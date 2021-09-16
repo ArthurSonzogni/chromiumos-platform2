@@ -66,6 +66,12 @@ MockPlatform::MockPlatform()
   ON_CALL(*this, Sync())
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::Sync));
 
+  ON_CALL(*this, CreateSymbolicLink(_, _))
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::CreateSymbolicLink));
+  ON_CALL(*this, ReadLink(_, _))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::ReadLink));
+
   ON_CALL(*this, SetFileTimes(_, _, _, _))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::SetFileTimes));
   ON_CALL(*this, SendFile(_, _, _, _))

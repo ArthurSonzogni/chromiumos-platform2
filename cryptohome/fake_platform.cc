@@ -179,6 +179,20 @@ base::FilePath FakePlatform::TestFilePath(const base::FilePath& path) const {
   return tmpfs_rootfs_.Append(path_str);
 }
 
+base::FilePath FakePlatform::StripTestFilePath(
+    const base::FilePath& path) const {
+  base::FilePath result("/");
+  if (!tmpfs_rootfs_.AppendRelativePath(path, &result)) {
+    // Not under the test root, so return as is.
+    return path;
+  }
+  return result;
+}
+
+bool FakePlatform::IsLink(const base::FilePath& path) const {
+  return base::IsLink(TestFilePath(path));
+}
+
 void FakePlatform::RemoveFakeEntries(const base::FilePath& path) {
   xattrs_.erase(path);
   file_owners_.erase(path);
@@ -263,6 +277,27 @@ bool FakePlatform::SyncDirectory(const base::FilePath& path) {
 
 void FakePlatform::Sync() {
   real_platform_.Sync();
+}
+
+bool FakePlatform::CreateSymbolicLink(const base::FilePath& path,
+                                      const base::FilePath& target) {
+  if (target.IsAbsolute()) {
+    return real_platform_.CreateSymbolicLink(TestFilePath(path),
+                                             TestFilePath(target));
+  } else {
+    return real_platform_.CreateSymbolicLink(TestFilePath(path), target);
+  }
+}
+
+bool FakePlatform::ReadLink(const base::FilePath& path,
+                            base::FilePath* target) {
+  base::FilePath tmp_path;
+  if (!real_platform_.ReadLink(TestFilePath(path), &tmp_path)) {
+    return false;
+  }
+
+  *target = StripTestFilePath(tmp_path);
+  return true;
 }
 
 bool FakePlatform::SetFileTimes(const base::FilePath& path,
@@ -398,7 +433,7 @@ bool FakePlatform::HasExtendedFileAttribute(const base::FilePath& path,
                                             const std::string& name) {
   base::AutoLock lock(mappings_lock_);
   base::FilePath npath = NormalizePath(path);
-  if (!FileExists(npath)) {
+  if (!IsLink(npath) && !FileExists(npath)) {
     return false;
   }
   const auto it = xattrs_.find(npath);
@@ -415,7 +450,7 @@ bool FakePlatform::ListExtendedFileAttributes(
     const base::FilePath& path, std::vector<std::string>* attr_list) {
   base::AutoLock lock(mappings_lock_);
   base::FilePath npath = NormalizePath(path);
-  if (!FileExists(npath)) {
+  if (!IsLink(npath) && !FileExists(npath)) {
     return false;
   }
   const auto it = xattrs_.find(npath);
@@ -433,7 +468,7 @@ bool FakePlatform::GetExtendedFileAttributeAsString(const base::FilePath& path,
                                                     std::string* value) {
   base::AutoLock lock(mappings_lock_);
   base::FilePath npath = NormalizePath(path);
-  if (!FileExists(npath)) {
+  if (!IsLink(npath) && !FileExists(npath)) {
     return false;
   }
   const auto it = xattrs_.find(npath);
@@ -452,7 +487,7 @@ bool FakePlatform::GetExtendedFileAttribute(const base::FilePath& path,
                                             ssize_t size) {
   base::AutoLock lock(mappings_lock_);
   base::FilePath npath = NormalizePath(path);
-  if (!FileExists(npath)) {
+  if (!IsLink(npath) && !FileExists(npath)) {
     return false;
   }
   const auto it = xattrs_.find(npath);
@@ -471,7 +506,7 @@ bool FakePlatform::SetExtendedFileAttribute(const base::FilePath& path,
                                             size_t size) {
   base::AutoLock lock(mappings_lock_);
   base::FilePath npath = NormalizePath(path);
-  if (!FileExists(npath)) {
+  if (!IsLink(npath) && !FileExists(npath)) {
     return false;
   }
 
@@ -486,7 +521,7 @@ bool FakePlatform::RemoveExtendedFileAttribute(const base::FilePath& path,
                                                const std::string& name) {
   base::AutoLock lock(mappings_lock_);
   base::FilePath npath = NormalizePath(path);
-  if (!FileExists(npath)) {
+  if (!IsLink(npath) && !FileExists(npath)) {
     return false;
   }
   auto it = xattrs_.find(npath);

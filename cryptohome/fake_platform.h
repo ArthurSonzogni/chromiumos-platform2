@@ -79,6 +79,10 @@ class FakePlatform final : public Platform {
   bool SyncDirectory(const base::FilePath& path) override;
   void Sync() override;
 
+  bool CreateSymbolicLink(const base::FilePath& path,
+                          const base::FilePath& target) override;
+  bool ReadLink(const base::FilePath& path, base::FilePath* target) override;
+
   bool SetFileTimes(const base::FilePath& path,
                     const struct timespec& atime,
                     const struct timespec& mtime,
@@ -210,6 +214,9 @@ class FakePlatform final : public Platform {
   void RemoveFakeEntries(const base::FilePath& path);
   void RemoveFakeEntriesRecursive(const base::FilePath& path);
   base::FilePath TestFilePath(const base::FilePath& path) const;
+  base::FilePath StripTestFilePath(const base::FilePath& path) const;
+  // TODO(dlunev): consider making IsLink a part of platform API.
+  bool IsLink(const base::FilePath& path) const;
 
   Platform real_platform_;
 };

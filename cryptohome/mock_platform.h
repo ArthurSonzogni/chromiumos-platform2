@@ -110,10 +110,22 @@ class MockPlatform : public Platform {
   MOCK_METHOD(bool, FileExists, (const base::FilePath&), (override));
   MOCK_METHOD(bool, DirectoryExists, (const base::FilePath&), (override));
   MOCK_METHOD(bool, CreateDirectory, (const base::FilePath&), (override));
+  MOCK_METHOD(bool,
+              CreateSparseFile,
+              (const base::FilePath&, int64_t),
+              (override));
   MOCK_METHOD(bool, DataSyncFile, (const base::FilePath&), (override));
   MOCK_METHOD(bool, SyncFile, (const base::FilePath&), (override));
   MOCK_METHOD(bool, SyncDirectory, (const base::FilePath&), (override));
   MOCK_METHOD(void, Sync, (), (override));
+  MOCK_METHOD(bool,
+              CreateSymbolicLink,
+              (const base::FilePath&, const base::FilePath&),
+              (override));
+  MOCK_METHOD(bool,
+              ReadLink,
+              (const base::FilePath&, base::FilePath*),
+              (override));
   MOCK_METHOD(bool,
               SetFileTimes,
               (const base::FilePath&,
@@ -358,18 +370,6 @@ class MockPlatform : public Platform {
               (override));
   MOCK_METHOD(bool, FirmwareWriteProtected, (), (override));
   MOCK_METHOD(std::string, GetHardwareID, (), (override));
-  MOCK_METHOD(bool,
-              CreateSymbolicLink,
-              (const base::FilePath&, const base::FilePath&),
-              (override));
-  MOCK_METHOD(bool,
-              ReadLink,
-              (const base::FilePath&, base::FilePath*),
-              (override));
-  MOCK_METHOD(bool,
-              CreateSparseFile,
-              (const base::FilePath&, int64_t),
-              (override));
   MOCK_METHOD(bool, GetBlkSize, (const base::FilePath&, uint64_t*), (override));
   MOCK_METHOD(base::FilePath, AttachLoop, (const base::FilePath&), (override));
   MOCK_METHOD(bool, DetachLoop, (const base::FilePath&), (override));
