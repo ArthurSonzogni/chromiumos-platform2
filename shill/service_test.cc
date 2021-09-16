@@ -1037,9 +1037,9 @@ TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   // The second call does trigger some throttling.
-  EXPECT_CALL(
-      dispatcher_,
-      PostDelayedTask(_, _, Service::kMinAutoConnectCooldownTimeMilliseconds));
+  EXPECT_CALL(dispatcher_,
+              PostDelayedTask(
+                  _, _, Service::kMinAutoConnectCooldownTime.InMilliseconds()));
   service_->AutoConnect();
   Mock::VerifyAndClearExpectations(&dispatcher_);
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
@@ -1058,13 +1058,12 @@ TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   // Timeouts increase exponentially.
-  uint64_t next_cooldown_time = service_->auto_connect_cooldown_milliseconds_;
-  EXPECT_EQ(next_cooldown_time,
-            Service::kAutoConnectCooldownBackoffFactor *
-                Service::kMinAutoConnectCooldownTimeMilliseconds);
-  while (next_cooldown_time <=
-         service_->GetMaxAutoConnectCooldownTimeMilliseconds()) {
-    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, next_cooldown_time));
+  base::TimeDelta next_cooldown_time = service_->auto_connect_cooldown_;
+  EXPECT_EQ(next_cooldown_time, Service::kAutoConnectCooldownBackoffFactor *
+                                    Service::kMinAutoConnectCooldownTime);
+  while (next_cooldown_time <= service_->GetMaxAutoConnectCooldownTime()) {
+    EXPECT_CALL(dispatcher_,
+                PostDelayedTask(_, _, next_cooldown_time.InMilliseconds()));
     service_->AutoConnect();
     Mock::VerifyAndClearExpectations(&dispatcher_);
     EXPECT_FALSE(service_->IsAutoConnectable(&reason));
@@ -1077,8 +1076,8 @@ TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
   for (int32_t i = 0; i < 2; i++) {
     EXPECT_CALL(
         dispatcher_,
-        PostDelayedTask(_, _,
-                        service_->GetMaxAutoConnectCooldownTimeMilliseconds()));
+        PostDelayedTask(
+            _, _, service_->GetMaxAutoConnectCooldownTime().InMilliseconds()));
     service_->AutoConnect();
     Mock::VerifyAndClearExpectations(&dispatcher_);
     EXPECT_FALSE(service_->IsAutoConnectable(&reason));
@@ -1092,12 +1091,12 @@ TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
   reason = "";
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
   EXPECT_STREQ("", reason);
-  EXPECT_EQ(service_->auto_connect_cooldown_milliseconds_, 0);
+  EXPECT_TRUE(service_->auto_connect_cooldown_.is_zero());
 
   // But future AutoConnects behave as before
-  EXPECT_CALL(
-      dispatcher_,
-      PostDelayedTask(_, _, Service::kMinAutoConnectCooldownTimeMilliseconds))
+  EXPECT_CALL(dispatcher_,
+              PostDelayedTask(
+                  _, _, Service::kMinAutoConnectCooldownTime.InMilliseconds()))
       .Times(1);
   service_->AutoConnect();
   service_->AutoConnect();

@@ -653,8 +653,8 @@ bool CellularService::IsAutoConnectable(const char** reason) const {
   return true;
 }
 
-uint64_t CellularService::GetMaxAutoConnectCooldownTimeMilliseconds() const {
-  return 30 * 60 * 1000;  // 30 minutes
+base::TimeDelta CellularService::GetMaxAutoConnectCooldownTime() const {
+  return base::TimeDelta::FromMinutes(30);
 }
 
 bool CellularService::IsDisconnectable(Error* error) const {

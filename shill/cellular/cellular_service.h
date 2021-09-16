@@ -142,7 +142,7 @@ class CellularService : public Service {
   void OnConnect(Error* error) override;
   void OnDisconnect(Error* error, const char* reason) override;
   bool IsAutoConnectable(const char** reason) const override;
-  uint64_t GetMaxAutoConnectCooldownTimeMilliseconds() const override;
+  base::TimeDelta GetMaxAutoConnectCooldownTime() const override;
   bool IsDisconnectable(Error* error) const override;
   bool IsMeteredByServiceProperties() const override;
   RpcIdentifier GetDeviceRpcId(Error* error) const override;

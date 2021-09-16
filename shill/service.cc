@@ -149,9 +149,13 @@ const size_t Service::kTrafficCounterArraySize = 4;
 const uint8_t Service::kStrengthMax = 100;
 const uint8_t Service::kStrengthMin = 0;
 
-const uint64_t Service::kMinAutoConnectCooldownTimeMilliseconds = 1000;
+const base::TimeDelta Service::kMinAutoConnectCooldownTime =
+    base::TimeDelta::FromSeconds(1);
+const base::TimeDelta Service::kMaxAutoConnectCooldownTime =
+    base::TimeDelta::FromMinutes(1);
 const uint64_t Service::kAutoConnectCooldownBackoffFactor = 2;
 
+// TODO(b/184036481): convert all of these to base::TimeDelta
 const int Service::kDisconnectsMonitorSeconds = 5 * 60;
 const int Service::kMisconnectsMonitorSeconds = 5 * 60;
 const int Service::kMaxDisconnectEventHistory = 20;
@@ -187,7 +191,6 @@ Service::Service(Manager* manager, Technology technology)
       has_ever_connected_(false),
       disconnects_(kMaxDisconnectEventHistory),
       misconnects_(kMaxMisconnectEventHistory),
-      auto_connect_cooldown_milliseconds_(0),
       store_(PropertyStore::PropertyChangeCallback(base::Bind(
           &Service::OnPropertyChanged, weak_ptr_factory_.GetWeakPtr()))),
       serial_number_(next_serial_number_++),
@@ -550,7 +553,7 @@ void Service::SetState(ConnectState state) {
     // When we succeed in connecting, forget that connects failed in the past.
     // Give services one chance at a fast autoconnect retry by resetting the
     // cooldown to 0 to indicate that the last connect was successful.
-    auto_connect_cooldown_milliseconds_ = 0;
+    auto_connect_cooldown_ = base::TimeDelta();
     reenable_auto_connect_task_.Cancel();
   }
   UpdateErrorProperty();
@@ -597,21 +600,20 @@ void Service::ReEnableAutoConnectTask() {
 }
 
 void Service::ThrottleFutureAutoConnects() {
-  if (auto_connect_cooldown_milliseconds_ > 0) {
+  if (!auto_connect_cooldown_.is_zero()) {
     LOG(INFO) << "Throttling future autoconnects to " << log_name()
-              << ". Next autoconnect in " << auto_connect_cooldown_milliseconds_
-              << " milliseconds.";
+              << ". Next autoconnect in " << auto_connect_cooldown_;
     reenable_auto_connect_task_.Reset(base::Bind(
         &Service::ReEnableAutoConnectTask, weak_ptr_factory_.GetWeakPtr()));
     dispatcher()->PostDelayedTask(FROM_HERE,
                                   reenable_auto_connect_task_.callback(),
-                                  auto_connect_cooldown_milliseconds_);
+                                  auto_connect_cooldown_.InMilliseconds());
   }
-  auto_connect_cooldown_milliseconds_ =
-      std::min(GetMaxAutoConnectCooldownTimeMilliseconds(),
-               std::max(kMinAutoConnectCooldownTimeMilliseconds,
-                        auto_connect_cooldown_milliseconds_ *
-                            kAutoConnectCooldownBackoffFactor));
+  auto min_cooldown_time =
+      std::max(kMinAutoConnectCooldownTime,
+               auto_connect_cooldown_ * kAutoConnectCooldownBackoffFactor);
+  auto_connect_cooldown_ =
+      std::min(GetMaxAutoConnectCooldownTime(), min_cooldown_time);
 }
 
 void Service::SaveFailure() {
@@ -1588,7 +1590,7 @@ void Service::OnBeforeSuspend(const ResultCallback& callback) {
 
 void Service::OnAfterResume() {
   // Forget old autoconnect failures across suspend/resume.
-  auto_connect_cooldown_milliseconds_ = 0;
+  auto_connect_cooldown_ = base::TimeDelta();
   reenable_auto_connect_task_.Cancel();
   // Forget if the user disconnected us, we might be able to connect now.
   ClearExplicitlyDisconnected();
@@ -1711,8 +1713,8 @@ bool Service::IsAutoConnectable(const char** reason) const {
   return true;
 }
 
-uint64_t Service::GetMaxAutoConnectCooldownTimeMilliseconds() const {
-  return 1 * 60 * 1000;  // 1 minute
+base::TimeDelta Service::GetMaxAutoConnectCooldownTime() const {
+  return kMaxAutoConnectCooldownTime;
 }
 
 bool Service::IsDisconnectable(Error* error) const {

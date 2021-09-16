@@ -681,7 +681,7 @@ class Service : public base::RefCounted<Service> {
 
   // Returns maximum auto connect cooldown time for ThrottleFutureAutoConnects.
   // May be overridden for types that require a longer cooldown period.
-  virtual uint64_t GetMaxAutoConnectCooldownTimeMilliseconds() const;
+  virtual base::TimeDelta GetMaxAutoConnectCooldownTime() const;
 
   // Returns true if a Service can be disconnected, otherwise returns false and
   // sets |error|. By default tests whether the Service is active.
@@ -859,7 +859,8 @@ class Service : public base::RefCounted<Service> {
   static const size_t kEAPMaxCertificationElements;
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
-  static const uint64_t kMinAutoConnectCooldownTimeMilliseconds;
+  static const base::TimeDelta kMinAutoConnectCooldownTime;
+  static const base::TimeDelta kMaxAutoConnectCooldownTime;
   static const uint64_t kAutoConnectCooldownBackoffFactor;
 
   static const int kDisconnectsMonitorSeconds;
@@ -1016,7 +1017,7 @@ class Service : public base::RefCounted<Service> {
   EventHistory misconnects_;  // Failures to connect.
 
   base::CancelableClosure reenable_auto_connect_task_;
-  uint64_t auto_connect_cooldown_milliseconds_;
+  base::TimeDelta auto_connect_cooldown_;
 
   ProfileRefPtr profile_;
   PropertyStore store_;
