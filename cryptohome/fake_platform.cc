@@ -318,6 +318,16 @@ bool FakePlatform::SendFile(int fd_to,
 void FakePlatform::InitializeFile(base::File* file,
                                   const base::FilePath& path,
                                   uint32_t flags) {
+  // This part here is to make one of the access verification tests happy.
+  // TODO(dlunev): generalize access control abiding fake permissions.
+  mode_t mode;
+  DCHECK(GetPermissions(path, &mode));
+  bool init_for_read = flags & base::File::FLAG_READ;
+  bool can_read = mode & S_IRUSR;
+  if (init_for_read && !can_read) {
+    return;
+  }
+
   real_platform_.InitializeFile(file, TestFilePath(path), flags);
 }
 
