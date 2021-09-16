@@ -30,7 +30,8 @@ mojo_ipc::GraphicsResultPtr GraphicsFetcher::FetchGraphicsInfo(
   auto graphics_info = mojo_ipc::GraphicsInfo::New();
 
   auto& gles_info = graphics_info->gles_info;
-  auto error = FetchGraphicsInfo(std::move(egl_manager), &gles_info);
+  auto& egl_info = graphics_info->egl_info;
+  auto error = FetchGraphicsInfo(std::move(egl_manager), &gles_info, &egl_info);
   if (error.has_value()) {
     return mojo_ipc::GraphicsResult::NewError(std::move(error.value()));
   }
@@ -100,9 +101,26 @@ mojo_ipc::GLESInfoPtr EglManager::FetchGLESInfo() {
   return gles_info;
 }
 
+mojo_ipc::EGLInfoPtr EglManager::FetchEGLInfo() {
+  auto egl_info = mojo_ipc::EGLInfo::New();
+  egl_info->version =
+      reinterpret_cast<const char*>(eglQueryString(egl_display_, EGL_VERSION));
+  egl_info->vendor =
+      reinterpret_cast<const char*>(eglQueryString(egl_display_, EGL_VENDOR));
+  egl_info->client_api = reinterpret_cast<const char*>(
+      eglQueryString(egl_display_, EGL_CLIENT_APIS));
+  std::string egl_extensions(reinterpret_cast<const char*>(
+      eglQueryString(egl_display_, EGL_EXTENSIONS)));
+  egl_info->extensions = base::SplitString(
+      egl_extensions, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+
+  return egl_info;
+}
+
 base::Optional<mojo_ipc::ProbeErrorPtr> GraphicsFetcher::FetchGraphicsInfo(
     std::unique_ptr<EglManager> egl_manager,
-    mojo_ipc::GLESInfoPtr* out_gles_info) {
+    mojo_ipc::GLESInfoPtr* out_gles_info,
+    mojo_ipc::EGLInfoPtr* out_egl_info) {
   if (!egl_manager) {
     egl_manager = EglManager::Create();
   }
@@ -113,6 +131,9 @@ base::Optional<mojo_ipc::ProbeErrorPtr> GraphicsFetcher::FetchGraphicsInfo(
 
   auto gles_info = egl_manager->FetchGLESInfo();
   *out_gles_info = std::move(gles_info);
+
+  auto egl_info = egl_manager->FetchEGLInfo();
+  *out_egl_info = std::move(egl_info);
 
   return base::nullopt;
 }

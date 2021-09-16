@@ -27,6 +27,7 @@ class EglManager {
 
   static std::unique_ptr<EglManager> Create();
   chromeos::cros_healthd::mojom::GLESInfoPtr FetchGLESInfo();
+  chromeos::cros_healthd::mojom::EGLInfoPtr FetchEGLInfo();
 
  private:
   EglManager() = default;
@@ -53,7 +54,8 @@ class GraphicsFetcher final : public BaseFetcher {
 
   OptionalProbeErrorPtr FetchGraphicsInfo(
       std::unique_ptr<EglManager> egl_manager,
-      chromeos::cros_healthd::mojom::GLESInfoPtr* out_gles_info);
+      chromeos::cros_healthd::mojom::GLESInfoPtr* out_gles_info,
+      chromeos::cros_healthd::mojom::EGLInfoPtr* out_egl_info);
 };
 
 }  // namespace diagnostics

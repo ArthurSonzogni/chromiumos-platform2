@@ -918,6 +918,19 @@ void DisplayGraphicsInfo(const GraphicsResultPtr& graphics_result) {
     gles_extensions->Append(ext);
   }
 
+  const auto& egl_info = info->egl_info;
+  auto* out_egl_info =
+      output.SetKey("egl_info", base::Value{base::Value::Type::DICTIONARY});
+  SET_DICT(version, egl_info, out_egl_info);
+  SET_DICT(vendor, egl_info, out_egl_info);
+  SET_DICT(client_api, egl_info, out_egl_info);
+
+  auto* egl_extensions =
+      out_egl_info->SetKey("extensions", base::Value{base::Value::Type::LIST});
+  for (const auto& ext : egl_info->extensions) {
+    egl_extensions->Append(ext);
+  }
+
   OutputJson(output);
 }
 

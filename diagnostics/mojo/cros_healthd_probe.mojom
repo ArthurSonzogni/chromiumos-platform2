@@ -901,6 +901,8 @@ union GraphicsResult {
 struct GraphicsInfo {
   // OpenGL | ES information.
   GLESInfo gles_info;
+  // EGL information.
+  EGLInfo egl_info;
 };
 
 struct GLESInfo {
@@ -913,6 +915,17 @@ struct GLESInfo {
   // GL renderer.
   string renderer;
   // GL extensions.
+  array<string> extensions;
+};
+
+struct EGLInfo {
+  // EGL version.
+  string version;
+  // EGL vendor.
+  string vendor;
+  // EGL client API.
+  string client_api;
+  // EGL extensions.
   array<string> extensions;
 };
 
