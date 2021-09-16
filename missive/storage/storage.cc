@@ -429,8 +429,8 @@ class Storage::KeyInStorage {
       key_files_to_remove.erase(result.first);
     }
     // Delete all files assigned for deletion.
-    for (const auto& full_name : key_files_to_remove) {
-      base::DeleteFile(full_name);  // Ignore errors, if any.
+    for (const auto& file_to_remove : key_files_to_remove) {
+      base::DeleteFile(file_to_remove);  // Ignore errors, if any.
     }
   }
 
