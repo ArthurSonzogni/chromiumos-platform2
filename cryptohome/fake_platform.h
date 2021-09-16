@@ -149,17 +149,39 @@ class FakePlatform final : public Platform {
   void RemoveSystemSaltForLibbrillo();
 
  private:
+  class FakeExtendedAttributes final {
+   public:
+    FakeExtendedAttributes() = default;
+    ~FakeExtendedAttributes() = default;
+    bool Exists(const std::string& name) const;
+    void List(std::vector<std::string>* attr_list) const;
+    bool GetAsString(const std::string& name, std::string* value) const;
+    bool Get(const std::string& name, char* value, ssize_t size) const;
+    void Set(const std::string& name, const char* value, ssize_t size);
+    void Remove(const std::string& name);
+
+   private:
+    std::unordered_map<std::string, std::vector<char>> xattrs_;
+  };
+
   std::unordered_map<std::string, uid_t> uids_;
   std::unordered_map<std::string, gid_t> gids_;
+
+  // Mapping for fake attributes of files. If you add a new mapping,
+  // update `RemoveFakeEntries` and `RemoveFakeEntriesRecursive`.
+  std::unordered_map<base::FilePath, FakeExtendedAttributes> xattrs_;
   // owners and perms are mutable due to const interface we need to abide.
   mutable std::unordered_map<base::FilePath, std::pair<uid_t, gid_t>>
       file_owners_;
   mutable std::unordered_map<base::FilePath, mode_t> file_mode_;
+
   base::FilePath tmpfs_rootfs_;
 
   void SetUserId(const std::string& user, uid_t user_id);
   void SetGroupId(const std::string& group, gid_t group_id);
 
+  void RemoveFakeEntries(const base::FilePath& path);
+  void RemoveFakeEntriesRecursive(const base::FilePath& path);
   base::FilePath TestFilePath(const base::FilePath& path) const;
 
   Platform real_platform_;

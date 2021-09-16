@@ -48,7 +48,74 @@ class ProxyFileEnumerator : public FileEnumerator {
   std::unique_ptr<FileEnumerator> real_enumerator_;
 };
 
+template <typename KeyType>
+void RemoveFakeEntriesRecursiveImpl(
+    const base::FilePath& path,
+    std::unordered_map<base::FilePath, KeyType>* m) {
+  for (auto it = m->begin(); it != m->end();) {
+    auto tmp_it = it;
+    ++it;
+    if (tmp_it->first == path || path.IsParent(tmp_it->first)) {
+      m->erase(tmp_it);
+    }
+  }
+}
+
 }  // namespace
+
+// FakeExtendedAttributes
+
+bool FakePlatform::FakeExtendedAttributes::Exists(
+    const std::string& name) const {
+  return xattrs_.find(name) != xattrs_.end();
+}
+
+void FakePlatform::FakeExtendedAttributes::List(
+    std::vector<std::string>* attr_list) const {
+  DCHECK(attr_list);
+  attr_list->clear();
+  for (const auto& xattr : xattrs_) {
+    attr_list->push_back(xattr.first);
+  }
+}
+
+bool FakePlatform::FakeExtendedAttributes::GetAsString(
+    const std::string& name, std::string* value) const {
+  const auto it = xattrs_.find(name);
+  if (it == xattrs_.end()) {
+    return false;
+  }
+
+  value->assign(it->second.data(), it->second.size());
+  return true;
+}
+
+bool FakePlatform::FakeExtendedAttributes::Get(const std::string& name,
+                                               char* value,
+                                               ssize_t size) const {
+  const auto it = xattrs_.find(name);
+  if (it == xattrs_.end()) {
+    return false;
+  }
+
+  if (it->second.size() > size) {
+    return false;
+  }
+
+  memcpy(value, it->second.data(), it->second.size());
+
+  return true;
+}
+
+void FakePlatform::FakeExtendedAttributes::Set(const std::string& name,
+                                               const char* value,
+                                               ssize_t size) {
+  xattrs_[name].assign(value, value + size);
+}
+
+void FakePlatform::FakeExtendedAttributes::Remove(const std::string& name) {
+  xattrs_.erase(name);
+}
 
 // Constructor/destructor
 
@@ -76,6 +143,18 @@ base::FilePath FakePlatform::TestFilePath(const base::FilePath& path) const {
   return tmpfs_rootfs_.Append(path_str);
 }
 
+void FakePlatform::RemoveFakeEntries(const base::FilePath& path) {
+  xattrs_.erase(path);
+  file_owners_.erase(path);
+  file_mode_.erase(path);
+}
+
+void FakePlatform::RemoveFakeEntriesRecursive(const base::FilePath& path) {
+  RemoveFakeEntriesRecursiveImpl(path, &xattrs_);
+  RemoveFakeEntriesRecursiveImpl(path, &file_owners_);
+  RemoveFakeEntriesRecursiveImpl(path, &file_mode_);
+}
+
 // Platform API
 
 bool FakePlatform::Rename(const base::FilePath& from,
@@ -100,14 +179,17 @@ bool FakePlatform::EnumerateDirectoryEntries(
 }
 
 bool FakePlatform::DeleteFile(const base::FilePath& path) {
+  RemoveFakeEntries(path);
   return real_platform_.DeleteFile(TestFilePath(path));
 }
 
 bool FakePlatform::DeletePathRecursively(const base::FilePath& path) {
+  RemoveFakeEntriesRecursive(path);
   return real_platform_.DeletePathRecursively(TestFilePath(path));
 }
 
 bool FakePlatform::DeleteFileDurable(const base::FilePath& path) {
+  RemoveFakeEntries(path);
   return real_platform_.DeleteFileDurable(TestFilePath(path));
 }
 
@@ -216,41 +298,87 @@ bool FakePlatform::GetFileSize(const base::FilePath& path, int64_t* size) {
 
 bool FakePlatform::HasExtendedFileAttribute(const base::FilePath& path,
                                             const std::string& name) {
-  return real_platform_.HasExtendedFileAttribute(TestFilePath(path), name);
+  if (!FileExists(path)) {
+    return false;
+  }
+  const auto it = xattrs_.find(path);
+  if (it == xattrs_.end()) {
+    return false;
+  }
+
+  return it->second.Exists(name);
 }
 
 bool FakePlatform::ListExtendedFileAttributes(
     const base::FilePath& path, std::vector<std::string>* attr_list) {
-  return real_platform_.ListExtendedFileAttributes(TestFilePath(path),
-                                                   attr_list);
+  if (!FileExists(path)) {
+    return false;
+  }
+  const auto it = xattrs_.find(path);
+  if (it == xattrs_.end()) {
+    return false;
+  }
+
+  it->second.List(attr_list);
+  return true;
 }
 
 bool FakePlatform::GetExtendedFileAttributeAsString(const base::FilePath& path,
                                                     const std::string& name,
                                                     std::string* value) {
-  return real_platform_.GetExtendedFileAttributeAsString(TestFilePath(path),
-                                                         name, value);
+  if (!FileExists(path)) {
+    return false;
+  }
+  const auto it = xattrs_.find(path);
+  if (it == xattrs_.end()) {
+    return false;
+  }
+
+  return it->second.GetAsString(name, value);
 }
 
 bool FakePlatform::GetExtendedFileAttribute(const base::FilePath& path,
                                             const std::string& name,
                                             char* value,
                                             ssize_t size) {
-  return real_platform_.GetExtendedFileAttribute(TestFilePath(path), name,
-                                                 value, size);
+  if (!FileExists(path)) {
+    return false;
+  }
+  const auto it = xattrs_.find(path);
+  if (it == xattrs_.end()) {
+    return false;
+  }
+
+  return it->second.Get(name, value, size);
 }
 
 bool FakePlatform::SetExtendedFileAttribute(const base::FilePath& path,
                                             const std::string& name,
                                             const char* value,
                                             size_t size) {
-  return real_platform_.SetExtendedFileAttribute(TestFilePath(path), name,
-                                                 value, size);
+  if (!FileExists(path)) {
+    return false;
+  }
+
+  auto [it, unused] =
+      xattrs_.emplace(path, FakePlatform::FakeExtendedAttributes());
+
+  it->second.Set(name, value, size);
+  return true;
 }
 
 bool FakePlatform::RemoveExtendedFileAttribute(const base::FilePath& path,
                                                const std::string& name) {
-  return real_platform_.RemoveExtendedFileAttribute(TestFilePath(path), name);
+  if (!FileExists(path)) {
+    return false;
+  }
+  auto it = xattrs_.find(path);
+  if (it == xattrs_.end()) {
+    return true;
+  }
+
+  it->second.Remove(name);
+  return true;
 }
 
 bool FakePlatform::GetOwnership(const base::FilePath& path,
