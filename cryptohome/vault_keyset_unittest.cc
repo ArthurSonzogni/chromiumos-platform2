@@ -74,6 +74,47 @@ constexpr char kFilePath[] = "foo";
 constexpr char kPasswordKey[] = "key";
 constexpr char kObfuscatedUsername[] = "foo@gmail.com";
 
+// Generated with this command:
+// cryptohome --action=mount_ex --user=fakeuser1@example.com
+// --key_label=PasswordLabel --create --password=FakePasswordForFakeUser1
+constexpr char kHexLibScryptExampleSerializedVaultKeyset[] =
+    "0802120869528fca742022fd1ab402736372797074000e00000008000000"
+    "019602e181d3047f2560d889b199015da9a2786101a1d491dccc7a9bd516"
+    "2d4ef72cd09817ab78dd27355bd45f5dd2c66a89f9b4c7911d2a85126e2a"
+    "ee5df1a88dceaa1b4adb5b98fc0107f5bafd881fb8b552cef71067cdfa39"
+    "6d11c51e5467a8937c393687eb407de488015ec793fe87bf5cd6987ff50d"
+    "e13111ee4604b774b951adc18ccc3ae0132e842df56b38e8256238fa3205"
+    "8ae9425451c54f8527669ad67888b64deabdf974d701ff7c429942979edf"
+    "ae07b8cf6b82e6a11c764ab216814de8652706c6aedc66f3ec7da371fd92"
+    "912742879e8bae064970b453c9e94d5f3677b80103f958599f8ee9aa6e68"
+    "3d497e4cc464666b71ec25c67336713cfb79020ee36a0ef2ae8a210c0b97"
+    "9e0ec287d0b622f7706ea7ace69c856ecc37b2221e5fb34a13120d506173"
+    "73776f72644c6162656c42021000529001736372797074000e0000000800"
+    "000001b9eed4ad3694dc8fcec59a06c16e508829e99bf1a45dabb1298574"
+    "c873f885d9355b3294bd243e40382fda5651ae094ab270188068d42e3bd8"
+    "320bbb57a165a613d70998310e9c6c3ea1f6759603275d22968ca3bda165"
+    "dc5dbc77921411ae5ba426ea84fcb29e8ee7c758be9a2e1c544d2834bd2c"
+    "ea69f49b484e68fca167265aa001736372797074000e0000000800000001"
+    "6f632b3a3faab2347327f58e4146fc00b1dddea4e7971caf7b3a49b6c02e"
+    "8ad24fb05076c16b7d1065df6379ef34b54a97231edb7393a7446beec328"
+    "afc962c24e123dd9e81a451c4f0f670f20e51662171c319127f96fd2718d"
+    "d6e73b29f32b86ffcc3cf115243f810ddcdc9be1e2ba3aba5d30cf3457e8"
+    "02f9da1d6c5934af7651cd9cca3d53ab5c6cafc057f52e8b";
+
+constexpr char kHexLibScryptExampleSalt[] = "69528fca742022fd";
+constexpr char kHexLibScryptExamplePasskey[] =
+    "6335336231666336333130336466313430356266626235336630303133366264";
+constexpr char kHexLibScryptExampleFek[] =
+    "1b70e790b9d48ae2d695bfba06ee8b47bece82c990569e191a79b9c1a256fa7140f1e69090"
+    "eb2c59d4370a9ff9bc623989c72b3617013a91c8ad52ab9c80d8a1";
+constexpr char kHexLibScryptExampleFekSig[] = "7535f385362a8450";
+constexpr char kHexLibScryptExampleFekSalt[] = "4e8f98e96de8d6ae";
+constexpr char kHexLibScryptExampleFnek[] =
+    "0ccf1c6a7e319665f843f950de0b9f82ce72ddb2e8eb4727a7c7b4786fbf307dc861696f36"
+    "a17044bd4f69949269088fab95cea159354a4968252d510c1e93a1";
+constexpr char kHexLibScryptExampleFnekSig[] = "71cb91c3ab4f2721";
+constexpr char kHexLibScryptExampleFnekSalt[] = "65ee2c9d0fea7161";
+
 std::string HexDecode(const std::string& hex) {
   std::vector<uint8_t> output;
   CHECK(base::HexStringToBytes(hex, &output));
@@ -651,6 +692,38 @@ TEST_F(VaultKeysetTest, DecryptTPMCommErr) {
   CryptoError tmp_error;
   ASSERT_FALSE(new_keyset.Decrypt(key, false, &tmp_error));
   ASSERT_EQ(tmp_error, CryptoError::CE_TPM_COMM_ERROR);
+}
+
+TEST_F(VaultKeysetTest, LibScryptBackwardCompatibility) {
+  Crypto crypto(&platform_);
+
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto);
+
+  SerializedVaultKeyset serialized;
+  serialized.ParseFromString(
+      HexDecode(kHexLibScryptExampleSerializedVaultKeyset));
+
+  vk.InitializeFromSerialized(serialized);
+
+  // TODO(b/198394243): We should remove this because it's not actually used.
+  EXPECT_EQ(SecureBlobToHex(vk.salt_), kHexLibScryptExampleSalt);
+
+  AuthBlockState auth_state;
+  EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
+
+  CryptoError crypto_error = CryptoError::CE_NONE;
+  EXPECT_TRUE(vk.DecryptVaultKeyset(
+      brillo::SecureBlob(HexDecode(kHexLibScryptExamplePasskey)), false,
+      &crypto_error));
+  EXPECT_EQ(CryptoError::CE_NONE, crypto_error);
+
+  EXPECT_EQ(SecureBlobToHex(vk.GetFek()), kHexLibScryptExampleFek);
+  EXPECT_EQ(SecureBlobToHex(vk.GetFekSig()), kHexLibScryptExampleFekSig);
+  EXPECT_EQ(SecureBlobToHex(vk.GetFekSalt()), kHexLibScryptExampleFekSalt);
+  EXPECT_EQ(SecureBlobToHex(vk.GetFnek()), kHexLibScryptExampleFnek);
+  EXPECT_EQ(SecureBlobToHex(vk.GetFnekSig()), kHexLibScryptExampleFnekSig);
+  EXPECT_EQ(SecureBlobToHex(vk.GetFnekSalt()), kHexLibScryptExampleFnekSalt);
 }
 
 class LeCredentialsManagerTest : public ::testing::Test {

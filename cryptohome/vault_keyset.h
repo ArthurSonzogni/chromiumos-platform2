@@ -417,6 +417,7 @@ class VaultKeyset {
   FRIEND_TEST_ALL_PREFIXES(LeCredentialsManagerTest, EncryptTestReset);
   FRIEND_TEST_ALL_PREFIXES(VaultKeysetTest, EncryptionTest);
   FRIEND_TEST_ALL_PREFIXES(VaultKeysetTest, DecryptionTest);
+  FRIEND_TEST_ALL_PREFIXES(VaultKeysetTest, LibScryptBackwardCompatibility);
   FRIEND_TEST_ALL_PREFIXES(KeysetManagementTest, AddInitialKeyset);
 };
 
