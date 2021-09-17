@@ -102,6 +102,8 @@ const char Service::kAutoConnTechnologyNotAutoConnectable[] =
 const char Service::kAutoConnThrottled[] = "throttled";
 const char Service::kAutoConnMediumUnavailable[] =
     "connection medium unavailable";
+const char Service::kAutoConnRecentBadPassphraseFailure[] =
+    "recent bad passphrase failure";
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 const size_t Service::kEAPMaxCertificationElements = 10;
@@ -1707,6 +1709,20 @@ bool Service::IsAutoConnectable(const char** reason) const {
   if (!technology_.IsPrimaryConnectivityTechnology() &&
       !manager_->IsConnected()) {
     *reason = kAutoConnOffline;
+    return false;
+  }
+
+  // It's possible for a connection failure to trigger an autoconnect to the
+  // same Service. This happens with no cooldown, so we'll see a connection
+  // failure immediately followed by an autoconnect attempt. This is desirable
+  // in many cases (e.g. there's a brief AP-/network-side issue), but not when
+  // the failure is due to a bad passphrase. Enforce a minimum cooldown time to
+  // avoid this.
+  auto time_since_failed = GetTimeSinceFailed();
+  if (time_since_failed &&
+      time_since_failed.value() < kMinAutoConnectCooldownTime &&
+      previous_error_ == kErrorBadPassphrase) {
+    *reason = kAutoConnRecentBadPassphraseFailure;
     return false;
   }
 
