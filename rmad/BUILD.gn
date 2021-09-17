@@ -40,6 +40,7 @@ pkg_config("target_defaults") {
 
 static_library("libsystem") {
   sources = [
+    "system/cros_disks_client_impl.cc",
     "system/cryptohome_client_impl.cc",
     "system/fake_cryptohome_client.cc",
     "system/fake_hardware_verifier_client.cc",
@@ -181,6 +182,7 @@ if (use.test) {
       "state_handler/write_protect_disable_physical_state_handler_test.cc",
       "state_handler/write_protect_disable_rsu_state_handler_test.cc",
       "state_handler/write_protect_enable_physical_state_handler_test.cc",
+      "system/cros_disks_client_test.cc",
       "system/cryptohome_client_test.cc",
       "system/hardware_verifier_client_test.cc",
       "system/power_manager_client_test.cc",
