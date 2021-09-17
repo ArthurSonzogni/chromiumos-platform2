@@ -319,6 +319,15 @@ TEST_F(UserSecretStashObjectApiTest, DecryptErrorNoCiphertext) {
       GetFlatbufferFromUssContainerObj(), kMainKey));
 }
 
+// Test that decryption fails when the ciphertext field is corrupted.
+TEST_F(UserSecretStashObjectApiTest, DecryptErrorCorruptedCiphertext) {
+  for (uint8_t& byte : uss_container_obj_.ciphertext)
+    byte ^= 1;
+
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssContainerObj(), kMainKey));
+}
+
 // Test that decryption fails when the iv field is missing.
 TEST_F(UserSecretStashObjectApiTest, DecryptErrorNoIv) {
   uss_container_obj_.iv.clear();
@@ -327,9 +336,41 @@ TEST_F(UserSecretStashObjectApiTest, DecryptErrorNoIv) {
       GetFlatbufferFromUssContainerObj(), kMainKey));
 }
 
+// Test that decryption fails when the iv field has a wrong value.
+TEST_F(UserSecretStashObjectApiTest, DecryptErrorWrongIv) {
+  uss_container_obj_.iv[0] ^= 1;
+
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssContainerObj(), kMainKey));
+}
+
+// Test that decryption fails when the iv field is of a wrong size.
+TEST_F(UserSecretStashObjectApiTest, DecryptErrorIvBadSize) {
+  uss_container_obj_.iv.resize(uss_container_obj_.iv.size() - 1);
+
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssContainerObj(), kMainKey));
+}
+
 // Test that decryption fails when the gcm_tag field is missing.
 TEST_F(UserSecretStashObjectApiTest, DecryptErrorNoGcmTag) {
   uss_container_obj_.gcm_tag.clear();
+
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssContainerObj(), kMainKey));
+}
+
+// Test that decryption fails when the gcm_tag field has a wrong value.
+TEST_F(UserSecretStashObjectApiTest, DecryptErrorWrongGcmTag) {
+  uss_container_obj_.gcm_tag[0] ^= 1;
+
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssContainerObj(), kMainKey));
+}
+
+// Test that decryption fails when the gcm_tag field is of a wrong size.
+TEST_F(UserSecretStashObjectApiTest, DecryptErrorGcmTagBadSize) {
+  uss_container_obj_.gcm_tag.resize(uss_container_obj_.gcm_tag.size() - 1);
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
       GetFlatbufferFromUssContainerObj(), kMainKey));
