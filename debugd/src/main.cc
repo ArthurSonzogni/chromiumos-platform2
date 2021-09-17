@@ -93,6 +93,18 @@ void enter_vfs_namespace() {
   if (minijail_bind(j.get(), "/run/shill", "/run/shill", 0))
     LOG(FATAL) << "minijail_bind(\"/run/shill\") failed";
 
+  // Bind mount /run/lockbox and /var/lib/devicesettings to be able to read
+  // policy files and check device policies.
+  // In case we start before, make sure the path exists.
+  mkdir("/run/lockbox", 0755);
+  if (minijail_bind(j.get(), "/run/lockbox", "/run/lockbox", 0))
+    LOG(FATAL) << "minijail_bind(\"/run/lockbox\") failed";
+  // In case we start before, make sure the path exists.
+  mkdir("/var/lib/devicesettings", 0755);
+  if (minijail_bind(j.get(), "/var/lib/devicesettings",
+                    "/var/lib/devicesettings", 0))
+    LOG(FATAL) << "minijail_bind(\"/var/lib/devicesettings\") failed";
+
   // Mount /dev to be able to inspect devices.
   if (minijail_mount_with_data(j.get(), "/dev", "/dev", "bind",
                                MS_BIND | MS_REC, nullptr)) {
