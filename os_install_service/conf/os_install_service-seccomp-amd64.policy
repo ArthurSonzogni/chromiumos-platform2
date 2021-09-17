@@ -68,6 +68,7 @@ getresgid: 1
 getresuid: 1
 getsockname: 1
 gettid: 1
+gettimeofday: 1
 getuid: 1
 inotify_add_watch: 1
 inotify_init1: 1
