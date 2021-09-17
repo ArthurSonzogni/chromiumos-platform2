@@ -30,6 +30,15 @@ toolchain("toolchain") {
         [ "{{source_out_dir}}/{{target_output_name}}.{{source_name_part}}.o" ]
   }
 
+  tool("asm") {
+    depfile = "{{output}}.d"
+    command = "$cc -MMD -MF $depfile {{defines}} {{include_dirs}} {{asmflags}} -c {{source}} -o {{output}}"
+    depsformat = "gcc"
+    description = "CC {{output}}"
+    outputs =
+        [ "{{source_out_dir}}/{{target_output_name}}.{{source_name_part}}.o" ]
+  }
+
   tool("cxx") {
     depfile = "{{output}}.d"
     command = "$cxx -MMD -MF $depfile {{defines}} {{include_dirs}} {{cflags}} {{cflags_cc}} -c {{source}} -o {{output}}"
