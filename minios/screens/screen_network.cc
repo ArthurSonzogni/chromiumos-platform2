@@ -90,6 +90,9 @@ void ScreenNetwork::ShowButtons() {
     case NetworkState::kGetPassword: {
       button_count_ = 3;
       draw_utils_->ShowLanguageMenu(index_ == 0);
+      draw_utils_->ShowText(
+          "Network: " + chosen_network_.ssid, (-frecon_canvas_size / 2) + 10,
+          (-frecon_canvas_size / 2) + 280 + kBtnYStep * 2, "grey");
       const int kBtnY = (-frecon_canvas_size / 2) + 318 + kBtnYStep * 2;
       draw_utils_->ShowButton("Enter your password", kBtnY, false,
                               btn_width * 4, true);
@@ -324,7 +327,8 @@ void ScreenNetwork::ShowCollapsedNetworkDropDown(bool is_selected) {
                   : screens_path.Append("language_menu_bg.png");
 
   draw_utils_->ShowImage(menu_background, kBgX, kOffsetY);
-  draw_utils_->ShowImage(screens_path.Append("wifi.png"), kGlobeX, kOffsetY);
+  draw_utils_->ShowImage(screens_path.Append("ic_wifi_filled-bg.png"), kGlobeX,
+                         kOffsetY);
   draw_utils_->ShowImage(screens_path.Append("ic_dropdown.png"), kArrowX,
                          kOffsetY);
   draw_utils_->ShowMessage("btn_MiniOS_display_options", kTextX, kOffsetY);

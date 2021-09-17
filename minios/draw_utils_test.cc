@@ -492,8 +492,9 @@ TEST_F(DrawUtilsTestMocks, ShowLanguageMenu) {
       mock_draw_utils_,
       ShowImage(screens_path_.Append("language_menu_bg_focused.png"), _, _))
       .WillOnce(testing::Return(true));
-  EXPECT_CALL(mock_draw_utils_,
-              ShowImage(screens_path_.Append("ic_language-globe.png"), _, _))
+  EXPECT_CALL(
+      mock_draw_utils_,
+      ShowImage(screens_path_.Append("ic_language_filled-bg.png"), _, _))
       .WillOnce(testing::Return(true));
   EXPECT_CALL(mock_draw_utils_,
               ShowImage(screens_path_.Append("ic_dropdown.png"), _, _))

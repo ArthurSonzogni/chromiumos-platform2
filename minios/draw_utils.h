@@ -35,6 +35,7 @@ extern const int kMonospaceGlyphHeight;
 extern const int kMonospaceGlyphWidth;
 extern const int kDefaultButtonWidth;
 extern const int kSmallCanvasSize;
+extern const int kProgressBarYScale;
 
 // Frecon constants
 extern const char kScreens[];

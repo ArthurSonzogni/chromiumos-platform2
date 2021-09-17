@@ -24,8 +24,6 @@ void ScreenWelcome::ShowButtons() {
       (-draw_utils_->GetFreconCanvasSize() / 2) + 318 + kBtnYStep * 2;
   draw_utils_->ShowButton("btn_next", kBtnY, (index_ == 1),
                           draw_utils_->GetDefaultButtonWidth(), false);
-  draw_utils_->ShowButton("btn_back", kBtnY + kBtnYStep, (index_ == 2),
-                          draw_utils_->GetDefaultButtonWidth(), false);
 }
 
 void ScreenWelcome::OnKeyPress(int key_changed) {

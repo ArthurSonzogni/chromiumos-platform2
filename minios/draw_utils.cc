@@ -29,6 +29,7 @@ const int kDefaultMessageWidth = 720;
 const int kMonospaceGlyphHeight = 20;
 const int kMonospaceGlyphWidth = 10;
 const int kDefaultButtonWidth = 80;
+const int kProgressBarYScale = 12;
 
 // Frecon constants
 constexpr char kScreens[] = "etc/screens";
@@ -204,7 +205,8 @@ void DrawUtils::ShowProgressPercentage(double progress) {
   constexpr int kProgressHeight = 4;
   const int kLeftIncrement = -frecon_canvas_size_ / 2;
   int progress_length = kProgressIncrement * progress * 100;
-  ShowBox(kLeftIncrement + progress_length / 2, 0, progress_length,
+  ShowBox(kLeftIncrement + progress_length / 2,
+          frecon_canvas_size_ / kProgressBarYScale, progress_length,
           kProgressHeight, kMenuBlue);
 }
 
@@ -362,7 +364,8 @@ void DrawUtils::ShowLanguageMenu(bool is_selected) {
                   : screens_path_.Append("language_menu_bg.png");
 
   ShowImage(menu_background, kBgX, kOffsetY);
-  ShowImage(screens_path_.Append("ic_language-globe.png"), kGlobeX, kOffsetY);
+  ShowImage(screens_path_.Append("ic_language_filled-bg.png"), kGlobeX,
+            kOffsetY);
 
   ShowImage(screens_path_.Append("ic_dropdown.png"), kArrowX, kOffsetY);
   ShowMessage("language_folded", kTextX, kOffsetY);
