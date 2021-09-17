@@ -122,25 +122,6 @@ void DBusPropertiesProxy::SetPropertiesChangedCallback(
                  weak_factory_.GetWeakPtr()));
 }
 
-void DBusPropertiesProxy::SetModemManagerPropertiesChangedCallback(
-    const ModemManagerPropertiesChangedCallback& callback) {
-  CHECK(mm_properties_changed_callback_.is_null());
-  mm_properties_changed_callback_ = callback;
-  proxy_->RegisterMmPropertiesChangedSignalHandler(
-      base::Bind(&DBusPropertiesProxy::MmPropertiesChanged,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&DBusPropertiesProxy::OnSignalConnected,
-                 weak_factory_.GetWeakPtr()));
-}
-
-void DBusPropertiesProxy::MmPropertiesChanged(
-    const std::string& interface, const brillo::VariantDictionary& properties) {
-  SLOG(&proxy_->GetObjectPath(), 2) << __func__ << "(" << interface << ")";
-  KeyValueStore properties_store =
-      KeyValueStore::ConvertFromVariantDictionary(properties);
-  mm_properties_changed_callback_.Run(interface, properties_store);
-}
-
 void DBusPropertiesProxy::PropertiesChanged(
     const std::string& interface,
     const brillo::VariantDictionary& changed_properties,

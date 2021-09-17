@@ -18,8 +18,6 @@
 
 namespace shill {
 
-// This is a cellular-specific DBus Properties interface, as it supports
-// cellular-specific signal (ModemManagerPropertiesChanged).
 // For asynchronous calls, the class instance should outlive the success
 // callback invocation since it owns the org::freedesktop::DBus::PropertiesProxy
 // object which has an opaque implementation that does not guarantee callback
@@ -29,11 +27,6 @@ class DBusPropertiesProxy {
   // Callback invoked when an object sends a DBus property change signal.
   using PropertiesChangedCallback = base::Callback<void(
       const std::string& interface, const KeyValueStore& changed_properties)>;
-
-  // Callback invoked when the classic modem manager sends a DBus
-  // property change signal.
-  using ModemManagerPropertiesChangedCallback = base::Callback<void(
-      const std::string& interface, const KeyValueStore& properties)>;
 
   DBusPropertiesProxy(const scoped_refptr<dbus::Bus>& bus,
                       const RpcIdentifier& path,
@@ -58,9 +51,6 @@ class DBusPropertiesProxy {
 
   void SetPropertiesChangedCallback(const PropertiesChangedCallback& callback);
 
-  void SetModemManagerPropertiesChangedCallback(
-      const ModemManagerPropertiesChangedCallback& callback);
-
   static std::unique_ptr<DBusPropertiesProxy>
   CreateDBusPropertiesProxyForTesting(
       std::unique_ptr<org::freedesktop::DBus::PropertiesProxyInterface> proxy);
@@ -75,8 +65,6 @@ class DBusPropertiesProxy {
       std::unique_ptr<org::freedesktop::DBus::PropertiesProxyInterface> proxy);
 
   // Signal handlers.
-  void MmPropertiesChanged(const std::string& interface,
-                           const brillo::VariantDictionary& properties);
   void PropertiesChanged(
       const std::string& interface,
       const brillo::VariantDictionary& changed_properties,
@@ -88,7 +76,6 @@ class DBusPropertiesProxy {
                          bool success);
 
   PropertiesChangedCallback properties_changed_callback_;
-  ModemManagerPropertiesChangedCallback mm_properties_changed_callback_;
 
   std::unique_ptr<org::freedesktop::DBus::PropertiesProxyInterface> proxy_;
 

@@ -309,8 +309,6 @@ void CellularCapability3gpp::InitProxies() {
 
   dbus_properties_proxy_ = control_interface()->CreateDBusPropertiesProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
-  dbus_properties_proxy_->SetModemManagerPropertiesChangedCallback(base::Bind(
-      &CellularCapability3gpp::OnPropertiesChanged, base::Unretained(this)));
   dbus_properties_proxy_->SetPropertiesChangedCallback(base::Bind(
       &CellularCapability3gpp::OnPropertiesChanged, base::Unretained(this)));
 

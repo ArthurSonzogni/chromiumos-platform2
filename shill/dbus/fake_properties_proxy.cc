@@ -99,11 +99,6 @@ void FakePropertiesProxy::GetAllAsync(
   std::move(success_callback).Run(dictionary);
 }
 
-void FakePropertiesProxy::RegisterMmPropertiesChangedSignalHandler(
-    const base::RepeatingCallback<void(
-        const std::string&, const brillo::VariantDictionary&)>& signal_callback,
-    dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {}
-
 void FakePropertiesProxy::RegisterPropertiesChangedSignalHandler(
     const base::RepeatingCallback<void(const std::string&,
                                        const brillo::VariantDictionary&,

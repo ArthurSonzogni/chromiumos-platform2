@@ -65,11 +65,6 @@ class FakePropertiesProxy
           success_callback,
       base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override;
-  void RegisterMmPropertiesChangedSignalHandler(
-      const base::RepeatingCallback<void(const std::string&,
-                                         const brillo::VariantDictionary&)>&
-          signal_callback,
-      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override;
   void RegisterPropertiesChangedSignalHandler(
       const base::RepeatingCallback<void(const std::string&,
                                          const brillo::VariantDictionary&,
