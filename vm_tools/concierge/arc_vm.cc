@@ -89,6 +89,22 @@ constexpr char kApkCacheSharedDirTag[] = "apkcache";
 constexpr char kFontsSharedDir[] = "/usr/share/fonts";
 constexpr char kFontsSharedDirTag[] = "fonts";
 
+#if defined(__x86_64__)
+constexpr char kLibSharedDir[] = "/lib64";
+constexpr char kUsrLibSharedDir[] = "/usr/lib64";
+#else
+constexpr char kLibSharedDir[] = "/lib";
+constexpr char kUsrLibSharedDir[] = "/usr/lib";
+#endif
+constexpr char kLibSharedDirTag[] = "lib";
+constexpr char kUsrLibSharedDirTag[] = "usr_lib";
+
+constexpr char kSbinSharedDir[] = "/sbin";
+constexpr char kSbinSharedDirTag[] = "sbin";
+
+constexpr char kUsrBinSharedDir[] = "/usr/bin";
+constexpr char kUsrBinSharedDirTag[] = "usr_bin";
+
 // For |kOemEtcSharedDir|, map host's crosvm to guest's root, also arc-camera
 // (603) to vendor_arc_camera (5003).
 constexpr char kOemEtcUgidMapTemplate[] = "0 %u 1, 5000 600 50";
@@ -252,6 +268,18 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   const base::FilePath fonts_dir(kFontsSharedDir);
   std::string shared_fonts =
       CreateSharedDataParam(fonts_dir, kFontsSharedDirTag, true, false, {});
+  const base::FilePath lib_dir(kLibSharedDir);
+  std::string shared_lib =
+      CreateSharedDataParam(lib_dir, kLibSharedDirTag, true, false, {});
+  const base::FilePath usr_lib_dir(kUsrLibSharedDir);
+  std::string shared_usr_lib =
+      CreateSharedDataParam(usr_lib_dir, kUsrLibSharedDirTag, true, false, {});
+  const base::FilePath sbin_dir(kSbinSharedDir);
+  std::string shared_sbin =
+      CreateSharedDataParam(sbin_dir, kSbinSharedDirTag, true, false, {});
+  const base::FilePath usr_bin_dir(kUsrBinSharedDir);
+  std::string shared_usr_bin =
+      CreateSharedDataParam(usr_bin_dir, kUsrBinSharedDirTag, true, false, {});
 
   vm_builder
       // Bias tuned on 4/8G hatch devices with multivm.Lifecycle tests.
@@ -270,6 +298,10 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .AppendSharedDir(shared_testharness)
       .AppendSharedDir(shared_apkcache)
       .AppendSharedDir(shared_fonts)
+      .AppendSharedDir(shared_lib)
+      .AppendSharedDir(shared_usr_lib)
+      .AppendSharedDir(shared_sbin)
+      .AppendSharedDir(shared_usr_bin)
       .EnableBattery(true /* enable */)
       .EnableDelayRt(true /* enable */);
 
