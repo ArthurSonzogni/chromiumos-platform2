@@ -253,7 +253,7 @@ class Platform2(object):
 
         We do this to set the various toolchain names for the target board.
         """
-        varnames = ['CHOST', 'AR', 'CC', 'CXX', 'PKG_CONFIG']
+        varnames = ['ARCH', 'CHOST', 'AR', 'CC', 'CXX', 'PKG_CONFIG']
         board_env = self.get_portageq_envvars(varnames)
 
         tool_names = {
@@ -263,7 +263,9 @@ class Platform2(object):
             'PKG_CONFIG': 'pkg-config',
         }
 
-        env = {}
+        env = {
+            'ARCH': board_env.get('ARCH'),
+        }
         for var, tool in tool_names.items():
             env['%s_target' % var] = (board_env[var] if board_env[var] else \
                                       '%s-%s' % (board_env['CHOST'], tool))
@@ -366,6 +368,16 @@ class Platform2(object):
                 yield '%s=%s' % (k.replace('-', '_'), v)
 
         buildenv = self.get_build_environment()
+
+        # Map Gentoo ARCH to GN target_cpu. Sometimes they're the same.
+        arch_to_target_cpu = {
+            'amd64': 'x64',
+            'mips': 'mipsel',
+        }
+        target_cpu = buildenv.get('ARCH')
+        target_cpu = arch_to_target_cpu.get(target_cpu, target_cpu)
+        assert target_cpu, '$ARCH is missing from the env'
+
         gn_args = {
             'platform_subdir':
             self.platform_subdir,
@@ -377,7 +389,12 @@ class Platform2(object):
             buildenv.get('AR_target', buildenv.get('AR', '')),
             'pkg-config':
             buildenv.get('PKG_CONFIG_target', buildenv.get('PKG_CONFIG', '')),
+            'target_cpu':
+            target_cpu,
+            'target_os':
+            'linux',
         }
+
         gn_args['clang_cc'] = 'clang' in gn_args['cc']
         gn_args['clang_cxx'] = 'clang' in gn_args['cxx']
         gn_args.update(self.gen_common_args(True))
