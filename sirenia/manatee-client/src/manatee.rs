@@ -17,7 +17,10 @@ use std::str::FromStr;
 use std::thread::{spawn, JoinHandle};
 use std::time::Duration;
 
-use dbus::blocking::Connection;
+use dbus::{
+    arg::OwnedFd,
+    blocking::{Connection, Proxy},
+};
 use getopts::Options;
 use libsirenia::{
     cli::{
@@ -32,13 +35,15 @@ use libsirenia::{
 };
 use log::{self, error, info};
 use manatee_client::client::OrgChromiumManaTEEInterface;
-use sys_util::{wait_for_interrupt, KillOnDrop};
+use sys_util::{
+    vsock::{SocketAddr as VsockAddr, VsockCid},
+    wait_for_interrupt, KillOnDrop,
+};
 use thiserror::Error as ThisError;
 
 const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(25);
 
 const DEVELOPER_SHELL_APP_ID: &str = "shell";
-const SANDBOXED_SHELL_APP_ID: &str = "sandboxed-shell";
 
 const MINIJAIL_NAME: &str = "minijail0";
 const CRONISTA_NAME: &str = "cronista";
@@ -97,6 +102,88 @@ enum Error {
 /// The result of an operation in this crate.
 type Result<T> = std::result::Result<T, Error>;
 
+impl From<Error> for dbus::Error {
+    fn from(err: Error) -> dbus::Error {
+        dbus::Error::new_custom("", &format!("{}", err))
+    }
+}
+
+/// Implementation of the D-Bus interface over a direct Vsock connection.
+struct Passthrough {
+    client: TrichechusClient,
+    uri: TransportType,
+}
+
+impl Passthrough {
+    fn new(trichechus_uri: Option<TransportType>) -> Result<Self> {
+        let uri = trichechus_uri.unwrap_or(TransportType::VsockConnection(VsockAddr {
+            cid: VsockCid::Host,
+            port: DEFAULT_SERVER_PORT,
+        }));
+
+        info!("Opening connection to trichechus");
+        // Adjust the source port when connecting to a non-standard port to facilitate testing.
+        let bind_port = match uri.get_port().map_err(Error::GetPort)? {
+            DEFAULT_SERVER_PORT => DEFAULT_CLIENT_PORT,
+            port => port + 1,
+        };
+        let mut transport = uri
+            .try_into_client(Some(bind_port))
+            .map_err(Error::IntoClient)?;
+
+        let transport = transport.connect().map_err(|e| {
+            error!("transport connect failed: {}", e);
+            Error::TransportConnection(e)
+        })?;
+        Ok(Passthrough {
+            client: TrichechusClient::new(transport),
+            uri,
+        })
+    }
+}
+
+impl OrgChromiumManaTEEInterface for Passthrough {
+    fn start_teeapplication(
+        &self,
+        app_id: &str,
+    ) -> std::result::Result<(i32, OwnedFd, OwnedFd), dbus::Error> {
+        info!("Setting up app vsock.");
+        let mut app_transport = self.uri.try_into_client(None).map_err(Error::IntoClient)?;
+        let addr = app_transport.bind().map_err(Error::TransportBind)?;
+        let app_info = AppInfo {
+            app_id: app_id.to_string(),
+            port_number: addr.get_port().map_err(Error::GetPort)?,
+        };
+
+        info!("Starting rpc.");
+        self.client
+            .start_session(app_info)
+            .map_err(Error::Rpc)?
+            .map_err(Error::StartSession)?;
+
+        info!("Starting TEE application: {}", app_id);
+        let Transport { r, w, id: _ } = app_transport
+            .connect()
+            .map_err(Error::TransportConnection)?;
+
+        info!("Forwarding stdio.");
+        // Safe because ownership of the file descriptors is transferred.
+        Ok((
+            0, /* error_code */
+            unsafe { OwnedFd::new(r.into_raw_fd()) },
+            unsafe { OwnedFd::new(w.into_raw_fd()) },
+        ))
+    }
+}
+
+fn connect_to_dugong<'a>(c: &'a Connection) -> Result<Proxy<'a, &Connection>> {
+    Ok(c.with_proxy(
+        "org.chromium.ManaTEE",
+        "/org/chromium/ManaTEE1",
+        DEFAULT_DBUS_TIMEOUT,
+    ))
+}
+
 fn handle_app_fds<R: 'static + Read + Send + Sized, W: 'static + Write + Send + Sized>(
     mut input: R,
     mut output: W,
@@ -114,19 +201,9 @@ fn handle_app_fds<R: 'static + Read + Send + Sized, W: 'static + Write + Send + 
         .map_err(|boxed_err| *boxed_err.downcast::<Error>().unwrap())?
 }
 
-fn dbus_start_manatee_app(app_id: &str) -> Result<()> {
-    info!("Connecting to D-Bus.");
-    let connection = Connection::new_system().map_err(Error::NewDBusConnection)?;
-    let conn_path = connection.with_proxy(
-        "org.chromium.ManaTEE",
-        "/org/chromium/ManaTEE1",
-        DEFAULT_DBUS_TIMEOUT,
-    );
+fn start_manatee_app(api: &dyn OrgChromiumManaTEEInterface, app_id: &str) -> Result<()> {
     info!("Starting TEE application: {}", app_id);
-    let (fd_in, fd_out) = match conn_path
-        .start_teeapplication(app_id)
-        .map_err(Error::DBusCall)?
-    {
+    let (fd_in, fd_out) = match api.start_teeapplication(app_id).map_err(Error::DBusCall)? {
         (0, fd_in, fd_out) => (fd_in, fd_out),
         (code, _, _) => return Err(Error::StartApp(code)),
     };
@@ -140,59 +217,29 @@ fn dbus_start_manatee_app(app_id: &str) -> Result<()> {
     handle_app_fds(file_in, file_out)
 }
 
+fn dbus_start_manatee_app(app_id: &str) -> Result<()> {
+    info!("Connecting to D-Bus.");
+    let connection = Connection::new_system().map_err(Error::NewDBusConnection)?;
+    let conn_path = connect_to_dugong(&connection)?;
+    start_manatee_app(&conn_path, app_id)
+}
+
 fn direct_start_manatee_app(
     trichechus_uri: TransportType,
     app_id: &str,
     elf: Option<Vec<u8>>,
 ) -> Result<()> {
-    info!("Opening connection to trichechus");
-    // Adjust the source port when connecting to a non-standard port to facilitate testing.
-    let bind_port = match trichechus_uri.get_port().map_err(Error::GetPort)? {
-        DEFAULT_SERVER_PORT => DEFAULT_CLIENT_PORT,
-        port => port + 1,
-    };
-    let mut transport = trichechus_uri
-        .try_into_client(Some(bind_port))
-        .map_err(Error::IntoClient)?;
-
-    let transport = transport.connect().map_err(|e| {
-        error!("transport connect failed: {}", e);
-        Error::TransportConnection(e)
-    })?;
-    let client = TrichechusClient::new(transport);
-
-    info!("Setting up app vsock.");
-    let mut app_transport = trichechus_uri
-        .try_into_client(None)
-        .map_err(Error::IntoClient)?;
-    let addr = app_transport.bind().map_err(Error::TransportBind)?;
-    let app_info = AppInfo {
-        app_id: app_id.to_string(),
-        port_number: addr.get_port().map_err(Error::GetPort)?,
-    };
+    let passthrough = Passthrough::new(Some(trichechus_uri))?;
 
     if let Some(elf) = elf {
         info!("Transmitting TEE app.");
-        client
+        passthrough
+            .client
             .load_app(app_id.to_string(), elf)
             .map_err(Error::Rpc)?
             .map_err(Error::LoadApp)?;
     }
-
-    info!("Starting rpc.");
-    client
-        .start_session(app_info)
-        .map_err(Error::Rpc)?
-        .map_err(Error::StartSession)?;
-
-    info!("Starting TEE application: {}", app_id);
-    match app_transport.connect() {
-        Ok(Transport { r, w, id: _ }) => {
-            info!("Forwarding stdio.");
-            handle_app_fds(r, w)
-        }
-        Err(err) => Err(Error::TransportConnection(err)),
-    }
+    start_manatee_app(&passthrough, app_id)
 }
 
 fn locate_command(name: &str) -> Result<PathBuf> {
@@ -326,17 +373,13 @@ fn run_test_environment() -> Result<()> {
 fn main() -> Result<()> {
     const HELP_SHORT_NAME: &str = "h";
     const RUN_SERVICES_LOCALLY_SHORT_NAME: &str = "r";
-    const SANDBOX_SHORT_NAME: &str = "s";
     const APP_ID_SHORT_NAME: &str = "a";
     const APP_ELF_SHORT_NAME: &str = "X";
 
+    const USAGE_BRIEF: &str = "[-h] [-r | -a <name> [-X <path>]]";
+
     let mut options = Options::new();
     options.optflag(HELP_SHORT_NAME, "help", "Show this help string.");
-    options.optflag(
-        SANDBOX_SHORT_NAME,
-        "enable-sandbox",
-        "Run the shell in the default sandbox.",
-    );
     options.optflag(
         RUN_SERVICES_LOCALLY_SHORT_NAME,
         "run-services-locally",
@@ -365,7 +408,7 @@ fn main() -> Result<()> {
 
     let args: Vec<String> = env::args().collect();
     let matches = options.parse(&args[1..]).map_err(|err| {
-        eprintln!("{}", options.usage(""));
+        eprintln!("{}", options.usage(USAGE_BRIEF));
         Error::OptionsParse(err)
     })?;
 
@@ -375,37 +418,38 @@ fn main() -> Result<()> {
         .unwrap();
 
     if matches.opt_present(HELP_SHORT_NAME) {
-        println!("{}", options.usage(""));
+        println!("{}", options.usage(USAGE_BRIEF));
         return Ok(());
     }
 
+    // Validate options, by counting mutually exclusive groups of options.
     let mut opts = Vec::<String>::new();
-    for short_name in &[
-        SANDBOX_SHORT_NAME,
-        RUN_SERVICES_LOCALLY_SHORT_NAME,
-        APP_ID_SHORT_NAME,
-    ] {
-        if matches.opt_present(short_name) {
-            opts.push(format!("-{}", short_name));
+    let mut mutually_exclusive_opts = 0;
+    if matches.opt_present(RUN_SERVICES_LOCALLY_SHORT_NAME) {
+        mutually_exclusive_opts += 1;
+        opts.push(format!("-{}", RUN_SERVICES_LOCALLY_SHORT_NAME));
+    }
+    if matches.opt_present(APP_ID_SHORT_NAME) || matches.opt_present(APP_ELF_SHORT_NAME) {
+        mutually_exclusive_opts += 1;
+        if matches.opt_present(APP_ID_SHORT_NAME) {
+            opts.push(format!("-{}", APP_ID_SHORT_NAME));
+        } else {
+            opts.push(format!("-{}", APP_ELF_SHORT_NAME));
         }
+    }
+    if mutually_exclusive_opts > 1 {
+        eprintln!("{}", options.usage(USAGE_BRIEF));
+        return Err(Error::ConflictingOptions(opts));
     }
 
     if matches.opt_present(RUN_SERVICES_LOCALLY_SHORT_NAME) {
-        if opts.len() > 1 {
-            eprintln!("{}", options.usage(""));
-            return Err(Error::ConflictingOptions(opts));
-        }
         return run_test_environment();
     }
 
-    let app_id = if matches.opt_present(SANDBOX_SHORT_NAME) {
-        if matches.opt_present(APP_ID_SHORT_NAME) {}
-        SANDBOXED_SHELL_APP_ID.to_string()
-    } else if let Some(app_id) = matches.opt_get(APP_ID_SHORT_NAME).unwrap() {
-        app_id
-    } else {
-        DEVELOPER_SHELL_APP_ID.to_string()
-    };
+    let app_id = matches
+        .opt_get(APP_ID_SHORT_NAME)
+        .unwrap()
+        .unwrap_or_else(|| DEVELOPER_SHELL_APP_ID.to_string());
 
     let elf = if let Some(elf_path) = matches.opt_get::<String>(APP_ELF_SHORT_NAME).unwrap() {
         let mut data = Vec::<u8>::new();
