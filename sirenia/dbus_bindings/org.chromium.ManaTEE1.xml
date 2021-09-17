@@ -19,5 +19,10 @@
     <arg name="fd_out" type="h" direction="out"/>
     <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
   </method>
+  <method name="SystemEvent">
+    <arg name="event" type="s" direction="in" />
+    <arg name="error_msg" type="s" direction="out"/>
+    <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+  </method>
 </interface>
 </node>

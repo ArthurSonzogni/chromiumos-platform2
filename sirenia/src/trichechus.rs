@@ -25,7 +25,7 @@ use libsirenia::{
     cli::{trichechus::initialize_common_arguments, TransportTypeOption},
     communication::{
         persistence::{Cronista, CronistaClient, Status},
-        trichechus::{self, AppInfo, Trichechus, TrichechusServer},
+        trichechus::{self, AppInfo, SystemEvent, Trichechus, TrichechusServer},
         StorageRpc, StorageRpcServer,
     },
     linux::{
@@ -34,7 +34,7 @@ use libsirenia::{
     },
     rpc::{self, ConnectionHandler, RpcDispatcher, TransportServer},
     sandbox::{MinijailSandbox, Sandbox, VmConfig, VmSandbox},
-    sys,
+    sys::{self, halt, power_off, reboot},
     transport::{
         create_transport_from_pipes, Transport, TransportType, CROS_CID, CROS_CONNECTION_ERR_FD,
         CROS_CONNECTION_R_FD, CROS_CONNECTION_W_FD, DEFAULT_CLIENT_PORT, DEFAULT_CONNECTION_R_FD,
@@ -273,6 +273,10 @@ impl Trichechus for TrichechusServerImpl {
         swap(&mut self.state.borrow_mut().log_queue, &mut replacement);
         Ok(replacement.into())
     }
+
+    fn system_event(&self, event: SystemEvent) -> StdResult<StdResult<(), String>, Self::Error> {
+        Ok(system_event(event))
+    }
 }
 
 struct DugongConnectionHandler {
@@ -477,6 +481,15 @@ fn spawn_tee_app(
     };
 
     Ok((pid, app, trichechus_transport))
+}
+
+fn system_event(event: SystemEvent) -> StdResult<(), String> {
+    match event {
+        SystemEvent::Halt => halt(),
+        SystemEvent::PowerOff => power_off(),
+        SystemEvent::Reboot => reboot(),
+    }
+    .map_err(|err| format!("{}", err))
 }
 
 fn handle_closed_child_processes(state: &RefCell<TrichechusState>) {

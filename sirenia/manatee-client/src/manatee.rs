@@ -14,8 +14,8 @@ use std::os::unix::io::FromRawFd;
 use std::path::{Path, PathBuf};
 use std::process::{exit, ChildStderr, Command, Stdio};
 use std::str::FromStr;
-use std::thread::{spawn, JoinHandle};
-use std::time::Duration;
+use std::thread::{sleep, spawn, JoinHandle};
+use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, bail, Context, Error, Result};
 use dbus::{
@@ -63,7 +63,7 @@ struct Passthrough {
 }
 
 impl Passthrough {
-    fn new(trichechus_uri: Option<TransportType>) -> Result<Self> {
+    fn new(trichechus_uri: Option<TransportType>, bind_timeout: Option<Duration>) -> Result<Self> {
         let uri = trichechus_uri.unwrap_or(TransportType::VsockConnection(VsockAddr {
             cid: VsockCid::Host,
             port: DEFAULT_SERVER_PORT,
@@ -75,9 +75,20 @@ impl Passthrough {
             DEFAULT_SERVER_PORT => DEFAULT_CLIENT_PORT,
             port => port + 1,
         };
-        let mut transport = uri
-            .try_into_client(Some(bind_port))
-            .context("failed to get client for transport")?;
+        let start = Instant::now();
+        // Duration::default() is zero (i.e. no timeout).
+        let bind_timeout = bind_timeout.unwrap_or_default();
+        let mut transport = loop {
+            match uri.try_into_client(Some(bind_port)) {
+                Ok(t) => break t,
+                Err(err) => {
+                    if start.elapsed() >= bind_timeout {
+                        return Err(err).context("failed to get client for transport");
+                    }
+                    sleep(Duration::from_millis(100));
+                }
+            }
+        };
 
         let transport = transport.connect().map_err(|e| {
             error!("transport connect failed: {}", e);
@@ -130,6 +141,18 @@ impl OrgChromiumManaTEEInterface for Passthrough {
         self.start_teeapplication_impl(app_id)
             .map_err(to_dbus_error)
     }
+
+    fn system_event(&self, event: &str) -> std::result::Result<String, dbus::Error> {
+        match self.client.system_event(
+            event
+                .parse()
+                .map_err(|err: String| dbus::Error::new_custom("", &err))?,
+        ) {
+            Ok(Ok(())) => Ok(String::new()),
+            Ok(Err(err)) => Ok(err),
+            Err(err) => Err(dbus::Error::new_custom("", &err.to_string())),
+        }
+    }
 }
 
 fn connect_to_dugong<'a>(c: &'a Connection) -> Result<Proxy<'a, &Connection>> {
@@ -176,6 +199,39 @@ fn start_manatee_app(api: &dyn OrgChromiumManaTEEInterface, app_id: &str) -> Res
     handle_app_fds(file_in, file_out)
 }
 
+fn system_event(trichechus_uri: Option<TransportType>, event: &str) -> Result<()> {
+    let timeout = if trichechus_uri.is_none() {
+        info!("Connecting to D-Bus.");
+        let connection = Connection::new_system().context("failed to get D-Bus connection")?;
+        let conn_path = connect_to_dugong(&connection)?;
+        match conn_path.system_event(event) {
+            Ok(v) => {
+                return if v.is_empty() {
+                    Ok(())
+                } else {
+                    Err(anyhow!("failed to invoke system event: {}", v))
+                }
+            }
+            Err(err) => {
+                error!("D-Bus call failed: {}", err);
+                info!("Falling back to default vsock interface.");
+            }
+        }
+        Some(Duration::from_secs(10))
+    } else {
+        None
+    };
+    let passthrough = Passthrough::new(trichechus_uri, timeout)?;
+    let err = passthrough
+        .system_event(event)
+        .context("system_event D-Bus call failed")?;
+    if err.is_empty() {
+        Ok(())
+    } else {
+        Err(anyhow!("system_event failed with: {}", err))
+    }
+}
+
 fn dbus_start_manatee_app(app_id: &str) -> Result<()> {
     info!("Connecting to D-Bus.");
     let connection = Connection::new_system().context("failed to get D-Bus connection")?;
@@ -188,7 +244,7 @@ fn direct_start_manatee_app(
     app_id: &str,
     elf: Option<Vec<u8>>,
 ) -> Result<()> {
-    let passthrough = Passthrough::new(Some(trichechus_uri))?;
+    let passthrough = Passthrough::new(Some(trichechus_uri), None)?;
 
     if let Some(elf) = elf {
         info!("Transmitting TEE app.");
@@ -341,7 +397,11 @@ fn main() -> Result<()> {
     const APP_ID_SHORT_NAME: &str = "a";
     const APP_ELF_SHORT_NAME: &str = "X";
 
-    const USAGE_BRIEF: &str = "[-h] [-r | -a <name> [-X <path>]]";
+    const HALT_LONG_NAME: &str = "halt";
+    const POWEROFF_LONG_NAME: &str = "poweroff";
+    const REBOOT_LONG_NAME: &str = "reboot";
+
+    const USAGE_BRIEF: &str = "[-h] [-r | -a <name> [-X <path>] | --halt | --poweroff | --reboot]";
 
     let mut options = Options::new();
     options.optflag(HELP_SHORT_NAME, "help", "Show this help string.");
@@ -355,6 +415,17 @@ fn main() -> Result<()> {
         "app-id",
         "Specify the app ID to invoke.",
         "demo_app",
+    );
+    options.optflag("", HALT_LONG_NAME, "Send a halt command to the hypervisor.");
+    options.optflag(
+        "",
+        POWEROFF_LONG_NAME,
+        "Send a poweroff command to the hypervisor.",
+    );
+    options.optflag(
+        "",
+        REBOOT_LONG_NAME,
+        "Send a reboot command to the hypervisor.",
     );
     options.optopt(
         APP_ELF_SHORT_NAME,
@@ -402,13 +473,36 @@ fn main() -> Result<()> {
             opts.push(format!("-{}", APP_ELF_SHORT_NAME));
         }
     }
+    for long_name in [HALT_LONG_NAME, POWEROFF_LONG_NAME, REBOOT_LONG_NAME] {
+        if matches.opt_present(long_name) {
+            mutually_exclusive_opts += 1;
+            opts.push(format!("--{}", long_name));
+        }
+    }
     if mutually_exclusive_opts > 1 {
         eprintln!("{}", options.usage(USAGE_BRIEF));
         bail!("incompatible options set : {0:?}", opts);
     }
 
+    let trichechus_uri = trichechus_uri_opt.from_matches(&matches).map_err(|err| {
+        eprintln!("{}", options.usage(USAGE_BRIEF));
+        anyhow!("failed to get transport type option: {}", err)
+    })?;
+
     if matches.opt_present(RUN_SERVICES_LOCALLY_SHORT_NAME) {
         return run_test_environment();
+    }
+
+    if matches.opt_present(HALT_LONG_NAME) {
+        return system_event(trichechus_uri, "halt");
+    }
+
+    if matches.opt_present(POWEROFF_LONG_NAME) {
+        return system_event(trichechus_uri, "poweroff");
+    }
+
+    if matches.opt_present(REBOOT_LONG_NAME) {
+        return system_event(trichechus_uri, "reboot");
     }
 
     let app_id = matches
@@ -427,10 +521,7 @@ fn main() -> Result<()> {
         None
     };
 
-    match trichechus_uri_opt
-        .from_matches(&matches)
-        .context("failed to parse transport options")?
-    {
+    match trichechus_uri {
         None => dbus_start_manatee_app(&app_id),
         Some(trichechus_uri) => direct_start_manatee_app(trichechus_uri, &app_id, elf),
     }

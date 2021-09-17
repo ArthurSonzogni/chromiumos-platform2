@@ -101,6 +101,17 @@ impl OrgChromiumManaTEEInterface for DugongState {
             Err(e) => Err(MethodErr::failed(&e)),
         }
     }
+
+    fn system_event(&mut self, event: String) -> std::result::Result<String, MethodErr> {
+        let api_handle = self.trichechus_client().lock().unwrap();
+        let status = api_handle
+            .system_event(event.parse().map_err(|err| MethodErr::failed(&err))?)
+            .map_err(|err| MethodErr::failed(&err))?;
+        Ok(match status {
+            Ok(()) => String::new(),
+            Err(err) => format!("{:?}", err),
+        })
+    }
 }
 
 fn load_tee_app(

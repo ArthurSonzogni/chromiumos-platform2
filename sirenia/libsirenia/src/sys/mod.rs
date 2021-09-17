@@ -80,3 +80,48 @@ pub fn dup<A: AsRawFd, F: FromRawFd>(fd: A) -> Result<F, io::Error> {
     }
     Ok(unsafe { F::from_raw_fd(dup_fd as RawFd) })
 }
+
+/// Halts the system.
+pub fn halt() -> Result<(), io::Error> {
+    // Safe because sync is called prior to reboot and the error code is checked.
+    let ret: c_int = unsafe {
+        libc::sync();
+        libc::reboot(libc::LINUX_REBOOT_CMD_HALT)
+    };
+    if ret < 0 {
+        Err(io::Error::last_os_error())
+    } else {
+        // This should never happen.
+        Ok(())
+    }
+}
+
+/// Reboots the system.
+pub fn power_off() -> Result<(), io::Error> {
+    // Safe because sync is called prior to reboot and the error code is checked.
+    let ret: c_int = unsafe {
+        libc::sync();
+        libc::reboot(libc::LINUX_REBOOT_CMD_POWER_OFF)
+    };
+    if ret < 0 {
+        Err(io::Error::last_os_error())
+    } else {
+        // This should never happen.
+        Ok(())
+    }
+}
+
+/// Powers off the system.
+pub fn reboot() -> Result<(), io::Error> {
+    // Safe because sync is called prior to reboot and the error code is checked.
+    let ret: c_int = unsafe {
+        libc::sync();
+        libc::reboot(libc::LINUX_REBOOT_CMD_RESTART)
+    };
+    if ret < 0 {
+        Err(io::Error::last_os_error())
+    } else {
+        // This should never happen.
+        Ok(())
+    }
+}

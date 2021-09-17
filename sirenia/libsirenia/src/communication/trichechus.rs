@@ -7,6 +7,7 @@
 
 use std::fmt::Debug;
 use std::result::Result as StdResult;
+use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 use sirenia_rpc_macros::sirenia_rpc;
@@ -42,6 +43,26 @@ pub struct AppInfo {
     pub port_number: u32,
 }
 
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub enum SystemEvent {
+    Halt,
+    PowerOff,
+    Reboot,
+}
+
+impl FromStr for SystemEvent {
+    type Err = String;
+
+    fn from_str(event: &str) -> StdResult<SystemEvent, String> {
+        Ok(match event {
+            "halt" => SystemEvent::Halt,
+            "poweroff" => SystemEvent::PowerOff,
+            "reboot" => SystemEvent::Reboot,
+            _ => return Err(format!("Failed to convert '{}' to an event.", event)),
+        })
+    }
+}
+
 #[sirenia_rpc]
 pub trait Trichechus {
     type Error;
@@ -49,4 +70,6 @@ pub trait Trichechus {
     fn start_session(&self, app_info: AppInfo) -> StdResult<Result<(), Error>, Self::Error>;
     fn load_app(&self, app_id: String, elf: Vec<u8>) -> StdResult<Result<(), Error>, Self::Error>;
     fn get_logs(&self) -> StdResult<Vec<Vec<u8>>, Self::Error>;
+
+    fn system_event(&self, event: SystemEvent) -> StdResult<Result<(), String>, Self::Error>;
 }
