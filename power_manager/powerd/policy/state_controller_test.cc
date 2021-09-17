@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 
+#include <utility>
 #include <vector>
 
 #include <base/compiler_specific.h>
@@ -194,12 +195,6 @@ class StateControllerTest : public testing::Test {
         update_engine_operation_(update_engine::Operation::IDLE) {
     dbus_wrapper_.SetMethodCallback(base::Bind(
         &StateControllerTest::HandleDBusMethodCall, base::Unretained(this)));
-
-    // Don't ask smart dim decision about whether to defer imminent screen dim
-    // by default, as they complicate tests and aren't integral to this class's
-    // behavior. Tests can change the setting to true before calling Init()
-    // if they want to verify these method calls.
-    controller_.set_request_smart_dim_decision_for_testing(false);
   }
   StateControllerTest(const StateControllerTest&) = delete;
   StateControllerTest& operator=(const StateControllerTest&) = delete;
@@ -1081,7 +1076,6 @@ TEST_F(StateControllerTest, FactoryMode) {
   controller_.HandleSessionStateChange(SessionState::STARTED);
 
   // Turn on the smartdim request.
-  controller_.set_request_smart_dim_decision_for_testing(true);
   dbus_wrapper_.NotifyServiceAvailable(ml_decision_proxy_, true);
 
   // With the factory-mode pref set, the system shouldn't have any actions
@@ -1089,6 +1083,7 @@ TEST_F(StateControllerTest, FactoryMode) {
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   EXPECT_EQ("", GetDBusMethodCalls());
+  EXPECT_FALSE(controller_.ShouldRequestSmartDim(now_));
 
   // Closing the lid shouldn't do anything.
   controller_.HandleLidStateChange(LidState::CLOSED);
@@ -2141,119 +2136,126 @@ TEST_F(StateControllerTest, ReportInactivityDelays) {
             GetDBusSignals(SignalType::ALL));
 }
 
-TEST_F(StateControllerTest, ScreenDimImminent) {
-  controller_.set_request_smart_dim_decision_for_testing(true);
+TEST_F(StateControllerTest, ScreenDimTriggered) {
   Init();
   dbus_wrapper_.NotifyServiceAvailable(ml_decision_proxy_, true);
+  defer_screen_dimming_ = false;
 
-  // Send a policy setting delays and instructing powerd to double the
-  // screen-dim delay while Chrome is presenting the screen.
+  // Set screen_dim_ms to a fix number.
   constexpr base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(60);
-  constexpr base::TimeDelta kOffDelay = base::TimeDelta::FromSeconds(70);
-  constexpr base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(90);
-  constexpr double kPresentationFactor = 2.0;
-
   PowerManagementPolicy policy;
   policy.mutable_ac_delays()->set_screen_dim_ms(kDimDelay.InMilliseconds());
-  policy.mutable_ac_delays()->set_screen_off_ms(kOffDelay.InMilliseconds());
-  policy.mutable_ac_delays()->set_idle_ms(kIdleDelay.InMilliseconds());
-  policy.set_presentation_screen_dim_delay_factor(kPresentationFactor);
   controller_.HandlePolicyChange(policy);
-
-  // Powerd should request smart dim decision shortly before the screen is
-  // dimmed.
   const base::TimeDelta kDimImminentDelay =
       kDimDelay - StateController::kScreenDimImminentInterval;
+
+  // Case (1): We should see screen dim if RequestSmartDimDecision decides not
+  // to defer.
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimImminentDelay));
-  EXPECT_EQ(chromeos::kMlDecisionServiceShouldDeferScreenDimMethod,
-            GetDBusMethodCalls());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
-  EXPECT_EQ(kScreenDim, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(kOffDelay));
-  EXPECT_EQ(kScreenOff, delegate_.GetActions());
   // RequestSmartDimDecision runs asynchronously, we need wait until the last
   // call finishes.
   base::RunLoop().RunUntilIdle();
+  EXPECT_EQ(chromeos::kMlDecisionServiceShouldDeferScreenDimMethod,
+            GetDBusMethodCalls());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+
+  // Case (2): We should see screen dim if RequestSmartDimDecision timeout.
+  defer_screen_dimming_ = true;
+  simulate_smart_dim_timeout_ = true;
+  // Turn the screen back on.
+  controller_.HandleUserActivity();
+  EXPECT_EQ(kScreenUndim, delegate_.GetActions());
+  ResetLastStepDelay();
+
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimImminentDelay));
+  // RequestSmartDimDecision runs asynchronously, we need wait until the last
+  // call finishes.
+  base::RunLoop().RunUntilIdle();
+  EXPECT_EQ(chromeos::kMlDecisionServiceShouldDeferScreenDimMethod,
+            GetDBusMethodCalls());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // Because screen dim is not delayed, this should dim the screen.
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
 
   // Turn the screen back on.
   controller_.HandleUserActivity();
-  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, nullptr),
-            delegate_.GetActions());
-  EXPECT_EQ("", GetDBusMethodCalls());
-
-  // After entering presentation mode, the screen-dim delay should be doubled,
-  // and ScreenDimImminent should be emitted again after its now-scaled delay is
-  // reached.
-  controller_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
-  const base::TimeDelta kScaledDimDelay = kDimDelay * kPresentationFactor;
-  const base::TimeDelta kScaledDimImminentDelay =
-      kScaledDimDelay - StateController::kScreenDimImminentInterval;
-
-  ResetLastStepDelay();
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledDimImminentDelay));
-  EXPECT_EQ(chromeos::kMlDecisionServiceShouldDeferScreenDimMethod,
-            GetDBusMethodCalls());
-  base::RunLoop().RunUntilIdle();
-
-  // Reset everything, wait for powerd to request smart dim decision, and defer
-  // the imminent screen dim.
-  controller_.HandleUserActivity();
-  controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
-  ResetLastStepDelay();
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimImminentDelay));
-  EXPECT_EQ(chromeos::kMlDecisionServiceShouldDeferScreenDimMethod,
-            GetDBusMethodCalls());
-  base::RunLoop().RunUntilIdle();
-  EXPECT_TRUE(controller_.screen_dim_deferred_for_testing());
-
-  // Reset the timer and wait for the screen to be dimmed.
-  ResetLastStepDelay();
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimImminentDelay));
-  EXPECT_EQ(chromeos::kMlDecisionServiceShouldDeferScreenDimMethod,
-            GetDBusMethodCalls());
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
-  EXPECT_EQ(kScreenDim, delegate_.GetActions());
-  base::RunLoop().RunUntilIdle();
-
-  // Powerd shouldn't request smart dim decision if screen is already dimmed.
-  EXPECT_FALSE(AdvanceTimeAndTriggerTimeout(base::TimeDelta::FromSeconds(5)));
-  EXPECT_EQ("", GetDBusMethodCalls());
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-
-  // Powerd shouldn't request if screen-dim isn't imminent.
-  controller_.HandleUserActivity();
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
-  EXPECT_EQ("", GetDBusMethodCalls());
-
-  // Set the smart dim response to false, reset everything, and wait for powerd
-  // to request smart dim decision.
-  // Powerd should decide not to defer the imminent screen dim.
-  defer_screen_dimming_ = false;
-  controller_.HandleUserActivity();
-  controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
   ResetLastStepDelay();
+
+  // Case (3): We shouldn't see screen dim if RequestSmartDimDecision decides to
+  // defer.
+  simulate_smart_dim_timeout_ = false;
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimImminentDelay));
+  // RequestSmartDimDecision runs asynchronously, we need wait until the last
+  // call finishes.
   base::RunLoop().RunUntilIdle();
-  EXPECT_FALSE(controller_.screen_dim_deferred_for_testing());
   EXPECT_EQ(chromeos::kMlDecisionServiceShouldDeferScreenDimMethod,
             GetDBusMethodCalls());
+  // THe StepTimeAndTriggerTimeout above will cause
+  // smart_dim_requestor_.RequestSmartDimDecision to be called which will
+  // eventually calls controller_.HandleDeferFromSmartDim, and thus
+  // resets the GetLastActivityTimeForScreenDim(now) to be now. Therefore
+  // screen_dim_duration is 0 now, and ShouldRequestSmartDim should return false
+  EXPECT_FALSE(controller_.ShouldRequestSmartDim(now_));
 
-  // Simulate D-Bus method call timeouts, it shouldn't block subsequent
-  // RequestSmartDimDecision calls when another kDimImminentDelay lapses.
-  simulate_smart_dim_timeout_ = true;
-  size_t call_count = 10;
-  std::vector<std::string> method_calls;
-  for (size_t i = 0; i <= call_count; ++i) {
-    controller_.HandleUserActivity();
-    controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
-    ResetLastStepDelay();
-    ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimImminentDelay));
-    base::RunLoop().RunUntilIdle();
-    method_calls.push_back(
-        chromeos::kMlDecisionServiceShouldDeferScreenDimMethod);
-  }
-  EXPECT_EQ(base::JoinString(method_calls, ","), GetDBusMethodCalls());
+  // Because the GetLastActivityTimeForScreenDim(now) is reset to now. The
+  // Next action was rescheduled to kDimImminentDelay in the controller; so we
+  // need to AdvanceTime to kDimImminentDelay to trigger the next action.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kDimImminentDelay));
+  // RequestSmartDimDecision runs asynchronously, we need wait until the last
+  // call finishes.
+  base::RunLoop().RunUntilIdle();
+  EXPECT_EQ(chromeos::kMlDecisionServiceShouldDeferScreenDimMethod,
+            GetDBusMethodCalls());
+  // And no action should happen until now since dimming is delayed.
+  EXPECT_EQ("", delegate_.GetActions());
+}
+
+TEST_F(StateControllerTest, ShouldNotRequestSmartDim) {
+  Init();
+  dbus_wrapper_.NotifyServiceAvailable(ml_decision_proxy_, true);
+  defer_screen_dimming_ = false;
+
+  // Set screen_dim_ms to a fix number.
+  constexpr base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(60);
+  PowerManagementPolicy policy;
+  policy.mutable_ac_delays()->set_screen_dim_ms(kDimDelay.InMilliseconds());
+  controller_.HandlePolicyChange(policy);
+  const base::TimeDelta kDimImminentDelay =
+      kDimDelay - StateController::kScreenDimImminentInterval;
+
+  // Case (1): Powerd shouldn't request a smart dim decision if
+  // screen-dim-duration is <  kDimImminentDelay.
+  EXPECT_FALSE(StepTimeAndTriggerTimeout(base::TimeDelta::FromSeconds(5)));
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  EXPECT_FALSE(controller_.ShouldRequestSmartDim(now_));
+  base::RunLoop().RunUntilIdle();
+  EXPECT_EQ("", GetDBusMethodCalls());
+
+  // Case (2): Powerd should request a smart dim decision if
+  // screen-dim-duration is >=  kDimImminentDelay
+  EXPECT_TRUE(StepTimeAndTriggerTimeout(kDimImminentDelay));
+  base::RunLoop().RunUntilIdle();
+  EXPECT_EQ(chromeos::kMlDecisionServiceShouldDeferScreenDimMethod,
+            GetDBusMethodCalls());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // StepTime to dim the screen.
+  EXPECT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
+  // No need to wait for screen dim since TestDelegate::DimScreen is not async.
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+
+  // Case (3) Powerd shouldn't request a smart dim decision if screen is already
+  // dimmed.
+  // Verify that controller_.ShouldRequestSmartDim should return false if the
+  // Screen is just dimmed.
+  EXPECT_FALSE(controller_.ShouldRequestSmartDim(now_));
+  EXPECT_EQ("", GetDBusMethodCalls());
 }
 
 // Tests that display mode changes are ignored if the screens have been recently

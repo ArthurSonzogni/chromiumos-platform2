@@ -355,7 +355,6 @@ StateController::StateController()
       dim_wake_lock_(std::make_unique<ActivityInfo>()),
       system_wake_lock_(std::make_unique<ActivityInfo>()),
       wake_lock_logger_(kWakeLocksLoggingInterval),
-      smart_dim_requestor_(new SmartDimRequestor()),
       weak_ptr_factory_(this) {}
 
 StateController::~StateController() {
@@ -392,10 +391,7 @@ void StateController::Init(Delegate* delegate,
       base::Bind(&StateController::HandleUpdateEngineStatusUpdateSignal,
                  weak_ptr_factory_.GetWeakPtr()));
 
-  smart_dim_requestor_->Init(
-      dbus_wrapper_,
-      base::BindRepeating(&StateController::HandleDeferFromSmartDim,
-                          weak_ptr_factory_.GetWeakPtr()));
+  smart_dim_requestor_.Init(dbus_wrapper_, this);
 
   last_user_activity_time_ = clock_->GetCurrentTime();
   power_source_ = power_source;
@@ -631,6 +627,22 @@ void StateController::OnPrefChanged(const std::string& pref_name) {
     LoadPrefs();
     UpdateSettingsAndState();
   }
+}
+
+bool StateController::ShouldRequestSmartDim(base::TimeTicks now) {
+  return !screen_dimmed_ && delays_.screen_dim_imminent > base::TimeDelta() &&
+         now - GetLastActivityTimeForScreenDim(now) >=
+             delays_.screen_dim_imminent &&
+         smart_dim_requestor_.ReadyForRequest(now, delays_.screen_dim_imminent);
+}
+
+void StateController::HandleDeferFromSmartDim() {
+  if (screen_dimmed_) {
+    VLOG(1) << "Screen is already dimmed";
+    return;
+  }
+  last_defer_screen_dim_time_ = clock_->GetCurrentTime();
+  UpdateState();
 }
 
 // static
@@ -1140,10 +1152,8 @@ void StateController::UpdateState() {
 
   // We only want to send a smart dim request if the screen is not dimmed and it
   // has been a while since the last smart_dim_activity.
-  if (!screen_dimmed_ && delays_.screen_dim_imminent > base::TimeDelta() &&
-      screen_dim_duration >= delays_.screen_dim_imminent &&
-      smart_dim_requestor_->ReadyForRequest(now, delays_.screen_dim_imminent)) {
-    smart_dim_requestor_->RequestSmartDimDecision(now);
+  if (ShouldRequestSmartDim(now)) {
+    smart_dim_requestor_.RequestSmartDimDecision(now);
   }
 
   const bool screen_was_dimmed = screen_dimmed_;
@@ -1267,7 +1277,7 @@ void StateController::ScheduleActionTimeout(base::TimeTicks now) {
   // Find the minimum of the delays that haven't yet occurred.
   base::TimeDelta timeout_delay;
   if (!IsScreenDimBlocked()) {
-    if (smart_dim_requestor_->request_smart_dim_decision()) {
+    if (smart_dim_requestor_.IsEnabled()) {
       UpdateActionTimeout(now, GetLastActivityTimeForScreenDim(now),
                           delays_.screen_dim_imminent, &timeout_delay);
     }
@@ -1393,15 +1403,6 @@ void StateController::EmitScreenIdleStateChanged(bool dimmed, bool off) {
   proto.set_off(off);
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kScreenIdleStateChangedSignal,
                                               proto);
-}
-
-void StateController::HandleDeferFromSmartDim() {
-  if (screen_dimmed_) {
-    VLOG(1) << "Screen is already dimmed";
-    return;
-  }
-  last_defer_screen_dim_time_ = clock_->GetCurrentTime();
-  UpdateState();
 }
 
 }  // namespace policy

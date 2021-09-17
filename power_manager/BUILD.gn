@@ -534,6 +534,7 @@ if (use.test) {
       "powerd/policy/internal_backlight_controller_test.cc",
       "powerd/policy/keyboard_backlight_controller_test.cc",
       "powerd/policy/shutdown_from_suspend_test.cc",
+      "powerd/policy/smart_dim_requestor_test.cc",
       "powerd/policy/state_controller_test.cc",
       "powerd/policy/suspend_delay_controller_test.cc",
       "powerd/policy/suspender_test.cc",

@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_SMART_DIM_REQUESTOR_H_
 #define POWER_MANAGER_POWERD_POLICY_SMART_DIM_REQUESTOR_H_
 
+#include <string>
+
 #include <base/time/time.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
@@ -14,60 +16,50 @@
 namespace power_manager {
 namespace policy {
 
-// SmartDimRequestor works as a helper class that
-// (1) exposes ReadyForRequest and RequestSmartDimDecision for the
-//     StateController to call to make a smart dim request.
-// (2) makes dbus calls to kMlDecisionServiceName to decide whether to defer the
-//     screen dimming.
-class SmartDimRequestor {
+class StateController;
+
+// SmartDimRequestor makes dbus calls to kMlDecisionServiceName to decide
+// whether to defer the screen dimming.
+class SmartDimRequestor : public system::DBusWrapperInterface::Observer {
  public:
   SmartDimRequestor();
-  // Initialize `ml_decision_dbus_proxy_` with `dbus_wrapper`.
+  ~SmartDimRequestor();
+
+  // Initializes with `dbus_wrapper` and `state_controller`.
   void Init(system::DBusWrapperInterface* dbus_wrapper,
-            base::RepeatingCallback<void()> defer_dim_callback);
+            StateController* state_controller);
   // Returns whether SmartDimRequestor is ready for making a new query.
   bool ReadyForRequest(base::TimeTicks now,
-                       base::TimeDelta screen_dim_imminent);
+                       base::TimeDelta screen_dim_imminent_delay);
   // Calls MLService to decide whether to defer the dimming.
   void RequestSmartDimDecision(base::TimeTicks now);
 
-  bool request_smart_dim_decision() { return request_smart_dim_decision_; }
+  // Return whether the SmartDimRequestor is enabled.
+  bool IsEnabled();
 
-  void set_request_smart_dim_decision_for_testing(bool should_ask) {
-    request_smart_dim_decision_ = should_ask;
-  }
-
-  bool screen_dim_deferred_for_testing() const {
-    return screen_dim_deferred_for_testing_;
-  }
+  // DBusWrapperInterface::Observer:
+  void OnDBusNameOwnerChanged(const std::string& service_name,
+                              const std::string& old_owner,
+                              const std::string& new_owner) override;
 
  private:
   // Handles the `ml_decision_dbus_proxy_` becoming initially available.
-  void HandleMlDecisionServiceAvailable(bool available);
+  void HandleMlDecisionServiceAvailableOrRestarted(bool available);
   // Handles smart dim response, serves as callback in RequestSmartDimDecision.
   void HandleSmartDimResponse(dbus::Response* response);
 
-  // Should powerd request smart dim decision via D-Bus service? May be disabled
-  // by tests.
-  bool request_smart_dim_decision_ = true;
   // True if ml decision service is available.
   bool ml_decision_service_available_ = false;
   // True if there's a pending request waiting for response.
   bool waiting_for_smart_dim_decision_ = false;
-  // True if the most recent RequestSmartDimDecision call returned true.
-  // Used by unit tests.
-  bool screen_dim_deferred_for_testing_ = false;
-  // Time of the last request of RequestSmartDimDecision. Used to prevent
+  // Timestamp of the last smart dim decision requested. Used to prevent
   // consecutive requests with intervals shorter than screen_dim_imminent_delay,
-  // see ReadyForRequest
+  // see ReadyForRequest.
   base::TimeTicks last_smart_dim_decision_request_time_;
 
   dbus::ObjectProxy* ml_decision_dbus_proxy_ = nullptr;   // not owned
   system::DBusWrapperInterface* dbus_wrapper_ = nullptr;  // not owned
-
-  // Called when smart dim wants to defer ths screen dim.
-  // This is passed in from StateController.
-  base::RepeatingCallback<void()> defer_dim_callback_;
+  StateController* state_controller_ = nullptr;           // not owned
 
   base::WeakPtrFactory<SmartDimRequestor> weak_ptr_factory_;
 };

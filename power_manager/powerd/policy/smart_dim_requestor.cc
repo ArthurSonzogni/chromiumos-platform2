@@ -4,11 +4,13 @@
 
 #include "power_manager/powerd/policy/smart_dim_requestor.h"
 
+#include <string>
 #include <utility>
 
+#include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include <base/logging.h>
+#include "power_manager/powerd/policy/state_controller.h"
 
 namespace power_manager {
 namespace policy {
@@ -22,20 +24,27 @@ static constexpr base::TimeDelta kSmartDimDecisionTimeout =
 
 SmartDimRequestor::SmartDimRequestor() : weak_ptr_factory_(this) {}
 
-void SmartDimRequestor::Init(
-    system::DBusWrapperInterface* dbus_wrapper,
-    base::RepeatingCallback<void()> defer_dim_callback) {
-  defer_dim_callback_ = std::move(defer_dim_callback);
+SmartDimRequestor::~SmartDimRequestor() {
+  if (dbus_wrapper_)
+    dbus_wrapper_->RemoveObserver(this);
+}
+
+void SmartDimRequestor::Init(system::DBusWrapperInterface* dbus_wrapper,
+                             StateController* state_controller) {
+  state_controller_ = state_controller;
   dbus_wrapper_ = dbus_wrapper;
+  dbus_wrapper_->AddObserver(this);
   ml_decision_dbus_proxy_ = dbus_wrapper->GetObjectProxy(
       chromeos::kMlDecisionServiceName, chromeos::kMlDecisionServicePath);
   dbus_wrapper->RegisterForServiceAvailability(
       ml_decision_dbus_proxy_,
-      base::Bind(&SmartDimRequestor::HandleMlDecisionServiceAvailable,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(
+          &SmartDimRequestor::HandleMlDecisionServiceAvailableOrRestarted,
+          weak_ptr_factory_.GetWeakPtr()));
 }
 
-void SmartDimRequestor::HandleMlDecisionServiceAvailable(bool available) {
+void SmartDimRequestor::HandleMlDecisionServiceAvailableOrRestarted(
+    bool available) {
   ml_decision_service_available_ = available;
   if (!available) {
     LOG(ERROR) << "Failed waiting for ml decision service to become "
@@ -45,32 +54,29 @@ void SmartDimRequestor::HandleMlDecisionServiceAvailable(bool available) {
 }
 
 void SmartDimRequestor::RequestSmartDimDecision(base::TimeTicks now) {
+  waiting_for_smart_dim_decision_ = true;
+  last_smart_dim_decision_request_time_ = now;
+
   dbus::MethodCall method_call(
       chromeos::kMlDecisionServiceInterface,
       chromeos::kMlDecisionServiceShouldDeferScreenDimMethod);
 
   dbus_wrapper_->CallMethodAsync(
       ml_decision_dbus_proxy_, &method_call, kSmartDimDecisionTimeout,
-      base::Bind(&SmartDimRequestor::HandleSmartDimResponse,
-                 weak_ptr_factory_.GetWeakPtr()));
-
-  waiting_for_smart_dim_decision_ = true;
-  last_smart_dim_decision_request_time_ = now;
+      base::BindOnce(&SmartDimRequestor::HandleSmartDimResponse,
+                     weak_ptr_factory_.GetWeakPtr()));
 }
 
-bool SmartDimRequestor::ReadyForRequest(base::TimeTicks now,
-                                        base::TimeDelta screen_dim_imminent) {
-  return request_smart_dim_decision_ && ml_decision_service_available_ &&
-         !waiting_for_smart_dim_decision_ &&
-         now - last_smart_dim_decision_request_time_ >= screen_dim_imminent;
+bool SmartDimRequestor::ReadyForRequest(
+    base::TimeTicks now, base::TimeDelta screen_dim_imminent_delay) {
+  return IsEnabled() && !waiting_for_smart_dim_decision_ &&
+         now - last_smart_dim_decision_request_time_ >=
+             screen_dim_imminent_delay;
 }
 
 void SmartDimRequestor::HandleSmartDimResponse(dbus::Response* response) {
-  screen_dim_deferred_for_testing_ = false;
-  if (!waiting_for_smart_dim_decision_) {
-    LOG(WARNING) << "Smart dim decision is not being waited for";
-    return;
-  }
+  DCHECK(waiting_for_smart_dim_decision_)
+      << "Smart dim decision is not being waited for";
 
   waiting_for_smart_dim_decision_ = false;
 
@@ -97,10 +103,22 @@ void SmartDimRequestor::HandleSmartDimResponse(dbus::Response* response) {
     return;
   }
 
-  screen_dim_deferred_for_testing_ = true;
   LOG(INFO) << "Smart dim decided to defer screen dimming";
+  state_controller_->HandleDeferFromSmartDim();
+}
 
-  defer_dim_callback_.Run();
+bool SmartDimRequestor::IsEnabled() {
+  return ml_decision_service_available_;
+}
+
+void SmartDimRequestor::OnDBusNameOwnerChanged(const std::string& service_name,
+                                               const std::string& old_owner,
+                                               const std::string& new_owner) {
+  if (service_name == chromeos::kMlDecisionServiceName && !new_owner.empty()) {
+    LOG(INFO) << "D-Bus " << service_name << " ownership changed to "
+              << new_owner;
+    HandleMlDecisionServiceAvailableOrRestarted(true);
+  }
 }
 
 }  // namespace policy

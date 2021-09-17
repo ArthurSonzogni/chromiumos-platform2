@@ -164,14 +164,6 @@ class StateController : public PrefsObserver {
     return last_user_activity_time_;
   }
 
-  bool screen_dim_deferred_for_testing() {
-    return smart_dim_requestor_->screen_dim_deferred_for_testing();
-  }
-  void set_request_smart_dim_decision_for_testing(bool should_ask) {
-    smart_dim_requestor_->set_request_smart_dim_decision_for_testing(
-        should_ask);
-  }
-
   // Is the system currently in "docked mode", where it remains awake while
   // the lid is closed because an external display is connected?
   bool in_docked_mode() {
@@ -210,6 +202,13 @@ class StateController : public PrefsObserver {
 
   // PrefsInterface::Observer implementation:
   void OnPrefChanged(const std::string& pref_name) override;
+
+  // Whether to request a smart dim decision.
+  bool ShouldRequestSmartDim(base::TimeTicks now);
+
+  // Called when smart_dim_requestor_.HandleSmartDimResponse returns
+  // "Should defer". virtual for mocking.
+  virtual void HandleDeferFromSmartDim();
 
  private:
   // Holds a collection of delays. Unset delays take the zero value.
@@ -398,12 +397,6 @@ class StateController : public PrefsObserver {
   // changed.
   void EmitScreenIdleStateChanged(bool dimmed, bool off);
 
-  // Request from ML decision D-Bus service.
-  void RequestSmartDimDecision();
-
-  // Called if RequestSmartDimDecision returns true.
-  void HandleDeferFromSmartDim();
-
   Delegate* delegate_ = nullptr;                          // not owned
   PrefsInterface* prefs_ = nullptr;                       // not owned
   system::DBusWrapperInterface* dbus_wrapper_ = nullptr;  // not owned
@@ -566,7 +559,7 @@ class StateController : public PrefsObserver {
 
   // Class that decides whether to defer the imminent screen dimming via dbus
   // method call to kMlDecisionServiceInterface.
-  std::unique_ptr<SmartDimRequestor> smart_dim_requestor_;
+  SmartDimRequestor smart_dim_requestor_;
 
   base::WeakPtrFactory<StateController> weak_ptr_factory_;
 };
