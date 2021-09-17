@@ -14,6 +14,9 @@ constexpr char kHpsServiceName[] = "org.chromium.Hps";
 // Methods exported by hpsd.
 constexpr char kGetFeatureResult[] = "GetFeatureResult";
 
+// Signals emitted by hpsd.
+constexpr char kHpsNotifyChanged[] = "HpsNotifyChanged";
+
 }  // namespace hps
 
 #endif  // SYSTEM_API_DBUS_HPS_DBUS_CONSTANTS_H_
