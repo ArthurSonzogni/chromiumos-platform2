@@ -572,6 +572,12 @@ class Platform {
                                          bool is_recursive,
                                          std::vector<base::FilePath>* ent_list);
 
+  // Returns true if the directory is empty
+  //
+  // Parameters
+  //  path - directory path
+  virtual bool IsDirectoryEmpty(const base::FilePath& path);
+
   // Returns a new FileEnumerator instance.
   //
   // The caller TAKES OWNERSHIP of the returned pointer.

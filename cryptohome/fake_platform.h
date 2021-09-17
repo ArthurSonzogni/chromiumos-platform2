@@ -61,6 +61,7 @@ class FakePlatform final : public Platform {
       const base::FilePath& path,
       bool recursive,
       std::vector<base::FilePath>* ent_list) override;
+  bool IsDirectoryEmpty(const base::FilePath& path) override;
 
   bool Rename(const base::FilePath& from, const base::FilePath& to) override;
   bool Move(const base::FilePath& from, const base::FilePath& to) override;

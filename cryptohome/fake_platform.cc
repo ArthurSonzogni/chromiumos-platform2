@@ -228,6 +228,10 @@ bool FakePlatform::EnumerateDirectoryEntries(
                                                   ent_list);
 }
 
+bool FakePlatform::IsDirectoryEmpty(const base::FilePath& path) {
+  return real_platform_.IsDirectoryEmpty(TestFilePath(path));
+}
+
 bool FakePlatform::TouchFileDurable(const base::FilePath& path) {
   return real_platform_.TouchFileDurable(TestFilePath(path));
 }

@@ -44,6 +44,9 @@ MockPlatform::MockPlatform()
   ON_CALL(*this, GetFileEnumerator(_, _, _))
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::GetFileEnumerator));
+  ON_CALL(*this, IsDirectoryEmpty(_))
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::IsDirectoryEmpty));
   ON_CALL(*this, FileExists(_))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::FileExists));
   ON_CALL(*this, DirectoryExists(_))

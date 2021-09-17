@@ -924,6 +924,10 @@ bool Platform::EnumerateDirectoryEntries(const FilePath& path,
   return true;
 }
 
+bool Platform::IsDirectoryEmpty(const base::FilePath& path) {
+  return base::IsDirectoryEmpty(path);
+}
+
 base::Time Platform::GetCurrentTime() const {
   return base::Time::Now();
 }
