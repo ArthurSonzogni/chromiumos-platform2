@@ -6,6 +6,7 @@
 #define RMAD_UTILS_VPD_UTILS_H_
 
 #include <string>
+#include <vector>
 
 namespace rmad {
 
@@ -23,6 +24,12 @@ class VpdUtils {
   // Get the region of the device from vpd.
   virtual bool GetRegion(std::string* region) const = 0;
 
+  // Get values from |entries| of the device from vpd and save it to
+  // |calibbias|. If there are any errors, leave |calibbias| untouched.
+  // Return true if it succeeds for all entries, otherwise it returns false.
+  virtual bool GetCalibbias(const std::vector<std::string>& entries,
+                            std::vector<int>* calibbias) const = 0;
+
   // Set the serial number of the device to vpd.
   virtual bool SetSerialNumber(const std::string& serial_number) = 0;
 
@@ -31,6 +38,11 @@ class VpdUtils {
 
   // Set the region of the device to vpd.
   virtual bool SetRegion(const std::string& region) = 0;
+
+  // Set |calibbias| to |entries| of the device in vpd.
+  // Return true if it succeeds for all entries, otherwise it returns false.
+  virtual bool SetCalibbias(const std::vector<std::string>& entries,
+                            const std::vector<int>& calibbias) = 0;
 
  protected:
   // Set a (key, value) pair to RO VPD. Return true if successfully set the

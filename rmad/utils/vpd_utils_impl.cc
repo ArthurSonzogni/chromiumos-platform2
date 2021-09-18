@@ -44,6 +44,26 @@ bool VpdUtilsImpl::GetRegion(std::string* region) const {
   return GetRoVpd(kVpdKeyRegion, region);
 }
 
+bool VpdUtilsImpl::GetCalibbias(const std::vector<std::string>& entries,
+                                std::vector<int>* calibbias) const {
+  CHECK(calibbias);
+
+  std::vector<int> values;
+  for (const std::string& entry : entries) {
+    std::string str;
+    int val;
+    if (!GetRoVpd(entry, &str) || !base::StringToInt(str, &val)) {
+      LOG(ERROR) << "Failed to get int value of " << entry << " from vpd.";
+      return false;
+    }
+    values.push_back(val);
+  }
+
+  *calibbias = values;
+
+  return true;
+}
+
 bool VpdUtilsImpl::SetSerialNumber(const std::string& serial_number) {
   return SetRoVpd(kVpdKeySerialNumber, serial_number);
 }
@@ -54,6 +74,21 @@ bool VpdUtilsImpl::SetWhitelabelTag(const std::string& whitelabel_tag) {
 
 bool VpdUtilsImpl::SetRegion(const std::string& region) {
   return SetRoVpd(kVpdKeyRegion, region);
+}
+
+bool VpdUtilsImpl::SetCalibbias(const std::vector<std::string>& entries,
+                                const std::vector<int>& calibbias) {
+  CHECK(calibbias.size() == entries.size());
+
+  for (int i = 0; i < calibbias.size(); i++) {
+    std::string str = base::NumberToString(calibbias[i]);
+    if (!SetRoVpd(entries[i], str)) {
+      LOG(ERROR) << "Failed to set " << entries[i] << "=" << str << " to vpd.";
+      return false;
+    }
+  }
+
+  return true;
 }
 
 bool VpdUtilsImpl::SetRoVpd(const std::string& key, const std::string& value) {

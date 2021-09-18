@@ -8,6 +8,7 @@
 #include "rmad/utils/vpd_utils.h"
 
 #include <string>
+#include <vector>
 
 namespace rmad {
 
@@ -22,9 +23,13 @@ class VpdUtilsImpl : public VpdUtils {
   bool GetSerialNumber(std::string* serial_number) const override;
   bool GetWhitelabelTag(std::string* whitelabel_tag) const override;
   bool GetRegion(std::string* region) const override;
+  bool GetCalibbias(const std::vector<std::string>& entries,
+                    std::vector<int>* calibbias) const override;
   bool SetSerialNumber(const std::string& serial_number) override;
   bool SetWhitelabelTag(const std::string& whitelabel_tag) override;
   bool SetRegion(const std::string& region) override;
+  bool SetCalibbias(const std::vector<std::string>& entries,
+                    const std::vector<int>& calibbias) override;
 
  protected:
   bool SetRoVpd(const std::string& key, const std::string& value) override;

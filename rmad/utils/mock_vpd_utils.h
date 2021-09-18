@@ -8,6 +8,7 @@
 #include "rmad/utils/vpd_utils.h"
 
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 
@@ -21,9 +22,17 @@ class MockVpdUtils : public VpdUtils {
   MOCK_METHOD(bool, GetSerialNumber, (std::string*), (const, override));
   MOCK_METHOD(bool, GetWhitelabelTag, (std::string*), (const, override));
   MOCK_METHOD(bool, GetRegion, (std::string*), (const, override));
+  MOCK_METHOD(bool,
+              GetCalibbias,
+              (const std::vector<std::string>&, std::vector<int>*),
+              (const, override));
   MOCK_METHOD(bool, SetSerialNumber, (const std::string&), (override));
   MOCK_METHOD(bool, SetWhitelabelTag, (const std::string&), (override));
   MOCK_METHOD(bool, SetRegion, (const std::string&), (override));
+  MOCK_METHOD(bool,
+              SetCalibbias,
+              (const std::vector<std::string>&, const std::vector<int>&),
+              (override));
 
  protected:
   MOCK_METHOD(bool,
