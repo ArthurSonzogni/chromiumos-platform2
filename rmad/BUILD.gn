@@ -49,6 +49,7 @@ static_library("libsystem") {
 
 static_library("libutils") {
   sources = [
+    "utils/accelerometer_calibration_utils_impl.cc",
     "utils/calibration_utils.cc",
     "utils/cbi_utils_impl.cc",
     "utils/cr50_utils_impl.cc",
