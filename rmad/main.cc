@@ -56,9 +56,10 @@ void EnterMinijail() {
   minijail_bind(j.get(), "/var/log", "/var/log", 0);
 
   minijail_mount_with_data(j.get(), "tmpfs", "/sys", "tmpfs", 0, nullptr);
-  minijail_bind(j.get(), "/sys/devices", "/sys/devices", 0);
+  minijail_bind(j.get(), "/sys/devices", "/sys/devices", 1);
   minijail_bind(j.get(), "/sys/class", "/sys/class", 0);
   minijail_bind(j.get(), "/sys/bus/pci", "/sys/bus/pci", 0);
+  minijail_bind(j.get(), "/sys/bus/iio", "/sys/bus/iio", 0);
 
   minijail_mount_with_data(j.get(), "tmpfs", "/mnt/stateful_partition", "tmpfs",
                            0, nullptr);
