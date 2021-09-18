@@ -141,8 +141,10 @@ int main(int argc, char** argv) {
   // Block SIGCHLD and set up a signalfd so the main daemon can reap its
   // children.
   sigset_t sigchld_mask, saved_mask;
-  DCHECK_EQ(sigemptyset(&sigchld_mask), 0);
-  DCHECK_EQ(sigaddset(&sigchld_mask, SIGCHLD), 0);
+  int result = sigemptyset(&sigchld_mask);
+  DCHECK_EQ(result, 0);
+  result = sigaddset(&sigchld_mask, SIGCHLD);
+  DCHECK_EQ(result, 0);
   if (sigprocmask(SIG_BLOCK, &sigchld_mask, &saved_mask) < 0) {
     PLOG(ERROR) << "Failed to block SIGCHLD";
     return EXIT_FAILURE;
