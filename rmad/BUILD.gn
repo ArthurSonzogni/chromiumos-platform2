@@ -56,6 +56,7 @@ static_library("libutils") {
     "utils/cros_config_utils_impl.cc",
     "utils/crossystem_utils_impl.cc",
     "utils/dbus_utils.cc",
+    "utils/gyroscope_calibration_utils_impl.cc",
     "utils/hardware_verifier_utils_impl.cc",
     "utils/iio_ec_sensor_utils_impl.cc",
     "utils/json_store.cc",
