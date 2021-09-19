@@ -147,7 +147,9 @@ class SensorHalClientImpl final : public SensorHalClient {
 
     void OnSensorServiceDisconnect();
     void OnNewDevicesObserverDisconnect();
-    void OnSensorDeviceDisconnect(int32_t iio_device_id);
+    void OnSensorDeviceDisconnect(int32_t iio_device_id,
+                                  uint32_t custom_reason_code,
+                                  const std::string& description);
 
     CameraMojoChannelManager* mojo_manager_;
     CancellationRelay* cancellation_relay_;

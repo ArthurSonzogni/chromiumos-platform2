@@ -49,6 +49,11 @@ class CROS_CAMERA_EXPORT SamplesObserver {
     // A sample read failed. Other samples should still be read. If this
     // happens too frequently, the user could abort all usages.
     READ_FAILED = 2,
+    // The device is removed from the system and is no longer available. The
+    // user should abort all usages and choose other devices instead.
+    // The SamplesObserver will be automatically unregistered in
+    // SensorHalClient.
+    DEVICE_REMOVED = 3,
   };
 
   // |OnSampleUpdated| and |OnErrorOccurred| are guaranteed to be called in

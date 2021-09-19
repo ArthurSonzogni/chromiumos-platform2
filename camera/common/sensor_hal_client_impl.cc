@@ -71,8 +71,8 @@ base::Optional<mojom::DeviceType> ConvertDeviceType(
 base::Optional<cros::SensorHalClient::Location> ParseLocation(
     const base::Optional<std::string>& raw_location) {
   if (!raw_location) {
-    LOGF(ERROR) << "No location attribute";
-    return base::nullopt;
+    LOGF(WARNING) << "No location attribute";
+    return cros::SensorHalClient::Location::kNone;
   }
 
   for (size_t i = 0; i < base::size(kLocationMapping); ++i) {
@@ -80,7 +80,7 @@ base::Optional<cros::SensorHalClient::Location> ParseLocation(
       return kLocationMapping[i].second;
   }
 
-  return base::nullopt;
+  return cros::SensorHalClient::Location::kNone;
 }
 
 }  // namespace
@@ -253,6 +253,10 @@ void SensorHalClientImpl::IPCBridge::RegisterSamplesObserver(
       LOGF(ERROR) << "Not all devices with type: " << type
                   << " have been initialized";
     }
+
+    samples_observer->OnErrorOccurred(
+        SamplesObserver::ErrorType::DEVICE_REMOVED);
+
     std::move(callback).Run(false);
     return;
   }
@@ -398,7 +402,7 @@ void SensorHalClientImpl::IPCBridge::RegisterDevice(
   // Add a temporary disconnect handler to catch failures during sensor
   // enumeration. SensorDevice will handle disconnection during normal
   // operation.
-  device.remote.set_disconnect_handler(
+  device.remote.set_disconnect_with_reason_handler(
       base::BindOnce(&SensorHalClientImpl::IPCBridge::OnSensorDeviceDisconnect,
                      GetWeakPtr(), iio_device_id));
 
@@ -609,12 +613,58 @@ void SensorHalClientImpl::IPCBridge::OnNewDevicesObserverDisconnect() {
 }
 
 void SensorHalClientImpl::IPCBridge::OnSensorDeviceDisconnect(
-    int32_t iio_device_id) {
+    int32_t iio_device_id,
+    uint32_t custom_reason_code,
+    const std::string& description) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
-  LOGF(ERROR) << "SensorDevice disconnected with id: " << iio_device_id;
+  const auto reason = static_cast<cros::mojom::SensorDeviceDisconnectReason>(
+      custom_reason_code);
+  LOG(WARNING) << "SensorDevice disconnected with id: " << iio_device_id
+               << ", reason: " << reason << ", description: " << description;
 
-  devices_[iio_device_id].remote.reset();
+  switch (reason) {
+    case cros::mojom::SensorDeviceDisconnectReason::IIOSERVICE_CRASHED:
+      ResetSensorService();
+      break;
+
+    case cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED:
+      for (auto it = readers_.begin(); it != readers_.end();) {
+        if (it->second.iio_device_id == iio_device_id) {
+          it->first->OnErrorOccurred(
+              SamplesObserver::ErrorType::DEVICE_REMOVED);
+          it = readers_.erase(it);
+        } else {
+          ++it;
+        }
+      }
+
+      auto types = devices_[iio_device_id].types;
+      auto location_opt = devices_[iio_device_id].location;
+      devices_.erase(iio_device_id);
+      if (!location_opt.has_value())
+        break;
+
+      auto location = location_opt.value();
+      for (const auto& type : types) {
+        auto& map_type = device_maps_[type];
+        if (map_type[location] == iio_device_id) {
+          map_type.erase(location);
+
+          // TODO(b/189998208): Check how to choose from multiple devices with
+          // the same type and location pair.
+          for (auto& device : devices_) {
+            if (base::Contains(device.second.types, type) &&
+                device.second.location == location) {
+              map_type[location] = device.first;
+              RunDeviceQueriesForType(type);
+              break;
+            }
+          }
+        }
+      }
+      break;
+  }
 }
 
 }  // namespace cros
