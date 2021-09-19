@@ -32,21 +32,26 @@ void LegacyCryptohomeInterfaceAdaptor::RegisterAsync() {
 
   // Register the dbus signal handlers
   userdataauth_proxy_->RegisterDircryptoMigrationProgressSignalHandler(
-      base::Bind(
+      base::BindRepeating(
           &LegacyCryptohomeInterfaceAdaptor::OnDircryptoMigrationProgressSignal,
           base::Unretained(this)),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::OnSignalConnectedHandler,
-                 base::Unretained(this)));
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::OnSignalConnectedHandler,
+          base::Unretained(this)));
   userdataauth_proxy_->RegisterLowDiskSpaceSignalHandler(
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::OnLowDiskSpaceSignal,
-                 base::Unretained(this)),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::OnSignalConnectedHandler,
-                 base::Unretained(this)));
+      base::BindRepeating(
+          &LegacyCryptohomeInterfaceAdaptor::OnLowDiskSpaceSignal,
+          base::Unretained(this)),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::OnSignalConnectedHandler,
+          base::Unretained(this)));
   tpm_ownership_proxy_->RegisterSignalOwnershipTakenSignalHandler(
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::OnOwnershipTakenSignal,
-                 base::Unretained(this)),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::OnSignalConnectedHandler,
-                 base::Unretained(this)));
+      base::BindRepeating(
+          &LegacyCryptohomeInterfaceAdaptor::OnOwnershipTakenSignal,
+          base::Unretained(this)),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::OnSignalConnectedHandler,
+          base::Unretained(this)));
 }
 
 void LegacyCryptohomeInterfaceAdaptor::IsMounted(
@@ -59,10 +64,10 @@ void LegacyCryptohomeInterfaceAdaptor::IsMounted(
   user_data_auth::IsMountedRequest request;
   userdataauth_proxy_->IsMountedAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::IsMountedOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::IsMountedOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -85,10 +90,12 @@ void LegacyCryptohomeInterfaceAdaptor::IsMountedForUser(
   request.set_username(in_username);
   userdataauth_proxy_->IsMountedAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::IsMountedForUserOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool, bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::IsMountedForUserOnSuccess,
+          base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardError<bool, bool>,
+          base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -116,11 +123,11 @@ void LegacyCryptohomeInterfaceAdaptor::ListKeysEx(
   // Note that in_list_keys_request is empty
   userdataauth_proxy_->ListKeysAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ListKeysExOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ListKeysExOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -153,12 +160,13 @@ void LegacyCryptohomeInterfaceAdaptor::CheckKeyEx(
   request.mutable_authorization_request()->CopyFrom(in_authorization_request);
   userdataauth_proxy_->CheckKeyAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
-                     user_data_auth::CheckKeyReply>,
-                 response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
+              user_data_auth::CheckKeyReply>,
+          response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -180,12 +188,13 @@ void LegacyCryptohomeInterfaceAdaptor::RemoveKeyEx(
   request.mutable_key()->CopyFrom(in_remove_key_request.key());
   userdataauth_proxy_->RemoveKeyAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
-                     user_data_auth::RemoveKeyReply>,
-                 response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
+              user_data_auth::RemoveKeyReply>,
+          response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -208,12 +217,13 @@ void LegacyCryptohomeInterfaceAdaptor::MassRemoveKeys(
       in_mass_remove_keys_request.exempt_key_data());
   userdataauth_proxy_->MassRemoveKeysAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
-                     user_data_auth::MassRemoveKeysReply>,
-                 response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
+              user_data_auth::MassRemoveKeysReply>,
+          response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -235,11 +245,11 @@ void LegacyCryptohomeInterfaceAdaptor::GetKeyDataEx(
   request.mutable_key()->CopyFrom(in_get_key_data_request.key());
   userdataauth_proxy_->GetKeyDataAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::GetKeyDataOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::GetKeyDataOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -273,12 +283,13 @@ void LegacyCryptohomeInterfaceAdaptor::MigrateKeyEx(
   request.set_secret(in_migrate_request.secret());
   userdataauth_proxy_->MigrateKeyAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
-                     user_data_auth::MigrateKeyReply>,
-                 response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
+              user_data_auth::MigrateKeyReply>,
+          response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -301,12 +312,13 @@ void LegacyCryptohomeInterfaceAdaptor::AddKeyEx(
   request.set_clobber_if_exists(in_add_key_request.clobber_if_exists());
   userdataauth_proxy_->AddKeyAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
-                     user_data_auth::AddKeyReply>,
-                 response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
+              user_data_auth::AddKeyReply>,
+          response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -326,11 +338,12 @@ void LegacyCryptohomeInterfaceAdaptor::AddDataRestoreKey(
   request.mutable_authorization_request()->CopyFrom(in_authorization_request);
   userdataauth_proxy_->AddDataRestoreKeyAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::AddDataRestoreKeyOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::AddDataRestoreKeyOnSuccess,
+          base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -362,12 +375,13 @@ void LegacyCryptohomeInterfaceAdaptor::RemoveEx(
   request.mutable_identifier()->CopyFrom(in_account);
   userdataauth_proxy_->RemoveAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
-                     user_data_auth::RemoveReply>,
-                 response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
+              user_data_auth::RemoveReply>,
+          response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -384,9 +398,9 @@ void LegacyCryptohomeInterfaceAdaptor::GetSystemSalt(
   user_data_auth::GetSystemSaltRequest request;
   misc_proxy_->GetSystemSaltAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::GetSystemSaltOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::GetSystemSaltOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::vector<uint8_t>>,
           base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
@@ -413,11 +427,12 @@ void LegacyCryptohomeInterfaceAdaptor::GetSanitizedUsername(
   request.set_username(in_username);
   misc_proxy_->GetSanitizedUsernameAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::GetSanitizedUsernameOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<std::string>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::string>,
+          base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -464,11 +479,11 @@ void LegacyCryptohomeInterfaceAdaptor::MountEx(
 
   userdataauth_proxy_->MountAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::MountExOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::MountExOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kMountTimeout.InMilliseconds());
 }
 
@@ -509,12 +524,13 @@ void LegacyCryptohomeInterfaceAdaptor::MountGuestEx(
 
   userdataauth_proxy_->MountAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
-                     user_data_auth::MountReply>,
-                 response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
+              user_data_auth::MountReply>,
+          response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kMountTimeout.InMilliseconds());
 }
 
@@ -534,12 +550,13 @@ void LegacyCryptohomeInterfaceAdaptor::RenameCryptohome(
   *request.mutable_id_to() = in_cryptohome_id_to;
   userdataauth_proxy_->RenameAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
-                     user_data_auth::RenameReply>,
-                 response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
+              user_data_auth::RenameReply>,
+          response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -557,12 +574,12 @@ void LegacyCryptohomeInterfaceAdaptor::GetAccountDiskUsage(
   *request.mutable_identifier() = in_account_id;
   userdataauth_proxy_->GetAccountDiskUsageAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::GetAccountDiskUsageOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -591,12 +608,13 @@ void LegacyCryptohomeInterfaceAdaptor::UnmountEx(
   user_data_auth::UnmountRequest request;
   userdataauth_proxy_->UnmountAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
-                     user_data_auth::UnmountReply>,
-                 response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
+              user_data_auth::UnmountReply>,
+          response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -613,11 +631,11 @@ void LegacyCryptohomeInterfaceAdaptor::UpdateCurrentUserActivityTimestamp(
   request.set_time_shift_sec(in_time_shift_sec);
   misc_proxy_->UpdateCurrentUserActivityTimestampAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     UpdateCurrentUserActivityTimestampOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         UpdateCurrentUserActivityTimestampOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -643,10 +661,10 @@ void LegacyCryptohomeInterfaceAdaptor::TpmIsReady(
   tpm_manager::GetTpmStatusRequest request;
   tpm_ownership_proxy_->GetTpmStatusAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::TpmIsReadyOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::TpmIsReadyOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -666,10 +684,10 @@ void LegacyCryptohomeInterfaceAdaptor::TpmIsEnabled(
   tpm_manager::GetTpmStatusRequest request;
   tpm_ownership_proxy_->GetTpmStatusAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::TpmIsEnabledOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::TpmIsEnabledOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -691,10 +709,11 @@ void LegacyCryptohomeInterfaceAdaptor::TpmGetPassword(
   tpm_manager::GetTpmStatusRequest request;
   tpm_ownership_proxy_->GetTpmStatusAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::TpmGetPasswordOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<std::string>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::TpmGetPasswordOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::string>,
+          base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -714,10 +733,10 @@ void LegacyCryptohomeInterfaceAdaptor::TpmIsOwned(
   tpm_manager::GetTpmStatusRequest request;
   tpm_ownership_proxy_->GetTpmStatusAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::TpmIsOwnedOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::TpmIsOwnedOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -734,10 +753,10 @@ void LegacyCryptohomeInterfaceAdaptor::TpmCanAttemptOwnership(
   tpm_manager::TakeOwnershipRequest request;
   tpm_ownership_proxy_->TakeOwnershipAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::TpmCanAttemptOwnershipOnSuccess,
           base::Unretained(this)),
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::TpmCanAttemptOwnershipOnFailure,
           base::Unretained(this)),
       kDefaultTimeout.InMilliseconds());
@@ -776,11 +795,11 @@ void LegacyCryptohomeInterfaceAdaptor::TpmClearStoredPassword(
   tpm_manager::ClearStoredOwnerPasswordRequest request;
   tpm_ownership_proxy_->ClearStoredOwnerPasswordAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::TpmClearStoredPasswordOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -801,11 +820,11 @@ void LegacyCryptohomeInterfaceAdaptor::TpmIsAttestationPrepared(
 
   attestation_proxy_->GetEnrollmentPreparationsAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::TpmIsAttestationPreparedOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kAttestationProxyTimeout.InMilliseconds());
 }
 
@@ -853,12 +872,12 @@ void LegacyCryptohomeInterfaceAdaptor::
 
   attestation_proxy_->GetEnrollmentPreparationsAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     TpmAttestationGetEnrollmentPreparationsExOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         TpmAttestationGetEnrollmentPreparationsExOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kAttestationProxyTimeout.InMilliseconds());
 }
 
@@ -899,11 +918,11 @@ void LegacyCryptohomeInterfaceAdaptor::TpmVerifyAttestationData(
 
   attestation_proxy_->VerifyAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::TpmVerifyAttestationDataOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kAttestationProxyTimeout.InMilliseconds());
 }
 
@@ -935,10 +954,10 @@ void LegacyCryptohomeInterfaceAdaptor::TpmVerifyEK(
 
   attestation_proxy_->VerifyAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::TpmVerifyEKOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::TpmVerifyEKOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kAttestationProxyTimeout.InMilliseconds());
 }
 
@@ -981,10 +1000,10 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationCreateEnrollRequest(
 
   attestation_proxy_->CreateEnrollRequestAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     TpmAttestationCreateEnrollRequestOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         TpmAttestationCreateEnrollRequestOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::vector<uint8_t>>,
           base::Unretained(this), response_shared),
       kAttestationProxyTimeout.InMilliseconds());
@@ -1060,10 +1079,11 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationEnroll(
       std::make_shared<SharedDBusMethodResponse<bool>>(std::move(response));
   attestation_proxy_->FinishEnrollAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::TpmAttestationEnrollSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::TpmAttestationEnrollSuccess,
+          base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kAttestationProxyTimeout.InMilliseconds());
 }
 
@@ -1136,10 +1156,10 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationCreateCertRequest(
           std::move(response));
   attestation_proxy_->CreateCertificateRequestAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     TpmAttestationCreateCertRequestOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         TpmAttestationCreateCertRequestOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::vector<uint8_t>>,
           base::Unretained(this), response_shared),
       kAttestationProxyTimeout.InMilliseconds());
@@ -1218,10 +1238,10 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationFinishCertRequest(
           std::move(response));
   attestation_proxy_->FinishCertificateRequestAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     TpmAttestationFinishCertRequestOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         TpmAttestationFinishCertRequestOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::vector<uint8_t>,
                                                           bool>,
           base::Unretained(this), response_shared),
@@ -1334,11 +1354,11 @@ void LegacyCryptohomeInterfaceAdaptor::TpmIsAttestationEnrolled(
 
   attestation_proxy_->GetStatusAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::TpmIsAttestationEnrolledOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kAttestationProxyTimeout.InMilliseconds());
 }
 
@@ -1375,11 +1395,11 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationDoesKeyExist(
 
   attestation_proxy_->GetKeyInfoAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     TpmAttestationDoesKeyExistOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         TpmAttestationDoesKeyExistOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kAttestationProxyTimeout.InMilliseconds());
 }
 
@@ -1411,10 +1431,10 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetCertificate(
 
   attestation_proxy_->GetKeyInfoAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     TpmAttestationGetCertificateOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         TpmAttestationGetCertificateOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::vector<uint8_t>,
                                                           bool>,
           base::Unretained(this), response_shared),
@@ -1460,10 +1480,10 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetPublicKey(
 
   attestation_proxy_->GetKeyInfoAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     TpmAttestationGetPublicKeyOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         TpmAttestationGetPublicKeyOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::vector<uint8_t>,
                                                           bool>,
           base::Unretained(this), response_shared),
@@ -1504,10 +1524,10 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetEnrollmentId(
           std::move(response));
   attestation_proxy_->GetEnrollmentIdAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     TpmAttestationGetEnrollmentIdOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         TpmAttestationGetEnrollmentIdOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::vector<uint8_t>,
                                                           bool>,
           base::Unretained(this), response_shared),
@@ -1712,10 +1732,10 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetKeyPayload(
 
   attestation_proxy_->GetKeyInfoAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     TpmAttestationGetKeyPayloadOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         TpmAttestationGetKeyPayloadOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::vector<uint8_t>,
                                                           bool>,
           base::Unretained(this), response_shared),
@@ -1762,11 +1782,11 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationSetKeyPayload(
 
   attestation_proxy_->SetKeyPayloadAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     TpmAttestationSetKeyPayloadOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         TpmAttestationSetKeyPayloadOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kAttestationProxyTimeout.InMilliseconds());
 }
 
@@ -1802,11 +1822,11 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationDeleteKeys(
 
   attestation_proxy_->DeleteKeysAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::TpmAttestationDeleteKeysOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kAttestationProxyTimeout.InMilliseconds());
 }
 
@@ -1842,11 +1862,11 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationDeleteKey(
 
   attestation_proxy_->DeleteKeysAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::TpmAttestationDeleteKeysOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kAttestationProxyTimeout.InMilliseconds());
 }
 
@@ -1874,10 +1894,10 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetEK(
 
   attestation_proxy_->GetEndorsementInfoAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::TpmAttestationGetEKOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::string, bool>,
           base::Unretained(this), response_shared),
       kAttestationProxyTimeout.InMilliseconds());
@@ -1910,10 +1930,10 @@ void LegacyCryptohomeInterfaceAdaptor::TpmAttestationResetIdentity(
           std::move(response));
   attestation_proxy_->ResetIdentityAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     TpmAttestationResetIdentityOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         TpmAttestationResetIdentityOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::vector<uint8_t>,
                                                           bool>,
           base::Unretained(this), response_shared),
@@ -1955,10 +1975,10 @@ void LegacyCryptohomeInterfaceAdaptor::TpmGetVersionStructured(
   tpm_manager::GetVersionInfoRequest request;
   tpm_ownership_proxy_->GetVersionInfoAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::TpmGetVersionStructuredOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::ForwardError<
               uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, std::string>,
           base::Unretained(this), response_shared),
@@ -1991,11 +2011,11 @@ void LegacyCryptohomeInterfaceAdaptor::Pkcs11IsTpmTokenReady(
   user_data_auth::Pkcs11IsTpmTokenReadyRequest request;
   pkcs11_proxy_->Pkcs11IsTpmTokenReadyAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::Pkcs11IsTpmTokenReadyOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2018,10 +2038,10 @@ void LegacyCryptohomeInterfaceAdaptor::Pkcs11GetTpmTokenInfo(
   user_data_auth::Pkcs11GetTpmTokenInfoRequest request;
   pkcs11_proxy_->Pkcs11GetTpmTokenInfoAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::Pkcs11GetTpmTokenInfoOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::string,
                                                           std::string, int32_t>,
           base::Unretained(this), response_shared),
@@ -2047,10 +2067,10 @@ void LegacyCryptohomeInterfaceAdaptor::Pkcs11GetTpmTokenInfoForUser(
   // Pkcs11GetTpmTokenInfo version here.
   pkcs11_proxy_->Pkcs11GetTpmTokenInfoAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::Pkcs11GetTpmTokenInfoOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::string,
                                                           std::string, int32_t>,
           base::Unretained(this), response_shared),
@@ -2077,10 +2097,11 @@ void LegacyCryptohomeInterfaceAdaptor::Pkcs11Terminate(
   request.set_username(in_username);
   pkcs11_proxy_->Pkcs11TerminateAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::Pkcs11TerminateOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::Pkcs11TerminateOnSuccess,
+          base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2098,11 +2119,11 @@ void LegacyCryptohomeInterfaceAdaptor::Pkcs11RestoreTpmTokens(
   user_data_auth::Pkcs11RestoreTpmTokensRequest request;
   pkcs11_proxy_->Pkcs11RestoreTpmTokensAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::Pkcs11RestoreTpmTokensOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2124,10 +2145,12 @@ void LegacyCryptohomeInterfaceAdaptor::GetStatusString(
   user_data_auth::GetStatusStringRequest request;
   misc_proxy_->GetStatusStringAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::GetStatusStringOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<std::string>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::GetStatusStringOnSuccess,
+          base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::string>,
+          base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2151,10 +2174,10 @@ void LegacyCryptohomeInterfaceAdaptor::InstallAttributesGet(
   request.set_name(in_name);
   install_attributes_proxy_->InstallAttributesGetAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::InstallAttributesGetOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::ForwardError<std::vector<uint8_t>,
                                                           bool>,
           base::Unretained(this), response_shared),
@@ -2184,11 +2207,11 @@ void LegacyCryptohomeInterfaceAdaptor::InstallAttributesSet(
   *request.mutable_value() = {in_value.begin(), in_value.end()};
   install_attributes_proxy_->InstallAttributesSetAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::InstallAttributesSetOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2209,11 +2232,11 @@ void LegacyCryptohomeInterfaceAdaptor::InstallAttributesCount(
   user_data_auth::InstallAttributesGetStatusRequest request;
   install_attributes_proxy_->InstallAttributesGetStatusAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::InstallAttributesCountOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<int32_t>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<int32_t>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2234,11 +2257,11 @@ void LegacyCryptohomeInterfaceAdaptor::InstallAttributesFinalize(
   user_data_auth::InstallAttributesFinalizeRequest request;
   install_attributes_proxy_->InstallAttributesFinalizeAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::InstallAttributesFinalizeOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2259,11 +2282,11 @@ void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsReady(
   user_data_auth::InstallAttributesGetStatusRequest request;
   install_attributes_proxy_->InstallAttributesGetStatusAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsReadyOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2287,11 +2310,11 @@ void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsSecure(
   user_data_auth::InstallAttributesGetStatusRequest request;
   install_attributes_proxy_->InstallAttributesGetStatusAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsSecureOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2312,11 +2335,11 @@ void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsInvalid(
   user_data_auth::InstallAttributesGetStatusRequest request;
   install_attributes_proxy_->InstallAttributesGetStatusAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     InstallAttributesIsInvalidOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         InstallAttributesIsInvalidOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2339,11 +2362,11 @@ void LegacyCryptohomeInterfaceAdaptor::InstallAttributesIsFirstInstall(
   user_data_auth::InstallAttributesGetStatusRequest request;
   install_attributes_proxy_->InstallAttributesGetStatusAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     InstallAttributesIsFirstInstallOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         InstallAttributesIsFirstInstallOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2444,11 +2467,11 @@ void LegacyCryptohomeInterfaceAdaptor::GetLoginStatus(
   user_data_auth::GetLoginStatusRequest request;
   misc_proxy_->GetLoginStatusAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::GetLoginStatusOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::GetLoginStatusOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2495,12 +2518,12 @@ void LegacyCryptohomeInterfaceAdaptor::GetTpmStatus(
   tpm_manager::GetTpmStatusRequest request;
   tpm_ownership_proxy_->GetTpmStatusAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     GetTpmStatusOnStageOwnershipStatusDone,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         GetTpmStatusOnStageOwnershipStatusDone,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2547,12 +2570,12 @@ void LegacyCryptohomeInterfaceAdaptor::GetTpmStatusOnStageOwnershipStatusDone(
   tpm_manager::GetDictionaryAttackInfoRequest request;
   tpm_ownership_proxy_->GetDictionaryAttackInfoAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     GetTpmStatusOnStageDictionaryAttackDone,
-                 base::Unretained(this), response, reply),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         GetTpmStatusOnStageDictionaryAttackDone,
+                     base::Unretained(this), response, reply),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2584,12 +2607,12 @@ void LegacyCryptohomeInterfaceAdaptor::GetTpmStatusOnStageDictionaryAttackDone(
   user_data_auth::InstallAttributesGetStatusRequest request;
   install_attributes_proxy_->InstallAttributesGetStatusAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     GetTpmStatusOnStageInstallAttributesDone,
-                 base::Unretained(this), response, reply),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         GetTpmStatusOnStageInstallAttributesDone,
+                     base::Unretained(this), response, reply),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2620,12 +2643,12 @@ void LegacyCryptohomeInterfaceAdaptor::GetTpmStatusOnStageInstallAttributesDone(
 
   attestation_proxy_->GetStatusAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::GetTpmStatusOnStageAttestationDone,
           base::Unretained(this), response, reply),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response),
       kAttestationProxyTimeout.InMilliseconds());
 }
 
@@ -2690,11 +2713,12 @@ void LegacyCryptohomeInterfaceAdaptor::GetEndorsementInfo(
 
   attestation_proxy_->GetEndorsementInfoAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::GetEndorsementInfoOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::GetEndorsementInfoOnSuccess,
+          base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kAttestationProxyTimeout.InMilliseconds());
 }
 
@@ -2746,12 +2770,13 @@ void LegacyCryptohomeInterfaceAdaptor::StartFingerprintAuthSession(
   request.mutable_account_id()->CopyFrom(in_account_id);
   userdataauth_proxy_->StartFingerprintAuthSessionAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
-                     user_data_auth::StartFingerprintAuthSessionReply>,
-                 response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
+              user_data_auth::StartFingerprintAuthSessionReply>,
+          response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2769,12 +2794,13 @@ void LegacyCryptohomeInterfaceAdaptor::EndFingerprintAuthSession(
   user_data_auth::EndFingerprintAuthSessionRequest request;
   userdataauth_proxy_->EndFingerprintAuthSessionAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
-                     user_data_auth::EndFingerprintAuthSessionReply>,
-                 response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
+              user_data_auth::EndFingerprintAuthSessionReply>,
+          response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2793,11 +2819,12 @@ void LegacyCryptohomeInterfaceAdaptor::GetWebAuthnSecret(
   request.mutable_account_id()->CopyFrom(in_account_id);
   userdataauth_proxy_->GetWebAuthnSecretAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::GetWebAuthnSecretOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared));
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::GetWebAuthnSecretOnSuccess,
+          base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared));
 }
 
 void LegacyCryptohomeInterfaceAdaptor::GetWebAuthnSecretOnSuccess(
@@ -2828,12 +2855,12 @@ void LegacyCryptohomeInterfaceAdaptor::GetFirmwareManagementParameters(
   user_data_auth::GetFirmwareManagementParametersRequest request;
   install_attributes_proxy_->GetFirmwareManagementParametersAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     GetFirmwareManagementParametersOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         GetFirmwareManagementParametersOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2869,12 +2896,13 @@ void LegacyCryptohomeInterfaceAdaptor::SetFirmwareManagementParameters(
       in_request.developer_key_hash();
   install_attributes_proxy_->SetFirmwareManagementParametersAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
-                     user_data_auth::SetFirmwareManagementParametersReply>,
-                 response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
+              user_data_auth::SetFirmwareManagementParametersReply>,
+          response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2892,12 +2920,13 @@ void LegacyCryptohomeInterfaceAdaptor::RemoveFirmwareManagementParameters(
   user_data_auth::RemoveFirmwareManagementParametersRequest request;
   install_attributes_proxy_->RemoveFirmwareManagementParametersAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
-                     user_data_auth::RemoveFirmwareManagementParametersReply>,
-                 response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
+              user_data_auth::RemoveFirmwareManagementParametersReply>,
+          response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2915,10 +2944,11 @@ void LegacyCryptohomeInterfaceAdaptor::MigrateToDircrypto(
   request.set_minimal_migration(in_migrate_request.minimal_migration());
   userdataauth_proxy_->StartMigrateToDircryptoAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::MigrateToDircryptoOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::MigrateToDircryptoOnSuccess,
+          base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2944,11 +2974,11 @@ void LegacyCryptohomeInterfaceAdaptor::NeedsDircryptoMigration(
   *request.mutable_account_id() = in_account_id;
   userdataauth_proxy_->NeedsDircryptoMigrationAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::NeedsDircryptoMigrationOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -2981,12 +3011,12 @@ void LegacyCryptohomeInterfaceAdaptor::GetSupportedKeyPolicies(
   user_data_auth::GetSupportedKeyPoliciesRequest request;
   userdataauth_proxy_->GetSupportedKeyPoliciesAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::GetSupportedKeyPoliciesOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -3014,10 +3044,11 @@ void LegacyCryptohomeInterfaceAdaptor::IsQuotaSupported(
   user_data_auth::GetArcDiskFeaturesRequest request;
   arc_quota_proxy_->GetArcDiskFeaturesAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::IsQuotaSupportedOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::IsQuotaSupportedOnSuccess,
+          base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -3039,11 +3070,11 @@ void LegacyCryptohomeInterfaceAdaptor::GetCurrentSpaceForUid(
   request.set_uid(in_uid);
   arc_quota_proxy_->GetCurrentSpaceForArcUidAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::GetCurrentSpaceForUidOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<int64_t>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<int64_t>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -3065,11 +3096,11 @@ void LegacyCryptohomeInterfaceAdaptor::GetCurrentSpaceForGid(
   request.set_gid(in_gid);
   arc_quota_proxy_->GetCurrentSpaceForArcGidAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::GetCurrentSpaceForGidOnSuccess,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<int64_t>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<int64_t>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -3092,11 +3123,11 @@ void LegacyCryptohomeInterfaceAdaptor::GetCurrentSpaceForProjectId(
   request.set_project_id(in_project_id);
   arc_quota_proxy_->GetCurrentSpaceForArcProjectIdAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     GetCurrentSpaceForProjectIdOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<int64_t>,
-                 base::Unretained(this), response_shared));
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         GetCurrentSpaceForProjectIdOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<int64_t>,
+                     base::Unretained(this), response_shared));
 }
 
 void LegacyCryptohomeInterfaceAdaptor::GetCurrentSpaceForProjectIdOnSuccess(
@@ -3124,10 +3155,10 @@ void LegacyCryptohomeInterfaceAdaptor::SetProjectId(
   request.mutable_account_id()->CopyFrom(in_account_id);
   arc_quota_proxy_->SetProjectIdAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::SetProjectIdOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
-                 base::Unretained(this), response_shared));
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::SetProjectIdOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<bool>,
+                     base::Unretained(this), response_shared));
 }
 
 void LegacyCryptohomeInterfaceAdaptor::SetProjectIdOnSuccess(
@@ -3153,12 +3184,12 @@ void LegacyCryptohomeInterfaceAdaptor::LockToSingleUserMountUntilReboot(
   }
   misc_proxy_->LockToSingleUserMountUntilRebootAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::
-                     LockToSingleUserMountUntilRebootOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::
+                         LockToSingleUserMountUntilRebootOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -3206,11 +3237,11 @@ void LegacyCryptohomeInterfaceAdaptor::GetRsuDeviceId(
   user_data_auth::GetRsuDeviceIdRequest request;
   misc_proxy_->GetRsuDeviceIdAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::GetRsuDeviceIdOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::GetRsuDeviceIdOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -3241,11 +3272,11 @@ void LegacyCryptohomeInterfaceAdaptor::CheckHealth(
   user_data_auth::CheckHealthRequest request;
   misc_proxy_->CheckHealthAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::CheckHealthOnSuccess,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::CheckHealthOnSuccess,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -3344,11 +3375,12 @@ void LegacyCryptohomeInterfaceAdaptor::StartAuthSession(
   request.set_flags(in_request.flags());
   userdataauth_proxy_->StartAuthSessionAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::StartAuthSessionOnStarted,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(
+          &LegacyCryptohomeInterfaceAdaptor::StartAuthSessionOnStarted,
+          base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -3381,11 +3413,11 @@ void LegacyCryptohomeInterfaceAdaptor::AddCredentials(
   request.set_add_more_credentials(in_request.add_more_credentials());
   userdataauth_proxy_->AddCredentialsAsync(
       request,
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::AddCredentialsOnDone,
-                 base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::AddCredentialsOnDone,
+                     base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 
@@ -3413,12 +3445,12 @@ void LegacyCryptohomeInterfaceAdaptor::AuthenticateAuthSession(
   request.mutable_authorization()->CopyFrom(in_request.authorization());
   userdataauth_proxy_->AuthenticateAuthSessionAsync(
       request,
-      base::Bind(
+      base::BindOnce(
           &LegacyCryptohomeInterfaceAdaptor::AuthenticateAuthSessionOnDone,
           base::Unretained(this), response_shared),
-      base::Bind(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                     cryptohome::BaseReply>,
-                 base::Unretained(this), response_shared),
+      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
+                         cryptohome::BaseReply>,
+                     base::Unretained(this), response_shared),
       kDefaultTimeout.InMilliseconds());
 }
 

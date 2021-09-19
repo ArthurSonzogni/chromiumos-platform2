@@ -211,8 +211,8 @@ void KeyChallengeServiceImpl::ChallengeKey(
   }
   dbus_proxy_.ChallengeKeyAsync(
       SerializeProto(account_id), SerializeProto(key_challenge_request),
-      base::Bind(&OnDBusChallengeKeySuccess, callback_holder),
-      base::Bind(&OnDBusChallengeKeyFailure, callback_holder),
+      base::BindOnce(&OnDBusChallengeKeySuccess, callback_holder),
+      base::BindOnce(&OnDBusChallengeKeyFailure, callback_holder),
       /*timeout_ms=*/kDbusCallTimeout.InMilliseconds());
 }
 
@@ -233,8 +233,8 @@ void KeyChallengeServiceImpl::FidoMakeCredential(
           std::move(response_callback)));
   dbus_proxy_.FidoMakeCredentialAsync(
       client_data_json, SerializeProto(request),
-      base::Bind(&OnDBusFidoMakeCredentialSuccess, callback_holder),
-      base::Bind(&OnDBusFidoMakeCredentialFailure, callback_holder));
+      base::BindOnce(&OnDBusFidoMakeCredentialSuccess, callback_holder),
+      base::BindOnce(&OnDBusFidoMakeCredentialFailure, callback_holder));
 }
 
 void KeyChallengeServiceImpl::FidoGetAssertion(
@@ -254,8 +254,8 @@ void KeyChallengeServiceImpl::FidoGetAssertion(
           std::move(response_callback)));
   dbus_proxy_.FidoGetAssertionAsync(
       client_data_json, SerializeProto(request),
-      base::Bind(&OnDBusFidoGetAssertionSuccess, callback_holder),
-      base::Bind(&OnDBusFidoGetAssertionFailure, callback_holder));
+      base::BindOnce(&OnDBusFidoGetAssertionSuccess, callback_holder),
+      base::BindOnce(&OnDBusFidoGetAssertionFailure, callback_holder));
 }
 
 }  // namespace cryptohome

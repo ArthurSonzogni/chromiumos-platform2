@@ -200,7 +200,7 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest, MountExSuccessWithCreate) {
   int respond_count = 0;
   std::unique_ptr<MockDBusMethodResponse<cryptohome::BaseReply>> response(
       new MockDBusMethodResponse<cryptohome::BaseReply>(nullptr));
-  response->set_return_callback(base::Bind(
+  response->set_return_callback(base::BindRepeating(
       [](int* respond_count_ptr, const cryptohome::BaseReply& reply) {
         EXPECT_EQ(cryptohome::CRYPTOHOME_ERROR_NOT_SET, reply.error());
         EXPECT_TRUE(reply.HasExtension(cryptohome::MountReply::reply));
@@ -838,7 +838,7 @@ TEST_F(LegacyCryptohomeInterfaceAdaptorTest, MigrateToDircryptoSuccess) {
   bool called = false;
   std::unique_ptr<MockDBusMethodResponse<>> response(
       new MockDBusMethodResponse<>(nullptr));
-  response->set_return_callback(base::Bind(
+  response->set_return_callback(base::BindRepeating(
       [](bool* called_ptr) {
         // Return can only be called once
         ASSERT_FALSE(*called_ptr);

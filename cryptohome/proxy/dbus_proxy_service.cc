@@ -47,15 +47,15 @@ class ServiceBlocker {
 
     dbus_thread_.task_runner()->PostTask(
         FROM_HERE,
-        base::Bind(&ServiceBlocker::SetupBlockUntilDestinationIsOnline,
-                   base::Unretained(this)));
+        base::BindOnce(&ServiceBlocker::SetupBlockUntilDestinationIsOnline,
+                       base::Unretained(this)));
 
     cryptohome_online.Wait();
     tpm_manager_online.Wait();
 
     dbus_thread_.task_runner()->PostTask(
         FROM_HERE,
-        base::Bind(&ServiceBlocker::Cleanup, base::Unretained(this)));
+        base::BindOnce(&ServiceBlocker::Cleanup, base::Unretained(this)));
     dbus_thread_.Stop();
   }
 
@@ -89,9 +89,9 @@ class ServiceBlocker {
     bus_ = bus_connection_->Connect();
     CHECK(bus_);
 
-    on_cryptohome_online_ = base::Bind(
+    on_cryptohome_online_ = base::BindRepeating(
         &ServiceBlocker::OnCryptohomeServiceChange, base::Unretained(this));
-    on_tpm_manager_online_ = base::Bind(
+    on_tpm_manager_online_ = base::BindRepeating(
         &ServiceBlocker::OnTpmManagerServiceChange, base::Unretained(this));
 
     // Setup the callbacks.
