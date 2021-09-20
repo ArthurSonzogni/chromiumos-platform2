@@ -628,4 +628,26 @@ TEST_F(CrashCommonUtilGetPathToThisBinaryTest, IgnoresEmptyEnvVar) {
   EXPECT_EQ(path.BaseName(), argv_path_);
 }
 
+TEST_F(CrashCommonUtilTest, RedactDigests) {
+  struct {
+    bool ret;
+    std::string input;
+    const std::string expected;
+  } test_data[] = {
+      {false, "same", "same"},
+      {false, "0123456789abcdefABCDEF0Z23456789abcdefAB",
+       "0123456789abcdefABCDEF0Z23456789abcdefAB"},
+      {true,
+       "rm_rf(/home/chronos/u-0123456789abcdefABCDEF0123456789abcdefAB): Bad "
+       "message",
+       "rm_rf(/home/chronos/u-<Redacted Digest>): Bad message"},
+      {true, "0123456789abcdefABCDEF0123456789abcdefAB", "<Redacted Digest>"},
+  };
+
+  for (auto [ret, input, expected] : test_data) {
+    EXPECT_EQ(RedactDigests(&input), ret);
+    EXPECT_EQ(input, expected);
+  }
+}
+
 }  // namespace util

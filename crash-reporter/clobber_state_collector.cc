@@ -14,6 +14,8 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
+#include "crash-reporter/util.h"
+
 namespace {
 constexpr size_t kMaxSignature = 256;
 constexpr const char kTmpfilesLogPath[] = "/run/tmpfiles.log";
@@ -59,6 +61,7 @@ bool ClobberStateCollector::Collect() {
       tmpfiles_log.empty()) {
     PLOG(ERROR) << "Failed to read '" << kTmpfilesLogPath << "'";
   }
+  util::RedactDigests(&tmpfiles_log);
   auto lines = base::SplitString(tmpfiles_log, "\n", base::TRIM_WHITESPACE,
                                  base::SPLIT_WANT_NONEMPTY);
   if (lines.empty()) {

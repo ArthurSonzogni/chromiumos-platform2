@@ -163,6 +163,11 @@ unsigned HashString(base::StringPiece input);
 // and allowing override with the LD_ARGV0 environment variable.
 base::FilePath GetPathToThisBinary(const char* const argv[]);
 
+// Replace digests with a placeholder this can help preserve privacy and group
+// reports together whenever digests are present in the crash's unique
+// signature.
+bool RedactDigests(std::string* to_filter);
+
 }  // namespace util
 
 #endif  // CRASH_REPORTER_UTIL_H_

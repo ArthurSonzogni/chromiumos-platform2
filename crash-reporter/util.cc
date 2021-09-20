@@ -27,6 +27,7 @@
 #include <brillo/cryptohome.h>
 #include <brillo/key_value_store.h>
 #include <brillo/userdb_utils.h>
+#include <re2/re2.h>
 #include <zlib.h>
 
 #include "crash-reporter/crossystem.h"
@@ -629,6 +630,12 @@ base::FilePath GetPathToThisBinary(const char* const argv[]) {
     arg0 = argv[0];
   }
   return base::MakeAbsoluteFilePath(base::FilePath(arg0));
+}
+
+bool RedactDigests(std::string* to_filter) {
+  static constexpr const LazyRE2 digest_re = {
+      R"((^|[^0-9a-fA-F])(?:[0-9a-fA-F]{32,})([^0-9a-fA-F]|$))"};
+  return re2::RE2::Replace(to_filter, *digest_re, R"(\1<Redacted Digest>\2)");
 }
 
 }  // namespace util
