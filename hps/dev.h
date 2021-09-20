@@ -11,6 +11,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <hps/hps_reg.h>
+
 namespace hps {
 
 class DevInterface {
@@ -30,12 +32,12 @@ class DevInterface {
    * Read 1 register.
    * Returns value read, or -1 for error.
    */
-  int ReadReg(int r);
+  int ReadReg(HpsReg r);
   /*
    * Write 1 register.
    * Returns false on failure.
    */
-  bool WriteReg(int r, uint16_t data);
+  bool WriteReg(HpsReg r, uint16_t data);
   /*
    * Return the maximum download block size (in bytes).
    * This value is the actual data to be written, not including the

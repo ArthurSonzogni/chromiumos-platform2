@@ -8,6 +8,8 @@
 #ifndef HPS_HPS_REG_H_
 #define HPS_HPS_REG_H_
 
+#include <cstdint>
+
 namespace hps {
 
 // Memory bank numbers for the download operation
@@ -17,7 +19,7 @@ enum class HpsBank {
 };
 
 // Register numbers for HPS module interface.
-enum HpsReg {
+enum class HpsReg : uint8_t {
   kMagic = 0,
   kHwRev = 1,
   kSysStatus = 2,
@@ -31,7 +33,6 @@ enum HpsReg {
   kFirmwareVersionHigh = 10,
   kFirmwareVersionLow = 11,
   kMax = 127,
-  kNumRegs = kMax + 1,
 };
 
 // Register 2 (RO) - System status register.
@@ -81,8 +82,8 @@ inline uint8_t I2cMemWrite(int bank) {
   return (bank % kNumBanks) | 0;
 }
 
-inline uint8_t I2cReg(int reg) {
-  return (reg % HpsReg::kNumRegs) | 0x80;
+inline uint8_t I2cReg(HpsReg reg) {
+  return static_cast<uint8_t>(reg) | 0x80U;
 }
 
 }  // namespace hps

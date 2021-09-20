@@ -28,14 +28,12 @@ int Status(std::unique_ptr<hps::HPS> hps,
   int start, end;
   switch (args.size()) {
     case 1:
-      start = hps::HpsReg::kMagic;
-      end = hps::HpsReg::kBankReady;
+      start = 0;
+      end = 4;
       break;
 
     case 2:
-      start = 0;
-      if (!base::StringToInt(args[1], &start) || start < 0 ||
-          start > hps::HpsReg::kMax) {
+      if (!base::StringToInt(args[1], &start)) {
         std::cerr << args[1] << ": illegal register" << std::endl;
         return 1;
       }
@@ -43,12 +41,12 @@ int Status(std::unique_ptr<hps::HPS> hps,
       break;
 
     case 3:
-      start = 0;
-      end = 0;
-      if (!base::StringToInt(args[1], &start) || start < 0 ||
-          start > hps::HpsReg::kMax || !base::StringToInt(args[2], &end) ||
-          end < 0 || end > hps::HpsReg::kMax) {
-        std::cerr << "status: illegal start/end values" << std::endl;
+      if (!base::StringToInt(args[1], &start)) {
+        std::cerr << args[1] << ": illegal register" << std::endl;
+        return 1;
+      }
+      if (!base::StringToInt(args[2], &end)) {
+        std::cerr << args[2] << ": illegal register" << std::endl;
         return 1;
       }
       break;
@@ -57,9 +55,22 @@ int Status(std::unique_ptr<hps::HPS> hps,
       std::cerr << "status: arg error" << std::endl;
       return 1;
   }
+  if (start < 0 || start > static_cast<int>(hps::HpsReg::kMax)) {
+    std::cerr << "status: illegal start value" << std::endl;
+    return 1;
+  }
+  if (end < 0 || end > static_cast<int>(hps::HpsReg::kMax)) {
+    std::cerr << "status: illegal end value" << std::endl;
+    return 1;
+  }
+  if (end < start) {
+    std::cerr << "status: end < start, nothing to do" << std::endl;
+    return 1;
+  }
+
   for (auto i = start; i <= end; i++) {
     std::cout << "reg " << std::dec << i << " = ";
-    auto result = hps->Device()->ReadReg(i);
+    auto result = hps->Device()->ReadReg(hps::HpsReg(i));
     if (result < 0) {
       std::cout << "Error!" << std::endl;
     } else {

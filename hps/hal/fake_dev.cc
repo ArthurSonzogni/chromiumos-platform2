@@ -41,9 +41,11 @@
 #include <base/memory/ref_counted.h>
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
+#include <base/strings/stringprintf.h>
 #include <base/threading/simple_thread.h>
 
 #include "hps/hps_reg.h"
+#include "hps/utils.h"
 
 namespace hps {
 
@@ -180,12 +182,12 @@ void FakeDev::Run() {
           return;
         case kReadReg:
           // Read a register and return the result.
-          m.result->store(this->ReadRegActual(m.reg));
+          m.result->store(this->ReadRegActual(HpsReg(m.reg)));
           m.sig->Signal();
           break;
         case kWriteReg:
           // Write a register.
-          this->WriteRegActual(m.reg, m.value);
+          this->WriteRegActual(HpsReg(m.reg), m.value);
           break;
         case kWriteMem:
           // Memory write request.
@@ -235,7 +237,7 @@ bool FakeDev::WriteMemory(int base, const uint8_t* mem, size_t len) {
   return res.load() == len;
 }
 
-uint16_t FakeDev::ReadRegActual(int reg) {
+uint16_t FakeDev::ReadRegActual(HpsReg reg) {
   uint16_t v = 0;
   switch (reg) {
     case HpsReg::kMagic:
@@ -314,12 +316,12 @@ uint16_t FakeDev::ReadRegActual(int reg) {
     default:
       break;
   }
-  VLOG(2) << "Read reg " << reg << " value " << v;
+  VLOG(2) << "Read reg " << HpsRegToString(reg) << " value " << v;
   return v;
 }
 
-void FakeDev::WriteRegActual(int reg, uint16_t value) {
-  VLOG(2) << "Write reg " << reg << " value " << value;
+void FakeDev::WriteRegActual(HpsReg reg, uint16_t value) {
+  VLOG(2) << "Write reg " << HpsRegToString(reg) << " value " << value;
   // Ignore everything except the command register.
   switch (reg) {
     case HpsReg::kSysCmd:

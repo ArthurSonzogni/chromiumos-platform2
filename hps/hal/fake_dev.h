@@ -126,8 +126,8 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
     kAppl,
   };
   void SetStage(Stage s);
-  uint16_t ReadRegActual(int);
-  void WriteRegActual(int, uint16_t);
+  uint16_t ReadRegActual(HpsReg reg);
+  void WriteRegActual(HpsReg reg, uint16_t value);
   uint16_t WriteMemActual(int base, const uint8_t* mem, size_t len);
   void MsgStop();
   void Send(const Msg& m);

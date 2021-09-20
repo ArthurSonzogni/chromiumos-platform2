@@ -71,13 +71,13 @@ class DevInterfaceTest : public testing::Test {
 TEST_F(DevInterfaceTest, ReadReg) {
   dev_.data_[0] = 0x12;
   dev_.data_[1] = 0x34;
-  int d = dev_.ReadReg(0);
+  int d = dev_.ReadReg(hps::HpsReg::kMagic);
   EXPECT_EQ(d, 0x1234);
   EXPECT_EQ(dev_.len_, 2);
   EXPECT_EQ(dev_.cmd_, 0x80);
   dev_.data_[0] = 0x89;
   dev_.data_[1] = 0xAB;
-  d = dev_.ReadReg(32);
+  d = dev_.ReadReg(hps::HpsReg(32));
   EXPECT_EQ(d, 0x89AB);
   EXPECT_EQ(dev_.cmd_, 0x80 | 32);
   EXPECT_EQ(dev_.len_, 2);
@@ -88,12 +88,12 @@ TEST_F(DevInterfaceTest, ReadReg) {
  * Check that a WriteReg writes the correct data.
  */
 TEST_F(DevInterfaceTest, WriteReg) {
-  EXPECT_TRUE(dev_.WriteReg(0, 0x1234));
+  EXPECT_TRUE(dev_.WriteReg(hps::HpsReg::kMagic, 0x1234));
   EXPECT_EQ(dev_.data_[0], 0x12);
   EXPECT_EQ(dev_.data_[1], 0x34);
   EXPECT_EQ(dev_.len_, 2);
   EXPECT_EQ(dev_.cmd_, 0x80);
-  EXPECT_TRUE(dev_.WriteReg(32, 0x89AB));
+  EXPECT_TRUE(dev_.WriteReg(hps::HpsReg(32), 0x89AB));
   EXPECT_EQ(dev_.data_[0], 0x89);
   EXPECT_EQ(dev_.data_[1], 0xAB);
   EXPECT_EQ(dev_.cmd_, 0x80 | 32);
@@ -106,7 +106,7 @@ TEST_F(DevInterfaceTest, WriteReg) {
  */
 TEST_F(DevInterfaceTest, ReadFail) {
   dev_.fails_ = kRetry;
-  int d = dev_.ReadReg(0);
+  int d = dev_.ReadReg(hps::HpsReg::kMagic);
   EXPECT_EQ(d, -1);
   EXPECT_EQ(dev_.reads_, kRetry);
 }
@@ -116,7 +116,7 @@ TEST_F(DevInterfaceTest, ReadFail) {
  */
 TEST_F(DevInterfaceTest, WriteFail) {
   dev_.fails_ = kRetry;
-  EXPECT_FALSE(dev_.WriteReg(0, 0x1234));
+  EXPECT_FALSE(dev_.WriteReg(hps::HpsReg::kMagic, 0x1234));
   EXPECT_EQ(dev_.writes_, kRetry);
 }
 
@@ -128,7 +128,7 @@ TEST_F(DevInterfaceTest, ReadRetry) {
   dev_.fails_ = 1;
   dev_.data_[0] = 0x12;
   dev_.data_[1] = 0x34;
-  int d = dev_.ReadReg(0);
+  int d = dev_.ReadReg(hps::HpsReg::kMagic);
   EXPECT_EQ(d, 0x1234);
   // One failed read, one success.
   EXPECT_EQ(dev_.reads_, 2);
@@ -140,7 +140,7 @@ TEST_F(DevInterfaceTest, ReadRetry) {
  */
 TEST_F(DevInterfaceTest, WriteRetry) {
   dev_.fails_ = 1;
-  EXPECT_TRUE(dev_.WriteReg(0, 0x1234));
+  EXPECT_TRUE(dev_.WriteReg(hps::HpsReg::kMagic, 0x1234));
   // One failed write, one success.
   EXPECT_EQ(dev_.writes_, 2);
 }

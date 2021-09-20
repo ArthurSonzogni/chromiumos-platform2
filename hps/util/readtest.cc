@@ -43,8 +43,8 @@ int ReadTest(std::unique_ptr<hps::HPS> hps,
       return 1;
   }
   for (int i = 0; i < iterations; i++) {
-    for (int reg = 0; reg < hps::HpsReg::kNumRegs; reg++) {
-      int result = hps->Device()->ReadReg(reg);
+    for (int reg = 0; reg <= static_cast<int>(hps::HpsReg::kMax); reg++) {
+      int result = hps->Device()->ReadReg(hps::HpsReg(reg));
       if (result < 0) {
         std::cout << std::endl
                   << "Error on iteration " << i << " register " << i

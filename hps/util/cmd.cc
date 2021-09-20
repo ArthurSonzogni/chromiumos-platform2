@@ -45,7 +45,7 @@ int SendCmd(std::unique_ptr<hps::HPS> hps,
 
   for (auto i = 0; i < 5; i++) {
     std::cout << "reg " << i << " = " << std::hex << std::setfill('0')
-              << std::setw(4) << hps->Device()->ReadReg(hps::I2cReg(i))
+              << std::setw(4) << hps->Device()->ReadReg(hps::HpsReg(i))
               << std::endl;
   }
   std::cout << "Sending cmd value " << std::hex << std::setfill('0')
