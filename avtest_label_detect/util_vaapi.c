@@ -320,3 +320,25 @@ bool get_vaapi_max_resolution(int fd,
   vaTerminate(va_display);
   return *resolution_width > 0 && *resolution_height > 0;
 }
+
+// Returns true if this is an AMD Mesa Gallium implementation.
+bool is_amd_implementation(int fd) {
+  VAStatus va_res;
+  VADisplay va_display = vaGetDisplayDRM(fd);
+  int major_version, minor_version;
+  if (!vaDisplayIsValid(va_display)) {
+    TRACE("vaGetDisplay returns invalid display\n");
+    return false;
+  }
+  va_res = vaInitialize(va_display, &major_version, &minor_version);
+  if (va_res != VA_STATUS_SUCCESS) {
+    TRACE("vaInitialize failed\n");
+    return false;
+  }
+  const char* va_vendor_string = vaQueryVendorString(va_display);
+  bool res =
+      va_vendor_string &&
+      strstr(va_vendor_string, "Mesa Gallium driver") == va_vendor_string;
+  vaTerminate(va_display);
+  return res;
+}

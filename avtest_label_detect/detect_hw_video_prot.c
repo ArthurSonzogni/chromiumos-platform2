@@ -8,6 +8,7 @@
 // video.
 
 #if defined(USE_VAAPI)
+#include <unistd.h>
 #include <va/va.h>
 #endif  // defined(USE_VAAPI)
 
@@ -50,6 +51,15 @@ static bool is_widevine_cbc_device(int fd) {
       {VAConfigAttribProtectedContentCipherMode, VA_PC_CIPHER_MODE_CBC}};
   return are_vaapi_attribs_supported(
       fd, VAProfileProtected, VAEntrypointProtectedContent, va_attribs, 4);
+}
+
+/* Helper function which returns true if we are running on an AMD platform and
+ * it has the kernel driver for protected content. AMD can handle protected
+ * content for a codec if it has the tee0 driver and it supports that codec for
+ * HW decode.
+ */
+static bool is_amd_protected_content(int fd) {
+  return (access("/dev/tee0", F_OK) == 0) && is_amd_implementation(fd);
 }
 
 /* Helper function for detect_video_prot_cencv1_h264_cbc.
@@ -205,6 +215,10 @@ bool detect_video_prot_cencv3_av1_cbc(void) {
 #if defined(USE_VAAPI)
   if (is_any_device(kDRMDevicePattern, is_vaapi_prot_av1_cencv3_cbc_device))
     return true;
+  if (is_any_device(kDRMDevicePattern, is_amd_protected_content) &&
+      detect_video_acc_av1()) {
+    return true;
+  }
 #endif  // defined(USE_VAAPI)
 
   return false;
@@ -217,6 +231,10 @@ bool detect_video_prot_cencv3_av1_ctr(void) {
 #if defined(USE_VAAPI)
   if (is_any_device(kDRMDevicePattern, is_vaapi_prot_av1_cencv3_ctr_device))
     return true;
+  if (is_any_device(kDRMDevicePattern, is_amd_protected_content) &&
+      detect_video_acc_av1()) {
+    return true;
+  }
 #endif  // defined(USE_VAAPI)
 
   return false;
@@ -229,6 +247,10 @@ bool detect_video_prot_cencv3_h264_cbc(void) {
 #if defined(USE_VAAPI)
   if (is_any_device(kDRMDevicePattern, is_vaapi_prot_h264_cencv3_cbc_device))
     return true;
+  if (is_any_device(kDRMDevicePattern, is_amd_protected_content) &&
+      detect_video_acc_h264()) {
+    return true;
+  }
 #endif  // defined(USE_VAAPI)
 
   return false;
@@ -241,6 +263,10 @@ bool detect_video_prot_cencv3_h264_ctr(void) {
 #if defined(USE_VAAPI)
   if (is_any_device(kDRMDevicePattern, is_vaapi_prot_h264_cencv3_ctr_device))
     return true;
+  if (is_any_device(kDRMDevicePattern, is_amd_protected_content) &&
+      detect_video_acc_h264()) {
+    return true;
+  }
 #endif  // defined(USE_VAAPI)
 
   return false;
@@ -253,6 +279,10 @@ bool detect_video_prot_cencv3_hevc_cbc(void) {
 #if defined(USE_VAAPI)
   if (is_any_device(kDRMDevicePattern, is_vaapi_prot_hevc_cencv3_cbc_device))
     return true;
+  if (is_any_device(kDRMDevicePattern, is_amd_protected_content) &&
+      detect_video_acc_hevc()) {
+    return true;
+  }
 #endif  // defined(USE_VAAPI)
 
   return false;
@@ -265,6 +295,10 @@ bool detect_video_prot_cencv3_hevc_ctr(void) {
 #if defined(USE_VAAPI)
   if (is_any_device(kDRMDevicePattern, is_vaapi_prot_hevc_cencv3_ctr_device))
     return true;
+  if (is_any_device(kDRMDevicePattern, is_amd_protected_content) &&
+      detect_video_acc_hevc()) {
+    return true;
+  }
 #endif  // defined(USE_VAAPI)
 
   return false;
@@ -277,6 +311,10 @@ bool detect_video_prot_cencv3_vp9_cbc(void) {
 #if defined(USE_VAAPI)
   if (is_any_device(kDRMDevicePattern, is_vaapi_prot_vp9_cencv3_cbc_device))
     return true;
+  if (is_any_device(kDRMDevicePattern, is_amd_protected_content) &&
+      detect_video_acc_vp9()) {
+    return true;
+  }
 #endif  // defined(USE_VAAPI)
 
   return false;
@@ -289,6 +327,10 @@ bool detect_video_prot_cencv3_vp9_ctr(void) {
 #if defined(USE_VAAPI)
   if (is_any_device(kDRMDevicePattern, is_vaapi_prot_vp9_cencv3_ctr_device))
     return true;
+  if (is_any_device(kDRMDevicePattern, is_amd_protected_content) &&
+      detect_video_acc_vp9()) {
+    return true;
+  }
 #endif  // defined(USE_VAAPI)
 
   return false;

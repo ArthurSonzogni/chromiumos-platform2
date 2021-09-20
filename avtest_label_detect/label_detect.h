@@ -63,6 +63,7 @@ bool are_vaapi_attribs_supported(int fd,
                                  VAEntrypoint entrypoint,
                                  const VAConfigAttrib* required_attribs,
                                  int num_required_attribs);
+bool is_amd_implementation(int fd);
 #endif  // defined(USE_VAAPI)
 
 /* detectors */
