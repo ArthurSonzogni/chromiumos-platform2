@@ -12,11 +12,30 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 
 namespace {
 constexpr size_t kMaxSignature = 256;
 constexpr const char kTmpfilesLogPath[] = "/run/tmpfiles.log";
 constexpr const char kClobberStateName[] = "clobber-state";
+
+std::string filter_signature(const std::string& sig) {
+  static constexpr const char* const known_issues[] = {
+      // This is associated with an EXT4-fs error in htree_dirblock_to_tree:
+      // "Directory block failed checksum"
+      "Bad message",
+      // This is associated with an EXT4-fs error in ext4_xattr_block_get:
+      // "corrupted xattr block ####"
+      "Structure needs cleaning",
+  };
+  for (auto known_issue : known_issues) {
+    if (base::EndsWith(sig, known_issue)) {
+      return known_issue;
+    }
+  }
+  return sig;
+}
+
 }  // namespace
 
 ClobberStateCollector::ClobberStateCollector()
@@ -46,7 +65,7 @@ bool ClobberStateCollector::Collect() {
     // Fall back to the exec name as the crash signature.
     AddCrashMetaData("sig", exec_name);
   } else {
-    AddCrashMetaData("sig", lines.front());
+    AddCrashMetaData("sig", filter_signature(lines.front()));
   }
 
   base::FilePath log_path = GetCrashPath(crash_directory, dump_basename, "log");
