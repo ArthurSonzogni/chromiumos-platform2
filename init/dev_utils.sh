@@ -183,7 +183,8 @@ dev_mount_packages() {
 
   # Mount the dev image if there is a separate device available.
   if [ -n "${device}" ]; then
-    mount -n "${device}" "${STATEFUL_PARTITION}/dev_image"
+    mount -n "${device}" "${STATEFUL_PARTITION}/dev_image" \
+        -o "nodev,noexec,nosuid,noatimed,discard"
   fi
 
   # Mount and then remount to enable exec/suid.
