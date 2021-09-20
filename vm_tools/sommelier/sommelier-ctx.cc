@@ -173,7 +173,6 @@ void sl_context_init_default(struct sl_context* ctx) {
   ctx->timing = NULL;
   ctx->trace_filename = NULL;
   ctx->trace_system = false;
-  ctx->use_explicit_fence = true;
 
   wl_list_init(&ctx->accelerators);
   wl_list_init(&ctx->registries);

@@ -3101,8 +3101,8 @@ int real_main(int argc, char** argv) {
       xfont_path = sl_arg_value(arg);
     } else if (strstr(arg, "--timing-filename") == arg) {
       ctx.timing = new Timing(sl_arg_value(arg));
-    } else if (strstr(arg, "--no-explicit-fence") == arg) {
-      ctx.use_explicit_fence = false;
+    } else if (strstr(arg, "--explicit-fence") == arg) {
+      ctx.use_explicit_fence = true;
     } else if (strstr(arg, "--virtgpu-channel") == arg) {
       ctx.use_virtgpu_channel = true;
 #ifdef PERFETTO_TRACING
