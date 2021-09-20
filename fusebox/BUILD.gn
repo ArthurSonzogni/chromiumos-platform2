@@ -35,6 +35,8 @@ pkg_config("target_defaults") {
 
 static_library("libfusebox") {
   sources = [
+    "file_system.cc",
+    "file_system.h",
     "fuse_file_handles.cc",
     "fuse_file_handles.h",
     "fuse_path_inodes.cc",
