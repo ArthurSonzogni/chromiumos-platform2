@@ -541,6 +541,7 @@ const char kNetworkTechnologyHspa[] = "HSPA";
 const char kNetworkTechnologyHspaPlus[] = "HSPA+";
 const char kNetworkTechnologyLte[] = "LTE";
 const char kNetworkTechnologyLteAdvanced[] = "LTE Advanced";
+const char kNetworkTechnology5gNr[] = "5GNR";
 
 // Flimflam roaming state options
 const char kRoamingStateHome[] = "home";

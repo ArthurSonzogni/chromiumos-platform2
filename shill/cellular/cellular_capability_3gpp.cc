@@ -101,6 +101,8 @@ const char kProfileAuthType[] = "auth-type";
 
 std::string AccessTechnologyToString(uint32_t access_technologies) {
   // Order is important. Return the highest radio access technology.
+  if (access_technologies & MM_MODEM_ACCESS_TECHNOLOGY_5GNR)
+    return kNetworkTechnology5gNr;
   if (access_technologies & MM_MODEM_ACCESS_TECHNOLOGY_LTE)
     return kNetworkTechnologyLte;
   if (access_technologies &
@@ -133,7 +135,8 @@ std::string AccessTechnologyToTechnologyFamily(uint32_t access_technologies) {
        MM_MODEM_ACCESS_TECHNOLOGY_HSPA | MM_MODEM_ACCESS_TECHNOLOGY_HSUPA |
        MM_MODEM_ACCESS_TECHNOLOGY_HSDPA | MM_MODEM_ACCESS_TECHNOLOGY_UMTS |
        MM_MODEM_ACCESS_TECHNOLOGY_EDGE | MM_MODEM_ACCESS_TECHNOLOGY_GPRS |
-       MM_MODEM_ACCESS_TECHNOLOGY_GSM_COMPACT | MM_MODEM_ACCESS_TECHNOLOGY_GSM))
+       MM_MODEM_ACCESS_TECHNOLOGY_GSM_COMPACT | MM_MODEM_ACCESS_TECHNOLOGY_GSM |
+       MM_MODEM_ACCESS_TECHNOLOGY_5GNR))
     return kTechnologyFamilyGsm;
   if (access_technologies &
       (MM_MODEM_ACCESS_TECHNOLOGY_EVDO0 | MM_MODEM_ACCESS_TECHNOLOGY_EVDOA |
