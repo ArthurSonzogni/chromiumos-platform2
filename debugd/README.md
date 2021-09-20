@@ -2,6 +2,6 @@
 clients in a safe manner. Please refer to the following documentation for more
 details:
 
-* [High-level design, goals, interactions](doc/design.md)
-* [Lower-level implementation](doc/implementation.md)
-* [How to hack on debugd](doc/hacking.md)
+* [High-level design, goals, interactions](docs/design.md)
+* [Lower-level implementation](docs/implementation.md)
+* [How to hack on debugd](docs/hacking.md)
