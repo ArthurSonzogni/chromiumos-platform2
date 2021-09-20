@@ -183,9 +183,18 @@ bool RecoveryCryptoImpl::GenerateRecoveryKey(
     LOG(ERROR) << "Failed to perform point multiplication";
     return false;
   }
-  brillo::SecureBlob recovery_dh;
-  if (!ec_.PointToSecureBlob(*point_dh, &recovery_dh, context.get())) {
-    LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob";
+  // Get point's affine X coordinate.
+  crypto::ScopedBIGNUM recovery_dh_x =
+      ec_.GetAffineCoordinateX(*point_dh, context.get());
+  if (!recovery_dh_x) {
+    LOG(ERROR) << "Failed to get affine X coordinate of point_dh";
+    return false;
+  }
+  brillo::SecureBlob hkdf_secret;
+  // Convert X coordinate to fixed-size blob.
+  if (!BigNumToSecureBlob(*recovery_dh_x, ec_.FieldElementSizeInBytes(),
+                          &hkdf_secret)) {
+    LOG(ERROR) << "Failed to convert recovery_dh_x BIGNUM to SecureBlob";
     return false;
   }
   const EC_POINT* dealer_pub_point =
@@ -196,7 +205,7 @@ bool RecoveryCryptoImpl::GenerateRecoveryKey(
     LOG(ERROR) << "Failed to convert dealer_pub_key to a SecureBlob";
     return false;
   }
-  if (!ComputeHkdfWithInfoSuffix(recovery_dh, GetRecoveryKeyHkdfInfo(),
+  if (!ComputeHkdfWithInfoSuffix(hkdf_secret, GetRecoveryKeyHkdfInfo(),
                                  dealer_pub_key, /*salt=*/brillo::SecureBlob(),
                                  HkdfHash::kSha256, /*result_len=*/0,
                                  recovery_key)) {
@@ -517,12 +526,21 @@ bool RecoveryCryptoImpl::RecoverDestination(
     LOG(ERROR) << "Failed to perform point addition";
     return false;
   }
-  brillo::SecureBlob destination_dh;
-  if (!ec_.PointToSecureBlob(*point_dest, &destination_dh, context.get())) {
-    LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob";
+  // Get point's affine X coordinate.
+  crypto::ScopedBIGNUM destination_dh_x =
+      ec_.GetAffineCoordinateX(*point_dest, context.get());
+  if (!destination_dh_x) {
+    LOG(ERROR) << "Failed to get affine X coordinate of point_dest";
     return false;
   }
-  if (!ComputeHkdfWithInfoSuffix(destination_dh, GetRecoveryKeyHkdfInfo(),
+  brillo::SecureBlob hkdf_secret;
+  // Convert X coordinate to fixed-size blob.
+  if (!BigNumToSecureBlob(*destination_dh_x, ec_.FieldElementSizeInBytes(),
+                          &hkdf_secret)) {
+    LOG(ERROR) << "Failed to convert destination_dh_x BIGNUM to SecureBlob";
+    return false;
+  }
+  if (!ComputeHkdfWithInfoSuffix(hkdf_secret, GetRecoveryKeyHkdfInfo(),
                                  dealer_pub_key, /*salt=*/brillo::SecureBlob(),
                                  HkdfHash::kSha256, /*result_len=*/0,
                                  destination_recovery_key)) {
