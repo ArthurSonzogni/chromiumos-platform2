@@ -102,6 +102,8 @@ class FileSystem {
                       const char* name,
                       mode_t mode,
                       struct fuse_file_info* fi);
+
+  static fuse_lowlevel_ops FuseOps();
 };
 
 }  // namespace fusebox

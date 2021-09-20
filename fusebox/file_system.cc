@@ -4,8 +4,6 @@
 
 #include "fusebox/file_system.h"
 
-#include <base/check.h>
-
 namespace fusebox {
 
 FileSystem::FileSystem() = default;
@@ -17,11 +15,11 @@ inline void FuseNotImplemented(FuseRequest* req) {
 }
 
 void FileSystem::Init(void* userdata, struct fuse_conn_info* conn) {
-  DCHECK(userdata);
+  FuseNotImplemented(nullptr);
 }
 
 void FileSystem::Destroy(void* userdata) {
-  DCHECK(userdata);
+  FuseNotImplemented(nullptr);
 }
 
 void FileSystem::Lookup(std::unique_ptr<EntryRequest> request,
