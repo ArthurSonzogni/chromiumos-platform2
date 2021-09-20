@@ -53,7 +53,7 @@ int ReadTest(std::unique_ptr<hps::HPS> hps,
         // Assumes registers 32 onwards will be zeros. Check the value.
         std::cout << std::endl
                   << " Iteration " << i << " Bad register value - reg: " << reg
-                  << " value: " << std::ios::hex << std::setfill('0')
+                  << " value: 0x" << std::ios::hex << std::setfill('0')
                   << std::setw(4) << result << std::endl;
         std::cout.unsetf(std::ios::hex);
       }

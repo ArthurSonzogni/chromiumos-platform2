@@ -14,11 +14,13 @@
 #include <string.h>
 
 #include <base/command_line.h>
+#include <base/strings/stringprintf.h>
 
 #include "hps/dev.h"
 #include "hps/hps.h"
 #include "hps/hps_reg.h"
 #include "hps/util/command.h"
+#include "hps/utils.h"
 
 namespace {
 
@@ -44,11 +46,18 @@ int SendCmd(std::unique_ptr<hps::HPS> hps,
   }
 
   for (auto i = 0; i < 5; i++) {
-    std::cout << "reg " << i << " = " << std::hex << std::setfill('0')
-              << std::setw(4) << hps->Device()->ReadReg(hps::HpsReg(i))
-              << std::endl;
+    int result = hps->Device()->ReadReg(hps::HpsReg(i));
+    if (result < 0) {
+      std::cout << base::StringPrintf("Register %3d: error (%s)\n", i,
+                                      hps::HpsRegToString(hps::HpsReg(i)));
+    } else {
+      std::cout << base::StringPrintf("Register %3d: 0x%.4x (%s)\n", i,
+                                      static_cast<uint16_t>(result),
+                                      hps::HpsRegToString(hps::HpsReg(i)));
+    }
   }
-  std::cout << "Sending cmd value " << std::hex << std::setfill('0')
+
+  std::cout << "Sending cmd value 0x" << std::hex << std::setfill('0')
             << std::setw(4) << cmd << " to register 3" << std::endl;
   if (hps->Device()->WriteReg(hps::HpsReg::kSysCmd, cmd)) {
     std::cout << "Success!" << std::endl;

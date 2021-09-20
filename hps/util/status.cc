@@ -12,11 +12,13 @@
 
 #include <base/command_line.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 
 #include "hps/dev.h"
 #include "hps/hps.h"
 #include "hps/hps_reg.h"
 #include "hps/util/command.h"
+#include "hps/utils.h"
 
 namespace {
 
@@ -69,13 +71,14 @@ int Status(std::unique_ptr<hps::HPS> hps,
   }
 
   for (auto i = start; i <= end; i++) {
-    std::cout << "reg " << std::dec << i << " = ";
-    auto result = hps->Device()->ReadReg(hps::HpsReg(i));
+    int result = hps->Device()->ReadReg(hps::HpsReg(i));
     if (result < 0) {
-      std::cout << "Error!" << std::endl;
+      std::cout << base::StringPrintf("Register %3d: error (%s)\n", i,
+                                      hps::HpsRegToString(hps::HpsReg(i)));
     } else {
-      std::cout << std::hex << std::setfill('0') << std::setw(4) << result
-                << std::endl;
+      std::cout << base::StringPrintf("Register %3d: 0x%.4x (%s)\n", i,
+                                      static_cast<uint16_t>(result),
+                                      hps::HpsRegToString(hps::HpsReg(i)));
     }
   }
   return 0;
