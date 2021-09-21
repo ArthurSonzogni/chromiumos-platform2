@@ -184,6 +184,7 @@ type cros_virtual_file_provider_jailed_exec, exec_type, file_type, cros_file_typ
 type cros_vm_cicerone_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_vm_concierge_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_vmlog_forwarder_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_vshd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_wilco_dtc_supportd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_wpa_supplicant_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 # SYSTEM_EXE_END_HERE
