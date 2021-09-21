@@ -28,6 +28,10 @@
       </tp:docstring>
       </arg>
     </method>
+    <signal name="HpsSenseChanged">
+      <arg name="result" direction="out" type="b" />
+    </signal>
+
     <method name="EnableHpsNotify">
       <arg name="serialized_proto" direction="in" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
@@ -42,5 +46,8 @@
       </tp:docstring>
       </arg>
     </method>
+    <signal name="HpsNotifyChanged">
+      <arg name="result" direction="out" type="b" />
+    </signal>
   </interface>
 </node>

@@ -20,6 +20,7 @@ constexpr char kDisableHpsNotify[] = "DisableHpsNotify";
 constexpr char kGetResultHpsNotify[] = "GetResultHpsNotify";
 
 // Signals emitted by hpsd.
+constexpr char kHpsSenseChanged[] = "kHpsSenseChanged";
 constexpr char kHpsNotifyChanged[] = "HpsNotifyChanged";
 
 }  // namespace hps
