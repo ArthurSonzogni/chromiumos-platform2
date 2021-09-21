@@ -86,8 +86,8 @@ class DBusMethodResponseWrapperTestBase : public testing::Test {
     // Run the |handler| on thread |thread_of_handler| with customized dbus
     // callback.
     thread_of_handler->task_runner()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(handler),
-                                  base::Passed(std::move(final_callback))));
+        FROM_HERE,
+        base::BindOnce(std::move(handler), std::move(final_callback)));
   }
 
   // Run CreateCallbackAndCallOnHandler on dbus thread.
