@@ -14,7 +14,7 @@
 
 namespace {
 
-const char kRegistryChromePolicyKey[] = "SOFTWARE\\Policies\\Chromium";
+const char16_t kRegistryChromePolicyKey[] = u"SOFTWARE\\Policies\\Chromium";
 
 }  // namespace
 
@@ -23,7 +23,7 @@ namespace preg_parser {
 
 // Disable logging.
 struct Environment {
-  Environment() : root(base::ASCIIToUTF16(kRegistryChromePolicyKey)) {
+  Environment() : root(kRegistryChromePolicyKey) {
     logging::SetMinLogLevel(logging::LOGGING_FATAL);
   }
 
