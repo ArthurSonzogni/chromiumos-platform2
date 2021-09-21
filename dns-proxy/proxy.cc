@@ -143,17 +143,6 @@ void Proxy::OnShutdown(int* code) {
   LOG(INFO) << "Stopping DNS proxy " << opts_ << "(" << *code << ")";
   if (opts_.type == Type::kSystem)
     SetShillProperty("");
-
-  resolver_.reset();
-  addr_listener_.reset();
-  lifeline_fds_.clear();
-  ns_fd_.reset();
-  patchpanel_.reset();
-  device_.reset();
-  shill_props_.reset();
-  shill_.reset();
-  features_.reset();
-  session_.reset();
 }
 
 void Proxy::Setup() {
