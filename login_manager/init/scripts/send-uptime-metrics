@@ -15,7 +15,27 @@ record_delta() {
   fi
 }
 
-CHROME_LOGOUT_STARTED=$(bootstat_get_last logout-started time-ms)
+# logout-started signal is written asynchronously after Chrome starts.
+# Wait for new signal to appear for 10 seconds.
+FLAG_FILE=/tmp/stats-logout-started.written
+for i in $(seq 10) ; do
+  if mv -f "$FLAG_FILE" "$FLAG_FILE".done 2> /dev/null ; then
+    FOUND=true
+    break;
+  fi
+  sleep 1
+done
+
+# Report infinite value when there was no recent logout-started.
+# Max histograms value is 1000000ms, which is calculated from the device uptime.
+# Set "impossible" start value to -1000000 to force out-of-bounds histogram
+# result.
+if [ -z "$FOUND" ] ; then
+  CHROME_LOGOUT_STARTED=-1000000
+else
+  CHROME_LOGOUT_STARTED=$(bootstat_get_last logout-started time-ms)
+fi
+
 # Only record restart statistics if chrome performed a logout.
 if [ -n "$CHROME_LOGOUT_STARTED" ]; then
   CHROME_UI_POST_STOP=$(bootstat_get_last ui-post-stop time-ms)
