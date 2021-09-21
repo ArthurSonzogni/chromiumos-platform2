@@ -33,7 +33,7 @@ use libsirenia::{
         syslog::{Syslog, SyslogReceiverMut, SYSLOG_PATH},
     },
     rpc::{self, ConnectionHandler, RpcDispatcher, TransportServer},
-    sandbox::{self, MinijailSandbox, Sandbox},
+    sandbox::{self, MinijailSandbox, Sandbox, VmConfig, VmSandbox},
     sys,
     transport::{
         self, create_transport_from_pipes, Transport, TransportType, CROS_CID,
@@ -62,6 +62,8 @@ use thiserror::Error as ThisError;
 const CRONISTA_URI_SHORT_NAME: &str = "C";
 const CRONISTA_URI_LONG_NAME: &str = "cronista";
 const SYSLOG_PATH_SHORT_NAME: &str = "L";
+
+const CROSVM_PATH: &str = "/bin/crosvm-direct";
 
 #[derive(ThisError, Debug)]
 pub enum Error {
@@ -430,20 +432,24 @@ fn start_session(
 ) -> StdResult<(), trichechus::Error> {
     let app_info = lookup_app_info(state, app_id)?.to_owned();
 
-    let sandbox =
-        match &app_info.sandbox_type {
-            SandboxType::DeveloperEnvironment => {
-                Box::new(MinijailSandbox::passthrough().map_err(|err| {
-                    trichechus::Error::from(format!("Failed create sandbox: {:?}", err))
-                })?)
-            }
-            SandboxType::Container => Box::new(MinijailSandbox::new(None).map_err(|err| {
-                trichechus::Error::from(format!("Failed create sandbox: {:?}", err))
-            })?),
-            SandboxType::VirtualMachine => {
-                return Err(trichechus::Error::SandboxTypeNotImplemented);
-            }
-        };
+    let sandbox: Box<dyn Sandbox> = match &app_info.sandbox_type {
+        SandboxType::DeveloperEnvironment => {
+            Box::new(MinijailSandbox::passthrough().map_err(|err| {
+                trichechus::Error::from(format!("Failed to create sandbox: {:?}", err))
+            })?)
+        }
+        SandboxType::Container => Box::new(MinijailSandbox::new(None).map_err(|err| {
+            trichechus::Error::from(format!("Failed to create sandbox: {:?}", err))
+        })?),
+        SandboxType::VirtualMachine => Box::new(
+            VmSandbox::new(VmConfig {
+                crosvm_path: PathBuf::from(CROSVM_PATH),
+            })
+            .map_err(|err| {
+                trichechus::Error::from(format!("Failed to create sandbox: {:?}", err))
+            })?,
+        ),
+    };
 
     // Do some additional checks to fail early and return the reason to the caller.
     match &app_info.exec_info {

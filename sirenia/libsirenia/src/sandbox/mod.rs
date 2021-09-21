@@ -4,8 +4,13 @@
 
 //! Encapsulates the logic used to setup sandboxes for TEE applications.
 
+use std::os::unix::io::FromRawFd;
 use std::os::unix::io::RawFd;
 use std::path::Path;
+use std::path::PathBuf;
+use std::process::{Child, Command, Stdio};
+
+use libc;
 
 use libc::pid_t;
 use minijail::{self, Minijail};
@@ -25,7 +30,19 @@ pub enum Error {
     #[error("failed to set max open files: {0}")]
     SettingMaxOpenFiles(minijail::Error),
     #[error("failed to wait on jailed process to complete: {0}")]
-    Wait(minijail::Error),
+    MinijailWait(minijail::Error),
+    #[error("failed to fork process: {0}")]
+    ForkingProcess(std::io::Error),
+    #[error("missing argument")]
+    MissingArgument,
+    #[error("VM not created")]
+    VmNotCreated,
+    #[error("failed to wait for process; {0}")]
+    Wait(std::io::Error),
+    #[error("unimplemented functionality")]
+    Unimplemented,
+    #[error("sibling VM is already running")]
+    SiblingVmRunning,
 }
 
 /// The result of an operation in this crate.
@@ -128,7 +145,89 @@ impl Sandbox for MinijailSandbox {
     }
 
     fn wait_for_completion(&mut self) -> Result<()> {
-        self.0.wait().map_err(Error::Wait)
+        self.0.wait().map_err(Error::MinijailWait)
+    }
+}
+
+pub struct VmConfig {
+    pub crosvm_path: PathBuf,
+}
+
+// Sandbox to run an instance of "crosvm" that will run a VM.
+pub struct VmSandbox {
+    config: VmConfig,
+    vm: Option<Child>,
+}
+
+impl VmSandbox {
+    /// Setup default sandbox / namespaces
+    pub fn new(config: VmConfig) -> Result<Self> {
+        Ok(VmSandbox { config, vm: None })
+    }
+}
+
+impl Sandbox for VmSandbox {
+    fn run(&mut self, _cmd: &Path, _args: &[&str], _keep_fds: &[(RawFd, RawFd)]) -> Result<pid_t> {
+        Err(Error::Unimplemented)
+    }
+
+    fn run_raw(
+        &mut self,
+        _cmd: RawFd,
+        args: &[&str],
+        keep_fds: &[(RawFd, RawFd)],
+    ) -> Result<pid_t> {
+        if self.vm.is_some() {
+            return Err(Error::SiblingVmRunning);
+        }
+
+        // The first arg will contain the path to the "fd" that points to the contents of the
+        // kernel.
+        if args.is_empty() {
+            return Err(Error::MissingArgument);
+        }
+
+        if keep_fds.is_empty() {
+            return Err(Error::MissingArgument);
+        }
+
+        // The 2nd element of the first entry of |keep_fds| corresponds to a
+        // write FD that will be used to pipe stdout and stderr from crosvm. A
+        // dup is required because |Stdio| takes ownership and without it, it
+        // would close the underlying file object in the parent process. Since
+        // the fd is owned by someone else this would result in the fd being
+        // closed twice.
+        let stdout;
+        unsafe {
+            stdout = Stdio::from_raw_fd(libc::dup(keep_fds[0].1));
+        }
+
+        let stderr;
+        unsafe {
+            stderr = Stdio::from_raw_fd(libc::dup(keep_fds[0].1));
+        }
+
+        let vm = Command::new(&self.config.crosvm_path)
+            .arg("--disable-sandbox")
+            .arg(args[0])
+            .stdout(stdout)
+            .stderr(stderr)
+            .spawn()
+            .map_err(Error::ForkingProcess)?;
+        let pid = vm.id();
+        self.vm = Some(vm);
+        Ok(pid as i32)
+    }
+
+    fn wait_for_completion(&mut self) -> Result<()> {
+        if self.vm.is_none() {
+            return Err(Error::VmNotCreated);
+        }
+
+        match self.vm.as_mut().unwrap().wait() {
+            Ok(_) => Ok(()),
+            Err(e) => Err(Error::Wait(e)),
+        }
     }
 }
 
