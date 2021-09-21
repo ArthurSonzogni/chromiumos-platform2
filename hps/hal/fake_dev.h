@@ -64,8 +64,8 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
     // When a RW download occurs, increment the firmware version number.
     kIncrementVersion = 7,
   };
-  bool Read(uint8_t cmd, uint8_t* data, size_t len);
-  bool Write(uint8_t cmd, const uint8_t* data, size_t len);
+  bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len);
+  bool WriteDevice(uint8_t cmd, const uint8_t* data, size_t len);
   size_t BlockSizeBytes() { return this->block_size_b_.load(); }
   void Run() override;
   void Start();

@@ -59,12 +59,12 @@ class SimDev : public DevInterface {
   explicit SimDev(scoped_refptr<FakeDev> device) : device_(device) {}
   virtual ~SimDev() {}
 
-  bool Read(uint8_t cmd, uint8_t* data, size_t len) override {
-    return this->device_->Read(cmd, data, len);
+  bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len) override {
+    return this->device_->ReadDevice(cmd, data, len);
   }
 
-  bool Write(uint8_t cmd, const uint8_t* data, size_t len) override {
-    return this->device_->Write(cmd, data, len);
+  bool WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) override {
+    return this->device_->WriteDevice(cmd, data, len);
   }
 
   size_t BlockSizeBytes() override { return this->device_->BlockSizeBytes(); }
@@ -88,7 +88,7 @@ void FakeDev::Start() {
   SimpleThread::Start();
 }
 
-bool FakeDev::Read(uint8_t cmd, uint8_t* data, size_t len) {
+bool FakeDev::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
   // Clear the whole buffer.
   for (int i = 0; i < len; i++) {
     data[i] = 0;
@@ -110,7 +110,7 @@ bool FakeDev::Read(uint8_t cmd, uint8_t* data, size_t len) {
   return true;
 }
 
-bool FakeDev::Write(uint8_t cmd, const uint8_t* data, size_t len) {
+bool FakeDev::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
   if ((cmd & 0x80) != 0) {
     if (len != 0) {
       // Register write.

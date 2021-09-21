@@ -186,7 +186,7 @@ void Mcp::Close() {
   }
 }
 
-bool Mcp::Read(uint8_t cmd, uint8_t* data, size_t len) {
+bool Mcp::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
   // 3 bytes at the start of the buffer are reserved for the response header,
   // so do not allow transfers that are larger than the remaining space.
   if (len > (kMcpTransferSize - 3)) {
@@ -252,7 +252,7 @@ bool Mcp::Read(uint8_t cmd, uint8_t* data, size_t len) {
   return false;
 }
 
-bool Mcp::Write(uint8_t cmd, const uint8_t* data, size_t len) {
+bool Mcp::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
   if (len > (kMcpTransferSize - 5)) {
     LOG(ERROR) << base::StringPrintf("Write req too long (%zu)", len);
     return false;

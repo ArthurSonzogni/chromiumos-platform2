@@ -212,7 +212,7 @@ void Ftdi::Close() {
   ftdi_deinit(&this->context_);
 }
 
-bool Ftdi::Read(uint8_t cmd, uint8_t* data, size_t len) {
+bool Ftdi::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
   if (len == 0) {
     return false;
   }
@@ -245,7 +245,7 @@ bool Ftdi::Read(uint8_t cmd, uint8_t* data, size_t len) {
   return true;
 }
 
-bool Ftdi::Write(uint8_t cmd, const uint8_t* data, size_t len) {
+bool Ftdi::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
   std::vector<uint8_t> b;
   // Flush read queue.
   this->GetRaw(&b);

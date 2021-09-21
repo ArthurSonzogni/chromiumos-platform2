@@ -51,7 +51,7 @@ int Uart::Open() {
   return this->fd_;
 }
 
-bool Uart::Read(uint8_t cmd, uint8_t* data, size_t len) {
+bool Uart::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
   if (len >= 127) {
     return false;
   }
@@ -86,7 +86,7 @@ bool Uart::Read(uint8_t cmd, uint8_t* data, size_t len) {
   return true;
 }
 
-bool Uart::Write(uint8_t cmd, const uint8_t* data, size_t len) {
+bool Uart::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
   if (len >= 127) {
     return false;
   }

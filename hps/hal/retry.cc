@@ -13,7 +13,7 @@
 
 namespace hps {
 
-bool RetryDev::Read(uint8_t cmd, uint8_t* data, size_t len) {
+bool RetryDev::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
   for (int i = 0; i < this->retries_; i++) {
     if (device_->Read(cmd, data, len)) {
       // Success!
@@ -24,7 +24,7 @@ bool RetryDev::Read(uint8_t cmd, uint8_t* data, size_t len) {
   return false;
 }
 
-bool RetryDev::Write(uint8_t cmd, const uint8_t* data, size_t len) {
+bool RetryDev::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
   for (int i = 0; i < this->retries_; i++) {
     if (device_->Write(cmd, data, len)) {
       // Success!

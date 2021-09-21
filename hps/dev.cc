@@ -20,6 +20,24 @@ namespace hps {
  */
 static const int kIoRetries = 5;
 
+bool DevInterface::Read(uint8_t cmd, uint8_t* data, size_t len) {
+  if (this->ReadDevice(cmd, data, len)) {
+    VLOG(2) << "Read: " << cmd << " " << len << " OK";
+    return true;
+  }
+  VLOG(2) << "Read: " << cmd << " " << len << " FAILED";
+  return false;
+}
+
+bool DevInterface::Write(uint8_t cmd, const uint8_t* data, size_t len) {
+  if (this->WriteDevice(cmd, data, len)) {
+    VLOG(2) << "Write: " << cmd << " " << len << " OK";
+    return true;
+  }
+  VLOG(2) << "Write: " << cmd << " " << len << " FAILED";
+  return false;
+}
+
 /*
  * Read 1 register.
  * Returns value read, or -1 for error.
@@ -28,7 +46,7 @@ int DevInterface::ReadReg(HpsReg r) {
   uint8_t res[2];
 
   for (int i = 0; i < kIoRetries; i++) {
-    if (this->Read(I2cReg(r), res, sizeof(res))) {
+    if (this->ReadDevice(I2cReg(r), res, sizeof(res))) {
       int ret = (static_cast<int>(res[0]) << 8) | static_cast<int>(res[1]);
       VLOG(2) << "ReadReg: " << HpsRegToString(r) << " " << ret << " OK";
       return ret;
@@ -47,7 +65,7 @@ bool DevInterface::WriteReg(HpsReg r, uint16_t data) {
   buf[0] = data >> 8;
   buf[1] = data & 0xFF;
   for (int i = 0; i < kIoRetries; i++) {
-    if (this->Write(I2cReg(r), buf, sizeof(buf))) {
+    if (this->WriteDevice(I2cReg(r), buf, sizeof(buf))) {
       VLOG(2) << "WriteReg: " << HpsRegToString(r) << " " << data << " OK";
       return true;
     }

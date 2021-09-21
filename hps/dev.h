@@ -22,12 +22,14 @@ class DevInterface {
    * Returns true on successful read, false on error.
    * In the event of an error, the contents may have been modified.
    */
-  virtual bool Read(uint8_t cmd, uint8_t* data, size_t len) = 0;
+  bool Read(uint8_t cmd, uint8_t* data, size_t len);
+
   /*
    * Write the data to the device.
    * Returns true on successful write, false on error.
    */
-  virtual bool Write(uint8_t cmd, const uint8_t* data, size_t len) = 0;
+  bool Write(uint8_t cmd, const uint8_t* data, size_t len);
+
   /*
    * Read 1 register.
    * Returns value read, or -1 for error.
@@ -44,6 +46,14 @@ class DevInterface {
    * write command byte or the 4 byte address header.
    */
   virtual size_t BlockSizeBytes();
+
+ private:
+  /*
+   * Device specific implementations of the Read/Write methods,
+   * with the same contract.
+   */
+  virtual bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len) = 0;
+  virtual bool WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) = 0;
 };
 
 }  // namespace hps

@@ -20,8 +20,8 @@ class Uart : public DevInterface {
  public:
   virtual ~Uart();
   int Open();
-  bool Read(uint8_t cmd, uint8_t* data, size_t len) override;
-  bool Write(uint8_t cmd, const uint8_t* data, size_t len) override;
+  bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len) override;
+  bool WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) override;
   static std::unique_ptr<DevInterface> Create(const char* device);
 
  private:

@@ -21,8 +21,8 @@ namespace hps {
 class Ftdi : public DevInterface {
  public:
   void Close();
-  bool Read(uint8_t cmd, uint8_t* data, size_t lem) override;
-  bool Write(uint8_t cmd, const uint8_t* data, size_t lem) override;
+  bool ReadDevice(uint8_t cmd, uint8_t* data, size_t lem) override;
+  bool WriteDevice(uint8_t cmd, const uint8_t* data, size_t lem) override;
   static std::unique_ptr<DevInterface> Create(uint8_t address,
                                               uint32_t speedKHz);
 

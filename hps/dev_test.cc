@@ -22,7 +22,7 @@ class DevInterfaceFake : public DevInterface {
  public:
   DevInterfaceFake() : fails_(0), cmd_(0), len_(0), reads_(0), writes_(0) {}
   virtual ~DevInterfaceFake() {}
-  bool Read(uint8_t cmd, uint8_t* data, size_t len) override {
+  bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len) override {
     ++reads_;
     cmd_ = cmd;
     len_ = len;
@@ -36,7 +36,7 @@ class DevInterfaceFake : public DevInterface {
     }
     return true;
   }
-  bool Write(uint8_t cmd, const uint8_t* data, size_t len) override {
+  bool WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) override {
     ++writes_;
     cmd_ = cmd;
     len_ = len;

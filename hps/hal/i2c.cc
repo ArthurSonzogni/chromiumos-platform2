@@ -32,7 +32,7 @@ int I2CDev::Open() {
   return this->fd_;
 }
 
-bool I2CDev::Read(uint8_t cmd, uint8_t* data, size_t len) {
+bool I2CDev::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
   struct i2c_msg m[2];
 
   m[0].addr = this->address_;
@@ -46,7 +46,7 @@ bool I2CDev::Read(uint8_t cmd, uint8_t* data, size_t len) {
   return this->Ioc(m, sizeof(m) / sizeof(m[0]));
 }
 
-bool I2CDev::Write(uint8_t cmd, const uint8_t* data, size_t len) {
+bool I2CDev::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
   struct i2c_msg m[2];
 
   m[0].addr = this->address_;
