@@ -25,6 +25,8 @@ struct BalloonStats {
   int64_t swap_in;
   int64_t swap_out;
   int64_t total_memory;
+  int64_t shared_memory;
+  int64_t unevictable_memory;
 };
 
 struct MemoryMargins {

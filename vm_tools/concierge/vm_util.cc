@@ -450,6 +450,10 @@ base::Optional<BalloonStats> GetBalloonStats(std::string socket_path) {
       additional_stats->FindDoubleKey("swap_out").value_or(0));
   stats.total_memory = static_cast<int64_t>(
       additional_stats->FindDoubleKey("total_memory").value_or(0));
+  stats.shared_memory = static_cast<int64_t>(
+      additional_stats->FindDoubleKey("shared_memory").value_or(0));
+  stats.unevictable_memory = static_cast<int64_t>(
+      additional_stats->FindDoubleKey("unevictable_memory").value_or(0));
   return stats;
 }
 

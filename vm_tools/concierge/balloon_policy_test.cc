@@ -16,6 +16,42 @@
 namespace vm_tools {
 namespace concierge {
 
+// Test that shared and unevictable memory is subtracted from disk caches when
+// checking if the guest has low caches.
+TEST(BalloonPolocyTest, Unreclaimable) {
+  // Values are roughly what a 4GB ARCVM would get (but rounded)
+  const int64_t host_lwm = 200 * MIB;
+  const int64_t guest_lwm = 200 * MIB;
+  MemoryMargins margins = {.critical = 400 * MIB, .moderate = 2000 * MIB};
+  const LimitCacheBalloonPolicy::Params params = {
+      .reclaim_target_cache = 0,
+      .critical_target_cache = 0,
+      .moderate_target_cache = 200 * MIB};
+  LimitCacheBalloonPolicy policy(margins, host_lwm, guest_lwm, params, "test");
+
+  // Test that when, because of unevictable memory, there is less cache left
+  // than the cache limit, that we keep free_memory at MaxFree.
+  {
+    BalloonStats stats = {.disk_caches = 300 * MIB,
+                          .free_memory = policy.MaxFree(),
+                          .unevictable_memory = 101 * MIB};
+    EXPECT_EQ(0, policy.ComputeBalloonDeltaImpl(
+                     0 /* host_free */, stats,
+                     margins.moderate /* host_available */, false, "test"));
+  }
+
+  // Test that when, because of shared memory, there is less cache left than the
+  // cache limit, that we keep free_memory at MaxFree.
+  {
+    BalloonStats stats = {.disk_caches = 300 * MIB,
+                          .free_memory = policy.MaxFree(),
+                          .shared_memory = 101 * MIB};
+    EXPECT_EQ(0, policy.ComputeBalloonDeltaImpl(
+                     0 /* host_free */, stats,
+                     margins.moderate /* host_available */, false, "test"));
+  }
+}
+
 // Test that having no limits still inflates the balloon to reduce excess free.
 TEST(BalloonPolicyTest, LimitCacheNoLimit) {
   const int64_t host_lwm = 200 * MIB;

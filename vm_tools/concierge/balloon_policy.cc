@@ -156,7 +156,10 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
   const int64_t max_free = MaxFree();
   const int64_t min_free = MinFree();
   const int64_t guest_free = stats.free_memory;
-  const int64_t guest_cache = stats.disk_caches;
+  const int64_t guest_unreclaimable =
+      stats.shared_memory + stats.unevictable_memory;
+  const int64_t guest_cache = std::max(stats.disk_caches - guest_unreclaimable,
+                                       static_cast<int64_t>(0));
   const int64_t critical_margin = margins_.critical;
   const int64_t moderate_margin = margins_.moderate;
   int64_t target_free = max_free;
@@ -224,6 +227,7 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
             << "\"game_mode\": " << (game_mode ? "true" : "false") << ", "
             << "\"balloon\": " << stats.balloon_actual << ", "
             << "\"guest_cached\": " << guest_cache << ", "
+            << "\"guest_unreclaimable\": " << guest_unreclaimable << ", "
             << "\"guest_free\": " << guest_free << ", "
             << "\"host_available\": " << host_available << ", "
             << "\"host_free\": " << host_free << ", "
