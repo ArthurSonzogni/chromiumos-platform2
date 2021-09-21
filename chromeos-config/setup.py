@@ -25,6 +25,7 @@ setup(
             '{0} = cros_config_host.{0}:main'.format(script)
             for script in (
                 'cros_config_host',
+                'cros_config_proto_converter',
                 'cros_config_schema',
                 'cros_config_test_schema'
             )
