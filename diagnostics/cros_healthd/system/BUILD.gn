@@ -94,7 +94,7 @@ if (use.test) {
     ]
   }
 
-  executable("system_config_test") {
+  source_set("system_config_test") {
     sources = [ "system_config_test.cc" ]
     configs += [
       ":system_config_test_pkg_deps",

@@ -44,7 +44,7 @@ if (use.test) {
     sources = [ "mojo_testrunner.cc" ]
   }
 
-  executable("libcommon_test") {
+  source_set("libcommon_test") {
     sources = [
       "dbus_utils_test.cc",
       "file_test_utils_test.cc",

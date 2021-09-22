@@ -26,7 +26,7 @@ if (use.test) {
     ]
   }
 
-  executable("libcros_healthd_wilco_ec_test") {
+  source_set("libcros_healthd_wilco_ec_test") {
     sources = [
       "ec_service_test.cc",
       "ec_service_test_utils.cc",

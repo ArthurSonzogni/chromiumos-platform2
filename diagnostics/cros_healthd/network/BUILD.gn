@@ -19,7 +19,7 @@ source_set("libnetwork_health_adapter") {
 }
 
 if (use.test) {
-  executable("network_test") {
+  source_set("network_test") {
     sources = [ "network_health_adapter_impl_test.cc" ]
     configs += [
       ":libnetwork_health_pkg_deps",

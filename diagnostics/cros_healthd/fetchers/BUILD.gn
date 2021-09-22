@@ -61,7 +61,7 @@ if (use.test) {
     ]
   }
 
-  executable("libcros_healthd_fetchers_test") {
+  source_set("libcros_healthd_fetchers_test") {
     sources = [
       "audio_fetcher_test.cc",
       "backlight_fetcher_test.cc",

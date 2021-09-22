@@ -32,7 +32,7 @@ if (use.test) {
     pkg_deps = [ "libchrome-test" ]
   }
 
-  executable("network_diagnostics_test") {
+  source_set("network_diagnostics_test") {
     sources = [ "network_diagnostics_adapter_impl_test.cc" ]
     configs += [
       ":network_diagnostics_test_pkg_deps",

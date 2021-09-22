@@ -27,7 +27,7 @@ if (use.test) {
     ]
   }
 
-  executable("libcros_healthd_utils_test") {
+  source_set("libcros_healthd_utils_test") {
     sources = [
       "cpu_file_helpers_test.cc",
       "file_utils_test.cc",

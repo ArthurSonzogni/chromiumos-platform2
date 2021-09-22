@@ -40,7 +40,7 @@ if (use.test) {
     ]
   }
 
-  executable("libcros_healthd_events_test") {
+  source_set("libcros_healthd_events_test") {
     sources = [
       "audio_events_impl_test.cc",
       "bluetooth_events_impl_test.cc",
