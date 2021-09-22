@@ -31,7 +31,8 @@ constexpr char kFakePciVendorName[] = "Vendor:12AB";
 constexpr char kFakePciProductName[] = "Device:34CD";
 constexpr char kFakeUsbVendorName[] = "usb:v12ABp34CD";
 constexpr auto kFakeUsbProductName = kFakeUsbVendorName;
-constexpr auto kFakeUsbFallbackProductName = kFakePciProductName;
+constexpr auto kFakeUsbFallbackVendorName = "Fallback Vendor Name";
+constexpr auto kFakeUsbFallbackProductName = "Fallback Product Name";
 constexpr uint8_t kFakeClass = 0x0a;
 constexpr uint8_t kFakeSubclass = 0x1b;
 constexpr uint8_t kFakeProg = 0x2c;
@@ -152,6 +153,7 @@ class BusFetcherTest : public BaseFileTest {
             ToFixHexStr(usb_info->protocol_id));
     SetFile({dir, dev, kFileUsbVendor}, ToFixHexStr(usb_info->vendor_id));
     SetFile({dir, dev, kFileUsbProduct}, ToFixHexStr(usb_info->product_id));
+    SetFile({dir, dev, kFileUsbManufacturerName}, kFakeUsbFallbackVendorName);
     SetFile({dir, dev, kFileUsbProductName}, kFakeUsbFallbackProductName);
 
     for (size_t i = 0; i < usb_info->interfaces.size(); ++i) {
@@ -215,7 +217,7 @@ TEST_F(BusFetcherTest, TestFetchMultiple) {
 
 TEST_F(BusFetcherTest, TestUsbFallback) {
   auto& bus_info = AddExpectedUsbDevice(1);
-  bus_info->vendor_name = "";
+  bus_info->vendor_name = kFakeUsbFallbackVendorName;
   bus_info->product_name = kFakeUsbFallbackProductName;
   mock_context_.fake_udev()->fake_udev_hwdb()->SetReturnEmptyProperties(true);
   SetExpectedBusDevices();

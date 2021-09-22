@@ -165,12 +165,17 @@ std::tuple<std::string, std::string> GetUsbNames(
   auto modalias =
       base::StringPrintf("usb:v%04Xp%04X", info->vendor_id, info->product_id);
   auto propertie = hwdb->GetProperties(modalias);
+  // Try to get vendor and product name from hwdb. If fail, try to read them
+  // from sysfs.
+  auto vendor = propertie[kPropertieVendor];
+  if (vendor == "") {
+    ReadAndTrimString(path, kFileUsbManufacturerName, &vendor);
+  }
   auto product = propertie[kPropertieProduct];
   if (product == "") {
-    // Product has not registered. Try to read the product name from sysfs.
     ReadAndTrimString(path, kFileUsbProductName, &product);
   }
-  return std::make_tuple(propertie[kPropertieVendor], product);
+  return std::make_tuple(vendor, product);
 }
 
 mojo_ipc::BusDeviceClass GetUsbDeviceClass(

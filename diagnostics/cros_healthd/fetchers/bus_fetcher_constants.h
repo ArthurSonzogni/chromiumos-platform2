@@ -30,6 +30,7 @@ inline constexpr char kFileUsbIFSubclass[] = "bInterfaceSubClass";
 inline constexpr char kFileUsbIFProtocol[] = "bInterfaceProtocol";
 inline constexpr char kFileUsbVendor[] = "idVendor";
 inline constexpr char kFileUsbProduct[] = "idProduct";
+inline constexpr char kFileUsbManufacturerName[] = "manufacturer";
 inline constexpr char kFileUsbProductName[] = "product";
 inline constexpr char kPropertieVendor[] = "ID_VENDOR_FROM_DATABASE";
 inline constexpr char kPropertieProduct[] = "ID_MODEL_FROM_DATABASE";
