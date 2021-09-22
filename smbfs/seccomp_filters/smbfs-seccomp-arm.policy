@@ -42,6 +42,7 @@ getegid32: 1
 geteuid32: 1
 getgid32: 1
 getpeername: 1
+getpid: 1
 getrandom: 1
 getresgid32: 1
 getresuid32: 1
@@ -86,6 +87,8 @@ rt_sigaction: 1
 rt_sigprocmask: 1
 rt_sigreturn: 1
 rt_sigsuspend: 1
+sched_getattr: 1
+sched_setattr: 1
 send: 1
 sendmsg: 1
 sendmmsg: 1
@@ -116,4 +119,3 @@ unlink: 1
 wait4: 1
 write: 1
 writev: 1
-getpid: 1
