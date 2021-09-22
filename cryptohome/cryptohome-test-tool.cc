@@ -16,6 +16,7 @@
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
 
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
@@ -40,20 +41,22 @@ bool CheckMandatoryFlag(const std::string& flag_name,
   return false;
 }
 
-bool ReadFileToSecureBlobLogged(const FilePath& file_path,
-                                SecureBlob* contents) {
+bool ReadHexFileToSecureBlobLogged(const FilePath& file_path,
+                                   SecureBlob* contents) {
   std::string contents_string;
   if (!base::ReadFileToString(file_path, &contents_string)) {
     LOG(ERROR) << "Failed to read from file " << file_path.value() << ".";
     return false;
   }
-  *contents = SecureBlob(contents_string);
+  if (!SecureBlob::HexStringToSecureBlob(contents_string, contents)) {
+    LOG(ERROR) << "Failed to convert hex to SecureBlob.";
+    return false;
+  }
   return true;
 }
 
-bool WriteFileLogged(const FilePath& file_path,
-                     base::span<const uint8_t> contents) {
-  if (base::WriteFile(file_path, contents))
+bool WriteHexFileLogged(const FilePath& file_path, const SecureBlob& contents) {
+  if (base::WriteFile(file_path, cryptohome::SecureBlobToHex(contents)))
     return true;
   LOG(ERROR) << "Failed to write to file " << file_path.value() << ".";
   return false;
@@ -96,12 +99,13 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
     return false;
   }
 
-  return WriteFileLogged(destination_share_out_file_path, destination_share) &&
-         WriteFileLogged(channel_pub_key_out_file_path, channel_pub_key) &&
-         WriteFileLogged(channel_priv_key_out_file_path, channel_priv_key) &&
-         WriteFileLogged(serialized_hsm_payload_out_file_path,
-                         serialized_hsm_payload) &&
-         WriteFileLogged(recovery_secret_out_file_path, recovery_key);
+  return WriteHexFileLogged(destination_share_out_file_path,
+                            destination_share) &&
+         WriteHexFileLogged(channel_pub_key_out_file_path, channel_pub_key) &&
+         WriteHexFileLogged(channel_priv_key_out_file_path, channel_priv_key) &&
+         WriteHexFileLogged(serialized_hsm_payload_out_file_path,
+                            serialized_hsm_payload) &&
+         WriteHexFileLogged(recovery_secret_out_file_path, recovery_key);
 }
 
 bool DoRecoveryCryptoCreateRecoveryRequestAction(
@@ -113,12 +117,12 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
   SecureBlob channel_pub_key;
   SecureBlob channel_priv_key;
   SecureBlob serialized_hsm_payload;
-  if (!ReadFileToSecureBlobLogged(channel_pub_key_in_file_path,
-                                  &channel_pub_key) ||
-      !ReadFileToSecureBlobLogged(channel_priv_key_in_file_path,
-                                  &channel_priv_key) ||
-      !ReadFileToSecureBlobLogged(serialized_hsm_payload_in_file_path,
-                                  &serialized_hsm_payload)) {
+  if (!ReadHexFileToSecureBlobLogged(channel_pub_key_in_file_path,
+                                     &channel_pub_key) ||
+      !ReadHexFileToSecureBlobLogged(channel_priv_key_in_file_path,
+                                     &channel_priv_key) ||
+      !ReadHexFileToSecureBlobLogged(serialized_hsm_payload_in_file_path,
+                                     &serialized_hsm_payload)) {
     return false;
   }
 
@@ -146,16 +150,18 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
     return false;
   }
 
-  return WriteFileLogged(ephemeral_pub_key_out_file_path, ephemeral_pub_key) &&
-         WriteFileLogged(recovery_request_out_file_path, recovery_request_cbor);
+  return WriteHexFileLogged(ephemeral_pub_key_out_file_path,
+                            ephemeral_pub_key) &&
+         WriteHexFileLogged(recovery_request_out_file_path,
+                            recovery_request_cbor);
 }
 
 bool DoRecoveryCryptoMediateAction(
     const FilePath& recovery_request_in_file_path,
     const FilePath& recovery_response_out_file_path) {
   SecureBlob serialized_recovery_request;
-  if (!ReadFileToSecureBlobLogged(recovery_request_in_file_path,
-                                  &serialized_recovery_request)) {
+  if (!ReadHexFileToSecureBlobLogged(recovery_request_in_file_path,
+                                     &serialized_recovery_request)) {
     return false;
   }
 
@@ -179,7 +185,7 @@ bool DoRecoveryCryptoMediateAction(
     return false;
   }
 
-  return WriteFileLogged(recovery_response_out_file_path, response_cbor);
+  return WriteHexFileLogged(recovery_response_out_file_path, response_cbor);
 }
 
 bool DoRecoveryCryptoDecryptAction(
@@ -190,14 +196,14 @@ bool DoRecoveryCryptoDecryptAction(
     const FilePath& recovery_secret_out_file_path) {
   SecureBlob recovery_response, ephemeral_pub_key, channel_priv_key,
       destination_share;
-  if (!ReadFileToSecureBlobLogged(recovery_response_in_file_path,
-                                  &recovery_response) ||
-      !ReadFileToSecureBlobLogged(channel_priv_key_in_file_path,
-                                  &channel_priv_key) ||
-      !ReadFileToSecureBlobLogged(ephemeral_pub_key_in_file_path,
-                                  &ephemeral_pub_key) ||
-      !ReadFileToSecureBlobLogged(destination_share_in_file_path,
-                                  &destination_share)) {
+  if (!ReadHexFileToSecureBlobLogged(recovery_response_in_file_path,
+                                     &recovery_response) ||
+      !ReadHexFileToSecureBlobLogged(channel_priv_key_in_file_path,
+                                     &channel_priv_key) ||
+      !ReadHexFileToSecureBlobLogged(ephemeral_pub_key_in_file_path,
+                                     &ephemeral_pub_key) ||
+      !ReadHexFileToSecureBlobLogged(destination_share_in_file_path,
+                                     &destination_share)) {
     return false;
   }
 
@@ -225,7 +231,8 @@ bool DoRecoveryCryptoDecryptAction(
     return false;
   }
 
-  return WriteFileLogged(recovery_secret_out_file_path, mediated_recovery_key);
+  return WriteHexFileLogged(recovery_secret_out_file_path,
+                            mediated_recovery_key);
 }
 
 }  // namespace
@@ -238,48 +245,62 @@ int main(int argc, char* argv[]) {
       "One of: recovery_crypto_create_hsm_payload, "
       "recovery_crypto_create_recovery_request, recovery_crypto_mediate, "
       "recovery_crypto_decrypt.");
-  DEFINE_string(destination_share_out_file, "",
-                "Path to the file where to store the Cryptohome Recovery "
-                "encrypted destination share.");
+  DEFINE_string(
+      destination_share_out_file, "",
+      "Path to the file where to store the hex-encoded Cryptohome Recovery "
+      "encrypted destination share.");
   DEFINE_string(destination_share_in_file, "",
-                "Path to the file containing the Cryptohome Recovery encrypted "
+                "Path to the file containing the hex-encoded Cryptohome "
+                "Recovery encrypted "
                 "destination share.");
-  DEFINE_string(channel_pub_key_out_file, "",
-                "Path to the file where to store the Cryptohome Recovery "
-                "channel public key.");
-  DEFINE_string(channel_pub_key_in_file, "",
-                "Path to the file containing the Cryptohome Recovery "
-                "channel public key.");
-  DEFINE_string(channel_priv_key_out_file, "",
-                "Path to the file where to store the Cryptohome Recovery "
-                "channel private key.");
-  DEFINE_string(channel_priv_key_in_file, "",
-                "Path to the file containing the Cryptohome Recovery  "
-                "channel private key.");
-  DEFINE_string(ephemeral_pub_key_out_file, "",
-                "Path to the file where to store the Cryptohome Recovery "
-                "ephemeral public key.");
-  DEFINE_string(ephemeral_pub_key_in_file, "",
-                "Path to the file containing the Cryptohome Recovery  "
-                "ephemeral public key.");
-  DEFINE_string(serialized_hsm_payload_out_file, "",
-                "Path to the file where to store the Cryptohome Recovery "
-                "serialized HSM payload.");
-  DEFINE_string(serialized_hsm_payload_in_file, "",
-                "Path to the file containing the Cryptohome Recovery "
-                "serialized HSM payload.");
-  DEFINE_string(recovery_request_out_file, "",
-                "Path to the file where to store the Cryptohome Recovery "
-                "Request.");
-  DEFINE_string(recovery_request_in_file, "",
-                "Path to the file containing the Cryptohome Recovery "
-                "Request.");
-  DEFINE_string(recovery_response_out_file, "",
-                "Path to the file where to store the Cryptohome Recovery "
-                "Response.");
-  DEFINE_string(recovery_response_in_file, "",
-                "Path to the file containing the Cryptohome Recovery "
-                "Response.");
+  DEFINE_string(
+      channel_pub_key_out_file, "",
+      "Path to the file where to store the hex-encoded Cryptohome Recovery "
+      "channel public key.");
+  DEFINE_string(
+      channel_pub_key_in_file, "",
+      "Path to the file containing the hex-encoded Cryptohome Recovery "
+      "channel public key.");
+  DEFINE_string(
+      channel_priv_key_out_file, "",
+      "Path to the file where to store the hex-encoded Cryptohome Recovery "
+      "channel private key.");
+  DEFINE_string(
+      channel_priv_key_in_file, "",
+      "Path to the file containing the hex-encoded Cryptohome Recovery  "
+      "channel private key.");
+  DEFINE_string(
+      ephemeral_pub_key_out_file, "",
+      "Path to the file where to store the hex-encoded Cryptohome Recovery "
+      "ephemeral public key.");
+  DEFINE_string(
+      ephemeral_pub_key_in_file, "",
+      "Path to the file containing the hex-encoded Cryptohome Recovery  "
+      "ephemeral public key.");
+  DEFINE_string(
+      serialized_hsm_payload_out_file, "",
+      "Path to the file where to store the hex-encoded Cryptohome Recovery "
+      "serialized HSM payload.");
+  DEFINE_string(
+      serialized_hsm_payload_in_file, "",
+      "Path to the file containing the hex-encoded Cryptohome Recovery "
+      "serialized HSM payload.");
+  DEFINE_string(
+      recovery_request_out_file, "",
+      "Path to the file where to store the hex-encoded Cryptohome Recovery "
+      "Request.");
+  DEFINE_string(
+      recovery_request_in_file, "",
+      "Path to the file containing the hex-encoded Cryptohome Recovery "
+      "Request.");
+  DEFINE_string(
+      recovery_response_out_file, "",
+      "Path to the file where to store the hex-encoded Cryptohome Recovery "
+      "Response.");
+  DEFINE_string(
+      recovery_response_in_file, "",
+      "Path to the file containing the hex-encoded Cryptohome Recovery "
+      "Response.");
   DEFINE_string(
       recovery_secret_out_file, "",
       "Path to the file where to store the Cryptohome Recovery secret.");
