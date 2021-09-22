@@ -34,7 +34,7 @@ use libsirenia::{
     },
     rpc::{self, ConnectionHandler, RpcDispatcher, TransportServer},
     sandbox::{self, MinijailSandbox, Sandbox},
-    to_sys_util,
+    sys,
     transport::{
         self, create_transport_from_pipes, Transport, TransportType, CROS_CID,
         CROS_CONNECTION_ERR_FD, CROS_CONNECTION_R_FD, CROS_CONNECTION_W_FD, DEFAULT_CLIENT_PORT,
@@ -592,21 +592,21 @@ fn main() -> Result<()> {
             error!("Unable to start new process group: {}", err);
         }
     }
-    to_sys_util::block_all_signals();
+    sys::block_all_signals();
     // This is safe because no additional file descriptors have been opened (except syslog which
     // cannot be dropped until we are ready to clean up /dev/log).
-    let ret = unsafe { to_sys_util::fork() }.unwrap();
+    let ret = unsafe { sys::fork() }.unwrap();
     if ret != 0 {
         // The parent process collects the return codes from the child processes, so they do not
         // remain zombies.
-        while to_sys_util::wait_for_child() {}
+        while sys::wait_for_child() {}
         info!("reaper done!");
         return Ok(());
     }
 
     // Unblock signals for the process that spawns the children. It might make sense to fork
     // again here for each child to avoid them blocking each other.
-    to_sys_util::unblock_all_signals();
+    sys::unblock_all_signals();
 
     if let Some(uri) = cronista_uri_option.from_matches(&matches).unwrap() {
         let mut state_mut = state.borrow_mut();

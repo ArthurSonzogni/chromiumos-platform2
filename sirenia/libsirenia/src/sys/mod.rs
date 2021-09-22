@@ -5,11 +5,10 @@
 //! Provides abstraction for needed libc functionality that isn't included in
 //! sys_util. Generally Sirenia code outside of this module shouldn't directly
 //! interact with the libc package.
-//!
-//! TODO(b/162502718) Move this over to crosvm/sys_util
 
 use std::io;
 use std::mem::MaybeUninit;
+use std::os::unix::io::{AsRawFd, FromRawFd, RawFd};
 use std::ptr::null_mut;
 
 use libc::{self, c_int, sigfillset, sigprocmask, sigset_t, wait, ECHILD, SIG_BLOCK, SIG_UNBLOCK};
@@ -67,4 +66,17 @@ pub unsafe fn fork() -> Result<i32, io::Error> {
     } else {
         Ok(ret)
     }
+}
+
+/// Light wrapper over the dup syscall.
+///
+/// Provides safety by ensuring the resulting file descriptor is owned.
+pub fn dup<A: AsRawFd, F: FromRawFd>(fd: A) -> Result<F, io::Error> {
+    // Safe because this doesn't modify any memory and we check the return value
+    // and take ownership of the resulting file descriptor in an `F`.
+    let dup_fd: c_int = unsafe { libc::fcntl(fd.as_raw_fd(), libc::F_DUPFD_CLOEXEC, 0) };
+    if dup_fd < 0 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(unsafe { F::from_raw_fd(dup_fd as RawFd) })
 }
