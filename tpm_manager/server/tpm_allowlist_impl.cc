@@ -84,6 +84,7 @@ constexpr DeviceModel kTpm2ModelsAllowlist[] = {
 
 constexpr DeviceFamily kTpm2FamiliesAllowlist[] = {
     DeviceFamily{"LENOVO", "ThinkPad X1 Carbon Gen 8", kVendorIdStm},
+    DeviceFamily{"LENOVO", "ThinkPad X1 Carbon Gen 9", kVendorIdStm},
 };
 
 bool GetDidVid(uint16_t* did, uint16_t* vid) {
