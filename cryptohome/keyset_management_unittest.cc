@@ -1525,4 +1525,136 @@ TEST_F(KeysetManagementTest, GetValidKeysetCryptoError) {
   }
 }
 
+TEST_F(KeysetManagementTest, AddKeysetNoFile) {
+  // Test for file not found.
+  // Setup
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto_);
+  vk.CreateRandom();
+
+  EXPECT_CALL(platform_, OpenFile(_, StrEq("wx")))
+      .WillRepeatedly(Return(nullptr));
+
+  // Test
+  // VaultKeysetPath returns no valid paths.
+  EXPECT_EQ(keyset_management_->AddKeyset(users_[0].credentials, vk),
+            user_data_auth::CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED);
+}
+
+TEST_F(KeysetManagementTest, AddKeysetNewLabel) {
+  // Suitable file path is found, test for first time entering a new label.
+  // Setup
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto_);
+  vk.CreateRandom();
+
+  // Test
+  EXPECT_EQ(keyset_management_->AddKeyset(users_[0].credentials, vk),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+}
+
+TEST_F(KeysetManagementTest, AddKeysetLabelExists) {
+  // Suitable file path is found, but label already exists.
+  // Setup
+  // Saves DefaultKeyData() as primary label.
+  KeysetSetUpWithKeyData(DefaultKeyData());
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto_);
+  vk.CreateRandom();
+
+  // Test
+  // AddKeyset creates a file at index 1, but deletes the file
+  // after KeysetManagement finds a duplicate label at index 0.
+  // The original label is overwritten when adding the new keyset.
+  EXPECT_EQ(keyset_management_->AddKeyset(users_[0].credentials, vk),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Verify
+  base::FilePath vk_path = VaultKeysetPath(users_[0].obfuscated, 1);
+  EXPECT_FALSE(platform_.FileExists(vk_path));
+}
+
+TEST_F(KeysetManagementTest, AddKeysetLabelExistsFail) {
+  // Suitable file path is found, label already exists,
+  // but AddKeyset fails to overwrite the existing file.
+  // Setup
+  KeysetSetUpWithKeyData(DefaultKeyData());
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto_);
+  vk.CreateRandom();
+
+  auto mock_vk = new NiceMock<MockVaultKeyset>();
+  auto match_vk = new VaultKeyset();
+  match_vk->Initialize(&platform_, &crypto_);
+  EXPECT_CALL(*mock_vault_keyset_factory_, New(_, _))
+      .WillOnce(Return(match_vk))  // Return duplicate label in AddKeyset.
+      .WillOnce(Return(mock_vk));  // mock_vk injects the encryption failure.
+
+  // AddKeyset creates a file at index 1, but deletes the file
+  // after KeysetManagement finds a duplicate label at index 0.
+  // AddKeyset tries to overwrite at index 0, but test forces encrypt to fail.
+  EXPECT_CALL(*mock_vk, Encrypt(_, _)).WillOnce(Return(false));
+
+  // Test
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
+            keyset_management_mock_vk_->AddKeyset(users_[0].credentials, vk));
+
+  // Verify that AddKeyset deleted the file at index 1.
+  base::FilePath vk_path = VaultKeysetPath(users_[0].obfuscated, 1);
+  EXPECT_FALSE(platform_.FileExists(vk_path));
+
+  // Verify original label still exists after encryption failure.
+  std::unique_ptr<VaultKeyset> test_vk = keyset_management_->GetVaultKeyset(
+      users_[0].obfuscated, users_[0].credentials.key_data().label());
+  EXPECT_NE(nullptr, test_vk.get());
+}
+
+TEST_F(KeysetManagementTest, AddKeysetSaveFailAuthSessions) {
+  // Test of AddKeyset overloaded to work with AuthSessions.
+  // Suitable file path is found, but save fails.
+  // Setup
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto_);
+  vk.CreateRandom();
+
+  auto mock_vk = new NiceMock<MockVaultKeyset>();
+  EXPECT_CALL(*mock_vault_keyset_factory_, New(_, _)).WillOnce(Return(mock_vk));
+  // Because of conditional or short-circuiting, Encrypt must
+  // return true for Save() to run.
+  EXPECT_CALL(*mock_vk, Encrypt(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_vk, Save(_)).WillOnce(Return(false));
+
+  // Test
+  // The file path created by AddKeyset is deleted after save fails.
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
+            keyset_management_mock_vk_->AddKeyset(users_[0].credentials, vk));
+
+  // Verify
+  base::FilePath vk_path = VaultKeysetPath(users_[0].obfuscated, 0);
+  EXPECT_FALSE(platform_.FileExists(vk_path));
+}
+
+TEST_F(KeysetManagementTest, AddKeysetEncryptFailAuthSessions) {
+  // Test of AddKeyset overloaded to work with AuthSessions.
+  // A suitable file path is found, encyrpt fails,
+  // and the created VaultKeyset file is deleted.
+  // Setup
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto_);
+  vk.CreateRandom();
+
+  auto mock_vk = new NiceMock<MockVaultKeyset>();
+  EXPECT_CALL(*mock_vault_keyset_factory_, New(_, _)).WillOnce(Return(mock_vk));
+  EXPECT_CALL(*mock_vk, Encrypt(_, _)).WillOnce(Return(false));
+
+  // Test
+  // The file path created by AddKeyset is deleted after encyrption fails.
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
+            keyset_management_mock_vk_->AddKeyset(users_[0].credentials, vk));
+
+  // Verify that the file was deleted.
+  base::FilePath vk_path = VaultKeysetPath(users_[0].obfuscated, 0);
+  EXPECT_FALSE(platform_.FileExists(vk_path));
+}
+
 }  // namespace cryptohome

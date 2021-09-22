@@ -588,7 +588,7 @@ user_data_auth::CryptohomeErrorCode KeysetManagement::AddKeyset(
     vk_path = VaultKeysetPath(obfuscated_username, new_index);
     // Rely on fopen()'s O_EXCL|O_CREAT behavior to fail
     // repeatedly until there is an opening.
-    base::ScopedFILE vk_file(base::OpenFile(vk_path, "wx"));
+    base::ScopedFILE vk_file(platform_->OpenFile(vk_path, "wx"));
     if (vk_file) {  // got one
       file_found = true;
       break;
