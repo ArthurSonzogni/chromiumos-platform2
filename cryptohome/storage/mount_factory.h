@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount.h"
@@ -22,7 +21,7 @@ class MountFactory {
  public:
   MountFactory();
   virtual ~MountFactory();
-  virtual Mount* New(Platform*, HomeDirs*, KeysetManagement*);
+  virtual Mount* New(Platform*, HomeDirs*);
 };
 
 }  // namespace cryptohome

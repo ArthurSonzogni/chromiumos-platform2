@@ -31,7 +31,6 @@
 #include <policy/libpolicy.h>
 
 #include "cryptohome/dircrypto_data_migrator/migration_helper.h"
-#include "cryptohome/keyset_management.h"
 #include "cryptohome/migration_type.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/cryptohome_vault.h"
@@ -71,9 +70,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Sets up Mount with the default locations, username, etc., as defined above.
   Mount();
-  Mount(Platform* platform,
-        HomeDirs* homedirs,
-        KeysetManagement* keyset_management);
+  Mount(Platform* platform, HomeDirs* homedirs);
   Mount(const Mount&) = delete;
   Mount& operator=(const Mount&) = delete;
 
@@ -114,6 +111,9 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // current user.
   virtual bool IsMounted() const;
 
+  // Returns true if the mount is ephemeral;
+  virtual bool IsEphemeral() const;
+
   // Checks whether the mount point currently has a cryptohome mounted for the
   // current user that is not ephemeral.
   //
@@ -141,11 +141,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   virtual Pkcs11State pkcs11_state() { return pkcs11_state_; }
 
-  // Returns the status of this mount as a Value
-  //
-  // The returned object is a dictionary whose keys describe the mount. Current
-  // keys are: "keysets", "mounted", "owner", "enterprise", and "type".
-  virtual base::Value GetStatus(int active_key_index);
+  // Return the the mount type as a string.
+  virtual std::string GetMountTypeString() const;
 
   // Inserts the current user's PKCS #11 token.
   virtual bool InsertPkcs11Token();
@@ -316,9 +313,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // HomeDirs encapsulates operations on Cryptohomes at rest.
   HomeDirs* homedirs_;
-
-  // KeysetManagement object to call user key management operations.
-  KeysetManagement* keyset_management_;
 
   // Name of the user the mount belongs to.
   std::string username_;

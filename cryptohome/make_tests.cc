@@ -34,6 +34,7 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/keyset_management.h"
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
@@ -215,8 +216,7 @@ void TestUser::GenerateCredentials(bool force_ecryptfs) {
           std::unique_ptr<policy::MockDevicePolicy>(device_policy)),
       remove_callback);
 
-  scoped_refptr<Mount> mount =
-      new Mount(&platform, &homedirs, &keyset_management);
+  scoped_refptr<Mount> mount = new Mount(&platform, &homedirs);
   FilePath keyset_path =
       ShadowRoot()
           .Append(obfuscated_username)

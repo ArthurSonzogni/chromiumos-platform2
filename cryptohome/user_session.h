@@ -66,6 +66,9 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   bool UpdateActivityTimestamp(int time_shift_sec);
 
   // Returns status string of the proxied Mount objest.
+  //
+  // The returned object is a dictionary whose keys describe the mount. Current
+  // keys are: "keysets", "mounted", "owner", "enterprise", and "type".
   base::Value GetStatus() const;
 
   // Returns the WebAuthn secret and clears it from memory.

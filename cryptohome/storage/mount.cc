@@ -25,7 +25,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
-#include <base/values.h>
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
 #include <brillo/cryptohome.h>
@@ -42,7 +41,6 @@
 #include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 #include "cryptohome/dircrypto_util.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
@@ -92,9 +90,7 @@ void StartUserFileAttrsCleanerService(cryptohome::Platform* platform,
     PLOG(WARNING) << "Error while running file_attrs_cleaner_tool";
 }
 
-Mount::Mount(Platform* platform,
-             HomeDirs* homedirs,
-             KeysetManagement* keyset_management)
+Mount::Mount(Platform* platform, HomeDirs* homedirs)
     : default_user_(-1),
       chaps_user_(-1),
       default_group_(-1),
@@ -102,7 +98,6 @@ Mount::Mount(Platform* platform,
       system_salt_(),
       platform_(platform),
       homedirs_(homedirs),
-      keyset_management_(keyset_management),
       pkcs11_state_(kUninitialized),
       legacy_mount_(true),
       bind_mount_downloads_(true),
@@ -115,7 +110,7 @@ Mount::Mount(Platform* platform,
       mount_non_ephemeral_session_out_of_process_(true),
       mount_guest_session_non_root_namespace_(true) {}
 
-Mount::Mount() : Mount(nullptr, nullptr, nullptr) {}
+Mount::Mount() : Mount(nullptr, nullptr) {}
 
 Mount::~Mount() {
   if (IsMounted())
@@ -414,8 +409,12 @@ bool Mount::IsMounted() const {
          (out_of_process_mounter_ && out_of_process_mounter_->MountPerformed());
 }
 
+bool Mount::IsEphemeral() const {
+  return mount_type_ == MountType::EPHEMERAL;
+}
+
 bool Mount::IsNonEphemeralMounted() const {
-  return IsMounted() && mount_type_ != MountType::EPHEMERAL;
+  return IsMounted() && !IsEphemeral();
 }
 
 bool Mount::OwnsMountPoint(const FilePath& path) const {
@@ -508,68 +507,20 @@ void Mount::RemovePkcs11Token() {
       IsolateCredentialManager::GetDefaultIsolateCredential(), token_dir);
 }
 
-base::Value Mount::GetStatus(int active_key_index) {
-  base::Value dv(base::Value::Type::DICTIONARY);
-  std::string user = SanitizeUserNameWithSalt(username_, system_salt_);
-  base::Value keysets(base::Value::Type::LIST);
-  std::vector<int> key_indices;
-  if (user.length() &&
-      keyset_management_->GetVaultKeysets(user, &key_indices)) {
-    for (auto key_index : key_indices) {
-      base::Value keyset_dict(base::Value::Type::DICTIONARY);
-      std::unique_ptr<VaultKeyset> keyset(
-          keyset_management_->LoadVaultKeysetForUser(user, key_index));
-      if (keyset.get()) {
-        bool tpm = keyset->GetFlags() & SerializedVaultKeyset::TPM_WRAPPED;
-        bool scrypt =
-            keyset->GetFlags() & SerializedVaultKeyset::SCRYPT_WRAPPED;
-        keyset_dict.SetBoolKey("tpm", tpm);
-        keyset_dict.SetBoolKey("scrypt", scrypt);
-        keyset_dict.SetBoolKey("ok", true);
-        keyset_dict.SetIntKey("last_activity",
-                              keyset->GetLastActivityTimestamp());
-        if (keyset->HasKeyData()) {
-          keyset_dict.SetStringKey("label", keyset->GetKeyData().label());
-        }
-      } else {
-        keyset_dict.SetBoolKey("ok", false);
-      }
-      // TODO(wad) Replace key_index use with key_label() use once
-      //           legacy keydata is populated.
-      if (mount_type_ != MountType::EPHEMERAL && key_index == active_key_index)
-        keyset_dict.SetBoolKey("current", true);
-      keyset_dict.SetIntKey("index", key_index);
-      keysets.Append(std::move(keyset_dict));
-    }
-  }
-  dv.SetKey("keysets", std::move(keysets));
-  dv.SetBoolKey("mounted", IsMounted());
-  std::string obfuscated_owner;
-  homedirs_->GetOwner(&obfuscated_owner);
-  dv.SetStringKey("owner", obfuscated_owner);
-  dv.SetBoolKey("enterprise", homedirs_->enterprise_owned());
-
-  std::string mount_type_string;
+std::string Mount::GetMountTypeString() const {
   switch (mount_type_) {
     case MountType::NONE:
-      mount_type_string = "none";
-      break;
+      return "none";
     case MountType::ECRYPTFS:
-      mount_type_string = "ecryptfs";
-      break;
+      return "ecryptfs";
     case MountType::DIR_CRYPTO:
-      mount_type_string = "dircrypto";
-      break;
+      return "dircrypto";
     case MountType::EPHEMERAL:
-      mount_type_string = "ephemeral";
-      break;
+      return "ephemeral";
     case MountType::DMCRYPT:
-      mount_type_string = "dmcrypt";
-      break;
+      return "dmcrypt";
   }
-  dv.SetStringKey("type", mount_type_string);
-
-  return dv;
+  return "";
 }
 
 bool Mount::MigrateToDircrypto(

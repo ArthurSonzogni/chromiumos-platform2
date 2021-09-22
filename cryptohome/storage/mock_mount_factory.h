@@ -9,7 +9,6 @@
 
 #include <gmock/gmock.h>
 
-#include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount.h"
@@ -21,21 +20,16 @@ class Mount;
 class MockMountFactory : public MountFactory {
  public:
   MockMountFactory() {
-    ON_CALL(*this, New(_, _, _))
+    ON_CALL(*this, New(_, _))
         .WillByDefault(testing::Invoke(this, &MockMountFactory::NewConcrete));
   }
 
   virtual ~MockMountFactory() {}
-  MOCK_METHOD(Mount*,
-              New,
-              (Platform*, HomeDirs*, KeysetManagement*),
-              (override));
+  MOCK_METHOD(Mount*, New, (Platform*, HomeDirs*), (override));
 
   // Backdoor to access real method, for delegating calls to parent class
-  Mount* NewConcrete(Platform* platform,
-                     HomeDirs* homedirs,
-                     KeysetManagement* keyset_management) {
-    return MountFactory::New(platform, homedirs, keyset_management);
+  Mount* NewConcrete(Platform* platform, HomeDirs* homedirs) {
+    return MountFactory::New(platform, homedirs);
   }
 };
 }  // namespace cryptohome

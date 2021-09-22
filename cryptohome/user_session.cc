@@ -7,9 +7,11 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
+#include <base/values.h>
 
 #include <brillo/cryptohome.h>
 #include <cryptohome/scrypt_verifier.h>
@@ -21,6 +23,7 @@
 #include "cryptohome/storage/mount.h"
 
 using brillo::cryptohome::home::SanitizeUserName;
+using brillo::cryptohome::home::SanitizeUserNameWithSalt;
 
 namespace cryptohome {
 
@@ -152,7 +155,49 @@ bool UserSession::UpdateActivityTimestamp(int time_shift_sec) {
 }
 
 base::Value UserSession::GetStatus() const {
-  return mount_->GetStatus(key_index_);
+  base::Value dv(base::Value::Type::DICTIONARY);
+  std::string user = SanitizeUserNameWithSalt(username_, system_salt_);
+  base::Value keysets(base::Value::Type::LIST);
+  std::vector<int> key_indices;
+  if (user.length() &&
+      keyset_management_->GetVaultKeysets(user, &key_indices)) {
+    for (auto key_index : key_indices) {
+      base::Value keyset_dict(base::Value::Type::DICTIONARY);
+      std::unique_ptr<VaultKeyset> keyset(
+          keyset_management_->LoadVaultKeysetForUser(user, key_index));
+      if (keyset.get()) {
+        bool tpm = keyset->GetFlags() & SerializedVaultKeyset::TPM_WRAPPED;
+        bool scrypt =
+            keyset->GetFlags() & SerializedVaultKeyset::SCRYPT_WRAPPED;
+        keyset_dict.SetBoolKey("tpm", tpm);
+        keyset_dict.SetBoolKey("scrypt", scrypt);
+        keyset_dict.SetBoolKey("ok", true);
+        keyset_dict.SetIntKey("last_activity",
+                              keyset->GetLastActivityTimestamp());
+        if (keyset->HasKeyData()) {
+          keyset_dict.SetStringKey("label", keyset->GetKeyData().label());
+        }
+      } else {
+        keyset_dict.SetBoolKey("ok", false);
+      }
+      // TODO(wad) Replace key_index use with key_label() use once
+      //           legacy keydata is populated.
+      if (!mount_->IsEphemeral() && key_index == key_index_)
+        keyset_dict.SetBoolKey("current", true);
+      keyset_dict.SetIntKey("index", key_index);
+      keysets.Append(std::move(keyset_dict));
+    }
+  }
+  dv.SetKey("keysets", std::move(keysets));
+  dv.SetBoolKey("mounted", mount_->IsMounted());
+  std::string obfuscated_owner;
+  homedirs_->GetOwner(&obfuscated_owner);
+  dv.SetStringKey("owner", obfuscated_owner);
+  dv.SetBoolKey("enterprise", homedirs_->enterprise_owned());
+
+  dv.SetStringKey("type", mount_->GetMountTypeString());
+
+  return dv;
 }
 
 void UserSession::PrepareWebAuthnSecret(const brillo::SecureBlob& fek,

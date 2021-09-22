@@ -153,7 +153,7 @@ class MountTest
 
     platform_.GetFake()->SetStandardUsersAndGroups();
 
-    mount_ = new Mount(&platform_, homedirs_.get(), keyset_management);
+    mount_ = new Mount(&platform_, homedirs_.get());
 
     mount_->set_chaps_client_factory(&chaps_client_factory_);
     // Perform mounts in-process.
@@ -774,7 +774,7 @@ class ChapsDirectoryTest : public ::testing::Test {
     homedirs_ =
         std::make_unique<HomeDirs>(&platform_, salt, nullptr, remove_cb);
 
-    mount_ = new Mount(&platform_, homedirs_.get(), keyset_management_.get());
+    mount_ = new Mount(&platform_, homedirs_.get());
     mount_->Init();
     mount_->chaps_user_ = fake_platform::kChapsUID;
     mount_->default_access_group_ = fake_platform::kSharedGID;

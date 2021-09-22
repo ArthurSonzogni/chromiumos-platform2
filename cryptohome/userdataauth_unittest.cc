@@ -1920,7 +1920,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   // ownership handed off to the Service MountMap
   MockMountFactory mount_factory;
   MockMount* mount = new MockMount();
-  EXPECT_CALL(mount_factory, New(_, _, _)).WillOnce(Return(mount));
+  EXPECT_CALL(mount_factory, New(_, _)).WillOnce(Return(mount));
   userdataauth_->set_mount_factory(&mount_factory);
   EXPECT_CALL(platform_, FileExists(_)).WillOnce(Return(true));
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
@@ -2023,7 +2023,7 @@ TEST_F(UserDataAuthTest,
   // ownership handed off to the Service MountMap
   MockMountFactory mount_factory;
   MockMount* mount = new MockMount();
-  EXPECT_CALL(mount_factory, New(_, _, _)).WillOnce(Return(mount));
+  EXPECT_CALL(mount_factory, New(_, _)).WillOnce(Return(mount));
   userdataauth_->set_mount_factory(&mount_factory);
   EXPECT_CALL(platform_, FileExists(_)).WillOnce(Return(false));
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).Times(0);
@@ -2383,8 +2383,8 @@ TEST_F(UserDataAuthExTest, MountGuestValidity) {
   EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
   EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(true));
 
-  EXPECT_CALL(mount_factory_, New(_, _, _))
-      .WillOnce(Invoke([](Platform*, HomeDirs*, KeysetManagement*) {
+  EXPECT_CALL(mount_factory_, New(_, _))
+      .WillOnce(Invoke([](Platform*, HomeDirs*) {
         NiceMock<MockMount>* res = new NiceMock<MockMount>();
         EXPECT_CALL(*res, Init()).WillOnce(Return(true));
         EXPECT_CALL(*res, MountGuestCryptohome()).WillOnce(Return(true));
@@ -2422,7 +2422,7 @@ TEST_F(UserDataAuthExTest, MountGuestMountPointBusy) {
   EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
   EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(false));
 
-  EXPECT_CALL(mount_factory_, New(_, _, _)).Times(0);
+  EXPECT_CALL(mount_factory_, New(_, _)).Times(0);
 
   bool called = false;
   {
@@ -2449,8 +2449,8 @@ TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
 
   mount_req_->set_guest_mount(true);
 
-  EXPECT_CALL(mount_factory_, New(_, _, _))
-      .WillOnce(Invoke([](Platform*, HomeDirs*, KeysetManagement*) {
+  EXPECT_CALL(mount_factory_, New(_, _))
+      .WillOnce(Invoke([](Platform*, HomeDirs*) {
         NiceMock<MockMount>* res = new NiceMock<MockMount>();
         EXPECT_CALL(*res, Init()).WillOnce(Return(true));
         EXPECT_CALL(*res, MountGuestCryptohome()).WillOnce(Return(false));
