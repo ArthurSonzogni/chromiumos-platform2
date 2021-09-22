@@ -96,6 +96,9 @@ fn set_game_mode(m: &MethodInfo) -> MethodResult {
 }
 
 fn set_game_mode_with_timeout(m: &MethodInfo) -> MethodResult {
+    let old_game_mode =
+        common::get_game_mode().map_err(|_| MethodErr::failed("Failed to get game mode"))?;
+
     let (mode_raw, timeout_raw): (u8, u32) = m.msg.read2()?;
     let mode = common::GameMode::try_from(mode_raw)
         .map_err(|_| MethodErr::failed("Unsupported game mode value"))?;
@@ -107,7 +110,8 @@ fn set_game_mode_with_timeout(m: &MethodInfo) -> MethodResult {
     timer
         .reset(timeout, None)
         .map_err(|_| MethodErr::failed("Failed to set the game mode restore timer"))?;
-    Ok(vec![m.msg.method_return()])
+
+    Ok(vec![m.msg.method_return().append1(old_game_mode as u8)])
 }
 
 fn get_rtc_audio_active(m: &MethodInfo) -> MethodResult {
