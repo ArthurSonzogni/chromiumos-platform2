@@ -15,6 +15,7 @@
 
 #include <base/check.h>
 #include <base/files/file_util.h>
+#include <base/no_destructor.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <re2/re2.h>
@@ -67,17 +68,19 @@ std::vector<T> ParseCommaSeparated(const std::string& value) {
 }
 
 uint32_t ParseQuirks(const std::string& value) {
-  static const std::map<std::string, uint32_t> kNameMap = {
-      {"prefer_mjpeg", kQuirkPreferMjpeg},
-      {"report_least_fps_ranges", kQuirkReportLeastFpsRanges},
-      {"v1device", kQuirkV1Device},
-  };
+  static const base::NoDestructor<std::map<std::string, uint32_t>> kNameMap(
+      std::map<std::string, uint32_t>{
+          {"prefer_mjpeg", kQuirkPreferMjpeg},
+          {"report_least_fps_ranges", kQuirkReportLeastFpsRanges},
+          {"v1device", kQuirkV1Device},
+          {"android_external", kQuirkAndroidExternal},
+      });
   std::vector<std::string> names = base::SplitString(
       value, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   uint32_t quirks = 0;
   for (const auto& name : names) {
-    auto it = kNameMap.find(name);
-    CHECK(it != kNameMap.end()) << "Invalid quirk name " << name;
+    auto it = kNameMap->find(name);
+    CHECK(it != kNameMap->end()) << "Invalid quirk name " << name;
     quirks |= it->second;
   }
   return quirks;

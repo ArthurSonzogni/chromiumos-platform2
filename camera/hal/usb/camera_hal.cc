@@ -139,9 +139,19 @@ void AdjustMetadataForFaceDetection(android::CameraMetadata* data) {
 }
 
 ScopedCameraMetadata StaticMetadataForAndroid(
-    const android::CameraMetadata& static_metadata) {
+    const android::CameraMetadata& static_metadata,
+    const DeviceInfo& device_info) {
   android::CameraMetadata data(static_metadata);
   std::vector<int32_t> stream_configurations;
+
+  if (device_info.quirks & kQuirkAndroidExternal) {
+    data.update(
+        ANDROID_LENS_FACING,
+        std::vector<uint8_t>{static_cast<uint8_t>(LensFacing::kExternal)});
+    data.update(
+        ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL,
+        std::vector<uint8_t>{ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_EXTERNAL});
+  }
 
   std::unique_ptr<CameraConfig> camera_config =
       CameraConfig::Create(constants::kCrosCameraConfigPathString);
@@ -688,7 +698,7 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
   path_to_id_[info.device_path] = info.camera_id;
   device_infos_[info.camera_id] = info;
   static_metadata_android_[info.camera_id] =
-      StaticMetadataForAndroid(static_metadata);
+      StaticMetadataForAndroid(static_metadata, info);
   request_template_android_[info.camera_id] = RequestTemplateForAndroid(
       static_metadata_android_[info.camera_id].get(), request_template);
   static_metadata_[info.camera_id] =
