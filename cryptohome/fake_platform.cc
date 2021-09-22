@@ -46,7 +46,7 @@ class ProxyFileEnumerator : public FileEnumerator {
   FileEnumerator::FileInfo GetInfo() override {
     FileEnumerator::FileInfo real_info = real_enumerator_->GetInfo();
     base::stat_wrapper_t stat;
-    DCHECK(fake_platform_->Stat(last_path_, &stat));
+    CHECK(fake_platform_->Stat(last_path_, &stat));
     return FileEnumerator::FileInfo(real_info.GetName(), stat);
   }
 
@@ -325,7 +325,7 @@ void FakePlatform::InitializeFile(base::File* file,
   // This part here is to make one of the access verification tests happy.
   // TODO(dlunev): generalize access control abiding fake permissions.
   mode_t mode;
-  DCHECK(GetPermissions(path, &mode));
+  CHECK(GetPermissions(path, &mode));
   bool init_for_read = flags & base::File::FLAG_READ;
   bool can_read = mode & S_IRUSR;
   if (init_for_read && !can_read) {
