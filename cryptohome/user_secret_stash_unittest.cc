@@ -175,7 +175,7 @@ TEST_F(UserSecretStashTest, DecryptErrorWrongKey) {
 }
 
 // Test that wrapped key blocks are [de]serialized correctly.
-TEST_F(UserSecretStashTest, EncryptAndDecryptUSSWrappedKeys) {
+TEST_F(UserSecretStashTest, EncryptAndDecryptUSSWithWrappedKeys) {
   const char kWrappingId1[] = "id1";
   const char kWrappingId2[] = "id2";
   const brillo::SecureBlob kWrappingKey1(kAesGcm256KeySize, 0xB);
@@ -200,6 +200,31 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSSWrappedKeys) {
       stash2->UnwrapMainKey(kWrappingId1, kWrappingKey1);
   ASSERT_TRUE(got_main_key1);
   EXPECT_EQ(*got_main_key1, kMainKey);
+}
+
+// Test that the USS can be loaded and decrypted using the wrapping key stored
+// in it.
+TEST_F(UserSecretStashTest, EncryptAndDecryptUSSViaWrappedKey) {
+  // Add a wrapped key block.
+  const char kWrappingId[] = "id";
+  const brillo::SecureBlob kWrappingKey(kAesGcm256KeySize, 0xB);
+  EXPECT_TRUE(stash_->AddWrappedMainKey(kMainKey, kWrappingId, kWrappingKey));
+
+  // Encrypt the USS.
+  base::Optional<brillo::SecureBlob> uss_container =
+      stash_->GetEncryptedContainer(kMainKey);
+  ASSERT_NE(base::nullopt, uss_container);
+
+  // The USS can be decrypted using the wrapping key.
+  brillo::SecureBlob unwrapped_main_key;
+  std::unique_ptr<UserSecretStash> stash2 =
+      UserSecretStash::FromEncryptedContainerWithWrappingKey(
+          uss_container.value(), kWrappingId, kWrappingKey,
+          &unwrapped_main_key);
+  ASSERT_TRUE(stash2);
+  EXPECT_EQ(stash_->GetFileSystemKey(), stash2->GetFileSystemKey());
+  EXPECT_EQ(stash_->GetResetSecret(), stash2->GetResetSecret());
+  EXPECT_EQ(unwrapped_main_key, kMainKey);
 }
 
 // Fixture that helps to read/manipulate the USS flatbuffer's internals using

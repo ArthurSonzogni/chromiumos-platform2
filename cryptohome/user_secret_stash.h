@@ -44,6 +44,14 @@ class UserSecretStash {
   // plaintext, it populates the fields of the class with the encrypted message.
   static std::unique_ptr<UserSecretStash> FromEncryptedContainer(
       const brillo::SecureBlob& flatbuffer, const brillo::SecureBlob& main_key);
+  // Same as |FromEncryptedContainer()|, but the main key is unwrapped from the
+  // USS container using the given wrapping key. The |main_key| output argument
+  // is populated with the unwrapped main key on success.
+  static std::unique_ptr<UserSecretStash> FromEncryptedContainerWithWrappingKey(
+      const brillo::SecureBlob& flatbuffer,
+      const std::string& wrapping_id,
+      const brillo::SecureBlob& wrapping_key,
+      brillo::SecureBlob* main_key);
 
   virtual ~UserSecretStash() = default;
 
@@ -85,6 +93,16 @@ class UserSecretStash {
       const brillo::SecureBlob& main_key);
 
  private:
+  // Decrypts the USS payload flatbuffer using the passed main key and
+  // constructs the USS instance from it. Returns null on decryption or
+  // validation failure.
+  static std::unique_ptr<UserSecretStash> FromEncryptedPayload(
+      const brillo::SecureBlob& ciphertext,
+      const brillo::SecureBlob& iv,
+      const brillo::SecureBlob& gcm_tag,
+      const std::map<std::string, WrappedKeyBlock>& wrapped_key_blocks,
+      const brillo::SecureBlob& main_key);
+
   UserSecretStash(const brillo::SecureBlob& file_system_key,
                   const brillo::SecureBlob& reset_secret);
 
