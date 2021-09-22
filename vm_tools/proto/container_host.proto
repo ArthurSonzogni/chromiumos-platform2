@@ -303,6 +303,8 @@ message GetDiskInfoResponse {
   uint64 available_space = 2;
   // How much the disk can be expanded by in bytes.
   uint64 expandable_space = 3;
+  // The current size of the disk in bytes.
+  uint64 disk_size = 4;
 }
 
 // For requesting that the disk is expanded.

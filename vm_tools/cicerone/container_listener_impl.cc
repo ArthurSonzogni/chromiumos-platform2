@@ -561,6 +561,7 @@ grpc::Status ContainerListenerImpl::GetDiskInfo(
   response->set_error(result.error());
   response->set_available_space(result.available_space());
   response->set_expandable_space(result.expandable_space());
+  response->set_disk_size(result.disk_size());
   return grpc::Status::OK;
 }
 
