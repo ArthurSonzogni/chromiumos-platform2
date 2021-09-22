@@ -39,6 +39,8 @@ static_library("libfusebox") {
     "fuse_file_handles.h",
     "fuse_path_inodes.cc",
     "fuse_path_inodes.h",
+    "fuse_request.cc",
+    "fuse_request.h",
     "make_stat.cc",
     "make_stat.h",
     "util.cc",
