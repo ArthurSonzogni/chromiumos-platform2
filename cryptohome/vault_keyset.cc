@@ -414,8 +414,7 @@ bool VaultKeyset::UnwrapScryptVaultKeyset(
   return true;
 }
 
-bool VaultKeyset::WrapVaultKeysetWithAesDeprecated(const KeyBlobs& blobs,
-                                                   bool store_reset_seed) {
+bool VaultKeyset::WrapVaultKeysetWithAesDeprecated(const KeyBlobs& blobs) {
   if (blobs.vkk_key == base::nullopt || blobs.vkk_iv == base::nullopt ||
       blobs.chaps_iv == base::nullopt) {
     DLOG(FATAL) << "Fields missing from KeyBlobs.";
@@ -447,7 +446,7 @@ bool VaultKeyset::WrapVaultKeysetWithAesDeprecated(const KeyBlobs& blobs,
   }
 
   // If a reset seed is present, encrypt and store it, else clear the field.
-  if (store_reset_seed && GetResetSeed().size() != 0) {
+  if (!IsLECredential() && GetResetSeed().size() != 0) {
     const auto reset_iv = CreateSecureRandomBlob(kAesBlockSize);
     SecureBlob wrapped_reset_seed;
     if (!AesEncryptDeprecated(GetResetSeed(), blobs.vkk_key.value(), reset_iv,
@@ -857,7 +856,6 @@ bool VaultKeyset::EncryptVaultKeyset(const SecureBlob& vault_key,
     return false;
   }
 
-  bool store_reset_seed = !IsLECredential();
   base::Optional<SecureBlob> reset_secret;
   if (!GetResetSecret().empty()) {
     reset_secret = GetResetSecret();
@@ -884,8 +882,7 @@ bool VaultKeyset::EncryptVaultKeyset(const SecureBlob& vault_key,
   if (is_scrypt_wrapped) {
     wrapping_succeeded = WrapScryptVaultKeyset(key_blobs);
   } else {
-    wrapping_succeeded =
-        WrapVaultKeysetWithAesDeprecated(key_blobs, store_reset_seed);
+    wrapping_succeeded = WrapVaultKeysetWithAesDeprecated(key_blobs);
   }
 
   // Report wrapping key type to UMA

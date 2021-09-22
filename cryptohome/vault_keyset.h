@@ -263,11 +263,7 @@ class VaultKeyset {
   //
   // Parameters
   //   key_blobs - Key bloc that stores VaultKeysetKey.
-  //   store_reset_seed - Whether to store PinWeaver reset seed. This parameter
-  // is here for legacy reasons because PinWeaver only stores a reset seed in
-  // some of the keysets.
-  bool WrapVaultKeysetWithAesDeprecated(const KeyBlobs& blobs,
-                                        bool store_reset_seed);
+  bool WrapVaultKeysetWithAesDeprecated(const KeyBlobs& blobs);
 
   // This function encrypts a VaultKeyset with an scrypt derived key.
   //
