@@ -30,6 +30,7 @@
 #include "debugd/src/debug_mode_tool.h"
 #include "debugd/src/dev_features_tool.h"
 #include "debugd/src/dmesg_tool.h"
+#include "debugd/src/drm_trace_tool.h"
 #include "debugd/src/ec_typec_tool.h"
 #include "debugd/src/example_tool.h"
 #include "debugd/src/icmp_tool.h"
@@ -238,6 +239,12 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
                          bool* result,
                          std::string* csv) override;
 
+  bool DRMTraceSetCategories(brillo::ErrorPtr* error,
+                             uint32_t categories) override;
+  bool DRMTraceSetSize(brillo::ErrorPtr* error, uint32_t size_enum) override;
+  bool DRMTraceAnnotateLog(brillo::ErrorPtr* error,
+                           const std::string& log) override;
+
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
   brillo::dbus_utils::ExportedProperty<bool> crash_sender_test_mode_;
@@ -251,6 +258,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<DebugLogsTool> debug_logs_tool_;
   std::unique_ptr<DebugModeTool> debug_mode_tool_;
   std::unique_ptr<DmesgTool> dmesg_tool_;
+  std::unique_ptr<DRMTraceTool> drm_trace_tool_;
   std::unique_ptr<RestrictedToolWrapper<DevFeaturesTool>>
       dev_features_tool_wrapper_;
   std::unique_ptr<EcTypeCTool> ec_typec_tool_;

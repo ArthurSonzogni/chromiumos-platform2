@@ -48,6 +48,7 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
   dev_features_tool_wrapper_ =
       std::make_unique<RestrictedToolWrapper<DevFeaturesTool>>(bus);
   dmesg_tool_ = std::make_unique<DmesgTool>();
+  drm_trace_tool_ = std::make_unique<DRMTraceTool>();
   ec_typec_tool_ = std::make_unique<EcTypeCTool>();
   example_tool_ = std::make_unique<ExampleTool>();
   icmp_tool_ = std::make_unique<ICMPTool>();
@@ -654,6 +655,21 @@ bool DebugdDBusAdaptor::KernelFeatureList(brillo::ErrorPtr* error,
                                           bool* result,
                                           std::string* csv) {
   return kernel_feature_tool_->KernelFeatureList(error, result, csv);
+}
+
+bool DebugdDBusAdaptor::DRMTraceSetCategories(brillo::ErrorPtr* error,
+                                              uint32_t categories) {
+  return drm_trace_tool_->SetCategories(error, categories);
+}
+
+bool DebugdDBusAdaptor::DRMTraceSetSize(brillo::ErrorPtr* error,
+                                        uint32_t size_enum) {
+  return drm_trace_tool_->SetSize(error, size_enum);
+}
+
+bool DebugdDBusAdaptor::DRMTraceAnnotateLog(brillo::ErrorPtr* error,
+                                            const std::string& log) {
+  return drm_trace_tool_->AnnotateLog(error, log);
 }
 
 }  // namespace debugd

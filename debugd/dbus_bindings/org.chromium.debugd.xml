@@ -1311,6 +1311,83 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
+    <method name="DRMTraceSetCategories">
+      <tp:docstring>
+        Set the log categories to enable for drm_trace.
+      </tp:docstring>
+      <arg name="categories" type="u" direction="in">
+        <tp:docstring>
+          A bitwise OR of categories to enable. Acceptable values are defined
+          in the DRMTraceCategories flags.
+          Setting |categories| to '0' will reset to the default categories.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+    <method name="DRMTraceSetSize">
+      <tp:docstring>
+        Modify the size of the drm_trace buffer.
+      </tp:docstring>
+      <arg name="size" type="u" direction="in">
+        <tp:docstring>
+          The size as defined in the DRMTraceSize enum.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+    <method name="DRMTraceAnnotateLog">
+      <tp:docstring>
+        Append a string to the drm_trace log by writing |log| to
+        /sys/kernel/debug/trace/instances/drm/trace_marker
+        Characters that are not human-readable will be filtered out and
+        replaced with '_'.
+      </tp:docstring>
+      <arg name="log" type="s" direction="in">
+        <tp:docstring>
+          Log contents to append.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+    <tp:flags name="DRMTraceCategories">
+      <tp:docstring>
+        Bit flags representing debug logging categories. Definitions of
+        categories correspond to those in
+        https://elixir.bootlin.com/linux/v5.14.12/source/include/drm/drm_print.h#L277
+        Currently dbusxx-xml2cpp does not extract flags values, so any changes
+        here should be manually flushed to
+        platform/system_api/dbus/service_constants.h.
+      </tp:docstring>
+      <tp:flag suffix="CORE"    value="0x001"/>
+      <tp:flag suffix="DRIVER"  value="0x002"/>
+      <tp:flag suffix="KMS"     value="0x004"/>
+      <tp:flag suffix="PRIME"   value="0x008"/>
+      <tp:flag suffix="ATOMIC"  value="0x010"/>
+      <tp:flag suffix="VBL"     value="0x020"/>
+      <tp:flag suffix="STATE"   value="0x040"/>
+      <tp:flag suffix="LEASE"   value="0x080"/>
+      <tp:flag suffix="DP"      value="0x100"/>
+      <tp:flag suffix="DRMRES"  value="0x200"/>
+    </tp:flags>
+    <tp:enum name="DRMTraceSize">
+      <tp:docstring>
+        Enum values for drm_trace log size.
+        Currently dbusxx-xml2cpp does not extract flags values, so any changes
+        here should be manually flushed to
+        platform/system_api/dbus/service_constants.h.
+      </tp:docstring>
+      <tp:enumvalue suffix="DEFAULT" value='0'>
+        <tp:docstring>
+          Set the size of the drm_trace buffer to its default value.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="DEBUG" value='1'>
+        <tp:docstring>
+          Increase the size of the drm_trace buffer to allow for collecting
+          more verbose logs and a longer history of logs.
+        </tp:docstring>
+      </tp:enumvalue>
+    </tp:enum>
     <signal name="PacketCaptureStart">
       <tp:docstring>
         The signal is emitted when a packet capture process starts in debugd.
