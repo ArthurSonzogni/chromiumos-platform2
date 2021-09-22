@@ -81,8 +81,7 @@ class FuseFrontend {
       fuse_chan_destroy(fuse_->chan);
   }
 
-  bool CreateFuseSession(void* userdata) {
-    fuse_lowlevel_ops fops = {0};  // TODO(noel): setup real fuse ops.
+  bool CreateFuseSession(void* userdata, fuse_lowlevel_ops fops) {
     fuse_chan* chan = fuse_->chan;
     fuse_args* args = fuse_->args;
 
