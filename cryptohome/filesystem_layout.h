@@ -41,12 +41,16 @@ constexpr char kTsFile[] = "timestamp";
 constexpr char kDmcryptContainerMountType[] = "ext4";
 constexpr char kDmcryptContainerMountOptions[] = "discard,commit=600";
 
+constexpr char kUserSecretStashDir[] = "user_secret_stash";
+constexpr char kUserSecretStashFile[] = "uss";
+
 base::FilePath ShadowRoot();
 base::FilePath SaltFile();
 base::FilePath SkelDir();
 base::FilePath VaultKeysetPath(const std::string& obfuscated, int index);
 base::FilePath UserActivityTimestampPath(const std::string& obfuscated,
                                          int index);
+base::FilePath UserSecretStashPath(const std::string& obfuscated_username);
 
 std::string LogicalVolumePrefix(const std::string& obfuscated_username);
 std::string DmcryptVolumePrefix(const std::string& obfuscated_username);

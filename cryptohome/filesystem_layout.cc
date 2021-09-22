@@ -45,6 +45,13 @@ base::FilePath VaultKeysetPath(const std::string& obfuscated, int index) {
       .AddExtension(base::NumberToString(index));
 }
 
+base::FilePath UserSecretStashPath(const std::string& obfuscated_username) {
+  return ShadowRoot()
+      .Append(obfuscated_username)
+      .Append(kUserSecretStashDir)
+      .Append(kUserSecretStashFile);
+}
+
 base::FilePath UserActivityTimestampPath(const std::string& obfuscated,
                                          int index) {
   return VaultKeysetPath(obfuscated, index).AddExtension(kTsFile);

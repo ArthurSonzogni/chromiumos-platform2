@@ -481,6 +481,7 @@ if (use.test) {
       "storage/mount_stack_unittest.cc",
       "storage/mount_unittest.cc",
       "storage/out_of_process_mount_helper_test.cc",
+      "user_secret_stash_storage_unittest.cc",
       "user_secret_stash_unittest.cc",
       "user_session_unittest.cc",
       "userdataauth_unittest.cc",

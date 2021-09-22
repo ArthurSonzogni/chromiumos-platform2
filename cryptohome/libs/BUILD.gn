@@ -155,6 +155,7 @@ static_library("libcrosplatform") {
     "../storage/encrypted_container/fscrypt_container.cc",
     "../storage/encrypted_container/loopback_device.cc",
     "../user_secret_stash.cc",
+    "../user_secret_stash_storage.cc",
   ]
   configs += [ ":target_defaults" ]
   libs = [
