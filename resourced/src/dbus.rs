@@ -12,7 +12,7 @@ use std::time::Duration;
 use anyhow::Result;
 use dbus::ffidisp::{Connection, WatchEvent};
 use dbus_tree::{MTFn, MethodErr, MethodResult};
-use sys_util::{error, PollContext, PollToken, TimerFd, WatchingEvents};
+use sys_util::{error, warn, PollContext, PollToken, TimerFd, WatchingEvents};
 
 use crate::common;
 use crate::memory;
@@ -275,6 +275,11 @@ pub fn service_main() -> Result<()> {
                     }
                 }
                 Token::ResetGameModeTimer => {
+                    warn!("Game mode heartbeat timed out.");
+
+                    // wait() reads the fd. It's necessary to read timerfd after timeout.
+                    reset_game_mode_timer.wait()?;
+
                     if common::set_game_mode(common::GameMode::Off).is_err() {
                         error!("Reset game mode failed.");
                     }
