@@ -23,13 +23,13 @@ class EglManager {
  public:
   EglManager(const EglManager&) = delete;
   EglManager& operator=(const EglManager&) = delete;
-  ~EglManager();
+  virtual ~EglManager();
 
   static std::unique_ptr<EglManager> Create();
-  chromeos::cros_healthd::mojom::GLESInfoPtr FetchGLESInfo();
-  chromeos::cros_healthd::mojom::EGLInfoPtr FetchEGLInfo();
+  virtual chromeos::cros_healthd::mojom::GLESInfoPtr FetchGLESInfo();
+  virtual chromeos::cros_healthd::mojom::EGLInfoPtr FetchEGLInfo();
 
- private:
+ protected:
   EglManager() = default;
 
  private:

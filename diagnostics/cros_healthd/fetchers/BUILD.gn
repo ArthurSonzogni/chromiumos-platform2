@@ -59,6 +59,8 @@ source_set("libcros_healthd_fetchers") {
 if (use.test) {
   pkg_config("libcros_healthd_fetchers_test_pkg_deps") {
     pkg_deps = [
+      "egl",
+      "glesv2",
       "libchrome",
       "libchrome-test",
       "libcros_config",
@@ -78,6 +80,7 @@ if (use.test) {
       "bus_fetcher_test.cc",
       "cpu_fetcher_test.cc",
       "fan_fetcher_test.cc",
+      "graphics_fetcher_test.cc",
       "memory_fetcher_test.cc",
       "network_fetcher_test.cc",
       "process_fetcher_test.cc",
