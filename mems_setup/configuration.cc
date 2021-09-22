@@ -48,6 +48,7 @@ struct LightVpdCalibrationEntry {
 struct LightColorCalibrationEntry {
   std::string iio_name;
   base::Optional<double> value;
+  libmems::IioChannel* chn;
 };
 
 #if USE_IIOSERVICE
@@ -149,6 +150,12 @@ bool Configuration::CopyLightCalibrationFromVpd() {
       {"als_cal_slope", "calibscale"},
   };
 
+  auto chn = sensor_->GetChannel("illuminance");
+  if (!chn) {
+    LOG(ERROR) << "No channel illuminance";
+    return false;
+  }
+
   for (auto& calib_attribute : calib_attributes) {
     auto attrib_value = delegate_->ReadVpdValue(calib_attribute.vpd_name);
     if (!attrib_value.has_value()) {
@@ -163,12 +170,6 @@ bool Configuration::CopyLightCalibrationFromVpd() {
                  << " has invalid value " << attrib_value.value();
       continue;
     }
-    auto chn = sensor_->GetChannel("illuminance");
-    if (!chn) {
-      LOG(ERROR) << "No channel illuminance";
-      return false;
-    }
-    LOG(INFO) << "iio: " << calib_attribute.iio_name;
     if (!chn->WriteDoubleAttribute(calib_attribute.iio_name, value))
       LOG(ERROR) << "failed to set calibration value "
                  << calib_attribute.iio_name;
@@ -178,12 +179,17 @@ bool Configuration::CopyLightCalibrationFromVpd() {
    * RGB sensors may need per channel calibration.
    */
   std::vector<LightColorCalibrationEntry> calib_color_entries = {
-      {"illuminance_red", base::nullopt},
-      {"illuminance_green", base::nullopt},
-      {"illuminance_blue", base::nullopt},
+      {"illuminance_red", base::nullopt, nullptr},
+      {"illuminance_green", base::nullopt, nullptr},
+      {"illuminance_blue", base::nullopt, nullptr},
   };
-  auto attrib_value = delegate_->ReadVpdValue("als_cal_slope_color");
+  for (auto& color_entry : calib_color_entries) {
+    color_entry.chn = sensor_->GetChannel(color_entry.iio_name);
+    if (!color_entry.chn)
+      return true;
+  }
 
+  auto attrib_value = delegate_->ReadVpdValue("als_cal_slope_color");
   if (attrib_value.has_value()) {
     /*
      * Split the attributes in 3 doubles.
@@ -208,13 +214,8 @@ bool Configuration::CopyLightCalibrationFromVpd() {
           LOG(ERROR) << "No value set for " << color_entry.iio_name;
           continue;
         }
-        LOG(ERROR) << "writing " << *color_entry.value;
-        auto chn = sensor_->GetChannel(color_entry.iio_name);
-        if (!chn) {
-          LOG(ERROR) << "No channel " << color_entry.iio_name;
-          return false;
-        }
-        if (!chn->WriteDoubleAttribute("calibscale", *color_entry.value))
+        if (!color_entry.chn->WriteDoubleAttribute("calibscale",
+                                                   *color_entry.value))
           LOG(WARNING) << "failed to to set calibration value "
                        << color_entry.iio_name << " to " << *color_entry.value;
       }
