@@ -100,6 +100,10 @@ int EllipticCurve::ScalarSizeInBytes() const {
   return BN_num_bytes(order_.get());
 }
 
+bool EllipticCurve::IsScalarValid(const BIGNUM& scalar) const {
+  return BN_is_negative(&scalar) == 0 && BN_cmp(&scalar, order_.get()) < 0;
+}
+
 int EllipticCurve::FieldElementSizeInBytes() const {
   unsigned int degree_bits = EC_GROUP_get_degree(group_.get());
   return (degree_bits + 7) >> 3;
@@ -176,7 +180,7 @@ crypto::ScopedEC_POINT EllipticCurve::Multiply(const EC_POINT& point,
   // strictly required by EC_POINT_mul, but we make it here as a requirement for
   // safety and performance reasons - multiplication performs in constant time
   // if scalar is smaller than the curve order.
-  if (BN_is_negative(&scalar) == 1 || BN_cmp(&scalar, order_.get()) >= 0) {
+  if (!IsScalarValid(scalar)) {
     LOG(ERROR) << "Failed to perform multiplication: input scalar is not "
                   "in the expected range [0..curve order-1]";
     return nullptr;
@@ -211,8 +215,7 @@ crypto::ScopedEC_POINT EllipticCurve::MultiplyWithGenerator(
       return nullptr;
     }
   }
-  if (BN_is_negative(scalar_mod.get()) == 1 ||
-      BN_cmp(scalar_mod.get(), order_.get()) >= 0) {
+  if (!IsScalarValid(*scalar_mod)) {
     LOG(ERROR) << "Failed to perform multiplication: input scalar is not "
                   "in the expected range [-curve_order..curve order-1]";
     return nullptr;

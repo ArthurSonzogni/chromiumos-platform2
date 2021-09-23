@@ -398,4 +398,28 @@ TEST_F(EllipticCurveTest, InversePointAddition) {
   EXPECT_TRUE(ec_->AreEqual(*point2, *point_sum_all, context_.get()));
 }
 
+TEST_F(EllipticCurveTest, ScalarRangeCheck) {
+  std::string str_ff(32, static_cast<char>(0xff));
+  brillo::SecureBlob blob_ff(str_ff.begin(), str_ff.end());
+  crypto::ScopedBIGNUM num_ff = SecureBlobToBigNum(blob_ff);
+  EXPECT_FALSE(ec_->IsScalarValid(*num_ff));
+
+  std::string str_23(32, static_cast<char>(0x23));
+  brillo::SecureBlob blob_23(str_23.begin(), str_23.end());
+  crypto::ScopedBIGNUM num_23 = SecureBlobToBigNum(blob_23);
+  EXPECT_TRUE(ec_->IsScalarValid(*num_23));
+
+  std::string str_cc(32, static_cast<char>(0xcc));
+  brillo::SecureBlob blob_cc(str_cc.begin(), str_cc.end());
+  crypto::ScopedBIGNUM num_cc = SecureBlobToBigNum(blob_cc);
+  EXPECT_TRUE(ec_->IsScalarValid(*num_cc));
+
+  std::string str_00(32, static_cast<char>(0));
+  brillo::SecureBlob blob_00(str_00.begin(), str_00.end());
+  crypto::ScopedBIGNUM num_00 = SecureBlobToBigNum(blob_00);
+  EXPECT_TRUE(ec_->IsScalarValid(*num_00));
+
+  EXPECT_FALSE(ec_->IsScalarValid(*ec_->GetOrderForTesting()));
+}
+
 }  // namespace cryptohome

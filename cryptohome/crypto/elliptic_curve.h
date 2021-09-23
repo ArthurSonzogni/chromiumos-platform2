@@ -49,6 +49,9 @@ class EllipticCurve final {
   // Returns scalar size in bytes of a curve order.
   int ScalarSizeInBytes() const;
 
+  // Returns true if scalar is inside the curve order.
+  bool IsScalarValid(const BIGNUM& scalar) const;
+
   // Returns field element (affine coordinate) size in bytes.
   int FieldElementSizeInBytes() const;
 
