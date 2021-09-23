@@ -45,6 +45,13 @@
 
 namespace {
 
+enum class VendorVariant {
+  kUnknown,
+  kCr50,
+  kSimulator,
+  kOther,
+};
+
 const char kPlatformPassword[] = "cros-platform";
 const size_t kMaxPasswordLength = 32;
 // The below maximum is defined in TPM 2.0 Library Spec Part 2 Section 13.1
@@ -94,6 +101,19 @@ std::string HashString(const std::string& plaintext,
   }
   NOTREACHED();
   return std::string();
+}
+
+VendorVariant ToVendorVariant(uint32_t vendor_id) {
+  switch (vendor_id) {
+    case kUnsetVendorId:
+      return VendorVariant::kUnknown;
+    case kVendorIdCr50:
+      return VendorVariant::kCr50;
+    case kVendorIdSimulator:
+      return VendorVariant::kSimulator;
+    default:
+      return VendorVariant::kOther;
+  }
 }
 
 }  // namespace
@@ -3004,10 +3024,19 @@ TPM_RC TpmUtilityImpl::PinWeaverCommand(const std::string& tag,
   }
 
   std::string out;
-  if (IsCr50()) {
-    rc = Cr50VendorCommand(kCr50SubcmdPinWeaver, in, &out);
-  } else {
-    rc = PinWeaverCsmeCommand(in, &out);
+  const VendorVariant vendor_variant = ToVendorVariant(VendorId());
+  switch (vendor_variant) {
+    case VendorVariant::kCr50:
+      rc = Cr50VendorCommand(kCr50SubcmdPinWeaver, in, &out);
+      break;
+    case VendorVariant::kOther:
+    case VendorVariant::kSimulator:
+      rc = PinWeaverCsmeCommand(in, &out);
+      break;
+    default:
+      LOG(WARNING) << "Pinweaver not supported with vendor variant: "
+                   << static_cast<int>(vendor_variant);
+      rc = TPM_RC_FAILURE;
   }
 
   if (rc != TPM_RC_SUCCESS) {
