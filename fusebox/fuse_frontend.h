@@ -91,14 +91,14 @@ class FuseFrontend {
 
     session_ = fuse_lowlevel_new(args, &fops, sizeof(fops), userdata);
     if (!session_) {
-      LOG(ERROR) << "fuse_lowlevel_new() failed";
+      PLOG(ERROR) << "fuse_lowlevel_new() failed";
       return false;
     }
 
     fuse_session_add_chan(session_, chan);
 
     if (fuse_set_signal_handlers(session_) == -1) {
-      LOG(ERROR) << "fuse_set_signal_handlers() failed";
+      PLOG(ERROR) << "fuse_set_signal_handlers() failed";
       return false;
     }
 
