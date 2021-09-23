@@ -76,18 +76,35 @@ proto_library("pinweaver_proto") {
   standalone = true
 }
 
-shared_library("trunks") {
+# The static library of pinweaver-csme.
+# Note: this is dedicatedly built for `trunks.so` to link against.
+# multiple linkages could lead ODR violation.
+source_set("pinweaver_csme_lib") {
   sources = [
-    "background_command_transceiver.cc",
-    "blob_parser.cc",
     "csme/mei_client_char_device.cc",
     "csme/mei_client_factory.cc",
     "csme/mei_client_socket.cc",
     "csme/pinweaver_core_client.cc",
-    "csme/pinweaver_core_client_impl.cc",
     "csme/pinweaver_core_client_null.cc",
     "csme/pinweaver_provision_client.cc",
     "csme/pinweaver_provision_impl.cc",
+  ]
+  if (use.pinweaver_csme) {
+    sources += [ "csme/pinweaver_core_client_impl.cc" ]
+  }
+  configs += [
+    ":target_defaults",
+
+    # -fPIC needed for a shared library to link against.
+    "//common-mk:pic",
+  ]
+  defines = [ "USE_CSME_EMULATOR=${use.csme_emulator}" ]
+}
+
+shared_library("trunks") {
+  sources = [
+    "background_command_transceiver.cc",
+    "blob_parser.cc",
     "error_codes.cc",
     "hmac_authorization_delegate.cc",
     "hmac_session_impl.cc",
@@ -119,6 +136,7 @@ shared_library("trunks") {
   }
   deps = [
     ":interface_proto",
+    ":pinweaver_csme_lib",
     ":pinweaver_proto",
   ]
 }
