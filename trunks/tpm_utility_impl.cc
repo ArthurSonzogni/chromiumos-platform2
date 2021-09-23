@@ -49,6 +49,8 @@ const char kPlatformPassword[] = "cros-platform";
 const size_t kMaxPasswordLength = 32;
 // The below maximum is defined in TPM 2.0 Library Spec Part 2 Section 13.1
 const uint32_t kMaxNVSpaceIndex = (1 << 24) - 1;
+// The value of the vendor ID when the vendor ID is not confirmed yet.
+const uint32_t kUnsetVendorId = 0;
 // Cr50 Vendor ID ("CROS").
 const uint32_t kVendorIdCr50 = 0x43524f53;
 // Simulator Vendor ID ("SIMU").
@@ -62,7 +64,6 @@ const uint16_t kCr50SubcmdManageCCDPwd = 33;
 const uint16_t kCr50SubcmdGetAlertsData = 35;
 const uint16_t kCr50SubcmdPinWeaver = 37;
 const uint16_t kCr50SubcmdGetRoStatus = 57;
-
 // Auth policy used in RSA and ECC templates for EK keys generation.
 // From TCG Credential Profile EK 2.0. Section 2.1.5.
 const std::string kEKTemplateAuthPolicy(
@@ -100,7 +101,7 @@ std::string HashString(const std::string& plaintext,
 namespace trunks {
 
 TpmUtilityImpl::TpmUtilityImpl(const TrunksFactory& factory)
-    : factory_(factory), vendor_id_(0) {
+    : factory_(factory), vendor_id_(kUnsetVendorId) {
   crypto::EnsureOpenSSLInit();
 }
 
@@ -2875,7 +2876,7 @@ TPM_RC TpmUtilityImpl::PinWeaverLogReplay(uint8_t protocol_version,
 }
 
 uint32_t TpmUtilityImpl::VendorId() {
-  if (!vendor_id_) {
+  if (vendor_id_ == kUnsetVendorId) {
     std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
     TPM_RC result = tpm_state->Initialize();
     if (result) {
