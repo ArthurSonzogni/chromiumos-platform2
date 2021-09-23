@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -19,6 +20,7 @@
 #include <libhwsec-foundation/tpm/tpm_version.h>
 
 #include "tpm_manager/server/mock_local_data_store.h"
+#include "tpm_manager/server/mock_pinweaver_provision.h"
 #include "tpm_manager/server/mock_tpm_allowlist.h"
 #include "tpm_manager/server/mock_tpm_initializer.h"
 #include "tpm_manager/server/mock_tpm_manager_metrics.h"
@@ -31,6 +33,7 @@ using testing::_;
 using testing::AtLeast;
 using testing::AtMost;
 using testing::DoAll;
+using testing::Expectation;
 using testing::Ge;
 using testing::Invoke;
 using testing::Le;
@@ -64,10 +67,13 @@ class TpmManagerServiceTestBase : public testing::Test {
   void SetUp() override {
     EXPECT_CALL(mock_tpm_manager_metrics_, ReportVersionFingerprint(_))
         .Times(AtMost(1));
+    auto mock_pinweaver_provision =
+        std::make_unique<NiceMock<MockPinWeaverProvision>>();
+    mock_pinweaver_provision_ = mock_pinweaver_provision.get();
     service_.reset(new TpmManagerService(
         wait_for_ownership, perform_preinit, &mock_local_data_store_,
-        &mock_tpm_status_, &mock_tpm_initializer_, &mock_tpm_nvram_,
-        &mock_tpm_manager_metrics_));
+        std::move(mock_pinweaver_provision), &mock_tpm_status_,
+        &mock_tpm_initializer_, &mock_tpm_nvram_, &mock_tpm_manager_metrics_));
     service_->set_tpm_allowlist_for_testing(&mock_tpm_allowlist_);
     ON_CALL(mock_tpm_allowlist_, IsAllowed()).WillByDefault(Return(true));
     DisablePeriodicDictionaryAttackReset();
@@ -109,6 +115,8 @@ class TpmManagerServiceTestBase : public testing::Test {
   NiceMock<MockTpmStatus> mock_tpm_status_;
   NiceMock<MockTpmAllowlist> mock_tpm_allowlist_;
   NiceMock<MockTpmManagerMetrics> mock_tpm_manager_metrics_;
+  // Owned by `service_` after `SetUp()`.
+  NiceMock<MockPinWeaverProvision>* mock_pinweaver_provision_;
   std::unique_ptr<TpmManagerService> service_;
 
  private:
@@ -205,7 +213,9 @@ TEST_F(TpmManagerServiceTest_Preinit, NoAutoInitialize) {
       .WillRepeatedly(
           DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).Times(0);
-  EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(1);
+  Expectation pw_provision =
+      EXPECT_CALL(*mock_pinweaver_provision_, Provision()).Times(1);
+  EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).After(pw_provision);
   SetupService();
   RunServiceWorkerAndQuit();
 }
@@ -216,6 +226,7 @@ TEST_F(TpmManagerServiceTest_Preinit, TpmAlreadyOwned) {
       .Times(1)
       .WillRepeatedly(
           DoAll(SetArgPointee<0>(TpmStatus::kTpmOwned), Return(true)));
+  EXPECT_CALL(*mock_pinweaver_provision_, Provision()).Times(1);
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
   EXPECT_CALL(mock_tpm_status_, IsDictionaryAttackMitigationEnabled(_))
@@ -296,6 +307,7 @@ TEST_F(TpmManagerServiceTest_Preinit, PruneLocalData) {
 }
 
 TEST_F(TpmManagerServiceTest_NoPreinit, NoPreInitialize) {
+  EXPECT_CALL(*mock_pinweaver_provision_, Provision()).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
   SetupService();

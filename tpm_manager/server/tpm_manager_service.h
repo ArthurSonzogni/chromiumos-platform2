@@ -23,6 +23,7 @@
 #include "tpm_manager/common/typedefs.h"
 #include "tpm_manager/server/local_data_store.h"
 #include "tpm_manager/server/passive_timer.h"
+#include "tpm_manager/server/pinweaver_provision.h"
 #include "tpm_manager/server/tpm_allowlist.h"
 #include "tpm_manager/server/tpm_initializer.h"
 #include "tpm_manager/server/tpm_manager_metrics.h"
@@ -87,6 +88,7 @@ class TpmManagerService : public TpmNvramInterface,
   TpmManagerService(bool wait_for_ownership,
                     bool perform_preinit,
                     LocalDataStore* local_data_store,
+                    std::unique_ptr<PinWeaverProvision> pinweaver_provision,
                     TpmStatus* tpm_status,
                     TpmInitializer* tpm_initializer,
                     TpmNvram* tpm_nvram,
@@ -329,6 +331,9 @@ class TpmManagerService : public TpmNvramInterface,
   void ShutdownTask();
 
   LocalDataStore* local_data_store_;
+
+  std::unique_ptr<PinWeaverProvision> pinweaver_provision_;
+
   TpmStatus* tpm_status_ = nullptr;
   TpmInitializer* tpm_initializer_ = nullptr;
   TpmNvram* tpm_nvram_ = nullptr;

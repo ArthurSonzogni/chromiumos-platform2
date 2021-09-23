@@ -23,6 +23,7 @@
 #include <inttypes.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 
+#include "tpm_manager/server/pinweaver_provision.h"
 #include "tpm_manager/server/tpm_allowlist_impl.h"
 
 namespace {
@@ -113,20 +114,24 @@ TpmManagerService::TpmManagerService(bool wait_for_ownership,
                         nullptr,
                         nullptr,
                         nullptr,
+                        nullptr,
                         &default_tpm_manager_metrics_) {
   CHECK(local_data_store_);
 }
 
-TpmManagerService::TpmManagerService(bool wait_for_ownership,
-                                     bool perform_preinit,
-                                     LocalDataStore* local_data_store,
-                                     TpmStatus* tpm_status,
-                                     TpmInitializer* tpm_initializer,
-                                     TpmNvram* tpm_nvram,
-                                     TpmManagerMetrics* tpm_manager_metrics)
+TpmManagerService::TpmManagerService(
+    bool wait_for_ownership,
+    bool perform_preinit,
+    LocalDataStore* local_data_store,
+    std::unique_ptr<PinWeaverProvision> pinweaver_provision,
+    TpmStatus* tpm_status,
+    TpmInitializer* tpm_initializer,
+    TpmNvram* tpm_nvram,
+    TpmManagerMetrics* tpm_manager_metrics)
     : dictionary_attack_timer_(
           base::TimeDelta::FromHours(kDictionaryAttackResetPeriodInHours)),
       local_data_store_(local_data_store),
+      pinweaver_provision_(std::move(pinweaver_provision)),
       tpm_status_(tpm_status),
       tpm_initializer_(tpm_initializer),
       tpm_nvram_(tpm_nvram),
@@ -183,7 +188,8 @@ void TpmManagerService::InitializeTask(
     const std::shared_ptr<GetTpmStatusReply>& reply) {
   VLOG(1) << "Initializing service...";
 
-  if (!tpm_status_ || !tpm_initializer_ || !tpm_nvram_) {
+  if (!tpm_status_ || !tpm_initializer_ || !tpm_nvram_ ||
+      !pinweaver_provision_) {
     // Setup default objects.
     TPM_SELECT_BEGIN;
     TPM2_SECTION({
@@ -199,6 +205,7 @@ void TpmManagerService::InitializeTask(
         }
         trunks_factory_ = std::move(trunks_factory);
       }
+      pinweaver_provision_ = PinWeaverProvision::Create(*trunks_factory_);
       default_tpm_status_ = std::make_unique<Tpm2StatusImpl>(*trunks_factory_);
       tpm_status_ = default_tpm_status_.get();
       default_tpm_initializer_ = std::make_unique<Tpm2InitializerImpl>(
@@ -209,6 +216,7 @@ void TpmManagerService::InitializeTask(
       tpm_nvram_ = default_tpm_nvram_.get();
     });
     TPM1_SECTION({
+      pinweaver_provision_ = PinWeaverProvision::CreateNoop();
       default_tpm_status_ = std::make_unique<TpmStatusImpl>(local_data_store_);
       tpm_status_ = default_tpm_status_.get();
       default_tpm_initializer_ =
@@ -219,6 +227,7 @@ void TpmManagerService::InitializeTask(
     });
     OTHER_TPM_SECTION({
       LOG(WARNING) << __func__ << ": No TPM on the device.";
+      pinweaver_provision_ = PinWeaverProvision::CreateNoop();
       tpm_allowed_ = false;
       reply->set_enabled(false);
       reply->set_status(STATUS_SUCCESS);
@@ -279,6 +288,20 @@ void TpmManagerService::InitializeTask(
       base::BindOnce(
           &TpmManagerService::PeriodicResetDictionaryAttackCounterTask,
           base::Unretained(this)));
+
+  // Only attempts to provision pinweaver-csme when `perform_preinit_` is
+  // `true`, for we only want it to take place with release images but not
+  // factory images.
+  if (perform_preinit_) {
+    // Supposedly pinweaver-csme should be provisioned during manufacturing;
+    // this is meant for devices that have their FW updraged to the first
+    // version that pinweaver-csme is supported.
+    if (!pinweaver_provision_->Provision()) {
+      LOG(WARNING) << __func__
+                   << ": Failed to provision pinweaver after TPM is owned. "
+                      "(Expected on devices w/o pinervaer-csme support.)";
+    }
+  }
 
   reply->set_owned(TpmStatus::kTpmOwned == ownership_status);
   if (ownership_status == TpmStatus::kTpmOwned) {
