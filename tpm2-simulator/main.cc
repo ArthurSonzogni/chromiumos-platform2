@@ -4,13 +4,23 @@
 
 #include <memory>
 
-#include "tpm2-simulator/simulator.h"
-#include "tpm2-simulator/tpm_executor_tpm2_impl.h"
-
 #include <base/at_exit.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+
+#include "tpm2-simulator/simulator.h"
+#include "tpm2-simulator/tpm_executor_version.h"
+
+#if USE_TPM1
+#include "tpm2-simulator/tpm_executor_tpm1_impl.h"
+#endif
+
+#if USE_TPM2
+#include "tpm2-simulator/tpm_executor_tpm2_impl.h"
+#endif
+
+using tpm2_simulator::TpmExecutorVersion;
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(sigstop, true, "raise SIGSTOP when TPM initialized");
@@ -26,11 +36,27 @@ int main(int argc, char* argv[]) {
     PLOG(ERROR) << "Failed to change to current directory";
   }
 
-  auto tpm_executor_impl =
-      std::make_unique<tpm2_simulator::TpmExecutorTpm2Impl>();
+  TpmExecutorVersion version = tpm2_simulator::GetTpmExecutorVersion();
 
-  tpm2_simulator::SimulatorDaemon daemon(tpm_executor_impl.get());
+  std::unique_ptr<tpm2_simulator::TpmExecutor> executor;
+  switch (version) {
+#if USE_TPM1
+    case TpmExecutorVersion::kTpm1:
+      executor = std::make_unique<tpm2_simulator::TpmExecutorTpm1Impl>();
+      break;
+#endif
+
+#if USE_TPM2
+    case TpmExecutorVersion::kTpm2:
+      executor = std::make_unique<tpm2_simulator::TpmExecutorTpm2Impl>();
+      break;
+#endif
+
+    default:
+      NOTREACHED() << "Unknown TPM executor version";
+  }
+
+  tpm2_simulator::SimulatorDaemon daemon(executor.get());
   daemon.set_sigstop_on_initialized(FLAGS_sigstop);
-
   daemon.Run();
 }

@@ -19,6 +19,7 @@ class TpmExecutor {
   virtual void InitializeVTPM() = 0;
   virtual size_t GetCommandSize(const std::string& command) = 0;
   virtual std::string RunCommand(const std::string& command) = 0;
+  virtual bool IsTPM2() = 0;
 };
 
 }  // namespace tpm2_simulator
