@@ -183,4 +183,26 @@ TEST_F(CryptohomeKeysManagerTest, HasAnyCryptohomeKeyNoKey) {
   EXPECT_FALSE(cryptohome_keys_manager_->HasAnyCryptohomeKey());
 }
 
+TEST_F(CryptohomeKeysManagerTest, HasCryptohomeKey) {
+  MockCryptohomeKeyLoader* mock_rsa_loader =
+      AddMockLoader(CryptohomeKeyType::kRSA);
+  MockCryptohomeKeyLoader* mock_ecc_loader =
+      AddMockLoader(CryptohomeKeyType::kECC);
+  InitKeysManager();
+  EXPECT_CALL(*mock_rsa_loader, HasCryptohomeKey()).Times(0);
+  EXPECT_CALL(*mock_ecc_loader, HasCryptohomeKey())
+      .Times(AtMost(1))
+      .WillRepeatedly(Return(true));
+  EXPECT_TRUE(
+      cryptohome_keys_manager_->HasCryptohomeKey(CryptohomeKeyType::kECC));
+}
+
+TEST_F(CryptohomeKeysManagerTest, HasCryptohomeKeyNoKey) {
+  MockCryptohomeKeyLoader* mock_rsa_loader =
+      AddMockLoader(CryptohomeKeyType::kRSA);
+  InitKeysManager();
+  EXPECT_CALL(*mock_rsa_loader, HasCryptohomeKey()).Times(0);
+  EXPECT_FALSE(
+      cryptohome_keys_manager_->HasCryptohomeKey(CryptohomeKeyType::kECC));
+}
 }  // namespace cryptohome

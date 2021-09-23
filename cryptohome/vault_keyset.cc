@@ -37,6 +37,7 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_bound_to_pcr_auth_block.h"
+#include "cryptohome/tpm_ecc_auth_block.h"
 #include "cryptohome/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/vault_keyset.pb.h"
 
@@ -622,6 +623,29 @@ void VaultKeyset::SetChallengeCredentialState(
   }
 }
 
+void VaultKeyset::SetTpmEccState(const TpmEccAuthBlockState& auth_state) {
+  flags_ = SerializedVaultKeyset::TPM_WRAPPED |
+           SerializedVaultKeyset::PCR_BOUND | SerializedVaultKeyset::ECC;
+  if (auth_state.sealed_hvkkm.has_value()) {
+    tpm_key_ = auth_state.sealed_hvkkm.value();
+  }
+  if (auth_state.extended_sealed_hvkkm.has_value()) {
+    extended_tpm_key_ = auth_state.extended_sealed_hvkkm.value();
+  }
+  if (auth_state.tpm_public_key_hash.has_value()) {
+    tpm_public_key_hash_ = auth_state.tpm_public_key_hash.value();
+  }
+  if (auth_state.auth_value_rounds.has_value()) {
+    password_rounds_ = auth_state.auth_value_rounds.value();
+  }
+  if (auth_state.salt.has_value()) {
+    auth_salt_ = auth_state.salt.value();
+  }
+  if (auth_state.vkk_iv.has_value()) {
+    vkk_iv_ = auth_state.vkk_iv.value();
+  }
+}
+
 void VaultKeyset::SetAuthBlockState(const AuthBlockState& auth_state) {
   if (auto* state =
           absl::get_if<TpmNotBoundToPcrAuthBlockState>(&auth_state.state)) {
@@ -638,6 +662,9 @@ void VaultKeyset::SetAuthBlockState(const AuthBlockState& auth_state) {
   } else if (auto* state = absl::get_if<ChallengeCredentialAuthBlockState>(
                  &auth_state.state)) {
     SetChallengeCredentialState(*state);
+  } else if (auto* state =
+                 absl::get_if<TpmEccAuthBlockState>(&auth_state.state)) {
+    SetTpmEccState(*state);
   } else {
     // other states are not supported.
     NOTREACHED() << "Invalid auth block state type";
@@ -784,12 +811,41 @@ bool VaultKeyset::GetDoubleWrappedCompatState(
   return true;
 }
 
+bool VaultKeyset::GetTpmEccState(AuthBlockState* auth_state) const {
+  // The AuthBlock can function without the |tpm_public_key_hash_|, but not
+  // without the |tpm_key_| or | extended_tpm_key_|.
+  if (!password_rounds_.has_value() || !tpm_key_.has_value() ||
+      !extended_tpm_key_.has_value() || !vkk_iv_.has_value()) {
+    return false;
+  }
+
+  TpmEccAuthBlockState state;
+  state.salt = auth_salt_;
+  state.sealed_hvkkm = tpm_key_.value();
+  state.extended_sealed_hvkkm = extended_tpm_key_.value();
+  state.auth_value_rounds = password_rounds_.value();
+  state.vkk_iv = vkk_iv_.value();
+  if (tpm_public_key_hash_.has_value()) {
+    state.tpm_public_key_hash = tpm_public_key_hash_.value();
+  }
+  if (wrapped_reset_seed_.has_value()) {
+    state.wrapped_reset_seed = wrapped_reset_seed_.value();
+  }
+
+  auth_state->state = std::move(state);
+  return true;
+}
+
 bool VaultKeyset::GetAuthBlockState(AuthBlockState* auth_state) const {
   // First case, handle a group of users with keysets that were incorrectly
   // flagged as being both TPM and scrypt wrapped.
   if ((flags_ & SerializedVaultKeyset::SCRYPT_WRAPPED) &&
       (flags_ & SerializedVaultKeyset::TPM_WRAPPED)) {
     return GetDoubleWrappedCompatState(auth_state);
+  } else if (flags_ & SerializedVaultKeyset::TPM_WRAPPED &&
+             flags_ & SerializedVaultKeyset::PCR_BOUND &&
+             flags_ & SerializedVaultKeyset::ECC) {
+    return GetTpmEccState(auth_state);
   } else if (flags_ & SerializedVaultKeyset::TPM_WRAPPED &&
              flags_ & SerializedVaultKeyset::PCR_BOUND) {
     return GetTpmBoundToPcrState(auth_state);
@@ -898,34 +954,34 @@ bool VaultKeyset::EncryptVaultKeyset(const SecureBlob& vault_key,
 // TODO(crbug.com/1216659): Move AuthBlock to AuthFactor once it is ready.
 std::unique_ptr<AuthBlock> VaultKeyset::GetAuthBlockForCreation() const {
   if (IsLECredential()) {
-    LOG(ERROR) << "LE Credential block.";
     ReportCreateAuthBlock(AuthBlockType::kPinWeaver);
     return std::make_unique<PinWeaverAuthBlock>(
         crypto_->le_manager(), crypto_->cryptohome_keys_manager());
   }
 
   if (IsSignatureChallengeProtected()) {
-    LOG(ERROR) << "SignatureChallenge block.";
-
     ReportCreateAuthBlock(AuthBlockType::kChallengeCredential);
     return std::make_unique<ChallengeCredentialAuthBlock>();
   }
   bool use_tpm = crypto_->tpm() && crypto_->tpm()->IsOwned();
   bool with_user_auth = crypto_->CanUnsealWithUserAuth();
-  LOG(ERROR) << "use_tpm: " << use_tpm
-             << "/nwith_user_auth: " << with_user_auth;
+  bool has_ecc_key = crypto_->cryptohome_keys_manager() &&
+                     crypto_->cryptohome_keys_manager()->HasCryptohomeKey(
+                         CryptohomeKeyType::kECC);
 
-  if (use_tpm && with_user_auth) {
-    LOG(ERROR) << "use_tpm && with_user_auth block.";
+  if (use_tpm && with_user_auth && has_ecc_key) {
+    ReportCreateAuthBlock(AuthBlockType::kTpmEcc);
+    return std::make_unique<TpmEccAuthBlock>(
+        crypto_->tpm(), crypto_->cryptohome_keys_manager());
+  }
 
+  if (use_tpm && with_user_auth && !has_ecc_key) {
     ReportCreateAuthBlock(AuthBlockType::kTpmBoundToPcr);
     return std::make_unique<TpmBoundToPcrAuthBlock>(
         crypto_->tpm(), crypto_->cryptohome_keys_manager());
   }
 
   if (use_tpm && !with_user_auth) {
-    LOG(ERROR) << "use_tpm && !with_user_auth block.";
-
     ReportCreateAuthBlock(AuthBlockType::kTpmNotBoundToPcr);
     return std::make_unique<TpmNotBoundToPcrAuthBlock>(
         crypto_->tpm(), crypto_->cryptohome_keys_manager());
@@ -949,16 +1005,21 @@ std::unique_ptr<AuthBlock> VaultKeyset::GetAuthBlockForDerivation() {
     ReportDeriveAuthBlock(AuthBlockType::kDoubleWrappedCompat);
     return std::make_unique<DoubleWrappedCompatAuthBlock>(
         crypto_->tpm(), crypto_->cryptohome_keys_manager());
+  } else if (flags_ & SerializedVaultKeyset::TPM_WRAPPED &&
+             flags_ & SerializedVaultKeyset::PCR_BOUND &&
+             flags_ & SerializedVaultKeyset::ECC) {
+    ReportDeriveAuthBlock(AuthBlockType::kTpmEcc);
+    return std::make_unique<TpmEccAuthBlock>(
+        crypto_->tpm(), crypto_->cryptohome_keys_manager());
+  } else if (flags_ & SerializedVaultKeyset::TPM_WRAPPED &&
+             flags_ & SerializedVaultKeyset::PCR_BOUND) {
+    ReportDeriveAuthBlock(AuthBlockType::kTpmBoundToPcr);
+    return std::make_unique<TpmBoundToPcrAuthBlock>(
+        crypto_->tpm(), crypto_->cryptohome_keys_manager());
   } else if (flags_ & SerializedVaultKeyset::TPM_WRAPPED) {
-    if (flags_ & SerializedVaultKeyset::PCR_BOUND) {
-      ReportDeriveAuthBlock(AuthBlockType::kTpmBoundToPcr);
-      return std::make_unique<TpmBoundToPcrAuthBlock>(
-          crypto_->tpm(), crypto_->cryptohome_keys_manager());
-    } else {
-      ReportDeriveAuthBlock(AuthBlockType::kTpmNotBoundToPcr);
-      return std::make_unique<TpmNotBoundToPcrAuthBlock>(
-          crypto_->tpm(), crypto_->cryptohome_keys_manager());
-    }
+    ReportDeriveAuthBlock(AuthBlockType::kTpmNotBoundToPcr);
+    return std::make_unique<TpmNotBoundToPcrAuthBlock>(
+        crypto_->tpm(), crypto_->cryptohome_keys_manager());
   } else if (flags_ & SerializedVaultKeyset::SCRYPT_WRAPPED) {
     ReportDeriveAuthBlock(AuthBlockType::kLibScryptCompat);
     return std::make_unique<LibScryptCompatAuthBlock>();
@@ -1319,6 +1380,10 @@ SerializedVaultKeyset VaultKeyset::ToSerialized() const {
     serialized.set_fscrypt_policy_version(fscrypt_policy_version_.value());
   }
 
+  if (vkk_iv_.has_value()) {
+    serialized.set_vkk_iv(vkk_iv_->data(), vkk_iv_->size());
+  }
+
   return serialized;
 }
 
@@ -1442,6 +1507,11 @@ void VaultKeyset::InitializeFromSerialized(
 
   if (serialized.has_fscrypt_policy_version()) {
     fscrypt_policy_version_ = serialized.fscrypt_policy_version();
+  }
+
+  if (serialized.has_vkk_iv()) {
+    vkk_iv_ = brillo::SecureBlob(serialized.vkk_iv().begin(),
+                                 serialized.vkk_iv().end());
   }
 }
 

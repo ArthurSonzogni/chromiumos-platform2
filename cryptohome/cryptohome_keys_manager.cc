@@ -79,4 +79,9 @@ bool CryptohomeKeysManager::HasAnyCryptohomeKey() {
   return false;
 }
 
+bool CryptohomeKeysManager::HasCryptohomeKey(CryptohomeKeyType key_type) {
+  CryptohomeKeyLoader* key_loader = GetKeyLoader(key_type);
+  return key_loader && key_loader->HasCryptohomeKey();
+}
+
 }  // namespace cryptohome

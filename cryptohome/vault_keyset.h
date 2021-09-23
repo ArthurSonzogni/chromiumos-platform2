@@ -214,6 +214,7 @@ class VaultKeyset {
   bool GetSignatureChallengeState(AuthBlockState* auth_state) const;
   bool GetLibScryptCompatState(AuthBlockState* auth_state) const;
   bool GetDoubleWrappedCompatState(AuthBlockState* auth_state) const;
+  bool GetTpmEccState(AuthBlockState* auth_state) const;
 
   // Reads an auth block state and update the VaultKeyset with what it
   // returns.
@@ -227,6 +228,7 @@ class VaultKeyset {
   void SetLibScryptCompatState(const LibScryptCompatAuthBlockState& auth_state);
   void SetChallengeCredentialState(
       const ChallengeCredentialAuthBlockState& auth_state);
+  void SetTpmEccState(const TpmEccAuthBlockState& auth_state);
 
   // This function serves as a factory method to return the authblock used in
   // authentication creation.
@@ -323,6 +325,8 @@ class VaultKeyset {
   int32_t flags_;
   // The salt used to derive the user input in auth block.
   brillo::SecureBlob auth_salt_;
+  // The IV used to encrypt the encryption key.
+  base::Optional<brillo::SecureBlob> vkk_iv_;
   // legacy_index_ is the index of the keyset for the user. It is called legacy
   // due to previous plans to fully switch to label-based addressing, which,
   // unfortunately, wasn't followed through.
@@ -405,6 +409,7 @@ class VaultKeyset {
   FRIEND_TEST_ALL_PREFIXES(LeCredentialsManagerTest, Encrypt);
   FRIEND_TEST_ALL_PREFIXES(LeCredentialsManagerTest, EncryptFail);
   FRIEND_TEST_ALL_PREFIXES(LeCredentialsManagerTest, EncryptTestReset);
+  FRIEND_TEST_ALL_PREFIXES(VaultKeysetTest, GetEccAuthBlockStateTest);
   FRIEND_TEST_ALL_PREFIXES(VaultKeysetTest, EncryptionTest);
   FRIEND_TEST_ALL_PREFIXES(VaultKeysetTest, DecryptionTest);
   FRIEND_TEST_ALL_PREFIXES(VaultKeysetTest, LibScryptBackwardCompatibility);

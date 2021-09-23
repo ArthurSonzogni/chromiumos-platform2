@@ -26,6 +26,8 @@ message SerializedVaultKeyset {
     // extended_tpm_key corresponds to the state where PCR is extended by user
     // specific value.
     PCR_BOUND = 32;
+    // The keyset is encrypted via cryptohome ECC key or not.
+    ECC = 64;
   }
   required int32 flags = 1;
   required bytes salt = 2;
@@ -119,6 +121,9 @@ message SerializedVaultKeyset {
 
   // Set if the vault keyset should be used with fscrypt v2 encryption policies.
   optional int32 fscrypt_policy_version = 20;
+
+  // The IV to decrypt EVK.
+  optional bytes vkk_iv = 21;
 
   // Deprecated fields that were removed.
   reserved 7, 19;

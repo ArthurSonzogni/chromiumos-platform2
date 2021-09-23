@@ -346,6 +346,39 @@ TEST_F(VaultKeysetTest, GetPcrBoundAuthBlockStateTest) {
   EXPECT_TRUE(tpm_state->tpm_key.has_value());
 }
 
+TEST_F(VaultKeysetTest, GetEccAuthBlockStateTest) {
+  MockPlatform platform;
+  Crypto crypto(&platform);
+  VaultKeyset keyset;
+  keyset.Initialize(&platform, &crypto);
+
+  keyset.CreateRandom();
+  keyset.SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
+                  SerializedVaultKeyset::SCRYPT_DERIVED |
+                  SerializedVaultKeyset::ECC |
+                  SerializedVaultKeyset::PCR_BOUND);
+  keyset.SetTpmPublicKeyHash(brillo::SecureBlob("yadayada"));
+  keyset.SetTPMKey(brillo::SecureBlob("blabla"));
+  keyset.SetExtendedTPMKey(brillo::SecureBlob("foobaz"));
+  keyset.password_rounds_ = 5;
+  keyset.vkk_iv_ = brillo::SecureBlob("wowowow");
+  keyset.auth_salt_ = brillo::SecureBlob("salt");
+
+  AuthBlockState auth_state;
+  EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
+
+  const TpmEccAuthBlockState* tpm_state =
+      absl::get_if<TpmEccAuthBlockState>(&auth_state.state);
+
+  EXPECT_NE(tpm_state, nullptr);
+  EXPECT_TRUE(tpm_state->salt.has_value());
+  EXPECT_TRUE(tpm_state->sealed_hvkkm.has_value());
+  EXPECT_TRUE(tpm_state->extended_sealed_hvkkm.has_value());
+  EXPECT_TRUE(tpm_state->tpm_public_key_hash.has_value());
+  EXPECT_TRUE(tpm_state->vkk_iv.has_value());
+  EXPECT_EQ(tpm_state->auth_value_rounds.value(), 5);
+}
+
 TEST_F(VaultKeysetTest, GetNotPcrBoundAuthBlockState) {
   MockPlatform platform;
   Crypto crypto(&platform);

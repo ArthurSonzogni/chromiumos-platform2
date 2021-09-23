@@ -36,13 +36,21 @@ class CryptohomeKeysManager {
 
   virtual ~CryptohomeKeysManager() = default;
 
+  // Init all key loaders.
   virtual void Init();
 
+  // Return the specific key loader.
   virtual CryptohomeKeyLoader* GetKeyLoader(CryptohomeKeyType key_type);
 
+  // Reload cryptohome keys in all key loaders. Return true when all key loaders
+  // reload successfully.
   virtual bool ReloadAllCryptohomeKeys();
 
+  // Whether the key manager has any cryptohome key or not.
   virtual bool HasAnyCryptohomeKey();
+
+  // Whether the specific key loader has cryptohome key or not.
+  virtual bool HasCryptohomeKey(CryptohomeKeyType key_type);
 
  private:
   std::map<CryptohomeKeyType, std::unique_ptr<CryptohomeKeyLoader>>
