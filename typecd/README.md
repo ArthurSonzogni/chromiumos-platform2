@@ -190,3 +190,21 @@ session event, performs an alternate mode switch (by exiting the current mode an
 
 For unit tests, where it's difficult to emulate the asynchronous `session_manager` events, we emulate the same behaviour by calling
 the `PortManager`'s `SessionManagerObserverInterface` functions.
+
+## Alternate Mode Entry examples
+
+On `Partner`s which support both Thunderbolt 3 (TBT3) alternate mode as well as DisplayPort (DP) alternate mode, the choice of which
+mode to enter can depend on a few factors like the current user session state and the value of the `PeripheralDataAccessEnabled`
+device setting. We can describe the expected behaviour with the help of a table. NOTE: The following applies *only* to TBT3 docks and
+peripherals that also support DP alternate mode.
+
+| Device Event                           | PciPeripheralAccess == true | PciPeripheralAccess ==  false |
+|    :--------------------------------:  |     :------------------:    |  :-------------------------:  |
+| Hotplug when unlocked                  | TBT3                        | DP                            |
+| Hotplug when locked                    | DP                          | DP                            |
+| Hotplug when logged out                | DP                          | DP                            |
+| Hotplug - Guest Mode                   | DP                          | DP                            |
+| Already connected, then screen unlocks | DP -> TBT3                  | DP                            |
+| Already connected, then screen locks   | TBT3                        | DP                            |
+| Already connected, then login occurs   | DP -> TBT3                  | DP                            |
+| Already connected, then logout occurs  | TBT3 -> DP                  | DP                            |
