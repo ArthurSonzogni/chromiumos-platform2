@@ -194,12 +194,14 @@ bool FakePlatform::IsLink(const base::FilePath& path) const {
 }
 
 void FakePlatform::RemoveFakeEntries(const base::FilePath& path) {
+  base::AutoLock lock(mappings_lock_);
   xattrs_.erase(path);
   file_owners_.erase(path);
   file_mode_.erase(path);
 }
 
 void FakePlatform::RemoveFakeEntriesRecursive(const base::FilePath& path) {
+  base::AutoLock lock(mappings_lock_);
   RemoveFakeEntriesRecursiveImpl(path, &xattrs_);
   RemoveFakeEntriesRecursiveImpl(path, &file_owners_);
   RemoveFakeEntriesRecursiveImpl(path, &file_mode_);
