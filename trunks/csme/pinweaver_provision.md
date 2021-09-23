@@ -23,7 +23,9 @@ comparing the hash value.
 it provisions the salting key for **pinweaver-csme**. Specifically, it persists
 the salting key in TPM to a persistent object handle that is well-known to CSME
 ; then, it calls CSME to set and commit the hash of that salting key hash to
-fuses so CSME can verify the salting key in the future.
+fuses so CSME can verify the salting key in the future. If the device has
+built-in pinweaver support by GSC (e.g., cr50), the content to provision is
+all 0s, in order to disable the pinweaver functionality by CSME.
 
 If the salting key is persisted already, it skips the persisting process.
 
@@ -35,7 +37,8 @@ once, calling this subcommand should also return success (i.e. returning 0).
 ## `pinweaver_provision --init_owner`
 
 It asks CSME to initialize the resources after TPM clear. In particular, the
-necessary NV spaces in TPM are allocated per request by CSME.
+necessary NV spaces in TPM are allocated per request by CSME. Note that if the
+device is provisioned w/ all-0s, this command will fail.
 
 ## Default subcommand
 

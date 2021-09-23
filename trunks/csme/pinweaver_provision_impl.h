@@ -21,6 +21,7 @@ class PinWeaverProvisionImpl : public PinWeaverProvision {
   bool InitOwner() override;
 
  private:
+  bool GetProvisionKeyContent(std::string& key);
   bool ProvisionSaltingKeyHash(const std::string& public_key_hash);
   bool InitOwnerInternal();
 };
