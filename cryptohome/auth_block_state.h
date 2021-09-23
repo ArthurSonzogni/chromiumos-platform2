@@ -124,6 +124,28 @@ struct CryptohomeRecoveryAuthBlockState {
   base::Optional<brillo::SecureBlob> channel_priv_key;
 };
 
+struct TpmEccAuthBlockState {
+  // The salt used to derive the user input with scrypt.
+  base::Optional<brillo::SecureBlob> salt;
+  // The IV to decrypt EVK.
+  base::Optional<brillo::SecureBlob> vkk_iv;
+  // The number of rounds the auth value generating process is called.
+  base::Optional<uint32_t> auth_value_rounds;
+  // HVKKM: Hardware Vault Keyset Key Material.
+  // SVKKM: Software Vault Keyset Key Material.
+  // We would use HVKKM and SVKKM to derive the VKK.
+  // The HVKKM are encrypted with the user's password, TPM, and binds to empty
+  // current user state.
+  base::Optional<brillo::SecureBlob> sealed_hvkkm;
+  // Same as |sealed_hvkkm|, but extends the current user state to the specific
+  // user.
+  base::Optional<brillo::SecureBlob> extended_sealed_hvkkm;
+  // A check if this is the same TPM that wrapped the credential.
+  base::Optional<brillo::SecureBlob> tpm_public_key_hash;
+  // The wrapped reset seed to reset LE credentials.
+  base::Optional<brillo::SecureBlob> wrapped_reset_seed;
+};
+
 struct AuthBlockState {
   // Returns an Flatbuffer offset which can be added to other Flatbuffers
   // tables. Returns a zero offset for errors since AuthBlockState
@@ -140,7 +162,8 @@ struct AuthBlockState {
                 LibScryptCompatAuthBlockState,
                 ChallengeCredentialAuthBlockState,
                 DoubleWrappedCompatAuthBlockState,
-                CryptohomeRecoveryAuthBlockState>
+                CryptohomeRecoveryAuthBlockState,
+                TpmEccAuthBlockState>
       state;
 };
 

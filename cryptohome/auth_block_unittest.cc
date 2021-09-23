@@ -17,6 +17,7 @@
 #include "cryptohome/auth_block_state.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/aes.h"
+#include "cryptohome/crypto/elliptic_curve_error.h"
 #include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_recovery_auth_block.h"
@@ -31,6 +32,7 @@
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/pin_weaver_auth_block.h"
 #include "cryptohome/tpm_bound_to_pcr_auth_block.h"
+#include "cryptohome/tpm_ecc_auth_block.h"
 #include "cryptohome/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -50,6 +52,18 @@ using ::testing::SaveArg;
 using ::testing::SetArgPointee;
 
 namespace cryptohome {
+
+namespace {
+TpmEccAuthBlockState GetDefaultEccAuthBlockState() {
+  TpmEccAuthBlockState auth_block_state;
+  auth_block_state.salt = brillo::SecureBlob(32, 'A');
+  auth_block_state.vkk_iv = brillo::SecureBlob(32, 'B');
+  auth_block_state.sealed_hvkkm = brillo::SecureBlob(32, 'C');
+  auth_block_state.extended_sealed_hvkkm = brillo::SecureBlob(32, 'D');
+  auth_block_state.auth_value_rounds = 5;
+  return auth_block_state;
+}
+}  // namespace
 
 TEST(TpmBoundToPcrTest, CreateTest) {
   // Set up inputs to the test.
@@ -841,6 +855,563 @@ TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   EXPECT_EQ(created_key_blobs.vkk_key, derived_key_blobs.vkk_key);
   EXPECT_EQ(created_key_blobs.vkk_iv, derived_key_blobs.vkk_iv);
   EXPECT_EQ(created_key_blobs.chaps_iv, derived_key_blobs.chaps_iv);
+}
+
+// Test the TpmEccAuthBlock::Create works correctly.
+TEST(TpmEccAuthBlockTest, CreateTest) {
+  // Set up inputs to the test.
+  brillo::SecureBlob vault_key(20, 'C');
+  std::string obfuscated_username = "OBFUSCATED_USERNAME";
+
+  // Set up the mock expectations.
+  brillo::SecureBlob scrypt_derived_key;
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  brillo::SecureBlob auth_value(32, 'a');
+  Tpm::TpmVersionInfo version_info;
+  version_info.manufacturer = 0x43524f53;
+  EXPECT_CALL(tpm, GetVersionInfo(_))
+      .WillOnce(DoAll(SetArgPointee<0>(version_info), Return(true)));
+  EXPECT_CALL(tpm, GetEccAuthValue(_, _, _))
+      .Times(Exactly(5))
+      .WillOnce(DoAll(SaveArg<1>(&scrypt_derived_key),
+                      SetArgPointee<2>(auth_value),
+                      ReturnError<TPMErrorBase>()))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<2>(auth_value), ReturnError<TPMErrorBase>()));
+  EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, auth_value, _, _))
+      .WillOnce(ReturnError<TPMErrorBase>())
+      .WillOnce(ReturnError<TPMErrorBase>());
+
+  AuthInput user_input = {vault_key,
+                          /*locked_to_single_user=*/base::nullopt,
+                          obfuscated_username,
+                          /*reset_secret=*/base::nullopt};
+  KeyBlobs vkk_data;
+  CryptoError error;
+
+  TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+  auto auth_state = auth_block.Create(user_input, &vkk_data, &error);
+  EXPECT_TRUE(absl::holds_alternative<TpmEccAuthBlockState>(auth_state->state));
+
+  EXPECT_NE(vkk_data.vkk_key, base::nullopt);
+  EXPECT_NE(vkk_data.vkk_iv, base::nullopt);
+  EXPECT_NE(vkk_data.chaps_iv, base::nullopt);
+
+  auto& tpm_state = absl::get<TpmEccAuthBlockState>(auth_state->state);
+
+  EXPECT_TRUE(tpm_state.salt.has_value());
+  const brillo::SecureBlob& salt = tpm_state.salt.value();
+  brillo::SecureBlob scrypt_derived_key_result(kDefaultPassBlobSize);
+  EXPECT_TRUE(
+      DeriveSecretsScrypt(vault_key, salt, {&scrypt_derived_key_result}));
+  EXPECT_EQ(scrypt_derived_key, scrypt_derived_key_result);
+
+  EXPECT_EQ(CryptoError::CE_NONE, error);
+}
+
+// Test the retry function of TpmEccAuthBlock::Create works correctly.
+TEST(TpmEccAuthBlockTest, CreateRetryTest) {
+  // Set up inputs to the test.
+  brillo::SecureBlob vault_key(20, 'C');
+  std::string obfuscated_username = "OBFUSCATED_USERNAME";
+
+  // Set up the mock expectations.
+  brillo::SecureBlob scrypt_derived_key;
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  brillo::SecureBlob auth_value(32, 'a');
+  Tpm::TpmVersionInfo version_info;
+  version_info.manufacturer = 0x43524f53;
+  EXPECT_CALL(tpm, GetVersionInfo(_))
+      .Times(Exactly(2))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(version_info), Return(true)));
+
+  // Add some communication errors and retry errors that may come from TPM
+  // daemon.
+  EXPECT_CALL(tpm, GetEccAuthValue(_, _, _))
+      .Times(Exactly(11))
+      .WillOnce(ReturnError<TPMError>("comm", TPMRetryAction::kCommunication))
+      .WillOnce(ReturnError<TPMError>("later", TPMRetryAction::kLater))
+      .WillOnce(ReturnError<EllipticCurveError>(
+          EllipticCurveErrorCode::kScalarOutOfRange))
+      .WillOnce(ReturnError<TPMError>("comm", TPMRetryAction::kCommunication))
+      .WillOnce(ReturnError<TPMError>("later", TPMRetryAction::kLater))
+      .WillOnce(DoAll(SaveArg<1>(&scrypt_derived_key),
+                      SetArgPointee<2>(auth_value),
+                      ReturnError<TPMErrorBase>()))
+      .WillOnce(ReturnError<TPMError>("comm", TPMRetryAction::kCommunication))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<2>(auth_value), ReturnError<TPMErrorBase>()));
+
+  // Add some communication errors that may come from TPM daemon.
+  EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, auth_value, _, _))
+      .WillOnce(ReturnError<TPMError>("comm", TPMRetryAction::kCommunication))
+      .WillOnce(ReturnError<TPMErrorBase>())
+      .WillOnce(ReturnError<TPMError>("comm", TPMRetryAction::kCommunication))
+      .WillOnce(ReturnError<TPMErrorBase>());
+
+  // Add some communication errors that may come from TPM daemon.
+  EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
+      .WillOnce(ReturnError<TPMError>("comm", TPMRetryAction::kCommunication))
+      .WillOnce(ReturnError<TPMError>("comm", TPMRetryAction::kCommunication))
+      .WillOnce(ReturnError<TPMErrorBase>());
+
+  AuthInput user_input = {vault_key,
+                          /*locked_to_single_user=*/base::nullopt,
+                          obfuscated_username,
+                          /*reset_secret=*/base::nullopt};
+  KeyBlobs vkk_data;
+  CryptoError error;
+
+  TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+  auto auth_state = auth_block.Create(user_input, &vkk_data, &error);
+  EXPECT_TRUE(absl::holds_alternative<TpmEccAuthBlockState>(auth_state->state));
+
+  EXPECT_NE(vkk_data.vkk_key, base::nullopt);
+  EXPECT_NE(vkk_data.vkk_iv, base::nullopt);
+  EXPECT_NE(vkk_data.chaps_iv, base::nullopt);
+
+  auto& tpm_state = absl::get<TpmEccAuthBlockState>(auth_state->state);
+
+  EXPECT_TRUE(tpm_state.salt.has_value());
+  const brillo::SecureBlob& salt = tpm_state.salt.value();
+  brillo::SecureBlob scrypt_derived_key_result(kDefaultPassBlobSize);
+  EXPECT_TRUE(
+      DeriveSecretsScrypt(vault_key, salt, {&scrypt_derived_key_result}));
+  EXPECT_EQ(scrypt_derived_key, scrypt_derived_key_result);
+
+  EXPECT_EQ(CryptoError::CE_NONE, error);
+}
+
+// Test the retry function of TpmEccAuthBlock::Create failed as expected.
+TEST(TpmEccAuthBlockTest, CreateRetryFailTest) {
+  // Set up inputs to the test.
+  brillo::SecureBlob vault_key(20, 'C');
+  std::string obfuscated_username = "OBFUSCATED_USERNAME";
+
+  // Set up the mock expectations.
+  brillo::SecureBlob scrypt_derived_key;
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  brillo::SecureBlob auth_value(32, 'a');
+  Tpm::TpmVersionInfo version_info;
+  version_info.manufacturer = 0x43524f53;
+  EXPECT_CALL(tpm, GetVersionInfo(_))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(version_info), Return(true)));
+  // The TpmEccAuthBlock shouldn't retry forever if the TPM always returning
+  // error.
+  EXPECT_CALL(tpm, GetEccAuthValue(_, _, _))
+      .WillRepeatedly(ReturnError<TPMError>("later", TPMRetryAction::kLater));
+
+  AuthInput user_input = {vault_key,
+                          /*locked_to_single_user=*/base::nullopt,
+                          obfuscated_username,
+                          /*reset_secret=*/base::nullopt};
+  KeyBlobs vkk_data;
+  CryptoError error;
+  TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+  EXPECT_EQ(base::nullopt, auth_block.Create(user_input, &vkk_data, &error));
+
+  EXPECT_EQ(CryptoError::CE_TPM_REBOOT, error);
+}
+
+// Test SealToPcr in TpmEccAuthBlock::Create failed as expected.
+TEST(TpmEccAuthBlockTest, CreateSealToPcrFailTest) {
+  // Set up inputs to the test.
+  brillo::SecureBlob vault_key(20, 'C');
+  std::string obfuscated_username = "OBFUSCATED_USERNAME";
+
+  // Set up the mock expectations.
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  brillo::SecureBlob auth_value(32, 'a');
+  Tpm::TpmVersionInfo version_info;
+  version_info.manufacturer = 0x49465800;
+  EXPECT_CALL(tpm, GetVersionInfo(_))
+      .WillOnce(DoAll(SetArgPointee<0>(version_info), Return(true)));
+  EXPECT_CALL(tpm, GetEccAuthValue(_, _, _))
+      .Times(2)
+      .WillRepeatedly(
+          DoAll(SetArgPointee<2>(auth_value), ReturnError<TPMErrorBase>()));
+
+  EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, auth_value, _, _))
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
+
+  AuthInput user_input = {vault_key,
+                          /*locked_to_single_user=*/base::nullopt,
+                          obfuscated_username,
+                          /*reset_secret=*/base::nullopt};
+  KeyBlobs vkk_data;
+  CryptoError error;
+  TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+  EXPECT_EQ(base::nullopt, auth_block.Create(user_input, &vkk_data, &error));
+
+  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO, error);
+}
+
+// Test second SealToPcr in TpmEccAuthBlock::Create failed as expected.
+TEST(TpmEccAuthBlockTest, CreateSecondSealToPcrFailTest) {
+  // Set up inputs to the test.
+  brillo::SecureBlob vault_key(20, 'C');
+  std::string obfuscated_username = "OBFUSCATED_USERNAME";
+
+  // Set up the mock expectations.
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  brillo::SecureBlob auth_value(32, 'a');
+  Tpm::TpmVersionInfo version_info;
+  version_info.manufacturer = 0x49465800;
+  EXPECT_CALL(tpm, GetVersionInfo(_))
+      .WillOnce(DoAll(SetArgPointee<0>(version_info), Return(true)));
+  EXPECT_CALL(tpm, GetEccAuthValue(_, _, _))
+      .Times(2)
+      .WillRepeatedly(
+          DoAll(SetArgPointee<2>(auth_value), ReturnError<TPMErrorBase>()));
+
+  EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, auth_value, _, _))
+      .WillOnce(ReturnError<TPMErrorBase>())
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
+
+  AuthInput user_input = {vault_key,
+                          /*locked_to_single_user=*/base::nullopt,
+                          obfuscated_username,
+                          /*reset_secret=*/base::nullopt};
+  KeyBlobs vkk_data;
+  CryptoError error;
+  TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+  EXPECT_EQ(base::nullopt, auth_block.Create(user_input, &vkk_data, &error));
+
+  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO, error);
+}
+
+// Test GetEccAuthValue in TpmEccAuthBlock::Create failed as expected.
+TEST(TpmEccAuthBlockTest, CreateEccAuthValueFailTest) {
+  // Set up inputs to the test.
+  brillo::SecureBlob vault_key(20, 'C');
+  std::string obfuscated_username = "OBFUSCATED_USERNAME";
+
+  // Set up the mock expectations.
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  brillo::SecureBlob auth_value(32, 'a');
+
+  EXPECT_CALL(tpm, GetVersionInfo(_)).WillOnce(Return(false));
+  EXPECT_CALL(tpm, GetEccAuthValue(_, _, _))
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
+
+  AuthInput user_input = {vault_key,
+                          /*locked_to_single_user=*/base::nullopt,
+                          obfuscated_username,
+                          /*reset_secret=*/base::nullopt};
+  KeyBlobs vkk_data;
+  CryptoError error;
+  TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+  EXPECT_EQ(base::nullopt, auth_block.Create(user_input, &vkk_data, &error));
+
+  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO, error);
+}
+
+// Test TpmEccAuthBlock::DeriveTest works correctly.
+TEST(TpmEccAuthBlockTest, DeriveTest) {
+  TpmEccAuthBlockState auth_block_state = GetDefaultEccAuthBlockState();
+
+  brillo::SecureBlob fake_hash(32, 'X');
+  auth_block_state.tpm_public_key_hash = fake_hash;
+
+  // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(fake_hash), ReturnError<TPMErrorBase>()));
+  EXPECT_CALL(tpm, PreloadSealedData(_, _)).Times(Exactly(1));
+  EXPECT_CALL(tpm, GetEccAuthValue(_, _, _)).Times(Exactly(5));
+
+  brillo::SecureBlob fake_hvkkm(32, 'F');
+  EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<4>(fake_hvkkm), ReturnError<TPMErrorBase>()));
+
+  TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+
+  KeyBlobs key_out_data;
+  AuthInput auth_input;
+  auth_input.user_input = brillo::SecureBlob(20, 'E');
+  auth_input.locked_to_single_user = false;
+
+  AuthBlockState auth_state{.state = std::move(auth_block_state)};
+
+  CryptoError error;
+  EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
+
+  // Assert that the returned key blobs isn't uninitialized.
+  EXPECT_NE(key_out_data.vkk_iv, base::nullopt);
+  EXPECT_NE(key_out_data.vkk_key, base::nullopt);
+  EXPECT_EQ(key_out_data.vkk_iv.value(), key_out_data.chaps_iv.value());
+
+  EXPECT_EQ(CryptoError::CE_NONE, error);
+}
+
+// Test the retry function of TpmEccAuthBlock::Derive works correctly.
+TEST(TpmEccAuthBlockTest, DeriveRetryTest) {
+  TpmEccAuthBlockState auth_block_state = GetDefaultEccAuthBlockState();
+
+  // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+
+  // Add some communication errors that may come from TPM daemon.
+  EXPECT_CALL(tpm, PreloadSealedData(_, _))
+      .WillOnce(ReturnError<TPMError>("comm", TPMRetryAction::kCommunication))
+      .WillRepeatedly(ReturnError<TPMErrorBase>());
+
+  // Add some communication errors and retry errors that may come from TPM
+  // daemon.
+  EXPECT_CALL(tpm, GetEccAuthValue(_, _, _))
+      .Times(Exactly(8))
+      .WillOnce(ReturnError<TPMError>("comm", TPMRetryAction::kCommunication))
+      .WillOnce(ReturnError<TPMError>("later", TPMRetryAction::kLater))
+      .WillOnce(ReturnError<TPMError>("comm", TPMRetryAction::kCommunication))
+      .WillRepeatedly(ReturnError<TPMErrorBase>());
+
+  // Add some communication errors that may come from TPM daemon.
+  brillo::SecureBlob fake_hvkkm(32, 'F');
+  EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
+      .WillOnce(ReturnError<TPMError>("comm", TPMRetryAction::kCommunication))
+      .WillOnce(
+          DoAll(SetArgPointee<4>(fake_hvkkm), ReturnError<TPMErrorBase>()));
+
+  EXPECT_CALL(*cryptohome_keys_manager.get_mock_cryptohome_key_loader(),
+              ReloadCryptohomeKey())
+      .WillOnce(Return(true));
+
+  TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+
+  KeyBlobs key_out_data;
+  AuthInput auth_input;
+  auth_input.user_input = brillo::SecureBlob(20, 'E');
+  auth_input.locked_to_single_user = true;
+
+  AuthBlockState auth_state{.state = std::move(auth_block_state)};
+
+  CryptoError error;
+  EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
+
+  // Assert that the returned key blobs isn't uninitialized.
+  EXPECT_NE(key_out_data.vkk_iv, base::nullopt);
+  EXPECT_NE(key_out_data.vkk_key, base::nullopt);
+  EXPECT_EQ(key_out_data.vkk_iv.value(), key_out_data.chaps_iv.value());
+
+  EXPECT_EQ(CryptoError::CE_NONE, error);
+}
+
+// Test GetEccAuthValue in TpmEccAuthBlock::Derive failed as expected.
+TEST(TpmEccAuthBlockTest, DeriveGetEccAuthFailTest) {
+  TpmEccAuthBlockState auth_block_state = GetDefaultEccAuthBlockState();
+
+  // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  EXPECT_CALL(tpm, PreloadSealedData(_, _))
+      .WillRepeatedly(ReturnError<TPMErrorBase>());
+
+  EXPECT_CALL(tpm, GetEccAuthValue(_, _, _))
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
+
+  TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+
+  KeyBlobs key_out_data;
+  AuthInput auth_input;
+  auth_input.user_input = brillo::SecureBlob(20, 'E');
+  auth_input.locked_to_single_user = false;
+
+  AuthBlockState auth_state{.state = std::move(auth_block_state)};
+
+  CryptoError error;
+  EXPECT_FALSE(
+      auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
+
+  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO, error);
+}
+
+// Test PreloadSealedData in TpmEccAuthBlock::Derive failed as expected.
+TEST(TpmEccAuthBlockTest, DerivePreloadSealedDataFailTest) {
+  TpmEccAuthBlockState auth_block_state = GetDefaultEccAuthBlockState();
+
+  // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  EXPECT_CALL(tpm, PreloadSealedData(_, _))
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
+
+  TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+
+  KeyBlobs key_out_data;
+  AuthInput auth_input;
+  auth_input.user_input = brillo::SecureBlob(20, 'E');
+  auth_input.locked_to_single_user = false;
+
+  AuthBlockState auth_state{.state = std::move(auth_block_state)};
+
+  CryptoError error;
+  EXPECT_FALSE(
+      auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
+
+  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO, error);
+}
+
+// Test GetPublicKeyHash in TpmEccAuthBlock::Derive failed as expected.
+TEST(TpmEccAuthBlockTest, DeriveGetPublicKeyHashFailTest) {
+  TpmEccAuthBlockState auth_block_state = GetDefaultEccAuthBlockState();
+
+  auth_block_state.tpm_public_key_hash = brillo::SecureBlob(32, 'X');
+
+  // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
+
+  TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+
+  KeyBlobs key_out_data;
+  AuthInput auth_input;
+  auth_input.user_input = brillo::SecureBlob(20, 'E');
+  auth_input.locked_to_single_user = false;
+
+  AuthBlockState auth_state{.state = std::move(auth_block_state)};
+
+  CryptoError error;
+  EXPECT_FALSE(
+      auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
+
+  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO, error);
+}
+
+// Test PublicKeyHashMismatch in TpmEccAuthBlock::Derive failed as expected.
+TEST(TpmEccAuthBlockTest, DerivePublicKeyHashMismatchTest) {
+  TpmEccAuthBlockState auth_block_state = GetDefaultEccAuthBlockState();
+
+  auth_block_state.tpm_public_key_hash = brillo::SecureBlob(32, 'X');
+
+  brillo::SecureBlob fake_hash(32, 'Z');
+  // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(fake_hash), ReturnError<TPMErrorBase>()));
+
+  TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+
+  KeyBlobs key_out_data;
+  AuthInput auth_input;
+  auth_input.user_input = brillo::SecureBlob(20, 'E');
+  auth_input.locked_to_single_user = false;
+
+  AuthBlockState auth_state{.state = std::move(auth_block_state)};
+
+  CryptoError error;
+  EXPECT_FALSE(
+      auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
+
+  EXPECT_EQ(CryptoError::CE_TPM_FATAL, error);
+}
+
+// Test the retry function in TpmEccAuthBlock::Derive failed as expected.
+TEST(TpmEccAuthBlockTest, DeriveRetryFailTest) {
+  TpmEccAuthBlockState auth_block_state = GetDefaultEccAuthBlockState();
+
+  // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  EXPECT_CALL(tpm, PreloadSealedData(_, _))
+      .WillRepeatedly(ReturnError<TPMErrorBase>());
+
+  // The TpmEccAuthBlock shouldn't retry forever if the TPM always returning
+  // error.
+  EXPECT_CALL(tpm, GetEccAuthValue(_, _, _))
+      .WillRepeatedly(ReturnError<TPMError>("later", TPMRetryAction::kLater));
+
+  TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+
+  KeyBlobs key_out_data;
+  AuthInput auth_input;
+  auth_input.user_input = brillo::SecureBlob(20, 'E');
+  auth_input.locked_to_single_user = true;
+
+  AuthBlockState auth_state{.state = std::move(auth_block_state)};
+
+  CryptoError error;
+  EXPECT_FALSE(
+      auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
+
+  EXPECT_EQ(CryptoError::CE_TPM_REBOOT, error);
+}
+
+// Test Unseal in TpmEccAuthBlock::Derive failed as expected.
+TEST(TpmEccAuthBlockTest, DeriveUnsealFailTest) {
+  TpmEccAuthBlockState auth_block_state = GetDefaultEccAuthBlockState();
+
+  brillo::SecureBlob fake_hash(32, 'X');
+  auth_block_state.tpm_public_key_hash = fake_hash;
+
+  // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(fake_hash), ReturnError<TPMErrorBase>()));
+  EXPECT_CALL(tpm, PreloadSealedData(_, _)).Times(Exactly(1));
+  EXPECT_CALL(tpm, GetEccAuthValue(_, _, _)).Times(Exactly(5));
+
+  brillo::SecureBlob fake_hvkkm(32, 'F');
+  EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
+
+  TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+
+  KeyBlobs key_out_data;
+  AuthInput auth_input;
+  auth_input.user_input = brillo::SecureBlob(20, 'E');
+  auth_input.locked_to_single_user = false;
+
+  AuthBlockState auth_state{.state = std::move(auth_block_state)};
+
+  CryptoError error;
+  EXPECT_FALSE(
+      auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
+
+  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO, error);
+}
+
+// Test CryptohomeKey in TpmEccAuthBlock::Derive failed as expected.
+TEST(TpmEccAuthBlockTest, DeriveCryptohomeKeyFailTest) {
+  TpmEccAuthBlockState auth_block_state = GetDefaultEccAuthBlockState();
+
+  // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+
+  EXPECT_CALL(*cryptohome_keys_manager.get_mock_cryptohome_key_loader(),
+              HasCryptohomeKey())
+      .WillRepeatedly(Return(false));
+
+  TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+
+  KeyBlobs key_out_data;
+  AuthInput auth_input;
+  auth_input.user_input = brillo::SecureBlob(20, 'E');
+  auth_input.locked_to_single_user = true;
+
+  AuthBlockState auth_state{.state = std::move(auth_block_state)};
+
+  CryptoError error;
+  EXPECT_FALSE(
+      auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
+
+  EXPECT_EQ(CryptoError::CE_TPM_REBOOT, error);
 }
 
 }  // namespace cryptohome

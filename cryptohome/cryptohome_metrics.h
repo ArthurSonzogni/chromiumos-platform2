@@ -73,6 +73,9 @@ enum DerivationType : int {
   // Secret is generated on the device and later derived by Cryptohome Recovery
   // process using data stored on the device and by Recovery Mediator service.
   kCryptohomeRecovery = 6,
+  // TPM/GSC and user passkey is used to derive the wrapping keys which are
+  // sealed to PCR and ECC auth value.
+  kTpmBackedEcc = 7,
   kDerivationTypeNumBuckets  // Must be the last entry.
 };
 
@@ -418,6 +421,8 @@ enum class AuthBlockType {
   kTpmBoundToPcr = 3,
   kTpmNotBoundToPcr = 4,
   kLibScryptCompat = 5,
+  kCryptohomeRecovery = 6,
+  kTpmEcc = 7,
   kMaxValue,
 };
 
