@@ -103,6 +103,7 @@ _IUSE = [
     'opengles',
     'passive_metrics',
     'pinweaver',
+    'pinweaver_csme',
     'power_management',
     'pppoe',
     'profiling',

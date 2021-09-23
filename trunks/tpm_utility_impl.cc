@@ -539,9 +539,10 @@ TPM_RC TpmUtilityImpl::ExtendPCRForCSME(int pcr_index,
   }
 
   csme::MeiClientFactory mei_client_factory;
-  csme::PinWeaverCoreClient client(&mei_client_factory);
+  std::unique_ptr<csme::PinWeaverCoreClient> client =
+      csme::PinWeaverCoreClient::Create(&mei_client_factory);
   const std::string digest = crypto::SHA256HashString(extend_data);
-  if (!client.ExtendPcr(pcr_index, TPM_ALG_SHA256, digest)) {
+  if (!client->ExtendPcr(pcr_index, TPM_ALG_SHA256, digest)) {
     LOG(ERROR) << __func__ << ": Failed to extend PCR " << pcr_index
                << " for CSME.";
     return TPM_RC_FAILURE;
@@ -590,10 +591,11 @@ TPM_RC TpmUtilityImpl::ReadPCR(int pcr_index, std::string* pcr_value) {
 
 TPM_RC TpmUtilityImpl::ReadPCRFromCSME(int pcr_index, std::string* pcr_value) {
   csme::MeiClientFactory mei_client_factory;
-  csme::PinWeaverCoreClient client(&mei_client_factory);
+  std::unique_ptr<csme::PinWeaverCoreClient> client =
+      csme::PinWeaverCoreClient::Create(&mei_client_factory);
   uint32_t pcr_index_out, hash_alg_out;
-  if (!client.ReadPcr(pcr_index, TPM_ALG_SHA256, &pcr_index_out, &hash_alg_out,
-                      pcr_value)) {
+  if (!client->ReadPcr(pcr_index, TPM_ALG_SHA256, &pcr_index_out, &hash_alg_out,
+                       pcr_value)) {
     LOG(ERROR) << __func__ << ": Failed to read PCR " << pcr_index
                << " from CSME.";
     return TPM_RC_FAILURE;
@@ -3211,8 +3213,9 @@ TPM_RC TpmUtilityImpl::GetRoVerificationStatus(ApRoStatus* status) {
 TPM_RC TpmUtilityImpl::PinWeaverCsmeCommand(const std::string& in,
                                             std::string* out) {
   csme::MeiClientFactory mei_client_factory;
-  csme::PinWeaverCoreClient client(&mei_client_factory);
-  if (!client.PinWeaverCommand(in, out)) {
+  std::unique_ptr<csme::PinWeaverCoreClient> client =
+      csme::PinWeaverCoreClient::Create(&mei_client_factory);
+  if (!client->PinWeaverCommand(in, out)) {
     LOG(ERROR) << __func__ << ": Failed to call pinweaver-csme.";
     return TPM_RC_FAILURE;
   }

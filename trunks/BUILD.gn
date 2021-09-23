@@ -47,7 +47,10 @@ pkg_config("target_default_pkg_deps") {
 
 config("target_defaults") {
   configs = [ ":target_default_pkg_deps" ]
-  defines = [ "USE_GENERIC_TPM2=${use.generic_tpm2}" ]
+  defines = [
+    "USE_GENERIC_TPM2=${use.generic_tpm2}",
+    "USE_PINWEAVER_CSME=${use.pinweaver_csme}",
+  ]
   if (use.tpm2_simulator) {
     defines += [ "USE_SIMULATOR=1" ]
   }
@@ -81,6 +84,8 @@ shared_library("trunks") {
     "csme/mei_client_factory.cc",
     "csme/mei_client_socket.cc",
     "csme/pinweaver_core_client.cc",
+    "csme/pinweaver_core_client_impl.cc",
+    "csme/pinweaver_core_client_null.cc",
     "csme/pinweaver_provision_client.cc",
     "error_codes.cc",
     "hmac_authorization_delegate.cc",
