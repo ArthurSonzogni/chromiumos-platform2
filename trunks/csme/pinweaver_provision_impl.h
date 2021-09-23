@@ -9,13 +9,15 @@
 
 #include <string>
 
+#include "trunks/trunks_factory.h"
+
 namespace trunks {
 namespace csme {
 
 // The implementation of `PinWeaverProvision`.
 class PinWeaverProvisionImpl : public PinWeaverProvision {
  public:
-  PinWeaverProvisionImpl() = default;
+  explicit PinWeaverProvisionImpl(const TrunksFactory& factory);
   ~PinWeaverProvisionImpl() override = default;
   bool Provision() override;
   bool InitOwner() override;
@@ -24,6 +26,8 @@ class PinWeaverProvisionImpl : public PinWeaverProvision {
   bool GetProvisionKeyContent(std::string& key);
   bool ProvisionSaltingKeyHash(const std::string& public_key_hash);
   bool InitOwnerInternal();
+
+  const TrunksFactory& factory_;
 };
 
 }  // namespace csme

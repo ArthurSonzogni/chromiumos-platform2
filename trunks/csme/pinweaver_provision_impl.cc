@@ -57,9 +57,8 @@ bool PinWeaverProvisionImpl::Provision() {
 bool PinWeaverProvisionImpl::GetProvisionKeyContent(std::string& key_hash) {
   switch (GetPinwWeaverSaltingKeyType()) {
     case PinwWeaverSaltingKeyType::kTpmKey: {
-      trunks::TrunksFactoryImpl factory;
-      CHECK(factory.Initialize()) << "Failed to initialize trunks factory.";
-      std::unique_ptr<trunks::TpmUtility> tpm_utility = factory.GetTpmUtility();
+      std::unique_ptr<trunks::TpmUtility> tpm_utility =
+          factory_.GetTpmUtility();
 
       // Persists the salting key in case it's not done yet.
       trunks::TPM_RC result = tpm_utility->PrepareForPinWeaver();
@@ -123,9 +122,7 @@ bool PinWeaverProvisionImpl::ProvisionSaltingKeyHash(
 }
 
 bool PinWeaverProvisionImpl::InitOwner() {
-  trunks::TrunksFactoryImpl factory;
-  CHECK(factory.Initialize()) << "Failed to initialize trunks factory.";
-  std::unique_ptr<trunks::TpmState> tpm_state(factory.GetTpmState());
+  std::unique_ptr<trunks::TpmState> tpm_state(factory_.GetTpmState());
   trunks::TPM_RC result = tpm_state->Initialize();
   if (result) {
     LOG(ERROR) << "Failed to initialize `TpmState`.";

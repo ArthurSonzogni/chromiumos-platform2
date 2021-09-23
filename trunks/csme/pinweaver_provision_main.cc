@@ -8,6 +8,7 @@
 
 #include "trunks/csme/pinweaver_provision.h"
 #include "trunks/csme/pinweaver_provision_impl.h"
+#include "trunks/trunks_factory_impl.h"
 
 namespace {
 
@@ -31,7 +32,9 @@ int main(int argc, char** argv) {
   brillo::InitLog(brillo::kLogToStderr);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
 
-  trunks::csme::PinWeaverProvisionImpl provision;
+  trunks::TrunksFactoryImpl factory;
+  CHECK(factory.Initialize()) << "Failed to initialize trunks factory.";
+  trunks::csme::PinWeaverProvisionImpl provision(factory);
 
   if (cl->HasSwitch("provision")) {
     return provision.Provision() ? 0 : 1;
