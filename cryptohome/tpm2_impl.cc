@@ -32,6 +32,7 @@
 #include <trunks/authorization_delegate.h>
 #include <trunks/blob_parser.h>
 #include <trunks/error_codes.h>
+#include <trunks/openssl_utility.h>
 #include <trunks/policy_session.h>
 #include <trunks/tpm_alerts.h>
 #include <trunks/tpm_constants.h>
@@ -40,6 +41,9 @@
 #include <trunks/trunks_factory_impl.h>
 
 #include "cryptohome/crypto/aes.h"
+#include "cryptohome/crypto/big_num_util.h"
+#include "cryptohome/crypto/elliptic_curve.h"
+#include "cryptohome/crypto/elliptic_curve_error.h"
 #include "cryptohome/crypto/rsa.h"
 #include "cryptohome/crypto/sha.h"
 
@@ -62,6 +66,11 @@ namespace cryptohome {
 namespace {
 
 constexpr trunks::TPMI_ECC_CURVE kDefaultTpmCurveId = trunks::TPM_ECC_NIST_P256;
+
+constexpr EllipticCurve::CurveType kDefaultCurve =
+    EllipticCurve::CurveType::kPrime256;
+
+constexpr int kMinPassBlobSize = 32;
 
 // Returns the total number of bits set in the first |size| elements from
 // |array|.
@@ -105,6 +114,47 @@ trunks::TpmUtility::AsymmetricKeyUsage ConvertAsymmetricKeyUsage(
                    << static_cast<int>(usage);
       return trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey;
   }
+}
+
+TPMErrorBase DeriveTpmEccPointFromSeed(const SecureBlob& seed,
+                                       trunks::TPMS_ECC_POINT* out_point) {
+  // Generate an ECC private key (scalar) based on the seed.
+  crypto::ScopedBIGNUM private_key = SecureBlobToBigNum(Sha256(seed));
+
+  ScopedBN_CTX context = CreateBigNumContext();
+  if (!context.get()) {
+    return CreateError<TPMError>("Failed to allocate BN_CTX structure",
+                                 TPMRetryAction::kNoRetry);
+  }
+
+  base::Optional<EllipticCurve> ec =
+      EllipticCurve::Create(kDefaultCurve, context.get());
+  if (!ec) {
+    return CreateError<TPMError>("Failed to create EllipticCurve",
+                                 TPMRetryAction::kNoRetry);
+  }
+
+  if (!ec->IsScalarValid(*private_key)) {
+    // Generate another pass_blob may resolve this issue.
+    return CreateError<EllipticCurveError>(
+        EllipticCurveErrorCode::kScalarOutOfRange);
+  }
+
+  crypto::ScopedEC_POINT public_point =
+      ec->MultiplyWithGenerator(*private_key, context.get());
+
+  if (!public_point) {
+    return CreateError<TPMError>("Failed to multiply with generator",
+                                 TPMRetryAction::kNoRetry);
+  }
+
+  if (!trunks::OpensslToTpmEccPoint(*ec->GetGroup(), *public_point,
+                                    ec->FieldElementSizeInBytes(), out_point)) {
+    return CreateError<TPMError>("Error converting OpenSSL to TPM ECC point",
+                                 TPMRetryAction::kNoRetry);
+  }
+
+  return nullptr;
 }
 
 }  // namespace
@@ -1332,6 +1382,52 @@ TPMErrorBase Tpm2Impl::GetAuthValue(base::Optional<TpmKeyHandle> key_handle,
     return WrapError<TPMError>(std::move(err), "Error decrypting pass_blob");
   }
   *auth_value = Sha256(SecureBlob(decrypted_value));
+
+  return nullptr;
+}
+
+TPMErrorBase Tpm2Impl::GetEccAuthValue(base::Optional<TpmKeyHandle> key_handle,
+                                       const SecureBlob& pass_blob,
+                                       SecureBlob* auth_value) {
+  if (!key_handle) {
+    LOG(DFATAL) << "TPM2.0 needs a key_handle to get ECC auth value.";
+    return CreateError<TPMError>(
+        "TPM2.0 needs a key_handle to get ECC auth value",
+        TPMRetryAction::kNoRetry);
+  }
+
+  if (pass_blob.size() < kMinPassBlobSize) {
+    return CreateError<TPMError>(
+        "Unexpected pass_blob size: " + std::to_string(pass_blob.size()),
+        TPMRetryAction::kNoRetry);
+  }
+
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return CreateError<TPMError>("Failed to get trunks context",
+                                 TPMRetryAction::kCommunication);
+  }
+
+  trunks::TPMS_ECC_POINT ecc_point;
+  if (TPMErrorBase err = DeriveTpmEccPointFromSeed(pass_blob, &ecc_point)) {
+    return WrapError<TPMError>(std::move(err),
+                               "Failed to derive TPM ECC point from ");
+  }
+
+  trunks::TPM2B_ECC_POINT in_point = trunks::Make_TPM2B_ECC_POINT(ecc_point);
+  trunks::TPM2B_ECC_POINT z_point;
+
+  std::unique_ptr<trunks::AuthorizationDelegate> delegate =
+      trunks->factory->GetPasswordAuthorization("");
+
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM2Error>(trunks->tpm_utility->ECDHZGen(
+              key_handle.value(), in_point, delegate.get(), &z_point)))) {
+    return WrapError<TPMError>(std::move(err), "Error doing ECDH ZGen");
+  }
+
+  *auth_value =
+      Sha256(SecureBlob(StringFrom_TPM2B_ECC_PARAMETER(z_point.point.x)));
 
   return nullptr;
 }

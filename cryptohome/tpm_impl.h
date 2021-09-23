@@ -196,6 +196,13 @@ class TpmImpl : public Tpm {
       const brillo::SecureBlob& pass_blob,
       brillo::SecureBlob* auth_value) override;
 
+  // Copies the |pass_blob| to |auth_value|.
+  // The input |pass_blob| must have 256 bytes.
+  hwsec::error::TPMErrorBase GetEccAuthValue(
+      base::Optional<TpmKeyHandle> key_handle,
+      const brillo::SecureBlob& pass_blob,
+      brillo::SecureBlob* auth_value) override;
+
  private:
   // Returns the owner password if this instance was used to take ownership.
   // This will only occur when the TPM is unowned, which will be on OOBE

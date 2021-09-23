@@ -49,6 +49,13 @@ class StubTpm : public Tpm {
     return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
         "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
   }
+  hwsec::error::TPMErrorBase GetEccAuthValue(
+      base::Optional<TpmKeyHandle> key_handle,
+      const brillo::SecureBlob& pass_blob,
+      brillo::SecureBlob* auth_value) override {
+    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
+        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
+  }
 
   hwsec::error::TPMErrorBase SealToPcrWithAuthorization(
       const SecureBlob& plaintext,

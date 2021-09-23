@@ -621,9 +621,18 @@ class Tpm {
 
   // Derive the |auth_value| from |pass_blob| using |key_handle|.
   // The input |pass_blob| must have 256 bytes. For TPM2.0, |key_handle| is used
-  // to decrypt the |pass_blob|, obtaining the authorization value. For TPM1.2
-  // the |key_handle| is unused.
+  // to decrypt the |pass_blob| and it must be a RSA key, obtaining the
+  // authorization value. For TPM1.2 the |key_handle| is unused.
   virtual hwsec::error::TPMErrorBase GetAuthValue(
+      base::Optional<TpmKeyHandle> key_handle,
+      const brillo::SecureBlob& pass_blob,
+      brillo::SecureBlob* auth_value) = 0;
+
+  // Derive the |auth_value| from |pass_blob| using |key_handle|.
+  // The input |pass_blob| must have at least 32 bytes. For TPM2.0, |key_handle|
+  // is used to decrypt the |pass_blob| and it must be an ECC key, obtaining the
+  // authorization value. For TPM1.2 the |key_handle| is unused.
+  virtual hwsec::error::TPMErrorBase GetEccAuthValue(
       base::Optional<TpmKeyHandle> key_handle,
       const brillo::SecureBlob& pass_blob,
       brillo::SecureBlob* auth_value) = 0;

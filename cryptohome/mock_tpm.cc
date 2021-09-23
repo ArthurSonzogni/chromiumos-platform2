@@ -50,6 +50,8 @@ MockTpm::MockTpm() {
       .WillByDefault(ReturnError<TPMErrorBase>());
   ON_CALL(*this, GetAuthValue(_, _, _))
       .WillByDefault(ReturnError<TPMErrorBase>());
+  ON_CALL(*this, GetEccAuthValue(_, _, _))
+      .WillByDefault(ReturnError<TPMErrorBase>());
 }
 
 MockTpm::~MockTpm() {}

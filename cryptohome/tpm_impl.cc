@@ -2206,4 +2206,12 @@ TPMErrorBase TpmImpl::GetAuthValue(base::Optional<TpmKeyHandle> key_handle,
   return nullptr;
 }
 
+TPMErrorBase TpmImpl::GetEccAuthValue(base::Optional<TpmKeyHandle> key_handle,
+                                      const SecureBlob& pass_blob,
+                                      SecureBlob* auth_value) {
+  // For TPM1.2, the |auth_value| should be the same as |pass_blob|.
+  *auth_value = pass_blob;
+  return nullptr;
+}
+
 }  // namespace cryptohome

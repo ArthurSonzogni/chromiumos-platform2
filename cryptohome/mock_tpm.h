@@ -204,6 +204,12 @@ class MockTpm : public Tpm {
                const brillo::SecureBlob& pass_blob,
                brillo::SecureBlob* auth_value),
               (override));
+  MOCK_METHOD(hwsec::error::TPMErrorBase,
+              GetEccAuthValue,
+              (base::Optional<TpmKeyHandle> key_handle,
+               const brillo::SecureBlob& pass_blob,
+               brillo::SecureBlob* auth_value),
+              (override));
 
  private:
   hwsec::error::TPMErrorBase XorDecrypt(

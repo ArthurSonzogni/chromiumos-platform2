@@ -45,6 +45,7 @@
 #include <trunks/trunks_factory.h>
 #include <trunks/trunks_factory_for_test.h>
 
+#include "cryptohome/crypto/elliptic_curve_error.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/key.pb.h"
 #include "cryptohome/protobuf_test_utils.h"
@@ -1356,6 +1357,60 @@ TEST_F(Tpm2Test, GetAuthValueFailed) {
   SecureBlob auth_value;
   EXPECT_NE(nullptr, tpm_->GetAuthValue(base::Optional<TpmKeyHandle>(handle),
                                         pass_blob, &auth_value));
+}
+
+TEST_F(Tpm2Test, GetEccAuthValueSuccess) {
+  TpmKeyHandle handle = 42;
+
+  trunks::TPMS_ECC_POINT ecc_point;
+  ecc_point.x = trunks::Make_TPM2B_ECC_PARAMETER(std::string(32, 0xcc));
+  ecc_point.y = trunks::Make_TPM2B_ECC_PARAMETER(std::string(32, 0xbb));
+  trunks::TPM2B_ECC_POINT out_point = trunks::Make_TPM2B_ECC_POINT(ecc_point);
+
+  EXPECT_CALL(mock_tpm_utility_, ECDHZGen(handle, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(out_point), Return(TPM_RC_SUCCESS)));
+  SecureBlob pass_blob(256, 'a');
+  SecureBlob auth_value;
+  EXPECT_EQ(nullptr, tpm_->GetEccAuthValue(base::Optional<TpmKeyHandle>(handle),
+                                           pass_blob, &auth_value));
+}
+
+TEST_F(Tpm2Test, GetEccAuthValueFailedWithAuthorizationBadAuthSize) {
+  TpmKeyHandle handle = 42;
+  SecureBlob pass_blob(16, 'a');
+  SecureBlob auth_value;
+  TPMErrorBase err = tpm_->GetEccAuthValue(base::Optional<TpmKeyHandle>(handle),
+                                           pass_blob, &auth_value);
+  EXPECT_NE(nullptr, err);
+  EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
+}
+
+TEST_F(Tpm2Test, GetEccAuthValueFailed) {
+  TpmKeyHandle handle = 42;
+  EXPECT_CALL(mock_tpm_utility_, ECDHZGen(handle, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  SecureBlob pass_blob(256, 'a');
+  SecureBlob auth_value;
+  TPMErrorBase err = tpm_->GetEccAuthValue(base::Optional<TpmKeyHandle>(handle),
+                                           pass_blob, &auth_value);
+  EXPECT_NE(nullptr, err);
+  EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
+}
+
+TEST_F(Tpm2Test, GetEccAuthValueScalarOutOfRange) {
+  const std::string kOorStr =
+      "AD1FE60D4FF828511B829DA029F98A1A164C4C946776AC1A4DEF3D490371BB66";
+  TpmKeyHandle handle = 42;
+  SecureBlob pass_blob;
+  EXPECT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(kOorStr, &pass_blob));
+  SecureBlob auth_value;
+  TPMErrorBase err = tpm_->GetEccAuthValue(base::Optional<TpmKeyHandle>(handle),
+                                           pass_blob, &auth_value);
+
+  EXPECT_NE(nullptr, err);
+  auto ecc_err = err->As<EllipticCurveError>();
+  EXPECT_NE(nullptr, ecc_err);
+  EXPECT_EQ(EllipticCurveErrorCode::kScalarOutOfRange, ecc_err->ErrorCode());
 }
 
 TEST_F(Tpm2Test, SealToPcrWithAuthorizationSuccess) {

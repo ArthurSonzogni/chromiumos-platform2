@@ -191,9 +191,17 @@ class Tpm2Impl : public Tpm {
       bool use_extended_pcr) const override;
 
   // Derives the |auth_value| by decrypting the |pass_blob| using |key_handle|
-  // and hashing the result. The input |pass_blob| must have 256 bytes, the
-  // size of cryptohome key modulus.
+  // and hashing the result. The key must be a RSA key. The input |pass_blob|
+  // must have 256 bytes, the size of cryptohome key modulus.
   hwsec::error::TPMErrorBase GetAuthValue(
+      base::Optional<TpmKeyHandle> key_handle,
+      const brillo::SecureBlob& pass_blob,
+      brillo::SecureBlob* auth_value) override;
+
+  // Derives the |auth_value| by decrypting the |pass_blob| using |key_handle|
+  // and hashing the result. The key must be an ECC key. The input |pass_blob|
+  // must have 256 bytes, the size of cryptohome key modulus.
+  hwsec::error::TPMErrorBase GetEccAuthValue(
       base::Optional<TpmKeyHandle> key_handle,
       const brillo::SecureBlob& pass_blob,
       brillo::SecureBlob* auth_value) override;

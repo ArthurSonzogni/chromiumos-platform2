@@ -130,8 +130,8 @@ class EllipticCurve final {
   // This should be used only for testing.
   crypto::ScopedEC_POINT PointAtInfinityForTesting() const;
 
-  // Returns group. This should be used only for testing.
-  const EC_GROUP* GetGroupForTesting() const { return group_.get(); }
+  // Returns group.
+  const EC_GROUP* GetGroup() const { return group_.get(); }
 
  private:
   // Constructor is private. A user of the class should use `Create` method

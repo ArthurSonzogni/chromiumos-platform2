@@ -80,9 +80,8 @@ class EllipticCurveTest : public testing::Test {
 
     // Set affine coordinates outside of the curve. Assume the method will fail,
     // but it should still initialize the point.
-    if (EC_POINT_set_affine_coordinates(ec_->GetGroupForTesting(), point.get(),
-                                        x.get(), y.get(),
-                                        context_.get()) == 1) {
+    if (EC_POINT_set_affine_coordinates(ec_->GetGroup(), point.get(), x.get(),
+                                        y.get(), context_.get()) == 1) {
       LOG(ERROR) << "Failed to set affine coords for invalid point";
       return nullptr;
     }
@@ -172,8 +171,7 @@ TEST_F(EllipticCurveTest, Add) {
 
   // Add point to its inverse.
   crypto::ScopedEC_POINT inv_point3 = CreatePoint(3u);
-  ASSERT_EQ(EC_POINT_invert(ec_->GetGroupForTesting(), inv_point3.get(),
-                            context_.get()),
+  ASSERT_EQ(EC_POINT_invert(ec_->GetGroup(), inv_point3.get(), context_.get()),
             1);
   result = ec_->Add(*point3, *inv_point3, context_.get());
   ASSERT_TRUE(result);
