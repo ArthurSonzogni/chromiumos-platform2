@@ -5,10 +5,12 @@
 // The dev module handles registration of crosh commands only enabled when Chrome OS is in developer
 // mode.
 
+mod display_debug;
 mod shell;
 
 use crate::dispatcher::Dispatcher;
 
 pub fn register(dispatcher: &mut Dispatcher) {
+    display_debug::register(dispatcher);
     shell::register(dispatcher);
 }
