@@ -620,7 +620,7 @@ wipe_stateful() {
 install_stateful() {
   # In general, the system isn't allowed to depend on anything
   # being in the stateful partition at startup.  We make some
-  # exceptions for dev images (only), as enumerated below:
+  # exceptions for dev images + factory installed DLCs, as enumerated below:
   #
   # var_overlay
   #   These are included to support gmerge, and must be kept in
@@ -634,6 +634,11 @@ install_stateful() {
   # dev_image
   #   This provides tools specifically chosen to be mounted at
   #   /usr/local as development only tools.
+  #
+  # dlc-factory-images
+  #   Includes the factory installed DLC images. Will be removed post boot as
+  #   the dlcservice daemon will move the factory installed images into the DLC
+  #   cache directory.
   #
   # Every exception added makes the dev image different from
   # the release image, which could mask bugs.  Make sure every
@@ -698,6 +703,7 @@ install_stateful() {
   local dirlist="
     unencrypted/cros-components/offline-demo-mode-resources
     unencrypted/import_extensions
+    unencrypted/dlc-factory-images
   "
 
   if crossystem 'cros_debug?1'; then
