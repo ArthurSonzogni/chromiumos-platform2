@@ -435,7 +435,7 @@ void MachineLearningServiceImpl::LoadHandwritingModel(
             channel, kModelName, &worker_pid)) {
       // UMA metrics has already been reported in `SpawnWorkerProcessAndGetPid`.
       std::move(callback).Run(LoadHandwritingModelResult::LOAD_MODEL_ERROR);
-      brillo::MessageLoop::current()->BreakLoop();
+      return;
     }
     Process::GetInstance()
         ->SendMojoInvitationAndGetRemote(worker_pid, std::move(channel),
