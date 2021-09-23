@@ -21,7 +21,7 @@ struct RetryInternalData {
   base::TimeDelta current_wait;
 };
 
-bool HWSEC_EXPORT RetryCommHandler(TPMError* err, RetryInternalData* data);
+bool HWSEC_EXPORT RetryCommHandler(TPMErrorBase* err, RetryInternalData* data);
 
 }  // namespace error
 }  // namespace hwsec
@@ -33,11 +33,11 @@ bool HWSEC_EXPORT RetryCommHandler(TPMError* err, RetryInternalData* data);
         ::hwsec_foundation::error::is_error_type<return_type>::value,        \
         "The result type isn't a valid error type.");                        \
     static_assert(                                                           \
-        std::is_base_of<::hwsec::error::TPMErrorObj,                         \
+        std::is_base_of<::hwsec::error::TPMErrorBaseObj,                     \
                         typename ::hwsec_foundation::error::UnwarpErrorType< \
                             return_type>::type>::value,                      \
         "The result type isn't a valid TPM error type.");                    \
-    ::hwsec::error::TPMError tpm_err_wrapper_result;                         \
+    ::hwsec::error::TPMErrorBase tpm_err_wrapper_result;                     \
     ::hwsec::error::RetryInternalData retry_internal;                        \
     do {                                                                     \
       tpm_err_wrapper_result = (x);                                          \

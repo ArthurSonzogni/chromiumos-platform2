@@ -23,7 +23,7 @@ constexpr int kMaxRetry = 5;
 namespace hwsec {
 namespace error {
 
-bool RetryCommHandler(TPMError* err, RetryInternalData* data) {
+bool RetryCommHandler(TPMErrorBase* err, RetryInternalData* data) {
   if ((*err)->ToTPMRetryAction() == TPMRetryAction::kCommunication) {
     if (data->retry_count + 1 >= kMaxRetry) {
       *err = hwsec_foundation::error::WrapError<TPMError>(
