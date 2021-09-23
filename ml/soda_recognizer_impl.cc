@@ -16,6 +16,7 @@
 #include <base/strings/string_util.h>
 #include <brillo/message_loops/message_loop.h>
 
+#include "base/debug/leak_annotations.h"
 #include "chrome/knowledge/soda/extended_soda_api.pb.h"
 #include "ml/request_metrics.h"
 #include "ml/soda.h"
@@ -65,6 +66,13 @@ bool SodaRecognizerImpl::Create(
     mojo::PendingReceiver<SodaRecognizer> soda_recognizer) {
   auto recognizer_impl = new SodaRecognizerImpl(
       std::move(spec), std::move(soda_client), std::move(soda_recognizer));
+
+  // In production, `recognizer_impl` is intentionally leaked, because this
+  // model runs in its own process and the model's memory is freed when the
+  // process exits. However, if being tested with ASAN, this memory leak could
+  // cause an error. Therefore, we annotate it as an intentional leak.
+  ANNOTATE_LEAKING_OBJECT_PTR(recognizer_impl);
+
   //  Set the disconnection handler to quit the message loop (i.e. exit the
   //  process) when the connection is gone, because this model is always run in
   //  a dedicated process.
