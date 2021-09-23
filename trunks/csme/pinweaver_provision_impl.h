@@ -9,13 +9,14 @@
 
 #include <string>
 
+#include "trunks/trunks_export.h"
 #include "trunks/trunks_factory.h"
 
 namespace trunks {
 namespace csme {
 
 // The implementation of `PinWeaverProvision`.
-class PinWeaverProvisionImpl : public PinWeaverProvision {
+class TRUNKS_EXPORT PinWeaverProvisionImpl : public PinWeaverProvision {
  public:
   explicit PinWeaverProvisionImpl(const TrunksFactory& factory);
   ~PinWeaverProvisionImpl() override = default;

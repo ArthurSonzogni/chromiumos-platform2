@@ -87,6 +87,7 @@ shared_library("trunks") {
     "csme/pinweaver_core_client_impl.cc",
     "csme/pinweaver_core_client_null.cc",
     "csme/pinweaver_provision_client.cc",
+    "csme/pinweaver_provision_impl.cc",
     "error_codes.cc",
     "hmac_authorization_delegate.cc",
     "hmac_session_impl.cc",
@@ -129,10 +130,7 @@ executable("pinweaver_client") {
 }
 
 executable("pinweaver_provision") {
-  sources = [
-    "csme/pinweaver_provision_impl.cc",
-    "csme/pinweaver_provision_main.cc",
-  ]
+  sources = [ "csme/pinweaver_provision_main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":trunks" ]
 }

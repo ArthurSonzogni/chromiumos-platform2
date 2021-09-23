@@ -7,11 +7,13 @@
 
 #include <memory>
 
+#include "trunks/trunks_export.h"
+
 namespace trunks {
 namespace csme {
 
 // An interface for performing pinweaver provisioning.
-class PinWeaverProvision {
+class TRUNKS_EXPORT PinWeaverProvision {
  public:
   PinWeaverProvision() = default;
   virtual ~PinWeaverProvision() = default;
