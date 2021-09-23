@@ -55,10 +55,10 @@ bool ZslStreamManipulator::OnConfiguredStreams(
 
 bool ZslStreamManipulator::ConstructDefaultRequestSettings(
     android::CameraMetadata* default_request_settings, int type) {
-  if (!zsl_enabled_) {
-    return true;
-  }
-  uint8_t zsl_enable = ANDROID_CONTROL_ENABLE_ZSL_TRUE;
+  // Enabling ZSL by default will fail some AE compensation CTS tests. Currently
+  // ZSL is only used by Chrome VCD. Enabling ZSL for Android by default is
+  // still a TODO.
+  uint8_t zsl_enable = ANDROID_CONTROL_ENABLE_ZSL_FALSE;
   if (default_request_settings->update(ANDROID_CONTROL_ENABLE_ZSL, &zsl_enable,
                                        1) != 0) {
     LOGF(WARNING) << "Failed to add ENABLE_ZSL to template " << type;
