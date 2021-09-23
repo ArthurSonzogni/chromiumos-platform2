@@ -67,6 +67,12 @@ trunks::TPM2B_PUBLIC MakeEmptyTpm2bPublic() {
   return tpm2b_public;
 }
 
+std::string HexDecode(const std::string hex) {
+  std::vector<uint8_t> output;
+  CHECK(base::HexStringToBytes(hex, &output));
+  return std::string(reinterpret_cast<char*>(output.data()), output.size());
+}
+
 }  // namespace
 
 namespace trunks {
@@ -868,6 +874,85 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptSchemeForward) {
                 key_handle, TPM_ALG_RSAES, TPM_ALG_NULL, ciphertext,
                 &mock_authorization_delegate_, &plaintext));
   EXPECT_EQ(scheme.scheme, TPM_ALG_RSAES);
+}
+
+TEST_F(TpmUtilityTest, ECDHZGenSuccess) {
+  TPM_HANDLE key_handle = 4231;
+  trunks::TPMS_ECC_POINT ecc_point;
+  std::string x = HexDecode(
+      "4d389be4b2542a71fff17e1ac8105077b8fcfe2c565fa202d07f386f576eb564");
+  std::string y = HexDecode(
+      "4491a3ac1cf9166a60d906ed06a5b1a2f29ca223b81064ca8b08f8bac68dd875");
+  ecc_point.x = trunks::Make_TPM2B_ECC_PARAMETER(x);
+  ecc_point.y = trunks::Make_TPM2B_ECC_PARAMETER(y);
+
+  trunks::TPM2B_ECC_POINT in_point = trunks::Make_TPM2B_ECC_POINT(ecc_point);
+  trunks::TPM2B_ECC_POINT z_point;
+
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
+  public_area.public_area.type = TPM_ALG_ECC;
+  public_area.public_area.object_attributes = kDecrypt;
+  public_area.public_area.auth_policy.size = 0;
+  public_area.public_area.unique.rsa.size = 0;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_,
+              ECDH_ZGenSync(key_handle, _, _, _, &mock_authorization_delegate_))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.ECDHZGen(key_handle, in_point,
+                              &mock_authorization_delegate_, &z_point));
+}
+
+TEST_F(TpmUtilityTest, ECDHZGenFail) {
+  TPM_HANDLE key_handle = 4231;
+  trunks::TPMS_ECC_POINT ecc_point;
+  trunks::TPM2B_ECC_POINT in_point = trunks::Make_TPM2B_ECC_POINT(ecc_point);
+  trunks::TPM2B_ECC_POINT z_point;
+
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
+  public_area.public_area.type = TPM_ALG_ECC;
+  public_area.public_area.object_attributes = kDecrypt;
+  public_area.public_area.auth_policy.size = 0;
+  public_area.public_area.unique.rsa.size = 0;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_,
+              ECDH_ZGenSync(key_handle, _, _, _, &mock_authorization_delegate_))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE,
+            utility_.ECDHZGen(key_handle, in_point,
+                              &mock_authorization_delegate_, &z_point));
+}
+
+TEST_F(TpmUtilityTest, ECDHZGenBadParams) {
+  TPM_HANDLE key_handle = 4231;
+  trunks::TPMS_ECC_POINT ecc_point;
+  trunks::TPM2B_ECC_POINT in_point = trunks::Make_TPM2B_ECC_POINT(ecc_point);
+  trunks::TPM2B_ECC_POINT z_point;
+
+  std::string plaintext;
+  std::string output_plaintext("plaintext");
+  std::string ciphertext;
+  TPM2B_PUBLIC public_area = kTpm2bPublic;
+  public_area.public_area.type = TPM_ALG_ECC;
+  public_area.public_area.object_attributes = kDecrypt | kRestricted;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
+            utility_.ECDHZGen(key_handle, in_point,
+                              &mock_authorization_delegate_, &z_point));
+}
+
+TEST_F(TpmUtilityTest, ECDHZGenBadSession) {
+  TPM_HANDLE key_handle = TPM_RH_FIRST;
+  trunks::TPM2B_ECC_POINT in_point;
+  trunks::TPM2B_ECC_POINT z_point;
+  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS,
+            utility_.ECDHZGen(key_handle, in_point, nullptr, &z_point));
 }
 
 TEST_F(TpmUtilityTest, SignRsaSuccess) {

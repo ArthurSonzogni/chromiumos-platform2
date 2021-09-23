@@ -213,6 +213,13 @@ class TpmUtilityForwarder : public TpmUtility {
                                       delegate, plaintext);
   }
 
+  TPM_RC ECDHZGen(TPM_HANDLE key_handle,
+                  const TPM2B_ECC_POINT& in_point,
+                  AuthorizationDelegate* delegate,
+                  TPM2B_ECC_POINT* out_point) override {
+    return target_->ECDHZGen(key_handle, in_point, delegate, out_point);
+  }
+
   TPM_RC RawSign(TPM_HANDLE key_handle,
                  TPM_ALG_ID scheme,
                  TPM_ALG_ID hash_alg,

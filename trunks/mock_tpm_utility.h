@@ -55,6 +55,11 @@ class MockTpmUtility : public TpmUtility {
                       const std::string&,
                       AuthorizationDelegate*,
                       std::string*));
+  MOCK_METHOD4(ECDHZGen,
+               TPM_RC(TPM_HANDLE,
+                      const TPM2B_ECC_POINT&,
+                      AuthorizationDelegate*,
+                      TPM2B_ECC_POINT*));
   MOCK_METHOD7(RawSign,
                TPM_RC(TPM_HANDLE,
                       TPM_ALG_ID,

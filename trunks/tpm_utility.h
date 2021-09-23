@@ -170,6 +170,15 @@ class TRUNKS_EXPORT TpmUtility {
                                    AuthorizationDelegate* delegate,
                                    std::string* plaintext) = 0;
 
+  // This method performs the ECDH ZGen operation with an unrestricted
+  // decryption key referenced by |key_handle|. |in_point| is the input point,
+  // |out_point| is the output point. |delegate| is an AuthorizationDelegate
+  // used to authorize this command.
+  virtual TPM_RC ECDHZGen(TPM_HANDLE key_handle,
+                          const TPM2B_ECC_POINT& in_point,
+                          AuthorizationDelegate* delegate,
+                          TPM2B_ECC_POINT* out_point) = 0;
+
   // This method takes an unrestricted signing key referenced by |key_handle|
   // and uses it to sign a hash: if |generate_hash| is true then get the hash
   // of |plaintext| using |hash_alg|, otherwise |plaintext| is already the hash

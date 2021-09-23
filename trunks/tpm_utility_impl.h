@@ -72,6 +72,10 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                            const std::string& ciphertext,
                            AuthorizationDelegate* delegate,
                            std::string* plaintext) override;
+  TPM_RC ECDHZGen(TPM_HANDLE key_handle,
+                  const TPM2B_ECC_POINT& in_point,
+                  AuthorizationDelegate* delegate,
+                  TPM2B_ECC_POINT* out_point) override;
   TPM_RC RawSign(TPM_HANDLE key_handle,
                  TPM_ALG_ID scheme,
                  TPM_ALG_ID hash_alg,

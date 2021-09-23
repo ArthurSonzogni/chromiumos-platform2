@@ -718,6 +718,54 @@ TPM_RC TpmUtilityImpl::AsymmetricDecrypt(TPM_HANDLE key_handle,
   return TPM_RC_SUCCESS;
 }
 
+TPM_RC TpmUtilityImpl::ECDHZGen(TPM_HANDLE key_handle,
+                                const TPM2B_ECC_POINT& in_point,
+                                AuthorizationDelegate* delegate,
+                                TPM2B_ECC_POINT* out_point) {
+  TPM_RC result;
+  if (delegate == nullptr) {
+    result = SAPI_RC_INVALID_SESSIONS;
+    LOG(ERROR) << __func__
+               << ": This method needs a valid authorization delegate: "
+               << GetErrorString(result);
+    return result;
+  }
+  TPMT_PUBLIC public_area;
+  result = GetKeyPublicArea(key_handle, &public_area);
+  if (result) {
+    LOG(ERROR) << __func__ << ": Error finding public area for: " << key_handle
+               << ", error: " << GetErrorString(result);
+    return result;
+  } else if (public_area.type != TPM_ALG_ECC) {
+    LOG(ERROR) << __func__ << ": Key handle given is not an ECC key";
+    return SAPI_RC_BAD_PARAMETER;
+  } else if ((public_area.object_attributes & kDecrypt) == 0) {
+    LOG(ERROR) << __func__ << ": Key handle given is not a decryption key";
+    return SAPI_RC_BAD_PARAMETER;
+  }
+  if ((public_area.object_attributes & kRestricted) != 0) {
+    LOG(ERROR) << __func__
+               << ": Cannot use ECDH for ZGen with a restricted key";
+    return SAPI_RC_BAD_PARAMETER;
+  }
+  std::string key_name;
+  result = ComputeKeyName(public_area, &key_name);
+  if (result) {
+    LOG(ERROR) << __func__ << ": Error computing key name for: " << key_handle
+               << ", error: " << GetErrorString(result);
+    return result;
+  }
+
+  result = factory_.GetTpm()->ECDH_ZGenSync(key_handle, key_name, in_point,
+                                            out_point, delegate);
+  if (result) {
+    LOG(ERROR) << __func__
+               << ": Error performing ECDH ZGen: " << GetErrorString(result);
+    return result;
+  }
+  return TPM_RC_SUCCESS;
+}
+
 TPM_RC TpmUtilityImpl::RawSign(TPM_HANDLE key_handle,
                                TPM_ALG_ID scheme,
                                TPM_ALG_ID hash_alg,
