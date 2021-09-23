@@ -378,7 +378,8 @@ void CrosFpBiometricsManager::OnEnrollScanDone(
 }
 
 void CrosFpBiometricsManager::OnAuthScanDone(
-    ScanResult result, const BiometricsManager::AttemptMatches& matches) {
+    FingerprintMessage result,
+    const BiometricsManager::AttemptMatches& matches) {
   if (!on_auth_scan_done_.is_null())
     on_auth_scan_done_.Run(result, matches);
 }
@@ -627,7 +628,6 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
   }
 
   biod_metrics_->SendIgnoreMatchEventOnPowerButtonPress(false);
-  ScanResult result;
   int match_result = EC_MKBP_FP_ERRCODE(event);
 
   // If the finger is positioned slightly off the sensor, retry a few times
@@ -664,6 +664,7 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
     dirty_list = GetDirtyList();
   }
 
+  FingerprintMessage result;
   base::Optional<std::string> matched_record_id;
   base::Optional<RecordMetadata> matched_record_meta;
 
@@ -673,20 +674,24 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
   switch (match_result) {
     case EC_MKBP_FP_ERR_MATCH_NO_TEMPLATES:
       LOG(ERROR) << "No templates to match: " << std::hex << event;
-      result = ScanResult::SCAN_RESULT_SUCCESS;
+      result.set_error(FingerprintError::ERROR_NO_TEMPLATES);
       break;
     case EC_MKBP_FP_ERR_MATCH_NO_INTERNAL:
       LOG(ERROR) << "Internal error when matching templates: " << std::hex
                  << event;
-      result = ScanResult::SCAN_RESULT_SUCCESS;
+      result.set_error(FingerprintError::ERROR_UNABLE_TO_PROCESS);
       break;
     case EC_MKBP_FP_ERR_MATCH_NO:
-      // This is the API: empty matches but still SCAN_RESULT_SUCCESS.
-      result = ScanResult::SCAN_RESULT_SUCCESS;
+      result.set_scan_result(ScanResult::SCAN_RESULT_NO_MATCH);
       break;
     case EC_MKBP_FP_ERR_MATCH_YES:
     case EC_MKBP_FP_ERR_MATCH_YES_UPDATED:
     case EC_MKBP_FP_ERR_MATCH_YES_UPDATE_FAILED:
+      // We are on a good path to successfully authenticate user, but
+      // we still need to confirm that positive match secret is correct.
+      // Set UNABLE_TO_PROCESS error for now, it will be changed to
+      // SUCCESS scan result when positive match secret is validated.
+      result.set_error(FingerprintError::ERROR_UNABLE_TO_PROCESS);
       matched_record_id = GetLoadedRecordId(match_idx);
       if (matched_record_id) {
         matched_record_meta =
@@ -698,13 +703,12 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
       } else {
         LOG(ERROR) << "Invalid finger index " << match_idx;
       }
-      result = ScanResult::SCAN_RESULT_SUCCESS;
       break;
     case EC_MKBP_FP_ERR_MATCH_NO_LOW_QUALITY:
-      result = ScanResult::SCAN_RESULT_INSUFFICIENT;
+      result.set_scan_result(ScanResult::SCAN_RESULT_INSUFFICIENT);
       break;
     case EC_MKBP_FP_ERR_MATCH_NO_LOW_COVERAGE:
-      result = ScanResult::SCAN_RESULT_PARTIAL;
+      result.set_scan_result(ScanResult::SCAN_RESULT_PARTIAL);
       break;
     default:
       LOG(ERROR) << "Unexpected result from matching templates: " << std::hex
@@ -721,6 +725,7 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
       matches.emplace(
           matched_record_meta->user_id,
           std::vector<std::string>({matched_record_meta->record_id}));
+      result.set_scan_result(ScanResult::SCAN_RESULT_SUCCESS);
     } else {
       LOG(ERROR) << "Failed to check Secure Secret for " << match_idx;
       matched_record_meta = base::nullopt;
@@ -728,7 +733,7 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
   }
 
   // Send back the result directly (as we are running on the main thread).
-  OnAuthScanDone(result, std::move(matches));
+  OnAuthScanDone(std::move(result), std::move(matches));
 
   base::Optional<CrosFpDeviceInterface::FpStats> stats =
       cros_dev_->GetFpStats();

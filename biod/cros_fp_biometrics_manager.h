@@ -116,7 +116,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   void OnEnrollScanDone(ScanResult result,
                         const BiometricsManager::EnrollStatus& enroll_status);
-  void OnAuthScanDone(ScanResult result,
+  void OnAuthScanDone(FingerprintMessage result,
                       const BiometricsManager::AttemptMatches& matches);
   void OnSessionFailed();
 

@@ -19,6 +19,7 @@
 
 #include "biod/biometrics_manager_record.h"
 #include "biod/proto_bindings/constants.pb.h"
+#include "biod/proto_bindings/messages.pb.h"
 
 namespace biod {
 
@@ -160,7 +161,7 @@ class BiometricsManager {
   using AttemptMatches =
       std::unordered_map<std::string, std::vector<std::string>>;
   using AuthScanDoneCallback =
-      base::RepeatingCallback<void(ScanResult, AttemptMatches)>;
+      base::RepeatingCallback<void(FingerprintMessage, AttemptMatches)>;
   virtual void SetAuthScanDoneHandler(
       const AuthScanDoneCallback& on_auth_scan_done) = 0;
 

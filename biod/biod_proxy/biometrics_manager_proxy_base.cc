@@ -35,8 +35,33 @@ const char* ScanResultToString(ScanResult result) {
       return "Too Fast";
     case ScanResult::SCAN_RESULT_IMMOBILE:
       return "Immobile";
+    case ScanResult::SCAN_RESULT_NO_MATCH:
+      return "No Match";
     default:
       return "Unknown Result";
+  }
+}
+
+const char* FingerprintErrorToString(const FingerprintError& error) {
+  switch (error) {
+    case FingerprintError::ERROR_HW_UNAVAILABLE:
+      return "Hardware unavailable";
+    case FingerprintError::ERROR_UNABLE_TO_PROCESS:
+      return "Operation can't continue";
+    case FingerprintError::ERROR_TIMEOUT:
+      return "Timeout";
+    case FingerprintError::ERROR_NO_SPACE:
+      return "No space for a template";
+    case FingerprintError::ERROR_CANCELED:
+      return "Canceled";
+    case FingerprintError::ERROR_UNABLE_TO_REMOVE:
+      return "Unable to remove a template";
+    case FingerprintError::ERROR_LOCKOUT:
+      return "Hardware is locked";
+    case FingerprintError::ERROR_NO_TEMPLATES:
+      return "No templates to match";
+    default:
+      return "Unknown error";
   }
 }
 

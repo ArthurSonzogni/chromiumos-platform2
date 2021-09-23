@@ -75,7 +75,7 @@ class BiometricsManagerWrapper {
   void OnNameOwnerChanged(dbus::Signal* signal);
   void OnEnrollScanDone(ScanResult scan_result,
                         const BiometricsManager::EnrollStatus& enroll_status);
-  void OnAuthScanDone(ScanResult scan_result,
+  void OnAuthScanDone(FingerprintMessage result,
                       BiometricsManager::AttemptMatches matches);
   void OnSessionFailed();
 

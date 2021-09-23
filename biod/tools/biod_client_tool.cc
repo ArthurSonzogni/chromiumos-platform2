@@ -258,12 +258,26 @@ class BiometricsManagerProxy : public biod::BiometricsManagerProxyBase {
   void OnAuthScanDone(dbus::Signal* signal) {
     dbus::MessageReader signal_reader(signal);
 
-    ScanResult scan_result;
+    biod::FingerprintMessage proto;
     dbus::MessageReader matches_reader(nullptr);
     std::vector<std::string> user_ids;
 
-    CHECK(signal_reader.PopUint32(reinterpret_cast<uint32_t*>(&scan_result)));
-    LOG(INFO) << "Authentication: " << ScanResultToString(scan_result);
+    CHECK(signal_reader.PopArrayOfBytesAsProto(&proto));
+    switch (proto.msg_case()) {
+      case biod::FingerprintMessage::MsgCase::kScanResult:
+        LOG(INFO) << "Authentication: "
+                  << ScanResultToString(proto.scan_result());
+        break;
+      case biod::FingerprintMessage::MsgCase::kError:
+        LOG(WARNING) << "Authentication failed: "
+                     << FingerprintErrorToString(proto.error());
+        break;
+      case biod::FingerprintMessage::MsgCase::MSG_NOT_SET:
+        LOG(WARNING) << "Fingerprint response doesn't contain any data";
+        break;
+      default:
+        LOG(ERROR) << "Unsupported message received";
+    }
 
     CHECK(signal_reader.PopArray(&matches_reader));
     while (matches_reader.HasMoreData()) {

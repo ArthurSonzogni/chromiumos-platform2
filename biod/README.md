@@ -282,7 +282,8 @@ The `UINT32 scan_result` values are meant to be instructions to the user on how
 to get a better scan. They are as follows:
 
 Note: Pretty much ripped off from AOSP's `fingerprint_acquired_info` in
-fingerprint.h.
+[fingerprint.h](https://cs.android.com/android/platform/superproject/+/master:hardware/libhardware/include/hardware/fingerprint.h;l=67;drc=1ae7379baab4b2941ad1701190718cf53a051b48).
+Codes which are greater or equal to 10000 are ChromeOS specific codes.
 
 *   0 = Success (the sensor captured good data)
 *   1 = Partial (sensor needs more data)
@@ -291,12 +292,31 @@ fingerprint.h.
 *   4 = Too Slow (tell user to speed up)
 *   5 = Too Fast (tell user to slow down)
 *   6 = Immobile (tell user to move a little to get more data)
+*   10000 = No Match (tell user to use another finger, used during authentication)
 
 #### AuthScanDone (Signal)
 
 ```
-AuthScanDone(UINT32 scan_result, std::unordered_map<std::string, std::vector<std::string>> matches)
+AuthScanDone(FingerprintMessage message, std::unordered_map<std::string, std::vector<std::string>> matches)
 ```
+
+The returned `message` is a protobuf which is the union of ScanResult enum and
+FingerprintError enum. ScanResult is used to give user a feedback about
+scanning. FingerprintError is used to provide more details when matching fails
+but is's not related to user.
+
+Note: Codes for FingerprintError comes from AOSP's `fingerprint_error` in
+[fingerprint.h](https://cs.android.com/android/platform/superproject/+/master:hardware/libhardware/include/hardware/fingerprint.h;l=48;drc=1ae7379baab4b2941ad1701190718cf53a051b48).
+Codes which are greater or equal to 10000 are ChromeOS specific codes.
+
+*   1 = HW Unavailable (general hardware error)
+*   2 = Unable To Process (operation can't continue)
+*   3 = Timeout (operation has timed out waiting for user input)
+*   4 = No Space (no space to store the template)
+*   5 = Canceled (operation can't proceed)
+*   6 = Unable To Remove (fingerprint with given ID can't be removed)
+*   7 = Lockout (hardware is locked due to too many attempts)
+*   10000 = No Templates (fingerprint hardware contains no templates)
 
 The returned `matches` are a map from user id to a list of biometric record ids.
 The user ids are the same ones given to `StartEnrollSession` in previous enroll

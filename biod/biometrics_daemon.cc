@@ -227,14 +227,14 @@ void BiometricsManagerWrapper::OnEnrollScanDone(
 }
 
 void BiometricsManagerWrapper::OnAuthScanDone(
-    ScanResult scan_result, BiometricsManager::AttemptMatches matches) {
+    FingerprintMessage result, BiometricsManager::AttemptMatches matches) {
   if (!auth_session_dbus_object_)
     return;
 
   dbus::Signal auth_scan_done_signal(kBiometricsManagerInterface,
                                      kBiometricsManagerAuthScanDoneSignal);
   dbus::MessageWriter writer(&auth_scan_done_signal);
-  writer.AppendUint32(static_cast<uint32_t>(scan_result));
+  writer.AppendProtoAsArrayOfBytes(result);
   dbus::MessageWriter matches_writer(nullptr);
   writer.OpenArray("{sao}", &matches_writer);
   for (const auto& match : matches) {

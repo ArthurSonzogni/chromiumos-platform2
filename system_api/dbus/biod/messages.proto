@@ -10,6 +10,7 @@ package biod;
 
 import "constants.proto";
 
+// Included in biod's AuthScanDone signal
 message FingerprintMessage {
   oneof msg {
     FingerprintError error = 1;
