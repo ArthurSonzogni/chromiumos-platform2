@@ -10,6 +10,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -281,7 +282,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
 
   const TrunksFactory& factory_;
   std::map<uint32_t, TPMS_NV_PUBLIC> nvram_public_area_map_;
-  uint32_t vendor_id_;
+  std::optional<uint32_t> vendor_id_;
   std::string cached_rsu_device_id_;
   size_t max_nv_chunk_size_ = 0;
 
@@ -421,10 +422,9 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   // Return true if the TPM supports padding-only scheme for Sign.
   bool SupportsPaddingOnlySigningScheme() { return IsCr50() || IsSimulator(); }
 
-  // Returns Vendor ID as reported in TPM_PT_MANUFACTURER property, or 0
-  // in case of error reading the property.
-  // Caches a non-zero vendor ID.
-  uint32_t VendorId();
+  // Queries Vendor ID as reported in TPM_PT_MANUFACTURER property and caches it
+  // in `vendor_id_`.
+  void CacheVendorId();
 
   // Returns true for TPMs running on simulator.
   bool IsSimulator();

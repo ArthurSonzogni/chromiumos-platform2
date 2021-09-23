@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <optional>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -56,8 +57,6 @@ const char kPlatformPassword[] = "cros-platform";
 const size_t kMaxPasswordLength = 32;
 // The below maximum is defined in TPM 2.0 Library Spec Part 2 Section 13.1
 const uint32_t kMaxNVSpaceIndex = (1 << 24) - 1;
-// The value of the vendor ID when the vendor ID is not confirmed yet.
-const uint32_t kUnsetVendorId = 0;
 // Cr50 Vendor ID ("CROS").
 const uint32_t kVendorIdCr50 = 0x43524f53;
 // Simulator Vendor ID ("SIMU").
@@ -103,10 +102,11 @@ std::string HashString(const std::string& plaintext,
   return std::string();
 }
 
-VendorVariant ToVendorVariant(uint32_t vendor_id) {
-  switch (vendor_id) {
-    case kUnsetVendorId:
-      return VendorVariant::kUnknown;
+VendorVariant ToVendorVariant(std::optional<uint32_t> vendor_id) {
+  if (!vendor_id.has_value()) {
+    return VendorVariant::kUnknown;
+  }
+  switch (*vendor_id) {
     case kVendorIdCr50:
       return VendorVariant::kCr50;
     case kVendorIdSimulator:
@@ -121,7 +121,7 @@ VendorVariant ToVendorVariant(uint32_t vendor_id) {
 namespace trunks {
 
 TpmUtilityImpl::TpmUtilityImpl(const TrunksFactory& factory)
-    : factory_(factory), vendor_id_(kUnsetVendorId) {
+    : factory_(factory) {
   crypto::EnsureOpenSSLInit();
 }
 
@@ -2895,32 +2895,34 @@ TPM_RC TpmUtilityImpl::PinWeaverLogReplay(uint8_t protocol_version,
       });
 }
 
-uint32_t TpmUtilityImpl::VendorId() {
-  if (vendor_id_ == kUnsetVendorId) {
-    std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
-    TPM_RC result = tpm_state->Initialize();
-    if (result) {
-      LOG(ERROR) << __func__ << ": TpmState initialization failed: "
-                 << GetErrorString(result);
-      return 0;
-    }
-    if (!tpm_state->GetTpmProperty(TPM_PT_MANUFACTURER, &vendor_id_)) {
-      LOG(WARNING) << __func__
-                   << ": Error getting TPM_PT_MANUFACTURER property";
-      return 0;
-    }
-    VLOG(1) << __func__ << ": TPM_PT_MANUFACTURER = 0x" << std::hex
-            << vendor_id_;
+void TpmUtilityImpl::CacheVendorId() {
+  if (vendor_id_.has_value()) {
+    return;
   }
-  return vendor_id_;
+  std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
+  TPM_RC result = tpm_state->Initialize();
+  if (result) {
+    LOG(ERROR) << __func__ << ": TpmState initialization failed: "
+               << GetErrorString(result);
+    return;
+  }
+  uint32_t vendor_id;
+  if (!tpm_state->GetTpmProperty(TPM_PT_MANUFACTURER, &vendor_id)) {
+    LOG(WARNING) << __func__ << ": Error getting TPM_PT_MANUFACTURER property";
+    return;
+  }
+  VLOG(1) << __func__ << ": TPM_PT_MANUFACTURER = 0x" << std::hex << vendor_id;
+  vendor_id_ = vendor_id;
 }
 
 bool TpmUtilityImpl::IsCr50() {
-  return VendorId() == kVendorIdCr50;
+  CacheVendorId();
+  return vendor_id_.has_value() && *vendor_id_ == kVendorIdCr50;
 }
 
 bool TpmUtilityImpl::IsSimulator() {
-  return VendorId() == kVendorIdSimulator;
+  CacheVendorId();
+  return vendor_id_.has_value() && *vendor_id_ == kVendorIdSimulator;
 }
 
 std::string TpmUtilityImpl::SendCommandAndWait(const std::string& command) {
@@ -3024,7 +3026,8 @@ TPM_RC TpmUtilityImpl::PinWeaverCommand(const std::string& tag,
   }
 
   std::string out;
-  const VendorVariant vendor_variant = ToVendorVariant(VendorId());
+  CacheVendorId();
+  const VendorVariant vendor_variant = ToVendorVariant(vendor_id_);
   switch (vendor_variant) {
     case VendorVariant::kCr50:
       rc = Cr50VendorCommand(kCr50SubcmdPinWeaver, in, &out);
