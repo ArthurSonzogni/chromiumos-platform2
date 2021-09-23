@@ -9,6 +9,8 @@
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/auth_block_state_generated.h"
+
 namespace cryptohome {
 // TODO(b/199531643): Check the impact of using empty blobs stored in every
 // AuthBlockState.
@@ -22,14 +24,18 @@ struct TpmNotBoundToPcrAuthBlockState {
   // Marks if the password is run through scrypt before going to the TPM.
   bool scrypt_derived = false;
   // The salt used to bind to the TPM.
+  // Must be set.
   base::Optional<brillo::SecureBlob> salt;
   // The number of rounds key derivation is called.
   base::Optional<uint32_t> password_rounds;
   // The VKK wrapped with the user's password by the tpm.
+  // Must be set.
   base::Optional<brillo::SecureBlob> tpm_key;
-  // A check if this is the same TPM that wrapped the credential.
+  // Optional, served as a TPM identity, useful when checking if the TPM is
+  // the same one sealed the tpm_key.
   base::Optional<brillo::SecureBlob> tpm_public_key_hash;
   // The wrapped reset seed to reset LE credentials.
+  // This is for in memory data holding only and will not be serialized.
   base::Optional<brillo::SecureBlob> wrapped_reset_seed;
 };
 
@@ -42,9 +48,11 @@ struct TpmBoundToPcrAuthBlockState {
   base::Optional<brillo::SecureBlob> tpm_key;
   // Same as tpm_key, but extends the PCR to only allow one user until reboot.
   base::Optional<brillo::SecureBlob> extended_tpm_key;
-  // A check if this is the same TPM that wrapped the credential.
+  // Optional, served as a TPM identity, useful when checking if the TPM is
+  // the same one sealed the tpm_key.
   base::Optional<brillo::SecureBlob> tpm_public_key_hash;
   // The wrapped reset seed to reset LE credentials.
+  // This is for in memory data holding only and will not be serialized.
   base::Optional<brillo::SecureBlob> wrapped_reset_seed;
 };
 
@@ -69,6 +77,7 @@ struct LibScryptCompatAuthBlockState {
   // The wrapped chaps keys.
   base::Optional<brillo::SecureBlob> wrapped_chaps_key;
   // The wrapped reset seed keys.
+  // This is for in memory data holding only and will not be serialized.
   base::Optional<brillo::SecureBlob> wrapped_reset_seed;
   // The random salt.
   // TODO(b/198394243): We should remove it because it's not actually used.
@@ -116,6 +125,15 @@ struct CryptohomeRecoveryAuthBlockState {
 };
 
 struct AuthBlockState {
+  // Returns an Flatbuffer offset which can be added to other Flatbuffers
+  // tables. Returns a zero offset for errors since AuthBlockState
+  // shall never be an empty table. Zero offset can be checked by IsNull().
+  flatbuffers::Offset<SerializedAuthBlockState> SerializeToOffset(
+      flatbuffers::FlatBufferBuilder* builder) const;
+
+  // Returns an AuthBlockState Flatbuffer serialized to a SecureBlob.
+  base::Optional<brillo::SecureBlob> Serialize() const;
+
   absl::variant<TpmNotBoundToPcrAuthBlockState,
                 TpmBoundToPcrAuthBlockState,
                 PinWeaverAuthBlockState,

@@ -1,0 +1,28 @@
+// Copyright 2021 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+namespace cryptohome;
+
+table TpmBoundToPcrState {
+  // This denotes if the password is fed through scrypt before going to
+  // the TPM.
+  scrypt_derived:bool = false (id: 0);
+  // The salt used when binding to the TPM.
+  salt:[ubyte] (id: 1);
+  // The VKK wrapped with the user's password by the tpm.
+  tpm_key:[ubyte] (id: 2);
+  // Same as tpm_key, but extends the PCR to only allow one user until reboot.
+  extended_tpm_key:[ubyte] (id: 3);
+  // A check if this is the same TPM that wrapped the credential.
+  tpm_public_key_hash:[ubyte] (id: 4);
+}
+
+// TODO(b/200961210): add more AuthBlockStates.
+union AuthBlockStateUnion { TpmBoundToPcrState }
+
+table SerializedAuthBlockState {
+  auth_block_state:AuthBlockStateUnion;
+}
+
+root_type SerializedAuthBlockState;

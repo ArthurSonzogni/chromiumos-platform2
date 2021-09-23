@@ -68,6 +68,7 @@ flatbuffer("cryptohome-flatbuffers") {
     flatc_args += [ "--gen-object-api" ]
   }
   sources = [
+    "../flatbuffer_schemas/auth_block_state.fbs",
     "../flatbuffer_schemas/user_secret_stash_container.fbs",
     "../flatbuffer_schemas/user_secret_stash_payload.fbs",
   ]
@@ -185,6 +186,7 @@ pkg_config("libcrostpm_dependent_config") {
 
 static_library("libcrostpm") {
   sources = [
+    "../auth_block_state.cc",
     "../auth_session.cc",
     "../challenge_credential_auth_block.cc",
     "../crc8.c",
