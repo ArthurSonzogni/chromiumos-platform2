@@ -557,6 +557,7 @@ void MachineLearningServiceImpl::LoadSpeechRecognizer(
     std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
     request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);
     brillo::MessageLoop::current()->BreakLoop();
+    return;
   }
 
   std::move(callback).Run(LoadModelResult::OK);
