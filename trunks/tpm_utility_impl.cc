@@ -363,27 +363,27 @@ TPM_RC TpmUtilityImpl::PrepareForOwnership() {
 TPM_RC TpmUtilityImpl::InitializeOwnerForCsme() {
   // For cr50 case, we don't have to create salting key for CSME.
   if (IsCr50()) {
-    return true;
+    return TPM_RC_SUCCESS;
   }
   uint8_t protocol_version = 0;
   TPM_RC result = PinWeaverIsSupported(0, &protocol_version);
   // If pinweaver is not supported at all, skip the initialization.
   if (result) {
-    return true;
+    return TPM_RC_SUCCESS;
   }
   result = CreateCsmeSaltingKey();
   if (result) {
     LOG(WARNING) << __func__ << ": Failed to create CSME Salting Key:"
                  << GetErrorString(result);
-    return false;
+    return result;
   }
   csme::MeiClientFactory mei_client_factory;
   csme::PinWeaverProvisionClient client(&mei_client_factory);
   if (!client.InitOwner()) {
     LOG(WARNING) << "Failed to call `InitOwner()`";
-    return false;
+    return TPM_RC_FAILURE;
   }
-  return true;
+  return TPM_RC_SUCCESS;
 }
 
 TPM_RC TpmUtilityImpl::CreateStorageAndSaltingKeys() {
