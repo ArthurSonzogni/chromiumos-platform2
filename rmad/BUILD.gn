@@ -62,6 +62,7 @@ static_library("libutils") {
     "utils/json_store.cc",
     "utils/regions_utils_impl.cc",
     "utils/vpd_utils_impl.cc",
+    "utils/vpd_utils_impl_thread_safe.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [ "//hardware_verifier/proto:hardware_verifier-protos" ]

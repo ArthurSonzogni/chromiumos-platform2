@@ -10,23 +10,20 @@
 #include <memory>
 #include <string>
 
+#include <base/memory/scoped_refptr.h>
 #include <base/synchronization/lock.h>
 
 #include "rmad/utils/iio_ec_sensor_utils.h"
-#include "rmad/utils/vpd_utils.h"
+#include "rmad/utils/vpd_utils_impl_thread_safe.h"
 
 namespace rmad {
 
 class GyroscopeCalibrationUtilsImpl : public SensorCalibrationUtils {
  public:
-  GyroscopeCalibrationUtilsImpl(const std::string& location,
-                                const std::string& name = "cros-ec-gyro");
-  // Used to inject mock |vpd_utils_|, and |iio_ec_sensor_utils_| for testing.
   GyroscopeCalibrationUtilsImpl(
+      scoped_refptr<VpdUtilsImplThreadSafe> vpd_utils_impl_thread_safe,
       const std::string& location,
-      const std::string& name,
-      std::unique_ptr<VpdUtils> vpd_utils,
-      std::unique_ptr<IioEcSensorUtils> iio_ec_sensor_utils);
+      const std::string& name = "cros-ec-gyro");
   ~GyroscopeCalibrationUtilsImpl() override = default;
 
   bool Calibrate() override;
@@ -36,7 +33,7 @@ class GyroscopeCalibrationUtilsImpl : public SensorCalibrationUtils {
   void SetProgress(double progress);
 
   // utils part
-  std::unique_ptr<VpdUtils> vpd_utils_;
+  scoped_refptr<VpdUtilsImplThreadSafe> vpd_utils_impl_thread_safe_;
   std::unique_ptr<IioEcSensorUtils> iio_ec_sensor_utils_;
 
   // progress part

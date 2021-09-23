@@ -51,21 +51,14 @@ const std::vector<double> kGyroscopIdealValues = {0, 0, 0};
 namespace rmad {
 
 GyroscopeCalibrationUtilsImpl::GyroscopeCalibrationUtilsImpl(
-    const std::string& location, const std::string& name)
-    : SensorCalibrationUtils(location, name), progress_(kProgressInit) {
-  vpd_utils_ = std::make_unique<VpdUtilsImpl>();
+    scoped_refptr<VpdUtilsImplThreadSafe> vpd_utils_impl_thread_safe,
+    const std::string& location,
+    const std::string& name)
+    : SensorCalibrationUtils(location, name),
+      vpd_utils_impl_thread_safe_(vpd_utils_impl_thread_safe),
+      progress_(kProgressInit) {
   iio_ec_sensor_utils_ = std::make_unique<IioEcSensorUtilsImpl>(location, name);
 }
-
-GyroscopeCalibrationUtilsImpl::GyroscopeCalibrationUtilsImpl(
-    const std::string& location,
-    const std::string& name,
-    std::unique_ptr<VpdUtils> vpd_utils,
-    std::unique_ptr<IioEcSensorUtils> iio_ec_sensor_utils)
-    : SensorCalibrationUtils(location, name),
-      vpd_utils_(std::move(vpd_utils)),
-      iio_ec_sensor_utils_(std::move(iio_ec_sensor_utils)),
-      progress_(kProgressInit) {}
 
 bool GyroscopeCalibrationUtilsImpl::Calibrate() {
   std::vector<double> avg_data;
@@ -113,7 +106,9 @@ bool GyroscopeCalibrationUtilsImpl::Calibrate() {
     calibbias_entries.push_back(kCalibbiasPrefix + channel + "_" + location_ +
                                 kCalibbiasPostfix);
   }
-  if (!vpd_utils_->SetCalibbias(calibbias_entries, scaled_data)) {
+
+  if (!vpd_utils_impl_thread_safe_->SetCalibbias(calibbias_entries,
+                                                 scaled_data)) {
     SetProgress(kProgressFailed);
     return false;
   }
