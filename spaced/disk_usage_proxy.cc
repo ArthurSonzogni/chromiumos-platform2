@@ -6,6 +6,8 @@
 
 #include <memory>
 
+#include <base/logging.h>
+
 namespace spaced {
 
 DiskUsageProxy::DiskUsageProxy() {

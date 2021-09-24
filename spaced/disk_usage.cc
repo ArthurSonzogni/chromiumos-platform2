@@ -11,6 +11,7 @@
 #include <sys/statvfs.h>
 
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_util.h>
 #include <rootdev/rootdev.h>
