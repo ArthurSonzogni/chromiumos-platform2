@@ -76,9 +76,10 @@ int Status(std::unique_ptr<hps::HPS> hps,
       std::cout << base::StringPrintf("Register %3d: error (%s)\n", i,
                                       hps::HpsRegToString(hps::HpsReg(i)));
     } else {
-      std::cout << base::StringPrintf("Register %3d: 0x%.4x (%s)\n", i,
-                                      static_cast<uint16_t>(result),
-                                      hps::HpsRegToString(hps::HpsReg(i)));
+      std::cout << base::StringPrintf(
+          "Register %3d: 0x%.4x (%s) %s\n", i, static_cast<uint16_t>(result),
+          hps::HpsRegToString(hps::HpsReg(i)),
+          hps::HpsRegValToString(hps::HpsReg(i), result).c_str());
     }
   }
   return 0;

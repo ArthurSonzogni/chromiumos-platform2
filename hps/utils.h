@@ -22,6 +22,10 @@ bool ReadVersionFromFile(const base::FilePath& mcu, uint32_t* version);
 // Convert the register to the name of the register
 const char* HpsRegToString(const HpsReg reg);
 
+// Return a pretty printed register value,
+// or empty string if there is nothing pretty to print
+std::string HpsRegValToString(HpsReg reg, uint16_t val);
+
 }  // namespace hps
 
 #endif  // HPS_UTILS_H_
