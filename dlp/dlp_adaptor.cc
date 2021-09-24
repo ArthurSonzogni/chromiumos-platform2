@@ -17,6 +17,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/location.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/file_descriptor.h>

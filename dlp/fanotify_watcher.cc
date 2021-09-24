@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "base/files/scoped_file.h"
+#include "base/logging.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/posix/eintr_wrapper.h"
 #include "base/threading/sequenced_task_runner_handle.h"
