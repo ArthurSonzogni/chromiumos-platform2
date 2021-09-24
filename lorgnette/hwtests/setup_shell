@@ -3,7 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-export PATH="/usr/local/opt/wwcb_mfp/usr/bin:${PATH}"
+export WWCB_ROOT="/usr/local/opt/wwcb_mfp"
+export PATH="${WWCB_ROOT}/usr/bin:${WWCB_ROOT}/usr/local/bin:${PATH}"
 
 export MFP_NAME=""
 export MFP_DEV_LIST=""
