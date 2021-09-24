@@ -136,6 +136,9 @@ class FingerprintManager {
   // |auth_scan_done_callback_|.
   void ProcessRetry();
 
+  // Run |auth_scan_done_callback_| with FAILED_RETRY_NOT_ALLOWED.
+  void ProcessFailed();
+
   void Reset();
 
   // The default BiometricsManagerProxyBase object.

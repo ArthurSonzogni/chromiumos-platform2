@@ -19,7 +19,7 @@ namespace cryptohome {
 namespace {
 
 struct AuthScanDBusResult {
-  uint32_t scan_result;
+  biod::FingerprintMessage auth_result;
   std::vector<std::string> user_ids;
 };
 
@@ -27,12 +27,28 @@ struct AuthScanDBusResult {
 bool ParseDBusSignal(dbus::Signal* signal, AuthScanDBusResult* result) {
   dbus::MessageReader signal_reader(signal);
 
-  if (!signal_reader.PopUint32(&result->scan_result))
+  if (!signal_reader.PopArrayOfBytesAsProto(&result->auth_result))
     return false;
 
+  switch (result->auth_result.msg_case()) {
+    case biod::FingerprintMessage::MsgCase::kError:
+    case biod::FingerprintMessage::MsgCase::kScanResult:
+      break;
+    case biod::FingerprintMessage::MsgCase::MSG_NOT_SET:
+      VLOG(1) << "Fingerprint response doesn't contain any data";
+      return false;
+    default:
+      VLOG(1) << "Unsupported message received";
+      return false;
+  }
+
   // Parsing is completed if the scan result isn't success.
-  if (result->scan_result != biod::ScanResult::SCAN_RESULT_SUCCESS)
+  if (result->auth_result.msg_case() !=
+          biod::FingerprintMessage::MsgCase::kScanResult ||
+      result->auth_result.scan_result() !=
+          biod::ScanResult::SCAN_RESULT_SUCCESS) {
     return true;
+  }
 
   dbus::MessageReader matches_reader(nullptr);
   if (!signal_reader.PopArray(&matches_reader))
@@ -123,18 +139,26 @@ void FingerprintManager::OnAuthScanDone(dbus::Signal* signal) {
 
   AuthScanDBusResult result;
   if (!ParseDBusSignal(signal, &result)) {
-    if (auth_scan_done_callback_) {
-      auth_scan_done_callback_.Run(
-          FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
-    }
-    state_ = State::AUTH_SESSION_LOCKED;
+    ProcessFailed();
     return;
   }
 
-  if (result.scan_result != biod::ScanResult::SCAN_RESULT_SUCCESS) {
+  if (result.auth_result.msg_case() ==
+      biod::FingerprintMessage::MsgCase::kError) {
+    VLOG(1) << "Authentication failed: error: "
+            << biod::FingerprintErrorToString(result.auth_result.error());
+    ProcessFailed();
+    return;
+  }
+
+  // Now we know that result.auth_result contains ScanResult.
+  CHECK(result.auth_result.msg_case() ==
+        biod::FingerprintMessage::MsgCase::kScanResult);
+
+  if (result.auth_result.scan_result() !=
+      biod::ScanResult::SCAN_RESULT_SUCCESS) {
     VLOG(1) << "Authentication failed: scan result: "
-            << biod::ScanResultToString(
-                   static_cast<biod::ScanResult>(result.scan_result));
+            << biod::ScanResultToString(result.auth_result.scan_result());
     ProcessRetry();
     return;
   }
@@ -164,6 +188,14 @@ void FingerprintManager::ProcessRetry() {
   }
   if (auth_scan_done_callback_)
     auth_scan_done_callback_.Run(error);
+}
+
+void FingerprintManager::ProcessFailed() {
+  if (auth_scan_done_callback_) {
+    auth_scan_done_callback_.Run(
+        FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
+  }
+  state_ = State::AUTH_SESSION_LOCKED;
 }
 
 void FingerprintManager::SetAuthScanDoneCallback(
