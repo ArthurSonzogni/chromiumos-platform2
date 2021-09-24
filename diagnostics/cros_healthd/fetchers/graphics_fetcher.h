@@ -10,12 +10,8 @@
 #include <base/optional.h>
 
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/graphics_header.h"
 #include "mojo/cros_healthd_probe.mojom.h"
-
-// Include here to avoid notoriously problematic X code library. In X code, they
-// define |Status| as |int|, it breaks many code.
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
 
 namespace diagnostics {
 

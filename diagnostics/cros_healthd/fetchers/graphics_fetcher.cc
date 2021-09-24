@@ -4,10 +4,6 @@
 
 #include "diagnostics/cros_healthd/fetchers/graphics_fetcher.h"
 
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-#include <GLES3/gl3.h>
-#include <GLES3/gl32.h>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,6 +11,7 @@
 #include <base/bind.h>
 #include <base/strings/string_split.h>
 
+#include "diagnostics/cros_healthd/fetchers/graphics_header.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 
 namespace diagnostics {
