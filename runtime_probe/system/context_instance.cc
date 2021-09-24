@@ -4,6 +4,8 @@
 
 #include "runtime_probe/system/context_instance.h"
 
+#include <ostream>
+
 #include <base/check.h>
 
 namespace runtime_probe {
