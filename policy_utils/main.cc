@@ -5,6 +5,7 @@
 #include <sysexits.h>
 
 #include <base/command_line.h>
+#include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_util.h>
 #include <brillo/flag_helper.h>
