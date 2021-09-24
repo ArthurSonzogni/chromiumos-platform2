@@ -11,6 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 
 #include "crash-reporter/util.h"
 
@@ -51,16 +52,15 @@ bool SELinuxViolationCollector::LoadSELinuxViolation(
   std::string::size_type metadata_end_position = violation_report.find('\n');
   *content = violation_report.substr(metadata_end_position + 1);
 
-  std::string metadata_string =
-      violation_report.substr(0, metadata_end_position);
-  while (!metadata_string.empty()) {
-    std::string::size_type key_end_position = metadata_string.find('\x01');
-    std::string::size_type value_end_position = metadata_string.find('\x02');
-    std::string key = metadata_string.substr(0, key_end_position);
-    std::string value = metadata_string.substr(
-        key_end_position + 1, value_end_position - key_end_position - 1);
-    extra_metadata->emplace(key, value);
-    metadata_string = metadata_string.substr(value_end_position + 1);
+  base::StringPairs kvpairs;
+  if (!base::SplitStringIntoKeyValuePairs(
+          violation_report.substr(0, metadata_end_position), '\x01', '\x02',
+          &kvpairs)) {
+    return false;
+  }
+
+  for (const auto& kvpair : kvpairs) {
+    extra_metadata->emplace(kvpair.first, kvpair.second);
   }
 
   return !signature->empty();
