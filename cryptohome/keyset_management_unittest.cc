@@ -1601,4 +1601,188 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFailAuthSessions) {
   EXPECT_FALSE(platform_.FileExists(vk_path));
 }
 
+TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndData) {
+  // Test to load key labels data as normal.
+  // Setup
+  KeysetSetUpWithKeyData(DefaultKeyData());
+
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto_);
+  vk.CreateRandom();
+
+  brillo::SecureBlob new_passkey(kNewPasskey);
+  Credentials new_credentials(users_[0].name, new_passkey);
+
+  KeyData key_data;
+  key_data.set_label(kAltPasswordLabel);
+  new_credentials.set_key_data(key_data);
+
+  EXPECT_EQ(keyset_management_->AddKeyset(new_credentials, vk),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  std::map<std::string, KeyData> labels_and_data_map;
+  std::pair<std::string, int> answer_map[] = {
+      {kAltPasswordLabel, KeyData::KEY_TYPE_PASSWORD},
+      {"password", KeyData::KEY_TYPE_PASSWORD}};
+
+  // Test
+  EXPECT_TRUE(keyset_management_->GetVaultKeysetLabelsAndData(
+      users_[0].obfuscated, &labels_and_data_map));
+  int answer_iter = 0;
+  for (const auto& [key, value] : labels_and_data_map) {
+    EXPECT_EQ(key, answer_map[answer_iter].first);
+    EXPECT_EQ(value.type(), answer_map[answer_iter].second);
+    answer_iter++;
+  }
+}
+
+TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataInvalidFileExtension) {
+  // File extension on keyset is not equal to kKeyFile, shouldn't be read.
+  // Setup
+  KeysetSetUpWithKeyData(DefaultKeyData());
+
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto_);
+  vk.CreateRandom();
+
+  brillo::SecureBlob new_passkey(kNewPasskey);
+  Credentials new_credentials(users_[0].name, new_passkey);
+
+  KeyData key_data;
+  key_data.set_label(kAltPasswordLabel);
+  new_credentials.set_key_data(key_data);
+  vk.SetKeyData(new_credentials.key_data());
+
+  std::string obfuscated_username =
+      new_credentials.GetObfuscatedUsername(system_salt_);
+  ASSERT_TRUE(vk.Encrypt(new_credentials.passkey(), obfuscated_username));
+  ASSERT_TRUE(
+      vk.Save(users_[0].homedir_path.Append("wrong_ext").AddExtension("1")));
+
+  std::map<std::string, KeyData> labels_and_data_map;
+  std::pair<std::string, int> answer_map[] = {
+      // "alt_password" is not fetched below, file extension is wrong.
+      // {"alt_password", KeyData::KEY_TYPE_PASSWORD}
+      {"password", KeyData::KEY_TYPE_PASSWORD},
+  };
+
+  // Test
+  EXPECT_TRUE(keyset_management_->GetVaultKeysetLabelsAndData(
+      obfuscated_username, &labels_and_data_map));
+  int answer_iter = 0;
+  for (const auto& [key, value] : labels_and_data_map) {
+    EXPECT_EQ(key, answer_map[answer_iter].first);
+    EXPECT_EQ(value.type(), answer_map[answer_iter].second);
+    answer_iter++;
+  }
+}
+
+TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataInvalidFileIndex) {
+  // Test for invalid key file range,
+  // i.e. AddExtension appends a string that isn't a number.
+  // Setup
+  KeysetSetUpWithKeyData(DefaultKeyData());
+
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto_);
+  vk.CreateRandom();
+
+  brillo::SecureBlob new_passkey(kNewPasskey);
+  Credentials new_credentials(users_[0].name, new_passkey);
+
+  KeyData key_data;
+  key_data.set_label(kAltPasswordLabel);
+  new_credentials.set_key_data(key_data);
+  vk.SetKeyData(new_credentials.key_data());
+
+  std::string obfuscated_username =
+      new_credentials.GetObfuscatedUsername(system_salt_);
+  ASSERT_TRUE(vk.Encrypt(new_credentials.passkey(), obfuscated_username));
+  // GetVaultKeysetLabelsAndData will skip over any file with an exentsion
+  // that is not a number (NAN), but in this case we use the string NAN to
+  // represent this.
+  ASSERT_TRUE(
+      vk.Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("NAN")));
+
+  std::map<std::string, KeyData> labels_and_data_map;
+  std::pair<std::string, int> answer_map[] = {
+      // "alt_password" is not fetched, invalid file index.
+      // {"alt_password", KeyData::KEY_TYPE_PASSWORD}
+      {"password", KeyData::KEY_TYPE_PASSWORD},
+  };
+
+  // Test
+  EXPECT_TRUE(keyset_management_->GetVaultKeysetLabelsAndData(
+      obfuscated_username, &labels_and_data_map));
+  int answer_iter = 0;
+  for (const auto& [key, value] : labels_and_data_map) {
+    EXPECT_EQ(key, answer_map[answer_iter].first);
+    EXPECT_EQ(value.type(), answer_map[answer_iter].second);
+    answer_iter++;
+  }
+}
+
+TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataDuplicateLabel) {
+  // Test for duplicate label.
+  // Setup
+  KeysetSetUpWithKeyData(DefaultKeyData());
+
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto_);
+  vk.CreateRandom();
+
+  brillo::SecureBlob new_passkey(kNewPasskey);
+  Credentials new_credentials(users_[0].name, new_passkey);
+
+  KeyData key_data;
+  // Setting label to be the duplicate of original.
+  key_data.set_label(kPasswordLabel);
+  new_credentials.set_key_data(key_data);
+  vk.SetKeyData(new_credentials.key_data());
+
+  std::string obfuscated_username =
+      new_credentials.GetObfuscatedUsername(system_salt_);
+  ASSERT_TRUE(vk.Encrypt(new_credentials.passkey(), obfuscated_username));
+  ASSERT_TRUE(
+      vk.Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("1")));
+
+  std::map<std::string, KeyData> labels_and_data_map;
+  std::pair<std::string, int> answer_map[] = {
+      // Not fetched, label is duplicate.
+      // {"password", KeyData::KEY_TYPE_PASSWORD}
+      {"password", KeyData::KEY_TYPE_PASSWORD},
+  };
+
+  // Test
+  EXPECT_TRUE(keyset_management_->GetVaultKeysetLabelsAndData(
+      obfuscated_username, &labels_and_data_map));
+  int answer_iter = 0;
+  for (const auto& [key, value] : labels_and_data_map) {
+    EXPECT_EQ(key, answer_map[answer_iter].first);
+    EXPECT_EQ(value.type(), answer_map[answer_iter].second);
+    answer_iter++;
+  }
+}
+
+TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataLoadFail) {
+  // LoadVaultKeysetForUser within function fails to load the VaultKeyset.
+  // Setup
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto_);
+  vk.CreateRandom();
+  vk.SetKeyData(DefaultKeyData());
+
+  EXPECT_EQ(keyset_management_->AddKeyset(users_[0].credentials, vk),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  auto mock_vk = new NiceMock<MockVaultKeyset>();
+  EXPECT_CALL(*mock_vault_keyset_factory_, New(_, _)).WillOnce(Return(mock_vk));
+  EXPECT_CALL(*mock_vk, Load(_)).WillOnce(Return(false));
+
+  // Test
+  std::map<std::string, KeyData> labels_and_data_map;
+  EXPECT_FALSE(keyset_management_mock_vk_->GetVaultKeysetLabelsAndData(
+      users_[0].obfuscated, &labels_and_data_map));
+}
+
 }  // namespace cryptohome
