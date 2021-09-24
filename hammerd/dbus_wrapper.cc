@@ -5,6 +5,7 @@
 #include "hammerd/dbus_wrapper.h"
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 
