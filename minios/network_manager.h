@@ -42,6 +42,7 @@ class NetworkManager : public NetworkManagerInterface {
   FRIEND_TEST(NetworkManagerTest, Connect_RequestScanSuccess_NoPassphrase);
   FRIEND_TEST(NetworkManagerTest, Connect_RequestScanSuccess_Passphrase);
   FRIEND_TEST(NetworkManagerTest, Connect_GetServiceSuccess_GoodStrength);
+  FRIEND_TEST(NetworkManagerTest, Connect_GetServiceSuccess_NoPassphrase);
   FRIEND_TEST(NetworkManagerTest, Connect_GetServiceSuccess_BadStrength);
   FRIEND_TEST(NetworkManagerTest, Connect_GetServiceSuccess_MissingStrength);
   FRIEND_TEST(NetworkManagerTest,

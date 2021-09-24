@@ -110,6 +110,22 @@ TEST_F(NetworkManagerTest, Connect_GetServiceSuccess_GoodStrength) {
   network_manager_->GetServiceSuccess(iter, input_properties);
 }
 
+TEST_F(NetworkManagerTest, Connect_GetServiceSuccess_NoPassphrase) {
+  // Empty password does not send `kPassphraseProperty`.
+  network_manager_->connect_map_["ssid"] =
+      NetworkManager::ConnectField{.passphrase = ""};
+  auto iter = network_manager_->connect_map_.begin();
+  const brillo::VariantDictionary input_properties = {
+      {shill::kSignalStrengthProperty, brillo::Any(uint8_t(1))},
+  };
+  const brillo::VariantDictionary expected_properties = {
+      {shill::kAutoConnectProperty, brillo::Any(true)},
+  };
+  EXPECT_CALL(*mock_shill_proxy_ptr_,
+              ServiceSetProperties(_, expected_properties, _, _));
+  network_manager_->GetServiceSuccess(iter, input_properties);
+}
+
 TEST_F(NetworkManagerTest, Connect_GetServiceSuccess_BadStrength) {
   network_manager_->connect_map_["ssid"] =
       NetworkManager::ConnectField{.passphrase = "passphrase"};

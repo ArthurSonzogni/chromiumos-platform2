@@ -24,6 +24,7 @@ class NetworkManagerInterface {
   typedef struct {
     std::string ssid;
     uint8_t strength;
+    std::string security;
   } NetworkProperties;
 
   class Observer : public base::CheckedObserver {

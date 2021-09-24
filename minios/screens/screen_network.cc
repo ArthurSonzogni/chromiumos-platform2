@@ -8,6 +8,7 @@
 #include <dbus/shill/dbus-constants.h>
 
 #include "minios/draw_utils.h"
+#include "minios/shill_utils.h"
 
 namespace minios {
 
@@ -146,6 +147,13 @@ void ScreenNetwork::OnKeyPress(int key_changed) {
         if (chosen_network_.ssid == kShillEthernetLabel) {
           // User has chosen the Ethernet connection. No need to enter password.
           screen_controller_->OnForward(this);
+          return;
+        }
+        if (chosen_network_.security == ToString(WifiSecurityType::NONE)) {
+          // Network has no password. Just connect.
+          network_manager_->Connect(chosen_network_.ssid, "");
+          state_ = NetworkState::kWaitForConnection;
+          WaitForConnection();
           return;
         }
         // Update internal state and get password.

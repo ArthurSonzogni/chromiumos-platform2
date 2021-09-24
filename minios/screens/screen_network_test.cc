@@ -85,6 +85,22 @@ TEST_F(ScreenNetworkTest, EnterOnDropDown) {
   EXPECT_EQ(screen_network_.GetIndexForTest(), 1);
 }
 
+TEST_F(ScreenNetworkTest, NetworkNoPassword) {
+  // Set networks.
+  screen_network_.OnGetNetworks({{.ssid = "test1", .security = "none"}},
+                                nullptr);
+
+  screen_network_.SetStateForTest(NetworkState::kDropdownOpen);
+  screen_network_.SetIndexForTest(0);
+
+  // Pick first network
+  screen_network_.OnKeyPress(kKeyEnter);
+
+  // Should skip password screen and wait for connection.
+  EXPECT_EQ(screen_network_.GetStateForTest(),
+            NetworkState::kWaitForConnection);
+}
+
 TEST_F(ScreenNetworkTest, OnConnectError) {
   std::string chosen_network = "test-ssid";
   // Network error, show corresponding screen.

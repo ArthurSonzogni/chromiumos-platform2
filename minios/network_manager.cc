@@ -108,10 +108,13 @@ void NetworkManager::GetServiceSuccess(ConnectMapIter iter,
       const auto& strength =
           brillo::GetVariantValueOrDefault<uint8_t>(dict, pr.first);
       if (strength > 0) {
-        const brillo::VariantDictionary properties = {
-            {shill::kAutoConnectProperty, brillo::Any(true)},
-            {shill::kPassphraseProperty, brillo::Any(iter->second.passphrase)},
-        };
+        brillo::VariantDictionary properties;
+        properties.emplace(shill::kAutoConnectProperty, brillo::Any(true));
+        // Don't set passphrase property if empty.
+        if (!iter->second.passphrase.empty()) {
+          properties.emplace(shill::kPassphraseProperty,
+                             brillo::Any(iter->second.passphrase));
+        }
         // Set the SSID passphrase and proceed with connecting.
         shill_proxy_->ServiceSetProperties(
             iter->second.service_path, properties,
@@ -325,7 +328,10 @@ void NetworkManager::IterateOverServicePropertiesSuccess(
   if (!name.empty()) {
     auto strength = brillo::GetVariantValueOrDefault<uint8_t>(
         dict, shill::kSignalStrengthProperty);
-    iter->networks.push_back({.ssid = name, .strength = strength});
+    auto security = brillo::GetVariantValueOrDefault<std::string>(
+        dict, shill::kSecurityClassProperty);
+    iter->networks.push_back(
+        {.ssid = name, .strength = strength, .security = security});
   }
 
   // Iterated over all services.

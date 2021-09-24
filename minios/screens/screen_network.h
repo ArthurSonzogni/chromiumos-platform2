@@ -58,6 +58,7 @@ class ScreenNetwork : public ScreenBase,
 
   void SetIndexForTest(int index) { index_ = index; }
   void SetStateForTest(NetworkState state) { state_ = state; }
+  NetworkState GetStateForTest() { return state_; }
 
  private:
   // Updates buttons with current selection.
