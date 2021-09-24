@@ -103,7 +103,12 @@ void SetEntry(const std::string& key,
   } else if (key == "lens_facing") {
     info->lens_facing = static_cast<LensFacing>(stoi(value));
   } else if (key == "sensor_orientation") {
-    info->sensor_orientation = stoi(value);
+    int sensor_orientation = stoi(value);
+    if (sensor_orientation != 0) {
+      LOGF(FATAL) << "sensor_orientation is set to a non-zero value: "
+                  << sensor_orientation;
+    }
+    LOGF(WARNING) << "sensor_orientation is deprecated";
   } else if (key == "lens_info_available_apertures") {
     info->lens_info_available_apertures = ParseCommaSeparated<float>(value);
   } else if (key == "lens_info_available_focal_lengths") {

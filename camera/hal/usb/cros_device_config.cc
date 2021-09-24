@@ -6,6 +6,8 @@
 
 #include "hal/usb/cros_device_config.h"
 
+#include <algorithm>
+
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 
@@ -29,7 +31,7 @@ std::unique_ptr<CrosDeviceConfig> CrosDeviceConfig::Create() {
     return nullptr;
   }
 
-  if (!cros_config.GetString("/", "name", &res.model_name)) {
+  if (!cros_config.GetString("/", "name", &res.model_name_)) {
     LOGF(ERROR) << "Failed to get model name of CrOS device";
     return nullptr;
   }
@@ -40,43 +42,63 @@ std::unique_ptr<CrosDeviceConfig> CrosDeviceConfig::Create() {
     if (use_legacy_usb == "true") {
       LOGF(INFO) << "The CrOS device is marked to have v1 camera devices";
     }
-    res.is_v1_device = use_legacy_usb == "true";
+    res.is_v1_device_ = use_legacy_usb == "true";
   } else {
-    res.is_v1_device = false;
+    res.is_v1_device_ = false;
   }
 
-  // Get USB camera count from "count" and "devices" array in cros_config.
-  // TODO(kamesan): Use the ids, facing, orientation in cros_config to identify
-  // cameras and their layout.
-  res.usb_camera_count = [&]() -> base::Optional<int> {
-    // The "count" includes both MIPI and USB cameras, so we only know there's
-    // no USB camera when it's zero.
-    std::string count_str;
-    if (cros_config.GetString("/camera", "count", &count_str)) {
-      if (count_str == "0") {
-        return 0;
-      }
+  std::string count_str;
+  if (cros_config.GetString("/camera", "count", &count_str)) {
+    res.count_ = std::stoi(count_str);
+  }
+
+  for (int i = 0;; ++i) {
+    std::string interface;
+    if (!cros_config.GetString(base::StringPrintf("/camera/devices/%i", i),
+                               "interface", &interface)) {
+      break;
     }
-    int count = 0;
-    for (int i = 0;; ++i) {
-      std::string interface;
-      if (!cros_config.GetString(base::StringPrintf("/camera/devices/%i", i),
-                                 "interface", &interface)) {
-        if (i == 0) {
-          // The "devices" array may be empty because there's no camera or
-          // the config is not provided, so we get no information in this case.
-          return base::nullopt;
-        }
-        break;
-      }
-      if (interface == "usb") {
-        ++count;
-      }
-    }
-    return count;
-  }();
+    std::string facing, orientation;
+    CHECK(cros_config.GetString(base::StringPrintf("/camera/devices/%i", i),
+                                "facing", &facing));
+    CHECK(cros_config.GetString(base::StringPrintf("/camera/devices/%i", i),
+                                "orientation", &orientation));
+    res.devices_.push_back(Device{
+        .interface = interface == "usb" ? Interface::kUsb : Interface::kMipi,
+        .facing = facing == "front" ? LensFacing::kFront : LensFacing::kBack,
+        .orientation = std::stoi(orientation),
+    });
+  }
+  if (!res.devices_.empty()) {
+    CHECK(res.count_.has_value());
+    CHECK_EQ(static_cast<size_t>(*res.count_), res.devices_.size());
+  }
 
   return std::make_unique<CrosDeviceConfig>(res);
+}
+
+base::Optional<int> CrosDeviceConfig::GetCameraCount(
+    Interface interface) const {
+  if (!count_.has_value())
+    return base::nullopt;
+  // |count_| includes both MIPI and USB cameras. If |count_| is not 0, we need
+  // the |devices_| information to determine the numbers.
+  if (*count_ == 0)
+    return 0;
+  if (devices_.empty())
+    return base::nullopt;
+  return std::count_if(devices_.begin(), devices_.end(), [=](const Device& d) {
+    return d.interface == interface;
+  });
+}
+
+base::Optional<int> CrosDeviceConfig::GetOrientationFromFacing(
+    LensFacing facing) const {
+  auto iter = std::find_if(devices_.begin(), devices_.end(),
+                           [=](const Device& d) { return d.facing == facing; });
+  if (iter == devices_.end())
+    return base::nullopt;
+  return iter->orientation;
 }
 
 }  // namespace cros

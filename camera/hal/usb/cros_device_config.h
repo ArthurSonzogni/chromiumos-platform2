@@ -9,30 +9,48 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/optional.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 
+#include "hal/usb/common_types.h"
+
 namespace cros {
 
-// This structs wraps the brillo::CrosConfig and stores the required values.
+enum class Interface {
+  kUsb,
+  kMipi,
+};
+
+// This class wraps the brillo::CrosConfig and stores the required values.
 class CrosDeviceConfig {
  public:
   static std::unique_ptr<CrosDeviceConfig> Create();
 
-  bool IsV1Device() const { return is_v1_device; }
-  const std::string& GetModelName() const { return model_name; }
-  bool IsUsbCameraCountAvailable() const {
-    return usb_camera_count.has_value();
-  }
-  int GetUsbCameraCount() const { return *usb_camera_count; }
+  bool IsV1Device() const { return is_v1_device_; }
+  const std::string& GetModelName() const { return model_name_; }
+  base::Optional<int> GetCameraCount(Interface interface) const;
+  base::Optional<int> GetOrientationFromFacing(LensFacing facing) const;
 
  private:
+  struct Device {
+    Interface interface;
+    LensFacing facing;
+    int orientation;
+  };
+
   CrosDeviceConfig() = default;
 
-  bool is_v1_device;
-  std::string model_name;
-  base::Optional<int> usb_camera_count;
+  bool is_v1_device_;
+  std::string model_name_;
+  // The number of built-in cameras, or |base::nullopt| when this information is
+  // not available.
+  base::Optional<int> count_;
+  // Detailed topology of the camera devices, or empty when this information is
+  // not available. |count_| has value |devices_.size()| if |devices_| is not
+  // empty.
+  std::vector<Device> devices_;
 };
 
 }  // namespace cros

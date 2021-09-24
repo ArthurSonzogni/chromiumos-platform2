@@ -452,11 +452,13 @@ int CameraHal::Init() {
   }
 
   bool enough_camera_probed = true;
-  if (cros_device_config_ != nullptr &&
-      cros_device_config_->IsUsbCameraCountAvailable()) {
-    if (num_builtin_cameras_ != cros_device_config_->GetUsbCameraCount()) {
-      LOGF(ERROR) << "Expected " << cros_device_config_->GetUsbCameraCount()
-                  << " cameras from Chrome OS config, found "
+  base::Optional<int> num_camera_from_config =
+      cros_device_config_ ? cros_device_config_->GetCameraCount(Interface::kUsb)
+                          : base::nullopt;
+  if (num_camera_from_config) {
+    if (num_builtin_cameras_ != *num_camera_from_config) {
+      LOGF(ERROR) << "Expected " << *num_camera_from_config
+                  << " cameras from cros_config, found "
                   << num_builtin_cameras_;
       enough_camera_probed = false;
     }
@@ -604,6 +606,11 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
   if (info_ptr != nullptr) {
     VLOGF(1) << "Found a built-in camera";
     info = *info_ptr;
+    info.sensor_orientation =
+        cros_device_config_
+            ? cros_device_config_->GetOrientationFromFacing(info.lens_facing)
+                  .value_or(0)
+            : 0;
     num_builtin_cameras_ = std::max(num_builtin_cameras_, info.camera_id + 1);
     if (info.constant_framerate_unsupported) {
       LOGF(WARNING) << "Camera module " << vid << ":" << pid
