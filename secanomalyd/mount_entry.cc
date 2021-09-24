@@ -48,12 +48,12 @@ MountEntry::MountEntry(base::StringPiece mount_str) {
                             base::SPLIT_WANT_NONEMPTY);
 }
 
-bool MountEntry::IsWX() {
+bool MountEntry::IsWX() const {
   return std::find(opts_.begin(), opts_.end(), "rw") != opts_.end() &&
          std::find(opts_.begin(), opts_.end(), "noexec") == opts_.end();
 }
 
-bool MountEntry::IsUsbDriveOrArchive() {
+bool MountEntry::IsUsbDriveOrArchive() const {
   for (const auto& src_path_to_filter : kSrcPathsToFilter) {
     if (src_path_to_filter.IsParent(src_)) {
       return true;
@@ -69,11 +69,11 @@ bool MountEntry::IsUsbDriveOrArchive() {
   return false;
 }
 
-bool MountEntry::IsDestInUsrLocal() {
+bool MountEntry::IsDestInUsrLocal() const {
   return kUsrLocal == this->dest() || kUsrLocal.IsParent(this->dest());
 }
 
-bool MountEntry::IsNamespaceBindMount() {
+bool MountEntry::IsNamespaceBindMount() const {
   // On 3.18 kernels these mounts show up as type "proc" rather than type
   // "nsfs".
   // TODO(crbug.com/1204604): Remove the "proc" exception after 3.18 kernels go

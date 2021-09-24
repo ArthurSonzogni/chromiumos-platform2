@@ -23,6 +23,7 @@
 
 #include "secanomalyd/metrics.h"
 #include "secanomalyd/mount_entry.h"
+#include "secanomalyd/mounts.h"
 
 namespace {
 
@@ -31,8 +32,6 @@ constexpr base::TimeDelta kCheckInterval = base::TimeDelta::FromSeconds(30);
 // users run the reporting.
 constexpr base::TimeDelta kReportWXMountCountInterval =
     base::TimeDelta::FromHours(2);
-
-constexpr char kProcSelfMountsPath[] = "/proc/self/mounts";
 
 constexpr char kCrashReporterPath[] = "/sbin/crash_reporter";
 constexpr char kSecurityAnomalyFlag[] = "--security_anomaly";
@@ -99,18 +98,13 @@ void Daemon::ReportWXMountCount() {
 }
 
 void Daemon::DoWXMountCheck() {
-  std::string proc_mounts;
-  if (!base::ReadFileToStringNonBlocking(base::FilePath(kProcSelfMountsPath),
-                                         &proc_mounts)) {
-    PLOG(ERROR) << "Failed to read " << kProcSelfMountsPath;
+  MaybeMountEntries mount_entries = ReadMounts();
+  if (!mount_entries) {
+    LOG(ERROR) << "Failed to read mounts";
     return;
   }
 
-  std::vector<base::StringPiece> mounts = base::SplitStringPiece(
-      proc_mounts, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-
-  for (const auto& m : mounts) {
-    MountEntry e(m);
+  for (const auto& e : mount_entries.value()) {
     if (e.IsWX()) {
       // Have we seen the mount yet?
       if (wx_mounts_.count(e.dest()) == 0) {

@@ -25,6 +25,7 @@ static_library("libsecanomaly") {
     "daemon.cc",
     "metrics.cc",
     "mount_entry.cc",
+    "mounts.cc",
   ]
   configs += [ ":target_defaults" ]
 }
@@ -41,7 +42,10 @@ if (use.test) {
   }
 
   executable("secanomalyd_testrunner") {
-    sources = [ "mount_entry_test.cc" ]
+    sources = [
+      "mount_entry_test.cc",
+      "mounts_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":secanomalyd_testrunner_config",

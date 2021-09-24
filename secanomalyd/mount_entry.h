@@ -26,10 +26,10 @@ class MountEntry {
 
   // TODO(jorgelo): Implement move constructor so that we can use emplace().
 
-  bool IsWX();
-  bool IsUsbDriveOrArchive();
-  bool IsDestInUsrLocal();
-  bool IsNamespaceBindMount();
+  bool IsWX() const;
+  bool IsUsbDriveOrArchive() const;
+  bool IsDestInUsrLocal() const;
+  bool IsNamespaceBindMount() const;
 
   const base::FilePath& src() const { return src_; }
   const base::FilePath& dest() const { return dest_; }
