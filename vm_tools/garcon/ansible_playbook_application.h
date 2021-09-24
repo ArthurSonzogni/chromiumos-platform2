@@ -6,6 +6,7 @@
 #define VM_TOOLS_GARCON_ANSIBLE_PLAYBOOK_APPLICATION_H_
 
 #include <memory>
+#include <sstream>
 #include <string>
 
 #include <base/files/file_descriptor_watcher_posix.h>
