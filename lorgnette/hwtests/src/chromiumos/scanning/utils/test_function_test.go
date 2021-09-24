@@ -23,16 +23,22 @@ var needsAuditFailure = TestFailure{Type: NeedsAudit, Message: needsAuditFailure
 
 // integerTest returns a TestFunction used in the TestRunTest unit test.
 func integerTest(testInt int) TestFunction {
-	return func() (failures []TestFailure, err error) {
+	return func() (result TestResult, failures []TestFailure, err error) {
 		switch testInt {
 		case 1:
-			err = fmt.Errorf(errorMessage)
-		case 2:
 			failures = append(failures, criticalFailure)
-		case 3:
+			err = fmt.Errorf(errorMessage)
+			result = Error
+		case 2:
 			failures = append(failures, needsAuditFailure)
-		case 4:
+			result = Failed
+		case 3:
 			failures = append(failures, criticalFailure, needsAuditFailure)
+			result = Failed
+		case 4:
+			result = Passed
+		case 5:
+			result = Skipped
 		}
 		return
 	}
@@ -41,40 +47,40 @@ func integerTest(testInt int) TestFunction {
 // TestRunTest tests that we can run a TestFunction via the RunTest wrapper.
 func TestRunTest(t *testing.T) {
 	tests := []struct {
-		testInt  int
-		passed   bool
-		failures []TestFailure
-		errText  string
+		testInt    int
+		testResult TestResult
+		failures   []TestFailure
+		errText    string
 	}{
 		{
-			testInt:  1,
-			passed:   false,
-			failures: []TestFailure{},
-			errText:  errorMessage,
+			testInt:    1,
+			testResult: Error,
+			failures:   []TestFailure{criticalFailure},
+			errText:    errorMessage,
 		},
 		{
-			testInt:  2,
-			passed:   false,
-			failures: []TestFailure{criticalFailure},
-			errText:  "",
+			testInt:    2,
+			testResult: Failed,
+			failures:   []TestFailure{needsAuditFailure},
+			errText:    "",
 		},
 		{
-			testInt:  3,
-			passed:   false,
-			failures: []TestFailure{needsAuditFailure},
-			errText:  "",
+			testInt:    3,
+			testResult: Failed,
+			failures:   []TestFailure{criticalFailure, needsAuditFailure},
+			errText:    "",
 		},
 		{
-			testInt:  4,
-			passed:   false,
-			failures: []TestFailure{criticalFailure, needsAuditFailure},
-			errText:  "",
+			testInt:    4,
+			testResult: Passed,
+			failures:   []TestFailure{},
+			errText:    "",
 		},
 		{
-			testInt:  5,
-			passed:   true,
-			failures: []TestFailure{},
-			errText:  "",
+			testInt:    5,
+			testResult: Skipped,
+			failures:   []TestFailure{},
+			errText:    "",
 		},
 	}
 
@@ -84,8 +90,8 @@ func TestRunTest(t *testing.T) {
 
 		got := RunTest(testName, integerTest(tc.testInt))
 
-		if got != tc.passed {
-			t.Errorf("Passed: got %t, want %t", got, tc.passed)
+		if got != tc.testResult {
+			t.Errorf("TestResult: got %d, want %d", got, tc.testResult)
 		}
 
 		lines := strings.Split(strings.TrimSuffix(logBuf.String(), "\n"), "\n")
@@ -93,11 +99,11 @@ func TestRunTest(t *testing.T) {
 		var expectedNumLines int
 		// All tests should have the starting and finished lines. Additionally:
 		// Tests with errors should have a single line with the error.
-		// Tests with failures but no errors should have a line for each error.
-		// Tests with no errors and no failures should have a single "PASSED"
-		// line.
+		// Tests with failures should have a line for each failuree.
+		// Tests with no errors and no failures should have a single "PASSED" or
+		// "SKIPPED" line.
 		if tc.errText != "" {
-			expectedNumLines = 3
+			expectedNumLines = 3 + len(tc.failures)
 		} else if len(tc.failures) != 0 {
 			expectedNumLines = 2 + len(tc.failures)
 		} else {
@@ -114,14 +120,16 @@ func TestRunTest(t *testing.T) {
 				expectedLine = "===== START " + testName + " ====="
 			} else if lineNum == expectedNumLines-1 {
 				expectedLine = "===== END " + testName + " ====="
-			} else if tc.errText != "" {
-				expectedLine = "Error during test execution: " + tc.errText
-			} else if len(tc.failures) == 0 {
+			} else if tc.testResult == Passed {
 				expectedLine = "PASSED."
-			} else if tc.failures[lineNum-1] == criticalFailure {
+			} else if tc.testResult == Skipped {
+				expectedLine = "SKIPPED."
+			} else if len(tc.failures) >= lineNum && tc.failures[lineNum-1] == criticalFailure {
 				expectedLine = "CRITICAL FAILURE: " + criticalFailureMessage
-			} else {
+			} else if len(tc.failures) >= lineNum && tc.failures[lineNum-1] == needsAuditFailure {
 				expectedLine = "NEEDS AUDIT: " + needsAuditFailureMessage
+			} else if tc.testResult == Error {
+				expectedLine = "ERROR: " + tc.errText
 			}
 
 			// Logged lines will also contain timestamps, so we can't check for

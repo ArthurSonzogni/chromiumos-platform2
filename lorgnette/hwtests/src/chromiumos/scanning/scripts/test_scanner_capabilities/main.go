@@ -46,20 +46,37 @@ func main() {
 		"NoCameraSource":         hwtests.NoCameraSourceTest(caps.CameraInputCaps),
 		"HasSupportedResolution": hwtests.HasSupportedResolutionTest(caps.PlatenInputCaps, caps.AdfCapabilities.AdfSimplexInputCaps, caps.AdfCapabilities.AdfDuplexInputCaps)}
 	failed := []string{}
+	skipped := []string{}
+	errors := []string{}
 
 	for name, test := range tests {
-		if !utils.RunTest(name, test) {
+		testResult := utils.RunTest(name, test)
+		if testResult == utils.Failed {
 			failed = append(failed, name)
+		} else if testResult == utils.Skipped {
+			skipped = append(skipped, name)
+		} else if testResult == utils.Error {
+			errors = append(errors, name)
 		}
 	}
 
+	fmt.Printf("Ran %d tests.\n", len(tests))
 	if len(failed) != 0 {
 		fmt.Printf("%d tests failed:\n", len(failed))
 		for _, failedTest := range failed {
 			fmt.Println(failedTest)
 		}
-	} else {
-		fmt.Println("All tests passed.")
 	}
-
+	if len(skipped) != 0 {
+		fmt.Printf("%d tests skipped:\n", len(skipped))
+		for _, skippedTest := range skipped {
+			fmt.Println(skippedTest)
+		}
+	}
+	if len(errors) != 0 {
+		fmt.Printf("%d tests had errors:\n", len(errors))
+		for _, errorTest := range errors {
+			fmt.Println(errorTest)
+		}
+	}
 }

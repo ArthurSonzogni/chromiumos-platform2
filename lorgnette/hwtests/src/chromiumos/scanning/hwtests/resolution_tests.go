@@ -50,7 +50,12 @@ func checkForSupportedResolution(sourceResolutions utils.SupportedResolutions) b
 // returned for each supported document source which does not advertise any of
 // the supported resolutions.
 func HasSupportedResolutionTest(platenCaps utils.SourceCapabilities, adfSimplexCaps utils.SourceCapabilities, adfDuplexCaps utils.SourceCapabilities) utils.TestFunction {
-	return func() (failures []utils.TestFailure, err error) {
+	return func() (result utils.TestResult, failures []utils.TestFailure, err error) {
+		if !platenCaps.IsPopulated() && !adfSimplexCaps.IsPopulated() && !adfDuplexCaps.IsPopulated() {
+			result = utils.Skipped
+			return
+		}
+
 		if platenCaps.IsPopulated() && !checkForSupportedResolution(platenCaps.SettingProfile.SupportedResolutions) {
 			failures = append(failures, utils.TestFailure{Type: utils.CriticalFailure, Message: fmt.Sprintf("Platen source advertises only unsupported resolutions: %v", platenCaps.SettingProfile.SupportedResolutions)})
 		}
@@ -60,6 +65,13 @@ func HasSupportedResolutionTest(platenCaps utils.SourceCapabilities, adfSimplexC
 		if adfDuplexCaps.IsPopulated() && !checkForSupportedResolution(adfDuplexCaps.SettingProfile.SupportedResolutions) {
 			failures = append(failures, utils.TestFailure{Type: utils.CriticalFailure, Message: fmt.Sprintf("ADF duplex source advertises only unsupported resolutions: %v", adfDuplexCaps.SettingProfile.SupportedResolutions)})
 		}
+
+		if len(failures) == 0 {
+			result = utils.Passed
+		} else {
+			result = utils.Failed
+		}
+
 		return
 	}
 }

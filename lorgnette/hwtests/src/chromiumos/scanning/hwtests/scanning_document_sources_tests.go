@@ -11,9 +11,11 @@ import (
 // NoCameraSourceTest checks if `cameraCapabilities` is the zero value. If it
 // isn't, the test returns a critical failure. Else it returns no failures.
 func NoCameraSourceTest(cameraCapabilities utils.SourceCapabilities) utils.TestFunction {
-	return func() (failures []utils.TestFailure, err error) {
+	return func() (result utils.TestResult, failures []utils.TestFailure, err error) {
+		result = utils.Passed
 		if cameraCapabilities.IsPopulated() {
 			failures = append(failures, utils.TestFailure{Type: utils.CriticalFailure, Message: "Scanner advertises camera capabilities."})
+			result = utils.Failed
 		}
 		return
 	}

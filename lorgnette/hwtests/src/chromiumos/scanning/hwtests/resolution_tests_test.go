@@ -17,6 +17,7 @@ func TestHasSupportedResolutionTest(t *testing.T) {
 		platenCaps     utils.SourceCapabilities
 		adfSimplexCaps utils.SourceCapabilities
 		adfDuplexCaps  utils.SourceCapabilities
+		result         utils.TestResult
 		failures       []utils.FailureType
 	}{
 		{
@@ -73,6 +74,7 @@ func TestHasSupportedResolutionTest(t *testing.T) {
 				MaxPhysicalHeight:     2800},
 			// Should pass: zero-value SourceCapabilities aren't checked.
 			adfDuplexCaps: utils.SourceCapabilities{},
+			result:        utils.Passed,
 			failures:      []utils.FailureType{},
 		},
 		{
@@ -146,21 +148,33 @@ func TestHasSupportedResolutionTest(t *testing.T) {
 				MaxOpticalYResolution: 600,
 				MaxPhysicalWidth:      1200,
 				MaxPhysicalHeight:     2800},
+			result:   utils.Failed,
 			failures: []utils.FailureType{utils.CriticalFailure, utils.CriticalFailure, utils.CriticalFailure},
+		},
+		{
+			platenCaps:     utils.SourceCapabilities{},
+			adfSimplexCaps: utils.SourceCapabilities{},
+			adfDuplexCaps:  utils.SourceCapabilities{},
+			result:         utils.Skipped,
+			failures:       []utils.FailureType{},
 		},
 	}
 
 	for _, tc := range tests {
-		got, err := HasSupportedResolutionTest(tc.platenCaps, tc.adfSimplexCaps, tc.adfDuplexCaps)()
+		result, failures, err := HasSupportedResolutionTest(tc.platenCaps, tc.adfSimplexCaps, tc.adfDuplexCaps)()
 
 		if err != nil {
 			t.Errorf("Unexpected error: %v", err)
 		}
 
-		if len(got) != len(tc.failures) {
-			t.Errorf("Number of failures: expected %d, got %d", len(tc.failures), len(got))
+		if result != tc.result {
+			t.Errorf("Result: expected %d, got %d", tc.result, result)
 		}
-		for i, failure := range got {
+
+		if len(failures) != len(tc.failures) {
+			t.Errorf("Number of failures: expected %d, got %d", len(tc.failures), len(failures))
+		}
+		for i, failure := range failures {
 			if failure.Type != tc.failures[i] {
 				t.Errorf("FailureType: expected %d, got %d", tc.failures[i], failure.Type)
 			}
