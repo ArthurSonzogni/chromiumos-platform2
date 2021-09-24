@@ -7,6 +7,7 @@
 
 #include "diagnostics/cros_healthd/executor/executor_adapter.h"
 #include "mojo/cros_healthd_executor.mojom.h"
+#include <string>
 
 namespace diagnostics {
 
@@ -21,6 +22,13 @@ class ExecutorAdapterImpl final : public ExecutorAdapter {
   // ExecutorAdapter overrides:
   void Connect(mojo::PlatformChannelEndpoint endpoint) override;
   void GetFanSpeed(Executor::GetFanSpeedCallback callback) override;
+  void GetInterfaces(Executor::GetInterfacesCallback callback) override;
+  void GetLink(const std::string& interface_name,
+               Executor::GetLinkCallback callback) override;
+  void GetInfo(const std::string& interface_name,
+               Executor::GetInfoCallback callback) override;
+  void GetScanDump(const std::string& interface_name,
+                   Executor::GetScanDumpCallback callback) override;
   void RunMemtester(Executor::RunMemtesterCallback callback) override;
   void KillMemtester() override;
   void GetProcessIOContents(

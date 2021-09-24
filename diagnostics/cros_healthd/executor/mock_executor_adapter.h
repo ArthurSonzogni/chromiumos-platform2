@@ -6,7 +6,6 @@
 #define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_MOCK_EXECUTOR_ADAPTER_H_
 
 #include <string>
-
 #include <gmock/gmock.h>
 
 #include "diagnostics/cros_healthd/executor/executor_adapter.h"
@@ -25,6 +24,23 @@ class MockExecutorAdapter final : public ExecutorAdapter {
   // ExecutorAdapter overrides:
   MOCK_METHOD(void, Connect, (mojo::PlatformChannelEndpoint), (override));
   MOCK_METHOD(void, GetFanSpeed, (Executor::GetFanSpeedCallback), (override));
+  MOCK_METHOD(void,
+              GetInterfaces,
+              (Executor::GetInterfacesCallback),
+              (override));
+  MOCK_METHOD(void,
+              GetLink,
+              (const std::string& interface_name, Executor::GetLinkCallback),
+              (override));
+  MOCK_METHOD(void,
+              GetInfo,
+              (const std::string& interface_name, Executor::GetInfoCallback),
+              (override));
+  MOCK_METHOD(void,
+              GetScanDump,
+              (const std::string& interface_name,
+               Executor::GetScanDumpCallback),
+              (override));
   MOCK_METHOD(void, RunMemtester, (Executor::RunMemtesterCallback), (override));
   MOCK_METHOD(void, KillMemtester, (), (override));
   MOCK_METHOD(void,

@@ -54,6 +54,8 @@ using chromeos::cros_healthd::mojom::ErrorType;
 using chromeos::cros_healthd::mojom::FanResultPtr;
 using chromeos::cros_healthd::mojom::GraphicsResultPtr;
 using chromeos::cros_healthd::mojom::MemoryResultPtr;
+using chromeos::cros_healthd::mojom::NetworkInterfaceInfo;
+using chromeos::cros_healthd::mojom::NetworkInterfaceResultPtr;
 using chromeos::cros_healthd::mojom::NetworkResultPtr;
 using chromeos::cros_healthd::mojom::NonRemovableBlockDeviceResultPtr;
 using chromeos::cros_healthd::mojom::NullableUint64Ptr;
@@ -95,6 +97,7 @@ constexpr std::pair<const char*, ProbeCategoryEnum> kCategorySwitches[] = {
     {"audio", ProbeCategoryEnum::kAudio},
     {"boot_performance", ProbeCategoryEnum::kBootPerformance},
     {"bus", ProbeCategoryEnum::kBus},
+    {"network_interface", ProbeCategoryEnum::kNetworkInterface},
     {"tpm", ProbeCategoryEnum::kTpm},
     {"graphics", ProbeCategoryEnum::kGraphics},
     {"display", ProbeCategoryEnum::kDisplay},
@@ -651,6 +654,51 @@ void DisplayNetworkInfo(const NetworkResultPtr& result) {
   OutputJson(output);
 }
 
+void DisplayNetworkInterfaceInfo(const NetworkInterfaceResultPtr& result) {
+  if (result->is_error()) {
+    DisplayError(result->get_error());
+    return;
+  }
+
+  const auto& infos = result->get_network_interface_info();
+
+  base::Value output{base::Value::Type::DICTIONARY};
+  auto* out_network_interfaces =
+      output.SetKey("network_interfaces", base::Value{base::Value::Type::LIST});
+
+  for (const auto& network_interface : infos) {
+    base::Value out_network_interface{base::Value::Type::DICTIONARY};
+    switch (network_interface->which()) {
+      case NetworkInterfaceInfo::Tag::WIRELESS_INTERFACE_INFO: {
+        const auto& wireless_interface =
+            network_interface->get_wireless_interface_info();
+        auto* out_wireless_interface = out_network_interface.SetKey(
+            "wireless_interface", base::Value{base::Value::Type::DICTIONARY});
+        base::Value data{base::Value::Type::DICTIONARY};
+        SET_DICT(interface_name, wireless_interface, out_wireless_interface);
+        SET_DICT(power_management_on, wireless_interface,
+                 out_wireless_interface);
+        const auto& link_info = wireless_interface->wireless_link_info;
+        if (link_info) {
+          auto* out_link = out_wireless_interface->SetKey(
+              "link_info", base::Value{base::Value::Type::DICTIONARY});
+          SET_DICT(access_point_address_str, link_info, out_link);
+          SET_DICT(tx_bit_rate_mbps, link_info, out_link);
+          SET_DICT(rx_bit_rate_mbps, link_info, out_link);
+          SET_DICT(tx_power_dBm, link_info, out_link);
+          SET_DICT(encyption_on, link_info, out_link);
+          SET_DICT(link_quality, link_info, out_link);
+          SET_DICT(signal_level_dBm, link_info, out_link);
+        }
+        break;
+      }
+    }
+    out_network_interfaces->Append(std::move(out_network_interface));
+  }
+
+  OutputJson(output);
+}
+
 void DisplayTimezoneInfo(const TimezoneResultPtr& result) {
   if (result->is_error()) {
     DisplayError(result->get_error());
@@ -1065,6 +1113,10 @@ void DisplayTelemetryInfo(const TelemetryInfoPtr& info) {
   const auto& boot_performance_result = info->boot_performance_result;
   if (boot_performance_result)
     DisplayBootPerformanceInfo(boot_performance_result);
+
+  const auto& network_interface_result = info->network_interface_result;
+  if (network_interface_result)
+    DisplayNetworkInterfaceInfo(network_interface_result);
 
   const auto& bus_result = info->bus_result;
   if (bus_result)

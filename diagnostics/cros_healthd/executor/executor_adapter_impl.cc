@@ -47,6 +47,34 @@ void ExecutorAdapterImpl::GetFanSpeed(Executor::GetFanSpeedCallback callback) {
   executor_->GetFanSpeed(std::move(callback));
 }
 
+void ExecutorAdapterImpl::GetInterfaces(
+    Executor::GetInterfacesCallback callback) {
+  DCHECK(executor_.is_bound());
+
+  executor_->GetInterfaces(std::move(callback));
+}
+
+void ExecutorAdapterImpl::GetLink(const std::string& interface_name,
+                                  Executor::GetLinkCallback callback) {
+  DCHECK(executor_.is_bound());
+
+  executor_->GetLink(interface_name, std::move(callback));
+}
+
+void ExecutorAdapterImpl::GetInfo(const std::string& interface_name,
+                                  Executor::GetInfoCallback callback) {
+  DCHECK(executor_.is_bound());
+
+  executor_->GetInfo(interface_name, std::move(callback));
+}
+
+void ExecutorAdapterImpl::GetScanDump(const std::string& interface_name,
+                                      Executor::GetScanDumpCallback callback) {
+  DCHECK(executor_.is_bound());
+
+  executor_->GetScanDump(interface_name, std::move(callback));
+}
+
 void ExecutorAdapterImpl::RunMemtester(
     Executor::RunMemtesterCallback callback) {
   DCHECK(executor_.is_bound());

@@ -26,6 +26,7 @@
 #include "diagnostics/cros_healthd/fetchers/graphics_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/network_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/network_interface_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/stateful_partition_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/timezone_fetcher.h"
@@ -108,6 +109,7 @@ class FetchAggregator final {
   SystemFetcher system_fetcher_;
   TimezoneFetcher timezone_fetcher_;
   TpmFetcher tpm_fetcher_;
+  NetworkInterfaceFetcher network_interface_fetcher_;
 
   // Must be the last member of the class.
   base::WeakPtrFactory<FetchAggregator> weak_factory_{this};

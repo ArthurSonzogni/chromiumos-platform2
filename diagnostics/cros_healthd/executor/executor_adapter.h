@@ -9,6 +9,8 @@
 
 #include "mojo/cros_healthd_executor.mojom.h"
 
+#include <string>
+
 namespace diagnostics {
 
 // Provides a convenient way to access the root-level executor.
@@ -23,6 +25,21 @@ class ExecutorAdapter {
 
   // Returns the speed of each of the device's fans.
   virtual void GetFanSpeed(Executor::GetFanSpeedCallback callback) = 0;
+
+  // Returns the wireless interfaces.
+  virtual void GetInterfaces(Executor::GetInterfacesCallback callback) = 0;
+
+  // Returns the wireless link information.
+  virtual void GetLink(const std::string& interface_name,
+                       Executor::GetLinkCallback callback) = 0;
+
+  // Returns the wireless device information.
+  virtual void GetInfo(const std::string& interface_name,
+                       Executor::GetInfoCallback callback) = 0;
+
+  // Returns the wireless device information.
+  virtual void GetScanDump(const std::string& interface_name,
+                           Executor::GetScanDumpCallback callback) = 0;
 
   // Instructs the executor to run the memtester executable.
   virtual void RunMemtester(Executor::RunMemtesterCallback callback) = 0;

@@ -34,6 +34,33 @@ interface Executor {
   // * |result| - contains information received from running the tool.
   GetFanSpeed() => (ProcessResult result);
 
+  // Obtains wireless interface by running "iw dev" and returns the result.
+  //
+  // The response:
+  // * |result| - contains information received from running the tool.
+  GetInterfaces() => (ProcessResult result);
+
+  // Obtains wireless link by running "iw <interface> link" and returns
+  // the result.
+  //
+  // The response:
+  // * |result| - contains information received from running the tool.
+  GetLink(string interface_name) => (ProcessResult result);
+
+  // Obtains wireless link info by running "iw <interface> info" and returns
+  // the result.
+  //
+  // The response:
+  // * |result| - contains information received from running the tool.
+  GetInfo(string interface_name) => (ProcessResult result);
+
+  // Obtains wireless scan dump by running "iw <interface> scan dump" and
+  // returns the result.
+  //
+  // The response:
+  // * |result| - contains information received from running the tool.
+  GetScanDump(string interface_name) => (ProcessResult result);
+
   // Runs memtester and returns the result. The executor can only run one
   // instance of the memtester process at a time, which is reasonable since
   // memtester mlocks the vast majority of the device's memory, and a second

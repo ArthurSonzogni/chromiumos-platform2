@@ -39,7 +39,8 @@ FetchAggregator::FetchAggregator(Context* context)
       stateful_partition_fetcher_(context),
       system_fetcher_(context),
       timezone_fetcher_(context),
-      tpm_fetcher_(context) {}
+      tpm_fetcher_(context),
+      network_interface_fetcher_(context) {}
 
 FetchAggregator::~FetchAggregator() = default;
 
@@ -145,6 +146,14 @@ void FetchAggregator::Run(
             &FetchAggregator::WrapFetchProbeData<mojo_ipc::TpmResultPtr>,
             weak_factory_.GetWeakPtr(), category, std::cref(state),
             &info->tpm_result));
+        break;
+      }
+      case mojo_ipc::ProbeCategoryEnum::kNetworkInterface: {
+        network_interface_fetcher_.FetchNetworkInterfaceInfo(
+            base::BindOnce(&FetchAggregator::WrapFetchProbeData<
+                               mojo_ipc::NetworkInterfaceResultPtr>,
+                           weak_factory_.GetWeakPtr(), category,
+                           std::cref(state), &info->network_interface_result));
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kGraphics: {

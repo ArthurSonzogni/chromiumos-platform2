@@ -38,6 +38,13 @@ class ExecutorMojoService final
 
   // chromeos::cros_healthd_executor::mojom::Executor overrides:
   void GetFanSpeed(GetFanSpeedCallback callback) override;
+  void GetInterfaces(GetInterfacesCallback callback) override;
+  void GetLink(const std::string& interface_name,
+               GetLinkCallback callback) override;
+  void GetInfo(const std::string& interface_name,
+               GetInfoCallback callback) override;
+  void GetScanDump(const std::string& interface_name,
+                   GetScanDumpCallback callback) override;
   void RunMemtester(RunMemtesterCallback callback) override;
   void KillMemtester() override;
   void GetProcessIOContents(const uint32_t pid,

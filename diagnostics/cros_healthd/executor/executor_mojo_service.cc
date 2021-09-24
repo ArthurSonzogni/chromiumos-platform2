@@ -21,6 +21,7 @@
 #include <base/task/thread_pool.h>
 #include <base/time/time.h>
 #include <brillo/process/process.h>
+#include <re2/re2.h>
 
 #include "diagnostics/cros_healthd/process/process_with_output.h"
 #include "diagnostics/cros_healthd/routines/memory/memory_constants.h"
@@ -46,6 +47,18 @@ constexpr char kEctoolBinary[] = "/usr/sbin/ectool";
 // The ectool command used to collect fan speed in RPM.
 constexpr char kGetFanRpmCommand[] = "pwmgetfanrpm";
 
+// The iw command used to collect diffrent wireless data.
+constexpr char kIwSeccompPolicyPath[] = "iw-seccomp.policy";
+// constexpr char kIwUserAndGroup[] = "healthd_iw";
+constexpr char kIwBinary[] = "/usr/sbin/iw";
+constexpr char kIwInterfaceCommand[] = "dev";
+constexpr char kIwInfoCommand[] = "info";
+constexpr char kIwLinkCommand[] = "link";
+constexpr std::array<const char*, 2> kIwScanDumpCommand{"scan", "dump"};
+// wireless interface name start with "wl" and end it with a number. All
+// characters are in lowercase.  Max length is 16 characters.
+constexpr auto kWirelessInterfaceRegex = R"((wl[a-z][a-z0-9]{1,12}[0-9]))";
+
 // SECCOMP policy for memtester, relative to kSandboxDirPath.
 constexpr char kMemtesterSeccompPolicyPath[] = "memtester-seccomp.policy";
 constexpr char kMemtesterBinary[] = "/usr/sbin/memtester";
@@ -60,6 +73,10 @@ void RunMojoProcessResultCallback(
     mojo_ipc::ProcessResult mojo_result,
     base::OnceCallback<void(mojo_ipc::ProcessResultPtr)> callback) {
   std::move(callback).Run(mojo_result.Clone());
+}
+
+bool IsValidWirelessInterfaceName(const std::string& interface_name) {
+  return (RE2::FullMatch(interface_name, kWirelessInterfaceRegex, nullptr));
 }
 
 }  // namespace
@@ -93,6 +110,140 @@ void ExecutorMojoService::GetFanSpeed(GetFanSpeedCallback callback) {
   base::OnceClosure closure = base::BindOnce(
       &ExecutorMojoService::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
       seccomp_policy_path, sandboxing_args, kEctoolUserAndGroup, binary_path,
+      binary_args, std::move(result), std::move(callback));
+
+  base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
+}
+
+void ExecutorMojoService::GetInterfaces(GetInterfacesCallback callback) {
+  mojo_ipc::ProcessResult result;
+
+  const auto seccomp_policy_path =
+      base::FilePath(kSandboxDirPath).Append(kIwSeccompPolicyPath);
+
+  // Minijail setup for iw.
+  std::vector<std::string> sandboxing_args;
+  sandboxing_args.push_back("-G");
+  sandboxing_args.push_back("-b");
+  sandboxing_args.push_back("/usr/sbin/iw");
+
+  std::vector<std::string> binary_args = {kIwInterfaceCommand};
+  base::FilePath binary_path = base::FilePath(kIwBinary);
+
+  // Since no user:group is specified, this will run with the default
+  // cros_healthd:cros_healthd user and group.
+  base::OnceClosure closure = base::BindOnce(
+      &ExecutorMojoService::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
+      seccomp_policy_path, sandboxing_args, base::nullopt, binary_path,
+      binary_args, std::move(result), std::move(callback));
+
+  base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
+}
+
+void ExecutorMojoService::GetLink(const std::string& interface_name,
+                                  GetLinkCallback callback) {
+  mojo_ipc::ProcessResult result;
+  // Sanitize against interface_name.
+  if (!IsValidWirelessInterfaceName(interface_name)) {
+    result.err = "Illegal interface name: " + interface_name;
+    result.return_code = EXIT_FAILURE;
+    std::move(callback).Run(result.Clone());
+    return;
+  }
+
+  const auto seccomp_policy_path =
+      base::FilePath(kSandboxDirPath).Append(kIwSeccompPolicyPath);
+
+  // Minijail setup for iw.
+  std::vector<std::string> sandboxing_args;
+  sandboxing_args.push_back("-G");
+  sandboxing_args.push_back("-b");
+  sandboxing_args.push_back("/usr/sbin/iw");
+
+  std::vector<std::string> binary_args;
+  binary_args.push_back(interface_name);
+  binary_args.push_back(kIwLinkCommand);
+
+  base::FilePath binary_path = base::FilePath(kIwBinary);
+
+  // Since no user:group is specified, this will run with the default
+  // cros_healthd:cros_healthd user and group.
+  base::OnceClosure closure = base::BindOnce(
+      &ExecutorMojoService::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
+      seccomp_policy_path, sandboxing_args, base::nullopt, binary_path,
+      binary_args, std::move(result), std::move(callback));
+
+  base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
+}
+
+void ExecutorMojoService::GetInfo(const std::string& interface_name,
+                                  GetInfoCallback callback) {
+  mojo_ipc::ProcessResult result;
+  // Sanitize against interface_name.
+  if (!IsValidWirelessInterfaceName(interface_name)) {
+    result.err = "Illegal interface name: " + interface_name;
+    result.return_code = EXIT_FAILURE;
+    std::move(callback).Run(result.Clone());
+    return;
+  }
+
+  const auto seccomp_policy_path =
+      base::FilePath(kSandboxDirPath).Append(kIwSeccompPolicyPath);
+
+  // Minijail setup for iw.
+  std::vector<std::string> sandboxing_args;
+  sandboxing_args.push_back("-G");
+  sandboxing_args.push_back("-b");
+  sandboxing_args.push_back("/usr/sbin/iw");
+
+  std::vector<std::string> binary_args;
+  binary_args.push_back(interface_name);
+  binary_args.push_back(kIwInfoCommand);
+
+  base::FilePath binary_path = base::FilePath(kIwBinary);
+
+  // Since no user:group is specified, this will run with the default
+  // cros_healthd:cros_healthd user and group.
+  base::OnceClosure closure = base::BindOnce(
+      &ExecutorMojoService::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
+      seccomp_policy_path, sandboxing_args, base::nullopt, binary_path,
+      binary_args, std::move(result), std::move(callback));
+
+  base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
+}
+
+void ExecutorMojoService::GetScanDump(const std::string& interface_name,
+                                      GetScanDumpCallback callback) {
+  mojo_ipc::ProcessResult result;
+  // Sanitize against interface_name.
+  if (!IsValidWirelessInterfaceName(interface_name)) {
+    result.err = "Illegal interface name: " + interface_name;
+    result.return_code = EXIT_FAILURE;
+    std::move(callback).Run(result.Clone());
+    return;
+  }
+
+  const auto seccomp_policy_path =
+      base::FilePath(kSandboxDirPath).Append(kIwSeccompPolicyPath);
+
+  // Minijail setup for iw.
+  std::vector<std::string> sandboxing_args;
+  sandboxing_args.push_back("-G");
+  sandboxing_args.push_back("-b");
+  sandboxing_args.push_back("/usr/sbin/iw");
+
+  std::vector<std::string> binary_args;
+  binary_args.push_back(interface_name);
+  binary_args.insert(binary_args.end(), kIwScanDumpCommand.begin(),
+                     kIwScanDumpCommand.end());
+
+  base::FilePath binary_path = base::FilePath(kIwBinary);
+
+  // Since no user:group is specified, this will run with the default
+  // cros_healthd:cros_healthd user and group.
+  base::OnceClosure closure = base::BindOnce(
+      &ExecutorMojoService::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
+      seccomp_policy_path, sandboxing_args, base::nullopt, binary_path,
       binary_args, std::move(result), std::move(callback));
 
   base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
