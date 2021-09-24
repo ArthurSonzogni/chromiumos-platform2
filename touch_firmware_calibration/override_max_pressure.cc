@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <base/logging.h>
 #include <brillo/flag_helper.h>
 
 int main(int argc, char** argv) {
