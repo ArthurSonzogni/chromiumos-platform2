@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/time/default_tick_clock.h>
 #include <cros_config/cros_config.h>

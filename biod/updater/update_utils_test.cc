@@ -10,10 +10,11 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/files/file.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
 #include <base/stl_util.h>
 #include <cros_config/fake_cros_config.h>
 #include <gtest/gtest.h>
