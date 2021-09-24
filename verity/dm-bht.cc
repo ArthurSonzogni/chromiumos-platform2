@@ -17,6 +17,7 @@
 #include <base/bits.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/logging.h>
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
 
