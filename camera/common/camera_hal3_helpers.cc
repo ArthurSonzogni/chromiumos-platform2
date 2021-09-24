@@ -126,6 +126,7 @@ Camera3CaptureDescriptor& Camera3CaptureDescriptor::operator=(
     num_physcam_metadata_ = other.num_physcam_metadata_;
     physcam_ids_ = other.physcam_ids_;
     physcam_metadata_ = other.physcam_metadata_;
+    feature_metadata_ = std::move(other.feature_metadata_);
     raw_descriptor_ = std::move(other.raw_descriptor_);
 
     other.Invalidate();

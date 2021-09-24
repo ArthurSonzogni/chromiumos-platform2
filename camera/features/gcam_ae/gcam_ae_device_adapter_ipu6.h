@@ -4,10 +4,10 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_FEATURES_HDRNET_HDRNET_AE_DEVICE_ADAPTER_IPU6_H_
-#define CAMERA_FEATURES_HDRNET_HDRNET_AE_DEVICE_ADAPTER_IPU6_H_
+#ifndef CAMERA_FEATURES_GCAM_AE_GCAM_AE_DEVICE_ADAPTER_IPU6_H_
+#define CAMERA_FEATURES_GCAM_AE_GCAM_AE_DEVICE_ADAPTER_IPU6_H_
 
-#include "features/hdrnet/hdrnet_ae_device_adapter.h"
+#include "features/gcam_ae/gcam_ae_device_adapter.h"
 
 #include <memory>
 
@@ -16,14 +16,14 @@
 
 namespace cros {
 
-// HdrNetAeDeviceAdapterIpu6 is the AE pipeline specilization for Intel IPU6/EP
+// GcamAeDeviceAdapterIpu6 is the AE pipeline specilization for Intel IPU6/EP
 // platforms.
-class HdrNetAeDeviceAdapterIpu6 : public HdrNetAeDeviceAdapter {
+class GcamAeDeviceAdapterIpu6 : public GcamAeDeviceAdapter {
  public:
-  HdrNetAeDeviceAdapterIpu6();
+  GcamAeDeviceAdapterIpu6();
 
-  // HdrNetAeDeviceAdapter implementations.
-  ~HdrNetAeDeviceAdapterIpu6() override = default;
+  // GcamAeDeviceAdapter implementations.
+  ~GcamAeDeviceAdapterIpu6() override = default;
   bool WriteRequestParameters(Camera3CaptureDescriptor* request) override;
   bool ExtractAeStats(Camera3CaptureDescriptor* result,
                       MetadataLogger* metadata_logger = nullptr) override;
@@ -48,4 +48,4 @@ class HdrNetAeDeviceAdapterIpu6 : public HdrNetAeDeviceAdapter {
 
 }  // namespace cros
 
-#endif  // CAMERA_FEATURES_HDRNET_HDRNET_AE_DEVICE_ADAPTER_IPU6_H_
+#endif  // CAMERA_FEATURES_GCAM_AE_GCAM_AE_DEVICE_ADAPTER_IPU6_H_

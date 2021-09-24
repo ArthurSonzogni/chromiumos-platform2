@@ -4,10 +4,10 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_FEATURES_HDRNET_HDRNET_AE_CONTROLLER_IMPL_H_
-#define CAMERA_FEATURES_HDRNET_HDRNET_AE_CONTROLLER_IMPL_H_
+#ifndef CAMERA_FEATURES_GCAM_AE_GCAM_AE_CONTROLLER_IMPL_H_
+#define CAMERA_FEATURES_GCAM_AE_GCAM_AE_CONTROLLER_IMPL_H_
 
-#include "features/hdrnet/hdrnet_ae_controller.h"
+#include "features/gcam_ae/gcam_ae_controller.h"
 
 #include <array>
 #include <memory>
@@ -21,25 +21,24 @@
 
 namespace cros {
 
-class HdrNetAeControllerImpl : public HdrNetAeController {
+class GcamAeControllerImpl : public GcamAeController {
  public:
-  // The default factory method to get the activated HdrNetAeController
+  // The default factory method to get the activated GcamAeController
   // instance.
-  static std::unique_ptr<HdrNetAeController> CreateInstance(
+  static std::unique_ptr<GcamAeController> CreateInstance(
       const camera_metadata_t* static_info);
 
-  HdrNetAeControllerImpl(
-      const camera_metadata_t* static_info,
-      std::unique_ptr<HdrNetAeDeviceAdapter> ae_device_adapter);
+  GcamAeControllerImpl(const camera_metadata_t* static_info,
+                       std::unique_ptr<GcamAeDeviceAdapter> ae_device_adapter);
 
-  // HdrNetAeController implementations.
-  ~HdrNetAeControllerImpl() = default;
+  // GcamAeController implementations.
+  ~GcamAeControllerImpl() = default;
   void RecordYuvBuffer(int frame_number,
                        buffer_handle_t buffer,
                        base::ScopedFD acquire_fence) override;
   void RecordAeMetadata(Camera3CaptureDescriptor* result) override;
   void SetOptions(const Options& options) override;
-  float GetCalculatedHdrRatio(int frame_number) const override;
+  base::Optional<float> GetCalculatedHdrRatio(int frame_number) const override;
   bool WriteRequestAeParameters(Camera3CaptureDescriptor* request) override;
   bool WriteResultFaceRectangles(Camera3CaptureDescriptor* result) override;
 
@@ -79,7 +78,7 @@ class HdrNetAeControllerImpl : public HdrNetAeController {
 
   // Device-specific AE adapter that handles AE stats extraction and AE
   // parameters computation.
-  std::unique_ptr<HdrNetAeDeviceAdapter> ae_device_adapter_;
+  std::unique_ptr<GcamAeDeviceAdapter> ae_device_adapter_;
 
   // AE algorithm input parameters.
   base::flat_map<float, float> max_hdr_ratio_;
@@ -94,10 +93,8 @@ class HdrNetAeControllerImpl : public HdrNetAeController {
 
   // Metadata logger for tests and debugging.
   MetadataLogger* metadata_logger_ = nullptr;
-
-  SEQUENCE_CHECKER(sequence_checker_);
 };
 
 }  // namespace cros
 
-#endif  // CAMERA_FEATURES_HDRNET_HDRNET_AE_CONTROLLER_IMPL_H_
+#endif  // CAMERA_FEATURES_GCAM_AE_GCAM_AE_CONTROLLER_IMPL_H_

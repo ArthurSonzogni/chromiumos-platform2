@@ -50,7 +50,7 @@
 #include <system/camera_metadata_hidden.h>
 #include <system/camera_vendor_tags.h>
 
-#include "features/hdrnet/intel_vendor_metadata_tags.h"
+#include "features/third_party/intel/intel_vendor_metadata_tags.h"
 
 // Minimal vendor_tag_ops_t implementation just to keep the test running.
 vendor_tag_ops_t ipu6ep_vendor_tag_ops = {

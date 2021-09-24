@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "features/hdrnet/hdrnet_ae_controller_impl.h"
+#include "features/gcam_ae/gcam_ae_controller_impl.h"
 
 #include <algorithm>
 #include <cmath>
@@ -52,19 +52,17 @@ float LookUpHdrRatio(const base::flat_map<float, float>& max_hdr_ratio,
 }  // namespace
 
 // static
-std::unique_ptr<HdrNetAeController> HdrNetAeControllerImpl::CreateInstance(
+std::unique_ptr<GcamAeController> GcamAeControllerImpl::CreateInstance(
     const camera_metadata_t* static_info) {
-  return std::make_unique<HdrNetAeControllerImpl>(
-      static_info, HdrNetAeDeviceAdapter::CreateInstance());
+  return std::make_unique<GcamAeControllerImpl>(
+      static_info, GcamAeDeviceAdapter::CreateInstance());
 }
 
-HdrNetAeControllerImpl::HdrNetAeControllerImpl(
+GcamAeControllerImpl::GcamAeControllerImpl(
     const camera_metadata_t* static_info,
-    std::unique_ptr<HdrNetAeDeviceAdapter> ae_device_adapter)
+    std::unique_ptr<GcamAeDeviceAdapter> ae_device_adapter)
     : face_detector_(FaceDetector::Create()),
       ae_device_adapter_(std::move(ae_device_adapter)) {
-  DETACH_FROM_SEQUENCE(sequence_checker_);
-
   base::span<const int32_t> sensitivity_range = GetRoMetadataAsSpan<int32_t>(
       static_info, ANDROID_SENSOR_INFO_SENSITIVITY_RANGE);
   base::Optional<int32_t> max_analog_sensitivity = GetRoMetadata<int32_t>(
@@ -106,11 +104,9 @@ HdrNetAeControllerImpl::HdrNetAeControllerImpl(
   active_array_dimension_ = Size(active_array_size[2], active_array_size[3]);
 }
 
-void HdrNetAeControllerImpl::RecordYuvBuffer(int frame_number,
-                                             buffer_handle_t buffer,
-                                             base::ScopedFD acquire_fence) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
+void GcamAeControllerImpl::RecordYuvBuffer(int frame_number,
+                                           buffer_handle_t buffer,
+                                           base::ScopedFD acquire_fence) {
   AeFrameInfo& frame_info = GetOrCreateAeFrameInfoEntry(frame_number);
 
   // TODO(jcliang): Face detection doesn't work too well on the under-exposed
@@ -156,10 +152,7 @@ void HdrNetAeControllerImpl::RecordYuvBuffer(int frame_number,
   MaybeRunAE(frame_number);
 }
 
-void HdrNetAeControllerImpl::RecordAeMetadata(
-    Camera3CaptureDescriptor* result) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
+void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
   AeFrameInfo& frame_info = GetOrCreateAeFrameInfoEntry(result->frame_number());
 
   // Exposure and gain info.
@@ -319,9 +312,7 @@ void HdrNetAeControllerImpl::RecordAeMetadata(
   }
 }
 
-void HdrNetAeControllerImpl::SetOptions(const Options& options) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
+void GcamAeControllerImpl::SetOptions(const Options& options) {
   if (options.enabled) {
     enabled_ = *options.enabled;
   }
@@ -369,11 +360,10 @@ void HdrNetAeControllerImpl::SetOptions(const Options& options) {
   }
 }
 
-float HdrNetAeControllerImpl::GetCalculatedHdrRatio(int frame_number) const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
+base::Optional<float> GcamAeControllerImpl::GetCalculatedHdrRatio(
+    int frame_number) const {
   if (!enabled_) {
-    return 0;
+    return base::nullopt;
   }
 
   base::Optional<const AeFrameInfo*> frame_info =
@@ -407,10 +397,8 @@ float HdrNetAeControllerImpl::GetCalculatedHdrRatio(int frame_number) const {
       LookUpHdrRatio(max_hdr_ratio_, actual_analog_gain * actual_digital_gain));
 }
 
-bool HdrNetAeControllerImpl::WriteRequestAeParameters(
+bool GcamAeControllerImpl::WriteRequestAeParameters(
     Camera3CaptureDescriptor* request) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
   if (!enabled_) {
     return false;
   }
@@ -448,7 +436,7 @@ bool HdrNetAeControllerImpl::WriteRequestAeParameters(
   }
 
   // TODO(jcliang): By overriding the AE parameters here we're going to upset
-  // CTS. We may need to disable HDRnet for Android.
+  // CTS. We may need to disable HDRnet and Gcam AE for Android.
   switch (ae_override_mode_) {
     case AeOverrideMode::kWithExposureCompensation:
       return SetExposureCompensation(request);
@@ -460,10 +448,8 @@ bool HdrNetAeControllerImpl::WriteRequestAeParameters(
   }
 }
 
-bool HdrNetAeControllerImpl::WriteResultFaceRectangles(
+bool GcamAeControllerImpl::WriteResultFaceRectangles(
     Camera3CaptureDescriptor* result) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
   if (!use_cros_face_detector_ || latest_faces_.empty()) {
     return true;
   }
@@ -482,22 +468,16 @@ bool HdrNetAeControllerImpl::WriteResultFaceRectangles(
   return true;
 }
 
-bool HdrNetAeControllerImpl::ShouldRunAe(int frame_number) const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
+bool GcamAeControllerImpl::ShouldRunAe(int frame_number) const {
   return enabled_ && (frame_number % ae_frame_interval_ == 0);
 }
 
-bool HdrNetAeControllerImpl::ShouldRunFd(int frame_number) const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
+bool GcamAeControllerImpl::ShouldRunFd(int frame_number) const {
   return enabled_ && (frame_number % fd_frame_interval_ == 0);
 }
 
-AeFrameInfo& HdrNetAeControllerImpl::GetOrCreateAeFrameInfoEntry(
+AeFrameInfo& GcamAeControllerImpl::GetOrCreateAeFrameInfoEntry(
     int frame_number) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
   int index = frame_number % frame_info_.size();
   AeFrameInfo& entry = frame_info_[index];
   if (entry.frame_number != frame_number) {
@@ -510,10 +490,8 @@ AeFrameInfo& HdrNetAeControllerImpl::GetOrCreateAeFrameInfoEntry(
   return entry;
 }
 
-base::Optional<const AeFrameInfo*> HdrNetAeControllerImpl::GetAeFrameInfoEntry(
+base::Optional<const AeFrameInfo*> GcamAeControllerImpl::GetAeFrameInfoEntry(
     int frame_number) const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
   int index = frame_number % frame_info_.size();
   const AeFrameInfo& entry = frame_info_[index];
   if (entry.frame_number != frame_number) {
@@ -522,9 +500,7 @@ base::Optional<const AeFrameInfo*> HdrNetAeControllerImpl::GetAeFrameInfoEntry(
   return &entry;
 }
 
-void HdrNetAeControllerImpl::MaybeRunAE(int frame_number) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-
+void GcamAeControllerImpl::MaybeRunAE(int frame_number) {
   AeFrameInfo& frame_info = GetOrCreateAeFrameInfoEntry(frame_number);
   if (!frame_info.IsValid() || !ae_device_adapter_->HasAeStats(frame_number)) {
     return;
@@ -594,7 +570,7 @@ void HdrNetAeControllerImpl::MaybeRunAE(int frame_number) {
   }
 }
 
-bool HdrNetAeControllerImpl::SetExposureCompensation(
+bool GcamAeControllerImpl::SetExposureCompensation(
     Camera3CaptureDescriptor* request) {
   std::array<int32_t, 1> exp_comp{latest_ae_compensation_};
   if (!request->UpdateMetadata<int32_t>(
@@ -610,7 +586,7 @@ bool HdrNetAeControllerImpl::SetExposureCompensation(
   return true;
 }
 
-bool HdrNetAeControllerImpl::SetManualSensorControls(
+bool GcamAeControllerImpl::SetManualSensorControls(
     Camera3CaptureDescriptor* request) {
   // Cap exposure_time to 33.33 ms.
   constexpr float kMaxExposureTime = 33.33f;

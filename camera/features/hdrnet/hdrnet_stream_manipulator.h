@@ -21,7 +21,6 @@
 #include "common/still_capture_processor.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_thread.h"
-#include "features/hdrnet/hdrnet_ae_controller.h"
 #include "features/hdrnet/hdrnet_config.h"
 #include "features/hdrnet/hdrnet_processor.h"
 #include "gpu/shared_image.h"
@@ -32,9 +31,7 @@ class HdrNetStreamManipulator : public StreamManipulator {
  public:
   HdrNetStreamManipulator(
       std::unique_ptr<StillCaptureProcessor> still_capture_processor,
-      HdrNetProcessor::Factory hdrnet_processor_factory = base::NullCallback(),
-      HdrNetAeController::Factory hdrnet_ae_controller_factory =
-          base::NullCallback());
+      HdrNetProcessor::Factory hdrnet_processor_factory = base::NullCallback());
 
   ~HdrNetStreamManipulator() override;
 
@@ -181,9 +178,6 @@ class HdrNetStreamManipulator : public StreamManipulator {
   android::CameraMetadata static_info_;
 
   std::unique_ptr<EglContext> egl_context_;
-
-  HdrNetAeController::Factory hdrnet_ae_controller_factory_;
-  std::unique_ptr<HdrNetAeController> ae_controller_;
 
   std::unique_ptr<StillCaptureProcessor> still_capture_processor_;
   CaptureResultCallback result_callback_;

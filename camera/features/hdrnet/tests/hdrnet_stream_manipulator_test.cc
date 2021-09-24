@@ -30,7 +30,6 @@
 #include <hardware/camera3.h>
 
 #include "common/still_capture_processor.h"
-#include "features/hdrnet/hdrnet_ae_controller.h"
 #include "features/hdrnet/hdrnet_processor.h"
 
 using ::testing::Test;
@@ -154,42 +153,6 @@ std::unique_ptr<HdrNetProcessor> CreateMockHdrNetProcessorInstance(
       static_info, task_runner);
 }
 
-class MockHdrNetAeController : public HdrNetAeController {
- public:
-  explicit MockHdrNetAeController(const camera_metadata_t* static_info) {}
-
-  MOCK_METHOD(void,
-              RecordYuvBuffer,
-              (int frame_number,
-               buffer_handle_t buffer,
-               base::ScopedFD acquire_fence),
-              (override));
-  MOCK_METHOD(void,
-              RecordAeMetadata,
-              (Camera3CaptureDescriptor * result),
-              (override));
-  MOCK_METHOD(void, SetOptions, (const Options& options), (override));
-  MOCK_METHOD(float,
-              GetCalculatedHdrRatio,
-              (int frame_number),
-              (const override));
-  MOCK_METHOD(bool,
-              WriteRequestAeParameters,
-              (Camera3CaptureDescriptor * request),
-              (override));
-  MOCK_METHOD(bool,
-              WriteResultFaceRectangles,
-              (Camera3CaptureDescriptor * result),
-              (override));
-  ~MockHdrNetAeController() = default;
-};
-
-std::unique_ptr<HdrNetAeController> CreateMockHdrNetAeControllerInstance(
-    const camera_metadata_t* static_info) {
-  return std::make_unique<::testing::NiceMock<MockHdrNetAeController>>(
-      static_info);
-}
-
 class FakeStillCaptureProcessor : public StillCaptureProcessor {
  public:
   FakeStillCaptureProcessor() {}
@@ -263,8 +226,7 @@ class HdrNetStreamManipulatorTest : public Test {
   void SetUp() {
     stream_manipulator_ = std::make_unique<HdrNetStreamManipulator>(
         std::make_unique<FakeStillCaptureProcessor>(),
-        base::BindRepeating(CreateMockHdrNetProcessorInstance),
-        base::BindRepeating(CreateMockHdrNetAeControllerInstance));
+        base::BindRepeating(CreateMockHdrNetProcessorInstance));
     stream_manipulator_->Initialize(
         nullptr,
         base::BindRepeating(&HdrNetStreamManipulatorTest::ProcessCaptureResult,

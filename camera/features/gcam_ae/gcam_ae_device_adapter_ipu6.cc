@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "features/hdrnet/hdrnet_ae_device_adapter_ipu6.h"
+#include "features/gcam_ae/gcam_ae_device_adapter_ipu6.h"
 
 #include <utility>
 
@@ -13,7 +13,7 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
-#include "features/hdrnet/intel_vendor_metadata_tags.h"
+#include "features/third_party/intel/intel_vendor_metadata_tags.h"
 
 namespace cros {
 
@@ -25,10 +25,10 @@ constexpr int kIpu6WhiteLevel = 249;
 
 }  // namespace
 
-HdrNetAeDeviceAdapterIpu6::HdrNetAeDeviceAdapterIpu6()
+GcamAeDeviceAdapterIpu6::GcamAeDeviceAdapterIpu6()
     : gcam_ae_(GcamAe::CreateInstance()) {}
 
-bool HdrNetAeDeviceAdapterIpu6::WriteRequestParameters(
+bool GcamAeDeviceAdapterIpu6::WriteRequestParameters(
     Camera3CaptureDescriptor* request) {
   std::array<uint8_t, 1> rgbs_grid_enable = {
       INTEL_VENDOR_CAMERA_CALLBACK_RGBS_TRUE};
@@ -41,8 +41,8 @@ bool HdrNetAeDeviceAdapterIpu6::WriteRequestParameters(
   return true;
 }
 
-bool HdrNetAeDeviceAdapterIpu6::ExtractAeStats(
-    Camera3CaptureDescriptor* result, MetadataLogger* metadata_logger_) {
+bool GcamAeDeviceAdapterIpu6::ExtractAeStats(Camera3CaptureDescriptor* result,
+                                             MetadataLogger* metadata_logger_) {
   base::span<const int32_t> rgbs_grid_size =
       result->GetMetadata<int32_t>(INTEL_VENDOR_CAMERA_RGBS_GRID_SIZE);
   if (rgbs_grid_size.empty()) {
@@ -123,11 +123,11 @@ bool HdrNetAeDeviceAdapterIpu6::ExtractAeStats(
   return true;
 }
 
-bool HdrNetAeDeviceAdapterIpu6::HasAeStats(int frame_number) {
+bool GcamAeDeviceAdapterIpu6::HasAeStats(int frame_number) {
   return GetAeStatsEntry(frame_number).has_value();
 }
 
-AeParameters HdrNetAeDeviceAdapterIpu6::ComputeAeParameters(
+AeParameters GcamAeDeviceAdapterIpu6::ComputeAeParameters(
     int frame_number, const AeFrameInfo& frame_info, float max_hdr_ratio) {
   AeParameters ae_parameters;
   AeFrameMetadata ae_metadata{
@@ -212,7 +212,7 @@ AeParameters HdrNetAeDeviceAdapterIpu6::ComputeAeParameters(
   return ae_parameters;
 }
 
-base::Optional<AeStatsIntelIpu6*> HdrNetAeDeviceAdapterIpu6::GetAeStatsEntry(
+base::Optional<AeStatsIntelIpu6*> GcamAeDeviceAdapterIpu6::GetAeStatsEntry(
     int frame_number, bool create_entry) {
   int index = frame_number % ae_stats_.size();
   AeStatsEntry& entry = ae_stats_[index];

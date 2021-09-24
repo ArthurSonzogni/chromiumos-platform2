@@ -28,18 +28,12 @@ if (use.ipu6 || use.ipu6ep) {
 
 source_set("hdrnet") {
   sources = [
-    "//camera/features/hdrnet/hdrnet_ae_controller_impl.cc",
-    "//camera/features/hdrnet/hdrnet_ae_device_adapter.cc",
     "//camera/features/hdrnet/hdrnet_config.cc",
     "//camera/features/hdrnet/hdrnet_processor_device_adapter.cc",
     "//camera/features/hdrnet/hdrnet_processor_impl.cc",
     "//camera/features/hdrnet/hdrnet_stream_manipulator.cc",
   ]
-  libs = [
-    "facessd_cros",
-    "gcam_ae_cros",
-    "hdrnet_cros",
-  ]
+  libs = [ "hdrnet_cros" ]
   public_configs = [ ":target_defaults" ]
 
   # -fPIC needed by the libcros_camera.so shared library.
@@ -49,7 +43,6 @@ source_set("hdrnet") {
 
   if (use.ipu6 || use.ipu6ep) {
     sources += [
-      "//camera/features/hdrnet/hdrnet_ae_device_adapter_ipu6.cc",
       "//camera/features/hdrnet/hdrnet_processor_device_adapter_ipu6.cc",
       "//camera/features/hdrnet/ipu6_gamma.cc",
     ]

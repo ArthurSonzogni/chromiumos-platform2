@@ -12,8 +12,6 @@
 #include <base/files/file_path_watcher.h>
 #include <base/synchronization/lock.h>
 
-#include "features/hdrnet/ae_info.h"
-
 namespace cros {
 
 // The Config class holds all the settings that controls the operation and
@@ -23,46 +21,17 @@ class HdrNetConfig {
   // The default HDRnet config file. The file should contain a JSON map for the
   // options defined below.
   static constexpr const char kDefaultHdrNetConfigFile[] =
-      "/etc/camera/hdrnet.config";
+      "/etc/camera/hdrnet_config.json";
   static constexpr const char kOverrideHdrNetConfigFile[] =
-      "/run/camera/hdrnet.config";
+      "/run/camera/hdrnet_config.json";
 
   struct Options {
     // Enables the HDRnet pipeline to produce output frames.
     bool hdrnet_enable = true;
 
-    // Enables Gcam AE to produce exposure settings and HDR ratio.
-    bool gcam_ae_enable = true;
-
-    // Controls the duty cycle of Gcam AE. The AE will run every
-    // |ae_frame_interval| frames.
-    int ae_frame_interval = 2;
-
-    // A map with (gain, max_hdr_ratio) entries defining the max HDR ratio
-    // passed to Gcam AE based on the gain (analog * digital) used to capture
-    // the frame.
-    base::flat_map<float, float> max_hdr_ratio = {
-        {1.0, 5.0}, {4.0, 5.0}, {8.0, 5.0}, {16.0, 2.0}, {32.0, 1.1}};
-
-    // Controls how Gcam AE gets the AE stats input parameters.
-    AeStatsInputMode ae_stats_input_mode = AeStatsInputMode::kFromVendorAeStats;
-
-    // Controls how HdrNetAeController overrides camera HAL's AE decision.
-    AeOverrideMode ae_override_mode = AeOverrideMode::kWithExposureCompensation;
-
-    // Uses CrOS face detector for face detection instead of the vendor one.
-    bool use_cros_face_detector = false;
-
-    // Controls the duty cycle of CrOS face detector. The face detector will run
-    // every |fd_frame_interval| frames.
-    int fd_frame_interval = 10;
-
     // The HDR ratio use for HDRnet rendering. Only effective if Gcam AE isn't
     // running.
     float hdr_ratio = 3.0;
-
-    // The exposure compensation in stops set to every capture request.
-    float exposure_compensation = 0.0f;
 
     // Dumps intermediate processing buffers for debugging.
     bool dump_buffer = false;

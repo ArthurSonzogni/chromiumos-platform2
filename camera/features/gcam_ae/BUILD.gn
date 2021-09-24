@@ -1,0 +1,39 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//camera/build/cc_embed_data.gni")
+import("//common-mk/pkg_config.gni")
+
+pkg_config("target_defaults") {
+  configs = [ "//camera/build:cros_camera_common" ]
+  pkg_deps = [
+    "libcros_camera_android_deps",
+    "libsync",
+  ]
+  defines = [
+    "USE_IPU6=${use.ipu6}",
+    "USE_IPU6EP=${use.ipu6ep}",
+  ]
+}
+
+source_set("gcam_ae") {
+  sources = [
+    "//camera/features/gcam_ae/gcam_ae_config.cc",
+    "//camera/features/gcam_ae/gcam_ae_controller_impl.cc",
+    "//camera/features/gcam_ae/gcam_ae_device_adapter.cc",
+    "//camera/features/gcam_ae/gcam_ae_stream_manipulator.cc",
+  ]
+  libs = [
+    "facessd_cros",
+    "gcam_ae_cros",
+  ]
+  public_configs = [ ":target_defaults" ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
+
+  if (use.ipu6 || use.ipu6ep) {
+    sources += [ "//camera/features/gcam_ae/gcam_ae_device_adapter_ipu6.cc" ]
+  }
+}

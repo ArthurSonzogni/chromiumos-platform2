@@ -250,7 +250,10 @@ shared_library("libcros_camera") {
   ]
 
   if (use.camera_feature_hdrnet) {
-    deps += [ "//camera/features/hdrnet" ]
+    deps += [
+      "//camera/features/gcam_ae",
+      "//camera/features/hdrnet",
+    ]
   }
 
   if (use.camera_feature_portrait_mode) {

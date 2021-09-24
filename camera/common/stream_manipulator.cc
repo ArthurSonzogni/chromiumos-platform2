@@ -15,6 +15,7 @@
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/constants.h"
 #include "cros-camera/jpeg_compressor.h"
+#include "features/gcam_ae/gcam_ae_stream_manipulator.h"
 #include "features/hdrnet/hdrnet_stream_manipulator.h"
 #endif
 
@@ -46,6 +47,8 @@ void MaybeEnableHdrNetStreamManipulator(
           std::make_unique<HdrNetStreamManipulator>(
               std::make_unique<StillCaptureProcessorImpl>(
                   std::move(jpeg_compressor))));
+      out_stream_manipulators->emplace_back(
+          std::make_unique<GcamAeStreamManipulator>());
     }
   }
 #endif

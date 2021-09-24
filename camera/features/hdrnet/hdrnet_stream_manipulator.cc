@@ -17,7 +17,6 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
-#include "features/hdrnet/hdrnet_ae_controller_impl.h"
 #include "features/hdrnet/hdrnet_processor_impl.h"
 #include "gpu/egl/egl_fence.h"
 #include "gpu/egl/utils.h"
@@ -30,21 +29,7 @@ namespace {
 
 constexpr int kDefaultSyncWaitTimeoutMs = 300;
 
-// Utility function to produce a debug string for the given camera3_stream_t
-// |stream|.
-inline std::string GetDebugString(const camera3_stream_t* stream) {
-  return base::StringPrintf(
-      "stream=%p, type=%d, size=%ux%u, format=%d, usage=%u, max_buffers=%u",
-      stream, stream->stream_type, stream->width, stream->height,
-      stream->format, stream->usage, stream->max_buffers);
-}
-
-inline bool HaveSameAspectRatio(const camera3_stream_t* s1,
-                                const camera3_stream_t* s2) {
-  return (s1->width * s2->height == s1->height * s2->width);
-}
-
-constexpr char kMetadataDumpPath[] = "/usr/local/hdrnet/frame_metadata.log";
+constexpr char kMetadataDumpPath[] = "/run/camera/hdrnet_frame_metadata.json";
 
 }  // namespace
 
@@ -125,17 +110,12 @@ void HdrNetStreamManipulator::HdrNetRequestBufferInfo::Invalidate() {
 
 HdrNetStreamManipulator::HdrNetStreamManipulator(
     std::unique_ptr<StillCaptureProcessor> still_capture_processor,
-    HdrNetProcessor::Factory hdrnet_processor_factory,
-    HdrNetAeController::Factory hdrnet_ae_controller_factory)
+    HdrNetProcessor::Factory hdrnet_processor_factory)
     : gpu_thread_("HdrNetPipelineGpuThread"),
       hdrnet_processor_factory_(
           !hdrnet_processor_factory.is_null()
               ? std::move(hdrnet_processor_factory)
               : base::BindRepeating(HdrNetProcessorImpl::CreateInstance)),
-      hdrnet_ae_controller_factory_(
-          !hdrnet_ae_controller_factory.is_null()
-              ? std::move(hdrnet_ae_controller_factory)
-              : base::BindRepeating(HdrNetAeControllerImpl::CreateInstance)),
       still_capture_processor_(std::move(still_capture_processor)) {
   CHECK(gpu_thread_.Start());
 }
@@ -244,7 +224,6 @@ bool HdrNetStreamManipulator::InitializeOnGpuThread(
   DCHECK(gpu_thread_.IsCurrentThread());
 
   static_info_.acquire(clone_camera_metadata(static_info));
-  ae_controller_ = hdrnet_ae_controller_factory_.Run(static_info);
   result_callback_ = std::move(result_callback);
   return true;
 }
@@ -395,22 +374,9 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
   } else {
     metadata_logger_ = nullptr;
   }
-  ae_controller_->SetOptions({
-      .enabled = options.gcam_ae_enable,
-      .ae_frame_interval = options.ae_frame_interval,
-      .max_hdr_ratio = options.max_hdr_ratio,
-      .use_cros_face_detector = options.use_cros_face_detector,
-      .fd_frame_interval = options.fd_frame_interval,
-      .ae_stats_input_mode = options.ae_stats_input_mode,
-      .ae_override_mode = options.ae_override_mode,
-      .exposure_compensation = options.exposure_compensation,
-      .metadata_logger = metadata_logger_.get(),
-  });
   for (auto& context : hdrnet_stream_context_) {
     context->processor->SetOptions({.metadata_logger = metadata_logger_.get()});
   }
-
-  UpdateRequestSettingsOnGpuThread(request);
 
   // First, pick the set of HDRnet stream that we will put into the request.
   base::span<const camera3_stream_buffer_t> client_output_buffers =
@@ -521,13 +487,6 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
 
   if (result->has_metadata()) {
     HdrNetConfig::Options options = config_.GetOptions();
-    ae_controller_->RecordAeMetadata(result);
-
-    if (options.use_cros_face_detector) {
-      // This is mainly for displaying the face rectangles in camera app for
-      // development and debugging.
-      ae_controller_->WriteResultFaceRectangles(result);
-    }
     if (options.hdrnet_enable) {
       // Result metadata may come before the buffers due to partial results.
       for (const auto& context : hdrnet_stream_context_) {
@@ -567,7 +526,6 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
     return true;
   }
 
-  const SharedImage* yuv_image_to_record = nullptr;
   HdrNetBufferInfoList& pending_request_buffers =
       request_buffer_info_[result->frame_number()];
 
@@ -588,9 +546,8 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
 
     // Run the HDRNet pipeline and write to the buffers.
     HdrNetConfig::Options processor_config = config_.GetOptions();
-    if (processor_config.gcam_ae_enable) {
-      processor_config.hdr_ratio =
-          ae_controller_->GetCalculatedHdrRatio(result->frame_number());
+    if (result->feature_metadata().hdr_ratio) {
+      processor_config.hdr_ratio = *result->feature_metadata().hdr_ratio;
     }
     const SharedImage& image =
         stream_context->shared_images[request_buffer_info->buffer_index];
@@ -601,20 +558,6 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
     OnBuffersRendered(result->frame_number(), stream_context,
                       &(*request_buffer_info), &output_buffers_to_client);
     pending_request_buffers.erase(request_buffer_info);
-
-    // Pass the buffer with the largest width to AE controller. This is a
-    // heuristic and shouldn't matter for the majority of the time, as for
-    // most cases the requested streams would have the same aspect ratio.
-    if (!yuv_image_to_record ||
-        (CameraBufferManager::GetWidth(image.buffer()) >
-         CameraBufferManager::GetWidth(yuv_image_to_record->buffer()))) {
-      yuv_image_to_record = &image;
-    }
-  }
-
-  if (yuv_image_to_record) {
-    RecordYuvBufferForAeControllerOnGpuThread(result->frame_number(),
-                                              *yuv_image_to_record);
   }
 
   if (pending_request_buffers.empty()) {
@@ -884,28 +827,6 @@ void HdrNetStreamManipulator::ResetStateOnGpuThread() {
   hdrnet_stream_context_.clear();
   request_stream_mapping_.clear();
   result_stream_mapping_.clear();
-}
-
-void HdrNetStreamManipulator::UpdateRequestSettingsOnGpuThread(
-    Camera3CaptureDescriptor* request) {
-  DCHECK(gpu_thread_.IsCurrentThread());
-
-  if (!egl_context_->MakeCurrent()) {
-    LOGF(ERROR) << "Failed to make display current";
-    return;
-  }
-
-  ae_controller_->WriteRequestAeParameters(request);
-}
-
-void HdrNetStreamManipulator::RecordYuvBufferForAeControllerOnGpuThread(
-    int frame_number, const SharedImage& yuv_input) {
-  DCHECK(gpu_thread_.IsCurrentThread());
-
-  // TODO(jcliang): We may want to take the HDRnet-rendered buffer instead if
-  // this is only used for face detection.
-  ae_controller_->RecordYuvBuffer(frame_number, yuv_input.buffer(),
-                                  base::ScopedFD());
 }
 
 HdrNetStreamManipulator::HdrNetStreamContext*

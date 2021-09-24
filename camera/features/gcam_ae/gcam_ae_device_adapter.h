@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_FEATURES_HDRNET_HDRNET_AE_DEVICE_ADAPTER_H_
-#define CAMERA_FEATURES_HDRNET_HDRNET_AE_DEVICE_ADAPTER_H_
+#ifndef CAMERA_FEATURES_GCAM_AE_GCAM_AE_DEVICE_ADAPTER_H_
+#define CAMERA_FEATURES_GCAM_AE_GCAM_AE_DEVICE_ADAPTER_H_
 
 #include <memory>
 
@@ -13,24 +13,24 @@
 
 #include "common/camera_hal3_helpers.h"
 #include "common/metadata_logger.h"
-#include "features/hdrnet/ae_info.h"
+#include "features/gcam_ae/ae_info.h"
 
 namespace cros {
 
 // AeDeviceAdapter handles the device or platform specific AE stats extraction
 // and translation, and the AE algorithm implementation (e.g. calls down to the
 // device-specific Gcam AE implementation).
-class HdrNetAeDeviceAdapter {
+class GcamAeDeviceAdapter {
  public:
-  static std::unique_ptr<HdrNetAeDeviceAdapter> CreateInstance();
+  static std::unique_ptr<GcamAeDeviceAdapter> CreateInstance();
 
-  virtual ~HdrNetAeDeviceAdapter() = default;
+  virtual ~GcamAeDeviceAdapter() = default;
 
-  // Called by HdrNetAeController to allow the adapter to set device specific
+  // Called by GcamAeController to allow the adapter to set device specific
   // control metadata (e.g. vendor tags) for each capture request.
   virtual bool WriteRequestParameters(Camera3CaptureDescriptor* request);
 
-  // Called by HdrNetAeController to extract the device specific AE stats from
+  // Called by GcamAeController to extract the device specific AE stats from
   // |result|.
   virtual bool ExtractAeStats(Camera3CaptureDescriptor* result,
                               MetadataLogger* metadata_logger = nullptr);
@@ -48,4 +48,4 @@ class HdrNetAeDeviceAdapter {
 
 }  // namespace cros
 
-#endif  // CAMERA_FEATURES_HDRNET_HDRNET_AE_DEVICE_ADAPTER_H_
+#endif  // CAMERA_FEATURES_GCAM_AE_GCAM_AE_DEVICE_ADAPTER_H_

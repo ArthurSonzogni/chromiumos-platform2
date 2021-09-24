@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_FEATURES_HDRNET_HDRNET_AE_CONTROLLER_H_
-#define CAMERA_FEATURES_HDRNET_HDRNET_AE_CONTROLLER_H_
+#ifndef CAMERA_FEATURES_GCAM_AE_GCAM_AE_CONTROLLER_H_
+#define CAMERA_FEATURES_GCAM_AE_GCAM_AE_CONTROLLER_H_
 
 #include <memory>
 
@@ -15,24 +15,24 @@
 #include <system/camera_metadata.h>
 
 #include "common/camera_hal3_helpers.h"
-#include "features/hdrnet/ae_info.h"
-#include "features/hdrnet/hdrnet_ae_device_adapter.h"
+#include "features/gcam_ae/ae_info.h"
+#include "features/gcam_ae/gcam_ae_device_adapter.h"
 
 namespace cros {
 
-// An interface class to facilitate testing.  For the actual HdrNetAeController
-// implementation, see features/hdrnet/hdrnet_ae_controller_impl.{h,cc}.
-class HdrNetAeController {
+// An interface class to facilitate testing.  For the actual GcamAeController
+// implementation, see features/gcam_ae/gcam_ae_controller_impl.{h,cc}.
+class GcamAeController {
  public:
-  using Factory = base::RepeatingCallback<std::unique_ptr<HdrNetAeController>(
+  using Factory = base::RepeatingCallback<std::unique_ptr<GcamAeController>(
       const camera_metadata_t* static_info)>;
 
   struct Options {
-    // Whether the HdrNetAeController is enabled.
+    // Whether the GcamAeController is enabled.
     base::Optional<bool> enabled;
 
-    // The duty cycle of the HdrNetAeController.  The AE controller should run
-    // once every |ae_frame_interval| frames.
+    // The duty cycle of the GcamAeController.  The AE controller will
+    // calculate and update AE parameters once every |ae_frame_interval| frames.
     base::Optional<int> ae_frame_interval;
 
     // The maximum allowed HDR ratio.  Needed by Gcam AE as input argument.
@@ -60,7 +60,7 @@ class HdrNetAeController {
     base::Optional<MetadataLogger*> metadata_logger;
   };
 
-  virtual ~HdrNetAeController() = default;
+  virtual ~GcamAeController() = default;
 
   // Records the YUV frame of |frame_number| provided in |buffer|.
   // |acquire_fence| is the fence that, if valid, needs to be synced on before
@@ -79,7 +79,8 @@ class HdrNetAeController {
 
   // Gets the HDR ratio calculated by Gcam AE.  This is normally used to get the
   // input argument to the HDRnet processing pipeline.
-  virtual float GetCalculatedHdrRatio(int frame_number) const = 0;
+  virtual base::Optional<float> GetCalculatedHdrRatio(
+      int frame_number) const = 0;
 
   // Writes the AE parameters calculated by the AE algorithm in the capture
   // request |request|.
@@ -93,4 +94,4 @@ class HdrNetAeController {
 
 }  // namespace cros
 
-#endif  // CAMERA_FEATURES_HDRNET_HDRNET_AE_CONTROLLER_H_
+#endif  // CAMERA_FEATURES_GCAM_AE_GCAM_AE_CONTROLLER_H_

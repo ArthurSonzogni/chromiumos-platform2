@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_FEATURES_HDRNET_AE_INFO_H_
-#define CAMERA_FEATURES_HDRNET_AE_INFO_H_
+#ifndef CAMERA_FEATURES_GCAM_AE_AE_INFO_H_
+#define CAMERA_FEATURES_GCAM_AE_AE_INFO_H_
 
 #include <cstdint>
 #include <vector>
@@ -64,10 +64,10 @@ enum class AeStatsInputMode {
 };
 
 enum class AeOverrideMode {
-  // Let HdrNetAeController override AE decision with exposure compensation.
+  // Let GacmAeController override AE decision with exposure compensation.
   kWithExposureCompensation = 0,
 
-  // Let HdrNetAeController override AE decision with manual sensor control.
+  // Let GcamAeController override AE decision with manual sensor control.
   kWithManualSensorControl = 1,
 };
 
@@ -140,4 +140,4 @@ struct AeParameters {
 
 }  // namespace cros
 
-#endif  // CAMERA_FEATURES_HDRNET_AE_INFO_H_
+#endif  // CAMERA_FEATURES_GCAM_AE_AE_INFO_H_

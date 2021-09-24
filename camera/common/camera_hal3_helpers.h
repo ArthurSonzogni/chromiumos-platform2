@@ -8,6 +8,7 @@
 #define CAMERA_COMMON_CAMERA_HAL3_HELPERS_H_
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <base/containers/span.h>
@@ -19,6 +20,28 @@
 #include "cros-camera/export.h"
 
 namespace cros {
+
+// Utility function to produce a debug string for the given camera3_stream_t
+// |stream|.
+inline std::string GetDebugString(const camera3_stream_t* stream) {
+  return base::StringPrintf(
+      "stream=%p, type=%d, size=%ux%u, format=%d, usage=%u, max_buffers=%u",
+      stream, stream->stream_type, stream->width, stream->height,
+      stream->format, stream->usage, stream->max_buffers);
+}
+
+inline bool HaveSameAspectRatio(const camera3_stream_t* s1,
+                                const camera3_stream_t* s2) {
+  return (s1->width * s2->height == s1->height * s2->width);
+}
+
+// A container for passing metadata across different StreamManipulator instances
+// to allow different feature implementations to communicate with one another.
+struct FeatureMetadata {
+  // |hdr_ratio| produced by GcamAeStreamManipulator and consumed by
+  // HdrNetStreamManipulator for HDRnet output frame rendering.
+  base::Optional<float> hdr_ratio;
+};
 
 // A helper class to make it easy to modify camera3_stream_configuration_t.
 //
@@ -159,6 +182,8 @@ class CROS_CAMERA_EXPORT Camera3CaptureDescriptor {
   uint32_t num_output_buffers() const { return output_buffers_.size(); }
   uint32_t partial_result() const { return partial_result_; }
 
+  FeatureMetadata& feature_metadata() { return feature_metadata_; }
+
  protected:
   void Invalidate();
   bool IsLocked() const;
@@ -179,6 +204,8 @@ class CROS_CAMERA_EXPORT Camera3CaptureDescriptor {
   uint32_t num_physcam_metadata_ = 0;
   const char** physcam_ids_ = nullptr;
   const camera_metadata_t** physcam_metadata_ = nullptr;
+
+  FeatureMetadata feature_metadata_;
 
   union RawDescriptor {
     camera3_capture_request_t raw_request;
