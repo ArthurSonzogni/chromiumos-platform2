@@ -9,8 +9,8 @@
  * Class to automatically register commands.
  */
 
-#include <iostream>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <utility>
 

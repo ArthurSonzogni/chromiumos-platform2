@@ -14,6 +14,7 @@
 #include <stdlib.h>
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/thread.h>
 #include <base/time/time.h>

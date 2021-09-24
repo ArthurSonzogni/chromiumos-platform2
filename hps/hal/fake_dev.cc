@@ -38,10 +38,11 @@
 #include <map>
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/memory/ref_counted.h>
+#include <base/strings/stringprintf.h>
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
-#include <base/strings/stringprintf.h>
 #include <base/threading/simple_thread.h>
 
 #include "hps/hps_reg.h"
