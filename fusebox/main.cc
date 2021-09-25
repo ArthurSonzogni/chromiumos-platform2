@@ -14,6 +14,7 @@
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "fusebox/file_system.h"
 #include "fusebox/fuse_frontend.h"
 #include "fusebox/util.h"
 
@@ -29,13 +30,59 @@ void SetupLogging() {
 
 namespace fusebox {
 
+class FuseBoxClient : public FileSystem {
+ public:
+  FuseBoxClient(scoped_refptr<dbus::Bus> bus, FuseMount* fuse)
+      : fuse_(fuse), bus_(bus) {}
+  FuseBoxClient(const FuseBoxClient&) = delete;
+  FuseBoxClient& operator=(const FuseBoxClient&) = delete;
+  virtual ~FuseBoxClient() = default;
+
+  void RegisterDBusObjectsAsync(
+      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+    // TODO(noel): register FuseBoxClient DBUS objects.
+  }
+
+  int StartFuseSession(base::OnceClosure quit_callback) {
+    quit_callback_ = std::move(quit_callback);
+
+    fuse_frontend_.reset(new FuseFrontend(fuse_));
+    if (!fuse_frontend_->CreateFuseSession(this, FileSystem::FuseOps()))
+      return EX_SOFTWARE;
+
+    auto stop = base::BindOnce(&FuseBoxClient::Stop, base::Unretained(this));
+    fuse_frontend_->StartFuseSession(std::move(stop));
+    return EX_OK;
+  }
+
+  void Stop() {
+    fuse_frontend_.reset();
+    if (quit_callback_) {
+      std::move(quit_callback_).Run();
+    }
+  }
+
+ private:
+  // Fuse mount: not owned.
+  FuseMount* fuse_ = nullptr;
+
+  // D-Bus.
+  scoped_refptr<dbus::Bus> bus_;
+
+  // Fuse user-space frontend.
+  std::unique_ptr<FuseFrontend> fuse_frontend_;
+
+  // Quit callback.
+  base::OnceClosure quit_callback_;
+};
+
 class FuseBoxDaemon : public brillo::DBusServiceDaemon {
  public:
   explicit FuseBoxDaemon(FuseMount* fuse)
       : DBusServiceDaemon(kFuseBoxClientName), fuse_(fuse) {}
   FuseBoxDaemon(const FuseBoxDaemon&) = delete;
   FuseBoxDaemon& operator=(const FuseBoxDaemon&) = delete;
-  ~FuseBoxDaemon() {}
+  ~FuseBoxDaemon() = default;
 
  protected:
   // brillo::DBusServiceDaemon overrides.
@@ -44,7 +91,9 @@ class FuseBoxDaemon : public brillo::DBusServiceDaemon {
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
     bus_->AssertOnDBusThread();
 
-    // TODO(noel): register the FuseBoxClient DBUS objects.
+    client_.reset(new FuseBoxClient(bus_, fuse_));
+    client_->RegisterDBusObjectsAsync(
+        sequencer->GetHandler("D-Bus register async failed", true));
   }
 
   int OnEventLoopStarted() override {
@@ -54,20 +103,23 @@ class FuseBoxDaemon : public brillo::DBusServiceDaemon {
     if (ret != EX_OK)
       return ret;
 
-    // TODO(noel): setup and start the FuseBoxClient here.
-    CHECK(fuse_);
-    return EX_OK;
+    auto quit = base::BindOnce(&Daemon::Quit, base::Unretained(this));
+    return client_->StartFuseSession(std::move(quit));
   }
 
   void OnShutdown(int* exit_code) override {
     bus_->AssertOnDBusThread();
 
     DBusServiceDaemon::OnShutdown(exit_code);
+    client_.reset();
   }
 
  private:
   // Fuse mount: not owned.
   FuseMount* fuse_ = nullptr;
+
+  // Fuse user-space client.
+  std::unique_ptr<FuseBoxClient> client_;
 };
 
 int Run(char** mountpoint, fuse_chan* chan, fuse_args* args) {
