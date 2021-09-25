@@ -4,6 +4,7 @@
 
 #include <sysexits.h>
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 
@@ -23,6 +24,47 @@ constexpr char app_info[] =
     "Get-Printer-Attributes request to given URL and parse obtained "
     "response. If no output files are specified, the obtained response "
     "is printed to stdout as formatted JSON";
+
+// Validates the protocol of `url` and modifies it if necessary. The protocols
+// ipp and ipps are converted to http and https, respectively. If the
+// conversion occurs, adds a port number if one is not specified.
+// Prints an error message to stderr and returns false in the following cases:
+// * `url` does not contain "://" substring
+// * the protocol is not one of http, https, ipp or ipps.
+// Does not verify the correctness of the given URL.
+bool ConvertIppToHttp(std::string* url) {
+  DCHECK(url);
+  auto pos = url->find("://");
+  if (pos == std::string::npos) {
+    std::cerr << "Incorrect URL: " << *url << ".\n";
+    std::cerr << "You have to set url parameter, e.g.:";
+    std::cerr << " --url=ipp://10.11.12.13/ipp/print." << std::endl;
+    return false;
+  }
+  const auto protocol = url->substr(0, pos);
+  if (protocol == "http" || protocol == "https") {
+    return true;
+  }
+  std::string default_port;
+  if (protocol == "ipp") {
+    default_port = "631";
+  } else if (protocol == "ipps") {
+    default_port = "443";
+  } else {
+    std::cerr << "Incorrect URL protocol: " << protocol << ".\n";
+    std::cerr << "Supported protocols: http, https, ipp, ipps." << std::endl;
+    return false;
+  }
+  *url = "htt" + url->substr(2);
+  pos += 4;
+  pos = url->find_first_of(":/?#", pos);
+  if (pos == std::string::npos) {
+    *url += ":" + default_port;
+  } else if ((*url)[pos] != ':') {
+    *url = url->substr(0, pos) + ":" + default_port + url->substr(pos);
+  }
+  return true;
+}
 
 // Prints information about HTTP error to stderr.
 void PrintHttpError(const std::string& msg, const brillo::ErrorPtr* err_ptr) {
@@ -50,12 +92,6 @@ base::Optional<std::vector<uint8_t>> SendIppFrameAndGetResponse(
   using Transport = brillo::http::Transport;
   using Request = brillo::http::Request;
   using Response = brillo::http::Response;
-  // Replace ipp/ipps protocol in the given URL to http/https.
-  if (url.substr(0, 6) == "ipp://") {
-    url = "http" + url.substr(3);
-  } else if (url.substr(0, 7) == "ipps://") {
-    url = "https" + url.substr(4);
-  }
   // Prepare HTTP request.
   std::shared_ptr<Transport> transport = Transport::CreateDefault();
   transport->UseCustomCertificate(Transport::Certificate::kNss);
@@ -124,7 +160,8 @@ bool WriteBufferToLocation(const char* buffer,
 // * -5: cannot parse IPP response (incorrect frame was received)
 int main(int argc, char** argv) {
   // Define and parse command line parameters, exit if incorrect.
-  DEFINE_string(url, "", "Address to query");
+  DEFINE_string(
+      url, "", "Address to query, supported protocols: http, https, ipp, ipps");
   DEFINE_string(version, "1.1", "IPP version (default 1.1)");
   DEFINE_string(
       jsonf, "",
@@ -136,6 +173,20 @@ int main(int argc, char** argv) {
       binary, "",
       "Dump the response to given file as a binary content (use - for stdout)");
   brillo::FlagHelper::Init(argc, argv, app_info);
+  auto free_params = base::CommandLine::ForCurrentProcess()->GetArgs();
+  if (!free_params.empty()) {
+    std::cerr << "Unknown parameters:";
+    for (auto param : free_params) {
+      std::cerr << " " << param;
+    }
+    std::cerr << std::endl;
+    return EX_USAGE;
+  }
+  // Replace ipp/ipps protocol in the given URL to http/https (if needed).
+  if (!ConvertIppToHttp(&FLAGS_url)) {
+    return EX_USAGE;
+  }
+  std::cerr << "URL: " << FLAGS_url << std::endl;
   // Parse the IPP version.
   ipp::Version version;
   if (!ipp::FromString(FLAGS_version, &version)) {
@@ -143,6 +194,7 @@ int main(int argc, char** argv) {
     std::cerr << "Allowed values: 1.0, 1.1, 2.0, 2.1, 2.2." << std::endl;
     return EX_USAGE;
   }
+  std::cerr << "IPP version: " << ipp::ToString(version) << std::endl;
   // If no output files were specified, set the default settings.
   if (FLAGS_binary.empty() && FLAGS_jsonc.empty() && FLAGS_jsonf.empty())
     FLAGS_jsonf = "-";
