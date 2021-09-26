@@ -38,43 +38,73 @@ class SetupCalibrationStateHandlerTest : public StateHandlerTest {
     auto handler =
         base::MakeRefCounted<SetupCalibrationStateHandler>(json_store_);
 
-    auto callback = std::make_unique<
-        base::RepeatingCallback<bool(CalibrationSetupInstruction)>>(
-        base::BindRepeating(
-            &SignalSender::SendCalibrationSetupSignal,
-            base::Unretained(&signal_calibration_setup_sender_)));
-    handler->RegisterSignalSender(std::move(callback));
-
     return handler;
   }
-
- protected:
-  StrictMock<SignalSender> signal_calibration_setup_sender_;
 };
 
 TEST_F(SetupCalibrationStateHandlerTest, InitializeState_Success) {
+  const std::map<std::string, std::map<std::string, std::string>>
+      predefined_calibration_map = {
+          {CalibrationSetupInstruction_Name(
+               RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE),
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)},
+            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}},
+          {CalibrationSetupInstruction_Name(
+               RMAD_CALIBRATION_INSTRUCTION_PLACE_LID_ON_FLAT_SURFACE),
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}}};
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
+
   auto handler = CreateStateHandler();
 
-  bool signal_sent = false;
-  EXPECT_CALL(signal_calibration_setup_sender_,
-              SendCalibrationSetupSignal(RMAD_CALIBRATION_INSTRUCTION_UNKNOWN))
-      .WillOnce(DoAll(Assign(&signal_sent, true), Return(true)));
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  EXPECT_TRUE(signal_sent);
+}
+
+TEST_F(SetupCalibrationStateHandlerTest, InitializeState_Failed) {
+  auto handler = CreateStateHandler();
+
+  EXPECT_EQ(handler->InitializeState(),
+            RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
 
 TEST_F(SetupCalibrationStateHandlerTest, GetNextStateCase_Success) {
+  const std::map<std::string, std::map<std::string, std::string>>
+      predefined_calibration_map = {
+          {CalibrationSetupInstruction_Name(
+               RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE),
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)},
+            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}},
+          {CalibrationSetupInstruction_Name(
+               RMAD_CALIBRATION_INSTRUCTION_PLACE_LID_ON_FLAT_SURFACE),
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}}};
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
+
   auto handler = CreateStateHandler();
 
-  bool signal_sent = false;
-  EXPECT_CALL(signal_calibration_setup_sender_,
-              SendCalibrationSetupSignal(RMAD_CALIBRATION_INSTRUCTION_UNKNOWN))
-      .WillOnce(DoAll(Assign(&signal_sent, true), Return(true)));
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  EXPECT_TRUE(signal_sent);
 
   RmadState state;
-  state.set_allocated_setup_calibration(new SetupCalibrationState);
+  auto setup_calibration_state = std::make_unique<SetupCalibrationState>();
+  setup_calibration_state->set_instruction(
+      RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE);
+  state.set_allocated_setup_calibration(setup_calibration_state.release());
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
@@ -82,14 +112,29 @@ TEST_F(SetupCalibrationStateHandlerTest, GetNextStateCase_Success) {
 }
 
 TEST_F(SetupCalibrationStateHandlerTest, GetNextStateCase_MissingState) {
+  const std::map<std::string, std::map<std::string, std::string>>
+      predefined_calibration_map = {
+          {CalibrationSetupInstruction_Name(
+               RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE),
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)},
+            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}},
+          {CalibrationSetupInstruction_Name(
+               RMAD_CALIBRATION_INSTRUCTION_PLACE_LID_ON_FLAT_SURFACE),
+           {{RmadComponent_Name(
+                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}}};
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
+
   auto handler = CreateStateHandler();
 
-  bool signal_sent = false;
-  EXPECT_CALL(signal_calibration_setup_sender_,
-              SendCalibrationSetupSignal(RMAD_CALIBRATION_INSTRUCTION_UNKNOWN))
-      .WillOnce(DoAll(Assign(&signal_sent, true), Return(true)));
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  EXPECT_TRUE(signal_sent);
 
   // No SetupCalibrationState.
   RmadState state;
@@ -99,79 +144,8 @@ TEST_F(SetupCalibrationStateHandlerTest, GetNextStateCase_MissingState) {
   EXPECT_EQ(state_case, RmadState::StateCase::kSetupCalibration);
 }
 
-TEST_F(SetupCalibrationStateHandlerTest, InitializeStateWithSetup_Success) {
-  const std::map<std::string, std::map<std::string, std::string>>
-      predefined_calibration_map = {
-          {CalibrationSetupInstruction_Name(
-               RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE),
-           {{RmadComponent_Name(
-                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
-             CalibrationComponentStatus::CalibrationStatus_Name(
-                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)},
-            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
-             CalibrationComponentStatus::CalibrationStatus_Name(
-                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}},
-          {CalibrationSetupInstruction_Name(
-               RMAD_CALIBRATION_INSTRUCTION_PLACE_LID_ON_FLAT_SURFACE),
-           {{RmadComponent_Name(
-                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
-             CalibrationComponentStatus::CalibrationStatus_Name(
-                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}}};
-  EXPECT_TRUE(
-      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
-
-  auto handler = CreateStateHandler();
-
-  bool signal_sent = false;
-  EXPECT_CALL(signal_calibration_setup_sender_,
-              SendCalibrationSetupSignal(
-                  RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE))
-      .WillOnce(DoAll(Assign(&signal_sent, true), Return(true)));
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  EXPECT_TRUE(signal_sent);
-}
-
-TEST_F(SetupCalibrationStateHandlerTest, GetNextStateCaseWithSetup_Success) {
-  const std::map<std::string, std::map<std::string, std::string>>
-      predefined_calibration_map = {
-          {CalibrationSetupInstruction_Name(
-               RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE),
-           {{RmadComponent_Name(
-                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
-             CalibrationComponentStatus::CalibrationStatus_Name(
-                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)},
-            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
-             CalibrationComponentStatus::CalibrationStatus_Name(
-                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}},
-          {CalibrationSetupInstruction_Name(
-               RMAD_CALIBRATION_INSTRUCTION_PLACE_LID_ON_FLAT_SURFACE),
-           {{RmadComponent_Name(
-                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
-             CalibrationComponentStatus::CalibrationStatus_Name(
-                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}}};
-  EXPECT_TRUE(
-      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
-
-  auto handler = CreateStateHandler();
-
-  bool signal_sent = false;
-  EXPECT_CALL(signal_calibration_setup_sender_,
-              SendCalibrationSetupSignal(
-                  RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE))
-      .WillOnce(DoAll(Assign(&signal_sent, true), Return(true)));
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  EXPECT_TRUE(signal_sent);
-
-  RmadState state;
-  state.set_allocated_setup_calibration(new SetupCalibrationState);
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kRunCalibration);
-}
-
 TEST_F(SetupCalibrationStateHandlerTest,
-       GetNextStateCaseWithSetup_MissingState) {
+       GetNextStateCaseWithSetup_ReadOnlyInstructionChanged) {
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {
           {CalibrationSetupInstruction_Name(
@@ -194,16 +168,13 @@ TEST_F(SetupCalibrationStateHandlerTest,
 
   auto handler = CreateStateHandler();
 
-  bool signal_sent = false;
-  EXPECT_CALL(signal_calibration_setup_sender_,
-              SendCalibrationSetupSignal(
-                  RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE))
-      .WillOnce(DoAll(Assign(&signal_sent, true), Return(true)));
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  EXPECT_TRUE(signal_sent);
 
-  // No SetupCalibrationState.
   RmadState state;
+  auto setup_calibration_state = std::make_unique<SetupCalibrationState>();
+  setup_calibration_state->set_instruction(
+      RMAD_CALIBRATION_INSTRUCTION_PLACE_LID_ON_FLAT_SURFACE);
+  state.set_allocated_setup_calibration(setup_calibration_state.release());
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_INVALID);

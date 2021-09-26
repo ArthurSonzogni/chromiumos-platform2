@@ -21,7 +21,6 @@ namespace dbus_utils {
 
 using rmad::CalibrationComponentStatus;
 using rmad::CalibrationOverallStatus;
-using rmad::CalibrationSetupInstruction;
 using rmad::HardwareVerificationResult;
 using rmad::ProvisionDeviceState;
 using rmad::RmadComponent;
@@ -122,27 +121,6 @@ struct DBusType<HardwareVerificationResult> {
   inline static bool Read(dbus::MessageReader* reader,
                           HardwareVerificationResult* value) {
     return PopValueFromReader(reader, value);
-  }
-};
-
-template <>
-struct DBusType<CalibrationSetupInstruction> {
-  inline static std::string GetSignature() {
-    return DBusType<int>::GetSignature();
-  }
-  inline static void Write(dbus::MessageWriter* writer,
-                           const CalibrationSetupInstruction value) {
-    DBusType<int>::Write(writer, static_cast<int>(value));
-  }
-  inline static bool Read(dbus::MessageReader* reader,
-                          CalibrationSetupInstruction* value) {
-    int v;
-    if (DBusType<int>::Read(reader, &v)) {
-      *value = static_cast<CalibrationSetupInstruction>(v);
-      return true;
-    } else {
-      return false;
-    }
   }
 };
 
@@ -272,9 +250,6 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
   hardware_verification_signal_ =
       dbus_interface->RegisterSignal<HardwareVerificationResult>(
           kHardwareVerificationResultSignal);
-  calibration_setup_signal_ =
-      dbus_interface->RegisterSignal<CalibrationSetupInstruction>(
-          kCalibrationSetupSignal);
   calibration_overall_signal_ =
       dbus_interface->RegisterSignal<CalibrationOverallStatus>(
           kCalibrationOverallSignal);
@@ -315,12 +290,6 @@ void DBusService::RegisterSignalSenders() {
               &DBusService::SendHardwareVerificationResultSignal,
               base::Unretained(this))));
   rmad_interface_->RegisterSignalSender(
-      RmadState::StateCase::kSetupCalibration,
-      std::make_unique<
-          base::RepeatingCallback<bool(CalibrationSetupInstruction)>>(
-          base::BindRepeating(&DBusService::SendCalibrationSetupSignal,
-                              base::Unretained(this))));
-  rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kRunCalibration,
       std::make_unique<base::RepeatingCallback<bool(CalibrationOverallStatus)>>(
           base::BindRepeating(&DBusService::SendCalibrationOverallSignal,
@@ -358,12 +327,6 @@ bool DBusService::SendHardwareVerificationResultSignal(
     const HardwareVerificationResult& result) {
   auto signal = hardware_verification_signal_.lock();
   return (signal.get() == nullptr) ? false : signal->Send(result);
-}
-
-bool DBusService::SendCalibrationSetupSignal(
-    CalibrationSetupInstruction instruction) {
-  auto signal = calibration_setup_signal_.lock();
-  return (signal.get() == nullptr) ? false : signal->Send(instruction);
 }
 
 bool DBusService::SendCalibrationOverallSignal(

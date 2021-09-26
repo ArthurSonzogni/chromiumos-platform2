@@ -20,11 +20,6 @@ class SetupCalibrationStateHandler : public BaseStateHandler {
  public:
   explicit SetupCalibrationStateHandler(scoped_refptr<JsonStore> json_store);
 
-  void RegisterSignalSender(
-      std::unique_ptr<CalibrationSetupSignalCallback> callback) override {
-    calibration_setup_signal_sender_ = std::move(callback);
-  }
-
   ASSIGN_STATE(RmadState::StateCase::kSetupCalibration);
   SET_REPEATABLE;
 
@@ -35,15 +30,11 @@ class SetupCalibrationStateHandler : public BaseStateHandler {
   ~SetupCalibrationStateHandler() override = default;
 
  private:
-  void RetrieveVarsAndSetup();
-
   // To ensure that calibration starts from a higher priority, we use an
   // ordered map to traverse it with it's number of the setup instruction.
   // Once we find the first sensor to be calibrated, we only calibrate those
   // sensors that have the same setup instruction as it.
   InstructionCalibrationStatusMap calibration_map_;
-  std::unique_ptr<CalibrationSetupSignalCallback>
-      calibration_setup_signal_sender_;
   CalibrationSetupInstruction running_setup_instruction_;
 };
 
