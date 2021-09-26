@@ -8,20 +8,64 @@
 #include <memory>
 
 #include <base/logging.h>
+#include <base/task/task_traits.h>
+#include <base/task/thread_pool.h>
 
+#include "rmad/utils/accelerometer_calibration_utils_impl.h"
 #include "rmad/utils/calibration_utils.h"
+#include "rmad/utils/gyroscope_calibration_utils_impl.h"
 
 namespace rmad {
 
 RunCalibrationStateHandler::RunCalibrationStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {}
+    : BaseStateHandler(json_store) {
+  auto vpd_utils_thread_safe = base::MakeRefCounted<VpdUtilsImplThreadSafe>();
+  sensor_calibration_utils_map_
+      [RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER] =
+          std::make_unique<AccelerometerCalibrationUtilsImpl>(
+              vpd_utils_thread_safe, "base");
+  sensor_calibration_utils_map_
+      [RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER] =
+          std::make_unique<AccelerometerCalibrationUtilsImpl>(
+              vpd_utils_thread_safe, "lid");
+  sensor_calibration_utils_map_[RmadComponent::RMAD_COMPONENT_GYROSCOPE] =
+      std::make_unique<GyroscopeCalibrationUtilsImpl>(vpd_utils_thread_safe,
+                                                      "base");
+}
+
+RunCalibrationStateHandler::RunCalibrationStateHandler(
+    scoped_refptr<JsonStore> json_store,
+    std::unique_ptr<SensorCalibrationUtils> base_acc_utils,
+    std::unique_ptr<SensorCalibrationUtils> lid_acc_utils,
+    std::unique_ptr<SensorCalibrationUtils> base_gyro_utils)
+    : BaseStateHandler(json_store) {
+  sensor_calibration_utils_map_
+      [RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER] =
+          std::move(base_acc_utils);
+  sensor_calibration_utils_map_
+      [RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER] =
+          std::move(lid_acc_utils);
+  sensor_calibration_utils_map_[RmadComponent::RMAD_COMPONENT_GYROSCOPE] =
+      std::move(base_gyro_utils);
+}
 
 RmadErrorCode RunCalibrationStateHandler::InitializeState() {
   if (!state_.has_run_calibration()) {
     state_.set_allocated_run_calibration(new RunCalibrationState);
   }
   running_group_ = CalibrationSetupInstruction_MAX;
+
+  if (!task_runner_) {
+    task_runner_ = base::ThreadPool::CreateTaskRunner(
+        {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
+  }
+  progress_timer_map_[RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER] =
+      std::make_unique<base::RepeatingTimer>();
+  progress_timer_map_[RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER] =
+      std::make_unique<base::RepeatingTimer>();
+  progress_timer_map_[RmadComponent::RMAD_COMPONENT_GYROSCOPE] =
+      std::make_unique<base::RepeatingTimer>();
 
   // We will run the calibration in RetrieveVarsAndCalibrate.
   RetrieveVarsAndCalibrate();
@@ -30,16 +74,19 @@ RmadErrorCode RunCalibrationStateHandler::InitializeState() {
 }
 
 void RunCalibrationStateHandler::CleanUpState() {
-  for (auto& component_timer : timer_map_) {
-    if (!component_timer.second) {
+  for (auto& progress_timer : progress_timer_map_) {
+    if (!progress_timer.second) {
       continue;
     }
-    if (component_timer.second->IsRunning()) {
-      component_timer.second->Stop();
+    if (progress_timer.second->IsRunning()) {
+      progress_timer.second->Stop();
     }
-    component_timer.second.reset();
+    progress_timer.second.reset();
   }
-  timer_map_.clear();
+  progress_timer_map_.clear();
+  if (task_runner_) {
+    task_runner_.reset();
+  }
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -58,19 +105,17 @@ RunCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
   if (ShouldRecalibrate(&error_code)) {
     if (error_code != RMAD_ERROR_OK) {
       LOG(ERROR) << "Rmad: The sensor calibration is failed.";
+      return {.error = error_code,
+              .state_case = RmadState::StateCase::kCheckCalibration};
     } else {
       LOG(INFO) << "Rmad: The sensor calibration needs another round.";
+      return {.error = error_code,
+              .state_case = RmadState::StateCase::kSetupCalibration};
     }
-
-    return {.error = error_code,
-            .state_case = RmadState::StateCase::kCheckCalibration};
   }
 
   // There's nothing in |RunCalibrations|.
   state_ = state;
-
-  // TODO(genechang): We should check whether we should perform the next round
-  // of calibration (different setup) here.
 
   return {.error = RMAD_ERROR_OK,
           .state_case = RmadState::StateCase::kProvisionDevice};
@@ -98,8 +143,7 @@ void RunCalibrationStateHandler::RetrieveVarsAndCalibrate() {
 
   for (auto component_status : calibration_map_[running_group_]) {
     if (ShouldCalibrate(component_status.second)) {
-      // TODO(genechang): Should execute calibration here.
-      PollUntilCalibrationDone(component_status.first);
+      CalibrateAndSendProgress(component_status.first);
     }
   }
 }
@@ -140,68 +184,40 @@ bool RunCalibrationStateHandler::ShouldRecalibrate(RmadErrorCode* error_code) {
   return false;
 }
 
-void RunCalibrationStateHandler::PollUntilCalibrationDone(
+void RunCalibrationStateHandler::CalibrateAndSendProgress(
     RmadComponent component) {
-  if (!timer_map_[component]) {
-    timer_map_[component] = std::make_unique<base::RepeatingTimer>();
-  }
-
-  if (timer_map_[component]->IsRunning()) {
-    timer_map_[component]->Stop();
-  }
-
-  if (component == RmadComponent::RMAD_COMPONENT_GYROSCOPE) {
-    timer_map_[component]->Start(
-        FROM_HERE, kPollInterval, this,
-        &RunCalibrationStateHandler::CheckGyroCalibrationTask);
-  } else if (component == RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER) {
-    timer_map_[component]->Start(
-        FROM_HERE, kPollInterval, this,
-        &RunCalibrationStateHandler::CheckBaseAccCalibrationTask);
-  } else if (component == RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER) {
-    timer_map_[component]->Start(
-        FROM_HERE, kPollInterval, this,
-        &RunCalibrationStateHandler::CheckLidAccCalibrationTask);
-  } else {
-    LOG(ERROR) << RmadComponent_Name(component) << " cannot be calibrated";
+  auto& utils = sensor_calibration_utils_map_[component];
+  if (!utils.get()) {
+    LOG(ERROR) << RmadComponent_Name(component)
+               << " does not support calibration.";
     return;
   }
 
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(base::IgnoreResult(&SensorCalibrationUtils::Calibrate),
+                     base::Unretained(utils.get())));
+  LOG(INFO) << "Start calibrating for " << RmadComponent_Name(component);
+
+  progress_timer_map_[component]->Start(
+      FROM_HERE, kPollInterval,
+      base::BindRepeating(&RunCalibrationStateHandler::CheckCalibrationTask,
+                          this, component));
   LOG(INFO) << "Start polling calibration progress for "
             << RmadComponent_Name(component);
 }
 
-void RunCalibrationStateHandler::CheckGyroCalibrationTask() {
+void RunCalibrationStateHandler::CheckCalibrationTask(RmadComponent component) {
+  auto& utils = sensor_calibration_utils_map_[component];
   double progress = 0;
 
-  if (!GetGyroCalibrationProgress(&progress)) {
-    LOG(WARNING) << "Failed to get gyroscpoe calibration progress";
+  if (!utils->GetProgress(&progress)) {
+    LOG(WARNING) << "Failed to get calibration progress for "
+                 << utils->GetLocation() << ":" << utils->GetName();
     return;
   }
 
-  SaveAndSend(RmadComponent::RMAD_COMPONENT_GYROSCOPE, progress);
-}
-
-void RunCalibrationStateHandler::CheckBaseAccCalibrationTask() {
-  double progress = 0;
-
-  if (!GetBaseAccCalibrationProgress(&progress)) {
-    LOG(WARNING) << "Failed to get base accelerometer calibration progress";
-    return;
-  }
-
-  SaveAndSend(RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER, progress);
-}
-
-void RunCalibrationStateHandler::CheckLidAccCalibrationTask() {
-  double progress = 0;
-
-  if (!GetLidAccCalibrationProgress(&progress)) {
-    LOG(WARNING) << "Failed to get lid accelerometer calibration progress";
-    return;
-  }
-
-  SaveAndSend(RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER, progress);
+  SaveAndSend(component, progress);
 }
 
 void RunCalibrationStateHandler::SaveAndSend(RmadComponent component,
@@ -211,20 +227,43 @@ void RunCalibrationStateHandler::SaveAndSend(RmadComponent component,
 
   if (progress == 1.0) {
     status = CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE;
-    if (timer_map_[component]) {
-      timer_map_[component]->Stop();
-    }
   } else if (progress < 0) {
     status = CalibrationComponentStatus::RMAD_CALIBRATION_FAILED;
-    if (timer_map_[component]) {
-      timer_map_[component]->Stop();
-    }
   }
 
-  if (calibration_map_[running_group_][component] != status) {
-    base::AutoLock lock_scope(calibration_mutex_);
+  auto pre_status = calibration_map_[running_group_][component];
+  if (pre_status != status) {
+    // This is a critical section, but we don't need to lock it.
+    // Instead of using a mutex to lock the critical section, we use a timer
+    // (tasks run sequentially on the main thread) to prevent race conditions.
     calibration_map_[running_group_][component] = status;
     SetCalibrationMap(json_store_, calibration_map_);
+
+    bool is_in_progress = false;
+    bool is_failed = false;
+    for (auto component_status_map : calibration_map_[running_group_]) {
+      is_in_progress |=
+          component_status_map.second ==
+          CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS;
+      is_failed |= component_status_map.second ==
+                   CalibrationComponentStatus::RMAD_CALIBRATION_FAILED;
+    }
+
+    // We only update the overall status after all calibrations are done.
+    if (!is_in_progress) {
+      if (is_failed) {
+        calibration_overall_signal_sender_->Run(
+            CalibrationOverallStatus::
+                RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_FAILED);
+      } else if (RmadErrorCode ignore; ShouldRecalibrate(&ignore)) {
+        calibration_overall_signal_sender_->Run(
+            CalibrationOverallStatus::
+                RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE);
+      } else {
+        calibration_overall_signal_sender_->Run(
+            CalibrationOverallStatus::RMAD_CALIBRATION_OVERALL_COMPLETE);
+      }
+    }
   }
 
   CalibrationComponentStatus component_status;
@@ -232,44 +271,10 @@ void RunCalibrationStateHandler::SaveAndSend(RmadComponent component,
   component_status.set_status(status);
   component_status.set_progress(progress);
   calibration_component_signal_sender_->Run(std::move(component_status));
-}
 
-// TODO(genechang): This is currently fake. Should check gyroscope calibration
-// progress.
-bool RunCalibrationStateHandler::GetGyroCalibrationProgress(double* progress) {
-  static double gyro_progress = 0;
-  *progress = gyro_progress;
-  gyro_progress += 0.1;
-  if (gyro_progress > 1.0) {
-    gyro_progress = 0;
+  if (status != CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS) {
+    progress_timer_map_[component]->Stop();
   }
-  return true;
-}
-
-// TODO(genechang): This is currently fake. Should check base acceleromoter
-// calibration progress.
-bool RunCalibrationStateHandler::GetBaseAccCalibrationProgress(
-    double* progress) {
-  static double base_acc_progress = 0;
-  *progress = base_acc_progress;
-  base_acc_progress += 0.1;
-  if (base_acc_progress > 1.0) {
-    base_acc_progress = 0;
-  }
-  return true;
-}
-
-// TODO(genechang): This is currently fake. Should check lid acceleromoter
-// calibration progress.
-bool RunCalibrationStateHandler::GetLidAccCalibrationProgress(
-    double* progress) {
-  static double lid_acc_progress = 0;
-  *progress = lid_acc_progress;
-  lid_acc_progress += 0.1;
-  if (lid_acc_progress > 1.0) {
-    lid_acc_progress = 0;
-  }
-  return true;
 }
 
 }  // namespace rmad

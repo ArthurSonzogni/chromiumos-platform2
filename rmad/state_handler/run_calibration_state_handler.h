@@ -11,10 +11,14 @@
 #include <memory>
 #include <utility>
 
-#include <base/synchronization/lock.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
+#include <base/task_runner.h>
 #include <base/timer/timer.h>
 
 #include "rmad/utils/calibration_utils.h"
+#include "rmad/utils/sensor_calibration_utils.h"
+#include "rmad/utils/vpd_utils_impl_thread_safe.h"
 
 namespace rmad {
 
@@ -25,6 +29,14 @@ class RunCalibrationStateHandler : public BaseStateHandler {
       base::TimeDelta::FromSeconds(2);
 
   explicit RunCalibrationStateHandler(scoped_refptr<JsonStore> json_store);
+
+  // Used to inject |base_acc_utils|, |lid_acc_utils|, |base_gyro_utils| to mock
+  // |sensor_calibration_utils_map_| for testing.
+  RunCalibrationStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      std::unique_ptr<SensorCalibrationUtils> base_acc_utils,
+      std::unique_ptr<SensorCalibrationUtils> lid_acc_utils,
+      std::unique_ptr<SensorCalibrationUtils> base_gyro_utils);
 
   void RegisterSignalSender(
       std::unique_ptr<CalibrationOverallSignalCallback> callback) override {
@@ -49,19 +61,12 @@ class RunCalibrationStateHandler : public BaseStateHandler {
  private:
   void RetrieveVarsAndCalibrate();
   bool ShouldRecalibrate(RmadErrorCode* error_code);
-  void PollUntilCalibrationDone(RmadComponent component);
+  void CalibrateAndSendProgress(RmadComponent component);
 
-  void CheckGyroCalibrationTask();
-  void CheckBaseAccCalibrationTask();
-  void CheckLidAccCalibrationTask();
+  void CheckCalibrationTask(RmadComponent component);
 
   void SaveAndSend(RmadComponent component, double progress);
 
-  static bool GetGyroCalibrationProgress(double* progress);
-  static bool GetBaseAccCalibrationProgress(double* progress);
-  static bool GetLidAccCalibrationProgress(double* progress);
-
-  base::Lock calibration_mutex_;
   // To ensure that calibration starts from a higher priority, we use an
   // ordered map to traverse it with its number of the setup instruction.
   // Once we find the first sensor to be calibrated, we only calibrate those
@@ -72,7 +77,18 @@ class RunCalibrationStateHandler : public BaseStateHandler {
       calibration_overall_signal_sender_;
   std::unique_ptr<CalibrationComponentSignalCallback>
       calibration_component_signal_sender_;
-  std::map<RmadComponent, std::unique_ptr<base::RepeatingTimer>> timer_map_;
+
+  // For each sensor, we should have its own utils to run calibration and poll
+  // progress.
+  std::map<RmadComponent, std::unique_ptr<SensorCalibrationUtils>>
+      sensor_calibration_utils_map_;
+  // Instead of using a mutex to lock the critical section, we use a timer
+  // (tasks run sequentially on the main thread) to poll the progress.
+  std::map<RmadComponent, std::unique_ptr<base::RepeatingTimer>>
+      progress_timer_map_;
+  // To run sensor calibration with the same setup simultaneously, we use a
+  // normal task_runner to do it.
+  scoped_refptr<base::TaskRunner> task_runner_;
 };
 
 }  // namespace rmad
