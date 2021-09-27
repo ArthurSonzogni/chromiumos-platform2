@@ -7,6 +7,7 @@
 #include <set>
 
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <chromeos/constants/imageloader.h>
 #include <chromeos/dbus/service_constants.h>
 

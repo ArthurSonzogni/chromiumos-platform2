@@ -12,6 +12,7 @@
 #include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/userdb_utils.h>

@@ -13,6 +13,7 @@
 
 #include <base/check_op.h>
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
