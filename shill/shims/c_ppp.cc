@@ -56,8 +56,8 @@ void PPPOnDisconnect() {
   PPP::GetInstance()->OnDisconnect();
 }
 
-void PPPOnExit(void* /*data*/, int /*arg*/) {
-  LOG(INFO) << __func__;
+void PPPOnExit(void* /*data*/, int arg) {
+  PPP::GetInstance()->OnExit(arg);
   delete g_exit_manager;
   g_exit_manager = nullptr;
 }

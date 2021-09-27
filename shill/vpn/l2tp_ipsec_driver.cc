@@ -439,6 +439,11 @@ void L2TPIPsecDriver::Notify(const std::string& reason,
     return;
   }
 
+  if (reason == kPPPReasonExit) {
+    // PPP failure is handled on the disconnect signal.
+    return;
+  }
+
   if (reason != kPPPReasonConnect) {
     DCHECK_EQ(kPPPReasonDisconnect, reason);
     // TODO(crbug.com/989361) We should move into a disconnecting state, stop

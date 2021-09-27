@@ -137,6 +137,16 @@ void PPP::OnDisconnect() {
   }
 }
 
+void PPP::OnExit(int exit_status) {
+  LOG(INFO) << __func__ << "(" << exit_status << ")";
+  if (CreateProxy()) {
+    std::map<std::string, std::string> dict;
+    dict[kPPPExitStatus] = base::NumberToString(exit_status);
+    proxy_->Notify(kPPPReasonExit, dict);
+    DestroyProxy();
+  }
+}
+
 bool PPP::CreateProxy() {
   Environment* environment = Environment::GetInstance();
   std::string service, path;

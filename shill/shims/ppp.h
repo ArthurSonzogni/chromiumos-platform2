@@ -36,6 +36,7 @@ class PPP {
   void OnAuthenticateDone();
   void OnConnect(const std::string& ifname);
   void OnDisconnect();
+  void OnExit(int exit_status);
 
  protected:
   PPP();

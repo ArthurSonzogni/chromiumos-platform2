@@ -124,15 +124,19 @@ void L2TPConnection::GetLogin(std::string* user, std::string* password) {
 
 void L2TPConnection::Notify(const std::string& reason,
                             const std::map<std::string, std::string>& dict) {
-  // TODO(b/165170125): On failure, check the reason (e.g., if it is an
-  // authentication failure).
-
   if (reason == kPPPReasonAuthenticating || reason == kPPPReasonAuthenticated) {
     // These are uninteresting intermediate states that do not indicate failure.
     return;
   }
 
-  if (reason != kPPPReasonConnect) {
+  if (reason == kPPPReasonDisconnect) {
+    // Ignored. Failure is handled when pppd exits since the exit status
+    // contains more information.
+    LOG(INFO) << "pppd disconnected";
+    return;
+  }
+
+  if (reason == kPPPReasonExit) {
     if (!IsConnectingOrConnected()) {
       // We have notified the upper layer, or the disconnect is triggered by the
       // upper layer. In both cases, we don't need call NotifyFailure().
@@ -140,7 +144,7 @@ void L2TPConnection::Notify(const std::string& reason,
                 << state();
       return;
     }
-    NotifyFailure(Service::kFailureInternal, "pppd disconnected");
+    NotifyFailure(PPPDevice::ParseExitFailure(dict), "pppd disconnected");
     return;
   }
 

@@ -120,10 +120,28 @@ Service::ConnectFailure PPPDevice::ExitStatusToFailure(int exit) {
     case EXIT_OK:
       return Service::kFailureNone;
     case EXIT_PEER_AUTH_FAILED:
+    case EXIT_AUTH_TOPEER_FAILED:
       return Service::kFailurePPPAuth;
     default:
       return Service::kFailureUnknown;
   }
+}
+
+// static
+Service::ConnectFailure PPPDevice::ParseExitFailure(
+    const std::map<std::string, std::string>& dict) {
+  const auto it = dict.find(kPPPExitStatus);
+  if (it == dict.end()) {
+    LOG(ERROR) << "Failed to find the failure status in the dict";
+    return Service::kFailureInternal;
+  }
+  int exit = 0;
+  if (!base::StringToInt(it->second, &exit)) {
+    LOG(ERROR) << "Failed to parse the failure status from the dict, value: "
+               << it->second;
+    return Service::kFailureInternal;
+  }
+  return ExitStatusToFailure(exit);
 }
 
 }  // namespace shill

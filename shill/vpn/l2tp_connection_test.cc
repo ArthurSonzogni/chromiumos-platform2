@@ -343,12 +343,22 @@ TEST_F(L2TPConnectionTest, PPPNotifyConnectedWithoutDeviceInfoReady) {
 TEST_F(L2TPConnectionTest, PPPNotifyDisconnect) {
   l2tp_connection_->set_state(VPNConnection::State::kConnected);
   std::map<std::string, std::string> dict;
-  EXPECT_CALL(callbacks_, OnFailure(_));
+  // Nothing should happen on the disconnect event.
+  EXPECT_CALL(callbacks_, OnFailure(_)).Times(0);
   l2tp_connection_->InvokeNotify(kPPPReasonDisconnect, dict);
+  dispatcher_.task_environment().RunUntilIdle();
+}
+
+TEST_F(L2TPConnectionTest, PPPNotifyExit) {
+  l2tp_connection_->set_state(VPNConnection::State::kConnected);
+  std::map<std::string, std::string> dict;
+  dict[kPPPExitStatus] = "19";
+  EXPECT_CALL(callbacks_, OnFailure(Service::kFailurePPPAuth));
+  l2tp_connection_->InvokeNotify(kPPPReasonExit, dict);
   dispatcher_.task_environment().RunUntilIdle();
 
   // The signal shouldn't be sent out twice if the event comes again.
-  l2tp_connection_->InvokeNotify(kPPPReasonDisconnect, dict);
+  l2tp_connection_->InvokeNotify(kPPPReasonExit, dict);
   dispatcher_.task_environment().RunUntilIdle();
 }
 

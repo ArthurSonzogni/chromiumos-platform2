@@ -24,10 +24,12 @@ static const char kPPPInterfaceName[] = "INTERNAL_IFNAME";
 static const char kPPPInternalIP4Address[] = "INTERNAL_IP4_ADDRESS";
 static const char kPPPLNSAddress[] = "LNS_ADDRESS";
 static const char kPPPMRU[] = "MRU";
+static const char kPPPExitStatus[] = "EXIT_STATUS";
 static const char kPPPReasonAuthenticated[] = "authenticated";
 static const char kPPPReasonAuthenticating[] = "authenticating";
 static const char kPPPReasonConnect[] = "connect";
 static const char kPPPReasonDisconnect[] = "disconnect";
+static const char kPPPReasonExit[] = "exit";
 
 class PPPDevice : public VirtualDevice {
  public:
@@ -55,6 +57,11 @@ class PPPDevice : public VirtualDevice {
       const std::map<std::string, std::string>& configuration);
 
   static Service::ConnectFailure ExitStatusToFailure(int exit);
+
+  // Get the failure reason from the dictionary which is received from our PPP
+  // plugin and contains the exit status.
+  static Service::ConnectFailure ParseExitFailure(
+      const std::map<std::string, std::string>& dict);
 
 #ifndef DISABLE_DHCPV6
   // Start a DHCPv6 configuration client for this device.  The generic

@@ -1715,6 +1715,8 @@ void Cellular::Notify(const std::string& reason,
     OnPPPConnected(dict);
   } else if (reason == kPPPReasonDisconnect) {
     // Ignore; we get disconnect information when pppd exits.
+  } else if (reason == kPPPReasonExit) {
+    // Ignore; we get its exit status by the death callback for PPPDaemon.
   } else {
     NOTREACHED();
   }
