@@ -1184,10 +1184,10 @@ TEST_F(Tpm2Test, LoadWrappedKeyTransientDevWriteFailure) {
   SecureBlob wrapped_key("wrapped_key");
   ScopedKeyHandle key_handle;
   EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
-      .WillOnce(Return(trunks::TRUNKS_RC_WRITE_ERROR));
+      .WillRepeatedly(Return(trunks::TRUNKS_RC_WRITE_ERROR));
   TPMErrorBase err = tpm_->LoadWrappedKey(wrapped_key, &key_handle);
   EXPECT_NE(nullptr, err);
-  EXPECT_EQ(TPMRetryAction::kCommunication, err->ToTPMRetryAction());
+  EXPECT_EQ(TPMRetryAction::kLater, err->ToTPMRetryAction());
 }
 
 TEST_F(Tpm2Test, LoadWrappedKeyRetryActions) {
