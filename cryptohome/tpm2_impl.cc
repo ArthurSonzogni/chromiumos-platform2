@@ -1299,8 +1299,7 @@ TPMErrorBase Tpm2Impl::GetAuthValue(base::Optional<TpmKeyHandle> key_handle,
   if (auto err = CreateError<TPM2Error>(trunks->tpm_utility->AsymmetricDecrypt(
           key_handle.value(), trunks::TPM_ALG_NULL, trunks::TPM_ALG_NULL,
           value_to_decrypt, delegate.get(), &decrypted_value))) {
-    return WrapError<TPMError>(std::move(err), "Error decrypting pass_blob",
-                               TPMRetryAction::kNoRetry);
+    return WrapError<TPMError>(std::move(err), "Error decrypting pass_blob");
   }
   *auth_value = Sha256(SecureBlob(decrypted_value));
 
