@@ -4,16 +4,15 @@
 
 //! Encapsulates the logic used to setup sandboxes for TEE applications.
 
-use std::os::unix::io::FromRawFd;
+use std::io;
 use std::os::unix::io::RawFd;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 
-use libc;
-
-use libc::pid_t;
+use libc::{self, pid_t};
 use minijail::{self, Minijail};
+
+use crate::sys::dup;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -23,6 +22,8 @@ pub enum Error {
     ForkingJail(minijail::Error),
     #[error("failed to bind '{0}' to '{1}': {2}")]
     Bind(String, String, minijail::Error),
+    #[error("dup failed: {0}")]
+    Dup(io::Error),
     #[error("failed to pivot root: {0}")]
     PivotRoot(minijail::Error),
     #[error("failed to parse seccomp policy: {0}")]
@@ -197,15 +198,8 @@ impl Sandbox for VmSandbox {
         // would close the underlying file object in the parent process. Since
         // the fd is owned by someone else this would result in the fd being
         // closed twice.
-        let stdout;
-        unsafe {
-            stdout = Stdio::from_raw_fd(libc::dup(keep_fds[0].1));
-        }
-
-        let stderr;
-        unsafe {
-            stderr = Stdio::from_raw_fd(libc::dup(keep_fds[0].1));
-        }
+        let stdout: Stdio = dup(keep_fds[0].1).map_err(Error::Dup)?;
+        let stderr: Stdio = dup(keep_fds[0].1).map_err(Error::Dup)?;
 
         let vm = Command::new(&self.config.crosvm_path)
             .arg("--disable-sandbox")
