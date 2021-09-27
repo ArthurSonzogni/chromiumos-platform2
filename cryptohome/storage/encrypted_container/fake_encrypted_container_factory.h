@@ -61,7 +61,7 @@ class FakeEncryptedContainerFactory : public EncryptedContainerFactory {
             config.dmcrypt_config, std::move(backing_device), key_reference,
             platform_,
             std::make_unique<brillo::DeviceMapper>(
-                base::Bind(&brillo::fake::CreateDevmapperTask)));
+                base::BindRepeating(&brillo::fake::CreateDevmapperTask)));
       default:
         return nullptr;
     }

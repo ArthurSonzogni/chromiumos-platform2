@@ -44,7 +44,7 @@ class EncryptedFsTest : public ::testing::Test {
                  .dmcrypt_cipher = "aes-cbc-essiv:sha256",
                  .mkfs_opts = {"-O", "encrypt,verity"},
                  .tune2fs_opts = {"-Q", "project"}}),
-        device_mapper_(base::Bind(&brillo::fake::CreateDevmapperTask)),
+        device_mapper_(base::BindRepeating(&brillo::fake::CreateDevmapperTask)),
         fake_backing_device_factory_(&platform_) {
     // Set up a fake backing device.
     auto fake_backing_device =
@@ -59,7 +59,7 @@ class EncryptedFsTest : public ::testing::Test {
     auto container = std::make_unique<cryptohome::DmcryptContainer>(
         config_, std::move(fake_backing_device), key_reference_, &platform_,
         std::make_unique<brillo::DeviceMapper>(
-            base::Bind(&brillo::fake::CreateDevmapperTask)));
+            base::BindRepeating(&brillo::fake::CreateDevmapperTask)));
 
     encrypted_fs_ = std::make_unique<EncryptedFs>(
         base::FilePath("/"), 3UL * 1024 * 1024 * 1024, dmcrypt_name_,

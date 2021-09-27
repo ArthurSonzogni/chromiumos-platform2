@@ -70,7 +70,7 @@ class BRILLO_EXPORT DevmapperTable {
 
 // DevmapperTask is an abstract class so we wrap it in a unique_ptr.
 using DevmapperTaskFactory =
-    base::Callback<std::unique_ptr<DevmapperTask>(int)>;
+    base::RepeatingCallback<std::unique_ptr<DevmapperTask>(int)>;
 
 // DeviceMapper handles the creation and removal of dm devices.
 class BRILLO_EXPORT DeviceMapper {

@@ -126,7 +126,7 @@ TEST(DevmapperTest, FakeTaskConformance) {
       DevmapperTable::CreateTableFromSecureBlob(crypt_table_str);
 
   EXPECT_EQ(secret, dm_table.CryptGetKey());
-  DeviceMapper dm(base::Bind(&fake::CreateDevmapperTask));
+  DeviceMapper dm(base::BindRepeating(&fake::CreateDevmapperTask));
 
   // Add device.
   EXPECT_TRUE(dm.Setup("abcd", dm_table));

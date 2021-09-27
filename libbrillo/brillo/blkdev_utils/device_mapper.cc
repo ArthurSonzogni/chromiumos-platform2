@@ -126,9 +126,8 @@ std::unique_ptr<DevmapperTask> CreateDevmapperTask(int type) {
   return std::make_unique<DevmapperTaskImpl>(type);
 }
 
-DeviceMapper::DeviceMapper() {
-  dm_task_factory_ = base::Bind(&CreateDevmapperTask);
-}
+DeviceMapper::DeviceMapper()
+    : DeviceMapper(base::BindRepeating(&CreateDevmapperTask)) {}
 
 DeviceMapper::DeviceMapper(const DevmapperTaskFactory& factory)
     : dm_task_factory_(factory) {}

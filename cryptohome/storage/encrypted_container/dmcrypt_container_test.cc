@@ -36,7 +36,7 @@ class DmcryptContainerTest : public ::testing::Test {
                  .mkfs_opts = {"-O", "encrypt,verity"},
                  .tune2fs_opts = {"-Q", "project"}}),
         key_({.fek = brillo::SecureBlob("random key")}),
-        device_mapper_(base::Bind(&brillo::fake::CreateDevmapperTask)),
+        device_mapper_(base::BindRepeating(&brillo::fake::CreateDevmapperTask)),
         backing_device_(std::make_unique<FakeBackingDevice>(
             BackingDeviceType::kLogicalVolumeBackingDevice,
             base::FilePath("/dev/VG/LV"))) {}
@@ -46,7 +46,7 @@ class DmcryptContainerTest : public ::testing::Test {
     container_ = std::make_unique<DmcryptContainer>(
         config_, std::move(backing_device_), key_reference_, &platform_,
         std::make_unique<brillo::DeviceMapper>(
-            base::Bind(&brillo::fake::CreateDevmapperTask)));
+            base::BindRepeating(&brillo::fake::CreateDevmapperTask)));
   }
 
  protected:
