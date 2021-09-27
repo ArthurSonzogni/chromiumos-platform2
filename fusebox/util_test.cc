@@ -11,13 +11,6 @@
 
 namespace fusebox {
 
-TEST(UtilTest, ErrorToString) {
-  EXPECT_EQ("[1]", ErrorToString(1));
-
-  const std::string prefix("prefix");
-  EXPECT_EQ("prefix [2]", ErrorToString(2, prefix));
-}
-
 TEST(UtilTest, OpenFlagsToString) {
   std::string flags = OpenFlagsToString(O_RDONLY);
   EXPECT_EQ("O_RDONLY", flags);

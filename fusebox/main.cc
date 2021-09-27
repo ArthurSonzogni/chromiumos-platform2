@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
   char* mountpoint = nullptr;
 
   if (fuse_parse_cmdline(&args, &mountpoint, nullptr, nullptr) == -1) {
-    LOG(ERROR) << "fuse_parse_cmdline() failed " << ErrorToString(errno);
+    PLOG(ERROR) << "fuse_parse_cmdline() failed";
     return EX_USAGE;
   }
 
@@ -98,19 +98,20 @@ int main(int argc, char** argv) {
 
   fuse_chan* chan = fuse_mount(mountpoint, &args);
   if (!chan) {
-    LOG(ERROR) << "fuse_mount() failed " << ErrorToString(errno, mountpoint);
+    PLOG(ERROR) << "fuse_mount() [" << mountpoint << "] failed";
     return ENODEV;
   }
 
   int exit_code = fusebox::Run(&mountpoint, chan, &args);
 
-  if (!mountpoint) {  // Kernel can remove the FUSE mountpoint: umount(8).
+  if (!mountpoint) {  // Kernel removed the FUSE mountpoint: umount(8).
     exit_code = ENODEV;
   } else {
     fuse_unmount(mountpoint, nullptr);
   }
 
-  LOG_IF(ERROR, exit_code) << ErrorToString(exit_code, "exiting");
+  errno = exit_code;
+  LOG_IF(ERROR, exit_code) << "fusebox exiting";
   fuse_opt_free_args(&args);
 
   return exit_code;

@@ -9,12 +9,6 @@
 
 #include <base/strings/stringprintf.h>
 
-std::string ErrorToString(int error, const std::string& prefix) {
-  if (!prefix.empty())
-    return base::StringPrintf("%s [%d]", prefix.c_str(), error);
-  return base::StringPrintf("[%d]", error);
-}
-
 namespace {
 
 struct FlagDef {
