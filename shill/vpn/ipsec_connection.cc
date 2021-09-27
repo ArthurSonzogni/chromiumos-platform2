@@ -550,7 +550,6 @@ void IPsecConnection::OnDisconnect() {
 
   switch (l2tp_connection_->state()) {
     case State::kIdle:
-    case State::kStopped:
       StopCharon();
       return;
     case State::kConnecting:
@@ -559,6 +558,11 @@ void IPsecConnection::OnDisconnect() {
       return;
     case State::kDisconnecting:
       // StopCharon() called in the stopped callback.
+      return;
+    case State::kStopped:
+      // If |l2tp_connection_| is in stopped state but has not been destroyed,
+      // the stopped callback must be in the queue, so StopCharon() will be
+      // called later.
       return;
     default:
       NOTREACHED();
