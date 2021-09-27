@@ -20,3 +20,19 @@ func NoCameraSourceTest(cameraCapabilities utils.SourceCapabilities) utils.TestF
 		return
 	}
 }
+
+// HasSupportedDocumentSourceTest passes if at least one of `platenCaps`,
+// `adfSimplexCaps` and `adfDuplexCaps` is non-empty. If all three of the input
+// sources are empty, the test will fail and a single critical failure will be
+// returned.
+func HasSupportedDocumentSourceTest(platenCaps utils.SourceCapabilities, adfSimplexCaps utils.SourceCapabilities, adfDuplexCaps utils.SourceCapabilities) utils.TestFunction {
+	return func() (result utils.TestResult, failures []utils.TestFailure, err error) {
+		if !platenCaps.IsPopulated() && !adfSimplexCaps.IsPopulated() && !adfDuplexCaps.IsPopulated() {
+			failures = append(failures, utils.TestFailure{Type: utils.CriticalFailure, Message: "Scanner advertises no supported document sources."})
+			result = utils.Failed
+		} else {
+			result = utils.Passed
+		}
+		return
+	}
+}
