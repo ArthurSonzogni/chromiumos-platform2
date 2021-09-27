@@ -17,6 +17,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
 #include <gtest/gtest.h>
 
 using file_attrs_cleaner::AttributeCheckStatus;
