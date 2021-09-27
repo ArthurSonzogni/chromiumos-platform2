@@ -10,6 +10,7 @@
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
 #include <chromeos/dbus/service_constants.h>
+#include <hps/daemon/filters/filter_factory.h>
 
 namespace hps {
 
@@ -35,8 +36,11 @@ void DBusAdaptor::PollTask() {
   for (uint8_t feature = 0; feature < kFeatures; ++feature) {
     if (enabled_features_.test(feature)) {
       int result = this->hps_->Result(feature);
+      // TODO(slangley): If HPS starts failing, we should probably let clients
+      // know somehow.
       if (result >= 0) {
-        // TODO(evanbenn): Do something with the result.
+        DCHECK(feature_filters_[feature]);
+        feature_filters_[feature]->ProcessResult(result);
       }
     }
   }
@@ -44,15 +48,16 @@ void DBusAdaptor::PollTask() {
 
 bool DBusAdaptor::EnableFeature(brillo::ErrorPtr* error,
                                 const hps::FeatureConfig& config,
-                                uint8_t feature) {
-  // TODO(evanbenn) Add the filter factory here
-
+                                uint8_t feature,
+                                StatusCallback callback) {
   if (!this->hps_->Enable(feature)) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          kErrorPath, "hpsd: Unable to enable feature");
 
     return false;
   } else {
+    auto filter = CreateFilter(config, callback);
+    feature_filters_[feature] = std::move(filter);
     enabled_features_.set(feature);
 
     if (enabled_features_.any() && !poll_timer_.IsRunning()) {
@@ -71,6 +76,7 @@ bool DBusAdaptor::DisableFeature(brillo::ErrorPtr* error, uint8_t feature) {
 
     return false;
   } else {
+    feature_filters_[feature].reset();
     enabled_features_.reset(feature);
     if (enabled_features_.none()) {
       poll_timer_.Stop();
@@ -82,22 +88,21 @@ bool DBusAdaptor::DisableFeature(brillo::ErrorPtr* error, uint8_t feature) {
 bool DBusAdaptor::GetFeatureResult(brillo::ErrorPtr* error,
                                    bool* result,
                                    uint8_t feature) {
-  int res = this->hps_->Result(feature);
-  if (res < 0) {
+  if (!enabled_features_.test(feature)) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
-                         kErrorPath, "hpsd: Feature result not available");
+                         kErrorPath, "hpsd: Feature not enabled.");
 
     return false;
-  } else {
-    *result = res;
-    return true;
   }
+  DCHECK(feature_filters_[feature]);
+  *result = feature_filters_[feature]->GetCurrentResult();
+  return true;
 }
 
 bool DBusAdaptor::EnableHpsSense(brillo::ErrorPtr* error,
                                  const hps::FeatureConfig& config) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return EnableFeature(error, config, 0);
+  return EnableFeature(error, config, 0, base::DoNothing());
 }
 
 bool DBusAdaptor::DisableHpsSense(brillo::ErrorPtr* error) {
@@ -113,7 +118,7 @@ bool DBusAdaptor::GetResultHpsSense(brillo::ErrorPtr* error, bool* result) {
 bool DBusAdaptor::EnableHpsNotify(brillo::ErrorPtr* error,
                                   const hps::FeatureConfig& config) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return EnableFeature(error, config, 1);
+  return EnableFeature(error, config, 1, base::DoNothing());
 }
 
 bool DBusAdaptor::DisableHpsNotify(brillo::ErrorPtr* error) {

@@ -119,25 +119,13 @@ TEST_F(HpsDaemonTest, DisableFeatureReady) {
   EXPECT_TRUE(result);
 }
 
-TEST_F(HpsDaemonTest, GetFeatureResultNotReady) {
+TEST_F(HpsDaemonTest, GetFeatureResultNotEnabled) {
   brillo::ErrorPtr error;
   bool result;
 
-  EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(-1));
   bool call_result = hps_daemon_->GetResultHpsSense(&error, &result);
   EXPECT_FALSE(call_result);
-  EXPECT_EQ("hpsd: Feature result not available", error->GetMessage());
-}
-
-TEST_F(HpsDaemonTest, GetFeatureResultReady) {
-  brillo::ErrorPtr error;
-  bool result;
-  bool expected_result = true;
-
-  EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(expected_result));
-  bool call_result = hps_daemon_->GetResultHpsSense(&error, &result);
-  EXPECT_TRUE(call_result);
-  EXPECT_EQ(expected_result, result);
+  EXPECT_EQ("hpsd: Feature not enabled.", error->GetMessage());
 }
 
 TEST_F(HpsDaemonTest, TestPollTimer) {

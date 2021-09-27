@@ -10,6 +10,8 @@
 #include <base/sequence_checker.h>
 #include <base/timer/timer.h>
 #include <hps/hps.h>
+#include <hps/daemon/filters/filter.h>
+#include <hps/daemon/filters/status_callback.h>
 #include <hps/proto_bindings/hps_service.pb.h>
 #include <dbus_adaptors/org.chromium.Hps.h>
 
@@ -45,7 +47,8 @@ class DBusAdaptor : public org::chromium::HpsAdaptor,
  private:
   bool EnableFeature(brillo::ErrorPtr* error,
                      const hps::FeatureConfig& config,
-                     uint8_t feature);
+                     uint8_t feature,
+                     StatusCallback callback);
   bool DisableFeature(brillo::ErrorPtr* error, uint8_t feature);
   bool GetFeatureResult(brillo::ErrorPtr* error, bool* result, uint8_t feature);
 
@@ -54,6 +57,7 @@ class DBusAdaptor : public org::chromium::HpsAdaptor,
   const uint32_t poll_time_ms_;
   base::RepeatingTimer poll_timer_;
   std::bitset<kFeatures> enabled_features_;
+  std::array<std::unique_ptr<Filter>, kFeatures> feature_filters_;
 
   SEQUENCE_CHECKER(sequence_checker_);
 };

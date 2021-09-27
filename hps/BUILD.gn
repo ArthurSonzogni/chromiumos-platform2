@@ -11,6 +11,7 @@ group("all") {
     deps += [
       ":dev_test",
       ":hps_daemon_test",
+      ":hps_filter_test",
       ":hps_metrics_test",
       ":hps_test",
     ]
@@ -53,6 +54,7 @@ static_library("hpsdlib") {
   ]
   public_configs = [ ":hpsdlib_config" ]
   deps = [
+    ":filters",
     ":hpsd-adaptors",
     ":hpslib",
   ]
@@ -91,6 +93,17 @@ static_library("hpslib") {
   public_configs = [ ":hpslib_config" ]
 }
 
+static_library("filters") {
+  sources = [
+    "daemon/filters/filter.cc",
+    "daemon/filters/filter.h",
+    "daemon/filters/filter_factory.cc",
+    "daemon/filters/filter_watcher.cc",
+    "daemon/filters/threshold_filter.cc",
+  ]
+  pkg_deps = [ "libchrome" ]
+}
+
 if (use.test) {
   executable("dev_test") {
     sources = [ "dev_test.cc" ]
@@ -127,7 +140,22 @@ if (use.test) {
     configs += [ "//common-mk:test" ]
 
     deps = [
+      ":filters",
       ":hpsdlib",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
+
+  executable("hps_filter_test") {
+    sources = [ "daemon/filters/filter_test.cc" ]
+    configs += [ "//common-mk:test" ]
+    libs = [ "system_api-hps-protos" ]
+    pkg_deps = [
+      "libbrillo",
+      "libchrome",
+    ]
+    deps = [
+      ":filters",
       "//common-mk/testrunner:testrunner",
     ]
   }
