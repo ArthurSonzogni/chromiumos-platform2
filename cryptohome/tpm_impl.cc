@@ -31,6 +31,7 @@
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec/overalls/overalls_api.h>
+#include <libhwsec/error/tpm_retry_handler.h>
 #include <libhwsec/error/tpm1_error.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
@@ -134,6 +135,14 @@ std::string OwnerDependencyEnumClassToString(
   return "";
 }
 
+TSS_RESULT GetErrorCode(const TPMErrorBase& err) {
+  TPM1Error tpm1_err = err->As<TPM1Error>();
+  if (tpm1_err) {
+    return tpm1_err->ErrorCode();
+  }
+  return TSS_LAYER_TCS | TSS_E_FAIL;
+}
+
 }  // namespace
 
 const unsigned char kDefaultSrkAuth[] = {};
@@ -141,8 +150,6 @@ const unsigned int kDefaultTpmRsaKeyFlag = TSS_KEY_SIZE_2048;
 const unsigned int kDefaultDiscardableWrapPasswordLength = 32;
 
 const char* kWellKnownSrkTmp = "1234567890";
-const unsigned int kTpmConnectRetries = 10;
-const unsigned int kTpmConnectIntervalMs = 100;
 const unsigned int kTpmPCRLocality = 1;
 const int kDelegateSecretSize = 20;
 const size_t kPCRExtensionSize = 20;  // SHA-1 digest size.
@@ -169,7 +176,7 @@ void TpmImpl::SetTpmManagerUtilityForTesting(
 
 TSS_HCONTEXT TpmImpl::ConnectContext() {
   TSS_HCONTEXT context_handle = 0;
-  if (TPM1Error err = OpenAndConnectTpm(&context_handle)) {
+  if (TPMErrorBase err = OpenAndConnectTpm(&context_handle)) {
     LOG(ERROR) << "Failed to OpenAndConnectTpm: " << *err;
     return 0;
   }
@@ -254,16 +261,16 @@ void TpmImpl::GetStatus(base::Optional<TpmKeyHandle> key_handle,
   status->this_instance_has_key_handle = key_handle.has_value();
   ScopedTssContext context_handle;
   // Check if we can connect
-  if (TPM1Error err = OpenAndConnectTpm(context_handle.ptr())) {
-    status->last_tpm_error = err->ErrorCode();
+  if (TPMErrorBase err = OpenAndConnectTpm(context_handle.ptr())) {
+    status->last_tpm_error = GetErrorCode(err);
     return;
   }
   status->can_connect = true;
 
   // Check the Storage Root Key
   ScopedTssKey srk_handle(context_handle);
-  if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
-    status->last_tpm_error = err->ErrorCode();
+  if (TPMErrorBase err = LoadSrk(context_handle, srk_handle.ptr())) {
+    status->last_tpm_error = GetErrorCode(err);
     return;
   }
   status->can_load_srk = true;
@@ -271,10 +278,11 @@ void TpmImpl::GetStatus(base::Optional<TpmKeyHandle> key_handle,
   // Check the SRK public key
   unsigned int public_srk_size;
   ScopedTssMemory public_srk_bytes(context_handle);
-  if (auto err = CreateError<TPM1Error>(Tspi_Key_GetPubKey(
-          srk_handle, &public_srk_size, public_srk_bytes.ptr()))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_Key_GetPubKey(
+              srk_handle, &public_srk_size, public_srk_bytes.ptr())))) {
     LOG(ERROR) << "Failed to get public key: " << *err;
-    status->last_tpm_error = err->ErrorCode();
+    status->last_tpm_error = GetErrorCode(err);
     return;
   }
   status->can_load_srk_public_key = true;
@@ -332,13 +340,14 @@ TPMErrorBase TpmImpl::IsSrkRocaVulnerable(bool* result) {
     return CreateError<TPMError>("No TPM context", TPMRetryAction::kNoRetry);
   }
   ScopedTssKey srk_handle(tpm_context_);
-  if (TPM1Error err = LoadSrk(tpm_context_, srk_handle.ptr())) {
+  if (TPMErrorBase err = LoadSrk(tpm_context_, srk_handle.ptr())) {
     return WrapError<TPMError>(std::move(err), "Failed to load SRK");
   }
   unsigned public_srk_size;
   ScopedTssMemory public_srk_bytes(tpm_context_);
-  if (auto err = CreateError<TPM1Error>(Tspi_Key_GetPubKey(
-          srk_handle, &public_srk_size, public_srk_bytes.ptr()))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_Key_GetPubKey(
+              srk_handle, &public_srk_size, public_srk_bytes.ptr())))) {
     return WrapError<TPMError>(std::move(err), "Failed to get SRK public key");
   }
   crypto::ScopedRSA public_srk = ParseRsaFromTpmPubkeyBlob(Blob(
@@ -379,17 +388,18 @@ bool TpmImpl::CreatePolicyWithRandomPassword(TSS_HCONTEXT context_handle,
                                              TSS_FLAG policy_type,
                                              TSS_HPOLICY* policy_handle) {
   trousers::ScopedTssPolicy local_policy(context_handle);
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_POLICY,
-                                    policy_type, local_policy.ptr()))) {
+                                    policy_type, local_policy.ptr())))) {
     LOG(ERROR) << "Error creating policy object: " << *err;
     return false;
   }
   auto migration_password =
       CreateSecureRandomBlob(kDefaultDiscardableWrapPasswordLength);
-  if (auto err = CreateError<TPM1Error>(Tspi_Policy_SetSecret(
-          local_policy, TSS_SECRET_MODE_PLAIN, migration_password.size(),
-          migration_password.data()))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_Policy_SetSecret(
+              local_policy, TSS_SECRET_MODE_PLAIN, migration_password.size(),
+              migration_password.data())))) {
     LOG(ERROR) << "Error setting policy password: " << *err;
     return false;
   }
@@ -404,33 +414,36 @@ bool TpmImpl::CreateRsaPublicKeyObject(TSS_HCONTEXT context_handle,
                                        UINT32 encryption_scheme,
                                        TSS_HKEY* key_handle) {
   ScopedTssKey local_key(context_handle);
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_RSAKEY,
-                                    key_flags, local_key.ptr()))) {
+                                    key_flags, local_key.ptr())))) {
     LOG(ERROR) << __func__ << ": Error creating the key object: " << *err;
     return false;
   }
 
-  if (auto err = CreateError<TPM1Error>(Tspi_SetAttribData(
-          local_key, TSS_TSPATTRIB_RSAKEY_INFO,
-          TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, key_modulus.size(),
-          const_cast<BYTE*>(key_modulus.data())))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_SetAttribData(
+              local_key, TSS_TSPATTRIB_RSAKEY_INFO,
+              TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, key_modulus.size(),
+              const_cast<BYTE*>(key_modulus.data()))))) {
     LOG(ERROR) << __func__ << ": Error setting the key modulus: " << *err;
     return false;
   }
   if (signature_scheme != TSS_SS_NONE) {
-    if (auto err = CreateError<TPM1Error>(Tspi_SetAttribUint32(
-            local_key, TSS_TSPATTRIB_KEY_INFO, TSS_TSPATTRIB_KEYINFO_SIGSCHEME,
-            signature_scheme))) {
+    if (TPMErrorBase err =
+            HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_SetAttribUint32(
+                local_key, TSS_TSPATTRIB_KEY_INFO,
+                TSS_TSPATTRIB_KEYINFO_SIGSCHEME, signature_scheme)))) {
       LOG(ERROR) << __func__
                  << ": Error setting the key signing scheme: " << *err;
       return false;
     }
   }
   if (encryption_scheme != TSS_ES_NONE) {
-    if (auto err = CreateError<TPM1Error>(Tspi_SetAttribUint32(
-            local_key, TSS_TSPATTRIB_KEY_INFO, TSS_TSPATTRIB_KEYINFO_ENCSCHEME,
-            encryption_scheme))) {
+    if (TPMErrorBase err =
+            HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_SetAttribUint32(
+                local_key, TSS_TSPATTRIB_KEY_INFO,
+                TSS_TSPATTRIB_KEYINFO_ENCSCHEME, encryption_scheme)))) {
       LOG(ERROR) << __func__
                  << ": Error setting the key encryption scheme: " << *err;
       return false;
@@ -440,31 +453,18 @@ bool TpmImpl::CreateRsaPublicKeyObject(TSS_HCONTEXT context_handle,
   return true;
 }
 
-TPM1Error TpmImpl::OpenAndConnectTpm(TSS_HCONTEXT* context_handle) {
+TPMErrorBase TpmImpl::OpenAndConnectTpm(TSS_HCONTEXT* context_handle) {
   ScopedTssContext local_context_handle;
-  if (auto err = CreateError<TPM1Error>(
-          Tspi_Context_Create(local_context_handle.ptr()))) {
-    LOG(ERROR) << "Error calling Tspi_Context_Create: " << *err;
-    return err;
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+          Tspi_Context_Create(local_context_handle.ptr())))) {
+    return WrapError<TPMError>(std::move(err),
+                               "Error calling Tspi_Context_Create");
   }
 
-  for (unsigned int i = 0; i < kTpmConnectRetries; i++) {
-    if (auto err = CreateError<TPM1Error>(
-            GetOveralls()->Ospi_Context_Connect(local_context_handle, NULL))) {
-      // If there was a communications failure, try sleeping a bit here, it may
-      // be that tcsd is still starting.
-      if (err->ToTPMRetryAction() == TPMRetryAction::kCommunication &&
-          i + 1 != kTpmConnectRetries) {
-        PlatformThread::Sleep(
-            base::TimeDelta::FromMilliseconds(kTpmConnectIntervalMs));
-
-      } else {
-        LOG(ERROR) << "Error calling Tspi_Context_Connect: " << *err;
-        return err;
-      }
-    } else {
-      break;
-    }
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+          GetOveralls()->Ospi_Context_Connect(local_context_handle, NULL)))) {
+    return WrapError<TPMError>(std::move(err),
+                               "Error calling Tspi_Context_Connect");
   }
 
   *context_handle = local_context_handle.release();
@@ -474,7 +474,7 @@ TPM1Error TpmImpl::OpenAndConnectTpm(TSS_HCONTEXT* context_handle) {
 TPMErrorBase TpmImpl::GetPublicKeyHash(TpmKeyHandle key_handle,
                                        SecureBlob* hash) {
   SecureBlob pubkey;
-  if (TPM1Error err =
+  if (TPMErrorBase err =
           GetPublicKeyBlob(tpm_context_.value(), key_handle, &pubkey)) {
     return WrapError<TPMError>(std::move(err),
                                "Failed to get TPM public key hash");
@@ -489,23 +489,24 @@ TPMErrorBase TpmImpl::EncryptBlob(TpmKeyHandle key_handle,
                                   SecureBlob* ciphertext) {
   TSS_FLAG init_flags = TSS_ENCDATA_SEAL;
   ScopedTssKey enc_handle(tpm_context_.value());
-  if (auto err = CreateError<TPM1Error>(Tspi_Context_CreateObject(
-          tpm_context_.value(), TSS_OBJECT_TYPE_ENCDATA, init_flags,
-          enc_handle.ptr()))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM1Error>(Tspi_Context_CreateObject(
+              tpm_context_.value(), TSS_OBJECT_TYPE_ENCDATA, init_flags,
+              enc_handle.ptr())))) {
     return WrapError<TPMError>(std::move(err),
                                "Error calling Tspi_Context_CreateObject");
   }
 
   // TODO(fes): Check RSA key modulus size, return an error or block input
 
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_Data_Bind(enc_handle, key_handle, plaintext.size(),
-                         const_cast<BYTE*>(plaintext.data())))) {
+                         const_cast<BYTE*>(plaintext.data()))))) {
     return WrapError<TPMError>(std::move(err), "Error calling Tspi_Data_Bind");
   }
 
   SecureBlob enc_data_blob;
-  if (TPM1Error err = GetDataAttribute(
+  if (TPMErrorBase err = GetDataAttribute(
           tpm_context_.value(), enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
           TSS_TSPATTRIB_ENCDATABLOB_BLOB, &enc_data_blob)) {
     return WrapError<TPMError>(std::move(err), "Failed to read encrypted blob");
@@ -530,25 +531,27 @@ TPMErrorBase TpmImpl::DecryptBlob(
 
   TSS_FLAG init_flags = TSS_ENCDATA_SEAL;
   ScopedTssKey enc_handle(tpm_context_.value());
-  if (auto err = CreateError<TPM1Error>(Tspi_Context_CreateObject(
-          tpm_context_.value(), TSS_OBJECT_TYPE_ENCDATA, init_flags,
-          enc_handle.ptr()))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM1Error>(Tspi_Context_CreateObject(
+              tpm_context_.value(), TSS_OBJECT_TYPE_ENCDATA, init_flags,
+              enc_handle.ptr())))) {
     return WrapError<TPMError>(std::move(err),
                                "Error calling Tspi_Context_CreateObject");
   }
 
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_SetAttribData(enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
                              TSS_TSPATTRIB_ENCDATABLOB_BLOB, local_data.size(),
-                             local_data.data()))) {
+                             local_data.data())))) {
     return WrapError<TPMError>(std::move(err),
                                "Error calling Tspi_SetAttribData");
   }
 
   ScopedTssMemory dec_data(tpm_context_.value());
   UINT32 dec_data_length = 0;
-  if (auto err = CreateError<TPM1Error>(Tspi_Data_Unbind(
-          enc_handle, key_handle, &dec_data_length, dec_data.ptr()))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_Data_Unbind(
+              enc_handle, key_handle, &dec_data_length, dec_data.ptr())))) {
     return WrapError<TPMError>(std::move(err),
                                "Error calling Tspi_Data_Unbind");
   }
@@ -565,29 +568,31 @@ bool TpmImpl::SetAuthValue(TSS_HCONTEXT context_handle,
                            TSS_HTPM tpm_handle,
                            const SecureBlob& auth_value) {
   // Create the enc_handle.
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_ENCDATA,
-                                    TSS_ENCDATA_SEAL, enc_handle->ptr()))) {
+                                    TSS_ENCDATA_SEAL, enc_handle->ptr())))) {
     LOG(ERROR) << "Error calling Tspi_Context_CreateObject: " << *err;
     return false;
   }
 
   // Get the TPM usage policy object and set the auth_value.
   TSS_HPOLICY tpm_usage_policy;
-  if (auto err = CreateError<TPM1Error>(Tspi_GetPolicyObject(
-          tpm_handle, TSS_POLICY_USAGE, &tpm_usage_policy))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_GetPolicyObject(
+              tpm_handle, TSS_POLICY_USAGE, &tpm_usage_policy)))) {
     LOG(ERROR) << "Error calling Tspi_GetPolicyObject: " << *err;
     return false;
   }
-  if (auto err = CreateError<TPM1Error>(Tspi_Policy_SetSecret(
-          tpm_usage_policy, TSS_SECRET_MODE_PLAIN, auth_value.size(),
-          const_cast<BYTE*>(auth_value.data())))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_Policy_SetSecret(
+              tpm_usage_policy, TSS_SECRET_MODE_PLAIN, auth_value.size(),
+              const_cast<BYTE*>(auth_value.data()))))) {
     LOG(ERROR) << "Error calling Tspi_Policy_SetSecret: " << *err;
     return false;
   }
 
-  if (auto err = CreateError<TPM1Error>(
-          Tspi_Policy_AssignToObject(tpm_usage_policy, *enc_handle))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+          Tspi_Policy_AssignToObject(tpm_usage_policy, *enc_handle)))) {
     LOG(ERROR) << "Error calling Tspi_Policy_AssignToObject: " << *err;
     return false;
   }
@@ -608,16 +613,17 @@ TPMErrorBase TpmImpl::SealToPcrWithAuthorization(
   }
   // Load the Storage Root Key.
   ScopedTssKey srk_handle(context_handle);
-  if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
+  if (TPMErrorBase err = LoadSrk(context_handle, srk_handle.ptr())) {
     return WrapError<TPMError>(std::move(err), "Failed to load SRK",
                                TPMRetryAction::kNoRetry);
   }
 
   // Create a PCRS object.
   ScopedTssPcrs pcrs_handle(context_handle);
-  if (auto err = CreateError<TPM1Error>(
-          Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_PCRS,
-                                    TSS_PCRS_STRUCT_INFO, pcrs_handle.ptr()))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM1Error>(Tspi_Context_CreateObject(
+              context_handle, TSS_OBJECT_TYPE_PCRS, TSS_PCRS_STRUCT_INFO,
+              pcrs_handle.ptr())))) {
     return WrapError<TPMError>(std::move(err),
                                "Error calling Tspi_Context_CreateObject",
                                TPMRetryAction::kNoRetry);
@@ -630,8 +636,9 @@ TPMErrorBase TpmImpl::SealToPcrWithAuthorization(
     if (digest.empty()) {
       UINT32 pcr_len = 0;
       ScopedTssMemory pcr_value(context_handle);
-      if (auto err = CreateError<TPM1Error>(Tspi_TPM_PcrRead(
-              tpm_handle, pcr_index, &pcr_len, pcr_value.ptr()))) {
+      if (TPMErrorBase err =
+              HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_TPM_PcrRead(
+                  tpm_handle, pcr_index, &pcr_len, pcr_value.ptr())))) {
         return WrapError<TPMError>(std::move(err), "Could not read PCR value");
       }
       Tspi_PcrComposite_SetPcrValue(pcrs_handle, pcr_index, pcr_len,
@@ -651,9 +658,9 @@ TPMErrorBase TpmImpl::SealToPcrWithAuthorization(
   }
 
   // Seal the given value with the SRK.
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_Data_Seal(enc_handle, srk_handle, plaintext.size(),
-                         const_cast<BYTE*>(plaintext.data()), pcrs_handle))) {
+                         const_cast<BYTE*>(plaintext.data()), pcrs_handle)))) {
     return WrapError<TPMError>(std::move(err), "Error calling Tspi_Data_Seal",
                                TPMRetryAction::kNoRetry);
   }
@@ -661,9 +668,10 @@ TPMErrorBase TpmImpl::SealToPcrWithAuthorization(
   // Extract the sealed value.
   ScopedTssMemory enc_data(context_handle);
   UINT32 enc_data_length = 0;
-  if (auto err = CreateError<TPM1Error>(Tspi_GetAttribData(
-          enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
-          TSS_TSPATTRIB_ENCDATABLOB_BLOB, &enc_data_length, enc_data.ptr()))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+          Tspi_GetAttribData(enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
+                             TSS_TSPATTRIB_ENCDATABLOB_BLOB, &enc_data_length,
+                             enc_data.ptr())))) {
     return WrapError<TPMError>(std::move(err),
                                "Error calling Tspi_GetAttribData",
                                TPMRetryAction::kNoRetry);
@@ -699,7 +707,7 @@ TPMErrorBase TpmImpl::UnsealWithAuthorization(
   }
   // Load the Storage Root Key.
   ScopedTssKey srk_handle(context_handle);
-  if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
+  if (TPMErrorBase err = LoadSrk(context_handle, srk_handle.ptr())) {
     return WrapError<TPMError>(std::move(err), "Failed to load SRK",
                                TPMRetryAction::kNoRetry);
   }
@@ -712,10 +720,10 @@ TPMErrorBase TpmImpl::UnsealWithAuthorization(
                                  TPMRetryAction::kNoRetry);
   }
 
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_SetAttribData(enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
                              TSS_TSPATTRIB_ENCDATABLOB_BLOB, sealed_data.size(),
-                             const_cast<BYTE*>(sealed_data.data())))) {
+                             const_cast<BYTE*>(sealed_data.data()))))) {
     return WrapError<TPMError>(std::move(err),
                                "Error calling Tspi_SetAttribData");
   }
@@ -723,8 +731,9 @@ TPMErrorBase TpmImpl::UnsealWithAuthorization(
   // Unseal using the SRK.
   ScopedTssMemory dec_data(context_handle);
   UINT32 dec_data_length = 0;
-  if (auto err = CreateError<TPM1Error>(Tspi_Data_Unseal(
-          enc_handle, srk_handle, &dec_data_length, dec_data.ptr()))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_Data_Unseal(
+              enc_handle, srk_handle, &dec_data_length, dec_data.ptr())))) {
     return WrapError<TPMError>(std::move(err),
                                "Error calling Tspi_Data_Unseal");
   }
@@ -734,14 +743,14 @@ TPMErrorBase TpmImpl::UnsealWithAuthorization(
   return nullptr;
 }
 
-TPM1Error TpmImpl::GetPublicKeyBlob(TSS_HCONTEXT context_handle,
-                                    TSS_HKEY key_handle,
-                                    SecureBlob* data_out) const {
+TPMErrorBase TpmImpl::GetPublicKeyBlob(TSS_HCONTEXT context_handle,
+                                       TSS_HKEY key_handle,
+                                       SecureBlob* data_out) const {
   ScopedTssMemory blob(context_handle);
   UINT32 blob_size;
 
-  if (auto err = CreateError<TPM1Error>(
-          Tspi_Key_GetPubKey(key_handle, &blob_size, blob.ptr()))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+          Tspi_Key_GetPubKey(key_handle, &blob_size, blob.ptr())))) {
     LOG(ERROR) << "Error calling Tspi_Key_GetPubKey: " << *err;
     return err;
   }
@@ -753,7 +762,8 @@ TPM1Error TpmImpl::GetPublicKeyBlob(TSS_HCONTEXT context_handle,
   return nullptr;
 }
 
-TPM1Error TpmImpl::LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle) {
+TPMErrorBase TpmImpl::LoadSrk(TSS_HCONTEXT context_handle,
+                              TSS_HKEY* srk_handle) {
   // We shouldn't load the SRK if the TPM have been fully owned.
   if (!IsOwned()) {
     return CreateError<TPM1Error>(TSS_LAYER_TCS | TSS_E_FAIL);
@@ -762,31 +772,34 @@ TPM1Error TpmImpl::LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle) {
   // Load the Storage Root Key
   TSS_UUID SRK_UUID = TSS_UUID_SRK;
   ScopedTssKey local_srk_handle(context_handle);
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_Context_LoadKeyByUUID(context_handle, TSS_PS_TYPE_SYSTEM,
-                                     SRK_UUID, local_srk_handle.ptr()))) {
+                                     SRK_UUID, local_srk_handle.ptr())))) {
     return err;
   }
 
   // Check if the SRK wants a password
   UINT32 srk_authusage;
-  if (auto err = CreateError<TPM1Error>(Tspi_GetAttribUint32(
-          local_srk_handle, TSS_TSPATTRIB_KEY_INFO,
-          TSS_TSPATTRIB_KEYINFO_AUTHUSAGE, &srk_authusage))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_GetAttribUint32(
+              local_srk_handle, TSS_TSPATTRIB_KEY_INFO,
+              TSS_TSPATTRIB_KEYINFO_AUTHUSAGE, &srk_authusage)))) {
     return err;
   }
 
   // Give it the password if needed
   if (srk_authusage) {
     TSS_HPOLICY srk_usage_policy;
-    if (auto err = CreateError<TPM1Error>(Tspi_GetPolicyObject(
-            local_srk_handle, TSS_POLICY_USAGE, &srk_usage_policy))) {
+    if (TPMErrorBase err =
+            HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_GetPolicyObject(
+                local_srk_handle, TSS_POLICY_USAGE, &srk_usage_policy)))) {
       return err;
     }
 
-    if (auto err = CreateError<TPM1Error>(Tspi_Policy_SetSecret(
-            srk_usage_policy, TSS_SECRET_MODE_PLAIN, srk_auth_.size(),
-            const_cast<BYTE*>(srk_auth_.data())))) {
+    if (TPMErrorBase err =
+            HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_Policy_SetSecret(
+                srk_usage_policy, TSS_SECRET_MODE_PLAIN, srk_auth_.size(),
+                const_cast<BYTE*>(srk_auth_.data()))))) {
       return err;
     }
   }
@@ -803,15 +816,16 @@ bool TpmImpl::CreateEndorsementKey() {
 
   ScopedTssKey local_key_handle(tpm_context_.value());
   TSS_FLAG init_flags = TSS_KEY_TYPE_LEGACY | TSS_KEY_SIZE_2048;
-  if (auto err = CreateError<TPM1Error>(Tspi_Context_CreateObject(
-          tpm_context_.value(), TSS_OBJECT_TYPE_RSAKEY, init_flags,
-          local_key_handle.ptr()))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM1Error>(Tspi_Context_CreateObject(
+              tpm_context_.value(), TSS_OBJECT_TYPE_RSAKEY, init_flags,
+              local_key_handle.ptr())))) {
     LOG(ERROR) << "Error calling Tspi_Context_CreateObject: " << *err;
     return false;
   }
 
-  if (auto err = CreateError<TPM1Error>(
-          Tspi_TPM_CreateEndorsementKey(tpm_handle, local_key_handle, NULL))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+          Tspi_TPM_CreateEndorsementKey(tpm_handle, local_key_handle, NULL)))) {
     LOG(ERROR) << "Error calling Tspi_TPM_CreateEndorsementKey: " << *err;
     return false;
   }
@@ -826,8 +840,9 @@ bool TpmImpl::IsEndorsementKeyAvailable() {
   }
 
   ScopedTssKey local_key_handle(tpm_context_.value());
-  if (auto err = CreateError<TPM1Error>(Tspi_TPM_GetPubEndorsementKey(
-          tpm_handle, false, NULL, local_key_handle.ptr()))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM1Error>(Tspi_TPM_GetPubEndorsementKey(
+              tpm_handle, false, NULL, local_key_handle.ptr())))) {
     LOG(ERROR) << "Error calling Tspi_TPM_GetPubEndorsementKey: " << *err;
     return false;
   }
@@ -849,8 +864,8 @@ bool TpmImpl::TakeOwnership(int, const SecureBlob&) {
 
 bool TpmImpl::GetTpm(TSS_HCONTEXT context_handle, TSS_HTPM* tpm_handle) {
   TSS_HTPM local_tpm_handle;
-  if (auto err = CreateError<TPM1Error>(
-          Tspi_Context_GetTpmObject(context_handle, &local_tpm_handle))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+          Tspi_Context_GetTpmObject(context_handle, &local_tpm_handle)))) {
     LOG(ERROR) << "Error calling Tspi_Context_GetTpmObject: " << *err;
     return false;
   }
@@ -867,15 +882,17 @@ bool TpmImpl::GetTpmWithAuth(TSS_HCONTEXT context_handle,
   }
 
   TSS_HPOLICY tpm_usage_policy;
-  if (auto err = CreateError<TPM1Error>(Tspi_GetPolicyObject(
-          local_tpm_handle, TSS_POLICY_USAGE, &tpm_usage_policy))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_GetPolicyObject(
+              local_tpm_handle, TSS_POLICY_USAGE, &tpm_usage_policy)))) {
     LOG(ERROR) << "Error calling Tspi_GetPolicyObject: " << *err;
     return false;
   }
 
-  if (auto err = CreateError<TPM1Error>(Tspi_Policy_SetSecret(
-          tpm_usage_policy, TSS_SECRET_MODE_PLAIN, owner_password.size(),
-          const_cast<BYTE*>(owner_password.data())))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_Policy_SetSecret(
+              tpm_usage_policy, TSS_SECRET_MODE_PLAIN, owner_password.size(),
+              const_cast<BYTE*>(owner_password.data()))))) {
     LOG(ERROR) << "Error calling Tspi_Policy_SetSecret: " << *err;
     return false;
   }
@@ -894,24 +911,26 @@ bool TpmImpl::GetTpmWithDelegation(TSS_HCONTEXT context_handle,
   }
 
   TSS_HPOLICY tpm_usage_policy;
-  if (auto err = CreateError<TPM1Error>(Tspi_GetPolicyObject(
-          local_tpm_handle, TSS_POLICY_USAGE, &tpm_usage_policy))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_GetPolicyObject(
+              local_tpm_handle, TSS_POLICY_USAGE, &tpm_usage_policy)))) {
     LOG(ERROR) << "Error calling Tspi_GetPolicyObject: " << *err;
     return false;
   }
 
   BYTE* secret_buffer = const_cast<BYTE*>(delegate_secret.data());
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_Policy_SetSecret(tpm_usage_policy, TSS_SECRET_MODE_PLAIN,
-                                delegate_secret.size(), secret_buffer))) {
+                                delegate_secret.size(), secret_buffer)))) {
     LOG(ERROR) << "Error calling Tspi_Policy_SetSecret: " << *err;
     return false;
   }
 
-  if (auto err = CreateError<TPM1Error>(Tspi_SetAttribData(
-          tpm_usage_policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
-          TSS_TSPATTRIB_POLDEL_OWNERBLOB, delegate_blob.size(),
-          const_cast<BYTE*>(delegate_blob.data())))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_SetAttribData(
+              tpm_usage_policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
+              TSS_TSPATTRIB_POLDEL_OWNERBLOB, delegate_blob.size(),
+              const_cast<BYTE*>(delegate_blob.data()))))) {
     LOG(ERROR) << "Error calling Tspi_SetAttribData: " << *err;
     return false;
   }
@@ -967,8 +986,8 @@ TPMErrorBase TpmImpl::GetRandomDataSecureBlob(size_t length,
 
   SecureBlob random(length);
   ScopedTssMemory tpm_data(context_handle);
-  if (auto err = CreateError<TPM1Error>(
-          Tspi_TPM_GetRandom(tpm_handle, random.size(), tpm_data.ptr()))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+          Tspi_TPM_GetRandom(tpm_handle, random.size(), tpm_data.ptr())))) {
     return WrapError<TPMError>(std::move(err),
                                "Could not get random data from the TPM");
   }
@@ -1101,7 +1120,7 @@ bool TpmImpl::SealToPCR0(const brillo::SecureBlob& value,
   }
   // Load the Storage Root Key.
   ScopedTssKey srk_handle(context_handle);
-  if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
+  if (TPMErrorBase err = LoadSrk(context_handle, srk_handle.ptr())) {
     LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
     return false;
   }
@@ -1109,17 +1128,18 @@ bool TpmImpl::SealToPCR0(const brillo::SecureBlob& value,
   // Check the SRK public key
   unsigned int size_n = 0;
   ScopedTssMemory public_srk(context_handle);
-  if (auto err = CreateError<TPM1Error>(
-          Tspi_Key_GetPubKey(srk_handle, &size_n, public_srk.ptr()))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+          Tspi_Key_GetPubKey(srk_handle, &size_n, public_srk.ptr())))) {
     LOG(ERROR) << __func__ << ": Unable to get the SRK public key: " << *err;
     return false;
   }
 
   // Create a PCRS object which holds the value of PCR0.
   ScopedTssPcrs pcrs_handle(context_handle);
-  if (auto err = CreateError<TPM1Error>(
-          Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_PCRS,
-                                    TSS_PCRS_STRUCT_INFO, pcrs_handle.ptr()))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM1Error>(Tspi_Context_CreateObject(
+              context_handle, TSS_OBJECT_TYPE_PCRS, TSS_PCRS_STRUCT_INFO,
+              pcrs_handle.ptr())))) {
     LOG(ERROR) << __func__
                << ": Error calling Tspi_Context_CreateObject: " << *err;
     return false;
@@ -1132,18 +1152,18 @@ bool TpmImpl::SealToPCR0(const brillo::SecureBlob& value,
   Tspi_PcrComposite_SetPcrValue(pcrs_handle, 0, pcr_len, pcr_value.value());
 
   ScopedTssKey enc_handle(context_handle);
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_ENCDATA,
-                                    TSS_ENCDATA_SEAL, enc_handle.ptr()))) {
+                                    TSS_ENCDATA_SEAL, enc_handle.ptr())))) {
     LOG(ERROR) << __func__
                << ": Error calling Tspi_Context_CreateObject: " << *err;
     return false;
   }
 
   // Seal the given value with the SRK.
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_Data_Seal(enc_handle, srk_handle, value.size(),
-                         const_cast<BYTE*>(value.data()), pcrs_handle))) {
+                         const_cast<BYTE*>(value.data()), pcrs_handle)))) {
     LOG(ERROR) << __func__ << ": Error calling Tspi_Data_Seal: " << *err;
     return false;
   }
@@ -1151,9 +1171,10 @@ bool TpmImpl::SealToPCR0(const brillo::SecureBlob& value,
   // Extract the sealed value.
   ScopedTssMemory enc_data(context_handle);
   UINT32 enc_data_length = 0;
-  if (auto err = CreateError<TPM1Error>(Tspi_GetAttribData(
-          enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
-          TSS_TSPATTRIB_ENCDATABLOB_BLOB, &enc_data_length, enc_data.ptr()))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+          Tspi_GetAttribData(enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
+                             TSS_TSPATTRIB_ENCDATABLOB_BLOB, &enc_data_length,
+                             enc_data.ptr())))) {
     LOG(ERROR) << __func__ << ": Error calling Tspi_GetAttribData: " << *err;
     return false;
   }
@@ -1173,25 +1194,26 @@ bool TpmImpl::Unseal(const brillo::SecureBlob& sealed_value,
   }
   // Load the Storage Root Key.
   ScopedTssKey srk_handle(context_handle);
-  if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
+  if (TPMErrorBase err = LoadSrk(context_handle, srk_handle.ptr())) {
     LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
     return false;
   }
 
   // Create an ENCDATA object with the sealed value.
   ScopedTssKey enc_handle(context_handle);
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_ENCDATA,
-                                    TSS_ENCDATA_SEAL, enc_handle.ptr()))) {
+                                    TSS_ENCDATA_SEAL, enc_handle.ptr())))) {
     LOG(ERROR) << __func__
                << ": Error calling Tspi_Context_CreateObject: " << *err;
     return false;
   }
 
-  if (auto err = CreateError<TPM1Error>(Tspi_SetAttribData(
-          enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
-          TSS_TSPATTRIB_ENCDATABLOB_BLOB, sealed_value.size(),
-          const_cast<BYTE*>(sealed_value.data())))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_SetAttribData(
+              enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
+              TSS_TSPATTRIB_ENCDATABLOB_BLOB, sealed_value.size(),
+              const_cast<BYTE*>(sealed_value.data()))))) {
     LOG(ERROR) << __func__ << ": Error calling Tspi_SetAttribData: " << *err;
     return false;
   }
@@ -1199,8 +1221,9 @@ bool TpmImpl::Unseal(const brillo::SecureBlob& sealed_value,
   // Unseal using the SRK.
   ScopedTssMemory dec_data(context_handle);
   UINT32 dec_data_length = 0;
-  if (auto err = CreateError<TPM1Error>(Tspi_Data_Unseal(
-          enc_handle, srk_handle, &dec_data_length, dec_data.ptr()))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_Data_Unseal(
+              enc_handle, srk_handle, &dec_data_length, dec_data.ptr())))) {
     LOG(ERROR) << __func__ << ": Error calling Tspi_Data_Unseal: " << *err;
     return false;
   }
@@ -1233,21 +1256,23 @@ bool TpmImpl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
 
   // Create an owner delegation policy.
   ScopedTssPolicy policy(context_handle);
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_POLICY,
-                                    TSS_POLICY_USAGE, policy.ptr()))) {
+                                    TSS_POLICY_USAGE, policy.ptr())))) {
     LOG(ERROR) << __func__ << ": Failed to create policy: " << *err;
     return false;
   }
-  if (auto err = CreateError<TPM1Error>(Tspi_Policy_SetSecret(
-          policy, TSS_SECRET_MODE_PLAIN, delegate_secret->size(),
-          delegate_secret->data()))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_Policy_SetSecret(
+              policy, TSS_SECRET_MODE_PLAIN, delegate_secret->size(),
+              delegate_secret->data())))) {
     LOG(ERROR) << __func__ << ": Failed to set policy secret: " << *err;
     return false;
   }
-  if (auto err = CreateError<TPM1Error>(Tspi_SetAttribUint32(
-          policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
-          TSS_TSPATTRIB_POLDEL_TYPE, TSS_DELEGATIONTYPE_OWNER))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_SetAttribUint32(
+              policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
+              TSS_TSPATTRIB_POLDEL_TYPE, TSS_DELEGATIONTYPE_OWNER)))) {
     LOG(ERROR) << __func__ << ": Failed to set delegation type: " << *err;
     return false;
   }
@@ -1257,15 +1282,15 @@ bool TpmImpl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
       TPM_DELEGATE_DAA_Sign | TPM_DELEGATE_ResetLockValue |
       TPM_DELEGATE_OwnerReadInternalPub | TPM_DELEGATE_CMK_ApproveMA |
       TPM_DELEGATE_CMK_CreateTicket | TPM_DELEGATE_AuthorizeMigrationKey;
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_SetAttribUint32(policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
-                               TSS_TSPATTRIB_POLDEL_PER1, permissions))) {
+                               TSS_TSPATTRIB_POLDEL_PER1, permissions)))) {
     LOG(ERROR) << __func__ << ": Failed to set permissions: " << *err;
     return false;
   }
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_SetAttribUint32(policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
-                               TSS_TSPATTRIB_POLDEL_PER2, 0))) {
+                               TSS_TSPATTRIB_POLDEL_PER2, 0)))) {
     LOG(ERROR) << __func__ << ": Failed to set permissions: " << *err;
     return false;
   }
@@ -1275,29 +1300,32 @@ bool TpmImpl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
   // otherwise it will fail with TPM_E_BAD_PARAM_SIZE.
   ScopedTssPcrs pcrs_handle(context_handle);
   if (!bound_pcrs.empty()) {
-    if (auto err = CreateError<TPM1Error>(Tspi_Context_CreateObject(
-            context_handle, TSS_OBJECT_TYPE_PCRS, TSS_PCRS_STRUCT_INFO_SHORT,
-            pcrs_handle.ptr()))) {
+    if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
+            CreateError<TPM1Error>(Tspi_Context_CreateObject(
+                context_handle, TSS_OBJECT_TYPE_PCRS,
+                TSS_PCRS_STRUCT_INFO_SHORT, pcrs_handle.ptr())))) {
       LOG(ERROR) << __func__ << ": Failed to create PCRS object: " << *err;
       return false;
     }
     for (auto bound_pcr : bound_pcrs) {
       UINT32 pcr_len = 0;
       ScopedTssMemory pcr_value(context_handle);
-      if (auto err = CreateError<TPM1Error>(Tspi_TPM_PcrRead(
-              tpm_handle, bound_pcr, &pcr_len, pcr_value.ptr()))) {
+      if (TPMErrorBase err =
+              HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_TPM_PcrRead(
+                  tpm_handle, bound_pcr, &pcr_len, pcr_value.ptr())))) {
         LOG(ERROR) << __func__ << ": Could not read PCR value: " << *err;
         return false;
       }
-      if (auto err = CreateError<TPM1Error>(Tspi_PcrComposite_SetPcrValue(
-              pcrs_handle, bound_pcr, pcr_len, pcr_value.value()))) {
+      if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
+              CreateError<TPM1Error>(Tspi_PcrComposite_SetPcrValue(
+                  pcrs_handle, bound_pcr, pcr_len, pcr_value.value())))) {
         LOG(ERROR) << __func__
                    << ": Could not set value for PCR in PCRS handle: " << *err;
         return false;
       }
     }
-    if (auto err = CreateError<TPM1Error>(
-            Tspi_PcrComposite_SetPcrLocality(pcrs_handle, kTpmPCRLocality))) {
+    if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+            Tspi_PcrComposite_SetPcrLocality(pcrs_handle, kTpmPCRLocality)))) {
       LOG(ERROR) << __func__
                  << ": Could not set locality for PCRs in PCRS handle: "
                  << *err;
@@ -1307,30 +1335,32 @@ bool TpmImpl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
 
   // Create a delegation family.
   ScopedTssObject<TSS_HDELFAMILY> family(context_handle);
-  if (auto err = CreateError<TPM1Error>(Tspi_TPM_Delegate_AddFamily(
-          tpm_handle, delegate_family_label, family.ptr()))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM1Error>(Tspi_TPM_Delegate_AddFamily(
+              tpm_handle, delegate_family_label, family.ptr())))) {
     LOG(ERROR) << __func__ << ": Failed to create family: " << *err;
     return false;
   }
 
   // Create the delegation.
-  if (auto err = CreateError<TPM1Error>(Tspi_TPM_Delegate_CreateDelegation(
-          tpm_handle, delegate_label, 0, pcrs_handle, family, policy))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM1Error>(Tspi_TPM_Delegate_CreateDelegation(
+              tpm_handle, delegate_label, 0, pcrs_handle, family, policy)))) {
     LOG(ERROR) << __func__ << ": Failed to create delegation: " << *err;
     return false;
   }
 
   // Enable the delegation family.
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_SetAttribUint32(family, TSS_TSPATTRIB_DELFAMILY_STATE,
-                               TSS_TSPATTRIB_DELFAMILYSTATE_ENABLED, TRUE))) {
+                               TSS_TSPATTRIB_DELFAMILYSTATE_ENABLED, TRUE)))) {
     LOG(ERROR) << __func__ << ": Failed to enable family: " << *err;
     return false;
   }
 
   // Save the delegation blob for later.
   SecureBlob delegate;
-  if (TPM1Error err = GetDataAttribute(
+  if (TPMErrorBase err = GetDataAttribute(
           context_handle, policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
           TSS_TSPATTRIB_POLDEL_OWNERBLOB, &delegate)) {
     LOG(ERROR) << __func__ << ": Failed to get delegate blob: " << *err;
@@ -1357,25 +1387,26 @@ bool TpmImpl::Sign(const SecureBlob& key_blob,
 
   // Load the Storage Root Key.
   ScopedTssKey srk_handle(context_handle);
-  if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
+  if (TPMErrorBase err = LoadSrk(context_handle, srk_handle.ptr())) {
     LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
     return false;
   }
 
   // Load the key (which should be wrapped by the SRK).
   ScopedTssKey key_handle(context_handle);
-  if (auto err = CreateError<TPM1Error>(Tspi_Context_LoadKeyByBlob(
-          context_handle, srk_handle, key_blob.size(),
-          const_cast<BYTE*>(key_blob.data()), key_handle.ptr()))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM1Error>(Tspi_Context_LoadKeyByBlob(
+              context_handle, srk_handle, key_blob.size(),
+              const_cast<BYTE*>(key_blob.data()), key_handle.ptr())))) {
     LOG(ERROR) << __func__ << ": Failed to load key: " << *err;
     return false;
   }
 
   // Create a hash object to hold the input.
   ScopedTssObject<TSS_HHASH> hash_handle(context_handle);
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_HASH,
-                                    TSS_HASH_OTHER, hash_handle.ptr()))) {
+                                    TSS_HASH_OTHER, hash_handle.ptr())))) {
     LOG(ERROR) << __func__ << ": Failed to create hash object: " << *err;
     return false;
   }
@@ -1386,17 +1417,18 @@ bool TpmImpl::Sign(const SecureBlob& key_blob,
   SecureBlob der_encoded_input = SecureBlob::Combine(der_header, Sha256(input));
 
   // Don't hash anything, just push the input data into the hash object.
-  if (auto err = CreateError<TPM1Error>(Tspi_Hash_SetHashValue(
-          hash_handle, der_encoded_input.size(),
-          const_cast<BYTE*>(der_encoded_input.data())))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_Hash_SetHashValue(
+              hash_handle, der_encoded_input.size(),
+              const_cast<BYTE*>(der_encoded_input.data()))))) {
     LOG(ERROR) << __func__ << ": Failed to set hash data: " << *err;
     return false;
   }
 
   UINT32 length = 0;
   ScopedTssMemory buffer(context_handle);
-  if (auto err = CreateError<TPM1Error>(
-          Tspi_Hash_Sign(hash_handle, key_handle, &length, buffer.ptr()))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+          Tspi_Hash_Sign(hash_handle, key_handle, &length, buffer.ptr())))) {
     LOG(ERROR) << __func__ << ": Failed to generate signature: " << *err;
     return false;
   }
@@ -1422,16 +1454,16 @@ bool TpmImpl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
 
   // Load the Storage Root Key.
   ScopedTssKey srk_handle(context_handle);
-  if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
+  if (TPMErrorBase err = LoadSrk(context_handle, srk_handle.ptr())) {
     LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
     return false;
   }
 
   // Create a PCRS object to hold pcr_index and pcr_value.
   ScopedTssPcrs pcrs(context_handle);
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_PCRS,
-                                    TSS_PCRS_STRUCT_INFO, pcrs.ptr()))) {
+                                    TSS_PCRS_STRUCT_INFO, pcrs.ptr())))) {
     LOG(ERROR) << __func__ << ": Failed to create PCRS object: " << *err;
     return false;
   }
@@ -1468,33 +1500,34 @@ bool TpmImpl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
       init_flags |= TSS_KEY_TYPE_LEGACY;
       break;
   }
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_RSAKEY,
-                                    init_flags, pcr_bound_key.ptr()))) {
+                                    init_flags, pcr_bound_key.ptr())))) {
     LOG(ERROR) << __func__ << ": Failed to create object: " << *err;
     return false;
   }
 
-  if (auto err = CreateError<TPM1Error>(Tspi_SetAttribUint32(
-          pcr_bound_key, TSS_TSPATTRIB_KEY_INFO,
-          TSS_TSPATTRIB_KEYINFO_SIGSCHEME, TSS_SS_RSASSAPKCS1V15_DER))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_SetAttribUint32(
+              pcr_bound_key, TSS_TSPATTRIB_KEY_INFO,
+              TSS_TSPATTRIB_KEYINFO_SIGSCHEME, TSS_SS_RSASSAPKCS1V15_DER)))) {
     LOG(ERROR) << __func__ << ": Failed to set signature scheme: " << *err;
     return false;
   }
-  if (auto err = CreateError<TPM1Error>(
-          Tspi_Key_CreateKey(pcr_bound_key, srk_handle, pcrs))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+          Tspi_Key_CreateKey(pcr_bound_key, srk_handle, pcrs)))) {
     LOG(ERROR) << __func__ << ": Failed to create key: " << *err;
     return false;
   }
-  if (auto err =
-          CreateError<TPM1Error>(Tspi_Key_LoadKey(pcr_bound_key, srk_handle))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+          Tspi_Key_LoadKey(pcr_bound_key, srk_handle)))) {
     LOG(ERROR) << __func__ << ": Failed to load key: " << *err;
     return false;
   }
 
   // Get the public key.
   SecureBlob public_key;
-  if (TPM1Error err = GetDataAttribute(
+  if (TPMErrorBase err = GetDataAttribute(
           context_handle, pcr_bound_key, TSS_TSPATTRIB_KEY_BLOB,
           TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, &public_key)) {
     LOG(ERROR) << __func__ << ": Failed to read public key: " << *err;
@@ -1505,9 +1538,9 @@ bool TpmImpl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
   }
 
   // Get the key blob so we can load it later.
-  if (TPM1Error err = GetDataAttribute(context_handle, pcr_bound_key,
-                                       TSS_TSPATTRIB_KEY_BLOB,
-                                       TSS_TSPATTRIB_KEYBLOB_BLOB, key_blob)) {
+  if (TPMErrorBase err = GetDataAttribute(
+          context_handle, pcr_bound_key, TSS_TSPATTRIB_KEY_BLOB,
+          TSS_TSPATTRIB_KEYBLOB_BLOB, key_blob)) {
     LOG(ERROR) << __func__ << ": Failed to read key blob: " << *err;
     return false;
   }
@@ -1525,22 +1558,23 @@ bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
   }
 
   ScopedTssKey srk_handle(context_handle);
-  if (TPM1Error err = LoadSrk(context_handle, srk_handle.ptr())) {
+  if (TPMErrorBase err = LoadSrk(context_handle, srk_handle.ptr())) {
     LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
     return false;
   }
 
   ScopedTssKey key(context_handle);
-  if (auto err = CreateError<TPM1Error>(Tspi_Context_LoadKeyByBlob(
-          context_handle, srk_handle, key_blob.size(),
-          const_cast<BYTE*>(key_blob.data()), key.ptr()))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM1Error>(Tspi_Context_LoadKeyByBlob(
+              context_handle, srk_handle, key_blob.size(),
+              const_cast<BYTE*>(key_blob.data()), key.ptr())))) {
     LOG(ERROR) << __func__ << ": Failed to load key: " << *err;
     return false;
   }
 
   // Check that |pcr_index| is selected.
   SecureBlob pcr_selection_blob;
-  if (TPM1Error err = GetDataAttribute(
+  if (TPMErrorBase err = GetDataAttribute(
           context_handle, key, TSS_TSPATTRIB_KEY_PCR,
           TSS_TSPATTRIB_KEYPCR_SELECTION, &pcr_selection_blob)) {
     LOG(ERROR) << __func__
@@ -1585,7 +1619,7 @@ bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
 
   // Check that the PCR value matches the key creation PCR value.
   SecureBlob pcr_at_creation;
-  if (TPM1Error err = GetDataAttribute(
+  if (TPMErrorBase err = GetDataAttribute(
           context_handle, key, TSS_TSPATTRIB_KEY_PCR,
           TSS_TSPATTRIB_KEYPCR_DIGEST_ATCREATION, &pcr_at_creation)) {
     LOG(ERROR) << __func__ << ": Failed to read PCR value at key creation"
@@ -1600,7 +1634,7 @@ bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
 
   // Check that the PCR value matches the PCR value required to use the key.
   SecureBlob pcr_at_release;
-  if (TPM1Error err = GetDataAttribute(
+  if (TPMErrorBase err = GetDataAttribute(
           context_handle, key, TSS_TSPATTRIB_KEY_PCR,
           TSS_TSPATTRIB_KEYPCR_DIGEST_ATRELEASE, &pcr_at_release)) {
     LOG(ERROR) << __func__
@@ -1625,9 +1659,10 @@ bool TpmImpl::ExtendPCR(uint32_t pcr_index, const brillo::Blob& extension) {
   Blob mutable_extension = extension;
   UINT32 new_pcr_value_length = 0;
   ScopedTssMemory new_pcr_value(context_handle);
-  if (auto err = CreateError<TPM1Error>(Tspi_TPM_PcrExtend(
-          tpm_handle, pcr_index, extension.size(), mutable_extension.data(),
-          NULL, &new_pcr_value_length, new_pcr_value.ptr()))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_TPM_PcrExtend(
+              tpm_handle, pcr_index, extension.size(), mutable_extension.data(),
+              NULL, &new_pcr_value_length, new_pcr_value.ptr())))) {
     LOG(ERROR) << "Failed to extend PCR " << pcr_index << ": " << *err;
     return false;
   }
@@ -1643,8 +1678,9 @@ bool TpmImpl::ReadPCR(uint32_t pcr_index, brillo::Blob* pcr_value) {
   }
   UINT32 pcr_len = 0;
   ScopedTssMemory pcr_value_buffer(context_handle);
-  if (auto err = CreateError<TPM1Error>(Tspi_TPM_PcrRead(
-          tpm_handle, pcr_index, &pcr_len, pcr_value_buffer.ptr()))) {
+  if (TPMErrorBase err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_TPM_PcrRead(
+              tpm_handle, pcr_index, &pcr_len, pcr_value_buffer.ptr())))) {
     LOG(ERROR) << "Could not read PCR " << pcr_index << ": " << *err;
     return false;
   }
@@ -1653,15 +1689,15 @@ bool TpmImpl::ReadPCR(uint32_t pcr_index, brillo::Blob* pcr_value) {
   return true;
 }
 
-TPM1Error TpmImpl::GetDataAttribute(TSS_HCONTEXT context,
-                                    TSS_HOBJECT object,
-                                    TSS_FLAG flag,
-                                    TSS_FLAG sub_flag,
-                                    SecureBlob* data) const {
+TPMErrorBase TpmImpl::GetDataAttribute(TSS_HCONTEXT context,
+                                       TSS_HOBJECT object,
+                                       TSS_FLAG flag,
+                                       TSS_FLAG sub_flag,
+                                       SecureBlob* data) const {
   UINT32 length = 0;
   ScopedTssMemory buf(context);
-  if (auto err = CreateError<TPM1Error>(
-          Tspi_GetAttribData(object, flag, sub_flag, &length, buf.ptr()))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+          Tspi_GetAttribData(object, flag, sub_flag, &length, buf.ptr())))) {
     LOG(ERROR) << "Failed to read object attribute: " << *err;
     return err;
   }
@@ -1726,8 +1762,8 @@ bool TpmImpl::WrapRsaKey(const SecureBlob& public_modulus,
                          SecureBlob* wrapped_key) {
   // Load the Storage Root Key
   trousers::ScopedTssKey srk_handle(tpm_context_.value());
-  if (TPM1Error err = LoadSrk(tpm_context_.value(), srk_handle.ptr())) {
-    if (err->ErrorCode() != kKeyNotFoundError) {
+  if (TPMErrorBase err = LoadSrk(tpm_context_.value(), srk_handle.ptr())) {
+    if (GetErrorCode(err) != kKeyNotFoundError) {
       LOG(ERROR) << __func__ << ": Failed to load SRK: " << *err;
     }
     return false;
@@ -1737,8 +1773,8 @@ bool TpmImpl::WrapRsaKey(const SecureBlob& public_modulus,
   // is not available.
   unsigned int size_n;
   trousers::ScopedTssMemory public_srk(tpm_context_.value());
-  if (auto err = CreateError<TPM1Error>(
-          Tspi_Key_GetPubKey(srk_handle, &size_n, public_srk.ptr()))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+          Tspi_Key_GetPubKey(srk_handle, &size_n, public_srk.ptr())))) {
     LOG(ERROR) << __func__ << ": Cannot load SRK pub key: " << *err;
     return false;
   }
@@ -1747,9 +1783,10 @@ bool TpmImpl::WrapRsaKey(const SecureBlob& public_modulus,
   TSS_FLAG init_flags = TSS_KEY_TYPE_LEGACY | TSS_KEY_VOLATILE |
                         TSS_KEY_MIGRATABLE | kDefaultTpmRsaKeyFlag;
   trousers::ScopedTssKey local_key_handle(tpm_context_.value());
-  if (auto err = CreateError<TPM1Error>(Tspi_Context_CreateObject(
-          tpm_context_.value(), TSS_OBJECT_TYPE_RSAKEY, init_flags,
-          local_key_handle.ptr()))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM1Error>(Tspi_Context_CreateObject(
+              tpm_context_.value(), TSS_OBJECT_TYPE_RSAKEY, init_flags,
+              local_key_handle.ptr())))) {
     LOG(ERROR) << __func__
                << ": Error calling Tspi_Context_CreateObject: " << *err;
     return false;
@@ -1757,17 +1794,17 @@ bool TpmImpl::WrapRsaKey(const SecureBlob& public_modulus,
 
   // Set the attributes
   UINT32 sig_scheme = TSS_SS_RSASSAPKCS1V15_DER;
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_SetAttribUint32(local_key_handle, TSS_TSPATTRIB_KEY_INFO,
-                               TSS_TSPATTRIB_KEYINFO_SIGSCHEME, sig_scheme))) {
+                               TSS_TSPATTRIB_KEYINFO_SIGSCHEME, sig_scheme)))) {
     LOG(ERROR) << __func__ << ": Error calling Tspi_SetAttribUint32: " << *err;
     return false;
   }
 
   UINT32 enc_scheme = TSS_ES_RSAESPKCSV15;
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_SetAttribUint32(local_key_handle, TSS_TSPATTRIB_KEY_INFO,
-                               TSS_TSPATTRIB_KEYINFO_ENCSCHEME, enc_scheme))) {
+                               TSS_TSPATTRIB_KEYINFO_ENCSCHEME, enc_scheme)))) {
     LOG(ERROR) << __func__ << ": Error calling Tspi_SetAttribUint32: " << *err;
     return false;
   }
@@ -1781,38 +1818,38 @@ bool TpmImpl::WrapRsaKey(const SecureBlob& public_modulus,
     LOG(ERROR) << __func__ << ": Error creating policy object";
     return false;
   }
-  if (auto err = CreateError<TPM1Error>(
-          Tspi_Policy_AssignToObject(policy_handle, local_key_handle))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+          Tspi_Policy_AssignToObject(policy_handle, local_key_handle)))) {
     LOG(ERROR) << __func__ << ": Error assigning migration policy: " << *err;
     return false;
   }
 
   SecureBlob mutable_modulus(public_modulus.begin(), public_modulus.end());
   BYTE* public_modulus_buffer = static_cast<BYTE*>(mutable_modulus.data());
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_SetAttribData(local_key_handle, TSS_TSPATTRIB_RSAKEY_INFO,
                              TSS_TSPATTRIB_KEYINFO_RSA_MODULUS,
-                             public_modulus.size(), public_modulus_buffer))) {
+                             public_modulus.size(), public_modulus_buffer)))) {
     LOG(ERROR) << __func__ << ": Error setting RSA modulus: " << *err;
     return false;
   }
   SecureBlob mutable_factor(prime_factor.begin(), prime_factor.end());
   BYTE* prime_factor_buffer = static_cast<BYTE*>(mutable_factor.data());
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_SetAttribData(local_key_handle, TSS_TSPATTRIB_KEY_BLOB,
                              TSS_TSPATTRIB_KEYBLOB_PRIVATE_KEY,
-                             prime_factor.size(), prime_factor_buffer))) {
+                             prime_factor.size(), prime_factor_buffer)))) {
     LOG(ERROR) << __func__ << ": Error setting private key: " << *err;
     return false;
   }
 
-  if (auto err = CreateError<TPM1Error>(
-          Tspi_Key_WrapKey(local_key_handle, srk_handle, 0))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+          Tspi_Key_WrapKey(local_key_handle, srk_handle, 0)))) {
     LOG(ERROR) << __func__ << ": Error wrapping RSA key: " << *err;
     return false;
   }
 
-  if (TPM1Error err =
+  if (TPMErrorBase err =
           GetKeyBlob(tpm_context_.value(), local_key_handle, wrapped_key)) {
     LOG(ERROR) << "Failed to GetKeyBlob: " << *err;
     return false;
@@ -1826,14 +1863,13 @@ bool TpmImpl::CreateWrappedEccKey(SecureBlob* wrapped_key) {
   return false;
 }
 
-TPM1Error TpmImpl::GetKeyBlob(TSS_HCONTEXT context_handle,
-                              TSS_HKEY key_handle,
-                              SecureBlob* data_out) const {
-  if (TPM1Error err =
+TPMErrorBase TpmImpl::GetKeyBlob(TSS_HCONTEXT context_handle,
+                                 TSS_HKEY key_handle,
+                                 SecureBlob* data_out) const {
+  if (TPMErrorBase err =
           GetDataAttribute(context_handle, key_handle, TSS_TSPATTRIB_KEY_BLOB,
                            TSS_TSPATTRIB_KEYBLOB_BLOB, data_out)) {
-    LOG(ERROR) << __func__ << ": Failed to get key blob " << *err;
-    return err;
+    return WrapError<TPMError>(std::move(err), "Failed to get key blob");
   }
 
   return nullptr;
@@ -1844,8 +1880,8 @@ TPMErrorBase TpmImpl::LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
   CHECK(key_handle);
   // Load the Storage Root Key
   trousers::ScopedTssKey srk_handle(tpm_context_.value());
-  if (TPM1Error err = LoadSrk(tpm_context_.value(), srk_handle.ptr())) {
-    if (err->ErrorCode() != kKeyNotFoundError) {
+  if (TPMErrorBase err = LoadSrk(tpm_context_.value(), srk_handle.ptr())) {
+    if (GetErrorCode(err) != kKeyNotFoundError) {
       ReportCryptohomeError(kCannotLoadTpmSrk);
     }
     return WrapError<TPMError>(std::move(err), "Failed to load SRK");
@@ -1855,18 +1891,19 @@ TPMErrorBase TpmImpl::LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
   // is not available.
   {
     SecureBlob pubkey;
-    if (TPM1Error err =
+    if (TPMErrorBase err =
             GetPublicKeyBlob(tpm_context_.value(), srk_handle, &pubkey)) {
       ReportCryptohomeError(kCannotReadTpmSrkPublic);
       return WrapError<TPMError>(std::move(err), "Cannot load SRK public key");
     }
   }
   TpmKeyHandle local_key_handle;
-  if (auto err = CreateError<TPM1Error>(Tspi_Context_LoadKeyByBlob(
-          tpm_context_.value(), srk_handle, wrapped_key.size(),
-          const_cast<BYTE*>(wrapped_key.data()), &local_key_handle))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM1Error>(Tspi_Context_LoadKeyByBlob(
+              tpm_context_.value(), srk_handle, wrapped_key.size(),
+              const_cast<BYTE*>(wrapped_key.data()), &local_key_handle)))) {
     ReportCryptohomeError(kCannotLoadTpmKey);
-    if (err->ErrorCode() == TPM_E_BAD_KEY_PROPERTY) {
+    if (GetErrorCode(err) == TPM_E_BAD_KEY_PROPERTY) {
       ReportCryptohomeError(kTpmBadKeyProperty);
     }
     return WrapError<TPMError>(std::move(err), "Cannot load key from blob");
@@ -1874,7 +1911,7 @@ TPMErrorBase TpmImpl::LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
 
   SecureBlob pub_key;
   // Make sure that we can get the public key
-  if (TPM1Error err =
+  if (TPMErrorBase err =
           GetPublicKeyBlob(tpm_context_.value(), local_key_handle, &pub_key)) {
     ReportCryptohomeError(kCannotReadTpmPublicKey);
     Tspi_Context_CloseObject(tpm_context_.value(), local_key_handle);
@@ -1889,15 +1926,16 @@ bool TpmImpl::LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
                                       brillo::SecureBlob* key_blob) {
   CHECK(key_handle);
   TpmKeyHandle local_key_handle;
-  if (auto err = CreateError<TPM1Error>(Tspi_Context_LoadKeyByUUID(
-          tpm_context_.value(), TSS_PS_TYPE_SYSTEM, kCryptohomeWellKnownUuid,
-          &local_key_handle))) {
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM1Error>(Tspi_Context_LoadKeyByUUID(
+              tpm_context_.value(), TSS_PS_TYPE_SYSTEM,
+              kCryptohomeWellKnownUuid, &local_key_handle)))) {
     LOG(ERROR) << __func__ << ": failed LoadKeyByUUID: " << *err;
     return false;
   }
 
   if (key_blob) {
-    if (TPM1Error err =
+    if (TPMErrorBase err =
             GetKeyBlob(tpm_context_.value(), local_key_handle, key_blob)) {
       LOG(ERROR) << __func__ << ": failed to GetKeyBlob: " << *err;
       Tspi_Context_CloseObject(tpm_context_.value(), local_key_handle);
@@ -1984,9 +2022,9 @@ bool TpmImpl::GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) {
   uint8_t kRequest[] = {0x11, 0x00, 0x00};
   uint32_t response_size;
   ScopedTssMemory response(context_handle);
-  if (auto err = CreateError<TPM1Error>(
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
           Tspi_TPM_FieldUpgrade(tpm_handle, sizeof(kRequest), kRequest,
-                                &response_size, response.ptr()))) {
+                                &response_size, response.ptr())))) {
     LOG(ERROR) << "Error calling Tspi_TPM_FieldUpgrade: " << *err;
     return false;
   }
@@ -2043,9 +2081,9 @@ bool TpmImpl::SetDelegateData(const brillo::Blob& delegate_blob,
   // TODO(b/169392230): Fix the potential memory leak while migrating to tpm
   // manager.
 
-  if (auto err =
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM1Error>(Trspi_UnloadBlob_TPM_DELEGATE_OWNER_BLOB(
-              &offset, const_cast<BYTE*>(delegate_blob.data()), &ownerBlob))) {
+              &offset, const_cast<BYTE*>(delegate_blob.data()), &ownerBlob)))) {
     LOG(ERROR) << __func__ << ": Failed to unload delegate blob: " << *err;
     return false;
   }

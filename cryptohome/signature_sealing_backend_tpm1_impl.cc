@@ -396,7 +396,7 @@ bool ObtainCmkMigrationSignatureTicket(
     return false;
   }
   SecureBlob local_cmk_migration_signature_ticket;
-  if (TPM1Error err = tpm->GetDataAttribute(
+  if (TPMErrorBase err = tpm->GetDataAttribute(
           tpm_context, migdata_handle, TSS_MIGATTRIB_TICKET_DATA,
           TSS_MIGATTRIB_TICKET_SIG_TICKET,
           &local_cmk_migration_signature_ticket)) {
@@ -527,7 +527,7 @@ bool MigrateCmk(TpmImpl* tpm,
       migration_random_buf.value(),
       migration_random_buf.value() + migration_random_buf_size);
   SecureBlob local_migrated_cmk_key12_blob;
-  if (TPM1Error err = tpm->GetDataAttribute(
+  if (TPMErrorBase err = tpm->GetDataAttribute(
           tpm_context, migdata_handle, TSS_MIGATTRIB_MIGRATIONBLOB,
           TSS_MIGATTRIB_MIG_XOR_BLOB, &local_migrated_cmk_key12_blob)) {
     LOG(ERROR) << "Failed to read the migrated key blob " << *err;
@@ -592,7 +592,7 @@ bool ObtainMaApprovalTicket(TpmImpl* const tpm,
     return false;
   }
   SecureBlob local_ma_approval_ticket;
-  if (TPM1Error err = tpm->GetDataAttribute(
+  if (TPMErrorBase err = tpm->GetDataAttribute(
           tpm_context, migdata_handle, TSS_MIGATTRIB_AUTHORITY_DATA,
           TSS_MIGATTRIB_AUTHORITY_APPROVAL_HMAC, &local_ma_approval_ticket)) {
     LOG(ERROR) << "Error reading migration authority approval ticket: " << *err;
@@ -909,7 +909,7 @@ bool GenerateCmk(TpmImpl* const tpm,
     return false;
   }
   SecureBlob local_cmk_pubkey;
-  if (TPM1Error err = tpm->GetDataAttribute(
+  if (TPMErrorBase err = tpm->GetDataAttribute(
           tpm_context, cmk_handle, TSS_TSPATTRIB_KEY_BLOB,
           TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, &local_cmk_pubkey)) {
     LOG(ERROR) << "Failed to read the certified migratable public key: "
@@ -919,7 +919,7 @@ bool GenerateCmk(TpmImpl* const tpm,
   // TODO(emaxx): Replace with a direct usage of Blob for the attribute read.
   cmk_pubkey->assign(local_cmk_pubkey.begin(), local_cmk_pubkey.end());
   SecureBlob local_srk_wrapped_cmk;
-  if (TPM1Error err = tpm->GetDataAttribute(
+  if (TPMErrorBase err = tpm->GetDataAttribute(
           tpm_context, cmk_handle, TSS_TSPATTRIB_KEY_BLOB,
           TSS_TSPATTRIB_KEYBLOB_BLOB, &local_srk_wrapped_cmk)) {
     LOG(ERROR) << "Failed to read the certified migratable key: " << *err;
@@ -1016,7 +1016,7 @@ TPMErrorBase UnsealingSessionTpm1Impl::Unseal(
   }
   // Load the required keys into Trousers.
   ScopedTssKey srk_handle(tpm_context);
-  if (TPM1Error err = tpm_->LoadSrk(tpm_context, srk_handle.ptr())) {
+  if (TPMErrorBase err = tpm_->LoadSrk(tpm_context, srk_handle.ptr())) {
     return WrapError<TPMError>(std::move(err), "Failed to load the SRK");
   }
   int protection_key_size_bits = 0;
@@ -1168,7 +1168,7 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   }
   // Load the SRK.
   ScopedTssKey srk_handle(tpm_context);
-  if (TPM1Error err = tpm_->LoadSrk(tpm_context, srk_handle.ptr())) {
+  if (TPMErrorBase err = tpm_->LoadSrk(tpm_context, srk_handle.ptr())) {
     return WrapError<TPMError>(std::move(err), "Failed to load the SRK");
   }
   // Generate the Certified Migratable Key, associated with the protection

@@ -154,8 +154,8 @@ class TpmImpl : public Tpm {
                                       TSS_HPOLICY* policy_handle);
 
   // Gets a handle to the SRK.
-  hwsec::error::TPM1Error LoadSrk(TSS_HCONTEXT context_handle,
-                                  TSS_HKEY* srk_handle);
+  hwsec::error::TPMErrorBase LoadSrk(TSS_HCONTEXT context_handle,
+                                     TSS_HKEY* srk_handle);
 
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
   // its matching TPM object iff the owner password is available and
@@ -171,11 +171,11 @@ class TpmImpl : public Tpm {
                                 TSS_HTPM* tpm_handle);
 
   // Wrapper for Tspi_GetAttribData.
-  hwsec::error::TPM1Error GetDataAttribute(TSS_HCONTEXT context,
-                                           TSS_HOBJECT object,
-                                           TSS_FLAG flag,
-                                           TSS_FLAG sub_flag,
-                                           brillo::SecureBlob* data) const;
+  hwsec::error::TPMErrorBase GetDataAttribute(TSS_HCONTEXT context,
+                                              TSS_HOBJECT object,
+                                              TSS_FLAG flag,
+                                              TSS_FLAG sub_flag,
+                                              brillo::SecureBlob* data) const;
 
   // Creates Trousers key object for the RSA public key, given its public
   // modulus in |key_modulus|, creation flags in |key_flags|, signature scheme
@@ -221,17 +221,18 @@ class TpmImpl : public Tpm {
                        bool has_reset_lock_permissions);
 
   // Connects to the TPM and return its context at |context_handle|.
-  hwsec::error::TPM1Error OpenAndConnectTpm(TSS_HCONTEXT* context_handle);
+  hwsec::error::TPMErrorBase OpenAndConnectTpm(TSS_HCONTEXT* context_handle);
 
   // Gets the Public Key blob associated with |key_handle|.
-  hwsec::error::TPM1Error GetPublicKeyBlob(TSS_HCONTEXT context_handle,
-                                           TSS_HKEY key_handle,
-                                           brillo::SecureBlob* data_out) const;
+  hwsec::error::TPMErrorBase GetPublicKeyBlob(
+      TSS_HCONTEXT context_handle,
+      TSS_HKEY key_handle,
+      brillo::SecureBlob* data_out) const;
 
   // Gets the key blob associated with |key_handle|.
-  hwsec::error::TPM1Error GetKeyBlob(TSS_HCONTEXT context_handle,
-                                     TSS_HKEY key_handle,
-                                     brillo::SecureBlob* data_out) const;
+  hwsec::error::TPMErrorBase GetKeyBlob(TSS_HCONTEXT context_handle,
+                                        TSS_HKEY key_handle,
+                                        brillo::SecureBlob* data_out) const;
 
   // Tries to connect to the TPM
   TSS_HCONTEXT ConnectContext();
