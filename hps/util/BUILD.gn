@@ -8,14 +8,6 @@ group("all") {
   deps = [ ":hps" ]
 }
 
-pkg_config("target_defaults") {
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-    "libusb-1.0",
-  ]
-}
-
 executable("hps") {
   sources = [
     "boot.cc",
@@ -28,12 +20,10 @@ executable("hps") {
     "watch.cc",
   ]
 
-  configs += [ ":target_defaults" ]
-
-  libs = [ "ftdi1" ]
-
-  deps = [
-    "//hps:fakedev",
-    "//hps:hpslib",
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
   ]
+
+  deps = [ "//hps:hpslib" ]
 }

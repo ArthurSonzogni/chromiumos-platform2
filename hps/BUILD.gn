@@ -24,13 +24,15 @@ generate_dbus_adaptors("hpsd-adaptors") {
 }
 
 executable("hpsd") {
-  sources = [
-    "daemon/dbus_adaptor.cc",
-    "daemon/hps_daemon.cc",
-    "daemon/main.cc",
+  sources = [ "daemon/main.cc" ]
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
   ]
-  libs = [ "system_api-hps-protos" ]
+  deps = [ ":hpsdlib" ]
+}
 
+pkg_config("hpsdlib_config") {
   # system_api depends on protobuf (or protobuf-lite). It must appear
   # before protobuf here or the linker flags won't be in the right
   # order.
@@ -41,31 +43,36 @@ executable("hpsd") {
     "system_api",
     "protobuf-lite",
   ]
+  libs = [ "system_api-hps-protos" ]
+}
+
+static_library("hpsdlib") {
+  sources = [
+    "daemon/dbus_adaptor.cc",
+    "daemon/hps_daemon.cc",
+  ]
+  public_configs = [ ":hpsdlib_config" ]
   deps = [
-    ":fakedev",
     ":hpsd-adaptors",
     ":hpslib",
   ]
 }
 
-static_library("hpslib") {
-  sources = [
-    "hps_impl.cc",
-    "hps_metrics.cc",
-  ]
+pkg_config("hpslib_config") {
   pkg_deps = [
     "libchrome",
+    "libftdi1",
     "libmetrics",
-  ]
-
-  deps = [
-    ":dev",
-    ":hal",
+    "libusb-1.0",
   ]
 }
 
-static_library("hal") {
+static_library("hpslib") {
   sources = [
+    "dev.cc",
+    "dev.h",
+    "hal/fake_dev.cc",
+    "hal/fake_dev.h",
     "hal/ftdi.cc",
     "hal/ftdi.h",
     "hal/i2c.cc",
@@ -76,34 +83,12 @@ static_library("hal") {
     "hal/retry.h",
     "hal/uart.cc",
     "hal/uart.h",
-  ]
-  pkg_deps = [
-    "libchrome",
-    "libftdi1",
-    "libusb-1.0",
-  ]
-
-  deps = [ ":dev" ]
-}
-
-static_library("fakedev") {
-  sources = [
-    "hal/fake_dev.cc",
-    "hal/fake_dev.h",
-  ]
-  pkg_deps = [ "libchrome" ]
-
-  deps = [ ":dev" ]
-}
-
-static_library("dev") {
-  sources = [
-    "dev.cc",
-    "dev.h",
+    "hps_impl.cc",
+    "hps_metrics.cc",
     "hps_reg.h",
     "utils.cc",
   ]
-  pkg_deps = [ "libchrome" ]
+  public_configs = [ ":hpslib_config" ]
 }
 
 if (use.test) {
@@ -112,7 +97,7 @@ if (use.test) {
     configs += [ "//common-mk:test" ]
     pkg_deps = [ "libchrome" ]
     deps = [
-      ":dev",
+      ":hpslib",
       "//common-mk/testrunner:testrunner",
     ]
   }
@@ -122,7 +107,6 @@ if (use.test) {
     configs += [ "//common-mk:test" ]
     pkg_deps = [ "libchrome" ]
     deps = [
-      ":fakedev",
       ":hpslib",
       "//common-mk/testrunner:testrunner",
     ]
@@ -139,27 +123,11 @@ if (use.test) {
   }
 
   executable("hps_daemon_test") {
-    sources = [
-      "daemon/dbus_adaptor.cc",
-      "daemon/hps_daemon.cc",
-      "daemon/hps_daemon_test.cc",
-    ]
-    libs = [ "system_api-hps-protos" ]
+    sources = [ "daemon/hps_daemon_test.cc" ]
     configs += [ "//common-mk:test" ]
 
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    # NOSORT
-    pkg_deps = [
-      "libbrillo",
-      "libchrome",
-      "system_api",
-      "protobuf-lite",
-    ]
     deps = [
-      ":dev",
-      ":hpslib",
+      ":hpsdlib",
       "//common-mk/testrunner:testrunner",
     ]
   }
