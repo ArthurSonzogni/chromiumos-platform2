@@ -9,12 +9,11 @@
 #include <memory>
 #include <ostream>
 #include <string>
+#include <utility>
 
 #include <base/macros.h>
 
-#include "hardware_verifier/hw_verification_spec_getter.h"
-#include "hardware_verifier/probe_result_getter.h"
-#include "hardware_verifier/verifier.h"
+#include "hardware_verifier/hw_verification_report_getter.h"
 
 namespace hardware_verifier {
 
@@ -75,13 +74,15 @@ class CLI {
                             const CLIOutputFormat output_format,
                             bool pii);
 
- private:
-  friend class CLITest;
+ protected:
+  // This constructor is reserved only for testing.
+  CLI(std::unique_ptr<HwVerificationReportGetter> vr_getter,
+      std::ostream* output_stream)
+      : vr_getter_(std::move(vr_getter)), output_stream_(output_stream) {}
 
+ private:
   // Dependent classes.
-  std::unique_ptr<ProbeResultGetter> pr_getter_;
-  std::unique_ptr<HwVerificationSpecGetter> vp_getter_;
-  std::unique_ptr<Verifier> verifier_;
+  std::unique_ptr<HwVerificationReportGetter> vr_getter_;
 
   // Instance to the output stream, default to |std::cout|.
   std::ostream* output_stream_;

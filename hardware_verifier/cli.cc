@@ -8,6 +8,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
@@ -18,14 +19,34 @@
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
 #include "hardware_verifier/hardware_verifier.pb.h"
-#include "hardware_verifier/hw_verification_spec_getter_impl.h"
+#include "hardware_verifier/hw_verification_report_getter_impl.h"
 #include "hardware_verifier/observer.h"
-#include "hardware_verifier/probe_result_getter_impl.h"
-#include "hardware_verifier/verifier_impl.h"
 
 namespace hardware_verifier {
 
 namespace {
+
+using ReportGetterErrorCode = HwVerificationReportGetter::ErrorCode;
+
+CLIVerificationResult
+ConvertHwVerificationReportGetterErrorCodeToCLIVerificationResult(
+    ReportGetterErrorCode error_code) {
+  switch (error_code) {
+    case ReportGetterErrorCode::kErrorCodeNoError:
+      return CLIVerificationResult::kPass;
+    case ReportGetterErrorCode::kErrorCodeInvalidHwVerificationSpecFile:
+      return CLIVerificationResult::kInvalidHwVerificationSpecFile;
+    case ReportGetterErrorCode::kErrorCodeInvalidProbeResultFile:
+      return CLIVerificationResult::kInvalidProbeResultFile;
+    case ReportGetterErrorCode::kErrorCodeProbeFail:
+      return CLIVerificationResult::kProbeFail;
+    case ReportGetterErrorCode::
+        kErrorCodeProbeResultHwVerificationSpecMisalignment:
+      return CLIVerificationResult::kProbeResultHwVerificationSpecMisalignment;
+    default:
+      return CLIVerificationResult::kUnknownError;
+  }
+}
 
 base::Optional<std::string> OutputInTextFormat(
     HwVerificationReport hw_verification_report, bool pii) {
@@ -66,68 +87,35 @@ base::Optional<std::string> OutputInTextFormat(
 }  // namespace
 
 CLI::CLI()
-    : pr_getter_(std::make_unique<ProbeResultGetterImpl>()),
-      vp_getter_(std::make_unique<HwVerificationSpecGetterImpl>()),
-      verifier_(std::make_unique<VerifierImpl>()),
+    : vr_getter_(std::make_unique<HwVerificationReportGetterImpl>()),
       output_stream_(&std::cout) {}
 
 CLIVerificationResult CLI::Run(const std::string& probe_result_file,
                                const std::string& hw_verification_spec_file,
                                const CLIOutputFormat output_format,
                                bool pii) {
-  LOG(INFO) << "Get the verification payload.";
-  base::Optional<HwVerificationSpec> hw_verification_spec;
-  if (hw_verification_spec_file.empty()) {
-    hw_verification_spec = vp_getter_->GetDefault();
-  } else {
-    hw_verification_spec =
-        vp_getter_->GetFromFile(base::FilePath(hw_verification_spec_file));
+  ReportGetterErrorCode error_code;
+  auto hw_verification_report = vr_getter_->Get(
+      probe_result_file, hw_verification_spec_file, &error_code);
+  if (error_code != ReportGetterErrorCode::kErrorCodeNoError) {
+    return ConvertHwVerificationReportGetterErrorCodeToCLIVerificationResult(
+        error_code);
   }
-  if (!hw_verification_spec) {
-    return CLIVerificationResult::kInvalidHwVerificationSpecFile;
-  }
-
-  LOG(INFO) << "Get the probe result.";
-  base::Optional<runtime_probe::ProbeResult> probe_result;
-  auto observer = Observer::GetInstance();
-
-  if (probe_result_file.empty()) {
-    observer->StartTimer(hardware_verifier::kMetricTimeToProbe);
-    probe_result = pr_getter_->GetFromRuntimeProbe();
-    observer->StopTimer(hardware_verifier::kMetricTimeToProbe);
-
-    if (!probe_result) {
-      return CLIVerificationResult::kProbeFail;
-    }
-  } else {
-    probe_result = pr_getter_->GetFromFile(base::FilePath(probe_result_file));
-    if (!probe_result) {
-      return CLIVerificationResult::kInvalidProbeResultFile;
-    }
-  }
-
-  LOG(INFO) << "Verify the probe result by the verification payload.";
-  const auto verifier_result =
-      verifier_->Verify(probe_result.value(), hw_verification_spec.value());
-  if (!verifier_result) {
-    return CLIVerificationResult::kProbeResultHwVerificationSpecMisalignment;
-  }
-  auto hw_verification_report = verifier_result.value();
 
   if (!pii) {
     // Remove PII data.
     for (auto& mutable_component :
-         *(hw_verification_report.mutable_found_component_infos())) {
+         *(hw_verification_report->mutable_found_component_infos())) {
       mutable_component.clear_component_uuid();
     }
-    hw_verification_report.clear_generic_device_info();
+    hw_verification_report->clear_generic_device_info();
   }
 
   LOG(INFO) << "Output the report.";
   switch (output_format) {
     case CLIOutputFormat::kProtoBin: {
       std::string s;
-      if (!hw_verification_report.SerializeToString(&s)) {
+      if (!hw_verification_report->SerializeToString(&s)) {
         return CLIVerificationResult::kUnknownError;
       }
       LOG(INFO) << "Output the report in protobuf binary format, " << s.size()
@@ -136,7 +124,7 @@ CLIVerificationResult CLI::Run(const std::string& probe_result_file,
       break;
     }
     case CLIOutputFormat::kText: {
-      auto output_data = OutputInTextFormat(hw_verification_report, pii);
+      auto output_data = OutputInTextFormat(*hw_verification_report, pii);
       if (!output_data.has_value()) {
         return CLIVerificationResult::kUnknownError;
       }
@@ -147,10 +135,12 @@ CLIVerificationResult CLI::Run(const std::string& probe_result_file,
   }
 
   LOG(INFO) << "Send to Observer.";
-  observer->RecordHwVerificationReport(hw_verification_report);
+  auto observer = Observer::GetInstance();
+  observer->RecordHwVerificationReport(*hw_verification_report);
 
-  return (hw_verification_report.is_compliant() ? CLIVerificationResult::kPass
-                                                : CLIVerificationResult::kFail);
+  return (hw_verification_report->is_compliant()
+              ? CLIVerificationResult::kPass
+              : CLIVerificationResult::kFail);
 }
 
 }  // namespace hardware_verifier

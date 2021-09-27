@@ -13,14 +13,16 @@
 
 namespace hardware_verifier {
 
-// Interface that provides ways to retrieve |VerificationPaylaod| messages.
+// Interface that provides ways to retrieve |HwVericationSpec| messages.
 class HwVerificationSpecGetter {
  public:
   virtual ~HwVerificationSpecGetter() = default;
 
-  // Reads the |HwVerificationSpec| message from the default path in rootfs.
+  // Reads the |HwVerificationSpec| message from the default path.
   //
-  // The default path is |/etc/hardware_verifier/verfiication_payload.prototxt|.
+  // The default path is |/etc/hardware_verifier/verification_payload.prototxt|
+  // on the rootfs.  If |cros_debug| is 1, this method will read the spec on the
+  // stateful partition first, then the one on the rootfs.
   //
   // @return A |HwVerificationSpec| message if it succeeds.
   virtual base::Optional<HwVerificationSpec> GetDefault() const = 0;
