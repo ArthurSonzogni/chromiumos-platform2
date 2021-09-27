@@ -297,6 +297,7 @@ void NewL2TPIPsecDriver::OnConnectTimeout() {
 void NewL2TPIPsecDriver::OnBeforeSuspend(const ResultCallback& callback) {
   if (ipsec_connection_ && ipsec_connection_->IsConnectingOrConnected()) {
     ipsec_connection_->Disconnect();
+    NotifyServiceOfFailure(Service::kFailureDisconnect);
   }
   callback.Run(Error(Error::kSuccess));
 }
@@ -311,9 +312,11 @@ void NewL2TPIPsecDriver::OnDefaultPhysicalServiceEvent(
       return;
     case kDefaultPhysicalServiceDown:
       ipsec_connection_->Disconnect();
+      NotifyServiceOfFailure(Service::kFailureDisconnect);
       return;
     case kDefaultPhysicalServiceChanged:
       ipsec_connection_->Disconnect();
+      NotifyServiceOfFailure(Service::kFailureDisconnect);
       return;
     default:
       NOTREACHED();

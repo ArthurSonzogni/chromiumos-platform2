@@ -197,6 +197,41 @@ TEST_F(NewL2TPIPsecDriverTest, ConnectedFailure) {
   EXPECT_EQ(driver_->ipsec_connection(), nullptr);
 }
 
+TEST_F(NewL2TPIPsecDriverTest, DisconnectOnSuspend) {
+  InvokeAndVerifyConnectAsync();
+
+  // Makes it connected.
+  driver_->ipsec_connection()->TriggerConnected("ifname", 123, {});
+  dispatcher_.DispatchPendingEvents();
+
+  EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureDisconnect, _));
+  driver_->OnBeforeSuspend(base::DoNothing());
+}
+
+TEST_F(NewL2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceDown) {
+  InvokeAndVerifyConnectAsync();
+
+  // Makes it connected.
+  driver_->ipsec_connection()->TriggerConnected("ifname", 123, {});
+  dispatcher_.DispatchPendingEvents();
+
+  EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureDisconnect, _));
+  driver_->OnDefaultPhysicalServiceEvent(
+      VPNDriver::kDefaultPhysicalServiceDown);
+}
+
+TEST_F(NewL2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceChanged) {
+  InvokeAndVerifyConnectAsync();
+
+  // Makes it connected.
+  driver_->ipsec_connection()->TriggerConnected("ifname", 123, {});
+  dispatcher_.DispatchPendingEvents();
+
+  EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureDisconnect, _));
+  driver_->OnDefaultPhysicalServiceEvent(
+      VPNDriver::kDefaultPhysicalServiceChanged);
+}
+
 TEST_F(NewL2TPIPsecDriverTest, PropertyStoreAndConfig) {
   Error unused_error;
   const std::string kStorageId = "l2tp-ipsec-test";
