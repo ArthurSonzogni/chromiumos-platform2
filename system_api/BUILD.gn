@@ -38,6 +38,7 @@ group("all") {
     ":system_api-plugin_vm_service-protos",
     ":system_api-power_manager-goprotos",
     ":system_api-power_manager-protos",
+    ":system_api-privacy_screen-protos",
     ":system_api-protos",
     ":system_api-rmad-protos",
     ":system_api-runtime_probe-goprotos",
@@ -518,5 +519,12 @@ proto_library("system_api-fusebox-protos") {
   proto_in_dir = "dbus/fusebox"
   proto_out_dir = "include/fusebox/proto_bindings"
   sources = [ "${proto_in_dir}/fusebox.proto" ]
+  standalone = true
+}
+
+proto_library("system_api-privacy_screen-protos") {
+  proto_in_dir = "dbus/privacy_screen"
+  proto_out_dir = "include/privacy_screen/proto_bindings"
+  sources = [ "${proto_in_dir}/privacy_screen.proto" ]
   standalone = true
 }
