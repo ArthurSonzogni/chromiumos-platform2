@@ -458,12 +458,15 @@ class TestUploader : public UploaderInterface {
   Sequence test_upload_sequence_;
 };
 
-class StorageQueueTest : public ::testing::TestWithParam<size_t> {
+class StorageQueueTest
+    : public ::testing::TestWithParam<
+          testing::tuple<size_t /*file_size*/, std::string /*dm_token*/>> {
  protected:
   void SetUp() override {
     ASSERT_TRUE(location_.CreateUniqueTempDir());
+    dm_token_ = testing::get<1>(GetParam());
     options_.set_directory(base::FilePath(location_.GetPath()))
-        .set_single_file_size(GetParam());
+        .set_single_file_size(testing::get<0>(GetParam()));
     EXPECT_CALL(set_mock_uploader_expectations_, Call(_, NotNull()))
         .WillRepeatedly(Invoke([](UploaderInterface::UploadReason reason,
                                   TestUploader* test_uploader) {
@@ -572,7 +575,10 @@ class StorageQueueTest : public ::testing::TestWithParam<size_t> {
     Record record;
     record.set_data(std::string(data));
     record.set_destination(UPLOAD_EVENTS);
-    record.set_dm_token("DM TOKEN");
+    if (!dm_token_.empty()) {
+      record.set_dm_token(dm_token_);
+    }
+
     storage_queue_->Write(std::move(record), w.cb());
     return w.result();
   }
@@ -590,6 +596,7 @@ class StorageQueueTest : public ::testing::TestWithParam<size_t> {
     ASSERT_OK(c_result) << c_result;
   }
 
+  std::string dm_token_;
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_{
@@ -1687,11 +1694,13 @@ TEST_P(StorageQueueTest, ForceConfirm) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(VaryingFileSize,
-                         StorageQueueTest,
-                         testing::Values(128 * 1024LL * 1024LL,
-                                         256 /* two records in file */,
-                                         1 /* single record in file */));
+INSTANTIATE_TEST_SUITE_P(
+    VaryingFileSize,
+    StorageQueueTest,
+    testing::Combine(testing::Values(128 * 1024LL * 1024LL,
+                                     256 /* two records in file */,
+                                     1 /* single record in file */),
+                     testing::Values("DM TOKEN", "")));
 
 // TODO(b/157943006): Additional tests:
 // 1) Options object with a bad path.

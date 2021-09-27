@@ -205,7 +205,7 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
     Record record;
     record.mutable_data()->assign(data.data(), data.size());
     record.set_destination(UPLOAD_EVENTS);
-    record.set_dm_token("DM TOKEN");
+    record.set_dm_token("");
     storage_queue_->Write(std::move(record), std::move(cb));
   }
 
