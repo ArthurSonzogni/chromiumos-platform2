@@ -10,6 +10,7 @@
 #include <memory>
 
 #include <base/files/file_util.h>
+#include <base/logging.h>
 
 namespace shill {
 

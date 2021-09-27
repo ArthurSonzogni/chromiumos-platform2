@@ -13,6 +13,7 @@
 
 #include <base/bind.h>
 #include <brillo/type_list.h>
+#include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"
