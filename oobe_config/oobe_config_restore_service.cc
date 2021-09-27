@@ -11,6 +11,7 @@
 #include "oobe_config/proto_bindings/oobe_config.pb.h"
 
 #include <base/check.h>
+#include <base/logging.h>
 
 using brillo::dbus_utils::AsyncEventSequencer;
 

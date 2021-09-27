@@ -4,6 +4,7 @@
 
 #include <base/command_line.h>
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <brillo/syslog_logging.h>
 
 #include "oobe_config/metrics.h"

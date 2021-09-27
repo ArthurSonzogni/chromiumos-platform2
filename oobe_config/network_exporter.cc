@@ -12,10 +12,11 @@
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/optional.h>
-#include <base/time/time.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <base/time/time.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <chromeos/dbus/service_constants.h>

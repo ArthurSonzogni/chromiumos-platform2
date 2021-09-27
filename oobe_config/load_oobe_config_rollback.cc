@@ -7,6 +7,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>
+#include <base/logging.h>
 #include <base/values.h>
 
 #include "oobe_config/oobe_config.h"
