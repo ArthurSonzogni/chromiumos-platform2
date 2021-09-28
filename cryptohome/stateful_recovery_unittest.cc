@@ -50,12 +50,12 @@ class StatefulRecoveryTest : public ::testing::Test {
   }
 
   void Initialize() {
-    auto mount =
-        base::Bind(&MockSRHandlers::Mount, base::Unretained(handlers_.get()));
-    auto unmount =
-        base::Bind(&MockSRHandlers::Unmount, base::Unretained(handlers_.get()));
-    auto is_owner =
-        base::Bind(&MockSRHandlers::IsOwner, base::Unretained(handlers_.get()));
+    auto mount = base::BindRepeating(&MockSRHandlers::Mount,
+                                     base::Unretained(handlers_.get()));
+    auto unmount = base::BindRepeating(&MockSRHandlers::Unmount,
+                                       base::Unretained(handlers_.get()));
+    auto is_owner = base::BindRepeating(&MockSRHandlers::IsOwner,
+                                        base::Unretained(handlers_.get()));
     recovery_.reset(
         new StatefulRecovery(platform_.get(), mount, unmount, is_owner));
   }

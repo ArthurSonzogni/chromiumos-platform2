@@ -33,19 +33,20 @@ class StatefulRecovery {
   // for the target user. Otherwise, false is returned and out_home_path is
   // unchanged. Note that it is the responsibility of the function to log any
   // detailed error should any arises.
-  typedef base::Callback<bool(const std::string& username,
-                              const std::string& passkey,
-                              base::FilePath* out_home_path)>
+  typedef base::RepeatingCallback<bool(const std::string& username,
+                                       const std::string& passkey,
+                                       base::FilePath* out_home_path)>
       MountFunction;
 
   // UnmountFunction is a function that unmount all cryptohome. It returns true
   // on success and false on failure. Note that it is the responsibility of the
   // function to log any detailed error should any arises.
-  typedef base::Callback<bool()> UnmountFunction;
+  typedef base::RepeatingCallback<bool()> UnmountFunction;
 
   // IsOwnerFunction is a function that returns true if the given user is the
   // owner, and false otherwise.
-  typedef base::Callback<bool(const std::string& username)> IsOwnerFunction;
+  typedef base::RepeatingCallback<bool(const std::string& username)>
+      IsOwnerFunction;
 
   explicit StatefulRecovery(Platform* platform,
                             MountFunction mountfn,

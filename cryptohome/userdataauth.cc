@@ -375,12 +375,12 @@ bool UserDataAuth::Initialize() {
                                        base::Unretained(this)));
 
   // Do Stateful Recovery if requested.
-  auto mountfn =
-      base::Bind(&UserDataAuth::StatefulRecoveryMount, base::Unretained(this));
-  auto unmountfn = base::Bind(&UserDataAuth::StatefulRecoveryUnmount,
-                              base::Unretained(this));
-  auto isownerfn = base::Bind(&UserDataAuth::StatefulRecoveryIsOwner,
-                              base::Unretained(this));
+  auto mountfn = base::BindRepeating(&UserDataAuth::StatefulRecoveryMount,
+                                     base::Unretained(this));
+  auto unmountfn = base::BindRepeating(&UserDataAuth::StatefulRecoveryUnmount,
+                                       base::Unretained(this));
+  auto isownerfn = base::BindRepeating(&UserDataAuth::StatefulRecoveryIsOwner,
+                                       base::Unretained(this));
   StatefulRecovery recovery(platform_, mountfn, unmountfn, isownerfn);
   if (recovery.Requested()) {
     if (recovery.Recover()) {
