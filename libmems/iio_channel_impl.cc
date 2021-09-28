@@ -13,6 +13,12 @@
 #include "libmems/iio_channel_impl.h"
 #include "libmems/iio_device.h"
 
+namespace {
+
+constexpr char kUnsupportedChannels[][24] = {"rot_from_north_magnetic"};
+
+}  // namespace
+
 namespace libmems {
 
 IioChannelImpl::IioChannelImpl(iio_channel* channel,
@@ -35,6 +41,13 @@ bool IioChannelImpl::IsEnabled() const {
 }
 
 void IioChannelImpl::SetEnabled(bool en) {
+  for (const auto& unsupported_channel : kUnsupportedChannels) {
+    if (strcmp(unsupported_channel, GetId()) == 0) {
+      // This channel is not supported in samples. Skip enabling it.
+      return;
+    }
+  }
+
   if (en)
     iio_channel_enable(channel_);
   else
