@@ -454,7 +454,9 @@ class CROS_CAMERA_EXPORT V4L2VideoNode final : public V4L2Device {
 
   int QueryBuffer(int index, enum v4l2_memory memory_type, V4L2Buffer* buf);
 
-  int RequestBuffers(size_t num_buffers, enum v4l2_memory memory_type);
+  int RequestBuffers(size_t num_buffers,
+                     enum v4l2_memory memory_type,
+                     unsigned int flags);
 
   int StopLocked(bool releaseBuffers = true);
 

@@ -489,7 +489,12 @@ int V4L2VideoNode::StopLocked(bool releaseBuffers) {
   }
 
   if (state_ == VideoNodeState::PREPARED) {
-    RequestBuffers(0, memory_type_);
+    unsigned int flags;
+    if (is_buffer_cached_)
+      flags = V4L2_MEMORY_FLAG_NON_COHERENT;
+    else
+      flags = 0;
+    RequestBuffers(0, memory_type_, flags);
     state_ = VideoNodeState::CONFIGURED;
   }
 
@@ -718,7 +723,12 @@ int V4L2VideoNode::SetupBuffers(size_t num_buffers,
     return -EINVAL;
   }
 
-  int ret = RequestBuffers(num_buffers, memory_type);
+  unsigned int flags;
+  if (is_cached)
+    flags = V4L2_MEMORY_FLAG_NON_COHERENT;
+  else
+    flags = 0;
+  int ret = RequestBuffers(num_buffers, memory_type, flags);
   if (ret <= 0) {
     LOGF(ERROR) << name_ << " could not complete buffer request";
     return -EINVAL;
@@ -763,7 +773,8 @@ int V4L2VideoNode::QueryCap(struct v4l2_capability* cap) {
 }
 
 int V4L2VideoNode::RequestBuffers(size_t num_buffers,
-                                  enum v4l2_memory memory_type) {
+                                  enum v4l2_memory memory_type,
+                                  unsigned int flags) {
   VLOGF_ENTER();
   if (state_ == VideoNodeState::CLOSED)
     return 0;
@@ -772,9 +783,11 @@ int V4L2VideoNode::RequestBuffers(size_t num_buffers,
   req_buf.memory = memory_type;
   req_buf.count = num_buffers;
   req_buf.type = buffer_type_;
+  req_buf.flags = flags;
 
   VLOGF(1) << "Device " << name_ << ": VIDIOC_REQBUFS, count=" << req_buf.count
-           << ", memory=" << req_buf.memory << ", type=" << req_buf.type;
+           << ", memory=" << req_buf.memory << ", type=" << req_buf.type
+           << ", flags=" << req_buf.flags;
   int ret = ::ioctl(fd_, VIDIOC_REQBUFS, &req_buf);
 
   if (ret < 0) {
