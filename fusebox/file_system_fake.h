@@ -44,6 +44,20 @@ class FileSystemFake : public FileSystem {
   void ReleaseDir(std::unique_ptr<OkRequest> request,
                   fuse_ino_t ino,
                   struct fuse_file_info* fi) override;
+
+  void Open(std::unique_ptr<OpenRequest> request,
+            fuse_ino_t ino,
+            struct fuse_file_info* fi) override;
+
+  void Read(std::unique_ptr<BufferRequest> request,
+            fuse_ino_t ino,
+            size_t size,
+            off_t off,
+            struct fuse_file_info* fi) override;
+
+  void Release(std::unique_ptr<OkRequest> request,
+               fuse_ino_t ino,
+               struct fuse_file_info* fi) override;
 };
 
 }  // namespace fusebox

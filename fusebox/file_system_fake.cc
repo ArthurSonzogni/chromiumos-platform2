@@ -242,4 +242,104 @@ void FileSystemFake::ReleaseDir(std::unique_ptr<OkRequest> request,
   request->ReplyOk();
 }
 
+void FileSystemFake::Open(std::unique_ptr<OpenRequest> request,
+                          fuse_ino_t ino,
+                          struct fuse_file_info* fi) {
+  LOG(INFO) << "Open ino " << ino;
+  CHECK(fi);
+
+  if (request->IsInterrupted())
+    return;
+
+  Node* node = GetInodeTable().Lookup(ino);
+  if (!node) {
+    PLOG(ERROR) << " open error";
+    request->ReplyError(errno);
+    return;
+  }
+
+  struct stat stat;
+  CHECK(GetInodeTable().GetStat(node->ino, &stat));
+  CHECK_EQ(stat.st_ino, node->ino);
+
+  if (S_ISDIR(stat.st_mode)) {
+    LOG(ERROR) << " opendir error: EISDIR";
+    request->ReplyError(EISDIR);
+    return;
+  }
+
+  LOG(INFO) << " " << OpenFlagsToString(fi->flags);
+  if ((fi->flags & O_ACCMODE) != O_RDONLY) {
+    LOG(ERROR) << " open error: EACCES";
+    request->ReplyError(EACCES);
+    return;
+  }
+
+  uint64_t handle = fusebox::OpenFile();
+  LOG(INFO) << " opened fh " << handle;
+  request->ReplyOpen(handle);
+}
+
+void FileSystemFake::Read(std::unique_ptr<BufferRequest> request,
+                          fuse_ino_t ino,
+                          size_t size,
+                          off_t off,
+                          struct fuse_file_info* fi) {
+  LOG(INFO) << "Read ino " << ino << " off " << off << " size " << size;
+  CHECK(fi);
+
+  if (request->IsInterrupted())
+    return;
+
+  if (!fusebox::GetFile(fi->fh)) {
+    LOG(ERROR) << " read error: EBADF";
+    request->ReplyError(EBADF);
+    return;
+  }
+
+  struct stat stat;
+  CHECK(GetInodeTable().GetStat(ino, &stat));
+  CHECK_EQ(stat.st_ino, ino);
+
+  if (S_ISDIR(stat.st_mode)) {
+    LOG(ERROR) << " opendir error: EISDIR";
+    request->ReplyError(EISDIR);
+    return;
+  }
+
+  const std::string data("hello\r\n");
+  LOG(INFO) << " read fh " << fi->fh;
+
+  const auto get_data_slice = [&data, &off, &size]() {
+    auto* source = data.data();
+    auto length = data.size();
+    if (off < length)
+      return base::StringPiece(source + off, std::min(length - off, size));
+    return base::StringPiece();
+  };
+
+  auto slice = get_data_slice();
+  request->ReplyBuffer(slice.data(), slice.size());
+}
+
+void FileSystemFake::Release(std::unique_ptr<OkRequest> request,
+                             fuse_ino_t ino,
+                             struct fuse_file_info* fi) {
+  LOG(INFO) << "Release ino " << ino;
+  CHECK(fi);
+
+  if (request->IsInterrupted())
+    return;
+
+  if (!fusebox::GetFile(fi->fh)) {
+    LOG(ERROR) << " release error: EBADF";
+    request->ReplyError(EBADF);
+    return;
+  }
+
+  LOG(INFO) << " release fh " << fi->fh;
+  fusebox::CloseFile(fi->fh);
+  request->ReplyOk();
+}
+
 }  // namespace fusebox
