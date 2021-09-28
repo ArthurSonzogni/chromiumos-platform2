@@ -37,6 +37,8 @@ static_library("libfusebox") {
   sources = [
     "file_system.cc",
     "file_system.h",
+    "file_system_fake.cc",
+    "file_system_fake.h",
     "file_system_fuse.cc",
     "fuse_file_handles.cc",
     "fuse_file_handles.h",

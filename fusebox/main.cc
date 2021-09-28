@@ -9,12 +9,14 @@
 #include <base/check_op.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/no_destructor.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "fusebox/file_system.h"
+#include "fusebox/file_system_fake.h"
 #include "fusebox/fuse_frontend.h"
 #include "fusebox/util.h"
 
@@ -24,6 +26,13 @@ namespace {
 
 void SetupLogging() {
   brillo::InitLog(brillo::kLogToStderr);
+}
+
+static bool g_use_fake_file_system;
+
+fusebox::FileSystem* CreateFakeFileSystem() {
+  static base::NoDestructor<fusebox::FileSystemFake> fake_file_system;
+  return fake_file_system.get();
 }
 
 }  // namespace
@@ -47,7 +56,8 @@ class FuseBoxClient : public FileSystem {
     quit_callback_ = std::move(quit_callback);
 
     fuse_frontend_.reset(new FuseFrontend(fuse_));
-    if (!fuse_frontend_->CreateFuseSession(this, FileSystem::FuseOps()))
+    auto* fs = g_use_fake_file_system ? CreateFakeFileSystem() : this;
+    if (!fuse_frontend_->CreateFuseSession(fs, FileSystem::FuseOps()))
       return EX_SOFTWARE;
 
     auto stop = base::BindOnce(&FuseBoxClient::Stop, base::Unretained(this));
@@ -134,6 +144,9 @@ int Run(char** mountpoint, fuse_chan* chan, fuse_args* args) {
 int main(int argc, char** argv) {
   CommandLine::Init(argc, argv);
   SetupLogging();
+
+  if (CommandLine::ForCurrentProcess()->HasSwitch("fake"))
+    g_use_fake_file_system = true;
 
   fuse_args args = FUSE_ARGS_INIT(argc, argv);
   char* mountpoint = nullptr;

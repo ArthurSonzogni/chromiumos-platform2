@@ -83,13 +83,13 @@ class FuseFrontend {
 
   bool CreateFuseSession(void* userdata, fuse_lowlevel_ops fops) {
     fuse_chan* chan = fuse_->chan;
-    fuse_args* args = fuse_->args;
 
+    struct fuse_args args = {0};
+    CHECK_EQ(0, fuse_opt_add_arg(&args, "fusebox"));
     CHECK_EQ(nullptr, session_);
     CHECK(chan);
-    CHECK(args);
 
-    session_ = fuse_lowlevel_new(args, &fops, sizeof(fops), userdata);
+    session_ = fuse_lowlevel_new(&args, &fops, sizeof(fops), userdata);
     if (!session_) {
       PLOG(ERROR) << "fuse_lowlevel_new() failed";
       return false;
