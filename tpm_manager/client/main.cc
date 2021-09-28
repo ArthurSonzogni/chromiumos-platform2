@@ -205,6 +205,9 @@ class ClientLoop : public ClientLoopBase {
   void OnShutdown(int* exit_code) override {
     tpm_nvram_.reset();
     tpm_ownership_.reset();
+    if (bus_) {
+      bus_->ShutdownAndBlock();
+    }
     ClientLoopBase::OnShutdown(exit_code);
   }
 

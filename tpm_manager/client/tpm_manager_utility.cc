@@ -230,6 +230,9 @@ void TpmManagerUtility::ShutdownTask() {
   tpm_nvram_ = nullptr;
   default_tpm_owner_.reset(nullptr);
   default_tpm_nvram_.reset(nullptr);
+  if (bus_) {
+    bus_->ShutdownAndBlock();
+  }
 }
 
 bool TpmManagerUtility::GetDictionaryAttackInfo(int* counter,
