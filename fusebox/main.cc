@@ -132,9 +132,9 @@ class FuseBoxDaemon : public brillo::DBusServiceDaemon {
   std::unique_ptr<FuseBoxClient> client_;
 };
 
-int Run(char** mountpoint, fuse_chan* chan, fuse_args* args) {
+int Run(char** mountpoint, fuse_chan* chan) {
   LOG(INFO) << base::StringPrintf("fusebox %s [%d]", *mountpoint, getpid());
-  FuseMount fuse = FuseMount(mountpoint, chan, args);
+  FuseMount fuse = FuseMount(mountpoint, chan);
   auto daemon = FuseBoxDaemon(&fuse);
   return daemon.Run();
 }
@@ -167,7 +167,7 @@ int main(int argc, char** argv) {
     return ENODEV;
   }
 
-  int exit_code = fusebox::Run(&mountpoint, chan, &args);
+  int exit_code = fusebox::Run(&mountpoint, chan);
 
   if (!mountpoint) {  // Kernel removed the FUSE mountpoint: umount(8).
     exit_code = ENODEV;

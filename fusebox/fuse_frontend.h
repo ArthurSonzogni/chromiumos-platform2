@@ -29,8 +29,8 @@ namespace fusebox {
  * the session.
  *
  * A FuseMount object is provided to the FuseFrontend class, containing
- * the active |mountpoint| name and Kernel FUSE channel |chan|, and the
- * |args| needed to create the session.
+ * the active |mountpoint| name, and Kernel FUSE channel |chan|, needed
+ * to create the session with fuse_lowlevel_new().
  *
  * FuseFrontend::CreateFuseSession() creates the FUSE session, and then
  * StartFuseSession() can be used to start and run the session.
@@ -54,11 +54,9 @@ namespace fusebox {
  */
 
 struct FuseMount {
-  FuseMount(char** m, fuse_chan* c, fuse_args* a)
-      : mountpoint(m), chan(c), args(a) {}
+  FuseMount(char** m, fuse_chan* c) : mountpoint(m), chan(c) {}
   char** mountpoint;
   fuse_chan* chan;
-  fuse_args* args;
 };
 
 class FuseFrontend {
