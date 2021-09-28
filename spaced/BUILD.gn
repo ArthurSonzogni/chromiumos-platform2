@@ -9,11 +9,8 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
-    ":libspaced",
     ":spaced",
-    ":spaced_adaptor",
     ":spaced_cli",
-    ":spaced_proxy",
   ]
 
   if (use.test) {
@@ -49,6 +46,7 @@ shared_library("libspaced") {
   ]
   libs = [ "rootdev" ]
   configs += [ ":target_defaults" ]
+  deps = [ ":spaced_proxy" ]
 }
 
 executable("spaced") {
@@ -57,7 +55,10 @@ executable("spaced") {
     "main.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ ":libspaced" ]
+  deps = [
+    ":libspaced",
+    ":spaced_adaptor",
+  ]
 }
 
 executable("spaced_cli") {
