@@ -35,8 +35,8 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
       const std::set<RmadComponent>& probed_components) {
     auto mock_runtime_probe_client =
         std::make_unique<NiceMock<MockRuntimeProbeClient>>();
-    ON_CALL(*mock_runtime_probe_client, ProbeCategories(_))
-        .WillByDefault(DoAll(SetArgPointee<0>(probed_components),
+    ON_CALL(*mock_runtime_probe_client, ProbeCategories(_, _))
+        .WillByDefault(DoAll(SetArgPointee<1>(probed_components),
                              Return(runtime_probe_client_retval)));
     return base::MakeRefCounted<ComponentsRepairStateHandler>(
         json_store_, std::move(mock_runtime_probe_client));

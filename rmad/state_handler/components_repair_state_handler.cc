@@ -115,7 +115,7 @@ RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
   // Call runtime_probe to get all probed components.
   // TODO(chenghan): Integrate with RACC to check AVL compliance.
   std::set<RmadComponent> probed_components;
-  if (!runtime_probe_client_->ProbeCategories(&probed_components)) {
+  if (!runtime_probe_client_->ProbeCategories({}, &probed_components)) {
     LOG(ERROR) << "Failed to get probe result from runtime_probe";
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }

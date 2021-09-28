@@ -3,7 +3,9 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <set>
 #include <string>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
@@ -15,6 +17,7 @@
 #include "rmad/rmad_interface_impl.h"
 #include "rmad/state_handler/mock_state_handler.h"
 #include "rmad/state_handler/state_handler_manager.h"
+#include "rmad/system/mock_runtime_probe_client.h"
 #include "rmad/system/mock_shill_client.h"
 #include "rmad/system/mock_tpm_manager_client.h"
 #include "rmad/utils/json_store.h"
@@ -142,6 +145,19 @@ class RmadInterfaceImplTest : public testing::Test {
     return CreateStateHandlerManagerWithHandlers(json_store, mock_handlers);
   }
 
+  std::unique_ptr<RuntimeProbeClient> CreateRuntimeProbeClient(
+      bool has_cellular) {
+    auto mock_runtime_probe_client =
+        std::make_unique<NiceMock<MockRuntimeProbeClient>>();
+    std::set<RmadComponent> components;
+    if (has_cellular) {
+      components.insert(RMAD_COMPONENT_CELLULAR);
+    }
+    ON_CALL(*mock_runtime_probe_client, ProbeCategories(_, _))
+        .WillByDefault(DoAll(SetArgPointee<1>(components), Return(true)));
+    return mock_runtime_probe_client;
+  }
+
   std::unique_ptr<ShillClient> CreateShillClient(bool* cellular_disabled) {
     auto mock_shill_client = std::make_unique<NiceMock<MockShillClient>>();
     if (cellular_disabled) {
@@ -173,7 +189,7 @@ class RmadInterfaceImplTest : public testing::Test {
   base::ScopedTempDir temp_dir_;
 };
 
-TEST_F(RmadInterfaceImplTest, GetCurrentState_Set) {
+TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_HasCellular) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
@@ -181,10 +197,32 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set) {
   bool cellular_disabled = false;
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
-      CreateShillClient(&cellular_disabled),
+      CreateRuntimeProbeClient(true), CreateShillClient(&cellular_disabled),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
   EXPECT_TRUE(cellular_disabled);
+
+  auto callback = [](const GetStateReply& reply) {
+    EXPECT_EQ(RMAD_ERROR_OK, reply.error());
+    EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
+    EXPECT_EQ(false, reply.can_go_back());
+    EXPECT_EQ(true, reply.can_abort());
+  };
+  rmad_interface.GetCurrentState(base::BindRepeating(callback));
+}
+
+TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_NoCellular) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
+                      std::size(kCurrentStateSetJson) - 1);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  bool cellular_disabled = false;
+  RmadInterfaceImpl rmad_interface(
+      json_store, CreateStateHandlerManager(json_store),
+      CreateRuntimeProbeClient(false), CreateShillClient(&cellular_disabled),
+      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
+
+  EXPECT_FALSE(cellular_disabled);
 
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -203,7 +241,7 @@ TEST_F(RmadInterfaceImplTest,
   bool cellular_disabled = false;
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
-      CreateShillClient(&cellular_disabled),
+      CreateRuntimeProbeClient(false), CreateShillClient(&cellular_disabled),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
   EXPECT_FALSE(cellular_disabled);
@@ -220,10 +258,9 @@ TEST_F(RmadInterfaceImplTest,
   base::FilePath json_store_file_path =
       temp_dir_.GetPath().AppendASCII("missing.json");
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
-  bool cellular_disabled = false;
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
-      CreateShillClient(&cellular_disabled),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::UNSUPPORTED));
 
   auto callback = [](const GetStateReply& reply) {
@@ -244,7 +281,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotSet) {
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
-      CreateShillClient(nullptr),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
   auto callback = [](const GetStateReply& reply) {
@@ -263,7 +300,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithHistory) {
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
-      CreateShillClient(nullptr),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
   auto callback = [](const GetStateReply& reply) {
@@ -282,7 +319,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithUnsupportedState) {
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
-      CreateShillClient(nullptr),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
   auto callback = [](const GetStateReply& reply) {
@@ -302,7 +339,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidState) {
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
-      CreateShillClient(nullptr),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
   auto callback = [](const GetStateReply& reply) {
@@ -320,7 +357,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidJson) {
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
-      CreateShillClient(nullptr),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
   auto callback = [](const GetStateReply& reply) {
@@ -339,7 +376,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InitializeStateFail) {
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManagerInitializeStateFail(json_store),
-      CreateShillClient(nullptr),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
   auto callback = [](const GetStateReply& reply) {
@@ -356,7 +393,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
-      CreateShillClient(nullptr),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
   EXPECT_EQ(true, rmad_interface.CanAbort());
 
@@ -387,7 +424,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManagerMissingHandler(json_store),
-      CreateShillClient(nullptr),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
   TransitionNextStateRequest request;
@@ -406,7 +443,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_InitializeNextStateFail) {
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManagerInitializeStateFail(json_store),
-      CreateShillClient(nullptr),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
   TransitionNextStateRequest request;
@@ -426,7 +463,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
-      CreateShillClient(nullptr),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
   auto callback = [](const GetStateReply& reply) {
@@ -445,7 +482,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
-      CreateShillClient(nullptr),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
   auto callback = [](const GetStateReply& reply) {
@@ -464,7 +501,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_MissingHandler) {
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManagerMissingHandler(json_store),
-      CreateShillClient(nullptr),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
   auto callback = [](const GetStateReply& reply) {
@@ -484,7 +521,7 @@ TEST_F(RmadInterfaceImplTest,
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManagerInitializeStateFail(json_store),
-      CreateShillClient(nullptr),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
   auto callback = [](const GetStateReply& reply) {
@@ -503,7 +540,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma) {
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
-      CreateShillClient(nullptr),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
   // Check that the state file exists now.
@@ -525,7 +562,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
-      CreateShillClient(nullptr),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
   // Check that the state file exists now.
@@ -547,7 +584,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
-      CreateShillClient(nullptr),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
 
   // Check that the state file exists now.

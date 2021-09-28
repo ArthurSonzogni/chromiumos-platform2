@@ -5,6 +5,7 @@
 #include "rmad/rmad_interface_impl.h"
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -15,6 +16,7 @@
 
 #include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
+#include "rmad/system/runtime_probe_client_impl.h"
 #include "rmad/system/shill_client_impl.h"
 #include "rmad/system/tpm_manager_client_impl.h"
 #include "rmad/utils/dbus_utils.h"
@@ -33,6 +35,8 @@ RmadInterfaceImpl::RmadInterfaceImpl() : RmadInterface() {
   json_store_ = base::MakeRefCounted<JsonStore>(kDefaultJsonStoreFilePath);
   state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
   state_handler_manager_->RegisterStateHandlers();
+  runtime_probe_client_ =
+      std::make_unique<RuntimeProbeClientImpl>(GetSystemBus());
   shill_client_ = std::make_unique<ShillClientImpl>(GetSystemBus());
   tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>(GetSystemBus());
   Initialize();
@@ -41,11 +45,13 @@ RmadInterfaceImpl::RmadInterfaceImpl() : RmadInterface() {
 RmadInterfaceImpl::RmadInterfaceImpl(
     scoped_refptr<JsonStore> json_store,
     std::unique_ptr<StateHandlerManager> state_handler_manager,
+    std::unique_ptr<RuntimeProbeClient> runtime_probe_client,
     std::unique_ptr<ShillClient> shill_client,
     std::unique_ptr<TpmManagerClient> tpm_manager_client)
     : RmadInterface(),
       json_store_(json_store),
       state_handler_manager_(std::move(state_handler_manager)),
+      runtime_probe_client_(std::move(runtime_probe_client)),
       shill_client_(std::move(shill_client)),
       tpm_manager_client_(std::move(tpm_manager_client)) {
   Initialize();
@@ -113,8 +119,15 @@ void RmadInterfaceImpl::Initialize() {
 
   // If we are in the RMA process, disable cellular to prevent accidentally
   // using it.
+  // TODO(chenghan): Do this in a separate thread to shorten the response time.
   if (current_state_case_ != RmadState::STATE_NOT_SET) {
-    DCHECK(shill_client_->DisableCellular());
+    if (std::set<RmadComponent> components;
+        runtime_probe_client_->ProbeCategories({RMAD_COMPONENT_CELLULAR},
+                                               &components) &&
+        components.count(RMAD_COMPONENT_CELLULAR) > 0) {
+      LOG(INFO) << "Disabling cellular network";
+      DCHECK(shill_client_->DisableCellular());
+    }
   }
 }
 

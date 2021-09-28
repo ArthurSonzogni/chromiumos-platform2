@@ -13,6 +13,7 @@
 #include <base/memory/scoped_refptr.h>
 
 #include "rmad/state_handler/state_handler_manager.h"
+#include "rmad/system/runtime_probe_client.h"
 #include "rmad/system/shill_client.h"
 #include "rmad/system/tpm_manager_client.h"
 #include "rmad/utils/json_store.h"
@@ -23,9 +24,10 @@ class RmadInterfaceImpl final : public RmadInterface {
  public:
   RmadInterfaceImpl();
   // Used to inject mocked |json_store_|, |state_handler_manager_|,
-  // |shill_client_| and |tpm_manager_client_|.
+  // |runtime_probe_client_|, |shill_client_| and |tpm_manager_client_|.
   RmadInterfaceImpl(scoped_refptr<JsonStore> json_store,
                     std::unique_ptr<StateHandlerManager> state_handler_manager,
+                    std::unique_ptr<RuntimeProbeClient> runtime_probe_client,
                     std::unique_ptr<ShillClient> shill_client,
                     std::unique_ptr<TpmManagerClient> tpm_manager_client);
   RmadInterfaceImpl(const RmadInterfaceImpl&) = delete;
@@ -89,6 +91,7 @@ class RmadInterfaceImpl final : public RmadInterface {
   // External utilities.
   scoped_refptr<JsonStore> json_store_;
   std::unique_ptr<StateHandlerManager> state_handler_manager_;
+  std::unique_ptr<RuntimeProbeClient> runtime_probe_client_;
   std::unique_ptr<ShillClient> shill_client_;
   std::unique_ptr<TpmManagerClient> tpm_manager_client_;
 

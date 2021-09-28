@@ -51,7 +51,7 @@ class RuntimeProbeClientTest : public testing::Test {
   std::unique_ptr<RuntimeProbeClientImpl> runtime_probe_client_;
 };
 
-TEST_F(RuntimeProbeClientTest, ProbeCategories_Success) {
+TEST_F(RuntimeProbeClientTest, ProbeAllCategories_Success) {
   EXPECT_CALL(*mock_object_proxy(), CallMethodAndBlock(_, _))
       .WillOnce([](dbus::MethodCall*, int) {
         std::unique_ptr<dbus::Response> runtime_probe_response =
@@ -64,7 +64,45 @@ TEST_F(RuntimeProbeClientTest, ProbeCategories_Success) {
       });
 
   std::set<RmadComponent> components;
-  EXPECT_TRUE(runtime_probe_client()->ProbeCategories(&components));
+  EXPECT_TRUE(runtime_probe_client()->ProbeCategories({}, &components));
+  EXPECT_EQ(1, components.size());
+  EXPECT_NE(components.find(RMAD_COMPONENT_BATTERY), components.end());
+}
+
+TEST_F(RuntimeProbeClientTest, ProbeSingleCategory_Success) {
+  EXPECT_CALL(*mock_object_proxy(), CallMethodAndBlock(_, _))
+      .WillOnce([](dbus::MethodCall*, int) {
+        std::unique_ptr<dbus::Response> runtime_probe_response =
+            dbus::Response::CreateEmpty();
+        runtime_probe::ProbeResult probe_result_proto;
+        probe_result_proto.add_battery();
+        dbus::MessageWriter writer(runtime_probe_response.get());
+        writer.AppendProtoAsArrayOfBytes(probe_result_proto);
+        return runtime_probe_response;
+      });
+
+  std::set<RmadComponent> components;
+  EXPECT_TRUE(runtime_probe_client()->ProbeCategories({RMAD_COMPONENT_BATTERY},
+                                                      &components));
+  EXPECT_EQ(1, components.size());
+  EXPECT_NE(components.find(RMAD_COMPONENT_BATTERY), components.end());
+}
+
+TEST_F(RuntimeProbeClientTest, ProbeSingleCategory_NoMatch) {
+  EXPECT_CALL(*mock_object_proxy(), CallMethodAndBlock(_, _))
+      .WillOnce([](dbus::MethodCall*, int) {
+        std::unique_ptr<dbus::Response> runtime_probe_response =
+            dbus::Response::CreateEmpty();
+        runtime_probe::ProbeResult probe_result_proto;
+        probe_result_proto.add_battery();
+        dbus::MessageWriter writer(runtime_probe_response.get());
+        writer.AppendProtoAsArrayOfBytes(probe_result_proto);
+        return runtime_probe_response;
+      });
+
+  std::set<RmadComponent> components;
+  EXPECT_TRUE(runtime_probe_client()->ProbeCategories({RMAD_COMPONENT_STORAGE},
+                                                      &components));
   EXPECT_EQ(1, components.size());
   EXPECT_NE(components.find(RMAD_COMPONENT_BATTERY), components.end());
 }
@@ -74,7 +112,7 @@ TEST_F(RuntimeProbeClientTest, ProbeCategories_NoResponse) {
       .WillOnce([](dbus::MethodCall*, int) { return nullptr; });
 
   std::set<RmadComponent> components;
-  EXPECT_FALSE(runtime_probe_client()->ProbeCategories(&components));
+  EXPECT_FALSE(runtime_probe_client()->ProbeCategories({}, &components));
 }
 
 TEST_F(RuntimeProbeClientTest, ProbeCategories_ErrorResponse) {
@@ -91,7 +129,7 @@ TEST_F(RuntimeProbeClientTest, ProbeCategories_ErrorResponse) {
       });
 
   std::set<RmadComponent> components;
-  EXPECT_FALSE(runtime_probe_client()->ProbeCategories(&components));
+  EXPECT_FALSE(runtime_probe_client()->ProbeCategories({}, &components));
 }
 
 }  // namespace rmad

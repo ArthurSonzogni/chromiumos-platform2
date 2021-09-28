@@ -8,6 +8,7 @@
 #include "rmad/system/runtime_probe_client.h"
 
 #include <set>
+#include <vector>
 
 #include <base/memory/scoped_refptr.h>
 #include <dbus/bus.h>
@@ -24,7 +25,8 @@ class RuntimeProbeClientImpl : public RuntimeProbeClient {
 
   ~RuntimeProbeClientImpl() override = default;
 
-  bool ProbeCategories(std::set<RmadComponent>* components) override;
+  bool ProbeCategories(const std::vector<RmadComponent>& categories,
+                       std::set<RmadComponent>* components) override;
 
  private:
   // Owned by external D-Bus bus.

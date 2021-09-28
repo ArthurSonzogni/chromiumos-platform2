@@ -8,6 +8,7 @@
 #include "rmad/system/runtime_probe_client.h"
 
 #include <set>
+#include <vector>
 
 #include <gmock/gmock.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
@@ -21,7 +22,10 @@ class MockRuntimeProbeClient : public RuntimeProbeClient {
   MockRuntimeProbeClient& operator=(const MockRuntimeProbeClient&) = delete;
   ~MockRuntimeProbeClient() override = default;
 
-  MOCK_METHOD(bool, ProbeCategories, (std::set<RmadComponent>*), (override));
+  MOCK_METHOD(bool,
+              ProbeCategories,
+              (const std::vector<RmadComponent>&, std::set<RmadComponent>*),
+              (override));
 };
 
 }  // namespace rmad
