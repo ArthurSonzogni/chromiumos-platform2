@@ -26,6 +26,26 @@ func containsSupportedColorMode(sourceColorModes []string) bool {
 	return false
 }
 
+// listUnsupportedColorModes returns a list of unsupported color modes contained
+// in `colorModes`.
+func listUnsupportedColorModes(colorModes []string) (unsupportedColorModes []string) {
+	for _, colorMode := range colorModes {
+		isSupported := false
+		for _, supportedColorMode := range supportedColorModes {
+			if colorMode == supportedColorMode {
+				isSupported = true
+				break
+			}
+		}
+
+		if !isSupported {
+			unsupportedColorModes = append(unsupportedColorModes, colorMode)
+		}
+	}
+
+	return
+}
+
 // HasSupportedColorModeTest checks that each supported document source
 // advertises at least one supported color mode. One critical failure will be
 // returned for each supported document source which does not advertise any of
@@ -45,6 +65,37 @@ func HasSupportedColorModeTest(platenCaps utils.SourceCapabilities, adfSimplexCa
 		}
 		if adfDuplexCaps.IsPopulated() && !containsSupportedColorMode(adfDuplexCaps.SettingProfile.ColorModes) {
 			failures = append(failures, utils.TestFailure{Type: utils.CriticalFailure, Message: fmt.Sprintf("ADF duplex source advertises only unsupported color modes: %v", adfDuplexCaps.SettingProfile.ColorModes)})
+		}
+
+		if len(failures) == 0 {
+			result = utils.Passed
+		} else {
+			result = utils.Failed
+		}
+
+		return
+	}
+}
+
+// NoUnsupportedColorModeTest checks that each supported document source
+// advertises only supported color modes. One critical failure will be returned
+// for each supported document source which advertises any unsupported color
+// mode.
+func NoUnsupportedColorModeTest(platenCaps utils.SourceCapabilities, adfSimplexCaps utils.SourceCapabilities, adfDuplexCaps utils.SourceCapabilities) utils.TestFunction {
+	return func() (result utils.TestResult, failures []utils.TestFailure, err error) {
+		if !platenCaps.IsPopulated() && !adfSimplexCaps.IsPopulated() && !adfDuplexCaps.IsPopulated() {
+			result = utils.Skipped
+			return
+		}
+
+		if unsupportedColorModes := listUnsupportedColorModes(platenCaps.SettingProfile.ColorModes); len(unsupportedColorModes) != 0 {
+			failures = append(failures, utils.TestFailure{Type: utils.CriticalFailure, Message: fmt.Sprintf("Platen source advertises unsupported color modes: %v", unsupportedColorModes)})
+		}
+		if unsupportedColorModes := listUnsupportedColorModes(adfSimplexCaps.SettingProfile.ColorModes); len(unsupportedColorModes) != 0 {
+			failures = append(failures, utils.TestFailure{Type: utils.CriticalFailure, Message: fmt.Sprintf("ADF simplex source advertises unsupported color modes: %v", unsupportedColorModes)})
+		}
+		if unsupportedColorModes := listUnsupportedColorModes(adfDuplexCaps.SettingProfile.ColorModes); len(unsupportedColorModes) != 0 {
+			failures = append(failures, utils.TestFailure{Type: utils.CriticalFailure, Message: fmt.Sprintf("ADF duplex source advertises unsupported color modes: %v", unsupportedColorModes)})
 		}
 
 		if len(failures) == 0 {
