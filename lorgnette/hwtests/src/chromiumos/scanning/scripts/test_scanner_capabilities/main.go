@@ -45,7 +45,8 @@ func main() {
 	tests := map[string]utils.TestFunction{
 		"HasSupportedDocumentSource": hwtests.HasSupportedDocumentSourceTest(caps.PlatenInputCaps, caps.AdfCapabilities.AdfSimplexInputCaps, caps.AdfCapabilities.AdfDuplexInputCaps),
 		"NoCameraSource":             hwtests.NoCameraSourceTest(caps.CameraInputCaps),
-		"HasSupportedResolution":     hwtests.HasSupportedResolutionTest(caps.PlatenInputCaps, caps.AdfCapabilities.AdfSimplexInputCaps, caps.AdfCapabilities.AdfDuplexInputCaps)}
+		"HasSupportedResolution":     hwtests.HasSupportedResolutionTest(caps.PlatenInputCaps, caps.AdfCapabilities.AdfSimplexInputCaps, caps.AdfCapabilities.AdfDuplexInputCaps),
+		"HasSupportedColorMode":      hwtests.HasSupportedColorModeTest(caps.PlatenInputCaps, caps.AdfCapabilities.AdfSimplexInputCaps, caps.AdfCapabilities.AdfDuplexInputCaps)}
 	failed := []string{}
 	skipped := []string{}
 	errors := []string{}
