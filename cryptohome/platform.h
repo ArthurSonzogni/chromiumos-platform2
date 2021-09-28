@@ -387,7 +387,7 @@ class Platform {
   //
   // Parameters
   //  path - Path of the file to check
-  virtual bool FileExists(const base::FilePath& path);
+  virtual bool FileExists(const base::FilePath& path) const;
 
   // Calls Access() on path with flag
   //

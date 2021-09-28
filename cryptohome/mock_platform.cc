@@ -49,6 +49,8 @@ MockPlatform::MockPlatform()
           Invoke(fake_platform_.get(), &FakePlatform::IsDirectoryEmpty));
   ON_CALL(*this, FileExists(_))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::FileExists));
+  ON_CALL(*this, Access(_, _))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::Access));
   ON_CALL(*this, DirectoryExists(_))
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::DirectoryExists));
@@ -164,12 +166,23 @@ MockPlatform::MockPlatform()
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::GetOwnership));
   ON_CALL(*this, SetOwnership(_, _, _, _))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::SetOwnership));
+  ON_CALL(*this, SafeDirChown(_, _, _))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::SafeDirChown));
   ON_CALL(*this, GetPermissions(_, _))
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::GetPermissions));
   ON_CALL(*this, SetPermissions(_, _))
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::SetPermissions));
+  ON_CALL(*this, SafeDirChmod(_, _))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::SafeDirChmod));
+  ON_CALL(*this, SafeCreateDirAndSetOwnershipAndPermissions(_, _, _, _))
+      .WillByDefault(
+          Invoke(fake_platform_.get(),
+                 &FakePlatform::SafeCreateDirAndSetOwnershipAndPermissions));
+  ON_CALL(*this, SafeCreateDirAndSetOwnership(_, _, _))
+      .WillByDefault(Invoke(fake_platform_.get(),
+                            &FakePlatform::SafeCreateDirAndSetOwnership));
 
   ON_CALL(*this, AmountOfFreeDiskSpace(_))
       .WillByDefault(

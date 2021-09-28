@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Contains the implementation of class Platform
-
 #include "cryptohome/fake_platform.h"
 
 #include <memory>
@@ -253,12 +251,31 @@ bool FakePlatform::DeleteFileDurable(const base::FilePath& path) {
   return real_platform_.DeleteFileDurable(TestFilePath(path));
 }
 
-bool FakePlatform::FileExists(const base::FilePath& path) {
+bool FakePlatform::FileExists(const base::FilePath& path) const {
   return real_platform_.FileExists(TestFilePath(path));
 }
 
 bool FakePlatform::DirectoryExists(const base::FilePath& path) {
   return real_platform_.DirectoryExists(TestFilePath(path));
+}
+
+int FakePlatform::Access(const base::FilePath& path, uint32_t flag) {
+  if (!FileExists(path)) {
+    return -1;
+  }
+
+  mode_t mode;
+  if (!GetPermissions(path, &mode)) {
+    return -1;
+  }
+  bool failed_read = (flag & R_OK) && !(mode & S_IRUSR);
+  bool failed_write = (flag & W_OK) && !(mode & S_IWUSR);
+  bool failed_exec = (flag & X_OK) && !(mode & S_IXUSR);
+  if (failed_read || failed_write || failed_exec) {
+    return -1;
+  }
+
+  return 0;
 }
 
 bool FakePlatform::CreateDirectory(const base::FilePath& path) {
@@ -326,12 +343,14 @@ void FakePlatform::InitializeFile(base::File* file,
                                   uint32_t flags) {
   // This part here is to make one of the access verification tests happy.
   // TODO(dlunev): generalize access control abiding fake permissions.
-  mode_t mode;
-  CHECK(GetPermissions(path, &mode));
-  bool init_for_read = flags & base::File::FLAG_READ;
-  bool can_read = mode & S_IRUSR;
-  if (init_for_read && !can_read) {
-    return;
+  if (FileExists(path)) {
+    mode_t mode;
+    CHECK(GetPermissions(path, &mode));
+    bool init_for_read = flags & base::File::FLAG_READ;
+    bool can_read = mode & S_IRUSR;
+    if (init_for_read && !can_read) {
+      return;
+    }
   }
 
   real_platform_.InitializeFile(file, TestFilePath(path), flags);
@@ -568,6 +587,7 @@ bool FakePlatform::GetOwnership(const base::FilePath& path,
                                 bool follow_links) const {
   base::AutoLock lock(mappings_lock_);
   base::FilePath npath = NormalizePath(path);
+  // TODO(dlunev): add path existence check when fake mount is implemented.
   // TODO(chromium:1141301, dlunev): here and further check for file existence.
   // Can not do it at present due to weird test dependencies.
   if (file_owners_.find(npath) == file_owners_.end()) {
@@ -587,14 +607,25 @@ bool FakePlatform::SetOwnership(const base::FilePath& path,
                                 bool follow_links) const {
   base::AutoLock lock(mappings_lock_);
   base::FilePath npath = NormalizePath(path);
+  // TODO(dlunev): add path existence check when fake mount is implemented.
   file_owners_[npath] = {user_id, group_id};
   return true;
+}
+
+bool FakePlatform::SafeDirChown(const base::FilePath& path,
+                                uid_t user_id,
+                                gid_t group_id) {
+  if (!DirectoryExists(path)) {
+    return false;
+  }
+  return SetOwnership(path, user_id, group_id, false);
 }
 
 bool FakePlatform::GetPermissions(const base::FilePath& path,
                                   mode_t* mode) const {
   base::AutoLock lock(mappings_lock_);
   base::FilePath npath = NormalizePath(path);
+  // TODO(dlunev): add path existence check when fake mount is implemented.
   if (file_mode_.find(npath) == file_mode_.end()) {
     (*mode) = S_IRWXU | S_IRGRP | S_IXGRP;
     return true;
@@ -607,7 +638,34 @@ bool FakePlatform::SetPermissions(const base::FilePath& path,
                                   mode_t mode) const {
   base::AutoLock lock(mappings_lock_);
   base::FilePath npath = NormalizePath(path);
+  // TODO(dlunev): add path existence check when fake mount is implemented.
   file_mode_[npath] = mode & 01777;
+  return true;
+}
+
+bool FakePlatform::SafeDirChmod(const base::FilePath& path, mode_t mode) {
+  if (!DirectoryExists(path)) {
+    return false;
+  }
+  return SetPermissions(path, mode);
+}
+
+bool FakePlatform::SafeCreateDirAndSetOwnershipAndPermissions(
+    const base::FilePath& path, mode_t mode, uid_t user_id, gid_t gid) {
+  if (DirectoryExists(path) || !CreateDirectory(path) ||
+      !SafeDirChown(path, user_id, gid) || !SafeDirChmod(path, mode)) {
+    return false;
+  }
+  return true;
+}
+
+bool FakePlatform::SafeCreateDirAndSetOwnership(const base::FilePath& path,
+                                                uid_t user_id,
+                                                gid_t gid) {
+  if (DirectoryExists(path) || !CreateDirectory(path) ||
+      !SafeDirChown(path, user_id, gid)) {
+    return false;
+  }
   return true;
 }
 

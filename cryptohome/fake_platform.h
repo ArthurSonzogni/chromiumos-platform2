@@ -70,8 +70,9 @@ class FakePlatform final : public Platform {
   bool DeleteFile(const base::FilePath& path) override;
   bool DeletePathRecursively(const base::FilePath& path) override;
   bool DeleteFileDurable(const base::FilePath& path) override;
-  bool FileExists(const base::FilePath& path) override;
+  bool FileExists(const base::FilePath& path) const override;
   bool DirectoryExists(const base::FilePath& path) override;
+  int Access(const base::FilePath& path, uint32_t flag) override;
   bool CreateDirectory(const base::FilePath& path) override;
   bool CreateSparseFile(const base::FilePath& path, int64_t size) override;
 
@@ -162,8 +163,19 @@ class FakePlatform final : public Platform {
                     uid_t user_id,
                     gid_t group_id,
                     bool follow_links) const override;
+  bool SafeDirChown(const base::FilePath& path,
+                    uid_t user_id,
+                    gid_t group_id) override;
   bool GetPermissions(const base::FilePath& path, mode_t* mode) const override;
   bool SetPermissions(const base::FilePath& path, mode_t mode) const override;
+  bool SafeDirChmod(const base::FilePath& path, mode_t mode) override;
+  bool SafeCreateDirAndSetOwnershipAndPermissions(const base::FilePath& path,
+                                                  mode_t mode,
+                                                  uid_t user_id,
+                                                  gid_t gid) override;
+  bool SafeCreateDirAndSetOwnership(const base::FilePath& path,
+                                    uid_t user_id,
+                                    gid_t gid) override;
 
   int64_t AmountOfFreeDiskSpace(const base::FilePath& path) const override;
 

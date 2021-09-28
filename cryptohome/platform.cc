@@ -595,7 +595,7 @@ bool Platform::SetQuotaProjectIdWithFd(int project_id,
   return SetQuotaProjectIdInternal(project_id, fd, out_error);
 }
 
-bool Platform::FileExists(const FilePath& path) {
+bool Platform::FileExists(const FilePath& path) const {
   return base::PathExists(path);
 }
 
