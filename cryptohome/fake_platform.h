@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_FAKE_PLATFORM_H_
 #define CRYPTOHOME_FAKE_PLATFORM_H_
 
+#include <map>
+#include <memory>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -16,6 +18,7 @@
 #include <base/files/file_util.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/fake_platform/fake_mount_mapper.h"
 #include "cryptohome/platform.h"
 
 namespace cryptohome {
@@ -179,6 +182,30 @@ class FakePlatform final : public Platform {
 
   int64_t AmountOfFreeDiskSpace(const base::FilePath& path) const override;
 
+  bool Mount(const base::FilePath& from,
+             const base::FilePath& to,
+             const std::string& type,
+             uint32_t mount_flags,
+             const std::string& mount_options) override;
+
+  bool Bind(const base::FilePath& from,
+            const base::FilePath& to,
+            RemountOption remount = RemountOption::kNoRemount,
+            bool nosymfollow = false) override;
+
+  bool Unmount(const base::FilePath& path, bool lazy, bool* was_busy) override;
+  void LazyUnmount(const base::FilePath& path) override;
+  bool GetLoopDeviceMounts(
+      std::multimap<const base::FilePath, const base::FilePath>* mounts)
+      override;
+  bool GetMountsBySourcePrefix(
+      const base::FilePath& from_prefix,
+      std::multimap<const base::FilePath, const base::FilePath>* mounts)
+      override;
+  bool IsDirectoryMounted(const base::FilePath& directory) override;
+  base::Optional<std::vector<bool>> AreDirectoriesMounted(
+      const std::vector<base::FilePath>& directories) override;
+
   // Test API
 
   void SetStandardUsersAndGroups();
@@ -220,12 +247,14 @@ class FakePlatform final : public Platform {
   mutable std::unordered_map<base::FilePath, mode_t> file_mode_;
 
   base::FilePath tmpfs_rootfs_;
+  std::unique_ptr<FakeMountMapper> fake_mount_mapper_;
 
   void SetUserId(const std::string& user, uid_t user_id);
   void SetGroupId(const std::string& group, gid_t group_id);
 
   void RemoveFakeEntries(const base::FilePath& path);
   void RemoveFakeEntriesRecursive(const base::FilePath& path);
+  base::FilePath ResolveMountPath(const base::FilePath& path) const;
   base::FilePath TestFilePath(const base::FilePath& path) const;
   base::FilePath StripTestFilePath(const base::FilePath& path) const;
   // TODO(dlunev): consider making IsLink a part of platform API.

@@ -4,6 +4,7 @@
 
 #include "cryptohome/fake_platform.h"
 
+#include <map>
 #include <memory>
 #include <string>
 #include <sys/stat.h>
@@ -18,7 +19,11 @@
 
 #include "cryptohome/util/get_random_suffix.h"
 
+#include "cryptohome/fake_platform/test_file_path.h"
+
 namespace cryptohome {
+
+using fake_platform::NormalizePath;
 
 namespace {
 
@@ -68,33 +73,6 @@ void RemoveFakeEntriesRecursiveImpl(
       m->erase(tmp_it);
     }
   }
-}
-
-base::FilePath NormalizePath(const base::FilePath& path) {
-  std::vector<std::string> components;
-  std::vector<std::string> normalized_components;
-
-  path.GetComponents(&components);
-  for (const auto& component : components) {
-    if (component == ".") {
-      continue;
-    }
-    if (component == "..") {
-      normalized_components.pop_back();
-      continue;
-    }
-    normalized_components.push_back(component);
-  }
-
-  base::FilePath result;
-  for (const auto& component : normalized_components) {
-    if (result.empty()) {
-      result = base::FilePath(component);
-      continue;
-    }
-    result = result.Append(component);
-  }
-  return result;
 }
 
 }  // namespace
@@ -161,6 +139,7 @@ FakePlatform::FakePlatform() : Platform() {
   if (!real_platform_.CreateDirectory(tmpfs_rootfs_)) {
     LOG(ERROR) << "Failed to create test dir: " << tmpfs_rootfs_;
   }
+  fake_mount_mapper_.reset(new FakeMountMapper(tmpfs_rootfs_));
 }
 
 FakePlatform::~FakePlatform() {
@@ -170,23 +149,14 @@ FakePlatform::~FakePlatform() {
 // Helpers
 
 base::FilePath FakePlatform::TestFilePath(const base::FilePath& path) const {
-  std::string path_str = path.NormalizePathSeparators().value();
-  // Make the path relative.
   CHECK(path.IsAbsolute());
-  if (path_str.length() > 0 && path_str[0] == '/') {
-    path_str = path_str.substr(1);
-  }
-  return tmpfs_rootfs_.Append(path_str);
+  const base::FilePath normalized_path = NormalizePath(path);
+  return fake_mount_mapper_->ResolvePath(normalized_path);
 }
 
 base::FilePath FakePlatform::StripTestFilePath(
     const base::FilePath& path) const {
-  base::FilePath result("/");
-  if (!tmpfs_rootfs_.AppendRelativePath(path, &result)) {
-    // Not under the test root, so return as is.
-    return path;
-  }
-  return result;
+  return fake_platform::StripTestFilePath(tmpfs_rootfs_, path);
 }
 
 bool FakePlatform::IsLink(const base::FilePath& path) const {
@@ -469,11 +439,11 @@ bool FakePlatform::Stat(const base::FilePath& path, base::stat_wrapper_t* buf) {
 bool FakePlatform::HasExtendedFileAttribute(const base::FilePath& path,
                                             const std::string& name) {
   base::AutoLock lock(mappings_lock_);
-  base::FilePath npath = NormalizePath(path);
-  if (!IsLink(npath) && !FileExists(npath)) {
+  const base::FilePath real_path = TestFilePath(path);
+  if (!IsLink(path) && !FileExists(path)) {
     return false;
   }
-  const auto it = xattrs_.find(npath);
+  const auto it = xattrs_.find(real_path);
   if (it == xattrs_.end() || !it->second.Exists(name)) {
     // Client code checks the error code, so set it.
     errno = ENODATA;
@@ -486,11 +456,11 @@ bool FakePlatform::HasExtendedFileAttribute(const base::FilePath& path,
 bool FakePlatform::ListExtendedFileAttributes(
     const base::FilePath& path, std::vector<std::string>* attr_list) {
   base::AutoLock lock(mappings_lock_);
-  base::FilePath npath = NormalizePath(path);
-  if (!IsLink(npath) && !FileExists(npath)) {
+  const base::FilePath real_path = TestFilePath(path);
+  if (!IsLink(path) && !FileExists(path)) {
     return false;
   }
-  const auto it = xattrs_.find(npath);
+  const auto it = xattrs_.find(real_path);
   if (it == xattrs_.end()) {
     attr_list->clear();
     return true;
@@ -504,11 +474,11 @@ bool FakePlatform::GetExtendedFileAttributeAsString(const base::FilePath& path,
                                                     const std::string& name,
                                                     std::string* value) {
   base::AutoLock lock(mappings_lock_);
-  base::FilePath npath = NormalizePath(path);
-  if (!IsLink(npath) && !FileExists(npath)) {
+  const base::FilePath real_path = TestFilePath(path);
+  if (!IsLink(path) && !FileExists(path)) {
     return false;
   }
-  const auto it = xattrs_.find(npath);
+  const auto it = xattrs_.find(real_path);
   if (it == xattrs_.end() || !it->second.Exists(name)) {
     // Client code checks the error code, so set it.
     errno = ENODATA;
@@ -523,11 +493,11 @@ bool FakePlatform::GetExtendedFileAttribute(const base::FilePath& path,
                                             char* value,
                                             ssize_t size) {
   base::AutoLock lock(mappings_lock_);
-  base::FilePath npath = NormalizePath(path);
-  if (!IsLink(npath) && !FileExists(npath)) {
+  const base::FilePath real_path = TestFilePath(path);
+  if (!IsLink(path) && !FileExists(path)) {
     return false;
   }
-  const auto it = xattrs_.find(npath);
+  const auto it = xattrs_.find(real_path);
   if (it == xattrs_.end() || !it->second.Exists(name)) {
     // Client code checks the error code, so set it.
     errno = ENODATA;
@@ -542,13 +512,13 @@ bool FakePlatform::SetExtendedFileAttribute(const base::FilePath& path,
                                             const char* value,
                                             size_t size) {
   base::AutoLock lock(mappings_lock_);
-  base::FilePath npath = NormalizePath(path);
-  if (!IsLink(npath) && !FileExists(npath)) {
+  const base::FilePath real_path = TestFilePath(path);
+  if (!IsLink(path) && !FileExists(path)) {
     return false;
   }
 
   auto [it, unused] =
-      xattrs_.emplace(npath, FakePlatform::FakeExtendedAttributes());
+      xattrs_.emplace(real_path, FakePlatform::FakeExtendedAttributes());
 
   it->second.Set(name, value, size);
   return true;
@@ -557,11 +527,11 @@ bool FakePlatform::SetExtendedFileAttribute(const base::FilePath& path,
 bool FakePlatform::RemoveExtendedFileAttribute(const base::FilePath& path,
                                                const std::string& name) {
   base::AutoLock lock(mappings_lock_);
-  base::FilePath npath = NormalizePath(path);
-  if (!IsLink(npath) && !FileExists(npath)) {
+  const base::FilePath real_path = TestFilePath(path);
+  if (!IsLink(path) && !FileExists(path)) {
     return false;
   }
-  auto it = xattrs_.find(npath);
+  auto it = xattrs_.find(real_path);
   if (it == xattrs_.end()) {
     return true;
   }
@@ -588,18 +558,19 @@ bool FakePlatform::GetOwnership(const base::FilePath& path,
                                 gid_t* group_id,
                                 bool follow_links) const {
   base::AutoLock lock(mappings_lock_);
-  base::FilePath npath = NormalizePath(path);
-  // TODO(dlunev): add path existence check when fake mount is implemented.
-  // TODO(chromium:1141301, dlunev): here and further check for file existence.
+  const base::FilePath real_path = TestFilePath(path);
+  if (!IsLink(path) && !FileExists(path)) {
+    return false;
+  }
   // Can not do it at present due to weird test dependencies.
-  if (file_owners_.find(npath) == file_owners_.end()) {
+  if (file_owners_.find(real_path) == file_owners_.end()) {
     *user_id = fake_platform::kChronosUID;
     *group_id = fake_platform::kChronosGID;
     return true;
   }
 
-  *user_id = file_owners_.at(npath).first;
-  *group_id = file_owners_.at(npath).second;
+  *user_id = file_owners_.at(real_path).first;
+  *group_id = file_owners_.at(real_path).second;
   return true;
 }
 
@@ -608,9 +579,11 @@ bool FakePlatform::SetOwnership(const base::FilePath& path,
                                 gid_t group_id,
                                 bool follow_links) const {
   base::AutoLock lock(mappings_lock_);
-  base::FilePath npath = NormalizePath(path);
-  // TODO(dlunev): add path existence check when fake mount is implemented.
-  file_owners_[npath] = {user_id, group_id};
+  const base::FilePath real_path = TestFilePath(path);
+  if (!IsLink(path) && !FileExists(path)) {
+    return false;
+  }
+  file_owners_[real_path] = {user_id, group_id};
   return true;
 }
 
@@ -626,22 +599,26 @@ bool FakePlatform::SafeDirChown(const base::FilePath& path,
 bool FakePlatform::GetPermissions(const base::FilePath& path,
                                   mode_t* mode) const {
   base::AutoLock lock(mappings_lock_);
-  base::FilePath npath = NormalizePath(path);
-  // TODO(dlunev): add path existence check when fake mount is implemented.
-  if (file_mode_.find(npath) == file_mode_.end()) {
+  const base::FilePath real_path = TestFilePath(path);
+  if (!IsLink(path) && !FileExists(path)) {
+    return false;
+  }
+  if (file_mode_.find(real_path) == file_mode_.end()) {
     (*mode) = S_IRWXU | S_IRGRP | S_IXGRP;
     return true;
   }
-  (*mode) = (file_mode_.at(npath) & 01777);
+  (*mode) = (file_mode_.at(real_path) & 01777);
   return true;
 }
 
 bool FakePlatform::SetPermissions(const base::FilePath& path,
                                   mode_t mode) const {
   base::AutoLock lock(mappings_lock_);
-  base::FilePath npath = NormalizePath(path);
-  // TODO(dlunev): add path existence check when fake mount is implemented.
-  file_mode_[npath] = mode & 01777;
+  const base::FilePath real_path = TestFilePath(path);
+  if (!IsLink(path) && !FileExists(path)) {
+    return false;
+  }
+  file_mode_[real_path] = mode & 01777;
   return true;
 }
 
@@ -701,6 +678,72 @@ bool FakePlatform::GetGroupId(const std::string& group, gid_t* group_id) const {
 
 int64_t FakePlatform::AmountOfFreeDiskSpace(const base::FilePath& path) const {
   return real_platform_.AmountOfFreeDiskSpace(TestFilePath(path));
+}
+
+bool FakePlatform::Mount(const base::FilePath& from,
+                         const base::FilePath& to,
+                         const std::string& type,
+                         uint32_t mount_flags,
+                         const std::string& mount_options) {
+  base::FilePath nfrom = NormalizePath(from);
+  base::FilePath nto = NormalizePath(to);
+  return fake_mount_mapper_->Mount(nfrom, nto);
+}
+
+bool FakePlatform::Bind(const base::FilePath& from,
+                        const base::FilePath& to,
+                        RemountOption remount,
+                        bool nosymfollow) {
+  base::FilePath nfrom = NormalizePath(from);
+  base::FilePath nto = NormalizePath(to);
+  return fake_mount_mapper_->Bind(nfrom, nto);
+}
+
+bool FakePlatform::Unmount(const base::FilePath& path,
+                           bool lazy,
+                           bool* was_busy) {
+  base::FilePath normalized_path = NormalizePath(path);
+  bool ok = fake_mount_mapper_->Unmount(normalized_path);
+  if (was_busy != nullptr) {
+    *was_busy = !ok;
+  }
+  return true;
+}
+
+void FakePlatform::LazyUnmount(const base::FilePath& path) {
+  base::FilePath normalized_path = NormalizePath(path);
+  // TODO(dlunev): actually implement lazy unmount in fake mapper, for now busy
+  // target will just fail silently.
+  (void)fake_mount_mapper_->Unmount(normalized_path);
+}
+
+bool FakePlatform::GetLoopDeviceMounts(
+    std::multimap<const base::FilePath, const base::FilePath>* mounts) {
+  constexpr char kLoopPrefix[] = "/dev/loop";
+  fake_mount_mapper_->ListMountsBySourcePrefix(kLoopPrefix, mounts);
+  return true;
+}
+
+bool FakePlatform::GetMountsBySourcePrefix(
+    const base::FilePath& from_prefix,
+    std::multimap<const base::FilePath, const base::FilePath>* mounts) {
+  fake_mount_mapper_->ListMountsBySourcePrefix(from_prefix, mounts);
+  return true;
+}
+
+bool FakePlatform::IsDirectoryMounted(const base::FilePath& directory) {
+  const base::FilePath ndirectory = NormalizePath(directory);
+  return fake_mount_mapper_->IsMounted(ndirectory);
+}
+
+base::Optional<std::vector<bool>> FakePlatform::AreDirectoriesMounted(
+    const std::vector<base::FilePath>& directories) {
+  std::vector<bool> result;
+  result.reserve(directories.size());
+  for (const auto& d : directories) {
+    result.push_back(IsDirectoryMounted(d));
+  }
+  return result;
 }
 
 // Test API

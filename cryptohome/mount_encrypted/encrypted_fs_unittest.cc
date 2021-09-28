@@ -82,26 +82,11 @@ class EncryptedFsTest : public ::testing::Test {
         .WillRepeatedly(DoAll(SetArgPointee<1>(40920000), Return(true)));
     EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
     EXPECT_CALL(platform_, Tune2Fs(_, _)).WillOnce(Return(true));
-    EXPECT_CALL(platform_, Access(_, _)).WillRepeatedly(Return(0));
   }
 
   void ExpectCreate() {
     EXPECT_CALL(platform_, FormatExt4(dmcrypt_device_, _, _))
         .WillOnce(Return(true));
-  }
-
-  void ExpectMount() {
-    EXPECT_CALL(platform_, Mount(dmcrypt_device_, mount_point_, _, _, _))
-        .WillOnce(Return(true));
-    EXPECT_CALL(platform_, Bind(_, _, _, false))
-        .Times(2)
-        .WillRepeatedly(Return(true));
-  }
-
-  void ExpectUnmount() {
-    EXPECT_CALL(platform_, Unmount(_, _, _))
-        .Times(3)
-        .WillRepeatedly(Return(true));
   }
 
  protected:
@@ -122,8 +107,6 @@ class EncryptedFsTest : public ::testing::Test {
 TEST_F(EncryptedFsTest, RebuildStateful) {
   ExpectSetup();
   ExpectCreate();
-  ExpectMount();
-  ExpectUnmount();
 
   // Check if dm device is mounted and has the correct key.
   EXPECT_EQ(encrypted_fs_->Setup(key_, true), RESULT_SUCCESS);
@@ -144,8 +127,6 @@ TEST_F(EncryptedFsTest, RebuildStateful) {
 
 TEST_F(EncryptedFsTest, OldStateful) {
   ExpectSetup();
-  ExpectMount();
-  ExpectUnmount();
 
   // Create the fake backing device.
   ASSERT_TRUE(backing_device_->Create());

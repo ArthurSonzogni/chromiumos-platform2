@@ -35,6 +35,7 @@ group("all") {
     deps += [
       ":boot_lockbox_unittests",
       ":cryptohome_testrunner",
+      ":fake_platform_unittest",
       ":mount_encrypted_unittests",
     ]
   }
@@ -406,6 +407,23 @@ if (use.cert_provision) {
 }
 
 if (use.test) {
+  static_library("fake_platform-static") {
+    sources = [
+      "fake_platform.cc",
+      "fake_platform/fake_fake_mount_mapping_redirect_factory.cc",
+      "fake_platform/fake_mount_mapper.cc",
+      "fake_platform/real_fake_mount_mapping_redirect_factory.cc",
+      "fake_platform/test_file_path.cc",
+      "mock_platform.cc",
+      "util/get_random_suffix.cc",
+    ]
+    pkg_deps = [
+      "libbrillo",
+      "libchrome",
+      "openssl",
+    ]
+  }
+
   executable("cryptohome_testrunner") {
     sources = [
       "auth_block_unittest.cc",
@@ -438,7 +456,6 @@ if (use.test) {
       "cryptorecovery/recovery_crypto_unittest.cc",
       "dircrypto_data_migrator/migration_helper_unittest.cc",
       "fake_le_credential_backend.cc",
-      "fake_platform.cc",
       "fido/make_credential_response_test.cc",
       "fingerprint_manager_unittest.cc",
       "firmware_management_parameters_unittest.cc",
@@ -458,7 +475,6 @@ if (use.test) {
       "mock_keystore.cc",
       "mock_lockbox.cc",
       "mock_pkcs11_init.cc",
-      "mock_platform.cc",
       "mock_signature_sealing_backend.cc",
       "mock_tpm.cc",
       "password_auth_factor_unittest.cc",
@@ -502,6 +518,7 @@ if (use.test) {
     # declarations.
     cflags_cc = [ "-Wno-error=deprecated-declarations" ]
     deps = [
+      ":fake_platform-static",
       "libs:cryptohome-proto",
       "libs:libcrostpm",
       "libs:libcryptohome",
@@ -564,20 +581,40 @@ if (use.test) {
     }
   }
 
-  executable("mount_encrypted_unittests") {
+  executable("fake_platform_unittest") {
     sources = [
-      "fake_platform.cc",
-      "mock_platform.cc",
-      "mount_encrypted/encrypted_fs_unittest.cc",
-      "mount_encrypted/encryption_key_unittest.cc",
-      "mount_encrypted/tlcl_stub.cc",
-      "util/get_random_suffix.cc",
+      "fake_platform/fake_mount_mapper_unittest.cc",
+      "fake_platform/real_fake_mount_mapping_redirect_factory_unittest.cc",
+      "fake_platform/test_file_path_unittest.cc",
     ]
     configs += [
       "//common-mk:test",
       "libs:target_defaults",
     ]
     deps = [
+      ":fake_platform-static",
+      "//common-mk/testrunner",
+    ]
+    pkg_deps = [
+      "libbrillo",
+      "libbrillo-test",
+      "libchrome",
+      "libchrome-test",
+    ]
+  }
+
+  executable("mount_encrypted_unittests") {
+    sources = [
+      "mount_encrypted/encrypted_fs_unittest.cc",
+      "mount_encrypted/encryption_key_unittest.cc",
+      "mount_encrypted/tlcl_stub.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      "libs:target_defaults",
+    ]
+    deps = [
+      ":fake_platform-static",
       ":mount_encrypted_lib",
       "libs:libcrostpm",
       "//common-mk/testrunner",

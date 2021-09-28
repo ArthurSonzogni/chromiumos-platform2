@@ -271,9 +271,6 @@ class MockPlatform : public Platform {
               AmountOfFreeDiskSpace,
               (const base::FilePath&),
               (const, override));
-
-  // Calls which do not have a corresponding fake in FakePlatform.
-
   MOCK_METHOD(bool,
               Mount,
               (const base::FilePath&,
@@ -288,10 +285,6 @@ class MockPlatform : public Platform {
       (const base::FilePath&, const base::FilePath&, RemountOption, bool),
       (override));
   MOCK_METHOD(bool, Unmount, (const base::FilePath&, bool, bool*), (override));
-  MOCK_METHOD(ExpireMountResult,
-              ExpireMount,
-              (const base::FilePath&),
-              (override));
   MOCK_METHOD(void, LazyUnmount, (const base::FilePath&), (override));
   MOCK_METHOD(bool,
               GetLoopDeviceMounts,
@@ -306,6 +299,13 @@ class MockPlatform : public Platform {
   MOCK_METHOD(base::Optional<std::vector<bool>>,
               AreDirectoriesMounted,
               (const std::vector<base::FilePath>&),
+              (override));
+
+  // Calls which do not have a corresponding fake in FakePlatform.
+
+  MOCK_METHOD(ExpireMountResult,
+              ExpireMount,
+              (const base::FilePath&),
               (override));
   MOCK_METHOD(std::unique_ptr<brillo::Process>,
               CreateProcessInstance,

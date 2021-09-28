@@ -188,6 +188,27 @@ MockPlatform::MockPlatform()
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::AmountOfFreeDiskSpace));
 
+  ON_CALL(*this, Mount(_, _, _, _, _))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::Mount));
+  ON_CALL(*this, Bind(_, _, _, _))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::Bind));
+  ON_CALL(*this, Unmount(_, _, _))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::Unmount));
+  ON_CALL(*this, LazyUnmount(_))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::LazyUnmount));
+  ON_CALL(*this, GetLoopDeviceMounts(_))
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::GetLoopDeviceMounts));
+  ON_CALL(*this, GetMountsBySourcePrefix(_, _))
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::GetMountsBySourcePrefix));
+  ON_CALL(*this, IsDirectoryMounted(_))
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::IsDirectoryMounted));
+  ON_CALL(*this, AreDirectoriesMounted(_))
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::AreDirectoriesMounted));
+
   ON_CALL(*this, SetGroupAccessible(_, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, GetCurrentTime())
       .WillByDefault(Return(base::Time::NowFromSystemTime()));
