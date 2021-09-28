@@ -14,6 +14,7 @@
 #include <base/macros.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <brillo/dbus/dbus_connection.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
 #include <openssl/evp.h>
@@ -79,10 +80,10 @@ static void PrintIFXFirmwarePackage(
 int TakeOwnership(bool finalize) {
   base::Time start_time = base::Time::Now();
 
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
+  brillo::DBusConnection connection;
   org::chromium::TpmManagerProxy proxy(
-      base::MakeRefCounted<dbus::Bus>(options));
+      connection.ConnectWithTimeout(kDefaultTimeout));
+
   brillo::ErrorPtr error;
 
   LOG(INFO) << "Initializing TPM.";
@@ -110,10 +111,10 @@ int TakeOwnership(bool finalize) {
 }
 
 int VerifyEK(bool is_cros_core) {
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
+  brillo::DBusConnection connection;
   org::chromium::AttestationProxy proxy(
-      base::MakeRefCounted<dbus::Bus>(options));
+      connection.ConnectWithTimeout(kDefaultTimeout));
+
   brillo::ErrorPtr error;
 
   attestation::VerifyRequest request;

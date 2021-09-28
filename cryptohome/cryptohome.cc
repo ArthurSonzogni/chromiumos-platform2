@@ -30,6 +30,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/cryptohome.h>
+#include <brillo/dbus/dbus_connection.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
@@ -660,20 +661,17 @@ int main(int argc, char** argv) {
   const int timeout_ms = kDefaultTimeoutMs;
 
   // Setup libbrillo dbus.
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> brillo_dbus =
-      base::MakeRefCounted<dbus::Bus>(options);
-  bool return_result = brillo_dbus->Connect();
-  DCHECK(return_result) << "Failed to connect to system bus through libbrillo";
-  org::chromium::AttestationProxy attestation_proxy(brillo_dbus);
-  org::chromium::TpmManagerProxy tpm_ownership_proxy(brillo_dbus);
-  org::chromium::TpmNvramProxy tpm_nvram_proxy(brillo_dbus);
-  org::chromium::UserDataAuthInterfaceProxy userdataauth_proxy(brillo_dbus);
-  org::chromium::CryptohomePkcs11InterfaceProxy pkcs11_proxy(brillo_dbus);
-  org::chromium::InstallAttributesInterfaceProxy install_attributes_proxy(
-      brillo_dbus);
-  org::chromium::CryptohomeMiscInterfaceProxy misc_proxy(brillo_dbus);
+  brillo::DBusConnection connection;
+  scoped_refptr<dbus::Bus> bus = connection.Connect();
+  DCHECK(bus) << "Failed to connect to system bus through libbrillo";
+
+  org::chromium::AttestationProxy attestation_proxy(bus);
+  org::chromium::TpmManagerProxy tpm_ownership_proxy(bus);
+  org::chromium::TpmNvramProxy tpm_nvram_proxy(bus);
+  org::chromium::UserDataAuthInterfaceProxy userdataauth_proxy(bus);
+  org::chromium::CryptohomePkcs11InterfaceProxy pkcs11_proxy(bus);
+  org::chromium::InstallAttributesInterfaceProxy install_attributes_proxy(bus);
+  org::chromium::CryptohomeMiscInterfaceProxy misc_proxy(bus);
 
   cryptohome::Platform platform;
 

@@ -71,11 +71,9 @@ TPM2NVSpaceUtility::TPM2NVSpaceUtility(
 
 bool TPM2NVSpaceUtility::Initialize() {
   if (!tpm_nvram_) {
-    dbus::Bus::Options options;
-    options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = base::MakeRefCounted<dbus::Bus>(options);
-    CHECK(bus_->Connect()) << "Failed to connect to system D-Bus";
-    default_tpm_nvram_ = std::make_unique<org::chromium::TpmNvramProxy>(bus_);
+    scoped_refptr<dbus::Bus> bus = connection_.Connect();
+    CHECK(bus) << "Failed to connect to system D-Bus";
+    default_tpm_nvram_ = std::make_unique<org::chromium::TpmNvramProxy>(bus);
     tpm_nvram_ = default_tpm_nvram_.get();
   }
   if (!trunks_factory_) {

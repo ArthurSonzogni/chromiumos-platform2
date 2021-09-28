@@ -10,6 +10,7 @@
 
 #include <openssl/sha.h>
 
+#include <brillo/dbus/dbus_connection.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 #include <trunks/tpm_constants.h>
@@ -80,7 +81,7 @@ class TPM2NVSpaceUtility : public TPMNVSpaceUtilityInterface {
   bool LockNVSpace() override;
 
  private:
-  scoped_refptr<dbus::Bus> bus_;
+  brillo::DBusConnection connection_;
 
   // Tpm manager interface that relays relays tpm request to tpm_managerd over
   // DBus. It is used for defining nvspace on the first boot. This object is
