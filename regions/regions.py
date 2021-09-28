@@ -490,6 +490,10 @@ REGIONS_LIST = [
     Region(
         'ee', 'xkb:ee::est', 'Europe/Tallinn', ['et', 'ru', 'en-GB'], KML.ISO,
         'Estonia'),
+    Region(
+        'ro.us', ['xkb:us::eng', 'xkb:ro::rum'], 'Europe/Bucharest', [
+            'ro', 'hu', 'de', 'en-GB'], KML.ANSI,
+        'Romania with US keyboard'),
     ]
 
 """A list of :py:class:`regions.Region` objects for
