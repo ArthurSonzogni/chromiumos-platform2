@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/optional.h>
+#include <brillo/dbus/dbus_connection.h>
 #include <brillo/syslog_logging.h>
 #include <dbus/bus.h>
 
@@ -54,11 +55,13 @@ int main(int argc, char* argv[]) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   const auto& args = command_line->GetArgs();
   brillo::InitLog(brillo::kLogToStderr);
+
   // dbus proxy setup
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  brillo::DBusConnection connection;
+  scoped_refptr<dbus::Bus> bus = connection.Connect();
+  CHECK(bus) << "Failed to connect to system bus through libbrillo";
   auto pca_agent = std::make_unique<org::chromium::PcaAgentProxy>(bus);
+
   brillo::ErrorPtr error;
   if (command_line->HasSwitch("help") || command_line->HasSwitch("h") ||
       args.empty()) {

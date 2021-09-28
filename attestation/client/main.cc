@@ -19,6 +19,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/daemons/daemon.h>
+#include <brillo/dbus/dbus_connection.h>
 #include <brillo/syslog_logging.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 
@@ -166,11 +167,9 @@ class ClientLoop : public ClientLoopBase {
       return exit_code;
     }
 
-    dbus::Bus::Options options;
-    options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = base::MakeRefCounted<dbus::Bus>(options);
-    CHECK(bus_->Connect()) << "Failed to connect to system D-Bus";
-    attestation_ = std::make_unique<org::chromium::AttestationProxy>(bus_);
+    scoped_refptr<dbus::Bus> bus = connection_.Connect();
+    CHECK(bus) << "Failed to connect to system D-Bus";
+    attestation_ = std::make_unique<org::chromium::AttestationProxy>(bus);
 
     exit_code = ScheduleCommand();
     if (exit_code == EX_USAGE) {
@@ -1090,7 +1089,7 @@ class ClientLoop : public ClientLoopBase {
     PrintReplyAndQuit<GetCertifiedNvIndexReply>(reply);
   }
 
-  scoped_refptr<dbus::Bus> bus_;
+  brillo::DBusConnection connection_;
 
   std::unique_ptr<org::chromium::AttestationProxy> attestation_;
 

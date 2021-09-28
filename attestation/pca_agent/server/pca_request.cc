@@ -61,12 +61,13 @@ template <typename ReplyType>
 void PcaRequest<ReplyType>::GetChromeProxyServersAsync(
     const std::string& url,
     const brillo::http::GetChromeProxyServersCallback& callback) {
-  if (!bus_.get()) {
-    dbus::Bus::Options options;
-    options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = base::MakeRefCounted<dbus::Bus>(options);
+  scoped_refptr<dbus::Bus> bus = connection_.Connect();
+  if (!bus) {
+    LOG(ERROR) << "Failed to connect to system bus through libbrillo.";
+    std::move(callback).Run(false, {});
+    return;
   }
-  return brillo::http::GetChromeProxyServersAsync(bus_, url, callback);
+  return brillo::http::GetChromeProxyServersAsync(bus, url, callback);
 }
 
 template <typename ReplyType>

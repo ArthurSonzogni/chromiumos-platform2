@@ -773,6 +773,7 @@ class AttestationService : public AttestationInterface {
   // and is not available after the thread is stopped/destroyed.
   std::unique_ptr<TpmUtility> default_tpm_utility_;
 
+  scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::chromium::PcaAgentProxyInterface>
       default_pca_agent_proxy_;
   org::chromium::PcaAgentProxyInterface* pca_agent_proxy_{nullptr};

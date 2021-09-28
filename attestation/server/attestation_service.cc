@@ -42,7 +42,6 @@ extern "C" {
 
 #include "attestation/common/database.pb.h"
 #include "attestation/common/tpm_utility_factory.h"
-#include "attestation/pca_agent/client/proxy_factory.h"
 #include "attestation/server/attestation_flow.h"
 #include "attestation/server/database_impl.h"
 #include "attestation/server/google_keys.h"
@@ -494,9 +493,14 @@ bool AttestationService::InitializeWithCallback(
   // |default_pca_agent_proxy_| is used in the origin thread instead of worker
   // thread.
   if (!pca_agent_proxy_) {
+    if (!bus_) {
+      dbus::Bus::Options options;
+      options.bus_type = dbus::Bus::SYSTEM;
+      options.dbus_task_runner = worker_thread_->task_runner();
+      bus_ = base::MakeRefCounted<dbus::Bus>(options);
+    }
     default_pca_agent_proxy_ =
-        attestation::pca_agent::client::CreateWithDBusTaskRunner(
-            worker_thread_->task_runner());
+        std::make_unique<org::chromium::PcaAgentProxy>(bus_);
     pca_agent_proxy_ = default_pca_agent_proxy_.get();
   }
   worker_thread_->task_runner()->PostTask(
@@ -701,6 +705,9 @@ void AttestationService::ShutdownTask() {
   default_crypto_utility_.reset(nullptr);
   tpm_utility_ = nullptr;
   default_tpm_utility_.reset(nullptr);
+  if (bus_) {
+    bus_->ShutdownAndBlock();
+  }
 }
 
 void AttestationService::GetKeyInfo(const GetKeyInfoRequest& request,

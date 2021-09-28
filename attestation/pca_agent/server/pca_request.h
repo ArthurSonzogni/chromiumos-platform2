@@ -16,6 +16,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
+#include <brillo/dbus/dbus_connection.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/http/http_request.h>
 #include <dbus/bus.h>
@@ -126,7 +127,7 @@ class PcaRequest final : public base::RefCounted<PcaRequest<ReplyType>>,
   PcaHttpUtils* http_utils_{this};
 
   // Used to retrieve proxy servers from Chrome.
-  scoped_refptr<dbus::Bus> bus_;
+  brillo::DBusConnection connection_;
 };
 
 }  // namespace pca_agent
