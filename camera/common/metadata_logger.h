@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/synchronization/lock.h>
 #include <base/values.h>
 
 #include "cros-camera/camera_metadata_utils.h"
@@ -62,11 +63,15 @@ class CROS_CAMERA_EXPORT MetadataLogger {
   // Returns true if the metadata are dumped successfully; false otherwise.
   bool DumpMetadata();
 
+  // Clears the logged frame metadata.
+  void Clear();
+
  private:
-  base::Value& GetOrCreateEntry(int frame_number);
+  base::Value& GetOrCreateEntryLocked(int frame_number);
 
   Options options_;
-  std::map<int, base::Value> frame_metadata_;
+  base::Lock frame_metadata_lock_;
+  std::map<int, base::Value> frame_metadata_ GUARDED_BY(frame_metadata_lock_);
 };
 
 // Template specializations don't always get exported, so we need to be explicit
