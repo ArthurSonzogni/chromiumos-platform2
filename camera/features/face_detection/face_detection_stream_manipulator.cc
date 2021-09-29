@@ -302,6 +302,8 @@ void FaceDetectionStreamManipulator::SetResultAeMetadata(
       LOGF(ERROR) << "Cannot set ANDROID_STATISTICS_FACE_RECTANGLES";
     }
   }
+
+  result->feature_metadata().faces = latest_faces_;
 }
 
 FaceDetectionStreamManipulator::FrameInfo&

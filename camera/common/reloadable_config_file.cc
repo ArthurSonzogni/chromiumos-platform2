@@ -41,7 +41,9 @@ ReloadableConfigFile::ReloadableConfigFile(
 void ReloadableConfigFile::SetCallback(OptionsUpdateCallback callback) {
   options_update_callback_ = std::move(callback);
   base::AutoLock lock(options_lock_);
-  options_update_callback_.Run(json_values_);
+  if (!json_values_.is_none()) {
+    options_update_callback_.Run(json_values_);
+  }
 }
 
 void ReloadableConfigFile::ReadConfigFileLocked(

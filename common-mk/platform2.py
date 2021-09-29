@@ -38,6 +38,7 @@ _IUSE = [
     'attestation',
     'bluetooth_suspend_management',
     'buffet',
+    'camera_feature_auto_framing',
     'camera_feature_face_detection',
     'camera_feature_hdrnet',
     'camera_feature_portrait_mode',

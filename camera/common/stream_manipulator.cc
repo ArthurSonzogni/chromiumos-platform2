@@ -8,6 +8,9 @@
 
 #include <utility>
 
+#include "features/feature_profile.h"
+#include "features/zsl/zsl_stream_manipulator.h"
+
 #if USE_CAMERA_FEATURE_HDRNET
 #include <base/files/file_util.h>
 
@@ -19,12 +22,13 @@
 #include "features/hdrnet/hdrnet_stream_manipulator.h"
 #endif
 
-#if USE_CAMERA_FEATURE_FACE_DETECTION
-#include "features/face_detection/face_detection_stream_manipulator.h"
+#if USE_CAMERA_FEATURE_AUTO_FRAMING
+#include "features/auto_framing/auto_framing_stream_manipulator.h"
 #endif
 
-#include "features/feature_profile.h"
-#include "features/zsl/zsl_stream_manipulator.h"
+#if USE_CAMERA_FEATURE_FACE_DETECTION || USE_CAMERA_FEATURE_AUTO_FRAMING
+#include "features/face_detection/face_detection_stream_manipulator.h"
+#endif
 
 namespace cros {
 
@@ -91,7 +95,13 @@ StreamManipulator::GetEnabledStreamManipulators(Options options) {
   std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators;
   FeatureProfile feature_profile;
 
-#if USE_CAMERA_FEATURE_FACE_DETECTION
+#if USE_CAMERA_FEATURE_AUTO_FRAMING
+  // Put AutoFraming at the head/tail of the capture request/result flow.
+  stream_manipulators.emplace_back(
+      std::make_unique<AutoFramingStreamManipulator>());
+#endif
+
+#if USE_CAMERA_FEATURE_FACE_DETECTION || USE_CAMERA_FEATURE_AUTO_FRAMING
   if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kFaceDetection)) {
     stream_manipulators.emplace_back(
         std::make_unique<FaceDetectionStreamManipulator>(

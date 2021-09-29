@@ -252,17 +252,18 @@ shared_library("libcros_camera") {
     "//camera/features",
     "//camera/features/zsl",
   ]
-  if (use.camera_feature_face_detection) {
+  if (use.camera_feature_face_detection || use.camera_feature_auto_framing) {
     deps += [ "//camera/features/face_detection" ]
   }
-
+  if (use.camera_feature_auto_framing) {
+    deps += [ "//camera/features/auto_framing" ]
+  }
   if (use.camera_feature_hdrnet) {
     deps += [
       "//camera/features/gcam_ae",
       "//camera/features/hdrnet",
     ]
   }
-
   if (use.camera_feature_portrait_mode) {
     deps += [ ":camera_gpu_algorithm" ]
   }
