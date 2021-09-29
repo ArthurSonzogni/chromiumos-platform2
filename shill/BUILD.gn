@@ -282,6 +282,7 @@ static_library("libshill") {
     "logging.cc",
     "manager.cc",
     "metrics.cc",
+    "pkcs11_data_store.cc",
     "portal_detector.cc",
     "power_manager.cc",
     "process_manager.cc",
@@ -315,6 +316,7 @@ static_library("libshill") {
   ]
   libs = [
     "bootstat",
+    "chaps",
     "rootdev",
     "rt",
   ]
@@ -607,6 +609,7 @@ if (use.test) {
       "mock_service.cc",
       "mock_throttler.cc",
       "mock_virtual_device.cc",
+      "pkcs11_data_store_test.cc",
       "portal_detector_test.cc",
       "power_manager_test.cc",
       "process_manager_test.cc",
