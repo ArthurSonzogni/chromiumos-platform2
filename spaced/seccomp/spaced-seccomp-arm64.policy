@@ -8,12 +8,14 @@ clone: 1
 close: 1
 connect: 1
 dup: 1
+dup3: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_pwait: 1
 execve: 1
 exit: 1
 exit_group: 1
+faccessat: 1
 fcntl: 1
 flock: 1
 fstat: 1
@@ -35,7 +37,7 @@ io_getevents: 1
 io_setup: 1
 io_submit: 1
 ioctl: arg1 == 0xc138fd00 || arg1 == 0xc138fd07 || arg1 == 0xc138fd0c || \
-       arg1 == 0x80081272
+       arg1 == BLKGETSIZE64
 lseek: 1
 memfd_create: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
