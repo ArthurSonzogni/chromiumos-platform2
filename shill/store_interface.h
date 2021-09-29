@@ -162,11 +162,20 @@ class StoreInterface {
                                 const std::string& deprecated_key,
                                 const std::string& plaintext_key,
                                 const std::string& value) = 0;
-};
 
-// Creates a store, implementing StoreInterface, at the specified |path|.
-// Currently, the implementation is provided by key_file_store.cc.
-std::unique_ptr<StoreInterface> CreateStore(const base::FilePath& path);
+  // The following functions behave similarly with their counterparts, but
+  // store the string in PKCS11 store as hardware-wrapped CKO_DATA object
+  // instead of in a key file.
+  virtual bool PKCS11SetString(const std::string& group,
+                               const std::string& key,
+                               const std::string& value) = 0;
+
+  virtual bool PKCS11GetString(const std::string& group,
+                               const std::string& key,
+                               std::string* value) const = 0;
+
+  virtual bool PKCS11DeleteGroup(const std::string& group) = 0;
+};
 
 }  // namespace shill
 

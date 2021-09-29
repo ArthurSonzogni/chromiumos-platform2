@@ -100,6 +100,17 @@ class StubStorage : public StoreInterface {
                         const std::string& value) override {
     return false;
   }
+  bool PKCS11SetString(const std::string& group,
+                       const std::string& key,
+                       const std::string& value) override {
+    return false;
+  }
+  bool PKCS11GetString(const std::string& group,
+                       const std::string& key,
+                       std::string* value) const override {
+    return false;
+  }
+  bool PKCS11DeleteGroup(const std::string& group) override { return false; }
 };
 
 }  // namespace shill

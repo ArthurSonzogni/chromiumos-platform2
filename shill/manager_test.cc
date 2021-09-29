@@ -32,6 +32,7 @@
 #include "shill/ethernet/mock_ethernet_provider.h"
 #include "shill/fake_store.h"
 #include "shill/geolocation_info.h"
+#include "shill/key_file_store.h"
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
 #include "shill/mock_adaptors.h"

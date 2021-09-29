@@ -5,6 +5,8 @@
 #include "shill/pkcs11_data_store.h"
 
 #include <base/strings/string_util.h>
+#include <chaps/isolate.h>
+#include <chaps/token_manager_client.h>
 
 namespace shill {
 
@@ -266,6 +268,47 @@ bool Pkcs11DataStore::DeleteIfMatchesPrefix(CK_SESSION_HANDLE session_handle,
     }
   }
   return true;
+}
+
+bool Pkcs11DataStore::GetUserSlot(const std::string& user_hash,
+                                  CK_SLOT_ID_PTR slot) {
+  const char kChapsSystemToken[] = "/var/lib/chaps";
+  const char kChapsDaemonStore[] = "/run/daemon-store/chaps";
+  base::FilePath token_path =
+      user_hash.empty() ? base::FilePath(kChapsSystemToken)
+                        : base::FilePath(kChapsDaemonStore).Append(user_hash);
+  CK_RV rv;
+  rv = C_Initialize(nullptr);
+  if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED) {
+    LOG(WARNING) << __func__ << ": C_Initialize failed. rv: " << rv;
+    return false;
+  }
+  CK_ULONG num_slots = 0;
+  rv = C_GetSlotList(CK_TRUE, nullptr, &num_slots);
+  if (rv != CKR_OK) {
+    LOG(WARNING) << __func__ << ": C_GetSlotList(nullptr) failed. rv: " << rv;
+    return false;
+  }
+  std::unique_ptr<CK_SLOT_ID[]> slot_list(new CK_SLOT_ID[num_slots]);
+  rv = C_GetSlotList(CK_TRUE, slot_list.get(), &num_slots);
+  if (rv != CKR_OK) {
+    LOG(WARNING) << __func__ << ": C_GetSlotList failed. rv: " << rv;
+    return false;
+  }
+  chaps::TokenManagerClient token_manager;
+  // Look through all slots for |token_path|.
+  for (CK_ULONG i = 0; i < num_slots; ++i) {
+    base::FilePath slot_path;
+    if (token_manager.GetTokenPath(
+            chaps::IsolateCredentialManager::GetDefaultIsolateCredential(),
+            slot_list[i], &slot_path) &&
+        (token_path == slot_path)) {
+      *slot = slot_list[i];
+      return true;
+    }
+  }
+  LOG(WARNING) << __func__ << ": Path not found.";
+  return false;
 }
 
 }  // namespace shill

@@ -14,6 +14,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/crypto.h"
+#include "shill/pkcs11_data_store.h"
 #include "shill/store_interface.h"
 
 namespace shill {
@@ -27,7 +28,10 @@ namespace shill {
 // strings and never have.
 class KeyFileStore : public StoreInterface {
  public:
-  explicit KeyFileStore(const base::FilePath& path);
+  static constexpr CK_SLOT_ID kInvalidSlot = ULONG_MAX;
+
+  KeyFileStore(const base::FilePath& path,
+               CK_SLOT_ID slot_id = KeyFileStore::kInvalidSlot);
   KeyFileStore(const KeyFileStore&) = delete;
   KeyFileStore& operator=(const KeyFileStore&) = delete;
 
@@ -85,6 +89,13 @@ class KeyFileStore : public StoreInterface {
                         const std::string& deprecated_key,
                         const std::string& plaintext_key,
                         const std::string& value) override;
+  bool PKCS11SetString(const std::string& group,
+                       const std::string& key,
+                       const std::string& value) override;
+  bool PKCS11GetString(const std::string& group,
+                       const std::string& key,
+                       std::string* value) const override;
+  bool PKCS11DeleteGroup(const std::string& group) override;
 
  private:
   FRIEND_TEST(KeyFileStoreTest, OpenClose);
@@ -99,7 +110,13 @@ class KeyFileStore : public StoreInterface {
 
   std::unique_ptr<KeyFile> key_file_;
   const base::FilePath path_;
+  const CK_SLOT_ID slot_id_;
 };
+
+// Creates a store, implementing StoreInterface, at the specified |path|.
+// A |user_hash| can be provided to enable PKCS#11 access to the user token.
+std::unique_ptr<StoreInterface> CreateStore(const base::FilePath& path,
+                                            const std::string& user_hash = "");
 
 }  // namespace shill
 

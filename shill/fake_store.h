@@ -79,6 +79,13 @@ class FakeStore : public StoreInterface {
                         const std::string& deprecated_key,
                         const std::string& plaintext_key,
                         const std::string& value) override;
+  bool PKCS11SetString(const std::string& group,
+                       const std::string& key,
+                       const std::string& value) override;
+  bool PKCS11GetString(const std::string& group,
+                       const std::string& key,
+                       std::string* value) const override;
+  bool PKCS11DeleteGroup(const std::string& group) override;
 
   void set_writes_fail(bool writes_fail) { writes_fail_ = writes_fail; }
 
@@ -93,6 +100,7 @@ class FakeStore : public StoreInterface {
                     const T& new_value);
 
   std::map<std::string, brillo::VariantDictionary> group_name_to_settings_;
+  std::map<std::string, std::map<std::string, std::string>> pkcs11_strings_;
   bool writes_fail_ = false;
 };
 

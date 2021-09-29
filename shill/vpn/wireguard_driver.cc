@@ -194,7 +194,7 @@ const VPNDriver::Property WireGuardDriver::kProperties[] = {
     // Properties for the interface. ListenPort is not here since we current
     // only support the "client mode". Local overlay addresses on the interface,
     // DNS servers, and MTU will be set via StaticIPConfig.
-    {kWireGuardPrivateKey, Property::kCredential | Property::kWriteOnly},
+    {kWireGuardPrivateKey, Property::kEphemeral | Property::kWriteOnly},
     // TODO(b/177877860): This field is for software-backed keys only. May need
     // to change this logic when hardware-backed keys come.
     {kWireGuardPublicKey, Property::kReadOnly},
@@ -314,7 +314,12 @@ bool WireGuardDriver::Load(const StoreInterface* storage,
   key_pair_source_ =
       static_cast<Metrics::VpnWireGuardKeyPairSource>(stored_value);
 
-  saved_private_key_ = args()->Lookup<std::string>(kWireGuardPrivateKey, "");
+  if (!storage->PKCS11GetString(storage_id, kWireGuardPrivateKey,
+                                &saved_private_key_)) {
+    LOG(ERROR) << "Failed to load private key from PKCS#11 store";
+    return false;
+  }
+  args()->Set<std::string>(kWireGuardPrivateKey, saved_private_key_);
 
   return true;
 }
@@ -349,6 +354,11 @@ bool WireGuardDriver::Save(StoreInterface* storage,
     }
     args()->Set<std::string>(kWireGuardPublicKey, public_key);
     saved_private_key_ = private_key;
+    if (!storage->PKCS11SetString(storage_id, kWireGuardPrivateKey,
+                                  private_key)) {
+      LOG(ERROR) << "Failed to save private key to PKCS#11 store";
+      return false;
+    }
   }
 
   // Handles peers.

@@ -21,6 +21,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/dbus/dbus_control.h"
+#include "shill/key_file_store.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
@@ -92,7 +93,7 @@ void Profile::OnPropertyChanged(const std::string& /*name*/) {
 bool Profile::InitStorage(InitStorageOption storage_option, Error* error) {
   CHECK(!persistent_profile_path_.empty());
   std::unique_ptr<StoreInterface> storage =
-      CreateStore(persistent_profile_path_);
+      CreateStore(persistent_profile_path_, name_.user_hash);
   bool already_exists = !storage->IsEmpty();
   if (!already_exists && storage_option != kCreateNew &&
       storage_option != kCreateOrOpenExisting) {
@@ -183,6 +184,7 @@ bool Profile::AbandonService(const ServiceRefPtr& service) {
   if (service->profile() == this)
     service->SetProfile(nullptr);
   storage_->DeleteGroup(service->GetStorageIdentifier());
+  storage_->PKCS11DeleteGroup(service->GetStorageIdentifier());
   return storage_->Flush();
 }
 

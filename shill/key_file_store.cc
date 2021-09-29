@@ -44,6 +44,8 @@ static std::string ObjectID(const KeyFileStore* k) {
 
 namespace {
 
+constexpr char kPKCS11ObjectIDPrefix[] = "shill";
+
 // GLib uses the semicolon for separating lists, but it is configurable,
 // so we don't want to hardcode it around this file.
 constexpr char kListSeparator = ';';
@@ -401,8 +403,8 @@ class KeyFileStore::KeyFile {
 
 const char KeyFileStore::kCorruptSuffix[] = ".corrupted";
 
-KeyFileStore::KeyFileStore(const base::FilePath& path)
-    : key_file_(nullptr), path_(path) {
+KeyFileStore::KeyFileStore(const base::FilePath& path, CK_SLOT_ID slot_id)
+    : key_file_(nullptr), path_(path), slot_id_(slot_id) {
   CHECK(!path_.empty());
 }
 
@@ -724,8 +726,51 @@ bool KeyFileStore::DoesGroupMatchProperties(
   return true;
 }
 
-std::unique_ptr<StoreInterface> CreateStore(const base::FilePath& path) {
-  return std::make_unique<KeyFileStore>(path);
+bool KeyFileStore::PKCS11SetString(const std::string& group,
+                                   const std::string& key,
+                                   const std::string& value) {
+  if (slot_id_ == kInvalidSlot) {
+    LOG(ERROR) << "Store does not have a PKCS#11 slot associated.";
+    return false;
+  }
+  Pkcs11DataStore pkcs11_store;
+  std::string object_key =
+      base::JoinString({kPKCS11ObjectIDPrefix, group, key}, "-");
+  return pkcs11_store.Write(slot_id_, object_key, value);
+}
+
+bool KeyFileStore::PKCS11GetString(const std::string& group,
+                                   const std::string& key,
+                                   std::string* value) const {
+  if (slot_id_ == kInvalidSlot) {
+    LOG(ERROR) << "Store does not have a PKCS#11 slot associated.";
+    return false;
+  }
+  Pkcs11DataStore pkcs11_store;
+  std::string object_key =
+      base::JoinString({kPKCS11ObjectIDPrefix, group, key}, "-");
+  return pkcs11_store.Read(slot_id_, object_key, value);
+}
+
+bool KeyFileStore::PKCS11DeleteGroup(const std::string& group) {
+  if (slot_id_ == kInvalidSlot) {
+    LOG(ERROR) << "Store does not have a PKCS#11 slot associated.";
+    return false;
+  }
+  Pkcs11DataStore pkcs11_store;
+  std::string group_prefix =
+      base::JoinString({kPKCS11ObjectIDPrefix, group, ""}, "-");
+  return pkcs11_store.DeleteByPrefix(slot_id_, group_prefix);
+}
+
+std::unique_ptr<StoreInterface> CreateStore(const base::FilePath& path,
+                                            const std::string& user_hash) {
+  Pkcs11DataStore pkcs11_store;
+  CK_SLOT_ID slot_id = KeyFileStore::kInvalidSlot;
+  if (!pkcs11_store.GetUserSlot(user_hash, &slot_id)) {
+    LOG(ERROR) << "Failed to get slot ID.";
+  }
+  return std::make_unique<KeyFileStore>(path, slot_id);
 }
 
 }  // namespace shill

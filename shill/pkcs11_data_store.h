@@ -53,6 +53,10 @@ class Pkcs11DataStore {
   // operation failure.
   bool DeleteByPrefix(CK_SLOT_ID slot, const std::string& key_prefix);
 
+  // Get the slot it for the given |user_hash| or the system slot if
+  // |user_hash| is empty. Return false if no appropriate slot is found.
+  bool GetUserSlot(const std::string& user_hash, CK_SLOT_ID_PTR slot);
+
  private:
   using EnumObjectsCallback = base::RepeatingCallback<bool(
       const std::string& key_name, CK_OBJECT_HANDLE object_handle)>;

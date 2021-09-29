@@ -4,9 +4,9 @@
 
 #include "shill/fake_store.h"
 
-#include <typeinfo>
 #include <set>
 #include <string>
+#include <typeinfo>
 #include <vector>
 
 #include "shill/logging.h"
@@ -210,6 +210,32 @@ bool FakeStore::SetCryptedString(const std::string& group,
                                  const std::string& plaintext_key,
                                  const std::string& value) {
   return SetString(group, plaintext_key, value);
+}
+
+bool FakeStore::PKCS11SetString(const std::string& group,
+                                const std::string& key,
+                                const std::string& value) {
+  pkcs11_strings_[group][key] = value;
+  return true;
+}
+
+bool FakeStore::PKCS11GetString(const std::string& group,
+                                const std::string& key,
+                                std::string* value) const {
+  if (pkcs11_strings_.find(group) == pkcs11_strings_.end()) {
+    return false;
+  }
+  auto& group_submap = pkcs11_strings_.at(group);
+  if (group_submap.find(key) == group_submap.end()) {
+    return false;
+  }
+  *value = group_submap.at(key);
+  return true;
+}
+
+bool FakeStore::PKCS11DeleteGroup(const std::string& group) {
+  pkcs11_strings_.erase(group);
+  return true;
 }
 
 // Private methods.
