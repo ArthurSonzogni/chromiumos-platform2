@@ -31,6 +31,7 @@ extern "C" {
 
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_capability_3gpp.h"
+#include "shill/cellular/cellular_consts.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/mock_cellular_service.h"
@@ -2472,6 +2473,46 @@ TEST_P(CellularTest, BuildApnTryList) {
   ASSERT_EQ(apn_try_list.size(), apn_list.size());
   EXPECT_EQ(apn_try_list[0], apn1);
   EXPECT_EQ(apn_try_list[1], apn2);
+}
+
+TEST_P(CellularTest, CompareApns) {
+  Stringmap apn1, apn2;
+  EXPECT_TRUE(device_->CompareApns(apn1, apn2));
+  apn1[kApnNameProperty] = "apn_name1";
+  apn2[kApnNameProperty] = "apn_name2";
+  EXPECT_TRUE(device_->CompareApns(apn1, apn2));
+
+  apn2[cellular::kApnVersionProperty] = "test_version";
+  EXPECT_TRUE(device_->CompareApns(apn1, apn2));
+  EXPECT_TRUE(device_->CompareApns(apn2, apn1));
+
+  apn1[kApnUsernameProperty] = "username";
+  EXPECT_FALSE(device_->CompareApns(apn1, apn2));
+  EXPECT_FALSE(device_->CompareApns(apn2, apn1));
+
+  apn2[kApnUsernameProperty] = "username_two";
+  EXPECT_FALSE(device_->CompareApns(apn1, apn2));
+  EXPECT_FALSE(device_->CompareApns(apn2, apn1));
+
+  apn2[kApnUsernameProperty] = "username";
+  EXPECT_TRUE(device_->CompareApns(apn1, apn2));
+  EXPECT_TRUE(device_->CompareApns(apn2, apn1));
+
+  apn2[kApnLanguageProperty] = "language";
+  EXPECT_TRUE(device_->CompareApns(apn1, apn2));
+  EXPECT_TRUE(device_->CompareApns(apn2, apn1));
+
+  apn2[cellular::kApnVersionProperty] = "version";
+  EXPECT_TRUE(device_->CompareApns(apn1, apn2));
+  EXPECT_TRUE(device_->CompareApns(apn2, apn1));
+
+  apn1[kApnProperty] = "apn.test";
+  EXPECT_FALSE(device_->CompareApns(apn1, apn2));
+  EXPECT_FALSE(device_->CompareApns(apn2, apn1));
+
+  apn2[kApnProperty] = "apn.test";
+  EXPECT_TRUE(device_->CompareApns(apn1, apn2));
+  EXPECT_TRUE(device_->CompareApns(apn2, apn1));
 }
 
 INSTANTIATE_TEST_SUITE_P(CellularTest,

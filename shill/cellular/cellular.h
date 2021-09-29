@@ -407,6 +407,7 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, OnAfterResumeDisabledWantEnabled);
   FRIEND_TEST(CellularTest, OnAfterResumePowerDownInProgressWantEnabled);
   FRIEND_TEST(CellularTest, OnPPPDied);
+  FRIEND_TEST(CellularTest, CompareApns);
   FRIEND_TEST(CellularTest, PPPConnectionFailedAfterAuth);
   FRIEND_TEST(CellularTest, PPPConnectionFailedBeforeAuth);
   FRIEND_TEST(CellularTest, PPPConnectionFailedDuringAuth);
@@ -509,6 +510,12 @@ class Cellular : public Device,
   // circular references between this device and the associated service,
   // allowing eventual device destruction.
   void DestroyAllServices();
+
+  // Compares 2 APN configurations ignoring fields that are not connection
+  // properties. This is needed since we add tags to the APN Stringmap to track
+  // information related to each APN, but these properties are not used as
+  // connection properties.
+  bool CompareApns(const Stringmap& apn1, const Stringmap& apn2) const;
 
   // Creates or updates services for secondary SIMs.
   void UpdateSecondaryServices();

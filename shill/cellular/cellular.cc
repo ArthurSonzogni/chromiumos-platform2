@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/in.h
 
+#include <set>
 #include <tuple>
 #include <utility>
 
@@ -30,6 +31,7 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_capability.h"
+#include "shill/cellular/cellular_consts.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/mobile_operator_info.h"
@@ -2088,6 +2090,29 @@ void Cellular::OnProfilesChanged() {
   SetPendingConnect(service_->iccid());
 }
 
+bool Cellular::CompareApns(const Stringmap& apn1, const Stringmap& apn2) const {
+  static const std::string always_ignore_keys[] = {
+      shill::cellular::kApnVersionProperty, kApnNameProperty,
+      kApnLanguageProperty};
+  std::set<std::string> ignore_keys{std::begin(always_ignore_keys),
+                                    std::end(always_ignore_keys)};
+
+  for (auto const& pair : apn1) {
+    if (ignore_keys.count(pair.first))
+      continue;
+    if (!base::Contains(apn2, pair.first) || pair.second != apn2.at(pair.first))
+      return false;
+    // Keys match, ignore them below.
+    ignore_keys.insert(pair.first);
+  }
+  // Find keys in apn2 which are not in apn1.
+  for (auto const& pair : apn2) {
+    if (ignore_keys.count(pair.first) == 0)
+      return false;
+  }
+  return true;
+}
+
 std::deque<Stringmap> Cellular::BuildApnTryList() const {
   std::deque<Stringmap> apn_try_list;
   bool add_last_good_apn = true;
@@ -2103,17 +2128,18 @@ std::deque<Stringmap> Cellular::BuildApnTryList() const {
                     << GetStringmapValue(*custom_apn_info, kApnProperty)
                     << " Is attach:"
                     << GetStringmapValue(*custom_apn_info, kApnAttachProperty);
-      if (last_good_apn_info && *last_good_apn_info == *custom_apn_info) {
+      if (last_good_apn_info &&
+          CompareApns(*last_good_apn_info, *custom_apn_info)) {
         add_last_good_apn = false;
       }
     }
   }
 
   for (auto apn : apn_list_) {
-    if (custom_apn_info && *custom_apn_info == apn) {
+    if (custom_apn_info && CompareApns(*custom_apn_info, apn)) {
       continue;
     }
-    if (last_good_apn_info && *last_good_apn_info == apn) {
+    if (last_good_apn_info && CompareApns(*last_good_apn_info, apn)) {
       add_last_good_apn = false;
     }
     apn_try_list.push_back(apn);

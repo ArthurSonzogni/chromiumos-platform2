@@ -17,6 +17,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular/cellular.h"
+#include "shill/cellular/cellular_consts.h"
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/manager.h"
@@ -58,7 +59,6 @@ const char kGenericServiceNamePrefix[] = "MobileNetwork";
 const char kStorageAPN[] = "Cellular.APN";
 const char kStorageLastGoodAPN[] = "Cellular.LastGoodAPN";
 
-const char kApnVersionProperty[] = "version";
 const int kCurrentApnCacheVersion = 2;
 
 constexpr base::TimeDelta kAutoConnectFailedTime =
@@ -109,9 +109,10 @@ void LoadApn(const StoreInterface* storage,
   if (keytag == kStorageLastGoodAPN) {
     // Ignore LastGoodAPN that is too old.
     int version;
-    if (!LoadApnField(storage, storage_group, keytag, kApnVersionProperty,
-                      apn_info) ||
-        !base::StringToInt((*apn_info)[kApnVersionProperty], &version) ||
+    if (!LoadApnField(storage, storage_group, keytag,
+                      cellular::kApnVersionProperty, apn_info) ||
+        !base::StringToInt((*apn_info)[cellular::kApnVersionProperty],
+                           &version) ||
         version < kCurrentApnCacheVersion) {
       return;
     }
@@ -153,7 +154,8 @@ void SaveApn(StoreInterface* storage,
                kApnAuthenticationProperty);
   SaveApnField(storage, storage_group, apn_info, keytag, kApnIpTypeProperty);
   SaveApnField(storage, storage_group, apn_info, keytag, kApnAttachProperty);
-  SaveApnField(storage, storage_group, apn_info, keytag, kApnVersionProperty);
+  SaveApnField(storage, storage_group, apn_info, keytag,
+               cellular::kApnVersionProperty);
 }
 
 }  // namespace
@@ -751,7 +753,7 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
     if (GetNonEmptyField(value, kApnAttachProperty, &str))
       new_apn_info[kApnAttachProperty] = str;
 
-    new_apn_info[kApnVersionProperty] =
+    new_apn_info[cellular::kApnVersionProperty] =
         base::NumberToString(kCurrentApnCacheVersion);
   }
   if (apn_info_ == new_apn_info) {
