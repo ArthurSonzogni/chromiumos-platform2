@@ -47,17 +47,18 @@ TEST_F(SetupCalibrationStateHandlerTest, InitializeState_Success) {
       predefined_calibration_map = {
           {CalibrationSetupInstruction_Name(
                RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE),
-           {{RmadComponent_Name(
-                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
+           {{RmadComponent_Name(RMAD_COMPONENT_BASE_ACCELEROMETER),
              CalibrationComponentStatus::CalibrationStatus_Name(
                  CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)},
-            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+            {RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE),
              CalibrationComponentStatus::CalibrationStatus_Name(
                  CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}},
           {CalibrationSetupInstruction_Name(
                RMAD_CALIBRATION_INSTRUCTION_PLACE_LID_ON_FLAT_SURFACE),
-           {{RmadComponent_Name(
-                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+           {{RmadComponent_Name(RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)},
+            {RmadComponent_Name(RMAD_COMPONENT_LID_GYROSCOPE),
              CalibrationComponentStatus::CalibrationStatus_Name(
                  CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}}};
   EXPECT_TRUE(
@@ -80,17 +81,18 @@ TEST_F(SetupCalibrationStateHandlerTest, GetNextStateCase_Success) {
       predefined_calibration_map = {
           {CalibrationSetupInstruction_Name(
                RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE),
-           {{RmadComponent_Name(
-                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
+           {{RmadComponent_Name(RMAD_COMPONENT_BASE_ACCELEROMETER),
              CalibrationComponentStatus::CalibrationStatus_Name(
                  CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)},
-            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+            {RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE),
              CalibrationComponentStatus::CalibrationStatus_Name(
                  CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}},
           {CalibrationSetupInstruction_Name(
                RMAD_CALIBRATION_INSTRUCTION_PLACE_LID_ON_FLAT_SURFACE),
-           {{RmadComponent_Name(
-                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+           {{RmadComponent_Name(RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)},
+            {RmadComponent_Name(RMAD_COMPONENT_LID_GYROSCOPE),
              CalibrationComponentStatus::CalibrationStatus_Name(
                  CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}}};
   EXPECT_TRUE(
@@ -116,17 +118,18 @@ TEST_F(SetupCalibrationStateHandlerTest, GetNextStateCase_MissingState) {
       predefined_calibration_map = {
           {CalibrationSetupInstruction_Name(
                RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE),
-           {{RmadComponent_Name(
-                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
+           {{RmadComponent_Name(RMAD_COMPONENT_BASE_ACCELEROMETER),
              CalibrationComponentStatus::CalibrationStatus_Name(
                  CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)},
-            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+            {RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE),
              CalibrationComponentStatus::CalibrationStatus_Name(
                  CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}},
           {CalibrationSetupInstruction_Name(
                RMAD_CALIBRATION_INSTRUCTION_PLACE_LID_ON_FLAT_SURFACE),
-           {{RmadComponent_Name(
-                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+           {{RmadComponent_Name(RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)},
+            {RmadComponent_Name(RMAD_COMPONENT_LID_GYROSCOPE),
              CalibrationComponentStatus::CalibrationStatus_Name(
                  CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}}};
   EXPECT_TRUE(
@@ -150,17 +153,18 @@ TEST_F(SetupCalibrationStateHandlerTest,
       predefined_calibration_map = {
           {CalibrationSetupInstruction_Name(
                RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE),
-           {{RmadComponent_Name(
-                 RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER),
+           {{RmadComponent_Name(RMAD_COMPONENT_BASE_ACCELEROMETER),
              CalibrationComponentStatus::CalibrationStatus_Name(
                  CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)},
-            {RmadComponent_Name(RmadComponent::RMAD_COMPONENT_GYROSCOPE),
+            {RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE),
              CalibrationComponentStatus::CalibrationStatus_Name(
                  CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}},
           {CalibrationSetupInstruction_Name(
                RMAD_CALIBRATION_INSTRUCTION_PLACE_LID_ON_FLAT_SURFACE),
-           {{RmadComponent_Name(
-                 RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER),
+           {{RmadComponent_Name(RMAD_COMPONENT_LID_ACCELEROMETER),
+             CalibrationComponentStatus::CalibrationStatus_Name(
+                 CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)},
+            {RmadComponent_Name(RMAD_COMPONENT_LID_GYROSCOPE),
              CalibrationComponentStatus::CalibrationStatus_Name(
                  CalibrationComponentStatus::RMAD_CALIBRATION_WAITING)}}}};
   EXPECT_TRUE(

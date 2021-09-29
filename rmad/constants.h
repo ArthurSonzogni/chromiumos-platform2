@@ -29,9 +29,9 @@ inline constexpr char kMlbRepair[] = "mlb_repair";
 inline constexpr char kCalibrationMap[] = "calibration_map";
 
 // Component traits.
-inline constexpr std::array<RmadComponent, 3> kComponentsNeedManualCalibration =
-    {RMAD_COMPONENT_GYROSCOPE, RMAD_COMPONENT_BASE_ACCELEROMETER,
-     RMAD_COMPONENT_LID_ACCELEROMETER};
+inline constexpr std::array<RmadComponent, 4> kComponentsNeedManualCalibration =
+    {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
+     RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE};
 inline constexpr std::array<RmadComponent, 2> kComponentsNeedAutoCalibration = {
     RMAD_COMPONENT_AUDIO_CODEC,
     RMAD_COMPONENT_TOUCHSCREEN,

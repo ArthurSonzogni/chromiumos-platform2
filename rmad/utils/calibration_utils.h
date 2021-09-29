@@ -17,13 +17,15 @@
 namespace rmad {
 
 inline constexpr std::
-    array<std::pair<RmadComponent, CalibrationSetupInstruction>, 3>
+    array<std::pair<RmadComponent, CalibrationSetupInstruction>, 4>
         kCalibrationSetupInstruction = {
-            {{RmadComponent::RMAD_COMPONENT_GYROSCOPE,
+            {{RMAD_COMPONENT_BASE_ACCELEROMETER,
               RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE},
-             {RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER,
+             {RMAD_COMPONENT_LID_ACCELEROMETER,
+              RMAD_CALIBRATION_INSTRUCTION_PLACE_LID_ON_FLAT_SURFACE},
+             {RMAD_COMPONENT_BASE_GYROSCOPE,
               RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE},
-             {RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER,
+             {RMAD_COMPONENT_LID_GYROSCOPE,
               RMAD_CALIBRATION_INSTRUCTION_PLACE_LID_ON_FLAT_SURFACE}}};
 
 // Check if the component can be calibrated.

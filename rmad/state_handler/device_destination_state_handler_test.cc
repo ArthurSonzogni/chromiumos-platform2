@@ -46,8 +46,9 @@ TEST_F(DeviceDestinationStateHandlerTest,
   auto handler = CreateStateHandler(true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  json_store_->SetValue(kReplacedComponentNames,
-                        std::vector<RmadComponent>{RMAD_COMPONENT_GYROSCOPE});
+  json_store_->SetValue(
+      kReplacedComponentNames,
+      std::vector<RmadComponent>{RMAD_COMPONENT_BASE_GYROSCOPE});
 
   auto device_destination = std::make_unique<DeviceDestinationState>();
   device_destination->set_destination(
@@ -73,8 +74,9 @@ TEST_F(DeviceDestinationStateHandlerTest,
   auto handler = CreateStateHandler(false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  json_store_->SetValue(kReplacedComponentNames,
-                        std::vector<RmadComponent>{RMAD_COMPONENT_GYROSCOPE});
+  json_store_->SetValue(
+      kReplacedComponentNames,
+      std::vector<RmadComponent>{RMAD_COMPONENT_BASE_GYROSCOPE});
 
   auto device_destination = std::make_unique<DeviceDestinationState>();
   device_destination->set_destination(
@@ -153,9 +155,9 @@ TEST_F(DeviceDestinationStateHandlerTest,
   auto handler = CreateStateHandler(true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  json_store_->SetValue(
-      kReplacedComponentNames,
-      std::vector<std::string>{RmadComponent_Name(RMAD_COMPONENT_GYROSCOPE)});
+  json_store_->SetValue(kReplacedComponentNames,
+                        std::vector<std::string>{
+                            RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE)});
 
   auto device_destination = std::make_unique<DeviceDestinationState>();
   device_destination->set_destination(
@@ -181,9 +183,9 @@ TEST_F(DeviceDestinationStateHandlerTest,
   auto handler = CreateStateHandler(false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  json_store_->SetValue(
-      kReplacedComponentNames,
-      std::vector<std::string>{RmadComponent_Name(RMAD_COMPONENT_GYROSCOPE)});
+  json_store_->SetValue(kReplacedComponentNames,
+                        std::vector<std::string>{
+                            RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE)});
 
   auto device_destination = std::make_unique<DeviceDestinationState>();
   device_destination->set_destination(
@@ -208,9 +210,9 @@ TEST_F(DeviceDestinationStateHandlerTest,
   auto handler = CreateStateHandler(true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  json_store_->SetValue(
-      kReplacedComponentNames,
-      std::vector<std::string>{RmadComponent_Name(RMAD_COMPONENT_GYROSCOPE)});
+  json_store_->SetValue(kReplacedComponentNames,
+                        std::vector<std::string>{
+                            RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE)});
 
   auto device_destination = std::make_unique<DeviceDestinationState>();
   device_destination->set_destination(
@@ -236,9 +238,9 @@ TEST_F(DeviceDestinationStateHandlerTest,
   auto handler = CreateStateHandler(false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  json_store_->SetValue(
-      kReplacedComponentNames,
-      std::vector<std::string>{RmadComponent_Name(RMAD_COMPONENT_GYROSCOPE)});
+  json_store_->SetValue(kReplacedComponentNames,
+                        std::vector<std::string>{
+                            RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE)});
 
   auto device_destination = std::make_unique<DeviceDestinationState>();
   device_destination->set_destination(

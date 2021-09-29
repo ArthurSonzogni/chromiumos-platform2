@@ -30,13 +30,14 @@ class RunCalibrationStateHandler : public BaseStateHandler {
 
   explicit RunCalibrationStateHandler(scoped_refptr<JsonStore> json_store);
 
-  // Used to inject |base_acc_utils|, |lid_acc_utils|, |base_gyro_utils| to mock
-  // |sensor_calibration_utils_map_| for testing.
+  // Used to inject |base_acc_utils|, |lid_acc_utils|, |base_gyro_utils|, and
+  // |lid_gyro_utils| to mock |sensor_calibration_utils_map_| for testing.
   RunCalibrationStateHandler(
       scoped_refptr<JsonStore> json_store,
       std::unique_ptr<SensorCalibrationUtils> base_acc_utils,
       std::unique_ptr<SensorCalibrationUtils> lid_acc_utils,
-      std::unique_ptr<SensorCalibrationUtils> base_gyro_utils);
+      std::unique_ptr<SensorCalibrationUtils> base_gyro_utils,
+      std::unique_ptr<SensorCalibrationUtils> lid_gyro_utils);
 
   void RegisterSignalSender(
       std::unique_ptr<CalibrationOverallSignalCallback> callback) override {

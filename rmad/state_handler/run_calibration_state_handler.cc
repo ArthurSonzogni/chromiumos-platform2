@@ -21,33 +21,35 @@ RunCalibrationStateHandler::RunCalibrationStateHandler(
     scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store) {
   auto vpd_utils_thread_safe = base::MakeRefCounted<VpdUtilsImplThreadSafe>();
-  sensor_calibration_utils_map_
-      [RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER] =
-          std::make_unique<AccelerometerCalibrationUtilsImpl>(
-              vpd_utils_thread_safe, "base");
-  sensor_calibration_utils_map_
-      [RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER] =
-          std::make_unique<AccelerometerCalibrationUtilsImpl>(
-              vpd_utils_thread_safe, "lid");
-  sensor_calibration_utils_map_[RmadComponent::RMAD_COMPONENT_GYROSCOPE] =
+  sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
+      std::make_unique<AccelerometerCalibrationUtilsImpl>(vpd_utils_thread_safe,
+                                                          "base");
+  sensor_calibration_utils_map_[RMAD_COMPONENT_LID_ACCELEROMETER] =
+      std::make_unique<AccelerometerCalibrationUtilsImpl>(vpd_utils_thread_safe,
+                                                          "lid");
+  sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_GYROSCOPE] =
       std::make_unique<GyroscopeCalibrationUtilsImpl>(vpd_utils_thread_safe,
                                                       "base");
+  sensor_calibration_utils_map_[RMAD_COMPONENT_LID_GYROSCOPE] =
+      std::make_unique<GyroscopeCalibrationUtilsImpl>(vpd_utils_thread_safe,
+                                                      "lid");
 }
 
 RunCalibrationStateHandler::RunCalibrationStateHandler(
     scoped_refptr<JsonStore> json_store,
     std::unique_ptr<SensorCalibrationUtils> base_acc_utils,
     std::unique_ptr<SensorCalibrationUtils> lid_acc_utils,
-    std::unique_ptr<SensorCalibrationUtils> base_gyro_utils)
+    std::unique_ptr<SensorCalibrationUtils> base_gyro_utils,
+    std::unique_ptr<SensorCalibrationUtils> lid_gyro_utils)
     : BaseStateHandler(json_store) {
-  sensor_calibration_utils_map_
-      [RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER] =
-          std::move(base_acc_utils);
-  sensor_calibration_utils_map_
-      [RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER] =
-          std::move(lid_acc_utils);
-  sensor_calibration_utils_map_[RmadComponent::RMAD_COMPONENT_GYROSCOPE] =
+  sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
+      std::move(base_acc_utils);
+  sensor_calibration_utils_map_[RMAD_COMPONENT_LID_ACCELEROMETER] =
+      std::move(lid_acc_utils);
+  sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_GYROSCOPE] =
       std::move(base_gyro_utils);
+  sensor_calibration_utils_map_[RMAD_COMPONENT_LID_GYROSCOPE] =
+      std::move(lid_gyro_utils);
 }
 
 RmadErrorCode RunCalibrationStateHandler::InitializeState() {
@@ -60,11 +62,13 @@ RmadErrorCode RunCalibrationStateHandler::InitializeState() {
     task_runner_ = base::ThreadPool::CreateTaskRunner(
         {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
   }
-  progress_timer_map_[RmadComponent::RMAD_COMPONENT_BASE_ACCELEROMETER] =
+  progress_timer_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
       std::make_unique<base::RepeatingTimer>();
-  progress_timer_map_[RmadComponent::RMAD_COMPONENT_LID_ACCELEROMETER] =
+  progress_timer_map_[RMAD_COMPONENT_LID_ACCELEROMETER] =
       std::make_unique<base::RepeatingTimer>();
-  progress_timer_map_[RmadComponent::RMAD_COMPONENT_GYROSCOPE] =
+  progress_timer_map_[RMAD_COMPONENT_BASE_GYROSCOPE] =
+      std::make_unique<base::RepeatingTimer>();
+  progress_timer_map_[RMAD_COMPONENT_LID_GYROSCOPE] =
       std::make_unique<base::RepeatingTimer>();
 
   // We will run the calibration in RetrieveVarsAndCalibrate.
@@ -154,7 +158,7 @@ bool RunCalibrationStateHandler::ShouldRecalibrate(RmadErrorCode* error_code) {
     CalibrationSetupInstruction setup_instruction =
         instruction_components.first;
     for (auto component_status : instruction_components.second) {
-      if (component_status.first == RmadComponent::RMAD_COMPONENT_UNKNOWN) {
+      if (component_status.first == RMAD_COMPONENT_UNKNOWN) {
         *error_code = RMAD_ERROR_CALIBRATION_COMPONENT_MISSING;
         return true;
       }
