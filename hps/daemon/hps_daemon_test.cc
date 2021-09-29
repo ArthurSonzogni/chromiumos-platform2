@@ -51,7 +51,7 @@ class HpsDaemonTest : public testing::Test {
         mock_bus_.get(), kHpsServicePath, path);
 
     mock_exported_object_ =
-        base::MakeRefCounted<NiceMock<dbus::MockExportedObject>>(
+        base::MakeRefCounted<StrictMock<dbus::MockExportedObject>>(
             mock_bus_.get(), path);
 
     ON_CALL(*mock_bus_, GetExportedObject(path))
@@ -189,6 +189,55 @@ TEST_F(HpsDaemonTest, TestPollTimerMultipleFeatures) {
   // Advance timer far enough so that the poll timer should fire.
   task_environment_.FastForwardBy(
       base::TimeDelta::FromMilliseconds(kPollTimeMs));
+
+  // Disable the feature, timer should no longer fire for feature 1.
+  result = hps_daemon_->DisableHpsNotify(&error);
+  EXPECT_TRUE(result);
+
+  // Advance time to ensure no more features are firing.
+  task_environment_.FastForwardBy(
+      base::TimeDelta::FromMilliseconds(kPollTimeMs));
+}
+
+// TODO(slangley): Work out how to check that the signal was fired, on first
+// inspection it doesn't come via the mocks we have.
+TEST_F(HpsDaemonTest, DISABLED_TestSignals) {
+  // This result indicates a positive inference from HPS.
+  constexpr uint16_t kValidInference = RFeat::kValid | 254;
+  constexpr uint16_t kInvalidInference = RFeat::kValid | 254;
+  {
+    InSequence sequence;
+    EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Enable(1)).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(kValidInference));
+    EXPECT_CALL(*mock_hps_, Result(1)).WillOnce(Return(kValidInference));
+    EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(kInvalidInference));
+    EXPECT_CALL(*mock_hps_, Result(1)).WillOnce(Return(kInvalidInference));
+    EXPECT_CALL(*mock_hps_, Disable(0)).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Disable(1)).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Result(0)).Times(0);
+    EXPECT_CALL(*mock_hps_, Result(1)).Times(0);
+  }
+
+  brillo::ErrorPtr error;
+
+  // Enable features 0 & 1
+  bool result = hps_daemon_->EnableHpsSense(&error, feature_config_);
+  EXPECT_TRUE(result);
+  result = hps_daemon_->EnableHpsNotify(&error, feature_config_);
+  EXPECT_TRUE(result);
+
+  // Advance timer far enough so that the poll timer should fire.
+  task_environment_.FastForwardBy(
+      base::TimeDelta::FromMilliseconds(kPollTimeMs));
+
+  // Advance timer far enough so that the poll timer should fire again.
+  task_environment_.FastForwardBy(
+      base::TimeDelta::FromMilliseconds(kPollTimeMs));
+
+  // Disable the feature, timer should no longer fire for feature 0.
+  result = hps_daemon_->DisableHpsSense(&error);
+  EXPECT_TRUE(result);
 
   // Disable the feature, timer should no longer fire for feature 1.
   result = hps_daemon_->DisableHpsNotify(&error);

@@ -102,7 +102,10 @@ bool DBusAdaptor::GetFeatureResult(brillo::ErrorPtr* error,
 bool DBusAdaptor::EnableHpsSense(brillo::ErrorPtr* error,
                                  const hps::FeatureConfig& config) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return EnableFeature(error, config, 0, base::DoNothing());
+  return EnableFeature(
+      error, config, 0,
+      base::BindRepeating(&DBusAdaptor::SendHpsSenseChangedSignal,
+                          base::Unretained(this)));
 }
 
 bool DBusAdaptor::DisableHpsSense(brillo::ErrorPtr* error) {
@@ -118,7 +121,10 @@ bool DBusAdaptor::GetResultHpsSense(brillo::ErrorPtr* error, bool* result) {
 bool DBusAdaptor::EnableHpsNotify(brillo::ErrorPtr* error,
                                   const hps::FeatureConfig& config) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return EnableFeature(error, config, 1, base::DoNothing());
+  return EnableFeature(
+      error, config, 1,
+      base::BindRepeating(&DBusAdaptor::SendHpsNotifyChangedSignal,
+                          base::Unretained(this)));
 }
 
 bool DBusAdaptor::DisableHpsNotify(brillo::ErrorPtr* error) {
