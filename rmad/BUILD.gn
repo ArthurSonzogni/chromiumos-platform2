@@ -21,6 +21,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libcros_config",
+    "libmems",
     "libminijail",
     "libshill-client",
     "libtpm_manager-client",
@@ -59,6 +60,7 @@ static_library("libutils") {
     "utils/gyroscope_calibration_utils_impl.cc",
     "utils/hardware_verifier_utils_impl.cc",
     "utils/iio_ec_sensor_utils_impl.cc",
+    "utils/iio_sensor_probe_utils_impl.cc",
     "utils/json_store.cc",
     "utils/regions_utils_impl.cc",
     "utils/vpd_utils_impl.cc",
@@ -118,6 +120,7 @@ executable("rmad") {
 if (use.test) {
   pkg_config("rmad_test_config") {
     pkg_deps = [
+      "libmems_test_support",
       "libshill-client-test",
       "libtpm_manager-client-test",
       "libuser_data_auth-client-test",
@@ -151,6 +154,7 @@ if (use.test) {
       "system/tpm_manager_client_test.cc",
       "utils/cros_config_utils_test.cc",
       "utils/fake_hardware_verifier_utils.cc",
+      "utils/iio_sensor_probe_utils_impl_test.cc",
       "utils/json_store_test.cc",
       "utils/regions_utils_impl_test.cc",
     ]
