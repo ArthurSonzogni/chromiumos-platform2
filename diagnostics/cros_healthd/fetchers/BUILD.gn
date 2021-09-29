@@ -44,6 +44,7 @@ source_set("libcros_healthd_fetchers") {
     "bus_fetcher.cc",
     "cpu_fetcher.cc",
     "disk_fetcher.cc",
+    "display_fetcher.cc",
     "fan_fetcher.cc",
     "graphics_fetcher.cc",
     "memory_fetcher.cc",
