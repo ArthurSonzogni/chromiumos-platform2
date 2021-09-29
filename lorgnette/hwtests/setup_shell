@@ -57,6 +57,7 @@ pick_wwcb_mfp_dev() {
   mapfile -t MFP_LIST < <(lorgnette_cli list 2>/dev/null | \
                           sed -ne '/^Detected scanners:/,$p' | \
                           grep -o "escl:[^:]*" | sed -e 's/^escl://' | \
+                          sed -e 's/[[:space:]]\[[a-fA-F0-9]*\]$//' | \
                           sort | uniq)
   select MFP_NAME in "${MFP_LIST[@]}"; do
     [[ -n "${MFP_NAME}" ]] && break
