@@ -370,6 +370,12 @@ const int Metrics::kMetricVpnUserAuthenticationTypeMax =
     Metrics::kVpnUserAuthenticationTypeMax;
 
 // static
+const char Metrics::kMetricVpnL2tpIpsecTunnelGroupUsage[] =
+    "Network.Shill.Vpn.L2tpIpsecTunnelGroupUsage";
+const int Metrics::kMetricVpnL2tpIpsecTunnelGroupUsageMax =
+    Metrics::kVpnL2tpIpsecTunnelGroupUsageMax;
+
+// static
 const char Metrics::kMetricVpnWireGuardKeyPairSource[] =
     "Network.Shill.Vpn.WireGuardKeyPairSource";
 const int Metrics::kMetricVpnWireGuardKeyPairSourceMax =

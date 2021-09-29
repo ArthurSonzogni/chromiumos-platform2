@@ -448,6 +448,12 @@ class Metrics : public DefaultServiceObserver {
     kVpnUserAuthenticationTypeMax
   };
 
+  enum VpnL2tpIpsecTunnelGroupUsage {
+    kVpnL2tpIpsecTunnelGroupUsageNo = 0,
+    kVpnL2tpIpsecTunnelGroupUsageYes = 1,
+    kVpnL2tpIpsecTunnelGroupUsageMax
+  };
+
   enum VpnWireGuardKeyPairSource {
     kVpnWireguardKeyPairSourceUnknown = 0,
     kVpnWireGuardKeyPairSourceUserInput = 1,
@@ -864,6 +870,9 @@ class Metrics : public DefaultServiceObserver {
   static const int kMetricVpnRemoteAuthenticationTypeMax;
   static const char kMetricVpnUserAuthenticationType[];
   static const int kMetricVpnUserAuthenticationTypeMax;
+
+  static const char kMetricVpnL2tpIpsecTunnelGroupUsage[];
+  static const int kMetricVpnL2tpIpsecTunnelGroupUsageMax;
 
   // WireGuard connection statistics.
   // Key pair source (e.g., user input) used in a WireGuard Connection.

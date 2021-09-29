@@ -123,6 +123,7 @@ TEST_F(NewL2TPIPsecDriverTest, ConnectAndDisconnect) {
   Error unused_error;
   store_->SetStringProperty(kL2TPIPsecPskProperty, "x", &unused_error);
   store_->SetStringProperty(kL2TPIPsecPasswordProperty, "y", &unused_error);
+  store_->SetStringProperty(kL2TPIPsecTunnelGroupProperty, "z", &unused_error);
   InvokeAndVerifyConnectAsync();
 
   // Connected.
@@ -142,6 +143,10 @@ TEST_F(NewL2TPIPsecDriverTest, ConnectAndDisconnect) {
                   Metrics::kMetricVpnUserAuthenticationType,
                   Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword,
                   Metrics::kVpnUserAuthenticationTypeMax));
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecTunnelGroupUsage,
+                            Metrics::kVpnL2tpIpsecTunnelGroupUsageYes,
+                            Metrics::kVpnL2tpIpsecTunnelGroupUsageMax));
 
   dispatcher_.DispatchPendingEvents();
 

@@ -560,6 +560,15 @@ void L2TPIPsecDriver::ReportConnectionMetrics() {
                              Metrics::kVpnUserAuthenticationTypeL2tpIpsecNone,
                              Metrics::kMetricVpnUserAuthenticationTypeMax);
   }
+
+  // Reports whether tunnel group is set or not (b/201478824).
+  const auto tunnel_group_usage =
+      args()->Lookup<std::string>(kL2TPIPsecTunnelGroupProperty, "") != ""
+          ? Metrics::kVpnL2tpIpsecTunnelGroupUsageYes
+          : Metrics::kVpnL2tpIpsecTunnelGroupUsageNo;
+  metrics()->SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecTunnelGroupUsage,
+                           tunnel_group_usage,
+                           Metrics::kMetricVpnL2tpIpsecTunnelGroupUsageMax);
 }
 
 }  // namespace shill

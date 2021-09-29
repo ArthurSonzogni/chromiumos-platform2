@@ -146,6 +146,7 @@ class L2TPIPsecDriverTest : public testing::Test, public RpcTaskDelegate {
     driver_->InitPropertyStore(&store);
     store.SetStringProperty(kL2TPIPsecPskProperty, "x", &unused_error);
     store.SetStringProperty(kL2TPIPsecPasswordProperty, "y", &unused_error);
+    store.SetStringProperty(kL2TPIPsecTunnelGroupProperty, "z", &unused_error);
     EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnDriver,
                                         Metrics::kVpnDriverL2tpIpsec,
                                         Metrics::kMetricVpnDriverMax));
@@ -159,6 +160,10 @@ class L2TPIPsecDriverTest : public testing::Test, public RpcTaskDelegate {
             Metrics::kMetricVpnUserAuthenticationType,
             Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword,
             Metrics::kVpnUserAuthenticationTypeMax));
+    EXPECT_CALL(metrics_,
+                SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecTunnelGroupUsage,
+                              Metrics::kVpnL2tpIpsecTunnelGroupUsageYes,
+                              Metrics::kVpnL2tpIpsecTunnelGroupUsageMax));
   }
 
   void SaveLoginPassword(const std::string& password_str) {
