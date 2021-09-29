@@ -18,7 +18,7 @@ use crate::transport::{TransportType, DEFAULT_SERVER_PORT};
 #[derive(ThisError, Debug)]
 pub enum Error {
     #[error("failed to get transport type option: {0}")]
-    FromMatches(cli::Error),
+    FromMatches(#[source] cli::Error),
 }
 
 /// The result of an operation in this crate.

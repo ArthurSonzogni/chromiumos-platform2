@@ -10,7 +10,7 @@
 pub mod persistence;
 pub mod trichechus;
 
-use std::fmt::{self, Debug, Display};
+use std::fmt::Debug;
 use std::io::{self, BufWriter, Read, Write};
 use std::result::Result as StdResult;
 
@@ -18,35 +18,22 @@ use flexbuffers::FlexbufferSerializer;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use sirenia_rpc_macros::sirenia_rpc;
+use thiserror::Error as ThisError;
 
 pub const LENGTH_BYTE_SIZE: usize = 4;
 
-#[derive(Debug)]
+#[derive(Debug, ThisError)]
 pub enum Error {
-    /// Error on reading the message.
-    Read(io::Error),
-    /// Length of the message is 0, which means there was an error.
+    #[error("failed to read: {0}")]
+    Read(#[source] io::Error),
+    #[error("no data to read from socket")]
     EmptyRead,
-    /// Error writing the message.
-    Write(io::Error),
-    /// Error deserializing the given root.
-    Deserialize(flexbuffers::DeserializationError),
-    /// Error serializing a value.
-    Serialize(flexbuffers::SerializationError),
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::Error::*;
-
-        match self {
-            Read(e) => write!(f, "failed to read: {}", e),
-            EmptyRead => write!(f, "no data to read from socket"),
-            Write(e) => write!(f, "failed to write: {}", e),
-            Deserialize(e) => write!(f, "Error deserializing: {}", e),
-            Serialize(e) => write!(f, "Error serializing: {}", e),
-        }
-    }
+    #[error("failed to write: {0}")]
+    Write(#[source] io::Error),
+    #[error("error deserializing: {0}")]
+    Deserialize(#[source] flexbuffers::DeserializationError),
+    #[error("error serializing: {0}")]
+    Serialize(#[source] flexbuffers::SerializationError),
 }
 
 /// The result of an operation in this crate.

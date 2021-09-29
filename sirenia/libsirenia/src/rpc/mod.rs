@@ -23,13 +23,13 @@ use std::convert::TryInto;
 
 #[derive(ThisError, Debug)]
 pub enum Error {
-    #[error("failed to create the transport: {0:?}")]
-    NewTransport(transport::Error),
+    #[error("failed to create the transport: {0}")]
+    NewTransport(#[source] transport::Error),
     // This is used by sirenia-rpc-macros
-    #[error("communication failed: {0:?}")]
-    Communication(communication::Error),
+    #[error("communication failed: {0}")]
+    Communication(#[source] communication::Error),
     #[error("failed to add event source to multiplexer: {0}")]
-    MultiplexerAddEvent(EventsError),
+    MultiplexerAddEvent(#[source] EventsError),
     #[error("got the wrong response")]
     ResponseMismatch,
 }

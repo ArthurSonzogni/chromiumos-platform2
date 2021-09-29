@@ -15,7 +15,7 @@ use crate::transport::{self, TransportType, LOOPBACK_DEFAULT};
 #[derive(ThisError, Debug)]
 pub enum Error {
     #[error("failed to parse transport type: {0}")]
-    TransportParse(transport::Error),
+    TransportParse(#[source] transport::Error),
 }
 
 /// The result of an operation in this crate.

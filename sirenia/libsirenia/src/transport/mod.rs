@@ -30,6 +30,7 @@ use sys_util::vsock::{
     VsockStream, VMADDR_PORT_ANY,
 };
 use sys_util::{getpid, handle_eintr, pipe};
+use thiserror::Error as ThisError;
 
 pub const CROS_CID: VsockCid = VsockCid::Cid(3);
 
@@ -42,59 +43,34 @@ pub const CROS_CONNECTION_R_FD: i32 = 0;
 pub const CROS_CONNECTION_W_FD: i32 = 1;
 pub const CROS_CONNECTION_ERR_FD: i32 = 2;
 
-#[derive(Debug)]
+#[derive(Debug, ThisError)]
 pub enum Error {
-    /// Failed to parse a socket address.
-    SocketAddrParse(Option<io::Error>),
-    /// Failed to parse a vsock socket address.
+    #[error("failed to parse the socket address: {0:?}")]
+    SocketAddrParse(#[source] Option<io::Error>),
+    #[error("failed to parse the vsock socket address: {0}")]
     VSocketAddrParse(AddrParseError),
-    /// Got an unknown transport type.
+    #[error("got an unrecognized transport type")]
     UnknownTransportType,
-    /// Failed to parse URI.
+    #[error("failed to parse the URI")]
     UriParse,
-    /// Failed to clone a fd.
-    Clone(io::Error),
-    /// Error creating a socket.
-    Socket(io::Error),
-    /// Failed to bind a socket.
-    Bind(io::Error),
-    /// Failed to get the socket address.
-    GetAddress(io::Error),
-    /// Failed to accept the incoming connection.
-    Accept(io::Error),
-    /// Failed to connect to the socket address.
-    Connect(io::Error),
-    /// Failed to obtain the local port.
-    LocalAddr(io::Error),
-    /// Failed to construct the pipe.
-    Pipe(sys_util::Error),
-    /// The pipe transport was in the wrong state to complete the requested operation.
+    #[error("failed to clone fd: {0}")]
+    Clone(#[source] io::Error),
+    #[error("failed to create socket: {0}")]
+    Socket(#[source] io::Error),
+    #[error("failed to bind: {0}")]
+    Bind(#[source] io::Error),
+    #[error("failed to get the socket address: {0}")]
+    GetAddress(#[source] io::Error),
+    #[error("failed to accept connection: {0}")]
+    Accept(#[source] io::Error),
+    #[error("failed to connect: {0}")]
+    Connect(#[source] io::Error),
+    #[error("failed to get port: {0}")]
+    LocalAddr(#[source] io::Error),
+    #[error("failed to construct the pipe: {0}")]
+    Pipe(#[source] sys_util::Error),
+    #[error("pipe transport was in the wrong state")]
     InvalidState,
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::Error::*;
-
-        match self {
-            SocketAddrParse(e) => match e {
-                Some(i) => write!(f, "failed to parse the socket address: {}", i),
-                None => write!(f, "failed to parse the socket address"),
-            },
-            VSocketAddrParse(_) => write!(f, "failed to parse the vsock socket address"),
-            UnknownTransportType => write!(f, "got an unrecognized transport type"),
-            UriParse => write!(f, "failed to parse the URI"),
-            Clone(e) => write!(f, "failed to clone fd: {}", e),
-            Socket(e) => write!(f, "failed to create socket: {}", e),
-            Bind(e) => write!(f, "failed to bind: {}", e),
-            GetAddress(e) => write!(f, "failed to get the socket address: {}", e),
-            Accept(e) => write!(f, "failed to accept connection: {}", e),
-            Connect(e) => write!(f, "failed to connect: {}", e),
-            LocalAddr(e) => write!(f, "failed to get port: {}", e),
-            Pipe(e) => write!(f, "failed to construct the pipe: {}", e),
-            InvalidState => write!(f, "pipe transport was in the wrong state"),
-        }
-    }
 }
 
 /// The result of an operation in this crate.

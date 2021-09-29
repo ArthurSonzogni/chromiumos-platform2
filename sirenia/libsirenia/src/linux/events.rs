@@ -19,37 +19,26 @@
 
 use std::boxed::Box;
 use std::collections::BTreeMap;
-use std::fmt::{self, Display};
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::result::Result as StdResult;
 
 use sys_util::{error, warn, Error as SysError, PollContext, PollToken, WatchingEvents};
+use thiserror::Error as ThisError;
 
-#[derive(Debug)]
+#[derive(Debug, ThisError)]
 pub enum Error {
-    CreatePollContext(SysError),
-    PollContextAddFd(SysError),
-    PollContextDeleteFd(SysError),
-    PollContextWait(SysError),
+    #[error("failed to create poll context: {0}")]
+    CreatePollContext(#[source] SysError),
+    #[error("failed to add fd to poll context: {0}")]
+    PollContextAddFd(#[source] SysError),
+    #[error("failed to delete fd from poll context: {0}")]
+    PollContextDeleteFd(#[source] SysError),
+    #[error("failed to wait for events using the poll context: {0}")]
+    PollContextWait(#[source] SysError),
+    #[error("event failed: {0}")]
     OnEvent(String),
+    #[error("mutate failed: {0}")]
     OnMutate(String),
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::Error::*;
-
-        match self {
-            CreatePollContext(e) => write!(f, "failed to create poll context: {}", e),
-            PollContextAddFd(e) => write!(f, "failed to add fd to poll context: {}", e),
-            PollContextDeleteFd(e) => write!(f, "failed to delete fd from poll context: {}", e),
-            PollContextWait(e) => {
-                write!(f, "failed to wait for events using the poll context: {}", e)
-            }
-            OnEvent(s) => write!(f, "event failed: {}", s),
-            OnMutate(s) => write!(f, "mutate failed: {}", s),
-        }
-    }
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

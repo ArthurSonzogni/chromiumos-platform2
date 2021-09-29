@@ -29,9 +29,9 @@ pub enum Error {
     // TODO: We may want to change this to not have an argument since it is not
     // used anyways
     #[error("failed to read data")]
-    ReadData(Option<Box<dyn StdError>>),
+    ReadData(#[source] Option<Box<dyn StdError>>),
     #[error("failed to write data")]
-    WriteData(Option<Box<dyn StdError>>),
+    WriteData(#[source] Option<Box<dyn StdError>>),
 }
 
 pub fn to_read_data_error<E: StdError + 'static>(err: E) -> Error {

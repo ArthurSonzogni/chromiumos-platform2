@@ -17,29 +17,29 @@ use crate::sys::dup;
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("failed to setup jail: {0}")]
-    Jail(minijail::Error),
+    Jail(#[source] minijail::Error),
     #[error("failed to fork jail process: {0}")]
-    ForkingJail(minijail::Error),
+    ForkingJail(#[source] minijail::Error),
     #[error("failed to bind '{0}' to '{1}': {2}")]
-    Bind(String, String, minijail::Error),
+    Bind(String, String, #[source] minijail::Error),
     #[error("dup failed: {0}")]
-    Dup(io::Error),
+    Dup(#[source] io::Error),
     #[error("failed to pivot root: {0}")]
-    PivotRoot(minijail::Error),
+    PivotRoot(#[source] minijail::Error),
     #[error("failed to parse seccomp policy: {0}")]
-    SeccompPolicy(minijail::Error),
+    SeccompPolicy(#[source] minijail::Error),
     #[error("failed to set max open files: {0}")]
-    SettingMaxOpenFiles(minijail::Error),
+    SettingMaxOpenFiles(#[source] minijail::Error),
     #[error("failed to wait on jailed process to complete: {0}")]
-    MinijailWait(minijail::Error),
+    MinijailWait(#[source] minijail::Error),
     #[error("failed to fork process: {0}")]
-    ForkingProcess(std::io::Error),
+    ForkingProcess(#[source] std::io::Error),
     #[error("missing argument")]
     MissingArgument,
     #[error("VM not created")]
     VmNotCreated,
-    #[error("failed to wait for process; {0}")]
-    Wait(std::io::Error),
+    #[error("failed to wait for process: {0}")]
+    Wait(#[source] std::io::Error),
     #[error("unimplemented functionality")]
     Unimplemented,
     #[error("sibling VM is already running")]
