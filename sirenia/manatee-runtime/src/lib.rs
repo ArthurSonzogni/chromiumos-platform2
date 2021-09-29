@@ -8,34 +8,12 @@
 
 use std::borrow::{Borrow, BorrowMut};
 use std::collections::BTreeMap as Map;
-use std::fmt::{self, Debug, Display};
 use std::marker::PhantomData;
 
 use libsirenia::storage::{Storable, Storage};
 
+pub use libsirenia::storage::{Error, Result};
 pub mod storage;
-
-#[derive(Debug)]
-pub enum Error {
-    /// Error reading data from storage
-    ReadData(libsirenia::storage::Error),
-    /// Error writing data to storage
-    WriteData(libsirenia::storage::Error),
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::Error::*;
-
-        match self {
-            ReadData(e) => write!(f, "Problem reading data from storage: {}", e),
-            WriteData(e) => write!(f, "Problem writing data to storage: {}", e),
-        }
-    }
-}
-
-/// The result of an operation in this crate.
-pub type Result<T> = std::result::Result<T, libsirenia::storage::Error>;
 
 /// Represents some scoped data temporarily loaded from the backing store.
 pub struct ScopedData<S: Storable, T: Storage, R: BorrowMut<T>> {
