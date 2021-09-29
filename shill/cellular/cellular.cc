@@ -76,10 +76,13 @@ const int64_t kPendingConnectCancelMilliseconds = 60 * 1000;
 
 class ApnList {
  public:
+  enum class ApnSource { kModb, kModem };
+
   void AddApns(
-      const std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>>& apns) {
+      const std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>>& apns,
+      ApnSource source) {
     for (const auto& mobile_apn : apns)
-      AddApn(mobile_apn);
+      AddApn(mobile_apn, source);
   }
 
   const Stringmaps& GetList() { return apn_dict_list_; }
@@ -94,8 +97,8 @@ class ApnList {
                            mobile_apn->password, mobile_apn->authentication);
   }
 
-  void AddApn(
-      const std::unique_ptr<MobileOperatorInfo::MobileAPN>& mobile_apn) {
+  void AddApn(const std::unique_ptr<MobileOperatorInfo::MobileAPN>& mobile_apn,
+              ApnSource source) {
     ApnIndexKey index = GetKey(mobile_apn);
     if (apn_index_[index] == nullptr) {
       apn_dict_list_.emplace_back();
@@ -119,6 +122,15 @@ class ApnList {
     // Find the first localized and non-localized name, if any.
     if (!mobile_apn->operator_name_list.empty())
       props->emplace(kApnNameProperty, mobile_apn->operator_name_list[0].name);
+
+    switch (source) {
+      case ApnSource::kModb:
+        props->emplace(cellular::kApnSource, cellular::kApnSourceMoDb);
+        break;
+      case ApnSource::kModem:
+        props->emplace(cellular::kApnSource, cellular::kApnSourceModem);
+        break;
+    }
     for (const auto& lname : mobile_apn->operator_name_list) {
       if (!lname.language.empty())
         props->emplace(kApnLocalizedNameProperty, lname.name);
@@ -174,7 +186,6 @@ const char Cellular::kModemResetSysfsName[] =
     "/sys/class/remoteproc/remoteproc0/state";
 const int64_t Cellular::kModemResetTimeoutMilliseconds = 1 * 1000;
 const int64_t Cellular::kPollLocationIntervalMilliseconds = 5 * 60 * 1000;
-
 // static
 std::string Cellular::GetStateString(State state) {
   switch (state) {
@@ -2092,8 +2103,8 @@ void Cellular::OnProfilesChanged() {
 
 bool Cellular::CompareApns(const Stringmap& apn1, const Stringmap& apn2) const {
   static const std::string always_ignore_keys[] = {
-      shill::cellular::kApnVersionProperty, kApnNameProperty,
-      kApnLanguageProperty};
+      cellular::kApnVersionProperty, kApnNameProperty, kApnLanguageProperty,
+      cellular::kApnSource};
   std::set<std::string> ignore_keys{std::begin(always_ignore_keys),
                                     std::end(always_ignore_keys)};
 
@@ -2124,6 +2135,7 @@ std::deque<Stringmap> Cellular::BuildApnTryList() const {
     last_good_apn_info = service_->GetLastGoodApn();
     if (custom_apn_info) {
       apn_try_list.push_back(*custom_apn_info);
+      apn_try_list.back()[cellular::kApnSource] = cellular::kApnSourceUi;
       SLOG(this, 3) << __func__ << " Adding User Specified APN:"
                     << GetStringmapValue(*custom_apn_info, kApnProperty)
                     << " Is attach:"
@@ -2137,6 +2149,9 @@ std::deque<Stringmap> Cellular::BuildApnTryList() const {
 
   for (auto apn : apn_list_) {
     if (custom_apn_info && CompareApns(*custom_apn_info, apn)) {
+      // If |custom_apn_info| is not null, it is located at the first position
+      // of |apn_try_list|, and we update the APN source for it.
+      apn_try_list[0][cellular::kApnSource] = cellular::kApnSourceMoDb;
       continue;
     }
     if (last_good_apn_info && CompareApns(*last_good_apn_info, apn)) {
@@ -2468,8 +2483,8 @@ void Cellular::UpdateHomeProvider(const MobileOperatorInfo* operator_info) {
   // TODO(b:180004055): remove this when we have captive portal checks that
   // mark APNs as bad and can skip the null APN for data connections
   if (manufacturer_ != kQ6V5ModemManufacturerName)
-    apn_list.AddApns(capability_->GetProfiles());
-  apn_list.AddApns(operator_info->apn_list());
+    apn_list.AddApns(capability_->GetProfiles(), ApnList::ApnSource::kModem);
+  apn_list.AddApns(operator_info->apn_list(), ApnList::ApnSource::kModb);
   SetApnList(apn_list.GetList());
 
   SetProviderRequiresRoaming(operator_info->requires_roaming());

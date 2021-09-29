@@ -2427,7 +2427,9 @@ TEST_P(CellularTest, BuildApnTryList) {
   Stringmaps apn_list;
   Stringmap apn1, apn2;
   apn1[kApnProperty] = "apn1";
+  apn1[cellular::kApnSource] = cellular::kApnSourceMoDb;
   apn2[kApnProperty] = "apn2";
+  apn2[cellular::kApnSource] = cellular::kApnSourceMoDb;
   apn_list.push_back(apn1);
   apn_list.push_back(apn2);
   device_->SetApnList(apn_list);
@@ -2441,6 +2443,7 @@ TEST_P(CellularTest, BuildApnTryList) {
   CellularService* service = SetService();
   Stringmap custom_apn;
   custom_apn[kApnProperty] = "custom_apn";
+  custom_apn[cellular::kApnSource] = cellular::kApnSourceUi;
   service->set_apn_info_for_testing(custom_apn);
   apn_try_list = device_->BuildApnTryList();
   ASSERT_EQ(apn_try_list.size(), apn_list.size() + 1u);
@@ -2451,6 +2454,7 @@ TEST_P(CellularTest, BuildApnTryList) {
   // Set the last good APN to an APN not in the current list
   Stringmap last_good_apn;
   last_good_apn[kApnProperty] = "last_good_apn";
+  last_good_apn[cellular::kApnSource] = cellular::kApnSourceUi;
   service->SetLastGoodApn(last_good_apn);
   apn_try_list = device_->BuildApnTryList();
   ASSERT_EQ(apn_try_list.size(), apn_list.size() + 2u);
@@ -2481,6 +2485,10 @@ TEST_P(CellularTest, CompareApns) {
   apn1[kApnNameProperty] = "apn_name1";
   apn2[kApnNameProperty] = "apn_name2";
   EXPECT_TRUE(device_->CompareApns(apn1, apn2));
+
+  apn1[cellular::kApnSource] = "test_source";
+  EXPECT_TRUE(device_->CompareApns(apn1, apn2));
+  EXPECT_TRUE(device_->CompareApns(apn2, apn1));
 
   apn2[cellular::kApnVersionProperty] = "test_version";
   EXPECT_TRUE(device_->CompareApns(apn1, apn2));
