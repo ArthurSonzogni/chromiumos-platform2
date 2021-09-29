@@ -49,6 +49,7 @@ using chromeos::cros_healthd::mojom::BusInfo;
 using chromeos::cros_healthd::mojom::BusResultPtr;
 using chromeos::cros_healthd::mojom::CpuArchitectureEnum;
 using chromeos::cros_healthd::mojom::CpuResultPtr;
+using chromeos::cros_healthd::mojom::DisplayResultPtr;
 using chromeos::cros_healthd::mojom::ErrorType;
 using chromeos::cros_healthd::mojom::FanResultPtr;
 using chromeos::cros_healthd::mojom::GraphicsResultPtr;
@@ -95,6 +96,7 @@ constexpr std::pair<const char*, ProbeCategoryEnum> kCategorySwitches[] = {
     {"bus", ProbeCategoryEnum::kBus},
     {"tpm", ProbeCategoryEnum::kTpm},
     {"graphics", ProbeCategoryEnum::kGraphics},
+    {"display", ProbeCategoryEnum::kDisplay},
 };
 
 std::string EnumToString(ProcessState state) {
@@ -398,6 +400,26 @@ void DisplayAudioInfo(const AudioResultPtr& audio_result) {
   output.SetIntKey("severe_underruns", audio->severe_underruns);
   output.SetIntKey("underruns", audio->underruns);
 
+  OutputJson(output);
+}
+
+void DisplayDisplayInfo(const DisplayResultPtr& display_result) {
+  if (display_result->is_error()) {
+    DisplayError(display_result->get_error());
+    return;
+  }
+
+  const auto& display = display_result->get_display_info();
+  if (display.is_null()) {
+    std::cout << "Device does not have display info" << std::endl;
+    return;
+  }
+
+  const auto& edp_info = display->edp_info;
+  base::Value output{base::Value::Type::DICTIONARY};
+  auto* edp = output.SetKey("edp", base::Value{base::Value::Type::DICTIONARY});
+  SET_DICT(privacy_screen_supported, edp_info, edp);
+  SET_DICT(privacy_screen_enabled, edp_info, edp);
   OutputJson(output);
 }
 
@@ -1005,6 +1027,10 @@ void DisplayTelemetryInfo(const TelemetryInfoPtr& info) {
   const auto& graphics_result = info->graphics_result;
   if (graphics_result)
     DisplayGraphicsInfo(graphics_result);
+
+  const auto& display_result = info->display_result;
+  if (display_result)
+    DisplayDisplayInfo(display_result);
 }
 
 // Create a stringified list of the category names for use in help.
