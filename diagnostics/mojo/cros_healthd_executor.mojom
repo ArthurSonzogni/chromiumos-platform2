@@ -48,4 +48,7 @@ interface Executor {
   // The response:
   // * |contents| - contains contents of the I/O file
   GetProcessIOContents(uint32 pid) => (string contents);
+
+  // Run |modetest| command.
+  RunModetest(string query_option) => (ProcessResult result);
 };

@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_MOCK_EXECUTOR_ADAPTER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_MOCK_EXECUTOR_ADAPTER_H_
 
+#include <string>
+
 #include <gmock/gmock.h>
 
 #include "diagnostics/cros_healthd/executor/executor_adapter.h"
@@ -28,6 +30,10 @@ class MockExecutorAdapter final : public ExecutorAdapter {
   MOCK_METHOD(void,
               GetProcessIOContents,
               (const pid_t pid, Executor::GetProcessIOContentsCallback),
+              (override));
+  MOCK_METHOD(void,
+              RunModetest,
+              (const std::string&, Executor::RunModetestCallback),
               (override));
 };
 

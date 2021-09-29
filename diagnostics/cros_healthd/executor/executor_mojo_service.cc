@@ -50,6 +50,10 @@ constexpr char kGetFanRpmCommand[] = "pwmgetfanrpm";
 constexpr char kMemtesterSeccompPolicyPath[] = "memtester-seccomp.policy";
 constexpr char kMemtesterBinary[] = "/usr/sbin/memtester";
 
+// SECCOMP policy for modetest.
+constexpr char kModetestSeccompPolicyPath[] = "modetest-seccomp.policy";
+constexpr char kModetestBinary[] = "/usr/bin/modetest";
+
 // All Mojo callbacks need to be ran by the Mojo task runner, so this provides a
 // convenient wrapper that can be bound and ran by that specific task runner.
 void RunMojoProcessResultCallback(
@@ -174,6 +178,35 @@ void ExecutorMojoService::GetProcessIOContents(
                     &result);
 
   std::move(callback).Run(result);
+}
+
+void ExecutorMojoService::RunModetest(const std::string& query_option,
+                                      RunModetestCallback callback) {
+  mojo_ipc::ProcessResult result;
+
+  if (query_option != "-c") {
+    result.return_code = EXIT_FAILURE;
+    result.err = "Not supported option";
+    std::move(callback).Run(result.Clone());
+    return;
+  }
+
+  const auto seccomp_policy_path =
+      base::FilePath(kSandboxDirPath).Append(kModetestSeccompPolicyPath);
+
+  // Minijail setup for modetest.
+  std::vector<std::string> sandboxing_args;
+  sandboxing_args.push_back("-G");
+
+  std::vector<std::string> binary_args = {query_option};
+  base::FilePath binary_path = base::FilePath(kModetestBinary);
+
+  base::OnceClosure closure = base::BindOnce(
+      &ExecutorMojoService::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
+      seccomp_policy_path, sandboxing_args, base::nullopt, binary_path,
+      binary_args, std::move(result), std::move(callback));
+
+  base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
 }
 
 void ExecutorMojoService::RunUntrackedBinary(

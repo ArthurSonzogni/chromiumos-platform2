@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_ADAPTER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_ADAPTER_H_
 
+#include <string>
+
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 
 #include "mojo/cros_healthd_executor.mojom.h"
@@ -34,6 +36,10 @@ class ExecutorAdapter {
   // Retrieves the contents of a process-specific I/O file.
   virtual void GetProcessIOContents(
       const pid_t pid, Executor::GetProcessIOContentsCallback callback) = 0;
+
+  // Run |modetest| command.
+  virtual void RunModetest(const std::string& query_option,
+                           Executor::RunModetestCallback callback) = 0;
 };
 
 }  // namespace diagnostics

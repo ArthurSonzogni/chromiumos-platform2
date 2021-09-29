@@ -42,6 +42,8 @@ class ExecutorMojoService final
   void KillMemtester() override;
   void GetProcessIOContents(const uint32_t pid,
                             GetProcessIOContentsCallback callback) override;
+  void RunModetest(const std::string& query_option,
+                   RunModetestCallback callback) override;
 
  private:
   // Runs the given binary with the given arguments and sandboxing. If
