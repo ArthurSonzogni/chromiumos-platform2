@@ -187,6 +187,32 @@ enum CalibrationOverallStatus {
   RMAD_CALIBRATION_OVERALL_INITIALIZATION_FAILED = 4;
 }
 
+// Defined provision status.
+message ProvisionStatus {
+  enum Status {
+    RMAD_PROVISION_STATUS_UNKNOWN = 0;
+    RMAD_PROVISION_STATUS_IN_PROGRESS = 1;
+    RMAD_PROVISION_STATUS_COMPLETE = 2;
+    RMAD_PROVISION_STATUS_FAILED_BLOCKING = 3;
+    RMAD_PROVISION_STATUS_FAILED_NON_BLOCKING = 4;
+  }
+  Status status = 1;
+  double progress = 2;
+}
+
+// Defined Finalize progress.
+message FinalizeStatus {
+  enum Status {
+    RMAD_FINALIZE_STATUS_UNKNOWN = 0;
+    RMAD_FINALIZE_STATUS_IN_PROGRESS = 1;
+    RMAD_FINALIZE_STATUS_COMPLETE = 2;
+    RMAD_FINALIZE_STATUS_FAILED_BLOCKING = 3;
+    RMAD_FINALIZE_STATUS_FAILED_NON_BLOCKING = 4;
+  }
+  Status status = 1;
+  double progress = 2;
+}
+
 // Defined Rmad states.
 
 // Confirm RMA is required.
@@ -365,6 +391,7 @@ message RunCalibrationState {
 
 // Provision the device.
 message ProvisionDeviceState {
+  // TODO(chenghan): Deprecated, remove it in the future.
   // Enum for ProvisioningProgress signal.
   enum ProvisioningStep {
     // TODO(gavindodd): Update with real provisioning steps.
@@ -373,7 +400,12 @@ message ProvisionDeviceState {
     RMAD_PROVISIONING_STEP_COMPLETE = 2;
   }
 
-  // No state. Waits for signal that provisioning is complete.
+  enum ProvisionChoice {
+    RMAD_PROVISION_CHOICE_UNKNOWN = 0;
+    RMAD_PROVISION_CHOICE_CONTINUE = 1;
+    RMAD_PROVISION_CHOICE_RETRY = 2;
+  }
+  ProvisionChoice choice = 1;
 }
 
 // Allow the tech to re-enable HWWP after it was physically disabled.
@@ -391,8 +423,13 @@ message FinalizeState {
     RMAD_FINALIZE_BATERY_CUTOFF = 3;
   }
   ShutdownMethod shutdown = 1;
-  // TODO(gavindodd): The log (or path to log) could be stored in a field of
-  // this proto, or it could be a separate d-bus method.
+
+  enum FinalizeChoice {
+    RMAD_FINALIZE_CHOICE_UNKNOWN = 0;
+    RMAD_FINALIZE_CHOICE_CONTINUE = 1;
+    RMAD_FINALIZE_CHOICE_RETRY = 2;
+  }
+  FinalizeChoice choice = 2;
 }
 
 // RMA complete. Allow tech to choose how to shut down.
