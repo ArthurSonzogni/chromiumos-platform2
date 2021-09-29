@@ -8,6 +8,7 @@
 #include "hps/hal/i2c.h"
 
 #include <utility>
+#include <vector>
 
 #include <fcntl.h>
 #include <stdint.h>
@@ -47,16 +48,16 @@ bool I2CDev::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
 }
 
 bool I2CDev::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
-  struct i2c_msg m[2];
+  struct i2c_msg m[1];
+  std::vector<uint8_t> buffer;
+  buffer.reserve(len + 1);
+  buffer.push_back(cmd);
+  buffer.insert(buffer.end(), data, data + len);
 
   m[0].addr = this->address_;
-  m[0].flags = 0;
-  m[0].len = sizeof(cmd);
-  m[0].buf = &cmd;
-  m[1].addr = this->address_;
-  m[1].flags = 0;
-  m[1].len = len;
-  m[1].buf = const_cast<uint8_t*>(data);
+  m[0].flags = I2C_M_STOP;
+  m[0].len = buffer.size();
+  m[0].buf = buffer.data();
   return this->Ioc(m, sizeof(m) / sizeof(m[0]));
 }
 
