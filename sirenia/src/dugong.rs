@@ -10,12 +10,13 @@ use std::collections::BTreeMap as Map;
 use std::env;
 use std::fmt::{self, Debug, Formatter};
 use std::fs::File;
-use std::io::{self, Read};
+use std::io::Read;
 use std::os::unix::net::UnixDatagram;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use anyhow::{anyhow, bail, Context, Result};
 use dbus::{
     arg::OwnedFd, blocking::LocalConnection, channel::MatchingReceiver, message::MatchRule,
     MethodErr,
@@ -26,56 +27,12 @@ use libsirenia::build_info::BUILD_TIMESTAMP;
 use libsirenia::cli::trichechus::initialize_common_arguments;
 use libsirenia::communication::trichechus::{self, AppInfo, Trichechus, TrichechusClient};
 use libsirenia::rpc;
-use libsirenia::transport::{
-    self, Transport, TransportType, DEFAULT_CLIENT_PORT, DEFAULT_SERVER_PORT,
-};
-use sirenia::app_info::{self, AppManifest, ExecutableInfo};
+use libsirenia::transport::{Transport, TransportType, DEFAULT_CLIENT_PORT, DEFAULT_SERVER_PORT};
+use sirenia::app_info::{AppManifest, ExecutableInfo};
 use sirenia::server::{register_org_chromium_mana_teeinterface, OrgChromiumManaTEEInterface};
 use sys_util::{error, info, syslog};
-use thiserror::Error as ThisError;
 
 const GET_LOGS_SHORT_NAME: &str = "l";
-
-#[derive(ThisError, Debug)]
-pub enum Error {
-    #[error("failed to open D-Bus connection: {0}")]
-    ConnectionRequest(dbus::Error),
-    #[error("failed to register D-Bus handler: {0}")]
-    DbusRegister(dbus::Error),
-    #[error("failed to process the D-Bus message: {0}")]
-    ProcessMessage(dbus::Error),
-    #[error("failed to call rpc: {0}")]
-    Rpc(rpc::Error),
-    #[error("failed to load manifest: {0}")]
-    Manifest(app_info::Error),
-    #[error("Start session failed: {0}")]
-    StartSession(trichechus::Error),
-    #[error("No entry for loading app '{0}'")]
-    AppNotLoadable(String),
-    #[error("open failed: {0:}")]
-    Open(io::Error),
-    #[error("read failed: {0:}")]
-    Read(io::Error),
-    #[error("Load app failed: {0:}")]
-    LoadApp(trichechus::Error),
-    #[error("failed connect to /dev/log: {0}")]
-    RawSyslogConnect(io::Error),
-    #[error("failed write to /dev/log: {0}")]
-    RawSyslogWrite(io::Error),
-    #[error("failed to start up the syslog: {0}")]
-    SysLog(sys_util::syslog::Error),
-    #[error("failed to bind to socket: {0}")]
-    TransportBind(transport::Error),
-    #[error("failed to connect to socket: {0}")]
-    TransportConnection(transport::Error),
-    #[error("failed to get port: {0:}")]
-    GetPort(transport::Error),
-    #[error("failed to get client for transport: {0:}")]
-    IntoClient(transport::Error),
-}
-
-/// The result of an operation in this crate.
-pub type Result<T> = std::result::Result<T, Error>;
 
 // Arc and Mutex are used because dbus-crossroads requires the Send trait since it is designed to
 // be thread safe. At the time of writing Dugong is single threaded so Arc and Mutex aren't strictly
@@ -156,19 +113,19 @@ fn load_tee_app(
         .get(app_id)
         .unwrap_or(&None)
         .as_ref()
-        .ok_or_else(|| Error::AppNotLoadable(app_id.to_string()))?;
+        .ok_or_else(|| anyhow!("no entry for loading app '{0}'", app_id))?;
 
     let mut elf = Vec::<u8>::new();
     File::open(elf_path)
-        .map_err(Error::Open)?
+        .with_context(|| format!("failed to open elf path '{}'", &elf_path.display()))?
         .read_to_end(&mut elf)
-        .map_err(Error::Read)?;
+        .with_context(|| format!("failed to read elf path '{}'", &elf_path.display()))?;
 
     info!("Transmitting TEE app.");
     api_handle
         .load_app(app_id.to_string(), elf)
-        .map_err(Error::Rpc)?
-        .map_err(Error::LoadApp)?;
+        .context("failed to call load_app rpc")?
+        .context("load_app rpc failed")?;
 
     Ok(())
 }
@@ -177,53 +134,53 @@ fn request_start_tee_app(state: &DugongState, app_id: &str) -> Result<(OwnedFd, 
     let mut transport = state
         .transport_type()
         .try_into_client(None)
-        .map_err(Error::IntoClient)?;
-    let addr = transport.bind().map_err(Error::TransportBind)?;
+        .context("failed to get client for transport")?;
+    let addr = transport.bind().context("failed to bind to socket")?;
     let app_info = AppInfo {
         app_id: String::from(app_id),
-        port_number: addr.get_port().map_err(Error::GetPort)?,
+        port_number: addr.get_port().context("failed to get port")?,
     };
     info!("Requesting start {:?}", &app_info);
     let mut trichechus_client = state.trichechus_client().lock().unwrap();
     match trichechus_client
         .start_session(app_info.clone())
-        .map_err(Error::Rpc)?
+        .context("failed to call start_session rpc")?
     {
         Ok(_) => (),
         Err(trichechus::Error::AppNotLoaded) => {
             load_tee_app(&mut trichechus_client, state, app_id)?;
             trichechus_client
                 .start_session(app_info)
-                .map_err(Error::Rpc)?
-                .map_err(Error::StartSession)?;
+                .context("failed to call start_session rpc")?
+                .context("start_session rpc failed")?;
         }
         Err(err) => {
-            return Err(Error::StartSession(err));
+            bail!("start_session rpc failed: {}", err);
         }
     }
-    match transport.connect() {
-        Ok(Transport { r, w, id: _ }) => unsafe {
-            // This is safe because into_raw_fd transfers the ownership to OwnedFd.
-            Ok((OwnedFd::new(r.into_raw_fd()), OwnedFd::new(w.into_raw_fd())))
-        },
-        Err(err) => Err(Error::TransportConnection(err)),
-    }
+    let Transport { r, w, id: _ } = transport.connect().context("failed to connect to socket")?;
+    // This is safe because into_raw_fd transfers the ownership to OwnedFd.
+    Ok((unsafe { OwnedFd::new(r.into_raw_fd()) }, unsafe {
+        OwnedFd::new(w.into_raw_fd())
+    }))
 }
 
 fn handle_manatee_logs(dugong_state: &DugongState) -> Result<()> {
     const LOG_PATH: &str = "/dev/log";
     let trichechus_client = dugong_state.trichechus_client().lock().unwrap();
-    let logs: Vec<Vec<u8>> = trichechus_client.get_logs().map_err(Error::Rpc)?;
+    let logs: Vec<Vec<u8>> = trichechus_client
+        .get_logs()
+        .context("failed to call get_logs rpc")?;
     if logs.is_empty() {
         return Ok(());
     }
 
     // TODO(b/173600313) Decide whether to write this directly to a different log file.
-    let raw_syslog = UnixDatagram::unbound().map_err(Error::RawSyslogConnect)?;
+    let raw_syslog = UnixDatagram::unbound().context("failed connect to /dev/log")?;
     for entry in logs.as_slice() {
         raw_syslog
             .send_to(entry, LOG_PATH)
-            .map_err(Error::RawSyslogWrite)?;
+            .context("failed write to /dev/log")?;
     }
 
     Ok(())
@@ -257,14 +214,14 @@ fn register_dbus_interface_for_app(
 }
 
 fn start_dbus_handler(dugong_state: DugongState) -> Result<()> {
-    let c = LocalConnection::new_system().map_err(Error::ConnectionRequest)?;
+    let c = LocalConnection::new_system().context("failed to open D-Bus connection")?;
     c.request_name(
         "org.chromium.ManaTEE",
         false, /*allow_replacement*/
         false, /*replace_existing*/
         false, /*do_not_queue*/
     )
-    .map_err(Error::ConnectionRequest)?;
+    .context("failed to register D-Bus handler")?;
 
     let mut crossroads = Crossroads::new();
     let interface_token = register_org_chromium_mana_teeinterface::<DugongState>(&mut crossroads);
@@ -296,14 +253,17 @@ fn start_dbus_handler(dugong_state: DugongState) -> Result<()> {
     info!("Finished dbus setup, starting handler.");
     loop {
         if let Err(err) = handle_manatee_logs(&dugong_state) {
-            if matches!(err, Error::Rpc(_)) {
+            if matches!(
+                err.source().map(|a| a.downcast_ref::<rpc::Error>()),
+                Some(_)
+            ) {
                 error!("Trichechus disconnected: {}", err);
                 return Err(err);
             }
             error!("Failed to forward syslog: {}", err);
         }
         c.process(Duration::from_millis(1000))
-            .map_err(Error::ProcessMessage)?;
+            .context("failed to process the D-Bus message")?;
     }
 }
 
@@ -321,23 +281,23 @@ fn main() -> Result<()> {
 
     if let Err(e) = syslog::init() {
         eprintln!("failed to initialize syslog: {}", e);
-        return Err(e).map_err(Error::SysLog);
+        bail!("failed to start up the syslog: {}", e);
     }
 
     info!("Starting dugong: {}", BUILD_TIMESTAMP);
     info!("Opening connection to trichechus");
     // Adjust the source port when connecting to a non-standard port to facilitate testing.
-    let bind_port = match transport_type.get_port().map_err(Error::GetPort)? {
+    let bind_port = match transport_type.get_port().context("failed to get port")? {
         DEFAULT_SERVER_PORT => DEFAULT_CLIENT_PORT,
         port => port + 1,
     };
     let mut transport = transport_type
         .try_into_client(Some(bind_port))
-        .map_err(Error::IntoClient)?;
+        .context("failed to get client for transport")?;
 
     let transport = transport.connect().map_err(|e| {
         error!("transport connect failed: {}", e);
-        Error::TransportConnection(e)
+        anyhow!("transport connect failed: {}", e)
     })?;
     info!("Starting rpc");
     let client = TrichechusClient::new(transport);
@@ -349,7 +309,7 @@ fn main() -> Result<()> {
         }
     } else {
         let mut dugong_state = DugongState::new(client, transport_type);
-        let manifest = AppManifest::load_default().map_err(Error::Manifest)?;
+        let manifest = AppManifest::load_default().context("failed to load manifest")?;
         dugong_state.register_supported_apps(manifest.iter().map(|entry| {
             (
                 &entry.app_name,

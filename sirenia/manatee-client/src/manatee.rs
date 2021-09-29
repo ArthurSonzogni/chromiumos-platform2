@@ -8,7 +8,7 @@
 
 use std::env;
 use std::fs::File;
-use std::io::{self, copy, stdin, stdout, BufRead, BufReader, Read, Write};
+use std::io::{copy, stdin, stdout, BufRead, BufReader, Read, Write};
 use std::mem::replace;
 use std::os::unix::io::FromRawFd;
 use std::path::{Path, PathBuf};
@@ -17,6 +17,7 @@ use std::str::FromStr;
 use std::thread::{spawn, JoinHandle};
 use std::time::Duration;
 
+use anyhow::{anyhow, bail, Context, Error, Result};
 use dbus::{
     arg::OwnedFd,
     blocking::{Connection, Proxy},
@@ -24,13 +25,12 @@ use dbus::{
 use getopts::Options;
 use libsirenia::{
     cli::{
-        self, TransportTypeOption, VerbosityOption, DEFAULT_TRANSPORT_TYPE_LONG_NAME,
+        TransportTypeOption, VerbosityOption, DEFAULT_TRANSPORT_TYPE_LONG_NAME,
         DEFAULT_TRANSPORT_TYPE_SHORT_NAME,
     },
-    communication::trichechus::{self, AppInfo, Trichechus, TrichechusClient},
-    rpc,
+    communication::trichechus::{AppInfo, Trichechus, TrichechusClient},
     transport::{
-        self, Transport, TransportType, DEFAULT_CLIENT_PORT, DEFAULT_SERVER_PORT, LOOPBACK_DEFAULT,
+        Transport, TransportType, DEFAULT_CLIENT_PORT, DEFAULT_SERVER_PORT, LOOPBACK_DEFAULT,
     },
 };
 use log::{self, error, info};
@@ -39,7 +39,6 @@ use sys_util::{
     vsock::{SocketAddr as VsockAddr, VsockCid},
     wait_for_interrupt, KillOnDrop,
 };
-use thiserror::Error as ThisError;
 
 const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(25);
 
@@ -53,59 +52,8 @@ const DUGONG_NAME: &str = "dugong";
 const CRONISTA_USER: &str = "cronista";
 const DUGONG_USER: &str = "dugong";
 
-#[derive(ThisError, Debug)]
-enum Error {
-    #[error("failed parse command line options: {0:}")]
-    OptionsParse(getopts::Fail),
-    #[error("failed to get transport type option: {0}")]
-    TransportOptionsParse(cli::Error),
-    #[error("failed set incompatible options: {0:?}")]
-    ConflictingOptions(Vec<String>),
-    #[error("failed to get D-Bus connection: {0:}")]
-    NewDBusConnection(dbus::Error),
-    #[error("failed to call D-Bus method: {0:}")]
-    DBusCall(dbus::Error),
-    #[error("failed to locate command '{0:}' because: {1:}")]
-    LocateCmd(String, which::Error),
-    #[error("failed to start command '{0:}' because: {1:}")]
-    StartCmd(String, io::Error),
-    #[error("failed to read stderr of {0:}: '{1:}'")]
-    ReadLineFailed(String, io::Error),
-    #[error("failed to bind to socket: {0}")]
-    TransportBind(transport::Error),
-    #[error("failed to connect to socket: {0}")]
-    TransportConnection(transport::Error),
-    #[error("failed to locate listening URI for {0:}; last line: '{1:}'")]
-    FindUri(String, String),
-    #[error("failed to parse port number from line '{0:}'")]
-    ParsePort(String),
-    #[error("failed to call rpc: {0}")]
-    Rpc(rpc::Error),
-    #[error("Start session failed: {0}")]
-    StartSession(trichechus::Error),
-    #[error("start app failed with code: {0:}")]
-    StartApp(i32),
-    #[error("Load app failed: {0:}")]
-    LoadApp(trichechus::Error),
-    #[error("copy failed: {0:}")]
-    Copy(io::Error),
-    #[error("open failed: {0:}")]
-    Open(io::Error),
-    #[error("read failed: {0:}")]
-    Read(io::Error),
-    #[error("failed to get port: {0:}")]
-    GetPort(transport::Error),
-    #[error("failed to get client for transport: {0:}")]
-    IntoClient(transport::Error),
-}
-
-/// The result of an operation in this crate.
-type Result<T> = std::result::Result<T, Error>;
-
-impl From<Error> for dbus::Error {
-    fn from(err: Error) -> dbus::Error {
-        dbus::Error::new_custom("", &format!("{}", err))
-    }
+fn to_dbus_error(err: Error) -> dbus::Error {
+    dbus::Error::new_custom("", &format!("{}", err))
 }
 
 /// Implementation of the D-Bus interface over a direct Vsock connection.
@@ -123,48 +71,46 @@ impl Passthrough {
 
         info!("Opening connection to trichechus");
         // Adjust the source port when connecting to a non-standard port to facilitate testing.
-        let bind_port = match uri.get_port().map_err(Error::GetPort)? {
+        let bind_port = match uri.get_port().context("failed to get port")? {
             DEFAULT_SERVER_PORT => DEFAULT_CLIENT_PORT,
             port => port + 1,
         };
         let mut transport = uri
             .try_into_client(Some(bind_port))
-            .map_err(Error::IntoClient)?;
+            .context("failed to get client for transport")?;
 
         let transport = transport.connect().map_err(|e| {
             error!("transport connect failed: {}", e);
-            Error::TransportConnection(e)
+            anyhow!("transport connect failed: {}", e)
         })?;
         Ok(Passthrough {
             client: TrichechusClient::new(transport),
             uri,
         })
     }
-}
 
-impl OrgChromiumManaTEEInterface for Passthrough {
-    fn start_teeapplication(
-        &self,
-        app_id: &str,
-    ) -> std::result::Result<(i32, OwnedFd, OwnedFd), dbus::Error> {
+    fn start_teeapplication_impl(&self, app_id: &str) -> Result<(i32, OwnedFd, OwnedFd)> {
         info!("Setting up app vsock.");
-        let mut app_transport = self.uri.try_into_client(None).map_err(Error::IntoClient)?;
-        let addr = app_transport.bind().map_err(Error::TransportBind)?;
+        let mut app_transport = self
+            .uri
+            .try_into_client(None)
+            .context("failed to get client for transport")?;
+        let addr = app_transport.bind().context("failed to bind to socket")?;
         let app_info = AppInfo {
             app_id: app_id.to_string(),
-            port_number: addr.get_port().map_err(Error::GetPort)?,
+            port_number: addr.get_port().context("failed to get port")?,
         };
 
         info!("Starting rpc.");
         self.client
             .start_session(app_info)
-            .map_err(Error::Rpc)?
-            .map_err(Error::StartSession)?;
+            .context("failed to call start_session rpc")?
+            .context("start_session rpc failed")?;
 
         info!("Starting TEE application: {}", app_id);
         let Transport { r, w, id: _ } = app_transport
             .connect()
-            .map_err(Error::TransportConnection)?;
+            .context("failed to connect to socket")?;
 
         info!("Forwarding stdio.");
         // Safe because ownership of the file descriptors is transferred.
@@ -173,6 +119,16 @@ impl OrgChromiumManaTEEInterface for Passthrough {
             unsafe { OwnedFd::new(r.into_raw_fd()) },
             unsafe { OwnedFd::new(w.into_raw_fd()) },
         ))
+    }
+}
+
+impl OrgChromiumManaTEEInterface for Passthrough {
+    fn start_teeapplication(
+        &self,
+        app_id: &str,
+    ) -> std::result::Result<(i32, OwnedFd, OwnedFd), dbus::Error> {
+        self.start_teeapplication_impl(app_id)
+            .map_err(to_dbus_error)
     }
 }
 
@@ -189,12 +145,12 @@ fn handle_app_fds<R: 'static + Read + Send + Sized, W: 'static + Write + Send + 
     mut output: W,
 ) -> Result<()> {
     let output_thread_handle = spawn(move || -> Result<()> {
-        copy(&mut input, &mut stdout()).map_err(Error::Copy)?;
+        copy(&mut input, &mut stdout()).context("failed to copy to stdout")?;
         // Once stdout is closed, stdin is invalid and it is time to exit.
         exit(0);
     });
 
-    copy(&mut stdin(), &mut output).map_err(Error::Copy)?;
+    copy(&mut stdin(), &mut output).context("failed to copy from stdin")?;
 
     output_thread_handle
         .join()
@@ -203,9 +159,12 @@ fn handle_app_fds<R: 'static + Read + Send + Sized, W: 'static + Write + Send + 
 
 fn start_manatee_app(api: &dyn OrgChromiumManaTEEInterface, app_id: &str) -> Result<()> {
     info!("Starting TEE application: {}", app_id);
-    let (fd_in, fd_out) = match api.start_teeapplication(app_id).map_err(Error::DBusCall)? {
+    let (fd_in, fd_out) = match api
+        .start_teeapplication(app_id)
+        .context("failed to call start_teeapplication D-Bus method")?
+    {
         (0, fd_in, fd_out) => (fd_in, fd_out),
-        (code, _, _) => return Err(Error::StartApp(code)),
+        (code, _, _) => bail!("start app failed with code: {}", code),
     };
     info!("Forwarding stdio.");
 
@@ -219,7 +178,7 @@ fn start_manatee_app(api: &dyn OrgChromiumManaTEEInterface, app_id: &str) -> Res
 
 fn dbus_start_manatee_app(app_id: &str) -> Result<()> {
     info!("Connecting to D-Bus.");
-    let connection = Connection::new_system().map_err(Error::NewDBusConnection)?;
+    let connection = Connection::new_system().context("failed to get D-Bus connection")?;
     let conn_path = connect_to_dugong(&connection)?;
     start_manatee_app(&conn_path, app_id)
 }
@@ -236,14 +195,14 @@ fn direct_start_manatee_app(
         passthrough
             .client
             .load_app(app_id.to_string(), elf)
-            .map_err(Error::Rpc)?
-            .map_err(Error::LoadApp)?;
+            .context("failed to call load_app rpc")?
+            .context("load_app rpc failed")?;
     }
     start_manatee_app(&passthrough, app_id)
 }
 
 fn locate_command(name: &str) -> Result<PathBuf> {
-    which::which(name).map_err(|err| Error::LocateCmd(name.to_string(), err))
+    which::which(name).with_context(|| format!("failed to locate command '{}'", name.to_string()))
 }
 
 fn read_line<R: Read>(
@@ -254,7 +213,7 @@ fn read_line<R: Read>(
     line.clear();
     reader
         .read_line(&mut line)
-        .map_err(|err| Error::ReadLineFailed(job_name.to_string(), err))?;
+        .with_context(|| format!("failed to read stderr of {}", job_name.to_string()))?;
     eprint!("{}", &line);
     Ok(())
 }
@@ -275,10 +234,14 @@ fn get_listening_port<R: Read + Send + 'static, C: Fn(&str) -> bool>(
     }
 
     if !line.contains("waiting for connection at: ip://127.0.0.1:") {
-        return Err(Error::FindUri(job_name.to_string(), line));
+        bail!(
+            "failed to locate listening URI for {0:}; last line: '{1:}'",
+            job_name.to_string(),
+            line
+        );
     }
     let port = u32::from_str(&line[line.rfind(':').unwrap() + 1..line.len() - 1])
-        .map_err(|_| Error::ParsePort(line.clone()))?;
+        .with_context(|| format!("failed to parse port number from line '{0:}'", line))?;
 
     let join_handle =
         spawn(
@@ -308,7 +271,7 @@ fn run_test_environment() -> Result<()> {
             ])
             .stderr(Stdio::piped())
             .spawn()
-            .map_err(|err| Error::StartCmd(CRONISTA_NAME.to_string(), err))?,
+            .with_context(|| format!("failed to start command '{}'", CRONISTA_NAME.to_string()))?,
     );
 
     let (cronista_port, cronista_stderr_print) = get_listening_port(
@@ -328,7 +291,9 @@ fn run_test_environment() -> Result<()> {
             ])
             .stderr(Stdio::piped())
             .spawn()
-            .map_err(|err| Error::StartCmd(TRICHECHUS_NAME.to_string(), err))?,
+            .with_context(|| {
+                format!("failed to start command '{}'", TRICHECHUS_NAME.to_string())
+            })?,
     );
 
     let conditions = [
@@ -354,7 +319,7 @@ fn run_test_environment() -> Result<()> {
                 &format!("ip://127.0.0.1:{}", trichechus_port),
             ])
             .spawn()
-            .map_err(|err| Error::StartCmd(DUGONG_NAME.to_string(), err))?,
+            .with_context(|| format!("failed to start command '{}'", DUGONG_NAME.to_string()))?,
     );
 
     println!("*** Press Ctrl-C to continue. ***");
@@ -409,7 +374,7 @@ fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
     let matches = options.parse(&args[1..]).map_err(|err| {
         eprintln!("{}", options.usage(USAGE_BRIEF));
-        Error::OptionsParse(err)
+        anyhow!("failed parse command line options: {}", err)
     })?;
 
     stderrlog::new()
@@ -439,7 +404,7 @@ fn main() -> Result<()> {
     }
     if mutually_exclusive_opts > 1 {
         eprintln!("{}", options.usage(USAGE_BRIEF));
-        return Err(Error::ConflictingOptions(opts));
+        bail!("incompatible options set : {0:?}", opts);
     }
 
     if matches.opt_present(RUN_SERVICES_LOCALLY_SHORT_NAME) {
@@ -454,9 +419,9 @@ fn main() -> Result<()> {
     let elf = if let Some(elf_path) = matches.opt_get::<String>(APP_ELF_SHORT_NAME).unwrap() {
         let mut data = Vec::<u8>::new();
         File::open(Path::new(&elf_path))
-            .map_err(Error::Open)?
+            .context("open failed")?
             .read_to_end(&mut data)
-            .map_err(Error::Read)?;
+            .context("read failed")?;
         Some(data)
     } else {
         None
@@ -464,7 +429,7 @@ fn main() -> Result<()> {
 
     match trichechus_uri_opt
         .from_matches(&matches)
-        .map_err(Error::TransportOptionsParse)?
+        .context("failed to parse transport options")?
     {
         None => dbus_start_manatee_app(&app_id),
         Some(trichechus_uri) => direct_start_manatee_app(trichechus_uri, &app_id, elf),

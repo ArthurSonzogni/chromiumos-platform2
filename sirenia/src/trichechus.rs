@@ -9,7 +9,6 @@
 use std::cell::RefCell;
 use std::collections::{BTreeMap as Map, VecDeque};
 use std::env;
-use std::fmt::Debug;
 use std::io::{self, stderr, Seek, SeekFrom, Write};
 use std::mem::swap;
 use std::ops::{Deref, DerefMut};
@@ -18,6 +17,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::result::Result as StdResult;
 
+use anyhow::{bail, Context, Result};
 use getopts::Options;
 use libchromeos::secure_blob::SecureBlob;
 use libsirenia::{
@@ -33,13 +33,12 @@ use libsirenia::{
         syslog::{Syslog, SyslogReceiverMut, SYSLOG_PATH},
     },
     rpc::{self, ConnectionHandler, RpcDispatcher, TransportServer},
-    sandbox::{self, MinijailSandbox, Sandbox, VmConfig, VmSandbox},
+    sandbox::{MinijailSandbox, Sandbox, VmConfig, VmSandbox},
     sys,
     transport::{
-        self, create_transport_from_pipes, Transport, TransportType, CROS_CID,
-        CROS_CONNECTION_ERR_FD, CROS_CONNECTION_R_FD, CROS_CONNECTION_W_FD, DEFAULT_CLIENT_PORT,
-        DEFAULT_CONNECTION_R_FD, DEFAULT_CONNECTION_W_FD, DEFAULT_CRONISTA_PORT,
-        DEFAULT_SERVER_PORT,
+        create_transport_from_pipes, Transport, TransportType, CROS_CID, CROS_CONNECTION_ERR_FD,
+        CROS_CONNECTION_R_FD, CROS_CONNECTION_W_FD, DEFAULT_CLIENT_PORT, DEFAULT_CONNECTION_R_FD,
+        DEFAULT_CONNECTION_W_FD, DEFAULT_CRONISTA_PORT, DEFAULT_SERVER_PORT,
     },
 };
 use sirenia::{
@@ -57,40 +56,12 @@ use sys_util::{
     self, error, getpid, getsid, info, reap_child, setsid, syslog,
     vsock::SocketAddr as VSocketAddr, warn, MemfdSeals, Pid, SharedMemory,
 };
-use thiserror::Error as ThisError;
 
 const CRONISTA_URI_SHORT_NAME: &str = "C";
 const CRONISTA_URI_LONG_NAME: &str = "cronista";
 const SYSLOG_PATH_SHORT_NAME: &str = "L";
 
 const CROSVM_PATH: &str = "/bin/crosvm-direct";
-
-#[derive(ThisError, Debug)]
-pub enum Error {
-    #[error("failed to initialize the syslog: {0}")]
-    InitSyslog(sys_util::syslog::Error),
-    #[error("failed to open pipe: {0}")]
-    OpenPipe(sys_util::Error),
-    #[error("failed create transport: {0}")]
-    NewTransport(transport::Error),
-    #[error("got unexpected transport type: {0:?}")]
-    UnexpectedConnectionType(TransportType),
-    #[error("failed to create new sandbox: {0}")]
-    NewSandbox(sandbox::Error),
-    #[error("failed to start up sandbox: {0}")]
-    RunSandbox(sandbox::Error),
-    #[error("received unexpected request type")]
-    UnexpectedRequest,
-    #[error("Error retrieving from app_manifest: {0}")]
-    AppManifest(app_info::Error),
-    #[error("Error retrieving path for TEE app: {0}")]
-    AppPath(String),
-    #[error("Failed to compute sha256 digest: {0:?}")]
-    Sha256(String),
-}
-
-/// The result of an operation in this crate.
-pub type Result<T> = StdResult<T, Error>;
 
 /* Holds the trichechus-relevant information for a TEEApp. */
 struct TeeApp {
@@ -231,7 +202,7 @@ impl TrichechusState {
             uri.try_into_client(None)
                 .unwrap()
                 .connect()
-                .map_err(Error::NewTransport)?,
+                .context("failed create transport")?,
         ));
         Ok(())
     }
@@ -475,7 +446,7 @@ fn spawn_tee_app(
     transport: Transport,
 ) -> Result<(Pid, TeeApp, Transport)> {
     let (trichechus_transport, tee_transport) =
-        create_transport_from_pipes().map_err(Error::NewTransport)?;
+        create_transport_from_pipes().context("failed create transport")?;
     let keep_fds: [(RawFd, RawFd); 5] = [
         (transport.r.as_raw_fd(), CROS_CONNECTION_R_FD),
         (transport.w.as_raw_fd(), CROS_CONNECTION_W_FD),
@@ -488,7 +459,7 @@ fn spawn_tee_app(
         ExecutableInfo::Path(path) => app
             .sandbox
             .run(Path::new(&path), &[path], &keep_fds)
-            .map_err(Error::RunSandbox)?,
+            .context("failed to start up sandbox")?,
         ExecutableInfo::Digest(digest) => match state.loaded_apps.borrow().get(digest) {
             Some(shared_mem) => {
                 let fd_path = fd_to_path(shared_mem.as_raw_fd())
@@ -496,9 +467,12 @@ fn spawn_tee_app(
                     .unwrap_or_else(|_| "".into());
                 app.sandbox
                     .run_raw(shared_mem.as_raw_fd(), &[&fd_path], &keep_fds)
-                    .map_err(Error::RunSandbox)?
+                    .context("failed to start up sandbox")?
             }
-            None => return Err(Error::AppPath(app.app_info.app_name.clone())),
+            None => bail!(
+                "error retrieving path for TEE app: {0}",
+                app.app_info.app_name.clone()
+            ),
         },
     };
 
@@ -589,7 +563,7 @@ fn main() -> Result<()> {
     // info!(...), and error!(...) should be used instead.
     if let Err(e) = syslog::init() {
         eprintln!("Failed to initialize syslog: {}", e);
-        return Err(Error::InitSyslog(e));
+        bail!("failed to initialize the syslog: {}", e);
     }
     info!("starting trichechus: {}", BUILD_TIMESTAMP);
 
