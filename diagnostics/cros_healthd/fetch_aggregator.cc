@@ -31,6 +31,7 @@ FetchAggregator::FetchAggregator(Context* context)
       bus_fetcher_(context),
       cpu_fetcher_(context),
       disk_fetcher_(context),
+      display_fetcher_(context),
       fan_fetcher_(context),
       graphics_fetcher_(context),
       memory_fetcher_(context),
@@ -152,6 +153,10 @@ void FetchAggregator::Run(
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kDisplay: {
+        display_fetcher_.FetchDisplayInfo(base::BindOnce(
+            &FetchAggregator::WrapFetchProbeData<mojo_ipc::DisplayResultPtr>,
+            weak_factory_.GetWeakPtr(), category, std::cref(state),
+            &info->display_result));
         break;
       }
     }
