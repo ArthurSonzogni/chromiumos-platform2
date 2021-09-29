@@ -1,0 +1,79 @@
+trying to open device 'i915'...failed
+trying to open device 'amdgpu'...failed
+trying to open device 'radeon'...failed
+trying to open device 'nouveau'...failed
+trying to open device 'vmwgfx'...failed
+trying to open device 'omapdrm'...failed
+trying to open device 'exynos'...failed
+trying to open device 'tilcdc'...failed
+trying to open device 'msm'...failed
+trying to open device 'sti'...failed
+trying to open device 'tegra'...failed
+trying to open device 'imx-drm'...failed
+trying to open device 'rockchip'...failed
+trying to open device 'atmel-hlcdc'...failed
+trying to open device 'fsl-dcu-drm'...failed
+trying to open device 'vc4'...failed
+trying to open device 'virtio_gpu'...failed
+trying to open device 'mediatek'...done
+Connectors:
+id	encoder	status		name		size (mm)	modes	encoders
+32	31	connected	eDP-1          	250x170		1	31
+  modes:
+	index name refresh (Hz) hdisp hss hse htot vdisp vss vse vtot
+  #0 1366x912 60.05 1366 1470 1492 1550 912 916 922 940 87500 flags: nhsync, nvsync; type: preferred, driver
+  props:
+	1 EDID:
+		flags: immutable blob
+		blobs:
+
+		value:
+			00ffffffffffff0006af97d400000000
+			2e1e010495191178022425975a589728
+			1b505400000001010101010101010101
+			0101010101012e2256b850901c306816
+			4600fda9000000180000000f00000000
+			00000000000000000020000000fe0041
+			554f0a202020202020202020000000fe
+			004231323058414e30312e30200a0051
+	2 DPMS:
+		flags: enum
+		enums: On=0 Standby=1 Suspend=2 Off=3
+		value: 0
+	5 link-status:
+		flags: enum
+		enums: Good=0 Bad=1
+		value: 0
+	6 non-desktop:
+		flags: immutable range
+		values: 0 1
+		value: 0
+	4 TILE:
+		flags: immutable blob
+		blobs:
+
+		value:
+34	0	disconnected	DP-1           	0x0		0	33
+  props:
+	1 EDID:
+		flags: immutable blob
+		blobs:
+
+		value:
+	2 DPMS:
+		flags: enum
+		enums: On=0 Standby=1 Suspend=2 Off=3
+		value: 0
+	5 link-status:
+		flags: enum
+		enums: Good=0 Bad=1
+		value: 0
+	6 non-desktop:
+		flags: immutable range
+		values: 0 1
+		value: 0
+	4 TILE:
+		flags: immutable blob
+		blobs:
+
+		value:

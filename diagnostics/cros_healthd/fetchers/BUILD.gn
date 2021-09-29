@@ -80,6 +80,7 @@ if (use.test) {
       "boot_performance_fetcher_test.cc",
       "bus_fetcher_test.cc",
       "cpu_fetcher_test.cc",
+      "display_fetcher_test.cc",
       "fan_fetcher_test.cc",
       "graphics_fetcher_test.cc",
       "memory_fetcher_test.cc",
