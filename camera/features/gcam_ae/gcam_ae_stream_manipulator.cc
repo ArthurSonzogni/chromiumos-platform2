@@ -120,7 +120,7 @@ bool GcamAeStreamManipulator::ProcessCaptureRequest(
     return true;
   }
   base::AutoLock lock(ae_controller_lock_);
-  ae_controller_->WriteRequestAeParameters(request);
+  ae_controller_->SetRequestAeParameters(request);
   return true;
 }
 
@@ -136,12 +136,7 @@ bool GcamAeStreamManipulator::ProcessCaptureResult(
   base::AutoLock lock(ae_controller_lock_);
   if (result->has_metadata()) {
     ae_controller_->RecordAeMetadata(result);
-
-    if (options_.use_cros_face_detector) {
-      // This is mainly for displaying the face rectangles in camera app for
-      // development and debugging.
-      ae_controller_->WriteResultFaceRectangles(result);
-    }
+    ae_controller_->SetResultAeMetadata(result);
   }
 
   // Pass along the calculated HDR ratio to HdrNetStreamManipulator for HDRnet

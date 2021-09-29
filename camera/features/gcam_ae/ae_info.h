@@ -82,6 +82,7 @@ struct AeFrameInfo {
   float target_tet = 0.0f;
   float target_hdr_ratio = 0.0f;
   float target_ae_compensation = 0.0f;
+  Range<int> target_fps_range = {15, 30};
 
   // The settings used to capture the frame.
   float analog_gain = 0.0f;
@@ -91,6 +92,13 @@ struct AeFrameInfo {
   float estimated_sensor_sensitivity = 0.0f;
   uint8_t face_detection_mode = ANDROID_STATISTICS_FACE_DETECT_MODE_OFF;
   base::Optional<std::vector<NormalizedRect>> faces;
+
+  // The capture request settings the camera client requested.
+  struct {
+    base::Optional<uint8_t> ae_mode;
+    base::Optional<int32_t> ae_exposure_compensation;
+    base::Optional<uint8_t> face_detection_mode;
+  } client_request_settings;
 
   // The AWB gains and color correction matrix that will be applied to the
   // frame.

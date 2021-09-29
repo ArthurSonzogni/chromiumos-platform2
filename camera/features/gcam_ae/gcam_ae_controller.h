@@ -79,17 +79,14 @@ class GcamAeController {
 
   // Gets the HDR ratio calculated by Gcam AE.  This is normally used to get the
   // input argument to the HDRnet processing pipeline.
-  virtual base::Optional<float> GetCalculatedHdrRatio(
-      int frame_number) const = 0;
+  virtual base::Optional<float> GetCalculatedHdrRatio(int frame_number) = 0;
 
-  // Writes the AE parameters calculated by the AE algorithm in the capture
+  // Sets the AE parameters calculated by the AE algorithm in the capture
   // request |request|.
-  virtual bool WriteRequestAeParameters(Camera3CaptureDescriptor* request) = 0;
+  virtual void SetRequestAeParameters(Camera3CaptureDescriptor* request) = 0;
 
-  // Writes the face metadata in the capture result metadata in |result|.
-  // This method has effect only when CrOS face detector is enabled, otherwise
-  // the face metadata would be filled by the vendor camera HAL.
-  virtual bool WriteResultFaceRectangles(Camera3CaptureDescriptor* result) = 0;
+  // Sets the face metadata in the capture result metadata in |result|.
+  virtual void SetResultAeMetadata(Camera3CaptureDescriptor* result) = 0;
 };
 
 }  // namespace cros

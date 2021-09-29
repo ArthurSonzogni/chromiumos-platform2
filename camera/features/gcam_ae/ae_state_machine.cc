@@ -234,6 +234,21 @@ float AeStateMachine::GetFilteredHdrRatio() {
   return next_hdr_ratio_to_set_;
 }
 
+uint8_t AeStateMachine::GetAndroidAeState() {
+  // We don't support flash, so there's no FLASH_REQUIRED state.
+  switch (current_state_) {
+    case AeStateMachine::State::kInactive:
+      return ANDROID_CONTROL_AE_STATE_INACTIVE;
+    case AeStateMachine::State::kSearching:
+    case AeStateMachine::State::kConverging:
+      return ANDROID_CONTROL_AE_STATE_SEARCHING;
+    case AeStateMachine::State::kConverged:
+      return ANDROID_CONTROL_AE_STATE_CONVERGED;
+    case AeStateMachine::State::kLocked:
+      return ANDROID_CONTROL_AE_STATE_LOCKED;
+  }
+}
+
 std::ostream& operator<<(std::ostream& os, AeStateMachine::State state) {
   std::string state_str;
   switch (state) {

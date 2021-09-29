@@ -178,6 +178,7 @@ class AeStateMachine {
 
   float GetCaptureTet();
   float GetFilteredHdrRatio();
+  uint8_t GetAndroidAeState();
 
   AeStateMachine(const AeStateMachine& other) = delete;
   AeStateMachine& operator=(const AeStateMachine& other) = delete;
