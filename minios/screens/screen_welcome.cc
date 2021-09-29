@@ -9,7 +9,7 @@ namespace minios {
 ScreenWelcome::ScreenWelcome(std::shared_ptr<DrawInterface> draw_utils,
                              ScreenControllerInterface* screen_controller)
     : ScreenBase(
-          /*button_count=*/3, /*index_=*/1, draw_utils, screen_controller) {}
+          /*button_count=*/2, /*index_=*/1, draw_utils, screen_controller) {}
 
 void ScreenWelcome::Show() {
   draw_utils_->MessageBaseScreen();
@@ -36,9 +36,6 @@ void ScreenWelcome::OnKeyPress(int key_changed) {
         break;
       case 1:
         screen_controller_->OnForward(this);
-        break;
-      case 2:
-        screen_controller_->OnBackward(this);
         break;
     }
   } else {
