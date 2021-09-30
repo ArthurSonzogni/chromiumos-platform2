@@ -7,11 +7,19 @@
 
 #include "rmad/state_handler/base_state_handler.h"
 
+#include <memory>
+
+#include "rmad/system/tpm_manager_client.h"
+
 namespace rmad {
 
 class UpdateRoFirmwareStateHandler : public BaseStateHandler {
  public:
   explicit UpdateRoFirmwareStateHandler(scoped_refptr<JsonStore> json_store);
+  // Used to inject mock |tpm_manager_client_| for testing.
+  UpdateRoFirmwareStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      std::unique_ptr<TpmManagerClient> tpm_manager_client);
 
   ASSIGN_STATE(RmadState::StateCase::kUpdateRoFirmware);
   SET_REPEATABLE;
@@ -23,7 +31,9 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   ~UpdateRoFirmwareStateHandler() override = default;
 
  private:
-  bool IsMainboardRepair() const;
+  void UpdateFirmwareFromUsbAsync();
+
+  std::unique_ptr<TpmManagerClient> tpm_manager_client_;
 };
 
 }  // namespace rmad
