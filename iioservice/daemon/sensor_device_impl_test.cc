@@ -82,6 +82,8 @@ class SensorDeviceImplTest : public ::testing::Test {
     device_ = device.get();
     context_->AddDevice(std::move(device));
 
+    SetSysPathAndDriver();
+
     sensor_device_->OnDeviceAdded(device_, std::set<cros::mojom::DeviceType>{
                                                cros::mojom::DeviceType::ACCEL});
     sensor_device_->AddReceiver(fakes::kAccelDeviceId,
@@ -95,8 +97,33 @@ class SensorDeviceImplTest : public ::testing::Test {
 
   void OnSensorDeviceDisconnect() { remote_.reset(); }
 
+  void SetSysPathAndDriver() {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base::FilePath foo_dir = temp_dir_.GetPath().Append("foo_dir");
+    base::FilePath bar_dir = temp_dir_.GetPath().Append("bar_dir");
+    ASSERT_TRUE(base::CreateDirectory(foo_dir));
+    ASSERT_TRUE(base::CreateDirectory(bar_dir));
+    link_from_ = foo_dir.Append("from_file");
+
+    ASSERT_TRUE(base::CreateTemporaryFileInDir(bar_dir, &link_to_));
+    ASSERT_TRUE(base::CreateSymbolicLink(
+        base::FilePath("../bar_dir").Append(link_to_.BaseName()), link_from_))
+        << "Failed to create file symlink.";
+
+    base::FilePath link_driver = temp_dir_.GetPath().Append("driver");
+    ASSERT_TRUE(base::CreateSymbolicLink(base::FilePath("../bar_dir/ish-hid"),
+                                         link_driver))
+        << "Failed to create driver symlink.";
+
+    device_->SetPath(link_from_);
+  }
+
   std::unique_ptr<libmems::fakes::FakeIioContext> context_;
   libmems::fakes::FakeIioDevice* device_;
+
+  base::ScopedTempDir temp_dir_;
+  base::FilePath link_from_;
+  base::FilePath link_to_;
 
   base::test::SingleThreadTaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME,
@@ -120,40 +147,28 @@ TEST_F(SensorDeviceImplTest, SetTimeout) {
 }
 
 TEST_F(SensorDeviceImplTest, GetAttributes) {
-  base::ScopedTempDir temp_dir_;
-  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-  base::FilePath foo_dir = temp_dir_.GetPath().Append("foo_dir");
-  base::FilePath bar_dir = temp_dir_.GetPath().Append("bar_dir");
-  ASSERT_TRUE(base::CreateDirectory(foo_dir));
-  ASSERT_TRUE(base::CreateDirectory(bar_dir));
-  base::FilePath link_from = foo_dir.Append("from_file"), link_to;
-
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(bar_dir, &link_to));
-  ASSERT_TRUE(base::CreateSymbolicLink(
-      base::FilePath("../bar_dir").Append(link_to.BaseName()), link_from))
-      << "Failed to create file symlink.";
-
-  device_->SetPath(link_from);
-
   base::RunLoop loop;
   remote_->GetAttributes(
       std::vector<std::string>{kDummyChnAttrName1, kDeviceAttrName,
                                cros::mojom::kDeviceName, cros::mojom::kSysPath,
-                               kDummyChnAttrName2},
+                               cros::mojom::kLocation, kDummyChnAttrName2},
       base::BindOnce(
           [](base::Closure closure, base::FilePath link_to,
              const std::vector<base::Optional<std::string>>& values) {
-            EXPECT_EQ(values.size(), 5u);
+            EXPECT_EQ(values.size(), 6u);
             EXPECT_FALSE(values.front().has_value());
             EXPECT_FALSE(values.back().has_value());
             EXPECT_TRUE(values[1].has_value());
             EXPECT_EQ(values[1].value().compare(kParsedDeviceAttrValue), 0);
             EXPECT_TRUE(values[2].has_value());
             EXPECT_EQ(values[2].value().compare(fakes::kAccelDeviceName), 0);
+            EXPECT_TRUE(values[3].has_value());
             EXPECT_EQ(values[3].value().compare(link_to.value()), 0);
+            EXPECT_TRUE(values[4].has_value());
+            EXPECT_EQ(values[4].value().compare(cros::mojom::kLocationLid), 0);
             closure.Run();
           },
-          loop.QuitClosure(), link_to));
+          loop.QuitClosure(), link_to_));
   loop.Run();
 }
 

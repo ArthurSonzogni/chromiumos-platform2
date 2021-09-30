@@ -9,7 +9,6 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/containers/contains.h>
-#include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 #include <libmems/common_types.h>
 #include <libmems/iio_channel.h>
@@ -22,6 +21,9 @@ namespace {
 
 constexpr char kDeviceRemovedDescription[] = "Device was removed";
 
+const std::vector<cros::mojom::DeviceType> kMotionSensors = {
+    cros::mojom::DeviceType::ACCEL, cros::mojom::DeviceType::ANGLVEL,
+    cros::mojom::DeviceType::MAGN};
 }
 
 // static
@@ -154,18 +156,9 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
   for (const auto& attr_name : attr_names) {
     base::Optional<std::string> value_opt;
     if (attr_name == cros::mojom::kSysPath) {
-      base::FilePath iio_path(client.device_data->iio_device->GetPath());
-      base::FilePath sys_path;
-      if (base::ReadSymbolicLink(iio_path, &sys_path)) {
-        if (sys_path.IsAbsolute()) {
-          value_opt = sys_path.value();
-        } else {
-          base::FilePath result = iio_path.DirName();
-          result = result.Append(sys_path);
-
-          value_opt = base::MakeAbsoluteFilePath(result).value();
-        }
-      }
+      auto path_opt = GetAbsoluteSysPath(client.device_data->iio_device);
+      if (path_opt.has_value())
+        value_opt = path_opt.value().value();
     } else {
       value_opt =
           client.device_data->iio_device->ReadStringAttribute(attr_name);
@@ -174,6 +167,38 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
       value_opt = std::string(base::TrimString(value_opt.value(),
                                                base::StringPiece("\0\n", 2),
                                                base::TRIM_TRAILING));
+    } else {
+      if (attr_name == cros::mojom::kLocation) {
+        base::Optional<cros::mojom::DeviceType> type;
+        for (auto& t : kMotionSensors) {
+          if (base::Contains(client.device_data->types, t)) {
+            type = t;
+            break;
+          }
+        }
+
+        if (type.has_value()) {
+          base::Optional<int32_t> only_device_id;
+          for (auto& device : devices_) {
+            if (base::Contains(device.second.types, type.value()) &&
+                device.second.on_dut) {
+              if (!only_device_id.has_value()) {
+                only_device_id = device.first;
+              } else {
+                only_device_id = base::nullopt;
+                break;
+              }
+            }
+          }
+
+          if (only_device_id.has_value() &&
+              only_device_id == client.device_data->iio_device->GetId()) {
+            // It's the only motion sensor type on dut. Assume it on location
+            // lid.
+            value_opt = cros::mojom::kLocationLid;
+          }
+        }
+      }
     }
 
     values.push_back(std::move(value_opt));
