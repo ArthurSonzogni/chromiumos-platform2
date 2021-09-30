@@ -5,6 +5,9 @@
 
 export WWCB_ROOT="/usr/local/opt/wwcb_mfp"
 export PATH="${WWCB_ROOT}/usr/bin:${WWCB_ROOT}/usr/local/bin:${PATH}"
+export MAGICK_CONFIGURE_PATH="${WWCB_ROOT}/usr/local/etc/ImageMagick-7"
+export MAGICK_CODER_MODULE_PATH="${WWCB_ROOT}/usr/local/lib64/ImageMagick-7/modules-Q16/coders"
+export MAGICK_FILTER_MODULE_PATH="${WWCB_ROOT}/usr/local/lib64/ImageMagick-7/modules-Q16/filters"
 
 export MFP_NAME=""
 export MFP_DEV_LIST=""

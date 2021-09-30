@@ -97,6 +97,14 @@ for f in "${SYSROOT_STATIC_BINS[@]}"; do
 done
 install -m 0755 -t "${PREFIX}/usr/bin" "${HWTESTS_BINS[@]}"
 
+# ImageMagick has a lot of extra modules and config files that need to be
+# included manually.
+mkdir -p "${PREFIX}/usr/local/etc"
+cp -r "${SYSROOT}/usr/local/etc/ImageMagick-7" "${PREFIX}/usr/local/etc"
+mkdir -p "${PREFIX}/usr/local/lib64/ImageMagick-7"
+cp -r "${SYSROOT}/usr/local/lib64/"ImageMagick-7*/* \
+      "${PREFIX}/usr/local/lib64/ImageMagick-7"
+
 mkdir -p "${ROOT}/bin"
 install -m 0755 setup_shell "${ROOT}/bin/wwcb_mfp_env"
 
