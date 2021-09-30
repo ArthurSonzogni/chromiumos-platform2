@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include "hps/daemon/filters/consecutive_results_filter.h"
 #include "hps/daemon/filters/filter_watcher.h"
 #include "hps/daemon/filters/threshold_filter.h"
 
@@ -23,6 +24,12 @@ std::unique_ptr<Filter> CreateFilter(const hps::FeatureConfig& config,
     case FeatureConfig::kBasicFilterConfig:
     case FeatureConfig::FILTER_CONFIG_NOT_SET:
       filter = std::make_unique<ThresholdFilter>(kDefaultThreshold);
+      break;
+    case FeatureConfig::kConsecutiveResultsFilterConfig:
+      filter = std::make_unique<ConsecutiveResultsFilter>(
+          config.consecutive_results_filter_config().threshold(),
+          config.consecutive_results_filter_config().count(),
+          config.consecutive_results_filter_config().initial_state());
       break;
     default:
       LOG(FATAL) << "Unexpected config";

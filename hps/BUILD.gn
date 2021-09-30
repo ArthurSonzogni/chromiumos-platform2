@@ -95,6 +95,7 @@ static_library("hpslib") {
 
 static_library("filters") {
   sources = [
+    "daemon/filters/consecutive_results_filter.cc",
     "daemon/filters/filter.cc",
     "daemon/filters/filter.h",
     "daemon/filters/filter_factory.cc",

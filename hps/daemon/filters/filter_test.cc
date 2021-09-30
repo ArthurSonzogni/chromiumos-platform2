@@ -6,6 +6,7 @@
 
 #include "base/test/bind.h"
 #include "gtest/gtest.h"
+#include "hps/daemon/filters/consecutive_results_filter.h"
 #include "hps/daemon/filters/filter.h"
 #include "hps/daemon/filters/filter_factory.h"
 #include "hps/daemon/filters/filter_watcher.h"
@@ -40,6 +41,72 @@ TEST(FilterWatcherTest, BasicTest) {
   EXPECT_FALSE(watcher.ProcessResult(kThreshold - 1));
   EXPECT_FALSE(watcher.GetCurrentResult());
   EXPECT_FALSE(cb_result);
+}
+
+TEST(ConsecutiveResultsFilterTest, BasicTest) {
+  constexpr int kCount = 5;
+  ConsecutiveResultsFilter filter(kThreshold, kCount, false);
+
+  EXPECT_FALSE(filter.GetCurrentResult());
+
+  // First kCount-1 above threshold should not change filter state.
+  for (int i = 0; i < kCount - 1; i++) {
+    EXPECT_FALSE(filter.ProcessResult(kThreshold + 1));
+    EXPECT_FALSE(filter.GetCurrentResult());
+  }
+
+  EXPECT_TRUE(filter.ProcessResult(kThreshold + 1));
+  EXPECT_TRUE(filter.GetCurrentResult());
+
+  // First kCount-1 below threshold should not change filter state.
+  for (int i = 0; i < kCount - 1; i++) {
+    EXPECT_TRUE(filter.ProcessResult(kThreshold));
+    EXPECT_TRUE(filter.GetCurrentResult());
+  }
+
+  EXPECT_FALSE(filter.ProcessResult(kThreshold));
+  EXPECT_FALSE(filter.GetCurrentResult());
+}
+
+TEST(ConsecutiveResultsFilterTest, ResetCountOnChange) {
+  constexpr int kCount = 5;
+  ConsecutiveResultsFilter filter(kThreshold, kCount, false);
+
+  EXPECT_FALSE(filter.GetCurrentResult());
+
+  // First kCount-1 above threshold should not change filter state.
+  for (int i = 0; i < kCount - 1; i++) {
+    EXPECT_FALSE(filter.ProcessResult(kThreshold + 1));
+    EXPECT_FALSE(filter.GetCurrentResult());
+  }
+  // Sending one result below the threshold should reset the count
+  EXPECT_FALSE(filter.ProcessResult(kThreshold));
+  EXPECT_FALSE(filter.GetCurrentResult());
+
+  // First kCount-1 above threshold should not change filter state.
+  for (int i = 0; i < kCount - 1; i++) {
+    EXPECT_FALSE(filter.ProcessResult(kThreshold + 1));
+    EXPECT_FALSE(filter.GetCurrentResult());
+  }
+
+  EXPECT_TRUE(filter.ProcessResult(kThreshold + 1));
+  EXPECT_TRUE(filter.GetCurrentResult());
+
+  // Now test going from above threshold to below threshold.
+  // First kCount below threshold should not change filter state.
+  for (int i = 0; i < kCount - 1; i++) {
+    EXPECT_TRUE(filter.ProcessResult(kThreshold));
+    EXPECT_TRUE(filter.GetCurrentResult());
+  }
+
+  EXPECT_TRUE(filter.ProcessResult(kThreshold + 1));
+  EXPECT_TRUE(filter.GetCurrentResult());
+
+  // First kCount below threshold should not change filter state.
+  for (int i = 0; i < kCount - 1; i++) {
+    EXPECT_TRUE(filter.ProcessResult(kThreshold));
+    EXPECT_TRUE(filter.GetCurrentResult());
+  }
 }
 
 }  // namespace hps

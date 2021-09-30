@@ -17,6 +17,7 @@ namespace hps {
 class Filter {
  public:
   Filter() = default;
+  explicit Filter(bool initial_state);
   Filter(const Filter&) = delete;
   Filter& operator=(const Filter&) = delete;
   virtual ~Filter() = default;
@@ -41,7 +42,7 @@ class Filter {
   virtual bool ProcessResultImpl(int result) = 0;
 
  private:
-  bool current_result_;
+  bool current_result_ = false;
 };
 
 }  // namespace hps

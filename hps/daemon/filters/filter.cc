@@ -6,6 +6,8 @@
 
 namespace hps {
 
+Filter::Filter(bool initial_state) : current_result_(initial_state) {}
+
 bool Filter::ProcessResult(int result) {
   current_result_ = ProcessResultImpl(result);
   return current_result_;
