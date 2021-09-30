@@ -7,6 +7,7 @@
 package utils
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -141,7 +142,17 @@ func setReferencedProfileIfNecessary(
 // fields in ScannerCapabilities which were missing from the scanner's response
 // will be left at their zero values.
 func GetScannerCapabilities(addr string) (caps ScannerCapabilities, err error) {
-	resp, err := http.Get(addr + "ScannerCapabilities")
+	// Deliberately ignore certificate errors because printers normally
+	// have self-signed certificates.
+	tlsConfig := &tls.Config{
+		MinVersion:         tls.VersionTLS12,
+		InsecureSkipVerify: true,
+	}
+	tr := &http.Transport{
+		TLSClientConfig: tlsConfig,
+	}
+	client := &http.Client{Transport: tr}
+	resp, err := client.Get(addr + "ScannerCapabilities")
 	if err != nil {
 		return
 	}
