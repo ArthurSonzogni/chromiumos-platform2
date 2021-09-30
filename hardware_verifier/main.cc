@@ -10,11 +10,13 @@
 #include <memory>
 
 #include <base/at_exit.h>
+#include <base/command_line.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
 #include "hardware_verifier/cli.h"
+#include "hardware_verifier/daemon.h"
 #include "hardware_verifier/observer.h"
 
 namespace {
@@ -29,6 +31,8 @@ enum ExitStatus {
 
   // Some of the argument is invalid.
   kInvalidArgument = 11,
+
+  // EX__BASE (64) to EX__MAX (78) defined in sysexits.h are reserved.
 };
 
 // Translate the error code from |hardware_verifier::CLI::Run()| to
@@ -88,39 +92,57 @@ int main(int argc, char* argv[]) {
   DEFINE_string(hw_verification_spec_file, "",
                 "File path to the hardware verification spec in prototxt "
                 "format, empty to use the default one.");
+  DEFINE_bool(dbus, false, "Run in the daemon mode to respond D-Bus call.");
   DEFINE_string(output_format, "proto",
                 "Format of the output verification report, can be either "
                 "\"proto\" for protobuf binary format or \"text\" for human "
-                "readable text format.");
+                "readable text format.  Only be available in normal mode.");
   DEFINE_bool(send_to_uma, false, "Send data to UMA.");
   DEFINE_bool(pii, false,
               "Output result including PII data like UUID and generic device "
-              "info.");
+              "info.  Only be available in normal mode.");
   brillo::FlagHelper::Init(argc, argv, "ChromeOS Hardware Verifier Tool");
-
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
+  base::CommandLine::Init(argc, argv);
+  auto* cl = base::CommandLine::ForCurrentProcess();
 
   // Validate the non-trivial flags and convert them to the proper value types.
   const auto log_level = SafeConvertVerbosityFlagToLogLevel(FLAGS_verbosity);
-  const auto output_format =
-      SafeConvertOutputFormatFlagToEnum(FLAGS_output_format);
-
   logging::SetMinLogLevel(log_level);
 
   auto observer = hardware_verifier::Observer::GetInstance();
   if (FLAGS_send_to_uma) {
     observer->SetMetricsLibrary(std::make_unique<MetricsLibrary>());
   }
-  observer->StartTimer(hardware_verifier::kMetricTimeToFinish);
-  // TODO(yhong): Add the D-Bus service mode.
 
-  hardware_verifier::CLI cli;
-  const auto cli_result =
-      cli.Run(FLAGS_probe_result_file, FLAGS_hw_verification_spec_file,
-              output_format, FLAGS_pii);
+  if (FLAGS_dbus) {
+    if (cl->HasSwitch("output_format")) {
+      LOG(ERROR) << "--output_format is only available in normal mode.";
+      exit(EX_USAGE);
+    }
+    if (cl->HasSwitch("pii")) {
+      LOG(ERROR) << "--pii is only available in normal mode.";
+      exit(EX_USAGE);
+    }
+  }
 
-  const auto exit_status = ConvertCLIVerificationResultToExitStatus(cli_result);
+  const auto output_format =
+      SafeConvertOutputFormatFlagToEnum(FLAGS_output_format);
 
-  observer->StopTimer(hardware_verifier::kMetricTimeToFinish);
+  int exit_status;
+  if (FLAGS_dbus) {
+    hardware_verifier::Daemon daemon;
+    exit_status = daemon.Run();
+  } else {
+    observer->StartTimer(hardware_verifier::kMetricTimeToFinish);
+    hardware_verifier::CLI cli;
+    const auto cli_result =
+        cli.Run(FLAGS_probe_result_file, FLAGS_hw_verification_spec_file,
+                output_format, FLAGS_pii);
+
+    exit_status = ConvertCLIVerificationResultToExitStatus(cli_result);
+    observer->StopTimer(hardware_verifier::kMetricTimeToFinish);
+  }
+
   return exit_status;
 }

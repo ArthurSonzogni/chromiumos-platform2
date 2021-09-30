@@ -88,3 +88,19 @@ message HwVerificationReport {
   // Records the overall device matrics.
   GenericDeviceInfo generic_device_info = 3;
 }
+
+enum ErrorCode {
+  ERROR_UNSPECIFIED = 0;
+  ERROR_OK = 1;
+  ERROR_OTHER_ERROR = 2;
+  ERROR_INVALID_HW_VERIFICATION_SPEC_FILE = 10;
+  ERROR_INVALID_PROBE_RESULT_FILE = 11;
+  ERROR_PROBE_FAIL = 12;
+  ERROR_PROBE_RESULT_HW_VERIFICATION_SPEC_MISALIGNMENT = 13;
+}
+
+// Reply for the D-Bus method `VerifyComponents`.
+message VerifyComponentsReply {
+  ErrorCode error = 1;
+  HwVerificationReport hw_verification_report = 2;
+}
