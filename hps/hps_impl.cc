@@ -100,38 +100,38 @@ bool HPS_impl::Disable(uint8_t feature) {
   return this->device_->WriteReg(HpsReg::kFeatEn, this->feat_enabled_);
 }
 
-int HPS_impl::Result(int feature) {
+FeatureResult HPS_impl::Result(int feature) {
   // Exclusive access to module.
   base::AutoLock l(this->lock_);
   // Check the application is enabled and running.
   int status = this->device_->ReadReg(HpsReg::kSysStatus);
   if (status < 0 || (status & R2::kAppl) == 0) {
-    return -1;
+    return {.valid = false};
   }
   // Check that feature is enabled.
   if (((1 << feature) & this->feat_enabled_) == 0) {
-    return -1;
+    return {.valid = false};
   }
-  int result;
+  int hps_result;
   switch (feature) {
     case 0:
-      result = this->device_->ReadReg(HpsReg::kF1);
+      hps_result = this->device_->ReadReg(HpsReg::kF1);
       break;
     case 1:
-      result = this->device_->ReadReg(HpsReg::kF2);
+      hps_result = this->device_->ReadReg(HpsReg::kF2);
       break;
     default:
-      result = -1;
+      hps_result = -1;
   }
-  if (result < 0) {
-    return -1;
+  if (hps_result < 0) {
+    return {.valid = false};
   }
-  // Check that valid bit is on.
-  if ((result & RFeat::kValid) == 0) {
-    return -1;
-  }
-  // Return lower 15 bits.
-  return result & 0x7FFF;
+  // TODO(slangley): Clean this up when we introduce sequence numbers for
+  // inference results.
+  FeatureResult result;
+  result.valid = (hps_result & RFeat::kValid) == RFeat::kValid;
+  result.inference_result = hps_result & 0xFF;
+  return result;
 }
 
 // Runs the state machine.

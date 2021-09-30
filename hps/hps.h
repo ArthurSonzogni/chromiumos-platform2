@@ -53,10 +53,8 @@ class HPS {
   // Return the latest result for the feature selected,
   // where the feature ranges from 0 to 15, corresponding to
   // the features selected in the Enable method above.
-  // Returns -1 in the event the module is unavailable, or
-  // the feature is not selected, or the result is not valid.
   //
-  virtual int Result(int feature) = 0;
+  virtual FeatureResult Result(int feature) = 0;
 
   //
   // Return the underlying access device for the module.

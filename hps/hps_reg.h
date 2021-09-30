@@ -86,6 +86,11 @@ inline uint8_t I2cReg(HpsReg reg) {
   return static_cast<uint8_t>(reg) | 0x80U;
 }
 
+struct FeatureResult {
+  uint8_t inference_result;
+  bool valid;
+};
+
 }  // namespace hps
 
 #endif  // HPS_HPS_REG_H_

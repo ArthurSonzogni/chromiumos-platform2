@@ -59,15 +59,18 @@ TEST_F(HPSTest, MagicNumber) {
  * results are returned only when allowed.
  */
 TEST_F(HPSTest, FeatureControl) {
+  hps::FeatureResult feature_result;
   // No features enabled until module is ready.
   EXPECT_FALSE(hps_->Enable(0));
   EXPECT_FALSE(hps_->Enable(1));
-  EXPECT_EQ(hps_->Result(0), -1);
+  feature_result = hps_->Result(0);
+  EXPECT_EQ(feature_result.valid, false);
   // Set the module to be ready for features.
   fake_->SkipBoot();
   EXPECT_FALSE(hps_->Enable(hps::kFeatures));
   EXPECT_FALSE(hps_->Disable(hps::kFeatures));
-  EXPECT_EQ(hps_->Result(hps::kFeatures), -1);
+  feature_result = hps_->Result(hps::kFeatures);
+  EXPECT_EQ(feature_result.valid, false);
   ASSERT_TRUE(hps_->Enable(0));
   ASSERT_TRUE(hps_->Enable(1));
   // Check that enabled features can be disabled.
@@ -76,11 +79,15 @@ TEST_F(HPSTest, FeatureControl) {
   // Check that a result is returned if the feature is enabled.
   const int result = 42;
   fake_->SetF1Result(result);
-  EXPECT_EQ(hps_->Result(0), -1);
+  feature_result = hps_->Result(0);
+  EXPECT_EQ(feature_result.valid, false);
   ASSERT_TRUE(hps_->Enable(0));
-  EXPECT_EQ(hps_->Result(0), result);
+  feature_result = hps_->Result(0);
+  EXPECT_EQ(feature_result.valid, true);
+  EXPECT_EQ(feature_result.inference_result, result);
   ASSERT_TRUE(hps_->Disable(0));
-  EXPECT_EQ(hps_->Result(0), -1);
+  feature_result = hps_->Result(0);
+  EXPECT_EQ(feature_result.valid, false);
 }
 
 /*

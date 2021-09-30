@@ -38,16 +38,17 @@ int Watch(std::unique_ptr<hps::HPS> hps,
     return 1;
   }
   hps->Enable(feat);
-  int last = -2;
   for (;;) {
-    int result = hps->Result(feat);
-    if (result != last) {
-      last = result;
-      if (result < 0) {
-        std::cout << "Invalid result" << std::endl;
-      } else {
-        std::cout << "Result = " << result << std::endl;
+    hps::FeatureResult feature_result;
+    uint8_t last_inference_result = 0;
+    feature_result = hps->Result(feat);
+    if (feature_result.valid) {
+      if (last_inference_result != feature_result.inference_result) {
+        last_inference_result = feature_result.inference_result;
+        std::cout << "Result = " << last_inference_result << std::endl;
       }
+    } else {
+      std::cout << "Invalid result" << std::endl;
     }
     base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
   }

@@ -35,12 +35,12 @@ void DBusAdaptor::PollTask() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   for (uint8_t feature = 0; feature < kFeatures; ++feature) {
     if (enabled_features_.test(feature)) {
-      int result = this->hps_->Result(feature);
+      FeatureResult result = this->hps_->Result(feature);
       // TODO(slangley): If HPS starts failing, we should probably let clients
       // know somehow.
-      if (result >= 0) {
+      if (result.valid) {
         DCHECK(feature_filters_[feature]);
-        feature_filters_[feature]->ProcessResult(result);
+        feature_filters_[feature]->ProcessResult(result.inference_result);
       }
     }
   }

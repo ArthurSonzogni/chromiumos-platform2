@@ -42,7 +42,7 @@ class HPS_impl : public HPS {
   void SkipBoot() override;
   bool Enable(uint8_t feature) override;
   bool Disable(uint8_t feature) override;
-  int Result(int feature) override;
+  FeatureResult Result(int feature) override;
   DevInterface* Device() override { return this->device_.get(); }
   bool Download(hps::HpsBank bank, const base::FilePath& source) override;
 

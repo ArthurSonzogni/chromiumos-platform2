@@ -35,7 +35,7 @@ class MockHps : public HPS {
   MOCK_METHOD(void, SkipBoot, (), (override));
   MOCK_METHOD(bool, Enable, (uint8_t), (override));
   MOCK_METHOD(bool, Disable, (uint8_t), (override));
-  MOCK_METHOD(int, Result, (int), (override));
+  MOCK_METHOD(FeatureResult, Result, (int), (override));
   MOCK_METHOD(DevInterface*, Device, (), (override));
   MOCK_METHOD(bool, Download, (HpsBank, const base::FilePath&), (override));
 };
@@ -129,12 +129,13 @@ TEST_F(HpsDaemonTest, GetFeatureResultNotEnabled) {
 }
 
 TEST_F(HpsDaemonTest, TestPollTimer) {
+  FeatureResult feature_result{.valid = true};
   {
     InSequence sequence;
     EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, Result(0))
         .Times(2)
-        .WillRepeatedly(Return(RFeat::kValid));
+        .WillRepeatedly(Return(feature_result));
     EXPECT_CALL(*mock_hps_, Disable(0)).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, Result(0)).Times(0);
   }
@@ -157,15 +158,16 @@ TEST_F(HpsDaemonTest, TestPollTimer) {
 }
 
 TEST_F(HpsDaemonTest, TestPollTimerMultipleFeatures) {
+  FeatureResult feature_result{.valid = true};
   {
     InSequence sequence;
     EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, Enable(1)).WillOnce(Return(true));
-    EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(RFeat::kValid));
-    EXPECT_CALL(*mock_hps_, Result(1)).WillOnce(Return(RFeat::kValid));
+    EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(feature_result));
+    EXPECT_CALL(*mock_hps_, Result(1)).WillOnce(Return(feature_result));
     EXPECT_CALL(*mock_hps_, Disable(0)).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, Result(0)).Times(0);
-    EXPECT_CALL(*mock_hps_, Result(1)).WillOnce(Return(RFeat::kValid));
+    EXPECT_CALL(*mock_hps_, Result(1)).WillOnce(Return(feature_result));
     EXPECT_CALL(*mock_hps_, Disable(1)).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, Result(1)).Times(0);
   }
@@ -203,16 +205,16 @@ TEST_F(HpsDaemonTest, TestPollTimerMultipleFeatures) {
 // inspection it doesn't come via the mocks we have.
 TEST_F(HpsDaemonTest, DISABLED_TestSignals) {
   // This result indicates a positive inference from HPS.
-  constexpr uint16_t kValidInference = RFeat::kValid | 254;
-  constexpr uint16_t kInvalidInference = RFeat::kValid | 254;
+  FeatureResult valid_feature_result{.inference_result = 254, .valid = true};
+  FeatureResult invalid_feature_result{.inference_result = 254, .valid = false};
   {
     InSequence sequence;
     EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, Enable(1)).WillOnce(Return(true));
-    EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(kValidInference));
-    EXPECT_CALL(*mock_hps_, Result(1)).WillOnce(Return(kValidInference));
-    EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(kInvalidInference));
-    EXPECT_CALL(*mock_hps_, Result(1)).WillOnce(Return(kInvalidInference));
+    EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(valid_feature_result));
+    EXPECT_CALL(*mock_hps_, Result(1)).WillOnce(Return(valid_feature_result));
+    EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(invalid_feature_result));
+    EXPECT_CALL(*mock_hps_, Result(1)).WillOnce(Return(invalid_feature_result));
     EXPECT_CALL(*mock_hps_, Disable(0)).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, Disable(1)).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, Result(0)).Times(0);
