@@ -347,6 +347,14 @@ TEST_F(EapCredentialsTest, DomainSuffixMatch) {
   std::string domain_suffix_match_list = params_.Get<std::string>(
       WPASupplicant::kNetworkPropertyEapDomainSuffixMatch);
   EXPECT_EQ("domain1.com;domain4.com", domain_suffix_match_list);
+
+  // Expect that if shill doesn't set the value for domain_suffix_match, the
+  // parameter is not set to the wpa_supplicant.
+  params_.Clear();
+  SetDomainSuffixMatch({""});
+  PopulateSupplicantProperties();
+  EXPECT_FALSE(params_.Contains<std::string>(
+      WPASupplicant::kNetworkPropertyEapDomainSuffixMatch));
 }
 
 TEST_F(EapCredentialsTest, ValidDomainSuffixMatch) {
