@@ -169,8 +169,7 @@ SensorDeviceFusion::IioDeviceHandler::IioDeviceHandler(
     cros::mojom::DeviceType type,
     base::RepeatingCallback<
         void(int32_t iio_device_id,
-             mojo::PendingReceiver<cros::mojom::SensorDevice> request,
-             const std::set<cros::mojom::DeviceType>& types)>
+             mojo::PendingReceiver<cros::mojom::SensorDevice> request)>
         iio_add_receiver_callback,
     base::RepeatingCallback<void(std::vector<int64_t>)>
         on_sample_updated_callback,
@@ -183,7 +182,7 @@ SensorDeviceFusion::IioDeviceHandler::IioDeviceHandler(
       on_read_failed_callback_(std::move(on_read_failed_callback)),
       invalidate_callback_(std::move(invalidate_callback)) {
   iio_add_receiver_callback.Run(iio_device_id_,
-                                remote_.BindNewPipeAndPassReceiver(), {type_});
+                                remote_.BindNewPipeAndPassReceiver());
 
   remote_.set_disconnect_handler(base::BindOnce(
       &SensorDeviceFusion::IioDeviceHandler::OnIioDeviceDisconnect,
@@ -471,8 +470,7 @@ SensorDeviceFusion::SensorDeviceFusion(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
     base::RepeatingCallback<
         void(int32_t iio_device_id,
-             mojo::PendingReceiver<cros::mojom::SensorDevice> request,
-             const std::set<cros::mojom::DeviceType>& types)>
+             mojo::PendingReceiver<cros::mojom::SensorDevice> request)>
         iio_add_receiver_callback,
     double max_frequency,
     std::vector<std::string> channel_ids)

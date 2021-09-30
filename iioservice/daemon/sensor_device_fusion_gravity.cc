@@ -27,8 +27,7 @@ SensorDeviceFusion::ScopedSensorDeviceFusion SensorDeviceFusionGravity::Create(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
     base::RepeatingCallback<
         void(int32_t iio_device_id,
-             mojo::PendingReceiver<cros::mojom::SensorDevice> request,
-             const std::set<cros::mojom::DeviceType>& types)>
+             mojo::PendingReceiver<cros::mojom::SensorDevice> request)>
         iio_add_receiver_callback,
     double max_frequency,
     int32_t accel_id,
@@ -84,8 +83,7 @@ SensorDeviceFusionGravity::SensorDeviceFusionGravity(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
     base::RepeatingCallback<
         void(int32_t iio_device_id,
-             mojo::PendingReceiver<cros::mojom::SensorDevice> request,
-             const std::set<cros::mojom::DeviceType>& types)>
+             mojo::PendingReceiver<cros::mojom::SensorDevice> request)>
         iio_add_receiver_callback,
     double max_frequency,
     std::vector<std::string> channel_ids,

@@ -39,11 +39,12 @@ class SensorDeviceImpl final : public cros::mojom::SensorDevice {
 
   ~SensorDeviceImpl();
 
+  void OnDeviceAdded(libmems::IioDevice* iio_device,
+                     const std::set<cros::mojom::DeviceType>& types);
   void OnDeviceRemoved(int iio_device_id);
 
   void AddReceiver(int32_t iio_device_id,
-                   mojo::PendingReceiver<cros::mojom::SensorDevice> request,
-                   const std::set<cros::mojom::DeviceType>& types);
+                   mojo::PendingReceiver<cros::mojom::SensorDevice> request);
 
   // cros::mojom::SensorDevice overrides:
   void SetTimeout(uint32_t timeout) override;
@@ -82,6 +83,9 @@ class SensorDeviceImpl final : public cros::mojom::SensorDevice {
   libmems::IioContext* context_;  // non-owned
   mojo::ReceiverSet<cros::mojom::SensorDevice> receiver_set_;
   std::unique_ptr<base::Thread> sample_thread_;
+
+  // First is iio device id, second is the device's data.
+  std::map<int32_t, DeviceData> devices_;
 
   // As |clients_| contain some data that should only be used in
   // |sample_thread_|, make sure |sample_thread_| is stopped before destructing

@@ -53,9 +53,8 @@ class SensorDeviceImplTest : public ::testing::Test {
     EXPECT_TRUE(sensor_device_);
 
     // Tried to add an invalid device with an invalid context.
-    sensor_device_->AddReceiver(
-        fakes::kAccelDeviceId, remote_.BindNewPipeAndPassReceiver(),
-        std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
+    sensor_device_->AddReceiver(fakes::kAccelDeviceId,
+                                remote_.BindNewPipeAndPassReceiver());
     remote_.set_disconnect_handler(
         base::BindOnce(&SensorDeviceImplTest::OnSensorDeviceDisconnect,
                        base::Unretained(this)));
@@ -83,9 +82,10 @@ class SensorDeviceImplTest : public ::testing::Test {
     device_ = device.get();
     context_->AddDevice(std::move(device));
 
-    sensor_device_->AddReceiver(
-        fakes::kAccelDeviceId, remote_.BindNewPipeAndPassReceiver(),
-        std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
+    sensor_device_->OnDeviceAdded(device_, std::set<cros::mojom::DeviceType>{
+                                               cros::mojom::DeviceType::ACCEL});
+    sensor_device_->AddReceiver(fakes::kAccelDeviceId,
+                                remote_.BindNewPipeAndPassReceiver());
   }
 
   void TearDown() override {

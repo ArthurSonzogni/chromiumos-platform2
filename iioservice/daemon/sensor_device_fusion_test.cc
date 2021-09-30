@@ -47,8 +47,7 @@ class FakeSensorDeviceFusion final : public SensorDeviceFusion {
       scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
       base::RepeatingCallback<
           void(int32_t iio_device_id,
-               mojo::PendingReceiver<cros::mojom::SensorDevice> request,
-               const std::set<cros::mojom::DeviceType>& types)>
+               mojo::PendingReceiver<cros::mojom::SensorDevice> request)>
           iio_add_receiver_callback,
       double max_frequency) {
     ScopedSensorDeviceFusion device(nullptr, SensorDeviceFusionDeleter);
@@ -87,8 +86,7 @@ class FakeSensorDeviceFusion final : public SensorDeviceFusion {
       scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
       base::RepeatingCallback<
           void(int32_t iio_device_id,
-               mojo::PendingReceiver<cros::mojom::SensorDevice> request,
-               const std::set<cros::mojom::DeviceType>& types)>
+               mojo::PendingReceiver<cros::mojom::SensorDevice> request)>
           iio_add_receiver_callback,
       double max_frequency,
       std::vector<std::string> channel_ids)
@@ -129,6 +127,8 @@ class IioDeviceHandlerBase {
 
     sensor_device_ = SensorDeviceImpl::Create(
         task_environment_.GetMainThreadTaskRunner(), context_.get());
+    sensor_device_->OnDeviceAdded(device_, std::set<cros::mojom::DeviceType>{
+                                               cros::mojom::DeviceType::ACCEL});
 
     iio_device_handler_ =
         std::make_unique<SensorDeviceFusion::IioDeviceHandler>(
@@ -371,8 +371,7 @@ class SensorDeviceFusionTest : public ::testing::Test {
         task_environment_.GetMainThreadTaskRunner(),
         base::RepeatingCallback<void(
             int32_t iio_device_id,
-            mojo::PendingReceiver<cros::mojom::SensorDevice> request,
-            const std::set<cros::mojom::DeviceType>& types)>(),
+            mojo::PendingReceiver<cros::mojom::SensorDevice> request)>(),
         kMaxFrequency);
 
     sensor_device_fusion_->AddReceiver(remote_.BindNewPipeAndPassReceiver());

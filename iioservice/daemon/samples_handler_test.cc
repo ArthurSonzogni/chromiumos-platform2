@@ -171,6 +171,7 @@ class SamplesHandlerTestBase : public cros::mojom::SensorDeviceSamplesObserver {
 
   fakes::FakeSamplesHandler::ScopedFakeSamplesHandler handler_ = {
       nullptr, SamplesHandler::SamplesHandlerDeleter};
+  std::unique_ptr<DeviceData> device_data_;
   std::vector<ClientData> clients_data_;
   std::vector<std::unique_ptr<fakes::FakeSamplesObserver>> observers_;
   mojo::ReceiverSet<cros::mojom::SensorDeviceSamplesObserver> receiver_set_;
@@ -196,10 +197,12 @@ TEST_F(SamplesHandlerTest, AddClientAndRemoveClient) {
   // No samples in this test
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
 
+  device_data_ = std::make_unique<DeviceData>(
+      device_.get(),
+      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
+
   // ClientData should be valid until |handler_| is destructed.
-  clients_data_.emplace_back(ClientData(
-      0, device_.get(),
-      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL}));
+  clients_data_.emplace_back(ClientData(0, device_data_.get()));
   ClientData& client_data = clients_data_[0];
 
   client_data.frequency = kFooFrequency;
@@ -232,12 +235,14 @@ TEST_F(SamplesHandlerTest, UpdateChannelsEnabled) {
   // No samples in this test
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
 
+  device_data_ = std::make_unique<DeviceData>(
+      device_.get(),
+      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
+
   std::vector<double> freqs = {0.0, 10.0};
   clients_data_.reserve(freqs.size());
   for (size_t i = 0; i < freqs.size(); ++i) {
-    clients_data_.emplace_back(ClientData(
-        i, device_.get(),
-        std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL}));
+    clients_data_.emplace_back(ClientData(i, device_data_.get()));
     ClientData& client_data = clients_data_[i];
 
     // At least one channel enabled
@@ -280,6 +285,10 @@ TEST_F(SamplesHandlerTest, UpdateChannelsEnabled) {
 TEST_F(SamplesHandlerTest, BadDeviceWithNoSamples) {
   device_->DisableFd();
 
+  device_data_ = std::make_unique<DeviceData>(
+      device_.get(),
+      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
+
   std::vector<double> freqs = {5.0, 0.0, 10.0, 100.0};
   clients_data_.reserve(freqs.size());
 
@@ -290,9 +299,7 @@ TEST_F(SamplesHandlerTest, BadDeviceWithNoSamples) {
   }
 
   for (size_t i = 0; i < freqs.size(); ++i) {
-    clients_data_.emplace_back(ClientData(
-        i, device_.get(),
-        std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL}));
+    clients_data_.emplace_back(ClientData(i, device_data_.get()));
     ClientData& client_data = clients_data_[i];
 
     // At least one channel enabled
@@ -357,15 +364,17 @@ TEST_P(SamplesHandlerTestWithParam, UpdateFrequency) {
   // No samples in this test
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
 
+  device_data_ = std::make_unique<DeviceData>(
+      device_.get(),
+      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
+
   clients_data_.reserve(GetParam().size());
 
   std::multiset<double> frequencies;
 
   // Add clients
   for (size_t i = 0; i < GetParam().size(); ++i) {
-    clients_data_.emplace_back(ClientData(
-        i, device_.get(),
-        std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL}));
+    clients_data_.emplace_back(ClientData(i, device_data_.get()));
     ClientData& client_data = clients_data_[i];
 
     // At least one channel enabled
@@ -425,6 +434,10 @@ TEST_P(SamplesHandlerTestWithParam, ReadSamplesWithFrequency) {
   // clients added.
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
 
+  device_data_ = std::make_unique<DeviceData>(
+      device_.get(),
+      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
+
   std::multiset<std::pair<int, cros::mojom::ObserverErrorType>> rf_failures;
   for (int i = 0; i < kNumFailures; ++i) {
     int k = base::RandInt(0, base::size(libmems::fakes::kFakeAccelSamples) - 1);
@@ -446,9 +459,7 @@ TEST_P(SamplesHandlerTestWithParam, ReadSamplesWithFrequency) {
   max_freq2 = FixFrequencyWithMin(max_freq2);
 
   for (size_t i = 0; i < GetParam().size(); ++i) {
-    clients_data_.emplace_back(ClientData(
-        i, device_.get(),
-        std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL}));
+    clients_data_.emplace_back(ClientData(i, device_data_.get()));
     ClientData& client_data = clients_data_[i];
 
     client_data.enabled_chn_indices.emplace(0);  // accel_x
@@ -576,10 +587,12 @@ class SamplesHandlerWithTriggerTest : public ::testing::Test,
 };
 
 TEST_F(SamplesHandlerWithTriggerTest, CheckFrequenciesSet) {
+  device_data_ = std::make_unique<DeviceData>(
+      device_.get(),
+      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
+
   // ClientData should be valid until |handler_| is destructed.
-  clients_data_.emplace_back(ClientData(
-      0, device_.get(),
-      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL}));
+  clients_data_.emplace_back(ClientData(0, device_data_.get()));
   ClientData& client_data = clients_data_[0];
 
   double frequency = kMaxFrequency;
@@ -618,10 +631,12 @@ TEST_F(SamplesHandlerLightTest, CrosECLight) {
   // values.
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
 
+  device_data_ = std::make_unique<DeviceData>(
+      device_.get(),
+      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::LIGHT});
+
   // ClientData should be valid until |handler_| is destructed.
-  clients_data_.emplace_back(ClientData(
-      0, device_.get(),
-      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::LIGHT}));
+  clients_data_.emplace_back(ClientData(0, device_data_.get()));
   ClientData& client_data = clients_data_[0];
 
   client_data.enabled_chn_indices.emplace(0);  // illuminance
@@ -662,10 +677,12 @@ TEST_F(SamplesHandlerLightTest, AcpiAls) {
   // values.
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
 
+  device_data_ = std::make_unique<DeviceData>(
+      device_.get(),
+      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::LIGHT});
+
   // ClientData should be valid until |handler_| is destructed.
-  clients_data_.emplace_back(ClientData(
-      0, device_.get(),
-      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::LIGHT}));
+  clients_data_.emplace_back(ClientData(0, device_data_.get()));
   ClientData& client_data = clients_data_[0];
 
   client_data.enabled_chn_indices.emplace(0);  // illuminance

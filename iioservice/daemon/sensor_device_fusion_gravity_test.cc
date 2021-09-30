@@ -68,6 +68,8 @@ class SensorDeviceFusionGravityTest : public ::testing::Test {
 
     sensor_device_ = SensorDeviceImpl::Create(
         task_environment_.GetMainThreadTaskRunner(), context_.get());
+    sensor_device_->OnDeviceAdded(device_, std::set<cros::mojom::DeviceType>{
+                                               cros::mojom::DeviceType::ACCEL});
 
     sensor_device_fusion_ = SensorDeviceFusionGravity::Create(
         kFakeFusionId, Location::kBase,

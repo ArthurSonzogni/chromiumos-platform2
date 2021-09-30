@@ -25,17 +25,24 @@ enum Location {
   kCamera = 3,
 };
 
+class DeviceData {
+ public:
+  DeviceData(libmems::IioDevice* const iio_device = nullptr,
+             std::set<cros::mojom::DeviceType> types = {});
+
+  libmems::IioDevice* const iio_device;
+  const std::set<cros::mojom::DeviceType> types;
+};
+
 class ClientData {
  public:
-  ClientData(const mojo::ReceiverId id,
-             libmems::IioDevice* const iio_device = nullptr,
-             const std::set<cros::mojom::DeviceType>& types = {});
+  explicit ClientData(const mojo::ReceiverId id,
+                      DeviceData* device_data = nullptr);
 
   bool IsActive() const;
 
   const mojo::ReceiverId id;
-  libmems::IioDevice* const iio_device;
-  const std::set<cros::mojom::DeviceType> types;
+  DeviceData* const device_data;
 
   std::set<int32_t> enabled_chn_indices;
   double frequency = -1;    // Hz

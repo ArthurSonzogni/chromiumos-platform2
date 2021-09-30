@@ -12,6 +12,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/containers/contains.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <libmems/common_types.h>
@@ -38,11 +39,11 @@ constexpr cros::mojom::DeviceType kOnChangeDeviceTypes[] = {
     cros::mojom::DeviceType::LIGHT};
 
 bool IsOnChangeDevice(ClientData* client_data) {
-  if (!client_data->iio_device->HasFifo())
+  if (!client_data->device_data->iio_device->HasFifo())
     return false;
 
   for (auto type : kOnChangeDeviceTypes) {
-    if (client_data->types.find(type) != client_data->types.end())
+    if (base::Contains(client_data->device_data->types, type))
       return true;
   }
 
@@ -148,7 +149,7 @@ void SamplesHandler::ResetWithReason(
 void SamplesHandler::AddClient(
     ClientData* client_data,
     mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> observer) {
-  DCHECK_EQ(client_data->iio_device, iio_device_);
+  DCHECK_EQ(client_data->device_data->iio_device, iio_device_);
 
   sample_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&SamplesHandler::AddClientOnThread,
@@ -158,7 +159,7 @@ void SamplesHandler::AddClient(
 
 void SamplesHandler::RemoveClient(ClientData* client_data,
                                   base::OnceClosure callback) {
-  DCHECK_EQ(client_data->iio_device, iio_device_);
+  DCHECK_EQ(client_data->device_data->iio_device, iio_device_);
 
   sample_task_runner_->PostTaskAndReply(
       FROM_HERE,
@@ -171,7 +172,7 @@ void SamplesHandler::UpdateFrequency(
     ClientData* client_data,
     double frequency,
     cros::mojom::SensorDevice::SetFrequencyCallback callback) {
-  DCHECK_EQ(client_data->iio_device, iio_device_);
+  DCHECK_EQ(client_data->device_data->iio_device, iio_device_);
 
   sample_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&SamplesHandler::UpdateFrequencyOnThread,
@@ -184,7 +185,7 @@ void SamplesHandler::UpdateChannelsEnabled(
     const std::vector<int32_t>& iio_chn_indices,
     bool en,
     cros::mojom::SensorDevice::SetChannelsEnabledCallback callback) {
-  DCHECK_EQ(client_data->iio_device, iio_device_);
+  DCHECK_EQ(client_data->device_data->iio_device, iio_device_);
 
   sample_task_runner_->PostTask(
       FROM_HERE,
@@ -197,7 +198,7 @@ void SamplesHandler::GetChannelsEnabled(
     ClientData* client_data,
     const std::vector<int32_t>& iio_chn_indices,
     cros::mojom::SensorDevice::GetChannelsEnabledCallback callback) {
-  DCHECK_EQ(client_data->iio_device, iio_device_);
+  DCHECK_EQ(client_data->device_data->iio_device, iio_device_);
 
   sample_task_runner_->PostTask(
       FROM_HERE,
@@ -280,7 +281,7 @@ void SamplesHandler::StopSampleWatcherOnThread() {
 }
 
 void SamplesHandler::AddActiveClientOnThread(ClientData* client_data) {
-  DCHECK_EQ(client_data->iio_device, iio_device_);
+  DCHECK_EQ(client_data->device_data->iio_device, iio_device_);
 
   SamplesHandlerBase::AddActiveClientOnThread(client_data);
 
@@ -288,7 +289,7 @@ void SamplesHandler::AddActiveClientOnThread(ClientData* client_data) {
     // Read the first sample of the ON_CHANGE sensor for the sensor client.
     libmems::IioDevice::IioSample sample;
     for (int32_t index : client_data->enabled_chn_indices) {
-      auto channel = client_data->iio_device->GetChannel(index);
+      auto channel = client_data->device_data->iio_device->GetChannel(index);
       // Read from the input attribute or the raw attribute.
       auto value_opt = channel->ReadNumberAttribute(kInputAttr);
       if (!value_opt.has_value())
@@ -309,7 +310,7 @@ void SamplesHandler::AddActiveClientOnThread(ClientData* client_data) {
 void SamplesHandler::RemoveActiveClientOnThread(ClientData* client_data,
                                                 double orig_freq) {
   DCHECK(sample_task_runner_->BelongsToCurrentThread());
-  DCHECK_EQ(client_data->iio_device, iio_device_);
+  DCHECK_EQ(client_data->device_data->iio_device, iio_device_);
   DCHECK_GE(orig_freq, libmems::kFrequencyEpsilon);
   DCHECK(clients_map_.find(client_data) != clients_map_.end());
 
@@ -347,7 +348,7 @@ void SamplesHandler::UpdateFrequencyOnThread(
     double frequency,
     cros::mojom::SensorDevice::SetFrequencyCallback callback) {
   DCHECK(sample_task_runner_->BelongsToCurrentThread());
-  DCHECK_EQ(client_data->iio_device, iio_device_);
+  DCHECK_EQ(client_data->device_data->iio_device, iio_device_);
 
   frequency = FixFrequency(frequency);
 
@@ -464,7 +465,7 @@ void SamplesHandler::UpdateChannelsEnabledOnThread(
     bool en,
     cros::mojom::SensorDevice::SetChannelsEnabledCallback callback) {
   DCHECK(sample_task_runner_->BelongsToCurrentThread());
-  DCHECK_EQ(client_data->iio_device, iio_device_);
+  DCHECK_EQ(client_data->device_data->iio_device, iio_device_);
 
   std::vector<int32_t> failed_indices;
 
@@ -519,7 +520,7 @@ void SamplesHandler::GetChannelsEnabledOnThread(
     const std::vector<int32_t>& iio_chn_indices,
     cros::mojom::SensorDevice::GetChannelsEnabledCallback callback) {
   DCHECK(sample_task_runner_->BelongsToCurrentThread());
-  DCHECK_EQ(client_data->iio_device, iio_device_);
+  DCHECK_EQ(client_data->device_data->iio_device, iio_device_);
 
   std::vector<bool> enabled;
 

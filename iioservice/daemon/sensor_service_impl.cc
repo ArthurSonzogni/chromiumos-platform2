@@ -239,10 +239,7 @@ void SensorServiceImpl::GetDevice(
       return;
     }
 
-    const auto& types = it->second;
-    sensor_device_->AddReceiver(
-        iio_device_id, std::move(device_request),
-        std::set<cros::mojom::DeviceType>(types.begin(), types.end()));
+    sensor_device_->AddReceiver(iio_device_id, std::move(device_request));
   } else {  // Fusion device
     auto it = sensor_device_fusions_.find(iio_device_id);
     if (it == sensor_device_fusions_.end()) {
@@ -306,6 +303,8 @@ void SensorServiceImpl::AddDevice(libmems::IioDevice* device) {
 
   Location location = GetLocation(device);
   AddDevice(id, types, location);
+  sensor_device_->OnDeviceAdded(
+      device, std::set<cros::mojom::DeviceType>(types.begin(), types.end()));
 
   // Check fusion devices.
   for (const auto& type : types) {

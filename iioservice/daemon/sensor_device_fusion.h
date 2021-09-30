@@ -41,8 +41,7 @@ class SensorDeviceFusion : public cros::mojom::SensorDevice {
         cros::mojom::DeviceType type,
         base::RepeatingCallback<
             void(int32_t iio_device_id,
-                 mojo::PendingReceiver<cros::mojom::SensorDevice> request,
-                 const std::set<cros::mojom::DeviceType>& types)>
+                 mojo::PendingReceiver<cros::mojom::SensorDevice> request)>
             iio_add_receiver_callback,
         base::RepeatingCallback<void(std::vector<int64_t>)>
             on_sample_updated_callback,
@@ -140,8 +139,7 @@ class SensorDeviceFusion : public cros::mojom::SensorDevice {
       scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
       base::RepeatingCallback<
           void(int32_t iio_device_id,
-               mojo::PendingReceiver<cros::mojom::SensorDevice> request,
-               const std::set<cros::mojom::DeviceType>& types)>
+               mojo::PendingReceiver<cros::mojom::SensorDevice> request)>
           iio_add_receiver_callback,
       double max_frequency,
       std::vector<std::string> channel_ids);
@@ -167,8 +165,7 @@ class SensorDeviceFusion : public cros::mojom::SensorDevice {
   scoped_refptr<base::SequencedTaskRunner> ipc_task_runner_;
   base::RepeatingCallback<void(
       int32_t iio_device_id,
-      mojo::PendingReceiver<cros::mojom::SensorDevice> request,
-      const std::set<cros::mojom::DeviceType>& types)>
+      mojo::PendingReceiver<cros::mojom::SensorDevice> request)>
       iio_add_receiver_callback_;
   double max_frequency_;
   std::vector<std::string> channel_ids_;

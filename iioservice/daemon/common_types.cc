@@ -4,15 +4,19 @@
 
 #include "iioservice/daemon/common_types.h"
 
+#include <utility>
+
 #include <base/strings/stringprintf.h>
 #include <libmems/common_types.h>
 
 namespace iioservice {
 
-ClientData::ClientData(const mojo::ReceiverId id,
-                       libmems::IioDevice* const iio_device,
-                       const std::set<cros::mojom::DeviceType>& types)
-    : id(id), iio_device(iio_device), types(types) {}
+DeviceData::DeviceData(libmems::IioDevice* const iio_device,
+                       std::set<cros::mojom::DeviceType> types)
+    : iio_device(iio_device), types(std::move(types)) {}
+
+ClientData::ClientData(const mojo::ReceiverId id, DeviceData* device_data)
+    : id(id), device_data(device_data) {}
 
 bool ClientData::IsActive() const {
   return frequency >= libmems::kFrequencyEpsilon &&

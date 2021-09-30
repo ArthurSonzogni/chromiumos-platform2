@@ -8,6 +8,7 @@
 
 #include <base/bind.h>
 #include <base/check.h>
+#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 #include <libmems/common_types.h>
@@ -69,12 +70,21 @@ SensorDeviceImpl::~SensorDeviceImpl() {
   clients_.clear();
 }
 
+void SensorDeviceImpl::OnDeviceAdded(
+    libmems::IioDevice* iio_device,
+    const std::set<cros::mojom::DeviceType>& types) {
+  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
+
+  devices_.emplace(iio_device->GetId(), DeviceData(iio_device, types));
+}
+
 void SensorDeviceImpl::OnDeviceRemoved(int iio_device_id) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   for (auto it = clients_.begin(); it != clients_.end();) {
-    if (it->second.iio_device->GetId() == iio_device_id) {
-      auto it_handler = samples_handlers_.find(it->second.iio_device);
+    if (it->second.device_data->iio_device->GetId() == iio_device_id) {
+      auto it_handler =
+          samples_handlers_.find(it->second.device_data->iio_device);
       if (it_handler != samples_handlers_.end()) {
         it_handler->second->ResetWithReason(
             cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
@@ -92,23 +102,17 @@ void SensorDeviceImpl::OnDeviceRemoved(int iio_device_id) {
       ++it;
     }
   }
+
+  devices_.erase(iio_device_id);
 }
 
 void SensorDeviceImpl::AddReceiver(
     int32_t iio_device_id,
-    mojo::PendingReceiver<cros::mojom::SensorDevice> request,
-    const std::set<cros::mojom::DeviceType>& types) {
+    mojo::PendingReceiver<cros::mojom::SensorDevice> request) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  if (!context_->IsValid()) {
-    LOGF(ERROR) << "No devices in the context. Failed to register to device "
-                   "with iio_device_id: "
-                << iio_device_id;
-    return;
-  }
-
-  auto iio_device = context_->GetDeviceById(iio_device_id);
-  if (!iio_device) {
+  auto it = devices_.find(iio_device_id);
+  if (it == devices_.end()) {
     LOGF(ERROR) << "Invalid iio_device_id: " << iio_device_id;
     return;
   }
@@ -116,7 +120,7 @@ void SensorDeviceImpl::AddReceiver(
   mojo::ReceiverId id =
       receiver_set_.Add(this, std::move(request), ipc_task_runner_);
 
-  clients_.emplace(id, ClientData(id, iio_device, types));
+  clients_.emplace(id, ClientData(id, &it->second));
 }
 
 void SensorDeviceImpl::SetTimeout(uint32_t timeout) {
@@ -150,7 +154,7 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
   for (const auto& attr_name : attr_names) {
     base::Optional<std::string> value_opt;
     if (attr_name == cros::mojom::kSysPath) {
-      base::FilePath iio_path(client.iio_device->GetPath());
+      base::FilePath iio_path(client.device_data->iio_device->GetPath());
       base::FilePath sys_path;
       if (base::ReadSymbolicLink(iio_path, &sys_path)) {
         if (sys_path.IsAbsolute()) {
@@ -163,7 +167,8 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
         }
       }
     } else {
-      value_opt = client.iio_device->ReadStringAttribute(attr_name);
+      value_opt =
+          client.device_data->iio_device->ReadStringAttribute(attr_name);
     }
     if (value_opt.has_value()) {
       value_opt = std::string(base::TrimString(value_opt.value(),
@@ -191,7 +196,7 @@ void SensorDeviceImpl::SetFrequency(double frequency,
 
   ClientData& client = it->second;
 
-  auto it_handler = samples_handlers_.find(client.iio_device);
+  auto it_handler = samples_handlers_.find(client.device_data->iio_device);
   if (it_handler != samples_handlers_.end()) {
     it_handler->second->UpdateFrequency(&client, frequency,
                                         std::move(callback));
@@ -215,23 +220,26 @@ void SensorDeviceImpl::StartReadingSamples(
 
   ClientData& client = it->second;
 
-  if (samples_handlers_.find(client.iio_device) == samples_handlers_.end()) {
+  if (samples_handlers_.find(client.device_data->iio_device) ==
+      samples_handlers_.end()) {
     SamplesHandler::ScopedSamplesHandler handler = {
         nullptr, SamplesHandler::SamplesHandlerDeleter};
 
-    handler = SamplesHandler::Create(
-        ipc_task_runner_, sample_thread_->task_runner(), client.iio_device);
+    handler =
+        SamplesHandler::Create(ipc_task_runner_, sample_thread_->task_runner(),
+                               client.device_data->iio_device);
 
     if (!handler) {
       LOGF(ERROR) << "Failed to create the samples handler for device: "
-                  << client.iio_device->GetId();
+                  << client.device_data->iio_device->GetId();
       return;
     }
 
-    samples_handlers_.emplace(client.iio_device, std::move(handler));
+    samples_handlers_.emplace(client.device_data->iio_device,
+                              std::move(handler));
   }
 
-  samples_handlers_.at(client.iio_device)
+  samples_handlers_.at(client.device_data->iio_device)
       ->AddClient(&client, std::move(observer));
 }
 
@@ -253,7 +261,7 @@ void SensorDeviceImpl::GetAllChannelIds(GetAllChannelIdsCallback callback) {
     return;
   }
 
-  auto iio_device = it->second.iio_device;
+  auto iio_device = it->second.device_data->iio_device;
   std::vector<std::string> chn_ids;
   for (auto iio_channel : iio_device->GetAllChannels())
     chn_ids.push_back(iio_channel->GetId());
@@ -277,7 +285,7 @@ void SensorDeviceImpl::SetChannelsEnabled(
 
   ClientData& client = it->second;
 
-  auto it_handler = samples_handlers_.find(client.iio_device);
+  auto it_handler = samples_handlers_.find(client.device_data->iio_device);
   if (it_handler != samples_handlers_.end()) {
     it_handler->second->UpdateChannelsEnabled(
         &client, std::move(iio_chn_indices), en, std::move(callback));
@@ -310,7 +318,7 @@ void SensorDeviceImpl::GetChannelsEnabled(
 
   ClientData& client = it->second;
 
-  auto it_handler = samples_handlers_.find(client.iio_device);
+  auto it_handler = samples_handlers_.find(client.device_data->iio_device);
   if (it_handler != samples_handlers_.end()) {
     it_handler->second->GetChannelsEnabled(&client, std::move(iio_chn_indices),
                                            std::move(callback));
@@ -344,7 +352,7 @@ void SensorDeviceImpl::GetChannelsAttributes(
   }
 
   ClientData& client = it->second;
-  auto iio_device = client.iio_device;
+  auto iio_device = client.device_data->iio_device;
 
   std::vector<base::Optional<std::string>> values;
 
@@ -418,8 +426,9 @@ void SensorDeviceImpl::StopReadingSamplesOnClient(mojo::ReceiverId id,
 
   ClientData& client = it->second;
 
-  if (samples_handlers_.find(client.iio_device) != samples_handlers_.end())
-    samples_handlers_.at(client.iio_device)
+  if (samples_handlers_.find(client.device_data->iio_device) !=
+      samples_handlers_.end())
+    samples_handlers_.at(client.device_data->iio_device)
         ->RemoveClient(&client, std::move(callback));
 }
 
