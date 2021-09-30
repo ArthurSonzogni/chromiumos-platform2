@@ -18,12 +18,15 @@ clock_nanosleep: 1
 clock_nanosleep_time64: 1
 close: 1
 connect: 1
+eventfd2: 1
 exit: 1
 exit_group: 1
 fcntl64: 1
 flock: 1
 fstat64: 1
 fstatat64: 1
+fstatfs: 1
+fstatfs64: 1
 getegid32: 1
 getgid32: 1
 futex: 1
@@ -41,6 +44,7 @@ getuid32: 1
 ioctl: arg1 == TCGETS
 _llseek: 1
 madvise: 1
+memfd_create: 1
 mlock: 1
 # Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
 mmap2: arg2 in 0xfffffffb || arg2 in 0xfffffffd
