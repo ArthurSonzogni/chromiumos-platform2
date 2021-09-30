@@ -9,6 +9,9 @@
 #include <utility>
 #include <vector>
 
+#include <base/command_line.h>
+#include <base/files/scoped_file.h>
+#include <base/process/launch.h>
 #include <base/bind.h>
 #include <base/callback_helpers.h>
 #include <base/check.h>
@@ -53,7 +56,6 @@ constexpr char kSearchFilesMethod[] = "SearchFiles";
 constexpr char kInstallFilesMethod[] = "InstallFiles";
 constexpr char kInstallPackagesMethod[] = "InstallPackages";
 constexpr char kRemovePackagesMethod[] = "RemovePackages";
-constexpr char kRefreshCacheMethod[] = "RefreshCache";
 constexpr char kResolveMethod[] = "Resolve";
 constexpr char kGetUpdatesMethod[] = "GetUpdates";
 constexpr char kUpdatePackagesMethod[] = "UpdatePackages";
@@ -1058,92 +1060,63 @@ class GetUpdatesTransaction : public PackageKitTransaction {
   bool security_updates_disabled_;
 };
 
-// Sublcass for handling RefreshCache transaction.
-class RefreshCacheTransaction : public PackageKitTransaction {
- public:
-  RefreshCacheTransaction(
-      scoped_refptr<dbus::Bus> bus,
-      PackageKitProxy* packagekit_proxy,
-      scoped_refptr<dbus::ObjectProxy> packagekit_service_proxy)
-      : PackageKitTransaction(bus,
-                              packagekit_proxy,
-                              packagekit_service_proxy,
-                              kErrorCodeSignalMask | kFinishedSignalMask) {}
-
-  static void RefreshCacheNow(
-      scoped_refptr<dbus::Bus> bus,
-      PackageKitProxy* packagekit_proxy,
-      scoped_refptr<dbus::ObjectProxy> packagekit_service_proxy) {
-    bool disable_cros_updates;
-    bool disable_security_updates;
-    CheckDisabledUpdates(&disable_cros_updates, &disable_security_updates);
-    if (disable_cros_updates && disable_security_updates) {
-      // Don't do the update now, but schedule another one for later and we will
-      // check the setting again then.
-      LOG(INFO) << "Not performing automatic update because they are disabled";
-      base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-          FROM_HERE,
-          base::Bind(&RefreshCacheNow, bus, packagekit_proxy,
-                     packagekit_service_proxy),
-          kRefreshCachePeriod);
-      return;
-    }
-
-    LOG(INFO) << "Refreshing the remote repository packages";
-    // This object is intentionally leaked and will clean itself up when done
-    // with all the D-Bus communication.
-    RefreshCacheTransaction* transaction = new RefreshCacheTransaction(
-        bus, packagekit_proxy, packagekit_service_proxy);
-    transaction->StartTransaction();
-  }
-
-  void GeneralError(const std::string& details) override {
-    LOG(ERROR) << "Error occurred with RefreshCache: " << details;
-    ScheduleNextCacheRefresh();
-  }
-
-  bool ExecuteRequest(dbus::ObjectProxy* transaction_proxy) override {
-    dbus::MethodCall method_call(kPackageKitTransactionInterface,
-                                 kRefreshCacheMethod);
-    dbus::MessageWriter writer(&method_call);
-    writer.AppendBool(false);  // Don't force cache wipe.
-    std::unique_ptr<dbus::Response> dbus_response =
-        transaction_proxy->CallMethodAndBlockWithErrorDetails(
-            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &dbus_error_);
-    return !!dbus_response;
-  }
-
-  void ErrorReceived(uint32_t error_code, const std::string& details) override {
-    LOG(ERROR) << "Failure with RefreshCache of: " << details;
-  }
-
- private:
-  void ScheduleNextCacheRefresh() {
+void RunAptUpdate(scoped_refptr<dbus::Bus> bus,
+                  PackageKitProxy* packagekit_proxy,
+                  scoped_refptr<dbus::ObjectProxy> packagekit_service_proxy) {
+  bool disable_cros_updates;
+  bool disable_security_updates;
+  CheckDisabledUpdates(&disable_cros_updates, &disable_security_updates);
+  if (disable_cros_updates && disable_security_updates) {
+    // Don't do the update now, but schedule another one for later and we will
+    // check the setting again then.
+    LOG(INFO) << "Not performing automatic update because they are disabled";
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE,
-        base::Bind(&RefreshCacheNow, bus_, packagekit_proxy_,
-                   packagekit_service_proxy_),
+        base::Bind(&RunAptUpdate, bus, packagekit_proxy,
+                   packagekit_service_proxy),
         kRefreshCachePeriod);
+    return;
   }
 
- public:
-  void FinishedReceived(uint32_t exit_code) override {
-    if (exit_code == kPackageKitExitCodeSuccess) {
-      LOG(INFO) << "Successfully performed refresh of package cache";
-      // Now we need to get the list of updatable packages that we control so we
-      // can perform upgrades on anything that's available.
-      // This object is intentionally leaked and will clean itself up when done
-      // with all the D-Bus communication.
-      GetUpdatesTransaction* transaction = new GetUpdatesTransaction(
-          bus_, packagekit_proxy_, packagekit_service_proxy_);
-      transaction->StartTransaction();
-    } else {
-      LOG(ERROR) << "Failure performing refresh of package cache, code: "
-                 << exit_code;
-    }
-    ScheduleNextCacheRefresh();
+  LOG(INFO) << "Refreshing the remote repository packages";
+  // Run the entire thing under sh, otherwise it's going to fail with "Waited
+  // for apt-key but it wasn't there". This seems to be caused by
+  // GetAppOutputAndError setting up a weird context where SIGCHLD doesn't
+  // work the way waitpid wants it to.
+  // https://unix.stackexchange.com/questions/485682/apt-get-dpkg-fails-from-a-bluetooth-serial-port-but-succeed-from-the-physi
+  // has some investigation by someone else who hit this over a serial port,
+  // though they weren't able to solve it.
+  std::string output;
+  bool success =
+      base::GetAppOutputAndError({"sudo", "sh", "-c",
+                                  "DEBIAN_FRONTEND=noninteractive apt-get "
+                                  "update -y --allow-releaseinfo-change"},
+                                 &output);
+
+  // TODO(crbug/1245498): GetAppOutputAndError is buggy when it comes to
+  // detecting failure of the executed process (also see arc_sideload.cc).
+  // It's fine for now since it's harmless to apt upgrade without an apt update
+  // (worst case is it fails).
+  success = true;
+  if (success) {
+    LOG(INFO) << "Successfully performed refresh of package cache";
+    // Now we need to get the list of updatable packages that we control so we
+    // can perform upgrades on anything that's available.
+    // This object is intentionally leaked and will clean itself up when done
+    // with all the D-Bus communication.
+    GetUpdatesTransaction* transaction = new GetUpdatesTransaction(
+        bus, packagekit_proxy, packagekit_service_proxy);
+    transaction->StartTransaction();
+  } else {
+    LOG(ERROR) << "Failure performing refresh of package cache, output: "
+               << output;
   }
-};
+  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE,
+      base::Bind(&RunAptUpdate, bus, packagekit_proxy,
+                 packagekit_service_proxy),
+      kRefreshCachePeriod);
+}
 
 // Sublcass for handling Resolve transaction.
 class ResolveTransaction : public PackageKitTransaction {
@@ -1302,8 +1275,8 @@ bool PackageKitProxy::Init() {
   // upgrades on our managed packages.
   task_runner_->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&RefreshCacheTransaction::RefreshCacheNow, bus_,
-                 base::Unretained(this), packagekit_service_proxy_),
+      base::Bind(&RunAptUpdate, bus_, base::Unretained(this),
+                 packagekit_service_proxy_),
       kRefreshCacheStartupDelay);
   return true;
 }
