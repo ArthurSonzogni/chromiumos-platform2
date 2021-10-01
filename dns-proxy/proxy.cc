@@ -248,6 +248,11 @@ void Proxy::StartDnsRedirection(const std::string& ifname,
     return;
   }
 
+  // TODO(jasongustaman): Enable IPv6 DNS redirection rule.
+  if (sa_family == AF_INET6) {
+    return;
+  }
+
   // Request IPv6 DNS redirection rule only if the IPv6 address is available.
   if (sa_family == AF_INET6 && ns_peer_ipv6_address_.empty()) {
     return;
