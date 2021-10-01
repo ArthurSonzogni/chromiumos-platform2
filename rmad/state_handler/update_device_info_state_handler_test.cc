@@ -175,6 +175,8 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
       ON_CALL(*cbi_utils, SetDramPartNum(_)).WillByDefault(Return(false));
     }
 
+    ON_CALL(*vpd_utils, FlushOutRoVpdCache()).WillByDefault(Return(true));
+
     return base::MakeRefCounted<UpdateDeviceInfoStateHandler>(
         json_store_, std::move(cbi_utils), std::move(cros_config_utils),
         std::move(regions_utils), std::move(vpd_utils));

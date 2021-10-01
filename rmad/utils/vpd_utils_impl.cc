@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include <base/logging.h>
 #include <base/process/launch.h>
 
 namespace rmad {
@@ -20,6 +21,12 @@ constexpr char kVpdKeyWhitelabelTag[] = "whitelabel_tag";
 constexpr char kVpdKeyRegion[] = "region";
 
 }  // namespace
+
+// We flush all caches into
+VpdUtilsImpl::~VpdUtilsImpl() {
+  FlushOutRoVpdCache();
+  FlushOutRwVpdCache();
+}
 
 bool VpdUtilsImpl::GetSerialNumber(std::string* serial_number) const {
   CHECK(serial_number);
@@ -65,52 +72,102 @@ bool VpdUtilsImpl::GetCalibbias(const std::vector<std::string>& entries,
 }
 
 bool VpdUtilsImpl::SetSerialNumber(const std::string& serial_number) {
-  return SetRoVpd(kVpdKeySerialNumber, serial_number);
+  cache_ro_[kVpdKeySerialNumber] = serial_number;
+  return true;
 }
 
 bool VpdUtilsImpl::SetWhitelabelTag(const std::string& whitelabel_tag) {
-  return SetRoVpd(kVpdKeyWhitelabelTag, whitelabel_tag);
+  cache_ro_[kVpdKeyWhitelabelTag] = whitelabel_tag;
+  return true;
 }
 
 bool VpdUtilsImpl::SetRegion(const std::string& region) {
-  return SetRoVpd(kVpdKeyRegion, region);
+  cache_ro_[kVpdKeyRegion] = region;
+  return true;
 }
 
-bool VpdUtilsImpl::SetCalibbias(const std::vector<std::string>& entries,
-                                const std::vector<int>& calibbias) {
-  CHECK(calibbias.size() == entries.size());
-
-  for (int i = 0; i < calibbias.size(); i++) {
-    std::string str = base::NumberToString(calibbias[i]);
-    if (!SetRoVpd(entries[i], str)) {
-      LOG(ERROR) << "Failed to set " << entries[i] << "=" << str << " to vpd.";
-      return false;
-    }
+bool VpdUtilsImpl::SetCalibbias(const std::map<std::string, int>& calibbias) {
+  for (const auto& [key, value] : calibbias) {
+    cache_ro_[key] = base::NumberToString(value);
   }
 
   return true;
 }
 
-bool VpdUtilsImpl::SetRoVpd(const std::string& key, const std::string& value) {
-  std::vector<std::string> argv{kVpdCmdPath, "-i", "RO_VPD", "-s",
-                                key + "=" + value};
+bool VpdUtilsImpl::FlushOutRoVpdCache() {
+  if (cache_ro_.size() && !SetRoVpd(cache_ro_)) {
+    return false;
+  }
+
+  cache_ro_.clear();
+  return true;
+}
+
+bool VpdUtilsImpl::FlushOutRwVpdCache() {
+  if (cache_rw_.size() && !SetRwVpd(cache_rw_)) {
+    return false;
+  }
+
+  cache_rw_.clear();
+  return true;
+}
+
+bool VpdUtilsImpl::SetRoVpd(
+    const std::map<std::string, std::string>& key_value_map) {
+  std::string log_msg;
+  std::vector<std::string> argv{kVpdCmdPath, "-i", "RO_VPD"};
+  for (const auto& [key, value] : key_value_map) {
+    argv.push_back("-s");
+    std::string key_value_pair = key + "=" + value;
+    argv.push_back(key_value_pair);
+    log_msg += key_value_pair + " ";
+  }
+
   static std::string unused_output;
-  return base::GetAppOutput(argv, &unused_output);
+  if (!base::GetAppOutput(argv, &unused_output)) {
+    LOG(ERROR) << "Failed to flush " << log_msg << "into RO_PVD.";
+    return false;
+  }
+  return true;
 }
 
 bool VpdUtilsImpl::GetRoVpd(const std::string& key, std::string* value) const {
+  CHECK(value);
+  if (auto it = cache_ro_.find(key); it != cache_ro_.end()) {
+    *value = it->second;
+    return true;
+  }
+
   std::vector<std::string> argv{kVpdCmdPath, "-i", "RO_VPD", "-g", key};
   return base::GetAppOutput(argv, value);
 }
 
-bool VpdUtilsImpl::SetRwVpd(const std::string& key, const std::string& value) {
-  std::vector<std::string> argv{kVpdCmdPath, "-i", "RW_VPD", "-s",
-                                key + "=" + value};
+bool VpdUtilsImpl::SetRwVpd(
+    const std::map<std::string, std::string>& key_value_map) {
+  std::string log_msg;
+  std::vector<std::string> argv{kVpdCmdPath, "-i", "RW_VPD"};
+  for (const auto& [key, value] : key_value_map) {
+    argv.push_back("-s");
+    std::string key_value_pair = key + "=" + value;
+    argv.push_back(key_value_pair);
+    log_msg += key_value_pair + " ";
+  }
+
   static std::string unused_output;
-  return base::GetAppOutput(argv, &unused_output);
+  if (!base::GetAppOutput(argv, &unused_output)) {
+    LOG(ERROR) << "Failed to flush " << log_msg << "into RW_PVD.";
+    return false;
+  }
+  return true;
 }
 
 bool VpdUtilsImpl::GetRwVpd(const std::string& key, std::string* value) const {
+  CHECK(value);
+  if (auto it = cache_rw_.find(key); it != cache_rw_.end()) {
+    *value = it->second;
+    return true;
+  }
+
   std::vector<std::string> argv{kVpdCmdPath, "-i", "RW_VPD", "-g", key};
   return base::GetAppOutput(argv, value);
 }

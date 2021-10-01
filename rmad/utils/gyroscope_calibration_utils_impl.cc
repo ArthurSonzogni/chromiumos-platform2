@@ -5,6 +5,7 @@
 #include "rmad/utils/gyroscope_calibration_utils_impl.h"
 
 #include <cmath>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -63,6 +64,7 @@ GyroscopeCalibrationUtilsImpl::GyroscopeCalibrationUtilsImpl(
 bool GyroscopeCalibrationUtilsImpl::Calibrate() {
   std::vector<double> avg_data;
   std::vector<int> scaled_data;
+  std::map<std::string, int> scaled_calibbias;
   SetProgress(kProgressInit);
 
   // Before starting the calibration, we clear the sensor state by writing 0 to
@@ -96,19 +98,15 @@ bool GyroscopeCalibrationUtilsImpl::Calibrate() {
   for (int i = 0; i < kGyroscopIdealValues.size(); i++) {
     scaled_data[i] =
         (kGyroscopIdealValues[i] - avg_data[i]) / kCalibbiasDataScale;
+    std::string entry = kCalibbiasPrefix + kGyroscopeChannels[i] + "_" +
+                        location_ + kCalibbiasPostfix;
+    scaled_calibbias[entry] = scaled_data[i];
   }
   SetProgress(kProgressBiasCalculated);
 
   // We first write the calibbias data to vpd, and then update the sensor via
   // sysfs accordingly.
-  std::vector<std::string> calibbias_entries;
-  for (auto channel : kGyroscopeChannels) {
-    calibbias_entries.push_back(kCalibbiasPrefix + channel + "_" + location_ +
-                                kCalibbiasPostfix);
-  }
-
-  if (!vpd_utils_impl_thread_safe_->SetCalibbias(calibbias_entries,
-                                                 scaled_data)) {
+  if (!vpd_utils_impl_thread_safe_->SetCalibbias(scaled_calibbias)) {
     SetProgress(kProgressFailed);
     return false;
   }

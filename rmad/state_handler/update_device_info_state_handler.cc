@@ -260,7 +260,7 @@ bool UpdateDeviceInfoStateHandler::VerifyReadOnly(
 bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
     const UpdateDeviceInfoState& device_info) {
   if (!vpd_utils_->SetSerialNumber(device_info.serial_number())) {
-    LOG(ERROR) << "Failed to write |serial number| to vpd.";
+    LOG(ERROR) << "Failed to save |serial number| to vpd cache.";
     return false;
   }
 
@@ -272,7 +272,7 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
   }
   if (!vpd_utils_->SetRegion(
           device_info.region_list(device_info.region_index()))) {
-    LOG(ERROR) << "Failed to write region to vpd.";
+    LOG(ERROR) << "Failed to save region to vpd cache.";
     return false;
   }
 
@@ -299,7 +299,7 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
   if (device_info.whitelabel_list_size() > 1 &&
       !vpd_utils_->SetWhitelabelTag(
           device_info.whitelabel_list(device_info.whitelabel_index()))) {
-    LOG(ERROR) << "Failed to write whitelabel to vpd.";
+    LOG(ERROR) << "Failed to save whitelabel to vpd cache.";
     return false;
   }
 
@@ -308,6 +308,10 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
     return false;
   }
 
+  if (!vpd_utils_->FlushOutRoVpdCache()) {
+    LOG(ERROR) << "Failed to flush cache to ro vpd.";
+    return false;
+  }
   return true;
 }
 

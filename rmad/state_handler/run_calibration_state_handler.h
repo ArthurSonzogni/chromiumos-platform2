@@ -90,6 +90,7 @@ class RunCalibrationStateHandler : public BaseStateHandler {
   // To run sensor calibration with the same setup simultaneously, we use a
   // normal task_runner to do it.
   scoped_refptr<base::TaskRunner> task_runner_;
+  scoped_refptr<VpdUtilsImplThreadSafe> vpd_utils_thread_safe_;
 };
 
 }  // namespace rmad

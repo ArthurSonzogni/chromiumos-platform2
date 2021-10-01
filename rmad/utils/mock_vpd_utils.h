@@ -7,6 +7,7 @@
 
 #include "rmad/utils/vpd_utils.h"
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -31,13 +32,15 @@ class MockVpdUtils : public VpdUtils {
   MOCK_METHOD(bool, SetRegion, (const std::string&), (override));
   MOCK_METHOD(bool,
               SetCalibbias,
-              (const std::vector<std::string>&, const std::vector<int>&),
+              ((const std::map<std::string, int>&)),
               (override));
+  MOCK_METHOD(bool, FlushOutRoVpdCache, (), (override));
+  MOCK_METHOD(bool, FlushOutRwVpdCache, (), (override));
 
  protected:
   MOCK_METHOD(bool,
               SetRoVpd,
-              (const std::string&, const std::string&),
+              ((const std::map<std::string, std::string>&)),
               (override));
   MOCK_METHOD(bool,
               GetRoVpd,
@@ -45,7 +48,7 @@ class MockVpdUtils : public VpdUtils {
               (const, override));
   MOCK_METHOD(bool,
               SetRwVpd,
-              (const std::string&, const std::string&),
+              ((const std::map<std::string, std::string>&)),
               (override));
   MOCK_METHOD(bool,
               GetRwVpd,

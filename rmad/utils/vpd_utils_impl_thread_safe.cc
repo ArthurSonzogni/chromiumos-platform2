@@ -4,6 +4,7 @@
 
 #include "rmad/utils/vpd_utils_impl_thread_safe.h"
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -58,11 +59,22 @@ bool VpdUtilsImplThreadSafe::SetRegion(const std::string& region) {
 }
 
 bool VpdUtilsImplThreadSafe::SetCalibbias(
-    const std::vector<std::string>& entries,
-    const std::vector<int>& calibbias) {
+    const std::map<std::string, int>& calibbias) {
   base::AutoLock scoped_lock(lock_);
 
-  return VpdUtilsImpl::SetCalibbias(entries, calibbias);
+  return VpdUtilsImpl::SetCalibbias(calibbias);
+}
+
+bool VpdUtilsImplThreadSafe::FlushOutRoVpdCache() {
+  base::AutoLock scoped_lock(lock_);
+
+  return VpdUtilsImpl::FlushOutRoVpdCache();
+}
+
+bool VpdUtilsImplThreadSafe::FlushOutRwVpdCache() {
+  base::AutoLock scoped_lock(lock_);
+
+  return VpdUtilsImpl::FlushOutRwVpdCache();
 }
 
 }  // namespace rmad

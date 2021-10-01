@@ -7,6 +7,7 @@
 
 #include "rmad/utils/vpd_utils_impl.h"
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -34,8 +35,9 @@ class VpdUtilsImplThreadSafe
   bool SetSerialNumber(const std::string& serial_number) override;
   bool SetWhitelabelTag(const std::string& whitelabel_tag) override;
   bool SetRegion(const std::string& region) override;
-  bool SetCalibbias(const std::vector<std::string>& entries,
-                    const std::vector<int>& calibbias) override;
+  bool SetCalibbias(const std::map<std::string, int>& calibbias) override;
+  bool FlushOutRoVpdCache() override;
+  bool FlushOutRwVpdCache() override;
 
   friend base::RefCountedThreadSafe<VpdUtilsImplThreadSafe>;
   // Refcounted object must have destructor declared protected or private.
