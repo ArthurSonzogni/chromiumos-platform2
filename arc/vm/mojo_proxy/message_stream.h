@@ -33,7 +33,8 @@ class MessageStream {
 
   // Writes the serialized |message| to the socket.
   // Returns true iff the whole message is written.
-  bool Write(const arc_proxy::MojoMessage& message);
+  bool Write(const arc_proxy::MojoMessage& message,
+             const std::vector<base::ScopedFD>& fds);
 
  private:
   base::ScopedFD fd_;

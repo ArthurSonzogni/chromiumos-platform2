@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <deque>
 #include <map>
 #include <memory>
 #include <string>
@@ -123,7 +124,7 @@ class MojoProxy {
 
   // Handles a message sent from the other side's proxy.
   bool HandleMessage(arc_proxy::MojoMessage* message,
-                     std::vector<base::ScopedFD>* received_fds);
+                     std::vector<base::ScopedFD> fds);
 
   // Stops this proxy.
   void Stop();
@@ -132,7 +133,7 @@ class MojoProxy {
   // TODO(crbug.com/842960): Use pass-by-value when protobuf is upreved enough
   // to support rvalues. (At least, 3.5, or maybe 3.6).
   bool OnClose(arc_proxy::Close* close);
-  bool OnData(arc_proxy::Data* data, std::vector<base::ScopedFD>* received_fds);
+  bool OnData(arc_proxy::Data* data);
   bool OnDataInternal(arc_proxy::Data* data);
   bool OnConnectRequest(arc_proxy::ConnectRequest* request);
   bool OnConnectResponse(arc_proxy::ConnectResponse* response);
@@ -193,6 +194,11 @@ class MojoProxy {
   std::map<int64_t, PreadCallback> pending_pread_;
   std::map<int64_t, PwriteCallback> pending_pwrite_;
   std::map<int64_t, FstatCallback> pending_fstat_;
+
+  // Virtwl doesn't maintain message boundaries, and doesn't synchronize
+  // between the data and fd stream. Keep a queue of received fds to handle the
+  // fact that we may receive a message's fds before we read the message frame.
+  std::deque<base::ScopedFD> received_fds_;
 
   // WeakPtrFactory needs to be declared as the member of the class, so that
   // on destruction, any pending Callbacks bound to WeakPtr are cancelled

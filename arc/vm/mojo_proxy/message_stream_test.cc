@@ -31,7 +31,7 @@ TEST(MessageStreamTest, ReadWrite) {
   message.mutable_data()->set_blob("abcde");
   {
     MessageStream stream(std::move(fd1));
-    ASSERT_TRUE(stream.Write(message));
+    ASSERT_TRUE(stream.Write(message, {}));
   }
 
   arc_proxy::MojoMessage read_message;

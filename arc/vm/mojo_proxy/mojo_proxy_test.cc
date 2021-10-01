@@ -23,7 +23,10 @@
 #include <base/optional.h>
 #include <base/posix/unix_domain_socket.h>
 #include <base/run_loop.h>
+#include <base/task/thread_pool.h>
+#include <base/task/thread_pool/thread_pool_instance.h>
 #include <base/test/task_environment.h>
+#include <base/threading/thread_restrictions.h>
 #include <gtest/gtest.h>
 
 #include "arc/vm/mojo_proxy/file_descriptor_util.h"
@@ -51,25 +54,59 @@ class TestDelegate : public MojoProxy::Delegate {
   }
   bool SendMessage(const arc_proxy::MojoMessage& message,
                    const std::vector<base::ScopedFD>& fds) override {
-    return stream_->Write(message);
+    return stream_->Write(message, fds);
   }
   bool ReceiveMessage(arc_proxy::MojoMessage* message,
                       std::vector<base::ScopedFD>* fds) override {
-    return stream_->Read(message, fds);
+    if (!virtwl_mode_) {
+      return stream_->Read(message, fds);
+    }
+
+    if (virtwl_tmp_message_) {
+      *message = std::move(*virtwl_tmp_message_);
+      virtwl_tmp_message_.reset();
+      return true;
+    }
+
+    std::vector<base::ScopedFD> extra_fds;
+    arc_proxy::MojoMessage tmp_msg;
+    if (!stream_->Read(message, fds) || !stream_->Read(&tmp_msg, &extra_fds)) {
+      return false;
+    }
+    for (auto& fd : extra_fds) {
+      fds->push_back(std::move(fd));
+    }
+    virtwl_tmp_message_ = std::move(tmp_msg);
+    return true;
   }
   void OnStopped() override { is_stopped_ = true; }
+
+  void SetVirtWlMode() { virtwl_mode_ = true; }
 
  private:
   const MojoProxy::Type type_;
   std::unique_ptr<MessageStream> stream_;
   bool is_stopped_ = false;
+
+  // When virtwl mode is enabled, some behavior of virtwl is emulated. In
+  // particular, receiving data on the 'guest' side does not respect message
+  // boundaries.
+  bool virtwl_mode_ = false;
+
+  base::Optional<arc_proxy::MojoMessage> virtwl_tmp_message_;
 };
 
 class MojoProxyTest : public testing::Test {
  public:
-  MojoProxyTest() = default;
+  MojoProxyTest()
+      : MojoProxyTest(
+            base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY,
+            base::test::TaskEnvironment::MainThreadType::IO) {}
   MojoProxyTest(const MojoProxyTest&) = delete;
   MojoProxyTest& operator=(const MojoProxyTest&) = delete;
+  MojoProxyTest(base::test::TaskEnvironment::ThreadingMode threading_mode,
+                base::test::TaskEnvironment::MainThreadType main_thread_type)
+      : task_environment_(threading_mode, main_thread_type) {}
 
   ~MojoProxyTest() override = default;
 
@@ -83,31 +120,27 @@ class MojoProxyTest : public testing::Test {
     client_delegate_ = std::make_unique<TestDelegate>(
         MojoProxy::Type::CLIENT, std::move(socket_pair->second));
 
-    server_ = std::make_unique<MojoProxy>(server_delegate_.get());
-    client_ = std::make_unique<MojoProxy>(client_delegate_.get());
-
     // Register initial socket pairs.
     auto server_socket_pair = CreateSocketPair(SOCK_STREAM | SOCK_NONBLOCK);
     ASSERT_TRUE(server_socket_pair.has_value());
     auto client_socket_pair = CreateSocketPair(SOCK_STREAM | SOCK_NONBLOCK);
     ASSERT_TRUE(client_socket_pair.has_value());
 
+    server_ = std::make_unique<MojoProxy>(server_delegate_.get());
     int64_t handle = server_->RegisterFileDescriptor(
-        std::move(server_socket_pair->first),
+        std::move(std::move(server_socket_pair->first)),
         arc_proxy::FileDescriptor::SOCKET_STREAM, 0 /* handle */);
-    server_fd_ = std::move(server_socket_pair->second);
 
-    client_->RegisterFileDescriptor(std::move(client_socket_pair->first),
-                                    arc_proxy::FileDescriptor::SOCKET_STREAM,
-                                    handle);
+    StartClient(handle, std::move(client_socket_pair->first));
+    server_fd_ = std::move(server_socket_pair->second);
     client_fd_ = std::move(client_socket_pair->second);
   }
 
   void TearDown() override {
     client_fd_.reset();
     server_fd_.reset();
-    ResetClient();
     ResetServer();
+    ResetClient();
   }
 
   MojoProxy* server() { return server_.get(); }
@@ -123,18 +156,24 @@ class MojoProxyTest : public testing::Test {
   void ResetClientFD() { client_fd_.reset(); }
 
   void ResetServer() {
+    base::ScopedAllowBaseSyncPrimitivesForTesting allow_sync;
     server_.reset();
     server_delegate_->ResetStream();
   }
-  void ResetClient() {
+  virtual void ResetClient() { DoResetClient(); }
+
+  void DoResetClient() {
+    base::ScopedAllowBaseSyncPrimitivesForTesting allow_sync;
     client_.reset();
     client_delegate_->ResetStream();
   }
 
- private:
-  base::test::TaskEnvironment task_environment_{
-      base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY,
-      base::test::TaskEnvironment::MainThreadType::IO};
+ protected:
+  virtual void StartClient(int64_t handle, base::ScopedFD client) {
+    client_ = std::make_unique<MojoProxy>(client_delegate_.get());
+    client_->RegisterFileDescriptor(
+        std::move(client), arc_proxy::FileDescriptor::SOCKET_STREAM, handle);
+  }
 
   std::unique_ptr<TestDelegate> server_delegate_;
   std::unique_ptr<TestDelegate> client_delegate_;
@@ -142,8 +181,55 @@ class MojoProxyTest : public testing::Test {
   std::unique_ptr<MojoProxy> server_;
   std::unique_ptr<MojoProxy> client_;
 
+ private:
+  base::test::TaskEnvironment task_environment_;
+
   base::ScopedFD server_fd_;
   base::ScopedFD client_fd_;
+};
+
+// A fixture class that emulates behavior of virtwl by not respecting
+// message boundaries.
+class VirtwlMojoProxyTest : public MojoProxyTest {
+ public:
+  VirtwlMojoProxyTest()
+      : MojoProxyTest(
+            // Virtwl mode doesn't have a 1-to-1 mapping between send and
+            // recv, so running everything on one thread can result in
+            // deadlocks depending on the task order. Run the client on a
+            // dedicated thread to avoid this.
+            base::test::TaskEnvironment::ThreadingMode::MULTIPLE_THREADS,
+            base::test::TaskEnvironment::MainThreadType::IO) {}
+
+ private:
+  void StartClient(int64_t handle, base::ScopedFD client) override {
+    client_task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
+        {base::MayBlock(), base::TaskPriority::BEST_EFFORT});
+
+    client_task_runner_->PostTask(
+        FROM_HERE,
+        base::BindOnce(&VirtwlMojoProxyTest::StartClientOnHandler,
+                       base::Unretained(this), handle, std::move(client)));
+    base::ThreadPoolInstance::Get()->FlushForTesting();
+  }
+
+  void StartClientOnHandler(int64_t handle, base::ScopedFD client) {
+    client_delegate_->SetVirtWlMode();
+
+    client_ = std::make_unique<MojoProxy>(client_delegate_.get());
+
+    client_->RegisterFileDescriptor(
+        std::move(client), arc_proxy::FileDescriptor::SOCKET_STREAM, handle);
+  }
+
+  void ResetClient() override {
+    client_task_runner_->PostTask(
+        FROM_HERE,
+        base::BindOnce(&MojoProxyTest::DoResetClient, base::Unretained(this)));
+    base::ThreadPoolInstance::Get()->FlushForTesting();
+  }
+
+  scoped_refptr<base::SequencedTaskRunner> client_task_runner_;
 };
 
 // Runs the message loop until the given |fd| gets read ready.
@@ -178,6 +264,13 @@ void ExpectSocketEof(int fd) {
   ssize_t size = Recvmsg(fd, buf, sizeof(buf), &fds);
   EXPECT_EQ(size, 0);
   EXPECT_TRUE(fds.empty());
+}
+
+// Gets the inode number from |fd|.
+ino_t GetInodeNumber(const base::ScopedFD& fd) {
+  struct stat st = {};
+  EXPECT_NE(-1, fstat(fd.get(), &st));
+  return st.st_ino;
 }
 
 TEST_F(MojoProxyTest, ServerToClient) {
@@ -265,6 +358,62 @@ TEST_F(MojoProxyTest, PassStreamSocketFromServer) {
   EXPECT_EQ(SOCK_STREAM, GetSocketType(received_fd.get()));
   TestDataTransfer(sockpair->first.get(), received_fd.get());
   TestDataTransfer(received_fd.get(), sockpair->first.get());
+}
+
+TEST_F(VirtwlMojoProxyTest, PassTwoTransportablesFromServerVirtwl) {
+  // Directories are an easy non-regular/fifo/socket type of fd.
+  base::ScopedTempDir tmp_dir_a;
+  ASSERT_TRUE(tmp_dir_a.CreateUniqueTempDir());
+  base::ScopedFD fd1(HANDLE_EINTR(
+      open(tmp_dir_a.GetPath().value().c_str(), O_DIRECTORY | O_RDONLY)));
+  ino_t fd1_ino = GetInodeNumber(fd1);
+
+  base::ScopedTempDir tmp_dir_b;
+  ASSERT_TRUE(tmp_dir_b.CreateUniqueTempDir());
+  base::ScopedFD fd2(HANDLE_EINTR(
+      open(tmp_dir_b.GetPath().value().c_str(), O_DIRECTORY | O_RDONLY)));
+  ino_t fd2_ino = GetInodeNumber(fd2);
+
+  EXPECT_NE(fd1_ino, fd2_ino);
+
+  constexpr char kData[] = "testdata";
+  {
+    std::vector<base::ScopedFD> fds;
+    fds.push_back(std::move(fd1));
+    ASSERT_EQ(Sendmsg(server_fd(), kData, sizeof(kData), fds), sizeof(kData));
+
+    fds.clear();
+    fds.push_back(std::move(fd2));
+    ASSERT_EQ(Sendmsg(server_fd(), kData, sizeof(kData), fds), sizeof(kData));
+
+    // The virtwl mode of TestDelegate.ReceiveMessage eats a readable signal
+    // on the client fd, so reset the server to unstick things.
+    ResetServerFD();
+  }
+
+  base::ScopedFD received_fd1;
+  base::ScopedFD received_fd2;
+  {
+    WaitUntilReadable(client_fd());
+    char buf[256] = {};
+    std::vector<base::ScopedFD> fds;
+    ssize_t size = Recvmsg(client_fd(), buf, sizeof(buf), &fds);
+    EXPECT_EQ(sizeof(kData), size);
+    EXPECT_STREQ(kData, buf);
+    ASSERT_EQ(1, fds.size());
+    received_fd1 = std::move(fds[0]);
+
+    WaitUntilReadable(client_fd());
+    char buf2[256] = {};
+    fds.clear();
+    size = Recvmsg(client_fd(), buf2, sizeof(buf2), &fds);
+    EXPECT_EQ(sizeof(kData), size);
+    EXPECT_STREQ(kData, buf2);
+    ASSERT_EQ(1, fds.size());
+    received_fd2 = std::move(fds[0]);
+  }
+  EXPECT_EQ(fd1_ino, GetInodeNumber(received_fd1));
+  EXPECT_EQ(fd2_ino, GetInodeNumber(received_fd2));
 }
 
 TEST_F(MojoProxyTest, PassStreamSocketSocketFromClient) {

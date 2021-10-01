@@ -39,6 +39,28 @@ bool ReceiveData(int fd,
   return true;
 }
 
+// Sends data and FDs to the given socket FD and return true upon success.
+bool SendMsg(int fd,
+             const char* buf,
+             size_t size,
+             const std::vector<base::ScopedFD>& fds) {
+  ssize_t written = Sendmsg(fd, buf, size, fds);
+  if (written < 0) {
+    PLOG(ERROR) << "Failed to write proto";
+    return false;
+  }
+
+  if (written < size) {
+    auto sp = base::StringPiece(buf + written, size - written);
+    if (!base::WriteFileDescriptor(fd, std::move(sp))) {
+      PLOG(ERROR) << "Failed to write proto";
+      return false;
+    }
+  }
+
+  return true;
+}
+
 }  // namespace
 
 MessageStream::MessageStream(base::ScopedFD fd) : fd_(std::move(fd)) {}
@@ -69,7 +91,8 @@ bool MessageStream::Read(arc_proxy::MojoMessage* message,
   return true;
 }
 
-bool MessageStream::Write(const arc_proxy::MojoMessage& message) {
+bool MessageStream::Write(const arc_proxy::MojoMessage& message,
+                          const std::vector<base::ScopedFD>& fds) {
   const uint64_t size = message.ByteSizeLong();
   buf_.resize(sizeof(size) + size);
 
@@ -84,8 +107,7 @@ bool MessageStream::Write(const arc_proxy::MojoMessage& message) {
     return false;
   }
 
-  if (!base::WriteFileDescriptor(fd_.get(),
-                                 base::StringPiece(buf_.data(), buf_.size()))) {
+  if (!SendMsg(fd_.get(), buf_.data(), buf_.size(), fds)) {
     PLOG(ERROR) << "Failed to write proto";
     return false;
   }

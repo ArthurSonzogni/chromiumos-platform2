@@ -4,7 +4,9 @@
 
 #include "arc/vm/mojo_proxy/server_proxy.h"
 
+#include <linux/sync_file.h>
 #include <poll.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -146,10 +148,16 @@ base::ScopedFD ServerProxy::CreateProxiedRegularFile(int64_t handle,
 bool ServerProxy::SendMessage(const arc_proxy::MojoMessage& message,
                               const std::vector<base::ScopedFD>& fds) {
   if (!fds.empty()) {
-    LOG(ERROR) << "It's not allowed to send FDs from host to guest.";
-    return false;
+    for (const auto& fd : fds) {
+      // Virtwl only supports sending sync_files from the host to the guest.
+      struct sync_file_info info = {};
+      if (ioctl(fd.get(), SYNC_IOC_FILE_INFO, &info)) {
+        LOG(ERROR) << "Unsupported host FD";
+        return false;
+      }
+    }
   }
-  return message_stream_->Write(message);
+  return message_stream_->Write(message, fds);
 }
 
 bool ServerProxy::ReceiveMessage(arc_proxy::MojoMessage* message,

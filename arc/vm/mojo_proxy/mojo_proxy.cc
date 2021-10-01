@@ -187,17 +187,20 @@ void MojoProxy::OnMojoMessageAvailable() {
   arc_proxy::MojoMessage message;
   std::vector<base::ScopedFD> fds;
   if (!delegate_->ReceiveMessage(&message, &fds) ||
-      !HandleMessage(&message, &fds))
+      !HandleMessage(&message, std::move(fds)))
     Stop();
 }
 
 bool MojoProxy::HandleMessage(arc_proxy::MojoMessage* message,
-                              std::vector<base::ScopedFD>* received_fds) {
+                              std::vector<base::ScopedFD> fds) {
+  for (auto& fd : fds)
+    received_fds_.push_back(std::move(fd));
+
   switch (message->command_case()) {
     case arc_proxy::MojoMessage::kClose:
       return OnClose(message->mutable_close());
     case arc_proxy::MojoMessage::kData:
-      return OnData(message->mutable_data(), received_fds);
+      return OnData(message->mutable_data());
     case arc_proxy::MojoMessage::kConnectRequest:
       return OnConnectRequest(message->mutable_connect_request());
     case arc_proxy::MojoMessage::kConnectResponse:
@@ -262,8 +265,7 @@ bool MojoProxy::OnClose(arc_proxy::Close* close) {
   return true;
 }
 
-bool MojoProxy::OnData(arc_proxy::Data* data,
-                       std::vector<base::ScopedFD>* received_fds) {
+bool MojoProxy::OnData(arc_proxy::Data* data) {
   auto it = fd_map_.find(data->handle());
   if (it == fd_map_.end()) {
     // The file was already closed.
@@ -271,7 +273,6 @@ bool MojoProxy::OnData(arc_proxy::Data* data,
   }
 
   // First, create file descriptors for the received message.
-  size_t received_fd_index = 0;
   std::vector<base::ScopedFD> transferred_fds;
   transferred_fds.reserve(data->transferred_fd().size());
   for (const auto& transferred_fd : data->transferred_fd()) {
@@ -300,12 +301,12 @@ bool MojoProxy::OnData(arc_proxy::Data* data,
         break;
       }
       case arc_proxy::FileDescriptor::TRANSPORTABLE: {
-        if (received_fd_index >= received_fds->size()) {
+        if (received_fds_.empty()) {
           LOG(ERROR) << "Type in proto is TRANSPORTABLE but no FD remaining.";
           return false;
         }
-        remote_fd = std::move((*received_fds)[received_fd_index]);
-        ++received_fd_index;
+        remote_fd = std::move(received_fds_.front());
+        received_fds_.pop_front();
         break;
       }
       case arc_proxy::FileDescriptor::SOCKET_STREAM: {
@@ -341,13 +342,6 @@ bool MojoProxy::OnData(arc_proxy::Data* data,
                              transferred_fd.handle());
     }
     transferred_fds.emplace_back(std::move(remote_fd));
-  }
-
-  // All received FDs must be consumed.
-  if (received_fd_index != received_fds->size()) {
-    LOG(ERROR) << "Received FDs not consumed." << received_fd_index << " "
-               << received_fds->size();
-    return false;
   }
 
   if (!it->second.file->Write(std::move(*data->mutable_blob()),
