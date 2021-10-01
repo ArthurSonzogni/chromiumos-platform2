@@ -935,8 +935,10 @@ bool Datapath::ModifyChromeDnsRedirect(IpFamily family,
     }
     if (!ModifyIptables(family, "nat",
                         {op, "POSTROUTING", "-p", protocol, "--dport",
-                         kDefaultDnsPort, "-m", "owner", "--uid-owner",
-                         kChronosUid, "-j", "MASQUERADE", "-w"})) {
+                         kDefaultDnsPort, "-m", "mark", "--mark",
+                         Fwmark::FromSource(TrafficSource::CHROME).ToString() +
+                             "/" + kFwmarkAllSourcesMask.ToString(),
+                         "-j", "MASQUERADE", "-w"})) {
       success = false;
     }
   }

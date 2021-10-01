@@ -1471,11 +1471,11 @@ TEST(DatapathTest, StartDnsRedirection_User) {
       "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
       "0 -j DNAT --to-destination 1.1.1.1 -w");
   Verify_iptables(*runner, IPv4,
-                  "nat -I POSTROUTING -p udp --dport 53 -m owner --uid-owner "
-                  "chronos -j MASQUERADE -w");
+                  "nat -I POSTROUTING -p udp --dport 53 -m mark --mark "
+                  "0x00000100/0x00003f00 -j MASQUERADE -w");
   Verify_iptables(*runner, IPv4,
-                  "nat -I POSTROUTING -p tcp --dport 53 -m owner --uid-owner "
-                  "chronos -j MASQUERADE -w");
+                  "nat -I POSTROUTING -p tcp --dport 53 -m mark --mark "
+                  "0x00000100/0x00003f00 -j MASQUERADE -w");
   Verify_iptables(*runner, IPv4,
                   "nat -A redirect_user_dns -p udp --dport 53 -j DNAT "
                   "--to-destination 100.115.92.130 -w");
@@ -1576,11 +1576,11 @@ TEST(DatapathTest, StopDnsRedirection_User) {
       "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
       "0 -j DNAT --to-destination 1.1.1.1 -w");
   Verify_iptables(*runner, IPv4,
-                  "nat -D POSTROUTING -p udp --dport 53 -m owner --uid-owner "
-                  "chronos -j MASQUERADE -w");
+                  "nat -D POSTROUTING -p udp --dport 53 -m mark --mark "
+                  "0x00000100/0x00003f00 -j MASQUERADE -w");
   Verify_iptables(*runner, IPv4,
-                  "nat -D POSTROUTING -p tcp --dport 53 -m owner --uid-owner "
-                  "chronos -j MASQUERADE -w");
+                  "nat -D POSTROUTING -p tcp --dport 53 -m mark --mark "
+                  "0x00000100/0x00003f00 -j MASQUERADE -w");
   Verify_iptables(*runner, IPv4,
                   "nat -D redirect_user_dns -p udp --dport 53 -j DNAT "
                   "--to-destination 100.115.92.130 -w");
