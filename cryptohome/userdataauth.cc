@@ -916,7 +916,6 @@ void UserDataAuth::InitializePkcs11(UserSession* session) {
   if (tpm_ && tpm_->IsEnabled() && !tpm_->IsOwned()) {
     LOG(WARNING) << "TPM was not owned. TPM initialization call back will"
                  << " handle PKCS#11 initialization.";
-    session->GetMount()->set_pkcs11_state(cryptohome::Mount::kIsWaitingOnTPM);
     return;
   }
 
@@ -955,7 +954,7 @@ void UserDataAuth::ResumeAllPkcs11Initialization() {
 
   for (auto& session_pair : sessions_) {
     scoped_refptr<UserSession> session = session_pair.second;
-    if (session->GetMount()->pkcs11_state() == Mount::kIsWaitingOnTPM) {
+    if (session->GetMount()->pkcs11_state() == Mount::kUninitialized) {
       InitializePkcs11(session.get());
     }
   }
@@ -971,15 +970,7 @@ void UserDataAuth::Pkcs11RestoreTpmTokens() {
 
   for (auto& session_pair : sessions_) {
     scoped_refptr<UserSession> session = session_pair.second;
-    switch (session->GetMount()->pkcs11_state()) {
-      case Mount::kIsWaitingOnTPM:
-      case Mount::kIsInitialized:
-        InitializePkcs11(session.get());
-        break;
-      case Mount::kUninitialized:
-        // Do nothing.
-        break;
-    }
+    InitializePkcs11(session.get());
   }
 }
 

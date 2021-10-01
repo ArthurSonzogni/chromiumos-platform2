@@ -130,7 +130,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Flag indicating if PKCS#11 is ready.
   typedef enum {
     kUninitialized = 0,   // PKCS#11 initialization hasn't been attempted.
-    kIsWaitingOnTPM,      // PKCS#11 initialization is waiting on TPM ownership,
     kIsInitialized,       // PKCS#11 was attempted and succeeded.
   } Pkcs11State;
 

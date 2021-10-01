@@ -822,7 +822,7 @@ TEST_F(UserDataAuthTest, InitializePkcs11TpmNotOwned) {
 
   userdataauth_->InitializePkcs11(session_.get());
 
-  EXPECT_EQ(mount_->pkcs11_state(), cryptohome::Mount::kIsWaitingOnTPM);
+  EXPECT_EQ(mount_->pkcs11_state(), cryptohome::Mount::kUninitialized);
 
   // We'll need to call InsertPkcs11Token() and IsEnabled() later in the test.
   Mock::VerifyAndClearExpectations(mount_.get());
@@ -889,10 +889,6 @@ TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
   // Check various other PKCS#11 states.
   EXPECT_CALL(*mount1, pkcs11_state())
       .WillOnce(Return(cryptohome::Mount::kUninitialized));
-  EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
-
-  EXPECT_CALL(*mount1, pkcs11_state())
-      .WillOnce(Return(cryptohome::Mount::kIsWaitingOnTPM));
   EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
 
   // Check when there's another mount.
@@ -990,8 +986,6 @@ TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokens) {
   EXPECT_CALL(*mount_, IsMounted())
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mount_, pkcs11_state())
-      .WillOnce(Return(cryptohome::Mount::kIsInitialized));
 
   // |mount_| should get a request to insert PKCS#11 token.
   EXPECT_CALL(*mount_, InsertPkcs11Token()).WillOnce(Return(true));
@@ -1025,9 +1019,6 @@ TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokensWaitingOnTPM) {
 
   // Add a mount associated with foo@gmail.com
   SetupMount("foo@gmail.com");
-
-  EXPECT_CALL(*mount_, pkcs11_state())
-      .WillOnce(Return(cryptohome::Mount::kIsWaitingOnTPM));
 
   // PKCS#11 will initialization works only when it's mounted.
   ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
