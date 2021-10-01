@@ -608,14 +608,6 @@ bool UserDataAuth::RemoveAllMounts(bool unmount) {
   for (auto it = sessions_.begin(); it != sessions_.end();) {
     scoped_refptr<UserSession> session = it->second;
     if (unmount && session->GetMount()->IsMounted()) {
-      if (session->GetMount()->pkcs11_state() ==
-          cryptohome::Mount::kIsBeingInitialized) {
-        // Reset the state.
-        session->GetMount()->set_pkcs11_state(
-            cryptohome::Mount::kUninitialized);
-        // And also reset the global failure reported state.
-        reported_pkcs11_init_fail_ = false;
-      }
       success = success && session->Unmount();
     }
     sessions_.erase(it++);
@@ -957,8 +949,6 @@ void UserDataAuth::InitializePkcs11(UserSession* session) {
         << "PKCS#11 initialization requested but cryptohome is not mounted.";
     return;
   }
-
-  session->GetMount()->set_pkcs11_state(cryptohome::Mount::kIsBeingInitialized);
 
   // Note that the timer stops in the Mount class' method.
   ReportTimerStart(kPkcs11InitTimer);

@@ -896,10 +896,6 @@ TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
   EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
 
   EXPECT_CALL(*mount1, pkcs11_state())
-      .WillOnce(Return(cryptohome::Mount::kIsBeingInitialized));
-  EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
-
-  EXPECT_CALL(*mount1, pkcs11_state())
       .WillOnce(Return(cryptohome::Mount::kIsFailed));
   EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
 

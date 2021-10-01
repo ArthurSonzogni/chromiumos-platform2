@@ -131,7 +131,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   typedef enum {
     kUninitialized = 0,   // PKCS#11 initialization hasn't been attempted.
     kIsWaitingOnTPM,      // PKCS#11 initialization is waiting on TPM ownership,
-    kIsBeingInitialized,  // PKCS#11 is being attempted asynchronously.
     kIsInitialized,       // PKCS#11 was attempted and succeeded.
     kIsFailed,            // PKCS#11 was attempted and failed.
     kInvalidState,        // We should never be in this state.
