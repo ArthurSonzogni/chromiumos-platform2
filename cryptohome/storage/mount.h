@@ -132,8 +132,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
     kUninitialized = 0,   // PKCS#11 initialization hasn't been attempted.
     kIsWaitingOnTPM,      // PKCS#11 initialization is waiting on TPM ownership,
     kIsInitialized,       // PKCS#11 was attempted and succeeded.
-    kIsFailed,            // PKCS#11 was attempted and failed.
-    kInvalidState,        // We should never be in this state.
   } Pkcs11State;
 
   virtual void set_pkcs11_state(Pkcs11State value) { pkcs11_state_ = value; }

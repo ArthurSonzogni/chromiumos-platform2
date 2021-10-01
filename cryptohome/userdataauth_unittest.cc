@@ -895,14 +895,6 @@ TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
       .WillOnce(Return(cryptohome::Mount::kIsWaitingOnTPM));
   EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
 
-  EXPECT_CALL(*mount1, pkcs11_state())
-      .WillOnce(Return(cryptohome::Mount::kIsFailed));
-  EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
-
-  EXPECT_CALL(*mount1, pkcs11_state())
-      .WillOnce(Return(cryptohome::Mount::kInvalidState));
-  EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
-
   // Check when there's another mount.
   scoped_refptr<NiceMock<MockMount>> mount2 = new NiceMock<MockMount>();
   scoped_refptr<UserSession> session2 =
