@@ -199,6 +199,7 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
 
     params.emplace_back("isolcpus=" + topology.RTCPUMask());
     params.emplace_back("androidboot.rtcpus=" + topology.RTCPUMask());
+    params.emplace_back("androidboot.non_rtcpus=" + topology.NonRTCPUMask());
   }
 
   VmBuilder vm_builder;

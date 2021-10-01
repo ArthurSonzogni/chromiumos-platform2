@@ -672,6 +672,14 @@ void ArcVmCPUTopology::CreateAffinity(void) {
   rt_cpu_mask_ = base::JoinString(cpu_list, ",");
   cpu_list.clear();
 
+  for (int i = 0; i < num_cpus_ + num_rt_cpus_; i++) {
+    if (rt_cpus_.find(i) == rt_cpus_.end()) {
+      cpu_list.push_back(std::to_string(i));
+    }
+  }
+  non_rt_cpu_mask_ = base::JoinString(cpu_list, ",");
+  cpu_list.clear();
+
   // Just skip any affinity settings for a symmetric processor.
   if (IsSymmetricCpu()) {
     num_cpus_ += num_rt_cpus_;
@@ -792,6 +800,10 @@ const std::string& ArcVmCPUTopology::AffinityMask() {
 
 const std::string& ArcVmCPUTopology::RTCPUMask() {
   return rt_cpu_mask_;
+}
+
+const std::string& ArcVmCPUTopology::NonRTCPUMask() {
+  return non_rt_cpu_mask_;
 }
 
 const std::string& ArcVmCPUTopology::CapacityMask() {

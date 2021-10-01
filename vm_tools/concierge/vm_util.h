@@ -194,6 +194,7 @@ class ArcVmCPUTopology {
   void SetNumRTCPUs(uint32_t num_rt_cpus);
   const std::string& AffinityMask();
   const std::string& RTCPUMask();
+  const std::string& NonRTCPUMask();
   const std::string& CapacityMask();
   const std::vector<std::string>& PackageMask();
 
@@ -213,6 +214,8 @@ class ArcVmCPUTopology {
   uint32_t num_rt_cpus_;
   // CPU mask for RT CPUs
   std::string rt_cpu_mask_;
+  // CPU mask for non RT CPUs
+  std::string non_rt_cpu_mask_;
   // CPU affinity
   std::string affinity_mask_;
   // A set of RT CPUs
