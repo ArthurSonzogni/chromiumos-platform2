@@ -151,6 +151,9 @@ void FetchAggregator::Run(
                            graphics_fetcher_.FetchGraphicsInfo());
         break;
       }
+      case mojo_ipc::ProbeCategoryEnum::kDisplay: {
+        break;
+      }
     }
   }
 }
