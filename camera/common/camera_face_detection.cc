@@ -136,24 +136,15 @@ void FaceDetector::PrepareBuffer(Size img_size) {
 int FaceDetector::ScaleImage(buffer_handle_t buffer,
                              Size in_size,
                              Size out_size) {
-  struct android_ycbcr ycbcr;
-  int ret = buffer_manager_->LockYCbCr(buffer, 0, 0, 0, in_size.width,
-                                       in_size.height, &ycbcr);
-  if (ret != 0) {
-    LOGF(ERROR) << "Failed to map buffer: " << base::safe_strerror(-ret);
-    return ret;
+  ScopedMapping mapping(buffer);
+  if (!mapping.is_valid()) {
+    LOGF(ERROR) << "Failed to map buffer";
+    return -EINVAL;
   }
-
-  libyuv::ScalePlane(static_cast<uint8_t*>(ycbcr.y), ycbcr.ystride,
-                     in_size.width, in_size.height, scaled_buffer_.data(),
-                     out_size.width, out_size.width, out_size.height,
-                     libyuv::FilterMode::kFilterNone);
-
-  ret = buffer_manager_->Unlock(buffer);
-  if (ret != 0) {
-    LOGF(ERROR) << "Failed to unmap buffer: " << base::safe_strerror(-ret);
-    return ret;
-  }
+  libyuv::ScalePlane(static_cast<uint8_t*>(mapping.plane(0).addr),
+                     mapping.plane(0).stride, in_size.width, in_size.height,
+                     scaled_buffer_.data(), out_size.width, out_size.width,
+                     out_size.height, libyuv::FilterMode::kFilterNone);
   return 0;
 }
 
