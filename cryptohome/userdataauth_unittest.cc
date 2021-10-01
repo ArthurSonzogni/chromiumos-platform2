@@ -984,6 +984,12 @@ TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokens) {
   // Add a mount associated with foo@gmail.com
   SetupMount("foo@gmail.com");
 
+  // PKCS#11 will initialization works only when it's mounted.
+  ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
+  // The initialization code should at least check, right?
+  EXPECT_CALL(*mount_, IsMounted())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(*mount_, pkcs11_state())
       .WillOnce(Return(cryptohome::Mount::kIsInitialized));
 

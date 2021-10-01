@@ -992,13 +992,10 @@ void UserDataAuth::Pkcs11RestoreTpmTokens() {
     scoped_refptr<UserSession> session = session_pair.second;
     switch (session->GetMount()->pkcs11_state()) {
       case Mount::kIsWaitingOnTPM:
+      case Mount::kIsInitialized:
         InitializePkcs11(session.get());
         break;
-      case Mount::kIsInitialized:
-        // Chaps would ignore this token if it's already managing this token.
-        session->GetMount()->InsertPkcs11Token();
-        break;
-      default:
+      case Mount::kUninitialized:
         // Do nothing.
         break;
     }
