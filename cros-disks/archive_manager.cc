@@ -40,14 +40,14 @@ bool ArchiveManager::Initialize() {
 
     auto sandbox_factory =
         CreateSandboxFactory(std::move(executable), "fuse-zip");
-    std::vector<int> password_needed_codes = {
+    std::vector<int> password_needed_exit_codes = {
         23,   // ZIP_ER_BASE + ZIP_ER_ZLIB
         36,   // ZIP_ER_BASE + ZIP_ER_NOPASSWD
         37};  // ZIP_ER_BASE + ZIP_ER_WRONGPASSWD
 
     mounters_.push_back(std::make_unique<ArchiveMounter>(
         platform(), process_reaper(), "zip", metrics(), "FuseZip",
-        std::move(password_needed_codes), std::move(sandbox_factory)));
+        std::move(password_needed_exit_codes), std::move(sandbox_factory)));
   }
 
   {
@@ -89,13 +89,18 @@ bool ArchiveManager::Initialize() {
 
     auto sandbox_factory =
         CreateSandboxFactory(std::move(executable), "fuse-archivemount");
-    // The archivemount program (or, at least, the way we use it) doesn't
-    // support passwords.
-    std::vector<int> password_needed_codes = {};
+
+    // These fuse-archive exit codes are defined at
+    // https://github.com/google/fuse-archive/blob/8659067a2457d8eb86d791d2f059e3b5aad5f783/src/main.cc#L79-L80
+    std::vector<int> password_needed_exit_codes = {
+        20,  // EXIT_CODE_PASSPHRASE_REQUIRED
+        21,  // EXIT_CODE_PASSPHRASE_INCORRECT
+    };
 
     mounters_.push_back(std::make_unique<ArchiveMounter>(
-        platform(), process_reaper(), ext, metrics(), "Archivemount",
-        std::move(password_needed_codes), std::move(sandbox_factory)));
+        platform(), process_reaper(), ext, metrics(),
+        ArchiveMounter::kArchivemountMetricsName,
+        std::move(password_needed_exit_codes), std::move(sandbox_factory)));
   }
 
   return true;

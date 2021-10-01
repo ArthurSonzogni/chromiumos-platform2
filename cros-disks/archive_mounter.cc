@@ -19,13 +19,6 @@ namespace cros_disks {
 namespace {
 constexpr char kOptionPassword[] = "password";
 
-bool IsCompressedTar(const base::FilePath& path) {
-  // Note that this calls the Extension method, not FinalExtension.
-  std::string ext = path.Extension();
-  return (ext.size() > 5) &&
-         base::LowerCaseEqualsASCII(ext.substr(0, 5), ".tar.");
-}
-
 bool IsFormatRaw(const std::string& archive_type) {
   return (archive_type == "bz2") || (archive_type == "gz");
 }
@@ -176,8 +169,11 @@ MountErrorType ArchiveMounter::FormatInvocationCommand(
   std::vector<std::string> opts = {
       "ro", "umask=0222", base::StringPrintf("uid=%d", kChronosUID),
       base::StringPrintf("gid=%d", kChronosAccessGID)};
-  if (format_raw_ && !IsCompressedTar(archive)) {
-    opts.push_back("formatraw");
+  // The fuse-archive program (and historically, the archivemount program)
+  // takes additional command line options.
+  if (metrics_name_ == kArchivemountMetricsName) {
+    opts.push_back("passphrase");
+    opts.push_back("redact");
   }
 
   std::string options;
