@@ -52,15 +52,13 @@ collect_shutdown_umount_failure_logs() {
       --print-reply --reply-timeout=1000 /org/freedesktop/DBus \
       org.freedesktop.DBus.ListNames
 
+    # Print process tree.
+    echo "Process tree:"
+    ps --deselect --ppid 2 --forest -f -o pid,ppid,comm
     # Parse pids of processes with active mount namespaces. PID is the fourth
     # field and the first line refers to the root mount namespace.
     for pid in $(lsns --raw -n -t mnt | cut -f4 -d' ' | tail -n+2); do
-      echo "====== Comm: $(cat /proc/${pid}/comm) ======"
-      # The mount namespaces are created by minijail, which shows up as
-      # 'minijail-init': get child processes for better insight into which
-      # process is running here.
-      echo "Child processes:"
-      ps --ppid ${pid}
+      echo "====== PID: ${pid} Comm: $(cat /proc/${pid}/comm) ======"
       # Use findmnt to look inside the mount namespace for any mounts that
       # refer to the (enc)stateful partition. These mounts may keep the
       # stateful partition from unmounting cleanly.
