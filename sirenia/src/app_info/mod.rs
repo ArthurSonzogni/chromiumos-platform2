@@ -213,8 +213,11 @@ pub fn entries_from_path<A: AsRef<Path>>(name: A) -> Result<Vec<AppManifestEntry
 #[cfg(test)]
 pub mod tests {
     use super::*;
+    use std::io::Write;
 
-    const TEST_MANIFEST_ENTRY: &str = r#"{
+    use sys_util::scoped_path::{get_temp_path, ScopedPath};
+
+    const TEST_MANIFEST_ENTRY_JSON: &str = r#"{
   "app_name": "demo_app",
   "exec_info": {
     "Path": "/usr/bin/demo_app"
@@ -228,13 +231,87 @@ pub mod tests {
   }
 }"#;
 
+    fn get_test_manifest_entry() -> AppManifestEntry {
+        AppManifestEntry {
+            app_name: "demo_app".to_string(),
+            exec_info: ExecutableInfo::Path("/usr/bin/demo_app".to_string()),
+            sandbox_type: SandboxType::DeveloperEnvironment,
+            secrets_parameters: None,
+            storage_parameters: Some(StorageParameters {
+                scope: Scope::Test,
+                domain: "test".to_string(),
+                encryption_key_version: Some(1),
+            }),
+        }
+    }
+
+    fn make_test_app(name: &str) -> (String, AppManifestEntry) {
+        let app_json = String::from(TEST_MANIFEST_ENTRY_JSON).replace("demo_app", name);
+        let mut app_entry = get_test_manifest_entry();
+        app_entry.app_name = name.to_string();
+        app_entry.exec_info =
+            ExecutableInfo::Path(Path::new("/usr/bin").join(name).display().to_string());
+        (app_json, app_entry)
+    }
+
     #[test]
-    fn check_serialization() {
-        let manifest = AppManifest::default();
-        let test_entry = serde_json::from_str::<'_, AppManifestEntry>(TEST_MANIFEST_ENTRY).unwrap();
-        let expected_entry = manifest
-            .get_app_manifest_entry(&test_entry.app_name)
+    fn check_deserialization() {
+        let test_entry =
+            serde_json::from_str::<'_, AppManifestEntry>(TEST_MANIFEST_ENTRY_JSON).unwrap();
+        assert_eq!(test_entry, get_test_manifest_entry());
+    }
+
+    #[test]
+    fn check_load_file() {
+        let test_dir =
+            ScopedPath::create(get_temp_path(Some("sirenia-app_info-check_load_file"))).unwrap();
+        let path = test_dir.join("test.json");
+        {
+            let mut manifest_file = File::create(&path).unwrap();
+            write!(manifest_file, "[{}]", TEST_MANIFEST_ENTRY_JSON).unwrap();
+        }
+        let entries = entries_from_path(path).unwrap();
+        assert_eq!(entries, [get_test_manifest_entry()]);
+    }
+
+    #[test]
+    fn check_load_file_2apps() {
+        let test_dir = ScopedPath::create(get_temp_path(Some(
+            "sirenia-app_info-check_load_file_2apps",
+        )))
+        .unwrap();
+        let path = test_dir.join("test.json");
+        let (app2_json, app2_entry) = make_test_app("app2");
+        {
+            let mut manifest_file = File::create(&path).unwrap();
+            write!(
+                manifest_file,
+                "[{},\n{}]",
+                TEST_MANIFEST_ENTRY_JSON, app2_json
+            )
             .unwrap();
-        assert_eq!(&test_entry, expected_entry);
+        }
+        let entries = entries_from_path(path).unwrap();
+        assert_eq!(entries, [get_test_manifest_entry(), app2_entry]);
+    }
+
+    #[test]
+    fn check_load_dir() {
+        let test_dir =
+            ScopedPath::create(get_temp_path(Some("sirenia-app_info-check_load_dir"))).unwrap();
+        let path1 = test_dir.join("test1.json");
+        let path2 = test_dir.join("test2.json");
+        let (app2_json, app2_entry) = make_test_app("app2");
+        let (app3_json, app3_entry) = make_test_app("app3");
+        {
+            let mut manifest_file1 = File::create(path1).unwrap();
+            write!(manifest_file1, "[{}]", TEST_MANIFEST_ENTRY_JSON).unwrap();
+
+            let mut manifest_file2 = File::create(path2).unwrap();
+            write!(manifest_file2, "[{},\n{}]", app2_json, app3_json).unwrap();
+        }
+        let mut entries = entries_from_path(&test_dir).unwrap();
+        entries.sort_by(|a, b| a.app_name.cmp(&b.app_name));
+        assert_eq!(entries, [app2_entry, app3_entry, get_test_manifest_entry()]);
     }
 }
