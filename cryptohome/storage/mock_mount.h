@@ -17,8 +17,8 @@ class Credentials;
 
 class MockMount : public Mount {
  public:
-  MockMount();
-  ~MockMount();
+  MockMount() = default;
+  ~MockMount() override = default;
   MOCK_METHOD(bool, Init, (), (override));
   MOCK_METHOD(bool,
               MountCryptohome,
@@ -38,11 +38,6 @@ class MockMount : public Mount {
   MOCK_METHOD(bool, MountGuestCryptohome, (), (override));
   MOCK_METHOD(const base::FilePath&, mount_point, (), (const, override));
   MOCK_METHOD(bool, OwnsMountPoint, (const base::FilePath&), (const, override));
-  MOCK_METHOD(bool, InsertPkcs11Token, (), (override));
-  MOCK_METHOD(void, RemovePkcs11Token, (), (override));
-  MOCK_METHOD(Pkcs11State, pkcs11_state, (), (override));
-
-  Pkcs11State Real_pkcs11_state() { return Mount::pkcs11_state(); }
 
   MOCK_METHOD(
       bool,

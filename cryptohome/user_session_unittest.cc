@@ -22,6 +22,8 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/pkcs11/fake_pkcs11_token.h"
+#include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_mount.h"
 
@@ -29,6 +31,7 @@ using brillo::SecureBlob;
 
 using ::testing::_;
 using ::testing::ByRef;
+using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
 
@@ -70,8 +73,16 @@ class UserSessionTest : public ::testing::Test {
     PrepareDirectoryStructure();
 
     mount_ = new NiceMock<MockMount>();
+
+    ON_CALL(pkcs11_token_factory_, New(_, _, _))
+        .WillByDefault(Invoke([](const std::string& username,
+                                 const base::FilePath& token_dir,
+                                 const brillo::SecureBlob& auth_data) {
+          return std::make_unique<FakePkcs11Token>();
+        }));
+
     session_ = new UserSession(homedirs_.get(), keyset_management_.get(),
-                               system_salt_, mount_);
+                               &pkcs11_token_factory_, system_salt_, mount_);
   }
 
   void TearDown() override {
@@ -91,6 +102,7 @@ class UserSessionTest : public ::testing::Test {
   // Information about users' homedirs. The order of users is equal to kUsers.
   std::vector<UserInfo> users_;
   NiceMock<MockPlatform> platform_;
+  NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
   Crypto crypto_;
   brillo::SecureBlob system_salt_;
   std::unique_ptr<KeysetManagement> keyset_management_;
@@ -170,6 +182,11 @@ TEST_F(UserSessionTest, MountVaultOk) {
   EXPECT_EQ(ts1, kTs1);
   EXPECT_NE(session_->GetWebAuthnSecret(), nullptr);
 
+  EXPECT_NE(session_->GetPkcs11Token(), nullptr);
+  ASSERT_FALSE(session_->GetPkcs11Token()->IsReady());
+  ASSERT_TRUE(session_->GetPkcs11Token()->Insert());
+  ASSERT_TRUE(session_->GetPkcs11Token()->IsReady());
+
   // SETUP
 
   // TODO(dlunev): this is required to mimic a real Mount::PrepareCryptohome
@@ -204,6 +221,10 @@ TEST_F(UserSessionTest, MountVaultOk) {
   const int64_t ts2 = vk0->GetLastActivityTimestamp();
   EXPECT_EQ(ts2, kTs2);
 
+  ASSERT_FALSE(session_->GetPkcs11Token()->IsReady());
+  ASSERT_TRUE(session_->GetPkcs11Token()->Insert());
+  ASSERT_TRUE(session_->GetPkcs11Token()->IsReady());
+
   // SETUP
 
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(true));
@@ -221,6 +242,8 @@ TEST_F(UserSessionTest, MountVaultOk) {
   vk0 = keyset_management_->LoadVaultKeysetForUser(users_[0].obfuscated, 0);
   const int64_t ts3 = vk0->GetLastActivityTimestamp();
   EXPECT_EQ(ts3, kTs3);
+
+  EXPECT_EQ(session_->GetPkcs11Token(), nullptr);
 }
 
 TEST_F(UserSessionTest, MountVaultWrongCreds) {
@@ -250,6 +273,13 @@ TEST_F(UserSessionTest, MountVaultWrongCreds) {
   const int64_t ts1 = vk0->GetLastActivityTimestamp();
   EXPECT_EQ(ts1, kTs1);
 
+  EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(true));
+  EXPECT_CALL(platform_, GetCurrentTime())
+      .WillOnce(Return(base::Time::FromInternalValue(kTs1)));
+  EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(true));
+
+  ASSERT_TRUE(session_->Unmount());
+
   // TODO(dlunev): this is required to mimic a real Mount::PrepareCryptohome
   // call. Remove it when we are not mocking mount.
   platform_.CreateDirectory(GetEcryptfsUserVaultPath(users_[0].obfuscated));
@@ -268,6 +298,7 @@ TEST_F(UserSessionTest, MountVaultWrongCreds) {
 
   ASSERT_EQ(MOUNT_ERROR_KEY_FAILURE,
             session_->MountVault(wrong_creds, mount_args_no_create));
+  EXPECT_EQ(session_->GetPkcs11Token(), nullptr);
 
   // VERIFY
   // Failed to remount with wrong credentials.
@@ -316,6 +347,7 @@ TEST_F(UserSessionTest, MountVaultNoExistNoCreate) {
   EXPECT_FALSE(platform_.DirectoryExists(users_[0].homedir_path));
   EXPECT_FALSE(session_->VerifyCredentials(users_[0].credentials));
   EXPECT_FALSE(keyset_management_->AreCredentialsValid(users_[0].credentials));
+  EXPECT_EQ(session_->GetPkcs11Token(), nullptr);
   EXPECT_EQ(session_->GetWebAuthnSecret(), nullptr);
 }
 
@@ -413,7 +445,7 @@ class UserSessionReAuthTest : public ::testing::Test {
 TEST_F(UserSessionReAuthTest, VerifyUser) {
   Credentials credentials("username", SecureBlob("password"));
   scoped_refptr<UserSession> session =
-      new UserSession(nullptr, nullptr, salt, nullptr);
+      new UserSession(nullptr, nullptr, nullptr, salt, nullptr);
   EXPECT_TRUE(session->SetCredentials(credentials, 0));
 
   EXPECT_TRUE(session->VerifyUser(credentials.GetObfuscatedUsername(salt)));
@@ -426,7 +458,7 @@ TEST_F(UserSessionReAuthTest, VerifyCredentials) {
   Credentials credentials_3("username2", SecureBlob("password2"));
 
   scoped_refptr<UserSession> session =
-      new UserSession(nullptr, nullptr, salt, nullptr);
+      new UserSession(nullptr, nullptr, nullptr, salt, nullptr);
   EXPECT_TRUE(session->SetCredentials(credentials_1, 0));
   EXPECT_TRUE(session->VerifyCredentials(credentials_1));
   EXPECT_FALSE(session->VerifyCredentials(credentials_2));

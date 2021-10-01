@@ -41,7 +41,6 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/make_tests.h"
-#include "cryptohome/mock_chaps_client_factory.h"
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
@@ -155,7 +154,6 @@ class MountTest
 
     mount_ = new Mount(&platform_, homedirs_.get());
 
-    mount_->set_chaps_client_factory(&chaps_client_factory_);
     // Perform mounts in-process.
     mount_->set_mount_guest_session_out_of_process(false);
     mount_->set_mount_ephemeral_session_out_of_process(false);
@@ -477,7 +475,6 @@ class MountTest
   policy::MockDevicePolicy* mock_device_policy_;  // owned by homedirs_
   std::unique_ptr<KeysetManagement> keyset_management_;
   std::unique_ptr<HomeDirs> homedirs_;
-  MockChapsClientFactory chaps_client_factory_;
   scoped_refptr<Mount> mount_;
 };
 
@@ -795,7 +792,7 @@ class ChapsDirectoryTest : public ::testing::Test {
         .WillRepeatedly(DoAll(SetArgPointee<1>(base_stat_), Return(true)));
   }
 
-  bool RunCheck() { return mount_->CheckChapsDirectory(kBaseDir); }
+  bool RunCheck() { return mount_->SetupChapsDirectory(kBaseDir); }
 
  protected:
   const FilePath kBaseDir;

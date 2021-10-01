@@ -25,8 +25,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
-#include <chaps/isolate.h>
-#include <chaps/token_manager_client.h>
 #include <brillo/cryptohome.h>
 #include <brillo/process/process.h>
 #include <brillo/scoped_umask.h>
@@ -34,14 +32,12 @@
 #include <chromeos/constants/cryptohome.h>
 #include <google/protobuf/util/message_differencer.h>
 
-#include "cryptohome/chaps_client_factory.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 #include "cryptohome/dircrypto_util.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/pkcs11_init.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_utils.h"
@@ -59,7 +55,6 @@ using brillo::cryptohome::home::IsSanitizedUserName;
 using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
 using brillo::cryptohome::home::SanitizeUserNameWithSalt;
-using chaps::IsolateCredentialManager;
 using google::protobuf::util::MessageDifferencer;
 
 namespace {
@@ -98,12 +93,9 @@ Mount::Mount(Platform* platform, HomeDirs* homedirs)
       system_salt_(),
       platform_(platform),
       homedirs_(homedirs),
-      pkcs11_state_(kUninitialized),
       legacy_mount_(true),
       bind_mount_downloads_(true),
       mount_type_(MountType::NONE),
-      default_chaps_client_factory_(new ChapsClientFactory()),
-      chaps_client_factory_(default_chaps_client_factory_.get()),
       dircrypto_migration_stopped_condition_(&active_dircrypto_migrator_lock_),
       mount_guest_session_out_of_process_(true),
       mount_ephemeral_session_out_of_process_(true),
@@ -254,8 +246,6 @@ bool Mount::MountCryptohome(const std::string& username,
     return false;
   }
 
-  pkcs11_token_auth_data_ = file_system_keyset.chaps_key();
-
   MountHelperInterface* helper;
   if (mount_non_ephemeral_session_out_of_process_) {
     helper = out_of_process_mounter_.get();
@@ -394,8 +384,6 @@ bool Mount::UnmountCryptohome() {
   if (homedirs_->AreEphemeralUsersEnabled())
     homedirs_->RemoveNonOwnerCryptohomes();
 
-  RemovePkcs11Token();
-
   // Resetting the vault teardowns the enclosed containers if setup succeeded.
   user_cryptohome_vault_.reset();
 
@@ -461,7 +449,7 @@ FilePath Mount::GetUserDirectoryForUser(
   return ShadowRoot().Append(obfuscated_username);
 }
 
-bool Mount::CheckChapsDirectory(const FilePath& dir) {
+bool Mount::SetupChapsDirectory(const FilePath& dir) {
   // If the Chaps database directory does not exist, create it.
   if (!platform_->DirectoryExists(dir)) {
     if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
@@ -473,38 +461,6 @@ bool Mount::CheckChapsDirectory(const FilePath& dir) {
     return true;
   }
   return true;
-}
-
-bool Mount::InsertPkcs11Token() {
-  FilePath token_dir = homedirs_->GetChapsTokenDir(username_);
-  if (!CheckChapsDirectory(token_dir))
-    return false;
-  // We may create a salt file and, if so, we want to restrict access to it.
-  brillo::ScopedUmask scoped_umask(kDefaultUmask);
-
-  std::unique_ptr<chaps::TokenManagerClient> chaps_client(
-      chaps_client_factory_->New());
-
-  Pkcs11Init pkcs11init;
-  int slot_id = 0;
-  if (!chaps_client->LoadToken(
-          IsolateCredentialManager::GetDefaultIsolateCredential(), token_dir,
-          pkcs11_token_auth_data_,
-          pkcs11init.GetTpmTokenLabelForUser(username_), &slot_id)) {
-    LOG(ERROR) << "Failed to load PKCS #11 token.";
-    ReportCryptohomeError(kLoadPkcs11TokenFailed);
-  }
-  pkcs11_token_auth_data_.clear();
-  ReportTimerStop(kPkcs11InitTimer);
-  return true;
-}
-
-void Mount::RemovePkcs11Token() {
-  FilePath token_dir = homedirs_->GetChapsTokenDir(username_);
-  std::unique_ptr<chaps::TokenManagerClient> chaps_client(
-      chaps_client_factory_->New());
-  chaps_client->UnloadToken(
-      IsolateCredentialManager::GetDefaultIsolateCredential(), token_dir);
 }
 
 std::string Mount::GetMountTypeString() const {

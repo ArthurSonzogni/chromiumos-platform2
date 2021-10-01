@@ -127,24 +127,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   virtual const base::FilePath& mount_point() const { return mount_point_; }
 
-  // Flag indicating if PKCS#11 is ready.
-  typedef enum {
-    kUninitialized = 0,   // PKCS#11 initialization hasn't been attempted.
-    kIsInitialized,       // PKCS#11 was attempted and succeeded.
-  } Pkcs11State;
-
-  virtual void set_pkcs11_state(Pkcs11State value) { pkcs11_state_ = value; }
-
-  virtual Pkcs11State pkcs11_state() { return pkcs11_state_; }
-
   // Return the the mount type as a string.
   virtual std::string GetMountTypeString() const;
-
-  // Inserts the current user's PKCS #11 token.
-  virtual bool InsertPkcs11Token();
-
-  // Removes the current user's PKCS #11 token.
-  virtual void RemovePkcs11Token();
 
   // Returns true if this Mount instances owns the mount path.
   virtual bool OwnsMountPoint(const base::FilePath& path) const;
@@ -164,11 +148,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   void set_legacy_mount(bool legacy) { legacy_mount_ = legacy; }
   void set_bind_mount_downloads(bool bind) { bind_mount_downloads_ = bind; }
-
-  // Does not take ownership.
-  void set_chaps_client_factory(ChapsClientFactory* factory) {
-    chaps_client_factory_ = factory;
-  }
 
  protected:
   // Only used in tests.
@@ -254,7 +233,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //
   // Parameters
   //   dir - directory to check
-  bool CheckChapsDirectory(const base::FilePath& dir);
+  bool SetupChapsDirectory(const base::FilePath& dir);
 
   // Mounts and populates an ephemeral cryptohome backed by tmpfs for the given
   // user.
@@ -276,11 +255,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Unmounts all mount points, and invalidates the dircrypto encryption key.
   // Relies on ForceUnmount() internally; see the caveat listed for it
   void UnmountAndDropKeys(base::OnceClosure unmounter);
-
-  // Derives PKCS #11 token authorization data from a passkey. This may take up
-  // to ~100ms (dependant on CPU / memory performance). Returns true on success.
-  bool DeriveTokenAuthData(const brillo::SecureBlob& passkey,
-                           std::string* auth_data);
 
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.
@@ -313,12 +287,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Name of the user the mount belongs to.
   std::string username_;
 
-  Pkcs11State pkcs11_state_;
-
-  // Used to track the user's passkey. PKCS #11 initialization consumes and
-  // clears this value.
-  brillo::SecureBlob pkcs11_token_auth_data_;
-
   // Whether to mount the legacy homedir or not (see MountLegacyHome)
   bool legacy_mount_;
 
@@ -328,9 +296,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Indicates the type of the current mount.
   // This is only valid when IsMounted() is true.
   MountType mount_type_;
-
-  std::unique_ptr<ChapsClientFactory> default_chaps_client_factory_;
-  ChapsClientFactory* chaps_client_factory_;
 
   dircrypto_data_migrator::MigrationHelper* active_dircrypto_migrator_ =
       nullptr;

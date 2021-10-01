@@ -39,6 +39,7 @@
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_challenge_service_factory_impl.h"
+#include "cryptohome/pkcs11/real_pkcs11_token_factory.h"
 #include "cryptohome/stateful_recovery.h"
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/tpm.h"
@@ -161,6 +162,8 @@ UserDataAuth::UserDataAuth()
       chaps_client_(default_chaps_client_.get()),
       default_pkcs11_init_(new Pkcs11Init()),
       pkcs11_init_(default_pkcs11_init_.get()),
+      default_pkcs11_token_factory_(new RealPkcs11TokenFactory()),
+      pkcs11_token_factory_(default_pkcs11_token_factory_.get()),
       firmware_management_parameters_(nullptr),
       default_fingerprint_manager_(),
       fingerprint_manager_(nullptr),
@@ -942,11 +945,13 @@ void UserDataAuth::InitializePkcs11(UserSession* session) {
   // Note that the timer stops in the Mount class' method.
   ReportTimerStart(kPkcs11InitTimer);
 
-  session->GetMount()->InsertPkcs11Token();
+  if (session->GetPkcs11Token()) {
+    session->GetPkcs11Token()->Insert();
+  }
+
+  ReportTimerStop(kPkcs11InitTimer);
 
   LOG(INFO) << "PKCS#11 initialization succeeded.";
-
-  session->GetMount()->set_pkcs11_state(cryptohome::Mount::kIsInitialized);
 }
 
 void UserDataAuth::ResumeAllPkcs11Initialization() {
@@ -954,7 +959,7 @@ void UserDataAuth::ResumeAllPkcs11Initialization() {
 
   for (auto& session_pair : sessions_) {
     scoped_refptr<UserSession> session = session_pair.second;
-    if (session->GetMount()->pkcs11_state() == Mount::kUninitialized) {
+    if (!session->GetPkcs11Token() || !session->GetPkcs11Token()->IsReady()) {
       InitializePkcs11(session.get());
     }
   }
@@ -1168,8 +1173,8 @@ scoped_refptr<UserSession> UserDataAuth::GetOrCreateUserSession(
     if (!m) {
       return nullptr;
     }
-    sessions_[username] =
-        new UserSession(homedirs_, keyset_management_, system_salt_, m);
+    sessions_[username] = new UserSession(
+        homedirs_, keyset_management_, pkcs11_token_factory_, system_salt_, m);
   }
   return sessions_[username];
 }
@@ -1831,9 +1836,6 @@ void UserDataAuth::ContinueMountWithCredentials(
     }
   }
 
-  // PKCS#11 always starts out uninitialized right after a fresh mount.
-  user_session->GetMount()->set_pkcs11_state(cryptohome::Mount::kUninitialized);
-
   // Mark the timer as done.
   ReportTimerStop(kMountExTimer);
 
@@ -1849,10 +1851,6 @@ void UserDataAuth::ContinueMountWithCredentials(
   keyset_management_->ResetLECredentials(*credentials);
   std::move(on_done).Run(reply);
 
-  // Update user timestamp and kick off PKCS#11 initialization.
-  // Time to push the task for PKCS#11 initialization.
-  // TODO(wad) This call will PostTask back to the same thread. It is safe,
-  //           but it seems pointless.
   InitializePkcs11(user_session.get());
 }
 
@@ -2654,16 +2652,14 @@ bool UserDataAuth::Pkcs11IsTpmTokenReady() {
   AssertOnMountThread();
   // We touched the sessions_ object, so we need to be on mount thread.
 
-  bool ready = true;
   for (const auto& session_pair : sessions_) {
     UserSession* session = session_pair.second.get();
-    bool ok = (session->GetMount()->pkcs11_state() ==
-               cryptohome::Mount::kIsInitialized);
-
-    ready = ready && ok;
+    if (!session->GetPkcs11Token() || !session->GetPkcs11Token()->IsReady()) {
+      return false;
+    }
   }
 
-  return ready;
+  return true;
 }
 
 user_data_auth::TpmTokenInfo UserDataAuth::Pkcs11GetTpmTokenInfo(
@@ -2706,7 +2702,9 @@ void UserDataAuth::Pkcs11Terminate() {
   // We are touching the |sessions_| object so we need to be on mount thread.
 
   for (const auto& session_pair : sessions_) {
-    session_pair.second->GetMount()->RemovePkcs11Token();
+    if (session_pair.second->GetPkcs11Token()) {
+      session_pair.second->GetPkcs11Token()->Remove();
+    }
   }
 }
 

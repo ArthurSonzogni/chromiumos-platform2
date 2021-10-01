@@ -20,6 +20,8 @@
 #include "cryptohome/crypto/hmac.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/keyset_management.h"
+#include "cryptohome/pkcs11/pkcs11_token.h"
+#include "cryptohome/pkcs11/pkcs11_token_factory.h"
 #include "cryptohome/storage/mount.h"
 
 using brillo::cryptohome::home::SanitizeUserName;
@@ -34,10 +36,12 @@ UserSession::UserSession() {}
 UserSession::~UserSession() {}
 UserSession::UserSession(HomeDirs* homedirs,
                          KeysetManagement* keyset_management,
+                         Pkcs11TokenFactory* pkcs11_token_factory,
                          const brillo::SecureBlob& salt,
                          const scoped_refptr<Mount> mount)
     : homedirs_(homedirs),
       keyset_management_(keyset_management),
+      pkcs11_token_factory_(pkcs11_token_factory),
       system_salt_(salt),
       mount_(mount) {}
 
@@ -93,6 +97,9 @@ MountError UserSession::MountVault(const Credentials& credentials,
   SetCredentials(credentials, vk->GetLegacyIndex());
   UpdateActivityTimestamp(0);
 
+  pkcs11_token_ = pkcs11_token_factory_->New(
+      username_, homedirs_->GetChapsTokenDir(username_), fs_keyset.chaps_key());
+
   PrepareWebAuthnSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
 
   return code;
@@ -123,6 +130,9 @@ MountError UserSession::MountVault(AuthSession* auth_session,
   SetCredentials(auth_session);
   UpdateActivityTimestamp(0);
 
+  pkcs11_token_ = pkcs11_token_factory_->New(
+      username_, homedirs_->GetChapsTokenDir(username_), fs_keyset.chaps_key());
+
   PrepareWebAuthnSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
 
   return code;
@@ -132,7 +142,11 @@ MountError UserSession::MountEphemeral(const Credentials& credentials) {
   MountError code = mount_->MountEphemeralCryptohome(credentials.username());
   if (code == MOUNT_ERROR_NONE) {
     SetCredentials(credentials, -1);
+    pkcs11_token_ = pkcs11_token_factory_->New(
+        username_, homedirs_->GetChapsTokenDir(username_),
+        brillo::SecureBlob());
   }
+
   return code;
 }
 
@@ -140,6 +154,9 @@ MountError UserSession::MountEphemeral(AuthSession* auth_session) {
   MountError code = mount_->MountEphemeralCryptohome(auth_session->username());
   if (code == MOUNT_ERROR_NONE) {
     SetCredentials(auth_session);
+    pkcs11_token_ = pkcs11_token_factory_->New(
+        username_, homedirs_->GetChapsTokenDir(username_),
+        brillo::SecureBlob());
   }
   return code;
 }
@@ -151,6 +168,10 @@ MountError UserSession::MountGuest() {
 
 bool UserSession::Unmount() {
   UpdateActivityTimestamp(0);
+  if (pkcs11_token_) {
+    pkcs11_token_->Remove();
+    pkcs11_token_.reset();
+  }
   return mount_->UnmountCryptohome();
 }
 

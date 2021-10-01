@@ -297,6 +297,7 @@ static_library("libcryptohome") {
     "../key_challenge_service_impl.cc",
     "../keyset_management.cc",
     "../lockbox-cache.cc",
+    "../pkcs11/real_pkcs11_token.cc",
     "../scrypt_verifier.cc",
     "../service_userdataauth.cc",
     "../stateful_recovery.cc",

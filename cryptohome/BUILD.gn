@@ -493,7 +493,6 @@ if (use.test) {
       "storage/encrypted_container/fscrypt_container_test.cc",
       "storage/encrypted_container/loopback_device_test.cc",
       "storage/homedirs_unittest.cc",
-      "storage/mock_mount.cc",
       "storage/mount_stack_unittest.cc",
       "storage/mount_unittest.cc",
       "storage/out_of_process_mount_helper_test.cc",

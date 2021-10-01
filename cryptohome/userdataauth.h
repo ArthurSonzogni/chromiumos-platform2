@@ -33,6 +33,7 @@
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_challenge_service_factory_impl.h"
 #include "cryptohome/keyset_management.h"
+#include "cryptohome/pkcs11/pkcs11_token_factory.h"
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/arc_disk_quota.h"
@@ -538,6 +539,11 @@ class UserDataAuth {
   // Override |pkcs11_init_| for testing purpose
   void set_pkcs11_init(Pkcs11Init* pkcs11_init) { pkcs11_init_ = pkcs11_init; }
 
+  // Override |pkcs11_token_factory_| for testing purpose
+  void set_pkcs11_token_factory(Pkcs11TokenFactory* pkcs11_token_factory) {
+    pkcs11_token_factory_ = pkcs11_token_factory;
+  }
+
   // Override |firmware_management_parameters_| for testing purpose
   void set_firmware_management_parameters(FirmwareManagementParameters* fwmp) {
     firmware_management_parameters_ = fwmp;
@@ -984,6 +990,12 @@ class UserDataAuth {
   // overridden for testing.
   Pkcs11Init* pkcs11_init_;
 
+  // The default factory for Pkcs11Token objects.
+  std::unique_ptr<Pkcs11TokenFactory> default_pkcs11_token_factory_;
+
+  // The actual factory for Pkcs11TokenObjects.
+  Pkcs11TokenFactory* pkcs11_token_factory_;
+
   // The default Firmware Management Parameters object for accessing any
   // Firmware Management Parameters related functionalities.
   std::unique_ptr<FirmwareManagementParameters>
@@ -1151,8 +1163,7 @@ class UserDataAuth {
   // Recorded when a requests comes in. Counts of 1 will not reported.
   std::atomic<int> parallel_task_count_ = 0;
 
-  FRIEND_TEST(UserDataAuthTest, InitializePkcs11Success);
-  FRIEND_TEST(UserDataAuthTest, InitializePkcs11TpmNotOwned);
+  friend class UserDataAuthTestTasked;
   FRIEND_TEST(UserDataAuthTest, InitializePkcs11Unmounted);
 
   friend class UserDataAuthExTest;

@@ -45,6 +45,8 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mock_vault_keyset.h"
+#include "cryptohome/pkcs11/fake_pkcs11_token.h"
+#include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/protobuf_test_utils.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_arc_disk_quota.h"
@@ -137,6 +139,7 @@ class UserDataAuthTestBase : public ::testing::Test {
     userdataauth_->set_fingerprint_manager(&fingerprint_manager_);
     userdataauth_->set_arc_disk_quota(&arc_disk_quota_);
     userdataauth_->set_pkcs11_init(&pkcs11_init_);
+    userdataauth_->set_pkcs11_token_factory(&pkcs11_token_factory_);
     userdataauth_->set_mount_factory(&mount_factory_);
     userdataauth_->set_challenge_credentials_helper(
         &challenge_credentials_helper_);
@@ -169,7 +172,8 @@ class UserDataAuthTestBase : public ::testing::Test {
     brillo::SecureBlob salt;
     AssignSalt(CRYPTOHOME_DEFAULT_SALT_LENGTH, &salt);
     mount_ = new NiceMock<MockMount>();
-    session_ = new UserSession(&homedirs_, &keyset_management_, salt, mount_);
+    session_ = new UserSession(&homedirs_, &keyset_management_,
+                               &pkcs11_token_factory_, salt, mount_);
     userdataauth_->set_session_for_user(username, session_.get());
   }
 
@@ -230,6 +234,10 @@ class UserDataAuthTestBase : public ::testing::Test {
   // use.
   NiceMock<MockPkcs11Init> pkcs11_init_;
 
+  // Mock Pcks11TokenFactory, will be passed to UserDataAuth for its internal
+  // use.
+  NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
+
   // Mock Firmware Management Parameters object, will be passed to UserDataAuth
   // for its internal use.
   NiceMock<MockFirmwareManagementParameters> fwmp_;
@@ -266,7 +274,7 @@ class UserDataAuthTestBase : public ::testing::Test {
 
   // This is used to hold the mount object when we create a mock mount with
   // SetupMount().
-  scoped_refptr<MockMount> mount_;
+  scoped_refptr<NiceMock<MockMount>> mount_;
 
   // Declare |userdataauth_| last so it gets destroyed before all the mocks.
   // This is important because otherwise the background thread may call into
@@ -305,6 +313,32 @@ class UserDataAuthTestTasked : public UserDataAuthTestBase {
       // biggest one.
       return std::max(origin_task_runner_->Now(), mount_task_runner_->Now());
     }));
+  }
+
+  void CreatePkcs11TokenInSession(scoped_refptr<NiceMock<MockMount>> mount,
+                                  scoped_refptr<UserSession> session) {
+    Mount::MountArgs mount_args;
+
+    EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
+    auto vk = std::make_unique<VaultKeyset>();
+    EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
+        .WillOnce(Return(ByMove(std::move(vk))));
+    EXPECT_CALL(*mount, MountCryptohome(_, _, _, _, _)).WillOnce(Return(true));
+    EXPECT_CALL(*mount, IsNonEphemeralMounted()).WillOnce(Return(true));
+
+    auto token = std::make_unique<FakePkcs11Token>();
+    EXPECT_CALL(pkcs11_token_factory_, New(_, _, _))
+        .WillOnce(Return(ByMove(std::move(token))));
+
+    ASSERT_EQ(MOUNT_ERROR_NONE, session->MountVault(Credentials(), mount_args));
+  }
+
+  void InitializePkcs11TokenInSession(scoped_refptr<NiceMock<MockMount>> mount,
+                                      scoped_refptr<UserSession> session) {
+    // PKCS#11 will initialization works only when it's mounted.
+    ON_CALL(*mount, IsMounted()).WillByDefault(Return(true));
+
+    userdataauth_->InitializePkcs11(session.get());
   }
 
   void TearDown() override {
@@ -789,18 +823,14 @@ TEST_F(UserDataAuthTest, InitializePkcs11Success) {
   // Add a mount associated with foo@gmail.com
   SetupMount("foo@gmail.com");
 
-  // PKCS#11 will initialization works only when it's mounted.
-  ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
-  // The initialization code should at least check, right?
-  EXPECT_CALL(*mount_, IsMounted())
-      .Times(AtLeast(1))
-      .WillRepeatedly(Return(true));
-  // |mount_| should get a request to insert PKCS#11 token.
-  EXPECT_CALL(*mount_, InsertPkcs11Token()).WillOnce(Return(true));
+  CreatePkcs11TokenInSession(mount_, session_);
 
-  userdataauth_->InitializePkcs11(session_.get());
+  // At first the token is not ready
+  EXPECT_FALSE(session_->GetPkcs11Token()->IsReady());
 
-  EXPECT_EQ(mount_->pkcs11_state(), cryptohome::Mount::kIsInitialized);
+  InitializePkcs11TokenInSession(mount_, session_);
+
+  EXPECT_TRUE(session_->GetPkcs11Token()->IsReady());
 }
 
 TEST_F(UserDataAuthTest, InitializePkcs11TpmNotOwned) {
@@ -810,41 +840,33 @@ TEST_F(UserDataAuthTest, InitializePkcs11TpmNotOwned) {
   // Add a mount associated with foo@gmail.com
   SetupMount("foo@gmail.com");
 
-  // PKCS#11 will initialization works only when it's mounted.
-  ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
+  CreatePkcs11TokenInSession(mount_, session_);
 
-  // |mount_| should not get a request to insert PKCS#11 token.
-  EXPECT_CALL(*mount_, InsertPkcs11Token()).Times(0);
+  // At first the token is not ready
+  EXPECT_FALSE(session_->GetPkcs11Token()->IsReady());
 
   // TPM is enabled but not owned.
   ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).Times(AtLeast(1)).WillRepeatedly(Return(false));
 
-  userdataauth_->InitializePkcs11(session_.get());
+  InitializePkcs11TokenInSession(mount_, session_);
 
-  EXPECT_EQ(mount_->pkcs11_state(), cryptohome::Mount::kUninitialized);
+  // Still not ready because TPM is not owned.
+  EXPECT_FALSE(session_->GetPkcs11Token()->IsReady());
 
-  // We'll need to call InsertPkcs11Token() and IsEnabled() later in the test.
+  // We'll need to call Pkcs11Token::Insert() and IsEnabled() later in the test.
   Mock::VerifyAndClearExpectations(mount_.get());
   Mock::VerifyAndClearExpectations(&tpm_);
 
   // Next check when the TPM is now owned.
 
-  // The initialization code should at least check, right?
-  EXPECT_CALL(*mount_, IsMounted())
-      .Times(AtLeast(1))
-      .WillRepeatedly(Return(true));
-
-  // |mount_| should get a request to insert PKCS#11 token.
-  EXPECT_CALL(*mount_, InsertPkcs11Token()).WillOnce(Return(true));
-
   // TPM is enabled and owned.
   ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).Times(AtLeast(1)).WillRepeatedly(Return(true));
 
-  userdataauth_->InitializePkcs11(session_.get());
+  InitializePkcs11TokenInSession(mount_, session_);
 
-  EXPECT_EQ(mount_->pkcs11_state(), cryptohome::Mount::kIsInitialized);
+  EXPECT_TRUE(session_->GetPkcs11Token()->IsReady());
 }
 
 TEST_F(UserDataAuthTest, InitializePkcs11Unmounted) {
@@ -852,18 +874,21 @@ TEST_F(UserDataAuthTest, InitializePkcs11Unmounted) {
   // Add a mount associated with foo@gmail.com
   SetupMount("foo@gmail.com");
 
+  CreatePkcs11TokenInSession(mount_, session_);
+
+  // At first the token is not ready
+  EXPECT_FALSE(session_->GetPkcs11Token()->IsReady());
+
   ON_CALL(*mount_, IsMounted()).WillByDefault(Return(false));
   // The initialization code should at least check, right?
   EXPECT_CALL(*mount_, IsMounted())
       .Times(AtLeast(1))
       .WillRepeatedly(Return(false));
 
-  // |mount_| should not get a request to insert PKCS#11 token.
-  EXPECT_CALL(*mount_, InsertPkcs11Token()).Times(0);
-
   userdataauth_->InitializePkcs11(session_.get());
 
-  EXPECT_EQ(mount_->pkcs11_state(), cryptohome::Mount::kUninitialized);
+  // Still not ready because already unmounted
+  EXPECT_FALSE(session_->GetPkcs11Token()->IsReady());
 }
 
 TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
@@ -877,46 +902,28 @@ TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
   brillo::SecureBlob salt;
   AssignSalt(CRYPTOHOME_DEFAULT_SALT_LENGTH, &salt);
 
-  // Check when there's 1 mount, and it's initialized.
   scoped_refptr<NiceMock<MockMount>> mount1 = new NiceMock<MockMount>();
-  scoped_refptr<UserSession> session1 =
-      new UserSession(&homedirs_, &keyset_management_, salt, mount1);
+  scoped_refptr<UserSession> session1 = new UserSession(
+      &homedirs_, &keyset_management_, &pkcs11_token_factory_, salt, mount1);
   userdataauth_->set_session_for_user(kUsername1, session1.get());
-  EXPECT_CALL(*mount1, pkcs11_state())
-      .WillOnce(Return(cryptohome::Mount::kIsInitialized));
-  EXPECT_TRUE(userdataauth_->Pkcs11IsTpmTokenReady());
+  CreatePkcs11TokenInSession(mount1, session1);
 
-  // Check various other PKCS#11 states.
-  EXPECT_CALL(*mount1, pkcs11_state())
-      .WillOnce(Return(cryptohome::Mount::kUninitialized));
-  EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
-
-  // Check when there's another mount.
   scoped_refptr<NiceMock<MockMount>> mount2 = new NiceMock<MockMount>();
-  scoped_refptr<UserSession> session2 =
-      new UserSession(&homedirs_, &keyset_management_, salt, mount2);
+  scoped_refptr<UserSession> session2 = new UserSession(
+      &homedirs_, &keyset_management_, &pkcs11_token_factory_, salt, mount2);
   userdataauth_->set_session_for_user(kUsername2, session2.get());
+  CreatePkcs11TokenInSession(mount2, session2);
 
-  // Both is initialized.
-  EXPECT_CALL(*mount1, pkcs11_state())
-      .WillOnce(Return(cryptohome::Mount::kIsInitialized));
-  EXPECT_CALL(*mount2, pkcs11_state())
-      .WillOnce(Return(cryptohome::Mount::kIsInitialized));
-  EXPECT_TRUE(userdataauth_->Pkcs11IsTpmTokenReady());
+  // Both are uninitialized.
+  EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
 
   // Only one is initialized.
-  EXPECT_CALL(*mount1, pkcs11_state())
-      .WillOnce(Return(cryptohome::Mount::kIsInitialized));
-  EXPECT_CALL(*mount2, pkcs11_state())
-      .WillOnce(Return(cryptohome::Mount::kUninitialized));
+  InitializePkcs11TokenInSession(mount2, session2);
   EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
 
-  // Both uninitialized.
-  EXPECT_CALL(*mount1, pkcs11_state())
-      .WillOnce(Return(cryptohome::Mount::kUninitialized));
-  EXPECT_CALL(*mount2, pkcs11_state())
-      .WillOnce(Return(cryptohome::Mount::kUninitialized));
-  EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
+  // Both is initialized.
+  InitializePkcs11TokenInSession(mount1, session1);
+  EXPECT_TRUE(userdataauth_->Pkcs11IsTpmTokenReady());
 }
 
 TEST_F(UserDataAuthTest, Pkcs11GetTpmTokenInfo) {
@@ -969,8 +976,14 @@ TEST_F(UserDataAuthTest, Pkcs11Terminate) {
   // Check that we'll indeed get the Mount object to remove the PKCS#11 token.
   constexpr char kUsername1[] = "foo@gmail.com";
   SetupMount(kUsername1);
-  EXPECT_CALL(*mount_, RemovePkcs11Token()).WillOnce(Return());
+  CreatePkcs11TokenInSession(mount_, session_);
+  InitializePkcs11TokenInSession(mount_, session_);
+
+  EXPECT_TRUE(session_->GetPkcs11Token()->IsReady());
+
   userdataauth_->Pkcs11Terminate();
+
+  EXPECT_FALSE(session_->GetPkcs11Token()->IsReady());
 }
 
 TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokens) {
@@ -980,6 +993,8 @@ TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokens) {
   // Add a mount associated with foo@gmail.com
   SetupMount("foo@gmail.com");
 
+  CreatePkcs11TokenInSession(mount_, session_);
+
   // PKCS#11 will initialization works only when it's mounted.
   ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
   // The initialization code should at least check, right?
@@ -987,10 +1002,11 @@ TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokens) {
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
 
-  // |mount_| should get a request to insert PKCS#11 token.
-  EXPECT_CALL(*mount_, InsertPkcs11Token()).WillOnce(Return(true));
+  EXPECT_FALSE(session_->GetPkcs11Token()->IsReady());
 
   userdataauth_->Pkcs11RestoreTpmTokens();
+
+  EXPECT_TRUE(session_->GetPkcs11Token()->IsReady());
 }
 
 TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokensTpmNotOwned) {
@@ -1000,16 +1016,20 @@ TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokensTpmNotOwned) {
   // Add a mount associated with foo@gmail.com
   SetupMount("foo@gmail.com");
 
+  CreatePkcs11TokenInSession(mount_, session_);
+
   // It shouldn't call any thing.
   EXPECT_CALL(*mount_, IsMounted()).Times(0);
-  EXPECT_CALL(*mount_, InsertPkcs11Token()).Times(0);
-  EXPECT_CALL(*mount_, pkcs11_state()).Times(0);
 
   // TPM is enabled but not owned.
   ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).Times(AtLeast(1)).WillRepeatedly(Return(false));
 
+  EXPECT_FALSE(session_->GetPkcs11Token()->IsReady());
+
   userdataauth_->Pkcs11RestoreTpmTokens();
+
+  EXPECT_FALSE(session_->GetPkcs11Token()->IsReady());
 }
 
 TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokensWaitingOnTPM) {
@@ -1020,6 +1040,8 @@ TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokensWaitingOnTPM) {
   // Add a mount associated with foo@gmail.com
   SetupMount("foo@gmail.com");
 
+  CreatePkcs11TokenInSession(mount_, session_);
+
   // PKCS#11 will initialization works only when it's mounted.
   ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
   // The initialization code should at least check, right?
@@ -1027,10 +1049,11 @@ TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokensWaitingOnTPM) {
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
 
-  // |mount_| should get a request to insert PKCS#11 token.
-  EXPECT_CALL(*mount_, InsertPkcs11Token()).WillOnce(Return(true));
+  EXPECT_FALSE(session_->GetPkcs11Token()->IsReady());
 
   userdataauth_->Pkcs11RestoreTpmTokens();
+
+  EXPECT_TRUE(session_->GetPkcs11Token()->IsReady());
 }
 
 TEST_F(UserDataAuthTestNotInitialized, InstallAttributesEnterpriseOwned) {

@@ -16,6 +16,8 @@
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/keyset_management.h"
+#include "cryptohome/pkcs11/pkcs11_token.h"
+#include "cryptohome/pkcs11/pkcs11_token_factory.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount.h"
 
@@ -26,6 +28,7 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   UserSession();
   UserSession(HomeDirs* homedirs,
               KeysetManagement* keyset_management,
+              Pkcs11TokenFactory* pkcs11_token_factory,
               const brillo::SecureBlob& salt,
               const scoped_refptr<Mount> mount);
   virtual ~UserSession();
@@ -101,6 +104,8 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   // Returns index of the keyset current credentials refer to.
   int key_index() const { return key_index_; }
 
+  Pkcs11Token* GetPkcs11Token() { return pkcs11_token_.get(); }
+
  private:
   // Computes a public derivative from |fek| and |fnek| for u2fd to fetch.
   void PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
@@ -111,6 +116,7 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
 
   HomeDirs* homedirs_;
   KeysetManagement* keyset_management_;
+  Pkcs11TokenFactory* pkcs11_token_factory_;
 
   std::string obfuscated_username_;
   std::string username_;
@@ -125,6 +131,7 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   base::OneShotTimer clear_webauthn_secret_timer_;
 
   scoped_refptr<cryptohome::Mount> mount_;
+  std::unique_ptr<Pkcs11Token> pkcs11_token_;
 };
 
 }  // namespace cryptohome
