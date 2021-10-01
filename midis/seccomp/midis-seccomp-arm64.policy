@@ -62,5 +62,6 @@ sendmsg: 1
 # Allow socket(domain == AF_UNIX)
 socket: arg0 == AF_UNIX
 socketpair: 1
+uname: 1
 write: 1
 fstatfs: 1

@@ -72,4 +72,5 @@ socket: arg0 == 0x1
 socketpair: 1
 stat64: 1
 statx: 1
+uname: 1
 write: 1
