@@ -65,3 +65,4 @@ memfd_create: 1
 eventfd2: 1
 fstatfs64: 1
 fstatfs: 1
+uname: 1
