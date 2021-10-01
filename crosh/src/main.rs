@@ -22,7 +22,7 @@ use rustyline::highlight::Highlighter;
 use rustyline::hint::Hinter;
 use rustyline::validate::Validator;
 use rustyline::{CompletionType, Config, Context, Editor, Helper};
-use sys_util::{block_signal, error, syslog, unblock_signal};
+use sys_util::{block_signal, error, handle_eintr_errno, syslog, unblock_signal};
 
 const HISTORY_FILENAME: &str = ".crosh_history";
 
@@ -124,17 +124,17 @@ fn handle_cmd(dispatcher: &Dispatcher, args: Vec<String>) -> Result<(), ()> {
     COMMAND_RUNNING_PID.store(pid as i32, Ordering::Release);
 
     let mut status: c_int = 1;
-    let code: pid_t;
-    unsafe {
-        code = waitpid(pid, &mut status, 0);
-        // This should only happen if the child process is ptraced.
-        if WIFSTOPPED(status) && kill(-pid, SIGKILL) != 0 {
-            error!("kill failed.");
-        }
+    // Safe because status is owned.
+    // EINTR can be triggered by signals such as SIGWINCH.
+    let code: pid_t = handle_eintr_errno!(unsafe { waitpid(pid, &mut status, 0) });
+    // Safe because references are not used and the return code is checked.
+    // This should only happen if the child process is ptraced.
+    if WIFSTOPPED(status) && unsafe { kill(-pid, SIGKILL) } != 0 {
+        error!("kill failed: {}", io::Error::last_os_error());
     }
     COMMAND_RUNNING_PID.store(-1, Ordering::Release);
     if code != pid {
-        error!("waitpid failed.");
+        error!("waitpid failed: {}", io::Error::last_os_error());
         return Err(());
     }
     match status {
