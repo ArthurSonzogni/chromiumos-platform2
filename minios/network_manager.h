@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
+#include <dbus/shill/dbus-constants.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "minios/network_manager_interface.h"

@@ -8,7 +8,6 @@
 #include <dbus/shill/dbus-constants.h>
 
 #include "minios/draw_utils.h"
-#include "minios/shill_utils.h"
 
 namespace minios {
 
@@ -149,7 +148,7 @@ void ScreenNetwork::OnKeyPress(int key_changed) {
           screen_controller_->OnForward(this);
           return;
         }
-        if (chosen_network_.security == ToString(WifiSecurityType::NONE)) {
+        if (chosen_network_.security == shill::kSecurityNone) {
           // Network has no password. Just connect.
           network_manager_->Connect(chosen_network_.ssid, "");
           state_ = NetworkState::kWaitForConnection;

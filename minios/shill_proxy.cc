@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/strings/stringprintf.h>
@@ -15,11 +16,11 @@ ShillProxy::ShillProxy(scoped_refptr<dbus::Bus> bus_for_proxies)
     : bus_for_proxies_(bus_for_proxies), weak_ptr_factory_(this) {}
 
 void ShillProxy::ManagerRequestScan(
-    const WifiTechnologyType& technology,
+    const std::string& technology,
     OnManagerRequestScanSuccess success_callback,
     OnManagerRequestScanError error_callback) {
   std::make_unique<ManagerProxyType>(bus_for_proxies_)
-      ->RequestScanAsync(ToString(technology), std::move(success_callback),
+      ->RequestScanAsync(technology, std::move(success_callback),
                          std::move(error_callback));
 }
 

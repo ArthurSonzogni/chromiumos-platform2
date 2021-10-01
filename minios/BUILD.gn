@@ -57,7 +57,6 @@ static_library("libminios") {
     "screens/screen_permission.cc",
     "screens/screen_welcome.cc",
     "shill_proxy.cc",
-    "shill_utils.cc",
     "update_engine_proxy.cc",
     "utils.cc",
   ]

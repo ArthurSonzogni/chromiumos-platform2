@@ -5,6 +5,8 @@
 #ifndef MINIOS_SHILL_PROXY_H_
 #define MINIOS_SHILL_PROXY_H_
 
+#include <string>
+
 #include <base/callback.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
@@ -22,7 +24,7 @@ class ShillProxy : public ShillProxyInterface {
   ShillProxy(const ShillProxy&) = delete;
   ShillProxy& operator=(const ShillProxy&) = delete;
 
-  void ManagerRequestScan(const WifiTechnologyType& technology,
+  void ManagerRequestScan(const std::string& technology,
                           OnManagerRequestScanSuccess success_callback,
                           OnManagerRequestScanError error_callback) override;
 

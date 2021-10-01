@@ -5,6 +5,8 @@
 #ifndef MINIOS_MOCK_SHILL_PROXY_H_
 #define MINIOS_MOCK_SHILL_PROXY_H_
 
+#include <string>
+
 #include <gmock/gmock.h>
 
 #include "minios/shill_proxy_interface.h"
@@ -20,7 +22,7 @@ class MockShillProxy : public ShillProxyInterface {
 
   MOCK_METHOD(void,
               ManagerRequestScan,
-              (const WifiTechnologyType& technology,
+              (const std::string& technology,
                OnManagerRequestScanSuccess success_callback,
                OnManagerRequestScanError error_callback),
               (override));

@@ -11,8 +11,6 @@
 #include <brillo/message_loops/message_loop.h>
 #include <dbus/shill/dbus-constants.h>
 
-#include "minios/shill_utils.h"
-
 namespace minios {
 
 namespace {
@@ -38,7 +36,7 @@ void NetworkManager::Connect(const std::string& ssid,
   iter = connect_map_.find(ssid);
 
   shill_proxy_->ManagerRequestScan(
-      WifiTechnologyType::WIFI,
+      shill::kTypeWifi,
       base::BindRepeating(static_cast<void (NetworkManager::*)(ConnectMapIter)>(
                               &NetworkManager::RequestScanSuccess),
                           weak_ptr_factory_.GetWeakPtr(), iter),
@@ -52,16 +50,15 @@ void NetworkManager::RequestScanSuccess(ConnectMapIter iter) {
   LOG(INFO) << "RequestScan success for SSID=" << iter->first;
 
   // If there is no passphrase, default to no security.
-  const auto& security = iter->second.passphrase.empty()
-                             ? ToString(WifiSecurityType::NONE)
-                             : ToString(WifiSecurityType::PSK);
+  const std::string security = iter->second.passphrase.empty()
+                                   ? shill::kSecurityNone
+                                   : shill::kSecurityPsk;
   const brillo::VariantDictionary properties = {
       // Mode needs to be set from supported station type.
-      {shill::kModeProperty, brillo::Any(ToString(WifiStationType::MANAGED))},
-      // SSID of the wireless network.
+      {shill::kModeProperty, brillo::Any(std::string(shill::kModeManaged))},
       {shill::kNameProperty, brillo::Any(iter->first)},
       {shill::kSecurityClassProperty, brillo::Any(security)},
-      {shill::kTypeProperty, brillo::Any(ToString(WifiTechnologyType::WIFI))},
+      {shill::kTypeProperty, brillo::Any(std::string(shill::kTypeWifi))},
   };
   shill_proxy_->ManagerFindMatchingService(
       properties,
@@ -256,7 +253,7 @@ void NetworkManager::GetNetworks() {
       get_networks_list_.insert(get_networks_list_.end(), GetNetworksField());
 
   shill_proxy_->ManagerRequestScan(
-      WifiTechnologyType::WIFI,
+      shill::kTypeWifi,
       base::BindRepeating(static_cast<GetNetworksRequestScanSuccessType>(
                               &NetworkManager::RequestScanSuccess),
                           weak_ptr_factory_.GetWeakPtr(), iter),
