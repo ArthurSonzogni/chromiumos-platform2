@@ -284,11 +284,6 @@ class UserDataAuth {
 
   // =============== PKCS#11 Related Public Methods ===============
 
-  // This initializes the PKCS#11 for a particular mount. Note that this is
-  // used mostly internally, by Mount related functions to bring up the PKCS#11
-  // functionalities after mounting.
-  void InitializePkcs11(UserSession* mount);
-
   // Returns true if and only if PKCS#11 tokens are ready for all mounts.
   bool Pkcs11IsTpmTokenReady();
 
@@ -836,6 +831,11 @@ class UserDataAuth {
 
   // =============== PKCS#11 Related Utilities ===============
 
+  // This initializes the PKCS#11 for a particular mount. Note that this is
+  // used mostly internally, by Mount related functions to bring up the PKCS#11
+  // functionalities after mounting.
+  void InitializePkcs11(UserSession* mount);
+
   // This is called when TPM is enabled and owned, so that we can continue
   // the initialization of any PKCS#11 that was paused because TPM wasn't
   // ready.
@@ -1150,6 +1150,10 @@ class UserDataAuth {
   // A counter to count the number of parallel tasks on mount thread.
   // Recorded when a requests comes in. Counts of 1 will not reported.
   std::atomic<int> parallel_task_count_ = 0;
+
+  FRIEND_TEST(UserDataAuthTest, InitializePkcs11Success);
+  FRIEND_TEST(UserDataAuthTest, InitializePkcs11TpmNotOwned);
+  FRIEND_TEST(UserDataAuthTest, InitializePkcs11Unmounted);
 
   friend class UserDataAuthExTest;
   FRIEND_TEST(UserDataAuthExTest, StartAuthSession);

@@ -907,20 +907,10 @@ bool UserDataAuth::Unmount() {
 }
 
 void UserDataAuth::InitializePkcs11(UserSession* session) {
+  AssertOnMountThread();
+
   // We should not pass nullptr to this method.
   DCHECK(session);
-
-  if (!IsOnMountThread()) {
-    // We are not on mount thread, but to be safe, we'll only access Mount
-    // objects on mount thread, so let's post ourself there.
-    PostTaskToMountThread(
-        FROM_HERE,
-        base::BindOnce(&UserDataAuth::InitializePkcs11, base::Unretained(this),
-                       base::Unretained(session)));
-    return;
-  }
-
-  AssertOnMountThread();
 
   // Wait for ownership if there is a working TPM.
   if (tpm_ && tpm_->IsEnabled() && !tpm_->IsOwned()) {
@@ -961,15 +951,6 @@ void UserDataAuth::InitializePkcs11(UserSession* session) {
 }
 
 void UserDataAuth::ResumeAllPkcs11Initialization() {
-  if (!IsOnMountThread()) {
-    // We are not on mount thread, but to be safe, we'll only access Mount
-    // objects on mount thread, so let's post ourself there.
-    PostTaskToMountThread(
-        FROM_HERE, base::BindOnce(&UserDataAuth::ResumeAllPkcs11Initialization,
-                                  base::Unretained(this)));
-    return;
-  }
-
   AssertOnMountThread();
 
   for (auto& session_pair : sessions_) {
