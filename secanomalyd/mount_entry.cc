@@ -34,7 +34,7 @@ const base::FilePath kUsrLocal = base::FilePath("/usr/local");
 }  // namespace
 
 MountEntry::MountEntry(base::StringPiece mount_str) {
-  // These entries are of the format:
+  // These entries are of the form:
   // /dev/root / ext2 rw,seclabel,relatime 0 0
   std::vector<base::StringPiece> fields =
       base::SplitStringPiece(mount_str, base::kWhitespaceASCII,

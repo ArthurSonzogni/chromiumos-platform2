@@ -31,7 +31,7 @@ class Daemon : public brillo::Daemon {
   bool generate_reports_ = false;
   bool dev_ = false;
 
-  std::map<base::FilePath, MountEntry> wx_mounts_;
+  MountEntryMap wx_mounts_;
 };
 
 #endif  // SECANOMALYD_DAEMON_H_

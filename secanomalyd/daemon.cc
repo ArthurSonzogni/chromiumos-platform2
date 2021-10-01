@@ -24,6 +24,7 @@
 #include "secanomalyd/metrics.h"
 #include "secanomalyd/mount_entry.h"
 #include "secanomalyd/mounts.h"
+#include "secanomalyd/processes.h"
 
 namespace {
 

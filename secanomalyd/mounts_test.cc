@@ -18,7 +18,7 @@ TEST(MountsTest, EmptyString) {
 }
 
 TEST(MountsTest, ActualMounts) {
-  std::string mounts =
+  const std::string mounts =
       "/dev/sda1 /mnt/stateful_partition ext4 "
       "rw,seclabel,nosuid,nodev,noexec,noatime,"
       "resgid=20119,commit=600,data=ordered 0 0\n"

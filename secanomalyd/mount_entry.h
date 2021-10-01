@@ -8,11 +8,15 @@
 #ifndef SECANOMALYD_MOUNT_ENTRY_H_
 #define SECANOMALYD_MOUNT_ENTRY_H_
 
+#include <map>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/strings/string_piece.h>
+
+class MountEntry;
+using MountEntryMap = std::map<base::FilePath, MountEntry>;
 
 class MountEntry {
  public:

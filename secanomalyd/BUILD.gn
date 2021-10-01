@@ -26,6 +26,7 @@ static_library("libsecanomaly") {
     "metrics.cc",
     "mount_entry.cc",
     "mounts.cc",
+    "processes.cc",
   ]
   configs += [ ":target_defaults" ]
 }
@@ -45,6 +46,7 @@ if (use.test) {
     sources = [
       "mount_entry_test.cc",
       "mounts_test.cc",
+      "processes_test.cc",
     ]
     configs += [
       "//common-mk:test",
