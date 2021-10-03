@@ -463,7 +463,6 @@ if (use.test) {
       "mock_tpm.cc",
       "password_auth_factor_unittest.cc",
       "persistent_lookup_table_unittest.cc",
-      "pkcs11_keystore_unittest.cc",
       "platform_unittest.cc",
       "proxy/legacy_cryptohome_interface_adaptor.cc",
       "proxy/legacy_cryptohome_interface_adaptor_test.cc",
