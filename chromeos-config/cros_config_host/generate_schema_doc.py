@@ -41,6 +41,22 @@ def ParseArgs(argv):
   return parser.parse_args(argv)
 
 
+def QuoteRegex(text):
+  """Quote regex column.
+
+  Use code block to quote the regex column, so most of the characters won't be
+  treated as Markdown format syntax.  Pipe (|) is an exception, we need to
+  explicitly escape it.
+
+  Args:
+    text: a string to quote
+
+  Returns:
+    A quoted string.
+  """
+  return '```%s```' % text.replace('|', '\\|')
+
+
 def PopulateTypeDef(
     name,
     type_def,
@@ -110,7 +126,7 @@ def PopulateTypeDef(
       regex = type_attrs.get('pattern', '')
       if regex:
         # Regex need escaping for markdown
-        regex = '```%s```' % regex
+        regex = QuoteRegex(regex)
       description = type_attrs.get('description', '')
       description = description.replace('\n', ' ')
       required_list = type_def.get('required', [])
