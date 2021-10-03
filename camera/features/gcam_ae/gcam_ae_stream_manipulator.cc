@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/files/file_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <system/camera_metadata.h>
 
 #include "cros-camera/camera_buffer_manager.h"
@@ -23,6 +24,16 @@ namespace {
 
 constexpr char kMetadataDumpPath[] = "/run/camera/gcam_ae_frame_metadata.json";
 
+constexpr char kAeFrameIntervalKey[] = "ae_frame_interval";
+constexpr char kAeOverrideModeKey[] = "ae_override_mode";
+constexpr char kAeStatsInputModeKey[] = "ae_stats_input_mode";
+constexpr char kExposureCompensationKey[] = "exp_comp";
+constexpr char kFaceDetectionEnableKey[] = "face_detection_enable";
+constexpr char kFdFrameIntervalKey[] = "fd_frame_interval";
+constexpr char kGcamAeEnableKey[] = "gcam_ae_enable";
+constexpr char kLogFrameMetadataKey[] = "log_frame_metadata";
+constexpr char kMaxHdrRatioKey[] = "max_hdr_ratio";
+
 }  // namespace
 
 //
@@ -31,17 +42,25 @@ constexpr char kMetadataDumpPath[] = "/run/camera/gcam_ae_frame_metadata.json";
 
 GcamAeStreamManipulator::GcamAeStreamManipulator(
     GcamAeController::Factory gcam_ae_controller_factory)
-    : gcam_ae_controller_factory_(
+    : config_(kDefaultGcamAeConfigFile, kOverrideGcamAeConfigFile),
+      gcam_ae_controller_factory_(
           !gcam_ae_controller_factory.is_null()
               ? std::move(gcam_ae_controller_factory)
-              : base::BindRepeating(GcamAeControllerImpl::CreateInstance)) {}
+              : base::BindRepeating(GcamAeControllerImpl::CreateInstance)),
+      metadata_logger_({.dump_path = base::FilePath(kMetadataDumpPath)}) {}
 
 bool GcamAeStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
   static_info_.acquire(clone_camera_metadata(static_info));
-  base::AutoLock lock(ae_controller_lock_);
-  ae_controller_ = gcam_ae_controller_factory_.Run(static_info);
+  {
+    base::AutoLock lock(ae_controller_lock_);
+    ae_controller_ = gcam_ae_controller_factory_.Run(static_info);
+  }
+  // Set the options callback here to set the latest options to
+  // |ae_controller_|.
+  config_.SetCallback(base::BindRepeating(
+      &GcamAeStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
   return true;
 }
 
@@ -100,32 +119,8 @@ bool GcamAeStreamManipulator::ProcessCaptureRequest(
     // Skip reprocessing requests.
     return true;
   }
-
-  GcamAeConfig::Options options = config_.GetOptions();
-  if (options.log_frame_metadata) {
-    if (!metadata_logger_) {
-      metadata_logger_ =
-          std::make_unique<MetadataLogger>(MetadataLogger::Options{
-              .dump_path = base::FilePath(kMetadataDumpPath)});
-    }
-  } else {
-    metadata_logger_ = nullptr;
-  }
   base::AutoLock lock(ae_controller_lock_);
-  ae_controller_->SetOptions({
-      .enabled = options.gcam_ae_enable,
-      .ae_frame_interval = options.ae_frame_interval,
-      .max_hdr_ratio = options.max_hdr_ratio,
-      .use_cros_face_detector = options.use_cros_face_detector,
-      .fd_frame_interval = options.fd_frame_interval,
-      .ae_stats_input_mode = options.ae_stats_input_mode,
-      .ae_override_mode = options.ae_override_mode,
-      .exposure_compensation = options.exposure_compensation,
-      .metadata_logger = metadata_logger_.get(),
-  });
-
   ae_controller_->WriteRequestAeParameters(request);
-
   return true;
 }
 
@@ -140,10 +135,9 @@ bool GcamAeStreamManipulator::ProcessCaptureResult(
 
   base::AutoLock lock(ae_controller_lock_);
   if (result->has_metadata()) {
-    GcamAeConfig::Options options = config_.GetOptions();
     ae_controller_->RecordAeMetadata(result);
 
-    if (options.use_cros_face_detector) {
+    if (options_.use_cros_face_detector) {
       // This is mainly for displaying the face rectangles in camera app for
       // development and debugging.
       ae_controller_->WriteResultFaceRectangles(result);
@@ -175,6 +169,113 @@ bool GcamAeStreamManipulator::Notify(camera3_notify_msg_t* msg) {
 
 bool GcamAeStreamManipulator::Flush() {
   return true;
+}
+
+void GcamAeStreamManipulator::OnOptionsUpdated(const base::Value& json_values) {
+  auto gcam_ae_enable = json_values.FindBoolKey(kGcamAeEnableKey);
+  if (gcam_ae_enable) {
+    options_.gcam_ae_enable = *gcam_ae_enable;
+  }
+  auto ae_frame_interval = json_values.FindIntKey(kAeFrameIntervalKey);
+  if (ae_frame_interval) {
+    options_.ae_frame_interval = *ae_frame_interval;
+  }
+  auto max_hdr_ratio = json_values.FindDictKey(kMaxHdrRatioKey);
+  if (max_hdr_ratio) {
+    base::flat_map<float, float> hdr_ratio_map;
+    for (auto [k, v] : max_hdr_ratio->DictItems()) {
+      double gain;
+      if (!base::StringToDouble(k, &gain)) {
+        LOGF(ERROR) << "Invalid gain value: " << k;
+        continue;
+      }
+      base::Optional<double> ratio = v.GetIfDouble();
+      if (!ratio) {
+        LOGF(ERROR) << "Invalid max_hdr_ratio";
+        continue;
+      }
+      hdr_ratio_map.insert({gain, *ratio});
+    }
+    options_.max_hdr_ratio = std::move(hdr_ratio_map);
+  }
+  auto ae_stats_input_mode = json_values.FindIntKey(kAeStatsInputModeKey);
+  if (ae_stats_input_mode) {
+    if (*ae_stats_input_mode ==
+            static_cast<int>(AeStatsInputMode::kFromVendorAeStats) ||
+        *ae_stats_input_mode ==
+            static_cast<int>(AeStatsInputMode::kFromYuvImage)) {
+      options_.ae_stats_input_mode =
+          static_cast<AeStatsInputMode>(*ae_stats_input_mode);
+    } else {
+      LOGF(ERROR) << "Invalid AE stats input mode: " << *ae_stats_input_mode;
+    }
+  }
+  auto ae_override_method = json_values.FindIntKey(kAeOverrideModeKey);
+  if (ae_override_method) {
+    if (*ae_override_method ==
+            static_cast<int>(AeOverrideMode::kWithExposureCompensation) ||
+        *ae_override_method ==
+            static_cast<int>(AeOverrideMode::kWithManualSensorControl)) {
+      options_.ae_override_mode =
+          static_cast<AeOverrideMode>(*ae_override_method);
+    } else {
+      LOGF(ERROR) << "Invalid AE override method: " << *ae_override_method;
+    }
+  }
+  auto use_cros_face_detector =
+      json_values.FindBoolKey(kFaceDetectionEnableKey);
+  if (use_cros_face_detector) {
+    options_.use_cros_face_detector = *use_cros_face_detector;
+  }
+  auto fd_frame_interval = json_values.FindIntKey(kFdFrameIntervalKey);
+  if (fd_frame_interval) {
+    options_.fd_frame_interval = *fd_frame_interval;
+  }
+  auto exp_comp = json_values.FindDoubleKey(kExposureCompensationKey);
+  if (exp_comp) {
+    options_.exposure_compensation = *exp_comp;
+  }
+  auto log_frame_metadata = json_values.FindBoolKey(kLogFrameMetadataKey);
+  if (log_frame_metadata) {
+    if (options_.log_frame_metadata && !log_frame_metadata.value()) {
+      // Dump frame metadata when metadata logging if turned off.
+      metadata_logger_.DumpMetadata();
+      metadata_logger_.Clear();
+    }
+    options_.log_frame_metadata = *log_frame_metadata;
+  }
+
+  if (VLOG_IS_ON(1)) {
+    VLOGF(1) << "Gcam AE config:"
+             << " gcam_ae_enable=" << options_.gcam_ae_enable
+             << " ae_frame_interval=" << options_.ae_frame_interval
+             << " ae_stats_input_mode="
+             << static_cast<int>(options_.ae_stats_input_mode)
+             << " use_cros_face_detector=" << options_.use_cros_face_detector
+             << " fd_frame_interval=" << options_.fd_frame_interval
+             << " exposure_compensation=" << options_.exposure_compensation
+             << " log_frame_metadata=" << options_.log_frame_metadata;
+    VLOGF(1) << "max_hdr_ratio:";
+    for (auto [gain, ratio] : options_.max_hdr_ratio) {
+      VLOGF(1) << "  " << gain << ": " << ratio;
+    }
+  }
+
+  base::AutoLock lock(ae_controller_lock_);
+  if (ae_controller_) {
+    ae_controller_->SetOptions({
+        .enabled = options_.gcam_ae_enable,
+        .ae_frame_interval = options_.ae_frame_interval,
+        .max_hdr_ratio = options_.max_hdr_ratio,
+        .use_cros_face_detector = options_.use_cros_face_detector,
+        .fd_frame_interval = options_.fd_frame_interval,
+        .ae_stats_input_mode = options_.ae_stats_input_mode,
+        .ae_override_mode = options_.ae_override_mode,
+        .exposure_compensation = options_.exposure_compensation,
+        .metadata_logger =
+            options_.log_frame_metadata ? &metadata_logger_ : nullptr,
+    });
+  }
 }
 
 }  // namespace cros

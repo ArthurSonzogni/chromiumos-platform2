@@ -19,7 +19,6 @@ pkg_config("target_defaults") {
 
 source_set("gcam_ae") {
   sources = [
-    "//camera/features/gcam_ae/gcam_ae_config.cc",
     "//camera/features/gcam_ae/gcam_ae_controller_impl.cc",
     "//camera/features/gcam_ae/gcam_ae_device_adapter.cc",
     "//camera/features/gcam_ae/gcam_ae_stream_manipulator.cc",

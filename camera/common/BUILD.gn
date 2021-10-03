@@ -79,6 +79,7 @@ source_set("base") {
     "//camera/common/future.cc",
     "//camera/common/ipc_util.cc",
     "//camera/common/metadata_logger.cc",
+    "//camera/common/reloadable_config_file.cc",
     "//camera/common/timezone.cc",
     "//camera/common/udev_watcher.cc",
     "//camera/common/utils/camera_config_impl.cc",

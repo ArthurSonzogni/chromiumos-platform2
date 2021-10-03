@@ -31,6 +31,11 @@ constexpr int kDefaultSyncWaitTimeoutMs = 300;
 
 constexpr char kMetadataDumpPath[] = "/run/camera/hdrnet_frame_metadata.json";
 
+constexpr char kDumpBufferKey[] = "dump_buffer";
+constexpr char kHdrNetEnableKey[] = "hdrnet_enable";
+constexpr char kHdrRatioKey[] = "hdr_ratio";
+constexpr char kLogFrameMetadataKey[] = "log_frame_metadata";
+
 }  // namespace
 
 //
@@ -116,8 +121,13 @@ HdrNetStreamManipulator::HdrNetStreamManipulator(
           !hdrnet_processor_factory.is_null()
               ? std::move(hdrnet_processor_factory)
               : base::BindRepeating(HdrNetProcessorImpl::CreateInstance)),
-      still_capture_processor_(std::move(still_capture_processor)) {
+      config_(HdrNetConfig::kDefaultHdrNetConfigFile,
+              HdrNetConfig::kOverrideHdrNetConfigFile),
+      still_capture_processor_(std::move(still_capture_processor)),
+      metadata_logger_({.dump_path = base::FilePath(kMetadataDumpPath)}) {
   CHECK(gpu_thread_.Start());
+  config_.SetCallback(base::BindRepeating(
+      &HdrNetStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
 }
 
 HdrNetStreamManipulator::~HdrNetStreamManipulator() {
@@ -364,18 +374,10 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
     return true;
   }
 
-  HdrNetConfig::Options options = config_.GetOptions();
-  if (options.log_frame_metadata) {
-    if (!metadata_logger_) {
-      metadata_logger_ =
-          std::make_unique<MetadataLogger>(MetadataLogger::Options{
-              .dump_path = base::FilePath(kMetadataDumpPath)});
-    }
-  } else {
-    metadata_logger_ = nullptr;
-  }
   for (auto& context : hdrnet_stream_context_) {
-    context->processor->SetOptions({.metadata_logger = metadata_logger_.get()});
+    context->processor->SetOptions(
+        {.metadata_logger =
+             options_.log_frame_metadata ? &metadata_logger_ : nullptr});
   }
 
   // First, pick the set of HDRnet stream that we will put into the request.
@@ -486,8 +488,7 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
   }
 
   if (result->has_metadata()) {
-    HdrNetConfig::Options options = config_.GetOptions();
-    if (options.hdrnet_enable) {
+    if (options_.hdrnet_enable) {
       // Result metadata may come before the buffers due to partial results.
       for (const auto& context : hdrnet_stream_context_) {
         // TODO(jcliang): Update the LUT textures once and share it with all
@@ -545,7 +546,7 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
     }
 
     // Run the HDRNet pipeline and write to the buffers.
-    HdrNetConfig::Options processor_config = config_.GetOptions();
+    HdrNetConfig::Options processor_config = options_;
     if (result->feature_metadata().hdr_ratio) {
       processor_config.hdr_ratio = *result->feature_metadata().hdr_ratio;
     }
@@ -868,6 +869,38 @@ HdrNetStreamManipulator::GetHdrNetContextFromHdrNetStream(
     return nullptr;
   }
   return iter->second;
+}
+
+void HdrNetStreamManipulator::OnOptionsUpdated(const base::Value& json_values) {
+  auto hdrnet_enable = json_values.FindBoolKey(kHdrNetEnableKey);
+  if (hdrnet_enable) {
+    options_.hdrnet_enable = *hdrnet_enable;
+  }
+  auto hdr_ratio = json_values.FindDoubleKey(kHdrRatioKey);
+  if (hdr_ratio) {
+    options_.hdr_ratio = *hdr_ratio;
+  }
+  auto dump_buffer = json_values.FindBoolKey(kDumpBufferKey);
+  if (dump_buffer) {
+    options_.dump_buffer = *dump_buffer;
+  }
+  auto log_frame_metadata = json_values.FindBoolKey(kLogFrameMetadataKey);
+  if (log_frame_metadata) {
+    if (options_.log_frame_metadata && !log_frame_metadata.value()) {
+      // Dump frame metadata when metadata logging if turned off.
+      metadata_logger_.DumpMetadata();
+      metadata_logger_.Clear();
+    }
+    options_.log_frame_metadata = *log_frame_metadata;
+  }
+
+  if (VLOG_IS_ON(1)) {
+    VLOGF(1) << "HDRnet config:"
+             << " hdrnet_enable=" << options_.hdrnet_enable
+             << " hdr_ratio=" << options_.hdr_ratio
+             << " dump_buffer=" << options_.dump_buffer
+             << " log_frame_metadata=" << options_.log_frame_metadata;
+  }
 }
 
 }  // namespace cros

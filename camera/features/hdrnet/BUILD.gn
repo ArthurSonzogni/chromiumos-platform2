@@ -28,7 +28,6 @@ if (use.ipu6 || use.ipu6ep) {
 
 source_set("hdrnet") {
   sources = [
-    "//camera/features/hdrnet/hdrnet_config.cc",
     "//camera/features/hdrnet/hdrnet_processor_device_adapter.cc",
     "//camera/features/hdrnet/hdrnet_processor_impl.cc",
     "//camera/features/hdrnet/hdrnet_stream_manipulator.cc",

@@ -18,6 +18,7 @@
 #include <base/files/scoped_file.h>
 #include <camera/camera_metadata.h>
 
+#include "common/reloadable_config_file.h"
 #include "common/still_capture_processor.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_thread.h"
@@ -172,9 +173,12 @@ class HdrNetStreamManipulator : public StreamManipulator {
   HdrNetStreamContext* GetHdrNetContextFromHdrNetStream(
       camera3_stream_t* hdrnet);
 
+  void OnOptionsUpdated(const base::Value& json_values);
+
   CameraThread gpu_thread_;
   HdrNetProcessor::Factory hdrnet_processor_factory_;
-  HdrNetConfig config_;
+  ReloadableConfigFile config_;
+  HdrNetConfig::Options options_;
   android::CameraMetadata static_info_;
 
   std::unique_ptr<EglContext> egl_context_;
@@ -190,7 +194,7 @@ class HdrNetStreamManipulator : public StreamManipulator {
   std::map<camera3_stream_t*, HdrNetStreamContext*> result_stream_mapping_;
 
   // Metadata logger for tests and debugging.
-  std::unique_ptr<MetadataLogger> metadata_logger_;
+  MetadataLogger metadata_logger_;
 };
 
 }  // namespace cros
