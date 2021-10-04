@@ -14,6 +14,7 @@ namespace concierge {
 
 constexpr int64_t KIB = 1024;
 constexpr int64_t MIB = 1024 * 1024;
+constexpr int64_t PAGE_BYTES = 4096;
 
 struct BalloonStats {
   int64_t available_memory;
@@ -85,6 +86,11 @@ class BalanceAvailableBalloonPolicy : public BalloonPolicyInterface {
       const BalanceAvailableBalloonPolicy&) = delete;
 };
 
+struct ZoneInfoStats {
+  int64_t sum_low;
+  int64_t totalreserve;
+};
+
 class LimitCacheBalloonPolicy : public BalloonPolicyInterface {
  public:
   struct Params {
@@ -102,7 +108,7 @@ class LimitCacheBalloonPolicy : public BalloonPolicyInterface {
   };
   LimitCacheBalloonPolicy(const MemoryMargins& margins,
                           int64_t host_lwm,
-                          int64_t guest_lwm,
+                          ZoneInfoStats guest_zoneinfo,
                           const Params& params,
                           const std::string& vm);
 
@@ -119,11 +125,11 @@ class LimitCacheBalloonPolicy : public BalloonPolicyInterface {
 
   // Expose the minimum target for guest free memory for testing. The balloon
   // will be sized so that guest free memory is not below this amount.
-  int64_t MinFree() { return guest_lwm_ - MIB; }
+  int64_t MinFree() { return guest_zoneinfo_.sum_low - MIB; }
 
   // Expose the maximum target for guest free memory for testing. The balloon
   // will be sized so that guest free memory is not above this amount.
-  int64_t MaxFree() { return guest_lwm_ * 3; }
+  int64_t MaxFree();
 
  private:
   // ChromeOS's memory margins.
@@ -132,8 +138,8 @@ class LimitCacheBalloonPolicy : public BalloonPolicyInterface {
   // The sum of all the host's zone's low memory watermarks.
   const int64_t host_lwm_;
 
-  // The sum of all the guest's zone's low memory watermarks.
-  const int64_t guest_lwm_;
+  // Stats from the guest's zoneinfo.
+  const ZoneInfoStats guest_zoneinfo_;
 
   // Tunable parameters of the policy.
   const Params params_;
@@ -149,6 +155,10 @@ base::Optional<uint64_t> HostZoneLowSum(bool log_on_error);
 // Computes the sum of all the zone low watermarks from the contents of
 // /proc/zoneinfo.
 uint64_t ZoneLowSumFromZoneInfo(const std::string& zoneinfo);
+
+// Computes statistics so that a balloon policy can know when Linux is close to
+// reclaiming memory, or Android's LMKD is close to killing Apps.
+base::Optional<ZoneInfoStats> ParseZoneInfoStats(const std::string& zoneinfo);
 
 }  // namespace concierge
 }  // namespace vm_tools

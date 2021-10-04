@@ -440,7 +440,7 @@ bool ArcVm::DetachUsbDevice(uint8_t port, UsbControlResponse* response) {
 
 namespace {
 
-base::Optional<uint64_t> ArcVmZoneLowSum(uint32_t cid, bool log_on_error) {
+base::Optional<ZoneInfoStats> ArcVmZoneStats(uint32_t cid, bool log_on_error) {
   brillo::ProcessImpl vsh;
   vsh.AddArg("/usr/bin/vsh");
   vsh.AddArg(base::StringPrintf("--cid=%u", cid));
@@ -459,14 +459,7 @@ base::Optional<uint64_t> ArcVmZoneLowSum(uint32_t cid, bool log_on_error) {
   }
 
   std::string zoneinfo = vsh.GetOutputString(STDOUT_FILENO);
-  const uint64_t zone_low_sum = ZoneLowSumFromZoneInfo(zoneinfo);
-  if (zone_low_sum == 0) {
-    if (log_on_error) {
-      LOG(ERROR) << "Failed to find any non-zero low watermark lines";
-    }
-    return base::nullopt;
-  }
-  return base::Optional<uint64_t>(zone_low_sum);
+  return ParseZoneInfoStats(zoneinfo);
 }
 
 }  // namespace
@@ -477,11 +470,12 @@ void ArcVm::InitializeBalloonPolicy(const MemoryMargins& margins,
   if (features_.balloon_policy_params) {
     // Only log on error if this is our last attempt. We expect some failures
     // early in boot, so we shouldn't spam the log with them.
-    auto guest_lwm = ArcVmZoneLowSum(vsock_cid_, balloon_init_attempts_ == 0);
+    auto guest_stats = ArcVmZoneStats(vsock_cid_, balloon_init_attempts_ == 0);
     auto host_lwm = HostZoneLowSum(balloon_init_attempts_ == 0);
-    if (guest_lwm && host_lwm) {
+    if (guest_stats && host_lwm) {
       balloon_policy_ = std::make_unique<LimitCacheBalloonPolicy>(
-          margins, *host_lwm, *guest_lwm, *features_.balloon_policy_params, vm);
+          margins, *host_lwm, *guest_stats, *features_.balloon_policy_params,
+          vm);
       return;
     } else if (balloon_init_attempts_ > 0) {
       // We still have attempts left. Leave balloon_policy_ uninitialized, and

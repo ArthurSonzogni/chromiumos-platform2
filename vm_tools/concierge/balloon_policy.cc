@@ -11,12 +11,21 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/process/process_metrics.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
 
 namespace vm_tools {
 namespace concierge {
+
+// LMKD's minfree level for killing the lowest priority apps. See
+// mOomMinFreeHigh in Android's
+// frameworks/base/services/core/java/com/android/server/am/ProcessList.java
+// NB: 64-bit systems multiply the last entry by 1.75, and the second last by
+// 1.5.
+constexpr int64_t MAX_OOM_MIN_FREE = 322560 * KIB;
 
 BalanceAvailableBalloonPolicy::BalanceAvailableBalloonPolicy(
     int64_t critical_host_available,
@@ -111,12 +120,12 @@ int64_t BalanceAvailableBalloonPolicy::ComputeBalloonDelta(
 
 LimitCacheBalloonPolicy::LimitCacheBalloonPolicy(const MemoryMargins& margins,
                                                  int64_t host_lwm,
-                                                 int64_t guest_lwm,
+                                                 ZoneInfoStats guest_zoneinfo,
                                                  const Params& params,
                                                  const std::string& vm)
     : margins_(margins),
       host_lwm_(host_lwm),
-      guest_lwm_(guest_lwm),
+      guest_zoneinfo_(guest_zoneinfo),
       params_(params) {
   LOG(INFO) << "BalloonInit: { "
             << "\"type\": \"LimitCacheBalloonPolicy\","
@@ -124,7 +133,8 @@ LimitCacheBalloonPolicy::LimitCacheBalloonPolicy(const MemoryMargins& margins,
             << "\"moderate_margin\": " << margins.moderate << ","
             << "\"critical_margin\": " << margins.critical << ","
             << "\"host_lwm\": " << host_lwm << ","
-            << "\"guest_lwm\": " << guest_lwm << ","
+            << "\"guest_lwm\": " << guest_zoneinfo.sum_low << ","
+            << "\"guest_totalreserve\": " << guest_zoneinfo.totalreserve << ","
             << "\"reclaim_target_cache\": " << params.reclaim_target_cache
             << ","
             << "\"critical_target_cache\": " << params.critical_target_cache
@@ -160,6 +170,7 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
       stats.shared_memory + stats.unevictable_memory;
   const int64_t guest_cache = std::max(stats.disk_caches - guest_unreclaimable,
                                        static_cast<int64_t>(0));
+  const int64_t guest_lwm = guest_zoneinfo_.sum_low;
   const int64_t critical_margin = margins_.critical;
   const int64_t moderate_margin = margins_.moderate;
   int64_t target_free = max_free;
@@ -169,7 +180,7 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
 
   if (params_.reclaim_target_cache > 0) {
     const int64_t reclaim_target_free =
-        std::max(guest_lwm_ + host_free - host_lwm_, min_free);
+        std::max(guest_lwm + host_free - host_lwm_, min_free);
     if (reclaim_target_free < max_free &&
         guest_cache > params_.reclaim_target_cache) {
       // We are close enough to reclaiming in the host that we should restrict
@@ -181,7 +192,7 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
   }
   if (params_.critical_target_cache > 0) {
     const int64_t critical_target_free =
-        std::max(guest_lwm_ + host_available - critical_margin, min_free);
+        std::max(guest_lwm + host_available - critical_margin, min_free);
     if (critical_target_free < max_free &&
         guest_cache > params_.critical_target_cache) {
       // We are close enough to discarding tabs in Chrome that we should
@@ -193,7 +204,7 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
   }
   if (params_.moderate_target_cache > 0) {
     const int64_t moderate_target_free =
-        std::max(guest_lwm_ + host_available - moderate_margin, min_free);
+        std::max(guest_lwm + host_available - moderate_margin, min_free);
     if (moderate_target_free < max_free &&
         guest_cache > params_.moderate_target_cache) {
       // We are close enough to per-process reclaim in Chrome that we should
@@ -236,17 +247,8 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
   return delta;
 }
 
-uint64_t ZoneLowSumFromZoneInfo(const std::string& zoneinfo) {
-  auto lines = base::SplitString(zoneinfo, "\n", base::TRIM_WHITESPACE,
-                                 base::SPLIT_WANT_NONEMPTY);
-  uint64_t zone_low_sum = 0;
-  for (auto line : lines) {
-    uint64_t zone_low;
-    if (1 == sscanf(line.data(), "low %" SCNd64, &zone_low)) {
-      zone_low_sum += zone_low;
-    }
-  }
-  return zone_low_sum * 4096;
+int64_t LimitCacheBalloonPolicy::MaxFree() {
+  return guest_zoneinfo_.totalreserve + MAX_OOM_MIN_FREE;
 }
 
 base::Optional<uint64_t> HostZoneLowSum(bool log_on_error) {
@@ -259,14 +261,82 @@ base::Optional<uint64_t> HostZoneLowSum(bool log_on_error) {
     }
     return base::nullopt;
   }
-  const uint64_t zone_low_sum = ZoneLowSumFromZoneInfo(zoneinfo);
-  if (zone_low_sum == 0) {
-    if (log_on_error) {
-      LOG(ERROR) << "Failed to find any non-zero low watermark lines";
-    }
+  auto stats = ParseZoneInfoStats(zoneinfo);
+  if (!stats) {
     return base::nullopt;
   }
-  return base::Optional<uint64_t>(zone_low_sum);
+  return base::Optional<uint64_t>(stats->sum_low);
+}
+
+base::Optional<ZoneInfoStats> ParseZoneInfoStats(const std::string& zoneinfo) {
+  auto lines = base::SplitStringPiece(zoneinfo, "\n", base::TRIM_WHITESPACE,
+                                      base::SPLIT_WANT_NONEMPTY);
+  ZoneInfoStats stats = {0, 0};
+  int64_t high = -1;
+  for (auto line : lines) {
+    if (base::StartsWith(line, "low ")) {
+      auto cols = base::SplitStringPiece(line, " ", base::TRIM_WHITESPACE,
+                                         base::SPLIT_WANT_NONEMPTY);
+      int64_t low;
+      if (cols.size() != 2 || !base::StringToInt64(cols[1], &low)) {
+        LOG(ERROR) << "Failed to parse low watermark line \"" << line << "\"";
+        return base::nullopt;
+      }
+      stats.sum_low += low * PAGE_BYTES;
+    } else if (base::StartsWith(line, "high ")) {
+      if (high != -1) {
+        LOG(ERROR) << "Found zone protection before any high watermark line";
+        return base::nullopt;
+      }
+      auto cols = base::SplitStringPiece(line, " ", base::TRIM_WHITESPACE,
+                                         base::SPLIT_WANT_NONEMPTY);
+      if (cols.size() != 2 || !base::StringToInt64(cols[1], &high)) {
+        LOG(ERROR) << "Failed to parse high watermark line \"" << line << "\"";
+        return base::nullopt;
+      }
+      // High is saved until we see a "protection" line.
+    } else if (base::StartsWith(line, "protection: (")) {
+      if (high == -1) {
+        LOG(ERROR) << "Found zone protection before any high watermark line";
+        return base::nullopt;
+      }
+      // NB: we only care about page counts, so to simplify indexing into
+      // columns, add all the letters of "protection" to the delimiters.
+      auto cols =
+          base::SplitStringPiece(line, "protecin: (,)", base::TRIM_WHITESPACE,
+                                 base::SPLIT_WANT_NONEMPTY);
+      int64_t max_protection = 0;
+      for (auto col : cols) {
+        int64_t protection;
+        if (!base::StringToInt64(col, &protection)) {
+          LOG(ERROR) << "Failed to parse protection \"" << col
+                     << "\" in line \"" << line << "\"";
+          return base::nullopt;
+        }
+        if (max_protection < protection) {
+          max_protection = protection;
+        }
+      }
+      // Zone watermarks can be boosted by up to 50%, so to be conservative,
+      // totalreserve should use the maximum zone size.
+      high = high + (high >> 1);
+      stats.totalreserve += (max_protection + high) * PAGE_BYTES;
+      high = -1;
+    }
+  }
+  if (high != -1) {
+    LOG(ERROR) << "Zone high watermark without a following protection line";
+    return base::nullopt;
+  }
+  if (stats.sum_low == 0) {
+    LOG(ERROR) << "Failed to find any non-zero zone low watermarks";
+    return base::nullopt;
+  }
+  if (stats.totalreserve == 0) {
+    LOG(ERROR) << "Failed to find any non-zero zone high watermarks";
+    return base::nullopt;
+  }
+  return base::Optional<ZoneInfoStats>(stats);
 }
 
 }  // namespace concierge
