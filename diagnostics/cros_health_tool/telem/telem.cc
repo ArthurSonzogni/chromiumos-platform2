@@ -118,6 +118,8 @@ std::string EnumToString(ProcessState state) {
 
 std::string EnumToString(ErrorType type) {
   switch (type) {
+    case ErrorType::kUnknown:
+      return "Unknown Error";
     case ErrorType::kFileReadError:
       return "File Read Error";
     case ErrorType::kParseError:
