@@ -457,6 +457,10 @@ void AddSystemFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("scheduler_configuration_performance"))
     builder->AddArg("--scheduler-configuration-default=performance");
 
+  // Enable runtime TPM selection. This UseFlag is set only on reven board.
+  if (builder->UseFlagIsSet("tpm_dynamic"))
+    builder->AddArg("--tpm-is-dynamic");
+
   SetUpOsInstallFlags(builder);
   SetUpSchedulerFlags(builder, cros_config);
 }
