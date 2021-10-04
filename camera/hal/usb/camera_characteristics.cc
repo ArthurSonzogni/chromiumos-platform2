@@ -74,7 +74,6 @@ uint32_t ParseQuirks(const std::string& value) {
           {"report_least_fps_ranges", kQuirkReportLeastFpsRanges},
           {"v1device", kQuirkV1Device},
           {"android_external", kQuirkAndroidExternal},
-          {"android_legacy", kQuirkAndroidLegacy},
       });
   std::vector<std::string> names = base::SplitString(
       value, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
@@ -100,7 +99,7 @@ void SetEntry(const std::string& key,
     std::istringstream(value) >> std::boolalpha >>
         info->constant_framerate_unsupported;
   } else if (key == "quirks") {
-    info->quirks |= ParseQuirks(value);
+    info->quirks = ParseQuirks(value);
   } else if (key == "lens_facing") {
     info->lens_facing = static_cast<LensFacing>(stoi(value));
   } else if (key == "sensor_orientation") {

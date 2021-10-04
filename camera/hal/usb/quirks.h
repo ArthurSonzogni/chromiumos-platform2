@@ -23,8 +23,7 @@ enum : uint32_t {
   kQuirkV1Device = 1 << 4,
   kQuirkUserSpaceTimestamp = 1 << 5,
   kQuirkAndroidExternal = 1 << 6,
-  kQuirkAndroidLegacy = 1 << 7,
-  kQuirkPreferLargePreviewResolution = 1 << 8,
+  kQuirkPreferLargePreviewResolution = 1 << 7,
 };
 
 uint32_t GetQuirks(const std::string& vid, const std::string& pid);

@@ -152,11 +152,6 @@ ScopedCameraMetadata StaticMetadataForAndroid(
         ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL,
         std::vector<uint8_t>{ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_EXTERNAL});
   }
-  if (device_info.quirks & kQuirkAndroidLegacy) {
-    data.update(
-        ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL,
-        std::vector<uint8_t>{ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY});
-  }
 
   std::unique_ptr<CameraConfig> camera_config =
       CameraConfig::Create(constants::kCrosCameraConfigPathString);
