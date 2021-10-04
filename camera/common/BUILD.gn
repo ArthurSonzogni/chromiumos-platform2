@@ -252,6 +252,7 @@ shared_library("libcros_camera") {
 
   if (use.camera_feature_hdrnet) {
     deps += [
+      "//camera/features/face_detection",
       "//camera/features/gcam_ae",
       "//camera/features/hdrnet",
     ]

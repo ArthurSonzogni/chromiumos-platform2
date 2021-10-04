@@ -14,7 +14,6 @@
 #include <vector>
 
 #include <base/sequence_checker.h>
-#include <cros-camera/camera_face_detection.h>
 
 #include "common/metadata_logger.h"
 #include "cros-camera/common_types.h"
@@ -52,7 +51,6 @@ class GcamAeControllerImpl : public GcamAeController {
   // Restores the settings to what the client originally requested.
   void RestoreClientRequestSettings(Camera3CaptureDescriptor* result);
 
-  void SetFaceDetectionMode(Camera3CaptureDescriptor* request);
   void SetExposureCompensation(Camera3CaptureDescriptor* request);
   void SetManualSensorControls(Camera3CaptureDescriptor* request);
 
@@ -79,14 +77,6 @@ class GcamAeControllerImpl : public GcamAeController {
   float ae_compensation_step_;
   Range<float> ae_compensation_range_;
   Size active_array_dimension_;
-
-  // Face detector.
-  std::unique_ptr<FaceDetector> face_detector_;
-  bool use_cros_face_detector_ = false;
-  int fd_frame_interval_ = 10;
-  // NormalizedRect is defined in the gcam_ae.h header file provided by
-  // cros-camera-libhdr.
-  std::vector<NormalizedRect> latest_faces_;
 
   // Ring buffer for the per-frame AE metadata.
   static constexpr size_t kAeFrameInfoRingBufferSize = 12;

@@ -17,6 +17,7 @@
 #include <hardware/camera3.h>
 
 #include "cros-camera/common.h"
+#include "cros-camera/common_types.h"
 #include "cros-camera/export.h"
 
 namespace cros {
@@ -41,6 +42,12 @@ struct FeatureMetadata {
   // |hdr_ratio| produced by GcamAeStreamManipulator and consumed by
   // HdrNetStreamManipulator for HDRnet output frame rendering.
   base::Optional<float> hdr_ratio;
+
+  // The face rectangles detected by the FaceDetectionStreamManipulator when
+  // CrOS face detector is enabled. The coordinates of the rectangles are
+  // normalized with respect to the active sensor array size. The face ROIs are
+  // consumed by GcamAeStreamManipulator as input metadata.
+  base::Optional<std::vector<Rect<float>>> faces;
 };
 
 // A helper class to make it easy to modify camera3_stream_configuration_t.

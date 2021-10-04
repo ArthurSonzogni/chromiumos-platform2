@@ -28,8 +28,6 @@ constexpr char kAeFrameIntervalKey[] = "ae_frame_interval";
 constexpr char kAeOverrideModeKey[] = "ae_override_mode";
 constexpr char kAeStatsInputModeKey[] = "ae_stats_input_mode";
 constexpr char kExposureCompensationKey[] = "exp_comp";
-constexpr char kFaceDetectionEnableKey[] = "face_detection_enable";
-constexpr char kFdFrameIntervalKey[] = "fd_frame_interval";
 constexpr char kGcamAeEnableKey[] = "gcam_ae_enable";
 constexpr char kLogFrameMetadataKey[] = "log_frame_metadata";
 constexpr char kMaxHdrRatioKey[] = "max_hdr_ratio";
@@ -217,15 +215,6 @@ void GcamAeStreamManipulator::OnOptionsUpdated(const base::Value& json_values) {
       LOGF(ERROR) << "Invalid AE override method: " << *ae_override_method;
     }
   }
-  auto use_cros_face_detector =
-      json_values.FindBoolKey(kFaceDetectionEnableKey);
-  if (use_cros_face_detector) {
-    options_.use_cros_face_detector = *use_cros_face_detector;
-  }
-  auto fd_frame_interval = json_values.FindIntKey(kFdFrameIntervalKey);
-  if (fd_frame_interval) {
-    options_.fd_frame_interval = *fd_frame_interval;
-  }
   auto exp_comp = json_values.FindDoubleKey(kExposureCompensationKey);
   if (exp_comp) {
     options_.exposure_compensation = *exp_comp;
@@ -246,8 +235,6 @@ void GcamAeStreamManipulator::OnOptionsUpdated(const base::Value& json_values) {
              << " ae_frame_interval=" << options_.ae_frame_interval
              << " ae_stats_input_mode="
              << static_cast<int>(options_.ae_stats_input_mode)
-             << " use_cros_face_detector=" << options_.use_cros_face_detector
-             << " fd_frame_interval=" << options_.fd_frame_interval
              << " exposure_compensation=" << options_.exposure_compensation
              << " log_frame_metadata=" << options_.log_frame_metadata;
     VLOGF(1) << "max_hdr_ratio:";
@@ -262,8 +249,6 @@ void GcamAeStreamManipulator::OnOptionsUpdated(const base::Value& json_values) {
         .enabled = options_.gcam_ae_enable,
         .ae_frame_interval = options_.ae_frame_interval,
         .max_hdr_ratio = options_.max_hdr_ratio,
-        .use_cros_face_detector = options_.use_cros_face_detector,
-        .fd_frame_interval = options_.fd_frame_interval,
         .ae_stats_input_mode = options_.ae_stats_input_mode,
         .ae_override_mode = options_.ae_override_mode,
         .exposure_compensation = options_.exposure_compensation,

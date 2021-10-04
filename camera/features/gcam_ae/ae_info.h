@@ -76,7 +76,6 @@ enum class AeOverrideMode {
 struct AeFrameInfo {
   int frame_number = -1;
   AeStatsInputMode ae_stats_input_mode = AeStatsInputMode::kFromVendorAeStats;
-  bool use_cros_face_detector = true;
   Size active_array_dimension;
 
   float target_tet = 0.0f;
@@ -90,14 +89,12 @@ struct AeFrameInfo {
   float exposure_time_ms = 0.0f;
   int ae_compensation = 0;
   float estimated_sensor_sensitivity = 0.0f;
-  uint8_t face_detection_mode = ANDROID_STATISTICS_FACE_DETECT_MODE_OFF;
   base::Optional<std::vector<NormalizedRect>> faces;
 
   // The capture request settings the camera client requested.
   struct {
     base::Optional<uint8_t> ae_mode;
     base::Optional<int32_t> ae_exposure_compensation;
-    base::Optional<uint8_t> face_detection_mode;
   } client_request_settings;
 
   // The AWB gains and color correction matrix that will be applied to the

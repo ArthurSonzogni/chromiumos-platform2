@@ -50,13 +50,6 @@ class GcamAeStreamManipulator : public StreamManipulator {
     // Controls how GcamAeController overrides camera HAL's AE decision.
     AeOverrideMode ae_override_mode = AeOverrideMode::kWithManualSensorControl;
 
-    // Uses CrOS face detector for face detection instead of the vendor one.
-    bool use_cros_face_detector = true;
-
-    // Controls the duty cycle of CrOS face detector. The face detector will run
-    // every |fd_frame_interval| frames.
-    int fd_frame_interval = 10;
-
     // The exposure compensation in stops set to every capture request.
     float exposure_compensation = 0.0f;
 

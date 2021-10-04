@@ -42,6 +42,16 @@ float LookUpHdrRatio(const base::flat_map<float, float>& max_hdr_ratio,
   return max_hdr_ratio.rbegin()->second;
 }
 
+std::vector<NormalizedRect> RectToNormalizedRect(
+    const std::vector<Rect<float>>& faces) {
+  std::vector<NormalizedRect> result;
+  for (const auto& f : faces) {
+    result.push_back(NormalizedRect{
+        .x0 = f.left, .x1 = f.right(), .y0 = f.top, .y1 = f.bottom()});
+  }
+  return result;
+}
+
 }  // namespace
 
 // static
@@ -54,8 +64,7 @@ std::unique_ptr<GcamAeController> GcamAeControllerImpl::CreateInstance(
 GcamAeControllerImpl::GcamAeControllerImpl(
     const camera_metadata_t* static_info,
     std::unique_ptr<GcamAeDeviceAdapter> ae_device_adapter)
-    : face_detector_(FaceDetector::Create()),
-      ae_device_adapter_(std::move(ae_device_adapter)) {
+    : ae_device_adapter_(std::move(ae_device_adapter)) {
   base::span<const int32_t> sensitivity_range = GetRoMetadataAsSpan<int32_t>(
       static_info, ANDROID_SENSOR_INFO_SENSITIVITY_RANGE);
   base::Optional<int32_t> max_analog_sensitivity = GetRoMetadata<int32_t>(
@@ -106,51 +115,15 @@ GcamAeControllerImpl::GcamAeControllerImpl(
 void GcamAeControllerImpl::RecordYuvBuffer(int frame_number,
                                            buffer_handle_t buffer,
                                            base::ScopedFD acquire_fence) {
+  if (ae_stats_input_mode_ != AeStatsInputMode::kFromYuvImage) {
+    return;
+  }
   AeFrameInfo* frame_info = GetAeFrameInfoEntry(frame_number);
   if (!frame_info) {
     return;
   }
-
-  // TODO(jcliang): Face detection doesn't work too well on the under-exposed
-  // frames in dark scenes. We should perhaps run face detection on the
-  // HDRnet-rendered frames.
-  if (frame_info->use_cros_face_detector) {
-    if (ShouldRunFd(frame_number)) {
-      std::vector<human_sensing::CrosFace> facessd_faces;
-      auto ret = face_detector_->Detect(buffer, &facessd_faces,
-                                        active_array_dimension_);
-      std::vector<NormalizedRect> faces;
-      if (ret != FaceDetectResult::kDetectOk) {
-        LOGF(WARNING) << "Cannot run face detection";
-      } else {
-        for (auto& f : facessd_faces) {
-          faces.push_back(NormalizedRect{
-              .x0 =
-                  std::clamp(f.bounding_box.x1 / active_array_dimension_.width,
-                             0.0f, 1.0f),
-              .x1 =
-                  std::clamp(f.bounding_box.x2 / active_array_dimension_.width,
-                             0.0f, 1.0f),
-              .y0 =
-                  std::clamp(f.bounding_box.y1 / active_array_dimension_.height,
-                             0.0f, 1.0f),
-              .y1 =
-                  std::clamp(f.bounding_box.y2 / active_array_dimension_.height,
-                             0.0f, 1.0f)});
-        }
-      }
-      latest_faces_ = std::move(faces);
-    }
-    frame_info->faces =
-        base::make_optional<std::vector<NormalizedRect>>(latest_faces_);
-  }
-
-  if ((ae_stats_input_mode_ == AeStatsInputMode::kFromYuvImage) &&
-      ShouldRunAe(frame_number)) {
-    frame_info->yuv_buffer = buffer;
-    frame_info->acquire_fence = std::move(acquire_fence);
-  }
-
+  frame_info->yuv_buffer = buffer;
+  frame_info->acquire_fence = std::move(acquire_fence);
   MaybeRunAE(frame_number);
 }
 
@@ -191,12 +164,6 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
         << "Invalid AE compensation value: " << ae_compensation[0];
     return;
   }
-  base::span<const uint8_t> face_detect_mode =
-      result->GetMetadata<uint8_t>(ANDROID_STATISTICS_FACE_DETECT_MODE);
-  if (face_detect_mode.empty()) {
-    LOGF(WARNING) << "Cannot get ANDROID_STATISTICS_FACE_DETECT_MODE";
-    return;
-  }
 
   float total_gain =
       base::checked_cast<float>(sensitivity[0]) / sensitivity_range_.lower();
@@ -211,7 +178,6 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
       (base::checked_cast<float>(sensitivity_range_.lower()) /
        (aperture[0] * aperture[0]));
   frame_info->ae_compensation = ae_compensation[0];
-  frame_info->face_detection_mode = face_detect_mode[0];
 
   if (metadata_logger_) {
     metadata_logger_->Log(result->frame_number(), kTagCaptureExposureTimeNs,
@@ -232,7 +198,7 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
   }
 
   // Face info.
-  if (!frame_info->use_cros_face_detector) {
+  if (!frame_info->faces) {
     base::span<const int32_t> face_rectangles =
         result->GetMetadata<int32_t>(ANDROID_STATISTICS_FACE_RECTANGLES);
     std::vector<NormalizedRect> faces;
@@ -256,10 +222,21 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
     }
     frame_info->faces =
         base::make_optional<std::vector<NormalizedRect>>(std::move(faces));
-    if (metadata_logger_) {
-      metadata_logger_->Log(result->frame_number(), kTagFaceRectangles,
-                            face_rectangles);
+  }
+  if (metadata_logger_) {
+    const int num_faces = frame_info->faces.value().size();
+    std::vector<float> flattened_faces(num_faces * 4);
+    for (int i = 0; i < num_faces; ++i) {
+      const NormalizedRect& f = frame_info->faces.value()[i];
+      const int base = i * 4;
+      flattened_faces[base] = f.x0;
+      flattened_faces[base + 1] = f.y0;
+      flattened_faces[base + 2] = f.x1;
+      flattened_faces[base + 3] = f.y1;
     }
+    metadata_logger_->Log(result->frame_number(), kTagFaceRectangles,
+                          base::span<const float>(flattened_faces.data(),
+                                                  flattened_faces.size()));
   }
 
   // AWB info.
@@ -336,19 +313,6 @@ void GcamAeControllerImpl::SetOptions(const Options& options) {
     max_hdr_ratio_ = std::move(*options.max_hdr_ratio);
   }
 
-  if (options.use_cros_face_detector) {
-    use_cros_face_detector_ = *options.use_cros_face_detector;
-  }
-
-  if (options.fd_frame_interval) {
-    const int fd_frame_interval = *options.fd_frame_interval;
-    if (fd_frame_interval > 0) {
-      fd_frame_interval_ = fd_frame_interval;
-    } else {
-      LOGF(ERROR) << "Invalid FD frame interval: " << fd_frame_interval;
-    }
-  }
-
   if (options.ae_stats_input_mode) {
     ae_stats_input_mode_ = *options.ae_stats_input_mode;
   }
@@ -409,12 +373,17 @@ void GcamAeControllerImpl::SetRequestAeParameters(
     frame_info->target_fps_range = {fps_range[0], fps_range[1]};
   }
 
+  // If the FaceDetectionStreamManipulator has set the face ROIs, use them for
+  // Gcam AE instead of the ones from the vendor camera HAL.
+  if (request->feature_metadata().faces) {
+    frame_info->faces =
+        RectToNormalizedRect(*request->feature_metadata().faces);
+  }
+
   if (!ae_device_adapter_->WriteRequestParameters(request)) {
     LOGFID(ERROR, request->frame_number()) << "Cannot set request parameters";
     return;
   }
-
-  SetFaceDetectionMode(request);
 
   switch (ae_override_mode_) {
     case AeOverrideMode::kWithExposureCompensation:
@@ -439,23 +408,6 @@ void GcamAeControllerImpl::SetResultAeMetadata(
     return;
   }
 
-  if (*frame_info->client_request_settings.face_detection_mode !=
-          ANDROID_STATISTICS_FACE_DETECT_MODE_OFF &&
-      frame_info->use_cros_face_detector) {
-    // This is mainly for displaying the face rectangles in camera app for
-    // development and debugging.
-    std::vector<int32_t> face_coordinates;
-    for (const auto& f : latest_faces_) {
-      face_coordinates.push_back(f.x0 * active_array_dimension_.width);
-      face_coordinates.push_back(f.y0 * active_array_dimension_.height);
-      face_coordinates.push_back(f.x1 * active_array_dimension_.width);
-      face_coordinates.push_back(f.y1 * active_array_dimension_.height);
-    }
-    if (!result->UpdateMetadata<int32_t>(ANDROID_STATISTICS_FACE_RECTANGLES,
-                                         face_coordinates)) {
-      LOGF(ERROR) << "Cannot set ANDROID_STATISTICS_FACE_RECTANGLES";
-    }
-  }
   if (frame_info->client_request_settings.ae_mode !=
           ANDROID_CONTROL_AE_MODE_OFF &&
       ae_override_mode_ == AeOverrideMode::kWithManualSensorControl) {
@@ -545,17 +497,6 @@ void GcamAeControllerImpl::RecordClientRequestSettings(
         << static_cast<int>(
                *frame_info->client_request_settings.ae_exposure_compensation);
   }
-
-  base::span<const uint8_t> face_detect_mode =
-      request->GetMetadata<uint8_t>(ANDROID_STATISTICS_FACE_DETECT_MODE);
-  if (!face_detect_mode.empty()) {
-    frame_info->client_request_settings.face_detection_mode =
-        face_detect_mode[0];
-    VLOGFID(2, request->frame_number())
-        << "Client requested ANDROID_STATISTICS_FACE_DETECT_MODE="
-        << static_cast<int>(
-               *frame_info->client_request_settings.face_detection_mode);
-  }
 }
 
 void GcamAeControllerImpl::RestoreClientRequestSettings(
@@ -587,38 +528,6 @@ void GcamAeControllerImpl::RestoreClientRequestSettings(
           << "Restored ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION="
           << static_cast<int>(
                  *frame_info->client_request_settings.ae_exposure_compensation);
-    }
-  }
-
-  if (frame_info->client_request_settings.face_detection_mode) {
-    std::array<uint8_t, 1> face_detect_mode = {
-        *frame_info->client_request_settings.face_detection_mode};
-    if (!result->UpdateMetadata<uint8_t>(ANDROID_STATISTICS_FACE_DETECT_MODE,
-                                         face_detect_mode)) {
-      LOGF(ERROR) << "Cannot restore ANDROID_STATISTICS_FACE_DETECT_MODE";
-    } else {
-      VLOGFID(2, result->frame_number())
-          << "Restored ANDROID_STATISTICS_FACE_DETECT_MODE="
-          << static_cast<int>(
-                 *frame_info->client_request_settings.face_detection_mode);
-    }
-  }
-}
-
-void GcamAeControllerImpl::SetFaceDetectionMode(
-    Camera3CaptureDescriptor* request) {
-  AeFrameInfo* frame_info = GetAeFrameInfoEntry(request->frame_number());
-
-  if (*frame_info->client_request_settings.face_detection_mode !=
-          ANDROID_STATISTICS_FACE_DETECT_MODE_OFF &&
-      frame_info->use_cros_face_detector) {
-    // Turn off the vendor camera HAL's face detection in favor of CrOS face
-    // detector.
-    std::array<uint8_t, 1> face_detect_mode = {
-        ANDROID_STATISTICS_FACE_DETECT_MODE_OFF};
-    if (!request->UpdateMetadata<uint8_t>(ANDROID_STATISTICS_FACE_DETECT_MODE,
-                                          face_detect_mode)) {
-      LOGF(ERROR) << "Cannot set ANDROID_STATISTICS_FACE_DETECT_MODE to OFF";
     }
   }
 }
@@ -685,10 +594,6 @@ bool GcamAeControllerImpl::ShouldRunAe(int frame_number) const {
   return enabled_ && (frame_number % ae_frame_interval_ == 0);
 }
 
-bool GcamAeControllerImpl::ShouldRunFd(int frame_number) const {
-  return enabled_ && (frame_number % fd_frame_interval_ == 0);
-}
-
 AeFrameInfo* GcamAeControllerImpl::CreateAeFrameInfoEntry(int frame_number) {
   int index = frame_number % frame_info_.size();
   AeFrameInfo& entry = frame_info_[index];
@@ -696,7 +601,6 @@ AeFrameInfo* GcamAeControllerImpl::CreateAeFrameInfoEntry(int frame_number) {
     // Clear the data of the outdated frame.
     entry = AeFrameInfo({.frame_number = frame_number,
                          .ae_stats_input_mode = ae_stats_input_mode_,
-                         .use_cros_face_detector = use_cros_face_detector_,
                          .active_array_dimension = active_array_dimension_});
   }
   return &entry;

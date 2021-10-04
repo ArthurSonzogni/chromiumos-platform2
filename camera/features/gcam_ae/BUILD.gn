@@ -24,10 +24,7 @@ source_set("gcam_ae") {
     "//camera/features/gcam_ae/gcam_ae_device_adapter.cc",
     "//camera/features/gcam_ae/gcam_ae_stream_manipulator.cc",
   ]
-  libs = [
-    "facessd_cros",
-    "gcam_cros",
-  ]
+  libs = [ "gcam_cros" ]
   public_configs = [ ":target_defaults" ]
 
   # -fPIC needed by the libcros_camera.so shared library.
