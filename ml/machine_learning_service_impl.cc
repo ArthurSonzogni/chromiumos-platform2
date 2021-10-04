@@ -138,6 +138,7 @@ void LoadDocumentScannerFromPath(
                  << static_cast<int>(result);
       std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
       request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);
+      brillo::MessageLoop::current()->BreakLoop();
       return;
     }
   }
@@ -775,13 +776,33 @@ void MachineLearningServiceImpl::LoadDocumentScanner(
     mojo::PendingReceiver<chromeos::machine_learning::mojom::DocumentScanner>
         receiver,
     LoadDocumentScannerCallback callback) {
-  // TODO(b/180564352): Make it run on separate worker process.
   if (!ml::DocumentScannerLibrary::IsSupported()) {
     LOG(ERROR) << "Document scanner library is not supported";
     std::move(callback).Run(LoadModelResult::FEATURE_NOT_SUPPORTED_ERROR);
     return;
   }
 
+  // If it is run in the control process, spawn a worker process and forward the
+  // request to it.
+  if (Process::GetInstance()->IsControlProcess()) {
+    pid_t worker_pid;
+    mojo::PlatformChannel channel;
+    constexpr char kModelName[] = "DocumentScanner";
+    if (!Process::GetInstance()->SpawnWorkerProcessAndGetPid(
+            channel, kModelName, &worker_pid)) {
+      // UMA metrics have already been reported in
+      // `SpawnWorkerProcessAndGetPid`.
+      std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
+      return;
+    }
+    Process::GetInstance()
+        ->SendMojoInvitationAndGetRemote(worker_pid, std::move(channel),
+                                         kModelName)
+        ->LoadDocumentScanner(std::move(receiver), std::move(callback));
+    return;
+  }
+
+  // From here below is the worker process.
   LoadDocumentScannerFromPath(std::move(receiver), std::move(callback),
                               ml::kLibDocumentScannerDefaultDir);
 }

@@ -1913,6 +1913,10 @@ class DocumentScannerTest : public ::testing::Test {
 };
 
 TEST_F(DocumentScannerTest, DetectFromNV12Image) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   if (!IsDocumentScannerSupported()) {
     return;
   }
@@ -1938,6 +1942,10 @@ TEST_F(DocumentScannerTest, DetectFromNV12Image) {
 }
 
 TEST_F(DocumentScannerTest, DetectFromJPEGImage) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   if (!IsDocumentScannerSupported()) {
     return;
   }
@@ -1963,6 +1971,10 @@ TEST_F(DocumentScannerTest, DetectFromJPEGImage) {
 }
 
 TEST_F(DocumentScannerTest, PostProcessing) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
   if (!IsDocumentScannerSupported()) {
     return;
   }

@@ -11,6 +11,7 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <brillo/message_loops/message_loop.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
 #include "ml/mojom/shared_memory.mojom.h"
@@ -109,7 +110,9 @@ DocumentScannerImpl::DocumentScannerImpl(
         scanner)
     : scanner_(std::move(scanner)) {}
 
-DocumentScannerImpl::~DocumentScannerImpl() = default;
+DocumentScannerImpl::~DocumentScannerImpl() {
+  brillo::MessageLoop::current()->BreakLoop();
+}
 
 void DocumentScannerImpl::DetectCornersFromNV12Image(
     ReadOnlySharedMemoryRegionPtr nv12_image,
