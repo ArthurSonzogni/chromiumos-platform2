@@ -101,6 +101,8 @@ constexpr std::pair<const char*, ProbeCategoryEnum> kCategorySwitches[] = {
 
 std::string EnumToString(ProcessState state) {
   switch (state) {
+    case ProcessState::kUnknown:
+      return "Unknown";
     case ProcessState::kRunning:
       return "Running";
     case ProcessState::kSleeping:
