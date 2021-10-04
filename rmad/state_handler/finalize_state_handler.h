@@ -14,7 +14,7 @@ class FinalizeStateHandler : public BaseStateHandler {
   explicit FinalizeStateHandler(scoped_refptr<JsonStore> json_store);
 
   ASSIGN_STATE(RmadState::StateCase::kFinalize);
-  SET_REPEATABLE;
+  SET_UNREPEATABLE;
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
