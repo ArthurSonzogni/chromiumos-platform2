@@ -93,6 +93,9 @@ void CrosHealthdRoutineService::GetRoutineUpdate(
           update.progress_percent, std::move(update.output),
           std::move(update.routine_update_union)));
       return;
+    case mojo_ipc::DiagnosticRoutineCommandEnum::kUnknown:
+      LOG(ERROR) << "Get unknown command";
+      break;
   }
 
   routine->PopulateStatusUpdate(&update, include_output);
