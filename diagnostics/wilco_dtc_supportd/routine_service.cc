@@ -70,10 +70,11 @@ bool GetGrpcStatusFromMojoStatus(
     case chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kNotRun:
       *grpc_status_out = grpc_api::ROUTINE_STATUS_FAILED_TO_START;
       return true;
+    case chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kUnknown:
+      LOG(ERROR) << "Unknown mojo routine status: "
+                 << static_cast<int>(mojo_status);
+      return false;
   }
-  LOG(ERROR) << "Unknown mojo routine status: "
-             << static_cast<int>(mojo_status);
-  return false;
 }
 
 // Converts from mojo's DiagnosticRoutineUserMessageEnum to gRPC's
