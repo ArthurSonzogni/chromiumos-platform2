@@ -10,39 +10,17 @@ import (
 	"chromiumos/scanning/utils"
 )
 
-var supportedResolutions = []int{75, 100, 150, 200, 300, 600}
-
 // checkForSupportedResolution returns true if `sourceResolutions` advertises at
 // least one supported resolution, which must be advertised for both X and Y
 // resolutions.
 func checkForSupportedResolution(sourceResolutions utils.SupportedResolutions) bool {
-	for _, discreteResolution := range sourceResolutions.DiscreteResolutions {
-		if discreteResolution.XResolution != discreteResolution.YResolution {
-			continue
-		}
+	lorgnetteResolutions := sourceResolutions.ToLorgnetteResolutions()
 
-		for _, supportedResolution := range supportedResolutions {
-			if discreteResolution.XResolution == supportedResolution {
-				return true
-			}
-		}
+	if len(lorgnetteResolutions) == 0 {
+		return false
 	}
 
-	for _, supportedResolution := range supportedResolutions {
-		if supportedResolution < sourceResolutions.XResolutionRange.Min || supportedResolution > sourceResolutions.XResolutionRange.Max {
-			continue
-		}
-
-		if supportedResolution < sourceResolutions.YResolutionRange.Min || supportedResolution > sourceResolutions.YResolutionRange.Max {
-			continue
-		}
-
-		if (supportedResolution-sourceResolutions.XResolutionRange.Min)%sourceResolutions.XResolutionRange.Step == 0 && (supportedResolution-sourceResolutions.YResolutionRange.Min)%sourceResolutions.YResolutionRange.Step == 0 {
-			return true
-		}
-	}
-
-	return false
+	return true
 }
 
 // HasSupportedResolutionTest checks that each supported document source

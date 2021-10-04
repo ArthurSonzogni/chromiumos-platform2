@@ -568,3 +568,264 @@ func TestIsPopulated(t *testing.T) {
 		}
 	}
 }
+
+// TestToLorgnetteResolutions tests that the ToLorgnetteResolutions function
+// works correctly.
+func TestToLorgnetteResolutions(t *testing.T) {
+	tests := []struct {
+		resolutions          SupportedResolutions
+		lorgnetteResolutions []int
+	}{
+		{
+			resolutions: SupportedResolutions{
+				XResolutionRange: ResolutionRange{
+					Min:    75,
+					Max:    600,
+					Normal: 300,
+					Step:   25},
+				YResolutionRange: ResolutionRange{
+					Min:    75,
+					Max:    600,
+					Normal: 300,
+					Step:   5}},
+			lorgnetteResolutions: []int{75, 100, 150, 200, 300, 600},
+		},
+		{
+			resolutions: SupportedResolutions{
+				DiscreteResolutions: []DiscreteResolution{
+					DiscreteResolution{
+						XResolution: 75,
+						YResolution: 75,
+					},
+					DiscreteResolution{
+						XResolution: 100,
+						YResolution: 100,
+					},
+					DiscreteResolution{
+						XResolution: 150,
+						YResolution: 150,
+					},
+					DiscreteResolution{
+						XResolution: 200,
+						YResolution: 200,
+					},
+					DiscreteResolution{
+						XResolution: 300,
+						YResolution: 300,
+					},
+					DiscreteResolution{
+						XResolution: 600,
+						YResolution: 600,
+					},
+				}},
+			lorgnetteResolutions: []int{75, 100, 150, 200, 300, 600},
+		},
+		{
+			resolutions: SupportedResolutions{
+				XResolutionRange: ResolutionRange{
+					Min:    0,
+					Max:    225,
+					Normal: 150,
+					Step:   75},
+				YResolutionRange: ResolutionRange{
+					Min:    0,
+					Max:    700,
+					Normal: 300,
+					Step:   100}},
+		},
+		{
+			resolutions: SupportedResolutions{
+				DiscreteResolutions: []DiscreteResolution{
+					DiscreteResolution{
+						XResolution: 50,
+						YResolution: 50,
+					},
+					DiscreteResolution{
+						XResolution: 125,
+						YResolution: 125,
+					},
+					DiscreteResolution{
+						XResolution: 1200,
+						YResolution: 1200,
+					},
+					DiscreteResolution{
+						XResolution: 200,
+						YResolution: 300,
+					},
+					DiscreteResolution{
+						XResolution: 300,
+						YResolution: 200,
+					},
+				}},
+		},
+		{
+			resolutions: SupportedResolutions{},
+		},
+	}
+
+	for _, tc := range tests {
+		got := tc.resolutions.ToLorgnetteResolutions()
+
+		if !cmp.Equal(got, tc.lorgnetteResolutions) {
+			t.Errorf("Expected %v, got %v for resolutions: %v", tc.lorgnetteResolutions, got, tc.resolutions)
+		}
+	}
+}
+
+// TestToLorgnetteSource tests that the ToLorgnetteSource function works
+// correctly.
+func TestToLorgnetteSource(t *testing.T) {
+	tests := []struct {
+		caps            SourceCapabilities
+		lorgnetteSource LorgnetteSource
+	}{
+		{
+			caps: SourceCapabilities{
+				MaxWidth:  2551,
+				MaxHeight: 4200,
+				SettingProfile: SettingProfile{
+					ColorModes: []string{"BlackAndWhite1", "Grayscale8", "Grayscale16", "RGB24", "RGB48"},
+					SupportedResolutions: SupportedResolutions{
+						XResolutionRange: ResolutionRange{
+							Min:    75,
+							Max:    600,
+							Normal: 75,
+							Step:   25},
+						YResolutionRange: ResolutionRange{
+							Min:    60,
+							Max:    700,
+							Normal: 90,
+							Step:   5}}}},
+			lorgnetteSource: LorgnetteSource{
+				ColorModes:  []string{"MODE_GRAYSCALE", "MODE_UNSPECIFIED", "MODE_COLOR", "MODE_UNSPECIFIED"},
+				Resolutions: []int{75, 100, 150, 200, 300, 600},
+				ScannableArea: ScannableArea{
+					Height: 355.6,
+					Width:  215.98466}},
+		},
+		{
+			caps:            SourceCapabilities{},
+			lorgnetteSource: LorgnetteSource{},
+		},
+	}
+
+	for _, tc := range tests {
+		got := tc.caps.ToLorgnetteSource()
+
+		if !cmp.Equal(got, tc.lorgnetteSource) {
+			t.Errorf("Expected %v, got %v for caps: %v", tc.lorgnetteSource, got, tc.caps)
+		}
+	}
+}
+
+// TestToLorgnetteCaps tests that the ToLorgnetteCaps function works correctly.
+func TestToLorgnetteCaps(t *testing.T) {
+	tests := []struct {
+		caps          ScannerCapabilities
+		lorgnetteCaps LorgnetteCapabilities
+	}{
+		{
+			caps: ScannerCapabilities{
+				PlatenInputCaps: SourceCapabilities{
+					MaxWidth:  1200,
+					MaxHeight: 2800,
+					SettingProfile: SettingProfile{
+						ColorModes: []string{"Grayscale16", "RGB24"},
+						SupportedResolutions: SupportedResolutions{
+							XResolutionRange: ResolutionRange{
+								Min:    75,
+								Max:    150,
+								Normal: 150,
+								Step:   75},
+							YResolutionRange: ResolutionRange{
+								Min:    75,
+								Max:    150,
+								Normal: 150,
+								Step:   75}}}},
+				AdfCapabilities: AdfCapabilities{
+					AdfSimplexInputCaps: SourceCapabilities{
+						MaxWidth:  2551,
+						MaxHeight: 4200,
+						SettingProfile: SettingProfile{
+							ColorModes: []string{"BlackAndWhite1", "Grayscale8"},
+							SupportedResolutions: SupportedResolutions{
+								DiscreteResolutions: []DiscreteResolution{
+									DiscreteResolution{
+										XResolution: 100,
+										YResolution: 200},
+									DiscreteResolution{
+										XResolution: 300,
+										YResolution: 300}}}}},
+					AdfDuplexInputCaps: SourceCapabilities{
+						MaxWidth:  1850,
+						MaxHeight: 3200,
+						SettingProfile: SettingProfile{
+							ColorModes: []string{"BlackAndWhite1", "RGB48"},
+							SupportedResolutions: SupportedResolutions{
+								DiscreteResolutions: []DiscreteResolution{
+									DiscreteResolution{
+										XResolution: 200,
+										YResolution: 200},
+									DiscreteResolution{
+										XResolution: 600,
+										YResolution: 600}}}}}}},
+			lorgnetteCaps: LorgnetteCapabilities{
+				PlatenCaps: LorgnetteSource{
+					ColorModes:  []string{"MODE_UNSPECIFIED", "MODE_COLOR"},
+					Resolutions: []int{75, 150},
+					ScannableArea: ScannableArea{
+						Height: 237.06667,
+						Width:  101.6}},
+				AdfSimplexCaps: LorgnetteSource{
+					ColorModes:  []string{"MODE_GRAYSCALE"},
+					Resolutions: []int{300},
+					ScannableArea: ScannableArea{
+						Height: 355.6,
+						Width:  215.98466}},
+				AdfDuplexCaps: LorgnetteSource{
+					ColorModes:  []string{"MODE_UNSPECIFIED"},
+					Resolutions: []int{200, 600},
+					ScannableArea: ScannableArea{
+						Height: 270.93333,
+						Width:  156.63333}}},
+		},
+		{
+			caps: ScannerCapabilities{
+				PlatenInputCaps: SourceCapabilities{
+					MaxWidth:  1200,
+					MaxHeight: 2800,
+					SettingProfile: SettingProfile{
+						ColorModes: []string{"Grayscale16", "RGB24"},
+						SupportedResolutions: SupportedResolutions{
+							XResolutionRange: ResolutionRange{
+								Min:    75,
+								Max:    150,
+								Normal: 150,
+								Step:   75},
+							YResolutionRange: ResolutionRange{
+								Min:    75,
+								Max:    150,
+								Normal: 150,
+								Step:   75}}}}},
+			lorgnetteCaps: LorgnetteCapabilities{
+				PlatenCaps: LorgnetteSource{
+					ColorModes:  []string{"MODE_UNSPECIFIED", "MODE_COLOR"},
+					Resolutions: []int{75, 150},
+					ScannableArea: ScannableArea{
+						Height: 237.06667,
+						Width:  101.6}}},
+		},
+		{
+			caps:          ScannerCapabilities{},
+			lorgnetteCaps: LorgnetteCapabilities{},
+		},
+	}
+
+	for _, tc := range tests {
+		got := tc.caps.ToLorgnetteCaps()
+
+		if !cmp.Equal(got, tc.lorgnetteCaps) {
+			t.Errorf("Expected %v, got %v for caps: %v", tc.lorgnetteCaps, got, tc.caps)
+		}
+	}
+}

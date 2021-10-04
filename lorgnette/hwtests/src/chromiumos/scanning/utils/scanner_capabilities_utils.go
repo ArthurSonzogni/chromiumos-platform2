@@ -117,6 +117,31 @@ type ScannerCapabilities struct {
 	StoredJobRequestSupport StoredJobRequestSupport `xml:"StoredJobRequestSupport"`
 }
 
+// constructScannableAreaFromESCL constructs a ScannableArea object from eSCL
+// units.
+func constructScannableAreaFromESCL(maxHeight int, maxWidth int) (area ScannableArea) {
+	inchesToMM := 25.4
+	eSCLToInches := 300
+	area.Height = float32(maxHeight) * float32(inchesToMM) / float32(eSCLToInches)
+	area.Width = float32(maxWidth) * float32(inchesToMM) / float32(eSCLToInches)
+	return
+}
+
+// eSCLToLorgnetteColorMode converts `eSCLColorMode` to the corresponding
+// Lorgnette color mode.
+func eSCLToLorgnetteColorMode(eSCLColorMode string) string {
+	switch eSCLColorMode {
+	case "BlackAndWhite1":
+		return "MODE_LINEART"
+	case "Grayscale8":
+		return "MODE_GRAYSCALE"
+	case "RGB24":
+		return "MODE_COLOR"
+	default:
+		return "MODE_UNSPECIFIED"
+	}
+}
+
 // setReferencedProfileIfNecessary checks to see if `outProfile` references
 // another SettingProfile, and if so, finds that profile in `referencedProfiles`
 // and copies its information into `outProfile`.
@@ -208,4 +233,63 @@ func ParseLorgnetteCapabilities(rawData string) (caps LorgnetteCapabilities, err
 // IsPopulated returns returns true iff `caps` is non-empty.
 func (caps SourceCapabilities) IsPopulated() bool {
 	return !cmp.Equal(caps, SourceCapabilities{})
+}
+
+// ToLorgnetteResolutions converts `resolutions` to a format returned by
+// lorgnette. All resolutions unsupported by lorgnette are dropped.
+func (resolutions SupportedResolutions) ToLorgnetteResolutions() (lorgnetteResolutions []int) {
+	supportedResolutions := []int{75, 100, 150, 200, 300, 600}
+
+	for _, discreteResolution := range resolutions.DiscreteResolutions {
+		if discreteResolution.XResolution != discreteResolution.YResolution {
+			continue
+		}
+
+		for _, supportedResolution := range supportedResolutions {
+			if discreteResolution.XResolution == supportedResolution {
+				lorgnetteResolutions = append(lorgnetteResolutions, supportedResolution)
+			}
+		}
+	}
+
+	for _, supportedResolution := range supportedResolutions {
+		if supportedResolution < resolutions.XResolutionRange.Min || supportedResolution > resolutions.XResolutionRange.Max {
+			continue
+		}
+
+		if supportedResolution < resolutions.YResolutionRange.Min || supportedResolution > resolutions.YResolutionRange.Max {
+			continue
+		}
+
+		if (supportedResolution-resolutions.XResolutionRange.Min)%resolutions.XResolutionRange.Step == 0 && (supportedResolution-resolutions.YResolutionRange.Min)%resolutions.YResolutionRange.Step == 0 {
+			lorgnetteResolutions = append(lorgnetteResolutions, supportedResolution)
+		}
+	}
+
+	return
+}
+
+// ToLorgnetteSource converts `sourceCaps` to LorgnetteSource.
+func (caps SourceCapabilities) ToLorgnetteSource() (lorgnetteSource LorgnetteSource) {
+	for _, colorMode := range caps.SettingProfile.ColorModes {
+		lorgnetteColorMode := eSCLToLorgnetteColorMode(colorMode)
+		if lorgnetteColorMode == "MODE_LINEART" {
+			// Skip black and white because sane-airscan doesn't support it.
+			continue
+		}
+		lorgnetteSource.ColorModes = append(lorgnetteSource.ColorModes, lorgnetteColorMode)
+	}
+
+	lorgnetteSource.Resolutions = caps.SettingProfile.SupportedResolutions.ToLorgnetteResolutions()
+	lorgnetteSource.ScannableArea = constructScannableAreaFromESCL(caps.MaxHeight, caps.MaxWidth)
+
+	return
+}
+
+// ToLorgnetteCaps converts `scannerCaps` to LorgnetteCapabilities.
+func (scannerCaps ScannerCapabilities) ToLorgnetteCaps() (lorgnetteCaps LorgnetteCapabilities) {
+	lorgnetteCaps.PlatenCaps = scannerCaps.PlatenInputCaps.ToLorgnetteSource()
+	lorgnetteCaps.AdfSimplexCaps = scannerCaps.AdfCapabilities.AdfSimplexInputCaps.ToLorgnetteSource()
+	lorgnetteCaps.AdfDuplexCaps = scannerCaps.AdfCapabilities.AdfDuplexInputCaps.ToLorgnetteSource()
+	return
 }
