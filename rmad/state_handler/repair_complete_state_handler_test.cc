@@ -49,6 +49,10 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
         json_store_, GetTempDirPath(), std::move(mock_power_manager_client));
   }
 
+  base::FilePath GetPowerwashRequestFilePath() const {
+    return GetTempDirPath().AppendASCII(kPowerwashRequestFilePath);
+  }
+
   base::FilePath GetCutoffRequestFilePath() const {
     return GetTempDirPath().AppendASCII(kCutoffRequestFilePath);
   }
@@ -64,19 +68,50 @@ TEST_F(RepairCompleteStateHandlerTest, InitializeState_Success) {
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
+TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Success_Powerwash) {
+  bool reboot_called = false;
+  auto handler = CreateStateHandler(&reboot_called, nullptr);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+
+  auto repair_complete = std::make_unique<RepairCompleteState>();
+  repair_complete->set_shutdown(
+      RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF);
+  RmadState state;
+  state.set_allocated_repair_complete(repair_complete.release());
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+  EXPECT_FALSE(reboot_called);
+
+  // Check that powerwash is requested.
+  bool powerwash_request;
+  EXPECT_TRUE(json_store_->GetValue(kPowerwashRequest, &powerwash_request));
+  EXPECT_TRUE(powerwash_request);
+  EXPECT_TRUE(base::PathExists(GetPowerwashRequestFilePath()));
+
+  // Reboot is called after a delay.
+  task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
+  EXPECT_TRUE(reboot_called);
+}
+
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Success_Reboot) {
   bool reboot_called = false, shutdown_called = false;
   auto handler = CreateStateHandler(&reboot_called, &shutdown_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  // Check that the state file exists now.
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
+  // Powerwash is already done.
+  json_store_->SetValue(kPowerwashRequest, true);
 
   auto repair_complete = std::make_unique<RepairCompleteState>();
   repair_complete->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
   RmadState state;
   state.set_allocated_repair_complete(repair_complete.release());
-
-  // Check that the state file exists now.
-  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
@@ -100,14 +135,17 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Success_Shutdown) {
   auto handler = CreateStateHandler(&reboot_called, &shutdown_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
+  // Check that the state file exists now.
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
+  // Powerwash is already done.
+  json_store_->SetValue(kPowerwashRequest, true);
+
   auto repair_complete = std::make_unique<RepairCompleteState>();
   repair_complete->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_SHUTDOWN);
   RmadState state;
   state.set_allocated_repair_complete(repair_complete.release());
-
-  // Check that the state file exists now.
-  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
@@ -131,14 +169,17 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Success_Cutoff) {
   auto handler = CreateStateHandler(&reboot_called, &shutdown_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
+  // Check that the state file exists now.
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
+  // Powerwash is already done.
+  json_store_->SetValue(kPowerwashRequest, true);
+
   auto repair_complete = std::make_unique<RepairCompleteState>();
   repair_complete->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF);
   RmadState state;
   state.set_allocated_repair_complete(repair_complete.release());
-
-  // Check that the state file exists now.
-  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);

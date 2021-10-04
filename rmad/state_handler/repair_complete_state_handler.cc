@@ -34,7 +34,7 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
       power_manager_client_(std::move(power_manager_client)) {}
 
 RmadErrorCode RepairCompleteStateHandler::InitializeState() {
-  if (!state_.has_repair_complete()) {
+  if (!state_.has_repair_complete() && !RetrieveState()) {
     state_.set_allocated_repair_complete(new RepairCompleteState);
   }
   return RMAD_ERROR_OK;
@@ -53,37 +53,62 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
             .state_case = GetStateCase()};
   }
 
-  // Clear the state file.
-  if (!json_store_->ClearAndDeleteFile()) {
-    LOG(ERROR) << "RepairCompleteState: Failed to clear RMA state file";
-    return {.error = RMAD_ERROR_TRANSITION_FAILED,
-            .state_case = GetStateCase()};
-  }
+  state_ = state;
+  StoreState();
 
-  switch (state.repair_complete().shutdown()) {
-    case RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT:
-      // Wait for a while before reboot.
-      timer_.Start(FROM_HERE, kShutdownDelay, this,
-                   &RepairCompleteStateHandler::Reboot);
-      return {.error = RMAD_ERROR_EXPECT_REBOOT, .state_case = GetStateCase()};
-    case RepairCompleteState::RMAD_REPAIR_COMPLETE_SHUTDOWN:
-      // Wait for a while before shutdown.
-      timer_.Start(FROM_HERE, kShutdownDelay, this,
-                   &RepairCompleteStateHandler::Shutdown);
-      return {.error = RMAD_ERROR_EXPECT_SHUTDOWN,
+  if (bool powerwash_request;
+      json_store_->GetValue(kPowerwashRequest, &powerwash_request) &&
+      powerwash_request) {
+    // Boot after powerwash. Clear the state file and shutdown/reboot/cutoff.
+    // We don't set |kPowerwashRequest| back to false because the state file is
+    // getting removed anyway.
+    // TODO(chenghan): Check if powerwash is successful.
+    // TODO(chenghan): Write to metrics before removing the state file.
+    if (!json_store_->ClearAndDeleteFile()) {
+      LOG(ERROR) << "RepairCompleteState: Failed to clear RMA state file";
+      return {.error = RMAD_ERROR_TRANSITION_FAILED,
               .state_case = GetStateCase()};
-    case RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF:
-      // Wait for a while before cutoff.
-      timer_.Start(FROM_HERE, kShutdownDelay, this,
-                   &RepairCompleteStateHandler::Cutoff);
-      return {.error = RMAD_ERROR_EXPECT_SHUTDOWN,
+    }
+
+    switch (state.repair_complete().shutdown()) {
+      case RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT:
+        // Wait for a while before reboot.
+        timer_.Start(FROM_HERE, kShutdownDelay, this,
+                     &RepairCompleteStateHandler::Reboot);
+        return {.error = RMAD_ERROR_EXPECT_REBOOT,
+                .state_case = GetStateCase()};
+      case RepairCompleteState::RMAD_REPAIR_COMPLETE_SHUTDOWN:
+        // Wait for a while before shutdown.
+        timer_.Start(FROM_HERE, kShutdownDelay, this,
+                     &RepairCompleteStateHandler::Shutdown);
+        return {.error = RMAD_ERROR_EXPECT_SHUTDOWN,
+                .state_case = GetStateCase()};
+      case RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF:
+        // Wait for a while before cutoff.
+        timer_.Start(FROM_HERE, kShutdownDelay, this,
+                     &RepairCompleteStateHandler::Cutoff);
+        return {.error = RMAD_ERROR_EXPECT_SHUTDOWN,
+                .state_case = GetStateCase()};
+      default:
+        break;
+    }
+    NOTREACHED();
+    return {.error = RMAD_ERROR_NOT_SET,
+            .state_case = RmadState::StateCase::STATE_NOT_SET};
+  } else {
+    // Request a powerwash. The pre-stop script picks up the file before reboot,
+    // and requests a rma-mode powerwash.
+    if (!json_store_->SetValue(kPowerwashRequest, true) ||
+        !brillo::TouchFile(
+            working_dir_path_.AppendASCII(kPowerwashRequestFilePath))) {
+      LOG(ERROR) << "Failed to request powerwash";
+      return {.error = RMAD_ERROR_POWERWASH_FAILED,
               .state_case = GetStateCase()};
-    default:
-      break;
+    }
+    timer_.Start(FROM_HERE, kShutdownDelay, this,
+                 &RepairCompleteStateHandler::Reboot);
+    return {.error = RMAD_ERROR_EXPECT_REBOOT, .state_case = GetStateCase()};
   }
-  NOTREACHED();
-  return {.error = RMAD_ERROR_NOT_SET,
-          .state_case = RmadState::StateCase::STATE_NOT_SET};
 }
 
 void RepairCompleteStateHandler::Reboot() {

@@ -15,6 +15,7 @@ namespace rmad {
 inline constexpr char kDefaultWorkingDirPath[] = "/var/lib/rmad/";
 
 // Files for pre-stop script to read.
+inline constexpr char kPowerwashRequestFilePath[] = ".powerwash_request";
 inline constexpr char kCutoffRequestFilePath[] = ".battery_cutoff_request";
 
 // JsonStore rmad_interface keys.
@@ -27,6 +28,7 @@ inline constexpr char kSameOwner[] = "same_owner";
 inline constexpr char kWpDisableSkipped[] = "wp_disable_skipped";
 inline constexpr char kMlbRepair[] = "mlb_repair";
 inline constexpr char kCalibrationMap[] = "calibration_map";
+inline constexpr char kPowerwashRequest[] = "powerwash_request";
 
 // Component traits.
 inline constexpr std::array<RmadComponent, 4> kComponentsNeedManualCalibration =
