@@ -492,6 +492,14 @@ class Tpm {
                           const brillo::SecureBlob& prime_factor,
                           brillo::SecureBlob* wrapped_key) = 0;
 
+  // Creates a wrapped ECC key with the TPM's Storage Root Key on TPM.
+  // The ECC key is generated on the TPM, only the wrapped key would leave
+  // the TPM.
+  //
+  // Parameters
+  //   wrapped_key (OUT) - A blob representing the wrapped key
+  virtual bool CreateWrappedEccKey(brillo::SecureBlob* wrapped_key) = 0;
+
   // Loads an SRK-wrapped key into the TPM.
   //
   // Parameters

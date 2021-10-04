@@ -114,6 +114,7 @@ class TpmImpl : public Tpm {
   bool WrapRsaKey(const brillo::SecureBlob& public_modulus,
                   const brillo::SecureBlob& prime_factor,
                   brillo::SecureBlob* wrapped_key) override;
+  bool CreateWrappedEccKey(brillo::SecureBlob* wrapped_key) override;
   hwsec::error::TPMErrorBase LoadWrappedKey(
       const brillo::SecureBlob& wrapped_key,
       ScopedKeyHandle* key_handle) override;

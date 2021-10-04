@@ -154,6 +154,7 @@ class StubTpm : public Tpm {
                   SecureBlob* wrapped_key) override {
     return false;
   }
+  bool CreateWrappedEccKey(SecureBlob* wrapped_key) override { return false; }
   hwsec::error::TPMErrorBase LoadWrappedKey(
       const SecureBlob& wrapped_key, ScopedKeyHandle* key_handle) override {
     return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(

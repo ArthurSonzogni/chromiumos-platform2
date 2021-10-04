@@ -1140,6 +1140,22 @@ TEST_F(Tpm2Test, WrapRsaKeyFailure) {
   EXPECT_FALSE(tpm_->WrapRsaKey(SecureBlob(), SecureBlob(), &wrapped_key));
 }
 
+TEST_F(Tpm2Test, CreateWrappedEccKeySuccess) {
+  std::string key_blob("key_blob");
+  EXPECT_CALL(mock_tpm_utility_, CreateECCKeyPair(_, _, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<7>(key_blob), Return(TPM_RC_SUCCESS)));
+  SecureBlob wrapped_key;
+  EXPECT_TRUE(tpm_->CreateWrappedEccKey(&wrapped_key));
+  EXPECT_EQ(key_blob, wrapped_key.to_string());
+}
+
+TEST_F(Tpm2Test, CreateWrappedEccKeyFailure) {
+  SecureBlob wrapped_key;
+  EXPECT_CALL(mock_tpm_utility_, CreateECCKeyPair(_, _, _, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_FALSE(tpm_->CreateWrappedEccKey(&wrapped_key));
+}
+
 TEST_F(Tpm2Test, LoadWrappedKeySuccess) {
   SecureBlob wrapped_key("wrapped_key");
   trunks::TPM_HANDLE handle = trunks::TPM_RH_FIRST;

@@ -1821,6 +1821,11 @@ bool TpmImpl::WrapRsaKey(const SecureBlob& public_modulus,
   return true;
 }
 
+bool TpmImpl::CreateWrappedEccKey(SecureBlob* wrapped_key) {
+  // Not supported for TPM 1.2.
+  return false;
+}
+
 TPM1Error TpmImpl::GetKeyBlob(TSS_HCONTEXT context_handle,
                               TSS_HKEY key_handle,
                               SecureBlob* data_out) const {

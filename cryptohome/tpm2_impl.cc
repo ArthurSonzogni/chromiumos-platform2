@@ -22,6 +22,7 @@
 #include <base/strings/stringprintf.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
+#include <libhwsec/error/tpm_retry_handler.h>
 #include <libhwsec/error/tpm2_error.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
@@ -59,6 +60,8 @@ using trunks::TrunksFactory;
 namespace cryptohome {
 
 namespace {
+
+constexpr trunks::TPMI_ECC_CURVE kDefaultTpmCurveId = trunks::TPM_ECC_NIST_P256;
 
 // Returns the total number of bits set in the first |size| elements from
 // |array|.
@@ -828,6 +831,33 @@ bool Tpm2Impl::WrapRsaKey(const SecureBlob& public_modulus,
     return false;
   }
   wrapped_key->assign(key_blob.begin(), key_blob.end());
+  return true;
+}
+
+bool Tpm2Impl::CreateWrappedEccKey(SecureBlob* wrapped_key) {
+  CHECK(wrapped_key) << "No key blob argument provided.";
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
+  std::vector<uint32_t> pcr_list;
+  std::string tpm_key_blob;
+  std::string tpm_creation_blob;
+  std::unique_ptr<trunks::AuthorizationDelegate> delegate =
+      trunks->factory->GetPasswordAuthorization("");
+  if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM2Error>(trunks->tpm_utility->CreateECCKeyPair(
+              trunks::TpmUtility::kDecryptKey, kDefaultTpmCurveId,
+              "",     // No authorization
+              "",     // No policy digest
+              false,  // use_only_policy_authorization
+              pcr_list, delegate.get(), &tpm_key_blob,
+              &tpm_creation_blob /* No creation_blob */)))) {
+    LOG(ERROR) << "Error creating a pcr bound key: " << *err;
+    return false;
+  }
+  wrapped_key->assign(tpm_key_blob.begin(), tpm_key_blob.end());
+
   return true;
 }
 
