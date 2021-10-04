@@ -516,6 +516,9 @@ bool Daemon::TriggerRetryShutdownTimerForTesting() {
 #if USE_IIOSERVICE
 void Daemon::OnClientReceived(
     mojo::PendingReceiver<cros::mojom::SensorHalClient> client) {
+  if (!light_sensor_manager_) {
+    return;
+  }
   system::AmbientLightSensorManagerMojo* manager =
       dynamic_cast<system::AmbientLightSensorManagerMojo*>(
           light_sensor_manager_.get());
