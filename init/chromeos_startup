@@ -292,6 +292,28 @@ if [ "$ROOTDEV_RET_CODE" = "0" ] && [ "$ROOTDEV_TYPE" != "/dev/ram" ]; then
     fi
   fi
 
+  # Check to see if this is a hibernate resume boot. If so,
+  # the image that will soon be resumed has active RW mounts
+  # on stateful that must not be disturbed. Instead, create a
+  # dm-snapshot, presenting the illusion of an RW stateful world.
+  if command -v hiberman >/dev/null 2>&1 && \
+     hiberman cookie "${ROOT_DEV_DISK}"; then
+
+    # As of 2021, a normal warm boot to the login screen writes about 32MB.
+    STATE_COW_SIZE="512M"
+    mkdir -p /run/hibernate
+    truncate -s "${STATE_COW_SIZE}" /run/hibernate/stateful_cow
+    COW_LOOP="$(losetup --show -f /run/hibernate/stateful_cow)"
+    STATE_SIZE="$(blockdev --getsz ${STATE_DEV})"
+    dmsetup create stateful-origin --table \
+      "0 ${STATE_SIZE} snapshot-origin ${STATE_DEV}"
+
+    dmsetup create stateful-rw --table \
+      "0 ${STATE_SIZE} snapshot ${STATE_DEV} ${COW_LOOP} P 8"
+
+    STATE_DEV="/dev/mapper/stateful-rw"
+  fi
+
   if [ "${USE_LVM_STATEFUL_PARTITION}" -eq "1" ]; then
     # Attempt to get a valid volume group name.
     vg_name="$(get_volume_group "${STATE_DEV}")"
