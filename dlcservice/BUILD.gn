@@ -11,6 +11,7 @@ group("all") {
     ":dlcservice",
     ":dlcservice_adaptors",
     ":dlcservice_util",
+    ":dlcverify",
     ":libdlcservice",
     ":libdlcservice_utils",
     ":ref_count-proto",
@@ -80,6 +81,12 @@ static_library("libdlcservice_utils") {
   configs += [ ":target_defaults" ]
 }
 
+# DLC verify related files.
+static_library("libdlcverify") {
+  configs += [ ":target_defaults" ]
+  deps = [ ":libdlcservice_utils" ]
+}
+
 # DLC service related files.
 static_library("libdlcservice") {
   sources = [
@@ -119,6 +126,13 @@ executable("dlcservice_util") {
     ":dlcservice_util_config",
   ]
   deps = [ ":libdlcservice_utils" ]
+}
+
+# For dlcverify:
+executable("dlcverify") {
+  sources = [ "tools/dlcverify.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libdlcverify" ]
 }
 
 # For test:
