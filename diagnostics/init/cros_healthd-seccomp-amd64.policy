@@ -41,13 +41,23 @@ getrandom: 1
 #   0xc0186475 == DRM_IOCTL_I915_GEM_CONTEXT_SETPARAM
 #   0xc0206464 == DRM_IOCTL_I915_GEM_MMAP_OFFSET
 #   0xc0406400 == DRM_IOCTL_VERSION
+#   0xc0106442 == DRM_IOCTL_AMDGPU_CTX DRM_IOCTL_ETNAVIV_GEM_NEW or
+#                 DRM_IOCTL_LIMA_GEM_INFO or DRM_IOCTL_MSM_GEM_NEW or
+#                 DRM_IOCTL_V3D_CREATE_BO or DRM_IOCTL_VC4_WAIT_BO
+#   0xc010640c == DRM_IOCTL_GET_CAP
+#   0xc0286448 == _IOC(_IOC_READ|_IOC_WRITE, 0x64, 0x48, 0x28)
+#   0xc0086441 == DRM_IOCTL_AMDGPU_GEM_MMAP
+#   0x40206445 == DRM_IOCTL_AMDGPU_INFO or DRM_IOCTL_SIS_FB_FREE
+#   0xc0206440 == DRM_IOCTL_AMDGPU_GEM_CREATE or DRM_IOCTL_VIA_ALLOCMEM
 ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0x40086409 || arg1 == 0x4008646e || arg1 == 0x400c645f || \
        arg1 == 0x40406469 || arg1 == 0x80106463 || arg1 == 0xc0086457 || \
        arg1 == 0xc008646d || arg1 == 0xc00c6466 || arg1 == 0xc0106446 || \
        arg1 == 0xc010645b || arg1 == 0xc0106461 || arg1 == 0xc0106471 || \
        arg1 == 0xc0106479 || arg1 == 0xc0186472 || arg1 == 0xc0186474 || \
-       arg1 == 0xc0186475 || arg1 == 0xc0206464 || arg1 == 0xc0406400
+       arg1 == 0xc0186475 || arg1 == 0xc0206464 || arg1 == 0xc0406400 || \
+       arg1 == 0xc0106442 || arg1 == 0xc010640c || arg1 == 0xc0286448 || \
+       arg1 == 0xc0086441 || arg1 == 0x40206445 || arg1 == 0xc0206440
 geteuid: 1
 brk: 1
 getuid: 1
@@ -93,7 +103,7 @@ mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 getdents64: 1
 dup2: 1
-prctl: arg0 == PR_SET_NO_NEW_PRIVS
+prctl: arg0 == PR_SET_NO_NEW_PRIVS || arg0 == PR_SET_NAME
 execve: 1
 arch_prctl: 1
 set_tid_address: 1
@@ -135,3 +145,4 @@ mremap: 1
 memfd_create: 1
 eventfd2: 1
 fstatfs: 1
+sched_setscheduler: 1

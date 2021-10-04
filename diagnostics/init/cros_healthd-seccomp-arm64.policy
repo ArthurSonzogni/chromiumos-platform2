@@ -48,10 +48,6 @@ getuid: 1
 #   0x80048011 == _IOC(_IOC_READ, 0x80, 0x11, 0x4)
 #   0xc0048000 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0, 0x4)
 #   0xc0208005 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x5, 0x20)
-#
-#   0x40088026 == _IOC(_IOC_WRITE, 0x80, 0x26, 0x8)
-#   0x4018800e == _IOC(_IOC_WRITE, 0x80, 0xe, 0x18)
-#   0x4020800f == _IOC(_IOC_WRITE, 0x80, 0xf, 0x20)
 ioctl: arg1 == BLKGETSIZE64 || arg1 == SIOCSIFFLAGS || arg1 == BLKSSZGET || \
        arg1 == SIOCGIFFLAGS || arg1 == TCGETS || arg1 == 0x40048001 || \
        arg1 == 0x40108003 || arg1 == 0x40108014 || arg1 == 0x40208018 || \
