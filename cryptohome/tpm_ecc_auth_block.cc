@@ -460,6 +460,9 @@ base::Optional<brillo::SecureBlob> TpmEccAuthBlock::DeriveHvkkm(
   brillo::SecureBlob auth_value = std::move(pass_blob);
 
   TpmKeyHandle cryptohome_key = cryptohome_key_loader_->GetCryptohomeKey();
+
+  ReportTimerStart(kGenerateEccAuthValueTimer);
+
   for (int i = 0; i < auth_value_rounds; i++) {
     brillo::SecureBlob tmp_value;
     TPMErrorBase err;
@@ -498,6 +501,8 @@ base::Optional<brillo::SecureBlob> TpmEccAuthBlock::DeriveHvkkm(
 
     auth_value = std::move(tmp_value);
   }
+
+  ReportTimerStop(kGenerateEccAuthValueTimer);
 
   std::map<uint32_t, std::string> pcr_map({{kTpmSingleUserPCR, ""}});
   brillo::SecureBlob hvkkm;

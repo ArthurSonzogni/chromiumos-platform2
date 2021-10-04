@@ -126,6 +126,7 @@ enum TimerType {
   kMountGuestExTimer = 12,
   kPerformEphemeralMountTimer = 13,
   kPerformMountTimer = 14,
+  kGenerateEccAuthValueTimer = 15,
   kNumTimerTypes  // For the number of timer types.
 };
 

@@ -143,6 +143,8 @@ const TimerHistogramParams kTimerHistogramParams[] = {
     // Non-ephemeral mounts are currently mounted in-process but it makes sense
     // to keep the same scale for them as ephemeral mounts.
     {"Cryptohome.TimeToPerformMount", 0, 3000, 50},
+    // The time to generate the ECC auth value in TpmEccAuthBlock.
+    {"Cryptohome.TimeToGenerateEccAuthValue", 0, 5000, 50},
 };
 
 static_assert(base::size(kTimerHistogramParams) == cryptohome::kNumTimerTypes,
