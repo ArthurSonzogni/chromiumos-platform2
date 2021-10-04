@@ -48,9 +48,16 @@ void FetchAggregator::Run(
   const auto& state =
       CreateProbeState(categories_to_probe, std::move(callback));
   auto& info = state->result;
+  // Clone the set because we will modify it during for-loop.
+  const auto remaining_categories = state->remaining_categories;
 
-  for (const auto category : categories_to_probe) {
+  for (const auto category : remaining_categories) {
     switch (category) {
+      case mojo_ipc::ProbeCategoryEnum::kUnknown: {
+        // Got unknown category. Just complete it and continue.
+        CompleteProbe(category, state);
+        break;
+      }
       case mojo_ipc::ProbeCategoryEnum::kBattery: {
         WrapFetchProbeData(category, state, &info->battery_result,
                            battery_fetcher_.FetchBatteryInfo());
@@ -174,6 +181,13 @@ void FetchAggregator::WrapFetchProbeData(
   DCHECK(response_data);
 
   *response_data = std::move(fetched_data);
+  CompleteProbe(category, state);
+}
+
+void FetchAggregator::CompleteProbe(
+    chromeos::cros_healthd::mojom::ProbeCategoryEnum category,
+    const std::unique_ptr<ProbeState>& state) {
+  DCHECK(state);
 
   auto& remaining_categories = state->remaining_categories;
   remaining_categories.erase(category);

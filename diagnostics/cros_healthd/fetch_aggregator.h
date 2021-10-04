@@ -81,6 +81,11 @@ class FetchAggregator final {
       T* response_data,
       T fetched_data);
 
+  // Completes a probe category of a probe state. If all the categories are
+  // probed, call the callback.
+  void CompleteProbe(chromeos::cros_healthd::mojom::ProbeCategoryEnum category,
+                     const std::unique_ptr<ProbeState>& state);
+
  private:
   // The set to keep the instances of |ProbeState|.
   std::set<std::unique_ptr<ProbeState>> probe_states_;
