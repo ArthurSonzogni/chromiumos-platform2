@@ -33,7 +33,8 @@ class MockExecutorAdapter final : public ExecutorAdapter {
               (override));
   MOCK_METHOD(void,
               RunModetest,
-              (const std::string&, Executor::RunModetestCallback),
+              (chromeos::cros_healthd_executor::mojom::ModetestOptionEnum,
+               Executor::RunModetestCallback),
               (override));
 };
 

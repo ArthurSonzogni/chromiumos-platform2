@@ -180,15 +180,20 @@ void ExecutorMojoService::GetProcessIOContents(
   std::move(callback).Run(result);
 }
 
-void ExecutorMojoService::RunModetest(const std::string& query_option,
+void ExecutorMojoService::RunModetest(mojo_ipc::ModetestOptionEnum option,
                                       RunModetestCallback callback) {
   mojo_ipc::ProcessResult result;
+  std::vector<std::string> binary_args;
 
-  if (query_option != "-c") {
-    result.return_code = EXIT_FAILURE;
-    result.err = "Not supported option";
-    std::move(callback).Run(result.Clone());
-    return;
+  switch (option) {
+    case mojo_ipc::ModetestOptionEnum::kListConnector:
+      binary_args.push_back("-c");
+      break;
+    default:
+      result.return_code = EXIT_FAILURE;
+      result.err = "Unsupported option";
+      std::move(callback).Run(result.Clone());
+      return;
   }
 
   const auto seccomp_policy_path =
@@ -198,7 +203,6 @@ void ExecutorMojoService::RunModetest(const std::string& query_option,
   std::vector<std::string> sandboxing_args;
   sandboxing_args.push_back("-G");
 
-  std::vector<std::string> binary_args = {query_option};
   base::FilePath binary_path = base::FilePath(kModetestBinary);
 
   base::OnceClosure closure = base::BindOnce(

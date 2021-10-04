@@ -4,7 +4,6 @@
 
 #include "diagnostics/cros_healthd/executor/executor_adapter_impl.h"
 
-#include <string>
 #include <utility>
 
 #include <base/check.h>
@@ -69,11 +68,11 @@ void ExecutorAdapterImpl::GetProcessIOContents(
                                   std::move(callback));
 }
 
-void ExecutorAdapterImpl::RunModetest(const std::string& query_option,
+void ExecutorAdapterImpl::RunModetest(executor_ipc::ModetestOptionEnum option,
                                       Executor::RunModetestCallback callback) {
   DCHECK(executor_.is_bound());
 
-  executor_->RunModetest(query_option, std::move(callback));
+  executor_->RunModetest(option, std::move(callback));
 }
 
 }  // namespace diagnostics

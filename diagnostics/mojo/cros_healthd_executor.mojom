@@ -20,6 +20,11 @@ struct ProcessResult {
   string err;
 };
 
+// An enumeration of modetest options.
+enum ModetestOptionEnum {
+  kListConnector,
+};
+
 // Root-level executor interface exposed to the cros_healthd daemon. In
 // production, this is implemented by the Executor daemon.
 interface Executor {
@@ -50,5 +55,5 @@ interface Executor {
   GetProcessIOContents(uint32 pid) => (string contents);
 
   // Run |modetest| command.
-  RunModetest(string query_option) => (ProcessResult result);
+  RunModetest(ModetestOptionEnum option) => (ProcessResult result);
 };

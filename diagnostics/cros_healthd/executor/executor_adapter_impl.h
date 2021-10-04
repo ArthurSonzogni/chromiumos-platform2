@@ -5,8 +5,6 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_ADAPTER_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_ADAPTER_IMPL_H_
 
-#include <string>
-
 #include "diagnostics/cros_healthd/executor/executor_adapter.h"
 #include "mojo/cros_healthd_executor.mojom.h"
 
@@ -28,8 +26,9 @@ class ExecutorAdapterImpl final : public ExecutorAdapter {
   void GetProcessIOContents(
       const pid_t pid,
       Executor::GetProcessIOContentsCallback callback) override;
-  void RunModetest(const std::string& query_option,
-                   Executor::RunModetestCallback callback) override;
+  void RunModetest(
+      chromeos::cros_healthd_executor::mojom::ModetestOptionEnum option,
+      Executor::RunModetestCallback callback) override;
 
  private:
   // Mojo endpoint to call the executor's methods.
