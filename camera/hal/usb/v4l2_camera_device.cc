@@ -393,6 +393,18 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
     }
   }
 
+  if (device_info_.enable_face_detection) {
+    IsRegionOfInterestSupported(device_fd_.get(), &roi_control_);
+    if (roi_control_.roi_flags) {
+      LOGF(INFO) << "ROI control flags:0x" << std::hex << roi_control_.roi_flags
+                 << " " << std::dec
+                 << "ROI default:" << roi_control_.roi_default;
+      LOGF(INFO) << "ROI bounds max:" << roi_control_.roi_bounds_max
+                 << ", min:" << roi_control_.roi_bounds_min;
+      SetControlValue(kControlRegionOfInterestAuto, roi_control_.roi_flags);
+    }
+  }
+
   privacy_switch_monitor_->TrySubscribe(device_info_.camera_id,
                                         device_info_.device_path);
 
@@ -457,34 +469,6 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
     LOGF(ERROR) << "Unsupported format: width " << width << ", height "
                 << height << ", pixelformat " << pixel_format;
     return -EINVAL;
-  }
-
-  if (device_info_.enable_face_detection) {
-    // The resolution may be changed after VIDIOC_S_FMT. We need to get correct
-    // ROI regions info after it.
-    IsRegionOfInterestSupported(device_fd_.get(), &roi_control_);
-    if (roi_control_.roi_flags) {
-      if (roi_control_.roi_bounds_max.width < width ||
-          roi_control_.roi_bounds_max.height < height) {
-        LOGF(WARNING) << "ROI bounds max is too small"
-                      << roi_control_.roi_bounds_max;
-      }
-      // Workaround some camera module didn't report correct min bounds.
-      if (roi_control_.roi_bounds_min.width >=
-              roi_control_.roi_bounds_max.width ||
-          roi_control_.roi_bounds_min.height >=
-              roi_control_.roi_bounds_max.height) {
-        LOGF(WARNING) << "ROI bounds min is too large"
-                      << roi_control_.roi_bounds_min
-                      << ", Set it to (0, 0, 0, 0)";
-        roi_control_.roi_bounds_min = Rect<int>();
-      }
-      VLOGF(1) << "ROI control flags:0x" << std::hex << roi_control_.roi_flags
-               << " " << std::dec << "ROI default:" << roi_control_.roi_default;
-      VLOGF(1) << "ROI bounds max:" << roi_control_.roi_bounds_max
-               << ", min:" << roi_control_.roi_bounds_min;
-      SetControlValue(kControlRegionOfInterestAuto, roi_control_.roi_flags);
-    }
   }
 
   if (CanUpdateFrameRate()) {
@@ -889,13 +873,27 @@ int V4L2CameraDevice::SetRegionOfInterest(const Rect<int>& rectangle) {
   if (roi_control_.roi_flags == 0) {
     return -EINVAL;
   }
-  int width = rectangle.width;
-  int height = rectangle.height;
-  if (width < roi_control_.roi_bounds_min.width) {
-    width = roi_control_.roi_bounds_min.width;
+  int left = std::max(rectangle.left, roi_control_.roi_bounds_max.left);
+  int top = std::max(rectangle.top, roi_control_.roi_bounds_max.top);
+  int width = std::max(rectangle.width, roi_control_.roi_bounds_min.width);
+  int height = std::max(rectangle.height, roi_control_.roi_bounds_min.height);
+  // if the right and bottom size is excess the max range, we have 2
+  // adjustments, to shrink width/height and to adjust left/top.
+  int rightmost =
+      roi_control_.roi_bounds_max.left + roi_control_.roi_bounds_max.width;
+  if (left + width > rightmost) {
+    int offset = std::min(left + width - rightmost,
+                          left - roi_control_.roi_bounds_max.left);
+    left -= offset;
+    width = rightmost - left;
   }
-  if (height < roi_control_.roi_bounds_min.height) {
-    height = roi_control_.roi_bounds_min.height;
+  int bottommost =
+      roi_control_.roi_bounds_max.top + roi_control_.roi_bounds_max.height;
+  if (top + height > bottommost) {
+    int offset = std::min(top + height - bottommost,
+                          top - roi_control_.roi_bounds_max.top);
+    top -= offset;
+    height = bottommost - top;
   }
   v4l2_selection current = {
       .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,

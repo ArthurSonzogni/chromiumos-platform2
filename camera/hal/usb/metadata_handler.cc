@@ -1337,7 +1337,8 @@ int MetadataHandler::PostHandleRequest(
   if (device_info_.enable_face_detection) {
     std::vector<int32_t> face_rectangles;
     std::vector<uint8_t> face_scores;
-    Rect<int> roi(0, 0, resolution.width, resolution.height);
+    Rect<int> roi(active_array_size.data.i32[0], active_array_size.data.i32[1],
+                  active_array_size.data.i32[2], active_array_size.data.i32[3]);
     Rect<int> largest_face;
     int largest_size = 0;
     for (auto& face : faces) {
