@@ -181,7 +181,17 @@ bool BrowserJob::RunInBackground() {
   bool first_boot = !login_metrics_->HasRecordedChromeExec();
   login_metrics_->RecordStats("chrome-exec");
 
-  RecordTime();
+  // Skip `RecordTime()` if ash is being launched for browser data migration so
+  // that the relaunch for migration is not considered a launch crash by
+  // `ShouldDropExtraArguments()`. Without this "safe-mode" gets triggered for
+  // migration after a restart to apply flags.
+  // 1. Ash is launched.
+  // 2. Ash is relaunched to apply flags.
+  // 3. Ash is relaunched to do migration.
+  // 4. Ash is relaunched to put users back in session.
+  if (browser_data_migration_arguments_.empty()) {
+    RecordTime();
+  }
 
   extra_one_time_arguments_.clear();
   if (first_boot)
