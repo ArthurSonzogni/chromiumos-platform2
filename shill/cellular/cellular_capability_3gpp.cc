@@ -685,19 +685,21 @@ void CellularCapability3gpp::OnServiceCreated() {
 void CellularCapability3gpp::SetupConnectProperties(KeyValueStore* properties) {
   SetRoamingProperties(properties);
   apn_try_list_ = cellular()->BuildApnTryList();
-  if (!apn_try_list_.empty())
-    SetApnProperties(apn_try_list_.front(), properties);
+  for (const auto& apn_info : apn_try_list_) {
+    if (SetApnProperties(apn_info, properties))
+      break;
+  }
 }
 
 void CellularCapability3gpp::SetRoamingProperties(KeyValueStore* properties) {
   properties->Set<bool>(kConnectAllowRoaming, cellular()->IsRoamingAllowed());
 }
 
-void CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
+bool CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
                                               KeyValueStore* properties) {
   if (!base::Contains(apn_info, kApnProperty)) {
     LOG(ERROR) << "Malformed APN entry";
-    return;
+    return false;
   }
   const std::string& apn = apn_info.at(kApnProperty);
   SLOG(this, 2) << __func__ << ": Using APN " << apn;
@@ -721,6 +723,8 @@ void CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
         kConnectIpType,
         IpTypeToMMBearerIpFamily(apn_info.at(kApnIpTypeProperty)));
   }
+
+  return true;
 }
 
 void CellularCapability3gpp::CallConnect(const KeyValueStore& properties,

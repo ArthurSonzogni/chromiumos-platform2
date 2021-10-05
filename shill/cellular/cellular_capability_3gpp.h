@@ -272,7 +272,7 @@ class CellularCapability3gpp : public CellularCapability {
   Stringmap ParseScanResult(const ScanResult& result);
 
   void SetRoamingProperties(KeyValueStore* properties);
-  void SetApnProperties(const Stringmap& apn_info, KeyValueStore* properties);
+  bool SetApnProperties(const Stringmap& apn_info, KeyValueStore* properties);
 
   void FillInitialEpsBearerPropertyMap(KeyValueStore* properties);
 
