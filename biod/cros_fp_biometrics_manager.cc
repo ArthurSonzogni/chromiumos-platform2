@@ -122,10 +122,6 @@ bool CrosFpBiometricsManager::Record::SetLabel(std::string label) {
   return true;
 }
 
-bool CrosFpBiometricsManager::Record::SupportsPositiveMatchSecret() const {
-  return biometrics_manager_->use_positive_match_secret_;
-}
-
 bool CrosFpBiometricsManager::Record::Remove() {
   if (!biometrics_manager_)
     return false;
@@ -331,7 +327,6 @@ CrosFpBiometricsManager::CrosFpBiometricsManager(
       weak_factory_(this),
       power_button_filter_(std::move(power_button_filter)),
       biod_storage_(std::move(biod_storage)),
-      use_positive_match_secret_(false),
       maintenance_timer_(std::make_unique<base::RepeatingTimer>()) {
   CHECK(power_button_filter_);
   CHECK(cros_dev_);
@@ -341,7 +336,7 @@ CrosFpBiometricsManager::CrosFpBiometricsManager(
   cros_dev_->SetMkbpEventCallback(base::BindRepeating(
       &CrosFpBiometricsManager::OnMkbpEvent, base::Unretained(this)));
 
-  use_positive_match_secret_ = cros_dev_->SupportsPositiveMatchSecret();
+  CHECK(cros_dev_->SupportsPositiveMatchSecret());
 
 // TODO(b/187951992): The following automatic maintenance routine needs to
 // be re-enabled in such a way that it will not interfere with the
@@ -486,25 +481,23 @@ void CrosFpBiometricsManager::DoEnrollImageEvent(
     return;
   }
 
-  if (use_positive_match_secret_) {
-    base::Optional<brillo::SecureVector> secret =
-        cros_dev_->GetPositiveMatchSecret(CrosFpDevice::kLastTemplate);
-    if (!secret) {
-      LOG(ERROR) << "Failed to get positive match secret.";
-      OnSessionFailed();
-      return;
-    }
-
-    std::vector<uint8_t> validation_val;
-    if (!BiodCrypto::ComputeValidationValue(*secret, record.user_id,
-                                            &validation_val)) {
-      LOG(ERROR) << "Failed to compute validation value.";
-      OnSessionFailed();
-      return;
-    }
-    record.validation_val = std::move(validation_val);
-    LOG(INFO) << "Computed validation value for enrolled finger.";
+  base::Optional<brillo::SecureVector> secret =
+      cros_dev_->GetPositiveMatchSecret(CrosFpDevice::kLastTemplate);
+  if (!secret) {
+    LOG(ERROR) << "Failed to get positive match secret.";
+    OnSessionFailed();
+    return;
   }
+
+  std::vector<uint8_t> validation_val;
+  if (!BiodCrypto::ComputeValidationValue(*secret, record.user_id,
+                                          &validation_val)) {
+    LOG(ERROR) << "Failed to compute validation value.";
+    OnSessionFailed();
+    return;
+  }
+  record.validation_val = std::move(validation_val);
+  LOG(INFO) << "Computed validation value for enrolled finger.";
 
   records_.emplace_back(record);
   Record current_record(weak_factory_.GetWeakPtr(), records_.size() - 1);
@@ -584,7 +577,7 @@ BiometricsManager::AttemptMatches CrosFpBiometricsManager::CalculateMatches(
     return matches;
   }
 
-  if (!use_positive_match_secret_ || ValidationValueIsCorrect(match_idx)) {
+  if (ValidationValueIsCorrect(match_idx)) {
     matches.emplace(records_[match_idx].user_id,
                     std::vector<std::string>({records_[match_idx].record_id}));
   }

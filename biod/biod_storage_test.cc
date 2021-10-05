@@ -73,11 +73,6 @@ constexpr int kElan515TemplateSizeBytes = 67064;
  */
 constexpr int kRlimitMemlockBytes = 65536;
 
-// Flag to control whether to run tests with positive match secret support.
-// This can't be a member of the test fixture because it's accessed in the
-// TestRecord class in anonymous namespace.
-bool test_record_supports_positive_match_secret = true;
-
 class TestRecord : public BiometricsManagerRecord {
  public:
   TestRecord(const std::string& id,
@@ -101,9 +96,6 @@ class TestRecord : public BiometricsManagerRecord {
   const std::string& GetData() const { return data_; }
   bool SetLabel(std::string label) override { return true; }
   bool Remove() override { return true; }
-  bool SupportsPositiveMatchSecret() const override {
-    return test_record_supports_positive_match_secret;
-  }
 
   void ClearValidationValue() { validation_val_.clear(); }
 
@@ -165,27 +157,12 @@ class BiodStorageBaseTest : public ::testing::Test {
   std::unique_ptr<BiodStorage> biod_storage_;
 };
 
-class BiodStorageTest : public BiodStorageBaseTest,
-                        public ::testing::WithParamInterface<bool> {
- public:
-  BiodStorageTest() { test_record_supports_positive_match_secret = GetParam(); }
-};
-
-TEST_P(BiodStorageTest, WriteAndReadRecords) {
+TEST_F(BiodStorageBaseTest, WriteAndReadRecords) {
   const std::vector<uint8_t> kEmpty;
   const std::vector<TestRecord> kRecords = {
-      TestRecord(
-          kRecordId1, kUserId1, kLabel1,
-          test_record_supports_positive_match_secret ? kValidationVal1 : kEmpty,
-          kData1),
-      TestRecord(
-          kRecordId2, kUserId2, kLabel2,
-          test_record_supports_positive_match_secret ? kValidationVal2 : kEmpty,
-          kData2),
-      TestRecord(
-          kRecordId3, kUserId2, kLabel3,
-          test_record_supports_positive_match_secret ? kValidationVal3 : kEmpty,
-          kData3)};
+      TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1),
+      TestRecord(kRecordId2, kUserId2, kLabel2, kValidationVal2, kData2),
+      TestRecord(kRecordId3, kUserId2, kLabel3, kValidationVal3, kData3)};
 
   // Write the record.
   for (auto const& record : kRecords) {
@@ -279,12 +256,10 @@ TEST_F(BiodStorageBaseTest, WriteRecord_CheckUmask) {
   EXPECT_EQ(kPermissions600, actual_permissions);
 }
 
-TEST_P(BiodStorageTest, DeleteRecord) {
+TEST_F(BiodStorageBaseTest, DeleteRecord) {
   const std::vector<uint8_t> kEmpty;
-  const TestRecord kRecord(
-      kRecordId1, kUserId1, kLabel1,
-      test_record_supports_positive_match_secret ? kValidationVal1 : kEmpty,
-      kData1);
+  const TestRecord kRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1,
+                           kData1);
 
   // Delete a non-existent record.
   EXPECT_TRUE(biod_storage_->DeleteRecord(kUserId1, kRecordId1));
@@ -334,10 +309,6 @@ TEST_F(BiodStorageBaseTest, TestReadValidationValueFromRecord) {
   EXPECT_TRUE(ret != nullptr);
   EXPECT_EQ(*ret, kValidationVal1);
 }
-
-INSTANTIATE_TEST_SUITE_P(RecordsSupportPositiveMatchSecret,
-                         BiodStorageTest,
-                         ::testing::Values(true, false));
 
 /**
  * Tests for invalid records. In general records will be correctly formatted

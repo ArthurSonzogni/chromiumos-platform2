@@ -71,15 +71,8 @@ bool BiodStorage::WriteRecord(const BiometricsManagerRecord& record,
   base::Value record_value(base::Value::Type::DICTIONARY);
   record_value.SetStringKey(kLabel, record.GetLabel());
   record_value.SetStringKey(kRecordId, record_id);
-
-  if (record.SupportsPositiveMatchSecret()) {
-    record_value.SetStringKey(kValidationVal, record.GetValidationValBase64());
-    record_value.SetIntKey(kVersionMember, kRecordFormatVersion);
-  } else {
-    record_value.SetIntKey(kVersionMember,
-                           kRecordFormatVersionNoValidationValue);
-  }
-
+  record_value.SetStringKey(kValidationVal, record.GetValidationValBase64());
+  record_value.SetIntKey(kVersionMember, kRecordFormatVersion);
   record_value.SetKey(kData, std::move(data));
   record_value.SetStringKey(kBioManagerMember, biometrics_manager_name_);
 

@@ -104,7 +104,6 @@ class CrosFpBiometricsManager : public BiometricsManager {
     const std::vector<uint8_t>& GetValidationVal() const override;
     bool SetLabel(std::string label) override;
     bool Remove() override;
-    bool SupportsPositiveMatchSecret() const override;
 
    private:
     base::WeakPtr<CrosFpBiometricsManager> biometrics_manager_;
@@ -167,8 +166,6 @@ class CrosFpBiometricsManager : public BiometricsManager {
   std::unique_ptr<PowerButtonFilterInterface> power_button_filter_;
 
   std::unique_ptr<BiodStorageInterface> biod_storage_;
-
-  bool use_positive_match_secret_;
 
   std::unique_ptr<base::RepeatingTimer> maintenance_timer_;
 };

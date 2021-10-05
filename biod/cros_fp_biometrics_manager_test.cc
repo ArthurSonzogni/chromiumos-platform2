@@ -127,16 +127,6 @@ class CrosFpBiometricsManagerPeer {
     fake_cros_dev_->positive_match_secret_ = new_secret;
   }
 
-  // Methods to access or modify CrosFpBiometricsManager private fields.
-
-  bool SupportsPositiveMatchSecret() {
-    return cros_fp_biometrics_manager_->use_positive_match_secret_;
-  }
-
-  void SetUsePositiveMatchSecret(bool use) {
-    cros_fp_biometrics_manager_->use_positive_match_secret_ = use;
-  }
-
   // Add a record to cros_fp_biometrics_manager_, return the index.
   int AddRecord(int record_format_version,
                 const std::string& record_id,
@@ -185,7 +175,6 @@ class CrosFpBiometricsManagerTest : public ::testing::Test {
 };
 
 TEST_F(CrosFpBiometricsManagerTest, TestComputeValidationValue) {
-  EXPECT_TRUE(cros_fp_biometrics_manager_peer_.SupportsPositiveMatchSecret());
   const std::vector<std::pair<brillo::SecureVector, std::vector<uint8_t>>>
       kSecretValidationValuePairs = {
           std::make_pair(kFakePositiveMatchSecret1, kFakeValidationValue1),
@@ -200,7 +189,6 @@ TEST_F(CrosFpBiometricsManagerTest, TestComputeValidationValue) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestValidationValueIsCorrect) {
-  ASSERT_TRUE(cros_fp_biometrics_manager_peer_.SupportsPositiveMatchSecret());
   cros_fp_biometrics_manager_peer_.SetDevicePositiveMatchSecret(
       kFakePositiveMatchSecret1);
   int index = cros_fp_biometrics_manager_peer_.AddRecord(
@@ -233,22 +221,7 @@ TEST_F(CrosFpBiometricsManagerTest, TestCalculateMatchesInvalidIndex) {
   EXPECT_TRUE(matches.empty());
 }
 
-TEST_F(CrosFpBiometricsManagerTest,
-       TestCalculateMatchesWithPositiveMatchSecret) {
-  ASSERT_TRUE(cros_fp_biometrics_manager_peer_.SupportsPositiveMatchSecret());
-  int index = cros_fp_biometrics_manager_peer_.AddRecord(
-      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1);
-  BiometricsManager::AttemptMatches matches =
-      cros_fp_biometrics_manager_peer_.CalculateMatches(index, true);
-  EXPECT_EQ(matches,
-            BiometricsManager::AttemptMatches({{kUserID, {kRecordID}}}));
-}
-
-TEST_F(CrosFpBiometricsManagerTest,
-       TestCalculateMatchesWithoutPositiveMatchSecret) {
-  // If not supporting positive match secret, we should just report matches.
-  cros_fp_biometrics_manager_peer_.SetUsePositiveMatchSecret(false);
-  ASSERT_FALSE(cros_fp_biometrics_manager_peer_.SupportsPositiveMatchSecret());
+TEST_F(CrosFpBiometricsManagerTest, TestCalculateMatches) {
   int index = cros_fp_biometrics_manager_peer_.AddRecord(
       kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1);
   BiometricsManager::AttemptMatches matches =
@@ -287,6 +260,9 @@ class CrosFpBiometricsManagerMockTest : public ::testing::Test {
     mock_metrics_ = mock_biod_metrics.get();
     auto mock_biod_storage = std::make_unique<storage::MockBiodStorage>();
     mock_biod_storage_ = mock_biod_storage.get();
+
+    EXPECT_CALL(*mock_cros_dev_, SupportsPositiveMatchSecret())
+        .WillRepeatedly(Return(true));
 
     mock_ = std::make_unique<MockCrosFpBiometricsManager>(
         PowerButtonFilter::Create(mock_bus), std::move(mock_cros_fp_dev),
