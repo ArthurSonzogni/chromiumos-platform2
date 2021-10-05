@@ -53,16 +53,48 @@ base::Time GetPathMtime(const base::FilePath& path) {
   return base::Time::FromTimeT(path_stat.st_mtime);
 }
 
-// Sets up PR_SET_PDEATHSIG to send SIGTERMs to the running subprocesses in case
-// the scheduler process is killed.
+// Sets up PR_SET_PDEATHSIG to send SIGKILLs to the running subprocesses in case
+// the scheduler process crashes/exits.
 class TerminateWithParentDelegate
     : public base::LaunchOptions::PreExecDelegate {
  public:
   TerminateWithParentDelegate() = default;
   ~TerminateWithParentDelegate() = default;
 
-  void RunAsyncSafe() override { prctl(PR_SET_PDEATHSIG, SIGTERM); }
+  void RunAsyncSafe() override { prctl(PR_SET_PDEATHSIG, SIGKILL); }
 };
+
+// Atomic variable for holding the child pid.
+static std::atomic<base::ProcessId> child_pid(-1);
+
+// Handle SIGTERM by sending the signal to current active child process, wait
+// for the child process to complete and exit. This allows the periodic
+// scheduler (and its subprocesses) to exit gracefully when the init process
+// (Upstart) sends it a SIGTERM.
+//
+// If the child process does not exit on SIGTERM, subsequently the periodic
+// scheduler process will exit/be killed and the configured PDEATHSIG (SIGKILL)
+// is sent to the child processes.
+static void SigtermHandler(int signal) {
+  if (child_pid > 0) {
+    // Attempt to send SIGTERM to the child process and wait for the child
+    // process to exit.
+    base::Process p(child_pid);
+    p.Terminate(-1, false /* wait */);
+    p.WaitForExitWithTimeout(base::TimeDelta::FromSeconds(kKillDelay), nullptr);
+  }
+  exit(0);
+}
+
+// Register signal handler for handling SIGTERM and stopping the process.
+void RegisterSigtermHandler() {
+  struct sigaction sigterm_action = {};
+  sigemptyset(&sigterm_action.sa_mask);
+  sigterm_action.sa_flags = SA_RESTART;
+  sigaddset(&sigterm_action.sa_mask, SIGTERM);
+  sigterm_action.sa_handler = SigtermHandler;
+  CHECK_EQ(sigaction(SIGTERM, &sigterm_action, nullptr), 0);
+}
 
 }  // namespace
 
@@ -80,6 +112,8 @@ PeriodicScheduler::PeriodicScheduler(
       process_args_(task_command) {}
 
 bool PeriodicScheduler::Run(bool start_immediately) {
+  RegisterSigtermHandler();
+
   if (!CheckAndFixSpoolPaths(spool_dir_)) {
     LOG(ERROR) << "Spool directory is damaged. Aborting!";
     return false;
@@ -112,7 +146,7 @@ bool PeriodicScheduler::Run(bool start_immediately) {
       TerminateWithParentDelegate terminate_with_parent_delegate;
       opts.pre_exec_delegate = &terminate_with_parent_delegate;
       auto p = base::LaunchProcess(process_args_, opts);
-
+      child_pid = p.Pid();
       LOG(INFO) << task_name_ << ": running "
                 << base::JoinString(process_args_, " ");
 
@@ -123,6 +157,8 @@ bool PeriodicScheduler::Run(bool start_immediately) {
 
       if (!p.WaitForExitWithTimeout(timeout_seconds_, &exit_code)) {
         LOG(ERROR) << task_name_ << ": timed out";
+        p.Terminate(-1, true /* wait */);
+        child_pid = -1;
       }
 
       if (exit_code != EXIT_SUCCESS) {
