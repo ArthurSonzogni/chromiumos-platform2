@@ -14,18 +14,15 @@
 #include <base/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
+#include <dbus/spaced/dbus-constants.h>
 
 #include "spaced/disk_usage.h"
 
 namespace spaced {
-namespace {
-constexpr char kSpacedServicePath[] = "/org/chromium/Spaced";
-constexpr char kSpacedServiceName[] = "org.chromium.Spaced";
-}  // namespace
-
 DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus)
     : org::chromium::SpacedAdaptor(this),
-      dbus_object_(nullptr, bus, dbus::ObjectPath(kSpacedServicePath)),
+      dbus_object_(
+          nullptr, bus, dbus::ObjectPath(::spaced::kSpacedServicePath)),
       disk_usage_util_(std::make_unique<DiskUsageUtil>()) {}
 
 void DBusAdaptor::RegisterAsync(
@@ -46,7 +43,7 @@ uint64_t DBusAdaptor::GetRootDeviceSize() {
   return disk_usage_util_->GetRootDeviceSize();
 }
 
-Daemon::Daemon() : DBusServiceDaemon(kSpacedServiceName) {}
+Daemon::Daemon() : DBusServiceDaemon(::spaced::kSpacedServiceName) {}
 
 void Daemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
