@@ -18,6 +18,9 @@ inline constexpr char kDefaultWorkingDirPath[] = "/var/lib/rmad/";
 inline constexpr char kPowerwashRequestFilePath[] = ".powerwash_request";
 inline constexpr char kCutoffRequestFilePath[] = ".battery_cutoff_request";
 
+// Files for testing purpose.
+inline constexpr char kDisablePowerwashFilePath[] = ".disable_powerwash";
+
 // JsonStore rmad_interface keys.
 // Update go/shimless-state-preservation when adding new fields.
 inline constexpr char kStateHistory[] = "state_history";

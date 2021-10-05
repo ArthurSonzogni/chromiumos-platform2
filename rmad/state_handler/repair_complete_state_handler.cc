@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <brillo/file_utils.h>
@@ -59,11 +60,15 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
   bool same_owner = false, powerwash_request = false;
   json_store_->GetValue(kSameOwner, &same_owner);
   json_store_->GetValue(kPowerwashRequest, &powerwash_request);
-  if (same_owner || powerwash_request) {
+  if (same_owner || powerwash_request ||
+      base::PathExists(
+          working_dir_path_.AppendASCII(kDisablePowerwashFilePath))) {
     // Clear the state file and shutdown/reboot/cutoff if the device is
     // returning to the same user, or it's already done a powerwash. We don't
     // set |kPowerwashRequest| back to false because the state file is getting
-    // removed anyway.
+    // removed anyway. |kDisablePowerwashFilePath| is a file for testing
+    // convenience. Manually touch this file if we want to avoid powerwash
+    // during testing.
     // TODO(chenghan): Check if powerwash is successful.
     // TODO(chenghan): Write to metrics before removing the state file.
     if (!json_store_->ClearAndDeleteFile()) {

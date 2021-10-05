@@ -9,6 +9,7 @@
 #include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/task_environment.h>
+#include <brillo/file_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -57,6 +58,10 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
     return GetTempDirPath().AppendASCII(kCutoffRequestFilePath);
   }
 
+  base::FilePath GetDisablePowerwashFilePath() const {
+    return GetTempDirPath().AppendASCII(kDisablePowerwashFilePath);
+  }
+
  protected:
   // Variables for TaskRunner.
   base::test::SingleThreadTaskEnvironment task_environment_{
@@ -101,6 +106,45 @@ TEST_F(RepairCompleteStateHandlerTest,
   EXPECT_TRUE(reboot_called);
 }
 
+TEST_F(RepairCompleteStateHandlerTest,
+       GetNextStateCase_DifferentOwner_PowerwashDisabled) {
+  bool reboot_called = false, shutdown_called = false;
+  auto handler = CreateStateHandler(&reboot_called, &shutdown_called);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  // Returning to different owner, and powerwash is not done yet.
+  EXPECT_TRUE(json_store_->SetValue(kSameOwner, false));
+  EXPECT_TRUE(json_store_->SetValue(kPowerwashRequest, false));
+
+  // Powerwash disabled manually.
+  brillo::TouchFile(GetDisablePowerwashFilePath());
+
+  // Check that the state file exists now.
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
+  auto repair_complete = std::make_unique<RepairCompleteState>();
+  repair_complete->set_shutdown(
+      RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
+  RmadState state;
+  state.set_allocated_repair_complete(repair_complete.release());
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+  EXPECT_FALSE(reboot_called);
+  EXPECT_FALSE(shutdown_called);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+
+  // Check that the state file is cleared.
+  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+
+  // Reboot is called after a delay.
+  task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
+  EXPECT_TRUE(reboot_called);
+  EXPECT_FALSE(shutdown_called);
+  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+}
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_DifferentOwner_Reboot) {
   bool reboot_called = false, shutdown_called = false;
   auto handler = CreateStateHandler(&reboot_called, &shutdown_called);
@@ -124,6 +168,7 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_DifferentOwner_Reboot) {
   EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
   EXPECT_FALSE(reboot_called);
   EXPECT_FALSE(shutdown_called);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
   EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
 
   // Check that the state file is cleared.
@@ -160,6 +205,7 @@ TEST_F(RepairCompleteStateHandlerTest,
   EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
   EXPECT_FALSE(reboot_called);
   EXPECT_FALSE(shutdown_called);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
   EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
 
   // Check that the state file is cleared.
@@ -195,6 +241,7 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_SameOwner_Cutoff) {
   EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
   EXPECT_FALSE(reboot_called);
   EXPECT_FALSE(shutdown_called);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
   EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
 
   // Check that the state file is cleared.
@@ -230,6 +277,7 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_SameOwner_Reboot) {
   EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
   EXPECT_FALSE(reboot_called);
   EXPECT_FALSE(shutdown_called);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
   EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
 
   // Check that the state file is cleared.
@@ -265,6 +313,7 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_SameOwner_Shutdown) {
   EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
   EXPECT_FALSE(reboot_called);
   EXPECT_FALSE(shutdown_called);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
   EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
 
   // Check that the state file is cleared.
@@ -300,6 +349,7 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Success_Cutoff) {
   EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
   EXPECT_FALSE(reboot_called);
   EXPECT_FALSE(shutdown_called);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
   EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
 
   // Check that the state file is cleared.
