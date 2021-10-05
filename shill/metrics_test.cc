@@ -594,7 +594,8 @@ TEST_F(MetricsTest, CellularDrop) {
       kNetworkTechnologyEvdo,     kNetworkTechnologyGprs,
       kNetworkTechnologyGsm,      kNetworkTechnologyHspa,
       kNetworkTechnologyHspaPlus, kNetworkTechnologyLte,
-      kNetworkTechnologyUmts,     "Unknown"};
+      kNetworkTechnologyUmts,     "Unknown",
+      kNetworkTechnology5gNr};
 
   const uint16_t signal_strength = 100;
   const int kInterfaceIndex = 1;

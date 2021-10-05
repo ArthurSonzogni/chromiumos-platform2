@@ -1505,6 +1505,8 @@ void Metrics::NotifyCellularDeviceDrop(const std::string& network_technology,
     drop_technology = kCellularDropTechnologyLte;
   } else if (network_technology == kNetworkTechnologyUmts) {
     drop_technology = kCellularDropTechnologyUmts;
+  } else if (network_technology == kNetworkTechnology5gNr) {
+    drop_technology = kCellularDropTechnology5gNr;
   }
   SendEnumToUMA(kMetricCellularDrop, drop_technology,
                 kCellularDropTechnologyMax);

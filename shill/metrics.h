@@ -349,6 +349,7 @@ class Metrics : public DefaultServiceObserver {
     kCellularDropTechnologyLte = 7,
     kCellularDropTechnologyUmts = 8,
     kCellularDropTechnologyUnknown = 9,
+    kCellularDropTechnology5gNr = 10,
     kCellularDropTechnologyMax
   };
 
