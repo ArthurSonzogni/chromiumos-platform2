@@ -24,9 +24,18 @@
 
 namespace biod {
 
+using Mode = ec::FpMode::Mode;
+
 namespace {
+constexpr int kMaxPartialAttempts = 20;
+constexpr int kMaxTemplateCount = 5;
 constexpr char kRecordID[] = "record0";
+constexpr char kData1[] = "some_super_interesting_data1";
 constexpr char kLabel[] = "label0";
+constexpr char kTemplateMetadataVersion0[] =
+    "AAAdY8N2B+A/3Bz/Z7jZQId8OTgBksdFxjlWXzZ4lRg/GhE+MazZtq6M2tcMUk7e";
+constexpr char kTemplateMetadataVersion1[] =
+    "AQDPIyylfuu1jT+nf5x3WHdWnunhRyVh5tIu4jo+mM0rztdi50id7XMFPycVJHoR";
 }  // namespace
 
 using crypto_test_data::kFakePositiveMatchSecret1;
@@ -39,6 +48,7 @@ using testing::_;
 using testing::ByMove;
 using testing::Return;
 using testing::ReturnRef;
+using testing::SaveArg;
 
 // Using a peer class to control access to the class under test is better than
 // making the text fixture a friend class.
@@ -65,6 +75,10 @@ class CrosFpBiometricsManagerPeer {
   bool CheckPositiveMatchSecret(const std::string& record_id, int match_idx) {
     return cros_fp_biometrics_manager_->CheckPositiveMatchSecret(record_id,
                                                                  match_idx);
+  }
+
+  void AddLoadedRecord(const std::string& record_id) {
+    cros_fp_biometrics_manager_->loaded_records_.emplace_back(record_id);
   }
 
  private:
@@ -103,21 +117,41 @@ class CrosFpBiometricsManagerTest : public ::testing::Test {
     EXPECT_CALL(*mock_cros_dev_, SupportsPositiveMatchSecret())
         .WillRepeatedly(Return(true));
 
+    // Save OnMkbpEvent callback to use later in tests
+    ON_CALL(*mock_cros_dev_, SetMkbpEventCallback)
+        .WillByDefault(SaveArg<0>(&on_mkbp_event_));
+
     auto cros_fp_biometrics_manager = std::make_unique<CrosFpBiometricsManager>(
         PowerButtonFilter::Create(mock_bus), std::move(mock_cros_dev),
         std::make_unique<metrics::MockBiodMetrics>(),
         std::move(mock_record_manager));
     cros_fp_biometrics_manager_ = cros_fp_biometrics_manager.get();
 
+    // Register OnAuthScanDone and OnSessionFailed callbacks which are actually
+    // mocks. That way we can conveniently handle these calls without
+    // using lambda.
+    cros_fp_biometrics_manager_->SetAuthScanDoneHandler(
+        base::BindRepeating(&CrosFpBiometricsManagerTest::AuthScanDoneHandler,
+                            base::Unretained(this)));
+    cros_fp_biometrics_manager_->SetSessionFailedHandler(
+        base::BindRepeating(&CrosFpBiometricsManagerTest::SessionFailedHandler,
+                            base::Unretained(this)));
+
     cros_fp_biometrics_manager_peer_.emplace(
         std::move(cros_fp_biometrics_manager));
   }
+
+  MOCK_METHOD(void,
+              AuthScanDoneHandler,
+              (ScanResult result, BiometricsManager::AttemptMatches matches));
+  MOCK_METHOD(void, SessionFailedHandler, ());
 
  protected:
   std::optional<CrosFpBiometricsManagerPeer> cros_fp_biometrics_manager_peer_;
   MockCrosFpRecordManager* mock_record_manager_;
   MockCrosFpDevice* mock_cros_dev_;
   CrosFpBiometricsManager* cros_fp_biometrics_manager_;
+  CrosFpDevice::MkbpCallback on_mkbp_event_;
 };
 
 TEST_F(CrosFpBiometricsManagerTest, TestComputeValidationValue) {
@@ -135,11 +169,11 @@ TEST_F(CrosFpBiometricsManagerTest, TestComputeValidationValue) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestValidationValueCalculation) {
-  BiodStorageInterface::RecordMetadata metadata1{
+  const BiodStorageInterface::RecordMetadata kMetadata1{
       kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
 
   EXPECT_CALL(*mock_record_manager_, GetRecordMetadata)
-      .WillRepeatedly(Return(metadata1));
+      .WillRepeatedly(Return(kMetadata1));
   EXPECT_CALL(*mock_cros_dev_, GetPositiveMatchSecret)
       .WillOnce(Return(kFakePositiveMatchSecret1));
   EXPECT_TRUE(
@@ -147,10 +181,10 @@ TEST_F(CrosFpBiometricsManagerTest, TestValidationValueCalculation) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestPositiveMatchSecretIsCorrect) {
-  BiodStorageInterface::RecordMetadata metadata{
+  const BiodStorageInterface::RecordMetadata kMetadata{
       kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
   EXPECT_CALL(*mock_record_manager_, GetRecordMetadata(kRecordID))
-      .WillRepeatedly(Return(metadata));
+      .WillRepeatedly(Return(kMetadata));
 
   EXPECT_CALL(*mock_cros_dev_, GetPositiveMatchSecret)
       .WillOnce(Return(kFakePositiveMatchSecret1));
@@ -159,10 +193,10 @@ TEST_F(CrosFpBiometricsManagerTest, TestPositiveMatchSecretIsCorrect) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestPositiveMatchSecretIsNotCorrect) {
-  BiodStorageInterface::RecordMetadata metadata{
+  const BiodStorageInterface::RecordMetadata kMetadata{
       kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue2};
   EXPECT_CALL(*mock_record_manager_, GetRecordMetadata(kRecordID))
-      .WillRepeatedly(Return(metadata));
+      .WillRepeatedly(Return(kMetadata));
 
   EXPECT_CALL(*mock_cros_dev_, GetPositiveMatchSecret)
       .WillOnce(Return(kFakePositiveMatchSecret1));
@@ -175,6 +209,481 @@ TEST_F(CrosFpBiometricsManagerTest, TestCheckPositiveMatchSecretNoSecret) {
       .WillOnce(Return(base::nullopt));
   EXPECT_FALSE(
       cros_fp_biometrics_manager_peer_->CheckPositiveMatchSecret(kRecordID, 0));
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestInvalidRecordsAreDeletedWhileReading) {
+  EXPECT_CALL(*mock_record_manager_, UserHasInvalidRecords(kUserID))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_record_manager_, DeleteInvalidRecords);
+
+  EXPECT_FALSE(cros_fp_biometrics_manager_->ReadRecordsForSingleUser(kUserID));
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestCheckPositiveMatchSecret) {
+  const BiodStorageInterface::RecordMetadata kMetadata{
+      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
+  EXPECT_CALL(*mock_record_manager_, GetRecordMetadata(kRecordID))
+      .WillRepeatedly(Return(kMetadata));
+  EXPECT_CALL(*mock_cros_dev_, GetPositiveMatchSecret)
+      .WillOnce(Return(kFakePositiveMatchSecret1));
+  EXPECT_TRUE(
+      cros_fp_biometrics_manager_peer_->CheckPositiveMatchSecret(kRecordID, 0));
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestLoadingTemplate) {
+  std::string template_decoded;
+  base::Base64Decode(kTemplateMetadataVersion0, &template_decoded);
+  VendorTemplate tmpl(template_decoded.begin(), template_decoded.end());
+  EXPECT_EQ(tmpl.size(), sizeof(struct ec_fp_template_encryption_metadata));
+
+  // Expect that biod will send correct record data to FPMCU.
+  EXPECT_CALL(*mock_cros_dev_, UploadTemplate(tmpl)).WillOnce(Return(true));
+
+  std::vector<Record> user_records({{{kRecordFormatVersion, kRecordID, kUserID,
+                                      kLabel, kFakeValidationValue1},
+                                     kTemplateMetadataVersion0}});
+
+  EXPECT_CALL(*mock_record_manager_, GetRecordsForUser)
+      .WillOnce(Return(user_records));
+  EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount)
+      .WillRepeatedly(Return(kMaxTemplateCount));
+  EXPECT_TRUE(cros_fp_biometrics_manager_->ReadRecordsForSingleUser(kUserID));
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestLoadingTemplateUploadError) {
+  std::vector<Record> user_records({{{kRecordFormatVersion, kRecordID, kUserID,
+                                      kLabel, kFakeValidationValue1},
+                                     kTemplateMetadataVersion0}});
+
+  EXPECT_CALL(*mock_record_manager_, GetRecordsForUser)
+      .WillOnce(Return(user_records));
+  EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount)
+      .WillRepeatedly(Return(kMaxTemplateCount));
+  EXPECT_CALL(*mock_cros_dev_, UploadTemplate).WillOnce(Return(false));
+  // Still expect true, because there are no invalid records
+  EXPECT_TRUE(cros_fp_biometrics_manager_->ReadRecordsForSingleUser(kUserID));
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestLoadingTemplateInvalidVersion) {
+  std::vector<Record> user_records({{{kRecordFormatVersion, kRecordID, kUserID,
+                                      kLabel, kFakeValidationValue1},
+                                     kTemplateMetadataVersion1}});
+
+  EXPECT_CALL(*mock_record_manager_, GetRecordsForUser)
+      .WillOnce(Return(user_records));
+  EXPECT_CALL(*mock_record_manager_, DeleteRecord(kRecordID))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount)
+      .WillRepeatedly(Return(kMaxTemplateCount));
+  EXPECT_CALL(*mock_cros_dev_, UploadTemplate).Times(0);
+  // Still expect true, because there are no invalid records
+  EXPECT_TRUE(cros_fp_biometrics_manager_->ReadRecordsForSingleUser(kUserID));
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestLoadingTemplateNoSpaceAvailable) {
+  std::vector<Record> user_records({{{kRecordFormatVersion, kRecordID, kUserID,
+                                      kLabel, kFakeValidationValue1},
+                                     kData1}});
+
+  EXPECT_CALL(*mock_record_manager_, GetRecordsForUser)
+      .WillOnce(Return(user_records));
+  EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount).WillRepeatedly(Return(0));
+  EXPECT_CALL(*mock_cros_dev_, UploadTemplate).Times(0);
+  // Still expect true, because there are no invalid records
+  EXPECT_TRUE(cros_fp_biometrics_manager_->ReadRecordsForSingleUser(kUserID));
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionStartStopSuccess) {
+  BiometricsManager::AuthSession auth_session;
+
+  // Expect that biod will ask FPMCU to set the match mode.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
+      .WillOnce(Return(true));
+
+  // Start auth session.
+  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth_session);
+
+  // When auth session ends, FP mode will be set to kNone.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kNone)))
+      .WillOnce(Return(true));
+
+  // Stop auth session
+  auth_session.End();
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchModeFailed) {
+  BiometricsManager::AuthSession auth_session;
+
+  // Expect that biod will ask FPMCU to set the match mode.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
+      .WillOnce(Return(false));
+
+  // Auth session should fail to start when FPMCU refuses to set match mode.
+  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_FALSE(auth_session);
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionRequestsFingerUp) {
+  BiometricsManager::AuthSession auth_session;
+
+  // Expect that biod will ask FPMCU to set the match mode.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
+      .WillOnce(Return(true));
+
+  // Start auth session.
+  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth_session);
+
+  // Biod will set FP mode to FingerUp, when calling on_mkbp_event_.Run.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerUp)))
+      .WillOnce(Return(true));
+
+  // When auth session ends, FP mode will be set to kNone.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kNone)))
+      .WillOnce(Return(true));
+
+  // Send response from Cros FP. Finger up should be requested regardless of
+  // response from FPMCU
+  on_mkbp_event_.Run(EC_MKBP_FP_MATCH);
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionRequestsFingerUpFailed) {
+  BiometricsManager::AuthSession auth_session;
+
+  // Expect that biod will ask FPMCU to set the match mode.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
+      .WillOnce(Return(true));
+
+  // Start auth session.
+  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth_session);
+
+  // Biod will set FP mode to FingerUp, when calling on_mkbp_event_.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerUp)))
+      .WillOnce(Return(false));
+
+  // Expect that OnSessionFailed callback is called.
+  EXPECT_CALL(*this, SessionFailedHandler).Times(1);
+
+  // When auth session ends, FP mode will be set to kNone.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kNone)))
+      .WillOnce(Return(true));
+
+  // Send response from Cros FP. Finger up should be requested regardless of
+  // response from FPMCU
+  on_mkbp_event_.Run(EC_MKBP_FP_MATCH);
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionSuccessNoUpdate) {
+  BiometricsManager::AuthSession auth_session;
+  const BiodStorageInterface::RecordMetadata kMetadata{
+      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
+  const BiometricsManager::AttemptMatches kExpectedMatches(
+      {{std::string(kUserID), std::vector<std::string>({kRecordID})}});
+
+  // Give record details if asked.
+  EXPECT_CALL(*mock_record_manager_, GetRecordMetadata)
+      .WillRepeatedly(Return(kMetadata));
+
+  // Always allow setting FP mode.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode).WillRepeatedly(Return(true));
+
+  // Pretend that we have some records loaded.
+  cros_fp_biometrics_manager_peer_->AddLoadedRecord(kMetadata.record_id);
+
+  EXPECT_CALL(*this, AuthScanDoneHandler(ScanResult::SCAN_RESULT_SUCCESS,
+                                         kExpectedMatches))
+      .Times(1);
+
+  // Start auth session.
+  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth_session);
+
+  EXPECT_CALL(*mock_cros_dev_, GetPositiveMatchSecret)
+      .WillOnce(Return(kFakePositiveMatchSecret1));
+
+  // Send response from Cros FP.
+  on_mkbp_event_.Run(EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_YES);
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionFailedInvalidTemplate) {
+  BiometricsManager::AuthSession auth_session;
+  const BiodStorageInterface::RecordMetadata kMetadata{
+      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
+  const BiometricsManager::AttemptMatches kEmptyMatches;
+
+  // Always allow setting FP mode.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode).WillRepeatedly(Return(true));
+
+  // No records are loaded, so don't expect asking for record details.
+  EXPECT_CALL(*mock_record_manager_, GetRecordMetadata).Times(0);
+
+  // Expect success result but without any matched records.
+  EXPECT_CALL(*this, AuthScanDoneHandler(ScanResult::SCAN_RESULT_SUCCESS,
+                                         kEmptyMatches))
+      .Times(1);
+
+  // Start auth session.
+  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth_session);
+
+  // Send response from Cros FP.
+  on_mkbp_event_.Run(EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_YES);
+}
+
+TEST_F(CrosFpBiometricsManagerTest,
+       TestAuthSessionFailedInvalidPositiveMatchSecret) {
+  BiometricsManager::AuthSession auth_session;
+  const BiodStorageInterface::RecordMetadata kMetadata{
+      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
+  const BiometricsManager::AttemptMatches kEmptyMatches;
+
+  // Give record details if asked.
+  EXPECT_CALL(*mock_record_manager_, GetRecordMetadata)
+      .WillRepeatedly(Return(kMetadata));
+
+  // Always allow setting FP mode.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode).WillRepeatedly(Return(true));
+
+  // Pretend that we have some records loaded.
+  cros_fp_biometrics_manager_peer_->AddLoadedRecord(kMetadata.record_id);
+
+  // When Positive Match Secret is not correct, then we expect to receive
+  // empty matches.
+  EXPECT_CALL(*this, AuthScanDoneHandler(ScanResult::SCAN_RESULT_SUCCESS,
+                                         kEmptyMatches))
+      .Times(1);
+
+  // Start auth session.
+  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth_session);
+
+  // Return wrong Positive Match Secret.
+  EXPECT_CALL(*mock_cros_dev_, GetPositiveMatchSecret)
+      .WillOnce(Return(kFakePositiveMatchSecret2));
+
+  // Send response from Cros FP.
+  on_mkbp_event_.Run(EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_YES);
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNo) {
+  BiometricsManager::AuthSession auth_session;
+  const BiodStorageInterface::RecordMetadata kMetadata{
+      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
+  const BiometricsManager::AttemptMatches kEmptyMatches;
+
+  // Always allow setting FP mode.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode).WillRepeatedly(Return(true));
+
+  // If result is different than MATCH_YES, then we expect to receive
+  // empty matches.
+  EXPECT_CALL(*this, AuthScanDoneHandler(ScanResult::SCAN_RESULT_SUCCESS,
+                                         kEmptyMatches))
+      .Times(1);
+
+  // Start auth session.
+  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth_session);
+
+  // Send response from Cros FP.
+  on_mkbp_event_.Run(EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_NO);
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNoTemplates) {
+  BiometricsManager::AuthSession auth_session;
+  const BiodStorageInterface::RecordMetadata kMetadata{
+      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
+  const BiometricsManager::AttemptMatches kEmptyMatches;
+
+  // Always allow setting FP mode.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode).WillRepeatedly(Return(true));
+
+  // If result is different than MATCH_YES, then we expect to receive
+  // empty matches.
+  EXPECT_CALL(*this, AuthScanDoneHandler(ScanResult::SCAN_RESULT_SUCCESS,
+                                         kEmptyMatches))
+      .Times(1);
+
+  // Start auth session.
+  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth_session);
+
+  // Send response from Cros FP.
+  on_mkbp_event_.Run(EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_NO_TEMPLATES);
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNoInternal) {
+  BiometricsManager::AuthSession auth_session;
+  const BiodStorageInterface::RecordMetadata kMetadata{
+      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
+  const BiometricsManager::AttemptMatches kEmptyMatches;
+
+  // Always allow setting FP mode.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode).WillRepeatedly(Return(true));
+
+  // If result is different than MATCH_YES, then we expect to receive
+  // empty matches.
+  EXPECT_CALL(*this, AuthScanDoneHandler(ScanResult::SCAN_RESULT_SUCCESS,
+                                         kEmptyMatches))
+      .Times(1);
+
+  // Start auth session.
+  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth_session);
+
+  // Send response from Cros FP.
+  on_mkbp_event_.Run(EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_NO_INTERNAL);
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNoLowQuality) {
+  BiometricsManager::AuthSession auth_session;
+  const BiodStorageInterface::RecordMetadata kMetadata{
+      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
+  const BiometricsManager::AttemptMatches kEmptyMatches;
+
+  // Always allow setting FP mode.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode).WillRepeatedly(Return(true));
+
+  // If result is different than MATCH_YES, then we expect to receive
+  // empty matches.
+  EXPECT_CALL(*this, AuthScanDoneHandler(ScanResult::SCAN_RESULT_INSUFFICIENT,
+                                         kEmptyMatches))
+      .Times(1);
+
+  // Start auth session.
+  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth_session);
+
+  // Send response from Cros FP.
+  on_mkbp_event_.Run(EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_NO_LOW_QUALITY);
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNoLowCoverage) {
+  BiometricsManager::AuthSession auth_session;
+  const BiodStorageInterface::RecordMetadata kMetadata{
+      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
+  const BiometricsManager::AttemptMatches kEmptyMatches;
+
+  // Always allow setting FP mode.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode).WillRepeatedly(Return(true));
+
+  // If result is different than MATCH_YES, then we expect to receive
+  // empty matches.
+  EXPECT_CALL(*this, AuthScanDoneHandler(ScanResult::SCAN_RESULT_PARTIAL,
+                                         kEmptyMatches))
+      .Times(1);
+
+  // Start auth session.
+  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth_session);
+
+  // Send response from Cros FP.
+  // DoMatchEvent will automatically retry the LOW_COVERAGE event (without
+  // ending the AuthSession) up to kMaxPartialAttempts times.
+  // When kMaxPartialAttempts is reached, AuthScanDoneHandler will be
+  // called with SCAN_RESULT_PARTIAL.
+  for (int i = 0; i < kMaxPartialAttempts + 1; i++) {
+    on_mkbp_event_.Run(EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_NO_LOW_COVERAGE);
+  }
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionSuccessAfterLowCoverage) {
+  BiometricsManager::AuthSession auth_session;
+  const BiodStorageInterface::RecordMetadata kMetadata{
+      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
+  const BiometricsManager::AttemptMatches kExpectedMatches(
+      {{std::string(kUserID), std::vector<std::string>({kRecordID})}});
+
+  // Give record details if asked.
+  EXPECT_CALL(*mock_record_manager_, GetRecordMetadata)
+      .WillRepeatedly(Return(kMetadata));
+
+  // Always allow setting FP mode.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode).WillRepeatedly(Return(true));
+
+  // Pretend that we have some records loaded.
+  cros_fp_biometrics_manager_peer_->AddLoadedRecord(kMetadata.record_id);
+
+  // Start auth session.
+  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth_session);
+
+  // Send LOW_COVERAGE for kMaxPartialAttempts/2 times then send MATCH_YES.
+  // DoMatchEvent will automatically retry the LOW_COVERAGE event (without
+  // ending the AuthSession) up to kMaxPartialAttempts times.
+  for (int i = 0; i < kMaxPartialAttempts / 2; i++) {
+    on_mkbp_event_.Run(EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_NO_LOW_COVERAGE);
+  }
+
+  EXPECT_CALL(*mock_cros_dev_, GetPositiveMatchSecret)
+      .WillOnce(Return(kFakePositiveMatchSecret1));
+
+  EXPECT_CALL(*this, AuthScanDoneHandler(ScanResult::SCAN_RESULT_SUCCESS,
+                                         kExpectedMatches))
+      .Times(1);
+
+  on_mkbp_event_.Run(EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_YES);
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchUnknownCode) {
+  BiometricsManager::AuthSession auth_session;
+
+  // Always allow setting FP mode.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode).WillRepeatedly(Return(true));
+
+  // When code from FPMCU is unknown a failure is expected..
+  EXPECT_CALL(*this, AuthScanDoneHandler).Times(0);
+  EXPECT_CALL(*this, SessionFailedHandler).Times(1);
+
+  // Start auth session.
+  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth_session);
+
+  // Send response from Cros FP.
+  on_mkbp_event_.Run(EC_MKBP_FP_MATCH | 15);
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionSuccessUpdated) {
+  BiometricsManager::AuthSession auth_session;
+  const BiodStorageInterface::RecordMetadata kMetadata{
+      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
+  const BiometricsManager::AttemptMatches kExpectedMatches(
+      {{std::string(kUserID), std::vector<std::string>({kRecordID})}});
+
+  // Give record details if asked.
+  EXPECT_CALL(*mock_record_manager_, GetRecordMetadata)
+      .WillRepeatedly(Return(kMetadata));
+
+  // Always allow setting FP mode.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode).WillRepeatedly(Return(true));
+
+  // Pretend that we have some records loaded.
+  cros_fp_biometrics_manager_peer_->AddLoadedRecord(kMetadata.record_id);
+
+  EXPECT_CALL(*this, AuthScanDoneHandler(ScanResult::SCAN_RESULT_SUCCESS,
+                                         kExpectedMatches))
+      .Times(1);
+
+  // Start auth session.
+  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth_session);
+
+  EXPECT_CALL(*mock_cros_dev_, GetPositiveMatchSecret)
+      .WillOnce(Return(kFakePositiveMatchSecret1));
+
+  // Return information that template 0 was updated
+  EXPECT_CALL(*mock_cros_dev_, GetDirtyMap)
+      .WillOnce(Return(std::bitset<32>(1)));
+
+  EXPECT_CALL(*mock_cros_dev_, GetTemplate)
+      .WillOnce(Return(ByMove(std::make_unique<VendorTemplate>())));
+
+  EXPECT_CALL(*mock_record_manager_, UpdateRecord(kMetadata, _))
+      .WillOnce(Return(true));
+
+  // Send response from Cros FP.
+  on_mkbp_event_.Run(EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_YES_UPDATED);
 }
 
 class CrosFpBiometricsManagerMockTest : public ::testing::Test {
@@ -287,7 +796,7 @@ TEST_F(CrosFpBiometricsManagerMockTest, TestGetDirtyList) {
 }
 
 TEST_F(CrosFpBiometricsManagerMockTest, TestUpdateTemplatesOnDisk) {
-  BiodStorageInterface::RecordMetadata metadata{
+  const BiodStorageInterface::RecordMetadata kMetadata{
       kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
   const std::vector<int> dirty_list = {0};
   const std::unordered_set<uint32_t> suspicious_templates;
@@ -297,8 +806,8 @@ TEST_F(CrosFpBiometricsManagerMockTest, TestUpdateTemplatesOnDisk) {
 
   EXPECT_CALL(*mock_, GetLoadedRecordId(0)).WillRepeatedly(Return(kRecordID));
   EXPECT_CALL(*mock_record_manager_, GetRecordMetadata(kRecordID))
-      .WillRepeatedly(Return(metadata));
-  EXPECT_CALL(*mock_record_manager_, UpdateRecord(metadata, _))
+      .WillRepeatedly(Return(kMetadata));
+  EXPECT_CALL(*mock_record_manager_, UpdateRecord(kMetadata, _))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(mock_->UpdateTemplatesOnDisk(dirty_list, suspicious_templates));
