@@ -56,12 +56,14 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
   state_ = state;
   StoreState();
 
-  if (bool powerwash_request;
-      json_store_->GetValue(kPowerwashRequest, &powerwash_request) &&
-      powerwash_request) {
-    // Boot after powerwash. Clear the state file and shutdown/reboot/cutoff.
-    // We don't set |kPowerwashRequest| back to false because the state file is
-    // getting removed anyway.
+  bool same_owner = false, powerwash_request = false;
+  json_store_->GetValue(kSameOwner, &same_owner);
+  json_store_->GetValue(kPowerwashRequest, &powerwash_request);
+  if (same_owner || powerwash_request) {
+    // Clear the state file and shutdown/reboot/cutoff if the device is
+    // returning to the same user, or it's already done a powerwash. We don't
+    // set |kPowerwashRequest| back to false because the state file is getting
+    // removed anyway.
     // TODO(chenghan): Check if powerwash is successful.
     // TODO(chenghan): Write to metrics before removing the state file.
     if (!json_store_->ClearAndDeleteFile()) {
@@ -96,8 +98,9 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
     return {.error = RMAD_ERROR_NOT_SET,
             .state_case = RmadState::StateCase::STATE_NOT_SET};
   } else {
-    // Request a powerwash. The pre-stop script picks up the file before reboot,
-    // and requests a rma-mode powerwash.
+    // Request a powerwash if the device is returning to a different user, and
+    // powerwash is not done yet. The pre-stop script picks up the file before
+    // reboot and requests a rma-mode powerwash.
     if (!json_store_->SetValue(kPowerwashRequest, true) ||
         !brillo::TouchFile(
             working_dir_path_.AppendASCII(kPowerwashRequestFilePath))) {
