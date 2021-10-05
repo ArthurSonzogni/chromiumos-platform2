@@ -5,7 +5,7 @@
 #ifndef SYSTEM_API_DBUS_PRIVACY_SCREEN_DBUS_CONSTANTS_H_
 #define SYSTEM_API_DBUS_PRIVACY_SCREEN_DBUS_CONSTANTS_H_
 
-namespace privace_screen {
+namespace privacy_screen {
 
 // Privacy screen service in Chromium:
 constexpr char kPrivacyScreenServiceName[] =
@@ -23,6 +23,6 @@ constexpr char kPrivacyScreenServiceGetPrivacyScreenSettingMethod[] =
 constexpr char kPrivacyScreenServicePrivacyScreenSettingChangedSignal[] =
     "PrivacyScreenSettingChanged";
 
-}  // namespace privace_screen
+}  // namespace privacy_screen
 
 #endif  // SYSTEM_API_DBUS_PRIVACY_SCREEN_DBUS_CONSTANTS_H_
