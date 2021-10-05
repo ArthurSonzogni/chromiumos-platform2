@@ -26,7 +26,9 @@ ModemModem3gppProxy::ModemModem3gppProxy(const scoped_refptr<dbus::Bus>& bus,
     : proxy_(new org::freedesktop::ModemManager1::Modem::Modem3gppProxy(
           bus, service, path)) {}
 
-ModemModem3gppProxy::~ModemModem3gppProxy() = default;
+ModemModem3gppProxy::~ModemModem3gppProxy() {
+  proxy_->ReleaseObjectProxy(base::DoNothing());
+}
 
 void ModemModem3gppProxy::Register(const std::string& operator_id,
                                    Error* error,

@@ -55,7 +55,9 @@ DBusObjectManagerProxy::DBusObjectManagerProxy(
       &DBusObjectManagerProxy::OnServiceAvailable, weak_factory_.GetWeakPtr()));
 }
 
-DBusObjectManagerProxy::~DBusObjectManagerProxy() = default;
+DBusObjectManagerProxy::~DBusObjectManagerProxy() {
+  proxy_->ReleaseObjectProxy(base::DoNothing());
+}
 
 void DBusObjectManagerProxy::GetManagedObjects(
     Error* error, const ManagedObjectsCallback& callback, int timeout) {

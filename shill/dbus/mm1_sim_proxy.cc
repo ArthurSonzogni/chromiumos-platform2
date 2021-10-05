@@ -26,7 +26,9 @@ SimProxy::SimProxy(const scoped_refptr<dbus::Bus>& bus,
     : proxy_(
           new org::freedesktop::ModemManager1::SimProxy(bus, service, path)) {}
 
-SimProxy::~SimProxy() = default;
+SimProxy::~SimProxy() {
+  proxy_->ReleaseObjectProxy(base::DoNothing());
+}
 
 void SimProxy::SendPin(const std::string& pin,
                        Error* error,

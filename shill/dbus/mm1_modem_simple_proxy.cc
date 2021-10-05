@@ -26,7 +26,9 @@ ModemSimpleProxy::ModemSimpleProxy(const scoped_refptr<dbus::Bus>& bus,
     : proxy_(new org::freedesktop::ModemManager1::Modem::SimpleProxy(
           bus, service, path)) {}
 
-ModemSimpleProxy::~ModemSimpleProxy() = default;
+ModemSimpleProxy::~ModemSimpleProxy() {
+  proxy_->ReleaseObjectProxy(base::DoNothing());
+}
 
 void ModemSimpleProxy::Connect(const KeyValueStore& properties,
                                const RpcIdentifierCallback& callback,

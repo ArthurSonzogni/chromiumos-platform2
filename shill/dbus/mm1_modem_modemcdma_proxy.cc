@@ -33,7 +33,9 @@ ModemModemCdmaProxy::ModemModemCdmaProxy(const scoped_refptr<dbus::Bus>& bus,
                  weak_factory_.GetWeakPtr()));
 }
 
-ModemModemCdmaProxy::~ModemModemCdmaProxy() = default;
+ModemModemCdmaProxy::~ModemModemCdmaProxy() {
+  proxy_->ReleaseObjectProxy(base::DoNothing());
+}
 
 void ModemModemCdmaProxy::Activate(const std::string& carrier,
                                    Error* error,

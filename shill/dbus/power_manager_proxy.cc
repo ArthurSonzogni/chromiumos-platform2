@@ -76,7 +76,9 @@ PowerManagerProxy::PowerManagerProxy(
       &PowerManagerProxy::OnServiceAvailable, weak_factory_.GetWeakPtr()));
 }
 
-PowerManagerProxy::~PowerManagerProxy() = default;
+PowerManagerProxy::~PowerManagerProxy() {
+  proxy_->ReleaseObjectProxy(base::DoNothing());
+}
 
 bool PowerManagerProxy::RegisterSuspendDelay(base::TimeDelta timeout,
                                              const std::string& description,
