@@ -410,12 +410,6 @@ bool SamplesHandler::UpdateRequestedFrequencyOnThread() {
 
   requested_frequency_ = frequency;
 
-  // HID sensors require to set sampling frequency in channels' attributes.
-  for (auto& channel : iio_device_->GetAllChannels()) {
-    if (channel->IsEnabled())
-      channel->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr, frequency);
-  }
-
   if (!iio_device_->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr,
                                          frequency)) {
     /*
@@ -425,6 +419,13 @@ bool SamplesHandler::UpdateRequestedFrequencyOnThread() {
     if (iio_device_->HasFifo()) {
       LOGF(ERROR) << "Failed to set frequency";
       return false;
+    }
+
+    // HID sensors require to set sampling frequency in channels' attributes.
+    for (auto& channel : iio_device_->GetAllChannels()) {
+      if (channel->IsEnabled())
+        channel->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr,
+                                      frequency);
     }
   }
 
