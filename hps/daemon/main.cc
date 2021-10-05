@@ -24,6 +24,8 @@
 #include "hps/utils.h"
 
 int main(int argc, char* argv[]) {
+  base::AtExitManager at_exit;
+
   DEFINE_string(bus, "/dev/i2c-2", "I2C device");
   DEFINE_uint32(addr, 0x30, "I2C address of module");
   DEFINE_uint32(speed, 200, "I2C bus speed in KHz");
