@@ -195,8 +195,6 @@ bool HdrNetProcessorDeviceAdapterIpu6::Preprocess(
   GLint uTextureMatrix =
       preprocessor_program_.GetUniformLocation("uTextureMatrix");
   glUniformMatrix4fv(uTextureMatrix, 1, false, texture_matrix.data());
-  GLint uTexelWidth = preprocessor_program_.GetUniformLocation("uTexelWidth");
-  glUniform1f(uTexelWidth, input_yuv.y_texture().width());
 
   Framebuffer fb;
   fb.Bind();
@@ -275,8 +273,6 @@ bool HdrNetProcessorDeviceAdapterIpu6::Postprocess(
       postprocessor_program_.GetUniformLocation("uTextureMatrix");
   glUniformMatrix4fv(uTextureMatrix, 1, false, texture_matrix.data());
   GLint uIsYPlane = postprocessor_program_.GetUniformLocation("uIsYPlane");
-  GLint uTexelWidth = postprocessor_program_.GetUniformLocation("uTexelWidth");
-  glUniform1f(uTexelWidth, output_nv12.y_texture().width());
 
   Framebuffer fb;
   fb.Bind();
@@ -315,12 +311,12 @@ Texture2D HdrNetProcessorDeviceAdapterIpu6::CreateGainLutTexture(
     base::span<const float> tonemap_curve, bool inverse) {
   auto interpolate = [](float i, float x0, float y0, float x1,
                         float y1) -> float {
-    float kEpsilon = 0.0000001f;
+    float kEpsilon = 1e-8;
     if (std::abs(x1 - x0) < kEpsilon) {
       return y0;
     }
     float slope = (y1 - y0) / (x1 - x0);
-    return y0 + (static_cast<float>(i) - x0) * slope;
+    return y0 + (i - x0) * slope;
   };
 
   if (gtm_lut_buffer_.size() < num_curve_points_) {

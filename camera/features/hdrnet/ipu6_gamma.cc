@@ -2997,17 +2997,18 @@ int32_t ipu6_gamma_lut[] = {
 
 // The original size of 32768 is too big for textures, so we need to downsample
 // the Gamma LUT.
-constexpr int kGammaLutSize = 16384;
+constexpr int kDownsampleFactor = 2;
+
+// The IPU6 gamma table scales [0.0, 1.0] to [0, 32767].
+constexpr int kScale = 32767;
 
 Texture2D CreateGammaLutTexture() {
   const int raw_lut_size = sizeof(ipu6_gamma_lut) / sizeof(*ipu6_gamma_lut);
-  const int lut_size = kGammaLutSize;
-  const int index_multiplier = raw_lut_size / lut_size;
+  const int lut_size = raw_lut_size / kDownsampleFactor;
   std::vector<float> lut_buffer(lut_size);
   for (int i = 0; i < lut_size; ++i) {
-    lut_buffer[i] = (static_cast<float>(ipu6_gamma_lut[i * index_multiplier]) /
-                     index_multiplier) /
-                    (lut_size - 1);
+    lut_buffer[i] =
+        static_cast<float>(ipu6_gamma_lut[i * kDownsampleFactor]) / kScale;
     VLOGF(1) << base::StringPrintf("(%5d, %1.10f)", i, lut_buffer[i]);
   }
 
@@ -3022,26 +3023,25 @@ Texture2D CreateGammaLutTexture() {
 Texture2D CreateInverseGammaLutTexture() {
   auto interpolate = [](float i, float x0, float y0, float x1,
                         float y1) -> float {
-    float kEpsilon = 0.0000001f;
+    float kEpsilon = 1e-8;
     if (std::abs(x1 - x0) < kEpsilon) {
       return y0;
     }
     float slope = (y1 - y0) / (x1 - x0);
-    return y0 + (static_cast<float>(i) - x0) * slope;
+    return y0 + (i - x0) * slope;
   };
 
   const int raw_lut_size = sizeof(ipu6_gamma_lut) / sizeof(*ipu6_gamma_lut);
-  const int lut_size = kGammaLutSize;
-  const int index_multiplier = raw_lut_size / lut_size;
+  const int lut_size = raw_lut_size / kDownsampleFactor;
   std::vector<float> lut_buffer(lut_size);
-  int lut_index = lut_size - 1;
-  float x0 = lut_size - 1, y0 = 1.0f;
-  for (int i = lut_size - 1; i >= 0; --i) {
-    float x1 = static_cast<float>(ipu6_gamma_lut[i * index_multiplier]) /
-               index_multiplier,
-          y1 = static_cast<float>(i) / (lut_size - 1);
-    for (; lut_index >= ipu6_gamma_lut[i * index_multiplier] / index_multiplier;
-         --lut_index) {
+  int lut_index = 0;
+  float x0 = 0.0f, y0 = 0.0f;
+  for (int i = 0; i < lut_size; ++i) {
+    const float x1 =
+        (static_cast<float>(ipu6_gamma_lut[i * kDownsampleFactor]) / kScale) *
+        lut_size;
+    const float y1 = static_cast<float>(i) / (lut_size - 1);
+    for (; lut_index <= x1; ++lut_index) {
       lut_buffer[lut_index] = interpolate(lut_index, x0, y0, x1, y1);
       VLOGF(1) << base::StringPrintf("(%5d, %1.10f)", lut_index,
                                      lut_buffer[lut_index]);
