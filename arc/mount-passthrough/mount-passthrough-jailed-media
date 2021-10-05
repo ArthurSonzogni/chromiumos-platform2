@@ -6,6 +6,8 @@
 # Runs mount-passthrough with minijail0 as chronos. The owner of the files
 # in FUSE is set to Android's MediaProvider, wherease their GID is set to
 # Android's external_storage.
+# Expected to be used for mount-passthrough processes for files shared with
+# ARCVM using virtio-fs.
 
 set -e
 
@@ -100,5 +102,14 @@ set -- "$@" "false" # force_group_permission
 
 # Enter the concierge namespace.
 set -- "$@" "true" # enter_concierge_namespace
+
+# Set the maximum number of open file descriptors to 262144.
+# The number is taken from vm_concierge.conf, which defines the maximum number
+# of fds that can be opened by virtio-fs devices.
+# We specify the same number here because files opened by this mount-passthrough
+# process are expected to be the ones opend by a virtio-fs device, and we'd like
+# to let virtio-fs devices open as many files as they like without imposing a
+# new restriction on the number of files they can open.
+set -- "$@" "262144" # max_number_of_open_fds
 
 run_mount_passthrough_with_minijail0 "$@"

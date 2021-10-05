@@ -33,4 +33,9 @@ set -- "$@" "false" # force_group_permission
 # Do not enter the concierge namespace.
 set -- "$@" "false" # enter_concierge_namespace
 
+# Set the maximum number of open file descriptors to 8192.
+# This is larger than the default value 1024 because this process handles many
+# open files. See b/30236190 for more context.
+set -- "$@" "8192" # max_number_of_open_fds
+
 run_mount_passthrough_with_minijail0 "$@"
