@@ -6,9 +6,7 @@ import("//common-mk/pkg_config.gni")
 import("wayland_protocol.gni")
 
 group("all") {
-  deps = [
-    ":sommelier",
-  ]
+  deps = [ ":sommelier" ]
   if (use.fuzzer) {
     deps += [ ":sommelier_wayland_fuzzer" ]
   }
@@ -110,16 +108,16 @@ static_library("libsommelier") {
   include_dirs = []
   defines = sommelier_defines
   pkg_deps = [
-    "gbm",
-    "libdrm",
-    "pixman-1",
-    "wayland-client",
-    "wayland-server",
-    "xcb",
-    "xcb-composite",
-    "xcb-xfixes",
-    "xkbcommon",
-  ] + tracing_pkg_deps
+               "gbm",
+               "libdrm",
+               "pixman-1",
+               "wayland-client",
+               "wayland-server",
+               "xcb",
+               "xcb-composite",
+               "xcb-xfixes",
+               "xkbcommon",
+             ] + tracing_pkg_deps
   libs = [ "m" ] + tracing_libs
   deps = [ ":sommelier-protocol" ] + gaming_deps
 }
