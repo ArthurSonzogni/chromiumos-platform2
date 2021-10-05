@@ -64,6 +64,7 @@ _IUSE = [
     'double_extend_pcr_issue',
     'enable_slow_boot_notify',
     'encrypted_stateful',
+    'esdfs',
     'factory_runtime_probe',
     'fake_drivefs_launcher',
     'feedback',
