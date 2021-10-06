@@ -47,6 +47,11 @@ std::unique_ptr<Inhibitor> GetInhibitor(
     scoped_refptr<dbus::Bus> bus, const dbus::ObjectPath& mm_object_path) {
   // Get the MM object backing this modem, and retrieve its Device property.
   // This is the mm_physdev_uid we use for inhibition during updates.
+  if (!mm_object_path.IsValid()) {
+    LOG(WARNING) << __func__ << " " << mm_object_path.value() << " is invalid";
+    return nullptr;
+  }
+
   auto mm_device = bus->GetObjectProxy(modemmanager::kModemManager1ServiceName,
                                        mm_object_path);
   if (!mm_device)
