@@ -106,7 +106,9 @@ void RmadInterfaceImpl::Initialize() {
     }
   } else if (RoVerificationStatus status;
              tpm_manager_client_->GetRoVerificationStatus(&status) &&
-             status != RoVerificationStatus::NOT_TRIGGERED) {
+             status == RoVerificationStatus::PASS) {
+    // TODO(b/181000999): Use the trigger flag from cr50 response when it's
+    //                    implemented.
     VLOG(1) << "RO verification triggered";
     current_state_case_ = kInitialStateCase;
     state_history_.push_back(current_state_case_);

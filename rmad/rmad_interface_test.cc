@@ -261,7 +261,7 @@ TEST_F(RmadInterfaceImplTest,
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
-      CreateTpmManagerClient(RoVerificationStatus::UNSUPPORTED));
+      CreateTpmManagerClient(RoVerificationStatus::PASS));
 
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
