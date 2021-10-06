@@ -90,8 +90,6 @@ struct KeyBlobs {
   base::Optional<brillo::SecureBlob> vkk_iv;
   // The IV to use with the chaps key.
   base::Optional<brillo::SecureBlob> chaps_iv;
-  // The wrapped reset seet, if it should be unwrapped.
-  base::Optional<brillo::SecureBlob> wrapped_reset_seed;
   // The reset secret used for LE credentials.
   base::Optional<brillo::SecureBlob> reset_secret;
 

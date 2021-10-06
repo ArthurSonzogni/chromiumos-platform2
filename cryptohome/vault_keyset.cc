@@ -345,8 +345,9 @@ bool VaultKeyset::UnwrapVKKVaultKeyset(const SerializedVaultKeyset& serialized,
   }
 
   // Decrypt the reset seed.
-  if (vkk_data.wrapped_reset_seed != base::nullopt &&
-      !vkk_data.wrapped_reset_seed.value().empty()) {
+  bool is_le_credential =
+      serialized.flags() & SerializedVaultKeyset::LE_CREDENTIAL;
+  if (serialized.has_wrapped_reset_seed() && !is_le_credential) {
     SecureBlob unwrapped_reset_seed;
     SecureBlob local_wrapped_reset_seed =
         SecureBlob(serialized.wrapped_reset_seed());

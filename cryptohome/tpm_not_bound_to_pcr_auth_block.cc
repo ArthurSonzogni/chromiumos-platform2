@@ -84,10 +84,6 @@ bool TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
 
   key_out_data->chaps_iv = key_out_data->vkk_iv;
 
-  if (tpm_state->wrapped_reset_seed.has_value()) {
-    key_out_data->wrapped_reset_seed = tpm_state->wrapped_reset_seed;
-  }
-
   if (!tpm_state->tpm_public_key_hash.has_value() && error) {
     *error = CryptoError::CE_NO_PUBLIC_KEY_HASH;
   }
