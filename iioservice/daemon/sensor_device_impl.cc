@@ -9,6 +9,7 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/containers/contains.h>
+#include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
 #include <libmems/common_types.h>
 #include <libmems/iio_channel.h>
@@ -24,7 +25,10 @@ constexpr char kDeviceRemovedDescription[] = "Device was removed";
 const std::vector<cros::mojom::DeviceType> kMotionSensors = {
     cros::mojom::DeviceType::ACCEL, cros::mojom::DeviceType::ANGLVEL,
     cros::mojom::DeviceType::MAGN};
-}
+
+constexpr char kChannelAttributeFormat[] = "in_%s_%s";
+
+}  // namespace
 
 // static
 void SensorDeviceImpl::SensorDeviceImplDeleter(SensorDeviceImpl* device) {
@@ -163,6 +167,23 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
       value_opt =
           client.device_data->iio_device->ReadStringAttribute(attr_name);
     }
+
+    if (!value_opt.has_value()) {
+      // Look for channels' attributes instead.
+      for (auto type : client.device_data->types) {
+        auto type_in_string = DeviceTypeToString(type);
+        if (!type_in_string.has_value())
+          continue;
+
+        value_opt = client.device_data->iio_device->ReadStringAttribute(
+            base::StringPrintf(kChannelAttributeFormat, type_in_string->c_str(),
+                               attr_name.c_str()));
+
+        if (value_opt.has_value())
+          break;
+      }
+    }
+
     if (value_opt.has_value()) {
       value_opt = std::string(base::TrimString(value_opt.value(),
                                                base::StringPiece("\0\n", 2),

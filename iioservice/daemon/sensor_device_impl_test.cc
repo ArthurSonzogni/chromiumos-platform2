@@ -10,6 +10,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/run_loop.h>
+#include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
 #include <libmems/common_types.h>
 #include <libmems/test_fakes.h>
@@ -34,6 +35,9 @@ constexpr char kParsedChnAttrValue[] = "FakeChnValue";
 
 constexpr char kDummyChnAttrName1[] = "DummyChnAttr1";
 constexpr char kDummyChnAttrName2[] = "DummyChnAttr2";
+
+constexpr char kChannelAttributeFormat[] = "in_%s_%s";
+constexpr char kChannelAttributeValue[] = "0.01";
 
 class SensorDeviceImplTest : public ::testing::Test {
  protected:
@@ -69,6 +73,11 @@ class SensorDeviceImplTest : public ::testing::Test {
     EXPECT_TRUE(device->WriteDoubleAttribute(libmems::kHWFifoTimeoutAttr, 0.0));
     EXPECT_TRUE(
         device->WriteStringAttribute(kDeviceAttrName, kDeviceAttrValue));
+
+    EXPECT_TRUE(device->WriteStringAttribute(
+        base::StringPrintf(kChannelAttributeFormat, libmems::kAccelName,
+                           cros::mojom::kScale),
+        kChannelAttributeValue));
 
     for (int i = 0; i < base::size(libmems::fakes::kFakeAccelChns); ++i) {
       auto chn = std::make_unique<libmems::fakes::FakeIioChannel>(
@@ -151,11 +160,12 @@ TEST_F(SensorDeviceImplTest, GetAttributes) {
   remote_->GetAttributes(
       std::vector<std::string>{kDummyChnAttrName1, kDeviceAttrName,
                                cros::mojom::kDeviceName, cros::mojom::kSysPath,
-                               cros::mojom::kLocation, kDummyChnAttrName2},
+                               cros::mojom::kLocation, cros::mojom::kScale,
+                               kDummyChnAttrName2},
       base::BindOnce(
           [](base::Closure closure, base::FilePath link_to,
              const std::vector<base::Optional<std::string>>& values) {
-            EXPECT_EQ(values.size(), 6u);
+            EXPECT_EQ(values.size(), 7u);
             EXPECT_FALSE(values.front().has_value());
             EXPECT_FALSE(values.back().has_value());
             EXPECT_TRUE(values[1].has_value());
@@ -166,6 +176,8 @@ TEST_F(SensorDeviceImplTest, GetAttributes) {
             EXPECT_EQ(values[3].value().compare(link_to.value()), 0);
             EXPECT_TRUE(values[4].has_value());
             EXPECT_EQ(values[4].value().compare(cros::mojom::kLocationLid), 0);
+            EXPECT_TRUE(values[5].has_value());
+            EXPECT_EQ(values[5].value().compare(kChannelAttributeValue), 0);
             closure.Run();
           },
           loop.QuitClosure(), link_to_));

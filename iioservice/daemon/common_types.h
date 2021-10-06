@@ -74,6 +74,8 @@ constexpr char kSamplingFrequencyAvailableFormat[] = "0.000000 %.6f %.6f";
 std::string GetSamplingFrequencyAvailable(double min_frequency,
                                           double max_frequency);
 
+base::Optional<std::string> DeviceTypeToString(cros::mojom::DeviceType type);
+
 }  // namespace iioservice
 
 #endif  // IIOSERVICE_DAEMON_COMMON_TYPES_H_
