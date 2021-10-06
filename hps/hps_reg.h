@@ -41,8 +41,8 @@ enum R2 : uint16_t {
   kFault = 1 << 1,
   kApplVerified = 1 << 2,
   kApplNotVerified = 1 << 3,
-  kWpOff = 1 << 4,
-  kWpOn = 1 << 5,
+  kWpOn = 1 << 4,
+  kWpOff = 1 << 5,
   // Unused           = 1<<6,
   // Unused           = 1<<7,
   kStage1 = 1 << 8,        // Stage1 running
