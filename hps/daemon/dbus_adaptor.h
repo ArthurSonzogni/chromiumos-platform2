@@ -5,6 +5,7 @@
 #ifndef HPS_DAEMON_DBUS_ADAPTOR_H_
 #define HPS_DAEMON_DBUS_ADAPTOR_H_
 
+#include <array>
 #include <memory>
 
 #include <base/sequence_checker.h>
