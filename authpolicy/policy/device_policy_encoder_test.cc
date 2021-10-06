@@ -254,6 +254,9 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(em::AutoUpdateSettingsProto::ROLLBACK,
             policy.auto_update_settings().channel_downgrade_behavior());
 
+  EncodeString(&policy, key::kDeviceTargetVersionSelector, kString);
+  EXPECT_EQ(kString, policy.auto_update_settings().target_version_selector());
+
   //
   // Accessibility policies.
   //

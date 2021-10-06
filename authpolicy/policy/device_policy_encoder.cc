@@ -474,6 +474,12 @@ void DevicePolicyEncoder::EncodeAutoUpdatePolicies(
                  << key::kDeviceChannelDowngradeBehavior;
     }
   }
+
+  if (base::Optional<std::string> value =
+          EncodeString(key::kDeviceTargetVersionSelector)) {
+    policy->mutable_auto_update_settings()->set_target_version_selector(
+        value.value());
+  }
 }
 
 void DevicePolicyEncoder::EncodeAccessibilityPolicies(
