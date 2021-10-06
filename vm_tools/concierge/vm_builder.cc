@@ -167,6 +167,11 @@ VmBuilder& VmBuilder::EnableDelayRt(bool enable) {
   return *this;
 }
 
+VmBuilder& VmBuilder::EnablePerVmCoreScheduling(bool enable) {
+  enable_per_vm_core_scheduling_ = enable;
+  return *this;
+}
+
 VmBuilder& VmBuilder::EnableODirect(bool enable) {
   for (auto& d : disks_) {
     d.EnableODirect(enable);
@@ -210,6 +215,9 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
 
   if (enable_delay_rt_)
     args.emplace_back("--delay-rt", "");
+
+  if (enable_per_vm_core_scheduling_)
+    args.emplace_back("--per-vm-core-scheduling", "");
 
   if (kernel_params_.size() > 0)
     args.emplace_back("--params", base::JoinString(kernel_params_, " "));

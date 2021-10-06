@@ -212,7 +212,8 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
                                             kArcVmPstoreSize))
       .AppendSharedDir(shared_data)
       .AppendSharedDir(shared_data_media)
-      .EnableSmt(false /* enable */);
+      .EnableSmt(false /* enable */)
+      .EnablePerVmCoreScheduling(request.use_per_vm_core_scheduling());
 
   if (request.enable_rt_vcpu()) {
     vm_builder.AppendCustomParam("--rt-cpus", topology.RTCPUMask());

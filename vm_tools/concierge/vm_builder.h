@@ -69,6 +69,7 @@ class VmBuilder {
   VmBuilder& EnableBattery(bool enable);
   VmBuilder& EnableSmt(bool enable);
   VmBuilder& EnableDelayRt(bool enable);
+  VmBuilder& EnablePerVmCoreScheduling(bool enable);
 
   // Override flags for O_DIRECT for already appended disks.
   VmBuilder& EnableODirect(bool enable);
@@ -101,6 +102,7 @@ class VmBuilder {
   bool enable_battery_ = false;
   base::Optional<bool> enable_smt_ = false;
   bool enable_delay_rt_ = false;
+  bool enable_per_vm_core_scheduling_ = false;
 
   std::vector<Disk> disks_;
   std::vector<std::string> kernel_params_;
