@@ -1,12 +1,1 @@
-# In alphabetical order:
-
-# HPS Core team:
-amcrae@google.com
-avg@google.com
-dcallagh@google.com
-dml@google.com
-quasisec@google.com
-slangley@google.com
-
-# EngProd:
-mblsha@google.com
+include chromiumos/platform/hps-firmware:/OWNERS
