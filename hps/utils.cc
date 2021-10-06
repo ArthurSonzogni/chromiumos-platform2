@@ -16,6 +16,8 @@
 
 namespace hps {
 
+#define ENUM_BIT(e) BIT(static_cast<int>(e))
+
 bool ReadVersionFromFile(const base::FilePath& mcu, uint32_t* version) {
   uint32_t version_tmp;
   base::File file(mcu,
@@ -121,6 +123,25 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
         ret.push_back(base::StringPrintf("0x%x", val));
       }
       return base::JoinString(ret, "|");
+
+    case HpsReg::kBankReady:
+      if (val & ENUM_BIT(HpsBank::kMcuFlash)) {
+        ret.push_back("kMcuFlash");
+        val ^= ENUM_BIT(HpsBank::kMcuFlash);
+      }
+      if (val & ENUM_BIT(HpsBank::kSpiFlash)) {
+        ret.push_back("kSpiFlash");
+        val ^= ENUM_BIT(HpsBank::kSpiFlash);
+      }
+      if (val & ENUM_BIT(HpsBank::kSocRom)) {
+        ret.push_back("kSocRom");
+        val ^= ENUM_BIT(HpsBank::kSocRom);
+      }
+      if (val) {
+        ret.push_back(base::StringPrintf("0x%x", val));
+      }
+      return base::JoinString(ret, "|");
+
     default:
       return "";
   }

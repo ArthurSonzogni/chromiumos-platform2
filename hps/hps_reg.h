@@ -10,12 +10,15 @@
 
 #include <cstdint>
 
+#define BIT(b) (1ULL << (b))
+
 namespace hps {
 
 // Memory bank numbers for the download operation
 enum class HpsBank {
   kMcuFlash = 0,
   kSpiFlash = 1,
+  kSocRom = 2,
 };
 
 // Register numbers for HPS module interface.
@@ -37,36 +40,36 @@ enum class HpsReg : uint8_t {
 
 // Register 2 (RO) - System status register.
 enum R2 : uint16_t {
-  kOK = 1 << 0,
-  kFault = 1 << 1,
-  kApplVerified = 1 << 2,
-  kApplNotVerified = 1 << 3,
-  kWpOn = 1 << 4,
-  kWpOff = 1 << 5,
-  // Unused           = 1<<6,
-  // Unused           = 1<<7,
-  kStage1 = 1 << 8,        // Stage1 running
-  kAppl = 1 << 9,          // Application running
-  kSpiVerified = 1 << 10,  // SPI flash verified
-  kSpiNotVerified = 1 << 11,
+  kOK = BIT(0),
+  kFault = BIT(1),
+  kApplVerified = BIT(2),
+  kApplNotVerified = BIT(3),
+  kWpOn = BIT(4),
+  kWpOff = BIT(5),
+  // Unused          BIT(6),
+  // Unused          BIT(7),
+  kStage1 = BIT(8),        // Stage1 running
+  kAppl = BIT(9),          // Application running
+  kSpiVerified = BIT(10),  // SPI flash verified
+  kSpiNotVerified = BIT(11),
 };
 
 // Register 3 (WO) - System command register.
 enum R3 : uint16_t {
-  kReset = 1 << 0,
-  kLaunch = 1 << 1,
-  kEnable = 1 << 2,
+  kReset = BIT(0),
+  kLaunch = BIT(1),
+  kEnable = BIT(2),
 };
 
 // Register 7 (RW) - Feature enable bit mask.
 enum R7 : uint16_t {
-  kFeature1Enable = 1 << 0,
-  kFeature2Enable = 1 << 1,
+  kFeature1Enable = BIT(0),
+  kFeature2Enable = BIT(1),
 };
 
 // Feature result registers (R8 & R9).
 enum RFeat : uint16_t {
-  kValid = 1 << 15,  // Feature result is valid.
+  kValid = BIT(15),  // Feature result is valid.
 };
 
 inline constexpr uint16_t kHpsMagic = 0x9df2;

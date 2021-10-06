@@ -19,8 +19,6 @@
 #include <base/threading/thread.h>
 #include <base/time/time.h>
 
-#define BIT(x) (1ULL << (x))
-
 namespace {
 
 // USB parameters.
