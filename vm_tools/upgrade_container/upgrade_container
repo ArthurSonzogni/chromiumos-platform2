@@ -29,6 +29,21 @@ to_bullseye() {
   [ $1 = 'DEBIAN_BULLSEYE' ]
 }
 
+# Really old versions of openssl will prioritize expired trust chains over valid
+# ones. This is problematic because deb.debian.org chains up to Let's Encrypt,
+# whose root cert is cross-signed by a now-expired certificate, which means we
+# can't update packages (including openssl itself). Work around this issue by
+# deleting any expired root certificates now, before we try to connect to
+# anything.
+if grep -q "VERSION_CODENAME=stretch" /etc/os-release; then
+  for pem in /usr/share/ca-certificates/mozilla/*; do
+    if ! openssl x509 -checkend 0 -in "${pem}" -out /dev/null; then
+      rm "${pem}"
+    fi
+  done
+  /usr/sbin/update-ca-certificates
+fi
+
 # Use defaults for everything, we don't support answering prompts.
 export DEBIAN_FRONTEND=noninteractive
 
