@@ -136,6 +136,11 @@ class TpmManagerServiceTest_NoPreinit
 class TpmManagerServiceTest_Preinit
     : public TpmManagerServiceTestBase<true, true, false> {};
 
+class TpmManagerServiceTest_NoSetup : public TpmManagerServiceTest {
+ public:
+  void SetUp() override {}
+};
+
 TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitialize) {
   // Called in InitializeTask()
   EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
@@ -1190,7 +1195,7 @@ TEST_F(TpmManagerServiceTest, ReadWriteSpaceSuccess) {
 }
 
 #if USE_TPM_DYNAMIC || (!USE_TPM1 && !USE_TPM2)
-TEST_F(TpmManagerServiceTest, TpmManagerNoCrash) {
+TEST_F(TpmManagerServiceTest_NoSetup, TpmManagerNoCrash) {
   SET_NO_TPM_FOR_TESTING;
   EXPECT_CALL(mock_tpm_manager_metrics_, ReportVersionFingerprint(_))
       .Times(AtMost(1));

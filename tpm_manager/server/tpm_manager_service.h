@@ -174,13 +174,6 @@ class TpmManagerService : public TpmNvramInterface,
 #endif
 
  private:
-  // A relay callback which allows the use of weak pointer semantics for a reply
-  // to TaskRunner::PostTaskAndReply.
-  template <typename ReplyProtobufType>
-  void TaskRelayCallback(
-      const base::OnceCallback<void(const ReplyProtobufType&)> callback,
-      const std::shared_ptr<ReplyProtobufType>& reply);
-
   // This templated method posts the provided |TaskType| to the background
   // thread with the provided |RequestProtobufType|. When |TaskType| finishes
   // executing, the |ReplyCallbackType| is called with the |ReplyProtobufType|.
@@ -205,7 +198,7 @@ class TpmManagerService : public TpmNvramInterface,
   // If an initialization process was interrupted it will be continued. If the
   // TPM is already initialized or cannot yet be initialized, this method has no
   // effect.
-  void InitializeTask(const std::shared_ptr<GetTpmStatusReply>& result);
+  std::unique_ptr<GetTpmStatusReply> InitializeTask();
 
   void ReportSecretStatus(const LocalData& local_data);
 
@@ -218,48 +211,43 @@ class TpmManagerService : public TpmNvramInterface,
 
   // Blocking implementation of GetTpmStatus that can be executed on the
   // background worker thread.
-  void GetTpmStatusTask(const GetTpmStatusRequest& request,
-                        const std::shared_ptr<GetTpmStatusReply>& result);
+  std::unique_ptr<GetTpmStatusReply> GetTpmStatusTask(
+      const GetTpmStatusRequest& request);
 
   // Blocking implementation of GetVersionInfo that can be executed on the
   // background worker thread.
-  void GetVersionInfoTask(const GetVersionInfoRequest& request,
-                          const std::shared_ptr<GetVersionInfoReply>& result);
+  std::unique_ptr<GetVersionInfoReply> GetVersionInfoTask(
+      const GetVersionInfoRequest& request);
 
   // Blocking implementation of GetSupportedFeatures that can be executed on the
   // background worker thread.
-  void GetSupportedFeaturesTask(
-      const GetSupportedFeaturesRequest& request,
-      const std::shared_ptr<GetSupportedFeaturesReply>& result);
+  std::unique_ptr<GetSupportedFeaturesReply> GetSupportedFeaturesTask(
+      const GetSupportedFeaturesRequest& request);
 
   // Blocking implementation of GetDictionaryAttackInfo that can be executed on
   // the background worker thread.
-  void GetDictionaryAttackInfoTask(
-      const GetDictionaryAttackInfoRequest& request,
-      const std::shared_ptr<GetDictionaryAttackInfoReply>& result);
+  std::unique_ptr<GetDictionaryAttackInfoReply> GetDictionaryAttackInfoTask(
+      const GetDictionaryAttackInfoRequest& request);
 
   // Blocking implementation of GetRoVerificationStatus that can be executed on
   // the background worker thread.
-  void GetRoVerificationStatusTask(
-      const GetRoVerificationStatusRequest& request,
-      const std::shared_ptr<GetRoVerificationStatusReply>& result);
+  std::unique_ptr<GetRoVerificationStatusReply> GetRoVerificationStatusTask(
+      const GetRoVerificationStatusRequest& request);
 
   // Blocking implementation of ResetDictionaryAttackLock that can be executed
   // on the background worker thread.
-  void ResetDictionaryAttackLockTask(
-      const ResetDictionaryAttackLockRequest& request,
-      const std::shared_ptr<ResetDictionaryAttackLockReply>& result);
+  std::unique_ptr<ResetDictionaryAttackLockReply> ResetDictionaryAttackLockTask(
+      const ResetDictionaryAttackLockRequest& request);
 
   // Blocking implementation of TakeOwnership that can be executed on the
   // background worker thread.
-  void TakeOwnershipTask(const TakeOwnershipRequest& request,
-                         const std::shared_ptr<TakeOwnershipReply>& result);
+  std::unique_ptr<TakeOwnershipReply> TakeOwnershipTask(
+      const TakeOwnershipRequest& request);
 
   // Blocking implementation of RemoveOwnerDependency that can be executed on
   // the background worker thread.
-  void RemoveOwnerDependencyTask(
-      const RemoveOwnerDependencyRequest& request,
-      const std::shared_ptr<RemoveOwnerDependencyReply>& result);
+  std::unique_ptr<RemoveOwnerDependencyReply> RemoveOwnerDependencyTask(
+      const RemoveOwnerDependencyRequest& request);
 
   // Removes a |owner_dependency| from the list of owner dependencies in
   // |local_data|. If |owner_dependency| is not present in |local_data|,
@@ -269,44 +257,43 @@ class TpmManagerService : public TpmNvramInterface,
 
   // Blocking implementation of ClearStoredOwnerPassword that can be executed
   // on the background worker thread.
-  void ClearStoredOwnerPasswordTask(
-      const ClearStoredOwnerPasswordRequest& request,
-      const std::shared_ptr<ClearStoredOwnerPasswordReply>& result);
+  std::unique_ptr<ClearStoredOwnerPasswordReply> ClearStoredOwnerPasswordTask(
+      const ClearStoredOwnerPasswordRequest& request);
 
   // Blocking implementation of DefineSpace that can be executed on the
   // background worker thread.
-  void DefineSpaceTask(const DefineSpaceRequest& request,
-                       const std::shared_ptr<DefineSpaceReply>& result);
+  std::unique_ptr<DefineSpaceReply> DefineSpaceTask(
+      const DefineSpaceRequest& request);
 
   // Blocking implementation of DestroySpace that can be executed on the
   // background worker thread.
-  void DestroySpaceTask(const DestroySpaceRequest& request,
-                        const std::shared_ptr<DestroySpaceReply>& result);
+  std::unique_ptr<DestroySpaceReply> DestroySpaceTask(
+      const DestroySpaceRequest& request);
 
   // Blocking implementation of WriteSpace that can be executed on the
   // background worker thread.
-  void WriteSpaceTask(const WriteSpaceRequest& request,
-                      const std::shared_ptr<WriteSpaceReply>& result);
+  std::unique_ptr<WriteSpaceReply> WriteSpaceTask(
+      const WriteSpaceRequest& request);
 
   // Blocking implementation of ReadSpace that can be executed on the
   // background worker thread.
-  void ReadSpaceTask(const ReadSpaceRequest& request,
-                     const std::shared_ptr<ReadSpaceReply>& result);
+  std::unique_ptr<ReadSpaceReply> ReadSpaceTask(
+      const ReadSpaceRequest& request);
 
   // Blocking implementation of LockSpace that can be executed on the
   // background worker thread.
-  void LockSpaceTask(const LockSpaceRequest& request,
-                     const std::shared_ptr<LockSpaceReply>& result);
+  std::unique_ptr<LockSpaceReply> LockSpaceTask(
+      const LockSpaceRequest& request);
 
   // Blocking implementation of ListSpaces that can be executed on the
   // background worker thread.
-  void ListSpacesTask(const ListSpacesRequest& request,
-                      const std::shared_ptr<ListSpacesReply>& result);
+  std::unique_ptr<ListSpacesReply> ListSpacesTask(
+      const ListSpacesRequest& request);
 
   // Blocking implementation of GetSpaceInfo that can be executed on the
   // background worker thread.
-  void GetSpaceInfoTask(const GetSpaceInfoRequest& request,
-                        const std::shared_ptr<GetSpaceInfoReply>& result);
+  std::unique_ptr<GetSpaceInfoReply> GetSpaceInfoTask(
+      const GetSpaceInfoRequest& request);
 
   // Gets the owner password from local storage. Returns an empty string if the
   // owner password is not available.
