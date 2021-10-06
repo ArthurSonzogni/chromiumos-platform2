@@ -311,6 +311,13 @@ message StartArcVmRequest {
   // How to configure the balloon policy. If set, LimitCacheBalloonPolicy is
   // used, otherwise BalanceAvailableBalloonPolicy is used.
   BalloonPolicyOptions balloon_policy = 13;
+
+  // Whether per-VM core scheduling should be used instead of the default one
+  // (per-vCPU core scheduing.) This option is no-op on devices that have
+  // neither MDS nor L1TF vulnerability. On those non-vulnerable devices, core
+  // scheduling is not used, and all vCPU threads can be assigned to any CPU
+  // cores without restrictions.
+  bool use_per_vm_core_scheduling = 14;
 }
 
 enum VmStatus {
