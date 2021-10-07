@@ -1431,9 +1431,10 @@ TEST_P(CellularTest, SetUseAttachApn) {
   // in order to use the new attach APN.
   EXPECT_CALL(*mm1_modem_proxy, Enable(false, _, _, _))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
-  EXPECT_CALL(*mm1_modem_proxy, Enable(true, _, _, _))
-      .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
   EXPECT_CALL(*mm1_modem_proxy, SetPowerState(_, _, _, _)).Times(0);
+  // It will call again Enable(true,...) but with another proxy as the previous
+  // one was released at the end of the Disabling process.
+
   Error error;
   device_->SetUseAttachApn(true, &error);
   dispatcher_.DispatchPendingEvents();  // StopModem yields a deferred task
@@ -1441,7 +1442,7 @@ TEST_P(CellularTest, SetUseAttachApn) {
   // We have (re)enabled the modem but as the final Enable() didn't invoke its
   // callback for the reason stated above we won't reach the final
   // kModemStarted state.
-  EXPECT_EQ(device_->state(), Cellular::State::kModemStarted);
+  EXPECT_EQ(device_->state(), Cellular::State::kModemStarting);
   EXPECT_TRUE(device_->use_attach_apn_);
 }
 

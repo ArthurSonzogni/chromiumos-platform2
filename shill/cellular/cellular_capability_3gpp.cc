@@ -440,40 +440,35 @@ void CellularCapability3gpp::Stop_DisableCompleted(
     const ResultCallback& callback, const Error& error) {
   SLOG(this, 3) << __func__;
 
-  // An error occurred; terminate the disable sequence.
-  if (!error.IsSuccess()) {
-    callback.Run(error);
-    return;
-  }
-
-  // The modem has been successfully disabled, but we still need to power it
-  // down.
+  // Set the modem to low power state even when we fail to stop the modem,
+  // since a modem without a SIM card is in failed state and might have its
+  // radio on.
   if (set_modem_to_low_power_mode_on_stop_)
-    Stop_PowerDown(callback);
+    Stop_PowerDown(callback, error);
   else
-    callback.Run(Error());
+    Stop_Completed(callback, error);
 }
 
-void CellularCapability3gpp::Stop_PowerDown(const ResultCallback& callback) {
+void CellularCapability3gpp::Stop_PowerDown(const ResultCallback& callback,
+                                            const Error& stop_disabled_error) {
   SLOG(this, 3) << __func__;
   Error error;
-  if (!modem_proxy_) {
-    Error::PopulateAndLog(FROM_HERE, &error, Error::kWrongState, "No proxy");
-    callback.Run(error);
-    return;
-  }
+  Error* error_to_propagate = new Error();
+  // Propagate |stop_disabled_error| since the final result of the operation is
+  // determined by this error.
+  error_to_propagate->CopyFrom(stop_disabled_error);
+
   modem_proxy_->SetPowerState(
       MM_MODEM_POWER_STATE_LOW, &error,
       base::Bind(&CellularCapability3gpp::Stop_PowerDownCompleted,
-                 weak_ptr_factory_.GetWeakPtr(), callback),
+                 weak_ptr_factory_.GetWeakPtr(), callback,
+                 base::Owned(error_to_propagate)),
       kSetPowerStateTimeoutMilliseconds);
 
   if (error.IsFailure())
-    // This really shouldn't happen, but if it does, report success,
-    // because a stop initiated power down is only called if the
-    // modem was successfully disabled, but the failure of this
-    // operation should still be propagated up as a successful disable.
-    Stop_PowerDownCompleted(callback, error);
+    // This really shouldn't happen, but if it does, ignore the error and
+    // continue to the next step propagating |stop_disabled_error|.
+    Stop_Completed(callback, stop_disabled_error);
 }
 
 // Note: if we were in the middle of powering down the modem when the
@@ -481,18 +476,26 @@ void CellularCapability3gpp::Stop_PowerDown(const ResultCallback& callback) {
 // ModemManager. And we might not even get a timeout from dbus-c++,
 // because StartModem re-initializes proxies.
 void CellularCapability3gpp::Stop_PowerDownCompleted(
-    const ResultCallback& callback, const Error& error) {
+    const ResultCallback& callback,
+    const Error* stop_disabled_error,
+    const Error& error) {
   SLOG(this, 3) << __func__;
+  DCHECK(stop_disabled_error);
 
   if (error.IsFailure())
     SLOG(this, 2) << "Ignoring error returned by SetPowerState: " << error;
 
-  // Since the disable succeeded, if power down fails, we currently fail
-  // silently, i.e. we need to report the disable operation as having
-  // succeeded.
-  metrics()->NotifyDeviceDisableFinished(cellular()->interface_index());
+  Stop_Completed(callback, *stop_disabled_error);
+}
+
+void CellularCapability3gpp::Stop_Completed(const ResultCallback& callback,
+                                            const Error& error) {
+  SLOG(this, 3) << __func__;
+
+  if (error.IsSuccess())
+    metrics()->NotifyDeviceDisableFinished(cellular()->interface_index());
   ReleaseProxies();
-  callback.Run(Error());
+  callback.Run(error);
 }
 
 void CellularCapability3gpp::Connect(const ResultCallback& callback) {
