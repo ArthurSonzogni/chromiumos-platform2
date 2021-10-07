@@ -61,8 +61,9 @@ void ScreenError::ShowButtons() {
       (-draw_utils_->GetFreconCanvasSize() / 2) + 318 + kBtnYStep * 2;
   draw_utils_->ShowButton("btn_try_again", kBtnY, index_ == 1,
                           draw_utils_->GetDefaultButtonWidth(), false);
-  draw_utils_->ShowButton("btn_debug_options", kBtnY + kBtnYStep, index_ == 2,
-                          draw_utils_->GetDefaultButtonWidth(), false);
+  draw_utils_->ShowButton("btn_MiniOS_advanced_options", kBtnY + kBtnYStep,
+                          index_ == 2, draw_utils_->GetDefaultButtonWidth(),
+                          false);
 }
 
 void ScreenError::OnKeyPress(int key_changed) {
