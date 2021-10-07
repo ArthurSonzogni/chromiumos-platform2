@@ -31,16 +31,8 @@ const RmadState::StateCase kInitialStateCase = RmadState::kWelcome;
 
 }  // namespace
 
-RmadInterfaceImpl::RmadInterfaceImpl() : RmadInterface() {
-  json_store_ = base::MakeRefCounted<JsonStore>(kDefaultJsonStoreFilePath);
-  state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
-  state_handler_manager_->RegisterStateHandlers();
-  runtime_probe_client_ =
-      std::make_unique<RuntimeProbeClientImpl>(GetSystemBus());
-  shill_client_ = std::make_unique<ShillClientImpl>(GetSystemBus());
-  tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>(GetSystemBus());
-  Initialize();
-}
+RmadInterfaceImpl::RmadInterfaceImpl()
+    : RmadInterface(), external_utils_initialized_(false) {}
 
 RmadInterfaceImpl::RmadInterfaceImpl(
     scoped_refptr<JsonStore> json_store,
@@ -53,9 +45,8 @@ RmadInterfaceImpl::RmadInterfaceImpl(
       state_handler_manager_(std::move(state_handler_manager)),
       runtime_probe_client_(std::move(runtime_probe_client)),
       shill_client_(std::move(shill_client)),
-      tpm_manager_client_(std::move(tpm_manager_client)) {
-  Initialize();
-}
+      tpm_manager_client_(std::move(tpm_manager_client)),
+      external_utils_initialized_(true) {}
 
 bool RmadInterfaceImpl::StoreStateHistory() {
   std::vector<int> state_history;
@@ -66,6 +57,18 @@ bool RmadInterfaceImpl::StoreStateHistory() {
 }
 
 void RmadInterfaceImpl::Initialize() {
+  // Initialize external utilities if needed.
+  if (!external_utils_initialized_) {
+    json_store_ = base::MakeRefCounted<JsonStore>(kDefaultJsonStoreFilePath);
+    state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
+    state_handler_manager_->RegisterStateHandlers();
+    runtime_probe_client_ =
+        std::make_unique<RuntimeProbeClientImpl>(GetSystemBus());
+    shill_client_ = std::make_unique<ShillClientImpl>(GetSystemBus());
+    tpm_manager_client_ =
+        std::make_unique<TpmManagerClientImpl>(GetSystemBus());
+    external_utils_initialized_ = true;
+  }
   // Initialize |current state_|, |state_history_|, and |can_abort_| flag.
   current_state_case_ = RmadState::STATE_NOT_SET;
   state_history_.clear();

@@ -35,6 +35,8 @@ class RmadInterfaceImpl final : public RmadInterface {
 
   ~RmadInterfaceImpl() override = default;
 
+  void Initialize() override;
+
   void RegisterSignalSender(
       RmadState::StateCase state_case,
       std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) override;
@@ -64,9 +66,6 @@ class RmadInterfaceImpl final : public RmadInterface {
   bool CanAbort() const override { return can_abort_; }
 
  private:
-  // Initialize the class.
-  void Initialize();
-
   // Get and initialize the state handler for |state case|, and store it to
   // |state_handler|. If there's no state handler for |state_case|, or the
   // initialization fails, return an error, and |state_handler| is unchanged.
@@ -92,6 +91,7 @@ class RmadInterfaceImpl final : public RmadInterface {
   std::unique_ptr<TpmManagerClient> tpm_manager_client_;
 
   // Internal states.
+  bool external_utils_initialized_;
   RmadState::StateCase current_state_case_;
   std::vector<RmadState::StateCase> state_history_;
   bool can_abort_;

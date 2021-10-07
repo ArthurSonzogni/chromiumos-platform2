@@ -15,6 +15,7 @@
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <dbus/rmad/dbus-constants.h>
+#include <sysexits.h>
 
 namespace brillo {
 namespace dbus_utils {
@@ -207,12 +208,17 @@ DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
       nullptr, bus, dbus::ObjectPath(kRmadServicePath));
 }
 
-int DBusService::OnInit() {
-  VLOG(1) << "Starting DBus service";
-  const int exit_code = DBusServiceDaemon::OnInit();
-  // Try a state transition after initialization.
+int DBusService::OnEventLoopStarted() {
+  const int exit_code = DBusServiceDaemon::OnEventLoopStarted();
+  if (exit_code != EX_OK) {
+    return exit_code;
+  }
+
+  // Initialize RMA interface and try a state transition.
+  rmad_interface_->Initialize();
+  RegisterSignalSenders();
   rmad_interface_->TryTransitionNextStateFromCurrentState();
-  return exit_code;
+  return EX_OK;
 }
 
 void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
@@ -264,8 +270,6 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
       dbus_interface->RegisterSignal<bool>(kHardwareWriteProtectionStateSignal);
   power_cable_signal_ =
       dbus_interface->RegisterSignal<bool>(kPowerCableStateSignal);
-
-  RegisterSignalSenders();
 
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed to register D-Bus objects.", true));

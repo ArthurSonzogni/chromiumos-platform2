@@ -59,7 +59,7 @@ class DBusService : public brillo::DBusServiceDaemon {
 
  protected:
   // brillo::DBusServiceDaemon overrides.
-  int OnInit() override;
+  int OnEventLoopStarted() override;
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
