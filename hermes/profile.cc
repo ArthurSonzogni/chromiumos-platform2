@@ -242,7 +242,7 @@ void Profile::OnDisabled(int error, std::shared_ptr<DBusResponse<>> response) {
 void Profile::FinishProfileOpCb(std::shared_ptr<DBusResponse<>> response,
                                 int err) {
   if (err) {
-    LOG(ERROR) << "Could not finish profile op: " << object_path_.value();
+    LOG(WARNING) << "Could not finish profile op: " << object_path_.value();
     // Notifications are optional by the standard. Since FinishProfileOp failed,
     // it means notifications cannot be sent, but our enable/disable succeeded.
     // return success on DBus anyway since only notifications cannot be sent.

@@ -729,7 +729,12 @@ void ModemMbim::FinishProfileOp(ResultCallback cb) {
     return;
   }
   retry_count_ = 0;
-  AcquireChannel(std::move(cb));
+  // Ideally we would acquire a channel to send notifications here. However,
+  // acquiring a channel could cause MM to stop reporting the EID due to a fw
+  // bug in L850. Thus we skip sending profile enable/disable notifications
+  // until b/195589882, and b/202401139 are fixed.
+  CloseDevice();
+  std::move(cb).Run(kModemMessageProcessingError);
 }
 
 void ModemMbim::RestoreActiveSlot(ResultCallback cb) {
