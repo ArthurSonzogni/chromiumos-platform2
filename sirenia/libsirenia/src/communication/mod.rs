@@ -12,11 +12,12 @@ pub mod trichechus;
 
 use std::fmt::Debug;
 use std::io::{self, BufWriter, Read, Write};
+use std::ops::Deref;
 use std::result::Result as StdResult;
 
 use flexbuffers::FlexbufferSerializer;
 use serde::de::DeserializeOwned;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sirenia_rpc_macros::sirenia_rpc;
 use thiserror::Error as ThisError;
 
@@ -87,4 +88,37 @@ pub fn write_message<W: Write, S: Serialize>(w: &mut W, m: S) -> Result<()> {
     writer.write(ser.view()).map_err(Error::Write)?;
 
     Ok(())
+}
+
+/// Types needed for trichechus RPC
+
+pub const SHA256_SIZE: usize = 32;
+
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+pub struct Digest([u8; SHA256_SIZE]);
+
+impl Deref for Digest {
+    type Target = [u8; SHA256_SIZE];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<A: AsRef<[u8]>> From<A> for Digest {
+    fn from(d: A) -> Self {
+        let mut array = [0u8; SHA256_SIZE];
+        array.copy_from_slice(d.as_ref());
+        Digest(array)
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub enum ExecutableInfo {
+    // Hypervisor initramfs path
+    Path(String),
+    // Only digest, location unspecified
+    Digest(Digest),
+    // Host (Chrome OS) path and digest
+    CrosPath(String, Digest),
 }

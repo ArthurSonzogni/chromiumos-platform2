@@ -20,6 +20,7 @@ use thiserror::Error as ThisError;
 
 use libsirenia::{
     communication::persistence::{Cronista, Scope, Status},
+    communication::Digest,
     rpc,
 };
 
@@ -27,7 +28,6 @@ use crate::{
     app_info::AppManifestEntry,
     compute_sha256,
     secrets::{self, SecretManager, SecretVersion},
-    Digest,
 };
 
 const DEFAULT_STORAGE_MAJOR_VERSION: usize = 0;

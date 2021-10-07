@@ -43,14 +43,13 @@ use libsirenia::{
 };
 use sirenia::{
     app_info::{
-        self, AppManifest, AppManifestEntry, ExecutableInfo, SandboxType, StorageParameters,
+        self, AppManifest, AppManifestEntry, Digest, ExecutableInfo, SandboxType, StorageParameters,
     },
     compute_sha256,
     secrets::{
         self, storage_encryption::StorageEncryption, GscSecret, PlatformSecret, SecretManager,
         VersionedSecret,
     },
-    Digest,
 };
 use sys_util::{
     self, error, getpid, getsid, info, reap_child, setsid, syslog,
@@ -268,6 +267,17 @@ impl Trichechus for TrichechusServerImpl {
         Ok(load_app(self.state.borrow_mut().deref_mut(), &app_id, &elf))
     }
 
+    fn get_apps(&self) -> StdResult<Vec<(String, ExecutableInfo)>, ()> {
+        info!("Received get apps message");
+        Ok(self
+            .state
+            .borrow()
+            .app_manifest
+            .iter()
+            .map(|e| (e.app_name.clone(), e.exec_info.clone()))
+            .collect())
+    }
+
     fn get_logs(&self) -> StdResult<Vec<Vec<u8>>, ()> {
         let mut replacement: VecDeque<Vec<u8>> = VecDeque::new();
         swap(&mut self.state.borrow_mut().log_queue, &mut replacement);
@@ -433,7 +443,7 @@ fn start_session(
                 return Err(trichechus::Error::AppPath);
             }
         }
-        ExecutableInfo::Digest(digest) => {
+        ExecutableInfo::Digest(digest) | ExecutableInfo::CrosPath(_, digest) => {
             if state.loaded_apps.borrow().get(digest).is_none() {
                 return Err(trichechus::Error::AppNotLoaded);
             }
@@ -464,20 +474,22 @@ fn spawn_tee_app(
             .sandbox
             .run(Path::new(&path), &[path], &keep_fds)
             .context("failed to start up sandbox")?,
-        ExecutableInfo::Digest(digest) => match state.loaded_apps.borrow().get(digest) {
-            Some(shared_mem) => {
-                let fd_path = fd_to_path(shared_mem.as_raw_fd())
-                    .map(|p| p.to_string_lossy().to_string())
-                    .unwrap_or_else(|_| "".into());
-                app.sandbox
-                    .run_raw(shared_mem.as_raw_fd(), &[&fd_path], &keep_fds)
-                    .context("failed to start up sandbox")?
+        ExecutableInfo::Digest(digest) | ExecutableInfo::CrosPath(_, digest) => {
+            match state.loaded_apps.borrow().get(digest) {
+                Some(shared_mem) => {
+                    let fd_path = fd_to_path(shared_mem.as_raw_fd())
+                        .map(|p| p.to_string_lossy().to_string())
+                        .unwrap_or_else(|_| "".into());
+                    app.sandbox
+                        .run_raw(shared_mem.as_raw_fd(), &[&fd_path], &keep_fds)
+                        .context("failed to start up sandbox")?
+                }
+                None => bail!(
+                    "error retrieving path for TEE app: {0}",
+                    app.app_info.app_name.clone()
+                ),
             }
-            None => bail!(
-                "error retrieving path for TEE app: {0}",
-                app.app_info.app_name.clone()
-            ),
-        },
+        }
     };
 
     Ok((pid, app, trichechus_transport))

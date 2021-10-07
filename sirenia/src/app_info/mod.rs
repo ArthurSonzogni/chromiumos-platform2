@@ -3,6 +3,9 @@
 // found in the LICENSE file.
 
 //! The module that defines the app_manifest.
+pub use libsirenia::communication::Digest;
+pub use libsirenia::communication::ExecutableInfo;
+
 use std::collections::BTreeMap as Map;
 use std::fmt::Debug;
 use std::fs::{read_dir, File};
@@ -13,8 +16,6 @@ use std::result::Result as StdResult;
 use libsirenia::communication::persistence::Scope;
 use serde::{Deserialize, Serialize};
 use thiserror::Error as ThisError;
-
-use crate::Digest;
 
 pub const DEFAULT_APP_CONFIG_PATH: &str = "/usr/share/manatee";
 pub const JSON_EXTENSION: &str = ".json";
@@ -82,12 +83,6 @@ pub struct AppManifestEntry {
     pub sandbox_type: SandboxType,
     pub secrets_parameters: Option<SecretsParameters>,
     pub storage_parameters: Option<StorageParameters>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
-pub enum ExecutableInfo {
-    Path(String),
-    Digest(Digest),
 }
 
 /// Provides a lookup for registered AppManifestEntries that represent which

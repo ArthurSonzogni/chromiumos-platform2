@@ -28,7 +28,7 @@ use libsirenia::cli::trichechus::initialize_common_arguments;
 use libsirenia::communication::trichechus::{self, AppInfo, Trichechus, TrichechusClient};
 use libsirenia::rpc;
 use libsirenia::transport::{Transport, TransportType, DEFAULT_CLIENT_PORT, DEFAULT_SERVER_PORT};
-use sirenia::app_info::{AppManifest, ExecutableInfo};
+use sirenia::app_info::ExecutableInfo;
 use sirenia::server::{register_org_chromium_mana_teeinterface, OrgChromiumManaTEEInterface};
 use sys_util::{error, info, syslog};
 
@@ -314,18 +314,18 @@ fn main() -> Result<()> {
     let client = TrichechusClient::new(transport);
     if get_logs {
         info!("Getting logs");
-        let logs = client.get_logs().unwrap();
+        let logs = client.get_logs().context("failed to fetch logs")?;
         for entry in &logs[..] {
             print!("{}", String::from_utf8_lossy(entry));
         }
     } else {
+        let apps = client.get_apps().context("failed to fetch app list")?;
         let mut dugong_state = DugongState::new(client, transport_type);
-        let manifest = AppManifest::load_default().context("failed to load manifest")?;
-        dugong_state.register_supported_apps(manifest.iter().map(|entry| {
+        dugong_state.register_supported_apps(apps.iter().map(|(name, exec_info)| {
             (
-                &entry.app_name,
-                match &entry.exec_info {
-                    ExecutableInfo::Path(p) => {
+                name,
+                match exec_info {
+                    ExecutableInfo::CrosPath(p, _) => {
                         let path = PathBuf::from(&p);
                         if path.exists() {
                             Some(path)
@@ -333,7 +333,7 @@ fn main() -> Result<()> {
                             None
                         }
                     }
-                    ExecutableInfo::Digest(_) => None,
+                    ExecutableInfo::Digest(_) | ExecutableInfo::Path(_) => None,
                 },
             )
         }));

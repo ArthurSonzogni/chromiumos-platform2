@@ -13,6 +13,8 @@ use serde::{Deserialize, Serialize};
 use sirenia_rpc_macros::sirenia_rpc;
 use thiserror::Error as ThisError;
 
+use crate::communication::ExecutableInfo;
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize, ThisError)]
 pub enum Error {
     #[error("App ID not found in the manifest")]
@@ -69,6 +71,7 @@ pub trait Trichechus {
 
     fn start_session(&self, app_info: AppInfo) -> StdResult<Result<(), Error>, Self::Error>;
     fn load_app(&self, app_id: String, elf: Vec<u8>) -> StdResult<Result<(), Error>, Self::Error>;
+    fn get_apps(&self) -> StdResult<Vec<(String, ExecutableInfo)>, Self::Error>;
     fn get_logs(&self) -> StdResult<Vec<Vec<u8>>, Self::Error>;
 
     fn system_event(&self, event: SystemEvent) -> StdResult<Result<(), String>, Self::Error>;
