@@ -357,7 +357,7 @@ TEST_F(ServerProxyTest, HandlePendingAuthRequests) {
   server_proxy_->AuthenticationRequired(
       protection_space.origin(), protection_space.scheme(),
       protection_space.realm(), /* bad_cached_credentials = */ "",
-      base::Bind(
+      base::BindRepeating(
           [](std::string* actual_credentials, const std::string& credentials) {
             *actual_credentials = credentials;
           },
@@ -409,7 +409,7 @@ TEST_F(ServerProxyTest, HandlePendingAuthRequestsNoCredentials) {
   server_proxy_->AuthenticationRequired(
       protection_space.origin(), protection_space.scheme(),
       protection_space.realm(), /* bad_cached_credentials = */ "",
-      base::Bind(
+      base::BindRepeating(
           [](std::string* actual_credentials, const std::string& credentials) {
             *actual_credentials = credentials;
           },
@@ -459,7 +459,7 @@ TEST_F(ServerProxyTest, HandlePendingAuthRequestsCachedCredentials) {
   server_proxy_->AuthenticationRequired(
       protection_space.origin(), protection_space.scheme(),
       protection_space.realm(), /* bad_cached_credentials = */ "",
-      base::Bind(
+      base::BindRepeating(
           [](std::string* actual_credentials, const std::string& credentials) {
             *actual_credentials = credentials;
           },
@@ -517,7 +517,7 @@ TEST_F(ServerProxyTest, AuthRequestsBadCachedCredentials) {
   server_proxy_->AuthenticationRequired(
       protection_space.origin(), protection_space.scheme(),
       protection_space.realm(), kBadCachedCredetials,
-      base::Bind(
+      base::BindRepeating(
           [](std::string* actual_credentials, const std::string& credentials) {
             *actual_credentials = credentials;
           },

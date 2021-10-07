@@ -139,9 +139,9 @@ ProxyConnectJob::ProxyConnectJob(
       setup_finished_callback_(std::move(setup_finished_callback)),
       // Safe to use |base::Unretained| because the callback will be canceled
       // when it goes out of scope.
-      client_connect_timeout_callback_(base::Bind(
+      client_connect_timeout_callback_(base::BindOnce(
           &ProxyConnectJob::OnClientConnectTimeout, base::Unretained(this))),
-      credentials_request_timeout_callback_(base::Bind(
+      credentials_request_timeout_callback_(base::BindOnce(
           &ProxyConnectJob::OnAuthenticationTimeout, base::Unretained(this))) {
   client_socket_ = std::move(socket);
 }
@@ -162,8 +162,9 @@ bool ProxyConnectJob::Start() {
       FROM_HERE, client_connect_timeout_callback_.callback(),
       kWaitClientConnectTimeout);
   read_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      client_socket_->fd(), base::Bind(&ProxyConnectJob::OnClientReadReady,
-                                       weak_ptr_factory_.GetWeakPtr()));
+      client_socket_->fd(),
+      base::BindRepeating(&ProxyConnectJob::OnClientReadReady,
+                          weak_ptr_factory_.GetWeakPtr()));
   return true;
 }
 
@@ -222,8 +223,8 @@ void ProxyConnectJob::HandleClientHTTPRequest(
   // target url.
   std::move(resolve_proxy_callback_)
       .Run(base::StringPrintf("https://%s", target_url_.c_str()),
-           base::Bind(&ProxyConnectJob::OnProxyResolution,
-                      weak_ptr_factory_.GetWeakPtr()));
+           base::BindOnce(&ProxyConnectJob::OnProxyResolution,
+                          weak_ptr_factory_.GetWeakPtr()));
 }
 
 void ProxyConnectJob::OnProxyResolution(

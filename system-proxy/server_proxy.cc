@@ -84,8 +84,8 @@ ServerProxy::~ServerProxy() = default;
 void ServerProxy::Init() {
   // Start listening for input.
   stdin_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      GetStdinPipe(), base::Bind(&ServerProxy::HandleStdinReadable,
-                                 weak_ptr_factory_.GetWeakPtr()));
+      GetStdinPipe(), base::BindRepeating(&ServerProxy::HandleStdinReadable,
+                                          weak_ptr_factory_.GetWeakPtr()));
 
   // Handle termination signals.
   signal_handler_.Init();

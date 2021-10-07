@@ -134,8 +134,8 @@ void SystemProxyAdaptor::SetAuthenticationDetails(
 
     brillo::MessageLoop::current()->PostTask(
         FROM_HERE,
-        base::Bind(&SystemProxyAdaptor::SetCredentialsTask,
-                   weak_ptr_factory_.GetWeakPtr(), worker, credentials));
+        base::BindOnce(&SystemProxyAdaptor::SetCredentialsTask,
+                       weak_ptr_factory_.GetWeakPtr(), worker, credentials));
   }
   if (auth_details.has_kerberos_enabled()) {
     std::string principal_name = auth_details.has_active_principal_name()
@@ -143,9 +143,10 @@ void SystemProxyAdaptor::SetAuthenticationDetails(
                                      : std::string();
 
     brillo::MessageLoop::current()->PostTask(
-        FROM_HERE, base::Bind(&SystemProxyAdaptor::SetKerberosEnabledTask,
-                              weak_ptr_factory_.GetWeakPtr(), worker,
-                              auth_details.kerberos_enabled(), principal_name));
+        FROM_HERE,
+        base::BindOnce(&SystemProxyAdaptor::SetKerberosEnabledTask,
+                       weak_ptr_factory_.GetWeakPtr(), worker,
+                       auth_details.kerberos_enabled(), principal_name));
   }
 }
 
@@ -202,8 +203,8 @@ std::vector<uint8_t> SystemProxyAdaptor::ShutDownProcess(
 
   if (request.traffic_type() == TrafficOrigin::ALL) {
     brillo::MessageLoop::current()->PostTask(
-        FROM_HERE, base::Bind(&SystemProxyAdaptor::ShutDownTask,
-                              weak_ptr_factory_.GetWeakPtr()));
+        FROM_HERE, base::BindOnce(&SystemProxyAdaptor::ShutDownTask,
+                                  weak_ptr_factory_.GetWeakPtr()));
   }
   return SerializeProto(response);
 }
@@ -238,8 +239,8 @@ SandboxedWorker* SystemProxyAdaptor::CreateWorkerIfNeeded(bool user_traffic) {
       patchpanel::kPatchPanelServiceName,
       dbus::ObjectPath(patchpanel::kPatchPanelServicePath));
   patchpanel_proxy->WaitForServiceToBeAvailable(
-      base::Bind(&SystemProxyAdaptor::OnPatchpanelServiceAvailable,
-                 weak_ptr_factory_.GetWeakPtr(), user_traffic));
+      base::BindOnce(&SystemProxyAdaptor::OnPatchpanelServiceAvailable,
+                     weak_ptr_factory_.GetWeakPtr(), user_traffic));
   return worker;
 }
 
@@ -323,8 +324,8 @@ void SystemProxyAdaptor::ConnectNamespace(bool user_traffic) {
   // implements "ip netns" to create the veth pair across network namespaces.
   brillo::MessageLoop::current()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&SystemProxyAdaptor::ConnectNamespaceTask,
-                 weak_ptr_factory_.GetWeakPtr(), worker, user_traffic),
+      base::BindOnce(&SystemProxyAdaptor::ConnectNamespaceTask,
+                     weak_ptr_factory_.GetWeakPtr(), worker, user_traffic),
       kConnectNamespaceDelay);
 }
 

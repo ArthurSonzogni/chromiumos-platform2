@@ -175,11 +175,11 @@ class ProxyConnectJob {
   ResolveProxyCallback resolve_proxy_callback_;
   AuthenticationRequiredCallback auth_required_callback_;
   OnConnectionSetupFinishedCallback setup_finished_callback_;
-  base::CancelableClosure client_connect_timeout_callback_;
+  base::CancelableOnceClosure client_connect_timeout_callback_;
   // Started the first time credentials are requested and cancelled when the
   // proxy server sends any HTTP code other than 407 (proxy authentication
   // required).
-  base::CancelableClosure credentials_request_timeout_callback_;
+  base::CancelableOnceClosure credentials_request_timeout_callback_;
 
   bool store_headers_for_testing_ = false;
   std::string request_headers_for_testing_;
