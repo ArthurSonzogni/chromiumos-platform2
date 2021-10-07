@@ -142,6 +142,40 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
       }
       return base::JoinString(ret, "|");
 
+    case HpsReg::kError:
+      if (val & RError::kSpiFlash) {
+        ret.push_back("kSpiFlash");
+        val ^= RError::kSpiFlash;
+      }
+      if (val & RError::kCamera) {
+        ret.push_back("kCamera");
+        val ^= RError::kCamera;
+      }
+      if (val & RError::kI2cORun) {
+        ret.push_back("kI2cORun");
+        val ^= RError::kI2cORun;
+      }
+      if (val & RError::kI2cBErr) {
+        ret.push_back("kI2cBErr");
+        val ^= RError::kI2cBErr;
+      }
+      if (val & RError::kPanic) {
+        ret.push_back("kPanic");
+        val ^= RError::kPanic;
+      }
+      if (val & RError::kMcuFlash) {
+        ret.push_back("kMcuFlash");
+        val ^= RError::kMcuFlash;
+      }
+      if (val & RError::kI2cURun) {
+        ret.push_back("kI2cURun");
+        val ^= RError::kI2cURun;
+      }
+      if (val) {
+        ret.push_back(base::StringPrintf("0x%x", val));
+      }
+      return base::JoinString(ret, "|");
+
     default:
       return "";
   }

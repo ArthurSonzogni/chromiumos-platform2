@@ -72,6 +72,16 @@ enum RFeat : uint16_t {
   kValid = BIT(15),  // Feature result is valid.
 };
 
+enum RError : uint16_t {
+  kSpiFlash = BIT(6),
+  kCamera = BIT(5),
+  kI2cORun = BIT(4),
+  kI2cBErr = BIT(3),
+  kPanic = BIT(2),
+  kMcuFlash = BIT(1),
+  kI2cURun = BIT(0),
+};
+
 inline constexpr uint16_t kHpsMagic = 0x9df2;
 inline constexpr int kFeatures = 2;  // Maximum of 2 features at this stage.
 
