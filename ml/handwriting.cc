@@ -200,11 +200,12 @@ bool HandwritingLibraryImpl::LoadHandwritingRecognizer(
 
   // If enabled, get model data from Language Packs instead of the path on
   // rootfs.
-  if (ml::HandwritingLibrary::IsUseLanguagePacksEnabled()) {
-    if (!spec->language_pack_path) {
-      LOG(ERROR) << "Language Pack path cannot be empty.";
-      return false;
-    }
+  // The only way to know if the client wants to use Language Packs is to check
+  // that |language_pack_path| has been set.
+  // TODO(claudiomagni): Work out the proper way to indicate that we are using
+  //                     Language Packs. Also add tests for this code path.
+  if (ml::HandwritingLibrary::IsUseLanguagePacksEnabled() &&
+      spec->language_pack_path) {
     const std::string target_path = spec->language_pack_path.value();
     const base::Optional<base::FilePath> real_language_pack_path =
         GetRealPath(base::FilePath(target_path));

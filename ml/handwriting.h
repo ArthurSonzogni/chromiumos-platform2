@@ -64,9 +64,11 @@ class HandwritingLibrary {
     return USE_ONDEVICE_HANDWRITING_DLC;
   }
 
-  // Returns bool of use.ondevice_handwriting_languagepack.
-  // TODO(claudiomagni): Use a USE flag.
-  static constexpr bool IsUseLanguagePacksEnabled() { return false; }
+  // Returns whether LanguagePacks is enabled.
+  // Currently it's enabled whenever ondevice_handwriting is.
+  static constexpr bool IsUseLanguagePacksEnabled() {
+    return USE_ONDEVICE_HANDWRITING;
+  }
 
   // Gets the singleton HandwritingLibrary. The singleton is initialized with
   // `lib_path` on the first call to GetInstance; for the rest of the calls,
