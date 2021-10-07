@@ -183,6 +183,10 @@ Information about connected printer and scanner devices produced by `lpstat -l
 
 ## lsusb
 
+## lvs
+
+Information about LVM logical volumes.
+
 ## mali_memory
 
 ## memd clips
@@ -246,6 +250,10 @@ it means.
 ## powerwash_count
 
 ## ps
+
+## pvs
+
+Information about LVM physical volumes.
 
 ## qcom_fw_info
 
