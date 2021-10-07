@@ -83,7 +83,8 @@ void Modem::CreateDevice(const InterfaceToProperties& properties) {
         modem_props.Get<uint32_t>(MM_MODEM_PROPERTY_CURRENTCAPABILITIES);
   }
 
-  if (capabilities & (MM_MODEM_CAPABILITY_GSM_UMTS | MM_MODEM_CAPABILITY_LTE)) {
+  if (capabilities & (MM_MODEM_CAPABILITY_GSM_UMTS | MM_MODEM_CAPABILITY_LTE |
+                      MM_MODEM_CAPABILITY_5GNR)) {
     type_ = Cellular::kType3gpp;
   } else if (capabilities & MM_MODEM_CAPABILITY_CDMA_EVDO) {
     type_ = Cellular::kTypeCdma;
