@@ -65,6 +65,7 @@ class MountHelperInterface {
   virtual bool PerformEphemeralMount(const std::string& username) = 0;
 
   // Tears down the existing ephemeral mount.
+  // TODO(dlunev): make sure epehemeral teardown failure is logged to telemetry.
   virtual bool TearDownEphemeralMount() = 0;
 
   // Tears down non-ephemeral cryptohome mount.

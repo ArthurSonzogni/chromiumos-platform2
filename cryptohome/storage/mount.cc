@@ -189,7 +189,8 @@ MountError Mount::MountEphemeralCryptohome(const std::string& username) {
     // This callback will be executed in the destructor at the latest so
     // |this| will always be valid.
     cleanup =
-        base::BindOnce(&Mount::TearDownEphemeralMount, base::Unretained(this));
+        base::BindOnce(base::IgnoreResult(&MountHelper::TearDownEphemeralMount),
+                       base::Unretained(mounter_.get()));
   }
 
   if (!MountEphemeralCryptohomeInternal(username_, ephemeral_mounter,
@@ -369,12 +370,6 @@ bool Mount::MountEphemeralCryptohomeInternal(
   return true;
 }
 
-void Mount::TearDownEphemeralMount() {
-  if (!mounter_->TearDownEphemeralMount()) {
-    ReportCryptohomeError(kEphemeralCleanUpFailed);
-  }
-}
-
 void Mount::UnmountAndDropKeys(base::OnceClosure unmounter) {
   std::move(unmounter).Run();
 
@@ -449,7 +444,8 @@ bool Mount::MountGuestCryptohome() {
     // This callback will be executed in the destructor at the latest so
     // |this| will always be valid.
     cleanup =
-        base::BindOnce(&Mount::TearDownEphemeralMount, base::Unretained(this));
+        base::BindOnce(base::IgnoreResult(&MountHelper::TearDownEphemeralMount),
+                       base::Unretained(mounter_.get()));
   }
 
   return MountEphemeralCryptohomeInternal(kGuestUserName, ephemeral_mounter,

@@ -248,10 +248,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
                                         MountHelperInterface* ephemeral_mounter,
                                         base::OnceClosure cleanup);
 
-  // Tears down an ephemeral cryptohome mount, and deletes the underlying loop
-  // device and sparse file.
-  void TearDownEphemeralMount();
-
   // Unmounts all mount points, and invalidates the dircrypto encryption key.
   // Relies on ForceUnmount() internally; see the caveat listed for it
   void UnmountAndDropKeys(base::OnceClosure unmounter);
