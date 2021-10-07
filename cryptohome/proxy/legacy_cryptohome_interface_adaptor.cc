@@ -322,45 +322,6 @@ void LegacyCryptohomeInterfaceAdaptor::AddKeyEx(
       kDefaultTimeout.InMilliseconds());
 }
 
-void LegacyCryptohomeInterfaceAdaptor::AddDataRestoreKey(
-    std::unique_ptr<
-        brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
-    const cryptohome::AccountIdentifier& in_account_id,
-    const cryptohome::AuthorizationRequest& in_authorization_request) {
-  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyAddDataRestoreKey);
-
-  auto response_shared =
-      std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
-          std::move(response));
-
-  user_data_auth::AddDataRestoreKeyRequest request;
-  request.mutable_account_id()->CopyFrom(in_account_id);
-  request.mutable_authorization_request()->CopyFrom(in_authorization_request);
-  userdataauth_proxy_->AddDataRestoreKeyAsync(
-      request,
-      base::BindOnce(
-          &LegacyCryptohomeInterfaceAdaptor::AddDataRestoreKeyOnSuccess,
-          base::Unretained(this), response_shared),
-      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                         cryptohome::BaseReply>,
-                     base::Unretained(this), response_shared),
-      kDefaultTimeout.InMilliseconds());
-}
-
-void LegacyCryptohomeInterfaceAdaptor::AddDataRestoreKeyOnSuccess(
-    std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
-    const user_data_auth::AddDataRestoreKeyReply& reply) {
-  cryptohome::BaseReply result;
-  result.set_error(static_cast<cryptohome::CryptohomeErrorCode>(reply.error()));
-  cryptohome::AddDataRestoreKeyReply* result_extension =
-      result.MutableExtension(cryptohome::AddDataRestoreKeyReply::reply);
-  if (result.error() == CRYPTOHOME_ERROR_NOT_SET) {
-    result_extension->set_data_restore_key(reply.data_restore_key());
-  }
-  ClearErrorIfNotSet(&result);
-  response->Return(result);
-}
-
 void LegacyCryptohomeInterfaceAdaptor::RemoveEx(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,

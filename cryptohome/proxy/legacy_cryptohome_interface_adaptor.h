@@ -150,11 +150,6 @@ class LegacyCryptohomeInterfaceAdaptor
       const cryptohome::AccountIdentifier& in_account_id,
       const cryptohome::AuthorizationRequest& in_authorization_request,
       const cryptohome::AddKeyRequest& in_add_key_request) override;
-  void AddDataRestoreKey(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                             cryptohome::BaseReply>> response,
-                         const cryptohome::AccountIdentifier& in_account_id,
-                         const cryptohome::AuthorizationRequest&
-                             in_authorization_request) override;
   void RemoveEx(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                     cryptohome::BaseReply>> response,
                 const cryptohome::AccountIdentifier& in_account) override;
@@ -699,9 +694,6 @@ class LegacyCryptohomeInterfaceAdaptor
   void GetKeyDataOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
       const user_data_auth::GetKeyDataReply& reply);
-  void AddDataRestoreKeyOnSuccess(
-      std::shared_ptr<SharedDBusMethodResponse<cryptohome::BaseReply>> response,
-      const user_data_auth::AddDataRestoreKeyReply& reply);
   void GetSystemSaltOnSuccess(
       std::shared_ptr<SharedDBusMethodResponse<std::vector<uint8_t>>> response,
       const user_data_auth::GetSystemSaltReply& reply);

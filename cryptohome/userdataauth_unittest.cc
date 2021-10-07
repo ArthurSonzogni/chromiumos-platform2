@@ -2378,7 +2378,6 @@ class UserDataAuthExTest : public UserDataAuthTest {
  protected:
   void PrepareArguments() {
     add_req_.reset(new user_data_auth::AddKeyRequest);
-    add_data_restore_req_.reset(new user_data_auth::AddDataRestoreKeyRequest);
     check_req_.reset(new user_data_auth::CheckKeyRequest);
     mount_req_.reset(new user_data_auth::MountRequest);
     remove_req_.reset(new user_data_auth::RemoveKeyRequest);
@@ -2408,8 +2407,6 @@ class UserDataAuthExTest : public UserDataAuthTest {
   }
 
   std::unique_ptr<user_data_auth::AddKeyRequest> add_req_;
-  std::unique_ptr<user_data_auth::AddDataRestoreKeyRequest>
-      add_data_restore_req_;
   std::unique_ptr<user_data_auth::CheckKeyRequest> check_req_;
   std::unique_ptr<user_data_auth::MountRequest> mount_req_;
   std::unique_ptr<user_data_auth::RemoveKeyRequest> remove_req_;
@@ -2790,83 +2787,6 @@ TEST_F(UserDataAuthExTest, AddKeyValidity) {
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 
-TEST_F(UserDataAuthExTest, AddDataRestoreKeyInvalidArgsNoEmail) {
-  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
-  PrepareArguments();
-
-  brillo::SecureBlob data_restore_key;
-  EXPECT_EQ(userdataauth_->AddDataRestoreKey(*add_data_restore_req_.get(),
-                                             &data_restore_key),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-}
-
-TEST_F(UserDataAuthExTest, AddDataRestoreKeyInvalidArgsNoSecret) {
-  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
-  PrepareArguments();
-
-  add_data_restore_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-
-  brillo::SecureBlob data_restore_key;
-  EXPECT_EQ(userdataauth_->AddDataRestoreKey(*add_data_restore_req_.get(),
-                                             &data_restore_key),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-}
-
-TEST_F(UserDataAuthExTest, AddDataRestoreKeyAccountNotExist) {
-  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
-  PrepareArguments();
-
-  add_data_restore_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  add_data_restore_req_->mutable_authorization_request()
-      ->mutable_key()
-      ->set_secret("blerg");
-
-  EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(false));
-
-  brillo::SecureBlob data_restore_key;
-  EXPECT_EQ(userdataauth_->AddDataRestoreKey(*add_data_restore_req_.get(),
-                                             &data_restore_key),
-            user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
-}
-
-TEST_F(UserDataAuthExTest, AddDataRestoreKeyAccountExistAddFail) {
-  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
-  PrepareArguments();
-
-  add_data_restore_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  add_data_restore_req_->mutable_authorization_request()
-      ->mutable_key()
-      ->set_secret("blerg");
-
-  EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, AddKeyset(_, _, _, _, _))
-      .WillRepeatedly(Return(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
-
-  brillo::SecureBlob data_restore_key;
-  EXPECT_EQ(userdataauth_->AddDataRestoreKey(*add_data_restore_req_.get(),
-                                             &data_restore_key),
-            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-}
-
-TEST_F(UserDataAuthExTest, AddDataRestoreKeyAccountExistAddSuccess) {
-  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
-  PrepareArguments();
-
-  add_data_restore_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  add_data_restore_req_->mutable_authorization_request()
-      ->mutable_key()
-      ->set_secret("blerg");
-
-  EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, AddKeyset(_, _, _, _, _))
-      .WillRepeatedly(Return(CRYPTOHOME_ERROR_NOT_SET));
-
-  brillo::SecureBlob data_restore_key;
-  EXPECT_EQ(userdataauth_->AddDataRestoreKey(*add_data_restore_req_.get(),
-                                             &data_restore_key),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_EQ(32, data_restore_key.size());
-}
 
 // Note that CheckKey tries to two method to check whether a key is valid or
 // not. The first is through Homedirs, and the second is through Mount.

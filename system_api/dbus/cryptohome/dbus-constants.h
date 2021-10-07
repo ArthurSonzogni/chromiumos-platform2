@@ -33,7 +33,6 @@ const char kListKeys[] = "ListKeys";
 const char kGetKeyData[] = "GetKeyData";
 const char kCheckKey[] = "CheckKey";
 const char kAddKey[] = "AddKey";
-const char kAddDataRestoreKey[] = "AddDataRestoreKey";
 const char kRemoveKey[] = "RemoveKey";
 const char kMassRemoveKeys[] = "MassRemoveKeys";
 const char kMigrateKey[] = "MigrateKey";

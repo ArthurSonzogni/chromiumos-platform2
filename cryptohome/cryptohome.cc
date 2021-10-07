@@ -118,7 +118,6 @@ static const char* kActions[] = {"mount_ex",
                                  "list_keys_ex",
                                  "migrate_key_ex",
                                  "add_key_ex",
-                                 "add_data_restore_key",
                                  "mass_remove_keys",
                                  "update_key_ex",
                                  "remove",
@@ -204,7 +203,6 @@ enum ActionEnum {
   ACTION_LIST_KEYS_EX,
   ACTION_MIGRATE_KEY_EX,
   ACTION_ADD_KEY_EX,
-  ACTION_ADD_DATA_RESTORE_KEY,
   ACTION_MASS_REMOVE_KEYS,
   ACTION_UPDATE_KEY_EX,
   ACTION_REMOVE,
@@ -898,37 +896,6 @@ int main(int argc, char** argv) {
       return reply.error();
     }
     printf("Key authenticated.\n");
-  } else if (!strcmp(switches::kActions[switches::ACTION_ADD_DATA_RESTORE_KEY],
-                     action.c_str())) {
-    user_data_auth::AddDataRestoreKeyRequest req;
-    if (!BuildAccountId(cl, req.mutable_account_id()))
-      return 1;
-    if (!BuildAuthorization(cl, &misc_proxy, true /* need_credential */,
-                            req.mutable_authorization_request()))
-      return 1;
-
-    user_data_auth::AddDataRestoreKeyReply reply;
-    brillo::ErrorPtr error;
-    if (!userdataauth_proxy.AddDataRestoreKey(req, &reply, &error,
-                                              timeout_ms) ||
-        error) {
-      printf("Restore key addition failed: %s",
-             BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    reply.PrintDebugString();
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("Restore key addition failed.\n");
-      return reply.error();
-    }
-
-    SecureBlob data_restore_key_raw(reply.data_restore_key());
-    printf("Restore key addition succeeded.\n");
-    printf("Here's the data restore key in hex: %s\n",
-           brillo::SecureBlobToSecureHex(data_restore_key_raw)
-               .to_string()
-               .c_str());
   } else if (!strcmp(switches::kActions[switches::ACTION_MASS_REMOVE_KEYS],
                      action.c_str())) {
     user_data_auth::MassRemoveKeysRequest req;
