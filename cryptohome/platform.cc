@@ -66,7 +66,6 @@
 #include <brillo/process/process.h>
 #include <brillo/scoped_umask.h>
 #include <brillo/secure_blob.h>
-#include <openssl/rand.h>
 #include <rootdev/rootdev.h>
 #include <secure_erase_file/secure_erase_file.h>
 
@@ -661,26 +660,6 @@ bool Platform::WriteArrayToFile(const FilePath& path,
                                 const char* data,
                                 size_t size) {
   return brillo::WriteToFile(path, data, size);
-}
-
-std::string Platform::GetRandomSuffix() {
-  const int kBufferSize = 6;
-  unsigned char buffer[kBufferSize];
-  if (RAND_bytes(buffer, kBufferSize) < 0) {
-    return std::string();
-  }
-  std::string suffix;
-  for (int i = 0; i < kBufferSize; ++i) {
-    int random_value = buffer[i] % (2 * 26 + 10);
-    if (random_value < 26) {
-      suffix.push_back('a' + random_value);
-    } else if (random_value < 2 * 26) {
-      suffix.push_back('A' + random_value - 26);
-    } else {
-      suffix.push_back('0' + random_value - 2 * 26);
-    }
-  }
-  return suffix;
 }
 
 bool Platform::WriteFileAtomic(const FilePath& path,

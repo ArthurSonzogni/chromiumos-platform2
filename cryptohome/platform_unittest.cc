@@ -21,6 +21,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/util/get_random_suffix.h"
+
 using base::FilePath;
 
 namespace cryptohome {
@@ -30,7 +32,6 @@ class PlatformTest : public ::testing::Test {
   virtual ~PlatformTest() {}
 
  protected:
-  std::string GetRandomSuffix() { return platform_.GetRandomSuffix(); }
   FilePath GetTempName() {
     FilePath temp_directory;
     EXPECT_TRUE(base::GetTempDir(&temp_directory));

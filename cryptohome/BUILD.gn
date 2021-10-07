@@ -484,6 +484,7 @@ if (use.test) {
       "user_secret_stash_unittest.cc",
       "user_session_unittest.cc",
       "userdataauth_unittest.cc",
+      "util/get_random_suffix.cc",
       "vault_keyset_unittest.cc",
     ]
     configs += [
@@ -570,6 +571,7 @@ if (use.test) {
       "mount_encrypted/encrypted_fs_unittest.cc",
       "mount_encrypted/encryption_key_unittest.cc",
       "mount_encrypted/tlcl_stub.cc",
+      "util/get_random_suffix.cc",
     ]
     configs += [
       "//common-mk:test",

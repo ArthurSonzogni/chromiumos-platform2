@@ -16,6 +16,8 @@
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/util/get_random_suffix.h"
+
 namespace cryptohome {
 
 namespace {
@@ -155,7 +157,7 @@ void FakePlatform::FakeExtendedAttributes::Remove(const std::string& name) {
 
 FakePlatform::FakePlatform() : Platform() {
   base::GetTempDir(&tmpfs_rootfs_);
-  tmpfs_rootfs_ = tmpfs_rootfs_.Append(real_platform_.GetRandomSuffix());
+  tmpfs_rootfs_ = tmpfs_rootfs_.Append(GetRandomSuffix());
   if (!real_platform_.CreateDirectory(tmpfs_rootfs_)) {
     LOG(ERROR) << "Failed to create test dir: " << tmpfs_rootfs_;
   }

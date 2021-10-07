@@ -944,10 +944,6 @@ class Platform {
   virtual bool RestoreSELinuxContexts(const base::FilePath& path,
                                       bool recursive);
 
-  // Creates a random string suitable to append to a filename.  Returns empty
-  // string in case of error.
-  virtual std::string GetRandomSuffix();
-
   // Safely change a directory's mode.
   virtual bool SafeDirChmod(const base::FilePath& path, mode_t mode);
 
