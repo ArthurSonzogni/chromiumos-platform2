@@ -418,33 +418,6 @@ bool Mount::CreateTrackedSubdirectories(const std::string& username) const {
                                                mount_type_);
 }
 
-bool Mount::MountGuestCryptohome() {
-  username_ = "";
-  MountHelperInterface* ephemeral_mounter = nullptr;
-  base::OnceClosure cleanup;
-
-  if (mount_guest_session_out_of_process_) {
-    // Ephemeral cryptohomes for Guest sessions are mounted out-of-process.
-    ephemeral_mounter = out_of_process_mounter_.get();
-    // This callback will be executed in the destructor at the latest so
-    // |out_of_process_mounter_| will always be valid. Error reporting is done
-    // in the helper process in cryptohome_namespace_mounter.cc.
-    cleanup = base::BindOnce(
-        base::IgnoreResult(&OutOfProcessMountHelper::TearDownEphemeralMount),
-        base::Unretained(out_of_process_mounter_.get()));
-  } else {
-    ephemeral_mounter = mounter_.get();
-    // This callback will be executed in the destructor at the latest so
-    // |this| will always be valid.
-    cleanup =
-        base::BindOnce(base::IgnoreResult(&MountHelper::TearDownEphemeralMount),
-                       base::Unretained(mounter_.get()));
-  }
-
-  return MountEphemeralCryptohomeInternal(kGuestUserName, ephemeral_mounter,
-                                          std::move(cleanup));
-}
-
 FilePath Mount::GetUserDirectoryForUser(
     const std::string& obfuscated_username) const {
   return ShadowRoot().Append(obfuscated_username);

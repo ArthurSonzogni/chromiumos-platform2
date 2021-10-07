@@ -24,6 +24,7 @@
 #include "cryptohome/pkcs11/pkcs11_token_factory.h"
 #include "cryptohome/storage/mount.h"
 
+using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
 using brillo::cryptohome::home::SanitizeUserNameWithSalt;
 
@@ -170,8 +171,7 @@ MountError UserSession::MountEphemeral(AuthSession* auth_session) {
 }
 
 MountError UserSession::MountGuest() {
-  bool status = mount_->MountGuestCryptohome();
-  return status ? MOUNT_ERROR_NONE : MOUNT_ERROR_FATAL;
+  return mount_->MountEphemeralCryptohome(kGuestUserName);
 }
 
 bool UserSession::Unmount() {

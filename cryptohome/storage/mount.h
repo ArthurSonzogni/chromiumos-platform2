@@ -101,9 +101,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   username - name of the user to mount
   virtual MountError MountEphemeralCryptohome(const std::string& username);
 
-  // Mounts a guest home directory to the cryptohome mount point.
-  virtual bool MountGuestCryptohome();
-
   // Unmounts any mount at the cryptohome mount point
   virtual bool UnmountCryptohome();
 

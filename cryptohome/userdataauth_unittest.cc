@@ -57,6 +57,7 @@
 
 using base::FilePath;
 using brillo::SecureBlob;
+using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserNameWithSalt;
 
 using ::hwsec::error::TPMError;
@@ -2446,7 +2447,8 @@ TEST_F(UserDataAuthExTest, MountGuestValidity) {
       .WillOnce(Invoke([](Platform*, HomeDirs*) {
         NiceMock<MockMount>* res = new NiceMock<MockMount>();
         EXPECT_CALL(*res, Init()).WillOnce(Return(true));
-        EXPECT_CALL(*res, MountGuestCryptohome()).WillOnce(Return(true));
+        EXPECT_CALL(*res, MountEphemeralCryptohome(kGuestUserName))
+            .WillOnce(Return(MOUNT_ERROR_NONE));
         return reinterpret_cast<Mount*>(res);
       }));
 
@@ -2466,9 +2468,7 @@ TEST_F(UserDataAuthExTest, MountGuestValidity) {
   }
   EXPECT_TRUE(called);
 
-  EXPECT_NE(userdataauth_->get_session_for_user(
-                brillo::cryptohome::home::kGuestUserName),
-            nullptr);
+  EXPECT_NE(userdataauth_->get_session_for_user(kGuestUserName), nullptr);
 }
 
 TEST_F(UserDataAuthExTest, MountGuestMountPointBusy) {
@@ -2498,9 +2498,7 @@ TEST_F(UserDataAuthExTest, MountGuestMountPointBusy) {
   }
   EXPECT_TRUE(called);
 
-  EXPECT_EQ(userdataauth_->get_session_for_user(
-                brillo::cryptohome::home::kGuestUserName),
-            nullptr);
+  EXPECT_EQ(userdataauth_->get_session_for_user(kGuestUserName), nullptr);
 }
 
 TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
@@ -2512,7 +2510,8 @@ TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
       .WillOnce(Invoke([](Platform*, HomeDirs*) {
         NiceMock<MockMount>* res = new NiceMock<MockMount>();
         EXPECT_CALL(*res, Init()).WillOnce(Return(true));
-        EXPECT_CALL(*res, MountGuestCryptohome()).WillOnce(Return(false));
+        EXPECT_CALL(*res, MountEphemeralCryptohome(kGuestUserName))
+            .WillOnce(Return(MOUNT_ERROR_FATAL));
         return reinterpret_cast<Mount*>(res);
       }));
 
