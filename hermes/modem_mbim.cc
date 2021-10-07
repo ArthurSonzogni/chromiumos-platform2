@@ -30,6 +30,9 @@ const std::array<uint8_t, 12> kMbimEidReqApdu = {
     0x81, 0xE2, 0x91, 0x00, 0x06, 0xBF, 0x3E, 0x03, 0x5C, 0x01, 0x5A, 0x00,
 };
 
+// ModemManager uses channel_group=1. Make Hermes use 2 just to be cautious.
+constexpr int kChannelGroupId = 2;
+
 }  // namespace
 
 namespace hermes {
@@ -224,8 +227,7 @@ void ModemMbim::TransmitMbimCloseChannel() {
   g_autoptr(GError) error = NULL;
   VLOG(2) << __func__;
   message = mbim_message_ms_uicc_low_level_access_close_channel_set_new(
-      channel_,
-      /*channelGroupId*/ 1, &error);
+      /* channel */ 0, kChannelGroupId, &error);
   if (!message) {
     LOG(ERROR) << "Mbim message creation failed:" << error->message;
     ProcessMbimResult(kModemMessageProcessingError);
@@ -246,7 +248,7 @@ void ModemMbim::TransmitMbimOpenLogicalChannel() {
   g_autoptr(MbimMessage) message = NULL;
   std::copy(kAidIsdr.begin(), kAidIsdr.end(), appId);
   message = mbim_message_ms_uicc_low_level_access_open_channel_set_new(
-      appIdSize, appId, /* selectP2arg */ 4, /* channelGroupId */ 1, &error);
+      appIdSize, appId, /* selectP2arg */ 4, kChannelGroupId, &error);
   if (!message) {
     LOG(ERROR) << __func__ << ": Mbim Message Creation Failed";
     ProcessMbimResult(kModemMessageProcessingError);
