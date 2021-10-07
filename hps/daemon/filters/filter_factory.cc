@@ -7,6 +7,8 @@
 #include <memory>
 #include <utility>
 
+#include <base/logging.h>
+
 #include "hps/daemon/filters/consecutive_results_filter.h"
 #include "hps/daemon/filters/filter_watcher.h"
 #include "hps/daemon/filters/threshold_filter.h"
