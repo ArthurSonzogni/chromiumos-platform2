@@ -205,8 +205,8 @@ TEST_F(HpsDaemonTest, TestPollTimerMultipleFeatures) {
 // inspection it doesn't come via the mocks we have.
 TEST_F(HpsDaemonTest, DISABLED_TestSignals) {
   // This result indicates a positive inference from HPS.
-  FeatureResult valid_feature_result{.inference_result = 254, .valid = true};
-  FeatureResult invalid_feature_result{.inference_result = 254, .valid = false};
+  FeatureResult valid_feature_result{.inference_result = 100, .valid = true};
+  FeatureResult invalid_feature_result{.inference_result = 100, .valid = false};
   {
     InSequence sequence;
     EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));

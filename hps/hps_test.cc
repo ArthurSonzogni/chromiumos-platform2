@@ -77,7 +77,7 @@ TEST_F(HPSTest, FeatureControl) {
   EXPECT_TRUE(hps_->Disable(0));
   EXPECT_TRUE(hps_->Disable(1));
   // Check that a result is returned if the feature is enabled.
-  const int result = 42;
+  const int result = -42;
   fake_->SetF1Result(result);
   feature_result = hps_->Result(0);
   EXPECT_EQ(feature_result.valid, false);

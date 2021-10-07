@@ -16,7 +16,7 @@
 namespace hps {
 
 // TODO(slangley): This needs confirming from MI team.
-constexpr uint8_t kDefaultThreshold = 127;
+constexpr int kDefaultThreshold = 0;
 
 std::unique_ptr<Filter> CreateFilter(const hps::FeatureConfig& config,
                                      StatusCallback signal) {

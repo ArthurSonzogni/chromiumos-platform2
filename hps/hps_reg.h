@@ -100,7 +100,7 @@ inline uint8_t I2cReg(HpsReg reg) {
 }
 
 struct FeatureResult {
-  uint8_t inference_result;
+  int8_t inference_result;
   bool valid;
 };
 

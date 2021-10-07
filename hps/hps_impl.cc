@@ -130,7 +130,10 @@ FeatureResult HPS_impl::Result(int feature) {
   // inference results.
   FeatureResult result;
   result.valid = (hps_result & RFeat::kValid) == RFeat::kValid;
-  result.inference_result = hps_result & 0xFF;
+
+  // The lower 8 bits are an int8_t.
+  // We are extracting that byte here, not converting the uint16_t.
+  result.inference_result = static_cast<int8_t>(hps_result & 0xFF);
   return result;
 }
 
