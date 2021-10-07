@@ -45,6 +45,19 @@ HandwritingRecognizerModelPaths GetModelPaths(
     paths.set_fst_lm_path(model_path.Append("latin_indy.compact.fst").value());
     paths.set_recospec_path(model_path.Append("latin_indy.pb").value());
     return paths;
+  } else if (language.empty()) {
+    // For Language Packs MVP, the VK is calling the ML Service Mojo API
+    // without language set, because only Spanish is enabled, so we can set
+    // hardcoded paths here.
+    // TODO(b/202357494): Fix the language param.
+    paths.set_reco_model_path(model_path.Append("latin_indy.tflite").value());
+    paths.set_seg_model_path(
+        model_path.Append("latin_indy_seg.tflite").value());
+    paths.set_conf_model_path(
+        model_path.Append("latin_indy_conf.tflite").value());
+    paths.set_fst_lm_path(model_path.Append("compact.fst.local").value());
+    paths.set_recospec_path(model_path.Append("qrnn.recospec.local").value());
+    return paths;
   }
 
   DCHECK_EQ(language, kLanguageCodeGesture);
