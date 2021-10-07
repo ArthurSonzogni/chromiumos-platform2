@@ -22,10 +22,12 @@ class Profile : public org::chromium::Hermes::ProfileInterface,
   template <typename... T>
   using DBusResponse = brillo::dbus_utils::DBusMethodResponse<T...>;
 
-  static std::unique_ptr<Profile> Create(const lpa::proto::ProfileInfo& profile,
-                                         const uint32_t physical_slot,
-                                         const std::string& eid,
-                                         bool is_pending);
+  static std::unique_ptr<Profile> Create(
+      const lpa::proto::ProfileInfo& profile,
+      const uint32_t physical_slot,
+      const std::string& eid,
+      bool is_pending,
+      base::RepeatingCallback<void(const std::string&)> on_profile_enabled_cb);
 
   // org::chromium::Hermes::ProfileInterface overrides.
   void Enable(std::unique_ptr<DBusResponse<>> resp) override;
@@ -57,6 +59,9 @@ class Profile : public org::chromium::Hermes::ProfileInterface,
   void SetNicknameProperty(std::string nickname);
   void SetNicknameMethod(std::string nickname,
                          std::unique_ptr<DBusResponse<>> response);
+
+  // Used to set other profiles as disabled when a new profile is enabled
+  base::RepeatingCallback<void(const std::string&)> on_profile_enabled_cb_;
 
   Context* context_;
   dbus::ObjectPath object_path_;

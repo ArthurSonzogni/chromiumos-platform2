@@ -236,7 +236,9 @@ void Euicc::OnProfileInstalled(const lpa::proto::ProfileInfo& profile_info,
     update_pending_profiles_property = true;
   } else {
     profile = Profile::Create(profile_info, physical_slot_, slot_info_.eid(),
-                              /*is_pending*/ false);
+                              /*is_pending*/ false,
+                              base::BindRepeating(&Euicc::OnProfileEnabled,
+                                                  weak_factory_.GetWeakPtr()));
   }
 
   if (!profile) {
@@ -266,6 +268,14 @@ void Euicc::OnProfileInstalled(const lpa::proto::ProfileInfo& profile_info,
                 std::vector<lpa::proto::ProfileInfo>& profile_infos,
                 int /*error*/) { dbus_result.Success(profile_path); });
       });
+}
+
+void Euicc::OnProfileEnabled(const std::string& iccid) {
+  for (auto& installed_profile : installed_profiles_) {
+    installed_profile->SetState(installed_profile->GetIccid() == iccid
+                                    ? profile::kActive
+                                    : profile::kInactive);
+  }
 }
 
 void Euicc::OnProfileUninstalled(const dbus::ObjectPath& profile_path,
@@ -315,11 +325,11 @@ void Euicc::RequestInstalledProfiles(DbusResult<> dbus_result) {
     return;
   }
   auto get_installed_profiles =
-      base::Bind(&Euicc::GetInstalledProfiles, weak_factory_.GetWeakPtr());
+      base::BindOnce(&Euicc::GetInstalledProfiles, weak_factory_.GetWeakPtr());
   context_->modem_control()->StoreAndSetActiveSlot(
       physical_slot_,
-      base::Bind(&RunOnSuccess<>, std::move(get_installed_profiles),
-                 std::move(dbus_result)));
+      base::BindOnce(&RunOnSuccess<>, std::move(get_installed_profiles),
+                     std::move(dbus_result)));
 }
 
 void Euicc::GetInstalledProfiles(DbusResult<> dbus_result) {
@@ -349,8 +359,11 @@ void Euicc::OnInstalledProfilesReceived(
     if (!is_test_mode_ &&
         info.profile_class() == lpa::proto::ProfileClass::TESTING)
       continue;
-    auto profile = Profile::Create(info, physical_slot_, slot_info_.eid(),
-                                   /*is_pending*/ false);
+    auto profile =
+        Profile::Create(info, physical_slot_, slot_info_.eid(),
+                        /*is_pending*/ false,
+                        base::BindRepeating(&Euicc::OnProfileEnabled,
+                                            weak_factory_.GetWeakPtr()));
     if (profile) {
       installed_profiles_.push_back(std::move(profile));
     }
@@ -405,8 +418,11 @@ void Euicc::OnPendingProfilesReceived(
 
   pending_profiles_.clear();
   for (const auto& info : profile_infos) {
-    auto profile = Profile::Create(info, physical_slot_, slot_info_.eid(),
-                                   /*is_pending*/ true);
+    auto profile =
+        Profile::Create(info, physical_slot_, slot_info_.eid(),
+                        /*is_pending*/ true,
+                        base::BindRepeating(&Euicc::OnProfileEnabled,
+                                            weak_factory_.GetWeakPtr()));
     if (profile) {
       pending_profiles_.push_back(std::move(profile));
     }

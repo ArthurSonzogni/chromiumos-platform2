@@ -52,6 +52,7 @@ class Euicc {
   dbus::ObjectPath object_path() const { return dbus_adaptor_->object_path(); }
 
  private:
+  void OnProfileEnabled(const std::string& iccid);
   void OnProfileInstalled(const lpa::proto::ProfileInfo& profile_info,
                           int error,
                           DbusResult<dbus::ObjectPath> dbus_result);

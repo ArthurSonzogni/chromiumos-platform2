@@ -74,7 +74,8 @@ std::unique_ptr<Profile> Profile::Create(
     const lpa::proto::ProfileInfo& profile_info,
     const uint32_t physical_slot,
     const std::string& eid,
-    bool is_pending) {
+    bool is_pending,
+    base::RepeatingCallback<void(const std::string&)> on_profile_enabled_cb) {
   CHECK(profile_info.has_iccid());
   auto profile = std::unique_ptr<Profile>(new Profile(
       dbus::ObjectPath(kBasePath + eid + "/" + profile_info.iccid()),
@@ -110,6 +111,8 @@ std::unique_ptr<Profile> Profile::Create(
 
   profile->RegisterWithDBusObject(&profile->dbus_object_);
   profile->dbus_object_.RegisterAndBlock();
+
+  profile->on_profile_enabled_cb_ = std::move(on_profile_enabled_cb);
 
   LOG(INFO) << "Successfuly created Profile";
   VLOG(2) << profile_info.DebugString();
@@ -210,8 +213,8 @@ void Profile::OnEnabled(int error, std::shared_ptr<DBusResponse<>> response) {
     response->ReplyWithError(decoded_error.get());
     return;
   }
+  on_profile_enabled_cb_.Run(GetIccid());
   VLOG(2) << "Enabled profile: " << object_path_.value();
-  SetState(profile::kActive);
   auto send_notifs =
       base::BindOnce(&Profile::FinishProfileOpCb, weak_factory_.GetWeakPtr(),
                      std::move(response));
