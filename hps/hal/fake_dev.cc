@@ -282,15 +282,15 @@ uint16_t FakeDev::ReadRegActual(HpsReg reg) {
       v = this->bank_.load();
       break;
 
-    case HpsReg::kF1:
-      if (this->feature_on_ & hps::R7::kFeature1Enable) {
-        v = hps::RFeat::kValid | static_cast<uint8_t>(this->f1_result_.load());
+    case HpsReg::kFeature0:
+      if (this->feature_on_ & hps::R7::kFeature0Enable) {
+        v = hps::RFeat::kValid | static_cast<uint8_t>(this->f0_result_.load());
       }
       break;
 
-    case HpsReg::kF2:
-      if (this->feature_on_ & hps::R7::kFeature2Enable) {
-        v = hps::RFeat::kValid | static_cast<uint8_t>(this->f2_result_.load());
+    case HpsReg::kFeature1:
+      if (this->feature_on_ & hps::R7::kFeature1Enable) {
+        v = hps::RFeat::kValid | static_cast<uint8_t>(this->f1_result_.load());
       }
       break;
 

@@ -60,10 +60,10 @@ const char* HpsRegToString(const HpsReg reg) {
       return "kError";
     case HpsReg::kFeatEn:
       return "kFeatEn";
-    case HpsReg::kF1:
-      return "kF1";
-    case HpsReg::kF2:
-      return "kF2";
+    case HpsReg::kFeature0:
+      return "kFeature0";
+    case HpsReg::kFeature1:
+      return "kFeature1";
     case HpsReg::kFirmwareVersionHigh:
       return "kFirmwareVersionHigh";
     case HpsReg::kFirmwareVersionLow:

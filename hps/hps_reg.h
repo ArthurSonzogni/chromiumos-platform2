@@ -31,8 +31,8 @@ enum class HpsReg : uint8_t {
   kBankReady = 5,
   kError = 6,
   kFeatEn = 7,
-  kF1 = 8,
-  kF2 = 9,
+  kFeature0 = 8,
+  kFeature1 = 9,
   kFirmwareVersionHigh = 10,
   kFirmwareVersionLow = 11,
   kMax = 127,
@@ -63,8 +63,8 @@ enum R3 : uint16_t {
 
 // Register 7 (RW) - Feature enable bit mask.
 enum R7 : uint16_t {
-  kFeature1Enable = BIT(0),
-  kFeature2Enable = BIT(1),
+  kFeature0Enable = BIT(0),
+  kFeature1Enable = BIT(1),
 };
 
 // Feature result registers (R8 & R9).

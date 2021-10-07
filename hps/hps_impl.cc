@@ -115,10 +115,10 @@ FeatureResult HPS_impl::Result(int feature) {
   int hps_result;
   switch (feature) {
     case 0:
-      hps_result = this->device_->ReadReg(HpsReg::kF1);
+      hps_result = this->device_->ReadReg(HpsReg::kFeature0);
       break;
     case 1:
-      hps_result = this->device_->ReadReg(HpsReg::kF2);
+      hps_result = this->device_->ReadReg(HpsReg::kFeature1);
       break;
     default:
       hps_result = -1;

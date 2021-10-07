@@ -42,8 +42,8 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
         flags_(0),
         firmware_version_(0),
         block_size_b_(256),
-        f1_result_(0),
-        f2_result_(0) {}
+        f0_result_(0),
+        f1_result_(0) {}
   // Flags for controlling behaviour. Multiple flags can be set,
   // controlling how the fake responds under test conditions.
   enum Flags {
@@ -74,8 +74,8 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
   void Clear(Flags f) { this->flags_.fetch_and(~(1 << f)); }
   void SetVersion(uint32_t version) { this->firmware_version_ = version; }
   void SetBlockSizeBytes(size_t sz) { this->block_size_b_ = sz; }
+  void SetF0Result(int8_t result) { this->f0_result_ = result; }
   void SetF1Result(int8_t result) { this->f1_result_ = result; }
-  void SetF2Result(int8_t result) { this->f2_result_ = result; }
   size_t GetBankLen(hps::HpsBank bank);
   // Return a DevInterface accessing the simulator.
   std::unique_ptr<DevInterface> CreateDevInterface();
@@ -142,8 +142,8 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
   std::atomic<uint16_t> flags_;      // Behaviour flags
   std::atomic<uint32_t> firmware_version_;  // Firmware version
   std::atomic<size_t> block_size_b_;  // Write block size.
+  std::atomic<int8_t> f0_result_;     // Result for feature 0
   std::atomic<int8_t> f1_result_;     // Result for feature 1
-  std::atomic<int8_t> f2_result_;     // Result for feature 2
 };
 
 }  // namespace hps
