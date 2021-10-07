@@ -14,6 +14,7 @@ pkg_config("target_defaults") {
 
 cc_embed_data("embedded_gpu_shaders") {
   sources = [
+    "//camera/gpu/shaders/crop.frag",
     "//camera/gpu/shaders/external_yuv_to_nv12.frag",
     "//camera/gpu/shaders/external_yuv_to_rgba.frag",
     "//camera/gpu/shaders/fullscreen_rect_highp_310_es.vert",

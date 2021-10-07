@@ -12,6 +12,8 @@
 #include "gpu/gles/shader_program.h"
 #include "gpu/gles/texture_2d.h"
 
+#include "cros-camera/common_types.h"
+
 namespace cros {
 
 class GpuImageProcessor {
@@ -171,6 +173,41 @@ class GpuImageProcessor {
                    const Texture2D& rgba_input,
                    const Texture2D& rgba_output);
 
+  // Crop the YUV input image with planes given by |y_input| and |uv_input|
+  // following the rectangle specified by |crop_region|, and scale and write the
+  // result to the YUV output image with planes given by |y_output| and
+  // |uv_output| with bilinear filtering.
+  //
+  // Args:
+  //    |y_input|:
+  //        The input 2D texture for Y plane.  The texture must be of format
+  //        R8.
+  //    |uv_input|:
+  //        The input 2D texture for UV plane.  The texture must be of format
+  //        GR8.  The pixel dimension must be
+  //        (|y_input|.width / 2, |y_input|.height / 2).
+  //    |crop_region|:
+  //        The (crop_x, crop_y, crop_width, crop_height) rectangle to crop.
+  //        (crop_x, crop_y) is the top-left coordinate of the rectangle, and
+  //        (crop_width, crop_height) is the dimension of the rectangle. The
+  //        crop coordinate and dimension are normalized with respect to the
+  //        input image size.
+  //    |y_output|:
+  //        The output 2D texture for Y plane.  The texture must be of format
+  //        R8.
+  //    |uv_output|:
+  //        The output 2D texture for UV plane.  The texture must be of format
+  //        GR8.  The pixel dimension must be
+  //        (|y_output|.width / 2, |y_output|.height / 2).
+  //
+  // Returns:
+  //    true if GL commands are successfully submitted; false otherwise.
+  bool CropYuv(const Texture2D& y_input,
+               const Texture2D& uv_input,
+               Rect<float> crop_region,
+               const Texture2D& y_output,
+               const Texture2D& uv_output);
+
  private:
   ScreenSpaceRect rect_;
 
@@ -181,6 +218,7 @@ class GpuImageProcessor {
   ShaderProgram nv12_to_nv12_program_;
   ShaderProgram gamma_correction_program_;
   ShaderProgram lut_program_;
+  ShaderProgram crop_yuv_program_;
 
   Sampler nearest_clamp_to_edge_;
   Sampler linear_clamp_to_edge_;

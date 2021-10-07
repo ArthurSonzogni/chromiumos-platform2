@@ -30,6 +30,7 @@ constexpr const char* kNv12ToRgbaFilename = "nv12_to_rgba.frag";
 constexpr const char* kYuvToYuvFilename = "yuv_to_yuv.frag";
 constexpr const char* kGammaCorrectionFilename = "gamma_correction.frag";
 constexpr const char* kLutFilename = "lut.frag";
+constexpr const char* kCropFilename = "crop.frag";
 
 }  // namespace
 
@@ -94,6 +95,13 @@ GpuImageProcessor::GpuImageProcessor()
                            std::string(src.data(), src.size()));
     CHECK(fragment_shader.IsValid());
     lut_program_ = ShaderProgram({&vertex_shader, &fragment_shader});
+  }
+  {
+    base::span<const char> src = gpu_shaders.Get(kCropFilename);
+    Shader fragment_shader(GL_FRAGMENT_SHADER,
+                           std::string(src.data(), src.size()));
+    CHECK(fragment_shader.IsValid());
+    crop_yuv_program_ = ShaderProgram({&vertex_shader, &fragment_shader});
   }
 }
 
@@ -492,6 +500,88 @@ bool GpuImageProcessor::ApplyRgbLut(const Texture2D& r_lut,
   glActiveTexture(GL_TEXTURE0 + kBLutBinding);
   b_lut.Unbind();
   Sampler::Unbind(kBLutBinding);
+
+  return true;
+}
+
+bool GpuImageProcessor::CropYuv(const Texture2D& y_input,
+                                const Texture2D& uv_input,
+                                Rect<float> crop_region,
+                                const Texture2D& y_output,
+                                const Texture2D& uv_output) {
+  if ((y_input.width() / 2 != uv_input.width()) ||
+      (y_input.height() / 2 != uv_input.height())) {
+    LOGF(ERROR) << "Invalid Y (" << y_input.width() << ", " << y_input.height()
+                << ") and UV (" << uv_input.width() << ", " << uv_input.height()
+                << ") input dimension";
+    return false;
+  }
+  if ((y_output.width() / 2 != uv_output.width()) ||
+      (y_output.height() / 2 != uv_output.height())) {
+    LOGF(ERROR) << "Invalid Y (" << y_output.width() << ", "
+                << y_output.height() << ") and UV (" << uv_output.width()
+                << ", " << uv_output.height() << ") output dimension";
+    return false;
+  }
+  if (crop_region.left < 0.0f || crop_region.left > 1.0f ||
+      crop_region.top < 0.0f || crop_region.top > 1.0f) {
+    LOGF(ERROR) << "Invalid crop coordinate (" << crop_region.left << ", "
+                << crop_region.top << ")";
+    return false;
+  }
+  if (crop_region.width < 0.0f || crop_region.width > 1.0f ||
+      crop_region.height < 0.0f || crop_region.height > 1.0f) {
+    LOGF(ERROR) << "Invalid crop dimension (" << crop_region.width << ", "
+                << crop_region.height << ")";
+    return false;
+  }
+
+  FramebufferGuard fb_guard;
+  ViewportGuard viewport_guard;
+  ProgramGuard program_guard;
+  VertexArrayGuard va_guard;
+
+  rect_.SetAsVertexInput();
+
+  constexpr int kInputTextureBinding = 0;
+  linear_clamp_to_edge_.Bind(kInputTextureBinding);
+
+  crop_yuv_program_.UseProgram();
+
+  // Set shader uniforms.
+  std::vector<float> texture_matrix = TextureSpaceFromNdc();
+  GLint uTextureMatrix = crop_yuv_program_.GetUniformLocation("uTextureMatrix");
+  glUniformMatrix4fv(uTextureMatrix, 1, false, texture_matrix.data());
+  GLint uCropRegion = crop_yuv_program_.GetUniformLocation("uCropRegion");
+
+  glUniform4f(uCropRegion, crop_region.left, crop_region.top, crop_region.width,
+              crop_region.height);
+  // Y pass.
+  {
+    glActiveTexture(GL_TEXTURE0 + kInputTextureBinding);
+    y_input.Bind();
+    Framebuffer fb;
+    fb.Bind();
+    fb.Attach(GL_COLOR_ATTACHMENT0, y_output);
+    glViewport(0, 0, y_output.width(), y_output.height());
+    rect_.Draw();
+  }
+
+  // UV pass.
+  {
+    glActiveTexture(GL_TEXTURE0 + kInputTextureBinding);
+    uv_input.Bind();
+    Framebuffer fb;
+    fb.Bind();
+    fb.Attach(GL_COLOR_ATTACHMENT0, uv_output);
+    glViewport(0, 0, uv_output.width(), uv_output.height());
+    rect_.Draw();
+  }
+
+  // Clean up.
+  glActiveTexture(GL_TEXTURE0 + kInputTextureBinding);
+  y_input.Unbind();
+  Sampler::Unbind(kInputTextureBinding);
 
   return true;
 }

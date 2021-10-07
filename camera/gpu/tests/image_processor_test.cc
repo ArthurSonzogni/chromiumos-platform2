@@ -50,11 +50,14 @@ struct Options {
   static constexpr const char kOutputSizeSwitch[] = "output-size";
   static constexpr const char kDumpBufferSwitch[] = "dump-buffer";
   static constexpr const char kInputNv12File[] = "input-nv12-file";
+  static constexpr const char kCropRegion[] = "crop-region";
 
   Size input_size{1920, 1080};
   Size output_size{1920, 1080};
   bool dump_buffer = false;
   base::Optional<base::FilePath> input_nv12_file;
+  Rect<double> crop_region = {static_cast<double>(1920) / 2,
+                              static_cast<double>(1080) / 2, 640.0, 360.0};
 };
 
 Options g_args;
@@ -68,6 +71,7 @@ constexpr uint32_t kBufferUsage = GRALLOC_USAGE_SW_READ_OFTEN |
 void ParseCommandLine(int argc, char** argv) {
   base::CommandLine command_line(argc, argv);
   {
+    // Example argument: --input-size=1920x1080
     std::string arg =
         command_line.GetSwitchValueASCII(Options::kInputSizeSwitch);
     if (!arg.empty()) {
@@ -79,6 +83,7 @@ void ParseCommandLine(int argc, char** argv) {
     }
   }
   {
+    // Example argument: --output-size=1920x1080
     std::string arg =
         command_line.GetSwitchValueASCII(Options::kOutputSizeSwitch);
     if (!arg.empty()) {
@@ -90,14 +95,29 @@ void ParseCommandLine(int argc, char** argv) {
     }
   }
   if (command_line.HasSwitch(Options::kDumpBufferSwitch)) {
+    // Example argument: --dump-buffer
     g_args.dump_buffer = true;
   }
   {
+    // Example argument: --input-nv12-file=somefile.bin
     std::string arg = command_line.GetSwitchValueASCII(Options::kInputNv12File);
     if (!arg.empty()) {
       base::FilePath path(arg);
       CHECK(base::PathExists(path)) << ": Input NV12 file does not exist";
       g_args.input_nv12_file = path;
+    }
+  }
+  {
+    // Example argument: --crop-region=400,500,640,360
+    std::string arg = command_line.GetSwitchValueASCII(Options::kCropRegion);
+    if (!arg.empty()) {
+      std::vector<std::string> arg_split = base::SplitString(
+          arg, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+      CHECK_EQ(arg_split.size(), 4);
+      CHECK(base::StringToDouble(arg_split[0], &g_args.crop_region.left));
+      CHECK(base::StringToDouble(arg_split[1], &g_args.crop_region.top));
+      CHECK(base::StringToDouble(arg_split[2], &g_args.crop_region.width));
+      CHECK(base::StringToDouble(arg_split[3], &g_args.crop_region.height));
     }
   }
 }
@@ -133,11 +153,10 @@ class GlImageProcessorTest : public testing::Test {
     ASSERT_TRUE(input_image_.uv_texture().IsValid());
   }
 
-  void AllocateNV12Output() {
+  void AllocateNV12Output(size_t width, size_t height) {
     // NV12 buffer with dual GL_TEXTURE_2D textures for Y and UV planes.
     output_buffer_ = CameraBufferManager::AllocateScopedBuffer(
-        g_args.output_size.width, g_args.output_size.height, kNV12Format,
-        kBufferUsage);
+        width, height, kNV12Format, kBufferUsage);
     output_image_ = SharedImage::CreateFromBuffer(
         *output_buffer_, Texture2D::Target::kTarget2D,
         /*separate_yuv_textures=*/true);
@@ -206,7 +225,7 @@ TEST_F(GlImageProcessorTest, RGBAToNV12Test) {
   FillTestPattern(*input_buffer_);
   DumpInputBuffer();
 
-  AllocateNV12Output();
+  AllocateNV12Output(g_args.output_size.width, g_args.output_size.height);
   EXPECT_TRUE(image_processor_.RGBAToNV12(input_image_.texture(),
                                           output_image_.y_texture(),
                                           output_image_.uv_texture()));
@@ -219,7 +238,7 @@ TEST_F(GlImageProcessorTest, ExternalYUVToNV12Test) {
   FillTestPattern(*input_buffer_);
   DumpInputBuffer();
 
-  AllocateNV12Output();
+  AllocateNV12Output(g_args.output_size.width, g_args.output_size.height);
   EXPECT_TRUE(image_processor_.ExternalYUVToNV12(input_image_.texture(),
                                                  output_image_.y_texture(),
                                                  output_image_.uv_texture()));
@@ -257,7 +276,7 @@ TEST_F(GlImageProcessorTest, NV12ToNV12Test) {
   FillTestPattern(*input_buffer_);
   DumpInputBuffer();
 
-  AllocateNV12Output();
+  AllocateNV12Output(g_args.output_size.width, g_args.output_size.height);
   EXPECT_TRUE(image_processor_.YUVToYUV(
       input_image_.y_texture(), input_image_.uv_texture(),
       output_image_.y_texture(), output_image_.uv_texture()));
@@ -315,6 +334,24 @@ TEST_F(GlImageProcessorTest, ApplyRgbLutTest) {
   EXPECT_TRUE(image_processor_.ApplyRgbLut(
       r_lut_texture, g_lut_texture, b_lut_texture, input_image_.texture(),
       output_image_.texture()));
+  glFinish();
+  DumpOutputBuffer();
+}
+
+TEST_F(GlImageProcessorTest, CropYuvTest) {
+  AllocateNV12Input();
+  FillTestPattern(*input_buffer_);
+  DumpInputBuffer();
+
+  AllocateNV12Output(g_args.output_size.width, g_args.output_size.height);
+  Rect<float> crop_region(
+      /*left=*/g_args.crop_region.left / g_args.input_size.width,
+      /*top=*/g_args.crop_region.top / g_args.input_size.height,
+      /*width=*/g_args.crop_region.width / g_args.input_size.width,
+      /*height=*/g_args.crop_region.height / g_args.input_size.height);
+  EXPECT_TRUE(image_processor_.CropYuv(
+      input_image_.y_texture(), input_image_.uv_texture(), crop_region,
+      output_image_.y_texture(), output_image_.uv_texture()));
   glFinish();
   DumpOutputBuffer();
 }
