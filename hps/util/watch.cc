@@ -38,14 +38,14 @@ int Watch(std::unique_ptr<hps::HPS> hps,
     return 1;
   }
   hps->Enable(feat);
+  int last_inference_result = INT_MAX;
   for (;;) {
-    hps::FeatureResult feature_result;
-    uint8_t last_inference_result = 0;
-    feature_result = hps->Result(feat);
+    hps::FeatureResult feature_result = hps->Result(feat);
     if (feature_result.valid) {
       if (last_inference_result != feature_result.inference_result) {
         last_inference_result = feature_result.inference_result;
-        std::cout << "Result = " << last_inference_result << std::endl;
+        std::cout << "Result = " << feature_result.inference_result
+                  << std::endl;
       }
     } else {
       std::cout << "Invalid result" << std::endl;
