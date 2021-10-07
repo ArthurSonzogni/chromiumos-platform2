@@ -3836,8 +3836,6 @@ TEST_F(UserDataAuthTestThreaded, DetectEnterpriseOwnership) {
       .WillOnce(DoAll(SetArgPointee<1>(true_value), Return(true)));
 
   EXPECT_CALL(homedirs_, set_enterprise_owned(true)).WillOnce(Return());
-  EXPECT_CALL(keyset_management_, set_enterprise_owned(true))
-      .WillOnce(Return());
 
   InitializeUserDataAuth();
 }

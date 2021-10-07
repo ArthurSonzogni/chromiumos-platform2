@@ -79,8 +79,6 @@ class DiskCleanupTest : public ::testing::Test {
         .WillRepeatedly(Return(false));
     EXPECT_CALL(homedirs_, GetOwner(_)).WillRepeatedly(Return(false));
     EXPECT_CALL(homedirs_, enterprise_owned()).WillRepeatedly(Return(false));
-    EXPECT_CALL(keyset_management_, enterprise_owned())
-        .WillRepeatedly(Return(false));
   }
 
  protected:

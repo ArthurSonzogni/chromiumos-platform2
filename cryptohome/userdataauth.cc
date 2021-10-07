@@ -1048,7 +1048,6 @@ void UserDataAuth::SetEnterpriseOwned(bool enterprise_owned) {
 
   enterprise_owned_ = enterprise_owned;
   homedirs_->set_enterprise_owned(enterprise_owned);
-  keyset_management_->set_enterprise_owned(enterprise_owned);
 }
 
 void UserDataAuth::DetectEnterpriseOwnership() {

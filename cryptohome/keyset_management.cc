@@ -44,7 +44,6 @@ KeysetManagement::KeysetManagement(
     : platform_(platform),
       crypto_(crypto),
       system_salt_(system_salt),
-      enterprise_owned_(false),
       timestamp_cache_(timestamp_cache),
       vault_keyset_factory_(std::move(vault_keyset_factory)) {}
 

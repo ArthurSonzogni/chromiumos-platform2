@@ -72,8 +72,6 @@ class MockKeysetManagement : public KeysetManagement {
               UpdateActivityTimestamp,
               (const std::string& obfuscated, int index, int time_shift_sec),
               (override));
-  MOCK_METHOD(void, set_enterprise_owned, (bool), (override));
-  MOCK_METHOD(bool, enterprise_owned, (), (const, override));
   MOCK_METHOD(bool, UserExists, (const std::string&), (override));
   MOCK_METHOD(brillo::SecureBlob,
               GetPublicMountPassKey,

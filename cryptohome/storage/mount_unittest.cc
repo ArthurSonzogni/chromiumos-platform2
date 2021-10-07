@@ -1490,7 +1490,6 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
   // mounted and no regular vault is created.
   set_policy(false, "", true);
   homedirs_->set_enterprise_owned(true);
-  keyset_management_->set_enterprise_owned(true);
 
   TestUser* user = &helper_.users[0];
 
@@ -1523,7 +1522,6 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountIsEphemeralTest) {
   // regular vault to be created.
   set_policy(true, "", false);
   homedirs_->set_enterprise_owned(true);
-  keyset_management_->set_enterprise_owned(true);
   TestUser* user = &helper_.users[0];
 
   // Always removes non-owner cryptohomes.
@@ -1572,7 +1570,6 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountStatVFSFailure) {
   // Checks the case when ephemeral statvfs call fails.
   set_policy(false, "", true);
   homedirs_->set_enterprise_owned(true);
-  keyset_management_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
 
   EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
@@ -1590,7 +1587,6 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountCreateSparseDirFailure) {
   // created.
   set_policy(false, "", true);
   homedirs_->set_enterprise_owned(true);
-  keyset_management_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
 
   EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
@@ -1611,7 +1607,6 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountCreateSparseFailure) {
   // Checks the case when ephemeral sparse file fails to create.
   set_policy(false, "", true);
   homedirs_->set_enterprise_owned(true);
-  keyset_management_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
   const FilePath ephemeral_filename =
       MountHelper::GetEphemeralSparseFile(user->obfuscated_username);
@@ -1636,7 +1631,6 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountAttachLoopFailure) {
   // appropriately.
   set_policy(false, "", true);
   homedirs_->set_enterprise_owned(true);
-  keyset_management_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
   const FilePath ephemeral_filename =
       MountHelper::GetEphemeralSparseFile(user->obfuscated_username);
@@ -1666,7 +1660,6 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountFormatFailure) {
   // happens appropriately.
   set_policy(false, "", true);
   homedirs_->set_enterprise_owned(true);
-  keyset_management_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
   const FilePath ephemeral_filename =
       MountHelper::GetEphemeralSparseFile(user->obfuscated_username);
@@ -1694,7 +1687,6 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountEnsureUserMountFailure) {
   // happens appropriately.
   set_policy(false, "", true);
   homedirs_->set_enterprise_owned(true);
-  keyset_management_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
   const FilePath ephemeral_filename =
       MountHelper::GetEphemeralSparseFile(user->obfuscated_username);
@@ -1931,7 +1923,6 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
   set_policy(false, "", true);
 
   homedirs_->set_enterprise_owned(true);
-  keyset_management_->set_enterprise_owned(true);
 
   TestUser* user = &helper_.users[0];
 
@@ -2178,7 +2169,6 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseUnmountRemoveTest) {
   // removed while unmounting.
   set_policy(false, "", true);
   homedirs_->set_enterprise_owned(true);
-  keyset_management_->set_enterprise_owned(true);
 
   EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
 
@@ -2309,7 +2299,6 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountIsEphemeralTest) {
   // Since ephemeral users aren't enabled, no vaults will be deleted.
   set_policy(true, "", false);
   homedirs_->set_enterprise_owned(true);
-  keyset_management_->set_enterprise_owned(true);
 
   TestUser* user = &helper_.users[0];
 

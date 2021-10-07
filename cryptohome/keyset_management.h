@@ -164,11 +164,6 @@ class KeysetManagement {
                                        int index,
                                        int time_shift_sec);
 
-  // Accessors. Mostly used for unit testing. These do not take ownership of
-  // passed-in pointers.
-  virtual void set_enterprise_owned(bool value) { enterprise_owned_ = value; }
-  virtual bool enterprise_owned() const { return enterprise_owned_; }
-
  private:
   // Check if the vault keyset needs re-encryption.
   bool ShouldReSaveKeyset(VaultKeyset* vault_keyset) const;
@@ -185,7 +180,6 @@ class KeysetManagement {
   Platform* platform_;
   Crypto* crypto_;
   brillo::SecureBlob system_salt_;
-  bool enterprise_owned_;
   UserOldestActivityTimestampCache* timestamp_cache_;
   std::unique_ptr<VaultKeysetFactory> vault_keyset_factory_;
 
