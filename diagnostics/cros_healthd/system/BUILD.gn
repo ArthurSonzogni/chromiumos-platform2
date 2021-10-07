@@ -22,9 +22,22 @@ pkg_config("libcros_healthd_system_pkg_deps") {
   ]
 }
 
+config("pcilib_config") {
+  cflags = [ "-Wno-format-nonliteral" ]
+}
+
+source_set("libcros_healthd_system_pci_util") {
+  configs += [
+    ":libcros_healthd_system_pkg_deps",
+    ":pcilib_config",
+  ]
+  sources = [ "pci_util_impl.cc" ]
+}
+
 source_set("libcros_healthd_system") {
   configs += [ ":libcros_healthd_system_pkg_deps" ]
   deps = [
+    ":libcros_healthd_system_pci_util",
     "//diagnostics:dbus-proxies",
     "//diagnostics/common:libcommon",
     "//diagnostics/cros_healthd/executor:libcros_healthd_executor",
@@ -33,7 +46,6 @@ source_set("libcros_healthd_system") {
   ]
   sources = [
     "context.cc",
-    "pci_util_impl.cc",
     "system_config.cc",
     "system_config_constants.cc",
     "system_utilities_constants.cc",
