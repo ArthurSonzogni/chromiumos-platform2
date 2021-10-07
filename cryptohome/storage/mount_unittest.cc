@@ -33,7 +33,6 @@
 #include <chromeos/constants/cryptohome.h>
 #include <gtest/gtest.h>
 #include <policy/libpolicy.h>
-#include <policy/mock_device_policy.h>
 
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/crypto.h"
@@ -58,7 +57,6 @@
 using base::FilePath;
 using brillo::SecureBlob;
 using ::testing::_;
-using ::testing::AnyNumber;
 using ::testing::AnyOf;
 using ::testing::AnyOfArray;
 using ::testing::DoAll;
@@ -98,17 +96,6 @@ MATCHER_P(FilePathMatchesRegex, pattern, "") {
 
 namespace cryptohome {
 
-ACTION_P2(SetOwner, owner_known, owner) {
-  if (owner_known)
-    *arg0 = owner;
-  return owner_known;
-}
-
-ACTION_P(SetEphemeralUsersEnabled, ephemeral_users_enabled) {
-  *arg0 = ephemeral_users_enabled;
-  return true;
-}
-
 std::string HexDecode(const std::string& hex) {
   std::vector<uint8_t> output;
   CHECK(base::HexStringToBytes(hex, &output));
@@ -129,8 +116,6 @@ class MountTest
     helper_.SetUpSystemSalt();
     helper_.InjectSystemSalt(&platform_);
 
-    mock_device_policy_ = new policy::MockDevicePolicy();
-
     InitializeFilesystemLayout(&platform_, &crypto_, nullptr);
     keyset_management_ = std::make_unique<KeysetManagement>(
         &platform_, &crypto_, helper_.system_salt, nullptr, nullptr);
@@ -144,9 +129,7 @@ class MountTest
                             base::Unretained(keyset_management));
     homedirs_ = std::make_unique<HomeDirs>(
         &platform_, helper_.system_salt,
-        std::make_unique<policy::PolicyProvider>(
-            std::unique_ptr<policy::MockDevicePolicy>(mock_device_policy_)),
-        remove_callback,
+        std::make_unique<policy::PolicyProvider>(), remove_callback,
         std::make_unique<CryptohomeVaultFactory>(&platform_,
                                                  std::move(container_factory)));
 
@@ -159,7 +142,6 @@ class MountTest
     mount_->set_mount_ephemeral_session_out_of_process(false);
     mount_->set_mount_non_ephemeral_session_out_of_process(false);
     mount_->set_mount_guest_session_non_root_namespace(false);
-    set_policy(false, "", false);
   }
 
   void TearDown() {
@@ -194,18 +176,6 @@ class MountTest
     serialized.wrapped_keyset().copy(local_wrapped_keyset.char_data(),
                                      serialized.wrapped_keyset().length(), 0);
     blob->swap(local_wrapped_keyset);
-  }
-
-  void set_policy(bool owner_known,
-                  const std::string& owner,
-                  bool ephemeral_users_enabled) {
-    EXPECT_CALL(*mock_device_policy_, LoadPolicy())
-        .Times(AnyNumber())
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(*mock_device_policy_, GetOwner(_))
-        .WillRepeatedly(SetOwner(owner_known, owner));
-    EXPECT_CALL(*mock_device_policy_, GetEphemeralUsersEnabled(_))
-        .WillRepeatedly(SetEphemeralUsersEnabled(ephemeral_users_enabled));
   }
 
   // Returns true if the test is running for eCryptfs, false if for dircrypto.
@@ -472,7 +442,6 @@ class MountTest
   NiceMock<MockPlatform> platform_;
   NiceMock<MockTpm> tpm_;
   Crypto crypto_;
-  policy::MockDevicePolicy* mock_device_policy_;  // owned by homedirs_
   std::unique_ptr<KeysetManagement> keyset_management_;
   std::unique_ptr<HomeDirs> homedirs_;
   scoped_refptr<Mount> mount_;
@@ -1195,31 +1164,13 @@ TEST_P(MountTest, MountCryptohomeForceDircrypto) {
 }
 
 // Test setup that initially has no cryptohomes.
-const TestUserInfo kNoUsers[] = {
+const TestUserInfo kUsers[] = {
     {"user0@invalid.domain", "zero", false},
     {"user1@invalid.domain", "odin", false},
     {"user2@invalid.domain", "dwaa", false},
     {"owner@invalid.domain", "1234", false},
 };
-const int kNoUserCount = base::size(kNoUsers);
-
-// Test setup that initially has a cryptohome for the owner only.
-const TestUserInfo kOwnerOnlyUsers[] = {
-    {"user0@invalid.domain", "zero", false},
-    {"user1@invalid.domain", "odin", false},
-    {"user2@invalid.domain", "dwaa", false},
-    {"owner@invalid.domain", "1234", true},
-};
-const int kOwnerOnlyUserCount = base::size(kOwnerOnlyUsers);
-
-// Test setup that initially has cryptohomes for all users.
-const TestUserInfo kAlternateUsers[] = {
-    {"user0@invalid.domain", "zero", true},
-    {"user1@invalid.domain", "odin", true},
-    {"user2@invalid.domain", "dwaa", true},
-    {"owner@invalid.domain", "1234", true},
-};
-const int kAlternateUserCount = base::size(kAlternateUsers);
+const int kUserCount = base::size(kUsers);
 
 class AltImageTest : public MountTest {
  public:
@@ -1289,24 +1240,23 @@ class AltImageTest : public MountTest {
   std::vector<FilePath> vaults_;
 };
 
-class EphemeralNoUserSystemTest : public AltImageTest {
+class EphemeralSystemTest : public AltImageTest {
  public:
-  EphemeralNoUserSystemTest() {}
-  EphemeralNoUserSystemTest(const EphemeralNoUserSystemTest&) = delete;
-  EphemeralNoUserSystemTest& operator=(const EphemeralNoUserSystemTest&) =
-      delete;
+  EphemeralSystemTest() {}
+  EphemeralSystemTest(const EphemeralSystemTest&) = delete;
+  EphemeralSystemTest& operator=(const EphemeralSystemTest&) = delete;
 
-  void SetUp() { SetUpAltImage(kNoUsers, kNoUserCount); }
+  void SetUp() { SetUpAltImage(kUsers, kUserCount); }
 };
 
 INSTANTIATE_TEST_SUITE_P(WithEcryptfs,
-                         EphemeralNoUserSystemTest,
+                         EphemeralSystemTest,
                          ::testing::Values(true));
 INSTANTIATE_TEST_SUITE_P(WithDircrypto,
-                         EphemeralNoUserSystemTest,
+                         EphemeralSystemTest,
                          ::testing::Values(false));
 
-TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloads) {
+TEST_P(EphemeralSystemTest, CreateMyFilesDownloads) {
   // Checks that MountHelper::SetUpEphemeralCryptohome creates
   // MyFiles/Downloads.
   const FilePath base_path("/ephemeral_home/");
@@ -1379,7 +1329,7 @@ TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloads) {
   ASSERT_TRUE(mnt_helper.SetUpEphemeralCryptohome(base_path));
 }
 
-TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloadsAlreadyExists) {
+TEST_P(EphemeralSystemTest, CreateMyFilesDownloadsAlreadyExists) {
   // Checks that MountHelper::SetUpEphemeralCryptohome doesn't re-recreate if
   // already exists, just sets the ownership and group access for |base_path|.
   const FilePath base_path("/ephemeral_home/");
@@ -1411,11 +1361,7 @@ TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloadsAlreadyExists) {
   ASSERT_TRUE(mnt_helper.SetUpEphemeralCryptohome(base_path));
 }
 
-TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
-  // Checks that when a device is not enterprise enrolled and does not have a
-  // known owner, a regular vault is created and mounted.
-  set_policy(false, "", true);
-
+TEST_P(EphemeralSystemTest, RegularMount) {
   TestUser* user = &helper_.users[0];
 
   EXPECT_CALL(platform_, FileExists(_)).WillRepeatedly(Return(true));
@@ -1483,45 +1429,7 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
-// TODO(wad) Duplicate these tests with multiple mounts instead of one.
-
-TEST_P(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
-  // Checks that when a device is enterprise enrolled, a tmpfs cryptohome is
-  // mounted and no regular vault is created.
-  set_policy(false, "", true);
-  homedirs_->set_enterprise_owned(true);
-
-  TestUser* user = &helper_.users[0];
-
-  EXPECT_CALL(platform_, Stat(_, _)).WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_, Unmount(_, _, _)).WillRepeatedly(Return(true));
-
-  ExpectEphemeralCryptohomeMount(*user);
-
-  ASSERT_EQ(MOUNT_ERROR_NONE, mount_->MountEphemeralCryptohome(user->username));
-
-  // Detach succeeds.
-  ON_CALL(platform_, DetachLoop(_)).WillByDefault(Return(true));
-}
-
-TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountIsEphemeralTest) {
-  // Checks that when a device is not enterprise enrolled and does not have a
-  // known owner, a mount request with the |ensure_ephemeral| flag set fails.
-  TestUser* user = &helper_.users[0];
-
-  EXPECT_CALL(platform_, Mount(_, _, _, kDefaultMountFlags | MS_NOSYMFOLLOW, _))
-      .Times(0);
-
-  ASSERT_EQ(MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER,
-            mount_->MountEphemeralCryptohome(user->username));
-}
-
-TEST_P(EphemeralNoUserSystemTest, EnterpriseMountIsEphemeralTest) {
-  // Checks that when a device is enterprise enrolled, a mount request with the
-  // |is_ephemeral| flag set causes a tmpfs cryptohome to be mounted and no
-  // regular vault to be created.
-  set_policy(true, "", false);
-  homedirs_->set_enterprise_owned(true);
+TEST_P(EphemeralSystemTest, EphemeralMount) {
   TestUser* user = &helper_.users[0];
 
   // Always removes non-owner cryptohomes.
@@ -1566,10 +1474,8 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountIsEphemeralTest) {
   EXPECT_TRUE(mount_->UnmountCryptohome());
 }
 
-TEST_P(EphemeralNoUserSystemTest, EnterpriseMountStatVFSFailure) {
+TEST_P(EphemeralSystemTest, EpmeneralMount_VFSFailure) {
   // Checks the case when ephemeral statvfs call fails.
-  set_policy(false, "", true);
-  homedirs_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
 
   EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
@@ -1582,11 +1488,9 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountStatVFSFailure) {
             mount_->MountEphemeralCryptohome(user->username));
 }
 
-TEST_P(EphemeralNoUserSystemTest, EnterpriseMountCreateSparseDirFailure) {
+TEST_P(EphemeralSystemTest, EphemeralMount_CreateSparseDirFailure) {
   // Checks the case when directory for ephemeral sparse files fails to be
   // created.
-  set_policy(false, "", true);
-  homedirs_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
 
   EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
@@ -1603,10 +1507,8 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountCreateSparseDirFailure) {
             mount_->MountEphemeralCryptohome(user->username));
 }
 
-TEST_P(EphemeralNoUserSystemTest, EnterpriseMountCreateSparseFailure) {
+TEST_P(EphemeralSystemTest, EphemeralMount_CreateSparseFailure) {
   // Checks the case when ephemeral sparse file fails to create.
-  set_policy(false, "", true);
-  homedirs_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
   const FilePath ephemeral_filename =
       MountHelper::GetEphemeralSparseFile(user->obfuscated_username);
@@ -1626,11 +1528,9 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountCreateSparseFailure) {
             mount_->MountEphemeralCryptohome(user->username));
 }
 
-TEST_P(EphemeralNoUserSystemTest, EnterpriseMountAttachLoopFailure) {
+TEST_P(EphemeralSystemTest, EphemeralMount_AttachLoopFailure) {
   // Checks that when ephemeral loop device fails to attach, clean up happens
   // appropriately.
-  set_policy(false, "", true);
-  homedirs_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
   const FilePath ephemeral_filename =
       MountHelper::GetEphemeralSparseFile(user->obfuscated_username);
@@ -1655,11 +1555,9 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountAttachLoopFailure) {
             mount_->MountEphemeralCryptohome(user->username));
 }
 
-TEST_P(EphemeralNoUserSystemTest, EnterpriseMountFormatFailure) {
+TEST_P(EphemeralSystemTest, EphemeralMount_FormatFailure) {
   // Checks that when ephemeral loop device fails to be formatted, clean up
   // happens appropriately.
-  set_policy(false, "", true);
-  homedirs_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
   const FilePath ephemeral_filename =
       MountHelper::GetEphemeralSparseFile(user->obfuscated_username);
@@ -1682,11 +1580,9 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountFormatFailure) {
             mount_->MountEphemeralCryptohome(user->username));
 }
 
-TEST_P(EphemeralNoUserSystemTest, EnterpriseMountEnsureUserMountFailure) {
+TEST_P(EphemeralSystemTest, EphemeralMount_EnsureUserMountFailure) {
   // Checks that when ephemeral mount fails to ensure mount points, clean up
   // happens appropriately.
-  set_policy(false, "", true);
-  homedirs_->set_enterprise_owned(true);
   const TestUser* const user = &helper_.users[0];
   const FilePath ephemeral_filename =
       MountHelper::GetEphemeralSparseFile(user->obfuscated_username);
@@ -1716,649 +1612,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountEnsureUserMountFailure) {
             mount_->MountEphemeralCryptohome(user->username));
 }
 
-class EphemeralOwnerOnlySystemTest : public AltImageTest {
- public:
-  EphemeralOwnerOnlySystemTest() {}
-  EphemeralOwnerOnlySystemTest(const EphemeralOwnerOnlySystemTest&) = delete;
-  EphemeralOwnerOnlySystemTest& operator=(const EphemeralOwnerOnlySystemTest&) =
-      delete;
-
-  void SetUp() { SetUpAltImage(kOwnerOnlyUsers, kOwnerOnlyUserCount); }
-};
-
-INSTANTIATE_TEST_SUITE_P(WithEcryptfs,
-                         EphemeralOwnerOnlySystemTest,
-                         ::testing::Values(true));
-INSTANTIATE_TEST_SUITE_P(WithDircrypto,
-                         EphemeralOwnerOnlySystemTest,
-                         ::testing::Values(false));
-
-TEST_P(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
-  // Checks that when a device is not enterprise enrolled and has a known owner,
-  // a tmpfs cryptohome is mounted and no regular vault is created.
-  TestUser* owner = &helper_.users[3];
-  TestUser* user = &helper_.users[0];
-  set_policy(true, owner->username, true);
-
-  // Always removes non-owner cryptohomes.
-  std::vector<FilePath> owner_only;
-  owner_only.push_back(owner->base_path);
-
-  EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
-
-  EXPECT_CALL(platform_, Stat(_, _)).WillRepeatedly(Return(false));
-  ExpectEphemeralCryptohomeMount(*user);
-
-  ASSERT_EQ(MOUNT_ERROR_NONE, mount_->MountEphemeralCryptohome(user->username));
-
-  EXPECT_CALL(platform_, Unmount(user->ephemeral_mount_path, _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_,
-              Unmount(user->ephemeral_mount_path.Append("user"), _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(
-      platform_,
-      Unmount(Property(&FilePath::value, StartsWith("/home/chronos/u-")), _, _))
-      .WillOnce(Return(true));  // user mount
-  EXPECT_CALL(
-      platform_,
-      Unmount(Property(&FilePath::value, StartsWith("/home/user/")), _, _))
-      .WillOnce(Return(true));  // user mount
-  EXPECT_CALL(
-      platform_,
-      Unmount(Property(&FilePath::value, StartsWith("/home/root/")), _, _))
-      .WillOnce(Return(true));  // user mount
-  EXPECT_CALL(platform_, Unmount(FilePath("/home/chronos/user"), _, _))
-      .WillOnce(Return(true));  // legacy mount
-  EXPECT_CALL(platform_, Unmount(Property(&FilePath::value,
-                                          StartsWith(kRunDaemonStoreBaseDir)),
-                                 _, _))
-      .WillOnce(Return(true));  // daemon store mounts
-  EXPECT_CALL(platform_, ClearUserKeyring()).WillRepeatedly(Return(true));
-
-  ExpectDownloadsUnmounts(*user, true /* ephemeral_mount */);
-
-  // Detach succeeds.
-  ON_CALL(platform_, DetachLoop(_)).WillByDefault(Return(true));
-
-  ASSERT_TRUE(mount_->UnmountCryptohome());
-}
-
-TEST_P(EphemeralOwnerOnlySystemTest, NonOwnerMountIsEphemeralTest) {
-  // Checks that when a device is not enterprise enrolled and has a known owner,
-  // a mount request for a non-owner user with the |is_ephemeral| flag set
-  // causes a tmpfs cryptohome to be mounted and no regular vault to be created.
-  TestUser* owner = &helper_.users[3];
-  TestUser* user = &helper_.users[0];
-  set_policy(true, owner->username, false);
-
-  // Always removes non-owner cryptohomes.
-  std::vector<FilePath> owner_only;
-  owner_only.push_back(owner->base_path);
-
-  EXPECT_CALL(platform_, Stat(_, _)).WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_, EnumerateDirectoryEntries(_, _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<2>(owner_only), Return(true)));
-
-  EXPECT_CALL(platform_, Unmount(_, _, _)).WillRepeatedly(Return(true));
-  ExpectEphemeralCryptohomeMount(*user);
-
-  ASSERT_EQ(MOUNT_ERROR_NONE, mount_->MountEphemeralCryptohome(user->username));
-
-  // Detach succeeds.
-  ON_CALL(platform_, DetachLoop(_)).WillByDefault(Return(true));
-
-  ASSERT_TRUE(mount_->UnmountCryptohome());
-}
-
-TEST_P(EphemeralOwnerOnlySystemTest, OwnerMountIsEphemeralTest) {
-  // Checks that when a device is not enterprise enrolled and has a known owner,
-  // a mount request for the owner with the |ensure_ephemeral| flag set fails.
-  TestUser* owner = &helper_.users[3];
-  set_policy(true, owner->username, false);
-
-  EXPECT_CALL(platform_, Mount(_, _, _, kDefaultMountFlags | MS_NOSYMFOLLOW, _))
-      .Times(0);
-
-  ASSERT_EQ(MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER,
-            mount_->MountEphemeralCryptohome(owner->username));
-}
-
-class EphemeralExistingUserSystemTest : public AltImageTest {
- public:
-  EphemeralExistingUserSystemTest() {}
-  EphemeralExistingUserSystemTest(const EphemeralExistingUserSystemTest&) =
-      delete;
-  EphemeralExistingUserSystemTest& operator=(
-      const EphemeralExistingUserSystemTest&) = delete;
-
-  void SetUp() { SetUpAltImage(kAlternateUsers, kAlternateUserCount); }
-};
-
-INSTANTIATE_TEST_SUITE_P(WithEcryptfs,
-                         EphemeralExistingUserSystemTest,
-                         ::testing::Values(true));
-INSTANTIATE_TEST_SUITE_P(WithDircrypto,
-                         EphemeralExistingUserSystemTest,
-                         ::testing::Values(false));
-
-TEST_P(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
-  // Checks that when a device is not enterprise enrolled and does not have a
-  // known owner, no stale cryptohomes are removed while mounting.
-  set_policy(false, "", true);
-  TestUser* user = &helper_.users[0];
-
-  // No c-homes will be removed.  The rest of the mocking just gets us to
-  // Mount().
-  for (auto& user : helper_.users)
-    user.InjectUserPaths(&platform_, fake_platform::kChronosUID,
-                         fake_platform::kChronosGID, fake_platform::kSharedGID,
-                         kDaemonGid, ShouldTestEcryptfs());
-
-  EXPECT_CALL(platform_, Stat(_, _)).WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_, CreateDirectory(user->vault_path)).Times(0);
-  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnership(user->vault_path, _, _))
-      .Times(0);
-  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
-                             user->vault_path, _, _, _))
-      .Times(0);
-  EXPECT_CALL(platform_, CreateDirectory(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnership(_, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(_, _, _, _))
-      .WillRepeatedly(Return(true));
-
-  ExpectCryptohomeMount(*user);
-  EXPECT_CALL(platform_, ClearUserKeyring()).WillOnce(Return(true));
-
-  EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, DeletePathRecursively(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, FileExists(_)).WillRepeatedly(Return(true));
-
-  EXPECT_CALL(platform_,
-              Mount(_, _, kEphemeralMountType, kDefaultMountFlags, _))
-      .Times(0);
-
-  Mount::MountArgs mount_args = GetDefaultMountArgs();
-  mount_args.create_if_missing = true;
-  MountError error = MOUNT_ERROR_NONE;
-  ASSERT_TRUE(mount_->MountCryptohome(user->username, FileSystemKeyset(),
-                                      mount_args,
-                                      /* is_pristine */ false, &error));
-
-  EXPECT_CALL(platform_, Unmount(_, _, _)).WillRepeatedly(Return(true));
-  if (ShouldTestEcryptfs()) {
-    EXPECT_CALL(platform_,
-                Unmount(Property(&FilePath::value, EndsWith("/mount")), _, _))
-        .WillOnce(Return(true));  // user mount
-  }
-  EXPECT_CALL(
-      platform_,
-      Unmount(Property(&FilePath::value, StartsWith("/home/chronos/u-")), _, _))
-      .WillOnce(Return(true));  // user mount
-  EXPECT_CALL(
-      platform_,
-      Unmount(Property(&FilePath::value, StartsWith("/home/user/")), _, _))
-      .WillOnce(Return(true));  // user mount
-  EXPECT_CALL(
-      platform_,
-      Unmount(Property(&FilePath::value, StartsWith("/home/root/")), _, _))
-      .WillOnce(Return(true));  // user mount
-  EXPECT_CALL(platform_, Unmount(FilePath("/home/chronos/user"), _, _))
-      .WillOnce(Return(true));  // legacy mount
-  EXPECT_CALL(platform_, Unmount(Property(&FilePath::value,
-                                          StartsWith(kRunDaemonStoreBaseDir)),
-                                 _, _))
-      .WillOnce(Return(true));  // daemon store mounts
-  EXPECT_CALL(platform_, ClearUserKeyring()).WillRepeatedly(Return(true));
-  ExpectDownloadsUnmounts(*user, false /* ephemeral_mount */);
-  ASSERT_TRUE(mount_->UnmountCryptohome());
-}
-
-TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
-  // Checks that when a device is enterprise enrolled, all stale cryptohomes are
-  // removed while mounting.
-  set_policy(false, "", true);
-
-  homedirs_->set_enterprise_owned(true);
-
-  TestUser* user = &helper_.users[0];
-
-  std::vector<int> expect_deletion;
-  expect_deletion.push_back(0);
-  expect_deletion.push_back(1);
-  expect_deletion.push_back(2);
-  expect_deletion.push_back(3);
-  PrepareHomedirs(true, &expect_deletion, NULL);
-
-  // Let Mount know how many vaults there are.
-  std::vector<FilePath> no_vaults;
-  EXPECT_CALL(platform_, EnumerateDirectoryEntries(ShadowRoot(), false, _))
-      .WillOnce(DoAll(SetArgPointee<2>(vaults_), Return(true)))
-      // Don't re-delete on Unmount.
-      .WillRepeatedly(DoAll(SetArgPointee<2>(no_vaults), Return(true)));
-  // Don't say any cryptohomes are mounted
-  EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
-
-  // Expect deletion of cryptohome mount points.
-  EXPECT_CALL(platform_,
-              DeletePathRecursively(
-                  brillo::cryptohome::home::GetRootPath(user->username)))
-      .Times(2)
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_,
-              DeletePathRecursively(
-                  brillo::cryptohome::home::GetUserPath(user->username)))
-      .Times(2)
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, DeletePathRecursively(
-                             MountHelper::GetNewUserPath(user->username)))
-      .WillOnce(Return(true));
-
-  std::vector<FilePath> empty;
-  EXPECT_CALL(
-      platform_,
-      EnumerateDirectoryEntries(
-          AnyOf(FilePath("/home/root/"), FilePath("/home/user/")), _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
-  EXPECT_CALL(platform_,
-              Stat(AnyOf(FilePath("/home/chronos"),
-                         MountHelper::GetNewUserPath(user->username)),
-                   _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_,
-              Stat(AnyOf(FilePath("/home"), FilePath("/home/root"),
-                         brillo::cryptohome::home::GetRootPath(user->username),
-                         FilePath("/home/user"),
-                         brillo::cryptohome::home::GetUserPath(user->username)),
-                   _))
-      .WillRepeatedly(Return(false));
-  helper_.InjectEphemeralSkeleton(&platform_,
-                                  FilePath(user->user_ephemeral_mount_path));
-  user->InjectUserPaths(&platform_, fake_platform::kChronosUID,
-                        fake_platform::kChronosGID, fake_platform::kSharedGID,
-                        kDaemonGid, ShouldTestEcryptfs());
-  // Only expect the mounted user to "exist".
-  EXPECT_CALL(platform_,
-              DirectoryExists(Property(
-                  &FilePath::value, StartsWith(user->user_mount_path.value()))))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, CreateDirectory(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetPermissions(_, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(MountHelper::GetEphemeralSparseFile(
-                             user->obfuscated_username)))
-      .WillOnce(Return(true));
-
-  EXPECT_CALL(platform_, Stat(user->root_ephemeral_mount_path, _))
-      .WillOnce(Return(false));
-  EXPECT_CALL(platform_, DeletePathRecursively(user->root_ephemeral_mount_path))
-      .WillOnce(Return(true));
-
-  ExpectEphemeralCryptohomeMount(*user);
-
-  // Deleting users will cause each user's shadow root subdir to be
-  // searched for LE credentials.
-  for (const auto& user : helper_.users) {
-    EXPECT_CALL(platform_,
-                GetFileEnumerator(ShadowRoot().Append(user.obfuscated_username),
-                                  false, _))
-        .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
-  }
-
-  ASSERT_EQ(MOUNT_ERROR_NONE, mount_->MountEphemeralCryptohome(user->username));
-
-  EXPECT_CALL(platform_, Unmount(_, _, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(
-      platform_,
-      Unmount(Property(&FilePath::value, StartsWith("/home/chronos/u-")), _, _))
-      .WillOnce(Return(true));  // user mount
-  EXPECT_CALL(
-      platform_,
-      Unmount(Property(&FilePath::value, StartsWith("/home/user/")), _, _))
-      .WillOnce(Return(true));  // user mount
-  EXPECT_CALL(
-      platform_,
-      Unmount(Property(&FilePath::value, StartsWith("/home/root/")), _, _))
-      .WillOnce(Return(true));  // user mount
-  EXPECT_CALL(platform_, Unmount(FilePath("/home/chronos/user"), _, _))
-      .WillOnce(Return(true));  // legacy mount
-  EXPECT_CALL(platform_, DeletePathRecursively(user->ephemeral_mount_path))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_, ClearUserKeyring()).WillRepeatedly(Return(true));
-  ExpectDownloadsUnmounts(*user, true /* ephemeral_mount */);
-  // Detach succeeds.
-  ON_CALL(platform_, DetachLoop(_)).WillByDefault(Return(true));
-  ASSERT_TRUE(mount_->UnmountCryptohome());
-}
-
-TEST_P(EphemeralExistingUserSystemTest, MountRemoveTest) {
-  // Checks that when a device is not enterprise enrolled and has a known owner,
-  // all non-owner cryptohomes are removed while mounting.
-  TestUser* owner = &helper_.users[3];
-  set_policy(true, owner->username, true);
-  TestUser* user = &helper_.users[0];
-
-  std::vector<int> expect_deletion;
-  expect_deletion.push_back(0);  // Mounting user shouldn't use be persistent.
-  expect_deletion.push_back(1);
-  expect_deletion.push_back(2);
-  // Expect all users but the owner to be removed.
-  PrepareHomedirs(true, &expect_deletion, NULL);
-
-  // Let Mount know how many vaults there are.
-  std::vector<FilePath> no_vaults;
-  EXPECT_CALL(platform_, EnumerateDirectoryEntries(ShadowRoot(), false, _))
-      .WillOnce(DoAll(SetArgPointee<2>(vaults_), Return(true)))
-      // Don't re-delete on Unmount.
-      .WillRepeatedly(DoAll(SetArgPointee<2>(no_vaults), Return(true)));
-  // Don't say any cryptohomes are mounted
-  EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
-
-  // Expect deletion of cryptohome mount points.
-  EXPECT_CALL(platform_,
-              DeletePathRecursively(
-                  brillo::cryptohome::home::GetRootPath(user->username)))
-      .Times(2)
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_,
-              DeletePathRecursively(
-                  brillo::cryptohome::home::GetUserPath(user->username)))
-      .Times(2)
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, DeletePathRecursively(
-                             MountHelper::GetNewUserPath(user->username)))
-      .WillOnce(Return(true));
-
-  std::vector<FilePath> empty;
-  EXPECT_CALL(
-      platform_,
-      EnumerateDirectoryEntries(
-          AnyOf(FilePath("/home/root/"), FilePath("/home/user/")), _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
-  EXPECT_CALL(platform_,
-              Stat(AnyOf(FilePath("/home/chronos"),
-                         MountHelper::GetNewUserPath(user->username)),
-                   _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_,
-              Stat(AnyOf(FilePath("/home"), FilePath("/home/root"),
-                         brillo::cryptohome::home::GetRootPath(user->username),
-                         FilePath("/home/user"),
-                         brillo::cryptohome::home::GetUserPath(user->username)),
-                   _))
-      .WillRepeatedly(Return(false));
-  helper_.InjectEphemeralSkeleton(&platform_,
-                                  FilePath(user->user_ephemeral_mount_path));
-  user->InjectUserPaths(&platform_, fake_platform::kChronosUID,
-                        fake_platform::kChronosGID, fake_platform::kSharedGID,
-                        kDaemonGid, ShouldTestEcryptfs());
-  // Only expect the mounted user to "exist".
-  EXPECT_CALL(platform_,
-              DirectoryExists(Property(
-                  &FilePath::value, StartsWith(user->user_mount_path.value()))))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, CreateDirectory(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetPermissions(_, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(MountHelper::GetEphemeralSparseFile(
-                             user->obfuscated_username)))
-      .WillRepeatedly(Return(true));
-
-  EXPECT_CALL(platform_, Stat(user->root_ephemeral_mount_path, _))
-      .WillOnce(Return(false));
-  EXPECT_CALL(platform_, DeletePathRecursively(user->root_ephemeral_mount_path))
-      .WillOnce(Return(true));
-
-  ExpectEphemeralCryptohomeMount(*user);
-
-  // Deleting users will cause "going-to-be-deleted" users' shadow root
-  // subdir to be searched for LE credentials.
-  for (int i = 0; i < helper_.users.size() - 1; i++) {
-    TestUser* cur_user = &helper_.users[i];
-    EXPECT_CALL(
-        platform_,
-        GetFileEnumerator(ShadowRoot().Append(cur_user->obfuscated_username),
-                          false, _))
-        .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
-  }
-
-  ASSERT_EQ(MOUNT_ERROR_NONE, mount_->MountEphemeralCryptohome(user->username));
-
-  EXPECT_CALL(platform_, Unmount(_, _, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(
-      platform_,
-      Unmount(Property(&FilePath::value, StartsWith("/home/chronos/u-")), _, _))
-      .WillOnce(Return(true));  // user mount
-  EXPECT_CALL(
-      platform_,
-      Unmount(Property(&FilePath::value, StartsWith("/home/user/")), _, _))
-      .WillOnce(Return(true));  // user mount
-  EXPECT_CALL(
-      platform_,
-      Unmount(Property(&FilePath::value, StartsWith("/home/root/")), _, _))
-      .WillOnce(Return(true));  // user mount
-  EXPECT_CALL(platform_, Unmount(FilePath("/home/chronos/user"), _, _))
-      .WillOnce(Return(true));  // legacy mount
-  EXPECT_CALL(platform_, DeletePathRecursively(user->ephemeral_mount_path))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, ClearUserKeyring()).WillRepeatedly(Return(true));
-  ExpectDownloadsUnmounts(*user, true /* ephemeral_mount */);
-  // Detach succeeds.
-  ON_CALL(platform_, DetachLoop(_)).WillByDefault(Return(true));
-  ASSERT_TRUE(mount_->UnmountCryptohome());
-}
-
-TEST_P(EphemeralExistingUserSystemTest, OwnerUnknownUnmountNoRemoveTest) {
-  // Checks that when a device is not enterprise enrolled and does not have a
-  // known owner, no stale cryptohomes are removed while unmounting.
-  set_policy(false, "", true);
-  ASSERT_TRUE(mount_->UnmountCryptohome());
-}
-
-TEST_P(EphemeralExistingUserSystemTest, EnterpriseUnmountRemoveTest) {
-  // Checks that when a device is enterprise enrolled, all stale cryptohomes are
-  // removed while unmounting.
-  set_policy(false, "", true);
-  homedirs_->set_enterprise_owned(true);
-
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
-
-  std::vector<int> expect_deletion;
-  expect_deletion.push_back(0);
-  expect_deletion.push_back(1);
-  expect_deletion.push_back(2);
-  expect_deletion.push_back(3);
-  PrepareHomedirs(false, &expect_deletion, NULL);
-
-  // Let Mount know how many vaults there are.
-  EXPECT_CALL(platform_, EnumerateDirectoryEntries(ShadowRoot(), false, _))
-      .WillRepeatedly(DoAll(SetArgPointee<2>(vaults_), Return(true)));
-
-  // Don't say any cryptohomes are mounted
-  EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
-  std::vector<FilePath> empty;
-  EXPECT_CALL(
-      platform_,
-      EnumerateDirectoryEntries(
-          AnyOf(FilePath("/home/root/"), FilePath("/home/user/")), _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
-
-  ASSERT_TRUE(mount_->UnmountCryptohome());
-}
-
-TEST_P(EphemeralExistingUserSystemTest, UnmountRemoveTest) {
-  // Checks that when a device is not enterprise enrolled and has a known owner,
-  // all stale cryptohomes are removed while unmounting.
-  TestUser* owner = &helper_.users[3];
-  set_policy(true, owner->username, true);
-
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
-
-  // All users but the owner.
-  std::vector<int> expect_deletion;
-  expect_deletion.push_back(0);
-  expect_deletion.push_back(1);
-  expect_deletion.push_back(2);
-  PrepareHomedirs(false, &expect_deletion, NULL);
-
-  // Let Mount know how many vaults there are.
-  EXPECT_CALL(platform_, EnumerateDirectoryEntries(ShadowRoot(), false, _))
-      .WillRepeatedly(DoAll(SetArgPointee<2>(vaults_), Return(true)));
-
-  // Don't say any cryptohomes are mounted
-  EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
-  std::vector<FilePath> empty;
-  EXPECT_CALL(
-      platform_,
-      EnumerateDirectoryEntries(
-          AnyOf(FilePath("/home/root/"), FilePath("/home/user/")), _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
-
-  ASSERT_TRUE(mount_->UnmountCryptohome());
-}
-
-TEST_P(EphemeralExistingUserSystemTest, NonOwnerMountIsEphemeralTest) {
-  // Checks that when a device is not enterprise enrolled and has a known owner,
-  // a mount request for a non-owner user with the |is_ephemeral| flag set
-  // causes a tmpfs cryptohome to be mounted, even if a regular vault exists for
-  // the user.
-  // Since ephemeral users aren't enabled, no vaults will be deleted.
-  TestUser* owner = &helper_.users[3];
-  set_policy(true, owner->username, false);
-  TestUser* user = &helper_.users[0];
-
-  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
-
-  PrepareHomedirs(true, NULL, NULL);
-
-  // Let Mount know how many vaults there are.
-  EXPECT_CALL(platform_, EnumerateDirectoryEntries(ShadowRoot(), false, _))
-      .WillRepeatedly(DoAll(SetArgPointee<2>(vaults_), Return(true)));
-  // Don't say any cryptohomes are mounted
-  EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
-  std::vector<FilePath> empty;
-  EXPECT_CALL(
-      platform_,
-      EnumerateDirectoryEntries(
-          AnyOf(FilePath("/home/root/"), FilePath("/home/user/")), _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
-  EXPECT_CALL(platform_,
-              Stat(AnyOf(FilePath("/home/chronos"),
-                         MountHelper::GetNewUserPath(user->username)),
-                   _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_,
-              Stat(AnyOf(FilePath("/home"), FilePath("/home/root"),
-                         brillo::cryptohome::home::GetRootPath(user->username),
-                         FilePath("/home/user"),
-                         brillo::cryptohome::home::GetUserPath(user->username)),
-                   _))
-      .WillRepeatedly(Return(false));
-  // Only expect the mounted user to "exist".
-  EXPECT_CALL(platform_,
-              DirectoryExists(Property(
-                  &FilePath::value, StartsWith(user->user_mount_path.value()))))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, CreateDirectory(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetPermissions(_, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, FileExists(Property(&FilePath::value,
-                                             StartsWith("/home/chronos/user"))))
-      .WillRepeatedly(Return(true));
-
-  helper_.InjectEphemeralSkeleton(&platform_,
-                                  FilePath(user->user_ephemeral_mount_path));
-
-  EXPECT_CALL(platform_, Stat(user->root_ephemeral_mount_path, _))
-      .WillOnce(Return(false));
-
-  EXPECT_CALL(platform_, Unmount(_, _, _)).WillRepeatedly(Return(true));
-  ExpectEphemeralCryptohomeMount(*user);
-
-  // Detach succeeds.
-  ON_CALL(platform_, DetachLoop(_)).WillByDefault(Return(true));
-
-  ASSERT_EQ(MOUNT_ERROR_NONE, mount_->MountEphemeralCryptohome(user->username));
-}
-
-TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountIsEphemeralTest) {
-  // Checks that when a device is enterprise enrolled, a mount request with the
-  // |is_ephemeral| flag set causes a tmpfs cryptohome to be mounted, even
-  // if a regular vault exists for the user.
-  // Since ephemeral users aren't enabled, no vaults will be deleted.
-  set_policy(true, "", false);
-  homedirs_->set_enterprise_owned(true);
-
-  TestUser* user = &helper_.users[0];
-
-  // Mounting user vault won't be deleted, but tmpfs mount should still be
-  // used.
-  PrepareHomedirs(true, NULL, NULL);
-
-  // Let Mount know how many vaults there are.
-  EXPECT_CALL(platform_, EnumerateDirectoryEntries(ShadowRoot(), false, _))
-      .WillRepeatedly(DoAll(SetArgPointee<2>(vaults_), Return(true)));
-  // Don't say any cryptohomes are mounted.
-  EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
-  std::vector<FilePath> empty;
-  EXPECT_CALL(
-      platform_,
-      EnumerateDirectoryEntries(
-          AnyOf(FilePath("/home/root/"), FilePath("/home/user/")), _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
-  EXPECT_CALL(platform_,
-              Stat(AnyOf(FilePath("/home/chronos"),
-                         MountHelper::GetNewUserPath(user->username)),
-                   _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_,
-              Stat(AnyOf(FilePath("/home"), FilePath("/home/root"),
-                         brillo::cryptohome::home::GetRootPath(user->username),
-                         FilePath("/home/user"),
-                         brillo::cryptohome::home::GetUserPath(user->username)),
-                   _))
-      .WillRepeatedly(Return(false));
-  // Only expect the mounted user to "exist".
-  EXPECT_CALL(platform_,
-              DirectoryExists(Property(
-                  &FilePath::value, StartsWith(user->user_mount_path.value()))))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, CreateDirectory(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetPermissions(_, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, FileExists(Property(&FilePath::value,
-                                             StartsWith("/home/chronos/user"))))
-      .WillRepeatedly(Return(true));
-
-  helper_.InjectEphemeralSkeleton(&platform_,
-                                  FilePath(user->user_ephemeral_mount_path));
-
-  EXPECT_CALL(platform_, Stat(user->root_ephemeral_mount_path, _))
-      .WillOnce(Return(false));
-
-  EXPECT_CALL(platform_, Unmount(_, _, _)).WillRepeatedly(Return(true));
-  ExpectEphemeralCryptohomeMount(*user);
-
-  // Detach succeeds.
-  ON_CALL(platform_, DetachLoop(_)).WillByDefault(Return(true));
-
-  ASSERT_EQ(MOUNT_ERROR_NONE, mount_->MountEphemeralCryptohome(user->username));
-}
-
-TEST_P(EphemeralNoUserSystemTest, MountGuestUserDir) {
+TEST_P(EphemeralSystemTest, MountGuestUserDir) {
   base::stat_wrapper_t fake_root_st;
   fake_root_st.st_uid = 0;
   fake_root_st.st_gid = 0;

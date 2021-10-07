@@ -166,10 +166,6 @@ bool Mount::Init() {
 MountError Mount::MountEphemeralCryptohome(const std::string& username) {
   username_ = username;
 
-  if (homedirs_->IsOrWillBeOwner(username_)) {
-    return MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER;
-  }
-
   MountHelperInterface* ephemeral_mounter = nullptr;
   base::OnceClosure cleanup;
   if (mount_ephemeral_session_out_of_process_) {
@@ -387,9 +383,6 @@ bool Mount::UnmountCryptohome() {
   if (!mount_cleanup_.is_null()) {
     std::move(mount_cleanup_).Run();
   }
-
-  if (homedirs_->AreEphemeralUsersEnabled())
-    homedirs_->RemoveNonOwnerCryptohomes();
 
   // Resetting the vault teardowns the enclosed containers if setup succeeded.
   user_cryptohome_vault_.reset();

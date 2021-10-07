@@ -139,6 +139,10 @@ MountError UserSession::MountVault(AuthSession* auth_session,
 }
 
 MountError UserSession::MountEphemeral(const Credentials& credentials) {
+  if (homedirs_->IsOrWillBeOwner(credentials.username())) {
+    return MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER;
+  }
+
   MountError code = mount_->MountEphemeralCryptohome(credentials.username());
   if (code == MOUNT_ERROR_NONE) {
     SetCredentials(credentials, -1);
@@ -151,6 +155,10 @@ MountError UserSession::MountEphemeral(const Credentials& credentials) {
 }
 
 MountError UserSession::MountEphemeral(AuthSession* auth_session) {
+  if (homedirs_->IsOrWillBeOwner(auth_session->username())) {
+    return MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER;
+  }
+
   MountError code = mount_->MountEphemeralCryptohome(auth_session->username());
   if (code == MOUNT_ERROR_NONE) {
     SetCredentials(auth_session);

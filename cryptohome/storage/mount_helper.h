@@ -382,8 +382,8 @@ class MountHelper : public MountHelperInterface {
 
   FRIEND_TEST(MountTest, RememberMountOrderingTest);
 
-  FRIEND_TEST(EphemeralNoUserSystemTest, CreateMyFilesDownloads);
-  FRIEND_TEST(EphemeralNoUserSystemTest, CreateMyFilesDownloadsAlreadyExists);
+  FRIEND_TEST(EphemeralSystemTest, CreateMyFilesDownloads);
+  FRIEND_TEST(EphemeralSystemTest, CreateMyFilesDownloadsAlreadyExists);
 };
 
 }  // namespace cryptohome

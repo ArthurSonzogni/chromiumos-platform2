@@ -906,6 +906,10 @@ bool UserDataAuth::Unmount() {
   // with open files.
   CleanUpStaleMounts(true);
 
+  if (homedirs_->AreEphemeralUsersEnabled()) {
+    homedirs_->RemoveNonOwnerCryptohomes();
+  }
+
   return unmount_ok;
 }
 

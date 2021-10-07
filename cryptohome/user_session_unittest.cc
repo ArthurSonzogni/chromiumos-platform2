@@ -14,6 +14,8 @@
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
+#include <policy/libpolicy.h>
+#include <policy/mock_device_policy.h>
 
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
@@ -31,9 +33,11 @@ using brillo::SecureBlob;
 
 using ::testing::_;
 using ::testing::ByRef;
+using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::SetArgPointee;
 
 namespace cryptohome {
 
@@ -62,8 +66,11 @@ class UserSessionTest : public ::testing::Test {
         &platform_, &crypto_, system_salt_, nullptr,
         std::make_unique<VaultKeysetFactory>());
     HomeDirs::RemoveCallback remove_callback;
+    mock_device_policy_ = new policy::MockDevicePolicy();
     homedirs_ = std::make_unique<HomeDirs>(
-        &platform_, system_salt_, std::make_unique<policy::PolicyProvider>(),
+        &platform_, system_salt_,
+        std::make_unique<policy::PolicyProvider>(
+            std::unique_ptr<policy::MockDevicePolicy>(mock_device_policy_)),
         remove_callback);
 
     platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt_);
@@ -106,6 +113,7 @@ class UserSessionTest : public ::testing::Test {
   Crypto crypto_;
   brillo::SecureBlob system_salt_;
   std::unique_ptr<KeysetManagement> keyset_management_;
+  policy::MockDevicePolicy* mock_device_policy_;  // owned by homedirs_
   std::unique_ptr<HomeDirs> homedirs_;
   scoped_refptr<UserSession> session_;
   // TODO(dlunev): Replace with real mount when FakePlatform is mature enough
@@ -134,6 +142,14 @@ class UserSessionTest : public ::testing::Test {
     ASSERT_TRUE(platform_.CreateDirectory(ShadowRoot()));
     ASSERT_TRUE(platform_.CreateDirectory(
         brillo::cryptohome::home::GetUserPathPrefix()));
+  }
+
+  void PreparePolicy(bool enterprise_owned, const std::string& owner) {
+    homedirs_->set_enterprise_owned(enterprise_owned);
+    EXPECT_CALL(*mock_device_policy_, LoadPolicy())
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*mock_device_policy_, GetOwner(_))
+        .WillRepeatedly(DoAll(SetArgPointee<0>(owner), Return(!owner.empty())));
   }
 };
 
@@ -349,6 +365,72 @@ TEST_F(UserSessionTest, MountVaultNoExistNoCreate) {
   EXPECT_FALSE(keyset_management_->AreCredentialsValid(users_[0].credentials));
   EXPECT_EQ(session_->GetPkcs11Token(), nullptr);
   EXPECT_EQ(session_->GetWebAuthnSecret(), nullptr);
+}
+
+TEST_F(UserSessionTest, EphemeralMountPolicyTest) {
+  EXPECT_CALL(*mount_, MountEphemeralCryptohome(_))
+      .WillRepeatedly(Return(MOUNT_ERROR_NONE));
+
+  struct PolicyTestCase {
+    std::string name;
+    bool is_enterprise;
+    std::string owner;
+    std::string user;
+    MountError expected_result;
+  };
+
+  std::vector<PolicyTestCase> test_cases{
+      {
+          .name = "NotEnterprise_NoOwner_UserLogin_OK",
+          .is_enterprise = false,
+          .owner = "",
+          .user = "some_user",
+          .expected_result = MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER,
+      },
+      {
+          .name = "NotEnterprise_Owner_UserLogin_OK",
+          .is_enterprise = false,
+          .owner = "owner",
+          .user = "some_user",
+          .expected_result = MOUNT_ERROR_NONE,
+      },
+      {
+          .name = "NotEnterprise_Owner_OwnerLogin_Error",
+          .is_enterprise = false,
+          .owner = "owner",
+          .user = "owner",
+          .expected_result = MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER,
+      },
+      {
+          .name = "Enterprise_NoOwner_UserLogin_OK",
+          .is_enterprise = true,
+          .owner = "",
+          .user = "some_user",
+          .expected_result = MOUNT_ERROR_NONE,
+      },
+      {
+          .name = "Enterprise_Owner_UserLogin_OK",
+          .is_enterprise = true,
+          .owner = "owner",
+          .user = "some_user",
+          .expected_result = MOUNT_ERROR_NONE,
+      },
+      {
+          .name = "Enterprise_Owner_OwnerLogin_OK",
+          .is_enterprise = true,
+          .owner = "owner",
+          .user = "owner",
+          .expected_result = MOUNT_ERROR_NONE,
+      },
+  };
+
+  for (const auto& test_case : test_cases) {
+    PreparePolicy(test_case.is_enterprise, test_case.owner);
+    ASSERT_THAT(session_->MountEphemeral(Credentials(
+                    test_case.user, brillo::SecureBlob("doesn't matter"))),
+                test_case.expected_result)
+        << "Test case: " << test_case.name;
+  }
 }
 
 // WebAuthn secret is cleared after read once.

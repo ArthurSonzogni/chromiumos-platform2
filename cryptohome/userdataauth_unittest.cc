@@ -779,7 +779,7 @@ TEST_F(UserDataAuthTest, IsMounted) {
   EXPECT_FALSE(is_ephemeral);
 }
 
-TEST_F(UserDataAuthTest, Unmount) {
+TEST_F(UserDataAuthTest, Unmount_EphemeralNotEnabled) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   // Unmount validity test.
   // The tests on whether stale mount are cleaned up is in another set of tests
@@ -792,6 +792,10 @@ TEST_F(UserDataAuthTest, Unmount) {
   EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(true));
   // If anyone asks, this mount is still mounted.
   ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
+
+  // Test that non-owner's vaults are not touched.
+  EXPECT_CALL(homedirs_, AreEphemeralUsersEnabled()).WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, RemoveNonOwnerCryptohomes()).Times(0);
 
   // Unmount should be successful.
   EXPECT_TRUE(userdataauth_->Unmount());
@@ -806,6 +810,53 @@ TEST_F(UserDataAuthTest, Unmount) {
   EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(false));
   // If anyone asks, this mount is still mounted.
   ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
+
+  // Test that non-owner's vaults are not touched.
+  EXPECT_CALL(homedirs_, AreEphemeralUsersEnabled()).WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, RemoveNonOwnerCryptohomes()).Times(0);
+
+  // Unmount should be honest about failures.
+  EXPECT_FALSE(userdataauth_->Unmount());
+
+  // Unmount will remove all mounts even if it failed.
+  EXPECT_FALSE(userdataauth_->IsMounted());
+}
+
+TEST_F(UserDataAuthTest, Unmount_EphemeralEnabled) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+  // Unmount validity test.
+  // The tests on whether stale mount are cleaned up is in another set of tests
+  // called CleanUpStale_*
+
+  // Add a mount associated with foo@gmail.com
+  SetupMount("foo@gmail.com");
+
+  // Unmount will be successful.
+  EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(true));
+  // If anyone asks, this mount is still mounted.
+  ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
+
+  // Test that non-owner's vaults are cleaned up.
+  EXPECT_CALL(homedirs_, AreEphemeralUsersEnabled()).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, RemoveNonOwnerCryptohomes()).Times(1);
+
+  // Unmount should be successful.
+  EXPECT_TRUE(userdataauth_->Unmount());
+
+  // It should be unmounted in the end.
+  EXPECT_FALSE(userdataauth_->IsMounted());
+
+  // Add another mount associated with bar@gmail.com
+  SetupMount("bar@gmail.com");
+
+  // Unmount will be unsuccessful.
+  EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(false));
+  // If anyone asks, this mount is still mounted.
+  ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
+
+  // Test that non-owner's vaults are cleaned up anyway.
+  EXPECT_CALL(homedirs_, AreEphemeralUsersEnabled()).WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, RemoveNonOwnerCryptohomes()).Times(1);
 
   // Unmount should be honest about failures.
   EXPECT_FALSE(userdataauth_->Unmount());
