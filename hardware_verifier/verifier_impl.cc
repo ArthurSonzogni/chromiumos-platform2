@@ -18,23 +18,60 @@
 #include <base/strings/string_util.h>
 #include <base/system/sys_info.h>
 #include <chromeos-config/libcros_config/cros_config.h>
+#include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
 namespace hardware_verifier {
 
 namespace {
 
+using CppType = google::protobuf::FieldDescriptor::CppType;
+using SupportCategory = runtime_probe::ProbeRequest_SupportCategory;
+
+constexpr int kCppTypeMsg = CppType::CPPTYPE_MESSAGE;
+constexpr int kCppTypeStr = CppType::CPPTYPE_STRING;
+
 constexpr auto kGenericComponentName = "generic";
 constexpr auto kNoMatchComponentName = "NO_MATCH";
 
-void AddFoundComponentInfo(
-    HwVerificationReport* hw_verification_report,
-    const runtime_probe::ProbeRequest_SupportCategory& component_category,
-    const std::string& comp_name,
-    const QualificationStatus status) {
+void FilterComponentFields(google::protobuf::Message* comp_values,
+                           const std::set<std::string>& comp_value_allowlist) {
+  const auto* comp_values_refl = comp_values->GetReflection();
+  const auto* comp_values_desc = comp_values->GetDescriptor();
+  for (int j = 0; j < comp_values_desc->field_count(); ++j) {
+    const auto* field = comp_values_desc->field(j);
+    if (!comp_value_allowlist.count(field->name())) {
+      comp_values_refl->ClearField(comp_values, field);
+    }
+  }
+}
+
+void SetComponentFields(ComponentInfo* component_info,
+                        SupportCategory category,
+                        const google::protobuf::Message& values) {
+  auto comp_fields = component_info->mutable_component_fields();
+  auto comp_fields_desc = comp_fields->GetDescriptor();
+  auto comp_fields_refl = comp_fields->GetReflection();
+  auto category_name =
+      runtime_probe::ProbeRequest_SupportCategory_Name(category);
+  auto* fields_desc = comp_fields_desc->FindFieldByName(category_name);
+  DCHECK(fields_desc && fields_desc->cpp_type() == kCppTypeMsg &&
+         fields_desc->is_optional());
+  auto* fields = comp_fields_refl->MutableMessage(comp_fields, fields_desc);
+  fields->CopyFrom(values);
+}
+
+void AddFoundComponentInfo(HwVerificationReport* hw_verification_report,
+                           SupportCategory component_category,
+                           const std::string& comp_name,
+                           google::protobuf::Message* comp_values,
+                           QualificationStatus status) {
   auto* found_comp_info = hw_verification_report->add_found_component_infos();
   found_comp_info->set_component_category(component_category);
   found_comp_info->set_component_uuid(comp_name);
   found_comp_info->set_qualification_status(status);
+  if (comp_values) {
+    SetComponentFields(found_comp_info, component_category, *comp_values);
+  }
   if (status != QualificationStatus::QUALIFIED) {
     hw_verification_report->set_is_compliant(false);
   }
@@ -56,10 +93,6 @@ VerifierImpl::VerifierImpl() {
   auto config = std::make_unique<brillo::CrosConfig>();
   CHECK(config->Init());
   cros_config_ = std::move(config);
-  using CppType = google::protobuf::FieldDescriptor::CppType;
-  constexpr int kCppTypeMsg = CppType::CPPTYPE_MESSAGE;
-  constexpr int kCppTypeStr = CppType::CPPTYPE_STRING;
-
   // Resolve |comp_category_infos_| in the constructor.
   const auto* category_enum_desc =
       runtime_probe::ProbeRequest_SupportCategory_descriptor();
@@ -72,7 +105,8 @@ VerifierImpl::VerifierImpl() {
     auto* comp_category_info = &comp_category_infos_[i];
     const auto& comp_category_name = category_enum_desc->value(i)->name();
 
-    comp_category_info->enum_value = category_enum_desc->value(i)->number();
+    comp_category_info->enum_value =
+        static_cast<SupportCategory>(category_enum_desc->value(i)->number());
     comp_category_info->enum_name = comp_category_name;
 
     if (comp_category_info->enum_value ==
@@ -121,13 +155,14 @@ base::Optional<HwVerificationReport> VerifierImpl::Verify(
     const runtime_probe::ProbeResult& probe_result,
     const HwVerificationSpec& hw_verification_spec) const {
   // A dictionary of 'expected_component_category => seen'.
-  std::map<int, bool> seen_comp;
+  std::map<SupportCategory, bool> seen_comp;
   // Collect the categories of generic components we found.
-  std::set<int> seen_generic_comp;
+  std::set<SupportCategory> seen_generic_comp;
 
   // A dictionary which maps (component_category, component_uuid) to its
   // qualification status.
-  std::map<int, std::map<std::string, QualificationStatus>> qual_status_dict;
+  std::map<SupportCategory, std::map<std::string, QualificationStatus>>
+      qual_status_dict;
   const auto model_name = GetModelName();
   for (const auto& comp_info : hw_verification_spec.component_infos()) {
     if (!IsModelComponent(comp_info, model_name))
@@ -136,8 +171,7 @@ base::Optional<HwVerificationReport> VerifierImpl::Verify(
     const auto& uuid = comp_info.component_uuid();
     const auto& qualification_status = comp_info.qualification_status();
     const auto& insert_result =
-        qual_status_dict[static_cast<int>(category)].emplace(
-            uuid, qualification_status);
+        qual_status_dict[category].emplace(uuid, qualification_status);
     if (!insert_result.second) {
       LOG(ERROR)
           << "The verification spec contains duplicated component infos.";
@@ -150,7 +184,8 @@ base::Optional<HwVerificationReport> VerifierImpl::Verify(
 
   // A dictionary which maps component_category to the field names in the
   // allowlist.
-  std::map<int, std::set<std::string>> generic_comp_value_allowlists;
+  std::map<SupportCategory, std::set<std::string>>
+      generic_comp_value_allowlists;
   for (const auto& spec_info :
        hw_verification_spec.generic_component_value_allowlists()) {
     const auto& insert_result = generic_comp_value_allowlists.emplace(
@@ -191,6 +226,8 @@ base::Optional<HwVerificationReport> VerifierImpl::Verify(
       const auto* comp_refl = comp.GetReflection();
       const auto& comp_name = comp_refl->GetString(
           comp, comp_category_info.probe_result_comp_name_field);
+      const auto& comp_values = comp_refl->GetMessage(
+          comp, comp_category_info.probe_result_comp_values_field);
 
       // If the component name is "generic", add it to |generic_device_info|
       // in the report.
@@ -202,19 +239,11 @@ base::Optional<HwVerificationReport> VerifierImpl::Verify(
         } else {
           // Duplicate the original values and filter the fields by the
           // allowlist.
-          auto* dup_comp_values = generic_device_info_refl->AddMessage(
+          auto* generic_comp_values = generic_device_info_refl->AddMessage(
               generic_device_info, comp_category_info.report_comp_values_field);
-          dup_comp_values->CopyFrom(comp_refl->GetMessage(
-              comp, comp_category_info.probe_result_comp_values_field));
-
-          const auto* dup_comp_values_refl = dup_comp_values->GetReflection();
-          const auto* dup_comp_values_desc = dup_comp_values->GetDescriptor();
-          for (int j = 0; j < dup_comp_values_desc->field_count(); ++j) {
-            const auto* field = dup_comp_values_desc->field(j);
-            if (!generic_comp_value_allowlist.count(field->name())) {
-              dup_comp_values_refl->ClearField(dup_comp_values, field);
-            }
-          }
+          generic_comp_values->CopyFrom(comp_values);
+          FilterComponentFields(generic_comp_values,
+                                generic_comp_value_allowlist);
         }
         continue;
       }
@@ -231,11 +260,12 @@ base::Optional<HwVerificationReport> VerifierImpl::Verify(
       // TODO(b147654337): How about components that are "missing", that is:
       //   - It is expected on the system (according to SKU or MODEL).
       //   - We cannot find this in generic nor non-generic components.
-      AddFoundComponentInfo(
-          &hw_verification_report,
-          static_cast<runtime_probe::ProbeRequest_SupportCategory>(
-              comp_category_info.enum_value),
-          comp_name, qual_status_it->second);
+      auto* filtered_comp_values = comp_values.New();
+      filtered_comp_values->CopyFrom(comp_values);
+      FilterComponentFields(filtered_comp_values, generic_comp_value_allowlist);
+      AddFoundComponentInfo(&hw_verification_report,
+                            comp_category_info.enum_value, comp_name,
+                            filtered_comp_values, qual_status_it->second);
       seen_comp[comp_category_info.enum_value] = true;
     }
   }
@@ -244,10 +274,9 @@ base::Optional<HwVerificationReport> VerifierImpl::Verify(
     // We have found a generic component in this category, but this doesn't have
     // any qualification status.
     if (!it.second && seen_generic_comp.count(it.first)) {
-      AddFoundComponentInfo(
-          &hw_verification_report,
-          static_cast<runtime_probe::ProbeRequest_SupportCategory>(it.first),
-          kNoMatchComponentName, QualificationStatus::NO_MATCH);
+      AddFoundComponentInfo(&hw_verification_report, it.first,
+                            kNoMatchComponentName, nullptr,
+                            QualificationStatus::NO_MATCH);
     }
   }
 

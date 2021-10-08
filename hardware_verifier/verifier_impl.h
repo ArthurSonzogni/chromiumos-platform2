@@ -14,6 +14,7 @@
 
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <google/protobuf/descriptor.h>
+#include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
 namespace hardware_verifier {
 
@@ -34,7 +35,7 @@ class VerifierImpl : public Verifier {
  private:
   struct CompCategoryInfo {
     // Enum value of of this category.
-    int enum_value;
+    runtime_probe::ProbeRequest_SupportCategory enum_value;
 
     // Enum name of this category.
     std::string enum_name;

@@ -36,6 +36,8 @@ message ComponentInfo {
   string component_uuid = 2;  // required
 
   QualificationStatus qualification_status = 3;  // required
+
+  runtime_probe.ComponentFields component_fields = 5;
 }
 
 message HwVerificationSpec {
