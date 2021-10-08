@@ -232,19 +232,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   dir - directory to check
   bool SetupChapsDirectory(const base::FilePath& dir);
 
-  // Mounts and populates an ephemeral cryptohome backed by tmpfs for the given
-  // user.
-  //
-  // Parameters
-  //   username - Username for the user
-  //   ephemeral_mounter - Mounter class to use. Allows mounting Guest sessions
-  //                       out of process
-  //   cleanup - Closure to use in UnmountCryptohome(), and to clean up in case
-  //             of failure
-  bool MountEphemeralCryptohomeInternal(const std::string& username,
-                                        MountHelperInterface* ephemeral_mounter,
-                                        base::OnceClosure cleanup);
-
   // Unmounts all mount points, and invalidates the dircrypto encryption key.
   // Relies on ForceUnmount() internally; see the caveat listed for it
   void UnmountAndDropKeys(base::OnceClosure unmounter);

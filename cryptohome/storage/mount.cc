@@ -189,10 +189,20 @@ MountError Mount::MountEphemeralCryptohome(const std::string& username) {
                        base::Unretained(mounter_.get()));
   }
 
-  if (!MountEphemeralCryptohomeInternal(username_, ephemeral_mounter,
-                                        std::move(cleanup))) {
+  base::ScopedClosureRunner cleanup_runner(std::move(cleanup));
+
+  // Ephemeral cryptohome can't be mounted twice.
+  CHECK(ephemeral_mounter->CanPerformEphemeralMount());
+
+  if (!ephemeral_mounter->PerformEphemeralMount(username)) {
+    LOG(ERROR) << "PerformEphemeralMount() failed, aborting ephemeral mount";
     return MOUNT_ERROR_FATAL;
   }
+
+  // Mount succeeded, move the clean-up closure to the instance variable.
+  mount_cleanup_ = cleanup_runner.Release();
+
+  mount_type_ = MountType::EPHEMERAL;
 
   return MOUNT_ERROR_NONE;
 }
@@ -339,27 +349,6 @@ bool Mount::MountCryptohome(const std::string& username,
                << GetUserDirectoryForUser(obfuscated_username) << ") failed.";
   }
 
-  return true;
-}
-
-bool Mount::MountEphemeralCryptohomeInternal(
-    const std::string& username,
-    MountHelperInterface* ephemeral_mounter,
-    base::OnceClosure cleanup) {
-  // Ephemeral cryptohome can't be mounted twice.
-  CHECK(ephemeral_mounter->CanPerformEphemeralMount());
-
-  base::ScopedClosureRunner cleanup_runner(std::move(cleanup));
-
-  if (!ephemeral_mounter->PerformEphemeralMount(username)) {
-    LOG(ERROR) << "PerformEphemeralMount() failed, aborting ephemeral mount";
-    return false;
-  }
-
-  // Mount succeeded, move the clean-up closure to the instance variable.
-  mount_cleanup_ = cleanup_runner.Release();
-
-  mount_type_ = MountType::EPHEMERAL;
   return true;
 }
 
