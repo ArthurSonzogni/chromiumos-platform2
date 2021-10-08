@@ -293,9 +293,9 @@ void ModemMbim::TransmitMbimSendApdu(TxElement* tx_element) {
   std::copy(fragment, fragment + fragment_size, apduCmd);
   apduCmd[apdu_len++] = 0x00;
 
-  VLOG(2) << "APDU fragment #"
-          << " bytes): " << base::HexEncode(apduCmd, apdu_len);
-  VLOG(2) << "Send the apdu over channel number: " << channel_;
+  LOG(INFO) << "Sending APDU fragment (" << apdu_len << " bytes): over channel "
+            << channel_;
+  VLOG(2) << "APDU: " << base::HexEncode(apduCmd, apdu_len);
   pending_response_ = true;
   message = (mbim_message_ms_uicc_low_level_access_apdu_set_new(
       channel_, secure_messaging, class_byte_type, apdu_len, apduCmd, NULL));
@@ -584,18 +584,21 @@ void ModemMbim::UiccLowLevelAccessApduResponseParse(MbimDevice* device,
                                        &error) &&
       mbim_message_ms_uicc_low_level_access_apdu_response_parse(
           response, &status, &response_size, &out_response, &error)) {
-    VLOG(2) << "Adding to payload from APDU response (" << response_size
-            << " bytes): " << base::HexEncode(out_response, response_size);
+    LOG(INFO) << "Adding to payload from APDU response (" << response_size
+              << " bytes)";
+    VLOG(2) << "Payload: " << base::HexEncode(out_response, response_size);
 
     payload.AddData(out_response, response_size);
     if (payload.MorePayloadIncoming()) {
       // Make the next transmit operation be a request for more APDU data
       info->apdu_ = payload.CreateGetMoreCommand(/*is_extended_apdu*/ false);
+      LOG(INFO) << "Requesting more APDUs...";
+      modem_mbim->TransmitFromQueue();
       return;
     }
     if (info->apdu_.HasMoreFragments()) {
       // Send next fragment of APDU
-      VLOG(2) << "Sending next APDU fragment";
+      LOG(INFO) << "Sending next APDU fragment...";
       modem_mbim->TransmitFromQueue();
       return;
     }
@@ -606,6 +609,7 @@ void ModemMbim::UiccLowLevelAccessApduResponseParse(MbimDevice* device,
     modem_mbim->tx_queue_.pop_front();
     modem_mbim->TransmitFromQueue();
   } else {
+    LOG(ERROR) << __func__ << ": Failed to parse APDU response";
     std::move(modem_mbim->tx_queue_[0].cb_)
         .Run(lpa::card::EuiccCard::kSendApduError);
     modem_mbim->tx_queue_.pop_front();
