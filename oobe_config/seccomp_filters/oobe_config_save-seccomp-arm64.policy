@@ -7,7 +7,7 @@ faccessat2: 1
 brk: 1
 epoll_create1: 1
 epoll_ctl: 1
-epoll_wait: 1
+epoll_pwait: 1
 clock_getres: 1
 clock_gettime: 1
 close: 1
