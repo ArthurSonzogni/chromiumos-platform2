@@ -9,6 +9,7 @@
 #include <sys/ioctl.h>
 
 #include <algorithm>
+#include <cstring>
 
 #include <base/check.h>
 #include <base/logging.h>
