@@ -44,7 +44,8 @@ int Watch(std::unique_ptr<hps::HPS> hps,
     if (feature_result.valid) {
       if (last_inference_result != feature_result.inference_result) {
         last_inference_result = feature_result.inference_result;
-        std::cout << "Result = " << feature_result.inference_result
+        std::cout << "Result = "
+                  << static_cast<int>(feature_result.inference_result)
                   << std::endl;
       }
     } else {
