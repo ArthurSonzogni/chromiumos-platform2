@@ -23,25 +23,7 @@ PATH=~/chromiumos/src/platform2/biod/study:${PATH}
 ls ./ | xargs -P$(nproc) -L1 fpstudy.py decrypt --password '<PRIVATE_KEY_PASSWORD>' <PATH_TO_PRIVATE_KEY>
 ```
 
-## 2. Restructure Sample Directories
-
-Restructure the sample directories from
-`./<PARTICIPANT_ID>/<PARTICIPANT_GROUP>/<FINGER_ID>/<SAMPLE_FILE>` to
-`./<PARTICIPANT_ID>/<FINGER_ID>/<SAMPLE_FILE>`.
-
-We remove the intermediate participant group directory from each participant's
-directory, since the analysis tools do not know how to interpret the participant
-group.
-
-```bash
-cd <PATH_TO_SAMPLES>
-for pid in ./*; do \
-mv -v "${pid}"/[A-Z]/* "${pid}"/; \
-rmdir -v "${pid}"/[A-Z]; \
-done
-```
-
-## 3. Generate PNG Samples [optional]
+## 2. Generate PNG Samples [optional]
 
 Generating PNG samples can help debug invalid samples.
 
