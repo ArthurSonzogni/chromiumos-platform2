@@ -305,6 +305,18 @@ TEST_F(CrosFpBiometricsManagerMockTest, TestUpdateTemplatesOnDisk) {
 }
 
 TEST_F(CrosFpBiometricsManagerMockTest,
+       TestUpdateTemplatesOnDisk_RecordNotAvailable) {
+  const std::vector<int> dirty_list = {0};
+  const std::unordered_set<uint32_t> suspicious_templates;
+
+  EXPECT_CALL(*mock_, GetLoadedRecordId(0)).WillOnce(Return(base::nullopt));
+  EXPECT_CALL(*mock_cros_dev_, GetTemplate).Times(0);
+  EXPECT_CALL(*mock_record_manager_, UpdateRecord).Times(0);
+
+  EXPECT_TRUE(mock_->UpdateTemplatesOnDisk(dirty_list, suspicious_templates));
+}
+
+TEST_F(CrosFpBiometricsManagerMockTest,
        TestUpdateTemplatesOnDisk_NoDirtyTemplates) {
   const std::vector<int> dirty_list;
   const std::unordered_set<uint32_t> suspicious_templates;
@@ -319,6 +331,7 @@ TEST_F(CrosFpBiometricsManagerMockTest,
   const std::vector<int> dirty_list = {0};
   const std::unordered_set<uint32_t> suspicious_templates = {0};
 
+  EXPECT_CALL(*mock_, GetLoadedRecordId(0)).WillRepeatedly(Return(kRecordID));
   EXPECT_CALL(*mock_record_manager_, UpdateRecord).Times(0);
 
   EXPECT_TRUE(mock_->UpdateTemplatesOnDisk(dirty_list, suspicious_templates));
@@ -329,6 +342,7 @@ TEST_F(CrosFpBiometricsManagerMockTest,
   const std::vector<int> dirty_list = {0};
   const std::unordered_set<uint32_t> suspicious_templates;
 
+  EXPECT_CALL(*mock_, GetLoadedRecordId(0)).WillRepeatedly(Return(kRecordID));
   EXPECT_CALL(*mock_cros_dev_, GetTemplate).WillOnce([](int) {
     return nullptr;
   });

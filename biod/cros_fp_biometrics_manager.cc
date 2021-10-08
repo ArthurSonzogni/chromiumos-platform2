@@ -818,6 +818,12 @@ bool CrosFpBiometricsManager::UpdateTemplatesOnDisk(
     const std::unordered_set<uint32_t>& suspicious_templates) {
   bool ret = true;
   for (int i : dirty_list) {
+    if (!GetLoadedRecordId(i)) {
+      LOG(ERROR)
+          << "Index " << i
+          << " is on dirty list, but corresponding record doesn't exist.";
+      continue;
+    }
     // If the template previously came with wrong validation value, do not
     // accept it until it comes with correct validation value.
     if (suspicious_templates.find(i) != suspicious_templates.end()) {
