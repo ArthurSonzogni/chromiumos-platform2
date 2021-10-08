@@ -428,14 +428,6 @@ class MountTest
         .WillOnce(Return(true));
   }
 
-  void ExpectCryptohomeRemoval(const TestUser& user) {
-    EXPECT_CALL(platform_, DeletePathRecursively(user.base_path)).Times(1);
-    EXPECT_CALL(platform_, DeletePathRecursively(user.user_mount_path))
-        .Times(1);
-    EXPECT_CALL(platform_, DeletePathRecursively(user.root_mount_path))
-        .Times(1);
-  }
-
  protected:
   // Protected for trivial access.
   MakeTests helper_;
@@ -1479,7 +1471,6 @@ TEST_P(EphemeralSystemTest, EpmeneralMount_VFSFailure) {
   const TestUser* const user = &helper_.users[0];
 
   EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
-  ExpectCryptohomeRemoval(*user);
 
   EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
       .WillOnce(Return(false));
@@ -1494,7 +1485,6 @@ TEST_P(EphemeralSystemTest, EphemeralMount_CreateSparseDirFailure) {
   const TestUser* const user = &helper_.users[0];
 
   EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
-  ExpectCryptohomeRemoval(*user);
 
   EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
       .WillOnce(Return(true));
@@ -1515,7 +1505,6 @@ TEST_P(EphemeralSystemTest, EphemeralMount_CreateSparseFailure) {
 
   EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
   EXPECT_CALL(platform_, DeleteFile(ephemeral_filename)).Times(1);
-  ExpectCryptohomeRemoval(*user);
 
   EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
       .WillOnce(Return(true));
@@ -1537,7 +1526,6 @@ TEST_P(EphemeralSystemTest, EphemeralMount_AttachLoopFailure) {
 
   EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
   EXPECT_CALL(platform_, DeleteFile(ephemeral_filename)).Times(1);
-  ExpectCryptohomeRemoval(*user);
 
   EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
       .WillOnce(Return(true));
@@ -1564,7 +1552,6 @@ TEST_P(EphemeralSystemTest, EphemeralMount_FormatFailure) {
 
   EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
   EXPECT_CALL(platform_, DeleteFile(ephemeral_filename)).Times(1);
-  ExpectCryptohomeRemoval(*user);
 
   EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
       .WillOnce(Return(true));
@@ -1589,7 +1576,6 @@ TEST_P(EphemeralSystemTest, EphemeralMount_EnsureUserMountFailure) {
 
   EXPECT_CALL(platform_, DetachLoop(_)).Times(1);
   EXPECT_CALL(platform_, DeleteFile(ephemeral_filename)).Times(1);
-  ExpectCryptohomeRemoval(*user);
 
   EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
       .WillOnce(Return(true));

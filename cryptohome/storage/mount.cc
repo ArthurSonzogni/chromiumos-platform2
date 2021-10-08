@@ -191,9 +191,6 @@ MountError Mount::MountEphemeralCryptohome(const std::string& username) {
 
   if (!MountEphemeralCryptohomeInternal(username_, ephemeral_mounter,
                                         std::move(cleanup))) {
-    std::string obfuscated_username =
-        SanitizeUserNameWithSalt(username_, system_salt_);
-    homedirs_->Remove(obfuscated_username);
     return MOUNT_ERROR_FATAL;
   }
 
