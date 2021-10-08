@@ -231,9 +231,7 @@ int main(int argc, char* argv[]) {
     // entering the namespace.
     chrome_mnt_ns =
         std::make_unique<brillo::MountNamespace>(ns_path.value(), &platform);
-    bool status = chrome_mnt_ns->Create();
-    metrics.SendNamespaceCreationResult(status);
-    if (status) {
+    if (chrome_mnt_ns->Create()) {
       // User session shouldn't fail if namespace creation fails.
       // browser_job enters the mount namespace if |config.chrome_mount_ns_path|
       // has a value. Populate this value only if the namespace creation
