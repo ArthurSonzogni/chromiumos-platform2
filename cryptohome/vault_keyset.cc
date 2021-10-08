@@ -743,9 +743,6 @@ bool VaultKeyset::GetTpmBoundToPcrState(AuthBlockState* auth_state) const {
   if (tpm_public_key_hash_.has_value()) {
     state.tpm_public_key_hash = tpm_public_key_hash_.value();
   }
-  if (wrapped_reset_seed_.has_value()) {
-    state.wrapped_reset_seed = wrapped_reset_seed_.value();
-  }
   auth_state->state = std::move(state);
   return true;
 }
@@ -767,9 +764,6 @@ bool VaultKeyset::GetTpmNotBoundToPcrState(AuthBlockState* auth_state) const {
   state.tpm_key = tpm_key_.value();
   if (tpm_public_key_hash_.has_value()) {
     state.tpm_public_key_hash = tpm_public_key_hash_.value();
-  }
-  if (wrapped_reset_seed_.has_value()) {
-    state.wrapped_reset_seed = wrapped_reset_seed_.value();
   }
   auth_state->state = std::move(state);
   return true;

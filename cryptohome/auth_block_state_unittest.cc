@@ -95,7 +95,6 @@ TEST(AuthBlockStateTest, TpmBoundtoPcrStateOptionalFields) {
       .tpm_key = tpm_key,
       .extended_tpm_key = extended_tpm_key,
       .tpm_public_key_hash = brillo::SecureBlob(),
-      .wrapped_reset_seed = base::nullopt,
   };
   AuthBlockState final_state = {.state = std::move(tpm_state)};
 

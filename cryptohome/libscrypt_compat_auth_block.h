@@ -10,14 +10,17 @@
 
 namespace cryptohome {
 
-// AuthBlocks generally output a populated AuthBlockState in the Create()
-// method, and consume the same AuthBlockState in the Derive() method.
-// LibScryptCompat is a special case because it includes the metadata at the
-// beginning of the same buffer as the encrypted blob. Thus, Create() outputs an
-// empty AuthBlockState and the KeyBlobs struct stores the encrypted buffers,
-// which happen to have the metadata at the beginning. When Derive() is called,
-// those entire blobs are put into the AuthBlockState, so Derive() can parse the
-// metadata from there.
+// AuthBlocks generally output a metadata populated AuthBlockState in the
+// Create() method, and consume the same AuthBlockState in the Derive() method.
+// LibScryptCompat is a special case because it includes the metadata
+// (including salt and scrypt parameters) at the beginning of the same buffer
+// as the encrypted blob. Thus, Create() outputs an empty AuthBlockState and
+// the KeyBlobs struct stores the scrypt derived keys and salts. When a
+// VaultKeyset encrypts itself with LibScryptCompat, wrapped_keyset, along
+// with wrapped_chaps_key and wrapped_reset_seed, is an encrypted buffer which
+// happen to have embedded the metadata. Before Derive() is called, those
+// encryption blobs are put into the AuthBlockState from a VaultKeyset so
+// Derive() can parse the metadata from them to derive the same scrypt keys.
 class LibScryptCompatAuthBlock : public AuthBlock {
  public:
   LibScryptCompatAuthBlock();

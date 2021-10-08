@@ -34,9 +34,6 @@ struct TpmNotBoundToPcrAuthBlockState {
   // Optional, served as a TPM identity, useful when checking if the TPM is
   // the same one sealed the tpm_key.
   base::Optional<brillo::SecureBlob> tpm_public_key_hash;
-  // The wrapped reset seed to reset LE credentials.
-  // This is for in memory data holding only and will not be serialized.
-  base::Optional<brillo::SecureBlob> wrapped_reset_seed;
 };
 
 struct TpmBoundToPcrAuthBlockState {
@@ -51,9 +48,6 @@ struct TpmBoundToPcrAuthBlockState {
   // Optional, served as a TPM identity, useful when checking if the TPM is
   // the same one sealed the tpm_key.
   base::Optional<brillo::SecureBlob> tpm_public_key_hash;
-  // The wrapped reset seed to reset LE credentials.
-  // This is for in memory data holding only and will not be serialized.
-  base::Optional<brillo::SecureBlob> wrapped_reset_seed;
 };
 
 struct PinWeaverAuthBlockState {
@@ -73,8 +67,10 @@ struct PinWeaverAuthBlockState {
 // the LibScryptCompatAuthBlock header for a full explanation.
 struct LibScryptCompatAuthBlockState {
   // The wrapped filesystem keys.
+  // This is for in memory data holding only and will not be serialized.
   base::Optional<brillo::SecureBlob> wrapped_keyset;
   // The wrapped chaps keys.
+  // This is for in memory data holding only and will not be serialized.
   base::Optional<brillo::SecureBlob> wrapped_chaps_key;
   // The wrapped reset seed keys.
   // This is for in memory data holding only and will not be serialized.
