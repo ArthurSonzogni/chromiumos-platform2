@@ -3,13 +3,14 @@
 // found in the LICENSE file.
 
 #include "minios/screens/screen_welcome.h"
+#include "minios/utils.h"
 
 namespace minios {
 
 ScreenWelcome::ScreenWelcome(std::shared_ptr<DrawInterface> draw_utils,
                              ScreenControllerInterface* screen_controller)
     : ScreenBase(
-          /*button_count=*/2, /*index_=*/1, draw_utils, screen_controller) {}
+          /*button_count=*/3, /*index_=*/1, draw_utils, screen_controller) {}
 
 void ScreenWelcome::Show() {
   draw_utils_->MessageBaseScreen();
@@ -24,6 +25,7 @@ void ScreenWelcome::ShowButtons() {
       (-draw_utils_->GetFreconCanvasSize() / 2) + 318 + kBtnYStep * 2;
   draw_utils_->ShowButton("btn_next", kBtnY, (index_ == 1),
                           draw_utils_->GetDefaultButtonWidth(), false);
+  draw_utils_->ShowAdvancedOptionsButtons(index_ == 2);
 }
 
 void ScreenWelcome::OnKeyPress(int key_changed) {
@@ -36,6 +38,9 @@ void ScreenWelcome::OnKeyPress(int key_changed) {
         break;
       case 1:
         screen_controller_->OnForward(this);
+        break;
+      case 2:
+        TriggerShutdown();
         break;
     }
   } else {

@@ -21,6 +21,7 @@ const char kMenuGrey[] = "0x3F4042";
 const char kMenuDropdownFrameNavy[] = "0x435066";
 const char kMenuDropdownBackgroundBlack[] = "0x2D2E30";
 const char kMenuButtonFrameGrey[] = "0x9AA0A6";
+const char kAdvancedBtnBackground[] = "0x2B2F37";
 
 // Dimension Constants
 const int kButtonHeight = 32;
@@ -369,6 +370,50 @@ void DrawUtils::ShowLanguageMenu(bool is_selected) {
 
   ShowImage(screens_path_.Append("ic_dropdown.png"), kArrowX, kOffsetY);
   ShowMessage("language_folded", kTextX, kOffsetY);
+}
+
+void DrawUtils::ShowAdvancedOptionsButtons(bool focused) {
+  const int kOffsetY = frecon_canvas_size_ / 2 - 222;
+
+  int power_btn_width;
+  GetDimension("BUTTON_btn_power_off_WIDTH", &power_btn_width);
+  const int kInnerWidth = power_btn_width + 60;
+  const int kBtnCenter = (-frecon_canvas_size_ + kInnerWidth) / 2;
+
+  // Clear previous state.
+  ShowBox(kBtnCenter, kOffsetY, kInnerWidth + 40, kButtonHeight, kMenuBlack);
+
+  int left_padding_x = (-frecon_canvas_size_ - 12) / 2;
+  int right_padding_x = (-frecon_canvas_size_ + 8) / 2 + kInnerWidth;
+  if (IsLocaleRightToLeft())
+    std::swap(left_padding_x, right_padding_x);
+
+  if (focused) {
+    ShowImage(screens_path_.Append("adv_btn_bg_left.png"), left_padding_x,
+              kOffsetY);
+    ShowImage(screens_path_.Append("adv_btn_bg_right.png"), right_padding_x,
+              kOffsetY);
+    // Box outline created when button is focused.
+    ShowBox(kBtnCenter - 4, kOffsetY, kInnerWidth + 2, kButtonHeight,
+            kMenuBlue);
+    ShowBox(kBtnCenter - 4, kOffsetY, kInnerWidth + 2, kButtonHeight - 4,
+            kAdvancedBtnBackground);
+  }
+
+  std::string power_icon = focused ? "power_focused.png" : "power.png";
+  ShowImage(screens_path_.Append(power_icon), -frecon_canvas_size_ / 2 + 10,
+            kOffsetY);
+
+  std::string power_token = focused ? "btn_power_off_focused" : "btn_power_off";
+  ShowMessage(power_token, -frecon_canvas_size_ / 2 + 36 + power_btn_width / 2,
+              kOffsetY);
+
+  std::string arrow =
+      IsLocaleRightToLeft() ? "ic_dropleft-blue" : "ic_dropright-blue";
+  arrow = focused ? arrow.append("_focused.png") : arrow.append(".png");
+
+  ShowImage(screens_path_.Append(arrow),
+            -frecon_canvas_size_ / 2 + 58 + power_btn_width, kOffsetY);
 }
 
 void DrawUtils::ShowFooter() {

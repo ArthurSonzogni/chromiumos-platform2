@@ -7,13 +7,14 @@
 #include <base/logging.h>
 
 #include "minios/draw_utils.h"
+#include "minios/utils.h"
 
 namespace minios {
 // TODO(b/191139789): minios: clean up, combine generic screens into one.
 ScreenPermission::ScreenPermission(std::shared_ptr<DrawInterface> draw_utils,
                                    ScreenControllerInterface* screen_controller)
     : ScreenBase(
-          /*button_count=*/3, /*index_=*/1, draw_utils, screen_controller) {}
+          /*button_count=*/4, /*index_=*/1, draw_utils, screen_controller) {}
 
 void ScreenPermission::Show() {
   draw_utils_->MessageBaseScreen();
@@ -31,6 +32,7 @@ void ScreenPermission::ShowButtons() {
                           false);
   draw_utils_->ShowButton("btn_back", kBtnY + kBtnYStep, (index_ == 2),
                           default_width, false);
+  draw_utils_->ShowAdvancedOptionsButtons(index_ == 3);
 }
 
 void ScreenPermission::OnKeyPress(int key_changed) {
@@ -46,6 +48,9 @@ void ScreenPermission::OnKeyPress(int key_changed) {
         break;
       case 2:
         screen_controller_->OnBackward(this);
+        break;
+      case 3:
+        TriggerShutdown();
         break;
       default:
         LOG(FATAL) << "Index " << index_ << " is not valid.";

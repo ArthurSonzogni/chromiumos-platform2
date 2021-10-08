@@ -7,6 +7,7 @@
 #include <base/logging.h>
 
 #include "minios/draw_utils.h"
+#include "minios/utils.h"
 
 namespace minios {
 
@@ -14,7 +15,7 @@ ScreenError::ScreenError(ScreenType error_screen,
                          std::shared_ptr<DrawInterface> draw_utils,
                          ScreenControllerInterface* screen_controller)
     : ScreenBase(
-          /*button_count=*/3, /*index_=*/1, draw_utils, screen_controller),
+          /*button_count=*/4, /*index_=*/1, draw_utils, screen_controller),
       error_screen_(error_screen) {}
 
 std::string ScreenError::GetErrorMessage() {
@@ -64,6 +65,7 @@ void ScreenError::ShowButtons() {
   draw_utils_->ShowButton("btn_MiniOS_advanced_options", kBtnY + kBtnYStep,
                           index_ == 2, draw_utils_->GetDefaultButtonWidth(),
                           false);
+  draw_utils_->ShowAdvancedOptionsButtons(index_ == 3);
 }
 
 void ScreenError::OnKeyPress(int key_changed) {
@@ -79,6 +81,9 @@ void ScreenError::OnKeyPress(int key_changed) {
         break;
       case 2:
         screen_controller_->OnForward(this);
+        break;
+      case 3:
+        TriggerShutdown();
         break;
       default:
         LOG(FATAL) << "Index " << index_ << " is not valid.";

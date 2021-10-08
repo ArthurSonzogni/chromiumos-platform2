@@ -102,6 +102,8 @@ class DrawUtils : public DrawInterface {
 
   void ShowLanguageMenu(bool is_selected) override;
 
+  void ShowAdvancedOptionsButtons(bool focused) override;
+
   void LocaleChange(int selected_locale) override;
 
   void ShowProgressPercentage(double progress) override;

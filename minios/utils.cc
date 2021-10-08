@@ -12,6 +12,9 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 
+#include "minios/minios.h"
+#include "minios/process_manager.h"
+
 namespace minios {
 
 std::tuple<bool, std::string> ReadFileContentWithinRange(
@@ -121,6 +124,20 @@ bool GetCrosRegionData(ProcessManagerInterface* process_manager,
     *value = "";
     return false;
   }
+  return true;
+}
+
+bool TriggerShutdown() {
+  ProcessManager process_manager;
+  if (!process_manager.RunCommand({"/sbin/poweroff", "-f"},
+                                  ProcessManager::IORedirection{
+                                      .input = minios::kDebugConsole,
+                                      .output = minios::kDebugConsole,
+                                  })) {
+    LOG(ERROR) << "Could not trigger shutdown";
+    return false;
+  }
+  LOG(INFO) << "Shutdown requested.";
   return true;
 }
 

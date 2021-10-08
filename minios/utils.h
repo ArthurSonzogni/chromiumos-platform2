@@ -52,6 +52,8 @@ bool GetCrosRegionData(ProcessManagerInterface* process_manager,
 // failure.
 std::string GetKeyboardLayout(ProcessManagerInterface* process_manager);
 
+bool TriggerShutdown();
+
 }  // namespace minios
 
 #endif  // MINIOS_UTILS_H__

@@ -8,6 +8,7 @@
 #include <dbus/shill/dbus-constants.h>
 
 #include "minios/draw_utils.h"
+#include "minios/utils.h"
 
 namespace minios {
 
@@ -24,7 +25,7 @@ ScreenNetwork::ScreenNetwork(
     KeyReader* key_reader,
     ScreenControllerInterface* screen_controller)
     : ScreenBase(
-          /*button_count=*/3, /*index_=*/1, draw_utils, screen_controller),
+          /*button_count=*/4, /*index_=*/1, draw_utils, screen_controller),
       network_manager_(network_manager),
       key_reader_(key_reader),
       state_(NetworkState::kDropdownClosed) {
@@ -75,6 +76,7 @@ void ScreenNetwork::ShowButtons() {
       ShowCollapsedNetworkDropDown(index_ == 1);
       draw_utils_->ShowButton("btn_back", kOffsetY, (index_ == 2), btn_width,
                               false);
+      draw_utils_->ShowAdvancedOptionsButtons(index_ == 3);
       break;
     }
     case NetworkState::kDropdownOpen: {
@@ -88,7 +90,7 @@ void ScreenNetwork::ShowButtons() {
       break;
     }
     case NetworkState::kGetPassword: {
-      button_count_ = 3;
+      button_count_ = 4;
       draw_utils_->ShowLanguageMenu(index_ == 0);
       draw_utils_->ShowText(
           "Network: " + chosen_network_.ssid, (-frecon_canvas_size / 2) + 10,
@@ -98,6 +100,7 @@ void ScreenNetwork::ShowButtons() {
                               btn_width * 4, true);
       draw_utils_->ShowButton("btn_back", kBtnY + kBtnYStep, index_ == 2,
                               btn_width, false);
+      draw_utils_->ShowAdvancedOptionsButtons(index_ == 3);
       break;
     }
     default:
@@ -133,6 +136,9 @@ void ScreenNetwork::OnKeyPress(int key_changed) {
           break;
         case 2:
           screen_controller_->OnBackward(this);
+          break;
+        case 3:
+          TriggerShutdown();
           break;
       }
     } else if (state_ == NetworkState::kDropdownOpen) {
@@ -183,6 +189,9 @@ void ScreenNetwork::OnKeyPress(int key_changed) {
           chosen_network_ = NetworkManagerInterface::NetworkProperties{};
           Show();
           break;
+        case 3:
+          TriggerShutdown();
+          break;
       }
     }
   } else {
@@ -200,7 +209,7 @@ void ScreenNetwork::Reset() {
     state_ = NetworkState::kDropdownClosed;
   }
   index_ = 1;
-  button_count_ = 3;
+  button_count_ = 4;
 }
 
 ScreenType ScreenNetwork::GetType() {
