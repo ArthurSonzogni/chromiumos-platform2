@@ -48,10 +48,7 @@ DecodeEventThread::~DecodeEventThread() {
 }
 
 void DecodeEventThread::Start() {
-  // TODO(alexlau): don't hardcode this path, see comment in gpu_impl.cc.
-  gbm_device_fd_.reset(HANDLE_EINTR(open("/dev/dri/renderD128", O_RDWR)));
-  ASSERT_TRUE(gbm_device_fd_.is_valid());
-  gbm_device_.reset(gbm_create_device(gbm_device_fd_.get()));
+  gbm_device_ = arc::ScopedGbmDevice::Create();
   ASSERT_NE(gbm_device_.get(), nullptr);
 
   vda_format_ = caps_->output_formats[0];

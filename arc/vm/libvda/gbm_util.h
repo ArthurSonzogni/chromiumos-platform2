@@ -10,16 +10,36 @@
 #include <memory>
 #include <vector>
 
+#include <base/files/scoped_file.h>
 #include <gbm.h>
 
 #include "arc/vm/libvda/libvda_common.h"
 
 namespace arc {
 
-struct GbmDeviceDeleter {
-  void operator()(gbm_device* device) { gbm_device_destroy(device); }
+// Owns the gdm_device and its underlying file descriptor.
+class ScopedGbmDevice {
+ public:
+  // Creates the GBM device by searching the default path for renderer node.
+  static ScopedGbmDevice Create();
+
+  ScopedGbmDevice() = default;
+  ~ScopedGbmDevice();
+
+  ScopedGbmDevice(ScopedGbmDevice&& rvalue);
+  ScopedGbmDevice& operator=(ScopedGbmDevice&& rvalue);
+  ScopedGbmDevice(const ScopedGbmDevice&) = delete;
+  ScopedGbmDevice& operator=(const ScopedGbmDevice&) = delete;
+
+  gbm_device* get();
+  void reset();
+
+ private:
+  ScopedGbmDevice(gbm_device* device, base::ScopedFD device_fd);
+
+  gbm_device* device_ = nullptr;
+  base::ScopedFD device_fd_;
 };
-using ScopedGbmDevicePtr = std::unique_ptr<gbm_device, GbmDeviceDeleter>;
 
 struct GbmBoDeleter {
   void operator()(gbm_bo* bo) { gbm_bo_destroy(bo); }

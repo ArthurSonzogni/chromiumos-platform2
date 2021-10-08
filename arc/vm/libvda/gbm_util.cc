@@ -4,14 +4,69 @@
 
 #include "arc/vm/libvda/gbm_util.h"
 
+#include <cstdio>
 #include <fcntl.h>
+#include <utility>
 
-#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/posix/eintr_wrapper.h>
 
 namespace arc {
+
+// static
+ScopedGbmDevice ScopedGbmDevice::Create() {
+  // TODO(alexlau): don't hardcode this path, see
+  // http://cs/chromeos_public/src/platform/minigbm/cros_gralloc/cros_gralloc_driver.cc?l=29&rcl=cc35e699f36cce0f0b3a130b0d6ce4e2a393b373
+  base::ScopedFD fd(HANDLE_EINTR(open("/dev/dri/renderD128", O_RDWR)));
+  if (!fd.is_valid()) {
+    LOG(ERROR) << "Could not open vgem.";
+    return ScopedGbmDevice();
+  }
+
+  gbm_device* device = gbm_create_device(fd.get());
+  if (!device) {
+    LOG(ERROR) << "Could not create gbm device.";
+    return ScopedGbmDevice();
+  }
+
+  return ScopedGbmDevice(device, std::move(fd));
+}
+
+ScopedGbmDevice::ScopedGbmDevice(gbm_device* device, base::ScopedFD device_fd)
+    : device_(device), device_fd_(std::move(device_fd)) {
+  DCHECK(device_);
+  DCHECK(device_fd_.get());
+}
+
+ScopedGbmDevice::~ScopedGbmDevice() {
+  reset();
+}
+
+ScopedGbmDevice::ScopedGbmDevice(ScopedGbmDevice&& rvalue)
+    : device_(rvalue.device_), device_fd_(std::move(rvalue.device_fd_)) {
+  rvalue.device_ = nullptr;
+}
+
+ScopedGbmDevice& ScopedGbmDevice::operator=(ScopedGbmDevice&& rvalue) {
+  reset();
+  device_ = rvalue.device_;
+  device_fd_ = std::move(rvalue.device_fd_);
+  rvalue.device_ = nullptr;
+  return *this;
+}
+
+gbm_device* ScopedGbmDevice::get() {
+  return device_;
+}
+
+void ScopedGbmDevice::reset() {
+  if (device_) {
+    gbm_device_destroy(device_);
+    device_ = nullptr;
+  }
+  device_fd_.reset();
+}
 
 uint32_t ConvertPixelFormatToGbmFormat(video_pixel_format_t format) {
   switch (format) {
@@ -26,19 +81,9 @@ uint32_t ConvertPixelFormatToGbmFormat(video_pixel_format_t format) {
 
 std::vector<video_pixel_format_t> GetSupportedRawFormats(
     GbmUsageType usage_type) {
-  // TODO(alexlau): don't hardcode this path, see
-  // http://cs/chromeos_public/src/platform/minigbm/cros_gralloc/cros_gralloc_driver.cc?l=29&rcl=cc35e699f36cce0f0b3a130b0d6ce4e2a393b373
-  base::ScopedFD fd(HANDLE_EINTR(open("/dev/dri/renderD128", O_RDWR)));
-  if (!fd.is_valid()) {
-    LOG(ERROR) << "Could not open vgem.";
+  auto device = ScopedGbmDevice::Create();
+  if (!device.get())
     return {};
-  }
-
-  arc::ScopedGbmDevicePtr device(gbm_create_device(fd.get()));
-  if (!device.get()) {
-    LOG(ERROR) << "Could not create gbm device.";
-    return {};
-  }
 
   uint32_t usage_flags = GBM_BO_USE_TEXTURING;
   switch (usage_type) {

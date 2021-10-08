@@ -74,8 +74,7 @@ class DecodeEventThread {
   // (crbug.com/909719).
   base::ThreadChecker thread_checker_;
 
-  base::ScopedFD gbm_device_fd_;
-  arc::ScopedGbmDevicePtr gbm_device_;
+  arc::ScopedGbmDevice gbm_device_;
   const vda_capabilities_t* const caps_;
   vda_pixel_format_t vda_format_;
   uint32_t gbm_format_;
