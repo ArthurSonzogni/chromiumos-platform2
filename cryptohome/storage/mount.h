@@ -77,7 +77,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   virtual ~Mount();
 
   // Gets the uid/gid of the default user and loads the system salt
-  virtual bool Init();
+  virtual bool Init(bool use_init_namespace = false);
 
   // Attempts to mount the cryptohome for the given username
   //
@@ -147,20 +147,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   void set_bind_mount_downloads(bool bind) { bind_mount_downloads_ = bind; }
 
  protected:
-  // Only used in tests.
-  void set_mount_guest_session_out_of_process(bool oop) {
-    mount_guest_session_out_of_process_ = oop;
-  }
-  void set_mount_ephemeral_session_out_of_process(bool oop) {
-    mount_ephemeral_session_out_of_process_ = oop;
-  }
-  void set_mount_non_ephemeral_session_out_of_process(bool oop) {
-    mount_non_ephemeral_session_out_of_process_ = oop;
-  }
-  void set_mount_guest_session_non_root_namespace(bool non_root_ns) {
-    mount_guest_session_non_root_namespace_ = non_root_ns;
-  }
-
   FRIEND_TEST(ServiceInterfaceTest, CheckAsyncTestCredentials);
   FRIEND_TEST(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest);
   friend class MakeTests;
@@ -286,17 +272,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // |mounter_| encapsulates mount(2)/umount(2) operations required to perform
   // and tear down cryptohome mounts. It performs these operations in-process.
   std::unique_ptr<MountHelper> mounter_;
-
-  // |out_of_process_mounter_| also encapsulates mount(2) and umount(2)
-  // operations, but will perform these operations out-of-process.
-  // This is currently only used for Guest sessions.
-  bool mount_guest_session_out_of_process_;
-  // Use the |out_of_process_mounter_| for non-Guest ephemeral sessions.
-  bool mount_ephemeral_session_out_of_process_;
-  // Use the |out_of_process_mounter_| for non-ephemeral sessions.
-  bool mount_non_ephemeral_session_out_of_process_;
-  bool mount_guest_session_non_root_namespace_;
   std::unique_ptr<OutOfProcessMountHelper> out_of_process_mounter_;
+  MountHelperInterface* active_mounter_;
 
   // Represents the user's cryptohome vault.
   std::unique_ptr<CryptohomeVault> user_cryptohome_vault_;

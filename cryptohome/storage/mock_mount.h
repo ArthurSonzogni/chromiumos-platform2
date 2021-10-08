@@ -19,7 +19,7 @@ class MockMount : public Mount {
  public:
   MockMount() = default;
   ~MockMount() override = default;
-  MOCK_METHOD(bool, Init, (), (override));
+  MOCK_METHOD(bool, Init, (bool), (override));
   MOCK_METHOD(bool,
               MountCryptohome,
               (const std::string&,

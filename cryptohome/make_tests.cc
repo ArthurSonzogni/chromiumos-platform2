@@ -233,7 +233,7 @@ void TestUser::GenerateCredentials(bool force_ecryptfs) {
   EXPECT_CALL(platform, DirectoryExists(ShadowRoot()))
       .WillRepeatedly(Return(true));
   platform.GetFake()->SetStandardUsersAndGroups();
-  mount->Init();
+  mount->Init(/*use_init_namespace=*/true);
 
   cryptohome::Crypto::PasswordToPasskey(password, sec_salt, &passkey);
   Credentials local_credentials(username, passkey);

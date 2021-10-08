@@ -136,12 +136,6 @@ class MountTest
     platform_.GetFake()->SetStandardUsersAndGroups();
 
     mount_ = new Mount(&platform_, homedirs_.get());
-
-    // Perform mounts in-process.
-    mount_->set_mount_guest_session_out_of_process(false);
-    mount_->set_mount_ephemeral_session_out_of_process(false);
-    mount_->set_mount_non_ephemeral_session_out_of_process(false);
-    mount_->set_mount_guest_session_non_root_namespace(false);
   }
 
   void TearDown() {
@@ -154,7 +148,7 @@ class MountTest
                          ShouldTestEcryptfs());
   }
 
-  bool DoMountInit() { return mount_->Init(); }
+  bool DoMountInit() { return mount_->Init(/*use_init_namespace=*/true); }
 
   bool LoadSerializedKeyset(const brillo::Blob& contents,
                             cryptohome::SerializedVaultKeyset* serialized) {
@@ -450,7 +444,7 @@ TEST_P(MountTest, BadInitTest) {
   // Just fail some initialization calls.
   EXPECT_CALL(platform_, GetUserId(_, _, _)).WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, GetGroupId(_, _)).WillRepeatedly(Return(false));
-  EXPECT_FALSE(mount_->Init());
+  EXPECT_FALSE(mount_->Init(/*use_init_namespace=*/true));
 }
 
 TEST_P(MountTest, MountCryptohomeHasPrivileges) {
@@ -733,7 +727,7 @@ class ChapsDirectoryTest : public ::testing::Test {
         std::make_unique<HomeDirs>(&platform_, salt, nullptr, remove_cb);
 
     mount_ = new Mount(&platform_, homedirs_.get());
-    mount_->Init();
+    mount_->Init(/*use_init_namespace=*/true);
     mount_->chaps_user_ = fake_platform::kChapsUID;
     mount_->default_access_group_ = fake_platform::kSharedGID;
     // By default, set stats to the expected values.

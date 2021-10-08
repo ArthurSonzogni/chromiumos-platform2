@@ -1990,7 +1990,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
 
   InitializeUserDataAuth();
 
-  EXPECT_CALL(*mount, Init()).WillOnce(Return(true));
+  EXPECT_CALL(*mount, Init(_)).WillOnce(Return(true));
   EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
   auto vk = std::make_unique<VaultKeyset>();
   EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
@@ -2092,7 +2092,7 @@ TEST_F(UserDataAuthTest,
 
   InitializeUserDataAuth();
 
-  EXPECT_CALL(*mount, Init()).WillOnce(Return(true));
+  EXPECT_CALL(*mount, Init(_)).WillOnce(Return(true));
   EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
   auto vk = std::make_unique<VaultKeyset>();
   EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
@@ -2446,7 +2446,7 @@ TEST_F(UserDataAuthExTest, MountGuestValidity) {
   EXPECT_CALL(mount_factory_, New(_, _))
       .WillOnce(Invoke([](Platform*, HomeDirs*) {
         NiceMock<MockMount>* res = new NiceMock<MockMount>();
-        EXPECT_CALL(*res, Init()).WillOnce(Return(true));
+        EXPECT_CALL(*res, Init(_)).WillOnce(Return(true));
         EXPECT_CALL(*res, MountEphemeralCryptohome(kGuestUserName))
             .WillOnce(Return(MOUNT_ERROR_NONE));
         return reinterpret_cast<Mount*>(res);
@@ -2509,7 +2509,7 @@ TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
   EXPECT_CALL(mount_factory_, New(_, _))
       .WillOnce(Invoke([](Platform*, HomeDirs*) {
         NiceMock<MockMount>* res = new NiceMock<MockMount>();
-        EXPECT_CALL(*res, Init()).WillOnce(Return(true));
+        EXPECT_CALL(*res, Init(_)).WillOnce(Return(true));
         EXPECT_CALL(*res, MountEphemeralCryptohome(kGuestUserName))
             .WillOnce(Return(MOUNT_ERROR_FATAL));
         return reinterpret_cast<Mount*>(res);

@@ -96,11 +96,8 @@ Mount::Mount(Platform* platform, HomeDirs* homedirs)
       legacy_mount_(true),
       bind_mount_downloads_(true),
       mount_type_(MountType::NONE),
-      dircrypto_migration_stopped_condition_(&active_dircrypto_migrator_lock_),
-      mount_guest_session_out_of_process_(true),
-      mount_ephemeral_session_out_of_process_(true),
-      mount_non_ephemeral_session_out_of_process_(true),
-      mount_guest_session_non_root_namespace_(true) {}
+      dircrypto_migration_stopped_condition_(&active_dircrypto_migrator_lock_) {
+}
 
 Mount::Mount() : Mount(nullptr, nullptr) {}
 
@@ -109,7 +106,7 @@ Mount::~Mount() {
     UnmountCryptohome();
 }
 
-bool Mount::Init() {
+bool Mount::Init(bool use_init_namespace) {
   bool result = true;
 
   // Get the user id and group id of the default user
@@ -140,24 +137,22 @@ bool Mount::Init() {
   mounter_.reset(new MountHelper(
       default_user_, default_group_, default_access_group_, system_salt_,
       legacy_mount_, bind_mount_downloads_, platform_));
+  active_mounter_ = mounter_.get();
 
   //  cryptohome_namespace_mounter enters the Chrome mount namespace and mounts
   //  the user cryptohome in that mount namespace if the flags are enabled.
   //  Chrome mount namespace is created by session_manager. cryptohome knows
   //  the path at which this mount namespace is created and uses that path to
   //  enter it.
-  std::unique_ptr<MountNamespace> chrome_mnt_ns;
-  if (mount_guest_session_non_root_namespace_ || IsolateUserSession()) {
-    chrome_mnt_ns = std::make_unique<MountNamespace>(
-        base::FilePath(kUserSessionMountNamespacePath), platform_);
-  }
+  if (!use_init_namespace) {
+    std::unique_ptr<MountNamespace> chrome_mnt_ns =
+        std::make_unique<MountNamespace>(
+            base::FilePath(kUserSessionMountNamespacePath), platform_);
 
-  if (mount_guest_session_out_of_process_ ||
-      mount_non_ephemeral_session_out_of_process_ ||
-      mount_ephemeral_session_out_of_process_) {
     out_of_process_mounter_.reset(new OutOfProcessMountHelper(
         system_salt_, std::move(chrome_mnt_ns), legacy_mount_,
         bind_mount_downloads_, platform_));
+    active_mounter_ = out_of_process_mounter_.get();
   }
 
   return result;
@@ -166,35 +161,14 @@ bool Mount::Init() {
 MountError Mount::MountEphemeralCryptohome(const std::string& username) {
   username_ = username;
 
-  MountHelperInterface* ephemeral_mounter = nullptr;
-  base::OnceClosure cleanup;
-  if (mount_ephemeral_session_out_of_process_) {
-    // Ephemeral cryptohomes for non-Guest ephemeral sessions are mounted
-    // out-of-process.
-    ephemeral_mounter = out_of_process_mounter_.get();
-    // Ephemeral mounts don't require dropping keys since they're not dircrypto
-    // mounts.
-    // This callback will be executed in the destructor at the latest so
-    // |out_of_process_mounter_| will always be valid. Error reporting is done
-    // in the helper process in cryptohome_namespace_mounter.cc.
-    cleanup = base::BindOnce(
-        base::IgnoreResult(&OutOfProcessMountHelper::TearDownEphemeralMount),
-        base::Unretained(out_of_process_mounter_.get()));
-  } else {
-    ephemeral_mounter = mounter_.get();
-    // This callback will be executed in the destructor at the latest so
-    // |this| will always be valid.
-    cleanup =
-        base::BindOnce(base::IgnoreResult(&MountHelper::TearDownEphemeralMount),
-                       base::Unretained(mounter_.get()));
-  }
-
-  base::ScopedClosureRunner cleanup_runner(std::move(cleanup));
+  base::ScopedClosureRunner cleanup_runner(base::BindOnce(
+      base::IgnoreResult(&MountHelperInterface::TearDownEphemeralMount),
+      base::Unretained(active_mounter_)));
 
   // Ephemeral cryptohome can't be mounted twice.
-  CHECK(ephemeral_mounter->CanPerformEphemeralMount());
+  CHECK(active_mounter_->CanPerformEphemeralMount());
 
-  if (!ephemeral_mounter->PerformEphemeralMount(username)) {
+  if (!active_mounter_->PerformEphemeralMount(username)) {
     LOG(ERROR) << "PerformEphemeralMount() failed, aborting ephemeral mount";
     return MOUNT_ERROR_FATAL;
   }
@@ -250,13 +224,6 @@ bool Mount::MountCryptohome(const std::string& username,
     return false;
   }
 
-  MountHelperInterface* helper;
-  if (mount_non_ephemeral_session_out_of_process_) {
-    helper = out_of_process_mounter_.get();
-  } else {
-    helper = mounter_.get();
-  }
-
   // Set up the cryptohome vault for mount.
   *mount_error =
       user_cryptohome_vault_->Setup(file_system_keyset.Key(), is_pristine);
@@ -271,7 +238,7 @@ bool Mount::MountCryptohome(const std::string& username,
   base::ScopedClosureRunner unmount_and_drop_keys_runner(base::BindOnce(
       &Mount::UnmountAndDropKeys, base::Unretained(this),
       base::BindOnce(&MountHelperInterface::TearDownNonEphemeralMount,
-                     base::Unretained(helper))));
+                     base::Unretained(active_mounter_))));
 
   // Mount cryptohome
   // /home/.shadow: owned by root
@@ -303,8 +270,9 @@ bool Mount::MountCryptohome(const std::string& username,
                                      mount_args.to_migrate_from_ecryptfs};
 
   cryptohome::ReportTimerStart(cryptohome::kPerformMountTimer);
-  if (!helper->PerformMount(mount_opts, username_, key_signature,
-                            fnek_signature, is_pristine, mount_error)) {
+  if (!active_mounter_->PerformMount(mount_opts, username_, key_signature,
+                                     fnek_signature, is_pristine,
+                                     mount_error)) {
     LOG(ERROR) << "MountHelper::PerformMount failed, error = " << *mount_error;
     return false;
   }
@@ -466,18 +434,10 @@ bool Mount::MigrateToDircrypto(
     active_dircrypto_migrator_ = &migrator;
   }
   bool success = migrator.Migrate(callback);
-  // This closure will be run immediately so |mounter_|/
-  // |out_of_process_mounter_| will be valid.
-  MountHelperInterface* helper;
-  if (mount_non_ephemeral_session_out_of_process_) {
-    helper = out_of_process_mounter_.get();
-  } else {
-    helper = mounter_.get();
-  }
 
   UnmountAndDropKeys(
       base::BindOnce(&MountHelperInterface::TearDownNonEphemeralMount,
-                     base::Unretained(helper)));
+                     base::Unretained(active_mounter_)));
   {  // Signal the waiting thread.
     base::AutoLock lock(active_dircrypto_migrator_lock_);
     active_dircrypto_migrator_ = nullptr;
