@@ -91,12 +91,14 @@ bool DiskCleanup::FreeDiskSpace() {
     case DiskCleanup::FreeSpaceState::kAboveTarget:
     case DiskCleanup::FreeSpaceState::kAboveThreshold:
       // Already have enough space. No need to clean up.
+      VLOG(1) << "Skipping cleanup with " << *free_space << " space available";
       ReportDiskCleanupResult(DiskCleanupResult::kDiskCleanupSkip);
       return true;
 
     case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
     case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
-      // trigger cleanup
+      // Trigger cleanup.
+      VLOG(1) << "Starting cleanup with " << *free_space << " space available";
       break;
 
     case DiskCleanup::FreeSpaceState::kError:

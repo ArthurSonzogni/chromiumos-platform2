@@ -4,6 +4,8 @@
 
 #include "cryptohome/cleanup/low_disk_space_handler.h"
 
+#include <type_traits>
+
 #include <base/check.h>
 #include <base/logging.h>
 
@@ -83,14 +85,20 @@ void LowDiskSpaceHandler::LowDiskSpaceCheck() {
   auto free_space_state = cleanup_->GetFreeDiskSpaceState(free_disk_space);
   if (free_space_state == DiskCleanup::FreeSpaceState::kError) {
     LOG(ERROR) << "Error getting free disk space";
-  } else if (free_space_state ==
-                 DiskCleanup::FreeSpaceState::kNeedNormalCleanup ||
-             free_space_state ==
-                 DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup) {
-    LOG(INFO) << "Available disk space: |" << free_disk_space.value()
-              << "| bytes.  Emitting low disk space signal.";
-    low_disk_space_callback_.Run(free_disk_space.value());
-    low_disk_space_signal_emitted = true;
+  } else {
+    VLOG(1) << "Available free disk space " << *free_disk_space
+            << "; FreeSpaceState="
+            << static_cast<std::underlying_type_t<DiskCleanup::FreeSpaceState>>(
+                   free_space_state);
+
+    if (free_space_state == DiskCleanup::FreeSpaceState::kNeedNormalCleanup ||
+        free_space_state ==
+            DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup) {
+      LOG(INFO) << "Available disk space: |" << free_disk_space.value()
+                << "| bytes.  Emitting low disk space signal.";
+      low_disk_space_callback_.Run(free_disk_space.value());
+      low_disk_space_signal_emitted = true;
+    }
   }
 
   const base::Time current_time = platform_->GetCurrentTime();
