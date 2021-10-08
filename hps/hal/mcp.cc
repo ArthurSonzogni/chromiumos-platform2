@@ -35,11 +35,10 @@ static const int kDelay = 10;          // Milliseconds delay between retries.
  * Calculate write block size.
  * The I2C header is 4 bytes.
  * 1 byte is reserved for the I2C cmd byte, 4 for the 32 bit address.
- * The value should be a multiple of 8 since the flash writing
- * is generally done in 64 bit blocks.
+ * The value should be a power of 2
+ * 48 == ((hps::kMcpTransferSize - 4 - sizeof(uint32_t) - 1) / 8) * 8;
  */
-static constexpr size_t kBlockSize =
-    ((hps::kMcpTransferSize - 4 - sizeof(uint32_t) - 1) / 8) * 8;
+static constexpr size_t kBlockSize = 32;
 
 // Command byte to send to MCP2221
 enum : uint8_t {

@@ -44,6 +44,7 @@ class DevInterface {
    * Return the maximum download block size (in bytes).
    * This value is the actual data to be written, not including the
    * write command byte or the 4 byte address header.
+   * This must be a power of two.
    */
   virtual size_t BlockSizeBytes();
 
