@@ -94,10 +94,10 @@ bool UinputDevice::Init() {
 
 bool UinputDevice::SendEvent(int value) const {
   // Send an input event to the kernel through this uinput device.
-  struct input_event ev;
-  ev.type = EV_KEY;
-  ev.code = KEY_WAKEUP;
-  ev.value = value;
+  struct input_event ev = {.time = base::Time::Now().ToTimeVal(),
+                           .type = EV_KEY,
+                           .code = KEY_WAKEUP,
+                           .value = value};
 
   int bytes_written =
       TEMP_FAILURE_RETRY(write(uinput_fd_.get(), &ev, sizeof(ev)));
