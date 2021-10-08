@@ -331,7 +331,8 @@ TEST_F(KeysetManagementTest, AreCredentialsValid) {
   // SETUP
 
   KeysetSetUpWithoutKeyData();
-  Credentials wrong_credentials(users_[0].name, brillo::SecureBlob("wrong"));
+  Credentials wrong_credentials(users_[0].name,
+                                brillo::SecureBlob(kWrongPasskey));
 
   // TEST
   ASSERT_TRUE(keyset_management_->AreCredentialsValid(users_[0].credentials));
@@ -368,7 +369,7 @@ TEST_F(KeysetManagementTest, AddKeysetSuccess) {
 
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  brillo::SecureBlob new_passkey("new pass");
+  brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
 
   // TEST
@@ -395,7 +396,7 @@ TEST_F(KeysetManagementTest, AddKeysetClobberSuccess) {
 
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  brillo::SecureBlob new_passkey("new pass");
+  brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
   // Re-use key data from existing credentials to cause label collision.
   KeyData key_data = users_[0].credentials.key_data();
@@ -427,7 +428,7 @@ TEST_F(KeysetManagementTest, AddKeysetNoClobber) {
 
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  brillo::SecureBlob new_passkey("new pass");
+  brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
   // Re-use key data from existing credentials to cause label collision.
   KeyData key_data = users_[0].credentials.key_data();
@@ -459,7 +460,7 @@ TEST_F(KeysetManagementTest, AddKeysetNonExistentLabel) {
 
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  brillo::SecureBlob new_passkey("new pass");
+  brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
 
   Credentials not_existing_label_credentials = users_[0].credentials;
@@ -492,10 +493,10 @@ TEST_F(KeysetManagementTest, AddKeysetInvalidCreds) {
 
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  brillo::SecureBlob new_passkey("new pass");
+  brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
 
-  brillo::SecureBlob wrong_passkey("wrong");
+  brillo::SecureBlob wrong_passkey(kWrongPasskey);
   Credentials wrong_credentials(users_[0].name, wrong_passkey);
 
   // TEST
@@ -523,7 +524,7 @@ TEST_F(KeysetManagementTest, AddKeysetNoFreeIndices) {
 
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  brillo::SecureBlob new_passkey("new pass");
+  brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
 
   // Use mock not to literally create a hundread files.
@@ -559,7 +560,7 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFail) {
 
   KeysetSetUpWithoutKeyData();
 
-  brillo::SecureBlob new_passkey("new pass");
+  brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
 
   // Mock vk to inject encryption failure on new keyset.
@@ -601,7 +602,7 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
 
   KeysetSetUpWithoutKeyData();
 
-  brillo::SecureBlob new_passkey("new pass");
+  brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
 
   // Mock vk to inject encryption failure on new keyset.
@@ -644,7 +645,7 @@ TEST_F(KeysetManagementTest, RemoveKeysetSuccess) {
 
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  brillo::SecureBlob new_passkey("new path");
+  brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
 
   int index = -1;
@@ -725,7 +726,7 @@ TEST_F(KeysetManagementTest, RemoveKeysetInvalidCreds) {
 
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  brillo::SecureBlob wrong_passkey("wrong");
+  brillo::SecureBlob wrong_passkey(kWrongPasskey);
   Credentials wrong_credentials(users_[0].name, wrong_passkey);
 
   // TEST
@@ -750,7 +751,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabels) {
 
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  brillo::SecureBlob new_passkey("new path");
+  brillo::SecureBlob new_passkey(kNewPasskey);
   KeyData key_data;
   key_data.set_label(kAltPasswordLabel);
 
@@ -798,7 +799,7 @@ TEST_F(KeysetManagementTest, ForceRemoveKeysetSuccess) {
 
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  brillo::SecureBlob new_passkey("new pass");
+  brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
   brillo::SecureBlob new_passkey2("new pass2");
   Credentials new_credentials2(users_[0].name, new_passkey2);
@@ -910,7 +911,7 @@ TEST_F(KeysetManagementTest, MoveKeysetFail) {
 
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  brillo::SecureBlob new_passkey("new pass");
+  brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
 
   int index = -1;
@@ -1156,7 +1157,7 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
   KeysetSetUpWithKeyData(DefaultKeyData());
 
   // Setup pin credentials.
-  brillo::SecureBlob new_passkey("123456");
+  brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
   KeyData key_data = DefaultLEKeyData();
   new_credentials.set_key_data(key_data);
