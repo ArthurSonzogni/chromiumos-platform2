@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
-// Next MinVersion: 1
+// Next MinVersion: 2
 //
 // Definitions for the NetworkDiagnosticsRoutines API exposed by the browser.
 // This API is consumed by cros_healthd to retrieve network diagnostics from
@@ -245,6 +245,18 @@ union RoutineProblems {
   array<ArcPingProblem> arc_ping_problems;
 };
 
+// Result values specific to HttpsLatency routine.
+[Stable]
+struct HttpsLatencyResultValue {
+  mojo_base.mojom.TimeDelta latency;
+};
+
+// Union of routine specific result values if any.
+[Stable]
+union RoutineResultValue {
+  HttpsLatencyResultValue https_latency_result_value;
+};
+
 // A single routine's result.
 [Stable]
 struct RoutineResult {
@@ -254,6 +266,8 @@ struct RoutineResult {
   RoutineProblems problems;
   // The timestamp when the routine was completed.
   mojo_base.mojom.Time timestamp;
+  // Routine specific result values.
+  [MinVersion=1] RoutineResultValue? result_value;
 };
 
 // This interface is to be used by any clients that need to run specific
