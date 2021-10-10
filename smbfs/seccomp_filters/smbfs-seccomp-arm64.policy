@@ -56,6 +56,7 @@ newfstatat: 1
 openat: 1
 pipe2: 1
 ppoll: 1
+pread64: 1
 prctl: arg0 == PR_SET_NAME
 prlimit64: 1
 pwrite64: 1

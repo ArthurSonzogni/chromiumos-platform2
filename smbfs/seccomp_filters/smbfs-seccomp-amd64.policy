@@ -72,6 +72,7 @@ pipe: 1
 pipe2: 1
 poll: 1
 prctl: arg0 == PR_SET_NAME
+pread64: 1
 prlimit64: arg2 == 0 && arg3 != 0
 pwrite64: 1
 read: 1
