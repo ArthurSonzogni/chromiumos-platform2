@@ -301,6 +301,9 @@ class MockPlatform : public Platform {
               (const std::vector<base::FilePath>&),
               (override));
 
+  MOCK_METHOD(base::FilePath, AttachLoop, (const base::FilePath&), (override));
+  MOCK_METHOD(bool, DetachLoop, (const base::FilePath&), (override));
+
   // Calls which do not have a corresponding fake in FakePlatform.
 
   MOCK_METHOD(ExpireMountResult,
@@ -385,8 +388,6 @@ class MockPlatform : public Platform {
   MOCK_METHOD(bool, FirmwareWriteProtected, (), (override));
   MOCK_METHOD(std::string, GetHardwareID, (), (override));
   MOCK_METHOD(bool, GetBlkSize, (const base::FilePath&, uint64_t*), (override));
-  MOCK_METHOD(base::FilePath, AttachLoop, (const base::FilePath&), (override));
-  MOCK_METHOD(bool, DetachLoop, (const base::FilePath&), (override));
   MOCK_METHOD(std::vector<LoopDevice>, GetAttachedLoopDevices, (), (override));
   MOCK_METHOD(bool,
               FormatExt4,
