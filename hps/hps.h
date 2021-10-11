@@ -5,6 +5,7 @@
 #ifndef HPS_HPS_H_
 #define HPS_HPS_H_
 
+#include <base/callback.h>
 #include <base/files/file_path.h>
 
 #include "hps/hps_reg.h"
@@ -68,6 +69,17 @@ class HPS {
   // Returns true on success, false on failure.
   //
   virtual bool Download(hps::HpsBank bank, const base::FilePath& source) = 0;
+
+  //
+  // Set a callback to be notified of incremental download progress. The
+  // callback will be called periodically during download operations.
+  //
+  using DownloadObserver =
+      base::RepeatingCallback<void(const base::FilePath& /*file_path*/,
+                                   uint64_t /*total_bytes*/,
+                                   uint64_t /*downloaded_bytes*/,
+                                   base::TimeDelta /*elapsed_time*/)>;
+  virtual void SetDownloadObserver(DownloadObserver) = 0;
 };
 
 }  // namespace hps

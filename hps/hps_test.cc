@@ -47,6 +47,13 @@ class HPSTest : public testing::Test {
   std::unique_ptr<hps::HPS_impl> hps_;
 };
 
+class MockDownloadObserver {
+ public:
+  MOCK_METHOD(void,
+              OnProgress,
+              (const base::FilePath&, uint64_t, uint64_t, base::TimeDelta));
+};
+
 /*
  * Check for a magic number.
  */
@@ -132,6 +139,40 @@ TEST_F(HPSTest, DownloadSmallBlocks) {
   ASSERT_TRUE(hps_->Download(hps::HpsBank::kMcuFlash, f));
   // Make sure the right amount was written.
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
+}
+
+/*
+ * Observing download progress.
+ */
+TEST_F(HPSTest, DownloadProgressObserver) {
+  MockDownloadObserver observer;
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  auto f1 = temp_dir.GetPath().Append("blob1");
+  auto f2 = temp_dir.GetPath().Append("blob2");
+  const int kBlockSize = 256;
+  const int kLen1 = 1000;
+  const int kLen2 = 128;
+  CreateBlob(f1, kLen1);
+  CreateBlob(f2, kLen2);
+  fake_->SetBlockSizeBytes(kBlockSize);
+  hps_->SetDownloadObserver(base::BindRepeating(
+      &MockDownloadObserver::OnProgress, base::Unretained(&observer)));
+  {
+    // Download a file that is larger than the block size.
+    testing::InSequence s;
+    EXPECT_CALL(observer, OnProgress(f1, kLen1, kBlockSize, _));
+    EXPECT_CALL(observer, OnProgress(f1, kLen1, kBlockSize * 2, _));
+    EXPECT_CALL(observer, OnProgress(f1, kLen1, kBlockSize * 3, _));
+    EXPECT_CALL(observer, OnProgress(f1, kLen1, kLen1, _));
+    ASSERT_TRUE(hps_->Download(hps::HpsBank::kMcuFlash, f1));
+  }
+  {
+    // Download a file that is smaller than the block size.
+    testing::InSequence s;
+    EXPECT_CALL(observer, OnProgress(f2, kLen2, kLen2, _));
+    ASSERT_TRUE(hps_->Download(hps::HpsBank::kMcuFlash, f2));
+  }
 }
 
 /*

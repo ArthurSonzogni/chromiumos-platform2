@@ -361,6 +361,11 @@ bool HPS_impl::Download(hps::HpsBank bank, const base::FilePath& source) {
   return this->WriteFile(ibank, source);
 }
 
+void HPS_impl::SetDownloadObserver(DownloadObserver observer) {
+  base::AutoLock l(this->lock_);
+  this->download_observer_ = std::move(observer);
+}
+
 /*
  * Write the file to the bank indicated.
  */
@@ -373,23 +378,26 @@ bool HPS_impl::WriteFile(int bank, const base::FilePath& source) {
     return false;
   }
   int bytes = 0;
+  int64_t total_bytes = file.GetLength();
   uint32_t address = 0;
   int rd;
+  base::TimeTicks start_time = base::TimeTicks::Now();
+  /*
+   * Leave room for a 32 bit address at the start of the block to be written.
+   * The address is updated for each block to indicate
+   * where this block is to be written.
+   * The format of the data block is:
+   *    4 bytes of address in big endian format
+   *    data
+   */
+  auto buf = std::make_unique<uint8_t[]>(this->device_->BlockSizeBytes() +
+                                         sizeof(uint32_t));
+
   do {
     if (!this->WaitForBankReady(bank)) {
       LOG(ERROR) << "WriteFile: bank not ready: " << bank;
       return false;
     }
-    /*
-     * Leave room for a 32 bit address at the start of the block to be written.
-     * The address is updated for each block to indicate
-     * where this block is to be written.
-     * The format of the data block is:
-     *    4 bytes of address in big endian format
-     *    data
-     */
-    auto buf = std::make_unique<uint8_t[]>(this->device_->BlockSizeBytes() +
-                                           sizeof(uint32_t));
     buf[0] = address >> 24;
     buf[1] = address >> 16;
     buf[2] = address >> 8;
@@ -404,6 +412,10 @@ bool HPS_impl::WriteFile(int bank, const base::FilePath& source) {
       }
       address += rd;
       bytes += rd;
+      if (download_observer_) {
+        download_observer_.Run(source, static_cast<uint32_t>(total_bytes),
+                               bytes, base::TimeTicks::Now() - start_time);
+      }
     }
   } while (rd > 0);  // A read returning 0 indicates EOF.
   VLOG(1) << "Wrote " << bytes << " bytes from " << source;

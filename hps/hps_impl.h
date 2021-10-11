@@ -45,6 +45,7 @@ class HPS_impl : public HPS {
   FeatureResult Result(int feature) override;
   DevInterface* Device() override { return this->device_.get(); }
   bool Download(hps::HpsBank bank, const base::FilePath& source) override;
+  void SetDownloadObserver(DownloadObserver) override;
 
   void SetMetricsLibraryForTesting(
       std::unique_ptr<MetricsLibraryInterface> metrics_lib) {
@@ -86,6 +87,7 @@ class HPS_impl : public HPS {
   uint16_t feat_enabled_;
   base::FilePath mcu_blob_;
   base::FilePath spi_blob_;
+  DownloadObserver download_observer_{};
 };
 
 }  // namespace hps

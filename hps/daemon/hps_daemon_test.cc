@@ -38,6 +38,7 @@ class MockHps : public HPS {
   MOCK_METHOD(FeatureResult, Result, (int), (override));
   MOCK_METHOD(DevInterface*, Device, (), (override));
   MOCK_METHOD(bool, Download, (HpsBank, const base::FilePath&), (override));
+  MOCK_METHOD(void, SetDownloadObserver, (DownloadObserver), (override));
 };
 
 class HpsDaemonTest : public testing::Test {

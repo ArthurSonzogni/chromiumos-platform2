@@ -13,6 +13,7 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 
 #include <base/check.h>
 #include <base/command_line.h>
@@ -33,6 +34,81 @@
 
 // Static allocation of global command list head.
 Command* Command::list_;
+
+namespace {
+
+class DownloadProgressIndicator {
+ public:
+  void Update(const base::FilePath& file_path,
+              uint64_t total_bytes,
+              uint64_t downloaded_bytes,
+              base::TimeDelta elapsed_time) {
+    bool done = downloaded_bytes == total_bytes;
+
+    // Don't flood the console too frequently.
+    if (!done && (elapsed_time - last_update_).InMilliseconds() < 100)
+      return;
+    last_update_ = elapsed_time;
+
+    constexpr const char kMessage[] = "Downloading ";
+    constexpr int kStatsWidth = 40;
+    std::string file = file_path.MaybeAsASCII();
+    int term_width = GetTerminalWidth();
+    int file_width = strlen(kMessage) + file.size();
+
+    // Bail out if the terminal is too narrow.
+    if (term_width <= file_width + kStatsWidth)
+      return;
+
+    // Print the file name.
+    std::cout << kMessage << file;
+
+    // Print the progress bar (if there's space).
+    int bar_width = term_width - file_width - kStatsWidth - 8;
+    if (total_bytes > 0 && bar_width > 0 && !done) {
+      std::cout << " [";
+      for (int i = 0; i < bar_width; i++) {
+        std::cout << (i > (bar_width * downloaded_bytes) / total_bytes ? '-'
+                                                                       : '#');
+      }
+      std::cout << "]" << std::setw(3) << std::right
+                << (100 * downloaded_bytes) / total_bytes << "%";
+    }
+
+    // Print statistics.
+    int seconds = elapsed_time.InSeconds();
+    std::cout << " (" << downloaded_bytes << " in " << (seconds / 60) << ":"
+              << std::setw(2) << std::setfill('0') << (seconds % 60)
+              << std::setfill(' ');
+    if (elapsed_time.InSeconds()) {
+      std::cout << ", " << std::setprecision(1) << std::fixed
+                << downloaded_bytes / (1024 * elapsed_time.InSecondsF())
+                << " KiB/s";
+    }
+    std::cout << ")";
+
+    // Erase the rest of the line and move the cursor back to the beginning of
+    // the line for the next update (unless we're done).
+    std::cout << "\033[K";
+    if (!done) {
+      std::cout << std::flush << "\r";
+    } else {
+      std::cout << std::endl;
+    }
+  }
+
+ private:
+  static int GetTerminalWidth() {
+    winsize window_size;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &window_size) != 0)
+      return -1;
+    return window_size.ws_col;
+  }
+
+  base::TimeDelta last_update_{};
+};
+
+}  // namespace
 
 int main(int argc, char* argv[]) {
   DEFINE_string(bus, "/dev/i2c-2", "I2C device");
@@ -85,6 +161,14 @@ int main(int argc, char* argv[]) {
         base::TimeDelta::FromMilliseconds(FLAGS_retry_delay));
   }
   auto hps = std::make_unique<hps::HPS_impl>(std::move(dev));
+
+  // Show download progress when run interactively.
+  if (isatty(STDOUT_FILENO)) {
+    hps->SetDownloadObserver(
+        base::BindRepeating(&DownloadProgressIndicator::Update,
+                            std::make_unique<DownloadProgressIndicator>()));
+  }
+
   // Pass args to the command for any following arguments.
   // args[0] is command name.
   return Command::Execute(args[0].c_str(), std::move(hps), args);
