@@ -37,20 +37,19 @@ int Watch(std::unique_ptr<hps::HPS> hps,
     std::cerr << args[1] << ": feature number out of range (0,1)" << std::endl;
     return 1;
   }
-  hps->Enable(feat);
-  int last_inference_result = INT_MAX;
-  for (;;) {
+  if (!hps->Enable(feat)) {
+    std::cerr << "Enable feature failure." << std::endl;
+    return 1;
+  }
+  hps::FeatureResult last_inference_result = {0};
+  for (unsigned i = 0;; i++) {
     hps::FeatureResult feature_result = hps->Result(feat);
-    if (feature_result.valid) {
-      if (last_inference_result != feature_result.inference_result) {
-        last_inference_result = feature_result.inference_result;
-        std::cout << "Result = "
-                  << static_cast<int>(feature_result.inference_result)
-                  << std::endl;
-      }
-    } else {
-      std::cout << "Invalid result" << std::endl;
+    if (0 == i || last_inference_result != feature_result) {
+      std::cout << "Result(" << i
+                << ") = " << static_cast<int>(feature_result.inference_result)
+                << (feature_result.valid ? "" : " (Invalid)") << std::endl;
     }
+    last_inference_result = feature_result;
     base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
   }
 }

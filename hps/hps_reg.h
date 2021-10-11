@@ -104,6 +104,13 @@ struct FeatureResult {
   bool valid;
 };
 
+inline bool operator==(const FeatureResult& lhs, const FeatureResult& rhs) {
+  return lhs.inference_result == rhs.inference_result && lhs.valid == rhs.valid;
+}
+inline bool operator!=(const FeatureResult& lhs, const FeatureResult& rhs) {
+  return !(lhs == rhs);
+}
+
 }  // namespace hps
 
 #endif  // HPS_HPS_REG_H_
