@@ -8,6 +8,7 @@
 
 from __future__ import print_function
 
+import io
 import json
 import os
 import re
@@ -773,6 +774,22 @@ class MainTests(cros_test_lib.TempDirTestCase):
         zephyr_ec_configs_only=True)
     expected_file = os.path.join(base_path, 'test_zephyr.json')
     self.assertFileEqual(expected_file, output)
+
+  def testIdentityTableOut(self):
+    base_path = os.path.join(this_dir, '../test_data')
+    output = io.BytesIO()
+    for fname in ('test.yaml', 'test_arm.yaml'):
+      cros_config_schema.Main(
+          None,
+          None,
+          None,
+          configs=[os.path.join(base_path, fname)],
+          identity_table_out=output,
+      )
+      # crosid unittests go in depth with testing the file
+      # contents/format.  We just check that we put some good looking
+      # data there (greater than 32 bytes is required).
+    self.assertGreater(len(output.getvalue()), 32)
 
   def testClangFormat(self):
     test_input = 'int main(int argc, char **argv) { return 0; }'

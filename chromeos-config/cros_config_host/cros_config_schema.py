@@ -24,6 +24,7 @@ import six
 this_dir = os.path.dirname(__file__)
 sys.path.insert(0, this_dir)
 import configfs
+import identity_table
 import libcros_schema
 sys.path.pop(0)
 
@@ -123,6 +124,10 @@ def ParseArgs(argv):
       action='store_true',
       help=('Remove any configuration which does not specify '
             '/firmware/build-targets:zephyr-ec'))
+  parser.add_argument(
+      '--identity-table-out',
+      type=argparse.FileType('wb'),
+      help='Output path for identity table')
   return parser.parse_args(argv)
 
 
@@ -834,7 +839,8 @@ def Main(schema,
          gen_c_output_dir=None,
          configfs_output=None,
          configs=None,
-         zephyr_ec_configs_only=False):
+         zephyr_ec_configs_only=False,
+         identity_table_out=None):
   """Transforms and validates a cros config file for use on the system
 
   Applies consistent transforms to covert a source YAML configuration into
@@ -853,6 +859,7 @@ def Main(schema,
     configs: List of source config files that will be transformed/verified.
     zephyr_ec_configs_only: True if device configs which do not
       contain /firmware/build-targets:zephyr-ec should be removed.
+    identity_table_out: Output file for crosid identity table.
   """
   # TODO(shapiroc): Remove this once we no longer need backwards compatibility
   # for single config parameters.
@@ -889,6 +896,10 @@ def Main(schema,
       print(GenerateMosysCBindings(full_json_transform), file=output_stream)
   if configfs_output:
     configfs.GenerateConfigFSData(json.loads(json_transform), configfs_output)
+  if identity_table_out:
+    identity_table.WriteIdentityStruct(json.loads(json_transform),
+                                       identity_table_out)
+
 
 # The distutils generated command line wrappers will not pass us argv.
 def main(argv=None):
@@ -902,7 +913,8 @@ def main(argv=None):
   opts = ParseArgs(argv)
   Main(opts.schema, opts.config, opts.output, opts.filter,
        opts.generated_c_output_directory, opts.configfs_output, opts.configs,
-       opts.zephyr_ec_configs_only)
+       opts.zephyr_ec_configs_only, opts.identity_table_out)
+
 
 if __name__ == '__main__':
   sys.exit(main(sys.argv[1:]))

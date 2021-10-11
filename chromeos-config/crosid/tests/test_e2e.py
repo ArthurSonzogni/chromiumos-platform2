@@ -7,7 +7,7 @@ import struct
 
 import pytest
 
-import cros_config_host.configfs
+import cros_config_host.identity_table
 
 
 def make_fake_sysroot(
@@ -50,7 +50,7 @@ def make_fake_sysroot(
     config_path = path / "usr" / "share" / "chromeos-config"
     config_path.mkdir(exist_ok=True, parents=True)
     with open(config_path / "identity.bin", "wb") as output_file:
-        cros_config_host.configfs.WriteIdentityStruct(configs_full, output_file)
+        cros_config_host.identity_table.WriteIdentityStruct(configs_full, output_file)
 
 
 REEF_CONFIGS = [
