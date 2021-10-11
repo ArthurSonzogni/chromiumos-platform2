@@ -47,6 +47,8 @@ recvmsg: 1
 restart_syscall: 1
 rt_sigprocmask: 1
 rt_sigreturn: 1
+rt_sigtimedwait: 1
+rt_sigtimedwait_time64: 1
 sched_getparam: 1
 sched_getscheduler: 1
 sched_yield: 1

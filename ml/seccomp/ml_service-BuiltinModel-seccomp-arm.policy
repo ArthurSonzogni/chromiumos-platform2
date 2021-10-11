@@ -31,6 +31,8 @@ mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 openat: 1
 read: 1
 recvmsg: 1
+rt_sigtimedwait: 1
+rt_sigtimedwait_time64: 1
 send: 1
 socket: arg0 == AF_UNIX
 statx: 1
