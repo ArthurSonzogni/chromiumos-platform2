@@ -72,7 +72,8 @@ std::unique_ptr<Subnet> SubnetPool::Allocate(uint32_t index) {
       htonl(ntohl(base_addr_) + (index - 1) * addr_per_index_);
   return std::make_unique<Subnet>(
       subnet_addr, prefix_length_,
-      base::Bind(&SubnetPool::Release, weak_ptr_factory_.GetWeakPtr(), index));
+      base::BindOnce(&SubnetPool::Release, weak_ptr_factory_.GetWeakPtr(),
+                     index));
 }
 
 void SubnetPool::Release(uint32_t index) {

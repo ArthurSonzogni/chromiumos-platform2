@@ -35,13 +35,13 @@ namespace patchpanel {
 
 SubnetAddress::SubnetAddress(uint32_t addr,
                              uint32_t prefix_length,
-                             base::Closure release_cb)
+                             base::OnceClosure release_cb)
     : addr_(addr),
       prefix_length_(prefix_length),
       release_cb_(std::move(release_cb)) {}
 
 SubnetAddress::~SubnetAddress() {
-  release_cb_.Run();
+  std::move(release_cb_).Run();
 }
 
 uint32_t SubnetAddress::Address() const {
@@ -62,7 +62,7 @@ uint32_t SubnetAddress::Netmask() const {
 
 Subnet::Subnet(uint32_t base_addr,
                uint32_t prefix_length,
-               base::Closure release_cb)
+               base::OnceClosure release_cb)
     : base_addr_(base_addr),
       prefix_length_(prefix_length),
       release_cb_(std::move(release_cb)),
@@ -77,7 +77,7 @@ Subnet::Subnet(uint32_t base_addr,
 }
 
 Subnet::~Subnet() {
-  release_cb_.Run();
+  std::move(release_cb_).Run();
 }
 
 std::unique_ptr<SubnetAddress> Subnet::Allocate(uint32_t addr) {
@@ -98,7 +98,7 @@ std::unique_ptr<SubnetAddress> Subnet::AllocateAtOffset(uint32_t offset) {
   addrs_[offset + 1] = true;
   return std::make_unique<SubnetAddress>(
       addr, prefix_length_,
-      base::Bind(&Subnet::Free, weak_factory_.GetWeakPtr(), offset + 1));
+      base::BindOnce(&Subnet::Free, weak_factory_.GetWeakPtr(), offset + 1));
 }
 
 uint32_t Subnet::AddressAtOffset(uint32_t offset) const {

@@ -28,7 +28,7 @@ class BRILLO_EXPORT SubnetAddress {
   // with the subnet address.
   SubnetAddress(uint32_t addr,
                 uint32_t prefix_length,
-                base::Closure release_cb);
+                base::OnceClosure release_cb);
   SubnetAddress(const SubnetAddress&) = delete;
   SubnetAddress& operator=(const SubnetAddress&) = delete;
 
@@ -55,7 +55,7 @@ class BRILLO_EXPORT SubnetAddress {
   uint32_t prefix_length_;
 
   // Callback to run when this object is destroyed.
-  base::Closure release_cb_;
+  base::OnceClosure release_cb_;
 };
 
 // Represents an allocated IPv4 subnet.
@@ -65,7 +65,9 @@ class BRILLO_EXPORT Subnet {
   // |base_addr| must be in network-byte order. |release_cb| runs in the
   // destructor of this class and can be used to free other resources associated
   // with the subnet.
-  Subnet(uint32_t base_addr, uint32_t prefix_length, base::Closure release_cb);
+  Subnet(uint32_t base_addr,
+         uint32_t prefix_length,
+         base::OnceClosure release_cb);
   Subnet(const Subnet&) = delete;
   Subnet& operator=(const Subnet&) = delete;
 
@@ -121,7 +123,7 @@ class BRILLO_EXPORT Subnet {
   std::vector<bool> addrs_;
 
   // Callback to run when this object is deleted.
-  base::Closure release_cb_;
+  base::OnceClosure release_cb_;
 
   base::WeakPtrFactory<Subnet> weak_factory_;
 };
