@@ -380,10 +380,12 @@ fn load_app(state: &TrichechusState, app_id: &str, elf: &[u8]) -> StdResult<(), 
     let app_info = lookup_app_info(state, app_id)?;
 
     // Validate digest.
-    let expected = if let ExecutableInfo::Digest(expected) = &app_info.exec_info {
-        expected
-    } else {
-        return Err(trichechus::Error::AppNotLoadable);
+    let expected = match &app_info.exec_info {
+        ExecutableInfo::Digest(expected) => expected,
+        ExecutableInfo::CrosPath(_, Some(expected)) => expected,
+        _ => {
+            return Err(trichechus::Error::AppNotLoadable);
+        }
     };
     let actual = compute_sha256(elf)
         .map_err(|err| trichechus::Error::from(format!("SHA256 failed: {:?}", err)))?;
@@ -447,7 +449,10 @@ fn start_session(
                 return Err(trichechus::Error::AppPath);
             }
         }
-        ExecutableInfo::Digest(digest) | ExecutableInfo::CrosPath(_, digest) => {
+        ExecutableInfo::CrosPath(_, None) => {
+            return Err(trichechus::Error::DigestMissing);
+        }
+        ExecutableInfo::Digest(digest) | ExecutableInfo::CrosPath(_, Some(digest)) => {
             if state.loaded_apps.borrow().get(digest).is_none() {
                 return Err(trichechus::Error::AppNotLoaded);
             }
@@ -489,7 +494,13 @@ fn spawn_tee_app(
                 .run(Path::new(&path), args.as_slice(), &keep_fds)
                 .context("failed to start up sandbox")?
         }
-        ExecutableInfo::Digest(digest) | ExecutableInfo::CrosPath(_, digest) => {
+        ExecutableInfo::CrosPath(_, None) => {
+            bail!(
+                "digest missing for TEE app {}",
+                app.app_info.app_name.clone()
+            );
+        }
+        ExecutableInfo::Digest(digest) | ExecutableInfo::CrosPath(_, Some(digest)) => {
             match state.loaded_apps.borrow().get(digest) {
                 Some(shared_mem) => {
                     let fd_path = fd_to_path(shared_mem.as_raw_fd())

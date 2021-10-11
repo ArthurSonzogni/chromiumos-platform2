@@ -390,10 +390,11 @@ mod tests {
     use base64::decode_config;
     use libchromeos::secure_blob::SecureBlob;
     use libsirenia::communication::persistence::MockCronista;
+    use libsirenia::communication::persistence::Scope;
     use sys_util::scoped_path::{get_temp_path, ScopedPath};
 
     use crate::{
-        app_info::AppManifest,
+        app_info::{AppManifest, ExecutableInfo, SandboxType, StorageParameters},
         secrets::{GscSecret, PlatformSecret, VersionedSecret, MAX_VERSION},
     };
 
@@ -423,7 +424,20 @@ mod tests {
         )
         .derive_other_version(TEST_MAIN_SECRET_VERSION)
         .unwrap();
-        let manifest = AppManifest::new();
+        let mut manifest = AppManifest::new();
+        let prev = manifest.add_app_manifest_entry(AppManifestEntry {
+            app_name: "demo_app".to_string(),
+            exec_info: ExecutableInfo::Path("/usr/bin/demo_app".to_string()),
+            exec_args: None,
+            sandbox_type: SandboxType::DeveloperEnvironment,
+            secrets_parameters: None,
+            storage_parameters: Some(StorageParameters {
+                scope: Scope::Test,
+                domain: "test".to_string(),
+                encryption_key_version: Some(1),
+            }),
+        });
+        assert_eq!(prev, None);
         let manager = SecretManager::new(platform_secret, gsc_secret, &manifest).unwrap();
         (manager, manifest)
     }

@@ -1,0 +1,16 @@
+[{
+  "app_name": "demo_app",
+  "exec_info": {
+    "CrosPath": [
+      "/usr/bin/demo_app",
+      null
+    ]
+  },
+  "sandbox_type": "DeveloperEnvironment",
+  "secrets_parameters": null,
+  "storage_parameters": {
+    "scope": "Test",
+    "domain": "test",
+    "encryption_key_version": 1
+  }
+}]

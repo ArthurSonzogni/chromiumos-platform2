@@ -10,6 +10,7 @@
 pub mod persistence;
 pub mod trichechus;
 
+use std::fmt;
 use std::fmt::Debug;
 use std::io::{self, BufWriter, Read, Write};
 use std::ops::Deref;
@@ -113,6 +114,12 @@ impl<A: AsRef<[u8]>> From<A> for Digest {
     }
 }
 
+impl fmt::Display for Digest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.map(|x| format!("{:02x}", x)).join(""))
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum ExecutableInfo {
     // Hypervisor initramfs path
@@ -120,5 +127,5 @@ pub enum ExecutableInfo {
     // Only digest, location unspecified
     Digest(Digest),
     // Host (Chrome OS) path and digest
-    CrosPath(String, Digest),
+    CrosPath(String, Option<Digest>),
 }

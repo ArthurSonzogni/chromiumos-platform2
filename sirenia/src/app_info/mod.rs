@@ -108,18 +108,6 @@ impl AppManifest {
                 secrets_parameters: None,
                 storage_parameters: None,
             },
-            AppManifestEntry {
-                app_name: "demo_app".to_string(),
-                exec_info: ExecutableInfo::Path("/usr/bin/demo_app".to_string()),
-                exec_args: None,
-                sandbox_type: SandboxType::DeveloperEnvironment,
-                secrets_parameters: None,
-                storage_parameters: Some(StorageParameters {
-                    scope: Scope::Test,
-                    domain: "test".to_string(),
-                    encryption_key_version: Some(1),
-                }),
-            },
         ])
     }
 
@@ -137,7 +125,7 @@ impl AppManifest {
         Ok(manifest)
     }
 
-    fn add_app_manifest_entry(&mut self, entry: AppManifestEntry) -> Option<AppManifestEntry> {
+    pub fn add_app_manifest_entry(&mut self, entry: AppManifestEntry) -> Option<AppManifestEntry> {
         let id = entry.app_name.clone();
         self.entries.insert(id, entry)
     }

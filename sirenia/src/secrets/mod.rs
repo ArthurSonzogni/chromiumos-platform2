@@ -642,6 +642,10 @@ impl SecretManager {
 pub mod tests {
     use super::*;
 
+    use libsirenia::communication::persistence::Scope;
+
+    use crate::app_info::{ExecutableInfo, SandboxType, StorageParameters};
+
     const TEST_APP_ID: &str = "demo_app";
     const TEST_MAIN_SECRET_VERSION: usize = 1usize;
     const TEST_SALT: &[u8; 64] = &[77u8; 64];
@@ -665,7 +669,20 @@ pub mod tests {
         .derive_other_version(TEST_MAIN_SECRET_VERSION)
         .unwrap();
 
-        let manifest = AppManifest::new();
+        let mut manifest = AppManifest::new();
+        let prev = manifest.add_app_manifest_entry(AppManifestEntry {
+            app_name: "demo_app".to_string(),
+            exec_info: ExecutableInfo::Path("/usr/bin/demo_app".to_string()),
+            exec_args: None,
+            sandbox_type: SandboxType::DeveloperEnvironment,
+            secrets_parameters: None,
+            storage_parameters: Some(StorageParameters {
+                scope: Scope::Test,
+                domain: "test".to_string(),
+                encryption_key_version: Some(1),
+            }),
+        });
+        assert_eq!(prev, None);
         let gen = SecretManager::new(platform_secret, gsc_secret, &manifest).unwrap();
         let app_info = manifest.get_app_manifest_entry(TEST_APP_ID).unwrap();
         let version = gen.get_storage_secret_version(app_info).unwrap();

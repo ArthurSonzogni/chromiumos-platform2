@@ -19,6 +19,8 @@ use crate::communication::ExecutableInfo;
 pub enum Error {
     #[error("App ID not found in the manifest")]
     InvalidAppId,
+    #[error("Digest of TEE app executable is missing from the manifest")]
+    DigestMissing,
     #[error("Digest of TEE app executable did not match value in manifest")]
     DigestMismatch,
     #[error("App not loadable")]

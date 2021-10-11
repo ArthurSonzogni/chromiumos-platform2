@@ -40,20 +40,29 @@ fn validate_entries(entries: &[AppManifestEntry]) -> Result<()> {
 fn convert_entries<A: AsRef<Path>>(target_root: A, entries: &mut [AppManifestEntry]) -> Result<()> {
     for entry in entries {
         let exec_info = &mut entry.exec_info;
-        let exec_path = if let ExecutableInfo::Path(suffix) = exec_info {
-            target_root.as_ref().join(suffix.trim_start_matches('/'))
-        } else {
-            continue;
-        };
-
-        let mut exec_data = Vec::<u8>::new();
-        File::open(&exec_path)
-            .with_context(|| format!("Failed to open entry executable path: {:?}", &exec_path))?
-            .read_to_end(&mut exec_data)
-            .with_context(|| format!("Failed to read entry executable path: {:?}", &exec_path))?;
-        *exec_info = ExecutableInfo::Digest(
-            compute_sha256(&exec_data).context("Failed to compute SHA256 digest.")?,
-        );
+        if let ExecutableInfo::CrosPath(path, digest) = exec_info {
+            let exec_path = target_root.as_ref().join(path.trim_start_matches('/'));
+            let mut exec_data = Vec::<u8>::new();
+            File::open(&exec_path)
+                .with_context(|| format!("Failed to open entry executable path: {:?}", &exec_path))?
+                .read_to_end(&mut exec_data)
+                .with_context(|| {
+                    format!("Failed to read entry executable path: {:?}", &exec_path)
+                })?;
+            let exec_digest =
+                compute_sha256(&exec_data).context("Failed to compute SHA256 digest.")?;
+            if let Some(expected_digest) = digest {
+                if *expected_digest != exec_digest {
+                    bail!(
+                        "configured digest ({}) does not match executable ({})",
+                        expected_digest,
+                        exec_digest
+                    );
+                }
+            } else {
+                *digest = Some(exec_digest);
+            }
+        }
     }
     Ok(())
 }
