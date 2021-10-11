@@ -84,11 +84,11 @@ namespace patchpanel {
 MulticastForwarder::Socket::Socket(
     base::ScopedFD fd,
     sa_family_t sa_family,
-    const base::Callback<void(int, sa_family_t)>& callback)
+    base::RepeatingCallback<void(int, sa_family_t)> callback)
     : fd(std::move(fd)) {
   watcher = base::FileDescriptorWatcher::WatchReadable(
       Socket::fd.get(),
-      base::BindRepeating(callback, Socket::fd.get(), sa_family));
+      base::BindRepeating(std::move(callback), Socket::fd.get(), sa_family));
 }
 
 MulticastForwarder::MulticastForwarder(const std::string& lan_ifname,

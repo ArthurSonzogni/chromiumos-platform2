@@ -80,12 +80,12 @@ class NDProxy {
   // NDProxy can trigger a callback upon receiving NA frame with unicast IPv6
   // address from guest OS interface.
   void RegisterOnGuestIpDiscoveryHandler(
-      const base::Callback<void(const std::string&, const std::string&)>&
+      base::RepeatingCallback<void(const std::string&, const std::string&)>
           handler);
 
   // Callback upon receiving prefix information from RA frame.
   void RegisterOnRouterDiscoveryHandler(
-      const base::Callback<void(const std::string&, const std::string&)>&
+      base::RepeatingCallback<void(const std::string&, const std::string&)>
           handler);
 
   // To proxy between upstream interface and guest OS interface (eth0-arc_eth0)
@@ -159,9 +159,9 @@ class NDProxy {
   // b/187918638: list of interfaces that require special workaround
   std::set<int> irregular_router_ifs;
 
-  base::Callback<void(const std::string&, const std::string&)>
+  base::RepeatingCallback<void(const std::string&, const std::string&)>
       guest_discovery_handler_;
-  base::Callback<void(const std::string&, const std::string&)>
+  base::RepeatingCallback<void(const std::string&, const std::string&)>
       router_discovery_handler_;
 
   base::WeakPtrFactory<NDProxy> weak_factory_{this};

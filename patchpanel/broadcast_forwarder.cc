@@ -117,7 +117,7 @@ uint32_t GetIfreqNetmask(const struct ifreq& ifr) {
 namespace patchpanel {
 
 BroadcastForwarder::Socket::Socket(base::ScopedFD fd,
-                                   const base::Callback<void(int)>& callback,
+                                   base::RepeatingCallback<void(int)> callback,
                                    uint32_t addr,
                                    uint32_t broadaddr,
                                    uint32_t netmask)

@@ -26,16 +26,16 @@ class MessageDispatcher {
 
   void Start();
 
-  void RegisterFailureHandler(const base::Callback<void()>& handler);
+  void RegisterFailureHandler(base::RepeatingCallback<void()> handler);
 
   void RegisterNDProxyMessageHandler(
-      const base::Callback<void(const NDProxyMessage&)>& handler);
+      base::RepeatingCallback<void(const NDProxyMessage&)> handler);
 
   void RegisterGuestMessageHandler(
-      const base::Callback<void(const GuestMessage&)>& handler);
+      base::RepeatingCallback<void(const GuestMessage&)> handler);
 
   void RegisterDeviceMessageHandler(
-      const base::Callback<void(const DeviceMessage&)>& handler);
+      base::RepeatingCallback<void(const DeviceMessage&)> handler);
 
   void SendMessage(const google::protobuf::MessageLite& proto) const;
 
@@ -45,10 +45,10 @@ class MessageDispatcher {
 
   base::ScopedFD fd_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
-  base::Callback<void()> failure_handler_;
-  base::Callback<void(const NDProxyMessage&)> ndproxy_handler_;
-  base::Callback<void(const GuestMessage&)> guest_handler_;
-  base::Callback<void(const DeviceMessage&)> device_handler_;
+  base::RepeatingCallback<void()> failure_handler_;
+  base::RepeatingCallback<void(const NDProxyMessage&)> ndproxy_handler_;
+  base::RepeatingCallback<void(const GuestMessage&)> guest_handler_;
+  base::RepeatingCallback<void(const DeviceMessage&)> device_handler_;
 
   IpHelperMessage msg_;
 

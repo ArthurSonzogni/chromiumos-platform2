@@ -16,11 +16,11 @@ namespace patchpanel {
 
 MulticastProxy::MulticastProxy(base::ScopedFD control_fd)
     : msg_dispatcher_(std::move(control_fd)) {
-  msg_dispatcher_.RegisterFailureHandler(base::Bind(
+  msg_dispatcher_.RegisterFailureHandler(base::BindRepeating(
       &MulticastProxy::OnParentProcessExit, weak_factory_.GetWeakPtr()));
 
-  msg_dispatcher_.RegisterDeviceMessageHandler(
-      base::Bind(&MulticastProxy::OnDeviceMessage, weak_factory_.GetWeakPtr()));
+  msg_dispatcher_.RegisterDeviceMessageHandler(base::BindRepeating(
+      &MulticastProxy::OnDeviceMessage, weak_factory_.GetWeakPtr()));
 }
 
 int MulticastProxy::OnInit() {

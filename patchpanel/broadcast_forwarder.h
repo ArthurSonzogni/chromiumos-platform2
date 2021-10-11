@@ -43,7 +43,7 @@ class BroadcastForwarder {
   // It also stores addresses corresponding to the interface it is bound to.
   struct Socket {
     Socket(base::ScopedFD fd,
-           const base::Callback<void(int)>& callback,
+           base::RepeatingCallback<void(int)> callback,
            uint32_t addr,
            uint32_t broadaddr,
            uint32_t netmask = 0);

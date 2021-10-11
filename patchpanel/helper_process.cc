@@ -83,11 +83,11 @@ void HelperProcess::Listen() {
 }
 
 void HelperProcess::RegisterNDProxyMessageHandler(
-    const base::Callback<void(const NDProxyMessage&)>& handler) {
+    base::RepeatingCallback<void(const NDProxyMessage&)> handler) {
   if (!msg_dispatcher_) {
     return;
   }
-  msg_dispatcher_->RegisterNDProxyMessageHandler(handler);
+  msg_dispatcher_->RegisterNDProxyMessageHandler(std::move(handler));
 }
 
 }  // namespace patchpanel

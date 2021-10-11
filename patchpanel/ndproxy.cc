@@ -616,15 +616,15 @@ bool NDProxy::GetNeighborMac(const in6_addr& ipv6_addr, MacAddress* mac_addr) {
 }
 
 void NDProxy::RegisterOnGuestIpDiscoveryHandler(
-    const base::Callback<void(const std::string&, const std::string&)>&
+    base::RepeatingCallback<void(const std::string&, const std::string&)>
         handler) {
-  guest_discovery_handler_ = handler;
+  guest_discovery_handler_ = std::move(handler);
 }
 
 void NDProxy::RegisterOnRouterDiscoveryHandler(
-    const base::Callback<void(const std::string&, const std::string&)>&
+    base::RepeatingCallback<void(const std::string&, const std::string&)>
         handler) {
-  router_discovery_handler_ = handler;
+  router_discovery_handler_ = std::move(handler);
 }
 
 NDProxy::interface_mapping* NDProxy::MapForType(uint8_t type) {
@@ -770,9 +770,9 @@ int NDProxyDaemon::OnInit() {
 
   // Register control fd callbacks
   if (msg_dispatcher_) {
-    msg_dispatcher_->RegisterFailureHandler(base::Bind(
+    msg_dispatcher_->RegisterFailureHandler(base::BindRepeating(
         &NDProxyDaemon::OnParentProcessExit, weak_factory_.GetWeakPtr()));
-    msg_dispatcher_->RegisterDeviceMessageHandler(base::Bind(
+    msg_dispatcher_->RegisterDeviceMessageHandler(base::BindRepeating(
         &NDProxyDaemon::OnDeviceMessage, weak_factory_.GetWeakPtr()));
   }
 
@@ -781,9 +781,9 @@ int NDProxyDaemon::OnInit() {
     PLOG(ERROR) << "Failed to initialize NDProxy internal state";
     return EX_OSERR;
   }
-  proxy_.RegisterOnGuestIpDiscoveryHandler(base::Bind(
+  proxy_.RegisterOnGuestIpDiscoveryHandler(base::BindRepeating(
       &NDProxyDaemon::OnGuestIpDiscovery, weak_factory_.GetWeakPtr()));
-  proxy_.RegisterOnRouterDiscoveryHandler(base::Bind(
+  proxy_.RegisterOnRouterDiscoveryHandler(base::BindRepeating(
       &NDProxyDaemon::OnRouterDiscovery, weak_factory_.GetWeakPtr()));
 
   // Initialize data fd
@@ -794,8 +794,8 @@ int NDProxyDaemon::OnInit() {
 
   // Start watching on data fd
   watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      fd_.get(), base::Bind(&NDProxyDaemon::OnDataSocketReadReady,
-                            weak_factory_.GetWeakPtr()));
+      fd_.get(), base::BindRepeating(&NDProxyDaemon::OnDataSocketReadReady,
+                                     weak_factory_.GetWeakPtr()));
   LOG(INFO) << "Started watching on packet fd...";
 
   return Daemon::OnInit();

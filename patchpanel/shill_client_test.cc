@@ -24,15 +24,15 @@ class ShillClientTest : public testing::Test {
   void SetUp() override {
     helper_ = std::make_unique<FakeShillClientHelper>();
     client_ = helper_->FakeClient();
-    client_->RegisterDefaultLogicalDeviceChangedHandler(
-        base::Bind(&ShillClientTest::DefaultLogicalDeviceChangedHandler,
-                   base::Unretained(this)));
-    client_->RegisterDefaultPhysicalDeviceChangedHandler(
-        base::Bind(&ShillClientTest::DefaultPhysicalDeviceChangedHandler,
-                   base::Unretained(this)));
-    client_->RegisterDevicesChangedHandler(base::Bind(
+    client_->RegisterDefaultLogicalDeviceChangedHandler(base::BindRepeating(
+        &ShillClientTest::DefaultLogicalDeviceChangedHandler,
+        base::Unretained(this)));
+    client_->RegisterDefaultPhysicalDeviceChangedHandler(base::BindRepeating(
+        &ShillClientTest::DefaultPhysicalDeviceChangedHandler,
+        base::Unretained(this)));
+    client_->RegisterDevicesChangedHandler(base::BindRepeating(
         &ShillClientTest::DevicesChangedHandler, base::Unretained(this)));
-    client_->RegisterIPConfigsChangedHandler(base::Bind(
+    client_->RegisterIPConfigsChangedHandler(base::BindRepeating(
         &ShillClientTest::IPConfigsChangedHandler, base::Unretained(this)));
     default_logical_ifname_.clear();
     added_.clear();

@@ -48,7 +48,7 @@ class HelperProcess {
   void Listen();
 
   void RegisterNDProxyMessageHandler(
-      const base::Callback<void(const NDProxyMessage&)>& handler);
+      base::RepeatingCallback<void(const NDProxyMessage&)> handler);
 
   pid_t pid() const { return pid_; }
   uint8_t restarts() const { return restarts_; }

@@ -45,7 +45,8 @@ constexpr int kIPv6RestartDelayMs = 300;
 // |response_sender|. If |handler| returns nullptr, an empty response is
 // created and sent.
 void HandleSynchronousDBusMethodCall(
-    base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)> handler,
+    base::RepeatingCallback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)>
+        handler,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
   std::unique_ptr<dbus::Response> response = handler.Run(method_call);
@@ -259,8 +260,8 @@ void Manager::InitialSetup() {
         &Manager::OnIPConfigsChanged, weak_factory_.GetWeakPtr()));
   }
 
-  nd_proxy_->RegisterNDProxyMessageHandler(
-      base::Bind(&Manager::OnNDProxyMessage, weak_factory_.GetWeakPtr()));
+  nd_proxy_->RegisterNDProxyMessageHandler(base::BindRepeating(
+      &Manager::OnNDProxyMessage, weak_factory_.GetWeakPtr()));
 
   GuestMessage::GuestType arc_guest =
       USE_ARCVM ? GuestMessage::ARC_VM : GuestMessage::ARC;

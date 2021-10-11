@@ -67,13 +67,13 @@ class FakeProcessRunner : public MinijailedProcessRunner {
   }
 
   void SetRunOverride(
-      base::Callback<int(const std::vector<std::string>&)> callback) {
-    run_override_ = callback;
+      base::RepeatingCallback<int(const std::vector<std::string>&)> callback) {
+    run_override_ = std::move(callback);
   }
 
  private:
   bool capture_ = false;
-  base::Callback<int(const std::vector<std::string>&)> run_override_;
+  base::RepeatingCallback<int(const std::vector<std::string>&)> run_override_;
   std::vector<std::string>* runs_;
   std::vector<std::string> runs_vec_;
   std::string add_host_ifname_;

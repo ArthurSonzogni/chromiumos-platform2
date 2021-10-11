@@ -70,7 +70,8 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  proxy.RegisterOnGuestIpDiscoveryHandler(base::Bind(&OnGuestIpDiscovery));
+  proxy.RegisterOnGuestIpDiscoveryHandler(
+      base::BindRepeating(&OnGuestIpDiscovery));
 
   base::ScopedFD fd = patchpanel::NDProxy::PreparePacketSocket();
   if (!fd.is_valid()) {

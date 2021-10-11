@@ -57,11 +57,11 @@ AdbProxy::AdbProxy(base::ScopedFD control_fd)
     : msg_dispatcher_(std::move(control_fd)),
       arc_type_(GuestMessage::UNKNOWN_GUEST),
       arcvm_vsock_cid_(-1) {
-  msg_dispatcher_.RegisterFailureHandler(
-      base::Bind(&AdbProxy::OnParentProcessExit, weak_factory_.GetWeakPtr()));
+  msg_dispatcher_.RegisterFailureHandler(base::BindRepeating(
+      &AdbProxy::OnParentProcessExit, weak_factory_.GetWeakPtr()));
 
-  msg_dispatcher_.RegisterGuestMessageHandler(
-      base::Bind(&AdbProxy::OnGuestMessage, weak_factory_.GetWeakPtr()));
+  msg_dispatcher_.RegisterGuestMessageHandler(base::BindRepeating(
+      &AdbProxy::OnGuestMessage, weak_factory_.GetWeakPtr()));
 }
 
 AdbProxy::~AdbProxy() = default;

@@ -103,7 +103,7 @@ TEST_F(ClientTest, RegisterNeighborEventHandler) {
         actual_signal_proto = sig;
       });
 
-  base::Callback<void(dbus::Signal * signal)> registered_dbus_callback;
+  base::RepeatingCallback<void(dbus::Signal * signal)> registered_dbus_callback;
 
   EXPECT_CALL(*proxy_,
               DoConnectToSignal(kPatchPanelInterface,

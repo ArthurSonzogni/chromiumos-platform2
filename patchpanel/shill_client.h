@@ -76,17 +76,17 @@ class ShillClient {
   };
 
   // Client callback for learning when shill default logical network changes.
-  using DefaultDeviceChangeHandler =
-      base::Callback<void(const Device& new_device, const Device& prev_device)>;
+  using DefaultDeviceChangeHandler = base::RepeatingCallback<void(
+      const Device& new_device, const Device& prev_device)>;
   // Client callback for learning which network interfaces start or stop being
   // managed by shill.
   using DevicesChangeHandler =
-      base::Callback<void(const std::vector<std::string>& added,
-                          const std::vector<std::string>& removed)>;
+      base::RepeatingCallback<void(const std::vector<std::string>& added,
+                                   const std::vector<std::string>& removed)>;
   // Client callback for listening to IPConfig changes on any shill Device with
   // interface name |ifname|.
-  using IPConfigsChangeHandler =
-      base::Callback<void(const std::string& ifname, const IPConfig& ipconfig)>;
+  using IPConfigsChangeHandler = base::RepeatingCallback<void(
+      const std::string& ifname, const IPConfig& ipconfig)>;
 
   explicit ShillClient(const scoped_refptr<dbus::Bus>& bus);
   ShillClient(const ShillClient&) = delete;

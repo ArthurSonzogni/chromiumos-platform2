@@ -28,23 +28,23 @@ void MessageDispatcher::Start() {
 }
 
 void MessageDispatcher::RegisterFailureHandler(
-    const base::Callback<void()>& handler) {
-  failure_handler_ = handler;
+    base::RepeatingCallback<void()> handler) {
+  failure_handler_ = std::move(handler);
 }
 
 void MessageDispatcher::RegisterNDProxyMessageHandler(
-    const base::Callback<void(const NDProxyMessage&)>& handler) {
-  ndproxy_handler_ = handler;
+    base::RepeatingCallback<void(const NDProxyMessage&)> handler) {
+  ndproxy_handler_ = std::move(handler);
 }
 
 void MessageDispatcher::RegisterGuestMessageHandler(
-    const base::Callback<void(const GuestMessage&)>& handler) {
-  guest_handler_ = handler;
+    base::RepeatingCallback<void(const GuestMessage&)> handler) {
+  guest_handler_ = std::move(handler);
 }
 
 void MessageDispatcher::RegisterDeviceMessageHandler(
-    const base::Callback<void(const DeviceMessage&)>& handler) {
-  device_handler_ = handler;
+    base::RepeatingCallback<void(const DeviceMessage&)> handler) {
+  device_handler_ = std::move(handler);
 }
 
 void MessageDispatcher::OnFileCanReadWithoutBlocking() {

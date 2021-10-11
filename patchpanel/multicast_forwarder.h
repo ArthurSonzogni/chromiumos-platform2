@@ -68,7 +68,7 @@ class MulticastForwarder {
   struct Socket {
     Socket(base::ScopedFD fd,
            sa_family_t sa_family,
-           const base::Callback<void(int, sa_family_t)>& callback);
+           base::RepeatingCallback<void(int, sa_family_t)> callback);
     base::ScopedFD fd;
     std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher;
   };
