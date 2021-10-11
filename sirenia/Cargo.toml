@@ -49,7 +49,7 @@ anyhow = "1.0.0"
 base64 = "0.13.0"
 dbus = "0.9"
 dbus-crossroads = "0.4.0"
-flexbuffers = "0.1.1"
+flexbuffers = "2.0.0"
 getopts = "0.2"
 libc = "0.2.97"
 libchromeos = { path = "../libchromeos-rs" } # provided by ebuild

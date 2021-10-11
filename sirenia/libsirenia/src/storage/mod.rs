@@ -13,7 +13,7 @@ use std::error::Error as StdError;
 use std::fmt::{self, Debug, Formatter};
 use std::result::Result as StdResult;
 
-use flexbuffers::{from_slice, FlexbufferSerializer};
+use flexbuffers::{from_slice, to_vec};
 use serde::de::{Deserialize, DeserializeOwned, Visitor};
 use serde::{Deserializer, Serialize, Serializer};
 use thiserror::Error as ThisError;
@@ -57,9 +57,7 @@ pub trait Storage {
     }
 
     fn write_data<S: Storable>(&mut self, id: &str, data: &S) -> Result<()> {
-        let mut ser = FlexbufferSerializer::new();
-        data.serialize(&mut ser).map_err(to_write_data_error)?;
-        self.write_raw(id, &ser.take_buffer())
+        self.write_raw(id, &to_vec(data).map_err(to_write_data_error)?)
     }
 }
 
@@ -103,10 +101,8 @@ impl StorableMember {
 
     pub fn interpret<S: Storable>(&mut self) -> Result<&mut Self> {
         if let StorableMember::Serialized(data) = self {
-            let ser_reader = flexbuffers::Reader::get_root(data).map_err(to_read_data_error)?;
-            *self = StorableMember::new_deserialized(
-                S::deserialize(ser_reader).map_err(to_read_data_error)?,
-            );
+            let value: S = from_slice(data).map_err(to_read_data_error)?;
+            *self = StorableMember::new_deserialized(value);
         }
         Ok(self)
     }
@@ -152,9 +148,7 @@ impl StorableMember {
 
 fn store<S: Storable>(val: &dyn Any) -> Result<Vec<u8>> {
     if let Some(value) = val.downcast_ref::<S>() {
-        let mut ser = FlexbufferSerializer::new();
-        value.serialize(&mut ser).map_err(to_write_data_error)?;
-        Ok(ser.take_buffer())
+        Ok(to_vec(value).map_err(to_write_data_error)?)
     } else {
         Err(Error::CastData {
             from: type_name::<dyn Any>().to_string(),
@@ -220,11 +214,10 @@ mod test {
     #[test]
     fn storablemember_internal_test() {
         let test_value = "Test value".to_string();
-
         let to_write = StorableMember::new_deserialized(test_value.clone());
         let serialized: Vec<u8> = to_write.into();
-        let mut to_read = StorableMember::new_serialized(serialized);
 
+        let mut to_read = StorableMember::new_serialized(serialized);
         assert_eq!(to_read.try_borrow_mut::<String>().unwrap(), &test_value);
     }
 
@@ -232,12 +225,9 @@ mod test {
     fn storablemember_external_test() {
         let test_value = "Test value".to_string();
         let to_write = StorableMember::new_deserialized(test_value.clone());
+        let serialized: Vec<u8> = to_vec(to_write).unwrap();
 
-        let mut ser = FlexbufferSerializer::new();
-        to_write.serialize(&mut ser).unwrap();
-        let serialized: Vec<u8> = ser.take_buffer();
-
-        let ser_reader = flexbuffers::Reader::get_root(&serialized).unwrap();
+        let ser_reader = flexbuffers::Reader::get_root(serialized.as_slice()).unwrap();
         let mut to_read = StorableMember::deserialize(ser_reader).unwrap();
 
         assert_eq!(to_read.try_borrow_mut::<String>().unwrap(), &test_value);
