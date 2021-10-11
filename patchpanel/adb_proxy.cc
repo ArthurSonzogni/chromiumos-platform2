@@ -76,7 +76,7 @@ int AdbProxy::OnInit() {
   // Run after DBusDaemon::OnInit().
   base::ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
-      base::Bind(&AdbProxy::InitialSetup, weak_factory_.GetWeakPtr()));
+      base::BindOnce(&AdbProxy::InitialSetup, weak_factory_.GetWeakPtr()));
   return DBusDaemon::OnInit();
 }
 

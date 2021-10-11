@@ -80,7 +80,7 @@ int main(int argc, char* argv[]) {
 
   std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher =
       base::FileDescriptorWatcher::WatchReadable(
-          fd.get(), base::Bind(&OnSocketReadReady, &proxy, fd.get()));
+          fd.get(), base::BindRepeating(&OnSocketReadReady, &proxy, fd.get()));
 
   return daemon.Run();
 }

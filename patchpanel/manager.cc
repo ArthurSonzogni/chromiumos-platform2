@@ -168,24 +168,24 @@ int Manager::OnInit() {
 
   CHECK(process_reaper_.WatchForChild(
       FROM_HERE, adb_proxy_->pid(),
-      base::Bind(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),
-                 adb_proxy_->pid())))
+      base::BindOnce(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),
+                     adb_proxy_->pid())))
       << "Failed to watch adb-proxy child process";
   CHECK(process_reaper_.WatchForChild(
       FROM_HERE, mcast_proxy_->pid(),
-      base::Bind(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),
-                 nd_proxy_->pid())))
+      base::BindOnce(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),
+                     nd_proxy_->pid())))
       << "Failed to watch multicast-proxy child process";
   CHECK(process_reaper_.WatchForChild(
       FROM_HERE, nd_proxy_->pid(),
-      base::Bind(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),
-                 nd_proxy_->pid())))
+      base::BindOnce(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),
+                     nd_proxy_->pid())))
       << "Failed to watch nd-proxy child process";
 
   // Run after Daemon::OnInit().
   base::ThreadTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
-      base::Bind(&Manager::InitialSetup, weak_factory_.GetWeakPtr()));
+      base::BindOnce(&Manager::InitialSetup, weak_factory_.GetWeakPtr()));
 
   return DBusDaemon::OnInit();
 }
@@ -225,8 +225,9 @@ void Manager::InitialSetup() {
   for (const auto& kv : kServiceMethods) {
     if (!dbus_svc_path_->ExportMethodAndBlock(
             patchpanel::kPatchPanelInterface, kv.first,
-            base::Bind(&HandleSynchronousDBusMethodCall,
-                       base::Bind(kv.second, base::Unretained(this))))) {
+            base::BindRepeating(
+                &HandleSynchronousDBusMethodCall,
+                base::BindRepeating(kv.second, base::Unretained(this))))) {
       LOG(FATAL) << "Failed to export method " << kv.first;
     }
   }
@@ -324,7 +325,8 @@ void Manager::OnSubprocessExited(pid_t pid, const siginfo_t&) {
 
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&Manager::RestartSubprocess, weak_factory_.GetWeakPtr(), proc),
+      base::BindOnce(&Manager::RestartSubprocess, weak_factory_.GetWeakPtr(),
+                     proc),
       base::TimeDelta::FromMilliseconds((2 << proc->restarts()) *
                                         kSubprocessRestartDelayMs));
 }
@@ -333,8 +335,8 @@ void Manager::RestartSubprocess(HelperProcess* subproc) {
   if (subproc->Restart()) {
     DCHECK(process_reaper_.WatchForChild(
         FROM_HERE, subproc->pid(),
-        base::Bind(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),
-                   subproc->pid())))
+        base::BindOnce(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),
+                       subproc->pid())))
         << "Failed to watch child process " << subproc->pid();
   }
 }

@@ -58,10 +58,10 @@ const std::string DeviceTypeName(ShillClient::Device::Type type) {
 ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus) : bus_(bus) {
   manager_proxy_.reset(new org::chromium::flimflam::ManagerProxy(bus_));
   manager_proxy_->RegisterPropertyChangedSignalHandler(
-      base::Bind(&ShillClient::OnManagerPropertyChange,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&ShillClient::OnManagerPropertyChangeRegistration,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&ShillClient::OnManagerPropertyChange,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&ShillClient::OnManagerPropertyChangeRegistration,
+                     weak_factory_.GetWeakPtr()));
 }
 
 const std::string& ShillClient::default_logical_interface() const {
@@ -308,10 +308,10 @@ void ShillClient::UpdateDevices(const brillo::Any& property_value) {
     if (known_device_paths_.insert(std::make_pair(device, path)).second) {
       org::chromium::flimflam::DeviceProxy proxy(bus_, path);
       proxy.RegisterPropertyChangedSignalHandler(
-          base::Bind(&ShillClient::OnDevicePropertyChange,
-                     weak_factory_.GetWeakPtr(), device),
-          base::Bind(&ShillClient::OnDevicePropertyChangeRegistration,
-                     weak_factory_.GetWeakPtr()));
+          base::BindRepeating(&ShillClient::OnDevicePropertyChange,
+                              weak_factory_.GetWeakPtr(), device),
+          base::BindOnce(&ShillClient::OnDevicePropertyChangeRegistration,
+                         weak_factory_.GetWeakPtr()));
       known_device_paths_[device] = path;
     }
   }

@@ -230,8 +230,8 @@ void ClientImpl::RegisterProcessChangedCallback(
     base::RepeatingCallback<void(bool)> callback) {
   owner_callback_ = callback;
   bus_->GetObjectProxy(kPatchPanelServiceName, dbus::ObjectPath{"/"})
-      ->SetNameOwnerChangedCallback(
-          base::Bind(&ClientImpl::OnOwnerChanged, weak_factory_.GetWeakPtr()));
+      ->SetNameOwnerChangedCallback(base::BindRepeating(
+          &ClientImpl::OnOwnerChanged, weak_factory_.GetWeakPtr()));
 }
 
 void ClientImpl::OnOwnerChanged(const std::string& old_owner,

@@ -123,15 +123,16 @@ BroadcastForwarder::Socket::Socket(base::ScopedFD fd,
                                    uint32_t netmask)
     : fd(std::move(fd)), addr(addr), broadaddr(broadaddr), netmask(netmask) {
   watcher = base::FileDescriptorWatcher::WatchReadable(
-      Socket::fd.get(), base::BindRepeating(callback, Socket::fd.get()));
+      Socket::fd.get(),
+      base::BindRepeating(std::move(callback), Socket::fd.get()));
 }
 
 BroadcastForwarder::BroadcastForwarder(const std::string& dev_ifname)
     : dev_ifname_(dev_ifname) {
   addr_listener_ = std::make_unique<shill::RTNLListener>(
       shill::RTNLHandler::kRequestAddr,
-      base::Bind(&BroadcastForwarder::AddrMsgHandler,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&BroadcastForwarder::AddrMsgHandler,
+                          weak_factory_.GetWeakPtr()));
   shill::RTNLHandler::GetInstance()->Start(RTMGRP_IPV4_IFADDR);
 }
 
