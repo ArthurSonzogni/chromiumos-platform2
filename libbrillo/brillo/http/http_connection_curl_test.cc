@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/callback.h>
+#include <base/logging.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport.h>
 #include <brillo/http/mock_curl_api.h>
