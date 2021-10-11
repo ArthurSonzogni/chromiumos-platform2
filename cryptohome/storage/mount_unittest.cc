@@ -622,93 +622,6 @@ TEST_P(MountTest, MountDmcrypt) {
                                       false, &error));
 }
 
-// A fixture for testing chaps directory checks.
-class ChapsDirectoryTest : public ::testing::Test {
- public:
-  ChapsDirectoryTest() : kBaseDir("/base_chaps_dir") {
-    crypto_.set_platform(&platform_);
-    platform_.GetFake()->SetStandardUsersAndGroups();
-
-    brillo::SecureBlob salt;
-    InitializeFilesystemLayout(&platform_, &crypto_, &salt);
-    keyset_management_ = std::make_unique<KeysetManagement>(
-        &platform_, &crypto_, salt, nullptr, nullptr);
-    HomeDirs::RemoveCallback remove_cb;
-    homedirs_ =
-        std::make_unique<HomeDirs>(&platform_, salt, nullptr, remove_cb);
-
-    mount_ = new Mount(&platform_, homedirs_.get());
-    mount_->Init(/*use_init_namespace=*/true);
-    mount_->chaps_user_ = fake_platform::kChapsUID;
-    mount_->default_access_group_ = fake_platform::kSharedGID;
-    // By default, set stats to the expected values.
-    InitStat(&base_stat_, 040750, fake_platform::kChapsUID,
-             fake_platform::kSharedGID);
-  }
-  ChapsDirectoryTest(const ChapsDirectoryTest&) = delete;
-  ChapsDirectoryTest& operator=(const ChapsDirectoryTest&) = delete;
-
-  virtual ~ChapsDirectoryTest() {}
-
-  void SetupFakeChapsDirectory() {
-    // Configure the base directory.
-    EXPECT_CALL(platform_, DirectoryExists(kBaseDir))
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(platform_, Stat(kBaseDir, _))
-        .WillRepeatedly(DoAll(SetArgPointee<1>(base_stat_), Return(true)));
-  }
-
-  bool RunCheck() { return mount_->SetupChapsDirectory(kBaseDir); }
-
- protected:
-  const FilePath kBaseDir;
-
-  base::stat_wrapper_t base_stat_;
-
-  scoped_refptr<Mount> mount_;
-  NiceMock<MockPlatform> platform_;
-  NiceMock<MockCrypto> crypto_;
-  std::unique_ptr<KeysetManagement> keyset_management_;
-  std::unique_ptr<HomeDirs> homedirs_;
-
- private:
-  void InitStat(base::stat_wrapper_t* s, mode_t mode, uid_t uid, gid_t gid) {
-    memset(s, 0, sizeof(base::stat_wrapper_t));
-    s->st_mode = mode;
-    s->st_uid = uid;
-    s->st_gid = gid;
-  }
-};
-
-TEST_F(ChapsDirectoryTest, DirectoryOK) {
-  SetupFakeChapsDirectory();
-  ASSERT_TRUE(RunCheck());
-}
-
-TEST_F(ChapsDirectoryTest, DirectoryDoesNotExist) {
-  // Specify directory does not exist.
-  EXPECT_CALL(platform_, DirectoryExists(kBaseDir))
-      .WillRepeatedly(Return(false));
-  // Expect basic setup.
-  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
-                             kBaseDir, 0750, fake_platform::kChapsUID,
-                             fake_platform::kSharedGID))
-      .WillRepeatedly(Return(true));
-  ASSERT_TRUE(RunCheck());
-}
-
-TEST_F(ChapsDirectoryTest, CreateFailure) {
-  // Specify directory does not exist.
-  EXPECT_CALL(platform_, DirectoryExists(kBaseDir))
-      .WillRepeatedly(Return(false));
-  // Expect basic setup but fail.
-  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
-                             kBaseDir, 0750, fake_platform::kChapsUID,
-                             fake_platform::kSharedGID))
-      .WillRepeatedly(Return(false));
-  ASSERT_FALSE(RunCheck());
-}
-
 TEST_P(MountTest, MountCryptohome) {
   // checks that cryptohome tries to mount successfully, and tests that the
   // tracked directories are created/replaced as expected
@@ -1500,6 +1413,93 @@ TEST_F(EphemeralSystemTest, EphemeralMount_EnsureUserMountFailure) {
 
   ASSERT_EQ(MOUNT_ERROR_FATAL,
             mount_->MountEphemeralCryptohome(user->username));
+}
+
+// A fixture for testing chaps directory checks.
+class ChapsDirectoryTest : public ::testing::Test {
+ public:
+  ChapsDirectoryTest() : kBaseDir("/base_chaps_dir") {
+    crypto_.set_platform(&platform_);
+    platform_.GetFake()->SetStandardUsersAndGroups();
+
+    brillo::SecureBlob salt;
+    InitializeFilesystemLayout(&platform_, &crypto_, &salt);
+    keyset_management_ = std::make_unique<KeysetManagement>(
+        &platform_, &crypto_, salt, nullptr, nullptr);
+    HomeDirs::RemoveCallback remove_cb;
+    homedirs_ =
+        std::make_unique<HomeDirs>(&platform_, salt, nullptr, remove_cb);
+
+    mount_ = new Mount(&platform_, homedirs_.get());
+    mount_->Init(/*use_init_namespace=*/true);
+    mount_->chaps_user_ = fake_platform::kChapsUID;
+    mount_->default_access_group_ = fake_platform::kSharedGID;
+    // By default, set stats to the expected values.
+    InitStat(&base_stat_, 040750, fake_platform::kChapsUID,
+             fake_platform::kSharedGID);
+  }
+  ChapsDirectoryTest(const ChapsDirectoryTest&) = delete;
+  ChapsDirectoryTest& operator=(const ChapsDirectoryTest&) = delete;
+
+  virtual ~ChapsDirectoryTest() {}
+
+  void SetupFakeChapsDirectory() {
+    // Configure the base directory.
+    EXPECT_CALL(platform_, DirectoryExists(kBaseDir))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(platform_, Stat(kBaseDir, _))
+        .WillRepeatedly(DoAll(SetArgPointee<1>(base_stat_), Return(true)));
+  }
+
+  bool RunCheck() { return mount_->SetupChapsDirectory(kBaseDir); }
+
+ protected:
+  const FilePath kBaseDir;
+
+  base::stat_wrapper_t base_stat_;
+
+  scoped_refptr<Mount> mount_;
+  NiceMock<MockPlatform> platform_;
+  NiceMock<MockCrypto> crypto_;
+  std::unique_ptr<KeysetManagement> keyset_management_;
+  std::unique_ptr<HomeDirs> homedirs_;
+
+ private:
+  void InitStat(base::stat_wrapper_t* s, mode_t mode, uid_t uid, gid_t gid) {
+    memset(s, 0, sizeof(base::stat_wrapper_t));
+    s->st_mode = mode;
+    s->st_uid = uid;
+    s->st_gid = gid;
+  }
+};
+
+TEST_F(ChapsDirectoryTest, DirectoryOK) {
+  SetupFakeChapsDirectory();
+  ASSERT_TRUE(RunCheck());
+}
+
+TEST_F(ChapsDirectoryTest, DirectoryDoesNotExist) {
+  // Specify directory does not exist.
+  EXPECT_CALL(platform_, DirectoryExists(kBaseDir))
+      .WillRepeatedly(Return(false));
+  // Expect basic setup.
+  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
+                             kBaseDir, 0750, fake_platform::kChapsUID,
+                             fake_platform::kSharedGID))
+      .WillRepeatedly(Return(true));
+  ASSERT_TRUE(RunCheck());
+}
+
+TEST_F(ChapsDirectoryTest, CreateFailure) {
+  // Specify directory does not exist.
+  EXPECT_CALL(platform_, DirectoryExists(kBaseDir))
+      .WillRepeatedly(Return(false));
+  // Expect basic setup but fail.
+  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
+                             kBaseDir, 0750, fake_platform::kChapsUID,
+                             fake_platform::kSharedGID))
+      .WillRepeatedly(Return(false));
+  ASSERT_FALSE(RunCheck());
 }
 
 }  // namespace cryptohome
