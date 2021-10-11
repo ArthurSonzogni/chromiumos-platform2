@@ -7,11 +7,14 @@
 
 #include <sys/types.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/optional.h>
 #include <base/strings/string_piece.h>
+
+#include <brillo/process/process.h>
 
 class ProcEntry {
  public:
@@ -42,6 +45,8 @@ using MaybeProcEntries = base::Optional<ProcEntries>;
 
 MaybeProcEntries ReadProcesses();
 // Used mostly for testing.
+// |reader| is un-owned.
+MaybeProcEntries ReadProcesses(brillo::Process* reader);
 MaybeProcEntries ReadProcessesFromString(const std::string& procs);
 
 #endif  // SECANOMALYD_PROCESSES_H_
