@@ -447,42 +447,6 @@ TEST_P(MountTest, BadInitTest) {
   EXPECT_FALSE(mount_->Init(/*use_init_namespace=*/true));
 }
 
-TEST_P(MountTest, MountCryptohomeHasPrivileges) {
-  // Check that Mount only works if the mount permission is given.
-  InsertTestUsers(&kDefaultUsers[10], 1);
-  EXPECT_CALL(platform_, DirectoryExists(ShadowRoot()))
-      .WillRepeatedly(Return(true));
-  EXPECT_TRUE(DoMountInit());
-
-  TestUser* user = &helper_.users[0];
-  user->key_data.set_label("my key!");
-  user->use_key_data = true;
-  // Regenerate the serialized vault keyset.
-  user->GenerateCredentials(ShouldTestEcryptfs());
-  // Let the legacy key iteration work here.
-
-  user->InjectUserPaths(&platform_, fake_platform::kChronosUID,
-                        fake_platform::kChronosGID, fake_platform::kSharedGID,
-                        kDaemonGid, ShouldTestEcryptfs());
-
-  ExpectCryptohomeMount(*user);
-  EXPECT_CALL(platform_, ClearUserKeyring()).WillOnce(Return(true));
-  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
-      .WillRepeatedly(Return(false));
-
-  // user exists, so there'll be no skel copy after.
-
-  MountError error = MOUNT_ERROR_NONE;
-  ASSERT_TRUE(mount_->MountCryptohome(user->username, FileSystemKeyset(),
-                                      GetDefaultMountArgs(),
-                                      /* is_pristine */ false, &error));
-
-  EXPECT_CALL(platform_, Unmount(_, _, _)).WillRepeatedly(Return(true));
-  if (ShouldTestEcryptfs())
-    EXPECT_CALL(platform_, ClearUserKeyring()).WillOnce(Return(true));
-  EXPECT_TRUE(mount_->UnmountCryptohome());
-}
-
 TEST_P(MountTest, BindMyFilesDownloadsSuccess) {
   FilePath dest_dir("/home/.shadow/userhash/mount/user");
   auto downloads_path = dest_dir.Append("Downloads");
@@ -823,6 +787,11 @@ TEST_P(MountTest, MountCryptohome) {
   EXPECT_TRUE(mount_->MountCryptohome(user->username, FileSystemKeyset(),
                                       GetDefaultMountArgs(),
                                       /* is_pristine */ false, &error));
+
+  EXPECT_CALL(platform_, Unmount(_, _, _)).WillRepeatedly(Return(true));
+  if (ShouldTestEcryptfs())
+    EXPECT_CALL(platform_, ClearUserKeyring()).WillOnce(Return(true));
+  EXPECT_TRUE(mount_->UnmountCryptohome());
 }
 
 TEST_P(MountTest, MountPristineCryptohome) {
@@ -884,6 +853,11 @@ TEST_P(MountTest, MountPristineCryptohome) {
                                       mount_args,
                                       /* is_pristine */ true, &error));
   ASSERT_EQ(MOUNT_ERROR_NONE, error);
+
+  ON_CALL(platform_, Unmount(_, _, _)).WillByDefault(Return(true));
+  if (ShouldTestEcryptfs())
+    EXPECT_CALL(platform_, ClearUserKeyring()).WillOnce(Return(true));
+  ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
 TEST_P(MountTest, RememberMountOrderingTest) {
@@ -1345,74 +1319,6 @@ TEST_P(EphemeralSystemTest, CreateMyFilesDownloadsAlreadyExists) {
                          &platform_);
 
   ASSERT_TRUE(mnt_helper.SetUpEphemeralCryptohome(base_path));
-}
-
-TEST_P(EphemeralSystemTest, RegularMount) {
-  TestUser* user = &helper_.users[0];
-
-  EXPECT_CALL(platform_, FileExists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, DirectoryExists(user->vault_path))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_, DirectoryExists(user->vault_mount_path))
-      .WillRepeatedly(Return(false));
-  ExpectCryptohomeKeySetup(*user);
-
-  EXPECT_CALL(platform_, DirectoryExists(Property(
-                             &FilePath::value,
-                             AnyOf(StartsWith(user->user_mount_path.value()),
-                                   StartsWith(user->root_mount_path.value()),
-                                   StartsWith(user->new_user_path.value())))))
-      .WillRepeatedly(Return(false));
-
-  EXPECT_CALL(platform_, IsDirectoryMounted(Property(
-                             &FilePath::value,
-                             AnyOf(StartsWith(user->user_mount_path.value()),
-                                   StartsWith(user->root_mount_path.value()),
-                                   StartsWith(user->new_user_path.value())))))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_, Stat(_, _)).WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_, CreateDirectory(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnership(_, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(_, _, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(user->credentials), Return(true)));
-  EXPECT_CALL(platform_, DirectoryExists(Property(
-                             &FilePath::value,
-                             StartsWith(user->user_vault_mount_path.value()))))
-      .WillRepeatedly(Return(true));
-
-  EXPECT_CALL(platform_,
-              Mount(_, _, kEphemeralMountType, kDefaultMountFlags, _))
-      .Times(0);
-  EXPECT_CALL(platform_, Mount(_, _, _, kDefaultMountFlags | MS_NOSYMFOLLOW, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Bind(_, _, _, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, IsDirectoryMounted(user->vault_mount_path))
-      .WillOnce(Return(false));
-  EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
-      .WillOnce(Return(false));
-  ExpectDownloadsBindMounts(*user, false /* ephemeral_mount */);
-  ExpectDaemonStoreMounts(*user, false /* is_ephemeral */);
-
-  EXPECT_CALL(platform_, GetFileEnumerator(SkelDir(), _, _))
-      .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
-      .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
-
-  Mount::MountArgs mount_args = GetDefaultMountArgs();
-  mount_args.create_if_missing = true;
-  MountError error = MOUNT_ERROR_NONE;
-  ASSERT_TRUE(mount_->MountCryptohome(user->username, FileSystemKeyset(),
-                                      mount_args,
-                                      /* is_pristine */ true, &error));
-
-  // Unmount succeeds.
-  ON_CALL(platform_, Unmount(_, _, _)).WillByDefault(Return(true));
-
-  ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
 TEST_P(EphemeralSystemTest, EphemeralMount) {
