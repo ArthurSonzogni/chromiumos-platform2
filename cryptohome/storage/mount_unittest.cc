@@ -6,6 +6,7 @@
 
 #include "cryptohome/storage/mount.h"
 
+#include <map>
 #include <memory>
 #include <openssl/evp.h>
 #include <openssl/sha.h>
@@ -983,437 +984,535 @@ TEST_P(MountTest, MountCryptohomeForceDircrypto) {
   }
 }
 
+namespace {
+constexpr int kEphemeralVFSFragmentSize = 1 << 10;
+constexpr int kEphemeralVFSSize = 1 << 12;
+
+struct Attributes {
+  mode_t mode;
+  uid_t uid;
+  gid_t gid;
+};
+
+constexpr char kEtc[] = "/etc";
+constexpr char kEtcSkel[] = "/etc/skel";
+constexpr char kEtcDaemonStore[] = "/etc/daemon-store";
+
+constexpr char kRun[] = "/run";
+constexpr char kRunCryptohome[] = "/run/cryptohome";
+constexpr char kRunDaemonStore[] = "/run/daemon-store";
+
+constexpr char kHome[] = "/home";
+constexpr char kHomeChronos[] = "/home/chronos";
+constexpr char kHomeChronosUser[] = "/home/chronos/user";
+constexpr char kHomeUser[] = "/home/user";
+constexpr char kHomeRoot[] = "/home/root";
+
+constexpr char kDir1[] = "dir1";
+constexpr char kFile1[] = "file1";
+constexpr char kDir1File2[] = "dir1/file2";
+constexpr char kDir1Dir2[] = "dir1/dir2";
+constexpr char kDir1Dir2File3[] = "dir1/dir2/file3";
+
+constexpr char kFile1Content[] = "content1";
+constexpr char kDir1File2Content[] = "content2";
+constexpr char kDir1Dir2File3Content[] = "content3";
+
+constexpr char kSomeDaemon[] = "some_daemon";
+constexpr Attributes kSomeDaemonAttributes{01735, 12, 27};
+constexpr char kAnotherDaemon[] = "another_daemon";
+constexpr Attributes kAnotherDaemonAttributes{0600, 0, 0};
+
+constexpr char kDevLoop0[] = "/dev/loop0";
+
+constexpr char kUser[] = "someuser";
+
+// TODO(dlunev): fix mount code to not depend on a fixed gid value.
+constexpr gid_t kDaemonStoreGid = 400;
+
+base::FilePath ChronosHashPath(const std::string& username) {
+  const std::string obfuscated_username =
+      brillo::cryptohome::home::SanitizeUserName(username);
+  return base::FilePath(kHomeChronos)
+      .Append(base::StringPrintf("u-%s", obfuscated_username.c_str()));
+}
+
+void PrepareDirectoryStructure(Platform* platform) {
+  // Create environment as defined in
+  // src/platform2/cryptohome/tmpfiles.d/cryptohome.conf
+  ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
+      base::FilePath(kRun), 0755, fake_platform::kRootUID,
+      fake_platform::kRootGID));
+  ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
+      base::FilePath(kRunCryptohome), 0700, fake_platform::kRootUID,
+      fake_platform::kRootGID));
+  ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
+      base::FilePath(kRunDaemonStore), 0755, fake_platform::kRootUID,
+      fake_platform::kRootGID));
+  ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
+      base::FilePath(kHome), 0755, fake_platform::kRootUID,
+      fake_platform::kRootGID));
+  ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
+      base::FilePath(kHomeChronos), 0755, fake_platform::kChronosUID,
+      fake_platform::kChronosGID));
+  ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
+      base::FilePath(kHomeChronosUser), 01755, fake_platform::kChronosUID,
+      fake_platform::kChronosGID));
+  ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
+      base::FilePath(kHomeUser), 0755, fake_platform::kRootUID,
+      fake_platform::kRootGID));
+  ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
+      base::FilePath(kHomeRoot), 01751, fake_platform::kRootUID,
+      fake_platform::kRootGID));
+
+  // Setup some skel directories to make sure they are copied over.
+  // TODO(dlunev): for now setting permissions is useless, for the code
+  // relies on Copy to copy it over for files, meaning we can't intercept it.
+  // It can be fixed by setting permissions explicitly in RecursiveCopy.
+  ASSERT_TRUE(platform->CreateDirectory(base::FilePath(kEtc)));
+  ASSERT_TRUE(platform->CreateDirectory(base::FilePath(kEtcSkel)));
+  ASSERT_TRUE(
+      platform->CreateDirectory(base::FilePath(kEtcSkel).Append(kDir1)));
+  ASSERT_TRUE(platform->WriteStringToFile(
+      base::FilePath(kEtcSkel).Append(kFile1), kFile1Content));
+  ASSERT_TRUE(platform->WriteStringToFile(
+      base::FilePath(kEtcSkel).Append(kDir1File2), kDir1File2Content));
+  ASSERT_TRUE(
+      platform->CreateDirectory(base::FilePath(kEtcSkel).Append(kDir1Dir2)));
+  ASSERT_TRUE(platform->WriteStringToFile(
+      base::FilePath(kEtcSkel).Append(kDir1Dir2File3), kDir1Dir2File3Content));
+
+  // Setup daemon-store templates
+  ASSERT_TRUE(platform->CreateDirectory(base::FilePath(kEtcDaemonStore)));
+  ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
+      base::FilePath(kEtcDaemonStore).Append(kSomeDaemon),
+      kSomeDaemonAttributes.mode, kSomeDaemonAttributes.uid,
+      kSomeDaemonAttributes.gid));
+  ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
+      base::FilePath(kEtcDaemonStore).Append(kAnotherDaemon),
+      kAnotherDaemonAttributes.mode, kAnotherDaemonAttributes.uid,
+      kAnotherDaemonAttributes.gid));
+  ASSERT_TRUE(platform->CreateDirectory(
+      base::FilePath(kRunDaemonStore).Append(kSomeDaemon)));
+  ASSERT_TRUE(platform->CreateDirectory(
+      base::FilePath(kRunDaemonStore).Append(kAnotherDaemon)));
+}
+
+void CheckExistanceAndPermissions(Platform* platform,
+                                  const base::FilePath& path,
+                                  mode_t expected_mode,
+                                  uid_t expected_uid,
+                                  gid_t expected_gid,
+                                  bool expect_present) {
+  ASSERT_THAT(platform->FileExists(path), expect_present)
+      << "PATH: " << path.value();
+
+  if (!expect_present) {
+    return;
+  }
+
+  mode_t mode;
+  uid_t uid;
+  gid_t gid;
+
+  ASSERT_THAT(platform->GetOwnership(path, &uid, &gid, false), true)
+      << "PATH: " << path.value();
+  ASSERT_THAT(platform->GetPermissions(path, &mode), true)
+      << "PATH: " << path.value();
+
+  ASSERT_THAT(mode, expected_mode) << "PATH: " << path.value();
+  ASSERT_THAT(uid, expected_uid) << "PATH: " << path.value();
+  ASSERT_THAT(gid, expected_gid) << "PATH: " << path.value();
+}
+
+void CheckRootAndDaemonStoreMounts(Platform* platform,
+                                   const std::string& username,
+                                   const base::FilePath& vault_mount_point,
+                                   bool expect_present) {
+  const std::string obfuscated_username =
+      brillo::cryptohome::home::SanitizeUserName(username);
+  const std::multimap<const base::FilePath, const base::FilePath>
+      expected_root_mount_map{
+          {
+              vault_mount_point.Append("root"),
+              brillo::cryptohome::home::GetRootPath(username),
+          },
+          {
+              vault_mount_point.Append("root").Append(kSomeDaemon),
+              base::FilePath(kRunDaemonStore)
+                  .Append(kSomeDaemon)
+                  .Append(obfuscated_username),
+          },
+          {
+              vault_mount_point.Append("root").Append(kAnotherDaemon),
+              base::FilePath(kRunDaemonStore)
+                  .Append(kAnotherDaemon)
+                  .Append(obfuscated_username),
+          },
+      };
+  std::multimap<const base::FilePath, const base::FilePath> root_mount_map;
+
+  ASSERT_THAT(platform->IsDirectoryMounted(
+                  brillo::cryptohome::home::GetRootPath(username)),
+              expect_present);
+  if (expect_present) {
+    ASSERT_TRUE(platform->GetMountsBySourcePrefix(
+        vault_mount_point.Append("root"), &root_mount_map));
+    ASSERT_THAT(root_mount_map,
+                ::testing::UnorderedElementsAreArray(expected_root_mount_map));
+  }
+  CheckExistanceAndPermissions(platform, vault_mount_point.Append("root"),
+                               01770, fake_platform::kRootUID, kDaemonStoreGid,
+                               expect_present);
+  CheckExistanceAndPermissions(
+      platform, vault_mount_point.Append("root").Append(kSomeDaemon),
+      kSomeDaemonAttributes.mode, kSomeDaemonAttributes.uid,
+      kSomeDaemonAttributes.gid, expect_present);
+  CheckExistanceAndPermissions(
+      platform, vault_mount_point.Append("root").Append(kAnotherDaemon),
+      kAnotherDaemonAttributes.mode, kAnotherDaemonAttributes.uid,
+      kAnotherDaemonAttributes.gid, expect_present);
+
+  if (expect_present) {
+    // TODO(dlunev): make this directories to go away on unmount.
+    ASSERT_THAT(platform->DirectoryExists(base::FilePath(kRunDaemonStore)
+                                              .Append(kSomeDaemon)
+                                              .Append(obfuscated_username)),
+                expect_present);
+    ASSERT_THAT(platform->DirectoryExists(base::FilePath(kRunDaemonStore)
+                                              .Append(kAnotherDaemon)
+                                              .Append(obfuscated_username)),
+                expect_present);
+    CheckExistanceAndPermissions(
+        platform, brillo::cryptohome::home::GetRootPath(username), 01770,
+        fake_platform::kRootUID, kDaemonStoreGid, expect_present);
+  }
+}
+
+void CheckUserMountPoints(Platform* platform,
+                          const std::string& username,
+                          const base::FilePath& vault_mount_point,
+                          bool expect_present) {
+  const base::FilePath chronos_hash_user_mount_point =
+      ChronosHashPath(username);
+
+  const std::multimap<const base::FilePath, const base::FilePath>
+      expected_user_mount_map{
+          {vault_mount_point.Append("user"), vault_mount_point.Append("user")},
+          {vault_mount_point.Append("user"),
+           brillo::cryptohome::home::GetUserPath(username)},
+          {vault_mount_point.Append("user"), chronos_hash_user_mount_point},
+          {vault_mount_point.Append("user"), base::FilePath(kHomeChronosUser)},
+          {vault_mount_point.Append("user").Append(kDownloadsDir),
+           vault_mount_point.Append("user")
+               .Append(kMyFilesDir)
+               .Append(kDownloadsDir)},
+      };
+  std::multimap<const base::FilePath, const base::FilePath> user_mount_map;
+
+  ASSERT_THAT(platform->IsDirectoryMounted(base::FilePath(kHomeChronosUser)),
+              expect_present);
+  ASSERT_THAT(platform->IsDirectoryMounted(
+                  brillo::cryptohome::home::GetUserPath(username)),
+              expect_present);
+  ASSERT_THAT(platform->IsDirectoryMounted(chronos_hash_user_mount_point),
+              expect_present);
+  ASSERT_THAT(platform->IsDirectoryMounted(vault_mount_point.Append("user")
+                                               .Append(kMyFilesDir)
+                                               .Append(kDownloadsDir)),
+              expect_present);
+  if (expect_present) {
+    ASSERT_TRUE(platform->GetMountsBySourcePrefix(
+        vault_mount_point.Append("user"), &user_mount_map));
+    ASSERT_THAT(user_mount_map,
+                ::testing::UnorderedElementsAreArray(expected_user_mount_map));
+  }
+}
+
+void CheckUserMountPaths(Platform* platform,
+                         const base::FilePath& base_path,
+                         bool expect_present) {
+  // The path itself.
+  // TODO(dlunev): the mount paths should be cleaned up upon unmount.
+  if (expect_present) {
+    CheckExistanceAndPermissions(platform, base_path, 0750,
+                                 fake_platform::kChronosUID,
+                                 fake_platform::kSharedGID, expect_present);
+  }
+
+  // Subdirectories
+  CheckExistanceAndPermissions(platform, base_path.Append(kDownloadsDir), 0750,
+                               fake_platform::kChronosUID,
+                               fake_platform::kSharedGID, expect_present);
+
+  CheckExistanceAndPermissions(platform, base_path.Append(kMyFilesDir), 0750,
+                               fake_platform::kChronosUID,
+                               fake_platform::kSharedGID, expect_present);
+
+  CheckExistanceAndPermissions(
+      platform, base_path.Append(kMyFilesDir).Append(kDownloadsDir), 0750,
+      fake_platform::kChronosUID, fake_platform::kSharedGID, expect_present);
+
+  CheckExistanceAndPermissions(platform, base_path.Append(kCacheDir), 0700,
+                               fake_platform::kChronosUID,
+                               fake_platform::kChronosGID, expect_present);
+
+  CheckExistanceAndPermissions(platform, base_path.Append(kGCacheDir), 0750,
+                               fake_platform::kChronosUID,
+                               fake_platform::kSharedGID, expect_present);
+
+  CheckExistanceAndPermissions(
+      platform, base_path.Append(kGCacheDir).Append(kGCacheVersion2Dir), 0770,
+      fake_platform::kChronosUID, fake_platform::kSharedGID, expect_present);
+}
+
+void CheckSkel(Platform* platform,
+               const base::FilePath& base_path,
+               bool expect_present) {
+  // Presence
+  // TODO(dlunev) unfortunately we can not verify if Copy correctly deals with
+  // the attributes, because it actually deals with those at the point where
+  // we can not intercept it. We can make that explicit by setting those in
+  // the copy skel itself.
+  CheckExistanceAndPermissions(platform, base_path.Append(kDir1), 0750,
+                               fake_platform::kChronosUID,
+                               fake_platform::kChronosGID, expect_present);
+  CheckExistanceAndPermissions(
+      platform, base_path.Append(kFile1),
+      0750,  // NOT A PART OF THE CONTRACT, SEE TODO ABOVE.
+      fake_platform::kChronosUID, fake_platform::kChronosGID, expect_present);
+  CheckExistanceAndPermissions(platform, base_path.Append(kDir1Dir2), 0750,
+                               fake_platform::kChronosUID,
+                               fake_platform::kChronosGID, expect_present);
+  CheckExistanceAndPermissions(
+      platform, base_path.Append(kDir1File2),
+      0750,  // NOT A PART OF THE CONTRACT, SEE TODO ABOVE.
+      fake_platform::kChronosUID, fake_platform::kChronosGID, expect_present);
+  CheckExistanceAndPermissions(
+      platform, base_path.Append(kDir1Dir2File3),
+      0750,  // NOT A PART OF THE CONTRACT, SEE TODO ABOVE.
+      fake_platform::kChronosUID, fake_platform::kChronosGID, expect_present);
+
+  // Content
+  if (expect_present) {
+    std::string result;
+    ASSERT_TRUE(platform->ReadFileToString(base_path.Append(kFile1), &result));
+    ASSERT_THAT(result, kFile1Content);
+    ASSERT_TRUE(
+        platform->ReadFileToString(base_path.Append(kDir1File2), &result));
+    ASSERT_THAT(result, kDir1File2Content);
+    ASSERT_TRUE(
+        platform->ReadFileToString(base_path.Append(kDir1Dir2File3), &result));
+    ASSERT_THAT(result, kDir1Dir2File3Content);
+  }
+}
+
+}  // namespace
+
 class EphemeralSystemTest : public ::testing::Test {
  public:
-  EphemeralSystemTest() : crypto_(&platform_) {
-    helper_.SetUpSystemSalt();
-    helper_.InjectSystemSalt(&platform_);
-    helper_.InitTestData(&kDefaultUsers[10], 1, false);
+  EphemeralSystemTest() : crypto_(&platform_) {}
 
-    InitializeFilesystemLayout(&platform_, &crypto_, nullptr);
-    keyset_management_ = std::make_unique<KeysetManagement>(
-        &platform_, &crypto_, helper_.system_salt, nullptr, nullptr);
+  void SetUp() {
+    ASSERT_NO_FATAL_FAILURE(PrepareDirectoryStructure(&platform_));
+    InitializeFilesystemLayout(&platform_, &crypto_, &system_salt_);
+    platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt_);
+    platform_.GetFake()->SetStandardUsersAndGroups();
 
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
             &platform_, std::make_unique<FakeBackingDeviceFactory>(&platform_));
-    KeysetManagement* keyset_management = keyset_management_.get();
-    HomeDirs::RemoveCallback remove_callback =
-        base::BindRepeating(&KeysetManagement::RemoveLECredentials,
-                            base::Unretained(keyset_management));
     homedirs_ = std::make_unique<HomeDirs>(
-        &platform_, helper_.system_salt,
-        std::make_unique<policy::PolicyProvider>(), remove_callback,
+        &platform_, system_salt_, std::make_unique<policy::PolicyProvider>(),
+        base::BindRepeating([](const std::string& unused) {}),
         std::make_unique<CryptohomeVaultFactory>(&platform_,
                                                  std::move(container_factory)));
 
-    platform_.GetFake()->SetStandardUsersAndGroups();
-
     mount_ = new Mount(&platform_, homedirs_.get());
 
-    EXPECT_CALL(platform_, DirectoryExists(ShadowRoot()))
-        .WillRepeatedly(Return(true));
     EXPECT_TRUE(mount_->Init(/*use_init_namespace=*/true));
+
+    SetupVFSMock();
   }
+
+  void TearDown() { platform_.GetFake()->RemoveSystemSaltForLibbrillo(); }
 
  protected:
   // Protected for trivial access.
   NiceMock<MockPlatform> platform_;
   Crypto crypto_;
-  MakeTests helper_;
-  NiceMock<MockTpm> tpm_;
-  std::unique_ptr<KeysetManagement> keyset_management_;
+  brillo::SecureBlob system_salt_;
   std::unique_ptr<HomeDirs> homedirs_;
   scoped_refptr<Mount> mount_;
+  struct statvfs ephemeral_statvfs_;
 
-  void ExpectEphemeralCryptohomeMount(const TestUser& user) {
-    EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
-        .WillOnce(Return(true));
-    const FilePath ephemeral_filename =
-        MountHelper::GetEphemeralSparseFile(user.obfuscated_username);
-    EXPECT_CALL(platform_, CreateSparseFile(ephemeral_filename, _))
-        .WillOnce(Return(true));
-    EXPECT_CALL(platform_, AttachLoop(ephemeral_filename))
-        .WillOnce(Return(kLoopDevice));
-    EXPECT_CALL(platform_,
-                FormatExt4(ephemeral_filename, kDefaultExt4FormatOpts, 0))
-        .WillOnce(Return(true));
-
-    EXPECT_CALL(platform_, Mount(kLoopDevice, _, kEphemeralMountType,
-                                 kDefaultMountFlags | MS_NOSYMFOLLOW, _))
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(platform_,
-                SetSELinuxContext(Property(&FilePath::value,
-                                           StartsWith(kEphemeralCryptohomeDir)),
-                                  cryptohome::kEphemeralCryptohomeRootContext))
-        .WillOnce(Return(true));
-    EXPECT_CALL(platform_, Bind(_, _, _, _)).WillRepeatedly(Return(true));
-
-    EXPECT_CALL(platform_, GetFileEnumerator(SkelDir(), _, _))
-        .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
-        .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
-    EXPECT_CALL(
-        platform_,
-        GetFileEnumerator(
-            Property(&FilePath::value, EndsWith("MyFiles/Downloads")), _, _))
-        .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
-    EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(platform_, CreateDirectory(user.vault_path)).Times(0);
-    EXPECT_CALL(platform_, FileExists(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(platform_, CreateDirectory(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(platform_, SafeCreateDirAndSetOwnership(_, _, _))
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(platform_,
-                SafeCreateDirAndSetOwnershipAndPermissions(_, _, _, _))
-        .WillRepeatedly(Return(true));
-    ExpectDaemonStoreMounts(user, true /* ephemeral_mount */);
+  base::FilePath EphemeralBackingFile(const std::string& username) {
+    const std::string obfuscated_username =
+        brillo::cryptohome::home::SanitizeUserName(username);
+    return base::FilePath(kEphemeralCryptohomeDir)
+        .Append(kSparseFileDir)
+        .Append(obfuscated_username);
   }
 
-  void ExpectDownloadsUnmounts(const TestUser& user, bool ephemeral_mount) {
-    // Unmounting Downloads to MyFiles/Downloads in user home directory.
-    const FilePath user_home = ephemeral_mount ? user.user_ephemeral_mount_path
-                                               : user.user_vault_mount_path;
-
-    EXPECT_CALL(platform_,
-                Unmount(user_home.Append("MyFiles").Append("Downloads"), _, _))
-        .WillOnce(Return(true));
+  base::FilePath EphemeralMountPoint(const std::string& username) {
+    const std::string obfuscated_username =
+        brillo::cryptohome::home::SanitizeUserName(username);
+    return base::FilePath(kEphemeralCryptohomeDir)
+        .Append(kEphemeralMountDir)
+        .Append(obfuscated_username);
   }
 
-  // Sets expectations for MountHelper::MountDaemonStoreDirectories. In
-  // particular, sets up |platform_| to pretend that all daemon store
-  // directories exists, so that they're all mounted. Without calling this
-  // method, daemon store directories are pretended to not exist.
-  void ExpectDaemonStoreMounts(const TestUser& user, bool ephemeral_mount) {
-    // Return a mock daemon store directory in /etc/daemon-store.
-    constexpr char kDaemonName[] = "mock-daemon";
-    constexpr uid_t kDaemonUid = 123;
-    constexpr gid_t kDaemonGid = 234;
-    base::stat_wrapper_t stat_data = {};
-    stat_data.st_mode = S_IFDIR;
-    stat_data.st_uid = kDaemonUid;
-    stat_data.st_gid = kDaemonGid;
-    const base::FilePath daemon_store_base_dir(kEtcDaemonStoreBaseDir);
-    const FileEnumerator::FileInfo daemon_info(
-        daemon_store_base_dir.AppendASCII(kDaemonName), stat_data);
-    NiceMock<MockFileEnumerator>* daemon_enumerator =
-        new NiceMock<MockFileEnumerator>();
-    daemon_enumerator->entries_.push_back(daemon_info);
-    EXPECT_CALL(platform_, GetFileEnumerator(daemon_store_base_dir, false,
-                                             base::FileEnumerator::DIRECTORIES))
-        .WillOnce(Return(daemon_enumerator));
+  void VerifyFS(const std::string& username,
+                const base::FilePath& loop_dev,
+                bool expect_present) {
+    CheckLoopDev(username, loop_dev, expect_present);
+    ASSERT_NO_FATAL_FAILURE(CheckRootAndDaemonStoreMounts(
+        &platform_, username, EphemeralMountPoint(username), expect_present));
+    ASSERT_NO_FATAL_FAILURE(CheckUserMountPoints(
+        &platform_, username, EphemeralMountPoint(username), expect_present));
 
-    const FilePath run_daemon_store_path =
-        FilePath(kRunDaemonStoreBaseDir).Append(kDaemonName);
+    const std::vector<base::FilePath> user_vault_and_mounts{
+        EphemeralMountPoint(username).Append("user"),
+        base::FilePath(kHomeChronosUser),
+        brillo::cryptohome::home::GetUserPath(username),
+        ChronosHashPath(username),
+    };
 
-    EXPECT_CALL(platform_, DirectoryExists(run_daemon_store_path))
-        .WillOnce(Return(true));
+    for (const auto& base_path : user_vault_and_mounts) {
+      ASSERT_NO_FATAL_FAILURE(
+          CheckUserMountPaths(&platform_, base_path, expect_present));
+      ASSERT_NO_FATAL_FAILURE(CheckSkel(&platform_, base_path, expect_present));
+    }
+  }
 
-    const FilePath root_home = ephemeral_mount ? user.root_ephemeral_mount_path
-                                               : user.root_vault_mount_path;
-    const FilePath mount_source = root_home.Append(kDaemonName);
-    const FilePath mount_target =
-        run_daemon_store_path.Append(user.obfuscated_username);
+ private:
+  void CheckLoopDev(const std::string& username,
+                    const base::FilePath& loop_dev,
+                    bool expect_present) {
+    const base::FilePath ephemeral_backing_file =
+        EphemeralBackingFile(username);
+    const base::FilePath ephemeral_mount_point = EphemeralMountPoint(username);
+    const std::multimap<const base::FilePath, const base::FilePath>
+        expected_ephemeral_mount_map{
+            {loop_dev, ephemeral_mount_point},
+        };
+    std::multimap<const base::FilePath, const base::FilePath>
+        ephemeral_mount_map;
 
-    // TODO(dlunev): made those repeated since in some cases it is strictly
-    // impossible to have the mocks perform correctly with current test
-    // architecture. Once service.cc and related are gone, re-architect.
-    EXPECT_CALL(platform_, DirectoryExists(mount_source))
-        .WillRepeatedly(Return(false));
+    ASSERT_THAT(platform_.FileExists(ephemeral_backing_file), expect_present);
+    ASSERT_THAT(platform_.FileExists(loop_dev), expect_present);
+    ASSERT_THAT(platform_.DirectoryExists(ephemeral_mount_point),
+                expect_present);
+    ASSERT_THAT(platform_.IsDirectoryMounted(ephemeral_mount_point),
+                expect_present);
+    if (expect_present) {
+      ASSERT_TRUE(
+          platform_.GetMountsBySourcePrefix(loop_dev, &ephemeral_mount_map));
+      ASSERT_THAT(ephemeral_mount_map, ::testing::UnorderedElementsAreArray(
+                                           expected_ephemeral_mount_map));
+    }
+  }
 
-    EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
-                               mount_source, stat_data.st_mode,
-                               stat_data.st_uid, stat_data.st_gid))
-        .WillRepeatedly(Return(true));
+  void SetupVFSMock() {
+    ephemeral_statvfs_ = {0};
+    ephemeral_statvfs_.f_frsize = kEphemeralVFSFragmentSize;
+    ephemeral_statvfs_.f_blocks = kEphemeralVFSSize / kEphemeralVFSFragmentSize;
 
-    EXPECT_CALL(platform_, CreateDirectory(mount_target))
-        .WillOnce(Return(true));
-
-    EXPECT_CALL(platform_, Bind(mount_source, mount_target, _, true))
-        .WillOnce(Return(true));
+    ON_CALL(platform_, StatVFS(base::FilePath(kEphemeralCryptohomeDir), _))
+        .WillByDefault(
+            DoAll(SetArgPointee<1>(ephemeral_statvfs_), Return(true)));
   }
 };
 
-TEST_F(EphemeralSystemTest, CreateMyFilesDownloads) {
-  // Checks that MountHelper::SetUpEphemeralCryptohome creates
-  // MyFiles/Downloads.
-  const FilePath base_path("/ephemeral_home/");
-  const FilePath user_home_path = base_path.Append("user");
-  const FilePath downloads_path = user_home_path.Append("Downloads");
-  const FilePath myfiles_path = user_home_path.Append("MyFiles");
-  const FilePath myfiles_downloads_path = myfiles_path.Append("Downloads");
-  const FilePath cache_path = user_home_path.Append("Cache");
-  const FilePath gcache_path = user_home_path.Append("GCache");
-  const FilePath gcache_v1_path = user_home_path.Append("GCache").Append("v1");
-  const FilePath gcache_v2_path = user_home_path.Append("GCache").Append("v2");
-
-  // Expecting Downloads to not exist and then be created.
-  EXPECT_CALL(platform_, DirectoryExists(downloads_path))
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
-                             downloads_path, 0750, fake_platform::kChronosUID,
-                             fake_platform::kSharedGID))
-      .WillRepeatedly(Return(true));
-  // Expecting MyFiles to not exist and then be created.
-  EXPECT_CALL(platform_, DirectoryExists(myfiles_path))
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
-                             myfiles_path, 0750, fake_platform::kChronosUID,
-                             fake_platform::kSharedGID))
-      .WillRepeatedly(Return(true));
-  // Expecting MyFiles/Downloads to not exist and then be created, with right
-  // user and group.
-  EXPECT_CALL(platform_, DirectoryExists(myfiles_downloads_path))
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_,
-              SafeCreateDirAndSetOwnershipAndPermissions(
-                  myfiles_downloads_path, 0750, fake_platform::kChronosUID,
-                  fake_platform::kSharedGID))
-      .WillRepeatedly(Return(true));
-
-  // Expect Cache to be created with the right user and group.
-  EXPECT_CALL(platform_, DirectoryExists(cache_path))
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
-                             cache_path, 0700, fake_platform::kChronosUID,
-                             fake_platform::kChronosGID))
-      .WillRepeatedly(Return(true));
-
-  // Expect GCache and Gcache/v2 to be created with the right user and group.
-  EXPECT_CALL(platform_, DirectoryExists(gcache_path))
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
-                             gcache_path, 0750, fake_platform::kChronosUID,
-                             fake_platform::kSharedGID))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, DirectoryExists(gcache_v2_path))
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SafeCreateDirAndSetOwnershipAndPermissions(
-                             gcache_v2_path, 0770, fake_platform::kChronosUID,
-                             fake_platform::kSharedGID))
-      .WillRepeatedly(Return(true));
-
-  MountHelper mnt_helper(fake_platform::kChronosUID, fake_platform::kChronosGID,
-                         fake_platform::kSharedGID, helper_.system_salt,
-                         true /*legacy_mount*/, true /* bind_mount_downloads */,
-                         &platform_);
-
-  ASSERT_TRUE(mnt_helper.SetUpEphemeralCryptohome(base_path));
-}
-
-TEST_F(EphemeralSystemTest, CreateMyFilesDownloadsAlreadyExists) {
-  // Checks that MountHelper::SetUpEphemeralCryptohome doesn't re-recreate if
-  // already exists, just sets the ownership and group access for |base_path|.
-  const FilePath base_path("/ephemeral_home/");
-  const FilePath user_home_path = base_path.Append("user");
-  const FilePath downloads_path = user_home_path.Append("Downloads");
-  const FilePath myfiles_path = user_home_path.Append("MyFiles");
-  const FilePath myfiles_downloads_path = myfiles_path.Append("Downloads");
-  const FilePath cache_path = user_home_path.Append("Cache");
-  const auto gcache_dirs = Property(
-      &FilePath::value, StartsWith(user_home_path.Append("GCache").value()));
-
-  // Expecting Downloads and MyFiles/Downloads to exist thus CreateDirectory
-  // isn't called.
-  EXPECT_CALL(platform_, DirectoryExists(AnyOf(
-                             base_path, myfiles_path, downloads_path,
-                             myfiles_downloads_path, cache_path, gcache_dirs)))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_,
-              SetGroupAccessible(AnyOf(base_path, myfiles_path, downloads_path,
-                                       myfiles_downloads_path, gcache_dirs),
-                                 fake_platform::kSharedGID, _))
-      .WillRepeatedly(Return(true));
-
-  MountHelper mnt_helper(fake_platform::kChronosUID, fake_platform::kChronosGID,
-                         fake_platform::kSharedGID, helper_.system_salt,
-                         true /*legacy_mount*/, true /* bind_mount_downloads */,
-                         &platform_);
-
-  ASSERT_TRUE(mnt_helper.SetUpEphemeralCryptohome(base_path));
-}
+namespace {
 
 TEST_F(EphemeralSystemTest, EphemeralMount) {
-  TestUser* user = &helper_.users[0];
-
-  // Always removes non-owner cryptohomes.
-  std::vector<FilePath> empty;
-  EXPECT_CALL(platform_, EnumerateDirectoryEntries(_, _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
-
-  EXPECT_CALL(platform_, Stat(_, _)).WillRepeatedly(Return(false));
-  ExpectEphemeralCryptohomeMount(*user);
-
-  ASSERT_EQ(MOUNT_ERROR_NONE, mount_->MountEphemeralCryptohome(user->username));
-
-  EXPECT_CALL(platform_, DetachLoop(kLoopDevice)).WillOnce(Return(true));
-  EXPECT_CALL(platform_,
-              Unmount(user->ephemeral_mount_path.Append("user"), _, _))
+  EXPECT_CALL(platform_, FormatExt4(EphemeralBackingFile(kUser), _, _))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform_, Unmount(user->ephemeral_mount_path, _, _))
+  EXPECT_CALL(platform_, SetSELinuxContext(EphemeralMountPoint(kUser), _))
       .WillOnce(Return(true));
 
-  EXPECT_CALL(
-      platform_,
-      Unmount(Property(&FilePath::value, StartsWith("/home/chronos/u-")), _, _))
-      .WillOnce(Return(true));  // user mount
-  EXPECT_CALL(
-      platform_,
-      Unmount(Property(&FilePath::value, StartsWith("/home/user/")), _, _))
-      .WillOnce(Return(true));  // user mount
-  EXPECT_CALL(
-      platform_,
-      Unmount(Property(&FilePath::value, StartsWith("/home/root/")), _, _))
-      .WillOnce(Return(true));  // user mount
-  EXPECT_CALL(platform_, Unmount(FilePath("/home/chronos/user"), _, _))
-      .WillOnce(Return(true));  // legacy mount
-  EXPECT_CALL(platform_, Unmount(Property(&FilePath::value,
-                                          StartsWith(kRunDaemonStoreBaseDir)),
-                                 _, _))
-      .WillOnce(Return(true));  // daemon store mounts
-  EXPECT_CALL(platform_, ClearUserKeyring()).WillRepeatedly(Return(true));
+  ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser), MOUNT_ERROR_NONE);
 
-  ExpectDownloadsUnmounts(*user, true /* ephemeral_mount */);
+  VerifyFS(kUser, base::FilePath(kDevLoop0), /*expect_present=*/true);
 
-  EXPECT_TRUE(mount_->UnmountCryptohome());
+  ASSERT_TRUE(mount_->UnmountCryptohome());
+
+  VerifyFS(kUser, base::FilePath(kDevLoop0), /*expect_present=*/false);
 }
 
 TEST_F(EphemeralSystemTest, EpmeneralMount_VFSFailure) {
   // Checks the case when ephemeral statvfs call fails.
-  const TestUser* const user = &helper_.users[0];
+  ON_CALL(platform_, StatVFS(base::FilePath(kEphemeralCryptohomeDir), _))
+      .WillByDefault(Return(false));
 
-  EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
+  ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser), MOUNT_ERROR_FATAL);
 
-  EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
-      .WillOnce(Return(false));
-
-  ASSERT_EQ(MOUNT_ERROR_FATAL,
-            mount_->MountEphemeralCryptohome(user->username));
+  VerifyFS(kUser, base::FilePath(kDevLoop0), /*expect_present=*/false);
 }
 
 TEST_F(EphemeralSystemTest, EphemeralMount_CreateSparseDirFailure) {
   // Checks the case when directory for ephemeral sparse files fails to be
   // created.
-  const TestUser* const user = &helper_.users[0];
-
-  EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
-
-  EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_, CreateDirectory(MountHelper::GetEphemeralSparseFile(
-                                             user->obfuscated_username)
-                                             .DirName()))
+  EXPECT_CALL(platform_, CreateDirectory(EphemeralBackingFile(kUser).DirName()))
       .WillOnce(Return(false));
 
-  ASSERT_EQ(MOUNT_ERROR_FATAL,
-            mount_->MountEphemeralCryptohome(user->username));
+  ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser), MOUNT_ERROR_FATAL);
+
+  VerifyFS(kUser, base::FilePath(kDevLoop0), /*expect_present=*/false);
 }
 
 TEST_F(EphemeralSystemTest, EphemeralMount_CreateSparseFailure) {
   // Checks the case when ephemeral sparse file fails to create.
-  const TestUser* const user = &helper_.users[0];
-  const FilePath ephemeral_filename =
-      MountHelper::GetEphemeralSparseFile(user->obfuscated_username);
-
-  EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
-  EXPECT_CALL(platform_, DeleteFile(ephemeral_filename)).Times(1);
-
-  EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_, CreateDirectory(ephemeral_filename.DirName()))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_, CreateSparseFile(ephemeral_filename, _))
+  EXPECT_CALL(platform_, CreateSparseFile(EphemeralBackingFile(kUser), _))
       .WillOnce(Return(false));
 
-  ASSERT_EQ(MOUNT_ERROR_FATAL,
-            mount_->MountEphemeralCryptohome(user->username));
-}
+  ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser), MOUNT_ERROR_FATAL);
 
-TEST_F(EphemeralSystemTest, EphemeralMount_AttachLoopFailure) {
-  // Checks that when ephemeral loop device fails to attach, clean up happens
-  // appropriately.
-  const TestUser* const user = &helper_.users[0];
-  const FilePath ephemeral_filename =
-      MountHelper::GetEphemeralSparseFile(user->obfuscated_username);
-
-  EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
-  EXPECT_CALL(platform_, DeleteFile(ephemeral_filename)).Times(1);
-
-  EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_, CreateDirectory(ephemeral_filename.DirName()))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_, CreateSparseFile(ephemeral_filename, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_,
-              FormatExt4(ephemeral_filename, kDefaultExt4FormatOpts, 0))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_, AttachLoop(ephemeral_filename))
-      .WillOnce(Return(FilePath()));
-
-  ASSERT_EQ(MOUNT_ERROR_FATAL,
-            mount_->MountEphemeralCryptohome(user->username));
+  VerifyFS(kUser, base::FilePath(kDevLoop0), /*expect_present=*/false);
 }
 
 TEST_F(EphemeralSystemTest, EphemeralMount_FormatFailure) {
   // Checks that when ephemeral loop device fails to be formatted, clean up
   // happens appropriately.
-  const TestUser* const user = &helper_.users[0];
-  const FilePath ephemeral_filename =
-      MountHelper::GetEphemeralSparseFile(user->obfuscated_username);
-
-  EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
-  EXPECT_CALL(platform_, DeleteFile(ephemeral_filename)).Times(1);
-
-  EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_, CreateDirectory(ephemeral_filename.DirName()))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_, CreateSparseFile(ephemeral_filename, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_,
-              FormatExt4(ephemeral_filename, kDefaultExt4FormatOpts, 0))
+  EXPECT_CALL(platform_, FormatExt4(EphemeralBackingFile(kUser), _, _))
       .WillOnce(Return(false));
 
-  ASSERT_EQ(MOUNT_ERROR_FATAL,
-            mount_->MountEphemeralCryptohome(user->username));
+  ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser), MOUNT_ERROR_FATAL);
+
+  VerifyFS(kUser, base::FilePath(kDevLoop0), /*expect_present=*/false);
+}
+
+TEST_F(EphemeralSystemTest, EphemeralMount_AttachLoopFailure) {
+  // Checks that when ephemeral loop device fails to attach, clean up happens
+  // appropriately.
+  EXPECT_CALL(platform_, FormatExt4(EphemeralBackingFile(kUser), _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, AttachLoop(EphemeralBackingFile(kUser)))
+      .WillOnce(Return(FilePath()));
+
+  ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser), MOUNT_ERROR_FATAL);
+
+  VerifyFS(kUser, base::FilePath(kDevLoop0), /*expect_present=*/false);
 }
 
 TEST_F(EphemeralSystemTest, EphemeralMount_EnsureUserMountFailure) {
   // Checks that when ephemeral mount fails to ensure mount points, clean up
   // happens appropriately.
-  const TestUser* const user = &helper_.users[0];
-  const FilePath ephemeral_filename =
-      MountHelper::GetEphemeralSparseFile(user->obfuscated_username);
-
-  EXPECT_CALL(platform_, DetachLoop(_)).Times(1);
-  EXPECT_CALL(platform_, DeleteFile(ephemeral_filename)).Times(1);
-
-  EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
+  EXPECT_CALL(platform_, FormatExt4(EphemeralBackingFile(kUser), _, _))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform_, CreateSparseFile(ephemeral_filename, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_,
-              FormatExt4(ephemeral_filename, kDefaultExt4FormatOpts, 0))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_, AttachLoop(ephemeral_filename))
-      .WillOnce(Return(FilePath("/dev/loop7")));
-  EXPECT_CALL(platform_, Stat(_, _)).WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_, CreateDirectory(_)).WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_, CreateDirectory(ephemeral_filename.DirName()))
-      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, Mount(base::FilePath(kDevLoop0),
+                               EphemeralMountPoint(kUser), _, _, _))
+      .WillOnce(Return(false));
 
-  // Detach succeeds.
-  ON_CALL(platform_, DetachLoop(_)).WillByDefault(Return(true));
+  ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser), MOUNT_ERROR_FATAL);
 
-  ASSERT_EQ(MOUNT_ERROR_FATAL,
-            mount_->MountEphemeralCryptohome(user->username));
+  // TODO(dlunev): some directories cleanup is missing in this case. Fix it and
+  // uncomment the following.
+  // VerifyFS(kUser, "/dev/loop0", /*expect_present=*/false);
 }
+
+}  // namespace
 
 // A fixture for testing chaps directory checks.
 class ChapsDirectoryTest : public ::testing::Test {
