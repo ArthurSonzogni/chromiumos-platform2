@@ -199,11 +199,9 @@ class MountHelper : public MountHelperInterface {
                                                           gid_t access_gid);
 
   // Returns the names of all GCache subdirectories and its proper ACLs.
-  // |v1_dirs| controls whether GCache/v1 subdirectories are enumerated.
   static std::vector<DirectoryACL> GetGCacheSubdirectories(uid_t uid,
                                                            gid_t gid,
-                                                           gid_t access_gid,
-                                                           bool v1_dirs);
+                                                           gid_t access_gid);
 
   // Returns the names of all tracked subdirectories and its proper ACLs.
   static std::vector<DirectoryACL> GetTrackedSubdirectories(uid_t uid,

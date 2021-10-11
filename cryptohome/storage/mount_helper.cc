@@ -117,33 +117,11 @@ std::vector<DirectoryACL> MountHelper::GetCacheSubdirectories(
   };
 }
 
-std::vector<DirectoryACL> MountHelper::GetGCacheSubdirectories(uid_t uid,
-                                                               gid_t gid,
-                                                               gid_t access_gid,
-                                                               bool v1_dirs) {
+std::vector<DirectoryACL> MountHelper::GetGCacheSubdirectories(
+    uid_t uid, gid_t gid, gid_t access_gid) {
   DirectoryACL gcache_v2_subdir = {
       FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(kGCacheVersion2Dir),
       kAccessMode | kGroupWriteAccess, uid, access_gid};
-
-  std::vector<DirectoryACL> gcache_v1_subdirs = {
-      {FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(kGCacheVersion1Dir),
-       kAccessMode, uid, access_gid},
-      {FilePath(kUserHomeSuffix)
-           .Append(kGCacheDir)
-           .Append(kGCacheVersion1Dir)
-           .Append(kGCacheBlobsDir),
-       kTrackedDirMode, uid, gid},
-      {FilePath(kUserHomeSuffix)
-           .Append(kGCacheDir)
-           .Append(kGCacheVersion1Dir)
-           .Append(kGCacheTmpDir),
-       kTrackedDirMode, uid, gid},
-  };
-
-  if (v1_dirs) {
-    gcache_v1_subdirs.push_back(gcache_v2_subdir);
-    return gcache_v1_subdirs;
-  }
 
   return {gcache_v2_subdir};
 }
@@ -163,7 +141,7 @@ std::vector<DirectoryACL> MountHelper::GetTrackedSubdirectories(
       GetCacheSubdirectories(uid, gid, access_gid);
 
   std::vector<DirectoryACL> gcache_subdirs =
-      GetGCacheSubdirectories(uid, gid, access_gid, /*v1_dirs=*/true);
+      GetGCacheSubdirectories(uid, gid, access_gid);
 
   auto result = durable_only_subdirs;
   result.insert(result.end(), common_subdirs.begin(), common_subdirs.end());
@@ -419,7 +397,7 @@ std::vector<DirectoryACL> MountHelper::GetEphemeralSubdirectories(
       GetCacheSubdirectories(uid, gid, access_gid);
 
   std::vector<DirectoryACL> gcache_subdirs =
-      GetGCacheSubdirectories(uid, gid, access_gid, /*v1_dirs=*/false);
+      GetGCacheSubdirectories(uid, gid, access_gid);
 
   auto result = common_subdirs;
   result.insert(result.end(), cache_subdirs.begin(), cache_subdirs.end());
@@ -732,8 +710,7 @@ std::vector<DirectoryACL> MountHelper::GetDmcryptSubdirectories(
     uid_t uid, gid_t gid, gid_t access_gid) {
   auto common_subdirs = GetCommonSubdirectories(uid, gid, access_gid);
   auto cache_subdirs = GetCacheSubdirectories(uid, gid, access_gid);
-  auto gcache_subdirs =
-      GetGCacheSubdirectories(uid, gid, access_gid, /*v1_dirs=*/true);
+  auto gcache_subdirs = GetGCacheSubdirectories(uid, gid, access_gid);
 
   // Construct data volume subdirectories.
   std::vector<DirectoryACL> data_volume_subdirs;
