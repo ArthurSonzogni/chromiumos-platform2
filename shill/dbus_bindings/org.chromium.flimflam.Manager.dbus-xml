@@ -121,6 +121,10 @@
 		<method name="SetDNSProxyDOHProviders">
 			<arg type="a{sv}" direction="in"/>
 		</method>
+		<method name="AddPasspointCredentials">
+			<arg name="profile" type="o" direction="in"/>
+			<arg name="properties" type="a{sv}" direction="in"/>
+		</method>
 	</interface>
 	<node name="device"/>
 	<node name="profile"/>

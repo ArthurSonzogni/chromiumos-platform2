@@ -539,6 +539,12 @@ class Manager {
   // service.
   bool SetDNSProxyDOHProviders(const KeyValueStore& providers, Error* error);
 
+  // Creates a set of Passpoint credentials from |properties| in the profile
+  // referenced by |profile_id|.
+  bool AddPasspointCredentials(const std::string& profile_rpcid,
+                               const KeyValueStore& properties,
+                               Error* error);
+
  private:
   friend class ArcVpnDriverTest;
   friend class CellularTest;

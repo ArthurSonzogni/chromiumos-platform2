@@ -37,6 +37,11 @@ class WiFiEndpoint;
 using WiFiEndpointConstRefPtr = scoped_refptr<const WiFiEndpoint>;
 using WiFiEndpointRefPtr = scoped_refptr<WiFiEndpoint>;
 
+class PasspointCredentials;
+using PasspointCredentialsConstRefPtr =
+    scoped_refptr<const PasspointCredentials>;
+using PasspointCredentialsRefPtr = scoped_refptr<PasspointCredentials>;
+
 class Service;
 using ServiceConstRefPtr = scoped_refptr<const Service>;
 using ServiceRefPtr = scoped_refptr<Service>;

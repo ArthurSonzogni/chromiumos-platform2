@@ -414,6 +414,16 @@ Methods
 			(both v4 and v6 are supported) of the standard DNS name
 			servers that map to the secure DNS service provider.
 
+		void AddPasspointCredentials(object profile, dict properties)
+
+			Adds a set of Passpoint credentials to |profile|. The credentials
+			will be used to match and connect to compatible Wi-Fi networks.
+			Credentials cannot be added to the default Profile.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.NotFound
+
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given

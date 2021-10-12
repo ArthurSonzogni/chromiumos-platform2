@@ -452,4 +452,16 @@ bool ManagerDBusAdaptor::SetDNSProxyDOHProviders(
   return !e.ToChromeosError(error);
 }
 
+bool ManagerDBusAdaptor::AddPasspointCredentials(
+    brillo::ErrorPtr* error,
+    const dbus::ObjectPath& profile_rpcid,
+    const brillo::VariantDictionary& args) {
+  SLOG(this, 2) << __func__;
+  Error e;
+  manager_->AddPasspointCredentials(
+      profile_rpcid.value(), KeyValueStore::ConvertFromVariantDictionary(args),
+      &e);
+  return !e.ToChromeosError(error);
+}
+
 }  // namespace shill

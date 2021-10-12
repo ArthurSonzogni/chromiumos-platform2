@@ -68,6 +68,7 @@
 #endif  // DISABLE_CELLULAR
 
 #if !defined(DISABLE_WIFI)
+#include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wifi.h"
 #include "shill/wifi/wifi_provider.h"
 #include "shill/wifi/wifi_service.h"
@@ -3109,6 +3110,44 @@ bool Manager::SetDNSProxyDOHProviders(const KeyValueStore& providers,
   adaptor_->EmitKeyValueStoreChanged(kDNSProxyDOHProvidersProperty,
                                      props_.dns_proxy_doh_providers);
   return true;
+}
+
+bool Manager::AddPasspointCredentials(const std::string& profile_rpcid,
+                                      const KeyValueStore& properties,
+                                      Error* error) {
+  if (error)
+    error->Reset();
+
+#if !defined(DISABLE_WIFI)
+  ProfileRefPtr profile = LookupProfileByRpcIdentifier(profile_rpcid);
+  if (!profile) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound,
+                          "Profile " + profile_rpcid + " not found");
+    return false;
+  }
+  if (profile->IsDefault()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Can't add credentials to default profile");
+    return false;
+  }
+
+  PasspointCredentialsRefPtr creds =
+      PasspointCredentials::CreatePasspointCredentials(properties, error);
+  if (!creds) {
+    // We expect |error| to be filled by the Passpoint credentials "factory".
+    LOG(ERROR) << "failed to create Passpoint credentials";
+    return false;
+  }
+
+  // TODO(b/162106001) store the credentials into the profile and push it to
+  // the provider.
+
+  return true;
+#else
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotImplemented,
+                        "Passpoint requires Wi-Fi support");
+  return false;
+#endif  // !DISABLE_WIFI
 }
 
 bool Manager::SetNetworkThrottlingStatus(const ResultCallback& callback,
