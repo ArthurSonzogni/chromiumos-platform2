@@ -60,7 +60,15 @@ void UpdateEngineProxy::Reboot() {
 
 bool UpdateEngineProxy::StartUpdate() {
   brillo::ErrorPtr error;
-  if (!update_engine_proxy_.get()->AttemptUpdate("ForcedUpdate", "", &error)) {
+  update_engine::UpdateParams update_params;
+  update_params.set_app_version("ForcedUpdate");
+  update_params.set_omaha_url("");
+  update_engine::UpdateFlags* update_flags =
+      update_params.mutable_update_flags();
+  // Default is interactive as `true`, but explicitly set here.
+  update_flags->set_non_interactive(false);
+
+  if (!update_engine_proxy_.get()->Update(update_params, &error)) {
     LOG(ERROR) << "Could not initiate forced update. "
                << "ErrorCode=" << error->GetCode()
                << " ErrorMessage=" << error->GetMessage();
