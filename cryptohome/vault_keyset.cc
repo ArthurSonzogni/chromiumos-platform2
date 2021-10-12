@@ -51,6 +51,61 @@ const char kKeyLegacyPrefix[] = "legacy-";
 
 namespace cryptohome {
 
+namespace {
+struct AuthBlockFlags {
+  int32_t require_flags;
+  int32_t refuse_flags;
+};
+
+constexpr AuthBlockFlags kPinWeaverFlags = {
+    .require_flags = SerializedVaultKeyset::LE_CREDENTIAL,
+    .refuse_flags = 0,
+};
+
+constexpr AuthBlockFlags kChallengeCredentialFlags = {
+    .require_flags = SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED,
+    .refuse_flags = 0,
+};
+
+constexpr AuthBlockFlags kDoubleWrappedCompatFlags = {
+    .require_flags = SerializedVaultKeyset::SCRYPT_WRAPPED |
+                     SerializedVaultKeyset::TPM_WRAPPED,
+    .refuse_flags = 0,
+};
+
+constexpr AuthBlockFlags kLibScryptCompatFlags = {
+    .require_flags = SerializedVaultKeyset::SCRYPT_WRAPPED,
+    .refuse_flags = SerializedVaultKeyset::TPM_WRAPPED,
+};
+
+constexpr AuthBlockFlags kTpmNotBoundToPcrFlags = {
+    .require_flags = SerializedVaultKeyset::TPM_WRAPPED,
+    .refuse_flags = SerializedVaultKeyset::SCRYPT_WRAPPED |
+                    SerializedVaultKeyset::PCR_BOUND |
+                    SerializedVaultKeyset::ECC,
+};
+
+constexpr AuthBlockFlags kTpmBoundToPcrFlags = {
+    .require_flags =
+        SerializedVaultKeyset::TPM_WRAPPED | SerializedVaultKeyset::PCR_BOUND,
+    .refuse_flags =
+        SerializedVaultKeyset::SCRYPT_WRAPPED | SerializedVaultKeyset::ECC,
+};
+
+constexpr AuthBlockFlags kTpmEccFlags = {
+    .require_flags = SerializedVaultKeyset::TPM_WRAPPED |
+                     SerializedVaultKeyset::PCR_BOUND |
+                     SerializedVaultKeyset::ECC,
+    .refuse_flags = SerializedVaultKeyset::SCRYPT_WRAPPED,
+};
+
+bool MatchFlags(AuthBlockFlags auth_block_flags, int32_t flags) {
+  return (flags & auth_block_flags.require_flags) ==
+             auth_block_flags.require_flags &&
+         (flags & auth_block_flags.refuse_flags) == 0;
+}
+}  // namespace
+
 VaultKeyset::VaultKeyset()
     : platform_(NULL),
       crypto_(NULL),
@@ -556,10 +611,11 @@ bool VaultKeyset::UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
 
 void VaultKeyset::SetTpmNotBoundToPcrState(
     const TpmNotBoundToPcrAuthBlockState& auth_state) {
-  flags_ = SerializedVaultKeyset::TPM_WRAPPED;
+  flags_ = kTpmNotBoundToPcrFlags.require_flags;
   if (auth_state.scrypt_derived) {
     flags_ |= SerializedVaultKeyset::SCRYPT_DERIVED;
   }
+
   if (auth_state.tpm_key.has_value()) {
     tpm_key_ = auth_state.tpm_key.value();
   }
@@ -573,11 +629,11 @@ void VaultKeyset::SetTpmNotBoundToPcrState(
 
 void VaultKeyset::SetTpmBoundToPcrState(
     const TpmBoundToPcrAuthBlockState& auth_state) {
-  flags_ =
-      SerializedVaultKeyset::TPM_WRAPPED | SerializedVaultKeyset::PCR_BOUND;
+  flags_ = kTpmBoundToPcrFlags.require_flags;
   if (auth_state.scrypt_derived) {
     flags_ |= SerializedVaultKeyset::SCRYPT_DERIVED;
   }
+
   if (auth_state.tpm_key.has_value()) {
     tpm_key_ = auth_state.tpm_key.value();
   }
@@ -593,7 +649,8 @@ void VaultKeyset::SetTpmBoundToPcrState(
 }
 
 void VaultKeyset::SetPinWeaverState(const PinWeaverAuthBlockState& auth_state) {
-  flags_ = SerializedVaultKeyset::LE_CREDENTIAL;
+  flags_ = kPinWeaverFlags.require_flags;
+
   if (auth_state.le_label.has_value()) {
     le_label_ = auth_state.le_label.value();
   }
@@ -604,7 +661,7 @@ void VaultKeyset::SetPinWeaverState(const PinWeaverAuthBlockState& auth_state) {
 
 void VaultKeyset::SetLibScryptCompatState(
     const LibScryptCompatAuthBlockState& auth_state) {
-  flags_ = SerializedVaultKeyset::SCRYPT_WRAPPED;
+  flags_ = kLibScryptCompatFlags.require_flags;
 
   // TODO(b/198394243): We should remove this because it's not actually used.
   if (auth_state.salt.has_value()) {
@@ -614,8 +671,7 @@ void VaultKeyset::SetLibScryptCompatState(
 
 void VaultKeyset::SetChallengeCredentialState(
     const ChallengeCredentialAuthBlockState& auth_state) {
-  flags_ = SerializedVaultKeyset::SCRYPT_WRAPPED |
-           SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED;
+  flags_ = kChallengeCredentialFlags.require_flags;
 
   // TODO(b/198394243): We should remove this because it's not actually used.
   if (auth_state.scrypt_state.salt.has_value()) {
@@ -624,8 +680,7 @@ void VaultKeyset::SetChallengeCredentialState(
 }
 
 void VaultKeyset::SetTpmEccState(const TpmEccAuthBlockState& auth_state) {
-  flags_ = SerializedVaultKeyset::TPM_WRAPPED |
-           SerializedVaultKeyset::PCR_BOUND | SerializedVaultKeyset::ECC;
+  flags_ = kTpmEccFlags.require_flags;
   if (auth_state.sealed_hvkkm.has_value()) {
     tpm_key_ = auth_state.sealed_hvkkm.value();
   }
@@ -839,23 +894,19 @@ bool VaultKeyset::GetTpmEccState(AuthBlockState* auth_state) const {
 bool VaultKeyset::GetAuthBlockState(AuthBlockState* auth_state) const {
   // First case, handle a group of users with keysets that were incorrectly
   // flagged as being both TPM and scrypt wrapped.
-  if ((flags_ & SerializedVaultKeyset::SCRYPT_WRAPPED) &&
-      (flags_ & SerializedVaultKeyset::TPM_WRAPPED)) {
+  if (MatchFlags(kDoubleWrappedCompatFlags, flags_)) {
     return GetDoubleWrappedCompatState(auth_state);
-  } else if (flags_ & SerializedVaultKeyset::TPM_WRAPPED &&
-             flags_ & SerializedVaultKeyset::PCR_BOUND &&
-             flags_ & SerializedVaultKeyset::ECC) {
+  } else if (MatchFlags(kTpmEccFlags, flags_)) {
     return GetTpmEccState(auth_state);
-  } else if (flags_ & SerializedVaultKeyset::TPM_WRAPPED &&
-             flags_ & SerializedVaultKeyset::PCR_BOUND) {
+  } else if (MatchFlags(kTpmBoundToPcrFlags, flags_)) {
     return GetTpmBoundToPcrState(auth_state);
-  } else if (flags_ & SerializedVaultKeyset::TPM_WRAPPED) {
+  } else if (MatchFlags(kTpmNotBoundToPcrFlags, flags_)) {
     return GetTpmNotBoundToPcrState(auth_state);
-  } else if (flags_ & SerializedVaultKeyset::LE_CREDENTIAL) {
+  } else if (MatchFlags(kPinWeaverFlags, flags_)) {
     return GetPinWeaverState(auth_state);
-  } else if (flags_ & SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED) {
+  } else if (MatchFlags(kChallengeCredentialFlags, flags_)) {
     return GetSignatureChallengeState(auth_state);
-  } else if (flags_ & SerializedVaultKeyset::SCRYPT_WRAPPED) {
+  } else if (MatchFlags(kLibScryptCompatFlags, flags_)) {
     return GetLibScryptCompatState(auth_state);
   } else {
     LOG(ERROR) << "Unknown auth block type for flags " << flags_;
@@ -993,34 +1044,30 @@ std::unique_ptr<AuthBlock> VaultKeyset::GetAuthBlockForCreation() const {
 
 // TODO(crbug.com/1216659): Move AuthBlock to AuthFactor once it is ready.
 std::unique_ptr<AuthBlock> VaultKeyset::GetAuthBlockForDerivation() {
-  if (flags_ & SerializedVaultKeyset::LE_CREDENTIAL) {
+  if (MatchFlags(kPinWeaverFlags, flags_)) {
     ReportDeriveAuthBlock(AuthBlockType::kPinWeaver);
     return std::make_unique<PinWeaverAuthBlock>(
         crypto_->le_manager(), crypto_->cryptohome_keys_manager());
-  } else if (flags_ & SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED) {
+  } else if (MatchFlags(kChallengeCredentialFlags, flags_)) {
     ReportDeriveAuthBlock(AuthBlockType::kChallengeCredential);
     return std::make_unique<ChallengeCredentialAuthBlock>();
-  } else if (flags_ & SerializedVaultKeyset::SCRYPT_WRAPPED &&
-             flags_ & SerializedVaultKeyset::TPM_WRAPPED) {
+  } else if (MatchFlags(kDoubleWrappedCompatFlags, flags_)) {
     ReportDeriveAuthBlock(AuthBlockType::kDoubleWrappedCompat);
     return std::make_unique<DoubleWrappedCompatAuthBlock>(
         crypto_->tpm(), crypto_->cryptohome_keys_manager());
-  } else if (flags_ & SerializedVaultKeyset::TPM_WRAPPED &&
-             flags_ & SerializedVaultKeyset::PCR_BOUND &&
-             flags_ & SerializedVaultKeyset::ECC) {
+  } else if (MatchFlags(kTpmEccFlags, flags_)) {
     ReportDeriveAuthBlock(AuthBlockType::kTpmEcc);
     return std::make_unique<TpmEccAuthBlock>(
         crypto_->tpm(), crypto_->cryptohome_keys_manager());
-  } else if (flags_ & SerializedVaultKeyset::TPM_WRAPPED &&
-             flags_ & SerializedVaultKeyset::PCR_BOUND) {
+  } else if (MatchFlags(kTpmBoundToPcrFlags, flags_)) {
     ReportDeriveAuthBlock(AuthBlockType::kTpmBoundToPcr);
     return std::make_unique<TpmBoundToPcrAuthBlock>(
         crypto_->tpm(), crypto_->cryptohome_keys_manager());
-  } else if (flags_ & SerializedVaultKeyset::TPM_WRAPPED) {
+  } else if (MatchFlags(kTpmNotBoundToPcrFlags, flags_)) {
     ReportDeriveAuthBlock(AuthBlockType::kTpmNotBoundToPcr);
     return std::make_unique<TpmNotBoundToPcrAuthBlock>(
         crypto_->tpm(), crypto_->cryptohome_keys_manager());
-  } else if (flags_ & SerializedVaultKeyset::SCRYPT_WRAPPED) {
+  } else if (MatchFlags(kLibScryptCompatFlags, flags_)) {
     ReportDeriveAuthBlock(AuthBlockType::kLibScryptCompat);
     return std::make_unique<LibScryptCompatAuthBlock>();
   }
