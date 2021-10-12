@@ -16,21 +16,43 @@ namespace arc {
 
 // static
 ScopedGbmDevice ScopedGbmDevice::Create() {
-  // TODO(alexlau): don't hardcode this path, see
-  // http://cs/chromeos_public/src/platform/minigbm/cros_gralloc/cros_gralloc_driver.cc?l=29&rcl=cc35e699f36cce0f0b3a130b0d6ce4e2a393b373
-  base::ScopedFD fd(HANDLE_EINTR(open("/dev/dri/renderD128", O_RDWR)));
-  if (!fd.is_valid()) {
-    LOG(ERROR) << "Could not open vgem.";
-    return ScopedGbmDevice();
+  // follow the implementation at:
+  // https://source.corp.google.com/chromeos_public/src/platform/minigbm/cros_gralloc/cros_gralloc_driver.cc;l=90;bpv=0;cl=c06cc9cccb3cf3c7f9d2aec706c27c34cd6162a0
+  constexpr int kDrmNumNodes = 63;
+  constexpr int kDrmRenderNodeStart = 128;
+  constexpr int kDrmCardNodeStart = 0;
+  constexpr char kRenderNodesFmt[] = "/dev/dri/renderD%d";
+  constexpr char kCardNodesFmt[] = "/dev/dri/card%d";
+
+  char path[32];
+  // Try render nodes...
+  for (int offset = 0; offset < kDrmNumNodes; ++offset) {
+    std::snprintf(path, sizeof(path), kRenderNodesFmt,
+                  kDrmRenderNodeStart + offset);
+    base::ScopedFD fd(HANDLE_EINTR(open(path, O_RDWR)));
+    if (!fd.is_valid())
+      continue;
+
+    gbm_device* device = gbm_create_device(fd.get());
+    if (device)
+      return ScopedGbmDevice(device, std::move(fd));
   }
 
-  gbm_device* device = gbm_create_device(fd.get());
-  if (!device) {
-    LOG(ERROR) << "Could not create gbm device.";
-    return ScopedGbmDevice();
+  // Try card nodes... for vkms mostly.
+  for (int offset = 0; offset < kDrmNumNodes; ++offset) {
+    std::snprintf(path, sizeof(path), kCardNodesFmt,
+                  kDrmCardNodeStart + offset);
+    base::ScopedFD fd(HANDLE_EINTR(open(path, O_RDWR)));
+    if (!fd.is_valid())
+      continue;
+
+    gbm_device* device = gbm_create_device(fd.get());
+    if (device)
+      return ScopedGbmDevice(device, std::move(fd));
   }
 
-  return ScopedGbmDevice(device, std::move(fd));
+  LOG(ERROR) << "Could not create gbm device.";
+  return ScopedGbmDevice();
 }
 
 ScopedGbmDevice::ScopedGbmDevice(gbm_device* device, base::ScopedFD device_fd)
