@@ -65,7 +65,7 @@ impl CliConfigGenerator {
         let mut config = Config::default();
         if let Some(cli_addr) = self
             .bind_addr
-            .from_matches(&matches)
+            .from_matches(matches)
             .map_err(Error::ParseTransport)?
         {
             config.bind_addr = cli_addr;
