@@ -23,8 +23,7 @@ bool Config::ParseCommandLineArgs(int argc, const char* const argv[]) {
                 "Show logs only for the specified priority or more important.");
   DEFINE_string(grep, "", "Show logs only matched with the specified regexp.");
   DEFINE_string(cursor, "", "Show logs starting from the specified cursor.");
-  DEFINE_bool(quiet, false,
-              "Suppress informational messages (not implemented yet).");
+  DEFINE_bool(quiet, false, "Suppress informational messages.");
   DEFINE_bool(follow, false, "Show continiously new logs as they are written.");
   DEFINE_string(since, "",
                 "Show entries not older than the specified date in YYYY-MM-DD "
