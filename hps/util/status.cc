@@ -70,11 +70,14 @@ int Status(std::unique_ptr<hps::HPS> hps,
     return 1;
   }
 
+  // return success only if there were 0 errors
+  int any_failures = 0;
   for (auto i = start; i <= end; i++) {
     int result = hps->Device()->ReadReg(hps::HpsReg(i));
     if (result < 0) {
       std::cout << base::StringPrintf("Register %3d: error (%s)\n", i,
                                       hps::HpsRegToString(hps::HpsReg(i)));
+      any_failures = 1;
     } else {
       std::cout << base::StringPrintf(
           "Register %3d: 0x%.4x (%s) %s\n", i, static_cast<uint16_t>(result),
@@ -82,7 +85,7 @@ int Status(std::unique_ptr<hps::HPS> hps,
           hps::HpsRegValToString(hps::HpsReg(i), result).c_str());
     }
   }
-  return 0;
+  return any_failures;
 }
 
 Command status("status",
