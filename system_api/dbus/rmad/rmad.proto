@@ -153,10 +153,8 @@ enum RmadComponent {
   RMAD_COMPONENT_LID_ACCELEROMETER = 17;
   RMAD_COMPONENT_BASE_GYROSCOPE = 18;
   RMAD_COMPONENT_LID_GYROSCOPE = 19;
-  // TODO(genechang): Legacy, keeping for compatibility with Chrome.
-  RMAD_COMPONENT_GYROSCOPE = 20;
   // Reserved for additional runtime_probe supported components.
-  reserved 21 to 32;
+  reserved 20 to 32;
   // Irrelevant components.
   // TODO(chenghan): Do we really need these?
   RMAD_COMPONENT_KEYBOARD = 33;
