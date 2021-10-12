@@ -457,7 +457,7 @@ const std::vector<Log> kFeedbackLogs {
     "/sys/kernel/debug/iwlwifi/*/iwlmvm/fw_ver", kRoot, kRoot},
   {kCommand, "iwlwifi_sysasserts",
     "croslog --show-cursor=false --identifier=kernel --priority=err"
-    "  --grep='iwlwifi.*ADVANCED_SYSASSERT' | tail -n 3"},
+    "  --grep='iwlwifi.*ADVANCED_SYSASSERT' --quiet | tail -n 3"},
   {kCommand, "iwlwifi_sysasserts_count",
     "croslog --show-cursor=false --identifier=kernel --priority=err"
     "  --grep='iwlwifi.*ADVANCED_SYSASSERT' | wc -l"},
@@ -471,7 +471,7 @@ const std::vector<Log> kFeedbackLogs {
       "/usr/bin/connectivity show-feedback services"},
   {kCommand, "shill_connection_diagnostic",
     "croslog --show-cursor=false --identifier=shill"
-    "  --grep='Connection issue:' | tail -n 3"},
+    "  --grep='Connection issue:' --quiet | tail -n 3"},
   {kCommand, "wifi_connection_attempts",
     "croslog --show-cursor=false --identifier=kernel"
     "  --grep='(authenticate|associate) with' | wc -l"},
@@ -480,7 +480,7 @@ const std::vector<Log> kFeedbackLogs {
     "  --grep='(authentication|association).*timed out' | wc -l"},
   {kCommand, "wifi_driver_errors",
     "croslog --show-cursor=false --identifier=kernel --priority=err"
-    "  --grep='(iwlwifi|mwifiex|ath10k)' | tail -n 3"},
+    "  --grep='(iwlwifi|mwifiex|ath10k)' --quiet | tail -n 3"},
   {kCommand, "wifi_driver_errors_count",
     "croslog --show-cursor=false --identifier=kernel --priority=err"
     "  --grep='(iwlwifi|mwifiex|ath10k)' | wc -l"},
