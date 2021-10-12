@@ -398,9 +398,9 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
     if (roi_control_.roi_flags) {
       LOGF(INFO) << "ROI control flags:0x" << std::hex << roi_control_.roi_flags
                  << " " << std::dec
-                 << "ROI default:" << roi_control_.roi_default;
-      LOGF(INFO) << "ROI bounds max:" << roi_control_.roi_bounds_max
-                 << ", min:" << roi_control_.roi_bounds_min;
+                 << "ROI bounds default:" << roi_control_.roi_bounds_default;
+      LOGF(INFO) << "ROI bounds:" << roi_control_.roi_bounds
+                 << ", min:" << roi_control_.min_roi_size.ToString();
       SetControlValue(kControlRegionOfInterestAuto, roi_control_.roi_flags);
     }
   }
@@ -873,25 +873,25 @@ int V4L2CameraDevice::SetRegionOfInterest(const Rect<int>& rectangle) {
   if (roi_control_.roi_flags == 0) {
     return -EINVAL;
   }
-  int left = std::max(rectangle.left, roi_control_.roi_bounds_max.left);
-  int top = std::max(rectangle.top, roi_control_.roi_bounds_max.top);
-  int width = std::max(rectangle.width, roi_control_.roi_bounds_min.width);
-  int height = std::max(rectangle.height, roi_control_.roi_bounds_min.height);
+  int left = std::max(rectangle.left, roi_control_.roi_bounds.left);
+  int top = std::max(rectangle.top, roi_control_.roi_bounds.top);
+  int width = std::max(rectangle.width,
+                       static_cast<int>(roi_control_.min_roi_size.width));
+  int height = std::max(rectangle.height,
+                        static_cast<int>(roi_control_.min_roi_size.height));
   // if the right and bottom size is excess the max range, we have 2
   // adjustments, to shrink width/height and to adjust left/top.
-  int rightmost =
-      roi_control_.roi_bounds_max.left + roi_control_.roi_bounds_max.width;
+  int rightmost = roi_control_.roi_bounds.left + roi_control_.roi_bounds.width;
   if (left + width > rightmost) {
-    int offset = std::min(left + width - rightmost,
-                          left - roi_control_.roi_bounds_max.left);
+    int offset =
+        std::min(left + width - rightmost, left - roi_control_.roi_bounds.left);
     left -= offset;
     width = rightmost - left;
   }
-  int bottommost =
-      roi_control_.roi_bounds_max.top + roi_control_.roi_bounds_max.height;
+  int bottommost = roi_control_.roi_bounds.top + roi_control_.roi_bounds.height;
   if (top + height > bottommost) {
-    int offset = std::min(top + height - bottommost,
-                          top - roi_control_.roi_bounds_max.top);
+    int offset =
+        std::min(top + height - bottommost, top - roi_control_.roi_bounds.top);
     top -= offset;
     height = bottommost - top;
   }
@@ -1199,24 +1199,23 @@ bool V4L2CameraDevice::IsRegionOfInterestSupported(int fd,
     PLOGF(WARNING) << "Failed to get selection: " << base::safe_strerror(errno);
     return false;
   }
-  roi_control->roi_default = Rect<int>(current.r.left, current.r.top,
-                                       current.r.width, current.r.height);
+  roi_control->roi_bounds_default = Rect<int>(
+      current.r.left, current.r.top, current.r.width, current.r.height);
 
   current.target = V4L2_SEL_TGT_ROI_BOUNDS_MIN;
   if (HANDLE_EINTR(ioctl(fd, VIDIOC_G_SELECTION, &current)) < 0) {
     PLOGF(WARNING) << "Failed to get selection: " << base::safe_strerror(errno);
     return false;
   }
-  roi_control->roi_bounds_min = Rect<int>(current.r.left, current.r.top,
-                                          current.r.width, current.r.height);
+  roi_control->min_roi_size = Size(current.r.width, current.r.height);
 
   current.target = V4L2_SEL_TGT_ROI_BOUNDS_MAX;
   if (HANDLE_EINTR(ioctl(fd, VIDIOC_G_SELECTION, &current)) < 0) {
     PLOGF(WARNING) << "Failed to get selection: " << base::safe_strerror(errno);
     return false;
   }
-  roi_control->roi_bounds_max = Rect<int>(current.r.left, current.r.top,
-                                          current.r.width, current.r.height);
+  roi_control->roi_bounds = Rect<int>(current.r.left, current.r.top,
+                                      current.r.width, current.r.height);
 
   if (QueryControl(fd, kControlRegionOfInterestAuto, &info) != 0) {
     return false;

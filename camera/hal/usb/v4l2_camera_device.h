@@ -43,9 +43,9 @@ struct RoiControl {
   // ROI auto-controls flags. It is a bitwise flag for
   // V4L2_CID_REGION_OF_INTEREST_AUTO which are defined in v4l2-control.h
   uint32_t roi_flags;
-  Rect<int> roi_default;
-  Rect<int> roi_bounds_min;
-  Rect<int> roi_bounds_max;
+  Rect<int> roi_bounds_default;
+  Rect<int> roi_bounds;
+  Size min_roi_size;
 };
 
 enum ControlType {
