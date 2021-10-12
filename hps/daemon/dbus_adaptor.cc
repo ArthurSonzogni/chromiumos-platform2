@@ -38,9 +38,15 @@ void DBusAdaptor::PollTask() {
       FeatureResult result = this->hps_->Result(feature);
       // TODO(slangley): If HPS starts failing, we should probably let clients
       // know somehow.
+      VLOG(2) << "Poll: Feature: " << static_cast<int>(feature)
+              << " Valid: " << result.valid
+              << " Result: " << static_cast<int>(result.inference_result);
       if (result.valid) {
         DCHECK(feature_filters_[feature]);
-        feature_filters_[feature]->ProcessResult(result.inference_result);
+        bool res =
+            feature_filters_[feature]->ProcessResult(result.inference_result);
+        VLOG(2) << "Poll: Feature: " << static_cast<int>(feature)
+                << "Filter: " << res;
       }
     }
   }
