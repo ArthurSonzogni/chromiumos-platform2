@@ -5,7 +5,11 @@
 package utils
 
 import (
+	"context"
+	"crypto/tls"
 	"fmt"
+	"net"
+	"net/http"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -15,14 +19,15 @@ import (
 const lorgnetteCLI = "lorgnette_cli"
 
 // Regex which matches an HTTP or HTTPS scanner address.
-var scannerRegex = regexp.MustCompile(`^(?P<protocol>airscan|ippusb):escl:(?P<name>[^:]+):(?P<address>.*/eSCL/)$`)
+var scannerRegex = regexp.MustCompile(`^(?P<protocol>airscan|ippusb):escl:(?P<name>[^:]+):(?P<address>.*)/eSCL/$`)
 
 // LorgnetteScannerInfo aggregates a scanner's information as reported by
 // lorgnette.
 type LorgnetteScannerInfo struct {
-	Protocol string
-	Name     string
-	Address  string
+	Protocol  string
+	Name      string
+	Address   string
+	SocketDir string
 }
 
 // LorgnetteCLIList runs the command `lorgnette_cli list` and returns its
@@ -45,6 +50,10 @@ func LorgnetteCLIGetJSONCaps(scanner string) (string, error) {
 // information for the first scanner in `listOutput` which matches `model`.
 // `listOutput` is expected to be the output from `lorgnette_cli list`.
 func GetLorgnetteScannerInfo(listOutput string, model string) (info LorgnetteScannerInfo, err error) {
+	// All IPP over USB scanners will use the same socket directory. Network
+	// scanners don't need this, but it doesn't hurt to include it.
+	info.SocketDir = "/run/ippusb"
+
 	lines := strings.Split(listOutput, "\n")
 	for _, line := range lines {
 		modelMatch, _ := regexp.MatchString(model, line)
@@ -76,4 +85,49 @@ func GetLorgnetteScannerInfo(listOutput string, model string) (info LorgnetteSca
 
 	err = fmt.Errorf("No scanner info found for model: %s", model)
 	return
+}
+
+// GetIPPUSBSocket returns the IPP over USB socket for `info`. If `info` is
+// using an protocol other than `ippusb`, an error is returned.
+func (info LorgnetteScannerInfo) GetIPPUSBSocket() (socket string, err error) {
+	if info.Protocol != "ippusb" {
+		err = fmt.Errorf("Cannot generate IPPUSB socket for protocol: %s", info.Protocol)
+		return
+	}
+
+	socket = fmt.Sprintf("%s/%s.sock", info.SocketDir, strings.ReplaceAll(info.Address, "_", "-"))
+	return
+}
+
+// HTTPGet sends an HTTP GET method to the scanner represented by `info`.
+func (info LorgnetteScannerInfo) HTTPGet(url string) (*http.Response, error) {
+	if info.Protocol == "ippusb" {
+		socket, err := info.GetIPPUSBSocket()
+		if err != nil {
+			return nil, err
+		}
+
+		client := http.Client{
+			Transport: &http.Transport{
+				DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+					return net.Dial("unix", socket)
+				},
+			},
+		}
+
+		return client.Get("http://localhost" + url)
+	}
+
+	// Deliberately ignore certificate errors because printers normally
+	// have self-signed certificates.
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				MinVersion:         tls.VersionTLS12,
+				InsecureSkipVerify: true,
+			},
+		},
+	}
+
+	return client.Get(info.Address + url)
 }

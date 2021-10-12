@@ -37,7 +37,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	caps, err := utils.GetScannerCapabilities(scannerInfo.Address)
+	caps, err := utils.GetScannerCapabilities(scannerInfo)
 	if err != nil {
 		log.Fatal(err)
 	}

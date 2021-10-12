@@ -249,7 +249,7 @@ func TestGetScannerCapabilities(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	got, err := GetScannerCapabilities(ts.URL + "/")
+	got, err := GetScannerCapabilities(LorgnetteScannerInfo{Protocol: "airscan", Address: ts.URL})
 
 	if err != nil {
 		t.Error(err)
@@ -426,7 +426,7 @@ func TestGetScannerCapabilitiesNotReferencedProfile(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	_, err := GetScannerCapabilities(ts.URL + "/")
+	_, err := GetScannerCapabilities(LorgnetteScannerInfo{Protocol: "airscan", Address: ts.URL})
 
 	if err == nil {
 		t.Error("Expected error from referenced profile not existing")
@@ -442,7 +442,7 @@ func TestGetScannerCapabilitiesBadHttpResponse(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	_, err := GetScannerCapabilities(ts.URL + "/")
+	_, err := GetScannerCapabilities(LorgnetteScannerInfo{Protocol: "airscan", Address: ts.URL})
 
 	if err == nil {
 		t.Error("Expected error from bad HTTP response status")
@@ -456,7 +456,7 @@ func TestGetScannerCapabilitiesBadXml(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	_, err := GetScannerCapabilities(ts.URL + "/")
+	_, err := GetScannerCapabilities(LorgnetteScannerInfo{Protocol: "airscan", Address: ts.URL})
 
 	if err == nil {
 		t.Error("Expected error from bad XML")
