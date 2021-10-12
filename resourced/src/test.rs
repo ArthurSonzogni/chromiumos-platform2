@@ -207,17 +207,12 @@ fn test_set_epp() {
     tpb1.push("sys/devices/system/cpu/cpufreq/policy1/");
     std::fs::create_dir_all(&tpb1).unwrap();
 
-    tpb0.push("energy_performance_preference");
-    tpb1.push("energy_performance_preference");
-
-    // Create energy_performance_preference files.
-    std::fs::write(&tpb0, "balance_performance").unwrap();
-    std::fs::write(&tpb1, "balance_performance").unwrap();
-
     // Set the EPP
     set_epp(dir.path().to_str().unwrap(), "179").unwrap();
 
     // Verify that files were written
+    tpb0.push("energy_performance_preference");
+    tpb1.push("energy_performance_preference");
     assert_eq!(std::fs::read_to_string(&tpb0).unwrap(), "179".to_string());
     assert_eq!(std::fs::read_to_string(&tpb1).unwrap(), "179".to_string());
 }
