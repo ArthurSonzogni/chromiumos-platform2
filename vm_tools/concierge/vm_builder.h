@@ -73,6 +73,8 @@ class VmBuilder {
 
   // Override flags for O_DIRECT for already appended disks.
   VmBuilder& EnableODirect(bool enable);
+  // Override block size for already appended disks.
+  VmBuilder& SetBlockSize(size_t block_size);
 
   // Builds the command line required to start a VM.
   base::StringPairs BuildVmArgs() const;

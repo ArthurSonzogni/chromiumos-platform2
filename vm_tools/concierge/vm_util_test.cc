@@ -4,6 +4,7 @@
 
 #include "vm_tools/concierge/vm_util.h"
 
+#include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -147,6 +148,24 @@ TEST(CustomParametersForDevTest, ODirect) {
   };
   EXPECT_THAT(args, testing::ContainerEq(expected));
   EXPECT_THAT(o_direct, "true");
+}
+
+TEST(CustomParametersForDevTest, BlockSize) {
+  base::StringPairs args = {{"--Key1", "Value1"}};
+  CustomParametersForDev custom(R"(BLOCK_SIZE=4096)");
+  custom.Apply(&args);
+
+  auto block_size_string = custom.ObtainSpecialParameter("BLOCK_SIZE");
+  EXPECT_TRUE(block_size_string);
+  uint64_t block_size_number;
+  EXPECT_TRUE(
+      base::StringToUint64(block_size_string.value(), &block_size_number));
+  EXPECT_EQ(block_size_number, 4096);
+
+  base::StringPairs expected{
+      {"--Key1", "Value1"},
+  };
+  EXPECT_THAT(args, testing::ContainerEq(expected));
 }
 
 TEST(VMUtilTest, GetCpuAffinityFromClustersNoGroups) {

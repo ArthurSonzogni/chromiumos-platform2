@@ -16,9 +16,12 @@
 #include <memory>
 #include <utility>
 
+#include <base/base64.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/format_macros.h>
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/stl_util.h>
@@ -28,10 +31,8 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
-#include <brillo/process/process.h>
 #include <brillo/files/file_util.h>
-#include <base/json/json_reader.h>
-#include <base/base64.h>
+#include <brillo/process/process.h>
 
 namespace vm_tools {
 namespace concierge {
@@ -173,6 +174,10 @@ void Disk::EnableODirect(bool enable) {
   o_direct_ = enable;
 }
 
+void Disk::SetBlockSize(size_t block_size) {
+  block_size_ = block_size;
+}
+
 base::StringPairs Disk::GetCrosvmArgs() const {
   std::string first;
   if (writable_)
@@ -188,8 +193,14 @@ base::StringPairs Disk::GetCrosvmArgs() const {
   if (o_direct_) {
     o_direct_arg = BooleanParameter(",o_direct=", o_direct_.value());
   }
+  std::string block_size_arg{};
+  if (block_size_) {
+    block_size_arg =
+        base::StringPrintf(",block_size=%" PRIuS, block_size_.value());
+  }
 
-  std::string second = base::StrCat({path_.value(), sparse_arg, o_direct_arg});
+  std::string second =
+      base::StrCat({path_.value(), sparse_arg, o_direct_arg, block_size_arg});
   base::StringPairs result = {{std::move(first), std::move(second)}};
   return result;
 }

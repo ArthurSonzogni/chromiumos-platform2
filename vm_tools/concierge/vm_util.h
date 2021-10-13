@@ -48,6 +48,7 @@ class Disk {
   base::StringPairs GetCrosvmArgs() const;
 
   void EnableODirect(bool enable);
+  void SetBlockSize(size_t block_size);
 
  private:
   // Path to the disk image on the host.
@@ -61,6 +62,9 @@ class Disk {
 
   // Whether the disk access should be done with O_DIRECT by the VM.
   base::Optional<bool> o_direct_;
+
+  // Block size.
+  base::Optional<size_t> block_size_{};
 };
 
 // Path to the crosvm binary.
