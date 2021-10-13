@@ -108,7 +108,13 @@ goproto_library("enterprise_management_goprotos") {
   # Package name needs to match with the one declared in .proto files.
   proto_out_dir = "go/src/chromiumos/policy/enterprise_management"
   import_mapping = [
+    "chrome_device_policy.proto=chromiumos/policy/enterprise_management",
+    "chrome_extension_policy.proto=chromiumos/policy/enterprise_management",
+    "device_management_backend.proto=chromiumos/policy/enterprise_management",
+    "policy_common_definitions.proto=chromiumos/policy/enterprise_management",
+    "private_membership.proto=chromiumos/policy/private_membership",
     "private_membership_rlwe.proto=chromiumos/policy/private_membership.rlwe",
+    "serialization.proto=chromiumos/policy/rlwe",
   ]
 
   sources = [
