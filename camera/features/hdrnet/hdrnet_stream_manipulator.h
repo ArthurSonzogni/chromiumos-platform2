@@ -116,11 +116,23 @@ class HdrNetStreamManipulator : public StreamManipulator {
     // HDRnet pipeline with the buffers rendered by the pipeline, with
     // downscaling if needed.
     std::vector<camera3_stream_buffer_t> client_requested_yuv_buffers;
+
+    // Indicator for whether the request is pending on a BLOB buffer from the
+    // camera HAL. The metadata from the BLOB buffer will be extracted and
+    // filled in the final still capture result.
+    bool blob_result_pending = false;
+
+    // Indicator for whether the request if pending on a intermediate YUV output
+    // from the HDRnet pipeline. The YUV buffer rendered by the HDRnet pipeline
+    // is used to produce the final still capture result.
+    bool blob_intermediate_yuv_pending = false;
   };
 
   using HdrNetBufferInfoList = std::vector<HdrNetRequestBufferInfo>;
   static HdrNetBufferInfoList::iterator FindMatchingBufferInfo(
       HdrNetBufferInfoList* list, const HdrNetStreamContext* const context);
+  HdrNetRequestBufferInfo* GetBufferInfoWithPendingBlobStream(
+      int frame_number, const camera3_stream_t* blob_stream);
 
   // Internal implementations of StreamManipulator.  All these methods are
   // sequenced on the |gpu_thread_|.

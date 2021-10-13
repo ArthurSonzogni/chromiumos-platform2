@@ -90,6 +90,8 @@ HdrNetStreamManipulator::HdrNetRequestBufferInfo::operator=(
     other.buffer_index = kInvalidBufferIndex;
     release_fence = std::move(other.release_fence);
     client_requested_yuv_buffers.swap(other.client_requested_yuv_buffers);
+    blob_result_pending = other.blob_result_pending;
+    blob_intermediate_yuv_pending = other.blob_intermediate_yuv_pending;
     other.Invalidate();
   }
   return *this;
@@ -107,6 +109,8 @@ void HdrNetStreamManipulator::HdrNetRequestBufferInfo::Invalidate() {
   buffer_index = kInvalidBufferIndex;
   release_fence.reset();
   client_requested_yuv_buffers.clear();
+  blob_result_pending = false;
+  blob_intermediate_yuv_pending = false;
 }
 
 //
@@ -226,6 +230,22 @@ HdrNetStreamManipulator::FindMatchingBufferInfo(
                            return buf_info.stream_context == context;
                          });
   return it;
+}
+
+HdrNetStreamManipulator::HdrNetRequestBufferInfo*
+HdrNetStreamManipulator::GetBufferInfoWithPendingBlobStream(
+    int frame_number, const camera3_stream_t* blob_stream) {
+  auto iter = request_buffer_info_.find(frame_number);
+  if (iter == request_buffer_info_.end()) {
+    return nullptr;
+  }
+  for (auto& entry : iter->second) {
+    if (entry.blob_result_pending &&
+        entry.stream_context->original_stream == blob_stream) {
+      return &entry;
+    }
+  }
+  return nullptr;
 }
 
 bool HdrNetStreamManipulator::InitializeOnGpuThread(
@@ -380,7 +400,9 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
   }
 
   if (request->GetInputBuffer() != nullptr) {
-    // Skip reprocessing requests.
+    // Skip reprocessing requests. We can't touch the output buffers of a
+    // reprocessing request since they have to be produced from the given input
+    // buffer.
     return true;
   }
 
@@ -435,12 +457,19 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
 
       case HdrNetStreamContext::Mode::kAppendWithBlob: {
         DCHECK_EQ(request_buffer.stream->format, HAL_PIXEL_FORMAT_BLOB);
+        // Defer the final BLOB buffer to the StillCaptureProcessor as we'll be
+        // handling the BLOB metadata and YUV buffer asynchronously.
         camera3_capture_request_t* locked_request = request->LockForRequest();
         still_capture_processor_->QueuePendingOutputBuffer(
             request->frame_number(), request_buffer, locked_request->settings);
         request->Unlock();
+        // Still queue the BLOB buffer so that we can extract the metadata.
         modified_output_buffers.push_back(request_buffer);
-        HdrNetRequestBufferInfo buf_info(stream_context, {request_buffer});
+        // Finally queue the HDRnet YUV buffer that will be used to produce the
+        // BLOB image.
+        HdrNetRequestBufferInfo buf_info(stream_context, {});
+        buf_info.blob_result_pending = true;
+        buf_info.blob_intermediate_yuv_pending = true;
         hdrnet_buf_to_add.emplace_back(std::move(buf_info));
         break;
       }
@@ -521,6 +550,24 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
   auto clean_up = [&]() {
     // Send back the buffers with our buffer set.
     result->SetOutputBuffers(output_buffers_to_client);
+    // Remove a pending request if the YUV buffers are done rendering and the
+    // pending BLOB buffer is received.
+    HdrNetBufferInfoList& pending_request_buffers =
+        request_buffer_info_[result->frame_number()];
+    for (auto it = pending_request_buffers.begin();
+         it != pending_request_buffers.end();) {
+      if (it->client_requested_yuv_buffers.empty() &&
+          !it->blob_result_pending && !it->blob_intermediate_yuv_pending) {
+        it = pending_request_buffers.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    if (pending_request_buffers.empty()) {
+      VLOGFID(2, result->frame_number())
+          << "Done processing all pending buffers";
+      request_buffer_info_.erase(result->frame_number());
+    }
 
     if (VLOG_IS_ON(2)) {
       VLOGFID(2, result->frame_number()) << "Modified result:";
@@ -570,12 +617,6 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
 
     OnBuffersRendered(result->frame_number(), stream_context,
                       &(*request_buffer_info), &output_buffers_to_client);
-    pending_request_buffers.erase(request_buffer_info);
-  }
-
-  if (pending_request_buffers.empty()) {
-    // All pending HDRnet buffers have been processed.
-    request_buffer_info_.erase(result->frame_number());
   }
 
   clean_up();
@@ -665,11 +706,15 @@ void HdrNetStreamManipulator::ExtractHdrNetBuffersToProcess(
     if (hal_result_buffer.stream->format == HAL_PIXEL_FORMAT_BLOB) {
       HdrNetStreamContext* associated_stream_context =
           GetHdrNetContextFromRequestedStream(hal_result_buffer.stream);
-      if (associated_stream_context) {
+      HdrNetRequestBufferInfo* request_info =
+          GetBufferInfoWithPendingBlobStream(frame_number,
+                                             hal_result_buffer.stream);
+      if (associated_stream_context && request_info) {
         DCHECK_EQ(associated_stream_context->mode,
                   HdrNetStreamContext::Mode::kAppendWithBlob);
         still_capture_processor_->QueuePendingAppsSegments(
             frame_number, *hal_result_buffer.buffer);
+        request_info->blob_result_pending = false;
         continue;
       }
     }
@@ -747,6 +792,7 @@ void HdrNetStreamManipulator::OnBuffersRendered(
             DupWithCloExec(request_buffer_info->release_fence.get()).release();
         output_buffers_to_client->push_back(requested_buffer);
       }
+      request_buffer_info->client_requested_yuv_buffers.clear();
       break;
 
     case HdrNetStreamContext::Mode::kAppendWithBlob:
@@ -754,6 +800,7 @@ void HdrNetStreamManipulator::OnBuffersRendered(
       // |still_capture_processor_| asynchronously.
       still_capture_processor_->QueuePendingYuvImage(
           frame_number, *stream_context->still_capture_intermediate);
+      request_buffer_info->blob_intermediate_yuv_pending = false;
       break;
   }
 }
