@@ -183,8 +183,6 @@ TEST_F(HPSTest, SkipBoot) {
   ASSERT_FALSE(hps_->Enable(0));
   // Put the fake straight into application stage.
   fake_->SkipBoot();
-  // Inform the HPS handler that application stage is ready.
-  hps_->SkipBoot();
   // Ensure that features can be enabled.
   EXPECT_TRUE(hps_->Enable(0));
 }

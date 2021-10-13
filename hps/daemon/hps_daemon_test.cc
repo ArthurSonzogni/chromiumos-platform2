@@ -32,7 +32,6 @@ class MockHps : public HPS {
               (uint32_t, const base::FilePath&, const base::FilePath&),
               (override));
   MOCK_METHOD(bool, Boot, (), (override));
-  MOCK_METHOD(void, SkipBoot, (), (override));
   MOCK_METHOD(bool, Enable, (uint8_t), (override));
   MOCK_METHOD(bool, Disable, (uint8_t), (override));
   MOCK_METHOD(FeatureResult, Result, (int), (override));

@@ -13,6 +13,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/threading/thread.h>
 #include <base/time/time.h>
+#include <base/timer/elapsed_timer.h>
 
 #include "hps/hps_impl.h"
 #include "hps/hps_reg.h"
@@ -21,7 +22,10 @@ namespace hps {
 
 static const int kTimeoutMs = 250;  // Bank ready timeout.
 static const int kPollMs = 5;       // Delay time for poll.
-static const int kMaxBootRetries = 5;
+static constexpr base::TimeDelta kMagicTimeout =
+    base::TimeDelta::FromMilliseconds(1000);
+static constexpr base::TimeDelta kMagicSleep =
+    base::TimeDelta::FromMilliseconds(100);
 
 // Initialise the firmware parameters.
 void HPS_impl::Init(uint32_t appl_version,
@@ -32,12 +36,8 @@ void HPS_impl::Init(uint32_t appl_version,
   this->spi_blob_ = spi;
 }
 
-void HPS_impl::SkipBoot() {
-  // Force state to ready.
-  LOG(INFO) << "Forcing module state to ready";
-  this->Go(State::kReady);
-}
-
+// Attempt the boot sequence
+// returns true if booting completed
 bool HPS_impl::Boot() {
   // Exclusive access to module.
   base::AutoLock l(this->lock_);
@@ -46,21 +46,26 @@ bool HPS_impl::Boot() {
     LOG(ERROR) << "No HPS firmware to download.";
     return false;
   }
-  this->reboots_ = 0;
-  this->Go(State::kBoot);
-  // Run the boot state machine it terminates with the
-  // module either ready, or in a failed state.
-  for (;;) {
-    this->HandleState();
-    if (this->state_ == State::kFailed) {
-      return false;
+
+  // TODO(evanbenn) we can't reboot here while we are using stm bootloader
+  // this->Reboot();
+
+  // If the boot process sent an update, reboot and try again
+  // A full update takes 3 boots, so try 3 times.
+  for (int i = 0; i < 3; ++i) {
+    switch (this->TryBoot()) {
+      case BootResult::kOk:
+        return true;
+      case BootResult::kFail:
+        return false;
+      case BootResult::kUpdate:
+        LOG(INFO) << "Update sent, rebooting";
+        this->Reboot();
+        continue;
     }
-    if (this->state_ == State::kReady) {
-      return true;
-    }
-    // Short delay between running the states.
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(10));
   }
+  LOG(FATAL) << "Boot failure, too many updates.";
+  return false;
 }
 
 bool HPS_impl::Enable(uint8_t feature) {
@@ -137,217 +142,238 @@ FeatureResult HPS_impl::Result(int feature) {
   return result;
 }
 
-// Runs the state machine.
-void HPS_impl::HandleState() {
-  switch (this->state_) {
-    case State::kBoot: {
-      // Wait for magic number.
-      int magic = this->device_->ReadReg(HpsReg::kMagic);
-      if (magic == kHpsMagic) {
-        this->Go(State::kBootCheckFault);
-      } else if (magic != -1) {
-        LOG(INFO) << "Bad magic number: " << magic;
-        hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kBadMagic);
-        this->Go(State::kFailed);
-      } else if (this->retries_++ >= 50) {
-        hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kNoResponse);
-        this->Reboot("Timeout waiting for boot magic number");
-      }
+// Attempt the boot sequence:
+// Check stage0 flags, send a MCU update or continue
+// Check stage1 flags, send a SPI update or continue
+// Check stage2 flags, return result.
+// returns BootResult::kOk if booting completed
+// returns BootResult::kUpdate if an update was sent
+// else returns BootResult::kFail
+hps::HPS_impl::BootResult HPS_impl::TryBoot() {
+  // Inspect stage0 flags and either fail, update, or launch stage1 and continue
+  switch (this->CheckStage0()) {
+    case BootResult::kOk:
+      this->device_->WriteReg(HpsReg::kSysCmd, R3::kLaunch);
       break;
-    }
-
-    case State::kBootCheckFault: {
-      // Wait for OK or Fault.
-      if (this->retries_++ >= 50) {
-        hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kTimeout);
-        this->Reboot("Timeout waiting for boot OK/Fault");
-        break;
-      }
-      {
-        int status = this->device_->ReadReg(HpsReg::kSysStatus);
-        if (status >= 0) {
-          if (status & R2::kFault) {
-            hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kFault);
-            this->Fault();
-          } else if (status & R2::kOK) {
-            // Module has reported OK.
-            // Store h/w version.
-            int hwrev = this->device_->ReadReg(HpsReg::kHwRev);
-            if (hwrev >= 0) {
-              this->hw_rev_ = base::checked_cast<uint16_t>(hwrev);
-              this->Go(State::kBootOK);
-            } else {
-              LOG(INFO) << "Failed to read hwrev";
-            }
-          }
-        }
-      }
-      break;
-    }
-
-    case State::kBootOK: {
-      if (this->retries_++ >= 50) {
-        hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kTimeout);
-        this->Reboot("Timeout boot appl verification");
-        break;
-      }
-      // Wait for application verified or not.
-      int status = this->device_->ReadReg(HpsReg::kSysStatus);
-      if (status >= 0) {
-        this->write_protect_off_ = status & R2::kWpOff;
-        VLOG_IF(1, this->write_protect_off_)
-            << "kWpOff, ignoring verified bits";
-        // Check if the MCU flash verified or not.
-        if (this->write_protect_off_ || status & R2::kApplVerified) {
-          // Verified, so now check the version. If it is
-          // different, update it.
-          int version_low = this->device_->ReadReg(HpsReg::kFirmwareVersionLow);
-          int version_high =
-              this->device_->ReadReg(HpsReg::kFirmwareVersionHigh);
-          if (version_low >= 0 && version_high >= 0) {
-            uint32_t version = static_cast<uint32_t>(
-                (version_high << 16) | static_cast<uint16_t>(version_low));
-            if (version == this->appl_version_) {
-              // Application is verified, launch it.
-              VLOG(1) << "Launching to stage1";
-              this->device_->WriteReg(HpsReg::kSysCmd, R3::kLaunch);
-              this->Go(State::kStage1);
-            } else {
-              // Versions do not match, need to update.
-              LOG(INFO) << "Appl version mismatch, module: " << version
-                        << " expected: " << this->appl_version_;
-              hps_metrics_.SendHpsTurnOnResult(
-                  HpsTurnOnResult::kMcuVersionMismatch);
-              this->Go(State::kUpdateAppl);
-            }
-          }
-        } else if (status & R2::kApplNotVerified) {
-          // Appl not verified, so need to update it.
-          LOG(INFO) << "Appl flash not verified, updating";
-          hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kMcuNotVerified);
-          this->Go(State::kUpdateAppl);
-        }
-      }
-      break;
-    }
-
-    case State::kUpdateAppl: {
-      // Update the MCU flash.
+    case BootResult::kFail:
+      return BootResult::kFail;
+    case BootResult::kUpdate:
+      LOG(INFO) << "Updating MCU flash";
       if (this->WriteFile(0, this->mcu_blob_)) {
-        this->Reboot("MCU flash updated");
-      } else if (this->retries_++ > 5) {
-        this->Reboot("MCU flash failed to update");
+        return BootResult::kUpdate;
+      } else {
+        return BootResult::kFail;
       }
-      break;
-    }
+  }
 
-    case State::kUpdateSpi: {
-      // Update the SPI flash.
+  // Inspect stage1 flags and either fail, update, or launch stage2 and continue
+  switch (this->CheckStage1()) {
+    case BootResult::kOk:
+      this->device_->WriteReg(HpsReg::kSysCmd, R3::kEnable);
+      break;
+    case BootResult::kFail:
+      return BootResult::kFail;
+    case BootResult::kUpdate:
+      LOG(INFO) << "Updating SPI flash";
       if (this->WriteFile(1, this->spi_blob_)) {
-        this->Reboot("SPI flash updated");
-      } else if (this->retries_++ > 5) {
-        this->Reboot("SPI flash failed to update");
+        return BootResult::kUpdate;
+      } else {
+        return BootResult::kFail;
       }
-      break;
-    }
+  }
 
-    case State::kStage1: {
-      // Wait for stage1 bit.
-      if ((this->device_->ReadReg(HpsReg::kMagic) == kHpsMagic) &&
-          (this->device_->ReadReg(HpsReg::kSysStatus) & R2::kStage1)) {
-        this->Go(State::kSpiVerify);
-      } else if (this->retries_++ >= 50) {
-        hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kStage1NotStarted);
-        this->Reboot("Timeout stage1");
+  // Inspect stage2 flags for success or failure
+  return this->CheckStage2();
+}
+
+// Returns true if the device replies with the expected magic number in time.
+// Attempts are made for kMagicTimeout time, with kMagicSleep delays between
+// failures. Retries are only done for failed reads, not incorrect
+// responses.
+bool HPS_impl::CheckMagic() {
+  base::ElapsedTimer timer;
+  for (;;) {
+    int magic = this->device_->ReadReg(HpsReg::kMagic);
+    if (magic < 0) {
+      if (timer.Elapsed() < kMagicTimeout) {
+        base::PlatformThread::Sleep(kMagicSleep);
+        continue;
+      } else {
+        LOG(FATAL) << "Timeout waiting for boot magic number";
+        return false;
       }
-      break;
+    } else if (magic == kHpsMagic) {
+      VLOG(1) << "Good magic number";
+      return true;
+    } else {
+      hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kBadMagic);
+      LOG(FATAL) << base::StringPrintf("Bad magic number 0x%04x", magic);
+      return false;
     }
+  }
+}
 
-    case State::kSpiVerify: {
-      // Wait for SPI verified or not.
-      if (this->retries_++ >= 50) {
-        hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kTimeout);
-        this->Reboot("Timeout SPI verify");
-      }
-      {
-        int status = this->device_->ReadReg(HpsReg::kSysStatus);
-        if (status >= 0) {
-          // Check if the SPI flash verified or not.
-          if (this->write_protect_off_ || status & R2::kSpiVerified) {
-            VLOG(1) << "Enabling application";
-            this->device_->WriteReg(HpsReg::kSysCmd, R3::kEnable);
-            this->Go(State::kApplWait);
-          } else if (status & R2::kSpiNotVerified) {
-            // Spi not verified, so need to update it.
-            LOG(INFO) << "SPI flash not verified, updating";
-            hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kSpiNotVerified);
-            this->Go(State::kUpdateSpi);
-          }
-        }
-      }
-      break;
-    }
+// Check stage0 status:
+// Check status flags.
+// Read and store kHwRev.
+// Read and store kWpOff.
+// Check stage1 verification and version.
+// Return BootResult::kOk if booting should continue.
+// Return BootResult::kUpdate if an update should be sent.
+// Else return BootResult::kFail.
+hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
+  if (!CheckMagic()) {
+    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kNoResponse);
+    return BootResult::kFail;
+  }
 
-    case State::kApplWait: {
-      // Wait for application running bit.
-      int status = this->device_->ReadReg(HpsReg::kSysStatus);
-      if (this->device_->ReadReg(HpsReg::kMagic) == kHpsMagic && status >= 0 &&
-          status & R2::kAppl) {
-        hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kSuccess);
-        this->Go(State::kReady);
-      } else if (this->retries_++ >= 50) {
-        hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kApplNotStarted);
-        this->Reboot("Timeout application");
-      }
-    } break;
+  int status = this->device_->ReadReg(HpsReg::kSysStatus);
+  if (status < 0) {
+    // TODO(evanbenn) log a metric
+    LOG(FATAL) << "ReadReg failure";
+    return BootResult::kFail;
+  }
 
-    case State::kReady: {
-      // The state machine is not run in this state
-      NOTREACHED();
-      break;
-    }
+  if (status & R2::kFault || !(status & R2::kOK)) {
+    this->Fault();
+    return BootResult::kFail;
+  }
 
-    case State::kFailed: {
-      // The state machine is not run in this state
-      NOTREACHED();
-      break;
-    }
+  int hwrev = this->device_->ReadReg(HpsReg::kHwRev);
+  if (hwrev >= 0) {
+    this->hw_rev_ = base::checked_cast<uint16_t>(hwrev);
+  } else {
+    // TODO(evanbenn) log a metric
+    LOG(FATAL) << "Failed to read hwrev";
+    return BootResult::kFail;
+  }
+
+  this->write_protect_off_ = status & R2::kWpOff;
+  VLOG_IF(1, this->write_protect_off_) << "kWpOff, ignoring verified bits";
+
+  // Send an update only when WP is off and there is no verified signal
+  if (!this->write_protect_off_ && !(status & R2::kApplVerified)) {
+    // Appl not verified, so need to update it.
+    LOG(INFO) << "Appl flash not verified";
+    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kMcuNotVerified);
+    return BootResult::kUpdate;
+  }
+
+  // Verified, so now check the version. If it is different, update it.
+  int version_low = this->device_->ReadReg(HpsReg::kFirmwareVersionLow);
+  int version_high = this->device_->ReadReg(HpsReg::kFirmwareVersionHigh);
+  if (version_low < 0 || version_high < 0) {
+    // TODO(evanbenn) log a metric
+    LOG(FATAL) << "ReadReg failure";
+    return BootResult::kFail;
+  }
+  uint32_t version = static_cast<uint32_t>((version_high << 16) |
+                                           static_cast<uint16_t>(version_low));
+  if (version == this->appl_version_) {
+    // Application is verified, launch it.
+    VLOG(1) << "Appl version OK";
+    return BootResult::kOk;
+  } else {
+    // Versions do not match, need to update.
+    LOG(INFO) << "Appl version mismatch, module: " << version
+              << " expected: " << this->appl_version_;
+    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kMcuVersionMismatch);
+    return BootResult::kUpdate;
+  }
+}
+
+// Check stage1 status:
+// Check status flags.
+// Check spi verification.
+// Return BootResult::kOk if booting should continue.
+// Return BootResult::kUpdate if an update should be sent.
+// Else return BootResult::kFail.
+hps::HPS_impl::BootResult HPS_impl::CheckStage1() {
+  if (!CheckMagic()) {
+    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kStage1NotStarted);
+    return BootResult::kFail;
+  }
+
+  int status = this->device_->ReadReg(HpsReg::kSysStatus);
+  if (status < 0) {
+    // TODO(evanbenn) log a metric
+    LOG(FATAL) << "ReadReg failure";
+    return BootResult::kFail;
+  }
+
+  if (status & R2::kFault || !(status & R2::kOK)) {
+    this->Fault();
+    return BootResult::kFail;
+  }
+
+  if (!(status & R2::kStage1)) {
+    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kStage1NotStarted);
+    LOG(FATAL) << "Stage 1 did not start";
+    return BootResult::kFail;
+  }
+
+  // Send an update only when WP is on and there is no verified signal
+  if (!this->write_protect_off_ && !(status & R2::kSpiVerified)) {
+    LOG(INFO) << "SPI flash not verified";
+    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kSpiNotVerified);
+    return BootResult::kUpdate;
+  } else {
+    VLOG(1) << "Enabling application";
+    return BootResult::kOk;
+  }
+}
+
+// Check stage2 status:
+// Check status flags.
+// Return BootResult::kOk if booting should continue.
+// Return BootResult::kUpdate if an update should be sent.
+// Else returns BootResult::kFail.
+hps::HPS_impl::BootResult HPS_impl::CheckStage2() {
+  if (!CheckMagic()) {
+    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kApplNotStarted);
+    return BootResult::kFail;
+  }
+
+  int status = this->device_->ReadReg(HpsReg::kSysStatus);
+  if (status < 0) {
+    // TODO(evanbenn) log a metric
+    LOG(FATAL) << "ReadReg failure";
+    return BootResult::kFail;
+  }
+
+  if (status & R2::kFault || !(status & R2::kOK)) {
+    this->Fault();
+    return BootResult::kFail;
+  }
+
+  if (!(status & R2::kAppl)) {
+    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kApplNotStarted);
+    LOG(FATAL) << "Application did not start";
+    return BootResult::kFail;
+  } else {
+    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kSuccess);
+    return BootResult::kOk;
   }
 }
 
 // Reboot the hardware module.
-void HPS_impl::Reboot(const char* msg) {
-  if (++this->reboots_ > kMaxBootRetries) {
-    LOG(ERROR) << "Too many reboots, giving up";
-    this->Go(State::kFailed);
-  } else {
-    LOG(INFO) << "Rebooting: " << msg;
-    // Send a reset cmd - maybe should power cycle.
-    this->device_->WriteReg(HpsReg::kSysCmd, R3::kReset);
-    this->Go(State::kBoot);
-  }
+void HPS_impl::Reboot() {
+  LOG(INFO) << "Rebooting";
+  // Send a reset cmd - maybe should power cycle.
+  this->device_->WriteReg(HpsReg::kSysCmd, R3::kReset);
 }
 
-// Fault bit seen, attempt to dump status information, and
-// try to reboot the module.
-// If the count of reboots is too high, set the module as failed.
+// Fault bit seen, attempt to dump status information
 void HPS_impl::Fault() {
+  hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kFault);
   int errors = this->device_->ReadReg(HpsReg::kError);
   if (errors < 0) {
-    this->Reboot("Fault: cause unknown");
+    LOG(FATAL) << "Fault: cause unknown";
   } else {
-    this->Reboot(
-        base::StringPrintf("Fault: cause 0x%04x", static_cast<unsigned>(errors))
-            .c_str());
+    LOG(FATAL) << base::StringPrintf("Fault: cause 0x%04x",
+                                     static_cast<unsigned>(errors))
+                      .c_str();
   }
-}
-
-// Move to new state, reset retry counter.
-void HPS_impl::Go(State newstate) {
-  VLOG(1) << "Old state: " << static_cast<int>(this->state_)
-          << " new state: " << static_cast<int>(newstate);
-  this->state_ = newstate;
-  this->retries_ = 0;
 }
 
 /*

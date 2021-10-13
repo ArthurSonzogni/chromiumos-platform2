@@ -27,9 +27,6 @@ class HPS_impl : public HPS {
  public:
   explicit HPS_impl(std::unique_ptr<DevInterface> dev)
       : device_(std::move(dev)),
-        state_(State::kBoot),
-        retries_(0),
-        reboots_(0),
         hw_rev_(0),
         appl_version_(0),
         write_protect_off_(false),
@@ -40,7 +37,6 @@ class HPS_impl : public HPS {
             const base::FilePath& mcu,
             const base::FilePath& spi) override;
   bool Boot() override;
-  void SkipBoot() override;
   bool Enable(uint8_t feature) override;
   bool Disable(uint8_t feature) override;
   FeatureResult Result(int feature) override;
@@ -58,31 +54,24 @@ class HPS_impl : public HPS {
   }
 
  private:
-  // Boot states.
-  enum class State {
-    kBoot,
-    kBootCheckFault,
-    kBootOK,
-    kUpdateAppl,
-    kUpdateSpi,
-    kStage1,
-    kSpiVerify,
-    kApplWait,
-    kFailed,
-    kReady,
+  enum class BootResult {
+    kFail,
+    kOk,
+    kUpdate,
   };
-  void HandleState();
-  void Reboot(const char* msg);
+
+  BootResult TryBoot();
+  bool CheckMagic();
+  BootResult CheckStage0();
+  BootResult CheckStage1();
+  BootResult CheckStage2();
+  void Reboot();
   void Fault();
-  void Go(State newstate);
   bool WaitForBankReady(uint8_t bank);
   bool WriteFile(uint8_t bank, const base::FilePath& source);
   std::unique_ptr<DevInterface> device_;
   HpsMetrics hps_metrics_;
   base::Lock lock_;  // Exclusive module access lock
-  State state_;      // Current state
-  int retries_;      // Common retry counter for states.
-  int reboots_;      // Count of reboots.
   uint16_t hw_rev_;
   uint32_t appl_version_;
   bool write_protect_off_;
