@@ -19,7 +19,8 @@ namespace cryptohome {
 
 namespace {
 constexpr char kFile[] = "file";
-constexpr char kDirectory[] = "directory";
+constexpr char kDirectory[] = "dir";
+constexpr char kDirectory2[] = "dir2";
 }  // namespace
 
 class FakeMountMapperTest : public ::testing::Test {
@@ -40,7 +41,9 @@ class FakeMountMapperTest : public ::testing::Test {
   const base::FilePath kSource2{"/home/.shadow/0010/mount"};
   const base::FilePath kSource3{"/home/.shadow/0100/mount"};
   const base::FilePath kTarget0{"/home/user/chronos/"};
-  const base::FilePath kTarget0Directory{"/home/user/chronos/directory"};
+  const base::FilePath kTarget0Directory{"/home/user/chronos/dir"};
+  const base::FilePath kTarget0Directory2{"/home/user/chronos/dir2"};
+  const base::FilePath kTarget0InnerDirectory{"/home/user/chronos/dir2/dir"};
   const base::FilePath kTarget0File{"/home/user/chronos/file"};
   const base::FilePath kTarget1{"/home/user/u-0001"};
   const base::FilePath kTarget1File{"/home/user/u-0001/file"};
@@ -253,6 +256,12 @@ TEST_F(FakeMountMapperTest, SourceRedirectBindConsistency) {
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
 }
 
+TEST_F(FakeMountMapperTest, BusyUnmount_SelfBindIsNotBusy) {
+  // Check that self Bind can unmount
+  ASSERT_TRUE(fake_mapper_->Bind(kSource1, kSource1));
+  ASSERT_TRUE(fake_mapper_->Unmount(kSource1));
+}
+
 TEST_F(FakeMountMapperTest, BusyUnmount_DirectMapping) {
   // Check that parent mount can not be unmounted before dependent one.
   // In this test the target of parent is the exact source for child.
@@ -383,6 +392,25 @@ TEST_F(FakeMountMapperTest, ResolveMountInnerBindChain) {
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
 }
 
+TEST_F(FakeMountMapperTest, ResolveSameTargetPrefixMountBindChain) {
+  // Check the Mount->Subdirectory Bind->File chain is resolved correctly when
+  // there is a matching target prefix
+
+  // Mount
+  ASSERT_TRUE(fake_mapper_->Mount(kSource1, kTarget0));
+  ASSERT_TRUE(fake_mapper_->Bind(kTarget0Directory, kTarget0InnerDirectory));
+
+  // File is on the source location of the first mount with relative path.
+  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0InnerDirectory),
+            kRedirect1.Append(kDirectory2).Append(kDirectory));
+  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0InnerDirectory.Append(kFile)),
+            kRedirect1.Append(kDirectory2).Append(kDirectory).Append(kFile));
+
+  // Unmount
+  ASSERT_TRUE(fake_mapper_->Unmount(kTarget0InnerDirectory));
+  ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
+}
+
 TEST_F(FakeMountMapperTest, ResolveBindBindChain) {
   // Check the Bind->Bind->File chain is resolved correctly.
 
@@ -419,6 +447,44 @@ TEST_F(FakeMountMapperTest, ResolveBindInnerBindChain) {
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget1));
+  ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
+}
+
+TEST_F(FakeMountMapperTest, ResolveSameTargetPrefixBindBindChain) {
+  // Check the Bind->Subdirectory Bind->File chain is resolved correctly when
+  // there is a matching target prefix
+
+  // Mount
+  ASSERT_TRUE(fake_mapper_->Bind(kSource1, kTarget0));
+  ASSERT_TRUE(fake_mapper_->Bind(kTarget0Directory, kTarget0InnerDirectory));
+
+  // File is on the source location of the first mount with relative path.
+  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0InnerDirectory),
+            fake_platform::SpliceTestFilePath(kRoot, kSource1)
+                .Append(kDirectory2)
+                .Append(kDirectory));
+  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0InnerDirectory.Append(kFile)),
+            fake_platform::SpliceTestFilePath(kRoot, kSource1)
+                .Append(kDirectory2)
+                .Append(kDirectory)
+                .Append(kFile));
+
+  // Unmount
+  ASSERT_TRUE(fake_mapper_->Unmount(kTarget0InnerDirectory));
+  ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
+}
+
+TEST_F(FakeMountMapperTest, ResolveMountSelfBind) {
+  // Check that self Bind can resolve correctly.
+  ASSERT_TRUE(fake_mapper_->Mount(kSource1, kTarget0));
+  ASSERT_TRUE(fake_mapper_->Bind(kTarget0Directory, kTarget0Directory));
+
+  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0Directory),
+            kRedirect1.Append(kDirectory));
+  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0Directory.Append(kFile)),
+            kRedirect1.Append(kDirectory).Append(kFile));
+
+  ASSERT_TRUE(fake_mapper_->Unmount(kTarget0Directory));
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
 }
 

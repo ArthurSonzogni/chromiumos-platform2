@@ -130,6 +130,10 @@ bool FakeMountMapper::Unmount(const base::FilePath& target) {
   // If the target has sources to other mounts under it, consider it busy.
   for (const auto& [unused, mapping] : target_to_mount_) {
     const base::FilePath& source = mapping.GetSource();
+    if (target == source && source == mapping.GetTarget()) {
+      // This is a hack to handle self-binding as shared.
+      break;
+    }
     if (target == source || target.IsParent(source)) {
       return false;
     }
@@ -180,12 +184,16 @@ bool FakeMountMapper::IsOnMount(const base::FilePath& path) const {
 
 std::optional<FakeMountMapping> FakeMountMapper::FindMapping(
     const base::FilePath& path) const {
+  std::optional<FakeMountMapping> result;
   for (const auto& [target, mapping] : target_to_mount_) {
+    // Find the longest prefix match
     if (target == path || target.IsParent(path)) {
-      return mapping;
+      if (!result.has_value() || target.IsParent(result->GetTarget())) {
+        result.emplace(mapping);
+      }
     }
   }
-  return std::nullopt;
+  return result;
 }
 
 base::FilePath FakeMountMapper::ResolvePath(const base::FilePath& path) const {
