@@ -600,10 +600,6 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // mode detection and internal input device event blocking logic.
   builder->AddVmodulePattern("*/ash/wm/tablet_mode/*=1");
 
-  // TODO(https://crbug.com/1106586,https://crbug.com/1102123): Remove after
-  // issues with night light are closed.
-  builder->AddVmodulePattern("*night_light*=1");
-
   if (builder->UseFlagIsSet("cheets"))
     builder->AddVmodulePattern("*arc/*=1");
 }
