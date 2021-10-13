@@ -25,7 +25,7 @@ source_set("gcam_ae") {
   ]
   libs = [
     "facessd_cros",
-    "gcam_ae_cros",
+    "gcam_cros",
   ]
   public_configs = [ ":target_defaults" ]
 

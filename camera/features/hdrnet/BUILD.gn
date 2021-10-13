@@ -32,7 +32,7 @@ source_set("hdrnet") {
     "//camera/features/hdrnet/hdrnet_processor_impl.cc",
     "//camera/features/hdrnet/hdrnet_stream_manipulator.cc",
   ]
-  libs = [ "hdrnet_cros" ]
+  libs = [ "gcam_cros" ]
   public_configs = [ ":target_defaults" ]
 
   # -fPIC needed by the libcros_camera.so shared library.
