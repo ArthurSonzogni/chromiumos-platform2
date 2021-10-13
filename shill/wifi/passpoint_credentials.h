@@ -17,22 +17,38 @@ namespace shill {
 class EapCredentials;
 class Error;
 class KeyValueStore;
+class StoreInterface;
 
 // A PasspointCredentials contains a set of criteria used to match a Wi-Fi
 // network without identifying it using its SSID. It also contains the EAP
 // credentials required to successfully authenticate to that network.
 class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
  public:
+  // Passpoint storage type and value
+  static constexpr char kStorageType[] = "Type";
+  static constexpr char kTypePasspoint[] = "passpoint";
+
+  explicit PasspointCredentials(std::string id) : id_(id) {}
   PasspointCredentials(const PasspointCredentials&) = delete;
   PasspointCredentials& operator=(const PasspointCredentials&) = delete;
+
+  // Set the profile that owns this set of credentials.
+  void SetProfile(const ProfileRefPtr& profile);
+
+  // Loads the set of credentials from |storage|. Requires the credentials
+  // identifier |id_| to be set before calling this.
+  void Load(const StoreInterface* storage);
+
+  // Saves the set of credentials to |storage|. Returns true on success.
+  bool Save(StoreInterface* storage);
 
   // Create a set of Passpoint credentials from a dictionary. The content of
   // the dictionary is validated (including EAP credentials) according to
   // the requirements of Passpoint specifications.
-  // Errors are reported in |error|.
   static PasspointCredentialsRefPtr CreatePasspointCredentials(
       const KeyValueStore& args, Error* error);
 
+  const std::string& id() const { return id_; }
   const std::vector<std::string>& domains() const { return domains_; }
   const std::string& realm() const { return realm_; }
   const std::vector<uint64_t>& home_ois() const { return home_ois_; }
@@ -47,15 +63,31 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
   const std::string android_package_name() const {
     return android_package_name_;
   }
+  const ProfileRefPtr& profile() const { return profile_; }
 
  private:
-  PasspointCredentials(const std::vector<std::string>& domains,
+  friend class WiFiProviderTest;
+
+  // Storage keys
+  static constexpr char kStorageDomains[] = "Domains";
+  static constexpr char kStorageRealm[] = "Realm";
+  static constexpr char kStorageHomeOIs[] = "HomeOIs";
+  static constexpr char kStorageRequiredHomeOIs[] = "RequiredHomeOIs";
+  static constexpr char kStorageRoamingConsortia[] = "RoamingConsortia";
+  static constexpr char kStorageMeteredOverride[] = "MeteredOverride";
+  static constexpr char kStorageAndroidPackageName[] = "AndroidPackageName";
+
+  PasspointCredentials(const std::string& id,
+                       const std::vector<std::string>& domains,
                        const std::string& realm,
                        const std::vector<uint64_t>& home_ois,
                        const std::vector<uint64_t>& required_home_ois,
                        const std::vector<uint64_t>& rc,
                        bool metered_override,
                        const std::string& android_package_name);
+
+  // Create a unique identifier for the set of credentials.
+  static std::string GenerateIdentifier();
 
   // Home service provider FQDNs.
   std::vector<std::string> domains_;
@@ -82,6 +114,11 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
   bool metered_override_;
   // Package name of the application that provided the credentials, if any.
   std::string android_package_name_;
+
+  // Credentials unique identifier.
+  std::string id_;
+  // Owner of the set of credentials.
+  ProfileRefPtr profile_;
 };
 
 }  // namespace shill

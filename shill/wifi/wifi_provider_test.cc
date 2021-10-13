@@ -25,6 +25,7 @@
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/wifi/mock_wifi_service.h"
+#include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wifi_endpoint.h"
 
 using ::testing::_;
@@ -244,6 +245,31 @@ class WiFiProviderTest : public testing::Test {
   void AddEndpointToService(WiFiServiceRefPtr service,
                             const WiFiEndpointConstRefPtr& endpoint) {
     provider_.service_by_endpoint_[endpoint.get()] = service;
+  }
+  std::string AddCredentialsToProfileStorage(
+      Profile* profile,
+      const std::vector<std::string>& domains,
+      const std::string& realm,
+      const std::vector<uint64_t>& home_ois,
+      const std::vector<uint64_t>& required_home_ois,
+      const std::vector<uint64_t>& roaming_consortia,
+      bool metered_override,
+      const std::string& app_package_name) {
+    std::string id = base::StringPrintf("entry_%d", storage_entry_index_);
+    auto* profile_storage = static_cast<FakeStore*>(profile->GetStorage());
+    PasspointCredentialsRefPtr creds = new PasspointCredentials(
+        id, domains, realm, home_ois, required_home_ois, roaming_consortia,
+        metered_override, app_package_name);
+    creds->Save(profile_storage);
+    storage_entry_index_++;
+    return id;
+  }
+  PasspointCredentialsRefPtr GetCredentials(const std::string& id) {
+    if (provider_.credentials_by_id_.find(id) ==
+        provider_.credentials_by_id_.end()) {
+      return nullptr;
+    }
+    return provider_.credentials_by_id_[id];
   }
 
   MockControl control_;
@@ -1467,6 +1493,78 @@ TEST_F(WiFiProviderTest, GetSsidsConfiguredForAutoConnect) {
       provider_.GetSsidsConfiguredForAutoConnect();
   EXPECT_EQ(1, service_list_1.size());
   EXPECT_TRUE(ssid1_bytes.Equals(service_list_1[0]));
+}
+
+TEST_F(WiFiProviderTest, LoadCredentialsFromProfileAndCheckContent) {
+  std::vector<std::string> domains{"sp-blue.com", "sp-green.com"};
+  std::string realm("sp-blue.com");
+  std::vector<uint64_t> home_ois{0x123456789, 0x65798731, 0x1};
+  std::vector<uint64_t> required_home_ois{0x111222333444, 0x99887744};
+  std::vector<uint64_t> roaming_consortia{0x1010101010, 0x2020202020};
+  std::string app_name("com.sp-blue.app");
+
+  // Add credentials to the user profile.
+  std::string id = AddCredentialsToProfileStorage(
+      user_profile_.get(), domains, realm, home_ois, required_home_ois,
+      roaming_consortia,
+      /*metered_override=*/true, app_name);
+  provider_.LoadCredentialsFromProfile(user_profile_.get());
+
+  // Check the credentials are correct.
+  PasspointCredentialsRefPtr creds = GetCredentials(id);
+  EXPECT_TRUE(creds != nullptr);
+  EXPECT_EQ(id, creds->id());
+  EXPECT_EQ(user_profile_.get(), creds->profile());
+  EXPECT_EQ(domains, creds->domains());
+  EXPECT_EQ(realm, creds->realm());
+  EXPECT_EQ(home_ois, creds->home_ois());
+  EXPECT_EQ(required_home_ois, creds->required_home_ois());
+  EXPECT_EQ(roaming_consortia, creds->roaming_consortia());
+  EXPECT_TRUE(creds->metered_override());
+  EXPECT_EQ(app_name, creds->android_package_name());
+
+  // Remove it
+  provider_.UnloadCredentialsFromProfile(user_profile_.get());
+  EXPECT_TRUE(!GetCredentials(id));
+}
+
+TEST_F(WiFiProviderTest, LoadUnloadCredentialsFromProfile) {
+  std::vector<std::string> domains{"sp-blue.com", "sp-green.com"};
+  std::string realm("sp-blue.com");
+  std::vector<uint64_t> ois{0x123456789, 0x65798731, 0x1};
+  std::string app_name("com.sp-blue.app");
+
+  // Add credentials to both Profiles.
+  std::string id_default =
+      AddCredentialsToProfileStorage(default_profile_.get(), domains, realm,
+                                     /*home_ois=*/ois,
+                                     /*required_home_ois=*/ois,
+                                     /*roaming_consortia=*/ois,
+                                     /*metered_override=*/true, app_name);
+  provider_.LoadCredentialsFromProfile(default_profile_.get());
+  std::string id_user =
+      AddCredentialsToProfileStorage(user_profile_.get(), domains, realm,
+                                     /*home_ois=*/ois,
+                                     /*required_home_ois=*/ois,
+                                     /*roaming_consortia=*/ois,
+                                     /*metered_override=*/true, app_name);
+  provider_.LoadCredentialsFromProfile(user_profile_.get());
+
+  // Check both credentials are available
+  PasspointCredentialsRefPtr creds;
+  creds = GetCredentials(id_default);
+  EXPECT_TRUE(creds != nullptr);
+  EXPECT_EQ(default_profile_.get(), creds->profile());
+  creds = GetCredentials(id_user);
+  EXPECT_TRUE(creds != nullptr);
+  EXPECT_EQ(user_profile_.get(), creds->profile());
+
+  // Remove it
+  provider_.UnloadCredentialsFromProfile(user_profile_.get());
+  EXPECT_TRUE(GetCredentials(id_user) == nullptr);
+  EXPECT_TRUE(GetCredentials(id_default) != nullptr);
+  provider_.UnloadCredentialsFromProfile(default_profile_.get());
+  EXPECT_TRUE(GetCredentials(id_default) == nullptr);
 }
 
 }  // namespace shill

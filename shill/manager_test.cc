@@ -4607,4 +4607,57 @@ TEST_F(ManagerTest, SetDNSProxyDOHProviders) {
   EXPECT_FALSE(err.IsFailure());
 }
 
+#if !defined(DISABLE_WIRED_8021X) && !defined(DISABLE_WIFI)
+TEST_F(ManagerTest, AddPasspointCredentials) {
+  Error err;
+  KeyValueStore properties;
+  RpcIdentifier profile_rpcid("/a/mock/profile");
+  MockProfile* profile = new MockProfile(manager(), "");
+  AdoptProfile(manager(), profile);  // Passes ownership.
+
+  // Attribute a RPC identifier to the mock profile.
+  EXPECT_CALL(*profile, GetRpcIdentifier())
+      .WillRepeatedly(ReturnRefOfCopy(profile_rpcid));
+
+  // Can't add credentials to an invalid profile.
+  manager()->AddPasspointCredentials(std::string(), properties, &err);
+  EXPECT_TRUE(err.IsFailure());
+
+  // Can't add credentials to the default profile.
+  EXPECT_CALL(*profile, IsDefault()).WillOnce(Return(true));
+  manager()->AddPasspointCredentials(profile_rpcid.value(), properties, &err);
+  EXPECT_TRUE(err.IsFailure());
+
+  // Good profile but invalid credentials fails.
+  EXPECT_CALL(*profile, IsDefault()).WillOnce(Return(false));
+  manager()->AddPasspointCredentials(profile_rpcid.value(), properties, &err);
+  EXPECT_TRUE(err.IsFailure());
+
+  // Get a correct dict for valid credentials
+  properties.Set(kPasspointCredentialsDomainsProperty,
+                 std::vector<std::string>{"example.com"});
+  properties.Set(kPasspointCredentialsRealmProperty,
+                 std::string("example.com"));
+  properties.Set(kEapMethodProperty, std::string("TLS"));
+  properties.Set(kEapCaCertPemProperty, std::vector<std::string>{"a PEM line"});
+  properties.Set(kEapCertIdProperty, std::string("cert-id"));
+  properties.Set(kEapKeyIdProperty, std::string("key-id"));
+  properties.Set(kEapPinProperty, std::string("111111"));
+  properties.Set(kEapIdentityProperty, std::string("a_user"));
+
+  // A correct set of credentials is pushed to the profile but it refuses them.
+  EXPECT_CALL(*profile, IsDefault()).WillOnce(Return(false));
+  EXPECT_CALL(*profile, AdoptCredentials(_)).WillOnce(Return(false));
+  manager()->AddPasspointCredentials(profile_rpcid.value(), properties, &err);
+  EXPECT_TRUE(err.IsFailure());
+
+  // A correct set of credentials is accepted.
+  EXPECT_CALL(*profile, IsDefault()).WillOnce(Return(false));
+  EXPECT_CALL(*profile, AdoptCredentials(_)).WillOnce(Return(true));
+  EXPECT_CALL(*wifi_provider_, AddCredentials(_));
+  manager()->AddPasspointCredentials(profile_rpcid.value(), properties, &err);
+  EXPECT_TRUE(err.IsSuccess());
+}
+#endif  // !DISABLE_WIRED_8021X && !DISABLE_WIFI
+
 }  // namespace shill

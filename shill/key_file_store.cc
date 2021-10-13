@@ -730,6 +730,53 @@ bool KeyFileStore::DoesGroupMatchProperties(
   return true;
 }
 
+bool KeyFileStore::GetUint64List(const std::string& group,
+                                 const std::string& key,
+                                 std::vector<uint64_t>* value) const {
+  CHECK(key_file_);
+  const auto data = key_file_->Get(group, key);
+  if (!data.has_value()) {
+    SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << ")";
+    return false;
+  }
+
+  std::vector<std::string> strings;
+  if (!Unescape(data.value(), kListSeparator, &strings)) {
+    SLOG(this, 10) << "Failed to parse (" << group << ":" << key << "): "
+                   << " as uint64 list";
+    return false;
+  }
+
+  std::vector<uint64_t> list;
+  for (const auto& a : strings) {
+    uint64_t i;
+    if (!base::StringToUint64(a, &i)) {
+      SLOG(this, 10) << "Failed to parse (" << group << ":" << key << "): "
+                     << " as uint64 list";
+      return false;
+    }
+    list.push_back(i);
+  }
+
+  if (value) {
+    *value = list;
+  }
+  return true;
+}
+
+bool KeyFileStore::SetUint64List(const std::string& group,
+                                 const std::string& key,
+                                 const std::vector<uint64_t>& value) {
+  CHECK(key_file_);
+  std::vector<std::string> strings;
+  // glib appends a separator to every element of the list.
+  for (const auto& uint_entry : value) {
+    strings.push_back(base::NumberToString(uint_entry) + kListSeparator);
+  }
+  key_file_->Set(group, key, base::JoinString(strings, std::string()));
+  return true;
+}
+
 bool KeyFileStore::PKCS11SetString(const std::string& group,
                                    const std::string& key,
                                    const std::string& value) {

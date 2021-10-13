@@ -30,6 +30,10 @@
 #include "shill/store_interface.h"
 #include "shill/stub_storage.h"
 
+#if !defined(DISABLE_WIFI)
+#include "shill/wifi/passpoint_credentials.h"
+#endif  // !DISABLE_WIFI
+
 namespace shill {
 
 // static
@@ -452,6 +456,16 @@ std::vector<std::string> Profile::EnumerateEntries(Error* /*error*/) {
 
   return service_groups;
 }
+
+#if !defined(DISABLE_WIFI)
+bool Profile::AdoptCredentials(const PasspointCredentialsRefPtr& credentials) {
+  if (credentials->profile() == this) {
+    return false;
+  }
+  credentials->SetProfile(this);
+  return credentials->Save(storage_.get()) && storage_->Flush();
+}
+#endif  // !DISABLE_WIFI
 
 bool Profile::UpdateDevice(const DeviceRefPtr& device) {
   return false;

@@ -581,6 +581,10 @@ void Manager::PushProfileInternal(const Profile::Identifier& ident,
 
   profiles_.push_back(profile);
 
+#if !defined(DISABLE_WIFI)
+  wifi_provider_->LoadCredentialsFromProfile(profile);
+#endif  // !DISABLE_WIFI
+
   for (ServiceRefPtr& service : services_) {
     service->ClearExplicitlyDisconnected();
 
@@ -684,6 +688,12 @@ void Manager::PopProfileInternal() {
     // Service was totally unloaded. No advance of iterator in this
     // case, as UnloadService has updated the iterator for us.
   }
+
+#if !defined(DISABLE_WIFI)
+  // Remove Passpoint credentials attached to this profile.
+  wifi_provider_->UnloadCredentialsFromProfile(active_profile);
+#endif  // !DISABLE_WIFI
+
   SortServices();
   OnProfilesChanged();
   LOG(INFO) << __func__ << " finished; " << profiles_.size()
@@ -3142,8 +3152,14 @@ bool Manager::AddPasspointCredentials(const std::string& profile_rpcid,
     return false;
   }
 
-  // TODO(b/162106001) store the credentials into the profile and push it to
-  // the provider.
+  if (!profile->AdoptCredentials(creds)) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kOperationFailed,
+        "failed to save credentials to profile " + profile_rpcid);
+    return false;
+  }
+
+  wifi_provider_->AddCredentials(creds);
 
   return true;
 #else

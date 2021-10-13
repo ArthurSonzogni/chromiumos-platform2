@@ -100,6 +100,16 @@ class StubStorage : public StoreInterface {
                         const std::string& value) override {
     return false;
   }
+  bool GetUint64List(const std::string& group,
+                     const std::string& key,
+                     std::vector<uint64_t>* value) const override {
+    return false;
+  }
+  bool SetUint64List(const std::string& group,
+                     const std::string& key,
+                     const std::vector<uint64_t>& value) override {
+    return false;
+  }
   bool PKCS11SetString(const std::string& group,
                        const std::string& key,
                        const std::string& value) override {

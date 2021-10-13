@@ -163,6 +163,20 @@ class StoreInterface {
                                 const std::string& plaintext_key,
                                 const std::string& value) = 0;
 
+  // Gets a uint64_t list |value| associated with |group|:|key|. Returns true on
+  // success and false on failure (including when |group|:|key| is not present
+  // in the store).  It is not an error to pass NULL as |value| to simply test
+  // for the presence of this value.
+  virtual bool GetUint64List(const std::string& group,
+                             const std::string& key,
+                             std::vector<uint64_t>* value) const = 0;
+
+  // Associates |group|:|key| with a uint64_t list |value|. Returns true on
+  // success, false otherwise.
+  virtual bool SetUint64List(const std::string& group,
+                             const std::string& key,
+                             const std::vector<uint64_t>& value) = 0;
+
   // The following functions behave similarly with their counterparts, but
   // store the string in PKCS11 store as hardware-wrapped CKO_DATA object
   // instead of in a key file.

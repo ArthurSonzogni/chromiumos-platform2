@@ -6,6 +6,7 @@
 
 #include <sys/stat.h>
 
+#include <limits>
 #include <memory>
 #include <set>
 #include <string>
@@ -18,6 +19,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
+#include <inttypes.h>
 
 #include "shill/key_value_store.h"
 
@@ -797,6 +799,80 @@ TEST_F(KeyFileStoreTest, PersistAcrossClose) {
   ASSERT_TRUE(store_->GetString(kGroup, kKey2, &value));
   ASSERT_EQ(kValue2, value);
   ASSERT_TRUE(store_->Close());
+}
+
+TEST_F(KeyFileStoreTest, GetUint64List) {
+  static const char kGroup[] = "uint64-lists";
+  static const char kKeyEmpty[] = "empty";
+  static const char kKeyValue[] = "value";
+  static const char kKeyTwoValues[] = "two-values";
+  static const char kKeyValues[] = "values";
+  static const uint64_t kValue = 1234567890ull;
+  static const uint64_t kValue2 = 9876543210ull;
+  static const uint64_t kValue3 = std::numeric_limits<uint64_t>::max();
+  WriteKeyFile(
+      base::StringPrintf("[%s]\n"
+                         "%s=\n"
+                         "%s=%" PRIu64 "\n"
+                         "%s=%" PRIu64 ";%" PRIu64 "\n"
+                         "%s=%" PRIu64 ";%" PRIu64 ";%" PRIu64 "\n",
+                         kGroup, kKeyEmpty, kKeyValue, kValue, kKeyTwoValues,
+                         kValue, kValue2, kKeyValues, kValue, kValue2,
+                         kValue3));
+  ASSERT_TRUE(store_->Open());
+
+  std::vector<uint64_t> value;
+
+  EXPECT_TRUE(store_->GetUint64List(kGroup, kKeyValues, &value));
+  ASSERT_EQ(3, value.size());
+  EXPECT_EQ(kValue, value[0]);
+  EXPECT_EQ(kValue2, value[1]);
+  EXPECT_EQ(kValue3, value[2]);
+
+  EXPECT_TRUE(store_->GetUint64List(kGroup, kKeyEmpty, &value));
+  ASSERT_EQ(0, value.size());
+
+  EXPECT_TRUE(store_->GetUint64List(kGroup, kKeyValue, &value));
+  ASSERT_EQ(1, value.size());
+  EXPECT_EQ(kValue, value[0]);
+
+  EXPECT_TRUE(store_->GetUint64List(kGroup, kKeyTwoValues, &value));
+  ASSERT_EQ(2, value.size());
+  EXPECT_EQ(kValue, value[0]);
+  EXPECT_EQ(kValue2, value[1]);
+
+  EXPECT_FALSE(
+      store_->GetUint64List("unknown-uint64-lists", kKeyEmpty, &value));
+  EXPECT_FALSE(store_->GetUint64List(kGroup, "some-key", &value));
+  EXPECT_TRUE(store_->GetUint64List(kGroup, kKeyValues, nullptr));
+  ASSERT_TRUE(store_->Close());
+}
+
+TEST_F(KeyFileStoreTest, SetUint64List) {
+  static const char kGroup[] = "unsigned-ints";
+  static const char kKeyEmpty[] = "e";
+  static const char kKeyValue[] = "v";
+  static const char kKeyTwoValues[] = "vv";
+  static const char kKeyValues[] = "vvv";
+  static const uint64_t kValue = 11111111;
+  static const uint64_t kValue2 = 8888888888;
+  static const uint64_t kValue3 = std::numeric_limits<uint64_t>::max();
+  ASSERT_TRUE(store_->Open());
+  ASSERT_TRUE(store_->SetUint64List(kGroup, kKeyEmpty, {}));
+  ASSERT_TRUE(store_->SetUint64List(kGroup, kKeyValue, {kValue}));
+  ASSERT_TRUE(store_->SetUint64List(kGroup, kKeyTwoValues, {kValue, kValue2}));
+  ASSERT_TRUE(
+      store_->SetUint64List(kGroup, kKeyValues, {kValue, kValue2, kValue3}));
+  ASSERT_TRUE(store_->Close());
+  EXPECT_EQ(
+      base::StringPrintf("[%s]\n"
+                         "%s=\n"
+                         "%s=%" PRIu64 ";\n"
+                         "%s=%" PRIu64 ";%" PRIu64 ";\n"
+                         "%s=%" PRIu64 ";%" PRIu64 ";%" PRIu64 ";\n",
+                         kGroup, kKeyEmpty, kKeyValue, kValue, kKeyTwoValues,
+                         kValue, kValue2, kKeyValues, kValue, kValue2, kValue3),
+      ReadKeyFile());
 }
 
 namespace {

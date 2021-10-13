@@ -31,6 +31,12 @@ class MockProfile : public Profile {
   MOCK_METHOD(const RpcIdentifier&, GetRpcIdentifier, (), (const, override));
   MOCK_METHOD(bool, UpdateService, (const ServiceRefPtr&), (override));
   MOCK_METHOD(bool, UpdateDevice, (const DeviceRefPtr&), (override));
+#if !defined(DISABLE_WIFI)
+  MOCK_METHOD(bool,
+              AdoptCredentials,
+              (const PasspointCredentialsRefPtr&),
+              (override));
+#endif  // !DISABLE_WIFI
   MOCK_METHOD(bool, Save, (), (override));
   MOCK_METHOD(StoreInterface*, GetStorage, (), (override));
   MOCK_METHOD(const StoreInterface*, GetConstStorage, (), (const, override));

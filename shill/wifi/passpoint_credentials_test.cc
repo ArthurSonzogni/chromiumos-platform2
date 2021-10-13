@@ -13,6 +13,7 @@
 
 #include "shill/error.h"
 #include "shill/key_value_store.h"
+#include "shill/profile.h"
 #include "shill/refptr_types.h"
 
 namespace shill {

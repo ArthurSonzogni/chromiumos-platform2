@@ -123,6 +123,7 @@ pkg_config("target_defaults") {
     # before protobuf here or the linker flags won't be in the right
     # order.
     "system_api",
+    "uuid",
   ]
   if (use.fuzzer) {
     pkg_deps += [ "protobuf" ]

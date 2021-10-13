@@ -34,6 +34,7 @@
 #include "shill/profile.h"
 #include "shill/store_interface.h"
 #include "shill/technology.h"
+#include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_service.h"
 
@@ -622,6 +623,44 @@ std::vector<ByteString> WiFiProvider::GetSsidsConfiguredForAutoConnect() {
     }
   }
   return results;
+}
+
+void WiFiProvider::LoadCredentialsFromProfile(const ProfileRefPtr& profile) {
+  const StoreInterface* storage = profile->GetConstStorage();
+  KeyValueStore args;
+  args.Set<std::string>(PasspointCredentials::kStorageType,
+                        PasspointCredentials::kTypePasspoint);
+  for (const auto& group : storage->GetGroupsWithProperties(args)) {
+    PasspointCredentialsRefPtr creds = new PasspointCredentials(group);
+    creds->Load(storage);
+    creds->SetProfile(profile);
+    AddCredentials(creds);
+  }
+}
+
+void WiFiProvider::UnloadCredentialsFromProfile(const ProfileRefPtr& profile) {
+  PasspointCredentialsMap creds(credentials_by_id_);
+  for (const auto& [id, c] : creds) {
+    if (c != nullptr && c->profile() == profile) {
+      RemoveCredentials(c);
+    }
+  }
+}
+
+void WiFiProvider::AddCredentials(
+    const PasspointCredentialsRefPtr& credentials) {
+  credentials_by_id_[credentials->id()] = credentials;
+
+  // TODO(b/162106001) push the credentials to supplicant to allow
+  // interworking matches.
+}
+
+void WiFiProvider::RemoveCredentials(
+    const PasspointCredentialsRefPtr& credentials) {
+  credentials_by_id_.erase(credentials->id());
+
+  // TODO(b/162106001) removes the credentials from supplicant to stop
+  // interworking matches with it.
 }
 
 Metrics* WiFiProvider::metrics() const {

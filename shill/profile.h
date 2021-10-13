@@ -139,6 +139,13 @@ class Profile : public base::RefCounted<Profile> {
   // DefaultProfile.
   virtual bool UpdateDevice(const DeviceRefPtr& device);
 
+#if !defined(DISABLE_WIFI)
+  // Start managing the persistence of a set of Passpoint credentials.
+  // Returns |true| if the set of credentials has been accepted by the
+  // Profile, |false| otherwise (ie if the Profile already own it).
+  virtual bool AdoptCredentials(const PasspointCredentialsRefPtr& credentials);
+#endif  // !DISABLE_WIFI
+
   // Write all in-memory state to disk via |storage_|.
   virtual bool Save();
 

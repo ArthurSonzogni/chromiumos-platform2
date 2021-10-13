@@ -91,6 +91,19 @@ class WiFiProvider : public ProviderInterface {
   // configured for auto-connect.
   std::vector<ByteString> GetSsidsConfiguredForAutoConnect();
 
+  // Load to the provider all the Passpoint credentials available in |Profile|.
+  void LoadCredentialsFromProfile(const ProfileRefPtr& profile);
+
+  // Unload from the provider all the Passpoint credentials provided
+  // by |profile|.
+  void UnloadCredentialsFromProfile(const ProfileRefPtr& profile);
+
+  // Adds a new set of credentials to the provider.
+  virtual void AddCredentials(const PasspointCredentialsRefPtr& credentials);
+
+  // Removes the set of credentials referenced by |id|.
+  virtual void RemoveCredentials(const PasspointCredentialsRefPtr& credentials);
+
   bool disable_vht() const { return disable_vht_; }
   void set_disable_vht(bool disable_vht) { disable_vht_ = disable_vht; }
 
@@ -98,6 +111,8 @@ class WiFiProvider : public ProviderInterface {
   friend class WiFiProviderTest;
 
   using EndpointServiceMap = std::map<const WiFiEndpoint*, WiFiServiceRefPtr>;
+  using PasspointCredentialsMap =
+      std::map<const std::string, PasspointCredentialsRefPtr>;
 
   // Add a service to the service_ vector and register it with the Manager.
   WiFiServiceRefPtr AddService(const std::vector<uint8_t>& ssid,
@@ -132,6 +147,7 @@ class WiFiProvider : public ProviderInterface {
 
   std::vector<WiFiServiceRefPtr> services_;
   EndpointServiceMap service_by_endpoint_;
+  PasspointCredentialsMap credentials_by_id_;
 
   bool running_;
 

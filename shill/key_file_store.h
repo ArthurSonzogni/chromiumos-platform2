@@ -89,6 +89,12 @@ class KeyFileStore : public StoreInterface {
                         const std::string& deprecated_key,
                         const std::string& plaintext_key,
                         const std::string& value) override;
+  bool GetUint64List(const std::string& group,
+                     const std::string& key,
+                     std::vector<uint64_t>* value) const override;
+  bool SetUint64List(const std::string& group,
+                     const std::string& key,
+                     const std::vector<uint64_t>& value) override;
   bool PKCS11SetString(const std::string& group,
                        const std::string& key,
                        const std::string& value) override;

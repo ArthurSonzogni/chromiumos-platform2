@@ -422,6 +422,7 @@ Methods
 
 			Possible Errors: [service].Error.InvalidArguments
 					 [service].Error.NotFound
+					 [service].Error.OperationFailed
 
 
 Signals		PropertyChanged(string name, variant value)

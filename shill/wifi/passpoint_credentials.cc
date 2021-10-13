@@ -7,15 +7,22 @@
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <string>
 #include <vector>
+#include <uuid/uuid.h>
 
 #include "shill/eap_credentials.h"
 #include "shill/error.h"
 #include "shill/key_value_store.h"
+#include "shill/profile.h"
 #include "shill/refptr_types.h"
+#include "shill/store_interface.h"
 
 namespace shill {
 
+// Size of an UUID string.
+constexpr size_t kUUIDStringLength = 37;
+
 PasspointCredentials::PasspointCredentials(
+    const std::string& id,
     const std::vector<std::string>& domains,
     const std::string& realm,
     const std::vector<uint64_t>& home_ois,
@@ -29,7 +36,55 @@ PasspointCredentials::PasspointCredentials(
       required_home_ois_(required_home_ois),
       roaming_consortia_(roaming_consortia),
       metered_override_(metered_override),
-      android_package_name_(android_package_name) {}
+      android_package_name_(android_package_name),
+      id_(id),
+      profile_(nullptr) {}
+
+void PasspointCredentials::SetProfile(const ProfileRefPtr& profile) {
+  profile_ = profile;
+}
+
+void PasspointCredentials::Load(const StoreInterface* storage) {
+  CHECK(storage);
+  CHECK(!id_.empty());
+
+  storage->GetStringList(id_, kStorageDomains, &domains_);
+  storage->GetString(id_, kStorageRealm, &realm_);
+  storage->GetUint64List(id_, kStorageHomeOIs, &home_ois_);
+  storage->GetUint64List(id_, kStorageRequiredHomeOIs, &required_home_ois_);
+  storage->GetUint64List(id_, kStorageRoamingConsortia, &roaming_consortia_);
+  storage->GetBool(id_, kStorageMeteredOverride, &metered_override_);
+  storage->GetString(id_, kStorageAndroidPackageName, &android_package_name_);
+  eap_.Load(storage, id_);
+}
+
+bool PasspointCredentials::Save(StoreInterface* storage) {
+  CHECK(storage);
+  CHECK(!id_.empty());
+
+  // The credentials identifier is unique, we can use it as storage identifier.
+  storage->SetString(id_, kStorageType, kTypePasspoint);
+  storage->SetStringList(id_, kStorageDomains, domains_);
+  storage->SetString(id_, kStorageRealm, realm_);
+  storage->SetUint64List(id_, kStorageHomeOIs, home_ois_);
+  storage->SetUint64List(id_, kStorageRequiredHomeOIs, required_home_ois_);
+  storage->SetUint64List(id_, kStorageRoamingConsortia, roaming_consortia_);
+  storage->SetBool(id_, kStorageMeteredOverride, metered_override_);
+  storage->SetString(id_, kStorageAndroidPackageName, android_package_name_);
+  eap_.Save(storage, id_, /*save_credentials=*/true);
+
+  return true;
+}
+
+std::string PasspointCredentials::GenerateIdentifier() {
+  uuid_t uuid_bytes;
+  uuid_generate_random(uuid_bytes);
+  std::string uuid(kUUIDStringLength, '\0');
+  uuid_unparse(uuid_bytes, &uuid[0]);
+  // Remove the null terminator from the string.
+  uuid.resize(kUUIDStringLength - 1);
+  return uuid;
+}
 
 PasspointCredentialsRefPtr PasspointCredentials::CreatePasspointCredentials(
     const KeyValueStore& args, Error* error) {
@@ -80,8 +135,10 @@ PasspointCredentialsRefPtr PasspointCredentials::CreatePasspointCredentials(
   android_package_name = args.Lookup<std::string>(
       kPasspointCredentialsAndroidPackageNameProperty, std::string());
 
+  // Create the set of credentials with a unique identifier.
+  std::string id = GenerateIdentifier();
   PasspointCredentialsRefPtr creds = new PasspointCredentials(
-      domains, realm, home_ois, required_home_ois, roaming_consortia,
+      id, domains, realm, home_ois, required_home_ois, roaming_consortia,
       metered_override, android_package_name);
 
   // Load EAP credentials from the set of properties.

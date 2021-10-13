@@ -57,6 +57,14 @@ class MockWiFiProvider : public WiFiProvider {
   MOCK_METHOD(bool, OnServiceUnloaded, (const WiFiServiceRefPtr&), (override));
   MOCK_METHOD(ByteArrays, GetHiddenSSIDList, (), (override));
   MOCK_METHOD(int, NumAutoConnectableServices, (), (override));
+  MOCK_METHOD(void,
+              AddCredentials,
+              (const PasspointCredentialsRefPtr&),
+              (override));
+  MOCK_METHOD(void,
+              RemoveCredentials,
+              (const PasspointCredentialsRefPtr&),
+              (override));
 };
 
 }  // namespace shill
