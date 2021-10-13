@@ -369,6 +369,16 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
     Camera3CaptureDescriptor* request) {
   DCHECK(gpu_thread_.IsCurrentThread());
 
+  if (VLOG_IS_ON(2)) {
+    VLOGFID(2, request->frame_number()) << " Got request:";
+    if (request->GetInputBuffer()) {
+      VLOGF(2) << "\t" << GetDebugString(request->GetInputBuffer()->stream);
+    }
+    for (const auto& request_buffer : request->GetOutputBuffers()) {
+      VLOGF(2) << "\t" << GetDebugString(request_buffer.stream);
+    }
+  }
+
   if (request->GetInputBuffer() != nullptr) {
     // Skip reprocessing requests.
     return true;
@@ -385,10 +395,7 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
       request->GetOutputBuffers();
   std::vector<camera3_stream_buffer_t> modified_output_buffers;
   HdrNetBufferInfoList hdrnet_buf_to_add;
-  VLOGFID(2, request->frame_number()) << " Got request:";
   for (const auto& request_buffer : client_output_buffers) {
-    VLOGF(2) << "\t" << GetDebugString(request_buffer.stream);
-
     HdrNetStreamContext* stream_context =
         GetHdrNetContextFromRequestedStream(request_buffer.stream);
     if (!stream_context) {
@@ -482,6 +489,9 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, result->frame_number()) << "Got result:";
+    if (result->GetInputBuffer()) {
+      VLOGF(2) << "\t" << GetDebugString(result->GetInputBuffer()->stream);
+    }
     for (const auto& hal_result_buffer : result->GetOutputBuffers()) {
       VLOGF(2) << "\t" << GetDebugString(hal_result_buffer.stream);
     }
@@ -652,15 +662,16 @@ void HdrNetStreamManipulator::ExtractHdrNetBuffersToProcess(
 
     // The buffer is not a HDRnet buffer we added, but it may be a BLOB
     // buffer that a kAppendWithBlob HDRnet stream is associated with.
-    HdrNetStreamContext* associated_stream_context =
-        GetHdrNetContextFromRequestedStream(hal_result_buffer.stream);
-    if (associated_stream_context) {
-      DCHECK_EQ(associated_stream_context->mode,
-                HdrNetStreamContext::Mode::kAppendWithBlob);
-      DCHECK_EQ(hal_result_buffer.stream->format, HAL_PIXEL_FORMAT_BLOB);
-      still_capture_processor_->QueuePendingAppsSegments(
-          frame_number, *hal_result_buffer.buffer);
-      continue;
+    if (hal_result_buffer.stream->format == HAL_PIXEL_FORMAT_BLOB) {
+      HdrNetStreamContext* associated_stream_context =
+          GetHdrNetContextFromRequestedStream(hal_result_buffer.stream);
+      if (associated_stream_context) {
+        DCHECK_EQ(associated_stream_context->mode,
+                  HdrNetStreamContext::Mode::kAppendWithBlob);
+        still_capture_processor_->QueuePendingAppsSegments(
+            frame_number, *hal_result_buffer.buffer);
+        continue;
+      }
     }
 
     // Not a buffer that we added or depend on, so pass to the client
