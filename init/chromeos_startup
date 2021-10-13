@@ -659,13 +659,12 @@ fi
   --prefix /var 2>>"${TMPFILES_LOG}" ||
     cleanup_mounts "tmpfiles.d for /home and /var failed"
 
-# Creates a bind mount of /var/lib/devicesettings -> /var/lib/whitelist to
-# allow code to migrate from /var/lib/whitelist to /var/lib/devicesettings.
-# Both folders are created with tmpfiles.d configurations. The bind mount needs
-# to run after tmpfiles.d configuration.
-if [ -d "/var/lib/whitelist" ] && [ -d "/var/lib/devicesettings" ]; then
-  mount --bind /var/lib/whitelist /var/lib/devicesettings
-  remember_mount /var/lib/devicesettings
+# Move from /var/lib/whitelist to /var/lib/devicesettings.
+# Check whether folders are empty using rmdir, this will delete the respective
+# folder only if it's empty.
+if [ -d "/var/lib/whitelist" ] && ! rmdir /var/lib/whitelist && \
+   rmdir /var/lib/devicesettings; then
+  mv /var/lib/whitelist /var/lib/devicesettings
 fi
 
 # /run is now tmpfs used for runtime data. Make sure /var/run and /var/lock are

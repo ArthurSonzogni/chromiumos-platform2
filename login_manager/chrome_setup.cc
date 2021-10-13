@@ -352,19 +352,6 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   CHECK(EnsureDirectoryExists(
       wayland_dir.Append(vm_tools::kConciergeSecurityContext), uid, gid, 0755));
 
-  // Ensure the existence of the directory in which the device settings and
-  // other ownership-related state will live. Yes, it should be owned by root.
-  // The permissions are set such that the policy-readers group can see the
-  // content of known files inside the directory. The policy-readers group is
-  // composed of the chronos user and other daemon accessing the device policies
-  // but not anything else.
-  // TODO(b/187793661) Change to /var/lib/devicesettings once it's a folder
-  // and not a bind mount anymore.
-  gid_t policy_readers_gid;
-  CHECK(brillo::userdb::GetGroupInfo("policy-readers", &policy_readers_gid));
-  CHECK(EnsureDirectoryExists(base::FilePath("/var/lib/whitelist"), kRootUid,
-                              policy_readers_gid, 0750));
-
   // Create the directory where policies for extensions installed in
   // device-local accounts are cached. This data is read and written by chronos.
   CHECK(EnsureDirectoryExists(
