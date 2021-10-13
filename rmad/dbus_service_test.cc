@@ -70,6 +70,12 @@ class DBusServiceTest : public testing::Test {
             _, A<std::unique_ptr<
                    base::RepeatingCallback<bool(const ProvisionStatus&)>>>()))
         .WillRepeatedly(Return());
+    EXPECT_CALL(
+        mock_rmad_service_,
+        RegisterSignalSender(
+            _, A<std::unique_ptr<
+                   base::RepeatingCallback<bool(const FinalizeStatus&)>>>()))
+        .WillRepeatedly(Return());
   }
   ~DBusServiceTest() override = default;
 
@@ -126,6 +132,10 @@ class DBusServiceTest : public testing::Test {
 
   bool SignalProvision(const ProvisionStatus& status) {
     return dbus_service_->SendProvisionProgressSignal(status);
+  }
+
+  bool SignalFinalize(const FinalizeStatus& status) {
+    return dbus_service_->SendFinalizeProgressSignal(status);
   }
 
   bool SignalHardwareWriteProtection(bool enabled) {
@@ -321,6 +331,25 @@ TEST_F(DBusServiceTest, SignalProvision) {
   status.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
   status.set_progress(0.5);
   EXPECT_TRUE(SignalProvision(status));
+}
+
+TEST_F(DBusServiceTest, SignalFinalize) {
+  RegisterDBusObjectAsync();
+  EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
+      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+        EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
+        EXPECT_EQ(signal->GetMember(), "FinalizeProgress");
+        dbus::MessageReader reader(signal);
+        FinalizeStatus status;
+        EXPECT_TRUE(PopValueFromReader(&reader, &status));
+        EXPECT_EQ(status.status(),
+                  FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS);
+        EXPECT_EQ(status.progress(), 0.5);
+      }));
+  FinalizeStatus status;
+  status.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS);
+  status.set_progress(0.5);
+  EXPECT_TRUE(SignalFinalize(status));
 }
 
 TEST_F(DBusServiceTest, SignalHardwareWriteProtection) {

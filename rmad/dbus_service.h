@@ -27,12 +27,16 @@ void AppendValueToWriter(dbus::MessageWriter* writer,
                          const rmad::CalibrationComponentStatus& value);
 void AppendValueToWriter(dbus::MessageWriter* writer,
                          const rmad::ProvisionStatus& value);
+void AppendValueToWriter(dbus::MessageWriter* writer,
+                         const rmad::FinalizeStatus& value);
 bool PopValueFromReader(dbus::MessageReader* reader,
                         rmad::HardwareVerificationResult* value);
 bool PopValueFromReader(dbus::MessageReader* reader,
                         rmad::CalibrationComponentStatus* value);
 bool PopValueFromReader(dbus::MessageReader* reader,
                         rmad::ProvisionStatus* value);
+bool PopValueFromReader(dbus::MessageReader* reader,
+                        rmad::FinalizeStatus* value);
 
 }  // namespace dbus_utils
 }  // namespace brillo
@@ -57,6 +61,7 @@ class DBusService : public brillo::DBusServiceDaemon {
   bool SendCalibrationOverallSignal(CalibrationOverallStatus status);
   bool SendCalibrationProgressSignal(CalibrationComponentStatus status);
   bool SendProvisionProgressSignal(const ProvisionStatus& status);
+  bool SendFinalizeProgressSignal(const FinalizeStatus& status);
   bool SendHardwareWriteProtectionStateSignal(bool enabled);
   bool SendPowerCableStateSignal(bool plugged_in);
 
@@ -149,6 +154,8 @@ class DBusService : public brillo::DBusServiceDaemon {
       calibration_component_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<ProvisionStatus>>
       provision_signal_;
+  std::weak_ptr<brillo::dbus_utils::DBusSignal<FinalizeStatus>>
+      finalize_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<bool>> hwwp_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<bool>> power_cable_signal_;
   RmadInterface* rmad_interface_;

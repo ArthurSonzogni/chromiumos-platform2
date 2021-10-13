@@ -22,13 +22,15 @@ namespace dbus_utils {
 
 using rmad::CalibrationComponentStatus;
 using rmad::CalibrationOverallStatus;
+using rmad::FinalizeStatus;
 using rmad::HardwareVerificationResult;
 using rmad::ProvisionStatus;
 using rmad::RmadComponent;
 using rmad::RmadErrorCode;
 
 // Overload AppendValueToWriter() for |HardwareVerificationResult|,
-// |CalibrationComponentStatus| and |ProvisionStatus| structures.
+// |CalibrationComponentStatus|, |ProvisionStatus| and |FinalizeStatus|
+// structures.
 void AppendValueToWriter(dbus::MessageWriter* writer,
                          const HardwareVerificationResult& value) {
   dbus::MessageWriter struct_writer(nullptr);
@@ -57,8 +59,18 @@ void AppendValueToWriter(dbus::MessageWriter* writer,
   writer->CloseContainer(&struct_writer);
 }
 
+void AppendValueToWriter(dbus::MessageWriter* writer,
+                         const FinalizeStatus& value) {
+  dbus::MessageWriter struct_writer(nullptr);
+  writer->OpenStruct(&struct_writer);
+  AppendValueToWriter(&struct_writer, static_cast<int>(value.status()));
+  AppendValueToWriter(&struct_writer, value.progress());
+  writer->CloseContainer(&struct_writer);
+}
+
 // Overload PopValueFromReader() for |HardwareVerificationResult|,
-// |CalibrationComponentStatus| and |ProvisionStatus| structures.
+// |CalibrationComponentStatus|, |ProvisionStatus| and |FinalizeStatus|
+// structures.
 bool PopValueFromReader(dbus::MessageReader* reader,
                         HardwareVerificationResult* value) {
   dbus::MessageReader struct_reader(nullptr);
@@ -111,6 +123,23 @@ bool PopValueFromReader(dbus::MessageReader* reader, ProvisionStatus* value) {
     return false;
   }
   value->set_status(static_cast<ProvisionStatus::Status>(status));
+  value->set_progress(progress);
+  return true;
+}
+
+bool PopValueFromReader(dbus::MessageReader* reader, FinalizeStatus* value) {
+  dbus::MessageReader struct_reader(nullptr);
+  if (!reader->PopStruct(&struct_reader)) {
+    return false;
+  }
+
+  int status;
+  double progress;
+  if (!PopValueFromReader(&struct_reader, &status) ||
+      !PopValueFromReader(&struct_reader, &progress)) {
+    return false;
+  }
+  value->set_status(static_cast<FinalizeStatus::Status>(status));
   value->set_progress(progress);
   return true;
 }
@@ -201,6 +230,20 @@ struct DBusType<ProvisionStatus> {
   }
 };
 
+template <>
+struct DBusType<FinalizeStatus> {
+  inline static std::string GetSignature() {
+    return GetStructDBusSignature<int, double>();
+  }
+  inline static void Write(dbus::MessageWriter* writer,
+                           const FinalizeStatus& value) {
+    AppendValueToWriter(writer, value);
+  }
+  inline static bool Read(dbus::MessageReader* reader, FinalizeStatus* value) {
+    return PopValueFromReader(reader, value);
+  }
+};
+
 }  // namespace dbus_utils
 }  // namespace brillo
 
@@ -283,6 +326,8 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
           kCalibrationProgressSignal);
   provision_signal_ = dbus_interface->RegisterSignal<ProvisionStatus>(
       kProvisioningProgressSignal);
+  finalize_signal_ =
+      dbus_interface->RegisterSignal<FinalizeStatus>(kFinalizeProgressSignal);
   hwwp_signal_ =
       dbus_interface->RegisterSignal<bool>(kHardwareWriteProtectionStateSignal);
   power_cable_signal_ =
@@ -325,6 +370,11 @@ void DBusService::RegisterSignalSenders() {
       RmadState::StateCase::kProvisionDevice,
       std::make_unique<base::RepeatingCallback<bool(const ProvisionStatus&)>>(
           base::BindRepeating(&DBusService::SendProvisionProgressSignal,
+                              base::Unretained(this))));
+  rmad_interface_->RegisterSignalSender(
+      RmadState::StateCase::kFinalize,
+      std::make_unique<base::RepeatingCallback<bool(const FinalizeStatus&)>>(
+          base::BindRepeating(&DBusService::SendFinalizeProgressSignal,
                               base::Unretained(this))));
 }
 
@@ -369,6 +419,11 @@ bool DBusService::SendCalibrationProgressSignal(
 
 bool DBusService::SendProvisionProgressSignal(const ProvisionStatus& status) {
   auto signal = provision_signal_.lock();
+  return (signal.get() == nullptr) ? false : signal->Send(status);
+}
+
+bool DBusService::SendFinalizeProgressSignal(const FinalizeStatus& status) {
+  auto signal = finalize_signal_.lock();
   return (signal.get() == nullptr) ? false : signal->Send(status);
 }
 

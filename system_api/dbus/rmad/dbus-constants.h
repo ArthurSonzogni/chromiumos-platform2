@@ -26,6 +26,7 @@ const char kHardwareVerificationResultSignal[] = "HardwareVerificationResult";
 const char kCalibrationOverallSignal[] = "CalibrationOverall";
 const char kCalibrationProgressSignal[] = "CalibrationProgress";
 const char kProvisioningProgressSignal[] = "ProvisioningProgress";
+const char kFinalizeProgressSignal[] = "FinalizeProgress";
 const char kHardwareWriteProtectionStateSignal[] =
     "HardwareWriteProtectionState";
 const char kPowerCableStateSignal[] = "PowerCableState";

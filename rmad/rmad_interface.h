@@ -50,6 +50,12 @@ class RmadInterface {
       RmadState::StateCase state_case,
       std::unique_ptr<ProvisionSignalCallback> callback) = 0;
 
+  using FinalizeSignalCallback =
+      base::RepeatingCallback<bool(const FinalizeStatus&)>;
+  virtual void RegisterSignalSender(
+      RmadState::StateCase state_case,
+      std::unique_ptr<FinalizeSignalCallback> callback) = 0;
+
   // Get the current state_case.
   virtual RmadState::StateCase GetCurrentStateCase() = 0;
 

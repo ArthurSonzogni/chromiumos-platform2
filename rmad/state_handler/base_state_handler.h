@@ -71,6 +71,11 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   virtual void RegisterSignalSender(
       std::unique_ptr<ProvisionSignalCallback> callback) {}
 
+  using FinalizeSignalCallback =
+      base::RepeatingCallback<bool(const FinalizeStatus&)>;
+  virtual void RegisterSignalSender(
+      std::unique_ptr<FinalizeSignalCallback> callback) {}
+
   // Return the next RmadState::StateCase in the RMA flow depending on device
   // status and user input (e.g. |json_store_| content). If the transition
   // fails, a corresponding RmadErrorCode is set, and |next_state_case| will be

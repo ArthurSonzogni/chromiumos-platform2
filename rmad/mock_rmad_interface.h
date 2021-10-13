@@ -43,6 +43,10 @@ class MockRmadInterface : public RmadInterface {
               RegisterSignalSender,
               (RmadState::StateCase, std::unique_ptr<ProvisionSignalCallback>),
               (override));
+  MOCK_METHOD(void,
+              RegisterSignalSender,
+              (RmadState::StateCase, std::unique_ptr<FinalizeSignalCallback>),
+              (override));
 
   MOCK_METHOD(RmadState::StateCase, GetCurrentStateCase, (), (override));
   MOCK_METHOD(void, TryTransitionNextStateFromCurrentState, (), (override));
