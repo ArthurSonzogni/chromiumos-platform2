@@ -180,15 +180,15 @@ void GetCropSizeAndXySkips(int src_width,
                            int* out_height,
                            int* out_start_x,
                            int* out_start_y) {
-  CHECK_GT(src_width, dst_width);
-  CHECK_GT(src_height, dst_height);
+  CHECK_GE(src_width, dst_width);
+  CHECK_GE(src_height, dst_height);
   if (src_width * dst_height == src_height * dst_width) {
     *out_width = src_width;
     *out_height = src_height;
     *out_start_x = 0;
     *out_start_y = 0;
   } else if (static_cast<float>(src_width) / src_height >
-             static_cast<float>(dst_width) / dst_width) {
+             static_cast<float>(dst_width) / dst_height) {
     // Crop left and right of the src.
     *out_width = dst_width * src_height / dst_height;
     *out_height = src_height;  // dst_height * src_height / dst_height
