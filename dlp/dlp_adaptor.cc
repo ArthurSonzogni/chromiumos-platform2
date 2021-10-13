@@ -236,13 +236,11 @@ void DlpAdaptor::RequestFileAccess(
   is_restricted_request.set_destination_url(request.destination_url());
   dlp_files_policy_service_->IsRestrictedAsync(
       SerializeProto(is_restricted_request),
-      base::AdaptCallbackForRepeating(base::BindOnce(
-          &DlpAdaptor::OnIsRestrictedReply, base::Unretained(this),
-          request.inode(), request.process_id(), std::move(local_fd),
-          std::move(callbacks.first))),
-      base::AdaptCallbackForRepeating(
-          base::BindOnce(&DlpAdaptor::OnIsRestrictedError,
-                         base::Unretained(this), std::move(callbacks.second))));
+      base::BindOnce(&DlpAdaptor::OnIsRestrictedReply, base::Unretained(this),
+                     request.inode(), request.process_id(), std::move(local_fd),
+                     std::move(callbacks.first)),
+      base::BindOnce(&DlpAdaptor::OnIsRestrictedError, base::Unretained(this),
+                     std::move(callbacks.second)));
 }
 
 void DlpAdaptor::InitDatabase(const base::FilePath database_path) {
@@ -319,12 +317,10 @@ void DlpAdaptor::ProcessFileOpenRequest(
       callbacks = base::SplitOnceCallback(std::move(callback));
   dlp_files_policy_service_->IsDlpPolicyMatchedAsync(
       SerializeProto(request),
-      base::AdaptCallbackForRepeating(
-          base::BindOnce(&DlpAdaptor::OnDlpPolicyMatched,
-                         base::Unretained(this), std::move(callbacks.first))),
-      base::AdaptCallbackForRepeating(
-          base::BindOnce(&DlpAdaptor::OnDlpPolicyMatchedError,
-                         base::Unretained(this), std::move(callbacks.second))));
+      base::BindOnce(&DlpAdaptor::OnDlpPolicyMatched, base::Unretained(this),
+                     std::move(callbacks.first)),
+      base::BindOnce(&DlpAdaptor::OnDlpPolicyMatchedError,
+                     base::Unretained(this), std::move(callbacks.second)));
 }
 
 void DlpAdaptor::OnDlpPolicyMatched(base::OnceCallback<void(bool)> callback,
