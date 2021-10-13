@@ -18,6 +18,7 @@
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/mock_cellular_service.h"
+#include "shill/cellular/mock_mm1_modem_modem3gpp_profile_manager_proxy.h"
 #include "shill/cellular/mock_mm1_modem_modem3gpp_proxy.h"
 #include "shill/cellular/mock_mm1_modem_modemcdma_proxy.h"
 #include "shill/cellular/mock_mm1_modem_proxy.h"
@@ -53,6 +54,8 @@ class CellularCapabilityCdmaTest : public testing::Test {
         device_adaptor_(nullptr),
         modem_info_(&control_interface_, &manager_),
         modem_3gpp_proxy_(new NiceMock<mm1::MockModemModem3gppProxy>()),
+        modem_3gpp_profile_manager_proxy_(
+            new NiceMock<mm1::MockModemModem3gppProfileManagerProxy>()),
         modem_cdma_proxy_(new NiceMock<mm1::MockModemModemCdmaProxy>()),
         modem_proxy_(new NiceMock<mm1::MockModemProxy>()),
         modem_simple_proxy_(new NiceMock<mm1::MockModemSimpleProxy>()),
@@ -125,6 +128,13 @@ class CellularCapabilityCdmaTest : public testing::Test {
       return std::move(test_->modem_3gpp_proxy_);
     }
 
+    std::unique_ptr<mm1::ModemModem3gppProfileManagerProxyInterface>
+    CreateMM1ModemModem3gppProfileManagerProxy(
+        const RpcIdentifier& /*path*/,
+        const std::string& /*service*/) override {
+      return std::move(test_->modem_3gpp_profile_manager_proxy_);
+    }
+
     std::unique_ptr<mm1::ModemModemCdmaProxyInterface>
     CreateMM1ModemModemCdmaProxy(const RpcIdentifier& /*path*/,
                                  const std::string& /*service*/) override {
@@ -168,6 +178,8 @@ class CellularCapabilityCdmaTest : public testing::Test {
   MockModemInfo modem_info_;
   // TODO(armansito): Remove |modem_3gpp_proxy_| after refactor.
   std::unique_ptr<mm1::MockModemModem3gppProxy> modem_3gpp_proxy_;
+  std::unique_ptr<mm1::MockModemModem3gppProfileManagerProxy>
+      modem_3gpp_profile_manager_proxy_;
   std::unique_ptr<mm1::MockModemModemCdmaProxy> modem_cdma_proxy_;
   std::unique_ptr<mm1::MockModemProxy> modem_proxy_;
   std::unique_ptr<mm1::MockModemSimpleProxy> modem_simple_proxy_;

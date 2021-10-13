@@ -322,6 +322,14 @@ void CellularCapability3gpp::InitProxies() {
   modem_3gpp_proxy_ = control_interface()->CreateMM1ModemModem3gppProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
 
+  modem_3gpp_profile_manager_proxy_ =
+      control_interface()->CreateMM1ModemModem3gppProfileManagerProxy(
+          cellular()->dbus_path(), cellular()->dbus_service());
+
+  modem_3gpp_profile_manager_proxy_->SetUpdatedCallback(base::Bind(
+      &CellularCapability3gpp::OnModem3gppProfileManagerUpdatedSignal,
+      weak_ptr_factory_.GetWeakPtr()));
+
   modem_proxy_ = control_interface()->CreateMM1ModemProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
   modem_proxy_->set_state_changed_callback(
@@ -392,7 +400,13 @@ void CellularCapability3gpp::EnableModemCompleted(
   // After modem is enabled, it should be possible to get properties
   // TODO(jglasgow): handle errors from GetProperties
   GetProperties();
-  callback.Run(error);
+
+  // Try to get profiles list from the modem, and then call the callback
+  // to complete the enabling process.
+  ResultVariantDictionariesOnceCallback cb =
+      base::BindOnce(&CellularCapability3gpp::OnProfilesListReply,
+                     weak_ptr_factory_.GetWeakPtr(), callback);
+  modem_3gpp_profile_manager_proxy_->List(std::move(cb), kTimeoutDefault);
 }
 
 void CellularCapability3gpp::SetModemToLowPowerModeOnModemStop(
@@ -658,6 +672,7 @@ void CellularCapability3gpp::ReleaseProxies() {
   SLOG(this, 3) << __func__;
   proxies_initialized_ = false;
   modem_3gpp_proxy_.reset();
+  modem_3gpp_profile_manager_proxy_.reset();
   modem_proxy_.reset();
   modem_location_proxy_.reset();
   modem_signal_proxy_.reset();
@@ -1743,12 +1758,6 @@ void CellularCapability3gpp::OnModem3gppPropertiesChanged(
     OnPcoChanged(
         properties.GetVariant(MM_MODEM_MODEM3GPP_PROPERTY_PCO).Get<PcoList>());
   }
-
-  if (properties.ContainsVariant(MM_MODEM_MODEM3GPP_PROPERTY_PROFILES)) {
-    OnProfilesChanged(
-        properties.GetVariant(MM_MODEM_MODEM3GPP_PROPERTY_PROFILES)
-            .Get<Profiles>());
-  }
 }
 
 void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
@@ -1882,6 +1891,27 @@ void CellularCapability3gpp::OnModemStateChangedSignal(int32_t old_state,
                 << Cellular::GetModemStateString(old_modem_state) << ", "
                 << Cellular::GetModemStateString(new_modem_state) << ", "
                 << reason << ")";
+}
+
+void CellularCapability3gpp::OnModem3gppProfileManagerUpdatedSignal() {
+  SLOG(this, 3) << __func__;
+  ResultVariantDictionariesOnceCallback cb =
+      base::BindOnce(&CellularCapability3gpp::OnProfilesListReply,
+                     weak_ptr_factory_.GetWeakPtr(), ResultCallback());
+  modem_3gpp_profile_manager_proxy_->List(std::move(cb), kTimeoutDefault);
+}
+
+void CellularCapability3gpp::OnProfilesListReply(const ResultCallback& callback,
+                                                 const Profiles& profiles,
+                                                 const Error& error) {
+  SLOG(this, 3) << __func__;
+  if (error.IsFailure()) {
+    LOG(WARNING) << "Failed to fetch modem profiles list: " << error;
+    OnProfilesChanged(Profiles());
+  } else {
+    OnProfilesChanged(profiles);
+  }
+  callback.Run(error);
 }
 
 void CellularCapability3gpp::OnFacilityLocksChanged(uint32_t locks) {

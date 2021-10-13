@@ -192,6 +192,7 @@ generate_dbus_proxies("generate_cellular_proxies") {
   proxy_output_file = "include/cellular/dbus-proxies.h"
   sources = [
     "${modemmanager_in_dir}/org.freedesktop.ModemManager1.Modem.Location.xml",
+    "${modemmanager_in_dir}/org.freedesktop.ModemManager1.Modem.Modem3gpp.ProfileManager.xml",
     "${modemmanager_in_dir}/org.freedesktop.ModemManager1.Modem.Modem3gpp.xml",
     "${modemmanager_in_dir}/org.freedesktop.ModemManager1.Modem.ModemCdma.xml",
     "${modemmanager_in_dir}/org.freedesktop.ModemManager1.Modem.Signal.xml",
@@ -356,6 +357,7 @@ static_library("libshill") {
       "dbus/dbus_objectmanager_proxy.cc",
       "dbus/dbus_properties_proxy.cc",
       "dbus/mm1_modem_location_proxy.cc",
+      "dbus/mm1_modem_modem3gpp_profile_manager_proxy.cc",
       "dbus/mm1_modem_modem3gpp_proxy.cc",
       "dbus/mm1_modem_modemcdma_proxy.cc",
       "dbus/mm1_modem_proxy.cc",
@@ -668,6 +670,7 @@ if (use.test) {
         "cellular/mock_cellular_service.cc",
         "cellular/mock_dbus_objectmanager_proxy.cc",
         "cellular/mock_mm1_modem_location_proxy.cc",
+        "cellular/mock_mm1_modem_modem3gpp_profile_manager_proxy.cc",
         "cellular/mock_mm1_modem_modem3gpp_proxy.cc",
         "cellular/mock_mm1_modem_modemcdma_proxy.cc",
         "cellular/mock_mm1_modem_proxy.cc",

@@ -36,6 +36,7 @@ extern "C" {
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/mock_cellular_service.h"
 #include "shill/cellular/mock_mm1_modem_location_proxy.h"
+#include "shill/cellular/mock_mm1_modem_modem3gpp_profile_manager_proxy.h"
 #include "shill/cellular/mock_mm1_modem_modem3gpp_proxy.h"
 #include "shill/cellular/mock_mm1_modem_modemcdma_proxy.h"
 #include "shill/cellular/mock_mm1_modem_proxy.h"
@@ -212,6 +213,8 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     CreatePropertiesProxy();
     mm1_modem_location_proxy_.reset(new mm1::MockModemLocationProxy());
     mm1_modem_3gpp_proxy_.reset(new mm1::MockModemModem3gppProxy());
+    mm1_modem_3gpp_profile_manager_proxy_.reset(
+        new mm1::MockModemModem3gppProfileManagerProxy());
     mm1_modem_cdma_proxy_.reset(new mm1::MockModemModemCdmaProxy());
     mm1_modem_proxy_.reset(new mm1::MockModemProxy());
     mm1_signal_proxy_.reset(new mm1::MockModemSignalProxy());
@@ -274,6 +277,9 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     if (!callback.is_null())
       callback.Run(Error(Error::kOperationFailed));
   }
+  void InvokeList(ResultVariantDictionariesOnceCallback callback, int timeout) {
+    std::move(callback).Run(VariantDictionaries(), Error());
+  }
   void InvokeSetPowerState(const uint32_t& power_state,
                            Error* error,
                            const ResultCallback& callback,
@@ -327,6 +333,13 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     EXPECT_CALL(*mm1_modem_proxy_, set_state_changed_callback(_))
         .Times(AnyNumber());
     return mm1_modem_proxy_.get();
+  }
+
+  mm1::MockModemModem3gppProfileManagerProxy*
+  SetModem3gppProfileManagerProxyExpectations() {
+    EXPECT_CALL(*mm1_modem_3gpp_profile_manager_proxy_, SetUpdatedCallback(_))
+        .Times(AnyNumber());
+    return mm1_modem_3gpp_profile_manager_proxy_.get();
   }
 
   mm1::MockModemProxy* SetupOnAfterResume() {
@@ -449,6 +462,15 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
       return std::move(test_->mm1_modem_3gpp_proxy_);
     }
 
+    std::unique_ptr<mm1::ModemModem3gppProfileManagerProxyInterface>
+    CreateMM1ModemModem3gppProfileManagerProxy(
+        const RpcIdentifier& path, const std::string& service) override {
+      if (!test_->mm1_modem_3gpp_profile_manager_proxy_)
+        test_->mm1_modem_3gpp_profile_manager_proxy_.reset(
+            new mm1::MockModemModem3gppProfileManagerProxy());
+      return std::move(test_->mm1_modem_3gpp_profile_manager_proxy_);
+    }
+
     std::unique_ptr<mm1::ModemModemCdmaProxyInterface>
     CreateMM1ModemModemCdmaProxy(const RpcIdentifier& path,
                                  const std::string& service) override {
@@ -550,6 +572,8 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   bool create_gsm_card_proxy_from_factory_;
   std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy_;
   std::unique_ptr<mm1::MockModemModem3gppProxy> mm1_modem_3gpp_proxy_;
+  std::unique_ptr<mm1::MockModemModem3gppProfileManagerProxy>
+      mm1_modem_3gpp_profile_manager_proxy_;
   std::unique_ptr<mm1::MockModemModemCdmaProxy> mm1_modem_cdma_proxy_;
   std::unique_ptr<mm1::MockModemLocationProxy> mm1_modem_location_proxy_;
   std::unique_ptr<mm1::MockModemProxy> mm1_modem_proxy_;
@@ -1421,10 +1445,15 @@ TEST_P(CellularTest, SetUseAttachApn) {
     return;
   }
   mm1::MockModemProxy* mm1_modem_proxy = mm1_modem_proxy_.get();
+  mm1::MockModemModem3gppProfileManagerProxy*
+      mm1_modem_3gpp_profile_manager_proxy =
+          SetModem3gppProfileManagerProxyExpectations();
   InitCapability3gppProxies();
   // initial state: modem enabled, attach APN disabled
   EXPECT_CALL(*mm1_modem_proxy, Enable(true, _, _, _))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
+  EXPECT_CALL(*mm1_modem_3gpp_profile_manager_proxy, List(_, _))
+      .WillOnce(Invoke(this, &CellularTest::InvokeList));
   device_->SetEnabled(true);
   EXPECT_FALSE(device_->use_attach_apn_);
 
@@ -1869,9 +1898,15 @@ TEST_P(CellularTest, OnAfterResumeDisableInProgressWantDisabled) {
 
   // Initial state.
   mm1::MockModemProxy* mm1_modem_proxy = SetupOnAfterResume();
+  mm1::MockModemModem3gppProfileManagerProxy*
+      mm1_modem_3gpp_profile_manager_proxy =
+          SetModem3gppProfileManagerProxyExpectations();
   Error error;
   EXPECT_CALL(*mm1_modem_proxy, Enable(true, _, _, _))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
+  EXPECT_CALL(*mm1_modem_3gpp_profile_manager_proxy, List(_, _))
+      .WillOnce(Invoke(this, &CellularTest::InvokeList));
+
   device_->SetEnabled(true);
   EXPECT_TRUE(device_->enabled_pending());
   EXPECT_EQ(Cellular::State::kModemStarted, device_->state());
@@ -1916,8 +1951,13 @@ TEST_P(CellularTest, OnAfterResumeDisableQueuedWantEnabled) {
   // Initial state.
   auto dbus_properties_proxy = dbus_properties_proxy_.get();
   mm1::MockModemProxy* mm1_modem_proxy = SetupOnAfterResume();
+  mm1::MockModemModem3gppProfileManagerProxy*
+      mm1_modem_3gpp_profile_manager_proxy =
+          SetModem3gppProfileManagerProxyExpectations();
   EXPECT_CALL(*mm1_modem_proxy, Enable(true, _, _, _))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
+  EXPECT_CALL(*mm1_modem_3gpp_profile_manager_proxy, List(_, _))
+      .WillOnce(Invoke(this, &CellularTest::InvokeList));
   device_->SetEnabled(true);
   EXPECT_TRUE(device_->enabled_pending());
   EXPECT_TRUE(device_->enabled_persistent());
@@ -1991,8 +2031,13 @@ TEST_P(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
   // Initial state.
   auto dbus_properties_proxy = dbus_properties_proxy_.get();
   mm1::MockModemProxy* mm1_modem_proxy = SetupOnAfterResume();
+  mm1::MockModemModem3gppProfileManagerProxy*
+      mm1_modem_3gpp_profile_manager_proxy =
+          SetModem3gppProfileManagerProxyExpectations();
   EXPECT_CALL(*mm1_modem_proxy, Enable(true, _, _, _))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
+  EXPECT_CALL(*mm1_modem_3gpp_profile_manager_proxy, List(_, _))
+      .WillOnce(Invoke(this, &CellularTest::InvokeList));
   device_->SetEnabled(true);
   EXPECT_TRUE(device_->enabled_pending());
   EXPECT_TRUE(device_->enabled_persistent());
@@ -2041,6 +2086,8 @@ TEST_P(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
                                 Cellular::kModemStateEnabled);
 
   // Let the enable complete.
+  EXPECT_CALL(*mm1_modem_3gpp_profile_manager_proxy, List(_, _))
+      .WillOnce(Invoke(this, &CellularTest::InvokeList));
   ASSERT_TRUE(error.IsSuccess());
   static_cast<FakePropertiesProxy*>(
       dbus_properties_proxy->GetDBusPropertiesProxyForTesting())
@@ -2061,6 +2108,9 @@ TEST_P(CellularTest, OnAfterResumeDisabledWantEnabled) {
   // This is the ideal case. The disable process completed before
   // going into suspend.
   mm1::MockModemProxy* mm1_modem_proxy = SetupOnAfterResume();
+  mm1::MockModemModem3gppProfileManagerProxy*
+      mm1_modem_3gpp_profile_manager_proxy =
+          SetModem3gppProfileManagerProxyExpectations();
   EXPECT_FALSE(device_->enabled_pending());
   EXPECT_TRUE(device_->enabled_persistent());
   EXPECT_EQ(Cellular::State::kDisabled, device_->state());
@@ -2072,6 +2122,8 @@ TEST_P(CellularTest, OnAfterResumeDisabledWantEnabled) {
   device_->OnAfterResume();
 
   // Complete enable.
+  EXPECT_CALL(*mm1_modem_3gpp_profile_manager_proxy, List(_, _))
+      .WillOnce(Invoke(this, &CellularTest::InvokeList));
   Error error;
   ASSERT_TRUE(error.IsSuccess());
   modem_proxy_enable_callback.Run(error);

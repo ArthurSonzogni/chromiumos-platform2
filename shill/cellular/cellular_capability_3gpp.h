@@ -23,6 +23,7 @@
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_capability.h"
 #include "shill/cellular/mm1_modem_location_proxy_interface.h"
+#include "shill/cellular/mm1_modem_modem3gpp_profile_manager_proxy_interface.h"
 #include "shill/cellular/mm1_modem_modem3gpp_proxy_interface.h"
 #include "shill/cellular/mm1_modem_proxy_interface.h"
 #include "shill/cellular/mm1_modem_signal_proxy_interface.h"
@@ -289,6 +290,12 @@ class CellularCapability3gpp : public CellularCapability {
                                  int32_t new_state,
                                  uint32_t reason);
 
+  // Profile manager signal handlers and callbacks
+  void OnProfilesListReply(const ResultCallback& callback,
+                           const Profiles& results,
+                           const Error& error);
+  void OnModem3gppProfileManagerUpdatedSignal();
+
   // Property Change notification handlers
   void OnModemPropertiesChanged(const KeyValueStore& properties);
 
@@ -367,6 +374,8 @@ class CellularCapability3gpp : public CellularCapability {
 
   bool proxies_initialized_ = false;
   std::unique_ptr<mm1::ModemModem3gppProxyInterface> modem_3gpp_proxy_;
+  std::unique_ptr<mm1::ModemModem3gppProfileManagerProxyInterface>
+      modem_3gpp_profile_manager_proxy_;
   std::unique_ptr<mm1::ModemProxyInterface> modem_proxy_;
   std::unique_ptr<mm1::ModemSimpleProxyInterface> modem_simple_proxy_;
   std::unique_ptr<mm1::ModemSignalProxyInterface> modem_signal_proxy_;

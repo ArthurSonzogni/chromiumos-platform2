@@ -25,6 +25,7 @@
 #include "shill/cellular/mock_cellular.h"
 #include "shill/cellular/mock_cellular_service.h"
 #include "shill/cellular/mock_mm1_modem_location_proxy.h"
+#include "shill/cellular/mock_mm1_modem_modem3gpp_profile_manager_proxy.h"
 #include "shill/cellular/mock_mm1_modem_modem3gpp_proxy.h"
 #include "shill/cellular/mock_mm1_modem_proxy.h"
 #include "shill/cellular/mock_mm1_modem_signal_proxy.h"
@@ -140,6 +141,8 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
         device_info_(&manager_),
         modem_info_(&control_interface_, &manager_),
         modem_3gpp_proxy_(new NiceMock<mm1::MockModemModem3gppProxy>()),
+        modem_3gpp_profile_manager_proxy_(
+            new NiceMock<mm1::MockModemModem3gppProfileManagerProxy>()),
         modem_proxy_(new mm1::MockModemProxy()),
         modem_signal_proxy_(new NiceMock<mm1::MockModemSignalProxy>()),
         modem_simple_proxy_(new NiceMock<mm1::MockModemSimpleProxy>()),
@@ -334,6 +337,9 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
                                 int timeout) {
     callback.Run(Error(Error::kWrongState));
   }
+  void InvokeList(ResultVariantDictionariesOnceCallback callback, int timeout) {
+    std::move(callback).Run(VariantDictionaries(), Error());
+  }
   void InvokeSetPowerState(const uint32_t& power_state,
                            Error* error,
                            const ResultCallback& callback,
@@ -366,6 +372,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   void ReleaseCapabilityProxies() {
     capability_->ReleaseProxies();
     EXPECT_EQ(nullptr, capability_->modem_3gpp_proxy_);
+    EXPECT_EQ(nullptr, capability_->modem_3gpp_profile_manager_proxy_);
     EXPECT_EQ(nullptr, capability_->modem_proxy_);
     EXPECT_EQ(nullptr, capability_->modem_location_proxy_);
     EXPECT_EQ(nullptr, capability_->modem_signal_proxy_);
@@ -457,6 +464,13 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
       return std::move(test_->modem_3gpp_proxy_);
     }
 
+    std::unique_ptr<mm1::ModemModem3gppProfileManagerProxyInterface>
+    CreateMM1ModemModem3gppProfileManagerProxy(
+        const RpcIdentifier& /*path*/,
+        const std::string& /*service*/) override {
+      return std::move(test_->modem_3gpp_profile_manager_proxy_);
+    }
+
     std::unique_ptr<mm1::ModemProxyInterface> CreateMM1ModemProxy(
         const RpcIdentifier& /*path*/,
         const std::string& /*service*/) override {
@@ -528,6 +542,8 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   NiceMock<MockDeviceInfo> device_info_;
   MockModemInfo modem_info_;
   std::unique_ptr<NiceMock<mm1::MockModemModem3gppProxy>> modem_3gpp_proxy_;
+  std::unique_ptr<NiceMock<mm1::MockModemModem3gppProfileManagerProxy>>
+      modem_3gpp_profile_manager_proxy_;
   std::unique_ptr<mm1::MockModemProxy> modem_proxy_;
   std::unique_ptr<mm1::MockModemSignalProxy> modem_signal_proxy_;
   std::unique_ptr<mm1::MockModemSimpleProxy> modem_simple_proxy_;
@@ -562,6 +578,8 @@ TEST_F(CellularCapability3gppTest, StartModem) {
   EXPECT_CALL(*modem_proxy_,
               Enable(true, _, _, CellularCapability::kTimeoutEnable))
       .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnable));
+  EXPECT_CALL(*modem_3gpp_profile_manager_proxy_, List(_, _))
+      .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeList));
 
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   Error error;
@@ -685,6 +703,8 @@ TEST_F(CellularCapability3gppTest, TerminationAction) {
   EXPECT_EQ(Cellular::State::kDisabled, cellular_->state());
   EXPECT_EQ(Cellular::kModemStateUnknown, cellular_->modem_state());
   EXPECT_TRUE(manager_.termination_actions_.IsEmpty());
+  EXPECT_CALL(*modem_3gpp_profile_manager_proxy_, List(_, _))
+      .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeList));
 
   // Here we mimic the modem state change from ModemManager. When the modem is
   // enabled, a termination action should be added.
@@ -736,6 +756,8 @@ TEST_F(CellularCapability3gppTest, TerminationActionRemovedByStopModem) {
   EXPECT_EQ(Cellular::State::kDisabled, cellular_->state());
   EXPECT_EQ(Cellular::kModemStateUnknown, cellular_->modem_state());
   EXPECT_TRUE(manager_.termination_actions_.IsEmpty());
+  EXPECT_CALL(*modem_3gpp_profile_manager_proxy_, List(_, _))
+      .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeList));
 
   // Here we mimic the modem state change from ModemManager. When the modem is
   // enabled, a termination action should be added.
