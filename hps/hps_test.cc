@@ -348,6 +348,42 @@ TEST_F(HPSTest, BothUpdate) {
 }
 
 /*
+ * Test that neither SPI nor MCU are updated
+ * when write protect is off even if not verified.
+ */
+TEST_F(HPSTest, WpOffUpdate) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  // Create MCU and SPI flash filenames (but do not
+  // create the files themselves).
+  auto mcu = temp_dir.GetPath().Append("mcu");
+  auto spi = temp_dir.GetPath().Append("spi");
+  const int len = 1024;
+  CreateBlob(spi, len);
+  CreateBlob(mcu, len);
+
+  // This is the reported version when not verified
+  const uint32_t version = 0xFFFFFFFF;
+  fake_->Set(hps::FakeDev::Flags::kApplNotVerified);
+  fake_->Set(hps::FakeDev::Flags::kSpiNotVerified);
+  fake_->Set(hps::FakeDev::Flags::kWpOff);
+  // Set up the version and files.
+  hps_->Init(version, mcu, spi);
+
+  // Boot the module.
+  EXPECT_CALL(
+      *GetMetricsLibraryMock(),
+      SendEnumToUMA(hps::kHpsTurnOnResult,
+                    static_cast<int>(hps::HpsTurnOnResult::kSuccess), _))
+      .Times(1);
+  ASSERT_TRUE(hps_->Boot());
+
+  // Check that neither MCU nor SPI blobs were updated.
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), 0);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSpiFlash), 0);
+}
+
+/*
  * Verify that mismatching version will update both MCU and SPI
  */
 TEST_F(HPSTest, VersionUpdate) {

@@ -32,6 +32,7 @@ class HPS_impl : public HPS {
         reboots_(0),
         hw_rev_(0),
         appl_version_(0),
+        write_protect_off_(false),
         feat_enabled_(0) {}
 
   // Methods for HPS
@@ -84,6 +85,7 @@ class HPS_impl : public HPS {
   int reboots_;      // Count of reboots.
   uint16_t hw_rev_;
   uint32_t appl_version_;
+  bool write_protect_off_;
   uint16_t feat_enabled_;
   base::FilePath mcu_blob_;
   base::FilePath spi_blob_;

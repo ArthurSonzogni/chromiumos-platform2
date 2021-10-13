@@ -194,13 +194,11 @@ void HPS_impl::HandleState() {
       // Wait for application verified or not.
       int status = this->device_->ReadReg(HpsReg::kSysStatus);
       if (status >= 0) {
+        this->write_protect_off_ = status & R2::kWpOff;
+        VLOG_IF(1, this->write_protect_off_)
+            << "kWpOff, ignoring verified bits";
         // Check if the MCU flash verified or not.
-        if (status & R2::kApplNotVerified) {
-          // Appl not verified, so need to update it.
-          LOG(INFO) << "Appl flash not verified, updating";
-          hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kMcuNotVerified);
-          this->Go(State::kUpdateAppl);
-        } else if (status & R2::kApplVerified) {
+        if (this->write_protect_off_ || status & R2::kApplVerified) {
           // Verified, so now check the version. If it is
           // different, update it.
           int version_low = this->device_->ReadReg(HpsReg::kFirmwareVersionLow);
@@ -223,6 +221,11 @@ void HPS_impl::HandleState() {
               this->Go(State::kUpdateAppl);
             }
           }
+        } else if (status & R2::kApplNotVerified) {
+          // Appl not verified, so need to update it.
+          LOG(INFO) << "Appl flash not verified, updating";
+          hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kMcuNotVerified);
+          this->Go(State::kUpdateAppl);
         }
       }
       break;
@@ -270,15 +273,15 @@ void HPS_impl::HandleState() {
         int status = this->device_->ReadReg(HpsReg::kSysStatus);
         if (status >= 0) {
           // Check if the SPI flash verified or not.
-          if (status & R2::kSpiNotVerified) {
+          if (this->write_protect_off_ || status & R2::kSpiVerified) {
+            VLOG(1) << "Enabling application";
+            this->device_->WriteReg(HpsReg::kSysCmd, R3::kEnable);
+            this->Go(State::kApplWait);
+          } else if (status & R2::kSpiNotVerified) {
             // Spi not verified, so need to update it.
             LOG(INFO) << "SPI flash not verified, updating";
             hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kSpiNotVerified);
             this->Go(State::kUpdateSpi);
-          } else if (status & R2::kSpiVerified) {
-            VLOG(1) << "Enabling application";
-            this->device_->WriteReg(HpsReg::kSysCmd, R3::kEnable);
-            this->Go(State::kApplWait);
           }
         }
       }
