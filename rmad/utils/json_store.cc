@@ -99,11 +99,7 @@ bool JsonStore::GetValueInternal(const base::Value* data, std::string* result) {
   return true;
 }
 
-JsonStore::JsonStore(const base::FilePath& file_path)
-    : file_path_(file_path),
-      data_(base::Value::Type::DICTIONARY),
-      read_error_(READ_ERROR_NONE),
-      read_only_(false) {
+JsonStore::JsonStore(const base::FilePath& file_path) : file_path_(file_path) {
   InitFromFile();
 }
 
@@ -150,15 +146,17 @@ base::Value JsonStore::GetValues() const {
 
 bool JsonStore::Clear() {
   data_ = base::Value(base::Value::Type::DICTIONARY);
-  return WriteToFile();
+  return WriteToFile(true);
 }
 
 bool JsonStore::ClearAndDeleteFile() {
   return Clear() && base::DeleteFile(file_path_);
 }
 
-void JsonStore::InitFromFile() {
+bool JsonStore::InitFromFile() {
   std::unique_ptr<JsonStore::ReadResult> read_result = ReadFromFile();
+  data_ = base::Value(base::Value::Type::DICTIONARY);
+  read_only_ = false;
   read_error_ = read_result->read_error;
   switch (read_error_) {
     case READ_ERROR_JSON_PARSE:
@@ -172,13 +170,17 @@ void JsonStore::InitFromFile() {
       data_ = std::move(*read_result->value);
       break;
     case READ_ERROR_NO_SUCH_FILE:
-      data_ = base::Value(base::Value::Type::DICTIONARY);
       break;
     case READ_ERROR_MAX_ENUM:
       NOTREACHED();
       break;
   }
+  // Check if we can write to the file.
+  if (!read_only_) {
+    read_only_ &= WriteToFile();
+  }
   VLOG(2) << "JsonStore::InitFromFile complete.";
+  return !read_only_;
 }
 
 std::unique_ptr<JsonStore::ReadResult> JsonStore::ReadFromFile() {
@@ -192,8 +194,8 @@ std::unique_ptr<JsonStore::ReadResult> JsonStore::ReadFromFile() {
   return read_result;
 }
 
-bool JsonStore::WriteToFile() {
-  if (read_only_)
+bool JsonStore::WriteToFile(bool force) {
+  if (read_only_ && !force)
     return false;
 
   std::string serialized_data;

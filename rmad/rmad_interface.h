@@ -18,7 +18,7 @@ class RmadInterface {
   RmadInterface() = default;
   virtual ~RmadInterface() = default;
 
-  virtual void Initialize() = 0;
+  virtual bool Initialize() = 0;
 
   // Register a signal sender for specific states. Virtual functions cannot be
   // declared as template so we need to declare them one by one.

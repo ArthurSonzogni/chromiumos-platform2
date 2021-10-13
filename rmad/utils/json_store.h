@@ -33,6 +33,9 @@ class JsonStore : public base::RefCounted<JsonStore> {
 
   explicit JsonStore(const base::FilePath& file_path);
 
+  // Initialize from the file.
+  bool InitFromFile();
+
   // Set a (key, value) pair to the dictionary. Return true if there's no
   // update or the updated data is successfully written to the file, false if
   // the update cannot be written to the file.
@@ -175,9 +178,10 @@ class JsonStore : public base::RefCounted<JsonStore> {
     return true;
   }
 
-  void InitFromFile();
   std::unique_ptr<JsonStore::ReadResult> ReadFromFile();
-  bool WriteToFile();
+  // This function is guarded by |read_only_|, but can be overridden by |force|
+  // argument.
+  bool WriteToFile(bool force = false);
 
   const base::FilePath file_path_;
   base::Value data_;

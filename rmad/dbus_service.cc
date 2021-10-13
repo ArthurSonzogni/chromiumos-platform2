@@ -277,7 +277,9 @@ int DBusService::OnEventLoopStarted() {
   }
 
   // Initialize RMA interface and try a state transition.
-  rmad_interface_->Initialize();
+  if (!rmad_interface_->Initialize()) {
+    return EX_SOFTWARE;
+  }
   RegisterSignalSenders();
   rmad_interface_->TryTransitionNextStateFromCurrentState();
   return EX_OK;

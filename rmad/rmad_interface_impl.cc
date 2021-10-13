@@ -56,7 +56,7 @@ bool RmadInterfaceImpl::StoreStateHistory() {
   return json_store_->SetValue(kStateHistory, state_history);
 }
 
-void RmadInterfaceImpl::Initialize() {
+bool RmadInterfaceImpl::Initialize() {
   // Initialize external utilities if needed.
   if (!external_utils_initialized_) {
     json_store_ = base::MakeRefCounted<JsonStore>(kDefaultJsonStoreFilePath);
@@ -73,6 +73,15 @@ void RmadInterfaceImpl::Initialize() {
   current_state_case_ = RmadState::STATE_NOT_SET;
   state_history_.clear();
   can_abort_ = true;
+  // Something's wrong with the state file. Try to clear it.
+  if (json_store_->ReadOnly()) {
+    LOG(WARNING) << "Corrupted RMA state file. Trying to fix it";
+    if (!json_store_->Clear() || !json_store_->InitFromFile()) {
+      LOG(ERROR) << "Failed to fix RMA state file";
+      return false;
+    }
+  }
+  DCHECK(!json_store_->ReadOnly());
   if (json_store_->GetReadError() != JsonStore::READ_ERROR_NO_SUCH_FILE) {
     if (std::vector<int> state_history;
         json_store_->GetReadError() == JsonStore::READ_ERROR_NONE &&
@@ -86,7 +95,7 @@ void RmadInterfaceImpl::Initialize() {
           can_abort_ &= handler->IsRepeatable();
         } else {
           // TODO(chenghan): Return to welcome screen with an error implying
-          //                 a fatal file corruption.
+          //                 an unsupported state.
           LOG(ERROR) << "Missing handler for state " << state << ".";
         }
       }
@@ -96,15 +105,13 @@ void RmadInterfaceImpl::Initialize() {
     } else {
       LOG(WARNING) << "Could not read state history from json store, reset to "
                       "initial state.";
-      // TODO(gavindodd): Reset the json store so it is not read only.
       current_state_case_ = kInitialStateCase;
       state_history_.push_back(current_state_case_);
-      // TODO(gavindodd): Set to an error state or send a signal to Chrome that
-      // the RMA was reset so a message can be displayed.
       if (!StoreStateHistory()) {
         LOG(ERROR) << "Could not store initial state";
-        // TODO(gavindodd): Set to an error state or send a signal to Chrome
-        // that the json store failed so a message can be displayed.
+        // TODO(chenghan): Send a signal to Chrome that the json store failed so
+        //                 a message can be displayed.
+        return false;
       }
     }
   } else if (RoVerificationStatus status;
@@ -117,8 +124,9 @@ void RmadInterfaceImpl::Initialize() {
     state_history_.push_back(current_state_case_);
     if (!StoreStateHistory()) {
       LOG(ERROR) << "Could not store initial state";
-      // TODO(gavindodd): Set to an error state or send a signal to Chrome that
-      // the json store failed so a message can be displayed.
+      // TODO(chenghan): Send a signal to Chrome that the json store failed so
+      //                 a message can be displayed.
+      return false;
     }
   }
 
@@ -134,6 +142,8 @@ void RmadInterfaceImpl::Initialize() {
       DCHECK(shill_client_->DisableCellular());
     }
   }
+
+  return true;
 }
 
 RmadErrorCode RmadInterfaceImpl::GetInitializedStateHandler(
