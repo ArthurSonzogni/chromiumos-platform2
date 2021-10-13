@@ -439,7 +439,7 @@ grpc::Status ServiceImpl::Shutdown(grpc::ServerContext* ctx,
 
   init_->Shutdown();
 
-  shutdown_cb_.Run();
+  std::move(shutdown_cb_).Run();
 
   return grpc::Status::OK;
 }
@@ -906,8 +906,8 @@ grpc::Status ServiceImpl::ResizeFilesystem(
                      std::to_string(request->size()), "/mnt/stateful"},
                     lxd_env_, false /*respawn*/, true /*use_console*/,
                     false /*wait_for_exit*/, &launch_info,
-                    base::Bind(&ServiceImpl::ResizeCommandExitCallback,
-                               base::Unretained(this)))) {
+                    base::BindOnce(&ServiceImpl::ResizeCommandExitCallback,
+                                   base::Unretained(this)))) {
     return grpc::Status(grpc::INTERNAL, "failed to spawn btrfs resize");
   }
 

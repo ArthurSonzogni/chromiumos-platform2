@@ -76,8 +76,8 @@ class Init final {
              bool use_console,
              bool wait_for_exit,
              ProcessLaunchInfo* launch_info,
-             base::Optional<base::Callback<void(ProcessStatus, int)>> exit_cb =
-                 base::nullopt);
+             base::Optional<base::OnceCallback<void(ProcessStatus, int)>>
+                 exit_cb = base::nullopt);
 
   // Shuts down the system, killing all child processes first with SIGTERM and
   // finally with SIGKILL.

@@ -32,7 +32,7 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
   // Initializes ServiceImpl for first use.
   bool Init();
 
-  void set_shutdown_cb(base::Callback<bool(void)> cb) {
+  void set_shutdown_cb(base::OnceCallback<bool(void)> cb) {
     shutdown_cb_ = std::move(cb);
   }
 
@@ -115,7 +115,7 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
 
   // Callback used for shutting down the gRPC server.  Called when handling a
   // Shutdown RPC.
-  base::Callback<bool(void)> shutdown_cb_;
+  base::OnceCallback<bool(void)> shutdown_cb_;
 
   // Flags to configure LXD functionality. Configuration happens statically in
   // the constructor as well as at runtime in the |StartTermina| function.

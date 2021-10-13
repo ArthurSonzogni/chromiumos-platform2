@@ -769,7 +769,7 @@ class Init::Worker {
 
     std::list<base::Time> spawn_times;
 
-    base::Optional<base::Callback<void(ProcessStatus, int)>> exit_cb;
+    base::Optional<base::OnceCallback<void(ProcessStatus, int)>> exit_cb;
   };
 
   Worker()
@@ -1071,7 +1071,7 @@ void Init::Worker::OnSignalReadable() {
     }
 
     if (info.exit_cb) {
-      info.exit_cb.value().Run(proc_status, code);
+      std::move(info.exit_cb).value().Run(proc_status, code);
     }
 
     if (!info.respawn) {
@@ -1174,7 +1174,7 @@ bool Init::Spawn(
     bool use_console,
     bool wait_for_exit,
     ProcessLaunchInfo* launch_info,
-    base::Optional<base::Callback<void(ProcessStatus, int)>> exit_cb) {
+    base::Optional<base::OnceCallback<void(ProcessStatus, int)>> exit_cb) {
   CHECK(!argv.empty());
   CHECK(!(respawn && wait_for_exit));
   CHECK(launch_info);
@@ -1201,9 +1201,8 @@ bool Init::Spawn(
   }
 
   bool ret = worker_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&Worker::Spawn, base::Unretained(worker_.get()),
-                 base::Passed(std::move(info)), sem.get(), launch_info));
+      FROM_HERE, base::BindOnce(&Worker::Spawn, base::Unretained(worker_.get()),
+                                std::move(info), sem.get(), launch_info));
   if (!ret) {
     return false;
   }
@@ -1224,8 +1223,9 @@ void Init::Shutdown() {
   }
 
   bool ret = worker_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&Worker::Shutdown, base::Unretained(worker_.get()),
-                            notify_fd.get()));
+      FROM_HERE,
+      base::BindOnce(&Worker::Shutdown, base::Unretained(worker_.get()),
+                     notify_fd.get()));
   if (!ret) {
     LOG(ERROR) << "Failed to post task to worker thread";
     return;
@@ -1388,7 +1388,8 @@ bool Init::Setup() {
 
   worker_ = std::make_unique<Worker>();
   bool ret = worker_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&Worker::Start, base::Unretained(worker_.get())));
+      FROM_HERE,
+      base::BindOnce(&Worker::Start, base::Unretained(worker_.get())));
   if (!ret) {
     LOG(ERROR) << "Failed to post task to worker thread";
     return false;

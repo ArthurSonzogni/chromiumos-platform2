@@ -275,12 +275,12 @@ int main(int argc, char** argv) {
 
   // The following line is very confusing but is equivalent to this code:
   //
-  // maitred_service.set_shutdown_cb(base::Bind(
+  // maitred_service.set_shutdown_cb(base::BindOnce(
   //     [](scoped_refptr<base::SingleThreadTaskRunner> runner,
   //        grpc::Server* server) {
   //       runner->PostTask(
   //           FROM_HERE,
-  //           base::Bind([](grpc::Server* s) { s->Shutdown(); }, server));
+  //           base::BindOnce([](grpc::Server* s) { s->Shutdown(); }, server));
   //     },
   //     shutdown_thread.task_runner(), server.get()));
   //
@@ -288,11 +288,11 @@ int main(int argc, char** argv) {
   // the code into a separate function, which would break up the flow of logic
   // and be arguably less readable than this code + comment.
   //
-  // Once base::Bind in chrome os has been updated to handle lambdas, we should
-  // consider replacing this with the above code instead.
-  maitred_service.set_shutdown_cb(base::Bind(
+  // Once base::BindOnce in chrome os has been updated to handle lambdas, we
+  // should consider replacing this with the above code instead.
+  maitred_service.set_shutdown_cb(base::BindOnce(
       &base::TaskRunner::PostTask, shutdown_thread.task_runner(), FROM_HERE,
-      base::Bind(
+      base::BindOnce(
           static_cast<void (grpc::Server::*)(void)>(&grpc::Server::Shutdown),
           base::Unretained(server.get()))));
 
