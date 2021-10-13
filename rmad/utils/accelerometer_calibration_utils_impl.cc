@@ -25,6 +25,12 @@ constexpr double kGravity = 9.80665;
 // The calibbias data is converted to 1/1024G unit,
 // and the sensor reading unit is m/s^2.
 constexpr double kCalibbiasDataScale = kGravity / 1024.0;
+// Both thresholds are used in m/s^2 units.
+// The offset is indicating the tolerance in m/s^2 for
+// the digital output of sensors under 0 and 1G.
+constexpr double kOffsetThreshold = 2.0;
+// The variance of capture data can not be larger than the threshold.
+constexpr double kVarianceThreshold = 5.0;
 
 constexpr double kProgressComplete = 1.0;
 constexpr double kProgressFailed = -1.0;
@@ -61,6 +67,7 @@ AccelerometerCalibrationUtilsImpl::AccelerometerCalibrationUtilsImpl(
 
 bool AccelerometerCalibrationUtilsImpl::Calibrate() {
   std::vector<double> avg_data;
+  std::vector<double> variance_data;
   std::vector<int> scaled_data;
   std::map<std::string, int> scaled_calibbias;
   SetProgress(kProgressInit);
@@ -76,7 +83,7 @@ bool AccelerometerCalibrationUtilsImpl::Calibrate() {
   // Due to the uncertainty of the sensor value, we use the average value to
   // calibrate it.
   if (!iio_ec_sensor_utils_->GetAvgData(kAccelerometerChannels, kSamples,
-                                        &avg_data)) {
+                                        &avg_data, &variance_data)) {
     LOG(ERROR) << location_ << ":" << name_ << ": Failed to accumulate data.";
     SetProgress(kProgressFailed);
     return false;
@@ -89,12 +96,37 @@ bool AccelerometerCalibrationUtilsImpl::Calibrate() {
     SetProgress(kProgressFailed);
     return false;
   }
-  scaled_data.resize(kAccelerometerIdealValues.size());
+
+  if (variance_data.size() != kAccelerometerIdealValues.size()) {
+    LOG(ERROR) << location_ << ":" << name_ << ": Get wrong variance data size "
+               << variance_data.size();
+    SetProgress(kProgressFailed);
+    return false;
+  }
+
+  for (int i = 0; i < variance_data.size(); i++) {
+    double var = variance_data[i];
+    if (var > kVarianceThreshold) {
+      LOG(ERROR) << location_ << ":" << name_ << ": Data variance=" << var
+                 << " too high in channel " << kAccelerometerChannels[i]
+                 << ". Expected to be less than " << kVarianceThreshold;
+      SetProgress(kProgressFailed);
+      return false;
+    }
+  }
 
   // For each axis, we calculate the difference between the ideal values.
+  scaled_data.resize(kAccelerometerIdealValues.size());
   for (int i = 0; i < avg_data.size(); i++) {
-    scaled_data[i] =
-        (kAccelerometerIdealValues[i] - avg_data[i]) / kCalibbiasDataScale;
+    double offset = kAccelerometerIdealValues[i] - avg_data[i];
+    if (std::fabs(offset) > kOffsetThreshold) {
+      LOG(ERROR) << location_ << ":" << name_
+                 << ": Data is out of range, the accelerometer may be damaged "
+                    "or the device setup is incorrect.";
+      SetProgress(kProgressFailed);
+      return false;
+    }
+    scaled_data[i] = offset / kCalibbiasDataScale;
     std::string entry = kCalibbiasPrefix + kAccelerometerChannels[i] + "_" +
                         location_ + kCalibbiasPostfix;
     scaled_calibbias[entry] = scaled_data[i];

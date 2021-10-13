@@ -28,7 +28,8 @@ class IioEcSensorUtils {
   // Returns true if it succeeds, otherwise it returns false.
   virtual bool GetAvgData(const std::vector<std::string>& channels,
                           int samples,
-                          std::vector<double>* avg_data) = 0;
+                          std::vector<double>* avg_data,
+                          std::vector<double>* variance = nullptr) = 0;
 
   // Write |values| to |entries| in the sysfs of iioservice.
   // Returns true if it succeeds for all entries, otherwise it returns false.

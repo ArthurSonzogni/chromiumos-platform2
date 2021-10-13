@@ -21,7 +21,8 @@ class IioEcSensorUtilsImpl : public IioEcSensorUtils {
 
   bool GetAvgData(const std::vector<std::string>& channels,
                   int samples,
-                  std::vector<double>* avg_data) override;
+                  std::vector<double>* avg_data,
+                  std::vector<double>* variance = nullptr) override;
   bool SetSysValues(const std::vector<std::string>& entries,
                     const std::vector<int>& values) override;
 

@@ -21,8 +21,11 @@ class MockIioEcSensorUtils : public IioEcSensorUtils {
   ~MockIioEcSensorUtils() override = default;
 
   MOCK_METHOD(bool,
-              GetData,
-              (const std::vector<std::string>&, int, std::vector<double>*),
+              GetAvgData,
+              (const std::vector<std::string>&,
+               int,
+               std::vector<double>*,
+               std::vector<double>*),
               (override));
   MOCK_METHOD(bool,
               SetSysValues,

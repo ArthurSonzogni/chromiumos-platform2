@@ -4,7 +4,7 @@
 
 #include "rmad/utils/iio_ec_sensor_utils_impl.h"
 
-#include <re2/re2.h>
+#include <numeric>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -12,6 +12,7 @@
 #include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <re2/re2.h>
 
 namespace {
 
@@ -42,7 +43,8 @@ IioEcSensorUtilsImpl::IioEcSensorUtilsImpl(const std::string& location,
 
 bool IioEcSensorUtilsImpl::GetAvgData(const std::vector<std::string>& channels,
                                       int samples,
-                                      std::vector<double>* avg_data) {
+                                      std::vector<double>* avg_data,
+                                      std::vector<double>* variance) {
   CHECK(avg_data);
 
   if (!initialized_) {
@@ -71,13 +73,12 @@ bool IioEcSensorUtilsImpl::GetAvgData(const std::vector<std::string>& channels,
     return false;
   }
 
-  std::vector<double> data(channels.size(), 0.0);
+  std::vector<std::vector<double>> data(channels.size());
   for (int i = 0; i < channels.size(); i++) {
     re2::StringPiece str_piece(value);
     re2::RE2 reg(channels[i] + R"(: ([-+]?\d+))");
     std::string match;
     double raw_data;
-    int count = 0;
 
     while (RE2::FindAndConsume(&str_piece, reg, &match)) {
       if (!base::StringToDouble(match, &raw_data)) {
@@ -86,21 +87,34 @@ bool IioEcSensorUtilsImpl::GetAvgData(const std::vector<std::string>& channels,
         continue;
       }
 
-      data.at(i) += raw_data;
-      count++;
+      data.at(i).push_back(raw_data * scale_);
     }
 
-    if (count != samples) {
+    if (data.at(i).size() != samples) {
       LOG(ERROR) << location_ << ":" << name_ << ":" << channels[i]
-                 << ": We received " << count << " instead of " << samples
-                 << " samples.";
+                 << ": We received " << data.at(i).size() << " instead of "
+                 << samples << " samples.";
       return false;
     }
   }
 
   avg_data->resize(channels.size());
   for (int i = 0; i < channels.size(); i++) {
-    avg_data->at(i) = data.at(i) * scale_ / samples;
+    avg_data->at(i) =
+        std::accumulate(data.at(i).begin(), data.at(i).end(), 0.0) / samples;
+  }
+
+  if (!variance) {
+    return true;
+  }
+
+  variance->resize(channels.size(), 0.0);
+  for (int i = 0; i < channels.size(); i++) {
+    for (const double& value : data.at(i)) {
+      double var = (value - avg_data->at(i)) * (value - avg_data->at(i));
+      variance->at(i) += var;
+    }
+    variance->at(i) /= data.at(i).size();
   }
 
   return true;
