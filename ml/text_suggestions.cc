@@ -102,7 +102,12 @@ bool TextSuggestions::LoadTextSuggester(
 
   chrome_knowledge::FeatureSettings* feature_settings =
       settings.mutable_feature_settings();
-  feature_settings->set_multi_word_experiment(experiment);
+  feature_settings->set_multi_word_enabled(true);
+  feature_settings->set_emojis_enabled(false);
+
+  chrome_knowledge::ExperimentSettings* experiment_settings =
+      settings.mutable_experiment_settings();
+  experiment_settings->set_multi_word(experiment);
 
   const std::string settings_pb = settings.SerializeAsString();
   return (*load_text_suggester_)(suggester, settings_pb.data(),
