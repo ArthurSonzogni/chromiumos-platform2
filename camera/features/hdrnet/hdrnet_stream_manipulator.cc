@@ -426,7 +426,13 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
       continue;
     }
 
-    stream_context->processor->WriteRequestParameters(request);
+    // Only change the metadata when the client request settings is not null.
+    // This is mainly to make the CTS tests happy, as some test cases set null
+    // settings and if we change that the vendor camera HAL may not handle the
+    // incremental changes well.
+    if (request->has_metadata()) {
+      stream_context->processor->WriteRequestParameters(request);
+    }
     switch (stream_context->mode) {
       case HdrNetStreamContext::Mode::kReplaceYuv: {
         auto is_compatible =

@@ -464,6 +464,9 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
 
   internal::ScopedCameraMetadata settings =
       internal::DeserializeCameraMetadata(request->settings);
+  if (settings) {
+    capture_settings_ = std::move(settings);
+  }
 
   capture_request_monitor_.Kick();
 
@@ -513,7 +516,7 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
         const_cast<const camera3_stream_buffer_t*>(output_buffers.data());
   }
 
-  req.settings = settings.get();
+  req.settings = capture_settings_.get();
 
   std::vector<const char*> phys_ids;
   std::vector<std::string> phys_ids_string;
@@ -572,6 +575,10 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
     return 0;
   }
 
+  // TODO(jcliang): We may need to cache the last request settings here. In case
+  // where the client sets a null settings we can pass the cached settings to
+  // the stream manipulators so that they can still do incremental changes on
+  // top of the cached settings.
   Camera3CaptureDescriptor request_descriptor(req);
   for (auto it = stream_manipulators_.begin(); it != stream_manipulators_.end();
        ++it) {

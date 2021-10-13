@@ -323,6 +323,10 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // ANDROID_PARTIAL_RESULT_COUNT from static metadata.
   int32_t partial_result_count_;
 
+  // Cached request settings that always track the latest set of request
+  // metadata.
+  internal::ScopedCameraMetadata capture_settings_;
+
   // Monitors for capture requests and capture results. If there is no capture
   // requests/responses for a while the monitors will output a log to indicate
   // this situation.

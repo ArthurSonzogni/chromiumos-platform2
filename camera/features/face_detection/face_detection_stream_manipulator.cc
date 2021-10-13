@@ -115,7 +115,14 @@ bool FaceDetectionStreamManipulator::ProcessCaptureRequest(
   // Disable face detection in the vendor camera HAL in favor of our CrOS face
   // detector.
   RecordClientRequestSettings(request);
-  SetFaceDetectionMode(request);
+
+  // Only change the metadata when the client request settings is not null.
+  // This is mainly to make the CTS tests happy, as some test cases set null
+  // settings and if we change that the vendor camera HAL may not handle the
+  // incremental changes well.
+  if (request->has_metadata()) {
+    SetFaceDetectionMode(request);
+  }
 
   // Carry down the latest detected faces as Gcam AE's input metadata.
   request->feature_metadata().faces = latest_faces_;

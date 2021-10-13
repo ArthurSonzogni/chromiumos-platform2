@@ -380,6 +380,14 @@ void GcamAeControllerImpl::SetRequestAeParameters(
         RectToNormalizedRect(*request->feature_metadata().faces);
   }
 
+  // Only change the metadata when the client request settings is not null.
+  // This is mainly to make the CTS tests happy, as some test cases set null
+  // settings and if we change that the vendor camera HAL may not handle the
+  // incremental changes well.
+  if (!request->has_metadata()) {
+    return;
+  }
+
   if (!ae_device_adapter_->WriteRequestParameters(request)) {
     LOGFID(ERROR, request->frame_number()) << "Cannot set request parameters";
     return;
