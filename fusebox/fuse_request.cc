@@ -96,7 +96,7 @@ DirEntryRequest::DirEntryRequest(fuse_req_t req,
   DCHECK(size_);
 }
 
-bool DirEntryRequest::AddEntry(DirEntry entry, off_t offset) {
+bool DirEntryRequest::AddEntry(const struct DirEntry& entry, off_t offset) {
   DCHECK(!replied_);
 
   const char* name = entry.name;
@@ -117,6 +117,7 @@ bool DirEntryRequest::AddEntry(DirEntry entry, off_t offset) {
   char* data = buf_.get() + off_;
   off_ += fuse_add_direntry(req_, data, size, name, &stat, offset);
   CHECK_LE(off_, size_);
+  offset_ = offset;
   return true;
 }
 

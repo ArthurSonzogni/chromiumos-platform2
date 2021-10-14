@@ -107,7 +107,7 @@ class DirEntryRequest : public FuseRequest {
   size_t size() const { return size_; }
 
   // Add entry to |buf_|. Returns true if the entry was added.
-  bool AddEntry(struct DirEntry entry, off_t offset);
+  bool AddEntry(const struct DirEntry& entry, off_t offset);
 
   // Space used in |buf_| by the added entries.
   size_t used() const { return off_; }
