@@ -135,7 +135,7 @@ bool RecoveryCryptoImpl::EncryptMediatorShare(
   brillo::SecureBlob ephemeral_priv_key;
   if (!ec_.GenerateKeysAsSecureBlobs(&encrypted_ms->ephemeral_pub_key,
                                      &ephemeral_priv_key, context)) {
-    LOG(ERROR) << "Failed to generate EC keys";
+    LOG(ERROR) << "Failed to generate EC keys for mediator share encryption";
     return false;
   }
 
@@ -148,7 +148,8 @@ bool RecoveryCryptoImpl::EncryptMediatorShare(
                                  ephemeral_priv_key, GetMediatorShareHkdfInfo(),
                                  /*hkdf_salt=*/brillo::SecureBlob(), kHkdfHash,
                                  kAesGcm256KeySize, &aes_gcm_key)) {
-    LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys";
+    LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys for mediator share "
+                  "encryption";
     return false;
   }
 
@@ -158,7 +159,7 @@ bool RecoveryCryptoImpl::EncryptMediatorShare(
   if (!AesGcmEncrypt(mediator_share, /*ad=*/base::nullopt, aes_gcm_key,
                      &encrypted_ms->iv, &encrypted_ms->tag,
                      &encrypted_ms->encrypted_data)) {
-    LOG(ERROR) << "Failed to perform AES-GCM encryption";
+    LOG(ERROR) << "Failed to perform AES-GCM encryption of the mediator share";
     return false;
   }
 
@@ -180,7 +181,8 @@ bool RecoveryCryptoImpl::GenerateRecoveryKey(
   crypto::ScopedEC_POINT point_dh =
       ec_.Multiply(*recovery_pub_point, *dealer_priv_key, context.get());
   if (!point_dh) {
-    LOG(ERROR) << "Failed to perform point multiplication";
+    LOG(ERROR) << "Failed to perform point multiplication of "
+                  "recovery_pub_point and dealer_priv_key";
     return false;
   }
   // Get point's affine X coordinate.
@@ -274,7 +276,8 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
   request_ad.request_payload_salt = CreateSecureRandomBlob(kHkdfSaltLength);
   if (!SerializeRecoveryRequestAssociatedDataToCbor(
           request_ad, &request_payload.associated_data)) {
-    LOG(ERROR) << "Failed to generate associated data cbor";
+    LOG(ERROR)
+        << "Failed to serialize recovery request associated data to cbor";
     return false;
   }
 
@@ -286,7 +289,8 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
           ec_, epoch_pub_key, channel_pub_key, channel_priv_key,
           GetRequestPayloadPlainTextHkdfInfo(), request_ad.request_payload_salt,
           kHkdfHash, kAesGcm256KeySize, &aes_gcm_key)) {
-    LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys";
+    LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys for recovery "
+                  "request plain text encryption";
     return false;
   }
 
@@ -307,7 +311,8 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
   if (!AesGcmEncrypt(plain_text_cbor, request_payload.associated_data,
                      aes_gcm_key, &request_payload.iv, &request_payload.tag,
                      &request_payload.cipher_text)) {
-    LOG(ERROR) << "Failed to perform AES-GCM encryption of plain_text_cbor";
+    LOG(ERROR) << "Failed to perform AES-GCM encryption of plain_text_cbor for "
+                  "recovery request";
     return false;
   }
 
@@ -338,7 +343,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   // Generate dealer key pair.
   crypto::ScopedEC_KEY dealer_key_pair = ec_.GenerateKey(context.get());
   if (!dealer_key_pair) {
-    LOG(ERROR) << "Failed to generate dealer key pair.";
+    LOG(ERROR) << "Failed to generate dealer key pair";
     return false;
   }
   // Generate two shares and a secret equal to the sum.
@@ -347,33 +352,35 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   crypto::ScopedBIGNUM destination_share_bn =
       ec_.RandomNonZeroScalar(context.get());
   if (!destination_share_bn) {
-    LOG(ERROR) << "Failed to generate secret";
+    LOG(ERROR) << "Failed to generate destination_share secret";
     return false;
   }
   crypto::ScopedBIGNUM mediator_share_bn;
   do {
     mediator_share_bn = ec_.RandomNonZeroScalar(context.get());
     if (!mediator_share_bn) {
-      LOG(ERROR) << "Failed to generate secret";
+      LOG(ERROR) << "Failed to generate mediator_share secret";
       return false;
     }
     secret =
         ec_.ModAdd(*mediator_share_bn, *destination_share_bn, context.get());
     if (!secret) {
-      LOG(ERROR) << "Failed to perform modulo addition";
+      LOG(ERROR) << "Failed to perform modulo addition of mediator_share "
+                    "and destination_share";
       return false;
     }
   } while (BN_is_zero(secret.get()));
 
   if (!BigNumToSecureBlob(*destination_share_bn, ec_.ScalarSizeInBytes(),
                           destination_share)) {
-    LOG(ERROR) << "Failed to convert BIGNUM to SecureBlob";
+    LOG(ERROR) << "Failed to convert destination_share BIGNUM to SecureBlob";
     return false;
   }
   crypto::ScopedEC_POINT recovery_pub_point =
       ec_.MultiplyWithGenerator(*secret, context.get());
   if (!recovery_pub_point) {
-    LOG(ERROR) << "Failed to perform MultiplyWithGenerator operation";
+    LOG(ERROR)
+        << "Failed to perform MultiplyWithGenerator operation for the secret";
     return false;
   }
 
@@ -381,7 +388,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   // TODO(b/194678588): channel private key should be protected via TPM.
   crypto::ScopedEC_KEY channel_key_pair = ec_.GenerateKey(context.get());
   if (!channel_key_pair) {
-    LOG(ERROR) << "Failed to generate channel key pair.";
+    LOG(ERROR) << "Failed to generate channel key pair";
     return false;
   }
   const EC_POINT* channel_pub_point =
@@ -407,7 +414,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
                                  onboarding_metadata,
                                  &hsm_payload->associated_data,
                                  &publisher_priv_key, &publisher_pub_key)) {
-    LOG(ERROR) << "Failed to generate associated data cbor";
+    LOG(ERROR) << "Failed to generate HSM associated data cbor";
     return false;
   }
 
@@ -447,14 +454,15 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
                                  publisher_priv_key, GetMediatorShareHkdfInfo(),
                                  /*hkdf_salt=*/brillo::SecureBlob(), kHkdfHash,
                                  kAesGcm256KeySize, &aes_gcm_key)) {
-    LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys";
+    LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys for HSM plain text "
+                  "encryption";
     return false;
   }
 
   if (!AesGcmEncrypt(plain_text_cbor, hsm_payload->associated_data, aes_gcm_key,
                      &hsm_payload->iv, &hsm_payload->tag,
                      &hsm_payload->cipher_text)) {
-    LOG(ERROR) << "Failed to perform AES-GCM encryption";
+    LOG(ERROR) << "Failed to perform AES-GCM encryption of HSM plain text";
     return false;
   }
 
@@ -485,26 +493,27 @@ bool RecoveryCryptoImpl::RecoverDestination(
   crypto::ScopedBIGNUM destination_share_bn =
       SecureBlobToBigNum(destination_share);
   if (!destination_share_bn) {
-    LOG(ERROR) << "Failed to convert SecureBlob to BIGNUM";
+    LOG(ERROR) << "Failed to convert destination_share SecureBlob to BIGNUM";
     return false;
   }
   crypto::ScopedEC_POINT dealer_pub_point =
       ec_.SecureBlobToPoint(dealer_pub_key, context.get());
   if (!dealer_pub_point) {
-    LOG(ERROR) << "Failed to convert SecureBlob to EC_POINT";
+    LOG(ERROR) << "Failed to convert dealer_pub_point SecureBlob to EC_POINT";
     return false;
   }
   crypto::ScopedEC_POINT mediated_point =
       ec_.SecureBlobToPoint(mediated_publisher_pub_key, context.get());
   if (!mediated_point) {
-    LOG(ERROR) << "Failed to convert SecureBlob to EC_POINT";
+    LOG(ERROR) << "Failed to convert mediated_point SecureBlob to EC_POINT";
     return false;
   }
   // Performs addition of mediated_point and ephemeral_pub_point.
   crypto::ScopedEC_POINT ephemeral_pub_point =
       ec_.SecureBlobToPoint(ephemeral_pub_key, context.get());
   if (!ephemeral_pub_point) {
-    LOG(ERROR) << "Failed to convert SecureBlob to EC_POINT";
+    LOG(ERROR)
+        << "Failed to convert ephemeral_pub_point SecureBlob to EC_POINT";
     return false;
   }
   crypto::ScopedEC_POINT mediator_dh =
@@ -517,13 +526,15 @@ bool RecoveryCryptoImpl::RecoverDestination(
   crypto::ScopedEC_POINT point_dh =
       ec_.Multiply(*dealer_pub_point, *destination_share_bn, context.get());
   if (!point_dh) {
-    LOG(ERROR) << "Failed to perform scalar multiplication";
+    LOG(ERROR) << "Failed to perform scalar multiplication of dealer_pub_point "
+                  "and destination_share";
     return false;
   }
   crypto::ScopedEC_POINT point_dest =
       ec_.Add(*point_dh, *mediator_dh, context.get());
   if (!point_dest) {
-    LOG(ERROR) << "Failed to perform point addition";
+    LOG(ERROR)
+        << "Failed to perform point addition of point_dh and mediator_dh";
     return false;
   }
   // Get point's affine X coordinate.
@@ -574,8 +585,8 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
                                     response_ad.response_payload_salt,
                                     RecoveryCrypto::kHkdfHash,
                                     kAesGcm256KeySize, &aes_gcm_key)) {
-    LOG(ERROR) << "Failed to generate ECDH+HKDF recipient key for mediator "
-                  "share decryption";
+    LOG(ERROR) << "Failed to generate ECDH+HKDF recipient key for response "
+                  "plain text decryption";
     return false;
   }
   brillo::SecureBlob response_plain_text_cbor;
@@ -584,7 +595,7 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
                      recovery_response.response_payload.tag, aes_gcm_key,
                      recovery_response.response_payload.iv,
                      &response_plain_text_cbor)) {
-    LOG(ERROR) << "Failed to perform AES-GCM decryption";
+    LOG(ERROR) << "Failed to perform AES-GCM decryption of response plain text";
     return false;
   }
   if (!DeserializeHsmResponsePlainTextFromCbor(response_plain_text_cbor,
@@ -611,7 +622,7 @@ bool RecoveryCryptoImpl::GenerateHsmAssociatedData(
   // Generate publisher key pair.
   crypto::ScopedEC_KEY publisher_key_pair = ec_.GenerateKey(context.get());
   if (!publisher_key_pair) {
-    LOG(ERROR) << "Failed to generate publisher key pair.";
+    LOG(ERROR) << "Failed to generate publisher key pair";
     return false;
   }
 
@@ -637,7 +648,7 @@ bool RecoveryCryptoImpl::GenerateHsmAssociatedData(
   hsm_ad.rsa_public_key = rsa_pub_key;
   hsm_ad.onboarding_meta_data = onboarding_metadata;
   if (!SerializeHsmAssociatedDataToCbor(hsm_ad, hsm_associated_data)) {
-    LOG(ERROR) << "Failed to generate associated data cbor";
+    LOG(ERROR) << "Failed to generate HSM associated data cbor";
     return false;
   }
   return true;

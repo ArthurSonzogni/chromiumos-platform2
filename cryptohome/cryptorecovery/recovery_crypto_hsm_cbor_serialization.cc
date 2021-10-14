@@ -37,7 +37,8 @@ base::Optional<cbor::Value> ReadCborMap(const brillo::SecureBlob& map_cbor) {
   base::Optional<cbor::Value> cbor_response =
       cbor::Reader::Read(map_cbor, &error_code);
   if (!cbor_response) {
-    LOG(ERROR) << "Unable to create CBOR reader.";
+    LOG(ERROR) << "Unable to create CBOR reader: "
+               << cbor::Reader::ErrorCodeToString(error_code);
     return base::nullopt;
   }
   if (error_code != cbor::Reader::DecoderError::CBOR_NO_ERROR) {
