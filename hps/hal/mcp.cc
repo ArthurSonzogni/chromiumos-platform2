@@ -18,6 +18,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/threading/thread.h>
 #include <base/time/time.h>
+#include <base/timer/elapsed_timer.h>
 
 namespace {
 
@@ -31,6 +32,12 @@ static const uint8_t kReadEndpoint = 0x83;   // device to host
 static const int kTimeout = 1000;      // Timeout in milliseconds.
 static const int kRetries = 50;        // Max retries.
 static const int kDelay = 10;          // Milliseconds delay between retries.
+
+static constexpr base::TimeDelta kReadSleep =
+    base::TimeDelta::FromMilliseconds(1);
+static constexpr base::TimeDelta kReadTimeout =
+    base::TimeDelta::FromMilliseconds(10);
+
 /*
  * Calculate write block size.
  * The I2C header is 4 bytes.
@@ -226,7 +233,8 @@ bool Mcp::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
     return false;
   }
   this->Clear();
-  for (int i = 0; i < kRetries; i++) {
+  base::ElapsedTimer timer;
+  do {
     this->out_[0] = kCmdReadData;
     if (!this->Cmd()) {
       LOG(ERROR) << "Read (read data) failed";
@@ -245,9 +253,9 @@ bool Mcp::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
       memcpy(data, &this->in_[4], sz);
       return true;
     }
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(kDelay));
-  }
-  LOG(ERROR) << "Read (retries exceeded) failed";
+    base::PlatformThread::Sleep(kReadSleep);
+  } while (timer.Elapsed() < kReadTimeout);
+  LOG(ERROR) << "Read (retries exceeded) failed: " << timer.Elapsed();
   return false;
 }
 
