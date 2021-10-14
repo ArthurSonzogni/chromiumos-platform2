@@ -190,7 +190,7 @@ void RmadInterfaceImpl::RegisterSignalSender(
 }
 
 void RmadInterfaceImpl::TryTransitionNextStateFromCurrentState() {
-  VLOG(1) << "Trying a state transition using current state";
+  LOG(INFO) << "Trying a state transition using current state";
   GetStateReply get_current_state_reply = GetCurrentStateInternal();
   if (get_current_state_reply.error() == RMAD_ERROR_OK) {
     TransitionNextStateRequest request;

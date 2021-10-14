@@ -41,19 +41,14 @@ BaseStateHandler::GetNextStateCaseReply RestockStateHandler::GetNextStateCase(
     return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
   }
 
-  state_ = state;
-  StoreState();
-
-  switch (state_.restock().choice()) {
+  // For the first bootup after restock and shutdown, the state machine will try
+  // to automatically transition to the next state. Therefore, we do not store
+  // the state to prevent the continuous shutdown.
+  switch (state.restock().choice()) {
     case RestockState::RMAD_RESTOCK_UNKNOWN:
       return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
               .state_case = GetStateCase()};
     case RestockState::RMAD_RESTOCK_SHUTDOWN_AND_RESTOCK:
-      // Set the choice to "Continue", so the device can auto-transition to the
-      // next state on next boot.
-      state_.mutable_restock()->set_choice(
-          RestockState::RMAD_RESTOCK_CONTINUE_RMA);
-      StoreState();
       // Wait for a while before shutting down.
       timer_.Start(FROM_HERE, kShutdownDelay, this,
                    &RestockStateHandler::Shutdown);
