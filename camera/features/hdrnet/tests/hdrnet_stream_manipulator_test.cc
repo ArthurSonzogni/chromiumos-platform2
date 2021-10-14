@@ -163,6 +163,8 @@ class FakeStillCaptureProcessor : public StillCaptureProcessor {
     result_callback_ = std::move(result_callback);
   }
 
+  void Reset() override {}
+
   void QueuePendingOutputBuffer(
       int frame_number,
       camera3_stream_buffer_t output_buffer,

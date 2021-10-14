@@ -13,6 +13,7 @@
 #include <memory>
 #include <vector>
 
+#include <base/callback_helpers.h>
 #include <base/threading/thread.h>
 
 #include "cros-camera/camera_buffer_manager.h"
@@ -29,6 +30,7 @@ class StillCaptureProcessorImpl : public StillCaptureProcessor {
   ~StillCaptureProcessorImpl() override;
   void Initialize(const camera3_stream_t* const still_capture_stream,
                   CaptureResultCallback result_callback) override;
+  void Reset() override;
   void QueuePendingOutputBuffer(
       int frame_number,
       camera3_stream_buffer_t output_buffer,
@@ -71,8 +73,8 @@ class StillCaptureProcessorImpl : public StillCaptureProcessor {
   base::Thread thread_;
   std::unique_ptr<JpegCompressor> jpeg_compressor_;
 
-  const camera3_stream_t* blob_stream_;
-  CaptureResultCallback result_callback_;
+  const camera3_stream_t* blob_stream_ = nullptr;
+  CaptureResultCallback result_callback_ = base::NullCallback();
 
   // Bookkeeping the RequestContext using the frame number as index.
   std::map<int, RequestContext> request_contexts_;

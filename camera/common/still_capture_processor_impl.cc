@@ -222,12 +222,10 @@ inline uint8_t* WriteTwoBytes(uint8_t* dst, uint16_t value) {
 StillCaptureProcessorImpl::StillCaptureProcessorImpl(
     std::unique_ptr<JpegCompressor> jpeg_compressor)
     : thread_("StillCaptureProcessorImplThread"),
-      jpeg_compressor_(std::move(jpeg_compressor)) {
-  CHECK(thread_.Start());
-}
+      jpeg_compressor_(std::move(jpeg_compressor)) {}
 
 StillCaptureProcessorImpl::~StillCaptureProcessorImpl() {
-  thread_.Stop();
+  Reset();
 }
 
 void StillCaptureProcessorImpl::Initialize(
@@ -235,6 +233,14 @@ void StillCaptureProcessorImpl::Initialize(
     CaptureResultCallback result_callback) {
   blob_stream_ = still_capture_stream;
   result_callback_ = std::move(result_callback);
+  request_contexts_.clear();
+  CHECK(thread_.Start());
+}
+
+void StillCaptureProcessorImpl::Reset() {
+  thread_.Stop();
+  blob_stream_ = nullptr;
+  result_callback_ = base::NullCallback();
   request_contexts_.clear();
 }
 

@@ -876,6 +876,7 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
     }
 
     if (context->original_stream->format == HAL_PIXEL_FORMAT_BLOB) {
+      LOGF(INFO) << "Allocate still capture intermediate";
       context->still_capture_intermediate =
           CameraBufferManager::AllocateScopedBuffer(
               stream->width, stream->height, HAL_PIXEL_FORMAT_YCBCR_420_888,
@@ -890,6 +891,7 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
 void HdrNetStreamManipulator::ResetStateOnGpuThread() {
   DCHECK(gpu_thread_.IsCurrentThread());
 
+  still_capture_processor_->Reset();
   request_buffer_info_.clear();
   hdrnet_stream_context_.clear();
   request_stream_mapping_.clear();

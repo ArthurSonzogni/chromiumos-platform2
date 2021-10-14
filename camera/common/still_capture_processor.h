@@ -45,6 +45,9 @@ class StillCaptureProcessor {
   virtual void Initialize(const camera3_stream_t* const still_capture_stream,
                           CaptureResultCallback result_callback) = 0;
 
+  // Resets the associated still capture stream and flushes pending requests.
+  virtual void Reset() = 0;
+
   // Queues a pending still capture request.  |frame_number| is the frame number
   // as in the HAL3 capture request for the still capture request.
   // |output_buffer| is the buffer that StillCaptureProcessor will need to fill
