@@ -20,10 +20,11 @@
 
 namespace policy {
 
-static const char kPolicyFileAllSet[] = "policy/tests/whitelist/policy_all.bin";
+static const char kPolicyFileAllSet[] =
+    "policy/tests/devicesettings/policy_all.bin";
 static const char kPolicyFileNoneSet[] =
-    "policy/tests/whitelist/policy_none.bin";
-static const char kKeyFile[] = "policy/tests/whitelist/owner.key";
+    "policy/tests/devicesettings/policy_none.bin";
+static const char kKeyFile[] = "policy/tests/devicesettings/owner.key";
 static const char kNonExistingFile[] = "file-does-not-exist";
 
 // Creates the DevicePolicyImpl with given parameters for test.
