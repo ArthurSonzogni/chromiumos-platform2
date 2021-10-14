@@ -83,8 +83,8 @@ void BaseTest::SetUp() {
       std::move(mock_session_manager_proxy_), &mock_state_change_reporter_,
       std::make_unique<BootSlot>(std::move(mock_boot_device_)),
       std::move(mock_metrics), std::move(mock_system_properties),
-      manifest_path_, preloaded_content_path_, content_path_, prefs_path_,
-      users_path_, verification_file_path_, &clock_,
+      manifest_path_, preloaded_content_path_, factory_install_path_,
+      content_path_, prefs_path_, users_path_, verification_file_path_, &clock_,
       /*for_test=*/true);
 }
 
@@ -94,6 +94,8 @@ void BaseTest::SetUpFilesAndDirectories() {
   manifest_path_ = JoinPaths(scoped_temp_dir_.GetPath(), "rootfs");
   preloaded_content_path_ =
       JoinPaths(scoped_temp_dir_.GetPath(), "preloaded_stateful");
+  factory_install_path_ =
+      JoinPaths(scoped_temp_dir_.GetPath(), "factory_install");
   content_path_ = JoinPaths(scoped_temp_dir_.GetPath(), "stateful");
   prefs_path_ = JoinPaths(scoped_temp_dir_.GetPath(), "var_lib_dlcservice");
   users_path_ = JoinPaths(scoped_temp_dir_.GetPath(), "users");
@@ -103,6 +105,7 @@ void BaseTest::SetUpFilesAndDirectories() {
   base::FilePath mount_root_path = JoinPaths(mount_path_, "root");
   base::CreateDirectory(manifest_path_);
   base::CreateDirectory(preloaded_content_path_);
+  base::CreateDirectory(factory_install_path_);
   base::CreateDirectory(content_path_);
   base::CreateDirectory(prefs_path_);
   base::CreateDirectory(users_path_);
@@ -125,10 +128,10 @@ int64_t GetFileSize(const base::FilePath& path) {
   return file_size;
 }
 
-base::FilePath BaseTest::SetUpDlcPreloadedImage(const DlcId& id) {
+base::FilePath BaseTest::SetUpImage(const base::FilePath& root,
+                                    const DlcId& id) {
   auto manifest = dlcservice::GetDlcManifest(manifest_path_, id, kPackage);
-  base::FilePath image_path =
-      JoinPaths(preloaded_content_path_, id, kPackage, kDlcImageFileName);
+  base::FilePath image_path = JoinPaths(root, id, kPackage, kDlcImageFileName);
   CreateFile(image_path, manifest->size());
   EXPECT_TRUE(base::PathExists(image_path));
 
@@ -136,6 +139,14 @@ base::FilePath BaseTest::SetUpDlcPreloadedImage(const DlcId& id) {
   WriteToImage(image_path, data);
 
   return image_path;
+}
+
+base::FilePath BaseTest::SetUpDlcPreloadedImage(const DlcId& id) {
+  return SetUpImage(preloaded_content_path_, id);
+}
+
+base::FilePath BaseTest::SetUpDlcFactoryImage(const DlcId& id) {
+  return SetUpImage(factory_install_path_, id);
 }
 
 // Will create |path/|id|/|package|/dlc_[a|b]/dlc.img files.

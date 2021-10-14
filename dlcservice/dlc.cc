@@ -37,7 +37,8 @@ namespace dlcservice {
 vector<FilePath> DlcBase::GetPathsToDelete(const DlcId& id) {
   const auto* system_state = SystemState::Get();
   return {JoinPaths(system_state->content_dir(), id),
-          JoinPaths(system_state->dlc_prefs_dir(), id)};
+          JoinPaths(system_state->dlc_prefs_dir(), id),
+          JoinPaths(system_state->factory_install_dir(), id)};
 }
 
 // TODO(ahassani): Instead of initialize function, create a factory method so
@@ -60,6 +61,8 @@ bool DlcBase::Initialize() {
   prefs_package_path_ = JoinPaths(prefs_path_, package_);
   preloaded_image_path_ = JoinPaths(system_state->preloaded_content_dir(), id_,
                                     package_, kDlcImageFileName);
+  factory_install_image_path_ = JoinPaths(system_state->factory_install_dir(),
+                                          id_, package_, kDlcImageFileName);
   ref_count_ = RefCountInterface::Create(prefs_path_, manifest_);
 
   state_.set_state(DlcState::NOT_INSTALLED);
@@ -85,6 +88,11 @@ bool DlcBase::Initialize() {
     state_.set_is_verified(Prefs(*this, system_state->active_boot_slot())
                                .GetKey(kDlcPrefVerified, &value) &&
                            value == verification_value_);
+  }
+
+  // If factory install isn't allowed, free up the space.
+  if (!IsFactoryInstall()) {
+    base::DeleteFile(factory_install_image_path_);
   }
 
   return true;
@@ -145,6 +153,10 @@ uint64_t DlcBase::GetUsedBytesOnDisk() const {
 bool DlcBase::IsPreloadAllowed() const {
   return manifest_->preload_allowed() &&
          !SystemState::Get()->system_properties()->IsOfficialBuild();
+}
+
+bool DlcBase::IsFactoryInstall() const {
+  return manifest_->factory_install();
 }
 
 base::FilePath DlcBase::GetRoot() const {
@@ -335,6 +347,59 @@ bool DlcBase::PreloadedCopier(ErrorPtr* err) {
   return true;
 }
 
+bool DlcBase::FactoryInstallCopier() {
+  int64_t factory_install_image_size;
+  if (!base::GetFileSize(factory_install_image_path_,
+                         &factory_install_image_size)) {
+    LOG(ERROR) << "Failed to get factory installed DLC (" << id_ << ") size.";
+    return false;
+  }
+  if (factory_install_image_size != manifest_->size()) {
+    LOG(WARNING) << "Factory installed DLC (" << id_ << ") is ("
+                 << factory_install_image_size << ") different than the "
+                 << "size (" << manifest_->size() << ") in the manifest.";
+    base::DeletePathRecursively(
+        JoinPaths(SystemState::Get()->factory_install_dir(), id_));
+    return false;
+  }
+
+  // Before touching the image, we need to mark it as unverified.
+  MarkUnverified();
+
+  FilePath image_path = GetImagePath(SystemState::Get()->active_boot_slot());
+  vector<uint8_t> image_sha256;
+  if (!CopyAndHashFile(factory_install_image_path_, image_path,
+                       manifest_->size(), &image_sha256)) {
+    LOG(WARNING) << "Failed to copy factory installed DLC (" << id_
+                 << ") into path " << image_path;
+    return false;
+  }
+
+  auto manifest_image_sha256 = manifest_->image_sha256();
+  if (image_sha256 != manifest_image_sha256) {
+    LOG(WARNING) << "Factory installed image is corrupt or modified for DLC ("
+                 << id_ << "). Expected="
+                 << base::HexEncode(manifest_image_sha256.data(),
+                                    manifest_image_sha256.size())
+                 << " Found="
+                 << base::HexEncode(image_sha256.data(), image_sha256.size());
+    base::DeletePathRecursively(
+        JoinPaths(SystemState::Get()->factory_install_dir(), id_));
+    return false;
+  }
+
+  if (!MarkVerified()) {
+    LOG(WARNING) << "Failed to mark the image verified for DLC=" << id_;
+  }
+
+  if (!base::DeletePathRecursively(
+          JoinPaths(SystemState::Get()->factory_install_dir(), id_))) {
+    LOG(WARNING) << "Failed to delete the factory installed DLC=" << id_;
+  }
+
+  return true;
+}
+
 bool DlcBase::Install(ErrorPtr* err) {
   switch (state_.state()) {
     case DlcState::NOT_INSTALLED: {
@@ -363,6 +428,18 @@ bool DlcBase::Install(ErrorPtr* err) {
         LOG(INFO) << "Verified existing, but previously not verified DLC="
                   << id_;
         break;
+      }
+
+      // Load the factory installed DLC if allowed otherwise clear the image.
+      if (IsFactoryInstall() && base::PathExists(factory_install_image_path_)) {
+        if (FactoryInstallCopier()) {
+          // Continue to mount the DLC image.
+          LOG(INFO) << "Factory installing DLC=" << id_;
+          break;
+        } else {
+          LOG(WARNING) << "Failed to move factory installed image for DLC="
+                       << id_;
+        }
       }
 
       // Preload the DLC if possible.

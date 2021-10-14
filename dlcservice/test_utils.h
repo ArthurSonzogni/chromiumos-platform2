@@ -44,6 +44,8 @@ int64_t GetFileSize(const base::FilePath& path);
 class BaseTest : public testing::Test {
  public:
   BaseTest();
+  BaseTest(const BaseTest&) = delete;
+  BaseTest& operator=(const BaseTest&) = delete;
 
   void SetUp() override;
 
@@ -52,6 +54,10 @@ class BaseTest : public testing::Test {
   // Will create |path|/|id|/|package|/dlc.img file. Will return the path to the
   // generated preloaded image.
   base::FilePath SetUpDlcPreloadedImage(const DlcId& id);
+
+  // Will create |path|/|id|/|package|/dlc.img file. Will return the path to the
+  // generated factory install image.
+  base::FilePath SetUpDlcFactoryImage(const DlcId& id);
 
   // Will create |path/|id|/|package|/dlc_[a|b]/dlc.img files.
   void SetUpDlcWithSlots(const DlcId& id);
@@ -69,6 +75,7 @@ class BaseTest : public testing::Test {
   base::FilePath testdata_path_;
   base::FilePath manifest_path_;
   base::FilePath preloaded_content_path_;
+  base::FilePath factory_install_path_;
   base::FilePath content_path_;
   base::FilePath prefs_path_;
   base::FilePath users_path_;
@@ -99,8 +106,7 @@ class BaseTest : public testing::Test {
   brillo::FakeMessageLoop loop_{&clock_};
 
  private:
-  BaseTest(const BaseTest&) = delete;
-  BaseTest& operator=(const BaseTest&) = delete;
+  base::FilePath SetUpImage(const base::FilePath& root, const DlcId& id);
 };
 
 }  // namespace dlcservice

@@ -45,6 +45,7 @@ class SystemState {
       std::unique_ptr<SystemProperties> system_properties,
       const base::FilePath& manifest_dir,
       const base::FilePath& preloaded_content_dir,
+      const base::FilePath& factory_install_dir,
       const base::FilePath& content_dir,
       const base::FilePath& prefs_dir,
       const base::FilePath& users_dir,
@@ -64,6 +65,7 @@ class SystemState {
   SystemProperties* system_properties() const;
   const base::FilePath& manifest_dir() const;
   const base::FilePath& preloaded_content_dir() const;
+  const base::FilePath& factory_install_dir() const;
   const base::FilePath& content_dir() const;
   const base::FilePath& prefs_dir() const;
   base::FilePath dlc_prefs_dir() const;
@@ -98,6 +100,7 @@ class SystemState {
       std::unique_ptr<SystemProperties> system_properties,
       const base::FilePath& manifest_dir,
       const base::FilePath& preloaded_content_dir,
+      const base::FilePath& factory_install_dir,
       const base::FilePath& content_dir,
       const base::FilePath& prefs_dir,
       const base::FilePath& users_dir,
@@ -117,6 +120,7 @@ class SystemState {
   std::unique_ptr<SystemProperties> system_properties_;
   base::FilePath manifest_dir_;
   base::FilePath preloaded_content_dir_;
+  base::FilePath factory_install_dir_;
   base::FilePath content_dir_;
   base::FilePath prefs_dir_;
   BootSlot::Slot active_boot_slot_;

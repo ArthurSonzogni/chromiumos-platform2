@@ -22,6 +22,7 @@ TEST(ManifestTest, ParseManifest) {
   const std::string preallocated_size = R"("600613")";
   const std::string size = R"("42")";
   const std::string preload_allowed = R"(true)";
+  const std::string factory_install = R"(true)";
   const std::string used_by = R"("foo-user")";
   const std::string days_to_purge = R"("3")";
   const std::string mount_file_required = R"(true)";
@@ -30,6 +31,8 @@ TEST(ManifestTest, ParseManifest) {
   const std::string manifest_raw = std::string() + R"(
     {
     "description":)" + description +
+                                   R"(,
+    "factory-install":)" + factory_install +
                                    R"(,
     "fs-type":)" + fs_type + R"(,
     "id":)" + id + R"(,
@@ -71,6 +74,7 @@ TEST(ManifestTest, ParseManifest) {
   EXPECT_EQ(manifest.preallocated_size(), 600613);
   EXPECT_EQ(manifest.size(), 42);
   EXPECT_EQ(manifest.preload_allowed(), true);
+  EXPECT_EQ(manifest.factory_install(), true);
   EXPECT_EQ(manifest.used_by(), "foo-user");
   EXPECT_EQ(manifest.days_to_purge(), 3);
   EXPECT_EQ(manifest.mount_file_required(), true);
@@ -109,6 +113,7 @@ TEST(ManifestTest, ParseManifestNoOptional) {
   EXPECT_NE(manifest.version().size(), 0);
   EXPECT_EQ(manifest.manifest_version(), 1);
   EXPECT_EQ(manifest.preload_allowed(), false);
+  EXPECT_EQ(manifest.factory_install(), false);
   EXPECT_EQ(manifest.used_by(), "");
   EXPECT_EQ(manifest.days_to_purge(), 0);
   EXPECT_EQ(manifest.description(), "");

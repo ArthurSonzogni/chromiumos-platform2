@@ -26,6 +26,9 @@ namespace {
 
 constexpr char kDlcPreloadedImageRootpath[] = "/var/cache/dlc-images";
 
+constexpr char kFactoryInstallImageRootpath[] =
+    "/mnt/stateful_partition/unencrypted/dlc-factory-images";
+
 constexpr char kDlcServicePrefsPath[] = "/var/lib/dlcservice";
 
 constexpr char kUsersPath[] = "/home/user";
@@ -75,6 +78,7 @@ void Daemon::RegisterDBusObjectsAsync(
       std::move(metrics), std::make_unique<SystemProperties>(),
       base::FilePath(imageloader::kDlcManifestRootpath),
       base::FilePath(kDlcPreloadedImageRootpath),
+      base::FilePath(kFactoryInstallImageRootpath),
       base::FilePath(imageloader::kDlcImageRootpath),
       base::FilePath(kDlcServicePrefsPath), base::FilePath(kUsersPath),
       base::FilePath(kDlcPrefVerifiedValueFile),

@@ -33,6 +33,7 @@ SystemState::SystemState(
     std::unique_ptr<SystemProperties> system_properties,
     const base::FilePath& manifest_dir,
     const base::FilePath& preloaded_content_dir,
+    const base::FilePath& factory_install_dir,
     const base::FilePath& content_dir,
     const base::FilePath& prefs_dir,
     const base::FilePath& users_dir,
@@ -46,6 +47,7 @@ SystemState::SystemState(
       system_properties_(std::move(system_properties)),
       manifest_dir_(manifest_dir),
       preloaded_content_dir_(preloaded_content_dir),
+      factory_install_dir_(factory_install_dir),
       content_dir_(content_dir),
       prefs_dir_(prefs_dir),
       users_dir_(users_dir),
@@ -72,6 +74,7 @@ void SystemState::Initialize(
     std::unique_ptr<SystemProperties> system_properties,
     const base::FilePath& manifest_dir,
     const base::FilePath& preloaded_content_dir,
+    const base::FilePath& factory_install_dir,
     const base::FilePath& content_dir,
     const base::FilePath& prefs_dir,
     const base::FilePath& users_dir,
@@ -84,8 +87,8 @@ void SystemState::Initialize(
       std::move(image_loader_proxy), std::move(update_engine_proxy),
       std::move(session_manager_proxy), state_change_reporter,
       std::move(boot_slot), std::move(metrics), std::move(system_properties),
-      manifest_dir, preloaded_content_dir, content_dir, prefs_dir, users_dir,
-      verification_file, clock));
+      manifest_dir, preloaded_content_dir, factory_install_dir, content_dir,
+      prefs_dir, users_dir, verification_file, clock));
 }
 
 // static
@@ -140,6 +143,10 @@ const base::FilePath& SystemState::manifest_dir() const {
 
 const base::FilePath& SystemState::preloaded_content_dir() const {
   return preloaded_content_dir_;
+}
+
+const base::FilePath& SystemState::factory_install_dir() const {
+  return factory_install_dir_;
 }
 
 const base::FilePath& SystemState::content_dir() const {

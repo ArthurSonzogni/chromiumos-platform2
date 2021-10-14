@@ -75,6 +75,10 @@ class DlcBase {
   // attribute in the manifest for the given |id| and |package|.
   bool IsPreloadAllowed() const;
 
+  // Returns true if the DLC has a boolean true for 'factory-install'
+  // attribute in the manifest for the given `id` and `package`.
+  bool IsFactoryInstall() const;
+
   // Creates the DLC image based on the fields from the manifest if the DLC is
   // not installed. If the DLC image exists or is installed already, some
   // verifications are passed to validate that the DLC is mounted.
@@ -154,6 +158,9 @@ class DlcBase {
   // Helper used to load in (copy + cleanup) preloadable files for the DLC.
   bool PreloadedCopier(brillo::ErrorPtr* err);
 
+  // Helper used to load in (copy + cleanup) factory installed DLC.
+  bool FactoryInstallCopier();
+
   // Mounts the DLC image.
   bool Mount(brillo::ErrorPtr* err);
 
@@ -192,6 +199,7 @@ class DlcBase {
   base::FilePath prefs_path_;
   base::FilePath prefs_package_path_;
   base::FilePath preloaded_image_path_;
+  base::FilePath factory_install_image_path_;
 
   // The object that keeps track of ref counts. NOTE: Do NOT access this object
   // directly. Use |GetRefCount()| instead.

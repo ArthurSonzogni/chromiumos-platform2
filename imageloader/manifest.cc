@@ -39,6 +39,7 @@ constexpr char kImageType[] = "image-type";
 constexpr char kPreallocatedSize[] = "pre-allocated-size";
 constexpr char kSize[] = "size";
 constexpr char kPreloadAllowed[] = "preload-allowed";
+constexpr char kFactoryInstall[] = "factory-install";
 constexpr char kMountFileRequired[] = "mount-file-required";
 constexpr char kUsedBy[] = "used-by";
 constexpr char kDaysToPurge[] = "days-to-purge";
@@ -167,6 +168,11 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
       manifest_dict.FindBoolKey(kPreloadAllowed);
   // If |preaload-allowed| field does not exist, by default it is false.
   preload_allowed_ = preload_allowed.value_or(false);
+
+  base::Optional<bool> factory_install =
+      manifest_dict.FindBoolKey(kFactoryInstall);
+  // If |factory-install| field does not exist, by default it is false.
+  factory_install_ = factory_install.value_or(false);
 
   base::Optional<bool> mount_file_required =
       manifest_dict.FindBoolKey(kMountFileRequired);

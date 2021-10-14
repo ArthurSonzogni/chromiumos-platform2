@@ -45,6 +45,8 @@ class BRILLO_EXPORT Manifest {
   bool is_removable() const { return is_removable_; }
   // Indicator for |dlcservice| to allow preloading at a per DLC level.
   bool preload_allowed() const { return preload_allowed_; }
+  // Indicator for |dlcservice| to allow factory installed DLC images.
+  bool factory_install() const { return factory_install_; }
   bool mount_file_required() const { return mount_file_required_; }
   const std::string& used_by() const { return used_by_; }
   int64_t days_to_purge() const { return days_to_purge_; }
@@ -70,6 +72,7 @@ class BRILLO_EXPORT Manifest {
   int64_t size_;
   bool is_removable_;
   bool preload_allowed_;
+  bool factory_install_;
   bool mount_file_required_;
   std::string used_by_;
   int64_t days_to_purge_;

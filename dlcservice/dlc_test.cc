@@ -402,6 +402,72 @@ TEST_F(DlcBaseTest, PreloadingSkippedOnAlreadyExistingAndVerifiableDlc) {
   EXPECT_TRUE(dlc.IsInstalled());
 }
 
+TEST_F(DlcBaseTest, FactoryInstalledImagesSupportedIntialization) {
+  base::FilePath factory_image_path = SetUpDlcFactoryImage(kThirdDlc);
+  DlcBase dlc(kThirdDlc);
+  dlc.Initialize();
+  EXPECT_TRUE(base::PathExists(factory_image_path));
+}
+
+TEST_F(DlcBaseTest, FactoryInstalledImagesUnsupportedIntialization) {
+  base::FilePath unsupported_factory_image_path =
+      SetUpDlcFactoryImage(kFirstDlc);
+  DlcBase dlc(kFirstDlc);
+  dlc.Initialize();
+  EXPECT_FALSE(base::PathExists(unsupported_factory_image_path));
+}
+
+TEST_F(DlcBaseTest, FactoryInstalledImageClearsAfterInstallation) {
+  DlcBase dlc(kThirdDlc);
+  dlc.Initialize();
+  base::FilePath factory_image_path = SetUpDlcFactoryImage(kThirdDlc);
+  EXPECT_TRUE(base::PathExists(factory_image_path));
+
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_,
+              LoadDlcImage(kThirdDlc, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
+              SetDlcActiveValue(_, kThirdDlc, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
+  EXPECT_CALL(*mock_metrics_,
+              SendInstallResult(InstallResult::kSuccessAlreadyInstalled));
+
+  EXPECT_TRUE(dlc.Install(&err_));
+  EXPECT_TRUE(dlc.IsInstalled());
+  EXPECT_FALSE(base::PathExists(factory_image_path));
+}
+
+TEST_F(DlcBaseTest, FactoryInstalledImageSizeCorruption) {
+  DlcBase dlc(kThirdDlc);
+  dlc.Initialize();
+  base::FilePath factory_image_path = SetUpDlcFactoryImage(kThirdDlc);
+  EXPECT_TRUE(ResizeFile(factory_image_path, 1));
+
+  EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
+  EXPECT_CALL(*mock_system_properties_, IsOfficialBuild())
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(dlc.Install(&err_));
+  EXPECT_TRUE(dlc.IsInstalling());
+  EXPECT_FALSE(base::PathExists(factory_image_path));
+}
+
+TEST_F(DlcBaseTest, FactoryInstalledImageDataCorruption) {
+  DlcBase dlc(kThirdDlc);
+  dlc.Initialize();
+  base::FilePath factory_image_path = SetUpDlcFactoryImage(kThirdDlc);
+  EXPECT_TRUE(WriteToFile(factory_image_path, "foobar"));
+
+  EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
+  EXPECT_CALL(*mock_system_properties_, IsOfficialBuild())
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(dlc.Install(&err_));
+  EXPECT_TRUE(dlc.IsInstalling());
+  EXPECT_FALSE(base::PathExists(factory_image_path));
+}
+
 TEST_F(DlcBaseTest, HasContent) {
   DlcBase dlc(kSecondDlc);
   dlc.Initialize();
