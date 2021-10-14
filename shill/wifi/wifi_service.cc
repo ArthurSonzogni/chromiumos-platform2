@@ -17,6 +17,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -123,7 +124,8 @@ WiFiService::WiFiService(Manager* manager,
       certificate_file_(new CertificateFile()),
       provider_(provider),
       roam_state_(kRoamStateIdle),
-      is_rekey_in_progress_(false) {
+      is_rekey_in_progress_(false),
+      last_rekey_time_(base::Time()) {
   std::string ssid_string(reinterpret_cast<const char*>(ssid_.data()),
                           ssid_.size());
   WiFi::SanitizeSSID(&ssid_string);
@@ -160,7 +162,6 @@ WiFiService::WiFiService(Manager* manager,
                                  &WiFiService::CalculateRoamState);
   store->RegisterConstBool(kWifiRekeyInProgressProperty,
                            &is_rekey_in_progress_);
-
   hex_ssid_ = base::HexEncode(ssid_.data(), ssid_.size());
   store->RegisterConstString(kWifiHexSsid, &hex_ssid_);
 
@@ -1445,6 +1446,12 @@ void WiFiService::SetIsRekeyInProgress(bool is_rekey_in_progress) {
   if (is_rekey_in_progress == is_rekey_in_progress_) {
     return;
   }
+
+  // Record time on start of "re-key" attempt.
+  if (is_rekey_in_progress) {
+    last_rekey_time_ = base::Time::Now();
+  }
+
   is_rekey_in_progress_ = is_rekey_in_progress;
   adaptor()->EmitBoolChanged(kWifiRekeyInProgressProperty,
                              is_rekey_in_progress_);

@@ -521,6 +521,13 @@ const int Metrics::kMetricServiceSignalStrengthNumBuckets = 40;
 // static
 const char Metrics::kMetricMBOSupport[] = "Network.Shill.WiFi.MBOSupport";
 
+// static
+const char Metrics::kMetricTimeFromRekeyToFailureSeconds[] =
+    "Network.Shill.WiFi.TimeFromRekeyToFailureSeconds";
+const int Metrics::kMetricTimeFromRekeyToFailureSecondsMin = 0;
+const int Metrics::kMetricTimeFromRekeyToFailureSecondsMax = 180;
+const int Metrics::kMetricTimeFromRekeyToFailureSecondsNumBuckets = 30;
+
 Metrics::Metrics()
     : library_(&metrics_library_),
       last_default_technology_(Technology::kUnknown),
@@ -1918,6 +1925,12 @@ void Metrics::NotifyMBOSupport(bool mbo_support) {
   SendBoolToUMA(kMetricMBOSupport, mbo_support);
 }
 
+void Metrics::NotifyWiFiServiceFailureAfterRekey(int seconds) {
+  SendToUMA(kMetricTimeFromRekeyToFailureSeconds, seconds,
+            kMetricTimeFromRekeyToFailureSecondsMin,
+            kMetricTimeFromRekeyToFailureSecondsMax,
+            kMetricTimeFromRekeyToFailureSecondsNumBuckets);
+}
 // static
 int Metrics::GetRegulatoryDomainValue(std::string country_code) {
   // Convert country code to upper case before checking validity.

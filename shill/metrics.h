@@ -1071,6 +1071,12 @@ class Metrics : public DefaultServiceObserver {
   // MBO support metric.
   static const char kMetricMBOSupport[];
 
+  // Seconds between latest WiFi rekey attempt and service failure.
+  static const char kMetricTimeFromRekeyToFailureSeconds[];
+  static const int kMetricTimeFromRekeyToFailureSecondsMin;
+  static const int kMetricTimeFromRekeyToFailureSecondsMax;
+  static const int kMetricTimeFromRekeyToFailureSecondsNumBuckets;
+
   Metrics();
   Metrics(const Metrics&) = delete;
   Metrics& operator=(const Metrics&) = delete;
@@ -1435,6 +1441,10 @@ class Metrics : public DefaultServiceObserver {
                          const std::string& apn_name,
                          const std::string& username,
                          const std::string& password);
+
+  // Notifies this object of the time elapsed between a WiFi service failure
+  // after the latest rekey event.
+  void NotifyWiFiServiceFailureAfterRekey(int seconds);
 
  private:
   friend class MetricsTest;

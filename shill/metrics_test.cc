@@ -1200,6 +1200,17 @@ TEST_F(MetricsTest, NotifyNeighborLinkMonitorFailure) {
       NeighborSignal::GATEWAY_AND_DNS_SERVER);
 }
 
+TEST_F(MetricsTest, NotifyWiFiServiceFailureAfterRekey) {
+  int seconds = 182;
+  EXPECT_CALL(
+      library_,
+      SendToUMA("Network.Shill.WiFi.TimeFromRekeyToFailureSeconds", seconds,
+                Metrics::kMetricTimeFromRekeyToFailureSecondsMin,
+                Metrics::kMetricTimeFromRekeyToFailureSecondsMax,
+                Metrics::kMetricTimeFromRekeyToFailureSecondsNumBuckets));
+  metrics_.NotifyWiFiServiceFailureAfterRekey(seconds);
+}
+
 #ifndef NDEBUG
 
 // We don't need the extra thread inside EventDispatcherForTest, using

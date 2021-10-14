@@ -2274,6 +2274,16 @@ void WiFi::OnLinkMonitorFailure(IPAddress::Family family) {
   // failures in short period of time.
   if (current_service_->unreliable()) {
     LOG(INFO) << "Current service is unreliable, skipping reassociate attempt.";
+
+    // We only want to capture the scenario where we see the network become
+    // unreliable soon after a rekey.
+    int seconds =
+        (base::Time::Now() - current_service_->last_rekey_time()).InSeconds();
+    if (seconds < Metrics::kMetricTimeFromRekeyToFailureSecondsMax) {
+      LOG(INFO) << "Connection became unreliable shortly after rekey, "
+                << "seconds between rekey and connection failure: " << seconds;
+      metrics()->NotifyWiFiServiceFailureAfterRekey(seconds);
+    }
     return;
   }
 
