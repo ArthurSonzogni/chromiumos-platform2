@@ -175,7 +175,7 @@ base::ScopedFD HdrNetProcessorImpl::Run(
         DumpGpuTextureSharedImage(
             intermediates_[0],
             base::FilePath(base::StringPrintf(
-                "preprocess_out_rgba_%dx%d_result#%d.bin",
+                "preprocess_out_rgba_%dx%d_result#%d.rgba",
                 intermediates_[0].texture().width(),
                 intermediates_[0].texture().height(), frame_number)));
       }
@@ -193,9 +193,9 @@ base::ScopedFD HdrNetProcessorImpl::Run(
         DumpGpuTextureSharedImage(
             intermediates_[1],
             base::FilePath(base::StringPrintf(
-                "linear_rgb_pipeline_out_rgba_%dx%d_result#%d.bin",
+                "linear_rgb_pipeline_out_rgba_%dx%d_result#%d.rgba",
                 intermediates_[1].texture().width(),
-                intermediates_[1].texture().width(), frame_number)));
+                intermediates_[1].texture().height(), frame_number)));
       }
       for (const auto& output_nv12 : output_images) {
         // Here we assume all the streams have the same aspect ratio, so no
@@ -217,7 +217,7 @@ base::ScopedFD HdrNetProcessorImpl::Run(
             if (!WriteBufferIntoFile(
                     output_nv12.buffer(),
                     base::FilePath(base::StringPrintf(
-                        "postprocess_out_nv12_%dx%d_result#%d.bin",
+                        "postprocess_out_nv12_%dx%d_result#%d.yuv",
                         CameraBufferManager::GetWidth(output_nv12.buffer()),
                         CameraBufferManager::GetHeight(output_nv12.buffer()),
                         frame_number)))) {
