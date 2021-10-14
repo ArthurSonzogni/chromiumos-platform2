@@ -20,8 +20,9 @@
 
 namespace policy {
 
-static const char kPolicyFileAllSet[] = "policy/tests/whitelist/policy_all";
-static const char kPolicyFileNoneSet[] = "policy/tests/whitelist/policy_none";
+static const char kPolicyFileAllSet[] = "policy/tests/whitelist/policy_all.bin";
+static const char kPolicyFileNoneSet[] =
+    "policy/tests/whitelist/policy_none.bin";
 static const char kKeyFile[] = "policy/tests/whitelist/owner.key";
 static const char kNonExistingFile[] = "file-does-not-exist";
 
