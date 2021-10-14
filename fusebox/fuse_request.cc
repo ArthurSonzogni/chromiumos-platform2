@@ -4,6 +4,8 @@
 
 #include "fusebox/fuse_request.h"
 
+#include <utility>
+
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/strings/string_piece.h>
@@ -125,6 +127,58 @@ void DirEntryRequest::ReplyDone() {
   DCHECK(!replied_);
   fuse_reply_buf(req_, buf_.get(), off_);
   replied_ = true;
+}
+
+DirEntryResponse::DirEntryResponse(uint64_t handle) : handle_(handle) {
+  DCHECK(handle_);
+}
+
+void DirEntryResponse::Append(std::vector<struct DirEntry> entry, bool end) {
+  entry_.insert(entry_.end(), entry.begin(), entry.end());
+  end_ = end;
+  Respond();
+}
+
+void DirEntryResponse::Append(std::unique_ptr<DirEntryRequest> request) {
+  request_.emplace_back(std::move(request));
+  Respond();
+}
+
+void DirEntryResponse::Respond() {
+  const auto process_next_request = [&]() {
+    DCHECK(!request_.empty());
+
+    if (request_[0]->IsInterrupted()) {
+      request_.erase(request_.begin());
+      return true;
+    }
+
+    off_t offset = request_[0]->offset();
+    CHECK_GE(offset, 0);
+
+    while (offset < entry_.size()) {
+      const off_t next = 1 + offset;
+      if (request_[0]->AddEntry(entry_[offset++], next))
+        continue;  // add next entry
+      request_[0]->ReplyDone();
+      request_.erase(request_.begin());
+      return true;
+    }
+
+    CHECK_GE(offset, entry_.size());
+    if (end_) {
+      request_[0]->ReplyDone();
+      request_.erase(request_.begin());
+      return true;
+    }
+
+    return false;
+  };
+
+  while (!request_.empty() && !entry_.empty()) {
+    if (!process_next_request())
+      break;
+  }
 }
 
 }  // namespace fusebox

@@ -8,6 +8,7 @@
 #include <fuse_lowlevel.h>
 
 #include <memory>
+#include <vector>
 
 namespace fusebox {
 
@@ -124,6 +125,36 @@ class DirEntryRequest : public FuseRequest {
   off_t offset_;
   std::unique_ptr<char[]> buf_;
   size_t off_ = 0;
+};
+
+class DirEntryResponse {
+ public:
+  explicit DirEntryResponse(uint64_t handle);
+
+  uint64_t handle() const { return handle_; }
+
+  // Append |entry| DirEntry to the DirEntry list.
+  void Append(std::vector<struct DirEntry> entry, bool end = false);
+
+  // Append |request| to the DirEntryRequest list.
+  void Append(std::unique_ptr<DirEntryRequest> request);
+
+ private:
+  // Called on Append() to respond to DirEntry requests.
+  void Respond();
+
+ private:
+  // The open file handle of the directory: opendir(2).
+  uint64_t const handle_;
+
+  // List of DirEntryRequest received from Kernel Fuse.
+  std::vector<std::unique_ptr<DirEntryRequest>> request_;
+
+  // List of DirEntry from the file system: readdir(2).
+  std::vector<struct DirEntry> entry_;
+
+  // True when the DirEntry list is complete.
+  bool end_ = false;
 };
 
 struct DirEntry {
