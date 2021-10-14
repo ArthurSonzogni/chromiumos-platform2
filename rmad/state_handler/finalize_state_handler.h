@@ -7,20 +7,55 @@
 
 #include "rmad/state_handler/base_state_handler.h"
 
+#include <memory>
+#include <utility>
+
+#include <base/synchronization/lock.h>
+#include <base/timer/timer.h>
+
 namespace rmad {
 
 class FinalizeStateHandler : public BaseStateHandler {
  public:
+  // Report status every second.
+  static constexpr base::TimeDelta kReportStatusInterval =
+      base::TimeDelta::FromSeconds(1);
+  // Mock finalize progress. Update every 2 seconds.
+  static constexpr base::TimeDelta kUpdateProgressInterval =
+      base::TimeDelta::FromSeconds(2);
+
   explicit FinalizeStateHandler(scoped_refptr<JsonStore> json_store);
 
   ASSIGN_STATE(RmadState::StateCase::kFinalize);
   SET_UNREPEATABLE;
 
+  void RegisterSignalSender(
+      std::unique_ptr<FinalizeSignalCallback> callback) override {
+    finalize_signal_sender_ = std::move(callback);
+  }
+
   RmadErrorCode InitializeState() override;
+  void CleanUpState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
 
  protected:
   ~FinalizeStateHandler() override = default;
+
+ private:
+  void SendStatusSignal();
+  void StartStatusTimer();
+  void StopStatusTimer();
+
+  void StartFinalize();
+  void UpdateProgress(bool restart);
+
+  FinalizeStatus status_;
+  std::unique_ptr<FinalizeSignalCallback> finalize_signal_sender_;
+  base::RepeatingTimer status_timer_;
+  mutable base::Lock lock_;
+
+  // Used to mock finalize progress.
+  base::RepeatingTimer finalize_timer_;
 };
 
 }  // namespace rmad
