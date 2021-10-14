@@ -44,7 +44,8 @@ namespace vm_tools {
 namespace syslog {
 namespace {
 
-using HandleLogsCallback = base::Callback<void(std::unique_ptr<LogRequest>)>;
+using HandleLogsCallback =
+    base::RepeatingCallback<void(std::unique_ptr<LogRequest>)>;
 
 // Test server that just forwards the protobufs it receives to the main thread.
 class FakeLogCollectorService final : public vm_tools::LogCollector::Service {
@@ -85,7 +86,7 @@ grpc::Status FakeLogCollectorService::CollectUserLogs(
   auto request_copy = std::make_unique<vm_tools::LogRequest>(*request);
   main_task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(handle_user_logs_cb_, base::Passed(std::move(request_copy))));
+      base::BindOnce(handle_user_logs_cb_, std::move(std::move(request_copy))));
 
   return grpc::Status::OK;
 }
@@ -93,7 +94,7 @@ grpc::Status FakeLogCollectorService::CollectUserLogs(
 void StartFakeLogCollectorService(
     scoped_refptr<base::SingleThreadTaskRunner> main_task_runner,
     base::FilePath listen_path,
-    base::Callback<void(std::shared_ptr<grpc::Server>)> server_cb,
+    base::OnceCallback<void(std::shared_ptr<grpc::Server>)> server_cb,
     HandleLogsCallback handle_user_logs_cb) {
   FakeLogCollectorService log_collector(main_task_runner, handle_user_logs_cb);
 
@@ -103,7 +104,8 @@ void StartFakeLogCollectorService(
   builder.RegisterService(&log_collector);
 
   std::shared_ptr<grpc::Server> server(builder.BuildAndStart().release());
-  main_task_runner->PostTask(FROM_HERE, base::Bind(server_cb, server));
+  main_task_runner->PostTask(FROM_HERE,
+                             base::BindOnce(std::move(server_cb), server));
 
   if (server) {
     // This will not race with shutdown because the grpc server code includes a
@@ -196,13 +198,13 @@ void CollectorTest::SetUp() {
   ASSERT_TRUE(server_thread_.Start());
   server_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&StartFakeLogCollectorService,
-                 base::ThreadTaskRunnerHandle::Get(),
-                 temp_dir_.GetPath().Append(kServerSocket),
-                 base::Bind(&CollectorTest::ServerStartCallback,
-                            weak_factory_.GetWeakPtr(), run_loop.QuitClosure()),
-                 base::Bind(&CollectorTest::HandleUserLogs,
-                            weak_factory_.GetWeakPtr())));
+      base::BindOnce(
+          &StartFakeLogCollectorService, base::ThreadTaskRunnerHandle::Get(),
+          temp_dir_.GetPath().Append(kServerSocket),
+          base::BindOnce(&CollectorTest::ServerStartCallback,
+                         weak_factory_.GetWeakPtr(), run_loop.QuitClosure()),
+          base::BindRepeating(&CollectorTest::HandleUserLogs,
+                              weak_factory_.GetWeakPtr())));
 
   run_loop.Run();
 

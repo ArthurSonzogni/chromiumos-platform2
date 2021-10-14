@@ -134,8 +134,9 @@ bool Collector::StartWatcher(base::TimeDelta flush_period) {
   }
 
   // Start a timer to periodically flush logs.
-  timer_.Start(FROM_HERE, flush_period,
-               base::Bind(&Collector::FlushLogs, weak_factory_.GetWeakPtr()));
+  timer_.Start(
+      FROM_HERE, flush_period,
+      base::BindRepeating(&Collector::FlushLogs, weak_factory_.GetWeakPtr()));
 
   // Start a new log request buffer.
   syslog_request_ = pb::Arena::CreateMessage<vm_tools::LogRequest>(&arena_);
