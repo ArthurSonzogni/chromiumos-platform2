@@ -48,33 +48,18 @@ UserSession::UserSession(HomeDirs* homedirs,
       mount_(mount) {}
 
 MountError UserSession::MountVault(const Credentials& credentials,
-                                   const Mount::MountArgs& mount_args) {
+                                   const Mount::MountArgs& mount_args,
+                                   bool is_pristine) {
   const std::string obfuscated_username =
       credentials.GetObfuscatedUsername(system_salt_);
-  bool created = false;
 
-  // TODO(chromium:1140868, dlunev): once re-recreation logic is removed, this
-  // can be moved to the service level.
-  MountError error = MOUNT_ERROR_NONE;
-  if (!homedirs_->CryptohomeExists(obfuscated_username, &error)) {
-    if (error != MOUNT_ERROR_NONE) {
-      LOG(ERROR) << "Failed to check cryptohome existence for : "
-                 << obfuscated_username << " error = " << error;
-      return error;
-    }
-    if (!mount_args.create_if_missing) {
-      LOG(ERROR) << "Asked to mount nonexistent user";
-      return MOUNT_ERROR_USER_DOES_NOT_EXIST;
-    }
-
-    if (!homedirs_->Create(credentials.username()) ||
-        !keyset_management_->AddInitialKeyset(credentials)) {
-      LOG(ERROR) << "Error creating cryptohome.";
-      return MOUNT_ERROR_CREATE_CRYPTOHOME_FAILED;
+  if (is_pristine) {
+    if (!keyset_management_->AddInitialKeyset(credentials)) {
+      LOG(ERROR) << "Error adding intial keyset.";
+      return MOUNT_ERROR_KEY_FAILURE;
     }
     keyset_management_->UpdateActivityTimestamp(obfuscated_username,
                                                 kInitialKeysetIndex, 0);
-    created = true;
   }
 
   // Verifies user's credentials and retrieves the user's file system encryption
@@ -91,7 +76,7 @@ MountError UserSession::MountVault(const Credentials& credentials,
   FileSystemKeyset fs_keyset(*vk);
 
   if (!mount_->MountCryptohome(credentials.username(), fs_keyset, mount_args,
-                               created, &code)) {
+                               is_pristine, &code)) {
     // In the weird case where MountCryptohome returns false with ERROR_NONE
     // code report it as FATAL.
     return code == MOUNT_ERROR_NONE ? MOUNT_ERROR_FATAL : code;

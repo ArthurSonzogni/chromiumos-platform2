@@ -666,6 +666,16 @@ class UserDataAuth {
   void CreateMountThreadDBus();
 
   // =============== Mount Related Utilities ===============
+  // Performs a single attempt to Mount a non-annonimous user.
+  MountError AttemptUserMount(const Credentials& credentials,
+                              const Mount::MountArgs& mount_args,
+                              scoped_refptr<UserSession> user_session);
+
+  // Performs a single attempt to Mount a non-annonimous user with AuthSession
+  MountError AttemptUserMount(AuthSession* auth_session,
+                              const Mount::MountArgs& mount_args,
+                              scoped_refptr<UserSession> user_session);
+
   // Returns the UserSession object associated with the given username
   scoped_refptr<UserSession> GetUserSession(const std::string& username);
 

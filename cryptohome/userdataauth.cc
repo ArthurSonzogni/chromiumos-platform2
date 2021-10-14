@@ -105,36 +105,6 @@ bool KeyMatchesForLightweightChallengeResponseCheck(
   return true;
 }
 
-// Performs a single attempt to Mount a non-annonimous user.
-MountError AttemptUserMount(const Credentials& credentials,
-                            const Mount::MountArgs& mount_args,
-                            scoped_refptr<UserSession> user_session) {
-  if (user_session->GetMount()->IsMounted()) {
-    return MOUNT_ERROR_MOUNT_POINT_BUSY;
-  }
-
-  if (mount_args.is_ephemeral) {
-    return user_session->MountEphemeral(credentials);
-  }
-
-  return user_session->MountVault(credentials, mount_args);
-}
-
-// Performs a single attempt to Mount a non-annonimous user with AuthSession
-MountError AttemptUserMount(AuthSession* auth_session,
-                            const Mount::MountArgs& mount_args,
-                            scoped_refptr<UserSession> user_session) {
-  if (user_session->GetMount()->IsMounted()) {
-    return MOUNT_ERROR_MOUNT_POINT_BUSY;
-  }
-  // Mount ephemerally using authsession
-  if (mount_args.is_ephemeral) {
-    return user_session->MountEphemeral(auth_session);
-  }
-
-  return user_session->MountVault(auth_session, mount_args);
-}
-
 // Returns true if any of the path in |prefixes| starts with |path|
 // Note that this function is case insensitive
 bool PrefixPresent(const std::vector<FilePath>& prefixes,
@@ -1895,6 +1865,57 @@ void UserDataAuth::ContinueMountWithCredentials(
   std::move(on_done).Run(reply);
 
   InitializePkcs11(user_session.get());
+}
+
+MountError UserDataAuth::AttemptUserMount(
+    const Credentials& credentials,
+    const Mount::MountArgs& mount_args,
+    scoped_refptr<UserSession> user_session) {
+  if (user_session->GetMount()->IsMounted()) {
+    return MOUNT_ERROR_MOUNT_POINT_BUSY;
+  }
+
+  if (mount_args.is_ephemeral) {
+    return user_session->MountEphemeral(credentials);
+  }
+
+  MountError error = MOUNT_ERROR_NONE;
+  const std::string obfuscated_username =
+      credentials.GetObfuscatedUsername(system_salt_);
+  bool created = false;
+  if (!homedirs_->CryptohomeExists(obfuscated_username, &error)) {
+    if (error != MOUNT_ERROR_NONE) {
+      LOG(ERROR) << "Failed to check cryptohome existence for : "
+                 << obfuscated_username << " error = " << error;
+      return error;
+    }
+    if (!mount_args.create_if_missing) {
+      LOG(ERROR) << "Asked to mount nonexistent user";
+      return MOUNT_ERROR_USER_DOES_NOT_EXIST;
+    }
+    if (!homedirs_->Create(credentials.username())) {
+      LOG(ERROR) << "Error creating cryptohome.";
+      return MOUNT_ERROR_CREATE_CRYPTOHOME_FAILED;
+    }
+    created = true;
+  }
+
+  return user_session->MountVault(credentials, mount_args, created);
+}
+
+MountError UserDataAuth::AttemptUserMount(
+    AuthSession* auth_session,
+    const Mount::MountArgs& mount_args,
+    scoped_refptr<UserSession> user_session) {
+  if (user_session->GetMount()->IsMounted()) {
+    return MOUNT_ERROR_MOUNT_POINT_BUSY;
+  }
+  // Mount ephemerally using authsession
+  if (mount_args.is_ephemeral) {
+    return user_session->MountEphemeral(auth_session);
+  }
+
+  return user_session->MountVault(auth_session, mount_args);
 }
 
 user_data_auth::CryptohomeErrorCode UserDataAuth::AddKey(

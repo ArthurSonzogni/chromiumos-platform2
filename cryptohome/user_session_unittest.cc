@@ -169,7 +169,6 @@ TEST_F(UserSessionTest, MountVaultOk) {
   Mount::MountArgs mount_args_create;
   // Test with ecryptfs since it has a simpler existence check.
   mount_args_create.create_as_ecryptfs = true;
-  mount_args_create.create_if_missing = true;
 
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _,
@@ -183,7 +182,8 @@ TEST_F(UserSessionTest, MountVaultOk) {
   // TEST
 
   ASSERT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].credentials, mount_args_create));
+            session_->MountVault(users_[0].credentials, mount_args_create,
+                                 true /*created*/));
 
   // VERIFY
   // Vault created.
@@ -211,7 +211,6 @@ TEST_F(UserSessionTest, MountVaultOk) {
   platform_.CreateDirectory(GetEcryptfsUserVaultPath(users_[0].obfuscated));
 
   Mount::MountArgs mount_args_no_create;
-  mount_args_no_create.create_if_missing = false;
 
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _,
@@ -224,7 +223,8 @@ TEST_F(UserSessionTest, MountVaultOk) {
   // TEST
 
   ASSERT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].credentials, mount_args_no_create));
+            session_->MountVault(users_[0].credentials, mount_args_no_create,
+                                 false /*created*/));
 
   // VERIFY
   // Vault still exists when tried to remount with no create.
@@ -271,7 +271,6 @@ TEST_F(UserSessionTest, MountVaultWrongCreds) {
   Mount::MountArgs mount_args_create;
   // Test with ecryptfs since it has a simpler existence check.
   mount_args_create.create_as_ecryptfs = true;
-  mount_args_create.create_if_missing = true;
 
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _,
@@ -283,7 +282,8 @@ TEST_F(UserSessionTest, MountVaultWrongCreds) {
       .WillRepeatedly(Return(base::Time::FromInternalValue(kTs1)));
 
   ASSERT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].credentials, mount_args_create));
+            session_->MountVault(users_[0].credentials, mount_args_create,
+                                 true /*created*/));
 
   std::unique_ptr<VaultKeyset> vk0 =
       keyset_management_->LoadVaultKeysetForUser(users_[0].obfuscated, 0);
@@ -302,7 +302,6 @@ TEST_F(UserSessionTest, MountVaultWrongCreds) {
   platform_.CreateDirectory(GetEcryptfsUserVaultPath(users_[0].obfuscated));
 
   Mount::MountArgs mount_args_no_create;
-  mount_args_no_create.create_if_missing = false;
 
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _,
@@ -314,7 +313,8 @@ TEST_F(UserSessionTest, MountVaultWrongCreds) {
   // TEST
 
   ASSERT_EQ(MOUNT_ERROR_KEY_FAILURE,
-            session_->MountVault(wrong_creds, mount_args_no_create));
+            session_->MountVault(wrong_creds, mount_args_no_create,
+                                 false /*created*/));
   EXPECT_EQ(session_->GetPkcs11Token(), nullptr);
 
   // VERIFY
@@ -346,28 +346,6 @@ TEST_F(UserSessionTest, MountVaultWrongCreds) {
   EXPECT_EQ(ts3, ts2);
   EXPECT_NE(session_->GetWebAuthnSecret(), nullptr);
   EXPECT_FALSE(session_->GetWebAuthnSecretHash().empty());
-}
-
-// Fail to mount because vault doesn't exist and creation is disallowed.
-TEST_F(UserSessionTest, MountVaultNoExistNoCreate) {
-  // SETUP
-
-  Mount::MountArgs mount_args;
-  mount_args.create_if_missing = false;
-
-  // TEST
-
-  ASSERT_EQ(MOUNT_ERROR_USER_DOES_NOT_EXIST,
-            session_->MountVault(users_[0].credentials, mount_args));
-
-  // VERIFY
-
-  EXPECT_FALSE(platform_.DirectoryExists(users_[0].homedir_path));
-  EXPECT_FALSE(session_->VerifyCredentials(users_[0].credentials));
-  EXPECT_FALSE(keyset_management_->AreCredentialsValid(users_[0].credentials));
-  EXPECT_EQ(session_->GetPkcs11Token(), nullptr);
-  EXPECT_EQ(session_->GetWebAuthnSecret(), nullptr);
-  EXPECT_TRUE(session_->GetWebAuthnSecretHash().empty());
 }
 
 TEST_F(UserSessionTest, EphemeralMountPolicyTest) {
@@ -443,7 +421,6 @@ TEST_F(UserSessionTest, WebAuthnSecretReadTwice) {
   Mount::MountArgs mount_args_create;
   // Test with ecryptfs since it has a simpler existence check.
   mount_args_create.create_as_ecryptfs = true;
-  mount_args_create.create_if_missing = true;
 
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _,
@@ -452,7 +429,8 @@ TEST_F(UserSessionTest, WebAuthnSecretReadTwice) {
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(true));
 
   ASSERT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].credentials, mount_args_create));
+            session_->MountVault(users_[0].credentials, mount_args_create,
+                                 true /*created*/));
 
   MountError code = MOUNT_ERROR_NONE;
   std::unique_ptr<VaultKeyset> vk =
@@ -490,7 +468,6 @@ TEST_F(UserSessionTest, WebAuthnSecretTimeout) {
   Mount::MountArgs mount_args_create;
   // Test with ecryptfs since it has a simpler existence check.
   mount_args_create.create_as_ecryptfs = true;
-  mount_args_create.create_if_missing = true;
 
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _,
@@ -499,7 +476,8 @@ TEST_F(UserSessionTest, WebAuthnSecretTimeout) {
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(true));
 
   ASSERT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].credentials, mount_args_create));
+            session_->MountVault(users_[0].credentials, mount_args_create,
+                                 true /*created*/));
 
   // TEST
 

@@ -48,7 +48,8 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   // Mounts disk backed vault for the user of supplied credentials, if the
   // credentials are valid.
   MountError MountVault(const Credentials& credentials,
-                        const Mount::MountArgs& mount_args);
+                        const Mount::MountArgs& mount_args,
+                        bool is_pristine);
 
   // Mounts disk backed vault for the user of supplied auth_session.
   MountError MountVault(AuthSession* auth_session,
