@@ -42,6 +42,7 @@ executable("tpm2-simulator") {
     "main.cc",
     "simulator.cc",
     "tpm_command_utils.cc",
+    "tpm_nvchip_utils.cc",
   ]
   libs = []
   configs += [ ":target_defaults" ]

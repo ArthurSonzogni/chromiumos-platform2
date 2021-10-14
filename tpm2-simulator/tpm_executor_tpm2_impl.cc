@@ -5,20 +5,12 @@
 #include <string>
 
 #include <base/logging.h>
-#include <base/posix/eintr_wrapper.h>
-#include <brillo/userdb_utils.h>
 #include <linux/vtpm_proxy.h>
 #include <tpm2/tpm_simulator.hpp>
 
+#include "tpm2-simulator/constants.h"
 #include "tpm2-simulator/tpm_command_utils.h"
 #include "tpm2-simulator/tpm_executor_tpm2_impl.h"
-
-namespace {
-
-constexpr char kSimulatorUser[] = "tpm2-simulator";
-constexpr char kNVChipPath[] = "NVChip";
-
-}  // namespace
 
 namespace tpm2_simulator {
 
@@ -40,17 +32,6 @@ void TpmExecutorTpm2Impl::InitializeVTPM() {
     tpm2::_TPM_Init();
     if (!tpm2::tpm_endorse())
       LOG(ERROR) << __func__ << " Failed to endorse TPM with a fixed key.";
-  }
-
-  uid_t uid;
-  gid_t gid;
-  if (!brillo::userdb::GetUserInfo(kSimulatorUser, &uid, &gid)) {
-    LOG(ERROR) << "Failed to lookup the user name.";
-    return;
-  }
-  if (HANDLE_EINTR(chown(kNVChipPath, uid, gid)) < 0) {
-    PLOG(ERROR) << "Failed to chown the NVChip.";
-    return;
   }
 
   LOG(INFO) << "vTPM Initialize.";

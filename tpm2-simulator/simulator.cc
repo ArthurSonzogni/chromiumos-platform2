@@ -25,11 +25,11 @@
 #include <sysexits.h>
 #include <unistd.h>
 
+#include "tpm2-simulator/constants.h"
 #include "tpm2-simulator/simulator.h"
+#include "tpm2-simulator/tpm_nvchip_utils.h"
 
 namespace {
-constexpr char kSimulatorUser[] = "tpm2-simulator";
-constexpr char kSimulatorGroup[] = "tpm2-simulator";
 constexpr char kSimulatorSeccompPath[] =
     "/usr/share/policy/tpm2-simulator.policy";
 constexpr char kVtpmxPath[] = "/dev/vtpmx";
@@ -63,8 +63,8 @@ void InitMinijailSandbox() {
   minijail_set_seccomp_filter_tsync(j.get());
   minijail_parse_seccomp_filters(j.get(), kSimulatorSeccompPath);
   minijail_use_seccomp_filter(j.get());
-  minijail_change_user(j.get(), kSimulatorUser);
-  minijail_change_group(j.get(), kSimulatorGroup);
+  minijail_change_user(j.get(), tpm2_simulator::kSimulatorUser);
+  minijail_change_group(j.get(), tpm2_simulator::kSimulatorGroup);
   minijail_inherit_usergroups(j.get());
   minijail_enter(j.get());
 }
@@ -81,7 +81,15 @@ int SimulatorDaemon::OnInit() {
   int exit_code = Daemon::OnInit();
   if (exit_code != EX_OK)
     return exit_code;
+  if (!MountAndEnterNVChip()) {
+    LOG(ERROR) << "Failed to mount and enter the NVChip.";
+    return EX_OSERR;
+  }
   tpm_executor_->InitializeVTPM();
+  if (!CorrectWorkingDirectoryFilesOwner()) {
+    LOG(ERROR) << "Failed to correct working directory owner.";
+    return EX_OSERR;
+  }
   base::FilePath tpm_path;
   command_fd_ = RegisterVTPM(&tpm_path, tpm_executor_->IsTPM2());
   if (!command_fd_.is_valid()) {
