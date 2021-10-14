@@ -14,6 +14,7 @@
 
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <metrics/metrics_library.h>
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
@@ -27,10 +28,11 @@ constexpr char kArcBridge[] = "arcbr0";
 
 class ArcService {
  public:
-  // All pointers are required and cannot be null, and are owned by the caller.
+  // All pointers are required, cannot be null, and are owned by the caller.
   ArcService(Datapath* datapath,
              AddressManager* addr_mgr,
              GuestMessage::GuestType guest,
+             MetricsLibraryInterface* metrics,
              Device::ChangeEventHandler device_changed_handler);
   ArcService(const ArcService&) = delete;
   ArcService& operator=(const ArcService&) = delete;
@@ -72,11 +74,20 @@ class ArcService {
   void ReleaseConfig(ShillClient::Device::Type type,
                      std::unique_ptr<Device::Config> config);
 
-  Datapath* datapath_;
-  AddressManager* addr_mgr_;
-  GuestMessage::GuestType guest_;
-  Device::ChangeEventHandler device_changed_handler_;
+  FRIEND_TEST(ArcServiceTest, NotStarted_AddDevice);
+  FRIEND_TEST(ArcServiceTest, NotStarted_AddRemoveDevice);
 
+  // Routing and iptables controller service, owned by Manager.
+  Datapath* datapath_;
+  // IPv4 prefix and address manager, owned by Manager.
+  AddressManager* addr_mgr_;
+  // Type of ARC environment, valid values are ARC_VM or ARC.
+  GuestMessage::GuestType guest_;
+  // UMA metrics client, owned by Manager.
+  MetricsLibraryInterface* metrics_;
+  // Manager callback used for notifying about virtual device creation and
+  // removal events.
+  Device::ChangeEventHandler device_changed_handler_;
   // A set of preallocated ARC interface configurations keyed by technology type
   // and used for setting up ARCVM TAP devices at VM booting time.
   std::map<ShillClient::Device::Type,
@@ -95,9 +106,6 @@ class ArcService {
   uint32_t id_;
   // All shill Devices currently managed by shill, keyed by host interface name.
   std::map<std::string, ShillClient::Device::Type> shill_devices_;
-
-  FRIEND_TEST(ArcServiceTest, NotStarted_AddDevice);
-  FRIEND_TEST(ArcServiceTest, NotStarted_AddRemoveDevice);
 
   base::WeakPtrFactory<ArcService> weak_factory_{this};
 };

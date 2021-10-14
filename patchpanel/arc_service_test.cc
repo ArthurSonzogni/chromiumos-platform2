@@ -17,6 +17,7 @@
 #include <base/callback_helpers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/guest_type.h"
@@ -59,12 +60,13 @@ class ArcServiceTest : public testing::Test {
   void SetUp() override {
     datapath_ = std::make_unique<MockDatapath>();
     addr_mgr_ = std::make_unique<AddressManager>();
+    metrics_ = std::make_unique<MetricsLibraryMock>();
     guest_devices_.clear();
   }
 
   std::unique_ptr<ArcService> NewService(GuestMessage::GuestType guest) {
     return std::make_unique<ArcService>(
-        datapath_.get(), addr_mgr_.get(), guest,
+        datapath_.get(), addr_mgr_.get(), guest, metrics_.get(),
         base::BindRepeating(&ArcServiceTest::DeviceHandler,
                             base::Unretained(this)));
   }
@@ -77,6 +79,7 @@ class ArcServiceTest : public testing::Test {
 
   std::unique_ptr<AddressManager> addr_mgr_;
   std::unique_ptr<MockDatapath> datapath_;
+  std::unique_ptr<MetricsLibraryMock> metrics_;
   std::map<std::string, Device::ChangeEvent> guest_devices_;
 };
 

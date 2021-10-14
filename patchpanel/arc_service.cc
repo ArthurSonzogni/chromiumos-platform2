@@ -23,6 +23,7 @@
 #include "patchpanel/guest_type.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/manager.h"
+#include "patchpanel/metrics.h"
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/scoped_ns.h"
@@ -34,6 +35,10 @@ const int32_t kAndroidRootUid = 655360;
 constexpr uint32_t kInvalidId = 0;
 constexpr char kArcNetnsName[] = "arc_netns";
 constexpr char kArcIfname[] = "arc0";
+
+void RecordEvent(MetricsLibraryInterface* metrics, ArcServiceUmaEvent event) {
+  metrics->SendEnumToUMA(kArcServiceUmaEventMetrics, event);
+}
 
 bool IsAdbAllowed(ShillClient::Device::Type type) {
   static const std::set<ShillClient::Device::Type> adb_allowed_types{
@@ -62,22 +67,28 @@ bool KernelVersion(int* major, int* minor) {
 
 // Makes Android root the owner of /sys/class/ + |path|. |pid| is the ARC
 // container pid.
-void SetSysfsOwnerToAndroidRoot(uint32_t pid, const std::string& path) {
+bool SetSysfsOwnerToAndroidRoot(uint32_t pid, const std::string& path) {
   auto ns = ScopedNS::EnterMountNS(pid);
   if (!ns) {
     LOG(ERROR) << "Cannot enter mnt namespace for pid " << pid;
-    return;
+    return false;
   }
 
   const std::string sysfs_path = "/sys/class/" + path;
-  if (chown(sysfs_path.c_str(), kAndroidRootUid, kAndroidRootUid) == -1)
+  if (chown(sysfs_path.c_str(), kAndroidRootUid, kAndroidRootUid) == -1) {
     PLOG(ERROR) << "Failed to change ownership of " + sysfs_path;
+    return false;
+  }
+
+  return true;
 }
 
-void OneTimeContainerSetup(Datapath& datapath, uint32_t pid) {
+bool OneTimeContainerSetup(Datapath& datapath, uint32_t pid) {
   static bool done = false;
   if (done)
-    return;
+    return true;
+
+  bool success = true;
 
   // Load networking modules needed by Android that are not compiled in the
   // kernel. Android does not allow auto-loading of kernel modules.
@@ -93,6 +104,7 @@ void OneTimeContainerSetup(Datapath& datapath, uint32_t pid) {
       })) {
     LOG(ERROR) << "One or more required kernel modules failed to load."
                << " Some Android functionality may be broken.";
+    success = false;
   }
   // The xfrm modules needed for Android's ipsec APIs on kernels < 5.4.
   int major, minor;
@@ -106,9 +118,11 @@ void OneTimeContainerSetup(Datapath& datapath, uint32_t pid) {
       })) {
     LOG(ERROR) << "One or more required kernel modules failed to load."
                << " Some Android functionality may be broken.";
+    success = false;
   }
 
-  // Optional modules.
+  // Additional modules optional for CTS compliance but required for some
+  // Android features.
   if (!datapath.ModprobeAll({
           // This module is not available in kernels < 3.18
           "nf_reject_ipv6",
@@ -122,12 +136,16 @@ void OneTimeContainerSetup(Datapath& datapath, uint32_t pid) {
           "tun",
       })) {
     LOG(WARNING) << "One or more optional kernel modules failed to load.";
+    success = false;
   }
 
   // This is only needed for CTS (b/27932574).
-  SetSysfsOwnerToAndroidRoot(pid, "xt_idletimer");
+  if (!SetSysfsOwnerToAndroidRoot(pid, "xt_idletimer")) {
+    success = false;
+  }
 
   done = true;
+  return success;
 }
 
 // Creates the ARC management Device used for VPN forwarding, ADB-over-TCP.
@@ -165,10 +183,12 @@ std::unique_ptr<Device> MakeArc0Device(AddressManager* addr_mgr,
 ArcService::ArcService(Datapath* datapath,
                        AddressManager* addr_mgr,
                        GuestMessage::GuestType guest,
+                       MetricsLibraryInterface* metrics,
                        Device::ChangeEventHandler device_changed_handler)
     : datapath_(datapath),
       addr_mgr_(addr_mgr),
       guest_(guest),
+      metrics_(metrics),
       device_changed_handler_(device_changed_handler),
       id_(kInvalidId) {
   arc_device_ = MakeArc0Device(addr_mgr, guest_);
@@ -263,7 +283,10 @@ void ArcService::ReleaseConfig(ShillClient::Device::Type type,
 }
 
 bool ArcService::Start(uint32_t id) {
+  RecordEvent(metrics_, ArcServiceUmaEvent::kStart);
+
   if (IsStarted()) {
+    RecordEvent(metrics_, ArcServiceUmaEvent::kStartWithoutStop);
     LOG(WARNING) << "Already running - did something crash?"
                  << " Stopping and restarting...";
     Stop(id_);
@@ -286,7 +309,10 @@ bool ArcService::Start(uint32_t id) {
     }
     arc_device_ifname = arc_device_->config().tap_ifname();
   } else {
-    OneTimeContainerSetup(*datapath_, id);
+    if (!OneTimeContainerSetup(*datapath_, id)) {
+      RecordEvent(metrics_, ArcServiceUmaEvent::kOneTimeContainerSetupError);
+      LOG(ERROR) << "One time container setup failed";
+    }
     if (!datapath_->NetnsAttachName(kArcNetnsName, id)) {
       LOG(ERROR) << "Failed to attach name " << kArcNetnsName << " to pid "
                  << id;
@@ -303,8 +329,10 @@ bool ArcService::Start(uint32_t id) {
       return false;
     }
     // Allow netd to write to /sys/class/net/arc0/mtu (b/175571457).
-    SetSysfsOwnerToAndroidRoot(id,
-                               "net/" + arc_device_->guest_ifname() + "/mtu");
+    if (!SetSysfsOwnerToAndroidRoot(
+            id, "net/" + arc_device_->guest_ifname() + "/mtu")) {
+      RecordEvent(metrics_, ArcServiceUmaEvent::kSetVethMtuError);
+    }
   }
   id_ = id;
 
@@ -332,11 +360,14 @@ bool ArcService::Start(uint32_t id) {
     return false;
   }
 
+  RecordEvent(metrics_, ArcServiceUmaEvent::kStartSuccess);
   return true;
 }
 
 void ArcService::Stop(uint32_t id) {
+  RecordEvent(metrics_, ArcServiceUmaEvent::kStop);
   if (!IsStarted()) {
+    RecordEvent(metrics_, ArcServiceUmaEvent::kStopBeforeStart);
     LOG(ERROR) << "ArcService was not running";
     return;
   }
@@ -364,14 +395,16 @@ void ArcService::Stop(uint32_t id) {
   // Stop the bridge for the management interface arc0.
   if (guest_ == GuestMessage::ARC) {
     datapath_->RemoveInterface(ArcVethHostName(arc_device_->phys_ifname()));
-    if (!datapath_->NetnsDeleteName(kArcNetnsName))
+    if (!datapath_->NetnsDeleteName(kArcNetnsName)) {
       LOG(WARNING) << "Failed to delete netns name " << kArcNetnsName;
+    }
   }
 
   // Destroy allocated TAP devices if any, including the ARC management Device.
   for (auto* config : all_configs_) {
     if (config->tap_ifname().empty())
       continue;
+
     datapath_->RemoveInterface(config->tap_ifname());
     config->set_tap_ifname("");
   }
@@ -379,6 +412,7 @@ void ArcService::Stop(uint32_t id) {
   datapath_->RemoveBridge(kArcBridge);
   LOG(INFO) << "Stopped ARC management Device " << *arc_device_.get();
   id_ = kInvalidId;
+  RecordEvent(metrics_, ArcServiceUmaEvent::kStopSuccess);
 }
 
 void ArcService::AddDevice(const std::string& ifname,
@@ -389,6 +423,8 @@ void ArcService::AddDevice(const std::string& ifname,
 
   if (ifname.empty())
     return;
+
+  RecordEvent(metrics_, ArcServiceUmaEvent::kAddDevice);
 
   if (devices_.find(ifname) != devices_.end()) {
     LOG(DFATAL) << "Attemping to add already tracked shill Device: " << ifname;
@@ -454,6 +490,7 @@ void ArcService::AddDevice(const std::string& ifname,
 
   device_changed_handler_.Run(*device, Device::ChangeEvent::ADDED, guest_);
   devices_.emplace(ifname, std::move(device));
+  RecordEvent(metrics_, ArcServiceUmaEvent::kAddDeviceSuccess);
 }
 
 void ArcService::RemoveDevice(const std::string& ifname) {

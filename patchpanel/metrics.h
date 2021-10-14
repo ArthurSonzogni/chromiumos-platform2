@@ -9,6 +9,8 @@ namespace patchpanel {
 
 // UMA metrics name for patchpanel Manager Dbus API calls.
 constexpr char kDbusUmaEventMetrics[] = "Network.Patchpanel.Dbus";
+// UMA metrics name for ArcService events.
+constexpr char kArcServiceUmaEventMetrics[] = "Network.Patchpanel.ArcService";
 
 // UMA metrics events for |kDbusUmaEventMetrics|;
 enum class DbusUmaEvent {
@@ -43,6 +45,23 @@ enum class DbusUmaEvent {
   kSetVpnLockdownSuccess = 28,
   kSetDnsRedirectionRule = 29,
   kSetDnsRedirectionRuleSuccess = 30,
+
+  kMaxValue,
+};
+
+// UMA metrics events for |kArcServiceUmaEventMetrics|;
+enum class ArcServiceUmaEvent {
+  kUnknown = 0,
+  kStart = 1,
+  kStartSuccess = 2,
+  kStartWithoutStop = 3,
+  kStop = 4,
+  kStopSuccess = 5,
+  kStopBeforeStart = 6,
+  kAddDevice = 7,
+  kAddDeviceSuccess = 8,
+  kSetVethMtuError = 10,
+  kOneTimeContainerSetupError = 11,
 
   kMaxValue,
 };

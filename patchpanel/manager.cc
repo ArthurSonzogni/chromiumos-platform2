@@ -27,6 +27,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/key_value_store.h>
 #include <brillo/minijail/minijail.h>
+#include <metrics/metrics_library.h>
 
 #include "patchpanel/guest_type.h"
 #include "patchpanel/ipc.pb.h"
@@ -273,7 +274,7 @@ void Manager::InitialSetup() {
   GuestMessage::GuestType arc_guest =
       USE_ARCVM ? GuestMessage::ARC_VM : GuestMessage::ARC;
   arc_svc_ = std::make_unique<ArcService>(
-      datapath_.get(), &addr_mgr_, arc_guest,
+      datapath_.get(), &addr_mgr_, arc_guest, metrics_.get(),
       base::BindRepeating(&Manager::OnGuestDeviceChanged,
                           weak_factory_.GetWeakPtr()));
   cros_svc_ = std::make_unique<CrostiniService>(
