@@ -240,6 +240,8 @@ enum class DiskCleanupProgress {
   kWholeUserProfilesCleanedAboveTarget = 7,
   kWholeUserProfilesCleaned = 8,
   kNoUnmountedCryptohomes = 9,
+  kCacheVaultsCleanedAboveTarget = 10,
+  kCacheVaultsCleanedAboveMinimum = 11,
   kNumBuckets
 };
 
@@ -538,8 +540,12 @@ void ReportFreeDiskSpaceTotalFreedInMb(int mb);
 void ReportTimeBetweenFreeDiskSpace(int s);
 
 // Reports removed GCache size by cryptohome to the
-// "Cryptohome.FreedGCacheDiskSpaceInMb" histogram.
+// "Cryptohome.GCache.FreedDiskSpaceInMb" histogram.
 void ReportFreedGCacheDiskSpaceInMb(int mb);
+
+// Reports removed Cache Vault size by cryptohome to the
+// "Cryptohome.FreedCacheVaultDiskSpaceInMb" histogram.
+void ReportFreedCacheVaultDiskSpaceInMb(int mb);
 
 // The |status| value is reported to the
 // "Cryptohome.DircryptoMigrationStartStatus" (full migration)

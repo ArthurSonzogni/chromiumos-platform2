@@ -39,6 +39,8 @@ constexpr char kCryptohomeDeletedUserProfilesHistogram[] =
     "Cryptohome.DeletedUserProfiles";
 constexpr char kCryptohomeGCacheFreedDiskSpaceInMbHistogram[] =
     "Cryptohome.GCache.FreedDiskSpaceInMb";
+constexpr char kCryptohomeCacheVaultFreedDiskSpaceInMbHistogram[] =
+    "Cryptohome.FreedCacheVaultDiskSpaceInMb";
 constexpr char kCryptohomeFreeDiskSpaceTotalTimeHistogram[] =
     "Cryptohome.FreeDiskSpaceTotalTime2";
 constexpr char kCryptohomeFreeDiskSpaceTotalFreedInMbHistogram[] =
@@ -298,6 +300,15 @@ void ReportFreedGCacheDiskSpaceInMb(int mb) {
     return;
   }
   g_metrics->SendToUMA(kCryptohomeGCacheFreedDiskSpaceInMbHistogram, mb,
+                       10 /* 10 MiB minimum */, 1024 * 10 /* 10 GiB maximum */,
+                       50 /* number of buckets */);
+}
+
+void ReportFreedCacheVaultDiskSpaceInMb(int mb) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendToUMA(kCryptohomeCacheVaultFreedDiskSpaceInMbHistogram, mb,
                        10 /* 10 MiB minimum */, 1024 * 10 /* 10 GiB maximum */,
                        50 /* number of buckets */);
 }
