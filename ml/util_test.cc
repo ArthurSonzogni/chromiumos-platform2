@@ -239,5 +239,31 @@ TEST(GetProcessMemoryUsageTest, RealisticProcStatus) {
   EXPECT_EQ(memory_usage.VmSwapKb, 321);
 }
 
+TEST(GetRealPathTest, VariousInputs) {
+  // Store the current directory for this test.
+  base::FilePath cd;
+  base::GetCurrentDirectory(&cd);
+  const std::string cd_str(cd.value());
+
+  // Resolve current directory.
+  const base::FilePath path_1(".");
+  base::Optional<base::FilePath> real_1 = GetRealPath(path_1);
+  EXPECT_TRUE(real_1.has_value());
+  EXPECT_EQ(cd_str, real_1.value().value());
+
+  // Resolve absolute path.
+  const base::FilePath temp_path_2("/tmp/getrealpathtest/dir2");
+  base::CreateDirectory(temp_path_2);
+  const base::FilePath path_2("/tmp/getrealpathtest/dir2/../");
+  base::Optional<base::FilePath> real_2 = GetRealPath(path_2);
+  EXPECT_TRUE(real_2.has_value());
+  EXPECT_EQ("/tmp/getrealpathtest", real_2.value().value());
+
+  // Check non-existing path.
+  const base::FilePath path_4("/run/imageloader/fake-dlc-foo/package/root/");
+  base::Optional<base::FilePath> real_4 = GetRealPath(path_4);
+  EXPECT_FALSE(real_4.has_value());
+}
+
 }  // namespace
 }  // namespace ml

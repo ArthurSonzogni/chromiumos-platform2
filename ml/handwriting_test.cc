@@ -42,6 +42,7 @@ TEST(HandwritingLibraryTest, CanLoadLibrary) {
     EXPECT_TRUE(
         ml::HandwritingLibrary::IsHandwritingLibraryUnitTestSupported());
     EXPECT_EQ(instance->GetStatus(), ml::HandwritingLibrary::Status::kOk);
+    EXPECT_TRUE(ml::HandwritingLibrary::IsUseLanguagePacksEnabled());
     return;
   }
 
@@ -54,8 +55,7 @@ TEST(HandwritingLibraryTest, CanLoadLibrary) {
     return;
   }
 
-  // This is only temporary until we use a feature flag.
-  // TODO(claudiomagni): Implement a proper check.
+  // Language Packs are disabled by default.
   EXPECT_FALSE(ml::HandwritingLibrary::IsUseLanguagePacksEnabled());
 }
 

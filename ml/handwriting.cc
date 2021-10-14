@@ -30,6 +30,7 @@ constexpr char kHandwritingLibraryRelativePath[] = "libhandwriting.so";
 
 // A list of supported language code.
 constexpr char kLanguageCodeEn[] = "en";
+constexpr char kLanguageCodeEs[] = "es";  // Language Packs only
 constexpr char kLanguageCodeGesture[] = "gesture_in_context";
 
 // Returns HandwritingRecognizerModelPaths based on the `spec`.
@@ -45,11 +46,9 @@ HandwritingRecognizerModelPaths GetModelPaths(
     paths.set_fst_lm_path(model_path.Append("latin_indy.compact.fst").value());
     paths.set_recospec_path(model_path.Append("latin_indy.pb").value());
     return paths;
-  } else if (language.empty()) {
+  } else if (language == kLanguageCodeEs) {
     // For Language Packs MVP, the VK is calling the ML Service Mojo API
-    // without language set, because only Spanish is enabled, so we can set
-    // hardcoded paths here.
-    // TODO(b/202357494): Fix the language param.
+    // only for Spanish language.
     paths.set_reco_model_path(model_path.Append("latin_indy.tflite").value());
     paths.set_seg_model_path(
         model_path.Append("latin_indy_seg.tflite").value());
@@ -213,13 +212,14 @@ bool HandwritingLibraryImpl::LoadHandwritingRecognizer(
       LOG(ERROR) << "Bad Language Pack path" << target_path;
       return false;
     }
+    model_path = base::FilePath(real_language_pack_path.value());
+
     // For security, we check that the path is pointing to a safe location on
     // disk.
     if (!IsDlcPathValid(model_path)) {
       LOG(ERROR) << "Not a valid Language Pack path " << target_path;
       return false;
     }
-    model_path = real_language_pack_path.value();
   } else {
     model_path = lib_path_;
   }

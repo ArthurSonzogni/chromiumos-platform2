@@ -23,6 +23,7 @@ futex: 1
 getpid: 1
 getrandom: 1
 gettid: 1
+lstat64: 1
 memfd_create: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC
@@ -34,6 +35,8 @@ rt_sigprocmask: 1
 rt_sigtimedwait: 1
 rt_sigtimedwait_time64: 1
 send: 1
+
+# Line below needed for logging. This comment is necessary for the linter.
 socket: arg0 == AF_UNIX
 statx: 1
 write: 1

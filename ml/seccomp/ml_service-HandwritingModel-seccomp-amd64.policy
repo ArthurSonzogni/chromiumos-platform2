@@ -20,6 +20,7 @@ getpid: 1
 getrandom: 1
 gettid: 1
 lseek: 1
+lstat: 1
 memfd_create: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC
@@ -32,5 +33,7 @@ rt_sigprocmask: 1
 rt_sigtimedwait: 1
 sched_getaffinity: 1
 sendto: 1
+
+# Line below needed for logging. This comment is necessary for the linter.
 socket: arg0 == AF_UNIX
 write: 1
