@@ -20,6 +20,7 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <rootdev/rootdev.h>
 
 #include "debugd/src/helper_utils.h"
 #include "debugd/src/process_with_id.h"
@@ -31,77 +32,22 @@ namespace {
 
 const char kSmartctl[] = "/usr/sbin/smartctl";
 const char kBadblocks[] = "/sbin/badblocks";
-const char kMountFile[] = "/proc/1/mounts";
-const char kSource[] = "/mnt/stateful_partition";
 const char kMmc[] = "/usr/bin/mmc";
 const char kNvme[] = "/usr/sbin/nvme";
 
 }  // namespace
 
-const std::string StorageTool::GetPartition(const std::string& dst) {
-  std::string::const_reverse_iterator part = dst.rbegin();
-
-  if (!isdigit(*part))
-    return "";
-  part++;
-
-  while (part < dst.rend() && isdigit(*part))
-    part++;
-
-  return std::string(part.base(), dst.end());
-}
-
-void StorageTool::StripPartition(base::FilePath* dstPath) {
-  std::string dst = dstPath->value();
-  std::string part = StorageTool::GetPartition(dst);
-  if (part.empty())
-    return;
-
-  size_t location = dst.rfind(part);
-  size_t part_size = part.length();
-
-  // For devices matching dm-NN, the digits are not a partition.
-  if (dst.at(location - 1) == '-')
-    return;
-
-  // For devices that end with a digit, the kernel uses a 'p'
-  // as a separator. E.g., mmcblk1p2 and loop0p1, but not loop0.
-  if (dst.at(location - 1) == 'p') {
-    location--;
-    part_size++;
-
-    base::FilePath basename = dstPath->BaseName();
-    std::string bname = basename.value();
-    if (bname.compare(0, 4, "loop") == 0 &&
-        bname.compare(bname.size() - part.length(), part.length(), part) == 0)
-      return;
-  }
-  dst.erase(location, part_size);
-  *dstPath = base::FilePath(dst);
-}
-
-const base::FilePath StorageTool::GetDevice(const base::FilePath& filesystemIn,
-                                            const base::FilePath& mountsFile) {
-  base::FilePath device;
-  base::ScopedFILE mountinfo(fopen(mountsFile.value().c_str(), "re"));
-  if (!mountinfo) {
-    PLOG(ERROR) << "Failed to open " << mountsFile.value();
+const base::FilePath StorageTool::GetRootDevice() {
+  char root_device[PATH_MAX];
+  int ret = rootdev(root_device, sizeof(root_device),
+                    true,   // Do full resolution.
+                    true);  // Remove partition number.
+  if (ret != 0) {
+    PLOG(WARNING) << "rootdev failed with error code " << ret;
     return base::FilePath();
   }
 
-  struct mntent mount_entry;
-  char buffer[PATH_MAX];
-
-  while (getmntent_r(mountinfo.get(), &mount_entry, buffer, sizeof(buffer))) {
-    const std::string mountpoint = mount_entry.mnt_dir;
-    if (mountpoint == filesystemIn.value()) {
-      device = base::FilePath(mount_entry.mnt_fsname);
-      break;
-    }
-  }
-
-  StorageTool::StripPartition(&device);
-  return device;
+  return base::FilePath(root_device);
 }
 
 // This function is called by Smartctl to check for ATA devices.
@@ -146,11 +92,10 @@ bool StorageTool::IsSupported(const base::FilePath typeFile,
 }
 
 std::string StorageTool::Smartctl(const std::string& option) {
-  const base::FilePath device =
-      GetDevice(base::FilePath(kSource), base::FilePath(kMountFile));
+  const base::FilePath device = GetRootDevice();
 
   if (device.empty()) {
-    LOG(ERROR) << "Failed to find device for " << kSource;
+    LOG(ERROR) << "Failed to find root device";
     return "<Failed to find device>";
   }
 
@@ -216,11 +161,10 @@ std::string StorageTool::Smartctl(const std::string& option) {
 }
 
 std::string StorageTool::Start(const base::ScopedFD& outfd) {
-  const base::FilePath device =
-      GetDevice(base::FilePath(kSource), base::FilePath(kMountFile));
+  const base::FilePath device = GetRootDevice();
 
   if (device.empty()) {
-    LOG(ERROR) << "Failed to find device for " << kSource;
+    LOG(ERROR) << "Failed to find root device";
     return "<Failed to find device>";
   }
 
@@ -257,8 +201,7 @@ std::string StorageTool::Mmc(const std::string& option) {
     return "<Option not supported>";
   }
 
-  const base::FilePath rootdev =
-      GetDevice(base::FilePath(kSource), base::FilePath(kMountFile));
+  const base::FilePath rootdev = GetRootDevice();
   process.AddArg(rootdev.value());
   process.Run();
   std::string output;
@@ -275,8 +218,7 @@ std::string StorageTool::Nvme(const std::string& option) {
 
   process.AddArg(kNvme);
 
-  const base::FilePath rootdev =
-      GetDevice(base::FilePath(kSource), base::FilePath(kMountFile));
+  const base::FilePath rootdev = GetRootDevice();
   if (option == "identify_controller") {
     process.AddArg("id-ctrl");
     process.AddArg("--vendor-specific");
@@ -351,8 +293,7 @@ std::string StorageTool::NvmeLog(const uint32_t& page_id,
     process.AddArg("--raw-binary");
   }
 
-  const base::FilePath rootdev =
-      GetDevice(base::FilePath(kSource), base::FilePath(kMountFile));
+  const base::FilePath rootdev = GetRootDevice();
   process.AddArg(rootdev.value());
   process.Run();
   std::string output;

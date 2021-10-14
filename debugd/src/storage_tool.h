@@ -26,8 +26,6 @@ class StorageTool : public SubprocessTool {
 
   std::string Smartctl(const std::string& option);
   std::string Start(const base::ScopedFD& outfd);
-  const base::FilePath GetDevice(const base::FilePath& filesystem,
-                                 const base::FilePath& mountsFile);
   bool IsSupported(const base::FilePath typeFile,
                    const base::FilePath vendFile,
                    std::string* errorMsg);
@@ -36,6 +34,9 @@ class StorageTool : public SubprocessTool {
   std::string NvmeLog(const uint32_t& page_id,
                       const uint32_t& length,
                       bool raw_binary);
+
+ protected:
+  virtual const base::FilePath GetRootDevice();
 
  private:
   // Returns the partition of |dst| as a string. |dst| is expected

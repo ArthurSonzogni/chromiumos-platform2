@@ -133,7 +133,10 @@ static_library("libdebugd") {
   ]
   configs += [ ":target_defaults" ]
   all_dependent_configs = [ ":libdebugd_dependent_config" ]
-  libs = [ "policy" ]
+  libs = [
+    "policy",
+    "rootdev",
+  ]
   deps = [
     ":debugd-adaptors",
     ":external-proto",
