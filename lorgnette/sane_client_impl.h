@@ -142,6 +142,8 @@ class SaneDeviceImpl : public SaneDevice {
     kTopLeftY,
     kBottomRightX,
     kBottomRightY,
+    kPageWidth,
+    kPageHeight,
   };
 
   SaneDeviceImpl(SANE_Handle handle,
@@ -166,6 +168,7 @@ class SaneDeviceImpl : public SaneDevice {
   base::Optional<uint32_t> GetJustificationXOffset(const ScanRegion& region,
                                                    brillo::ErrorPtr* error);
   base::Optional<OptionRange> GetXRange(brillo::ErrorPtr* error);
+  base::Optional<OptionRange> GetYRange(brillo::ErrorPtr* error);
 
   SANE_Handle handle_;
   std::string name_;

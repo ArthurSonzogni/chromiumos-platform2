@@ -334,6 +334,21 @@ bool SaneDeviceImpl::SetColorMode(brillo::ErrorPtr* error,
 
 bool SaneDeviceImpl::SetScanRegion(brillo::ErrorPtr* error,
                                    const ScanRegion& region) {
+  // If the scanner exposes page-width and page-height options, these need to be
+  // set before the main scan region coordinates will be accepted.
+  if (base::Contains(options_, kPageWidth)) {
+    double page_width = region.bottom_right_x() - region.top_left_x();
+    if (!SetOption(error, kPageWidth, page_width)) {
+      return false;
+    }
+  }
+  if (base::Contains(options_, kPageHeight)) {
+    double page_height = region.bottom_right_y() - region.top_left_y();
+    if (!SetOption(error, kPageHeight, page_height)) {
+      return false;
+    }
+  }
+
   // Get the offsets for X and Y so that if the device's coordinate system
   // doesn't start at (0, 0), we can translate the requested region into the
   // device's coordinates. We provide the appearance to the user that all
@@ -685,6 +700,8 @@ bool SaneDeviceImpl::LoadOptions(brillo::ErrorPtr* error) {
       {SANE_NAME_SCAN_TL_Y, kTopLeftY},
       {SANE_NAME_SCAN_BR_X, kBottomRightX},
       {SANE_NAME_SCAN_BR_Y, kBottomRightY},
+      {SANE_NAME_PAGE_WIDTH, kPageWidth},
+      {SANE_NAME_PAGE_HEIGHT, kPageHeight},
   };
 
   options_.clear();
@@ -784,21 +801,18 @@ base::Optional<ScannableArea> SaneDeviceImpl::CalculateScannableArea(
   //
   // Based on my examination of sane-backends, every backend that declares this
   // set of options uses a range constraint.
+  //
+  // Several backends also have --page-width and --page-height options that
+  // define the real maximum values.  If these are present, they are handled
+  // automatically in the GetXRange and GetYRange functions.
   ScannableArea area;
   base::Optional<OptionRange> x_range = GetXRange(error);
-  area.set_width(x_range.value().size);
-
-  int index = options_.at(kBottomRightY).GetIndex();
-  const SANE_Option_Descriptor* descriptor =
-      sane_get_option_descriptor(handle_, index);
-  if (!descriptor) {
-    brillo::Error::AddToPrintf(
-        error, FROM_HERE, kDbusDomain, kManagerServiceError,
-        "Unable to get bottom-right Y option at index %d", index);
+  if (!x_range.has_value()) {
     return base::nullopt;
   }
+  area.set_width(x_range.value().size);
 
-  base::Optional<OptionRange> y_range = GetOptionRange(error, *descriptor);
+  base::Optional<OptionRange> y_range = GetYRange(error);
   if (!y_range.has_value()) {
     return base::nullopt;
   }
@@ -858,6 +872,10 @@ const char* SaneDeviceImpl::OptionDisplayName(ScanOption option) {
       return SANE_NAME_SCAN_BR_Y;
     case kJustificationX:
       return SANE_NAME_ADF_JUSTIFICATION_X;
+    case kPageWidth:
+      return SANE_NAME_PAGE_WIDTH;
+    case kPageHeight:
+      return SANE_NAME_PAGE_HEIGHT;
   }
 }
 
@@ -993,7 +1011,12 @@ base::Optional<uint32_t> SaneDeviceImpl::GetJustificationXOffset(
 }
 
 base::Optional<OptionRange> SaneDeviceImpl::GetXRange(brillo::ErrorPtr* error) {
-  int index = options_.at(kTopLeftX).GetIndex();
+  int index;
+  if (base::Contains(options_, kPageWidth)) {
+    index = options_.at(kPageWidth).GetIndex();
+  } else {
+    index = options_.at(kTopLeftX).GetIndex();
+  }
   const SANE_Option_Descriptor* descriptor =
       sane_get_option_descriptor(handle_, index);
   if (!descriptor) {
@@ -1009,6 +1032,30 @@ base::Optional<OptionRange> SaneDeviceImpl::GetXRange(brillo::ErrorPtr* error) {
   }
 
   return x_range;
+}
+
+base::Optional<OptionRange> SaneDeviceImpl::GetYRange(brillo::ErrorPtr* error) {
+  int index;
+  if (base::Contains(options_, kPageHeight)) {
+    index = options_.at(kPageHeight).GetIndex();
+  } else {
+    index = options_.at(kBottomRightY).GetIndex();
+  }
+  const SANE_Option_Descriptor* descriptor =
+      sane_get_option_descriptor(handle_, index);
+  if (!descriptor) {
+    brillo::Error::AddToPrintf(
+        error, FROM_HERE, kDbusDomain, kManagerServiceError,
+        "Unable to get bottom-right Y option at index %d", index);
+    return base::nullopt;
+  }
+
+  base::Optional<OptionRange> y_range = GetOptionRange(error, *descriptor);
+  if (!y_range.has_value()) {
+    return base::nullopt;
+  }
+
+  return y_range;
 }
 
 }  // namespace lorgnette
