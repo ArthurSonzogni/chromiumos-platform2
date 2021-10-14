@@ -10,6 +10,9 @@ group("all") {
   if (use.test) {
     deps += [ ":typecd_testrunner" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":typecd_partner_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -88,5 +91,16 @@ if (use.test) {
       ":typecd_common",
       "//common-mk/testrunner:testrunner",
     ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("typecd_partner_fuzzer") {
+    sources = [ "partner_fuzzer.cc" ]
+    configs += [
+      ":target_defaults",
+      "//common-mk/common_fuzzer",
+    ]
+    deps = [ ":typecd_common" ]
   }
 }
