@@ -180,8 +180,8 @@ bool VshClient::Init(const std::string& user,
   container_shell_pid_ = connection_response.pid();
 
   sock_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      sock_fd_.get(),
-      base::Bind(&VshClient::HandleVsockReadable, base::Unretained(this)));
+      sock_fd_.get(), base::BindRepeating(&VshClient::HandleVsockReadable,
+                                          base::Unretained(this)));
   // STDIN_FILENO may not be watchable if it's /dev/null, and WatchReadable will
   // CHECK in this case. So watch only if it's interactive tty.
   // Watch FIFO too to make `echo command | vsh` usable even it's not
@@ -197,19 +197,20 @@ bool VshClient::Init(const std::string& user,
   }
   if (is_stdin_watchable) {
     stdin_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-        STDIN_FILENO,
-        base::Bind(&VshClient::HandleStdinReadable, base::Unretained(this)));
+        STDIN_FILENO, base::BindRepeating(&VshClient::HandleStdinReadable,
+                                          base::Unretained(this)));
   }
 
   // Handle termination signals and SIGWINCH.
   signal_handler_.Init();
   for (int signal : {SIGINT, SIGTERM, SIGHUP, SIGQUIT}) {
     signal_handler_.RegisterHandler(
-        signal, base::Bind(&VshClient::HandleSignal, base::Unretained(this)));
+        signal,
+        base::BindRepeating(&VshClient::HandleSignal, base::Unretained(this)));
   }
   signal_handler_.RegisterHandler(
-      SIGWINCH,
-      base::Bind(&VshClient::HandleWindowResizeSignal, base::Unretained(this)));
+      SIGWINCH, base::BindRepeating(&VshClient::HandleWindowResizeSignal,
+                                    base::Unretained(this)));
 
   return true;
 }

@@ -113,7 +113,7 @@ bool RecvMessage(int sockfd, MessageLite* message) {
 // Posts a shutdown task to the main message loop.
 void Shutdown() {
   brillo::MessageLoop::current()->PostTask(FROM_HERE,
-                                           base::Bind(&ShutdownTask));
+                                           base::BindOnce(&ShutdownTask));
 }
 
 }  // namespace vsh

@@ -331,8 +331,8 @@ bool VshForwarder::Init() {
   // signalfd will still have any queued SIGCHLD.
   signal_handler_.Init();
   signal_handler_.RegisterHandler(
-      SIGCHLD,
-      base::Bind(&VshForwarder::HandleSigchld, base::Unretained(this)));
+      SIGCHLD, base::BindRepeating(&VshForwarder::HandleSigchld,
+                                   base::Unretained(this)));
 
   return true;
 }
