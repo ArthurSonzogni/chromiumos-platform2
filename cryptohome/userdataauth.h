@@ -355,6 +355,9 @@ class UserDataAuth {
   user_data_auth::GetWebAuthnSecretReply GetWebAuthnSecret(
       const user_data_auth::GetWebAuthnSecretRequest& request);
 
+  user_data_auth::GetWebAuthnSecretHashReply GetWebAuthnSecretHash(
+      const user_data_auth::GetWebAuthnSecretHashRequest& request);
+
   // ========= Firmware Management Parameters Related Public Methods =========
 
   // Retrieve the firmware management parameters. Returns

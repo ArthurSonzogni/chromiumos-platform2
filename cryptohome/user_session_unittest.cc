@@ -197,6 +197,7 @@ TEST_F(UserSessionTest, MountVaultOk) {
   const int64_t ts1 = vk0->GetLastActivityTimestamp();
   EXPECT_EQ(ts1, kTs1);
   EXPECT_NE(session_->GetWebAuthnSecret(), nullptr);
+  EXPECT_FALSE(session_->GetWebAuthnSecretHash().empty());
 
   EXPECT_NE(session_->GetPkcs11Token(), nullptr);
   ASSERT_FALSE(session_->GetPkcs11Token()->IsReady());
@@ -344,9 +345,10 @@ TEST_F(UserSessionTest, MountVaultWrongCreds) {
   const int64_t ts3 = vk0->GetLastActivityTimestamp();
   EXPECT_EQ(ts3, ts2);
   EXPECT_NE(session_->GetWebAuthnSecret(), nullptr);
+  EXPECT_FALSE(session_->GetWebAuthnSecretHash().empty());
 }
 
-// Fail to mount because vault doesn't exist and creation is disaalowed.
+// Fail to mount because vault doesn't exist and creation is disallowed.
 TEST_F(UserSessionTest, MountVaultNoExistNoCreate) {
   // SETUP
 
@@ -365,6 +367,7 @@ TEST_F(UserSessionTest, MountVaultNoExistNoCreate) {
   EXPECT_FALSE(keyset_management_->AreCredentialsValid(users_[0].credentials));
   EXPECT_EQ(session_->GetPkcs11Token(), nullptr);
   EXPECT_EQ(session_->GetWebAuthnSecret(), nullptr);
+  EXPECT_TRUE(session_->GetWebAuthnSecretHash().empty());
 }
 
 TEST_F(UserSessionTest, EphemeralMountPolicyTest) {
@@ -470,11 +473,14 @@ TEST_F(UserSessionTest, WebAuthnSecretReadTwice) {
       session_->GetWebAuthnSecret();
   EXPECT_NE(actual_webauthn_secret, nullptr);
   EXPECT_EQ(*actual_webauthn_secret, *expected_webauthn_secret);
-
+  EXPECT_FALSE(session_->GetWebAuthnSecretHash().empty());
   // VERIFY
-  // The second read should get nothing.
 
+  // The second read should get nothing.
   EXPECT_EQ(session_->GetWebAuthnSecret(), nullptr);
+
+  // The second read of the WebAuthn secret hash should still get the hash.
+  EXPECT_FALSE(session_->GetWebAuthnSecretHash().empty());
 }
 
 // WebAuthn secret is cleared after timeout.
@@ -502,6 +508,9 @@ TEST_F(UserSessionTest, WebAuthnSecretTimeout) {
   // VERIFY
 
   EXPECT_EQ(session_->GetWebAuthnSecret(), nullptr);
+
+  // The WebAuthn secret hash will not be cleared after timeout.
+  EXPECT_FALSE(session_->GetWebAuthnSecretHash().empty());
 }
 
 class UserSessionReAuthTest : public ::testing::Test {

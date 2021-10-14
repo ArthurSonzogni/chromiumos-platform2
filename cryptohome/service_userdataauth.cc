@@ -495,6 +495,27 @@ void UserDataAuthAdaptor::DoGetWebAuthnSecret(
   response->Return(service_->GetWebAuthnSecret(in_request));
 }
 
+void UserDataAuthAdaptor::GetWebAuthnSecretHash(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetWebAuthnSecretHashReply>> response,
+    const user_data_auth::GetWebAuthnSecretHashRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(&UserDataAuthAdaptor::DoGetWebAuthnSecretHash,
+                     base::Unretained(this),
+                     ThreadSafeDBusMethodResponse<
+                         user_data_auth::GetWebAuthnSecretHashReply>::
+                         MakeThreadSafe(std::move(response)),
+                     in_request));
+}
+
+void UserDataAuthAdaptor::DoGetWebAuthnSecretHash(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetWebAuthnSecretHashReply>> response,
+    const user_data_auth::GetWebAuthnSecretHashRequest& in_request) {
+  response->Return(service_->GetWebAuthnSecretHash(in_request));
+}
+
 void UserDataAuthAdaptor::StartMigrateToDircrypto(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::StartMigrateToDircryptoReply>> response,

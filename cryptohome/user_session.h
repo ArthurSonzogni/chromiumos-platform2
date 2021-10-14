@@ -81,6 +81,9 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   // Returns the WebAuthn secret and clears it from memory.
   std::unique_ptr<brillo::SecureBlob> GetWebAuthnSecret();
 
+  // Returns the WebAuthn secret hash.
+  const brillo::SecureBlob& GetWebAuthnSecretHash() const;
+
   // Sets credentials current session can be re-authenticated with and the
   // index of the keyset those credentials belong to. Returns false in case
   // anything went wrong in setting up new re-auth state.
@@ -127,6 +130,8 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
 
   // Secret for WebAuthn credentials.
   std::unique_ptr<brillo::SecureBlob> webauthn_secret_;
+  // Hash of the WebAuthn secret.
+  brillo::SecureBlob webauthn_secret_hash_;
   // Timer for clearing the WebAuthn secret.
   base::OneShotTimer clear_webauthn_secret_timer_;
 

@@ -157,6 +157,16 @@ class UserDataAuthAdaptor
           user_data_auth::GetWebAuthnSecretReply>> response,
       const user_data_auth::GetWebAuthnSecretRequest& in_request);
 
+  void GetWebAuthnSecretHash(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetWebAuthnSecretHashReply>> response,
+      const user_data_auth::GetWebAuthnSecretHashRequest& in_request) override;
+
+  void DoGetWebAuthnSecretHash(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetWebAuthnSecretHashReply>> response,
+      const user_data_auth::GetWebAuthnSecretHashRequest& in_request);
+
   void StartMigrateToDircrypto(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::StartMigrateToDircryptoReply>> response,

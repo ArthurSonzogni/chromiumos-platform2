@@ -2801,6 +2801,39 @@ user_data_auth::GetWebAuthnSecretReply UserDataAuth::GetWebAuthnSecret(
   return reply;
 }
 
+user_data_auth::GetWebAuthnSecretHashReply UserDataAuth::GetWebAuthnSecretHash(
+    const user_data_auth::GetWebAuthnSecretHashRequest& request) {
+  AssertOnMountThread();
+  user_data_auth::GetWebAuthnSecretHashReply reply;
+
+  if (!request.has_account_id()) {
+    LOG(ERROR) << "GetWebAuthnSecretHashRequest must have account_id.";
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    return reply;
+  }
+
+  std::string account_id = GetAccountId(request.account_id());
+  if (account_id.empty()) {
+    LOG(ERROR) << "GetWebAuthnSecretHashRequest must have valid account_id.";
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    return reply;
+  }
+
+  scoped_refptr<UserSession> session = GetUserSession(account_id);
+  brillo::SecureBlob secret_hash;
+  if (session) {
+    secret_hash = session->GetWebAuthnSecretHash();
+  }
+  if (secret_hash.empty()) {
+    LOG(ERROR) << "Failed to get WebAuthn secret hash.";
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+    return reply;
+  }
+
+  reply.set_webauthn_secret_hash(secret_hash.to_string());
+  return reply;
+}
+
 user_data_auth::CryptohomeErrorCode
 UserDataAuth::GetFirmwareManagementParameters(
     user_data_auth::FirmwareManagementParameters* fwmp) {

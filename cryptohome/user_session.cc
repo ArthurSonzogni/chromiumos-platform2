@@ -18,6 +18,7 @@
 
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto/hmac.h"
+#include "cryptohome/crypto/sha.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"
@@ -242,9 +243,11 @@ void UserSession::PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
   // This WebAuthn secret can be rederived upon in-session user auth success
   // since they will unlock the vault keyset.
   const std::string message(kWebAuthnSecretHmacMessage);
+
   webauthn_secret_ = std::make_unique<brillo::SecureBlob>(
       HmacSha256(brillo::SecureBlob::Combine(fnek, fek),
                  brillo::Blob(message.cbegin(), message.cend())));
+  webauthn_secret_hash_ = Sha256(*webauthn_secret_);
   clear_webauthn_secret_timer_.Start(
       FROM_HERE, base::TimeDelta::FromSeconds(30),
       base::BindOnce(&UserSession::ClearWebAuthnSecret,
@@ -257,6 +260,10 @@ void UserSession::ClearWebAuthnSecret() {
 
 std::unique_ptr<brillo::SecureBlob> UserSession::GetWebAuthnSecret() {
   return std::move(webauthn_secret_);
+}
+
+const brillo::SecureBlob& UserSession::GetWebAuthnSecretHash() const {
+  return webauthn_secret_hash_;
 }
 
 bool UserSession::SetCredentials(const Credentials& credentials,
