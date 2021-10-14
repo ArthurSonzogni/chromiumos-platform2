@@ -8,6 +8,7 @@
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
 #include <libprotobuf-mutator/src/libfuzzer/libfuzzer_macro.h>
 
 #include "modemfwd/firmware_manifest.h"
