@@ -78,6 +78,8 @@ class CryptohomeVault {
                             : EncryptedContainerType::kUnknown;
   }
 
+  bool PurgeCacheContainer();
+
  private:
   friend class CryptohomeVaultTest;
 

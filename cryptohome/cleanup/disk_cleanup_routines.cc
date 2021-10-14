@@ -96,6 +96,15 @@ bool DiskCleanupRoutines::DeleteUserGCache(const std::string& obfuscated) {
   return ret;
 }
 
+bool DiskCleanupRoutines::DeleteCacheVault(const std::string& obfuscated) {
+  if (!homedirs_->DmcryptCacheContainerExists(obfuscated))
+    return true;
+
+  VLOG(1) << "Deleting Cache Volume for " << obfuscated;
+
+  return homedirs_->RemoveDmcryptCacheContainer(obfuscated);
+}
+
 bool DiskCleanupRoutines::DeleteUserAndroidCache(
     const std::string& obfuscated) {
   FilePath user_dir = GetShadowDir(obfuscated);

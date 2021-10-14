@@ -478,6 +478,21 @@ bool HomeDirs::Remove(const std::string& obfuscated) {
          platform_->DeletePathRecursively(root_path);
 }
 
+bool HomeDirs::RemoveDmcryptCacheContainer(const std::string& obfuscated) {
+  if (!DmcryptCacheContainerExists(obfuscated))
+    return false;
+
+  auto vault = vault_factory_->Generate(obfuscated, FileSystemKeyReference(),
+                                        EncryptedContainerType::kDmcrypt);
+  if (!vault)
+    return false;
+
+  if (vault->GetCacheContainerType() != EncryptedContainerType::kDmcrypt)
+    return false;
+
+  return vault->PurgeCacheContainer();
+}
+
 bool HomeDirs::Rename(const std::string& account_id_from,
                       const std::string& account_id_to) {
   if (account_id_from == account_id_to) {

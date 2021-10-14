@@ -40,6 +40,14 @@ class MockHomeDirs : public HomeDirs {
   MOCK_METHOD(int64_t, ComputeDiskUsage, (const std::string&), (override));
   MOCK_METHOD(bool, Exists, (const std::string&), (const, override));
   MOCK_METHOD(bool,
+              DmcryptCacheContainerExists,
+              (const std::string&),
+              (const, override));
+  MOCK_METHOD(bool,
+              RemoveDmcryptCacheContainer,
+              (const std::string&),
+              (override));
+  MOCK_METHOD(bool,
               CryptohomeExists,
               (const std::string&, MountError*),
               (const, override));

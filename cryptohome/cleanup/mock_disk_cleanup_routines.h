@@ -20,6 +20,7 @@ class MockDiskCleanupRoutines : public DiskCleanupRoutines {
 
   MOCK_METHOD(bool, DeleteUserCache, (const std::string&), (override));
   MOCK_METHOD(bool, DeleteUserGCache, (const std::string&), (override));
+  MOCK_METHOD(bool, DeleteCacheVault, (const std::string&), (override));
   MOCK_METHOD(bool, DeleteUserAndroidCache, (const std::string&), (override));
   MOCK_METHOD(bool, DeleteUserProfile, (const std::string&), (override));
 };

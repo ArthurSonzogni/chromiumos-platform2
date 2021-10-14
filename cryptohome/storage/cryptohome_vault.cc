@@ -217,4 +217,14 @@ bool CryptohomeVault::Purge() {
   return ret;
 }
 
+bool CryptohomeVault::PurgeCacheContainer() {
+  if (!cache_container_)
+    return false;
+
+  if (!cache_container_->Purge())
+    return false;
+
+  return true;
+}
+
 }  // namespace cryptohome

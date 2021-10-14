@@ -203,8 +203,6 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
     return false;
   }
 
-  bool earlyStop = false;
-
   // Clean GCache directories for every unmounted user that has logged out after
   // after the last normal cleanup happened.
   for (auto dir = normal_cleanup_homedirs.rbegin();
@@ -213,15 +211,13 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
       result = false;
 
     if (HasTargetFreeSpace()) {
-      earlyStop = true;
-      break;
+      ReportDiskCleanupProgress(
+          DiskCleanupProgress::kGoogleDriveCacheCleanedAboveTarget);
+      return result;
     }
   }
 
-  if (!earlyStop)
-    last_normal_disk_cleanup_complete_ = platform_->GetCurrentTime();
-
-  const auto old_free_disk_space = freeDiskSpace;
+  auto old_free_disk_space = freeDiskSpace;
   freeDiskSpace = AmountOfFreeDiskSpace();
   if (!freeDiskSpace) {
     LOG(ERROR) << "Failed to get the amount of free space";
@@ -235,15 +231,52 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
     ReportFreedGCacheDiskSpaceInMb(freed_gcache_space / 1024 / 1024);
   }
 
+  freeDiskSpace = AmountOfFreeDiskSpace();
+  if (!freeDiskSpace) {
+    LOG(ERROR) << "Failed to get the amount of free space";
+    return false;
+  }
+
+  bool earlyStop = false;
+
+  // Purge Dmcrypt cache vaults.
+  for (auto dir = normal_cleanup_homedirs.rbegin();
+       dir != normal_cleanup_homedirs.rend(); dir++) {
+    if (!routines_->DeleteCacheVault(dir->obfuscated))
+      result = false;
+
+    if (HasTargetFreeSpace()) {
+      earlyStop = true;
+      break;
+    }
+  }
+
+  old_free_disk_space = freeDiskSpace;
+  freeDiskSpace = AmountOfFreeDiskSpace();
+  if (!freeDiskSpace) {
+    LOG(ERROR) << "Failed to get the amount of free space";
+    return false;
+  }
+
+  const int64_t freed_vault_cache_space =
+      freeDiskSpace.value() - old_free_disk_space.value();
+  // Report only if something was deleted.
+  if (freed_gcache_space > 0) {
+    ReportFreedCacheVaultDiskSpaceInMb(freed_vault_cache_space / 1024 / 1024);
+  }
+
+  if (!earlyStop)
+    last_normal_disk_cleanup_complete_ = platform_->GetCurrentTime();
+
   switch (GetFreeDiskSpaceState(freeDiskSpace)) {
     case DiskCleanup::FreeSpaceState::kAboveTarget:
       ReportDiskCleanupProgress(
-          DiskCleanupProgress::kGoogleDriveCacheCleanedAboveTarget);
+          DiskCleanupProgress::kCacheVaultsCleanedAboveTarget);
       return result;
     case DiskCleanup::FreeSpaceState::kAboveThreshold:
     case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
       ReportDiskCleanupProgress(
-          DiskCleanupProgress::kGoogleDriveCacheCleanedAboveMinimum);
+          DiskCleanupProgress::kCacheVaultsCleanedAboveMinimum);
       return result;
     case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
       // continue cleanup

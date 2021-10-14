@@ -96,6 +96,9 @@ class HomeDirs {
   // Removes the cryptohome for the given obfuscated username.
   virtual bool Remove(const std::string& obfuscated);
 
+  // Removes the Dmcryot cache container for the named user.
+  virtual bool RemoveDmcryptCacheContainer(const std::string& username);
+
   // Renames account identified by |account_id_from| to |account_id_to|.
   // This is called when user e-mail is replaced with GaiaId as account
   // identifier.

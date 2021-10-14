@@ -26,6 +26,8 @@ class DiskCleanupRoutines {
   virtual bool DeleteUserCache(const std::string& obfuscated);
   // Clear the users GDrive cache.
   virtual bool DeleteUserGCache(const std::string& obfuscated);
+  // Remove Dmcrypt cache.
+  virtual bool DeleteCacheVault(const std::string& obfuscated);
   // Remove the users Android cache.
   virtual bool DeleteUserAndroidCache(const std::string& obfuscated);
   // Remove the entire user profile.

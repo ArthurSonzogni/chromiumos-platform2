@@ -259,6 +259,16 @@ TEST_P(DiskCleanupRoutinesTest, DeleteUserGCacheV2) {
   routines_.DeleteUserGCache(kTestUser);
 }
 
+TEST_P(DiskCleanupRoutinesTest, DeleteCacheVault) {
+  EXPECT_CALL(homedirs_, DmcryptCacheContainerExists(kTestUser))
+      .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(homedirs_, RemoveDmcryptCacheContainer(kTestUser))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(routines_.DeleteCacheVault(kTestUser));
+}
+
 TEST_P(DiskCleanupRoutinesTest, DeleteAndroidCache) {
   base::FilePath mount = ShadowRoot().Append(kTestUser).Append(kMountDir);
   base::FilePath root = mount.Append(kRootHomeSuffix);
