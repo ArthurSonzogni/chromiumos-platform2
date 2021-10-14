@@ -20,8 +20,11 @@
 
 namespace hps {
 
-static const int kTimeoutMs = 250;  // Bank ready timeout.
-static const int kPollMs = 5;       // Delay time for poll.
+static constexpr base::TimeDelta kBankReadySleep =
+    base::TimeDelta::FromMilliseconds(5);
+static constexpr base::TimeDelta kBankReadyTimeout =
+    base::TimeDelta::FromMilliseconds(250);
+
 static constexpr base::TimeDelta kMagicTimeout =
     base::TimeDelta::FromMilliseconds(1000);
 static constexpr base::TimeDelta kMagicSleep =
@@ -456,23 +459,18 @@ bool HPS_impl::WriteFile(uint8_t bank, const base::FilePath& source) {
 }
 
 bool HPS_impl::WaitForBankReady(uint8_t bank) {
-  int tout = 0;
-  for (;;) {
+  base::ElapsedTimer timer;
+  do {
     int result = this->device_->ReadReg(HpsReg::kBankReady);
     if (result < 0) {
       return false;
     }
     if (result & (1 << bank)) {
-      break;
+      return true;
     }
-    // If timed out, finish the write.
-    if (tout >= kTimeoutMs) {
-      return false;
-    }
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(kPollMs));
-    tout += kPollMs;
-  }
-  return true;
+    base::PlatformThread::Sleep(kBankReadySleep);
+  } while (timer.Elapsed() < kBankReadyTimeout);
+  return false;
 }
 
 }  // namespace hps
