@@ -42,6 +42,15 @@ float LookUpHdrRatio(const base::flat_map<float, float>& max_hdr_ratio,
   return max_hdr_ratio.rbegin()->second;
 }
 
+bool IsClientManualSensorControlSet(const AeFrameInfo& frame_info) {
+  if (frame_info.client_request_settings.ae_mode &&
+      frame_info.client_request_settings.ae_mode.value() ==
+          ANDROID_CONTROL_AE_MODE_OFF) {
+    return true;
+  }
+  return false;
+}
+
 std::vector<NormalizedRect> RectToNormalizedRect(
     const std::vector<Rect<float>>& faces) {
   std::vector<NormalizedRect> result;
@@ -339,6 +348,12 @@ base::Optional<float> GcamAeControllerImpl::GetCalculatedHdrRatio(
   if (!frame_info) {
     return base::nullopt;
   }
+  if (IsClientManualSensorControlSet(*frame_info)) {
+    // The client is doing manual exposure control, so let's not do too much
+    // with HDRnet rendering.
+    return 1.0f;
+  }
+
   return frame_info->target_hdr_ratio;
 }
 
@@ -352,6 +367,10 @@ void GcamAeControllerImpl::SetRequestAeParameters(
   AeFrameInfo* frame_info = CreateAeFrameInfoEntry(request->frame_number());
 
   RecordClientRequestSettings(request);
+
+  if (IsClientManualSensorControlSet(*frame_info)) {
+    return;
+  }
 
   frame_info->target_tet = ae_state_machine_.GetCaptureTet();
   frame_info->target_hdr_ratio = ae_state_machine_.GetFilteredHdrRatio();
@@ -412,13 +431,11 @@ void GcamAeControllerImpl::SetResultAeMetadata(
   }
 
   AeFrameInfo* frame_info = GetAeFrameInfoEntry(result->frame_number());
-  if (!frame_info) {
+  if (!frame_info || IsClientManualSensorControlSet(*frame_info)) {
     return;
   }
 
-  if (frame_info->client_request_settings.ae_mode !=
-          ANDROID_CONTROL_AE_MODE_OFF &&
-      ae_override_mode_ == AeOverrideMode::kWithManualSensorControl) {
+  if (ae_override_mode_ == AeOverrideMode::kWithManualSensorControl) {
     std::array<uint8_t, 1> ae_state = {ae_state_machine_.GetAndroidAeState()};
     if (!result->UpdateMetadata<uint8_t>(ANDROID_CONTROL_AE_STATE, ae_state)) {
       LOGF(ERROR) << "Cannot set ANDROID_CONTROL_AE_STATE";
@@ -512,8 +529,7 @@ void GcamAeControllerImpl::RecordClientRequestSettings(
     frame_info->client_request_settings.ae_lock = ae_lock[0];
     VLOGFID(2, request->frame_number())
         << "Client requested ANDROID_CONTROL_AE_LOCK="
-        << get_camera_metadata_tag_name(
-               *frame_info->client_request_settings.ae_lock);
+        << static_cast<int>(*frame_info->client_request_settings.ae_lock);
   }
 }
 
@@ -557,8 +573,7 @@ void GcamAeControllerImpl::RestoreClientRequestSettings(
     } else {
       VLOGFID(2, result->frame_number())
           << "Restored ANDROID_CONTROL_AE_LOCK="
-          << get_camera_metadata_tag_name(
-                 *frame_info->client_request_settings.ae_lock);
+          << static_cast<int>(*frame_info->client_request_settings.ae_lock);
     }
   }
 }
