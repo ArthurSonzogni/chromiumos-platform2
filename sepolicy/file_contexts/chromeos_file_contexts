@@ -329,17 +329,20 @@ include(sepolicy/file_contexts/sysfs_contexts)
 
 # All the following files are created dynamically and need to be labeled at
 # runtime.
-/run                            u:object_r:cros_run:s0
-/run/arc/debugfs                u:object_r:debugfs:s0
-/run/arc/oem(/.*)?              u:object_r:oem_fs:s0
-/run/arc/sdcard(/.*)?           u:object_r:storage_file:s0
-/run/arcvm(/.*)?                u:object_r:cros_run_arcvm:s0
-/run/arcvm/android-data         u:object_r:system_data_root_file:s0
-/run/arcvm/android-data/.*      u:object_r:system_data_file:s0
-/run/arcvm/apkcache(/.*)?       u:object_r:apkcache_file:s0
-/run/arcvm/host_generated(/.*)? u:object_r:oem_fs:s0
-/run/bluetooth                  u:object_r:cros_run_bluetooth:s0
-/run/bluetooth/audio(/.*)?      u:object_r:cros_bluetooth_audio_socket:s0
+/run                                           u:object_r:cros_run:s0
+/run/arc/debugfs                               u:object_r:debugfs:s0
+/run/arc/oem(/.*)?                             u:object_r:oem_fs:s0
+/run/arc/sdcard(/.*)?                          u:object_r:storage_file:s0
+/run/arcvm(/.*)?                               u:object_r:cros_run_arcvm:s0
+/run/arcvm/android-data(/.*)?                  u:object_r:system_data_root_file:s0
+/run/arcvm/android-data/mount/data/.*          u:object_r:system_data_file:s0
+has_arc(`
+/run/arcvm/android-data/mount/data/media(/.*)? u:object_r:media_rw_data_file:s0
+')
+/run/arcvm/apkcache(/.*)?                      u:object_r:apkcache_file:s0
+/run/arcvm/host_generated(/.*)?                u:object_r:oem_fs:s0
+/run/bluetooth                                 u:object_r:cros_run_bluetooth:s0
+/run/bluetooth/audio(/.*)?                     u:object_r:cros_bluetooth_audio_socket:s0
 # /run/camera requires labels from Android.
 /run/camera                     u:object_r:camera_dir:s0
 /run/camera/.*\.sock            u:object_r:camera_socket:s0
@@ -454,6 +457,9 @@ has_arc(`
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data/cache u:object_r:cache_file:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data/data   u:object_r:system_data_root_file:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data/data/.*   u:object_r:system_data_file:s0
+has_arc(`
+/home/.shadow/[0-9a-z]{40}/mount/root/android-data/data/media(.*/)?   u:object_r:media_rw_data_file:s0
+')
 /home/.shadow/[0-9a-z]{40}/mount/root/authpolicyd(/.*)?   u:object_r:cros_home_shadow_uid_root_authpolicyd:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/cdm-oemcrypto(/.*)?   u:object_r:cros_home_shadow_uid_root_cdm-oemcrypto:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/chaps(/.*)?   u:object_r:cros_home_shadow_uid_root_chaps:s0

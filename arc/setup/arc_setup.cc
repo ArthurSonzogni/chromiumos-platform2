@@ -796,9 +796,18 @@ void ArcSetup::SetUpAndroidData(const base::FilePath& bind_target) {
   if (USE_ARCVM) {
     // For ARCVM, create /data/media too since crosvm exports the directory via
     // virtio-fs.
+    const base::FilePath android_data_media_directory =
+        arc_paths_->android_data_directory.Append("data").Append("media");
+    EXIT_IF(!InstallDirectory(0770, kMediaUid, kMediaGid,
+                              android_data_media_directory));
+
+    // Set up /data/media/0/Download with a strict permission so that users
+    // cannot modify the directory before it is covered by Chrome OS Downloads.
+    EXIT_IF(!InstallDirectory(0770, kMediaUid, kMediaGid,
+                              android_data_media_directory.Append("0")));
     EXIT_IF(!InstallDirectory(
-        0770, kMediaUid, kMediaGid,
-        arc_paths_->android_data_directory.Append("data").Append("media")));
+        0700, kRootUid, kRootGid,
+        android_data_media_directory.Append("0").Append("Download")));
   }
 
   // To make our bind-mount business easier, we first bind-mount the real
@@ -806,6 +815,12 @@ void ArcSetup::SetUpAndroidData(const base::FilePath& bind_target) {
   // Then we do not need to pass the android-data path to other processes.
   EXIT_IF(!arc_mounter_->BindMount(arc_paths_->android_data_directory,
                                    bind_target));
+
+  if (USE_ARCVM) {
+    // Restore the contexts of files under /data/media. This is needed to ensure
+    // Android's vold can mount Chrome OS Downloads on /data/media/0/Download.
+    RestoreconRecursively({bind_target.Append("data").Append("media")});
+  }
 }
 
 void ArcSetup::UnmountSdcard() {
