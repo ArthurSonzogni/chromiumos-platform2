@@ -75,7 +75,6 @@ mlock: 1
 madvise: 1
 munlock: 1
 dup2: 1
-prlimit64: 1
 getdents64: 1
 prctl: 1
 statfs: 1

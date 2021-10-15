@@ -86,7 +86,6 @@ getdents: 1
 shutdown: 1
 waitid:1
 sysinfo: 1
-dup: 1
 flock: 1
 fstatfs: 1
 nanosleep: 1
