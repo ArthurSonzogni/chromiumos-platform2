@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <stdlib.h>
 #include <string>
 
@@ -13,6 +14,7 @@
 #include "tpm2-simulator/constants.h"
 #include "tpm2-simulator/tpm_command_utils.h"
 #include "tpm2-simulator/tpm_executor_tpm1_impl.h"
+#include "tpm2-simulator/tpm_vendor_cmd_locality.h"
 
 namespace {
 
@@ -25,6 +27,10 @@ constexpr unsigned char kStartupCommand[] = {
 }  // namespace
 
 namespace tpm2_simulator {
+
+TpmExecutorTpm1Impl::TpmExecutorTpm1Impl() {
+  vendor_commands_.emplace_back(std::make_unique<TpmVendorCommandLocality>());
+}
 
 void TpmExecutorTpm1Impl::InitializeVTPM() {
   setenv(kEnvTpmPath, kTpmDataPath, 0);
@@ -44,6 +50,12 @@ void TpmExecutorTpm1Impl::InitializeVTPM() {
   RunCommand(std::string(reinterpret_cast<const char*>(kStartupCommand),
                          sizeof(kStartupCommand)));
 
+  for (const auto& vendor_cmd : vendor_commands_) {
+    if (!vendor_cmd->Init()) {
+      LOG(ERROR) << "Failed to initialize vendor command.";
+    }
+  }
+
   LOG(INFO) << "vTPM Initialize.";
 }
 
@@ -61,15 +73,10 @@ std::string TpmExecutorTpm1Impl::RunCommand(const std::string& command) {
   uint32_t rlength;
   uint32_t rtotal = 0;
 
-  CommandHeader header;
-  if (!ExtractCommandHeader(command, &header)) {
-    LOG(ERROR) << "Command too small.";
-    return CreateCommandWithCode(TPM_SUCCESS);
-  }
-
-  if (header.code == TPM_ORD_SET_LOCALITY) {
-    // Ignoring TPM_ORD_SET_LOCALITY command.
-    return CreateCommandWithCode(TPM_SUCCESS);
+  for (const auto& vendor_cmd : vendor_commands_) {
+    if (vendor_cmd->IsVendorCommand(command)) {
+      return vendor_cmd->RunCommand(command);
+    }
   }
 
   std::string command_copy = command;

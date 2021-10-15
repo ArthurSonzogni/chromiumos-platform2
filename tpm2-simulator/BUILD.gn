@@ -27,6 +27,7 @@ config("target_defaults") {
     "USE_TPM1=${use.tpm}",
     "USE_TPM2=${use.tpm2}",
   ]
+  include_dirs = [ "${sysroot}/usr/include/pinweaver" ]
 }
 
 source_set("tpm_executor_version_library") {
@@ -43,6 +44,7 @@ executable("tpm2-simulator") {
     "simulator.cc",
     "tpm_command_utils.cc",
     "tpm_nvchip_utils.cc",
+    "tpm_vendor_cmd_locality.cc",
   ]
   libs = []
   configs += [ ":target_defaults" ]
