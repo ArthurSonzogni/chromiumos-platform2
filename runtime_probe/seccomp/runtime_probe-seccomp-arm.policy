@@ -22,6 +22,7 @@ clock_getres: 1
 clock_getres_time64: 1
 write: 1
 getegid32: 1
+getpid: 1
 rt_sigprocmask: 1
 send: 1
 access: 1

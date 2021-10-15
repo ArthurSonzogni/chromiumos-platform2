@@ -13,6 +13,7 @@ getegid: 1
 epoll_create1: 1
 pipe2: 1
 epoll_ctl: 1
+getpid: 1
 gettid: 1
 rt_sigprocmask: 1
 signalfd4: 1
