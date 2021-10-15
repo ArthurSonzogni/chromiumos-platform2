@@ -19,6 +19,7 @@ constexpr char kAccelDeviceName[] = "cros-ec-accel";
 constexpr char kGyroDeviceName[] = "cros-ec-gyro";
 constexpr char kLightDeviceName[] = "cros-ec-light";
 constexpr char kAlsDeviceName[] = "acpi-als";
+constexpr char kProxDeviceName[] = "cros-ec-prox";
 constexpr char kSyncDeviceName[] = "cros-ec-sync";
 constexpr char kMagnDeviceName[] = "cros-ec-mag";
 constexpr char kLidAngleDeviceName[] = "cros-ec-lid-angle";
@@ -43,6 +44,8 @@ std::string SensorKindToString(SensorKind kind) {
       return libmems::kMagnName;
     case SensorKind::LID_ANGLE:
       return libmems::kLidAngleName;
+    case SensorKind::PROXIMITY:
+      return libmems::kProxName;
     case SensorKind::BAROMETER:
       return libmems::kBaroName;
     case SensorKind::HID_OTHERS:
@@ -60,6 +63,8 @@ SensorKind SensorKindFromString(const std::string& name) {
     return SensorKind::GYROSCOPE;
   if (name == kLightDeviceName || name == kAlsDeviceName)
     return SensorKind::LIGHT;
+  if (name == kProxDeviceName)
+    return SensorKind::PROXIMITY;
   if (name == kSyncDeviceName)
     return SensorKind::SYNC;
   if (name == kMagnDeviceName)

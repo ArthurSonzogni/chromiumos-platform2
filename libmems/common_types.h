@@ -37,6 +37,7 @@ constexpr char kSysDevString[] = "/sys/bus/iio/devices";
 constexpr char kAccelName[] = "accel";
 constexpr char kGyroName[] = "anglvel";
 constexpr char kLightName[] = "illuminance";
+constexpr char kProxName[] = "proximity";
 constexpr char kSyncName[] = "count";
 constexpr char kMagnName[] = "magn";
 constexpr char kLidAngleName[] = "angl";

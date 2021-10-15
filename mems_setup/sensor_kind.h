@@ -15,6 +15,7 @@ enum class SensorKind {
   ACCELEROMETER,
   GYROSCOPE,
   LIGHT,
+  PROXIMITY,
   SYNC,
   MAGNETOMETER,
   LID_ANGLE,
