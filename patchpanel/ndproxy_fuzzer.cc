@@ -4,6 +4,8 @@
 
 #include "patchpanel/ndproxy.h"
 
+#include <base/logging.h>
+
 namespace patchpanel {
 
 namespace {

@@ -5,6 +5,8 @@
 #include "patchpanel/multicast_forwarder.h"
 #include "patchpanel/net_util.h"
 
+#include <base/logging.h>
+
 namespace patchpanel {
 
 constexpr const struct in_addr kLanIp = {.s_addr = Ipv4Addr(192, 168, 1, 1)};
