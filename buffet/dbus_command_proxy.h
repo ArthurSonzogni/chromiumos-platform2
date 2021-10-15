@@ -9,7 +9,6 @@
 #include <string>
 
 #include <base/macros.h>
-#include <base/scoped_observer.h>
 #include <brillo/dbus/data_serialization.h>
 #include <brillo/dbus/dbus_object.h>
 #include <weave/command.h>
