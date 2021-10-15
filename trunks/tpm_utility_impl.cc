@@ -362,7 +362,7 @@ TPM_RC TpmUtilityImpl::PrepareForOwnership() {
 
 TPM_RC TpmUtilityImpl::InitializeOwnerForCsme() {
   // For cr50 case, we don't have to create salting key for CSME.
-  if (IsCr50()) {
+  if (IsCr50() || IsSimulator()) {
     return TPM_RC_SUCCESS;
   }
   uint8_t protocol_version = 0;
@@ -3092,10 +3092,10 @@ TPM_RC TpmUtilityImpl::PinWeaverCommand(const std::string& tag,
   const VendorVariant vendor_variant = ToVendorVariant(vendor_id_);
   switch (vendor_variant) {
     case VendorVariant::kCr50:
+    case VendorVariant::kSimulator:
       rc = Cr50VendorCommand(kCr50SubcmdPinWeaver, in, &out);
       break;
     case VendorVariant::kOther:
-    case VendorVariant::kSimulator:
       rc = PinWeaverCsmeCommand(in, &out);
       break;
     default:
@@ -3291,8 +3291,9 @@ TpmUtilityImpl::GetPinwWeaverBackendType() {
   if (PinWeaverIsSupported(0, &protocol_version) != TPM_RC_SUCCESS) {
     pinweaver_backend_type_ = PinWeaverBackendType::kNotSupported;
   } else {
-    pinweaver_backend_type_ =
-        IsCr50() ? PinWeaverBackendType::kCr50 : PinWeaverBackendType::kCsme;
+    pinweaver_backend_type_ = (IsCr50() || IsSimulator())
+                                  ? PinWeaverBackendType::kCr50
+                                  : PinWeaverBackendType::kCsme;
   }
   return pinweaver_backend_type_;
 }
