@@ -503,7 +503,10 @@ TEST_F(UserSessionTest, WebAuthnSecretTimeout) {
 
   // TEST
 
-  task_environment_.FastForwardBy(base::TimeDelta::FromSeconds(30));
+  // TODO(b/184393647): Since GetWebAuthnSecret is not currently used yet,
+  // the timer for clearing WebAuthn secret for security is minimized. It will
+  // be set to appropriate duration after secret enforcement.
+  task_environment_.FastForwardBy(base::TimeDelta::FromSeconds(0));
 
   // VERIFY
 

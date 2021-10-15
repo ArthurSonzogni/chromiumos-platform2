@@ -201,7 +201,7 @@ bool WebAuthnHandler::AllowPresenceMode() {
 
 void WebAuthnHandler::OnSessionStarted(const std::string& account_id) {
   // Do this first because there's a timeout for reading the secret.
-  GetWebAuthnSecretAsync(account_id);
+  GetWebAuthnSecretHashAsync(account_id);
 
   webauthn_storage_->set_allow_access(true);
   base::Optional<std::string> sanitized_user = user_state_->GetSanitizedUser();
@@ -220,51 +220,47 @@ void WebAuthnHandler::OnSessionStopped() {
   webauthn_storage_->Reset();
 }
 
-void WebAuthnHandler::GetWebAuthnSecretAsync(const std::string& account_id) {
-  user_data_auth::GetWebAuthnSecretRequest request;
+void WebAuthnHandler::GetWebAuthnSecretHashAsync(
+    const std::string& account_id) {
+  user_data_auth::GetWebAuthnSecretHashRequest request;
   request.mutable_account_id()->set_account_id(account_id);
 
-  cryptohome::GetWebAuthnSecretRequest req;
-
-  cryptohome_proxy_->GetWebAuthnSecretAsync(
+  cryptohome_proxy_->GetWebAuthnSecretHashAsync(
       request,
-      base::Bind(&WebAuthnHandler::OnGetWebAuthnSecretResp,
-                 base::Unretained(this)),
-      base::Bind(&WebAuthnHandler::OnGetWebAuthnSecretCallFailed,
-                 base::Unretained(this)),
+      base::BindOnce(&WebAuthnHandler::OnGetWebAuthnSecretHashResp,
+                     base::Unretained(this)),
+      base::BindOnce(&WebAuthnHandler::OnGetWebAuthnSecretHashCallFailed,
+                     base::Unretained(this)),
       kCryptohomeTimeout.InMilliseconds());
 }
 
-void WebAuthnHandler::OnGetWebAuthnSecretCallFailed(brillo::Error* error) {
-  LOG(ERROR) << "Failed to call GetWebAuthnSecret on cryptohome, error: "
+void WebAuthnHandler::OnGetWebAuthnSecretHashCallFailed(brillo::Error* error) {
+  LOG(ERROR) << "Failed to call GetWebAuthnSecretHash on cryptohome, error: "
              << error->GetMessage();
 }
 
-void WebAuthnHandler::OnGetWebAuthnSecretResp(
-    const user_data_auth::GetWebAuthnSecretReply& reply) {
+void WebAuthnHandler::OnGetWebAuthnSecretHashResp(
+    const user_data_auth::GetWebAuthnSecretHashReply& reply) {
   // In case there's any error, read the backup hash first.
   auth_time_secret_hash_ = webauthn_storage_->LoadAuthTimeSecretHash();
 
   if (reply.error() !=
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-    LOG(ERROR) << "GetWebAuthnSecret reply has error " << reply.error();
+    LOG(ERROR) << "GetWebAuthnSecretHash reply has error " << reply.error();
     return;
   }
 
-  brillo::SecureBlob secret(reply.webauthn_secret());
-  if (secret.size() != SHA256_DIGEST_LENGTH) {
-    LOG(ERROR) << "WebAuthn auth time secret size is wrong.";
+  brillo::Blob secret_hash =
+      brillo::BlobFromString(reply.webauthn_secret_hash());
+  if (secret_hash.size() != SHA256_DIGEST_LENGTH) {
+    LOG(ERROR) << "WebAuthn auth time secret hash size is wrong.";
     return;
   }
 
-  std::unique_ptr<brillo::Blob> fresh_secret_hash =
-      std::make_unique<brillo::Blob>(util::Sha256(secret));
-
-  if (fresh_secret_hash) {
-    // Persist to daemon-store in case we crash during a user session.
-    webauthn_storage_->PersistAuthTimeSecretHash(*fresh_secret_hash);
-    auth_time_secret_hash_ = std::move(fresh_secret_hash);
-  }
+  // Persist to daemon-store in case we crash during a user session.
+  webauthn_storage_->PersistAuthTimeSecretHash(secret_hash);
+  auth_time_secret_hash_ =
+      std::make_unique<brillo::Blob>(std::move(secret_hash));
 }
 
 void WebAuthnHandler::MakeCredential(

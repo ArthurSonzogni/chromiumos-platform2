@@ -140,10 +140,10 @@ class WebAuthnHandler {
   bool Initialized();
 
   // Fetches auth-time WebAuthn secret and keep the hash of it.
-  void GetWebAuthnSecretAsync(const std::string& account_id);
-  void OnGetWebAuthnSecretResp(
-      const user_data_auth::GetWebAuthnSecretReply& reply);
-  void OnGetWebAuthnSecretCallFailed(brillo::Error* error);
+  void GetWebAuthnSecretHashAsync(const std::string& account_id);
+  void OnGetWebAuthnSecretHashResp(
+      const user_data_auth::GetWebAuthnSecretHashReply& reply);
+  void OnGetWebAuthnSecretHashCallFailed(brillo::Error* error);
 
   // Callbacks invoked when UI completes user verification flow.
   void HandleUVFlowResultMakeCredential(dbus::Response* flow_response);
