@@ -66,9 +66,13 @@ class CrosFpBiometricsManager : public BiometricsManager {
   void EndAuthSession() override;
 
   virtual void OnMaintenanceTimerFired();
-  virtual bool WriteRecord(const BiometricsManagerRecord& record,
+  virtual bool WriteRecord(const BiodStorageInterface::RecordMetadata& record,
                            uint8_t* tmpl_data,
                            size_t tmpl_size);
+
+  // Returns RecordMetadata for given record.
+  virtual const BiodStorageInterface::RecordMetadata& GetRecordMetadata(
+      int index) const;
 
   std::vector<int> GetDirtyList();
   /**

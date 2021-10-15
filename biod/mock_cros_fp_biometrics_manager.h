@@ -64,10 +64,14 @@ class MockCrosFpBiometricsManager : public CrosFpBiometricsManager {
   MOCK_METHOD(void, OnMaintenanceTimerFired, (), (override));
   MOCK_METHOD(bool,
               WriteRecord,
-              (const BiometricsManagerRecord& record,
+              (const BiodStorageInterface::RecordMetadata& record,
                uint8_t* tmpl_data,
                size_t tmpl_size),
               (override));
+  MOCK_METHOD(const BiodStorageInterface::RecordMetadata&,
+              GetRecordMetadata,
+              (int index),
+              (const, override));
 
   // Delegate to the real implementation in the base class:
   // https://github.com/google/googletest/blob/HEAD/googlemock/docs/cook_book.md#delegating-calls-to-a-parent-class

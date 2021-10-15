@@ -55,23 +55,25 @@ void BiodStorage::SetRootPathForTesting(const base::FilePath& root_path) {
   root_path_ = root_path;
 }
 
-bool BiodStorage::WriteRecord(const BiometricsManagerRecord& record,
-                              base::Value data) {
+bool BiodStorage::WriteRecord(
+    const BiodStorageInterface::RecordMetadata& record_metadata,
+    base::Value data) {
   if (!allow_access_) {
     LOG(ERROR) << "Access to the storage mounts not allowed.";
     return false;
   }
 
-  if (!record.IsValidUTF8()) {
+  if (!record_metadata.IsValidUTF8()) {
     LOG(ERROR) << "Record contains invalid UTF8.";
     return false;
   }
 
-  const std::string& record_id(record.GetId());
+  const std::string& record_id(record_metadata.record_id);
   base::Value record_value(base::Value::Type::DICTIONARY);
-  record_value.SetStringKey(kLabel, record.GetLabel());
+  record_value.SetStringKey(kLabel, record_metadata.label);
   record_value.SetStringKey(kRecordId, record_id);
-  record_value.SetStringKey(kValidationVal, record.GetValidationValBase64());
+  record_value.SetStringKey(kValidationVal,
+                            record_metadata.GetValidationValBase64());
   record_value.SetIntKey(kVersionMember, kRecordFormatVersion);
   record_value.SetKey(kData, std::move(data));
   record_value.SetStringKey(kBioManagerMember, biometrics_manager_name_);
@@ -84,7 +86,7 @@ bool BiodStorage::WriteRecord(const BiometricsManagerRecord& record,
     return false;
   }
 
-  FilePath record_storage_filename = GetRecordFilename(record);
+  FilePath record_storage_filename = GetRecordFilename(record_metadata);
   if (record_storage_filename.empty()) {
     LOG(ERROR) << "Unable to get filename for record.";
     return false;
@@ -95,7 +97,7 @@ bool BiodStorage::WriteRecord(const BiometricsManagerRecord& record,
 
     if (!base::CreateDirectory(record_storage_filename.DirName())) {
       PLOG(ERROR) << "Cannot create directory for user "
-                  << LogSafeID(record.GetUserId()) << ".";
+                  << LogSafeID(record_metadata.user_id) << ".";
       return false;
     }
   }
@@ -106,7 +108,7 @@ bool BiodStorage::WriteRecord(const BiometricsManagerRecord& record,
     if (!base::ImportantFileWriter::WriteFileAtomically(record_storage_filename,
                                                         json_string)) {
       LOG(ERROR) << "Failed to write JSON file for record "
-                 << LogSafeID(record.GetId()) << ".";
+                 << LogSafeID(record_metadata.record_id) << ".";
       return false;
     }
   }
@@ -298,10 +300,11 @@ std::string BiodStorage::GenerateNewRecordId() {
 }
 
 base::FilePath BiodStorage::GetRecordFilename(
-    const BiometricsManagerRecord& record) {
-  std::vector<FilePath> paths = {FilePath(kBiod), FilePath(record.GetUserId()),
-                                 FilePath(biometrics_manager_name_),
-                                 FilePath(kRecordFileName + record.GetId())};
+    const BiodStorageInterface::RecordMetadata& record_metadata) {
+  std::vector<FilePath> paths = {
+      FilePath(kBiod), FilePath(record_metadata.user_id),
+      FilePath(biometrics_manager_name_),
+      FilePath(kRecordFileName + record_metadata.record_id)};
 
   FilePath record_storage_filename = root_path_;
   for (const auto& path : paths) {

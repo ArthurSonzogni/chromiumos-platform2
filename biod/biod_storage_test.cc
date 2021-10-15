@@ -24,6 +24,9 @@
 
 namespace biod {
 
+using Record = BiodStorageInterface::Record;
+using RecordMetadata = BiodStorageInterface::RecordMetadata;
+
 namespace {
 
 const char kBiometricsManagerName[] = "BiometricsManager";
@@ -73,49 +76,6 @@ constexpr int kElan515TemplateSizeBytes = 67064;
  */
 constexpr int kRlimitMemlockBytes = 65536;
 
-class TestRecord : public BiometricsManagerRecord {
- public:
-  TestRecord(const std::string& id,
-             const std::string& user_id,
-             const std::string& label,
-             const std::vector<uint8_t>& validation_val,
-             const std::string& data)
-      : id_(id),
-        user_id_(user_id),
-        label_(label),
-        validation_val_(validation_val),
-        data_(data) {}
-
-  // BiometricsManager::Record overrides:
-  const std::string& GetId() const override { return id_; }
-  const std::string& GetUserId() const override { return user_id_; }
-  const std::string& GetLabel() const override { return label_; }
-  const std::vector<uint8_t>& GetValidationVal() const override {
-    return validation_val_;
-  }
-  const std::string& GetData() const { return data_; }
-  bool SetLabel(std::string label) override { return true; }
-  bool Remove() override { return true; }
-
-  void ClearValidationValue() { validation_val_.clear(); }
-
-  friend bool operator==(const TestRecord& lhs, const TestRecord& rhs) {
-    return lhs.id_ == rhs.id_ && lhs.user_id_ == rhs.user_id_ &&
-           lhs.validation_val_ == rhs.validation_val_ &&
-           lhs.label_ == rhs.label_ && lhs.data_ == rhs.data_;
-  }
-  friend inline bool operator!=(const TestRecord& lhs, const TestRecord& rhs) {
-    return !(lhs == rhs);
-  }
-
- private:
-  std::string id_;
-  std::string user_id_;
-  std::string label_;
-  std::vector<uint8_t> validation_val_;
-  std::string data_;
-};
-
 struct MemlockTestParams {
   int rlimit_bytes;
   int template_size_bytes;
@@ -159,15 +119,18 @@ class BiodStorageBaseTest : public ::testing::Test {
 
 TEST_F(BiodStorageBaseTest, WriteAndReadRecords) {
   const std::vector<uint8_t> kEmpty;
-  const std::vector<TestRecord> kRecords = {
-      TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1),
-      TestRecord(kRecordId2, kUserId2, kLabel2, kValidationVal2, kData2),
-      TestRecord(kRecordId3, kUserId2, kLabel3, kValidationVal3, kData3)};
+  const std::vector<Record> kRecords(
+      {{{kRecordFormatVersion, kRecordId1, kUserId1, kLabel1, kValidationVal1},
+        kData1},
+       {{kRecordFormatVersion, kRecordId2, kUserId2, kLabel2, kValidationVal2},
+        kData2},
+       {{kRecordFormatVersion, kRecordId3, kUserId2, kLabel3, kValidationVal3},
+        kData3}});
 
   // Write the record.
   for (auto const& record : kRecords) {
     EXPECT_TRUE(
-        biod_storage_->WriteRecord(record, base::Value(record.GetData())));
+        biod_storage_->WriteRecord(record.metadata, base::Value(record.data)));
   }
 
   // Read the record.
@@ -175,74 +138,72 @@ TEST_F(BiodStorageBaseTest, WriteAndReadRecords) {
   auto read_result = biod_storage_->ReadRecords(user_ids);
   EXPECT_TRUE(read_result.invalid_records.empty());
 
-  std::vector<TestRecord> records;
-  for (const auto& record : read_result.valid_records) {
-    records.emplace_back(
-        TestRecord(record.metadata.record_id, record.metadata.user_id,
-                   record.metadata.label, record.metadata.validation_val,
-                   std::string(record.data.cbegin(), record.data.cend())));
-  }
-  EXPECT_EQ(records.size(), kRecords.size());
-  EXPECT_TRUE(
-      std::is_permutation(kRecords.begin(), kRecords.end(), records.begin()));
+  EXPECT_EQ(read_result.valid_records.size(), kRecords.size());
+  EXPECT_TRUE(std::is_permutation(kRecords.begin(), kRecords.end(),
+                                  read_result.valid_records.begin()));
 }
 
 TEST_F(BiodStorageBaseTest, WriteRecord_InvalidAbsolutePath) {
-  auto record =
-      TestRecord(kRecordId1, "/absolutepath", kLabel1, kValidationVal1, kData1);
+  Record record = {{kRecordFormatVersion, kRecordId1, "/absolutepath", kLabel1,
+                    kValidationVal1},
+                   kData1};
 
   EXPECT_FALSE(
-      biod_storage_->WriteRecord(record, base::Value(record.GetData())));
+      biod_storage_->WriteRecord(record.metadata, base::Value(record.data)));
 }
 
 TEST_F(BiodStorageBaseTest, WriteRecord_RecordIdNotUTF8) {
   EXPECT_FALSE(base::IsStringUTF8(kInvalidUTF8));
 
-  auto record =
-      TestRecord(kInvalidUTF8, kUserId1, kLabel1, kValidationVal1, kData1);
+  Record record = {
+      {kRecordFormatVersion, kInvalidUTF8, kUserId1, kLabel1, kValidationVal1},
+      kData1};
 
-  EXPECT_FALSE(record.IsValidUTF8());
+  EXPECT_FALSE(record.metadata.IsValidUTF8());
   EXPECT_FALSE(
-      biod_storage_->WriteRecord(record, base::Value(record.GetData())));
+      biod_storage_->WriteRecord(record.metadata, base::Value(record.data)));
 }
 
 TEST_F(BiodStorageBaseTest, WriteRecord_UserIdNotUTF8) {
   EXPECT_FALSE(base::IsStringUTF8(kInvalidUTF8));
 
-  auto record =
-      TestRecord(kRecordId1, kInvalidUTF8, kLabel1, kValidationVal1, kData1);
+  Record record = {{kRecordFormatVersion, kRecordId1, kInvalidUTF8, kLabel1,
+                    kValidationVal1},
+                   kData1};
 
-  EXPECT_FALSE(record.IsValidUTF8());
+  EXPECT_FALSE(record.metadata.IsValidUTF8());
   EXPECT_FALSE(
-      biod_storage_->WriteRecord(record, base::Value(record.GetData())));
+      biod_storage_->WriteRecord(record.metadata, base::Value(record.data)));
 }
 
 TEST_F(BiodStorageBaseTest, WriteRecord_LabelNotUTF8) {
   EXPECT_FALSE(base::IsStringUTF8(kInvalidUTF8));
 
-  auto record =
-      TestRecord(kRecordId1, kUserId1, kInvalidUTF8, kValidationVal1, kData1);
+  Record record = {{kRecordFormatVersion, kRecordId1, kUserId1, kInvalidUTF8,
+                    kValidationVal1},
+                   kData1};
 
-  EXPECT_FALSE(record.IsValidUTF8());
+  EXPECT_FALSE(record.metadata.IsValidUTF8());
   EXPECT_FALSE(
-      biod_storage_->WriteRecord(record, base::Value(record.GetData())));
+      biod_storage_->WriteRecord(record.metadata, base::Value(record.data)));
 }
 
 TEST_F(BiodStorageBaseTest, WriteRecord_CheckUmask) {
-  auto record =
-      TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1);
+  Record record = {
+      {kRecordFormatVersion, kRecordId1, kUserId1, kLabel1, kValidationVal1},
+      kData1};
 
   const base::FilePath kRecordStorageFilename =
       root_path_.Append("biod")
-          .Append(record.GetUserId())
+          .Append(record.metadata.user_id)
           .Append(kBiometricsManagerName)
-          .Append("Record" + record.GetId());
+          .Append("Record" + record.metadata.record_id);
 
   ASSERT_FALSE(base::PathExists(kRecordStorageFilename));
   ASSERT_FALSE(base::PathExists(kRecordStorageFilename.DirName()));
 
   EXPECT_TRUE(
-      biod_storage_->WriteRecord(record, base::Value(record.GetData())));
+      biod_storage_->WriteRecord(record.metadata, base::Value(record.data)));
 
   // Check permissions of directory
   int actual_permissions;
@@ -258,14 +219,15 @@ TEST_F(BiodStorageBaseTest, WriteRecord_CheckUmask) {
 
 TEST_F(BiodStorageBaseTest, DeleteRecord) {
   const std::vector<uint8_t> kEmpty;
-  const TestRecord kRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1,
-                           kData1);
+  const Record kRecord = {
+      {kRecordFormatVersion, kRecordId1, kUserId1, kLabel1, kValidationVal1},
+      kData1};
 
   // Delete a non-existent record.
   EXPECT_TRUE(biod_storage_->DeleteRecord(kUserId1, kRecordId1));
 
   EXPECT_TRUE(
-      biod_storage_->WriteRecord(kRecord, base::Value(kRecord.GetData())));
+      biod_storage_->WriteRecord(kRecord.metadata, base::Value(kRecord.data)));
 
   // Check this record is properly written.
   std::unordered_set<std::string> user_ids({kUserId1});
@@ -273,11 +235,7 @@ TEST_F(BiodStorageBaseTest, DeleteRecord) {
   EXPECT_TRUE(read_result.invalid_records.empty());
   EXPECT_EQ(read_result.valid_records.size(), 1);
   const auto& record = read_result.valid_records[0];
-  auto test_record =
-      TestRecord(record.metadata.record_id, record.metadata.user_id,
-                 record.metadata.label, record.metadata.validation_val,
-                 std::string(record.data.cbegin(), record.data.cend()));
-  EXPECT_EQ(test_record, kRecord);
+  EXPECT_EQ(record, kRecord);
 
   EXPECT_TRUE(biod_storage_->DeleteRecord(kUserId1, kRecordId1));
 
@@ -295,11 +253,18 @@ TEST_F(BiodStorageBaseTest, GenerateNewRecordId) {
 }
 
 TEST_F(BiodStorageBaseTest, TestEqualOperator) {
-  EXPECT_EQ(TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1),
-            TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1));
+  Record record = {
+      {kRecordFormatVersion, kRecordId1, kUserId1, kLabel1, kValidationVal1},
+      kData1};
+  Record record_eq = {
+      {kRecordFormatVersion, kRecordId1, kUserId1, kLabel1, kValidationVal1},
+      kData1};
+  Record record_ne = {
+      {kRecordFormatVersion, kRecordId1, kUserId1, kLabel1, kValidationVal2},
+      kData1};
 
-  EXPECT_NE(TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1),
-            TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal2, kData1));
+  EXPECT_EQ(record, record_eq);
+  EXPECT_NE(record, record_ne);
 }
 
 TEST_F(BiodStorageBaseTest, TestReadValidationValueFromRecord) {
@@ -326,9 +291,10 @@ class BiodStorageInvalidRecordTest : public ::testing::Test {
     biod_storage_->set_allow_access(true);
     biod_storage_->SetRootPathForTesting(root_path_);
 
-    auto record =
-        TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1);
-    record_name_ = biod_storage_->GetRecordFilename(record);
+    Record record = {
+        {kRecordFormatVersion, kRecordId1, kUserId1, kLabel1, kValidationVal1},
+        kData1};
+    record_name_ = biod_storage_->GetRecordFilename(record.metadata);
     EXPECT_FALSE(record_name_.empty());
     EXPECT_TRUE(base::CreateDirectory(record_name_.DirName()));
   }
@@ -498,9 +464,10 @@ class BiodStorageMemlockTest
     biod_storage_->set_allow_access(true);
     biod_storage_->SetRootPathForTesting(root_path_);
 
-    auto record =
-        TestRecord(kRecordId1, kUserId1, kLabel1, kValidationVal1, kData1);
-    record_name_ = biod_storage_->GetRecordFilename(record);
+    Record record = {
+        {kRecordFormatVersion, kRecordId1, kUserId1, kLabel1, kValidationVal1},
+        kData1};
+    record_name_ = biod_storage_->GetRecordFilename(record.metadata);
     EXPECT_FALSE(record_name_.empty());
     EXPECT_TRUE(base::CreateDirectory(record_name_.DirName()));
 

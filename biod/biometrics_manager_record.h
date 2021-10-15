@@ -8,10 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/base64.h>
-#include <base/logging.h>
-#include <base/strings/string_util.h>
-
 namespace biod {
 
 // Represents a record previously registered with this BiometricsManager in an
@@ -29,38 +25,6 @@ class BiometricsManagerRecord {
 
   // Returns true on success.
   virtual bool Remove() = 0;
-
-  virtual const std::string GetValidationValBase64() const {
-    const auto& validation_val_bytes = GetValidationVal();
-    std::string validation_val(validation_val_bytes.begin(),
-                               validation_val_bytes.end());
-    base::Base64Encode(validation_val, &validation_val);
-    return validation_val;
-  }
-
-  virtual bool IsValidUTF8() const {
-    if (!base::IsStringUTF8(GetLabel())) {
-      LOG(ERROR) << "Label is not valid UTF8";
-      return false;
-    }
-
-    if (!base::IsStringUTF8(GetId())) {
-      LOG(ERROR) << "Record ID is not valid UTF8";
-      return false;
-    }
-
-    if (!base::IsStringUTF8(GetValidationValBase64())) {
-      LOG(ERROR) << "Validation value is not valid UTF8";
-      return false;
-    }
-
-    if (!base::IsStringUTF8(GetUserId())) {
-      LOG(ERROR) << "User ID is not valid UTF8";
-      return false;
-    }
-
-    return true;
-  }
 };
 
 }  //  namespace biod

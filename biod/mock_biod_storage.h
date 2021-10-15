@@ -28,11 +28,12 @@ class MockBiodStorage : public BiodStorageInterface {
               (override));
   MOCK_METHOD(base::FilePath,
               GetRecordFilename,
-              (const BiometricsManagerRecord& record),
+              (const BiodStorageInterface::RecordMetadata& record_metadata),
               (override));
   MOCK_METHOD(bool,
               WriteRecord,
-              (const BiometricsManagerRecord& record, base::Value data),
+              (const BiodStorageInterface::RecordMetadata& record_metadata,
+               base::Value data),
               (override));
   MOCK_METHOD(ReadRecordResult,
               ReadRecords,

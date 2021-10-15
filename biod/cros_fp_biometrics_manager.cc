@@ -115,7 +115,8 @@ bool CrosFpBiometricsManager::Record::SetLabel(std::string label) {
   }
   biometrics_manager_->records_[index_].label = std::move(label);
 
-  if (!biometrics_manager_->WriteRecord(*this, tmpl->data(), tmpl->size())) {
+  if (!biometrics_manager_->WriteRecord(biometrics_manager_->records_[index_],
+                                        tmpl->data(), tmpl->size())) {
     biometrics_manager_->records_[index_].label = std::move(old_label);
     return false;
   }
@@ -202,6 +203,12 @@ CrosFpBiometricsManager::GetRecords() {
     records.emplace_back(
         std::make_unique<Record>(weak_factory_.GetWeakPtr(), i));
   return records;
+}
+
+const BiodStorageInterface::RecordMetadata&
+CrosFpBiometricsManager::GetRecordMetadata(int index) const {
+  CHECK(index < records_.size());
+  return records_.at(index);
 }
 
 bool CrosFpBiometricsManager::DestroyAllRecords() {
@@ -500,8 +507,7 @@ void CrosFpBiometricsManager::DoEnrollImageEvent(
   LOG(INFO) << "Computed validation value for enrolled finger.";
 
   records_.emplace_back(record);
-  Record current_record(weak_factory_.GetWeakPtr(), records_.size() - 1);
-  if (!WriteRecord(current_record, tmpl->data(), tmpl->size())) {
+  if (!WriteRecord(records_.back(), tmpl->data(), tmpl->size())) {
     records_.pop_back();
     OnSessionFailed();
     return;
@@ -749,9 +755,10 @@ bool CrosFpBiometricsManager::LoadRecord(
   return true;
 }
 
-bool CrosFpBiometricsManager::WriteRecord(const BiometricsManagerRecord& record,
-                                          uint8_t* tmpl_data,
-                                          size_t tmpl_size) {
+bool CrosFpBiometricsManager::WriteRecord(
+    const BiodStorageInterface::RecordMetadata& record,
+    uint8_t* tmpl_data,
+    size_t tmpl_size) {
   base::StringPiece tmpl_sp(reinterpret_cast<char*>(tmpl_data), tmpl_size);
   std::string tmpl_base64;
   base::Base64Encode(tmpl_sp, &tmpl_base64);
@@ -813,9 +820,10 @@ bool CrosFpBiometricsManager::UpdateTemplatesOnDisk(
       continue;
     }
 
-    Record current_record(weak_factory_.GetWeakPtr(), i);
+    const auto current_record = GetRecordMetadata(i);
     if (!WriteRecord(current_record, templ->data(), templ->size())) {
-      LOG(ERROR) << "Cannot update record " << LogSafeID(records_[i].record_id)
+      LOG(ERROR) << "Cannot update record "
+                 << LogSafeID(current_record.record_id)
                  << " in storage during AuthSession because writing failed.";
       ret = false;
     }

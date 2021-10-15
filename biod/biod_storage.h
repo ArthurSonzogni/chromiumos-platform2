@@ -10,10 +10,13 @@
 #include <unordered_set>
 #include <vector>
 
+#include <base/base64.h>
 #include <base/callback.h>
 #include <base/files/file_path.h>
-#include <brillo/secure_blob.h>
+#include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <base/values.h>
+#include <brillo/secure_blob.h>
 #include <brillo/scoped_umask.h>
 
 #include "biod/biometrics_manager.h"
@@ -38,12 +41,59 @@ class BiodStorageInterface {
     std::string label;
     /** Positive match secrect validation value. */
     std::vector<uint8_t> validation_val;
+
+    bool operator==(const RecordMetadata& rhs) const {
+      return std::tie(this->record_format_version, this->validation_val,
+                      this->record_id, this->user_id, this->label) ==
+             std::tie(rhs.record_format_version, rhs.validation_val,
+                      rhs.record_id, rhs.user_id, rhs.label);
+    }
+
+    bool operator!=(const RecordMetadata& rhs) const { return !(*this == rhs); }
+
+    const std::string GetValidationValBase64() const {
+      std::string validation_val_base64(validation_val.begin(),
+                                        validation_val.end());
+      base::Base64Encode(validation_val_base64, &validation_val_base64);
+      return validation_val_base64;
+    }
+
+    bool IsValidUTF8() const {
+      if (!base::IsStringUTF8(label)) {
+        LOG(ERROR) << "Label is not valid UTF8";
+        return false;
+      }
+
+      if (!base::IsStringUTF8(record_id)) {
+        LOG(ERROR) << "Record ID is not valid UTF8";
+        return false;
+      }
+
+      if (!base::IsStringUTF8(GetValidationValBase64())) {
+        LOG(ERROR) << "Validation value is not valid UTF8";
+        return false;
+      }
+
+      if (!base::IsStringUTF8(user_id)) {
+        LOG(ERROR) << "User ID is not valid UTF8";
+        return false;
+      }
+
+      return true;
+    }
   };
 
   struct Record {
     RecordMetadata metadata;
     // "data" is base64 encoded.
     std::string data;
+
+    bool operator==(const Record& rhs) const {
+      return std::tie(this->metadata, this->data) ==
+             std::tie(rhs.metadata, rhs.data);
+    }
+
+    bool operator!=(const Record& rhs) const { return !(*this == rhs); }
   };
 
   struct ReadRecordResult {
@@ -55,9 +105,10 @@ class BiodStorageInterface {
 
   virtual void SetRootPathForTesting(const base::FilePath& root_path) = 0;
   virtual base::FilePath GetRecordFilename(
-      const BiometricsManagerRecord& record) = 0;
-  virtual bool WriteRecord(const BiometricsManagerRecord& record,
-                           base::Value data) = 0;
+      const BiodStorageInterface::RecordMetadata& record_metadata) = 0;
+  virtual bool WriteRecord(
+      const BiodStorageInterface::RecordMetadata& record_metadata,
+      base::Value data) = 0;
   virtual ReadRecordResult ReadRecords(
       const std::unordered_set<std::string>& user_ids) = 0;
   virtual ReadRecordResult ReadRecordsForSingleUser(
@@ -85,11 +136,11 @@ class BiodStorage : public BiodStorageInterface {
    * @return Full path on success. Empty path on failure.
    */
   base::FilePath GetRecordFilename(
-      const BiometricsManagerRecord& record) override;
+      const BiodStorageInterface::RecordMetadata& record_metadata) override;
 
   // Write one record to file in per user stateful. This is called whenever
   // we enroll a new record.
-  bool WriteRecord(const BiometricsManagerRecord& record,
+  bool WriteRecord(const BiodStorageInterface::RecordMetadata& record_metadata,
                    base::Value data) override;
 
   // Read validation value from |record_dictionary| and store in |output|.

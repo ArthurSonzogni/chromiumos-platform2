@@ -37,6 +37,7 @@ using crypto_test_data::kFakeValidationValue2;
 using crypto_test_data::kUserID;
 
 using testing::Return;
+using testing::ReturnRef;
 
 class FakeCrosFpDevice : public CrosFpDeviceInterface {
  public:
@@ -346,6 +347,11 @@ TEST_F(CrosFpBiometricsManagerMockTest, TestUpdateTemplatesOnDisk) {
   EXPECT_CALL(*mock_cros_dev_, GetTemplate).WillOnce([](int) {
     return std::make_unique<VendorTemplate>();
   });
+
+  BiodStorageInterface::RecordMetadata record_metadata;
+  EXPECT_CALL(*mock_, GetRecordMetadata(0))
+      .WillOnce(ReturnRef(record_metadata));
+
   EXPECT_CALL(*mock_, WriteRecord).WillOnce(Return(true));
 
   EXPECT_TRUE(mock_->UpdateTemplatesOnDisk(dirty_list, suspicious_templates));
