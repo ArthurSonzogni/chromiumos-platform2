@@ -6,8 +6,9 @@
 #define VM_TOOLS_SOMMELIER_SOMMELIER_UTIL_H_
 
 #include <assert.h>
-#include <memory>
+#include <cerrno>
 #include <cstring>
+#include <memory>
 
 #include <wayland-server.h>
 

@@ -5,6 +5,7 @@
 #include "sommelier-ctx.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
+#include <cerrno>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <wayland-util.h>
@@ -249,8 +250,9 @@ static int sl_handle_wayland_channel_event(int fd, uint32_t mask, void* data) {
     ctx->clipboard_event_source.reset(
         wl_event_loop_add_fd(event_loop, pipe_read_fd, WL_EVENT_READABLE,
                              sl_handle_clipboard_event, ctx));
-  } else if (event_type != WaylandChannelEvent::Receive)
+  } else if (event_type != WaylandChannelEvent::Receive) {
     return 1;
+  }
 
   buffer_iov.iov_base = receive.data;
   buffer_iov.iov_len = receive.data_size;

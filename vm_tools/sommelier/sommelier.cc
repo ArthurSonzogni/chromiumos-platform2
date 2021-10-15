@@ -455,11 +455,11 @@ static void sl_global_destroy(struct sl_global* global) {
 // giving Sommelier an opportunity to bind to the new global object
 // (so we can receive events or invoke requests on it), and/or forward the
 // wl_registry::global event on to our clients.
-static void sl_registry_handler(void* data,
-                                struct wl_registry* registry,
-                                uint32_t id,
-                                const char* interface,
-                                uint32_t version) {
+void sl_registry_handler(void* data,
+                         struct wl_registry* registry,
+                         uint32_t id,
+                         const char* interface,
+                         uint32_t version) {
   struct sl_context* ctx = (struct sl_context*)data;
 
   TRACE_EVENT("other", "sl_registry_handler", "id", id);
@@ -836,13 +836,13 @@ static int sl_handle_event(int fd, uint32_t mask, void* data) {
   return count;
 }
 
-static void sl_create_window(struct sl_context* ctx,
-                             xcb_window_t id,
-                             int x,
-                             int y,
-                             int width,
-                             int height,
-                             int border_width) {
+void sl_create_window(struct sl_context* ctx,
+                      xcb_window_t id,
+                      int x,
+                      int y,
+                      int width,
+                      int height,
+                      int border_width) {
   TRACE_EVENT("surface", "sl_create_window");
   struct sl_window* window =
       static_cast<sl_window*>(malloc(sizeof(struct sl_window)));
@@ -862,6 +862,7 @@ static void sl_create_window(struct sl_context* ctx,
   window->managed = 0;
   window->realized = 0;
   window->activated = 0;
+  window->fullscreen = 0;
   window->maximized = 0;
   window->allow_resize = 1;
   window->transient_for = XCB_WINDOW_NONE;
@@ -1061,7 +1062,7 @@ static void sl_handle_map_request(struct sl_context* ctx,
   xcb_get_property_cookie_t property_cookies[ARRAY_SIZE(properties)];
   struct sl_wm_size_hints size_hints = {0};
   struct sl_mwm_hints mwm_hints = {0};
-  bool maximize_h = false, maximize_v = false;
+  bool maximize_h = false, maximize_v = false, fullscreen = false;
   uint32_t values[5];
 
   if (!window)
@@ -1186,14 +1187,27 @@ static void sl_handle_map_request(struct sl_context* ctx,
           } else if (reply_atoms[j] ==
                      ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_VERT].value) {
             maximize_v = true;
+          } else if (reply_atoms[j] ==
+                     ctx->atoms[ATOM_NET_WM_STATE_FULLSCREEN].value) {
+            fullscreen = true;
           }
         }
         // Neither wayland not CrOS support 1D maximizing, so sommelier will
         // only consider a window maximized if both dimensions are. This
         // behaviour is consistent with sl_handle_client_message().
         window->maximized = maximize_h && maximize_v;
-        if (window->maximized)
-          value = "ATOM_NET_WM_STATE_MAXIMIZED_VERT && HORZ";
+        window->fullscreen = fullscreen;
+        if (window->maximized) {
+          if (window->fullscreen) {
+            value =
+                "_NET_WM_STATE_FULLSCREEN, _NET_WM_STATE_MAXIMIZED_VERT && "
+                "HORZ";
+          } else {
+            value = "_NET_WM_STATE_MAXIMIZED_VERT && HORZ";
+          }
+        } else if (window->fullscreen) {
+          value = "_NET_WM_STATE_FULLSCREEN";
+        }
         break;
       case PROPERTY_GTK_THEME_VARIANT:
         if (xcb_get_property_value_length(reply) >= 4)
@@ -1580,8 +1594,8 @@ static void sl_request_attention(struct sl_context* ctx,
   }
 }
 
-static void sl_handle_client_message(struct sl_context* ctx,
-                                     xcb_client_message_event_t* event) {
+void sl_handle_client_message(struct sl_context* ctx,
+                              xcb_client_message_event_t* event) {
   TRACE_EVENT("x11wm", "XCB_CLIENT_MESSAGE", [&](perfetto::EventContext p) {
     perfetto_annotate_atom(ctx, p, "event->type", event->type);
     perfetto_annotate_window(ctx, p, "event->window", event->window);
@@ -1629,7 +1643,7 @@ static void sl_handle_client_message(struct sl_context* ctx,
   } else if (event->type == ctx->atoms[ATOM_NET_WM_STATE].value) {
     struct sl_window* window = sl_lookup_window(ctx, event->window);
 
-    if (window && window->xdg_toplevel) {
+    if (window) {
       int changed[ATOM_LAST + 1];
       uint32_t action = event->data.data32[0];
       unsigned i;
@@ -1643,10 +1657,17 @@ static void sl_handle_client_message(struct sl_context* ctx,
         TRACE_EVENT("x11wm", "XCB_CLIENT_MESSAGE: ATOM_NET_WM_STATE_FULLSCREEN",
                     "action", net_wm_state_to_string(action), "window->name",
                     window->name);
-        if (action == NET_WM_STATE_ADD)
-          xdg_toplevel_set_fullscreen(window->xdg_toplevel, NULL);
-        else if (action == NET_WM_STATE_REMOVE)
-          xdg_toplevel_unset_fullscreen(window->xdg_toplevel);
+        if (action == NET_WM_STATE_ADD) {
+          window->fullscreen = 1;
+          if (window->xdg_toplevel) {
+            xdg_toplevel_set_fullscreen(window->xdg_toplevel, NULL);
+          }
+        } else if (action == NET_WM_STATE_REMOVE) {
+          window->fullscreen = 0;
+          if (window->xdg_toplevel) {
+            xdg_toplevel_unset_fullscreen(window->xdg_toplevel);
+          }
+        }
       }
 
       if (changed[ATOM_NET_WM_STATE_MAXIMIZED_VERT] &&
@@ -1656,10 +1677,17 @@ static void sl_handle_client_message(struct sl_context* ctx,
             "XCB_CLIENT_MESSAGE: ATOM_NET_WM_STATE_MAXIMIZED_VERT && HORZ",
             "action", net_wm_state_to_string(action), "window->name",
             window->name);
-        if (action == NET_WM_STATE_ADD)
-          xdg_toplevel_set_maximized(window->xdg_toplevel);
-        else if (action == NET_WM_STATE_REMOVE)
-          xdg_toplevel_unset_maximized(window->xdg_toplevel);
+        if (action == NET_WM_STATE_ADD) {
+          window->maximized = 1;
+          if (window->xdg_toplevel) {
+            xdg_toplevel_set_maximized(window->xdg_toplevel);
+          }
+        } else if (action == NET_WM_STATE_REMOVE) {
+          window->maximized = 0;
+          if (window->xdg_toplevel) {
+            xdg_toplevel_unset_maximized(window->xdg_toplevel);
+          }
+        }
       }
     }
   } else if (event->type == ctx->atoms[ATOM_WM_CHANGE_STATE].value &&

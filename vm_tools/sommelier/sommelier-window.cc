@@ -469,6 +469,9 @@ void sl_window_update(struct sl_window* window) {
     if (window->maximized) {
       xdg_toplevel_set_maximized(window->xdg_toplevel);
     }
+    if (window->fullscreen) {
+      xdg_toplevel_set_fullscreen(window->xdg_toplevel, NULL);
+    }
   } else if (!window->xdg_popup) {
     struct xdg_positioner* positioner;
 

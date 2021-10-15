@@ -63,6 +63,13 @@ class WaylandChannel;
 
 extern const struct wl_registry_listener sl_registry_listener;
 
+// Exported for testing.
+void sl_registry_handler(void* data,
+                         struct wl_registry* registry,
+                         uint32_t id,
+                         const char* interface,
+                         uint32_t version);
+
 struct sl_context {
   char** runprog;
   struct wl_display* display;
@@ -511,6 +518,17 @@ void sl_roundtrip(struct sl_context* ctx);
 
 struct sl_window* sl_lookup_window(struct sl_context* ctx, xcb_window_t id);
 int sl_is_our_window(struct sl_context* ctx, xcb_window_t id);
+
+// Exported for testing.
+void sl_create_window(struct sl_context* ctx,
+                      xcb_window_t id,
+                      int x,
+                      int y,
+                      int width,
+                      int height,
+                      int border_width);
+void sl_handle_client_message(struct sl_context* ctx,
+                              xcb_client_message_event_t* event);
 
 #ifdef GAMEPAD_SUPPORT
 void sl_gaming_seat_add_listener(struct sl_context* ctx);

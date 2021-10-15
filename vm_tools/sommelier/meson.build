@@ -155,7 +155,7 @@ executable('sommelier',
   install: true,
   sources: [
     'sommelier-main.cc',
-  ] + wl_outs, 
+  ] + wl_outs,
   link_with: libsommelier,
   cpp_args: cpp_args + sommelier_defines,
   include_directories: includes,
@@ -166,7 +166,7 @@ if get_option('with_tests')
     install: true,
     sources: [
       'sommelier_test.cc',
-    ],
+    ] + wl_outs,
     link_with: libsommelier,
     dependencies: [
       dependency('gtest'),
