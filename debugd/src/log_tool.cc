@@ -177,7 +177,8 @@ const std::vector<Log> kCommandLogs {
   // There might be more than one record, so grab them all.
   // Plus, for <linux-3.19, it's named "console-ramoops", but for newer
   // versions, it's named "console-ramoops-#".
-  {kGlob, "console-ramoops", "/sys/fs/pstore/console-ramoops*"},
+  {kGlob, "console-ramoops", "/sys/fs/pstore/console-ramoops*",
+    SandboxedProcess::kDefaultUser, kPstoreAccessGroup },
   {kFile, "cpuinfo", "/proc/cpuinfo"},
   {kFile, "cr50_version", "/var/cache/cr50-version"},
   {kFile, "cros_ec.log", "/var/log/cros_ec.log",

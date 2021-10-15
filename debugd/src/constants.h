@@ -15,6 +15,7 @@ extern const char kDevFeaturesChromeRemoteDebuggingFlagPath[];
 extern const char kDeviceCoredumpUploadFlagPath[];
 
 extern const char kDebugfsGroup[];
+extern const char kPstoreAccessGroup[];
 
 }  // namespace debugd
 

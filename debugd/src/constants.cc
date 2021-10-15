@@ -17,4 +17,6 @@ const char kDeviceCoredumpUploadFlagPath[] =
 
 const char kDebugfsGroup[] = "debugfs-access";
 
+const char kPstoreAccessGroup[] = "pstore-access";
+
 }  // namespace debugd
