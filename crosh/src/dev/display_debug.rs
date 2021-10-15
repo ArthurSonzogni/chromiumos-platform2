@@ -4,7 +4,12 @@
 
 // Provides the `display_debug` command which can be used to assist with log collection for feedback reports.
 
+use dbus::blocking::Connection;
+use sys_util::error;
+use system_api::client::OrgChromiumDebugd;
+
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
+use crate::util::DEFAULT_DBUS_TIMEOUT;
 
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
@@ -62,7 +67,32 @@ fn execute_display_debug_trace_stop(
 
 fn execute_display_debug_annotate(
     _cmd: &Command,
-    _args: &Arguments,
+    args: &Arguments,
 ) -> Result<(), dispatcher::Error> {
-    unimplemented!();
+    let tokens = args.get_args();
+
+    if tokens.is_empty() {
+        return Err(dispatcher::Error::CommandInvalidArguments(
+            "missing log argument".to_string(),
+        ));
+    }
+
+    let connection = Connection::new_system().map_err(|err| {
+        error!("ERROR: Failed to get D-Bus connection: {}", err);
+        dispatcher::Error::CommandReturnedError
+    })?;
+
+    let conn_path = connection.with_proxy(
+        "org.chromium.debugd",
+        "/org/chromium/debugd",
+        DEFAULT_DBUS_TIMEOUT,
+    );
+
+    // Sanitizion and validation of the log is done in debugd.
+    let log = tokens.join(" ");
+    conn_path.drmtrace_annotate_log(&log).map_err(|err| {
+        println!("ERROR: Got unexpected result: {}", err);
+        dispatcher::Error::CommandReturnedError
+    })?;
+    Ok(())
 }
