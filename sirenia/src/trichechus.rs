@@ -469,19 +469,33 @@ fn spawn_tee_app(
         (tee_transport.w.as_raw_fd(), DEFAULT_CONNECTION_W_FD),
     ];
 
+    let exe_args = app
+        .app_info
+        .exec_args
+        .as_deref()
+        .unwrap_or(&[])
+        .iter()
+        .map(|a| a.as_str());
     let pid = match &app.app_info.exec_info {
-        ExecutableInfo::Path(path) => app
-            .sandbox
-            .run(Path::new(&path), &[path], &keep_fds)
-            .context("failed to start up sandbox")?,
+        ExecutableInfo::Path(path) => {
+            let mut args = Vec::with_capacity(1 + exe_args.len());
+            args.push(path.as_str());
+            args.extend(exe_args);
+            app.sandbox
+                .run(Path::new(&path), args.as_slice(), &keep_fds)
+                .context("failed to start up sandbox")?
+        }
         ExecutableInfo::Digest(digest) | ExecutableInfo::CrosPath(_, digest) => {
             match state.loaded_apps.borrow().get(digest) {
                 Some(shared_mem) => {
                     let fd_path = fd_to_path(shared_mem.as_raw_fd())
                         .map(|p| p.to_string_lossy().to_string())
                         .unwrap_or_else(|_| "".into());
+                    let mut args = Vec::with_capacity(1 + exe_args.len());
+                    args.push(fd_path.as_str());
+                    args.extend(exe_args);
                     app.sandbox
-                        .run_raw(shared_mem.as_raw_fd(), &[&fd_path], &keep_fds)
+                        .run_raw(shared_mem.as_raw_fd(), args.as_slice(), &keep_fds)
                         .context("failed to start up sandbox")?
                 }
                 None => bail!(

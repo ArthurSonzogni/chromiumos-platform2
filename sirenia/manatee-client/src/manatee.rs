@@ -473,7 +473,7 @@ fn main() -> Result<()> {
             opts.push(format!("-{}", APP_ELF_SHORT_NAME));
         }
     }
-    for long_name in [HALT_LONG_NAME, POWEROFF_LONG_NAME, REBOOT_LONG_NAME] {
+    for long_name in &[HALT_LONG_NAME, POWEROFF_LONG_NAME, REBOOT_LONG_NAME] {
         if matches.opt_present(long_name) {
             mutually_exclusive_opts += 1;
             opts.push(format!("--{}", long_name));

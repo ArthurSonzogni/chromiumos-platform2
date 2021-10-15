@@ -80,6 +80,7 @@ pub struct SecretsParameters {
 pub struct AppManifestEntry {
     pub app_name: String,
     pub exec_info: ExecutableInfo,
+    pub exec_args: Option<Vec<String>>,
     pub sandbox_type: SandboxType,
     pub secrets_parameters: Option<SecretsParameters>,
     pub storage_parameters: Option<StorageParameters>,
@@ -94,6 +95,7 @@ impl AppManifest {
             AppManifestEntry {
                 app_name: "shell".to_string(),
                 exec_info: ExecutableInfo::Path("/bin/sh".to_string()),
+                exec_args: Some(vec!["-i".to_string()]),
                 sandbox_type: SandboxType::DeveloperEnvironment,
                 secrets_parameters: None,
                 storage_parameters: None,
@@ -101,6 +103,7 @@ impl AppManifest {
             AppManifestEntry {
                 app_name: "sandboxed-shell".to_string(),
                 exec_info: ExecutableInfo::Path("/bin/sh".to_string()),
+                exec_args: Some(vec!["-i".to_string()]),
                 sandbox_type: SandboxType::Container,
                 secrets_parameters: None,
                 storage_parameters: None,
@@ -108,6 +111,7 @@ impl AppManifest {
             AppManifestEntry {
                 app_name: "demo_app".to_string(),
                 exec_info: ExecutableInfo::Path("/usr/bin/demo_app".to_string()),
+                exec_args: None,
                 sandbox_type: SandboxType::DeveloperEnvironment,
                 secrets_parameters: None,
                 storage_parameters: Some(StorageParameters {
@@ -230,6 +234,7 @@ pub mod tests {
         AppManifestEntry {
             app_name: "demo_app".to_string(),
             exec_info: ExecutableInfo::Path("/usr/bin/demo_app".to_string()),
+            exec_args: None,
             sandbox_type: SandboxType::DeveloperEnvironment,
             secrets_parameters: None,
             storage_parameters: Some(StorageParameters {
