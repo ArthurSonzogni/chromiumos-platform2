@@ -57,8 +57,15 @@ executable("tpm2-simulator") {
   }
 
   if (use.tpm2) {
-    sources += [ "tpm_executor_tpm2_impl.cc" ]
-    libs += [ "tpm2" ]
+    sources += [
+      "pinweaver_eal.cc",
+      "tpm_executor_tpm2_impl.cc",
+      "tpm_vendor_cmd_pinweaver.cc",
+    ]
+    libs += [
+      "pinweaver",
+      "tpm2",
+    ]
   }
 }
 

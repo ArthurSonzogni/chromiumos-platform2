@@ -19,6 +19,7 @@ poll: 1
 pselect6: 1
 open: 1
 openat: 1
+creat: 1
 unlink: 1
 unlinkat: 1
 fstat: 1
@@ -56,6 +57,7 @@ clock_nanosleep: 1
 clock_nanosleep_time64: 1
 futex: 1
 getrandom: 1
+sysinfo: 1
 
 # tgkill is used by abort() and CHECK()/LOG(FATAL).
 tgkill: 1

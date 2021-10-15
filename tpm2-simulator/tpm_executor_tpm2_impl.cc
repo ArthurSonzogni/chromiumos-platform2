@@ -13,11 +13,13 @@
 #include "tpm2-simulator/tpm_command_utils.h"
 #include "tpm2-simulator/tpm_executor_tpm2_impl.h"
 #include "tpm2-simulator/tpm_vendor_cmd_locality.h"
+#include "tpm2-simulator/tpm_vendor_cmd_pinweaver.h"
 
 namespace tpm2_simulator {
 
 TpmExecutorTpm2Impl::TpmExecutorTpm2Impl() {
   vendor_commands_.emplace_back(std::make_unique<TpmVendorCommandLocality>());
+  vendor_commands_.emplace_back(std::make_unique<TpmVendorCommandPinweaver>());
 }
 
 void TpmExecutorTpm2Impl::InitializeVTPM() {
