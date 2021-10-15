@@ -959,6 +959,12 @@ void ArcSetup::SetUpSdcard() {
   for (const auto& mount : GetEsdfsMounts(GetSdkVersion())) {
     base::FilePath dest_directory =
         arc_paths_->sdcard_mount_directory.Append(mount.relative_path);
+
+    // Don't mount if the final destination path doesn't fall under
+    // "/run/arc/sdcard" directory
+    EXIT_IF(
+        !base::FilePath("/run/arc/sdcard").IsParent(Realpath(dest_directory)));
+
     EXIT_IF(!arc_mounter_->Mount(
         source_directory.value(), dest_directory, "esdfs", mount_flags,
         CreateEsdfsMountOpts(kMediaUid, kMediaGid, mount.mode, kRootUid,
