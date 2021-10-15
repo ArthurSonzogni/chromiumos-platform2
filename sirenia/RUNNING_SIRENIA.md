@@ -105,8 +105,8 @@ Manatee boards set the `manatee` USE flag which does the following:
 *   Trichechus (and TEE apps) are installed to the initramfs
 *   Dugong and cronista are started by upstart as system services.
 
-Note: The only manatee board options at the moment are eve-manatee and
-hatch-manatee. Creating a new board can be done using this script
+Note: The only manatee board options at the moment are
+`{hatch,volteer-brya}-manatee`.
 
 ### Building using portage
 
