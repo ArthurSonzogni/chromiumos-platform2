@@ -393,8 +393,8 @@ int main(int argc, char** argv) {
   // This needs to be created on the D-Bus thread.
   std::unique_ptr<vm_tools::garcon::PackageKitProxy> pk_proxy;
   bool ret = dbus_thread.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&CreatePackageKitProxy, &event, host_notifier.get(),
-                            &pk_proxy));
+      FROM_HERE, base::BindOnce(&CreatePackageKitProxy, &event,
+                                host_notifier.get(), &pk_proxy));
   if (!ret) {
     LOG(ERROR) << "Failed to post PackageKit proxy creation to D-Bus thread";
     return -1;
@@ -411,10 +411,10 @@ int main(int argc, char** argv) {
   std::shared_ptr<grpc::Server> server_copy;
   int vsock_listen_port = 0;
   ret = grpc_thread.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&RunGarconService, pk_proxy.get(), &event, &server_copy,
-                 &vsock_listen_port, garcon_service_tasks_thread.task_runner(),
-                 host_notifier.get()));
+      FROM_HERE, base::BindOnce(&RunGarconService, pk_proxy.get(), &event,
+                                &server_copy, &vsock_listen_port,
+                                garcon_service_tasks_thread.task_runner(),
+                                host_notifier.get()));
   if (!ret) {
     LOG(ERROR) << "Failed to post server startup task to grpc thread";
     return -1;

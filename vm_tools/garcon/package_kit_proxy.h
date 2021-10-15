@@ -53,10 +53,10 @@ class PackageKitProxy {
     std::string summary;
   };
 
-  typedef base::Callback<void(bool success,
-                              bool pkg_found,
-                              const LinuxPackageInfo& pkg_info,
-                              const std::string& error)>
+  typedef base::OnceCallback<void(bool success,
+                                  bool pkg_found,
+                                  const LinuxPackageInfo& pkg_info,
+                                  const std::string& error)>
       PackageSearchCallback;
 
   // Creates an instance of PackageKitProxy that will use the calling thread for

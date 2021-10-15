@@ -261,8 +261,9 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
       transaction_properties_ =
           std::make_unique<PackageKitTransactionProperties>(
               transaction_proxy_,
-              base::Bind(&PackageKitTransaction::OnPackageKitPropertyChanged,
-                         base::Unretained(this)));
+              base::BindRepeating(
+                  &PackageKitTransaction::OnPackageKitPropertyChanged,
+                  base::Unretained(this)));
       transaction_properties_->ConnectSignals();
       transaction_properties_->GetAll();
     }
@@ -338,31 +339,31 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
     if (signal_mask_ & kErrorCodeSignalMask) {
       signal_mask_ = signal_mask_ & ~kErrorCodeSignalMask;
       signal_name.assign(kErrorCodeSignal);
-      signal_callback = base::Bind(&PackageKitTransaction::OnErrorSignal,
-                                   base::Unretained(this));
+      signal_callback = base::BindRepeating(
+          &PackageKitTransaction::OnErrorSignal, base::Unretained(this));
     } else if (signal_mask_ & kFinishedSignalMask) {
       signal_mask_ = signal_mask_ & ~kFinishedSignalMask;
       signal_name.assign(kFinishedSignal);
-      signal_callback = base::Bind(&PackageKitTransaction::OnFinishedSignal,
-                                   base::Unretained(this));
+      signal_callback = base::BindRepeating(
+          &PackageKitTransaction::OnFinishedSignal, base::Unretained(this));
     } else if (signal_mask_ & kPackageSignalMask) {
       signal_mask_ = signal_mask_ & ~kPackageSignalMask;
       signal_name.assign(kPackageSignal);
-      signal_callback = base::Bind(&PackageKitTransaction::OnPackageSignal,
-                                   base::Unretained(this));
+      signal_callback = base::BindRepeating(
+          &PackageKitTransaction::OnPackageSignal, base::Unretained(this));
     } else if (signal_mask_ & kDetailsSignalMask) {
       signal_mask_ = signal_mask_ & ~kDetailsSignalMask;
       signal_name.assign(kDetailsSignal);
-      signal_callback = base::Bind(&PackageKitTransaction::OnDetailsSignal,
-                                   base::Unretained(this));
+      signal_callback = base::BindRepeating(
+          &PackageKitTransaction::OnDetailsSignal, base::Unretained(this));
     } else {
       NOTREACHED();
     }
 
     transaction_proxy_->ConnectToSignal(
         kPackageKitTransactionInterface, signal_name, signal_callback,
-        base::Bind(&PackageKitTransaction::OnSignalConnected,
-                   base::Unretained(this)));
+        base::BindOnce(&PackageKitTransaction::OnSignalConnected,
+                       base::Unretained(this)));
   }
 
   void OnSignalConnected(const std::string& interface_name,
@@ -605,8 +606,7 @@ class SearchFilesTransaction : public PackageKitTransaction {
             packagekit_service_proxy,
             kErrorCodeSignalMask | kFinishedSignalMask | kPackageSignalMask),
         file_path_(file_path),
-        callback_(std::move(callback)),
-        callback_called_(false) {}
+        callback_(std::move(callback)) {}
 
   bool ExecuteRequest(dbus::ObjectProxy* transaction_proxy) override {
     dbus::MethodCall method_call(kPackageKitTransactionInterface,
@@ -627,24 +627,22 @@ class SearchFilesTransaction : public PackageKitTransaction {
     LOG(ERROR) << "Problem with SearchFiles transaction for file "
                << file_path_.value() << ": " << details;
     // Check if we've already done the callback.
-    if (callback_called_)
+    if (!callback_)
       return;
-    callback_called_ = true;
-    callback_.Run(false /*success*/, false /*pkg_found*/,
-                  PackageKitProxy::LinuxPackageInfo(), details);
+    std::move(callback_).Run(false /*success*/, false /*pkg_found*/,
+                             PackageKitProxy::LinuxPackageInfo(), details);
   }
 
   void ErrorReceived(uint32_t error_code, const std::string& details) override {
     LOG(ERROR) << "Failure searching local Linux Packages by file "
                << file_path_.value() << ": " << details;
     // Check if we've already done the callback.
-    if (callback_called_)
+    if (!callback_)
       return;
-    callback_called_ = true;
     // We will still get a Finished signal where we finalize everything, but
     // no need to wait for it.
-    callback_.Run(false /*success*/, false /*pkg_found*/,
-                  PackageKitProxy::LinuxPackageInfo(), details);
+    std::move(callback_).Run(false /*success*/, false /*pkg_found*/,
+                             PackageKitProxy::LinuxPackageInfo(), details);
   }
 
   void PackageReceived(uint32_t code,
@@ -652,32 +650,30 @@ class SearchFilesTransaction : public PackageKitTransaction {
                        const std::string& summary) override {
     LOG(INFO) << "Got a package for local file " << file_path_.value();
     // Check if we've already done the callback.
-    if (callback_called_)
+    if (!callback_)
       return;
-    callback_called_ = true;
     PackageKitProxy::LinuxPackageInfo pkg_info;
     pkg_info.package_id = package_id;
     pkg_info.summary = summary;
-    callback_.Run(true /*success*/, true /*pkg_found*/, pkg_info, "");
+    std::move(callback_).Run(true /*success*/, true /*pkg_found*/, pkg_info,
+                             "");
   }
 
   void FinishedReceived(uint32_t exit_code) override {
     LOG(INFO) << "Finished with SearchFiles transaction for local file "
               << file_path_.value();
-    if (callback_called_)
+    if (!callback_)
       return;
-    callback_called_ = true;
 
     // If we got here without calling the callback, PackageKit couldn't find a
     // package corresponding to the file.
-    callback_.Run(true /*success*/, false /*pkg_found*/,
-                  PackageKitProxy::LinuxPackageInfo(), "");
+    std::move(callback_).Run(true /*success*/, false /*pkg_found*/,
+                             PackageKitProxy::LinuxPackageInfo(), "");
   }
 
  private:
   base::FilePath file_path_;
   PackageKitProxy::PackageSearchCallback callback_;
-  bool callback_called_;
 };
 
 // Sublcass for handling InstallFiles and InstallPackages. If |package_id|
@@ -1072,8 +1068,8 @@ void RunAptUpdate(scoped_refptr<dbus::Bus> bus,
     LOG(INFO) << "Not performing automatic update because they are disabled";
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE,
-        base::Bind(&RunAptUpdate, bus, packagekit_proxy,
-                   packagekit_service_proxy),
+        base::BindOnce(&RunAptUpdate, bus, packagekit_proxy,
+                       packagekit_service_proxy),
         kRefreshCachePeriod);
     return;
   }
@@ -1113,8 +1109,8 @@ void RunAptUpdate(scoped_refptr<dbus::Bus> bus,
   }
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&RunAptUpdate, bus, packagekit_proxy,
-                 packagekit_service_proxy),
+      base::BindOnce(&RunAptUpdate, bus, packagekit_proxy,
+                     packagekit_service_proxy),
       kRefreshCachePeriod);
 }
 
@@ -1132,8 +1128,7 @@ class ResolveTransaction : public PackageKitTransaction {
             packagekit_service_proxy,
             kErrorCodeSignalMask | kFinishedSignalMask | kPackageSignalMask),
         package_name_(package_name),
-        callback_(std::move(callback)),
-        callback_called_(false) {}
+        callback_(std::move(callback)) {}
 
   bool ExecuteRequest(dbus::ObjectProxy* transaction_proxy) override {
     dbus::MethodCall method_call(kPackageKitTransactionInterface,
@@ -1151,24 +1146,22 @@ class ResolveTransaction : public PackageKitTransaction {
     LOG(ERROR) << "Problem with Resolve transaction for package: "
                << package_name_ << ": " << details;
     // Check if we've already done the callback.
-    if (callback_called_)
+    if (!callback_)
       return;
-    callback_called_ = true;
-    callback_.Run(false /*success*/, false /*pkg_found*/,
-                  PackageKitProxy::LinuxPackageInfo(), details);
+    std::move(callback_).Run(false /*success*/, false /*pkg_found*/,
+                             PackageKitProxy::LinuxPackageInfo(), details);
   }
 
   void ErrorReceived(uint32_t error_code, const std::string& details) override {
     LOG(ERROR) << "Failure resolving package " << package_name_ << ": "
                << details;
     // Check if we've already done the callback.
-    if (callback_called_)
+    if (!callback_)
       return;
-    callback_called_ = true;
     // We will still get a Finished signal where we finalize everything, but
     // no need to wait for it.
-    callback_.Run(false /*success*/, false /*pkg_found*/,
-                  PackageKitProxy::LinuxPackageInfo(), details);
+    std::move(callback_).Run(false /*success*/, false /*pkg_found*/,
+                             PackageKitProxy::LinuxPackageInfo(), details);
   }
 
   void PackageReceived(uint32_t code,
@@ -1176,31 +1169,29 @@ class ResolveTransaction : public PackageKitTransaction {
                        const std::string& summary) override {
     LOG(INFO) << "Got a package for package name: " << package_name_;
     // Check if we've already done the callback.
-    if (callback_called_)
+    if (!callback_)
       return;
-    callback_called_ = true;
     PackageKitProxy::LinuxPackageInfo pkg_info;
     pkg_info.package_id = package_id;
     pkg_info.summary = summary;
-    callback_.Run(true /*success*/, true /*pkg_found*/, pkg_info, "");
+    std::move(callback_).Run(true /*success*/, true /*pkg_found*/, pkg_info,
+                             "");
   }
 
   void FinishedReceived(uint32_t exit_code) override {
     LOG(INFO) << "Finished resolving package name";
-    if (callback_called_)
+    if (!callback_)
       return;
-    callback_called_ = true;
 
     // If we got here without calling the callback, PackageKit couldn't resolve
     // the package name into a package id.
-    callback_.Run(true /*success*/, false /*pkg_found*/,
-                  PackageKitProxy::LinuxPackageInfo(), "");
+    std::move(callback_).Run(true /*success*/, false /*pkg_found*/,
+                             PackageKitProxy::LinuxPackageInfo(), "");
   }
 
  private:
   std::string package_name_;
   PackageKitProxy::PackageSearchCallback callback_;
-  bool callback_called_;
 };
 
 }  // namespace
@@ -1268,15 +1259,15 @@ bool PackageKitProxy::Init() {
     LOG(ERROR) << "Failed to get PackageKit D-Bus proxy";
     return false;
   }
-  packagekit_service_proxy_->WaitForServiceToBeAvailable(base::Bind(
+  packagekit_service_proxy_->WaitForServiceToBeAvailable(base::BindOnce(
       &PackageKitProxy::OnPackageKitServiceAvailable, base::Unretained(this)));
 
   // Fire off a delayed task to do a repo update so that we can do automatic
   // upgrades on our managed packages.
   task_runner_->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&RunAptUpdate, bus_, base::Unretained(this),
-                 packagekit_service_proxy_),
+      base::BindOnce(&RunAptUpdate, bus_, base::Unretained(this),
+                     packagekit_service_proxy_),
       kRefreshCacheStartupDelay);
   return true;
 }
@@ -1294,8 +1285,9 @@ bool PackageKitProxy::GetLinuxPackageInfoFromFilePath(
   std::shared_ptr<PackageInfoTransactionData> data =
       std::make_shared<PackageInfoTransactionData>(file_path, out_pkg_info);
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&PackageKitProxy::GetLinuxPackageInfoOnDBusThread,
-                            base::Unretained(this), data));
+      FROM_HERE,
+      base::BindOnce(&PackageKitProxy::GetLinuxPackageInfoOnDBusThread,
+                     base::Unretained(this), data));
 
   bool result;
   if (!data->event.TimedWait(kGetLinuxPackageInfoTimeout)) {
@@ -1327,7 +1319,7 @@ bool PackageKitProxy::GetLinuxPackageInfoFromPackageName(
 
   ResolvePackageName(
       package_name,
-      base::Bind(
+      base::BindOnce(
           &PackageKitProxy::
               GetLinuxPackageInfoFromPackageNameResolvePackageNameCallback,
           base::Unretained(this), data, out_error));
@@ -1349,8 +1341,9 @@ void PackageKitProxy::ResolvePackageName(const std::string& package_name,
   LOG(INFO) << "Resolving package name: " << package_name;
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&PackageKitProxy::ResolvePackageNameOnDBusThread,
-                 base::Unretained(this), package_name, std::move(callback)));
+      base::BindOnce(&PackageKitProxy::ResolvePackageNameOnDBusThread,
+                     base::Unretained(this), package_name,
+                     std::move(callback)));
 }
 
 void PackageKitProxy::
@@ -1386,8 +1379,9 @@ void PackageKitProxy::
   // This object is intentionally leaked and will clean itself up when done
   // with all the D-Bus communication.
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&PackageKitProxy::GetLinuxPackageInfoOnDBusThread,
-                            base::Unretained(this), data));
+      FROM_HERE,
+      base::BindOnce(&PackageKitProxy::GetLinuxPackageInfoOnDBusThread,
+                     base::Unretained(this), data));
 }
 
 vm_tools::container::InstallLinuxPackageResponse::Status
@@ -1411,9 +1405,9 @@ PackageKitProxy::InstallLinuxPackageFromFilePath(
       &blocking_operation_active_mutex_, &blocking_operation_active_);
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&PackageKitProxy::InstallLinuxPackageFromFilePathOnDBusThread,
-                 base::Unretained(this), file_path, command_uuid,
-                 base::Passed(&clearer)));
+      base::BindOnce(
+          &PackageKitProxy::InstallLinuxPackageFromFilePathOnDBusThread,
+          base::Unretained(this), file_path, command_uuid, std::move(clearer)));
   return vm_tools::container::InstallLinuxPackageResponse::STARTED;
 }
 
@@ -1438,9 +1432,10 @@ PackageKitProxy::InstallLinuxPackageFromPackageId(
       &blocking_operation_active_mutex_, &blocking_operation_active_);
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&PackageKitProxy::InstallLinuxPackageFromPackageIdOnDBusThread,
-                 base::Unretained(this), package_id, command_uuid,
-                 base::Passed(&clearer)));
+      base::BindOnce(
+          &PackageKitProxy::InstallLinuxPackageFromPackageIdOnDBusThread,
+          base::Unretained(this), package_id, command_uuid,
+          std::move(clearer)));
   return vm_tools::container::InstallLinuxPackageResponse::STARTED;
 }
 
@@ -1463,9 +1458,9 @@ PackageKitProxy::UninstallPackageOwningFile(const base::FilePath& file_path,
       &blocking_operation_active_mutex_, &blocking_operation_active_);
 
   // Start search
-  PackageSearchCallback callback = base::Bind(
+  PackageSearchCallback callback = base::BindOnce(
       &PackageKitProxy::UninstallPackageOwningFileSearchForFileCallback,
-      base::Unretained(this), file_path, base::Passed(&clearer));
+      base::Unretained(this), file_path, std::move(clearer));
   SearchLinuxPackagesForFile(file_path, std::move(callback));
   return vm_tools::container::UninstallPackageOwningFileResponse::STARTED;
 }
@@ -1512,8 +1507,8 @@ void PackageKitProxy::SearchLinuxPackagesForFile(
             << file_path.value();
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&PackageKitProxy::SearchLinuxPackagesForFileOnDBusThread,
-                 base::Unretained(this), file_path, std::move(callback)));
+      base::BindOnce(&PackageKitProxy::SearchLinuxPackagesForFileOnDBusThread,
+                     base::Unretained(this), file_path, std::move(callback)));
 }
 
 void PackageKitProxy::AddPackageKitDeathObserver(
@@ -1597,8 +1592,8 @@ void PackageKitProxy::OnPackageKitNameOwnerChanged(
 void PackageKitProxy::OnPackageKitServiceAvailable(bool service_is_available) {
   if (service_is_available) {
     packagekit_service_proxy_->SetNameOwnerChangedCallback(
-        base::Bind(&PackageKitProxy::OnPackageKitNameOwnerChanged,
-                   base::Unretained(this)));
+        base::BindRepeating(&PackageKitProxy::OnPackageKitNameOwnerChanged,
+                            base::Unretained(this)));
   }
 }
 

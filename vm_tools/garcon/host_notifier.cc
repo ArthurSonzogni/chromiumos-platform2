@@ -347,9 +347,10 @@ void HostNotifier::OnInstallCompletion(const std::string& command_uuid,
               : vm_tools::container::InstallLinuxPackageProgressInfo::FAILED);
   progress_info.set_failure_details(failure_reason);
   progress_info.set_command_uuid(command_uuid);
-  task_runner_->PostTask(FROM_HERE, base::Bind(&SendInstallStatusToHost,
-                                               base::Unretained(stub_.get()),
-                                               std::move(progress_info)));
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&SendInstallStatusToHost, base::Unretained(stub_.get()),
+                     std::move(progress_info)));
 }
 
 void HostNotifier::OnInstallProgress(
@@ -361,9 +362,10 @@ void HostNotifier::OnInstallProgress(
   progress_info.set_status(status);
   progress_info.set_progress_percent(percent_progress);
   progress_info.set_command_uuid(command_uuid);
-  task_runner_->PostTask(FROM_HERE, base::Bind(&SendInstallStatusToHost,
-                                               base::Unretained(stub_.get()),
-                                               std::move(progress_info)));
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&SendInstallStatusToHost, base::Unretained(stub_.get()),
+                     std::move(progress_info)));
 }
 
 void HostNotifier::OnUninstallCompletion(bool success,
@@ -380,8 +382,9 @@ void HostNotifier::OnUninstallCompletion(bool success,
     info.set_failure_details(failure_reason);
   }
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&SendUninstallStatusToHost,
-                            base::Unretained(stub_.get()), std::move(info)));
+      FROM_HERE,
+      base::BindOnce(&SendUninstallStatusToHost, base::Unretained(stub_.get()),
+                     std::move(info)));
 }
 
 void HostNotifier::OnUninstallProgress(uint32_t percent_progress) {
@@ -393,8 +396,9 @@ void HostNotifier::OnUninstallProgress(uint32_t percent_progress) {
       vm_tools::container::UninstallPackageProgressInfo::UNINSTALLING);
   info.set_progress_percent(percent_progress);
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&SendUninstallStatusToHost,
-                            base::Unretained(stub_.get()), std::move(info)));
+      FROM_HERE,
+      base::BindOnce(&SendUninstallStatusToHost, base::Unretained(stub_.get()),
+                     std::move(info)));
 }
 
 void HostNotifier::OnApplyAnsiblePlaybookCompletion(
@@ -414,8 +418,9 @@ void HostNotifier::OnApplyAnsiblePlaybookCompletion(
     info.set_failure_details(failure_reason);
   }
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&SendApplyAnsiblePlaybookStatusToHost,
-                            base::Unretained(stub_.get()), std::move(info)));
+      FROM_HERE,
+      base::BindOnce(&SendApplyAnsiblePlaybookStatusToHost,
+                     base::Unretained(stub_.get()), std::move(info)));
 }
 
 void HostNotifier::CreateAnsiblePlaybookApplication(
@@ -483,8 +488,8 @@ bool HostNotifier::Init(uint32_t vsock_port,
     std::unique_ptr<base::FilePathWatcher> watcher =
         std::make_unique<base::FilePathWatcher>();
     if (!watcher->Watch(path, base::FilePathWatcher::Type::kRecursive,
-                        base::Bind(&HostNotifier::DesktopPathsChanged,
-                                   base::Unretained(this)))) {
+                        base::BindRepeating(&HostNotifier::DesktopPathsChanged,
+                                            base::Unretained(this)))) {
       LOG(ERROR) << "Failed setting up filesystem path watcher for dir: "
                  << path.value();
       // Probably better to just watch the dirs we can rather than terminate
@@ -501,10 +506,10 @@ bool HostNotifier::Init(uint32_t vsock_port,
   std::unique_ptr<base::FilePathWatcher> mime_type_watcher =
       std::make_unique<base::FilePathWatcher>();
   base::FilePath mime_type_path(kMimeTypesDir);
-  if (!mime_type_watcher->Watch(mime_type_path,
-                                base::FilePathWatcher::Type::kNonRecursive,
-                                base::Bind(&HostNotifier::MimeTypesChanged,
-                                           base::Unretained(this)))) {
+  if (!mime_type_watcher->Watch(
+          mime_type_path, base::FilePathWatcher::Type::kNonRecursive,
+          base::BindRepeating(&HostNotifier::MimeTypesChanged,
+                              base::Unretained(this)))) {
     LOG(ERROR) << "Failed setting up filesystem path watcher for: "
                << kMimeTypesDir;
   }
@@ -516,8 +521,8 @@ bool HostNotifier::Init(uint32_t vsock_port,
   if (!home_mime_type_watcher->Watch(
           base::GetHomeDir().Append(kUserMimeTypesDir),
           base::FilePathWatcher::Type::kNonRecursive,
-          base::Bind(&HostNotifier::MimeTypesChanged,
-                     base::Unretained(this)))) {
+          base::BindRepeating(&HostNotifier::MimeTypesChanged,
+                              base::Unretained(this)))) {
     LOG(ERROR) << "Failed setting up filesystem path watcher for: "
                << base::GetHomeDir().value();
   }
@@ -607,7 +612,8 @@ void HostNotifier::SendAppListToHost() {
     // on the same thread.
     task_runner_->PostDelayedTask(
         FROM_HERE,
-        base::Bind(&HostNotifier::SendAppListToHost, base::Unretained(this)),
+        base::BindOnce(&HostNotifier::SendAppListToHost,
+                       base::Unretained(this)),
         kFilesystemChangeCoalesceTime);
     return;
   }
@@ -753,8 +759,8 @@ void HostNotifier::RequestNextPackageIdOrCompleteUpdateApplicationList(
   package_kit_proxy_->SearchLinuxPackagesForFile(
       state->desktop_files_for_application
           [state->num_package_id_queries_completed],
-      base::Bind(&HostNotifier::PackageIdCallback, base::Unretained(this),
-                 base::Passed(&state)));
+      base::BindOnce(&HostNotifier::PackageIdCallback, base::Unretained(this),
+                     std::move(state)));
 }
 
 void HostNotifier::PackageIdCallback(
@@ -779,9 +785,9 @@ void HostNotifier::PackageIdCallback(
   state->num_package_id_queries_completed++;
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(
+      base::BindOnce(
           &HostNotifier::RequestNextPackageIdOrCompleteUpdateApplicationList,
-          base::Unretained(this), base::Passed(&state)));
+          base::Unretained(this), std::move(state)));
 }
 
 void HostNotifier::SendMimeTypesToHost() {
@@ -835,7 +841,7 @@ void HostNotifier::DesktopPathsChanged(const base::FilePath& path, bool error) {
   }
   task_runner_->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&HostNotifier::SendAppListToHost, base::Unretained(this)),
+      base::BindOnce(&HostNotifier::SendAppListToHost, base::Unretained(this)),
       kFilesystemChangeCoalesceTime);
   update_app_list_posted_ = true;
   NotifyHostOfPendingAppListUpdates();
@@ -856,7 +862,8 @@ void HostNotifier::MimeTypesChanged(const base::FilePath& path, bool error) {
   }
   task_runner_->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&HostNotifier::SendMimeTypesToHost, base::Unretained(this)),
+      base::BindOnce(&HostNotifier::SendMimeTypesToHost,
+                     base::Unretained(this)),
       kFilesystemChangeCoalesceTime);
   update_mime_types_posted_ = true;
 }
@@ -970,8 +977,8 @@ void HostNotifier::FileWatchTriggered(const base::FilePath& absolute_path,
   } else {
     task_runner_->PostDelayedTask(
         FROM_HERE,
-        base::Bind(&HostNotifier::SendFileWatchTriggeredToHost,
-                   base::Unretained(this), path),
+        base::BindOnce(&HostNotifier::SendFileWatchTriggeredToHost,
+                       base::Unretained(this), path),
         kFilesystemChangeCoalesceTime - time_since_last);
     file_watch_change_posted_.insert(path);
   }

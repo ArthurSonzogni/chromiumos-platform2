@@ -417,9 +417,9 @@ grpc::Status ServiceImpl::ApplyAnsiblePlaybook(
   // because Ansible playbook application task is using
   // base::FileDescriptorWatcher to watch ansible-playbook process stdio.
   bool ret = task_runner_->PostTask(
-      FROM_HERE, base::Bind(&HostNotifier::CreateAnsiblePlaybookApplication,
-                            base::Unretained(host_notifier_), &event,
-                            &ansible_playbook_application));
+      FROM_HERE, base::BindOnce(&HostNotifier::CreateAnsiblePlaybookApplication,
+                                base::Unretained(host_notifier_), &event,
+                                &ansible_playbook_application));
   if (!ret) {
     error_msg =
         "Failed to post AnsiblePlaybookApplication creation to garcon "
