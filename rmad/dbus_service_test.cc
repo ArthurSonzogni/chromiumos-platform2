@@ -64,6 +64,12 @@ class DBusServiceTest : public testing::Test {
             A<std::unique_ptr<
                 base::RepeatingCallback<bool(CalibrationComponentStatus)>>>()))
         .WillRepeatedly(Return());
+    EXPECT_CALL(
+        mock_rmad_service_,
+        RegisterSignalSender(
+            _, A<std::unique_ptr<
+                   base::RepeatingCallback<bool(const ProvisionStatus&)>>>()))
+        .WillRepeatedly(Return());
   }
   ~DBusServiceTest() override = default;
 
@@ -118,9 +124,8 @@ class DBusServiceTest : public testing::Test {
     return dbus_service_->SendCalibrationProgressSignal(component_status);
   }
 
-  bool SignalProvisioning(ProvisionDeviceState::ProvisioningStep step,
-                          double progress) {
-    return dbus_service_->SendProvisioningProgressSignal(step, progress);
+  bool SignalProvision(const ProvisionStatus& status) {
+    return dbus_service_->SendProvisionProgressSignal(status);
   }
 
   bool SignalHardwareWriteProtection(bool enabled) {
@@ -299,23 +304,23 @@ TEST_F(DBusServiceTest, SignalCalibrationComponent) {
   EXPECT_TRUE(SignalCalibrationComponent(component_status));
 }
 
-TEST_F(DBusServiceTest, SignalProvisioning) {
+TEST_F(DBusServiceTest, SignalProvision) {
   RegisterDBusObjectAsync();
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillRepeatedly(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
         EXPECT_EQ(signal->GetMember(), "ProvisioningProgress");
         dbus::MessageReader reader(signal);
-        int step;
-        double progress;
-        EXPECT_TRUE(reader.PopInt32(&step));
-        EXPECT_TRUE(reader.PopDouble(&progress));
-        EXPECT_EQ(step,
-                  ProvisionDeviceState::RMAD_PROVISIONING_STEP_IN_PROGRESS);
-        EXPECT_EQ(progress, 0.63);
+        ProvisionStatus status;
+        EXPECT_TRUE(PopValueFromReader(&reader, &status));
+        EXPECT_EQ(status.status(),
+                  ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
+        EXPECT_EQ(status.progress(), 0.5);
       }));
-  EXPECT_TRUE(SignalProvisioning(
-      ProvisionDeviceState::RMAD_PROVISIONING_STEP_IN_PROGRESS, 0.63));
+  ProvisionStatus status;
+  status.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
+  status.set_progress(0.5);
+  EXPECT_TRUE(SignalProvision(status));
 }
 
 TEST_F(DBusServiceTest, SignalHardwareWriteProtection) {

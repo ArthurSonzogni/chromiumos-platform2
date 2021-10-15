@@ -189,6 +189,15 @@ void RmadInterfaceImpl::RegisterSignalSender(
   }
 }
 
+void RmadInterfaceImpl::RegisterSignalSender(
+    RmadState::StateCase state_case,
+    std::unique_ptr<ProvisionSignalCallback> callback) {
+  auto state_handler = state_handler_manager_->GetStateHandler(state_case);
+  if (state_handler) {
+    state_handler->RegisterSignalSender(std::move(callback));
+  }
+}
+
 void RmadInterfaceImpl::TryTransitionNextStateFromCurrentState() {
   LOG(INFO) << "Trying a state transition using current state";
   GetStateReply get_current_state_reply = GetCurrentStateInternal();

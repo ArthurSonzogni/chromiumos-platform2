@@ -23,12 +23,12 @@ namespace dbus_utils {
 using rmad::CalibrationComponentStatus;
 using rmad::CalibrationOverallStatus;
 using rmad::HardwareVerificationResult;
-using rmad::ProvisionDeviceState;
+using rmad::ProvisionStatus;
 using rmad::RmadComponent;
 using rmad::RmadErrorCode;
 
-// Overload AppendValueToWriter() for |HardwareVerificationResult| and
-// |CalibrationComponentStatus| structures.
+// Overload AppendValueToWriter() for |HardwareVerificationResult|,
+// |CalibrationComponentStatus| and |ProvisionStatus| structures.
 void AppendValueToWriter(dbus::MessageWriter* writer,
                          const HardwareVerificationResult& value) {
   dbus::MessageWriter struct_writer(nullptr);
@@ -48,8 +48,17 @@ void AppendValueToWriter(dbus::MessageWriter* writer,
   writer->CloseContainer(&struct_writer);
 }
 
-// Overload PopValueFromReader() for |HardwareVerificationResult| and
-// |CalibrationComponentStatus| structures.
+void AppendValueToWriter(dbus::MessageWriter* writer,
+                         const ProvisionStatus& value) {
+  dbus::MessageWriter struct_writer(nullptr);
+  writer->OpenStruct(&struct_writer);
+  AppendValueToWriter(&struct_writer, static_cast<int>(value.status()));
+  AppendValueToWriter(&struct_writer, value.progress());
+  writer->CloseContainer(&struct_writer);
+}
+
+// Overload PopValueFromReader() for |HardwareVerificationResult|,
+// |CalibrationComponentStatus| and |ProvisionStatus| structures.
 bool PopValueFromReader(dbus::MessageReader* reader,
                         HardwareVerificationResult* value) {
   dbus::MessageReader struct_reader(nullptr);
@@ -85,6 +94,23 @@ bool PopValueFromReader(dbus::MessageReader* reader,
   value->set_component(static_cast<RmadComponent>(component));
   value->set_status(
       static_cast<CalibrationComponentStatus::CalibrationStatus>(status));
+  value->set_progress(progress);
+  return true;
+}
+
+bool PopValueFromReader(dbus::MessageReader* reader, ProvisionStatus* value) {
+  dbus::MessageReader struct_reader(nullptr);
+  if (!reader->PopStruct(&struct_reader)) {
+    return false;
+  }
+
+  int status;
+  double progress;
+  if (!PopValueFromReader(&struct_reader, &status) ||
+      !PopValueFromReader(&struct_reader, &progress)) {
+    return false;
+  }
+  value->set_status(static_cast<ProvisionStatus::Status>(status));
   value->set_progress(progress);
   return true;
 }
@@ -162,23 +188,16 @@ struct DBusType<CalibrationComponentStatus> {
 };
 
 template <>
-struct DBusType<ProvisionDeviceState::ProvisioningStep> {
+struct DBusType<ProvisionStatus> {
   inline static std::string GetSignature() {
-    return DBusType<int>::GetSignature();
+    return GetStructDBusSignature<int, double>();
   }
   inline static void Write(dbus::MessageWriter* writer,
-                           const ProvisionDeviceState::ProvisioningStep value) {
-    DBusType<int>::Write(writer, static_cast<int>(value));
+                           const ProvisionStatus& value) {
+    AppendValueToWriter(writer, value);
   }
-  inline static bool Read(dbus::MessageReader* reader,
-                          ProvisionDeviceState::ProvisioningStep* value) {
-    int v;
-    if (DBusType<int>::Read(reader, &v)) {
-      *value = static_cast<ProvisionDeviceState::ProvisioningStep>(v);
-      return true;
-    } else {
-      return false;
-    }
+  inline static bool Read(dbus::MessageReader* reader, ProvisionStatus* value) {
+    return PopValueFromReader(reader, value);
   }
 };
 
@@ -262,10 +281,8 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
   calibration_component_signal_ =
       dbus_interface->RegisterSignal<CalibrationComponentStatus>(
           kCalibrationProgressSignal);
-  provisioning_signal_ =
-      dbus_interface
-          ->RegisterSignal<ProvisionDeviceState::ProvisioningStep, double>(
-              kProvisioningProgressSignal);
+  provision_signal_ = dbus_interface->RegisterSignal<ProvisionStatus>(
+      kProvisioningProgressSignal);
   hwwp_signal_ =
       dbus_interface->RegisterSignal<bool>(kHardwareWriteProtectionStateSignal);
   power_cable_signal_ =
@@ -303,6 +320,11 @@ void DBusService::RegisterSignalSenders() {
       std::make_unique<
           base::RepeatingCallback<bool(CalibrationComponentStatus)>>(
           base::BindRepeating(&DBusService::SendCalibrationProgressSignal,
+                              base::Unretained(this))));
+  rmad_interface_->RegisterSignalSender(
+      RmadState::StateCase::kProvisionDevice,
+      std::make_unique<base::RepeatingCallback<bool(const ProvisionStatus&)>>(
+          base::BindRepeating(&DBusService::SendProvisionProgressSignal,
                               base::Unretained(this))));
 }
 
@@ -345,10 +367,9 @@ bool DBusService::SendCalibrationProgressSignal(
   return (signal.get() == nullptr) ? false : signal->Send(status);
 }
 
-bool DBusService::SendProvisioningProgressSignal(
-    ProvisionDeviceState::ProvisioningStep step, double progress) {
-  auto signal = provisioning_signal_.lock();
-  return (signal.get() == nullptr) ? false : signal->Send(step, progress);
+bool DBusService::SendProvisionProgressSignal(const ProvisionStatus& status) {
+  auto signal = provision_signal_.lock();
+  return (signal.get() == nullptr) ? false : signal->Send(status);
 }
 
 bool DBusService::SendHardwareWriteProtectionStateSignal(bool enabled) {
