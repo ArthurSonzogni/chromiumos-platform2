@@ -99,6 +99,7 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
                                frame_info.analog_gain * frame_info.digital_gain;
 
   // Compute state transition.
+  MaybeToggleAeLock(frame_info);
   State next_state;
   switch (current_state_) {
     case State::kInactive:
@@ -122,7 +123,11 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
       }
       ConvergeToTargetTet(frame_info, inputs, actual_tet_set);
       if (converged_tet_) {
-        next_state = State::kConverged;
+        if (ae_locked_) {
+          next_state = State::kLocked;
+        } else {
+          next_state = State::kConverged;
+        }
       } else {
         next_state = State::kConverging;
       }
@@ -131,6 +136,10 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
 
     case State::kConverged: {
       SearchTargetTet(frame_info, inputs, new_tet);
+      if (ae_locked_) {
+        next_state = State::kConverging;
+        break;
+      }
       if (target_tet_ &&
           std::fabs(std::log2f(*converged_tet_) - std::log2f(*target_tet_)) <=
               tuning_parameters_.tet_rescan_threshold_log2) {
@@ -153,10 +162,15 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
     }
 
     case State::kLocked:
-      // TODO(jcliang): Handle transitioning into the locked state.
       SearchTargetTet(frame_info, inputs, new_tet);
       if (ae_locked_) {
-        next_state = State::kLocked;
+        DCHECK(target_tet_);
+        if (std::fabs(std::log2f(actual_tet_set) - std::log2f(*target_tet_)) <=
+            tuning_parameters_.tet_rescan_threshold_log2) {
+          next_state = State::kLocked;
+        } else {
+          next_state = State::kConverging;
+        }
       } else {
         if (!target_tet_) {
           next_state = State::kSearching;
@@ -200,10 +214,35 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
       break;
 
     case State::kLocked:
-      // Keep |next_tet_to_set_| unchanged.
-      // TODO(jcliang): Handle transitioning into the locked state.
+      DCHECK(converged_tet_);
+      next_tet_to_set_ = *converged_tet_;
+      next_hdr_ratio_to_set_ = *locked_hdr_ratio_;
       break;
   }
+
+  constexpr float kInvalidTet = -1.0f;
+  constexpr float kInvalidHdrRatio = -1.0f;
+  constexpr int kInvalidDuration = -1;
+  VLOGFID(1, frame_info.frame_number)
+      << "target_tet=" << (target_tet_ ? *target_tet_ : kInvalidTet);
+  VLOGFID(1, frame_info.frame_number)
+      << "target_hdr_ratio="
+      << (target_hdr_ratio_ ? *target_hdr_ratio_ : kInvalidHdrRatio);
+  VLOGFID(1, frame_info.frame_number)
+      << "converged_tet=" << (converged_tet_ ? *converged_tet_ : kInvalidTet);
+  VLOGFID(1, frame_info.frame_number)
+      << "converged_hdr_ratio="
+      << (converged_hdr_ratio_ ? *converged_hdr_ratio_ : kInvalidHdrRatio);
+  VLOGFID(1, frame_info.frame_number)
+      << "tet_retention_duration_ms="
+      << (tet_retention_duration_ms_ ? *tet_retention_duration_ms_
+                                     : kInvalidDuration);
+  VLOGFID(1, frame_info.frame_number) << "ae_locked=" << ae_locked_;
+  VLOGFID(1, frame_info.frame_number)
+      << "locked_tet_=" << (locked_tet_ ? *locked_tet_ : kInvalidTet);
+  VLOGFID(1, frame_info.frame_number)
+      << "locked_hdr_ratio_="
+      << (locked_hdr_ratio_ ? *locked_hdr_ratio_ : kInvalidHdrRatio);
   VLOGFID(1, frame_info.frame_number) << "next_tet_to_set=" << next_tet_to_set_;
   VLOGFID(1, frame_info.frame_number)
       << "next_hdr_ratio_to_set=" << next_hdr_ratio_to_set_;
@@ -222,6 +261,9 @@ void AeStateMachine::OnReset() {
   converged_tet_.reset();
   converged_hdr_ratio_.reset();
   tet_retention_duration_ms_.reset();
+  locked_tet_.reset();
+  locked_hdr_ratio_.reset();
+  ae_locked_ = false;
 }
 
 float AeStateMachine::GetCaptureTet() {
@@ -274,6 +316,13 @@ std::ostream& operator<<(std::ostream& os, AeStateMachine::State state) {
 void AeStateMachine::SearchTargetTet(const AeFrameInfo& frame_info,
                                      const InputParameters& inputs,
                                      const float new_tet) {
+  if (ae_locked_) {
+    // AE compensation is still effective when AE is locked.
+    target_tet_ = *locked_tet_ * std::exp2f(frame_info.target_ae_compensation);
+    target_hdr_ratio_ = *locked_hdr_ratio_;
+    return;
+  }
+
   const float previous_log = std::log2f(previous_tet_);
   const float new_log = std::log2f(new_tet);
   const float search_tet_delta_log = std::fabs(previous_log - new_log);
@@ -284,14 +333,9 @@ void AeStateMachine::SearchTargetTet(const AeFrameInfo& frame_info,
     target_tet_ = inputs.tet_range.Clamp(new_tet);
     target_hdr_ratio_ =
         current_ae_parameters_.long_tet / current_ae_parameters_.short_tet;
-    VLOGFID(1, frame_info.frame_number) << "target_tet=" << *target_tet_;
-    VLOGFID(1, frame_info.frame_number)
-        << "target_hdr_ratio=" << *target_hdr_ratio_;
   } else {
     target_tet_.reset();
     target_hdr_ratio_.reset();
-    VLOGFID(1, frame_info.frame_number) << "target_tet=none";
-    VLOGFID(1, frame_info.frame_number) << "target_hdr_ratio=none";
   }
 }
 
@@ -312,18 +356,28 @@ void AeStateMachine::ConvergeToTargetTet(const AeFrameInfo& frame_info,
               ? tuning_parameters_.tet_retention_duration_ms_default
               : tuning_parameters_.tet_retention_duration_ms_with_face;
     }
-    VLOGFID(1, frame_info.frame_number) << "converged_tet=" << *converged_tet_;
-    VLOGFID(1, frame_info.frame_number)
-        << "converged_hdr_ratio=" << *converged_hdr_ratio_;
-    VLOGFID(1, frame_info.frame_number)
-        << "tet_retention_duration_ms=" << *tet_retention_duration_ms_;
   } else {
     converged_tet_.reset();
     converged_hdr_ratio_.reset();
     tet_retention_duration_ms_.reset();
-    VLOGFID(1, frame_info.frame_number) << "converged_tet=none";
-    VLOGFID(1, frame_info.frame_number) << "converged_hdr_ratio=none";
-    VLOGFID(1, frame_info.frame_number) << "tet_retention_duration_ms=none";
+  }
+}
+
+void AeStateMachine::MaybeToggleAeLock(const AeFrameInfo& frame_info) {
+  if (frame_info.client_request_settings.ae_lock) {
+    if (*frame_info.client_request_settings.ae_lock ==
+            ANDROID_CONTROL_AE_LOCK_ON &&
+        !ae_locked_) {
+      ae_locked_ = true;
+      locked_tet_ = next_tet_to_set_;
+      locked_hdr_ratio_ = next_hdr_ratio_to_set_;
+    } else if (*frame_info.client_request_settings.ae_lock ==
+                   ANDROID_CONTROL_AE_LOCK_OFF &&
+               ae_locked_) {
+      ae_locked_ = false;
+      locked_tet_.reset();
+      locked_hdr_ratio_.reset();
+    }
   }
 }
 

@@ -146,7 +146,8 @@ AeParameters GcamAeDeviceAdapterIpu6::ComputeAeParameters(
            << " exposure_time=" << ae_metadata.actual_exposure_time_ms
            << " analog_gain=" << ae_metadata.actual_analog_gain
            << " digital_gain=" << ae_metadata.applied_digital_gain
-           << " num_faces=" << ae_metadata.faces.size();
+           << " num_faces=" << ae_metadata.faces.size()
+           << " exposure_compensation=" << ae_metadata.exposure_compensation;
 
   AeResult ae_result;
   if (frame_info.ae_stats_input_mode == AeStatsInputMode::kFromVendorAeStats) {

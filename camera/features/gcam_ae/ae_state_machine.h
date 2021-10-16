@@ -157,7 +157,9 @@ class AeStateMachine {
     //         is detected, and |target_tet| is set when the state transitions.
     kConverged,
 
-    // The exposure is locked and |next_tet_to_set| will remain unchanged.
+    // The exposure is locked and |next_tet_to_set| will remain unchanged. Any
+    // state can transition to the locked state when the ANDROID_CONTROL_AE_LOCK
+    // capture setting is set.
     //
     // Entry Action:
     // * None as we need to keep |next_tet_to_set| unchanged
@@ -190,6 +192,7 @@ class AeStateMachine {
   void ConvergeToTargetTet(const AeFrameInfo& frame_info,
                            const InputParameters& inputs,
                            const float actual_tet_set);
+  void MaybeToggleAeLock(const AeFrameInfo& frame_info);
 
   // For synchronizing all the internal state.
   base::Lock lock_;
@@ -222,6 +225,8 @@ class AeStateMachine {
   base::TimeTicks last_converged_time_ GUARDED_BY(lock_);
 
   // Whether the AE needs to be locked.
+  base::Optional<float> locked_tet_ GUARDED_BY(lock_);
+  base::Optional<float> locked_hdr_ratio_ GUARDED_BY(lock_);
   bool ae_locked_ GUARDED_BY(lock_) = false;
 };
 

@@ -95,6 +95,7 @@ struct AeFrameInfo {
   struct {
     base::Optional<uint8_t> ae_mode;
     base::Optional<int32_t> ae_exposure_compensation;
+    base::Optional<uint8_t> ae_lock;
   } client_request_settings;
 
   // The AWB gains and color correction matrix that will be applied to the

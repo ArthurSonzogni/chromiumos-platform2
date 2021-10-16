@@ -361,10 +361,10 @@ void GcamAeControllerImpl::SetRequestAeParameters(
   }
 
   frame_info->target_ae_compensation = base_exposure_compensation_;
-  base::span<const int32_t> ae_comp =
-      request->GetMetadata<int32_t>(ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION);
-  if (!ae_comp.empty()) {
-    frame_info->target_ae_compensation += ae_comp[0] * ae_compensation_step_;
+  if (frame_info->client_request_settings.ae_exposure_compensation) {
+    frame_info->target_ae_compensation +=
+        frame_info->client_request_settings.ae_exposure_compensation.value() *
+        ae_compensation_step_;
   }
 
   base::span<const int32_t> fps_range =
@@ -497,6 +497,16 @@ void GcamAeControllerImpl::RecordClientRequestSettings(
         << static_cast<int>(
                *frame_info->client_request_settings.ae_exposure_compensation);
   }
+
+  base::span<const uint8_t> ae_lock =
+      request->GetMetadata<uint8_t>(ANDROID_CONTROL_AE_LOCK);
+  if (!ae_lock.empty()) {
+    frame_info->client_request_settings.ae_lock = ae_lock[0];
+    VLOGFID(2, request->frame_number())
+        << "Client requested ANDROID_CONTROL_AE_LOCK="
+        << get_camera_metadata_tag_name(
+               *frame_info->client_request_settings.ae_lock);
+  }
 }
 
 void GcamAeControllerImpl::RestoreClientRequestSettings(
@@ -528,6 +538,19 @@ void GcamAeControllerImpl::RestoreClientRequestSettings(
           << "Restored ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION="
           << static_cast<int>(
                  *frame_info->client_request_settings.ae_exposure_compensation);
+    }
+  }
+
+  if (frame_info->client_request_settings.ae_lock) {
+    std::array<uint8_t, 1> ae_lock = {
+        *frame_info->client_request_settings.ae_lock};
+    if (!result->UpdateMetadata<uint8_t>(ANDROID_CONTROL_AE_LOCK, ae_lock)) {
+      LOGF(ERROR) << "Cannot restore ANDROID_CONTROL_AE_LOCK";
+    } else {
+      VLOGFID(2, result->frame_number())
+          << "Restored ANDROID_CONTROL_AE_LOCK="
+          << get_camera_metadata_tag_name(
+                 *frame_info->client_request_settings.ae_lock);
     }
   }
 }
@@ -569,11 +592,13 @@ void GcamAeControllerImpl::SetManualSensorControls(
       << "exp_time=" << exp_time << " gain=" << gain;
 
   std::array<uint8_t, 1> ae_mode = {ANDROID_CONTROL_AE_MODE_OFF};
+  std::array<uint8_t, 1> ae_lock = {ANDROID_CONTROL_AE_LOCK_OFF};
   std::array<int64_t, 1> exposure_time = {
       base::checked_cast<int64_t>(exp_time * 1e6)};
   std::array<int32_t, 1> sensitivity = {sensitivity_range_.Clamp(
       base::checked_cast<int32_t>(sensitivity_range_.lower() * gain))};
   if (!request->UpdateMetadata<uint8_t>(ANDROID_CONTROL_AE_MODE, ae_mode) ||
+      !request->UpdateMetadata<uint8_t>(ANDROID_CONTROL_AE_LOCK, ae_lock) ||
       !request->UpdateMetadata<int64_t>(ANDROID_SENSOR_EXPOSURE_TIME,
                                         exposure_time) ||
       !request->UpdateMetadata<int32_t>(ANDROID_SENSOR_SENSITIVITY,
