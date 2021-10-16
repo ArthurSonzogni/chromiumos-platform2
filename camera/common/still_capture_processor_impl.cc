@@ -391,15 +391,26 @@ void StillCaptureProcessorImpl::QueuePendingYuvImageOnThread(
             libyuv::kFilterBilinear)) {
       LOGF(ERROR) << "Cannot downscale YUV image to produce thumbnail";
     }
+
+    // This leaves 15533 bytes of space for other metadata in APP1 segment.
+    constexpr int kThumbnailSizeLimit = 50000;
     uint32_t thumbnail_data_size = 0;
+    int thumbnail_quality = context.thumbnail_quality;
     context.thumbnail_buffer.resize(context.thumbnail_size.area() * 2);
-    if (!jpeg_compressor_->CompressImageFromMemory(
-            scaled_nv12.data(), V4L2_PIX_FMT_NV12,
-            context.thumbnail_buffer.data(), context.thumbnail_buffer.size(),
-            context.thumbnail_size.width, context.thumbnail_size.height,
-            context.thumbnail_quality, nullptr, 0, &thumbnail_data_size)) {
-      LOGF(ERROR) << "Cannot produce JPEG thumbnail image";
-    }
+    do {
+      auto ret = jpeg_compressor_->CompressImageFromMemory(
+          scaled_nv12.data(), V4L2_PIX_FMT_NV12,
+          context.thumbnail_buffer.data(), context.thumbnail_buffer.size(),
+          context.thumbnail_size.width, context.thumbnail_size.height,
+          thumbnail_quality, nullptr, 0, &thumbnail_data_size);
+      if (!ret) {
+        LOGF(ERROR) << "Cannot produce JPEG thumbnail image";
+        thumbnail_data_size = 0;
+        break;
+      }
+      thumbnail_quality -= 10;
+    } while (thumbnail_data_size > kThumbnailSizeLimit &&
+             thumbnail_quality > 0);
     context.thumbnail_buffer.resize(thumbnail_data_size);
     VLOGFID(1, frame_number)
         << "Produced thumbnail with size=" << context.thumbnail_size.ToString()
