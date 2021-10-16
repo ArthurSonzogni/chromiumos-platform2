@@ -1,27 +1,30 @@
 # Copyright 2021 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-ACTION=="add", ATTR{name}=="cros-ec-accel*", RUN+="/usr/sbin/mems_setup --device_id=%n"
-ACTION=="add", ATTR{name}=="cros-ec-gyro", RUN+="/usr/sbin/mems_setup --device_id=%n"
-ACTION=="add", ATTR{name}=="cros-ec-light", RUN+="/usr/sbin/mems_setup --device_id=%n"
-ACTION=="add", ATTR{name}=="acpi-als", RUN+="/usr/sbin/mems_setup --device_id=%n"
-ACTION=="add", ATTR{name}=="cros-ec-sync", RUN+="/usr/sbin/mems_setup --device_id=%n"
-ACTION=="add", ATTR{name}=="cros-ec-mag", RUN+="/usr/sbin/mems_setup --device_id=%n"
-ACTION=="add", ATTR{name}=="cros-ec-lid-angle", RUN+="/usr/sbin/mems_setup --device_id=%n"
-ACTION=="add", ATTR{name}=="cros-ec-baro", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ACTION!="add", GOTO="end_mems_add"
+ATTR{name}=="cros-ec-accel*", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ATTR{name}=="cros-ec-gyro", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ATTR{name}=="cros-ec-light", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ATTR{name}=="acpi-als", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ATTR{name}=="cros-ec-sync", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ATTR{name}=="cros-ec-mag", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ATTR{name}=="cros-ec-lid-angle", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ATTR{name}=="cros-ec-baro", RUN+="/usr/sbin/mems_setup --device_id=%n"
 
 # HID stack sensors
-ACTION=="add", ATTR{name}=="accel_3d", RUN+="/usr/sbin/mems_setup --device_id=%n"
-ACTION=="add", ATTR{name}=="gyro_3d", RUN+="/usr/sbin/mems_setup --device_id=%n"
-ACTION=="add", ATTR{name}=="magn_3d", RUN+="/usr/sbin/mems_setup --device_id=%n"
-ACTION=="add", ATTR{name}=="als", RUN+="/usr/sbin/mems_setup --device_id=%n"
-ACTION=="add", ATTR{name}=="temperature", RUN+="/usr/sbin/mems_setup --device_id=%n"
-ACTION=="add", ATTR{name}=="incli_3d", RUN+="/usr/sbin/mems_setup --device_id=%n"
-ACTION=="add", ATTR{name}=="dev_rotation", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ATTR{name}=="accel_3d", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ATTR{name}=="gyro_3d", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ATTR{name}=="magn_3d", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ATTR{name}=="als", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ATTR{name}=="temperature", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ATTR{name}=="incli_3d", RUN+="/usr/sbin/mems_setup --device_id=%n"
+ATTR{name}=="dev_rotation", RUN+="/usr/sbin/mems_setup --device_id=%n"
 
 # Since the device appears after the selinux policies were applied to /dev,
 # call restorecon.
-ACTION=="add", SUBSYSTEM=="iio", RUN+="/sbin/restorecon $env{DEVNAME}"
+SUBSYSTEM=="iio", RUN+="/sbin/restorecon $env{DEVNAME}"
+
+LABEL="end_mems_add"
 
 #TODO(gwendal): not needed when iioservice is running. Remove when iioservice is fully deployed.
 ACTION!="remove", ATTR{name}=="cros-ec-accel*", SYMLINK+="cros-ec-accel/%n", MODE="640", GROUP="chronos"
