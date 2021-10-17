@@ -92,6 +92,11 @@ ScopedMinijail SetupSandbox(const base::FilePath& policy_file) {
     return ScopedMinijail();
   }
 
+  if (minijail_bind(jail.get(), kDlcPath, kDlcPath, 0)) {
+    LOG(ERROR) << "Failed to bind-mount " << kDlcPath;
+    return ScopedMinijail();
+  }
+
   if (minijail_bind(jail.get(), "/run/pvm", "/run/pvm", 1)) {
     LOG(ERROR) << "Failed to bind-mount /run/pvm";
     return ScopedMinijail();
