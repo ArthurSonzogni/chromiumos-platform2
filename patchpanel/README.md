@@ -34,6 +34,9 @@ features not associated with virtualization:
     *    The [authenticated web proxy relay](../system-proxy) that transparently
          supports web proxy authentication for proxy aware web clients on the
          host platform or in guest application platforms.
+    *    The [DNS proxy service](../dns-proxy) that manages DNS functionality
+         including providing Chrome OS with DNS-over-HTTPS.
+    *    Various Tast test packages including those for VPN and [system-proxy](../system-proxy).
 *   A ModifyPortRule D-Bus API for opening destination ports in the inbound
     firewall rules and for forwarding destination ports to guest application
     platforms.
