@@ -102,6 +102,9 @@ class Port {
   // returns true.
   virtual bool IsPartnerDiscoveryComplete();
 
+  // Returns true when the partner reports PD support, and false otherwise.
+  virtual bool PartnerSupportsPD();
+
   // Return true when all PD discovery information (PD Identity VDOs, all
   // Discover Mode data) for a cable has been processed.
   //

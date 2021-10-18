@@ -291,9 +291,9 @@ void PortManager::ReportMetrics(int port_num) {
   }
 
   auto port = it->second.get();
-  if (port->IsPartnerDiscoveryComplete()) {
+  auto partner_has_pd = port->PartnerSupportsPD();
+  if (!partner_has_pd || (partner_has_pd && port->IsPartnerDiscoveryComplete()))
     port->ReportPartnerMetrics(metrics_);
-  }
 
   if (port->IsCableDiscoveryComplete()) {
     port->ReportCableMetrics(metrics_);

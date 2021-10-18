@@ -294,6 +294,15 @@ bool Port::IsPartnerDiscoveryComplete() {
   return partner_->DiscoveryComplete();
 }
 
+bool Port::PartnerSupportsPD() {
+  if (!partner_) {
+    LOG(INFO) << "Trying to check supports PD for a non-existent partner.";
+    return false;
+  }
+
+  return partner_->GetSupportsPD();
+}
+
 bool Port::IsCableAltModePresent(uint16_t altmode_sid) {
   return cable_->IsAltModeSVIDPresent(altmode_sid);
 }
