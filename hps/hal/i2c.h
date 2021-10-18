@@ -21,7 +21,7 @@ namespace hps {
 
 class I2CDev : public DevInterface {
  public:
-  ~I2CDev() {}
+  ~I2CDev() override {}
   int Open();
   bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len) override;
   bool WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) override;
@@ -31,7 +31,7 @@ class I2CDev : public DevInterface {
   I2CDev(const char* bus, uint8_t address);
   bool Ioc(struct i2c_msg* msg, size_t count);
   const char* bus_;
-  int address_;
+  uint8_t address_;
   int fd_;
 };
 

@@ -61,8 +61,10 @@ static inline const char* errString(int status) {
  * Clock divider uses 12MHz clock as base, divided by target
  * bus speed in Hz, offset by 2.
  */
-static inline uint8_t ClockDivider(uint32_t speedKHz) {
-  return (12 * 1000) / speedKHz - 2;
+static inline uint8_t ClockDivider(uint32_t speed_khz) {
+  DCHECK_GE(speed_khz, 50u);
+  DCHECK_LE(speed_khz, 1000u);
+  return static_cast<uint8_t>((12 * 1000) / speed_khz - 2);
 }
 
 }  // namespace
@@ -78,12 +80,12 @@ Mcp::~Mcp() {
  * Scan the available USB devices until the correct VID/PID is found,
  * and then open that device.
  */
-bool Mcp::Init(uint32_t speedKHz) {
-  if (speedKHz > 1000 || speedKHz < 50) {
-    LOG(ERROR) << "I2C bus peed must be > 50KHz and < 1000KHz";
+bool Mcp::Init(uint32_t speed_khz) {
+  if (speed_khz > 1000 || speed_khz < 50) {
+    LOG(ERROR) << "I2C bus speed must be > 50KHz and < 1000KHz";
     return false;
   }
-  this->div_ = ClockDivider(speedKHz);
+  this->div_ = ClockDivider(speed_khz);
   int status = libusb_init(&this->context_);
   if (status != 0) {
     this->context_ = nullptr;
@@ -211,7 +213,7 @@ bool Mcp::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
   }
   this->Clear();
   this->out_[0] = kCmdReadRepeatStart;
-  this->out_[1] = len;                 // LSB transfer length
+  this->out_[1] = len & 0xff;          // LSB transfer length
   this->out_[2] = 0;                   // MSB transfer length
   this->out_[3] = this->address_ | 1;  // For read.
   if (!this->Cmd()) {
@@ -260,8 +262,8 @@ bool Mcp::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
   // Send I2C Write Data
   this->Clear();
   this->out_[0] = kCmdWriteData;
-  this->out_[1] = len + 1;  // LSB transfer length
-  this->out_[2] = 0;        // MSB transfer length
+  this->out_[1] = (len + 1) & 0xff;  // LSB transfer length
+  this->out_[2] = 0;                 // MSB transfer length
   this->out_[3] = this->address_;
   this->out_[4] = cmd;
   memcpy(&this->out_[5], data, len);
@@ -366,10 +368,10 @@ void Mcp::Clear() {
 }
 
 // Static factory method.
-std::unique_ptr<DevInterface> Mcp::Create(uint8_t address, uint32_t speedKHz) {
+std::unique_ptr<DevInterface> Mcp::Create(uint8_t address, uint32_t speed_khz) {
   // Use new so that private constructor can be accessed.
   auto dev = std::unique_ptr<Mcp>(new Mcp(address));
-  CHECK(dev->Init(speedKHz));
+  CHECK(dev->Init(speed_khz));
   return std::unique_ptr<DevInterface>(std::move(dev));
 }
 

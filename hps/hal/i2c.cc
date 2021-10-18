@@ -19,6 +19,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/numerics/safe_conversions.h>
 
 namespace hps {
 
@@ -42,7 +43,7 @@ bool I2CDev::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
   m[0].buf = &cmd;
   m[1].addr = this->address_;
   m[1].flags = I2C_M_RD;
-  m[1].len = len;
+  m[1].len = base::checked_cast<uint16_t>(len);
   m[1].buf = data;
   return this->Ioc(m, sizeof(m) / sizeof(m[0]));
 }
@@ -56,7 +57,7 @@ bool I2CDev::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
 
   m[0].addr = this->address_;
   m[0].flags = I2C_M_STOP;
-  m[0].len = buffer.size();
+  m[0].len = base::checked_cast<uint16_t>(buffer.size());
   m[0].buf = buffer.data();
   return this->Ioc(m, sizeof(m) / sizeof(m[0]));
 }
@@ -65,7 +66,7 @@ bool I2CDev::Ioc(struct i2c_msg* msg, size_t count) {
   struct i2c_rdwr_ioctl_data ioblk;
 
   ioblk.msgs = msg;
-  ioblk.nmsgs = count;
+  ioblk.nmsgs = static_cast<uint32_t>(count);
   int ret = ioctl(this->fd_, I2C_RDWR, &ioblk);
   if (ret < 0) {
     perror(this->bus_);

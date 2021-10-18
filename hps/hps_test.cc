@@ -25,7 +25,7 @@ namespace {
 
 class HPSTest : public testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     fake_ = hps::FakeDev::Create();
     hps_ = std::make_unique<hps::HPS_impl>(fake_->CreateDevInterface());
 

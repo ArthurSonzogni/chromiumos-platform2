@@ -53,15 +53,16 @@ int main(int argc, char* argv[]) {
       return 1;
     }
   } else {
-    version = FLAGS_version;
+    version = base::checked_cast<uint32_t>(FLAGS_version);
   }
 
   // Determine the hardware connection.
   std::unique_ptr<hps::DevInterface> dev;
+  uint8_t addr = base::checked_cast<uint8_t>(FLAGS_addr);
   if (FLAGS_mcp) {
-    dev = hps::Mcp::Create(FLAGS_addr, FLAGS_speed);
+    dev = hps::Mcp::Create(addr, FLAGS_speed);
   } else if (FLAGS_ftdi) {
-    dev = hps::Ftdi::Create(FLAGS_addr, FLAGS_speed);
+    dev = hps::Ftdi::Create(addr, FLAGS_speed);
   } else if (FLAGS_test) {
     // Initialise the fake device as already booted so that
     // features can be enabled/disabled.
@@ -71,7 +72,7 @@ int main(int argc, char* argv[]) {
   } else if (!FLAGS_uart.empty()) {
     dev = hps::Uart::Create(FLAGS_uart.c_str());
   } else {
-    dev = hps::I2CDev::Create(FLAGS_bus.c_str(), FLAGS_addr);
+    dev = hps::I2CDev::Create(FLAGS_bus.c_str(), addr);
   }
   CHECK(dev) << "Hardware device failed to initialise";
   LOG(INFO) << "Starting HPS Service.";

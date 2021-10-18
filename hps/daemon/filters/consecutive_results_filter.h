@@ -18,7 +18,7 @@ class ConsecutiveResultsFilter : public Filter {
   ConsecutiveResultsFilter(int threshold, int count, bool initial_state);
   ConsecutiveResultsFilter(const ConsecutiveResultsFilter&) = delete;
   ConsecutiveResultsFilter& operator=(const ConsecutiveResultsFilter&) = delete;
-  virtual ~ConsecutiveResultsFilter() = default;
+  ~ConsecutiveResultsFilter() override = default;
 
  private:
   // Metehods for Filter

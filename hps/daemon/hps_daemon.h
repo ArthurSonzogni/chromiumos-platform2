@@ -20,7 +20,7 @@ class HpsDaemon : public brillo::DBusServiceDaemon {
 
   HpsDaemon(const HpsDaemon&) = delete;
   HpsDaemon& operator=(const HpsDaemon&) = delete;
-  virtual ~HpsDaemon();
+  ~HpsDaemon() override;
 
  private:
   friend class HpsDaemonTest;

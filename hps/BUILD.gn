@@ -18,6 +18,49 @@ group("all") {
   }
 }
 
+config("target_defaults") {
+  cflags = [
+    "-Wall",
+    "-Werror",
+    "-Wextra",
+    "-Wpedantic",
+    "-Weverything",
+
+    # Allow C++20 designated initializers.
+    "-Wno-c++20-designator",
+
+    # We're not trying to be compatible with C++98.
+    "-Wno-c++98-compat",
+    "-Wno-c++98-compat-pedantic",
+
+    # For libchrome header compatibility.
+    "-Wno-cast-qual",
+    "-Wno-deprecated",
+    "-Wno-gnu-zero-variadic-macro-arguments",
+    "-Wno-old-style-cast",
+    "-Wno-padded",
+    "-Wno-reserved-identifier",
+    "-Wno-reserved-macro-identifier",
+    "-Wno-shadow-field-in-constructor",
+    "-Wno-sign-conversion",
+    "-Wno-thread-safety-negative",
+    "-Wno-undef",
+    "-Wno-unused-parameter",
+    "-Wno-weak-vtables",
+
+    # For libbrillo header compatibility.
+    "-Wno-extra-semi-stmt",
+  ]
+}
+
+config("test_warning_suppressions") {
+  cflags = [
+    "-Wno-global-constructors",
+    "-Wno-unused-member-function",
+    "-Wno-used-but-marked-unused",
+  ]
+}
+
 generate_dbus_adaptors("hpsd-adaptors") {
   dbus_service_config = "daemon/dbus_bindings/dbus-service-config.json"
   dbus_adaptors_out_dir = "include/dbus_adaptors"
@@ -30,6 +73,7 @@ executable("hpsd") {
     "libbrillo",
     "libchrome",
   ]
+  configs += [ ":target_defaults" ]
   deps = [ ":hpsdlib" ]
 }
 
@@ -53,6 +97,7 @@ static_library("hpsdlib") {
     "daemon/hps_daemon.cc",
   ]
   public_configs = [ ":hpsdlib_config" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":filters",
     ":hpsd-adaptors",
@@ -91,6 +136,7 @@ static_library("hpslib") {
     "utils.cc",
   ]
   public_configs = [ ":hpslib_config" ]
+  configs += [ ":target_defaults" ]
 }
 
 static_library("filters") {
@@ -102,13 +148,18 @@ static_library("filters") {
     "daemon/filters/filter_watcher.cc",
     "daemon/filters/threshold_filter.cc",
   ]
+  configs += [ ":target_defaults" ]
   pkg_deps = [ "libchrome" ]
 }
 
 if (use.test) {
   executable("dev_test") {
     sources = [ "dev_test.cc" ]
-    configs += [ "//common-mk:test" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_warning_suppressions",
+    ]
     pkg_deps = [ "libchrome" ]
     deps = [
       ":hpslib",
@@ -118,7 +169,11 @@ if (use.test) {
 
   executable("hps_test") {
     sources = [ "hps_test.cc" ]
-    configs += [ "//common-mk:test" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_warning_suppressions",
+    ]
     pkg_deps = [ "libchrome" ]
     deps = [
       ":hpslib",
@@ -131,14 +186,22 @@ if (use.test) {
       "hps_metrics.cc",
       "hps_metrics_test.cc",
     ]
-    configs += [ "//common-mk:test" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_warning_suppressions",
+    ]
     pkg_deps = [ "libmetrics" ]
     deps = [ "//common-mk/testrunner:testrunner" ]
   }
 
   executable("hps_daemon_test") {
     sources = [ "daemon/hps_daemon_test.cc" ]
-    configs += [ "//common-mk:test" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_warning_suppressions",
+    ]
 
     deps = [
       ":filters",
@@ -149,7 +212,11 @@ if (use.test) {
 
   executable("hps_filter_test") {
     sources = [ "daemon/filters/filter_test.cc" ]
-    configs += [ "//common-mk:test" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_warning_suppressions",
+    ]
     libs = [ "system_api-hps-protos" ]
     pkg_deps = [
       "libbrillo",

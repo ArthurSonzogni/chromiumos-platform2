@@ -59,7 +59,7 @@ class HPS_impl : public HPS {
 
  private:
   // Boot states.
-  enum State {
+  enum class State {
     kBoot,
     kBootCheckFault,
     kBootOK,
@@ -75,8 +75,8 @@ class HPS_impl : public HPS {
   void Reboot(const char* msg);
   void Fault();
   void Go(State newstate);
-  bool WaitForBankReady(int bank);
-  bool WriteFile(int bank, const base::FilePath& source);
+  bool WaitForBankReady(uint8_t bank);
+  bool WriteFile(uint8_t bank, const base::FilePath& source);
   std::unique_ptr<DevInterface> device_;
   HpsMetrics hps_metrics_;
   base::Lock lock_;  // Exclusive module access lock

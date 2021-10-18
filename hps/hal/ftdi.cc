@@ -122,7 +122,7 @@ bool Ftdi::Init(uint32_t speedKHz) {
   // Use the first device found. It's unlikely that multiple FTDI
   // devices will be attached - if so, some means of selecting the
   // correct device must be added.
-  if (this->Check(devlist == 0, "no device"))
+  if (this->Check(devlist == nullptr, "no device"))
     return false;
 #if 0
   uint8_t bus = libusb_get_bus_number(devlist->dev);
@@ -260,7 +260,7 @@ bool Ftdi::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
     this->Reset();
     return false;
   }
-  for (int i = 0; i < len; ++i) {
+  for (size_t i = 0; i < len; ++i) {
     b.clear();
     if (!this->SendByte(data[i], &b)) {
       this->Reset();
@@ -367,20 +367,24 @@ bool Ftdi::ReadByte(uint8_t* result, bool nak) {
 // Read from the module whatever data is available.
 bool Ftdi::GetRaw(std::vector<uint8_t>* get) {
   get->resize(kReadSize);
-  int actual = ftdi_read_data(&this->context_, &(*get)[0], get->size());
+  int actual = ftdi_read_data(&this->context_, &(*get)[0],
+                              static_cast<int>(get->size()));
   // Nothing to read, return empty vector.
   if (actual <= 0) {
     get->clear();
     return true;
   }
-  get->resize(actual);
+  get->resize(static_cast<size_t>(actual));
   return true;
 }
 
 // Write the data to the module..
 size_t Ftdi::PutRaw(const std::vector<uint8_t>& output) {
-  return ftdi_write_data(&this->context_, const_cast<uint8_t*>(&output[0]),
-                         output.size());
+  ssize_t len =
+      ftdi_write_data(&this->context_, const_cast<uint8_t*>(&output[0]),
+                      static_cast<int>(output.size()));
+  DCHECK_GE(len, 0);
+  return static_cast<size_t>(len);
 }
 
 // Reset the state of the bus to idle.

@@ -20,7 +20,7 @@ inline static constexpr int kMcpTransferSize = 64;  // Transfer buffer size
 
 class Mcp : public DevInterface {
  public:
-  virtual ~Mcp();
+  ~Mcp() override;
   void Close();
   bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len) override;
   bool WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) override;
@@ -30,7 +30,10 @@ class Mcp : public DevInterface {
 
  private:
   explicit Mcp(uint8_t addr)
-      : address_(addr << 1), div_(0), context_(0), handle_(0) {}
+      : address_(static_cast<uint8_t>(addr << 1)),
+        div_(0),
+        context_(nullptr),
+        handle_(nullptr) {}
   bool Init(uint32_t speedKHz);
   bool PrepareBus();
   bool Cmd();

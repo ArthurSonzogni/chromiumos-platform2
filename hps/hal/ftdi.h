@@ -27,7 +27,7 @@ class Ftdi : public DevInterface {
                                               uint32_t speedKHz);
 
  private:
-  explicit Ftdi(uint8_t addr) : address_(addr << 1) {}
+  explicit Ftdi(uint8_t addr) : address_(static_cast<uint8_t>(addr << 1)) {}
   bool Init(uint32_t speedKHz);
   bool Check(bool cond, const char* tag);
   void Reset();

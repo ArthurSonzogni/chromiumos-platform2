@@ -63,7 +63,7 @@ class MetricsLibrary : public MetricsLibraryInterface {
   MetricsLibrary(const MetricsLibrary&) = delete;
   MetricsLibrary& operator=(const MetricsLibrary&) = delete;
 
-  virtual ~MetricsLibrary();
+  ~MetricsLibrary() override;
 
   // Formerly used to initialize the library.
   // TODO(chromium:940343): Remove this function.

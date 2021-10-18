@@ -19,7 +19,7 @@ class FilterWatcher : public Filter {
   FilterWatcher(std::unique_ptr<Filter> wrapped_filter, StatusCallback signal);
   FilterWatcher(const FilterWatcher&) = delete;
   FilterWatcher& operator=(const FilterWatcher&) = delete;
-  virtual ~FilterWatcher() = default;
+  ~FilterWatcher() override = default;
 
  private:
   // Metehods for Filter

@@ -36,7 +36,7 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
  public:
   FakeDev()
       : SimpleThread("HPS Simulator"),
-        stage_(kFault),
+        stage_(Stage::kFault),
         feature_on_(0),
         bank_(0),
         flags_(0),
@@ -46,7 +46,7 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
         f1_result_(0) {}
   // Flags for controlling behaviour. Multiple flags can be set,
   // controlling how the fake responds under test conditions.
-  enum Flags {
+  enum class Flags {
     // Set FAULT bit at boot.
     kBootFault = 0,
     // Set MCU RW not verified status bit.
@@ -69,9 +69,13 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
   size_t BlockSizeBytes() { return this->block_size_b_.load(); }
   void Run() override;
   void Start();
-  void SkipBoot() { this->SetStage(kAppl); }
-  void Set(Flags f) { this->flags_.fetch_or(1 << f); }
-  void Clear(Flags f) { this->flags_.fetch_and(~(1 << f)); }
+  void SkipBoot() { this->SetStage(Stage::kAppl); }
+  void Set(Flags f) {
+    this->flags_.fetch_or(static_cast<uint16_t>(1 << static_cast<int>(f)));
+  }
+  void Clear(Flags f) {
+    this->flags_.fetch_and(~static_cast<uint16_t>(1 << static_cast<int>(f)));
+  }
   void SetVersion(uint32_t version) { this->firmware_version_ = version; }
   void SetBlockSizeBytes(size_t sz) { this->block_size_b_ = sz; }
   void SetF0Result(int8_t result) { this->f0_result_ = result; }
@@ -112,14 +116,16 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
   };
 
   friend class base::RefCounted<FakeDev>;
-  virtual ~FakeDev();
+  ~FakeDev() override;
   uint16_t ReadRegister(int r);
   void WriteRegister(int r, uint16_t v);
   bool WriteMemory(int base, const uint8_t* mem, size_t len);
-  bool Flag(Flags f) { return (this->flags_.load() & (1 << f)) != 0; }
+  bool Flag(Flags f) {
+    return (this->flags_.load() & (1 << static_cast<int>(f))) != 0;
+  }
   // Current stage (phase) of the device.
   // The device behaves differently in different stages.
-  enum Stage {
+  enum class Stage {
     kFault,
     kStage0,
     kStage1,

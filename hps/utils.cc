@@ -176,7 +176,16 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
       }
       return base::JoinString(ret, "|");
 
-    default:
+    case HpsReg::kApplVers:
+    case HpsReg::kFeatEn:
+    case HpsReg::kFeature0:
+    case HpsReg::kFeature1:
+    case HpsReg::kFirmwareVersionHigh:
+    case HpsReg::kFirmwareVersionLow:
+    case HpsReg::kHwRev:
+    case HpsReg::kMagic:
+    case HpsReg::kMax:
+    case HpsReg::kSysCmd:
       return "";
   }
 }

@@ -18,7 +18,7 @@ namespace hps {
 
 class Uart : public DevInterface {
  public:
-  virtual ~Uart();
+  ~Uart() override;
   int Open();
   bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len) override;
   bool WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) override;

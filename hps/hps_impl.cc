@@ -140,7 +140,7 @@ FeatureResult HPS_impl::Result(int feature) {
 // Runs the state machine.
 void HPS_impl::HandleState() {
   switch (this->state_) {
-    case kBoot: {
+    case State::kBoot: {
       // Wait for magic number.
       int magic = this->device_->ReadReg(HpsReg::kMagic);
       if (magic == kHpsMagic) {
@@ -156,7 +156,7 @@ void HPS_impl::HandleState() {
       break;
     }
 
-    case kBootCheckFault: {
+    case State::kBootCheckFault: {
       // Wait for OK or Fault.
       if (this->retries_++ >= 50) {
         hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kTimeout);
@@ -174,7 +174,7 @@ void HPS_impl::HandleState() {
             // Store h/w version.
             int hwrev = this->device_->ReadReg(HpsReg::kHwRev);
             if (hwrev >= 0) {
-              this->hw_rev_ = hwrev;
+              this->hw_rev_ = base::checked_cast<uint16_t>(hwrev);
               this->Go(State::kBootOK);
             } else {
               LOG(INFO) << "Failed to read hwrev";
@@ -185,7 +185,7 @@ void HPS_impl::HandleState() {
       break;
     }
 
-    case kBootOK: {
+    case State::kBootOK: {
       if (this->retries_++ >= 50) {
         hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kTimeout);
         this->Reboot("Timeout boot appl verification");
@@ -205,8 +205,8 @@ void HPS_impl::HandleState() {
           int version_high =
               this->device_->ReadReg(HpsReg::kFirmwareVersionHigh);
           if (version_low >= 0 && version_high >= 0) {
-            uint32_t version = (static_cast<uint16_t>(version_high) << 16) |
-                               static_cast<uint16_t>(version_low);
+            uint32_t version = static_cast<uint32_t>(
+                (version_high << 16) | static_cast<uint16_t>(version_low));
             if (version == this->appl_version_) {
               // Application is verified, launch it.
               VLOG(1) << "Launching to stage1";
@@ -231,7 +231,7 @@ void HPS_impl::HandleState() {
       break;
     }
 
-    case kUpdateAppl: {
+    case State::kUpdateAppl: {
       // Update the MCU flash.
       if (this->WriteFile(0, this->mcu_blob_)) {
         this->Reboot("MCU flash updated");
@@ -241,7 +241,7 @@ void HPS_impl::HandleState() {
       break;
     }
 
-    case kUpdateSpi: {
+    case State::kUpdateSpi: {
       // Update the SPI flash.
       if (this->WriteFile(1, this->spi_blob_)) {
         this->Reboot("SPI flash updated");
@@ -251,7 +251,7 @@ void HPS_impl::HandleState() {
       break;
     }
 
-    case kStage1: {
+    case State::kStage1: {
       // Wait for stage1 bit.
       if ((this->device_->ReadReg(HpsReg::kMagic) == kHpsMagic) &&
           (this->device_->ReadReg(HpsReg::kSysStatus) & R2::kStage1)) {
@@ -263,7 +263,7 @@ void HPS_impl::HandleState() {
       break;
     }
 
-    case kSpiVerify: {
+    case State::kSpiVerify: {
       // Wait for SPI verified or not.
       if (this->retries_++ >= 50) {
         hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kTimeout);
@@ -288,7 +288,7 @@ void HPS_impl::HandleState() {
       break;
     }
 
-    case kApplWait: {
+    case State::kApplWait: {
       // Wait for application running bit.
       int status = this->device_->ReadReg(HpsReg::kSysStatus);
       if (this->device_->ReadReg(HpsReg::kMagic) == kHpsMagic && status >= 0 &&
@@ -301,13 +301,13 @@ void HPS_impl::HandleState() {
       }
     } break;
 
-    case kReady: {
+    case State::kReady: {
       // The state machine is not run in this state
       NOTREACHED();
       break;
     }
 
-    case kFailed: {
+    case State::kFailed: {
       // The state machine is not run in this state
       NOTREACHED();
       break;
@@ -344,7 +344,8 @@ void HPS_impl::Fault() {
 
 // Move to new state, reset retry counter.
 void HPS_impl::Go(State newstate) {
-  VLOG(1) << "Old state: " << this->state_ << " new state: " << newstate;
+  VLOG(1) << "Old state: " << static_cast<int>(this->state_)
+          << " new state: " << static_cast<int>(newstate);
   this->state_ = newstate;
   this->retries_ = 0;
 }
@@ -356,8 +357,8 @@ void HPS_impl::Go(State newstate) {
 bool HPS_impl::Download(hps::HpsBank bank, const base::FilePath& source) {
   // Exclusive access to module.
   base::AutoLock l(this->lock_);
-  int ibank = static_cast<int>(bank);
-  if (ibank < 0 || ibank >= kNumBanks) {
+  uint8_t ibank = static_cast<uint8_t>(bank);
+  if (ibank >= kNumBanks) {
     LOG(ERROR) << "Download: Illegal bank: " << ibank << ": " << source;
     return -1;
   }
@@ -372,7 +373,7 @@ void HPS_impl::SetDownloadObserver(DownloadObserver observer) {
 /*
  * Write the file to the bank indicated.
  */
-bool HPS_impl::WriteFile(int bank, const base::FilePath& source) {
+bool HPS_impl::WriteFile(uint8_t bank, const base::FilePath& source) {
   base::File file(source,
                   base::File::Flags::FLAG_OPEN | base::File::Flags::FLAG_READ);
   if (!file.IsValid()) {
@@ -380,7 +381,7 @@ bool HPS_impl::WriteFile(int bank, const base::FilePath& source) {
                << base::File::ErrorToString(file.error_details());
     return false;
   }
-  int bytes = 0;
+  uint64_t bytes = 0;
   int64_t total_bytes = file.GetLength();
   uint32_t address = 0;
   int rd;
@@ -402,19 +403,20 @@ bool HPS_impl::WriteFile(int bank, const base::FilePath& source) {
       return false;
     }
     buf[0] = address >> 24;
-    buf[1] = address >> 16;
-    buf[2] = address >> 8;
-    buf[3] = address;
-    rd = file.ReadAtCurrentPos(reinterpret_cast<char*>(&buf[sizeof(uint32_t)]),
-                               this->device_->BlockSizeBytes());
+    buf[1] = (address >> 16) & 0xff;
+    buf[2] = (address >> 8) & 0xff;
+    buf[3] = address & 0xff;
+    rd = file.ReadAtCurrentPos(
+        reinterpret_cast<char*>(&buf[sizeof(uint32_t)]),
+        static_cast<int>(this->device_->BlockSizeBytes()));
     if (rd > 0) {
       if (!this->device_->Write(I2cMemWrite(bank), &buf[0],
-                                rd + sizeof(uint32_t))) {
+                                static_cast<size_t>(rd) + sizeof(uint32_t))) {
         LOG(ERROR) << "WriteFile: device write error. bank: " << bank;
         return false;
       }
-      address += rd;
-      bytes += rd;
+      address += static_cast<uint32_t>(rd);
+      bytes += static_cast<uint64_t>(rd);
       if (download_observer_) {
         download_observer_.Run(source, static_cast<uint32_t>(total_bytes),
                                bytes, base::TimeTicks::Now() - start_time);
@@ -427,7 +429,7 @@ bool HPS_impl::WriteFile(int bank, const base::FilePath& source) {
   return true;
 }
 
-bool HPS_impl::WaitForBankReady(int bank) {
+bool HPS_impl::WaitForBankReady(uint8_t bank) {
   int tout = 0;
   for (;;) {
     int result = this->device_->ReadReg(HpsReg::kBankReady);

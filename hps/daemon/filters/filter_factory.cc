@@ -33,8 +33,6 @@ std::unique_ptr<Filter> CreateFilter(const hps::FeatureConfig& config,
           config.consecutive_results_filter_config().count(),
           config.consecutive_results_filter_config().initial_state());
       break;
-    default:
-      LOG(FATAL) << "Unexpected config";
   }
   return std::make_unique<FilterWatcher>(std::move(filter), std::move(signal));
 }

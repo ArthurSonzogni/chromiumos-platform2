@@ -57,7 +57,7 @@ namespace hps {
 class SimDev : public DevInterface {
  public:
   explicit SimDev(scoped_refptr<FakeDev> device) : device_(device) {}
-  virtual ~SimDev() {}
+  ~SimDev() override = default;
 
   bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len) override {
     return this->device_->ReadDevice(cmd, data, len);
@@ -90,9 +90,7 @@ void FakeDev::Start() {
 
 bool FakeDev::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
   // Clear the whole buffer.
-  for (int i = 0; i < len; i++) {
-    data[i] = 0;
-  }
+  memset(data, 0, len);
   if ((cmd & 0x80) != 0) {
     // Register read.
     uint16_t value = this->ReadRegister(cmd & 0x7F);
@@ -115,7 +113,7 @@ bool FakeDev::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
     if (len != 0) {
       // Register write.
       int reg = cmd & 0x7F;
-      uint16_t value = data[0] << 8;
+      uint16_t value = static_cast<uint16_t>(data[0] << 8);
       if (len > 1) {
         value |= data[1];
       }
@@ -137,16 +135,16 @@ bool FakeDev::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
 void FakeDev::SetStage(Stage s) {
   this->stage_ = s;
   switch (s) {
-    case kFault:
+    case Stage::kFault:
       this->bank_ = 0;
       break;
-    case kStage0:
+    case Stage::kStage0:
       this->bank_ = 0x0001;
       break;
-    case kStage1:
+    case Stage::kStage1:
       this->bank_ = 0x0002;
       break;
-    case kAppl:
+    case Stage::kAppl:
       this->bank_ = 0;
       break;
   }
@@ -156,10 +154,10 @@ void FakeDev::SetStage(Stage s) {
 void FakeDev::Run() {
   // Initial startup.
   // Check for boot fault.
-  if (this->Flag(kBootFault)) {
-    this->SetStage(kFault);
+  if (this->Flag(Flags::kBootFault)) {
+    this->SetStage(Stage::kFault);
   } else {
-    this->SetStage(kStage0);
+    this->SetStage(Stage::kStage0);
   }
   for (;;) {
     // Main message loop.
@@ -199,7 +197,7 @@ void FakeDev::Run() {
           // This should be done in a separate thread so that
           // registers can be read while the memory is being
           // written.
-          this->bank_.fetch_or(1 << m.reg);
+          this->bank_.fetch_or(static_cast<uint16_t>(1 << m.reg));
           break;
       }
     }
@@ -225,7 +223,7 @@ bool FakeDev::WriteMemory(int base, const uint8_t* mem, size_t len) {
   if (len < sizeof(uint32_t)) {
     return false;
   }
-  this->bank_.fetch_and(~(1 << base));
+  this->bank_.fetch_and(static_cast<uint16_t>(~(1 << base)));
   std::atomic<uint16_t> res(0);
   base::WaitableEvent ev;
   Msg m(Cmd::kWriteMem, base, 0, &ev, &res);
@@ -245,29 +243,29 @@ uint16_t FakeDev::ReadRegActual(HpsReg reg) {
       v = kHpsMagic;
       break;
     case HpsReg::kHwRev:
-      if (this->stage_ == kStage0) {
+      if (this->stage_ == Stage::kStage0) {
         v = 0x0101;  // Version return in stage0.
       }
       break;
     case HpsReg::kSysStatus:
-      if (this->stage_ == kFault) {
+      if (this->stage_ == Stage::kFault) {
         v = hps::R2::kFault;
         break;
       }
       v = hps::R2::kOK;
-      if (this->Flag(kApplNotVerified)) {
+      if (this->Flag(Flags::kApplNotVerified)) {
         v |= hps::R2::kApplNotVerified;
       } else {
         v |= hps::R2::kApplVerified;
       }
-      if (this->Flag(kWpOff)) {
+      if (this->Flag(Flags::kWpOff)) {
         v |= hps::R2::kWpOff;
       } else {
         v |= hps::R2::kWpOn;
       }
-      if (this->stage_ == kStage1) {
+      if (this->stage_ == Stage::kStage1) {
         v |= hps::R2::kStage1;
-        if (this->Flag(kSpiNotVerified)) {
+        if (this->Flag(Flags::kSpiNotVerified)) {
           v |= hps::R2::kSpiNotVerified;
         } else {
           v |= hps::R2::kSpiVerified;
@@ -297,7 +295,8 @@ uint16_t FakeDev::ReadRegActual(HpsReg reg) {
     case HpsReg::kFirmwareVersionHigh:
       // Firmware version, only returned in stage0 if the
       // application has been verified.
-      if (this->stage_ == kStage0 && !this->Flag(kApplNotVerified)) {
+      if (this->stage_ == Stage::kStage0 &&
+          !this->Flag(Flags::kApplNotVerified)) {
         v = static_cast<uint16_t>(firmware_version_.load() >> 16);
       } else {
         v = 0xFFFF;
@@ -307,14 +306,19 @@ uint16_t FakeDev::ReadRegActual(HpsReg reg) {
     case HpsReg::kFirmwareVersionLow:
       // Firmware version, only returned in stage0 if the
       // application has been verified.
-      if (this->stage_ == kStage0 && !this->Flag(kApplNotVerified)) {
+      if (this->stage_ == Stage::kStage0 &&
+          !this->Flag(Flags::kApplNotVerified)) {
         v = static_cast<uint16_t>(firmware_version_.load() & 0xFFFF);
       } else {
         v = 0xFFFF;
       }
       break;
 
-    default:
+    case HpsReg::kSysCmd:
+    case HpsReg::kApplVers:
+    case HpsReg::kError:
+    case HpsReg::kFeatEn:
+    case HpsReg::kMax:
       break;
   }
   VLOG(2) << "Read reg " << HpsRegToString(reg) << " value " << v;
@@ -327,16 +331,16 @@ void FakeDev::WriteRegActual(HpsReg reg, uint16_t value) {
   switch (reg) {
     case HpsReg::kSysCmd:
       if (value & hps::R3::kReset) {
-        this->SetStage(kStage0);
+        this->SetStage(Stage::kStage0);
       } else if (value & hps::R3::kLaunch) {
         // Only valid in stage0
-        if (this->stage_ == kStage0) {
-          this->SetStage(kStage1);
+        if (this->stage_ == Stage::kStage0) {
+          this->SetStage(Stage::kStage1);
         }
       } else if (value & hps::R3::kEnable) {
         // Only valid in stage1
-        if (this->stage_ == kStage1) {
-          this->SetStage(kAppl);
+        if (this->stage_ == Stage::kStage1) {
+          this->SetStage(Stage::kAppl);
         }
       }
       break;
@@ -346,7 +350,17 @@ void FakeDev::WriteRegActual(HpsReg reg, uint16_t value) {
       this->feature_on_ = value;
       break;
 
-    default:
+    case HpsReg::kMagic:
+    case HpsReg::kHwRev:
+    case HpsReg::kSysStatus:
+    case HpsReg::kApplVers:
+    case HpsReg::kBankReady:
+    case HpsReg::kError:
+    case HpsReg::kFeature0:
+    case HpsReg::kFeature1:
+    case HpsReg::kFirmwareVersionHigh:
+    case HpsReg::kFirmwareVersionLow:
+    case HpsReg::kMax:
       break;
   }
 }
@@ -354,7 +368,7 @@ void FakeDev::WriteRegActual(HpsReg reg, uint16_t value) {
 // Returns the number of bytes written.
 // The length includes 4 bytes of prepended address.
 uint16_t FakeDev::WriteMemActual(int bank, const uint8_t* data, size_t len) {
-  if (this->Flag(kMemFail)) {
+  if (this->Flag(Flags::kMemFail)) {
     return 0;
   }
   // Don't allow writes that exceed the max block size.
@@ -362,34 +376,35 @@ uint16_t FakeDev::WriteMemActual(int bank, const uint8_t* data, size_t len) {
     return 0;
   }
   switch (this->stage_) {
-    case kStage0:
+    case Stage::kStage0:
       // Stage0 allows the MCU flash to be written.
       if (bank == 0) {
         this->bank_len_[bank] += len - sizeof(uint32_t);
         // Check if the fake needs to reset the not-verified bit.
-        if (this->Flag(kResetApplVerification)) {
-          this->Clear(kApplNotVerified);
+        if (this->Flag(Flags::kResetApplVerification)) {
+          this->Clear(Flags::kApplNotVerified);
         }
         // Check if the fake should increment the version.
-        if (this->Flag(kIncrementVersion)) {
-          this->Clear(kIncrementVersion);
+        if (this->Flag(Flags::kIncrementVersion)) {
+          this->Clear(Flags::kIncrementVersion);
           this->firmware_version_++;
         }
-        return len;
+        return base::checked_cast<uint16_t>(len);
       }
       break;
-    case kStage1:
+    case Stage::kStage1:
       // Stage1 allows the SPI flash to be written.
       if (bank == 1) {
         this->bank_len_[bank] += len - sizeof(uint32_t);
         // Check if the fake needs to reset the not-verified bit.
-        if (this->Flag(kResetSpiVerification)) {
-          this->Clear(kSpiNotVerified);
+        if (this->Flag(Flags::kResetSpiVerification)) {
+          this->Clear(Flags::kSpiNotVerified);
         }
-        return len;
+        return base::checked_cast<uint16_t>(len);
       }
       break;
-    default:
+    case Stage::kFault:
+    case Stage::kAppl:
       break;
   }
   return 0;

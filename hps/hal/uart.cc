@@ -64,19 +64,19 @@ bool Uart::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
     return false;
   }
   // Now request read.
-  c = len;
+  c = static_cast<uint8_t>(len);
   if (write(this->fd_, &c, 1) != 1) {
     return false;
   }
   // Read loop to retrieve data.
   while (len > 0) {
-    int rd = read(this->fd_, data, len);
+    ssize_t rd = read(this->fd_, data, len);
     if (rd < 0) {
       perror(this->device_);
       return false;
     }
     data += rd;
-    len -= rd;
+    len -= static_cast<size_t>(rd);
   }
   // Send stop.
   c = 0;
@@ -91,7 +91,7 @@ bool Uart::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
     return false;
   }
   // Send start and byte count (including command).
-  uint8_t c = 0x80 | (len + 1);
+  uint8_t c = 0x80 | (static_cast<uint8_t>(len) + 1);
   if (write(this->fd_, &c, 1) != 1) {
     return false;
   }
@@ -99,7 +99,7 @@ bool Uart::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
   if (write(this->fd_, &cmd, 1) != 1) {
     return false;
   }
-  if (write(this->fd_, data, len) != len) {
+  if (write(this->fd_, data, len) != static_cast<ssize_t>(len)) {
     return false;
   }
   // Send stop.

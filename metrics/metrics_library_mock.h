@@ -31,7 +31,7 @@ class MetricsLibraryMock : public MetricsLibraryInterface {
               (const std::string&, int, int, int, int, int),
               (override));
 #endif
-  bool AreMetricsEnabled() override { return metrics_enabled_; };
+  bool AreMetricsEnabled() override { return metrics_enabled_; }
   bool IsGuestMode() override { return guest_mode_; }
 
   void set_metrics_enabled(bool value) { metrics_enabled_ = value; }

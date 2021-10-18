@@ -91,7 +91,7 @@ inline constexpr int kFeatures = 2;  // Maximum of 2 features at this stage.
 
 inline constexpr int kNumBanks = 16;
 
-inline uint8_t I2cMemWrite(int bank) {
+inline uint8_t I2cMemWrite(uint8_t bank) {
   return (bank % kNumBanks) | 0;
 }
 

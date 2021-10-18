@@ -18,7 +18,7 @@ class ThresholdFilter : public Filter {
   explicit ThresholdFilter(int threshold);
   ThresholdFilter(const ThresholdFilter&) = delete;
   ThresholdFilter& operator=(const ThresholdFilter&) = delete;
-  virtual ~ThresholdFilter() = default;
+  ~ThresholdFilter() override = default;
 
  private:
   // Metehods for Filter
