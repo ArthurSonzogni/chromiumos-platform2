@@ -79,67 +79,39 @@ using Mode = ec::FpMode::Mode;
 
 const std::string& CrosFpBiometricsManager::Record::GetId() const {
   CHECK(biometrics_manager_);
-  CHECK(index_ < biometrics_manager_->records_.size());
-  return biometrics_manager_->records_[index_].record_id;
+  return biometrics_manager_->GetRecordMetadata(index_).record_id;
 }
 
 const std::string& CrosFpBiometricsManager::Record::GetUserId() const {
   CHECK(biometrics_manager_);
-  CHECK(index_ <= biometrics_manager_->records_.size());
-  return biometrics_manager_->records_[index_].user_id;
+  return biometrics_manager_->GetRecordMetadata(index_).user_id;
 }
 
 const std::string& CrosFpBiometricsManager::Record::GetLabel() const {
   CHECK(biometrics_manager_);
-  CHECK(index_ < biometrics_manager_->records_.size());
-  return biometrics_manager_->records_[index_].label;
+  return biometrics_manager_->GetRecordMetadata(index_).label;
 }
 
 const std::vector<uint8_t>& CrosFpBiometricsManager::Record::GetValidationVal()
     const {
   CHECK(biometrics_manager_);
-  CHECK(index_ <= biometrics_manager_->records_.size());
-  return biometrics_manager_->records_[index_].validation_val;
+  return biometrics_manager_->GetRecordMetadata(index_).validation_val;
 }
 
 bool CrosFpBiometricsManager::Record::SetLabel(std::string label) {
   CHECK(biometrics_manager_);
-  CHECK(index_ < biometrics_manager_->records_.size());
-  std::string old_label = biometrics_manager_->records_[index_].label;
+  auto record_metadata = biometrics_manager_->GetRecordMetadata(index_);
 
-  std::unique_ptr<VendorTemplate> tmpl =
-      biometrics_manager_->cros_dev_->GetTemplate(index_);
-  // TODO(vpalatin): would be faster to read it from disk
-  if (!tmpl) {
-    return false;
-  }
-  biometrics_manager_->records_[index_].label = std::move(label);
+  record_metadata.label = std::move(label);
 
-  if (!biometrics_manager_->WriteRecord(biometrics_manager_->records_[index_],
-                                        tmpl->data(), tmpl->size())) {
-    biometrics_manager_->records_[index_].label = std::move(old_label);
-    return false;
-  }
-  return true;
+  return biometrics_manager_->UpdateRecordMetadata(index_, record_metadata);
 }
 
 bool CrosFpBiometricsManager::Record::Remove() {
   if (!biometrics_manager_)
     return false;
-  if (index_ >= biometrics_manager_->records_.size())
-    return false;
 
-  const auto& record = biometrics_manager_->records_[index_];
-  std::string user_id = record.user_id;
-
-  // TODO(mqg): only delete record if user_id is primary user.
-  if (!biometrics_manager_->biod_storage_->DeleteRecord(user_id,
-                                                        record.record_id))
-    return false;
-
-  // We cannot remove only one record if we want to stay in sync with the MCU,
-  // Clear and reload everything.
-  return biometrics_manager_->ReloadAllRecords(user_id);
+  return biometrics_manager_->RemoveRecord(index_);
 }
 
 bool CrosFpBiometricsManager::ReloadAllRecords(std::string user_id) {
@@ -222,6 +194,40 @@ void CrosFpBiometricsManager::RemoveRecordsFromMemory() {
   records_.clear();
   suspicious_templates_.clear();
   cros_dev_->ResetContext();
+}
+
+bool CrosFpBiometricsManager::RemoveRecord(int index) {
+  if (index >= records_.size())
+    return false;
+
+  const auto& record = records_[index];
+  std::string user_id = record.user_id;
+
+  // TODO(mqg): only delete record if user_id is primary user.
+  if (!biod_storage_->DeleteRecord(user_id, record.record_id))
+    return false;
+
+  // We cannot remove only one record if we want to stay in sync with the MCU,
+  // Clear and reload everything.
+  return ReloadAllRecords(user_id);
+}
+
+bool CrosFpBiometricsManager::UpdateRecordMetadata(
+    int index, const BiodStorageInterface::RecordMetadata& record_metadata) {
+  if (index >= records_.size())
+    return false;
+
+  std::unique_ptr<VendorTemplate> tmpl = cros_dev_->GetTemplate(index);
+  // TODO(vpalatin): would be faster to read it from disk
+  if (!tmpl)
+    return false;
+
+  if (!WriteRecord(record_metadata, tmpl->data(), tmpl->size()))
+    return false;
+
+  records_[index] = record_metadata;
+
+  return true;
 }
 
 bool CrosFpBiometricsManager::ReadRecordsForSingleUser(
@@ -833,7 +839,7 @@ bool CrosFpBiometricsManager::UpdateTemplatesOnDisk(
       continue;
     }
 
-    const auto current_record = GetRecordMetadata(i);
+    const auto& current_record = GetRecordMetadata(i);
     if (!WriteRecord(current_record, templ->data(), templ->size())) {
       LOG(ERROR) << "Cannot update record "
                  << LogSafeID(current_record.record_id)

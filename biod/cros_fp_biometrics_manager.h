@@ -146,6 +146,14 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   // Clear FPMCU context and re-upload all records from storage.
   bool ReloadAllRecords(std::string user_id);
+
+  // Updates record metadata on disk.
+  bool UpdateRecordMetadata(
+      int index, const BiodStorageInterface::RecordMetadata& record_metadata);
+
+  // Removes record from disk and from FPMCU.
+  bool RemoveRecord(int index);
+
   // BiodMetrics must come before CrosFpDevice, since CrosFpDevice has a
   // raw pointer to BiodMetrics. We must ensure CrosFpDevice is destructed
   // first.
