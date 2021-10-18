@@ -101,8 +101,8 @@ mod test {
             let storage_root = ScopedPath::create(get_temp_path(None)).unwrap();
             let storage = FileStorage::new(storage_root.to_path_buf()).unwrap();
             TestFileStorage {
-                storage_root,
                 storage,
+                storage_root,
             }
         }
     }
