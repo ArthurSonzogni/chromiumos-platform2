@@ -50,5 +50,6 @@ sched_yield: 1
 sendto: 1
 set_robust_list: 1
 socket: arg0 == AF_UNIX
+stat: 1
 sysinfo: 1
 write: 1
