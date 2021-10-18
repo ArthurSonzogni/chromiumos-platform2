@@ -11,7 +11,10 @@ group("all") {
     deps += [ ":typecd_testrunner" ]
   }
   if (use.fuzzer) {
-    deps += [ ":typecd_partner_fuzzer" ]
+    deps += [
+      ":typecd_cros_ec_util_fuzzer",
+      ":typecd_partner_fuzzer",
+    ]
   }
 }
 
@@ -61,16 +64,16 @@ static_library("typecd_common") {
   deps = [ ":typecd-adaptors" ]
 }
 
-if (use.test) {
-  pkg_config("test_defaults") {
-    pkg_deps = [
-      "libbrillo-test",
-      "libchrome-test",
-      "libudev",
-      "re2",
-    ]
-  }
+pkg_config("test_defaults") {
+  pkg_deps = [
+    "libbrillo-test",
+    "libchrome-test",
+    "libudev",
+    "re2",
+  ]
+}
 
+if (use.test) {
   executable("typecd_testrunner") {
     sources = [
       "cable_test.cc",
@@ -100,6 +103,16 @@ if (use.fuzzer) {
     configs += [
       ":target_defaults",
       "//common-mk/common_fuzzer",
+    ]
+    deps = [ ":typecd_common" ]
+  }
+
+  executable("typecd_cros_ec_util_fuzzer") {
+    sources = [ "cros_ec_util_fuzzer.cc" ]
+    configs += [
+      ":test_defaults",
+      "//common-mk/common_fuzzer",
+      "//common-mk:test",
     ]
     deps = [ ":typecd_common" ]
   }
