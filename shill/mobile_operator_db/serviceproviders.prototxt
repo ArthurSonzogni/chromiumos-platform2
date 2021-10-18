@@ -13416,6 +13416,7 @@ mno {
       localized_name {
         name : "4G LTE Contract"
       }
+      ip_type: IPV4V6
     }
     sid : "2"
     sid : "4"
