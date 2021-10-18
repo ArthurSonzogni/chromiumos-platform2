@@ -6,6 +6,7 @@
 #include "usb_bouncer/util_internal.h"
 
 #include <fcntl.h>
+#include <sys/capability.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -20,6 +21,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/process/launch.h>
+#include <base/scoped_generic.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -357,7 +359,27 @@ UMADeviceClass MergeClasses(UMADeviceClass a, UMADeviceClass b) {
   return UMADeviceClass::kOther;
 }
 
+struct ScopedCapTTraits {
+  static cap_t InvalidValue() { return nullptr; }
+  static void Free(cap_t cap_ptr) { cap_free(cap_ptr); }
+};
+typedef base::ScopedGeneric<cap_t, ScopedCapTTraits> ScopedCapT;
+
 }  // namespace
+
+bool CanChown() {
+  ScopedCapT caps(cap_get_pid(0));
+  if (!caps.is_valid()) {
+    return false;
+  }
+
+  cap_flag_value_t value;
+  if (cap_get_flag(caps.get(), CAP_CHOWN, CAP_EFFECTIVE, &value) == -1) {
+    return false;
+  }
+
+  return value == CAP_SET;
+}
 
 std::string Hash(const std::string& content) {
   std::vector<uint8_t> digest(SHA256_DIGEST_LENGTH, 0);
@@ -546,8 +568,7 @@ SafeFD OpenStateFile(const base::FilePath& base_path,
   uid_t proc_uid = getuid();
   uid_t uid = proc_uid;
   gid_t gid = getgid();
-  if (uid == kRootUid &&
-      !brillo::userdb::GetUserInfo(kUsbBouncerUser, &uid, &gid)) {
+  if (CanChown() && !brillo::userdb::GetUserInfo(kUsbBouncerUser, &uid, &gid)) {
     LOG(ERROR) << "Failed to get uid & gid for \"" << kUsbBouncerUser << "\"";
     return SafeFD();
   }

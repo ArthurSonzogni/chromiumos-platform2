@@ -18,6 +18,7 @@ group("all") {
 pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
+    "libcap",
     "libchrome",
     "libcrypto",
     "libmetrics",

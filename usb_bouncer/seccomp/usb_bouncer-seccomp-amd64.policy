@@ -15,6 +15,7 @@ sendmsg: 1
 fstat: 1
 lseek: 1
 connect: 1
+# Called by libusbguard.
 socket: arg0 == AF_UNIX
 access: 1
 faccessat: 1
@@ -41,7 +42,9 @@ restart_syscall: 1
 rt_sigreturn: 1
 
 # These were not included by security.USBBouncer.
+capget: 1
 clock_gettime: 1
+# Needed for fork.
 clone: 1
 creat: 1
 dup: 1
@@ -51,6 +54,7 @@ newfstatat: 1
 futex: 1
 getpid: 1
 gettimeofday: 1
+# TCGETS is ok.
 ioctl: arg1 == TCGETS
 lstat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE

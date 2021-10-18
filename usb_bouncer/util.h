@@ -59,6 +59,9 @@ enum class UMAEventTiming {
   kMaxValue = kLocked,
 };
 
+// Returns true if the process has CAP_CHOWN.
+bool CanChown();
+
 std::string Hash(const std::string& content);
 std::string Hash(const google::protobuf::RepeatedPtrField<std::string>& rules);
 

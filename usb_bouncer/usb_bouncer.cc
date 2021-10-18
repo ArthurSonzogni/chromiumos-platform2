@@ -17,6 +17,7 @@
 #include "usb_bouncer/entry_manager.h"
 #include "usb_bouncer/util.h"
 
+using usb_bouncer::CanChown;
 using usb_bouncer::Daemonize;
 using usb_bouncer::DevpathToRuleCallback;
 using usb_bouncer::EntryManager;
@@ -52,6 +53,10 @@ static constexpr char kLogPath[] = "/dev/log";
 static constexpr char kUMAEventsPath[] = "/var/lib/metrics/uma-events";
 
 void DropPrivileges(const Configuration& config) {
+  if (!CanChown()) {
+    LOG(FATAL) << "This process doesn't have permission to chown.";
+  }
+
   ScopedMinijail j(minijail_new());
   minijail_change_user(j.get(), usb_bouncer::kUsbBouncerUser);
   minijail_change_group(j.get(), usb_bouncer::kUsbBouncerGroup);
