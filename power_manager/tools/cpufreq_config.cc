@@ -115,9 +115,8 @@ base::Optional<std::string> GetGovernor(const CpufreqConf& conf) {
 }
 
 // Set governor for all CPUs.
-bool SetGovernor(std::string governor) {
+bool SetGovernor(const std::string& governor) {
   bool ret = true;
-
   base::FileEnumerator enumerator(base::FilePath(kCpuBaseDir), false,
                                   base::FileEnumerator::DIRECTORIES,
                                   "cpu[0-9]*");
@@ -137,15 +136,40 @@ bool SetGovernor(std::string governor) {
 }
 
 base::Optional<std::string> GetConfigValue(const CpufreqConf& conf,
-                                           std::string setting) {
+                                           const std::string& setting) {
   return conf.GetValue("CPUFREQ_" + base::ToUpperASCII(setting));
+}
+
+// Optionally write a setting in a multi-policy directory structure.
+// If the setting isn't found in the conf file or not available on the
+// system, ignore it.
+bool MultiPolicySetOptional(const CpufreqConf& conf,
+                            const std::string& setting) {
+  base::Optional<std::string> value = GetConfigValue(conf, setting);
+  if (!value.has_value())
+    return true;
+
+  base::FileEnumerator enumerator(base::FilePath(kCpuBaseDir), false,
+                                  base::FileEnumerator::DIRECTORIES,
+                                  "cpu[0-9]*");
+  for (auto file = enumerator.Next(); !file.empty(); file = enumerator.Next()) {
+    base::FilePath path = file.Append("cpufreq").Append(setting);
+    if (!base::PathExists(path))
+      continue;
+    if (!base::WriteFile(path, value.value())) {
+      PLOG(ERROR) << "Failed to write " << setting << " to " << path;
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // Set a governor-specific setting, optionally. If the setting isn't found in
 // the conf file, or it's not available on the system, ignore it.
 bool GovernorSetOptional(const CpufreqConf& conf,
-                         std::string governor,
-                         std::string setting) {
+                         const std::string& governor,
+                         const std::string& setting) {
   base::Optional<std::string> value = GetConfigValue(conf, setting);
   if (!value.has_value())
     return true;
@@ -161,6 +185,21 @@ bool GovernorSetOptional(const CpufreqConf& conf,
   }
 
   return true;
+}
+
+// These are settings specific to the intel_pstate driver.
+bool ConfigureIntelPstate(const CpufreqConf& conf) {
+  const std::vector<std::string> settings = {
+      "energy_performance_preference",
+  };
+  bool ret = true;
+
+  for (const auto& setting : settings) {
+    if (!MultiPolicySetOptional(conf, setting))
+      ret = false;
+  }
+
+  return ret;
 }
 
 bool ConfigureGovernorSettings(const CpufreqConf& conf, std::string governor) {
@@ -231,6 +270,11 @@ int main(int argc, char* argv[]) {
 
   if (!SetGovernor(governor)) {
     LOG(ERROR) << "Could not set governor: " << governor;
+    return EXIT_FAILURE;
+  }
+
+  if (!ConfigureIntelPstate(conf)) {
+    LOG(ERROR) << "Failed to configure intel_pstate settings";
     return EXIT_FAILURE;
   }
 
