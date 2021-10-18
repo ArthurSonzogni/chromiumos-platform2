@@ -889,7 +889,8 @@ bool HostNotifier::AddFileWatch(const base::FilePath& path,
       // TODO(crbug.com/1179608): after libchrome is upreved to r860220,
       // base::FilePathWatcher will not be overloaded and could be simplified to
       // base::IgnoreResult(&base::FilePathWatcher::Watch).
-      base::BindOnce(base::IgnoreResult<bool (base::FilePathWatcher::*)(
+      base::BindOnce(base::IgnoreResult<bool (  // NOLINT(whitespace/parens)
+                         base::FilePathWatcher::*)(
                          const base::FilePath&, base::FilePathWatcher::Type,
                          const base::FilePathWatcher::Callback&)>(
                          &base::FilePathWatcher::Watch),
