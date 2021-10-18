@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <tuple>
 #include <utility>
 
 #include "cros-camera/camera_buffer_manager.h"
@@ -115,6 +116,7 @@ GcamAeControllerImpl::GcamAeControllerImpl(
   ae_compensation_range_ =
       Range<float>(ae_compensation_range[0], ae_compensation_range[1]);
   active_array_dimension_ = Size(active_array_size[2], active_array_size[3]);
+  powerline_freq_ = GetPowerLineFrequencyForLocation();
 
   ae_compensation_step_delta_range_ =
       Range<float>(kAeCompensationDeltaStopRange[0] / ae_compensation_step_,
@@ -531,6 +533,17 @@ void GcamAeControllerImpl::RecordClientRequestSettings(
         << "Client requested ANDROID_CONTROL_AE_LOCK="
         << static_cast<int>(*frame_info->client_request_settings.ae_lock);
   }
+
+  base::span<const uint8_t> ae_antibanding_mode =
+      request->GetMetadata<uint8_t>(ANDROID_CONTROL_AE_ANTIBANDING_MODE);
+  if (!ae_antibanding_mode.empty()) {
+    frame_info->client_request_settings.ae_antibanding_mode =
+        ae_antibanding_mode[0];
+    VLOGFID(2, request->frame_number())
+        << "Client requested ANDROID_CONTROL_AE_ANTIBANDING_MODE="
+        << static_cast<int>(
+               *frame_info->client_request_settings.ae_antibanding_mode);
+  }
 }
 
 void GcamAeControllerImpl::RestoreClientRequestSettings(
@@ -576,6 +589,20 @@ void GcamAeControllerImpl::RestoreClientRequestSettings(
           << static_cast<int>(*frame_info->client_request_settings.ae_lock);
     }
   }
+
+  if (frame_info->client_request_settings.ae_antibanding_mode) {
+    std::array<uint8_t, 1> ae_antibanding_mode = {
+        *frame_info->client_request_settings.ae_antibanding_mode};
+    if (!result->UpdateMetadata<uint8_t>(ANDROID_CONTROL_AE_ANTIBANDING_MODE,
+                                         ae_antibanding_mode)) {
+      LOGF(ERROR) << "Cannot restore ANDROID_CONTROL_AE_ANTIBANDING_MODE";
+    } else {
+      VLOGFID(2, result->frame_number())
+          << "Restored ANDROID_CONTROL_AE_ANTIBANDING_MODE="
+          << static_cast<int>(
+                 *frame_info->client_request_settings.ae_antibanding_mode);
+    }
+  }
 }
 
 void GcamAeControllerImpl::SetExposureCompensation(
@@ -602,17 +629,75 @@ void GcamAeControllerImpl::SetExposureCompensation(
 
 void GcamAeControllerImpl::SetManualSensorControls(
     Camera3CaptureDescriptor* request) {
+  constexpr float kSecondInMs = 1000.0f;
+  auto get_exposure_time_rounding_for_antibanding =
+      [&](uint8_t antibanding_mode) -> float {
+    constexpr float kExpTimeMs50HzRounding = (kSecondInMs / 50.0) / 2.0;
+    constexpr float kExpTimeMs60HzRounding = (kSecondInMs / 60.0) / 2.0;
+    constexpr float kExpTimeMsNoRounding = 1.0f;
+    switch (antibanding_mode) {
+      case ANDROID_CONTROL_AE_ANTIBANDING_MODE_50HZ:
+        return kExpTimeMs50HzRounding;
+      case ANDROID_CONTROL_AE_ANTIBANDING_MODE_60HZ:
+        return kExpTimeMs60HzRounding;
+      case ANDROID_CONTROL_AE_ANTIBANDING_MODE_AUTO:
+        switch (powerline_freq_) {
+          case PowerLineFrequency::FREQ_50HZ:
+            return kExpTimeMs50HzRounding;
+          case PowerLineFrequency::FREQ_60HZ:
+            return kExpTimeMs60HzRounding;
+          default:
+            NOTREACHED() << "Powerline frequency not set";
+            return kExpTimeMsNoRounding;
+        }
+        break;
+      case ANDROID_CONTROL_AE_ANTIBANDING_MODE_OFF:
+        return kExpTimeMsNoRounding;
+      default:
+        NOTREACHED() << "Unknown antibanding_mode enum: "
+                     << static_cast<int>(antibanding_mode);
+        return kExpTimeMsNoRounding;
+    }
+  };
+
+  auto factorize_exp_time_and_gain =
+      [&](const float tet, const float max_exposure_time_ms,
+          const float exp_time_rounding_ms) -> std::tuple<float, float> {
+    float exp_time = std::max(std::floorf(std::min(tet, max_exposure_time_ms) /
+                                          exp_time_rounding_ms),
+                              1.0f) *
+                     exp_time_rounding_ms;
+    float gain = tet / exp_time;
+
+    return std::make_tuple(exp_time, gain);
+  };
+
   AeFrameInfo* frame_info = GetAeFrameInfoEntry(request->frame_number());
   if (!frame_info->target_tet) {
     return;
   }
 
-  const float max_exposure_time_ms =
-      1000.0f / base::checked_cast<float>(frame_info->target_fps_range.lower());
-  float exp_time = std::min(frame_info->target_tet, max_exposure_time_ms);
-  float gain = frame_info->target_tet / exp_time;
+  // Defaults to 30fps.
+  float max_exposure_time_ms = 33.3f;
+  if (frame_info->target_fps_range.lower() == 0) {
+    LOGFID(ERROR, frame_info->frame_number)
+        << "Invalid fps range: " << frame_info->target_fps_range;
+  } else {
+    max_exposure_time_ms =
+        kSecondInMs /
+        base::checked_cast<float>(frame_info->target_fps_range.lower());
+  }
+  uint8_t ae_antibanding_mode =
+      frame_info->client_request_settings.ae_antibanding_mode
+          ? *frame_info->client_request_settings.ae_antibanding_mode
+          : ANDROID_CONTROL_AE_ANTIBANDING_MODE_AUTO;
+
+  auto [exp_time, gain] = factorize_exp_time_and_gain(
+      frame_info->target_tet, max_exposure_time_ms,
+      get_exposure_time_rounding_for_antibanding(ae_antibanding_mode));
   VLOGFID(2, request->frame_number())
-      << "exp_time=" << exp_time << " gain=" << gain;
+      << "exp_time=" << exp_time << " gain=" << gain
+      << " antibanding_mode=" << static_cast<int>(ae_antibanding_mode);
 
   std::array<uint8_t, 1> ae_mode = {ANDROID_CONTROL_AE_MODE_OFF};
   std::array<uint8_t, 1> ae_lock = {ANDROID_CONTROL_AE_LOCK_OFF};
