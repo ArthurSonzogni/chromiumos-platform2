@@ -2384,7 +2384,7 @@ void Cellular::SetScanning(bool scanning) {
     return;
   LOG(INFO) << __func__ << ": " << scanning
             << " State: " << GetStateString(state_)
-            << " Modem State: " << GetModemStateString(modem_state_) << ")";
+            << " Modem State: " << GetModemStateString(modem_state_);
   if (scanning) {
     // Set Scanning=true immediately.
     scanning_clear_callback_.Cancel();
