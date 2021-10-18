@@ -45,7 +45,7 @@ use sirenia::{
     app_info::{
         self, AppManifest, AppManifestEntry, Digest, ExecutableInfo, SandboxType, StorageParameters,
     },
-    compute_sha256,
+    compute_sha256, log_error,
     secrets::{
         self, storage_encryption::StorageEncryption, GscSecret, PlatformSecret, SecretManager,
         VersionedSecret,
@@ -250,11 +250,11 @@ impl Trichechus for TrichechusServerImpl {
     fn start_session(&self, app_info: AppInfo) -> StdResult<StdResult<(), trichechus::Error>, ()> {
         info!("Received start session message: {:?}", &app_info);
         // The TEE app isn't started until its socket connection is accepted.
-        Ok(start_session(
+        Ok(log_error(start_session(
             self.state.borrow_mut().deref_mut(),
             self.port_to_transport_type(app_info.port_number),
             &app_info.app_id,
-        ))
+        )))
     }
 
     fn load_app(
@@ -264,7 +264,11 @@ impl Trichechus for TrichechusServerImpl {
     ) -> StdResult<StdResult<(), trichechus::Error>, ()> {
         info!("Received load app message: {:?}", &app_id);
         // The TEE app isn't started until its socket connection is accepted.
-        Ok(load_app(self.state.borrow_mut().deref_mut(), &app_id, &elf))
+        Ok(log_error(load_app(
+            self.state.borrow_mut().deref_mut(),
+            &app_id,
+            &elf,
+        )))
     }
 
     fn get_apps(&self) -> StdResult<Vec<(String, ExecutableInfo)>, ()> {
@@ -285,7 +289,7 @@ impl Trichechus for TrichechusServerImpl {
     }
 
     fn system_event(&self, event: SystemEvent) -> StdResult<StdResult<(), String>, Self::Error> {
-        Ok(system_event(event))
+        Ok(log_error(system_event(event)))
     }
 }
 

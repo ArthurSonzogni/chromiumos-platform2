@@ -17,7 +17,15 @@ use openssl::{
     error::ErrorStack,
     hash::{hash, MessageDigest},
 };
+use sys_util::error;
 
 pub fn compute_sha256(data: &[u8]) -> Result<Digest, ErrorStack> {
     hash(MessageDigest::sha256(), data).map(From::from)
+}
+
+pub fn log_error<T, E: std::fmt::Debug>(ret: Result<T, E>) -> Result<T, E> {
+    if let Err(err) = &ret {
+        error!("Got error: {:?}", err);
+    }
+    ret
 }
