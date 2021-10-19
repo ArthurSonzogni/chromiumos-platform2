@@ -8,6 +8,7 @@ pkg_config("egl_pkgconfig") {
   pkg_deps = [
     "egl",
     "libcros_camera_android_deps",
+    "libdrm",
   ]
 }
 
