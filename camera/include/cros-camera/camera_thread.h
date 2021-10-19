@@ -9,6 +9,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include <base/location.h>
 #include <base/threading/thread.h>
@@ -48,7 +49,7 @@ class CROS_CAMERA_EXPORT CameraThread {
   // return -EIO.
   template <typename T>
   int PostTaskSync(const base::Location& from_here,
-                   base::Callback<T()> task,
+                   base::OnceCallback<T()> task,
                    T* result) {
     VLOGF_ENTER();
     if (!thread_.task_runner()) {
@@ -57,10 +58,10 @@ class CROS_CAMERA_EXPORT CameraThread {
     }
 
     auto future = cros::Future<T>::Create(nullptr);
-    base::Closure closure =
-        base::Bind(&CameraThread::ProcessSyncTaskOnThread<T>,
-                   base::Unretained(this), task, future);
-    if (!thread_.task_runner()->PostTask(from_here, closure)) {
+    base::OnceClosure closure =
+        base::BindOnce(&CameraThread::ProcessSyncTaskOnThread<T>,
+                       base::Unretained(this), std::move(task), future);
+    if (!thread_.task_runner()->PostTask(from_here, std::move(closure))) {
       LOG(ERROR) << "Failed to post task";
       return -EIO;
     }
@@ -72,17 +73,18 @@ class CROS_CAMERA_EXPORT CameraThread {
   // Posts the given task to be run asynchronously. Return 0 if succeed.
   // Otherwise return -EIO.
   template <typename T>
-  int PostTaskAsync(const base::Location& from_here, base::Callback<T()> task) {
+  int PostTaskAsync(const base::Location& from_here,
+                    base::OnceCallback<T()> task) {
     VLOGF_ENTER();
     if (!thread_.task_runner()) {
       LOG(ERROR) << "Thread is not started";
       return -EIO;
     }
-    base::Closure closure =
-        base::Bind(&CameraThread::ProcessASyncTaskOnThread<T>,
-                   base::Unretained(this), task);
+    base::OnceClosure closure =
+        base::BindOnce(&CameraThread::ProcessASyncTaskOnThread<T>,
+                       base::Unretained(this), std::move(task));
 
-    if (!thread_.task_runner()->PostTask(from_here, closure)) {
+    if (!thread_.task_runner()->PostTask(from_here, std::move(closure))) {
       LOG(ERROR) << "Failed to post task";
       return -EIO;
     }
@@ -91,7 +93,7 @@ class CROS_CAMERA_EXPORT CameraThread {
 
   // Posts the given task to be run and wait till it is finished.
   // Return 0 if succeed. Otherwise return -EIO.
-  int PostTaskSync(const base::Location& from_here, base::Closure task) {
+  int PostTaskSync(const base::Location& from_here, base::OnceClosure task) {
     VLOGF_ENTER();
     if (!thread_.task_runner()) {
       LOG(ERROR) << "Thread is not started";
@@ -99,10 +101,10 @@ class CROS_CAMERA_EXPORT CameraThread {
     }
 
     auto future = cros::Future<void>::Create(nullptr);
-    base::Closure closure =
-        base::Bind(&CameraThread::ProcessClosureSyncTaskOnThread,
-                   base::Unretained(this), task, future);
-    if (!thread_.task_runner()->PostTask(from_here, closure)) {
+    base::OnceClosure closure =
+        base::BindOnce(&CameraThread::ProcessClosureSyncTaskOnThread,
+                       base::Unretained(this), std::move(task), future);
+    if (!thread_.task_runner()->PostTask(from_here, std::move(closure))) {
       LOG(ERROR) << "Failed to post task";
       return -EIO;
     }
@@ -111,28 +113,42 @@ class CROS_CAMERA_EXPORT CameraThread {
     return 0;
   }
 
+  // Original function signatures with old-style callbacks. Temporarily in place
+  // to allow non-platform2 dependencies to be migrated.
+  template <typename T>
+  int PostTaskSync(const base::Location& from_here,
+                   base::Callback<T()> task,
+                   T* result) {
+    return PostTaskSync(from_here, base::OnceCallback<T()>(std::move(task)),
+                        result);
+  }
+  template <typename T>
+  int PostTaskAsync(const base::Location& from_here, base::Callback<T()> task) {
+    return PostTaskAsync(from_here, base::OnceCallback<T()>(std::move(task)));
+  }
+
   scoped_refptr<base::SingleThreadTaskRunner> task_runner() const {
     return thread_.task_runner();
   }
 
  private:
   template <typename T>
-  void ProcessSyncTaskOnThread(const base::Callback<T()>& task,
+  void ProcessSyncTaskOnThread(base::OnceCallback<T()> task,
                                scoped_refptr<cros::Future<T>> future) {
     VLOGF_ENTER();
-    future->Set(task.Run());
+    future->Set(std::move(task).Run());
   }
 
   template <typename T>
-  void ProcessASyncTaskOnThread(const base::Callback<T()>& task) {
+  void ProcessASyncTaskOnThread(base::OnceCallback<T()> task) {
     VLOGF_ENTER();
-    task.Run();
+    std::move(task).Run();
   }
 
   void ProcessClosureSyncTaskOnThread(
-      const base::Closure& task, scoped_refptr<cros::Future<void>> future) {
+      base::OnceClosure task, scoped_refptr<cros::Future<void>> future) {
     VLOGF_ENTER();
-    task.Run();
+    std::move(task).Run();
     future->Set();
   }
 

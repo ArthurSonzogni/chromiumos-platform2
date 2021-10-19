@@ -44,8 +44,8 @@ int Camera3DeviceImpl::Initialize(Camera3Module* cam_module) {
   }
   int result = -EIO;
   hal_thread_.PostTaskSync(
-      FROM_HERE, base::Bind(&Camera3DeviceImpl::InitializeOnThread,
-                            base::Unretained(this), cam_module, &result));
+      FROM_HERE, base::BindOnce(&Camera3DeviceImpl::InitializeOnThread,
+                                base::Unretained(this), cam_module, &result));
   return result;
 }
 
@@ -53,8 +53,8 @@ void Camera3DeviceImpl::Destroy() {
   VLOGF_ENTER();
   int result = -EIO;
   hal_thread_.PostTaskSync(FROM_HERE,
-                           base::Bind(&Camera3DeviceImpl::DestroyOnThread,
-                                      base::Unretained(this), &result));
+                           base::BindOnce(&Camera3DeviceImpl::DestroyOnThread,
+                                          base::Unretained(this), &result));
   EXPECT_EQ(0, result) << "Camera device close failed";
   hal_thread_.Stop();
 
@@ -65,7 +65,7 @@ void Camera3DeviceImpl::RegisterProcessCaptureResultCallback(
     Camera3Device::ProcessCaptureResultCallback cb) {
   hal_thread_.PostTaskSync(
       FROM_HERE,
-      base::Bind(
+      base::BindOnce(
           &Camera3DeviceImpl::RegisterProcessCaptureResultCallbackOnThread,
           base::Unretained(this), cb));
 }
@@ -73,32 +73,34 @@ void Camera3DeviceImpl::RegisterProcessCaptureResultCallback(
 void Camera3DeviceImpl::RegisterNotifyCallback(
     Camera3Device::NotifyCallback cb) {
   hal_thread_.PostTaskSync(
-      FROM_HERE, base::Bind(&Camera3DeviceImpl::RegisterNotifyCallbackOnThread,
-                            base::Unretained(this), cb));
+      FROM_HERE,
+      base::BindOnce(&Camera3DeviceImpl::RegisterNotifyCallbackOnThread,
+                     base::Unretained(this), cb));
 }
 
 void Camera3DeviceImpl::RegisterResultMetadataOutputBufferCallback(
     Camera3Device::ProcessResultMetadataOutputBuffersCallback cb) {
   hal_thread_.PostTaskSync(
       FROM_HERE,
-      base::Bind(&Camera3DeviceImpl::
-                     RegisterResultMetadataOutputBufferCallbackOnThread,
-                 base::Unretained(this), cb));
+      base::BindOnce(&Camera3DeviceImpl::
+                         RegisterResultMetadataOutputBufferCallbackOnThread,
+                     base::Unretained(this), cb));
 }
 
 void Camera3DeviceImpl::RegisterPartialMetadataCallback(
     Camera3Device::ProcessPartialMetadataCallback cb) {
   hal_thread_.PostTaskSync(
       FROM_HERE,
-      base::Bind(&Camera3DeviceImpl::RegisterPartialMetadataCallbackOnThread,
-                 base::Unretained(this), cb));
+      base::BindOnce(
+          &Camera3DeviceImpl::RegisterPartialMetadataCallbackOnThread,
+          base::Unretained(this), cb));
 }
 
 bool Camera3DeviceImpl::IsTemplateSupported(int32_t type) {
   bool result = false;
   hal_thread_.PostTaskSync(
-      FROM_HERE, base::Bind(&Camera3DeviceImpl::IsTemplateSupportedOnThread,
-                            base::Unretained(this), type, &result));
+      FROM_HERE, base::BindOnce(&Camera3DeviceImpl::IsTemplateSupportedOnThread,
+                                base::Unretained(this), type, &result));
   return result;
 }
 
@@ -107,8 +109,9 @@ const camera_metadata_t* Camera3DeviceImpl::ConstructDefaultRequestSettings(
   const camera_metadata_t* metadata = nullptr;
   hal_thread_.PostTaskSync(
       FROM_HERE,
-      base::Bind(&Camera3DeviceImpl::ConstructDefaultRequestSettingsOnThread,
-                 base::Unretained(this), type, &metadata));
+      base::BindOnce(
+          &Camera3DeviceImpl::ConstructDefaultRequestSettingsOnThread,
+          base::Unretained(this), type, &metadata));
   return metadata;
 }
 
@@ -119,9 +122,9 @@ void Camera3DeviceImpl::AddStream(int format,
                                   camera3_stream_type_t type) {
   VLOGF_ENTER();
   hal_thread_.PostTaskSync(
-      FROM_HERE,
-      base::Bind(&Camera3DeviceImpl::AddStreamOnThread, base::Unretained(this),
-                 format, width, height, crop_rotate_scale_degrees, type));
+      FROM_HERE, base::BindOnce(&Camera3DeviceImpl::AddStreamOnThread,
+                                base::Unretained(this), format, width, height,
+                                crop_rotate_scale_degrees, type));
 }
 
 int Camera3DeviceImpl::ConfigureStreams(
@@ -129,8 +132,8 @@ int Camera3DeviceImpl::ConfigureStreams(
   VLOGF_ENTER();
   int32_t result = -EIO;
   hal_thread_.PostTaskSync(
-      FROM_HERE, base::Bind(&Camera3DeviceImpl::ConfigureStreamsOnThread,
-                            base::Unretained(this), streams, &result));
+      FROM_HERE, base::BindOnce(&Camera3DeviceImpl::ConfigureStreamsOnThread,
+                                base::Unretained(this), streams, &result));
   return result;
 }
 
@@ -140,8 +143,8 @@ int Camera3DeviceImpl::AllocateOutputStreamBuffers(
   int32_t result = -EIO;
   hal_thread_.PostTaskSync(
       FROM_HERE,
-      base::Bind(&Camera3DeviceImpl::AllocateOutputStreamBuffersOnThread,
-                 base::Unretained(this), output_buffers, &result));
+      base::BindOnce(&Camera3DeviceImpl::AllocateOutputStreamBuffersOnThread,
+                     base::Unretained(this), output_buffers, &result));
   return result;
 }
 
@@ -152,8 +155,9 @@ int Camera3DeviceImpl::AllocateOutputBuffersByStreams(
   int32_t result = -EIO;
   hal_thread_.PostTaskSync(
       FROM_HERE,
-      base::Bind(&Camera3DeviceImpl::AllocateOutputBuffersByStreamsOnThread,
-                 base::Unretained(this), &streams, output_buffers, &result));
+      base::BindOnce(&Camera3DeviceImpl::AllocateOutputBuffersByStreamsOnThread,
+                     base::Unretained(this), &streams, output_buffers,
+                     &result));
   return result;
 }
 
@@ -162,9 +166,10 @@ int Camera3DeviceImpl::RegisterOutputBuffer(
   VLOGF_ENTER();
   int32_t result = -EIO;
   hal_thread_.PostTaskSync(
-      FROM_HERE, base::Bind(&Camera3DeviceImpl::RegisterOutputBufferOnThread,
-                            base::Unretained(this), &stream,
-                            base::Passed(&unique_buffer), &result));
+      FROM_HERE,
+      base::BindOnce(&Camera3DeviceImpl::RegisterOutputBufferOnThread,
+                     base::Unretained(this), &stream, std::move(unique_buffer),
+                     &result));
   return result;
 }
 
@@ -173,8 +178,9 @@ int Camera3DeviceImpl::ProcessCaptureRequest(
   VLOGF_ENTER();
   int32_t result = -EIO;
   hal_thread_.PostTaskSync(
-      FROM_HERE, base::Bind(&Camera3DeviceImpl::ProcessCaptureRequestOnThread,
-                            base::Unretained(this), capture_request, &result));
+      FROM_HERE,
+      base::BindOnce(&Camera3DeviceImpl::ProcessCaptureRequestOnThread,
+                     base::Unretained(this), capture_request, &result));
   return result;
 }
 
@@ -674,8 +680,8 @@ void Camera3DeviceImpl::ProcessCaptureResult(
   std::unique_ptr<CaptureResult> unique_result(new CaptureResult(*result));
   hal_thread_.PostTaskAsync(
       FROM_HERE,
-      base::Bind(&Camera3DeviceImpl::ProcessCaptureResultOnThread,
-                 base::Unretained(this), base::Passed(&unique_result)));
+      base::BindOnce(&Camera3DeviceImpl::ProcessCaptureResultOnThread,
+                     base::Unretained(this), std::move(unique_result)));
 }
 
 void Camera3DeviceImpl::Notify(const camera3_notify_msg_t* msg) {
@@ -685,8 +691,8 @@ void Camera3DeviceImpl::Notify(const camera3_notify_msg_t* msg) {
     return;
   }
   hal_thread_.PostTaskAsync(FROM_HERE,
-                            base::Bind(&Camera3DeviceImpl::NotifyOnThread,
-                                       base::Unretained(this), *msg));
+                            base::BindOnce(&Camera3DeviceImpl::NotifyOnThread,
+                                           base::Unretained(this), *msg));
 }
 
 int Camera3DeviceImpl::GetOutputStreamBufferHandles(

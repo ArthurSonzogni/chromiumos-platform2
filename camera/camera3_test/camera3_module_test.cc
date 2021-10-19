@@ -382,8 +382,9 @@ static void InitCameraModule(const base::FilePath& camera_hal_path,
     ASSERT_GT(module->get_number_of_cameras(), id)
         << "No such test camera id in HAL";
   }
-  ASSERT_EQ(0, GetModuleThread().PostTaskSync(
-                   FROM_HERE, base::Bind(&InitCameraModuleOnThread, module)));
+  ASSERT_EQ(0,
+            GetModuleThread().PostTaskSync(
+                FROM_HERE, base::BindOnce(&InitCameraModuleOnThread, module)));
   *cam_module = module;
 }
 

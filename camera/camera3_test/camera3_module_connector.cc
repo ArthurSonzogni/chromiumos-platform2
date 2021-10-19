@@ -50,8 +50,8 @@ HalModuleConnector::HalModuleConnector(camera_module_t* cam_module,
                                        cros::CameraThread* hal_thread)
     : cam_module_(cam_module), hal_thread_(hal_thread) {
   hal_thread_->PostTaskSync(
-      FROM_HERE, base::Bind(&HalModuleConnector::GetVendorTagsOnHalThread,
-                            base::Unretained(this)));
+      FROM_HERE, base::BindOnce(&HalModuleConnector::GetVendorTagsOnHalThread,
+                                base::Unretained(this)));
 }
 
 void HalModuleConnector::GetVendorTagsOnHalThread() {
@@ -78,8 +78,9 @@ int HalModuleConnector::GetNumberOfCameras() {
   }
   int result = -EINVAL;
   hal_thread_->PostTaskSync(
-      FROM_HERE, base::Bind(&HalModuleConnector::GetNumberOfCamerasOnHalThread,
-                            base::Unretained(this), &result));
+      FROM_HERE,
+      base::BindOnce(&HalModuleConnector::GetNumberOfCamerasOnHalThread,
+                     base::Unretained(this), &result));
   return result;
 }
 
@@ -93,8 +94,9 @@ std::unique_ptr<DeviceConnector> HalModuleConnector::OpenDevice(int cam_id) {
   }
   std::unique_ptr<DeviceConnector> dev_connector;
   hal_thread_->PostTaskSync(
-      FROM_HERE, base::Bind(&HalModuleConnector::OpenDeviceOnHalThread,
-                            base::Unretained(this), cam_id, &dev_connector));
+      FROM_HERE,
+      base::BindOnce(&HalModuleConnector::OpenDeviceOnHalThread,
+                     base::Unretained(this), cam_id, &dev_connector));
   return dev_connector;
 }
 
@@ -116,8 +118,8 @@ int HalModuleConnector::GetCameraInfo(int cam_id, camera_info* info) {
   }
   int result = -ENODEV;
   hal_thread_->PostTaskSync(
-      FROM_HERE, base::Bind(&HalModuleConnector::GetCameraInfoOnHalThread,
-                            base::Unretained(this), cam_id, info, &result));
+      FROM_HERE, base::BindOnce(&HalModuleConnector::GetCameraInfoOnHalThread,
+                                base::Unretained(this), cam_id, info, &result));
   return result;
 }
 

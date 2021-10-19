@@ -140,9 +140,9 @@ bool HdrNetStreamManipulator::Initialize(
   bool ret;
   gpu_thread_.PostTaskSync(
       FROM_HERE,
-      base::Bind(&HdrNetStreamManipulator::InitializeOnGpuThread,
-                 base::Unretained(this), base::Unretained(static_info),
-                 std::move(result_callback)),
+      base::BindOnce(&HdrNetStreamManipulator::InitializeOnGpuThread,
+                     base::Unretained(this), base::Unretained(static_info),
+                     std::move(result_callback)),
       &ret);
   return ret;
 }
@@ -152,8 +152,8 @@ bool HdrNetStreamManipulator::ConfigureStreams(
   bool ret;
   gpu_thread_.PostTaskSync(
       FROM_HERE,
-      base::Bind(&HdrNetStreamManipulator::ConfigureStreamsOnGpuThread,
-                 base::Unretained(this), base::Unretained(stream_config)),
+      base::BindOnce(&HdrNetStreamManipulator::ConfigureStreamsOnGpuThread,
+                     base::Unretained(this), base::Unretained(stream_config)),
       &ret);
   return ret;
 }
@@ -163,8 +163,8 @@ bool HdrNetStreamManipulator::OnConfiguredStreams(
   bool ret;
   gpu_thread_.PostTaskSync(
       FROM_HERE,
-      base::Bind(&HdrNetStreamManipulator::OnConfiguredStreamsOnGpuThread,
-                 base::Unretained(this), base::Unretained(stream_config)),
+      base::BindOnce(&HdrNetStreamManipulator::OnConfiguredStreamsOnGpuThread,
+                     base::Unretained(this), base::Unretained(stream_config)),
       &ret);
   return ret;
 }
@@ -179,8 +179,8 @@ bool HdrNetStreamManipulator::ProcessCaptureRequest(
   bool ret;
   gpu_thread_.PostTaskSync(
       FROM_HERE,
-      base::Bind(&HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread,
-                 base::Unretained(this), base::Unretained(request)),
+      base::BindOnce(&HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread,
+                     base::Unretained(this), base::Unretained(request)),
       &ret);
   return ret;
 }
@@ -190,8 +190,8 @@ bool HdrNetStreamManipulator::ProcessCaptureResult(
   bool ret;
   gpu_thread_.PostTaskSync(
       FROM_HERE,
-      base::Bind(&HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread,
-                 base::Unretained(this), base::Unretained(result)),
+      base::BindOnce(&HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread,
+                     base::Unretained(this), base::Unretained(result)),
       &ret);
   return ret;
 }
@@ -200,8 +200,8 @@ bool HdrNetStreamManipulator::Notify(camera3_notify_msg_t* msg) {
   bool ret;
   gpu_thread_.PostTaskSync(
       FROM_HERE,
-      base::Bind(&HdrNetStreamManipulator::NotifyOnGpuThread,
-                 base::Unretained(this), base::Unretained(msg)),
+      base::BindOnce(&HdrNetStreamManipulator::NotifyOnGpuThread,
+                     base::Unretained(this), base::Unretained(msg)),
       &ret);
   return ret;
 }
@@ -210,8 +210,8 @@ bool HdrNetStreamManipulator::Flush() {
   bool ret;
   gpu_thread_.PostTaskSync(
       FROM_HERE,
-      base::Bind(&HdrNetStreamManipulator::FlushOnGpuThread,
-                 base::Unretained(this)),
+      base::BindOnce(&HdrNetStreamManipulator::FlushOnGpuThread,
+                     base::Unretained(this)),
       &ret);
   return ret;
 }

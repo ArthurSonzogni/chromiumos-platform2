@@ -35,8 +35,8 @@ HalDeviceConnector::HalDeviceConnector(int cam_id, camera3_device_t* cam_device)
 HalDeviceConnector::~HalDeviceConnector() {
   int result = -EIO;
   dev_thread_.PostTaskSync(FROM_HERE,
-                           base::Bind(&HalDeviceConnector::CloseOnThread,
-                                      base::Unretained(this), &result));
+                           base::BindOnce(&HalDeviceConnector::CloseOnThread,
+                                          base::Unretained(this), &result));
   dev_thread_.Stop();
 }
 
@@ -54,10 +54,10 @@ int HalDeviceConnector::Initialize(const camera3_callback_ops_t* callback_ops,
     return -EINVAL;
   }
   int result = -EIO;
-  dev_thread_.PostTaskSync(FROM_HERE,
-                           base::Bind(&HalDeviceConnector::InitializeOnThread,
-                                      base::Unretained(this), callback_ops,
-                                      device_api_version, &result));
+  dev_thread_.PostTaskSync(
+      FROM_HERE, base::BindOnce(&HalDeviceConnector::InitializeOnThread,
+                                base::Unretained(this), callback_ops,
+                                device_api_version, &result));
   return result;
 }
 
@@ -83,8 +83,8 @@ int HalDeviceConnector::ConfigureStreams(
   VLOGF_ENTER();
   int32_t result = -EIO;
   dev_thread_.PostTaskSync(
-      FROM_HERE, base::Bind(&HalDeviceConnector::ConfigureStreamsOnThread,
-                            base::Unretained(this), stream_list, &result));
+      FROM_HERE, base::BindOnce(&HalDeviceConnector::ConfigureStreamsOnThread,
+                                base::Unretained(this), stream_list, &result));
   return result;
 }
 
@@ -104,8 +104,9 @@ const camera_metadata_t* HalDeviceConnector::ConstructDefaultRequestSettings(
   const camera_metadata_t* metadata = nullptr;
   dev_thread_.PostTaskSync(
       FROM_HERE,
-      base::Bind(&HalDeviceConnector::ConstructDefaultRequestSettingsOnThread,
-                 base::Unretained(this), type, &metadata));
+      base::BindOnce(
+          &HalDeviceConnector::ConstructDefaultRequestSettingsOnThread,
+          base::Unretained(this), type, &metadata));
   return metadata;
 }
 
@@ -123,8 +124,9 @@ int HalDeviceConnector::ProcessCaptureRequest(
   VLOGF_ENTER();
   int32_t result = -EIO;
   dev_thread_.PostTaskSync(
-      FROM_HERE, base::Bind(&HalDeviceConnector::ProcessCaptureRequestOnThread,
-                            base::Unretained(this), capture_request, &result));
+      FROM_HERE,
+      base::BindOnce(&HalDeviceConnector::ProcessCaptureRequestOnThread,
+                     base::Unretained(this), capture_request, &result));
   return result;
 }
 
@@ -158,8 +160,8 @@ ClientDeviceConnector::~ClientDeviceConnector() {
   auto future = cros::Future<int32_t>::Create(nullptr);
   dev_thread_.PostTaskAsync(
       FROM_HERE,
-      base::Bind(&ClientDeviceConnector::CloseOnThread, base::Unretained(this),
-                 cros::GetFutureCallback(future)));
+      base::BindOnce(&ClientDeviceConnector::CloseOnThread,
+                     base::Unretained(this), cros::GetFutureCallback(future)));
   if (!future->Wait() || future->Get() != 0) {
     ADD_FAILURE() << "Camera device close failed";
   }
@@ -171,8 +173,8 @@ ClientDeviceConnector::GetDeviceOpsReceiver() {
   mojo::PendingReceiver<cros::mojom::Camera3DeviceOps> dev_ops_rec;
   dev_thread_.PostTaskSync(
       FROM_HERE,
-      base::Bind(&ClientDeviceConnector::MakeDeviceOpsReceiverOnThread,
-                 base::Unretained(this), &dev_ops_rec));
+      base::BindOnce(&ClientDeviceConnector::MakeDeviceOpsReceiverOnThread,
+                     base::Unretained(this), &dev_ops_rec));
   return dev_ops_rec;
 }
 
@@ -203,9 +205,9 @@ int ClientDeviceConnector::Initialize(
   auto future = cros::Future<int32_t>::Create(nullptr);
   dev_thread_.PostTaskAsync(
       FROM_HERE,
-      base::Bind(&ClientDeviceConnector::InitializeOnThread,
-                 base::Unretained(this), callback_ops, device_api_version,
-                 cros::GetFutureCallback(future)));
+      base::BindOnce(&ClientDeviceConnector::InitializeOnThread,
+                     base::Unretained(this), callback_ops, device_api_version,
+                     cros::GetFutureCallback(future)));
   if (!future->Wait()) {
     LOGF(ERROR) << "Failed to initialize client camera device";
     return -EIO;
@@ -231,9 +233,10 @@ int ClientDeviceConnector::ConfigureStreams(
   }
   auto future = cros::Future<int32_t>::Create(nullptr);
   dev_thread_.PostTaskAsync(
-      FROM_HERE, base::Bind(&ClientDeviceConnector::ConfigureStreamsOnThread,
-                            base::Unretained(this), stream_list,
-                            cros::GetFutureCallback(future)));
+      FROM_HERE,
+      base::BindOnce(&ClientDeviceConnector::ConfigureStreamsOnThread,
+                     base::Unretained(this), stream_list,
+                     cros::GetFutureCallback(future)));
   if (!future->Wait()) {
     return -ENODEV;
   }
@@ -308,7 +311,7 @@ const camera_metadata_t* ClientDeviceConnector::ConstructDefaultRequestSettings(
   auto future = cros::Future<const camera_metadata_t*>::Create(nullptr);
   dev_thread_.PostTaskAsync(
       FROM_HERE,
-      base::Bind(
+      base::BindOnce(
           &ClientDeviceConnector::ConstructDefaultRequestSettingsOnThread,
           base::Unretained(this), type, cros::GetFutureCallback(future)));
   if (!future->Wait()) {
@@ -351,9 +354,9 @@ int ClientDeviceConnector::ProcessCaptureRequest(
   auto future = cros::Future<int32_t>::Create(nullptr);
   dev_thread_.PostTaskAsync(
       FROM_HERE,
-      base::Bind(&ClientDeviceConnector::ProcessCaptureRequestOnThread,
-                 base::Unretained(this), capture_request,
-                 cros::GetFutureCallback(future)));
+      base::BindOnce(&ClientDeviceConnector::ProcessCaptureRequestOnThread,
+                     base::Unretained(this), capture_request,
+                     cros::GetFutureCallback(future)));
   if (!future->Wait()) {
     return -EIO;
   }
