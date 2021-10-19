@@ -34,10 +34,13 @@ android::CameraMetadata MetadataHandler::CreateStaticMetadata(
   metadata.update(ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS,
                   characteristic_keys);
 
-  std::vector<int32_t> request_result_keys = {};
-  metadata.update(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS, request_result_keys);
+  std::vector<int32_t> request_keys = {};
+  metadata.update(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS, request_keys);
 
-  metadata.update(ANDROID_REQUEST_AVAILABLE_RESULT_KEYS, request_result_keys);
+  std::vector<int32_t> result_keys = {
+      ANDROID_LENS_STATE,
+  };
+  metadata.update(ANDROID_REQUEST_AVAILABLE_RESULT_KEYS, result_keys);
 
   std::vector<int32_t> available_fps_ranges;
   available_fps_ranges.push_back(fps);
@@ -95,6 +98,11 @@ android::CameraMetadata MetadataHandler::CreateStaticMetadata(
 camera_metadata_t* MetadataHandler::GetDefaultRequestSettings() {
   static camera_metadata_t* default_metadata = allocate_camera_metadata(0, 0);
   return default_metadata;
+}
+
+void MetadataHandler::AddResultMetadata(android::CameraMetadata* metadata) {
+  std::vector<uint8_t> lens_state = {ANDROID_LENS_STATE_STATIONARY};
+  metadata->update(ANDROID_LENS_STATE, lens_state);
 }
 
 }  // namespace cros

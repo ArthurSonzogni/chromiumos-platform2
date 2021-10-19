@@ -46,6 +46,7 @@ shared_library("libcamera_hal") {
 if (use.test) {
   executable("request_queue_test") {
     sources = [
+      "metadata_handler.cc",
       "request_queue.cc",
       "request_queue_test.cc",
     ]

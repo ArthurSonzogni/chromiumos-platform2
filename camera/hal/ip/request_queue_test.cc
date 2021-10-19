@@ -30,6 +30,7 @@ class RequestQueueTest : public ::testing::Test {
   }
 
   void PushFrame(uint32_t frame_number) {
+    android::CameraMetadata metadata;
     camera3_capture_request_t request = {};
     camera3_stream_buffer_t buffer = {};
     buffer_handle_t handle = {};
@@ -37,8 +38,9 @@ class RequestQueueTest : public ::testing::Test {
     buffer.acquire_fence = -1;
     request.output_buffers = &buffer;
     request.frame_number = frame_number;
+    auto capture_request = std::make_unique<CaptureRequest>(request, metadata);
 
-    request_queue_->Push(&request);
+    request_queue_->Push(std::move(capture_request));
   }
 
   static void ProcessResult(const struct camera3_callback_ops* ops,

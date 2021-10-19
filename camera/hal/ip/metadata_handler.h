@@ -33,6 +33,7 @@ class MetadataHandler {
       const std::vector<mojom::IpCameraStreamPtr>& streams);
 
   static camera_metadata_t* GetDefaultRequestSettings();
+  static void AddResultMetadata(android::CameraMetadata* metadata);
 };
 
 }  // namespace cros

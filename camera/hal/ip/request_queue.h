@@ -12,6 +12,7 @@
 
 #include <base/macros.h>
 #include <base/synchronization/condition_variable.h>
+#include <camera/camera_metadata.h>
 
 #include <hardware/camera3.h>
 
@@ -19,19 +20,22 @@ namespace cros {
 
 class CaptureRequest {
  public:
-  explicit CaptureRequest(camera3_capture_request_t* request);
+  CaptureRequest(const camera3_capture_request_t& request,
+                 const android::CameraMetadata& metadata);
   CaptureRequest(const CaptureRequest&) = delete;
   CaptureRequest& operator=(const CaptureRequest&) = delete;
 
   ~CaptureRequest();
 
   const uint32_t GetFrameNumber() const;
+  android::CameraMetadata* GetMetadata();
   const camera3_stream_buffer_t* GetOutputBuffer() const;
 
   void SetErrorBufferStatus();
 
  private:
   const uint32_t frame_number_;
+  android::CameraMetadata metadata_;
   buffer_handle_t buffer_handle_;
   camera3_stream_buffer_t output_stream_buffer_;
 };
@@ -50,7 +54,7 @@ class RequestQueue {
   void SetCallbacks(const camera3_callback_ops_t* callback_ops);
 
   // Queues a request
-  void Push(camera3_capture_request_t* request);
+  void Push(std::unique_ptr<CaptureRequest> request);
 
   // If no request is available this will block until one does become available.
   // This can return null if the queue is flushed. This shouldn't be called a

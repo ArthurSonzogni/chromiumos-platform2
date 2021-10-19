@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "hal/ip/metadata_handler.h"
 #include "hal/ip/request_queue.h"
 
 #include <sync/sync.h>
@@ -14,14 +15,14 @@
 
 namespace cros {
 
-CaptureRequest::CaptureRequest(camera3_capture_request_t* request)
-    : frame_number_(request->frame_number) {
-  output_stream_buffer_.stream = request->output_buffers[0].stream;
-  buffer_handle_ = *(request->output_buffers[0].buffer);
+CaptureRequest::CaptureRequest(const camera3_capture_request_t& request,
+                               const android::CameraMetadata& metadata)
+    : frame_number_(request.frame_number), metadata_(metadata) {
+  output_stream_buffer_.stream = request.output_buffers[0].stream;
+  buffer_handle_ = *(request.output_buffers[0].buffer);
   output_stream_buffer_.buffer = &buffer_handle_;
   output_stream_buffer_.status = CAMERA3_BUFFER_STATUS_OK;
-  output_stream_buffer_.acquire_fence =
-      request->output_buffers[0].acquire_fence;
+  output_stream_buffer_.acquire_fence = request.output_buffers[0].acquire_fence;
   output_stream_buffer_.release_fence = -1;
 }
 
@@ -29,6 +30,10 @@ CaptureRequest::~CaptureRequest() {}
 
 const uint32_t CaptureRequest::GetFrameNumber() const {
   return frame_number_;
+}
+
+android::CameraMetadata* CaptureRequest::GetMetadata() {
+  return &metadata_;
 }
 
 const camera3_stream_buffer_t* CaptureRequest::GetOutputBuffer() const {
@@ -54,12 +59,12 @@ RequestQueue::~RequestQueue() {
   queue_.clear();
 }
 
-void RequestQueue::Push(camera3_capture_request_t* request) {
+void RequestQueue::Push(std::unique_ptr<CaptureRequest> request) {
   base::AutoLock l(lock_);
   if (flushing_) {
-    CancelRequestLocked(std::make_unique<CaptureRequest>(request));
+    CancelRequestLocked(std::move(request));
   } else {
-    queue_.push_back(std::make_unique<CaptureRequest>(request));
+    queue_.push_back(std::move(request));
     new_request_available_.Signal();
   }
 }
@@ -136,9 +141,11 @@ void RequestQueue::NotifyCaptureInternal(
     return;
   }
 
+  android::CameraMetadata* metadata = request->GetMetadata();
+  MetadataHandler::AddResultMetadata(metadata);
   camera3_capture_result_t result = {};
   result.frame_number = request->GetFrameNumber();
-  result.result = nullptr;
+  result.result = metadata->getAndLock();
   result.num_output_buffers = 1;
   result.output_buffers = request->GetOutputBuffer();
   result.partial_result = 1;

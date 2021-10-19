@@ -83,6 +83,7 @@ class CameraDevice : public mojom::IpCameraFrameListener {
   mojo::Receiver<IpCameraFrameListener> receiver_;
   CameraBufferManager* buffer_manager_;
   android::CameraMetadata static_metadata_;
+  android::CameraMetadata latest_request_metadata_;
 
   // for JPEG decoding
   bool jpeg_;

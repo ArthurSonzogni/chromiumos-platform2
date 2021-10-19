@@ -405,7 +405,13 @@ int CameraDevice::ProcessCaptureRequest(camera3_capture_request_t* request) {
     return -ENODEV;
   }
 
-  request_queue_.Push(request);
+  if (request->settings) {
+    latest_request_metadata_ = request->settings;
+  }
+
+  auto capture_request =
+      std::make_unique<CaptureRequest>(*request, latest_request_metadata_);
+  request_queue_.Push(std::move(capture_request));
 
   return 0;
 }
