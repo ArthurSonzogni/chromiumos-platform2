@@ -48,12 +48,12 @@ std::string GenerateBootEntryString(const std::string current_boot_id,
       "%04d-%02d-%02dT%02d:%02d:%02d.%03d000Z", exploded.year, exploded.month,
       exploded.day_of_month, exploded.hour, exploded.minute, exploded.second,
       exploded.millisecond));
-  CHECK_EQ(kTimestampLength, boot_time_str.size());
+  CHECK_LE(kTimestampLength, boot_time_str.size());
 
   const std::string boot_id_entry = boot_time_str + " " + kBootEntrySeverity +
                                     " " + kBootEntryPrefix +
                                     base::ToLowerASCII(current_boot_id);
-  CHECK_EQ(kBootEntryLength, boot_id_entry.length());
+  CHECK_LE(kBootEntryLength, boot_id_entry.length());
   return boot_id_entry;
 }
 
