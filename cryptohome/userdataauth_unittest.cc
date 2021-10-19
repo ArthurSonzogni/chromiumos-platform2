@@ -2750,8 +2750,23 @@ TEST_F(UserDataAuthExTest, AddKeyInvalidArgs) {
   EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
+  // Test for an invalid account_id, where it is initialized
+  // but the underlying string is empty.
+  // Initialize the authorization request but leave the secret empty.
+  add_req_->mutable_account_id()->set_account_id("");
+  add_req_->mutable_authorization_request()->mutable_key();
+  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  // Cleanup
+  add_req_->clear_authorization_request();
+
   // Test for when there's no secret.
   add_req_->mutable_account_id()->set_account_id("foo@gmail.com");
+  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+
+  // Test for valid authorization request but empty secret.
+  add_req_->mutable_authorization_request()->mutable_key();
   EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
@@ -2767,6 +2782,24 @@ TEST_F(UserDataAuthExTest, AddKeyInvalidArgs) {
   add_req_->mutable_key()->set_secret("some secret");
   EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
+TEST_F(UserDataAuthExTest, AddKeyNoObfuscatedName) {
+  // HomeDirs cant find the existing obfuscated username.
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+  PrepareArguments();
+
+  // Prepare a valid AddKeyRequest.
+  add_req_->mutable_account_id()->set_account_id("foo@gmail.com");
+  add_req_->mutable_authorization_request()->mutable_key()->set_secret("blerg");
+  add_req_->mutable_key();
+  add_req_->mutable_key()->set_secret("some secret");
+  add_req_->mutable_key()->mutable_data()->set_label("just a label");
+  // Inject failure into homedirs->Exists().
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(false));
+
+  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
 }
 
 TEST_F(UserDataAuthExTest, AddKeyValidity) {
