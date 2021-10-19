@@ -79,7 +79,7 @@ enum class UpdateExtraCommand : uint16_t {
   kTouchpadDebug = 8,
   kConsoleReadInit = 9,
   kConsoleReadNext = 10,
-  kMaxValue = kTouchpadInfo
+  kMaxValue = kConsoleReadNext
 };
 const char* ToString(UpdateExtraCommand subcommand);
 
@@ -171,11 +171,7 @@ struct FirstResponsePdu {
   uint32_t key_version;       // RO public key version
 };
 
-enum class SectionName {
-  RO,
-  RW,
-  Invalid,
-};
+enum class SectionName { RO, RW, Invalid, kMaxValue = Invalid };
 const char* ToString(SectionName name);
 SectionName OtherSection(SectionName name);
 

@@ -6,8 +6,12 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
+#include "hammerd/fmap_utils.h"
+#include "hammerd/fuzzed_ec_image.h"
 #include "hammerd/update_fw.h"
+#include "hammerd/vb21_struct.h"
 
 namespace hammerd {
 
@@ -25,7 +29,9 @@ class FuzzedUsbEndpoint : public UsbEndpointInterface {
   void Close() override {}
   bool UsbSysfsExists() override { return true; }
   UsbConnectStatus Connect() override { return UsbConnectStatus::kSuccess; }
-  bool IsConnected() const override { return true; }
+  bool IsConnected() const override {
+    return fuzz_provider_->ConsumeIntegral<bool>();
+  }
   std::string GetConfigurationString() const override { return "fake"; }
 
   int GetChunkLength() const override {
@@ -83,6 +89,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   FuzzedDataProvider data_provider(data, size);
   FirmwareUpdater fw_updater_(
       std::make_unique<FuzzedUsbEndpoint>(&data_provider));
+  FuzzedEcImage ec_image_factory(&data_provider);
 
   fw_updater_.TryConnectUsb();
   fw_updater_.SendSubcommand(data_provider.ConsumeEnum<UpdateExtraCommand>());
@@ -92,8 +99,13 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       data_provider.ConsumeEnum<UpdateExtraCommand>(),
       data_provider.ConsumeRandomLengthString(max_cmd_body_len), &resp,
       sizeof(resp));
-  // TODO(swboyd): Implement below
-  // fw_updater_.TransferImage();
+  fw_updater_.ReadConsole();
+
+  // Only try to transfer if we load a valid image
+  if (fw_updater_.LoadEcImage(ec_image_factory.Create())) {
+    fw_updater_.GetEcImageVersion();
+    fw_updater_.TransferImage(data_provider.ConsumeEnum<SectionName>());
+  }
 
   return 0;
 }

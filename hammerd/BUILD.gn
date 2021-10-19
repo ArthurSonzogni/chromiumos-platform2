@@ -106,7 +106,10 @@ if (use.fuzzer) {
     deps = [ ":libhammerd" ]
   }
   executable("hammerd_update_fw_fuzzer") {
-    sources = [ "update_fw_fuzzer.cc" ]
+    sources = [
+      "fuzzed_ec_image.cc",
+      "update_fw_fuzzer.cc",
+    ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
