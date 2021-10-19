@@ -55,6 +55,7 @@ class PortManager : public UdevMonitor::Observer,
   void SetPeripheralDataAccess(bool val) { peripheral_data_access_ = val; }
 
  private:
+  friend class PortManagerFuzzer;
   friend class PortManagerTest;
   FRIEND_TEST(PortManagerTest, ModeEntryNotSupported);
   FRIEND_TEST(PortManagerTest, SimpleModeEntry);
