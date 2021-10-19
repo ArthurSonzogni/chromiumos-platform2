@@ -84,8 +84,8 @@ class CameraAlgorithmImpl {
     }
     thread_.task_runner()->PostTask(
         FROM_HERE,
-        base::Bind(&CameraAlgorithmImpl::ReturnCallback, base::Unretained(this),
-                   req_id, status, buffer_handle));
+        base::BindOnce(&CameraAlgorithmImpl::ReturnCallback,
+                       base::Unretained(this), req_id, status, buffer_handle));
   }
 
   void DeregisterBuffers(const int32_t buffer_handles[], uint32_t size) {

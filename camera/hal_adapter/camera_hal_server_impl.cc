@@ -70,19 +70,19 @@ void CameraHalServerImpl::Start() {
   base::AutoLock l(ipc_bridge_lock_);
   mojo_manager_->GetIpcTaskRunner()->PostTask(
       FROM_HERE,
-      base::Bind(&CameraHalServerImpl::IPCBridge::Start,
-                 ipc_bridge_->GetWeakPtr(), camera_hal_adapter_.get(),
-                 base::BindRepeating(
-                     [](const std::vector<cros_camera_hal_t*>& hals,
-                        PrivacySwitchStateChangeCallback callback) {
-                       for (const auto* hal : hals) {
-                         if (hal->set_privacy_switch_callback != nullptr) {
-                           hal->set_privacy_switch_callback(
-                               std::move(callback));
-                         }
-                       }
-                     },
-                     cros_camera_hals_)));
+      base::BindOnce(&CameraHalServerImpl::IPCBridge::Start,
+                     ipc_bridge_->GetWeakPtr(), camera_hal_adapter_.get(),
+                     base::BindRepeating(
+                         [](const std::vector<cros_camera_hal_t*>& hals,
+                            PrivacySwitchStateChangeCallback callback) {
+                           for (const auto* hal : hals) {
+                             if (hal->set_privacy_switch_callback != nullptr) {
+                               hal->set_privacy_switch_callback(
+                                   std::move(callback));
+                             }
+                           }
+                         },
+                         cros_camera_hals_)));
 }
 
 CameraHalServerImpl::IPCBridge::IPCBridge(
@@ -186,8 +186,9 @@ void CameraHalServerImpl::IPCBridge::OnServiceMojoChannelError() {
   LOGF(INFO) << "Mojo connection to CameraHalDispatcher is broken";
   receiver_.reset();
   main_task_runner_->PostTask(
-      FROM_HERE, base::Bind(&CameraHalServerImpl::ExitOnMainThread,
-                            base::Unretained(camera_hal_server_), ECONNRESET));
+      FROM_HERE,
+      base::BindOnce(&CameraHalServerImpl::ExitOnMainThread,
+                     base::Unretained(camera_hal_server_), ECONNRESET));
 }
 
 void CameraHalServerImpl::IPCBridge::OnPrivacySwitchStatusChanged(

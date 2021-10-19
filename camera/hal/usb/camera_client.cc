@@ -312,9 +312,9 @@ int CameraClient::ProcessCaptureRequest(camera3_capture_request_t* request) {
   std::unique_ptr<CaptureRequest> capture_request(
       new CaptureRequest(*request, latest_request_metadata_));
   request_task_runner_->PostTask(
-      FROM_HERE, base::Bind(&CameraClient::RequestHandler::HandleRequest,
-                            base::Unretained(request_handler_.get()),
-                            base::Passed(&capture_request)));
+      FROM_HERE, base::BindOnce(&CameraClient::RequestHandler::HandleRequest,
+                                base::Unretained(request_handler_.get()),
+                                std::move(capture_request)));
   return 0;
 }
 
@@ -409,10 +409,10 @@ int CameraClient::StreamOn(Size stream_on_resolution,
       base::Bind(&CameraClient::StreamOnCallback, base::Unretained(this),
                  base::RetainedRef(future), num_buffers);
   request_task_runner_->PostTask(
-      FROM_HERE, base::Bind(&CameraClient::RequestHandler::StreamOn,
-                            base::Unretained(request_handler_.get()),
-                            stream_on_resolution, crop_rotate_scale_degrees,
-                            use_native_sensor_ratio, streamon_callback));
+      FROM_HERE, base::BindOnce(&CameraClient::RequestHandler::StreamOn,
+                                base::Unretained(request_handler_.get()),
+                                stream_on_resolution, crop_rotate_scale_degrees,
+                                use_native_sensor_ratio, streamon_callback));
   return future->Get();
 }
 
@@ -424,9 +424,9 @@ void CameraClient::StreamOff() {
         base::Bind(&CameraClient::StreamOffCallback, base::Unretained(this),
                    base::RetainedRef(future));
     request_task_runner_->PostTask(
-        FROM_HERE, base::Bind(&CameraClient::RequestHandler::StreamOff,
-                              base::Unretained(request_handler_.get()),
-                              streamoff_callback));
+        FROM_HERE, base::BindOnce(&CameraClient::RequestHandler::StreamOff,
+                                  base::Unretained(request_handler_.get()),
+                                  streamoff_callback));
     int ret = future->Get();
     if (ret) {
       LOGFID(ERROR, id_) << "StreamOff failed";
@@ -778,9 +778,9 @@ void CameraClient::RequestHandler::HandleFlush(
     base::AutoLock l(flush_lock_);
     flush_started_ = true;
   }
-  task_runner_->PostTask(FROM_HERE,
-                         base::Bind(&CameraClient::RequestHandler::FlushDone,
-                                    base::Unretained(this), callback));
+  task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(&CameraClient::RequestHandler::FlushDone,
+                                base::Unretained(this), callback));
 }
 
 int CameraClient::RequestHandler::GetMaxNumDetectedFaces() {

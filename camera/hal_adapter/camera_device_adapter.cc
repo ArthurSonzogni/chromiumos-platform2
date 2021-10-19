@@ -169,12 +169,12 @@ CameraDeviceAdapter::~CameraDeviceAdapter() {
 
   camera_device_ops_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&CameraDeviceAdapter::ResetDeviceOpsDelegateOnThread,
-                 base::Unretained(this)));
+      base::BindOnce(&CameraDeviceAdapter::ResetDeviceOpsDelegateOnThread,
+                     base::Unretained(this)));
   camera_callback_ops_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&CameraDeviceAdapter::ResetCallbackOpsDelegateOnThread,
-                 base::Unretained(this)));
+      base::BindOnce(&CameraDeviceAdapter::ResetCallbackOpsDelegateOnThread,
+                     base::Unretained(this)));
   camera_device_ops_thread_.Stop();
   camera_callback_ops_thread_.Stop();
 }
@@ -565,9 +565,9 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
     auto req_ptr = std::make_unique<Camera3CaptureDescriptor>(req);
     reprocess_effect_thread_.task_runner()->PostTask(
         FROM_HERE,
-        base::Bind(
+        base::BindOnce(
             &CameraDeviceAdapter::ReprocessEffectsOnReprocessEffectThread,
-            base::Unretained(this), base::Passed(&req_ptr)));
+            base::Unretained(this), std::move(req_ptr)));
 
     if (camera_metadata_inspector_) {
       camera_metadata_inspector_->InspectRequest(&req);
@@ -1087,9 +1087,9 @@ void CameraDeviceAdapter::RemoveBufferLocked(
     }
     fence_sync_thread_.task_runner()->PostTask(
         FROM_HERE,
-        base::Bind(&CameraDeviceAdapter::RemoveBufferOnFenceSyncThread,
-                   base::Unretained(this), base::Passed(&scoped_release_fence),
-                   base::Passed(&buffer_handle)));
+        base::BindOnce(&CameraDeviceAdapter::RemoveBufferOnFenceSyncThread,
+                       base::Unretained(this), std::move(scoped_release_fence),
+                       std::move(buffer_handle)));
   }
 }
 
@@ -1113,9 +1113,9 @@ void CameraDeviceAdapter::RemoveBufferOnFenceSyncThread(
              << handle->buffer_id;
     fence_sync_thread_.task_runner()->PostTask(
         FROM_HERE,
-        base::Bind(&CameraDeviceAdapter::RemoveBufferOnFenceSyncThread,
-                   base::Unretained(this), base::Passed(&release_fence),
-                   base::Passed(&buffer)));
+        base::BindOnce(&CameraDeviceAdapter::RemoveBufferOnFenceSyncThread,
+                       base::Unretained(this), std::move(release_fence),
+                       std::move(buffer)));
   }
 }
 

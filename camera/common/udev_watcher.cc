@@ -87,8 +87,9 @@ bool UdevWatcher::Start(
 
   auto future = cros::Future<bool>::Create(nullptr);
   thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&UdevWatcher::StartOnThread, base::Unretained(this),
-                            fd, cros::GetFutureCallback(future)));
+      FROM_HERE,
+      base::BindOnce(&UdevWatcher::StartOnThread, base::Unretained(this), fd,
+                     cros::GetFutureCallback(future)));
   return future->Get();
 }
 
@@ -180,8 +181,8 @@ void UdevWatcher::OnReadable() {
   }
 
   callback_task_runner_->PostTask(
-      FROM_HERE, base::Bind(callback, base::Unretained(observer_),
-                            base::Passed(std::move(dev))));
+      FROM_HERE,
+      base::BindOnce(callback, base::Unretained(observer_), std::move(dev)));
 }
 
 }  // namespace cros

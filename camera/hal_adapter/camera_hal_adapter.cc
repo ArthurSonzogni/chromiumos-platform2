@@ -83,15 +83,16 @@ CameraHalAdapter::CameraHalAdapter(
 CameraHalAdapter::~CameraHalAdapter() {
   VLOGF_ENTER();
   camera_module_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&CameraHalAdapter::ResetModuleDelegateOnThread,
-                            base::Unretained(this), kIdAll));
+      FROM_HERE, base::BindOnce(&CameraHalAdapter::ResetModuleDelegateOnThread,
+                                base::Unretained(this), kIdAll));
   camera_module_callbacks_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&CameraHalAdapter::ResetCallbacksDelegateOnThread,
-                            base::Unretained(this), kIdAll));
+      FROM_HERE,
+      base::BindOnce(&CameraHalAdapter::ResetCallbacksDelegateOnThread,
+                     base::Unretained(this), kIdAll));
   camera_module_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&CameraHalAdapter::ResetVendorTagOpsDelegateOnThread,
-                 base::Unretained(this), kIdAll));
+      base::BindOnce(&CameraHalAdapter::ResetVendorTagOpsDelegateOnThread,
+                     base::Unretained(this), kIdAll));
   camera_module_thread_.Stop();
   camera_module_callbacks_thread_.Stop();
   set_camera_metadata_vendor_ops(nullptr);
@@ -113,8 +114,8 @@ bool CameraHalAdapter::Start() {
   auto future = cros::Future<bool>::Create(nullptr);
   camera_module_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&CameraHalAdapter::StartOnThread, base::Unretained(this),
-                 cros::GetFutureCallback(future)));
+      base::BindOnce(&CameraHalAdapter::StartOnThread, base::Unretained(this),
+                     cros::GetFutureCallback(future)));
   return future->Get();
 }
 
@@ -378,9 +379,10 @@ void CameraHalAdapter::CloseDeviceCallback(
     scoped_refptr<base::SingleThreadTaskRunner> task_runner,
     int32_t camera_id,
     mojom::CameraClientType camera_client_type) {
-  task_runner->PostTask(FROM_HERE, base::Bind(&CameraHalAdapter::CloseDevice,
-                                              base::Unretained(this), camera_id,
-                                              camera_client_type));
+  task_runner->PostTask(
+      FROM_HERE,
+      base::BindOnce(&CameraHalAdapter::CloseDevice, base::Unretained(this),
+                     camera_id, camera_client_type));
 }
 
 // static
@@ -394,9 +396,10 @@ void CameraHalAdapter::camera_device_status_change(
   auto* aux = static_cast<const CameraModuleCallbacksAux*>(callbacks);
   CameraHalAdapter* self = aux->adapter;
   self->camera_module_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&CameraHalAdapter::CameraDeviceStatusChange,
-                            base::Unretained(self), aux, internal_camera_id,
-                            static_cast<camera_device_status_t>(new_status)));
+      FROM_HERE,
+      base::BindOnce(&CameraHalAdapter::CameraDeviceStatusChange,
+                     base::Unretained(self), aux, internal_camera_id,
+                     static_cast<camera_device_status_t>(new_status)));
 }
 
 // static
@@ -411,9 +414,9 @@ void CameraHalAdapter::torch_mode_status_change(
   CameraHalAdapter* self = aux->adapter;
   self->camera_module_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&CameraHalAdapter::TorchModeStatusChange,
-                 base::Unretained(self), aux, atoi(internal_camera_id),
-                 static_cast<torch_mode_status_t>(new_status)));
+      base::BindOnce(&CameraHalAdapter::TorchModeStatusChange,
+                     base::Unretained(self), aux, atoi(internal_camera_id),
+                     static_cast<torch_mode_status_t>(new_status)));
 }
 
 const camera_metadata_t* CameraHalAdapter::GetUpdatedCameraMetadata(

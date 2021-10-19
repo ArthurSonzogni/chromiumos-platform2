@@ -334,10 +334,10 @@ void CameraMetadataInspector::InspectRequest(
   }
   thread_->task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&CameraMetadataInspector::InspectOnThread,
-                 base::Unretained(this), Kind::kRequest, "Req", kRequestColor,
-                 base::Time::Now(), request->frame_number,
-                 clone_camera_metadata(request->settings)));
+      base::BindOnce(&CameraMetadataInspector::InspectOnThread,
+                     base::Unretained(this), Kind::kRequest, "Req",
+                     kRequestColor, base::Time::Now(), request->frame_number,
+                     clone_camera_metadata(request->settings)));
 }
 
 void CameraMetadataInspector::InspectResult(
@@ -353,10 +353,11 @@ void CameraMetadataInspector::InspectResult(
     return;
   }
   thread_->task_runner()->PostTask(
-      FROM_HERE, base::Bind(&CameraMetadataInspector::InspectOnThread,
-                            base::Unretained(this), Kind::kResult, "Res",
-                            kResultColor, base::Time::Now(),
-                            result->frame_number, pending_result_.release()));
+      FROM_HERE,
+      base::BindOnce(&CameraMetadataInspector::InspectOnThread,
+                     base::Unretained(this), Kind::kResult, "Res", kResultColor,
+                     base::Time::Now(), result->frame_number,
+                     pending_result_.release()));
 }
 
 }  // namespace cros

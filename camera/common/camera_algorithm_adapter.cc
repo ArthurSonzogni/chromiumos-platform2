@@ -65,8 +65,8 @@ void CameraAlgorithmAdapter::Run(std::string pipe_name,
       base::Thread::Options(base::MessagePumpType::IO, 0));
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&CameraAlgorithmAdapter::InitializeOnIpcThread,
-                 base::Unretained(this), pipe_name, base::Passed(&channel)));
+      base::BindOnce(&CameraAlgorithmAdapter::InitializeOnIpcThread,
+                     base::Unretained(this), pipe_name, std::move(channel)));
   future->Wait(-1);
   exit(EXIT_SUCCESS);
 }

@@ -28,10 +28,10 @@ void CameraModuleCallbacksAssociatedDelegate::CameraDeviceStatusChange(
   VLOGF_ENTER();
   auto future = cros::Future<void>::Create(&relay_);
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&CameraModuleCallbacksAssociatedDelegate::
-                                CameraDeviceStatusChangeOnThread,
-                            base::AsWeakPtr(this), camera_id, new_status,
-                            cros::GetFutureCallback(future)));
+      FROM_HERE, base::BindOnce(&CameraModuleCallbacksAssociatedDelegate::
+                                    CameraDeviceStatusChangeOnThread,
+                                base::AsWeakPtr(this), camera_id, new_status,
+                                cros::GetFutureCallback(future)));
   future->Wait();
 }
 
@@ -40,10 +40,10 @@ void CameraModuleCallbacksAssociatedDelegate::TorchModeStatusChange(
   VLOGF_ENTER();
   auto future = cros::Future<void>::Create(&relay_);
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&CameraModuleCallbacksAssociatedDelegate::
-                                TorchModeStatusChangeOnThread,
-                            base::AsWeakPtr(this), camera_id, new_status,
-                            cros::GetFutureCallback(future)));
+      FROM_HERE, base::BindOnce(&CameraModuleCallbacksAssociatedDelegate::
+                                    TorchModeStatusChangeOnThread,
+                                base::AsWeakPtr(this), camera_id, new_status,
+                                cros::GetFutureCallback(future)));
   future->Wait();
 }
 

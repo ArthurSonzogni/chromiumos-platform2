@@ -86,8 +86,8 @@ class MojoRemoteBase
     VLOGF_ENTER();
     task_runner_->PostTask(
         FROM_HERE,
-        base::Bind(&Self::BindOnThread, base::AsWeakPtr(this),
-                   base::Passed(&pending_remote), disconnect_handler));
+        base::BindOnce(&Self::BindOnThread, base::AsWeakPtr(this),
+                       std::move(pending_remote), disconnect_handler));
   }
 
   ~MojoRemoteBase() {
@@ -101,8 +101,8 @@ class MojoRemoteBase
     } else {
       task_runner_->PostTask(
           FROM_HERE,
-          base::Bind(&Self::ResetRemoteOnThread, base::AsWeakPtr(this),
-                     cros::GetFutureCallback(future)));
+          base::BindOnce(&Self::ResetRemoteOnThread, base::AsWeakPtr(this),
+                         cros::GetFutureCallback(future)));
     }
     future->Wait();
   }
@@ -169,10 +169,10 @@ class MojoReceiver : public T {
     if (task_runner_->BelongsToCurrentThread()) {
       ResetReceiverOnThread(cros::GetFutureCallback(future));
     } else {
-      task_runner_->PostTask(FROM_HERE,
-                             base::Bind(&MojoReceiver<T>::ResetReceiverOnThread,
-                                        weak_ptr_factory_.GetWeakPtr(),
-                                        cros::GetFutureCallback(future)));
+      task_runner_->PostTask(
+          FROM_HERE, base::BindOnce(&MojoReceiver<T>::ResetReceiverOnThread,
+                                    weak_ptr_factory_.GetWeakPtr(),
+                                    cros::GetFutureCallback(future)));
     }
     future->Wait();
   }
@@ -185,9 +185,9 @@ class MojoReceiver : public T {
     } else {
       task_runner_->PostTask(
           FROM_HERE,
-          base::Bind(&MojoReceiver<T>::CreateRemoteOnThread,
-                     weak_ptr_factory_.GetWeakPtr(), disconnect_handler,
-                     cros::GetFutureCallback(future)));
+          base::BindOnce(&MojoReceiver<T>::CreateRemoteOnThread,
+                         weak_ptr_factory_.GetWeakPtr(), disconnect_handler,
+                         cros::GetFutureCallback(future)));
     }
     return future->Get();
   }
@@ -197,9 +197,9 @@ class MojoReceiver : public T {
     VLOGF_ENTER();
     task_runner_->PostTask(
         FROM_HERE,
-        base::Bind(&MojoReceiver<T>::BindOnThread,
-                   weak_ptr_factory_.GetWeakPtr(),
-                   base::Passed(&pending_receiver), disconnect_handler));
+        base::BindOnce(&MojoReceiver<T>::BindOnThread,
+                       weak_ptr_factory_.GetWeakPtr(),
+                       std::move(pending_receiver), disconnect_handler));
   }
 
  protected:

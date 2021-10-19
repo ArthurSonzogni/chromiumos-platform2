@@ -102,9 +102,9 @@ bool JpegDecodeAcceleratorImpl::Start() {
   auto is_initialized = cros::Future<bool>::Create(cancellation_relay_.get());
 
   mojo_manager_->GetIpcTaskRunner()->PostTask(
-      FROM_HERE, base::Bind(&JpegDecodeAcceleratorImpl::IPCBridge::Start,
-                            ipc_bridge_->GetWeakPtr(),
-                            cros::GetFutureCallback(is_initialized)));
+      FROM_HERE, base::BindOnce(&JpegDecodeAcceleratorImpl::IPCBridge::Start,
+                                ipc_bridge_->GetWeakPtr(),
+                                cros::GetFutureCallback(is_initialized)));
   if (!is_initialized->Wait()) {
     return false;
   }
@@ -149,10 +149,10 @@ int32_t JpegDecodeAcceleratorImpl::Decode(int input_fd,
   buffer_id_ = (buffer_id_ + 1) & 0x3FFFFFFF;
 
   mojo_manager_->GetIpcTaskRunner()->PostTask(
-      FROM_HERE, base::Bind(&JpegDecodeAcceleratorImpl::IPCBridge::Decode,
-                            ipc_bridge_->GetWeakPtr(), buffer_id, input_fd,
-                            input_buffer_size, input_buffer_offset,
-                            output_buffer, std::move(callback)));
+      FROM_HERE, base::BindOnce(&JpegDecodeAcceleratorImpl::IPCBridge::Decode,
+                                ipc_bridge_->GetWeakPtr(), buffer_id, input_fd,
+                                input_buffer_size, input_buffer_offset,
+                                output_buffer, std::move(callback)));
   return buffer_id;
 }
 
@@ -307,8 +307,8 @@ void JpegDecodeAcceleratorImpl::TestResetJDAChannel() {
 
   mojo_manager_->GetIpcTaskRunner()->PostTask(
       FROM_HERE,
-      base::Bind(&JpegDecodeAcceleratorImpl::IPCBridge::TestResetJDAChannel,
-                 ipc_bridge_->GetWeakPtr(), base::RetainedRef(future)));
+      base::BindOnce(&JpegDecodeAcceleratorImpl::IPCBridge::TestResetJDAChannel,
+                     ipc_bridge_->GetWeakPtr(), base::RetainedRef(future)));
   future->Wait();
 }
 

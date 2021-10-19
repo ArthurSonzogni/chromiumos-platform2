@@ -509,8 +509,8 @@ void CameraHal::CloseDeviceOnOpsThread(int id) {
   DCHECK(task_runner_);
   auto future = cros::Future<void>::Create(nullptr);
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&CameraHal::CloseDevice, base::Unretained(this), id,
-                            base::RetainedRef(future)));
+      FROM_HERE, base::BindOnce(&CameraHal::CloseDevice, base::Unretained(this),
+                                id, base::RetainedRef(future)));
   future->Wait();
 }
 

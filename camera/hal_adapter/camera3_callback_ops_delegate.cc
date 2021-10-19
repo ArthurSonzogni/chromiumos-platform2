@@ -30,15 +30,15 @@ void Camera3CallbackOpsDelegate::ProcessCaptureResult(
   VLOGF_ENTER();
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread,
-                 base::AsWeakPtr(this), base::Passed(&result)));
+      base::BindOnce(&Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread,
+                     base::AsWeakPtr(this), std::move(result)));
 }
 
 void Camera3CallbackOpsDelegate::Notify(mojom::Camera3NotifyMsgPtr msg) {
   VLOGF_ENTER();
-  task_runner_->PostTask(FROM_HERE,
-                         base::Bind(&Camera3CallbackOpsDelegate::NotifyOnThread,
-                                    base::AsWeakPtr(this), base::Passed(&msg)));
+  task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(&Camera3CallbackOpsDelegate::NotifyOnThread,
+                                base::AsWeakPtr(this), std::move(msg)));
 }
 
 void Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread(

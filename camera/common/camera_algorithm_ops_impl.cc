@@ -147,8 +147,9 @@ void CameraAlgorithmOpsImpl::ReturnCallbackForwarder(
   }
   singleton_->ipc_task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&CameraAlgorithmOpsImpl::ReturnCallbackOnIPCThread,
-                 base::Unretained(singleton_), req_id, status, buffer_handle));
+      base::BindOnce(&CameraAlgorithmOpsImpl::ReturnCallbackOnIPCThread,
+                     base::Unretained(singleton_), req_id, status,
+                     buffer_handle));
 }
 
 void CameraAlgorithmOpsImpl::ReturnCallbackOnIPCThread(uint32_t req_id,

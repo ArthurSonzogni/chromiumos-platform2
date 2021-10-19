@@ -75,9 +75,9 @@ bool JpegEncodeAcceleratorImpl::Start() {
   auto is_initialized = Future<bool>::Create(cancellation_relay_.get());
 
   mojo_manager_->GetIpcTaskRunner()->PostTask(
-      FROM_HERE, base::Bind(&JpegEncodeAcceleratorImpl::IPCBridge::Start,
-                            ipc_bridge_->GetWeakPtr(),
-                            cros::GetFutureCallback(is_initialized)));
+      FROM_HERE, base::BindOnce(&JpegEncodeAcceleratorImpl::IPCBridge::Start,
+                                ipc_bridge_->GetWeakPtr(),
+                                cros::GetFutureCallback(is_initialized)));
   if (!is_initialized->Wait()) {
     return false;
   }
@@ -109,11 +109,11 @@ int JpegEncodeAcceleratorImpl::EncodeSync(int input_fd,
 
   mojo_manager_->GetIpcTaskRunner()->PostTask(
       FROM_HERE,
-      base::Bind(&JpegEncodeAcceleratorImpl::IPCBridge::EncodeLegacy,
-                 ipc_bridge_->GetWeakPtr(), task_id, input_fd, input_buffer,
-                 input_buffer_size, coded_size_width, coded_size_height,
-                 exif_buffer, exif_buffer_size, output_fd, output_buffer_size,
-                 std::move(callback)));
+      base::BindOnce(&JpegEncodeAcceleratorImpl::IPCBridge::EncodeLegacy,
+                     ipc_bridge_->GetWeakPtr(), task_id, input_fd, input_buffer,
+                     input_buffer_size, coded_size_width, coded_size_height,
+                     exif_buffer, exif_buffer_size, output_fd,
+                     output_buffer_size, std::move(callback)));
 
   if (!future->Wait()) {
     if (!ipc_bridge_->IsReady()) {
@@ -148,11 +148,12 @@ int JpegEncodeAcceleratorImpl::EncodeSync(
                  output_data_size, task_id);
 
   mojo_manager_->GetIpcTaskRunner()->PostTask(
-      FROM_HERE, base::Bind(&JpegEncodeAcceleratorImpl::IPCBridge::Encode,
-                            ipc_bridge_->GetWeakPtr(), task_id, input_format,
-                            std::move(input_planes), std::move(output_planes),
-                            exif_buffer, exif_buffer_size, coded_size_width,
-                            coded_size_height, quality, std::move(callback)));
+      FROM_HERE,
+      base::BindOnce(&JpegEncodeAcceleratorImpl::IPCBridge::Encode,
+                     ipc_bridge_->GetWeakPtr(), task_id, input_format,
+                     std::move(input_planes), std::move(output_planes),
+                     exif_buffer, exif_buffer_size, coded_size_width,
+                     coded_size_height, quality, std::move(callback)));
 
   if (!future->Wait()) {
     if (!ipc_bridge_->IsReady()) {

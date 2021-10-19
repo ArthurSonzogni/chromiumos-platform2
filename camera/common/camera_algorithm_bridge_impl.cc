@@ -88,9 +88,10 @@ int32_t CameraAlgorithmBridgeImpl::Initialize(
     auto future = cros::Future<int32_t>::Create(&relay_);
 
     mojo_manager_->GetIpcTaskRunner()->PostTask(
-        FROM_HERE, base::Bind(&CameraAlgorithmBridgeImpl::IPCBridge::Initialize,
-                              ipc_bridge_->GetWeakPtr(), callback_ops,
-                              cros::GetFutureCallback(future)));
+        FROM_HERE,
+        base::BindOnce(&CameraAlgorithmBridgeImpl::IPCBridge::Initialize,
+                       ipc_bridge_->GetWeakPtr(), callback_ops,
+                       cros::GetFutureCallback(future)));
 
     if (future->Wait(std::min(kInitializationWaitConnectionMs,
                               kInitializationRetryTimeoutMs - elapsed_ms))) {
@@ -111,9 +112,9 @@ int32_t CameraAlgorithmBridgeImpl::RegisterBuffer(int buffer_fd) {
 
   mojo_manager_->GetIpcTaskRunner()->PostTask(
       FROM_HERE,
-      base::Bind(&CameraAlgorithmBridgeImpl::IPCBridge::RegisterBuffer,
-                 ipc_bridge_->GetWeakPtr(), buffer_fd,
-                 cros::GetFutureCallback(future)));
+      base::BindOnce(&CameraAlgorithmBridgeImpl::IPCBridge::RegisterBuffer,
+                     ipc_bridge_->GetWeakPtr(), buffer_fd,
+                     cros::GetFutureCallback(future)));
 
   future->Wait();
   VLOGF_EXIT();
@@ -126,9 +127,9 @@ void CameraAlgorithmBridgeImpl::Request(uint32_t req_id,
   VLOGF_ENTER();
 
   mojo_manager_->GetIpcTaskRunner()->PostTask(
-      FROM_HERE,
-      base::Bind(&CameraAlgorithmBridgeImpl::IPCBridge::Request,
-                 ipc_bridge_->GetWeakPtr(), req_id, req_header, buffer_handle));
+      FROM_HERE, base::BindOnce(&CameraAlgorithmBridgeImpl::IPCBridge::Request,
+                                ipc_bridge_->GetWeakPtr(), req_id, req_header,
+                                buffer_handle));
 
   VLOGF_EXIT();
 }
@@ -139,8 +140,8 @@ void CameraAlgorithmBridgeImpl::DeregisterBuffers(
 
   mojo_manager_->GetIpcTaskRunner()->PostTask(
       FROM_HERE,
-      base::Bind(&CameraAlgorithmBridgeImpl::IPCBridge::DeregisterBuffers,
-                 ipc_bridge_->GetWeakPtr(), buffer_handles));
+      base::BindOnce(&CameraAlgorithmBridgeImpl::IPCBridge::DeregisterBuffers,
+                     ipc_bridge_->GetWeakPtr(), buffer_handles));
 
   VLOGF_EXIT();
 }

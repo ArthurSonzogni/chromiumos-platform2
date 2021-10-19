@@ -36,8 +36,8 @@ int32_t CameraGPUAlgorithm::Initialize(
   callback_ops_ = callback_ops;
   // Initialize the algorithms asynchronously
   thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&CameraGPUAlgorithm::InitializeOnThread,
-                            base::Unretained(this)));
+      FROM_HERE, base::BindOnce(&CameraGPUAlgorithm::InitializeOnThread,
+                                base::Unretained(this)));
   return 0;
 }
 

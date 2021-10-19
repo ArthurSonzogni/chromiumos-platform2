@@ -104,8 +104,9 @@ CameraMojoChannelManagerImpl::~CameraMojoChannelManagerImpl() {
     sensor_hal_client_.reset();
     ipc_thread_.task_runner()->PostTask(
         FROM_HERE,
-        base::Bind(&CameraMojoChannelManagerImpl::TearDownMojoEnvOnIpcThread,
-                   base::Unretained(this)));
+        base::BindOnce(
+            &CameraMojoChannelManagerImpl::TearDownMojoEnvOnIpcThread,
+            base::Unretained(this)));
     ipc_thread_.Stop();
   }
 }
@@ -141,8 +142,8 @@ void CameraMojoChannelManagerImpl::RegisterServer(
       .on_error_callback = std::move(on_error_callback)};
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
-                 base::Unretained(this)));
+      base::BindOnce(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
+                     base::Unretained(this)));
 }
 
 void CameraMojoChannelManagerImpl::CreateMjpegDecodeAccelerator(
@@ -159,8 +160,8 @@ void CameraMojoChannelManagerImpl::CreateMjpegDecodeAccelerator(
   jda_tasks_.push_back(std::move(pending_task));
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
-                 base::Unretained(this)));
+      base::BindOnce(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
+                     base::Unretained(this)));
 }
 
 void CameraMojoChannelManagerImpl::CreateJpegEncodeAccelerator(
@@ -177,8 +178,8 @@ void CameraMojoChannelManagerImpl::CreateJpegEncodeAccelerator(
   jea_tasks_.push_back(std::move(pending_task));
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
-                 base::Unretained(this)));
+      base::BindOnce(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
+                     base::Unretained(this)));
 }
 
 mojo::Remote<mojom::CameraAlgorithmOps>
@@ -239,7 +240,7 @@ void CameraMojoChannelManagerImpl::OnSocketFileStatusChange(
 
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(
+      base::BindOnce(
           &CameraMojoChannelManagerImpl::OnSocketFileStatusChangeOnIpcThread,
           base::Unretained(this)));
 }
@@ -257,16 +258,16 @@ void CameraMojoChannelManagerImpl::OnSocketFileStatusChangeOnIpcThread() {
     if (bound_socket_inode_num_ != GetSocketInodeNumber(socket_path)) {
       ipc_thread_.task_runner()->PostTask(
           FROM_HERE,
-          base::Bind(&CameraMojoChannelManagerImpl::ResetDispatcherPtr,
-                     base::Unretained(this)));
+          base::BindOnce(&CameraMojoChannelManagerImpl::ResetDispatcherPtr,
+                         base::Unretained(this)));
     }
     return;
   }
 
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
-                 base::Unretained(this)));
+      base::BindOnce(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
+                     base::Unretained(this)));
 }
 
 void CameraMojoChannelManagerImpl::TryConnectToDispatcher() {
