@@ -8,7 +8,6 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/strings/string_piece.h>
 
 namespace fusebox {
 
