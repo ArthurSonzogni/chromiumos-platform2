@@ -688,6 +688,11 @@ bool FakePlatform::Mount(const base::FilePath& from,
                          const std::string& mount_options) {
   base::FilePath nfrom = NormalizePath(from);
   base::FilePath nto = NormalizePath(to);
+  if (type == "ecryptfs") {
+    // In the case of ecryptfs we more or less transparently overlay
+    // directories, so it looks more like a bind rather than a mount.
+    return fake_mount_mapper_->Bind(nfrom, nto);
+  }
   return fake_mount_mapper_->Mount(nfrom, nto);
 }
 
