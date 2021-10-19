@@ -28,6 +28,7 @@ group("all") {
   if (use.fuzzer) {
     deps += [
       ":cellular_pco_fuzzer",
+      ":dhcpv4_static_routes_fuzzer",
       ":verizon_subscription_state_fuzzer",
       ":wifi_ies_fuzzer",
     ]
@@ -515,6 +516,15 @@ if (use.fuzzer) {
   }
   executable("wifi_ies_fuzzer") {
     sources = [ "wifi/wifi_ies_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+      ":shill_config",
+    ]
+    deps = [ ":libshill" ]
+  }
+  executable("dhcpv4_static_routes_fuzzer") {
+    sources = [ "dhcp/dhcpv4_static_routes_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",

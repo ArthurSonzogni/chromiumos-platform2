@@ -52,6 +52,7 @@ class DHCPv4Config : public DHCPConfig {
 
  private:
   friend class DHCPv4ConfigTest;
+  friend class DHCPv4ConfigStaticRoutesFuzz;
   FRIEND_TEST(DHCPv4ConfigCallbackTest, ProcessEventSignalFail);
   FRIEND_TEST(DHCPv4ConfigCallbackTest, ProcessEventSignalGatewayArp);
   FRIEND_TEST(DHCPv4ConfigCallbackTest, ProcessEventSignalGatewayArpNak);
