@@ -26,7 +26,11 @@ fi
 umask 022
 mkdir -p -m 0711 "${LOCKBOX_CACHE_DIR}"
 
-LOCKBOX_INDEX=0x9da5b0
+if [ "$(tpm_version_client)" -eq 2 ]; then
+  LOCKBOX_INDEX=0x9da5b0
+else
+  LOCKBOX_INDEX=0x800004
+fi
 
 # Use tpm_manager to read the NV space.
 /usr/bin/gdbus wait --system -t 15 org.chromium.TpmManager
