@@ -150,39 +150,37 @@ void DirEntryResponse::Append(int error) {
 }
 
 void DirEntryResponse::Respond() {
-  const auto process_next_request = [&]() {
-    DCHECK(!request_.empty());
-
-    if (request_[0]->IsInterrupted())
+  const auto process_next_request = [&](auto& request) {
+    if (request->IsInterrupted())
       return true;
 
     if (error_) {
-      request_[0]->ReplyError(error_);
+      request->ReplyError(error_);
       return true;
     }
 
-    off_t offset = request_[0]->offset();
-    CHECK_GE(offset, 0);
+    off_t offset = request->offset();
+    if (offset < 0) {
+      request->ReplyError(EINVAL);
+      return true;
+    }
 
     while (offset < entry_.size()) {
       const off_t next = 1 + offset;
-      if (request_[0]->AddEntry(entry_[offset++], next))
+      if (request->AddEntry(entry_[offset++], next))
         continue;  // add next entry
-      request_[0]->ReplyDone();
+      request->ReplyDone();
       return true;
     }
 
-    CHECK_GE(offset, entry_.size());
-    if (end_) {
-      request_[0]->ReplyDone();
-      return true;
-    }
-
-    return false;
+    DCHECK_GE(offset, entry_.size());
+    if (end_)
+      request->ReplyDone();
+    return end_;
   };
 
   while (!request_.empty() && !entry_.empty()) {
-    if (!process_next_request())
+    if (!process_next_request(*request_.begin()))
       break;
     request_.erase(request_.begin());
   }
