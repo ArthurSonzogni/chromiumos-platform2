@@ -35,6 +35,11 @@ Detected scanners:
 pixma:MF741C/743C_207.648.54.70
 ippusb:escl:Canon TR8500 series:04a9_1823/eSCL/`
 
+// Sample output from `lorgnette_cli list` with a scanner name containing
+// special regex characters.
+const lorgnetteCLIListOutputRegex = `Detected scanners:
+airscan:escl:HP ENVY Photo 7100 series [ABCD12]:https://201.995.21.789:343/eSCL/`
+
 // Sample output from `lorgnette_cli list` with no valid scanner.
 const lorgnetteCLIListOutputNoeSCLScanner = `Getting scanner list.
 SANE scanners:
@@ -50,30 +55,37 @@ const ipAddressResponse = "Network response."
 // TestGetLorgnetteScannerInfo tests that scanner info can be parsed correctly.
 func TestGetLorgnetteScannerInfo(t *testing.T) {
 	tests := []struct {
-		input    string
-		model    string
-		protocol string
-		name     string
-		address  string
+		input      string
+		identifier string
+		protocol   string
+		name       string
+		address    string
 	}{
 		{
-			input:    lorgnetteCLIListOutputAirscan,
-			model:    "MF741C",
-			protocol: "airscan",
-			name:     "Canon MF741C/743C (8d_29_6f) (4)",
-			address:  "http://207.648.54.70:99",
+			input:      lorgnetteCLIListOutputAirscan,
+			identifier: "MF741C",
+			protocol:   "airscan",
+			name:       "Canon MF741C/743C (8d_29_6f) (4)",
+			address:    "http://207.648.54.70:99",
 		},
 		{
-			input:    lorgnetteCLIListOutputIPPUSB,
-			model:    "TR8500",
-			protocol: "ippusb",
-			name:     "Canon TR8500 series",
-			address:  "04a9_1823",
+			input:      lorgnetteCLIListOutputIPPUSB,
+			identifier: "TR8500",
+			protocol:   "ippusb",
+			name:       "Canon TR8500 series",
+			address:    "04a9_1823",
+		},
+		{
+			input:      lorgnetteCLIListOutputRegex,
+			identifier: "airscan:escl:HP ENVY Photo 7100 series [ABCD12]:https://201.995.21.789:343/eSCL/",
+			protocol:   "airscan",
+			name:       "HP ENVY Photo 7100 series [ABCD12]",
+			address:    "https://201.995.21.789:343",
 		},
 	}
 
 	for _, tc := range tests {
-		got, err := GetLorgnetteScannerInfo(tc.input, tc.model)
+		got, err := GetLorgnetteScannerInfo(tc.input, tc.identifier)
 
 		if err != nil {
 			t.Error(err)

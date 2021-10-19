@@ -47,17 +47,17 @@ func LorgnetteCLIGetJSONCaps(scanner string) (string, error) {
 }
 
 // GetLorgnetteScannerInfo parses `listOutput` to find the lorgnette scanner
-// information for the first scanner in `listOutput` which matches `model`.
+// information for the first scanner in `listOutput` which matches `identifier`.
 // `listOutput` is expected to be the output from `lorgnette_cli list`.
-func GetLorgnetteScannerInfo(listOutput string, model string) (info LorgnetteScannerInfo, err error) {
+func GetLorgnetteScannerInfo(listOutput string, identifier string) (info LorgnetteScannerInfo, err error) {
 	// All IPP over USB scanners will use the same socket directory. Network
 	// scanners don't need this, but it doesn't hurt to include it.
 	info.SocketDir = "/run/ippusb"
 
 	lines := strings.Split(listOutput, "\n")
 	for _, line := range lines {
-		modelMatch, _ := regexp.MatchString(model, line)
-		if !modelMatch {
+		identifierMatch, _ := regexp.MatchString(identifier, line)
+		if !identifierMatch && identifier != line {
 			continue
 		}
 
@@ -83,7 +83,7 @@ func GetLorgnetteScannerInfo(listOutput string, model string) (info LorgnetteSca
 		return
 	}
 
-	err = fmt.Errorf("No scanner info found for model: %s", model)
+	err = fmt.Errorf("No scanner info found for identifier: %s", identifier)
 	return
 }
 
