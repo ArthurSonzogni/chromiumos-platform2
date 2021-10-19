@@ -83,8 +83,9 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
       return MountErrorToCryptohomeError(MOUNT_ERROR_UNPRIVILEGED_KEY);
     }
 
-    return keyset_management_->AddKeyset(*credentials,
-                                         auth_factor_->vault_keyset());
+    return static_cast<user_data_auth::CryptohomeErrorCode>(
+        keyset_management_->AddKeyset(
+            *credentials, auth_factor_->vault_keyset(), true /*clobber*/));
   }
 
   // If AuthSession is not configured as an ephemeral user, then we save the

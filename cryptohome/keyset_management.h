@@ -13,6 +13,7 @@
 #include <brillo/secure_blob.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/platform.h"
@@ -73,8 +74,8 @@ class KeysetManagement {
   // partucular failure reason.
   // NOTE: The LE Credential Keysets are only considered when the key label
   // provided via |creds| is non-empty.
-  std::unique_ptr<VaultKeyset> GetValidKeyset(const Credentials& creds,
-                                              MountError* error);
+  virtual std::unique_ptr<VaultKeyset> GetValidKeyset(const Credentials& creds,
+                                                      MountError* error);
 
   // Loads the vault keyset for the supplied obfuscated username and index.
   // Returns true for success, false for failure.
@@ -92,33 +93,25 @@ class KeysetManagement {
   // Adds initial keyset for the credentials.
   virtual bool AddInitialKeyset(const Credentials& credentials);
 
-  // Adds a new vault keyset for the user using the |existing_credentials| to
-  // unwrap the homedir key and the |new_credentials| to rewrap and persist to
-  // disk.  The key index is return in the |index| pointer if the function
-  // returns true.  |index| is not modified if the function returns false.
-  // |new_data|, when provided, is copied to the key_data of the new keyset.
-  // If |new_data| is provided, a best-effort attempt will be made at ensuring
-  // key_data().label() is unique.
-  // If |clobber| is true and there are no matching, labeled keys, then it does
-  // nothing.  If there is an identically labeled key, it will overwrite it.
-  virtual CryptohomeErrorCode AddKeyset(const Credentials& existing_credentials,
-                                        const brillo::SecureBlob& new_passkey,
-                                        const KeyData* new_data,
-                                        bool clobber,
-                                        int* index);
+  // Adds randomly generated reset_seed to the vault keyset if |reset_seed_|
+  // doesn't have any value.
+  virtual CryptohomeErrorCode AddWrappedResetSeedIfMissing(
+      VaultKeyset* vault_keyset, const Credentials& credentials);
 
-  // Adds a new vault keyset for the user rewrap |vault_keyset| and persist to
-  // disk. |has_new_key_data|, is set true when new credentials carry new
-  // key_data. If provided, key_data is copied to the new keyset. If |new_data|
-  // is provided, a best-effort attempt will be made at ensuring
-  // key_data().label() is unique. If |clobber| is true and there are no
-  // matching, labeled keys, then it does nothing.  If there is an identically
-  // labeled key, it will overwrite it.
-  virtual user_data_auth::CryptohomeErrorCode AddKeyset(
-      const Credentials& new_credentials, VaultKeyset vault_keyset);
+  // Adds a new keyset to the given |vault_keyset| and persist to
+  // disk. This function assumes the user is already authenticated and their
+  // vault keyset with the existing credentials is unwrapped which should be
+  // inputted to this function to initialize a new vault keyset. Thus,
+  // GetValidKeyset() should be called prior to this function to authenticate
+  // with the existing credentials. New keyset is updated to have the key data
+  // from |new_credentials|. If |clobber| is true and there are no matching,
+  // labeled keys, then it does nothing; if there is an identically labeled key,
+  // it will overwrite it.
+  virtual CryptohomeErrorCode AddKeyset(const Credentials& new_credentials,
+                                        const VaultKeyset& vault_keyset,
+                                        bool clobber);
 
-  // Removes the keyset identified by |key_data| if |credentials|
-  // has the remove() KeyPrivilege.  The VaultKeyset backing
+  // Removes the keyset identified by |key_data|.  The VaultKeyset backing
   // |credentials| may be the same that |key_data| identifies.
   virtual CryptohomeErrorCode RemoveKeyset(const Credentials& credentials,
                                            const KeyData& key_data);
@@ -134,10 +127,9 @@ class KeysetManagement {
   // claimed for a given |obfuscated| username.
   virtual bool MoveKeyset(const std::string& obfuscated, int src, int dst);
 
-  // Migrates the cryptohome for the supplied obfuscated username from the
-  // supplied old key to the supplied new key.
-  virtual bool Migrate(const Credentials& newcreds,
-                       const brillo::SecureBlob& oldkey,
+  // Migrates the cryptohome vault keyset to a new one for the new credentials.
+  virtual bool Migrate(const VaultKeyset& old_vk,
+                       const Credentials& newcreds,
                        int* migrated_key_index);
 
   // Attempts to reset all LE credentials associated with a username, given
@@ -159,18 +151,18 @@ class KeysetManagement {
   // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
   virtual void CleanupPerIndexTimestampFiles(const std::string& obfuscated);
 
+  // Checks whether the keyset is up to date (e.g. has correct encryption
+  // parameters, has all required fields populated etc.) and if not, updates
+  // and resaves the keyset.
+  virtual bool ReSaveKeysetIfNeeded(const Credentials& credentials,
+                                    VaultKeyset* keyset) const;
+
  private:
   // Check if the vault keyset needs re-encryption.
   bool ShouldReSaveKeyset(VaultKeyset* vault_keyset) const;
 
   // Resaves the vault keyset, restoring on failure.
   bool ReSaveKeyset(const Credentials& credentials, VaultKeyset* keyset) const;
-
-  // Checks whether the keyset is up to date (e.g. has correct encryption
-  // parameters, has all required fields populated etc.) and if not, updates
-  // and resaves the keyset.
-  bool ReSaveKeysetIfNeeded(const Credentials& credentials,
-                            VaultKeyset* keyset) const;
 
   // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
   base::Time GetPerIndexTimestampFileData(const std::string& obfuscated,

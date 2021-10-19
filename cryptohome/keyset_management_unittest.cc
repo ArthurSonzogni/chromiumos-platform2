@@ -328,18 +328,21 @@ TEST_F(KeysetManagementTest, AddKeysetSuccess) {
 
   brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
+  KeyData new_data;
+  new_data.set_label("some_label");
+  new_credentials.set_key_data(new_data);
 
   // TEST
-
-  int index = -1;
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(users_[0].credentials, new_passkey,
-                                          nullptr, false, &index));
-  EXPECT_NE(index, -1);
+            keyset_management_->AddKeyset(new_credentials, *vk.get(), false));
 
   // VERIFY
   // After we add an additional keyset, we can list and read both of them.
-
+  vk = keyset_management_->GetValidKeyset(new_credentials, nullptr /* error */);
+  int index = vk->GetLegacyIndex();
   VerifyKeysetIndicies({kInitialKeysetIndex, index});
 
   VerifyKeysetPresentWithCredsAtIndex(users_[0].credentials,
@@ -360,12 +363,11 @@ TEST_F(KeysetManagementTest, AddKeysetClobberSuccess) {
   new_credentials.set_key_data(key_data);
 
   // TEST
-
-  int index = -1;
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(users_[0].credentials, new_passkey,
-                                          &key_data, true, &index));
-  EXPECT_EQ(index, 0);
+            keyset_management_->AddKeyset(new_credentials, *vk.get(), true));
 
   // VERIFY
   // When adding new keyset with an "existing" label and the clobber is on, we
@@ -392,12 +394,11 @@ TEST_F(KeysetManagementTest, AddKeysetNoClobber) {
   new_credentials.set_key_data(key_data);
 
   // TEST
-
-  int index = -1;
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
   EXPECT_EQ(CRYPTOHOME_ERROR_KEY_LABEL_EXISTS,
-            keyset_management_->AddKeyset(users_[0].credentials, new_passkey,
-                                          &key_data, false, &index));
-  EXPECT_EQ(index, -1);
+            keyset_management_->AddKeyset(new_credentials, *vk.get(), false));
 
   // VERIFY
   // Label collision without "clobber" causes an addition error. Old keyset
@@ -411,14 +412,11 @@ TEST_F(KeysetManagementTest, AddKeysetNoClobber) {
   VerifyKeysetNotPresentWithCreds(new_credentials);
 }
 
-// Fail to add new keyset due to invalid label.
-TEST_F(KeysetManagementTest, AddKeysetNonExistentLabel) {
+// Fail to get keyset due to invalid label.
+TEST_F(KeysetManagementTest, GetValidKeysetNonExistentLabel) {
   // SETUP
 
   KeysetSetUpWithKeyData(DefaultKeyData());
-
-  brillo::SecureBlob new_passkey(kNewPasskey);
-  Credentials new_credentials(users_[0].name, new_passkey);
 
   Credentials not_existing_label_credentials = users_[0].credentials;
   KeyData key_data = users_[0].credentials.key_data();
@@ -427,55 +425,33 @@ TEST_F(KeysetManagementTest, AddKeysetNonExistentLabel) {
 
   // TEST
 
-  int index = -1;
-  ASSERT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND,
-            keyset_management_->AddKeyset(not_existing_label_credentials,
-                                          new_passkey, nullptr, false, &index));
-  EXPECT_EQ(index, -1);
-
-  // VERIFY
-  // Invalid label causes an addition error. Old keyset shall still be
-  // readable with old credentials, and the new one shall not  exist.
-
-  VerifyKeysetIndicies({kInitialKeysetIndex});
-
-  VerifyKeysetPresentWithCredsAtIndex(users_[0].credentials,
-                                      kInitialKeysetIndex);
-  VerifyKeysetNotPresentWithCreds(new_credentials);
+  MountError error;
+  ASSERT_EQ(nullptr, keyset_management_->GetValidKeyset(
+                         not_existing_label_credentials, &error));
+  EXPECT_EQ(error, MountError::MOUNT_ERROR_KEY_FAILURE);
 }
 
-// Fail to add new keyset due to invalid credentials.
-TEST_F(KeysetManagementTest, AddKeysetInvalidCreds) {
+// Fail to get keyset due to invalid credentials.
+TEST_F(KeysetManagementTest, GetValidKeysetInvalidCreds) {
   // SETUP
 
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  brillo::SecureBlob new_passkey(kNewPasskey);
-  Credentials new_credentials(users_[0].name, new_passkey);
-
   brillo::SecureBlob wrong_passkey(kWrongPasskey);
+
   Credentials wrong_credentials(users_[0].name, wrong_passkey);
+  KeyData key_data = users_[0].credentials.key_data();
+  wrong_credentials.set_key_data(key_data);
 
   // TEST
 
-  int index = -1;
-  ASSERT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
-            keyset_management_->AddKeyset(wrong_credentials, new_passkey,
-                                          nullptr, false, &index));
-  EXPECT_EQ(index, -1);
-
-  // VERIFY
-  // Invalid credentials cause an addition error. Old keyset shall still be
-  // readable with old credentials, and the new one shall not  exist.
-
-  VerifyKeysetIndicies({kInitialKeysetIndex});
-
-  VerifyKeysetPresentWithCredsAtIndex(users_[0].credentials,
-                                      kInitialKeysetIndex);
-  VerifyKeysetNotPresentWithCreds(new_credentials);
+  MountError error;
+  ASSERT_EQ(nullptr,
+            keyset_management_->GetValidKeyset(wrong_credentials, &error));
+  EXPECT_EQ(error, MountError::MOUNT_ERROR_KEY_FAILURE);
 }
 
-// Fail to add new keyset due to index pool exhaustion.
+// Fail to add new keyset due to file name index pool exhaustion.
 TEST_F(KeysetManagementTest, AddKeysetNoFreeIndices) {
   // SETUP
 
@@ -483,6 +459,9 @@ TEST_F(KeysetManagementTest, AddKeysetNoFreeIndices) {
 
   brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
+  KeyData new_data;
+  new_data.set_label("some_label");
+  new_credentials.set_key_data(new_data);
 
   // Use mock not to literally create a hundread files.
   EXPECT_CALL(platform_,
@@ -492,12 +471,11 @@ TEST_F(KeysetManagementTest, AddKeysetNoFreeIndices) {
       .WillRepeatedly(Return(nullptr));
 
   // TEST
-
-  int index = -1;
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
   EXPECT_EQ(CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED,
-            keyset_management_->AddKeyset(users_[0].credentials, new_passkey,
-                                          nullptr, false, &index));
-  EXPECT_EQ(index, -1);
+            keyset_management_->AddKeyset(new_credentials, *vk.get(), false));
 
   // VERIFY
   // Nothing should change if we were not able to add keyset due to a lack of
@@ -520,30 +498,36 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFail) {
   brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
 
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
+
   // Mock vk to inject encryption failure on new keyset.
   auto mock_vk_to_add = new NiceMock<MockVaultKeyset>();
   // Mock vk for existing keyset.
-  auto mock_vk = new NiceMock<MockVaultKeyset>();
-  mock_vk->CreateRandomResetSeed();
-  mock_vk->SetWrappedResetSeed(brillo::SecureBlob("reset_seed"));
-  EXPECT_CALL(*mock_vault_keyset_factory_, New(_, _))
-      .Times(2)
-      .WillOnce(Return(mock_vk))
+
+  vk->CreateRandomResetSeed();
+  vk->SetWrappedResetSeed(brillo::SecureBlob("reset_seed"));
+  vk->Encrypt(users_[0].passkey, users_[0].obfuscated);
+  vk->Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("0"));
+
+  // ON_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))
+  //    .WillByDefault(Return(mock_vk_to_add));
+  EXPECT_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))
+      .Times(1)
       .WillOnce(Return(mock_vk_to_add));
-  EXPECT_CALL(*mock_vk, Load(_)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_vk, Decrypt(_, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_vk_to_add, Encrypt(new_passkey, _)).WillOnce(Return(false));
+
+  EXPECT_CALL(*mock_vk_to_add,
+              Encrypt(new_credentials.passkey(), users_[0].obfuscated))
+      .WillOnce(Return(false));
 
   // TEST
-
-  int index = -1;
-  ASSERT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
-            keyset_management_mock_vk_->AddKeyset(
-                users_[0].credentials, new_passkey, nullptr, false, &index));
-  EXPECT_EQ(index, -1);
+  ASSERT_EQ(
+      CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
+      keyset_management_mock_vk_->AddKeyset(new_credentials, *vk.get(), false));
 
   // VERIFY
-  // If we failed to save the added keyset due to encryption failure, the old
+  // If we failed to save the added keyset due to disk failure, the old
   // keyset should still exist and be readable with the old credentials.
 
   VerifyKeysetIndicies({kInitialKeysetIndex});
@@ -562,28 +546,37 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
   brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
 
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
+
   // Mock vk to inject encryption failure on new keyset.
   auto mock_vk_to_add = new NiceMock<MockVaultKeyset>();
   // Mock vk for existing keyset.
-  auto mock_vk = new NiceMock<MockVaultKeyset>();
-  mock_vk->CreateRandomResetSeed();
-  mock_vk->SetWrappedResetSeed(brillo::SecureBlob("reset_seed"));
-  EXPECT_CALL(*mock_vault_keyset_factory_, New(_, _))
-      .Times(2)
-      .WillOnce(Return(mock_vk))
+
+  vk->CreateRandomResetSeed();
+  vk->SetWrappedResetSeed(brillo::SecureBlob("reset_seed"));
+  vk->Encrypt(users_[0].passkey, users_[0].obfuscated);
+  vk->Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("0"));
+
+  // ON_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))
+  //    .WillByDefault(Return(mock_vk_to_add));
+  EXPECT_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))
+      .Times(1)
       .WillOnce(Return(mock_vk_to_add));
-  EXPECT_CALL(*mock_vk, Load(_)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_vk, Decrypt(_, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_vk_to_add, Encrypt(new_passkey, _)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_vk_to_add, Save(_)).WillOnce(Return(false));
+
+  EXPECT_CALL(*mock_vk_to_add,
+              Encrypt(new_credentials.passkey(), users_[0].obfuscated))
+      .WillOnce(Return(true));
+  // The first available slot is in indice 1 since the 0 is used by |vk|.
+  EXPECT_CALL(*mock_vk_to_add,
+              Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("1")))
+      .WillOnce(Return(false));
 
   // TEST
-
-  int index = -1;
-  ASSERT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
-            keyset_management_mock_vk_->AddKeyset(
-                users_[0].credentials, new_passkey, nullptr, false, &index));
-  EXPECT_EQ(index, -1);
+  ASSERT_EQ(
+      CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
+      keyset_management_mock_vk_->AddKeyset(new_credentials, *vk.get(), false));
 
   // VERIFY
   // If we failed to save the added keyset due to disk failure, the old
@@ -604,11 +597,15 @@ TEST_F(KeysetManagementTest, RemoveKeysetSuccess) {
 
   brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
+  KeyData new_data;
+  new_data.set_label("some_label");
+  new_credentials.set_key_data(new_data);
 
-  int index = -1;
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(users_[0].credentials, new_passkey,
-                                          nullptr, false, &index));
+            keyset_management_->AddKeyset(new_credentials, *vk.get(), false));
 
   // TEST
 
@@ -619,9 +616,10 @@ TEST_F(KeysetManagementTest, RemoveKeysetSuccess) {
   // VERIFY
   // We had one initial keyset and one added one. After deleting the initial
   // one, only the new one shoulde be available.
-
+  vk = keyset_management_->GetValidKeyset(new_credentials,
+                                          /* error */ nullptr);
+  int index = vk->GetLegacyIndex();
   VerifyKeysetIndicies({index});
-
   VerifyKeysetNotPresentWithCreds(users_[0].credentials);
   VerifyKeysetPresentWithCredsAtIndex(new_credentials, index);
 }
@@ -709,13 +707,16 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabels) {
   KeysetSetUpWithKeyData(DefaultKeyData());
 
   brillo::SecureBlob new_passkey(kNewPasskey);
-  KeyData key_data;
-  key_data.set_label(kAltPasswordLabel);
+  Credentials new_credentials(users_[0].name, new_passkey);
+  KeyData new_data;
+  new_data.set_label(kAltPasswordLabel);
+  new_credentials.set_key_data(new_data);
 
-  int index = -1;
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(users_[0].credentials, new_passkey,
-                                          &key_data, false, &index));
+            keyset_management_->AddKeyset(new_credentials, *vk.get(), false));
 
   // TEST
 
@@ -758,20 +759,27 @@ TEST_F(KeysetManagementTest, ForceRemoveKeysetSuccess) {
 
   brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
+  KeyData new_data;
+  new_data.set_label("first label");
+  new_credentials.set_key_data(new_data);
+
   brillo::SecureBlob new_passkey2("new pass2");
   Credentials new_credentials2(users_[0].name, new_passkey2);
+  KeyData new_data2;
+  new_data2.set_label("second_label");
+  new_credentials.set_key_data(new_data2);
 
-  int index = -1;
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(users_[0].credentials, new_passkey,
-                                          nullptr, false, &index));
-  int index2 = -1;
+            keyset_management_->AddKeyset(new_credentials, *vk.get(), false));
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(users_[0].credentials, new_passkey2,
-                                          nullptr, false, &index2));
+            keyset_management_->AddKeyset(new_credentials2, *vk.get(), false));
 
   // TEST
-
+  vk = keyset_management_->GetValidKeyset(new_credentials, nullptr /* error */);
+  int index = vk->GetLegacyIndex();
   EXPECT_TRUE(
       keyset_management_->ForceRemoveKeyset(users_[0].obfuscated, index));
   // Remove a non-existing keyset is a success.
@@ -779,8 +787,11 @@ TEST_F(KeysetManagementTest, ForceRemoveKeysetSuccess) {
       keyset_management_->ForceRemoveKeyset(users_[0].obfuscated, index));
 
   // VERIFY
-  // We added two new keysets and force removed on of them. Only initial and the
+  // We added two new keysets and force removed them. Only initial and the
   // second added shall remain.
+  vk =
+      keyset_management_->GetValidKeyset(new_credentials2, nullptr /* error */);
+  int index2 = vk->GetLegacyIndex();
 
   VerifyKeysetIndicies({kInitialKeysetIndex, index2});
 
@@ -870,12 +881,17 @@ TEST_F(KeysetManagementTest, MoveKeysetFail) {
 
   brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
+  KeyData new_data;
+  new_data.set_label("some_label");
+  new_credentials.set_key_data(new_data);
 
-  int index = -1;
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(users_[0].credentials, new_passkey,
-                                          nullptr, false, &index));
-
+            keyset_management_->AddKeyset(new_credentials, *vk.get(), false));
+  vk = keyset_management_->GetValidKeyset(new_credentials, nullptr /* error */);
+  int index = vk->GetLegacyIndex();
   const std::string kInitialFile =
       base::StringPrintf("master.%d", kInitialKeysetIndex);  // nocheck
   const std::string kIndexPlus2File =
@@ -921,7 +937,6 @@ TEST_F(KeysetManagementTest, MoveKeysetFail) {
                                               kInitialKeysetIndex, index + 3));
 
   // VERIFY
-
   // TODO(chromium:1141301, dlunev): the fact we have keyset index+3 is a bug -
   // MoveKeyset will not cleanup created file if Rename fails. Not addressing it
   // now durign test refactor, but will in the coming CLs.
@@ -1120,19 +1135,19 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
   new_credentials.set_key_data(key_data);
 
   // Add Pin Credentials
-  int index = -1;
+
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(users_[0].credentials, new_passkey,
-                                          &key_data, true, &index));
-  EXPECT_EQ(index, 1);
+            keyset_management_->AddKeyset(new_credentials, *vk.get(), true));
 
   // When adding new keyset with an new label we expect it to have another
   // keyset.
   VerifyKeysetIndicies({kInitialKeysetIndex, kInitialKeysetIndex + 1});
 
   // Ensure Pin keyset was added.
-  std::unique_ptr<VaultKeyset> vk =
-      keyset_management_->GetValidKeyset(new_credentials, /* error */ nullptr);
+  vk = keyset_management_->GetValidKeyset(new_credentials, /* error */ nullptr);
   ASSERT_NE(vk.get(), nullptr);
 
   // TEST
@@ -1201,12 +1216,12 @@ TEST_F(KeysetManagementTest, ResetLECredentialsAuthLocked) {
   KeyData key_data = DefaultLEKeyData();
   new_credentials.set_key_data(key_data);
 
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
   // Add Pin Keyset to keyset_mangement_.
-  int index = -1;
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(users_[0].credentials, new_passkey,
-                                          &key_data, true, &index));
-  EXPECT_EQ(index, 1);
+            keyset_management_->AddKeyset(new_credentials, *vk.get(), true));
 
   std::unique_ptr<VaultKeyset> le_vk =
       keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPinLabel);
@@ -1253,12 +1268,12 @@ TEST_F(KeysetManagementTest, ResetLECredentialsNotAuthLocked) {
   KeyData key_data = DefaultLEKeyData();
   new_credentials.set_key_data(key_data);
 
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
   // Add Pin Keyset.
-  int index = -1;
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(users_[0].credentials, new_passkey,
-                                          &key_data, true, &index));
-  EXPECT_EQ(index, 1);
+            keyset_management_->AddKeyset(new_credentials, *vk.get(), true));
 
   std::unique_ptr<VaultKeyset> le_vk =
       keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPinLabel);
@@ -1300,12 +1315,12 @@ TEST_F(KeysetManagementTest, ResetLECredentialsWrongCredential) {
   KeyData key_data = DefaultLEKeyData();
   new_credentials.set_key_data(key_data);
 
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
   // Add Pin Keyset.
-  int index = -1;
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(users_[0].credentials, new_passkey,
-                                          &key_data, true, &index));
-  EXPECT_EQ(index, 1);
+            keyset_management_->AddKeyset(new_credentials, *vk.get(), true));
 
   std::unique_ptr<VaultKeyset> le_vk =
       keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPinLabel);
@@ -1333,16 +1348,17 @@ TEST_F(KeysetManagementTest, ResetLECredentialsWrongCredential) {
   EXPECT_TRUE(le_vk->GetAuthLocked());
 }
 
-TEST_F(KeysetManagementTest, AddKeysetResetSeedGeneration) {
-  // This existing keyset is used as a basis to add a new credential for a user.
-  // Setup
+// Tests whether AddWrappedResetSeedIfMissing() adds a reset seed to the input
+// vault keyset when missing.
+TEST_F(KeysetManagementTest, AddWrappedResetSeed) {
+  // Setup a vault keyset.
   VaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
   vk.CreateRandom();
   vk.SetKeyData(DefaultKeyData());
   users_[0].credentials.set_key_data(DefaultKeyData());
 
-  // Explicitly set reset_seed to be empty.
+  // Explicitly set |reset_seed_| to be empty.
   vk.reset_seed_.clear();
   ASSERT_TRUE(vk.Encrypt(users_[0].passkey, users_[0].obfuscated));
   ASSERT_TRUE(
@@ -1351,27 +1367,16 @@ TEST_F(KeysetManagementTest, AddKeysetResetSeedGeneration) {
   // Reset seed should be empty for the VaultKeyset in keyset_management_.
   // There is no real code flow in cryptohome that should produce a keyset like
   // this - i.e a high entropy, password/labeled credential but with no
-  // reset_seed. AddKeyset generates a new reset_seed and populates the field
-  // if it's empty for any reason.
+  // reset_seed.
   std::unique_ptr<VaultKeyset> init_vk =
       keyset_management_->GetValidKeyset(users_[0].credentials, nullptr);
   EXPECT_FALSE(init_vk->HasWrappedResetSeed());
-
-  // Create an Credential
-  brillo::SecureBlob new_passkey(kNewPasskey);
-  Credentials new_credentials(users_[0].name, new_passkey);
-
-  // Add Credentials to keyset_mangement_
-  int index = -1;
-  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(users_[0].credentials, new_passkey,
-                                          nullptr, true, &index));
-  EXPECT_EQ(index, 1);
+  // Generate reset seed and add it to the VaultKeyset object.
+  keyset_management_->AddWrappedResetSeedIfMissing(init_vk.get(),
+                                                   users_[0].credentials);
 
   // Test
-  std::unique_ptr<VaultKeyset> add_vk =
-      keyset_management_->LoadVaultKeysetForUser(users_[0].obfuscated, index);
-  EXPECT_TRUE(add_vk->HasWrappedResetSeed());
+  EXPECT_TRUE(init_vk->HasWrappedResetSeed());
 }
 
 TEST_F(KeysetManagementTest, GetValidKeysetNoValidKeyset) {
@@ -1438,8 +1443,8 @@ TEST_F(KeysetManagementTest, AddKeysetNoFile) {
 
   // Test
   // VaultKeysetPath returns no valid paths.
-  EXPECT_EQ(keyset_management_->AddKeyset(users_[0].credentials, vk),
-            user_data_auth::CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED);
+  EXPECT_EQ(keyset_management_->AddKeyset(users_[0].credentials, vk, true),
+            CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED);
 }
 
 TEST_F(KeysetManagementTest, AddKeysetNewLabel) {
@@ -1450,8 +1455,8 @@ TEST_F(KeysetManagementTest, AddKeysetNewLabel) {
   vk.CreateRandom();
 
   // Test
-  EXPECT_EQ(keyset_management_->AddKeyset(users_[0].credentials, vk),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_EQ(keyset_management_->AddKeyset(users_[0].credentials, vk, true),
+            CRYPTOHOME_ERROR_NOT_SET);
 }
 
 TEST_F(KeysetManagementTest, AddKeysetLabelExists) {
@@ -1467,8 +1472,8 @@ TEST_F(KeysetManagementTest, AddKeysetLabelExists) {
   // AddKeyset creates a file at index 1, but deletes the file
   // after KeysetManagement finds a duplicate label at index 0.
   // The original label is overwritten when adding the new keyset.
-  EXPECT_EQ(keyset_management_->AddKeyset(users_[0].credentials, vk),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_EQ(keyset_management_->AddKeyset(users_[0].credentials, vk, true),
+            CRYPTOHOME_ERROR_NOT_SET);
 
   // Verify
   base::FilePath vk_path = VaultKeysetPath(users_[0].obfuscated, 1);
@@ -1497,8 +1502,9 @@ TEST_F(KeysetManagementTest, AddKeysetLabelExistsFail) {
   EXPECT_CALL(*mock_vk, Encrypt(_, _)).WillOnce(Return(false));
 
   // Test
-  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
-            keyset_management_mock_vk_->AddKeyset(users_[0].credentials, vk));
+  EXPECT_EQ(
+      CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
+      keyset_management_mock_vk_->AddKeyset(users_[0].credentials, vk, true));
 
   // Verify that AddKeyset deleted the file at index 1.
   base::FilePath vk_path = VaultKeysetPath(users_[0].obfuscated, 1);
@@ -1527,8 +1533,9 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFailAuthSessions) {
 
   // Test
   // The file path created by AddKeyset is deleted after save fails.
-  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
-            keyset_management_mock_vk_->AddKeyset(users_[0].credentials, vk));
+  EXPECT_EQ(
+      CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
+      keyset_management_mock_vk_->AddKeyset(users_[0].credentials, vk, true));
 
   // Verify
   base::FilePath vk_path = VaultKeysetPath(users_[0].obfuscated, 0);
@@ -1550,8 +1557,9 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFailAuthSessions) {
 
   // Test
   // The file path created by AddKeyset is deleted after encyrption fails.
-  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
-            keyset_management_mock_vk_->AddKeyset(users_[0].credentials, vk));
+  EXPECT_EQ(
+      CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
+      keyset_management_mock_vk_->AddKeyset(users_[0].credentials, vk, true));
 
   // Verify that the file was deleted.
   base::FilePath vk_path = VaultKeysetPath(users_[0].obfuscated, 0);
@@ -1574,7 +1582,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndData) {
   key_data.set_label(kAltPasswordLabel);
   new_credentials.set_key_data(key_data);
 
-  EXPECT_EQ(keyset_management_->AddKeyset(new_credentials, vk),
+  EXPECT_EQ(keyset_management_->AddKeyset(new_credentials, vk, true),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   std::map<std::string, KeyData> labels_and_data_map;
@@ -1729,7 +1737,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataLoadFail) {
   vk.CreateRandom();
   vk.SetKeyData(DefaultKeyData());
 
-  EXPECT_EQ(keyset_management_->AddKeyset(users_[0].credentials, vk),
+  EXPECT_EQ(keyset_management_->AddKeyset(users_[0].credentials, vk, true),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   auto mock_vk = new NiceMock<MockVaultKeyset>();

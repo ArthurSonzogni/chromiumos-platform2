@@ -415,7 +415,7 @@ class VaultKeyset {
   FRIEND_TEST_ALL_PREFIXES(VaultKeysetTest, DecryptionTest);
   FRIEND_TEST_ALL_PREFIXES(VaultKeysetTest, LibScryptBackwardCompatibility);
   FRIEND_TEST_ALL_PREFIXES(KeysetManagementTest, AddInitialKeyset);
-  FRIEND_TEST_ALL_PREFIXES(KeysetManagementTest, AddKeysetResetSeedGeneration);
+  FRIEND_TEST_ALL_PREFIXES(KeysetManagementTest, AddWrappedResetSeed);
 };
 
 }  // namespace cryptohome

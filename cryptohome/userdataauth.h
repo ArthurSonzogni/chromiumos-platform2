@@ -178,7 +178,7 @@ class UserDataAuth {
   // indicate the status of adding the key. If CryptohomeErrorCode is
   // CRYPTOHOME_ERROR_NOT_SET, then the key is successfully added.
   user_data_auth::CryptohomeErrorCode AddKey(
-      const user_data_auth::AddKeyRequest request);
+      const user_data_auth::AddKeyRequest& request);
 
   // Check the key given in |request| again the currently mounted directories
   // and other credentials. |on_done| is called once the operation is completed,
@@ -809,6 +809,25 @@ class UserDataAuth {
   void OnFullChallengeResponseCheckKeyDone(
       base::OnceCallback<void(user_data_auth::CryptohomeErrorCode)> on_done,
       std::unique_ptr<Credentials> credentials);
+
+  // ================= Key Management Related Helper Methods ============
+
+  // This utility function wraps the keyset_management methods to add a new
+  // credential to the user keyset. Obtains the existing vault keyset by
+  // authenticating with the existing credentials; adds a reset seed to the
+  // existing vault keyset; and then adds the new credentials and key data to
+  // the user vault keyset.
+  CryptohomeErrorCode AddVaultKeyset(const Credentials& existing_credentials,
+                                     const Credentials& new_credentials,
+                                     bool clobber);
+
+  //  This utility function wraps the keyset_management methods to migrate to a
+  //  new credential for the user keyset.Obtains the vault keyset by
+  //  authenticating against the existing credentials, and calls Migrate() with
+  //  this vault keyset and the given new credentials.
+  bool MigrateVaultKeyset(const Credentials& existing_credentials,
+                          const Credentials& new_credentials,
+                          int* key_index);
 
   // ================ Fingerprint Auth Related Methods ==================
 

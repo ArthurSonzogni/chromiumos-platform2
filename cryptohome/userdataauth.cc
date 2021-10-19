@@ -1720,13 +1720,6 @@ void UserDataAuth::ContinueMountWithCredentials(
   reply.set_sanitized_username(
       brillo::cryptohome::home::SanitizeUserName(account_id));
 
-  // While it would be cleaner to implement the privilege enforcement
-  // here, that can only be done if a label was supplied.  If a wildcard
-  // was supplied, then we can only perform the enforcement after the
-  // matching key is identified.
-  //
-  // See Mount::MountCryptohome for privilege checking.
-
   // Check if the guest user is mounted, if it is, we can't proceed.
   scoped_refptr<UserSession> guest_session = GetUserSession(guest_user_);
   bool guest_mounted =
@@ -1933,8 +1926,64 @@ MountError UserDataAuth::AttemptUserMount(
   return user_session->MountVault(auth_session, mount_args);
 }
 
+bool UserDataAuth::MigrateVaultKeyset(const Credentials& existing_credentials,
+                                      const Credentials& new_credentials,
+                                      int* key_index) {
+  DCHECK_EQ(existing_credentials.username(), new_credentials.username());
+  DCHECK(key_index);
+  std::unique_ptr<VaultKeyset> vault_keyset =
+      keyset_management_->GetValidKeyset(existing_credentials, nullptr);
+  if (vault_keyset == nullptr) {
+    return false;
+  }
+
+  if (!keyset_management_->Migrate(*vault_keyset.get(), new_credentials,
+                                   key_index)) {
+    return false;
+  }
+  return true;
+}
+
+CryptohomeErrorCode UserDataAuth::AddVaultKeyset(
+    const Credentials& existing_credentials,
+    const Credentials& new_credentials,
+    bool clobber) {
+  DCHECK_EQ(existing_credentials.username(), new_credentials.username());
+  std::unique_ptr<VaultKeyset> vk =
+      keyset_management_->GetValidKeyset(existing_credentials, nullptr);
+
+  if (!vk) {
+    // Differentiate between failure and non-existent.
+    if (!existing_credentials.key_data().label().empty()) {
+      vk = keyset_management_->GetVaultKeyset(
+          existing_credentials.GetObfuscatedUsername(system_salt_),
+          existing_credentials.key_data().label());
+      if (!vk.get()) {
+        LOG(WARNING) << "Key not found for AddKey operation.";
+        return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND;
+      }
+    }
+    LOG(WARNING) << "Invalid authentication provided for AddKey operation.";
+    return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED;
+  }
+
+  // If the newly added credential is an LE credential and reset seed is
+  // missing in the vault keyset it needs to be added. We don't know whether
+  // it is LE credential yet. So add reset_seed in anycase and resave.
+  VaultKeyset* vault_keyset = vk.get();
+  CryptohomeErrorCode crypto_error =
+      keyset_management_->AddWrappedResetSeedIfMissing(vault_keyset,
+                                                       existing_credentials);
+  // Add the new key data to the user vault_keyset.
+  if (crypto_error == CRYPTOHOME_ERROR_NOT_SET) {
+    crypto_error =
+        keyset_management_->AddKeyset(new_credentials, *vault_keyset, clobber);
+  }
+  return crypto_error;
+}
+
 user_data_auth::CryptohomeErrorCode UserDataAuth::AddKey(
-    const user_data_auth::AddKeyRequest request) {
+    const user_data_auth::AddKeyRequest& request) {
   AssertOnMountThread();
 
   if (!request.has_account_id() || !request.has_authorization_request()) {
@@ -1952,7 +2001,6 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::AddKey(
   // Note that there's no check for empty AuthorizationRequest key label because
   // such a key will test against all VaultKeysets of a compatible
   // key().data().type(), and thus is valid.
-
   if (request.authorization_request().key().secret().empty()) {
     LOG(ERROR) << "No key secret in AddKeyRequest.";
     return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
@@ -1978,16 +2026,13 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::AddKey(
     return user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
   }
 
-  // An integer for AddKeyset to write the resulting index. This is discarded in
-  // the end.
-  int unused_keyset_index;
-
   const std::string& new_key_secret = request.key().secret();
-  SecureBlob new_secret(new_key_secret);
+  Credentials new_credentials(account_id, SecureBlob(new_key_secret));
+
+  new_credentials.set_key_data(request.key().data());
   CryptohomeErrorCode result;
-  result = keyset_management_->AddKeyset(
-      credentials, new_secret, &request.key().data(),
-      request.clobber_if_exists(), &unused_keyset_index);
+  result =
+      AddVaultKeyset(credentials, new_credentials, request.clobber_if_exists());
 
   // Note that cryptohome::CryptohomeErrorCode and
   // user_data_auth::CryptohomeErrorCode are same in content, and it'll remain
@@ -2491,14 +2536,14 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::MigrateKey(
 
   Credentials credentials(account_id, SecureBlob(request.secret()));
 
+  Credentials old_credentials(
+      account_id, SecureBlob(request.authorization_request().key().secret()));
   int key_index = -1;
-  if (!keyset_management_->Migrate(
-          credentials,
-          SecureBlob(request.authorization_request().key().secret()),
-          &key_index)) {
+  if (!MigrateVaultKeyset(old_credentials, credentials, &key_index)) {
     ResetDictionaryAttackMitigation();
     return user_data_auth::CRYPTOHOME_ERROR_MIGRATE_KEY_FAILED;
   }
+
   scoped_refptr<UserSession> session = GetUserSession(account_id);
   if (session.get()) {
     if (!session->SetCredentials(credentials, key_index)) {

@@ -33,10 +33,14 @@ class MockKeysetManagement : public KeysetManagement {
   MOCK_METHOD(bool, AreCredentialsValid, (const Credentials&), (override));
   MOCK_METHOD(bool,
               Migrate,
-              (const Credentials&, const brillo::SecureBlob&, int*),
+              (const VaultKeyset&, const Credentials&, int*),
               (override));
   MOCK_METHOD(std::unique_ptr<VaultKeyset>,
               LoadUnwrappedKeyset,
+              (const Credentials&, MountError*),
+              (override));
+  MOCK_METHOD(std::unique_ptr<VaultKeyset>,
+              GetValidKeyset,
               (const Credentials&, MountError*),
               (override));
   MOCK_METHOD(std::unique_ptr<VaultKeyset>,
@@ -57,12 +61,12 @@ class MockKeysetManagement : public KeysetManagement {
               (const, override));
   MOCK_METHOD(bool, AddInitialKeyset, (const Credentials&), (override));
   MOCK_METHOD(CryptohomeErrorCode,
+              AddWrappedResetSeedIfMissing,
+              (VaultKeyset * vault_keyset, const Credentials& credentials),
+              (override));
+  MOCK_METHOD(CryptohomeErrorCode,
               AddKeyset,
-              (const Credentials&,
-               const brillo::SecureBlob&,
-               const KeyData*,
-               bool,
-               int*),
+              (const Credentials&, const VaultKeyset&, bool),
               (override));
   MOCK_METHOD(CryptohomeErrorCode,
               RemoveKeyset,

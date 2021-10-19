@@ -2941,13 +2941,55 @@ TEST_F(UserDataAuthExTest, AddKeyValidity) {
   add_req_->mutable_key()->mutable_data()->set_label("just a label");
 
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, AddKeyset(_, _, _, _, _))
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
+  EXPECT_CALL(keyset_management_, AddKeyset(_, _, _))
       .WillOnce(Return(cryptohome::CRYPTOHOME_ERROR_NOT_SET));
 
   EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 
+// Tests the AddKey interface for reset seed generation.
+TEST_F(UserDataAuthExTest, AddKeyResetSeedGeneration) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+  PrepareArguments();
+
+  add_req_->mutable_account_id()->set_account_id("foo@gmail.com");
+  add_req_->mutable_authorization_request()->mutable_key()->set_secret("blerg");
+  add_req_->mutable_key();
+  add_req_->mutable_key()->set_secret("some secret");
+  add_req_->mutable_key()->mutable_data()->set_label("just a label");
+
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
+  EXPECT_CALL(keyset_management_, AddWrappedResetSeedIfMissing(_, _));
+  EXPECT_CALL(keyset_management_, AddKeyset(_, _, _))
+      .WillOnce(Return(cryptohome::CRYPTOHOME_ERROR_NOT_SET));
+
+  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+}
+
+// Tests the AddKey interface for vault keyset not found case.
+TEST_F(UserDataAuthExTest, AddKeyKeysetNotFound) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+  PrepareArguments();
+
+  add_req_->mutable_account_id()->set_account_id("foo@gmail.com");
+  add_req_->mutable_authorization_request()->mutable_key()->set_secret("blerg");
+  add_req_->mutable_key();
+  add_req_->mutable_key()->set_secret("some secret");
+  add_req_->mutable_key()->mutable_data()->set_label("just a label");
+
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
+      .WillOnce(Return(ByMove(nullptr)));
+
+  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
+            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+}
 
 // Note that CheckKey tries to two method to check whether a key is valid or
 // not. The first is through Homedirs, and the second is through Mount.
@@ -3491,15 +3533,32 @@ TEST_F(UserDataAuthExTest, MigrateKeyValidity) {
   SetupMount(kUsername1);
 
   // Test for successful case.
+
+  EXPECT_CALL(
+      keyset_management_,
+      GetValidKeyset(Property(&Credentials::username, kUsername1), nullptr))
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_,
-              Migrate(Property(&Credentials::username, kUsername1),
-                      brillo::SecureBlob(kSecret1), _))
+              Migrate(_, Property(&Credentials::username, kUsername1), _))
       .WillOnce(Return(true));
   EXPECT_EQ(userdataauth_->MigrateKey(*migrate_req_),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
-  // Test for unsuccessful case.
-  EXPECT_CALL(keyset_management_, Migrate(_, brillo::SecureBlob(kSecret1), _))
+  // Test for unsuccessful case when existing keyset is not validated.
+  EXPECT_CALL(
+      keyset_management_,
+      GetValidKeyset(Property(&Credentials::username, kUsername1), nullptr))
+      .WillOnce(Return(ByMove(nullptr)));
+  EXPECT_EQ(userdataauth_->MigrateKey(*migrate_req_),
+            user_data_auth::CRYPTOHOME_ERROR_MIGRATE_KEY_FAILED);
+
+  // Test for unsuccessful case when keyset migration fails.
+  EXPECT_CALL(
+      keyset_management_,
+      GetValidKeyset(Property(&Credentials::username, kUsername1), nullptr))
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
+  EXPECT_CALL(keyset_management_,
+              Migrate(_, Property(&Credentials::username, kUsername1), _))
       .WillOnce(Return(false));
   EXPECT_EQ(userdataauth_->MigrateKey(*migrate_req_),
             user_data_auth::CRYPTOHOME_ERROR_MIGRATE_KEY_FAILED);
