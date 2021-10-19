@@ -744,6 +744,12 @@ class Platform {
   // keyring.
   virtual bool SetupProcessKeyring();
 
+  // Gets the version of the dircrypto policy for the directory.
+  virtual int GetDirectoryPolicyVersion(const base::FilePath& dir) const;
+
+  // Returns true if kernel support fscrypt key ioctl (pre-req for v2 policy).
+  virtual bool CheckFscryptKeyIoctlSupport() const;
+
   // Returns the state of the directory's encryption key.
   virtual dircrypto::KeyState GetDirCryptoKeyState(const base::FilePath& dir);
 

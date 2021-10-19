@@ -1531,6 +1531,14 @@ bool Platform::SetDirCryptoKey(const FilePath& dir,
   return dircrypto::SetDirectoryKey(dir, key_reference);
 }
 
+int Platform::GetDirectoryPolicyVersion(const base::FilePath& dir) const {
+  return dircrypto::GetDirectoryPolicyVersion(dir);
+}
+
+bool Platform::CheckFscryptKeyIoctlSupport() const {
+  return dircrypto::CheckFscryptKeyIoctlSupport();
+}
+
 bool Platform::AddDirCryptoKeyToKeyring(
     const brillo::SecureBlob& key, dircrypto::KeyReference* key_reference) {
   return dircrypto::AddDirectoryKey(key, key_reference);

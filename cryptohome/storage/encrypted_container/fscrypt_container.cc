@@ -40,11 +40,11 @@ bool FscryptContainer::Setup(const FileSystemKey& encryption_key, bool create) {
   }
 
   key_reference_.policy_version =
-      dircrypto::GetDirectoryPolicyVersion(backing_dir_);
+      platform_->GetDirectoryPolicyVersion(backing_dir_);
 
   if (key_reference_.policy_version < 0) {
     key_reference_.policy_version =
-        (allow_v2_ && dircrypto::CheckFscryptKeyIoctlSupport())
+        (allow_v2_ && platform_->CheckFscryptKeyIoctlSupport())
             ? FSCRYPT_POLICY_V2
             : FSCRYPT_POLICY_V1;
   }

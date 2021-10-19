@@ -370,6 +370,11 @@ class MockPlatform : public Platform {
               SetDirCryptoKey,
               (const base::FilePath&, const dircrypto::KeyReference&),
               (override));
+  MOCK_METHOD(int,
+              GetDirectoryPolicyVersion,
+              (const base::FilePath& dir),
+              (const, override));
+  MOCK_METHOD(bool, CheckFscryptKeyIoctlSupport, (), (const, override));
   MOCK_METHOD(bool,
               AddDirCryptoKeyToKeyring,
               (const brillo::SecureBlob& key, dircrypto::KeyReference*),
