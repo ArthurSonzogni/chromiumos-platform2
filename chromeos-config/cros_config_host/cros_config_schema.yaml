@@ -587,6 +587,14 @@ properties:
               dependencies:
                 ro-version:
                   - board
+            hps:
+              type: object
+              description: Contains details about the model's hps (go/cros-hps) implementation.
+              properties:
+                has-hps:
+                  description: Whether the model has an hps device.
+                  type: boolean
+              additionalProperties: false
             firmware:
               type: object
               properties:

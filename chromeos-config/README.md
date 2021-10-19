@@ -422,6 +422,7 @@ In the tables below,
 | firmware | [firmware](#firmware) |  | False |  | False |  |
 | firmware-signing | [firmware-signing](#firmware_signing) |  | False |  | True |  |
 | hardware-properties | [hardware-properties](#hardware_properties) |  | False |  | False | Contains boolean flags or enums for hardware properties of this board, for example if it's convertible, has a touchscreen, has a camera, etc. This information is used to auto-generate C code that is consumed by the EC build process in order to do run-time configuration. If a value is defined within a config file, but not for a specific model, that value will be assumed to be false for that model. If a value is an enum and is not specified for a specific model, it will default to "none". All properties must be booleans or enums. If non-boolean properties are desired, the generation code in cros_config_schema.py must be updated to support them. |
+| hps | [hps](#hps) |  | False |  | False | Contains details about the model's hps (go/cros-hps) implementation. |
 | hwid-override | string | ```[A-Z0-9]+(-[A-Z]{4})?( [0-9A-F]+(-[0-9A-F]+)*)? ([A-Z2-7]{4}(-[A-Z2-7]{4})*\|[A-Z2-7][2-9][A-Z2-7](-[A-Z2-7][2-9][A-Z2-7])*)``` | False |  | False | Override the HWID reported by crossystem.  This property should only be used for devices supporting non-ChromeOS firmware, where we don't have the ability to set the HWID in GBB.  |
 | identity | [identity](#identity) |  | False |  | False | Defines attributes that are used by cros_config to detect the identity of the platform and which corresponding config should be used. This tuple must either contain x86 properties only or ARM properties only. |
 | keyboard | [keyboard](#keyboard) |  | False |  | False | Contains details about the model's keyboard. |
@@ -647,6 +648,11 @@ In the tables below,
 | is-lid-convertible | boolean |  | False |  | False | Can the lid be rotated 360 degrees. |
 | psu-type | string |  | False |  | False | Type of PSU the device has: - battery: the device has a battery intended for primary use - AC_primary: the device has a battery, but it is not intended for primary use - AC_only: the device has no battery - no_power: the device does not receive power in any direct manner (e.g., it is virtualized)  |
 | stylus-category | string |  | False |  | False | Denotes the category of stylus this device contains. |
+
+### hps
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| has-hps | boolean |  | False |  | False | Whether the model has an hps device. |
 
 ### identity
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
