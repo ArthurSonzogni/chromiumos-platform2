@@ -6,6 +6,9 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [ ":bootid-logger" ]
+  if (use.fuzzer) {
+    deps += [ ":bootid_logger_fuzzer" ]
+  }
   if (use.test) {
     deps += [ ":bootid-logger-testrunner" ]
   }
@@ -32,6 +35,17 @@ executable("bootid-logger") {
   configs += [ ":target_defaults" ]
   deps = [ ":bootid_logger_lib" ]
   install_path = "sbin"
+}
+
+if (use.fuzzer) {
+  executable("bootid_logger_fuzzer") {
+    sources = [ "bootid_logger_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    deps = [ ":bootid_logger_lib" ]
+  }
 }
 
 if (use.test) {
