@@ -95,7 +95,10 @@ if (use.test) {
 
 if (use.fuzzer) {
   executable("hammerd_load_ec_image_fuzzer") {
-    sources = [ "update_fw_load_ec_image_fuzzer.cc" ]
+    sources = [
+      "fuzzed_ec_image.cc",
+      "update_fw_load_ec_image_fuzzer.cc",
+    ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
