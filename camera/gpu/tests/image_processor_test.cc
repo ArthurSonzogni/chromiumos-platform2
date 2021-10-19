@@ -17,6 +17,19 @@
 #include <system/graphics.h>
 #include <drm_fourcc.h>
 
+#pragma push_macro("None")
+#pragma push_macro("Bool")
+#undef None
+#undef Bool
+
+// gtest's internal typedef of None and Bool conflicts with the None and Bool
+// macros in X11/X.h (https://github.com/google/googletest/issues/371).
+// X11/X.h is pulled in by the GL headers we include.
+#include <gtest/gtest.h>
+
+#pragma pop_macro("None")
+#pragma pop_macro("Bool")
+
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_buffer_utils.h"
 #include "cros-camera/common.h"
@@ -91,7 +104,7 @@ void ParseCommandLine(int argc, char** argv) {
 
 }  // namespace
 
-class GlImageProcessorTest : public GlTestFixture {
+class GlImageProcessorTest : public testing::Test {
  protected:
   GlImageProcessorTest() = default;
   ~GlImageProcessorTest() = default;
@@ -180,6 +193,7 @@ class GlImageProcessorTest : public GlTestFixture {
     ASSERT_TRUE(ReadFileIntoBuffer(*input_buffer_, image_file));
   }
 
+  GlTestFixture gl_test_fixture_;
   GpuImageProcessor image_processor_;
   ScopedBufferHandle input_buffer_;
   ScopedBufferHandle output_buffer_;

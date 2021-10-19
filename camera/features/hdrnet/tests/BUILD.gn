@@ -4,16 +4,23 @@
 
 group("all") {
   deps = [
+    ":hdrnet_processor_benchmark",
     ":hdrnet_processor_impl_test",
     ":hdrnet_stream_manipulator_test",
   ]
 }
 
 pkg_config("target_defaults") {
-  configs = [ "//common-mk:test" ]
+  configs = [
+    "//camera/build:cros_camera_common",
+    "//common-mk:test",
+  ]
   pkg_deps = [
+    "benchmark",
     "libchrome-test",
     "libcros_camera",
+    "libcros_camera_android_deps",
+    "libdrm",
   ]
   defines = [
     "USE_IPU6=${use.ipu6}",
@@ -21,13 +28,26 @@ pkg_config("target_defaults") {
   ]
 }
 
-executable("hdrnet_processor_impl_test") {
-  sources = [ "//camera/features/hdrnet/tests/hdrnet_processor_impl_test.cc" ]
+source_set("hdrnet_processor_test_fixture") {
+  sources =
+      [ "//camera/features/hdrnet/tests/hdrnet_processor_test_fixture.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
     "//camera/features/hdrnet",
     "//camera/gpu:gpu_test_support",
   ]
+}
+
+executable("hdrnet_processor_benchmark") {
+  sources = [ "//camera/features/hdrnet/tests/hdrnet_processor_benchmark.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":hdrnet_processor_test_fixture" ]
+}
+
+executable("hdrnet_processor_impl_test") {
+  sources = [ "//camera/features/hdrnet/tests/hdrnet_processor_impl_test.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":hdrnet_processor_test_fixture" ]
 }
 
 executable("hdrnet_stream_manipulator_test") {
