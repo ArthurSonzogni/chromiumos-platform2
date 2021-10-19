@@ -1433,6 +1433,7 @@ bool InitializeTest(int* argc,
       "scarlet",
   };
   const std::vector<std::string> kIgnoreSensorOrientationTestModels = {
+      "collis",
       "jelboz",
       "jelboz360",
   };
