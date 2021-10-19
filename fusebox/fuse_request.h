@@ -139,6 +139,9 @@ class DirEntryResponse {
   // Append |request| to the DirEntryRequest list.
   void Append(std::unique_ptr<DirEntryRequest> request);
 
+  // Error the DirEntry list with errno |error|.
+  void Append(int error);
+
  private:
   // Called on Append() to respond to DirEntry requests.
   void Respond();
@@ -152,6 +155,9 @@ class DirEntryResponse {
 
   // List of DirEntry from the file system: readdir(2).
   std::vector<struct DirEntry> entry_;
+
+  // Error state of the DirEntry list.
+  int error_ = 0;
 
   // True when the DirEntry list is complete.
   bool end_ = false;

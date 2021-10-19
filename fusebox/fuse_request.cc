@@ -144,12 +144,20 @@ void DirEntryResponse::Append(std::unique_ptr<DirEntryRequest> request) {
   Respond();
 }
 
+void DirEntryResponse::Append(int error) {
+  error_ = error;
+  Respond();
+}
+
 void DirEntryResponse::Respond() {
   const auto process_next_request = [&]() {
     DCHECK(!request_.empty());
 
-    if (request_[0]->IsInterrupted()) {
-      request_.erase(request_.begin());
+    if (request_[0]->IsInterrupted())
+      return true;
+
+    if (error_) {
+      request_[0]->ReplyError(error_);
       return true;
     }
 
@@ -161,14 +169,12 @@ void DirEntryResponse::Respond() {
       if (request_[0]->AddEntry(entry_[offset++], next))
         continue;  // add next entry
       request_[0]->ReplyDone();
-      request_.erase(request_.begin());
       return true;
     }
 
     CHECK_GE(offset, entry_.size());
     if (end_) {
       request_[0]->ReplyDone();
-      request_.erase(request_.begin());
       return true;
     }
 
@@ -178,6 +184,7 @@ void DirEntryResponse::Respond() {
   while (!request_.empty() && !entry_.empty()) {
     if (!process_next_request())
       break;
+    request_.erase(request_.begin());
   }
 }
 
