@@ -174,7 +174,11 @@ bool FakeMountMapper::IsMounted(const base::FilePath& path) const {
 }
 
 bool FakeMountMapper::IsOnMount(const base::FilePath& path) const {
-  for (const auto& [target, unused] : target_to_mount_) {
+  for (const auto& [target, mapping] : target_to_mount_) {
+    if (mapping.GetTarget() == mapping.GetSource()) {
+      // ignore self-binds for resolutions.
+      continue;
+    }
     if (target == path || target.IsParent(path)) {
       return true;
     }
@@ -187,6 +191,10 @@ std::optional<FakeMountMapping> FakeMountMapper::FindMapping(
   std::optional<FakeMountMapping> result;
   for (const auto& [target, mapping] : target_to_mount_) {
     // Find the longest prefix match
+    if (mapping.GetTarget() == mapping.GetSource()) {
+      // ignore self-binds for resolutions.
+      continue;
+    }
     if (target == path || target.IsParent(path)) {
       if (!result.has_value() || target.IsParent(result->GetTarget())) {
         result.emplace(mapping);
