@@ -14,6 +14,7 @@ group("all") {
     deps += [
       ":typecd_cros_ec_util_fuzzer",
       ":typecd_partner_fuzzer",
+      ":typecd_udev_monitor_fuzzer",
     ]
   }
 }
@@ -109,6 +110,16 @@ if (use.fuzzer) {
 
   executable("typecd_cros_ec_util_fuzzer") {
     sources = [ "cros_ec_util_fuzzer.cc" ]
+    configs += [
+      ":test_defaults",
+      "//common-mk/common_fuzzer",
+      "//common-mk:test",
+    ]
+    deps = [ ":typecd_common" ]
+  }
+
+  executable("typecd_udev_monitor_fuzzer") {
+    sources = [ "udev_monitor_fuzzer.cc" ]
     configs += [
       ":test_defaults",
       "//common-mk/common_fuzzer",

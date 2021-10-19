@@ -117,6 +117,7 @@ class UdevMonitor {
 
  private:
   friend class UdevMonitorTest;
+  friend class UdevMonitorFuzzer;
   FRIEND_TEST(UdevMonitorTest, TestBasic);
   FRIEND_TEST(UdevMonitorTest, TestHotplug);
   FRIEND_TEST(UdevMonitorTest, TestInvalidPortSyspath);
