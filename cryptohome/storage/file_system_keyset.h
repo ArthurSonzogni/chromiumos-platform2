@@ -20,12 +20,19 @@ class FileSystemKeyset final {
  public:
   FileSystemKeyset();
   explicit FileSystemKeyset(const cryptohome::VaultKeyset& vault_keyset);
+  FileSystemKeyset(FileSystemKey key,
+                   FileSystemKeyReference key_reference,
+                   brillo::SecureBlob chaps_key);
   ~FileSystemKeyset();
 
   // Getters for the associated key data
   const FileSystemKey Key() const;
   const FileSystemKeyReference KeyReference() const;
   const brillo::SecureBlob& chaps_key() const;
+
+  // TODO(dlunev): make vault keyset to use this CreateRandom instead
+  // of its own.
+  static FileSystemKeyset CreateRandom();
 
  private:
   // Keys for file encryption. Currently we would need file_encryption_key(fek)
