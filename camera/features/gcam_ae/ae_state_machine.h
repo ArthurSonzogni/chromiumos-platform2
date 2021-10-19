@@ -35,11 +35,16 @@ class AeStateMachine {
   struct TuningParameters {
     // The threshold in log2 space for TET target stabilization. See the
     // comments for the kSearching state below.
-    float tet_stabilize_threshold_log2 = 0.1f;
+    float tet_target_threshold_log2 = 0.1f;
 
     // The TET step in log2 space for TET convergence. See the comments of the
     // kConverging state below.
     float converging_step_log2 = 0.1f;
+
+    // The duration for which the converged TET needs to keep stable in order to
+    // transition to the kConverged state. See the comments of the kConverging
+    // state below.
+    int tet_converge_stabilize_duration_ms = 1000;
 
     // The threshold in log2 space for declaring converged TET. See the comments
     // of the kConverged state below.
@@ -76,7 +81,7 @@ class AeStateMachine {
   // Define the SearchTargetTet() procedure as:
   //
   //   tet_delta = abs(log2(|new_tet|) - log2(|previous_tet|))
-  //   if (tet_delta < tet_stabilize_threshold_log2):
+  //   if (tet_delta < tet_target_threshold_log2):
   //     |target_tet| = |new_tet|
   //   else:
   //     |target_tet| = nil
@@ -132,8 +137,11 @@ class AeStateMachine {
     // * Run SearchTargetTet()
     //   * kSearching: if |target_tet| is not set
     // * Run ConvergeToTargetTet()
-    //   * kConverging: if |converged_tet| is not set
-    //   * kConverged: if |converged_tet| is set
+    //   * kConverging: if |converged_tet| is not set, or if |converged_tet| is
+    //         not stabilized for more than tet_converge_stabilize_duration_ms
+    //         ms.
+    //   * kConverged: if |converged_tet| is set and is stabilized for more than
+    //         tet_converge_stabilize_duration_ms ms.
     kConverging,
 
     // The AE algorithm has stabilized the TET to the stable TET the algorithm
@@ -219,6 +227,7 @@ class AeStateMachine {
   // The converged TET that the state machine has settled with.
   base::Optional<float> converged_tet_ GUARDED_BY(lock_);
   base::Optional<float> converged_hdr_ratio_ GUARDED_BY(lock_);
+  base::Optional<base::TimeTicks> converged_start_time_ GUARDED_BY(lock_);
   base::Optional<int> tet_retention_duration_ms_ GUARDED_BY(lock_);
 
   // The last time when |converged_tet_| is still considered valid.
