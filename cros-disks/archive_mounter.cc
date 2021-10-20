@@ -169,9 +169,8 @@ MountErrorType ArchiveMounter::FormatInvocationCommand(
   std::vector<std::string> opts = {
       "ro", "umask=0222", base::StringPrintf("uid=%d", kChronosUID),
       base::StringPrintf("gid=%d", kChronosAccessGID)};
-  // The fuse-archive program (and historically, the archivemount program)
-  // takes additional command line options.
-  if (metrics_name_ == kArchivemountMetricsName) {
+  // The fuse-archive program takes additional command line options.
+  if (metrics_name_ == kFuseArchiveMetricsName) {
     opts.push_back("passphrase");
     opts.push_back("redact");
   }

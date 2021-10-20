@@ -18,7 +18,7 @@ class Metrics;
 // An implementation of FUSEMounter tailored for mounting archives.
 class ArchiveMounter : public FUSEMounter {
  public:
-  static constexpr char kArchivemountMetricsName[] = "Archivemount";
+  static constexpr char kFuseArchiveMetricsName[] = "FuseArchive";
   static constexpr char kChromeNamespace[] = "/run/namespaces/mnt_chrome";
 
   ArchiveMounter(const Platform* platform,

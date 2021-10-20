@@ -91,15 +91,20 @@ bool ArchiveManager::Initialize() {
         CreateSandboxFactory(std::move(executable), "fuse-archivemount");
 
     // These fuse-archive exit codes are defined at
-    // https://github.com/google/fuse-archive/blob/8659067a2457d8eb86d791d2f059e3b5aad5f783/src/main.cc#L79-L80
+    // https://github.com/google/fuse-archive/blob/a9df9f76c99b4b127e217f91b220ffe96bd0052f/src/main.cc#L82-L84
     std::vector<int> password_needed_exit_codes = {
         20,  // EXIT_CODE_PASSPHRASE_REQUIRED
         21,  // EXIT_CODE_PASSPHRASE_INCORRECT
+        // We don't add 22 (EXIT_CODE_PASSPHRASE_NOT_SUPPORTED) here. That exit
+        // code means that the archive file has a password, but libarchive (and
+        // thus the fuse-archive program) does not support decrypting that file
+        // format. There's no point prompting the user for the password. We
+        // couldn't use the password even if it's correct.
     };
 
     mounters_.push_back(std::make_unique<ArchiveMounter>(
         platform(), process_reaper(), ext, metrics(),
-        ArchiveMounter::kArchivemountMetricsName,
+        ArchiveMounter::kFuseArchiveMetricsName,
         std::move(password_needed_exit_codes), std::move(sandbox_factory)));
   }
 
