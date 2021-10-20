@@ -25,6 +25,8 @@ struct PreeditStyle {
   uint32_t style;
 };
 
+enum class KeyState { kPressed, kReleased };
+
 // IMContextBackend wraps a text_input_v1 object.
 class IMContextBackend {
  public:
@@ -36,6 +38,8 @@ class IMContextBackend {
                             int cursor,
                             const std::vector<PreeditStyle>& styles) = 0;
     virtual void Commit(const std::string& text) = 0;
+
+    virtual void KeySym(uint32_t keysym, KeyState state) = 0;
   };
 
   explicit IMContextBackend(Observer* observer);
@@ -59,6 +63,11 @@ class IMContextBackend {
   void SetPreeditStyling(uint32_t index, uint32_t length, uint32_t style);
   void SetPreeditCursor(uint32_t cursor);
   void Commit(uint32_t serial, const char* text);
+  void KeySym(uint32_t serial,
+              uint32_t time,
+              uint32_t sym,
+              uint32_t state,
+              uint32_t modifiers);
 
   static const zwp_text_input_v1_listener text_input_listener_;
   zwp_text_input_v1* text_input_ = nullptr;

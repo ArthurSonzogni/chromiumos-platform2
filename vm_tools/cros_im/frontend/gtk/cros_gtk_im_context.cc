@@ -116,6 +116,21 @@ CrosGtkIMContext::~CrosGtkIMContext() = default;
 
 void CrosGtkIMContext::SetClientWindow(GdkWindow* window) {
   window_ = window;
+  gtk_window_ = nullptr;
+  if (!window)
+    return;
+
+  GdkWindow* toplevel = gdk_window_get_toplevel(window);
+  GList* toplevels = gtk_window_list_toplevels();
+  while (toplevels) {
+    GtkWindow* gtk_window = GTK_WINDOW(toplevels->data);
+    if (gtk_widget_get_window(GTK_WIDGET(gtk_window)) == toplevel) {
+      gtk_window_ = gtk_window;
+      break;
+    }
+  }
+  if (!gtk_window_)
+    g_warning("Failed to find GtkWindow");
 }
 
 void CrosGtkIMContext::GetPreeditString(char** preedit,
@@ -132,7 +147,7 @@ void CrosGtkIMContext::GetPreeditString(char** preedit,
   }
 }
 
-gboolean CrosGtkIMContext::FilterKeypress(GdkEventKey* Key) {
+gboolean CrosGtkIMContext::FilterKeypress(GdkEventKey* event) {
   // The compositor sends us events directly so we generally don't need to do
   // anything here. It is possible for key events to race with input field
   // activation, in which case we will fail to send the key event to the IME.
@@ -140,6 +155,8 @@ gboolean CrosGtkIMContext::FilterKeypress(GdkEventKey* Key) {
 }
 
 void CrosGtkIMContext::FocusIn() {
+  if (!window_)
+    return;
   backend_->Activate(GetSeat(), gdk_wayland_window_get_wl_surface(window_));
 
   // TODO(timloh): Set content type.
@@ -209,6 +226,48 @@ void CrosGtkIMContext::BackendObserver::Commit(const std::string& text) {
     g_signal_emit_by_name(context_, "preedit-end");
   }
   g_signal_emit_by_name(context_, "commit", text.c_str());
+}
+
+void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
+                                               KeyState state) {
+  if (!context_->window_ || !context_->gtk_window_)
+    return;
+
+  // TODO(timloh): This implementation is incomplete. Take a a look at GTK's
+  // gdkdevice-wayland.c when implementing it properly.
+
+  GdkEvent* raw_event = gdk_event_new(
+      state == KeyState::kPressed ? GDK_KEY_PRESS : GDK_KEY_RELEASE);
+
+  GdkEventKey* event = reinterpret_cast<GdkEventKey*>(raw_event);
+  event->window = context_->window_;
+  g_object_ref(event->window);  // Ref is dropped in gdk_event_free.
+  event->send_event = true;
+  event->time = GDK_CURRENT_TIME;
+  event->state = 0;
+  event->keyval = keysym;
+
+  // These are "deprecated and should never be used" so we leave them empty.
+  // We may have to revisit if we find apps relying on these.
+  event->length = 0;
+  event->string = nullptr;
+
+  if (keysym == GDK_KEY_BackSpace) {
+    event->hardware_keycode = 22;
+  } else {
+    event->hardware_keycode = 0;
+  }
+
+  event->group = 0;
+  event->is_modifier = false;
+
+  bool result;
+  g_signal_emit_by_name(context_->gtk_window_, "key-press-event", event,
+                        &result);
+  if (!result)
+    g_warning("Failed to send key press event.");
+
+  gdk_event_free(raw_event);
 }
 
 }  // namespace gtk

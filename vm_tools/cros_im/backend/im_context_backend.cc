@@ -39,7 +39,7 @@ const zwp_text_input_v1_listener IMContextBackend::text_input_listener_ = {
     .commit_string = Fwd<&IMContextBackend::Commit>,
     .cursor_position = DoNothing,
     .delete_surrounding_text = DoNothing,
-    .keysym = DoNothing,
+    .keysym = Fwd<&IMContextBackend::KeySym>,
     .language = DoNothing,
     .text_direction = DoNothing,
 };
@@ -124,6 +124,17 @@ void IMContextBackend::SetPreedit(uint32_t serial,
 void IMContextBackend::Commit(uint32_t serial, const char* text) {
   styles_.clear();
   observer_->Commit(text);
+}
+
+void IMContextBackend::KeySym(uint32_t serial,
+                              uint32_t time,
+                              uint32_t sym,
+                              uint32_t state,
+                              uint32_t modifiers) {
+  // TODO(timloh): Handle remaining arguments.
+  observer_->KeySym(sym, state == WL_KEYBOARD_KEY_STATE_PRESSED
+                             ? KeyState::kPressed
+                             : KeyState::kReleased);
 }
 
 }  // namespace cros_im

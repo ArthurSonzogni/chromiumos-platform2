@@ -58,11 +58,14 @@ class CrosGtkIMContext : public GtkIMContext {
                     const std::vector<PreeditStyle>& styles) override;
     void Commit(const std::string& commit) override;
 
+    void KeySym(uint32_t keysym, KeyState state) override;
+
    private:
     CrosGtkIMContext* context_;
   };
 
   GdkWindow* window_ = nullptr;
+  GtkWindow* gtk_window_ = nullptr;
 
   std::string preedit_;
   int32_t preedit_cursor_pos_ = 0;
