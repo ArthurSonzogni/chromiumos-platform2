@@ -94,21 +94,6 @@ struct DoubleWrappedCompatAuthBlockState {
 };
 
 struct CryptohomeRecoveryAuthBlockState {
-  // Contains encrypted mediator share and data required for decryption.
-  struct EncryptedMediatorShare {
-    // The integrity tag of the data generated during encryption of the
-    // mediator share.
-    base::Optional<brillo::SecureBlob> tag;
-    // The initialization vector generated during encryption of the mediator
-    // share.
-    base::Optional<brillo::SecureBlob> iv;
-    // Ephemeral key created during encryption of the mediator share.
-    base::Optional<brillo::SecureBlob> ephemeral_pub_key;
-    // Encrypted mediator share.
-    base::Optional<brillo::SecureBlob> encrypted_data;
-  };
-  // Secret share of the mediator encrypted to the mediator public key.
-  base::Optional<EncryptedMediatorShare> encrypted_mediator_share;
   // HSM Payload is created at onboarding and contains all the data that are
   // persisted on a chromebook and will be eventually used for recovery,
   // serialized to CBOR.
