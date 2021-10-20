@@ -12,6 +12,7 @@
 #include <base/sys_byteorder.h>
 #include <gtest/gtest.h>
 
+#include "hps/dev.h"
 #include "hps/hal/fake_dev.h"
 #include "hps/hps.h"
 #include "hps/hps_impl.h"
@@ -21,8 +22,52 @@
 #include "metrics/metrics_library_mock.h"
 
 using ::testing::_;
+using testing::Return;
 
-namespace {
+namespace hps {
+
+class MockHpsDev : public hps::DevInterface {
+ public:
+  MOCK_METHOD(bool, Read, (uint8_t, uint8_t*, size_t), (override));
+  MOCK_METHOD(bool, Write, (uint8_t, const uint8_t*, size_t), (override));
+  MOCK_METHOD(int, ReadReg, (hps::HpsReg), (override));
+  MOCK_METHOD(bool, WriteReg, (hps::HpsReg, uint16_t), (override));
+  bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len) override {
+    return true;
+  }
+  bool WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) override {
+    return true;
+  }
+};
+
+// A duplicate of HPSTest, but using a MockHpsDev, existing only while the
+// tests are converted to using the mock. TODO(evanbenn) complete the
+// conversion of the remainder of the tests
+class HPSTestButUsingAMock : public testing::Test {
+ protected:
+  void SetUp() override {
+    auto dev = std::make_unique<MockHpsDev>();
+    dev_ = dev.get();
+    hps_ = std::make_unique<hps::HPS_impl>(std::move(dev));
+    hps_->SetMetricsLibraryForTesting(std::make_unique<MetricsLibraryMock>());
+  }
+
+  void CreateBlob(const base::FilePath& file, int len) {
+    base::File f(file, base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
+    ASSERT_TRUE(f.IsValid());
+    f.SetLength(len);
+  }
+
+  MetricsLibraryMock* GetMetricsLibraryMock() {
+    return static_cast<MetricsLibraryMock*>(
+        hps_->metrics_library_for_testing());
+  }
+
+  bool CheckMagic() { return hps_->CheckMagic(); }
+
+  MockHpsDev* dev_;
+  std::unique_ptr<hps::HPS_impl> hps_;
+};
 
 class HPSTest : public testing::Test {
  protected:
@@ -58,8 +103,10 @@ class MockDownloadObserver {
 /*
  * Check for a magic number.
  */
-TEST_F(HPSTest, MagicNumber) {
-  EXPECT_EQ(hps_->Device()->ReadReg(hps::HpsReg::kMagic), hps::kHpsMagic);
+TEST_F(HPSTestButUsingAMock, MagicNumber) {
+  EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kMagic))
+      .WillOnce(Return(hps::kHpsMagic));
+  EXPECT_TRUE(CheckMagic());
 }
 
 /*
@@ -471,4 +518,4 @@ TEST(ReadVersionFromFile, BadFile) {
   EXPECT_FALSE(hps::ReadVersionFromFile(path, &version));
 }
 
-}  //  namespace
+}  // namespace hps

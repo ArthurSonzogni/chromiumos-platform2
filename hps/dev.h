@@ -22,24 +22,24 @@ class DevInterface {
    * Returns true on successful read, false on error.
    * In the event of an error, the contents may have been modified.
    */
-  bool Read(uint8_t cmd, uint8_t* data, size_t len);
+  virtual bool Read(uint8_t cmd, uint8_t* data, size_t len);
 
   /*
    * Write the data to the device.
    * Returns true on successful write, false on error.
    */
-  bool Write(uint8_t cmd, const uint8_t* data, size_t len);
+  virtual bool Write(uint8_t cmd, const uint8_t* data, size_t len);
 
   /*
    * Read 1 register.
    * Returns value read, or -1 for error.
    */
-  int ReadReg(HpsReg r);
+  virtual int ReadReg(HpsReg r);
   /*
    * Write 1 register.
    * Returns false on failure.
    */
-  bool WriteReg(HpsReg r, uint16_t data);
+  virtual bool WriteReg(HpsReg r, uint16_t data);
   /*
    * Return the maximum download block size (in bytes).
    * This value is the actual data to be written, not including the

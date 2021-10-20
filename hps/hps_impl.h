@@ -24,6 +24,7 @@ namespace hps {
 
 class HPS_impl : public HPS {
  public:
+  friend class HPSTestButUsingAMock;
   explicit HPS_impl(std::unique_ptr<DevInterface> dev)
       : device_(std::move(dev)),
         hw_rev_(0),
