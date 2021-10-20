@@ -89,8 +89,8 @@ namespace cryptohome {
 
 namespace {
 
-bool AssignSalt(size_t size, SecureBlob* salt) {
-  SecureBlob fake_salt(size, 'S');
+bool AssignSalt(SecureBlob* salt) {
+  SecureBlob fake_salt(CRYPTOHOME_DEFAULT_SALT_LENGTH, 'S');
   salt->swap(fake_salt);
   return true;
 }
@@ -153,9 +153,12 @@ class UserDataAuthTestBase : public ::testing::Test {
     // Skip CleanUpStaleMounts by default.
     ON_CALL(platform_, GetMountsBySourcePrefix(_, _))
         .WillByDefault(Return(false));
-    // Setup fake salt by default.
-    ON_CALL(crypto_, GetOrCreateSalt(_, _, _, _))
-        .WillByDefault(WithArgs<1, 3>(Invoke(AssignSalt)));
+    // Setup fake public mount salt by default.
+    ON_CALL(crypto_, GetPublicMountSalt(_))
+        .WillByDefault(WithArgs<0>(Invoke(AssignSalt)));
+    // Setup fake system salt by default.
+    ON_CALL(crypto_, GetSystemSalt(_))
+        .WillByDefault(WithArgs<0>(Invoke(AssignSalt)));
     // It doesnt matter what key it returns for the purposes of the UserDataAuth
     // test.
     ON_CALL(keyset_management_, GetPublicMountPassKey(_))
@@ -171,7 +174,7 @@ class UserDataAuthTestBase : public ::testing::Test {
   // user. After calling this function, |mount_| is available for use.
   void SetupMount(const std::string& username) {
     brillo::SecureBlob salt;
-    AssignSalt(CRYPTOHOME_DEFAULT_SALT_LENGTH, &salt);
+    AssignSalt(&salt);
     mount_ = new NiceMock<MockMount>();
     session_ = new UserSession(&homedirs_, &keyset_management_,
                                &pkcs11_token_factory_, salt, mount_);
@@ -182,7 +185,7 @@ class UserDataAuthTestBase : public ::testing::Test {
   // fake salt.
   std::string GetObfuscatedUsername(const std::string& username) {
     brillo::SecureBlob salt;
-    AssignSalt(CRYPTOHOME_DEFAULT_SALT_LENGTH, &salt);
+    AssignSalt(&salt);
     return SanitizeUserNameWithSalt(username, salt);
   }
 
@@ -952,7 +955,7 @@ TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
   constexpr char kUsername2[] = "bar@gmail.com";
 
   brillo::SecureBlob salt;
-  AssignSalt(CRYPTOHOME_DEFAULT_SALT_LENGTH, &salt);
+  AssignSalt(&salt);
 
   scoped_refptr<NiceMock<MockMount>> mount1 = new NiceMock<MockMount>();
   scoped_refptr<UserSession> session1 = new UserSession(
@@ -1592,7 +1595,7 @@ TEST_F(UserDataAuthTest, RemoveFirmwareManagementParametersError) {
 TEST_F(UserDataAuthTest, GetSystemSaltSucess) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   brillo::SecureBlob salt;
-  AssignSalt(CRYPTOHOME_DEFAULT_SALT_LENGTH, &salt);
+  AssignSalt(&salt);
   EXPECT_EQ(salt, userdataauth_->GetSystemSalt());
 }
 

@@ -899,9 +899,7 @@ bool KeysetManagement::UserExists(const std::string& obfuscated_username) {
 brillo::SecureBlob KeysetManagement::GetPublicMountPassKey(
     const std::string& account_id) {
   brillo::SecureBlob public_mount_salt;
-  FilePath saltfile(kPublicMountSaltFilePath);
-  if (!crypto_->GetOrCreateSalt(saltfile, CRYPTOHOME_DEFAULT_SALT_LENGTH, false,
-                                &public_mount_salt)) {
+  if (!crypto_->GetPublicMountSalt(&public_mount_salt)) {
     LOG(ERROR) << "Could not get or create public salt from file";
     // Ensure that it is empty so that caller can confirm there was an error.
     public_mount_salt.clear();

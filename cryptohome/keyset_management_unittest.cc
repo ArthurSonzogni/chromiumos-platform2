@@ -1253,12 +1253,10 @@ TEST_F(KeysetManagementTest, GetPublicMountPassKey) {
   std::string account_id(kUser0);
 
   brillo::SecureBlob public_mount_salt;
-  base::FilePath saltfile(kPublicMountSaltFilePath);
   // Fetches or creates a salt from a saltfile. Setting the force
   // parameter to false only creates a new saltfile if one doesn't
   // already exist.
-  crypto_.GetOrCreateSalt(saltfile, CRYPTOHOME_DEFAULT_SALT_LENGTH,
-                          false /**force**/, &public_mount_salt);
+  crypto_.GetPublicMountSalt(&public_mount_salt);
 
   brillo::SecureBlob passkey;
   Crypto::PasswordToPasskey(account_id.c_str(), public_mount_salt, &passkey);
@@ -1277,7 +1275,7 @@ TEST_F(KeysetManagementTest, GetPublicMountPassKeyFail) {
       &platform_, &mock_crypto, system_salt_, &timestamp_cache_,
       std::make_unique<VaultKeysetFactory>());
 
-  EXPECT_CALL(mock_crypto, GetOrCreateSalt).WillOnce(Return(false));
+  EXPECT_CALL(mock_crypto, GetPublicMountSalt).WillOnce(Return(false));
 
   // Compare the SecureBlob with an empty and non-empty SecureBlob.
   brillo::SecureBlob public_mount_passkey =

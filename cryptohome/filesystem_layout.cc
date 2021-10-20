@@ -30,8 +30,12 @@ base::FilePath ShadowRoot() {
   return base::FilePath(kShadowRoot);
 }
 
-base::FilePath SaltFile() {
+base::FilePath SystemSaltFile() {
   return ShadowRoot().Append(kSystemSaltFile);
+}
+
+base::FilePath PublicMountSaltFile() {
+  return base::FilePath(kPublicMountSaltFilePath);
 }
 
 base::FilePath SkelDir() {
@@ -110,9 +114,8 @@ bool InitializeFilesystemLayout(Platform* platform,
       LOG(ERROR) << "RestoreSELinuxContexts(" << shadow_root << ") failed.";
     }
   }
-  const base::FilePath salt_file = SaltFile();
-  if (!crypto->GetOrCreateSalt(salt_file, CRYPTOHOME_DEFAULT_SALT_LENGTH, false,
-                               salt)) {
+
+  if (!crypto->GetSystemSalt(salt)) {
     LOG(ERROR) << "Failed to create system salt.";
     return false;
   }

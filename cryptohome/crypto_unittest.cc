@@ -26,6 +26,7 @@
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/crypto_error.h"
+#include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
@@ -48,8 +49,6 @@ using ::testing::SaveArg;
 using ::testing::SetArgPointee;
 
 namespace cryptohome {
-
-const char kImageDir[] = "test_image_dir";
 
 // FIPS 180-2 test vectors for SHA-1 and SHA-256
 class ShaTestVectors {
@@ -151,39 +150,29 @@ TEST_F(CryptoTest, SaltCreateTest) {
   MockPlatform platform;
   Crypto crypto(&platform);
 
-  // Case 1: No salt exists
+  // Case 1: No System salt exists
   SecureBlob salt;
   SecureBlob salt_written;
   SecureBlob* salt_ptr = &salt_written;
-  FilePath salt_path(FilePath(kImageDir).Append("crypto_test_salt"));
-  EXPECT_CALL(platform, FileExists(salt_path)).WillOnce(Return(false));
-  EXPECT_CALL(platform, WriteSecureBlobToFileAtomicDurable(salt_path, _, _))
+  EXPECT_CALL(platform, FileExists(SystemSaltFile())).WillOnce(Return(false));
+  EXPECT_CALL(platform,
+              WriteSecureBlobToFileAtomicDurable(SystemSaltFile(), _, _))
       .WillOnce(DoAll(SaveArg<1>(salt_ptr), Return(true)));
-  crypto.GetOrCreateSalt(salt_path, 32, false, &salt);
+  EXPECT_TRUE(crypto.GetSystemSalt(&salt));
 
-  ASSERT_EQ(32, salt.size());
+  ASSERT_EQ(CRYPTOHOME_DEFAULT_SALT_LENGTH, salt.size());
   EXPECT_EQ(salt.to_string(), std::string(salt_ptr->begin(), salt_ptr->end()));
 
-  // Case 2: Salt exists, but forced
-  SecureBlob new_salt;
-  salt_written.resize(0);
-  salt_ptr = &salt_written;
-  EXPECT_CALL(platform, FileExists(salt_path)).WillOnce(Return(true));
-  int64_t salt_size = 32;
-  EXPECT_CALL(platform, GetFileSize(salt_path, _))
-      .WillOnce(DoAll(SetArgPointee<1>(salt_size), Return(true)));
-  EXPECT_CALL(platform, WriteSecureBlobToFileAtomicDurable(salt_path, _, _))
+  // Case 2: No Public Mount salt exists
+  EXPECT_CALL(platform, FileExists(PublicMountSaltFile()))
+      .WillOnce(Return(false));
+  EXPECT_CALL(platform,
+              WriteSecureBlobToFileAtomicDurable(PublicMountSaltFile(), _, _))
       .WillOnce(DoAll(SaveArg<1>(salt_ptr), Return(true)));
-  crypto.GetOrCreateSalt(salt_path, 32, true, &new_salt);
-  ASSERT_EQ(32, new_salt.size());
-  EXPECT_EQ(new_salt.to_string(),
-            std::string(salt_ptr->begin(), salt_ptr->end()));
+  EXPECT_TRUE(crypto.GetPublicMountSalt(&salt));
 
-  EXPECT_EQ(salt.size(), new_salt.size());
-  EXPECT_FALSE(CryptoTest::FindBlobInBlob(salt, new_salt));
-
-  // TODO(wad): cases not covered: file is 0 bytes, file fails to read,
-  //            existing salt is read.
+  ASSERT_EQ(CRYPTOHOME_DEFAULT_SALT_LENGTH, salt.size());
+  EXPECT_EQ(salt.to_string(), std::string(salt_ptr->begin(), salt_ptr->end()));
 }
 
 TEST_F(CryptoTest, BlobToHexTest) {

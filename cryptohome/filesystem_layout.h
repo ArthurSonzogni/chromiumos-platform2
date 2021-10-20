@@ -45,7 +45,8 @@ constexpr char kUserSecretStashDir[] = "user_secret_stash";
 constexpr char kUserSecretStashFile[] = "uss";
 
 base::FilePath ShadowRoot();
-base::FilePath SaltFile();
+base::FilePath SystemSaltFile();
+base::FilePath PublicMountSaltFile();
 base::FilePath SkelDir();
 base::FilePath VaultKeysetPath(const std::string& obfuscated, int index);
 base::FilePath UserActivityTimestampPath(const std::string& obfuscated,
