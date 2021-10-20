@@ -1,0 +1,25 @@
+# The SafeSetID LSM uses this list to record which UID’s/GID’s to restrict, look here for more information:
+# https://www.kernel.org/doc/html/latest/admin-guide/LSM/SafeSetID.html
+
+# shill spawns dhcpcd as 'dhcp' group
+20104:224
+# shill spawns openvpn as 'openvpn' group
+20104:217
+# charon daemon (part of strongswan IPSec package) drops to 'ipsec' group
+20104:212
+# shill spawns logger as 'syslog' group
+20104:202
+# shill spawns tc as 'nobody' group
+20104:65534
+20104:1000
+# TODO(crbug.com/1262208) Uncomment these or write policies for the relevant groups.
+# We can't allow any of the target GIDs to switch to other GIDs, or
+# else a compromised shill could switch to one of them and then switch
+# to any GID on the system.
+# 217:217
+# 212:212
+# 224:224
+# 202:202
+# 605:605
+# 400:400
+# 65534:65534
