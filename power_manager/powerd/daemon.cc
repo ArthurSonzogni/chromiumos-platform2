@@ -50,7 +50,8 @@
 #if USE_IIOSERVICE
 #include "power_manager/powerd/system/ambient_light_sensor_manager_mojo.h"
 #endif  // USE_IIOSERVICE
-#include "power_manager/powerd/system/ambient_light_sensor_watcher.h"
+#include "power_manager/powerd/system/ambient_light_sensor_watcher_interface.h"
+#include "power_manager/powerd/system/ambient_light_sensor_watcher_mojo.h"
 #include "power_manager/powerd/system/arc_timer_manager.h"
 #include "power_manager/powerd/system/audio_client_interface.h"
 #include "power_manager/powerd/system/backlight_interface.h"
@@ -338,10 +339,19 @@ void Daemon::Init() {
 #endif  // USE_IIOSERVICE
 
   if (BoolPrefIsTrue(kExternalAmbientLightSensorPref)) {
+#if USE_IIOSERVICE
+    ambient_light_sensor_watcher_ = delegate_->CreateAmbientLightSensorWatcher(
+        sensor_service_handler_.get());
+    external_ambient_light_sensor_factory_ =
+        delegate_->CreateExternalAmbientLightSensorFactory(
+            static_cast<system::AmbientLightSensorWatcherMojo*>(
+                ambient_light_sensor_watcher_.get()));
+#else   // !USE_IIOSERVICE
     ambient_light_sensor_watcher_ =
         delegate_->CreateAmbientLightSensorWatcher(udev_.get());
     external_ambient_light_sensor_factory_ =
         delegate_->CreateExternalAmbientLightSensorFactory();
+#endif  // USE_IIOSERVICE
   }
   display_watcher_ = delegate_->CreateDisplayWatcher(udev_.get());
   display_power_setter_ =

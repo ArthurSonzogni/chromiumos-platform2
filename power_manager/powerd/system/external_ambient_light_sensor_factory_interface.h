@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include "power_manager/powerd/system/ambient_light_sensor_info.h"
 #include "power_manager/powerd/system/ambient_light_sensor_interface.h"
 
 namespace power_manager {
@@ -19,7 +20,7 @@ class ExternalAmbientLightSensorFactoryInterface {
   virtual ~ExternalAmbientLightSensorFactoryInterface() {}
 
   virtual std::unique_ptr<AmbientLightSensorInterface> CreateSensor(
-      const std::string& device_name) const = 0;
+      const AmbientLightSensorInfo& als_info) const = 0;
 };
 
 }  // namespace system

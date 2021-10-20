@@ -7,6 +7,8 @@
 
 #include <vector>
 
+#include <base/observer_list.h>
+
 #include "power_manager/powerd/system/ambient_light_sensor_info.h"
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_observer.h"
 
@@ -19,12 +21,23 @@ class AmbientLightSensorWatcherInterface {
   virtual ~AmbientLightSensorWatcherInterface() {}
 
   // Returns the current list of connected ambient light sensors.
-  virtual const std::vector<AmbientLightSensorInfo>& GetAmbientLightSensors()
-      const = 0;
+  const std::vector<AmbientLightSensorInfo>& GetAmbientLightSensors() const;
 
   // Adds or removes an observer.
-  virtual void AddObserver(AmbientLightSensorWatcherObserver* observer) = 0;
-  virtual void RemoveObserver(AmbientLightSensorWatcherObserver* observer) = 0;
+  void AddObserver(AmbientLightSensorWatcherObserver* observer);
+  void RemoveObserver(AmbientLightSensorWatcherObserver* observer);
+
+ protected:
+  void AddSensorAndNotifyObservers(AmbientLightSensorInfo new_als);
+
+  // Called when changes are made to |ambient_light_sensors_| to notify
+  // observers.
+  void NotifyObservers();
+
+  // Currently-connected ambient light sensors.
+  std::vector<AmbientLightSensorInfo> ambient_light_sensors_;
+
+  base::ObserverList<AmbientLightSensorWatcherObserver> observers_;
 };
 
 }  // namespace system

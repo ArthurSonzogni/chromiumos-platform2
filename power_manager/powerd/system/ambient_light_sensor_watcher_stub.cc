@@ -7,23 +7,6 @@
 namespace power_manager {
 namespace system {
 
-const std::vector<AmbientLightSensorInfo>&
-AmbientLightSensorWatcherStub::GetAmbientLightSensors() const {
-  return ambient_light_sensors_;
-}
-
-void AmbientLightSensorWatcherStub::AddObserver(
-    AmbientLightSensorWatcherObserver* observer) {
-  DCHECK(observer);
-  observers_.AddObserver(observer);
-}
-
-void AmbientLightSensorWatcherStub::RemoveObserver(
-    AmbientLightSensorWatcherObserver* observer) {
-  DCHECK(observer);
-  observers_.RemoveObserver(observer);
-}
-
 void AmbientLightSensorWatcherStub::AddSensor(
     const AmbientLightSensorInfo& device_info) {
   for (const auto& sensor : ambient_light_sensors_) {

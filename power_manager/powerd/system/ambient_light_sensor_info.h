@@ -22,8 +22,11 @@ struct AmbientLightSensorInfo {
   // light sensor.
   base::FilePath iio_path;
 
-  // IIO device name.
+  // IIO device name, used by sysfs implementation.
   std::string device;
+
+  // Used by mojo implementation.
+  int32_t id = -1;
 };
 
 }  // namespace system

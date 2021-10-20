@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/system/ambient_light_sensor_watcher.h"
+#include "power_manager/powerd/system/ambient_light_sensor_watcher_udev.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "power_manager/powerd/system/udev.h"
@@ -14,20 +15,21 @@
 namespace power_manager {
 namespace system {
 
-const char AmbientLightSensorWatcher::kIioUdevSubsystem[] = "iio";
+const char AmbientLightSensorWatcherUdev::kIioUdevSubsystem[] = "iio";
 
-const char AmbientLightSensorWatcher::kIioUdevDevice[] = "iio_device";
+const char AmbientLightSensorWatcherUdev::kIioUdevDevice[] = "iio_device";
 
-AmbientLightSensorWatcher::AmbientLightSensorWatcher() : udev_(nullptr) {}
+AmbientLightSensorWatcherUdev::AmbientLightSensorWatcherUdev()
+    : udev_(nullptr) {}
 
-AmbientLightSensorWatcher::~AmbientLightSensorWatcher() {
+AmbientLightSensorWatcherUdev::~AmbientLightSensorWatcherUdev() {
   if (udev_) {
     udev_->RemoveSubsystemObserver(kIioUdevSubsystem, this);
     udev_ = nullptr;
   }
 }
 
-void AmbientLightSensorWatcher::Init(UdevInterface* udev) {
+void AmbientLightSensorWatcherUdev::Init(UdevInterface* udev) {
   udev_ = udev;
   udev_->AddSubsystemObserver(kIioUdevSubsystem, this);
 
@@ -41,22 +43,7 @@ void AmbientLightSensorWatcher::Init(UdevInterface* udev) {
   }
 }
 
-const std::vector<AmbientLightSensorInfo>&
-AmbientLightSensorWatcher::GetAmbientLightSensors() const {
-  return ambient_light_sensors_;
-}
-
-void AmbientLightSensorWatcher::AddObserver(
-    AmbientLightSensorWatcherObserver* observer) {
-  observers_.AddObserver(observer);
-}
-
-void AmbientLightSensorWatcher::RemoveObserver(
-    AmbientLightSensorWatcherObserver* observer) {
-  observers_.RemoveObserver(observer);
-}
-
-void AmbientLightSensorWatcher::OnUdevEvent(const UdevEvent& event) {
+void AmbientLightSensorWatcherUdev::OnUdevEvent(const UdevEvent& event) {
   switch (event.action) {
     case UdevEvent::Action::ADD:
       OnAddUdevDevice(event.device_info);
@@ -69,13 +56,7 @@ void AmbientLightSensorWatcher::OnUdevEvent(const UdevEvent& event) {
   }
 }
 
-void AmbientLightSensorWatcher::NotifyObservers() {
-  for (auto& observer : observers_) {
-    observer.OnAmbientLightSensorsChanged(ambient_light_sensors_);
-  }
-}
-
-bool AmbientLightSensorWatcher::IsAmbientLightSensor(
+bool AmbientLightSensorWatcherUdev::IsAmbientLightSensor(
     const UdevDeviceInfo& device_info) {
   if (device_info.subsystem != kIioUdevSubsystem) {
     return false;
@@ -85,14 +66,10 @@ bool AmbientLightSensorWatcher::IsAmbientLightSensor(
     return false;
   }
 
-  if (device_info.syspath.find("HID-SENSOR-200041") != std::string::npos) {
-    return true;
-  }
-
-  return false;
+  return true;
 }
 
-void AmbientLightSensorWatcher::OnAddUdevDevice(
+void AmbientLightSensorWatcherUdev::OnAddUdevDevice(
     const UdevDeviceInfo& device_info) {
   if (!IsAmbientLightSensor(device_info)) {
     return;
@@ -112,11 +89,10 @@ void AmbientLightSensorWatcher::OnAddUdevDevice(
     }
   }
 
-  ambient_light_sensors_.push_back(new_als);
-  NotifyObservers();
+  AddSensorAndNotifyObservers(std::move(new_als));
 }
 
-void AmbientLightSensorWatcher::OnRemoveUdevDevice(
+void AmbientLightSensorWatcherUdev::OnRemoveUdevDevice(
     const UdevDeviceInfo& device_info) {
   if (!IsAmbientLightSensor(device_info)) {
     return;

@@ -18,10 +18,10 @@ FakeSensorDevice::FakeSensorDevice(bool is_color_sensor,
                                    base::Optional<std::string> location)
     : is_color_sensor_(is_color_sensor) {
   if (name.has_value())
-    attributes_[cros::mojom::kDeviceName] = name.value();
+    SetAttribute(cros::mojom::kDeviceName, name.value());
 
   if (location.has_value())
-    attributes_[cros::mojom::kLocation] = location.value();
+    SetAttribute(cros::mojom::kLocation, location.value());
 }
 
 mojo::ReceiverId FakeSensorDevice::AddReceiver(
@@ -53,6 +53,10 @@ void FakeSensorDevice::ResetObserverRemote(mojo::ReceiverId id) {
   DCHECK(it != observers_.end());
 
   observers_.erase(it);
+}
+
+void FakeSensorDevice::SetAttribute(std::string attr_name, std::string value) {
+  attributes_[attr_name] = value;
 }
 
 void FakeSensorDevice::GetAttributes(const std::vector<std::string>& attr_names,

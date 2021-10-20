@@ -340,8 +340,8 @@ void AmbientLightSensorDelegateMojo::OnObserverDisconnect() {
 
   LOG(ERROR) << "OnObserverDisconnect error, assuming IIO Service crashes and "
                 "waiting for it to relaunch";
-  // Don't reset |sensor_device_remote_| so that AmbientLightSensorManager can
-  // get the disconnection.
+  // Don't reset |sensor_device_remote_| so that AmbientLightSensorManager and
+  // AmbientLightSensorWatcher can get the disconnection.
   receiver_.reset();
 }
 

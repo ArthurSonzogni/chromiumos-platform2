@@ -200,8 +200,18 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     EXPECT_EQ(udev_, udev);
     return std::move(passed_ambient_light_sensor_watcher_);
   }
+  std::unique_ptr<system::AmbientLightSensorWatcherInterface>
+  CreateAmbientLightSensorWatcher(
+      system::SensorServiceHandler* sensor_service_handler) override {
+    return std::move(passed_ambient_light_sensor_watcher_);
+  }
   std::unique_ptr<system::ExternalAmbientLightSensorFactoryInterface>
   CreateExternalAmbientLightSensorFactory() override {
+    return std::move(passed_external_ambient_light_sensor_factory_);
+  }
+  std::unique_ptr<system::ExternalAmbientLightSensorFactoryInterface>
+  CreateExternalAmbientLightSensorFactory(
+      system::AmbientLightSensorWatcherMojo* watcher) override {
     return std::move(passed_external_ambient_light_sensor_factory_);
   }
   std::unique_ptr<system::DisplayWatcherInterface> CreateDisplayWatcher(

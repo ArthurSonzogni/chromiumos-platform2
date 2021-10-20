@@ -13,7 +13,7 @@ namespace system {
 
 std::unique_ptr<AmbientLightSensorInterface>
 ExternalAmbientLightSensorFactoryStub::CreateSensor(
-    const std::string& device_name) const {
+    const AmbientLightSensorInfo& als_info) const {
   return std::make_unique<AmbientLightSensorStub>(0);
 }
 

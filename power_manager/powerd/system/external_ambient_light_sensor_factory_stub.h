@@ -18,7 +18,7 @@ class ExternalAmbientLightSensorFactoryStub
     : public ExternalAmbientLightSensorFactoryInterface {
  public:
   std::unique_ptr<AmbientLightSensorInterface> CreateSensor(
-      const std::string& device_name) const override;
+      const AmbientLightSensorInfo& als_info) const override;
 };
 
 }  // namespace system

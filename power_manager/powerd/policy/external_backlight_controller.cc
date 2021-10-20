@@ -431,7 +431,7 @@ void ExternalBacklightController::MatchAmbientLightSensorsToDisplays() {
       // If ALS-based brightness is enabled, and no match already exists, create
       // a new one.
       auto sensor =
-          external_ambient_light_sensor_factory_->CreateSensor(als_info.device);
+          external_ambient_light_sensor_factory_->CreateSensor(als_info);
       auto handler = std::make_unique<ExternalAmbientLightHandler>(
           std::move(sensor), best_matching_display, this);
       handler->Init(external_backlight_als_steps_,

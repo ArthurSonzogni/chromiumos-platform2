@@ -29,6 +29,8 @@ class FakeSensorDevice : public cros::mojom::SensorDevice {
 
   void ResetObserverRemote(mojo::ReceiverId id);
 
+  void SetAttribute(std::string attr_name, std::string value);
+
   // Implementation of cros::mojom::SensorDevice.
   void SetTimeout(uint32_t timeout) override {}
   void GetAttributes(const std::vector<std::string>& attr_names,

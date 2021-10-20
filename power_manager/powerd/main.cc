@@ -51,7 +51,8 @@
 #include "power_manager/powerd/system/ambient_light_sensor_manager_file.h"
 #endif  // USE_IIOSERVICE
 #include "power_manager/powerd/system/ambient_light_sensor_manager_interface.h"
-#include "power_manager/powerd/system/ambient_light_sensor_watcher.h"
+#include "power_manager/powerd/system/ambient_light_sensor_watcher_mojo.h"
+#include "power_manager/powerd/system/ambient_light_sensor_watcher_udev.h"
 #include "power_manager/powerd/system/audio_client.h"
 #include "power_manager/powerd/system/cros_ec_helper.h"
 #include "power_manager/powerd/system/dark_resume.h"
@@ -60,6 +61,7 @@
 #include "power_manager/powerd/system/display/display_watcher.h"
 #include "power_manager/powerd/system/event_device.h"
 #include "power_manager/powerd/system/external_ambient_light_sensor_factory_file.h"
+#include "power_manager/powerd/system/external_ambient_light_sensor_factory_mojo.h"
 #include "power_manager/powerd/system/input_watcher.h"
 #include "power_manager/powerd/system/internal_backlight.h"
 #include "power_manager/powerd/system/lockfile_checker.h"
@@ -128,14 +130,26 @@ class DaemonDelegateImpl : public DaemonDelegate {
 
   std::unique_ptr<system::AmbientLightSensorWatcherInterface>
   CreateAmbientLightSensorWatcher(system::UdevInterface* udev) override {
-    auto watcher = std::make_unique<system::AmbientLightSensorWatcher>();
+    auto watcher = std::make_unique<system::AmbientLightSensorWatcherUdev>();
     watcher->Init(udev);
     return watcher;
+  }
+  std::unique_ptr<system::AmbientLightSensorWatcherInterface>
+  CreateAmbientLightSensorWatcher(
+      system::SensorServiceHandler* sensor_service_handler) override {
+    return std::make_unique<system::AmbientLightSensorWatcherMojo>(
+        sensor_service_handler);
   }
 
   std::unique_ptr<system::ExternalAmbientLightSensorFactoryInterface>
   CreateExternalAmbientLightSensorFactory() override {
     return std::make_unique<system::ExternalAmbientLightSensorFactoryFile>();
+  }
+  std::unique_ptr<system::ExternalAmbientLightSensorFactoryInterface>
+  CreateExternalAmbientLightSensorFactory(
+      system::AmbientLightSensorWatcherMojo* watcher) override {
+    return std::make_unique<system::ExternalAmbientLightSensorFactoryMojo>(
+        watcher);
   }
 
   std::unique_ptr<system::DisplayWatcherInterface> CreateDisplayWatcher(

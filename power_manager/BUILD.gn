@@ -165,7 +165,9 @@ static_library("libsystem") {
     "powerd/system/ambient_light_sensor_info.cc",
     "powerd/system/ambient_light_sensor_manager_file.cc",
     "powerd/system/ambient_light_sensor_manager_mojo.cc",
-    "powerd/system/ambient_light_sensor_watcher.cc",
+    "powerd/system/ambient_light_sensor_watcher_interface.cc",
+    "powerd/system/ambient_light_sensor_watcher_mojo.cc",
+    "powerd/system/ambient_light_sensor_watcher_udev.cc",
     "powerd/system/arc_timer_manager.cc",
     "powerd/system/async_file_reader.cc",
     "powerd/system/audio_client.cc",
@@ -180,6 +182,7 @@ static_library("libsystem") {
     "powerd/system/display/external_display.cc",
     "powerd/system/event_device.cc",
     "powerd/system/external_ambient_light_sensor_factory_file.cc",
+    "powerd/system/external_ambient_light_sensor_factory_mojo.cc",
     "powerd/system/input_watcher.cc",
     "powerd/system/internal_backlight.cc",
     "powerd/system/lockfile_checker.cc",
@@ -226,6 +229,7 @@ static_library("libsystem_stub") {
     "powerd/system/acpi_wakeup_helper_stub.cc",
     "powerd/system/ambient_light_sensor_manager_stub.cc",
     "powerd/system/ambient_light_sensor_stub.cc",
+    "powerd/system/ambient_light_sensor_watcher_observer_stub.cc",
     "powerd/system/ambient_light_sensor_watcher_stub.cc",
     "powerd/system/audio_client_stub.cc",
     "powerd/system/backlight_stub.cc",
@@ -248,6 +252,7 @@ static_library("libsystem_stub") {
   ]
   configs += [ ":target_defaults" ]
   all_dependent_configs = [ ":libsystem_stub_dependent_config" ]
+  deps = [ "//iioservice/libiioservice_ipc:libiioservice_ipc_mojom" ]
 }
 
 static_library("libpolicy") {
@@ -274,8 +279,9 @@ static_library("libpolicy") {
   ]
   configs += [ ":target_defaults" ]
   libs = [ "m" ]
+  deps = [ "//iioservice/libiioservice_ipc:libiioservice_ipc_mojom" ]
   if (use.cellular) {
-    deps = [ ":generate_modemmanager_proxies" ]
+    deps += [ ":generate_modemmanager_proxies" ]
   }
   if (use.qrtr) {
     deps += [ ":generate_upstart_proxies" ]
@@ -488,7 +494,8 @@ if (use.test) {
       "powerd/system/ambient_light_sensor_manager_file_test.cc",
       "powerd/system/ambient_light_sensor_manager_mojo_test.cc",
       "powerd/system/ambient_light_sensor_test.cc",
-      "powerd/system/ambient_light_sensor_watcher_test.cc",
+      "powerd/system/ambient_light_sensor_watcher_mojo_test.cc",
+      "powerd/system/ambient_light_sensor_watcher_udev_test.cc",
       "powerd/system/arc_timer_manager_test.cc",
       "powerd/system/async_file_reader_test.cc",
       "powerd/system/audio_client_test.cc",

@@ -13,9 +13,9 @@ namespace system {
 
 std::unique_ptr<AmbientLightSensorInterface>
 ExternalAmbientLightSensorFactoryFile::CreateSensor(
-    const std::string& device_name) const {
+    const AmbientLightSensorInfo& als_info) const {
   auto delegate =
-      std::make_unique<AmbientLightSensorDelegateFile>(device_name, false);
+      std::make_unique<AmbientLightSensorDelegateFile>(als_info.device, false);
   delegate->Init(false);
   auto sensor = std::make_unique<AmbientLightSensor>();
   sensor->SetDelegate(std::move(delegate));

@@ -25,6 +25,7 @@ class AcpiWakeupHelperInterface;
 class AmbientLightSensorInterface;
 class AmbientLightSensorManagerInterface;
 class AmbientLightSensorWatcherInterface;
+class AmbientLightSensorWatcherMojo;
 class AudioClientInterface;
 class BacklightInterface;
 class ChargeControllerHelperInterface;
@@ -79,9 +80,15 @@ class DaemonDelegate {
 
   virtual std::unique_ptr<system::AmbientLightSensorWatcherInterface>
   CreateAmbientLightSensorWatcher(system::UdevInterface* udev) = 0;
+  virtual std::unique_ptr<system::AmbientLightSensorWatcherInterface>
+  CreateAmbientLightSensorWatcher(
+      system::SensorServiceHandler* sensor_service_handler) = 0;
 
   virtual std::unique_ptr<system::ExternalAmbientLightSensorFactoryInterface>
   CreateExternalAmbientLightSensorFactory() = 0;
+  virtual std::unique_ptr<system::ExternalAmbientLightSensorFactoryInterface>
+  CreateExternalAmbientLightSensorFactory(
+      system::AmbientLightSensorWatcherMojo* watcher) = 0;
 
   virtual std::unique_ptr<system::DisplayWatcherInterface> CreateDisplayWatcher(
       system::UdevInterface* udev) = 0;
