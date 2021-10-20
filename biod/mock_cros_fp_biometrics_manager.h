@@ -31,7 +31,7 @@ class MockCrosFpBiometricsManager : public CrosFpBiometricsManager {
               (override));
   MOCK_METHOD(BiometricsManager::AuthSession, StartAuthSession, (), (override));
   MOCK_METHOD(std::vector<std::unique_ptr<BiometricsManagerRecord>>,
-              GetRecords,
+              GetLoadedRecords,
               (),
               (override));
   MOCK_METHOD(bool, DestroyAllRecords, (), (override));
@@ -70,8 +70,12 @@ class MockCrosFpBiometricsManager : public CrosFpBiometricsManager {
               (override));
   MOCK_METHOD(const BiodStorageInterface::RecordMetadata&,
               GetRecordMetadata,
-              (int index),
+              (const std::string& id),
               (const, override));
+  MOCK_METHOD(base::Optional<std::string>,
+              GetLoadedRecordId,
+              (int id),
+              (override));
 
   // Delegate to the real implementation in the base class:
   // https://github.com/google/googletest/blob/HEAD/googlemock/docs/cook_book.md#delegating-calls-to-a-parent-class

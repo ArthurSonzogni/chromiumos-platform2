@@ -41,7 +41,8 @@ class CrosFpBiometricsManager : public BiometricsManager {
   BiometricsManager::EnrollSession StartEnrollSession(
       std::string user_id, std::string label) override;
   BiometricsManager::AuthSession StartAuthSession() override;
-  std::vector<std::unique_ptr<BiometricsManagerRecord>> GetRecords() override;
+  std::vector<std::unique_ptr<BiometricsManagerRecord>> GetLoadedRecords()
+      override;
   bool DestroyAllRecords() override;
   void RemoveRecordsFromMemory() override;
   bool ReadRecordsForSingleUser(const std::string& user_id) override;
@@ -72,7 +73,9 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   // Returns RecordMetadata for given record.
   virtual const BiodStorageInterface::RecordMetadata& GetRecordMetadata(
-      int index) const;
+      const std::string& id) const;
+  // Returns RecordId for given template id.
+  virtual base::Optional<std::string> GetLoadedRecordId(int id);
 
   std::vector<int> GetDirtyList();
   /**
@@ -98,8 +101,8 @@ class CrosFpBiometricsManager : public BiometricsManager {
   class Record : public BiometricsManagerRecord {
    public:
     Record(const base::WeakPtr<CrosFpBiometricsManager>& biometrics_manager,
-           int index)
-        : biometrics_manager_(biometrics_manager), index_(index) {}
+           const std::string& record_id)
+        : biometrics_manager_(biometrics_manager), record_id_(record_id) {}
 
     // BiometricsManager::Record overrides:
     const std::string& GetId() const override;
@@ -111,7 +114,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
    private:
     base::WeakPtr<CrosFpBiometricsManager> biometrics_manager_;
-    int index_;
+    std::string record_id_;
   };
 
   void OnEnrollScanDone(ScanResult result,
@@ -136,7 +139,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
                              uint32_t event);
   void DoMatchEvent(int attempt, uint32_t event);
   void DoMatchFingerUpEvent(uint32_t event);
-  bool CheckPositiveMatchSecret(int match_idx);
+  bool CheckPositiveMatchSecret(const std::string& record_id, int match_idx);
 
   void KillMcuSession();
 
@@ -147,10 +150,10 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   // Updates record metadata on disk.
   bool UpdateRecordMetadata(
-      int index, const BiodStorageInterface::RecordMetadata& record_metadata);
+      const BiodStorageInterface::RecordMetadata& record_metadata);
 
   // Removes record from disk and from FPMCU.
-  bool RemoveRecord(int index);
+  bool RemoveRecord(const std::string& id);
 
   // BiodMetrics must come before CrosFpDevice, since CrosFpDevice has a
   // raw pointer to BiodMetrics. We must ensure CrosFpDevice is destructed
@@ -160,8 +163,12 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   SessionAction next_session_action_;
 
-  // This list of records should be matching the templates loaded on the MCU.
-  std::vector<BiodStorageInterface::RecordMetadata> records_;
+  // Map of RecordId, RecordMetadata. Contains only valid records.
+  std::unordered_map<std::string, BiodStorageInterface::RecordMetadata>
+      records_;
+
+  // This vector contains RecordIds of templates loaded into the MCU.
+  std::vector<std::string> loaded_records_;
 
   // Set of templates that came with a wrong validation value in matching.
   std::unordered_set<uint32_t> suspicious_templates_;

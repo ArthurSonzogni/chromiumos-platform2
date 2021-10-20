@@ -115,11 +115,12 @@ class BiometricsManager {
   // mode is active. Returns a false AuthSession on failure.
   virtual AuthSession StartAuthSession() = 0;
 
-  // Gets the records registered with this BiometricsManager. Some records will
-  // naturally be unaccessible because they are currently in an encrypted state,
-  // so those will silently be left out of the returned vector.
+  // Gets the records successfully loaded to the biometrics device (eg. FPMCU).
+  // Records that are invalid, with unsupported version, belongs to different
+  // user or not successfully loaded to the biometrics device, are not included
+  // in the returned vector.
   virtual std::vector<std::unique_ptr<BiometricsManagerRecord>>
-  GetRecords() = 0;
+  GetLoadedRecords() = 0;
 
   // Irreversibly destroys records registered with this BiometricsManager,
   // including currently encrypted ones. Returns true if successful.

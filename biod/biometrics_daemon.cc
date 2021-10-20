@@ -399,7 +399,7 @@ bool BiometricsManagerWrapper::AuthSessionEnd(brillo::ErrorPtr* error) {
 void BiometricsManagerWrapper::RefreshRecordObjects() {
   records_.clear();
   std::vector<std::unique_ptr<BiometricsManagerRecord>> records =
-      biometrics_manager_->GetRecords();
+      biometrics_manager_->GetLoadedRecords();
 
   ExportedObjectManager* object_manager = dbus_object_.GetObjectManager().get();
   std::string records_root_path = object_path_.value() + std::string("/Record");

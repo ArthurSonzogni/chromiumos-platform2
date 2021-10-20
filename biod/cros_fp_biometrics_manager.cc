@@ -78,45 +78,45 @@ namespace biod {
 using Mode = ec::FpMode::Mode;
 
 const std::string& CrosFpBiometricsManager::Record::GetId() const {
-  CHECK(biometrics_manager_);
-  return biometrics_manager_->GetRecordMetadata(index_).record_id;
+  return record_id_;
 }
 
 const std::string& CrosFpBiometricsManager::Record::GetUserId() const {
   CHECK(biometrics_manager_);
-  return biometrics_manager_->GetRecordMetadata(index_).user_id;
+  return biometrics_manager_->GetRecordMetadata(record_id_).user_id;
 }
 
 const std::string& CrosFpBiometricsManager::Record::GetLabel() const {
   CHECK(biometrics_manager_);
-  return biometrics_manager_->GetRecordMetadata(index_).label;
+  return biometrics_manager_->GetRecordMetadata(record_id_).label;
 }
 
 const std::vector<uint8_t>& CrosFpBiometricsManager::Record::GetValidationVal()
     const {
   CHECK(biometrics_manager_);
-  return biometrics_manager_->GetRecordMetadata(index_).validation_val;
+  return biometrics_manager_->GetRecordMetadata(record_id_).validation_val;
 }
 
 bool CrosFpBiometricsManager::Record::SetLabel(std::string label) {
   CHECK(biometrics_manager_);
-  auto record_metadata = biometrics_manager_->GetRecordMetadata(index_);
+  auto record_metadata = biometrics_manager_->GetRecordMetadata(record_id_);
 
   record_metadata.label = std::move(label);
 
-  return biometrics_manager_->UpdateRecordMetadata(index_, record_metadata);
+  return biometrics_manager_->UpdateRecordMetadata(record_metadata);
 }
 
 bool CrosFpBiometricsManager::Record::Remove() {
   if (!biometrics_manager_)
     return false;
 
-  return biometrics_manager_->RemoveRecord(index_);
+  return biometrics_manager_->RemoveRecord(record_id_);
 }
 
 bool CrosFpBiometricsManager::ReloadAllRecords(std::string user_id) {
   // Here we need a copy of user_id because the user_id could be part of
   // records_ which is cleared in this method.
+  loaded_records_.clear();
   records_.clear();
   suspicious_templates_.clear();
 
@@ -136,7 +136,7 @@ BiometricsManager::EnrollSession CrosFpBiometricsManager::StartEnrollSession(
     return BiometricsManager::EnrollSession();
   }
 
-  if (records_.size() >= cros_dev_->MaxTemplateCount()) {
+  if (loaded_records_.size() >= cros_dev_->MaxTemplateCount()) {
     LOG(ERROR) << "No space for an additional template.";
     return BiometricsManager::EnrollSession();
   }
@@ -165,42 +165,55 @@ BiometricsManager::AuthSession CrosFpBiometricsManager::StartAuthSession() {
 }
 
 std::vector<std::unique_ptr<BiometricsManagerRecord>>
-CrosFpBiometricsManager::GetRecords() {
+CrosFpBiometricsManager::GetLoadedRecords() {
   std::vector<std::unique_ptr<BiometricsManagerRecord>> records;
-  for (int i = 0; i < records_.size(); i++)
+
+  for (const auto& record_id : loaded_records_) {
     records.emplace_back(
-        std::make_unique<Record>(weak_factory_.GetWeakPtr(), i));
+        std::make_unique<Record>(weak_factory_.GetWeakPtr(), record_id));
+  }
+
   return records;
 }
 
 const BiodStorageInterface::RecordMetadata&
-CrosFpBiometricsManager::GetRecordMetadata(int index) const {
-  CHECK(index < records_.size());
-  return records_.at(index);
+CrosFpBiometricsManager::GetRecordMetadata(const std::string& id) const {
+  const auto& it = records_.find(id);
+  CHECK(it != records_.end());
+  return it->second;
+}
+
+base::Optional<std::string> CrosFpBiometricsManager::GetLoadedRecordId(int id) {
+  if (id < 0 || id >= loaded_records_.size()) {
+    return base::nullopt;
+  }
+  return loaded_records_[id];
 }
 
 bool CrosFpBiometricsManager::DestroyAllRecords() {
   // Enumerate through records_ and delete each record.
   bool delete_all_records = true;
-  for (auto& record : records_) {
+  for (const auto& [id, metadata] : records_) {
     delete_all_records &=
-        biod_storage_->DeleteRecord(record.user_id, record.record_id);
+        biod_storage_->DeleteRecord(metadata.user_id, metadata.record_id);
   }
   RemoveRecordsFromMemory();
   return delete_all_records;
 }
 
 void CrosFpBiometricsManager::RemoveRecordsFromMemory() {
+  loaded_records_.clear();
   records_.clear();
   suspicious_templates_.clear();
   cros_dev_->ResetContext();
 }
 
-bool CrosFpBiometricsManager::RemoveRecord(int index) {
-  if (index >= records_.size())
+bool CrosFpBiometricsManager::RemoveRecord(const std::string& id) {
+  const auto& it = records_.find(id);
+  if (it == records_.end())
     return false;
 
-  const auto& record = records_[index];
+  const auto& record = it->second;
   std::string user_id = record.user_id;
 
   // TODO(mqg): only delete record if user_id is primary user.
@@ -213,19 +226,26 @@ bool CrosFpBiometricsManager::RemoveRecord(int index) {
 }
 
 bool CrosFpBiometricsManager::UpdateRecordMetadata(
-    int index, const BiodStorageInterface::RecordMetadata& record_metadata) {
-  if (index >= records_.size())
+    const BiodStorageInterface::RecordMetadata& record_metadata) {
+  const std::string& record_id = record_metadata.record_id;
+  if (records_.find(record_id) == records_.end())
     return false;
 
-  std::unique_ptr<VendorTemplate> tmpl = cros_dev_->GetTemplate(index);
+  const auto& iter =
+      std::find(loaded_records_.begin(), loaded_records_.end(), record_id);
+  if (iter == loaded_records_.end())
+    return false;
+
+  const int index = std::distance(loaded_records_.begin(), iter);
   // TODO(vpalatin): would be faster to read it from disk
+  std::unique_ptr<VendorTemplate> tmpl = cros_dev_->GetTemplate(index);
   if (!tmpl)
     return false;
 
   if (!WriteRecord(record_metadata, tmpl->data(), tmpl->size()))
     return false;
 
-  records_[index] = record_metadata;
+  records_[record_id] = record_metadata;
 
   return true;
 }
@@ -274,10 +294,10 @@ void CrosFpBiometricsManager::SetSessionFailedHandler(
 
 bool CrosFpBiometricsManager::SendStatsOnLogin() {
   bool rc = true;
-  rc = biod_metrics_->SendEnrolledFingerCount(records_.size()) && rc;
+  rc = biod_metrics_->SendEnrolledFingerCount(loaded_records_.size()) && rc;
   // Even though it looks a bit redundant with the finger count, it's easier to
   // discover and interpret.
-  rc = biod_metrics_->SendFpUnlockEnabled(!records_.empty()) && rc;
+  rc = biod_metrics_->SendFpUnlockEnabled(!loaded_records_.empty()) && rc;
   return rc;
 }
 
@@ -525,12 +545,16 @@ void CrosFpBiometricsManager::DoEnrollImageEvent(
   record.validation_val = std::move(validation_val);
   LOG(INFO) << "Computed validation value for enrolled finger.";
 
-  records_.emplace_back(record);
-  if (!WriteRecord(records_.back(), tmpl->data(), tmpl->size())) {
-    records_.pop_back();
+  std::string record_id = record.record_id;
+  records_.emplace(record_id, std::move(record));
+  if (!WriteRecord(records_[record_id], tmpl->data(), tmpl->size())) {
+    records_.erase(record_id);
     OnSessionFailed();
     return;
   }
+
+  // This record is now loaded in FPMCU, so add it to the list.
+  loaded_records_.emplace_back(record_id);
 
   BiometricsManager::EnrollStatus enroll_status = {true, 100};
   OnEnrollScanDone(ScanResult::SCAN_RESULT_SUCCESS, enroll_status);
@@ -559,7 +583,8 @@ void CrosFpBiometricsManager::DoMatchFingerUpEvent(uint32_t event) {
     OnSessionFailed();
 }
 
-bool CrosFpBiometricsManager::CheckPositiveMatchSecret(int match_idx) {
+bool CrosFpBiometricsManager::CheckPositiveMatchSecret(
+    const std::string& record_id, int match_idx) {
   base::Optional<brillo::SecureVector> secret =
       cros_dev_->GetPositiveMatchSecret(match_idx);
   biod_metrics_->SendReadPositiveMatchSecretSuccess(secret.has_value());
@@ -571,14 +596,20 @@ bool CrosFpBiometricsManager::CheckPositiveMatchSecret(int match_idx) {
   }
 
   std::vector<uint8_t> validation_value;
-  if (!BiodCrypto::ComputeValidationValue(*secret, records_[match_idx].user_id,
+  const auto& record_iter = records_.find(record_id);
+  if (record_iter == records_.cend()) {
+    return false;
+  }
+  const auto& meta = record_iter->second;
+
+  if (!BiodCrypto::ComputeValidationValue(*secret, meta.user_id,
                                           &validation_value)) {
     LOG(ERROR) << "Failed to compute validation value for finger " << match_idx
                << ".";
     return false;
   }
 
-  if (validation_value != records_[match_idx].validation_val) {
+  if (validation_value != meta.validation_val) {
     LOG(ERROR) << "Validation value does not match for finger " << match_idx;
     biod_metrics_->SendPositiveMatchSecretCorrect(false);
     suspicious_templates_.emplace(match_idx);
@@ -661,7 +692,7 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
     dirty_list = GetDirtyList();
   }
 
-  bool matched = false;
+  base::Optional<std::string> matched_record_id;
 
   uint32_t match_idx = EC_MKBP_FP_MATCH_IDX(event);
   LOG(INFO) << __func__ << " result: '" << MatchResultToString(match_result)
@@ -683,9 +714,8 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
     case EC_MKBP_FP_ERR_MATCH_YES:
     case EC_MKBP_FP_ERR_MATCH_YES_UPDATED:
     case EC_MKBP_FP_ERR_MATCH_YES_UPDATE_FAILED:
-      if (match_idx < records_.size()) {
-        matched = true;
-      } else {
+      matched_record_id = GetLoadedRecordId(match_idx);
+      if (!matched_record_id) {
         LOG(ERROR) << "Invalid finger index " << match_idx;
       }
       result = ScanResult::SCAN_RESULT_SUCCESS;
@@ -705,15 +735,14 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
 
   BiometricsManager::AttemptMatches matches;
 
-  if (matched) {
+  if (matched_record_id) {
     // CrosFp says that match was successful, let's check if this is true
-    if (CheckPositiveMatchSecret(match_idx)) {
-      matches.emplace(
-          records_[match_idx].user_id,
-          std::vector<std::string>({records_[match_idx].record_id}));
+    if (CheckPositiveMatchSecret(*matched_record_id, match_idx)) {
+      matches.emplace(records_[*matched_record_id].user_id,
+                      std::vector<std::string>({*matched_record_id}));
     } else {
       LOG(ERROR) << "Failed to check Secure Secret for " << match_idx;
-      matched = false;
+      matched_record_id = base::nullopt;
     }
   }
 
@@ -723,7 +752,7 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
   base::Optional<CrosFpDeviceInterface::FpStats> stats =
       cros_dev_->GetFpStats();
   if (stats) {
-    biod_metrics_->SendFpLatencyStats(matched, *stats);
+    biod_metrics_->SendFpLatencyStats(matched_record_id.has_value(), *stats);
   }
 
   // Record updated templates
@@ -740,7 +769,7 @@ bool CrosFpBiometricsManager::LoadRecord(
   std::string tmpl_data_str;
   base::Base64Decode(record.data, &tmpl_data_str);
 
-  if (records_.size() >= cros_dev_->MaxTemplateCount()) {
+  if (loaded_records_.size() >= cros_dev_->MaxTemplateCount()) {
     LOG(ERROR) << "No space to upload template from "
                << LogSafeID(record.metadata.record_id) << ".";
     return false;
@@ -765,7 +794,8 @@ bool CrosFpBiometricsManager::LoadRecord(
     return false;
   }
 
-  records_.emplace_back(std::move(record.metadata));
+  loaded_records_.emplace_back(record.metadata.record_id);
+  records_.emplace(record.metadata.record_id, std::move(record.metadata));
   return true;
 }
 
@@ -834,7 +864,7 @@ bool CrosFpBiometricsManager::UpdateTemplatesOnDisk(
       continue;
     }
 
-    const auto& current_record = GetRecordMetadata(i);
+    const auto& current_record = GetRecordMetadata(*GetLoadedRecordId(i));
     if (!WriteRecord(current_record, templ->data(), templ->size())) {
       LOG(ERROR) << "Cannot update record "
                  << LogSafeID(current_record.record_id)
