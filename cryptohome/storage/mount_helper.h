@@ -365,23 +365,7 @@ class MountHelper : public MountHelperInterface {
 
   Platform* platform_;  // Un-owned.
 
-  FRIEND_TEST(MountTest, BindMyFilesDownloadsSuccess);
-  FRIEND_TEST(MountTest, BindMyFilesDownloadsMissingUserHome);
-  FRIEND_TEST(MountTest, BindMyFilesDownloadsMissingDownloads);
-  FRIEND_TEST(MountTest, BindMyFilesDownloadsMissingMyFilesDownloads);
-  FRIEND_TEST(MountTest, BindMyFilesDownloadsRemoveExistingFiles);
-  FRIEND_TEST(MountTest, BindMyFilesDownloadsMoveForgottenFiles);
-
-  FRIEND_TEST(MountTest, CreateTrackedSubdirectories);
-  FRIEND_TEST(MountTest, CreateTrackedSubdirectoriesReplaceExistingDir);
-
-  FRIEND_TEST(MountTest, CreateDmcryptSubdirectories);
-  FRIEND_TEST(MountTest, MountDmcrypt);
-
-  FRIEND_TEST(MountTest, RememberMountOrderingTest);
-
-  FRIEND_TEST(EphemeralSystemTest, CreateMyFilesDownloads);
-  FRIEND_TEST(EphemeralSystemTest, CreateMyFilesDownloadsAlreadyExists);
+  FRIEND_TEST(PersistentSystemTest, MountOrdering);
 };
 
 }  // namespace cryptohome
