@@ -4,18 +4,24 @@
 
 #include "rmad/dbus_service.h"
 
+#include <sysexits.h>
+
 #include <memory>
 #include <string>
 #include <utility>
 
 #include <base/bind.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/process/launch.h>
 #include <brillo/dbus/data_serialization.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <dbus/rmad/dbus-constants.h>
-#include <sysexits.h>
+
+#include "rmad/constants.h"
+#include "rmad/system/tpm_manager_client_impl.h"
+#include "rmad/utils/dbus_utils.h"
 
 namespace brillo {
 namespace dbus_utils {
@@ -260,12 +266,21 @@ using brillo::dbus_utils::DBusObject;
 
 DBusService::DBusService(RmadInterface* rmad_interface)
     : brillo::DBusServiceDaemon(kRmadServiceName),
-      rmad_interface_(rmad_interface) {}
+      rmad_interface_(rmad_interface),
+      state_file_path_(kDefaultJsonStoreFilePath),
+      is_external_utils_initialized_(false),
+      is_interface_set_up_(false) {}
 
 DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
-                         RmadInterface* rmad_interface)
+                         RmadInterface* rmad_interface,
+                         const base::FilePath& state_file_path,
+                         std::unique_ptr<TpmManagerClient> tpm_manager_client)
     : brillo::DBusServiceDaemon(kRmadServiceName),
-      rmad_interface_(rmad_interface) {
+      rmad_interface_(rmad_interface),
+      state_file_path_(state_file_path),
+      tpm_manager_client_(std::move(tpm_manager_client)),
+      is_external_utils_initialized_(true),
+      is_interface_set_up_(false) {
   dbus_object_ = std::make_unique<DBusObject>(
       nullptr, bus, dbus::ObjectPath(kRmadServicePath));
 }
@@ -276,12 +291,12 @@ int DBusService::OnEventLoopStarted() {
     return exit_code;
   }
 
-  // Initialize RMA interface and try a state transition.
-  if (!rmad_interface_->Initialize()) {
-    return EX_SOFTWARE;
+  if (!is_external_utils_initialized_) {
+    tpm_manager_client_ =
+        std::make_unique<TpmManagerClientImpl>(GetSystemBus());
+    is_external_utils_initialized_ = true;
   }
-  RegisterSignalSenders();
-  rmad_interface_->TryTransitionNextStateFromCurrentState();
+  is_rma_required_ = IsRmaRequired();
   return EX_OK;
 }
 
@@ -337,6 +352,32 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
 
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed to register D-Bus objects.", true));
+}
+
+bool DBusService::IsRmaRequired() const {
+  if (base::PathExists(state_file_path_)) {
+    return true;
+  }
+  CHECK(is_external_utils_initialized_);
+  if (RoVerificationStatus status;
+      tpm_manager_client_->GetRoVerificationStatus(&status) &&
+      status == RoVerificationStatus::PASS) {
+    return true;
+  }
+  return false;
+}
+
+bool DBusService::ConditionallySetUpInterface() {
+  CHECK(rmad_interface_);
+  if (is_rma_required_ && !is_interface_set_up_) {
+    if (!rmad_interface_->SetUp()) {
+      return false;
+    }
+    is_interface_set_up_ = true;
+    RegisterSignalSenders();
+    rmad_interface_->TryTransitionNextStateFromCurrentState();
+  }
+  return true;
 }
 
 void DBusService::RegisterSignalSenders() {

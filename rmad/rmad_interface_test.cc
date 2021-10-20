@@ -199,7 +199,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_HasCellular) {
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(true), CreateShillClient(&cellular_disabled),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   EXPECT_TRUE(cellular_disabled);
 
@@ -222,7 +222,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_NoCellular) {
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(&cellular_disabled),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   EXPECT_FALSE(cellular_disabled);
 
@@ -245,7 +245,7 @@ TEST_F(RmadInterfaceImplTest,
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(&cellular_disabled),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   EXPECT_FALSE(cellular_disabled);
 
@@ -265,7 +265,7 @@ TEST_F(RmadInterfaceImplTest,
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::PASS));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -286,7 +286,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_CorruptedFile) {
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_FALSE(rmad_interface.Initialize());
+  EXPECT_FALSE(rmad_interface.SetUp());
 }
 
 TEST_F(RmadInterfaceImplTest, GetCurrentState_EmptyFile) {
@@ -297,7 +297,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_EmptyFile) {
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -317,7 +317,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotSet) {
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -337,7 +337,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithHistory) {
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -357,7 +357,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithUnsupportedState) {
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -378,7 +378,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidState) {
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -397,7 +397,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidJson) {
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -417,7 +417,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InitializeStateFail) {
       json_store, CreateStateHandlerManagerInitializeStateFail(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_MISSING_COMPONENT, reply.error());
@@ -435,7 +435,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
   EXPECT_EQ(true, rmad_interface.CanAbort());
 
   TransitionNextStateRequest request;
@@ -467,7 +467,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
       json_store, CreateStateHandlerManagerMissingHandler(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   TransitionNextStateRequest request;
   auto callback = [](const GetStateReply& reply) {
@@ -487,7 +487,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_InitializeNextStateFail) {
       json_store, CreateStateHandlerManagerInitializeStateFail(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   TransitionNextStateRequest request;
   auto callback = [](const GetStateReply& reply) {
@@ -508,7 +508,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
@@ -528,7 +528,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
@@ -548,7 +548,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_MissingHandler) {
       json_store, CreateStateHandlerManagerMissingHandler(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_TRANSITION_FAILED, reply.error());
@@ -569,7 +569,7 @@ TEST_F(RmadInterfaceImplTest,
       json_store, CreateStateHandlerManagerInitializeStateFail(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   auto callback = [](const GetStateReply& reply) {
     EXPECT_EQ(RMAD_ERROR_MISSING_COMPONENT, reply.error());
@@ -589,7 +589,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma) {
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(json_store_file_path));
@@ -612,7 +612,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(json_store_file_path));
@@ -635,7 +635,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED));
-  EXPECT_TRUE(rmad_interface.Initialize());
+  EXPECT_TRUE(rmad_interface.SetUp());
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(json_store_file_path));

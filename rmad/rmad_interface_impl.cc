@@ -25,14 +25,14 @@ namespace rmad {
 
 namespace {
 
-const base::FilePath kDefaultJsonStoreFilePath(
-    "/mnt/stateful_partition/unencrypted/rma-data/state");
 const RmadState::StateCase kInitialStateCase = RmadState::kWelcome;
 
 }  // namespace
 
 RmadInterfaceImpl::RmadInterfaceImpl()
-    : RmadInterface(), external_utils_initialized_(false) {}
+    : RmadInterface(),
+      external_utils_initialized_(false),
+      current_state_case_(RmadState::STATE_NOT_SET) {}
 
 RmadInterfaceImpl::RmadInterfaceImpl(
     scoped_refptr<JsonStore> json_store,
@@ -46,7 +46,8 @@ RmadInterfaceImpl::RmadInterfaceImpl(
       runtime_probe_client_(std::move(runtime_probe_client)),
       shill_client_(std::move(shill_client)),
       tpm_manager_client_(std::move(tpm_manager_client)),
-      external_utils_initialized_(true) {}
+      external_utils_initialized_(true),
+      current_state_case_(RmadState::STATE_NOT_SET) {}
 
 bool RmadInterfaceImpl::StoreStateHistory() {
   std::vector<int> state_history;
@@ -56,10 +57,11 @@ bool RmadInterfaceImpl::StoreStateHistory() {
   return json_store_->SetValue(kStateHistory, state_history);
 }
 
-bool RmadInterfaceImpl::Initialize() {
+bool RmadInterfaceImpl::SetUp() {
   // Initialize external utilities if needed.
   if (!external_utils_initialized_) {
-    json_store_ = base::MakeRefCounted<JsonStore>(kDefaultJsonStoreFilePath);
+    json_store_ = base::MakeRefCounted<JsonStore>(
+        base::FilePath(kDefaultJsonStoreFilePath));
     state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
     state_handler_manager_->RegisterStateHandlers();
     runtime_probe_client_ =
@@ -263,6 +265,11 @@ void RmadInterfaceImpl::TransitionNextState(
 GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
     const TransitionNextStateRequest& request) {
   GetStateReply reply;
+  if (current_state_case_ == RmadState::STATE_NOT_SET) {
+    reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
+    return reply;
+  }
+
   scoped_refptr<BaseStateHandler> current_state_handler, next_state_handler;
   if (RmadErrorCode error = GetInitializedStateHandler(current_state_case_,
                                                        &current_state_handler);
@@ -325,6 +332,12 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
 void RmadInterfaceImpl::TransitionPreviousState(
     const GetStateCallback& callback) {
   GetStateReply reply;
+  if (current_state_case_ == RmadState::STATE_NOT_SET) {
+    reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
+    callback.Run(reply);
+    return;
+  }
+
   scoped_refptr<BaseStateHandler> current_state_handler, prev_state_handler;
   if (RmadErrorCode error = GetInitializedStateHandler(current_state_case_,
                                                        &current_state_handler);
@@ -378,8 +391,9 @@ void RmadInterfaceImpl::TransitionPreviousState(
 
 void RmadInterfaceImpl::AbortRma(const AbortRmaCallback& callback) {
   AbortRmaReply reply;
-
-  if (can_abort_) {
+  if (current_state_case_ == RmadState::STATE_NOT_SET) {
+    reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
+  } else if (can_abort_) {
     VLOG(1) << "AbortRma: Abort allowed.";
     if (json_store_->ClearAndDeleteFile()) {
       current_state_case_ = RmadState::STATE_NOT_SET;

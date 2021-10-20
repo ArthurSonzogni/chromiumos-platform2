@@ -18,7 +18,10 @@ class RmadInterface {
   RmadInterface() = default;
   virtual ~RmadInterface() = default;
 
-  virtual bool Initialize() = 0;
+  // Fully set up the interface. To minimize unnecessary initialization when RMA
+  // is not required, the D-Bus APIs might be called when the class is
+  // initialized by the constructor but not fully set up.
+  virtual bool SetUp() = 0;
 
   // Register a signal sender for specific states. Virtual functions cannot be
   // declared as template so we need to declare them one by one.

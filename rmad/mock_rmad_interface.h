@@ -18,7 +18,7 @@ class MockRmadInterface : public RmadInterface {
   MockRmadInterface() = default;
   virtual ~MockRmadInterface() = default;
 
-  MOCK_METHOD(bool, Initialize, (), (override));
+  MOCK_METHOD(bool, SetUp, (), (override));
   MOCK_METHOD(void,
               RegisterSignalSender,
               (RmadState::StateCase,

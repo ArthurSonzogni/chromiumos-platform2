@@ -127,6 +127,9 @@ enum RmadErrorCode {
 
   // Failed to get logs.
   RMAD_ERROR_CANNOT_GET_LOG = 38;
+
+  // RMA daemon initialization failed.
+  RMAD_ERROR_DAEMON_INITIALIZATION_FAILED = 39;
 }
 
 // Defined Rmad components.

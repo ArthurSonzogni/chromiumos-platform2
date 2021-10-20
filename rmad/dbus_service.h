@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/data_serialization.h>
 #include <brillo/dbus/dbus_method_response.h>
@@ -17,6 +18,7 @@
 #include <dbus/bus.h>
 
 #include "rmad/rmad_interface.h"
+#include "rmad/system/tpm_manager_client.h"
 
 namespace brillo {
 namespace dbus_utils {
@@ -48,7 +50,9 @@ class DBusService : public brillo::DBusServiceDaemon {
   explicit DBusService(RmadInterface* rmad_interface);
   // Used to inject a mock bus.
   DBusService(const scoped_refptr<dbus::Bus>& bus,
-              RmadInterface* rmad_interface);
+              RmadInterface* rmad_interface,
+              const base::FilePath& state_file_path,
+              std::unique_ptr<TpmManagerClient> tpm_manager_client);
   DBusService(const DBusService&) = delete;
   DBusService& operator=(const DBusService&) = delete;
 
@@ -77,6 +81,9 @@ class DBusService : public brillo::DBusServiceDaemon {
  private:
   friend class DBusServiceTest;
 
+  bool IsRmaRequired() const;
+  bool ConditionallySetUpInterface();
+
   template <typename... Types>
   using DBusMethodResponse = brillo::dbus_utils::DBusMethodResponse<Types...>;
 
@@ -91,6 +98,10 @@ class DBusService : public brillo::DBusServiceDaemon {
             DBusService::HandlerFunction<RequestProtobufType, ReplyType> func>
   void HandleMethod(std::unique_ptr<DBusMethodResponse<ReplyType>> response,
                     const RequestProtobufType& request) {
+    if (!ConditionallySetUpInterface()) {
+      SendErrorSignal(RMAD_ERROR_DAEMON_INITIALIZATION_FAILED);
+      return;
+    }
     // Convert to shared_ptr so rmad_interface_ can safely copy the callback.
     using SharedResponsePointer =
         std::shared_ptr<DBusMethodResponse<ReplyType>>;
@@ -108,6 +119,10 @@ class DBusService : public brillo::DBusServiceDaemon {
   template <typename ReplyType,
             DBusService::HandlerFunctionEmptyRequest<ReplyType> func>
   void HandleMethod(std::unique_ptr<DBusMethodResponse<ReplyType>> response) {
+    if (!ConditionallySetUpInterface()) {
+      SendErrorSignal(RMAD_ERROR_DAEMON_INITIALIZATION_FAILED);
+      return;
+    }
     // Convert to shared_ptr so rmad_interface_ can safely copy the callback.
     using SharedResponsePointer =
         std::shared_ptr<DBusMethodResponse<ReplyType>>;
@@ -143,6 +158,8 @@ class DBusService : public brillo::DBusServiceDaemon {
   void PostQuitTask();
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+
+  // D-Bus signals.
   std::weak_ptr<brillo::dbus_utils::DBusSignal<RmadErrorCode>> error_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<HardwareVerificationResult>>
       hardware_verification_signal_;
@@ -158,7 +175,20 @@ class DBusService : public brillo::DBusServiceDaemon {
       finalize_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<bool>> hwwp_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<bool>> power_cable_signal_;
+
+  // RMA interface for handling most of the D-Bus requests.
   RmadInterface* rmad_interface_;
+  // RMA state file path.
+  base::FilePath state_file_path_;
+  // External utils to communicate with tpm_manager.
+  std::unique_ptr<TpmManagerClient> tpm_manager_client_;
+  // External utils initialization status.
+  bool is_external_utils_initialized_;
+  // RMA interface setup status. Only set up the interface when RMA is required
+  // to avoid unnecessary code paths.
+  bool is_interface_set_up_;
+  // Whether the device should trigger shimless RMA.
+  bool is_rma_required_;
 };
 
 }  // namespace rmad

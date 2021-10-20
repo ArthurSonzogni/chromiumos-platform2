@@ -13,6 +13,8 @@
 namespace rmad {
 
 inline constexpr char kDefaultWorkingDirPath[] = "/var/lib/rmad/";
+inline constexpr char kDefaultJsonStoreFilePath[] =
+    "/mnt/stateful_partition/unencrypted/rma-data/state";
 
 // Files for pre-stop script to read.
 inline constexpr char kPowerwashRequestFilePath[] = ".powerwash_request";

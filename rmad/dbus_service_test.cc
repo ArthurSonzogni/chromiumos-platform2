@@ -2,9 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sysexits.h>
+
 #include <string>
 
+#include <base/files/scoped_temp_dir.h>
 #include <brillo/dbus/dbus_object_test_helpers.h>
+#include <brillo/file_utils.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <dbus/rmad/dbus-constants.h>
@@ -13,14 +17,17 @@
 
 #include "rmad/dbus_service.h"
 #include "rmad/mock_rmad_interface.h"
+#include "rmad/system/mock_tpm_manager_client.h"
 
 using brillo::dbus_utils::AsyncEventSequencer;
 using brillo::dbus_utils::PopValueFromReader;
 using testing::_;
 using testing::A;
+using testing::DoAll;
 using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
+using testing::SetArgPointee;
 using testing::StrictMock;
 
 namespace rmad {
@@ -36,8 +43,6 @@ class DBusServiceTest : public testing::Test {
             mock_bus_.get(), path);
     ON_CALL(*mock_bus_, GetExportedObject(path))
         .WillByDefault(Return(mock_exported_object_.get()));
-    dbus_service_ =
-        std::make_unique<DBusService>(mock_bus_, &mock_rmad_service_);
 
     EXPECT_CALL(mock_rmad_service_, GetCurrentStateCase())
         .WillRepeatedly(Return(RmadState::STATE_NOT_SET));
@@ -79,9 +84,34 @@ class DBusServiceTest : public testing::Test {
   }
   ~DBusServiceTest() override = default;
 
-  void RegisterDBusObjectAsync() {
+  void SetUpDBusService(bool state_file_exist,
+                        RoVerificationStatus ro_verification_status,
+                        bool setup_success) {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base::FilePath state_file_path = temp_dir_.GetPath().AppendASCII("state");
+    if (state_file_exist) {
+      brillo::TouchFile(state_file_path);
+    }
+    auto mock_tpm_manager_client =
+        std::make_unique<NiceMock<MockTpmManagerClient>>();
+    ON_CALL(*mock_tpm_manager_client, GetRoVerificationStatus(_))
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(ro_verification_status), Return(true)));
+    dbus_service_ = std::make_unique<DBusService>(
+        mock_bus_, &mock_rmad_service_, state_file_path,
+        std::move(mock_tpm_manager_client));
+    ASSERT_EQ(dbus_service_->OnEventLoopStarted(), EX_OK);
+
     auto sequencer = base::MakeRefCounted<AsyncEventSequencer>();
     dbus_service_->RegisterDBusObjectsAsync(sequencer.get());
+
+    if (state_file_exist ||
+        ro_verification_status == RoVerificationStatus::PASS) {
+      EXPECT_CALL(mock_rmad_service_, SetUp())
+          .WillRepeatedly(Return(setup_success));
+      EXPECT_CALL(mock_rmad_service_, TryTransitionNextStateFromCurrentState())
+          .WillRepeatedly(Return());
+    }
   }
 
   template <typename RequestProtobufType, typename ReplyProtobufType>
@@ -93,8 +123,10 @@ class DBusServiceTest : public testing::Test {
     writer.AppendProtoAsArrayOfBytes(request);
     auto response = brillo::dbus_utils::testing::CallMethod(
         *dbus_service_->dbus_object_, call.get());
-    dbus::MessageReader reader(response.get());
-    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(reply));
+    if (response.get()) {
+      dbus::MessageReader reader(response.get());
+      EXPECT_TRUE(reader.PopArrayOfBytesAsProto(reply));
+    }
   }
 
   template <typename ReplyProtobufType>
@@ -102,16 +134,20 @@ class DBusServiceTest : public testing::Test {
     std::unique_ptr<dbus::MethodCall> call = CreateMethodCall(method_name);
     auto response = brillo::dbus_utils::testing::CallMethod(
         *dbus_service_->dbus_object_, call.get());
-    dbus::MessageReader reader(response.get());
-    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(reply));
+    if (response.get()) {
+      dbus::MessageReader reader(response.get());
+      EXPECT_TRUE(reader.PopArrayOfBytesAsProto(reply));
+    }
   }
 
   void ExecuteMethod(const std::string& method_name, std::string* reply) {
     std::unique_ptr<dbus::MethodCall> call = CreateMethodCall(method_name);
     auto response = brillo::dbus_utils::testing::CallMethod(
         *dbus_service_->dbus_object_, call.get());
-    dbus::MessageReader reader(response.get());
-    EXPECT_TRUE(reader.PopString(reply));
+    if (response.get()) {
+      dbus::MessageReader reader(response.get());
+      EXPECT_TRUE(reader.PopString(reply));
+    }
   }
 
   bool SignalError(RmadErrorCode error) {
@@ -161,13 +197,27 @@ class DBusServiceTest : public testing::Test {
 
   scoped_refptr<dbus::MockBus> mock_bus_;
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
+  base::ScopedTempDir temp_dir_;
   StrictMock<MockRmadInterface> mock_rmad_service_;
   std::unique_ptr<DBusService> dbus_service_;
 };
 
-TEST_F(DBusServiceTest, GetCurrentState) {
-  RegisterDBusObjectAsync();
+TEST_F(DBusServiceTest, GetCurrentStats_RmaNotRequired) {
+  SetUpDBusService(false, RoVerificationStatus::NOT_TRIGGERED, true);
+  EXPECT_CALL(mock_rmad_service_, GetCurrentState(_))
+      .WillOnce(Invoke([](const RmadInterface::GetStateCallback& callback) {
+        GetStateReply reply;
+        reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
+        callback.Run(reply);
+      }));
+  GetStateReply reply;
+  ExecuteMethod(kGetCurrentStateMethod, &reply);
+  EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
+  EXPECT_EQ(RmadState::STATE_NOT_SET, reply.state().state_case());
+}
 
+TEST_F(DBusServiceTest, GetCurrentState_RoVerificationTriggered) {
+  SetUpDBusService(false, RoVerificationStatus::PASS, true);
   EXPECT_CALL(mock_rmad_service_, GetCurrentState(_))
       .WillOnce(Invoke([](const RmadInterface::GetStateCallback& callback) {
         GetStateReply reply;
@@ -181,9 +231,40 @@ TEST_F(DBusServiceTest, GetCurrentState) {
   EXPECT_EQ(RmadState::STATE_NOT_SET, reply.state().state_case());
 }
 
-TEST_F(DBusServiceTest, TransitionNextState) {
-  RegisterDBusObjectAsync();
+TEST_F(DBusServiceTest, GetCurrentState_StateFileExists) {
+  SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
+  EXPECT_CALL(mock_rmad_service_, GetCurrentState(_))
+      .WillOnce(Invoke([](const RmadInterface::GetStateCallback& callback) {
+        GetStateReply reply;
+        reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
+        callback.Run(reply);
+      }));
 
+  GetStateReply reply;
+  ExecuteMethod(kGetCurrentStateMethod, &reply);
+  EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
+  EXPECT_EQ(RmadState::STATE_NOT_SET, reply.state().state_case());
+}
+
+TEST_F(DBusServiceTest, GetCurrentState_InterfaceSetUpFailed) {
+  SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, false);
+  EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
+      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+        EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
+        EXPECT_EQ(signal->GetMember(), "Error");
+        dbus::MessageReader reader(signal);
+        int error;
+        EXPECT_TRUE(brillo::dbus_utils::DBusType<int>::Read(&reader, &error));
+        EXPECT_EQ(static_cast<RmadErrorCode>(error),
+                  RMAD_ERROR_DAEMON_INITIALIZATION_FAILED);
+      }));
+
+  GetStateReply reply;
+  ExecuteMethod(kGetCurrentStateMethod, &reply);
+}
+
+TEST_F(DBusServiceTest, TransitionNextState) {
+  SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(mock_rmad_service_, TransitionNextState(_, _))
       .WillOnce(Invoke([](const TransitionNextStateRequest& request,
                           const RmadInterface::GetStateCallback& callback) {
@@ -203,8 +284,7 @@ TEST_F(DBusServiceTest, TransitionNextState) {
 }
 
 TEST_F(DBusServiceTest, TransitionPreviousState) {
-  RegisterDBusObjectAsync();
-
+  SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(mock_rmad_service_, TransitionPreviousState(_))
       .WillOnce(Invoke([](const RmadInterface::GetStateCallback& callback) {
         GetStateReply reply;
@@ -219,8 +299,7 @@ TEST_F(DBusServiceTest, TransitionPreviousState) {
 }
 
 TEST_F(DBusServiceTest, AbortRma) {
-  RegisterDBusObjectAsync();
-
+  SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(mock_rmad_service_, AbortRma(_))
       .WillOnce(Invoke([](const RmadInterface::AbortRmaCallback& callback) {
         AbortRmaReply reply;
@@ -235,15 +314,14 @@ TEST_F(DBusServiceTest, AbortRma) {
 
 TEST_F(DBusServiceTest, GetLogPath) {
   // This method doesn't call |mock_rma_service_|.
-  RegisterDBusObjectAsync();
-
+  SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   std::string reply;
   ExecuteMethod(kGetLogPathMethod, &reply);
   EXPECT_EQ("not_supported", reply);
 }
 
 TEST_F(DBusServiceTest, SignalError) {
-  RegisterDBusObjectAsync();
+  SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillRepeatedly(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
@@ -257,7 +335,7 @@ TEST_F(DBusServiceTest, SignalError) {
 }
 
 TEST_F(DBusServiceTest, SignalHardwareVerification) {
-  RegisterDBusObjectAsync();
+  SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillRepeatedly(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
@@ -275,7 +353,7 @@ TEST_F(DBusServiceTest, SignalHardwareVerification) {
 }
 
 TEST_F(DBusServiceTest, SignalCalibrationOverall) {
-  RegisterDBusObjectAsync();
+  SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillRepeatedly(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
@@ -291,7 +369,7 @@ TEST_F(DBusServiceTest, SignalCalibrationOverall) {
 }
 
 TEST_F(DBusServiceTest, SignalCalibrationComponent) {
-  RegisterDBusObjectAsync();
+  SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillRepeatedly(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
@@ -315,7 +393,7 @@ TEST_F(DBusServiceTest, SignalCalibrationComponent) {
 }
 
 TEST_F(DBusServiceTest, SignalProvision) {
-  RegisterDBusObjectAsync();
+  SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillRepeatedly(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
@@ -334,7 +412,7 @@ TEST_F(DBusServiceTest, SignalProvision) {
 }
 
 TEST_F(DBusServiceTest, SignalFinalize) {
-  RegisterDBusObjectAsync();
+  SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillRepeatedly(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
@@ -353,7 +431,7 @@ TEST_F(DBusServiceTest, SignalFinalize) {
 }
 
 TEST_F(DBusServiceTest, SignalHardwareWriteProtection) {
-  RegisterDBusObjectAsync();
+  SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillRepeatedly(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
@@ -367,7 +445,7 @@ TEST_F(DBusServiceTest, SignalHardwareWriteProtection) {
 }
 
 TEST_F(DBusServiceTest, SignalPowerCable) {
-  RegisterDBusObjectAsync();
+  SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillRepeatedly(Invoke([](dbus::Signal* signal) {
         EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");

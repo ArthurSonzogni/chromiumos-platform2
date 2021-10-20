@@ -35,7 +35,7 @@ class RmadInterfaceImpl final : public RmadInterface {
 
   ~RmadInterfaceImpl() override = default;
 
-  bool Initialize() override;
+  bool SetUp() override;
 
   void RegisterSignalSender(
       RmadState::StateCase state_case,
