@@ -559,10 +559,11 @@ void CrosFpBiometricsManager::DoMatchFingerUpEvent(uint32_t event) {
     OnSessionFailed();
 }
 
-bool CrosFpBiometricsManager::ValidationValueIsCorrect(uint32_t match_idx) {
+bool CrosFpBiometricsManager::CheckPositiveMatchSecret(int match_idx) {
   base::Optional<brillo::SecureVector> secret =
       cros_dev_->GetPositiveMatchSecret(match_idx);
   biod_metrics_->SendReadPositiveMatchSecretSuccess(secret.has_value());
+
   if (!secret) {
     LOG(ERROR) << "Failed to read positive match secret on match for finger "
                << match_idx << ".";
@@ -572,9 +573,8 @@ bool CrosFpBiometricsManager::ValidationValueIsCorrect(uint32_t match_idx) {
   std::vector<uint8_t> validation_value;
   if (!BiodCrypto::ComputeValidationValue(*secret, records_[match_idx].user_id,
                                           &validation_value)) {
-    LOG(ERROR) << "Got positive match secret but failed to compute validation "
-                  "value for finger "
-               << match_idx << ".";
+    LOG(ERROR) << "Failed to compute validation value for finger " << match_idx
+               << ".";
     return false;
   }
 
@@ -589,24 +589,6 @@ bool CrosFpBiometricsManager::ValidationValueIsCorrect(uint32_t match_idx) {
   biod_metrics_->SendPositiveMatchSecretCorrect(true);
   suspicious_templates_.erase(match_idx);
   return true;
-}
-
-BiometricsManager::AttemptMatches CrosFpBiometricsManager::CalculateMatches(
-    int match_idx, bool matched) {
-  BiometricsManager::AttemptMatches matches;
-  if (!matched)
-    return matches;
-
-  if (match_idx >= records_.size()) {
-    LOG(ERROR) << "Invalid finger index " << match_idx;
-    return matches;
-  }
-
-  if (ValidationValueIsCorrect(match_idx)) {
-    matches.emplace(records_[match_idx].user_id,
-                    std::vector<std::string>({records_[match_idx].record_id}));
-  }
-  return matches;
 }
 
 void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
@@ -701,8 +683,12 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
     case EC_MKBP_FP_ERR_MATCH_YES:
     case EC_MKBP_FP_ERR_MATCH_YES_UPDATED:
     case EC_MKBP_FP_ERR_MATCH_YES_UPDATE_FAILED:
+      if (match_idx < records_.size()) {
+        matched = true;
+      } else {
+        LOG(ERROR) << "Invalid finger index " << match_idx;
+      }
       result = ScanResult::SCAN_RESULT_SUCCESS;
-      matched = true;
       break;
     case EC_MKBP_FP_ERR_MATCH_NO_LOW_QUALITY:
       result = ScanResult::SCAN_RESULT_INSUFFICIENT;
@@ -717,10 +703,19 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
       return;
   }
 
-  BiometricsManager::AttemptMatches matches =
-      CalculateMatches(match_idx, matched);
-  if (matches.empty())
-    matched = false;
+  BiometricsManager::AttemptMatches matches;
+
+  if (matched) {
+    // CrosFp says that match was successful, let's check if this is true
+    if (CheckPositiveMatchSecret(match_idx)) {
+      matches.emplace(
+          records_[match_idx].user_id,
+          std::vector<std::string>({records_[match_idx].record_id}));
+    } else {
+      LOG(ERROR) << "Failed to check Secure Secret for " << match_idx;
+      matched = false;
+    }
+  }
 
   // Send back the result directly (as we are running on the main thread).
   OnAuthScanDone(result, std::move(matches));

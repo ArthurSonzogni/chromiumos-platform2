@@ -154,13 +154,8 @@ class CrosFpBiometricsManagerPeer {
     return BiodCrypto::ComputeValidationValue(secret, user_id, out);
   }
 
-  bool ValidationValueIsCorrect(uint32_t match_idx) {
-    return cros_fp_biometrics_manager_->ValidationValueIsCorrect(match_idx);
-  }
-
-  BiometricsManager::AttemptMatches CalculateMatches(int match_idx,
-                                                     bool matched) {
-    return cros_fp_biometrics_manager_->CalculateMatches(match_idx, matched);
+  bool CheckPositiveMatchSecret(int match_idx) {
+    return cros_fp_biometrics_manager_->CheckPositiveMatchSecret(match_idx);
   }
 
  private:
@@ -189,46 +184,34 @@ TEST_F(CrosFpBiometricsManagerTest, TestComputeValidationValue) {
   }
 }
 
-TEST_F(CrosFpBiometricsManagerTest, TestValidationValueIsCorrect) {
+TEST_F(CrosFpBiometricsManagerTest, TestPositiveMatchSecretIsCorrect) {
   cros_fp_biometrics_manager_peer_.SetDevicePositiveMatchSecret(
       kFakePositiveMatchSecret1);
   int index = cros_fp_biometrics_manager_peer_.AddRecord(
       kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1);
-  bool ret = cros_fp_biometrics_manager_peer_.ValidationValueIsCorrect(index);
+  bool ret = cros_fp_biometrics_manager_peer_.CheckPositiveMatchSecret(index);
   EXPECT_TRUE(ret);
 
   // Make the device return a wrong positive_match_secret.
   cros_fp_biometrics_manager_peer_.SetDevicePositiveMatchSecret(
       kFakePositiveMatchSecret2);
-  ret = cros_fp_biometrics_manager_peer_.ValidationValueIsCorrect(index);
+  ret = cros_fp_biometrics_manager_peer_.CheckPositiveMatchSecret(index);
   EXPECT_FALSE(ret);
 }
 
-TEST_F(CrosFpBiometricsManagerTest, TestCalculateMatchesNotMatched) {
+TEST_F(CrosFpBiometricsManagerTest, TestCheckPositiveMatchSecretNoSecret) {
   int index = cros_fp_biometrics_manager_peer_.AddRecord(
       kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1);
-  BiometricsManager::AttemptMatches matches =
-      cros_fp_biometrics_manager_peer_.CalculateMatches(index, false);
-  // If matched is false then we should report no matches.
-  EXPECT_TRUE(matches.empty());
+  brillo::SecureVector empty;
+  cros_fp_biometrics_manager_peer_.SetDevicePositiveMatchSecret(empty);
+  EXPECT_FALSE(
+      cros_fp_biometrics_manager_peer_.CheckPositiveMatchSecret(index));
 }
 
-TEST_F(CrosFpBiometricsManagerTest, TestCalculateMatchesInvalidIndex) {
+TEST_F(CrosFpBiometricsManagerTest, TestCheckPositiveMatchSecret) {
   int index = cros_fp_biometrics_manager_peer_.AddRecord(
       kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1);
-  BiometricsManager::AttemptMatches matches =
-      cros_fp_biometrics_manager_peer_.CalculateMatches(index + 1, true);
-  // If index is invalid then we should report no matches.
-  EXPECT_TRUE(matches.empty());
-}
-
-TEST_F(CrosFpBiometricsManagerTest, TestCalculateMatches) {
-  int index = cros_fp_biometrics_manager_peer_.AddRecord(
-      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1);
-  BiometricsManager::AttemptMatches matches =
-      cros_fp_biometrics_manager_peer_.CalculateMatches(index, true);
-  EXPECT_EQ(matches,
-            BiometricsManager::AttemptMatches({{kUserID, {kRecordID}}}));
+  EXPECT_TRUE(cros_fp_biometrics_manager_peer_.CheckPositiveMatchSecret(index));
 }
 
 class CrosFpBiometricsManagerMockTest : public ::testing::Test {

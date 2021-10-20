@@ -136,9 +136,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
                              uint32_t event);
   void DoMatchEvent(int attempt, uint32_t event);
   void DoMatchFingerUpEvent(uint32_t event);
-  bool ValidationValueIsCorrect(uint32_t match_idx);
-  BiometricsManager::AttemptMatches CalculateMatches(int match_idx,
-                                                     bool matched);
+  bool CheckPositiveMatchSecret(int match_idx);
 
   void KillMcuSession();
 
