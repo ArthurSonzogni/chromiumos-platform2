@@ -10,6 +10,9 @@ group("all") {
     ":chaps-protos",
     ":chaps_client",
     ":chapsd",
+    ":dbus_conf",
+    ":install_client_headers",
+    ":install_pkcs11_header",
     ":libchaps",
     ":libchaps_static",
     ":p11_replay",
@@ -40,6 +43,9 @@ group("all") {
       ":chaps_attributes_fuzzer",
       ":chaps_object_store_fuzzer",
     ]
+  }
+  if (!use.systemd) {
+    deps += [ ":install_chapsd_conf" ]
   }
 }
 
@@ -120,6 +126,7 @@ shared_library("libchaps") {
     "proto_conversion.cc",
     "token_manager_client.cc",
   ]
+  install_path = "lib"
   defines = [
     "USE_TPM1=${use.tpm}",
     "USE_TPM2=${use.tpm2}",
@@ -171,6 +178,7 @@ executable("chapsd") {
     "slot_policy_shared_slot.cc",
     "system_shutdown_blocker.cc",
   ]
+  install_path = "sbin"
   configs += [
     ":chapsd_config",
     ":target_defaults",
@@ -194,14 +202,40 @@ executable("chapsd") {
   }
 }
 
+install_config("dbus_conf") {
+  sources = [ "org.chromium.Chaps.conf" ]
+  install_path = "/etc/dbus-1/system.d/"
+}
+
+install_config("install_client_headers") {
+  sources = [
+    "attributes.h",
+    "chaps.h",
+    "chaps_interface.h",
+    "chaps_proxy_mock.h",
+    "isolate.h",
+    "token_manager_client.h",
+    "token_manager_client_mock.h",
+    "token_manager_interface.h",
+  ]
+  install_path = "/usr/include/chaps"
+}
+
+install_config("install_pkcs11_header") {
+  sources = [ "pkcs11/cryptoki.h" ]
+  install_path = "/usr/include/chaps/pkcs11"
+}
+
 executable("chaps_client") {
   sources = [ "chaps_client.cc" ]
+  install_path = "bin"
   configs += [ ":target_defaults" ]
   deps = [ ":libchaps_static" ]
 }
 
 executable("p11_replay") {
   sources = [ "p11_replay.cc" ]
+  install_path = "bin"
   configs += [ ":target_defaults" ]
   deps = [ ":libchaps" ]
 }
@@ -450,6 +484,7 @@ if (use.test) {
       "chapsd_test.cc",
       "platform_globals_chromeos.cc",
     ]
+    install_path = "sbin"
     configs += [
       "//common-mk:test",
       ":target_defaults",
@@ -463,6 +498,7 @@ if (use.test) {
 
   executable("tpm_utility_test") {
     sources = [ "tpm_utility_test.cc" ]
+    install_path = "sbin"
     configs += [
       "//common-mk:test",
       ":target_defaults",
@@ -542,5 +578,13 @@ if (use.fuzzer) {
       "nss",
     ]
     deps = [ ":libchaps_static" ]
+  }
+}
+
+# systemd config is installed by the ebuild.
+if (!use.systemd) {
+  install_config("install_chapsd_conf") {
+    sources = [ "init/chapsd.conf" ]
+    install_path = "/etc/init"
   }
 }
