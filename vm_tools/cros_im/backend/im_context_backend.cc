@@ -78,6 +78,12 @@ void IMContextBackend::Deactivate() {
   seat_ = nullptr;
 }
 
+void IMContextBackend::ShowInputPanel() {
+  if (!text_input_)
+    return;
+  zwp_text_input_v1_show_input_panel(text_input_);
+}
+
 void IMContextBackend::Reset() {
   if (!text_input_)
     return;
@@ -89,6 +95,13 @@ void IMContextBackend::SetSurrounding(const char* text, int cursor_index) {
     return;
   zwp_text_input_v1_set_surrounding_text(text_input_, text, cursor_index,
                                          cursor_index);
+}
+
+void IMContextBackend::SetContentType(ContentType content_type) {
+  if (!text_input_)
+    return;
+  zwp_text_input_v1_set_content_type(text_input_, content_type.hints,
+                                     content_type.purpose);
 }
 
 void IMContextBackend::SetCursorLocation(int x, int y, int width, int height) {

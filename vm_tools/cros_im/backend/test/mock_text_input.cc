@@ -21,9 +21,12 @@ std::vector<std::unique_ptr<zwp_text_input_v1>>& GetTextInputs() {
   return text_inputs;
 }
 
+void HandleRequest(const Request& request) {
+  cros_im::test::BackendTest::GetInstance()->ProcessRequest(request);
+}
+
 void HandleRequest(zwp_text_input_v1* text_input, Request::RequestType type) {
-  cros_im::test::BackendTest::GetInstance()->ProcessRequest(
-      Request(text_input->id, type));
+  HandleRequest(Request(text_input->id, type));
 }
 
 }  // namespace
@@ -67,6 +70,10 @@ void zwp_text_input_v1_hide_input_panel(zwp_text_input_v1* text_input) {
   HandleRequest(text_input, Request::kHideInputPanel);
 }
 
+void zwp_text_input_v1_show_input_panel(zwp_text_input_v1* text_input) {
+  HandleRequest(text_input, Request::kShowInputPanel);
+}
+
 void zwp_text_input_v1_reset(zwp_text_input_v1* text_input) {
   HandleRequest(text_input, Request::kReset);
 }
@@ -76,6 +83,13 @@ void zwp_text_input_v1_set_surrounding_text(zwp_text_input_v1* text_input,
                                             uint32_t cursor,
                                             uint32_t anchor) {
   HandleRequest(text_input, Request::kSetSurroundingText);
+}
+
+void zwp_text_input_v1_set_content_type(zwp_text_input_v1* text_input,
+                                        uint32_t hints,
+                                        uint32_t purpose) {
+  HandleRequest(
+      cros_im::test::SetContentTypeRequest(text_input->id, hints, purpose));
 }
 
 void zwp_text_input_v1_set_cursor_rectangle(zwp_text_input_v1* text_input,

@@ -71,6 +71,97 @@ wl_seat* GetSeat() {
       gdk_display_get_default_seat(gdk_display_get_default()));
 }
 
+uint32_t GetZwpHintsFromGtk(GtkInputHints gtk_hints) {
+  uint32_t zwp_hints = ZWP_TEXT_INPUT_V1_CONTENT_HINT_NONE;
+
+  // Input hints are not often set so default to turning on auto completion and
+  // auto correction unless explicitly disabled.
+
+  // Don't require GTK_INPUT_HINT_SPELLCHECK
+  if (!(gtk_hints & GTK_INPUT_HINT_NO_SPELLCHECK))
+    zwp_hints |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_AUTO_CORRECTION;
+
+  // Don't require GTK_INPUT_HINT_WORD_COMPLETION
+  zwp_hints |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_AUTO_COMPLETION;
+
+  // TODO(timloh): Current TITLECASE and and AUTO_CAPITALIZATION seem to make
+  // text entirely uppercase, maybe due to lack of surrounding text support.
+  // Test this (e.g. <input autocapitalize="on"> in Firefox) when VK support
+  // is improved, and default to auto capitalize once this works.
+  if (gtk_hints & GTK_INPUT_HINT_LOWERCASE) {
+    zwp_hints |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_LOWERCASE;
+  } else if (gtk_hints & GTK_INPUT_HINT_UPPERCASE_CHARS) {
+    zwp_hints |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_UPPERCASE;
+  } else if (gtk_hints & GTK_INPUT_HINT_UPPERCASE_WORDS) {
+    zwp_hints |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_TITLECASE;
+  } else if (gtk_hints & GTK_INPUT_HINT_UPPERCASE_SENTENCES) {
+    zwp_hints |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_AUTO_CAPITALIZATION;
+  }
+
+  // Handled explicitly in FocusIn():
+  // - GTK_INPUT_HINT_INHIBIT_OSK
+  // Not supported:
+  // - GTK_INPUT_HINT_VERTICAL_WRITING
+  // - GTK_INPUT_HINT_EMOJI
+  // - GTK_INPUT_HINT_NO_EMOJI
+  // - ZWP_TEXT_INPUT_V1_CONTENT_HINT_LATIN
+  // - ZWP_TEXT_INPUT_V1_CONTENT_HINT_MULTILINE
+  // GetZwpHintsPurposeFromGtk special-cases a PASSWORD or PIN purpose, ignoring
+  // any explicitly set hints and instead setting:
+  // - ZWP_TEXT_INPUT_V1_CONTENT_HINT_HIDDEN_TEXT
+  // - ZWP_TEXT_INPUT_V1_CONTENT_HINT_SENSITIVE_DATA
+  // - (aka ZWP_TEXT_INPUT_V1_CONTENT_HINT_PASSWORD)
+  return zwp_hints;
+}
+
+uint32_t GetZwpPurposeFromGtk(GtkInputPurpose gtk_purpose) {
+  switch (gtk_purpose) {
+    case GTK_INPUT_PURPOSE_FREE_FORM:
+      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_NORMAL;
+    case GTK_INPUT_PURPOSE_ALPHA:
+      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_ALPHA;
+    case GTK_INPUT_PURPOSE_DIGITS:
+    case GTK_INPUT_PURPOSE_PIN:
+      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_DIGITS;
+    case GTK_INPUT_PURPOSE_NUMBER:
+      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_NUMBER;
+    case GTK_INPUT_PURPOSE_PHONE:
+      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_PHONE;
+    case GTK_INPUT_PURPOSE_URL:
+      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_URL;
+    case GTK_INPUT_PURPOSE_EMAIL:
+      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_EMAIL;
+    case GTK_INPUT_PURPOSE_NAME:
+      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_NAME;
+    case GTK_INPUT_PURPOSE_PASSWORD:
+      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_PASSWORD;
+    default:
+      g_warning("Unknown GtkInputPurpose %d", static_cast<int>(gtk_purpose));
+      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_NORMAL;
+  }
+
+  // Not supported:
+  // - ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_DATE
+  // - ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_TIME
+  // - ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_DATETIME
+  // - ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_TERMINAL
+}
+
+IMContextBackend::ContentType GetZwpHintsPurposeFromGtk(
+    GtkInputHints gtk_hints, GtkInputPurpose gtk_purpose) {
+  uint32_t zwp_purpose = GetZwpPurposeFromGtk(gtk_purpose);
+
+  uint32_t zwp_hints;
+  if (gtk_purpose == GTK_INPUT_PURPOSE_PASSWORD ||
+      gtk_purpose == GTK_INPUT_PURPOSE_PIN) {
+    zwp_hints = ZWP_TEXT_INPUT_V1_CONTENT_HINT_PASSWORD;
+  } else {
+    zwp_hints = GetZwpHintsFromGtk(gtk_hints);
+  }
+
+  return {.hints = zwp_hints, .purpose = zwp_purpose};
+}
+
 PangoAttribute* ToPangoAttribute(const PreeditStyle& style) {
   PangoAttribute* attr = nullptr;
   // TODO(timloh): Work out how to best style pre-edit text. This code tries to
@@ -324,7 +415,14 @@ void CrosGtkIMContext::Activate() {
 
   backend_->Activate(GetSeat(), surface);
 
-  // TODO(timloh): Set content type.
+  GtkInputHints gtk_hints = GTK_INPUT_HINT_NONE;
+  GtkInputPurpose gtk_purpose = GTK_INPUT_PURPOSE_FREE_FORM;
+  g_object_get(this, "input-hints", &gtk_hints, "input-purpose", &gtk_purpose,
+               NULL);
+  backend_->SetContentType(GetZwpHintsPurposeFromGtk(gtk_hints, gtk_purpose));
+
+  if (!(gtk_hints & GTK_INPUT_HINT_INHIBIT_OSK))
+    backend_->ShowInputPanel();
 
   // TODO(timloh): Work out when else we need to call this.
   bool result = false;

@@ -21,9 +21,11 @@ class Request {
     kDestroy,
     kActivate,
     kDeactivate,
+    kShowInputPanel,
     kHideInputPanel,
     kReset,
     kSetSurroundingText,
+    kSetContentType,
     kSetCursorRectangle,
   };
 
@@ -31,7 +33,7 @@ class Request {
       : text_input_id_(text_input_id), type_(type) {}
   virtual ~Request();
   virtual bool RequestMatches(const Request& actual) const;
-  virtual std::string ToString() const;
+  virtual void Print(std::ostream& stream) const;
 
  private:
   friend std::ostream& operator<<(std::ostream& stream, const Request& request);
@@ -40,6 +42,18 @@ class Request {
 };
 
 std::ostream& operator<<(std::ostream& stream, const Request& request);
+
+class SetContentTypeRequest : public Request {
+ public:
+  SetContentTypeRequest(int text_input_id, uint32_t hints, uint32_t purpose);
+  ~SetContentTypeRequest() override;
+  bool RequestMatches(const Request& actual) const override;
+  void Print(std::ostream& stream) const override;
+
+ private:
+  uint32_t hints_;
+  uint32_t purpose_;
+};
 
 }  // namespace test
 }  // namespace cros_im

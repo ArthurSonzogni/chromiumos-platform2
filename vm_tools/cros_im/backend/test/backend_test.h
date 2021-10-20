@@ -99,9 +99,17 @@ class BackendTest {
       case CreateTextInputOptions::kIgnoreCommon:
         Ignore<text_input_id>(Request::kSetCursorRectangle);
         Ignore<text_input_id>(Request::kSetSurroundingText);
+        Ignore<text_input_id>(Request::kSetContentType);
+        Ignore<text_input_id>(Request::kShowInputPanel);
         Ignore<text_input_id>(Request::kHideInputPanel);
         break;
     }
+  }
+
+  template <int text_input_id = 0>
+  void ExpectSetContentType(uint32_t hints, uint32_t purpose) {
+    actions_.emplace(
+        std::make_unique<SetContentTypeRequest>(text_input_id, hints, purpose));
   }
 
   template <int text_input_id = 0>

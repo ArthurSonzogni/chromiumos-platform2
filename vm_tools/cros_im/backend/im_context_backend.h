@@ -44,13 +44,20 @@ class IMContextBackend {
     virtual void KeySym(uint32_t keysym, KeyState state) = 0;
   };
 
+  struct ContentType {
+    uint32_t hints;    // zwp_text_input_v1_content_hint
+    uint32_t purpose;  // zwp_text_input_v1_content_purpose
+  };
+
   explicit IMContextBackend(Observer* observer);
   ~IMContextBackend();
 
   void Activate(wl_seat* seat, wl_surface* surface);
   void Deactivate();
+  void ShowInputPanel();
   void Reset();
   void SetSurrounding(const char* text, int cursor_index);
+  void SetContentType(ContentType content_type);
   void SetCursorLocation(int x, int y, int width, int height);
 
  private:
