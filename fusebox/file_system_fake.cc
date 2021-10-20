@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/check.h>
@@ -186,6 +187,8 @@ void FileSystemFake::OpenDir(std::unique_ptr<OpenRequest> request,
   }
 
   uint64_t handle = fusebox::OpenFile();
+  readdir_[handle].reset(new DirEntryResponse(handle));
+
   LOG(INFO) << " opendir fh " << handle;
   request->ReplyOpen(handle);
 }
@@ -200,26 +203,22 @@ void FileSystemFake::ReadDir(std::unique_ptr<DirEntryRequest> request,
   if (request->IsInterrupted())
     return;
 
-  if (!fusebox::GetFile(fi->fh)) {
+  auto it = readdir_.find(fi->fh);
+  if (it == readdir_.end()) {
     LOG(ERROR) << " readdir error: EBADF";
     request->ReplyError(EBADF);
     return;
   }
 
-  if (off != 0) {
-    LOG(INFO) << " readdir done fh " << fi->fh;
-    request->ReplyDone();
-    return;
+  DirEntryResponse* response = it->second.get();
+  if (off == 0) {
+    LOG(INFO) << " readdir fh " << fi->fh;
+    for (const auto& entry : GetDirEntryVector())
+      LOG(INFO) << " entry [" << entry.name << "]";
+    response->Append(GetDirEntryVector(), true);
   }
 
-  off_t next = 0;
-  LOG(INFO) << " readdir fh " << fi->fh;
-  for (const auto& entry : GetDirEntryVector()) {
-    LOG(INFO) << " entry [" << entry.name << "]";
-    CHECK(request->AddEntry(entry, ++next));
-  }
-
-  request->ReplyDone();
+  response->Append(std::move(request));
 }
 
 void FileSystemFake::ReleaseDir(std::unique_ptr<OkRequest> request,
@@ -239,6 +238,8 @@ void FileSystemFake::ReleaseDir(std::unique_ptr<OkRequest> request,
 
   LOG(INFO) << " releasedir fh " << fi->fh;
   fusebox::CloseFile(fi->fh);
+  readdir_.erase(fi->fh);
+
   request->ReplyOk();
 }
 
@@ -263,7 +264,7 @@ void FileSystemFake::Open(std::unique_ptr<OpenRequest> request,
   CHECK_EQ(stat.st_ino, node->ino);
 
   if (S_ISDIR(stat.st_mode)) {
-    LOG(ERROR) << " opendir error: EISDIR";
+    LOG(ERROR) << " open error: EISDIR";
     request->ReplyError(EISDIR);
     return;
   }
@@ -302,7 +303,7 @@ void FileSystemFake::Read(std::unique_ptr<BufferRequest> request,
   CHECK_EQ(stat.st_ino, ino);
 
   if (S_ISDIR(stat.st_mode)) {
-    LOG(ERROR) << " opendir error: EISDIR";
+    LOG(ERROR) << " read error: EISDIR";
     request->ReplyError(EISDIR);
     return;
   }

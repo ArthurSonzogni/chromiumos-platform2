@@ -5,6 +5,7 @@
 #ifndef FUSEBOX_FILE_SYSTEM_FAKE_H_
 #define FUSEBOX_FILE_SYSTEM_FAKE_H_
 
+#include <map>
 #include <memory>
 
 #include "fusebox/file_system.h"
@@ -58,6 +59,9 @@ class FileSystemFake : public FileSystem {
   void Release(std::unique_ptr<OkRequest> request,
                fuse_ino_t ino,
                struct fuse_file_info* fi) override;
+
+ private:
+  std::map<uint64_t, std::unique_ptr<DirEntryResponse>> readdir_;
 };
 
 }  // namespace fusebox
