@@ -65,6 +65,7 @@ class IpsecManager : public ServiceManager {
 
  private:
   friend class IpsecManagerTest;
+  friend class IpsecManagerFuzzer;
   FRIEND_TEST(IpsecManagerTest, CreateIpsecRunDirectory);
   FRIEND_TEST(IpsecManagerTest, PollWaitIfNotUpYet);
   FRIEND_TEST(IpsecManagerTest, PollTimeoutWaiting);

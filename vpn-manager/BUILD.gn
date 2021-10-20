@@ -13,7 +13,10 @@ group("all") {
     deps += [ ":vpn_manager_test" ]
   }
   if (use.fuzzer) {
-    deps += [ ":vpn_manager_service_manager_fuzzer" ]
+    deps += [
+      ":vpn_manager_ipsec_manager_fuzzer",
+      ":vpn_manager_service_manager_fuzzer",
+    ]
   }
 }
 
@@ -67,6 +70,18 @@ if (use.test) {
 }
 
 if (use.fuzzer) {
+  executable("vpn_manager_ipsec_manager_fuzzer") {
+    sources = [
+      "ipsec_manager.cc",
+      "ipsec_manager_fuzzer.cc",
+    ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [ ":libl2tpipsec_vpn" ]
+  }
   executable("vpn_manager_service_manager_fuzzer") {
     sources = [
       "service_manager.cc",
