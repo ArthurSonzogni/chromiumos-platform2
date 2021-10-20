@@ -87,7 +87,7 @@ class FakeMountMapper final {
   const base::FilePath tmpfs_rootfs_;
   const std::unique_ptr<FakeMountMappingRedirectFactory> redirect_factory_;
 
-  std::unordered_map<base::FilePath, FakeMountMapping> target_to_mount_;
+  std::map<base::FilePath, FakeMountMapping> target_to_mount_;
   std::unordered_map<base::FilePath, base::FilePath> source_to_redirect_;
 
   bool MountImpl(const base::FilePath& source,

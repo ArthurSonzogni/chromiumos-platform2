@@ -189,6 +189,7 @@ bool FakeMountMapper::IsOnMount(const base::FilePath& path) const {
 std::optional<FakeMountMapping> FakeMountMapper::FindMapping(
     const base::FilePath& path) const {
   std::optional<FakeMountMapping> result;
+
   for (const auto& [target, mapping] : target_to_mount_) {
     // Find the longest prefix match
     if (mapping.GetTarget() == mapping.GetSource()) {
@@ -196,7 +197,7 @@ std::optional<FakeMountMapping> FakeMountMapper::FindMapping(
       continue;
     }
     if (target == path || target.IsParent(path)) {
-      if (!result.has_value() || target.IsParent(result->GetTarget())) {
+      if (!result.has_value() || result->GetTarget().IsParent(target)) {
         result.emplace(mapping);
       }
     }

@@ -20,7 +20,6 @@ namespace cryptohome {
 namespace {
 constexpr char kFile[] = "file";
 constexpr char kDirectory[] = "dir";
-constexpr char kDirectory2[] = "dir2";
 }  // namespace
 
 class FakeMountMapperTest : public ::testing::Test {
@@ -43,7 +42,7 @@ class FakeMountMapperTest : public ::testing::Test {
   const base::FilePath kTarget0{"/home/user/chronos/"};
   const base::FilePath kTarget0Directory{"/home/user/chronos/dir"};
   const base::FilePath kTarget0Directory2{"/home/user/chronos/dir2"};
-  const base::FilePath kTarget0InnerDirectory{"/home/user/chronos/dir2/dir"};
+  const base::FilePath kTarget0InnerDirectory{"/home/user/chronos/dir2/dir3"};
   const base::FilePath kTarget0File{"/home/user/chronos/file"};
   const base::FilePath kTarget1{"/home/user/u-0001"};
   const base::FilePath kTarget1File{"/home/user/u-0001/file"};
@@ -402,9 +401,9 @@ TEST_F(FakeMountMapperTest, ResolveSameTargetPrefixMountBindChain) {
 
   // File is on the source location of the first mount with relative path.
   EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0InnerDirectory),
-            kRedirect1.Append(kDirectory2).Append(kDirectory));
+            kRedirect1.Append(kDirectory));
   EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0InnerDirectory.Append(kFile)),
-            kRedirect1.Append(kDirectory2).Append(kDirectory).Append(kFile));
+            kRedirect1.Append(kDirectory).Append(kFile));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0InnerDirectory));
@@ -461,11 +460,9 @@ TEST_F(FakeMountMapperTest, ResolveSameTargetPrefixBindBindChain) {
   // File is on the source location of the first mount with relative path.
   EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0InnerDirectory),
             fake_platform::SpliceTestFilePath(kRoot, kSource1)
-                .Append(kDirectory2)
                 .Append(kDirectory));
   EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0InnerDirectory.Append(kFile)),
             fake_platform::SpliceTestFilePath(kRoot, kSource1)
-                .Append(kDirectory2)
                 .Append(kDirectory)
                 .Append(kFile));
 
