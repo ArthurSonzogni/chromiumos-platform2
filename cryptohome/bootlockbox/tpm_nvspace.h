@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_BOOTLOCKBOX_TPM_NVSPACE_INTERFACE_H_
-#define CRYPTOHOME_BOOTLOCKBOX_TPM_NVSPACE_INTERFACE_H_
+#ifndef CRYPTOHOME_BOOTLOCKBOX_TPM_NVSPACE_H_
+#define CRYPTOHOME_BOOTLOCKBOX_TPM_NVSPACE_H_
 
 #include <string>
 
@@ -19,9 +19,9 @@ enum class NVSpaceState {
   kNVSpaceWriteLocked = 4
 };
 
-class TPMNVSpaceUtilityInterface {
+class TPMNVSpace {
  public:
-  virtual ~TPMNVSpaceUtilityInterface() = default;
+  virtual ~TPMNVSpace() = default;
 
   // Override to perform initialization work. This must be called successfully
   // before calling any other methods.
@@ -49,4 +49,4 @@ class TPMNVSpaceUtilityInterface {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_BOOTLOCKBOX_TPM_NVSPACE_INTERFACE_H_
+#endif  // CRYPTOHOME_BOOTLOCKBOX_TPM_NVSPACE_H_

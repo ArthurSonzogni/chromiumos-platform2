@@ -30,7 +30,7 @@ class BootLockboxService : public brillo::DBusServiceDaemon {
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
  private:
-  std::unique_ptr<TPMNVSpaceUtilityInterface> nvspace_utility_;
+  std::unique_ptr<TPMNVSpace> nvspace_utility_;
   std::unique_ptr<NVRamBootLockbox> boot_lockbox_;
   std::unique_ptr<BootLockboxDBusAdaptor> boot_lockbox_dbus_adaptor_;
   base::WeakPtrFactory<BootLockboxService> weak_factory_{this};

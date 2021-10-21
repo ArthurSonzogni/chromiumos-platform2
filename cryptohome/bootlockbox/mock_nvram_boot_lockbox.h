@@ -9,7 +9,7 @@
 
 #include "bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h"
 #include "cryptohome/bootlockbox/nvram_boot_lockbox.h"
-#include "cryptohome/bootlockbox/tpm_nvspace_interface.h"
+#include "cryptohome/bootlockbox/tpm_nvspace.h"
 
 #include <gmock/gmock.h>
 

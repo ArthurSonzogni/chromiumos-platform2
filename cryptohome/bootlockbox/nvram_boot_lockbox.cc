@@ -13,26 +13,22 @@
 #include <brillo/file_utils.h>
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
-#include <trunks/tpm_constants.h>
-#include <trunks/tpm_utility.h>
 
-#include "cryptohome/bootlockbox/tpm2_nvspace_utility.h"
-#include "cryptohome/bootlockbox/tpm_nvspace_interface.h"
+#include "cryptohome/bootlockbox/tpm_nvspace.h"
+#include "cryptohome/bootlockbox/tpm_nvspace_impl.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/platform.h"
 
 namespace cryptohome {
 
-NVRamBootLockbox::NVRamBootLockbox(
-    TPMNVSpaceUtilityInterface* tpm_nvspace_utility)
+NVRamBootLockbox::NVRamBootLockbox(TPMNVSpace* tpm_nvspace)
     : boot_lockbox_filepath_(base::FilePath(kNVRamBootLockboxFilePath)),
-      tpm_nvspace_utility_(tpm_nvspace_utility) {}
+      tpm_nvspace_(tpm_nvspace) {}
 
-NVRamBootLockbox::NVRamBootLockbox(
-    TPMNVSpaceUtilityInterface* tpm_nvspace_utility,
-    const base::FilePath& bootlockbox_file_path)
+NVRamBootLockbox::NVRamBootLockbox(TPMNVSpace* tpm_nvspace,
+                                   const base::FilePath& bootlockbox_file_path)
     : boot_lockbox_filepath_(bootlockbox_file_path),
-      tpm_nvspace_utility_(tpm_nvspace_utility) {}
+      tpm_nvspace_(tpm_nvspace) {}
 
 NVRamBootLockbox::~NVRamBootLockbox() {}
 
@@ -96,7 +92,7 @@ bool NVRamBootLockbox::Finalize() {
   if (nvspace_state_ == NVSpaceState::kNVSpaceUndefined) {
     return false;
   }
-  if (tpm_nvspace_utility_->LockNVSpace()) {
+  if (tpm_nvspace_->LockNVSpace()) {
     nvspace_state_ = NVSpaceState::kNVSpaceWriteLocked;
     return true;
   }
@@ -111,7 +107,7 @@ bool NVRamBootLockbox::DefineSpace() {
     return false;
   }
 
-  if (!tpm_nvspace_utility_->DefineNVSpace()) {
+  if (!tpm_nvspace_->DefineNVSpace()) {
     return false;
   }
 
@@ -142,12 +138,13 @@ bool NVRamBootLockbox::RegisterOwnershipCallback() {
       base::BindRepeating(base::IgnoreResult(&NVRamBootLockbox::DefineSpace),
                           base::Unretained(this));
 
-  tpm_nvspace_utility_->RegisterOwnershipTakenCallback(std::move(callback));
+  tpm_nvspace_->RegisterOwnershipTakenCallback(std::move(callback));
+
   return true;
 }
 
 bool NVRamBootLockbox::Load() {
-  if (!tpm_nvspace_utility_->ReadNVSpace(&root_digest_, &nvspace_state_)) {
+  if (!tpm_nvspace_->ReadNVSpace(&root_digest_, &nvspace_state_)) {
     LOG(ERROR) << "Failed to read NVRAM space.";
     return false;
   }
@@ -210,7 +207,7 @@ bool NVRamBootLockbox::FlushAndUpdate(const KeyValueMap& keyvals) {
     return false;
   }
   // Update tpm_nvram.
-  if (!tpm_nvspace_utility_->WriteNVSpace(digest)) {
+  if (!tpm_nvspace_->WriteNVSpace(digest)) {
     LOG(ERROR) << "Failed to write boot lockbox NVRAM space";
     return false;
   }

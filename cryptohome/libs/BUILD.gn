@@ -356,27 +356,25 @@ generate_dbus_adaptors("bootlockbox-adaptors") {
   sources = [ "../dbus_adaptors/org.chromium.BootLockboxInterface.xml" ]
 }
 
-if (use.tpm2) {
-  pkg_config("libnvram-boot-lockbox_dependent_config") {
-    pkg_deps = [
-      "libbootlockbox-client",
-      "libbrillo",
-      "libchrome",
-    ]
-  }
+pkg_config("libnvram-boot-lockbox_dependent_config") {
+  pkg_deps = [
+    "libbootlockbox-client",
+    "libbrillo",
+    "libchrome",
+  ]
+}
 
-  static_library("libnvram-boot-lockbox") {
-    sources = [
-      "../bootlockbox/nvram_boot_lockbox.cc",
-      "../bootlockbox/tpm2_nvspace_utility.cc",
-    ]
-    configs += [ ":target_defaults" ]
-    all_dependent_configs = [ ":libnvram-boot-lockbox_dependent_config" ]
-    deps = [
-      ":cryptohome-proto",
-      ":libcrosplatform",
-    ]
-  }
+static_library("libnvram-boot-lockbox") {
+  sources = [
+    "../bootlockbox/nvram_boot_lockbox.cc",
+    "../bootlockbox/tpm_nvspace_impl.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  all_dependent_configs = [ ":libnvram-boot-lockbox_dependent_config" ]
+  deps = [
+    ":cryptohome-proto",
+    ":libcrosplatform",
+  ]
 }
 
 # cryptohome <-> cryptohome-namespace-mounter IPC proto.

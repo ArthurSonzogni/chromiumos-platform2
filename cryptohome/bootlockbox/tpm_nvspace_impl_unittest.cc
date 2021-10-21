@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/bootlockbox/tpm2_nvspace_utility.h"
+#include "cryptohome/bootlockbox/tpm_nvspace_impl.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
@@ -22,31 +23,43 @@ std::string uint16_to_string(uint16_t value) {
   return std::string(bytes, sizeof(uint16_t));
 }
 
+uint32_t GetBootLockboxNVRamIndex() {
+  TPM_SELECT_BEGIN;
+  TPM1_SECTION({ return 0x20000006; });
+  TPM2_SECTION({ return 0x800006; });
+  OTHER_TPM_SECTION({
+    LOG(ERROR) << "Failed to get the bootlockbox index on none supported TPM.";
+    return 0;
+  });
+  TPM_SELECT_END;
+}
+
 }  // namespace
 
 namespace cryptohome {
 
-class TPM2NVSpaceUtilityTest : public testing::Test {
+class TPMNVSpaceImplTest : public testing::Test {
  public:
   void SetUp() override {
-    nvspace_utility_ = std::make_unique<TPM2NVSpaceUtility>(&mock_tpm_nvram_,
-                                                            &mock_tpm_owner_);
+    SET_DEFAULT_TPM_FOR_TESTING;
+    nvspace_utility_ =
+        std::make_unique<TPMNVSpaceImpl>(&mock_tpm_nvram_, &mock_tpm_owner_);
     nvspace_utility_->Initialize();
   }
 
  protected:
   NiceMock<org::chromium::TpmNvramProxyMock> mock_tpm_nvram_;
   NiceMock<org::chromium::TpmManagerProxyMock> mock_tpm_owner_;
-  std::unique_ptr<TPM2NVSpaceUtility> nvspace_utility_;
+  std::unique_ptr<TPMNVSpaceImpl> nvspace_utility_;
 };
 
-TEST_F(TPM2NVSpaceUtilityTest, DefineNVSpaceSuccess) {
+TEST_F(TPMNVSpaceImplTest, DefineNVSpaceSuccess) {
   EXPECT_CALL(mock_tpm_nvram_, DefineSpace(_, _, _, _))
       .WillOnce(Invoke([](const tpm_manager::DefineSpaceRequest& request,
                           tpm_manager::DefineSpaceReply* reply,
                           brillo::ErrorPtr*, int) {
         EXPECT_TRUE(request.has_index());
-        EXPECT_EQ(kBootLockboxNVRamIndex, request.index());
+        EXPECT_EQ(GetBootLockboxNVRamIndex(), request.index());
         EXPECT_TRUE(request.has_size());
         EXPECT_EQ(kNVSpaceSize, request.size());
         reply->set_result(tpm_manager::NVRAM_RESULT_SUCCESS);
@@ -76,7 +89,7 @@ TEST_F(TPM2NVSpaceUtilityTest, DefineNVSpaceSuccess) {
   EXPECT_TRUE(nvspace_utility_->DefineNVSpace());
 }
 
-TEST_F(TPM2NVSpaceUtilityTest, DefineNVSpaceFail) {
+TEST_F(TPMNVSpaceImplTest, DefineNVSpaceFail) {
   EXPECT_CALL(mock_tpm_nvram_, DefineSpace(_, _, _, _))
       .WillOnce(Invoke([](const tpm_manager::DefineSpaceRequest& request,
                           tpm_manager::DefineSpaceReply* reply,
@@ -98,7 +111,7 @@ TEST_F(TPM2NVSpaceUtilityTest, DefineNVSpaceFail) {
   EXPECT_FALSE(nvspace_utility_->DefineNVSpace());
 }
 
-TEST_F(TPM2NVSpaceUtilityTest, ReadNVSpaceLengthFail) {
+TEST_F(TPMNVSpaceImplTest, ReadNVSpaceLengthFail) {
   EXPECT_CALL(mock_tpm_nvram_, ReadSpace(_, _, _, _))
       .WillOnce(Invoke([](const tpm_manager::ReadSpaceRequest& request,
                           tpm_manager::ReadSpaceReply* reply, brillo::ErrorPtr*,
@@ -116,7 +129,7 @@ TEST_F(TPM2NVSpaceUtilityTest, ReadNVSpaceLengthFail) {
   EXPECT_FALSE(nvspace_utility_->ReadNVSpace(&data, &state));
 }
 
-TEST_F(TPM2NVSpaceUtilityTest, ReadNVSpaceVersionFail) {
+TEST_F(TPMNVSpaceImplTest, ReadNVSpaceVersionFail) {
   EXPECT_CALL(mock_tpm_nvram_, ReadSpace(_, _, _, _))
       .WillOnce(Invoke([](const tpm_manager::ReadSpaceRequest& request,
                           tpm_manager::ReadSpaceReply* reply, brillo::ErrorPtr*,
@@ -135,7 +148,7 @@ TEST_F(TPM2NVSpaceUtilityTest, ReadNVSpaceVersionFail) {
   EXPECT_FALSE(nvspace_utility_->ReadNVSpace(&data, &state));
 }
 
-TEST_F(TPM2NVSpaceUtilityTest, ReadNVSpaceSuccess) {
+TEST_F(TPMNVSpaceImplTest, ReadNVSpaceSuccess) {
   std::string test_digest(SHA256_DIGEST_LENGTH, 'a');
   EXPECT_CALL(mock_tpm_nvram_, ReadSpace(_, _, _, _))
       .WillOnce(
@@ -159,7 +172,7 @@ TEST_F(TPM2NVSpaceUtilityTest, ReadNVSpaceSuccess) {
   EXPECT_EQ(data, test_digest);
 }
 
-TEST_F(TPM2NVSpaceUtilityTest, WriteNVSpaceSuccess) {
+TEST_F(TPMNVSpaceImplTest, WriteNVSpaceSuccess) {
   std::string nvram_data(SHA256_DIGEST_LENGTH, 'a');
   EXPECT_CALL(mock_tpm_nvram_, WriteSpace(_, _, _, _))
       .WillOnce(
@@ -176,18 +189,18 @@ TEST_F(TPM2NVSpaceUtilityTest, WriteNVSpaceSuccess) {
   EXPECT_TRUE(nvspace_utility_->WriteNVSpace(nvram_data));
 }
 
-TEST_F(TPM2NVSpaceUtilityTest, WriteNVSpaceInvalidLength) {
+TEST_F(TPMNVSpaceImplTest, WriteNVSpaceInvalidLength) {
   std::string nvram_data = "data of invalid length";
   EXPECT_CALL(mock_tpm_nvram_, WriteSpace(_, _, _, _)).Times(0);
   EXPECT_FALSE(nvspace_utility_->WriteNVSpace(nvram_data));
 }
 
-TEST_F(TPM2NVSpaceUtilityTest, LockNVSpace) {
+TEST_F(TPMNVSpaceImplTest, LockNVSpace) {
   EXPECT_CALL(mock_tpm_nvram_, LockSpace(_, _, _, _))
       .WillOnce(Invoke([](const tpm_manager::LockSpaceRequest& request,
                           tpm_manager::LockSpaceReply* reply, brillo::ErrorPtr*,
                           int) {
-        EXPECT_EQ(kBootLockboxNVRamIndex, request.index());
+        EXPECT_EQ(GetBootLockboxNVRamIndex(), request.index());
         EXPECT_FALSE(request.lock_read());
         EXPECT_TRUE(request.lock_write());
         EXPECT_FALSE(request.use_owner_authorization());

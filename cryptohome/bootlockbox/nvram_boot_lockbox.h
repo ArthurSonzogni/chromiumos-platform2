@@ -14,7 +14,7 @@
 
 #include "bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h"
 #include "cryptohome/bootlockbox/key_value_map.pb.h"
-#include "cryptohome/bootlockbox/tpm_nvspace_interface.h"
+#include "cryptohome/bootlockbox/tpm_nvspace.h"
 
 namespace cryptohome {
 
@@ -35,9 +35,9 @@ constexpr uint32_t kVersion = 1;
 // TPM and can only be updated before a user logs in after boot.
 class NVRamBootLockbox {
  public:
-  // Does not take ownership of |tpm_nvspace_utility|.
-  explicit NVRamBootLockbox(TPMNVSpaceUtilityInterface* tpm_nvspace_utility);
-  NVRamBootLockbox(TPMNVSpaceUtilityInterface* tpm_nvspace_utility,
+  // Does not take ownership of |tpm_nvspace|.
+  explicit NVRamBootLockbox(TPMNVSpace* tpm_nvspace);
+  NVRamBootLockbox(TPMNVSpace* tpm_nvspace,
                    const base::FilePath& bootlockbox_file_path);
   virtual ~NVRamBootLockbox();
 
@@ -88,7 +88,7 @@ class NVRamBootLockbox {
   // space and locked for writing after users logs in.
   std::string root_digest_;
 
-  TPMNVSpaceUtilityInterface* tpm_nvspace_utility_;
+  TPMNVSpace* tpm_nvspace_;
 
   bool ownership_callback_registered_ = false;
 

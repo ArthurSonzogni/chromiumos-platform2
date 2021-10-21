@@ -9,7 +9,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <cryptohome/bootlockbox/fake_tpm_nvspace_utility.h>
+#include <cryptohome/bootlockbox/fake_tpm_nvspace.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -27,12 +27,12 @@ class NVRamBootLockboxTest : public testing::Test {
     base::ScopedTempDir temp_directory;
     ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
     file_path_ = temp_directory.GetPath().Append(kTestFilePath);
-    nvram_boot_lockbox_ = std::make_unique<NVRamBootLockbox>(
-        &fake_tpm_nvspace_utility_, file_path_);
+    nvram_boot_lockbox_ =
+        std::make_unique<NVRamBootLockbox>(&fake_tpm_nvspace_, file_path_);
   }
 
  protected:
-  FakeTpmNVSpaceUtility fake_tpm_nvspace_utility_;
+  FakeTpmNVSpace fake_tpm_nvspace_;
   std::unique_ptr<NVRamBootLockbox> nvram_boot_lockbox_;
   base::FilePath file_path_;
 };

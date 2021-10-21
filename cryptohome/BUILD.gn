@@ -11,6 +11,8 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":bootlockboxd",
+    ":bootlockboxtool",
     ":cryptohome",
     ":cryptohome-namespace-mounter",
     ":cryptohome-path",
@@ -45,12 +47,6 @@ group("all") {
       ":cryptohome_cryptolib_rsa_oaep_decrypt_fuzzer",
       ":cryptohome_tpm1_cmk_migration_parser_fuzzer",
       ":cryptohome_user_secret_stash_parser_fuzzer",
-    ]
-  }
-  if (use.tpm2) {
-    deps += [
-      ":bootlockboxd",
-      ":bootlockboxtool",
     ]
   }
 }
@@ -634,11 +630,18 @@ if (use.test) {
   }
 
   executable("boot_lockbox_unittests") {
+    sources = [
+      "bootlockbox/boot_lockbox_dbus_adaptor.cc",
+      "bootlockbox/boot_lockbox_service_unittest.cc",
+      "bootlockbox/fake_tpm_nvspace.cc",
+      "bootlockbox/nvram_boot_lockbox_unittest.cc",
+      "bootlockbox/tpm_nvspace_impl_unittest.cc",
+    ]
+    libs = [ "tpm_manager" ]
     configs += [
       "//common-mk:test",
       "libs:target_defaults",
     ]
-    deps = [ "//common-mk/testrunner" ]
 
     # NOSORT
     pkg_deps = [
@@ -656,93 +659,74 @@ if (use.test) {
       "system_api",
       "protobuf",
     ]
-
-    if (use.tpm2) {
-      sources = [
-        "bootlockbox/boot_lockbox_dbus_adaptor.cc",
-        "bootlockbox/boot_lockbox_service_unittest.cc",
-        "bootlockbox/fake_tpm_nvspace_utility.cc",
-        "bootlockbox/nvram_boot_lockbox_unittest.cc",
-        "bootlockbox/tpm2_nvspace_utility_unittest.cc",
-      ]
-      defines = [ "TPM2_MODE=1" ]
-      libs = [
-        "tpm_manager",
-        "trunks",
-        "trunks_test",
-      ]
-      deps += [
-        ":tpm-manager",
-        "libs:libcrostpm",
-        "libs:libnvram-boot-lockbox",
-      ]
-    }
+    deps = [
+      ":tpm-manager",
+      "libs:libcrostpm",
+      "libs:libnvram-boot-lockbox",
+      "//common-mk/testrunner",
+    ]
   }
 }
 
-if (use.tpm2) {
-  executable("bootlockboxtool") {
-    sources = [ "bootlockbox/boot_lockbox_tool.cc" ]
+executable("bootlockboxtool") {
+  sources = [ "bootlockbox/boot_lockbox_tool.cc" ]
 
-    # NOSORT
-    pkg_deps = [
-      "libbootlockbox-client",
-      "libbrillo",
-      "libchrome",
+  # NOSORT
+  pkg_deps = [
+    "libbootlockbox-client",
+    "libbrillo",
+    "libchrome",
 
-      # system_api depends on protobuf (or protobuf-lite). It must appear
-      # before protobuf here or the linker flags won't be in the right
-      # order.
-      "system_api",
-      "protobuf",
-    ]
-    defines = [
-      "USE_TPM1=${use.tpm}",
-      "USE_TPM2=${use.tpm2}",
-      "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
-    ]
-    deps = [ "libs:libnvram-boot-lockbox" ]
-  }
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf",
+  ]
+  defines = [
+    "USE_TPM1=${use.tpm}",
+    "USE_TPM2=${use.tpm2}",
+    "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
+  ]
+  deps = [ "libs:libnvram-boot-lockbox" ]
+}
 
-  executable("bootlockboxd") {
-    sources = [
-      "bootlockbox/boot_lockbox_dbus_adaptor.cc",
-      "bootlockbox/boot_lockbox_service.cc",
-      "bootlockbox/boot_lockboxd.cc",
-    ]
+executable("bootlockboxd") {
+  sources = [
+    "bootlockbox/boot_lockbox_dbus_adaptor.cc",
+    "bootlockbox/boot_lockbox_service.cc",
+    "bootlockbox/boot_lockboxd.cc",
+  ]
 
-    # NOSORT
-    pkg_deps = [
-      "libbrillo",
-      "libchrome",
-      "libmetrics",
-      "libecryptfs",
-      "openssl",
+  # NOSORT
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "libmetrics",
+    "libecryptfs",
+    "openssl",
 
-      # system_api depends on protobuf (or protobuf-lite). It must appear
-      # before protobuf here or the linker flags won't be in the right
-      # order.
-      "system_api",
-      "protobuf",
-      "vboot_host",
-    ]
-    defines = [
-      "USE_TPM1=${use.tpm}",
-      "USE_TPM2=${use.tpm2}",
-      "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
-    ]
-    libs = [
-      "chaps",
-      "keyutils",
-      "tpm_manager",
-      "trunks",
-    ]
-    deps = [
-      "libs:bootlockbox-adaptors",
-      "libs:libcrostpm",
-      "libs:libnvram-boot-lockbox",
-    ]
-  }
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf",
+    "vboot_host",
+  ]
+  defines = [
+    "USE_TPM1=${use.tpm}",
+    "USE_TPM2=${use.tpm2}",
+    "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
+  ]
+  libs = [
+    "keyutils",
+    "tpm_manager",
+  ]
+  deps = [
+    "libs:bootlockbox-adaptors",
+    "libs:libcrostpm",
+    "libs:libnvram-boot-lockbox",
+  ]
 }
 
 if (use.fuzzer) {

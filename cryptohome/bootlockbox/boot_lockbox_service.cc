@@ -9,8 +9,8 @@
 #include <base/logging.h>
 #include <dbus/dbus-protocol.h>
 
-#include "cryptohome/bootlockbox/tpm2_nvspace_utility.h"
-#include "cryptohome/bootlockbox/tpm_nvspace_interface.h"
+#include "cryptohome/bootlockbox/tpm_nvspace.h"
+#include "cryptohome/bootlockbox/tpm_nvspace_impl.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm.h"
@@ -18,7 +18,7 @@
 namespace cryptohome {
 
 int BootLockboxService::OnInit() {
-  nvspace_utility_ = std::make_unique<TPM2NVSpaceUtility>();
+  nvspace_utility_ = std::make_unique<TPMNVSpaceImpl>();
   if (!nvspace_utility_->Initialize()) {
     LOG(ERROR) << "Failed to initialize nvspace utility";
     return EX_UNAVAILABLE;

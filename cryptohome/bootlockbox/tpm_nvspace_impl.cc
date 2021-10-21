@@ -8,13 +8,28 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
 
-#include "cryptohome/bootlockbox/tpm2_nvspace_utility.h"
-#include "cryptohome/bootlockbox/tpm_nvspace_interface.h"
+#include "cryptohome/bootlockbox/tpm_nvspace.h"
+#include "cryptohome/bootlockbox/tpm_nvspace_impl.h"
 
 namespace {
 constexpr base::TimeDelta kDefaultTimeout = base::TimeDelta::FromMinutes(2);
+
+// The index of the nv space for bootlockboxd. Refer to README.lockbox
+// for how the index is selected.
+uint32_t GetBootLockboxNVRamIndex() {
+  TPM_SELECT_BEGIN;
+  TPM1_SECTION({ return 0x20000006; });
+  TPM2_SECTION({ return 0x800006; });
+  OTHER_TPM_SECTION({
+    LOG(ERROR) << "Failed to get the bootlockbox index on none supported TPM.";
+    return 0;
+  });
+  TPM_SELECT_END;
+}
+
 }  // namespace
 
 using tpm_manager::NvramResult;
@@ -65,12 +80,12 @@ std::string NvramResult2Str(NvramResult r) {
   }
 }
 
-TPM2NVSpaceUtility::TPM2NVSpaceUtility(
+TPMNVSpaceImpl::TPMNVSpaceImpl(
     org::chromium::TpmNvramProxyInterface* tpm_nvram,
     org::chromium::TpmManagerProxyInterface* tpm_owner)
     : tpm_nvram_(tpm_nvram), tpm_owner_(tpm_owner) {}
 
-bool TPM2NVSpaceUtility::Initialize() {
+bool TPMNVSpaceImpl::Initialize() {
   if (!tpm_nvram_ && !tpm_owner_) {
     scoped_refptr<dbus::Bus> bus = connection_.Connect();
     CHECK(bus) << "Failed to connect to system D-Bus";
@@ -82,14 +97,14 @@ bool TPM2NVSpaceUtility::Initialize() {
   return true;
 }
 
-bool TPM2NVSpaceUtility::DefineNVSpace() {
+bool TPMNVSpaceImpl::DefineNVSpace() {
   if (!IsOwnerPasswordPresent()) {
     LOG(INFO) << "Try to define nvram without owner password present.";
     return false;
   }
 
   tpm_manager::DefineSpaceRequest request;
-  request.set_index(kBootLockboxNVRamIndex);
+  request.set_index(GetBootLockboxNVRamIndex());
   request.set_size(kNVSpaceSize);
   request.add_attributes(tpm_manager::NVRAM_READ_AUTHORIZATION);
   request.add_attributes(tpm_manager::NVRAM_BOOT_WRITE_LOCK);
@@ -114,7 +129,7 @@ bool TPM2NVSpaceUtility::DefineNVSpace() {
   return true;
 }
 
-bool TPM2NVSpaceUtility::RemoveNVSpaceOwnerDependency() {
+bool TPMNVSpaceImpl::RemoveNVSpaceOwnerDependency() {
   tpm_manager::RemoveOwnerDependencyRequest request;
   tpm_manager::RemoveOwnerDependencyReply reply;
   brillo::ErrorPtr error;
@@ -128,7 +143,7 @@ bool TPM2NVSpaceUtility::RemoveNVSpaceOwnerDependency() {
   return true;
 }
 
-bool TPM2NVSpaceUtility::WriteNVSpace(const std::string& digest) {
+bool TPMNVSpaceImpl::WriteNVSpace(const std::string& digest) {
   if (digest.size() != SHA256_DIGEST_LENGTH) {
     LOG(ERROR) << "Wrong digest size, expected: " << SHA256_DIGEST_LENGTH
                << " got: " << digest.size();
@@ -143,7 +158,7 @@ bool TPM2NVSpaceUtility::WriteNVSpace(const std::string& digest) {
                          kNVSpaceSize);
 
   tpm_manager::WriteSpaceRequest request;
-  request.set_index(kBootLockboxNVRamIndex);
+  request.set_index(GetBootLockboxNVRamIndex());
   request.set_data(nvram_data);
   request.set_authorization_value(kWellKnownPassword);
   request.set_use_owner_authorization(false);
@@ -162,12 +177,11 @@ bool TPM2NVSpaceUtility::WriteNVSpace(const std::string& digest) {
   return true;
 }
 
-bool TPM2NVSpaceUtility::ReadNVSpace(std::string* digest,
-                                     NVSpaceState* result) {
+bool TPMNVSpaceImpl::ReadNVSpace(std::string* digest, NVSpaceState* result) {
   *result = NVSpaceState::kNVSpaceError;
 
   tpm_manager::ReadSpaceRequest request;
-  request.set_index(kBootLockboxNVRamIndex);
+  request.set_index(GetBootLockboxNVRamIndex());
   request.set_authorization_value(kWellKnownPassword);
   request.set_use_owner_authorization(false);
   tpm_manager::ReadSpaceReply reply;
@@ -204,9 +218,9 @@ bool TPM2NVSpaceUtility::ReadNVSpace(std::string* digest,
   return true;
 }
 
-bool TPM2NVSpaceUtility::LockNVSpace() {
+bool TPMNVSpaceImpl::LockNVSpace() {
   tpm_manager::LockSpaceRequest request;
-  request.set_index(kBootLockboxNVRamIndex);
+  request.set_index(GetBootLockboxNVRamIndex());
   request.set_lock_read(false);
   request.set_lock_write(true);
   request.set_authorization_value(kWellKnownPassword);
@@ -227,7 +241,7 @@ bool TPM2NVSpaceUtility::LockNVSpace() {
   return true;
 }
 
-bool TPM2NVSpaceUtility::IsOwnerPasswordPresent() {
+bool TPMNVSpaceImpl::IsOwnerPasswordPresent() {
   tpm_manager::GetTpmNonsensitiveStatusRequest request;
   tpm_manager::GetTpmNonsensitiveStatusReply reply;
   brillo::ErrorPtr error;
@@ -240,15 +254,15 @@ bool TPM2NVSpaceUtility::IsOwnerPasswordPresent() {
   return reply.is_owner_password_present();
 }
 
-void TPM2NVSpaceUtility::RegisterOwnershipTakenCallback(
+void TPMNVSpaceImpl::RegisterOwnershipTakenCallback(
     const base::RepeatingClosure& callback) {
   tpm_owner_->RegisterSignalOwnershipTakenSignalHandler(
-      base::BindRepeating(&TPM2NVSpaceUtility::OnOwnershipTaken,
+      base::BindRepeating(&TPMNVSpaceImpl::OnOwnershipTaken,
                           base::Unretained(this), callback),
       base::DoNothing());
 }
 
-void TPM2NVSpaceUtility::OnOwnershipTaken(
+void TPMNVSpaceImpl::OnOwnershipTaken(
     const base::RepeatingClosure& callback,
     const tpm_manager::OwnershipTakenSignal& signal) {
   LOG(INFO) << __func__ << ": Received |OwnershipTakenSignal|.";

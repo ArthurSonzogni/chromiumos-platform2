@@ -1,19 +1,19 @@
-// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_BOOTLOCKBOX_FAKE_TPM_NVSPACE_UTILITY_H_
-#define CRYPTOHOME_BOOTLOCKBOX_FAKE_TPM_NVSPACE_UTILITY_H_
+#ifndef CRYPTOHOME_BOOTLOCKBOX_FAKE_TPM_NVSPACE_H_
+#define CRYPTOHOME_BOOTLOCKBOX_FAKE_TPM_NVSPACE_H_
 
 #include <string>
 
-#include <cryptohome/bootlockbox/tpm_nvspace_interface.h>
+#include "cryptohome/bootlockbox/tpm_nvspace.h"
 
 namespace cryptohome {
 
-class FakeTpmNVSpaceUtility : public TPMNVSpaceUtilityInterface {
+class FakeTpmNVSpace : public TPMNVSpace {
  public:
-  FakeTpmNVSpaceUtility() {}
+  FakeTpmNVSpace() {}
 
   bool Initialize() override;
 
@@ -36,4 +36,4 @@ class FakeTpmNVSpaceUtility : public TPMNVSpaceUtilityInterface {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_BOOTLOCKBOX_FAKE_TPM_NVSPACE_UTILITY_H_
+#endif  // CRYPTOHOME_BOOTLOCKBOX_FAKE_TPM_NVSPACE_H_
