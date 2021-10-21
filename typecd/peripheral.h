@@ -21,6 +21,7 @@ enum class PDRevision {
   kNone = 0,
   k20,
   k30,
+  kMaxValue = k30,
 };
 
 // This is a base class which can represent the components connected to a Type C
