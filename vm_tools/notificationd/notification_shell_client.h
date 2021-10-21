@@ -15,7 +15,7 @@
 #include <base/macros.h>
 #include <wayland-server.h>
 
-#include "notification-shell-unstable-v1-client-protocol.h"  // NOLINT(build/include)
+#include "notification-shell-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "vm_tools/notificationd/notification_shell_interface.h"
 
 namespace vm_tools {
@@ -31,7 +31,7 @@ class NotificationShellClient {
       const std::string& display_name,
       const std::string& virtwl_device,
       NotificationShellInterface* interface,
-      base::Closure quit_closure);
+      base::OnceClosure quit_closure);
 
   ~NotificationShellClient() = default;
 
@@ -128,11 +128,10 @@ class NotificationShellClient {
     const std::string notification_key_;
 
     NotificationShellClient* shell_client_;  // Not owned.
-
   };
 
   NotificationShellClient(NotificationShellInterface* interface,
-                          base::Closure quit_closure);
+                          base::OnceClosure quit_closure);
   NotificationShellClient(const NotificationShellClient&) = delete;
   NotificationShellClient& operator=(const NotificationShellClient&) = delete;
 
@@ -215,7 +214,7 @@ class NotificationShellClient {
   std::map<std::string, std::unique_ptr<NotificationClient>>
       notification_clients_;
 
-  base::Closure quit_closure_;
+  base::OnceClosure quit_closure_;
 };
 
 }  // namespace notificationd

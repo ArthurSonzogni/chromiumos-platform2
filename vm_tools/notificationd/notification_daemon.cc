@@ -36,7 +36,7 @@ namespace notificationd {
 std::unique_ptr<NotificationDaemon> NotificationDaemon::Create(
     const std::string& display_name,
     const std::string& virtwl_device,
-    base::Closure quit_closure) {
+    base::OnceClosure quit_closure) {
   auto daemon = base::WrapUnique(new NotificationDaemon());
 
   if (!daemon->Init(display_name, virtwl_device, std::move(quit_closure))) {
@@ -49,7 +49,7 @@ std::unique_ptr<NotificationDaemon> NotificationDaemon::Create(
 
 bool NotificationDaemon::Init(const std::string& display_name,
                               const std::string& virtwl_device,
-                              base::Closure quit_closure) {
+                              base::OnceClosure quit_closure) {
   notification_shell_client_ = NotificationShellClient::Create(
       display_name, virtwl_device, this, std::move(quit_closure));
   if (!notification_shell_client_) {

@@ -19,7 +19,8 @@ const char kNotificationsServiceName[] = "org.freedesktop.Notifications";
 const char kNotificationsServicePath[] = "/org/freedesktop/Notifications";
 
 void HandleSynchronousDBusMethodCall(
-    base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)> handler,
+    base::RepeatingCallback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)>
+        handler,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
   auto response = handler.Run(method_call);
@@ -117,8 +118,9 @@ bool DBusService::RegisterMethods() {
   for (const auto& iter : kServiceMethods) {
     const bool ret = exported_object_->ExportMethodAndBlock(
         kNotificationsServiceName, iter.first,
-        base::Bind(&HandleSynchronousDBusMethodCall,
-                   base::Bind(iter.second, base::Unretained(this))));
+        base::BindRepeating(
+            &HandleSynchronousDBusMethodCall,
+            base::BindRepeating(iter.second, base::Unretained(this))));
     if (!ret) {
       LOG(ERROR) << "Failed to export method " << iter.first;
       return false;

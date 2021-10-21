@@ -29,7 +29,7 @@ class Service final {
  public:
   // Creates a new Service instance.  |quit_closure| is posted to the TaskRunner
   // for the current thread when this process receives a SIGTERM.
-  static std::unique_ptr<Service> Create(base::Closure quit_closure);
+  static std::unique_ptr<Service> Create(base::OnceClosure quit_closure);
   ~Service() = default;
 
  private:
@@ -57,10 +57,9 @@ class Service final {
 
     // The root of this server.
     base::ScopedTempDir root_dir_;
-
   };
 
-  explicit Service(base::Closure quit_closure);
+  explicit Service(base::OnceClosure quit_closure);
   Service(const Service&) = delete;
   Service& operator=(const Service&) = delete;
 
@@ -104,7 +103,7 @@ class Service final {
   dbus::ExportedObject* exported_object_;  // Owned by |bus_|.
 
   // Closure to be posted to the task runner when we receive a SIGTERM.
-  base::Closure quit_closure_;
+  base::OnceClosure quit_closure_;
 
   base::WeakPtrFactory<Service> weak_factory_;
 };

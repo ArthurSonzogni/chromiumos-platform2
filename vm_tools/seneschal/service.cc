@@ -149,7 +149,8 @@ bool MkdirRecursively(const base::FilePath& full_path) {
 // |response_sender|. If |handler| returns NULL, an empty response is created
 // and sent.
 void HandleSynchronousDBusMethodCall(
-    base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)> handler,
+    base::RepeatingCallback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)>
+        handler,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
   std::unique_ptr<dbus::Response> response = handler.Run(method_call);
@@ -227,7 +228,7 @@ Service::ServerInfo::~ServerInfo() {
 }
 
 // static
-std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
+std::unique_ptr<Service> Service::Create(base::OnceClosure quit_closure) {
   std::unique_ptr<Service> service(new Service(std::move(quit_closure)));
 
   if (!service->Init()) {
@@ -237,7 +238,7 @@ std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
   return service;
 }
 
-Service::Service(base::Closure quit_closure)
+Service::Service(base::OnceClosure quit_closure)
     : next_server_handle_(1),
       quit_closure_(std::move(quit_closure)),
       weak_factory_(this) {}
@@ -308,8 +309,9 @@ bool Service::Init() {
   for (const auto& iter : kServiceMethods) {
     bool ret = exported_object_->ExportMethodAndBlock(
         kSeneschalInterface, iter.first,
-        base::Bind(&HandleSynchronousDBusMethodCall,
-                   base::Bind(iter.second, base::Unretained(this))));
+        base::BindRepeating(
+            &HandleSynchronousDBusMethodCall,
+            base::BindRepeating(iter.second, base::Unretained(this))));
     if (!ret) {
       LOG(ERROR) << "Failed to export method " << iter.first;
       return false;
@@ -411,7 +413,10 @@ void Service::HandleSigterm() {
   bus_->ShutdownAndBlock();
 
   // Stop the message loop.
-  base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, quit_closure_);
+  if (quit_closure_) {
+    base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                                  std::move(quit_closure_));
+  }
 }
 
 // Handles a request to start a new 9p server.
@@ -698,8 +703,8 @@ std::unique_ptr<dbus::Response> Service::StopServer(
 
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&Service::KillServer, weak_factory_.GetWeakPtr(),
-                 request.handle()),
+      base::BindOnce(&Service::KillServer, weak_factory_.GetWeakPtr(),
+                     request.handle()),
       kServerExitTimeout);
 
   response.set_success(true);
