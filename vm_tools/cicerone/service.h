@@ -56,7 +56,7 @@ class Service final {
   // tests, the services only listen on an AF_UNIX socket by giving
   // |unix_socket_path_for_testing| a value.
   static std::unique_ptr<Service> Create(
-      base::Closure quit_closure,
+      base::OnceClosure quit_closure,
       const base::Optional<base::FilePath>& unix_socket_path_for_testing,
       scoped_refptr<dbus::Bus> bus);
 
@@ -528,7 +528,8 @@ class Service final {
     return true;
   }
 
-  explicit Service(base::Closure quit_closure, scoped_refptr<dbus::Bus> bus);
+  explicit Service(base::OnceClosure quit_closure,
+                   scoped_refptr<dbus::Bus> bus);
   Service(const Service&) = delete;
   Service& operator=(const Service&) = delete;
 
@@ -779,7 +780,7 @@ class Service final {
 
   // Closure that's posted to the current thread's TaskRunner when the service
   // receives a SIGTERM.
-  base::Closure quit_closure_;
+  base::OnceClosure quit_closure_;
 
   // Ensure calls are made on the right thread.
   base::SequenceChecker sequence_checker_;

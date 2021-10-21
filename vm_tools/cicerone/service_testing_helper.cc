@@ -129,8 +129,8 @@ ServiceTestingHelper::ServiceTestingHelper(MockType mock_type) {
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   CHECK(dbus_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&ServiceTestingHelper::CreateService,
-                            base::Unretained(this), &event)));
+      FROM_HERE, base::BindOnce(&ServiceTestingHelper::CreateService,
+                                base::Unretained(this), &event)));
 
   // Wait for service_ to be created.
   event.Wait();
@@ -146,8 +146,8 @@ ServiceTestingHelper::~ServiceTestingHelper() {
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   CHECK(dbus_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&ServiceTestingHelper::DestroyService,
-                            base::Unretained(this), &event)));
+      FROM_HERE, base::BindOnce(&ServiceTestingHelper::DestroyService,
+                                base::Unretained(this), &event)));
 
   event.Wait();
 }
@@ -211,9 +211,9 @@ void ServiceTestingHelper::CallDBus(
     base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                               base::WaitableEvent::InitialState::NOT_SIGNALED);
     CHECK(dbus_task_runner_->PostTask(
-        FROM_HERE,
-        base::Bind(&ServiceTestingHelper::CallDBusOnDBusThread,
-                   base::Unretained(this), call, &request, response, &event)));
+        FROM_HERE, base::BindOnce(&ServiceTestingHelper::CallDBusOnDBusThread,
+                                  base::Unretained(this), call, &request,
+                                  response, &event)));
     event.Wait();
   }
 }
@@ -230,7 +230,7 @@ void ServiceTestingHelper::CallDBusOnDBusThread(
   dbus::MessageWriter writer(&method_call);
   writer.AppendProtoAsArrayOfBytes(*request);
   dbus::ExportedObject::ResponseSender response_callback =
-      base::Bind(&ExtractProtoFromCall, response);
+      base::BindRepeating(&ExtractProtoFromCall, response);
 
   dbus_callbacks_[call].callback.Run(&method_call,
                                      std::move(response_callback));
@@ -362,7 +362,7 @@ void ServiceTestingHelper::CreateContainerWithTokenForTesting(
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   CHECK(dbus_task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(
+      base::BindOnce(
           &ServiceTestingHelper::CreateContainerWithTokenForTestingOnDBusThread,
           base::Unretained(this), owner_id, vm_name, container_name,
           container_token, &event)));
@@ -455,11 +455,11 @@ void ServiceTestingHelper::CreateService(base::WaitableEvent* event) {
   ON_CALL(*mock_bus_, AssertOnDBusThread())
       .WillByDefault(Invoke(this, &ServiceTestingHelper::AssertOnDBusThread));
 
-  base::Closure quit_closure = base::Bind(
+  base::OnceClosure quit_closure = base::BindOnce(
       &ServiceTestingHelper::IncrementQuitClosure, base::Unretained(this));
   Service::DisableGrpcForTesting();
-  service_ =
-      Service::Create(quit_closure, socket_temp_dir_.GetPath(), mock_bus_);
+  service_ = Service::Create(std::move(quit_closure),
+                             socket_temp_dir_.GetPath(), mock_bus_);
   CHECK(service_);
 
   event->Signal();

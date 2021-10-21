@@ -25,7 +25,8 @@ class ShillClient final {
   ShillClient(const ShillClient&) = delete;
   ShillClient& operator=(const ShillClient&) = delete;
 
-  void RegisterDefaultServiceChangedHandler(base::Callback<void()> callback);
+  void RegisterDefaultServiceChangedHandler(
+      base::RepeatingCallback<void()> callback);
 
  private:
   void OnShillServiceOwnerChange(const std::string& old_owner,
@@ -36,7 +37,7 @@ class ShillClient final {
   void OnManagerPropertyChange(const std::string& property_name,
                                const brillo::Any& property_value);
 
-  base::Callback<void()> default_service_changed_callback_;
+  base::RepeatingCallback<void()> default_service_changed_callback_;
 
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::chromium::flimflam::ManagerProxy> manager_proxy_;

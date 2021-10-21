@@ -48,8 +48,8 @@ grpc::Status TremplinListenerImpl::TremplinReady(
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&vm_tools::cicerone::Service::ConnectTremplin,
-                            service_, cid, &result, &event));
+      FROM_HERE, base::BindOnce(&vm_tools::cicerone::Service::ConnectTremplin,
+                                service_, cid, &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Received TremplinReady but could not find matching VM: "
@@ -77,9 +77,9 @@ grpc::Status TremplinListenerImpl::UpdateCreateStatus(
   if (request->status() == tremplin::ContainerCreationProgress::DOWNLOADING) {
     task_runner_->PostTask(
         FROM_HERE,
-        base::Bind(&vm_tools::cicerone::Service::LxdContainerDownloading,
-                   service_, cid, request->container_name(),
-                   request->download_progress(), &result, &event));
+        base::BindOnce(&vm_tools::cicerone::Service::LxdContainerDownloading,
+                       service_, cid, request->container_name(),
+                       request->download_progress(), &result, &event));
   } else {
     vm_tools::cicerone::Service::CreateStatus status;
     switch (request->status()) {
@@ -100,9 +100,10 @@ grpc::Status TremplinListenerImpl::UpdateCreateStatus(
         break;
     }
     task_runner_->PostTask(
-        FROM_HERE, base::Bind(&vm_tools::cicerone::Service::LxdContainerCreated,
-                              service_, cid, request->container_name(), status,
-                              request->failure_reason(), &result, &event));
+        FROM_HERE,
+        base::BindOnce(&vm_tools::cicerone::Service::LxdContainerCreated,
+                       service_, cid, request->container_name(), status,
+                       request->failure_reason(), &result, &event));
   }
 
   event.Wait();
@@ -133,9 +134,10 @@ grpc::Status TremplinListenerImpl::UpdateDeletionStatus(
 
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&vm_tools::cicerone::Service::LxdContainerDeleted, service_,
-                 cid, request->container_name(), request->status(),
-                 request->failure_reason(), &result, &event));
+      base::BindOnce(&vm_tools::cicerone::Service::LxdContainerDeleted,
+                     service_, cid, request->container_name(),
+                     request->status(), request->failure_reason(), &result,
+                     &event));
 
   event.Wait();
   if (!result) {
@@ -181,9 +183,10 @@ grpc::Status TremplinListenerImpl::UpdateStartStatus(
       break;
   }
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&vm_tools::cicerone::Service::LxdContainerStarting,
-                            service_, cid, request->container_name(), status,
-                            request->failure_reason(), &result, &event));
+      FROM_HERE,
+      base::BindOnce(&vm_tools::cicerone::Service::LxdContainerStarting,
+                     service_, cid, request->container_name(), status,
+                     request->failure_reason(), &result, &event));
 
   event.Wait();
   if (!result) {
@@ -227,8 +230,8 @@ grpc::Status TremplinListenerImpl::UpdateExportStatus(
   bool result = false;
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&vm_tools::cicerone::Service::ContainerExportProgress,
-                 service_, cid, &progress_signal, &result, &event));
+      base::BindOnce(&vm_tools::cicerone::Service::ContainerExportProgress,
+                     service_, cid, &progress_signal, &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Failure updating container export progress";
@@ -271,8 +274,8 @@ grpc::Status TremplinListenerImpl::UpdateImportStatus(
   bool result = false;
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&vm_tools::cicerone::Service::ContainerImportProgress,
-                 service_, cid, &progress_signal, &result, &event));
+      base::BindOnce(&vm_tools::cicerone::Service::ContainerImportProgress,
+                     service_, cid, &progress_signal, &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Failure updating container import progress";
@@ -306,9 +309,9 @@ grpc::Status TremplinListenerImpl::ContainerShutdown(
 
   bool result = false;
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&vm_tools::cicerone::Service::ContainerShutdown,
-                            service_, request->container_name(),
-                            container_token, cid, &result, &event));
+      FROM_HERE, base::BindOnce(&vm_tools::cicerone::Service::ContainerShutdown,
+                                service_, request->container_name(),
+                                container_token, cid, &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Error in tremplin listener ContainerShutdown for "
@@ -343,8 +346,9 @@ grpc::Status TremplinListenerImpl::UpdateListeningPorts(
   bool result = false;
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&vm_tools::cicerone::Service::UpdateListeningPorts, service_,
-                 std::move(listening_tcp4_ports), cid, &result, &event));
+      base::BindOnce(&vm_tools::cicerone::Service::UpdateListeningPorts,
+                     service_, std::move(listening_tcp4_ports), cid, &result,
+                     &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Error in tremplin listener UpdateListeningPorts";
@@ -380,8 +384,8 @@ grpc::Status TremplinListenerImpl::UpgradeContainerStatus(
   bool result = false;
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&vm_tools::cicerone::Service::ContainerUpgradeProgress,
-                 service_, cid, &progress_signal, &result, &event));
+      base::BindOnce(&vm_tools::cicerone::Service::ContainerUpgradeProgress,
+                     service_, cid, &progress_signal, &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Failure sending upgrade container progress";
@@ -416,8 +420,9 @@ grpc::Status TremplinListenerImpl::UpdateStartLxdStatus(
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool result = false;
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&vm_tools::cicerone::Service::StartLxdProgress,
-                            service_, cid, &progress_signal, &result, &event));
+      FROM_HERE,
+      base::BindOnce(&vm_tools::cicerone::Service::StartLxdProgress, service_,
+                     cid, &progress_signal, &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Failure sending start lxd progress";

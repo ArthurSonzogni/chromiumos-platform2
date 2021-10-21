@@ -85,7 +85,8 @@ constexpr char kHostDomainSocket[] = "/run/vm_cicerone/client/host.sock";
 // |response_sender|. If |handler| returns NULL, an empty response is created
 // and sent.
 void HandleSynchronousDBusMethodCall(
-    base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)> handler,
+    base::RepeatingCallback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)>
+        handler,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
   std::unique_ptr<dbus::Response> response = handler.Run(method_call);
@@ -143,8 +144,8 @@ bool SetupListenerService(base::Thread* grpc_thread,
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool ret = grpc_thread->task_runner()->PostTask(
-      FROM_HERE, base::Bind(&RunListenerService, listener_impl,
-                            listener_addresses, &event, server_copy));
+      FROM_HERE, base::BindOnce(&RunListenerService, listener_impl,
+                                listener_addresses, &event, server_copy));
   if (!ret) {
     LOG(ERROR) << "Failed to post server startup task to grpc thread";
     return false;
@@ -384,7 +385,7 @@ void OnFileSelected(std::vector<std::string>* result,
 bool Service::run_grpc_ = true;
 
 std::unique_ptr<Service> Service::Create(
-    base::Closure quit_closure,
+    base::OnceClosure quit_closure,
     const base::Optional<base::FilePath>& unix_socket_path_for_testing,
     scoped_refptr<dbus::Bus> bus) {
   auto service =
@@ -397,7 +398,7 @@ std::unique_ptr<Service> Service::Create(
   return service;
 }
 
-Service::Service(base::Closure quit_closure, scoped_refptr<dbus::Bus> bus)
+Service::Service(base::OnceClosure quit_closure, scoped_refptr<dbus::Bus> bus)
     : bus_(std::move(bus)),
       quit_closure_(std::move(quit_closure)),
       weak_ptr_factory_(this) {
@@ -1428,8 +1429,9 @@ bool Service::Init(
   for (const auto& iter : kServiceMethods) {
     bool ret = exported_object_->ExportMethodAndBlock(
         kVmCiceroneInterface, iter.first,
-        base::Bind(&HandleSynchronousDBusMethodCall,
-                   base::Bind(iter.second, base::Unretained(this))));
+        base::BindRepeating(
+            &HandleSynchronousDBusMethodCall,
+            base::BindRepeating(iter.second, base::Unretained(this))));
     if (!ret) {
       LOG(ERROR) << "Failed to export method " << iter.first;
       return false;
@@ -1445,8 +1447,8 @@ bool Service::Init(
   // Set up the D-Bus client for shill.
   shill_client_ = std::make_unique<ShillClient>(bus_);
   shill_client_->RegisterDefaultServiceChangedHandler(
-      base::Bind(&Service::OnDefaultNetworkServiceChanged,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&Service::OnDefaultNetworkServiceChanged,
+                          weak_ptr_factory_.GetWeakPtr()));
 
   // Get the D-Bus proxy for communicating with the crostini registry in Chrome
   // and for the URL handler service.
@@ -1482,7 +1484,7 @@ bool Service::Init(
                << crosdns::kCrosDnsServiceName;
     return false;
   }
-  crosdns_service_proxy_->WaitForServiceToBeAvailable(base::Bind(
+  crosdns_service_proxy_->WaitForServiceToBeAvailable(base::BindOnce(
       &Service::OnCrosDnsServiceAvailable, weak_ptr_factory_.GetWeakPtr()));
 
   concierge_service_proxy_ = bus_->GetObjectProxy(
@@ -1636,7 +1638,10 @@ void Service::HandleChildExit() {
 void Service::HandleSigterm() {
   LOG(INFO) << "Shutting down due to SIGTERM";
 
-  base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, quit_closure_);
+  if (quit_closure_) {
+    base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                                  std::move(quit_closure_));
+  }
 }
 
 std::unique_ptr<dbus::Response> Service::NotifyVmStarted(
@@ -3714,7 +3719,7 @@ void Service::OnLocaltimeFileChanged(const base::FilePath& path, bool error) {
 
 void Service::OnCrosDnsServiceAvailable(bool service_is_available) {
   if (service_is_available) {
-    crosdns_service_proxy_->SetNameOwnerChangedCallback(base::Bind(
+    crosdns_service_proxy_->SetNameOwnerChangedCallback(base::BindRepeating(
         &Service::OnCrosDnsNameOwnerChanged, weak_ptr_factory_.GetWeakPtr()));
   }
 }

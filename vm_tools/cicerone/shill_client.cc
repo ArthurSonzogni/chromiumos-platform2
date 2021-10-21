@@ -23,13 +23,13 @@ ShillClient::ShillClient(scoped_refptr<dbus::Bus> bus)
       manager_proxy_(new org::chromium::flimflam::ManagerProxy(bus_)) {
   // The Manager must be watched for changes to the default Service.
   manager_proxy_->RegisterPropertyChangedSignalHandler(
-      base::Bind(&ShillClient::OnManagerPropertyChange,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&ShillClient::OnManagerPropertyChangeRegistration,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&ShillClient::OnManagerPropertyChange,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&ShillClient::OnManagerPropertyChangeRegistration,
+                     weak_factory_.GetWeakPtr()));
 
-  auto owner_changed_cb = base::Bind(&ShillClient::OnShillServiceOwnerChange,
-                                     weak_factory_.GetWeakPtr());
+  auto owner_changed_cb = base::BindRepeating(
+      &ShillClient::OnShillServiceOwnerChange, weak_factory_.GetWeakPtr());
   bus_->GetObjectProxy(shill::kFlimflamServiceName, dbus::ObjectPath{"/"})
       ->SetNameOwnerChangedCallback(owner_changed_cb);
 }
@@ -38,12 +38,12 @@ void ShillClient::OnShillServiceOwnerChange(const std::string& old_owner,
                                             const std::string& new_owner) {
   std::unique_ptr<ManagerProxy> manager_proxy(new ManagerProxy(bus_));
 
-  manager_proxy_->ReleaseObjectProxy(base::Bind([]() {}));
+  manager_proxy_->ReleaseObjectProxy(base::DoNothing());
   manager_proxy->RegisterPropertyChangedSignalHandler(
-      base::Bind(&ShillClient::OnManagerPropertyChange,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&ShillClient::OnManagerPropertyChangeRegistration,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&ShillClient::OnManagerPropertyChange,
+                          weak_factory_.GetWeakPtr()),
+      base::BindOnce(&ShillClient::OnManagerPropertyChangeRegistration,
+                     weak_factory_.GetWeakPtr()));
 
   manager_proxy_ = std::move(manager_proxy);
 }
@@ -79,7 +79,7 @@ void ShillClient::OnManagerPropertyChange(const std::string& property_name,
 }
 
 void ShillClient::RegisterDefaultServiceChangedHandler(
-    base::Callback<void()> callback) {
+    base::RepeatingCallback<void()> callback) {
   default_service_changed_callback_ = std::move(callback);
 }
 

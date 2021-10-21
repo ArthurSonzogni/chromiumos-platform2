@@ -56,9 +56,9 @@ grpc::Status ContainerListenerImpl::ContainerReady(
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&vm_tools::cicerone::Service::ContainerStartupCompleted,
-                 service_, request->token(), cid, request->garcon_port(),
-                 &result, &event));
+      base::BindOnce(&vm_tools::cicerone::Service::ContainerStartupCompleted,
+                     service_, request->token(), cid, request->garcon_port(),
+                     &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Received ContainerReady but could not find matching VM: "
@@ -92,8 +92,8 @@ grpc::Status ContainerListenerImpl::ContainerShutdown(
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&vm_tools::cicerone::Service::ContainerShutdown, service_,
-                 container_name, request->token(), cid, &result, &event));
+      base::BindOnce(&vm_tools::cicerone::Service::ContainerShutdown, service_,
+                     container_name, request->token(), cid, &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Received ContainerShutdown but could not find matching VM: "
@@ -124,7 +124,7 @@ grpc::Status ContainerListenerImpl::PendingUpdateApplicationListCalls(
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(
+      base::BindOnce(
           &vm_tools::cicerone::Service::PendingUpdateApplicationListCalls,
           service_, request->token(), cid, request->count(), &result, &event));
   event.Wait();
@@ -198,8 +198,9 @@ grpc::Status ContainerListenerImpl::UpdateApplicationList(
   bool result = false;
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&vm_tools::cicerone::Service::UpdateApplicationList, service_,
-                 request->token(), cid, &app_list, &result, &event));
+      base::BindOnce(&vm_tools::cicerone::Service::UpdateApplicationList,
+                     service_, request->token(), cid, &app_list, &result,
+                     &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Failure updating application list from ContainerListener";
@@ -228,8 +229,8 @@ grpc::Status ContainerListenerImpl::OpenUrl(
   bool result = false;
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&vm_tools::cicerone::Service::OpenUrl, service_,
-                 request->token(), request->url(), cid, &result, &event));
+      base::BindOnce(&vm_tools::cicerone::Service::OpenUrl, service_,
+                     request->token(), request->url(), cid, &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Failure opening URL from ContainerListener";
@@ -264,9 +265,9 @@ grpc::Status ContainerListenerImpl::InstallLinuxPackageProgress(
   bool result = false;
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&vm_tools::cicerone::Service::InstallLinuxPackageProgress,
-                 service_, request->token(), cid, &progress_signal, &result,
-                 &event));
+      base::BindOnce(&vm_tools::cicerone::Service::InstallLinuxPackageProgress,
+                     service_, request->token(), cid, &progress_signal, &result,
+                     &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Failure updating Linux package install progress from "
@@ -309,9 +310,9 @@ grpc::Status ContainerListenerImpl::UninstallPackageProgress(
   bool result = false;
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&vm_tools::cicerone::Service::UninstallPackageProgress,
-                 service_, request->token(), cid, &progress_signal, &result,
-                 &event));
+      base::BindOnce(&vm_tools::cicerone::Service::UninstallPackageProgress,
+                     service_, request->token(), cid, &progress_signal, &result,
+                     &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Failure updating Linux package uninstall progress from "
@@ -347,9 +348,9 @@ grpc::Status ContainerListenerImpl::ApplyAnsiblePlaybookProgress(
   bool result = false;
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&vm_tools::cicerone::Service::ApplyAnsiblePlaybookProgress,
-                 service_, request->token(), cid, &progress_signal, &result,
-                 &event));
+      base::BindOnce(&vm_tools::cicerone::Service::ApplyAnsiblePlaybookProgress,
+                     service_, request->token(), cid, &progress_signal, &result,
+                     &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Failure updating Ansible playbook application progress from "
@@ -381,9 +382,10 @@ grpc::Status ContainerListenerImpl::OpenTerminal(
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool result = false;
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&vm_tools::cicerone::Service::OpenTerminal,
-                            service_, request->token(),
-                            std::move(terminal_params), cid, &result, &event));
+      FROM_HERE,
+      base::BindOnce(&vm_tools::cicerone::Service::OpenTerminal, service_,
+                     request->token(), std::move(terminal_params), cid, &result,
+                     &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Failure opening terminal from ContainerListener";
@@ -409,9 +411,9 @@ grpc::Status ContainerListenerImpl::UpdateMimeTypes(
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool result = false;
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&vm_tools::cicerone::Service::UpdateMimeTypes,
-                            service_, request->token(), std::move(mime_types),
-                            cid, &result, &event));
+      FROM_HERE, base::BindOnce(&vm_tools::cicerone::Service::UpdateMimeTypes,
+                                service_, request->token(),
+                                std::move(mime_types), cid, &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Failure updating MIME types from ContainerListener";
@@ -437,8 +439,9 @@ grpc::Status ContainerListenerImpl::FileWatchTriggered(
   bool result = false;
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&vm_tools::cicerone::Service::FileWatchTriggered, service_,
-                 request->token(), cid, &triggered_signal, &result, &event));
+      base::BindOnce(&vm_tools::cicerone::Service::FileWatchTriggered, service_,
+                     request->token(), cid, &triggered_signal, &result,
+                     &event));
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Failure notifying FileWatchTriggered from ContainerListener";
@@ -464,8 +467,9 @@ grpc::Status ContainerListenerImpl::LowDiskSpaceTriggered(
   bool result = false;
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&vm_tools::cicerone::Service::LowDiskSpaceTriggered, service_,
-                 request->token(), cid, &triggered_signal, &result, &event));
+      base::BindOnce(&vm_tools::cicerone::Service::LowDiskSpaceTriggered,
+                     service_, request->token(), cid, &triggered_signal,
+                     &result, &event));
   event.Wait();
   if (!result) {
     LOG(ERROR)
@@ -496,9 +500,9 @@ grpc::Status ContainerListenerImpl::ForwardSecurityKeyMessage(
 
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&vm_tools::cicerone::Service::ForwardSecurityKeyMessage,
-                 service_, cid, std::move(security_key_message),
-                 &security_key_response, &event));
+      base::BindOnce(&vm_tools::cicerone::Service::ForwardSecurityKeyMessage,
+                     service_, cid, std::move(security_key_message),
+                     &security_key_response, &event));
   event.Wait();
   if (security_key_response.message().empty()) {
     LOG(ERROR)
@@ -530,8 +534,8 @@ grpc::Status ContainerListenerImpl::SelectFile(
   std::vector<std::string> files;
   task_runner_->PostTask(
       FROM_HERE,
-      base::Bind(&vm_tools::cicerone::Service::SelectFile, service_,
-                 request->token(), cid, &select_file, &files, &event));
+      base::BindOnce(&vm_tools::cicerone::Service::SelectFile, service_,
+                     request->token(), cid, &select_file, &files, &event));
   // Waits for dialog to be shown, and user to select file(s), then chrome sends
   // back the FileSelectedSignal.
   event.Wait();
@@ -555,8 +559,9 @@ grpc::Status ContainerListenerImpl::GetDiskInfo(
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   vm_tools::disk_management::GetDiskInfoResponse result;
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&vm_tools::cicerone::Service::GetDiskInfo, service_,
-                            request->token(), cid, &result, &event));
+      FROM_HERE,
+      base::BindOnce(&vm_tools::cicerone::Service::GetDiskInfo, service_,
+                     request->token(), cid, &result, &event));
   event.Wait();
   response->set_error(result.error());
   response->set_available_space(result.available_space());
@@ -578,9 +583,9 @@ grpc::Status ContainerListenerImpl::RequestSpace(
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   vm_tools::disk_management::RequestSpaceResponse result;
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&vm_tools::cicerone::Service::RequestSpace,
-                            service_, request->token(), cid,
-                            request->space_requested(), &result, &event));
+      FROM_HERE, base::BindOnce(&vm_tools::cicerone::Service::RequestSpace,
+                                service_, request->token(), cid,
+                                request->space_requested(), &result, &event));
   event.Wait();
   response->set_error(result.error());
   response->set_space_granted(result.space_granted());
@@ -600,9 +605,9 @@ grpc::Status ContainerListenerImpl::ReleaseSpace(
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   vm_tools::disk_management::ReleaseSpaceResponse result;
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&vm_tools::cicerone::Service::ReleaseSpace,
-                            service_, request->token(), cid,
-                            request->space_to_release(), &result, &event));
+      FROM_HERE, base::BindOnce(&vm_tools::cicerone::Service::ReleaseSpace,
+                                service_, request->token(), cid,
+                                request->space_to_release(), &result, &event));
   event.Wait();
   response->set_error(result.error());
   response->set_space_released(result.space_released());

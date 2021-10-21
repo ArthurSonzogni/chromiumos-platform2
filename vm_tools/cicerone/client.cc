@@ -129,12 +129,12 @@ int CreateLxdContainer(dbus::ObjectProxy* proxy,
   vm_tools::cicerone::LxdContainerCreatedSignal::Status final_status =
       vm_tools::cicerone::LxdContainerCreatedSignal::UNKNOWN;
   std::string failure_reason = "Timed out waiting for reply";
-  proxy->ConnectToSignal(
-      vm_tools::cicerone::kVmCiceroneInterface,
-      vm_tools::cicerone::kLxdContainerCreatedSignal,
-      base::Bind(&OnContainerCreatedCallback, base::Unretained(&run_loop),
-                 &final_status, &failure_reason),
-      base::Bind(&OnSignalConnected));
+  proxy->ConnectToSignal(vm_tools::cicerone::kVmCiceroneInterface,
+                         vm_tools::cicerone::kLxdContainerCreatedSignal,
+                         base::BindRepeating(&OnContainerCreatedCallback,
+                                             base::Unretained(&run_loop),
+                                             &final_status, &failure_reason),
+                         base::BindOnce(&OnSignalConnected));
 
   std::unique_ptr<dbus::Response> dbus_response =
       proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
@@ -206,12 +206,12 @@ int StartLxdContainer(dbus::ObjectProxy* proxy,
   vm_tools::cicerone::LxdContainerStartingSignal::Status final_status =
       vm_tools::cicerone::LxdContainerStartingSignal::UNKNOWN;
   std::string failure_reason = "Timed out waiting for reply";
-  proxy->ConnectToSignal(
-      vm_tools::cicerone::kVmCiceroneInterface,
-      vm_tools::cicerone::kLxdContainerStartingSignal,
-      base::Bind(&OnContainerStartingCallback, base::Unretained(&run_loop),
-                 &final_status, &failure_reason),
-      base::Bind(&OnSignalConnected));
+  proxy->ConnectToSignal(vm_tools::cicerone::kVmCiceroneInterface,
+                         vm_tools::cicerone::kLxdContainerStartingSignal,
+                         base::BindRepeating(&OnContainerStartingCallback,
+                                             base::Unretained(&run_loop),
+                                             &final_status, &failure_reason),
+                         base::BindOnce(&OnSignalConnected));
 
   std::unique_ptr<dbus::Response> dbus_response =
       proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
@@ -681,12 +681,12 @@ int InstallLinuxPackage(dbus::ObjectProxy* proxy,
   vm_tools::cicerone::InstallLinuxPackageProgressSignal::Status final_status =
       vm_tools::cicerone::InstallLinuxPackageProgressSignal::FAILED;
   std::string failure_details = "Timed out waiting for reply";
-  proxy->ConnectToSignal(
-      vm_tools::cicerone::kVmCiceroneInterface,
-      vm_tools::cicerone::kInstallLinuxPackageProgressSignal,
-      base::Bind(&OnApplicationInstalledCallback, base::Unretained(&run_loop),
-                 &final_status, &failure_details),
-      base::Bind(&OnSignalConnected));
+  proxy->ConnectToSignal(vm_tools::cicerone::kVmCiceroneInterface,
+                         vm_tools::cicerone::kInstallLinuxPackageProgressSignal,
+                         base::BindRepeating(&OnApplicationInstalledCallback,
+                                             base::Unretained(&run_loop),
+                                             &final_status, &failure_details),
+                         base::BindOnce(&OnSignalConnected));
 
   std::unique_ptr<dbus::Response> dbus_response =
       proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
@@ -788,12 +788,12 @@ int UninstallApplication(dbus::ObjectProxy* proxy,
   vm_tools::cicerone::UninstallPackageProgressSignal::Status final_status =
       vm_tools::cicerone::UninstallPackageProgressSignal::FAILED;
   std::string failure_details = "Timed out waiting for reply";
-  proxy->ConnectToSignal(
-      vm_tools::cicerone::kVmCiceroneInterface,
-      vm_tools::cicerone::kUninstallPackageProgressSignal,
-      base::Bind(&OnApplicationUninstalledCallback, base::Unretained(&run_loop),
-                 &final_status, &failure_details),
-      base::Bind(&OnSignalConnected));
+  proxy->ConnectToSignal(vm_tools::cicerone::kVmCiceroneInterface,
+                         vm_tools::cicerone::kUninstallPackageProgressSignal,
+                         base::BindRepeating(&OnApplicationUninstalledCallback,
+                                             base::Unretained(&run_loop),
+                                             &final_status, &failure_details),
+                         base::BindOnce(&OnSignalConnected));
 
   std::unique_ptr<dbus::Response> dbus_response =
       proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
@@ -897,9 +897,10 @@ int ApplyAnsiblePlaybook(dbus::ObjectProxy* proxy,
   proxy->ConnectToSignal(
       vm_tools::cicerone::kVmCiceroneInterface,
       vm_tools::cicerone::kApplyAnsiblePlaybookProgressSignal,
-      base::Bind(&OnPlaybookAppliedCallback, base::Unretained(&run_loop),
-                 &final_status, &failure_details),
-      base::Bind(&OnSignalConnected));
+      base::BindRepeating(&OnPlaybookAppliedCallback,
+                          base::Unretained(&run_loop), &final_status,
+                          &failure_details),
+      base::BindOnce(&OnSignalConnected));
 
   std::unique_ptr<dbus::Response> dbus_response =
       proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
