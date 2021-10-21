@@ -638,6 +638,16 @@ class GetPreservedFilesListTest : public ::testing::Test {
         CreateDirectoryAndWriteFile(extensions.Append("fileC.tar"), ""));
     ASSERT_TRUE(
         CreateDirectoryAndWriteFile(extensions.Append("fileD.bmp"), ""));
+
+    base::FilePath dlc_factory =
+        fake_stateful_.Append("unencrypted/dlc-factory-images");
+    ASSERT_TRUE(base::CreateDirectory(dlc_factory));
+    ASSERT_TRUE(CreateDirectoryAndWriteFile(
+        dlc_factory.Append("test-dlc1/package/dlc.img"), ""));
+    ASSERT_TRUE(CreateDirectoryAndWriteFile(
+        dlc_factory.Append("test-dlc2/package/dlc.img"), ""));
+    ASSERT_TRUE(
+        CreateDirectoryAndWriteFile(dlc_factory.Append("test-dlc3"), ""));
   }
 
   void SetCompare(std::set<std::string> expected,
@@ -747,7 +757,9 @@ TEST_F(GetPreservedFilesListTest, FactoryWipe) {
                                          preserved_files.end());
   std::set<std::string> expected_preserved_set{
       "unencrypted/import_extensions/extensions/fileA.crx",
-      "unencrypted/import_extensions/extensions/fileB.crx"};
+      "unencrypted/import_extensions/extensions/fileB.crx",
+      "unencrypted/dlc-factory-images/test-dlc1/package/dlc.img",
+      "unencrypted/dlc-factory-images/test-dlc2/package/dlc.img"};
   SetCompare(expected_preserved_set, preserved_set);
 }
 
@@ -783,7 +795,9 @@ TEST_F(GetPreservedFilesListTest, SafeRollbackFactoryWipe) {
       "unencrypted/cros-components/offline-demo-mode-resources/table",
       "unencrypted/preserve/rollback_data",
       "unencrypted/import_extensions/extensions/fileA.crx",
-      "unencrypted/import_extensions/extensions/fileB.crx"};
+      "unencrypted/import_extensions/extensions/fileB.crx",
+      "unencrypted/dlc-factory-images/test-dlc1/package/dlc.img",
+      "unencrypted/dlc-factory-images/test-dlc2/package/dlc.img"};
   SetCompare(expected_preserved_set, preserved_set);
 }
 

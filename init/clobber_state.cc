@@ -936,14 +936,29 @@ std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
   }
 
   if (args_.factory_wipe) {
-    base::FileEnumerator enumerator(
+    base::FileEnumerator crx_enumerator(
         stateful_.Append("unencrypted/import_extensions/extensions"), false,
         base::FileEnumerator::FileType::FILES, "*.crx");
-    for (base::FilePath name = enumerator.Next(); !name.empty();
-         name = enumerator.Next()) {
+    for (base::FilePath name = crx_enumerator.Next(); !name.empty();
+         name = crx_enumerator.Next()) {
       preserved_files.push_back(
           base::FilePath("unencrypted/import_extensions/extensions")
               .Append(name.BaseName()));
+    }
+
+    base::FileEnumerator dlc_enumerator(
+        stateful_.Append("unencrypted/dlc-factory-images"), false,
+        base::FileEnumerator::DIRECTORIES);
+    for (base::FilePath dir = dlc_enumerator.Next(); !dir.empty();
+         dir = dlc_enumerator.Next()) {
+      base::FilePath dlc_image_path =
+          base::FilePath("unencrypted/dlc-factory-images")
+              .Append(dir.BaseName())
+              .Append("package")
+              .Append("dlc.img");
+      if (base::PathExists(stateful_.Append(dlc_image_path))) {
+        preserved_files.push_back(dlc_image_path);
+      }
     }
   }
 
