@@ -111,6 +111,8 @@ class BiodStorageInterface {
       const std::unordered_set<std::string>& user_ids) = 0;
   virtual std::vector<Record> ReadRecordsForSingleUser(
       const std::string& user_id) = 0;
+  virtual base::Optional<Record> ReadSingleRecord(
+      const std::string& user_id, const std::string& record_id) = 0;
   virtual bool DeleteRecord(const std::string& user_id,
                             const std::string& record_id) = 0;
   virtual void set_allow_access(bool allow_access) = 0;
@@ -157,6 +159,11 @@ class BiodStorage : public BiodStorageInterface {
   std::vector<Record> ReadRecordsForSingleUser(
       const std::string& user_id) override;
 
+  // Read a single record from disk and return it. If record doesn't exist
+  // then base::nullopt is returned.
+  base::Optional<Record> ReadSingleRecord(
+      const std::string& user_id, const std::string& record_id) override;
+
   // Delete one record file. User will be able to do this via UI. True if
   // this record does not exist on disk.
   bool DeleteRecord(const std::string& user_id,
@@ -176,6 +183,10 @@ class BiodStorage : public BiodStorageInterface {
   }
 
  private:
+  // It reads single record from provided path. If record doesn't exist then
+  // base::nullopt is returned. If record is invalid then |valid| field in the
+  // Record structure will be set to false.
+  base::Optional<Record> ReadRecordFromPath(const base::FilePath& record_path);
   base::FilePath root_path_;
   std::string biometrics_manager_name_;
   bool allow_access_;

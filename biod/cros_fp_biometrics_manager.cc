@@ -231,18 +231,13 @@ bool CrosFpBiometricsManager::UpdateRecordMetadata(
   if (records_.find(record_id) == records_.end())
     return false;
 
-  const auto& iter =
-      std::find(loaded_records_.begin(), loaded_records_.end(), record_id);
-  if (iter == loaded_records_.end())
+  auto record =
+      biod_storage_->ReadSingleRecord(record_metadata.user_id, record_id);
+  if (!record || !record->valid)
     return false;
 
-  const int index = std::distance(loaded_records_.begin(), iter);
-  // TODO(vpalatin): would be faster to read it from disk
-  std::unique_ptr<VendorTemplate> tmpl = cros_dev_->GetTemplate(index);
-  if (!tmpl)
-    return false;
-
-  if (!WriteRecord(record_metadata, tmpl->data(), tmpl->size()))
+  if (!biod_storage_->WriteRecord(record_metadata,
+                                  base::Value(std::move(record->data))))
     return false;
 
   records_[record_id] = record_metadata;

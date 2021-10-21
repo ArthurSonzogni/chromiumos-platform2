@@ -147,6 +147,49 @@ TEST_F(BiodStorageBaseTest, WriteAndReadRecords) {
                                   read_result.begin()));
 }
 
+TEST_F(BiodStorageBaseTest, WriteAndReadSingleRecord) {
+  const std::vector<Record> kRecords(
+      {{{kRecordFormatVersion, kRecordId1, kUserId1, kLabel1, kValidationVal1},
+        kData1},
+       {{kRecordFormatVersion, kRecordId2, kUserId2, kLabel2, kValidationVal2},
+        kData2},
+       {{kRecordFormatVersion, kRecordId3, kUserId2, kLabel3, kValidationVal3},
+        kData3}});
+
+  // Write the record.
+  for (auto const& record : kRecords) {
+    EXPECT_TRUE(
+        biod_storage_->WriteRecord(record.metadata, base::Value(record.data)));
+  }
+
+  // Read the records.
+  EXPECT_EQ(kRecords[0],
+            *biod_storage_->ReadSingleRecord(kUserId1, kRecordId1));
+  EXPECT_EQ(kRecords[1],
+            *biod_storage_->ReadSingleRecord(kUserId2, kRecordId2));
+  EXPECT_EQ(kRecords[2],
+            *biod_storage_->ReadSingleRecord(kUserId2, kRecordId3));
+}
+
+TEST_F(BiodStorageBaseTest, ReadSingleRecord) {
+  const std::vector<Record> kRecords(
+      {{{kRecordFormatVersion, kRecordId1, kUserId1, kLabel1, kValidationVal1},
+        kData1},
+       {{kRecordFormatVersion, kRecordId2, kUserId2, kLabel2, kValidationVal2},
+        kData2}});
+
+  // Write the record.
+  for (auto const& record : kRecords) {
+    EXPECT_TRUE(
+        biod_storage_->WriteRecord(record.metadata, base::Value(record.data)));
+  }
+
+  // Check if ReadSingleRecord returns empty base::Optional on RecordId,
+  // UserId mismatch.
+  EXPECT_FALSE(biod_storage_->ReadSingleRecord(kUserId1, kRecordId2));
+  EXPECT_FALSE(biod_storage_->ReadSingleRecord(kUserId2, kRecordId1));
+}
+
 TEST_F(BiodStorageBaseTest, WriteRecord_InvalidAbsolutePath) {
   Record record = {{kRecordFormatVersion, kRecordId1, "/absolutepath", kLabel1,
                     kValidationVal1},

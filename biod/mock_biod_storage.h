@@ -43,6 +43,10 @@ class MockBiodStorage : public BiodStorageInterface {
               ReadRecordsForSingleUser,
               (const std::string& user_id),
               (override));
+  MOCK_METHOD(base::Optional<Record>,
+              ReadSingleRecord,
+              (const std::string& user_id, const std::string& record_id),
+              (override));
   MOCK_METHOD(bool,
               DeleteRecord,
               (const std::string& user_id, const std::string& record_id),
