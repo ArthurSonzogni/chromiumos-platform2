@@ -11,6 +11,7 @@ const char kRmadServicePath[] = "/org/chromium/Rmad";
 const char kRmadServiceName[] = "org.chromium.Rmad";
 
 // Methods
+const char kIsRmaRequiredMethod[] = "IsRmaRequired";
 const char kGetCurrentStateMethod[] = "GetCurrentState";
 const char kTransitionNextStateMethod[] = "TransitionNextState";
 const char kTransitionPreviousStateMethod[] = "TransitionPreviousState";

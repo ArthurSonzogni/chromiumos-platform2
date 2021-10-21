@@ -309,6 +309,9 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
   brillo::dbus_utils::DBusInterface* dbus_interface =
       dbus_object_->AddOrGetInterface(kRmadInterfaceName);
 
+  dbus_interface->AddSimpleMethodHandler(
+      kIsRmaRequiredMethod, base::Unretained(this),
+      &DBusService::HandleIsRmaRequiredMethod);
   dbus_interface->AddMethodHandler(
       kGetCurrentStateMethod, base::Unretained(this),
       &DBusService::HandleMethod<GetStateReply,
@@ -419,6 +422,10 @@ void DBusService::RegisterSignalSenders() {
       std::make_unique<base::RepeatingCallback<bool(const FinalizeStatus&)>>(
           base::BindRepeating(&DBusService::SendFinalizeProgressSignal,
                               base::Unretained(this))));
+}
+
+bool DBusService::HandleIsRmaRequiredMethod() {
+  return is_rma_required_;
 }
 
 std::string DBusService::HandleGetLogPathMethod() {

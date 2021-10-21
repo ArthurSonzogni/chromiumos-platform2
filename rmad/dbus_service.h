@@ -131,6 +131,7 @@ class DBusService : public brillo::DBusServiceDaemon {
         SharedResponsePointer(std::move(response))));
   }
 
+  bool HandleIsRmaRequiredMethod();
   std::string HandleGetLogPathMethod();
   GetLogReply HandleGetLogMethod();
 
