@@ -49,7 +49,9 @@ using chromeos::cros_healthd::mojom::BusInfo;
 using chromeos::cros_healthd::mojom::BusResultPtr;
 using chromeos::cros_healthd::mojom::CpuArchitectureEnum;
 using chromeos::cros_healthd::mojom::CpuResultPtr;
+using chromeos::cros_healthd::mojom::CryptoAlgorithm;
 using chromeos::cros_healthd::mojom::DisplayResultPtr;
+using chromeos::cros_healthd::mojom::EncryptionState;
 using chromeos::cros_healthd::mojom::ErrorType;
 using chromeos::cros_healthd::mojom::FanResultPtr;
 using chromeos::cros_healthd::mojom::GraphicsResultPtr;
@@ -208,6 +210,30 @@ std::string EnumToString(PortalState state) {
       return "Proxy Auth Required";
     case PortalState::kNoInternet:
       return "No Internet";
+  }
+}
+
+std::string EnumToString(EncryptionState encryption_state) {
+  switch (encryption_state) {
+    case EncryptionState::kEncryptionDisabled:
+      return "Memory encryption disabled";
+    case EncryptionState::kTmeEnabled:
+      return "TME enabled";
+    case EncryptionState::kMktmeEnabled:
+      return "MKTME enabled";
+    default:
+      return "Unknown state";
+  }
+}
+
+std::string EnumToString(CryptoAlgorithm algorithm) {
+  switch (algorithm) {
+    case CryptoAlgorithm::kAesXts128:
+      return "AES-XTS-128";
+    case CryptoAlgorithm::kAesXts256:
+      return "AES-XTS-256";
+    default:
+      return "Invalid Algorithm";
   }
 }
 
@@ -729,6 +755,16 @@ void DisplayMemoryInfo(const MemoryResultPtr& result) {
   SET_DICT(free_memory_kib, info, &output);
   SET_DICT(page_faults_since_last_boot, info, &output);
   SET_DICT(total_memory_kib, info, &output);
+
+  const auto& memory_encryption_info = info->memory_encryption_info;
+  if (memory_encryption_info) {
+    auto* out_mem_encryption = output.SetKey(
+        "memory_encryption_info", base::Value{base::Value::Type::DICTIONARY});
+    SET_DICT(encryption_state, memory_encryption_info, out_mem_encryption);
+    SET_DICT(max_key_number, memory_encryption_info, out_mem_encryption);
+    SET_DICT(key_length, memory_encryption_info, out_mem_encryption);
+    SET_DICT(active_algorithm, memory_encryption_info, out_mem_encryption);
+  }
 
   OutputJson(output);
 }
