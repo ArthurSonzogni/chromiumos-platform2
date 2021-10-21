@@ -63,7 +63,7 @@ TEST_F(SensorDataForwarderTest, ForwardSmallData) {
   ASSERT_TRUE(base::WriteFileDescriptor(in_pipe_.get(), kData));
 
   char buf[sizeof(kData)] = {};
-  ASSERT_TRUE(base::ReadFromFD(out_pipe_.get(), buf, sizeof(buf)));
+  ASSERT_TRUE(base::ReadFromFD(out_pipe_.get(), buf, strlen(kData)));
 
   EXPECT_EQ(0, memcmp(kData, buf, sizeof(kData))) << buf;
 }
