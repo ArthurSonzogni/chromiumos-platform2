@@ -96,8 +96,7 @@ int main(int argc, char* argv[]) {
           isxdigit(FLAGS_mosys_eventlog_code[2]) &&
           isxdigit(FLAGS_mosys_eventlog_code[3]))
         << "Invalid event code";
-    RunCommand("mosys", "eventlog", "add", FLAGS_mosys_eventlog_code.c_str(),
-               nullptr);
+    RunCommand("elogtool", "add", FLAGS_mosys_eventlog_code.c_str(), nullptr);
   } else if (FLAGS_action == "reboot" || FLAGS_action == "shut_down") {
     std::string reason_arg;
     if (!FLAGS_shutdown_reason.empty()) {
