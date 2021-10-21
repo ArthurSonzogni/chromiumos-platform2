@@ -11,22 +11,34 @@
 #include <utility>
 
 #include "diagnostics/common/file_test_utils.h"
+#include "diagnostics/cros_healthd/executor/mock_executor_adapter.h"
 #include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
+#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 namespace {
 
+namespace executor_ipc = chromeos::cros_healthd_executor::mojom;
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+
+using ::testing::_;
+using ::testing::DoAll;
+using ::testing::Invoke;
+using ::testing::Return;
+using ::testing::StrictMock;
+using ::testing::WithArg;
+
 constexpr char kRelativeProcCpuInfoPath[] = "proc/cpuinfo";
 constexpr char kRelativeMeminfoPath[] = "proc/meminfo";
 constexpr char kRelativeVmStatPath[] = "proc/vmstat";
-constexpr char kFakeCpuInfoNoTmeContent[] =
-    "cpu family\t: 6\n"
-    "model\t: 154\n"
-    "flags\t: fpu vme de pse tsc"
-    "\0";
+constexpr char kRelativeMtkmeDirectoryPath[] = "sys/kernel/mm/mktme";
+constexpr char kRelativeMtkmeActivePath[] = "sys/kernel/mm/mktme/active";
+constexpr char kRelativeMtkmeActiveAlgorithmPath[] =
+    "sys/kernel/mm/mktme/active_algo";
+constexpr char kRelativeMtkmeKeyCountPath[] = "sys/kernel/mm/mktme/keycnt";
+constexpr char kRelativeMtkmeKeyLengthPath[] = "sys/kernel/mm/mktme/keylen";
 
 constexpr char kFakeMeminfoContents[] =
     "MemTotal:      3906320 kB\nMemFree:      873180 kB\nMemAvailable:      "
@@ -56,10 +68,53 @@ constexpr char kFakeVmStatContentsMissingPgfault[] = "foo 9908\n";
 constexpr char kFakeVmStatContentsIncorrectlyFormattedPgfault[] =
     "pgfault NotAnInteger\n";
 
+constexpr char kFakeMktmeActiveFileContent[] = "1\n";
+constexpr char kFakeMktmeActiveAlgorithmFileContent[] = "AES_XTS_256\n";
+constexpr char kFakeMktmeKeyCountFileContent[] = "3\n";
+constexpr char kFakeMktmeKeyLengthFileContent[] = "256\n";
+
+constexpr mojo_ipc::EncryptionState kExpectedMktmeState =
+    mojo_ipc::EncryptionState::kMktmeEnabled;
+constexpr mojo_ipc::EncryptionState kExpectedTmeState =
+    mojo_ipc::EncryptionState::kTmeEnabled;
+constexpr mojo_ipc::CryptoAlgorithm kExpectedActiveAlgorithm =
+    mojo_ipc::CryptoAlgorithm::kAesXts256;
+constexpr int32_t kExpectedMktmeKeyCount = 3;
+constexpr int32_t kExpectedTmeKeyCount = 1;
+constexpr int32_t kExpectedEncryptionKeyLength = 256;
+constexpr uint32_t kTmeCapabilityMsr = 0x981;
+constexpr uint64_t kTmeCapabilityMsrValue = 0x000000f400000004;
+constexpr uint32_t kTmeActivateMsr = 0x982;
+constexpr uint64_t kTmeActivateMsrValue = 0x000400020000002b;
+constexpr char kFakeCpuInfoNoTmeContent[] =
+    "cpu family\t: 6\n"
+    "model\t: 154\n"
+    "flags\t: fpu vme de pse tsc"
+    "\0";
+constexpr char kFakeCpuInfoTmeContent[] =
+    "cpu family\t: 6\n"
+    "model\t: 154\n"
+    "flags\t: fpu vme tme pse tsc"
+    "blah\t: blah"
+    "\0";
+
 // Saves |response| to |response_destination|.
 void OnGetMemoryResponse(mojo_ipc::MemoryResultPtr* response_update,
                          mojo_ipc::MemoryResultPtr response) {
   *response_update = std::move(response);
+}
+
+void VerifyMemoryEncryptionInfo(
+    const mojo_ipc::MemoryEncryptionInfoPtr& actual_data,
+    mojo_ipc::EncryptionState expected_state,
+    mojo_ipc::CryptoAlgorithm expected_algorithm,
+    uint32_t expected_key_count,
+    uint32_t expected_key_length) {
+  ASSERT_FALSE(actual_data.is_null());
+  EXPECT_EQ(actual_data->encryption_state, expected_state);
+  EXPECT_EQ(actual_data->active_algorithm, expected_algorithm);
+  EXPECT_EQ(actual_data->max_key_number, expected_key_count);
+  EXPECT_EQ(actual_data->key_length, expected_key_length);
 }
 
 class MemoryFetcherTest : public ::testing::Test {
@@ -70,7 +125,34 @@ class MemoryFetcherTest : public ::testing::Test {
         root_dir().Append(kRelativeProcCpuInfoPath), kFakeCpuInfoNoTmeContent));
   }
 
+  void CreateMkmteEnviroment() {
+    ASSERT_TRUE(WriteFileAndCreateParentDirs(
+        root_dir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
+    ASSERT_TRUE(WriteFileAndCreateParentDirs(
+        root_dir().Append(kRelativeVmStatPath), kFakeVmStatContents));
+    // Create /sys/kernel/mm/mktme/ directory
+    ASSERT_TRUE(
+        base::CreateDirectory(root_dir().Append(kRelativeMtkmeDirectoryPath)));
+    // Write /sys/kernel/mm/mktme/active file.
+    ASSERT_TRUE(WriteFileAndCreateParentDirs(
+        root_dir().Append(kRelativeMtkmeActivePath),
+        kFakeMktmeActiveFileContent));
+    // Write /sys/kernel/mm/mktme/active_algo file.
+    ASSERT_TRUE(WriteFileAndCreateParentDirs(
+        root_dir().Append(kRelativeMtkmeActiveAlgorithmPath),
+        kFakeMktmeActiveAlgorithmFileContent));
+    // Write /sys/kernel/mm/mktme/keycnt file.
+    ASSERT_TRUE(WriteFileAndCreateParentDirs(
+        root_dir().Append(kRelativeMtkmeKeyCountPath),
+        kFakeMktmeKeyCountFileContent));
+    // Write /sys/kernel/mm/mktme/keylen file.
+    ASSERT_TRUE(WriteFileAndCreateParentDirs(
+        root_dir().Append(kRelativeMtkmeKeyLengthPath),
+        kFakeMktmeKeyLengthFileContent));
+  }
+
   const base::FilePath& root_dir() { return mock_context_.root_dir(); }
+  MockExecutorAdapter* mock_executor() { return mock_context_.mock_executor(); }
 
   mojo_ipc::MemoryResultPtr FetchMemoryInfo() {
     base::RunLoop run_loop;
@@ -89,7 +171,7 @@ class MemoryFetcherTest : public ::testing::Test {
 };
 
 // Test that memory info can be read when it exists.
-TEST_F(MemoryFetcherTest, TestFetchMemoryInfo) {
+TEST_F(MemoryFetcherTest, TestFetchMemoryInfoWithoutMemoryEncryption) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       root_dir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
@@ -266,6 +348,112 @@ TEST_F(MemoryFetcherTest,
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+}
+
+// Test to handle missing /sys/kernel/mm/mktme directory.
+TEST_F(MemoryFetcherTest, MissingMktmeDirectory) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      root_dir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      root_dir().Append(kRelativeVmStatPath), kFakeVmStatContents));
+
+  auto result = FetchMemoryInfo();
+  ASSERT_TRUE(result->is_memory_info());
+  const auto& memory_info = result->get_memory_info();
+  ASSERT_FALSE(memory_info->memory_encryption_info);
+}
+
+// Test to verify mktme info.
+TEST_F(MemoryFetcherTest, TestFetchMktmeInfo) {
+  CreateMkmteEnviroment();
+
+  auto result = FetchMemoryInfo();
+  ASSERT_TRUE(result->is_memory_info());
+  const auto& memory_info = result->get_memory_info();
+  VerifyMemoryEncryptionInfo(memory_info->memory_encryption_info,
+                             kExpectedMktmeState, kExpectedActiveAlgorithm,
+                             kExpectedMktmeKeyCount,
+                             kExpectedEncryptionKeyLength);
+}
+
+// Test to handle missing /sys/kernel/mm/mktme/active file.
+TEST_F(MemoryFetcherTest, MissingMktmeActiveFile) {
+  CreateMkmteEnviroment();
+  ASSERT_TRUE(base::DeleteFile(root_dir().Append(kRelativeMtkmeActivePath)));
+
+  auto result = FetchMemoryInfo();
+  ASSERT_TRUE(result->is_error());
+  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+}
+
+// Test to handle missing /sys/kernel/mm/mktme/active_algo file.
+TEST_F(MemoryFetcherTest, MissingMktmeActiveAlgorithmFile) {
+  CreateMkmteEnviroment();
+  ASSERT_TRUE(
+      base::DeleteFile(root_dir().Append(kRelativeMtkmeActiveAlgorithmPath)));
+
+  auto result = FetchMemoryInfo();
+  ASSERT_TRUE(result->is_error());
+  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+}
+
+// Test to handle missing /sys/kernel/mm/mktme/key_cnt file.
+TEST_F(MemoryFetcherTest, MissingMktmeKeyCountFile) {
+  CreateMkmteEnviroment();
+  ASSERT_TRUE(base::DeleteFile(root_dir().Append(kRelativeMtkmeKeyCountPath)));
+
+  auto result = FetchMemoryInfo();
+  ASSERT_TRUE(result->is_error());
+  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+}
+
+// Test to handle missing /sys/kernel/mm/mktme/key_len file.
+TEST_F(MemoryFetcherTest, MissingMktmeKeyLengthFile) {
+  CreateMkmteEnviroment();
+  ASSERT_TRUE(base::DeleteFile(root_dir().Append(kRelativeMtkmeKeyLengthPath)));
+
+  auto result = FetchMemoryInfo();
+  ASSERT_TRUE(result->is_error());
+  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+}
+
+// Test to verify TME info.
+TEST_F(MemoryFetcherTest, TestFetchTmeInfo) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      root_dir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      root_dir().Append(kRelativeVmStatPath), kFakeVmStatContents));
+  ASSERT_TRUE(DeleteFile(root_dir().Append(kRelativeProcCpuInfoPath)));
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      root_dir().Append(kRelativeProcCpuInfoPath), kFakeCpuInfoTmeContent));
+
+  // Set the mock executor response for ReadMsr calls.
+  EXPECT_CALL(*mock_executor(), ReadMsr(_, _))
+      .Times(2)
+      .WillRepeatedly(
+          Invoke([](uint32_t msr_reg,
+                    executor_ipc::Executor::ReadMsrCallback callback) {
+            executor_ipc::ProcessResult status;
+            status.return_code = EXIT_SUCCESS;
+            int64_t val = 0;
+            if (msr_reg == kTmeCapabilityMsr) {
+              val = kTmeCapabilityMsrValue;
+            } else if (msr_reg == kTmeActivateMsr) {
+              val = kTmeActivateMsrValue;
+            } else {
+              status.return_code = EXIT_FAILURE;
+              status.err = "MSR access not allowed";
+            }
+            std::move(callback).Run(status.Clone(), val);
+          }));
+
+  auto result = FetchMemoryInfo();
+  ASSERT_TRUE(result->is_memory_info());
+  const auto& memory_info = result->get_memory_info();
+  VerifyMemoryEncryptionInfo(memory_info->memory_encryption_info,
+                             kExpectedTmeState, kExpectedActiveAlgorithm,
+                             kExpectedTmeKeyCount,
+                             kExpectedEncryptionKeyLength);
 }
 
 }  // namespace
