@@ -4,33 +4,69 @@
 
 #include "rmad/state_handler/provision_device_state_handler.h"
 
+#include <openssl/rand.h>
+
 #include <algorithm>
+#include <iomanip>
+#include <memory>
+#include <sstream>
+#include <string>
 
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/synchronization/lock.h>
+#include <base/task/task_traits.h>
+#include <base/task/thread_pool.h>
+#include <base/strings/string_number_conversions.h>
 
 #include "rmad/constants.h"
+#include "rmad/utils/vpd_utils_impl.h"
+
+namespace {
+
+constexpr int kStableDeviceSecretSize = 32;
+
+constexpr double kProgressComplete = 1.0;
+constexpr double kProgressFailedNonblocking = -1.0;
+constexpr double kProgressFailedBlocking = -2.0;
+constexpr double kProgressInit = 0.0;
+constexpr double kProgressGetDestination = 0.3;
+constexpr double kProgressGenerateStableDeviceSecret = 0.5;
+constexpr double kProgressWriteStableDeviceSecret = 0.7;
+constexpr double kProgressFlushOutVpdCache = kProgressComplete;
+
+}  // namespace
 
 namespace rmad {
 
 ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {}
+    : BaseStateHandler(json_store) {
+  vpd_utils_ = std::make_unique<VpdUtilsImpl>();
+}
+
+ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
+    scoped_refptr<JsonStore> json_store, std::unique_ptr<VpdUtils> vpd_utils)
+    : BaseStateHandler(json_store), vpd_utils_(std::move(vpd_utils)) {}
 
 RmadErrorCode ProvisionDeviceStateHandler::InitializeState() {
+  if (!task_runner_) {
+    task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
+        {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
+  }
+
   if (!state_.has_provision_device()) {
     state_.set_allocated_provision_device(new ProvisionDeviceState);
-    status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
-    status_.set_progress(0);
+    UpdateProgress(kProgressInit,
+                   ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
   }
   if (!provision_signal_sender_) {
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
 
-  StartStatusTimer();
-  if (status_.status() == ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN) {
+  if (GetProgress().status() ==
+      ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN) {
     StartProvision();
   }
   return RMAD_ERROR_OK;
@@ -47,12 +83,13 @@ ProvisionDeviceStateHandler::GetNextStateCase(const RmadState& state) {
     return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
   }
 
+  const ProvisionStatus& status = GetProgress();
   switch (state.provision_device().choice()) {
     case ProvisionDeviceState::RMAD_PROVISION_CHOICE_UNKNOWN:
       return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
               .state_case = GetStateCase()};
     case ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE:
-      switch (status_.status()) {
+      switch (status.status()) {
         case ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS:
           return {.error = RMAD_ERROR_WAIT, .state_case = GetStateCase()};
         case ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE:
@@ -86,7 +123,11 @@ ProvisionDeviceStateHandler::GetNextStateCase(const RmadState& state) {
 }
 
 void ProvisionDeviceStateHandler::SendStatusSignal() {
-  provision_signal_sender_->Run(status_);
+  const ProvisionStatus& status = GetProgress();
+  provision_signal_sender_->Run(status);
+  if (status.status() != ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS) {
+    StopStatusTimer();
+  }
 }
 
 void ProvisionDeviceStateHandler::StartStatusTimer() {
@@ -102,36 +143,81 @@ void ProvisionDeviceStateHandler::StopStatusTimer() {
 }
 
 void ProvisionDeviceStateHandler::StartProvision() {
-  UpdateProgress(true);
-
-  // Mock provision progress.
-  if (provision_timer_.IsRunning()) {
-    provision_timer_.Stop();
-  }
-  provision_timer_.Start(
-      FROM_HERE, kUpdateProgressInterval,
-      base::BindRepeating(&ProvisionDeviceStateHandler::UpdateProgress,
-                          base::Unretained(this), false));
+  UpdateProgress(kProgressInit,
+                 ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
+  task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(&ProvisionDeviceStateHandler::RunProvision,
+                                base::Unretained(this)));
+  StartStatusTimer();
 }
 
-void ProvisionDeviceStateHandler::UpdateProgress(bool restart) {
-  base::AutoLock scoped_lock(lock_);
-  if (restart) {
-    status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
-    status_.set_progress(0);
+void ProvisionDeviceStateHandler::RunProvision() {
+  bool same_owner = false;
+  if (!json_store_->GetValue(kSameOwner, &same_owner)) {
+    LOG(ERROR) << "Failed to get device destination from json store";
+    UpdateProgress(kProgressFailedBlocking,
+                   ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
     return;
+  }
+  UpdateProgress(kProgressGetDestination,
+                 ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
+
+  if (!same_owner) {
+    std::string stable_device_secret;
+    if (!GenerateStableDeviceSecret(&stable_device_secret)) {
+      UpdateProgress(
+          kProgressFailedNonblocking,
+          ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_NON_BLOCKING);
+      return;
+    }
+    UpdateProgress(kProgressGenerateStableDeviceSecret,
+                   ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
+
+    if (!vpd_utils_->SetStableDeviceSecret(stable_device_secret)) {
+      UpdateProgress(
+          kProgressFailedNonblocking,
+          ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_NON_BLOCKING);
+      return;
+    }
+    UpdateProgress(kProgressWriteStableDeviceSecret,
+                   ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
+    // TODO(genechang): Reset fingerprint sensor here."
   }
 
-  // This is currently fake.
-  if (status_.status() != ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS) {
+  // TODO(genechang): Write SSFC and FW_CONFIG here.
+
+  if (!vpd_utils_->FlushOutRoVpdCache()) {
+    UpdateProgress(kProgressFailedNonblocking,
+                   ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_NON_BLOCKING);
     return;
   }
-  status_.set_progress(status_.progress() + 0.3);
-  if (status_.progress() >= 1) {
-    status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
-    status_.set_progress(1);
-    provision_timer_.Stop();
+  UpdateProgress(kProgressFlushOutVpdCache,
+                 ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+}
+
+void ProvisionDeviceStateHandler::UpdateProgress(
+    double progress, ProvisionStatus::Status status) {
+  base::AutoLock scoped_lock(lock_);
+  status_.set_progress(progress);
+  status_.set_status(status);
+}
+
+ProvisionStatus ProvisionDeviceStateHandler::GetProgress() const {
+  base::AutoLock scoped_lock(lock_);
+  return status_;
+}
+
+bool ProvisionDeviceStateHandler::GenerateStableDeviceSecret(
+    std::string* stable_device_secret) {
+  CHECK(stable_device_secret);
+  unsigned char buffer[kStableDeviceSecretSize];
+  if (RAND_bytes(buffer, kStableDeviceSecretSize) != 1) {
+    LOG(ERROR) << "Failed to get random bytes.";
+    return false;
   }
+
+  *stable_device_secret = base::HexEncode(buffer, kStableDeviceSecretSize);
+  return true;
 }
 
 }  // namespace rmad

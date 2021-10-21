@@ -35,6 +35,11 @@ class VpdUtils {
   virtual bool GetRegistrationCode(std::string* ubind,
                                    std::string* gbind) const = 0;
 
+  // Get the stable device secret of the device from vpd.
+  // Return true if it succeeds, otherwise return false.
+  virtual bool GetStableDeviceSecret(
+      std::string* stable_device_secret) const = 0;
+
   // Save the serial number in the cache until flush is called and set to vpd.
   // Return true if it succeeds, otherwise return false.
   virtual bool SetSerialNumber(const std::string& serial_number) = 0;
@@ -55,6 +60,11 @@ class VpdUtils {
   // Save the registration codes.
   virtual bool SetRegistrationCode(const std::string& ubind,
                                    const std::string& gbind) = 0;
+
+  // Save the stable device secret in the cache until flush is called and set to
+  // vpd. Return true if it succeeds, otherwise return false.
+  virtual bool SetStableDeviceSecret(
+      const std::string& stable_device_secret) = 0;
 
   // Since setting the value to vpd requires a lot of overhead, we cache all
   // (key, value) pairs and then flush it all at once.

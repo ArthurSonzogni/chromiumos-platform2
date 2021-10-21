@@ -46,6 +46,13 @@ bool VpdUtilsImplThreadSafe::GetRegistrationCode(std::string* ubind,
   return VpdUtilsImpl::GetRegistrationCode(ubind, gbind);
 }
 
+bool VpdUtilsImplThreadSafe::GetStableDeviceSecret(
+    std::string* stable_device_secret) const {
+  base::AutoLock scoped_lock(lock_);
+
+  return VpdUtilsImpl::GetStableDeviceSecret(stable_device_secret);
+}
+
 bool VpdUtilsImplThreadSafe::SetSerialNumber(const std::string& serial_number) {
   base::AutoLock scoped_lock(lock_);
 
@@ -77,6 +84,13 @@ bool VpdUtilsImplThreadSafe::SetRegistrationCode(const std::string& ubind,
   base::AutoLock scoped_lock(lock_);
 
   return VpdUtilsImpl::SetRegistrationCode(ubind, gbind);
+}
+
+bool VpdUtilsImplThreadSafe::SetStableDeviceSecret(
+    const std::string& stable_device_secret) {
+  base::AutoLock scoped_lock(lock_);
+
+  return VpdUtilsImpl::SetStableDeviceSecret(stable_device_secret);
 }
 
 bool VpdUtilsImplThreadSafe::FlushOutRoVpdCache() {

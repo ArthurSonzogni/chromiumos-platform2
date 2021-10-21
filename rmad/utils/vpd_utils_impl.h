@@ -32,12 +32,14 @@ class VpdUtilsImpl : public VpdUtils {
                     std::vector<int>* calibbias) const override;
   bool GetRegistrationCode(std::string* ubind,
                            std::string* gbind) const override;
+  bool GetStableDeviceSecret(std::string* stable_device_secret) const override;
   bool SetSerialNumber(const std::string& serial_number) override;
   bool SetWhitelabelTag(const std::string& whitelabel_tag) override;
   bool SetRegion(const std::string& region) override;
   bool SetCalibbias(const std::map<std::string, int>& calibbias) override;
   bool SetRegistrationCode(const std::string& ubind,
                            const std::string& gbind) override;
+  bool SetStableDeviceSecret(const std::string& stable_device_secret) override;
   bool FlushOutRoVpdCache() override;
   bool FlushOutRwVpdCache() override;
 

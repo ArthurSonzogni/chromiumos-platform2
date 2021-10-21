@@ -31,6 +31,7 @@ class MockVpdUtils : public VpdUtils {
               GetRegistrationCode,
               (std::string*, std::string*),
               (const, override));
+  MOCK_METHOD(bool, GetStableDeviceSecret, (std::string*), (const, override));
   MOCK_METHOD(bool, SetSerialNumber, (const std::string&), (override));
   MOCK_METHOD(bool, SetWhitelabelTag, (const std::string&), (override));
   MOCK_METHOD(bool, SetRegion, (const std::string&), (override));
@@ -42,6 +43,7 @@ class MockVpdUtils : public VpdUtils {
               SetRegistrationCode,
               (const std::string&, const std::string&),
               (override));
+  MOCK_METHOD(bool, SetStableDeviceSecret, (const std::string&), (override));
   MOCK_METHOD(bool, FlushOutRoVpdCache, (), (override));
   MOCK_METHOD(bool, FlushOutRwVpdCache, (), (override));
 

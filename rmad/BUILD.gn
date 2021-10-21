@@ -33,6 +33,7 @@ pkg_config("target_defaults") {
     # before protobuf here or the linker flags won't be in the right
     # order.
     "system_api",
+    "openssl",
     "protobuf",
   ]
 }
@@ -135,6 +136,7 @@ if (use.test) {
       "state_handler/check_calibration_state_handler_test.cc",
       "state_handler/components_repair_state_handler_test.cc",
       "state_handler/device_destination_state_handler_test.cc",
+      "state_handler/provision_device_state_handler_test.cc",
       "state_handler/repair_complete_state_handler_test.cc",
       "state_handler/restock_state_handler_test.cc",
       "state_handler/run_calibration_state_handler_test.cc",

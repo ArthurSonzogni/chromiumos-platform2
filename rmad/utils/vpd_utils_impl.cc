@@ -23,6 +23,8 @@ constexpr char kVpdKeyWhitelabelTag[] = "whitelabel_tag";
 constexpr char kVpdKeyRegion[] = "region";
 constexpr char kVpdKeyUbindAttribute[] = "ubind_attribute";
 constexpr char kVpdKeyGbindAttribute[] = "gbind_attribute";
+constexpr char kVpdKeyStableDeviceSecret[] =
+    "stable_device_secret_DO_NOT_SHARE";
 
 }  // namespace
 
@@ -99,6 +101,13 @@ bool VpdUtilsImpl::GetRegistrationCode(std::string* ubind,
   return true;
 }
 
+bool VpdUtilsImpl::GetStableDeviceSecret(
+    std::string* stable_device_secret) const {
+  CHECK(stable_device_secret);
+
+  return GetRoVpd(kVpdKeyStableDeviceSecret, stable_device_secret);
+}
+
 bool VpdUtilsImpl::SetSerialNumber(const std::string& serial_number) {
   cache_ro_[kVpdKeySerialNumber] = serial_number;
   return true;
@@ -126,6 +135,12 @@ bool VpdUtilsImpl::SetRegistrationCode(const std::string& ubind,
                                        const std::string& gbind) {
   cache_rw_[kVpdKeyUbindAttribute] = ubind;
   cache_rw_[kVpdKeyGbindAttribute] = gbind;
+  return true;
+}
+
+bool VpdUtilsImpl::SetStableDeviceSecret(
+    const std::string& stable_device_secret) {
+  cache_ro_[kVpdKeyStableDeviceSecret] = stable_device_secret;
   return true;
 }
 
