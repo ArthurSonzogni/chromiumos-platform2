@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
+#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -19,7 +20,6 @@ class MemoryFetcher final : public BaseFetcher {
   using FetchMemoryInfoCallback =
       base::OnceCallback<void(chromeos::cros_healthd::mojom::MemoryResultPtr)>;
   using BaseFetcher::BaseFetcher;
-
   // Returns a structure with either the device's memory info or the error that
   // occurred fetching the information.
   void FetchMemoryInfo(FetchMemoryInfoCallback callback);
@@ -27,6 +27,16 @@ class MemoryFetcher final : public BaseFetcher {
  private:
   using OptionalProbeErrorPtr =
       base::Optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>;
+  void FetchMemoryEncryptionInfo();
+  void FetchMktmeInfo();
+  void FetchTmeInfo();
+  void HandleReadTmeCapabilityMsr(
+      chromeos::cros_healthd_executor::mojom::ProcessResultPtr status,
+      uint64_t val);
+  void HandleReadTmeActivateMsr(
+      chromeos::cros_healthd_executor::mojom::ProcessResultPtr status,
+      uint64_t val);
+  void ExtractTmeInfoFromMsr();
   void CreateResultAndSendBack();
   void CreateErrorAndSendBack(
       chromeos::cros_healthd::mojom::ErrorType error_type,
@@ -34,6 +44,8 @@ class MemoryFetcher final : public BaseFetcher {
   void SendBackResult(chromeos::cros_healthd::mojom::MemoryResultPtr result);
   void ParseProcMeminfo(chromeos::cros_healthd::mojom::MemoryInfo* info);
   void ParseProcVmStat(chromeos::cros_healthd::mojom::MemoryInfo* info);
+  uint64_t tme_capability_value_;
+  uint64_t tme_activate_value_;
   chromeos::cros_healthd::mojom::MemoryInfo mem_info_;
   std::vector<FetchMemoryInfoCallback> pending_callbacks_;
   base::WeakPtrFactory<MemoryFetcher> weak_factory_{this};

@@ -19,9 +19,14 @@ namespace diagnostics {
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
+constexpr char kRelativeProcCpuInfoPath[] = "proc/cpuinfo";
 constexpr char kRelativeMeminfoPath[] = "proc/meminfo";
 constexpr char kRelativeVmStatPath[] = "proc/vmstat";
+constexpr char kFakeCpuInfoNoTmeContent[] =
+    "cpu family\t: 6\n"
+    "model\t: 154\n"
+    "flags\t: fpu vme de pse tsc"
+    "\0";
 
 constexpr char kFakeMeminfoContents[] =
     "MemTotal:      3906320 kB\nMemFree:      873180 kB\nMemAvailable:      "
@@ -60,6 +65,10 @@ void OnGetMemoryResponse(mojo_ipc::MemoryResultPtr* response_update,
 class MemoryFetcherTest : public ::testing::Test {
  protected:
   MemoryFetcherTest() = default;
+  void SetUp() override {
+    ASSERT_TRUE(WriteFileAndCreateParentDirs(
+        root_dir().Append(kRelativeProcCpuInfoPath), kFakeCpuInfoNoTmeContent));
+  }
 
   const base::FilePath& root_dir() { return mock_context_.root_dir(); }
 
