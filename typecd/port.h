@@ -23,6 +23,7 @@ enum class ModeEntryResult {
   kSuccess = 0,
   kCableError = 1,
   kPartnerError = 2,
+  kMaxValue = kPartnerError,
 };
 
 // Possible data roles for the port.
@@ -30,6 +31,7 @@ enum class DataRole {
   kNone = 0,
   kDevice = 1,
   kHost = 2,
+  kMaxValue = kHost,
 };
 
 // Possible power roles for the port.
@@ -37,6 +39,7 @@ enum class PowerRole {
   kNone = 0,
   kSink = 1,
   kSource = 2,
+  kMaxValue = kSource,
 };
 
 // This class is used to represent a Type C Port. It can be used to access PD
