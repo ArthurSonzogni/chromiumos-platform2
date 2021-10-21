@@ -7,6 +7,7 @@
 
 #include "cryptohome/keyset_management.h"
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -21,6 +22,8 @@
 namespace cryptohome {
 class VaultKeyset;
 class HomeDirs;
+
+typedef std::map<std::string, KeyData> KeyLabelMap;
 
 class MockKeysetManagement : public KeysetManagement {
  public:
@@ -47,6 +50,10 @@ class MockKeysetManagement : public KeysetManagement {
   MOCK_METHOD(bool,
               GetVaultKeysetLabels,
               (const std::string&, std::vector<std::string>*),
+              (const, override));
+  MOCK_METHOD(bool,
+              GetVaultKeysetLabelsAndData,
+              (const std::string&, KeyLabelMap*),
               (const, override));
   MOCK_METHOD(bool, AddInitialKeyset, (const Credentials&), (override));
   MOCK_METHOD(CryptohomeErrorCode,

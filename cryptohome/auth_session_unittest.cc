@@ -6,13 +6,16 @@
 
 #include "cryptohome/auth_session.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
 #include <base/test/task_environment.h>
 #include <base/timer/mock_timer.h>
+#include <brillo/cryptohome.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/cryptohome_common.h"
 #include "cryptohome/mock_keyset_management.h"
 
 using ::testing::_;
@@ -39,10 +42,25 @@ class AuthSessionTest : public ::testing::Test {
   AuthSessionTest& operator=(const AuthSessionTest&) = delete;
   ~AuthSessionTest() override = default;
 
+  void SetUp() override {
+    // Setup salt for brillo functions.
+    brillo::SecureBlob fake_salt(CRYPTOHOME_DEFAULT_SALT_LENGTH, 'S');
+    // Lifetime of this pointer is determined by this class.
+    brillo_salt_ = std::make_unique<std::string>(
+        reinterpret_cast<const char*>(fake_salt.data()), fake_salt.size());
+    brillo::cryptohome::home::SetSystemSalt(brillo_salt_.get());
+  }
+
+  void TearDown() override {
+    // tearing down salt set.
+    brillo::cryptohome::home::SetSystemSalt(NULL);
+  }
+
  protected:
   // Mock KeysetManagent object, will be passed to AuthSession for its internal
   // use.
   NiceMock<MockKeysetManagement> keyset_management_;
+  std::unique_ptr<std::string> brillo_salt_;
 };
 
 TEST_F(AuthSessionTest, TimeoutTest) {
@@ -165,6 +183,84 @@ TEST_F(AuthSessionTest, GetCredentialKioskUser) {
   EXPECT_EQ(test_creds->key_data().DebugString(),
             authorization_request.mutable_key()->data().DebugString());
   EXPECT_EQ(test_creds->passkey(), fake_pass_blob);
+}
+
+// Test if AuthSession correctly adds new credentials for a new user.
+TEST_F(AuthSessionTest, AddCredentialNewUser) {
+  // Setup.
+  base::test::SingleThreadTaskEnvironment task_environment;
+  bool called = false;
+  auto on_timeout = base::BindOnce(
+      [](bool& called, const base::UnguessableToken&) { called = true; },
+      std::ref(called));
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
+                           &keyset_management_);
+
+  // Test.
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session.GetStatus());
+  EXPECT_FALSE(auth_session.user_exists());
+  ASSERT_TRUE(auth_session.timer_.IsRunning());
+
+  user_data_auth::AddCredentialsRequest add_cred_request;
+  cryptohome::AuthorizationRequest* authorization_request =
+      add_cred_request.mutable_authorization();
+  authorization_request->mutable_key()->set_secret(kFakePass);
+  authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
+
+  EXPECT_CALL(keyset_management_, AddInitialKeyset(_)).WillOnce(Return(true));
+
+  // Verify.
+  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+              auth_session.AddCredentials(add_cred_request));
+  EXPECT_EQ(auth_session.GetStatus(),
+            AuthStatus::kAuthStatusFurtherFactorRequired);
+}
+
+// Test if AuthSession correctly authenticates existing credentials for a
+// user.
+TEST_F(AuthSessionTest, AuthenticateExistingUser) {
+  // Setup.
+  base::test::SingleThreadTaskEnvironment task_environment;
+  bool called = false;
+  auto on_timeout = base::BindOnce(
+      [](bool& called, const base::UnguessableToken&) { called = true; },
+      std::ref(called));
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
+  AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
+                           &keyset_management_);
+
+  // Test.
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session.GetStatus());
+  EXPECT_TRUE(auth_session.user_exists());
+  ASSERT_TRUE(auth_session.timer_.IsRunning());
+
+  cryptohome::AuthorizationRequest authorization_request;
+  authorization_request.mutable_key()->set_secret(kFakePass);
+  authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
+
+  auto vk = std::make_unique<VaultKeyset>();
+  EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
+      .WillOnce(Return(ByMove(std::move(vk))));
+
+  // Verify.
+  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+              auth_session.Authenticate(authorization_request));
+  EXPECT_EQ(AuthStatus::kAuthStatusAuthenticated, auth_session.GetStatus());
+  EXPECT_TRUE(auth_session.TakeCredentialVerifier()->Verify(
+      brillo::SecureBlob(kFakePass)));
+
+  // Cleanup.
+  auth_session.timer_.FireNow();
+  EXPECT_THAT(AuthStatus::kAuthStatusTimedOut, auth_session.GetStatus());
+  EXPECT_TRUE(called);
 }
 
 }  // namespace cryptohome
