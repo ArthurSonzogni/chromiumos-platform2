@@ -83,4 +83,11 @@ interface Executor {
 
   // Run |modetest| command.
   RunModetest(ModetestOptionEnum option) => (ProcessResult result);
+
+  // Reads MSR register from /dev/cpu/0/msr file.
+  //
+  // The response:
+  // * |contents| - contains the value of 64-bit MSR register value.
+  ReadMsr(uint32 msr_reg) => (ProcessResult result, uint64 value);
+
 };

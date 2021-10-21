@@ -52,6 +52,7 @@ class ExecutorMojoService final
   void RunModetest(
       chromeos::cros_healthd_executor::mojom::ModetestOptionEnum option,
       RunModetestCallback callback) override;
+  void ReadMsr(const uint32_t msr_reg, ReadMsrCallback callback) override;
 
  private:
   // Runs the given binary with the given arguments and sandboxing. If

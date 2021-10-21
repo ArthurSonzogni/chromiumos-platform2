@@ -38,6 +38,8 @@ class ExecutorAdapterImpl final : public ExecutorAdapter {
   void RunModetest(
       chromeos::cros_healthd_executor::mojom::ModetestOptionEnum option,
       Executor::RunModetestCallback callback) override;
+  void ReadMsr(const uint32_t msr_reg,
+               Executor::ReadMsrCallback callback) override;
 
  private:
   // Mojo endpoint to call the executor's methods.

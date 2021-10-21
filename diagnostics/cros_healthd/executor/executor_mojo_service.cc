@@ -13,6 +13,7 @@
 
 #include <base/bind.h>
 #include <base/check.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
@@ -67,6 +68,15 @@ constexpr char kMemtesterBinary[] = "/usr/sbin/memtester";
 constexpr char kModetestSeccompPolicyPath[] = "modetest-seccomp.policy";
 constexpr char kModetestBinary[] = "/usr/bin/modetest";
 
+// Path to msr file. This file can be read by root only.
+// Values of MSR registers IA32_TME_CAPABILITY (0x981) and IA32_TME_ACTIVATE_MSR
+// (0x982) will be the same in all CPU cores. Therefore, we are only interested
+// in reading the values in CPU0.
+constexpr char kMsrPath[] = "/dev/cpu/0/msr";
+// Fetch encryption data from following MSR registers IA32_TME_CAPABILITY
+// (0x981) and IA32_TME_ACTIVATE_MSR (0x982) to report tme telemetry data.
+constexpr std::array<uint32_t, 2> kMsrAccessAllowList{0x981, 0x982};
+
 // All Mojo callbacks need to be ran by the Mojo task runner, so this provides a
 // convenient wrapper that can be bound and ran by that specific task runner.
 void RunMojoProcessResultCallback(
@@ -77,6 +87,16 @@ void RunMojoProcessResultCallback(
 
 bool IsValidWirelessInterfaceName(const std::string& interface_name) {
   return (RE2::FullMatch(interface_name, kWirelessInterfaceRegex, nullptr));
+}
+
+bool IsMsrAccessAllowed(uint32_t msr) {
+  for (auto it = kMsrAccessAllowList.begin(); it != kMsrAccessAllowList.end();
+       it++) {
+    if (*it == msr) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace
@@ -362,6 +382,37 @@ void ExecutorMojoService::RunModetest(mojo_ipc::ModetestOptionEnum option,
       binary_args, std::move(result), std::move(callback));
 
   base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
+}
+
+void ExecutorMojoService::ReadMsr(const uint32_t msr_reg,
+                                  ReadMsrCallback callback) {
+  mojo_ipc::ProcessResult status;
+  uint64_t val = 0;
+  if (!IsMsrAccessAllowed(msr_reg)) {
+    status.return_code = EXIT_FAILURE;
+    status.err = "MSR access not allowed";
+    std::move(callback).Run(status.Clone(), val);
+    return;
+  }
+  base::File msr_fd(base::FilePath(kMsrPath),
+                    base::File::FLAG_OPEN | base::File::FLAG_READ);
+  if (!msr_fd.IsValid()) {
+    status.return_code = EXIT_FAILURE;
+    status.err = "Could not open " + std::string(kMsrPath);
+    std::move(callback).Run(status.Clone(), val);
+    return;
+  }
+  char msr_buf[sizeof(uint64_t)];
+  // Read MSR register.
+  if (sizeof(msr_buf) != msr_fd.Read(msr_reg, msr_buf, sizeof(msr_buf))) {
+    status.return_code = EXIT_FAILURE;
+    status.err = "Could not read MSR register from " + std::string(kMsrPath);
+    std::move(callback).Run(status.Clone(), val);
+    return;
+  }
+  val = *reinterpret_cast<uint64_t*>(&msr_buf[0]);
+  status.return_code = EXIT_SUCCESS;
+  std::move(callback).Run(status.Clone(), val);
 }
 
 void ExecutorMojoService::RunUntrackedBinary(

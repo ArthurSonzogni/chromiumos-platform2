@@ -103,4 +103,12 @@ void ExecutorAdapterImpl::RunModetest(executor_ipc::ModetestOptionEnum option,
   executor_->RunModetest(option, std::move(callback));
 }
 
+void ExecutorAdapterImpl::ReadMsr(const uint32_t msr_reg,
+                                  Executor::ReadMsrCallback callback) {
+  DCHECK(executor_.is_bound());
+
+  executor_->ReadMsr(base::checked_cast<uint32_t>(msr_reg),
+                     std::move(callback));
+}
+
 }  // namespace diagnostics

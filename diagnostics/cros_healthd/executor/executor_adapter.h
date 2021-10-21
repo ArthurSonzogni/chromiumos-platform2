@@ -56,6 +56,10 @@ class ExecutorAdapter {
   virtual void RunModetest(
       chromeos::cros_healthd_executor::mojom::ModetestOptionEnum option,
       Executor::RunModetestCallback callback) = 0;
+
+  // Read MSR register.
+  virtual void ReadMsr(const uint32_t msr_reg,
+                       Executor::ReadMsrCallback callback) = 0;
 };
 
 }  // namespace diagnostics
