@@ -15,10 +15,7 @@ EVENTLOG_FILE="/var/log/eventlog.txt"
 # Need to do this before user can request it in Chrome.
 # Moved here to keep out of critical boot path
 
-if ! mosys eventlog list > ${EVENTLOG_FILE} 2> /dev/null; then
-  # If a mosys sub-command is not available, mosys will fail with a non-zero
-  # exit code and print the help menu. Write the output only if the command
-  # succeeded.
-  echo "unavailable" > ${EVENTLOG_FILE}
+if ! elogtool list > "${EVENTLOG_FILE}" 2>/dev/null; then
+  # Write the output only if the command succeeded.
+  echo "unavailable" > "${EVENTLOG_FILE}"
 fi
-
