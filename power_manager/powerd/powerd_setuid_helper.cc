@@ -55,14 +55,14 @@ void RunCommand(const char* command, const char* arg, ...) {
 
 int main(int argc, char* argv[]) {
   DEFINE_string(action, "",
-                "Action to perform.  Must be one of \"mosys_eventlog\", "
+                "Action to perform.  Must be one of \"eventlog_add\", "
                 "\"reboot\", \"set_force_lid_open\", "
                 "\"set_cellular_transmit_power\" \"set_wifi_transmit_power\", "
                 "\"shut_down\", and \"suspend\".");
   DEFINE_bool(force_lid_open, false,
               "Whether lid should be forced open or not for "
               "\"set_force_lid_open\" action.");
-  DEFINE_string(mosys_eventlog_code, "",
+  DEFINE_string(eventlog_code, "",
                 "Hexadecimal byte, e.g. \"0xa7\", "
                 "describing the event being logged.");
   DEFINE_string(shutdown_reason, "",
@@ -89,14 +89,12 @@ int main(int argc, char* argv[]) {
 
   brillo::FlagHelper::Init(argc, argv, "powerd setuid helper");
 
-  if (FLAGS_action == "mosys_eventlog") {
-    CHECK(FLAGS_mosys_eventlog_code.size() == 4 &&
-          FLAGS_mosys_eventlog_code[0] == '0' &&
-          FLAGS_mosys_eventlog_code[1] == 'x' &&
-          isxdigit(FLAGS_mosys_eventlog_code[2]) &&
-          isxdigit(FLAGS_mosys_eventlog_code[3]))
+  if (FLAGS_action == "eventlog_add") {
+    CHECK(FLAGS_eventlog_code.size() == 4 && FLAGS_eventlog_code[0] == '0' &&
+          FLAGS_eventlog_code[1] == 'x' && isxdigit(FLAGS_eventlog_code[2]) &&
+          isxdigit(FLAGS_eventlog_code[3]))
         << "Invalid event code";
-    RunCommand("elogtool", "add", FLAGS_mosys_eventlog_code.c_str(), nullptr);
+    RunCommand("elogtool", "add", FLAGS_eventlog_code.c_str(), nullptr);
   } else if (FLAGS_action == "reboot" || FLAGS_action == "shut_down") {
     std::string reason_arg;
     if (!FLAGS_shutdown_reason.empty()) {

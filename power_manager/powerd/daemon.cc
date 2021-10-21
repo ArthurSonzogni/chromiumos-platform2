@@ -733,9 +733,9 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
 
   // This command is run synchronously to ensure that it finishes before the
   // system is suspended.
-  // TODO(b/192353448): Create a mosys eventlog code for hibernate.
+  // TODO(b/192353448): Create a eventlog code for hibernate.
   if (log_suspend_with_mosys_eventlog_) {
-    RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa7", true);
+    RunSetuidHelper("eventlog_add", "--eventlog_code=0xa7", true);
   }
 
   std::vector<std::string> args;
@@ -777,9 +777,9 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
       RunSetuidHelper("suspend", base::JoinString(args, " "), true);
   LOG(INFO) << "powerd_suspend returned " << exit_code;
 
-  // TODO(b/192353448): Create a mosys eventlog code for hibernate.
+  // TODO(b/192353448): Create a eventlog code for hibernate.
   if (log_suspend_with_mosys_eventlog_)
-    RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa8", false);
+    RunSetuidHelper("eventlog_add", "--eventlog_code=0xa8", false);
 
   if (created_suspended_state_file_) {
     if (!base::DeleteFile(base::FilePath(suspended_state_path)))
