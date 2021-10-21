@@ -578,6 +578,9 @@ bool BuildAuthorization(base::CommandLine* cl,
 
       auth->mutable_key()->set_secret(password);
     }
+  } else {
+    auth->mutable_key()->mutable_data()->set_type(
+        cryptohome::KeyData::KEY_TYPE_KIOSK);
   }
 
   if (cl->HasSwitch(switches::kKeyLabelSwitch)) {
@@ -2864,9 +2867,6 @@ int main(int argc, char** argv) {
     user_data_auth::StartAuthSessionRequest req;
     user_data_auth::StartAuthSessionReply reply;
     unsigned int flags = 0;
-    flags |= cl->HasSwitch(switches::kPublicMount)
-                 ? user_data_auth::AUTH_SESSION_FLAGS_KIOSK_USER
-                 : 0;
     flags |= cl->HasSwitch(switches::kEnsureEphemeralSwitch)
                  ? user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER
                  : 0;

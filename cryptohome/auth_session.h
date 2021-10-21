@@ -139,7 +139,6 @@ class AuthSession final {
   base::UnguessableToken token_;
 
   // AuthSession's flag configuration.
-  bool is_kiosk_user_;
   bool is_ephemeral_user_;
 
   AuthStatus status_ = AuthStatus::kAuthStatusFurtherFactorRequired;

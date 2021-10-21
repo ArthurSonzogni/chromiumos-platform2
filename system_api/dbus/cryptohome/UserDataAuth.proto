@@ -518,10 +518,9 @@ message LowDiskSpace {
 enum AuthSessionFlags {
   // Default Value.
   AUTH_SESSION_FLAGS_NONE = 0;
-  // This flag is set when auth session is used for a kiosk user.
-  AUTH_SESSION_FLAGS_KIOSK_USER = 1;
   // This flag is set when auth session is used for an ephemeral user.
   AUTH_SESSION_FLAGS_EPHEMERAL_USER = 2;
+  reserved 1;
 }
 
 message StartAuthSessionRequest {

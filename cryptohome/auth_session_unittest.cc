@@ -137,12 +137,11 @@ TEST_F(AuthSessionTest, GetCredentialKioskUser) {
   auto on_timeout = base::BindOnce(
       [](bool* called, const base::UnguessableToken&) { *called = true; },
       base::Unretained(&called));
-  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_KIOSK_USER;
   // SecureBlob for kFakePass above
   const brillo::SecureBlob fake_pass_blob(
       brillo::BlobFromString(kFakeUsername));
 
-  AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
+  AuthSession auth_session(kFakeUsername, 0, std::move(on_timeout),
                            &keyset_management_);
   EXPECT_CALL(keyset_management_, GetPublicMountPassKey(_))
       .WillOnce(Return(ByMove(fake_pass_blob)));
@@ -155,8 +154,9 @@ TEST_F(AuthSessionTest, GetCredentialKioskUser) {
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusTimedOut);
   EXPECT_TRUE(called);
   cryptohome::AuthorizationRequest authorization_request;
-  authorization_request.mutable_key()->set_secret(kFakePass);
   authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
+  authorization_request.mutable_key()->mutable_data()->set_type(
+      KeyData::KEY_TYPE_KIOSK);
   std::unique_ptr<Credentials> test_creds =
       auth_session.GetCredentials(authorization_request, &error);
 

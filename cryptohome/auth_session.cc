@@ -55,13 +55,10 @@ AuthSession::AuthSession(
 AuthSession::~AuthSession() = default;
 
 void AuthSession::ProcessFlags(unsigned int flags) {
-  is_kiosk_user_ =
-      flags & user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_KIOSK_USER;
   is_ephemeral_user_ =
       flags &
       user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
-  LOG(INFO) << "AuthSession Flags: is_ephemeral_user_  " << is_ephemeral_user_
-            << "  is_kiosk_user_  " << is_kiosk_user_;
+  LOG(INFO) << "AuthSession Flags: is_ephemeral_user_  " << is_ephemeral_user_;
 }
 
 void AuthSession::AuthSessionTimedOut() {
@@ -78,7 +75,13 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
   if (!credentials) {
     return MountErrorToCryptohomeError(code);
   }
+
   if (user_exists_) {
+    // Can't add kiosk key for an existing user.
+    if (credentials->key_data().type() == KeyData::KEY_TYPE_KIOSK) {
+      LOG(WARNING) << "Add Credentials: tried adding kiosk auth for user";
+      return MountErrorToCryptohomeError(MOUNT_ERROR_UNPRIVILEGED_KEY);
+    }
     // Check the privileges to ensure Add is allowed.
     // Keys without extended data are considered fully privileged.
     if (auth_factor_->vault_keyset().HasKeyData() &&
@@ -107,7 +110,8 @@ user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(
   if (!credentials) {
     return MountErrorToCryptohomeError(code);
   }
-  if (authorization_request.key().data().type() == KeyData::KEY_TYPE_PASSWORD) {
+  if (authorization_request.key().data().type() == KeyData::KEY_TYPE_PASSWORD ||
+      authorization_request.key().data().type() == KeyData::KEY_TYPE_KIOSK) {
     auth_factor_ = std::make_unique<PasswordAuthFactor>(keyset_management_);
   }
 
@@ -161,7 +165,12 @@ std::unique_ptr<Credentials> AuthSession::GetCredentials(
       username_, brillo::SecureBlob(authorization_request.key().secret()));
   credentials->set_key_data(authorization_request.key().data());
 
-  if (is_kiosk_user_) {
+  if (authorization_request.key().data().type() == KeyData::KEY_TYPE_KIOSK) {
+    if (!credentials->passkey().empty()) {
+      LOG(ERROR) << "Non-empty passkey in kiosk key.";
+      *error = MountError::MOUNT_ERROR_INVALID_ARGS;
+      return nullptr;
+    }
     brillo::SecureBlob public_mount_passkey =
         keyset_management_->GetPublicMountPassKey(username_);
     if (public_mount_passkey.empty()) {
