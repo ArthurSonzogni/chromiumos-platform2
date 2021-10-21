@@ -94,6 +94,19 @@ class DeviceIdentifierGeneratorTest : public ::testing::Test {
     EXPECT_EQ(expect_immediate_callback, state_keys_received_);
   }
 
+  void CompletionPsmDeviceKeyHandler(const std::string& derived_secret) {
+    psm_device_secret_received_ = true;
+    psm_derived_secret_ = derived_secret;
+  }
+
+  void RequestPsmDeviceActiveSecret(bool expect_immediate_callback) {
+    psm_device_secret_received_ = false;
+    generator_.RequestPsmDeviceActiveSecret(base::Bind(
+        &DeviceIdentifierGeneratorTest::CompletionPsmDeviceKeyHandler,
+        base::Unretained(this)));
+    EXPECT_EQ(expect_immediate_callback, psm_device_secret_received_);
+  }
+
   FakeSystemUtils system_utils_;
   MockMetrics metrics_;
 
@@ -101,6 +114,9 @@ class DeviceIdentifierGeneratorTest : public ::testing::Test {
 
   bool state_keys_received_;
   std::vector<std::vector<uint8_t>> state_keys_;
+
+  bool psm_device_secret_received_;
+  std::string psm_derived_secret_;
 
   LoginMetrics::StateKeyGenerationStatus last_state_key_generation_status_;
 };
@@ -112,6 +128,21 @@ TEST_F(DeviceIdentifierGeneratorTest, RequestStateKeys) {
             last_state_key_generation_status_);
   ASSERT_EQ(DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta,
             state_keys_.size());
+}
+
+TEST_F(DeviceIdentifierGeneratorTest,
+       RequestPsmDeviceActiveSecretSuccessAfterInitMachineInfo) {
+  InitMachineInfo();
+  RequestPsmDeviceActiveSecret(true);
+  EXPECT_TRUE(psm_device_secret_received_);
+}
+
+TEST_F(DeviceIdentifierGeneratorTest,
+       RequestPsmDeviceActiveSecretSuccessBeforeInitMachineInfo) {
+  // No callback as long as machine info has not been provided.
+  RequestPsmDeviceActiveSecret(false);
+  InitMachineInfo();
+  EXPECT_TRUE(psm_device_secret_received_);
 }
 
 TEST_F(DeviceIdentifierGeneratorTest, RequestStateKeysLegacy) {

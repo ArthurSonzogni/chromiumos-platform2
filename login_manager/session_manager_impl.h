@@ -295,6 +295,10 @@ class SessionManagerImpl
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           std::vector<std::vector<uint8_t>>>> response) override;
 
+  void GetPsmDeviceActiveSecret(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::string>>
+          response) override;
+
   bool InitMachineInfo(brillo::ErrorPtr* error,
                        const std::string& in_data) override;
   bool StartArcMiniContainer(brillo::ErrorPtr* error,

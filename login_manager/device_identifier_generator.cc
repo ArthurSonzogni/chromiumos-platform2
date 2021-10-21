@@ -30,6 +30,7 @@ const char kGroupCodeKey[] = "gbind_attribute";
 const char kSerialNumberKey[] = "serial_number";
 const char kDiskSerialNumberKey[] = "root_disk_serial_number";
 const char kStableDeviceSecretKey[] = "stable_device_secret_DO_NOT_SHARE";
+const size_t kHmacInitLength = 32;
 
 // These are the machine serial number keys that we check in order until we find
 // a non-empty serial number.
@@ -52,6 +53,10 @@ const char* const kMachineInfoSerialNumberKeys[] = {
     "Product_S/N",     // Samsung legacy
     kSerialNumberKey,  // VPD v2+ devices
 };
+
+// The secret to initialize the hmac instance to generate PSM device
+// active secret.
+const char kPsmDeviceActiveUsageContext[] = "psm_device_active_secret";
 
 // String constant identifying the device secret usage context.
 const char kDeviceSecretUsageContext[] = "server_backed_state_keys";
@@ -126,7 +131,7 @@ bool DeviceIdentifierGenerator::InitMachineInfo(
   LOG_IF(INFO, stable_device_secret_.empty())
       << "Stable device secret missing!";
 
-  // Fire all pending callbacks.
+  // Fire all pending state_keys callbacks.
   std::vector<std::vector<uint8_t>> state_keys;
   ComputeKeys(&state_keys);
   std::vector<StateKeyCallback> callbacks;
@@ -135,6 +140,15 @@ bool DeviceIdentifierGenerator::InitMachineInfo(
            callbacks.begin());
        callback != callbacks.end(); ++callback) {
     callback->Run(state_keys);
+  }
+
+  // Fire all pending psm device active secret callbacks.
+  std::string derived_secret;
+  DerivePsmDeviceActiveSecret(&derived_secret);
+  for (std::vector<PsmDeviceActiveSecretCallback>::const_iterator callback(
+           pending_psm_device_secret_callbacks_.begin());
+       callback != pending_psm_device_secret_callbacks_.end(); ++callback) {
+    callback->Run(derived_secret);
   }
 
   return !stable_device_secret_.empty() ||
@@ -219,4 +233,36 @@ void DeviceIdentifierGenerator::ComputeKeys(
   }
 }
 
+void DeviceIdentifierGenerator::RequestPsmDeviceActiveSecret(
+    const PsmDeviceActiveSecretCallback& callback) {
+  if (!machine_info_available_) {
+    pending_psm_device_secret_callbacks_.push_back(callback);
+    return;
+  }
+
+  std::string derived_secret;
+  DerivePsmDeviceActiveSecret(&derived_secret);
+  callback.Run(derived_secret);
+}
+
+void DeviceIdentifierGenerator::DerivePsmDeviceActiveSecret(
+    std::string* derived_secret) {
+  if (!stable_device_secret_.empty()) {
+    crypto::HMAC hmac(crypto::HMAC::SHA256);
+    unsigned char secret_key[kHmacInitLength];
+
+    bool result_status =
+        hmac.Init(kPsmDeviceActiveUsageContext) &&
+        hmac.Sign(stable_device_secret_, secret_key, kHmacInitLength);
+
+    if (!result_status) {
+      LOG(ERROR) << "The generation of PSM device active secret is failure.";
+      return;
+    }
+
+    *derived_secret = base::HexEncode(secret_key, kHmacInitLength);
+  } else {
+    LOG(ERROR) << "No stable device secret available.";
+  }
+}
 }  // namespace login_manager

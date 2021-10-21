@@ -32,6 +32,10 @@ class DeviceIdentifierGenerator {
   typedef base::Callback<void(const std::vector<std::vector<uint8_t>>&)>
       StateKeyCallback;
 
+  // Callback type for PSM derived device active secret generation request.
+  typedef base::Callback<void(const std::string&)>
+      PsmDeviceActiveSecretCallback;
+
   // The power of two determining the size of the time quanta for device state
   // keys, i.e. the quanta will be of size 2^kDeviceStateKeyTimeQuantumPower
   // seconds. 2^23 seconds corresponds to 97.09 days.
@@ -86,16 +90,28 @@ class DeviceIdentifierGenerator {
   // with an empty vector.
   virtual void RequestStateKeys(const StateKeyCallback& callback);
 
+  // Request the derived device secret. Using hmac to hash the device
+  // stable secret and the derived device secret is returned via |callback|.
+  virtual void RequestPsmDeviceActiveSecret(
+      const PsmDeviceActiveSecretCallback& callback);
+
  private:
   // Computes the keys and stores them in |state_keys|. In case of error,
   // |state_keys| will be cleared.
   void ComputeKeys(std::vector<std::vector<uint8_t>>* state_keys);
+
+  // Derive the device active secret by hmac stable_device_secret_DO_NOT_SHARE.
+  void DerivePsmDeviceActiveSecret(std::string* derived_secret);
 
   SystemUtils* system_utils_;
   LoginMetrics* metrics_;
 
   // Pending state key generation callbacks.
   std::vector<StateKeyCallback> pending_callbacks_;
+
+  // Pending PSM device secret generation callbacks.
+  std::vector<PsmDeviceActiveSecretCallback>
+      pending_psm_device_secret_callbacks_;
 
   // The data required to generate state keys.
   bool machine_info_available_ = false;

@@ -336,6 +336,16 @@ class SessionManagerImpl::DBusService {
                       weak_ptr_factory_.GetWeakPtr(), base::Passed(&response));
   }
 
+  // Adaptor for DBusMethodResponse to
+  // DeviceIdentifierGenerator::PsmDeviceActiveSecretCallback callback.
+  DeviceIdentifierGenerator::PsmDeviceActiveSecretCallback
+  CreatePsmDeviceActiveSecretCallback(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::string>>
+          response) {
+    return base::Bind(&DBusService::HandlePsmDeviceActiveSecretCallback,
+                      weak_ptr_factory_.GetWeakPtr(), base::Passed(&response));
+  }
+
  private:
   void HandlePolicyServiceCompletion(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
@@ -353,6 +363,13 @@ class SessionManagerImpl::DBusService {
           std::vector<std::vector<uint8_t>>>> response,
       const std::vector<std::vector<uint8_t>>& state_key) {
     response->Return(std::move(state_key));
+  }
+
+  void HandlePsmDeviceActiveSecretCallback(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::string>>
+          response,
+      const std::string& derived_secret) {
+    response->Return(std::move(derived_secret));
   }
 
   org::chromium::SessionManagerInterfaceAdaptor* const adaptor_;
@@ -1223,6 +1240,15 @@ void SessionManagerImpl::GetServerBackedStateKeys(
   } else {
     pending_state_key_callbacks_.push_back(callback);
   }
+}
+
+void SessionManagerImpl::GetPsmDeviceActiveSecret(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::string>>
+        response) {
+  DCHECK(dbus_service_);
+  DeviceIdentifierGenerator::PsmDeviceActiveSecretCallback callback =
+      dbus_service_->CreatePsmDeviceActiveSecretCallback(std::move(response));
+  device_identifier_generator_->RequestPsmDeviceActiveSecret(callback);
 }
 
 void SessionManagerImpl::OnSuspendImminent(dbus::Signal* signal) {

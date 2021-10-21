@@ -565,6 +565,21 @@
     </method>
 
     <!--
+        GetPsmDeviceActiveSecret:
+        @derived_secret: The secret is used to generate PSM plaintext_id.
+
+        Requests derived device secret based on chromeos stable device secret
+        to be computed and returned. The derived device secret will be used
+        in generating the plaintext_id for counting CrOS devices actives in
+        a privacy compliant manner.
+    -->
+    <method name="GetPsmDeviceActiveSecret">
+      <arg type="s" name="derived_secret" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+    </method>
+
+
+    <!--
         InitMachineInfo:
         @data: A string containing newline-separated key=value pairs.
 

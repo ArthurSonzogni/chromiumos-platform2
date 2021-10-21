@@ -1635,6 +1635,12 @@ TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSyncAfterFail) {
   std::move(time_sync_callback).Run(response.get());
 }
 
+TEST_F(SessionManagerImplTest, GetPsmDeviceActiveSecretSuccess) {
+  EXPECT_CALL(device_identifier_generator_, RequestPsmDeviceActiveSecret(_));
+  ResponseCapturer capturer;
+  impl_->GetPsmDeviceActiveSecret(capturer.CreateMethodResponse<std::string>());
+}
+
 TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSession) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
 
