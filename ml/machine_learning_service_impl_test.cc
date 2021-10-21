@@ -34,6 +34,7 @@
 #include "ml/mojom/soda.mojom.h"
 #include "ml/mojom/text_classifier.mojom.h"
 #include "ml/mojom/text_suggester.mojom.h"
+#include "ml/mojom/web_platform_handwriting.mojom.h"
 #include "ml/process.h"
 #include "ml/tensor_view.h"
 #include "ml/test_utils.h"

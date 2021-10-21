@@ -13,6 +13,7 @@
 #include <base/logging.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
+#include "ml/mojom/shared_memory.mojom.h"
 #include "ml/request_metrics.h"
 
 namespace ml {
