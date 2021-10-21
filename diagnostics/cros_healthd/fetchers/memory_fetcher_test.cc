@@ -3,11 +3,17 @@
 // found in the LICENSE file.
 
 #include <base/files/file_path.h>
+#include <base/run_loop.h>
+#include <base/test/task_environment.h>
+#include <gmock/gmock.h>
+#include <gmock/gmock-actions.h>
 #include <gtest/gtest.h>
+#include <utility>
 
 #include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 namespace {
@@ -45,6 +51,12 @@ constexpr char kFakeVmStatContentsMissingPgfault[] = "foo 9908\n";
 constexpr char kFakeVmStatContentsIncorrectlyFormattedPgfault[] =
     "pgfault NotAnInteger\n";
 
+// Saves |response| to |response_destination|.
+void OnGetMemoryResponse(mojo_ipc::MemoryResultPtr* response_update,
+                         mojo_ipc::MemoryResultPtr response) {
+  *response_update = std::move(response);
+}
+
 class MemoryFetcherTest : public ::testing::Test {
  protected:
   MemoryFetcherTest() = default;
@@ -52,10 +64,17 @@ class MemoryFetcherTest : public ::testing::Test {
   const base::FilePath& root_dir() { return mock_context_.root_dir(); }
 
   mojo_ipc::MemoryResultPtr FetchMemoryInfo() {
-    return memory_fetcher_.FetchMemoryInfo();
+    base::RunLoop run_loop;
+    mojo_ipc::MemoryResultPtr result;
+    memory_fetcher_.FetchMemoryInfo(
+        base::BindOnce(&OnGetMemoryResponse, &result));
+    run_loop.RunUntilIdle();
+    return result;
   }
 
  private:
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
   MockContext mock_context_;
   MemoryFetcher memory_fetcher_{&mock_context_};
 };
@@ -69,7 +88,6 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfo) {
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_memory_info());
-
   const auto& info = result->get_memory_info();
   EXPECT_EQ(info->total_memory_kib, 3906320);
   EXPECT_EQ(info->free_memory_kib, 873180);

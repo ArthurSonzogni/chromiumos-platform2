@@ -32,22 +32,22 @@ constexpr char kRelativeProcPath[] = "proc";
 // |info| with information read from proc/meminfo. Returns any error
 // encountered probing the memory information. |info| is valid iff no error
 // occurred.
-OptionalProbeErrorPtr MemoryFetcher::ParseProcMeminfo(
-    mojo_ipc::MemoryInfo* info) {
+void MemoryFetcher::ParseProcMeminfo(mojo_ipc::MemoryInfo* info) {
   std::string file_contents;
   if (!ReadAndTrimString(context_->root_dir().Append(kRelativeProcPath),
                          "meminfo", &file_contents)) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
-                                  "Unable to read /proc/meminfo");
+    CreateErrorAndSendBack(mojo_ipc::ErrorType::kFileReadError,
+                           "Unable to read /proc/meminfo");
+    return;
   }
-
   // Parse the meminfo contents for MemTotal, MemFree and MemAvailable. Note
   // that these values are actually reported in KiB from /proc/meminfo, despite
   // claiming to be in kB.
   base::StringPairs keyVals;
   if (!base::SplitStringIntoKeyValuePairs(file_contents, ':', '\n', &keyVals)) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
-                                  "Incorrectly formatted /proc/meminfo");
+    CreateErrorAndSendBack(mojo_ipc::ErrorType::kParseError,
+                           "Incorrectly formatted /proc/meminfo");
+    return;
   }
 
   bool memtotal_found = false;
@@ -62,8 +62,9 @@ OptionalProbeErrorPtr MemoryFetcher::ParseProcMeminfo(
         info->total_memory_kib = memtotal;
         memtotal_found = true;
       } else {
-        return CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
-                                      "Incorrectly formatted MemTotal");
+        CreateErrorAndSendBack(mojo_ipc::ErrorType::kParseError,
+                               "Incorrectly formatted MemTotal");
+        return;
       }
     } else if (keyVals[i].first == "MemFree") {
       int memfree;
@@ -73,8 +74,9 @@ OptionalProbeErrorPtr MemoryFetcher::ParseProcMeminfo(
         info->free_memory_kib = memfree;
         memfree_found = true;
       } else {
-        return CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
-                                      "Incorrectly formatted MemFree");
+        CreateErrorAndSendBack(mojo_ipc::ErrorType::kParseError,
+                               "Incorrectly formatted MemFree");
+        return;
       }
     } else if (keyVals[i].first == "MemAvailable") {
       // Convert from kB to MB and cache the result.
@@ -85,8 +87,9 @@ OptionalProbeErrorPtr MemoryFetcher::ParseProcMeminfo(
         info->available_memory_kib = memavailable;
         memavailable_found = true;
       } else {
-        return CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
-                                      "Incorrectly formatted MemAvailable");
+        CreateErrorAndSendBack(mojo_ipc::ErrorType::kParseError,
+                               "Incorrectly formatted MemAvailable");
+        return;
       }
     }
   }
@@ -97,30 +100,30 @@ OptionalProbeErrorPtr MemoryFetcher::ParseProcMeminfo(
     error_msg += !memavailable_found ? "MemAvailable " : "";
     error_msg += "not found in /proc/meminfo";
 
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
-                                  std::move(error_msg));
+    CreateErrorAndSendBack(mojo_ipc::ErrorType::kParseError,
+                           std::move(error_msg));
+    return;
   }
-
-  return base::nullopt;
 }
 
 // Sets the page_faults_per_second field of |info| with information read from
 // /proc/vmstat. Returns any error encountered probing the memory information.
 // |info| is valid iff no error occurred.
-OptionalProbeErrorPtr MemoryFetcher::ParseProcVmStat(
-    mojo_ipc::MemoryInfo* info) {
+void MemoryFetcher::ParseProcVmStat(mojo_ipc::MemoryInfo* info) {
   std::string file_contents;
   if (!ReadAndTrimString(context_->root_dir().Append(kRelativeProcPath),
                          "vmstat", &file_contents)) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
-                                  "Unable to read /proc/vmstat");
+    CreateErrorAndSendBack(mojo_ipc::ErrorType::kFileReadError,
+                           "Unable to read /proc/vmstat");
+    return;
   }
 
   // Parse the vmstat contents for pgfault.
   base::StringPairs keyVals;
   if (!base::SplitStringIntoKeyValuePairs(file_contents, ' ', '\n', &keyVals)) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
-                                  "Incorrectly formatted /proc/vmstat");
+    CreateErrorAndSendBack(mojo_ipc::ErrorType::kParseError,
+                           "Incorrectly formatted /proc/vmstat");
+    return;
   }
 
   bool pgfault_found = false;
@@ -132,31 +135,49 @@ OptionalProbeErrorPtr MemoryFetcher::ParseProcVmStat(
         pgfault_found = true;
         break;
       } else {
-        return CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
-                                      "Incorrectly formatted pgfault");
+        CreateErrorAndSendBack(mojo_ipc::ErrorType::kParseError,
+                               "Incorrectly formatted pgfault");
+        return;
       }
     }
   }
 
-  if (!pgfault_found)
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
-                                  "pgfault not found in /proc/vmstat");
-
-  return base::nullopt;
+  if (!pgfault_found) {
+    CreateErrorAndSendBack(mojo_ipc::ErrorType::kParseError,
+                           "pgfault not found in /proc/vmstat");
+    return;
+  }
 }
 
-mojo_ipc::MemoryResultPtr MemoryFetcher::FetchMemoryInfo() {
-  mojo_ipc::MemoryInfo info;
+void MemoryFetcher::CreateResultAndSendBack() {
+  SendBackResult(mojo_ipc::MemoryResult::NewMemoryInfo(mem_info_.Clone()));
+}
 
-  auto error = ParseProcMeminfo(&info);
-  if (error.has_value())
-    return mojo_ipc::MemoryResult::NewError(std::move(error.value()));
+void MemoryFetcher::CreateErrorAndSendBack(mojo_ipc::ErrorType error_type,
+                                           const std::string& message) {
+  SendBackResult(mojo_ipc::MemoryResult::NewError(
+      CreateAndLogProbeError(error_type, message)));
+}
 
-  error = ParseProcVmStat(&info);
-  if (error.has_value())
-    return mojo_ipc::MemoryResult::NewError(std::move(error.value()));
+void MemoryFetcher::SendBackResult(mojo_ipc::MemoryResultPtr result) {
+  // Invalid all weak ptrs to prevent other callbacks to be run.
+  weak_factory_.InvalidateWeakPtrs();
+  if (pending_callbacks_.empty())
+    return;
+  for (size_t i = 1; i < pending_callbacks_.size(); ++i) {
+    std::move(pending_callbacks_[i]).Run(result.Clone());
+  }
+  std::move(pending_callbacks_[0]).Run(std::move(result));
+  pending_callbacks_.clear();
+}
 
-  return mojo_ipc::MemoryResult::NewMemoryInfo(mojo_ipc::MemoryInfo::New(info));
+void MemoryFetcher::FetchMemoryInfo(FetchMemoryInfoCallback callback) {
+  pending_callbacks_.push_back(std::move(callback));
+  if (pending_callbacks_.size() > 1)
+    return;
+  ParseProcMeminfo(&mem_info_);
+  ParseProcVmStat(&mem_info_);
+  CreateResultAndSendBack();
 }
 
 }  // namespace diagnostics

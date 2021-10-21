@@ -81,8 +81,10 @@ void FetchAggregator::Run(
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kMemory: {
-        WrapFetchProbeData(category, state, &info->memory_result,
-                           memory_fetcher_.FetchMemoryInfo());
+        memory_fetcher_.FetchMemoryInfo(base::BindOnce(
+            &FetchAggregator::WrapFetchProbeData<mojo_ipc::MemoryResultPtr>,
+            weak_factory_.GetWeakPtr(), category, std::cref(state),
+            &info->memory_result));
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kBacklight: {
