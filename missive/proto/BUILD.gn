@@ -6,27 +6,27 @@ import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
 proto_library("status_proto") {
-  sources = [ "status.proto" ]
+  sources = [ "synced/status.proto" ]
 
-  proto_in_dir = "//missive/proto"
+  proto_in_dir = "//missive/proto/synced"
   proto_out_dir = "include/missive/proto"
   standalone = true
 }
 
 # Record constants for use with the reporting messaging library.
 proto_library("record_constants") {
-  sources = [ "record_constants.proto" ]
+  sources = [ "synced/record_constants.proto" ]
 
-  proto_in_dir = "//missive/proto"
+  proto_in_dir = "//missive/proto/synced"
   proto_out_dir = "include/missive/proto"
   standalone = true
 }
 
 # Record definitions for reporting.
 proto_library("record_proto") {
-  sources = [ "record.proto" ]
+  sources = [ "synced/record.proto" ]
 
-  proto_in_dir = "//missive/proto"
+  proto_in_dir = "//missive/proto/synced"
   proto_out_dir = "include/missive/proto"
   standalone = true
 
@@ -34,10 +34,10 @@ proto_library("record_proto") {
 }
 
 proto_library("interface_proto") {
-  sources = [ "interface.proto" ]
+  sources = [ "synced/interface.proto" ]
 
-  proto_in_dir = "//missive/proto"
-  proto_out_dir = "include/missive/proto"
+  proto_in_dir = "//missive/proto/synced"
+  proto_out_dir = "include/missive/proto/"
   standalone = true
 
   deps = [
