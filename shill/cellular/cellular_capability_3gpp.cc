@@ -2040,8 +2040,9 @@ void CellularCapability3gpp::OnGetSimProperties(
         properties.Get<std::string>(MM_SIM_PROPERTY_OPERATORIDENTIFIER);
   }
   if (properties.Contains<std::string>(MM_SIM_PROPERTY_OPERATORNAME)) {
-    sim_properties.spn =
-        (properties.Get<std::string>(MM_SIM_PROPERTY_OPERATORNAME));
+    base::TrimWhitespaceASCII(
+        properties.Get<std::string>(MM_SIM_PROPERTY_OPERATORNAME),
+        base::TRIM_ALL, &sim_properties.spn);
   }
   if (properties.Contains<std::string>(MM_SIM_PROPERTY_IMSI)) {
     sim_properties.imsi = properties.Get<std::string>(MM_SIM_PROPERTY_IMSI);
