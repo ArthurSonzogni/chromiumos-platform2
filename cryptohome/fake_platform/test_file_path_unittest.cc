@@ -19,12 +19,14 @@ class TestFilePathTest : public ::testing::Test {};
 
 namespace {
 
+using ::testing::Eq;
+
 TEST_F(TestFilePathTest, SpliceTestFilePath) {
   const base::FilePath root("/some/root");
   const base::FilePath path("/and/path");
   const base::FilePath expected_result("/some/root/and/path");
 
-  EXPECT_EQ(SpliceTestFilePath(root, path), expected_result);
+  EXPECT_THAT(SpliceTestFilePath(root, path), Eq(expected_result));
 }
 
 TEST_F(TestFilePathTest, SpliceTestFilePath_Root) {
@@ -32,7 +34,7 @@ TEST_F(TestFilePathTest, SpliceTestFilePath_Root) {
   const base::FilePath path("/");
   const base::FilePath expected_result("/some/root");
 
-  EXPECT_EQ(SpliceTestFilePath(root, path), expected_result);
+  EXPECT_THAT(SpliceTestFilePath(root, path), Eq(expected_result));
 }
 
 TEST_F(TestFilePathTest, StripTestFilePath_Strip) {
@@ -40,7 +42,7 @@ TEST_F(TestFilePathTest, StripTestFilePath_Strip) {
   const base::FilePath path("/some/root/and/path");
   const base::FilePath expected_result("/and/path");
 
-  EXPECT_EQ(StripTestFilePath(root, path), expected_result);
+  EXPECT_THAT(StripTestFilePath(root, path), Eq(expected_result));
 }
 
 TEST_F(TestFilePathTest, StripTestFilePath_Root) {
@@ -48,7 +50,7 @@ TEST_F(TestFilePathTest, StripTestFilePath_Root) {
   const base::FilePath path("/some/root");
   const base::FilePath expected_result("/");
 
-  EXPECT_EQ(StripTestFilePath(root, path), expected_result);
+  EXPECT_THAT(StripTestFilePath(root, path), Eq(expected_result));
 }
 
 TEST_F(TestFilePathTest, StripTestFilePath_NoStrip) {
@@ -56,7 +58,7 @@ TEST_F(TestFilePathTest, StripTestFilePath_NoStrip) {
   const base::FilePath path("/and/path");
   const base::FilePath expected_result("/and/path");
 
-  EXPECT_EQ(StripTestFilePath(root, path), expected_result);
+  EXPECT_THAT(StripTestFilePath(root, path), Eq(expected_result));
 }
 
 TEST_F(TestFilePathTest, NormalizePath_NoOp) {
@@ -72,7 +74,7 @@ TEST_F(TestFilePathTest, NormalizePath_NoOp) {
            {"/some/random/path/../../.././.././", "/"},
            {"/some/../some/random/path", "/some/random/path"},
        }) {
-    EXPECT_EQ(NormalizePath(base::FilePath(from)), base::FilePath(to));
+    EXPECT_THAT(NormalizePath(base::FilePath(from)), Eq(base::FilePath(to)));
   }
 }
 

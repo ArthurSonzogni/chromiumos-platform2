@@ -60,6 +60,7 @@ class FakeMountMapperTest : public ::testing::Test {
 
 namespace {
 
+using ::testing::Eq;
 using ::testing::UnorderedElementsAreArray;
 
 TEST_F(FakeMountMapperTest, SimpleMountRedirectUnmountChecks) {
@@ -71,17 +72,20 @@ TEST_F(FakeMountMapperTest, SimpleMountRedirectUnmountChecks) {
   ASSERT_TRUE(fake_mapper_->Mount(kSource2, kTarget2));
 
   // Check redirects are correct (from the redirect factory)
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1), kRedirect1);
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1File), kRedirect1.Append(kFile));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget2), kRedirect2);
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget2File), kRedirect2.Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1), Eq(kRedirect1));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1File),
+              Eq(kRedirect1.Append(kFile)));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget2), Eq(kRedirect2));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget2File),
+              Eq(kRedirect2.Append(kFile)));
 
   // Mount the same source to a different target
   ASSERT_TRUE(fake_mapper_->Mount(kSource1, kTarget0));
 
   // Should appear on the same redirect
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0), kRedirect1);
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0File), kRedirect1.Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget0), Eq(kRedirect1));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget0File),
+              Eq(kRedirect1.Append(kFile)));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
@@ -89,12 +93,12 @@ TEST_F(FakeMountMapperTest, SimpleMountRedirectUnmountChecks) {
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget2));
 
   // Now resolve should return the files itself
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0File),
-            fake_platform::SpliceTestFilePath(kRoot, kTarget0File));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1File),
-            fake_platform::SpliceTestFilePath(kRoot, kTarget1File));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget2File),
-            fake_platform::SpliceTestFilePath(kRoot, kTarget2File));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget0File),
+              Eq(fake_platform::SpliceTestFilePath(kRoot, kTarget0File)));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1File),
+              Eq(fake_platform::SpliceTestFilePath(kRoot, kTarget1File)));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget2File),
+              Eq(fake_platform::SpliceTestFilePath(kRoot, kTarget2File)));
 
   // Another unmount should fail
   ASSERT_FALSE(fake_mapper_->Unmount(kTarget0));
@@ -107,12 +111,15 @@ TEST_F(FakeMountMapperTest, SimpleMountRedirectUnmountChecks) {
   ASSERT_TRUE(fake_mapper_->Mount(kSource1, kTarget1));
 
   // Check redirects are still correct
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0), kRedirect1);
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0File), kRedirect1.Append(kFile));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1), kRedirect1);
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1File), kRedirect1.Append(kFile));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget2), kRedirect2);
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget2File), kRedirect2.Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget0), Eq(kRedirect1));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget0File),
+              Eq(kRedirect1.Append(kFile)));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1), Eq(kRedirect1));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1File),
+              Eq(kRedirect1.Append(kFile)));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget2), Eq(kRedirect2));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget2File),
+              Eq(kRedirect2.Append(kFile)));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
@@ -129,23 +136,26 @@ TEST_F(FakeMountMapperTest, SimpleBindRedirectUnmountChecks) {
   ASSERT_TRUE(fake_mapper_->Bind(kSource2, kTarget2));
 
   // Check redirects are correct (tmpfs location of the source)
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1),
-            fake_platform::SpliceTestFilePath(kRoot, kSource1));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1File),
-            fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kFile));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget2),
-            fake_platform::SpliceTestFilePath(kRoot, kSource2));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget2File),
-            fake_platform::SpliceTestFilePath(kRoot, kSource2).Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1),
+              Eq(fake_platform::SpliceTestFilePath(kRoot, kSource1)));
+  EXPECT_THAT(
+      fake_mapper_->ResolvePath(kTarget1File),
+      Eq(fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kFile)));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget2),
+              Eq(fake_platform::SpliceTestFilePath(kRoot, kSource2)));
+  EXPECT_THAT(
+      fake_mapper_->ResolvePath(kTarget2File),
+      Eq(fake_platform::SpliceTestFilePath(kRoot, kSource2).Append(kFile)));
 
   // Bind the same source to a different target
   ASSERT_TRUE(fake_mapper_->Bind(kSource1, kTarget0));
 
   // Should appear on the same redirect
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0),
-            fake_platform::SpliceTestFilePath(kRoot, kSource1));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0File),
-            fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget0),
+              Eq(fake_platform::SpliceTestFilePath(kRoot, kSource1)));
+  EXPECT_THAT(
+      fake_mapper_->ResolvePath(kTarget0File),
+      Eq(fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kFile)));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
@@ -153,12 +163,12 @@ TEST_F(FakeMountMapperTest, SimpleBindRedirectUnmountChecks) {
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget2));
 
   // Now resolve should return the files itself
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0File),
-            fake_platform::SpliceTestFilePath(kRoot, kTarget0File));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1File),
-            fake_platform::SpliceTestFilePath(kRoot, kTarget1File));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget2File),
-            fake_platform::SpliceTestFilePath(kRoot, kTarget2File));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget0File),
+              Eq(fake_platform::SpliceTestFilePath(kRoot, kTarget0File)));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1File),
+              Eq(fake_platform::SpliceTestFilePath(kRoot, kTarget1File)));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget2File),
+              Eq(fake_platform::SpliceTestFilePath(kRoot, kTarget2File)));
 
   // Another unmount should fail
   ASSERT_FALSE(fake_mapper_->Unmount(kTarget0));
@@ -171,18 +181,21 @@ TEST_F(FakeMountMapperTest, SimpleBindRedirectUnmountChecks) {
   ASSERT_TRUE(fake_mapper_->Bind(kSource1, kTarget1));
 
   // Check redirects are still correct
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0),
-            fake_platform::SpliceTestFilePath(kRoot, kSource1));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0File),
-            fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kFile));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1),
-            fake_platform::SpliceTestFilePath(kRoot, kSource1));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1File),
-            fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kFile));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget2),
-            fake_platform::SpliceTestFilePath(kRoot, kSource2));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget2File),
-            fake_platform::SpliceTestFilePath(kRoot, kSource2).Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget0),
+              Eq(fake_platform::SpliceTestFilePath(kRoot, kSource1)));
+  EXPECT_THAT(
+      fake_mapper_->ResolvePath(kTarget0File),
+      Eq(fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kFile)));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1),
+              Eq(fake_platform::SpliceTestFilePath(kRoot, kSource1)));
+  EXPECT_THAT(
+      fake_mapper_->ResolvePath(kTarget1File),
+      Eq(fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kFile)));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget2),
+              Eq(fake_platform::SpliceTestFilePath(kRoot, kSource2)));
+  EXPECT_THAT(
+      fake_mapper_->ResolvePath(kTarget2File),
+      Eq(fake_platform::SpliceTestFilePath(kRoot, kSource2).Append(kFile)));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
@@ -197,7 +210,8 @@ TEST_F(FakeMountMapperTest, SourceRedirectMountConsistency) {
   ASSERT_TRUE(fake_mapper_->Mount(kSource1, kTarget0));
 
   // Check redirects is correct
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0File), kRedirect1.Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget0File),
+              Eq(kRedirect1.Append(kFile)));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
@@ -206,7 +220,8 @@ TEST_F(FakeMountMapperTest, SourceRedirectMountConsistency) {
   ASSERT_TRUE(fake_mapper_->Mount(kSource2, kTarget0));
 
   // Check redirects is correct (different from the first case)
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0File), kRedirect2.Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget0File),
+              Eq(kRedirect2.Append(kFile)));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
@@ -214,8 +229,9 @@ TEST_F(FakeMountMapperTest, SourceRedirectMountConsistency) {
   // Mount the first source again
   ASSERT_TRUE(fake_mapper_->Mount(kSource1, kTarget0));
 
-  // Check redirects is correct (the same with the first casE).
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0File), kRedirect1.Append(kFile));
+  // Check redirects is correct (the same with the first case).
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget0File),
+              Eq(kRedirect1.Append(kFile)));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
@@ -228,8 +244,9 @@ TEST_F(FakeMountMapperTest, SourceRedirectBindConsistency) {
   ASSERT_TRUE(fake_mapper_->Bind(kSource1, kTarget0));
 
   // Check redirects is correct
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0File),
-            fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kFile));
+  EXPECT_THAT(
+      fake_mapper_->ResolvePath(kTarget0File),
+      Eq(fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kFile)));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
@@ -238,8 +255,9 @@ TEST_F(FakeMountMapperTest, SourceRedirectBindConsistency) {
   ASSERT_TRUE(fake_mapper_->Bind(kSource2, kTarget0));
 
   // Check redirects is correct (different from the first case)
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0File),
-            fake_platform::SpliceTestFilePath(kRoot, kSource2).Append(kFile));
+  EXPECT_THAT(
+      fake_mapper_->ResolvePath(kTarget0File),
+      Eq(fake_platform::SpliceTestFilePath(kRoot, kSource2).Append(kFile)));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
@@ -248,8 +266,9 @@ TEST_F(FakeMountMapperTest, SourceRedirectBindConsistency) {
   ASSERT_TRUE(fake_mapper_->Bind(kSource1, kTarget0));
 
   // Check redirects is correct (the same with the first casE).
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0File),
-            fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kFile));
+  EXPECT_THAT(
+      fake_mapper_->ResolvePath(kTarget0File),
+      Eq(fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kFile)));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
@@ -270,13 +289,15 @@ TEST_F(FakeMountMapperTest, BusyUnmount_DirectMapping) {
   ASSERT_TRUE(fake_mapper_->Bind(kTarget0, kTarget1));
 
   // Verify redirect
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1File), kRedirect1.Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1File),
+              Eq(kRedirect1.Append(kFile)));
 
   // Unmounting in the wrong order should fail
   ASSERT_FALSE(fake_mapper_->Unmount(kTarget0));
 
   // Verify redirect
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1File), kRedirect1.Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1File),
+              Eq(kRedirect1.Append(kFile)));
 
   // Unmounting in the correct order succeeds
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget1));
@@ -292,15 +313,15 @@ TEST_F(FakeMountMapperTest, BusyUnmount_InnerPathMapping) {
   ASSERT_TRUE(fake_mapper_->Bind(kTarget0Directory, kTarget1));
 
   // Verify redirect
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1File),
-            kRedirect1.Append(kDirectory).Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1File),
+              Eq(kRedirect1.Append(kDirectory).Append(kFile)));
 
   // Unmounting in the wrong order should fail
   ASSERT_FALSE(fake_mapper_->Unmount(kTarget0));
 
   // Verify redirect
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1File),
-            kRedirect1.Append(kDirectory).Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1File),
+              Eq(kRedirect1.Append(kDirectory).Append(kFile)));
 
   // Unmounting in the correct order succeeds
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget1));
@@ -312,13 +333,15 @@ TEST_F(FakeMountMapperTest, MultipleMountsShouldFail) {
   // is still ok after that.
   ASSERT_TRUE(fake_mapper_->Mount(kSource1, kTarget1));
   ASSERT_FALSE(fake_mapper_->Mount(kSource2, kTarget1));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1File), kRedirect1.Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1File),
+              Eq(kRedirect1.Append(kFile)));
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget1));
 
   // Repeat other way around
   ASSERT_TRUE(fake_mapper_->Mount(kSource2, kTarget1));
   ASSERT_FALSE(fake_mapper_->Mount(kSource1, kTarget1));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1File), kRedirect2.Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1File),
+              Eq(kRedirect2.Append(kFile)));
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget1));
 }
 
@@ -327,15 +350,17 @@ TEST_F(FakeMountMapperTest, MultipleBindShouldFail) {
   // is still ok after that.
   ASSERT_TRUE(fake_mapper_->Bind(kSource1, kTarget1));
   ASSERT_FALSE(fake_mapper_->Bind(kSource2, kTarget1));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1File),
-            fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kFile));
+  EXPECT_THAT(
+      fake_mapper_->ResolvePath(kTarget1File),
+      Eq(fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kFile)));
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget1));
 
   // Repeat other way around
   ASSERT_TRUE(fake_mapper_->Bind(kSource2, kTarget1));
   ASSERT_FALSE(fake_mapper_->Bind(kSource1, kTarget1));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1File),
-            fake_platform::SpliceTestFilePath(kRoot, kSource2).Append(kFile));
+  EXPECT_THAT(
+      fake_mapper_->ResolvePath(kTarget1File),
+      Eq(fake_platform::SpliceTestFilePath(kRoot, kSource2).Append(kFile)));
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget1));
 }
 
@@ -365,8 +390,9 @@ TEST_F(FakeMountMapperTest, ResolveMountBindChain) {
   ASSERT_TRUE(fake_mapper_->Bind(kTarget0, kTarget1));
 
   // File is on the factory created redirect of the first mount.
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1), kRedirect1);
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1File), kRedirect1.Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1), Eq(kRedirect1));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1File),
+              Eq(kRedirect1.Append(kFile)));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget1));
@@ -382,9 +408,10 @@ TEST_F(FakeMountMapperTest, ResolveMountInnerBindChain) {
 
   // File is on the factory created redirect of the first mount with relative
   // path.
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1), kRedirect1.Append(kDirectory));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1File),
-            kRedirect1.Append(kDirectory).Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1),
+              Eq(kRedirect1.Append(kDirectory)));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1File),
+              Eq(kRedirect1.Append(kDirectory).Append(kFile)));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget1));
@@ -400,10 +427,10 @@ TEST_F(FakeMountMapperTest, ResolveSameTargetPrefixMountBindChain) {
   ASSERT_TRUE(fake_mapper_->Bind(kTarget0Directory, kTarget0InnerDirectory));
 
   // File is on the source location of the first mount with relative path.
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0InnerDirectory),
-            kRedirect1.Append(kDirectory));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0InnerDirectory.Append(kFile)),
-            kRedirect1.Append(kDirectory).Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget0InnerDirectory),
+              Eq(kRedirect1.Append(kDirectory)));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget0InnerDirectory.Append(kFile)),
+              Eq(kRedirect1.Append(kDirectory).Append(kFile)));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0InnerDirectory));
@@ -418,10 +445,11 @@ TEST_F(FakeMountMapperTest, ResolveBindBindChain) {
   ASSERT_TRUE(fake_mapper_->Bind(kTarget0, kTarget1));
 
   // File is on the source location of the first mount.
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1),
-            fake_platform::SpliceTestFilePath(kRoot, kSource1));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1File),
-            fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1),
+              Eq(fake_platform::SpliceTestFilePath(kRoot, kSource1)));
+  EXPECT_THAT(
+      fake_mapper_->ResolvePath(kTarget1File),
+      Eq(fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kFile)));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget1));
@@ -436,13 +464,13 @@ TEST_F(FakeMountMapperTest, ResolveBindInnerBindChain) {
   ASSERT_TRUE(fake_mapper_->Bind(kTarget0Directory, kTarget1));
 
   // File is on the source location of the first mount with relative path.
-  EXPECT_EQ(
-      fake_mapper_->ResolvePath(kTarget1),
-      fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kDirectory));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget1File),
-            fake_platform::SpliceTestFilePath(kRoot, kSource1)
-                .Append(kDirectory)
-                .Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1),
+              Eq(fake_platform::SpliceTestFilePath(kRoot, kSource1)
+                     .Append(kDirectory)));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1File),
+              Eq(fake_platform::SpliceTestFilePath(kRoot, kSource1)
+                     .Append(kDirectory)
+                     .Append(kFile)));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget1));
@@ -458,13 +486,13 @@ TEST_F(FakeMountMapperTest, ResolveSameTargetPrefixBindBindChain) {
   ASSERT_TRUE(fake_mapper_->Bind(kTarget0Directory, kTarget0InnerDirectory));
 
   // File is on the source location of the first mount with relative path.
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0InnerDirectory),
-            fake_platform::SpliceTestFilePath(kRoot, kSource1)
-                .Append(kDirectory));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0InnerDirectory.Append(kFile)),
-            fake_platform::SpliceTestFilePath(kRoot, kSource1)
-                .Append(kDirectory)
-                .Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget0InnerDirectory),
+              Eq(fake_platform::SpliceTestFilePath(kRoot, kSource1)
+                     .Append(kDirectory)));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget0InnerDirectory.Append(kFile)),
+              Eq(fake_platform::SpliceTestFilePath(kRoot, kSource1)
+                     .Append(kDirectory)
+                     .Append(kFile)));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0InnerDirectory));
@@ -476,10 +504,10 @@ TEST_F(FakeMountMapperTest, ResolveMountSelfBind) {
   ASSERT_TRUE(fake_mapper_->Mount(kSource1, kTarget0));
   ASSERT_TRUE(fake_mapper_->Bind(kTarget0Directory, kTarget0Directory));
 
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0Directory),
-            kRedirect1.Append(kDirectory));
-  EXPECT_EQ(fake_mapper_->ResolvePath(kTarget0Directory.Append(kFile)),
-            kRedirect1.Append(kDirectory).Append(kFile));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget0Directory),
+              Eq(kRedirect1.Append(kDirectory)));
+  EXPECT_THAT(fake_mapper_->ResolvePath(kTarget0Directory.Append(kFile)),
+              Eq(kRedirect1.Append(kDirectory).Append(kFile)));
 
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0Directory));
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
@@ -560,7 +588,7 @@ TEST_F(FakeMountMapperTest, ListMountsBySourcePrefix_String) {
           {kSource3, kTarget3},
       };
   fake_mapper_->ListMountsBySourcePrefix(prefix_1, &result);
-  EXPECT_THAT(result, ::testing::UnorderedElementsAreArray(expected_mounts_1));
+  EXPECT_THAT(result, UnorderedElementsAreArray(expected_mounts_1));
 
   // Multiple sources, some of which multi-targeted, but on a partial path
   const std::string prefix_2("/home/.shadow/00");
@@ -571,14 +599,14 @@ TEST_F(FakeMountMapperTest, ListMountsBySourcePrefix_String) {
           {kSource2, kTarget2},
       };
   fake_mapper_->ListMountsBySourcePrefix(prefix_2, &result);
-  EXPECT_THAT(result, ::testing::UnorderedElementsAreArray(expected_mounts_2));
+  EXPECT_THAT(result, UnorderedElementsAreArray(expected_mounts_2));
 
   // A prefix that doesn't match any sources
   const std::string prefix_3("/home/.shadow/1");
   const std::multimap<const base::FilePath, const base::FilePath>
       expected_mounts_3;
   fake_mapper_->ListMountsBySourcePrefix(prefix_3, &result);
-  EXPECT_THAT(result, ::testing::UnorderedElementsAreArray(expected_mounts_3));
+  EXPECT_THAT(result, UnorderedElementsAreArray(expected_mounts_3));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget3));
@@ -607,7 +635,7 @@ TEST_F(FakeMountMapperTest, ListMountsBySourcePrefix_Path) {
           {kSource3, kTarget3},
       };
   fake_mapper_->ListMountsBySourcePrefix(prefix_1, &result);
-  EXPECT_THAT(result, ::testing::UnorderedElementsAreArray(expected_mounts_1));
+  EXPECT_THAT(result, UnorderedElementsAreArray(expected_mounts_1));
 
   // Prefix exactly matches the source
   const base::FilePath prefix_2(kTarget1);
@@ -616,14 +644,14 @@ TEST_F(FakeMountMapperTest, ListMountsBySourcePrefix_Path) {
           {kTarget1, kTarget4},
       };
   fake_mapper_->ListMountsBySourcePrefix(prefix_2, &result);
-  EXPECT_THAT(result, ::testing::UnorderedElementsAreArray(expected_mounts_2));
+  EXPECT_THAT(result, UnorderedElementsAreArray(expected_mounts_2));
 
   // Not a source for mount
   const base::FilePath prefix_3("/var/log");
   const std::multimap<const base::FilePath, const base::FilePath>
       expected_mounts_3;
   fake_mapper_->ListMountsBySourcePrefix(prefix_3, &result);
-  EXPECT_THAT(result, ::testing::UnorderedElementsAreArray(expected_mounts_3));
+  EXPECT_THAT(result, UnorderedElementsAreArray(expected_mounts_3));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget4));
