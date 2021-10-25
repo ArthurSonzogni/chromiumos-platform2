@@ -107,13 +107,15 @@ class BRILLO_EXPORT Client {
 
     bool operator==(const Device& that) const {
       return this->type == that.type && this->ifname == that.ifname &&
-             this->ipconfig == that.ipconfig;
+             this->ipconfig == that.ipconfig &&
+             this->cellular_country_code == that.cellular_country_code;
     }
 
     Type type;
     ConnectionState state;
     std::string ifname;
     IPConfig ipconfig;
+    std::string cellular_country_code;
   };
 
   template <class Proxy>

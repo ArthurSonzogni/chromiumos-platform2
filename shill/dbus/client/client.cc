@@ -91,6 +91,14 @@ const char* ToString(Client::Device::ConnectionState state) {
   return it != m.end() ? it->second : "unknown";
 }
 
+std::string GetCellularProviderCountryCode(
+    const brillo::VariantDictionary& device_properties) {
+  auto operator_info =
+      brillo::GetVariantValueOrDefault<std::map<std::string, std::string>>(
+          device_properties, kHomeProviderProperty);
+  return operator_info[shill::kOperatorCountryKey];
+}
+
 }  // namespace
 
 Client::Client(scoped_refptr<dbus::Bus> bus) : bus_(bus) {
@@ -455,6 +463,9 @@ void Client::OnDevicePropertyChangeRegistration(const std::string& device_path,
     return;
   }
 
+  if (device->type == Client::Device::Type::kCellular) {
+    device->cellular_country_code = GetCellularProviderCountryCode(properties);
+  }
   // Obtain and monitor properties on this device's selected service and treat
   // them as if they are instrinsically characteristic of the device itself.
   const auto service_path = brillo::GetVariantValueOrDefault<dbus::ObjectPath>(
@@ -486,6 +497,15 @@ void Client::OnDevicePropertyChange(bool device_added,
     device = HandleSelectedServiceChanged(device_path, property_value);
     if (!device)
       return;
+  } else if (property_name == kHomeProviderProperty) {
+    auto it = devices_.find(device_path);
+    if (it == devices_.end()) {
+      LOG(ERROR) << "Device [" << device_path << "] not found";
+      return;
+    }
+    device = it->second->device();
+    device->cellular_country_code = property_value.TryGet<
+        std::map<std::string, std::string>>()[shill::kOperatorCountryKey];
   } else {
     return;
   }
@@ -727,6 +747,7 @@ std::vector<std::unique_ptr<Client::Device>> Client::GetDevices() const {
     device->ifname = dev->device()->ifname;
     device->state = dev->device()->state;
     device->ipconfig = dev->device()->ipconfig;
+    device->cellular_country_code = dev->device()->cellular_country_code;
     devices.emplace_back(std::move(device));
   }
   return devices;
@@ -803,6 +824,9 @@ std::unique_ptr<Client::Device> Client::DefaultDevice(bool exclude_vpn) {
       device_path.value(),
       brillo::GetVariantValueOrDefault<std::vector<dbus::ObjectPath>>(
           properties, kIPConfigsProperty));
+  if (device->type == Client::Device::Type::kCellular) {
+    device->cellular_country_code = GetCellularProviderCountryCode(properties);
+  }
   return device;
 }
 
