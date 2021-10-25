@@ -265,6 +265,14 @@ extern const char kSetCellularTransmitPowerForActivityProximityPref[];
 // RadioTransmitPower enum (e.g. "LOW", "MEDIUM", "HIGH".).
 extern const char kSetCellularTransmitPowerLevelMappingPref[];
 
+// If true, use the offset from kSetCellularRegulatoryDomainMappingPref
+extern const char kUseRegulatoryDomainForDynamicSARPref[];
+
+// String describing the offset corresponding to each regulatory domain.
+// Each line contains "DOMAIN offset", where DOMAIN is the name of value
+// from the CellularRegulatoryDomain enum (e.g. FCC, CE, ISED etc).
+extern const char kSetCellularRegulatoryDomainMappingPref[];
+
 // GPIO number for the dynamic power reduction signal of a built-in cellular
 // modem.
 extern const char kSetCellularTransmitPowerDprGpioPref[];
@@ -389,6 +397,15 @@ enum class ModemState {
   UNKNOWN,
 };
 
+enum class CellularRegulatoryDomain {
+  FCC,
+  ISED,
+  CE,
+  MIC,
+  KCC,
+  UNKNOWN,
+};
+
 // Convertible Chromebooks may either be folded into a tablet or used as a
 // clamshell.
 enum class TabletMode {
@@ -460,6 +477,7 @@ std::string LidStateToString(LidState state);
 std::string TabletModeToString(TabletMode mode);
 std::string UserProximityToString(UserProximity proximity);
 std::string RadioTransmitPowerToString(RadioTransmitPower power);
+std::string RegulatoryDomainToString(CellularRegulatoryDomain domain);
 std::string SessionStateToString(SessionState state);
 std::string DisplayModeToString(DisplayMode mode);
 std::string ButtonStateToString(ButtonState state);

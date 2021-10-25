@@ -157,6 +157,8 @@ powerd_prefs: &powerd_prefs
   use-modemmanager-for-dynamic-sar: *powerd_prefs_default
   use-multi-power-level-dynamic-sar: *powerd_prefs_default
   set-cellular-transmit-power-level-mapping: *powerd_prefs_default
+  set-cellular-regulatory-domain-mapping: *powerd_prefs_default
+  use-regulatory-domain-for-dynamic-sar: *powerd_prefs_default
   enable-console-during-suspend: *powerd_prefs_default
   max-dark-suspend-delay-timeout-ms: *powerd_prefs_default
   suspend-mode:

@@ -109,6 +109,10 @@ const char kUseMultiPowerLevelDynamicSARPref[] =
     "use_multi_power_level_dynamic_sar";
 const char kSetCellularTransmitPowerLevelMappingPref[] =
     "set_cellular_transmit_power_level_mapping";
+const char kSetCellularRegulatoryDomainMappingPref[] =
+    "set_cellular_regulatory_domain_mapping";
+const char kUseRegulatoryDomainForDynamicSARPref[] =
+    "use_regulatory_domain_for_dynamic_sar";
 const char kEnableConsoleDuringSuspendPref[] = "enable_console_during_suspend";
 const char kMaxDarkSuspendDelayTimeoutMsPref[] =
     "max_dark_suspend_delay_timeout_ms";
@@ -210,6 +214,25 @@ std::string RadioTransmitPowerToString(RadioTransmitPower power) {
   }
   NOTREACHED() << "Unhandled Radio transmit power " << static_cast<int>(power);
   return base::StringPrintf("unknown (%d)", static_cast<int>(power));
+}
+
+std::string RegulatoryDomainToString(CellularRegulatoryDomain domain) {
+  switch (domain) {
+    case CellularRegulatoryDomain::FCC:
+      return "FCC";
+    case CellularRegulatoryDomain::ISED:
+      return "ISED";
+    case CellularRegulatoryDomain::CE:
+      return "CE";
+    case CellularRegulatoryDomain::MIC:
+      return "MIC";
+    case CellularRegulatoryDomain::KCC:
+      return "KCC";
+    case CellularRegulatoryDomain::UNKNOWN:
+      return "UNKNOWN";
+  }
+  NOTREACHED() << "Unhandled Regulatory Domain " << static_cast<int>(domain);
+  return base::StringPrintf("unknown (%d)", static_cast<int>(domain));
 }
 
 std::string SessionStateToString(SessionState state) {
