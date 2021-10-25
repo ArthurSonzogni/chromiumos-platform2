@@ -10,6 +10,8 @@
 namespace ml {
 namespace {
 
+const float kScoringEqualityDelta = 0.0015f;
+
 TEST(TextSuggestionsTest, CanLoadLibrary) {
   auto* const instance = ml::TextSuggestions::GetInstance();
   if (IsAsan()) {
@@ -56,8 +58,8 @@ TEST(TextSuggestionsText, ExampleCompletionRequestWithDefaultSettings) {
   ASSERT_GT(result.candidates_size(), 0);
   EXPECT_EQ(result.candidates(0).has_multi_word(), true);
   EXPECT_EQ(result.candidates(0).multi_word().text(), "you doing");
-  EXPECT_FLOAT_EQ(result.candidates(0).multi_word().normalized_score(),
-                  -0.680989f);
+  EXPECT_NEAR(result.candidates(0).multi_word().normalized_score(), -0.680989f,
+              kScoringEqualityDelta);
 
   instance->DestroyTextSuggester(suggester);
 }
@@ -86,8 +88,8 @@ TEST(TextSuggestionsText, ExamplePredictionRequestWithDefaultSettings) {
   ASSERT_GT(result.candidates_size(), 0);
   ASSERT_EQ(result.candidates(0).has_multi_word(), true);
   EXPECT_EQ(result.candidates(0).multi_word().text(), "you doing");
-  EXPECT_FLOAT_EQ(result.candidates(0).multi_word().normalized_score(),
-                  -0.8141749f);
+  EXPECT_NEAR(result.candidates(0).multi_word().normalized_score(), -0.8141749f,
+              kScoringEqualityDelta);
 
   instance->DestroyTextSuggester(suggester);
 }
@@ -149,8 +151,8 @@ TEST(TextSuggestionsText,
   ASSERT_GT(result.candidates_size(), 0);
   EXPECT_EQ(result.candidates(0).has_multi_word(), true);
   EXPECT_EQ(result.candidates(0).multi_word().text(), "aren\'t you");
-  EXPECT_FLOAT_EQ(result.candidates(0).multi_word().normalized_score(),
-                  -0.13418171f);
+  EXPECT_NEAR(result.candidates(0).multi_word().normalized_score(),
+              -0.13418171f, kScoringEqualityDelta);
 
   instance->DestroyTextSuggester(suggester);
 }
@@ -185,8 +187,8 @@ TEST(TextSuggestionsText,
   ASSERT_GT(result.candidates_size(), 0);
   EXPECT_EQ(result.candidates(0).has_multi_word(), true);
   EXPECT_EQ(result.candidates(0).multi_word().text(), "aren\'t you");
-  EXPECT_FLOAT_EQ(result.candidates(0).multi_word().normalized_score(),
-                  -0.13418171f);
+  EXPECT_NEAR(result.candidates(0).multi_word().normalized_score(),
+              -0.13418171f, kScoringEqualityDelta);
 
   instance->DestroyTextSuggester(suggester);
 }
@@ -221,8 +223,8 @@ TEST(TextSuggestionsText,
   ASSERT_GT(result.candidates_size(), 0);
   EXPECT_EQ(result.candidates(0).has_multi_word(), true);
   EXPECT_EQ(result.candidates(0).multi_word().text(), "the morning");
-  EXPECT_FLOAT_EQ(result.candidates(0).multi_word().normalized_score(),
-                  -0.5560128f);
+  EXPECT_NEAR(result.candidates(0).multi_word().normalized_score(), -0.5560128f,
+              kScoringEqualityDelta);
 
   instance->DestroyTextSuggester(suggester);
 }
@@ -257,8 +259,8 @@ TEST(TextSuggestionsText,
   ASSERT_GT(result.candidates_size(), 0);
   EXPECT_EQ(result.candidates(0).has_multi_word(), true);
   EXPECT_EQ(result.candidates(0).multi_word().text(), "the morning");
-  EXPECT_FLOAT_EQ(result.candidates(0).multi_word().normalized_score(),
-                  -0.5560128f);
+  EXPECT_NEAR(result.candidates(0).multi_word().normalized_score(), -0.5560128f,
+              kScoringEqualityDelta);
 
   instance->DestroyTextSuggester(suggester);
 }

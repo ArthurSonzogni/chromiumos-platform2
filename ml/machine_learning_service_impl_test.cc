@@ -1728,6 +1728,8 @@ class TextSuggesterTest : public ::testing::Test {
 
  protected:
   mojo::Remote<TextSuggester> suggester_;
+
+  const float scoring_equality_delta_ = 0.0015f;
 };
 
 TEST_F(TextSuggesterTest, LoadModelAndGenerateCompletionCandidate) {
@@ -1751,18 +1753,19 @@ TEST_F(TextSuggesterTest, LoadModelAndGenerateCompletionCandidate) {
   suggester_->Suggest(
       std::move(query),
       base::BindOnce(
-          [](bool* infer_callback_done, const TextSuggesterResultPtr result) {
+          [](bool* infer_callback_done, float equality_delta,
+             const TextSuggesterResultPtr result) {
             EXPECT_EQ(result->status, TextSuggesterResult::Status::OK);
             ASSERT_EQ(result->candidates.size(), 1);
             ASSERT_TRUE(result->candidates.at(0)->is_multi_word());
             EXPECT_EQ(result->candidates.at(0)->get_multi_word()->text,
                       "you doing");
-            EXPECT_EQ(
+            EXPECT_NEAR(
                 result->candidates.at(0)->get_multi_word()->normalized_score,
-                -0.680989f);
+                -0.680989f, equality_delta);
             *infer_callback_done = true;
           },
-          &infer_callback_done));
+          &infer_callback_done, scoring_equality_delta_));
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(infer_callback_done);
 }
@@ -1782,18 +1785,19 @@ TEST_F(TextSuggesterTest, LoadModelAndGeneratePredictionCandidate) {
   suggester_->Suggest(
       std::move(query),
       base::BindOnce(
-          [](bool* infer_callback_done, const TextSuggesterResultPtr result) {
+          [](bool* infer_callback_done, float equality_delta,
+             const TextSuggesterResultPtr result) {
             EXPECT_EQ(result->status, TextSuggesterResult::Status::OK);
             ASSERT_EQ(result->candidates.size(), 1);
             ASSERT_TRUE(result->candidates.at(0)->is_multi_word());
             EXPECT_EQ(result->candidates.at(0)->get_multi_word()->text,
                       "you doing");
-            EXPECT_EQ(
+            EXPECT_NEAR(
                 result->candidates.at(0)->get_multi_word()->normalized_score,
-                -0.8141749f);
+                -0.8141749f, equality_delta);
             *infer_callback_done = true;
           },
-          &infer_callback_done));
+          &infer_callback_done, scoring_equality_delta_));
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(infer_callback_done);
 }
@@ -1856,18 +1860,19 @@ TEST_F(TextSuggesterTest, GboardExperimentGroupTriggersExpectedSuggestions) {
   suggester_->Suggest(
       std::move(query),
       base::BindOnce(
-          [](bool* infer_callback_done, const TextSuggesterResultPtr result) {
+          [](bool* infer_callback_done, float equality_delta,
+             const TextSuggesterResultPtr result) {
             EXPECT_EQ(result->status, TextSuggesterResult::Status::OK);
             ASSERT_EQ(result->candidates.size(), 1);
             ASSERT_TRUE(result->candidates.at(0)->is_multi_word());
             EXPECT_EQ(result->candidates.at(0)->get_multi_word()->text,
                       "aren\'t you");
-            EXPECT_EQ(
+            EXPECT_NEAR(
                 result->candidates.at(0)->get_multi_word()->normalized_score,
-                -0.13418171f);
+                -0.13418171f, equality_delta);
             *infer_callback_done = true;
           },
-          &infer_callback_done));
+          &infer_callback_done, scoring_equality_delta_));
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(infer_callback_done);
 }
