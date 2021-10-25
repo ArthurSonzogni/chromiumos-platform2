@@ -18,9 +18,9 @@
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 
 namespace diagnostics {
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
 namespace {
+
+namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 using ::testing::_;
 using ::testing::AtMost;
@@ -57,8 +57,6 @@ class MockDiagProcessAdapter : public DiagProcessAdapter {
               (override));
   MOCK_METHOD(bool, KillProcess, (const base::ProcessHandle&), (override));
 };
-
-}  // namespace
 
 class SubprocRoutineTest : public Test {
  protected:
@@ -467,4 +465,5 @@ TEST(SubprocRoutineTestNoFixture, ProductionConstructor) {
                              kSubprocRoutineReadyMessage);
 }
 
+}  // namespace
 }  // namespace diagnostics

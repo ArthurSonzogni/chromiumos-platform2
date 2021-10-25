@@ -28,7 +28,6 @@ using testing::WithArg;
 using testing::WithParamInterface;
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -39,8 +38,6 @@ struct CaptivePortalProblemTestParams {
   network_diagnostics_ipc::CaptivePortalProblem problem_enum;
   std::string failure_message;
 };
-
-}  // namespace
 
 class CaptivePortalRoutineTest : public testing::Test {
  protected:
@@ -165,4 +162,5 @@ INSTANTIATE_TEST_SUITE_P(
             network_diagnostics_ipc::CaptivePortalProblem::kNoInternet,
             kPortalRoutineNoInternetProblemMessage}));
 
+}  // namespace
 }  // namespace diagnostics

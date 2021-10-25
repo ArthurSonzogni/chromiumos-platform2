@@ -30,7 +30,6 @@ using ::testing::Invoke;
 using ::testing::WithArg;
 
 namespace diagnostics {
-
 namespace {
 
 namespace executor_ipc = ::chromeos::cros_healthd_executor::mojom;
@@ -143,8 +142,6 @@ void OnMojoResponseReceived(mojo_ipc::ProcessResultPtr* response_destination,
   *response_destination = std::move(response);
   quit_closure.Run();
 }
-
-}  // namespace
 
 class ProcessFetcherTest : public testing::Test {
  protected:
@@ -598,4 +595,5 @@ INSTANTIATE_TEST_SUITE_P(
                     ParseProcessStateTestParams{
                         /*raw_state=*/"X", mojo_ipc::ProcessState::kDead}));
 
+}  // namespace
 }  // namespace diagnostics

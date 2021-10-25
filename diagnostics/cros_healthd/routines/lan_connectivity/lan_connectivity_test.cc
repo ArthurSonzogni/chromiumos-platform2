@@ -25,13 +25,10 @@ using testing::StrictMock;
 using testing::WithArg;
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
-
-}  // namespace
 
 class LanConnectivityRoutineTest : public testing::Test {
  protected:
@@ -130,4 +127,5 @@ TEST_F(LanConnectivityRoutineTest, RoutineNotRun) {
                              kLanConnectivityRoutineNotRunMessage);
 }
 
+}  // namespace
 }  // namespace diagnostics

@@ -22,9 +22,9 @@
 using testing::ElementsAreArray;
 
 namespace diagnostics {
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
 namespace {
+
+namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 grpc_api::RunRoutineRequest MakeBatteryRoutineRequest() {
   grpc_api::RunRoutineRequest request;
@@ -759,5 +759,4 @@ INSTANTIATE_TEST_SUITE_P(
                     MakeDiskRandomReadRoutineRequest()));
 
 }  // namespace
-
 }  // namespace diagnostics

@@ -23,7 +23,6 @@ using ::testing::StrictMock;
 using ::testing::WithArg;
 
 namespace diagnostics {
-
 namespace {
 
 constexpr char kSmartAttributes[] = "attributes";
@@ -41,8 +40,6 @@ class MockCallback {
               OnStringResultCallback,
               (const std::string&, brillo::Error*));
 };
-
-}  // namespace
 
 class DebugdAdapterImplTest : public ::testing::Test {
  public:
@@ -265,4 +262,5 @@ TEST_F(DebugdAdapterImplTest, GetNvmeLogError) {
                                          base::Unretained(&callback_)));
 }
 
+}  // namespace
 }  // namespace diagnostics

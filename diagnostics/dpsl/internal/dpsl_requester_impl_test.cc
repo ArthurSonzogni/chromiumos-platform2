@@ -29,6 +29,7 @@
 #include "diagnostics/dpsl/public/dpsl_thread_context.h"
 
 namespace diagnostics {
+namespace {
 
 TEST(GetWilcoDtcSupportdGrpcUriTestDeathTest, InvalidValue) {
   ASSERT_DEATH(DpslRequesterImpl::GetWilcoDtcSupportdGrpcUri(
@@ -110,8 +111,6 @@ TEST_F(DpslRequesterImplDeathTest, CreateWithInvalidServerUri) {
                            DpslRequester::GrpcClientUri>::type>::max())),
                "Unexpected GrpcClientUri");
 }
-
-namespace {
 
 // Generic template for the type of a member function of DpslRequesterImpl
 template <typename Request, typename Response>
@@ -493,8 +492,6 @@ class TestDsplMultiRequesterServer {
       async_grpc_server_;
 };
 
-}  // namespace
-
 class DpslRequesterImplWithRequesterTest : public DpslRequesterImplTest {
  public:
   DpslRequesterImplWithRequesterTest() = default;
@@ -728,4 +725,5 @@ TYPED_TEST(DpslRequesterImplServerTest, CallGrpcMethodFromBackgroundThread) {
   EXPECT_EQ(this->server_->GetHandleCallCalled(), 1);
 }
 
+}  // namespace
 }  // namespace diagnostics

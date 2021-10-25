@@ -25,7 +25,6 @@
 #include "diagnostics/cros_healthd/wilco_ec/ec_service_test_utils.h"
 
 namespace diagnostics {
-
 namespace {
 
 using testing::_;
@@ -188,5 +187,4 @@ TEST_F(StartedWilcoEcServiceTest, ReadManyEvent) {
 }
 
 }  // namespace
-
 }  // namespace diagnostics

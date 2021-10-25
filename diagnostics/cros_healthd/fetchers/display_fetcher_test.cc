@@ -19,7 +19,6 @@
 #include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
-
 namespace {
 
 namespace executor_ipc = chromeos::cros_healthd_executor::mojom;
@@ -40,8 +39,6 @@ void OnGetDisplayInfoResponseReceived(
   *response_destination = std::move(response);
   quit_closure.Run();
 }
-
-}  // namespace
 
 class DisplayFetcherTest : public ::testing::Test {
  protected:
@@ -134,4 +131,5 @@ TEST_F(DisplayFetcherTest, FetchFailure) {
   ASSERT_TRUE(display_result->is_error());
 }
 
+}  // namespace
 }  // namespace diagnostics

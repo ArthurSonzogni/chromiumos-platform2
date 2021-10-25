@@ -25,7 +25,6 @@ using ::testing::SaveArg;
 using ::testing::StrictMock;
 
 namespace diagnostics {
-
 namespace {
 
 // Writes empty proto messate to |signal|. After this operation, empty proto
@@ -79,8 +78,6 @@ class MockPowerdAdapterLidObserver : public PowerdAdapter::LidObserver {
 
   MOCK_METHOD(void, OnLidSignal, (LidSignalType));
 };
-
-}  // namespace
 
 class BasePowerdAdapterImplTest : public ::testing::Test {
  public:
@@ -310,4 +307,5 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple(power_manager::kLidOpenedSignal,
                                     MockPowerdAdapterLidObserver::LID_OPENED)));
 
+}  // namespace
 }  // namespace diagnostics

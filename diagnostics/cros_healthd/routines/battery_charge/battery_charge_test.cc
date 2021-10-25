@@ -22,7 +22,6 @@
 #include "mojo/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -49,8 +48,6 @@ power_manager::PowerSupplyProperties GetPowerSupplyProperties() {
       power_manager::PowerSupplyProperties_BatteryState_CHARGING);
   return power_supply_proto;
 }
-
-}  // namespace
 
 class BatteryChargeRoutineTest : public testing::Test {
  protected:
@@ -357,4 +354,5 @@ TEST_F(BatteryChargeRoutineTest, CancelWhileInErrorState) {
   EXPECT_EQ(update->progress_percent, 0);
 }
 
+}  // namespace
 }  // namespace diagnostics

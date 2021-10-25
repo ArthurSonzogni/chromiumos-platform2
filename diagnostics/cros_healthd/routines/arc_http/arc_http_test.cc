@@ -28,7 +28,6 @@ using testing::WithArg;
 using testing::WithParamInterface;
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -39,8 +38,6 @@ struct ArcHttpProblemTestParams {
   network_diagnostics_ipc::ArcHttpProblem problem_enum;
   std::string failure_message;
 };
-
-}  // namespace
 
 class ArcHttpRoutineTest : public testing::Test {
  protected:
@@ -160,4 +157,5 @@ INSTANTIATE_TEST_SUITE_P(
             network_diagnostics_ipc::ArcHttpProblem::kVeryHighLatency,
             kArcHttpRoutineVeryHighLatencyProblemMessage}));
 
+}  // namespace
 }  // namespace diagnostics

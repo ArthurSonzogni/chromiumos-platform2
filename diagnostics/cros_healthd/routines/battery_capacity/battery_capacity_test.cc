@@ -16,15 +16,14 @@
 #include "mojo/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
+namespace {
+
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
-namespace {
 constexpr uint32_t kLowmAh = 1000;
 constexpr uint32_t kHighmAh = 10000;
 constexpr double kGoodBatteryChargeFullDesign = 8.948;
 constexpr double kBadBatteryChargeFullDesign = 0.812;
-
-}  // namespace
 
 class BatteryCapacityRoutineTest : public testing::Test {
  protected:
@@ -107,4 +106,5 @@ TEST_F(BatteryCapacityRoutineTest, InvalidParameters) {
                              kBatteryCapacityRoutineParametersInvalidMessage);
 }
 
+}  // namespace
 }  // namespace diagnostics

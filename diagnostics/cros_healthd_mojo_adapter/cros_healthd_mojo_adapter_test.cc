@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 namespace diagnostics {
+namespace {
 
 class CrosHealthdMojoAdapterImplTest : public testing::Test {
  protected:
@@ -15,4 +16,5 @@ class CrosHealthdMojoAdapterImplTest : public testing::Test {
       const CrosHealthdMojoAdapterImplTest&) = delete;
 };
 
+}  // namespace
 }  // namespace diagnostics

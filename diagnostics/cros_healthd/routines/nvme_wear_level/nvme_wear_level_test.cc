@@ -24,9 +24,10 @@ using testing::StrictMock;
 using testing::WithArg;
 
 namespace diagnostics {
+namespace {
+
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
-namespace {
 constexpr uint32_t kThreshold50 = 50;
 
 constexpr uint8_t kWearLevel4[] = {0, 0, 0, 0, 0, 4, 0, 0,
@@ -39,7 +40,6 @@ constexpr uint8_t kEightByteWearLevel4[] = {0, 0, 0, 0, 0, 4, 0, 0};
 
 // Invalid base64 encoded data. Length of encoded data must divide by 4.
 constexpr char kInvaildWearLevel[] = "AAAAAAAAAAAAAAAAAAA";
-}  // namespace
 
 class NvmeWearLevelRoutineTest : public testing::Test {
  protected:
@@ -185,4 +185,5 @@ TEST_F(NvmeWearLevelRoutineTest, DebugdError) {
                              kDebugdErrorMessage);
 }
 
+}  // namespace
 }  // namespace diagnostics

@@ -28,7 +28,6 @@ using testing::WithArg;
 using testing::WithParamInterface;
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -39,8 +38,6 @@ struct GatewayCanBePingedProblemTestParams {
   network_diagnostics_ipc::GatewayCanBePingedProblem problem_enum;
   std::string failure_message;
 };
-
-}  // namespace
 
 class GatewayCanBePingedRoutineTest : public testing::Test {
  protected:
@@ -169,4 +166,5 @@ INSTANTIATE_TEST_SUITE_P(
                 kNonDefaultNetworksAboveLatencyThreshold,
             kPingRoutineNonDefaultHighLatencyProblemMessage}));
 
+}  // namespace
 }  // namespace diagnostics

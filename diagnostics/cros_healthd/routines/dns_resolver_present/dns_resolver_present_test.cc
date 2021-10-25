@@ -28,7 +28,6 @@ using testing::WithArg;
 using testing::WithParamInterface;
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -39,8 +38,6 @@ struct DnsResolverPresentProblemTestParams {
   network_diagnostics_ipc::DnsResolverPresentProblem problem_enum;
   std::string failure_message;
 };
-
-}  // namespace
 
 class DnsResolverPresentRoutineTest : public testing::Test {
  protected:
@@ -161,4 +158,5 @@ INSTANTIATE_TEST_SUITE_P(
                 DEPRECATED_kEmptyNameServers,
             kDnsResolverPresentRoutineNoNameServersFoundProblemMessage}));
 
+}  // namespace
 }  // namespace diagnostics

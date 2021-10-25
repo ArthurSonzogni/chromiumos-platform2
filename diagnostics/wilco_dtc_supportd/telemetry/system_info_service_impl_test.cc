@@ -15,6 +15,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/system_info_service.h"
 
 namespace diagnostics {
+namespace {
 
 class SystemInfoServiceImplTest : public testing::Test {
  public:
@@ -77,4 +78,5 @@ TEST_F(SystemInfoServiceImplTest, GetOsMilestoneNotInteger) {
   EXPECT_FALSE(service()->GetOsMilestone(&milestone));
 }
 
+}  // namespace
 }  // namespace diagnostics

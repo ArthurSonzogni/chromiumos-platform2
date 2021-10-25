@@ -9,7 +9,6 @@
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
 
 namespace diagnostics {
-
 namespace {
 
 TEST(EcConstantsTest, PropertiesPath) {
@@ -19,5 +18,4 @@ TEST(EcConstantsTest, PropertiesPath) {
 }
 
 }  // namespace
-
 }  // namespace diagnostics

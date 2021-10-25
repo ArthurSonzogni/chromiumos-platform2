@@ -10,6 +10,7 @@
 #include "diagnostics/cros_healthd/fetchers/storage/nvme_device_adapter.h"
 
 namespace diagnostics {
+namespace {
 
 TEST(NvmeDeviceAdapterTest, OkData) {
   constexpr char kPath[] =
@@ -83,4 +84,5 @@ TEST(NvmeDeviceAdapterTest, NoData) {
             adapter.GetFirmwareVersion().status().code());
 }
 
+}  // namespace
 }  // namespace diagnostics

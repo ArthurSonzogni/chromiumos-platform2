@@ -15,7 +15,6 @@
 #include "diagnostics/cros_healthd/system/mock_context.h"
 
 namespace diagnostics {
-
 namespace {
 
 // POD struct for GetBatteryCapacityParametersTest.
@@ -39,8 +38,6 @@ struct GetPrimeSearchParametersTestParams {
   base::Optional<std::string> max_num_in;
   base::Optional<uint64_t> expected_max_num_out;
 };
-
-}  // namespace
 
 class RoutineParameterFetcherTest : public testing::Test {
  protected:
@@ -289,4 +286,5 @@ INSTANTIATE_TEST_SUITE_P(
                         /*max_num_in=*/"10000000000",
                         /*expected_max_num_out=*/10000000000}));
 
+}  // namespace
 }  // namespace diagnostics

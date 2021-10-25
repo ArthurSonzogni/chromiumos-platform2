@@ -20,12 +20,9 @@ using testing::Return;
 using testing::StrictMock;
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
-}  // namespace
 
 TEST(StorageDeviceInfoTest, PopulateTest) {
   constexpr char kPath[] =
@@ -86,4 +83,5 @@ TEST(StorageDeviceInfoTest, PopulateLegacyTest) {
   EXPECT_EQ(0xA5, info.manufacturer_id);
 }
 
+}  // namespace
 }  // namespace diagnostics

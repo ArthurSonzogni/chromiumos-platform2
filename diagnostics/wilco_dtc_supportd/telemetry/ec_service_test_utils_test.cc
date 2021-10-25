@@ -10,7 +10,6 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/ec_service_test_utils.h"
 
 namespace diagnostics {
-
 namespace {
 
 using EcEvent = EcService::EcEvent;
@@ -67,5 +66,4 @@ INSTANTIATE_TEST_SUITE_P(
                         kEcEventNonSysNotification)));
 
 }  // namespace
-
 }  // namespace diagnostics

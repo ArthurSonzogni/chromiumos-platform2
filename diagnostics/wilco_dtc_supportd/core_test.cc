@@ -81,6 +81,7 @@ using testing::StrictMock;
 using testing::WithArg;
 
 namespace diagnostics {
+namespace {
 
 // Templates for the gRPC URIs that should be used for testing. "%s" is
 // substituted with a temporary directory.
@@ -101,8 +102,6 @@ using MojomWilcoDtcSupportdWebRequestHttpMethod =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestHttpMethod;
 using MojomWilcoDtcSupportdWebRequestStatus =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestStatus;
-
-namespace {
 
 // Returns a callback that, once called, saves its parameter to |*response| and
 // quits |*run_loop|.
@@ -1375,5 +1374,4 @@ INSTANTIATE_TEST_SUITE_P(
                         grpc_api::HandlePowerNotificationRequest::OS_RESUME)));
 
 }  // namespace
-
 }  // namespace diagnostics

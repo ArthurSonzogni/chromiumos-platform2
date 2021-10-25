@@ -34,7 +34,6 @@ using ::testing::Invoke;
 using ::testing::WithArg;
 
 namespace diagnostics {
-
 namespace {
 
 namespace executor_ipc = chromeos::cros_healthd_executor::mojom;
@@ -76,8 +75,6 @@ std::string ConstructOutput() {
       output_dict, base::JSONWriter::Options::OPTIONS_PRETTY_PRINT, &json);
   return json;
 }
-
-}  // namespace
 
 class MemoryRoutineTest : public testing::Test {
  protected:
@@ -254,4 +251,5 @@ TEST_F(MemoryRoutineTest, Cancel) {
                              kMemoryRoutineCancelledMessage);
 }
 
+}  // namespace
 }  // namespace diagnostics

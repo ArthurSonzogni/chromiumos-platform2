@@ -16,6 +16,7 @@ using testing::Return;
 using testing::StrictMock;
 
 namespace diagnostics {
+namespace {
 
 // Tests whether the caching layer works properly, i.e. pass-through the initial
 // call but returns the rest from the remembered value.
@@ -41,4 +42,5 @@ TEST(CachingDeviceAdapterTest, CheckCaching) {
   EXPECT_EQ(kModel, adapter.GetModel().value());
 }
 
+}  // namespace
 }  // namespace diagnostics

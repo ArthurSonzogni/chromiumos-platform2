@@ -26,7 +26,6 @@
 using testing::StrictMock;
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -105,8 +104,6 @@ std::set<mojo_ipc::DiagnosticRoutineEnum> GetFioRoutines() {
   return std::set<mojo_ipc::DiagnosticRoutineEnum>{
       mojo_ipc::DiagnosticRoutineEnum::kDiskRead};
 }
-
-}  // namespace
 
 // Tests for the CrosHealthdRoutineService class.
 class CrosHealthdRoutineServiceTest : public testing::Test {
@@ -1046,4 +1043,5 @@ INSTANTIATE_TEST_SUITE_P(
             /*num_expected_resume_calls=*/0,
             /*num_expected_cancel_calls=*/0}));
 
+}  // namespace
 }  // namespace diagnostics

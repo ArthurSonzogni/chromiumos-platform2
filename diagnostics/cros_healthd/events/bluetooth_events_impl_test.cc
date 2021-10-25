@@ -24,7 +24,6 @@
 #include "mojo/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -76,8 +75,6 @@ class MockCrosHealthdBluetoothObserver
  private:
   mojo::Receiver<mojo_ipc::CrosHealthdBluetoothObserver> receiver_;
 };
-
-}  // namespace
 
 // Tests for the BluetoothEventsImpl class.
 class BluetoothEventsImplTest : public testing::Test {
@@ -223,4 +220,5 @@ TEST_F(BluetoothEventsImplTest,
   EXPECT_FALSE(fake_bluetooth_client()->HasObserver(bluetooth_events_impl()));
 }
 
+}  // namespace
 }  // namespace diagnostics

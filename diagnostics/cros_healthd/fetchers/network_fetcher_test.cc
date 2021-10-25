@@ -16,7 +16,6 @@
 #include "mojo/network_health.mojom.h"
 
 namespace diagnostics {
-
 namespace {
 
 // Saves |response| to |response_destination|.
@@ -27,8 +26,6 @@ void OnGetNetworkInfoReceived(
   *response_destination = std::move(response);
   quit_closure.Run();
 }
-
-}  // namespace
 
 class NetworkFetcherTest : public testing::Test {
  protected:
@@ -86,4 +83,5 @@ TEST_F(NetworkFetcherTest, GetNetworkHealthState) {
   EXPECT_EQ(result->get_network_health()->networks[0], network);
 }
 
+}  // namespace
 }  // namespace diagnostics

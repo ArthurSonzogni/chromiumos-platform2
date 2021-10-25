@@ -15,11 +15,10 @@
 #include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
+namespace {
 
 using ::chromeos::cros_healthd::mojom::ErrorType;
 using ::testing::Return;
-
-namespace {
 
 const char kFakeBiosTimes[] = "texts\n...\n\nTotal Time: 10,111,111";
 const char kFakeUptimeLog[] = "7.666666666\n17.000000000";
@@ -64,8 +63,6 @@ void VerifyDefaultShutdownInfo(
   EXPECT_NEAR(info->shutdown_timestamp, 0.0, 0.1);
   EXPECT_NEAR(info->shutdown_seconds, 0.0, 0.1);
 }
-
-}  // namespace
 
 class BootPerformanceFetcherTest : public ::testing::Test {
  protected:
@@ -248,4 +245,5 @@ TEST_F(BootPerformanceFetcherTest, TestWrongPowerdLog) {
   VerifyDefaultShutdownInfo(FetchBootPerformanceInfo());
 }
 
+}  // namespace
 }  // namespace diagnostics

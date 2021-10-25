@@ -20,7 +20,6 @@
 #include "mojo/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -45,8 +44,6 @@ class MockCrosHealthdLidObserver : public mojo_ipc::CrosHealthdLidObserver {
  private:
   mojo::Receiver<mojo_ipc::CrosHealthdLidObserver> receiver_;
 };
-
-}  // namespace
 
 // Tests for the LidEventsImpl class.
 class LidEventsImplTest : public testing::Test {
@@ -130,4 +127,5 @@ TEST_F(LidEventsImplTest, UnsubscribeFromPowerdAdapterWhenAllObserversLost) {
   EXPECT_FALSE(fake_adapter()->HasLidObserver(lid_events_impl()));
 }
 
+}  // namespace
 }  // namespace diagnostics

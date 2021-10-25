@@ -12,13 +12,12 @@
 #include "diagnostics/common/file_test_utils.h"
 
 namespace diagnostics {
-
 namespace {
+
 constexpr char kTestBinaryFile[] = "/usr/local/test.bin";
 constexpr unsigned char kTestBinaryData[] = {0x01, 0x23, 0x45, 0x67,
                                              0x89, 0xab, 0xcd, 0xef};
 constexpr size_t kTestBinaryDataLen = 8;
-}  // namespace
 
 class FileTest : public BaseFileTest {
  protected:
@@ -65,4 +64,5 @@ TEST_F(FileTest, BaseTest) {
   EXPECT_EQ(GetPathUnderRoot({"/a", "b/c"}), expected_path);
 }
 
+}  // namespace
 }  // namespace diagnostics

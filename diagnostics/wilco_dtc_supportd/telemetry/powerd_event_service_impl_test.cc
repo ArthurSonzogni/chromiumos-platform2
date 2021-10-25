@@ -20,15 +20,12 @@ using PowerEventType =
     diagnostics::PowerdEventService::Observer::PowerEventType;
 
 namespace diagnostics {
-
 namespace {
 
 class MockPowerdEventServiceObserver : public PowerdEventService::Observer {
  public:
   MOCK_METHOD(void, OnPowerdEvent, (PowerEventType), (override));
 };
-
-}  // namespace
 
 class PowerdEventServiceImplTest : public ::testing::Test {
  public:
@@ -102,4 +99,5 @@ TEST_F(PowerdEventServiceImplTest, OnSuspendDoneSignal) {
   fake_powerd_adapter_.EmitSuspendDoneSignal(kSuspendDone);
 }
 
+}  // namespace
 }  // namespace diagnostics

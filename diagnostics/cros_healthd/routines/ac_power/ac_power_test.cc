@@ -17,16 +17,13 @@
 #include "mojo/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
+namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
-namespace {
 
 constexpr char kExpectedPowerType[] = "USB_PD";
 constexpr char kPowerSupplyDirectoryPath[] =
     "sys/class/power_supply/foo_power_supply";
-
-}  // namespace
 
 class AcPowerRoutineTest : public testing::Test {
  protected:
@@ -230,4 +227,5 @@ TEST_F(AcPowerRoutineTest, CancelWhenWaiting) {
   EXPECT_EQ(update->progress_percent, kAcPowerRoutineWaitingProgressPercent);
 }
 
+}  // namespace
 }  // namespace diagnostics

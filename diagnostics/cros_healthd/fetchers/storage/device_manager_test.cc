@@ -23,12 +23,9 @@
 #include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
-}  // namespace
 
 using testing::_;
 using testing::ByMove;
@@ -143,4 +140,5 @@ TEST(StorageDeviceManagerTest, NoRecreation) {
   }
 }
 
+}  // namespace
 }  // namespace diagnostics

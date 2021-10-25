@@ -10,7 +10,6 @@
 #include "diagnostics/cros_healthd/routines/prime_search/prime_number_search.h"
 
 namespace diagnostics {
-
 namespace {
 
 using ::testing::Return;
@@ -26,8 +25,6 @@ class MockPrimeNumberSearchTest : public PrimeNumberSearch {
 
   MOCK_METHOD(bool, IsPrime, (uint64_t num), (const, override));
 };
-
-}  // namespace
 
 // Tests if different numbers are prime by using the IsPrime() calculation.
 TEST(PrimeNumberSearchTest, IsPrime) {
@@ -88,4 +85,5 @@ TEST(PrimeNumberSearchTest,
   EXPECT_FALSE(prime_search.Run());
 }
 
+}  // namespace
 }  // namespace diagnostics

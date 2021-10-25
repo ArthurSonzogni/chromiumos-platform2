@@ -20,7 +20,6 @@
 #include "mojo/network_health.mojom.h"
 
 namespace diagnostics {
-
 namespace {
 
 namespace network_health_ipc = chromeos::network_health::mojom;
@@ -124,8 +123,6 @@ class MockNetworkEventsObserver
  private:
   mojo::Receiver<network_health_ipc::NetworkEventsObserver> receiver_;
 };
-
-}  // namespace
 
 class NetworkHealthAdapterImplTest : public testing::Test {
  protected:
@@ -268,4 +265,5 @@ TEST_F(NetworkHealthAdapterImplTest, RemoteBoundCheck) {
   EXPECT_TRUE(network_health_adapter()->ServiceRemoteBound());
 }
 
+}  // namespace
 }  // namespace diagnostics

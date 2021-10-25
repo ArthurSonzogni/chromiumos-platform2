@@ -11,7 +11,6 @@
 #include "diagnostics/common/file_test_utils.h"
 
 namespace diagnostics {
-
 namespace {
 
 // Production instances will use a root directory of "/".
@@ -19,8 +18,6 @@ constexpr char kProductionRootDir[] = "/";
 
 // Logical ID to test with.
 constexpr char kLogicalId[] = "13";
-
-}  // namespace
 
 TEST(CpuFileHelpers, GetCpuDirectoryPath) {
   const auto cpu_dir = GetCpuDirectoryPath(base::FilePath(kProductionRootDir));
@@ -59,4 +56,5 @@ TEST(CpuFileHelpers, GetCpuFreqDirectoryPath) {
   EXPECT_EQ(freq_dir, temp_dir.GetPath().Append(cpufreq_path));
 }
 
+}  // namespace
 }  // namespace diagnostics

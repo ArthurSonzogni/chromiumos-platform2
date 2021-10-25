@@ -15,6 +15,7 @@
 #include "diagnostics/cros_healthd/system/mock_context.h"
 
 namespace diagnostics {
+namespace {
 
 using ::chromeos::cros_healthd::mojom::ErrorType;
 using ::testing::_;
@@ -23,8 +24,6 @@ using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 using ::testing::WithArg;
-
-namespace {
 
 const brillo::VariantDictionary kInactiveOutputDevice = {
     {cras::kNameProperty, std::string("Inactive output device")},
@@ -55,8 +54,6 @@ struct GetVolumeStateOutput {
   bool input_mute;
   bool output_user_mute;
 };
-
-}  // namespace
 
 class AudioFetcherTest : public ::testing::Test {
  protected:
@@ -191,4 +188,5 @@ TEST_F(AudioFetcherTest, FetchAudioInfoGetNodeInfosFail) {
   EXPECT_EQ(audio_result->get_error()->type, ErrorType::kSystemUtilityError);
 }
 
+}  // namespace
 }  // namespace diagnostics

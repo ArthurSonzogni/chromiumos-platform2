@@ -8,6 +8,7 @@
 #include "diagnostics/dpsl/public/dpsl_global_context.h"
 
 namespace diagnostics {
+namespace {
 
 class DpslGlobalContextImplDeathTest : public testing::Test {
  public:
@@ -31,4 +32,5 @@ TEST_F(DpslGlobalContextImplDeathTest, CreateAndSave) {
                "Duplicate DpslGlobalContext instances");
 }
 
+}  // namespace
 }  // namespace diagnostics

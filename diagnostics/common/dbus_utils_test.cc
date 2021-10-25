@@ -10,12 +10,11 @@
 #include <gtest/gtest.h>
 
 namespace diagnostics {
-
 namespace {
+
 const int TEST_INT = 42;
 const float TEST_FLOAT = 3.14;
 const auto TEST_ERR = brillo::Error::Create(base::Location(), "", "", "");
-}  // namespace
 
 class MockHandler {
  public:
@@ -40,4 +39,5 @@ TEST(DbusUtilsTest, SplitBusCallbackOnError) {
   std::move(on_error).Run(TEST_ERR.get());
 }
 
+}  // namespace
 }  // namespace diagnostics

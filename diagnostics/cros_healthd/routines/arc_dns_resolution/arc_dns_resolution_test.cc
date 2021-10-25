@@ -28,7 +28,6 @@ using testing::WithArg;
 using testing::WithParamInterface;
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -39,8 +38,6 @@ struct ArcDnsResolutionProblemTestParams {
   network_diagnostics_ipc::ArcDnsResolutionProblem problem_enum;
   std::string failure_message;
 };
-
-}  // namespace
 
 class ArcDnsResolutionRoutineTest : public testing::Test {
  protected:
@@ -166,4 +163,5 @@ INSTANTIATE_TEST_SUITE_P(
             network_diagnostics_ipc::ArcDnsResolutionProblem::kFailedDnsQueries,
             kArcDnsResolutionRoutineFailedDnsQueriesMessage}));
 
+}  // namespace
 }  // namespace diagnostics

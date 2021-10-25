@@ -14,7 +14,6 @@
 #include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -35,8 +34,6 @@ constexpr char kFakeEGLVersion[] = "1.4";
 constexpr char kFakeEGLVendor[] = "Mesa Project";
 constexpr char kFakeEGLClientApi[] = "OpenGL OpenGL_ES";
 constexpr char kFakeEGLExtensions[] = "ext3 ext4";
-
-}  // namespace
 
 class MockEglManager final : public EglManager {
  public:
@@ -109,4 +106,5 @@ TEST_F(GraphicsFetcherTest, FetchGraphicsInfo) {
   EXPECT_EQ(info->egl_info->extensions, expected_egl_extensions);
 }
 
+}  // namespace
 }  // namespace diagnostics

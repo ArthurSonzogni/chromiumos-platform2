@@ -10,7 +10,6 @@
 #include "diagnostics/cros_healthd/system/mock_context.h"
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -243,5 +242,4 @@ TEST_F(MemoryFetcherTest,
 }
 
 }  // namespace
-
 }  // namespace diagnostics

@@ -21,9 +21,9 @@
 #include "mojo/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
 namespace {
+
+namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 using ::testing::UnorderedElementsAreArray;
 
@@ -73,8 +73,6 @@ power_manager::PowerSupplyProperties GetDefaultPowerSupplyProperties() {
   power_supply_proto.set_battery_charge(kFakeChargeNow);
   return power_supply_proto;
 }
-
-}  // namespace
 
 class BatteryHealthRoutineTest : public testing::Test {
  protected:
@@ -245,4 +243,5 @@ TEST_F(BatteryHealthRoutineTest, PowerdError) {
                              kPowerdPowerSupplyPropertiesFailedMessage);
 }
 
+}  // namespace
 }  // namespace diagnostics

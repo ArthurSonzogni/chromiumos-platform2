@@ -13,6 +13,7 @@
 #include <mojo/public/cpp/system/handle.h>
 
 namespace diagnostics {
+namespace {
 
 TEST(MojoUtilsTest, CreateMojoHandleAndRetrieveContent) {
   const base::StringPiece content("{\"key\": \"value\"}");
@@ -45,4 +46,5 @@ TEST(MojoUtilsTest, CreateReadOnlySharedMemoryFromEmptyContent) {
   EXPECT_FALSE(handle.is_valid());
 }
 
+}  // namespace
 }  // namespace diagnostics

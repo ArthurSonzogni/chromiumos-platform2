@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 
 namespace diagnostics {
+namespace {
 
 TEST(HelperUtilsTest, GetHelperPath) {
   std::string full_path;
@@ -20,4 +21,5 @@ TEST(HelperUtilsTest, GetHelperPath) {
   EXPECT_EQ("/usr/libexec/healthd/helpers/test/me", full_path);
 }
 
+}  // namespace
 }  // namespace diagnostics

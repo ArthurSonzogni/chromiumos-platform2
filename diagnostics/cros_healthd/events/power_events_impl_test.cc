@@ -21,7 +21,6 @@
 #include "mojo/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -48,8 +47,6 @@ class MockCrosHealthdPowerObserver : public mojo_ipc::CrosHealthdPowerObserver {
  private:
   mojo::Receiver<mojo_ipc::CrosHealthdPowerObserver> receiver_;
 };
-
-}  // namespace
 
 // Tests for the PowerEventsImpl class.
 class PowerEventsImplTest : public testing::Test {
@@ -235,4 +232,5 @@ TEST_F(PowerEventsImplTest, UnsubscribeFromPowerdAdapterWhenAllObserversLost) {
   EXPECT_FALSE(fake_adapter()->HasPowerObserver(power_events_impl()));
 }
 
+}  // namespace
 }  // namespace diagnostics

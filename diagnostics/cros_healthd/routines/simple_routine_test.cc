@@ -18,7 +18,6 @@
 #include "mojo/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -70,8 +69,6 @@ void FakeRoutineTask(mojo_ipc::DiagnosticRoutineStatusEnum status_in,
   *status_message_out = std::move(status_message_in);
   output_dict_out->MergeDictionary(&output_dict_in);
 }
-
-}  // namespace
 
 class SimpleRoutineTest : public testing::Test {
  protected:
@@ -218,4 +215,5 @@ INSTANTIATE_TEST_SUITE_P(
         ReportProgressPercentTestParams{
             mojo_ipc::DiagnosticRoutineStatusEnum::kNotRun, 0}));
 
+}  // namespace
 }  // namespace diagnostics

@@ -26,7 +26,6 @@ using ::testing::SaveArg;
 using ::testing::StrictMock;
 
 namespace diagnostics {
-
 namespace {
 
 using AdapterData = BluetoothEventService::AdapterData;
@@ -85,15 +84,6 @@ class MockBluetoothEventServiceObserver
               (const std::vector<AdapterData>&),
               (override));
 };
-
-}  // namespace
-
-std::ostream& operator<<(std::ostream& out, const AdapterData& d) {
-  out << "name: " << d.name << " address: " << d.address
-      << " powered: " << d.powered
-      << " connected_devices: " << d.connected_devices_count;
-  return out;
-}
 
 class BluetoothEventServiceImplTest : public ::testing::Test {
  public:
@@ -452,4 +442,5 @@ TEST_F(BluetoothEventServiceImplTest, RemoveAdapterWithConnectedDevice) {
                                               true /* powered */));
 }
 
+}  // namespace
 }  // namespace diagnostics

@@ -66,8 +66,6 @@ class MockCrosHealthdThunderboltObserver
   mojo::Receiver<mojo_ipc::CrosHealthdThunderboltObserver> receiver_;
 };
 
-}  // namespace
-
 class UdevEventsImplTest : public BaseFileTest {
  public:
   UdevEventsImplTest()
@@ -173,4 +171,5 @@ TEST_F(UdevEventsImplTest, TestThunderboltUnAuthorizedEvent) {
   run_loop.Run();
 }
 
+}  // namespace
 }  // namespace diagnostics

@@ -13,14 +13,11 @@
 #include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 constexpr char kFakeRoot[] = "cros_healthd/fetchers/storage/testdata/";
-
-}  //  namespace
 
 TEST(StorageDeviceResolverTest, GoodData) {
   auto resolver_or =
@@ -42,4 +39,5 @@ TEST(StorageDeviceResolverTest, MissingFile) {
   ASSERT_FALSE(resolver_or.ok());
 }
 
+}  // namespace
 }  // namespace diagnostics

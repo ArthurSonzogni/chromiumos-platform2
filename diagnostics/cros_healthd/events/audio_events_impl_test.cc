@@ -21,7 +21,6 @@
 #include "mojo/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
-
 namespace {
 
 using ::testing::_;
@@ -48,8 +47,6 @@ class MockAudioObserver
   mojo::Receiver<chromeos::cros_healthd::mojom::CrosHealthdAudioObserver>
       receiver_;
 };
-
-}  // namespace
 
 // Tests for the AudioEventsImpl class.
 class AudioEventsImplTest : public testing::Test {
@@ -112,4 +109,5 @@ TEST_F(AudioEventsImplTest, SevereUnderrunEvent) {
   run_loop.Run();
 }
 
+}  // namespace
 }  // namespace diagnostics

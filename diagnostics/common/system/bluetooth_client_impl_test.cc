@@ -30,7 +30,6 @@ using ::testing::SaveArg;
 using ::testing::StrictMock;
 
 namespace diagnostics {
-
 namespace {
 
 const dbus::ObjectPath kAdapterPath("/org/bluez/hci0");
@@ -95,8 +94,6 @@ class MockBluetoothClientObserver : public BluetoothClient::Observer {
               (const dbus::ObjectPath& object_path,
                const BluetoothClient::DeviceProperties& properties));
 };
-
-}  // namespace
 
 class BluetoothClientImplTest : public ::testing::Test {
  public:
@@ -547,4 +544,5 @@ TEST_F(BluetoothClientImplTest, AddAndRemoveObserver) {
       kAdapterPath, bluetooth_adapter::kBluetoothAdapterInterface);
 }
 
+}  // namespace
 }  // namespace diagnostics

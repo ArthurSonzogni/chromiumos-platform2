@@ -26,7 +26,6 @@
 #include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -215,8 +214,6 @@ void VerifyCpuTemps(
           {MatchesCpuTemperatureChannelPtr(std::cref(first_expected_temp)),
            MatchesCpuTemperatureChannelPtr(std::cref(second_expected_temp))}));
 }
-
-}  // namespace
 
 class CpuFetcherTest : public testing::Test {
  protected:
@@ -784,4 +781,5 @@ INSTANTIATE_TEST_SUITE_P(
         ParseCpuArchitectureTestParams{
             "Unknown uname machine", mojo_ipc::CpuArchitectureEnum::kUnknown}));
 
+}  // namespace
 }  // namespace diagnostics

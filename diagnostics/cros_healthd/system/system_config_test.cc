@@ -19,15 +19,12 @@ using ::testing::ByMove;
 using ::testing::Return;
 
 namespace diagnostics {
-
 namespace {
 
 // Fake marketing name used for testing cros config.
 constexpr char kFakeMarketingName[] = "chromebook X 1234";
 // Fake code name used for testing cros config.
 constexpr char kFakeCodeName[] = "CodeName";
-
-}  // namespace
 
 class SystemConfigTest : public ::testing::Test {
  protected:
@@ -196,4 +193,5 @@ TEST_F(SystemConfigTest, CodeNameUnset) {
   EXPECT_EQ(system_config()->GetCodeName(), "");
 }
 
+}  // namespace
 }  // namespace diagnostics

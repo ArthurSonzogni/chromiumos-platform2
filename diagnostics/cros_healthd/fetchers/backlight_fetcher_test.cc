@@ -17,7 +17,6 @@
 #include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
-
 namespace {
 
 using ::chromeos::cros_healthd::mojom::BacklightInfo;
@@ -52,8 +51,6 @@ MATCHER_P(MatchesBacklightInfoPtr, ptr, "") {
          arg->max_brightness == ptr.get()->max_brightness &&
          arg->brightness == ptr.get()->brightness;
 }
-
-}  // namespace
 
 class BacklightUtilsTest : public ::testing::Test {
  protected:
@@ -221,4 +218,5 @@ TEST_F(BacklightUtilsTest, TestCrosConfigReportsNoBacklight) {
   EXPECT_EQ(backlight_result->get_backlight_info().size(), 0);
 }
 
+}  // namespace
 }  // namespace diagnostics

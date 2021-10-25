@@ -23,6 +23,7 @@
 #include "diagnostics/dpsl/public/dpsl_thread_context.h"
 
 namespace diagnostics {
+namespace {
 
 class DpslThreadContextImplBaseTest : public testing::Test {
  public:
@@ -317,4 +318,5 @@ TEST_F(DpslThreadContextImplMultiThreadDeathTest, DestructorCrash) {
   ASSERT_DEATH(delete background_thread_context(), "Called from wrong thread");
 }
 
+}  // namespace
 }  // namespace diagnostics

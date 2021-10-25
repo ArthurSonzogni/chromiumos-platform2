@@ -10,6 +10,7 @@
 #include "diagnostics/cros_healthd/fetchers/storage/emmc_device_adapter.h"
 
 namespace diagnostics {
+namespace {
 
 TEST(EmmcDeviceAdapterTest, OkData) {
   constexpr char kPath[] =
@@ -83,4 +84,5 @@ TEST(EmmcDeviceAdapterTest, NoData) {
             adapter.GetFirmwareVersion().status().code());
 }
 
+}  // namespace
 }  // namespace diagnostics

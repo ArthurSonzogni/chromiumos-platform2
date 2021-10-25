@@ -51,7 +51,6 @@ using testing::UnorderedElementsAre;
 using testing::WithArgs;
 
 namespace diagnostics {
-
 namespace {
 
 using DelegateWebRequestHttpMethod =
@@ -1768,5 +1767,4 @@ INSTANTIATE_TEST_SUITE_P(
             DelegateDriveSystemDataType::kIdentityAttributes)));
 
 }  // namespace
-
 }  // namespace diagnostics

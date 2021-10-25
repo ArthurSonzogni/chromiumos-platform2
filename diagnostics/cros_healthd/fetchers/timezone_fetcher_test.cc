@@ -15,7 +15,6 @@
 #include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -75,5 +74,4 @@ TEST_F(TimezoneFetcherTest, TestGetTimezoneFailure) {
 }
 
 }  // namespace
-
 }  // namespace diagnostics

@@ -10,6 +10,7 @@
 #include "diagnostics/cros_healthd/fetchers/storage/default_device_adapter.h"
 
 namespace diagnostics {
+namespace {
 
 TEST(DefaultDeviceAdapterTest, ModelFile) {
   constexpr char kPath[] =
@@ -85,4 +86,5 @@ TEST(DefaultDeviceAdapterTest, NoData) {
   EXPECT_EQ(0, adapter.GetFirmwareVersion().value().get_other());
 }
 
+}  // namespace
 }  // namespace diagnostics

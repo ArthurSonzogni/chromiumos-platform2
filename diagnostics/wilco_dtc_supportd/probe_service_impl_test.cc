@@ -24,9 +24,9 @@ using testing::Return;
 using testing::StrictMock;
 
 namespace diagnostics {
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
 namespace {
+
+namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 class MockCallback {
  public:
@@ -53,8 +53,6 @@ class MockProbeServiceDelegate : public ProbeService::Delegate {
               (mojo::PendingReceiver<mojo_ipc::CrosHealthdProbeService>),
               (override));
 };
-
-}  // namespace
 
 // Tests for the ProbeServiceImpl class.
 class ProbeServiceImplTest : public testing::Test {
@@ -208,4 +206,5 @@ TEST_F(ProbeServiceImplTest, ProbeTelemetryInfo) {
   run_loop.Run();
 }
 
+}  // namespace
 }  // namespace diagnostics

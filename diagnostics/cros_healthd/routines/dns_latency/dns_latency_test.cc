@@ -28,7 +28,6 @@ using testing::WithArg;
 using testing::WithParamInterface;
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -39,8 +38,6 @@ struct DnsLatencyProblemTestParams {
   network_diagnostics_ipc::DnsLatencyProblem problem_enum;
   std::string failure_message;
 };
-
-}  // namespace
 
 class DnsLatencyRoutineTest : public testing::Test {
  protected:
@@ -157,4 +154,5 @@ INSTANTIATE_TEST_SUITE_P(
                 kSignificantlyAboveThreshold,
             kDnsLatencyRoutineSignificantlyAboveThresholdProblemMessage}));
 
+}  // namespace
 }  // namespace diagnostics

@@ -19,7 +19,6 @@
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_utils.h"
 
 namespace diagnostics {
-
 namespace {
 
 using testing::_;
@@ -136,8 +135,6 @@ class MockNetworkDiagnosticsRoutines final
  private:
   mojo::Receiver<network_diagnostics_ipc::NetworkDiagnosticsRoutines> receiver_;
 };
-
-}  // namespace
 
 class NetworkDiagnosticsAdapterImplTest : public testing::Test {
  protected:
@@ -888,4 +885,5 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RemoteBoundCheck) {
   EXPECT_TRUE(network_diagnostics_adapter()->ServiceRemoteBound());
 }
 
+}  // namespace
 }  // namespace diagnostics

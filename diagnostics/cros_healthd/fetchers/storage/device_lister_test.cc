@@ -18,12 +18,9 @@ using testing::Return;
 using testing::UnorderedElementsAre;
 
 namespace diagnostics {
-
 namespace {
 
 constexpr char kFakeRoot[] = "cros_healthd/fetchers/storage/testdata/";
-
-}
 
 TEST(StorageDeviceListerTest, EmmcRoot) {
   auto mock_platform = std::make_unique<MockPlatform>();
@@ -51,4 +48,5 @@ TEST(StorageDeviceListerTest, NvmeRoot) {
                                            "model_file_test"));
 }
 
+}  // namespace
 }  // namespace diagnostics

@@ -19,6 +19,7 @@
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
 namespace diagnostics {
+namespace {
 
 using ::chromeos::cros_healthd::mojom::ErrorType;
 using ::testing::_;
@@ -26,8 +27,6 @@ using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::WithArg;
-
-namespace {
 
 // Arbitrary test values for the various battery metrics.
 constexpr power_manager::PowerSupplyProperties_BatteryState kBatteryStateFull =
@@ -56,8 +55,6 @@ constexpr char kBatteryStatus[] = "Discharging";
 // Timeouts for the Debugd D-Bus calls. Note that D-Bus is mocked out in the
 // test, but the timeouts are still part of the mock calls.
 constexpr int kDebugdTimeOut = 10 * 1000;
-
-}  // namespace
 
 class BatteryFetcherTest : public ::testing::Test {
  protected:
@@ -253,4 +250,5 @@ TEST_F(BatteryFetcherTest, NoBattery) {
   ASSERT_TRUE(battery_result->get_battery_info().is_null());
 }
 
+}  // namespace
 }  // namespace diagnostics

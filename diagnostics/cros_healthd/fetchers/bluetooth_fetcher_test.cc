@@ -17,7 +17,6 @@
 #include "diagnostics/cros_healthd/system/mock_context.h"
 
 namespace diagnostics {
-
 namespace {
 
 using ::testing::Return;
@@ -48,8 +47,6 @@ std::unique_ptr<BluetoothClient::DeviceProperties> GetDeviceProperties() {
   properties->adapter.set_valid(true);
   return properties;
 }
-
-}  // namespace
 
 class BluetoothUtilsTest : public ::testing::Test {
  protected:
@@ -182,4 +179,5 @@ TEST_F(BluetoothUtilsTest, DisconnectedDevice) {
   EXPECT_EQ(adapter_info[0]->num_connected_devices, 0);
 }
 
+}  // namespace
 }  // namespace diagnostics

@@ -12,7 +12,6 @@
 #include "diagnostics/common/file_test_utils.h"
 
 namespace diagnostics {
-
 namespace {
 
 // Production instances will use a root directory of "/".
@@ -20,8 +19,6 @@ constexpr char kProductionRootDir[] = "/";
 
 // Process ID to test with.
 constexpr pid_t kProcessId = 42;
-
-}  // namespace
 
 TEST(ProcfsUtilsTest, GetProcProcessDirectoryPath) {
   const auto process_dir = GetProcProcessDirectoryPath(
@@ -46,4 +43,5 @@ TEST(ProcfsUtilsTest, GetProcUptimePath) {
   EXPECT_EQ(uptime_path.value(), "/proc/uptime");
 }
 
+}  // namespace
 }  // namespace diagnostics

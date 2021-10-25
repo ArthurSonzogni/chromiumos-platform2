@@ -25,14 +25,13 @@ using testing::StrictMock;
 using testing::WithArg;
 
 namespace diagnostics {
+namespace {
+
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
-namespace {
 // Success message from controller if launching is completed without errors.
 constexpr char kStartSuccess[] = "Device self-test started";
 constexpr char kNvmeError[] = "NVMe Status:Unknown";
-
-}  // namespace
 
 class NvmeSelfTestRoutineTest : public testing::Test {
  protected:
@@ -501,4 +500,5 @@ TEST_F(NvmeSelfTestRoutineTest, DebugdErrorForGettingProgress) {
                              kDebugdErrorMessage);
 }
 
+}  // namespace
 }  // namespace diagnostics

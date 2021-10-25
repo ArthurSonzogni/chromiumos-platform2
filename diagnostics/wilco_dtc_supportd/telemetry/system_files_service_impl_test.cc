@@ -22,17 +22,15 @@
 using testing::AnyOf;
 using testing::StrEq;
 
+namespace diagnostics {
 namespace {
+
 std::string FakeFileContents() {
   constexpr char kFakeFileContents[] = "test1 \0 Œ test2/test3 \0 Ö";
 
   return std::string(std::begin(kFakeFileContents),
                      std::end(kFakeFileContents));
 }
-}  // namespace
-
-namespace diagnostics {
-
 // Tests for SystemFilesService
 class SystemFilesServiceTest : public testing::Test {
  public:
@@ -499,4 +497,5 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple(SystemFilesService::VpdField::kUuid,
                                     "run/wilco_dtc/vpd_fields/uuid_id")));
 
+}  // namespace
 }  // namespace diagnostics

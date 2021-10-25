@@ -28,7 +28,6 @@ using testing::WithArg;
 using testing::WithParamInterface;
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -39,8 +38,6 @@ struct ArcPingProblemTestParams {
   network_diagnostics_ipc::ArcPingProblem problem_enum;
   std::string failure_message;
 };
-
-}  // namespace
 
 class ArcPingRoutineTest : public testing::Test {
  protected:
@@ -176,4 +173,5 @@ INSTANTIATE_TEST_SUITE_P(
                 kNonDefaultNetworksAboveLatencyThreshold,
             kArcPingRoutineNonDefaultNetworksAboveLatencyThresholdMessage}));
 
+}  // namespace
 }  // namespace diagnostics

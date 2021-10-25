@@ -31,7 +31,6 @@ using testing::WithArg;
 using testing::WithParamInterface;
 
 namespace diagnostics {
-
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -42,8 +41,6 @@ struct VideoConferencingProblemTestParams {
   std::vector<network_diagnostics_ipc::VideoConferencingProblem> problems;
   std::string failure_message;
 };
-
-}  // namespace
 
 class VideoConferencingRoutineTest : public testing::Test {
  protected:
@@ -198,4 +195,5 @@ INSTANTIATE_TEST_SUITE_P(
                 std::string("\n") +
                 kVideoConferencingRoutineMediaFailureProblemMessage}));
 
+}  // namespace
 }  // namespace diagnostics

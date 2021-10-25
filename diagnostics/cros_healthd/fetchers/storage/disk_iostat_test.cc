@@ -8,6 +8,7 @@
 #include "diagnostics/cros_healthd/fetchers/storage/disk_iostat.h"
 
 namespace diagnostics {
+namespace {
 
 // Tests that all fields 4.18+ kernel are populated.
 TEST(DiskIoStat, Extended) {
@@ -60,4 +61,5 @@ TEST(DiskIoStat, WrongFormat) {
   EXPECT_EQ(StatusCode::kInvalidArgument, status.code());
 }
 
+}  // namespace
 }  // namespace diagnostics

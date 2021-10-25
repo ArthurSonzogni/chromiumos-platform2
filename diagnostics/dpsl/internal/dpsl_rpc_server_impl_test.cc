@@ -36,7 +36,6 @@ using testing::ReturnRef;
 using testing::StrictMock;
 
 namespace diagnostics {
-
 namespace {
 
 constexpr DpslRpcServer::GrpcServerUri kGrpcServerUriInvalidValue =
@@ -102,8 +101,6 @@ class MockDpslRpcHandler : public DpslRpcHandler {
               HandleBluetoothDataChangedImpl,
               (const grpc_api::HandleBluetoothDataChangedRequest& request));
 };
-
-}  // namespace
 
 class DpslRpcServerImplBaseTest : public testing::Test {
  public:
@@ -399,4 +396,5 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(DpslRpcServer::GrpcServerUri::kVmVsock,
                     DpslRpcServer::GrpcServerUri::kUiMessageReceiverVmVsock));
 
+}  // namespace
 }  // namespace diagnostics

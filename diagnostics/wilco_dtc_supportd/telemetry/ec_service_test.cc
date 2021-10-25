@@ -25,7 +25,6 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/ec_service_test_utils.h"
 
 namespace diagnostics {
-
 namespace {
 
 using testing::_;
@@ -188,5 +187,4 @@ TEST_F(StartedEcServiceTest, ReadManyEvent) {
 }
 
 }  // namespace
-
 }  // namespace diagnostics
