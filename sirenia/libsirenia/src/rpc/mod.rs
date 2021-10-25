@@ -143,9 +143,10 @@ impl<H: MessageHandler + 'static> SingleRpcConnectionHandler<H> {
 
 impl<H: MessageHandler + 'static> ConnectionHandler for SingleRpcConnectionHandler<H> {
     fn handle_incoming_connection(&mut self, connection: Transport) -> Option<Box<dyn Mutator>> {
-        Some(Box::new(AddEventSourceMutator(Some(Box::new(
-            RpcDispatcher::new(self.handler.clone(), connection),
-        )))))
+        Some(Box::new(AddEventSourceMutator::from(RpcDispatcher::new(
+            self.handler.clone(),
+            connection,
+        ))))
     }
 }
 

@@ -161,7 +161,13 @@ impl EventMultiplexer {
 }
 
 /// Adds the specified EventSource from the EventMultiplexer when the mutator is executed.
-pub struct AddEventSourceMutator(pub Option<Box<dyn EventSource>>);
+pub struct AddEventSourceMutator(Option<Box<dyn EventSource>>);
+
+impl<E: 'static + EventSource> From<E> for AddEventSourceMutator {
+    fn from(event_source: E) -> Self {
+        AddEventSourceMutator(Some(Box::new(event_source)))
+    }
+}
 
 impl Mutator for AddEventSourceMutator {
     fn mutate(&mut self, event_loop: &mut EventMultiplexer) -> StdResult<(), String> {
