@@ -160,6 +160,15 @@ const char WPASupplicant::kSecurityMethodPropertyKeyManagement[] = "KeyMgmt";
 const char WPASupplicant::kSecurityModeRSN[] = "RSN";
 const char WPASupplicant::kSecurityModeWPA[] = "WPA";
 
+const char WPASupplicant::kCredentialsPropertyDomain[] = "domain";
+const char WPASupplicant::kCredentialsPropertyRealm[] = "realm";
+const char WPASupplicant::kCredentialsPropertyRoamingConsortium[] =
+    "roaming_consortium";
+const char WPASupplicant::kCredentialsPropertyRequiredRoamingConsortium[] =
+    "required_roaming_consortium";
+const char WPASupplicant::kCredentialsPropertyRoamingConsortiums[] =
+    "roaming_consortiums";
+
 const char WPASupplicant::kInterfaceCapabilityMaxScanSSID[] = "MaxScanSSID";
 
 const char WPASupplicant::kFlagDisableEapTLS1p1[] = "tls_disable_tlsv1_1=1";

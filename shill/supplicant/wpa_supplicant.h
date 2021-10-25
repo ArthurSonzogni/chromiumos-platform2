@@ -153,6 +153,12 @@ class WPASupplicant {
   static const char kSecurityModeRSN[];
   static const char kSecurityModeWPA[];
 
+  static const char kCredentialsPropertyDomain[];
+  static const char kCredentialsPropertyRealm[];
+  static const char kCredentialsPropertyRoamingConsortium[];
+  static const char kCredentialsPropertyRequiredRoamingConsortium[];
+  static const char kCredentialsPropertyRoamingConsortiums[];
+
   static const char kInterfaceCapabilityMaxScanSSID[];
 
   static const char kFlagDisableEapTLS1p1[];

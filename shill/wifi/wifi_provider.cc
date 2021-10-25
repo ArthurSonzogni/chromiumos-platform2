@@ -651,16 +651,44 @@ void WiFiProvider::AddCredentials(
     const PasspointCredentialsRefPtr& credentials) {
   credentials_by_id_[credentials->id()] = credentials;
 
-  // TODO(b/162106001) push the credentials to supplicant to allow
-  // interworking matches.
+  DeviceRefPtr device =
+      manager_->GetEnabledDeviceWithTechnology(Technology::kWifi);
+  if (!device) {
+    return;
+  }
+  // We can safely do this because GetEnabledDeviceWithTechnology ensures
+  // the type of the device is WiFi.
+  WiFiRefPtr wifi(static_cast<WiFi*>(device.get()));
+  if (!wifi->AddCred(credentials)) {
+    SLOG(this, 1) << "Failed to push credentials " << credentials->id()
+                  << " to device.";
+  }
 }
 
 void WiFiProvider::RemoveCredentials(
     const PasspointCredentialsRefPtr& credentials) {
   credentials_by_id_.erase(credentials->id());
 
-  // TODO(b/162106001) removes the credentials from supplicant to stop
-  // interworking matches with it.
+  DeviceRefPtr device =
+      manager_->GetEnabledDeviceWithTechnology(Technology::kWifi);
+  if (!device) {
+    return;
+  }
+  // We can safely do this because GetEnabledDeviceWithTechnology ensures
+  // the type of the device is WiFi.
+  WiFiRefPtr wifi(static_cast<WiFi*>(device.get()));
+  if (!wifi->RemoveCred(credentials)) {
+    SLOG(this, 1) << "Failed to remove credentials " << credentials->id()
+                  << " from the device.";
+  }
+}
+
+std::vector<PasspointCredentialsRefPtr> WiFiProvider::GetCredentials() {
+  std::vector<PasspointCredentialsRefPtr> list;
+  for (const auto& [_, c] : credentials_by_id_) {
+    list.push_back(c);
+  }
+  return list;
 }
 
 Metrics* WiFiProvider::metrics() const {

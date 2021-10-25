@@ -228,6 +228,12 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   mockable int16_t GetSignalLevelForActiveService();
 
+  // Add a set of Passpoint credentials to WPA supplicant.
+  bool AddCred(const PasspointCredentialsRefPtr& credentials);
+
+  // Removes a set of Passpoint credentials from WPA supplicant.
+  bool RemoveCred(const PasspointCredentialsRefPtr& credentials);
+
  private:
   enum ScanMethod { kScanMethodNone, kScanMethodFull };
   enum ScanState {

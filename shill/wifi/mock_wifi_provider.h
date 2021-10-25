@@ -5,8 +5,11 @@
 #ifndef SHILL_WIFI_MOCK_WIFI_PROVIDER_H_
 #define SHILL_WIFI_MOCK_WIFI_PROVIDER_H_
 
+#include <vector>
+
 #include <gmock/gmock.h>
 
+#include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_provider.h"
 
@@ -64,6 +67,10 @@ class MockWiFiProvider : public WiFiProvider {
   MOCK_METHOD(void,
               RemoveCredentials,
               (const PasspointCredentialsRefPtr&),
+              (override));
+  MOCK_METHOD(std::vector<PasspointCredentialsRefPtr>,
+              GetCredentials,
+              (),
               (override));
 };
 

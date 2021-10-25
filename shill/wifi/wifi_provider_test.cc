@@ -271,6 +271,21 @@ class WiFiProviderTest : public testing::Test {
     }
     return provider_.credentials_by_id_[id];
   }
+  std::string AddCredentialsToProvider(
+      const std::vector<std::string>& domains,
+      const std::string& realm,
+      const std::vector<uint64_t>& home_ois,
+      const std::vector<uint64_t>& required_home_ois,
+      const std::vector<uint64_t>& roaming_consortia,
+      bool metered_override,
+      const std::string& app_package_name) {
+    std::string id = PasspointCredentials::GenerateIdentifier();
+    PasspointCredentialsRefPtr creds = new PasspointCredentials(
+        id, domains, realm, home_ois, required_home_ois, roaming_consortia,
+        metered_override, app_package_name);
+    provider_.AddCredentials(creds);
+    return id;
+  }
 
   MockControl control_;
   EventDispatcherForTest dispatcher_;
@@ -1503,6 +1518,10 @@ TEST_F(WiFiProviderTest, LoadCredentialsFromProfileAndCheckContent) {
   std::vector<uint64_t> roaming_consortia{0x1010101010, 0x2020202020};
   std::string app_name("com.sp-blue.app");
 
+  EXPECT_CALL(manager_, GetEnabledDeviceWithTechnology(_))
+      .Times(2)
+      .WillRepeatedly(Return(nullptr));
+
   // Add credentials to the user profile.
   std::string id = AddCredentialsToProfileStorage(
       user_profile_.get(), domains, realm, home_ois, required_home_ois,
@@ -1533,6 +1552,11 @@ TEST_F(WiFiProviderTest, LoadUnloadCredentialsFromProfile) {
   std::string realm("sp-blue.com");
   std::vector<uint64_t> ois{0x123456789, 0x65798731, 0x1};
   std::string app_name("com.sp-blue.app");
+
+  // We expect: two adds and two removes
+  EXPECT_CALL(manager_, GetEnabledDeviceWithTechnology(_))
+      .Times(4)
+      .WillRepeatedly(Return(nullptr));
 
   // Add credentials to both Profiles.
   std::string id_default =
@@ -1565,6 +1589,35 @@ TEST_F(WiFiProviderTest, LoadUnloadCredentialsFromProfile) {
   EXPECT_TRUE(GetCredentials(id_default) != nullptr);
   provider_.UnloadCredentialsFromProfile(default_profile_.get());
   EXPECT_TRUE(GetCredentials(id_default) == nullptr);
+}
+
+TEST_F(WiFiProviderTest, AddRemoveCredentials) {
+  std::vector<std::string> domains{"sp-red.com", "sp-blue.com"};
+  std::string realm("sp-red.com");
+  std::vector<uint64_t> ois{0x1122334455, 0x97643165, 0x30};
+  std::string app_name("com.sp-red.app");
+
+  // We expect two calls, one during add, one during remove.
+  EXPECT_CALL(manager_, GetEnabledDeviceWithTechnology(_))
+      .Times(2)
+      .WillRepeatedly(Return(nullptr));
+
+  // Add a set of credentials.
+  std::string id =
+      AddCredentialsToProvider(domains, realm, ois, ois, ois, false, app_name);
+  PasspointCredentialsRefPtr creds = GetCredentials(id);
+  EXPECT_TRUE(creds != nullptr);
+
+  // Check it is present
+  std::vector<PasspointCredentialsRefPtr> list = provider_.GetCredentials();
+  EXPECT_EQ(1, list.size());
+  EXPECT_EQ(creds, list[0]);
+
+  // Remove the set of credentials
+  list.clear();
+  provider_.RemoveCredentials(creds);
+  list = provider_.GetCredentials();
+  EXPECT_EQ(0, list.size());
 }
 
 }  // namespace shill

@@ -15,6 +15,7 @@
 #include "shill/key_value_store.h"
 #include "shill/profile.h"
 #include "shill/refptr_types.h"
+#include "shill/supplicant/wpa_supplicant.h"
 
 namespace shill {
 
@@ -303,6 +304,33 @@ TEST_F(PasspointCredentialsTest, Create) {
   EXPECT_EQ(kPackageName, creds->android_package_name());
   EXPECT_TRUE(creds->eap().IsConnectable());
   EXPECT_TRUE(creds->eap().use_system_cas());
+}
+
+TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {
+  const std::vector<std::string> domains{"blue-sp.example.com",
+                                         "green-sp.example.com"};
+  const std::string realm("blue-sp.example.com");
+  const std::vector<uint64_t> home_ois{0x1234, 0x5678};
+  const std::vector<uint64_t> required_home_ois{0xabcd, 0xcdef};
+  const std::vector<uint64_t> roaming_consortia{0x11111111, 0x22222222};
+
+  PasspointCredentialsRefPtr creds = new PasspointCredentials(
+      "an_id", domains, realm, home_ois, required_home_ois, roaming_consortia,
+      /*metered_override=*/false, "app_package_name");
+
+  KeyValueStore properties;
+  creds->ToSupplicantProperties(&properties);
+
+  EXPECT_EQ(domains[0], properties.Get<std::string>(
+                            WPASupplicant::kCredentialsPropertyDomain));
+  EXPECT_EQ(realm, properties.Get<std::string>(
+                       WPASupplicant::kCredentialsPropertyRealm));
+  // We expect the EAP method to be set, this is mandatory for supplicant to
+  // perform matches. Right now the value is unknown because the EAP properties
+  // can't be set with the constructor.
+  EXPECT_TRUE(
+      properties.Contains<std::string>(WPASupplicant::kNetworkPropertyEapEap));
+  // TODO(b/162106001) check home, required home and roaming consortium OIs
 }
 
 }  // namespace shill

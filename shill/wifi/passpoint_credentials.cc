@@ -9,12 +9,15 @@
 #include <vector>
 #include <uuid/uuid.h>
 
+#include "shill/data_types.h"
+#include "shill/dbus/dbus_control.h"
 #include "shill/eap_credentials.h"
 #include "shill/error.h"
 #include "shill/key_value_store.h"
 #include "shill/profile.h"
 #include "shill/refptr_types.h"
 #include "shill/store_interface.h"
+#include "shill/supplicant/wpa_supplicant.h"
 
 namespace shill {
 
@@ -38,10 +41,34 @@ PasspointCredentials::PasspointCredentials(
       metered_override_(metered_override),
       android_package_name_(android_package_name),
       id_(id),
-      profile_(nullptr) {}
+      profile_(nullptr),
+      supplicant_id_(DBusControl::NullRpcIdentifier()) {}
 
-void PasspointCredentials::SetProfile(const ProfileRefPtr& profile) {
-  profile_ = profile;
+void PasspointCredentials::ToSupplicantProperties(
+    KeyValueStore* properties) const {
+  CHECK(properties);
+  // A set of passpoint credentials is validated at insertion time in Shill,
+  // it is expected to be valid now.
+  CHECK(!domains_.empty() && !domains_[0].empty());
+  CHECK(!realm_.empty());
+
+  if (domains_.size() > 1) {
+    // TODO(b/162105998) add support for multiple domains in wpa_supplicant
+    // D-Bus interface.
+    LOG(WARNING) << "Passpoint credentials does not support multiple domains "
+                 << "yet, only the first one will be used.";
+  }
+  properties->Set<std::string>(WPASupplicant::kCredentialsPropertyDomain,
+                               domains_[0]);
+  properties->Set<std::string>(WPASupplicant::kCredentialsPropertyRealm,
+                               realm_);
+
+  // TODO(b/162106001) set the home, required home and roaming consortium OIs
+  // to the correct properties.
+
+  // Supplicant requires the EAP method for interworking selection.
+  properties->Set<std::string>(WPASupplicant::kNetworkPropertyEapEap,
+                               eap_.method());
 }
 
 void PasspointCredentials::Load(const StoreInterface* storage) {

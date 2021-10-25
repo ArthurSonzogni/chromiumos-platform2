@@ -26,6 +26,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
+#include "shill/dbus/dbus_control.h"
 #include "shill/dhcp/mock_dhcp_config.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/error.h"
@@ -68,9 +69,11 @@
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
+#include "shill/wifi/mock_passpoint_credentials.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi_provider.h"
 #include "shill/wifi/mock_wifi_service.h"
+#include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wake_on_wifi.h"
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_service.h"
@@ -671,6 +674,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
  protected:
   using MockWiFiServiceRefPtr = scoped_refptr<MockWiFiService>;
+  using MockPasspointCredentialsRefPtr =
+      scoped_refptr<MockPasspointCredentials>;
 
   // Simulate the course of events when the last endpoint of a service is
   // removed.
@@ -1214,6 +1219,14 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     }
   }
 
+  bool AddCred(const PasspointCredentialsRefPtr& credentials) {
+    return wifi_->AddCred(credentials);
+  }
+
+  bool RemoveCred(const PasspointCredentialsRefPtr& credentials) {
+    return wifi_->RemoveCred(credentials);
+  }
+
   std::unique_ptr<EventDispatcher> event_dispatcher_;
   MockWakeOnWiFi* wake_on_wifi_;  // Owned by |wifi_|.
   NiceMock<MockRTNLHandler> rtnl_handler_;
@@ -1414,6 +1427,7 @@ TEST_F(WiFiMainTest, OnSupplicantAppearStarted) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), FlushBSS(0));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetFastReauth(false));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetScanInterval(_));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveAllCreds());
 
   OnSupplicantAppear();
   EXPECT_NE(nullptr, GetSupplicantInterfaceProxyFromWiFi());
@@ -1562,6 +1576,7 @@ TEST_F(WiFiMainTest, Restart) {
 TEST_F(WiFiMainTest, StartClearsState) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveAllNetworks());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), FlushBSS(_));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveAllCreds());
   StartWiFi();
 }
 
@@ -4697,6 +4712,84 @@ TEST_F(WiFiMainTest, OnGetReg) {
   msg.attributes()->SetU8AttributeValue(NL80211_ATTR_DFS_REGION,
                                         NL80211_DFS_JP);
   OnGetReg(msg);
+}
+
+TEST_F(WiFiMainTest, AddCred) {
+  MockPasspointCredentialsRefPtr creds = new MockPasspointCredentials("an_id");
+
+  // Supplicant not started yet: device should fail.
+  EXPECT_FALSE(AddCred(creds));
+  EXPECT_EQ(DBusControl::NullRpcIdentifier(), creds->supplicant_id());
+
+  StartWiFi();
+
+  // Supplicant fails to add credentials: device should fail.
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddCred(_, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*creds, ToSupplicantProperties(_));
+  EXPECT_FALSE(AddCred(creds));
+  EXPECT_EQ(DBusControl::NullRpcIdentifier(), creds->supplicant_id());
+
+  // Credentials added successfully.
+  RpcIdentifier path("/credentials/0");
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddCred(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(path), Return(true)));
+  EXPECT_CALL(*creds, ToSupplicantProperties(_));
+  EXPECT_TRUE(AddCred(creds));
+  EXPECT_EQ(path, creds->supplicant_id());
+}
+
+TEST_F(WiFiMainTest, RemoveCred) {
+  RpcIdentifier path("/credentials/1");
+  PasspointCredentialsRefPtr creds = new PasspointCredentials("an_id");
+
+  // Supplicant not started
+  creds->SetSupplicantId(path);
+  EXPECT_FALSE(RemoveCred(creds));
+  EXPECT_EQ(DBusControl::NullRpcIdentifier(), creds->supplicant_id());
+
+  StartWiFi();
+
+  // Credentials with null path cannot be removed
+  creds->SetSupplicantId(DBusControl::NullRpcIdentifier());
+  EXPECT_FALSE(RemoveCred(creds));
+
+  // Supplicant refuses to remove the credentials.
+  creds->SetSupplicantId(path);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveCred(path))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(RemoveCred(creds));
+  EXPECT_EQ(DBusControl::NullRpcIdentifier(), creds->supplicant_id());
+
+  // Removal is done correctly
+  creds->SetSupplicantId(path);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveCred(path))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(RemoveCred(creds));
+  EXPECT_EQ(DBusControl::NullRpcIdentifier(), creds->supplicant_id());
+}
+
+TEST_F(WiFiMainTest, ClearsAndRestoresCredentials) {
+  MockPasspointCredentialsRefPtr cred1 = new MockPasspointCredentials("id1");
+  MockPasspointCredentialsRefPtr cred2 = new MockPasspointCredentials("id2");
+  std::vector<PasspointCredentialsRefPtr> credentials{cred1, cred2};
+
+  // Supplicant state is cleared and the credentials we own are added.
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveAllCreds());
+  EXPECT_CALL(*wifi_provider(), GetCredentials()).WillOnce(Return(credentials));
+  EXPECT_CALL(*cred1, ToSupplicantProperties(_));
+  EXPECT_CALL(*cred2, ToSupplicantProperties(_));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddCred(_, _))
+      .Times(2)
+      .WillRepeatedly(Return(true));
+
+  StartWiFi();
+
+  // When supplicant is stopped, we remove our credentials.
+  EXPECT_CALL(*wifi_provider(), GetCredentials()).WillOnce(Return(credentials));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveCred(_))
+      .Times(2)
+      .WillRepeatedly(Return(true));
 }
 
 }  // namespace shill

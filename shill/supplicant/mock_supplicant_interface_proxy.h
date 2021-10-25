@@ -53,6 +53,12 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
               (override));
   MOCK_METHOD(bool, DisableMacAddressRandomization, (), (override));
   MOCK_METHOD(bool, GetCapabilities, (KeyValueStore*), (override));
+  MOCK_METHOD(bool,
+              AddCred,
+              (const KeyValueStore&, RpcIdentifier* cred),
+              (override));
+  MOCK_METHOD(bool, RemoveCred, (const RpcIdentifier& cred), (override));
+  MOCK_METHOD(bool, RemoveAllCreds, (), (override));
 };
 
 }  // namespace shill

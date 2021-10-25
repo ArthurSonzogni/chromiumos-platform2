@@ -41,6 +41,9 @@ class SupplicantInterfaceProxyInterface {
       const std::vector<unsigned char>& mask, bool sched_scan) = 0;
   virtual bool DisableMacAddressRandomization() = 0;
   virtual bool GetCapabilities(KeyValueStore* capabilities) = 0;
+  virtual bool AddCred(const KeyValueStore& args, RpcIdentifier* cred) = 0;
+  virtual bool RemoveCred(const RpcIdentifier& cred) = 0;
+  virtual bool RemoveAllCreds() = 0;
 };
 
 }  // namespace shill

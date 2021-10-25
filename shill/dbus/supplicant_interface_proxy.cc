@@ -362,6 +362,45 @@ bool SupplicantInterfaceProxy::GetCapabilities(KeyValueStore* capabilities) {
   return true;
 }
 
+bool SupplicantInterfaceProxy::AddCred(const KeyValueStore& args,
+                                       RpcIdentifier* cred) {
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
+  brillo::VariantDictionary dict =
+      KeyValueStore::ConvertToVariantDictionary(args);
+  dbus::ObjectPath path;
+  brillo::ErrorPtr error;
+  if (!interface_proxy_->AddCred(dict, &path, &error)) {
+    LOG(ERROR) << "Failed to add credential: " << error->GetCode() << " "
+               << error->GetMessage();
+    return false;
+  }
+  *cred = path;
+  return true;
+}
+
+bool SupplicantInterfaceProxy::RemoveCred(const RpcIdentifier& cred) {
+  SLOG(&interface_proxy_->GetObjectPath(), 2)
+      << __func__ << ": " << cred.value();
+  brillo::ErrorPtr error;
+  if (!interface_proxy_->RemoveCred(cred, &error)) {
+    LOG(ERROR) << "Failed to remove credential: " << error->GetCode() << " "
+               << error->GetMessage();
+    return false;
+  }
+  return true;
+}
+
+bool SupplicantInterfaceProxy::RemoveAllCreds() {
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
+  brillo::ErrorPtr error;
+  if (!interface_proxy_->RemoveAllCreds(&error)) {
+    LOG(ERROR) << "Failed to remove all credentials: " << error->GetCode()
+               << " " << error->GetMessage();
+    return false;
+  }
+  return true;
+}
+
 void SupplicantInterfaceProxy::BlobAdded(const std::string& /*blobname*/) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   // XXX

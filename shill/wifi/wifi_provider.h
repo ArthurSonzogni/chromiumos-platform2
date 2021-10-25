@@ -91,18 +91,24 @@ class WiFiProvider : public ProviderInterface {
   // configured for auto-connect.
   std::vector<ByteString> GetSsidsConfiguredForAutoConnect();
 
-  // Load to the provider all the Passpoint credentials available in |Profile|.
+  // Load to the provider all the Passpoint credentials available in |Profile|
+  // and push the credentials to the WiFi device.
   void LoadCredentialsFromProfile(const ProfileRefPtr& profile);
 
   // Unload from the provider all the Passpoint credentials provided
-  // by |profile|.
+  // by |profile| and remove them from the WiFi device.
   void UnloadCredentialsFromProfile(const ProfileRefPtr& profile);
 
-  // Adds a new set of credentials to the provider.
+  // Adds a new set of credentials to the provider and pushes it to the WiFi
+  // device.
   virtual void AddCredentials(const PasspointCredentialsRefPtr& credentials);
 
-  // Removes the set of credentials referenced by |id|.
+  // Removes the set of credentials referenced by |id| from both the provider
+  // and the WiFi device.
   virtual void RemoveCredentials(const PasspointCredentialsRefPtr& credentials);
+
+  // Get the list of Passpoint credentials known by the provider.
+  virtual std::vector<PasspointCredentialsRefPtr> GetCredentials();
 
   bool disable_vht() const { return disable_vht_; }
   void set_disable_vht(bool disable_vht) { disable_vht_ = disable_vht; }

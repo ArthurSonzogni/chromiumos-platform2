@@ -33,6 +33,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"
+#include "shill/dbus/dbus_control.h"
 #include "shill/device.h"
 #include "shill/eap_credentials.h"
 #include "shill/error.h"
@@ -55,6 +56,7 @@
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
+#include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wake_on_wifi.h"
 #include "shill/wifi/wifi_cqm.h"
 #include "shill/wifi/wifi_endpoint.h"
@@ -277,6 +279,10 @@ void WiFi::Stop(Error* error, const EnabledStateChangedCallback& /*callback*/) {
     RemoveNetwork(map_entry.second);
   }
   rpcid_by_service_.clear();
+  // Remove all the credentials registered in supplicant.
+  for (const auto& creds : provider_->GetCredentials()) {
+    RemoveCred(creds);
+  }
   // Remove interface from supplicant.
   if (supplicant_present_ && supplicant_interface_proxy_) {
     supplicant_process_proxy()->RemoveInterface(supplicant_interface_path_);
@@ -322,6 +328,58 @@ void WiFi::Scan(Error* /*error*/, const std::string& reason) {
 int16_t WiFi::GetSignalLevelForActiveService() {
   return current_service_ ? current_service_->SignalLevel()
                           : WiFiService::SignalLevelMin;
+}
+
+bool WiFi::AddCred(const PasspointCredentialsRefPtr& credentials) {
+  SLOG(this, 2) << __func__;
+  CHECK(credentials);
+
+  if (!supplicant_present_ || !enabled()) {
+    // Supplicant is not here yet, the credentials will be pushed later.
+    credentials->SetSupplicantId(DBusControl::NullRpcIdentifier());
+    return false;
+  }
+
+  RpcIdentifier id;
+  KeyValueStore properties;
+  credentials->ToSupplicantProperties(&properties);
+  if (!supplicant_interface_proxy_->AddCred(properties, &id)) {
+    LOG(ERROR) << "failed add passpoint credentials " << credentials->id()
+               << " to supplicant";
+    credentials->SetSupplicantId(DBusControl::NullRpcIdentifier());
+    return false;
+  }
+  credentials->SetSupplicantId(id);
+  return true;
+}
+
+bool WiFi::RemoveCred(const PasspointCredentialsRefPtr& credentials) {
+  SLOG(this, 2) << __func__;
+  CHECK(credentials);
+
+  if (!supplicant_present_ || !enabled()) {
+    // Supplicant is not here, there's not credentials to remove.
+    // Just invalidate the path.
+    credentials->SetSupplicantId(DBusControl::NullRpcIdentifier());
+    return false;
+  }
+
+  if (credentials->supplicant_id() == DBusControl::NullRpcIdentifier()) {
+    LOG(ERROR) << "credentials " << credentials->id()
+               << " not registered in supplicant.";
+    return false;
+  }
+
+  RpcIdentifier id(credentials->supplicant_id());
+  credentials->SetSupplicantId(DBusControl::NullRpcIdentifier());
+
+  if (!supplicant_interface_proxy_->RemoveCred(id)) {
+    // The only reason for a failure here would be an invalid D-Bus path.
+    LOG(ERROR) << "failed to remove credentials " << credentials->id()
+               << " from supplicant with path " << id.value();
+    return false;
+  }
+  return true;
 }
 
 void WiFi::AddPendingScanResult(const RpcIdentifier& path,
@@ -2877,6 +2935,18 @@ void WiFi::ConnectToSupplicant() {
           kRandomMacMask, sched_scan_supported_)) {
     LOG(ERROR) << "Failed to enable MAC address randomization. "
                << "May be running an older version of wpa_supplicant.";
+  }
+
+  // Remove all the credentials set in supplicant.
+  if (!supplicant_interface_proxy_->RemoveAllCreds()) {
+    LOG(ERROR) << "Failed to clear credentials from wpa_supplicant";
+  }
+
+  // Push our set of passpoint credentials.
+  std::vector<PasspointCredentialsRefPtr> credentials =
+      provider_->GetCredentials();
+  for (const auto& c : credentials) {
+    AddCred(c);
   }
 
   Scan(nullptr, __func__);

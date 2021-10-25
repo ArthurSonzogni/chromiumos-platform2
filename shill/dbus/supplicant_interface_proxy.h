@@ -60,6 +60,9 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   bool SetScanInterval(int seconds) override;
   bool SetScan(bool enable) override;
   bool GetCapabilities(KeyValueStore* capabilities) override;
+  bool AddCred(const KeyValueStore& args, RpcIdentifier* cred) override;
+  bool RemoveCred(const RpcIdentifier& cred) override;
+  bool RemoveAllCreds() override;
 
  private:
   class PropertySet : public dbus::PropertySet {

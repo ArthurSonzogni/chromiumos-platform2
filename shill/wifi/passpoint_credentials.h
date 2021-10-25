@@ -6,9 +6,11 @@
 #define SHILL_WIFI_PASSPOINT_CREDENTIALS_H_
 
 #include <base/memory/ref_counted.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <string>
 #include <vector>
 
+#include "shill/data_types.h"
 #include "shill/eap_credentials.h"
 #include "shill/refptr_types.h"
 
@@ -32,8 +34,17 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
   PasspointCredentials(const PasspointCredentials&) = delete;
   PasspointCredentials& operator=(const PasspointCredentials&) = delete;
 
+  virtual ~PasspointCredentials() = default;
+
   // Set the profile that owns this set of credentials.
-  void SetProfile(const ProfileRefPtr& profile);
+  void SetProfile(const ProfileRefPtr& profile) { profile_ = profile; }
+
+  // Set supplicant D-Bus identifier.
+  void SetSupplicantId(const RpcIdentifier& id) { supplicant_id_ = id; }
+
+  // Populate the wpa_supplicant D-Bus parameter map |properties| with the
+  // parameters contained in |this|.
+  virtual void ToSupplicantProperties(KeyValueStore* properties) const;
 
   // Loads the set of credentials from |storage|. Requires the credentials
   // identifier |id_| to be set before calling this.
@@ -64,9 +75,11 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
     return android_package_name_;
   }
   const ProfileRefPtr& profile() const { return profile_; }
+  const RpcIdentifier& supplicant_id() { return supplicant_id_; }
 
  private:
   friend class WiFiProviderTest;
+  FRIEND_TEST(PasspointCredentialsTest, ToSupplicantProperties);
 
   // Storage keys
   static constexpr char kStorageDomains[] = "Domains";
@@ -119,6 +132,10 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
   std::string id_;
   // Owner of the set of credentials.
   ProfileRefPtr profile_;
+  // D-Bus object path that idenfies the set of credentials on supplicant
+  // interface. The field contains a real object path when the set of
+  // credentials lives in supplicant.
+  RpcIdentifier supplicant_id_;
 };
 
 }  // namespace shill

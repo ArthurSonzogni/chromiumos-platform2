@@ -4,7 +4,10 @@
 
 #include "shill/wifi/mock_wifi_provider.h"
 
-#include "shill/wifi/wifi_service.h"  // Needed for mock method instantiation.
+// Needed for mock method instantiation.
+#include "shill/profile.h"
+#include "shill/wifi/passpoint_credentials.h"
+#include "shill/wifi/wifi_service.h"
 
 using testing::Return;
 
