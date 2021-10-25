@@ -101,7 +101,7 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
           .mkfs_opts = {"-O", "^huge_file,^flex_bg,", "-N",
                         base::StringPrintf("%" PRIu64,
                                            CalculateInodeCount(stateful_size)),
-                        "-E", "discard,lazy_itable_init"},
+                        "-E", "discard,assume_storage_prezeroed=1"},
           .tune2fs_opts = {"-O", "verity,quota", "-Q", "usrquota,grpquota"}};
       break;
     case EncryptedContainerType::kEphemeral:

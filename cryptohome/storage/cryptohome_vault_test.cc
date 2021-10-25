@@ -89,7 +89,7 @@ class CryptohomeVaultTest
                 .dmcrypt_device_name = "dmcrypt-" + name,
                 .dmcrypt_cipher = "aes-xts-plain64",
                 .mkfs_opts = {"-O", "^huge_file,^flex_bg,", "-E",
-                              "discard,lazy_itable_init"},
+                              "discard,assume_storage_prezeroed=1"},
                 .tune2fs_opts = {"-O", "verity,quota", "-Q",
                                  "usrquota,grpquota"}}};
         break;

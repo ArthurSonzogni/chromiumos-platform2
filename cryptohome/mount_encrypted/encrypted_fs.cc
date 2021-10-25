@@ -46,7 +46,7 @@ constexpr unsigned int kResizeStepSeconds = 2;
 constexpr uint64_t kExt4ResizeBlocks = 32768 * 10;
 // Block size is 4k => Minimum free space available to try resizing is 400MB.
 constexpr int64_t kMinBlocksAvailForResize = 102400;
-constexpr char kExt4ExtendedOptions[] = "discard,lazy_itable_init";
+constexpr char kExt4ExtendedOptions[] = "discard,assume_storage_prezeroed=1";
 constexpr char kDmCryptDefaultCipher[] = "aes-cbc-essiv:sha256";
 
 bool CheckBind(cryptohome::Platform* platform, const BindMount& bind) {
