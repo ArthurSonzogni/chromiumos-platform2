@@ -102,7 +102,8 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
                         base::StringPrintf("%" PRIu64,
                                            CalculateInodeCount(stateful_size)),
                         "-E", "discard"},
-          .tune2fs_opts = {"-O", "verity,quota", "-Q", "usrquota,grpquota"}};
+          .tune2fs_opts = {"-O", "verity,quota,project", "-Q",
+                           "usrquota,grpquota,prjquota"}};
       break;
     case EncryptedContainerType::kEphemeral:
       config.type = EncryptedContainerType::kEphemeral;
