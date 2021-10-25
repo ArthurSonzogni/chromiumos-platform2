@@ -69,9 +69,21 @@ class TPM2NVSpaceUtility : public TPMNVSpaceUtilityInterface {
   // Locks the bootlockbox nvspace for writing.
   bool LockNVSpace() override;
 
+  // Register the callback that would be called when TPM ownership had been
+  // taken.
+  void RegisterOwnershipTakenCallback(
+      const base::RepeatingClosure& callback) override;
+
  private:
+  // Check the owner password presents in tpm_manager.
+  bool IsOwnerPasswordPresent();
+
   // This method removes owner dependency from tpm_manager.
   bool RemoveNVSpaceOwnerDependency();
+
+  // This method would be called when the ownership had been taken.
+  void OnOwnershipTaken(const base::RepeatingClosure& callback,
+                        const tpm_manager::OwnershipTakenSignal& signal);
 
   brillo::DBusConnection connection_;
 

@@ -28,6 +28,13 @@ int BootLockboxService::OnInit() {
   if (!boot_lockbox_->Load() &&
       boot_lockbox_->GetState() == NVSpaceState::kNVSpaceUndefined) {
     LOG(INFO) << "NVSpace is not defined, define it now";
+
+    // Register the ownership callback before defining the space could prevent
+    // the race condition.
+    if (!boot_lockbox_->RegisterOwnershipCallback()) {
+      LOG(ERROR) << "Failed to register ownership callback";
+    }
+
     if (!boot_lockbox_->DefineSpace()) {
       // TPM define nvspace failed but continue to run the service so
       // bootlockbox client can still communicated with bootlockbox. The client

@@ -25,6 +25,9 @@ class FakeTpmNVSpaceUtility : public TPMNVSpaceUtilityInterface {
 
   bool LockNVSpace() override;
 
+  void RegisterOwnershipTakenCallback(
+      const base::RepeatingClosure& callback) override;
+
   void SetDigest(const std::string& digest);
 
  private:

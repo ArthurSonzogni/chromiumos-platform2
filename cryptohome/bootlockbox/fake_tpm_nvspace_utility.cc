@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <utility>
+
 #include "cryptohome/bootlockbox/fake_tpm_nvspace_utility.h"
 
 namespace cryptohome {
@@ -28,6 +30,11 @@ bool FakeTpmNVSpaceUtility::ReadNVSpace(std::string* digest,
 
 bool FakeTpmNVSpaceUtility::LockNVSpace() {
   return true;
+}
+
+void FakeTpmNVSpaceUtility::RegisterOwnershipTakenCallback(
+    const base::RepeatingClosure& callback) {
+  std::move(callback).Run();
 }
 
 void FakeTpmNVSpaceUtility::SetDigest(const std::string& digest) {

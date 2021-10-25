@@ -43,6 +43,7 @@ TEST_F(NVRamBootLockboxTest, Finalize) {
 }
 
 TEST_F(NVRamBootLockboxTest, DefineSpace) {
+  nvram_boot_lockbox_->SetState(NVSpaceState::kNVSpaceUndefined);
   EXPECT_TRUE(nvram_boot_lockbox_->DefineSpace());
   EXPECT_EQ(nvram_boot_lockbox_->GetState(),
             NVSpaceState::kNVSpaceUninitialized);

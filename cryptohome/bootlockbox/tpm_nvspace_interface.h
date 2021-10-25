@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/callback.h>
+
 namespace cryptohome {
 
 enum class NVSpaceState {
@@ -38,6 +40,11 @@ class TPMNVSpaceUtilityInterface {
 
   // Lock the bootlockbox nvspace for writing.
   virtual bool LockNVSpace() = 0;
+
+  // Register the callback that would be called when TPM ownership had been
+  // taken.
+  virtual void RegisterOwnershipTakenCallback(
+      const base::RepeatingClosure& callback) = 0;
 };
 
 }  // namespace cryptohome

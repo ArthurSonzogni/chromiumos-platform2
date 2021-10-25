@@ -31,6 +31,7 @@ class MockNVRamBootLockbox : public NVRamBootLockbox {
   MOCK_METHOD(bool, Finalize, (), (override));
   MOCK_METHOD(NVSpaceState, GetState, (), (override));
   MOCK_METHOD(bool, DefineSpace, (), (override));
+  MOCK_METHOD(bool, RegisterOwnershipCallback, (), (override));
   MOCK_METHOD(bool, Load, (), (override));
 };
 

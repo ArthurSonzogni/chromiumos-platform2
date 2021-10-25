@@ -62,6 +62,17 @@ TEST_F(TPM2NVSpaceUtilityTest, DefineNVSpaceSuccess) {
             reply->set_status(tpm_manager::STATUS_SUCCESS);
             return true;
           }));
+  EXPECT_CALL(mock_tpm_owner_, GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillOnce(
+          Invoke([](const tpm_manager::GetTpmNonsensitiveStatusRequest& request,
+                    tpm_manager::GetTpmNonsensitiveStatusReply* reply,
+                    brillo::ErrorPtr*, int) {
+            reply->set_is_enabled(true);
+            reply->set_is_owned(true);
+            reply->set_is_owner_password_present(true);
+            reply->set_status(tpm_manager::STATUS_SUCCESS);
+            return true;
+          }));
   EXPECT_TRUE(nvspace_utility_->DefineNVSpace());
 }
 
@@ -73,6 +84,17 @@ TEST_F(TPM2NVSpaceUtilityTest, DefineNVSpaceFail) {
         reply->set_result(tpm_manager::NVRAM_RESULT_IPC_ERROR);
         return true;
       }));
+  EXPECT_CALL(mock_tpm_owner_, GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillOnce(
+          Invoke([](const tpm_manager::GetTpmNonsensitiveStatusRequest& request,
+                    tpm_manager::GetTpmNonsensitiveStatusReply* reply,
+                    brillo::ErrorPtr*, int) {
+            reply->set_is_enabled(true);
+            reply->set_is_owned(true);
+            reply->set_is_owner_password_present(true);
+            reply->set_status(tpm_manager::STATUS_SUCCESS);
+            return true;
+          }));
   EXPECT_FALSE(nvspace_utility_->DefineNVSpace());
 }
 

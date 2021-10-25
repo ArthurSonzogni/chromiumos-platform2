@@ -5,6 +5,7 @@
 #include "cryptohome/bootlockbox/nvram_boot_lockbox.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_util.h>
@@ -104,12 +105,45 @@ bool NVRamBootLockbox::Finalize() {
 }
 
 bool NVRamBootLockbox::DefineSpace() {
-  if (tpm_nvspace_utility_->DefineNVSpace()) {
-    nvspace_state_ = NVSpaceState::kNVSpaceUninitialized;
-    return true;
+  if (nvspace_state_ != NVSpaceState::kNVSpaceUndefined) {
+    LOG(ERROR)
+        << "Trying to define the nvspace, but the nvspace isn't undefined.";
+    return false;
   }
-  nvspace_state_ = NVSpaceState::kNVSpaceUndefined;
-  return false;
+
+  if (!tpm_nvspace_utility_->DefineNVSpace()) {
+    return false;
+  }
+
+  LOG(INFO) << "Space defined successfully.";
+  nvspace_state_ = NVSpaceState::kNVSpaceUninitialized;
+
+  return true;
+}
+
+bool NVRamBootLockbox::RegisterOwnershipCallback() {
+  if (nvspace_state_ != NVSpaceState::kNVSpaceUndefined) {
+    LOG(ERROR) << "Trying to register the ownership callback, but the nvspace "
+                  "isn't undefined.";
+    return false;
+  }
+
+  if (ownership_callback_registered_) {
+    LOG(ERROR) << "Ownership callback had already been registered.";
+    return false;
+  }
+
+  ownership_callback_registered_ = true;
+
+  // NVRamBootLockbox and TPMNVSpace would be destructed in the same time and
+  // this callback would disappear after TPMNVSpace be destructed, so it is safe
+  // to pass `this` into this callback.
+  base::RepeatingClosure callback =
+      base::BindRepeating(base::IgnoreResult(&NVRamBootLockbox::DefineSpace),
+                          base::Unretained(this));
+
+  tpm_nvspace_utility_->RegisterOwnershipTakenCallback(std::move(callback));
+  return true;
 }
 
 bool NVRamBootLockbox::Load() {

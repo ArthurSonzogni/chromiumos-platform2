@@ -83,6 +83,11 @@ bool TPM2NVSpaceUtility::Initialize() {
 }
 
 bool TPM2NVSpaceUtility::DefineNVSpace() {
+  if (!IsOwnerPasswordPresent()) {
+    LOG(INFO) << "Try to define nvram without owner password present.";
+    return false;
+  }
+
   tpm_manager::DefineSpaceRequest request;
   request.set_index(kBootLockboxNVRamIndex);
   request.set_size(kNVSpaceSize);
@@ -220,6 +225,34 @@ bool TPM2NVSpaceUtility::LockNVSpace() {
     return false;
   }
   return true;
+}
+
+bool TPM2NVSpaceUtility::IsOwnerPasswordPresent() {
+  tpm_manager::GetTpmNonsensitiveStatusRequest request;
+  tpm_manager::GetTpmNonsensitiveStatusReply reply;
+  brillo::ErrorPtr error;
+  if (!tpm_owner_->GetTpmNonsensitiveStatus(request, &reply, &error,
+                                            kDefaultTimeout.InMilliseconds())) {
+    LOG(ERROR) << "Failed to call GetTpmNonsensitiveStatus: "
+               << error->GetMessage();
+    return false;
+  }
+  return reply.is_owner_password_present();
+}
+
+void TPM2NVSpaceUtility::RegisterOwnershipTakenCallback(
+    const base::RepeatingClosure& callback) {
+  tpm_owner_->RegisterSignalOwnershipTakenSignalHandler(
+      base::BindRepeating(&TPM2NVSpaceUtility::OnOwnershipTaken,
+                          base::Unretained(this), callback),
+      base::DoNothing());
+}
+
+void TPM2NVSpaceUtility::OnOwnershipTaken(
+    const base::RepeatingClosure& callback,
+    const tpm_manager::OwnershipTakenSignal& signal) {
+  LOG(INFO) << __func__ << ": Received |OwnershipTakenSignal|.";
+  callback.Run();
 }
 
 }  // namespace cryptohome

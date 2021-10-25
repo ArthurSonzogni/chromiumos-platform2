@@ -57,8 +57,14 @@ class NVRamBootLockbox {
   // Gets BootLockbox state.
   virtual NVSpaceState GetState();
 
-  // Defines NVRAM space. This function may change nvspace_state_.
+  // Defines NVRAM space. This function may change nvspace_state_ to
+  // kNVSpaceUninitialized.
   virtual bool DefineSpace();
+
+  // Registers a callback to defines NVRAM space after the TPM ownership had
+  // been taken. This function may change nvspace_state_ to
+  // kNVSpaceUninitialized.
+  virtual bool RegisterOwnershipCallback();
 
   // Reads the key value map from disk and verifies the digest against the
   // digest stored in NVRAM space. This function may update nvspace_state_.
@@ -84,9 +90,12 @@ class NVRamBootLockbox {
 
   TPMNVSpaceUtilityInterface* tpm_nvspace_utility_;
 
+  bool ownership_callback_registered_ = false;
+
   // The state of nvspace. This is not the state of the service.
   NVSpaceState nvspace_state_{NVSpaceState::kNVSpaceError};
 
+  FRIEND_TEST(NVRamBootLockboxTest, DefineSpace);
   FRIEND_TEST(NVRamBootLockboxTest, LoadFailDigestMisMatch);
   FRIEND_TEST(NVRamBootLockboxTest, StoreLoadReadSuccess);
   FRIEND_TEST(NVRamBootLockboxTest, FirstStoreReadSuccess);
