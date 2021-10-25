@@ -6,6 +6,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
 using testing::_;
@@ -28,12 +29,14 @@ namespace cryptohome {
 class TPM2NVSpaceUtilityTest : public testing::Test {
  public:
   void SetUp() override {
-    nvspace_utility_ = std::make_unique<TPM2NVSpaceUtility>(&mock_tpm_nvram_);
+    nvspace_utility_ = std::make_unique<TPM2NVSpaceUtility>(&mock_tpm_nvram_,
+                                                            &mock_tpm_owner_);
     nvspace_utility_->Initialize();
   }
 
  protected:
   NiceMock<org::chromium::TpmNvramProxyMock> mock_tpm_nvram_;
+  NiceMock<org::chromium::TpmManagerProxyMock> mock_tpm_owner_;
   std::unique_ptr<TPM2NVSpaceUtility> nvspace_utility_;
 };
 
@@ -49,6 +52,16 @@ TEST_F(TPM2NVSpaceUtilityTest, DefineNVSpaceSuccess) {
         reply->set_result(tpm_manager::NVRAM_RESULT_SUCCESS);
         return true;
       }));
+  EXPECT_CALL(mock_tpm_owner_, RemoveOwnerDependency(_, _, _, _))
+      .WillOnce(
+          Invoke([](const tpm_manager::RemoveOwnerDependencyRequest& request,
+                    tpm_manager::RemoveOwnerDependencyReply* reply,
+                    brillo::ErrorPtr*, int) {
+            EXPECT_EQ(tpm_manager::kTpmOwnerDependency_Bootlockbox,
+                      request.owner_dependency());
+            reply->set_status(tpm_manager::STATUS_SUCCESS);
+            return true;
+          }));
   EXPECT_TRUE(nvspace_utility_->DefineNVSpace());
 }
 

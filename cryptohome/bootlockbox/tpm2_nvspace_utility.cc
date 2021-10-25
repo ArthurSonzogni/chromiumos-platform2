@@ -8,6 +8,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
 
 #include "cryptohome/bootlockbox/tpm2_nvspace_utility.h"
 #include "cryptohome/bootlockbox/tpm_nvspace_interface.h"
@@ -65,16 +66,18 @@ std::string NvramResult2Str(NvramResult r) {
 }
 
 TPM2NVSpaceUtility::TPM2NVSpaceUtility(
-    org::chromium::TpmNvramProxyInterface* tpm_nvram) {
-  tpm_nvram_ = tpm_nvram;
-}
+    org::chromium::TpmNvramProxyInterface* tpm_nvram,
+    org::chromium::TpmManagerProxyInterface* tpm_owner)
+    : tpm_nvram_(tpm_nvram), tpm_owner_(tpm_owner) {}
 
 bool TPM2NVSpaceUtility::Initialize() {
-  if (!tpm_nvram_) {
+  if (!tpm_nvram_ && !tpm_owner_) {
     scoped_refptr<dbus::Bus> bus = connection_.Connect();
     CHECK(bus) << "Failed to connect to system D-Bus";
     default_tpm_nvram_ = std::make_unique<org::chromium::TpmNvramProxy>(bus);
     tpm_nvram_ = default_tpm_nvram_.get();
+    default_tpm_owner_ = std::make_unique<org::chromium::TpmManagerProxy>(bus);
+    tpm_owner_ = default_tpm_owner_.get();
   }
   return true;
 }
@@ -100,7 +103,23 @@ bool TPM2NVSpaceUtility::DefineNVSpace() {
                << NvramResult2Str(reply.result());
     return false;
   }
-  // TODO(xzhou): notify tpm_managerd ready to drop key.
+  if (!RemoveNVSpaceOwnerDependency()) {
+    LOG(ERROR) << "Failed to remove the owner dependency.";
+  }
+  return true;
+}
+
+bool TPM2NVSpaceUtility::RemoveNVSpaceOwnerDependency() {
+  tpm_manager::RemoveOwnerDependencyRequest request;
+  tpm_manager::RemoveOwnerDependencyReply reply;
+  brillo::ErrorPtr error;
+  request.set_owner_dependency(tpm_manager::kTpmOwnerDependency_Bootlockbox);
+  if (!tpm_owner_->RemoveOwnerDependency(request, &reply, &error,
+                                         kDefaultTimeout.InMilliseconds())) {
+    LOG(ERROR) << "Failed to call RemoveOwnerDependency: "
+               << error->GetMessage();
+    return false;
+  }
   return true;
 }
 

@@ -44,7 +44,9 @@ class TPM2NVSpaceUtility : public TPMNVSpaceUtilityInterface {
   TPM2NVSpaceUtility() = default;
 
   // Constructor that does not take ownership of tpm_nvram.
-  explicit TPM2NVSpaceUtility(org::chromium::TpmNvramProxyInterface* tpm_nvram);
+  TPM2NVSpaceUtility(org::chromium::TpmNvramProxyInterface* tpm_nvram,
+                     org::chromium::TpmManagerProxyInterface* tpm_owner);
+
   TPM2NVSpaceUtility(const TPM2NVSpaceUtility&) = delete;
   TPM2NVSpaceUtility& operator=(const TPM2NVSpaceUtility&) = delete;
 
@@ -68,13 +70,18 @@ class TPM2NVSpaceUtility : public TPMNVSpaceUtilityInterface {
   bool LockNVSpace() override;
 
  private:
+  // This method removes owner dependency from tpm_manager.
+  bool RemoveNVSpaceOwnerDependency();
+
   brillo::DBusConnection connection_;
 
-  // Tpm manager interface that relays relays tpm request to tpm_managerd over
+  // Tpm manager interfaces that relays relays tpm request to tpm_managerd over
   // DBus. It is used for defining nvspace on the first boot. This object is
   // created in Initialize and should only be used in the same thread.
   std::unique_ptr<org::chromium::TpmNvramProxyInterface> default_tpm_nvram_;
   org::chromium::TpmNvramProxyInterface* tpm_nvram_;
+  std::unique_ptr<org::chromium::TpmManagerProxyInterface> default_tpm_owner_;
+  org::chromium::TpmManagerProxyInterface* tpm_owner_;
 };
 
 }  // namespace cryptohome
