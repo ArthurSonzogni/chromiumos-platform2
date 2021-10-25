@@ -58,6 +58,9 @@ if (use.test) {
       "libcros_camera_android_deps",
       "libsync",
     ]
-    deps = [ "//common-mk/testrunner" ]
+    deps = [
+      ":libcamera_hal_mojom",
+      "//common-mk/testrunner",
+    ]
   }
 }
