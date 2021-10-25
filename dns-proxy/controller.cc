@@ -56,9 +56,6 @@ void Controller::OnShutdown(int* code) {
   LOG(INFO) << "Stopping DNS Proxy service (" << *code << ")";
   for (const auto& p : proxies_)
     Kill(p);
-
-  if (bus_)
-    bus_->ShutdownAndBlock();
 }
 
 void Controller::Setup() {
