@@ -392,10 +392,7 @@ bool DlcBase::FactoryInstallCopier() {
     LOG(WARNING) << "Failed to mark the image verified for DLC=" << id_;
   }
 
-  if (!base::DeletePathRecursively(
-          JoinPaths(SystemState::Get()->factory_install_dir(), id_))) {
-    LOG(WARNING) << "Failed to delete the factory installed DLC=" << id_;
-  }
+  // TODO(kimjae): Delete once aligned with factory process.
 
   return true;
 }
@@ -437,7 +434,7 @@ bool DlcBase::Install(ErrorPtr* err) {
           LOG(INFO) << "Factory installing DLC=" << id_;
           break;
         } else {
-          LOG(WARNING) << "Failed to move factory installed image for DLC="
+          LOG(WARNING) << "Failed to copy factory installed image for DLC="
                        << id_;
         }
       }
