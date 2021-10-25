@@ -6,6 +6,7 @@
 #define DNS_PROXY_CONTROLLER_H_
 
 #include <iostream>
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -60,6 +61,26 @@ class Controller : public brillo::DBusDaemon {
     Proxy::Options opts;
   };
 
+  struct ProxyRestarts {
+    static constexpr int kRestartLimit = 10;
+    static constexpr base::TimeDelta kRestartWindow =
+        base::TimeDelta::FromSeconds(20);
+
+    bool is_valid() const { return count > 0; }
+
+    bool try_next() {
+      if (base::Time::Now() - kRestartWindow <= since)
+        return (--count > 0);
+
+      since = base::Time::Now();
+      count = kRestartLimit;
+      return true;
+    }
+
+    base::Time since{base::Time::Now()};
+    int count{kRestartLimit};
+  };
+
   void Setup();
   void SetupPatchpanel();
   void OnPatchpanelReady(bool success);
@@ -72,6 +93,7 @@ class Controller : public brillo::DBusDaemon {
   void Kill(const ProxyProc& proc);
   void OnProxyExit(pid_t pid, const siginfo_t& siginfo);
   void EvalProxyExit(const ProxyProc& proc);
+  bool RestartProxy(const ProxyProc& proc);
 
   // Callback used to run/kill default proxy based on its dependencies.
   // |has_deps| will be true if either VPN or a single-networked guest OS is
@@ -91,6 +113,7 @@ class Controller : public brillo::DBusDaemon {
   const std::string progname_;
   brillo::ProcessReaper process_reaper_;
   std::set<ProxyProc> proxies_;
+  std::map<ProxyProc, ProxyRestarts> restarts_;
 
   bool shill_ready_{false};
   std::unique_ptr<shill::Client> shill_;

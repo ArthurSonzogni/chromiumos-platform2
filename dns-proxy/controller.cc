@@ -138,8 +138,13 @@ void Controller::OnShillReset(bool reset) {
 
 void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
   ProxyProc proc(type, ifname);
-  auto it = proxies_.find(proc);
-  if (it != proxies_.end()) {
+  const auto& it = restarts_.find(proc);
+  if (it != restarts_.end() && !it->second.is_valid()) {
+    LOG(ERROR) << "Not running blocked proxy " << proc;
+    return;
+  }
+
+  if (proxies_.find(proc) != proxies_.end()) {
     return;
   }
 
@@ -193,6 +198,7 @@ void Controller::KillProxy(Proxy::Type type, const std::string& ifname) {
   if (it != proxies_.end()) {
     Kill(*it);
     proxies_.erase(it);
+    restarts_.erase(*it);
   }
 }
 
@@ -238,15 +244,12 @@ void Controller::OnProxyExit(pid_t pid, const siginfo_t& siginfo) {
     case CLD_TRAPPED:
       metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
                                   Metrics::ProcessEvent::kProxyKilled);
+
       LOG(ERROR) << "Process for proxy [" << proc
                  << " was unexpectedly killed (" << siginfo.si_code << ":"
-                 << siginfo.si_status << ") - attempting to restart";
-
-      base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-          FROM_HERE,
-          base::BindOnce(&Controller::RunProxy, weak_factory_.GetWeakPtr(),
-                         proc.opts.type, proc.opts.ifname),
-          base::TimeDelta::FromMilliseconds(kSubprocessRestartDelayMs));
+                 << siginfo.si_status << ") - "
+                 << (RestartProxy(proc) ? "attempting to restart"
+                                        : "restart attempts exceeded");
       break;
 
     case CLD_STOPPED:
@@ -265,6 +268,23 @@ void Controller::OnProxyExit(pid_t pid, const siginfo_t& siginfo) {
     default:
       NOTREACHED();
   }
+}
+
+bool Controller::RestartProxy(const ProxyProc& proc) {
+  auto it = restarts_.find(proc);
+  if (it == restarts_.end()) {
+    // First time the process has been restarted.
+    restarts_.emplace(proc, ProxyRestarts());
+  } else if (!it->second.try_next()) {
+    return false;
+  }
+
+  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&Controller::RunProxy, weak_factory_.GetWeakPtr(),
+                     proc.opts.type, proc.opts.ifname),
+      base::TimeDelta::FromMilliseconds(kSubprocessRestartDelayMs));
+  return true;
 }
 
 void Controller::EvalProxyExit(const ProxyProc& proc) {
