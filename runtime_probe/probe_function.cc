@@ -100,7 +100,7 @@ PrivilegedProbeFunction::DataType PrivilegedProbeFunction::Eval() const {
     return {};
   }
 
-  auto result = json_output->TakeList();
+  DataType result = std::move(*json_output).TakeList();
   PostHelperEvalImpl(&result);
   return result;
 }
