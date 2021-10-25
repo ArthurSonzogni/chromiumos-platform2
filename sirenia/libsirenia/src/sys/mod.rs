@@ -6,12 +6,15 @@
 //! sys_util. Generally Sirenia code outside of this module shouldn't directly
 //! interact with the libc package.
 
+use std::fs::File;
 use std::io;
 use std::mem::MaybeUninit;
 use std::os::unix::io::{AsRawFd, FromRawFd, RawFd};
 use std::ptr::null_mut;
 
+use anyhow::Context;
 use libc::{self, c_int, sigfillset, sigprocmask, sigset_t, wait, ECHILD, SIG_BLOCK, SIG_UNBLOCK};
+use sys_util::add_fd_flags;
 
 pub fn errno() -> c_int {
     io::Error::last_os_error().raw_os_error().unwrap()
@@ -81,6 +84,35 @@ pub fn dup<F: FromRawFd>(fd: RawFd) -> Result<F, io::Error> {
     Ok(unsafe { F::from_raw_fd(dup_fd as RawFd) })
 }
 
+pub fn get_a_pty() -> Result<(File, File), anyhow::Error> {
+    let main: RawFd = unsafe { libc::getpt() };
+    if main < 0 {
+        Err(io::Error::last_os_error()).context("bad pty")?;
+    }
+
+    let main = unsafe { File::from_raw_fd(main) };
+
+    if unsafe { libc::grantpt(main.as_raw_fd()) } < 0 {
+        Err(io::Error::last_os_error()).context("grantpt")?;
+    }
+
+    if unsafe { libc::unlockpt(main.as_raw_fd()) } < 0 {
+        Err(io::Error::last_os_error()).context("unlockpt")?;
+    }
+
+    let name = unsafe { libc::ptsname(main.as_raw_fd()) };
+    if name.is_null() {
+        Err(io::Error::last_os_error()).context("ptsname")?;
+    }
+
+    let client: RawFd = unsafe { libc::open(name, libc::O_RDWR) };
+    if client < 0 {
+        Err(io::Error::last_os_error()).context("failed to open pty client")?;
+    }
+    let client = unsafe { File::from_raw_fd(client) };
+    Ok((main, client))
+}
+
 /// Halts the system.
 pub fn halt() -> Result<(), io::Error> {
     // Safe because sync is called prior to reboot and the error code is checked.
@@ -124,4 +156,21 @@ pub fn reboot() -> Result<(), io::Error> {
         // This should never happen.
         Ok(())
     }
+}
+
+pub fn set_nonblocking(fd: RawFd) -> Result<(), sys_util::Error> {
+    add_fd_flags(fd, libc::O_NONBLOCK)
+}
+
+pub fn eagain_is_ok<T>(ret: Result<T, io::Error>) -> Result<Option<T>, io::Error> {
+    Ok(match ret {
+        Ok(v) => Some(v),
+        Err(err) => {
+            if matches!(err.raw_os_error(), Some(code) if code == libc::EAGAIN) {
+                None
+            } else {
+                return Err(err);
+            }
+        }
+    })
 }

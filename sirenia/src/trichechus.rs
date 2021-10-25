@@ -9,8 +9,10 @@
 use std::cell::RefCell;
 use std::collections::{BTreeMap as Map, VecDeque};
 use std::env;
-use std::io::{self, stderr, Seek, SeekFrom, Write};
-use std::mem::swap;
+use std::fs::File;
+use std::io::{self, Seek, SeekFrom, Write};
+use std::iter::once;
+use std::mem::{replace, swap};
 use std::ops::{Deref, DerefMut};
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::{Path, PathBuf};
@@ -20,6 +22,9 @@ use std::result::Result as StdResult;
 use anyhow::{bail, Context, Result};
 use getopts::Options;
 use libchromeos::secure_blob::SecureBlob;
+use libsirenia::linux::events::{ComboMutator, CopyFdEventSource};
+use libsirenia::sys::dup;
+use libsirenia::transport::{TransportRead, TransportWrite};
 use libsirenia::{
     build_info::BUILD_TIMESTAMP,
     cli::{trichechus::initialize_common_arguments, TransportTypeOption},
@@ -34,7 +39,7 @@ use libsirenia::{
     },
     rpc::{self, ConnectionHandler, RpcDispatcher, TransportServer},
     sandbox::{MinijailSandbox, Sandbox, VmConfig, VmSandbox},
-    sys::{self, halt, power_off, reboot},
+    sys::{self, get_a_pty, halt, power_off, reboot},
     transport::{
         create_transport_from_pipes, Transport, TransportType, CROS_CID, CROS_CONNECTION_ERR_FD,
         CROS_CONNECTION_R_FD, CROS_CONNECTION_W_FD, DEFAULT_CLIENT_PORT, DEFAULT_CONNECTION_R_FD,
@@ -297,30 +302,78 @@ struct DugongConnectionHandler {
     state: Rc<RefCell<TrichechusState>>,
 }
 
+fn setup_pty(connection: &mut Transport) -> Result<[Box<dyn Mutator>; 4]> {
+    let (main, client) = get_a_pty().context("failed get a pty")?;
+
+    let dup_main: File = dup(main.as_raw_fd()).context("failed dup pty main")?;
+    let dup_client: File = dup(client.as_raw_fd()).context("failed dup pty client")?;
+
+    let id = (client.as_raw_fd(), dup_client.as_raw_fd());
+    let client_r: Box<dyn TransportRead> = Box::new(client);
+    let client_w: Box<dyn TransportWrite> = Box::new(dup_client);
+    let Transport { r, w, id: _ } =
+        replace(connection, Transport::from((client_r, client_w, id.into())));
+
+    let main_r: Box<dyn TransportRead> = Box::new(main);
+    let main_w: Box<dyn TransportWrite> = Box::new(dup_main);
+    let w_copy = CopyFdEventSource::new(r, main_w).context("failed to setup pty pipe")?;
+    let r_copy = CopyFdEventSource::new(main_r, w).context("failed to setup pty pipe")?;
+    Ok([
+        Box::new(AddEventSourceMutator::from(w_copy.0)),
+        Box::new(AddEventSourceMutator::from(w_copy.1)),
+        Box::new(AddEventSourceMutator::from(r_copy.0)),
+        Box::new(AddEventSourceMutator::from(r_copy.1)),
+    ])
+}
+
 impl DugongConnectionHandler {
     fn new(state: Rc<RefCell<TrichechusState>>) -> Self {
         DugongConnectionHandler { state }
     }
 
-    fn connect_tee_app(&mut self, app: TeeApp, connection: Transport) -> Option<Box<dyn Mutator>> {
+    fn connect_tee_app(
+        &mut self,
+        app: TeeApp,
+        mut connection: Transport,
+    ) -> Option<Box<dyn Mutator>> {
         let state = self.state.clone();
         // Only borrow once.
         let mut trichechus_state = self.state.borrow_mut();
-        match spawn_tee_app(&trichechus_state, app, connection) {
+
+        let mut support_threads: Option<[Box<dyn Mutator>; 4]> = None;
+        if app.app_info.app_name == "shell" {
+            match setup_pty(&mut connection) {
+                Ok(mutators) => support_threads = Some(mutators),
+                Err(err) => {
+                    error!("failed to set up pty: {}", err);
+                    return None;
+                }
+            }
+        }
+
+        let add_event: Box<dyn Mutator> = match spawn_tee_app(&trichechus_state, app, connection) {
             Ok((pid, app, transport)) => {
                 let tee_app = Rc::new(RefCell::new(app));
                 trichechus_state.running_apps.insert(pid, tee_app.clone());
                 let storage_server: Box<dyn StorageRpcServer> =
                     Box::new(TeeAppHandler { state, tee_app });
-                Some(Box::new(AddEventSourceMutator::from(RpcDispatcher::new(
+                Box::new(AddEventSourceMutator::from(RpcDispatcher::new(
                     storage_server,
                     transport,
-                ))))
+                )))
             }
             Err(e) => {
                 error!("failed to start tee app: {}", e);
-                None
+                return None;
             }
+        };
+
+        if let Some(a) = support_threads {
+            Some(Box::new(ComboMutator::from(
+                IntoIterator::into_iter(a).chain(once(add_event)),
+            )))
+        } else {
+            Some(add_event)
         }
     }
 }
@@ -472,7 +525,7 @@ fn spawn_tee_app(
     let keep_fds: [(RawFd, RawFd); 5] = [
         (transport.r.as_raw_fd(), CROS_CONNECTION_R_FD),
         (transport.w.as_raw_fd(), CROS_CONNECTION_W_FD),
-        (stderr().as_raw_fd(), CROS_CONNECTION_ERR_FD),
+        (transport.w.as_raw_fd(), CROS_CONNECTION_ERR_FD),
         (tee_transport.r.as_raw_fd(), DEFAULT_CONNECTION_R_FD),
         (tee_transport.w.as_raw_fd(), DEFAULT_CONNECTION_W_FD),
     ];

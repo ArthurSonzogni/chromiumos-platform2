@@ -95,7 +95,7 @@ impl AppManifest {
             AppManifestEntry {
                 app_name: "shell".to_string(),
                 exec_info: ExecutableInfo::Path("/bin/sh".to_string()),
-                exec_args: Some(vec!["-i".to_string()]),
+                exec_args: None,
                 sandbox_type: SandboxType::DeveloperEnvironment,
                 secrets_parameters: None,
                 storage_parameters: None,
@@ -103,7 +103,7 @@ impl AppManifest {
             AppManifestEntry {
                 app_name: "sandboxed-shell".to_string(),
                 exec_info: ExecutableInfo::Path("/bin/sh".to_string()),
-                exec_args: Some(vec!["-i".to_string()]),
+                exec_args: None,
                 sandbox_type: SandboxType::Container,
                 secrets_parameters: None,
                 storage_parameters: None,

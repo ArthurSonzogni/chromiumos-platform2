@@ -19,11 +19,15 @@
 
 use std::boxed::Box;
 use std::collections::BTreeMap;
+use std::io::{Read, Write};
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::result::Result as StdResult;
 
 use sys_util::{error, warn, Error as SysError, PollContext, PollToken, WatchingEvents};
 use thiserror::Error as ThisError;
+
+use crate::sys::{eagain_is_ok, set_nonblocking};
+use crate::transport::{TransportRead, TransportWrite};
 
 #[derive(Debug, ThisError)]
 pub enum Error {
@@ -37,8 +41,12 @@ pub enum Error {
     PollContextWait(#[source] SysError),
     #[error("event failed: {0}")]
     OnEvent(String),
+    #[error("hangup failed: {0}")]
+    OnHangUp(String),
     #[error("mutate failed: {0}")]
     OnMutate(String),
+    #[error("failed to set nonblocking: {0}")]
+    SetNonBlocking(#[source] SysError),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -62,23 +70,36 @@ impl PollToken for Fd {
     }
 }
 
+/// Additional abstraction on top of PollContext to make it possible to multiplex listeners,
+/// streams, (anything with AsRawFd) on a single thread.
 pub struct EventMultiplexer {
     poll_ctx: PollContext<Fd>,
     handlers: BTreeMap<RawFd, Box<dyn EventSource>>,
 }
 
+/// A trait that represents an object that can mutate an EventMultiplexer.
 pub trait Mutator {
     fn mutate(&mut self, event_loop: &mut EventMultiplexer) -> std::result::Result<(), String>;
 }
 
 /// Interface for event handler.
 pub trait EventSource: AsRawFd {
+    /// Provide the events to watch. EPOLLHUP, EPOLLRDHUP, and read are covered by default.
+    fn get_events(&self) -> WatchingEvents {
+        WatchingEvents::new(libc::EPOLLRDHUP as u32).set_read()
+    }
+
     /// Callback to be executed when the event loop encounters an event for this handler.
-    fn on_event(&mut self) -> std::result::Result<Option<Box<dyn Mutator>>, String>;
+    fn on_event(&mut self) -> std::result::Result<Option<Box<dyn Mutator>>, String> {
+        Ok(None)
+    }
+
+    /// Callback to be executed when either EPOLLHUP or EPOLLRDHUP are received.
+    fn on_hangup(&mut self) -> std::result::Result<Option<Box<dyn Mutator>>, String> {
+        Ok(None)
+    }
 }
 
-/// Additional abstraction on top of PollContext to make it possible to multiplex listeners,
-/// streams, (anything with AsRawFd) on a single thread.
 impl EventMultiplexer {
     /// Initialize the EventMultiplexer.
     pub fn new() -> Result<EventMultiplexer> {
@@ -91,15 +112,20 @@ impl EventMultiplexer {
     /// Wait until there are events to process. Then, process them. If an error is returned, there
     /// may still events to process.
     pub fn run_once(&mut self) -> Result<()> {
-        let mut to_remove: Vec<RawFd> = Vec::new();
+        let mut to_hang_up: Vec<RawFd> = Vec::new();
         let mut to_read: Vec<RawFd> = Vec::new();
         for event in self.poll_ctx.wait().map_err(Error::PollContextWait)?.iter() {
-            if event.hungup() {
-                &mut to_remove
-            } else {
-                &mut to_read
+            let fd = event.token().as_raw_fd();
+            if event.readable() {
+                to_read.push(fd);
             }
-            .push(event.token().as_raw_fd());
+            if event.hungup() {
+                to_hang_up.push(fd);
+            }
+            if !(event.readable() || event.hungup()) {
+                warn!("unattributed event for {}", fd);
+                to_hang_up.push(fd);
+            }
         }
 
         for fd in to_read {
@@ -116,7 +142,25 @@ impl EventMultiplexer {
             }
         }
 
-        for fd in to_remove {
+        for &fd in &to_hang_up {
+            let mutator: Option<Box<dyn Mutator>> = match self.handlers.get_mut(&fd) {
+                Some(cb) => cb.on_hangup().map_err(Error::OnHangUp)?,
+                None => {
+                    continue;
+                }
+            };
+
+            if let Some(mut m) = mutator {
+                m.mutate(self).map_err(Error::OnMutate)?;
+            }
+        }
+
+        for fd in to_hang_up {
+            // The fd might have already been removed. If so, do not remove it again.
+            if !self.handlers.contains_key(&fd) {
+                continue;
+            }
+
             self.remove_event_for_fd(&Fd(fd))
                 .map_err(|err| {
                     error!("failed to remove event fd: {:?}", err);
@@ -127,13 +171,19 @@ impl EventMultiplexer {
         Ok(())
     }
 
+    /// Return true if the specified fd is tracked by the EventMultiplexer.
+    pub fn has_fd(&self, fd: RawFd) -> bool {
+        self.handlers.contains_key(&fd)
+    }
+
     /// Add a new event to multiplexer. The handler will be invoked when `event` happens on `fd`.
     pub fn add_event(&mut self, handler: Box<dyn EventSource>) -> Result<()> {
+        let events = handler.get_events();
         let fd = handler.as_raw_fd();
         self.handlers.insert(fd, handler);
         // This might fail due to epoll syscall. Check epoll_ctl(2).
         self.poll_ctx
-            .add_fd_with_events(&Fd(fd), WatchingEvents::empty().set_read(), Fd(fd))
+            .add_fd_with_events(&Fd(fd), events, Fd(fd))
             .map_err(Error::PollContextAddFd)
     }
 
@@ -143,10 +193,10 @@ impl EventMultiplexer {
     /// EventMultiplexer does not guarantee all events for `fd` is handled.
     pub fn remove_event_for_fd(&mut self, fd: &dyn AsRawFd) -> Result<Box<dyn EventSource>> {
         // This might fail due to epoll syscall. Check epoll_ctl(2).
-        self.poll_ctx
-            .delete(fd)
-            .map_err(Error::PollContextDeleteFd)?;
-        Ok(self.handlers.remove(&fd.as_raw_fd()).unwrap())
+        let ret = self.poll_ctx.delete(fd).map_err(Error::PollContextDeleteFd);
+        let handler = self.handlers.remove(&fd.as_raw_fd());
+        ret?;
+        Ok(handler.unwrap())
     }
 
     /// Returns true if there are no event sources registered.
@@ -157,6 +207,32 @@ impl EventMultiplexer {
     /// Returns the number of handlers.
     pub fn len(&self) -> usize {
         self.handlers.len()
+    }
+}
+
+/// Mutator which combines other mutators into one.
+pub struct ComboMutator<I: Iterator<Item = Box<dyn Mutator>>>(I);
+
+impl<I: Iterator<Item = Box<dyn Mutator>>> From<I> for ComboMutator<I> {
+    fn from(mutators: I) -> Self {
+        ComboMutator(mutators)
+    }
+}
+
+impl<I: Iterator<Item = Box<dyn Mutator>>> Mutator for ComboMutator<I> {
+    fn mutate(&mut self, event_loop: &mut EventMultiplexer) -> StdResult<(), String> {
+        let mut ret = StdResult::<(), String>::Ok(());
+        for mut mutator in &mut self.0 {
+            if let Err(msg) = mutator.as_mut().mutate(event_loop) {
+                if let Err(ret_msg) = ret.as_mut() {
+                    ret_msg.push('\n');
+                    ret_msg.push_str(&msg);
+                } else {
+                    ret = Err(msg);
+                }
+            }
+        }
+        ret
     }
 }
 
@@ -185,6 +261,9 @@ pub struct RemoveFdMutator(pub RawFd);
 
 impl Mutator for RemoveFdMutator {
     fn mutate(&mut self, event_loop: &mut EventMultiplexer) -> StdResult<(), String> {
+        if !event_loop.has_fd(self.as_raw_fd()) {
+            return Ok(());
+        }
         match event_loop.remove_event_for_fd(self) {
             Ok(_) => Ok(()),
             Err(e) => Err(format!("failed to remove fd: {:?}", e)),
@@ -195,6 +274,93 @@ impl Mutator for RemoveFdMutator {
 impl AsRawFd for RemoveFdMutator {
     fn as_raw_fd(&self) -> RawFd {
         self.0
+    }
+}
+
+/// Tool for copying from a source to a sink. It should be used along with a HangupListener for the
+/// sink.
+pub struct CopyFdEventSource {
+    input: Box<dyn TransportRead>,
+    output: Box<dyn TransportWrite>,
+}
+
+impl CopyFdEventSource {
+    /// Return a CopyFdEventSource and associated HangupListener.
+    pub fn new(
+        input: Box<dyn TransportRead>,
+        output: Box<dyn TransportWrite>,
+    ) -> Result<(Self, HangupListener)> {
+        set_nonblocking(input.as_raw_fd()).map_err(Error::SetNonBlocking)?;
+        let hang_up = HangupListener::new(
+            output.as_raw_fd(),
+            Box::new(RemoveFdMutator(input.as_raw_fd())),
+        );
+        Ok((CopyFdEventSource { input, output }, hang_up))
+    }
+}
+
+impl AsRawFd for CopyFdEventSource {
+    fn as_raw_fd(&self) -> RawFd {
+        self.input.as_raw_fd()
+    }
+}
+
+impl EventSource for CopyFdEventSource {
+    fn on_event(&mut self) -> StdResult<Option<Box<dyn Mutator>>, String> {
+        let mut buf = [0u8; 1028];
+        loop {
+            match eagain_is_ok(self.input.read(&mut buf)) {
+                Ok(Some(0)) | Err(_) => break,
+                Ok(Some(size)) => {
+                    if self.output.write_all(&buf[..size]).is_err() {
+                        break;
+                    }
+                }
+                Ok(None) => return Ok(None),
+            }
+        }
+        let rm_in: Box<dyn Mutator> = Box::new(RemoveFdMutator(self.as_raw_fd()));
+        let rm_out: Box<dyn Mutator> = Box::new(RemoveFdMutator(self.output.as_raw_fd()));
+        Ok(Some(Box::new(ComboMutator::from(IntoIterator::into_iter(
+            [rm_in, rm_out],
+        )))))
+    }
+
+    fn on_hangup(&mut self) -> StdResult<Option<Box<dyn Mutator>>, String> {
+        Ok(Some(Box::new(RemoveFdMutator(self.output.as_raw_fd()))))
+    }
+}
+
+/// Executes a mutator when a specified file descriptor is closed. This is particularly useful for
+/// detecting when a writer closes.
+pub struct HangupListener {
+    fd: RawFd,
+    mutator: Option<Box<dyn Mutator>>,
+}
+
+impl HangupListener {
+    pub fn new(fd: RawFd, mutator: Box<dyn Mutator>) -> Self {
+        HangupListener {
+            fd,
+            mutator: Some(mutator),
+        }
+    }
+}
+
+impl AsRawFd for HangupListener {
+    fn as_raw_fd(&self) -> RawFd {
+        self.fd
+    }
+}
+
+impl EventSource for HangupListener {
+    fn get_events(&self) -> WatchingEvents {
+        // We are only interested in the hang-up.
+        WatchingEvents::new(libc::EPOLLRDHUP as u32)
+    }
+
+    fn on_hangup(&mut self) -> StdResult<Option<Box<dyn Mutator>>, String> {
+        Ok(std::mem::replace(&mut self.mutator, None))
     }
 }
 

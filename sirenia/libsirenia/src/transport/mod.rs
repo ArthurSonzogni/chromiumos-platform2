@@ -317,6 +317,7 @@ impl ServerTransport for IpServerTransport {
 
     fn accept(&mut self) -> Result<Transport> {
         let (stream, addr) = handle_eintr!(self.0.accept()).map_err(Error::Accept)?;
+        stream.set_nodelay(true).unwrap();
         tcpstream_to_transport(stream, addr)
     }
 }

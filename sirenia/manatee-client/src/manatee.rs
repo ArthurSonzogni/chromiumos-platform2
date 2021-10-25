@@ -8,7 +8,7 @@
 
 use std::env;
 use std::fs::File;
-use std::io::{copy, stdin, stdout, BufRead, BufReader, Read, Write};
+use std::io::{copy, stdin, stdout, BufRead, BufReader, Read};
 use std::mem::replace;
 use std::os::unix::io::FromRawFd;
 use std::path::{Path, PathBuf};
@@ -23,17 +23,21 @@ use dbus::{
     blocking::{Connection, Proxy},
 };
 use getopts::Options;
+use libsirenia::linux::events::CopyFdEventSource;
+use libsirenia::sys::dup;
 use libsirenia::{
+    build_info::BUILD_TIMESTAMP,
     cli::{
         TransportTypeOption, VerbosityOption, DEFAULT_TRANSPORT_TYPE_LONG_NAME,
         DEFAULT_TRANSPORT_TYPE_SHORT_NAME,
     },
     communication::trichechus::{AppInfo, Trichechus, TrichechusClient},
+    linux::events::EventMultiplexer,
     transport::{
         Transport, TransportType, DEFAULT_CLIENT_PORT, DEFAULT_SERVER_PORT, LOOPBACK_DEFAULT,
     },
 };
-use log::{self, error, info};
+use log::{self, debug, error, info};
 use manatee_client::client::OrgChromiumManaTEEInterface;
 use sys_util::{
     vsock::{SocketAddr as VsockAddr, VsockCid},
@@ -163,10 +167,28 @@ fn connect_to_dugong<'a>(c: &'a Connection) -> Result<Proxy<'a, &Connection>> {
     ))
 }
 
-fn handle_app_fds<R: 'static + Read + Send + Sized, W: 'static + Write + Send + Sized>(
-    mut input: R,
-    mut output: W,
-) -> Result<()> {
+fn handle_app_fds_interactive(input: File, output: File) -> Result<()> {
+    let mut ctx = EventMultiplexer::new().unwrap();
+    let raw = termion::raw::IntoRawMode::into_raw_mode(stdout())
+        .map_err(|_| anyhow!("failed to put stdin in raw mode"))?;
+
+    let copy_in = CopyFdEventSource::new(Box::new(input), Box::new(dup::<File>(1)?))?;
+    ctx.add_event(Box::new(copy_in.0))?;
+    ctx.add_event(Box::new(copy_in.1))?;
+
+    let copy_out = CopyFdEventSource::new(Box::new(dup::<File>(0)?), Box::new(output))?;
+    ctx.add_event(Box::new(copy_out.0))?;
+    ctx.add_event(Box::new(copy_out.1))?;
+
+    let start = ctx.len();
+    while ctx.len() == start {
+        ctx.run_once()?;
+    }
+    drop(raw);
+    Ok(())
+}
+
+fn handle_app_fds(mut input: File, mut output: File) -> Result<()> {
     let output_thread_handle = spawn(move || -> Result<()> {
         copy(&mut input, &mut stdout()).context("failed to copy to stdout")?;
         // Once stdout is closed, stdin is invalid and it is time to exit.
@@ -180,7 +202,11 @@ fn handle_app_fds<R: 'static + Read + Send + Sized, W: 'static + Write + Send + 
         .map_err(|boxed_err| *boxed_err.downcast::<Error>().unwrap())?
 }
 
-fn start_manatee_app(api: &dyn OrgChromiumManaTEEInterface, app_id: &str) -> Result<()> {
+fn start_manatee_app(
+    api: &dyn OrgChromiumManaTEEInterface,
+    app_id: &str,
+    handler: &dyn Fn(File, File) -> Result<()>,
+) -> Result<()> {
     info!("Starting TEE application: {}", app_id);
     let (fd_in, fd_out) = match api
         .start_teeapplication(app_id)
@@ -196,7 +222,7 @@ fn start_manatee_app(api: &dyn OrgChromiumManaTEEInterface, app_id: &str) -> Res
     // Safe because ownership of the file descriptor is transferred.
     let file_out = unsafe { File::from_raw_fd(fd_out.into_fd()) };
 
-    handle_app_fds(file_in, file_out)
+    handler(file_in, file_out)
 }
 
 fn system_event(trichechus_uri: Option<TransportType>, event: &str) -> Result<()> {
@@ -232,17 +258,18 @@ fn system_event(trichechus_uri: Option<TransportType>, event: &str) -> Result<()
     }
 }
 
-fn dbus_start_manatee_app(app_id: &str) -> Result<()> {
+fn dbus_start_manatee_app(app_id: &str, handler: &dyn Fn(File, File) -> Result<()>) -> Result<()> {
     info!("Connecting to D-Bus.");
     let connection = Connection::new_system().context("failed to get D-Bus connection")?;
     let conn_path = connect_to_dugong(&connection)?;
-    start_manatee_app(&conn_path, app_id)
+    start_manatee_app(&conn_path, app_id, handler)
 }
 
 fn direct_start_manatee_app(
     trichechus_uri: TransportType,
     app_id: &str,
     elf: Option<Vec<u8>>,
+    handler: &dyn Fn(File, File) -> Result<()>,
 ) -> Result<()> {
     let passthrough = Passthrough::new(Some(trichechus_uri), None)?;
 
@@ -254,7 +281,7 @@ fn direct_start_manatee_app(
             .context("failed to call load_app rpc")?
             .context("load_app rpc failed")?;
     }
-    start_manatee_app(&passthrough, app_id)
+    start_manatee_app(&passthrough, app_id, handler)
 }
 
 fn locate_command(name: &str) -> Result<PathBuf> {
@@ -391,17 +418,21 @@ fn run_test_environment() -> Result<()> {
     Ok(())
 }
 
+fn get_usage() -> String {
+    format!("[-h] [-r | -a <name> [-X <path>] [-i true|false] | --halt | --poweroff | --reboot]\nversion: {}", BUILD_TIMESTAMP)
+}
+
 fn main() -> Result<()> {
     const HELP_SHORT_NAME: &str = "h";
     const RUN_SERVICES_LOCALLY_SHORT_NAME: &str = "r";
+
     const APP_ID_SHORT_NAME: &str = "a";
     const APP_ELF_SHORT_NAME: &str = "X";
+    const INTERACTIVE_SHORT_NAME: &str = "i";
 
     const HALT_LONG_NAME: &str = "halt";
     const POWEROFF_LONG_NAME: &str = "poweroff";
     const REBOOT_LONG_NAME: &str = "reboot";
-
-    const USAGE_BRIEF: &str = "[-h] [-r | -a <name> [-X <path>] | --halt | --poweroff | --reboot]";
 
     let mut options = Options::new();
     options.optflag(HELP_SHORT_NAME, "help", "Show this help string.");
@@ -410,12 +441,26 @@ fn main() -> Result<()> {
         "run-services-locally",
         "Run a test sirenia environment locally.",
     );
+
     options.optopt(
         APP_ID_SHORT_NAME,
         "app-id",
         "Specify the app ID to invoke.",
         "demo_app",
     );
+    options.optopt(
+        APP_ELF_SHORT_NAME,
+        "app-elf",
+        "Specify the app elf file to load.",
+        "/bin/bash",
+    );
+    options.optopt(
+        INTERACTIVE_SHORT_NAME,
+        "interactive",
+        "Enable or disable readline support. Defaults to false except for 'shell'",
+        "true|false",
+    );
+
     options.optflag("", HALT_LONG_NAME, "Send a halt command to the hypervisor.");
     options.optflag(
         "",
@@ -426,12 +471,6 @@ fn main() -> Result<()> {
         "",
         REBOOT_LONG_NAME,
         "Send a reboot command to the hypervisor.",
-    );
-    options.optopt(
-        APP_ELF_SHORT_NAME,
-        "app-elf",
-        "Specify the app elf file to load.",
-        "/bin/bash",
     );
     let trichechus_uri_opt = TransportTypeOption::new(
         DEFAULT_TRANSPORT_TYPE_SHORT_NAME,
@@ -444,17 +483,16 @@ fn main() -> Result<()> {
 
     let args: Vec<String> = env::args().collect();
     let matches = options.parse(&args[1..]).map_err(|err| {
-        eprintln!("{}", options.usage(USAGE_BRIEF));
+        eprintln!("{}", options.usage(&get_usage()));
         anyhow!("failed parse command line options: {}", err)
     })?;
 
-    stderrlog::new()
-        .verbosity(verbosity_opt.from_matches(&matches))
-        .init()
-        .unwrap();
+    let verbosity = verbosity_opt.from_matches(&matches);
+    stderrlog::new().verbosity(verbosity).init().unwrap();
+    debug!("Verbosity: {}", verbosity);
 
     if matches.opt_present(HELP_SHORT_NAME) {
-        println!("{}", options.usage(USAGE_BRIEF));
+        println!("{}", options.usage(&get_usage()));
         return Ok(());
     }
 
@@ -465,12 +503,17 @@ fn main() -> Result<()> {
         mutually_exclusive_opts += 1;
         opts.push(format!("-{}", RUN_SERVICES_LOCALLY_SHORT_NAME));
     }
-    if matches.opt_present(APP_ID_SHORT_NAME) || matches.opt_present(APP_ELF_SHORT_NAME) {
+    if matches.opt_present(APP_ID_SHORT_NAME)
+        || matches.opt_present(APP_ELF_SHORT_NAME)
+        || matches.opt_present(INTERACTIVE_SHORT_NAME)
+    {
         mutually_exclusive_opts += 1;
         if matches.opt_present(APP_ID_SHORT_NAME) {
             opts.push(format!("-{}", APP_ID_SHORT_NAME));
-        } else {
+        } else if matches.opt_present(APP_ELF_SHORT_NAME) {
             opts.push(format!("-{}", APP_ELF_SHORT_NAME));
+        } else {
+            opts.push(format!("-{}", INTERACTIVE_SHORT_NAME));
         }
     }
     for long_name in &[HALT_LONG_NAME, POWEROFF_LONG_NAME, REBOOT_LONG_NAME] {
@@ -480,14 +523,36 @@ fn main() -> Result<()> {
         }
     }
     if mutually_exclusive_opts > 1 {
-        eprintln!("{}", options.usage(USAGE_BRIEF));
+        eprintln!("{}", options.usage(&get_usage()));
         bail!("incompatible options set : {0:?}", opts);
     }
 
     let trichechus_uri = trichechus_uri_opt.from_matches(&matches).map_err(|err| {
-        eprintln!("{}", options.usage(USAGE_BRIEF));
+        eprintln!("{}", options.usage(&get_usage()));
         anyhow!("failed to get transport type option: {}", err)
     })?;
+
+    let interactive: Option<bool> = if matches.opt_present(INTERACTIVE_SHORT_NAME) {
+        Some(
+            matches
+                .opt_get::<String>(INTERACTIVE_SHORT_NAME)
+                .unwrap()
+                .unwrap()
+                .parse()
+                .map_err(|err| {
+                    eprintln!("{}", options.usage(&get_usage()));
+                    anyhow!("invalid value for -i: {}", err)
+                })?,
+        )
+    } else {
+        None
+    };
+
+    // libsirenia uses sys_util::syslog which isn't integrated with the log crate.
+    if let Err(e) = sys_util::syslog::init() {
+        eprintln!("Failed to initialize syslog: {}", e);
+        bail!("failed to initialize the syslog: {}", e);
+    }
 
     if matches.opt_present(RUN_SERVICES_LOCALLY_SHORT_NAME) {
         return run_test_environment();
@@ -521,8 +586,16 @@ fn main() -> Result<()> {
         None
     };
 
+    let handler: &dyn Fn(File, File) -> Result<()> = if termion::is_tty(&stdin())
+        && interactive.unwrap_or_else(|| app_id.as_str() == DEVELOPER_SHELL_APP_ID)
+    {
+        &handle_app_fds_interactive
+    } else {
+        &handle_app_fds
+    };
+
     match trichechus_uri {
-        None => dbus_start_manatee_app(&app_id),
-        Some(trichechus_uri) => direct_start_manatee_app(trichechus_uri, &app_id, elf),
+        None => dbus_start_manatee_app(&app_id, handler),
+        Some(trichechus_uri) => direct_start_manatee_app(trichechus_uri, &app_id, elf, handler),
     }
 }

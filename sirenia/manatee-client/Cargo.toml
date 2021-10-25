@@ -7,9 +7,14 @@ edition = "2018"
 exclude = ["*"]
 include = ["Cargo.toml", "build.rs", "src/lib.rs", "src/bindings/*"]
 
+[features]
+default = []
+tools = ["termion"]
+
 [[bin]]
 name = "manatee"
 path = "src/manatee.rs"
+required-features = ["tools"]
 
 [build-dependencies]
 chromeos-dbus-bindings = { path = "../../chromeos-dbus-bindings"} # provided by ebuild
@@ -23,5 +28,6 @@ libsirenia = { path = "../libsirenia" } # provided by ebuild
 log = "0.4.0"
 stderrlog = "0.5.0"
 sys_util = { path = "../../../platform/crosvm/common/sys_util" } # provided by ebuild
+termion = { version = "1.5.0", optional = true }
 thiserror = "1.0.20"
 which = "4.0"
