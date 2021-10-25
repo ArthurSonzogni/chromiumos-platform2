@@ -20,6 +20,24 @@
 namespace {
 // Size of logical volumes to use for the dm-crypt cryptohomes.
 constexpr uint64_t kLogicalVolumeSizePercent = 90;
+
+// By default, each ext4 filesystem takes up ~2% of the entire filesystem space
+// for storing filesystem metadata including inode tables. Tune the number of
+// inodes such that the overall metadata cost is <1 % of the filesystem size.
+// For larger storage devices, we increase the inode count up to an upper limit
+// of 2^20 inodes.
+uint64_t CalculateInodeCount(int64_t filesystem_size) {
+  constexpr uint64_t kGigabytes = 1024 * 1024 * 1024;
+  constexpr uint64_t kBaseInodeCount = 256 * 1024;
+
+  if (filesystem_size <= 16 * kGigabytes)
+    return kBaseInodeCount;
+  if (filesystem_size <= 32 * kGigabytes)
+    return 2 * kBaseInodeCount;
+
+  return 4 * kBaseInodeCount;
+}
+
 }  // namespace
 
 namespace cryptohome {
@@ -80,8 +98,10 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
           .dmcrypt_cipher = "aes-xts-plain64",
           // TODO(sarthakkukreti): Add more dynamic checks for filesystem
           // features once dm-crypt cryptohomes are stable.
-          .mkfs_opts = {"-O", "^huge_file,^flex_bg,", "-E",
-                        "discard,lazy_itable_init"},
+          .mkfs_opts = {"-O", "^huge_file,^flex_bg,", "-N",
+                        base::StringPrintf("%" PRIu64,
+                                           CalculateInodeCount(stateful_size)),
+                        "-E", "discard,lazy_itable_init"},
           .tune2fs_opts = {"-O", "verity,quota", "-Q", "usrquota,grpquota"}};
       break;
     case EncryptedContainerType::kEphemeral:
