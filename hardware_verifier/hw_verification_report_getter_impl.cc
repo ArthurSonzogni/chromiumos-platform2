@@ -33,14 +33,20 @@ base::Optional<HwVerificationReport> HwVerificationReportGetterImpl::Get(
   base::Optional<HwVerificationSpec> hw_verification_spec;
   if (hw_verification_spec_file.empty()) {
     hw_verification_spec = vs_getter_->GetDefault();
+    if (!hw_verification_spec) {
+      if (out_error_code)
+        *out_error_code =
+            ErrorCode::kErrorCodeMissingDefaultHwVerificationSpecFile;
+      return base::nullopt;
+    }
   } else {
     hw_verification_spec =
         vs_getter_->GetFromFile(base::FilePath(hw_verification_spec_file));
-  }
-  if (!hw_verification_spec) {
-    if (out_error_code)
-      *out_error_code = ErrorCode::kErrorCodeInvalidHwVerificationSpecFile;
-    return base::nullopt;
+    if (!hw_verification_spec) {
+      if (out_error_code)
+        *out_error_code = ErrorCode::kErrorCodeInvalidHwVerificationSpecFile;
+      return base::nullopt;
+    }
   }
 
   DVLOG(1) << "Get the probe result.";

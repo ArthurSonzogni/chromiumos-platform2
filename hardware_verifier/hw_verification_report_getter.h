@@ -20,6 +20,10 @@ class HwVerificationReportGetter {
   enum class ErrorCode {
     kErrorCodeNoError = 0,
 
+    // Skipped the verifier since the default verificatiojn payload is not
+    // found.
+    kErrorCodeMissingDefaultHwVerificationSpecFile,
+
     // Failed to load the verification payload from either the default one or
     // the specific one.
     kErrorCodeInvalidHwVerificationSpecFile,

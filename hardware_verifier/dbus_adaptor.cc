@@ -26,6 +26,9 @@ void DBusAdaptor::VerifyComponents(VerifyComponentsResponseCallback callback) {
     case ReportGetterErrorCode::kErrorCodeNoError:
       error = ERROR_OK;
       break;
+    case ReportGetterErrorCode::kErrorCodeMissingDefaultHwVerificationSpecFile:
+      error = ERROR_SKIPPED;
+      break;
     case ReportGetterErrorCode::kErrorCodeInvalidHwVerificationSpecFile:
       error = ERROR_INVALID_HW_VERIFICATION_SPEC_FILE;
       break;

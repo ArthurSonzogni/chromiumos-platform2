@@ -16,7 +16,6 @@
 
 #include "hardware_verifier/hardware_verifier.pb.h"
 #include "hardware_verifier/hw_verification_report_getter.h"
-#include "hardware_verifier/hw_verification_spec_getter.h"
 #include "hardware_verifier/mock_hw_verification_report_getter.h"
 
 namespace hardware_verifier {
@@ -79,6 +78,8 @@ TEST_F(DBusAdaptorTest, VerifyComponents_Success) {
 
 TEST_F(DBusAdaptorTest, VerifyComponents_Fail) {
   std::vector<std::pair<ReportGetterErrorCode, ErrorCode>> testdata = {
+      {ReportGetterErrorCode::kErrorCodeMissingDefaultHwVerificationSpecFile,
+       ERROR_SKIPPED},
       {ReportGetterErrorCode::kErrorCodeInvalidHwVerificationSpecFile,
        ERROR_INVALID_HW_VERIFICATION_SPEC_FILE},
       {ReportGetterErrorCode::kErrorCodeInvalidProbeResultFile,

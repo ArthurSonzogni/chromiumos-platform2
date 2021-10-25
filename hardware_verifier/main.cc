@@ -27,6 +27,9 @@ enum ExitStatus {
   // The verification report shows the device is not complicant.
   kVerifiedFail = 1,
 
+  // The verification process is skipped.
+  kSkippedVerification = 2,
+
   kUnknownError = 10,
 
   // Some of the argument is invalid.
@@ -45,6 +48,8 @@ ExitStatus ConvertCLIVerificationResultToExitStatus(
       return ExitStatus::kSuccess;
     case CLIVerificationResult::kFail:
       return ExitStatus::kVerifiedFail;
+    case CLIVerificationResult::kSkippedVerification:
+      return ExitStatus::kSkippedVerification;
     case CLIVerificationResult::kInvalidHwVerificationSpecFile:
     case CLIVerificationResult::kInvalidProbeResultFile:
       return ExitStatus::kInvalidArgument;

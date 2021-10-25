@@ -164,8 +164,9 @@ TEST_F(HwVerificationReportGetterImplTest,
 
   ON_CALL(*mock_vs_getter_, GetDefault()).WillByDefault(Return(base::nullopt));
   EXPECT_FALSE(vr_getter_->Get("", "", &error_code));
-  EXPECT_EQ(error_code,
-            ReportGetterErrorCode::kErrorCodeInvalidHwVerificationSpecFile);
+  EXPECT_EQ(
+      error_code,
+      ReportGetterErrorCode::kErrorCodeMissingDefaultHwVerificationSpecFile);
 
   ON_CALL(*mock_vs_getter_, GetFromFile(_))
       .WillByDefault(Return(HwVerificationSpec()));

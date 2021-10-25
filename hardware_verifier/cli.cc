@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/optional.h>
+#include <base/notreached.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/util/json_util.h>
@@ -32,8 +33,8 @@ CLIVerificationResult
 ConvertHwVerificationReportGetterErrorCodeToCLIVerificationResult(
     ReportGetterErrorCode error_code) {
   switch (error_code) {
-    case ReportGetterErrorCode::kErrorCodeNoError:
-      return CLIVerificationResult::kPass;
+    case ReportGetterErrorCode::kErrorCodeMissingDefaultHwVerificationSpecFile:
+      return CLIVerificationResult::kSkippedVerification;
     case ReportGetterErrorCode::kErrorCodeInvalidHwVerificationSpecFile:
       return CLIVerificationResult::kInvalidHwVerificationSpecFile;
     case ReportGetterErrorCode::kErrorCodeInvalidProbeResultFile:
@@ -43,7 +44,10 @@ ConvertHwVerificationReportGetterErrorCodeToCLIVerificationResult(
     case ReportGetterErrorCode::
         kErrorCodeProbeResultHwVerificationSpecMisalignment:
       return CLIVerificationResult::kProbeResultHwVerificationSpecMisalignment;
+    case ReportGetterErrorCode::kErrorCodeNoError:
     default:
+      NOTREACHED() << "Invalid HwVerificationReportGetter::ErrorCode: "
+                   << static_cast<int>(error_code);
       return CLIVerificationResult::kUnknownError;
   }
 }

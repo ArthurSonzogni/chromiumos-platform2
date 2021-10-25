@@ -113,6 +113,17 @@ TEST_F(CLITest, TestGetReportFailed) {
             CLIVerificationResult::kProbeFail);
 }
 
+TEST_F(CLITest, TestMissingPayloads) {
+  ON_CALL(*mock_vr_getter_, Get(_, _, _))
+      .WillByDefault(DoAll(
+          SetArgPointee<2>(ReportGetterErrorCode::
+                               kErrorCodeMissingDefaultHwVerificationSpecFile),
+          Return(base::nullopt)));
+
+  EXPECT_EQ(cli_->Run("", "", CLIOutputFormat::kProtoBin, true),
+            CLIVerificationResult::kSkippedVerification);
+}
+
 TEST_F(CLITest, TestVerifyReportSample1) {
   const auto& path = GetTestDataPath()
                          .Append("verifier_impl_sample_data")

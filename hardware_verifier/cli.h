@@ -11,8 +11,6 @@
 #include <string>
 #include <utility>
 
-#include <base/macros.h>
-
 #include "hardware_verifier/hw_verification_report_getter.h"
 
 namespace hardware_verifier {
@@ -23,6 +21,9 @@ enum CLIVerificationResult {
   // The whole process works without errors, but the verification
   // report shows the device is not compliant.
   kFail,
+
+  // Skip the verification process.
+  kSkippedVerification,
 
   // Failed to load the probe result from the specific file.
   kInvalidProbeResultFile,
