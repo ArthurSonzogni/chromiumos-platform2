@@ -46,7 +46,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       base::Time::FromTimeT(data_provider.ConsumeIntegral<time_t>());
   base::Time keep =
       base::Time::FromTimeT(data_provider.ConsumeIntegral<time_t>());
-  int max_entries = data_provider.ConsumeIntegral<int>();
+  size_t max_entries = data_provider.ConsumeIntegral<size_t>();
 
   // Put all remaining bytes in the file.
   auto path = base::FilePath(file_path);

@@ -87,7 +87,7 @@ bool ValidateBootEntryWithTimezone(const std::string& boot_id_entry) {
 base::Optional<std::deque<std::string>> ReadPreviousBootEntries(
     const int fd,
     const base::Time first_timestamp_to_keep,
-    int boot_log_max_entries) {
+    size_t boot_log_max_entries) {
   std::deque<std::string> previous_boot_entries;
 
   struct stat st;
@@ -135,7 +135,8 @@ base::Optional<std::deque<std::string>> ReadPreviousBootEntries(
     munmap(buffer, length);
 
     // Truncate if the logs are overflown.
-    while (previous_boot_entries.size() > (boot_log_max_entries - 1)) {
+    while (boot_log_max_entries &&
+           previous_boot_entries.size() > (boot_log_max_entries - 1)) {
       previous_boot_entries.pop_front();
     }
   }
@@ -185,7 +186,7 @@ std::string GetCurrentBootId() {
 
 bool WriteCurrentBootEntry(const base::FilePath& bootid_log_path,
                            const base::Time first_timestamp_to_keep,
-                           const int max_entries) {
+                           const size_t max_entries) {
   std::string boot_id = GetCurrentBootId();
   base::Time boot_time = GetCurrentBootTime();
 
@@ -197,7 +198,7 @@ bool WriteBootEntry(const base::FilePath& bootid_log_path,
                     const std::string& current_boot_id,
                     const base::Time boot_time,
                     const base::Time first_timestamp_to_keep,
-                    const int max_entries) {
+                    const size_t max_entries) {
   // Open the log file.
   base::ScopedFD fd(HANDLE_EINTR(
       open(bootid_log_path.value().c_str(), O_RDWR | O_CREAT | O_CLOEXEC,
