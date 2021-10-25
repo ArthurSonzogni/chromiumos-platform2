@@ -63,14 +63,16 @@ interface CrosHealthdAudioObserver {
 };
 
 // Implemented by clients who desire Thunderbolt notifications.
+//
+// NextMinVersion: 1, NextIndex: 4
 interface CrosHealthdThunderboltObserver {
   // Fired when the Thunderbolt plug in.
-  OnAdd();
+  OnAdd@0();
   // Fired when the Thunderbolt plug out.
-  OnRemove();
+  OnRemove@1();
   // Fired when the Thunderbolt device is authorized.
-  OnAuthorized();
+  OnAuthorized@2();
   // Fired when the Thunderbolt device is unauthorized.
-  OnUnAuthorized();
+  OnUnAuthorized@3();
 };
 
