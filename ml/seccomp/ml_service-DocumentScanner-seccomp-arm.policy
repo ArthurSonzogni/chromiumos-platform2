@@ -45,3 +45,4 @@ socket: arg0 == AF_UNIX
 uname: 1
 rt_sigtimedwait: 1
 rt_sigtimedwait_time64: 1
+clock_gettime64: 1
