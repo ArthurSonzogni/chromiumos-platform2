@@ -460,7 +460,7 @@ GscVersion TpmStatusImpl::GetGscVersion() {
 
 bool TpmStatusImpl::GetRoVerificationStatus(
     tpm_manager::RoVerificationStatus* status) {
-  *status = tpm_manager::RO_STATUS_UNSUPPORTED;
+  *status = tpm_manager::RO_STATUS_UNSUPPORTED_NOT_TRIGGERED;
   return true;
 }
 

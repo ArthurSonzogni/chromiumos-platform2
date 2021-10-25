@@ -170,6 +170,12 @@ std::string GetProtoDebugStringWithIndent(RoVerificationStatus value,
   if (value == RO_STATUS_UNSUPPORTED) {
     return "RO_STATUS_UNSUPPORTED";
   }
+  if (value == RO_STATUS_UNSUPPORTED_NOT_TRIGGERED) {
+    return "RO_STATUS_UNSUPPORTED_NOT_TRIGGERED";
+  }
+  if (value == RO_STATUS_UNSUPPORTED_TRIGGERED) {
+    return "RO_STATUS_UNSUPPORTED_TRIGGERED";
+  }
   return "<unknown>";
 }
 

@@ -3493,7 +3493,7 @@ TEST_F(TpmUtilityTest, GetRoVerificationStatusForNotCr50) {
   SetCr50(false);
   TpmUtility::ApRoStatus status;
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetRoVerificationStatus(&status));
-  EXPECT_EQ(status, TpmUtility::ApRoStatus::kApRoUnsupported);
+  EXPECT_EQ(status, TpmUtility::ApRoStatus::kApRoUnsupportedNotTriggered);
 }
 
 }  // namespace trunks

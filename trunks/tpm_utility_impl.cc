@@ -3157,7 +3157,7 @@ TPM_RC TpmUtilityImpl::GetRsuDeviceId(std::string* device_id) {
 
 TPM_RC TpmUtilityImpl::GetRoVerificationStatus(ApRoStatus* status) {
   if (!IsCr50()) {
-    *status = ApRoStatus::kApRoUnsupported;
+    *status = ApRoStatus::kApRoUnsupportedNotTriggered;
     return TPM_RC_SUCCESS;
   }
   std::string res;

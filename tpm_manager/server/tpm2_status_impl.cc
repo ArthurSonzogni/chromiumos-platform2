@@ -28,9 +28,14 @@ tpm_manager::RoVerificationStatus MapRoStatus(
       return tpm_manager::RO_STATUS_PASS;
     case trunks::TpmUtility::ApRoStatus::kApRoFail:
       return tpm_manager::RO_STATUS_FAIL;
-    case trunks::TpmUtility::ApRoStatus::kApRoUnsupported:
+    case trunks::TpmUtility::ApRoStatus::kApRoUnsupportedUnknown:
       return tpm_manager::RO_STATUS_UNSUPPORTED;
+    case trunks::TpmUtility::ApRoStatus::kApRoUnsupportedNotTriggered:
+      return tpm_manager::RO_STATUS_UNSUPPORTED_NOT_TRIGGERED;
+    case trunks::TpmUtility::ApRoStatus::kApRoUnsupportedTriggered:
+      return tpm_manager::RO_STATUS_UNSUPPORTED_TRIGGERED;
   }
+  NOTREACHED();
 }
 
 }  // namespace

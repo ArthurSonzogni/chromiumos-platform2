@@ -63,7 +63,9 @@ class TRUNKS_EXPORT TpmUtility {
     kApRoNotRun = 0,
     kApRoPass = 1,
     kApRoFail = 2,
-    kApRoUnsupported = 3,
+    kApRoUnsupportedUnknown = 3,
+    kApRoUnsupportedNotTriggered = 4,
+    kApRoUnsupportedTriggered = 5,
   };
 
   TpmUtility() {}
