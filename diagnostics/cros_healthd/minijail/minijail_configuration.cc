@@ -115,6 +115,10 @@ void ConfigureAndEnterMinijail() {
       jail.get(),
       base::FilePath("/sys/firmware/efi/vars/"));  // Files with UEFI vars.
 
+  // Files with Arm device tree compatible string info.
+  BindMountIfPathExists(
+      jail.get(), base::FilePath("/sys/firmware/devicetree/base/compatible"));
+
   BindMountIfPathExists(
       jail.get(),
       base::FilePath("/sys/bus/pci"));  // Files related to the

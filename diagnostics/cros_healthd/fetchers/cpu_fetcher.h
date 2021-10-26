@@ -14,6 +14,9 @@ namespace diagnostics {
 
 // Directory containing SoC ID info.
 inline constexpr char kRelativeSoCDevicesDir[] = "sys/bus/soc/devices/";
+// File containing Arm device tree compatible string.
+inline constexpr char kRelativeCompatibleFile[] =
+    "sys/firmware/devicetree/base/compatible";
 
 // The CpuFetcher class is responsible for gathering CPU info reported by
 // cros_healthd.

@@ -318,9 +318,37 @@ void ParseSocID(const base::FilePath& root_dir, std::string* model_name) {
   }
 }
 
+void ParseCompatibleString(const base::FilePath& root_dir,
+                           std::string* model_name) {
+  std::string content;
+  if (!base::ReadFileToString(root_dir.Append(kRelativeCompatibleFile),
+                              &content)) {
+    return;
+  }
+
+  // pair.first: Vendor string in compatible string.
+  // pair.second: The string that we return from our API.
+  const std::map<std::string, std::string> vendors{{"mediatek", "MediaTek"},
+                                                   {"qualcomm", "Qualcomm"},
+                                                   {"rockchip", "Rockchip"}};
+  base::StringPairs pairs;
+  base::SplitStringIntoKeyValuePairs(content, ',', '\0', &pairs);
+  for (const auto& key_value : pairs) {
+    auto vendor = vendors.find(key_value.first);
+    if (vendor != vendors.end()) {
+      *model_name = vendor->second + " " + key_value.second;
+      return;
+    }
+  }
+}
+
 void GetArmSoCModelName(const base::FilePath& root_dir,
                         std::string* model_name) {
   ParseSocID(root_dir, model_name);
+  if (!model_name->empty()) {
+    return;
+  }
+  ParseCompatibleString(root_dir, model_name);
 }
 
 // Fetch Keylocker information.

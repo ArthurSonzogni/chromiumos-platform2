@@ -512,6 +512,28 @@ TEST_F(CpuFetcherTest, ModelNameFromSoCID) {
   ASSERT_EQ(model_name.value(), "MediaTek 8192");
 }
 
+// Test that we have device tree compatible string for Arm devices.
+TEST_F(CpuFetcherTest, ModelNameFromCompatibleString) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(root_dir()),
+                                           kNoModelNameCpuinfoContents));
+  auto compatible_file = root_dir().Append(kRelativeCompatibleFile);
+  ASSERT_TRUE(base::CreateDirectory(compatible_file.DirName()));
+
+  constexpr uint8_t data[] = {'g', 'o', 'o', 'g',  'l', 'e', ',', 'h', 'a', 'y',
+                              'a', 't', 'o', '\0', 'm', 'e', 'd', 'i', 'a', 't',
+                              'e', 'k', ',', '8',  '1', '9', '2', '\0'};
+  EXPECT_TRUE(base::WriteFile(compatible_file, data));
+
+  auto cpu_result = FetchCpuInfo();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 1);
+
+  auto model_name = cpu_result->get_cpu_info()->physical_cpus[0]->model_name;
+  EXPECT_TRUE(model_name.has_value());
+  ASSERT_EQ(model_name.value(), "MediaTek 8192");
+}
+
 // Test that we handle a missing stat file.
 TEST_F(CpuFetcherTest, MissingStatFile) {
   ASSERT_TRUE(base::DeleteFile(GetProcStatPath(root_dir())));
