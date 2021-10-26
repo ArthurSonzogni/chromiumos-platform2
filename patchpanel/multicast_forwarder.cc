@@ -81,14 +81,15 @@ void SetSockaddr(struct sockaddr_storage* saddr_storage,
 
 namespace patchpanel {
 
-MulticastForwarder::Socket::Socket(
-    base::ScopedFD fd,
-    sa_family_t sa_family,
-    base::RepeatingCallback<void(int, sa_family_t)> callback)
-    : fd(std::move(fd)) {
-  watcher = base::FileDescriptorWatcher::WatchReadable(
-      Socket::fd.get(),
-      base::BindRepeating(std::move(callback), Socket::fd.get(), sa_family));
+std::unique_ptr<MulticastForwarder::Socket> MulticastForwarder::CreateSocket(
+    base::ScopedFD fd, sa_family_t sa_family) {
+  auto socket = std::make_unique<Socket>();
+  socket->watcher = base::FileDescriptorWatcher::WatchReadable(
+      fd.get(),
+      base::BindRepeating(&MulticastForwarder::OnFileCanReadWithoutBlocking,
+                          base::Unretained(this), fd.get(), sa_family));
+  socket->fd = std::move(fd);
+  return socket;
 }
 
 MulticastForwarder::MulticastForwarder(const std::string& lan_ifname,
@@ -100,29 +101,20 @@ MulticastForwarder::MulticastForwarder(const std::string& lan_ifname,
   CHECK(inet_pton(AF_INET6, mcast_addr6.c_str(), mcast_addr6_.s6_addr));
 
   base::ScopedFD lan_fd(Bind(AF_INET, lan_ifname_));
-  if (!lan_fd.is_valid()) {
+  if (lan_fd.is_valid()) {
+    lan_socket_.emplace(AF_INET, CreateSocket(std::move(lan_fd), AF_INET));
+  } else {
     LOG(WARNING) << "Could not bind socket on " << lan_ifname_ << " for "
                  << mcast_addr_ << ":" << port_;
   }
 
   base::ScopedFD lan_fd6(Bind(AF_INET6, lan_ifname_));
-  if (!lan_fd6.is_valid()) {
+  if (lan_fd6.is_valid()) {
+    lan_socket_.emplace(AF_INET6, CreateSocket(std::move(lan_fd6), AF_INET6));
+  } else {
     LOG(WARNING) << "Could not bind socket on " << lan_ifname_ << " for "
                  << mcast_addr6_ << ":" << port_;
   }
-
-  lan_socket_.emplace(
-      AF_INET, new Socket(std::move(lan_fd), AF_INET,
-                          base::BindRepeating(
-                              &MulticastForwarder::OnFileCanReadWithoutBlocking,
-                              base::Unretained(this))));
-
-  lan_socket_.emplace(
-      AF_INET6,
-      new Socket(
-          std::move(lan_fd6), AF_INET6,
-          base::BindRepeating(&MulticastForwarder::OnFileCanReadWithoutBlocking,
-                              base::Unretained(this))));
 }
 
 base::ScopedFD MulticastForwarder::Bind(sa_family_t sa_family,
@@ -238,13 +230,8 @@ bool MulticastForwarder::AddGuest(const std::string& int_ifname) {
   if (int_fd4.is_valid()) {
     int_fds_.emplace(std::make_pair(AF_INET, int_fd4.get()));
 
-    std::unique_ptr<Socket> int_socket4 = std::make_unique<Socket>(
-        std::move(int_fd4), AF_INET,
-        base::BindRepeating(&MulticastForwarder::OnFileCanReadWithoutBlocking,
-                            base::Unretained(this)));
-
     int_sockets_.emplace(std::make_pair(AF_INET, int_ifname),
-                         std::move(int_socket4));
+                         CreateSocket(std::move(int_fd4), AF_INET));
 
     success = true;
     LOG(INFO) << "Started IPv4 forwarding between " << lan_ifname_ << " and "
@@ -258,14 +245,8 @@ bool MulticastForwarder::AddGuest(const std::string& int_ifname) {
   base::ScopedFD int_fd6(Bind(AF_INET6, int_ifname));
   if (int_fd6.is_valid()) {
     int_fds_.emplace(std::make_pair(AF_INET6, int_fd6.get()));
-
-    std::unique_ptr<Socket> int_socket6 = std::make_unique<Socket>(
-        std::move(int_fd6), AF_INET6,
-        base::BindRepeating(&MulticastForwarder::OnFileCanReadWithoutBlocking,
-                            base::Unretained(this)));
-
     int_sockets_.emplace(std::make_pair(AF_INET6, int_ifname),
-                         std::move(int_socket6));
+                         CreateSocket(std::move(int_fd6), AF_INET6));
 
     success = true;
     LOG(INFO) << "Started IPv6 forwarding between " << lan_ifname_ << " and "
@@ -310,7 +291,7 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd,
 
   socklen_t addrlen = sizeof(struct sockaddr_storage);
 
-  ssize_t len = recvfrom(fd, data, kBufSize, 0, fromaddr, &addrlen);
+  ssize_t len = Receive(fd, data, kBufSize, fromaddr, &addrlen);
   if (len < 0) {
     // Ignore ENETDOWN: this can happen if the interface is not yet configured
     if (errno != ENETDOWN) {
@@ -532,4 +513,11 @@ void MulticastForwarder::TranslateMdnsIp(const struct in_addr& lan_ip,
   }
 }
 
+ssize_t MulticastForwarder::Receive(int fd,
+                                    char* buffer,
+                                    size_t buffer_size,
+                                    struct sockaddr* src_addr,
+                                    socklen_t* addrlen) {
+  return recvfrom(fd, buffer, buffer_size, 0, src_addr, addrlen);
+}
 }  // namespace patchpanel

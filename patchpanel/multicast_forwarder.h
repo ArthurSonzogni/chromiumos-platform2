@@ -7,6 +7,7 @@
 
 #include <netinet/ip.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 
 #include <map>
 #include <memory>
@@ -63,55 +64,63 @@ class MulticastForwarder {
                               char* data,
                               ssize_t len);
 
+  void OnFileCanReadWithoutBlocking(int fd, sa_family_t sa_family);
+
  protected:
   // Socket is used to keep track of an fd and its watcher.
   struct Socket {
-    Socket(base::ScopedFD fd,
-           sa_family_t sa_family,
-           base::RepeatingCallback<void(int, sa_family_t)> callback);
     base::ScopedFD fd;
     std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher;
   };
 
   // Bind will create a multicast socket and return its fd.
-  base::ScopedFD Bind(sa_family_t sa_family, const std::string& ifname);
+  virtual base::ScopedFD Bind(sa_family_t sa_family, const std::string& ifname);
 
   // SendTo sends |data| using a socket bound to |src_port| and |lan_ifname_|.
   // If |src_port| is equal to |port_|, we will use |lan_socket_|. Otherwise,
   // create a temporary socket.
-  bool SendTo(uint16_t src_port,
-              const void* data,
-              ssize_t len,
-              const struct sockaddr* dst,
-              socklen_t dst_len);
+  virtual bool SendTo(uint16_t src_port,
+                      const void* data,
+                      ssize_t len,
+                      const struct sockaddr* dst,
+                      socklen_t dst_len);
 
   // SendToGuests will forward packet to all Chrome OS guests' (ARC++,
   // Crostini, etc) internal fd using |port|.
   // However, if ignore_fd is not 0, it will skip guest with fd = ignore_fd.
-  bool SendToGuests(const void* data,
-                    ssize_t len,
-                    const struct sockaddr* dst,
-                    socklen_t dst_len,
-                    int ignore_fd = -1);
+  virtual bool SendToGuests(const void* data,
+                            ssize_t len,
+                            const struct sockaddr* dst,
+                            socklen_t dst_len,
+                            int ignore_fd = -1);
 
+  // Wrapper around libc recvfrom, allowing override in fuzzer tests.
+  virtual ssize_t Receive(int fd,
+                          char* buffer,
+                          size_t buffer_size,
+                          struct sockaddr* src_addr,
+                          socklen_t* addrlen);
+
+  virtual std::unique_ptr<Socket> CreateSocket(base::ScopedFD fd,
+                                               sa_family_t family);
+
+ private:
+  // Name of the physical interface that this forwarder is bound to.
   std::string lan_ifname_;
+  // UDP port of the protocol that this forwarder is processing.
   unsigned int port_;
-
+  // IPv4 multicast address of the protocol that this forwarder is processing.
   struct in_addr mcast_addr_;
+  // IPv6 multicast address of the protocol that this forwarder is processing.
   struct in6_addr mcast_addr6_;
-
+  // IPv4 and IPv6 sockets bound by this forwarder onto |lan_ifname_|.
   std::map<sa_family_t, std::unique_ptr<Socket>> lan_socket_;
-
-  // Mapping from internal interface name to internal sockets.
+  // Mapping from internal interface names to internal sockets.
   std::map<std::pair<sa_family_t, std::string>, std::unique_ptr<Socket>>
       int_sockets_;
-
   // A set of internal file descriptors (guest facing sockets) to its guest
   // IP address.
   std::set<std::pair<sa_family_t, int>> int_fds_;
-
- private:
-  void OnFileCanReadWithoutBlocking(int fd, sa_family_t sa_family);
 };
 
 }  // namespace patchpanel
