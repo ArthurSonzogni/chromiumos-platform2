@@ -11,6 +11,10 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/check.h>
+#include <base/files/file_util.h>
+#include <base/rand_util.h>
+#include <base/test/bind.h>
 #include <brillo/minijail/mock_minijail.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -22,6 +26,7 @@ using testing::DoAll;
 using testing::Return;
 using testing::SetArgPointee;
 using testing::StrEq;
+using testing::WithArg;
 
 namespace shill {
 
@@ -40,7 +45,8 @@ class ProcessManagerTest : public testing::Test {
   }
 
   void AddWatchedProcess(pid_t pid, const base::Callback<void(int)>& callback) {
-    process_manager_->watched_processes_[pid] = std::move(callback);
+    process_manager_->watched_processes_[pid].exit_callback =
+        std::move(callback);
   }
 
   void AddTerminateProcess(
@@ -70,6 +76,8 @@ class ProcessManagerTest : public testing::Test {
   void OnTerminationTimeout(pid_t pid, bool kill_signal) {
     process_manager_->ProcessTerminationTimeoutHandler(pid, kill_signal);
   }
+
+  void ForwardDispatcher() { dispatcher_.task_environment().RunUntilIdle(); }
 
  protected:
   class CallbackObserver {
@@ -273,6 +281,85 @@ TEST_F(ProcessManagerTest, UpdateExitCallbackUpdatesCallback) {
       kPid, new_observer.exited_callback_));
   EXPECT_CALL(new_observer, OnProcessExited(_)).Times(1);
   OnProcessExited(kPid, kExitStatus);
+}
+
+TEST_F(ProcessManagerTest, StartProcessWithMinijailWithStdout) {
+  const std::string kProgram = "/usr/bin/dump";
+  const std::vector<std::string> kArgs = {"-b", "-g"};
+  const std::map<std::string, std::string> kEnv = {
+      {"one", "1"},
+      {"two", "2"},
+  };
+  const std::string kUser = "user";
+  const std::string kGroup = "group";
+  constexpr uint64_t kCapMask = 1;
+
+  ProcessManager::MinijailOptions minijail_options;
+  minijail_options.user = kUser;
+  minijail_options.group = kGroup;
+  minijail_options.capmask = kCapMask;
+  minijail_options.inherit_supplementary_groups = false;
+  minijail_options.close_nonstd_fds = false;
+
+  std::optional<int> actual_exit_status;
+  std::string actual_stdout_str;
+  auto callback = [&actual_exit_status, &actual_stdout_str](
+                      int exit_status, const std::string& stdout_str) {
+    actual_exit_status = exit_status;
+    actual_stdout_str = stdout_str;
+  };
+
+  base::ScopedFD process_side_stdout_fd;
+
+  EXPECT_CALL(minijail_, DropRoot(_, StrEq(kUser), StrEq(kGroup)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(minijail_, UseCapabilities(_, kCapMask)).Times(1);
+  EXPECT_CALL(minijail_,
+              RunEnvPipesAndDestroy(_, IsProcessArgs(kProgram, kArgs),
+                                    IsProcessEnv(kEnv), _, _, _, _))
+      .WillOnce(WithArg<5>([&process_side_stdout_fd](int* stdout_fd) {
+        int fds[2];
+        CHECK(base::CreateLocalNonBlockingPipe(fds));
+        *stdout_fd = fds[0];
+        process_side_stdout_fd.reset(fds[1]);
+        return true;
+      }));
+  pid_t actual_pid = process_manager_->StartProcessInMinijailWithStdout(
+      FROM_HERE, base::FilePath(kProgram), kArgs, kEnv, minijail_options,
+      base::BindLambdaForTesting(callback));
+
+  constexpr int kExpectedExitStatus = 123;
+  std::string expected_stdout;
+  // Writes a random string to the pipe, appends it to |expected_stdout|, and
+  // forward the dispatcher.
+  const auto write_to_pipe = [&process_side_stdout_fd, &expected_stdout,
+                              this]() {
+    const char c = static_cast<char>(base::RandInt('a', 'z'));
+    const int length = base::RandInt(0, 2048);
+    const std::string str = std::string(length, c);
+    CHECK(base::WriteFileDescriptor(process_side_stdout_fd.get(), str));
+    expected_stdout.append(str);
+    ForwardDispatcher();
+  };
+
+  write_to_pipe();
+  EXPECT_FALSE(actual_exit_status.has_value());
+
+  write_to_pipe();
+  EXPECT_FALSE(actual_exit_status.has_value());
+
+  OnProcessExited(actual_pid, kExpectedExitStatus);
+  EXPECT_FALSE(actual_exit_status.has_value());
+
+  write_to_pipe();
+  process_side_stdout_fd.reset();
+  ForwardDispatcher();
+
+  EXPECT_TRUE(actual_exit_status.has_value());
+  EXPECT_EQ(actual_exit_status.value(), kExpectedExitStatus);
+  EXPECT_EQ(actual_stdout_str, expected_stdout);
+
+  AssertEmptyWatchedProcesses();
 }
 
 }  // namespace shill

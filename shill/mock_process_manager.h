@@ -55,6 +55,15 @@ class MockProcessManager : public ProcessManager {
                base::OnceCallback<void(int)>,
                struct std_file_descriptors),
               (override));
+  MOCK_METHOD(pid_t,
+              StartProcessInMinijailWithStdout,
+              (const base::Location&,
+               const base::FilePath&,
+               const std::vector<std::string>&,
+               (const std::map<std::string, std::string>&),
+               const MinijailOptions&,
+               ExitWithStdoutCallback),
+              (override));
   MOCK_METHOD(bool, StopProcess, (pid_t), (override));
   MOCK_METHOD(bool, StopProcessAndBlock, (pid_t), (override));
   MOCK_METHOD(bool,

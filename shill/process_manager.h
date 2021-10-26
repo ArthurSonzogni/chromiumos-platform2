@@ -16,6 +16,7 @@
 
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
 #include <base/lazy_instance.h>
 #include <base/location.h>
@@ -40,6 +41,10 @@ class EventDispatcher;
 // Init method call.
 class ProcessManager {
  public:
+  using ExitCallback = base::OnceCallback<void(int exit_status)>;
+  using ExitWithStdoutCallback =
+      base::OnceCallback<void(int exit_status, const std::string& stdout_str)>;
+
   struct MinijailOptions {
     // Program will run as |user| and |group|.
     std::string user;
@@ -95,7 +100,7 @@ class ProcessManager {
       const std::vector<std::string>& arguments,
       const std::map<std::string, std::string>& environment,
       const MinijailOptions& minijail_options,
-      base::OnceCallback<void(int)> exit_callback) {
+      ExitCallback exit_callback) {
     return StartProcessInMinijailWithPipes(
         spawn_source, program, arguments, environment, minijail_options,
         std::move(exit_callback),
@@ -113,8 +118,23 @@ class ProcessManager {
       const std::vector<std::string>& arguments,
       const std::map<std::string, std::string>& environment,
       const MinijailOptions& minijail_options,
-      base::OnceCallback<void(int)> exit_callback,
+      ExitCallback exit_callback,
       struct std_file_descriptors std_fds);
+
+  // Similar to StartProcessInMinijail, with the additional ability to return
+  // the output of stdout with the exit status together when the program exits.
+  // Note that the output of stdout will be cached inside this object during the
+  // lifetime of the process, so this function may not be suitable for the
+  // processes which will run for a long time and output a lot in stdout.
+  // Currently, this class will only keep 32KB at maximum for the stdout of a
+  // process. Any string beyond that length will be truncated.
+  virtual pid_t StartProcessInMinijailWithStdout(
+      const base::Location& spawn_source,
+      const base::FilePath& program,
+      const std::vector<std::string>& arguments,
+      const std::map<std::string, std::string>& environment,
+      const MinijailOptions& minijail_options,
+      ExitWithStdoutCallback exit_callback);
 
   // Stop the given |pid|.  Previously registered |exit_callback| will be
   // unregistered, since the caller is not interested in this process anymore
@@ -144,8 +164,47 @@ class ProcessManager {
 
   using TerminationTimeoutCallback = base::CancelableClosure;
 
+  struct WatchedProcess {
+    // |exit_callback| is valid when the caller only expects the exit status.
+    // |exit_with_stdout_callback| is valid when the caller also expects the
+    // output of stdout. One and only one of these two callbacks can be valid at
+    // the same time.
+    ExitCallback exit_callback;
+    ExitWithStdoutCallback exit_with_stdout_callback;
+
+    // The exit status if the process has already exited.
+    std::optional<int> exit_status;
+
+    // Fields related to stdout of this watched process. They are meaningful
+    // only when |exit_with_stdout_callback| is set. |stdout_fd| and
+    // |stdout_watcher| will be set once the process is started, and be reset
+    // once the stdout pipe is closed.
+    base::ScopedFD stdout_fd;
+    std::unique_ptr<base::FileDescriptorWatcher::Controller> stdout_watcher;
+    std::string stdout_str;
+  };
+
+  // See the above comment for StartProcessInMinijailWithPipes().
+  pid_t StartProcessInMinijailWithPipesInternal(
+      const base::Location& spawn_source,
+      const base::FilePath& program,
+      const std::vector<std::string>& arguments,
+      const std::map<std::string, std::string>& environment,
+      const MinijailOptions& minijail_options,
+      struct std_file_descriptors std_fds);
+
+  // Invoked when the stdout of the process |pid| is readable.
+  void OnProcessStdoutReadable(pid_t pid);
+
   // Invoked when process |pid| exited.
   void OnProcessExited(pid_t pid, const siginfo_t& info);
+
+  // Check the WatchedProcess struct associated with process |pid|, and invoke
+  // the corresponding callback if:
+  // - |exit_status| is ready when |exit_callback| is set;
+  // - |exit_status| is ready and stdout pipe has been closed when
+  //   |exit_with_stdout_callback| is set.
+  void CheckProcessExitStateAndNotify(pid_t pid);
 
   // Invoked when process |pid| did not terminate within a certain timeout.
   // |kill_signal| indicates the signal used for termination. When it is set
@@ -190,7 +249,7 @@ class ProcessManager {
   brillo::Minijail* minijail_;
 
   // Processes to watch for the caller.
-  std::map<pid_t, base::OnceCallback<void(int)>> watched_processes_;
+  std::map<pid_t, WatchedProcess> watched_processes_;
   // Processes being terminated by us.  Use a timer to make sure process
   // does exit, log an error if it failed to exit within a specific timeout.
   std::map<pid_t, std::unique_ptr<TerminationTimeoutCallback>>
