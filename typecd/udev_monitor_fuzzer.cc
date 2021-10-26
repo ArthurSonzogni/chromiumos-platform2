@@ -51,9 +51,7 @@ namespace typecd {
 class UdevMonitorFuzzer {
  public:
   UdevMonitorFuzzer()
-      : task_environment_(
-            base::test::TaskEnvironment::MainThreadType::IO,
-            base::test::TaskEnvironment::ThreadPoolExecutionMode::ASYNC) {
+      : task_environment_(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {
     observer_ = std::make_unique<FuzzerObserver>();
 
     monitor_ = std::make_unique<typecd::UdevMonitor>();
