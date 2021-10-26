@@ -71,7 +71,7 @@ pub unsafe fn fork() -> Result<i32, io::Error> {
 /// Light wrapper over the dup syscall.
 ///
 /// Provides safety by ensuring the resulting file descriptor is owned.
-pub fn dup<A: AsRawFd, F: FromRawFd>(fd: A) -> Result<F, io::Error> {
+pub fn dup<F: FromRawFd>(fd: RawFd) -> Result<F, io::Error> {
     // Safe because this doesn't modify any memory and we check the return value
     // and take ownership of the resulting file descriptor in an `F`.
     let dup_fd: c_int = unsafe { libc::fcntl(fd.as_raw_fd(), libc::F_DUPFD_CLOEXEC, 0) };
