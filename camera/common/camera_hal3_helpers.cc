@@ -107,6 +107,11 @@ Camera3CaptureDescriptor::Camera3CaptureDescriptor(
   }
 }
 
+Camera3CaptureDescriptor::~Camera3CaptureDescriptor() {
+  Unlock();
+  Invalidate();
+}
+
 Camera3CaptureDescriptor::Camera3CaptureDescriptor(
     Camera3CaptureDescriptor&& other) {
   *this = std::move(other);

@@ -120,7 +120,7 @@ class CROS_CAMERA_EXPORT Camera3CaptureDescriptor {
   explicit Camera3CaptureDescriptor(const camera3_capture_request_t& request);
   explicit Camera3CaptureDescriptor(const camera3_capture_result_t& result);
 
-  ~Camera3CaptureDescriptor() = default;
+  ~Camera3CaptureDescriptor();
 
   Camera3CaptureDescriptor(Camera3CaptureDescriptor&& other);
   Camera3CaptureDescriptor& operator=(Camera3CaptureDescriptor&& other);
