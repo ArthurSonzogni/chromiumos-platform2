@@ -6,6 +6,7 @@
 #define DEBUGD_SRC_KERNEL_FEATURE_TOOL_H_
 
 #include <string>
+#include <unordered_map>
 
 #include <base/macros.h>
 #include <base/values.h>
