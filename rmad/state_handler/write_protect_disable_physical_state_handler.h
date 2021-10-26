@@ -12,27 +12,30 @@
 
 #include <base/timer/timer.h>
 
-namespace rmad {
+#include "rmad/system/power_manager_client.h"
+#include "rmad/utils/cr50_utils.h"
+#include "rmad/utils/crossystem_utils.h"
 
-class Cr50Utils;
-class CrosSystemUtils;
-class CryptohomeClient;
+namespace rmad {
 
 class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
  public:
   // Poll every 2 seconds.
   static constexpr base::TimeDelta kPollInterval =
       base::TimeDelta::FromSeconds(2);
+  // Wait for 5 seconds before rebooting.
+  static constexpr base::TimeDelta kRebootDelay =
+      base::TimeDelta::FromSeconds(5);
 
   explicit WriteProtectDisablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store);
-  // Used to inject mock |cr50_utils_|, |crossystem_utils_| and
-  // |cryptohome_client_| for testing.
+  // Used to inject mock |cr50_utils_|, |crossystem_utils_|,
+  // and |power_manager_client_| for testing.
   WriteProtectDisablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store,
       std::unique_ptr<Cr50Utils> cr50_utils,
       std::unique_ptr<CrosSystemUtils> crossystem_utils,
-      std::unique_ptr<CryptohomeClient> cryptohome_client);
+      std::unique_ptr<PowerManagerClient> power_manager_client);
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisablePhysical);
   SET_REPEATABLE;
@@ -50,12 +53,14 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   ~WriteProtectDisablePhysicalStateHandler() override = default;
 
  private:
+  bool IsHwwpDisabled() const;
+  bool IsFactoryModeTried() const;
   void PollUntilWriteProtectOff();
   void CheckWriteProtectOffTask();
 
   std::unique_ptr<Cr50Utils> cr50_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
-  std::unique_ptr<CryptohomeClient> cryptohome_client_;
+  std::unique_ptr<PowerManagerClient> power_manager_client_;
   std::unique_ptr<base::RepeatingCallback<bool(bool)>>
       write_protect_signal_sender_;
   base::RepeatingTimer timer_;

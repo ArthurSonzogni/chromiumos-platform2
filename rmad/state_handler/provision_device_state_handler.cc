@@ -11,6 +11,8 @@
 #include <base/notreached.h>
 #include <base/synchronization/lock.h>
 
+#include "rmad/constants.h"
+
 namespace rmad {
 
 ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
@@ -56,10 +58,15 @@ ProvisionDeviceStateHandler::GetNextStateCase(const RmadState& state) {
         case ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE:
           FALLTHROUGH;
         case ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_NON_BLOCKING:
-          // TODO(chenghan): If device is still open, we should go to
-          //                 kWpEnablePhysical state.
-          return {.error = RMAD_ERROR_OK,
-                  .state_case = RmadState::StateCase::kFinalize};
+          if (bool keep_device_open;
+              json_store_->GetValue(kKeepDeviceOpen, &keep_device_open) &&
+              keep_device_open) {
+            return {.error = RMAD_ERROR_OK,
+                    .state_case = RmadState::StateCase::kWpEnablePhysical};
+          } else {
+            return {.error = RMAD_ERROR_OK,
+                    .state_case = RmadState::StateCase::kFinalize};
+          }
         case ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING:
           return {.error = RMAD_ERROR_PROVISIONING_FAILED,
                   .state_case = GetStateCase()};

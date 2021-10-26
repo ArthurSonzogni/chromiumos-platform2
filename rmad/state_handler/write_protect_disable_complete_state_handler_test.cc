@@ -12,70 +12,61 @@
 #include "rmad/constants.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/write_protect_disable_complete_state_handler.h"
-#include "rmad/utils/mock_cr50_utils.h"
-
-using testing::_;
-using testing::NiceMock;
-using testing::Return;
 
 namespace rmad {
 
 class WriteProtectDisableCompleteStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<WriteProtectDisableCompleteStateHandler> CreateStateHandler(
-      bool factory_mode_enabled, bool wp_disable_skipped) {
-    auto mock_cr50_utils = std::make_unique<NiceMock<MockCr50Utils>>();
-    ON_CALL(*mock_cr50_utils, IsFactoryModeEnabled())
-        .WillByDefault(Return(factory_mode_enabled));
-
+      bool keep_device_open, bool wp_disable_skipped) {
+    EXPECT_TRUE(json_store_->SetValue(kKeepDeviceOpen, keep_device_open));
     EXPECT_TRUE(json_store_->SetValue(kWpDisableSkipped, wp_disable_skipped));
-
     return base::MakeRefCounted<WriteProtectDisableCompleteStateHandler>(
-        json_store_, std::move(mock_cr50_utils));
+        json_store_);
   }
 };
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest,
-       InitializeState_FactoryModeEnabled_WpDisableSkipped) {
+       InitializeState_KeepDeviceOpen_WpDisableSkipped) {
+  // Should not happen in real use case.
   auto handler = CreateStateHandler(true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  EXPECT_EQ(handler->GetState().wp_disable_complete().keep_device_open(),
-            false);
+  EXPECT_EQ(handler->GetState().wp_disable_complete().keep_device_open(), true);
   EXPECT_EQ(handler->GetState().wp_disable_complete().wp_disable_skipped(),
             true);
 }
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest,
-       InitializeState_FactoryModeEnabled_WpDisableNotSkipped) {
+       InitializeState_KeepDeviceOpen_WpDisableNotSkipped) {
   auto handler = CreateStateHandler(true, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  EXPECT_EQ(handler->GetState().wp_disable_complete().keep_device_open(),
-            false);
+  EXPECT_EQ(handler->GetState().wp_disable_complete().keep_device_open(), true);
   EXPECT_EQ(handler->GetState().wp_disable_complete().wp_disable_skipped(),
             false);
 }
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest,
-       InitializeState_FactoryModeDisabled_WpDisableSkipped) {
-  // Should not happen in real use case.
+       InitializeState_CanCloseDevice_WpDisableSkipped) {
   auto handler = CreateStateHandler(false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  EXPECT_EQ(handler->GetState().wp_disable_complete().keep_device_open(), true);
+  EXPECT_EQ(handler->GetState().wp_disable_complete().keep_device_open(),
+            false);
   EXPECT_EQ(handler->GetState().wp_disable_complete().wp_disable_skipped(),
             true);
 }
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest,
-       InitializeState_FactoryModeDisabled_WpDisableNotSkipped) {
+       InitializeState_CanCloseDevice_WpDisableNotSkipped) {
   auto handler = CreateStateHandler(false, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  EXPECT_EQ(handler->GetState().wp_disable_complete().keep_device_open(), true);
+  EXPECT_EQ(handler->GetState().wp_disable_complete().keep_device_open(),
+            false);
   EXPECT_EQ(handler->GetState().wp_disable_complete().wp_disable_skipped(),
             false);
 }
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest, GetNextStateCase_Success) {
-  auto handler = CreateStateHandler(true, true);
+  auto handler = CreateStateHandler(false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -88,7 +79,7 @@ TEST_F(WriteProtectDisableCompleteStateHandlerTest, GetNextStateCase_Success) {
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest,
        GetNextStateCase_MissingState) {
-  auto handler = CreateStateHandler(false, false);
+  auto handler = CreateStateHandler(false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No WriteProtectDisableCompleteState.

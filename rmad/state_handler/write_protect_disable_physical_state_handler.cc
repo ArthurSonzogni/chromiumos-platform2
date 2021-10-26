@@ -9,7 +9,8 @@
 
 #include <base/logging.h>
 
-#include "rmad/system/cryptohome_client_impl.h"
+#include "rmad/constants.h"
+#include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
@@ -28,7 +29,8 @@ WriteProtectDisablePhysicalStateHandler::
     : BaseStateHandler(json_store) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
-  cryptohome_client_ = std::make_unique<CryptohomeClientImpl>(GetSystemBus());
+  power_manager_client_ =
+      std::make_unique<PowerManagerClientImpl>(GetSystemBus());
 }
 
 WriteProtectDisablePhysicalStateHandler::
@@ -36,11 +38,11 @@ WriteProtectDisablePhysicalStateHandler::
         scoped_refptr<JsonStore> json_store,
         std::unique_ptr<Cr50Utils> cr50_utils,
         std::unique_ptr<CrosSystemUtils> crossystem_utils,
-        std::unique_ptr<CryptohomeClient> cryptohome_client)
+        std::unique_ptr<PowerManagerClient> power_manager_client)
     : BaseStateHandler(json_store),
       cr50_utils_(std::move(cr50_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
-      cryptohome_client_(std::move(cryptohome_client)) {}
+      power_manager_client_(std::move(power_manager_client)) {}
 
 RmadErrorCode WriteProtectDisablePhysicalStateHandler::InitializeState() {
   if (!state_.has_wp_disable_physical()) {
@@ -70,24 +72,32 @@ WriteProtectDisablePhysicalStateHandler::GetNextStateCase(
     return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
   }
 
-  int hwwp_status;
-  if (crossystem_utils_->GetInt(kHwwpProperty, &hwwp_status) &&
-      hwwp_status == 0) {
-    // Enable cr50 factory mode if possible.
-    if (!cr50_utils_->IsFactoryModeEnabled() &&
-        !cryptohome_client_->IsEnrolled()) {
-      if (cr50_utils_->EnableFactoryMode()) {
-        return {.error = RMAD_ERROR_EXPECT_REBOOT,
-                .state_case = GetStateCase()};
-      } else {
-        LOG(WARNING) << "WpDisablePhysical: Failed to enable factory mode";
-      }
-    }
+  // To transition to next state, either factory mode is enabled, or we've set a
+  // flag indicating that the device should stay open.
+  if (IsFactoryModeTried() && IsHwwpDisabled()) {
     return {.error = RMAD_ERROR_OK,
             .state_case = RmadState::StateCase::kWpDisableComplete};
   }
-
+  // Wait for HWWP being disabled, or the follow-up preparations are done.
   return {.error = RMAD_ERROR_WAIT, .state_case = GetStateCase()};
+}
+
+bool WriteProtectDisablePhysicalStateHandler::IsHwwpDisabled() const {
+  int hwwp_status;
+  return (crossystem_utils_->GetInt(kHwwpProperty, &hwwp_status) &&
+          hwwp_status == 0);
+}
+
+bool WriteProtectDisablePhysicalStateHandler::IsFactoryModeTried() const {
+  if (cr50_utils_->IsFactoryModeEnabled()) {
+    return true;
+  }
+  if (bool keep_device_open;
+      json_store_->GetValue(kKeepDeviceOpen, &keep_device_open) &&
+      keep_device_open) {
+    return true;
+  }
+  return false;
 }
 
 void WriteProtectDisablePhysicalStateHandler::PollUntilWriteProtectOff() {
@@ -104,14 +114,18 @@ void WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask() {
   DCHECK(write_protect_signal_sender_);
   VLOG(1) << "Check write protection";
 
-  int hwwp_status;
-  if (!crossystem_utils_->GetInt(kHwwpProperty, &hwwp_status)) {
-    LOG(ERROR) << "Failed to get HWWP status";
-    return;
-  }
-  if (hwwp_status == 0) {
-    write_protect_signal_sender_->Run(false);
+  if (IsHwwpDisabled()) {
     timer_.Stop();
+    if (IsFactoryModeTried()) {
+      write_protect_signal_sender_->Run(false);
+    } else {
+      // Enable cr50 factory mode if possible.
+      if (!cr50_utils_->EnableFactoryMode()) {
+        LOG(WARNING) << "WpDisablePhysical: Failed to enable factory mode";
+        json_store_->SetValue(kKeepDeviceOpen, true);
+        power_manager_client_->Restart();
+      }
+    }
   }
 }
 

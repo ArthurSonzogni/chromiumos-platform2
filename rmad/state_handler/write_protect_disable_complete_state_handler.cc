@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "rmad/constants.h"
-#include "rmad/utils/cr50_utils_impl.h"
 
 #include <base/logging.h>
 
@@ -17,23 +16,17 @@ namespace rmad {
 WriteProtectDisableCompleteStateHandler::
     WriteProtectDisableCompleteStateHandler(scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store) {
-  cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
 }
-
-WriteProtectDisableCompleteStateHandler::
-    WriteProtectDisableCompleteStateHandler(
-        scoped_refptr<JsonStore> json_store,
-        std::unique_ptr<Cr50Utils> cr50_utils)
-    : BaseStateHandler(json_store), cr50_utils_(std::move(cr50_utils)) {}
 
 RmadErrorCode WriteProtectDisableCompleteStateHandler::InitializeState() {
   // Always probe again when entering the state.
   auto wp_disable_complete =
       std::make_unique<WriteProtectDisableCompleteState>();
-  // Need to keep device open to disable hardware write protect if cr50 factory
-  // mode is disabled.
-  wp_disable_complete->set_keep_device_open(
-      !cr50_utils_->IsFactoryModeEnabled());
+  // Need to keep device open to disable hardware write protect if the flag is
+  // set in |json_store_|.
+  bool keep_device_open = false;
+  json_store_->GetValue(kKeepDeviceOpen, &keep_device_open);
+  wp_disable_complete->set_keep_device_open(keep_device_open);
   // Check if WP disabling steps are skipped.
   bool wp_disable_skipped = false;
   json_store_->GetValue(kWpDisableSkipped, &wp_disable_skipped);

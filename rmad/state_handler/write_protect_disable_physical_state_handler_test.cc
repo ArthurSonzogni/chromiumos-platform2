@@ -12,9 +12,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "rmad/constants.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/write_protect_disable_physical_state_handler.h"
-#include "rmad/system/mock_cryptohome_client.h"
+#include "rmad/system/mock_power_manager_client.h"
 #include "rmad/utils/mock_cr50_utils.h"
 #include "rmad/utils/mock_crossystem_utils.h"
 
@@ -42,8 +43,10 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
       const std::vector<int> wp_status_list,
       bool factory_mode_enabled,
       bool is_enrolled,
-      bool* factory_mode_toggled = nullptr) {
-    // Mock |Cr50Utils|, |CrosSystemUtils| and |CryptohomeClient|.
+      bool* factory_mode_toggled = nullptr,
+      bool* reboot_toggled = nullptr) {
+    // Mock |Cr50Utils|, |CrosSystemUtils|, |CryptohomeClient| and
+    // |PowerManagerClient|.
     auto mock_crossystem_utils =
         std::make_unique<StrictMock<MockCrosSystemUtils>>();
     {
@@ -60,19 +63,21 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
     if (factory_mode_toggled) {
       ON_CALL(*mock_cr50_utils, EnableFactoryMode())
           .WillByDefault(
-              DoAll(Assign(factory_mode_toggled, true), Return(true)));
+              DoAll(Assign(factory_mode_toggled, true), Return(!is_enrolled)));
     }
 
-    auto mock_cryptohome_client =
-        std::make_unique<NiceMock<MockCryptohomeClient>>();
-    ON_CALL(*mock_cryptohome_client, IsEnrolled())
-        .WillByDefault(Return(is_enrolled));
+    auto mock_power_manager_client =
+        std::make_unique<NiceMock<MockPowerManagerClient>>();
+    if (reboot_toggled) {
+      ON_CALL(*mock_power_manager_client, Restart())
+          .WillByDefault(DoAll(Assign(reboot_toggled, true), Return(true)));
+    }
 
     auto handler =
         base::MakeRefCounted<WriteProtectDisablePhysicalStateHandler>(
             json_store_, std::move(mock_cr50_utils),
             std::move(mock_crossystem_utils),
-            std::move(mock_cryptohome_client));
+            std::move(mock_power_manager_client));
     auto callback = std::make_unique<base::RepeatingCallback<bool(bool)>>(
         base::BindRepeating(&SignalSender::SendHardwareWriteProtectSignal,
                             base::Unretained(&signal_sender_)));
@@ -90,14 +95,39 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest, InitializeState_Success) {
-  auto handler = CreateStateHandler({}, false, false);
+  auto handler = CreateStateHandler({0}, true, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  bool signal_sent = false;
+  EXPECT_CALL(signal_sender_, SendHardwareWriteProtectSignal(IsFalse()))
+      .WillOnce(DoAll(Assign(&signal_sent, true), Return(true)));
+
+  task_environment_.FastForwardBy(
+      WriteProtectDisablePhysicalStateHandler::kPollInterval);
+  EXPECT_TRUE(signal_sent);
+}
+
+TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
+       GetNextStateCase_Success_CleanUpBeforeSignal) {
+  auto handler = CreateStateHandler({0}, true, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  RmadState state;
+  state.set_allocated_wp_disable_physical(new WriteProtectDisablePhysicalState);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableComplete);
+
+  handler->CleanUpState();
+  task_environment_.FastForwardBy(
+      WriteProtectDisablePhysicalStateHandler::kPollInterval);
+  // |signal_sender_| is not called.
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        GetNextStateCase_Success_FactoryModeEnabled) {
-  bool factory_mode_toggled = false;
-  auto handler = CreateStateHandler({0}, true, false, &factory_mode_toggled);
+  auto handler = CreateStateHandler({0, 0}, true, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -106,37 +136,102 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableComplete);
-  EXPECT_FALSE(factory_mode_toggled);
+
+  bool signal_sent = false;
+  EXPECT_CALL(signal_sender_, SendHardwareWriteProtectSignal(IsFalse()))
+      .WillOnce(DoAll(Assign(&signal_sent, true), Return(true)));
+
+  task_environment_.FastForwardBy(
+      WriteProtectDisablePhysicalStateHandler::kPollInterval);
+  EXPECT_TRUE(signal_sent);
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
-       GetNextStateCase_Success_FactoryModeDisabled_NoFwmp) {
-  bool factory_mode_toggled = false;
-  auto handler = CreateStateHandler({0}, false, false, &factory_mode_toggled);
+       GetNextStateCase_Success_KeepDeviceOpen) {
+  auto handler = CreateStateHandler({0, 0}, false, false);
+  json_store_->SetValue(kKeepDeviceOpen, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
   state.set_allocated_wp_disable_physical(new WriteProtectDisablePhysicalState);
 
   auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableComplete);
+
+  bool signal_sent = false;
+  EXPECT_CALL(signal_sender_, SendHardwareWriteProtectSignal(IsFalse()))
+      .WillOnce(DoAll(Assign(&signal_sent, true), Return(true)));
+
+  task_environment_.FastForwardBy(
+      WriteProtectDisablePhysicalStateHandler::kPollInterval);
+  EXPECT_TRUE(signal_sent);
+}
+
+TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
+       GetNextStateCase_Success_FactoryModeDisabled_NotEnrolled) {
+  bool factory_mode_toggled = false, reboot_toggled = false;
+  auto handler = CreateStateHandler({1, 1, 0}, false, false,
+                                    &factory_mode_toggled, &reboot_toggled);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  RmadState state;
+  state.set_allocated_wp_disable_physical(new WriteProtectDisablePhysicalState);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_WAIT);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisablePhysical);
+
+  EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(reboot_toggled);
+  // First call to |mock_crossystem_utils_| during polling, get 1.
+  task_environment_.FastForwardBy(
+      WriteProtectDisablePhysicalStateHandler::kPollInterval);
+  EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(reboot_toggled);
+  // Second call to |mock_crossystem_utils_| during polling, get 1.
+  task_environment_.FastForwardBy(
+      WriteProtectDisablePhysicalStateHandler::kPollInterval);
+  EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(reboot_toggled);
+  // Third call to |mock_crossystem_utils_| during polling, get 0.
+  task_environment_.FastForwardBy(
+      WriteProtectDisablePhysicalStateHandler::kPollInterval);
   EXPECT_TRUE(factory_mode_toggled);
+  EXPECT_FALSE(reboot_toggled);
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
-       GetNextStateCase_Success_FactoryModeDisabled_HasFwmp) {
-  bool factory_mode_toggled = false;
-  auto handler = CreateStateHandler({0}, false, true, &factory_mode_toggled);
+       GetNextStateCase_Success_FactoryModeDisabled_Enrolled) {
+  bool factory_mode_toggled = false, reboot_toggled = false;
+  auto handler = CreateStateHandler({1, 1, 0}, false, true,
+                                    &factory_mode_toggled, &reboot_toggled);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
   state.set_allocated_wp_disable_physical(new WriteProtectDisablePhysicalState);
 
   auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableComplete);
+  EXPECT_EQ(error, RMAD_ERROR_WAIT);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisablePhysical);
+
   EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(reboot_toggled);
+  // First call to |mock_crossystem_utils_| during polling, get 1.
+  task_environment_.FastForwardBy(
+      WriteProtectDisablePhysicalStateHandler::kPollInterval);
+  EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(reboot_toggled);
+  // Second call to |mock_crossystem_utils_| during polling, get 1.
+  task_environment_.FastForwardBy(
+      WriteProtectDisablePhysicalStateHandler::kPollInterval);
+  EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(reboot_toggled);
+  // Third call to |mock_crossystem_utils_| during polling, get 0.
+  task_environment_.FastForwardBy(
+      WriteProtectDisablePhysicalStateHandler::kPollInterval);
+  EXPECT_TRUE(factory_mode_toggled);
+  EXPECT_TRUE(reboot_toggled);
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
@@ -150,36 +245,6 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_INVALID);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisablePhysical);
-}
-
-TEST_F(WriteProtectDisablePhysicalStateHandlerTest, GetNextStateCase_Wait) {
-  auto handler = CreateStateHandler({1, 1, 1, 0}, false, false);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  RmadState state;
-  state.set_allocated_wp_disable_physical(new WriteProtectDisablePhysicalState);
-
-  // First call to |mock_crossystem_utils_|, get 1.
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_WAIT);
-  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisablePhysical);
-
-  bool signal_sent = false;
-  EXPECT_CALL(signal_sender_, SendHardwareWriteProtectSignal(IsFalse()))
-      .WillOnce(DoAll(Assign(&signal_sent, true), Return(true)));
-
-  // Second call to |mock_crossystem_utils_| during polling, get 1.
-  task_environment_.FastForwardBy(
-      WriteProtectDisablePhysicalStateHandler::kPollInterval);
-  EXPECT_FALSE(signal_sent);
-  // Third call to |mock_crossystem_utils_| during polling, get 1.
-  task_environment_.FastForwardBy(
-      WriteProtectDisablePhysicalStateHandler::kPollInterval);
-  EXPECT_FALSE(signal_sent);
-  // Forth call to |mock_crossystem_utils_| during polling, get 0.
-  task_environment_.FastForwardBy(
-      WriteProtectDisablePhysicalStateHandler::kPollInterval);
-  EXPECT_TRUE(signal_sent);
 }
 
 }  // namespace rmad
