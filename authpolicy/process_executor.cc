@@ -36,7 +36,7 @@ struct EnvVarDef {
 #define DEFINE_ENV_VAR(name) \
   { name "=", sizeof(name "=") - 1 }
 
-constexpr EnvVarDef kWhitelistedEnvVars[]{
+constexpr EnvVarDef kAllowlistedEnvVars[]{
     DEFINE_ENV_VAR("ASAN_OPTIONS"),  DEFINE_ENV_VAR("LSAN_OPTIONS"),
     DEFINE_ENV_VAR("MSAN_OPTIONS"),  DEFINE_ENV_VAR("TSAN_OPTIONS"),
     DEFINE_ENV_VAR("UBSAN_OPTIONS"),
@@ -135,12 +135,12 @@ bool ProcessExecutor::Execute() {
     putenv(const_cast<char*>(env_list.back().c_str()));
   }
 
-  // Add back whitelisted env vars. Note that |whitelisted_var.name_equals| is
+  // Add back allowlisted env vars. Note that |allowlisted_var.name_equals| is
   // name= and |env| is name=value. A linear search seems fine, but consider
-  // using a map if kWhitelistedEnvVars grows.
+  // using a map if kAllowlistedEnvVars grows.
   for (char* env : old_environ) {
-    for (const EnvVarDef& whitelisted_var : kWhitelistedEnvVars) {
-      if (strncmp(env, whitelisted_var.name_equals, whitelisted_var.size) == 0)
+    for (const EnvVarDef& allowlisted_var : kAllowlistedEnvVars) {
+      if (strncmp(env, allowlisted_var.name_equals, allowlisted_var.size) == 0)
         putenv(env);
     }
   }

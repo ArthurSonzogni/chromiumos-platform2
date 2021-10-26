@@ -200,7 +200,7 @@ void CheckMachinePassword(const std::string& password) {
 
 void TriggerSeccompFailure() {
   // If the tests start failing because this call got added to some seccomp
-  // file, switch to any other syscall that is not whitelisted.
+  // file, switch to any other syscall that is not allowlisted.
   uid_t unused_uid;
   getresuid(&unused_uid, &unused_uid, &unused_uid);
 }

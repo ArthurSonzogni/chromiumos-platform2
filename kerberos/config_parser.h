@@ -16,7 +16,7 @@
 namespace kerberos {
 
 // Parses the Kerberos configuration for either validation or encryption types
-// retrieval. During Validation, verifies that only whitelisted configuration
+// retrieval. During Validation, verifies that only allowlisted configuration
 // options are used. The Kerberos daemon does not allow all options for security
 // reasons. Also performs basic syntax checks and returns more useful error
 // information than "You screwed up your config, screw you!"
@@ -27,7 +27,7 @@ class ConfigParser {
   ConfigParser& operator=(const ConfigParser&) = delete;
 
   // Checks the Kerberos configuration |krb5conf|. If the config cannot be
-  // parsed or a non-whitelisted option is used, returns a message with proper
+  // parsed or a non-allowlisted option is used, returns a message with proper
   // error code and the 0-based line index where the error occurred. If the
   // config was validated successfully, returns a message with code set to
   // |CONFIG_ERROR_NONE|.
@@ -60,9 +60,9 @@ class ConfigParser {
                       int group_level) const;
 
   using StringSet = base::flat_set<std::string>;
-  const StringSet libdefaults_whitelist_;
-  const StringSet realms_whitelist_;
-  const StringSet section_whitelist_;
+  const StringSet libdefaults_allowlist_;
+  const StringSet realms_allowlist_;
+  const StringSet section_allowlist_;
   const StringSet enctypes_fields_;
   const StringSet weak_enctypes_;
   const StringSet strong_enctypes_;

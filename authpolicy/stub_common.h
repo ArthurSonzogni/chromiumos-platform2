@@ -61,7 +61,7 @@ extern const char kPasswordChangedUserName[];
 extern const char kNoPwdFieldsUserPrincipal[];
 // Corresponding user name.
 extern const char kNoPwdFieldsUserName[];
-// Triggers kinit to call a syscall that is not whitelisted.
+// Triggers kinit to call a syscall that is not allowlisted.
 extern const char kSeccompUserPrincipal[];
 // Triggers an error in net ads join for missing or bad createcomputer argument.
 extern const char kExpectOuUserPrincipal[];
@@ -156,7 +156,7 @@ extern const char kUnaffiliatedMachineName[];
 // Triggers kinit to be retried a few times for the machine TGT (simulates that
 // the account hasn't propagated yet).
 extern const char kPropagationRetryMachineName[];
-// Triggers net ads join to call a syscall that is not whitelisted.
+// Triggers net ads join to call a syscall that is not allowlisted.
 extern const char kSeccompMachineName[];
 
 // How many times an account propagation error is simulated if

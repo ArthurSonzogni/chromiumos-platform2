@@ -19,11 +19,11 @@ constexpr int kMaxGroupLevelDepth = 1000;
 // https://web.mit.edu/kerberos/krb5-1.12/doc/admin/conf_files/krb5_conf.html
 // for a description of the krb5.conf format.
 
-// Directives that are not relations (i.e. key=value). All blacklisted.
+// Directives that are not relations (i.e. key=value). All blocklisted.
 const char* const kDirectives[] = {"module", "include", "includedir"};
 
-// Whitelisted configuration keys in the [libdefaults] section.
-const char* const kLibDefaultsWhitelist[] = {
+// Allowlisted configuration keys in the [libdefaults] section.
+const char* const kLibDefaultsAllowlist[] = {
     "canonicalize",
     "clockskew",
     "default_tgs_enctypes",
@@ -45,18 +45,19 @@ const char* const kLibDefaultsWhitelist[] = {
     "udp_preference_limit",
 };
 
-// Whitelisted configuration keys in the [realms] section.
-const char* const kRealmsWhitelist[] = {
-    "admin_server", "auth_to_local", "kdc", "kpasswd_server", "master_kdc",
+// Allowlisted configuration keys in the [realms] section.
+const char* const kRealmsAllowlist[] = {
+    "admin_server",   "auth_to_local", "kdc",
+    "kpasswd_server", "master_kdc",  // nocheck
 };
 
-// Whitelisted sections. Any key in "domain_realm" and "capaths" is accepted.
+// Allowlisted sections. Any key in "domain_realm" and "capaths" is accepted.
 constexpr char kSectionLibdefaults[] = "libdefaults";
 constexpr char kSectionRealms[] = "realms";
 constexpr char kSectionDomainRealm[] = "domain_realm";
 constexpr char kSectionCapaths[] = "capaths";
 
-const char* const kSectionWhitelist[] = {kSectionLibdefaults, kSectionRealms,
+const char* const kSectionAllowlist[] = {kSectionLibdefaults, kSectionRealms,
                                          kSectionDomainRealm, kSectionCapaths};
 
 // List of encryption types fields allowed inside [libdefaults] section.
@@ -108,12 +109,12 @@ ConfigErrorInfo MakeErrorInfo(ConfigErrorCode code, int line_index) {
 }  // namespace
 
 ConfigParser::ConfigParser()
-    : libdefaults_whitelist_(std::begin(kLibDefaultsWhitelist),
-                             std::end(kLibDefaultsWhitelist)),
-      realms_whitelist_(std::begin(kRealmsWhitelist),
-                        std::end(kRealmsWhitelist)),
-      section_whitelist_(std::begin(kSectionWhitelist),
-                         std::end(kSectionWhitelist)),
+    : libdefaults_allowlist_(std::begin(kLibDefaultsAllowlist),
+                             std::end(kLibDefaultsAllowlist)),
+      realms_allowlist_(std::begin(kRealmsAllowlist),
+                        std::end(kRealmsAllowlist)),
+      section_allowlist_(std::begin(kSectionAllowlist),
+                         std::end(kSectionAllowlist)),
       enctypes_fields_(std::begin(kEnctypesFields), std::end(kEnctypesFields)),
       weak_enctypes_(std::begin(kWeakEnctypes), std::end(kWeakEnctypes)),
       strong_enctypes_(std::begin(kStrongEnctypes), std::end(kStrongEnctypes)) {
@@ -223,7 +224,7 @@ ConfigErrorInfo ConfigParser::ParseConfig(
 
       // Bail if the section is not supported, e.g. [appdefaults].
       if (current_section.empty() ||
-          !base::Contains(section_whitelist_, current_section)) {
+          !base::Contains(section_allowlist_, current_section)) {
         return MakeErrorInfo(CONFIG_ERROR_SECTION_NOT_SUPPORTED, line_index);
       }
       continue;
@@ -312,17 +313,17 @@ bool ConfigParser::IsKeySupported(const std::string& key,
   if (section.empty())
     return false;
 
-  // Enforce only whitelisted libdefaults keys on the root and realm levels:
+  // Enforce only allowlisted libdefaults keys on the root and realm levels:
   // [libdefaults]
   //   clockskew = 300
   //   EXAMPLE.COM = {
   //     clockskew = 500
   //   }
   if (section == kSectionLibdefaults && group_level <= 1) {
-    return base::Contains(libdefaults_whitelist_, key);
+    return base::Contains(libdefaults_allowlist_, key);
   }
 
-  // Enforce only whitelisted realm keys on the root and realm levels:
+  // Enforce only allowlisted realm keys on the root and realm levels:
   // [realms]
   //   kdc = kerberos1.example.com
   //   EXAMPLE.COM = {
@@ -330,7 +331,7 @@ bool ConfigParser::IsKeySupported(const std::string& key,
   //   }
   // Not sure if they can actually be at the root level, but just in case...
   if (section == kSectionRealms && group_level <= 1)
-    return base::Contains(realms_whitelist_, key);
+    return base::Contains(realms_allowlist_, key);
 
   // Anything else is fine (all keys of other supported sections).
   return true;

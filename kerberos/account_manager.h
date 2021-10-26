@@ -98,7 +98,7 @@ class AccountManager : public TgtRenewalScheduler::Delegate {
                       const std::string& krb5conf) const WARN_UNUSED_RESULT;
 
   // Validates the Kerberos configuration data |krb5conf|. If the config has
-  // syntax errors or uses non-whitelisted options, returns ERROR_BAD_CONFIG
+  // syntax errors or uses non-allowlisted options, returns ERROR_BAD_CONFIG
   // and fills |error_info| with error information.
   ErrorType ValidateConfig(const std::string& krb5conf,
                            ConfigErrorInfo* error_info) const

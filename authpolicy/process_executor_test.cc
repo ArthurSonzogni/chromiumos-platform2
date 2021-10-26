@@ -27,9 +27,9 @@ const char kCmdTee[] = "/usr/bin/tee";
 const char kCmdPrintEnv[] = "/usr/bin/printenv";
 const char kEnvVar[] = "PROCESS_EXECUTOR_TEST_ENV_VAR";
 const char kEnvVar2[] = "PROCESS_EXECUTOR_TEST_2_ENV_VAR";
-const char kWhitelistedEnvVar[] = "ASAN_OPTIONS";
-const char kShortenedWhitelistedEnvVar[] = "ASAN_OPT";
-const char kExtendedWhitelistedEnvVar[] = "ASAN_OPTIONS_123";
+const char kAllowlistedEnvVar[] = "ASAN_OPTIONS";
+const char kShortenedAllowlistedEnvVar[] = "ASAN_OPT";
+const char kExtendedAllowlistedEnvVar[] = "ASAN_OPTIONS_123";
 const char kCatTestText[] = "This is a test.\n";
 const char kFileDoesNotExist[] = "does_not_exist_khsdgviu";
 const char kLargeTestString[] = "I like recursion because ";
@@ -273,28 +273,28 @@ TEST_F(ProcessExecutorTest, ClearsEnvVariables) {
   EXPECT_EQ(getenv(kEnvVar2), nullptr);
 }
 
-// The executor keeps whitelisted environment variables.
-TEST_F(ProcessExecutorTest, KeepsWhitelistedEnvVariables) {
+// The executor keeps allowlisted environment variables.
+TEST_F(ProcessExecutorTest, KeepsAllowlistedEnvVariables) {
   ProcessExecutor cmd({kCmdPrintEnv});
   EXPECT_TRUE(cmd.Execute());
   EXPECT_EQ(cmd.GetExitCode(), 0);
-  EXPECT_NE(cmd.GetStdout().find(kWhitelistedEnvVar), std::string::npos);
+  EXPECT_NE(cmd.GetStdout().find(kAllowlistedEnvVar), std::string::npos);
   EXPECT_TRUE(cmd.GetStderr().empty());
 }
 
-// Makes sure that XY and XYZ_123 aren't kept if XYZ is whitelisted.
-TEST_F(ProcessExecutorTest, WhitelistedEnvVariablesMustMatchExactly) {
+// Makes sure that XY and XYZ_123 aren't kept if XYZ is allowlisted.
+TEST_F(ProcessExecutorTest, AllowlistedEnvVariablesMustMatchExactly) {
   ProcessExecutor cmd({kCmdPrintEnv});
-  setenv(kShortenedWhitelistedEnvVar, "1", 1);
-  setenv(kExtendedWhitelistedEnvVar, "1", 1);
+  setenv(kShortenedAllowlistedEnvVar, "1", 1);
+  setenv(kExtendedAllowlistedEnvVar, "1", 1);
   EXPECT_TRUE(cmd.Execute());
   EXPECT_EQ(cmd.GetExitCode(), 0);
-  // Note that kShortenedWhitelistedEnvVar is a part of a whitelisted variable,
+  // Note that kShortenedAllowlistedEnvVar is a part of a allowlisted variable,
   // so we have to add '='.
   EXPECT_EQ(
-      cmd.GetStdout().find(std::string(kShortenedWhitelistedEnvVar) + "="),
+      cmd.GetStdout().find(std::string(kShortenedAllowlistedEnvVar) + "="),
       std::string::npos);
-  EXPECT_EQ(cmd.GetStdout().find(kExtendedWhitelistedEnvVar),
+  EXPECT_EQ(cmd.GetStdout().find(kExtendedAllowlistedEnvVar),
             std::string::npos);
   EXPECT_TRUE(cmd.GetStderr().empty());
 }

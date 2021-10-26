@@ -102,8 +102,10 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeBoolean(&policy, key::kDeviceAllowNewUsers, kBool);
   EXPECT_EQ(kBool, policy.allow_new_users().allow_new_users());
 
-  EncodeStringList(&policy, key::kDeviceUserWhitelist, kStringList);
-  EXPECT_EQ(kStringList, ToVector(policy.user_whitelist().user_whitelist()));
+  // Old policy, tested for backward compatibility.
+  EncodeStringList(&policy, key::kDeviceUserWhitelist, kStringList);  // nocheck
+  EXPECT_EQ(kStringList,
+            ToVector(policy.user_whitelist().user_whitelist()));  // nocheck
   // Old policy copied to new name.
   EXPECT_EQ(kStringList, ToVector(policy.user_allowlist().user_allowlist()));
 
@@ -459,16 +461,18 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
             policy.device_display_resolution().device_display_resolution());
 
   // The encoder of this policy converts a JSON string to separate values.
-  EncodeStringList(&policy, key::kUsbDetachableWhitelist,
+  // Old policy, tested for backward compatibility.
+  EncodeStringList(&policy, key::kUsbDetachableWhitelist,  // nocheck
                    {"{\"vendor_id\":123, \"product_id\":234}",
                     "{\"vendor_id\":345, \"product_id\":456}"});
-  const auto& whitelist_proto = policy.usb_detachable_whitelist();
+  const auto& deprecated_allowlist_proto =
+      policy.usb_detachable_whitelist();  // nocheck
   const auto& copied_allowlist_proto = policy.usb_detachable_allowlist();
-  EXPECT_EQ(123, whitelist_proto.id().Get(0).vendor_id());
-  EXPECT_EQ(234, whitelist_proto.id().Get(0).product_id());
-  EXPECT_EQ(345, whitelist_proto.id().Get(1).vendor_id());
-  EXPECT_EQ(456, whitelist_proto.id().Get(1).product_id());
-  // Whitelist values should have been copied to the allowlist proto
+  EXPECT_EQ(123, deprecated_allowlist_proto.id().Get(0).vendor_id());
+  EXPECT_EQ(234, deprecated_allowlist_proto.id().Get(0).product_id());
+  EXPECT_EQ(345, deprecated_allowlist_proto.id().Get(1).vendor_id());
+  EXPECT_EQ(456, deprecated_allowlist_proto.id().Get(1).product_id());
+  // Former values should have been copied to the allowlist proto.
   EXPECT_EQ(123, copied_allowlist_proto.id().Get(0).vendor_id());
   EXPECT_EQ(234, copied_allowlist_proto.id().Get(0).product_id());
   EXPECT_EQ(345, copied_allowlist_proto.id().Get(1).vendor_id());
@@ -482,7 +486,8 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(2345, allowlist_proto.id().Get(0).product_id());
   EXPECT_EQ(3456, allowlist_proto.id().Get(1).vendor_id());
   EXPECT_EQ(4567, allowlist_proto.id().Get(1).product_id());
-  EXPECT_FALSE(policy.has_usb_detachable_whitelist());
+  // Checking that the new policy is not mapped into the former one.
+  EXPECT_FALSE(policy.has_usb_detachable_whitelist());  // nocheck
 
   EncodeBoolean(&policy, key::kDeviceQuirksDownloadEnabled, kBool);
   EXPECT_EQ(kBool, policy.quirks_download_enabled().quirks_download_enabled());
@@ -544,9 +549,10 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeString(&policy, key::kDevicePrinters, kString);
   EXPECT_EQ(kString, policy.device_printers().external_policy());
 
-  // Old policy copied to new name.
-  EncodeString(&policy, key::kDeviceNativePrinters, kString);
-  EXPECT_EQ(kString, policy.native_device_printers().external_policy());
+  // Old policy, tested for backward compatibility.
+  EncodeString(&policy, key::kDeviceNativePrinters, kString);  // nocheck
+  EXPECT_EQ(kString,
+            policy.native_device_printers().external_policy());  // nocheck
   // Old policy copied to new name.
   EXPECT_EQ(kString, policy.device_printers().external_policy());
 
@@ -556,11 +562,14 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(em::DevicePrintersAccessModeProto::ACCESS_MODE_ALLOWLIST,
             policy.device_printers_access_mode().access_mode());
 
-  // Old policy copied to new name.
-  EncodeInteger(&policy, key::kDeviceNativePrintersAccessMode,
-                em::DeviceNativePrintersAccessModeProto::ACCESS_MODE_WHITELIST);
-  EXPECT_EQ(em::DeviceNativePrintersAccessModeProto::ACCESS_MODE_WHITELIST,
-            policy.native_device_printers_access_mode().access_mode());
+  // Old policy, tested for backward compatibility.
+  EncodeInteger(&policy, key::kDeviceNativePrintersAccessMode,  // nocheck
+                em::DeviceNativePrintersAccessModeProto::       // nocheck
+                ACCESS_MODE_WHITELIST);                         // nocheck
+  EXPECT_EQ(
+      em::DeviceNativePrintersAccessModeProto::                    // nocheck
+      ACCESS_MODE_WHITELIST,                                       // nocheck
+      policy.native_device_printers_access_mode().access_mode());  // nocheck
   // Old policy copied to new name.
   EXPECT_EQ(em::DevicePrintersAccessModeProto::ACCESS_MODE_ALLOWLIST,
             policy.device_printers_access_mode().access_mode());
@@ -569,9 +578,13 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(kStringList,
             ToVector(policy.device_printers_allowlist().allowlist()));
 
-  EncodeStringList(&policy, key::kDeviceNativePrintersWhitelist, kStringList);
-  EXPECT_EQ(kStringList,
-            ToVector(policy.native_device_printers_whitelist().whitelist()));
+  // Old policy, tested for backward compatibility.
+  EncodeStringList(&policy, key::kDeviceNativePrintersWhitelist,  // nocheck
+                   kStringList);
+  EXPECT_EQ(
+      kStringList,
+      ToVector(
+          policy.native_device_printers_whitelist().whitelist()));  // nocheck
   // Old policy copied to new name.
   EXPECT_EQ(kStringList,
             ToVector(policy.device_printers_allowlist().allowlist()));
@@ -580,9 +593,13 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(kStringList,
             ToVector(policy.device_printers_blocklist().blocklist()));
 
-  EncodeStringList(&policy, key::kDeviceNativePrintersBlacklist, kStringList);
-  EXPECT_EQ(kStringList,
-            ToVector(policy.native_device_printers_blacklist().blacklist()));
+  // Old policy, tested for backward compatibility.
+  EncodeStringList(&policy, key::kDeviceNativePrintersBlacklist,  // nocheck
+                   kStringList);
+  EXPECT_EQ(
+      kStringList,
+      ToVector(
+          policy.native_device_printers_blacklist().blacklist()));  // nocheck
   // Old policy copied to new name.
   EXPECT_EQ(kStringList,
             ToVector(policy.device_printers_blocklist().blocklist()));

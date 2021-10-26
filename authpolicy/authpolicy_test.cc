@@ -922,7 +922,7 @@ class AuthPolicyTest : public testing::Test {
     writer.AppendInteger(policy::key::kDevicePolicyRefreshRate, kPolicyInt);
     writer.AppendString(policy::key::kSystemTimezone, kPolicyStr);
     const std::vector<std::string> str_list = {"str1", "str2"};
-    writer.AppendStringList(policy::key::kDeviceUserWhitelist, str_list);
+    writer.AppendStringList(policy::key::kDeviceUserAllowlist, str_list);
     writer.WriteToFile(gpo_path);
 
     validate_device_policy_ = [str_list](
@@ -932,11 +932,11 @@ class AuthPolicyTest : public testing::Test {
           kPolicyInt,
           policy.device_policy_refresh_rate().device_policy_refresh_rate());
       EXPECT_EQ(kPolicyStr, policy.system_timezone().timezone());
-      const em::UserWhitelistProto& str_list_proto = policy.user_whitelist();
-      EXPECT_EQ(str_list_proto.user_whitelist_size(),
+      const em::UserAllowlistProto& str_list_proto = policy.user_allowlist();
+      EXPECT_EQ(str_list_proto.user_allowlist_size(),
                 static_cast<int>(str_list.size()));
-      for (int n = 0; n < str_list_proto.user_whitelist_size(); ++n)
-        EXPECT_EQ(str_list_proto.user_whitelist(n), str_list.at(n));
+      for (int n = 0; n < str_list_proto.user_allowlist_size(); ++n)
+        EXPECT_EQ(str_list_proto.user_allowlist(n), str_list.at(n));
     };
   }
 
@@ -2270,7 +2270,7 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchGposOverride) {
   writer1.AppendInteger(policy::key::kDevicePolicyRefreshRate, kPolicyInt);
   writer1.AppendString(policy::key::kSystemTimezone, kPolicyStr);
   const std::vector<std::string> str_list1 = {"str1", "str2", "str3"};
-  writer1.AppendStringList(policy::key::kDeviceUserWhitelist, str_list1);
+  writer1.AppendStringList(policy::key::kDeviceUserAllowlist, str_list1);
   writer1.WriteToFile(stub_gpo1_path_);
 
   policy::PRegUserDevicePolicyWriter writer2;
@@ -2278,7 +2278,7 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchGposOverride) {
   writer2.AppendInteger(policy::key::kDevicePolicyRefreshRate, kOtherPolicyInt);
   writer2.AppendString(policy::key::kSystemTimezone, kOtherPolicyStr);
   const std::vector<std::string> str_list2 = {"str4", "str5"};
-  writer2.AppendStringList(policy::key::kDeviceUserWhitelist, str_list2);
+  writer2.AppendStringList(policy::key::kDeviceUserAllowlist, str_list2);
   writer2.WriteToFile(stub_gpo2_path_);
 
   validate_device_policy_ = [str_list2](
@@ -2287,11 +2287,11 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchGposOverride) {
     EXPECT_EQ(kOtherPolicyInt,
               policy.device_policy_refresh_rate().device_policy_refresh_rate());
     EXPECT_EQ(kOtherPolicyStr, policy.system_timezone().timezone());
-    const em::UserWhitelistProto& str_list_proto = policy.user_whitelist();
-    EXPECT_EQ(str_list_proto.user_whitelist_size(),
+    const em::UserAllowlistProto& str_list_proto = policy.user_allowlist();
+    EXPECT_EQ(str_list_proto.user_allowlist_size(),
               static_cast<int>(str_list2.size()));
-    for (int n = 0; n < str_list_proto.user_whitelist_size(); ++n)
-      EXPECT_EQ(str_list_proto.user_whitelist(n), str_list2.at(n));
+    for (int n = 0; n < str_list_proto.user_allowlist_size(); ++n)
+      EXPECT_EQ(str_list_proto.user_allowlist(n), str_list2.at(n));
   };
   EXPECT_EQ(ERROR_NONE,
             Join(kTwoGposMachineName, kUserPrincipal, MakePasswordFd()));
