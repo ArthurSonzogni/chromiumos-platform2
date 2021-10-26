@@ -18,7 +18,7 @@
 #include "diagnostics/dpsl/internal/callback_utils.h"
 #include "diagnostics/dpsl/public/dpsl_thread_context.h"
 
-#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include_directory)
 
 namespace diagnostics {
 

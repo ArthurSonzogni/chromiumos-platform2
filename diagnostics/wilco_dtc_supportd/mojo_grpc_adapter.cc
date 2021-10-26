@@ -13,7 +13,7 @@
 #include "diagnostics/wilco_dtc_supportd/grpc_client_manager.h"
 #include "diagnostics/wilco_dtc_supportd/json_utils.h"
 
-#include "wilco_dtc.grpc.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc.grpc.pb.h"  // NOLINT(build/include_directory)
 
 namespace diagnostics {
 

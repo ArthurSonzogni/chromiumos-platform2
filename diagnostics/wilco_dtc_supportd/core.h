@@ -34,8 +34,8 @@
 #include "mojo/cros_healthd.mojom.h"
 #include "mojo/cros_healthd_probe.mojom.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"
-#include "wilco_dtc.grpc.pb.h"           // NOLINT(build/include)
-#include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc.grpc.pb.h"           // NOLINT(build/include_directory)
+#include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include_directory)
 
 namespace diagnostics {
 

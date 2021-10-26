@@ -28,8 +28,8 @@
 #include "diagnostics/dpsl/public/dpsl_thread_context.h"
 #include "diagnostics/dpsl/test_utils/common.h"
 
-#include "wilco_dtc.grpc.pb.h"           // NOLINT(build/include)
-#include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc.grpc.pb.h"           // NOLINT(build/include_directory)
+#include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include_directory)
 
 using testing::_;
 using testing::ReturnRef;

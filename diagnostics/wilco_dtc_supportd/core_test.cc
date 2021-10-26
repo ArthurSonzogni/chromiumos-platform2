@@ -69,7 +69,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/fake_ec_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/fake_powerd_event_service.h"
 #include "mojo/wilco_dtc_supportd.mojom.h"
-#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include_directory)
 
 using testing::_;
 using testing::ElementsAreArray;

@@ -19,7 +19,7 @@
 #include "diagnostics/dpsl/public/dpsl_thread_context.h"
 #include "diagnostics/dpsl/test_utils/common.h"
 
-#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include_directory)
 
 namespace diagnostics {
 namespace {

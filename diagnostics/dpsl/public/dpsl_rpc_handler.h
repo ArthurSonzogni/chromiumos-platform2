@@ -8,7 +8,7 @@
 #include <functional>
 #include <memory>
 
-#include "wilco_dtc.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc.pb.h"  // NOLINT(build/include_directory)
 
 namespace diagnostics {
 

@@ -15,8 +15,8 @@
 
 #include "diagnostics/dpsl/public/dpsl_rpc_server.h"
 
-#include "wilco_dtc.grpc.pb.h"  // NOLINT(build/include)
-#include "wilco_dtc.pb.h"       // NOLINT(build/include)
+#include "wilco_dtc.grpc.pb.h"  // NOLINT(build/include_directory)
+#include "wilco_dtc.pb.h"       // NOLINT(build/include_directory)
 
 namespace diagnostics {
 

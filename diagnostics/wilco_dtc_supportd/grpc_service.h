@@ -21,7 +21,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/system_info_service.h"
 
 #include "mojo/cros_healthd_probe.mojom.h"
-#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include_directory)
 
 namespace diagnostics {
 

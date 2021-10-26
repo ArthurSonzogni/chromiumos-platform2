@@ -19,7 +19,7 @@
 
 #include "diagnostics/dpsl/public/dpsl_requester.h"
 
-#include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include_directory)
 
 namespace diagnostics {
 

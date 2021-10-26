@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-#include "wilco_dtc.grpc.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc.grpc.pb.h"  // NOLINT(build/include_directory)
 
 namespace diagnostics {
 

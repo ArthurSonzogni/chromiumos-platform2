@@ -16,8 +16,8 @@
 #include <brillo/grpc/async_grpc_client.h>
 #include <brillo/grpc/async_grpc_server.h>
 
-#include "wilco_dtc.grpc.pb.h"           // NOLINT(build/include)
-#include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include)
+#include "wilco_dtc.grpc.pb.h"           // NOLINT(build/include_directory)
+#include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include_directory)
 
 namespace diagnostics {
 
