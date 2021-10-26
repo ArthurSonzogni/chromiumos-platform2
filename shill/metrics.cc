@@ -374,6 +374,26 @@ const char Metrics::kMetricVpnL2tpIpsecTunnelGroupUsage[] =
     "Network.Shill.Vpn.L2tpIpsecTunnelGroupUsage";
 const int Metrics::kMetricVpnL2tpIpsecTunnelGroupUsageMax =
     Metrics::kVpnL2tpIpsecTunnelGroupUsageMax;
+const char Metrics::kMetricVpnL2tpIpsecIkeEncryptionAlgorithm[] =
+    "Network.Shill.Vpn.L2tpIpsec.IkeEncryptionAlgorithm";
+const int Metrics::kMetricVpnL2tpIpsecIkeEncryptionAlgorithmMax =
+    Metrics::kVpnIpsecEncryptionAlgorithmMax;
+const char Metrics::kMetricVpnL2tpIpsecIkeIntegrityAlgorithm[] =
+    "Network.Shill.Vpn.L2tpIpsec.IkeIntegrityAlgorithm";
+const int Metrics::kMetricVpnL2tpIpsecIkeIntegrityAlgorithmMax =
+    Metrics::kVpnIpsecIntegrityAlgorithmMax;
+const char Metrics::kMetricVpnL2tpIpsecIkeDHGroup[] =
+    "Network.Shill.Vpn.L2tpIpsec.IkeDHGroup";
+const int Metrics::kMetricVpnL2tpIpsecIkeDHGroupMax =
+    Metrics::kVpnIpsecDHGroupMax;
+const char Metrics::kMetricVpnL2tpIpsecEspEncryptionAlgorithm[] =
+    "Network.Shill.Vpn.L2tpIpsec.EspEncryptionAlgorithm";
+const int Metrics::kMetricVpnL2tpIpsecEspEncryptionAlgorithmMax =
+    Metrics::kVpnIpsecEncryptionAlgorithmMax;
+const char Metrics::kMetricVpnL2tpIpsecEspIntegrityAlgorithm[] =
+    "Network.Shill.Vpn.L2tpIpsec.EspIntegrityAlgorithm";
+const int Metrics::kMetricVpnL2tpIpsecEspIntegrityAlgorithmMax =
+    Metrics::kVpnIpsecIntegrityAlgorithmMax;
 
 // static
 const char Metrics::kMetricVpnWireGuardKeyPairSource[] =

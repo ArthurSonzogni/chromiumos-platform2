@@ -16,6 +16,7 @@
 #include <base/files/scoped_temp_dir.h>
 
 #include "shill/certificate_file.h"
+#include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/process_manager.h"
 #include "shill/service.h"
@@ -34,6 +35,7 @@ namespace shill {
 // - Generate swanctl.conf in the created temp dir;
 // - Invoke swanctl to let charon load the configurations in swanctl.conf;
 // - Invoke swanctl to initiate the connection;
+// - Invoke swanctl to read the needed information about this connection.
 // TODO(b/165170125): Document temporary files.
 class IPsecConnection : public VPNConnection {
  public:
@@ -74,6 +76,7 @@ class IPsecConnection : public VPNConnection {
     kCharonStarted,
     kSwanctlConfigLoaded,
     kIPsecConnected,
+    kIPsecStatusRead,
   };
 
   explicit IPsecConnection(std::unique_ptr<Config> config,
@@ -83,8 +86,24 @@ class IPsecConnection : public VPNConnection {
                            ProcessManager* process_manager);
   ~IPsecConnection();
 
+  Metrics::VpnIpsecEncryptionAlgorithm ike_encryption_algo() const {
+    return ike_encryption_algo_;
+  }
+  Metrics::VpnIpsecIntegrityAlgorithm ike_integrity_algo() const {
+    return ike_integrity_algo_;
+  }
+  Metrics::VpnIpsecDHGroup ike_dh_group() const { return ike_dh_group_; }
+  Metrics::VpnIpsecEncryptionAlgorithm esp_encryption_algo() const {
+    return esp_encryption_algo_;
+  }
+  Metrics::VpnIpsecIntegrityAlgorithm esp_integrity_algo() const {
+    return esp_integrity_algo_;
+  }
+
  private:
   friend class IPsecConnectionUnderTest;
+
+  using SwanctlCallback = base::OnceCallback<void(const std::string&)>;
 
   void OnConnect() override;
   void OnDisconnect() override;
@@ -112,19 +131,32 @@ class IPsecConnection : public VPNConnection {
   void SwanctlLoadConfig();
   // Executes `swanctl --initiate`. Trigger |kIPsecConnected| on success.
   void SwanctlInitiateConnection();
+  // Executes `swanctl --list-sas`, and parses the needed information from the
+  // stdout of the execution. Trigger |kIPsecStatusRead| on success.
+  void SwanctlListSAs();
 
   void OnCharonExitedUnexpectedly(int exit_code);
   void OnViciSocketPathEvent(const base::FilePath& path, bool error);
+  void OnSwanctlListSAsDone(const std::string& stdout_str);
 
   // Helper functions to run swanctl. RunSwanctl() executes `swanctl` with
   // |args|, and invokes |on_success| if the execution succeeds and the exit
   // code is 0, otherwise invokes NoitfyFailure() with |message_on_failure|.
   void RunSwanctl(const std::vector<std::string>& args,
-                  base::OnceClosure on_success,
+                  SwanctlCallback on_success,
                   const std::string& message_on_failure);
-  void OnSwanctlExited(base::OnceClosure on_success,
+  void OnSwanctlExited(SwanctlCallback on_success,
                        const std::string& message_on_failure,
-                       int exit_code);
+                       int exit_code,
+                       const std::string& stdout_str);
+  // Used as the success callback for RunSwanctl(). Ignore |stdout_str| and
+  // executes |step|.
+  void SwanctlNextStep(ConnectStep step, const std::string& stdout_str);
+
+  // Parses and sets the cipher suite for IKE and ESP from the output of
+  // `swanctl --list-sas`.
+  void SetIKECipherSuite(const std::vector<std::string>& swanctl_output);
+  void SetESPCipherSuite(const std::vector<std::string>& swanctl_output);
 
   // Callbacks from L2TPConnection.
   void OnL2TPConnected(const std::string& interface_name,
@@ -148,6 +180,13 @@ class IPsecConnection : public VPNConnection {
   pid_t charon_pid_;
   base::FilePath vici_socket_path_;
   std::unique_ptr<base::FilePathWatcher> vici_socket_watcher_;
+
+  // Cipher algorithms used by this connection. Set when IPsec is connected.
+  Metrics::VpnIpsecEncryptionAlgorithm ike_encryption_algo_;
+  Metrics::VpnIpsecIntegrityAlgorithm ike_integrity_algo_;
+  Metrics::VpnIpsecDHGroup ike_dh_group_;
+  Metrics::VpnIpsecEncryptionAlgorithm esp_encryption_algo_;
+  Metrics::VpnIpsecIntegrityAlgorithm esp_integrity_algo_;
 
   // External dependencies.
   ProcessManager* process_manager_;

@@ -455,6 +455,68 @@ class Metrics : public DefaultServiceObserver {
     kVpnL2tpIpsecTunnelGroupUsageMax
   };
 
+  // This enum contains the encryption algorithms we are using for IPsec now,
+  // but not the complete list of algorithms which are supported by strongswan.
+  // It is the same for the following enums for integrity algorithms and DH
+  // groups.
+  enum VpnIpsecEncryptionAlgorithm {
+    kVpnIpsecEncryptionAlgorithmUnknown = 0,
+
+    kVpnIpsecEncryptionAlgorithm_AES_CBC_128 = 1,
+    kVpnIpsecEncryptionAlgorithm_AES_CBC_192 = 2,
+    kVpnIpsecEncryptionAlgorithm_AES_CBC_256 = 3,
+    kVpnIpsecEncryptionAlgorithm_CAMELLIA_CBC_128 = 4,
+    kVpnIpsecEncryptionAlgorithm_CAMELLIA_CBC_192 = 5,
+    kVpnIpsecEncryptionAlgorithm_CAMELLIA_CBC_256 = 6,
+    kVpnIpsecEncryptionAlgorithm_3DES_CBC = 7,
+    kVpnIpsecEncryptionAlgorithm_AES_GCM_16_128 = 8,
+    kVpnIpsecEncryptionAlgorithm_AES_GCM_16_192 = 9,
+    kVpnIpsecEncryptionAlgorithm_AES_GCM_16_256 = 10,
+    kVpnIpsecEncryptionAlgorithm_AES_GCM_12_128 = 11,
+    kVpnIpsecEncryptionAlgorithm_AES_GCM_12_192 = 12,
+    kVpnIpsecEncryptionAlgorithm_AES_GCM_12_256 = 13,
+    kVpnIpsecEncryptionAlgorithm_AES_GCM_8_128 = 14,
+    kVpnIpsecEncryptionAlgorithm_AES_GCM_8_192 = 15,
+    kVpnIpsecEncryptionAlgorithm_AES_GCM_8_256 = 16,
+
+    kVpnIpsecEncryptionAlgorithmMax,
+  };
+
+  enum VpnIpsecIntegrityAlgorithm {
+    kVpnIpsecIntegrityAlgorithmUnknown = 0,
+
+    kVpnIpsecIntegrityAlgorithm_HMAC_SHA2_256_128 = 1,
+    kVpnIpsecIntegrityAlgorithm_HMAC_SHA2_384_192 = 2,
+    kVpnIpsecIntegrityAlgorithm_HMAC_SHA2_512_256 = 3,
+    kVpnIpsecIntegrityAlgorithm_HMAC_SHA1_96 = 4,
+    kVpnIpsecIntegrityAlgorithm_AES_XCBC_96 = 5,
+    kVpnIpsecIntegrityAlgorithm_AES_CMAC_96 = 6,
+
+    kVpnIpsecIntegrityAlgorithmMax,
+  };
+
+  enum VpnIpsecDHGroup {
+    kVpnIpsecDHGroupUnknown = 0,
+
+    kVpnIpsecDHGroup_ECP_256 = 1,
+    kVpnIpsecDHGroup_ECP_384 = 2,
+    kVpnIpsecDHGroup_ECP_521 = 3,
+    kVpnIpsecDHGroup_ECP_256_BP = 4,
+    kVpnIpsecDHGroup_ECP_384_BP = 5,
+    kVpnIpsecDHGroup_ECP_512_BP = 6,
+    kVpnIpsecDHGroup_CURVE_25519 = 7,
+    kVpnIpsecDHGroup_CURVE_448 = 8,
+    kVpnIpsecDHGroup_MODP_1024 = 9,
+    kVpnIpsecDHGroup_MODP_1536 = 10,
+    kVpnIpsecDHGroup_MODP_2048 = 11,
+    kVpnIpsecDHGroup_MODP_3072 = 12,
+    kVpnIpsecDHGroup_MODP_4096 = 13,
+    kVpnIpsecDHGroup_MODP_6144 = 14,
+    kVpnIpsecDHGroup_MODP_8192 = 15,
+
+    kVpnIpsecDHGroupMax,
+  };
+
   enum VpnWireGuardKeyPairSource {
     kVpnWireguardKeyPairSourceUnknown = 0,
     kVpnWireGuardKeyPairSourceUserInput = 1,
@@ -872,8 +934,19 @@ class Metrics : public DefaultServiceObserver {
   static const char kMetricVpnUserAuthenticationType[];
   static const int kMetricVpnUserAuthenticationTypeMax;
 
+  // L2TP/IPsec connection statistics.
   static const char kMetricVpnL2tpIpsecTunnelGroupUsage[];
   static const int kMetricVpnL2tpIpsecTunnelGroupUsageMax;
+  static const char kMetricVpnL2tpIpsecIkeEncryptionAlgorithm[];
+  static const int kMetricVpnL2tpIpsecIkeEncryptionAlgorithmMax;
+  static const char kMetricVpnL2tpIpsecIkeIntegrityAlgorithm[];
+  static const int kMetricVpnL2tpIpsecIkeIntegrityAlgorithmMax;
+  static const char kMetricVpnL2tpIpsecIkeDHGroup[];
+  static const int kMetricVpnL2tpIpsecIkeDHGroupMax;
+  static const char kMetricVpnL2tpIpsecEspEncryptionAlgorithm[];
+  static const int kMetricVpnL2tpIpsecEspEncryptionAlgorithmMax;
+  static const char kMetricVpnL2tpIpsecEspIntegrityAlgorithm[];
+  static const int kMetricVpnL2tpIpsecEspIntegrityAlgorithmMax;
 
   // WireGuard connection statistics.
   // Key pair source (e.g., user input) used in a WireGuard Connection.

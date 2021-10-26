@@ -429,6 +429,34 @@ void NewL2TPIPsecDriver::ReportConnectionMetrics() {
   metrics()->SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecTunnelGroupUsage,
                            tunnel_group_usage,
                            Metrics::kMetricVpnL2tpIpsecTunnelGroupUsageMax);
+
+  // To access the methods only defined in the inherited class. The cast will
+  // only fail in unit tests.
+  const auto* conn = dynamic_cast<IPsecConnection*>(ipsec_connection_.get());
+  if (conn) {
+    // Cipher suite for IKE.
+    metrics()->SendEnumToUMA(
+        Metrics::kMetricVpnL2tpIpsecIkeEncryptionAlgorithm,
+        conn->ike_encryption_algo(),
+        Metrics::kMetricVpnL2tpIpsecIkeEncryptionAlgorithmMax);
+    metrics()->SendEnumToUMA(
+        Metrics::kMetricVpnL2tpIpsecIkeIntegrityAlgorithm,
+        conn->ike_encryption_algo(),
+        Metrics::kMetricVpnL2tpIpsecIkeIntegrityAlgorithmMax);
+    metrics()->SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecIkeDHGroup,
+                             conn->ike_dh_group(),
+                             Metrics::kMetricVpnL2tpIpsecIkeDHGroupMax);
+
+    // Cipher suite for ESP.
+    metrics()->SendEnumToUMA(
+        Metrics::kMetricVpnL2tpIpsecEspEncryptionAlgorithm,
+        conn->esp_encryption_algo(),
+        Metrics::kMetricVpnL2tpIpsecEspEncryptionAlgorithmMax);
+    metrics()->SendEnumToUMA(
+        Metrics::kMetricVpnL2tpIpsecEspIntegrityAlgorithm,
+        conn->esp_integrity_algo(),
+        Metrics::kMetricVpnL2tpIpsecEspIntegrityAlgorithmMax);
+  }
 }
 
 }  // namespace shill

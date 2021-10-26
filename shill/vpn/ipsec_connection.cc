@@ -7,6 +7,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -16,9 +17,12 @@
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <re2/re2.h>
 
+#include "shill/metrics.h"
 #include "shill/process_manager.h"
 #include "shill/vpn/vpn_util.h"
 
@@ -33,7 +37,6 @@ constexpr char kSwanctlPath[] = "/usr/sbin/swanctl";
 constexpr char kCharonPath[] = "/usr/libexec/ipsec/charon";
 constexpr char kViciSocketPath[] = "/run/ipsec/charon.vici";
 constexpr char kSmartcardModuleName[] = "crypto_module";
-// TODO(b/197839464): Consider adding metrics for the final selected value.
 // aes128-sha256-modp3072: new strongSwan default
 // aes128-sha1-modp2048: old strongSwan default
 // 3des-sha1-modp1536: strongSwan fallback
@@ -135,6 +138,168 @@ class StrongSwanConfSection {
   std::map<std::string, std::string> key_values_;
 };
 
+// Parsing the encryption algorithm output by swanctl, which may contain two
+// parts: the algorithm name and an optional key size. See the following src
+// files in the strongswan project for how the name is output:
+// - libstrongswan/crypto/crypters/crypter.c
+// - swanctl/commands/list-sas.c
+Metrics::VpnIpsecEncryptionAlgorithm ParseEncryptionAlgorithm(
+    const std::string& input) {
+  // The name and the key size is concated with "-". Changes them into "_" for
+  // simplicity.
+  std::string algo_str;
+  base::ReplaceChars(input, "-", "_", &algo_str);
+  static const std::map<std::string, Metrics::VpnIpsecEncryptionAlgorithm>
+      str2enum = {
+          {"AES_CBC_128", Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_128},
+          {"AES_CBC_192", Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_192},
+          {"AES_CBC_256", Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_256},
+          {"CAMELLIA_CBC_128",
+           Metrics::kVpnIpsecEncryptionAlgorithm_CAMELLIA_CBC_128},
+          {"CAMELLIA_CBC_192",
+           Metrics::kVpnIpsecEncryptionAlgorithm_CAMELLIA_CBC_192},
+          {"CAMELLIA_CBC_256",
+           Metrics::kVpnIpsecEncryptionAlgorithm_CAMELLIA_CBC_256},
+          {"3DES_CBC", Metrics::kVpnIpsecEncryptionAlgorithm_3DES_CBC},
+          {"AES_GCM_16_128",
+           Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_16_128},
+          {"AES_GCM_16_192",
+           Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_16_192},
+          {"AES_GCM_16_256",
+           Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_16_256},
+          {"AES_GCM_12_128",
+           Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_12_128},
+          {"AES_GCM_12_192",
+           Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_12_192},
+          {"AES_GCM_12_256",
+           Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_12_256},
+          {"AES_GCM_8_128",
+           Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_8_128},
+          {"AES_GCM_8_192",
+           Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_8_192},
+          {"AES_GCM_8_256",
+           Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_8_256},
+      };
+  const auto it = str2enum.find(algo_str);
+  if (it == str2enum.end()) {
+    return Metrics::kVpnIpsecEncryptionAlgorithmUnknown;
+  }
+  return it->second;
+}
+
+// Parsing the integrity algorithm output by swanctl, which may contain two
+// parts: the algorithm name and an optional key size. See the following src
+// files in the strongswan project for how the name is output:
+// - libstrongswan/crypto/signers/signer.c
+// - swanctl/commands/list-sas.c
+Metrics::VpnIpsecIntegrityAlgorithm ParseIntegrityAlgorithm(
+    const std::string& input) {
+  // The name and the key size is concated with "-". Changes them into "_" for
+  // simplicity.
+  std::string algo_str;
+  base::ReplaceChars(input, "-", "_", &algo_str);
+  static const std::map<std::string, Metrics::VpnIpsecIntegrityAlgorithm>
+      str2enum = {
+          {"HMAC_SHA2_256_128",
+           Metrics::kVpnIpsecIntegrityAlgorithm_HMAC_SHA2_256_128},
+          {"HMAC_SHA2_384_192",
+           Metrics::kVpnIpsecIntegrityAlgorithm_HMAC_SHA2_384_192},
+          {"HMAC_SHA2_512_256",
+           Metrics::kVpnIpsecIntegrityAlgorithm_HMAC_SHA2_512_256},
+          {"HMAC_SHA1_96", Metrics::kVpnIpsecIntegrityAlgorithm_HMAC_SHA1_96},
+          {"AES_XCBC_96", Metrics::kVpnIpsecIntegrityAlgorithm_AES_XCBC_96},
+          {"AES_CMAC_96", Metrics::kVpnIpsecIntegrityAlgorithm_AES_CMAC_96},
+      };
+  const auto it = str2enum.find(algo_str);
+  if (it == str2enum.end()) {
+    return Metrics::kVpnIpsecIntegrityAlgorithmUnknown;
+  }
+  return it->second;
+}
+
+// Parsing the DH group output by swanctl. See the following src files in the
+// strongswan project for the names:
+// - libstrongswan/crypto/diffie_hellman.c
+Metrics::VpnIpsecDHGroup ParseDHGroup(const std::string& input) {
+  static const std::map<std::string, Metrics::VpnIpsecDHGroup> str2enum = {
+      {"ECP_256", Metrics::kVpnIpsecDHGroup_ECP_256},
+      {"ECP_384", Metrics::kVpnIpsecDHGroup_ECP_384},
+      {"ECP_521", Metrics::kVpnIpsecDHGroup_ECP_521},
+      {"ECP_256_BP", Metrics::kVpnIpsecDHGroup_ECP_256_BP},
+      {"ECP_384_BP", Metrics::kVpnIpsecDHGroup_ECP_384_BP},
+      {"ECP_512_BP", Metrics::kVpnIpsecDHGroup_ECP_512_BP},
+      {"CURVE_25519", Metrics::kVpnIpsecDHGroup_CURVE_25519},
+      {"CURVE_448", Metrics::kVpnIpsecDHGroup_CURVE_448},
+      {"MODP_1024", Metrics::kVpnIpsecDHGroup_MODP_1024},
+      {"MODP_1536", Metrics::kVpnIpsecDHGroup_MODP_1536},
+      {"MODP_2048", Metrics::kVpnIpsecDHGroup_MODP_2048},
+      {"MODP_3072", Metrics::kVpnIpsecDHGroup_MODP_3072},
+      {"MODP_4096", Metrics::kVpnIpsecDHGroup_MODP_4096},
+      {"MODP_6144", Metrics::kVpnIpsecDHGroup_MODP_6144},
+      {"MODP_8192", Metrics::kVpnIpsecDHGroup_MODP_8192},
+  };
+  const auto it = str2enum.find(input);
+  if (it == str2enum.end()) {
+    return Metrics::kVpnIpsecDHGroupUnknown;
+  }
+  return it->second;
+}
+
+std::tuple<Metrics::VpnIpsecEncryptionAlgorithm,
+           Metrics::VpnIpsecIntegrityAlgorithm,
+           Metrics::VpnIpsecDHGroup>
+ParseCipherSuite(const std::string& input) {
+  constexpr auto kInvalidResults =
+      std::make_tuple(Metrics::kVpnIpsecEncryptionAlgorithmUnknown,
+                      Metrics::kVpnIpsecIntegrityAlgorithmUnknown,
+                      Metrics::kVpnIpsecDHGroupUnknown);
+  auto [encryption_algo, integrity_algo, dh_group] = kInvalidResults;
+
+  const std::vector<std::string> names = base::SplitString(
+      input, "/", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  for (const auto& name : names) {
+    // Tries parsing the name as an encryption algorithm.
+    auto parsed_encryption_algo = ParseEncryptionAlgorithm(name);
+    if (parsed_encryption_algo !=
+        Metrics::kVpnIpsecEncryptionAlgorithmUnknown) {
+      if (encryption_algo != Metrics::kVpnIpsecEncryptionAlgorithmUnknown) {
+        // This means |input| contains algorithm names with a certain type
+        // multiple times. This is not expected, discards the results.
+        LOG(ERROR) << "The input contains multiple encryption algorithm: "
+                   << input;
+        return kInvalidResults;
+      }
+      encryption_algo = parsed_encryption_algo;
+      continue;
+    }
+
+    // Tries parsing the name as an integrity algorithm.
+    auto parsed_integrity_algo = ParseIntegrityAlgorithm(name);
+    if (parsed_integrity_algo != Metrics::kVpnIpsecIntegrityAlgorithmUnknown) {
+      if (integrity_algo != Metrics::kVpnIpsecIntegrityAlgorithmUnknown) {
+        LOG(ERROR) << "The input contains multiple integrity algorithm: "
+                   << input;
+        return kInvalidResults;
+      }
+      integrity_algo = parsed_integrity_algo;
+      continue;
+    }
+
+    // Tries parsing the name as a DH group.
+    auto parsed_dh_group = ParseDHGroup(name);
+    if (parsed_dh_group != Metrics::kVpnIpsecDHGroupUnknown) {
+      if (dh_group != Metrics::kVpnIpsecDHGroupUnknown) {
+        LOG(ERROR) << "The input contains multiple DH group: " << input;
+        return kInvalidResults;
+      }
+      dh_group = parsed_dh_group;
+      continue;
+    }
+  }
+
+  return {encryption_algo, integrity_algo, dh_group};
+}
+
 }  // namespace
 
 IPsecConnection::IPsecConnection(std::unique_ptr<Config> config,
@@ -201,6 +366,9 @@ void IPsecConnection::ScheduleConnectTask(ConnectStep step) {
       SwanctlInitiateConnection();
       return;
     case ConnectStep::kIPsecConnected:
+      SwanctlListSAs();
+      return;
+    case ConnectStep::kIPsecStatusRead:
       if (l2tp_connection_) {
         l2tp_connection_->Connect();
       } else {
@@ -444,7 +612,7 @@ void IPsecConnection::SwanctlLoadConfig() {
   const std::vector<std::string> args = {"--load-all", "--file",
                                          swanctl_conf_path_.value()};
   RunSwanctl(args,
-             base::BindOnce(&IPsecConnection::ScheduleConnectTask,
+             base::BindOnce(&IPsecConnection::SwanctlNextStep,
                             weak_factory_.GetWeakPtr(),
                             ConnectStep::kSwanctlConfigLoaded),
              "Failed to load swanctl.conf");
@@ -459,9 +627,17 @@ void IPsecConnection::SwanctlInitiateConnection() {
                                          "--timeout", timeout_str};
   RunSwanctl(
       args,
-      base::BindOnce(&IPsecConnection::ScheduleConnectTask,
+      base::BindOnce(&IPsecConnection::SwanctlNextStep,
                      weak_factory_.GetWeakPtr(), ConnectStep::kIPsecConnected),
       "Failed to initiate IPsec connection");
+}
+
+void IPsecConnection::SwanctlListSAs() {
+  const std::vector<std::string> args = {"--list-sas"};
+  RunSwanctl(args,
+             base::BindOnce(&IPsecConnection::OnSwanctlListSAsDone,
+                            weak_factory_.GetWeakPtr()),
+             "Failed to get SA information");
 }
 
 void IPsecConnection::OnViciSocketPathEvent(const base::FilePath& /*path*/,
@@ -498,15 +674,27 @@ void IPsecConnection::OnCharonExitedUnexpectedly(int exit_code) {
   return;
 }
 
+void IPsecConnection::OnSwanctlListSAsDone(const std::string& stdout_str) {
+  // Note that any failure in parsing the cipher suite is unexpected but will
+  // not block the connection. We only leave a log for such failures.
+  const std::vector<std::string> lines = base::SplitString(
+      stdout_str, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+
+  SetIKECipherSuite(lines);
+  SetESPCipherSuite(lines);
+
+  ScheduleConnectTask(ConnectStep::kIPsecStatusRead);
+}
+
 void IPsecConnection::RunSwanctl(const std::vector<std::string>& args,
-                                 base::OnceClosure on_success,
+                                 SwanctlCallback on_success,
                                  const std::string& message_on_failure) {
   std::map<std::string, std::string> env = {
       {"STRONGSWAN_CONF", strongswan_conf_path_.value()},
   };
 
   constexpr uint64_t kCapMask = 0;
-  pid_t pid = process_manager_->StartProcessInMinijail(
+  pid_t pid = process_manager_->StartProcessInMinijailWithStdout(
       FROM_HERE, base::FilePath(kSwanctlPath), args, env,
       VPNUtil::BuildMinijailOptions(kCapMask),
       base::BindOnce(&IPsecConnection::OnSwanctlExited,
@@ -517,15 +705,96 @@ void IPsecConnection::RunSwanctl(const std::vector<std::string>& args,
   }
 }
 
-void IPsecConnection::OnSwanctlExited(base::OnceClosure on_success,
+void IPsecConnection::OnSwanctlExited(SwanctlCallback on_success,
                                       const std::string& message_on_failure,
-                                      int exit_code) {
+                                      int exit_code,
+                                      const std::string& stdout_str) {
   if (exit_code == 0) {
-    std::move(on_success).Run();
+    std::move(on_success).Run(stdout_str);
   } else {
     NotifyFailure(Service::kFailureInternal,
                   base::StringPrintf("%s, exit_code=%d",
                                      message_on_failure.c_str(), exit_code));
+  }
+}
+
+void IPsecConnection::SwanctlNextStep(ConnectStep step, const std::string&) {
+  ScheduleConnectTask(step);
+}
+
+void IPsecConnection::SetIKECipherSuite(
+    const std::vector<std::string>& swanctl_output) {
+  ike_encryption_algo_ = Metrics::kVpnIpsecEncryptionAlgorithmUnknown;
+  ike_integrity_algo_ = Metrics::kVpnIpsecIntegrityAlgorithmUnknown;
+  ike_dh_group_ = Metrics::kVpnIpsecDHGroupUnknown;
+
+  // The index of the line which contains the cipher suite information for IKE
+  // in |swanctl_output|.
+  constexpr int kIKECipherSuiteLineNumber = 3;
+  if (swanctl_output.size() <= kIKECipherSuiteLineNumber) {
+    LOG(ERROR) << "Failed to parse the IKE cipher suite, the number of line is "
+               << swanctl_output.size();
+    return;
+  }
+
+  // Example: AES_CBC-128/HMAC_SHA2_256_128/PRF_HMAC_SHA2_256/MODP_3072
+  // See `swanctl/commands/list-sas.c:ike_sa()` in the strongswan project for
+  // the format.
+  static constexpr LazyRE2 kIKECipherSuiteLine = {
+      R"(^\s*((?:[^/\s]+)(?:/[^/\s]+)*)\s*$)"};
+  const std::string& line = swanctl_output[kIKECipherSuiteLineNumber];
+
+  std::string matched_part;
+  if (!RE2::FullMatch(line, *kIKECipherSuiteLine, &matched_part)) {
+    LOG(ERROR) << "Failed to parse the IKE cipher suite, the line is: " << line;
+    return;
+  }
+
+  std::tie(ike_encryption_algo_, ike_integrity_algo_, ike_dh_group_) =
+      ParseCipherSuite(matched_part);
+  if (ike_encryption_algo_ == Metrics::kVpnIpsecEncryptionAlgorithmUnknown ||
+      ike_integrity_algo_ == Metrics::kVpnIpsecIntegrityAlgorithmUnknown ||
+      ike_dh_group_ == Metrics::kVpnIpsecDHGroupUnknown) {
+    LOG(ERROR) << "The output does not contain a valid cipher suite for IKE: "
+               << matched_part;
+  }
+}
+
+void IPsecConnection::SetESPCipherSuite(
+    const std::vector<std::string>& swanctl_output) {
+  esp_encryption_algo_ = Metrics::kVpnIpsecEncryptionAlgorithmUnknown;
+  esp_integrity_algo_ = Metrics::kVpnIpsecIntegrityAlgorithmUnknown;
+
+  // The index of the line which contains the cipher suite information for ESP
+  // in |swanctl_output|.
+  constexpr int kESPCipherSuiteLineNumber = 5;
+  if (swanctl_output.size() <= kESPCipherSuiteLineNumber) {
+    LOG(ERROR) << "Failed to parse the ESP cipher suite, the number of line is "
+               << swanctl_output.size();
+    return;
+  }
+
+  // This line does not only contains the cipher suite for ESP. Example:
+  //  managed: #1, reqid 1, INSTALLED, TUNNEL, ESP:AES_CBC-128/HMAC_SHA2_256_128
+  // See `swanctl/commands/list-sas.c:child_sas()` in the strongswan project
+  // for the format.
+  static constexpr LazyRE2 kESPCipherSuiteLine = {
+      R"(^.*ESP:((?:[^/\s]+)(?:/[^/\s]+)*)\s*$)"};
+  const std::string& line = swanctl_output[kESPCipherSuiteLineNumber];
+
+  std::string matched_part;
+  if (!RE2::FullMatch(line, *kESPCipherSuiteLine, &matched_part)) {
+    LOG(ERROR) << "Failed to parse the ESP cipher suite, the line is: " << line;
+    return;
+  }
+
+  const auto parsed_results = ParseCipherSuite(matched_part);
+  esp_encryption_algo_ = std::get<0>(parsed_results);
+  esp_integrity_algo_ = std::get<1>(parsed_results);
+  if (esp_encryption_algo_ == Metrics::kVpnIpsecEncryptionAlgorithmUnknown ||
+      esp_integrity_algo_ == Metrics::kVpnIpsecIntegrityAlgorithmUnknown) {
+    LOG(ERROR) << "The output does not contain a valid cipher suite for ESP: "
+               << matched_part;
   }
 }
 
