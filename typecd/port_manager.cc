@@ -47,7 +47,8 @@ PortManager::PortManager()
       notify_mgr_(nullptr),
       features_client_(nullptr),
       user_active_(false),
-      peripheral_data_access_(true) {}
+      peripheral_data_access_(true),
+      metrics_(nullptr) {}
 
 void PortManager::OnPortAddedOrRemoved(const base::FilePath& path,
                                        int port_num,
