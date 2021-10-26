@@ -177,6 +177,8 @@ mod tests {
     use std::cell::RefCell;
     use std::rc::Rc;
 
+    use assert_matches::assert_matches;
+
     fn test_usage() -> String {
         "test usage string".to_string()
     }
@@ -198,7 +200,7 @@ mod tests {
 
         let matches = opts.parse(&test_args).unwrap();
 
-        assert!(matches!(url_option.from_matches(&matches), Ok(None)));
+        assert_matches!(url_option.from_matches(&matches), Ok(None));
     }
 
     #[test]
@@ -209,7 +211,7 @@ mod tests {
         let url_option = TransportTypeOption::default(&mut opts);
 
         let matches = opts.parse(&test_args).unwrap();
-        assert!(matches!(url_option.from_matches(&matches), Ok(Some(_))));
+        assert_matches!(url_option.from_matches(&matches), Ok(Some(_)));
     }
 
     #[test]
@@ -221,10 +223,10 @@ mod tests {
         let url_option = TransportTypeOption::default(&mut opts);
 
         let matches = opts.parse(&test_args).unwrap();
-        assert!(matches!(
+        assert_matches!(
             url_option.from_matches(&matches),
             Err(Error::TransportParse(_))
-        ));
+        );
     }
 
     #[test]

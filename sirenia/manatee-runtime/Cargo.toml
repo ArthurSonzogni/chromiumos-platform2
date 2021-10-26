@@ -9,6 +9,9 @@ edition = "2018"
 name = "demo_app"
 path = "src/demo-app.rs"
 
+[dev-dependencies]
+assert_matches = "1.5.0"
+
 [dependencies]
 libsirenia = { path = "../libsirenia" } # provided by ebuild
 serde = { version = "1.0.114", features = ["derive"] }

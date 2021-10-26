@@ -44,6 +44,9 @@ overflow-checks = true
 [build-dependencies]
 chromeos-dbus-bindings = { path = "../chromeos-dbus-bindings"} # provided by ebuild
 
+[dev-dependencies]
+assert_matches = "1.5.0"
+
 [dependencies]
 anyhow = "1.0.0"
 base64 = "0.13.0"

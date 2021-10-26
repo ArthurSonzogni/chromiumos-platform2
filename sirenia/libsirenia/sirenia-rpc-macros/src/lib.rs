@@ -270,12 +270,12 @@ fn sirenia_rpc_impl(item_trait: &ItemTrait) -> Result<TokenStream> {
     Ok(quote! {
         #item_trait
 
-        #[derive(::serde::Deserialize, ::serde::Serialize)]
+        #[derive(::std::fmt::Debug, ::serde::Deserialize, ::serde::Serialize)]
         pub enum #request_name {
             #(#request_contents,)*
         }
 
-        #[derive(::serde::Deserialize, ::serde::Serialize)]
+        #[derive(::std::fmt::Debug, ::serde::Deserialize, ::serde::Serialize)]
         pub enum #response_name {
             #(#response_contents,)*
         }

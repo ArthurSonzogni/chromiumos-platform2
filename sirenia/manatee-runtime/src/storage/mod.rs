@@ -93,6 +93,7 @@ pub mod tests {
     use std::thread::spawn;
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    use assert_matches::assert_matches;
     use libsirenia::linux::events::EventSource;
     use libsirenia::rpc::RpcDispatcher;
     use libsirenia::storage::Error as StorageError;
@@ -153,8 +154,8 @@ pub mod tests {
             assert_eq!(retrieved_data, data);
         });
 
-        assert!(matches!(dispatcher.on_event(), Ok(None)));
-        assert!(matches!(dispatcher.on_event(), Ok(None)));
+        assert_matches!(dispatcher.on_event(), Ok(None));
+        assert_matches!(dispatcher.on_event(), Ok(None));
 
         client_thread.join().unwrap();
     }
@@ -166,10 +167,10 @@ pub mod tests {
         let client_thread = spawn(move || {
             let error = trichechus_storage.read_data::<String>(TEST_ID).unwrap_err();
             println!("Client thread: {}", error);
-            assert!(matches!(error, StorageError::ReadData(_)));
+            assert_matches!(error, StorageError::ReadData(_));
         });
 
-        assert!(matches!(dispatcher.on_event(), Ok(Some(_))));
+        assert_matches!(dispatcher.on_event(), Ok(Some(_)));
 
         // Explicitly call drop to close the pipe so the client thread gets the hang up since the return
         // value should be a RemoveFd mutator.

@@ -6,6 +6,7 @@
 
 use std::boxed::Box;
 use std::cell::RefCell;
+use std::fmt::{Debug, Formatter};
 use std::fs::remove_file;
 use std::io;
 use std::os::unix::io::{AsRawFd, RawFd};
@@ -90,6 +91,15 @@ impl AsRawFd for Syslog {
     }
 }
 
+impl Debug for Syslog {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Syslog")
+            .field("log_path", &self.log_path)
+            .field("socket", &self.socket)
+            .finish()
+    }
+}
+
 /// Creates a EventSource that adds any accept connections and returns a Mutator that will add the
 /// client connection to the EventMultiplexer when applied.
 impl EventSource for Syslog {
@@ -112,9 +122,10 @@ pub(crate) mod tests {
     use std::sync::{Arc, Barrier};
     use std::thread::spawn;
 
+    use assert_matches::assert_matches;
     use sys_util::scoped_path::ScopedPath;
 
-    use super::super::events::EventMultiplexer;
+    use crate::linux::events::EventMultiplexer;
 
     struct TestReciever(Vec<Vec<u8>>);
 
@@ -178,7 +189,7 @@ pub(crate) mod tests {
             // Make sure the read happens before dropping the socket.
             client_check.wait();
         });
-        assert!(matches!(syslog.on_event(), Ok(None)));
+        assert_matches!(syslog.on_event(), Ok(None));
         assert_eq!(receiver.as_ref().borrow().as_ref().len(), 1);
         assert_eq!(receiver.as_ref().borrow().as_ref()[0].len(), MAX_MESSAGE);
         local_check.wait();

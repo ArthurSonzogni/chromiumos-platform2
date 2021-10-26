@@ -5,6 +5,7 @@
 //! A generic RPC implementation that depends on serializable and deserializable enums for requests
 //! and responses.
 
+use std::fmt::{Debug, Formatter};
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::result::Result as StdResult;
 
@@ -56,8 +57,8 @@ pub fn register_server<H: MessageHandler + 'static>(
 /// A paring between request and response messages. Define this trait for the desired
 /// Request-Response pair to make Invoker<P> available for Transport instances.
 pub trait Procedure {
-    type Request: Serialize + DeserializeOwned;
-    type Response: Serialize + DeserializeOwned;
+    type Request: Serialize + DeserializeOwned + Debug;
+    type Response: Serialize + DeserializeOwned + Debug;
 }
 
 /// The server-side implementation of a Procedure. Define this trait for use with RpcDispatcher.
@@ -98,6 +99,15 @@ impl<H: MessageHandler + 'static> RpcDispatcher<H> {
 impl<H: MessageHandler + 'static> AsRawFd for RpcDispatcher<H> {
     fn as_raw_fd(&self) -> RawFd {
         self.transport.as_raw_fd()
+    }
+}
+
+impl<H: MessageHandler + 'static> Debug for RpcDispatcher<H> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RpcDispatcher")
+            .field("handler", &"impl Handler {}")
+            .field("transport", &self.transport)
+            .finish()
     }
 }
 
@@ -176,6 +186,15 @@ impl<H: ConnectionHandler> AsRawFd for TransportServer<H> {
     }
 }
 
+impl<H: ConnectionHandler> Debug for TransportServer<H> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TransportServer")
+            .field("handler", &"impl Handler {}")
+            .field("transport", &"Box<dyn ServerTransport>")
+            .finish()
+    }
+}
+
 /// Creates a EventSource that adds any accept connections and returns a Mutator that will add the
 /// client connection to the EventMultiplexer when applied.
 impl<H: ConnectionHandler> EventSource for TransportServer<H> {
@@ -198,18 +217,19 @@ mod test {
     use std::str::FromStr;
     use std::thread::spawn;
 
+    use assert_matches::assert_matches;
     use serde::Deserialize;
 
     use crate::transport::{ClientTransport, IpClientTransport};
 
-    #[derive(Serialize, Deserialize)]
+    #[derive(Debug, Serialize, Deserialize)]
     enum Request {
         CheckedNeg(i32),
         CheckedAdd(i32, i32),
         Terminate,
     }
 
-    #[derive(Serialize, Deserialize)]
+    #[derive(Debug, Serialize, Deserialize)]
     enum Response {
         CheckedNeg(Option<i32>),
         CheckedAdd(Option<i32>),
@@ -252,11 +272,11 @@ mod test {
             let mut connection = client_transport.connect().unwrap();
             let neg_resp =
                 Invoker::<TestHandler>::invoke(&mut connection, Request::CheckedNeg(125)).unwrap();
-            assert!(matches!(neg_resp, Response::CheckedNeg(Some(-125))));
+            assert_matches!(neg_resp, Response::CheckedNeg(Some(-125)));
 
             let add_resp =
                 Invoker::<TestHandler>::invoke(&mut connection, Request::CheckedAdd(5, 4)).unwrap();
-            assert!(matches!(add_resp, Response::CheckedAdd(Some(9))));
+            assert_matches!(add_resp, Response::CheckedAdd(Some(9)));
 
             assert!(Invoker::<TestHandler>::invoke(&mut connection, Request::Terminate).is_err());
         });

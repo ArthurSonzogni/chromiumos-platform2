@@ -19,6 +19,7 @@
 
 use std::boxed::Box;
 use std::collections::BTreeMap;
+use std::fmt::{Debug, Formatter};
 use std::io::{Read, Write};
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::result::Result as StdResult;
@@ -78,12 +79,12 @@ pub struct EventMultiplexer {
 }
 
 /// A trait that represents an object that can mutate an EventMultiplexer.
-pub trait Mutator {
+pub trait Mutator: Debug {
     fn mutate(&mut self, event_loop: &mut EventMultiplexer) -> std::result::Result<(), String>;
 }
 
 /// Interface for event handler.
-pub trait EventSource: AsRawFd {
+pub trait EventSource: AsRawFd + Debug {
     /// Provide the events to watch. EPOLLHUP, EPOLLRDHUP, and read are covered by default.
     fn get_events(&self) -> WatchingEvents {
         WatchingEvents::new(libc::EPOLLRDHUP as u32).set_read()
@@ -219,6 +220,12 @@ impl<I: Iterator<Item = Box<dyn Mutator>>> From<I> for ComboMutator<I> {
     }
 }
 
+impl<I: Iterator<Item = Box<dyn Mutator>>> Debug for ComboMutator<I> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ComboMutator").finish()
+    }
+}
+
 impl<I: Iterator<Item = Box<dyn Mutator>>> Mutator for ComboMutator<I> {
     fn mutate(&mut self, event_loop: &mut EventMultiplexer) -> StdResult<(), String> {
         let mut ret = StdResult::<(), String>::Ok(());
@@ -236,6 +243,7 @@ impl<I: Iterator<Item = Box<dyn Mutator>>> Mutator for ComboMutator<I> {
     }
 }
 
+#[derive(Debug)]
 /// Adds the specified EventSource from the EventMultiplexer when the mutator is executed.
 pub struct AddEventSourceMutator(Option<Box<dyn EventSource>>);
 
@@ -256,6 +264,7 @@ impl Mutator for AddEventSourceMutator {
     }
 }
 
+#[derive(Debug)]
 /// Removes the specified RawFd from the EventMultiplexer when the mutator is executed.
 pub struct RemoveFdMutator(pub RawFd);
 
@@ -277,6 +286,7 @@ impl AsRawFd for RemoveFdMutator {
     }
 }
 
+#[derive(Debug)]
 /// Tool for copying from a source to a sink. It should be used along with a HangupListener for the
 /// sink.
 pub struct CopyFdEventSource {
@@ -331,6 +341,7 @@ impl EventSource for CopyFdEventSource {
     }
 }
 
+#[derive(Debug)]
 /// Executes a mutator when a specified file descriptor is closed. This is particularly useful for
 /// detecting when a writer closes.
 pub struct HangupListener {
@@ -375,6 +386,7 @@ mod tests {
     use std::io::{Read, Write};
     use sys_util::{pipe, EventFd};
 
+    #[derive(Debug)]
     struct EventMultiplexerTestHandler {
         val: Rc<RefCell<u8>>,
         evt: File,
@@ -418,6 +430,7 @@ mod tests {
         assert!(l.handlers.is_empty());
     }
 
+    #[derive(Debug)]
     struct MutatorTestHandler(EventFd);
 
     impl AsRawFd for MutatorTestHandler {

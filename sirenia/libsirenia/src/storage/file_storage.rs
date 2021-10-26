@@ -85,6 +85,7 @@ mod test {
     use std::fs::create_dir;
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    use assert_matches::assert_matches;
     use sys_util::scoped_path::{get_temp_path, ScopedPath};
 
     const VALID_TEST_ID: &str = "Test Data";
@@ -150,10 +151,10 @@ mod test {
     fn storage_read_idnotfound() {
         let mut storage = TestFileStorage::new();
 
-        assert!(matches!(
+        assert_matches!(
             storage.as_mut().read_data::<u64>(VALID_TEST_ID),
             Err(Error::IdNotFound(_))
-        ));
+        );
     }
 
     #[test]

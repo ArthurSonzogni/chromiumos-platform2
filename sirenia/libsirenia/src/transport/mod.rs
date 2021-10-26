@@ -648,6 +648,7 @@ pub mod tests {
     use std::net::{IpAddr, Ipv4Addr};
     use std::thread::spawn;
 
+    use assert_matches::assert_matches;
     use sys_util::vsock::{VsockCid, VMADDR_PORT_ANY};
 
     const CLIENT_SEND: [u8; 7] = [1, 2, 3, 4, 5, 6, 7];
@@ -715,7 +716,7 @@ pub mod tests {
     fn pipetransport_bind() {
         let mut p = PipeTransport::new();
         p.bind().unwrap();
-        assert!(matches!(p.state, PipeTransportState::Bound(_, _)));
+        assert_matches!(p.state, PipeTransportState::Bound(_, _));
     }
 
     #[test]

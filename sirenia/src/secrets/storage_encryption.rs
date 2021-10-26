@@ -387,6 +387,7 @@ mod tests {
     use std::io::Write;
     use std::path::Path;
 
+    use assert_matches::assert_matches;
     use base64::decode_config;
     use libchromeos::secure_blob::SecureBlob;
     use libsirenia::communication::persistence::MockCronista;
@@ -480,7 +481,7 @@ mod tests {
                 TEST_DATA.to_vec(),
             )
             .unwrap();
-        assert!(matches!(ret, Status::Success));
+        assert_matches!(ret, Status::Success);
         drop(ret);
 
         let ret = storage
@@ -491,7 +492,7 @@ mod tests {
             )
             .unwrap();
         assert_eq!(&ret.1, TEST_DATA);
-        assert!(matches!(ret.0, Status::Success));
+        assert_matches!(ret.0, Status::Success);
     }
 
     #[test]
@@ -509,7 +510,7 @@ mod tests {
             )
             .unwrap();
         assert!(ret.1.is_empty());
-        assert!(matches!(ret.0, Status::IdNotFound));
+        assert_matches!(ret.0, Status::IdNotFound);
     }
 
     #[test]
@@ -571,7 +572,7 @@ mod tests {
 
         assert_ne!(associated_data, tampered_associated_data);
 
-        assert!(matches!(
+        assert_matches!(
             storage.do_crypto(
                 ModeArgs::Decrypt { tag: &mac },
                 key.as_ref(),
@@ -581,6 +582,6 @@ mod tests {
                 &mut cipher_text,
             ),
             Err(Error::Finalize(_))
-        ));
+        );
     }
 }
