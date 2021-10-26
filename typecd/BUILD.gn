@@ -15,6 +15,7 @@ group("all") {
       ":typecd_cable_fuzzer",
       ":typecd_cros_ec_util_fuzzer",
       ":typecd_partner_fuzzer",
+      ":typecd_port_fuzzer",
       ":typecd_port_manager_fuzzer",
       ":typecd_udev_monitor_fuzzer",
     ]
@@ -138,6 +139,15 @@ if (use.fuzzer) {
       ":test_defaults",
       "//common-mk/common_fuzzer",
       "//common-mk:test",
+    ]
+    deps = [ ":typecd_common" ]
+  }
+
+  executable("typecd_port_fuzzer") {
+    sources = [ "port_fuzzer.cc" ]
+    configs += [
+      ":target_defaults",
+      "//common-mk/common_fuzzer",
     ]
     deps = [ ":typecd_common" ]
   }
