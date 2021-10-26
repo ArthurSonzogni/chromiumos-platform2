@@ -279,6 +279,50 @@ bool ParseProcessor(const std::string& processor,
   return (!processor_id->empty() && !physical_id->empty());
 }
 
+void ParseSocID(const base::FilePath& root_dir, std::string* model_name) {
+  // Currently, only Mediatek and Qualcomm with newer kernel support this
+  // feature.
+  std::string content;
+  base::FileEnumerator file_enum(
+      root_dir.Append(kRelativeSoCDevicesDir), false,
+      base::FileEnumerator::FileType::FILES |
+          base::FileEnumerator::FileType::DIRECTORIES |
+          base::FileEnumerator::FileType::SHOW_SYM_LINKS);
+  for (auto path = file_enum.Next(); !path.empty(); path = file_enum.Next()) {
+    if (!base::ReadFileToString(path.Append("soc_id"), &content)) {
+      continue;
+    }
+    // The soc_id content should be "jep106:XXYY:ZZZZ".
+    // XX represents identity code.
+    // YY represents continuation code.
+    // ZZZZ represents SoC ID.
+    // We can use XXYY to distinguish vendor.
+    //
+    // https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-devices-soc
+    const std::string kSoCIDPrefix = "jep106:";
+    if (content.find(kSoCIDPrefix) != 0) {
+      continue;
+    }
+    content.erase(0, kSoCIDPrefix.length());
+
+    std::string vendor_id = content.substr(0, 4);
+    std::string soc_id = content.substr(5, 4);
+    // pair.first: Vendor ID.
+    // pair.second: The string that we return from our API.
+    const std::map<std::string, std::string> vendors{{"0426", "MediaTek"},
+                                                     {"0070", "Qualcomm"}};
+    auto vendor = vendors.find(vendor_id);
+    if (vendor != vendors.end()) {
+      *model_name = vendor->second + " " + soc_id;
+    }
+  }
+}
+
+void GetArmSoCModelName(const base::FilePath& root_dir,
+                        std::string* model_name) {
+  ParseSocID(root_dir, model_name);
+}
+
 // Fetch Keylocker information.
 base::Optional<mojo_ipc::ProbeErrorPtr> FetchKeylockerInfo(
     const base::FilePath& root_dir,
@@ -334,6 +378,10 @@ mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
     auto itr = physical_cpus.find(physical_id);
     if (itr == physical_cpus.end()) {
       mojo_ipc::PhysicalCpuInfo physical_cpu;
+      if (model_name.empty()) {
+        // It may be Arm CPU. We will return SoC model name instead.
+        GetArmSoCModelName(root_dir, &model_name);
+      }
       if (!model_name.empty())
         physical_cpu.model_name = std::move(model_name);
       const auto result =

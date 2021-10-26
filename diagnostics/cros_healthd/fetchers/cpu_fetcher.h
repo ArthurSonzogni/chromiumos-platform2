@@ -12,6 +12,9 @@
 
 namespace diagnostics {
 
+// Directory containing SoC ID info.
+inline constexpr char kRelativeSoCDevicesDir[] = "sys/bus/soc/devices/";
+
 // The CpuFetcher class is responsible for gathering CPU info reported by
 // cros_healthd.
 class CpuFetcher final : public BaseFetcher {

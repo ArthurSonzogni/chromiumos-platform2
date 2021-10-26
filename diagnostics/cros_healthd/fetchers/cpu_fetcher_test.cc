@@ -130,6 +130,8 @@ constexpr char kFakeCryptoContents[] =
     "driver\t: driver_name\n"
     "module\t: module_name\n";
 
+constexpr char kSoCIDContents[] = "jep106:0426:8192";
+
 // Workaround matchers for UnorderedElementsAreArray not accepting
 // move-only types.
 
@@ -490,6 +492,24 @@ TEST_F(CpuFetcherTest, NoModelNameCpuinfoFile) {
   ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 1);
   EXPECT_FALSE(
       cpu_result->get_cpu_info()->physical_cpus[0]->model_name.has_value());
+}
+
+// Test that we have soc_id for Arm devices.
+TEST_F(CpuFetcherTest, ModelNameFromSoCID) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(root_dir()),
+                                           kNoModelNameCpuinfoContents));
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      root_dir().Append(kRelativeSoCDevicesDir).Append("soc0").Append("soc_id"),
+      kSoCIDContents));
+
+  auto cpu_result = FetchCpuInfo();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 1);
+
+  auto model_name = cpu_result->get_cpu_info()->physical_cpus[0]->model_name;
+  EXPECT_TRUE(model_name.has_value());
+  ASSERT_EQ(model_name.value(), "MediaTek 8192");
 }
 
 // Test that we handle a missing stat file.
