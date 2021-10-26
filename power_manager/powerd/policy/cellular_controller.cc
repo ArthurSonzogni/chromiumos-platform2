@@ -36,6 +36,44 @@ const char kNodeRemovedEvent[] = "qrtr-service-removed";
 }  // namespace
 #endif  // USE_QRTR
 
+namespace {
+#if USE_CELLULAR
+power_manager::CellularRegulatoryDomain GetRegulatoryDomainFromCountryCode(
+    const std::string& country_code) {
+  // Regulatory domain to country code mappings
+  const struct {
+    const std::string country_code;
+    power_manager::CellularRegulatoryDomain domain;
+  } kRdCcMappings[] = {{"US", power_manager::CellularRegulatoryDomain::FCC},
+                       {"CA", power_manager::CellularRegulatoryDomain::ISED},
+                       {"UK", power_manager::CellularRegulatoryDomain::CE},
+                       {"JP", power_manager::CellularRegulatoryDomain::MIC},
+                       {"KR", power_manager::CellularRegulatoryDomain::KCC}};
+  std::string cc = base::ToUpperASCII(country_code);
+  for (const auto& m : kRdCcMappings) {
+    if (m.country_code == cc)
+      return m.domain;
+  }
+  return power_manager::CellularRegulatoryDomain::UNKNOWN;
+}
+#endif
+
+power_manager::CellularRegulatoryDomain GetRegulatoryDomainFromString(
+    const std::string& name) {
+  if (name == "FCC")
+    return power_manager::CellularRegulatoryDomain::FCC;
+  else if (name == "ISED")
+    return power_manager::CellularRegulatoryDomain::ISED;
+  else if (name == "CE")
+    return power_manager::CellularRegulatoryDomain::CE;
+  else if (name == "MIC")
+    return power_manager::CellularRegulatoryDomain::MIC;
+  else if (name == "KCC")
+    return power_manager::CellularRegulatoryDomain::KCC;
+  else
+    return power_manager::CellularRegulatoryDomain::UNKNOWN;
+}
+}  // namespace
 namespace power_manager {
 namespace policy {
 
@@ -71,6 +109,8 @@ void CellularController::Init(Delegate* delegate,
                  &use_modemmanager_for_dynamic_sar_);
   prefs->GetBool(kUseMultiPowerLevelDynamicSARPref,
                  &use_multi_power_level_dynamic_sar_);
+  prefs->GetBool(kUseRegulatoryDomainForDynamicSARPref,
+                 &use_regulatory_domain_for_dynamic_sar_);
   std::string levels_string;
   if (prefs->GetString(kSetCellularTransmitPowerLevelMappingPref,
                        &levels_string)) {
@@ -78,6 +118,13 @@ void CellularController::Init(Delegate* delegate,
                               &levels_string);
   }
   InitPowerLevel(levels_string);
+  std::string regulatory_domain_string;
+  if (prefs->GetString(kSetCellularRegulatoryDomainMappingPref,
+                       &regulatory_domain_string)) {
+    base::TrimWhitespaceASCII(regulatory_domain_string, base::TRIM_TRAILING,
+                              &regulatory_domain_string);
+  }
+  InitRegulatoryDomainMapping(regulatory_domain_string);
 
   LOG(INFO)
       << "In CellularController::Init set_transmit_power_for_proximity_ = "
@@ -87,13 +134,18 @@ void CellularController::Init(Delegate* delegate,
       << " use_modemmanager_for_dynamic_sar_ = "
       << use_modemmanager_for_dynamic_sar_
       << " use_multi_power_level_dynamic_sar_ = "
-      << use_multi_power_level_dynamic_sar_;
+      << use_multi_power_level_dynamic_sar_
+      << " use_regulatory_domain_for_dynamic_sar_ = "
+      << use_regulatory_domain_for_dynamic_sar_;
+
 #if USE_QRTR
   CHECK(InitQrtrSocket());
 #endif
+
 #if USE_CELLULAR
   if (use_modemmanager_for_dynamic_sar_) {
     InitModemManagerSarInterface();
+    InitShillProxyInterface();
     return;
   }
 #endif  // USE_CELLULAR
@@ -135,6 +187,41 @@ void CellularController::InitPowerLevel(const std::string& power_levels) {
     }
     LOG(INFO) << "power = " << RadioTransmitPowerToString(power)
               << " level = " << level;
+  }
+}
+
+void CellularController::InitRegulatoryDomainMapping(
+    const std::string& domain_offsets) {
+  if (domain_offsets.empty()) {
+    regulatory_domain_mappings_ = {{CellularRegulatoryDomain::FCC, 0},
+                                   {CellularRegulatoryDomain::ISED, 0},
+                                   {CellularRegulatoryDomain::CE, 0},
+                                   {CellularRegulatoryDomain::MIC, 0},
+                                   {CellularRegulatoryDomain::KCC, 0}};
+    return;
+  }
+  base::StringPairs pairs;
+  if (!base::SplitStringIntoKeyValuePairs(domain_offsets, ' ', '\n', &pairs))
+    LOG(FATAL) << "Failed parsing " << kSetCellularTransmitPowerLevelMappingPref
+               << " pref";
+  for (const auto& pair : pairs) {
+    const CellularRegulatoryDomain domain =
+        GetRegulatoryDomainFromString(pair.first);
+    uint32_t offset;
+    if (domain == CellularRegulatoryDomain::UNKNOWN ||
+        !base::StringToUint(pair.second, &offset)) {
+      LOG(FATAL) << "Unrecognized Regulatory Domain \"" << pair.first
+                 << "\" for \"" << pair.second << "\" in "
+                 << kSetCellularRegulatoryDomainMappingPref << " pref";
+    }
+    if (!regulatory_domain_mappings_.insert(std::make_pair(domain, offset))
+             .second) {
+      LOG(FATAL) << "Duplicate entry for \"" << RegulatoryDomainToString(domain)
+                 << "\" in " << kSetCellularRegulatoryDomainMappingPref
+                 << " pref";
+    }
+    LOG(INFO) << "domain = " << RegulatoryDomainToString(domain)
+              << " offset = " << offset;
   }
 }
 
@@ -193,6 +280,21 @@ void CellularController::HandleModemStateChange(ModemState state) {
     return;
 
   state_ = state;
+  UpdateTransmitPower();
+}
+
+void CellularController::HandleModemRegulatoryDomainChange(
+    CellularRegulatoryDomain domain) {
+  VLOG(1) << __func__ << " New domain : " << RegulatoryDomainToString(domain)
+          << " current domain : "
+          << RegulatoryDomainToString(regulatory_domain_);
+  if (!use_regulatory_domain_for_dynamic_sar_)
+    return;
+
+  if (regulatory_domain_ == domain)
+    return;
+
+  regulatory_domain_ = domain;
   UpdateTransmitPower();
 }
 
@@ -259,6 +361,7 @@ void CellularController::UpdateTransmitPower() {
 void CellularController::SetCellularTransmitPowerInModemManager(
     RadioTransmitPower power) {
   brillo::ErrorPtr error;
+  uint32_t offset = 0;
   if (!mm_sar_proxy_) {
     LOG(ERROR) << __func__ << " called before SAR interface is up";
     return;
@@ -270,10 +373,19 @@ void CellularController::SetCellularTransmitPowerInModemManager(
     return;
   }
 
+  if (use_regulatory_domain_for_dynamic_sar_) {
+    auto domain_it = regulatory_domain_mappings_.find(regulatory_domain_);
+    // If no domain mapping info is present then use the default value (which is
+    // 0)
+    offset = (domain_it == regulatory_domain_mappings_.end())
+                 ? 0
+                 : domain_it->second;
+  }
+
   LOG(INFO) << "Setting cellular transmit power level to "
             << RadioTransmitPowerToString(power)
-            << " Table index = " << power_it->second;
-  if (!mm_sar_proxy_->SetPowerLevel(power_it->second, &error)) {
+            << " Table index = " << power_it->second << " Offset = " << offset;
+  if (!mm_sar_proxy_->SetPowerLevel(power_it->second + offset, &error)) {
     LOG(ERROR) << "Failed to Set SAR Power Level in modem: "
                << error->GetMessage();
   }
@@ -347,6 +459,55 @@ void CellularController::OnServiceOwnerChanged(const std::string& old_owner,
                                                const std::string& new_owner) {
   VLOG(1) << __func__ << " old: " << old_owner << " new: " << new_owner;
   OnModemManagerServiceAvailable(!new_owner.empty());
+}
+
+void CellularController::OnShillDeviceChanged(
+    const shill::Client::Device* const device) {
+  if (!device || device->type != shill::Client::Device::Type::kCellular) {
+    VLOG(1) << __func__ << " ifname = " << device->ifname
+            << " not cellular device";
+    return;
+  }
+  VLOG(1) << __func__ << " ifname = " << device->ifname
+          << " country_code = " << device->cellular_country_code;
+  HandleModemRegulatoryDomainChange(
+      GetRegulatoryDomainFromCountryCode(device->cellular_country_code));
+}
+
+void CellularController::OnShillReady(bool success) {
+  VLOG(1) << __func__ << " success : " << success;
+  shill_ready_ = success;
+  if (!shill_ready_) {
+    LOG(INFO) << __func__ << " Shill not ready";
+    return;
+  }
+  shill_->RegisterDeviceChangedHandler(
+      base::BindRepeating(&CellularController::OnShillDeviceChanged,
+                          weak_ptr_factory_.GetWeakPtr()));
+  for (const auto& d : shill_->GetDevices()) {
+    OnShillDeviceChanged(d.get());
+  }
+}
+
+void CellularController::OnShillReset(bool reset) {
+  VLOG(1) << __func__ << " reset : " << reset;
+  if (reset) {
+    LOG(INFO) << "Shill has been reset";
+    return;
+  }
+  LOG(INFO) << "Shill has been shutdown";
+  shill_ready_ = false;
+  // Listen for it to come back.
+  shill_->RegisterOnAvailableCallback(base::BindOnce(
+      &CellularController::OnShillReady, weak_ptr_factory_.GetWeakPtr()));
+}
+
+void CellularController::InitShillProxyInterface() {
+  shill_.reset(new shill::Client(dbus_wrapper_->GetBus()));
+  shill_->RegisterProcessChangedHandler(base::BindRepeating(
+      &CellularController::OnShillReset, weak_ptr_factory_.GetWeakPtr()));
+  shill_->RegisterOnAvailableCallback(base::BindOnce(
+      &CellularController::OnShillReady, weak_ptr_factory_.GetWeakPtr()));
 }
 
 void CellularController::InitModemManagerSarInterface() {

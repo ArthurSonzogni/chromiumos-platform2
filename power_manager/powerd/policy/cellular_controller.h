@@ -23,6 +23,10 @@
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
+#if USE_CELLULAR
+#include <shill/dbus-proxies.h>
+#include "shill/dbus/client/client.h"
+#endif
 #if USE_QRTR  // TODO(b/188798246): Remove this once qc-netmgr is merged back
               // into modemmanager.
 #include "upstart/dbus-proxies.h"
@@ -74,6 +78,8 @@ class CellularController : public UserProximityHandler::Delegate {
   void HandleTabletModeChange(TabletMode mode);
   // Called when the modem state changes
   void HandleModemStateChange(ModemState state);
+  // Called when the regulatory domain changes
+  void HandleModemRegulatoryDomainChange(CellularRegulatoryDomain domain);
   // UserProximityHandler::Delegate overrides:
   void ProximitySensorDetected(UserProximity proximity) override;
   void HandleProximityChange(UserProximity proximity) override;
@@ -84,6 +90,7 @@ class CellularController : public UserProximityHandler::Delegate {
 
   RadioTransmitPower DetermineTransmitPower() const;
   void InitPowerLevel(const std::string& power_levels);
+  void InitRegulatoryDomainMapping(const std::string& domain_offsets);
   RadioTransmitPower GetPowerIndexFromString(const std::string& name);
 #if USE_CELLULAR
   void SetCellularTransmitPowerInModemManager(RadioTransmitPower power);
@@ -104,6 +111,13 @@ class CellularController : public UserProximityHandler::Delegate {
   // Service name owner changed handler.
   void OnServiceOwnerChanged(const std::string& old_owner,
                              const std::string& new_owner);
+
+  // Setup Shill dbus proxies
+  void InitShillProxyInterface();
+  void OnShillReady(bool success);
+  void OnShillReset(bool reset);
+  void OnShillDeviceChanged(const shill::Client::Device* const device);
+
 #endif        // USE_CELLULAR
 #if USE_QRTR  // TODO(b/188798246): Remove this once qc-netmgr is merged back
               // into modemmanager.
@@ -128,6 +142,8 @@ class CellularController : public UserProximityHandler::Delegate {
   TabletMode tablet_mode_ = TabletMode::UNSUPPORTED;
   UserProximity proximity_ = UserProximity::UNKNOWN;
   ModemState state_ = ModemState::UNKNOWN;
+  CellularRegulatoryDomain regulatory_domain_ =
+      CellularRegulatoryDomain::UNKNOWN;
 
   // True if powerd has been configured to set cellular transmit power in
   // response to tablet mode or proximity changes.
@@ -135,7 +151,10 @@ class CellularController : public UserProximityHandler::Delegate {
   bool set_transmit_power_for_proximity_ = false;
   bool use_modemmanager_for_dynamic_sar_ = false;
   bool use_multi_power_level_dynamic_sar_ = false;
+  bool use_regulatory_domain_for_dynamic_sar_ = false;
   std::map<RadioTransmitPower, uint32_t> level_mappings_;
+  // Regulatory domain to offset mapping
+  std::map<CellularRegulatoryDomain, uint32_t> regulatory_domain_mappings_;
 
 #if USE_QRTR  // TODO(b/188798246): Remove this once qc-netmgr is merged back
               // into modemmanager.
@@ -152,6 +171,10 @@ class CellularController : public UserProximityHandler::Delegate {
   std::unique_ptr<org::freedesktop::ModemManager1::Modem::SarProxy>
       mm_sar_proxy_;
   std::unique_ptr<system::DBusObjectManagerProxyInterface> mm_obj_proxy_;
+  std::unique_ptr<org::chromium::flimflam::ManagerProxy> shill_manager_proxy_;
+  std::unique_ptr<org::chromium::flimflam::DeviceProxy> shill_device_proxy_;
+  bool shill_ready_{false};
+  std::unique_ptr<shill::Client> shill_;
 #endif  // USE_CELLULAR
   base::WeakPtrFactory<CellularController> weak_ptr_factory_;
 };
