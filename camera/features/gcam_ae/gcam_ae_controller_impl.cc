@@ -15,6 +15,10 @@
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
 
+#if USE_CAMERA_FEATURE_FACE_DETECTION
+#include "cros-camera/face_detector_client_cros_wrapper.h"
+#endif
+
 namespace cros {
 
 namespace {
@@ -52,15 +56,21 @@ bool IsClientManualSensorControlSet(const AeFrameInfo& frame_info) {
   return false;
 }
 
-std::vector<NormalizedRect> RectToNormalizedRect(
-    const std::vector<Rect<float>>& faces) {
+#if USE_CAMERA_FEATURE_FACE_DETECTION
+std::vector<NormalizedRect> CrosFaceToNormalizedRect(
+    const std::vector<human_sensing::CrosFace>& faces,
+    const Size& active_array_dimension) {
   std::vector<NormalizedRect> result;
   for (const auto& f : faces) {
     result.push_back(NormalizedRect{
-        .x0 = f.left, .x1 = f.right(), .y0 = f.top, .y1 = f.bottom()});
+        .x0 = f.bounding_box.x1 / active_array_dimension.width,
+        .x1 = f.bounding_box.x2 / active_array_dimension.width,
+        .y0 = f.bounding_box.y1 / active_array_dimension.height,
+        .y1 = f.bounding_box.y2 / active_array_dimension.height});
   }
   return result;
 }
+#endif
 
 }  // namespace
 
@@ -394,12 +404,14 @@ void GcamAeControllerImpl::SetRequestAeParameters(
     frame_info->target_fps_range = {fps_range[0], fps_range[1]};
   }
 
+#if USE_CAMERA_FEATURE_FACE_DETECTION
   // If the FaceDetectionStreamManipulator has set the face ROIs, use them for
   // Gcam AE instead of the ones from the vendor camera HAL.
   if (request->feature_metadata().faces) {
-    frame_info->faces =
-        RectToNormalizedRect(*request->feature_metadata().faces);
+    frame_info->faces = CrosFaceToNormalizedRect(
+        *request->feature_metadata().faces, active_array_dimension_);
   }
+#endif
 
   // Only change the metadata when the client request settings is not null.
   // This is mainly to make the CTS tests happy, as some test cases set null

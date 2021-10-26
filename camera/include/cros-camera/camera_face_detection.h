@@ -8,6 +8,7 @@
 #define CAMERA_INCLUDE_CROS_CAMERA_CAMERA_FACE_DETECTION_H_
 
 #include <memory>
+#include <string>
 #include <tuple>
 #include <vector>
 
@@ -89,6 +90,8 @@ class CROS_CAMERA_EXPORT FaceDetector {
 
   std::unique_ptr<human_sensing::FaceDetectorClientCrosWrapper> wrapper_;
 };
+
+std::string LandmarkTypeToString(human_sensing::Landmark::Type type);
 
 }  // namespace cros
 

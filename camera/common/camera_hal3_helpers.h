@@ -20,6 +20,10 @@
 #include "cros-camera/common_types.h"
 #include "cros-camera/export.h"
 
+#if USE_CAMERA_FEATURE_FACE_DETECTION
+#include "cros-camera/camera_face_detection.h"
+#endif
+
 namespace cros {
 
 // Utility function to produce a debug string for the given camera3_stream_t
@@ -43,11 +47,13 @@ struct FeatureMetadata {
   // HdrNetStreamManipulator for HDRnet output frame rendering.
   base::Optional<float> hdr_ratio;
 
+#if USE_CAMERA_FEATURE_FACE_DETECTION
   // The face rectangles detected by the FaceDetectionStreamManipulator when
   // CrOS face detector is enabled. The coordinates of the rectangles are
   // normalized with respect to the active sensor array size. The face ROIs are
   // consumed by GcamAeStreamManipulator as input metadata.
-  base::Optional<std::vector<Rect<float>>> faces;
+  base::Optional<std::vector<human_sensing::CrosFace>> faces;
+#endif
 };
 
 // A helper class to make it easy to modify camera3_stream_configuration_t.

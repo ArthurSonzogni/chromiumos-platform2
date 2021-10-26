@@ -15,9 +15,12 @@
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/constants.h"
 #include "cros-camera/jpeg_compressor.h"
-#include "features/face_detection/face_detection_stream_manipulator.h"
 #include "features/gcam_ae/gcam_ae_stream_manipulator.h"
 #include "features/hdrnet/hdrnet_stream_manipulator.h"
+#endif
+
+#if USE_CAMERA_FEATURE_FACE_DETECTION
+#include "features/face_detection/face_detection_stream_manipulator.h"
 #endif
 
 #include "features/zsl/zsl_stream_manipulator.h"
@@ -52,14 +55,12 @@ void MaybeEnableHdrNetStreamManipulator(
       //   ==> capture result flow
       //
       // Why the pipeline is organized this way:
-      // * FaceDetection is placed before HDRnet because we want to run
-      //   face detection on result frames rendered by HDRnet so we can better
-      //   detect the underexposed faces.
+      // * FaceDetection (if present) is placed before HDRnet because we want to
+      //   run face detection on result frames rendered by HDRnet so we can
+      //   better detect the underexposed faces.
       // * Gcam AE is placed after HDRnet because it needs raw result frames as
       //   input to get accurate AE metering, and because Gcam AE produces the
       //   HDR ratio needed by HDRnet to render the output frame.
-      out_stream_manipulators->emplace_back(
-          std::make_unique<FaceDetectionStreamManipulator>());
       std::unique_ptr<JpegCompressor> jpeg_compressor =
           JpegCompressor::GetInstance(CameraMojoChannelManager::GetInstance());
       out_stream_manipulators->emplace_back(
@@ -77,6 +78,11 @@ void MaybeEnableHdrNetStreamManipulator(
 std::vector<std::unique_ptr<StreamManipulator>>
 StreamManipulator::GetEnabledStreamManipulators(Options options) {
   std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators;
+
+#if USE_CAMERA_FEATURE_FACE_DETECTION
+  stream_manipulators.emplace_back(
+      std::make_unique<FaceDetectionStreamManipulator>());
+#endif
 
   MaybeEnableHdrNetStreamManipulator(options, &stream_manipulators);
 

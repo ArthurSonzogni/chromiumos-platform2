@@ -84,7 +84,7 @@ class FaceDetectionStreamManipulator : public StreamManipulator {
   base::Lock lock_;
 
   // The latest face ROIs detected by the CrOS face detector.
-  std::vector<Rect<float>> latest_faces_ GUARDED_BY(lock_);
+  std::vector<human_sensing::CrosFace> latest_faces_ GUARDED_BY(lock_);
 
   // Ring buffer for the per-frame face detection metadata.
   static constexpr size_t kFrameInfoRingBufferSize = 12;

@@ -31,10 +31,6 @@ pkg_config("target_defaults") {
     "libcros_camera_android_deps",
     "libdrm",
   ]
-  defines = [
-    "USE_CAMERA_FEATURE_HDRNET=${use.camera_feature_hdrnet}",
-    "USE_CAMERA_FEATURE_PORTRAIT_MODE=${use.camera_feature_portrait_mode}",
-  ]
 }
 
 generate_mojom_bindings("libcros_camera_mojom") {
@@ -249,10 +245,12 @@ shared_library("libcros_camera") {
     ":v4l2_device",
     "//camera/features/zsl",
   ]
+  if (use.camera_feature_face_detection) {
+    deps += [ "//camera/features/face_detection" ]
+  }
 
   if (use.camera_feature_hdrnet) {
     deps += [
-      "//camera/features/face_detection",
       "//camera/features/gcam_ae",
       "//camera/features/hdrnet",
     ]

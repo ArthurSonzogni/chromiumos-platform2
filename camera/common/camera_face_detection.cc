@@ -83,6 +83,10 @@ FaceDetectResult FaceDetector::Detect(
       f.bounding_box.y1 *= ratio;
       f.bounding_box.x2 *= ratio;
       f.bounding_box.y2 *= ratio;
+      for (auto& l : f.landmarks) {
+        l.x *= ratio;
+        l.y *= ratio;
+      }
     }
   }
 
@@ -100,6 +104,10 @@ FaceDetectResult FaceDetector::Detect(
       f.bounding_box.y1 = scale * f.bounding_box.y1 + offset_y;
       f.bounding_box.x2 = scale * f.bounding_box.x2 + offset_x;
       f.bounding_box.y2 = scale * f.bounding_box.y2 + offset_y;
+      for (auto& l : f.landmarks) {
+        l.x = scale * l.x + offset_x;
+        l.y = scale * l.y + offset_y;
+      }
     }
   }
 
@@ -146,6 +154,26 @@ int FaceDetector::ScaleImage(buffer_handle_t buffer,
                      scaled_buffer_.data(), out_size.width, out_size.width,
                      out_size.height, libyuv::FilterMode::kFilterNone);
   return 0;
+}
+
+std::string LandmarkTypeToString(human_sensing::Landmark::Type type) {
+  switch (type) {
+    case human_sensing::Landmark::Type::kLeftEye:
+      return "LeftEye";
+    case human_sensing::Landmark::Type::kRightEye:
+      return "RightEye";
+    case human_sensing::Landmark::Type::kNoseTip:
+      return "NoseTip";
+    case human_sensing::Landmark::Type::kMouthCenter:
+      return "MouthCenter";
+    case human_sensing::Landmark::Type::kLeftEarTragion:
+      return "LeftEarTragion";
+    case human_sensing::Landmark::Type::kRightEarTragion:
+      return "RightEarTragion";
+    case human_sensing::Landmark::Type::kLandmarkUnknown:
+      return "Unknown";
+  }
+  return base::StringPrintf("Undefined landmark type %d", type);
 }
 
 }  // namespace cros

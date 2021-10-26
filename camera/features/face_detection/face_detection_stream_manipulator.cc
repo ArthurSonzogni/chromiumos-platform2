@@ -21,6 +21,21 @@ constexpr char kLogFrameMetadataKey[] = "log_frame_metadata";
 
 constexpr char kTagFaceRectangles[] = "face_rectangles";
 
+void LogFaceInfo(int frame_number, const human_sensing::CrosFace& face) {
+  VLOGFID(2, frame_number) << "\t(" << face.bounding_box.x1 << ", "
+                           << face.bounding_box.y1 << ", "
+                           << face.bounding_box.x2 << ", "
+                           << face.bounding_box.y2 << ")";
+  VLOGFID(2, frame_number) << "\tLandmarks:";
+  for (const auto& l : face.landmarks) {
+    VLOGFID(2, frame_number) << "\t(" << l.x << ", " << l.y << ", " << l.z
+                             << "): " << LandmarkTypeToString(l.type);
+  }
+  VLOGFID(2, frame_number) << "Roll angle: " << face.roll_angle;
+  VLOGFID(2, frame_number) << "Pan angle: " << face.pan_angle;
+  VLOGFID(2, frame_number) << "Tilt angle: " << face.tilt_angle;
+}
+
 }  // namespace
 
 //
@@ -127,11 +142,9 @@ bool FaceDetectionStreamManipulator::ProcessCaptureRequest(
   // Carry down the latest detected faces as Gcam AE's input metadata.
   request->feature_metadata().faces = latest_faces_;
   if (VLOG_IS_ON(2)) {
-    VLOGFID(2, request->frame_number()) << "Set face rectangles:";
+    VLOGFID(2, request->frame_number()) << "Set face(s):";
     for (const auto& f : *request->feature_metadata().faces) {
-      VLOGFID(2, request->frame_number())
-          << "(" << f.left << ", " << f.top << ", " << f.right() << ", "
-          << f.bottom() << ")";
+      LogFaceInfo(request->frame_number(), f);
     }
   }
 
@@ -153,37 +166,22 @@ bool FaceDetectionStreamManipulator::ProcessCaptureResult(
         std::vector<human_sensing::CrosFace> facessd_faces;
         auto ret = face_detector_->Detect(*buffer.buffer, &facessd_faces,
                                           active_array_dimension_);
-        std::vector<Rect<float>> faces;
         if (ret != FaceDetectResult::kDetectOk) {
           LOGF(WARNING) << "Cannot run face detection";
         } else {
-          for (auto& f : facessd_faces) {
-            faces.push_back(Rect<float>(
-                /*left=*/std::clamp(
-                    f.bounding_box.x1 / active_array_dimension_.width, 0.0f,
-                    1.0f),
-                /*top=*/
-                std::clamp(f.bounding_box.y1 / active_array_dimension_.height,
-                           0.0f, 1.0f),
-                /*width=*/
-                std::clamp((f.bounding_box.x2 - f.bounding_box.x1) /
-                               active_array_dimension_.width,
-                           0.0f, 1.0f),
-                /*height=*/
-                std::clamp((f.bounding_box.y2 - f.bounding_box.y1) /
-                               active_array_dimension_.height,
-                           0.0f, 1.0f)));
-          }
           if (VLOG_IS_ON(2)) {
-            VLOGFID(2, result->frame_number()) << "Detected face:";
-            for (const auto& f : faces) {
+            if (facessd_faces.empty()) {
+              VLOGFID(2, result->frame_number()) << "Detected zero faces";
+            } else {
               VLOGFID(2, result->frame_number())
-                  << "(" << f.left << ", " << f.top << ", " << f.right() << ", "
-                  << f.bottom() << ")";
+                  << "Detected " << facessd_faces.size() << " face(s):";
+              for (const auto& f : facessd_faces) {
+                LogFaceInfo(result->frame_number(), f);
+              }
             }
           }
         }
-        latest_faces_ = std::move(faces);
+        latest_faces_ = std::move(facessd_faces);
         break;
       }
     }
@@ -191,13 +189,23 @@ bool FaceDetectionStreamManipulator::ProcessCaptureResult(
 
   if (options_.log_frame_metadata) {
     std::vector<float> flattened_faces(latest_faces_.size() * 4);
+    // Log the face rectangles in normalized rectangles so that it can be
+    // consumed by the Gcam AE CLI directly.
     for (int i = 0; i < latest_faces_.size(); ++i) {
-      const Rect<float>& f = latest_faces_[i];
+      const human_sensing::CrosFace& f = latest_faces_[i];
       const int base = i * 4;
-      flattened_faces[base] = f.left;
-      flattened_faces[base + 1] = f.top;
-      flattened_faces[base + 2] = f.right();
-      flattened_faces[base + 3] = f.bottom();
+      // Left
+      flattened_faces[base] = std::clamp(
+          f.bounding_box.x1 / active_array_dimension_.width, 0.0f, 1.0f);
+      // Top
+      flattened_faces[base + 1] = std::clamp(
+          f.bounding_box.y1 / active_array_dimension_.height, 0.0f, 1.0f);
+      // Right
+      flattened_faces[base + 2] = std::clamp(
+          f.bounding_box.x2 / active_array_dimension_.width, 0.0f, 1.0f);
+      // Bottom
+      flattened_faces[base + 3] = std::clamp(
+          f.bounding_box.y2 / active_array_dimension_.height, 0.0f, 1.0f);
     }
     metadata_logger_.Log(result->frame_number(), kTagFaceRectangles,
                          base::span<const float>(flattened_faces.data(),
@@ -283,10 +291,10 @@ void FaceDetectionStreamManipulator::SetResultAeMetadata(
     // development and debugging.
     std::vector<int32_t> face_coordinates;
     for (const auto& f : latest_faces_) {
-      face_coordinates.push_back(f.left * active_array_dimension_.width);
-      face_coordinates.push_back(f.top * active_array_dimension_.height);
-      face_coordinates.push_back(f.right() * active_array_dimension_.width);
-      face_coordinates.push_back(f.bottom() * active_array_dimension_.height);
+      face_coordinates.push_back(f.bounding_box.x1);
+      face_coordinates.push_back(f.bounding_box.y1);
+      face_coordinates.push_back(f.bounding_box.x2);
+      face_coordinates.push_back(f.bounding_box.y2);
     }
     if (!result->UpdateMetadata<int32_t>(ANDROID_STATISTICS_FACE_RECTANGLES,
                                          face_coordinates)) {

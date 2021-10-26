@@ -12,6 +12,14 @@ config("cros_camera_common") {
   # CHROME_OS_CAMERA_BUILD_ENV is used to toggle the include path in header
   # files imported from google3.
   defines = [ "CHROME_OS_CAMERA_BUILD_ENV" ]
+
+  # Feature USE flags as declared in chromeos-base/cros-camera-libs.
+  defines += [
+    "USE_CAMERA_FEATURE_FACE_DETECTION=${use.camera_feature_face_detection}",
+    "USE_CAMERA_FEATURE_HDRNET=${use.camera_feature_hdrnet}",
+    "USE_CAMERA_FEATURE_PORTRAIT_MODE=${use.camera_feature_portrait_mode}",
+  ]
+
   include_dirs = [
     "//camera",
     "//camera/include",
