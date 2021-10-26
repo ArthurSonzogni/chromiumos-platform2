@@ -226,14 +226,18 @@ bool PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
                                 CryptoError* error) {
   const PinWeaverAuthBlockState* auth_state;
   if (!(auth_state = absl::get_if<PinWeaverAuthBlockState>(&state.state))) {
-    DLOG(FATAL) << "Invalid AuthBlockState";
+    LOG(ERROR) << "Invalid AuthBlockState";
     return false;
   }
 
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   brillo::SecureBlob kdf_skey(kDefaultAesKeySize);
+  if (!auth_state->le_label.has_value()) {
+    LOG(ERROR) << "Invalid PinWeaverAuthBlockState: missing le_label";
+    return false;
+  }
   if (!auth_state->salt.has_value()) {
-    DLOG(FATAL) << "Invalid salt";
+    LOG(ERROR) << "Invalid PinWeaverAuthBlockState: missing salt";
     return false;
   }
   brillo::SecureBlob salt = auth_state->salt.value();

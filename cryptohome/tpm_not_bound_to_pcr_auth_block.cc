@@ -49,7 +49,16 @@ bool TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
   const TpmNotBoundToPcrAuthBlockState* tpm_state;
   if (!(tpm_state =
             absl::get_if<TpmNotBoundToPcrAuthBlockState>(&state.state))) {
-    DLOG(FATAL) << "Called with an invalid auth block state";
+    LOG(ERROR) << "Invalid AuthBlockState";
+    return false;
+  }
+
+  if (!tpm_state->salt.has_value()) {
+    LOG(ERROR) << "Invalid TpmNotBoundToPcrAuthBlockState: missing salt";
+    return false;
+  }
+  if (!tpm_state->tpm_key.has_value()) {
+    LOG(ERROR) << "Invalid TpmNotBoundToPcrAuthBlockState: missing tpm_key";
     return false;
   }
 
@@ -67,15 +76,8 @@ bool TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
   key_out_data->vkk_iv = brillo::SecureBlob(kAesBlockSize);
   key_out_data->vkk_key = brillo::SecureBlob(kDefaultAesKeySize);
 
-  brillo::SecureBlob salt;
-  if (tpm_state->salt.has_value()) {
-    salt = tpm_state->salt.value();
-  }
-  brillo::SecureBlob tpm_key;
-  if (tpm_state->tpm_key.has_value()) {
-    tpm_key = tpm_state->tpm_key.value();
-  }
-
+  brillo::SecureBlob salt = tpm_state->salt.value();
+  brillo::SecureBlob tpm_key = tpm_state->tpm_key.value();
   if (!DecryptTpmNotBoundToPcr(
           *tpm_state, auth_input.user_input.value(), tpm_key, salt, error,
           &key_out_data->vkk_iv.value(), &key_out_data->vkk_key.value())) {
@@ -183,6 +185,7 @@ bool TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
                             ? tpm_state.password_rounds.value()
                             : kDefaultLegacyPasswordRounds;
 
+  // TODO(b/204200132): check if this branch is unnecessary.
   if (tpm_state.scrypt_derived) {
     if (!DeriveSecretsScrypt(vault_key, salt, {&aes_skey, &kdf_skey, vkk_iv})) {
       PopulateError(error, CryptoError::CE_OTHER_FATAL);
@@ -218,6 +221,7 @@ bool TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
     }
   }
 
+  // TODO(b/204200132): check if this branch is unnecessary.
   if (tpm_state.scrypt_derived) {
     *vkk_key = HmacSha256(kdf_skey, local_vault_key);
   } else {

@@ -138,8 +138,8 @@ base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
   }
 
   tpm_state.scrypt_derived = true;
-  tpm_state.tpm_key = tpm_key;
-  tpm_state.extended_tpm_key = extended_tpm_key;
+  tpm_state.tpm_key = std::move(tpm_key);
+  tpm_state.extended_tpm_key = std::move(extended_tpm_key);
   tpm_state.salt = std::move(salt);
 
   // Pass back the vkk_key and vkk_iv so the generic secret wrapping can use it.
@@ -160,12 +160,25 @@ bool TpmBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
                                     CryptoError* error) {
   const TpmBoundToPcrAuthBlockState* tpm_state;
   if (!(tpm_state = absl::get_if<TpmBoundToPcrAuthBlockState>(&state.state))) {
-    DLOG(FATAL) << "Called with an invalid auth block state";
+    LOG(ERROR) << "Invalid AuthBlockState";
     return false;
   }
 
   if (!tpm_state->scrypt_derived) {
     LOG(ERROR) << "All TpmBoundtoPcr operations should be scrypt derived.";
+    return false;
+  }
+  if (!tpm_state->salt.has_value()) {
+    LOG(ERROR) << "Invalid TpmBoundToPcrAuthBlockState: missing salt";
+    return false;
+  }
+  if (!tpm_state->tpm_key.has_value()) {
+    LOG(ERROR) << "Invalid TpmBoundToPcrAuthBlockState: missing tpm_key";
+    return false;
+  }
+  if (!tpm_state->extended_tpm_key.has_value()) {
+    LOG(ERROR)
+        << "Invalid TpmBoundToPcrAuthBlockState: missing extended_tpm_key";
     return false;
   }
 
@@ -182,19 +195,12 @@ bool TpmBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
   key_out_data->vkk_key = brillo::SecureBlob(kDefaultAesKeySize);
 
   bool locked_to_single_user = auth_input.locked_to_single_user.value_or(false);
-  if (!tpm_state->salt.has_value()) {
-    DLOG(FATAL) << "Invalid TpmBoundToPcrAuthBlockState";
-    return false;
-  }
   brillo::SecureBlob salt = tpm_state->salt.value();
-  base::Optional<brillo::SecureBlob> tpm_key =
-      locked_to_single_user ? tpm_state->extended_tpm_key : tpm_state->tpm_key;
-  if (!tpm_key.has_value()) {
-    DLOG(FATAL) << "Invalid TpmBoundToPcrAuthBlockState";
-    return false;
-  }
-  if (!DecryptTpmBoundToPcr(auth_input.user_input.value(), tpm_key.value(),
-                            salt, error, &key_out_data->vkk_iv.value(),
+  brillo::SecureBlob tpm_key = locked_to_single_user
+                                   ? tpm_state->extended_tpm_key.value()
+                                   : tpm_state->tpm_key.value();
+  if (!DecryptTpmBoundToPcr(auth_input.user_input.value(), tpm_key, salt, error,
+                            &key_out_data->vkk_iv.value(),
                             &key_out_data->vkk_key.value())) {
     return false;
   }

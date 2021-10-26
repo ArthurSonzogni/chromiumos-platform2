@@ -26,7 +26,8 @@ struct TpmNotBoundToPcrAuthBlockState {
   // The salt used to bind to the TPM.
   // Must be set.
   base::Optional<brillo::SecureBlob> salt;
-  // The number of rounds key derivation is called.
+  // Optional, the number of rounds key derivation is called.
+  // This is only used for legacy non-scrypt key derivation.
   base::Optional<uint32_t> password_rounds;
   // The VKK wrapped with the user's password by the tpm.
   // Must be set.
@@ -58,6 +59,7 @@ struct PinWeaverAuthBlockState {
   // The IV used to derive the chaps key.
   base::Optional<brillo::SecureBlob> chaps_iv;
   // The IV used to derive the file encryption key.
+  // TODO(b/204202689): rename fek_iv to vkk_iv.
   base::Optional<brillo::SecureBlob> fek_iv;
 };
 

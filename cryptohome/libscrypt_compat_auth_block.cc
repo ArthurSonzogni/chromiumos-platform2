@@ -125,16 +125,17 @@ bool LibScryptCompatAuthBlock::Derive(const AuthInput& auth_input,
   const LibScryptCompatAuthBlockState* state;
   if (!(state =
             absl::get_if<LibScryptCompatAuthBlockState>(&auth_state.state))) {
-    DLOG(FATAL) << "Invalid AuthBlockState";
+    LOG(ERROR) << "Invalid AuthBlockState";
+    return false;
+  }
+
+  if (!state->wrapped_keyset.has_value()) {
+    LOG(ERROR)
+        << "Invalid LibScryptCompatAuthBlockState: missing wrapped_keyset";
     return false;
   }
 
   const brillo::SecureBlob input_key = auth_input.user_input.value();
-
-  if (!state->wrapped_keyset.has_value()) {
-    DLOG(FATAL) << "Invalid LibScryptCompatAuthBlockState";
-    return false;
-  }
   brillo::SecureBlob wrapped_keyset = state->wrapped_keyset.value();
   brillo::SecureBlob derived_scrypt_key;
   if (!ParseHeaderAndDerive(wrapped_keyset, input_key, &derived_scrypt_key,

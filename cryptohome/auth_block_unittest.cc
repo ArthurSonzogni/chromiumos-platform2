@@ -194,6 +194,68 @@ TEST(TpmNotBoundToPcrTest, CreateFailTest) {
   EXPECT_EQ(base::nullopt, auth_block.Create(user_input, &vkk_data, &error));
 }
 
+// Check required field |salt| in TpmNotBoundToPcrAuthBlockState.
+TEST(TpmNotBoundToPcrTest, DeriveFailureMissingSalt) {
+  brillo::SecureBlob tpm_key(20, 'C');
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  TpmNotBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+
+  AuthBlockState auth_state;
+  TpmNotBoundToPcrAuthBlockState state;
+  state.scrypt_derived = true;
+  state.tpm_key = tpm_key;
+  auth_state.state = std::move(state);
+
+  KeyBlobs key_blobs;
+  CryptoError error;
+  AuthInput auth_input = {};
+  EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
+}
+
+// Check required field |tpm_key| in TpmNotBoundToPcrAuthBlockState.
+TEST(TpmNotBoundToPcrTest, DeriveFailureMissingTpmKey) {
+  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  TpmNotBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+
+  AuthBlockState auth_state;
+  TpmNotBoundToPcrAuthBlockState state;
+  state.scrypt_derived = true;
+  state.salt = salt;
+  auth_state.state = std::move(state);
+
+  KeyBlobs key_blobs;
+  CryptoError error;
+  AuthInput auth_input = {};
+  EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
+}
+
+TEST(TpmNotBoundToPcrTest, DeriveSuccess) {
+  brillo::SecureBlob tpm_key(20, 'A');
+  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'B');
+  brillo::SecureBlob vault_key(20, 'C');
+  brillo::SecureBlob aes_key(kDefaultAesKeySize);
+  ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&aes_key}));
+
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  TpmNotBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+  EXPECT_CALL(tpm, DecryptBlob(_, tpm_key, aes_key, _, _)).Times(Exactly(1));
+  AuthBlockState auth_state;
+  TpmNotBoundToPcrAuthBlockState state;
+  state.scrypt_derived = true;
+  state.salt = salt;
+  state.tpm_key = tpm_key;
+  auth_state.state = std::move(state);
+
+  KeyBlobs key_blobs;
+  CryptoError error;
+  AuthInput auth_input = {.user_input = vault_key};
+  EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
+}
+
 TEST(PinWeaverAuthBlockTest, CreateTest) {
   // Set up inputs to the test.
   brillo::SecureBlob vault_key(20, 'C');
@@ -252,9 +314,55 @@ TEST(PinWeaverAuthBlockTest, CreateFailTest) {
             auth_block_fail.Create(user_input, &vkk_data, &error));
 }
 
+// Check required field |le_label| in PinWeaverAuthBlockState.
+TEST(PinWeaverAuthBlockTest, DeriveFailureMissingLeLabel) {
+  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+  brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
+  brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
+
+  NiceMock<MockLECredentialManager> le_cred_manager;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
+
+  // Construct the auth block state. le_label is not set.
+  AuthBlockState auth_state;
+  PinWeaverAuthBlockState state;
+  state.salt = salt;
+  state.chaps_iv = chaps_iv;
+  state.fek_iv = fek_iv;
+  auth_state.state = std::move(state);
+
+  CryptoError error;
+  KeyBlobs key_blobs;
+  AuthInput auth_input = {};
+  EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
+}
+
+// Check required field |salt| in PinWeaverAuthBlockState.
+TEST(PinWeaverAuthBlockTest, DeriveFailureMissingSalt) {
+  brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
+  brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
+
+  NiceMock<MockLECredentialManager> le_cred_manager;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
+
+  // Construct the auth block state. salt is not set.
+  AuthBlockState auth_state;
+  PinWeaverAuthBlockState state;
+  state.le_label = 0;
+  state.chaps_iv = chaps_iv;
+  state.fek_iv = fek_iv;
+  auth_state.state = std::move(state);
+
+  CryptoError error;
+  KeyBlobs key_blobs;
+  AuthInput auth_input = {};
+  EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
+}
+
 TEST(PinWeaverAuthBlockTest, DeriveTest) {
   brillo::SecureBlob vault_key(20, 'C');
-  brillo::SecureBlob tpm_key(20, 'B');
   brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
   brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
   brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
@@ -302,7 +410,6 @@ TEST(PinWeaverAuthBlockTest, DeriveTest) {
 
 TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
   brillo::SecureBlob vault_key(20, 'C');
-  brillo::SecureBlob tpm_key(20, 'B');
   brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
   brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
   brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
@@ -343,7 +450,6 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
 
 TEST(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
   brillo::SecureBlob vault_key(20, 'C');
-  brillo::SecureBlob tpm_key(20, 'B');
   brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
   brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
   brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
@@ -527,6 +633,68 @@ TEST(TpmAuthBlockTest, DeriveTest) {
   EXPECT_NE(key_out_data.vkk_iv, base::nullopt);
   EXPECT_NE(key_out_data.vkk_key, base::nullopt);
   EXPECT_EQ(key_out_data.vkk_iv.value(), key_out_data.chaps_iv.value());
+}
+
+// Check required field |salt| in TpmBoundToPcrAuthBlockState.
+TEST(TpmAuthBlockTest, DeriveFailureMissingSalt) {
+  brillo::SecureBlob tpm_key(20, 'C');
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  TpmBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+
+  AuthBlockState auth_state;
+  TpmBoundToPcrAuthBlockState state;
+  state.scrypt_derived = true;
+  state.tpm_key = tpm_key;
+  state.extended_tpm_key = tpm_key;
+  auth_state.state = std::move(state);
+
+  KeyBlobs key_blobs;
+  AuthInput auth_input = {};
+  CryptoError error;
+  EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
+}
+
+// Check required field |tpm_key| in TpmBoundToPcrAuthBlockState.
+TEST(TpmAuthBlockTest, DeriveFailureMissingTpmKey) {
+  brillo::SecureBlob tpm_key(20, 'C');
+  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  TpmBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+
+  AuthBlockState auth_state;
+  TpmBoundToPcrAuthBlockState state;
+  state.scrypt_derived = true;
+  state.salt = salt;
+  state.extended_tpm_key = tpm_key;
+  auth_state.state = std::move(state);
+
+  KeyBlobs key_blobs;
+  AuthInput auth_input = {};
+  CryptoError error;
+  EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
+}
+
+// Check required field |extended_tpm_key| in TpmBoundToPcrAuthBlockState.
+TEST(TpmAuthBlockTest, DeriveFailureMissingExtendedTpmKey) {
+  brillo::SecureBlob tpm_key(20, 'C');
+  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  TpmBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
+
+  AuthBlockState auth_state;
+  TpmBoundToPcrAuthBlockState state;
+  state.scrypt_derived = true;
+  state.salt = salt;
+  state.tpm_key = tpm_key;
+  auth_state.state = std::move(state);
+
+  KeyBlobs key_blobs;
+  AuthInput auth_input = {};
+  CryptoError error;
+  EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
 }
 
 TEST(DoubleWrappedCompatAuthBlockTest, DeriveTest) {
