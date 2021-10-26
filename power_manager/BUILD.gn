@@ -52,6 +52,7 @@ group("all") {
       ":ambient_light_handler_fuzzer",
       ":internal_backlight_controller_fuzzer",
       ":powerd_als_fuzzer",
+      ":powerd_suspend_configurator_fuzzer",
     ]
   }
 
@@ -610,6 +611,20 @@ if (use.fuzzer) {
     ]
     deps = [
       ":libpolicy_test",
+      ":libpowerd",
+      ":libsystem_stub",
+      ":libutil_test",
+    ]
+  }
+  executable("powerd_suspend_configurator_fuzzer") {
+    sources = [ "powerd/system/suspend_configurator_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      "//common-mk:test",
+      ":fuzzer_config",
+      ":target_defaults",
+    ]
+    deps = [
       ":libpowerd",
       ":libsystem_stub",
       ":libutil_test",

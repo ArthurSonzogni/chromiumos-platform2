@@ -1,0 +1,60 @@
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "power_manager/powerd/system/suspend_configurator.h"
+
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
+#include <base/test/task_environment.h>
+#include "fuzzer/FuzzedDataProvider.h"
+
+#include "power_manager/common/fake_prefs.h"
+#include "power_manager/common/power_constants.h"
+
+namespace {
+constexpr char kSuspendModePath[] = "/sys/power/mem_sleep";
+
+// Creates an empty sysfs file rooted in |temp_root_dir|. For example if
+// |temp_root_dir| is "/tmp/xxx" and |sys_path| is "/sys/power/temp", creates
+// "/tmp/xxx/sys/power/temp" with all necessary root directories.
+// Copied from suspend_configurator_test.cc
+void CreateSysfsFileInTempRootDir(const base::FilePath& temp_root_dir,
+                                  const std::string& sys_path) {
+  base::FilePath path = temp_root_dir.Append(sys_path.substr(1));
+  CHECK(base::CreateDirectory(path.DirName()));
+  CHECK_EQ(base::WriteFile(path, "", 0), 0);
+}
+
+}  // namespace
+
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+  FuzzedDataProvider data_provider(data, size);
+  base::test::TaskEnvironment task_environment;
+
+  // Create fake directory structure.
+  base::ScopedTempDir temp_root_dir;
+  CHECK(temp_root_dir.CreateUniqueTempDir());
+  base::FilePath temp_root_dir_path = temp_root_dir.GetPath();
+  CreateSysfsFileInTempRootDir(
+      temp_root_dir_path,
+      power_manager::system::SuspendConfigurator::kConsoleSuspendPath.value());
+  CreateSysfsFileInTempRootDir(temp_root_dir_path, kSuspendModePath);
+
+  power_manager::system::SuspendConfigurator suspend_configurator;
+  suspend_configurator.set_prefix_path_for_testing(temp_root_dir_path);
+
+  // Fill in garbage prefs.
+  power_manager::FakePrefs prefs;
+  prefs.SetInt64(power_manager::kSuspendToIdlePref,
+                 data_provider.ConsumeBool());
+  prefs.SetInt64(power_manager::kEnableConsoleDuringSuspendPref,
+                 data_provider.ConsumeBool());
+  prefs.SetString(power_manager::kSuspendModePref,
+                  data_provider.ConsumeRandomLengthString(20));
+
+  suspend_configurator.Init(&prefs);
+  suspend_configurator.PrepareForSuspend(base::TimeDelta());
+
+  return 0;
+}
