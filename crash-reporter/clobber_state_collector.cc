@@ -18,10 +18,11 @@
 
 namespace {
 constexpr size_t kMaxSignature = 256;
+constexpr size_t kMaxSignatureSearch = 4096;
 constexpr const char kTmpfilesLogPath[] = "/run/tmpfiles.log";
 constexpr const char kClobberStateName[] = "clobber-state";
 
-std::string filter_signature(const std::string& sig) {
+std::string filter_signature(const std::vector<std::string>& lines) {
   static constexpr const char* const known_issues[] = {
       // This is associated with an EXT4-fs error in htree_dirblock_to_tree:
       // "Directory block failed checksum"
@@ -30,12 +31,26 @@ std::string filter_signature(const std::string& sig) {
       // "corrupted xattr block ####"
       "Structure needs cleaning",
   };
-  for (auto known_issue : known_issues) {
-    if (base::EndsWith(sig, known_issue)) {
-      return known_issue;
+
+  for (const std::string& line : lines) {
+    // There are some duplicate entries on purpose because of ARCVM not
+    // being present on all systems. For example:
+    //
+    //   /usr/lib/tmpfiles.d/vm_tools.conf:35: Duplicate line for path \
+    //     "/run/arc/sdcard", ignoring.
+    //
+    // Skip these lines because they did not cause the clobber.
+    if (!base::EndsWith(line, "ignoring.")) {
+      for (auto known_issue : known_issues) {
+        if (base::EndsWith(line, known_issue)) {
+          return known_issue;
+        }
+      }
+      return line.substr(0, kMaxSignature);
     }
   }
-  return sig;
+  // We should never get here, but if we do, set a consistent signature.
+  return kNoErrorLogged;
 }
 
 }  // namespace
@@ -57,7 +72,7 @@ bool ClobberStateCollector::Collect() {
   // signature with the exec_name as a fall back.
   std::string tmpfiles_log;
   if (!base::ReadFileToStringWithMaxSize(tmpfiles_log_, &tmpfiles_log,
-                                         kMaxSignature) &&
+                                         kMaxSignatureSearch) &&
       tmpfiles_log.empty()) {
     PLOG(ERROR) << "Failed to read '" << kTmpfilesLogPath << "'";
   }
@@ -68,7 +83,7 @@ bool ClobberStateCollector::Collect() {
     // Fall back to the exec name as the crash signature.
     AddCrashMetaData("sig", exec_name);
   } else {
-    AddCrashMetaData("sig", filter_signature(lines.front()));
+    AddCrashMetaData("sig", filter_signature(lines));
   }
 
   base::FilePath log_path = GetCrashPath(crash_directory, dump_basename, "log");

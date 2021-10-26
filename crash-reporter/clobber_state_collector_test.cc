@@ -17,16 +17,13 @@ using ::testing::HasSubstr;
 using ::testing::Not;
 using ::testing::Return;
 
-// Dummy log config file name.
+// Log config file name.
 const char kLogConfigFileName[] = "log_config_file";
 const char kTmpfilesLogName[] = "tmpfiles.log";
 
-// A bunch of random rules to put into the dummy log config file.
+// A bunch of random rules to put into the log config file.
 const char kLogConfigFileContents[] =
     "clobber-state=echo 'found clobber.log'\n";
-
-// A bunch of random rules to put into the dummy log config file.
-const char kTmpfilesContents[] = "contents of tmpfiles.log\n";
 
 class ClobberStateCollectorMock : public ClobberStateCollector {
  public:
@@ -39,7 +36,8 @@ class ClobberStateCollectorMock : public ClobberStateCollector {
 };
 
 void Initialize(ClobberStateCollectorMock* collector,
-                base::ScopedTempDir* scoped_tmp_dir) {
+                base::ScopedTempDir* scoped_tmp_dir,
+                const std::string& contents) {
   ASSERT_TRUE(scoped_tmp_dir->CreateUniqueTempDir());
   EXPECT_CALL(*collector, SetUpDBus()).WillRepeatedly(Return());
   base::FilePath log_config_path =
@@ -48,7 +46,7 @@ void Initialize(ClobberStateCollectorMock* collector,
 
   base::FilePath tmpfiles_log_path =
       scoped_tmp_dir->GetPath().Append(kTmpfilesLogName);
-  ASSERT_TRUE(test_util::CreateFile(tmpfiles_log_path, kTmpfilesContents));
+  ASSERT_TRUE(test_util::CreateFile(tmpfiles_log_path, contents));
   collector->set_tmpfiles_log(tmpfiles_log_path);
 
   collector->Initialize(false);
@@ -66,7 +64,11 @@ TEST(ClobberStateCollectorTest, TestClobberState) {
   base::FilePath report_path;
   std::string report_contents;
 
-  Initialize(&collector, &tmp_dir);
+  constexpr const char kTmpfilesContents[] =
+      "/usr/lib/tmpfiles.d/vm_tools.conf:35: Duplicate line for path"
+      "\"/run/arc/sdcard\", ignoring.\n"
+      "contents of tmpfiles.log\n";
+  Initialize(&collector, &tmp_dir, kTmpfilesContents);
 
   EXPECT_TRUE(collector.Collect());
 
@@ -80,6 +82,71 @@ TEST(ClobberStateCollectorTest, TestClobberState) {
   std::string meta_contents;
   EXPECT_TRUE(base::ReadFileToString(meta_path, &meta_contents));
   EXPECT_THAT(meta_contents, HasSubstr("sig=contents of tmpfiles.log"));
+
+  // Check report contents.
+  EXPECT_TRUE(base::ReadFileToString(report_path, &report_contents));
+  EXPECT_EQ("found clobber.log\n", report_contents);
+}
+
+TEST(ClobberStateCollectorTest, TestClobberState_WarningOnly) {
+  ClobberStateCollectorMock collector;
+  base::ScopedTempDir tmp_dir;
+  base::FilePath meta_path;
+  base::FilePath report_path;
+  std::string report_contents;
+
+  constexpr const char kTmpfilesContents[] =
+      "/usr/lib/tmpfiles.d/vm_tools.conf:35: Duplicate line for path "
+      "\"/run/arc/sdcard\", ignoring.\n"
+      "/usr/lib/tmpfiles.d/vm_tools.conf:36: Duplicate line for path "
+      "\"/run/camera\", ignoring.\n"
+      "/usr/lib/tmpfiles.d/vm_tools.conf:38: Duplicate line for path "
+      "\"/run/perfetto\", ignoring.\nignoring.";
+  Initialize(&collector, &tmp_dir, kTmpfilesContents);
+
+  EXPECT_TRUE(collector.Collect());
+
+  // Check report collection.
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+      tmp_dir.GetPath(), "clobber_state.*.meta", &meta_path));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+      tmp_dir.GetPath(), "clobber_state.*.log", &report_path));
+
+  // Check meta contents.
+  std::string meta_contents;
+  EXPECT_TRUE(base::ReadFileToString(meta_path, &meta_contents));
+  EXPECT_THAT(meta_contents, HasSubstr(std::string("sig=") + kNoErrorLogged));
+
+  // Check report contents.
+  EXPECT_TRUE(base::ReadFileToString(report_path, &report_contents));
+  EXPECT_EQ("found clobber.log\n", report_contents);
+}
+
+TEST(ClobberStateCollectorTest, TestClobberState_KnownIssue) {
+  ClobberStateCollectorMock collector;
+  base::ScopedTempDir tmp_dir;
+  base::FilePath meta_path;
+  base::FilePath report_path;
+  std::string report_contents;
+
+  constexpr const char kTmpfilesContents[] =
+      "/usr/lib/tmpfiles.d/vm_tools.conf:35: Duplicate line for path"
+      "\"/run/arc/sdcard\", ignoring.\n"
+      "Failed to open directory 'cras': Structure needs cleaning\n";
+  Initialize(&collector, &tmp_dir, kTmpfilesContents);
+
+  EXPECT_TRUE(collector.Collect());
+
+  // Check report collection.
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+      tmp_dir.GetPath(), "clobber_state.*.meta", &meta_path));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+      tmp_dir.GetPath(), "clobber_state.*.log", &report_path));
+
+  // Check meta contents.
+  std::string meta_contents;
+  EXPECT_TRUE(base::ReadFileToString(meta_path, &meta_contents));
+  EXPECT_THAT(meta_contents, HasSubstr("sig=Structure needs cleaning"));
 
   // Check report contents.
   EXPECT_TRUE(base::ReadFileToString(report_path, &report_contents));

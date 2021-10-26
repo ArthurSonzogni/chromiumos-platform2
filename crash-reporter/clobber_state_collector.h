@@ -11,6 +11,8 @@
 
 #include "crash-reporter/crash_collector.h"
 
+constexpr const char kNoErrorLogged[] = "No error logged.";
+
 // Collect clobber.log which has the error messages that led to the stateful
 // clobber.
 class ClobberStateCollector : public CrashCollector {
