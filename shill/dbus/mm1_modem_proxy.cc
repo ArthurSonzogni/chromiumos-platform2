@@ -33,9 +33,7 @@ ModemProxy::ModemProxy(const scoped_refptr<dbus::Bus>& bus,
       base::Bind(&ModemProxy::OnSignalConnected, weak_factory_.GetWeakPtr()));
 }
 
-ModemProxy::~ModemProxy() {
-  proxy_->ReleaseObjectProxy(base::DoNothing());
-}
+ModemProxy::~ModemProxy() = default;
 
 void ModemProxy::Enable(bool enable,
                         Error* error,

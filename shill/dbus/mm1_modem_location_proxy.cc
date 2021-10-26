@@ -28,9 +28,7 @@ ModemLocationProxy::ModemLocationProxy(const scoped_refptr<dbus::Bus>& bus,
     : proxy_(new org::freedesktop::ModemManager1::Modem::LocationProxy(
           bus, service, path)) {}
 
-ModemLocationProxy::~ModemLocationProxy() {
-  proxy_->ReleaseObjectProxy(base::DoNothing());
-}
+ModemLocationProxy::~ModemLocationProxy() = default;
 
 void ModemLocationProxy::Setup(uint32_t sources,
                                bool signal_location,

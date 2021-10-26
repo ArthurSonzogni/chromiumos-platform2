@@ -26,9 +26,7 @@ ModemSignalProxy::ModemSignalProxy(const scoped_refptr<dbus::Bus>& bus,
     : proxy_(new org::freedesktop::ModemManager1::Modem::SignalProxy(
           bus, service, path)) {}
 
-ModemSignalProxy::~ModemSignalProxy() {
-  proxy_->ReleaseObjectProxy(base::DoNothing());
-}
+ModemSignalProxy::~ModemSignalProxy() = default;
 
 void ModemSignalProxy::Setup(const int rate,
                              Error* /*error*/,
