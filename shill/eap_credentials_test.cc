@@ -271,6 +271,41 @@ TEST_F(EapCredentialsTest, LoadAndSave) {
   EXPECT_EQ(password, kPassword);
 }
 
+TEST_F(EapCredentialsTest, Load) {
+  const std::vector<std::string> kCaCertPem{"first line", "second line"};
+  const std::string kMethod("TTLS");
+  const std::string kInnerMethod("auth=AnotherMethod");
+  const std::string kIdentity("Red Fruit");
+  const std::string kPassword("One Time Password");
+
+  KeyValueStore store;
+  store.Set(kEapCaCertPemProperty, kCaCertPem);
+  store.Set(kEapMethodProperty, kMethod);
+  store.Set(kEapPhase2AuthProperty, kInnerMethod);
+  store.Set(kEapIdentityProperty, kIdentity);
+  store.Set(kEapPasswordProperty, kPassword);
+  eap_.Load(store);
+
+  EXPECT_EQ(kMethod, eap_.method());
+  EXPECT_EQ(kInnerMethod, eap_.inner_method());
+  EXPECT_EQ(kIdentity, eap_.identity());
+  EXPECT_EQ(kPassword, eap_.password_);
+  EXPECT_EQ(kCaCertPem, eap_.ca_cert_pem_);
+  // Other fields keep their default value.
+  EXPECT_TRUE(eap_.anonymous_identity_.empty());
+  EXPECT_TRUE(eap_.cert_id_.empty());
+  EXPECT_TRUE(eap_.key_id_.empty());
+  EXPECT_TRUE(eap_.pin_.empty());
+  EXPECT_TRUE(eap_.ca_cert_id_.empty());
+  EXPECT_TRUE(eap_.tls_version_max_.empty());
+  EXPECT_TRUE(eap_.subject_match_.empty());
+  EXPECT_TRUE(eap_.subject_alternative_name_match_list_.empty());
+  EXPECT_TRUE(eap_.domain_suffix_match_list_.empty());
+  EXPECT_TRUE(eap_.use_system_cas_);
+  EXPECT_FALSE(eap_.use_proactive_key_caching_);
+  EXPECT_FALSE(eap_.use_login_password_);
+}
+
 TEST_F(EapCredentialsTest, OutputConnectionMetrics) {
   Error unused_error;
   SetEap(kEapMethodPEAP);

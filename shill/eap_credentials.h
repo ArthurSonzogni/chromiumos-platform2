@@ -52,6 +52,9 @@ class EapCredentials {
   // Loads EAP properties from |storage| in group |id|.
   virtual void Load(const StoreInterface* store, const std::string& id);
 
+  // Load EAP properties from key/value store |store|.
+  virtual void Load(const KeyValueStore& store);
+
   void MigrateDeprecatedStorage(StoreInterface* storage,
                                 const std::string& id) const;
 
@@ -119,10 +122,13 @@ class EapCredentials {
     password_ = password;
   }
   virtual const std::string& pin() const { return pin_; }
+  virtual const std::string& method() const { return eap_; }
+  virtual const std::string& inner_method() const { return inner_eap_; }
 
  private:
   friend class EapCredentialsTest;
   FRIEND_TEST(EapCredentialsTest, LoadAndSave);
+  FRIEND_TEST(EapCredentialsTest, Load);
   FRIEND_TEST(ServiceTest, LoadEap);
   FRIEND_TEST(ServiceTest, SaveEap);
 

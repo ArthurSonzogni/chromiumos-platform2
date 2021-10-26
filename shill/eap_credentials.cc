@@ -348,6 +348,34 @@ void EapCredentials::Load(const StoreInterface* storage,
   storage->GetBool(id, kStorageEapUseSystemCAs, &use_system_cas_);
 }
 
+void EapCredentials::Load(const KeyValueStore& store) {
+  ca_cert_id_ = store.Lookup<std::string>(kEapCaCertIdProperty, std::string());
+  ca_cert_pem_ = store.Lookup<Strings>(kEapCaCertPemProperty, Strings());
+  eap_ = store.Lookup<std::string>(kEapMethodProperty, std::string());
+  inner_eap_ = store.Lookup<std::string>(kEapPhase2AuthProperty, std::string());
+  tls_version_max_ =
+      store.Lookup<std::string>(kEapTLSVersionMaxProperty, std::string());
+  subject_match_ =
+      store.Lookup<std::string>(kEapSubjectMatchProperty, std::string());
+  subject_alternative_name_match_list_ =
+      store.Lookup<Strings>(kEapSubjectAlternativeNameMatchProperty, Strings());
+  domain_suffix_match_list_ =
+      store.Lookup<Strings>(kEapDomainSuffixMatchProperty, Strings());
+  use_proactive_key_caching_ =
+      store.Lookup<bool>(kEapUseProactiveKeyCachingProperty, false);
+  use_system_cas_ = store.Lookup<bool>(kEapUseSystemCasProperty, true);
+  anonymous_identity_ =
+      store.Lookup<std::string>(kEapAnonymousIdentityProperty, std::string());
+  identity_ = store.Lookup<std::string>(kEapIdentityProperty, std::string());
+  password_ = store.Lookup<std::string>(kEapPasswordProperty, std::string());
+  use_login_password_ = store.Lookup<bool>(kEapUseLoginPasswordProperty, false);
+  cert_id_ = store.Lookup<std::string>(kEapCertIdProperty, std::string());
+  key_id_ = store.Lookup<std::string>(kEapKeyIdProperty, std::string());
+  SetKeyManagement(
+      store.Lookup<std::string>(kEapKeyMgmtProperty, std::string()), nullptr);
+  pin_ = store.Lookup<std::string>(kEapPinProperty, std::string());
+}
+
 void EapCredentials::MigrateDeprecatedStorage(StoreInterface* storage,
                                               const std::string& id) const {
   // Note that if we found any of these keys, then we already know that
