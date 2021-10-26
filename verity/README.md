@@ -3,7 +3,7 @@
 Verity is the userspace tool for creating integrity hashes for a device image.
 
 This tool is a frontend for dm-bht, a device-mapper friendly block hash
-table structure.  `verity' produces dm-bht-based images for use with
+table structure.  `verity` produces dm-bht-based images for use with
 dm-verity.  The dm-verity module provides a transparent, integrity-checking
 layer over a given block device.  This expects a backing device and a secondary
 device which provides cryptographic digests of the blocks on the primary
@@ -29,13 +29,24 @@ device.
 
 To use:
 ```sh
-./verity mode depth alg image hash_image [root_hexdigest]
+verity <arg>=<value>...
+```
+
+where supported options are
+```
+mode              One of 'create' or 'verify'
+alg               Hash algorithm to use. Only sha256 for now
+payload           Path to the image to hash
+payload_blocks    Size of the image, in blocks (4096 bytes)
+hashtree          Path to a hash tree to create or read from
+root_hexdigest    Digest of the root node (in hex) for verification
+salt              Salt (in hex)
 ```
 
 For example:
 ```sh
 dd if=/dev/zero of=/tmp/image bs=4k count=512
-./verity create 2 sha256 /tmp/image /tmp/hash | tee table
+verity mode=create alg=sha256 payload=/tmp/image hashtree=/tmp/hash | tee table
 # ...
 cat table
 ls -la /tmp/hash
