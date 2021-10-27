@@ -429,9 +429,9 @@ class Daemon :
   // suspending. If true, the file will be unlinked after resuming.
   bool created_suspended_state_file_ = false;
 
-  // True if the "mosys" command should be used to record suspend and resume
-  // timestamps in eventlog.
-  bool log_suspend_with_mosys_eventlog_ = false;
+  // True if the "elogtool" command should be used to record suspend
+  // and resume timestamps in eventlog.
+  bool log_suspend_manually_ = false;
 
   // True if the system should suspend to idle.
   bool suspend_to_idle_ = false;

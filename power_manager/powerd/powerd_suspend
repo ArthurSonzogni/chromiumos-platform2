@@ -424,7 +424,7 @@ fi
 
 send_uma_result "${result}"
 
-# Refresh mosys eventlog to help feedback reports pick up the latest snapshot.
+# Refresh eventlog to help feedback reports pick up the latest snapshot.
 /usr/share/userfeedback/scripts/eventlog &
 
 log_msg "Resume finished"

@@ -136,7 +136,7 @@ powerd_prefs: &powerd_prefs
   has-keyboard-backlight: *powerd_prefs_default
   external-display-only: *powerd_prefs_default
   legacy-power-button: *powerd_prefs_default
-  mosys-eventlog: *powerd_prefs_default
+  manual-eventlog-add: *powerd_prefs_default
   use-cras: *powerd_prefs_default
   tpm-counter-suspend-threshold:
     <<: *powerd_prefs_default

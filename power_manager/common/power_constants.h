@@ -206,9 +206,10 @@ extern const char kExternalDisplayOnlyPref[];
 // releases properly.
 extern const char kLegacyPowerButtonPref[];
 
-// If true, record suspend and resume timestamps in eventlog using the "mosys"
-// command.
-extern const char kMosysEventlogPref[];
+// If true, record suspend and resume timestamps in the firmware
+// eventlog manually by calling "elogtool add".  This is usually only
+// necessary on ARM platforms.
+extern const char kManualEventlogAddPref[];
 
 // If true, use CRAS, the Chrome OS audio server, to monitor audio activity and
 // to mute audio when suspending.
