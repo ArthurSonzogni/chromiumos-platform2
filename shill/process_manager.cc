@@ -93,7 +93,7 @@ pid_t ProcessManager::StartProcess(
     const std::vector<std::string>& arguments,
     const std::map<std::string, std::string>& environment,
     bool terminate_with_parent,
-    const base::Callback<void(int)>& exit_callback) {
+    ExitCallback exit_callback) {
   SLOG(this, 2) << __func__ << "(" << program.value() << ")";
 
   // Setup/create child process.
@@ -277,8 +277,7 @@ bool ProcessManager::WaitpidWithTimeout(pid_t pid,
   return false;
 }
 
-bool ProcessManager::UpdateExitCallback(
-    pid_t pid, const base::Callback<void(int)>& new_callback) {
+bool ProcessManager::UpdateExitCallback(pid_t pid, ExitCallback new_callback) {
   SLOG(this, 2) << __func__ << "(pid: " << pid << ")";
 
   const auto process_entry = watched_processes_.find(pid);
@@ -287,7 +286,7 @@ bool ProcessManager::UpdateExitCallback(
     return false;
   }
 
-  process_entry->second.exit_callback = new_callback;
+  process_entry->second.exit_callback = std::move(new_callback);
   return true;
 }
 

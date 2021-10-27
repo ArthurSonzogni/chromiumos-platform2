@@ -44,7 +44,7 @@ class ProcessManagerTest : public testing::Test {
     process_manager_->pending_termination_processes_.clear();
   }
 
-  void AddWatchedProcess(pid_t pid, const base::Callback<void(int)>& callback) {
+  void AddWatchedProcess(pid_t pid, ProcessManager::ExitCallback callback) {
     process_manager_->watched_processes_[pid].exit_callback =
         std::move(callback);
   }
@@ -83,17 +83,17 @@ class ProcessManagerTest : public testing::Test {
   class CallbackObserver {
    public:
     CallbackObserver()
-        : exited_callback_(base::Bind(&CallbackObserver::OnProcessExited,
-                                      base::Unretained(this))),
+        : exited_callback_(base::BindOnce(&CallbackObserver::OnProcessExited,
+                                          base::Unretained(this))),
           termination_timeout_callback_(
-              base::Bind(&CallbackObserver::OnTerminationTimeout,
-                         base::Unretained(this))) {}
+              base::BindRepeating(&CallbackObserver::OnTerminationTimeout,
+                                  base::Unretained(this))) {}
     virtual ~CallbackObserver() = default;
 
     MOCK_METHOD(void, OnProcessExited, (int));
     MOCK_METHOD(void, OnTerminationTimeout, ());
 
-    base::Callback<void(int)> exited_callback_;
+    ProcessManager::ExitCallback exited_callback_;
     base::Closure termination_timeout_callback_;
   };
 
@@ -137,7 +137,7 @@ TEST_F(ProcessManagerTest, WatchedProcessExited) {
   const pid_t kPid = 123;
   const int kExitStatus = 1;
   CallbackObserver observer;
-  AddWatchedProcess(kPid, observer.exited_callback_);
+  AddWatchedProcess(kPid, std::move(observer.exited_callback_));
 
   EXPECT_CALL(observer, OnProcessExited(kExitStatus)).Times(1);
   OnProcessExited(kPid, kExitStatus);
@@ -273,12 +273,12 @@ TEST_F(ProcessManagerTest, UpdateExitCallbackUpdatesCallback) {
   const pid_t kPid = 123;
   const int kExitStatus = 1;
   CallbackObserver original_observer;
-  AddWatchedProcess(kPid, original_observer.exited_callback_);
+  AddWatchedProcess(kPid, std::move(original_observer.exited_callback_));
 
   CallbackObserver new_observer;
   EXPECT_CALL(original_observer, OnProcessExited(_)).Times(0);
   EXPECT_TRUE(process_manager_->UpdateExitCallback(
-      kPid, new_observer.exited_callback_));
+      kPid, std::move(new_observer.exited_callback_)));
   EXPECT_CALL(new_observer, OnProcessExited(_)).Times(1);
   OnProcessExited(kPid, kExitStatus);
 }

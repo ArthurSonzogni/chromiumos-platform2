@@ -54,7 +54,7 @@ bool ExternalTask::Start(const base::FilePath& program,
 
   pid_t pid = process_manager_->StartProcess(
       FROM_HERE, program, arguments, env, terminate_with_parent,
-      base::Bind(&ExternalTask::OnTaskDied, base::Unretained(this)));
+      base::BindOnce(&ExternalTask::OnTaskDied, base::Unretained(this)));
 
   if (pid < 0) {
     Error::PopulateAndLog(
@@ -85,7 +85,7 @@ bool ExternalTask::StartInMinijail(
 
   pid_t pid = process_manager_->StartProcessInMinijail(
       FROM_HERE, program, *arguments, env, minijail_options,
-      base::Bind(&ExternalTask::OnTaskDied, base::Unretained(this)));
+      base::BindOnce(&ExternalTask::OnTaskDied, base::Unretained(this)));
 
   if (pid < 0) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,

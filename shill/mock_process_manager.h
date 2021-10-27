@@ -34,7 +34,7 @@ class MockProcessManager : public ProcessManager {
                const std::vector<std::string>&,
                (const std::map<std::string, std::string>&),
                bool,
-               const base::Callback<void(int)>&),
+               ExitCallback),
               (override));
   MOCK_METHOD(pid_t,
               StartProcessInMinijail,
@@ -66,10 +66,7 @@ class MockProcessManager : public ProcessManager {
               (override));
   MOCK_METHOD(bool, StopProcess, (pid_t), (override));
   MOCK_METHOD(bool, StopProcessAndBlock, (pid_t), (override));
-  MOCK_METHOD(bool,
-              UpdateExitCallback,
-              (pid_t, const base::Callback<void(int)>&),
-              (override));
+  MOCK_METHOD(bool, UpdateExitCallback, (pid_t, ExitCallback), (override));
 };
 
 // Custom matchers for MinijailOptions.

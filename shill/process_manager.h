@@ -81,14 +81,13 @@ class ProcessManager {
   // invoked when child process exits (not terminated by us).  Return -1
   // if failed to start the process, otherwise, return the pid of the child
   // process.
-  // TODO(b/203478033): |exit_callback| should be a base::OnceCallback
   virtual pid_t StartProcess(
       const base::Location& spawn_source,
       const base::FilePath& program,
       const std::vector<std::string>& arguments,
       const std::map<std::string, std::string>& environment,
       bool terminate_with_parent,
-      const base::Callback<void(int)>& exit_callback);
+      ExitCallback exit_callback);
 
   // Similar to StartProcess(), with the following differences:
   // - terminate_with_parent is not supported (may be non-trivial).
@@ -150,8 +149,7 @@ class ProcessManager {
   virtual bool StopProcessAndBlock(pid_t pid);
 
   // Replace the current exit callback for |pid| with |new_callback|.
-  virtual bool UpdateExitCallback(
-      pid_t pid, const base::Callback<void(int)>& new_callback);
+  virtual bool UpdateExitCallback(pid_t pid, ExitCallback new_callback);
 
  protected:
   ProcessManager();

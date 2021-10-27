@@ -179,7 +179,8 @@ bool DHCPConfig::Start() {
   minijail_options.close_nonstd_fds = false;
   pid_t pid = process_manager_->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kDHCPCDPath), args, {}, minijail_options,
-      base::Bind(&DHCPConfig::OnProcessExited, weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&DHCPConfig::OnProcessExited,
+                     weak_ptr_factory_.GetWeakPtr()));
   if (pid < 0) {
     return false;
   }
