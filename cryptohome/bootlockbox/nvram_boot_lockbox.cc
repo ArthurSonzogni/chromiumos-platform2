@@ -155,6 +155,7 @@ bool NVRamBootLockbox::Load() {
   brillo::Blob data;
   if (!Platform().ReadFile(boot_lockbox_filepath_, &data)) {
     LOG(ERROR) << "Failed to read boot lockbox file.";
+    nvspace_state_ = NVSpaceState::kNVSpaceUninitialized;
     return false;
   }
 
@@ -163,17 +164,20 @@ bool NVRamBootLockbox::Load() {
 
   if (digest != root_digest_) {
     LOG(ERROR) << "The nvram boot lockbox file verification failed.";
+    nvspace_state_ = NVSpaceState::kNVSpaceUninitialized;
     return false;
   }
 
   SerializedKeyValueMap message;
   if (!message.ParseFromArray(data.data(), data.size())) {
     LOG(ERROR) << "Failed to parse boot lockbox file.";
+    nvspace_state_ = NVSpaceState::kNVSpaceUninitialized;
     return false;
   }
 
   if (!message.has_version() || message.version() != kVersion) {
     LOG(ERROR) << "Unsupported version " << message.version();
+    nvspace_state_ = NVSpaceState::kNVSpaceUninitialized;
     return false;
   }
 
