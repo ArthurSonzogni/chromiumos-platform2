@@ -92,8 +92,8 @@ The program name is `kernel` and might be referred to as `kcrash`.
     & `dmesg-efi-*`, and generate a report for each one.
 *   Stack traces created by the kernel are analyzed to create a stack for the
     server, as well as generate a hash/fingerprint to correlate other reports.
-*   For watchdog resets, we'll first query the eventlog (from [mosys]) to see if
-    the reset was actually due to that.
+*   For watchdog resets, we'll first query the eventlog (from [elogtool]) to see
+    if the reset was actually due to that.
     Normally we'd query the watchdog driver directly, but not all platforms are
     able to support that properly via the kernel driver.
     We'll create a simpler report using the last snippet of the kernel log from
@@ -413,10 +413,10 @@ D-Bus signal on /org/chromium/AnomalyEventService.  This is currently used by
 [ARCVM]: ../../arc/vm/
 [BERT]: https://www.uefi.org/sites/default/files/resources/ACPI%206_2_A_Sept29.pdf
 [EC]: https://chromium.googlesource.com/chromiumos/platform/ec
+[elogtool]: https://review.coreboot.org/plugins/gitiles/coreboot/+/HEAD/util/cbfstool/
 [Google Breakpad]: https://chromium.googlesource.com/breakpad/breakpad
 [crashpad]: https://chromium.googlesource.com/crashpad/crashpad
 [memd]: ../../metrics/memd/
-[mosys]: https://chromium.googlesource.com/chromiumos/platform/mosys/
 [pstore]: https://chromium.googlesource.com/chromiumos/third_party/kernel/+/v4.17/Documentation/admin-guide/ramoops.rst
 [SELinux]: https://en.wikipedia.org/wiki/Security-Enhanced_Linux
 [udev]: https://en.wikipedia.org/wiki/Udev
