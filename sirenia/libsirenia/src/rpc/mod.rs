@@ -5,22 +5,25 @@
 //! A generic RPC implementation that depends on serializable and deserializable enums for requests
 //! and responses.
 
+use std::convert::TryInto;
 use std::fmt::{Debug, Formatter};
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::result::Result as StdResult;
+use std::thread::{sleep, yield_now};
+use std::time::Duration;
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use sys_util::{self, error};
 use thiserror::Error as ThisError;
 
-use crate::communication::{self, read_message, write_message};
+use crate::communication::{self, read_message, write_message, NonBlockingMessageReader};
 use crate::linux::events::{
     AddEventSourceMutator, Error as EventsError, EventMultiplexer, EventSource, Mutator,
     RemoveFdMutator,
 };
+use crate::sys::set_nonblocking;
 use crate::transport::{self, ServerTransport, Transport, TransportType};
-use std::convert::TryInto;
 
 #[derive(ThisError, Debug)]
 pub enum Error {
@@ -33,6 +36,8 @@ pub enum Error {
     MultiplexerAddEvent(#[source] EventsError),
     #[error("got the wrong response")]
     ResponseMismatch,
+    #[error("failed to set non-blocking: {0}")]
+    SetNonBlocking(#[source] sys_util::Error),
 }
 
 type Result<T> = StdResult<T, Error>;
@@ -88,11 +93,55 @@ pub trait ConnectionHandler {
 pub struct RpcDispatcher<H: MessageHandler + 'static> {
     handler: H,
     transport: Transport,
+    reader: NonBlockingMessageReader<H::Request>,
+    message_count: usize,
 }
 
 impl<H: MessageHandler + 'static> RpcDispatcher<H> {
-    pub fn new(handler: H, transport: Transport) -> Self {
-        RpcDispatcher { handler, transport }
+    pub fn new(handler: H, transport: Transport) -> Result<Self> {
+        set_nonblocking(transport.r.as_raw_fd()).map_err(Error::SetNonBlocking)?;
+        Ok(RpcDispatcher {
+            handler,
+            transport,
+            reader: NonBlockingMessageReader::default(),
+            message_count: 0,
+        })
+    }
+
+    pub fn new_as_boxed_mutator(handler: H, transport: Transport) -> Option<Box<dyn Mutator>> {
+        match RpcDispatcher::new(handler, transport) {
+            Ok(dispatcher) => Some(Box::new(AddEventSourceMutator::from(dispatcher))),
+            Err(err) => {
+                error!("failed to create dispatcher: {}", err);
+                None
+            }
+        }
+    }
+
+    // Make tests easier to write by providing a blocking message read.
+    pub fn read_complete_message(
+        &mut self,
+        sleep_for: Option<Duration>,
+    ) -> StdResult<Option<Box<dyn Mutator>>, String> {
+        let start = self.message_count();
+        let mut ret = self.on_event();
+        while matches!(ret, Ok(None)) && self.message_count() == start {
+            if let Some(sleep_for) = sleep_for {
+                sleep(sleep_for)
+            } else {
+                yield_now();
+            }
+            ret = self.on_event();
+        }
+        ret
+    }
+
+    pub fn reader(&self) -> &NonBlockingMessageReader<H::Request> {
+        &self.reader
+    }
+
+    pub fn message_count(&self) -> usize {
+        self.message_count
     }
 }
 
@@ -114,9 +163,9 @@ impl<H: MessageHandler + 'static> Debug for RpcDispatcher<H> {
 /// Reads RPC messages from the transport and dispatches them to RPC handler.
 impl<H: MessageHandler + 'static> EventSource for RpcDispatcher<H> {
     fn on_event(&mut self) -> StdResult<Option<Box<dyn Mutator>>, String> {
-        //TODO: Fix this. It is a DoS risk because it is a blocking read on an epoll.
-        Ok(match read_message(&mut self.transport.r) {
+        Ok(match self.reader.read_message(&mut self.transport.r) {
             Ok(Option::<H::Request>::Some(r)) => {
+                self.message_count += 1;
                 if let Ok(response) = self.handler.handle_message(r) {
                     match write_message(&mut self.transport.w, response) {
                         Ok(()) => None,
@@ -127,7 +176,13 @@ impl<H: MessageHandler + 'static> EventSource for RpcDispatcher<H> {
                 }
             }
             Ok(Option::<H::Request>::None) => {
-                error!("RpcHandler got empty message");
+                // Wait for more bytes.
+                None
+            }
+            Err(communication::Error::EmptyRead) => {
+                if self.reader.partial_read() {
+                    error!("RpcHandler error: partial read.");
+                }
                 Some(())
             }
             Err(e) => {
@@ -153,10 +208,7 @@ impl<H: MessageHandler + 'static> SingleRpcConnectionHandler<H> {
 
 impl<H: MessageHandler + 'static> ConnectionHandler for SingleRpcConnectionHandler<H> {
     fn handle_incoming_connection(&mut self, connection: Transport) -> Option<Box<dyn Mutator>> {
-        Some(Box::new(AddEventSourceMutator::from(RpcDispatcher::new(
-            self.handler.clone(),
-            connection,
-        ))))
+        RpcDispatcher::new_as_boxed_mutator(self.handler.clone(), connection)
     }
 }
 

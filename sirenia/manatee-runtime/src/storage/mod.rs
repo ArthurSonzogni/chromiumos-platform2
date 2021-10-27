@@ -85,7 +85,6 @@ impl Storage for TrichechusStorage {
 pub mod tests {
     use super::*;
 
-    use libsirenia::communication::StorageRpcServer;
     use std::cell::RefCell;
     use std::collections::BTreeMap as Map;
     use std::rc::Rc;
@@ -94,7 +93,7 @@ pub mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use assert_matches::assert_matches;
-    use libsirenia::linux::events::EventSource;
+    use libsirenia::communication::StorageRpcServer;
     use libsirenia::rpc::RpcDispatcher;
     use libsirenia::storage::Error as StorageError;
     use libsirenia::transport::create_transport_from_pipes;
@@ -137,7 +136,7 @@ pub mod tests {
         let handler: Box<dyn StorageRpcServer> = Box::new(StorageRpcServerImpl {
             map: Rc::new(RefCell::new(Map::new())),
         });
-        let dispatcher = RpcDispatcher::new(handler, server_transport);
+        let dispatcher = RpcDispatcher::new(handler, server_transport).unwrap();
 
         (dispatcher, TrichechusStorage::from(client_transport))
     }
@@ -154,8 +153,9 @@ pub mod tests {
             assert_eq!(retrieved_data, data);
         });
 
-        assert_matches!(dispatcher.on_event(), Ok(None));
-        assert_matches!(dispatcher.on_event(), Ok(None));
+        let sleep_for = None;
+        assert_matches!(dispatcher.read_complete_message(sleep_for), Ok(None));
+        assert_matches!(dispatcher.read_complete_message(sleep_for), Ok(None));
 
         client_thread.join().unwrap();
     }
@@ -170,7 +170,8 @@ pub mod tests {
             assert_matches!(error, StorageError::ReadData(_));
         });
 
-        assert_matches!(dispatcher.on_event(), Ok(Some(_)));
+        let sleep_for = None;
+        assert_matches!(dispatcher.read_complete_message(sleep_for), Ok(Some(_)));
 
         // Explicitly call drop to close the pipe so the client thread gets the hang up since the return
         // value should be a RemoveFd mutator.

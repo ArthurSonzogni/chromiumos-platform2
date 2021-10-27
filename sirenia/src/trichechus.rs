@@ -357,10 +357,7 @@ impl DugongConnectionHandler {
                 trichechus_state.running_apps.insert(pid, tee_app.clone());
                 let storage_server: Box<dyn StorageRpcServer> =
                     Box::new(TeeAppHandler { state, tee_app });
-                Box::new(AddEventSourceMutator::from(RpcDispatcher::new(
-                    storage_server,
-                    transport,
-                )))
+                RpcDispatcher::new_as_boxed_mutator(storage_server, transport)?
             }
             Err(e) => {
                 error!("failed to start tee app: {}", e);
@@ -393,11 +390,11 @@ impl ConnectionHandler for DugongConnectionHandler {
             match connection.id.get_port() {
                 Ok(port) if port == expected_port => {
                     info!("new control connection.");
-                    Some(Box::new(AddEventSourceMutator::from(RpcDispatcher::new(
+                    RpcDispatcher::new_as_boxed_mutator(
                         TrichechusServerImpl::new(self.state.clone(), connection.id.clone())
                             .box_clone(),
                         connection,
-                    ))))
+                    )
                 }
                 _ => {
                     error!("dropping unexpected connection.");

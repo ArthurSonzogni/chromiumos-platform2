@@ -9,7 +9,6 @@ extern crate sirenia_rpc_macros;
 use std::thread::spawn;
 
 use assert_matches::assert_matches;
-use libsirenia::linux::events::EventSource;
 use libsirenia::rpc::RpcDispatcher;
 use libsirenia::transport::create_transport_from_pipes;
 use sirenia_rpc_macros::sirenia_rpc;
@@ -47,7 +46,7 @@ fn smoke_test() {
     let (server_transport, client_transport) = create_transport_from_pipes().unwrap();
 
     let handler: Box<dyn TestRpcServer> = Box::new(TestRpcServerImpl {});
-    let mut dispatcher = RpcDispatcher::new(handler, server_transport);
+    let mut dispatcher = RpcDispatcher::new(handler, server_transport).unwrap();
 
     // Queue the client RPC:
     let client_thread = spawn(move || {
@@ -62,9 +61,10 @@ fn smoke_test() {
         assert!(rpc_client.terminate().is_err());
     });
 
-    assert_matches!(dispatcher.on_event(), Ok(None));
-    assert_matches!(dispatcher.on_event(), Ok(None));
-    assert_matches!(dispatcher.on_event(), Ok(Some(_)));
+    let sleep_for = None;
+    assert_matches!(dispatcher.read_complete_message(sleep_for), Ok(None));
+    assert_matches!(dispatcher.read_complete_message(sleep_for), Ok(None));
+    assert_matches!(dispatcher.read_complete_message(sleep_for), Ok(Some(_)));
     // Explicitly call drop to close the pipe so the client thread gets the hang up since the return
     // value should be a RemoveFd mutator.
     drop(dispatcher);

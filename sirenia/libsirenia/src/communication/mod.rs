@@ -10,9 +10,11 @@
 pub mod persistence;
 pub mod trichechus;
 
+use std::convert::TryInto;
 use std::fmt;
 use std::fmt::Debug;
 use std::io::{self, BufWriter, Read, Write};
+use std::marker::PhantomData;
 use std::ops::Deref;
 use std::result::Result as StdResult;
 
@@ -21,6 +23,8 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use sirenia_rpc_macros::sirenia_rpc;
 use thiserror::Error as ThisError;
+
+use crate::sys::eagain_is_ok;
 
 pub const LENGTH_BYTE_SIZE: usize = 4;
 
@@ -48,6 +52,89 @@ pub trait StorageRpc {
 
     fn read_data(&self, id: String) -> StdResult<(persistence::Status, Vec<u8>), Self::Error>;
     fn write_data(&self, id: String, data: Vec<u8>) -> StdResult<persistence::Status, Self::Error>;
+}
+
+#[derive(Debug)]
+pub struct NonBlockingMessageReader<D: DeserializeOwned> {
+    read_buffer: Vec<u8>,
+    read_size: usize,
+    read_target: Option<usize>,
+    _message: PhantomData<D>,
+}
+
+impl<D: DeserializeOwned> NonBlockingMessageReader<D> {
+    pub fn partial_read(&self) -> bool {
+        self.read_size != 0 || self.read_target.is_some()
+    }
+
+    pub fn remaining(&self) -> Option<usize> {
+        self.read_target.map(|a| a - self.read_size)
+    }
+
+    pub fn clear(&mut self) {
+        self.read_buffer.clear();
+        self.read_buffer.resize(LENGTH_BYTE_SIZE, 0u8);
+        self.read_size = 0;
+        self.read_target = None;
+    }
+
+    fn try_read<R: Read>(&mut self, r: &mut R) -> Result<()> {
+        if let Some(size) =
+            eagain_is_ok(r.read(&mut self.read_buffer.as_mut_slice()[self.read_size..]))
+                .map_err(Error::Read)?
+        {
+            if size == 0 {
+                return Err(Error::EmptyRead);
+            }
+            self.read_size += size;
+        }
+        Ok(())
+    }
+
+    pub fn read_message<R: Read>(&mut self, r: &mut R) -> Result<Option<D>> {
+        if self.read_target.is_none() {
+            // Read the length of the serialized message first.
+            debug_assert_eq!(self.read_buffer.len(), LENGTH_BYTE_SIZE);
+            self.try_read(r)?;
+            if self.read_size < LENGTH_BYTE_SIZE {
+                return Ok(None);
+            }
+
+            let target =
+                u32::from_be_bytes(self.read_buffer.as_slice().try_into().unwrap()) as usize;
+            self.read_size = 0;
+            self.read_target = Some(target);
+            self.read_buffer.clear();
+            self.read_buffer.resize(target, 0);
+        }
+        // Read the serialized message.
+        let message_size = self.read_target.unwrap();
+        if message_size == 0 {
+            return Err(Error::EmptyRead);
+        }
+        debug_assert_eq!(self.read_buffer.len(), message_size);
+
+        self.try_read(r)?;
+        if self.read_size < message_size {
+            return Ok(None);
+        }
+        let ret = flexbuffers::from_slice(self.read_buffer.as_slice())
+            .map(Some)
+            .map_err(Error::Deserialize);
+        self.clear();
+        ret
+    }
+}
+
+impl<D: DeserializeOwned> Default for NonBlockingMessageReader<D> {
+    fn default() -> Self {
+        NonBlockingMessageReader {
+            read_buffer: vec![0u8; LENGTH_BYTE_SIZE],
+            read_size: 0,
+            read_target: None,
+            _message: PhantomData::default(),
+        }
+    }
 }
 
 // Reads a message from the given Read. First reads a u32 that says the length
@@ -128,4 +215,101 @@ pub enum ExecutableInfo {
     Digest(Digest),
     // Host (Chrome OS) path and digest
     CrosPath(String, Option<Digest>),
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use std::io::{Cursor, Seek};
+    use std::mem::size_of;
+
+    use assert_matches::assert_matches;
+
+    const TEST_VALUE: u32 = 77;
+
+    #[test]
+    fn read_and_write_message() {
+        let mut channel = Cursor::new(Vec::<u8>::with_capacity(size_of::<u32>() * 2));
+
+        write_message(&mut channel, TEST_VALUE).unwrap();
+        channel.rewind().unwrap();
+        assert_matches!(read_message(&mut channel), Ok(TEST_VALUE));
+
+        channel.rewind().unwrap();
+        let mut reader = NonBlockingMessageReader::<u32>::default();
+        assert_matches!(reader.read_message(&mut channel).unwrap(), Some(TEST_VALUE));
+    }
+
+    #[test]
+    fn readmessage_error_read() {
+        let mut channel = Cursor::new(Vec::<u8>::with_capacity(size_of::<u32>() * 2));
+
+        let ret: Result<u32> = read_message(&mut channel);
+        assert_matches!(ret, Err(Error::Read(_)));
+    }
+
+    #[test]
+    fn nonblockingmessagereader_error_emptyread() {
+        let mut channel = Cursor::new(Vec::<u8>::with_capacity(size_of::<u32>() * 2));
+        let mut reader = NonBlockingMessageReader::<u32>::default();
+        assert_matches!(reader.read_message(&mut channel), Err(Error::EmptyRead));
+    }
+
+    #[test]
+    fn nonblockingmessagereader_partial_read() {
+        let mut buf = Vec::<u8>::with_capacity(size_of::<u32>() * 2);
+        write_message(&mut Cursor::new(&mut buf), TEST_VALUE).unwrap();
+
+        let mut reader = NonBlockingMessageReader::<u32>::default();
+        assert!(!reader.partial_read());
+        eprintln!("0 Reader: {:?}", &reader);
+
+        let mut offset = 0;
+        const TAKE: usize = 1;
+        assert_matches!(
+            reader
+                .read_message(&mut Cursor::new(&mut buf[offset..(offset + TAKE)]))
+                .unwrap(),
+            None
+        );
+        eprintln!("1 Reader: {:?}", &reader);
+        offset += TAKE;
+        assert_eq!(reader.read_size, offset);
+        assert!(reader.partial_read());
+        assert_matches!(reader.remaining(), None);
+
+        let remaining: usize = size_of::<u32>() - TAKE;
+        // This is an empty read because the end of the slice is reached trying to read the message.
+        assert_matches!(
+            reader.read_message(&mut Cursor::new(&mut buf[offset..(offset + remaining)])),
+            Err(Error::EmptyRead)
+        );
+        eprintln!("2 Reader: {:?}", &reader);
+        offset += remaining;
+        assert!(reader.partial_read());
+        assert_eq!(reader.read_size, offset - size_of::<u32>());
+        assert_matches!(reader.remaining(), Some(v) if v == buf.len() - size_of::<u32>());
+
+        assert_matches!(
+            reader
+                .read_message(&mut Cursor::new(&mut buf[offset..(offset + TAKE)]))
+                .unwrap(),
+            None
+        );
+        eprintln!("3 Reader: {:?}", &reader);
+        offset += TAKE;
+        assert!(reader.partial_read());
+        assert_matches!(reader.remaining(), Some(v) if v == buf.len() - size_of::<u32>() - TAKE);
+
+        assert_matches!(
+            reader
+                .read_message(&mut Cursor::new(&mut buf[offset..]))
+                .unwrap(),
+            Some(TEST_VALUE)
+        );
+        eprintln!("4 Reader: {:?}", &reader);
+        assert!(!reader.partial_read());
+        assert_matches!(reader.remaining(), None);
+    }
 }
