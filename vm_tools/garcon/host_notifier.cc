@@ -133,7 +133,7 @@ namespace garcon {
 
 // static
 std::unique_ptr<HostNotifier> HostNotifier::Create(
-    base::Closure shutdown_closure) {
+    base::OnceClosure shutdown_closure) {
   return base::WrapUnique(new HostNotifier(std::move(shutdown_closure)));
 }
 
@@ -316,7 +316,7 @@ bool HostNotifier::ReleaseSpace(
   return true;
 }
 
-HostNotifier::HostNotifier(base::Closure shutdown_closure)
+HostNotifier::HostNotifier(base::OnceClosure shutdown_closure)
     : update_app_list_posted_(false),
       send_app_list_to_host_in_progress_(false),
       update_mime_types_posted_(false),
@@ -334,7 +334,9 @@ void HostNotifier::OnSignalReadable() {
   // which should then shut us down, deallocate us and then also terminate the
   // gRPC thread.
   NotifyHostOfContainerShutdown();
-  task_runner_->PostTask(FROM_HERE, shutdown_closure_);
+  if (shutdown_closure_) {
+    task_runner_->PostTask(FROM_HERE, std::move(shutdown_closure_));
+  }
 }
 
 void HostNotifier::OnInstallCompletion(const std::string& command_uuid,

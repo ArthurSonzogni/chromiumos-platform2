@@ -59,7 +59,7 @@ constexpr char kSyslog[] = "syslog";
 }  // namespace
 
 std::unique_ptr<GuestCollector> GuestCollector::Create(
-    base::Closure shutdown_closure) {
+    base::OnceClosure shutdown_closure) {
   auto collector = base::WrapUnique<GuestCollector>(
       new GuestCollector(std::move(shutdown_closure)));
 
@@ -69,7 +69,7 @@ std::unique_ptr<GuestCollector> GuestCollector::Create(
   return collector;
 }
 
-GuestCollector::GuestCollector(base::Closure shutdown_closure)
+GuestCollector::GuestCollector(base::OnceClosure shutdown_closure)
     : shutdown_closure_(std::move(shutdown_closure)), weak_factory_(this) {}
 
 GuestCollector::~GuestCollector() {
@@ -125,7 +125,8 @@ void GuestCollector::OnSignalReadable() {
   }
   DCHECK_EQ(info.ssi_signo, SIGTERM);
 
-  base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, shutdown_closure_);
+  base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                                std::move(shutdown_closure_));
 }
 
 bool GuestCollector::SendUserLogs() {
@@ -171,7 +172,7 @@ std::unique_ptr<GuestCollector> GuestCollector::CreateForTesting(
     std::unique_ptr<vm_tools::LogCollector::Stub> stub) {
   CHECK(stub);
   auto collector =
-      base::WrapUnique<GuestCollector>(new GuestCollector(base::Closure()));
+      base::WrapUnique<GuestCollector>(new GuestCollector(base::OnceClosure()));
 
   if (!collector->InitForTesting(std::move(syslog_fd), std::move(stub))) {
     collector.reset();

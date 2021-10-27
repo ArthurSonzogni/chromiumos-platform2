@@ -35,7 +35,7 @@ constexpr char kLogPrefix[] = "vm_syslog: ";
 
 // File descriptor that points to /dev/kmsg.  Needs to be a global variable
 // because logging::LogMessageHandlerFunction is just a function pointer so we
-// can't bind any variables to it via base::Bind.
+// can't bind any variables to it via base::Bind*.
 int g_kmsg_fd = -1;
 
 bool LogToKmsg(logging::LogSeverity severity,

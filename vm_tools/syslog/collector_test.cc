@@ -134,7 +134,7 @@ class CollectorTest : public ::testing::Test {
  private:
   // Posted back to the main thread by the grpc thread after starting the
   // server.
-  void ServerStartCallback(base::Closure quit,
+  void ServerStartCallback(base::OnceClosure quit,
                            std::shared_ptr<grpc::Server> server);
 
   // Posted back to the main thread by the grpc thread when it receives user
@@ -161,7 +161,7 @@ class CollectorTest : public ::testing::Test {
 
   // Closure that should be called once all expected LogRequests have been
   // received or on failure.
-  base::Closure quit_;
+  base::OnceClosure quit_;
 
   // Set to true to indicate failure.
   bool failed_;
@@ -240,10 +240,10 @@ void CollectorTest::TearDown() {
   server_thread_.Stop();
 }
 
-void CollectorTest::ServerStartCallback(base::Closure quit,
+void CollectorTest::ServerStartCallback(base::OnceClosure quit,
                                         std::shared_ptr<grpc::Server> server) {
   server_.swap(server);
-  quit.Run();
+  std::move(quit).Run();
 }
 
 void CollectorTest::HandleUserLogs(
@@ -252,7 +252,7 @@ void CollectorTest::HandleUserLogs(
   if (expected_user_requests_.size() == 0) {
     failed_ = true;
     failure_reason_ = "unexpected user logs";
-    quit_.Run();
+    std::move(quit_).Run();
     return;
   }
 
@@ -262,12 +262,12 @@ void CollectorTest::HandleUserLogs(
   if (!message_differencer_->Compare(*expected_request, *request)) {
     failed_ = true;
     failure_reason_ = "mismatched user logs";
-    quit_.Run();
+    std::move(quit_).Run();
     return;
   }
 
   if (expected_user_requests_.size() == 0) {
-    quit_.Run();
+    std::move(quit_).Run();
   }
 }
 

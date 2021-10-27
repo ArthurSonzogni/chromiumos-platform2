@@ -33,7 +33,8 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
  public:
   // Creates and inits the HostNotifier for running on the current sequence.
   // Returns null if there was any failure.
-  static std::unique_ptr<HostNotifier> Create(base::Closure shutdown_closure);
+  static std::unique_ptr<HostNotifier> Create(
+      base::OnceClosure shutdown_closure);
 
   // Sends a gRPC call to the host to notify it to open the specified URL with
   // the web browser. Returns true on success, false otherwise.
@@ -117,7 +118,7 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
     int num_package_id_queries_completed = 0;
   };
 
-  explicit HostNotifier(base::Closure shutdown_closure);
+  explicit HostNotifier(base::OnceClosure shutdown_closure);
   HostNotifier(const HostNotifier&) = delete;
   HostNotifier& operator=(const HostNotifier&) = delete;
 
@@ -213,7 +214,7 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
 
   // Closure for stopping the MessageLoop.  Posted to the thread's TaskRunner
   // when this program receives a SIGTERM.
-  base::Closure shutdown_closure_;
+  base::OnceClosure shutdown_closure_;
 
   // File descriptor for receiving signals.
   base::ScopedFD signal_fd_;

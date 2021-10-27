@@ -17,7 +17,8 @@ namespace syslog {
 class GuestCollector : public Collector {
  public:
   // Create a new, initialized GuestCollector.
-  static std::unique_ptr<GuestCollector> Create(base::Closure shutdown_closure);
+  static std::unique_ptr<GuestCollector> Create(
+      base::OnceClosure shutdown_closure);
 
   static std::unique_ptr<GuestCollector> CreateForTesting(
       base::ScopedFD syslog_fd,
@@ -34,7 +35,7 @@ class GuestCollector : public Collector {
  private:
   // Private default constructor.  Use the static factory function to create new
   // instances of this class.
-  explicit GuestCollector(base::Closure shutdown_closure);
+  explicit GuestCollector(base::OnceClosure shutdown_closure);
   GuestCollector(const GuestCollector&) = delete;
   GuestCollector& operator=(const GuestCollector&) = delete;
 
@@ -55,7 +56,7 @@ class GuestCollector : public Collector {
 
   // Closure for stopping the MessageLoop.  Posted to the thread's TaskRunner
   // when this program receives a SIGTERM.
-  base::Closure shutdown_closure_;
+  base::OnceClosure shutdown_closure_;
 
   // Connection to the LogCollector service on the host.
   std::unique_ptr<vm_tools::LogCollector::Stub> stub_;
