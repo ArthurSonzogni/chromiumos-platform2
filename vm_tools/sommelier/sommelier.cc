@@ -2055,6 +2055,11 @@ static void sl_handle_property_notify(struct sl_context* ctx,
                            0, sizeof(mwm_hints)),
           NULL);
       if (reply) {
+        if (xcb_get_property_value_length(reply) >=
+            static_cast<int>(sizeof(mwm_hints))) {
+          memcpy(&mwm_hints, xcb_get_property_value(reply), sizeof(mwm_hints));
+        }
+        free(reply);
         if (mwm_hints.flags & MWM_HINTS_DECORATIONS) {
           if (mwm_hints.decorations & MWM_DECOR_ALL)
             window->decorated = ~mwm_hints.decorations & MWM_DECOR_TITLE;
