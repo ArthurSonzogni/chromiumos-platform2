@@ -62,15 +62,9 @@ class MockCrosFpBiometricsManager : public CrosFpBiometricsManager {
   MOCK_METHOD(void, EndEnrollSession, (), (override));
   MOCK_METHOD(void, EndAuthSession, (), (override));
   MOCK_METHOD(void, OnMaintenanceTimerFired, (), (override));
-  MOCK_METHOD(bool,
-              WriteRecord,
-              (const BiodStorageInterface::RecordMetadata& record,
-               uint8_t* tmpl_data,
-               size_t tmpl_size),
-              (override));
-  MOCK_METHOD(const BiodStorageInterface::RecordMetadata&,
+  MOCK_METHOD(base::Optional<BiodStorageInterface::RecordMetadata>,
               GetRecordMetadata,
-              (const std::string& id),
+              (const std::string& record_id),
               (const, override));
   MOCK_METHOD(base::Optional<std::string>,
               GetLoadedRecordId,

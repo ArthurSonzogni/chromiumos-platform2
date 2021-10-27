@@ -55,13 +55,15 @@ int DoBioWash(const bool factory_init = false) {
   // events for BioWash.
   auto bus = base::MakeRefCounted<dbus::Bus>(options);
   auto biod_metrics = std::make_unique<biod::BiodMetrics>();
+  auto biod_storage =
+      std::make_unique<biod::BiodStorage>(biod::kCrosFpBiometricsManagerName);
   // Add all the possible BiometricsManagers available.
   auto cros_fp_bio = std::make_unique<biod::CrosFpBiometricsManager>(
       biod::PowerButtonFilter::Create(bus),
       biod::CrosFpDevice::Create(biod_metrics.get(),
                                  std::make_unique<ec::EcCommandFactory>()),
       std::move(biod_metrics),
-      std::make_unique<biod::BiodStorage>(biod::kCrosFpBiometricsManagerName));
+      std::make_unique<biod::CrosFpRecordManager>(std::move(biod_storage)));
   if (cros_fp_bio) {
     managers.emplace_back(std::move(cros_fp_bio));
   }

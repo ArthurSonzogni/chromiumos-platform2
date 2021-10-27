@@ -16,8 +16,8 @@
 #include <dbus/bus.h>
 #include <base/timer/timer.h>
 
-#include "biod/biod_storage.h"
 #include "biod/cros_fp_device.h"
+#include "biod/cros_fp_record_manager.h"
 #include "biod/power_button_filter_interface.h"
 
 namespace biod {
@@ -30,7 +30,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
       std::unique_ptr<PowerButtonFilterInterface> power_button_filter,
       std::unique_ptr<CrosFpDeviceInterface> cros_fp_device,
       std::unique_ptr<BiodMetricsInterface> biod_metrics,
-      std::unique_ptr<BiodStorageInterface> biod_storage);
+      std::unique_ptr<CrosFpRecordManagerInterface> record_manager);
   CrosFpBiometricsManager(const CrosFpBiometricsManager&) = delete;
   CrosFpBiometricsManager& operator=(const CrosFpBiometricsManager&) = delete;
 
@@ -67,13 +67,10 @@ class CrosFpBiometricsManager : public BiometricsManager {
   void EndAuthSession() override;
 
   virtual void OnMaintenanceTimerFired();
-  virtual bool WriteRecord(const BiodStorageInterface::RecordMetadata& record,
-                           uint8_t* tmpl_data,
-                           size_t tmpl_size);
 
   // Returns RecordMetadata for given record.
-  virtual const BiodStorageInterface::RecordMetadata& GetRecordMetadata(
-      const std::string& id) const;
+  virtual base::Optional<BiodStorageInterface::RecordMetadata>
+  GetRecordMetadata(const std::string& record_id) const;
   // Returns RecordId for given template id.
   virtual base::Optional<std::string> GetLoadedRecordId(int id);
 
@@ -106,9 +103,9 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
     // BiometricsManager::Record overrides:
     const std::string& GetId() const override;
-    const std::string& GetUserId() const override;
-    const std::string& GetLabel() const override;
-    const std::vector<uint8_t>& GetValidationVal() const override;
+    std::string GetUserId() const override;
+    std::string GetLabel() const override;
+    std::vector<uint8_t> GetValidationVal() const override;
     bool SetLabel(std::string label) override;
     bool Remove() override;
 
@@ -163,10 +160,6 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   SessionAction next_session_action_;
 
-  // Map of RecordId, RecordMetadata. Contains only valid records.
-  std::unordered_map<std::string, BiodStorageInterface::RecordMetadata>
-      records_;
-
   // This vector contains RecordIds of templates loaded into the MCU.
   std::vector<std::string> loaded_records_;
 
@@ -182,7 +175,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   std::unique_ptr<PowerButtonFilterInterface> power_button_filter_;
 
-  std::unique_ptr<BiodStorageInterface> biod_storage_;
+  std::unique_ptr<CrosFpRecordManagerInterface> record_manager_;
 
   std::unique_ptr<base::RepeatingTimer> maintenance_timer_;
 };

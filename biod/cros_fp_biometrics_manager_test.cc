@@ -18,9 +18,9 @@
 #include "biod/biod_crypto_test_data.h"
 #include "biod/cros_fp_device_interface.h"
 #include "biod/mock_biod_metrics.h"
-#include "biod/mock_biod_storage.h"
 #include "biod/mock_cros_fp_biometrics_manager.h"
 #include "biod/mock_cros_fp_device.h"
+#include "biod/mock_cros_fp_record_manager.h"
 
 namespace biod {
 
@@ -36,6 +36,7 @@ using crypto_test_data::kFakeValidationValue1;
 using crypto_test_data::kFakeValidationValue2;
 using crypto_test_data::kUserID;
 
+using testing::_;
 using testing::Return;
 using testing::ReturnRef;
 
@@ -94,7 +95,8 @@ class FakeCrosFpDevice : public CrosFpDeviceInterface {
 // making the text fixture a friend class.
 class CrosFpBiometricsManagerPeer {
  public:
-  CrosFpBiometricsManagerPeer() {
+  CrosFpBiometricsManagerPeer(
+      std::unique_ptr<MockCrosFpRecordManager> mock_record_manager) {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
     const auto mock_bus = base::MakeRefCounted<dbus::MockBus>(options);
@@ -119,7 +121,7 @@ class CrosFpBiometricsManagerPeer {
     cros_fp_biometrics_manager_ = std::make_unique<CrosFpBiometricsManager>(
         PowerButtonFilter::Create(mock_bus), std::move(fake_cros_dev),
         std::make_unique<metrics::MockBiodMetrics>(),
-        std::make_unique<storage::MockBiodStorage>());
+        std::move(mock_record_manager));
   }
 
   // Methods to access or modify the fake device.
@@ -128,21 +130,9 @@ class CrosFpBiometricsManagerPeer {
     fake_cros_dev_->positive_match_secret_ = new_secret;
   }
 
-  // Add a record to cros_fp_biometrics_manager_, return the index.
-  int AddRecord(int record_format_version,
-                const std::string& record_id,
-                const std::string& user_id,
-                const std::string& label,
-                const std::vector<uint8_t>& validation_value) {
-    BiodStorageInterface::RecordMetadata record = {
-        record_format_version, record_id, user_id, label, validation_value};
-    cros_fp_biometrics_manager_->records_.emplace(record_id, std::move(record));
-    return cros_fp_biometrics_manager_->records_.size() - 1;
-  }
-
   bool ValidationValueEquals(const std::string& id,
                              const std::vector<uint8_t>& reference_value) {
-    return cros_fp_biometrics_manager_->records_[id].validation_val ==
+    return cros_fp_biometrics_manager_->GetRecordMetadata(id)->validation_val ==
            reference_value;
   }
 
@@ -167,8 +157,18 @@ class CrosFpBiometricsManagerPeer {
 };
 
 class CrosFpBiometricsManagerTest : public ::testing::Test {
+ public:
+  CrosFpBiometricsManagerTest() {
+    auto mock_record_manager = std::make_unique<MockCrosFpRecordManager>();
+    // Keep a pointer to record manager, to manipulate it later.
+    mock_record_manager_ = mock_record_manager.get();
+
+    cros_fp_biometrics_manager_peer_.emplace(std::move(mock_record_manager));
+  }
+
  protected:
-  CrosFpBiometricsManagerPeer cros_fp_biometrics_manager_peer_;
+  std::optional<CrosFpBiometricsManagerPeer> cros_fp_biometrics_manager_peer_;
+  MockCrosFpRecordManager* mock_record_manager_;
 };
 
 TEST_F(CrosFpBiometricsManagerTest, TestComputeValidationValue) {
@@ -179,43 +179,53 @@ TEST_F(CrosFpBiometricsManagerTest, TestComputeValidationValue) {
       };
   for (const auto& pair : kSecretValidationValuePairs) {
     std::vector<uint8_t> validation_value;
-    EXPECT_TRUE(cros_fp_biometrics_manager_peer_.ComputeValidationValue(
+    EXPECT_TRUE(cros_fp_biometrics_manager_peer_->ComputeValidationValue(
         pair.first, kUserID, &validation_value));
     EXPECT_EQ(validation_value, pair.second);
   }
 }
 
-TEST_F(CrosFpBiometricsManagerTest, TestPositiveMatchSecretIsCorrect) {
-  cros_fp_biometrics_manager_peer_.SetDevicePositiveMatchSecret(
-      kFakePositiveMatchSecret1);
-  int index = cros_fp_biometrics_manager_peer_.AddRecord(
-      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1);
-  bool ret = cros_fp_biometrics_manager_peer_.CheckPositiveMatchSecret(
-      kRecordID, index);
-  EXPECT_TRUE(ret);
+TEST_F(CrosFpBiometricsManagerTest, TestValidationValueCalculation) {
+  BiodStorageInterface::RecordMetadata metadata1{
+      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
 
-  // Make the device return a wrong positive_match_secret.
-  cros_fp_biometrics_manager_peer_.SetDevicePositiveMatchSecret(
-      kFakePositiveMatchSecret2);
-  ret = cros_fp_biometrics_manager_peer_.CheckPositiveMatchSecret(kRecordID,
-                                                                  index);
-  EXPECT_FALSE(ret);
+  EXPECT_CALL(*mock_record_manager_, GetRecordMetadata)
+      .WillRepeatedly(Return(metadata1));
+  cros_fp_biometrics_manager_peer_->SetDevicePositiveMatchSecret(
+      kFakePositiveMatchSecret1);
+  EXPECT_TRUE(
+      cros_fp_biometrics_manager_peer_->CheckPositiveMatchSecret(kRecordID, 0));
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestPositiveMatchSecretIsCorrect) {
+  BiodStorageInterface::RecordMetadata metadata{
+      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
+  EXPECT_CALL(*mock_record_manager_, GetRecordMetadata(kRecordID))
+      .WillRepeatedly(Return(metadata));
+
+  cros_fp_biometrics_manager_peer_->SetDevicePositiveMatchSecret(
+      kFakePositiveMatchSecret1);
+  EXPECT_TRUE(
+      cros_fp_biometrics_manager_peer_->CheckPositiveMatchSecret(kRecordID, 0));
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestPositiveMatchSecretIsNotCorrect) {
+  BiodStorageInterface::RecordMetadata metadata{
+      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue2};
+  EXPECT_CALL(*mock_record_manager_, GetRecordMetadata(kRecordID))
+      .WillRepeatedly(Return(metadata));
+
+  cros_fp_biometrics_manager_peer_->SetDevicePositiveMatchSecret(
+      kFakePositiveMatchSecret1);
+  EXPECT_FALSE(
+      cros_fp_biometrics_manager_peer_->CheckPositiveMatchSecret(kRecordID, 0));
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestCheckPositiveMatchSecretNoSecret) {
-  int index = cros_fp_biometrics_manager_peer_.AddRecord(
-      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1);
   brillo::SecureVector empty;
-  cros_fp_biometrics_manager_peer_.SetDevicePositiveMatchSecret(empty);
-  EXPECT_FALSE(cros_fp_biometrics_manager_peer_.CheckPositiveMatchSecret(
-      kRecordID, index));
-}
-
-TEST_F(CrosFpBiometricsManagerTest, TestCheckPositiveMatchSecret) {
-  int index = cros_fp_biometrics_manager_peer_.AddRecord(
-      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1);
-  EXPECT_TRUE(cros_fp_biometrics_manager_peer_.CheckPositiveMatchSecret(
-      kRecordID, index));
+  cros_fp_biometrics_manager_peer_->SetDevicePositiveMatchSecret(empty);
+  EXPECT_FALSE(
+      cros_fp_biometrics_manager_peer_->CheckPositiveMatchSecret(kRecordID, 0));
 }
 
 class CrosFpBiometricsManagerMockTest : public ::testing::Test {
@@ -246,15 +256,15 @@ class CrosFpBiometricsManagerMockTest : public ::testing::Test {
     mock_cros_dev_ = mock_cros_fp_dev.get();
     auto mock_biod_metrics = std::make_unique<metrics::MockBiodMetrics>();
     mock_metrics_ = mock_biod_metrics.get();
-    auto mock_biod_storage = std::make_unique<storage::MockBiodStorage>();
-    mock_biod_storage_ = mock_biod_storage.get();
+    auto mock_record_manager = std::make_unique<MockCrosFpRecordManager>();
+    mock_record_manager_ = mock_record_manager.get();
 
     EXPECT_CALL(*mock_cros_dev_, SupportsPositiveMatchSecret())
         .WillRepeatedly(Return(true));
 
     mock_ = std::make_unique<MockCrosFpBiometricsManager>(
         PowerButtonFilter::Create(mock_bus), std::move(mock_cros_fp_dev),
-        std::move(mock_biod_metrics), std::move(mock_biod_storage));
+        std::move(mock_biod_metrics), std::move(mock_record_manager));
     EXPECT_TRUE(mock_);
   }
 
@@ -264,7 +274,7 @@ class CrosFpBiometricsManagerMockTest : public ::testing::Test {
   std::unique_ptr<MockCrosFpBiometricsManager> mock_;
   MockCrosFpDevice* mock_cros_dev_;
   metrics::MockBiodMetrics* mock_metrics_;
-  storage::MockBiodStorage* mock_biod_storage_;
+  MockCrosFpRecordManager* mock_record_manager_;
 };
 
 // TODO(b/187951992): The following tests for the automatic maintenance timer
@@ -328,6 +338,8 @@ TEST_F(CrosFpBiometricsManagerMockTest, TestGetDirtyList) {
 }
 
 TEST_F(CrosFpBiometricsManagerMockTest, TestUpdateTemplatesOnDisk) {
+  BiodStorageInterface::RecordMetadata metadata{
+      kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
   const std::vector<int> dirty_list = {0};
   const std::unordered_set<uint32_t> suspicious_templates;
 
@@ -335,13 +347,11 @@ TEST_F(CrosFpBiometricsManagerMockTest, TestUpdateTemplatesOnDisk) {
     return std::make_unique<VendorTemplate>();
   });
 
-  std::string record_id;
-  BiodStorageInterface::RecordMetadata record_metadata;
-  EXPECT_CALL(*mock_, GetLoadedRecordId(0)).WillRepeatedly(Return(record_id));
-  EXPECT_CALL(*mock_, GetRecordMetadata(record_id))
-      .WillOnce(ReturnRef(record_metadata));
-
-  EXPECT_CALL(*mock_, WriteRecord).WillOnce(Return(true));
+  EXPECT_CALL(*mock_, GetLoadedRecordId(0)).WillRepeatedly(Return(kRecordID));
+  EXPECT_CALL(*mock_record_manager_, GetRecordMetadata(kRecordID))
+      .WillRepeatedly(Return(metadata));
+  EXPECT_CALL(*mock_record_manager_, UpdateRecord(metadata, _))
+      .WillOnce(Return(true));
 
   EXPECT_TRUE(mock_->UpdateTemplatesOnDisk(dirty_list, suspicious_templates));
 }
@@ -351,7 +361,7 @@ TEST_F(CrosFpBiometricsManagerMockTest,
   const std::vector<int> dirty_list;
   const std::unordered_set<uint32_t> suspicious_templates;
 
-  EXPECT_CALL(*mock_, WriteRecord).Times(0);
+  EXPECT_CALL(*mock_record_manager_, UpdateRecord).Times(0);
 
   EXPECT_TRUE(mock_->UpdateTemplatesOnDisk(dirty_list, suspicious_templates));
 }
@@ -361,7 +371,7 @@ TEST_F(CrosFpBiometricsManagerMockTest,
   const std::vector<int> dirty_list = {0};
   const std::unordered_set<uint32_t> suspicious_templates = {0};
 
-  EXPECT_CALL(*mock_, WriteRecord).Times(0);
+  EXPECT_CALL(*mock_record_manager_, UpdateRecord).Times(0);
 
   EXPECT_TRUE(mock_->UpdateTemplatesOnDisk(dirty_list, suspicious_templates));
 }
@@ -374,7 +384,7 @@ TEST_F(CrosFpBiometricsManagerMockTest,
   EXPECT_CALL(*mock_cros_dev_, GetTemplate).WillOnce([](int) {
     return nullptr;
   });
-  EXPECT_CALL(*mock_, WriteRecord).Times(0);
+  EXPECT_CALL(*mock_record_manager_, UpdateRecord).Times(0);
 
   EXPECT_TRUE(mock_->UpdateTemplatesOnDisk(dirty_list, suspicious_templates));
 }
@@ -382,7 +392,7 @@ TEST_F(CrosFpBiometricsManagerMockTest,
 TEST_F(CrosFpBiometricsManagerMockTest, TestCallDeleteRecord) {
   EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount).WillOnce(Return(5));
 
-  EXPECT_CALL(*mock_biod_storage_, DeleteRecord);
+  EXPECT_CALL(*mock_record_manager_, DeleteRecord);
 
   struct ec_fp_template_encryption_metadata Data = {0};
   Data.struct_version = 0x3;  // Correct version is zero.
@@ -397,7 +407,7 @@ TEST_F(CrosFpBiometricsManagerMockTest, TestCallDeleteRecord) {
 TEST_F(CrosFpBiometricsManagerMockTest, TestSkipDeleteRecord) {
   EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount).WillOnce(Return(5));
 
-  EXPECT_CALL(*mock_biod_storage_, DeleteRecord).Times(0);
+  EXPECT_CALL(*mock_record_manager_, DeleteRecord).Times(0);
 
   struct ec_fp_template_encryption_metadata Data = {0};
   // Template version is zero because it comes from mock.

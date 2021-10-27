@@ -16,9 +16,9 @@ class BiometricsManagerRecord {
  public:
   virtual ~BiometricsManagerRecord() = default;
   virtual const std::string& GetId() const = 0;
-  virtual const std::string& GetUserId() const = 0;
-  virtual const std::string& GetLabel() const = 0;
-  virtual const std::vector<uint8_t>& GetValidationVal() const = 0;
+  virtual std::string GetUserId() const = 0;
+  virtual std::string GetLabel() const = 0;
+  virtual std::vector<uint8_t> GetValidationVal() const = 0;
 
   // Returns true on success.
   virtual bool SetLabel(std::string label) = 0;

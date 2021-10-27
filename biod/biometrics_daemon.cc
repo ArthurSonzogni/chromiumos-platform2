@@ -433,10 +433,12 @@ BiometricsDaemon::BiometricsDaemon() {
   CHECK(cros_fp_device) << "Failed to initialize CrosFpDevice.";
   auto power_button_filter = PowerButtonFilter::Create(bus_);
   CHECK(power_button_filter) << "Failed to initialize PowerButtonFilter.";
+  auto biod_storage =
+      std::make_unique<BiodStorage>(biod::kCrosFpBiometricsManagerName);
   auto cros_fp_bio = std::make_unique<CrosFpBiometricsManager>(
       std::move(power_button_filter), std::move(cros_fp_device),
       std::move(biod_metrics),
-      std::make_unique<BiodStorage>(biod::kCrosFpBiometricsManagerName));
+      std::make_unique<CrosFpRecordManager>(std::move(biod_storage)));
   if (cros_fp_bio) {
     biometrics_managers_.emplace_back(
         std::make_unique<BiometricsManagerWrapper>(

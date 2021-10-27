@@ -56,7 +56,7 @@ class BiometricsManagerWrapper {
 
     const dbus::ObjectPath& path() const { return object_path_; }
 
-    const std::string& GetUserId() const { return record_->GetUserId(); }
+    std::string GetUserId() const { return record_->GetUserId(); }
 
    private:
     bool SetLabel(brillo::ErrorPtr* error, const std::string& new_label);
