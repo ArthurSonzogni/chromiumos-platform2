@@ -17,6 +17,7 @@ group("all") {
       ":typecd_partner_fuzzer",
       ":typecd_port_fuzzer",
       ":typecd_port_manager_fuzzer",
+      ":typecd_session_manager_proxy_fuzzer",
       ":typecd_udev_monitor_fuzzer",
     ]
   }
@@ -154,6 +155,16 @@ if (use.fuzzer) {
 
   executable("typecd_port_manager_fuzzer") {
     sources = [ "port_manager_fuzzer.cc" ]
+    configs += [
+      ":test_defaults",
+      "//common-mk/common_fuzzer",
+      "//common-mk:test",
+    ]
+    deps = [ ":typecd_common" ]
+  }
+
+  executable("typecd_session_manager_proxy_fuzzer") {
+    sources = [ "session_manager_proxy_fuzzer.cc" ]
     configs += [
       ":test_defaults",
       "//common-mk/common_fuzzer",

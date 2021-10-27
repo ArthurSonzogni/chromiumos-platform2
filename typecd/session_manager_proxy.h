@@ -37,6 +37,8 @@ class SessionManagerProxy {
   bool IsSessionStarted();
 
  private:
+  friend class SessionManagerProxyFuzzer;
+
   // Handles the ScreenIsLocked DBus signal.
   void OnScreenIsLocked();
 
