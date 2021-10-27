@@ -267,6 +267,7 @@ base::Optional<HwVerificationReport> VerifierImpl::Verify(
                             comp_category_info.enum_value, comp_name,
                             filtered_comp_values, qual_status_it->second);
       seen_comp[comp_category_info.enum_value] = true;
+      delete filtered_comp_values;
     }
   }
 
