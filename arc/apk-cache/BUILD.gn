@@ -9,6 +9,9 @@ group("all") {
     ":apk-cache-cleaner",
     ":apk-cache-ctl",
   ]
+  if (use.fuzzer) {
+    deps += [ ":apk_cache_database_fuzzer" ]
+  }
   if (use.test) {
     deps += [
       ":apk-cache-cleaner_testrunner",
@@ -69,6 +72,17 @@ executable("apk-cache-ctl") {
     ":libapk-cache",
     ":libapk-cache-ctl",
   ]
+}
+
+if (use.fuzzer) {
+  executable("apk_cache_database_fuzzer") {
+    sources = [ "apk_cache_database_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":apk-cache-common_config",
+    ]
+    deps = [ ":libapk-cache" ]
+  }
 }
 
 if (use.test) {
