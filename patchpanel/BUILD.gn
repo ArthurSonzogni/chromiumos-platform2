@@ -14,6 +14,7 @@ group("all") {
   if (use.fuzzer) {
     deps += [
       ":counters_service_fuzzer",
+      ":broadcast_forwarder_fuzzer",
       ":datapath_fuzzer",
       ":firewall_fuzzer",
       ":multicast_forwarder_fuzzer",
@@ -188,6 +189,16 @@ if (use.fuzzer) {
 
   executable("counters_service_fuzzer") {
     sources = [ "counters_service_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+      ":fuzzing_config",
+    ]
+    deps = [ ":libpatchpanel" ]
+  }
+
+  executable("broadcast_forwarder_fuzzer") {
+    sources = [ "broadcast_forwarder_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",

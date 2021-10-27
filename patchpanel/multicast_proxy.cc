@@ -90,6 +90,7 @@ void MulticastProxy::OnDeviceMessage(const DeviceMessage& msg) {
     if (bcast_fwd == bcast_fwds_.end()) {
       LOG(INFO) << "Enabling broadcast forwarding for device " << dev_ifname;
       auto fwd = std::make_unique<BroadcastForwarder>(dev_ifname);
+      fwd->Init();
       bcast_fwd = bcast_fwds_.emplace(dev_ifname, std::move(fwd)).first;
     }
 

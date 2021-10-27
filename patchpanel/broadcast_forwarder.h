@@ -6,9 +6,7 @@
 #define PATCHPANEL_BROADCAST_FORWARDER_H_
 
 #include <sys/socket.h>
-
-#include <shill/net/rtnl_listener.h>
-#include "patchpanel/shill_client.h"
+#include <sys/types.h>
 
 #include <map>
 #include <memory>
@@ -16,8 +14,11 @@
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/macros.h>
+#include <shill/net/rtnl_listener.h>
+#include <shill/net/rtnl_message.h>
 
 #include "patchpanel/net_util.h"
+#include "patchpanel/shill_client.h"
 
 namespace patchpanel {
 
@@ -35,18 +36,26 @@ class BroadcastForwarder {
 
   virtual ~BroadcastForwarder() = default;
 
+  // Starts listening to RTNL IPv4 address events.
+  void Init();
+
+  // Starts or stops forwarding broadcast packets to and from a downstream
+  // guest on network interface |br_ifname|.
   bool AddGuest(const std::string& br_ifname);
   void RemoveGuest(const std::string& br_ifname);
+
+  // Receives a broadcast packet from the network or from a guest and forwards
+  // it.
+  void OnFileCanReadWithoutBlocking(int fd);
+
+  // Callback from RTNetlink listener, invoked when the lan interface IPv4
+  // address is changed.
+  void AddrMsgHandler(const shill::RTNLMessage& msg);
 
  protected:
   // Socket is used to keep track of an fd and its watcher.
   // It also stores addresses corresponding to the interface it is bound to.
   struct Socket {
-    Socket(base::ScopedFD fd,
-           base::RepeatingCallback<void(int)> callback,
-           uint32_t addr,
-           uint32_t broadaddr,
-           uint32_t netmask = 0);
     base::ScopedFD fd;
     std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher;
     uint32_t addr;
@@ -56,13 +65,13 @@ class BroadcastForwarder {
 
   // Bind will create a broadcast socket and return its fd.
   // This is used for sending broadcasts.
-  static base::ScopedFD Bind(const std::string& ifname, uint16_t port);
+  virtual base::ScopedFD Bind(const std::string& ifname, uint16_t port);
 
   // BindRaw will create a broadcast socket that listens to all IP packets.
   // It filters the packets to only broadcast packets that is sent by
   // applications.
   // This is used to listen on broadcasts.
-  static base::ScopedFD BindRaw(const std::string& ifname);
+  virtual base::ScopedFD BindRaw(const std::string& ifname);
 
   // SendToNetwork sends |data| using a socket bound to |src_port| and
   // |dev_ifname_| using a temporary socket.
@@ -77,21 +86,29 @@ class BroadcastForwarder {
                     ssize_t len,
                     const struct sockaddr_in& dst);
 
-  // Callback from RTNetlink listener, invoked when the lan interface IPv4
-  // address is changed.
-  void AddrMsgHandler(const shill::RTNLMessage& msg);
+  // Wrapper around libc recvmsg, allowing override in fuzzer tests.
+  virtual ssize_t ReceiveMessage(int fd, struct msghdr* msg);
 
-  // Listens for RTMGRP_IPV4_IFADDR messages and invokes AddrMsgHandler.
-  std::unique_ptr<shill::RTNLListener> addr_listener_;
+  // Wrapper around libc sendto, allowing override in fuzzer tests.
+  virtual ssize_t SendTo(int fd,
+                         const void* buffer,
+                         size_t buffer_len,
+                         const struct sockaddr_in* dst_addr);
 
-  const std::string dev_ifname_;
-  std::unique_ptr<Socket> dev_socket_;
-
-  // Mapping from guest bridge interface name to its sockets.
-  std::map<std::string, std::unique_ptr<Socket>> br_sockets_;
+  virtual std::unique_ptr<Socket> CreateSocket(base::ScopedFD fd,
+                                               uint32_t addr,
+                                               uint32_t broadaddr,
+                                               uint32_t netmask);
 
  private:
-  void OnFileCanReadWithoutBlocking(int fd);
+  // Listens for RTMGRP_IPV4_IFADDR messages and invokes AddrMsgHandler.
+  std::unique_ptr<shill::RTNLListener> addr_listener_;
+  // Name of the physical interface that this forwarder is bound to.
+  const std::string dev_ifname_;
+  // IPv4 socket bound by this forwarder onto |dev_ifname_|.
+  std::unique_ptr<Socket> dev_socket_;
+  // Mapping from guest bridge interface name to its sockets.
+  std::map<std::string, std::unique_ptr<Socket>> br_sockets_;
 
   base::WeakPtrFactory<BroadcastForwarder> weak_factory_{this};
 };

@@ -13,7 +13,6 @@
 #include <net/if.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
-#include <shill/net/rtnl_handler.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -22,6 +21,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <shill/net/rtnl_handler.h>
 
 #include "patchpanel/socket.h"
 
@@ -116,19 +116,24 @@ uint32_t GetIfreqNetmask(const struct ifreq& ifr) {
 
 namespace patchpanel {
 
-BroadcastForwarder::Socket::Socket(base::ScopedFD fd,
-                                   base::RepeatingCallback<void(int)> callback,
-                                   uint32_t addr,
-                                   uint32_t broadaddr,
-                                   uint32_t netmask)
-    : fd(std::move(fd)), addr(addr), broadaddr(broadaddr), netmask(netmask) {
-  watcher = base::FileDescriptorWatcher::WatchReadable(
-      Socket::fd.get(),
-      base::BindRepeating(std::move(callback), Socket::fd.get()));
+std::unique_ptr<BroadcastForwarder::Socket> BroadcastForwarder::CreateSocket(
+    base::ScopedFD fd, uint32_t addr, uint32_t broadaddr, uint32_t netmask) {
+  auto socket = std::make_unique<Socket>();
+  socket->watcher = base::FileDescriptorWatcher::WatchReadable(
+      fd.get(),
+      base::BindRepeating(&BroadcastForwarder::OnFileCanReadWithoutBlocking,
+                          base::Unretained(this), fd.get()));
+  socket->fd = std::move(fd);
+  socket->addr = addr;
+  socket->broadaddr = broadaddr;
+  socket->netmask = netmask;
+  return socket;
 }
 
 BroadcastForwarder::BroadcastForwarder(const std::string& dev_ifname)
-    : dev_ifname_(dev_ifname) {
+    : dev_ifname_(dev_ifname) {}
+
+void BroadcastForwarder::Init() {
   addr_listener_ = std::make_unique<shill::RTNLListener>(
       shill::RTNLHandler::kRequestAddr,
       base::BindRepeating(&BroadcastForwarder::AddrMsgHandler,
@@ -167,11 +172,8 @@ void BroadcastForwarder::AddrMsgHandler(const shill::RTNLMessage& msg) {
       LOG(WARNING) << "Could not bind socket on " << dev_ifname_;
       return;
     }
-    dev_socket_.reset(new Socket(
-        std::move(dev_fd),
-        base::BindRepeating(&BroadcastForwarder::OnFileCanReadWithoutBlocking,
-                            base::Unretained(this)),
-        dev_socket_->addr, dev_socket_->broadaddr));
+    dev_socket_ = CreateSocket(std::move(dev_fd), dev_socket_->addr,
+                               dev_socket_->broadaddr, 0);
   }
 }
 
@@ -280,11 +282,8 @@ bool BroadcastForwarder::AddGuest(const std::string& br_ifname) {
   Ioctl(br_fd.get(), br_ifname, SIOCGIFNETMASK, &ifr);
   uint32_t br_netmask = GetIfreqNetmask(ifr);
 
-  std::unique_ptr<Socket> br_socket = std::make_unique<Socket>(
-      std::move(br_fd),
-      base::BindRepeating(&BroadcastForwarder::OnFileCanReadWithoutBlocking,
-                          base::Unretained(this)),
-      br_addr, br_broadaddr, br_netmask);
+  std::unique_ptr<Socket> br_socket =
+      CreateSocket(std::move(br_fd), br_addr, br_broadaddr, br_netmask);
 
   br_sockets_.emplace(br_ifname, std::move(br_socket));
 
@@ -302,11 +301,7 @@ bool BroadcastForwarder::AddGuest(const std::string& br_ifname) {
     Ioctl(dev_fd.get(), dev_ifname_, SIOCGIFBRDADDR, &ifr);
     uint32_t dev_broadaddr = GetIfreqBroadaddr(ifr);
 
-    dev_socket_.reset(new Socket(
-        std::move(dev_fd),
-        base::BindRepeating(&BroadcastForwarder::OnFileCanReadWithoutBlocking,
-                            base::Unretained(this)),
-        dev_addr, dev_broadaddr));
+    dev_socket_ = CreateSocket(std::move(dev_fd), dev_addr, dev_broadaddr, 0);
   }
   return true;
 }
@@ -340,7 +335,7 @@ void BroadcastForwarder::OnFileCanReadWithoutBlocking(int fd) {
       .msg_flags = 0,
   };
 
-  ssize_t msg_len = recvmsg(fd, &hdr, 0);
+  ssize_t msg_len = ReceiveMessage(fd, &hdr);
   if (msg_len < 0) {
     // Ignore ENETDOWN: this can happen if the interface is not yet configured.
     if (errno != ENETDOWN) {
@@ -421,9 +416,7 @@ bool BroadcastForwarder::SendToNetwork(uint16_t src_port,
   if (dev_dst.sin_addr.s_addr != kBcastAddr)
     dev_dst.sin_addr.s_addr = dev_socket_->broadaddr;
 
-  if (sendto(temp_fd.get(), data, len, 0,
-             reinterpret_cast<const struct sockaddr*>(&dev_dst),
-             sizeof(struct sockaddr_in)) < 0) {
+  if (SendTo(temp_fd.get(), data, len, &dev_dst) < 0) {
     // Ignore ENETDOWN: this can happen if the interface is not yet configured.
     if (errno != ENETDOWN) {
       PLOG(WARNING) << "sendto() failed";
@@ -491,15 +484,27 @@ bool BroadcastForwarder::SendToGuests(const void* ip_pkt,
     }
 
     // Use already created broadcast fd.
-    if (sendto(raw.get(), buffer,
-               sizeof(struct iphdr) + sizeof(struct udphdr) + len, 0,
-               reinterpret_cast<const struct sockaddr*>(&br_dst),
-               sizeof(struct sockaddr_in)) < 0) {
+    if (SendTo(raw.get(), buffer,
+               sizeof(struct iphdr) + sizeof(struct udphdr) + len,
+               &br_dst) < 0) {
       PLOG(WARNING) << "sendto failed";
       success = false;
     }
   }
   return success;
+}
+
+ssize_t BroadcastForwarder::ReceiveMessage(int fd, struct msghdr* msg) {
+  return recvmsg(fd, msg, 0);
+}
+
+ssize_t BroadcastForwarder::SendTo(int fd,
+                                   const void* buffer,
+                                   size_t buffer_len,
+                                   const struct sockaddr_in* dst_addr) {
+  return sendto(fd, buffer, buffer_len, 0,
+                reinterpret_cast<const struct sockaddr*>(dst_addr),
+                sizeof(*dst_addr));
 }
 
 }  // namespace patchpanel
