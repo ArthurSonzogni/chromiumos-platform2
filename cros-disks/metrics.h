@@ -50,7 +50,9 @@ class Metrics {
     kArchive7z = 8,
     kArchiveCrx = 9,
     kArchiveIso = 10,
-    kArchiveMaxValue = 11,
+    kArchiveTarXz = 11,
+    kArchiveOtherXz = 12,
+    kArchiveMaxValue = 13,
   };
 
   // Don't renumber these values. They are recorded in UMA metrics.
@@ -91,9 +93,11 @@ class Metrics {
       {"tar", kArchiveTar},           //
       {"tar.bz2", kArchiveTarBzip2},  //
       {"tar.gz", kArchiveTarGzip},    //
+      {"tar.xz", kArchiveTarXz},      //
       {"tbz", kArchiveTarBzip2},      //
       {"tbz2", kArchiveTarBzip2},     //
       {"tgz", kArchiveTarGzip},       //
+      {"xz", kArchiveOtherXz},        //
       {"zip", kArchiveZip},           //
   };
 

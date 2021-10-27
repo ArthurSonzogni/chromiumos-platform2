@@ -20,7 +20,8 @@ namespace {
 constexpr char kOptionPassword[] = "password";
 
 bool IsFormatRaw(const std::string& archive_type) {
-  return (archive_type == "bz2") || (archive_type == "gz");
+  return (archive_type == "bz2") || (archive_type == "gz") ||
+         (archive_type == "xz");
 }
 
 void RecordArchiveTypeMetrics(Metrics* const metrics,
@@ -29,13 +30,16 @@ void RecordArchiveTypeMetrics(Metrics* const metrics,
                               const std::string& source) {
   if (format_raw) {
     // Discriminate between kArchiveOtherGzip and kArchiveTarGzip, and ditto
-    // for the Bzip2 flavors.
+    // for the Bzip2 and Xz flavors.
     std::string ext = base::FilePath(source).Extension();
     if (base::LowerCaseEqualsASCII(ext, ".tar.bz2")) {
       metrics->RecordArchiveType("tar.bz2");
       return;
     } else if (base::LowerCaseEqualsASCII(ext, ".tar.gz")) {
       metrics->RecordArchiveType("tar.gz");
+      return;
+    } else if (base::LowerCaseEqualsASCII(ext, ".tar.xz")) {
+      metrics->RecordArchiveType("tar.xz");
       return;
     }
   }

@@ -81,6 +81,7 @@ bool ArchiveManager::Initialize() {
       "tbz",   //
       "tbz2",  //
       "tgz",   //
+      "xz",    //
   };
   for (const char* const ext : archivemount_extensions) {
     SandboxedExecutable executable = {
