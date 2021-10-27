@@ -17,6 +17,7 @@
 #include <mojo/public/cpp/system/platform_handle.h>
 
 #include "mojom/constants.mojom.h"
+#include "mojom/video_capture_buffer.mojom.h"
 #include "mojom/video_capture_types.mojom.h"
 
 namespace mri {
