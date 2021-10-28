@@ -83,6 +83,9 @@ code in `codelab.cc` so that the test passes.
 
 To deploy this binary to your DUT (device under test), you can use the
 `cros deploy` command. Once deployed, you can run it on your local system.
+
+For more information regarding deploy, please see [Cros Deploy].
+
 ```
 # If you've been using cros_workon_make to iterate, now you have to "install".
 # Emerge does this step automatically.
@@ -124,3 +127,5 @@ To clean up your local changes, please see [Chromium OS Contributing Guide].
 [Installing Chromium OS on your Device]: https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_guide.md#Installing-Chromium-OS-on-your-Device
 
 [Chromium OS Contributing Guide]: https://chromium.googlesource.com/chromiumos/docs/+/HEAD/contributing.md#clean-up
+
+[Cros Deploy]: https://chromium.googlesource.com/chromiumos/docs/+/HEAD/cros_deploy.md
