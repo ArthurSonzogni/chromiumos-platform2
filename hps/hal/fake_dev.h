@@ -9,14 +9,10 @@
 #define HPS_HAL_FAKE_DEV_H_
 
 #include <atomic>
-#include <deque>
 #include <map>
 #include <memory>
 
 #include <base/memory/ref_counted.h>
-#include <base/synchronization/lock.h>
-#include <base/synchronization/waitable_event.h>
-#include <base/threading/simple_thread.h>
 
 #include "hps/dev.h"
 #include "hps/hps_reg.h"
@@ -32,18 +28,18 @@ namespace hps {
  *
  * A set of flags defines behaviour of the device (such as forced errors etc.).
  */
-class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
+class FakeDev : public base::RefCounted<FakeDev> {
  public:
   FakeDev()
-      : SimpleThread("HPS Simulator"),
-        stage_(Stage::kFault),
-        feature_on_(0),
+      : feature_on_(0),
         bank_(0),
         flags_(0),
         firmware_version_(0),
         block_size_b_(256),
         f0_result_(0),
-        f1_result_(0) {}
+        f1_result_(0) {
+    this->SetStage(Stage::kStage0);
+  }
   // Flags for controlling behaviour. Multiple flags can be set,
   // controlling how the fake responds under test conditions.
   enum class Flags {
@@ -67,11 +63,12 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
   bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len);
   bool WriteDevice(uint8_t cmd, const uint8_t* data, size_t len);
   size_t BlockSizeBytes() { return this->block_size_b_.load(); }
-  void Run() override;
-  void Start();
   void SkipBoot() { this->SetStage(Stage::kAppl); }
   void Set(Flags f) {
     this->flags_.fetch_or(static_cast<uint16_t>(1 << static_cast<int>(f)));
+    if (this->Flag(Flags::kBootFault)) {
+      this->SetStage(Stage::kFault);
+    }
   }
   void Clear(Flags f) {
     this->flags_.fetch_and(~static_cast<uint16_t>(1 << static_cast<int>(f)));
@@ -87,39 +84,10 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
   static scoped_refptr<FakeDev> Create();
 
  private:
-  // Message code identifying the type of message passed
-  // to the simulation thread.
-  enum Cmd {
-    kStop,
-    kReadReg,
-    kWriteReg,
-    kWriteMem,
-  };
-  // Message structure. Messages are delivered to the simulator thread,
-  // which processes the request and responds if appropriate (via a
-  // WaitableEvent signal).
-  struct Msg {
-    Msg() : cmd(Cmd::kStop), reg(0), value(0), sig(nullptr), result(nullptr) {}
-    Msg(Cmd c,
-        int r,
-        uint16_t v,
-        base::WaitableEvent* e,
-        std::atomic<uint16_t>* res)
-        : cmd(c), reg(r), value(v), sig(e), result(res) {}
-    Cmd cmd;
-    int reg;  // Or bank for memory write
-    uint16_t value;
-    base::WaitableEvent* sig;
-    std::atomic<uint16_t>* result;
-    const uint8_t* data;
-    size_t length;
-  };
-
   friend class base::RefCounted<FakeDev>;
-  ~FakeDev() override;
-  uint16_t ReadRegister(int r);
-  void WriteRegister(int r, uint16_t v);
-  bool WriteMemory(int base, const uint8_t* mem, size_t len);
+  uint16_t ReadRegister(HpsReg r);
+  void WriteRegister(HpsReg r, uint16_t v);
+  bool WriteMemory(HpsBank bank, const uint8_t* mem, size_t len);
   bool Flag(Flags f) {
     return (this->flags_.load() & (1 << static_cast<int>(f))) != 0;
   }
@@ -132,16 +100,7 @@ class FakeDev : public base::RefCounted<FakeDev>, base::SimpleThread {
     kAppl,
   };
   void SetStage(Stage s);
-  uint16_t ReadRegActual(HpsReg reg);
-  void WriteRegActual(HpsReg reg, uint16_t value);
-  uint16_t WriteMemActual(int base, const uint8_t* mem, size_t len);
-  void MsgStop();
-  void Send(const Msg& m);
-  std::deque<Msg> q_;                // Message queue
-  std::map<int, size_t> bank_len_;   // Count of writes to banks.
-  base::Lock bank_lock_;             // Lock for bank_len_
-  base::Lock qlock_;                 // Lock for queue
-  base::WaitableEvent ev_;           // Signal for messages available
+  std::map<HpsBank, size_t> bank_len_;  // Count of writes to banks.
   Stage stage_;                      // Current stage of the device
   uint16_t feature_on_;              // Enabled features.
   std::atomic<uint16_t> bank_;       // Current memory bank readiness

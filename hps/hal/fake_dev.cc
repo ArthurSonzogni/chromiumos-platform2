@@ -4,31 +4,6 @@
 
 /*
  * Simulated HPS hardware device.
- *
- * When started, a thread is spawned to asynchronously
- * process register reads/writes and memory writes.
- *
- * The idea is to simulate the asynch device operation by
- * passing messages to the thread, which maintains its
- * own state representing the current state of the device.
- * Some messages require replies, which are passed via atomics.
- * WaitableEvent is used to signal when messages are passed,
- * and also when results are available.
- *
- * So a typical register read is:
- *
- *   Main thread                 device thread
- * ->DevInterface->Read
- *     FakeDev->ReadRegister
- *       create event/result
- *       FakeDev->send
- *           Add msg to queue
- *               signal  - - -> FakeDev->Run
- *                                read msg from queue
- *                                FakeDev->ReadRegActual
- *             result < - - - -
- *             event  < - - - -
- *     return result
  */
 #include "hps/hal/fake_dev.h"
 
@@ -41,9 +16,6 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/strings/stringprintf.h>
-#include <base/synchronization/lock.h>
-#include <base/synchronization/waitable_event.h>
-#include <base/threading/simple_thread.h>
 
 #include "hps/hps_reg.h"
 #include "hps/utils.h"
@@ -74,26 +46,12 @@ class SimDev : public DevInterface {
   scoped_refptr<FakeDev> device_;
 };
 
-FakeDev::~FakeDev() {
-  // If thread is running, send a request to terminate it.
-  if (SimpleThread::HasBeenStarted() && !SimpleThread::HasBeenJoined()) {
-    this->MsgStop();
-    this->Join();
-  }
-}
-
-// Start the simulator.
-void FakeDev::Start() {
-  CHECK(!SimpleThread::HasBeenStarted());
-  SimpleThread::Start();
-}
-
 bool FakeDev::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
   // Clear the whole buffer.
   memset(data, 0, len);
   if ((cmd & 0x80) != 0) {
     // Register read.
-    uint16_t value = this->ReadRegister(cmd & 0x7F);
+    uint16_t value = this->ReadRegister(static_cast<HpsReg>(cmd & 0x7F));
     // Store the value of the register into the buffer.
     if (len > 0) {
       data[0] = (value >> 8) & 0xFF;
@@ -112,16 +70,15 @@ bool FakeDev::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
   if ((cmd & 0x80) != 0) {
     if (len != 0) {
       // Register write.
-      int reg = cmd & 0x7F;
       uint16_t value = static_cast<uint16_t>(data[0] << 8);
       if (len > 1) {
         value |= data[1];
       }
-      this->WriteRegister(reg, value);
+      this->WriteRegister(static_cast<HpsReg>(cmd & 0x7F), value);
     }
   } else if ((cmd & 0xC0) == 0) {
     // Memory write.
-    return this->WriteMemory(cmd & 0x3F, data, len);
+    return this->WriteMemory(static_cast<HpsBank>(cmd & 0x3F), data, len);
   } else {
     // Unknown command.
     return false;
@@ -150,93 +107,7 @@ void FakeDev::SetStage(Stage s) {
   }
 }
 
-// Run reads the message queue and processes each message.
-void FakeDev::Run() {
-  // Initial startup.
-  // Check for boot fault.
-  if (this->Flag(Flags::kBootFault)) {
-    this->SetStage(Stage::kFault);
-  } else {
-    this->SetStage(Stage::kStage0);
-  }
-  for (;;) {
-    // Main message loop.
-    this->ev_.Wait();
-    this->ev_.Reset();
-    for (;;) {
-      // Read all messages available.
-      Msg m;
-      {
-        base::AutoLock l(this->qlock_);
-        if (this->q_.empty()) {
-          break;
-        }
-        // Retrieve the next message.
-        m = this->q_.front();
-        this->q_.pop_front();
-      }
-      switch (m.cmd) {
-        case kStop:
-          // Exit simulator.
-          return;
-        case kReadReg:
-          // Read a register and return the result.
-          m.result->store(this->ReadRegActual(HpsReg(m.reg)));
-          m.sig->Signal();
-          break;
-        case kWriteReg:
-          // Write a register.
-          this->WriteRegActual(HpsReg(m.reg), m.value);
-          break;
-        case kWriteMem:
-          // Memory write request.
-          m.result->store(this->WriteMemActual(m.reg, m.data, m.length));
-          m.sig->Signal();
-          // Re-enable the bank.
-          // TODO(amcrae): Add delay to simulate a flash write.
-          // This should be done in a separate thread so that
-          // registers can be read while the memory is being
-          // written.
-          this->bank_.fetch_or(static_cast<uint16_t>(1 << m.reg));
-          break;
-      }
-    }
-  }
-}
-
-uint16_t FakeDev::ReadRegister(int r) {
-  std::atomic<uint16_t> res(0);
-  base::WaitableEvent ev;
-  this->Send(Msg(Cmd::kReadReg, r, 0, &ev, &res));
-  ev.Wait();
-  return res.load();
-}
-
-void FakeDev::WriteRegister(int r, uint16_t v) {
-  this->Send(Msg(Cmd::kWriteReg, r, v, nullptr, nullptr));
-}
-
-// At the start of the write, clear the bank ready bit.
-// The simulator will set it again once the memory write completes.
-bool FakeDev::WriteMemory(int base, const uint8_t* mem, size_t len) {
-  // Ensure minimum length (4 bytes of address).
-  if (len < sizeof(uint32_t)) {
-    return false;
-  }
-  this->bank_.fetch_and(static_cast<uint16_t>(~(1 << base)));
-  std::atomic<uint16_t> res(0);
-  base::WaitableEvent ev;
-  Msg m(Cmd::kWriteMem, base, 0, &ev, &res);
-  m.data = mem;
-  m.length = len;
-  this->Send(m);
-  ev.Wait();
-  // Device response is number of bytes written.
-  // Return true if write succeeded.
-  return res.load() == len;
-}
-
-uint16_t FakeDev::ReadRegActual(HpsReg reg) {
+uint16_t FakeDev::ReadRegister(HpsReg reg) {
   uint16_t v = 0;
   switch (reg) {
     case HpsReg::kMagic:
@@ -325,7 +196,7 @@ uint16_t FakeDev::ReadRegActual(HpsReg reg) {
   return v;
 }
 
-void FakeDev::WriteRegActual(HpsReg reg, uint16_t value) {
+void FakeDev::WriteRegister(HpsReg reg, uint16_t value) {
   VLOG(2) << "Write reg " << HpsRegToString(reg) << " value " << value;
   // Ignore everything except the command register.
   switch (reg) {
@@ -367,18 +238,18 @@ void FakeDev::WriteRegActual(HpsReg reg, uint16_t value) {
 
 // Returns the number of bytes written.
 // The length includes 4 bytes of prepended address.
-uint16_t FakeDev::WriteMemActual(int bank, const uint8_t* data, size_t len) {
+bool FakeDev::WriteMemory(HpsBank bank, const uint8_t* data, size_t len) {
   if (this->Flag(Flags::kMemFail)) {
-    return 0;
+    return false;
   }
   // Don't allow writes that exceed the max block size.
   if (len > (this->block_size_b_.load() + sizeof(uint32_t))) {
-    return 0;
+    return false;
   }
   switch (this->stage_) {
     case Stage::kStage0:
       // Stage0 allows the MCU flash to be written.
-      if (bank == 0) {
+      if (bank == HpsBank::kMcuFlash) {
         this->bank_len_[bank] += len - sizeof(uint32_t);
         // Check if the fake needs to reset the not-verified bit.
         if (this->Flag(Flags::kResetApplVerification)) {
@@ -389,40 +260,29 @@ uint16_t FakeDev::WriteMemActual(int bank, const uint8_t* data, size_t len) {
           this->Clear(Flags::kIncrementVersion);
           this->firmware_version_++;
         }
-        return base::checked_cast<uint16_t>(len);
+        return true;
       }
       break;
     case Stage::kStage1:
       // Stage1 allows the SPI flash to be written.
-      if (bank == 1) {
+      if (bank == HpsBank::kSpiFlash) {
         this->bank_len_[bank] += len - sizeof(uint32_t);
         // Check if the fake needs to reset the not-verified bit.
         if (this->Flag(Flags::kResetSpiVerification)) {
           this->Clear(Flags::kSpiNotVerified);
         }
-        return base::checked_cast<uint16_t>(len);
+        return true;
       }
       break;
     case Stage::kFault:
     case Stage::kAppl:
       break;
   }
-  return 0;
+  return false;
 }
 
 size_t FakeDev::GetBankLen(hps::HpsBank bank) {
-  base::AutoLock l(this->bank_lock_);
-  return this->bank_len_[static_cast<int>(bank)];
-}
-
-void FakeDev::MsgStop() {
-  this->Send(Msg(Cmd::kStop, 0, 0, nullptr, nullptr));
-}
-
-void FakeDev::Send(const Msg& m) {
-  base::AutoLock l(this->qlock_);
-  this->q_.push_back(m);
-  this->ev_.Signal();
+  return this->bank_len_[bank];
 }
 
 // Return a DevInterface connected to the simulated device.
@@ -433,7 +293,6 @@ std::unique_ptr<DevInterface> FakeDev::CreateDevInterface() {
 // Static factory method to create and start an instance of a fake device.
 scoped_refptr<FakeDev> FakeDev::Create() {
   auto fake_dev = base::MakeRefCounted<FakeDev>();
-  fake_dev->Start();
   return fake_dev;
 }
 
