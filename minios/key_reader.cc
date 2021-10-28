@@ -69,7 +69,8 @@ KeyReader::KeyReader(bool include_usb)
       delegate_(nullptr) {}
 
 KeyReader::KeyReader(bool include_usb, std::string keyboard_layout)
-    : backspace_counter_(0),
+    : repeated_key_(0),
+      repeated_counter_(0),
       return_pressed_(false),
       include_usb_(include_usb),
       keyboard_layout_(keyboard_layout),
@@ -191,7 +192,20 @@ void KeyReader::OnKeyEvent() {
     return;
   }
 
-  delegate_->OnKeyPress(index, ev.code, (ev.value == 0));
+  if (ev.value == 2) {
+    if (repeated_key_ != ev.code) {
+      repeated_key_ = ev.code;
+      repeated_counter_ = 0;
+    }
+    if (++repeated_counter_ < kRepeatedSensitivity)
+      return;
+    // Repeated key press and release.
+    delegate_->OnKeyPress(index, ev.code, false);
+    delegate_->OnKeyPress(index, ev.code, true);
+  } else {
+    delegate_->OnKeyPress(index, ev.code, (ev.value == 0));
+  }
+  repeated_counter_ = 0;
 }
 
 bool KeyReader::SetKeyboardContext() {
@@ -277,11 +291,15 @@ bool KeyReader::GetChar(const struct input_event& ev, bool* tab_toggle) {
 
   } else if (ev.value == 2) {
     // Long press or repeating key event.
+    if (repeated_key_ != ev.code) {
+      repeated_key_ = ev.code;
+      repeated_counter_ = 0;
+    }
     if (sym == XKB_KEY_BackSpace && !user_input_.empty() &&
-        ++backspace_counter_ >= kBackspaceSensitivity) {
+        ++repeated_counter_ >= kRepeatedSensitivity) {
       // Remove characters until empty.
       user_input_.pop_back();
-      backspace_counter_ = 0;
+      repeated_counter_ = 0;
     }
   }
   return true;

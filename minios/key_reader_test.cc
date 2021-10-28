@@ -37,7 +37,11 @@ class MockKeyReader : public KeyReader {
   MOCK_METHOD(bool, GetEpEvent, (int epfd, struct input_event* ev, int* index));
   MOCK_METHOD(bool, GetValidFds, (bool check_supported_keys));
   MOCK_METHOD(bool, EpollCreate, (base::ScopedFD * epfd));
-  MOCK_METHOD(void, OnKeyEvent, ());
+};
+
+class MockDelegate : public KeyReader::Delegate {
+ public:
+  MOCK_METHOD(void, OnKeyPress, (int, int, bool));
 };
 
 TEST_F(KeyReaderTest, BasicKeyTest) {
@@ -164,7 +168,7 @@ TEST_F(KeyReaderTest, InputLengthTest) {
   // Back space repeated keypress.
   // Stop deleting when string empty.
   ev_.value = 2;
-  int remaining_chars = kBackspaceSensitivity * (kMaxInputLength - 20);
+  int remaining_chars = kRepeatedSensitivity * (kMaxInputLength - 20);
   for (int i = 0; i < remaining_chars + 2; i++) {
     key_reader.GetCharForTest(ev_);
   }
@@ -426,6 +430,29 @@ TEST_F(KeyReaderTest, InitEpollFailure) {
   EXPECT_CALL(key_reader, GetValidFds(true)).WillOnce(testing::Return(true));
   EXPECT_CALL(key_reader, EpollCreate(_)).WillOnce(testing::Return(false));
   EXPECT_FALSE(key_reader.Init({103, 108, 28}));
+}
+
+TEST_F(KeyReaderTest, OnKeyEventRepeat) {
+  MockKeyReader key_reader(false, "us");
+  MockDelegate delegate;
+
+  // Key repeat event.
+  struct input_event ev_repeat {
+    .type = EV_KEY, .code = KEY_ENTER, .value = 2,
+  };
+  EXPECT_CALL(key_reader, GetEpEvent(_, _, _))
+      .WillRepeatedly(testing::DoAll(testing::SetArgPointee<1>(ev_repeat),
+                                     testing::Return(true)));
+
+  int num_repeats = 5;
+  EXPECT_CALL(delegate, OnKeyPress(_, _, false)).Times(num_repeats);
+  EXPECT_CALL(delegate, OnKeyPress(_, _, true)).Times(num_repeats);
+
+  key_reader.keys_ = {KEY_UP, KEY_DOWN, KEY_ENTER, KEY_ESC};
+  key_reader.SetDelegate(&delegate);
+  // Repeated key press.
+  for (int i = 0; i < num_repeats * kRepeatedSensitivity; ++i)
+    key_reader.OnKeyEvent();
 }
 
 }  // namespace minios

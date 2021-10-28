@@ -22,8 +22,8 @@ namespace minios {
 
 constexpr int kMaxInputLength = 64;
 
-// Increasing `kBackspaceSensitivity` will slow backspace speed.
-constexpr int kBackspaceSensitivity = 2;
+// Increasing `kRepeatedSensitivity` will slow key repeating speed.
+constexpr int kRepeatedSensitivity = 3;
 
 // Key state parameters.
 extern const int kFdsMax;
@@ -83,6 +83,8 @@ class KeyReader {
   std::string GetUserInputForTest();
 
  private:
+  FRIEND_TEST(KeyReaderTest, OnKeyEventRepeat);
+
   // Checks whether all the keys in `keys_` are supported by the fd. Returns
   // false on failure.
   bool SupportsAllKeys(const int fd);
@@ -111,8 +113,10 @@ class KeyReader {
   bool GetChar(const struct input_event& ev, bool* tab_toggle);
 
   std::string user_input_;
-  // Counts and aggregates repeated backspace key events.
-  int backspace_counter_;
+  // Records the most recent repeated key press
+  int repeated_key_;
+  // Counts and aggregates repeated key events.
+  unsigned int repeated_counter_;
   // Checks that enter key down was recorded before returning on key up.
   bool return_pressed_;
   // Whether or not to include USB connections when scanning for events.
