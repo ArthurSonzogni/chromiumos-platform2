@@ -81,9 +81,9 @@ class BusFetcherTest : public BaseFileTest {
   std::unique_ptr<brillo::MockUdevDevice> CreateMockUdevDevice() {
     auto udevice = std::make_unique<brillo::MockUdevDevice>();
     ON_CALL(*udevice, GetPropertyValue).WillByDefault([](const char* key) {
-      if (key == kPropertieVendor)
+      if (key == kPropertieVendorFromDB)
         return kFakeUsbVendorName;
-      if (key == kPropertieProduct)
+      if (key == kPropertieModelFromDB)
         return kFakeUsbProductName;
       return "";
     });

@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <brillo/udev/udev_device.h>
 
@@ -17,6 +18,9 @@ namespace diagnostics {
 std::string GetUsbVendorName(const std::unique_ptr<brillo::UdevDevice>& device);
 // Returns product name of a usb device. Similar to the above method.
 std::string GetUsbProductName(
+    const std::unique_ptr<brillo::UdevDevice>& device);
+// Returns vid and pid of a usb device.
+std::pair<uint16_t, uint16_t> GetUsbVidPid(
     const std::unique_ptr<brillo::UdevDevice>& device);
 
 }  // namespace diagnostics

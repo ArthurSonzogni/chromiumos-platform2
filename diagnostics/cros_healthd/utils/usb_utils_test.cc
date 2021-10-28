@@ -4,7 +4,9 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
+#include <base/strings/string_split.h>
 #include <brillo/udev/mock_udev_device.h>
 
 #include "diagnostics/common/file_test_utils.h"
@@ -22,6 +24,9 @@ constexpr char kFakeUsbVendorName[] = "Usb Vendor";
 constexpr auto kFakeUsbProductName = "Usb Product";
 constexpr auto kFakeUsbFallbackVendorName = "Fallback Vendor Name";
 constexpr auto kFakeUsbFallbackProductName = "Fallback Product Name";
+constexpr auto kFakeUsbPropertieProduct = "47f/430c/1093";
+constexpr uint16_t kFakeUsbVid = 0x47f;
+constexpr uint16_t kFakeUsbPid = 0x430c;
 
 class UsbUtilsTest : public BaseFileTest {
  public:
@@ -40,6 +45,12 @@ class UsbUtilsTest : public BaseFileTest {
             kFakeUsbFallbackVendorName);
     SetFile({kFakePathUsbDevices, kFileUsbProductName},
             kFakeUsbFallbackProductName);
+    auto product_tokens =
+        base::SplitString(std::string(kFakeUsbPropertieProduct), "/",
+                          base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    EXPECT_EQ(product_tokens.size(), 3);
+    SetFile({kFakePathUsbDevices, kFileUsbVendor}, product_tokens[0]);
+    SetFile({kFakePathUsbDevices, kFileUsbProduct}, product_tokens[1]);
   }
 
   brillo::MockUdevDevice& mock_dev() {
@@ -52,22 +63,19 @@ class UsbUtilsTest : public BaseFileTest {
 };
 
 TEST_F(UsbUtilsTest, TestFetchVendor) {
-  brillo::MockUdevDevice dev;
-  EXPECT_CALL(mock_dev(), GetPropertyValue(kPropertieVendor))
+  EXPECT_CALL(mock_dev(), GetPropertyValue(kPropertieVendorFromDB))
       .WillOnce(Return(kFakeUsbVendorName));
   EXPECT_EQ(GetUsbVendorName(dev_), kFakeUsbVendorName);
 }
 
 TEST_F(UsbUtilsTest, TestFetchProduct) {
-  brillo::MockUdevDevice dev;
-  EXPECT_CALL(mock_dev(), GetPropertyValue(kPropertieProduct))
+  EXPECT_CALL(mock_dev(), GetPropertyValue(kPropertieModelFromDB))
       .WillOnce(Return(kFakeUsbProductName));
   EXPECT_EQ(GetUsbProductName(dev_), kFakeUsbProductName);
 }
 
 TEST_F(UsbUtilsTest, TestFetchVendorFallback) {
-  brillo::MockUdevDevice dev;
-  EXPECT_CALL(mock_dev(), GetPropertyValue(kPropertieVendor))
+  EXPECT_CALL(mock_dev(), GetPropertyValue(kPropertieVendorFromDB))
       .WillOnce(Return(nullptr));
   EXPECT_CALL(mock_dev(), GetSysPath())
       .WillOnce(Return(fake_dev_path_.value().c_str()));
@@ -75,12 +83,25 @@ TEST_F(UsbUtilsTest, TestFetchVendorFallback) {
 }
 
 TEST_F(UsbUtilsTest, TestFetchProductFallback) {
-  brillo::MockUdevDevice dev;
-  EXPECT_CALL(mock_dev(), GetPropertyValue(kPropertieProduct))
+  EXPECT_CALL(mock_dev(), GetPropertyValue(kPropertieModelFromDB))
       .WillOnce(Return(nullptr));
   EXPECT_CALL(mock_dev(), GetSysPath())
       .WillOnce(Return(fake_dev_path_.value().c_str()));
   EXPECT_EQ(GetUsbProductName(dev_), kFakeUsbFallbackProductName);
+}
+
+TEST_F(UsbUtilsTest, TestFetchVidPid) {
+  EXPECT_CALL(mock_dev(), GetPropertyValue(kPropertieProduct))
+      .WillOnce(Return(kFakeUsbPropertieProduct));
+  EXPECT_EQ(GetUsbVidPid(dev_), std::make_pair(kFakeUsbVid, kFakeUsbPid));
+}
+
+TEST_F(UsbUtilsTest, TestFetchVidPidFallback) {
+  EXPECT_CALL(mock_dev(), GetPropertyValue(kPropertieProduct))
+      .WillOnce(Return(nullptr));
+  EXPECT_CALL(mock_dev(), GetSysPath())
+      .WillOnce(Return(fake_dev_path_.value().c_str()));
+  EXPECT_EQ(GetUsbVidPid(dev_), std::make_pair(kFakeUsbVid, kFakeUsbPid));
 }
 
 }  // namespace

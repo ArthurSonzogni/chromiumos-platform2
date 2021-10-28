@@ -24,6 +24,7 @@
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/cros_healthd/utils/file_utils.h"
 #include "diagnostics/cros_healthd/utils/usb_utils.h"
+#include "diagnostics/cros_healthd/utils/usb_utils_constants.h"
 
 namespace diagnostics {
 namespace {
