@@ -10,6 +10,7 @@ pkg_config("libcros_healthd_utils_pkg_deps") {
     "libbrillo",
     "libchrome",
     "libudev",
+    "libusb-1.0",
   ]
 }
 

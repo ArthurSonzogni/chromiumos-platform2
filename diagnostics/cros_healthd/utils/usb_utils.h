@@ -22,6 +22,8 @@ std::string GetUsbProductName(
 // Returns vid and pid of a usb device.
 std::pair<uint16_t, uint16_t> GetUsbVidPid(
     const std::unique_ptr<brillo::UdevDevice>& device);
+// Returns human readable device class string.
+std::string LookUpUsbDeviceClass(const int class_code);
 
 }  // namespace diagnostics
 

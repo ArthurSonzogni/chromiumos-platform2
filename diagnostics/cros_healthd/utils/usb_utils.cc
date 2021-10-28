@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <libusb.h>
+
 #include "diagnostics/cros_healthd/utils/usb_utils.h"
 
 #include <base/files/file_path.h>
@@ -84,6 +86,52 @@ std::pair<uint16_t, uint16_t> GetUsbVidPid(
   }
 
   return std::make_pair(static_cast<uint16_t>(vid), static_cast<uint16_t>(pid));
+}
+
+std::string LookUpUsbDeviceClass(const int class_code) {
+  // https://www.usb.org/defined-class-codes
+  switch (class_code) {
+    case libusb_class_code::LIBUSB_CLASS_AUDIO:
+      return "Audio";
+    case libusb_class_code::LIBUSB_CLASS_COMM:
+      return "Communication";
+    case libusb_class_code::LIBUSB_CLASS_HID:
+      return "Human Interface Device";
+    case libusb_class_code::LIBUSB_CLASS_PHYSICAL:
+      return "Physical";
+    case libusb_class_code::LIBUSB_CLASS_PRINTER:
+      return "Printer";
+    case libusb_class_code::LIBUSB_CLASS_IMAGE:
+      return "Image";
+    case libusb_class_code::LIBUSB_CLASS_MASS_STORAGE:
+      return "Mass storage";
+    case libusb_class_code::LIBUSB_CLASS_HUB:
+      return "Hub";
+    case libusb_class_code::LIBUSB_CLASS_DATA:
+      return "Data";
+    case libusb_class_code::LIBUSB_CLASS_SMART_CARD:
+      return "Smart Card";
+    case libusb_class_code::LIBUSB_CLASS_CONTENT_SECURITY:
+      return "Content Security";
+    case libusb_class_code::LIBUSB_CLASS_VIDEO:
+      return "Video";
+    case libusb_class_code::LIBUSB_CLASS_PERSONAL_HEALTHCARE:
+      return "Personal Healthcare";
+    case libusb_class_code::LIBUSB_CLASS_DIAGNOSTIC_DEVICE:
+      return "Diagnostic Device";
+    case libusb_class_code::LIBUSB_CLASS_WIRELESS:
+      return "Wireless";
+    case libusb_class_code::LIBUSB_CLASS_APPLICATION:
+      return "Application";
+    case libusb_class_code::LIBUSB_CLASS_VENDOR_SPEC:
+      return "Vendor Specific";
+    case libusb_class_code::LIBUSB_CLASS_PER_INTERFACE:
+      // Return "Unknown" because it means that the category is defined by its
+      // interfaces.
+      return "Unknown";
+    default:
+      return "Unknown";
+  }
 }
 
 }  // namespace diagnostics

@@ -10,6 +10,7 @@ pkg_config("libcros_healthd_events_pkg_deps") {
     "libbrillo",
     "libchrome",
     "libmojo",
+    "libusb-1.0",
     "protobuf",
     "system_api",
   ]

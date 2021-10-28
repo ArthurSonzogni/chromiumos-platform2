@@ -4,17 +4,22 @@
 
 #include "diagnostics/cros_healthd/events/udev_events_impl.h"
 
+#include <libusb.h>
+#include <set>
 #include <string>
 #include <utility>
 
 #include <base/bind.h>
 #include <base/check.h>
+#include <base/files/file_enumerator.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <brillo/udev/udev_device.h>
 
 #include "diagnostics/cros_healthd/utils/file_utils.h"
 #include "diagnostics/cros_healthd/utils/usb_utils.h"
+#include "diagnostics/cros_healthd/utils/usb_utils_constants.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
@@ -30,12 +35,42 @@ std::string GetString(const char* str) {
   return "";
 }
 
+void FillUsbCategory(const std::unique_ptr<brillo::UdevDevice>& device,
+                     const base::FilePath& root_dir,
+                     mojo_ipc::UsbEventInfo* info) {
+  auto sys_path = GetString(device->GetSysPath());
+  uint32_t class_code = 0;
+  std::set<std::string> categories;
+
+  ReadInteger(base::FilePath(sys_path), kFileUsbDevClass,
+              &base::HexStringToUInt, &class_code);
+  if (class_code != libusb_class_code::LIBUSB_CLASS_PER_INTERFACE) {
+    categories.insert(LookUpUsbDeviceClass(class_code));
+  } else {  // The category is determined by interfaces.
+    base::FileEnumerator file_enum(base::FilePath(sys_path), false,
+                                   base::FileEnumerator::FileType::DIRECTORIES);
+    for (auto path = file_enum.Next(); !path.empty(); path = file_enum.Next()) {
+      std::string content;
+      ReadAndTrimString(path.Append(kFileUsbIFClass), &content);
+      if (!base::HexStringToUInt(content, &class_code))
+        continue;
+      categories.insert(LookUpUsbDeviceClass(class_code));
+    }
+  }
+
+  categories.erase("Unknown");
+  for (const auto& category : categories) {
+    info->categories.push_back(category);
+  }
+}
+
 void FillUsbEventInfo(const std::unique_ptr<brillo::UdevDevice>& device,
                       const base::FilePath& root_dir,
                       mojo_ipc::UsbEventInfo* info) {
   info->vendor = GetUsbVendorName(device);
   info->name = GetUsbProductName(device);
   std::tie(info->vid, info->pid) = GetUsbVidPid(device);
+  FillUsbCategory(device, root_dir, info);
 }
 
 }  // namespace
