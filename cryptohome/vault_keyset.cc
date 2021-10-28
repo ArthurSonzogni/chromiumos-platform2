@@ -680,7 +680,9 @@ void VaultKeyset::SetChallengeCredentialState(
 }
 
 void VaultKeyset::SetTpmEccState(const TpmEccAuthBlockState& auth_state) {
-  flags_ = kTpmEccFlags.require_flags;
+  // TODO(b/204384070): Move SCRYPT_DERIVED into the require_flags after all
+  // user on dev channel migrated to the new flags.
+  flags_ = kTpmEccFlags.require_flags | SerializedVaultKeyset::SCRYPT_DERIVED;
   if (auth_state.sealed_hvkkm.has_value()) {
     tpm_key_ = auth_state.sealed_hvkkm.value();
   }

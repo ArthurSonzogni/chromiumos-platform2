@@ -1157,6 +1157,13 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestRegularCreds) {
                 SerializedVaultKeyset::SCRYPT_DERIVED |
                 SerializedVaultKeyset::PCR_BOUND);
   EXPECT_FALSE(keyset_management_->ShouldReSaveKeyset(vk0.get()));
+
+  // Tpm wrapped pcr bound and ECC key, public hash - no resave.
+  vk0->SetTpmPublicKeyHash(brillo::SecureBlob("public hash"));
+  vk0->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
+                SerializedVaultKeyset::SCRYPT_DERIVED |
+                SerializedVaultKeyset::PCR_BOUND | SerializedVaultKeyset::ECC);
+  EXPECT_FALSE(keyset_management_->ShouldReSaveKeyset(vk0.get()));
 }
 
 TEST_F(KeysetManagementTest, ReSaveOnLoadTestLeCreds) {
