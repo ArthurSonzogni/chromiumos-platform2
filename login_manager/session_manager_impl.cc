@@ -328,8 +328,8 @@ class SessionManagerImpl::DBusService {
   }
 
   // Adaptor from DBusMethodResponse to
-  // ServerBackedStateKeyGenerator::StateKeyCallback callback.
-  ServerBackedStateKeyGenerator::StateKeyCallback CreateStateKeyCallback(
+  // DeviceIdentifierGenerator::StateKeyCallback callback.
+  DeviceIdentifierGenerator::StateKeyCallback CreateStateKeyCallback(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           std::vector<std::vector<uint8_t>>>> response) {
     return base::Bind(&DBusService::HandleStateKeyCallback,
@@ -387,7 +387,7 @@ SessionManagerImpl::SessionManagerImpl(
     std::unique_ptr<InitDaemonController> init_controller,
     const scoped_refptr<dbus::Bus>& bus,
     KeyGenerator* key_gen,
-    ServerBackedStateKeyGenerator* state_key_generator,
+    DeviceIdentifierGenerator* device_identifier_generator,
     ProcessManagerServiceInterface* manager,
     LoginMetrics* metrics,
     NssUtil* nss,
@@ -410,7 +410,7 @@ SessionManagerImpl::SessionManagerImpl(
       adaptor_(this),
       delegate_(delegate),
       key_gen_(key_gen),
-      state_key_generator_(state_key_generator),
+      device_identifier_generator_(device_identifier_generator),
       manager_(manager),
       login_metrics_(metrics),
       nss_(nss),
@@ -1216,10 +1216,10 @@ void SessionManagerImpl::GetServerBackedStateKeys(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         std::vector<std::vector<uint8_t>>>> response) {
   DCHECK(dbus_service_);
-  ServerBackedStateKeyGenerator::StateKeyCallback callback =
+  DeviceIdentifierGenerator::StateKeyCallback callback =
       dbus_service_->CreateStateKeyCallback(std::move(response));
   if (system_clock_synchronized_) {
-    state_key_generator_->RequestStateKeys(callback);
+    device_identifier_generator_->RequestStateKeys(callback);
   } else {
     pending_state_key_callbacks_.push_back(callback);
   }
@@ -1288,7 +1288,7 @@ void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
   if (network_synchronized) {
     system_clock_synchronized_ = true;
     for (const auto& callback : pending_state_key_callbacks_)
-      state_key_generator_->RequestStateKeys(callback);
+      device_identifier_generator_->RequestStateKeys(callback);
     pending_state_key_callbacks_.clear();
   } else {
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
@@ -1302,12 +1302,12 @@ void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
 bool SessionManagerImpl::InitMachineInfo(brillo::ErrorPtr* error,
                                          const std::string& in_data) {
   std::map<std::string, std::string> params;
-  if (!ServerBackedStateKeyGenerator::ParseMachineInfo(in_data, &params)) {
+  if (!DeviceIdentifierGenerator::ParseMachineInfo(in_data, &params)) {
     *error = CreateError(dbus_error::kInitMachineInfoFail, "Parse failure.");
     return false;
   }
 
-  if (!state_key_generator_->InitMachineInfo(params)) {
+  if (!device_identifier_generator_->InitMachineInfo(params)) {
     *error =
         CreateError(dbus_error::kInitMachineInfoFail, "Missing parameters.");
     return false;

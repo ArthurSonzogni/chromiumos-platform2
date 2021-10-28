@@ -26,13 +26,13 @@
 #include "login_manager/arc_sideload_status_interface.h"
 #include "login_manager/container_manager_interface.h"
 #include "login_manager/dbus_adaptors/org.chromium.SessionManagerInterface.h"
+#include "login_manager/device_identifier_generator.h"
 #include "login_manager/device_local_account_manager.h"
 #include "login_manager/device_policy_service.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/login_screen_storage.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/regen_mitigator.h"
-#include "login_manager/server_backed_state_key_generator.h"
 
 class Crossystem;
 class InstallAttributesReader;
@@ -151,7 +151,7 @@ class SessionManagerImpl
                      std::unique_ptr<InitDaemonController> init_controller,
                      const scoped_refptr<dbus::Bus>& bus,
                      KeyGenerator* key_gen,
-                     ServerBackedStateKeyGenerator* state_key_generator,
+                     DeviceIdentifierGenerator* device_identifier_generator,
                      ProcessManagerServiceInterface* manager,
                      LoginMetrics* metrics,
                      NssUtil* nss,
@@ -476,7 +476,7 @@ class SessionManagerImpl
   // Ownership of all of these raw pointers remains elsewhere.
   Delegate* delegate_;
   KeyGenerator* key_gen_;
-  ServerBackedStateKeyGenerator* state_key_generator_;
+  DeviceIdentifierGenerator* device_identifier_generator_;
   ProcessManagerServiceInterface* manager_;
   LoginMetrics* login_metrics_;
   NssUtil* nss_;
@@ -501,7 +501,7 @@ class SessionManagerImpl
   // Callbacks passed to RequestServerBackedStateKeys() while
   // |system_clock_synchronized_| was false. They will be run by
   // OnGotSystemClockLastSyncInfo() once the clock is synchronized.
-  std::vector<ServerBackedStateKeyGenerator::StateKeyCallback>
+  std::vector<DeviceIdentifierGenerator::StateKeyCallback>
       pending_state_key_callbacks_;
 
   // Map of the currently signed-in users to their state.

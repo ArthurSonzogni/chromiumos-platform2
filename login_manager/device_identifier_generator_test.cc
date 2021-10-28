@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "login_manager/server_backed_state_key_generator.h"
+#include "login_manager/device_identifier_generator.h"
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -54,9 +54,9 @@ class FakeSystemUtils : public SystemUtilsImpl {
 
 }  // namespace
 
-class ServerBackedStateKeyGeneratorTest : public ::testing::Test {
+class DeviceIdentifierGeneratorTest : public ::testing::Test {
  public:
-  ServerBackedStateKeyGeneratorTest()
+  DeviceIdentifierGeneratorTest()
       : generator_(&system_utils_, &metrics_),
         state_keys_received_(false),
         last_state_key_generation_status_(
@@ -64,12 +64,11 @@ class ServerBackedStateKeyGeneratorTest : public ::testing::Test {
     EXPECT_CALL(metrics_, SendStateKeyGenerationStatus(_))
         .WillRepeatedly(SaveArg<0>(&last_state_key_generation_status_));
   }
-  ServerBackedStateKeyGeneratorTest(const ServerBackedStateKeyGeneratorTest&) =
-      delete;
-  ServerBackedStateKeyGeneratorTest& operator=(
-      const ServerBackedStateKeyGeneratorTest&) = delete;
+  DeviceIdentifierGeneratorTest(const DeviceIdentifierGeneratorTest&) = delete;
+  DeviceIdentifierGeneratorTest& operator=(
+      const DeviceIdentifierGeneratorTest&) = delete;
 
-  ~ServerBackedStateKeyGeneratorTest() override {}
+  ~DeviceIdentifierGeneratorTest() override {}
 
   // Installs mock data for the required parameters.
   void InitMachineInfo() {
@@ -90,7 +89,7 @@ class ServerBackedStateKeyGeneratorTest : public ::testing::Test {
     state_keys_received_ = false;
     state_keys_.clear();
     generator_.RequestStateKeys(
-        base::Bind(&ServerBackedStateKeyGeneratorTest::CompletionHandler,
+        base::Bind(&DeviceIdentifierGeneratorTest::CompletionHandler,
                    base::Unretained(this)));
     EXPECT_EQ(expect_immediate_callback, state_keys_received_);
   }
@@ -98,7 +97,7 @@ class ServerBackedStateKeyGeneratorTest : public ::testing::Test {
   FakeSystemUtils system_utils_;
   MockMetrics metrics_;
 
-  ServerBackedStateKeyGenerator generator_;
+  DeviceIdentifierGenerator generator_;
 
   bool state_keys_received_;
   std::vector<std::vector<uint8_t>> state_keys_;
@@ -106,16 +105,16 @@ class ServerBackedStateKeyGeneratorTest : public ::testing::Test {
   LoginMetrics::StateKeyGenerationStatus last_state_key_generation_status_;
 };
 
-TEST_F(ServerBackedStateKeyGeneratorTest, RequestStateKeys) {
+TEST_F(DeviceIdentifierGeneratorTest, RequestStateKeys) {
   InitMachineInfo();
   RequestStateKeys(true);
   EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_HMAC_DEVICE_SECRET,
             last_state_key_generation_status_);
-  ASSERT_EQ(ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta,
+  ASSERT_EQ(DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta,
             state_keys_.size());
 }
 
-TEST_F(ServerBackedStateKeyGeneratorTest, RequestStateKeysLegacy) {
+TEST_F(DeviceIdentifierGeneratorTest, RequestStateKeysLegacy) {
   std::map<std::string, std::string> params;
   params["serial_number"] = "fake-machine-serial-number";
   params["root_disk_serial_number"] = "fake-disk-serial-number";
@@ -123,11 +122,11 @@ TEST_F(ServerBackedStateKeyGeneratorTest, RequestStateKeysLegacy) {
   RequestStateKeys(true);
   EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_IDENTIFIER_HASH,
             last_state_key_generation_status_);
-  ASSERT_EQ(ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta,
+  ASSERT_EQ(DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta,
             state_keys_.size());
 }
 
-TEST_F(ServerBackedStateKeyGeneratorTest, TimedStateKeys) {
+TEST_F(DeviceIdentifierGeneratorTest, TimedStateKeys) {
   InitMachineInfo();
   system_utils_.forward_time(base::TimeDelta::FromDays(100).InSeconds());
 
@@ -135,14 +134,14 @@ TEST_F(ServerBackedStateKeyGeneratorTest, TimedStateKeys) {
   RequestStateKeys(true);
   EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_HMAC_DEVICE_SECRET,
             last_state_key_generation_status_);
-  ASSERT_EQ(ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta,
+  ASSERT_EQ(DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta,
             state_keys_.size());
   std::vector<std::vector<uint8_t>> initial_state_keys = state_keys_;
 
   // All state keys are different.
   std::set<std::vector<uint8_t>> state_key_set(state_keys_.begin(),
                                                state_keys_.end());
-  EXPECT_EQ(ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta,
+  EXPECT_EQ(DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta,
             state_key_set.size());
 
   // Moving forward just a little yields the same keys.
@@ -154,30 +153,30 @@ TEST_F(ServerBackedStateKeyGeneratorTest, TimedStateKeys) {
 
   // Jumping to a future quantum results in the state keys rolling forward.
   int64_t step =
-      1 << ServerBackedStateKeyGenerator::kDeviceStateKeyTimeQuantumPower;
+      1 << DeviceIdentifierGenerator::kDeviceStateKeyTimeQuantumPower;
   system_utils_.forward_time(2 * step);
 
   RequestStateKeys(true);
   EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_HMAC_DEVICE_SECRET,
             last_state_key_generation_status_);
-  ASSERT_EQ(ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta,
+  ASSERT_EQ(DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta,
             state_keys_.size());
   EXPECT_TRUE(std::equal(initial_state_keys.begin() + 2,
                          initial_state_keys.end(), state_keys_.begin()));
 }
 
-TEST_F(ServerBackedStateKeyGeneratorTest, PendingMachineInfo) {
+TEST_F(DeviceIdentifierGeneratorTest, PendingMachineInfo) {
   // No callback as long as machine info has not been provided.
   RequestStateKeys(false);
 
   // Supplying machine info fires callbacks.
   InitMachineInfo();
   EXPECT_TRUE(state_keys_received_);
-  EXPECT_EQ(ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta,
+  EXPECT_EQ(DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta,
             state_keys_.size());
 }
 
-TEST_F(ServerBackedStateKeyGeneratorTest, PendingMachineInfoFailure) {
+TEST_F(DeviceIdentifierGeneratorTest, PendingMachineInfoFailure) {
   // No callback as long as machine info has not been provided.
   RequestStateKeys(false);
 
@@ -194,9 +193,9 @@ TEST_F(ServerBackedStateKeyGeneratorTest, PendingMachineInfoFailure) {
   EXPECT_EQ(0, state_keys_.size());
 }
 
-TEST_F(ServerBackedStateKeyGeneratorTest, ParseMachineInfoSuccess) {
+TEST_F(DeviceIdentifierGeneratorTest, ParseMachineInfoSuccess) {
   std::map<std::string, std::string> params;
-  EXPECT_TRUE(ServerBackedStateKeyGenerator::ParseMachineInfo(
+  EXPECT_TRUE(DeviceIdentifierGenerator::ParseMachineInfo(
       "\"serial_number\"=\"fake-machine-serial-number\"\n"
       "# This is a comment.\n"
       "\"root_disk_serial_number\"=\"fake disk-serial-number\"\n"
@@ -209,10 +208,9 @@ TEST_F(ServerBackedStateKeyGeneratorTest, ParseMachineInfoSuccess) {
   EXPECT_EQ("fake disk-serial-number", params["root_disk_serial_number"]);
 }
 
-TEST_F(ServerBackedStateKeyGeneratorTest, ParseMachineInfoFailure) {
+TEST_F(DeviceIdentifierGeneratorTest, ParseMachineInfoFailure) {
   std::map<std::string, std::string> params;
-  EXPECT_FALSE(
-      ServerBackedStateKeyGenerator::ParseMachineInfo("bad!", &params));
+  EXPECT_FALSE(DeviceIdentifierGenerator::ParseMachineInfo("bad!", &params));
 }
 
 }  // namespace login_manager

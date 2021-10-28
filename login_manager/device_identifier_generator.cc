@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "login_manager/server_backed_state_key_generator.h"
+#include "login_manager/device_identifier_generator.h"
 
 #include <iterator>
 
@@ -64,17 +64,17 @@ std::string GetMapValue(const std::map<std::string, std::string>& map,
 
 }  // namespace
 
-const int ServerBackedStateKeyGenerator::kDeviceStateKeyTimeQuantumPower;
-const int ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta;
+const int DeviceIdentifierGenerator::kDeviceStateKeyTimeQuantumPower;
+const int DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta;
 
-ServerBackedStateKeyGenerator::ServerBackedStateKeyGenerator(
-    SystemUtils* system_utils, LoginMetrics* metrics)
+DeviceIdentifierGenerator::DeviceIdentifierGenerator(SystemUtils* system_utils,
+                                                     LoginMetrics* metrics)
     : system_utils_(system_utils), metrics_(metrics) {}
 
-ServerBackedStateKeyGenerator::~ServerBackedStateKeyGenerator() {}
+DeviceIdentifierGenerator::~DeviceIdentifierGenerator() {}
 
 // static
-bool ServerBackedStateKeyGenerator::ParseMachineInfo(
+bool DeviceIdentifierGenerator::ParseMachineInfo(
     const std::string& data, std::map<std::string, std::string>* params) {
   params->clear();
 
@@ -105,7 +105,7 @@ bool ServerBackedStateKeyGenerator::ParseMachineInfo(
   return !params->empty();
 }
 
-bool ServerBackedStateKeyGenerator::InitMachineInfo(
+bool DeviceIdentifierGenerator::InitMachineInfo(
     const std::map<std::string, std::string>& params) {
   machine_info_available_ = true;
 
@@ -141,7 +141,7 @@ bool ServerBackedStateKeyGenerator::InitMachineInfo(
          (!machine_serial_number_.empty() && !disk_serial_number_.empty());
 }
 
-void ServerBackedStateKeyGenerator::RequestStateKeys(
+void DeviceIdentifierGenerator::RequestStateKeys(
     const StateKeyCallback& callback) {
   if (!machine_info_available_) {
     pending_callbacks_.push_back(callback);
@@ -153,7 +153,7 @@ void ServerBackedStateKeyGenerator::RequestStateKeys(
   callback.Run(state_keys);
 }
 
-void ServerBackedStateKeyGenerator::ComputeKeys(
+void DeviceIdentifierGenerator::ComputeKeys(
     std::vector<std::vector<uint8_t>>* state_keys) {
   state_keys->clear();
 

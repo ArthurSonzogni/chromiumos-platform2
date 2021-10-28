@@ -162,7 +162,7 @@ SessionManagerService::SessionManagerService(
       nss_(NssUtil::Create()),
       owner_key_(nss_->GetOwnerKeyFilePath(), nss_.get()),
       key_gen_(uid, utils),
-      state_key_generator_(utils, metrics),
+      device_identifier_generator_(utils, metrics),
       vpd_process_(utils),
       android_container_(std::make_unique<AndroidOciWrapper>(
           utils, base::FilePath(kContainerInstallDirectory))),
@@ -243,7 +243,7 @@ bool SessionManagerService::Initialize() {
   impl_ = std::make_unique<SessionManagerImpl>(
       this /* delegate */,
       std::make_unique<InitDaemonControllerImpl>(init_dbus_proxy), bus_,
-      &key_gen_, &state_key_generator_,
+      &key_gen_, &device_identifier_generator_,
       this /* manager, i.e. ProcessManagerServiceInterface */, login_metrics_,
       nss_.get(), chrome_mount_ns_path_, system_, &crossystem_, &vpd_process_,
       &owner_key_, android_container_.get(), &install_attributes_reader_,

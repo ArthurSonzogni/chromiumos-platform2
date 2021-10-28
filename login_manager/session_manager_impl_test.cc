@@ -69,6 +69,7 @@
 #include "login_manager/file_checker.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_arc_sideload_status.h"
+#include "login_manager/mock_device_identifier_generator.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_init_daemon_controller.h"
@@ -79,7 +80,6 @@
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_process_manager_service.h"
-#include "login_manager/mock_server_backed_state_key_generator.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/mock_user_policy_service_factory.h"
 #include "login_manager/mock_vpd_process.h"
@@ -321,7 +321,7 @@ class SessionManagerImplTest : public ::testing::Test,
  public:
   SessionManagerImplTest()
       : bus_(new FakeBus()),
-        state_key_generator_(&utils_, &metrics_),
+        device_identifier_generator_(&utils_, &metrics_),
         android_container_(kAndroidPid),
         powerd_proxy_(new dbus::MockObjectProxy(
             nullptr, "", dbus::ObjectPath("/fake/powerd"))),
@@ -377,7 +377,7 @@ class SessionManagerImplTest : public ::testing::Test,
     arc_sideload_status_ = new MockArcSideloadStatus();
     impl_ = std::make_unique<SessionManagerImpl>(
         this /* delegate */, base::WrapUnique(init_controller_), bus_.get(),
-        &key_gen_, &state_key_generator_, &manager_, &metrics_, &nss_,
+        &key_gen_, &device_identifier_generator_, &manager_, &metrics_, &nss_,
         base::nullopt, &utils_, &crossystem_, &vpd_process_, &owner_key_,
         &android_container_, &install_attributes_reader_, powerd_proxy_.get(),
         system_clock_proxy_.get(), debugd_proxy_.get(), arc_sideload_status_);
@@ -968,7 +968,7 @@ class SessionManagerImplTest : public ::testing::Test,
 
   scoped_refptr<FakeBus> bus_;
   MockKeyGenerator key_gen_;
-  MockServerBackedStateKeyGenerator state_key_generator_;
+  MockDeviceIdentifierGenerator device_identifier_generator_;
   MockProcessManagerService manager_;
   MockMetrics metrics_;
   MockNssUtil nss_;
@@ -1575,7 +1575,7 @@ TEST_F(SessionManagerImplTest, ListStoredComponentPolicies) {
 }
 
 TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSync) {
-  EXPECT_CALL(state_key_generator_, RequestStateKeys(_));
+  EXPECT_CALL(device_identifier_generator_, RequestStateKeys(_));
 
   ResponseCapturer capturer;
   impl_->GetServerBackedStateKeys(
@@ -1584,7 +1584,7 @@ TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSync) {
 }
 
 TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_NoTimeSync) {
-  EXPECT_CALL(state_key_generator_, RequestStateKeys(_)).Times(0);
+  EXPECT_CALL(device_identifier_generator_, RequestStateKeys(_)).Times(0);
   ResponseCapturer capturer;
   impl_->GetServerBackedStateKeys(
       capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>>());
@@ -1593,7 +1593,7 @@ TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_NoTimeSync) {
 TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSyncDoneBefore) {
   ASSERT_NO_FATAL_FAILURE(GotLastSyncInfo(true));
 
-  EXPECT_CALL(state_key_generator_, RequestStateKeys(_));
+  EXPECT_CALL(device_identifier_generator_, RequestStateKeys(_));
   ResponseCapturer capturer;
   impl_->GetServerBackedStateKeys(
       capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>>());
@@ -1602,7 +1602,7 @@ TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSyncDoneBefore) {
 TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_FailedTimeSync) {
   ASSERT_NO_FATAL_FAILURE(GotLastSyncInfo(false));
 
-  EXPECT_CALL(state_key_generator_, RequestStateKeys(_)).Times(0);
+  EXPECT_CALL(device_identifier_generator_, RequestStateKeys(_)).Times(0);
   ResponseCapturer capturer;
   impl_->GetServerBackedStateKeys(
       capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>>());
@@ -1628,7 +1628,7 @@ TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSyncAfterFail) {
   ASSERT_TRUE(Mock::VerifyAndClearExpectations(system_clock_proxy_.get()));
   ASSERT_FALSE(time_sync_callback.is_null());
 
-  EXPECT_CALL(state_key_generator_, RequestStateKeys(_)).Times(1);
+  EXPECT_CALL(device_identifier_generator_, RequestStateKeys(_)).Times(1);
   std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
   dbus::MessageWriter writer(response.get());
   writer.AppendBool(true);
