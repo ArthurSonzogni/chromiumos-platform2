@@ -7,8 +7,6 @@
  */
 #include "hps/hal/fake_dev.h"
 
-#include <atomic>
-#include <deque>
 #include <iostream>
 #include <map>
 
@@ -123,18 +121,18 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
       break;
 
     case HpsReg::kBankReady:
-      v = this->bank_.load();
+      v = this->bank_;
       break;
 
     case HpsReg::kFeature0:
       if (this->feature_on_ & hps::R7::kFeature0Enable) {
-        v = hps::RFeat::kValid | static_cast<uint8_t>(this->f0_result_.load());
+        v = hps::RFeat::kValid | static_cast<uint8_t>(this->f0_result_);
       }
       break;
 
     case HpsReg::kFeature1:
       if (this->feature_on_ & hps::R7::kFeature1Enable) {
-        v = hps::RFeat::kValid | static_cast<uint8_t>(this->f1_result_.load());
+        v = hps::RFeat::kValid | static_cast<uint8_t>(this->f1_result_);
       }
       break;
 
@@ -143,7 +141,7 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
       // application has been verified.
       if (this->stage_ == Stage::kStage0 &&
           !this->Flag(Flags::kApplNotVerified)) {
-        v = static_cast<uint16_t>(firmware_version_.load() >> 16);
+        v = static_cast<uint16_t>(firmware_version_ >> 16);
       } else {
         v = 0xFFFF;
       }
@@ -154,7 +152,7 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
       // application has been verified.
       if (this->stage_ == Stage::kStage0 &&
           !this->Flag(Flags::kApplNotVerified)) {
-        v = static_cast<uint16_t>(firmware_version_.load() & 0xFFFF);
+        v = static_cast<uint16_t>(firmware_version_ & 0xFFFF);
       } else {
         v = 0xFFFF;
       }
@@ -218,7 +216,7 @@ bool FakeDev::WriteMemory(HpsBank bank, const uint8_t* data, size_t len) {
     return false;
   }
   // Don't allow writes that exceed the max block size.
-  if (len > (this->block_size_b_.load() + sizeof(uint32_t))) {
+  if (len > (this->block_size_b_ + sizeof(uint32_t))) {
     return false;
   }
   switch (this->stage_) {

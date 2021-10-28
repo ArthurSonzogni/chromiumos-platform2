@@ -8,7 +8,6 @@
 #ifndef HPS_HAL_FAKE_DEV_H_
 #define HPS_HAL_FAKE_DEV_H_
 
-#include <atomic>
 #include <map>
 #include <memory>
 
@@ -60,16 +59,16 @@ class FakeDev : public DevInterface {
   };
   bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len) override;
   bool WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) override;
-  size_t BlockSizeBytes() override { return this->block_size_b_.load(); }
+  size_t BlockSizeBytes() override { return this->block_size_b_; }
   void SkipBoot() { this->SetStage(Stage::kAppl); }
   void Set(Flags f) {
-    this->flags_.fetch_or(static_cast<uint16_t>(1 << static_cast<int>(f)));
+    this->flags_ |= static_cast<uint16_t>(1 << static_cast<int>(f));
     if (this->Flag(Flags::kBootFault)) {
       this->SetStage(Stage::kFault);
     }
   }
   void Clear(Flags f) {
-    this->flags_.fetch_and(~static_cast<uint16_t>(1 << static_cast<int>(f)));
+    this->flags_ &= ~static_cast<uint16_t>(1 << static_cast<int>(f));
   }
   void SetVersion(uint32_t version) { this->firmware_version_ = version; }
   void SetBlockSizeBytes(size_t sz) { this->block_size_b_ = sz; }
@@ -84,7 +83,7 @@ class FakeDev : public DevInterface {
   void WriteRegister(HpsReg r, uint16_t v);
   bool WriteMemory(HpsBank bank, const uint8_t* mem, size_t len);
   bool Flag(Flags f) {
-    return (this->flags_.load() & (1 << static_cast<int>(f))) != 0;
+    return (this->flags_ & (1 << static_cast<int>(f))) != 0;
   }
   // Current stage (phase) of the device.
   // The device behaves differently in different stages.
@@ -98,12 +97,12 @@ class FakeDev : public DevInterface {
   std::map<HpsBank, size_t> bank_len_;  // Count of writes to banks.
   Stage stage_;                      // Current stage of the device
   uint16_t feature_on_;              // Enabled features.
-  std::atomic<uint16_t> bank_;       // Current memory bank readiness
-  std::atomic<uint16_t> flags_;      // Behaviour flags
-  std::atomic<uint32_t> firmware_version_;  // Firmware version
-  std::atomic<size_t> block_size_b_;  // Write block size.
-  std::atomic<int8_t> f0_result_;     // Result for feature 0
-  std::atomic<int8_t> f1_result_;     // Result for feature 1
+  uint16_t bank_;                    // Current memory bank readiness
+  uint16_t flags_;                   // Behaviour flags
+  uint32_t firmware_version_;        // Firmware version
+  size_t block_size_b_;              // Write block size.
+  int8_t f0_result_;                 // Result for feature 0
+  int8_t f1_result_;                 // Result for feature 1
 };
 
 }  // namespace hps
