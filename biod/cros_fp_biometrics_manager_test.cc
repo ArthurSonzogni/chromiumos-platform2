@@ -25,7 +25,6 @@
 namespace biod {
 
 namespace {
-constexpr int kMaxTemplateCount = 5;
 constexpr char kRecordID[] = "record0";
 constexpr char kLabel[] = "label0";
 }  // namespace
@@ -40,63 +39,13 @@ using testing::_;
 using testing::Return;
 using testing::ReturnRef;
 
-class FakeCrosFpDevice : public CrosFpDeviceInterface {
- public:
-  FakeCrosFpDevice() { positive_match_secret_ = kFakePositiveMatchSecret1; }
-  // CrosFpDeviceInterface overrides:
-  ~FakeCrosFpDevice() override = default;
-
-  void SetMkbpEventCallback(MkbpCallback callback) override {}
-
-  bool SetFpMode(const ec::FpMode& mode) override { return false; }
-  ec::FpMode GetFpMode() override {
-    return ec::FpMode(ec::FpMode::Mode::kModeInvalid);
-  }
-  base::Optional<FpStats> GetFpStats() override { return base::nullopt; }
-  base::Optional<std::bitset<32>> GetDirtyMap() override {
-    return base::nullopt;
-  }
-  bool SupportsPositiveMatchSecret() override { return true; }
-  base::Optional<brillo::SecureVector> GetPositiveMatchSecret(
-      int index) override {
-    if (positive_match_secret_.empty()) {
-      return base::nullopt;
-    }
-    // Zero-pad the secret if it's too short.
-    brillo::SecureVector secret(FP_POSITIVE_MATCH_SECRET_BYTES, 0);
-    std::copy(positive_match_secret_.begin(), positive_match_secret_.end(),
-              secret.begin());
-    return secret;
-  }
-  std::unique_ptr<VendorTemplate> GetTemplate(int index) override {
-    return nullptr;
-  }
-  bool UploadTemplate(const VendorTemplate& tmpl) override { return false; }
-  bool SetContext(std::string user_id) override { return false; }
-  bool ResetContext() override { return false; }
-  bool InitEntropy(bool reset) override { return false; }
-  bool UpdateFpInfo() override { return true; }
-
-  int MaxTemplateCount() override { return kMaxTemplateCount; }
-  int TemplateVersion() override { return FP_TEMPLATE_FORMAT_VERSION; }
-  int DeadPixelCount() override { return 0; }
-
-  ec::EcCmdVersionSupportStatus EcCmdVersionSupported(uint16_t cmd,
-                                                      uint32_t ver) override {
-    return ec::EcCmdVersionSupportStatus::UNSUPPORTED;
-  }
-
- private:
-  friend class CrosFpBiometricsManagerPeer;
-  brillo::SecureVector positive_match_secret_;
-};
-
 // Using a peer class to control access to the class under test is better than
 // making the text fixture a friend class.
 class CrosFpBiometricsManagerPeer {
  public:
   CrosFpBiometricsManagerPeer(
-      std::unique_ptr<MockCrosFpRecordManager> mock_record_manager) {
+      std::unique_ptr<MockCrosFpRecordManager> mock_record_manager,
+      std::unique_ptr<MockCrosFpDevice> mock_cros_dev) {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
     const auto mock_bus = base::MakeRefCounted<dbus::MockBus>(options);
@@ -114,29 +63,19 @@ class CrosFpBiometricsManagerPeer {
                     dbus::ObjectPath(power_manager::kPowerManagerServicePath)))
         .WillOnce(testing::Return(power_manager_proxy.get()));
 
-    auto fake_cros_dev = std::make_unique<FakeCrosFpDevice>();
-    // Keep a pointer to the fake device to manipulate it later.
-    fake_cros_dev_ = fake_cros_dev.get();
-
     cros_fp_biometrics_manager_ = std::make_unique<CrosFpBiometricsManager>(
-        PowerButtonFilter::Create(mock_bus), std::move(fake_cros_dev),
+        PowerButtonFilter::Create(mock_bus), std::move(mock_cros_dev),
         std::make_unique<metrics::MockBiodMetrics>(),
         std::move(mock_record_manager));
   }
 
-  // Methods to access or modify the fake device.
-
-  void SetDevicePositiveMatchSecret(const brillo::SecureVector& new_secret) {
-    fake_cros_dev_->positive_match_secret_ = new_secret;
-  }
+  // Methods to execute CrosFpBiometricsManager private methods.
 
   bool ValidationValueEquals(const std::string& id,
                              const std::vector<uint8_t>& reference_value) {
     return cros_fp_biometrics_manager_->GetRecordMetadata(id)->validation_val ==
            reference_value;
   }
-
-  // Methods to execute CrosFpBiometricsManager private methods.
 
   bool ComputeValidationValue(const brillo::SecureVector& secret,
                               const std::string& user_id,
@@ -153,22 +92,31 @@ class CrosFpBiometricsManagerPeer {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   std::unique_ptr<CrosFpBiometricsManager> cros_fp_biometrics_manager_;
-  FakeCrosFpDevice* fake_cros_dev_;
 };
 
 class CrosFpBiometricsManagerTest : public ::testing::Test {
  public:
   CrosFpBiometricsManagerTest() {
+    auto mock_cros_dev = std::make_unique<MockCrosFpDevice>();
+    // Keep a pointer to the fake device to manipulate it later.
+    mock_cros_dev_ = mock_cros_dev.get();
+
     auto mock_record_manager = std::make_unique<MockCrosFpRecordManager>();
     // Keep a pointer to record manager, to manipulate it later.
     mock_record_manager_ = mock_record_manager.get();
 
-    cros_fp_biometrics_manager_peer_.emplace(std::move(mock_record_manager));
+    // Always support positive match secret
+    EXPECT_CALL(*mock_cros_dev_, SupportsPositiveMatchSecret())
+        .WillRepeatedly(Return(true));
+
+    cros_fp_biometrics_manager_peer_.emplace(std::move(mock_record_manager),
+                                             std::move(mock_cros_dev));
   }
 
  protected:
   std::optional<CrosFpBiometricsManagerPeer> cros_fp_biometrics_manager_peer_;
   MockCrosFpRecordManager* mock_record_manager_;
+  MockCrosFpDevice* mock_cros_dev_;
 };
 
 TEST_F(CrosFpBiometricsManagerTest, TestComputeValidationValue) {
@@ -191,8 +139,8 @@ TEST_F(CrosFpBiometricsManagerTest, TestValidationValueCalculation) {
 
   EXPECT_CALL(*mock_record_manager_, GetRecordMetadata)
       .WillRepeatedly(Return(metadata1));
-  cros_fp_biometrics_manager_peer_->SetDevicePositiveMatchSecret(
-      kFakePositiveMatchSecret1);
+  EXPECT_CALL(*mock_cros_dev_, GetPositiveMatchSecret)
+      .WillOnce(Return(kFakePositiveMatchSecret1));
   EXPECT_TRUE(
       cros_fp_biometrics_manager_peer_->CheckPositiveMatchSecret(kRecordID, 0));
 }
@@ -203,8 +151,8 @@ TEST_F(CrosFpBiometricsManagerTest, TestPositiveMatchSecretIsCorrect) {
   EXPECT_CALL(*mock_record_manager_, GetRecordMetadata(kRecordID))
       .WillRepeatedly(Return(metadata));
 
-  cros_fp_biometrics_manager_peer_->SetDevicePositiveMatchSecret(
-      kFakePositiveMatchSecret1);
+  EXPECT_CALL(*mock_cros_dev_, GetPositiveMatchSecret)
+      .WillOnce(Return(kFakePositiveMatchSecret1));
   EXPECT_TRUE(
       cros_fp_biometrics_manager_peer_->CheckPositiveMatchSecret(kRecordID, 0));
 }
@@ -215,15 +163,15 @@ TEST_F(CrosFpBiometricsManagerTest, TestPositiveMatchSecretIsNotCorrect) {
   EXPECT_CALL(*mock_record_manager_, GetRecordMetadata(kRecordID))
       .WillRepeatedly(Return(metadata));
 
-  cros_fp_biometrics_manager_peer_->SetDevicePositiveMatchSecret(
-      kFakePositiveMatchSecret1);
+  EXPECT_CALL(*mock_cros_dev_, GetPositiveMatchSecret)
+      .WillOnce(Return(kFakePositiveMatchSecret1));
   EXPECT_FALSE(
       cros_fp_biometrics_manager_peer_->CheckPositiveMatchSecret(kRecordID, 0));
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestCheckPositiveMatchSecretNoSecret) {
-  brillo::SecureVector empty;
-  cros_fp_biometrics_manager_peer_->SetDevicePositiveMatchSecret(empty);
+  EXPECT_CALL(*mock_cros_dev_, GetPositiveMatchSecret)
+      .WillOnce(Return(base::nullopt));
   EXPECT_FALSE(
       cros_fp_biometrics_manager_peer_->CheckPositiveMatchSecret(kRecordID, 0));
 }
