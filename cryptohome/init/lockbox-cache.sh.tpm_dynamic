@@ -29,7 +29,7 @@ mkdir -p -m 0711 "${LOCKBOX_CACHE_DIR}"
 if [ "$(tpm_version_client)" -eq 2 ]; then
   LOCKBOX_INDEX=0x9da5b0
 else
-  LOCKBOX_INDEX=0x800004
+  LOCKBOX_INDEX=0x20000004
 fi
 
 # Use tpm_manager to read the NV space.
@@ -42,6 +42,10 @@ if [ -s "${LOCKBOX_NVRAM_FILE}" ]; then
   lockbox-cache --cache="${INSTALL_ATTRS_CACHE}" \
                 --nvram="${LOCKBOX_NVRAM_FILE}" \
                 --lockbox="${INSTALL_ATTRS_FILE}"
+else
+  # For TPM-less devices and legacy CR1 devices,
+  # pretend like lockbox is supported.
+  cp "${INSTALL_ATTRS_FILE}" "${INSTALL_ATTRS_CACHE}"
 fi
 
 # There are no other consumers; remove the nvram data.
