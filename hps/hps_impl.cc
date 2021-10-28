@@ -42,8 +42,6 @@ void HPS_impl::Init(uint32_t appl_version,
 // Attempt the boot sequence
 // returns true if booting completed
 bool HPS_impl::Boot() {
-  // Exclusive access to module.
-  base::AutoLock l(this->lock_);
   // Make sure blobs are set etc.
   if (this->mcu_blob_.empty() || this->spi_blob_.empty()) {
     LOG(ERROR) << "No HPS firmware to download.";
@@ -72,8 +70,6 @@ bool HPS_impl::Boot() {
 }
 
 bool HPS_impl::Enable(uint8_t feature) {
-  // Exclusive access to module.
-  base::AutoLock l(this->lock_);
   // Only 2 features available at the moment.
   if (feature >= kFeatures) {
     LOG(ERROR) << "Enabling unknown feature (" << feature << ")";
@@ -91,8 +87,6 @@ bool HPS_impl::Enable(uint8_t feature) {
 }
 
 bool HPS_impl::Disable(uint8_t feature) {
-  // Exclusive access to module.
-  base::AutoLock l(this->lock_);
   if (feature >= kFeatures) {
     LOG(ERROR) << "Disabling unknown feature (" << feature << ")";
     return false;
@@ -109,8 +103,6 @@ bool HPS_impl::Disable(uint8_t feature) {
 }
 
 FeatureResult HPS_impl::Result(int feature) {
-  // Exclusive access to module.
-  base::AutoLock l(this->lock_);
   // Check the application is enabled and running.
   int status = this->device_->ReadReg(HpsReg::kSysStatus);
   if (status < 0 || (status & R2::kAppl) == 0) {
@@ -384,8 +376,6 @@ void HPS_impl::Fault() {
  * The HPS/Host I2C Interface Memory Write is used.
  */
 bool HPS_impl::Download(hps::HpsBank bank, const base::FilePath& source) {
-  // Exclusive access to module.
-  base::AutoLock l(this->lock_);
   uint8_t ibank = static_cast<uint8_t>(bank);
   if (ibank >= kNumBanks) {
     LOG(ERROR) << "Download: Illegal bank: " << ibank << ": " << source;
@@ -395,7 +385,6 @@ bool HPS_impl::Download(hps::HpsBank bank, const base::FilePath& source) {
 }
 
 void HPS_impl::SetDownloadObserver(DownloadObserver observer) {
-  base::AutoLock l(this->lock_);
   this->download_observer_ = std::move(observer);
 }
 

@@ -14,7 +14,6 @@
 #include <utility>
 
 #include <base/files/file_path.h>
-#include <base/synchronization/lock.h>
 
 #include "hps/dev.h"
 #include "hps/hps.h"
@@ -71,7 +70,6 @@ class HPS_impl : public HPS {
   bool WriteFile(uint8_t bank, const base::FilePath& source);
   std::unique_ptr<DevInterface> device_;
   HpsMetrics hps_metrics_;
-  base::Lock lock_;  // Exclusive module access lock
   uint16_t hw_rev_;
   uint32_t appl_version_;
   bool write_protect_off_;
