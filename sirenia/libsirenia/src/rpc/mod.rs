@@ -69,7 +69,7 @@ pub trait Procedure {
 /// The server-side implementation of a Procedure. Define this trait for use with RpcDispatcher.
 #[allow(clippy::result_unit_err)]
 pub trait MessageHandler: Procedure + Clone {
-    fn handle_message(&self, request: Self::Request) -> StdResult<Self::Response, ()>;
+    fn handle_message(&mut self, request: Self::Request) -> StdResult<Self::Response, ()>;
 }
 
 /// The client-side of an RPC. Note that this is implemented genericly for Transport.
@@ -296,7 +296,7 @@ mod test {
     }
 
     impl MessageHandler for TestHandler {
-        fn handle_message(&self, request: Self::Request) -> StdResult<Self::Response, ()> {
+        fn handle_message(&mut self, request: Self::Request) -> StdResult<Self::Response, ()> {
             match request {
                 Request::CheckedNeg(v) => Ok(Response::CheckedNeg(v.checked_neg())),
                 Request::CheckedAdd(a, b) => Ok(Response::CheckedAdd(a.checked_add(b))),

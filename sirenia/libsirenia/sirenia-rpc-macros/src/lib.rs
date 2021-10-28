@@ -319,7 +319,7 @@ fn sirenia_rpc_impl(item_trait: &ItemTrait) -> Result<TokenStream> {
         }
 
         impl #libsirenia_prefix::rpc::MessageHandler for Box<dyn #server_trait_name> {
-            fn handle_message(&self, request: #request_name) -> ::std::result::Result<#response_name, ()> {
+            fn handle_message(&mut self, request: #request_name) -> ::std::result::Result<#response_name, ()> {
                 match request {
                     #(#handle_message_contents)*
                 }
