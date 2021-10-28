@@ -29,4 +29,5 @@ recvmsg: 1
 rt_sigtimedwait: 1
 sendto: 1
 socket: arg0 == AF_UNIX
+uname: 1
 write: 1

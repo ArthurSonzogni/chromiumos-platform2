@@ -37,3 +37,4 @@ send: 1
 socket: arg0 == AF_UNIX
 statx: 1
 write: 1
+uname: 1

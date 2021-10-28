@@ -56,4 +56,5 @@ send: 1
 set_robust_list: 1
 socket: arg0 == AF_UNIX
 statx: 1
+uname: 1
 write: 1
