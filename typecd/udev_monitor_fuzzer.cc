@@ -69,6 +69,8 @@ class UdevMonitorFuzzer {
 
   void CallScanDevices() { monitor_->ScanDevices(); }
 
+  void CallRunUntilIdle() { task_environment_.RunUntilIdle(); }
+
  private:
   // Add a task environment to keep the FileDescriptorWatcher code happy.
   base::test::TaskEnvironment task_environment_;
@@ -118,6 +120,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   fuzzer.SetUdev(std::move(udev));
   fuzzer.CallScanDevices();
+
+  fuzzer.CallRunUntilIdle();
 
   return 0;
 }
