@@ -34,6 +34,7 @@ void FillUsbEventInfo(const std::unique_ptr<brillo::UdevDevice>& device,
                       const base::FilePath& root_dir,
                       mojo_ipc::UsbEventInfo* info) {
   info->vendor = GetUsbVendorName(device);
+  info->name = GetUsbProductName(device);
 }
 
 }  // namespace
