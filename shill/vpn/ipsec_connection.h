@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include <base/callback.h>
@@ -78,6 +79,13 @@ class IPsecConnection : public VPNConnection {
     kIPsecConnected,
     kIPsecStatusRead,
   };
+
+  // Parses the cipher suite from an string output by swanctl or stroke. |input|
+  // is like "AES_CBC-128/HMAC_SHA2_256_128/PRF_HMAC_SHA2_256/MODP_3072".
+  static std::tuple<Metrics::VpnIpsecEncryptionAlgorithm,
+                    Metrics::VpnIpsecIntegrityAlgorithm,
+                    Metrics::VpnIpsecDHGroup>
+  ParseCipherSuite(const std::string& input);
 
   explicit IPsecConnection(std::unique_ptr<Config> config,
                            std::unique_ptr<Callbacks> callbacks,

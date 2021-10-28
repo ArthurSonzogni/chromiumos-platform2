@@ -38,8 +38,39 @@ using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
+using testing::WithArg;
 
 namespace shill {
+
+namespace {
+
+// Output of `stroke statusall` used in
+// L2TPIPsecDriverTest::ExpectCipherMetricsReported().
+constexpr char kStrokeStatusAllOutput[] =
+    R"(Status of IKE charon daemon (strongSwan 5.7.2, Linux 4.4.289-21012-gca997499d4ea, x86_64):
+  uptime: 3 minutes, since Oct 28 12:34:20 2021
+  malloc: sbrk 1622016, mmap 1196032, used 613040, free 1008976
+  worker threads: 10 of 16 idle, 6/0/0/0 working, job queue: 0/0/0/0, scheduled: 3
+  loaded plugins: charon pkcs11 aes des rc2 sha2 sha1 md5 mgf1 random nonce x509 revocation constraints pubkey pkcs1 pkcs7 pkcs8 pkcs12 pgp dnskey sshkey pem openssl fips-prf gmp curve25519 xcbc cmac hmac attr kernel-netlink resolve socket-default socket-dynamic stroke vici updown xauth-generic lookip led counters
+Listening IP addresses:
+  1.2.3.4
+  1.2.3.5
+  192.168.0.1
+  192.168.1.2
+Connections:
+     managed:  %any...10.0.0.1  IKEv1
+     managed:   local:  [100.86.195.191] uses pre-shared key authentication
+     managed:   remote: uses pre-shared key authentication
+     managed:   child:  dynamic[udp/l2tp] === dynamic[udp/l2tp] TRANSPORT
+Security Associations (1 up, 0 connecting):
+     managed[1]: ESTABLISHED 3 minutes ago, 1.2.3.4[1.2.3.4]...10.0.0.1[10.0.0.1]
+     managed[1]: IKEv1 SPIs: a8936495c1cbbca4_i* f8b549a4234245e7_r, pre-shared key reauthentication in 2 hours
+     managed[1]: IKE proposal: AES_CBC_128/HMAC_SHA2_256_128/PRF_HMAC_SHA2_256/MODP_3072
+     managed{1}:  INSTALLED, TRANSPORT, reqid 1, ESP in UDP SPIs: c422affe_i c5ff79b3_o
+     managed{1}:  AES_CBC_128/HMAC_SHA2_256_128, 4034 bytes_i (57 pkts, 19s ago), 42409 bytes_o (569 pkts, 1s ago), rekeying in 41 minutes
+     managed{1}:   1.2.3.4/32[udp/l2tp] === 10.0.0.1/32[udp/l2tp])";
+
+}  // namespace
 
 class L2TPIPsecDriverTest : public testing::Test, public RpcTaskDelegate {
  public:
@@ -164,6 +195,46 @@ class L2TPIPsecDriverTest : public testing::Test, public RpcTaskDelegate {
                 SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecTunnelGroupUsage,
                               Metrics::kVpnL2tpIpsecTunnelGroupUsageYes,
                               Metrics::kVpnL2tpIpsecTunnelGroupUsageMax));
+
+    ExpectCipherMetricsReported();
+  }
+
+  void ExpectCipherMetricsReported() {
+    EXPECT_CALL(process_manager_,
+                StartProcessInMinijailWithStdout(_, _, _, _, _, _))
+        .WillOnce(WithArg<5>([](ProcessManager::ExitWithStdoutCallback cb) {
+          // Invokes the callback directly.
+          std::move(cb).Run(0, kStrokeStatusAllOutput);
+          return 123;
+        }));
+
+    // Expects metrics for IKE.
+    EXPECT_CALL(
+        metrics_,
+        SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecIkeEncryptionAlgorithm,
+                      Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_128,
+                      Metrics::kMetricVpnL2tpIpsecIkeEncryptionAlgorithmMax));
+    EXPECT_CALL(
+        metrics_,
+        SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecIkeIntegrityAlgorithm,
+                      Metrics::kVpnIpsecIntegrityAlgorithm_HMAC_SHA2_256_128,
+                      Metrics::kMetricVpnL2tpIpsecIkeIntegrityAlgorithmMax));
+    EXPECT_CALL(metrics_,
+                SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecIkeDHGroup,
+                              Metrics::kVpnIpsecDHGroup_MODP_3072,
+                              Metrics::kMetricVpnL2tpIpsecIkeDHGroupMax));
+
+    // Expect metrics for ESP.
+    EXPECT_CALL(
+        metrics_,
+        SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecEspEncryptionAlgorithm,
+                      Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_128,
+                      Metrics::kMetricVpnL2tpIpsecEspEncryptionAlgorithmMax));
+    EXPECT_CALL(
+        metrics_,
+        SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecEspIntegrityAlgorithm,
+                      Metrics::kVpnIpsecIntegrityAlgorithm_HMAC_SHA2_256_128,
+                      Metrics::kMetricVpnL2tpIpsecEspIntegrityAlgorithmMax));
   }
 
   void SaveLoginPassword(const std::string& password_str) {

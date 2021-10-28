@@ -245,10 +245,13 @@ Metrics::VpnIpsecDHGroup ParseDHGroup(const std::string& input) {
   return it->second;
 }
 
+}  // namespace
+
+// static
 std::tuple<Metrics::VpnIpsecEncryptionAlgorithm,
            Metrics::VpnIpsecIntegrityAlgorithm,
            Metrics::VpnIpsecDHGroup>
-ParseCipherSuite(const std::string& input) {
+IPsecConnection::ParseCipherSuite(const std::string& input) {
   constexpr auto kInvalidResults =
       std::make_tuple(Metrics::kVpnIpsecEncryptionAlgorithmUnknown,
                       Metrics::kVpnIpsecIntegrityAlgorithmUnknown,
@@ -299,8 +302,6 @@ ParseCipherSuite(const std::string& input) {
 
   return {encryption_algo, integrity_algo, dh_group};
 }
-
-}  // namespace
 
 IPsecConnection::IPsecConnection(std::unique_ptr<Config> config,
                                  std::unique_ptr<Callbacks> callbacks,

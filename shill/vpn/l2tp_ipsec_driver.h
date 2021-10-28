@@ -122,6 +122,11 @@ class L2TPIPsecDriver : public VPNDriver, public RpcTaskDelegate {
 
   void ReportConnectionMetrics();
 
+  // Parses the output of `stroke statusall` to get the cipher suites used by
+  // this connection, and reports them.
+  void ParseCipherSuitesAndReport(int exit_status,
+                                  const std::string& stdout_str);
+
   std::unique_ptr<ExternalTask> external_task_;
   base::FilePath psk_file_;
   base::FilePath xauth_credentials_file_;
