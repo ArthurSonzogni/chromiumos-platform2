@@ -10,8 +10,8 @@
 
 module chromeos.cros_healthd.mojom;
 
-import "mojo/network_health.mojom";
-import "mojo/nullable_primitives.mojom";
+import "diagnostics/mojom/external/network_health.mojom";
+import "diagnostics/mojom/public/nullable_primitives.mojom";
 
 // An enumeration of CPU architectures.
 //

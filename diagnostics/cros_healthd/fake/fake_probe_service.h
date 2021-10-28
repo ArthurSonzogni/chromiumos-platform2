@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "mojo/cros_healthd.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd.mojom.h"
 
 namespace diagnostics {
 

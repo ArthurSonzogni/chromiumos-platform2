@@ -8,7 +8,7 @@
 
 #include <base/time/time.h>
 
-#include "mojo/network_diagnostics.mojom.h"
+#include "diagnostics/mojom/external/network_diagnostics.mojom.h"
 
 namespace {
 

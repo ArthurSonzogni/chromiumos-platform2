@@ -20,7 +20,7 @@
 #include "diagnostics/cros_healthd/fetchers/storage/mock/mock_device_lister.h"
 #include "diagnostics/cros_healthd/fetchers/storage/mock/mock_device_resolver.h"
 #include "diagnostics/cros_healthd/fetchers/storage/mock/mock_platform.h"
-#include "mojo/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 namespace {

@@ -11,7 +11,7 @@
 #include <base/task/single_thread_task_executor.h>
 
 #include "diagnostics/cros_healthd_mojo_adapter/cros_healthd_mojo_adapter.h"
-#include "mojo/cros_healthd.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd.mojom.h"
 
 namespace diagnostics {
 

@@ -22,7 +22,7 @@
 #include "diagnostics/wilco_dtc_supportd/mojo_service_factory.h"
 #include "diagnostics/wilco_dtc_supportd/probe_service_impl.h"
 
-#include "mojo/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 

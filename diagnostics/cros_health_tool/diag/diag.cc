@@ -22,7 +22,7 @@
 #include "diagnostics/cros_health_tool/diag/diag_actions.h"
 #include "diagnostics/cros_healthd/routines/shared_defaults.h"
 #include "diagnostics/cros_healthd/routines/urandom/urandom.h"
-#include "mojo/cros_healthd_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 

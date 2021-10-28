@@ -26,7 +26,7 @@
 #include "diagnostics/wilco_dtc_supportd/mojo_grpc_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_service.h"
 
-#include "mojo/wilco_dtc_supportd.mojom.h"
+#include "diagnostics/mojom/public/wilco_dtc_supportd.mojom.h"
 
 using testing::_;
 using testing::Invoke;

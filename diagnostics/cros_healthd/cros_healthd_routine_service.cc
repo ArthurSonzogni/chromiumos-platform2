@@ -15,8 +15,8 @@
 
 #include "diagnostics/common/system/debugd_adapter.h"
 #include "diagnostics/cros_healthd/system/system_config.h"
-#include "mojo/cros_healthd_diagnostics.mojom.h"
-#include "mojo/nullable_primitives.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
 

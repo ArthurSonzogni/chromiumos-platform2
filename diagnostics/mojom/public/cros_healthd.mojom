@@ -10,13 +10,13 @@
 
 module chromeos.cros_healthd.mojom;
 
-import "mojo/cros_healthd_diagnostics.mojom";
-import "mojo/cros_healthd_events.mojom";
-import "mojo/cros_healthd_probe.mojom";
-import "mojo/network_diagnostics.mojom";
-import "mojo/network_health.mojom";
-import "mojo/nullable_primitives.mojom";
-import "mojo/wilco_ec.mojom";
+import "diagnostics/mojom/external/network_diagnostics.mojom";
+import "diagnostics/mojom/external/network_health.mojom";
+import "diagnostics/mojom/public/cros_healthd_diagnostics.mojom";
+import "diagnostics/mojom/public/cros_healthd_events.mojom";
+import "diagnostics/mojom/public/cros_healthd_probe.mojom";
+import "diagnostics/mojom/public/nullable_primitives.mojom";
+import "diagnostics/mojom/public/wilco_ec.mojom";
 
 // Factory interface which allows remote ends to request implementations of the
 // probe, diagnostics, or event services. Additionally, the browser can send

@@ -15,8 +15,8 @@
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "diagnostics/common/mojo_test_utils.h"
+#include "diagnostics/mojom/public/wilco_dtc_supportd.mojom.h"
 #include "diagnostics/wilco_dtc_supportd/mock_mojo_client.h"
-#include "mojo/wilco_dtc_supportd.mojom.h"
 
 namespace diagnostics {
 

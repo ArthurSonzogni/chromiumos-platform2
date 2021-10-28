@@ -60,7 +60,7 @@ source_set("libdiag_routine") {
   deps = [
     "//diagnostics/common:libcommon",
     "//diagnostics/cros_healthd/system:libcros_healthd_system",
-    "//diagnostics/mojo:cros_healthd_mojo_bindings",
+    "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
   ]
   sources = [
     "ac_power/ac_power.cc",
@@ -106,7 +106,7 @@ source_set("libdiag_routine") {
 if (use.test) {
   source_set("libroutine_test_utils") {
     configs += [ "//common-mk:test" ]
-    deps = [ "//diagnostics/mojo:cros_healthd_mojo_bindings" ]
+    deps = [ "//diagnostics/mojom/public:cros_healthd_mojo_bindings" ]
     sources = [ "routine_test_utils.cc" ]
   }
 

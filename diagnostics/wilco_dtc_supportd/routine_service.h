@@ -16,7 +16,7 @@
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "mojo/cros_healthd.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include_directory)
 
 namespace diagnostics {

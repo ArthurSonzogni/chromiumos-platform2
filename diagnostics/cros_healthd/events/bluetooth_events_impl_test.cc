@@ -21,7 +21,7 @@
 #include "diagnostics/common/system/fake_bluetooth_client.h"
 #include "diagnostics/cros_healthd/events/bluetooth_events_impl.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
-#include "mojo/cros_healthd_events.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
 namespace {

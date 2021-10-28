@@ -14,9 +14,9 @@
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
+#include "diagnostics/mojom/public/cros_healthd.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 #include "diagnostics/wilco_dtc_supportd/probe_service_impl.h"
-#include "mojo/cros_healthd.mojom.h"
-#include "mojo/cros_healthd_probe.mojom.h"
 
 using testing::_;
 using testing::Invoke;

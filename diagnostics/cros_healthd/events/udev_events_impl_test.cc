@@ -20,7 +20,7 @@
 #include "diagnostics/common/mojo_type_utils.h"
 #include "diagnostics/cros_healthd/events/udev_events_impl.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
-#include "mojo/cros_healthd_events.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
 namespace {

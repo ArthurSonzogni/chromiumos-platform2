@@ -17,7 +17,7 @@
 #include "diagnostics/common/system/fake_powerd_adapter.h"
 #include "diagnostics/cros_healthd/events/lid_events_impl.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
-#include "mojo/cros_healthd_events.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
 namespace {

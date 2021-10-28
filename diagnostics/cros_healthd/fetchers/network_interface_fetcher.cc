@@ -9,18 +9,19 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/logging.h>
 #include <base/check_op.h>
 #include <base/files/file_enumerator.h>
+#include <base/logging.h>
 #include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/strings/string_tokenizer.h>
+#include <re2/re2.h>
+
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/cros_healthd/utils/file_utils.h"
-#include <re2/re2.h>
 
 namespace diagnostics {
 

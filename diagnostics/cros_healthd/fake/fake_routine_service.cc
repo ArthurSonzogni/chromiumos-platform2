@@ -7,7 +7,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 
-#include "mojo/nullable_primitives.mojom.h"
+#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
 
