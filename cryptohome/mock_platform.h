@@ -303,6 +303,7 @@ class MockPlatform : public Platform {
 
   MOCK_METHOD(base::FilePath, AttachLoop, (const base::FilePath&), (override));
   MOCK_METHOD(bool, DetachLoop, (const base::FilePath&), (override));
+  MOCK_METHOD(brillo::LoopDeviceManager*, GetLoopDeviceManager, (), (override));
 
   // Calls which do not have a corresponding fake in FakePlatform.
 

@@ -183,6 +183,9 @@ MockPlatform::MockPlatform()
   ON_CALL(*this, SafeCreateDirAndSetOwnership(_, _, _))
       .WillByDefault(Invoke(fake_platform_.get(),
                             &FakePlatform::SafeCreateDirAndSetOwnership));
+  ON_CALL(*this, GetLoopDeviceManager())
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::GetLoopDeviceManager));
 
   ON_CALL(*this, AmountOfFreeDiskSpace(_))
       .WillByDefault(

@@ -24,6 +24,7 @@
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <base/optional.h>
+#include <brillo/blkdev_utils/loop_device.h>
 #include <brillo/process/process.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
@@ -974,6 +975,8 @@ class Platform {
   // Gets the block device for the underlying stateful partition.
   virtual base::FilePath GetStatefulDevice();
 
+  virtual brillo::LoopDeviceManager* GetLoopDeviceManager();
+
  private:
   // Returns true if child is a file or folder below or equal to parent.  If
   // parent is a directory, it should end with a '/' character.
@@ -1051,6 +1054,7 @@ class Platform {
   std::vector<DecodedProcMountInfo> ReadMountInfoFile();
 
   base::FilePath mount_info_path_;
+  std::unique_ptr<brillo::LoopDeviceManager> loop_device_manager_;
 
   friend class PlatformTest;
   FRIEND_TEST(PlatformTest, ReadMountInfoFileCorruptedMountInfo);

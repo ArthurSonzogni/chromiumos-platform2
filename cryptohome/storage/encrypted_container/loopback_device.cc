@@ -11,27 +11,18 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/values.h>
-#include <brillo/blkdev_utils/loop_device.h>
 
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 
 namespace cryptohome {
 
-LoopbackDevice::LoopbackDevice(
-    const BackingDeviceConfig& config,
-    Platform* platform,
-    std::unique_ptr<brillo::LoopDeviceManager> loop_device_manager)
+LoopbackDevice::LoopbackDevice(const BackingDeviceConfig& config,
+                               Platform* platform)
     : name_(config.name),
       size_(config.size),
       backing_file_path_(config.loopback.backing_file_path),
-      platform_(platform),
-      loop_device_manager_(std::move(loop_device_manager)) {}
-
-LoopbackDevice::LoopbackDevice(const BackingDeviceConfig& config,
-                               Platform* platform)
-    : LoopbackDevice(
-          config, platform, std::make_unique<brillo::LoopDeviceManager>()) {}
+      platform_(platform) {}
 
 bool LoopbackDevice::Create() {
   if (!platform_->CreateSparseFile(backing_file_path_, size_) ||
@@ -49,7 +40,7 @@ bool LoopbackDevice::Purge() {
 bool LoopbackDevice::Setup() {
   // Set up loopback device.
   std::unique_ptr<brillo::LoopDevice> loopdev =
-      loop_device_manager_->AttachDeviceToFile(backing_file_path_);
+      platform_->GetLoopDeviceManager()->AttachDeviceToFile(backing_file_path_);
 
   if (!loopdev->IsValid()) {
     LOG(ERROR) << "Failed to attach loop back device";
@@ -68,7 +59,7 @@ bool LoopbackDevice::Setup() {
 
 bool LoopbackDevice::Teardown() {
   std::unique_ptr<brillo::LoopDevice> loopdev =
-      loop_device_manager_->GetAttachedDeviceByName(name_);
+      platform_->GetLoopDeviceManager()->GetAttachedDeviceByName(name_);
 
   if (!loopdev->IsValid()) {
     LOG(ERROR) << "Loop device does not exist.";
@@ -84,7 +75,7 @@ bool LoopbackDevice::Exists() {
 
 base::Optional<base::FilePath> LoopbackDevice::GetPath() {
   std::unique_ptr<brillo::LoopDevice> loopdev =
-      loop_device_manager_->GetAttachedDeviceByName(name_);
+      platform_->GetLoopDeviceManager()->GetAttachedDeviceByName(name_);
 
   if (!loopdev->IsValid()) {
     LOG(ERROR) << "Loop device does not exist.";

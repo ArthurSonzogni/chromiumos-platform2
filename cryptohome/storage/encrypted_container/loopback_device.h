@@ -27,11 +27,6 @@ class LoopbackDevice : public BackingDevice {
   //         by name.
   // - `size`: Size of the underlying sparse file.
   // - `backing_file_path`: Path of the backing sparse file.
-  LoopbackDevice(
-      const BackingDeviceConfig& config,
-      Platform* platform,
-      std::unique_ptr<brillo::LoopDeviceManager> loop_device_manager);
-
   LoopbackDevice(const BackingDeviceConfig& config, Platform* platform);
 
   ~LoopbackDevice() = default;
@@ -68,7 +63,6 @@ class LoopbackDevice : public BackingDevice {
   const base::FilePath backing_file_path_;
 
   Platform* platform_;
-  std::unique_ptr<brillo::LoopDeviceManager> loop_device_manager_;
 };
 
 }  // namespace cryptohome

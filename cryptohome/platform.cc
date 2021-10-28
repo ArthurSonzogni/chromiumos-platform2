@@ -61,6 +61,7 @@
 #include <base/system/sys_info.h>
 #include <base/threading/thread.h>
 #include <base/time/time.h>
+#include <brillo/blkdev_utils/loop_device.h>
 #include <brillo/file_utils.h>
 #include <brillo/files/safe_fd.h>
 #include <brillo/process/process.h>
@@ -184,13 +185,17 @@ const std::vector<std::string> kDefaultExt4FormatOpts(
      // Attempt to discard blocks at mkfs time.
      "-E", "discard"});
 
-Platform::Platform() {
-  pid_t pid = getpid();
-  mount_info_path_ =
-      FilePath(kProcDir).Append(std::to_string(pid)).Append(kMountInfoFile);
-}
+Platform::Platform()
+    : mount_info_path_(FilePath(kProcDir)
+                           .Append(std::to_string(getpid()))
+                           .Append(kMountInfoFile)),
+      loop_device_manager_(std::make_unique<brillo::LoopDeviceManager>()) {}
 
 Platform::~Platform() {}
+
+brillo::LoopDeviceManager* Platform::GetLoopDeviceManager() {
+  return loop_device_manager_.get();
+}
 
 std::vector<DecodedProcMountInfo> Platform::ReadMountInfoFile() {
   std::string contents;

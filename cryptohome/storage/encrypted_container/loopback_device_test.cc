@@ -8,7 +8,6 @@
 
 #include <base/files/file_path.h>
 #include <base/values.h>
-#include <brillo/blkdev_utils/loop_device_fake.h>
 #include <gtest/gtest.h>
 
 #include "cryptohome/mock_platform.h"
@@ -24,10 +23,8 @@ class LoopbackDeviceTest : public ::testing::Test {
              .name = "foo",
              .size = 1024 * 1024 * 1024,
              .loopback = {.backing_file_path = base::FilePath("/a.block")}}),
-        backing_device_(std::make_unique<LoopbackDevice>(
-            config_,
-            &platform_,
-            std::make_unique<brillo::fake::FakeLoopDeviceManager>())) {}
+        backing_device_(std::make_unique<LoopbackDevice>(config_, &platform_)) {
+  }
   ~LoopbackDeviceTest() override = default;
 
  protected:

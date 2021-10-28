@@ -23,8 +23,7 @@ std::unique_ptr<BackingDevice> BackingDeviceFactory::Generate(
     const BackingDeviceConfig& config) {
   switch (config.type) {
     case BackingDeviceType::kLoopbackDevice:
-      return std::make_unique<LoopbackDevice>(
-          config, platform_, std::make_unique<brillo::LoopDeviceManager>());
+      return std::make_unique<LoopbackDevice>(config, platform_);
 // TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
     case BackingDeviceType::kLogicalVolumeBackingDevice:

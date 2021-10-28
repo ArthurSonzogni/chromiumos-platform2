@@ -16,6 +16,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <brillo/blkdev_utils/loop_device_fake.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/fake_platform/fake_mount_mapper.h"
@@ -209,6 +210,8 @@ class FakePlatform final : public Platform {
   base::FilePath AttachLoop(const base::FilePath& file) override;
   bool DetachLoop(const base::FilePath& loop_dev) override;
 
+  brillo::LoopDeviceManager* GetLoopDeviceManager() override;
+
   // Test API
 
   void SetStandardUsersAndGroups();
@@ -267,6 +270,8 @@ class FakePlatform final : public Platform {
   bool IsLink(const base::FilePath& path) const;
 
   Platform real_platform_;
+  std::unique_ptr<brillo::fake::FakeLoopDeviceManager>
+      fake_loop_device_manager_;
 };
 
 }  // namespace cryptohome

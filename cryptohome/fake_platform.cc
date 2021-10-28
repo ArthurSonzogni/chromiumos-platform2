@@ -15,6 +15,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/blkdev_utils/loop_device_fake.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 
@@ -134,7 +135,11 @@ void FakePlatform::FakeExtendedAttributes::Remove(const std::string& name) {
 
 // Constructor/destructor
 
-FakePlatform::FakePlatform() : Platform(), next_loop_dev_(0) {
+FakePlatform::FakePlatform()
+    : Platform(),
+      next_loop_dev_(0),
+      fake_loop_device_manager_(
+          std::make_unique<brillo::fake::FakeLoopDeviceManager>()) {
   base::GetTempDir(&tmpfs_rootfs_);
   tmpfs_rootfs_ = tmpfs_rootfs_.Append(GetRandomSuffix());
   if (!real_platform_.CreateDirectory(tmpfs_rootfs_)) {
@@ -179,6 +184,10 @@ void FakePlatform::RemoveFakeEntriesRecursive(const base::FilePath& path) {
 }
 
 // Platform API
+
+brillo::LoopDeviceManager* FakePlatform::GetLoopDeviceManager() {
+  return fake_loop_device_manager_.get();
+}
 
 bool FakePlatform::Rename(const base::FilePath& from,
                           const base::FilePath& to) {
