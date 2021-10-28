@@ -28,15 +28,15 @@ void ScreenBase::UpdateButtonsIndex(int key, bool* enter) {
     starting_index = 0;
 
   // Modify selected index and enter state based on user key input.
-  if (key == kKeyUp || key == kKeyVolUp) {
+  if (key == KEY_UP || key == KEY_VOLUMEUP) {
     if (starting_index > 0) {
       starting_index--;
     }
-  } else if (key == kKeyDown || key == kKeyVolDown) {
+  } else if (key == KEY_DOWN || key == KEY_VOLUMEDOWN) {
     if (starting_index < (button_count_ - 1)) {
       starting_index++;
     }
-  } else if (key == kKeyEnter || key == kKeyPower) {
+  } else if (key == KEY_ENTER || key == KEY_POWER) {
     *enter = true;
   } else {
     LOG(ERROR) << "Unknown key value: " << key;

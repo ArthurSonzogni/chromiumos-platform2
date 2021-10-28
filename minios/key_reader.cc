@@ -21,14 +21,6 @@
 
 namespace minios {
 
-// Key values.
-const int kKeyUp = 103;
-const int kKeyDown = 108;
-const int kKeyEnter = 28;
-const int kKeyVolUp = 115;
-const int kKeyVolDown = 114;
-const int kKeyPower = 116;
-
 // Key state parameters.
 const int kFdsMax = 10;
 const int kKeyMax = 200;

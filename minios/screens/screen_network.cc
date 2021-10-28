@@ -194,6 +194,13 @@ void ScreenNetwork::OnKeyPress(int key_changed) {
           break;
       }
     }
+  } else if (key_changed == KEY_ESC) {
+    if (state_ == NetworkState::kDropdownOpen) {
+      // Cancel selection by ESC.
+      // Update internal state and re-query for networks.
+      Reset();
+      Show();
+    }
   } else {
     // No selection made. Just update the button or menu focuses.
     ShowButtons();

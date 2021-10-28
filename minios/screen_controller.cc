@@ -41,9 +41,9 @@ bool ScreenController::Init() {
   }
   update_engine_proxy_->Init();
 
-  std::vector<int> wait_keys = {kKeyUp, kKeyDown, kKeyEnter};
+  std::vector<int> wait_keys = {KEY_UP, KEY_DOWN, KEY_ENTER, KEY_ESC};
   if (draw_utils_->IsDetachable())
-    wait_keys = {kKeyVolDown, kKeyVolUp, kKeyPower};
+    wait_keys = {KEY_VOLUMEDOWN, KEY_VOLUMEUP, KEY_POWER, KEY_ESC};
   if (!key_reader_.Init(wait_keys)) {
     LOG(ERROR) << "Could not initialize key reader. Unable to continue.";
     return false;
@@ -160,6 +160,13 @@ void ScreenController::OnBackward(ScreenInterface* screen) {
     case ScreenType::kLogScreen:
       // Back to debug options screen.
       current_screen_ = CreateScreen(ScreenType::kDebugOptionsScreen);
+      break;
+    case ScreenType::kLanguageDropDownScreen:
+      if (previous_screen_) {
+        current_screen_ = std::move(previous_screen_);
+      } else {
+        current_screen_ = CreateScreen(ScreenType::kWelcomeScreen);
+      }
       break;
     default:
       LOG(FATAL) << "Invalid screen.";

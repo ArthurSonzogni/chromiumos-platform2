@@ -110,6 +110,34 @@ TEST_F(ScreenControllerTest, ChangeLocale) {
             screen_controller_.GetCurrentScreen());
 }
 
+TEST_F(ScreenControllerTest, CancelChangeLocale) {
+  screen_controller_.SetCurrentScreenForTest(
+      ScreenType::kNetworkDropDownScreen);
+
+  screen_controller_.SwitchLocale(&mock_screen_);
+  EXPECT_EQ(ScreenType::kLanguageDropDownScreen,
+            screen_controller_.GetCurrentScreen());
+
+  // Cancel language dropdown selection, return to original screen.
+  EXPECT_CALL(mock_screen_, GetType())
+      .WillOnce(testing::Return(ScreenType::kLanguageDropDownScreen));
+  screen_controller_.OnBackward(&mock_screen_);
+  EXPECT_EQ(ScreenType::kNetworkDropDownScreen,
+            screen_controller_.GetCurrentScreen());
+}
+
+TEST_F(ScreenControllerTest, NullScreenCancelChangeLocale) {
+  screen_controller_.SwitchLocale(nullptr);
+  EXPECT_EQ(ScreenType::kLanguageDropDownScreen,
+            screen_controller_.GetCurrentScreen());
+
+  // Cancel language dropdown selection, return to welcome screen.
+  EXPECT_CALL(mock_screen_, GetType())
+      .WillOnce(testing::Return(ScreenType::kLanguageDropDownScreen));
+  screen_controller_.OnBackward(&mock_screen_);
+  EXPECT_EQ(ScreenType::kWelcomeScreen, screen_controller_.GetCurrentScreen());
+}
+
 TEST_F(ScreenControllerTest, RestartFromDownloadError) {
   // Starting from Download error screen.
   screen_controller_.SetCurrentScreenForTest(ScreenType::kDownloadError);

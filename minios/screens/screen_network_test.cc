@@ -51,7 +51,7 @@ TEST_F(ScreenNetworkTest, GetNetworksWithEthernet) {
   // skip password and connection screens.
   screen_network_.SetIndexForTest(0);
   EXPECT_CALL(mock_screen_controller_, OnForward(testing::_));
-  screen_network_.OnKeyPress(kKeyEnter);
+  screen_network_.OnKeyPress(KEY_ENTER);
 }
 
 TEST_F(ScreenNetworkTest, GetNetworksRefresh) {
@@ -65,24 +65,40 @@ TEST_F(ScreenNetworkTest, GetNetworksRefresh) {
 
 TEST_F(ScreenNetworkTest, EnterOnDropDown) {
   // If dropdown has not been selected yet, the focus is on the normal buttons.
-  screen_network_.OnKeyPress(kKeyDown);
+  screen_network_.OnKeyPress(KEY_DOWN);
   EXPECT_CALL(mock_screen_controller_, OnBackward(testing::_));
-  screen_network_.OnKeyPress(kKeyEnter);
+  screen_network_.OnKeyPress(KEY_ENTER);
 
   // Set networks.
   screen_network_.OnGetNetworks(
       {{.ssid = "test1"}, {.ssid = "test2"}, {.ssid = "test3"}}, nullptr);
 
   // Select dropdown.
-  screen_network_.OnKeyPress(kKeyUp);
-  screen_network_.OnKeyPress(kKeyEnter);
+  screen_network_.OnKeyPress(KEY_UP);
+  screen_network_.OnKeyPress(KEY_ENTER);
   screen_network_.SetStateForTest(NetworkState::kDropdownOpen);
 
   // Pick second network.
-  screen_network_.OnKeyPress(kKeyDown);
-  screen_network_.OnKeyPress(kKeyEnter);
+  screen_network_.OnKeyPress(KEY_DOWN);
+  screen_network_.OnKeyPress(KEY_ENTER);
 
   EXPECT_EQ(screen_network_.GetIndexForTest(), 1);
+}
+
+TEST_F(ScreenNetworkTest, EscOnDropDown) {
+  // Set networks.
+  screen_network_.OnGetNetworks(
+      {{.ssid = "test1"}, {.ssid = "test2"}, {.ssid = "test3"}}, nullptr);
+
+  // Select dropdown.
+  screen_network_.OnKeyPress(KEY_ENTER);
+  screen_network_.SetStateForTest(NetworkState::kDropdownOpen);
+
+  // Pick second network, then cancel selection by ESC.
+  screen_network_.OnKeyPress(KEY_DOWN);
+  screen_network_.OnKeyPress(KEY_ESC);
+
+  EXPECT_EQ(screen_network_.GetStateForTest(), NetworkState::kDropdownClosed);
 }
 
 TEST_F(ScreenNetworkTest, NetworkNoPassword) {
@@ -94,7 +110,7 @@ TEST_F(ScreenNetworkTest, NetworkNoPassword) {
   screen_network_.SetIndexForTest(0);
 
   // Pick first network
-  screen_network_.OnKeyPress(kKeyEnter);
+  screen_network_.OnKeyPress(KEY_ENTER);
 
   // Should skip password screen and wait for connection.
   EXPECT_EQ(screen_network_.GetStateForTest(),

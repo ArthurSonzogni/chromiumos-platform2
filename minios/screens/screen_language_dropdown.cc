@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "minios/key_reader.h"
 #include "minios/screens/screen_language_dropdown.h"
 
 namespace minios {
@@ -30,6 +31,9 @@ void ScreenLanguageDropdown::OnKeyPress(int key_changed) {
   UpdateButtonsIndex(key_changed, &enter);
   if (enter) {
     screen_controller_->UpdateLocale(this, index_);
+  } else if (key_changed == KEY_ESC) {
+    // Cancel language selection by ESC.
+    screen_controller_->OnBackward(this);
   } else {
     UpdateMenu();
   }
