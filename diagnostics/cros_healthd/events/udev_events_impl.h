@@ -41,6 +41,9 @@ class UdevEventsImpl final : public UdevEvents {
   void OnThunderboltAuthorizedEvent();
   void OnThunderboltUnAuthorizedEvent();
 
+  void OnUsbAdd(const std::unique_ptr<brillo::UdevDevice>& device);
+  void OnUsbRemove(const std::unique_ptr<brillo::UdevDevice>& device);
+
   // Unowned pointer. Should outlive this instance.
   Context* const context_ = nullptr;
 

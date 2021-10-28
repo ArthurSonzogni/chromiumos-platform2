@@ -17,6 +17,19 @@
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
+namespace {
+
+namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+
+std::string GetString(const char* str) {
+  if (str) {
+    return std::string(str);
+  }
+
+  return "";
+}
+
+}  // namespace
 
 UdevEventsImpl::UdevEventsImpl(Context* context) : context_(context) {
   DCHECK(context_);
@@ -51,17 +64,9 @@ void UdevEventsImpl::OnUdevEvent() {
     return;
   }
 
-  auto action = std::string(device->GetAction());
-  if (action.empty()) {
-    LOG(ERROR) << "Failed to get device action.";
-    return;
-  }
-
-  auto subsystem = std::string(device->GetSubsystem());
-  if (subsystem.empty()) {
-    LOG(ERROR) << "Failed to get device subsystem";
-    return;
-  }
+  auto action = GetString(device->GetAction());
+  auto subsystem = GetString(device->GetSubsystem());
+  auto device_type = GetString(device->GetDeviceType());
 
   // Distinguished events by subsystem and action here.
   if (subsystem == "thunderbolt") {
@@ -78,6 +83,12 @@ void UdevEventsImpl::OnUdevEvent() {
         auth ? OnThunderboltAuthorizedEvent()
              : OnThunderboltUnAuthorizedEvent();
       }
+    }
+  } else if (subsystem == "usb" && device_type == "usb_device") {
+    if (action == "add") {
+      OnUsbAdd(device);
+    } else if (action == "remove") {
+      OnUsbRemove(device);
     }
   }
 }
@@ -113,6 +124,20 @@ void UdevEventsImpl::AddUsbObserver(
     mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdUsbObserver>
         observer) {
   usb_observers_.Add(std::move(observer));
+}
+
+void UdevEventsImpl::OnUsbAdd(
+    const std::unique_ptr<brillo::UdevDevice>& device) {
+  mojo_ipc::UsbEventInfo info;
+  for (auto& observer : usb_observers_)
+    observer->OnAdd(info.Clone());
+}
+
+void UdevEventsImpl::OnUsbRemove(
+    const std::unique_ptr<brillo::UdevDevice>& device) {
+  mojo_ipc::UsbEventInfo info;
+  for (auto& observer : usb_observers_)
+    observer->OnRemove(info.Clone());
 }
 
 }  // namespace diagnostics
