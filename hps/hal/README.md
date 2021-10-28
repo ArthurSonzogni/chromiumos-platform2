@@ -11,21 +11,10 @@ methods that are used.
 The i2c implementation uses a i2c device to connect to
 the hardware module.
 
-## FTDI
-
-The ftdi implementation uses the libftdi1 library to
-remotely interface a minimal I2C connection via
-FTDI USB interface devices such as FT4232H.
-
 ## FakeDev
 
 The FakeDev class implements an internal s/w simulator
 of the HPS hardware for testing and development.
-
-## UART
-
-The uart implementation uses a serial protocol
-to communicate with a remote device.
 
 ## MCP
 

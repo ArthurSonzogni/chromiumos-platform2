@@ -16,10 +16,8 @@
 #include <brillo/syslog_logging.h>
 
 #include "hps/hal/fake_dev.h"
-#include "hps/hal/ftdi.h"
 #include "hps/hal/i2c.h"
 #include "hps/hal/mcp.h"
-#include "hps/hal/uart.h"
 #include "hps/hps_impl.h"
 #include "hps/utils.h"
 
@@ -29,10 +27,8 @@ int main(int argc, char* argv[]) {
   DEFINE_string(bus, "/dev/i2c-2", "I2C device");
   DEFINE_uint32(addr, 0x30, "I2C address of module");
   DEFINE_uint32(speed, 200, "I2C bus speed in KHz");
-  DEFINE_bool(ftdi, false, "Use FTDI connection");
   DEFINE_bool(mcp, false, "Use MCP2221A connection");
   DEFINE_bool(test, false, "Use internal test fake");
-  DEFINE_string(uart, "", "Use UART connection");
   DEFINE_bool(skipboot, false, "Skip boot sequence");
   DEFINE_int64(version, -1, "Override MCU firmware file version");
   DEFINE_string(mcu_path, "", "MCU firmware file");
@@ -61,16 +57,12 @@ int main(int argc, char* argv[]) {
   uint8_t addr = base::checked_cast<uint8_t>(FLAGS_addr);
   if (FLAGS_mcp) {
     dev = hps::Mcp::Create(addr, FLAGS_speed);
-  } else if (FLAGS_ftdi) {
-    dev = hps::Ftdi::Create(addr, FLAGS_speed);
   } else if (FLAGS_test) {
     // Initialise the fake device as already booted so that
     // features can be enabled/disabled.
     auto fake = std::make_unique<hps::FakeDev>();
     fake->SkipBoot();
     dev = std::move(fake);
-  } else if (!FLAGS_uart.empty()) {
-    dev = hps::Uart::Create(FLAGS_uart.c_str());
   } else {
     dev = hps::I2CDev::Create(FLAGS_bus.c_str(), addr);
   }

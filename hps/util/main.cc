@@ -23,11 +23,9 @@
 #include <brillo/flag_helper.h>
 
 #include "hps/hal/fake_dev.h"
-#include "hps/hal/ftdi.h"
 #include "hps/hal/i2c.h"
 #include "hps/hal/mcp.h"
 #include "hps/hal/retry.h"
-#include "hps/hal/uart.h"
 #include "hps/hps.h"
 #include "hps/hps_impl.h"
 #include "hps/util/command.h"
@@ -116,18 +114,15 @@ int main(int argc, char* argv[]) {
   DEFINE_uint32(speed, 200, "I2C bus speed in KHz");
   DEFINE_uint32(retries, 0, "Max I2C retries");
   DEFINE_uint32(retry_delay, 10, "Delay in ms between retries");
-  DEFINE_bool(ftdi, false, "Use FTDI connection");
   DEFINE_bool(mcp, false, "Use MCP2221A connection");
   DEFINE_string(test, "none",
                 "Use internal test fake, optionally setting the emulated state "
                 "to one of: boot, ready");
-  DEFINE_string(uart, "", "Use UART connection");
-  brillo::FlagHelper::Init(
-      argc, argv,
-      "usage: hps [ --mcp | --ftdi | --test[=<state>] | --bus "
-      "<i2c-bus> ] [ --addr <i2c-addr> ]\n"
-      "           <command> <command arguments>\n\n" +
-          Command::GetHelp());
+  brillo::FlagHelper::Init(argc, argv,
+                           "usage: hps [ --mcp | --test[=<state>] | --bus "
+                           "<i2c-bus> ] [ --addr <i2c-addr> ]\n"
+                           "           <command> <command arguments>\n\n" +
+                               Command::GetHelp());
 
   const logging::LoggingSettings ls;
   logging::InitLogging(ls);
@@ -140,8 +135,6 @@ int main(int argc, char* argv[]) {
   std::unique_ptr<hps::DevInterface> dev;
   if (FLAGS_mcp) {
     dev = hps::Mcp::Create(FLAGS_addr, FLAGS_speed);
-  } else if (FLAGS_ftdi) {
-    dev = hps::Ftdi::Create(FLAGS_addr, FLAGS_speed);
   } else if (FLAGS_test != "none") {
     // Optionally initialise the fake device as already booted so that
     // features can be enabled/disabled.
@@ -153,8 +146,6 @@ int main(int argc, char* argv[]) {
       return 1;
     }
     dev = std::move(fake);
-  } else if (!FLAGS_uart.empty()) {
-    dev = hps::Uart::Create(FLAGS_uart.c_str());
   } else {
     dev = hps::I2CDev::Create(FLAGS_bus.c_str(), FLAGS_addr);
   }

@@ -109,7 +109,6 @@ static_library("hpsdlib") {
 pkg_config("hpslib_config") {
   pkg_deps = [
     "libchrome",
-    "libftdi1",
     "libmetrics",
     "libusb-1.0",
   ]
@@ -121,16 +120,12 @@ static_library("hpslib") {
     "dev.h",
     "hal/fake_dev.cc",
     "hal/fake_dev.h",
-    "hal/ftdi.cc",
-    "hal/ftdi.h",
     "hal/i2c.cc",
     "hal/i2c.h",
     "hal/mcp.cc",
     "hal/mcp.h",
     "hal/retry.cc",
     "hal/retry.h",
-    "hal/uart.cc",
-    "hal/uart.h",
     "hps_impl.cc",
     "hps_metrics.cc",
     "hps_reg.h",
