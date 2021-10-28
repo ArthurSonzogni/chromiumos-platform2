@@ -47,6 +47,8 @@ constexpr uint16_t kAdbServerPort = 5555;
 constexpr char kGuestIPv4Subnet[] = "100.115.92.0/23";
 constexpr std::array<const char*, 6> kPhysicalIfnamePrefixes{
     {"eth+", "wlan+", "mlan+", "usb+", "wwan+", "rmnet+"}};
+constexpr std::array<const char*, 2> kCellularIfnamePrefixes{
+    {"wwan+", "rmnet+"}};
 
 constexpr char kApplyLocalSourceMarkChain[] = "apply_local_source_mark";
 constexpr char kApplyVpnMarkChain[] = "apply_vpn_mark";
@@ -225,11 +227,15 @@ void Datapath::Start() {
   // guests need to be dropped explicitly because SNAT will not apply to them
   // but the --state INVALID rule above will also not match for these packets.
   // crbug/1241756: Make sure that only egress FINPSH packets are dropped.
-  if (process_runner_->iptables(
-          "filter",
-          {"-I", "FORWARD", "-s", kGuestIPv4Subnet, "-p", "tcp", "--tcp-flags",
-           "FIN,PSH", "FIN,PSH", "-j", "DROP", "-w"}) != 0) {
-    LOG(ERROR) << "Failed to install FORWARD rule to drop TCP FIN,PSH packets";
+  for (const auto& oif : kCellularIfnamePrefixes) {
+    if (process_runner_->iptables(
+            "filter", {"-I", "FORWARD", "-s", kGuestIPv4Subnet, "-p", "tcp",
+                       "--tcp-flags", "FIN,PSH", "FIN,PSH", "-o", oif, "-j",
+                       "DROP", "-w"}) != 0) {
+      LOG(ERROR) << "Failed to install FORWARD rule to drop TCP FIN,PSH "
+                    "packets egressing "
+                 << oif << " interfaces";
+    }
   }
 
   if (process_runner_->iptables(
