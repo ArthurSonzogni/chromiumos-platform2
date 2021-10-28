@@ -595,6 +595,7 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   builder->AddVmodulePattern("*/browser/ash/login/screens/*=1");
   builder->AddVmodulePattern("*/webui/chromeos/login/*=1");
   builder->AddVmodulePattern("wizard_controller=1");
+  builder->AddVmodulePattern("existing_user_controller=1");
 
   // TODO(https://crbug.com/907158): Needed for investigating issues with tablet
   // mode detection and internal input device event blocking logic.
