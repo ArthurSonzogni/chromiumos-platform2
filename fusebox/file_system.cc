@@ -34,17 +34,14 @@ void FileSystem::Forget(std::unique_ptr<NoneRequest> request,
   FuseNotImplemented(request.get());
 }
 
-void FileSystem::GetAttr(std::unique_ptr<AttrRequest> request,
-                         fuse_ino_t ino,
-                         struct fuse_file_info* fi) {
+void FileSystem::GetAttr(std::unique_ptr<AttrRequest> request, fuse_ino_t ino) {
   FuseNotImplemented(request.get());
 }
 
 void FileSystem::SetAttr(std::unique_ptr<AttrRequest> request,
                          fuse_ino_t ino,
                          struct stat* attr,
-                         int to_set,
-                         struct fuse_file_info* fi) {
+                         int to_set) {
   FuseNotImplemented(request.get());
 }
 
@@ -75,17 +72,14 @@ void FileSystem::Rename(std::unique_ptr<OkRequest> request,
   FuseNotImplemented(request.get());
 }
 
-void FileSystem::Open(std::unique_ptr<OpenRequest> request,
-                      fuse_ino_t ino,
-                      struct fuse_file_info* fi) {
+void FileSystem::Open(std::unique_ptr<OpenRequest> request, fuse_ino_t ino) {
   FuseNotImplemented(request.get());
 }
 
 void FileSystem::Read(std::unique_ptr<BufferRequest> request,
                       fuse_ino_t ino,
                       size_t size,
-                      off_t off,
-                      struct fuse_file_info* fi) {
+                      off_t off) {
   FuseNotImplemented(request.get());
 }
 
@@ -93,41 +87,33 @@ void FileSystem::Write(std::unique_ptr<WriteRequest> request,
                        fuse_ino_t ino,
                        const char* buf,
                        size_t size,
-                       off_t off,
-                       struct fuse_file_info* fi) {
+                       off_t off) {
   FuseNotImplemented(request.get());
 }
 
-void FileSystem::Release(std::unique_ptr<OkRequest> request,
-                         fuse_ino_t ino,
-                         struct fuse_file_info* fi) {
+void FileSystem::Release(std::unique_ptr<OkRequest> request, fuse_ino_t ino) {
   FuseNotImplemented(request.get());
 }
 
-void FileSystem::OpenDir(std::unique_ptr<OpenRequest> request,
-                         fuse_ino_t ino,
-                         struct fuse_file_info* fi) {
+void FileSystem::OpenDir(std::unique_ptr<OpenRequest> request, fuse_ino_t ino) {
   FuseNotImplemented(request.get());
 }
 
 void FileSystem::ReadDir(std::unique_ptr<DirEntryRequest> request,
                          fuse_ino_t ino,
-                         off_t off,
-                         struct fuse_file_info* fi) {
+                         off_t off) {
   FuseNotImplemented(request.get());
 }
 
 void FileSystem::ReleaseDir(std::unique_ptr<OkRequest> request,
-                            fuse_ino_t ino,
-                            struct fuse_file_info* fi) {
+                            fuse_ino_t ino) {
   FuseNotImplemented(request.get());
 }
 
 void FileSystem::Create(std::unique_ptr<CreateRequest> request,
                         fuse_ino_t parent,
                         const char* name,
-                        mode_t mode,
-                        struct fuse_file_info* fi) {
+                        mode_t mode) {
   FuseNotImplemented(request.get());
 }
 

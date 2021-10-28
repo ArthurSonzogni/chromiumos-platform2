@@ -11,7 +11,10 @@
 
 namespace fusebox {
 
-FuseRequest::FuseRequest(fuse_req_t req) : req_(req) {}
+FuseRequest::FuseRequest(fuse_req_t req, fuse_file_info* fi) : req_(req) {
+  flags_ = fi ? fi->flags : 0;
+  fh_ = fi ? fi->fh : 0;
+}
 
 bool FuseRequest::IsInterrupted() const {  // Kernel FUSE interrupt
   return fuse_req_interrupted(req_);
@@ -72,12 +75,12 @@ void CreateRequest::ReplyCreate(const fuse_entry_param& entry, uint64_t fh) {
   replied_ = true;
 }
 
-void BufferRequest::ReplyBuffer(const char* buf, size_t length) {
+void BufferRequest::ReplyBuffer(const char* data, size_t size) {
   DCHECK(!replied_);
   replied_ = true;
 
-  if (buf) {
-    fuse_reply_buf(req_, buf, length);
+  if (data) {
+    fuse_reply_buf(req_, data, size);
   } else {
     fuse_reply_buf(req_, nullptr, 0);
   }
@@ -89,11 +92,9 @@ void WriteRequest::ReplyWrite(size_t count) {
   replied_ = true;
 }
 
-DirEntryRequest::DirEntryRequest(fuse_req_t req,
-                                 fuse_ino_t ino,
-                                 size_t size,
-                                 off_t off)
-    : FuseRequest(req), parent_(ino), size_(size), offset_(off) {
+DirEntryRequest::DirEntryRequest(
+    fuse_req_t req, fuse_file_info* fi, fuse_ino_t ino, size_t size, off_t off)
+    : FuseRequest(req, fi), parent_(ino), size_(size), offset_(off) {
   DCHECK(size_);
 }
 

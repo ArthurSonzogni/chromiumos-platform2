@@ -26,24 +26,29 @@ namespace fusebox {
 
 class FuseRequest {
  protected:
-  explicit FuseRequest(fuse_req_t req);
+  explicit FuseRequest(fuse_req_t req, fuse_file_info* fi = nullptr);
   FuseRequest(const FuseRequest&) = delete;
   FuseRequest& operator=(const FuseRequest&) = delete;
   virtual ~FuseRequest();
 
  public:
+  int flags() const { return flags_; }
+  uint64_t fh() const { return fh_; }
   bool IsInterrupted() const;
   int ReplyError(int error);
 
  protected:
   const fuse_req_t req_;
   bool replied_ = false;
+  uint64_t fh_;
+  int flags_;
 };
 
 // FUSE request with an OK response.
 class OkRequest : public FuseRequest {
  public:
-  explicit OkRequest(fuse_req_t req) : FuseRequest(req) {}
+  explicit OkRequest(fuse_req_t req, fuse_file_info* fi = nullptr)
+      : FuseRequest(req, fi) {}
   void ReplyOk();
 };
 
@@ -57,7 +62,7 @@ class NoneRequest : public FuseRequest {
 // FUSE request with an attribute stat response.
 class AttrRequest : public FuseRequest {
  public:
-  explicit AttrRequest(fuse_req_t req) : FuseRequest(req) {}
+  AttrRequest(fuse_req_t req, fuse_file_info* fi) : FuseRequest(req, fi) {}
   void ReplyAttr(const struct stat& attr, double timeout);
 };
 
@@ -71,35 +76,41 @@ class EntryRequest : public FuseRequest {
 // FUSE request with an open file handle response.
 class OpenRequest : public FuseRequest {
  public:
-  explicit OpenRequest(fuse_req_t req) : FuseRequest(req) {}
+  OpenRequest(fuse_req_t req, fuse_file_info* fi) : FuseRequest(req, fi) {}
   void ReplyOpen(uint64_t fh);
 };
 
 // FUSE request with an entry create response.
 class CreateRequest : public FuseRequest {
  public:
-  explicit CreateRequest(fuse_req_t req) : FuseRequest(req) {}
+  explicit CreateRequest(fuse_req_t req, fuse_file_info* fi)
+      : FuseRequest(req, fi) {}
   void ReplyCreate(const fuse_entry_param& entry, uint64_t fh);
 };
 
 // FUSE request with a data buffer response.
 class BufferRequest : public FuseRequest {
  public:
-  explicit BufferRequest(fuse_req_t req) : FuseRequest(req) {}
-  void ReplyBuffer(const char* buf, size_t length);
+  BufferRequest(fuse_req_t req, fuse_file_info* fi) : FuseRequest(req, fi) {}
+  void ReplyBuffer(const char* data, size_t size);
 };
 
 // FUSE request with a bytes written count response.
 class WriteRequest : public FuseRequest {
  public:
-  explicit WriteRequest(fuse_req_t req) : FuseRequest(req) {}
+  explicit WriteRequest(fuse_req_t req, fuse_file_info* fi)
+      : FuseRequest(req, fi) {}
   void ReplyWrite(size_t count);
 };
 
 // FUSE request with a DirEntry list response.
 class DirEntryRequest : public FuseRequest {
  public:
-  DirEntryRequest(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off);
+  DirEntryRequest(fuse_req_t req,
+                  fuse_file_info* fi,
+                  fuse_ino_t ino,
+                  size_t size,
+                  off_t off);
 
   // Directory ino.
   fuse_ino_t parent() const { return parent_; }

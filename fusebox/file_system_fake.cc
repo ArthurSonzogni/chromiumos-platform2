@@ -131,8 +131,7 @@ void FileSystemFake::Lookup(std::unique_ptr<EntryRequest> request,
 }
 
 void FileSystemFake::GetAttr(std::unique_ptr<AttrRequest> request,
-                             fuse_ino_t ino,
-                             struct fuse_file_info* fi) {
+                             fuse_ino_t ino) {
   LOG(INFO) << "GetAttr ino " << ino;
 
   if (request->IsInterrupted())
@@ -154,10 +153,8 @@ void FileSystemFake::GetAttr(std::unique_ptr<AttrRequest> request,
 }
 
 void FileSystemFake::OpenDir(std::unique_ptr<OpenRequest> request,
-                             fuse_ino_t ino,
-                             struct fuse_file_info* fi) {
+                             fuse_ino_t ino) {
   LOG(INFO) << "OpenDir ino " << ino;
-  CHECK(fi);
 
   if (request->IsInterrupted())
     return;
@@ -179,8 +176,8 @@ void FileSystemFake::OpenDir(std::unique_ptr<OpenRequest> request,
     return;
   }
 
-  LOG(INFO) << " " << OpenFlagsToString(fi->flags);
-  if ((fi->flags & O_ACCMODE) != O_RDONLY) {
+  LOG(INFO) << " " << OpenFlagsToString(request->flags());
+  if ((request->flags() & O_ACCMODE) != O_RDONLY) {
     LOG(ERROR) << " opendir error: EACCES";
     request->ReplyError(EACCES);
     return;
@@ -195,24 +192,22 @@ void FileSystemFake::OpenDir(std::unique_ptr<OpenRequest> request,
 
 void FileSystemFake::ReadDir(std::unique_ptr<DirEntryRequest> request,
                              fuse_ino_t ino,
-                             off_t off,
-                             struct fuse_file_info* fi) {
+                             off_t off) {
   LOG(INFO) << "ReadDir ino " << ino << " off " << off;
-  CHECK(fi);
 
   if (request->IsInterrupted())
     return;
 
-  auto it = readdir_.find(fi->fh);
+  auto it = readdir_.find(request->fh());
   if (it == readdir_.end()) {
-    LOG(ERROR) << " readdir error: EBADF";
+    LOG(ERROR) << " readdir error: EBADF " << request->fh();
     request->ReplyError(EBADF);
     return;
   }
 
   DirEntryResponse* response = it->second.get();
   if (off == 0) {
-    LOG(INFO) << " readdir fh " << fi->fh;
+    LOG(INFO) << " readdir fh " << request->fh();
     for (const auto& entry : GetDirEntryVector())
       LOG(INFO) << " entry [" << entry.name << "]";
     response->Append(GetDirEntryVector(), true);
@@ -222,32 +217,28 @@ void FileSystemFake::ReadDir(std::unique_ptr<DirEntryRequest> request,
 }
 
 void FileSystemFake::ReleaseDir(std::unique_ptr<OkRequest> request,
-                                fuse_ino_t ino,
-                                struct fuse_file_info* fi) {
+                                fuse_ino_t ino) {
   LOG(INFO) << "ReleaseDir ino " << ino;
-  CHECK(fi);
 
   if (request->IsInterrupted())
     return;
 
-  if (!fusebox::GetFile(fi->fh)) {
-    LOG(ERROR) << " releasedir error: EBADF";
+  if (!fusebox::GetFile(request->fh())) {
+    LOG(ERROR) << " releasedir error: EBADF " << request->fh();
     request->ReplyError(EBADF);
     return;
   }
 
-  LOG(INFO) << " releasedir fh " << fi->fh;
-  fusebox::CloseFile(fi->fh);
-  readdir_.erase(fi->fh);
+  LOG(INFO) << " releasedir fh " << request->fh();
+  fusebox::CloseFile(request->fh());
+  readdir_.erase(request->fh());
 
   request->ReplyOk();
 }
 
 void FileSystemFake::Open(std::unique_ptr<OpenRequest> request,
-                          fuse_ino_t ino,
-                          struct fuse_file_info* fi) {
+                          fuse_ino_t ino) {
   LOG(INFO) << "Open ino " << ino;
-  CHECK(fi);
 
   if (request->IsInterrupted())
     return;
@@ -269,8 +260,8 @@ void FileSystemFake::Open(std::unique_ptr<OpenRequest> request,
     return;
   }
 
-  LOG(INFO) << " " << OpenFlagsToString(fi->flags);
-  if ((fi->flags & O_ACCMODE) != O_RDONLY) {
+  LOG(INFO) << " " << OpenFlagsToString(request->flags());
+  if ((request->flags() & O_ACCMODE) != O_RDONLY) {
     LOG(ERROR) << " open error: EACCES";
     request->ReplyError(EACCES);
     return;
@@ -284,16 +275,14 @@ void FileSystemFake::Open(std::unique_ptr<OpenRequest> request,
 void FileSystemFake::Read(std::unique_ptr<BufferRequest> request,
                           fuse_ino_t ino,
                           size_t size,
-                          off_t off,
-                          struct fuse_file_info* fi) {
+                          off_t off) {
   LOG(INFO) << "Read ino " << ino << " off " << off << " size " << size;
-  CHECK(fi);
 
   if (request->IsInterrupted())
     return;
 
-  if (!fusebox::GetFile(fi->fh)) {
-    LOG(ERROR) << " read error: EBADF";
+  if (!fusebox::GetFile(request->fh())) {
+    LOG(ERROR) << " read error: EBADF " << request->fh();
     request->ReplyError(EBADF);
     return;
   }
@@ -309,7 +298,7 @@ void FileSystemFake::Read(std::unique_ptr<BufferRequest> request,
   }
 
   const std::string data("hello\r\n");
-  LOG(INFO) << " read fh " << fi->fh;
+  LOG(INFO) << " read fh " << request->fh();
 
   const auto get_data_slice = [&data, &off, &size]() {
     auto* source = data.data();
@@ -324,22 +313,20 @@ void FileSystemFake::Read(std::unique_ptr<BufferRequest> request,
 }
 
 void FileSystemFake::Release(std::unique_ptr<OkRequest> request,
-                             fuse_ino_t ino,
-                             struct fuse_file_info* fi) {
+                             fuse_ino_t ino) {
   LOG(INFO) << "Release ino " << ino;
-  CHECK(fi);
 
   if (request->IsInterrupted())
     return;
 
-  if (!fusebox::GetFile(fi->fh)) {
-    LOG(ERROR) << " release error: EBADF";
+  if (!fusebox::GetFile(request->fh())) {
+    LOG(ERROR) << " release error: EBADF " << request->fh();
     request->ReplyError(EBADF);
     return;
   }
 
-  LOG(INFO) << " release fh " << fi->fh;
-  fusebox::CloseFile(fi->fh);
+  LOG(INFO) << " release fh " << request->fh();
+  fusebox::CloseFile(request->fh());
   request->ReplyOk();
 }
 

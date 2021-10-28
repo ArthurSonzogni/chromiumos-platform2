@@ -29,7 +29,7 @@ static void fs_forget(fuse_req_t req, fuse_ino_t ino, uint64_t nlookup) {
 static void fs_getattr(fuse_req_t req,
                        fuse_ino_t ino,
                        struct fuse_file_info* fi) {
-  fs(req)->GetAttr(std::make_unique<AttrRequest>(req), ino, fi);
+  fs(req)->GetAttr(std::make_unique<AttrRequest>(req, fi), ino);
 }
 
 static void fs_setattr(fuse_req_t req,
@@ -37,7 +37,7 @@ static void fs_setattr(fuse_req_t req,
                        struct stat* attr,
                        int to_set,
                        struct fuse_file_info* fi) {
-  fs(req)->SetAttr(std::make_unique<AttrRequest>(req), ino, attr, to_set, fi);
+  fs(req)->SetAttr(std::make_unique<AttrRequest>(req, fi), ino, attr, to_set);
 }
 
 static void fs_mkdir(fuse_req_t req,
@@ -65,7 +65,7 @@ static void fs_rename(fuse_req_t req,
 }
 
 static void fs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info* fi) {
-  fs(req)->Open(std::make_unique<OpenRequest>(req), ino, fi);
+  fs(req)->Open(std::make_unique<OpenRequest>(req, fi), ino);
 }
 
 static void fs_read(fuse_req_t req,
@@ -73,7 +73,7 @@ static void fs_read(fuse_req_t req,
                     size_t size,
                     off_t off,
                     struct fuse_file_info* fi) {
-  fs(req)->Read(std::make_unique<BufferRequest>(req), ino, size, off, fi);
+  fs(req)->Read(std::make_unique<BufferRequest>(req, fi), ino, size, off);
 }
 
 static void fs_write(fuse_req_t req,
@@ -82,19 +82,19 @@ static void fs_write(fuse_req_t req,
                      size_t size,
                      off_t off,
                      struct fuse_file_info* fi) {
-  fs(req)->Write(std::make_unique<WriteRequest>(req), ino, buf, size, off, fi);
+  fs(req)->Write(std::make_unique<WriteRequest>(req, fi), ino, buf, size, off);
 }
 
 static void fs_release(fuse_req_t req,
                        fuse_ino_t ino,
                        struct fuse_file_info* fi) {
-  fs(req)->Release(std::make_unique<OkRequest>(req), ino, fi);
+  fs(req)->Release(std::make_unique<OkRequest>(req, fi), ino);
 }
 
 static void fs_opendir(fuse_req_t req,
                        fuse_ino_t ino,
                        struct fuse_file_info* fi) {
-  fs(req)->OpenDir(std::make_unique<OpenRequest>(req), ino, fi);
+  fs(req)->OpenDir(std::make_unique<OpenRequest>(req, fi), ino);
 }
 
 static void fs_readdir(fuse_req_t req,
@@ -102,14 +102,14 @@ static void fs_readdir(fuse_req_t req,
                        size_t size,
                        off_t off,
                        struct fuse_file_info* fi) {
-  fs(req)->ReadDir(std::make_unique<DirEntryRequest>(req, ino, size, off), ino,
-                   off, fi);
+  fs(req)->ReadDir(std::make_unique<DirEntryRequest>(req, fi, ino, size, off),
+                   ino, off);
 }
 
 static void fs_releasedir(fuse_req_t req,
                           fuse_ino_t ino,
                           struct fuse_file_info* fi) {
-  fs(req)->ReleaseDir(std::make_unique<OkRequest>(req), ino, fi);
+  fs(req)->ReleaseDir(std::make_unique<OkRequest>(req, fi), ino);
 }
 
 static void fs_create(fuse_req_t req,
@@ -117,7 +117,7 @@ static void fs_create(fuse_req_t req,
                       const char* name,
                       mode_t mode,
                       struct fuse_file_info* fi) {
-  fs(req)->Create(std::make_unique<CreateRequest>(req), parent, name, mode, fi);
+  fs(req)->Create(std::make_unique<CreateRequest>(req, fi), parent, name, mode);
 }
 
 // static

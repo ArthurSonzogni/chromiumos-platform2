@@ -34,15 +34,12 @@ class FileSystem {
                       fuse_ino_t ino,
                       uint64_t nlookup);
 
-  virtual void GetAttr(std::unique_ptr<AttrRequest> request,
-                       fuse_ino_t ino,
-                       struct fuse_file_info* fi);
+  virtual void GetAttr(std::unique_ptr<AttrRequest> request, fuse_ino_t ino);
 
   virtual void SetAttr(std::unique_ptr<AttrRequest> request,
                        fuse_ino_t ino,
                        struct stat* attr,
-                       int to_set,
-                       struct fuse_file_info* fi);
+                       int to_set);
 
   virtual void MkDir(std::unique_ptr<EntryRequest> request,
                      fuse_ino_t parent,
@@ -63,45 +60,33 @@ class FileSystem {
                       fuse_ino_t new_parent,
                       const char* new_name);
 
-  virtual void Open(std::unique_ptr<OpenRequest> request,
-                    fuse_ino_t ino,
-                    struct fuse_file_info* fi);
+  virtual void Open(std::unique_ptr<OpenRequest> request, fuse_ino_t ino);
 
   virtual void Read(std::unique_ptr<BufferRequest> request,
                     fuse_ino_t ino,
                     size_t size,
-                    off_t off,
-                    struct fuse_file_info* fi);
+                    off_t off);
 
   virtual void Write(std::unique_ptr<WriteRequest> request,
                      fuse_ino_t ino,
                      const char* buf,
                      size_t size,
-                     off_t off,
-                     struct fuse_file_info* fi);
+                     off_t off);
 
-  virtual void Release(std::unique_ptr<OkRequest> request,
-                       fuse_ino_t ino,
-                       struct fuse_file_info* fi);
+  virtual void Release(std::unique_ptr<OkRequest> request, fuse_ino_t ino);
 
-  virtual void OpenDir(std::unique_ptr<OpenRequest> request,
-                       fuse_ino_t ino,
-                       struct fuse_file_info* fi);
+  virtual void OpenDir(std::unique_ptr<OpenRequest> request, fuse_ino_t ino);
 
   virtual void ReadDir(std::unique_ptr<DirEntryRequest> request,
                        fuse_ino_t ino,
-                       off_t off,
-                       struct fuse_file_info* fi);
+                       off_t off);
 
-  virtual void ReleaseDir(std::unique_ptr<OkRequest> request,
-                          fuse_ino_t ino,
-                          struct fuse_file_info* fi);
+  virtual void ReleaseDir(std::unique_ptr<OkRequest> request, fuse_ino_t ino);
 
   virtual void Create(std::unique_ptr<CreateRequest> request,
                       fuse_ino_t parent,
                       const char* name,
-                      mode_t mode,
-                      struct fuse_file_info* fi);
+                      mode_t mode);
 
   static fuse_lowlevel_ops FuseOps();
 };
