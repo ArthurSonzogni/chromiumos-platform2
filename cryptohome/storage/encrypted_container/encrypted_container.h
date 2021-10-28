@@ -24,6 +24,7 @@ enum class EncryptedContainerType {
   kFscrypt,
   kEcryptfs,
   kDmcrypt,
+  kEphemeral,
 };
 
 struct DmcryptConfig {
@@ -38,12 +39,14 @@ struct EncryptedContainerConfig {
   EncryptedContainerType type;
   base::FilePath backing_dir;
   DmcryptConfig dmcrypt_config;
+  std::string backing_file_name;
 };
 
 // An encrypted container is an abstract class that represents an encrypted
 // backing storage medium. Since encrypted containers can be used in both
 // daemons and one-shot calls, the implementation of each encrypted container
 // leans towards keeping the container as stateless as possible.
+// TODO(dlunev): rename abstraction to VaultContainer.
 class EncryptedContainer {
  public:
   virtual ~EncryptedContainer() {}

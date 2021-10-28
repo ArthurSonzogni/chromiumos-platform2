@@ -8,7 +8,7 @@
 
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
-#include "cryptohome/storage/encrypted_container/loopback_device.h"
+#include "cryptohome/storage/encrypted_container/ramdisk_device.h"
 // TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
 #include "cryptohome/storage/encrypted_container/logical_volume_backing_device.h"
@@ -24,6 +24,9 @@ std::unique_ptr<BackingDevice> BackingDeviceFactory::Generate(
   switch (config.type) {
     case BackingDeviceType::kLoopbackDevice:
       return std::make_unique<LoopbackDevice>(config, platform_);
+    case BackingDeviceType::kRamdiskDevice:
+      return RamdiskDevice::Generate(config.ramdisk.backing_file_name,
+                                     platform_);
 // TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
     case BackingDeviceType::kLogicalVolumeBackingDevice:

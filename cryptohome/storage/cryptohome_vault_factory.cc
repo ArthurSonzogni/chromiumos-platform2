@@ -84,7 +84,11 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
                         "discard,lazy_itable_init"},
           .tune2fs_opts = {"-O", "verity,quota", "-Q", "usrquota,grpquota"}};
       break;
-    default:
+    case EncryptedContainerType::kEphemeral:
+      config.type = EncryptedContainerType::kEphemeral;
+      config.backing_file_name = obfuscated_username;
+      break;
+    case EncryptedContainerType::kUnknown:
       return nullptr;
   }
 

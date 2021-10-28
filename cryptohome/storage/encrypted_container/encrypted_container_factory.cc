@@ -14,6 +14,7 @@
 #include "cryptohome/storage/encrypted_container/dmcrypt_container.h"
 #include "cryptohome/storage/encrypted_container/ecryptfs_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
+#include "cryptohome/storage/encrypted_container/ephemeral_container.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/encrypted_container/fscrypt_container.h"
 
@@ -50,6 +51,16 @@ std::unique_ptr<EncryptedContainer> EncryptedContainerFactory::Generate(
       return std::make_unique<DmcryptContainer>(config.dmcrypt_config,
                                                 std::move(backing_device),
                                                 key_reference, platform_);
+    }
+    case EncryptedContainerType::kEphemeral: {
+      auto backing_device =
+          RamdiskDevice::Generate(config.backing_file_name, platform_);
+      if (!backing_device) {
+        LOG(ERROR) << "Could not create backing device for ephemeral container";
+        return nullptr;
+      }
+      return std::make_unique<EphemeralContainer>(std::move(backing_device),
+                                                  platform_);
     }
     case EncryptedContainerType::kUnknown:
       return nullptr;

@@ -154,8 +154,11 @@ static_library("libcrosplatform") {
     "../storage/encrypted_container/dmcrypt_container.cc",
     "../storage/encrypted_container/ecryptfs_container.cc",
     "../storage/encrypted_container/encrypted_container_factory.cc",
+    "../storage/encrypted_container/ephemeral_container.cc",
     "../storage/encrypted_container/fscrypt_container.cc",
     "../storage/encrypted_container/loopback_device.cc",
+    "../storage/encrypted_container/ramdisk_device.cc",
+    "../storage/mount_constants.cc",
     "../user_secret_stash.cc",
     "../user_secret_stash_storage.cc",
   ]

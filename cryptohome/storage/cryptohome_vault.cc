@@ -125,6 +125,9 @@ void CryptohomeVault::ReportVaultEncryptionType() {
     case EncryptedContainerType::kFscrypt:
       ReportHomedirEncryptionType(HomedirEncryptionType::kDircrypto);
       break;
+    case EncryptedContainerType::kEphemeral:
+      // Not an encrypted vault
+      break;
     default:
       // We're only interested in encrypted home directories.
       NOTREACHED() << "Unknown homedir encryption type: "
@@ -144,6 +147,8 @@ MountType CryptohomeVault::GetMountType() {
       return MountType::DIR_CRYPTO;
     case EncryptedContainerType::kDmcrypt:
       return MountType::DMCRYPT;
+    case EncryptedContainerType::kEphemeral:
+      return MountType::EPHEMERAL;
     default:
       return MountType::NONE;
   }
