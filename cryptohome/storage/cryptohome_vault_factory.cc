@@ -100,15 +100,31 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
   std::unique_ptr<EncryptedContainer> container =
       GenerateEncryptedContainer(container_type, obfuscated_username,
                                  key_reference, kDmcryptDataContainerSuffix);
-  std::unique_ptr<EncryptedContainer> migrating_container =
-      GenerateEncryptedContainer(migrating_container_type, obfuscated_username,
-                                 key_reference, kDmcryptDataContainerSuffix);
+  if (!container) {
+    LOG(ERROR) << "Could not create vault container";
+    return nullptr;
+  }
+
+  std::unique_ptr<EncryptedContainer> migrating_container;
+  if (migrating_container_type != EncryptedContainerType::kUnknown) {
+    migrating_container = GenerateEncryptedContainer(
+        migrating_container_type, obfuscated_username, key_reference,
+        kDmcryptDataContainerSuffix);
+    if (!migrating_container) {
+      LOG(ERROR) << "Could not create vault container for migration";
+      return nullptr;
+    }
+  }
 
   std::unique_ptr<EncryptedContainer> cache_container;
   if (container_type == EncryptedContainerType::kDmcrypt) {
     cache_container =
         GenerateEncryptedContainer(container_type, obfuscated_username,
                                    key_reference, kDmcryptCacheContainerSuffix);
+    if (!cache_container) {
+      LOG(ERROR) << "Could not create vault container for cache";
+      return nullptr;
+    }
   }
   return std::make_unique<CryptohomeVault>(
       obfuscated_username, std::move(container), std::move(migrating_container),

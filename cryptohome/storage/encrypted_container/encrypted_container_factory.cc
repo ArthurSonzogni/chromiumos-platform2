@@ -40,13 +40,18 @@ std::unique_ptr<EncryptedContainer> EncryptedContainerFactory::Generate(
     case EncryptedContainerType::kEcryptfs:
       return std::make_unique<EcryptfsContainer>(config.backing_dir,
                                                  key_reference, platform_);
-    case EncryptedContainerType::kDmcrypt:
-      return std::make_unique<DmcryptContainer>(
-          config.dmcrypt_config,
-          backing_device_factory_->Generate(
-              config.dmcrypt_config.backing_device_config),
-          key_reference, platform_);
-    default:
+    case EncryptedContainerType::kDmcrypt: {
+      auto backing_device = backing_device_factory_->Generate(
+          config.dmcrypt_config.backing_device_config);
+      if (!backing_device) {
+        LOG(ERROR) << "Could not create backing device for dmcrypt container";
+        return nullptr;
+      }
+      return std::make_unique<DmcryptContainer>(config.dmcrypt_config,
+                                                std::move(backing_device),
+                                                key_reference, platform_);
+    }
+    case EncryptedContainerType::kUnknown:
       return nullptr;
   }
 }
