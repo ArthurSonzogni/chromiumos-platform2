@@ -26,9 +26,9 @@ namespace {
 class HPSTest : public testing::Test {
  protected:
   void SetUp() override {
-    fake_ = hps::FakeDev::Create();
-    hps_ = std::make_unique<hps::HPS_impl>(fake_->CreateDevInterface());
-
+    auto fake = std::make_unique<hps::FakeDev>();
+    fake_ = fake.get();
+    hps_ = std::make_unique<hps::HPS_impl>(std::move(fake));
     hps_->SetMetricsLibraryForTesting(std::make_unique<MetricsLibraryMock>());
   }
 
@@ -43,7 +43,7 @@ class HPSTest : public testing::Test {
         hps_->metrics_library_for_testing());
   }
 
-  scoped_refptr<hps::FakeDev> fake_;
+  hps::FakeDev* fake_;
   std::unique_ptr<hps::HPS_impl> hps_;
 };
 

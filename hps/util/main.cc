@@ -145,14 +145,14 @@ int main(int argc, char* argv[]) {
   } else if (FLAGS_test != "none") {
     // Optionally initialise the fake device as already booted so that
     // features can be enabled/disabled.
-    auto fake = hps::FakeDev::Create();
+    auto fake = std::make_unique<hps::FakeDev>();
     if (FLAGS_test == "ready" || FLAGS_test == "") {
       fake->SkipBoot();
     } else if (FLAGS_test != "boot") {
       std::cerr << "Unsupported fake device state: " << FLAGS_test << std::endl;
       return 1;
     }
-    dev = fake->CreateDevInterface();
+    dev = std::move(fake);
   } else if (!FLAGS_uart.empty()) {
     dev = hps::Uart::Create(FLAGS_uart.c_str());
   } else {

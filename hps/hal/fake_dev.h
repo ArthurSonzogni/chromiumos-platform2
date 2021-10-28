@@ -12,8 +12,6 @@
 #include <map>
 #include <memory>
 
-#include <base/memory/ref_counted.h>
-
 #include "hps/dev.h"
 #include "hps/hps_reg.h"
 
@@ -28,7 +26,7 @@ namespace hps {
  *
  * A set of flags defines behaviour of the device (such as forced errors etc.).
  */
-class FakeDev : public base::RefCounted<FakeDev> {
+class FakeDev : public DevInterface {
  public:
   FakeDev()
       : feature_on_(0),
@@ -60,9 +58,9 @@ class FakeDev : public base::RefCounted<FakeDev> {
     // When a RW download occurs, increment the firmware version number.
     kIncrementVersion = 7,
   };
-  bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len);
-  bool WriteDevice(uint8_t cmd, const uint8_t* data, size_t len);
-  size_t BlockSizeBytes() { return this->block_size_b_.load(); }
+  bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len) override;
+  bool WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) override;
+  size_t BlockSizeBytes() override { return this->block_size_b_.load(); }
   void SkipBoot() { this->SetStage(Stage::kAppl); }
   void Set(Flags f) {
     this->flags_.fetch_or(static_cast<uint16_t>(1 << static_cast<int>(f)));
@@ -80,11 +78,8 @@ class FakeDev : public base::RefCounted<FakeDev> {
   size_t GetBankLen(hps::HpsBank bank);
   // Return a DevInterface accessing the simulator.
   std::unique_ptr<DevInterface> CreateDevInterface();
-  // Create an instance of a simulator.
-  static scoped_refptr<FakeDev> Create();
 
  private:
-  friend class base::RefCounted<FakeDev>;
   uint16_t ReadRegister(HpsReg r);
   void WriteRegister(HpsReg r, uint16_t v);
   bool WriteMemory(HpsBank bank, const uint8_t* mem, size_t len);

@@ -14,37 +14,12 @@
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/memory/ref_counted.h>
 #include <base/strings/stringprintf.h>
 
 #include "hps/hps_reg.h"
 #include "hps/utils.h"
 
 namespace hps {
-
-/*
- * SimDev is an internal class (implementing DevInterface) that
- * forwards calls to the simulator.
- */
-class SimDev : public DevInterface {
- public:
-  explicit SimDev(scoped_refptr<FakeDev> device) : device_(device) {}
-  ~SimDev() override = default;
-
-  bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len) override {
-    return this->device_->ReadDevice(cmd, data, len);
-  }
-
-  bool WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) override {
-    return this->device_->WriteDevice(cmd, data, len);
-  }
-
-  size_t BlockSizeBytes() override { return this->device_->BlockSizeBytes(); }
-
- private:
-  // Reference counted simulator object.
-  scoped_refptr<FakeDev> device_;
-};
 
 bool FakeDev::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
   // Clear the whole buffer.
@@ -283,17 +258,6 @@ bool FakeDev::WriteMemory(HpsBank bank, const uint8_t* data, size_t len) {
 
 size_t FakeDev::GetBankLen(hps::HpsBank bank) {
   return this->bank_len_[bank];
-}
-
-// Return a DevInterface connected to the simulated device.
-std::unique_ptr<DevInterface> FakeDev::CreateDevInterface() {
-  return std::unique_ptr<DevInterface>(std::make_unique<SimDev>(this));
-}
-
-// Static factory method to create and start an instance of a fake device.
-scoped_refptr<FakeDev> FakeDev::Create() {
-  auto fake_dev = base::MakeRefCounted<FakeDev>();
-  return fake_dev;
 }
 
 }  // namespace hps
