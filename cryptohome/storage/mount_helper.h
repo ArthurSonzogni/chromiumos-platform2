@@ -22,7 +22,7 @@
 
 #include "cryptohome/credentials.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/storage/mount_constants.h"
+#include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/mount_stack.h"
 
 using base::FilePath;
@@ -62,14 +62,12 @@ class MountHelperInterface {
   virtual bool IsPathMounted(const base::FilePath& path) const = 0;
 
   // Carries out an ephemeral mount for user |username|.
-  virtual bool PerformEphemeralMount(const std::string& username) = 0;
+  virtual bool PerformEphemeralMount(
+      const std::string& username,
+      const base::FilePath& ephemeral_loop_device) = 0;
 
-  // Tears down the existing ephemeral mount.
-  // TODO(dlunev): make sure epehemeral teardown failure is logged to telemetry.
-  virtual bool TearDownEphemeralMount() = 0;
-
-  // Tears down non-ephemeral cryptohome mount.
-  virtual void TearDownNonEphemeralMount() = 0;
+  // Unmounts the mount point.
+  virtual void UnmountAll() = 0;
 
   // Carries out mount operations for a regular cryptohome.
   virtual bool PerformMount(const Options& mount_opts,
@@ -104,10 +102,6 @@ class MountHelper : public MountHelperInterface {
   // Returns the temporary user path while we're migrating for
   // http://crbug.com/224291.
   static base::FilePath GetNewUserPath(const std::string& username);
-
-  // Returns the path to sparse file used for ephemeral cryptohome for the user.
-  static FilePath GetEphemeralSparseFile(
-      const std::string& obfuscated_username);
 
   // Ensures that root and user mountpoints for the specified user are present.
   // Returns false if the mountpoints were not present and could not be created.
@@ -159,21 +153,13 @@ class MountHelper : public MountHelperInterface {
 
   // Carries out dircrypto mount(2) operations for an ephemeral cryptohome.
   // Does not clean up on failure.
-  bool PerformEphemeralMount(const std::string& username) override;
-
-  // Tears down an ephemeral cryptohome mount in-process by calling umount(2).
-  bool TearDownEphemeralMount() override;
-
-  // Tears down non-ephemeral cryptohome mount in-process by calling umount(2).
-  void TearDownNonEphemeralMount() override;
+  bool PerformEphemeralMount(
+      const std::string& username,
+      const base::FilePath& ephemeral_loop_device) override;
 
   // Unmounts all mount points.
   // Relies on ForceUnmount() internally; see the caveat listed for it.
-  void UnmountAll();
-
-  // Deletes loop device used for ephemeral cryptohome and underlying temporary
-  // sparse file.
-  bool CleanUpEphemeral();
+  void UnmountAll() override;
 
   // Returns whether an ephemeral mount operation can be performed.
   bool CanPerformEphemeralMount() const override;
@@ -327,9 +313,6 @@ class MountHelper : public MountHelperInterface {
   // /home/chronos/user.
   bool MountLegacyHome(const FilePath& from);
 
-  // Creates a loop device formatted as an ext4 partition.
-  bool PrepareEphemeralDevice(const std::string& obfuscated_username);
-
   // Recursively copies directory contents to the destination if the destination
   // file does not exist.  Sets ownership to |default_user_|.
   //
@@ -354,14 +337,6 @@ class MountHelper : public MountHelperInterface {
 
   // Stack of mounts (in the mount(2) sense) that have been made.
   MountStack stack_;
-
-  // Tracks loop device used for ephemeral cryptohome.
-  // Empty when the device is not present.
-  base::FilePath ephemeral_loop_device_;
-
-  // Tracks path to ephemeral cryptohome sparse file.
-  // Empty when the file is not created or already deleted.
-  base::FilePath ephemeral_file_path_;
 
   Platform* platform_;  // Un-owned.
 

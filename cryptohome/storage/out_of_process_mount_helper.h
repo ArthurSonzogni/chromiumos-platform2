@@ -57,18 +57,14 @@ class OutOfProcessMountHelper : public MountHelperInterface {
 
   // Carries out dircrypto mount(2) operations for an ephemeral cryptohome,
   // but does so out of process.
-  bool PerformEphemeralMount(const std::string& username) override;
+  bool PerformEphemeralMount(
+      const std::string& username,
+      const base::FilePath& ephemeral_loop_device) override;
 
-  // Tears down an ephemeral cryptohome mount by terminating the out-of-process
-  // helper.
-  bool TearDownEphemeralMount() override;
-
-  // Tears down the non-ephemeral cryptohome mount by terminating the
-  // out-of-process helper.
-  void TearDownNonEphemeralMount() override;
-
-  // Returns whether an ephemeral mount operation can be performed.
   bool CanPerformEphemeralMount() const override;
+
+  // Unmounts all the currently mounted vaults.
+  void UnmountAll() override;
 
   // Returns whether a mount operation has been performed.
   bool MountPerformed() const override;

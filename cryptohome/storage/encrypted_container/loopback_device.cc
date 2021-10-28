@@ -19,9 +19,9 @@ namespace cryptohome {
 
 LoopbackDevice::LoopbackDevice(const BackingDeviceConfig& config,
                                Platform* platform)
-    : name_(config.name),
+    : backing_file_path_(config.loopback.backing_file_path),
+      name_(config.name),
       size_(config.size),
-      backing_file_path_(config.loopback.backing_file_path),
       platform_(platform) {}
 
 bool LoopbackDevice::Create() {

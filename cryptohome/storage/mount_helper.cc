@@ -159,14 +159,6 @@ FilePath MountHelper::GetNewUserPath(const std::string& username) {
       .Append(user_dir);
 }
 
-// static
-FilePath MountHelper::GetEphemeralSparseFile(
-    const std::string& obfuscated_username) {
-  return FilePath(cryptohome::kEphemeralCryptohomeDir)
-      .Append(kSparseFileDir)
-      .Append(obfuscated_username);
-}
-
 FilePath MountHelper::GetMountedUserHomePath(
     const std::string& obfuscated_username) const {
   return GetUserMountDirectory(obfuscated_username).Append(kUserHomeSuffix);
@@ -916,60 +908,10 @@ bool MountHelper::PerformMount(const Options& mount_opts,
   return true;
 }
 
-bool MountHelper::PrepareEphemeralDevice(
-    const std::string& obfuscated_username) {
-  // Underlying sparse file will be created in a temporary directory in RAM.
-  const FilePath ephemeral_root(kEphemeralCryptohomeDir);
-
-  // Determine ephemeral cryptohome size.
-  struct statvfs vfs;
-  if (!platform_->StatVFS(ephemeral_root, &vfs)) {
-    PLOG(ERROR) << "Can't determine ephemeral cryptohome size";
-    return false;
-  }
-  const int64_t sparse_size = static_cast<int64_t>(vfs.f_blocks * vfs.f_frsize);
-
-  // Create underlying sparse file.
-  const FilePath sparse_file = GetEphemeralSparseFile(obfuscated_username);
-  if (!platform_->CreateDirectory(sparse_file.DirName())) {
-    LOG(ERROR) << "Can't create directory for ephemeral sparse files";
-    return false;
-  }
-
-  // Remember the file to clean up if an error happens during file creation.
-  ephemeral_file_path_ = sparse_file;
-  if (!platform_->CreateSparseFile(sparse_file, sparse_size)) {
-    LOG(ERROR) << "Can't create ephemeral sparse file";
-    return false;
-  }
-
-  // Format the sparse file as ext4.
-  if (!platform_->FormatExt4(sparse_file, kDefaultExt4FormatOpts, 0)) {
-    LOG(ERROR) << "Can't format ephemeral sparse file as ext4";
-    return false;
-  }
-
-  // Create a loop device based on the sparse file.
-  const FilePath loop_device = platform_->AttachLoop(sparse_file);
-  if (loop_device.empty()) {
-    LOG(ERROR) << "Can't create loop device";
-    return false;
-  }
-
-  // Remember the loop device to clean up if an error happens.
-  ephemeral_loop_device_ = loop_device;
-  return true;
-}
-
-bool MountHelper::PerformEphemeralMount(const std::string& username) {
+bool MountHelper::PerformEphemeralMount(const std::string& username,
+                                        const FilePath& ephemeral_loop_device) {
   const std::string obfuscated_username =
       SanitizeUserNameWithSalt(username, system_salt_);
-
-  if (!PrepareEphemeralDevice(obfuscated_username)) {
-    LOG(ERROR) << "Can't prepare ephemeral device";
-    return false;
-  }
-
   const FilePath mount_point =
       GetUserEphemeralMountDirectory(obfuscated_username);
   LOG(ERROR) << "Directory is" << mount_point.value();
@@ -978,7 +920,7 @@ bool MountHelper::PerformEphemeralMount(const std::string& username) {
     PLOG(ERROR) << "Directory creation failed for " << mount_point.value();
     return false;
   }
-  if (!MountAndPush(ephemeral_loop_device_, mount_point, kEphemeralMountType,
+  if (!MountAndPush(ephemeral_loop_device, mount_point, kEphemeralMountType,
                     kEphemeralMountOptions)) {
     LOG(ERROR) << "Can't mount ephemeral mount point";
     return false;
@@ -1016,47 +958,16 @@ bool MountHelper::PerformEphemeralMount(const std::string& username) {
   return true;
 }
 
-bool MountHelper::TearDownEphemeralMount() {
-  UnmountAll();
-  return CleanUpEphemeral();
-}
-
-void MountHelper::TearDownNonEphemeralMount() {
-  UnmountAll();
-}
-
 void MountHelper::UnmountAll() {
   FilePath src, dest;
-  const FilePath ephemeral_mount_path =
-      FilePath(kEphemeralCryptohomeDir).Append(kEphemeralMountDir);
   while (stack_.Pop(&src, &dest)) {
     ForceUnmount(src, dest);
-    // Clean up destination directory for ephemeral loop device mounts.
-    if (ephemeral_mount_path == dest.DirName())
-      platform_->DeletePathRecursively(dest);
-  }
-}
-
-bool MountHelper::CleanUpEphemeral() {
-  bool success = true;
-  if (!ephemeral_loop_device_.empty()) {
-    if (!platform_->DetachLoop(ephemeral_loop_device_)) {
-      PLOG(ERROR) << "Can't detach loop device '"
-                  << ephemeral_loop_device_.value() << "'";
-      success = false;
-    }
-    ephemeral_loop_device_.clear();
-  }
-  if (!ephemeral_file_path_.empty()) {
-    if (!platform_->DeleteFile(ephemeral_file_path_)) {
-      PLOG(ERROR) << "Failed to clean up ephemeral sparse file '"
-                  << ephemeral_file_path_.value() << "'";
-      success = false;
-    }
-    ephemeral_file_path_.clear();
   }
 
-  return success;
+  // Clean up destination directory for ephemeral loop device mounts.
+  const FilePath ephemeral_mount_path =
+      FilePath(kEphemeralCryptohomeDir).Append(kEphemeralMountDir);
+  platform_->DeletePathRecursively(ephemeral_mount_path);
 }
 
 void MountHelper::ForceUnmount(const FilePath& src, const FilePath& dest) {
@@ -1075,7 +986,7 @@ void MountHelper::ForceUnmount(const FilePath& src, const FilePath& dest) {
 }
 
 bool MountHelper::CanPerformEphemeralMount() const {
-  return ephemeral_file_path_.empty() && ephemeral_loop_device_.empty();
+  return !MountPerformed();
 }
 
 bool MountHelper::MountPerformed() const {

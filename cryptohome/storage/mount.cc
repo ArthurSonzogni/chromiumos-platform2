@@ -160,23 +160,44 @@ bool Mount::Init(bool use_init_namespace) {
 
 MountError Mount::MountEphemeralCryptohome(const std::string& username) {
   username_ = username;
+  std::string obfuscated_username =
+      SanitizeUserNameWithSalt(username_, system_salt_);
 
   base::ScopedClosureRunner cleanup_runner(base::BindOnce(
-      base::IgnoreResult(&MountHelperInterface::TearDownEphemeralMount),
-      base::Unretained(active_mounter_)));
+      base::IgnoreResult(&Mount::UnmountCryptohome), base::Unretained(this)));
 
   // Ephemeral cryptohome can't be mounted twice.
   CHECK(active_mounter_->CanPerformEphemeralMount());
 
-  if (!active_mounter_->PerformEphemeralMount(username)) {
+  MountError error = MOUNT_ERROR_NONE;
+  CryptohomeVault::Options vault_options = {
+      .force_type = EncryptedContainerType::kEphemeral,
+  };
+
+  user_cryptohome_vault_ = homedirs_->GenerateCryptohomeVault(
+      obfuscated_username, FileSystemKeyReference(), vault_options,
+      /*is_pristine=*/true, &error);
+
+  if (error != MOUNT_ERROR_NONE || !user_cryptohome_vault_) {
+    LOG(ERROR) << "Failed to generate ephemeral vault with error=" << error;
+    return error != MOUNT_ERROR_NONE ? error : MOUNT_ERROR_FATAL;
+  }
+
+  error = user_cryptohome_vault_->Setup(FileSystemKey(), /*create=*/true);
+  if (error != MOUNT_ERROR_NONE) {
+    LOG(ERROR) << "Failed to setup ephemeral vault with error=" << error;
+    user_cryptohome_vault_.reset();
+    return error;
+  }
+
+  if (!active_mounter_->PerformEphemeralMount(
+          username, user_cryptohome_vault_->GetContainerBackingLocation())) {
     LOG(ERROR) << "PerformEphemeralMount() failed, aborting ephemeral mount";
     return MOUNT_ERROR_FATAL;
   }
 
-  // Mount succeeded, move the clean-up closure to the instance variable.
-  mount_cleanup_ = cleanup_runner.Release();
-
   mount_type_ = MountType::EPHEMERAL;
+  ignore_result(cleanup_runner.Release());
 
   return MOUNT_ERROR_NONE;
 }
@@ -235,10 +256,8 @@ bool Mount::MountCryptohome(const std::string& username,
   // The closure won't outlive the class so |this| will always be valid.
   // |out_of_process_mounter_|/|mounter_| will always be valid since this
   // callback runs in the destructor at the latest.
-  base::ScopedClosureRunner unmount_and_drop_keys_runner(base::BindOnce(
-      &Mount::UnmountAndDropKeys, base::Unretained(this),
-      base::BindOnce(&MountHelperInterface::TearDownNonEphemeralMount,
-                     base::Unretained(active_mounter_))));
+  base::ScopedClosureRunner cleanup_runner(base::BindOnce(
+      base::IgnoreResult(&Mount::UnmountCryptohome), base::Unretained(this)));
 
   // Mount cryptohome
   // /home/.shadow: owned by root
@@ -291,9 +310,8 @@ bool Mount::MountCryptohome(const std::string& username,
   // reconstruct the run-time state of cryptohome vault(s) at the time of crash.
   ignore_result(user_cryptohome_vault_->SetLazyTeardownWhenUnused());
 
-  // At this point we're done mounting so move the clean-up closure to the
-  // instance variable.
-  mount_cleanup_ = unmount_and_drop_keys_runner.Release();
+  // At this point we're done mounting.
+  ignore_result(cleanup_runner.Release());
 
   *mount_error = MOUNT_ERROR_NONE;
 
@@ -320,23 +338,12 @@ bool Mount::MountCryptohome(const std::string& username,
   return true;
 }
 
-void Mount::UnmountAndDropKeys(base::OnceClosure unmounter) {
-  std::move(unmounter).Run();
-
-  // Resetting the vault teardowns the enclosed containers if setup succeeded.
-  user_cryptohome_vault_.reset();
-
-  mount_type_ = MountType::NONE;
-}
-
 bool Mount::UnmountCryptohome() {
   // There should be no file access when unmounting.
   // Stop dircrypto migration if in progress.
   MaybeCancelActiveDircryptoMigrationAndWait();
 
-  if (!mount_cleanup_.is_null()) {
-    std::move(mount_cleanup_).Run();
-  }
+  active_mounter_->UnmountAll();
 
   // Resetting the vault teardowns the enclosed containers if setup succeeded.
   user_cryptohome_vault_.reset();
@@ -344,6 +351,15 @@ bool Mount::UnmountCryptohome() {
   mount_type_ = MountType::NONE;
 
   return true;
+}
+
+void Mount::UnmountCryptohomeFromMigration() {
+  active_mounter_->UnmountAll();
+
+  // Resetting the vault teardowns the enclosed containers if setup succeeded.
+  user_cryptohome_vault_.reset();
+
+  mount_type_ = MountType::NONE;
 }
 
 bool Mount::IsMounted() const {
@@ -435,9 +451,7 @@ bool Mount::MigrateToDircrypto(
   }
   bool success = migrator.Migrate(callback);
 
-  UnmountAndDropKeys(
-      base::BindOnce(&MountHelperInterface::TearDownNonEphemeralMount,
-                     base::Unretained(active_mounter_)));
+  UnmountCryptohomeFromMigration();
   {  // Signal the waiting thread.
     base::AutoLock lock(active_dircrypto_migrator_lock_);
     active_dircrypto_migrator_ = nullptr;

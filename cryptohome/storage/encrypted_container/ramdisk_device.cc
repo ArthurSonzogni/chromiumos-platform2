@@ -42,8 +42,8 @@ bool RamdiskDevice::Create() {
 
 bool RamdiskDevice::Teardown() {
   bool ok = LoopbackDevice::Teardown();
-  if (!platform_->DeletePathRecursively(SparseFileDir())) {
-    LOG(ERROR) << "Can't delete directory for ephemeral backing file";
+  if (!platform_->DeleteFileDurable(backing_file_path_)) {
+    LOG(ERROR) << "Can't delete ephemeral file";
     return false;
   }
   return ok;
@@ -51,8 +51,8 @@ bool RamdiskDevice::Teardown() {
 
 bool RamdiskDevice::Purge() {
   bool ok = LoopbackDevice::Purge();
-  if (!platform_->DeletePathRecursively(SparseFileDir())) {
-    LOG(ERROR) << "Can't delete directory for ephemeral backing file";
+  if (!platform_->DeleteFileDurable(backing_file_path_)) {
+    LOG(ERROR) << "Can't delete ephemeral file";
     return false;
   }
   return ok;

@@ -119,14 +119,15 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOP) {
   OutOfProcessMountResponse resp;
   resp.add_paths(legacy_home.value());
   ASSERT_TRUE(WriteProtobuf(write_end.get(), resp));
-  ASSERT_TRUE(out_of_process_mounter_->PerformEphemeralMount(kGuestUserName));
+  ASSERT_TRUE(out_of_process_mounter_->PerformEphemeralMount(kGuestUserName,
+                                                             base::FilePath()));
 
   EXPECT_TRUE(out_of_process_mounter_->IsPathMounted(legacy_home));
   EXPECT_FALSE(
       out_of_process_mounter_->IsPathMounted(FilePath("/invalid/path")));
 
   EXPECT_CALL(*process, Kill(SIGTERM, _)).WillOnce(Return(true));
-  out_of_process_mounter_->TearDownEphemeralMount();
+  out_of_process_mounter_->UnmountAll();
 }
 
 TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPWriteProtobuf) {
@@ -146,7 +147,8 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPWriteProtobuf) {
   EXPECT_CALL(*process, GetPipe(STDIN_FILENO))
       .WillOnce(Return(write_end.get()));
 
-  ASSERT_TRUE(out_of_process_mounter_->PerformEphemeralMount(kGuestUserName));
+  ASSERT_TRUE(out_of_process_mounter_->PerformEphemeralMount(kGuestUserName,
+                                                             base::FilePath()));
 
   OutOfProcessMountRequest r;
   ASSERT_TRUE(ReadProtobuf(read_end.get(), &r));
@@ -154,13 +156,14 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPWriteProtobuf) {
   EXPECT_EQ(r.mount_namespace_path(), "");
 
   EXPECT_CALL(*process, Kill(SIGTERM, _)).WillOnce(Return(true));
-  out_of_process_mounter_->TearDownEphemeralMount();
+  out_of_process_mounter_->UnmountAll();
 }
 
 TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPFailsToStart) {
   brillo::ProcessMock* process = platform_.mock_process();
   EXPECT_CALL(*process, Start()).WillOnce(Return(false));
-  ASSERT_FALSE(out_of_process_mounter_->PerformEphemeralMount(kGuestUserName));
+  ASSERT_FALSE(out_of_process_mounter_->PerformEphemeralMount(
+      kGuestUserName, base::FilePath()));
 }
 
 TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPNonRootMountNamespace) {
@@ -187,14 +190,15 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPNonRootMountNamespace) {
   EXPECT_CALL(*process, GetPipe(STDIN_FILENO))
       .WillOnce(Return(write_end.get()));
 
-  ASSERT_TRUE(out_of_process_mounter_->PerformEphemeralMount(kGuestUserName));
+  ASSERT_TRUE(out_of_process_mounter_->PerformEphemeralMount(kGuestUserName,
+                                                             base::FilePath()));
 
   OutOfProcessMountRequest r;
   ASSERT_TRUE(ReadProtobuf(read_end.get(), &r));
   EXPECT_EQ(r.username(), kGuestUserName);
   EXPECT_EQ(r.mount_namespace_path(), kChromeMountNamespace.value());
 
-  out_of_process_mounter_->TearDownEphemeralMount();
+  out_of_process_mounter_->UnmountAll();
 }
 
 TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPFailsToWriteProtobuf) {
@@ -218,7 +222,8 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPFailsToWriteProtobuf) {
   // If writing the protobuf fails, OOP mount helper should be killed.
   EXPECT_CALL(*process, Kill(SIGTERM, _)).WillOnce(Return(true));
 
-  ASSERT_FALSE(out_of_process_mounter_->PerformEphemeralMount(kGuestUserName));
+  ASSERT_FALSE(out_of_process_mounter_->PerformEphemeralMount(
+      kGuestUserName, base::FilePath()));
 }
 
 TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPFailsToReadAck) {
@@ -241,7 +246,8 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPFailsToReadAck) {
   // If reading the ack fails, OOP mount helper should be killed.
   EXPECT_CALL(*process, Kill(SIGTERM, _)).WillOnce(Return(true));
 
-  ASSERT_FALSE(out_of_process_mounter_->PerformEphemeralMount(kGuestUserName));
+  ASSERT_FALSE(out_of_process_mounter_->PerformEphemeralMount(
+      kGuestUserName, base::FilePath()));
 }
 
 TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPFailsToPoke) {
@@ -261,14 +267,15 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPFailsToPoke) {
   EXPECT_CALL(*process, GetPipe(STDOUT_FILENO))
       .WillOnce(Return(read_from_helper.get()));
 
-  ASSERT_TRUE(out_of_process_mounter_->PerformEphemeralMount(kGuestUserName));
+  ASSERT_TRUE(out_of_process_mounter_->PerformEphemeralMount(kGuestUserName,
+                                                             base::FilePath()));
 
   // Poking the helper fails.
   EXPECT_CALL(*process, Kill(SIGTERM, _)).WillOnce(Return(false));
   // If poking fails, OOP mount helper should be killed with SIGKILL.
   EXPECT_CALL(*process, Kill(SIGKILL, _)).WillOnce(Return(true));
 
-  out_of_process_mounter_->TearDownEphemeralMount();
+  out_of_process_mounter_->UnmountAll();
 }
 
 }  // namespace cryptohome

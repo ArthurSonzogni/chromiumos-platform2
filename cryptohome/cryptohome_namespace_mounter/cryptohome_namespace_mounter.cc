@@ -90,13 +90,6 @@ bool HandleSignal(base::RepeatingClosure quit_closure,
   return true;  // unregister the handler
 }
 
-void TearDownEphemeralAndReportError(
-    cryptohome::MountHelperInterface* mounter) {
-  if (!mounter->TearDownEphemeralMount()) {
-    ReportCryptohomeError(cryptohome::kEphemeralCleanUpFailed);
-  }
-}
-
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -167,19 +160,17 @@ int main(int argc, char** argv) {
     return EX_OSERR;
   }
 
-  // A failure in PerformMount/PerformEphemeralMount might still require
-  // clean-up so set up the clean-up routine before
-  // PerformMount/PerformEphemeralMount is started.
-  base::ScopedClosureRunner tear_down_runner;
   cryptohome::OutOfProcessMountResponse response;
   bool is_ephemeral =
       request.type() == kProtobufMountType[cryptohome::MountType::EPHEMERAL];
+  base::ScopedClosureRunner tear_down_runner =
+      base::ScopedClosureRunner(base::BindOnce(
+          &cryptohome::MountHelper::UnmountAll, base::Unretained(&mounter)));
   if (is_ephemeral) {
-    tear_down_runner = base::ScopedClosureRunner(
-        base::BindOnce(&TearDownEphemeralAndReportError, &mounter));
-
     cryptohome::ReportTimerStart(cryptohome::kPerformEphemeralMountTimer);
-    if (!mounter.PerformEphemeralMount(request.username())) {
+    if (!mounter.PerformEphemeralMount(
+            request.username(),
+            base::FilePath(request.ephemeral_loop_device()))) {
       cryptohome::ForkAndCrash("PerformEphemeralMount failed");
       return EX_SOFTWARE;
     }
@@ -187,10 +178,6 @@ int main(int argc, char** argv) {
     cryptohome::ReportTimerStop(cryptohome::kPerformEphemeralMountTimer);
     VLOG(1) << "PerformEphemeralMount succeeded";
   } else {
-    tear_down_runner = base::ScopedClosureRunner(
-        base::BindOnce(&cryptohome::MountHelper::TearDownNonEphemeralMount,
-                       base::Unretained(&mounter)));
-
     cryptohome::MountHelperInterface::Options mount_options;
     mount_options.type = static_cast<cryptohome::MountType>(request.type());
     mount_options.to_migrate_from_ecryptfs = request.to_migrate_from_ecryptfs();

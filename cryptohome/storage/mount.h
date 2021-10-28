@@ -217,9 +217,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   dir - directory to check
   bool SetupChapsDirectory(const base::FilePath& dir);
 
-  // Unmounts all mount points, and invalidates the dircrypto encryption key.
-  // Relies on ForceUnmount() internally; see the caveat listed for it
-  void UnmountAndDropKeys(base::OnceClosure unmounter);
+  // A special of UnmountCryptohome to be called from the migration path.
+  void UnmountCryptohomeFromMigration();
 
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.
@@ -276,9 +275,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Represents the user's cryptohome vault.
   std::unique_ptr<CryptohomeVault> user_cryptohome_vault_;
-
-  // This closure will be run in UnmountCryptohome().
-  base::OnceClosure mount_cleanup_;
 
   FRIEND_TEST(MountTest, CreateTrackedSubdirectoriesReplaceExistingDir);
 };

@@ -86,27 +86,8 @@ allow cros_cryptohome_namespace_mounter kernel:system module_request;
 
 # Permissions to create and bind-mount ephemeral cryptohome directory.
 create_mounton_dir_file(cros_cryptohome_namespace_mounter, cros_run_cryptohome);
-# iocts needed by mkfs.ext4 to format the sparse file as ext4.
-allowxperm cros_cryptohome_namespace_mounter cros_run_cryptohome:file ioctl {
-  BLKROGET  # 0x125e
-  BLKGETSIZE  # 0x1260
-  BLKSSZGET  # 0x1268
-  BLKGETSIZE64  # 0x1272
-  BLKPBSZGET  # 0x127b
-  BLKDISCARDZEROES  # 0x127c
-  FDGETPRM # 0x204
-};
 
 r_dir_file(cros_cryptohome_namespace_mounter, cros_var_db);
-
-allow cros_cryptohome_namespace_mounter device:blk_file      rw_file_perms;
-allowxperm cros_cryptohome_namespace_mounter device:blk_file ioctl {
-  LOOP_SET_FD
-  LOOP_CLR_FD
-  LOOP_GET_STATUS
-  LOOP_GET_STATUS64
-};
-allow cros_cryptohome_namespace_mounter tpm_device:chr_file  r_file_perms;
 
 has_arc(`
 allow cros_cryptohome_namespace_mounter media_rw_data_file:dir {
@@ -121,8 +102,6 @@ allow cros_cryptohome_namespace_mounter {
   cgroup
 }:dir r_dir_perms;
 
-r_dir_file(cros_cryptohome_namespace_mounter, sysfs_fs_ext4_features);
-
 # TODO(b/178237710) Label the directories and files with specific contexts.
 r_dir_file(cros_cryptohome_namespace_mounter, unlabeled);
 allow cros_cryptohome_namespace_mounter unlabeled:dir {
@@ -132,7 +111,6 @@ allow cros_cryptohome_namespace_mounter unlabeled:dir {
 
 # TODO(b/178237004) Label the processes with specific contexts.
 allow cros_cryptohome_namespace_mounter cros_unconfined_exec:file x_file_perms;
-allow cros_cryptohome_namespace_mounter cros_mke2fs_exec:file rx_file_perms;
 
 # Cryptohome_namespace_mounter needs to enter user session mount namespace at /run/namespaces/mnt_chrome
 allow cros_cryptohome_namespace_mounter cros_run_namespaces:dir search;

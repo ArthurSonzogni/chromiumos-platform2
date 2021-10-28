@@ -55,12 +55,14 @@ class LoopbackDevice : public BackingDevice {
   // Gets the device path for the loop device.
   base::Optional<base::FilePath> GetPath() override;
 
+ protected:
+  const base::FilePath backing_file_path_;
+
  private:
   friend class LoopbackDevicePeer;
 
   const std::string name_;
   const int64_t size_;
-  const base::FilePath backing_file_path_;
 
   Platform* platform_;
 };

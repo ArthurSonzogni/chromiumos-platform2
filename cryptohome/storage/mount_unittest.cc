@@ -67,6 +67,7 @@ using ::testing::NiceMock;
 using ::testing::Pointee;
 using ::testing::Return;
 using ::testing::SetArgPointee;
+using ::testing::StartsWith;
 
 namespace {
 constexpr int kEphemeralVFSFragmentSize = 1 << 10;
@@ -107,7 +108,7 @@ constexpr Attributes kSomeDaemonAttributes{01735, 12, 27};
 constexpr char kAnotherDaemon[] = "another_daemon";
 constexpr Attributes kAnotherDaemonAttributes{0600, 0, 0};
 
-constexpr char kDevLoop0[] = "/dev/loop0";
+constexpr char kDevLoopPrefix[] = "/dev/loop";
 
 constexpr char kUser[] = "someuser";
 
@@ -1121,9 +1122,8 @@ class EphemeralSystemTest : public ::testing::Test {
   }
 
   void VerifyFS(const std::string& username,
-                const base::FilePath& loop_dev,
                 bool expect_present) {
-    CheckLoopDev(username, loop_dev, expect_present);
+    CheckLoopDev(username, expect_present);
     ASSERT_NO_FATAL_FAILURE(CheckRootAndDaemonStoreMounts(
         &platform_, username, EphemeralMountPoint(username), expect_present));
     ASSERT_NO_FATAL_FAILURE(CheckUserMountPoints(
@@ -1143,29 +1143,33 @@ class EphemeralSystemTest : public ::testing::Test {
     }
   }
 
+  base::FilePath GetLoopDevice() {
+    return platform_.GetLoopDeviceManager()
+        ->GetAttachedDeviceByName("ephemeral")
+        ->GetDevicePath();
+  }
+
  private:
   void CheckLoopDev(const std::string& username,
-                    const base::FilePath& loop_dev,
                     bool expect_present) {
     const base::FilePath ephemeral_backing_file =
         EphemeralBackingFile(username);
     const base::FilePath ephemeral_mount_point = EphemeralMountPoint(username);
-    const std::multimap<const base::FilePath, const base::FilePath>
-        expected_ephemeral_mount_map{
-            {loop_dev, ephemeral_mount_point},
-        };
-    std::multimap<const base::FilePath, const base::FilePath>
-        ephemeral_mount_map;
 
     ASSERT_THAT(platform_.FileExists(ephemeral_backing_file), expect_present);
-    ASSERT_THAT(platform_.FileExists(loop_dev), expect_present);
     ASSERT_THAT(platform_.DirectoryExists(ephemeral_mount_point),
                 expect_present);
     ASSERT_THAT(platform_.IsDirectoryMounted(ephemeral_mount_point),
                 expect_present);
     if (expect_present) {
-      ASSERT_TRUE(
-          platform_.GetMountsBySourcePrefix(loop_dev, &ephemeral_mount_map));
+      const std::multimap<const base::FilePath, const base::FilePath>
+          expected_ephemeral_mount_map{
+              {GetLoopDevice(), ephemeral_mount_point},
+          };
+      std::multimap<const base::FilePath, const base::FilePath>
+          ephemeral_mount_map;
+      ASSERT_TRUE(platform_.GetMountsBySourcePrefix(GetLoopDevice(),
+                                                    &ephemeral_mount_map));
       ASSERT_THAT(ephemeral_mount_map, ::testing::UnorderedElementsAreArray(
                                            expected_ephemeral_mount_map));
     }
@@ -1185,18 +1189,20 @@ class EphemeralSystemTest : public ::testing::Test {
 namespace {
 
 TEST_F(EphemeralSystemTest, EphemeralMount) {
-  EXPECT_CALL(platform_, FormatExt4(EphemeralBackingFile(kUser), _, _))
+  EXPECT_CALL(platform_, FormatExt4(Property(&base::FilePath::value,
+                                             StartsWith(kDevLoopPrefix)),
+                                    _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, SetSELinuxContext(EphemeralMountPoint(kUser), _))
       .WillOnce(Return(true));
 
   ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser), MOUNT_ERROR_NONE);
 
-  VerifyFS(kUser, base::FilePath(kDevLoop0), /*expect_present=*/true);
+  VerifyFS(kUser, /*expect_present=*/true);
 
   ASSERT_TRUE(mount_->UnmountCryptohome());
 
-  VerifyFS(kUser, base::FilePath(kDevLoop0), /*expect_present=*/false);
+  VerifyFS(kUser, /*expect_present=*/false);
 }
 
 TEST_F(EphemeralSystemTest, EpmeneralMount_VFSFailure) {
@@ -1206,7 +1212,7 @@ TEST_F(EphemeralSystemTest, EpmeneralMount_VFSFailure) {
 
   ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser), MOUNT_ERROR_FATAL);
 
-  VerifyFS(kUser, base::FilePath(kDevLoop0), /*expect_present=*/false);
+  VerifyFS(kUser, /*expect_present=*/false);
 }
 
 TEST_F(EphemeralSystemTest, EphemeralMount_CreateSparseDirFailure) {
@@ -1215,9 +1221,10 @@ TEST_F(EphemeralSystemTest, EphemeralMount_CreateSparseDirFailure) {
   EXPECT_CALL(platform_, CreateDirectory(EphemeralBackingFile(kUser).DirName()))
       .WillOnce(Return(false));
 
-  ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser), MOUNT_ERROR_FATAL);
+  ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser),
+              MOUNT_ERROR_KEYRING_FAILED);
 
-  VerifyFS(kUser, base::FilePath(kDevLoop0), /*expect_present=*/false);
+  VerifyFS(kUser, /*expect_present=*/false);
 }
 
 TEST_F(EphemeralSystemTest, EphemeralMount_CreateSparseFailure) {
@@ -1225,49 +1232,41 @@ TEST_F(EphemeralSystemTest, EphemeralMount_CreateSparseFailure) {
   EXPECT_CALL(platform_, CreateSparseFile(EphemeralBackingFile(kUser), _))
       .WillOnce(Return(false));
 
-  ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser), MOUNT_ERROR_FATAL);
+  ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser),
+              MOUNT_ERROR_KEYRING_FAILED);
 
-  VerifyFS(kUser, base::FilePath(kDevLoop0), /*expect_present=*/false);
+  VerifyFS(kUser, /*expect_present=*/false);
 }
 
 TEST_F(EphemeralSystemTest, EphemeralMount_FormatFailure) {
   // Checks that when ephemeral loop device fails to be formatted, clean up
   // happens appropriately.
-  EXPECT_CALL(platform_, FormatExt4(EphemeralBackingFile(kUser), _, _))
+  EXPECT_CALL(platform_, FormatExt4(Property(&base::FilePath::value,
+                                             StartsWith(kDevLoopPrefix)),
+                                    _, _))
       .WillOnce(Return(false));
 
-  ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser), MOUNT_ERROR_FATAL);
+  ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser),
+              MOUNT_ERROR_KEYRING_FAILED);
 
-  VerifyFS(kUser, base::FilePath(kDevLoop0), /*expect_present=*/false);
-}
-
-TEST_F(EphemeralSystemTest, EphemeralMount_AttachLoopFailure) {
-  // Checks that when ephemeral loop device fails to attach, clean up happens
-  // appropriately.
-  EXPECT_CALL(platform_, FormatExt4(EphemeralBackingFile(kUser), _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform_, AttachLoop(EphemeralBackingFile(kUser)))
-      .WillOnce(Return(FilePath()));
-
-  ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser), MOUNT_ERROR_FATAL);
-
-  VerifyFS(kUser, base::FilePath(kDevLoop0), /*expect_present=*/false);
+  VerifyFS(kUser, /*expect_present=*/false);
 }
 
 TEST_F(EphemeralSystemTest, EphemeralMount_EnsureUserMountFailure) {
   // Checks that when ephemeral mount fails to ensure mount points, clean up
   // happens appropriately.
-  EXPECT_CALL(platform_, FormatExt4(EphemeralBackingFile(kUser), _, _))
+  EXPECT_CALL(platform_, FormatExt4(Property(&base::FilePath::value,
+                                             StartsWith(kDevLoopPrefix)),
+                                    _, _))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform_, Mount(base::FilePath(kDevLoop0),
+  EXPECT_CALL(platform_, Mount(Property(&base::FilePath::value,
+                                        StartsWith(kDevLoopPrefix)),
                                EphemeralMountPoint(kUser), _, _, _))
       .WillOnce(Return(false));
 
   ASSERT_THAT(mount_->MountEphemeralCryptohome(kUser), MOUNT_ERROR_FATAL);
 
-  // TODO(dlunev): some directories cleanup is missing in this case. Fix it and
-  // uncomment the following.
-  // VerifyFS(kUser, "/dev/loop0", /*expect_present=*/false);
+  VerifyFS(kUser, /*expect_present=*/false);
 }
 
 }  // namespace

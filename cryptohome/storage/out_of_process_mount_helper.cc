@@ -149,7 +149,7 @@ void OutOfProcessMountHelper::KillOutOfProcessHelperIfNecessary() {
 }
 
 bool OutOfProcessMountHelper::PerformEphemeralMount(
-    const std::string& username) {
+    const std::string& username, const base::FilePath& ephemeral_loop_device) {
   OutOfProcessMountRequest request;
   request.set_username(username);
   request.set_system_salt(SecureBlobToSecureHex(system_salt_).to_string());
@@ -160,6 +160,7 @@ bool OutOfProcessMountHelper::PerformEphemeralMount(
           ? chrome_mnt_ns_->path().value()
           : "");
   request.set_type(cryptohome::OutOfProcessMountRequest_MountType_EPHEMERAL);
+  request.set_ephemeral_loop_device(ephemeral_loop_device.value());
 
   OutOfProcessMountResponse response;
   if (!LaunchOutOfProcessHelper(request, &response)) {
@@ -240,11 +241,7 @@ bool OutOfProcessMountHelper::LaunchOutOfProcessHelper(
   return true;
 }
 
-bool OutOfProcessMountHelper::TearDownEphemeralMount() {
-  return TearDownExistingMount();
-}
-
-void OutOfProcessMountHelper::TearDownNonEphemeralMount() {
+void OutOfProcessMountHelper::UnmountAll() {
   TearDownExistingMount();
 }
 

@@ -169,10 +169,32 @@ allow cros_cryptohomed {
   cgroup
 }:dir r_dir_perms;
 
+# iocts needed by mkfs.ext4 to format loop dev as ext4.
+allowxperm cros_cryptohomed device:blk_file ioctl {
+  BLKROGET  # 0x125e
+  BLKGETSIZE  # 0x1260
+  BLKSSZGET  # 0x1268
+  BLKGETSIZE64  # 0x1272
+  BLKDISCARD  # 0x1277
+  BLKPBSZGET  # 0x127b
+  BLKDISCARDZEROES  # 0x127c
+  FDGETPRM # 0x204
+};
+
+r_dir_file(cros_cryptohomed, sysfs_fs_ext4_features);
+
+allow cros_cryptohomed tpm_device:chr_file  r_file_perms;
+allow cros_cryptohomed device:blk_file      rw_file_perms;
 allowxperm cros_cryptohomed device:blk_file ioctl {
   BLKSECDISCARD
   BLKPBSZGET
   BLKRAGET
+  LOOP_SET_FD
+  LOOP_CLR_FD
+  LOOP_GET_STATUS
+  LOOP_GET_STATUS64
+  LOOP_SET_STATUS64
+  LOOP_SET_DIRECT_IO
 };
 
 # TODO(b/178237710) Label the directories and files with specific contexts.

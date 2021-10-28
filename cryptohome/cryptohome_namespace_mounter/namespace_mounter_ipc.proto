@@ -47,6 +47,7 @@ message OutOfProcessMountRequest {
   bool is_pristine = 9;
   // True, if the Cryptohomed should bind mount Downloads/.
   bool bind_mount_downloads = 10;
+  string ephemeral_loop_device = 11;
 }
 
 message OutOfProcessMountResponse {

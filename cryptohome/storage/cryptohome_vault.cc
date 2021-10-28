@@ -78,6 +78,11 @@ MountError CryptohomeVault::Setup(const FileSystemKey& filesystem_key,
     return MOUNT_ERROR_KEYRING_FAILED;
   }
 
+  if (container_->GetType() == EncryptedContainerType::kEphemeral) {
+    // Do not create /home/.shadow/<hash>/mount for ephemeral.
+    return MOUNT_ERROR_NONE;
+  }
+
   base::FilePath mount_point = GetUserMountDirectory(obfuscated_username_);
   if (!platform_->CreateDirectory(mount_point)) {
     PLOG(ERROR) << "User mount directory creation failed for "
