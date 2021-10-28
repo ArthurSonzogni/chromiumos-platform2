@@ -17,6 +17,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/containers/flat_map.h>
 #include <base/containers/flat_set.h>
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
@@ -26,7 +27,6 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 #include <base/rand_util.h>
 #include <base/sequence_checker.h>
 #include <base/strings/strcat.h>
@@ -44,13 +44,14 @@
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/proto/record.pb.h"
-#include "missive/storage/resources/resource_interface.h"
+#include "missive/resources/resource_interface.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 #include "missive/util/task_runner_context.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {
 
@@ -207,8 +208,8 @@ Status StorageQueue::Init() {
         LOG(ERROR) << "Unable to retrieve generation id, performing full reset";
         next_sequencing_id_ = 0;
         first_sequencing_id_ = 0;
-        first_unconfirmed_sequencing_id_ = base::nullopt;
-        last_record_digest_ = base::nullopt;
+        first_unconfirmed_sequencing_id_ = absl::nullopt;
+        last_record_digest_ = absl::nullopt;
         ReleaseAllFileInstances();
         used_files_set.clear();
       }
@@ -231,12 +232,12 @@ Status StorageQueue::Init() {
   // This is especially imporant for non-periodic queues, but won't harm
   // others either.
   if (first_sequencing_id_ < next_sequencing_id_) {
-    Start<ReadContext>(UploaderInterface::INIT_RESUME, this);
+    Start<ReadContext>(UploaderInterface::UploadReason::INIT_RESUME, this);
   }
   return Status::StatusOK();
 }
 
-base::Optional<std::string> StorageQueue::GetLastRecordDigest() const {
+absl::optional<std::string> StorageQueue::GetLastRecordDigest() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
   // Attach last record digest, if present.
   return last_record_digest_;
@@ -317,7 +318,7 @@ Status StorageQueue::EnumerateDataFiles(
   // We need to set first_sequencing_id_ to 0 if this is the initialization
   // of an empty StorageQueue, and to the lowest sequencing id among all
   // existing files, if it was already used.
-  base::Optional<int64_t> first_sequencing_id;
+  absl::optional<int64_t> first_sequencing_id;
   base::FileEnumerator dir_enum(options_.directory(),
                                 /*recursive=*/false,
                                 base::FileEnumerator::FILES,
@@ -453,7 +454,7 @@ StatusOr<scoped_refptr<StorageQueue::SingleFile>> StorageQueue::AssignLastFile(
   scoped_refptr<SingleFile> last_file = files_.rbegin()->second;
   if (last_file->size() > 0 &&  // Cannot have a file with no records.
       last_file->size() + size + sizeof(RecordHeader) + FRAME_SIZE >
-          options_.single_file_size()) {
+          options_.max_single_file_size()) {
     // The last file will become too large, asynchronously close it and add
     // new.
     last_file->Close();
@@ -489,6 +490,17 @@ Status StorageQueue::WriteHeaderAndBlock(
     base::StringPiece current_record_digest,
     scoped_refptr<StorageQueue::SingleFile> file) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
+
+  // Test only: Simulate failure if requested
+  if (test_injected_failures_.count(
+          test::StorageQueueOperationKind::kWriteBlock) > 0 &&
+      test_injected_failures_[test::StorageQueueOperationKind::kWriteBlock]
+          .count(next_sequencing_id_)) {
+    return Status(error::INTERNAL,
+                  base::StrCat({"Simulated failure, seq=",
+                                base::NumberToString(next_sequencing_id_)}));
+  }
+
   // Prepare header.
   RecordHeader header;
   // Pad to the whole frame, if necessary.
@@ -545,6 +557,17 @@ Status StorageQueue::WriteHeaderAndBlock(
 
 Status StorageQueue::WriteMetadata(base::StringPiece current_record_digest) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
+
+  // Test only: Simulate failure if requested
+  if (test_injected_failures_.count(
+          test::StorageQueueOperationKind::kWriteMetadata) > 0 &&
+      test_injected_failures_[test::StorageQueueOperationKind::kWriteMetadata]
+          .count(next_sequencing_id_)) {
+    return Status(error::INTERNAL,
+                  base::StrCat({"Simulated failure, seq=",
+                                base::NumberToString(next_sequencing_id_)}));
+  }
+
   // Synchronously write the metafile.
   ASSIGN_OR_RETURN(
       scoped_refptr<SingleFile> meta_file,
@@ -792,7 +815,9 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
         storage_queue_(storage_queue->weakptr_factory_.GetWeakPtr()) {
     DCHECK(storage_queue.get());
     DCHECK(async_start_upload_cb_);
-    DCHECK_LT(reason, UploaderInterface::MAX_REASON);
+    DCHECK_LT(
+        static_cast<uint32_t>(reason),
+        static_cast<uint32_t>(UploaderInterface::UploadReason::MAX_REASON));
     DETACH_FROM_SEQUENCE(read_sequence_checker_);
   }
 
@@ -1061,8 +1086,12 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     }
 
     // Test only: simulate error, if requested.
-    if (storage_queue_->test_injected_fail_sequencing_ids_.count(
-            sequencing_id) > 0) {
+    if (storage_queue_->test_injected_failures_.count(
+            test::StorageQueueOperationKind::kReadBlock) > 0 &&
+        storage_queue_
+                ->test_injected_failures_
+                    [test::StorageQueueOperationKind::kReadBlock]
+                .count(sequencing_id) > 0) {
       return Status(error::INTERNAL,
                     base::StrCat({"Simulated failure, seq=",
                                   base::NumberToString(sequencing_id)}));
@@ -1269,7 +1298,8 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
     // Otherwise initiate Upload right after writing
     // finished and respond back when reading Upload is done.
     // Note: new uploader created synchronously before scheduling Upload.
-    Start<ReadContext>(UploaderInterface::IMMEDIATE_FLUSH, storage_queue_);
+    Start<ReadContext>(UploaderInterface::UploadReason::IMMEDIATE_FLUSH,
+                       storage_queue_);
   }
 
   void OnStart() override {
@@ -1356,7 +1386,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
 
   void OnCompressedRecordReady(
       std::string compressed_record_result,
-      base::Optional<CompressionInformation> compression_information) {
+      absl::optional<CompressionInformation> compression_information) {
     // Encrypt the result. The callback is partially bounded to include
     // compression information.
     storage_queue_->encryption_module_->EncryptRecord(
@@ -1367,7 +1397,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
   }
 
   void OnEncryptedRecordReady(
-      base::Optional<CompressionInformation> compression_information,
+      absl::optional<CompressionInformation> compression_information,
       StatusOr<EncryptedRecord> encrypted_record_result) {
     if (!encrypted_record_result.ok()) {
       // Failed to serialize or encrypt.
@@ -1526,7 +1556,7 @@ StorageQueue::CollectFilesForUpload(int64_t sequencing_id) const {
 
 class StorageQueue::ConfirmContext : public TaskRunnerContext<Status> {
  public:
-  ConfirmContext(base::Optional<int64_t> sequencing_id,
+  ConfirmContext(absl::optional<int64_t> sequencing_id,
                  bool force,
                  base::OnceCallback<void(Status)> end_callback,
                  scoped_refptr<StorageQueue> storage_queue)
@@ -1557,7 +1587,7 @@ class StorageQueue::ConfirmContext : public TaskRunnerContext<Status> {
   }
 
   // Confirmed sequencing id.
-  base::Optional<int64_t> sequencing_id_;
+  absl::optional<int64_t> sequencing_id_;
 
   bool force_;
 
@@ -1566,7 +1596,7 @@ class StorageQueue::ConfirmContext : public TaskRunnerContext<Status> {
   SEQUENCE_CHECKER(confirm_sequence_checker_);
 };
 
-void StorageQueue::Confirm(base::Optional<int64_t> sequencing_id,
+void StorageQueue::Confirm(absl::optional<int64_t> sequencing_id,
                            bool force,
                            base::OnceCallback<void(Status)> completion_cb) {
   Start<ConfirmContext>(sequencing_id, force, std::move(completion_cb), this);
@@ -1619,14 +1649,14 @@ void StorageQueue::CheckBackUpload(Status status, int64_t next_sequencing_id) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
   if (!status.ok()) {
     // Previous upload failed, retry.
-    Start<ReadContext>(UploaderInterface::FAILURE_RETRY, this);
+    Start<ReadContext>(UploaderInterface::UploadReason::FAILURE_RETRY, this);
     return;
   }
 
   if (!first_unconfirmed_sequencing_id_.has_value() ||
       first_unconfirmed_sequencing_id_.value() < next_sequencing_id) {
     // Not all uploaded events were confirmed after upload, retry.
-    Start<ReadContext>(UploaderInterface::INCOMPLETE_RETRY, this);
+    Start<ReadContext>(UploaderInterface::UploadReason::INCOMPLETE_RETRY, this);
     return;
   }
 
@@ -1634,11 +1664,11 @@ void StorageQueue::CheckBackUpload(Status status, int64_t next_sequencing_id) {
 }
 
 void StorageQueue::PeriodicUpload() {
-  Start<ReadContext>(UploaderInterface::PERIODIC, this);
+  Start<ReadContext>(UploaderInterface::UploadReason::PERIODIC, this);
 }
 
 void StorageQueue::Flush() {
-  Start<ReadContext>(UploaderInterface::MANUAL, this);
+  Start<ReadContext>(UploaderInterface::UploadReason::MANUAL, this);
 }
 
 void StorageQueue::ReleaseAllFileInstances() {
@@ -1646,9 +1676,10 @@ void StorageQueue::ReleaseAllFileInstances() {
   meta_file_.reset();
 }
 
-void StorageQueue::TestInjectBlockReadErrors(
+void StorageQueue::TestInjectErrorsForOperation(
+    const test::StorageQueueOperationKind operation_kind,
     std::initializer_list<int64_t> sequencing_ids) {
-  test_injected_fail_sequencing_ids_ = sequencing_ids;
+  test_injected_failures_[operation_kind] = sequencing_ids;
 }
 
 //
@@ -1712,7 +1743,7 @@ void StorageQueue::SingleFile::Close() {
     return;
   }
   handle_.reset();
-  is_readonly_ = base::nullopt;
+  is_readonly_ = absl::nullopt;
   if (buffer_) {
     buffer_.reset();
     GetMemoryResource()->Discard(buffer_size_);

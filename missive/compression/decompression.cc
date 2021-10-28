@@ -11,13 +11,13 @@
 #include <base/feature_list.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
-#include <base/optional.h>
 #include <base/strings/string_piece.h>
 #include <base/task/thread_pool.h>
 #include <snappy.h>
 
 #include "missive/proto/record.pb.h"
-#include "missive/storage/resources/resource_interface.h"
+#include "missive/resources/resource_interface.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {
 

@@ -92,7 +92,9 @@ void MissiveDaemon::AsyncStartUpload(
   DCHECK(uploader_result_cb);
   auto upload_job_result = UploadJob::Create(
       upload_client_,
-      /*need_encryption_key=*/reason == UploaderInterface::KEY_DELIVERY,
+      /*need_encryption_key=*/
+      (EncryptionModuleInterface::is_enabled() &&
+       reason == UploaderInterface::UploadReason::KEY_DELIVERY),
       std::move(uploader_result_cb));
   if (!upload_job_result.ok()) {
     // In the event that UploadJob::Create fails, it will call

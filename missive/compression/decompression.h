@@ -5,10 +5,10 @@
 #include <string>
 
 #include <base/memory/ref_counted.h>
-#include <base/optional.h>
 #include <base/strings/string_piece.h>
 
 #include "missive/proto/record.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #ifndef MISSIVE_COMPRESSION_DECOMPRESSION_H_
 #define MISSIVE_COMPRESSION_DECOMPRESSION_H_

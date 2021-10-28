@@ -28,9 +28,9 @@ TestCompressionModuleStrict::TestCompressionModuleStrict()
       .WillByDefault(Invoke(
           [](std::string record,
              base::OnceCallback<void(
-                 std::string, base::Optional<CompressionInformation>)> cb) {
+                 std::string, absl::optional<CompressionInformation>)> cb) {
             // compression_info is not set.
-            std::move(cb).Run(record, base::nullopt);
+            std::move(cb).Run(record, absl::nullopt);
           }));
 }
 

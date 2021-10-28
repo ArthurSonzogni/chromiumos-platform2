@@ -74,6 +74,7 @@ constexpr base::TimeDelta kManualUploadPeriod = base::TimeDelta::Max();
 
 constexpr char kEncryptionKeyFilePrefix[] = "EncryptionKey.";
 const int32_t kEncryptionKeyMaxFileSize = 256;
+const uint64_t kQueueSize = 2 * 1024LL * 1024LL;
 
 // Failed upload retry delay: if an upload fails and there are no more incoming
 // events, collected events will not get uploaded for an indefinite time (see
@@ -90,33 +91,37 @@ std::vector<std::pair<Priority, QueueOptions>> ExpectedQueues(
                      QueueOptions(options)
                          .set_subdirectory(kSecurityQueueSubdir)
                          .set_file_prefix(kSecurityQueuePrefix)
-                         .set_upload_retry_delay(kFailedUploadRetryDelay)),
+                         .set_upload_retry_delay(kFailedUploadRetryDelay)
+                         .set_max_single_file_size(kQueueSize)),
       std::make_pair(IMMEDIATE,
                      QueueOptions(options)
                          .set_subdirectory(kImmediateQueueSubdir)
                          .set_file_prefix(kImmediateQueuePrefix)
-                         .set_upload_retry_delay(kFailedUploadRetryDelay)),
-      std::make_pair(FAST_BATCH,
-                     QueueOptions(options)
-                         .set_subdirectory(kFastBatchQueueSubdir)
-                         .set_file_prefix(kFastBatchQueuePrefix)
-                         .set_upload_period(kFastBatchUploadPeriod)),
-      std::make_pair(SLOW_BATCH,
-                     QueueOptions(options)
-                         .set_subdirectory(kSlowBatchQueueSubdir)
-                         .set_file_prefix(kSlowBatchQueuePrefix)
-                         .set_upload_period(kSlowBatchUploadPeriod)),
+                         .set_upload_retry_delay(kFailedUploadRetryDelay)
+                         .set_max_single_file_size(kQueueSize)),
+      std::make_pair(FAST_BATCH, QueueOptions(options)
+                                     .set_subdirectory(kFastBatchQueueSubdir)
+                                     .set_file_prefix(kFastBatchQueuePrefix)
+                                     .set_upload_period(kFastBatchUploadPeriod)
+                                     .set_max_single_file_size(kQueueSize)),
+      std::make_pair(SLOW_BATCH, QueueOptions(options)
+                                     .set_subdirectory(kSlowBatchQueueSubdir)
+                                     .set_file_prefix(kSlowBatchQueuePrefix)
+                                     .set_upload_period(kSlowBatchUploadPeriod)
+                                     .set_max_single_file_size(kQueueSize)),
       std::make_pair(BACKGROUND_BATCH,
                      QueueOptions(options)
                          .set_subdirectory(kBackgroundQueueSubdir)
                          .set_file_prefix(kBackgroundQueuePrefix)
-                         .set_upload_period(kBackgroundQueueUploadPeriod)),
+                         .set_upload_period(kBackgroundQueueUploadPeriod)
+                         .set_max_single_file_size(kQueueSize)),
       std::make_pair(MANUAL_BATCH,
                      QueueOptions(options)
                          .set_subdirectory(kManualQueueSubdir)
                          .set_file_prefix(kManualQueuePrefix)
                          .set_upload_period(kManualUploadPeriod)
-                         .set_upload_retry_delay(kFailedUploadRetryDelay)),
+                         .set_upload_retry_delay(kFailedUploadRetryDelay)
+                         .set_max_single_file_size(kQueueSize)),
   };
 }
 
@@ -138,7 +143,7 @@ class Storage::QueueUploaderInterface : public UploaderInterface {
     storage->async_start_upload_cb_.Run(
         (/*need_encryption_key=*/EncryptionModuleInterface::is_enabled() &&
          storage->encryption_module_->need_encryption_key())
-            ? UploaderInterface::KEY_DELIVERY
+            ? UploaderInterface::UploadReason::KEY_DELIVERY
             : reason,
         base::BindOnce(&QueueUploaderInterface::WrapInstantiatedUploader,
                        priority, std::move(start_uploader_cb)));
@@ -226,7 +231,7 @@ class Storage::KeyDelivery {
         base::BindOnce(&KeyDelivery::EncryptionKeyReceiverReady,
                        base::Unretained(this));
     async_start_upload_cb_.Run(
-        UploaderInterface::KEY_DELIVERY,
+        UploaderInterface::UploadReason::KEY_DELIVERY,
         base::BindOnce(&KeyDelivery::WrapInstantiatedKeyUploader,
                        /*priority=*/MANUAL_BATCH,
                        std::move(start_uploader_cb)));
@@ -476,7 +481,7 @@ class Storage::KeyInStorage {
   // Enumerates found key files and locates one with the highest index and
   // valid key. Returns pair of file name and loaded signed key proto.
   // Called once, during initialization.
-  base::Optional<std::pair<base::FilePath, SignedEncryptionInfo>>
+  absl::optional<std::pair<base::FilePath, SignedEncryptionInfo>>
   LocateValidKeyAndParse(
       const base::flat_map<uint64_t, base::FilePath>& found_key_files) {
     // Try to unserialize the key from each found file (latest first).
@@ -527,7 +532,7 @@ class Storage::KeyInStorage {
     }
 
     // Not found, return error.
-    return base::nullopt;
+    return absl::nullopt;
   }
 
   // Index of the file to serialize the signed key to.
@@ -730,7 +735,7 @@ void Storage::Write(Priority priority,
 }
 
 void Storage::Confirm(Priority priority,
-                      base::Optional<int64_t> seq_number,
+                      absl::optional<int64_t> seq_number,
                       bool force,
                       base::OnceCallback<void(Status)> completion_cb) {
   // Note: queues_ never change after initialization is finished, so there is

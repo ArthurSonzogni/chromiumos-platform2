@@ -13,7 +13,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/optional.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/synchronization/waitable_event.h>
@@ -30,11 +29,12 @@
 #include "missive/encryption/scoped_encryption_feature.h"
 #include "missive/encryption/test_encryption_module.h"
 #include "missive/proto/record.pb.h"
-#include "missive/storage/resources/resource_interface.h"
+#include "missive/resources/resource_interface.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using ::testing::_;
 using ::testing::Between;
@@ -61,7 +61,7 @@ class TestUploadClient : public UploaderInterface {
   // generation is uploaded without last record digest.
   using LastRecordDigestMap = base::flat_map<
       std::pair<int64_t /*generation id */, int64_t /*sequencing id*/>,
-      base::Optional<std::string /*digest*/>>;
+      absl::optional<std::string /*digest*/>>;
 
   explicit TestUploadClient(LastRecordDigestMap* last_record_digest_map)
       : last_record_digest_map_(last_record_digest_map) {}
@@ -120,7 +120,7 @@ class TestUploadClient : public UploaderInterface {
   void Completed(Status status) override { ASSERT_OK(status); }
 
  private:
-  base::Optional<int64_t> generation_id_;
+  absl::optional<int64_t> generation_id_;
   LastRecordDigestMap* const last_record_digest_map_;
 
   Sequence test_upload_sequence_;
@@ -130,8 +130,7 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
  public:
   void SetUp() override {
     ASSERT_TRUE(location_.CreateUniqueTempDir());
-    options_.set_directory(base::FilePath(location_.GetPath()))
-        .set_single_file_size(GetParam());
+    options_.set_directory(base::FilePath(location_.GetPath()));
   }
 
   void TearDown() override {
@@ -205,7 +204,7 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
     Record record;
     record.mutable_data()->assign(data.data(), data.size());
     record.set_destination(UPLOAD_EVENTS);
-    record.set_dm_token("");
+    record.set_dm_token("DM TOKEN");
     storage_queue_->Write(std::move(record), std::move(cb));
   }
 

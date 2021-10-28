@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MISSIVE_STORAGE_RESOURCES_MEMORY_RESOURCE_IMPL_H_
-#define MISSIVE_STORAGE_RESOURCES_MEMORY_RESOURCE_IMPL_H_
+#ifndef MISSIVE_RESOURCES_MEMORY_RESOURCE_IMPL_H_
+#define MISSIVE_RESOURCES_MEMORY_RESOURCE_IMPL_H_
 
 #include <atomic>
 #include <cstdint>
 
-#include "missive/storage/resources/resource_interface.h"
+#include "missive/resources/resource_interface.h"
 
 namespace reporting {
 
@@ -34,4 +34,4 @@ class MemoryResourceImpl : public ResourceInterface {
 
 }  // namespace reporting
 
-#endif  // MISSIVE_STORAGE_RESOURCES_MEMORY_RESOURCE_IMPL_H_
+#endif  // MISSIVE_RESOURCES_MEMORY_RESOURCE_IMPL_H_

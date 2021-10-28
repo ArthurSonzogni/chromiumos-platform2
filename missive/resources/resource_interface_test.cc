@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-#include "missive/storage/resources/resource_interface.h"
+#include "missive/resources/resource_interface.h"
 
 #include "base/task/post_task.h"
 #include "base/task/thread_pool.h"

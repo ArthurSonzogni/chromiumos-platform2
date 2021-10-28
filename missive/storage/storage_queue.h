@@ -11,6 +11,7 @@
 #include <string>
 
 #include <base/callback.h>
+#include <base/containers/flat_map.h>
 #include <base/containers/flat_set.h>
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
@@ -18,7 +19,6 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/ref_counted_delete_on_sequence.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/optional.h>
 #include <base/sequenced_task_runner.h>
 #include <base/strings/string_piece.h>
 #include <base/threading/thread.h>
@@ -32,8 +32,21 @@
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {
+
+namespace test {
+
+// Storage Queue operation kind used to associate operations with failures for
+// testing purposes
+enum class StorageQueueOperationKind {
+  kReadBlock,
+  kWriteBlock,
+  kWriteMetadata
+};
+
+}  // namespace test
 
 // Storage queue represents single queue of data to be collected and stored
 // persistently. It allows to add whole data records as necessary,
@@ -76,7 +89,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // only accepted if no higher ids were confirmed before; otherwise it is
   // accepted unconditionally.
   // Helper methods: RemoveConfirmedData.
-  void Confirm(base::Optional<int64_t> sequencing_id,
+  void Confirm(absl::optional<int64_t> sequencing_id,
                bool force,
                base::OnceCallback<void(Status)> completion_cb);
 
@@ -103,8 +116,10 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // CollectFilesForUpload.
   void Flush();
 
-  // Test only: makes specified records fail on reading.
-  void TestInjectBlockReadErrors(std::initializer_list<int64_t> sequencing_ids);
+  // Test only: makes specified records fail on specified operation kind.
+  void TestInjectErrorsForOperation(
+      const test::StorageQueueOperationKind operation_kind,
+      std::initializer_list<int64_t> sequencing_ids);
 
   // Access queue options.
   const QueueOptions& options() const { return options_; }
@@ -175,7 +190,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
 
     // Flag (valid for opened file only): true if file was opened for reading
     // only, false otherwise.
-    base::Optional<bool> is_readonly_;
+    absl::optional<bool> is_readonly_;
 
     const base::FilePath filename_;  // relative to the StorageQueue directory
     uint64_t size_ = 0;  // tracked internally rather than by filesystem
@@ -210,7 +225,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   Status Init();
 
   // Retrieves last record digest (does not exist at a generation start).
-  base::Optional<std::string> GetLastRecordDigest() const;
+  absl::optional<std::string> GetLastRecordDigest() const;
 
   // Helper method for Init(): process single data file.
   // Return sequencing_id from <prefix>.<sequencing_id> file name, or Status
@@ -323,7 +338,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
 
   // Digest of the last written record (loaded at queue initialization, absent
   // if the new generation has just started, and no records where stored yet).
-  base::Optional<std::string> last_record_digest_;
+  absl::optional<std::string> last_record_digest_;
 
   // Queue of the write context instances in the order of creation, sequencing
   // ids and record digests. Context is always removed from this queue before
@@ -345,7 +360,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // If first_unconfirmed_sequencing_id_ < first_sequencing_id_,
   // [first_unconfirmed_sequencing_id_, first_sequencing_id_) is a gap
   // that cannot be filled in and is uploaded as such.
-  base::Optional<int64_t> first_unconfirmed_sequencing_id_;
+  absl::optional<int64_t> first_unconfirmed_sequencing_id_;
 
   // Latest metafile. May be null.
   scoped_refptr<SingleFile> meta_file_;
@@ -371,8 +386,9 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // Compression module.
   scoped_refptr<CompressionModule> compression_module_;
 
-  // Test only: records specified to fail on reading.
-  base::flat_set<int64_t> test_injected_fail_sequencing_ids_;
+  // Test only: records specified to fail for a given operation kind.
+  base::flat_map<test::StorageQueueOperationKind, base::flat_set<int64_t>>
+      test_injected_failures_;
 
   // Weak pointer factory (must be last member in class).
   base::WeakPtrFactory<StorageQueue> weakptr_factory_{this};

@@ -11,12 +11,12 @@
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/optional.h>
 #include <base/strings/string_piece.h>
 
 #include "missive/proto/record.pb.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {
 
@@ -104,7 +104,7 @@ class Encryptor : public base::RefCountedThreadSafe<Encryptor> {
   ~Encryptor();
 
   // Public key used for asymmetric encryption of symmetric key and its id.
-  base::Optional<std::pair<std::string, PublicKeyId>> asymmetric_key_;
+  absl::optional<std::pair<std::string, PublicKeyId>> asymmetric_key_;
 
   // Sequential task runner for all asymmetric_key_ activities: update, read.
   scoped_refptr<base::SequencedTaskRunner>

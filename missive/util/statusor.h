@@ -63,9 +63,9 @@
 
 #include <base/compiler_specific.h>
 #include <base/logging.h>
-#include <base/optional.h>
 
 #include "missive/util/status.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {
 
@@ -300,7 +300,7 @@ class WARN_UNUSED_RESULT StatusOr {
   }
 
   Status status_;
-  base::Optional<T> value_;
+  absl::optional<T> value_;
 };
 
 }  // namespace reporting

@@ -6,10 +6,10 @@
 
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/optional.h>
 #include <base/strings/string_piece.h>
 
 #include "missive/proto/record.pb.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #ifndef MISSIVE_COMPRESSION_COMPRESSION_MODULE_H_
 #define MISSIVE_COMPRESSION_COMPRESSION_MODULE_H_
@@ -28,7 +28,7 @@ class CompressionModule : public base::RefCountedThreadSafe<CompressionModule> {
 
   // Factory method creates |CompressionModule| object.
   static scoped_refptr<CompressionModule> Create(
-      size_t compression_threshold_,
+      uint64_t compression_threshold_,
       CompressionInformation::CompressionAlgorithm compression_type_);
 
   // CompressRecord will attempt to compress the provided |record| and respond
@@ -40,7 +40,7 @@ class CompressionModule : public base::RefCountedThreadSafe<CompressionModule> {
   void CompressRecord(
       std::string record,
       base::OnceCallback<
-          void(std::string, base::Optional<CompressionInformation>)> cb) const;
+          void(std::string, absl::optional<CompressionInformation>)> cb) const;
 
   // Returns 'true' if |kCompressReportingPipeline| feature is enabled.
   static bool is_enabled();
@@ -51,7 +51,7 @@ class CompressionModule : public base::RefCountedThreadSafe<CompressionModule> {
  protected:
   // Constructor can only be called by |Create| factory method.
   CompressionModule(
-      size_t compression_threshold_,
+      uint64_t compression_threshold_,
       CompressionInformation::CompressionAlgorithm compression_type_);
 
   // Refcounted object must have destructor declared protected or private.
@@ -64,11 +64,11 @@ class CompressionModule : public base::RefCountedThreadSafe<CompressionModule> {
   void CompressRecordSnappy(
       std::string record,
       base::OnceCallback<
-          void(std::string, base::Optional<CompressionInformation>)> cb) const;
+          void(std::string, absl::optional<CompressionInformation>)> cb) const;
 
   // Minimum compression threshold (in bytes) for when a record will be
   // compressed
-  const size_t compression_threshold_;
+  const uint64_t compression_threshold_;
 };
 
 }  // namespace reporting

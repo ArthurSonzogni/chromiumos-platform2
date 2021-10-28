@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MISSIVE_STORAGE_RESOURCES_RESOURCE_INTERFACE_H_
-#define MISSIVE_STORAGE_RESOURCES_RESOURCE_INTERFACE_H_
+#ifndef MISSIVE_RESOURCES_RESOURCE_INTERFACE_H_
+#define MISSIVE_RESOURCES_RESOURCE_INTERFACE_H_
 
 #include <cstdint>
 
-#include "base/optional.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {
 
@@ -67,7 +67,7 @@ class ScopedReservation {
 
  private:
   ResourceInterface* const resource_interface_;
-  base::Optional<uint64_t> size_;
+  absl::optional<uint64_t> size_;
 };
 
 ResourceInterface* GetMemoryResource();
@@ -75,4 +75,4 @@ ResourceInterface* GetDiskResource();
 
 }  // namespace reporting
 
-#endif  // MISSIVE_STORAGE_RESOURCES_RESOURCE_INTERFACE_H_
+#endif  // MISSIVE_RESOURCES_RESOURCE_INTERFACE_H_

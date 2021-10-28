@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "missive/storage/resources/resource_interface.h"
+#include "missive/resources/resource_interface.h"
 
 #include <utility>
 

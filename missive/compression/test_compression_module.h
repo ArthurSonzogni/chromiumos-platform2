@@ -28,7 +28,7 @@ class TestCompressionModuleStrict : public CompressionModule {
               CompressRecord,
               (std::string record,
                base::OnceCallback<void(
-                   std::string, base::Optional<CompressionInformation>)> cb),
+                   std::string, absl::optional<CompressionInformation>)> cb),
               (const override));
 
  protected:
