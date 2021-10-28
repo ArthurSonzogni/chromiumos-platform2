@@ -5,6 +5,8 @@
 20104:224
 # shill spawns openvpn as 'openvpn' group
 20104:217
+# shill spawns wireguard tools and 'l2tpipsec_vpn' as 'vpn' group
+20104:20174
 # charon daemon (part of strongswan IPSec package) drops to 'ipsec' group
 20104:212
 # shill spawns logger as 'syslog' group
