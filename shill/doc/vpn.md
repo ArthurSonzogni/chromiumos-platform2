@@ -167,7 +167,7 @@ both a control and data channel.
 [Android `VpnService` API]: https://developer.android.com/reference/android/net/VpnService
 [ARC net.mojom interface]: https://cs.chromium.org/chromium/src/components/arc/mojom/net.mojom
 [`ArcNetHostImpl`]: https://cs.chromium.org/chromium/src/components/arc/net/arc_net_host_impl.h
-[`ArcNetworkBridge`]: https://cs.corp.google.com/master-arc-dev/vendor/google_arc/libs/arc-services/src/com/android/server/arc/net/ArcNetworkBridge.java
+[`ArcNetworkBridge`]: https://source.corp.google.com/rvc-arc/vendor/google_arc/libs/arc-net-services/src/com/android/server/arc/net/ArcNetworkBridge.java
 [Chrome `VpnService`]: https://cs.chromium.org/chromium/src/extensions/browser/api/vpn_provider/vpn_service.h
 [Chrome vpnProvider API]: https://developer.chrome.com/apps/vpnProvider
 [RFC 2661]: https://tools.ietf.org/html/rfc2661
