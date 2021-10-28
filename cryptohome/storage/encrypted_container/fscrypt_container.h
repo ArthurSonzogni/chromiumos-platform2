@@ -32,6 +32,7 @@ class FscryptContainer : public EncryptedContainer {
     return EncryptedContainerType::kFscrypt;
   }
   bool SetLazyTeardownWhenUnused() override;
+  base::FilePath GetBackingLocation() const override;
 
  private:
   const base::FilePath backing_dir_;

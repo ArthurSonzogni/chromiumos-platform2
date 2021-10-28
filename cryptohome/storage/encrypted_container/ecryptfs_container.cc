@@ -70,4 +70,8 @@ bool EcryptfsContainer::Teardown() {
   return platform_->ClearUserKeyring();
 }
 
+base::FilePath EcryptfsContainer::GetBackingLocation() const {
+  return backing_dir_;
+}
+
 }  // namespace cryptohome

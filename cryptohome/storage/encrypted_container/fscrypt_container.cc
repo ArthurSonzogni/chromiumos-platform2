@@ -74,4 +74,8 @@ bool FscryptContainer::Teardown() {
   return platform_->InvalidateDirCryptoKey(key_reference_, backing_dir_);
 }
 
+base::FilePath FscryptContainer::GetBackingLocation() const {
+  return backing_dir_;
+}
+
 }  // namespace cryptohome

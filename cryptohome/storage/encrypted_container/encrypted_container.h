@@ -63,6 +63,8 @@ class EncryptedContainer {
   // container is dropped, the constructs of the container are automatically
   // torn down and the container can be safely purged afterwards.
   virtual bool SetLazyTeardownWhenUnused() = 0;
+  // Returns the backing location if any.
+  virtual base::FilePath GetBackingLocation() const = 0;
 };
 
 }  // namespace cryptohome

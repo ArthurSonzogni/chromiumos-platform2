@@ -66,6 +66,9 @@ class CryptohomeVault {
     return container_ ? container_->GetType()
                       : EncryptedContainerType::kUnknown;
   }
+  base::FilePath GetContainerBackingLocation() {
+    return container_ ? container_->GetBackingLocation() : base::FilePath();
+  }
   EncryptedContainerType GetMigratingContainerType() {
     return migrating_container_ ? migrating_container_->GetType()
                                 : EncryptedContainerType::kUnknown;

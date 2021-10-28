@@ -276,4 +276,11 @@ bool DmcryptContainer::Teardown() {
   return true;
 }
 
+base::FilePath DmcryptContainer::GetBackingLocation() const {
+  if (backing_device_ != nullptr && backing_device_->GetPath().has_value()) {
+    return *(backing_device_->GetPath());
+  }
+  return base::FilePath();
+}
+
 }  // namespace cryptohome
