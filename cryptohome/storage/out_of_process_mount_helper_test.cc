@@ -23,7 +23,8 @@
 #include <brillo/cryptohome.h>
 #include <gtest/gtest.h>
 
-#include "cryptohome/make_tests.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/mount_utils.h"
 
@@ -49,7 +50,7 @@ namespace cryptohome {
 
 class OutOfProcessMountHelperTest : public ::testing::Test {
  public:
-  OutOfProcessMountHelperTest() {}
+  OutOfProcessMountHelperTest() : crypto_(&platform_) {}
   OutOfProcessMountHelperTest(const OutOfProcessMountHelperTest&) = delete;
   OutOfProcessMountHelperTest& operator=(const OutOfProcessMountHelperTest&) =
       delete;
@@ -58,17 +59,17 @@ class OutOfProcessMountHelperTest : public ::testing::Test {
 
   void SetUp() {
     // Populate the system salt.
-    helper_.SetUpSystemSalt();
-    helper_.InjectSystemSalt(&platform_);
+    InitializeFilesystemLayout(&platform_, &crypto_, &system_salt_);
+    platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt_);
 
     out_of_process_mounter_.reset(new OutOfProcessMountHelper(
-        helper_.system_salt, std::unique_ptr<MountNamespace>(),
+        system_salt_, std::unique_ptr<MountNamespace>(),
         true /* legacy_mount */, true /* bind_mount_downloads */, &platform_));
   }
 
   void TearDown() {
     out_of_process_mounter_ = nullptr;
-    helper_.TearDownSystemSalt();
+    platform_.GetFake()->RemoveSystemSaltForLibbrillo();
   }
 
   bool CreatePipe(base::ScopedFD* read_end, base::ScopedFD* write_end) {
@@ -90,8 +91,9 @@ class OutOfProcessMountHelperTest : public ::testing::Test {
   }
 
  protected:
-  MakeTests helper_;
   NiceMock<MockPlatform> platform_;
+  Crypto crypto_;
+  brillo::SecureBlob system_salt_;
   std::unique_ptr<OutOfProcessMountHelper> out_of_process_mounter_;
 };
 
@@ -170,7 +172,7 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPNonRootMountNamespace) {
   std::unique_ptr<MountNamespace> mnt_ns =
       std::make_unique<MountNamespace>(kChromeMountNamespace, &platform_);
   out_of_process_mounter_.reset(new OutOfProcessMountHelper(
-      helper_.system_salt, std::move(mnt_ns), true /* legacy_mount */,
+      system_salt_, std::move(mnt_ns), true /* legacy_mount */,
       true /* bind_mount_downloads */, &platform_));
 
   // Reading from the helper always succeeds.

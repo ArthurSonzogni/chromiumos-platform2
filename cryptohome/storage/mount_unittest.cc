@@ -41,7 +41,6 @@
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/keyset_management.h"
-#include "cryptohome/make_tests.h"
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"

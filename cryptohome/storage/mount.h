@@ -149,7 +149,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
  protected:
   FRIEND_TEST(ServiceInterfaceTest, CheckAsyncTestCredentials);
   FRIEND_TEST(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest);
-  friend class MakeTests;
   friend class MountTest;
   friend class ChapsDirectoryTest;
   friend class EphemeralNoUserSystemTest;
