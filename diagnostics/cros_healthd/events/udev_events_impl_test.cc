@@ -68,7 +68,16 @@ class MockCrosHealthdThunderboltObserver
 
 class UdevEventsImplTest : public BaseFileTest {
  public:
-  UdevEventsImplTest()
+  UdevEventsImpl* udev_events_impl() { return &udev_events_impl_; }
+
+ protected:
+  MockContext mock_context_;
+  UdevEventsImpl udev_events_impl_{&mock_context_};
+};
+
+class ThunderboltEventTest : public UdevEventsImplTest {
+ public:
+  ThunderboltEventTest()
       : task_environment_(
             base::test::TaskEnvironment::MainThreadType::IO,
             base::test::TaskEnvironment::ThreadPoolExecutionMode::ASYNC) {}
@@ -92,8 +101,6 @@ class UdevEventsImplTest : public BaseFileTest {
     observer_.reset();
     task_environment_.RunUntilIdle();
   }
-
-  UdevEventsImpl* udev_events_impl() { return &udev_events_impl_; }
 
   void SetUpSysfsFile(const std::string& val) {
     const auto dir = kFakeThunderboltDevicePath;
@@ -120,14 +127,12 @@ class UdevEventsImplTest : public BaseFileTest {
 
  protected:
   base::test::TaskEnvironment task_environment_;
-  MockContext mock_context_;
   std::unique_ptr<brillo::MockUdevDevice> device_;
   std::unique_ptr<brillo::UdevMonitor> monitor_;
-  UdevEventsImpl udev_events_impl_{&mock_context_};
   std::unique_ptr<StrictMock<MockCrosHealthdThunderboltObserver>> observer_;
 };
 
-TEST_F(UdevEventsImplTest, TestThunderboltAddEvent) {
+TEST_F(ThunderboltEventTest, TestThunderboltAddEvent) {
   base::RunLoop run_loop;
   EXPECT_CALL(*mock_observer(), OnAdd()).WillOnce(Invoke([&]() {
     run_loop.Quit();
@@ -138,7 +143,7 @@ TEST_F(UdevEventsImplTest, TestThunderboltAddEvent) {
   run_loop.Run();
 }
 
-TEST_F(UdevEventsImplTest, TestThunderboltRemoveEvent) {
+TEST_F(ThunderboltEventTest, TestThunderboltRemoveEvent) {
   base::RunLoop run_loop;
   EXPECT_CALL(*mock_observer(), OnRemove()).WillOnce(Invoke([&]() {
     run_loop.Quit();
@@ -149,7 +154,7 @@ TEST_F(UdevEventsImplTest, TestThunderboltRemoveEvent) {
   run_loop.Run();
 }
 
-TEST_F(UdevEventsImplTest, TestThunderboltAuthorizedEvent) {
+TEST_F(ThunderboltEventTest, TestThunderboltAuthorizedEvent) {
   base::RunLoop run_loop;
   EXPECT_CALL(*mock_observer(), OnAuthorized()).WillOnce(Invoke([&]() {
     run_loop.Quit();
@@ -160,7 +165,7 @@ TEST_F(UdevEventsImplTest, TestThunderboltAuthorizedEvent) {
   run_loop.Run();
 }
 
-TEST_F(UdevEventsImplTest, TestThunderboltUnAuthorizedEvent) {
+TEST_F(ThunderboltEventTest, TestThunderboltUnAuthorizedEvent) {
   base::RunLoop run_loop;
   EXPECT_CALL(*mock_observer(), OnUnAuthorized()).WillOnce(Invoke([&]() {
     run_loop.Quit();
