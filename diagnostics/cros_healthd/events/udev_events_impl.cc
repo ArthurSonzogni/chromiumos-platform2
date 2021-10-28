@@ -14,6 +14,7 @@
 #include <brillo/udev/udev_device.h>
 
 #include "diagnostics/cros_healthd/utils/file_utils.h"
+#include "diagnostics/cros_healthd/utils/usb_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
@@ -27,6 +28,12 @@ std::string GetString(const char* str) {
   }
 
   return "";
+}
+
+void FillUsbEventInfo(const std::unique_ptr<brillo::UdevDevice>& device,
+                      const base::FilePath& root_dir,
+                      mojo_ipc::UsbEventInfo* info) {
+  info->vendor = GetUsbVendorName(device);
 }
 
 }  // namespace
@@ -129,6 +136,7 @@ void UdevEventsImpl::AddUsbObserver(
 void UdevEventsImpl::OnUsbAdd(
     const std::unique_ptr<brillo::UdevDevice>& device) {
   mojo_ipc::UsbEventInfo info;
+  FillUsbEventInfo(device, context_->root_dir(), &info);
   for (auto& observer : usb_observers_)
     observer->OnAdd(info.Clone());
 }
@@ -136,6 +144,7 @@ void UdevEventsImpl::OnUsbAdd(
 void UdevEventsImpl::OnUsbRemove(
     const std::unique_ptr<brillo::UdevDevice>& device) {
   mojo_ipc::UsbEventInfo info;
+  FillUsbEventInfo(device, context_->root_dir(), &info);
   for (auto& observer : usb_observers_)
     observer->OnRemove(info.Clone());
 }
