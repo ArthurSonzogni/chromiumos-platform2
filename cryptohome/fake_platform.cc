@@ -777,8 +777,6 @@ void FakePlatform::SetGroupId(const std::string& group, gid_t group_id) {
 void FakePlatform::SetStandardUsersAndGroups() {
   SetUserId(fake_platform::kRoot, fake_platform::kRootUID);
   SetGroupId(fake_platform::kRoot, fake_platform::kRootGID);
-  SetUserId(fake_platform::kChapsUser, fake_platform::kChapsUID);
-  SetGroupId(fake_platform::kChapsUser, fake_platform::kChapsGID);
   SetUserId(fake_platform::kChronosUser, fake_platform::kChronosUID);
   SetGroupId(fake_platform::kChronosUser, fake_platform::kChronosGID);
   SetGroupId(fake_platform::kSharedGroup, fake_platform::kSharedGID);

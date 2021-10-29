@@ -27,14 +27,11 @@ namespace cryptohome {
 namespace fake_platform {
 // Common constants
 constexpr char kRoot[] = "root";
-constexpr char kChapsUser[] = "chaps";
 constexpr char kChronosUser[] = "chronos";
 constexpr char kSharedGroup[] = "chronos-access";
 
 constexpr uid_t kRootUID = 0;
 constexpr gid_t kRootGID = 0;
-constexpr uid_t kChapsUID = 42;
-constexpr gid_t kChapsGID = 43;
 constexpr uid_t kChronosUID = 44;
 constexpr gid_t kChronosGID = 45;
 constexpr gid_t kSharedGID = 46;

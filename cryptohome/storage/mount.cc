@@ -65,7 +65,6 @@ constexpr bool __attribute__((unused)) MountUserSessionOOP() {
 
 namespace cryptohome {
 
-const char kChapsUserName[] = "chaps";
 const char kDefaultSharedAccessGroup[] = "chronos-access";
 
 void StartUserFileAttrsCleanerService(cryptohome::Platform* platform,
@@ -86,7 +85,6 @@ void StartUserFileAttrsCleanerService(cryptohome::Platform* platform,
 
 Mount::Mount(Platform* platform, HomeDirs* homedirs)
     : default_user_(-1),
-      chaps_user_(-1),
       default_group_(-1),
       default_access_group_(-1),
       platform_(platform),
@@ -109,12 +107,6 @@ bool Mount::Init(bool use_local_mounter) {
   // Get the user id and group id of the default user
   if (!platform_->GetUserId(kDefaultSharedUser, &default_user_,
                             &default_group_)) {
-    result = false;
-  }
-
-  // Get the user id of the chaps user.
-  gid_t not_used;
-  if (!platform_->GetUserId(kChapsUserName, &chaps_user_, &not_used)) {
     result = false;
   }
 
@@ -346,20 +338,6 @@ bool Mount::OwnsMountPoint(const FilePath& path) const {
 FilePath Mount::GetUserDirectoryForUser(
     const std::string& obfuscated_username) const {
   return ShadowRoot().Append(obfuscated_username);
-}
-
-bool Mount::SetupChapsDirectory(const FilePath& dir) {
-  // If the Chaps database directory does not exist, create it.
-  if (!platform_->DirectoryExists(dir)) {
-    if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-            dir, S_IRWXU | S_IRGRP | S_IXGRP, chaps_user_,
-            default_access_group_)) {
-      LOG(ERROR) << "Failed to create " << dir.value();
-      return false;
-    }
-    return true;
-  }
-  return true;
 }
 
 MountType Mount::GetMountType() const {

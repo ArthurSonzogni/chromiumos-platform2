@@ -44,8 +44,6 @@
 
 namespace cryptohome {
 
-class ChapsClientFactory;
-
 // The Mount class handles mounting/unmounting of the user's cryptohome
 // directory.
 class Mount : public base::RefCountedThreadSafe<Mount> {
@@ -144,9 +142,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   void set_legacy_mount(bool legacy) { legacy_mount_ = legacy; }
   void set_bind_mount_downloads(bool bind) { bind_mount_downloads_ = bind; }
 
- protected:
-  friend class ChapsDirectoryTest;
-
  private:
   // Gets the directory in the shadow root where the user's salt, key, and vault
   // are stored.
@@ -191,18 +186,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   base::FilePath GetMountedEphemeralRootHomePath(
       const std::string& obfuscated_username) const;
 
-  // Checks Chaps Directory and makes sure that it has the correct
-  // permissions, owner uid and gid. If any of these values are
-  // incorrect, the correct values are set. If the directory
-  // does not exist, it is created and initialzed with the correct
-  // values. If the directory or its attributes cannot be checked,
-  // set or created, a fatal error has occured and the function
-  // returns false.
-  //
-  // Parameters
-  //   dir - directory to check
-  bool SetupChapsDirectory(const base::FilePath& dir);
-
   // A special of UnmountCryptohome to be called from the migration path.
   void UnmountCryptohomeFromMigration();
 
@@ -212,10 +195,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.
   uid_t default_user_;
-
-  // The uid of the chaps user. Ownership of the user's PKCS #11 token directory
-  // is set to this uid.
-  uid_t chaps_user_;
 
   // The gid of the shared user.  Ownership of the user's vault is set to this
   // gid.
