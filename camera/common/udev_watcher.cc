@@ -136,7 +136,8 @@ bool UdevWatcher::EnumerateExistingDevices() {
   return true;
 }
 
-void UdevWatcher::StartOnThread(int fd, base::Callback<void(bool)> callback) {
+void UdevWatcher::StartOnThread(int fd,
+                                base::OnceCallback<void(bool)> callback) {
   DCHECK(thread_.task_runner()->BelongsToCurrentThread());
 
   watcher_ = base::FileDescriptorWatcher::WatchReadable(
@@ -144,11 +145,11 @@ void UdevWatcher::StartOnThread(int fd, base::Callback<void(bool)> callback) {
       base::BindRepeating(&UdevWatcher::OnReadable, base::Unretained(this)));
   if (!watcher_) {
     LOGF(ERROR) << "Failed to start watching a file descriptor";
-    callback.Run(false);
+    std::move(callback).Run(false);
     return;
   }
 
-  callback.Run(true);
+  std::move(callback).Run(true);
 }
 
 void UdevWatcher::StopOnThread() {

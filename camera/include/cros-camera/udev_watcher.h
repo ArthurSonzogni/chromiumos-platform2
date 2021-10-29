@@ -63,7 +63,7 @@ class CROS_CAMERA_EXPORT UdevWatcher {
  private:
   void OnReadable();
 
-  void StartOnThread(int fd, base::Callback<void(bool)> callback);
+  void StartOnThread(int fd, base::OnceCallback<void(bool)> callback);
   void StopOnThread();
 
   Observer* observer_;
