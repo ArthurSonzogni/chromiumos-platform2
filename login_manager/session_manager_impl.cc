@@ -31,6 +31,7 @@
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/system/sys_info.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/default_tick_clock.h>
 #include <base/time/time.h>
@@ -714,7 +715,17 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
   // Make sure that Chrome's stdout and stderr, which may contain log messages
   // with user-specific data, don't get saved after the first user logs in:
   // https://crbug.com/904850
-  if (user_sessions_.empty())
+  //
+  // On test images, disable this behavior so that developers can see in-process
+  // crash dump which is printed to stderr. b/188858313
+  // NOTE: Here we check the image type instead of the device's mode, so that
+  // developers can verify what's happening on user devices with a developer
+  // mode device running a regular image.
+  std::string channel_string;
+  const bool is_test_image = base::SysInfo::GetLsbReleaseValue(
+                                 "CHROMEOS_RELEASE_TRACK", &channel_string) &&
+                             base::StartsWith(channel_string, "test");
+  if (user_sessions_.empty() && !is_test_image)
     DisconnectLogFile(ui_log_symlink_path_);
 
   init_controller_->TriggerImpulse(kStartUserSessionImpulse,
