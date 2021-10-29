@@ -15,6 +15,6 @@ int main(int argc, char* argv[]) {
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  Daemon(FLAGS_generate_reports, FLAGS_dev).Run();
+  secanomalyd::Daemon(FLAGS_generate_reports, FLAGS_dev).Run();
   return 0;
 }

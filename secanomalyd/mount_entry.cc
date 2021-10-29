@@ -13,6 +13,8 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
+namespace secanomalyd {
+
 namespace {
 // These paths can be sources of removable drive or archive mounts.
 const std::vector<base::FilePath> kSrcPathsToFilter = {
@@ -80,3 +82,5 @@ bool MountEntry::IsNamespaceBindMount() const {
   // away.
   return this->type() == "nsfs" || this->type() == "proc";
 }
+
+}  // namespace secanomalyd

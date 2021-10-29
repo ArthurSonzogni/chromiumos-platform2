@@ -13,6 +13,8 @@
 
 #include <brillo/process/process.h>
 
+namespace secanomalyd {
+
 namespace {
 constexpr char kPsPath[] = "/bin/ps";
 }
@@ -95,3 +97,5 @@ MaybeProcEntries ReadProcessesFromString(const std::string& processes) {
   // If we failed to parse any valid processes, return nullopt.
   return res.size() > 0 ? MaybeProcEntries(res) : base::nullopt;
 }
+
+}  // namespace secanomalyd

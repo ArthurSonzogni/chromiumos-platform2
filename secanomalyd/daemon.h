@@ -11,6 +11,8 @@
 
 #include "secanomalyd/mount_entry.h"
 
+namespace secanomalyd {
+
 class Daemon : public brillo::Daemon {
  public:
   explicit Daemon(bool generate_reports = false, bool dev = false)
@@ -33,5 +35,7 @@ class Daemon : public brillo::Daemon {
 
   MountEntryMap wx_mounts_;
 };
+
+}  // namespace secanomalyd
 
 #endif  // SECANOMALYD_DAEMON_H_

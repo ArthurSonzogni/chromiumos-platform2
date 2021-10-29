@@ -12,6 +12,8 @@
 
 #include <base/optional.h>
 
+namespace secanomalyd {
+
 TEST(MountsTest, EmptyString) {
   MaybeMountEntries entries = ReadMountsFromString("");
   ASSERT_EQ(entries, base::nullopt);
@@ -43,3 +45,5 @@ TEST(MountsTest, ActualMounts) {
   ASSERT_EQ(entries[1].src(), base::FilePath("/dev/sda1"));
   ASSERT_EQ(entries[3].type(), "fuse.rarfs");
 }
+
+}  // namespace secanomalyd

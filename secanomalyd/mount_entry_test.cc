@@ -8,6 +8,8 @@
 
 #include <gtest/gtest.h>
 
+namespace secanomalyd {
+
 TEST(MountEntryTest, RoRootFs) {
   MountEntry e("/dev/root / ext2 ro,seclabel,relatime 0 0");
   ASSERT_FALSE(e.IsWX());
@@ -84,3 +86,5 @@ TEST(MountEntryTest, OtherTypesAreNotNamespaceMounts) {
   MountEntry e("src /run/netns/connected_netns_0 msphs rw 0 0");
   ASSERT_FALSE(e.IsNamespaceBindMount());
 }
+
+}  // namespace secanomalyd

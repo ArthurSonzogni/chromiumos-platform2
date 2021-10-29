@@ -16,6 +16,8 @@
 using testing::_;
 using testing::Return;
 
+namespace secanomalyd {
+
 namespace {
 constexpr char kProcesses[] =
     "471 4026531836 agetty          agetty 115200 ttyS0 linux\n"      // 0
@@ -152,3 +154,5 @@ TEST(ProcessesTest, EmptyOutputStringFails) {
   MaybeProcEntries maybe_entries = ReadProcesses(reader.get());
   ASSERT_FALSE(maybe_entries.has_value());
 }
+
+}  // namespace secanomalyd

@@ -16,6 +16,8 @@
 
 #include <brillo/process/process.h>
 
+namespace secanomalyd {
+
 class ProcEntry {
  public:
   ProcEntry() : pid_{}, pidns_{}, comm_{}, args_{} {}
@@ -48,5 +50,7 @@ MaybeProcEntries ReadProcesses();
 // |reader| is un-owned.
 MaybeProcEntries ReadProcesses(brillo::Process* reader);
 MaybeProcEntries ReadProcessesFromString(const std::string& procs);
+
+}  // namespace secanomalyd
 
 #endif  // SECANOMALYD_PROCESSES_H_

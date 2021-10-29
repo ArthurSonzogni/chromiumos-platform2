@@ -26,6 +26,8 @@
 #include "secanomalyd/mounts.h"
 #include "secanomalyd/processes.h"
 
+namespace secanomalyd {
+
 namespace {
 
 constexpr base::TimeDelta kCheckInterval = base::TimeDelta::FromSeconds(30);
@@ -162,3 +164,5 @@ void Daemon::DoWXMountCountReporting() {
     }
   }
 }
+
+}  // namespace secanomalyd

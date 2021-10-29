@@ -12,11 +12,15 @@
 
 #include "secanomalyd/mount_entry.h"
 
+namespace secanomalyd {
+
 using MountEntries = std::vector<MountEntry>;
 using MaybeMountEntries = base::Optional<MountEntries>;
 
 MaybeMountEntries ReadMounts();
 // Used mostly for testing.
 MaybeMountEntries ReadMountsFromString(const std::string& mounts);
+
+}  // namespace secanomalyd
 
 #endif  // SECANOMALYD_MOUNTS_H_

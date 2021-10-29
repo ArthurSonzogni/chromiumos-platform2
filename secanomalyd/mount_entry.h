@@ -15,6 +15,8 @@
 #include <base/files/file_path.h>
 #include <base/strings/string_piece.h>
 
+namespace secanomalyd {
+
 class MountEntry;
 using MountEntryMap = std::map<base::FilePath, MountEntry>;
 
@@ -45,5 +47,7 @@ class MountEntry {
   std::string type_;
   std::vector<std::string> opts_;
 };
+
+}  // namespace secanomalyd
 
 #endif  // SECANOMALYD_MOUNT_ENTRY_H_

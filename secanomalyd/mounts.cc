@@ -12,6 +12,8 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
+namespace secanomalyd {
+
 namespace {
 constexpr char kProcSelfMountsPath[] = "/proc/self/mounts";
 }
@@ -42,3 +44,5 @@ MaybeMountEntries ReadMountsFromString(const std::string& mounts) {
 
   return MaybeMountEntries(res);
 }
+
+}  // namespace secanomalyd
