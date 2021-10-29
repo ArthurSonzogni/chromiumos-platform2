@@ -95,7 +95,6 @@ Mount::Mount(Platform* platform, HomeDirs* homedirs)
       homedirs_(homedirs),
       legacy_mount_(true),
       bind_mount_downloads_(true),
-      mount_type_(MountType::NONE),
       dircrypto_migration_stopped_condition_(&active_dircrypto_migrator_lock_) {
 }
 
@@ -196,7 +195,6 @@ MountError Mount::MountEphemeralCryptohome(const std::string& username) {
     return MOUNT_ERROR_FATAL;
   }
 
-  mount_type_ = MountType::EPHEMERAL;
   ignore_result(cleanup_runner.Release());
 
   return MOUNT_ERROR_NONE;
@@ -235,9 +233,7 @@ bool Mount::MountCryptohome(const std::string& username,
     return false;
   }
 
-  mount_type_ = user_cryptohome_vault_->GetMountType();
-
-  if (mount_type_ == MountType::NONE) {
+  if (GetMountType() == MountType::NONE) {
     // TODO(dlunev): there should be a more proper error code set. CREATE_FAILED
     // is a temporary returned error to keep the behaviour unchanged while
     // refactoring.
@@ -285,7 +281,7 @@ bool Mount::MountCryptohome(const std::string& username,
   std::string fnek_signature =
       SecureBlobToHex(file_system_keyset.KeyReference().fnek_sig);
 
-  MountHelper::Options mount_opts = {mount_type_,
+  MountHelper::Options mount_opts = {GetMountType(),
                                      mount_args.to_migrate_from_ecryptfs};
 
   cryptohome::ReportTimerStart(cryptohome::kPerformMountTimer);
@@ -348,8 +344,6 @@ bool Mount::UnmountCryptohome() {
   // Resetting the vault teardowns the enclosed containers if setup succeeded.
   user_cryptohome_vault_.reset();
 
-  mount_type_ = MountType::NONE;
-
   return true;
 }
 
@@ -358,8 +352,6 @@ void Mount::UnmountCryptohomeFromMigration() {
 
   // Resetting the vault teardowns the enclosed containers if setup succeeded.
   user_cryptohome_vault_.reset();
-
-  mount_type_ = MountType::NONE;
 }
 
 bool Mount::IsMounted() const {
@@ -368,7 +360,7 @@ bool Mount::IsMounted() const {
 }
 
 bool Mount::IsEphemeral() const {
-  return mount_type_ == MountType::EPHEMERAL;
+  return GetMountType() == MountType::EPHEMERAL;
 }
 
 bool Mount::IsNonEphemeralMounted() const {
@@ -400,8 +392,15 @@ bool Mount::SetupChapsDirectory(const FilePath& dir) {
   return true;
 }
 
+MountType Mount::GetMountType() const {
+  if (!user_cryptohome_vault_) {
+    return MountType::NONE;
+  }
+  return user_cryptohome_vault_->GetMountType();
+}
+
 std::string Mount::GetMountTypeString() const {
-  switch (mount_type_) {
+  switch (GetMountType()) {
     case MountType::NONE:
       return "none";
     case MountType::ECRYPTFS:
@@ -423,7 +422,7 @@ bool Mount::MigrateToDircrypto(
       SanitizeUserNameWithSalt(username_, system_salt_);
   FilePath temporary_mount =
       GetUserTemporaryMountDirectory(obfuscated_username);
-  if (!IsMounted() || mount_type_ != MountType::DIR_CRYPTO ||
+  if (!IsMounted() || GetMountType() != MountType::DIR_CRYPTO ||
       !platform_->DirectoryExists(temporary_mount) ||
       !OwnsMountPoint(temporary_mount)) {
     LOG(ERROR) << "Not mounted for eCryptfs->dircrypto migration.";

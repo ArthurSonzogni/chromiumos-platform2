@@ -208,6 +208,9 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // A special of UnmountCryptohome to be called from the migration path.
   void UnmountCryptohomeFromMigration();
 
+  // Return the the mount type as a string.
+  MountType GetMountType() const;
+
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.
   uid_t default_user_;
@@ -244,10 +247,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Whether to bind mount Downloads/.
   bool bind_mount_downloads_;
-
-  // Indicates the type of the current mount.
-  // This is only valid when IsMounted() is true.
-  MountType mount_type_;
 
   dircrypto_data_migrator::MigrationHelper* active_dircrypto_migrator_ =
       nullptr;
