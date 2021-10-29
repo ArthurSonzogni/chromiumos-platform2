@@ -198,12 +198,6 @@ bool Mount::MountCryptohome(const std::string& username,
   username_ = username;
   std::string obfuscated_username = SanitizeUserName(username_);
 
-  if (!mounter_->EnsureUserMountPoints(username_)) {
-    LOG(ERROR) << "Error creating mountpoint.";
-    *mount_error = MOUNT_ERROR_CREATE_CRYPTOHOME_FAILED;
-    return false;
-  }
-
   CryptohomeVault::Options vault_options;
   if (mount_args.force_dircrypto) {
     // If dircrypto is forced, it's an error to mount ecryptfs home unless

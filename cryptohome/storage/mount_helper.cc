@@ -860,6 +860,12 @@ bool MountHelper::PerformMount(const Options& mount_opts,
                                MountError* error) {
   const std::string obfuscated_username = SanitizeUserName(username);
 
+  if (!EnsureUserMountPoints(username)) {
+    LOG(ERROR) << "Error creating mountpoint.";
+    *error = MOUNT_ERROR_CREATE_CRYPTOHOME_FAILED;
+    return false;
+  }
+
   bool should_mount_ecryptfs = mount_opts.type == MountType::ECRYPTFS ||
                                mount_opts.to_migrate_from_ecryptfs;
 
