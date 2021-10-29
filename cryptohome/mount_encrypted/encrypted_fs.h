@@ -40,8 +40,8 @@ enum class TeardownStage {
 struct BindMount {
   base::FilePath src;  // Location of bind source.
   base::FilePath dst;  // Destination of bind.
-  std::string owner;
-  std::string group;
+  uid_t owner;
+  gid_t group;
   mode_t mode;
   bool submount;  // Submount is bound already.
 };

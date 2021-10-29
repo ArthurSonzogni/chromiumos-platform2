@@ -24,19 +24,6 @@
 
 namespace cryptohome {
 
-namespace fake_platform {
-// Common constants
-constexpr char kRoot[] = "root";
-constexpr char kChronosUser[] = "chronos";
-constexpr char kSharedGroup[] = "chronos-access";
-
-constexpr uid_t kRootUID = 0;
-constexpr gid_t kRootGID = 0;
-constexpr uid_t kChronosUID = 44;
-constexpr gid_t kChronosGID = 45;
-constexpr gid_t kSharedGID = 46;
-}  // namespace fake_platform
-
 class FakePlatform final : public Platform {
  public:
   FakePlatform();
@@ -49,11 +36,6 @@ class FakePlatform final : public Platform {
   FakePlatform& operator=(const FakePlatform&&) = delete;
 
   // Platform API
-
-  bool GetUserId(const std::string& user,
-                 uid_t* user_id,
-                 gid_t* group_id) const override;
-  bool GetGroupId(const std::string& group, gid_t* group_id) const override;
 
   FileEnumerator* GetFileEnumerator(const base::FilePath& path,
                                     bool recursive,
@@ -208,8 +190,6 @@ class FakePlatform final : public Platform {
 
   // Test API
 
-  void SetStandardUsersAndGroups();
-
   // TODO(chromium:1141301, dlunev): this is a workaround of the fact that
   // libbrillo reads and caches system salt on it own and we are unable to
   // inject the tmpfs path to it.
@@ -232,9 +212,6 @@ class FakePlatform final : public Platform {
     std::unordered_map<std::string, std::vector<char>> xattrs_;
   };
 
-  std::unordered_map<std::string, uid_t> uids_;
-  std::unordered_map<std::string, gid_t> gids_;
-
   // Mappings for fake attributes of files. If you add a new mapping,
   // update `RemoveFakeEntries` and `RemoveFakeEntriesRecursive`.
   // Lock to protect the mappings. Should be held when reading or writing
@@ -248,9 +225,6 @@ class FakePlatform final : public Platform {
 
   base::FilePath tmpfs_rootfs_;
   std::unique_ptr<FakeMountMapper> fake_mount_mapper_;
-
-  void SetUserId(const std::string& user, uid_t user_id);
-  void SetGroupId(const std::string& group, gid_t group_id);
 
   void RemoveFakeEntries(const base::FilePath& path);
   void RemoveFakeEntriesRecursive(const base::FilePath& path);

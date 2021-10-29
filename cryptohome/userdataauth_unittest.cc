@@ -2340,7 +2340,7 @@ TEST_F(UserDataAuthTest, LowDiskSpaceHandlerStopped) {
 // functionalities.
 class UserDataAuthExTest : public UserDataAuthTest {
  public:
-  UserDataAuthExTest() { platform_.GetFake()->SetStandardUsersAndGroups(); }
+  UserDataAuthExTest() = default;
   UserDataAuthExTest(const UserDataAuthExTest&) = delete;
   UserDataAuthExTest& operator=(const UserDataAuthExTest&) = delete;
 

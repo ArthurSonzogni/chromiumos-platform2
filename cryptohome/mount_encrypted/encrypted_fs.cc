@@ -48,11 +48,12 @@ constexpr uint64_t kExt4ResizeBlocks = 32768 * 10;
 constexpr int64_t kMinBlocksAvailForResize = 102400;
 constexpr char kExt4ExtendedOptions[] = "discard,assume_storage_prezeroed=1";
 constexpr char kDmCryptDefaultCipher[] = "aes-cbc-essiv:sha256";
+constexpr uid_t kRootUid = 0;
+constexpr gid_t kRootGid = 0;
+constexpr uid_t kChronosUid = 1000;
+constexpr gid_t kChronosGid = 1000;
 
 bool CheckBind(cryptohome::Platform* platform, const BindMount& bind) {
-  uid_t user;
-  gid_t group;
-
   if (platform->Access(bind.src, R_OK) &&
       !platform->CreateDirectory(bind.src)) {
     PLOG(ERROR) << "mkdir " << bind.src;
@@ -66,18 +67,13 @@ bool CheckBind(cryptohome::Platform* platform, const BindMount& bind) {
     return false;
   }
 
-  if (!platform->GetUserId(bind.owner, &user, &group)) {
-    PLOG(ERROR) << "getpwnam" << bind.owner;
-    return false;
-  }
-
   // Destination may be on read-only filesystem, so skip tweaks.
   // Must do explicit chmod since mkdir()'s mode respects umask.
   if (!platform->SetPermissions(bind.src, bind.mode)) {
     PLOG(ERROR) << "chmod " << bind.src;
     return false;
   }
-  if (!platform->SetOwnership(bind.src, user, group, true)) {
+  if (!platform->SetOwnership(bind.src, bind.owner, bind.group, true)) {
     PLOG(ERROR) << "chown " << bind.src;
     return false;
   }
@@ -193,10 +189,10 @@ EncryptedFs::EncryptedFs(
       device_mapper_(device_mapper),
       container_(std::move(container)),
       bind_mounts_({{rootdir_.Append(ENCRYPTED_MNT "/var"),
-                     rootdir_.Append("var"), "root", "root",
+                     rootdir_.Append("var"), kRootUid, kRootGid,
                      S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, false},
                     {rootdir_.Append(ENCRYPTED_MNT "/chronos"),
-                     rootdir_.Append("home/chronos"), "chronos", "chronos",
+                     rootdir_.Append("home/chronos"), kChronosUid, kChronosGid,
                      S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, true}}) {}
 
 // static
@@ -456,7 +452,7 @@ result_code EncryptedFs::ReportInfo(void) const {
   for (auto& mnt : bind_mounts_) {
     printf("\tsrc:%s\n", mnt.src.value().c_str());
     printf("\tdst:%s\n", mnt.dst.value().c_str());
-    printf("\towner:%s\n", mnt.owner.c_str());
+    printf("\towner:%d\n", mnt.owner);
     printf("\tmode:%o\n", mnt.mode);
     printf("\tsubmount:%d\n", mnt.submount);
     printf("\n");

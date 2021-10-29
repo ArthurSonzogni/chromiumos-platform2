@@ -16,11 +16,6 @@ namespace cryptohome {
 MockPlatform::MockPlatform()
     : mock_process_(new NiceMock<brillo::ProcessMock>()),
       fake_platform_(new FakePlatform()) {
-  ON_CALL(*this, GetUserId(_, _, _))
-      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::GetUserId));
-  ON_CALL(*this, GetGroupId(_, _))
-      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::GetGroupId));
-
   ON_CALL(*this, Rename(_, _))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::Rename));
   ON_CALL(*this, Move(_, _))

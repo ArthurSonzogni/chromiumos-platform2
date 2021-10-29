@@ -112,9 +112,6 @@ constexpr char kDevLoopPrefix[] = "/dev/loop";
 
 constexpr char kUser[] = "someuser";
 
-// TODO(dlunev): fix mount code to not depend on a fixed gid value.
-constexpr gid_t kDaemonStoreGid = 400;
-
 MATCHER_P(DirCryptoReferenceMatcher, reference, "") {
   if (reference.reference != arg.reference) {
     return false;
@@ -136,29 +133,21 @@ void PrepareDirectoryStructure(Platform* platform) {
   // Create environment as defined in
   // src/platform2/cryptohome/tmpfiles.d/cryptohome.conf
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kRun), 0755, fake_platform::kRootUID,
-      fake_platform::kRootGID));
+      base::FilePath(kRun), 0755, kRootUid, kRootGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kRunCryptohome), 0700, fake_platform::kRootUID,
-      fake_platform::kRootGID));
+      base::FilePath(kRunCryptohome), 0700, kRootUid, kRootGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kRunDaemonStore), 0755, fake_platform::kRootUID,
-      fake_platform::kRootGID));
+      base::FilePath(kRunDaemonStore), 0755, kRootUid, kRootGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kHome), 0755, fake_platform::kRootUID,
-      fake_platform::kRootGID));
+      base::FilePath(kHome), 0755, kRootUid, kRootGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kHomeChronos), 0755, fake_platform::kChronosUID,
-      fake_platform::kChronosGID));
+      base::FilePath(kHomeChronos), 0755, kChronosUid, kChronosGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kHomeChronosUser), 01755, fake_platform::kChronosUID,
-      fake_platform::kChronosGID));
+      base::FilePath(kHomeChronosUser), 01755, kChronosUid, kChronosGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kHomeUser), 0755, fake_platform::kRootUID,
-      fake_platform::kRootGID));
+      base::FilePath(kHomeUser), 0755, kRootUid, kRootGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
-      base::FilePath(kHomeRoot), 01751, fake_platform::kRootUID,
-      fake_platform::kRootGID));
+      base::FilePath(kHomeRoot), 01751, kRootUid, kRootGid));
 
   // Setup some skel directories to make sure they are copied over.
   // TODO(dlunev): for now setting permissions is useless, for the code
@@ -257,7 +246,7 @@ void CheckRootAndDaemonStoreMounts(Platform* platform,
                 ::testing::UnorderedElementsAreArray(expected_root_mount_map));
   }
   CheckExistanceAndPermissions(platform, vault_mount_point.Append("root"),
-                               01770, fake_platform::kRootUID, kDaemonStoreGid,
+                               01770, kRootUid, kDaemonStoreGid,
                                expect_present);
   CheckExistanceAndPermissions(
       platform, vault_mount_point.Append("root").Append(kSomeDaemon),
@@ -280,7 +269,7 @@ void CheckRootAndDaemonStoreMounts(Platform* platform,
                 expect_present);
     CheckExistanceAndPermissions(
         platform, brillo::cryptohome::home::GetRootPath(username), 01770,
-        fake_platform::kRootUID, kDaemonStoreGid, expect_present);
+        kRootUid, kDaemonStoreGid, expect_present);
   }
 }
 
@@ -336,35 +325,30 @@ void CheckUserMountPaths(Platform* platform,
   // The path itself.
   // TODO(dlunev): the mount paths should be cleaned up upon unmount.
   if (expect_present) {
-    CheckExistanceAndPermissions(platform, base_path, 0750,
-                                 fake_platform::kChronosUID,
-                                 fake_platform::kSharedGID, expect_present);
+    CheckExistanceAndPermissions(platform, base_path, 0750, kChronosUid,
+                                 kChronosAccessGid, expect_present);
   }
 
   // Subdirectories
   CheckExistanceAndPermissions(platform, base_path.Append(kDownloadsDir), 0750,
-                               fake_platform::kChronosUID,
-                               fake_platform::kSharedGID, expect_present);
+                               kChronosUid, kChronosAccessGid, expect_present);
 
   CheckExistanceAndPermissions(platform, base_path.Append(kMyFilesDir), 0750,
-                               fake_platform::kChronosUID,
-                               fake_platform::kSharedGID, expect_present);
+                               kChronosUid, kChronosAccessGid, expect_present);
 
   CheckExistanceAndPermissions(
       platform, base_path.Append(kMyFilesDir).Append(kDownloadsDir), 0750,
-      fake_platform::kChronosUID, fake_platform::kSharedGID, expect_present);
+      kChronosUid, kChronosAccessGid, expect_present);
 
   CheckExistanceAndPermissions(platform, base_path.Append(kCacheDir), 0700,
-                               fake_platform::kChronosUID,
-                               fake_platform::kChronosGID, expect_present);
+                               kChronosUid, kChronosGid, expect_present);
 
   CheckExistanceAndPermissions(platform, base_path.Append(kGCacheDir), 0750,
-                               fake_platform::kChronosUID,
-                               fake_platform::kSharedGID, expect_present);
+                               kChronosUid, kChronosAccessGid, expect_present);
 
   CheckExistanceAndPermissions(
       platform, base_path.Append(kGCacheDir).Append(kGCacheVersion2Dir), 0770,
-      fake_platform::kChronosUID, fake_platform::kSharedGID, expect_present);
+      kChronosUid, kChronosAccessGid, expect_present);
 }
 
 void CheckSkel(Platform* platform,
@@ -376,23 +360,21 @@ void CheckSkel(Platform* platform,
   // we can not intercept it. We can make that explicit by setting those in
   // the copy skel itself.
   CheckExistanceAndPermissions(platform, base_path.Append(kDir1), 0750,
-                               fake_platform::kChronosUID,
-                               fake_platform::kChronosGID, expect_present);
+                               kChronosUid, kChronosGid, expect_present);
   CheckExistanceAndPermissions(
       platform, base_path.Append(kFile1),
       0750,  // NOT A PART OF THE CONTRACT, SEE TODO ABOVE.
-      fake_platform::kChronosUID, fake_platform::kChronosGID, expect_present);
+      kChronosUid, kChronosGid, expect_present);
   CheckExistanceAndPermissions(platform, base_path.Append(kDir1Dir2), 0750,
-                               fake_platform::kChronosUID,
-                               fake_platform::kChronosGID, expect_present);
+                               kChronosUid, kChronosGid, expect_present);
   CheckExistanceAndPermissions(
       platform, base_path.Append(kDir1File2),
       0750,  // NOT A PART OF THE CONTRACT, SEE TODO ABOVE.
-      fake_platform::kChronosUID, fake_platform::kChronosGID, expect_present);
+      kChronosUid, kChronosGid, expect_present);
   CheckExistanceAndPermissions(
       platform, base_path.Append(kDir1Dir2File3),
       0750,  // NOT A PART OF THE CONTRACT, SEE TODO ABOVE.
-      fake_platform::kChronosUID, fake_platform::kChronosGID, expect_present);
+      kChronosUid, kChronosGid, expect_present);
 
   // Content
   if (expect_present) {
@@ -420,7 +402,6 @@ class PersistentSystemTest : public ::testing::Test {
     brillo::SecureBlob system_salt;
     InitializeFilesystemLayout(&platform_, &crypto_, &system_salt);
     platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt);
-    platform_.GetFake()->SetStandardUsersAndGroups();
 
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
@@ -669,9 +650,8 @@ TEST_F(PersistentSystemTest, MountOrdering) {
   // TODO(dlunev): once mount_helper is refactored, change this test to be able
   // to live within an anonymous namespace.
   SetHomedir(kUser);
-  MountHelper mnt_helper(fake_platform::kChronosUID, fake_platform::kChronosGID,
-                         fake_platform::kSharedGID, true /*legacy_mount*/,
-                         true /* bind_mount_downloads */, &platform_);
+  MountHelper mnt_helper(true /*legacy_mount*/, true /* bind_mount_downloads */,
+                         &platform_);
 
   FilePath src("/src");
   FilePath dest0("/dest/foo");
@@ -708,9 +688,8 @@ TEST_F(PersistentSystemTest, BindDownloads) {
   MountError error = MOUNT_ERROR_NONE;
 
   SetHomedir(kUser);
-  MountHelper mnt_helper(fake_platform::kChronosUID, fake_platform::kChronosGID,
-                         fake_platform::kSharedGID, true /*legacy_mount*/,
-                         true /* bind_mount_downloads */, &platform_);
+  MountHelper mnt_helper(true /*legacy_mount*/, true /* bind_mount_downloads */,
+                         &platform_);
 
   MountHelper::Options options;
   options.type = MountType::DIR_CRYPTO;
@@ -768,8 +747,7 @@ TEST_F(PersistentSystemTest, NoBindDownloads) {
   MountError error = MOUNT_ERROR_NONE;
 
   SetHomedir(kUser);
-  MountHelper mnt_helper(fake_platform::kChronosUID, fake_platform::kChronosGID,
-                         fake_platform::kSharedGID, true /*legacy_mount*/,
+  MountHelper mnt_helper(true /*legacy_mount*/,
                          false /* bind_mount_downloads */, &platform_);
 
   MountHelper::Options options;
@@ -828,9 +806,8 @@ TEST_F(PersistentSystemTest, Dmcrypt_MountUnmount) {
   MountError error = MOUNT_ERROR_NONE;
 
   SetDmcryptPrereqs(kUser);
-  MountHelper mnt_helper(fake_platform::kChronosUID, fake_platform::kChronosGID,
-                         fake_platform::kSharedGID, true /*legacy_mount*/,
-                         true /* bind_mount_downloads */, &platform_);
+  MountHelper mnt_helper(true /*legacy_mount*/, true /* bind_mount_downloads */,
+                         &platform_);
 
   MountHelper::Options options;
   options.type = MountType::DMCRYPT;
@@ -1073,7 +1050,6 @@ class EphemeralSystemTest : public ::testing::Test {
     brillo::SecureBlob system_salt;
     InitializeFilesystemLayout(&platform_, &crypto_, &system_salt);
     platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt);
-    platform_.GetFake()->SetStandardUsersAndGroups();
 
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(

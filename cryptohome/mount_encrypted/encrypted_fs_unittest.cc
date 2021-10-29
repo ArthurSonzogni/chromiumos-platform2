@@ -72,8 +72,6 @@ class EncryptedFsTest : public ::testing::Test {
         platform_.CreateDirectory(base::FilePath("/mnt/stateful_partition/")));
     ASSERT_TRUE(platform_.CreateDirectory(base::FilePath("/var")));
     ASSERT_TRUE(platform_.CreateDirectory(base::FilePath("/home/chronos")));
-
-    platform_.GetFake()->SetStandardUsersAndGroups();
   }
 
   void ExpectSetup() {

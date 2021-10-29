@@ -80,18 +80,7 @@ class MountHelperInterface {
 
 class MountHelper : public MountHelperInterface {
  public:
-  MountHelper(uid_t uid,
-              gid_t gid,
-              gid_t access_gid,
-              bool legacy_mount,
-              bool bind_mount_downloads,
-              Platform* platform)
-      : default_uid_(uid),
-        default_gid_(gid),
-        default_access_gid_(access_gid),
-        legacy_mount_(legacy_mount),
-        bind_mount_downloads_(bind_mount_downloads),
-        platform_(platform) {}
+  MountHelper(bool legacy_mount, bool bind_mount_downloads, Platform* platform);
   MountHelper(const MountHelper&) = delete;
   MountHelper& operator=(const MountHelper&) = delete;
 
@@ -246,7 +235,7 @@ class MountHelper : public MountHelperInterface {
   void CopySkeleton(const FilePath& destination) const;
 
   // Ensures that a specified directory exists, with all path components owned
-  // by kMountOwnerUid:kMountOwnerGid.
+  // by kRootUid:kRootGid.
   //
   // Parameters
   //   dir - Directory to check
@@ -322,10 +311,6 @@ class MountHelper : public MountHelperInterface {
   // Sets up a freshly mounted ephemeral cryptohome by adjusting its permissions
   // and populating it with a skeleton directory and file structure.
   bool SetUpEphemeralCryptohome(const FilePath& source_path);
-
-  uid_t default_uid_;
-  uid_t default_gid_;
-  uid_t default_access_gid_;
 
   bool legacy_mount_ = true;
   bool bind_mount_downloads_ = true;

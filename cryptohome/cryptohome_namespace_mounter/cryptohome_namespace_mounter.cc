@@ -103,10 +103,6 @@ int main(int argc, char** argv) {
 
   cryptohome::ScopedMetricsInitializer metrics;
 
-  constexpr uid_t uid = 1000;         // UID for 'chronos'.
-  constexpr gid_t gid = 1000;         // GID for 'chronos'.
-  constexpr gid_t access_gid = 1001;  // GID for 'chronos-access'.
-
   cryptohome::OutOfProcessMountRequest request;
   if (!cryptohome::ReadProtobuf(STDIN_FILENO, &request)) {
     LOG(ERROR) << "Failed to read request protobuf";
@@ -143,7 +139,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  cryptohome::MountHelper mounter(uid, gid, access_gid, request.legacy_home(),
+  cryptohome::MountHelper mounter(request.legacy_home(),
                                   request.bind_mount_downloads(), &platform);
 
   cryptohome::MountError error = cryptohome::MOUNT_ERROR_NONE;

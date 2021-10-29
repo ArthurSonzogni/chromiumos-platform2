@@ -161,7 +161,6 @@ bool SetQuotaProjectIdInternal(int project_id, int fd, int* out_error) {
 namespace cryptohome {
 
 const uint32_t kDefaultMountFlags = MS_NOEXEC | MS_NOSUID | MS_NODEV;
-const int kDefaultPwnameLength = 1024;
 const int kDefaultUmask =
     S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH;
 const char kProcDir[] = "/proc";
@@ -480,46 +479,6 @@ bool Platform::SetGroupAccessible(const FilePath& path,
     LOG(ERROR) << "Couldn't set up group access on directory: " << path.value();
     return false;
   }
-  return true;
-}
-
-bool Platform::GetUserId(const std::string& user,
-                         uid_t* user_id,
-                         gid_t* group_id) const {
-  // Load the passwd entry
-  long user_name_length = sysconf(_SC_GETPW_R_SIZE_MAX);  // NOLINT long
-  if (user_name_length == -1) {
-    user_name_length = kDefaultPwnameLength;
-  }
-  struct passwd user_info, *user_infop;
-  std::vector<char> user_name_buf(user_name_length);
-  if (getpwnam_r(user.c_str(), &user_info, user_name_buf.data(),
-                 user_name_length, &user_infop)) {
-    return false;
-  }
-  *user_id = user_info.pw_uid;
-  *group_id = user_info.pw_gid;
-  return true;
-}
-
-bool Platform::GetGroupId(const std::string& group, gid_t* group_id) const {
-  // Load the group entry
-  long group_name_length = sysconf(_SC_GETGR_R_SIZE_MAX);  // NOLINT long
-  if (group_name_length == -1) {
-    group_name_length = kDefaultPwnameLength;
-  }
-  struct group group_info, *group_infop = nullptr;
-  std::vector<char> group_name_buf(group_name_length);
-
-  // In getgrgid_r(), err can be 0 even when a group is not found.
-  // Only *group_infop matters: if NULL, the group was not found.
-  getgrnam_r(group.c_str(), &group_info, group_name_buf.data(),
-             group_name_length, &group_infop);
-
-  if (!group_infop)
-    return false;
-
-  *group_id = group_infop->gr_gid;
   return true;
 }
 

@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_STORAGE_MOUNT_CONSTANTS_H_
 #define CRYPTOHOME_STORAGE_MOUNT_CONSTANTS_H_
 
+#include <sys/types.h>
+
 namespace cryptohome {
 
 enum class MountType {

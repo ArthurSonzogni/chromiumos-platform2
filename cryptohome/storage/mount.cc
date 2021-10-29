@@ -65,8 +65,6 @@ constexpr bool __attribute__((unused)) MountUserSessionOOP() {
 
 namespace cryptohome {
 
-const char kDefaultSharedAccessGroup[] = "chronos-access";
-
 void StartUserFileAttrsCleanerService(cryptohome::Platform* platform,
                                       const std::string& username) {
   std::unique_ptr<brillo::Process> file_attrs =
@@ -84,10 +82,7 @@ void StartUserFileAttrsCleanerService(cryptohome::Platform* platform,
 }
 
 Mount::Mount(Platform* platform, HomeDirs* homedirs)
-    : default_user_(-1),
-      default_group_(-1),
-      default_access_group_(-1),
-      platform_(platform),
+    : platform_(platform),
       homedirs_(homedirs),
       legacy_mount_(true),
       bind_mount_downloads_(true),
@@ -102,25 +97,10 @@ Mount::~Mount() {
 }
 
 bool Mount::Init(bool use_local_mounter) {
-  bool result = true;
-
-  // Get the user id and group id of the default user
-  if (!platform_->GetUserId(kDefaultSharedUser, &default_user_,
-                            &default_group_)) {
-    result = false;
-  }
-
-  // Get the group id of the default shared access group.
-  if (!platform_->GetGroupId(kDefaultSharedAccessGroup,
-                             &default_access_group_)) {
-    result = false;
-  }
-
   if (use_local_mounter) {
-    active_mounter_.reset(new MountHelper(default_user_, default_group_,
-                                          default_access_group_, legacy_mount_,
-                                          bind_mount_downloads_, platform_));
-    return result;
+    active_mounter_.reset(
+        new MountHelper(legacy_mount_, bind_mount_downloads_, platform_));
+    return true;
   }
 
   //  cryptohome_namespace_mounter enters the Chrome mount namespace and mounts
@@ -136,7 +116,7 @@ bool Mount::Init(bool use_local_mounter) {
       new OutOfProcessMountHelper(std::move(chrome_mnt_ns), legacy_mount_,
                                   bind_mount_downloads_, platform_));
 
-  return result;
+  return true;
 }
 
 MountError Mount::MountEphemeralCryptohome(const std::string& username) {

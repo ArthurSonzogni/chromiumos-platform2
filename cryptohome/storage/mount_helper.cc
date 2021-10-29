@@ -36,9 +36,6 @@ const char kEphemeralCryptohomeRootContext[] =
 }
 
 namespace {
-constexpr uid_t kMountOwnerUid = 0;
-constexpr gid_t kMountOwnerGid = 0;
-constexpr gid_t kDaemonStoreGid = 400;
 
 const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
 
@@ -95,6 +92,13 @@ namespace cryptohome {
 
 const char kDefaultHomeDir[] = "/home/chronos/user";
 
+MountHelper::MountHelper(bool legacy_mount,
+                         bool bind_mount_downloads,
+                         Platform* platform)
+    : legacy_mount_(legacy_mount),
+      bind_mount_downloads_(bind_mount_downloads),
+      platform_(platform) {}
+
 std::vector<DirectoryACL> MountHelper::GetCommonSubdirectories(
     uid_t uid, gid_t gid, gid_t access_gid) {
   return std::vector<DirectoryACL>{
@@ -128,8 +132,7 @@ std::vector<DirectoryACL> MountHelper::GetGCacheSubdirectories(
 std::vector<DirectoryACL> MountHelper::GetTrackedSubdirectories(
     uid_t uid, gid_t gid, gid_t access_gid) {
   std::vector<DirectoryACL> durable_only_subdirs{
-      {FilePath(kRootHomeSuffix), kRootDirMode, kMountOwnerUid,
-       kDaemonStoreGid},
+      {FilePath(kRootHomeSuffix), kRootDirMode, kRootUid, kDaemonStoreGid},
       {FilePath(kUserHomeSuffix), kAccessMode, uid, access_gid},
   };
 
@@ -213,19 +216,19 @@ void MountHelper::CreateHomeSubdirectories(const FilePath& vault_path) const {
   // root_path will exist and we're done, and if we didn't complete it, we can
   // finish it.
   if (platform_->Stat(root_path, &st) && S_ISDIR(st.st_mode) &&
-      st.st_mode & S_ISVTX && st.st_uid == kMountOwnerUid &&
+      st.st_mode & S_ISVTX && st.st_uid == kRootUid &&
       st.st_gid == kDaemonStoreGid) {
     // This reports whether the existing user directory has the correct group.
     // TODO(crbug.com/1205308): Remove once the root cause is fixed and we stop
     // seeing cases where this directory has the wrong group owner.
     if (platform_->Stat(user_path, &st)) {
-      bool correct = st.st_gid == default_access_gid_;
+      bool correct = st.st_gid == kChronosAccessGid;
       ReportUserSubdirHasCorrectGroup(correct);
       if (!correct) {
         LOG(ERROR) << "Group mismatch in user directory: " << user_path.value()
-                   << " " << st.st_gid << " != " << default_access_gid_;
-        if (!platform_->SafeDirChown(user_path, default_uid_,
-                                     default_access_gid_)) {
+                   << " " << st.st_gid << " != " << kChronosAccessGid;
+        if (!platform_->SafeDirChown(user_path, kChronosUid,
+                                     kChronosAccessGid)) {
           LOG(ERROR) << "Failed to fix ownership of user directory";
         }
       }
@@ -244,7 +247,7 @@ void MountHelper::CreateHomeSubdirectories(const FilePath& vault_path) const {
   platform_->DeletePathRecursively(root_path);
 
   if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-          user_path, kAccessMode, default_uid_, default_access_gid_)) {
+          user_path, kAccessMode, kChronosUid, kChronosAccessGid)) {
     PLOG(ERROR) << "SafeCreateDirAndSetOwnershipAndPermissions() failed: "
                 << user_path.value();
     return;
@@ -252,7 +255,7 @@ void MountHelper::CreateHomeSubdirectories(const FilePath& vault_path) const {
 
   // Create root_path at the end as a sentinel for migration.
   if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-          root_path, kRootDirMode, kMountOwnerUid, kDaemonStoreGid)) {
+          root_path, kRootDirMode, kRootUid, kDaemonStoreGid)) {
     PLOG(ERROR) << "SafeCreateDirAndSetOwnershipAndPermissions() failed: "
                 << root_path.value();
     return;
@@ -269,7 +272,7 @@ bool MountHelper::EnsureMountPointPath(const FilePath& dir) const {
   }
   for (size_t i = 1; i < path_parts.size(); i++) {
     check_path = check_path.Append(path_parts[i]);
-    if (!EnsurePathComponent(check_path, kMountOwnerUid, kMountOwnerGid)) {
+    if (!EnsurePathComponent(check_path, kRootUid, kRootGid)) {
       return false;
     }
   }
@@ -305,29 +308,26 @@ bool MountHelper::EnsureUserMountPoints(const std::string& username) const {
   if (!EnsureMountPointPath(multi_home_user.DirName()) ||
       !EnsureMountPointPath(multi_home_root.DirName()) ||
       !EnsureMountPointPath(new_user_path.DirName().DirName()) ||
-      !EnsurePathComponent(new_user_path.DirName(), default_uid_,
-                           default_gid_)) {
+      !EnsurePathComponent(new_user_path.DirName(), kChronosUid, kChronosGid)) {
     LOG(ERROR) << "The paths to mountpoints are inconsistent";
     return false;
   }
 
   if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-          multi_home_user, kUserMountPointMode, default_uid_,
-          default_access_gid_)) {
+          multi_home_user, kUserMountPointMode, kChronosUid,
+          kChronosAccessGid)) {
     PLOG(ERROR) << "Can't create: " << multi_home_user;
     return false;
   }
 
   if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-          new_user_path, kUserMountPointMode, default_uid_,
-          default_access_gid_)) {
+          new_user_path, kUserMountPointMode, kChronosUid, kChronosAccessGid)) {
     PLOG(ERROR) << "Can't create: " << new_user_path;
     return false;
   }
 
   if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-          multi_home_root, kRootMountPointMode, kMountOwnerUid,
-          kMountOwnerGid)) {
+          multi_home_root, kRootMountPointMode, kRootUid, kRootGid)) {
     PLOG(ERROR) << "Can't create: " << multi_home_root;
     return false;
   }
@@ -347,10 +347,10 @@ void MountHelper::RecursiveCopy(const FilePath& source,
     FilePath destination_file = destination.Append(file_name);
 
     if (!platform_->Copy(next_path, destination_file) ||
-        !platform_->SetOwnership(destination_file, default_uid_, default_gid_,
+        !platform_->SetOwnership(destination_file, kChronosUid, kChronosGid,
                                  false)) {
-      LOG(ERROR) << "Couldn't change owner (" << default_uid_ << ":"
-                 << default_gid_
+      LOG(ERROR) << "Couldn't change owner (" << kChronosUid << ":"
+                 << kChronosGid
                  << ") of destination path: " << destination_file.value();
     }
   }
@@ -366,7 +366,7 @@ void MountHelper::RecursiveCopy(const FilePath& source,
     VLOG(1) << "RecursiveCopy: " << destination_dir.value();
 
     if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-            destination_dir, kSkeletonSubDirMode, default_uid_, default_gid_)) {
+            destination_dir, kSkeletonSubDirMode, kChronosUid, kChronosGid)) {
       LOG(ERROR) << "SafeCreateDirAndSetOwnership() failed: "
                  << destination_dir.value();
     }
@@ -400,8 +400,8 @@ bool MountHelper::SetUpEphemeralCryptohome(const FilePath& source_path) {
   FilePath user_home = source_path.Append(kUserHomeSuffix);
   CopySkeleton(user_home);
 
-  const auto subdirs = GetEphemeralSubdirectories(default_uid_, default_gid_,
-                                                  default_access_gid_);
+  const auto subdirs =
+      GetEphemeralSubdirectories(kChronosUid, kChronosGid, kChronosAccessGid);
 
   for (const auto& subdir : subdirs) {
     FilePath path = FilePath(source_path).Append(subdir.path);
@@ -633,8 +633,8 @@ bool MountHelper::CreateTrackedSubdirectories(
   // want to have as many of the specified tracked directories created as
   // possible.
   bool result = true;
-  for (const auto& tracked_dir : GetTrackedSubdirectories(
-           default_uid_, default_gid_, default_access_gid_)) {
+  for (const auto& tracked_dir :
+       GetTrackedSubdirectories(kChronosUid, kChronosGid, kChronosAccessGid)) {
     const FilePath tracked_dir_path = dest_dir.Append(tracked_dir.path);
     if (mount_type == MountType::ECRYPTFS) {
       // TODO(dlunev): this is unnecessary anymore, remove this if all together
@@ -734,7 +734,7 @@ bool MountHelper::CreateDmcryptSubdirectories(
     const std::string& obfuscated_username) {
   FilePath user_shadow_dir = ShadowRoot().Append(obfuscated_username);
   const std::vector<DirectoryACL> dmcrypt_subdirs =
-      GetDmcryptSubdirectories(default_uid_, default_gid_, default_access_gid_);
+      GetDmcryptSubdirectories(kChronosUid, kChronosGid, kChronosAccessGid);
 
   // Set up directories.
   for (const auto& subdir : dmcrypt_subdirs) {

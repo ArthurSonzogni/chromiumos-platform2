@@ -59,6 +59,14 @@ extern const std::vector<std::string> kDefaultExt4FormatOpts;
 // Loop devices prefix.
 extern const char kLoopPrefix[];
 
+// IDs of necessary groups and users
+constexpr uid_t kRootUid = 0;
+constexpr gid_t kRootGid = 0;
+constexpr gid_t kDaemonStoreGid = 400;
+constexpr uid_t kChronosUid = 1000;
+constexpr gid_t kChronosGid = 1000;
+constexpr gid_t kChronosAccessGid = 1001;
+
 // Decoded content of /proc/<id>/mountinfo file that has format:
 // 36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root .. // nocheck
 // rw,errors= (0)(1)(2)   (3)   (4)      (5)      (6)   (7) (8)   (9) (10)
@@ -311,23 +319,6 @@ class Platform {
   virtual bool SetGroupAccessible(const base::FilePath& path,
                                   gid_t group_id,
                                   mode_t group_mode) const;
-
-  // Returns the user and group ids for a user
-  //
-  // Parameters
-  //   user - The username to query for
-  //   user_id (OUT) - The user ID on success
-  //   group_id (OUT) - The group ID on success
-  virtual bool GetUserId(const std::string& user,
-                         uid_t* user_id,
-                         gid_t* group_id) const;
-
-  // Returns the group id for a group
-  //
-  // Parameters
-  //   group - The group name to query for
-  //   group_id (OUT) - The group ID on success
-  virtual bool GetGroupId(const std::string& group, gid_t* group_id) const;
 
   // Return the available disk space in bytes on the volume containing |path|,
   // or -1 on failure.

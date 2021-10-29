@@ -75,14 +75,6 @@ class MockPlatform : public Platform {
   MockPlatform();
   virtual ~MockPlatform();
 
-  MOCK_METHOD(bool,
-              GetUserId,
-              (const std::string&, uid_t*, gid_t*),
-              (const, override));
-  MOCK_METHOD(bool,
-              GetGroupId,
-              (const std::string&, gid_t*),
-              (const, override));
   MOCK_METHOD(FileEnumerator*,
               GetFileEnumerator,
               (const base::FilePath&, bool, int),
