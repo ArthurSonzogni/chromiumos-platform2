@@ -492,6 +492,20 @@ class PersistentSystemTest : public ::testing::Test {
     EXPECT_CALL(platform_, ClearUserKeyring()).WillOnce(Return(success));
   }
 
+  void MockDircryptoPolicy(const std::string& username, bool existing_dir) {
+    const std::string obfuscated_username =
+        brillo::cryptohome::home::SanitizeUserName(username);
+    const base::FilePath backing_dir =
+        GetUserMountDirectory(obfuscated_username);
+    EXPECT_CALL(platform_, GetDirectoryPolicyVersion(backing_dir))
+        .WillRepeatedly(Return(existing_dir ? FSCRYPT_POLICY_V1 : -1));
+    EXPECT_CALL(platform_, GetDirCryptoKeyState(ShadowRoot()))
+        .WillRepeatedly(Return(dircrypto::KeyState::NO_KEY));
+    EXPECT_CALL(platform_, GetDirCryptoKeyState(backing_dir))
+        .WillRepeatedly(Return(existing_dir ? dircrypto::KeyState::ENCRYPTED
+                                            : dircrypto::KeyState::NO_KEY));
+  }
+
   void MockDircryptoKeyringSetup(const std::string& username,
                                  const FileSystemKeyset& keyset,
                                  bool existing_dir,
@@ -505,13 +519,7 @@ class PersistentSystemTest : public ::testing::Test {
         .reference = keyset.KeyReference().fek_sig,
     };
 
-    EXPECT_CALL(platform_, GetDirectoryPolicyVersion(backing_dir))
-        .WillOnce(Return(existing_dir ? FSCRYPT_POLICY_V1 : -1));
-    EXPECT_CALL(platform_, GetDirCryptoKeyState(ShadowRoot()))
-        .WillRepeatedly(Return(dircrypto::KeyState::NO_KEY));
-    EXPECT_CALL(platform_, GetDirCryptoKeyState(backing_dir))
-        .WillRepeatedly(Return(existing_dir ? dircrypto::KeyState::ENCRYPTED
-                                            : dircrypto::KeyState::NO_KEY));
+    MockDircryptoPolicy(username, existing_dir);
     // EXPECT_CALL(platform_,
     // CheckDircryptoKeyIoctlSupport()).WillOnce(Return(true));
     EXPECT_CALL(platform_, AddDirCryptoKeyToKeyring(
@@ -1131,6 +1139,12 @@ TEST_F(PersistentSystemTest, EcryptfsMigration) {
   MockDircryptoKeyringTeardown(kUser, keyset, /*success=*/true);
   ASSERT_TRUE(mount_->UnmountCryptohome());
 
+  // We can't mount in progress migration regularly
+  options = {};
+  MockDircryptoPolicy(kUser, /*existing_dir=*/true);
+  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options),
+              MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE);
+
   // We haven't migrated anything really, so we are in continuation.
   // Create a new mount object, because interface rises a flag prohibiting
   // migration on unmount.
@@ -1142,7 +1156,7 @@ TEST_F(PersistentSystemTest, EcryptfsMigration) {
   };
   MockPreclearKeyring(/*success=*/true);
   MockEcryptfsKeyringSetup(keyset, /*success=*/true);
-  MockDircryptoKeyringSetup(kUser, keyset, /*existing_dir=*/false,
+  MockDircryptoKeyringSetup(kUser, keyset, /*existing_dir=*/true,
                             /*success=*/true);
   ASSERT_THAT(new_mount->MountCryptohome(kUser, keyset, options),
               MOUNT_ERROR_NONE);
