@@ -207,9 +207,6 @@ class FakePlatform final : public Platform {
   base::Optional<std::vector<bool>> AreDirectoriesMounted(
       const std::vector<base::FilePath>& directories) override;
 
-  base::FilePath AttachLoop(const base::FilePath& file) override;
-  bool DetachLoop(const base::FilePath& loop_dev) override;
-
   brillo::LoopDeviceManager* GetLoopDeviceManager() override;
 
   // Test API
@@ -247,9 +244,6 @@ class FakePlatform final : public Platform {
   // them, because the calls into platform may happen concurrently.
   mutable base::Lock mappings_lock_;
   std::unordered_map<base::FilePath, FakeExtendedAttributes> xattrs_;
-  // TODO(dlunev): Change to use FakeLoopManager.
-  std::unordered_map<base::FilePath, base::FilePath> file_to_loop_dev_;
-  int next_loop_dev_;
   // owners and perms are mutable due to const interface we need to abide.
   mutable std::unordered_map<base::FilePath, std::pair<uid_t, gid_t>>
       file_owners_;

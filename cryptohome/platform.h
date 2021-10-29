@@ -879,22 +879,16 @@ class Platform {
   //   size (OUT) - size of the block device.
   virtual bool GetBlkSize(const base::FilePath& device, uint64_t* size);
 
-  // Attaches the file to a loop device and returns path to that.
-  // New loop device might be allocated if no free device is present.
-  // Returns path to the loop device.
-  //
-  // Parameters
-  //   path - Path to the file which should be associated to a loop device.
-  virtual base::FilePath AttachLoop(const base::FilePath& path);
-
+  // DEPRECATED: do not use. Use LoopDeviceManager instead.
   // Detaches the loop device from associated file.
   // Doesn't delete the loop device itself.
   // Returns true if the loop device is successfully detached.
   //
   // Parameters
   //   device - Path to the loop device to be detached.
-  virtual bool DetachLoop(const base::FilePath& device);
+  virtual bool DetachLoop(const base::FilePath& device_path);
 
+  // DEPRECATED: do not use. Use LoopDeviceManager instead.
   // Returns list of attached loop devices.
   virtual std::vector<LoopDevice> GetAttachedLoopDevices();
 

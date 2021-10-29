@@ -212,11 +212,6 @@ MockPlatform::MockPlatform()
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::AreDirectoriesMounted));
 
-  ON_CALL(*this, AttachLoop(_))
-      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::AttachLoop));
-  ON_CALL(*this, DetachLoop(_))
-      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::DetachLoop));
-
   ON_CALL(*this, SetGroupAccessible(_, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, GetCurrentTime())
       .WillByDefault(Return(base::Time::NowFromSystemTime()));

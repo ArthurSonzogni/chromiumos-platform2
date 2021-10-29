@@ -168,11 +168,7 @@ const char kProcDir[] = "/proc";
 const char kMountInfoFile[] = "mountinfo";
 const char kPathTune2fs[] = "/sbin/tune2fs";
 const char kEcryptFS[] = "ecryptfs";
-const char kLoopControl[] = "/dev/loop-control";
 const char kLoopPrefix[] = "/dev/loop";
-const char kSysBlockPath[] = "/sys/block";
-const char kDevPath[] = "/dev";
-const char kLoopBackingFile[] = "loop/backing_file";
 const std::vector<std::string> kDefaultExt4FormatOpts(
     {// Always use 'default' configuration.
      "-T", "default",
@@ -1283,76 +1279,30 @@ bool Platform::GetBlkSize(const base::FilePath& device, uint64_t* size) {
   return true;
 }
 
-base::FilePath Platform::AttachLoop(const base::FilePath& path) {
-  base::ScopedFD control_fd(
-      HANDLE_EINTR(open(kLoopControl, O_RDONLY | O_CLOEXEC)));
-  if (!control_fd.is_valid()) {
-    PLOG(ERROR) << "open loop control";
-    return base::FilePath();
-  }
-  std::string loopback;
-
-  while (true) {
-    int num = ioctl(control_fd.get(), LOOP_CTL_GET_FREE);
-    if (num < 0) {
-      PLOG(ERROR) << "ioctl(LOOP_CTL_GET_FREE)";
-      return base::FilePath();
-    }
-    loopback = kLoopPrefix + base::NumberToString(num);
-    base::ScopedFD loop_fd(
-        HANDLE_EINTR(open(loopback.c_str(), O_RDWR | O_NOFOLLOW | O_CLOEXEC)));
-    if (!loop_fd.is_valid()) {
-      PLOG(ERROR) << "open " + loopback;
-      return base::FilePath();
-    }
-    base::ScopedFD fd(
-        HANDLE_EINTR(open(path.value().c_str(), O_RDWR | O_CLOEXEC)));
-    if (!fd.is_valid()) {
-      PLOG(ERROR) << "open " + path.value();
-      return base::FilePath();
-    }
-    if (ioctl(loop_fd.get(), LOOP_SET_FD, fd.get()) == 0)
-      break;
-    // Retry on LOOP_SET_FD coming back with EBUSY.
-    if (errno != EBUSY) {
-      PLOG(ERROR) << "LOOP_SET_FD";
-      return base::FilePath();
+bool Platform::DetachLoop(const base::FilePath& device_path) {
+  // TODO(dlunev): This is a horrible way to do it, but LoopDeviceManager
+  // doesn't support searching by the path, only by the number, so then we have
+  // a choice to either parse out the number from |device_path| or iterate over.
+  // Since this function is not used a lot, iterating over all loop devices
+  // doesn't cost a lot, but we should go and fix the interface of the
+  // LoopDeviceManager to be sane. This function is also temporary until we
+  // can rewrite the stale mount cleanup path - replacing the usage now is
+  // complicated, because of the way the tests for stale cleanup are written.
+  // The idea is to actually replace that path with a more generic session
+  // recovery driver once the work on mount refactoring is finished.
+  for (const auto& device : GetLoopDeviceManager()->GetAttachedDevices()) {
+    if (device->GetDevicePath() == device_path) {
+      return device->Detach();
     }
   }
-  return base::FilePath(loopback);
-}
-
-bool Platform::DetachLoop(const base::FilePath& device) {
-  base::ScopedFD loop_fd(HANDLE_EINTR(
-      open(device.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC)));
-  if (!loop_fd.is_valid()) {
-    PLOG(ERROR) << "open " + device.value();
-    return false;
-  }
-  if (ioctl(loop_fd.get(), LOOP_CLR_FD, 0)) {
-    PLOG(ERROR) << "LOOP_CLR_FD";
-    return false;
-  }
-  return true;
+  // Not found the device
+  return false;
 }
 
 std::vector<Platform::LoopDevice> Platform::GetAttachedLoopDevices() {
-  // Read /sys/block to discover all loop devices.
-  std::vector<FilePath> sysfs_block_devices;
-  EnumerateDirectoryEntries(FilePath(kSysBlockPath), false /* is_recursive */,
-                            &sysfs_block_devices);
   std::vector<LoopDevice> devices;
-  for (const auto& sysfs_block_device : sysfs_block_devices) {
-    FilePath device = FilePath(kDevPath).Append(sysfs_block_device.BaseName());
-    // Backing file contains path to associated source for loop devices.
-    FilePath sysfs_backing_file = sysfs_block_device.Append(kLoopBackingFile);
-    std::string backing_file_content;
-    // If the backing file doesn't exist, it's not an attached loop device.
-    if (!ReadFileToString(sysfs_backing_file, &backing_file_content))
-      continue;
-    FilePath backing_file(
-        base::TrimWhitespaceASCII(backing_file_content, base::TRIM_ALL));
-    devices.push_back({backing_file, device});
+  for (const auto& device : GetLoopDeviceManager()->GetAttachedDevices()) {
+    devices.push_back({device->GetBackingFilePath(), device->GetDevicePath()});
   }
   return devices;
 }

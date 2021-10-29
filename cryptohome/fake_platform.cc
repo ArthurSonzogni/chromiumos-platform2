@@ -137,7 +137,6 @@ void FakePlatform::FakeExtendedAttributes::Remove(const std::string& name) {
 
 FakePlatform::FakePlatform()
     : Platform(),
-      next_loop_dev_(0),
       fake_loop_device_manager_(
           std::make_unique<brillo::fake::FakeLoopDeviceManager>()) {
   base::GetTempDir(&tmpfs_rootfs_);
@@ -759,38 +758,6 @@ base::Optional<std::vector<bool>> FakePlatform::AreDirectoriesMounted(
     result.push_back(IsDirectoryMounted(d));
   }
   return result;
-}
-
-base::FilePath FakePlatform::AttachLoop(const base::FilePath& file) {
-  if (!DirectoryExists(base::FilePath("/dev"))) {
-    CHECK(CreateDirectory(base::FilePath("/dev")));
-  }
-  if (file_to_loop_dev_.count(file) != 0) {
-    return base::FilePath();
-  }
-
-  const base::FilePath loop_dev(
-      base::StringPrintf("/dev/loop%d", next_loop_dev_));
-  file_to_loop_dev_.insert({file, loop_dev});
-
-  CHECK(TouchFileDurable(loop_dev));
-
-  ++next_loop_dev_;
-
-  return loop_dev;
-}
-
-bool FakePlatform::DetachLoop(const base::FilePath& loop_dev) {
-  for (const auto& [mapped_file, mapped_loop_dev] : file_to_loop_dev_) {
-    if (mapped_loop_dev == loop_dev) {
-      // It is ok to erase the entry within the loop since we immediately
-      // return afterwards.
-      file_to_loop_dev_.erase(mapped_file);
-      CHECK(DeleteFileDurable(loop_dev));
-      return true;
-    }
-  }
-  return false;
 }
 
 // Test API
