@@ -68,7 +68,7 @@ class UserSessionTest : public ::testing::Test {
     HomeDirs::RemoveCallback remove_callback;
     mock_device_policy_ = new policy::MockDevicePolicy();
     homedirs_ = std::make_unique<HomeDirs>(
-        &platform_, system_salt_,
+        &platform_,
         std::make_unique<policy::PolicyProvider>(
             std::unique_ptr<policy::MockDevicePolicy>(mock_device_policy_)),
         remove_callback);

@@ -113,10 +113,6 @@ int main(int argc, char** argv) {
     return EX_NOINPUT;
   }
 
-  brillo::SecureBlob system_salt;
-  brillo::SecureBlob::HexStringToSecureBlob(request.system_salt(),
-                                            &system_salt);
-
   cryptohome::Platform platform;
 
   // Before performing any mounts, check whether there are any leftover
@@ -147,8 +143,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  cryptohome::MountHelper mounter(uid, gid, access_gid, system_salt,
-                                  request.legacy_home(),
+  cryptohome::MountHelper mounter(uid, gid, access_gid, request.legacy_home(),
                                   request.bind_mount_downloads(), &platform);
 
   cryptohome::MountError error = cryptohome::MOUNT_ERROR_NONE;

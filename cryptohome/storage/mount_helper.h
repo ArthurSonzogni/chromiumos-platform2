@@ -83,14 +83,12 @@ class MountHelper : public MountHelperInterface {
   MountHelper(uid_t uid,
               gid_t gid,
               gid_t access_gid,
-              const brillo::SecureBlob& system_salt,
               bool legacy_mount,
               bool bind_mount_downloads,
               Platform* platform)
       : default_uid_(uid),
         default_gid_(gid),
         default_access_gid_(access_gid),
-        system_salt_(system_salt),
         legacy_mount_(legacy_mount),
         bind_mount_downloads_(bind_mount_downloads),
         platform_(platform) {}
@@ -328,9 +326,6 @@ class MountHelper : public MountHelperInterface {
   uid_t default_uid_;
   uid_t default_gid_;
   uid_t default_access_gid_;
-
-  // Stores the global system salt.
-  brillo::SecureBlob system_salt_;
 
   bool legacy_mount_ = true;
   bool bind_mount_downloads_ = true;

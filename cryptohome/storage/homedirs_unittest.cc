@@ -99,7 +99,8 @@ class HomeDirsTest
   void SetUp() override {
     PreparePolicy(true, kOwner, false, "");
 
-    InitializeFilesystemLayout(&platform_, &crypto_, &system_salt_);
+    brillo::SecureBlob system_salt;
+    InitializeFilesystemLayout(&platform_, &crypto_, &system_salt);
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
             &platform_, std::make_unique<FakeBackingDeviceFactory>(&platform_));
@@ -107,19 +108,19 @@ class HomeDirsTest
         base::BindRepeating(&MockKeysetManagement::RemoveLECredentials,
                             base::Unretained(&keyset_management_));
     homedirs_ = std::make_unique<HomeDirs>(
-        &platform_, system_salt_,
+        &platform_,
         std::make_unique<policy::PolicyProvider>(
             std::unique_ptr<policy::MockDevicePolicy>(mock_device_policy_)),
         remove_callback,
         std::make_unique<CryptohomeVaultFactory>(&platform_,
                                                  std::move(container_factory)));
 
-    platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt_);
+    platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt);
 
-    AddUser(kUser0, kUserPassword0);
-    AddUser(kUser1, kUserPassword1);
-    AddUser(kUser2, kUserPassword2);
-    AddUser(kOwner, kOwnerPassword);
+    AddUser(kUser0, kUserPassword0, system_salt);
+    AddUser(kUser1, kUserPassword1, system_salt);
+    AddUser(kUser2, kUserPassword2, system_salt);
+    AddUser(kOwner, kOwnerPassword, system_salt);
 
     ASSERT_EQ(kOwner, users_[kOwnerIndex].name);
 
@@ -130,11 +131,12 @@ class HomeDirsTest
     platform_.GetFake()->RemoveSystemSaltForLibbrillo();
   }
 
-  void AddUser(const char* name, const char* password) {
-    std::string obfuscated =
-        brillo::cryptohome::home::SanitizeUserNameWithSalt(name, system_salt_);
+  void AddUser(const char* name,
+               const char* password,
+               const brillo::SecureBlob& salt) {
+    std::string obfuscated = brillo::cryptohome::home::SanitizeUserName(name);
     brillo::SecureBlob passkey;
-    cryptohome::Crypto::PasswordToPasskey(password, system_salt_, &passkey);
+    cryptohome::Crypto::PasswordToPasskey(password, salt, &passkey);
     Credentials credentials(name, passkey);
 
     UserInfo info = {name,
@@ -165,7 +167,6 @@ class HomeDirsTest
   NiceMock<MockPlatform> platform_;
   MockKeysetManagement keyset_management_;
   Crypto crypto_;
-  brillo::SecureBlob system_salt_;
   policy::MockDevicePolicy* mock_device_policy_;  // owned by homedirs_
   std::unique_ptr<HomeDirs> homedirs_;
 
@@ -217,8 +218,7 @@ TEST_P(HomeDirsTest, RemoveNonOwnerCryptohomes) {
 TEST_P(HomeDirsTest, RenameCryptohome) {
   constexpr char kNewUserId[] = "some_new_user";
   const std::string kHashedNewUserId =
-      brillo::cryptohome::home::SanitizeUserNameWithSalt(kNewUserId,
-                                                         system_salt_);
+      brillo::cryptohome::home::SanitizeUserName(kNewUserId);
   const base::FilePath kNewUserPath = ShadowRoot().Append(kHashedNewUserId);
 
   // Original state - pregenerated users' vaults exist, kNewUserId's vault
@@ -275,8 +275,7 @@ TEST_P(HomeDirsTest, RenameCryptohome) {
 TEST_P(HomeDirsTest, CreateCryptohome) {
   constexpr char kNewUserId[] = "some_new_user";
   const std::string kHashedNewUserId =
-      brillo::cryptohome::home::SanitizeUserNameWithSalt(kNewUserId,
-                                                         system_salt_);
+      brillo::cryptohome::home::SanitizeUserName(kNewUserId);
   const base::FilePath kNewUserPath = ShadowRoot().Append(kHashedNewUserId);
 
   EXPECT_TRUE(homedirs_->Create(kNewUserId));
@@ -481,7 +480,7 @@ class HomeDirsVaultTest : public ::testing::Test {
   void SetUp() override {
     HomeDirs::RemoveCallback remove_callback;
     homedirs_ = std::make_unique<HomeDirs>(
-        &platform_, system_salt_,
+        &platform_,
         std::make_unique<policy::PolicyProvider>(
             std::unique_ptr<policy::MockDevicePolicy>(mock_device_policy_)),
         remove_callback);
@@ -522,7 +521,6 @@ class HomeDirsVaultTest : public ::testing::Test {
 
   NiceMock<MockPlatform> platform_;
   Crypto crypto_;
-  brillo::SecureBlob system_salt_;
   policy::MockDevicePolicy* mock_device_policy_;  // owned by homedirs_
   std::unique_ptr<HomeDirs> homedirs_;
 };

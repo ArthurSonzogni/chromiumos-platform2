@@ -38,13 +38,11 @@ class OutOfProcessMountResponse;
 
 class OutOfProcessMountHelper : public MountHelperInterface {
  public:
-  OutOfProcessMountHelper(const brillo::SecureBlob& system_salt,
-                          std::unique_ptr<MountNamespace> chrome_mnt_ns,
+  OutOfProcessMountHelper(std::unique_ptr<MountNamespace> chrome_mnt_ns,
                           bool legacy_home,
                           bool bind_mount_downloads,
                           Platform* platform)
-      : system_salt_(system_salt),
-        chrome_mnt_ns_(std::move(chrome_mnt_ns)),
+      : chrome_mnt_ns_(std::move(chrome_mnt_ns)),
         legacy_home_(legacy_home),
         bind_mount_downloads_(bind_mount_downloads),
         platform_(platform),
@@ -94,9 +92,6 @@ class OutOfProcessMountHelper : public MountHelperInterface {
   // Tears down the existing cryptohome mount by terminating the out-of-process
   // helper.
   bool TearDownExistingMount();
-
-  // Stores the global system salt.
-  brillo::SecureBlob system_salt_;
 
   // If populated, mount namespace where to perform the mount.
   std::unique_ptr<MountNamespace> chrome_mnt_ns_;

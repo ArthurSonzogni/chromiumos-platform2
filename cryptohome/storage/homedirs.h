@@ -65,11 +65,9 @@ class HomeDirs {
   // the corresponding |obfuscated_username| is also removed when user's
   // cryptohome is removed from the device.
   HomeDirs(Platform* platform,
-           const brillo::SecureBlob& system_salt,
            std::unique_ptr<policy::PolicyProvider> policy_provider,
            const RemoveCallback& remove_callback);
   HomeDirs(Platform* platform,
-           const brillo::SecureBlob& system_salt,
            std::unique_ptr<policy::PolicyProvider> policy_provider,
            const RemoveCallback& remove_callback,
            std::unique_ptr<CryptohomeVaultFactory> vault_factory);
@@ -81,9 +79,6 @@ class HomeDirs {
   // Removes all cryptohomes owned by anyone other than the owner user (if set),
   // regardless of free disk space.
   virtual void RemoveNonOwnerCryptohomes();
-
-  // Returns the system salt.
-  virtual bool GetSystemSalt(brillo::SecureBlob* blob);
 
   // Returns the owner's obfuscated username.
   virtual bool GetOwner(std::string* owner);
@@ -257,7 +252,6 @@ class HomeDirs {
   bool IsOwnedByAndroidSystem(const base::FilePath& directory) const;
 
   Platform* platform_;
-  brillo::SecureBlob system_salt_;
   std::unique_ptr<policy::PolicyProvider> policy_provider_;
   bool enterprise_owned_;
   chaps::TokenManagerClient chaps_client_;

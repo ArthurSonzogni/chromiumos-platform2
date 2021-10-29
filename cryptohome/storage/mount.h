@@ -76,7 +76,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   virtual ~Mount();
 
-  // Gets the uid/gid of the default user and loads the system salt
+  // Gets the uid/gid of the default user.
   virtual bool Init(bool use_init_namespace = false);
 
   // Attempts to mount the cryptohome for the given username
@@ -229,9 +229,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // The file path to mount cryptohome at.  Defaults to /home/chronos/user
   base::FilePath mount_point_;
-
-  // Stores the global system salt
-  brillo::SecureBlob system_salt_;
 
   // The platform-specific calls
   Platform* platform_;

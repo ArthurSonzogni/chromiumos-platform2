@@ -59,12 +59,13 @@ class OutOfProcessMountHelperTest : public ::testing::Test {
 
   void SetUp() {
     // Populate the system salt.
-    InitializeFilesystemLayout(&platform_, &crypto_, &system_salt_);
-    platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt_);
+    brillo::SecureBlob system_salt;
+    InitializeFilesystemLayout(&platform_, &crypto_, &system_salt);
+    platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt);
 
     out_of_process_mounter_.reset(new OutOfProcessMountHelper(
-        system_salt_, std::unique_ptr<MountNamespace>(),
-        true /* legacy_mount */, true /* bind_mount_downloads */, &platform_));
+        std::unique_ptr<MountNamespace>(), true /* legacy_mount */,
+        true /* bind_mount_downloads */, &platform_));
   }
 
   void TearDown() {
@@ -93,7 +94,6 @@ class OutOfProcessMountHelperTest : public ::testing::Test {
  protected:
   NiceMock<MockPlatform> platform_;
   Crypto crypto_;
-  brillo::SecureBlob system_salt_;
   std::unique_ptr<OutOfProcessMountHelper> out_of_process_mounter_;
 };
 
@@ -174,9 +174,9 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPNonRootMountNamespace) {
 
   std::unique_ptr<MountNamespace> mnt_ns =
       std::make_unique<MountNamespace>(kChromeMountNamespace, &platform_);
-  out_of_process_mounter_.reset(new OutOfProcessMountHelper(
-      system_salt_, std::move(mnt_ns), true /* legacy_mount */,
-      true /* bind_mount_downloads */, &platform_));
+  out_of_process_mounter_.reset(
+      new OutOfProcessMountHelper(std::move(mnt_ns), true /* legacy_mount */,
+                                  true /* bind_mount_downloads */, &platform_));
 
   // Reading from the helper always succeeds.
   base::ScopedFD dev_zero = GetDevZeroFd();

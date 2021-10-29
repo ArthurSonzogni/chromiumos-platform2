@@ -29,7 +29,6 @@ using base::StringPrintf;
 using brillo::cryptohome::home::GetRootPath;
 using brillo::cryptohome::home::GetUserPath;
 using brillo::cryptohome::home::SanitizeUserName;
-using brillo::cryptohome::home::SanitizeUserNameWithSalt;
 
 namespace cryptohome {
 const char kEphemeralCryptohomeRootContext[] =
@@ -910,8 +909,7 @@ bool MountHelper::PerformMount(const Options& mount_opts,
 
 bool MountHelper::PerformEphemeralMount(const std::string& username,
                                         const FilePath& ephemeral_loop_device) {
-  const std::string obfuscated_username =
-      SanitizeUserNameWithSalt(username, system_salt_);
+  const std::string obfuscated_username = SanitizeUserName(username);
   const FilePath mount_point =
       GetUserEphemeralMountDirectory(obfuscated_username);
   LOG(ERROR) << "Directory is" << mount_point.value();

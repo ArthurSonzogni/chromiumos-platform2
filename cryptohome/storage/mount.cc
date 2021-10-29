@@ -54,7 +54,6 @@ using brillo::cryptohome::home::GetUserPath;
 using brillo::cryptohome::home::IsSanitizedUserName;
 using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
-using brillo::cryptohome::home::SanitizeUserNameWithSalt;
 using google::protobuf::util::MessageDifferencer;
 
 namespace {
@@ -90,7 +89,6 @@ Mount::Mount(Platform* platform, HomeDirs* homedirs)
       chaps_user_(-1),
       default_group_(-1),
       default_access_group_(-1),
-      system_salt_(),
       platform_(platform),
       homedirs_(homedirs),
       legacy_mount_(true),
@@ -126,16 +124,9 @@ bool Mount::Init(bool use_init_namespace) {
     result = false;
   }
 
-  // One-time load of the global system salt (used in generating username
-  // hashes)
-  if (!homedirs_->GetSystemSalt(&system_salt_)) {
-    LOG(ERROR) << "Failed to load or create the system salt";
-    result = false;
-  }
-
-  mounter_.reset(new MountHelper(
-      default_user_, default_group_, default_access_group_, system_salt_,
-      legacy_mount_, bind_mount_downloads_, platform_));
+  mounter_.reset(new MountHelper(default_user_, default_group_,
+                                 default_access_group_, legacy_mount_,
+                                 bind_mount_downloads_, platform_));
   active_mounter_ = mounter_.get();
 
   //  cryptohome_namespace_mounter enters the Chrome mount namespace and mounts
@@ -148,9 +139,9 @@ bool Mount::Init(bool use_init_namespace) {
         std::make_unique<MountNamespace>(
             base::FilePath(kUserSessionMountNamespacePath), platform_);
 
-    out_of_process_mounter_.reset(new OutOfProcessMountHelper(
-        system_salt_, std::move(chrome_mnt_ns), legacy_mount_,
-        bind_mount_downloads_, platform_));
+    out_of_process_mounter_.reset(
+        new OutOfProcessMountHelper(std::move(chrome_mnt_ns), legacy_mount_,
+                                    bind_mount_downloads_, platform_));
     active_mounter_ = out_of_process_mounter_.get();
   }
 
@@ -159,8 +150,7 @@ bool Mount::Init(bool use_init_namespace) {
 
 MountError Mount::MountEphemeralCryptohome(const std::string& username) {
   username_ = username;
-  std::string obfuscated_username =
-      SanitizeUserNameWithSalt(username_, system_salt_);
+  std::string obfuscated_username = SanitizeUserName(username_);
 
   base::ScopedClosureRunner cleanup_runner(base::BindOnce(
       base::IgnoreResult(&Mount::UnmountCryptohome), base::Unretained(this)));
@@ -206,8 +196,7 @@ bool Mount::MountCryptohome(const std::string& username,
                             bool is_pristine,
                             MountError* mount_error) {
   username_ = username;
-  std::string obfuscated_username =
-      SanitizeUserNameWithSalt(username_, system_salt_);
+  std::string obfuscated_username = SanitizeUserName(username_);
 
   if (!mounter_->EnsureUserMountPoints(username_)) {
     LOG(ERROR) << "Error creating mountpoint.";
@@ -418,8 +407,7 @@ std::string Mount::GetMountTypeString() const {
 bool Mount::MigrateToDircrypto(
     const dircrypto_data_migrator::MigrationHelper::ProgressCallback& callback,
     MigrationType migration_type) {
-  std::string obfuscated_username =
-      SanitizeUserNameWithSalt(username_, system_salt_);
+  std::string obfuscated_username = SanitizeUserName(username_);
   FilePath temporary_mount =
       GetUserTemporaryMountDirectory(obfuscated_username);
   if (!IsMounted() || GetMountType() != MountType::DIR_CRYPTO ||

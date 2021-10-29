@@ -152,7 +152,6 @@ bool OutOfProcessMountHelper::PerformEphemeralMount(
     const std::string& username, const base::FilePath& ephemeral_loop_device) {
   OutOfProcessMountRequest request;
   request.set_username(username);
-  request.set_system_salt(SecureBlobToSecureHex(system_salt_).to_string());
   request.set_legacy_home(legacy_home_);
   request.set_bind_mount_downloads(bind_mount_downloads_);
   request.set_mount_namespace_path(
@@ -269,7 +268,6 @@ bool OutOfProcessMountHelper::PerformMount(const Options& mount_opts,
                                            MountError* error) {
   OutOfProcessMountRequest request;
   request.set_username(username);
-  request.set_system_salt(SecureBlobToSecureHex(system_salt_).to_string());
   request.set_bind_mount_downloads(bind_mount_downloads_);
   request.set_legacy_home(legacy_home_);
   request.set_mount_namespace_path(chrome_mnt_ns_ && IsolateUserSession()

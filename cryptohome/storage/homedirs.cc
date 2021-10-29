@@ -42,7 +42,7 @@
 
 using base::FilePath;
 using brillo::SecureBlob;
-using brillo::cryptohome::home::SanitizeUserNameWithSalt;
+using brillo::cryptohome::home::SanitizeUserName;
 
 namespace cryptohome {
 
@@ -56,22 +56,18 @@ const char kTrackedDirectoryNameAttribute[] = "user.TrackedDirectoryName";
 const char kRemovableFileAttribute[] = "user.GCacheRemovable";
 
 HomeDirs::HomeDirs(Platform* platform,
-                   const brillo::SecureBlob& system_salt,
                    std::unique_ptr<policy::PolicyProvider> policy_provider,
                    const RemoveCallback& remove_callback)
     : HomeDirs(platform,
-               system_salt,
                std::move(policy_provider),
                remove_callback,
                std::make_unique<CryptohomeVaultFactory>(platform)) {}
 
 HomeDirs::HomeDirs(Platform* platform,
-                   const brillo::SecureBlob& system_salt,
                    std::unique_ptr<policy::PolicyProvider> policy_provider,
                    const RemoveCallback& remove_callback,
                    std::unique_ptr<CryptohomeVaultFactory> vault_factory)
     : platform_(platform),
-      system_salt_(system_salt),
       policy_provider_(std::move(policy_provider)),
       enterprise_owned_(false),
       vault_factory_(std::move(vault_factory)),
@@ -472,7 +468,7 @@ bool HomeDirs::GetOwner(std::string* owner) {
   if (!GetPlainOwner(&plain_owner) || plain_owner.empty())
     return false;
 
-  *owner = SanitizeUserNameWithSalt(plain_owner, system_salt_);
+  *owner = SanitizeUserName(plain_owner);
   return true;
 }
 
@@ -482,15 +478,9 @@ bool HomeDirs::IsOrWillBeOwner(const std::string& account_id) {
   return !enterprise_owned_ && (owner.empty() || account_id == owner);
 }
 
-bool HomeDirs::GetSystemSalt(SecureBlob* blob) {
-  *blob = system_salt_;
-  return true;
-}
-
 bool HomeDirs::Create(const std::string& username) {
   brillo::ScopedUmask scoped_umask(kDefaultUmask);
-  std::string obfuscated_username =
-      SanitizeUserNameWithSalt(username, system_salt_);
+  std::string obfuscated_username = SanitizeUserName(username);
 
   // Create the user's entry in the shadow root
   FilePath user_dir = ShadowRoot().Append(obfuscated_username);
@@ -529,10 +519,8 @@ bool HomeDirs::Rename(const std::string& account_id_from,
     return true;
   }
 
-  const std::string obfuscated_from =
-      SanitizeUserNameWithSalt(account_id_from, system_salt_);
-  const std::string obfuscated_to =
-      SanitizeUserNameWithSalt(account_id_to, system_salt_);
+  const std::string obfuscated_from = SanitizeUserName(account_id_from);
+  const std::string obfuscated_to = SanitizeUserName(account_id_to);
 
   const FilePath user_dir_from = ShadowRoot().Append(obfuscated_from);
   const FilePath user_path_from =
@@ -636,7 +624,7 @@ int64_t HomeDirs::ComputeDiskUsage(const std::string& account_id) {
   // Note that for ephemeral mounts, there could be a vault that's not
   // ephemeral, but the current mount is ephemeral. In this case,
   // ComputeDiskUsage() return the non ephemeral on disk vault's size.
-  std::string obfuscated = SanitizeUserNameWithSalt(account_id, system_salt_);
+  std::string obfuscated = SanitizeUserName(account_id);
   FilePath user_dir = ShadowRoot().Append(obfuscated);
 
   int64_t size = 0;

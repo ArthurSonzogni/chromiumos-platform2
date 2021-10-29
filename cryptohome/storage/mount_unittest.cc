@@ -417,15 +417,16 @@ class PersistentSystemTest : public ::testing::Test {
 
   void SetUp() {
     ASSERT_NO_FATAL_FAILURE(PrepareDirectoryStructure(&platform_));
-    InitializeFilesystemLayout(&platform_, &crypto_, &system_salt_);
-    platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt_);
+    brillo::SecureBlob system_salt;
+    InitializeFilesystemLayout(&platform_, &crypto_, &system_salt);
+    platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt);
     platform_.GetFake()->SetStandardUsersAndGroups();
 
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
             &platform_, std::make_unique<FakeBackingDeviceFactory>(&platform_));
     homedirs_ = std::make_unique<HomeDirs>(
-        &platform_, system_salt_, std::make_unique<policy::PolicyProvider>(),
+        &platform_, std::make_unique<policy::PolicyProvider>(),
         base::BindRepeating([](const std::string& unused) {}),
         std::make_unique<CryptohomeVaultFactory>(&platform_,
                                                  std::move(container_factory)));
@@ -441,7 +442,6 @@ class PersistentSystemTest : public ::testing::Test {
   // Protected for trivial access.
   NiceMock<MockPlatform> platform_;
   Crypto crypto_;
-  brillo::SecureBlob system_salt_;
   std::unique_ptr<HomeDirs> homedirs_;
   scoped_refptr<Mount> mount_;
 
@@ -670,9 +670,8 @@ TEST_F(PersistentSystemTest, MountOrdering) {
   // to live within an anonymous namespace.
   SetHomedir(kUser);
   MountHelper mnt_helper(fake_platform::kChronosUID, fake_platform::kChronosGID,
-                         fake_platform::kSharedGID, system_salt_,
-                         true /*legacy_mount*/, true /* bind_mount_downloads */,
-                         &platform_);
+                         fake_platform::kSharedGID, true /*legacy_mount*/,
+                         true /* bind_mount_downloads */, &platform_);
 
   FilePath src("/src");
   FilePath dest0("/dest/foo");
@@ -710,9 +709,8 @@ TEST_F(PersistentSystemTest, BindDownloads) {
 
   SetHomedir(kUser);
   MountHelper mnt_helper(fake_platform::kChronosUID, fake_platform::kChronosGID,
-                         fake_platform::kSharedGID, system_salt_,
-                         true /*legacy_mount*/, true /* bind_mount_downloads */,
-                         &platform_);
+                         fake_platform::kSharedGID, true /*legacy_mount*/,
+                         true /* bind_mount_downloads */, &platform_);
 
   MountHelper::Options options;
   options.type = MountType::DIR_CRYPTO;
@@ -771,8 +769,7 @@ TEST_F(PersistentSystemTest, NoBindDownloads) {
 
   SetHomedir(kUser);
   MountHelper mnt_helper(fake_platform::kChronosUID, fake_platform::kChronosGID,
-                         fake_platform::kSharedGID, system_salt_,
-                         true /*legacy_mount*/,
+                         fake_platform::kSharedGID, true /*legacy_mount*/,
                          false /* bind_mount_downloads */, &platform_);
 
   MountHelper::Options options;
@@ -832,9 +829,8 @@ TEST_F(PersistentSystemTest, Dmcrypt_MountUnmount) {
 
   SetDmcryptPrereqs(kUser);
   MountHelper mnt_helper(fake_platform::kChronosUID, fake_platform::kChronosGID,
-                         fake_platform::kSharedGID, system_salt_,
-                         true /*legacy_mount*/, true /* bind_mount_downloads */,
-                         &platform_);
+                         fake_platform::kSharedGID, true /*legacy_mount*/,
+                         true /* bind_mount_downloads */, &platform_);
 
   MountHelper::Options options;
   options.type = MountType::DMCRYPT;
@@ -1074,15 +1070,16 @@ class EphemeralSystemTest : public ::testing::Test {
 
   void SetUp() {
     ASSERT_NO_FATAL_FAILURE(PrepareDirectoryStructure(&platform_));
-    InitializeFilesystemLayout(&platform_, &crypto_, &system_salt_);
-    platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt_);
+    brillo::SecureBlob system_salt;
+    InitializeFilesystemLayout(&platform_, &crypto_, &system_salt);
+    platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt);
     platform_.GetFake()->SetStandardUsersAndGroups();
 
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
             &platform_, std::make_unique<FakeBackingDeviceFactory>(&platform_));
     homedirs_ = std::make_unique<HomeDirs>(
-        &platform_, system_salt_, std::make_unique<policy::PolicyProvider>(),
+        &platform_, std::make_unique<policy::PolicyProvider>(),
         base::BindRepeating([](const std::string& unused) {}),
         std::make_unique<CryptohomeVaultFactory>(&platform_,
                                                  std::move(container_factory)));
@@ -1100,7 +1097,6 @@ class EphemeralSystemTest : public ::testing::Test {
   // Protected for trivial access.
   NiceMock<MockPlatform> platform_;
   Crypto crypto_;
-  brillo::SecureBlob system_salt_;
   std::unique_ptr<HomeDirs> homedirs_;
   scoped_refptr<Mount> mount_;
   struct statvfs ephemeral_statvfs_;
@@ -1283,8 +1279,7 @@ class ChapsDirectoryTest : public ::testing::Test {
     keyset_management_ = std::make_unique<KeysetManagement>(
         &platform_, &crypto_, salt, nullptr, nullptr);
     HomeDirs::RemoveCallback remove_cb;
-    homedirs_ =
-        std::make_unique<HomeDirs>(&platform_, salt, nullptr, remove_cb);
+    homedirs_ = std::make_unique<HomeDirs>(&platform_, nullptr, remove_cb);
 
     mount_ = new Mount(&platform_, homedirs_.get());
     mount_->Init(/*use_init_namespace=*/true);

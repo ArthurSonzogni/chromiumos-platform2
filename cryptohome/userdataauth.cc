@@ -270,8 +270,8 @@ bool UserDataAuth::Initialize() {
         base::BindRepeating(&KeysetManagement::RemoveLECredentials,
                             base::Unretained(keyset_management_));
     default_homedirs_ = std::make_unique<HomeDirs>(
-        platform_, system_salt_, std::make_unique<policy::PolicyProvider>(),
-        remove_callback, std::move(vault_factory));
+        platform_, std::make_unique<policy::PolicyProvider>(), remove_callback,
+        std::move(vault_factory));
     homedirs_ = default_homedirs_.get();
   }
 
