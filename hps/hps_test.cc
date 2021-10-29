@@ -41,15 +41,32 @@ class MockHpsDev : public hps::DevInterface {
   }
 };
 
+// Override sleep to use MOCK_TIME functionality
+class HPS_fake_sleep_for_test : public HPS_impl {
+ public:
+  HPS_fake_sleep_for_test(std::unique_ptr<DevInterface> dev,
+                          base::test::TaskEnvironment* task_environment)
+      : HPS_impl(std::move(dev)), task_environment_(task_environment) {}
+
+  void Sleep(base::TimeDelta duration) override {
+    task_environment_->AdvanceClock(duration);
+  }
+  base::test::TaskEnvironment* task_environment_;
+};
+
 // A duplicate of HPSTest, but using a MockHpsDev, existing only while the
 // tests are converted to using the mock. TODO(evanbenn) complete the
 // conversion of the remainder of the tests
 class HPSTestButUsingAMock : public testing::Test {
  protected:
+  base::test::SingleThreadTaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+
   void SetUp() override {
     auto dev = std::make_unique<MockHpsDev>();
     dev_ = dev.get();
-    hps_ = std::make_unique<hps::HPS_impl>(std::move(dev));
+    hps_ = std::make_unique<hps::HPS_fake_sleep_for_test>(std::move(dev),
+                                                          &task_environment_);
     hps_->SetMetricsLibraryForTesting(std::make_unique<MetricsLibraryMock>());
   }
 
@@ -68,20 +85,6 @@ class HPSTestButUsingAMock : public testing::Test {
 
   MockHpsDev* dev_;
   std::unique_ptr<hps::HPS_impl> hps_;
-};
-
-// Override sleep to use MOCK_TIME functionality
-class HPS_fake_sleep_for_test : public HPS_impl {
- public:
-  HPS_fake_sleep_for_test(
-      std::unique_ptr<DevInterface> dev,
-      base::test::SingleThreadTaskEnvironment* task_environment)
-      : HPS_impl(std::move(dev)), task_environment_(task_environment) {}
-
-  void Sleep(base::TimeDelta duration) override {
-    task_environment_->AdvanceClock(duration);
-  }
-  base::test::SingleThreadTaskEnvironment* task_environment_;
 };
 
 class HPSTest : public testing::Test {
@@ -109,7 +112,7 @@ class HPSTest : public testing::Test {
   }
 
   hps::FakeDev* fake_;
-  std::unique_ptr<hps::HPS_fake_sleep_for_test> hps_;
+  std::unique_ptr<hps::HPS_impl> hps_;
 };
 
 class MockDownloadObserver {
@@ -126,6 +129,14 @@ TEST_F(HPSTestButUsingAMock, MagicNumber) {
   EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kMagic))
       .WillOnce(Return(hps::kHpsMagic));
   EXPECT_TRUE(CheckMagic());
+}
+
+/*
+ * Check for a magic number but timeout.
+ */
+TEST_F(HPSTestButUsingAMock, MagicNumberTimeout) {
+  EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kMagic)).WillRepeatedly(Return(-1));
+  EXPECT_DEATH(CheckMagic(), "Timeout waiting for boot magic number");
 }
 
 /*

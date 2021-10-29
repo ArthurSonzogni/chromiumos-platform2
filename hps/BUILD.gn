@@ -59,6 +59,7 @@ config("test_warning_suppressions") {
     "-Wno-global-constructors",
     "-Wno-unused-member-function",
     "-Wno-used-but-marked-unused",
+    "-Wno-covered-switch-default",  # required by EXPECT_DEATH
   ]
 }
 
