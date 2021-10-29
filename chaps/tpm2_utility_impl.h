@@ -157,7 +157,10 @@ class TPM2UtilityImpl : public TPMUtility {
   std::unique_ptr<trunks::TrunksFactoryImpl> default_factory_;
   trunks::TrunksFactory* factory_;
   bool is_trunks_proxy_initialized_ = false;
+  // |Init| had been completely run. This implies TPM is enabled and owned.
   std::atomic<bool> is_initialized_ = false;
+  // TPM is enabled.
+  std::atomic<bool> is_enabled_ = false;
   base::Lock lock_;
   std::unique_ptr<trunks::HmacSession> session_;
   std::unique_ptr<trunks::TpmUtility> trunks_tpm_utility_;
