@@ -166,9 +166,12 @@ TPMUtilityImpl::~TPMUtilityImpl() {
 }
 
 bool TPMUtilityImpl::Init() {
+  VLOG(1) << "TPMUtilityImpl::Init enter";
+
   if (is_initialized_)
     return true;
-  VLOG(1) << "TPMUtilityImpl::Init enter";
+  if (!IsTPMAvailable())
+    return false;
 
   if (!tpm_manager_utility_) {
     tpm_manager_utility_ = tpm_manager::TpmManagerUtility::GetSingleton();
@@ -216,6 +219,9 @@ bool TPMUtilityImpl::Init() {
 }
 
 bool TPMUtilityImpl::IsTPMAvailable() {
+  if (is_enabled_) {
+    return true;
+  }
   if (!tpm_manager_utility_) {
     LOG(ERROR) << "Accessing invalid tpm_manager utility.";
     return false;
@@ -230,7 +236,7 @@ bool TPMUtilityImpl::IsTPMAvailable() {
     LOG(ERROR) << ": failed to get TPM status from tpm_manager.";
     return false;
   }
-  return is_enabled;
+  return is_enabled_ = is_enabled;
 }
 
 TPMVersion TPMUtilityImpl::GetTPMVersion() {

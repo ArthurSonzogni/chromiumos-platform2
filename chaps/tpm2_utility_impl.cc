@@ -315,6 +315,12 @@ TPM2UtilityImpl::~TPM2UtilityImpl() {
 }
 
 bool TPM2UtilityImpl::Init() {
+  if (is_initialized_)
+    return true;
+
+  if (!IsTPMAvailable())
+    return false;
+
   if (!tpm_manager_utility_) {
     tpm_manager_utility_ = tpm_manager::TpmManagerUtility::GetSingleton();
     if (!tpm_manager_utility_) {
@@ -356,7 +362,7 @@ bool TPM2UtilityImpl::Init() {
 }
 
 bool TPM2UtilityImpl::IsTPMAvailable() {
-  if (is_initialized_) {
+  if (is_enabled_) {
     return true;
   }
   if (!tpm_manager_utility_) {
@@ -376,7 +382,7 @@ bool TPM2UtilityImpl::IsTPMAvailable() {
     LOG(ERROR) << ": failed to get TPM status from tpm_manager.";
     return false;
   }
-  return is_enabled;
+  return is_enabled_ = is_enabled;
 }
 
 TPMVersion TPM2UtilityImpl::GetTPMVersion() {
@@ -993,7 +999,7 @@ bool TPM2UtilityImpl::Sign(int key_handle,
 }
 
 bool TPM2UtilityImpl::IsSRKReady() {
-  return IsTPMAvailable() && Init();
+  return Init();
 }
 
 bool TPM2UtilityImpl::LoadKeyWithParentInternal(int slot,
