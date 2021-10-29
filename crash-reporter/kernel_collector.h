@@ -108,9 +108,10 @@ class KernelCollector : public CrashCollector {
       return (timestamp * kMaxPart + part) * kMaxDumpRecord + crash_count;
     }
 
-   private:
     static constexpr size_t kMaxDumpRecord = 1000;
     static constexpr size_t kMaxPart = 100;
+
+   private:
     uint64_t id_;
     uint64_t timestamp_;
     uint32_t max_part_;

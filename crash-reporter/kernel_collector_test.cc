@@ -63,8 +63,11 @@ class KernelCollectorTest : public ::testing::Test {
     test_console_ramoops_old_ = test_kcrash_.Append("console-ramoops");
     ASSERT_FALSE(base::PathExists(test_console_ramoops_old_));
     for (int i = 0; i < kMaxEfiParts; i++) {
-      test_efikcrash_[i] = test_kcrash_.Append(StringPrintf(
-          "dmesg-efi-%" PRIu64, (9876543210 * 100 + i) * 1000 + 1));
+      test_efikcrash_[i] = test_kcrash_.Append(
+          StringPrintf("dmesg-efi-%" PRIu64,
+                       (9876543210 * KernelCollector::EfiCrash::kMaxPart + i) *
+                               KernelCollector::EfiCrash::kMaxDumpRecord +
+                           1));
       ASSERT_FALSE(base::PathExists(test_efikcrash_[i]));
     }
     test_kcrash_ = test_kcrash_.Append("dmesg-ramoops-0");
