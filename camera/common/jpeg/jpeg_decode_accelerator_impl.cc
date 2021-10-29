@@ -121,10 +121,10 @@ JpegDecodeAccelerator::Error JpegDecodeAcceleratorImpl::DecodeSync(
     buffer_handle_t output_buffer) {
   auto future = cros::Future<int>::Create(cancellation_relay_.get());
 
-  Decode(
-      input_fd, input_buffer_size, input_buffer_offset, output_buffer,
-      base::Bind(&JpegDecodeAcceleratorImpl::IPCBridge::DecodeSyncCallback,
-                 ipc_bridge_->GetWeakPtr(), cros::GetFutureCallback(future)));
+  Decode(input_fd, input_buffer_size, input_buffer_offset, output_buffer,
+         base::BindOnce(
+             &JpegDecodeAcceleratorImpl::IPCBridge::DecodeSyncCallback,
+             ipc_bridge_->GetWeakPtr(), cros::GetFutureCallback(future)));
 
   if (!future->Wait()) {
     if (!ipc_bridge_->IsReady()) {
@@ -171,7 +171,7 @@ JpegDecodeAcceleratorImpl::IPCBridge::~IPCBridge() {
 }
 
 void JpegDecodeAcceleratorImpl::IPCBridge::Start(
-    base::Callback<void(bool)> callback) {
+    base::OnceCallback<void(bool)> callback) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
 
@@ -182,14 +182,14 @@ void JpegDecodeAcceleratorImpl::IPCBridge::Start(
 
   mojo::PendingReceiver<mojom::MjpegDecodeAccelerator> receiver =
       jda_.BindNewPipeAndPassReceiver();
-  jda_.set_disconnect_handler(base::Bind(
+  jda_.set_disconnect_handler(base::BindOnce(
       &JpegDecodeAcceleratorImpl::IPCBridge::OnJpegDecodeAcceleratorError,
       GetWeakPtr()));
   mojo_manager_->CreateMjpegDecodeAccelerator(
       std::move(receiver),
-      base::Bind(&JpegDecodeAcceleratorImpl::IPCBridge::Initialize,
-                 GetWeakPtr(), std::move(callback)),
-      base::Bind(
+      base::BindOnce(&JpegDecodeAcceleratorImpl::IPCBridge::Initialize,
+                     GetWeakPtr(), std::move(callback)),
+      base::BindOnce(
           &JpegDecodeAcceleratorImpl::IPCBridge::OnJpegDecodeAcceleratorError,
           GetWeakPtr()));
   VLOGF_EXIT();
@@ -212,7 +212,8 @@ void JpegDecodeAcceleratorImpl::IPCBridge::Decode(int32_t buffer_id,
   DCHECK(!base::Contains(inflight_buffer_ids_, buffer_id));
 
   if (!jda_.is_bound()) {
-    callback.Run(buffer_id, static_cast<int>(Error::TRY_START_AGAIN));
+    std::move(callback).Run(buffer_id,
+                            static_cast<int>(Error::TRY_START_AGAIN));
     return;
   }
 
@@ -221,7 +222,8 @@ void JpegDecodeAcceleratorImpl::IPCBridge::Decode(int32_t buffer_id,
   mojom::VideoPixelFormat mojo_format = V4L2PixelFormatToMojoFormat(
       buffer_manager->GetV4L2PixelFormat(output_buffer));
   if (mojo_format == mojom::VideoPixelFormat::PIXEL_FORMAT_UNKNOWN) {
-    callback.Run(buffer_id, static_cast<int>(Error::INVALID_ARGUMENT));
+    std::move(callback).Run(buffer_id,
+                            static_cast<int>(Error::INVALID_ARGUMENT));
     return;
   }
   const uint32_t num_planes = buffer_manager->GetNumPlanes(output_buffer);
@@ -249,14 +251,14 @@ void JpegDecodeAcceleratorImpl::IPCBridge::Decode(int32_t buffer_id,
   jda_->DecodeWithDmaBuf(
       buffer_id, std::move(input_handle), input_buffer_size,
       input_buffer_offset, std::move(output_frame),
-      base::BindRepeating(&JpegDecodeAcceleratorImpl::IPCBridge::OnDecodeAck,
-                          GetWeakPtr(), callback, buffer_id));
+      base::BindOnce(&JpegDecodeAcceleratorImpl::IPCBridge::OnDecodeAck,
+                     GetWeakPtr(), std::move(callback), buffer_id));
 }
 
 void JpegDecodeAcceleratorImpl::IPCBridge::DecodeSyncCallback(
-    base::Callback<void(int)> callback, int32_t buffer_id, int error) {
+    base::OnceCallback<void(int)> callback, int32_t buffer_id, int error) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  callback.Run(error);
+  std::move(callback).Run(error);
 }
 
 void JpegDecodeAcceleratorImpl::IPCBridge::TestResetJDAChannel(
@@ -276,7 +278,7 @@ bool JpegDecodeAcceleratorImpl::IPCBridge::IsReady() {
 }
 
 void JpegDecodeAcceleratorImpl::IPCBridge::Initialize(
-    base::Callback<void(bool)> callback) {
+    base::OnceCallback<void(bool)> callback) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
 
@@ -299,7 +301,7 @@ void JpegDecodeAcceleratorImpl::IPCBridge::OnDecodeAck(
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK(base::Contains(inflight_buffer_ids_, buffer_id));
   inflight_buffer_ids_.erase(buffer_id);
-  callback.Run(buffer_id, static_cast<int>(error));
+  std::move(callback).Run(buffer_id, static_cast<int>(error));
 }
 
 void JpegDecodeAcceleratorImpl::TestResetJDAChannel() {

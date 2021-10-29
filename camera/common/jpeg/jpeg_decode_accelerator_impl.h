@@ -66,7 +66,7 @@ class JpegDecodeAcceleratorImpl final : public JpegDecodeAccelerator {
     ~IPCBridge();
 
     // Initialize Mojo channel to GPU pcorss in chrome.
-    void Start(base::Callback<void(bool)> callback);
+    void Start(base::OnceCallback<void(bool)> callback);
 
     // Destroy the instance.
     void Destroy();
@@ -80,7 +80,7 @@ class JpegDecodeAcceleratorImpl final : public JpegDecodeAccelerator {
                 DecodeCallback callback);
 
     // For synced Decode API.
-    void DecodeSyncCallback(base::Callback<void(int)> callback,
+    void DecodeSyncCallback(base::OnceCallback<void(int)> callback,
                             int32_t buffer_id,
                             int error);
 
@@ -96,7 +96,7 @@ class JpegDecodeAcceleratorImpl final : public JpegDecodeAccelerator {
 
    private:
     // Initialize the JpegDecodeAccelerator.
-    void Initialize(base::Callback<void(bool)> callback);
+    void Initialize(base::OnceCallback<void(bool)> callback);
 
     // Error handler for JDA mojo channel.
     void OnJpegDecodeAcceleratorError();

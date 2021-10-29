@@ -105,7 +105,7 @@ class JpegEncodeAcceleratorTest : public ::testing::Test {
                                    uint8_t* sw_yuv_result,
                                    size_t yuv_size);
   void EncodeTest(Frame* frame);
-  void EncodeSyncCallback(base::Callback<void(int)> callback,
+  void EncodeSyncCallback(base::OnceCallback<void(int)> callback,
                           int32_t buffer_id,
                           int error);
 

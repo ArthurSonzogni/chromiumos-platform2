@@ -89,7 +89,7 @@ class JpegDecodeAcceleratorTest : public ::testing::Test {
   double GetMeanAbsoluteDifference(Frame* frame);
   void DecodeTest(Frame* frame, size_t decoder_id);
   void DecodeTestAsync(Frame* frame, DecodeCallback callback);
-  void DecodeSyncCallback(base::Callback<void(int)> callback,
+  void DecodeSyncCallback(base::OnceCallback<void(int)> callback,
                           int32_t buffer_id,
                           int error);
   void ResetJDAChannel();
@@ -261,12 +261,13 @@ void JpegDecodeAcceleratorTest::DecodeTestAsync(Frame* frame,
 
   jpeg_decoder_[0]->Decode(input_fd, frame->in_shm_mapping.mapped_size(),
                            frame->width, frame->height, output_fd,
-                           frame->hw_out_shm_mapping.mapped_size(), callback);
+                           frame->hw_out_shm_mapping.mapped_size(),
+                           std::move(callback));
 }
 
 void JpegDecodeAcceleratorTest::DecodeSyncCallback(
-    base::Callback<void(int)> callback, int32_t buffer_id, int error) {
-  callback.Run(error);
+    base::OnceCallback<void(int)> callback, int32_t buffer_id, int error) {
+  std::move(callback).Run(error);
 }
 
 void JpegDecodeAcceleratorTest::ResetJDAChannel() {
@@ -352,8 +353,8 @@ TEST_F(JpegDecodeAcceleratorTest, DecodeAsync) {
 
   DecodeTestAsync(
       &jpeg_frame1_,
-      base::Bind(&JpegDecodeAcceleratorTest::DecodeSyncCallback,
-                 base::Unretained(this), cros::GetFutureCallback(future1)));
+      base::BindOnce(&JpegDecodeAcceleratorTest::DecodeSyncCallback,
+                     base::Unretained(this), cros::GetFutureCallback(future1)));
 
   ASSERT_TRUE(future1->Wait());
   EXPECT_EQ(future1->Get(),
@@ -379,13 +380,13 @@ TEST_F(JpegDecodeAcceleratorTest, DecodeAsync2) {
 
   DecodeTestAsync(
       &jpeg_frame1_,
-      base::Bind(&JpegDecodeAcceleratorTest::DecodeSyncCallback,
-                 base::Unretained(this), cros::GetFutureCallback(future1)));
+      base::BindOnce(&JpegDecodeAcceleratorTest::DecodeSyncCallback,
+                     base::Unretained(this), cros::GetFutureCallback(future1)));
 
   DecodeTestAsync(
       &jpeg_frame2_,
-      base::Bind(&JpegDecodeAcceleratorTest::DecodeSyncCallback,
-                 base::Unretained(this), cros::GetFutureCallback(future2)));
+      base::BindOnce(&JpegDecodeAcceleratorTest::DecodeSyncCallback,
+                     base::Unretained(this), cros::GetFutureCallback(future2)));
   ASSERT_TRUE(future2->Wait());
   EXPECT_EQ(future2->Get(),
             static_cast<int>(JpegDecodeAccelerator::Error::NO_ERRORS));

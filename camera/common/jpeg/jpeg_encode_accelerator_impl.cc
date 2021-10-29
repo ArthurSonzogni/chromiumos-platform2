@@ -103,9 +103,9 @@ int JpegEncodeAcceleratorImpl::EncodeSync(int input_fd,
 
   auto future = Future<int>::Create(cancellation_relay_.get());
   auto callback =
-      base::Bind(&JpegEncodeAcceleratorImpl::IPCBridge::EncodeSyncCallback,
-                 ipc_bridge_->GetWeakPtr(), GetFutureCallback(future),
-                 output_data_size, task_id);
+      base::BindOnce(&JpegEncodeAcceleratorImpl::IPCBridge::EncodeSyncCallback,
+                     ipc_bridge_->GetWeakPtr(), GetFutureCallback(future),
+                     output_data_size, task_id);
 
   mojo_manager_->GetIpcTaskRunner()->PostTask(
       FROM_HERE,
@@ -143,9 +143,9 @@ int JpegEncodeAcceleratorImpl::EncodeSync(
 
   auto future = Future<int>::Create(cancellation_relay_.get());
   auto callback =
-      base::Bind(&JpegEncodeAcceleratorImpl::IPCBridge::EncodeSyncCallback,
-                 ipc_bridge_->GetWeakPtr(), GetFutureCallback(future),
-                 output_data_size, task_id);
+      base::BindOnce(&JpegEncodeAcceleratorImpl::IPCBridge::EncodeSyncCallback,
+                     ipc_bridge_->GetWeakPtr(), GetFutureCallback(future),
+                     output_data_size, task_id);
 
   mojo_manager_->GetIpcTaskRunner()->PostTask(
       FROM_HERE,
@@ -182,7 +182,7 @@ JpegEncodeAcceleratorImpl::IPCBridge::~IPCBridge() {
 }
 
 void JpegEncodeAcceleratorImpl::IPCBridge::Start(
-    base::Callback<void(bool)> callback) {
+    base::OnceCallback<void(bool)> callback) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
 
@@ -193,14 +193,14 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Start(
 
   mojo::PendingReceiver<mojom::JpegEncodeAccelerator> receiver =
       jea_.BindNewPipeAndPassReceiver();
-  jea_.set_disconnect_handler(base::Bind(
+  jea_.set_disconnect_handler(base::BindOnce(
       &JpegEncodeAcceleratorImpl::IPCBridge::OnJpegEncodeAcceleratorError,
       GetWeakPtr()));
   mojo_manager_->CreateJpegEncodeAccelerator(
       std::move(receiver),
-      base::Bind(&JpegEncodeAcceleratorImpl::IPCBridge::Initialize,
-                 GetWeakPtr(), std::move(callback)),
-      base::Bind(
+      base::BindOnce(&JpegEncodeAcceleratorImpl::IPCBridge::Initialize,
+                     GetWeakPtr(), std::move(callback)),
+      base::BindOnce(
           &JpegEncodeAcceleratorImpl::IPCBridge::OnJpegEncodeAcceleratorError,
           GetWeakPtr()));
   VLOGF_EXIT();
@@ -227,7 +227,8 @@ void JpegEncodeAcceleratorImpl::IPCBridge::EncodeLegacy(
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
   if (!jea_.is_bound()) {
-    callback.Run(0, TRY_START_AGAIN);
+    std::move(callback).Run(0, TRY_START_AGAIN);
+    return;
   }
 
   base::WritableSharedMemoryRegion input_shm_region =
@@ -235,14 +236,14 @@ void JpegEncodeAcceleratorImpl::IPCBridge::EncodeLegacy(
   if (!input_shm_region.IsValid()) {
     LOGF(WARNING) << "Create shared memory region for input failed, size="
                   << input_buffer_size;
-    callback.Run(0, SHARED_MEMORY_FAIL);
+    std::move(callback).Run(0, SHARED_MEMORY_FAIL);
     return;
   }
   base::WritableSharedMemoryMapping input_shm_mapping = input_shm_region.Map();
   if (!input_shm_mapping.IsValid()) {
     LOGF(WARNING) << "Create mapping for input failed, size="
                   << input_buffer_size;
-    callback.Run(0, SHARED_MEMORY_FAIL);
+    std::move(callback).Run(0, SHARED_MEMORY_FAIL);
     return;
   }
   // Copy content from input buffer or file descriptor to shared memory.
@@ -254,7 +255,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::EncodeLegacy(
 
     if (mmap_buf == MAP_FAILED) {
       LOGF(WARNING) << "MMAP for input_fd:" << input_fd << " Failed.";
-      callback.Run(0, MMAP_FAIL);
+      std::move(callback).Run(0, MMAP_FAIL);
       return;
     }
 
@@ -271,7 +272,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::EncodeLegacy(
   base::WritableSharedMemoryMapping exif_shm_mapping = exif_shm_region.Map();
   if (!exif_shm_mapping.IsValid()) {
     LOGF(WARNING) << "Create and Map for exif failed, size=" << exif_shm_size;
-    callback.Run(0, SHARED_MEMORY_FAIL);
+    std::move(callback).Run(0, SHARED_MEMORY_FAIL);
     return;
   }
   if (exif_buffer_size) {
@@ -298,8 +299,8 @@ void JpegEncodeAcceleratorImpl::IPCBridge::EncodeLegacy(
       task_id, std::move(input_handle), input_buffer_size, coded_size_width,
       coded_size_height, std::move(exif_handle), exif_buffer_size,
       std::move(output_handle), output_buffer_size,
-      base::Bind(&JpegEncodeAcceleratorImpl::IPCBridge::OnEncodeAck,
-                 GetWeakPtr(), callback));
+      base::BindOnce(&JpegEncodeAcceleratorImpl::IPCBridge::OnEncodeAck,
+                     GetWeakPtr(), std::move(callback)));
 }
 
 void JpegEncodeAcceleratorImpl::IPCBridge::Encode(
@@ -316,7 +317,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Encode(
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
   if (!jea_.is_bound()) {
-    callback.Run(0, TRY_START_AGAIN);
+    std::move(callback).Run(0, TRY_START_AGAIN);
     return;
   }
 
@@ -328,13 +329,13 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Encode(
   if (!exif_shm_region.IsValid()) {
     LOGF(WARNING) << "Create shared memory region for exif failed, size="
                   << exif_shm_size;
-    callback.Run(0, SHARED_MEMORY_FAIL);
+    std::move(callback).Run(0, SHARED_MEMORY_FAIL);
     return;
   }
   base::WritableSharedMemoryMapping exif_shm_mapping = exif_shm_region.Map();
   if (!exif_shm_mapping.IsValid()) {
     LOGF(WARNING) << "Create mapping for exif failed, size=" << exif_shm_size;
-    callback.Run(0, SHARED_MEMORY_FAIL);
+    std::move(callback).Run(0, SHARED_MEMORY_FAIL);
     return;
   }
   if (exif_buffer_size) {
@@ -371,19 +372,19 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Encode(
       task_id, input_format, std::move(mojo_input_planes),
       std::move(mojo_output_planes), std::move(exif_handle), exif_buffer_size,
       coded_size_width, coded_size_height, quality,
-      base::Bind(&JpegEncodeAcceleratorImpl::IPCBridge::OnEncodeDmaBufAck,
-                 GetWeakPtr(), callback));
+      base::BindOnce(&JpegEncodeAcceleratorImpl::IPCBridge::OnEncodeDmaBufAck,
+                     GetWeakPtr(), std::move(callback)));
 }
 
 void JpegEncodeAcceleratorImpl::IPCBridge::EncodeSyncCallback(
-    base::Callback<void(int)> callback,
+    base::OnceCallback<void(int)> callback,
     uint32_t* output_data_size,
     int32_t task_id,
     uint32_t output_size,
     int status) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   *output_data_size = output_size;
-  callback.Run(status);
+  std::move(callback).Run(status);
 }
 
 base::WeakPtr<JpegEncodeAcceleratorImpl::IPCBridge>
@@ -396,7 +397,7 @@ bool JpegEncodeAcceleratorImpl::IPCBridge::IsReady() {
 }
 
 void JpegEncodeAcceleratorImpl::IPCBridge::Initialize(
-    base::Callback<void(bool)> callback) {
+    base::OnceCallback<void(bool)> callback) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
 
@@ -419,7 +420,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::OnEncodeAck(
     uint32_t output_size,
     mojom::EncodeStatus status) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  callback.Run(output_size, static_cast<int>(status));
+  std::move(callback).Run(output_size, static_cast<int>(status));
 }
 
 void JpegEncodeAcceleratorImpl::IPCBridge::OnEncodeDmaBufAck(
@@ -427,7 +428,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::OnEncodeDmaBufAck(
     uint32_t output_size,
     mojom::EncodeStatus status) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  callback.Run(output_size, static_cast<int>(status));
+  std::move(callback).Run(output_size, static_cast<int>(status));
 }
 
 }  // namespace cros

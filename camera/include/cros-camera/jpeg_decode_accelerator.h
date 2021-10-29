@@ -19,7 +19,7 @@
 
 namespace cros {
 
-using DecodeCallback = base::Callback<void(int buffer_id, int error)>;
+using DecodeCallback = base::OnceCallback<void(int buffer_id, int error)>;
 
 // Encapsulates a converter from JPEG to YU12 format. This class is not
 // thread-safe.

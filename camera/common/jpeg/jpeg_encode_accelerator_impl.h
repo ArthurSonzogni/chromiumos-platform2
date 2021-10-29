@@ -75,7 +75,7 @@ class JpegEncodeAcceleratorImpl : public JpegEncodeAccelerator {
     ~IPCBridge();
 
     // Initialize Mojo channel to GPU pcorss in chrome.
-    void Start(base::Callback<void(bool)> callback);
+    void Start(base::OnceCallback<void(bool)> callback);
 
     // Destroy the instance.
     void Destroy();
@@ -107,7 +107,7 @@ class JpegEncodeAcceleratorImpl : public JpegEncodeAccelerator {
                 EncodeWithDmaBufCallback callback);
 
     // For synced Encode API.
-    void EncodeSyncCallback(base::Callback<void(int)> callback,
+    void EncodeSyncCallback(base::OnceCallback<void(int)> callback,
                             uint32_t* output_data_size,
                             int32_t task_id,
                             uint32_t output_size,
@@ -123,7 +123,7 @@ class JpegEncodeAcceleratorImpl : public JpegEncodeAccelerator {
 
    private:
     // Initialize the JpegEncodeAccelerator.
-    void Initialize(base::Callback<void(bool)> callback);
+    void Initialize(base::OnceCallback<void(bool)> callback);
 
     // Error handler for JEA mojo channel.
     void OnJpegEncodeAcceleratorError();

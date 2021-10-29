@@ -19,9 +19,9 @@
 namespace cros {
 
 using EncodeWithFDCallback =
-    base::Callback<void(uint32_t output_size, int error)>;
+    base::OnceCallback<void(uint32_t output_size, int error)>;
 using EncodeWithDmaBufCallback =
-    base::Callback<void(uint32_t output_size, int error)>;
+    base::OnceCallback<void(uint32_t output_size, int error)>;
 
 // Encapsulates a converter from YU12 to JPEG format. This class is not
 // thread-safe.
