@@ -122,8 +122,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Returns associated platform object
   virtual Platform* platform() { return platform_; }
 
-  virtual const base::FilePath& mount_point() const { return mount_point_; }
-
   // Return the the mount type as a string.
   virtual std::string GetMountTypeString() const;
 

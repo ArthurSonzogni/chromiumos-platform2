@@ -249,15 +249,6 @@ bool Mount::MountCryptohome(const std::string& username,
   // /home/user/$hash: owned by chronos
   // /home/root/$hash: owned by root
 
-  mount_point_ = GetUserMountDirectory(obfuscated_username);
-  // Since Service::Mount cleans up stale mounts, we should only reach
-  // this point if someone attempts to re-mount an in-use mount point.
-  if (platform_->IsDirectoryMounted(mount_point_)) {
-    LOG(ERROR) << "Mount point is busy: " << mount_point_.value();
-    *mount_error = MOUNT_ERROR_FATAL;
-    return false;
-  }
-
   std::string key_signature =
       SecureBlobToHex(file_system_keyset.KeyReference().fek_sig);
   std::string fnek_signature =
@@ -409,7 +400,7 @@ bool Mount::MigrateToDircrypto(
   // Do migration.
   constexpr uint64_t kMaxChunkSize = 128 * 1024 * 1024;
   dircrypto_data_migrator::MigrationHelper migrator(
-      platform_, temporary_mount, mount_point_,
+      platform_, temporary_mount, GetUserMountDirectory(obfuscated_username),
       GetUserDirectoryForUser(obfuscated_username), kMaxChunkSize,
       migration_type);
   {  // Abort if already cancelled.
@@ -451,4 +442,5 @@ void Mount::MaybeCancelActiveDircryptoMigrationAndWait() {
     LOG(INFO) << "Dircrypto migration stopped.";
   }
 }
+
 }  // namespace cryptohome

@@ -866,6 +866,16 @@ bool MountHelper::PerformMount(const Options& mount_opts,
     return false;
   }
 
+  // Since Service::Mount cleans up stale mounts, we should only reach
+  // this point if someone attempts to re-mount an in-use mount point.
+  if (platform_->IsDirectoryMounted(
+          GetUserMountDirectory(obfuscated_username))) {
+    LOG(ERROR) << "Mount point is busy: "
+               << GetUserMountDirectory(obfuscated_username);
+    *error = MOUNT_ERROR_FATAL;
+    return false;
+  }
+
   bool should_mount_ecryptfs = mount_opts.type == MountType::ECRYPTFS ||
                                mount_opts.to_migrate_from_ecryptfs;
 

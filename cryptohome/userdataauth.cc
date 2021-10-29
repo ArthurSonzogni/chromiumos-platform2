@@ -390,7 +390,9 @@ bool UserDataAuth::StatefulRecoveryMount(const std::string& username,
           *mount_path_retrieved = false;
           return;
         }
-        *out_home_path = user_session->GetMount()->mount_point();
+        const std::string obfuscated_username =
+            brillo::cryptohome::home::SanitizeUserName(username);
+        *out_home_path = GetUserMountDirectory(obfuscated_username);
         *mount_path_retrieved = true;
         done_event_ptr->Signal();
       },
