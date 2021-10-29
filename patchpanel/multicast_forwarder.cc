@@ -99,7 +99,9 @@ MulticastForwarder::MulticastForwarder(const std::string& lan_ifname,
     : lan_ifname_(lan_ifname), port_(port) {
   mcast_addr_.s_addr = mcast_addr;
   CHECK(inet_pton(AF_INET6, mcast_addr6.c_str(), mcast_addr6_.s6_addr));
+}
 
+void MulticastForwarder::Init() {
   base::ScopedFD lan_fd(Bind(AF_INET, lan_ifname_));
   if (lan_fd.is_valid()) {
     lan_socket_.emplace(AF_INET, CreateSocket(std::move(lan_fd), AF_INET));

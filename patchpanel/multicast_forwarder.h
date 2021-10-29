@@ -45,6 +45,10 @@ class MulticastForwarder {
 
   virtual ~MulticastForwarder() = default;
 
+  // Starts multicast listening on |lan_ifname| for addresses |mcast_addr_| and
+  // |mcast_addr6_| on port |port_|.
+  void Init();
+
   // Start forwarding multicast packets between the guest's interface
   // |int_ifname| and the external LAN interface |lan_ifname|.  This
   // only forwards traffic on multicast address |mcast_addr_| or

@@ -27,7 +27,7 @@ constexpr const struct in_addr kGuestIp = {.s_addr = Ipv4Addr(100, 115, 92, 2)};
 
 namespace {
 
-// Test class that overrides MulticastForwader's sending and receive functions
+// Test class that overrides MulticastForwarder's sending and receive functions
 // with stubs.
 class TestMulticastForwarder : public MulticastForwarder {
  public:
@@ -113,6 +113,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   TestMulticastForwarder mcast_forwarder(lan_ifname, mcast_addr, mcast_addr6,
                                          kMdnsPort);
+  mcast_forwarder.Init();
   mcast_forwarder.AddGuest(guest_ifname1);
   mcast_forwarder.AddGuest(guest_ifname2);
 

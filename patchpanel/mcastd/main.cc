@@ -28,10 +28,12 @@ int main(int argc, char* argv[]) {
   auto mdns_fwd = std::make_unique<patchpanel::MulticastForwarder>(
       args[0], patchpanel::kMdnsMcastAddress, patchpanel::kMdnsMcastAddress6,
       patchpanel::kMdnsPort);
+  mdns_fwd->Init();
 
   auto ssdp_fwd = std::make_unique<patchpanel::MulticastForwarder>(
       args[0], patchpanel::kSsdpMcastAddress, patchpanel::kSsdpMcastAddress6,
       patchpanel::kSsdpPort);
+  ssdp_fwd->Init();
 
   // Crostini depends on another daemon (LXD) creating the guest bridge
   // interface. This can take a few seconds, so retry if necessary.

@@ -63,6 +63,7 @@ void MulticastProxy::OnDeviceMessage(const DeviceMessage& msg) {
       LOG(INFO) << "Enabling mDNS forwarding for device " << dev_ifname;
       auto fwd = std::make_unique<MulticastForwarder>(
           dev_ifname, kMdnsMcastAddress, kMdnsMcastAddress6, kMdnsPort);
+      fwd->Init();
       mdns_fwd = mdns_fwds_.emplace(dev_ifname, std::move(fwd)).first;
     }
 
@@ -77,6 +78,7 @@ void MulticastProxy::OnDeviceMessage(const DeviceMessage& msg) {
       LOG(INFO) << "Enabling SSDP forwarding for device " << dev_ifname;
       auto fwd = std::make_unique<MulticastForwarder>(
           dev_ifname, kSsdpMcastAddress, kSsdpMcastAddress6, kSsdpPort);
+      fwd->Init();
       ssdp_fwd = ssdp_fwds_.emplace(dev_ifname, std::move(fwd)).first;
     }
 
