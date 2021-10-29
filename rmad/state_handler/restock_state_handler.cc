@@ -50,7 +50,7 @@ BaseStateHandler::GetNextStateCaseReply RestockStateHandler::GetNextStateCase(
     const RmadState& state) {
   if (!state.has_restock()) {
     LOG(ERROR) << "RmadState missing |restock| state.";
-    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
   // For the first bootup after restock and shutdown, the state machine will try
@@ -58,23 +58,21 @@ BaseStateHandler::GetNextStateCaseReply RestockStateHandler::GetNextStateCase(
   // the state to prevent the continuous shutdown.
   switch (state.restock().choice()) {
     case RestockState::RMAD_RESTOCK_UNKNOWN:
-      return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
-              .state_case = GetStateCase()};
+      return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_MISSING);
     case RestockState::RMAD_RESTOCK_SHUTDOWN_AND_RESTOCK:
       // Wait for a while before shutting down.
       timer_.Start(FROM_HERE, kShutdownDelay, this,
                    &RestockStateHandler::Shutdown);
-      return {.error = RMAD_ERROR_EXPECT_SHUTDOWN,
-              .state_case = GetStateCase()};
+      return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_SHUTDOWN,
+                                  AdditionalActivity::SHUTDOWN);
     case RestockState::RMAD_RESTOCK_CONTINUE_RMA:
-      return {.error = RMAD_ERROR_OK,
-              .state_case = RmadState::StateCase::kUpdateDeviceInfo};
+      return NextStateCaseWrapper(RmadState::StateCase::kUpdateDeviceInfo);
     default:
       break;
   }
   NOTREACHED();
-  return {.error = RMAD_ERROR_NOT_SET,
-          .state_case = RmadState::StateCase::STATE_NOT_SET};
+  return NextStateCaseWrapper(RmadState::StateCase::STATE_NOT_SET,
+                              RMAD_ERROR_NOT_SET, AdditionalActivity::NOTHING);
 }
 
 void RestockStateHandler::Shutdown() {

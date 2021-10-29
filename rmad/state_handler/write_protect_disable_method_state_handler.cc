@@ -34,25 +34,22 @@ WriteProtectDisableMethodStateHandler::GetNextStateCase(
     const RmadState& state) {
   if (!state.has_wp_disable_method()) {
     LOG(ERROR) << "RmadState missing |write protection disable method| state.";
-    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
   switch (state.wp_disable_method().disable_method()) {
     case WriteProtectDisableMethodState::RMAD_WP_DISABLE_UNKNOWN:
-      return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
-              .state_case = GetStateCase()};
+      return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_MISSING);
     case WriteProtectDisableMethodState::RMAD_WP_DISABLE_RSU:
-      return {.error = RMAD_ERROR_OK,
-              .state_case = RmadState::StateCase::kWpDisableRsu};
+      return NextStateCaseWrapper(RmadState::StateCase::kWpDisableRsu);
     case WriteProtectDisableMethodState::RMAD_WP_DISABLE_PHYSICAL:
-      return {.error = RMAD_ERROR_OK,
-              .state_case = RmadState::StateCase::kWpDisablePhysical};
+      return NextStateCaseWrapper(RmadState::StateCase::kWpDisablePhysical);
     default:
       break;
   }
   NOTREACHED();
-  return {.error = RMAD_ERROR_NOT_SET,
-          .state_case = RmadState::StateCase::STATE_NOT_SET};
+  return NextStateCaseWrapper(RmadState::StateCase::STATE_NOT_SET,
+                              RMAD_ERROR_NOT_SET, AdditionalActivity::NOTHING);
 }
 
 }  // namespace rmad

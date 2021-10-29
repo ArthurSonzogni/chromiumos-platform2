@@ -93,46 +93,43 @@ BaseStateHandler::GetNextStateCaseReply
 ProvisionDeviceStateHandler::GetNextStateCase(const RmadState& state) {
   if (!state.has_provision_device()) {
     LOG(ERROR) << "RmadState missing |provision| state.";
-    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
   const ProvisionStatus& status = GetProgress();
   switch (state.provision_device().choice()) {
     case ProvisionDeviceState::RMAD_PROVISION_CHOICE_UNKNOWN:
-      return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
-              .state_case = GetStateCase()};
+      return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_MISSING);
     case ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE:
       switch (status.status()) {
         case ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS:
-          return {.error = RMAD_ERROR_WAIT, .state_case = GetStateCase()};
+          return NextStateCaseWrapper(RMAD_ERROR_WAIT);
         case ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE:
           FALLTHROUGH;
         case ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_NON_BLOCKING:
           if (bool keep_device_open;
               json_store_->GetValue(kKeepDeviceOpen, &keep_device_open) &&
               keep_device_open) {
-            return {.error = RMAD_ERROR_OK,
-                    .state_case = RmadState::StateCase::kWpEnablePhysical};
+            return NextStateCaseWrapper(
+                RmadState::StateCase::kWpEnablePhysical);
           } else {
-            return {.error = RMAD_ERROR_OK,
-                    .state_case = RmadState::StateCase::kFinalize};
+            return NextStateCaseWrapper(RmadState::StateCase::kFinalize);
           }
         case ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING:
-          return {.error = RMAD_ERROR_PROVISIONING_FAILED,
-                  .state_case = GetStateCase()};
+          return NextStateCaseWrapper(RMAD_ERROR_PROVISIONING_FAILED);
         default:
           break;
       }
       break;
     case ProvisionDeviceState::RMAD_PROVISION_CHOICE_RETRY:
       StartProvision();
-      return {.error = RMAD_ERROR_WAIT, .state_case = GetStateCase()};
+      return NextStateCaseWrapper(RMAD_ERROR_WAIT);
     default:
       break;
   }
 
   NOTREACHED();
-  return {.error = RMAD_ERROR_TRANSITION_FAILED, .state_case = GetStateCase()};
+  return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
 }
 
 void ProvisionDeviceStateHandler::SendStatusSignal() {

@@ -25,8 +25,7 @@ FakeWriteProtectDisableCompleteStateHandler::
 
 WriteProtectDisableCompleteStateHandler::
     WriteProtectDisableCompleteStateHandler(scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
-}
+    : BaseStateHandler(json_store) {}
 
 RmadErrorCode WriteProtectDisableCompleteStateHandler::InitializeState() {
   // Always check again when entering the state.
@@ -60,11 +59,10 @@ WriteProtectDisableCompleteStateHandler::GetNextStateCase(
     const RmadState& state) {
   if (!state.has_wp_disable_complete()) {
     LOG(ERROR) << "RmadState missing |WP disable complete| state.";
-    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
-  return {.error = RMAD_ERROR_OK,
-          .state_case = RmadState::StateCase::kUpdateRoFirmware};
+  return NextStateCaseWrapper(RmadState::StateCase::kUpdateRoFirmware);
 }
 
 }  // namespace rmad

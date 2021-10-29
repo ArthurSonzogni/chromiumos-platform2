@@ -63,6 +63,8 @@ inline constexpr char kBlockCcdFilePath[] = "block_ccd";
 inline constexpr char kCbiFilePath[] = "cbi";
 inline constexpr char kCrosSystemFilePath[] = "crossystem";
 inline constexpr char kVpdFilePath[] = "vpd";
+inline constexpr char kMetricsRecordSuccessFilePath[] =
+    "metrics_record_success";
 
 }  // namespace fake
 

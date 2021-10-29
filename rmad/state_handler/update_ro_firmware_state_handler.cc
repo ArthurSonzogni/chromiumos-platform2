@@ -43,40 +43,36 @@ BaseStateHandler::GetNextStateCaseReply
 UpdateRoFirmwareStateHandler::GetNextStateCase(const RmadState& state) {
   if (!state.has_update_ro_firmware()) {
     LOG(ERROR) << "RmadState missing |update RO firmware| state.";
-    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
   const UpdateRoFirmwareState& update_ro_firmware = state.update_ro_firmware();
   if (update_ro_firmware.update() ==
       UpdateRoFirmwareState::RMAD_UPDATE_FIRMWARE_UNKNOWN) {
     LOG(ERROR) << "RmadState missing |udpate| argument.";
-    return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
-            .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_MISSING);
   }
   if (!state_.update_ro_firmware().optional() &&
       update_ro_firmware.update() == UpdateRoFirmwareState::RMAD_UPDATE_SKIP) {
     LOG(ERROR) << "RO firmware update is mandatory.";
-    return {.error = RMAD_ERROR_REQUEST_ARGS_VIOLATION,
-            .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   }
 
   // TODO(chenghan): This is currently a mock.
   switch (state.update_ro_firmware().update()) {
     case UpdateRoFirmwareState::RMAD_UPDATE_FIRMWARE_DOWNLOAD:
       // TODO(chenghan): This is not supported in V1.
-      return {.error = RMAD_ERROR_TRANSITION_FAILED,
-              .state_case = GetStateCase()};
+      return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
     case UpdateRoFirmwareState::RMAD_UPDATE_FIRMWARE_RECOVERY_UTILITY:
       UpdateFirmwareFromUsbAsync();
-      return {.error = RMAD_ERROR_WAIT, .state_case = GetStateCase()};
+      return NextStateCaseWrapper(RMAD_ERROR_WAIT);
     case UpdateRoFirmwareState::RMAD_UPDATE_SKIP:
-      return {.error = RMAD_ERROR_OK,
-              .state_case = RmadState::StateCase::kUpdateDeviceInfo};
+      return NextStateCaseWrapper(RmadState::StateCase::kUpdateDeviceInfo);
     default:
       break;
   }
   NOTREACHED();
-  return {.error = RMAD_ERROR_NOT_SET,
-          .state_case = RmadState::StateCase::STATE_NOT_SET};
+  return NextStateCaseWrapper(RmadState::StateCase::STATE_NOT_SET,
+                              RMAD_ERROR_NOT_SET, AdditionalActivity::NOTHING);
 }
 
 // TODO(chenghan): Implement this.

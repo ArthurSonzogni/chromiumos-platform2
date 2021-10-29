@@ -110,28 +110,30 @@ BaseStateHandler::GetNextStateCaseReply
 WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
   if (!state.has_wp_disable_rsu()) {
     LOG(ERROR) << "RmadState missing |RSU| state.";
-    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
   // If factory mode is already enabled, we can transition to the next state
   // immediately.
   if (IsFactoryModeEnabled()) {
-    return {.error = RMAD_ERROR_OK,
-            .state_case = RmadState::StateCase::kWpDisableComplete};
+    json_store_->SetValue(kWriteProtectDisableMethod,
+                          static_cast<int>(WriteProtectDisableMethod::RSU));
+    return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
   }
 
   // Do RSU. If RSU succeeds, cr50 will cut off its connection with AP until the
   // next boot, so we need a reboot here for factory mode to take effect.
   if (!cr50_utils_->PerformRsu(state.wp_disable_rsu().unlock_code())) {
     LOG(ERROR) << "Incorrect unlock code.";
-    return {.error = RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_CODE_INVALID,
-            .state_case = GetStateCase()};
+    return NextStateCaseWrapper(
+        RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_CODE_INVALID);
   }
 
   // Schedule a reboot after |kRebootDelay| seconds and return.
   timer_.Start(FROM_HERE, kRebootDelay, this,
                &WriteProtectDisableRsuStateHandler::Reboot);
-  return {.error = RMAD_ERROR_EXPECT_REBOOT, .state_case = GetStateCase()};
+  return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_REBOOT,
+                              AdditionalActivity::REBOOT);
 }
 
 bool WriteProtectDisableRsuStateHandler::IsFactoryModeEnabled() const {

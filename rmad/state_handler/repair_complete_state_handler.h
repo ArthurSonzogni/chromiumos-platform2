@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/timer/timer.h>
 
+#include "rmad/metrics/metrics_utils.h"
 #include "rmad/system/power_manager_client.h"
 
 namespace rmad {
@@ -23,12 +24,13 @@ class RepairCompleteStateHandler : public BaseStateHandler {
       base::TimeDelta::FromSeconds(5);
 
   explicit RepairCompleteStateHandler(scoped_refptr<JsonStore> json_store);
-  // Used to inject |working_dir_path_| and mocked |power_manager_client_| for
-  // testing.
+  // Used to inject |working_dir_path_| and mocked |power_manager_client_|,
+  // |metrics_utils_| for testing.
   RepairCompleteStateHandler(
       scoped_refptr<JsonStore> json_store,
       const base::FilePath& working_dir_path,
-      std::unique_ptr<PowerManagerClient> power_manager_client);
+      std::unique_ptr<PowerManagerClient> power_manager_client,
+      std::unique_ptr<MetricsUtils> metrics_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kRepairComplete);
   SET_UNREPEATABLE;
@@ -46,6 +48,7 @@ class RepairCompleteStateHandler : public BaseStateHandler {
 
   base::FilePath working_dir_path_;
   std::unique_ptr<PowerManagerClient> power_manager_client_;
+  std::unique_ptr<MetricsUtils> metrics_utils_;
   base::OneShotTimer timer_;
 };
 

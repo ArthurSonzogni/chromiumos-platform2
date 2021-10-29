@@ -47,30 +47,26 @@ BaseStateHandler::GetNextStateCaseReply
 SetupCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
   if (!state.has_setup_calibration()) {
     LOG(ERROR) << "RmadState missing |setup calibration| state.";
-    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
   if (running_setup_instruction_ != state.setup_calibration().instruction()) {
     LOG(ERROR) << "The read-only setup instruction is changed.";
-    return {.error = RMAD_ERROR_REQUEST_INVALID,
-            .state_case = RmadState::StateCase::kSetupCalibration};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
   if (running_setup_instruction_ ==
       RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION) {
     LOG(WARNING)
         << "We don't need to calibrate but still enter the setup state.";
-    return {.error = RMAD_ERROR_OK,
-            .state_case = RmadState::StateCase::kProvisionDevice};
+    return NextStateCaseWrapper(RmadState::StateCase::kProvisionDevice);
   } else if (running_setup_instruction_ ==
              RMAD_CALIBRATION_INSTRUCTION_UNKNOWN) {
     LOG(ERROR) << "We entered the setup state without a valid instruction.";
-    return {.error = RMAD_ERROR_OK,
-            .state_case = RmadState::StateCase::kCheckCalibration};
+    return NextStateCaseWrapper(RmadState::StateCase::kCheckCalibration);
   }
 
-  return {.error = RMAD_ERROR_OK,
-          .state_case = RmadState::StateCase::kRunCalibration};
+  return NextStateCaseWrapper(RmadState::StateCase::kRunCalibration);
 }
 
 }  // namespace rmad

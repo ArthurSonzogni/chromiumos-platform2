@@ -162,15 +162,14 @@ RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
 BaseStateHandler::GetNextStateCaseReply
 ComponentsRepairStateHandler::GetNextStateCase(const RmadState& state) {
   if (!ApplyUserSelection(state)) {
-    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
   // Store the state to storage to keep user's selection.
   StoreState();
   StoreVars();
 
-  return {.error = RMAD_ERROR_OK,
-          .state_case = RmadState::StateCase::kDeviceDestination};
+  return NextStateCaseWrapper(RmadState::StateCase::kDeviceDestination);
 }
 
 bool ComponentsRepairStateHandler::ApplyUserSelection(const RmadState& state) {

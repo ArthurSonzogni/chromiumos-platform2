@@ -106,19 +106,17 @@ CheckCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
   bool need_calibration;
   RmadErrorCode error_code;
   if (!CheckIsCalibrationRequired(state, &need_calibration, &error_code)) {
-    return {.error = error_code, .state_case = GetStateCase()};
+    return NextStateCaseWrapper(error_code);
   }
 
   state_ = state;
   SetCalibrationMap(json_store_, calibration_map_);
 
   if (need_calibration) {
-    return {.error = RMAD_ERROR_OK,
-            .state_case = RmadState::StateCase::kSetupCalibration};
+    return NextStateCaseWrapper(RmadState::StateCase::kSetupCalibration);
   }
 
-  return {.error = RMAD_ERROR_OK,
-          .state_case = RmadState::StateCase::kProvisionDevice};
+  return NextStateCaseWrapper(RmadState::StateCase::kProvisionDevice);
 }
 
 bool CheckCalibrationStateHandler::CheckIsUserSelectionValid(

@@ -85,7 +85,10 @@ static_library("libutils") {
 }
 
 static_library("libmetrics") {
-  sources = [ "metrics/metrics_utils_impl.cc" ]
+  sources = [
+    "metrics/fake_metrics_utils.cc",
+    "metrics/metrics_utils_impl.cc",
+  ]
   configs += [ ":target_defaults" ]
   deps = [ "//metrics/structured:libstructuredmetrics" ]
 }

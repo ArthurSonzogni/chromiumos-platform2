@@ -10,6 +10,7 @@
 #include <base/logging.h>
 
 #include "rmad/constants.h"
+#include "rmad/metrics/metrics_constants.h"
 #include "rmad/system/cryptohome_client_impl.h"
 #include "rmad/system/fake_cryptohome_client.h"
 #include "rmad/system/fake_power_manager_client.h"
@@ -96,17 +97,29 @@ WriteProtectDisablePhysicalStateHandler::GetNextStateCase(
     const RmadState& state) {
   if (!state.has_wp_disable_physical()) {
     LOG(ERROR) << "RmadState missing |physical write protection| state.";
-    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
   // To transition to next state, either factory mode is enabled, or we've set a
   // flag indicating that the device should stay open.
   if (IsFactoryModeTried() && IsHwwpDisabled()) {
-    return {.error = RMAD_ERROR_OK,
-            .state_case = RmadState::StateCase::kWpDisableComplete};
+    if (bool keep_device_open;
+        json_store_->GetValue(kKeepDeviceOpen, &keep_device_open) &&
+        keep_device_open) {
+      json_store_->SetValue(
+          kWriteProtectDisableMethod,
+          static_cast<int>(
+              WriteProtectDisableMethod::PHYSICAL_KEEP_DEVICE_OPEN));
+    } else {
+      json_store_->SetValue(
+          kWriteProtectDisableMethod,
+          static_cast<int>(
+              WriteProtectDisableMethod::PHYSICAL_ASSEMBLE_DEVICE));
+    }
+    return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
   }
   // Wait for HWWP being disabled, or the follow-up preparations are done.
-  return {.error = RMAD_ERROR_WAIT, .state_case = GetStateCase()};
+  return NextStateCaseWrapper(RMAD_ERROR_WAIT);
 }
 
 bool WriteProtectDisablePhysicalStateHandler::IsHwwpDisabled() const {

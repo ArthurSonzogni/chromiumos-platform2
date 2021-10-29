@@ -14,6 +14,8 @@
 #include <brillo/file_utils.h>
 
 #include "rmad/constants.h"
+#include "rmad/metrics/fake_metrics_utils.h"
+#include "rmad/metrics/metrics_utils_impl.h"
 #include "rmad/system/fake_power_manager_client.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/dbus_utils.h"
@@ -27,7 +29,8 @@ FakeRepairCompleteStateHandler::FakeRepairCompleteStateHandler(
     : RepairCompleteStateHandler(
           json_store,
           working_dir_path,
-          std::make_unique<FakePowerManagerClient>(working_dir_path)) {}
+          std::make_unique<FakePowerManagerClient>(working_dir_path),
+          std::make_unique<FakeMetricsUtils>(working_dir_path)) {}
 
 }  // namespace fake
 
@@ -36,15 +39,18 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
     : BaseStateHandler(json_store), working_dir_path_(kDefaultWorkingDirPath) {
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
+  metrics_utils_ = std::make_unique<MetricsUtilsImpl>();
 }
 
 RepairCompleteStateHandler::RepairCompleteStateHandler(
     scoped_refptr<JsonStore> json_store,
     const base::FilePath& working_dir_path,
-    std::unique_ptr<PowerManagerClient> power_manager_client)
+    std::unique_ptr<PowerManagerClient> power_manager_client,
+    std::unique_ptr<MetricsUtils> metrics_utils)
     : BaseStateHandler(json_store),
       working_dir_path_(working_dir_path),
-      power_manager_client_(std::move(power_manager_client)) {}
+      power_manager_client_(std::move(power_manager_client)),
+      metrics_utils_(std::move(metrics_utils)) {}
 
 RmadErrorCode RepairCompleteStateHandler::InitializeState() {
   if (!state_.has_repair_complete() && !RetrieveState()) {
@@ -57,13 +63,12 @@ BaseStateHandler::GetNextStateCaseReply
 RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
   if (!state.has_repair_complete()) {
     LOG(ERROR) << "RmadState missing |repair_complete| state.";
-    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
   if (state.repair_complete().shutdown() ==
       RepairCompleteState::RMAD_REPAIR_COMPLETE_UNKNOWN) {
-    return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
-            .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_MISSING);
   }
 
   state_ = state;
@@ -84,11 +89,14 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
     // during testing. Powerwash is also disabled when the test mode directory
     // exists.
     // TODO(chenghan): Check if powerwash is successful.
-    // TODO(chenghan): Write to metrics before removing the state file.
+    if (!metrics_utils_->Record(json_store_, true)) {
+      LOG(ERROR) << "RepairCompleteState: Failed to record metrics to the file";
+      return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
+    }
+
     if (!json_store_->ClearAndDeleteFile()) {
       LOG(ERROR) << "RepairCompleteState: Failed to clear RMA state file";
-      return {.error = RMAD_ERROR_TRANSITION_FAILED,
-              .state_case = GetStateCase()};
+      return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
     }
 
     switch (state.repair_complete().shutdown()) {
@@ -124,12 +132,12 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
         !brillo::TouchFile(
             working_dir_path_.AppendASCII(kPowerwashRequestFilePath))) {
       LOG(ERROR) << "Failed to request powerwash";
-      return {.error = RMAD_ERROR_POWERWASH_FAILED,
-              .state_case = GetStateCase()};
+      return NextStateCaseWrapper(RMAD_ERROR_POWERWASH_FAILED);
     }
     timer_.Start(FROM_HERE, kShutdownDelay, this,
                  &RepairCompleteStateHandler::Reboot);
-    return {.error = RMAD_ERROR_EXPECT_REBOOT, .state_case = GetStateCase()};
+    return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_REBOOT,
+                                AdditionalActivity::REBOOT);
   }
 }
 

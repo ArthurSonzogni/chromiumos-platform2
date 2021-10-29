@@ -61,25 +61,22 @@ BaseStateHandler::GetNextStateCaseReply FinalizeStateHandler::GetNextStateCase(
     const RmadState& state) {
   if (!state.has_finalize()) {
     LOG(ERROR) << "RmadState missing |finalize| state.";
-    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
   switch (state.finalize().choice()) {
     case FinalizeState::RMAD_FINALIZE_CHOICE_UNKNOWN:
-      return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
-              .state_case = GetStateCase()};
+      return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_MISSING);
     case FinalizeState::RMAD_FINALIZE_CHOICE_CONTINUE:
       switch (status_.status()) {
         case FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS:
-          return {.error = RMAD_ERROR_WAIT, .state_case = GetStateCase()};
+          return NextStateCaseWrapper(RMAD_ERROR_WAIT);
         case FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE:
           FALLTHROUGH;
         case FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_NON_BLOCKING:
-          return {.error = RMAD_ERROR_OK,
-                  .state_case = RmadState::StateCase::kRepairComplete};
+          return NextStateCaseWrapper(RmadState::StateCase::kRepairComplete);
         case FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING:
-          return {.error = RMAD_ERROR_FINALIZATION_FAILED,
-                  .state_case = GetStateCase()};
+          return NextStateCaseWrapper(RMAD_ERROR_FINALIZATION_FAILED);
         default:
           break;
       }
@@ -87,13 +84,13 @@ BaseStateHandler::GetNextStateCaseReply FinalizeStateHandler::GetNextStateCase(
       break;
     case FinalizeState::RMAD_FINALIZE_CHOICE_RETRY:
       StartFinalize();
-      return {.error = RMAD_ERROR_WAIT, .state_case = GetStateCase()};
+      return NextStateCaseWrapper(RMAD_ERROR_WAIT);
     default:
       break;
   }
 
   NOTREACHED();
-  return {.error = RMAD_ERROR_TRANSITION_FAILED, .state_case = GetStateCase()};
+  return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
 }
 
 void FinalizeStateHandler::SendStatusSignal() {

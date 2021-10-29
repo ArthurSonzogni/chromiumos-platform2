@@ -13,6 +13,7 @@
 #include <base/logging.h>
 
 #include "rmad/constants.h"
+#include "rmad/metrics/metrics_constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/fake_cr50_utils.h"
@@ -51,14 +52,13 @@ BaseStateHandler::GetNextStateCaseReply
 DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
   if (!state.has_device_destination()) {
     LOG(ERROR) << "RmadState missing |device destination| state.";
-    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
   const DeviceDestinationState& device_destination = state.device_destination();
   if (device_destination.destination() ==
       DeviceDestinationState::RMAD_DESTINATION_UNKNOWN) {
     LOG(ERROR) << "RmadState missing |destination| argument.";
-    return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
-            .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_MISSING);
   }
 
   state_ = state;
@@ -67,19 +67,20 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
   // Check if conditions are met to skip disabling write protection and directly
   // go to Finalize step.
   if (CanSkipHwwp()) {
-    return {.error = RMAD_ERROR_OK,
-            .state_case = RmadState::StateCase::kFinalize};
+    json_store_->SetValue(kWriteProtectDisableMethod,
+                          static_cast<int>(WriteProtectDisableMethod::SKIPPED));
+    return NextStateCaseWrapper(RmadState::StateCase::kFinalize);
   }
 
   // If factory mode is already enabled, go directly to WpDisableComplete state.
   if (cr50_utils_->IsFactoryModeEnabled()) {
     json_store_->SetValue(kWpDisableSkipped, true);
-    return {.error = RMAD_ERROR_OK,
-            .state_case = RmadState::StateCase::kWpDisableComplete};
+    json_store_->SetValue(kWriteProtectDisableMethod,
+                          static_cast<int>(WriteProtectDisableMethod::SKIPPED));
+    return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
   }
 
-  return {.error = RMAD_ERROR_OK,
-          .state_case = RmadState::StateCase::kWpDisableMethod};
+  return NextStateCaseWrapper(RmadState::StateCase::kWpDisableMethod);
 }
 
 bool DeviceDestinationStateHandler::StoreVars() const {

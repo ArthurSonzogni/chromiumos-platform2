@@ -58,22 +58,20 @@ BaseStateHandler::GetNextStateCaseReply
 WelcomeScreenStateHandler::GetNextStateCase(const RmadState& state) {
   if (!state.has_welcome()) {
     LOG(ERROR) << "RmadState missing |welcome| state.";
-    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
   switch (state.welcome().choice()) {
     case WelcomeState::RMAD_CHOICE_UNKNOWN:
-      return {.error = RMAD_ERROR_REQUEST_ARGS_MISSING,
-              .state_case = GetStateCase()};
+      return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_MISSING);
     case WelcomeState::RMAD_CHOICE_FINALIZE_REPAIR:
-      return {.error = RMAD_ERROR_OK,
-              .state_case = RmadState::StateCase::kComponentsRepair};
+      return NextStateCaseWrapper(RmadState::StateCase::kComponentsRepair);
     default:
       break;
   }
   NOTREACHED();
-  return {.error = RMAD_ERROR_NOT_SET,
-          .state_case = RmadState::StateCase::STATE_NOT_SET};
+  return NextStateCaseWrapper(RmadState::StateCase::STATE_NOT_SET,
+                              RMAD_ERROR_NOT_SET, AdditionalActivity::NOTHING);
 }
 
 void WelcomeScreenStateHandler::RunHardwareVerifier() const {

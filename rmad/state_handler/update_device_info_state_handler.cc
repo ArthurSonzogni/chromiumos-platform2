@@ -195,19 +195,17 @@ BaseStateHandler::GetNextStateCaseReply
 UpdateDeviceInfoStateHandler::GetNextStateCase(const RmadState& state) {
   if (!state.has_update_device_info()) {
     LOG(ERROR) << "RmadState missing |update device info| state.";
-    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
   if (!VerifyReadOnly(state.update_device_info()) ||
       !WriteDeviceInfo(state.update_device_info())) {
-    return {.error = RMAD_ERROR_DEVICE_INFO_INVALID,
-            .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_DEVICE_INFO_INVALID);
   }
 
   state_ = state;
 
-  return {.error = RMAD_ERROR_OK,
-          .state_case = RmadState::StateCase::kCheckCalibration};
+  return NextStateCaseWrapper(RmadState::StateCase::kCheckCalibration);
 }
 
 bool UpdateDeviceInfoStateHandler::VerifyReadOnly(

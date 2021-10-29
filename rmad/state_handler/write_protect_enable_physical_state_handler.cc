@@ -72,16 +72,15 @@ WriteProtectEnablePhysicalStateHandler::GetNextStateCase(
     const RmadState& state) {
   if (!state.has_wp_enable_physical()) {
     LOG(ERROR) << "RmadState missing |write protection enable| state.";
-    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
   int hwwp_status;
   if (crossystem_utils_->GetInt(kWriteProtectProperty, &hwwp_status) &&
       hwwp_status == 1) {
-    return {.error = RMAD_ERROR_OK,
-            .state_case = RmadState::StateCase::kFinalize};
+    return NextStateCaseWrapper(RmadState::StateCase::kFinalize);
   }
-  return {.error = RMAD_ERROR_WAIT, .state_case = GetStateCase()};
+  return NextStateCaseWrapper(RMAD_ERROR_WAIT);
 }
 
 void WriteProtectEnablePhysicalStateHandler::PollUntilWriteProtectOn() {

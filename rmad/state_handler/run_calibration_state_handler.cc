@@ -114,7 +114,7 @@ BaseStateHandler::GetNextStateCaseReply
 RunCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
   if (!state.has_run_calibration()) {
     LOG(ERROR) << "RmadState missing |run calibration| state.";
-    return {.error = RMAD_ERROR_REQUEST_INVALID, .state_case = GetStateCase()};
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
   // Since the actual calibration has already started in InitializeState,
@@ -126,19 +126,18 @@ RunCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
   if (ShouldRecalibrate(&error_code)) {
     if (error_code != RMAD_ERROR_OK) {
       LOG(ERROR) << "Rmad: The sensor calibration is failed.";
-      return {.error = error_code,
-              .state_case = RmadState::StateCase::kCheckCalibration};
+      return NextStateCaseWrapper(RmadState::StateCase::kCheckCalibration,
+                                  error_code, AdditionalActivity::NOTHING);
     } else {
       LOG(INFO) << "Rmad: The sensor calibration needs another round.";
-      return {.error = error_code,
-              .state_case = RmadState::StateCase::kSetupCalibration};
+      return NextStateCaseWrapper(RmadState::StateCase::kSetupCalibration,
+                                  error_code, AdditionalActivity::NOTHING);
     }
   }
 
   state_ = state;
 
-  return {.error = RMAD_ERROR_OK,
-          .state_case = RmadState::StateCase::kProvisionDevice};
+  return NextStateCaseWrapper(RmadState::StateCase::kProvisionDevice);
 }
 
 void RunCalibrationStateHandler::RetrieveVarsAndCalibrate() {
