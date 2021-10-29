@@ -69,6 +69,7 @@ copies.
 | [hammerd](./hammerd/) | Firmware updater utility for hammer hardware |
 | [hardware_verifier](./hardware_verifier/) | Hardware verifier tool |
 | [hermes](./hermes/) | Chrome OS LPA implementation for eSIM hardware support |
+| [hiberman](./hiberman/) | Chrome OS Hibernation Manager |
 | [hps](./hps/) | Chrome OS HPS daemon and utilities |
 | [hwsec-test-utils](./hwsec-test-utils/) | Hwsec-related test-only features |
 | [iioservice](./iioservice/) | Daemon and libraries that provide sensor data to all processes |
