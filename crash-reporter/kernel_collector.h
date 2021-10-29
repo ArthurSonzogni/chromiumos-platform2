@@ -46,7 +46,7 @@ class KernelCollector : public CrashCollector {
   void set_arch(kernel_util::ArchKind arch) { arch_ = arch; }
   kernel_util::ArchKind arch() const { return arch_; }
 
- private:
+ protected:
   // This class represents single EFI crash.
   class EfiCrash {
    public:
@@ -120,6 +120,7 @@ class KernelCollector : public CrashCollector {
     base::FilePath GetFilePath(uint32_t part) const;
   };
 
+ private:
   friend class KernelCollectorTest;
   FRIEND_TEST(KernelCollectorTest, LoadPreservedDump);
   FRIEND_TEST(KernelCollectorTest, LoadBiosLog);

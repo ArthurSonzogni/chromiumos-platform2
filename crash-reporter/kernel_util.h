@@ -19,7 +19,8 @@ enum ArchKind {
   kArchX86,
   kArchX86_64,
 
-  kArchCount  // Number of architectures.
+  kArchCount,  // Number of architectures.
+  kMaxValue = kArchCount
 };
 
 extern const char kKernelExecName[];

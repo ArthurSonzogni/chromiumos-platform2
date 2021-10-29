@@ -39,6 +39,7 @@ group("all") {
       ":anomaly_detector_fuzzer",
       ":chrome_collector_fuzzer",
       ":crash_sender_fuzzer",
+      ":kernel_collector_fuzzer",
     ]
   }
 }
@@ -526,6 +527,19 @@ if (use.fuzzer) {
     libs = [ "system_api-anomaly_detector-protos" ]
     deps = [
       ":libcrash",
+      ":libcrash_test_util",
+    ]
+  }
+
+  executable("kernel_collector_fuzzer") {
+    sources = [ "kernel_collector_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":crash_reporter_test_config",
+    ]
+    deps = [
+      ":libcrash",
+      ":libcrash_reporter",
       ":libcrash_test_util",
     ]
   }
