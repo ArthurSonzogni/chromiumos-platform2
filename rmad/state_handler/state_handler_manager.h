@@ -22,6 +22,7 @@ class StateHandlerManager {
 
   void RegisterStateHandler(scoped_refptr<BaseStateHandler> handler);
   void RegisterStateHandlers();
+  void RegisterFakeStateHandlers();
 
   scoped_refptr<BaseStateHandler> GetStateHandler(
       RmadState::StateCase state) const;

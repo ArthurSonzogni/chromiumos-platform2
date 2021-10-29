@@ -32,7 +32,8 @@ const RmadState::StateCase kInitialStateCase = RmadState::kWelcome;
 RmadInterfaceImpl::RmadInterfaceImpl()
     : RmadInterface(),
       external_utils_initialized_(false),
-      current_state_case_(RmadState::STATE_NOT_SET) {}
+      current_state_case_(RmadState::STATE_NOT_SET),
+      test_mode_(false) {}
 
 RmadInterfaceImpl::RmadInterfaceImpl(
     scoped_refptr<JsonStore> json_store,
@@ -47,7 +48,8 @@ RmadInterfaceImpl::RmadInterfaceImpl(
       shill_client_(std::move(shill_client)),
       tpm_manager_client_(std::move(tpm_manager_client)),
       external_utils_initialized_(true),
-      current_state_case_(RmadState::STATE_NOT_SET) {}
+      current_state_case_(RmadState::STATE_NOT_SET),
+      test_mode_(false) {}
 
 bool RmadInterfaceImpl::StoreStateHistory() {
   std::vector<int> state_history;
@@ -63,7 +65,11 @@ bool RmadInterfaceImpl::SetUp() {
     json_store_ = base::MakeRefCounted<JsonStore>(
         base::FilePath(kDefaultJsonStoreFilePath));
     state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
-    state_handler_manager_->RegisterStateHandlers();
+    if (test_mode_) {
+      state_handler_manager_->RegisterFakeStateHandlers();
+    } else {
+      state_handler_manager_->RegisterStateHandlers();
+    }
     runtime_probe_client_ =
         std::make_unique<RuntimeProbeClientImpl>(GetSystemBus());
     shill_client_ = std::make_unique<ShillClientImpl>(GetSystemBus());

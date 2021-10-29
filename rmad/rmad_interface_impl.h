@@ -73,6 +73,8 @@ class RmadInterfaceImpl final : public RmadInterface {
   void AbortRma(const AbortRmaCallback& callback) override;
   bool CanAbort() const override { return can_abort_; }
 
+  void SetTestMode() { test_mode_ = true; }
+
  private:
   // Get and initialize the state handler for |state case|, and store it to
   // |state_handler|. If there's no state handler for |state_case|, or the
@@ -103,6 +105,9 @@ class RmadInterfaceImpl final : public RmadInterface {
   RmadState::StateCase current_state_case_;
   std::vector<RmadState::StateCase> state_history_;
   bool can_abort_;
+
+  // Test mode. Use fake state handlers.
+  bool test_mode_;
 };
 
 }  // namespace rmad

@@ -69,6 +69,8 @@ class DBusService : public brillo::DBusServiceDaemon {
   bool SendHardwareWriteProtectionStateSignal(bool enabled);
   bool SendPowerCableStateSignal(bool plugged_in);
 
+  void SetTestMode() { test_mode_ = true; }
+
  protected:
   // brillo::DBusServiceDaemon overrides.
   int OnEventLoopStarted() override;
@@ -190,6 +192,9 @@ class DBusService : public brillo::DBusServiceDaemon {
   bool is_interface_set_up_;
   // Whether the device should trigger shimless RMA.
   bool is_rma_required_;
+
+  // Test mode daemon.
+  bool test_mode_;
 };
 
 }  // namespace rmad

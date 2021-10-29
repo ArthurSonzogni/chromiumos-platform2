@@ -83,6 +83,11 @@ void StateHandlerManager::RegisterStateHandlers() {
       base::MakeRefCounted<RepairCompleteStateHandler>(json_store_));
 }
 
+void StateHandlerManager::RegisterFakeStateHandlers() {
+  // TODO(chenghan): Use fake state handlers.
+  RegisterStateHandlers();
+}
+
 scoped_refptr<BaseStateHandler> StateHandlerManager::GetStateHandler(
     RmadState::StateCase state) const {
   auto it = state_handler_map_.find(state);

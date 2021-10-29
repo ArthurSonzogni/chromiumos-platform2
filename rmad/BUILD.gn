@@ -158,6 +158,7 @@ if (use.test) {
       "utils/cmd_utils_test.cc",
       "utils/cr50_utils_test.cc",
       "utils/cros_config_utils_test.cc",
+      "utils/dbus_utils_test.cc",
       "utils/fake_hardware_verifier_utils.cc",
       "utils/iio_sensor_probe_utils_impl_test.cc",
       "utils/json_store_test.cc",

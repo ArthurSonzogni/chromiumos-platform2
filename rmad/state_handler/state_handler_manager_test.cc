@@ -5,6 +5,7 @@
 #include <memory>
 
 #include <base/files/file_path.h>
+#include <base/test/task_environment.h>
 #include <base/memory/scoped_refptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -80,6 +81,16 @@ TEST_F(StateHandlerManagerTest, RegisterStateHandlerCollision) {
   state_handler_manager_->RegisterStateHandler(handler1);
   EXPECT_DEATH(state_handler_manager_->RegisterStateHandler(handler2),
                "Registered handlers should have unique RmadStates.");
+}
+
+TEST_F(StateHandlerManagerTest, RegisterStateHandlers) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+  state_handler_manager_->RegisterStateHandlers();
+}
+
+TEST_F(StateHandlerManagerTest, RegisterFakeStateHandlers) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+  state_handler_manager_->RegisterFakeStateHandlers();
 }
 
 }  // namespace rmad

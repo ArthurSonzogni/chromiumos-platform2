@@ -269,7 +269,8 @@ DBusService::DBusService(RmadInterface* rmad_interface)
       rmad_interface_(rmad_interface),
       state_file_path_(kDefaultJsonStoreFilePath),
       is_external_utils_initialized_(false),
-      is_interface_set_up_(false) {}
+      is_interface_set_up_(false),
+      test_mode_(false) {}
 
 DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
                          RmadInterface* rmad_interface,
@@ -280,7 +281,8 @@ DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
       state_file_path_(state_file_path),
       tpm_manager_client_(std::move(tpm_manager_client)),
       is_external_utils_initialized_(true),
-      is_interface_set_up_(false) {
+      is_interface_set_up_(false),
+      test_mode_(false) {
   dbus_object_ = std::make_unique<DBusObject>(
       nullptr, bus, dbus::ObjectPath(kRmadServicePath));
 }
@@ -292,6 +294,7 @@ int DBusService::OnEventLoopStarted() {
   }
 
   if (!is_external_utils_initialized_) {
+    // TODO(chenghan): Use fake tpm_manager client if running in test mode.
     tpm_manager_client_ =
         std::make_unique<TpmManagerClientImpl>(GetSystemBus());
     is_external_utils_initialized_ = true;
