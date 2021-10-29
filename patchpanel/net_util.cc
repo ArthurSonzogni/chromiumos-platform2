@@ -247,21 +247,31 @@ uint16_t Ipv4Checksum(const iphdr* ip) {
   return FoldChecksum(sum);
 }
 
-uint16_t Udpv4Checksum(const iphdr* ip, const udphdr* udp) {
+uint16_t Udpv4Checksum(const uint8_t* udp_packet, ssize_t len) {
+  if (len < sizeof(iphdr) + sizeof(udphdr)) {
+    LOG(ERROR) << "UDP packet length is too small";
+    return 0;
+  }
+
   uint8_t pseudo_header[12];
   memset(pseudo_header, 0, sizeof(pseudo_header));
 
+  struct iphdr* ip_hdr = (struct iphdr*)(udp_packet);
+  struct udphdr* udp_hdr = (struct udphdr*)(udp_packet + sizeof(iphdr));
+
   // Fill in the pseudo-header.
-  memcpy(pseudo_header, &ip->saddr, sizeof(in_addr));
-  memcpy(pseudo_header + 4, &ip->daddr, sizeof(in_addr));
-  memcpy(pseudo_header + 9, &ip->protocol, sizeof(uint8_t));
-  memcpy(pseudo_header + 10, &udp->len, sizeof(uint16_t));
+  memcpy(pseudo_header, &ip_hdr->saddr, sizeof(in_addr));
+  memcpy(pseudo_header + 4, &ip_hdr->daddr, sizeof(in_addr));
+  memcpy(pseudo_header + 9, &ip_hdr->protocol, sizeof(uint8_t));
+  memcpy(pseudo_header + 10, &udp_hdr->len, sizeof(uint16_t));
 
   // Compute pseudo-header checksum
   uint32_t sum = NetChecksum(pseudo_header, sizeof(pseudo_header));
 
   // UDP
-  sum += NetChecksum(udp, ntohs(udp->len));
+  const uint8_t* udp_segment = udp_packet + sizeof(iphdr);
+  ssize_t udp_len = len - sizeof(iphdr);
+  sum += NetChecksum(udp_segment, udp_len);
 
   return FoldChecksum(sum);
 }

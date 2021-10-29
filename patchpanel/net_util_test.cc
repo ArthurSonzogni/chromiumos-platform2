@@ -142,13 +142,12 @@ TEST(Ipv4, IpChecksum) {
 TEST(Ipv4, UdpChecksum) {
   alignas(4) uint8_t buffer[IP_MAXPACKET];
 
-  iphdr* ip = reinterpret_cast<iphdr*>(buffer);
   udphdr* udp = reinterpret_cast<udphdr*>(buffer + sizeof(iphdr));
 
   memcpy(buffer, udp_packet, sizeof(udp_packet));
   uint16_t ori_cksum = udp->check;
   udp->check = 0;
-  EXPECT_EQ(ori_cksum, Udpv4Checksum(ip, udp));
+  EXPECT_EQ(ori_cksum, Udpv4Checksum(buffer, sizeof(udp_packet)));
 }
 
 TEST(Ipv6, IcmpChecksum) {

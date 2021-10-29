@@ -130,7 +130,7 @@ BRILLO_EXPORT uint16_t Ipv4Checksum(const iphdr* ip);
 
 // UDPv4 checksum along with IPv4 pseudo-header is defined in RFC 793,
 // Section 3.1.
-BRILLO_EXPORT uint16_t Udpv4Checksum(const iphdr* ip, const udphdr* udp);
+BRILLO_EXPORT uint16_t Udpv4Checksum(const uint8_t* udp_packet, ssize_t len);
 
 // ICMPv6 checksum is defined in RFC 8200 Section 8.1
 BRILLO_EXPORT uint16_t Icmpv6Checksum(const ip6_hdr* ip6,

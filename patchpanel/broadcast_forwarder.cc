@@ -478,7 +478,8 @@ bool BroadcastForwarder::SendToGuests(const void* ip_pkt,
       ip_hdr->daddr = socket.second->broadaddr;
       ip_hdr->check = Ipv4Checksum(ip_hdr);
     }
-    udp_hdr->check = Udpv4Checksum(ip_hdr, udp_hdr);
+    udp_hdr->check =
+        Udpv4Checksum(buffer, sizeof(iphdr) + sizeof(udphdr) + len);
 
     struct ifreq ifr;
     memset(&ifr, 0, sizeof(ifr));
