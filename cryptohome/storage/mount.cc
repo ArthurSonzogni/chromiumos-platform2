@@ -381,13 +381,6 @@ bool Mount::OwnsMountPoint(const FilePath& path) const {
           out_of_process_mounter_->IsPathMounted(path));
 }
 
-bool Mount::CreateTrackedSubdirectories(const std::string& username) const {
-  std::string obfuscated_username =
-      SanitizeUserNameWithSalt(username, system_salt_);
-  return mounter_->CreateTrackedSubdirectories(obfuscated_username,
-                                               mount_type_);
-}
-
 FilePath Mount::GetUserDirectoryForUser(
     const std::string& obfuscated_username) const {
   return ShadowRoot().Append(obfuscated_username);

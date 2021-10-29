@@ -147,21 +147,9 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   void set_bind_mount_downloads(bool bind) { bind_mount_downloads_ = bind; }
 
  protected:
-  FRIEND_TEST(ServiceInterfaceTest, CheckAsyncTestCredentials);
-  FRIEND_TEST(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest);
-  friend class MountTest;
   friend class ChapsDirectoryTest;
-  friend class EphemeralNoUserSystemTest;
 
  private:
-  // Creates the tracked subdirectories in a user's cryptohome
-  // If the cryptohome did not have tracked directories, but had them untracked,
-  // migrates their contents.
-  //
-  // Parameters
-  //   username - name of the user to create directories for
-  virtual bool CreateTrackedSubdirectories(const std::string& username) const;
-
   // Gets the directory in the shadow root where the user's salt, key, and vault
   // are stored.
   //
@@ -275,8 +263,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Represents the user's cryptohome vault.
   std::unique_ptr<CryptohomeVault> user_cryptohome_vault_;
-
-  FRIEND_TEST(MountTest, CreateTrackedSubdirectoriesReplaceExistingDir);
 };
 
 }  // namespace cryptohome
