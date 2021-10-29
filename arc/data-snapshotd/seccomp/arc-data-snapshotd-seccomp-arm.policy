@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 gettid: 1
 openat: 1
 read: 1
@@ -43,28 +43,29 @@ _llseek: 1
 pipe2: 1
 getsockname: 1
 execve: 1
-arch_prctl: 1
 set_tid_address: 1
 set_robust_list: 1
 prlimit64: 1
-# MTIOCGET: 0x80306d02
+# MTIOCGET: 0x801c6d02
 # EVIOCGBIT: 0x80604521
 # FS_IOC_FIEMAP: 0xc020660b
+# CROS_EC_DEV_IOCXCMD: 0xc01c3a00
 ioctl: arg1 == SIOCGIFFLAGS || arg1 == TIOCLINUX || arg1 == TIOCGWINSZ || \
-       arg1 == 0x80306d02 || arg1 == FIONREAD || arg1 == TCGETS || \
-       arg1 == SIOCSIFFLAGS || arg1 == 0x80604521 || arg1 == 0xc020660b
+       arg1 == FIONREAD || arg1 == TCGETS || \
+       arg1 == SIOCSIFFLAGS || arg1 == 0x80604521 || arg1 == 0xc020660b || \
+       arg1 == 0xc01c3a00 || arg1 == 0x801c6d02
 epoll_create1: 1
 clock_getres: 1
 clock_getres_time64: 1
-getresuid: 1
-getresgid: 1
+getresuid32: 1
+getresgid32: 1
 clone: 1
 getpid: 1
 restart_syscall: 1
 exit: 1
 exit_group: 1
-rt_sigreturn: 1
-lstat: 1
+sigreturn: 1
+lstat64: 1
 # Generate key pair.
 getdents: 1
 unlink: 1
@@ -75,6 +76,7 @@ mlock: 1
 madvise: 1
 munlock: 1
 dup2: 1
+dup: 1
 getdents64: 1
 prctl: 1
 statfs: 1
@@ -83,11 +85,11 @@ mkdir: 1
 sysinfo: 1
 readlink: 1
 symlink: 1
-lchown: 1
+lchown32: 1
 utimensat: 1
 utimensat_time64: 1
 llistxattr: 1
-fadvise64: 1
+arm_fadvise64_64: 1
 flistxattr: 1
 fchmod: 1
 chmod: 1
@@ -96,6 +98,7 @@ creat: 1
 mknod: 1
 ftruncate: 1
 fchown: 1
+fchown32: 1
 symlinkat: 1
 fgetxattr: 1
 fsetxattr: 1
@@ -110,9 +113,19 @@ getppid: 1
 faccessat: 1
 faccessat2: 1
 unlinkat: 1
-newfstatat: 1
+fstatat64: 1
 pipe: 1
 fstatfs: 1
 fstatfs64: 1
 renameat: 1
 renameat2: 1
+clock_gettime: 1
+clock_gettime64: 1
+send: 1
+uname: 1
+ARM_set_tls: 1
+ugetrlimit: 1
+getpeername: 1
+pread64: 1
+flock: 1
+iopl: 1

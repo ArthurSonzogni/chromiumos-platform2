@@ -109,3 +109,9 @@ pipe: 1
 fstatfs: 1
 renameat: 1
 renameat2: 1
+pread64: 1
+dup: 1
+uname: 1
+flock: 1
+iopl: 1
+getpeername: 1
