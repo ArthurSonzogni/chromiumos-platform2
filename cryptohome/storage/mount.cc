@@ -103,7 +103,7 @@ Mount::~Mount() {
     UnmountCryptohome();
 }
 
-bool Mount::Init(bool use_init_namespace) {
+bool Mount::Init(bool use_local_mounter) {
   bool result = true;
 
   // Get the user id and group id of the default user
@@ -124,26 +124,25 @@ bool Mount::Init(bool use_init_namespace) {
     result = false;
   }
 
-  mounter_.reset(new MountHelper(default_user_, default_group_,
-                                 default_access_group_, legacy_mount_,
-                                 bind_mount_downloads_, platform_));
-  active_mounter_ = mounter_.get();
+  if (use_local_mounter) {
+    active_mounter_.reset(new MountHelper(default_user_, default_group_,
+                                          default_access_group_, legacy_mount_,
+                                          bind_mount_downloads_, platform_));
+    return result;
+  }
 
   //  cryptohome_namespace_mounter enters the Chrome mount namespace and mounts
   //  the user cryptohome in that mount namespace if the flags are enabled.
   //  Chrome mount namespace is created by session_manager. cryptohome knows
   //  the path at which this mount namespace is created and uses that path to
   //  enter it.
-  if (!use_init_namespace) {
-    std::unique_ptr<MountNamespace> chrome_mnt_ns =
-        std::make_unique<MountNamespace>(
-            base::FilePath(kUserSessionMountNamespacePath), platform_);
+  std::unique_ptr<MountNamespace> chrome_mnt_ns =
+      std::make_unique<MountNamespace>(
+          base::FilePath(kUserSessionMountNamespacePath), platform_);
 
-    out_of_process_mounter_.reset(
-        new OutOfProcessMountHelper(std::move(chrome_mnt_ns), legacy_mount_,
-                                    bind_mount_downloads_, platform_));
-    active_mounter_ = out_of_process_mounter_.get();
-  }
+  active_mounter_.reset(
+      new OutOfProcessMountHelper(std::move(chrome_mnt_ns), legacy_mount_,
+                                  bind_mount_downloads_, platform_));
 
   return result;
 }
@@ -233,8 +232,8 @@ bool Mount::MountCryptohome(const std::string& username,
 
   // Ensure we don't leave any mounts hanging on intermediate errors.
   // The closure won't outlive the class so |this| will always be valid.
-  // |out_of_process_mounter_|/|mounter_| will always be valid since this
-  // callback runs in the destructor at the latest.
+  // |active_mounter_| will always be valid since this callback runs in the
+  // destructor at the latest.
   base::ScopedClosureRunner cleanup_runner(base::BindOnce(
       base::IgnoreResult(&Mount::UnmountCryptohome), base::Unretained(this)));
 
@@ -338,8 +337,7 @@ void Mount::UnmountCryptohomeFromMigration() {
 }
 
 bool Mount::IsMounted() const {
-  return (mounter_ && mounter_->MountPerformed()) ||
-         (out_of_process_mounter_ && out_of_process_mounter_->MountPerformed());
+  return active_mounter_ && active_mounter_->MountPerformed();
 }
 
 bool Mount::IsEphemeral() const {
@@ -351,9 +349,7 @@ bool Mount::IsNonEphemeralMounted() const {
 }
 
 bool Mount::OwnsMountPoint(const FilePath& path) const {
-  return (mounter_ && mounter_->IsPathMounted(path)) ||
-         (out_of_process_mounter_ &&
-          out_of_process_mounter_->IsPathMounted(path));
+  return active_mounter_ && active_mounter_->IsPathMounted(path);
 }
 
 FilePath Mount::GetUserDirectoryForUser(

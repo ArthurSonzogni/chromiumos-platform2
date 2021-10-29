@@ -433,7 +433,7 @@ class PersistentSystemTest : public ::testing::Test {
 
     mount_ = new Mount(&platform_, homedirs_.get());
 
-    EXPECT_TRUE(mount_->Init(/*use_init_namespace=*/true));
+    EXPECT_TRUE(mount_->Init(/*use_local_mounter=*/true));
   }
 
   void TearDown() { platform_.GetFake()->RemoveSystemSaltForLibbrillo(); }
@@ -1010,7 +1010,7 @@ TEST_F(PersistentSystemTest, EcryptfsMigration) {
   // migration on unmount.
   // TODO(dlunev): fix the behaviour.
   scoped_refptr<Mount> new_mount = new Mount(&platform_, homedirs_.get());
-  EXPECT_TRUE(new_mount->Init(/*use_init_namespace=*/true));
+  EXPECT_TRUE(new_mount->Init(/*use_local_mounter=*/true));
   args = {
       .to_migrate_from_ecryptfs = true,
   };
@@ -1086,7 +1086,7 @@ class EphemeralSystemTest : public ::testing::Test {
 
     mount_ = new Mount(&platform_, homedirs_.get());
 
-    EXPECT_TRUE(mount_->Init(/*use_init_namespace=*/true));
+    EXPECT_TRUE(mount_->Init(/*use_local_mounter=*/true));
 
     SetupVFSMock();
   }
@@ -1282,7 +1282,7 @@ class ChapsDirectoryTest : public ::testing::Test {
     homedirs_ = std::make_unique<HomeDirs>(&platform_, nullptr, remove_cb);
 
     mount_ = new Mount(&platform_, homedirs_.get());
-    mount_->Init(/*use_init_namespace=*/true);
+    mount_->Init(/*use_local_mounter=*/true);
     mount_->chaps_user_ = fake_platform::kChapsUID;
     mount_->default_access_group_ = fake_platform::kSharedGID;
     // By default, set stats to the expected values.

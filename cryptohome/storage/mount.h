@@ -77,7 +77,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   virtual ~Mount();
 
   // Gets the uid/gid of the default user.
-  virtual bool Init(bool use_init_namespace = false);
+  virtual bool Init(bool use_local_mounter = false);
 
   // Attempts to mount the cryptohome for the given username
   //
@@ -251,11 +251,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   base::Lock active_dircrypto_migrator_lock_;
   base::ConditionVariable dircrypto_migration_stopped_condition_;
 
-  // |mounter_| encapsulates mount(2)/umount(2) operations required to perform
-  // and tear down cryptohome mounts. It performs these operations in-process.
-  std::unique_ptr<MountHelper> mounter_;
-  std::unique_ptr<OutOfProcessMountHelper> out_of_process_mounter_;
-  MountHelperInterface* active_mounter_;
+  std::unique_ptr<MountHelperInterface> active_mounter_;
 
   // Represents the user's cryptohome vault.
   std::unique_ptr<CryptohomeVault> user_cryptohome_vault_;
