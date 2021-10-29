@@ -77,8 +77,13 @@ class TestMulticastForwarder : public MulticastForwarder {
                   struct sockaddr* src_addr,
                   socklen_t* addrlen) override {
     *addrlen = std::min(src_sockaddr.size(), (size_t)*addrlen);
-    memcpy(src_addr, src_sockaddr.data(), *addrlen);
-    memcpy(buffer, payload.data(), std::min(payload.size(), buffer_size));
+    if (*addrlen > 0) {
+      memcpy(src_addr, src_sockaddr.data(), *addrlen);
+    }
+    buffer_size = std::min(payload.size(), buffer_size);
+    if (buffer_size > 0) {
+      memcpy(buffer, payload.data(), buffer_size);
+    }
     src_addr->sa_family = sa_family;
     return true;
   }
