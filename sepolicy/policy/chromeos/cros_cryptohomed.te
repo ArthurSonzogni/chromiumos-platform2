@@ -209,7 +209,7 @@ allow cros_cryptohomed cros_unconfined_exec:file    x_file_perms;
 allow cros_cryptohomed cros_initctl_exec:file rx_file_perms;
 
 # Dm-crypt cryptohome related labels.
-allow cros_cryptohomed cros_run_udev:dir search;
+allow cros_cryptohomed cros_run_udev:dir { read search};
 allow cros_cryptohomed cros_var_lock:dir { getattr search };
 allow cros_cryptohomed cros_run_lock:dir { add_name remove_name write };
 allow cros_cryptohomed cros_run_lock:file { append create getattr lock open read unlink };
@@ -220,6 +220,9 @@ allow cros_cryptohomed cros_udevadm_exec:file rx_file_perms;
 allow cros_cryptohomed cros_mke2fs_exec:file rx_file_perms;
 allow cros_cryptohomed usb_device:dir search;
 allow cros_cryptohomed kernel:system ipc_info;
+allow cros_cryptohomed cros_run_udev:sock_file write;
+allow cros_cryptohomed cros_shm:file getattr;
+allow cros_cryptohomed cros_udevd:unix_stream_socket connectto;
 
 # Remove the arc_cts_fails_release macro for ARCVM devices so that
 # cros_cryptohomed is not converted into a permissive domain after being
@@ -243,6 +246,8 @@ is_arc_vm(`
   allow cros_cryptohomed { arc_files unlabeled }:file { rw_file_perms unlink };
   allow cros_cryptohomed { arc_files unlabeled }:lnk_file { rw_file_perms unlink };
   allow cros_cryptohomed { arc_files unlabeled }:sock_file { rw_file_perms unlink };
+  # Managing dm_task_cookie for setting up/tearing down dm-crypt devices
+  allow cros_cryptohomed self:sem { associate create destroy read unix_read unix_write write };
 ',`
   arc_cts_fails_release(`
     allow cros_cryptohomed device:blk_file create_file_perms;
@@ -263,6 +268,8 @@ is_arc_vm(`
     allow cros_cryptohomed arc_files:file { rw_file_perms unlink };
     allow cros_cryptohomed arc_files:lnk_file { rw_file_perms unlink };
     allow cros_cryptohomed arc_files:sock_file { rw_file_perms unlink };
+    # Managing dm_task_cookie for setting up/tearing down dm-crypt devices
+    allow cros_cryptohomed self:sem { associate create destroy read unix_read unix_write write };
   ', (`cros_cryptohomed'));
 ')
 
