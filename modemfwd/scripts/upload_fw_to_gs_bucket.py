@@ -48,7 +48,7 @@ class FwUploader(object):
         self.basename = os.path.basename(self.path)
         self.tarball_dir_name = tarball_dir_name
 
-    def process_fw_and_upload(self):
+    def process_fw_and_upload(self, keep_tmp_files):
         if not self.validate():
             return os.EX_USAGE
 
@@ -73,8 +73,10 @@ class FwUploader(object):
             os.system('gsutil cp -n -a public-read {0} {1}'.format(
                 tarball_path, gs_bucket_path))
 
-        logging.info('Removing temporary files')
-        shutil.rmtree(tempdir)
+        if not keep_tmp_files:
+            logging.info('Removing temporary files')
+            shutil.rmtree(tempdir)
+
         return os.EX_OK
 
 
@@ -208,6 +210,13 @@ def parse_arguments(argv):
                         action='store_true',
                         help='upload file to GS bucket.')
 
+    parser.add_argument('--keep-files',
+                        default=False,
+                        action='store_true',
+                        help="Don't delete the tarball files in /tmp. Useful "
+                        'for Partners. Googlers should not upload files '
+                        'manually.')
+
     return parser.parse_args(argv[1:])
 
 
@@ -233,7 +242,7 @@ def main(argv):
     elif opts.type == PackageType.NL668_MAIN_FW:
         fw_uploader = NL668MainFw(opts.path, opts.upload)
 
-    return fw_uploader.process_fw_and_upload()
+    return fw_uploader.process_fw_and_upload(opts.keep_files)
 
 
 if __name__ == '__main__':
