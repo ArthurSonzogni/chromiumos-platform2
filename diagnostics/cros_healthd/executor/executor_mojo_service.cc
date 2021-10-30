@@ -26,7 +26,7 @@
 #include "diagnostics/cros_healthd/process/process_with_output.h"
 #include "diagnostics/cros_healthd/routines/memory/memory_constants.h"
 #include "diagnostics/cros_healthd/utils/file_utils.h"
-#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
+#include "mojo/cros_healthd_executor.mojom.h"
 
 namespace diagnostics {
 

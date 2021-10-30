@@ -18,7 +18,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/system_files_service_impl.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/system_info_service_impl.h"
 
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 

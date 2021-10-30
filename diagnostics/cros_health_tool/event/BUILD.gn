@@ -17,7 +17,7 @@ source_set("libevent") {
   configs += [ ":libevent_pkg_deps" ]
   deps = [
     "//diagnostics/cros_healthd_mojo_adapter:libcros_healthd_mojo_adapter",
-    "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
+    "//diagnostics/mojo:cros_healthd_mojo_bindings",
   ]
   sources = [
     "audio_subscriber.cc",

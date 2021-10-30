@@ -15,7 +15,7 @@ pkg_config("libcros_healthd_mojo_adapter_pkg_deps") {
 # Library that provides a mojo connection to cros_healthd.
 source_set("libcros_healthd_mojo_adapter") {
   configs += [ ":libcros_healthd_mojo_adapter_pkg_deps" ]
-  deps = [ "//diagnostics/mojom/public:cros_healthd_mojo_bindings" ]
+  deps = [ "//diagnostics/mojo:cros_healthd_mojo_bindings" ]
   sources = [
     "cros_healthd_mojo_adapter.cc",
     "cros_healthd_mojo_adapter_delegate_impl.cc",

@@ -18,7 +18,7 @@ source_set("libdiag") {
     "//diagnostics/common:libcommon",
     "//diagnostics/cros_healthd/routines:libdiag_routine",
     "//diagnostics/cros_healthd_mojo_adapter:libcros_healthd_mojo_adapter",
-    "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
+    "//diagnostics/mojo:cros_healthd_mojo_bindings",
   ]
   sources = [
     "diag.cc",

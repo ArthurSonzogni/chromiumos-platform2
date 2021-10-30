@@ -6,7 +6,7 @@
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_TIMEZONE_FETCHER_H_
 
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 

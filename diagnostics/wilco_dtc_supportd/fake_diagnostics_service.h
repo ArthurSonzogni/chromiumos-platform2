@@ -14,9 +14,9 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/system/handle.h>
 
-#include "diagnostics/mojom/public/cros_healthd.mojom.h"
-#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/wilco_dtc_supportd/routine_service.h"
+#include "mojo/cros_healthd.mojom.h"
+#include "mojo/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
 

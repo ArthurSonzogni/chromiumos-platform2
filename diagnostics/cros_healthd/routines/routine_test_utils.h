@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "mojo/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
 

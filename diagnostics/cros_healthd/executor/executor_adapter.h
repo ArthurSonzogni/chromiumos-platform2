@@ -7,7 +7,7 @@
 
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 
-#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
+#include "mojo/cros_healthd_executor.mojom.h"
 
 #include <string>
 

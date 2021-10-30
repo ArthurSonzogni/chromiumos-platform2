@@ -30,9 +30,9 @@
 #include <brillo/syslog_logging.h>
 
 #include "diagnostics/cros_healthd_mojo_adapter/cros_healthd_mojo_adapter.h"
-#include "diagnostics/mojom/external/network_health.mojom.h"
-#include "diagnostics/mojom/external/network_types.mojom.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "mojo/cros_healthd_probe.mojom.h"
+#include "mojo/network_health.mojom.h"
+#include "mojo/network_types.mojom.h"
 
 namespace diagnostics {
 

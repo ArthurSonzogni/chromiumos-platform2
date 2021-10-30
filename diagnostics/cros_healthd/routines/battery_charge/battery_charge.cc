@@ -19,7 +19,7 @@
 
 #include "diagnostics/common/mojo_utils.h"
 #include "diagnostics/cros_healthd/routines/battery_charge/battery_charge_constants.h"
-#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "mojo/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
 

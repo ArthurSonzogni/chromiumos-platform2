@@ -5,7 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_NETWORK_DIAGNOSTICS_NETWORK_DIAGNOSTICS_UTILS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_NETWORK_DIAGNOSTICS_NETWORK_DIAGNOSTICS_UTILS_H_
 
-#include "diagnostics/mojom/external/network_diagnostics.mojom.h"
+#include "mojo/network_diagnostics.mojom.h"
 
 namespace diagnostics {
 

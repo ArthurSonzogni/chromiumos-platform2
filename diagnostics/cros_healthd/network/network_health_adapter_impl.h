@@ -14,7 +14,7 @@
 #include <mojo/public/cpp/bindings/remote_set.h>
 
 #include "diagnostics/cros_healthd/network/network_health_adapter.h"
-#include "diagnostics/mojom/external/network_health.mojom.h"
+#include "mojo/network_health.mojom.h"
 
 namespace diagnostics {
 

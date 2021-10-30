@@ -11,8 +11,8 @@
 #include <base/optional.h>
 
 #include "diagnostics/cros_healthd/utils/error_utils.h"
-#include "diagnostics/mojom/external/network_health.mojom.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "mojo/cros_healthd_probe.mojom.h"
+#include "mojo/network_health.mojom.h"
 
 namespace diagnostics {
 

@@ -10,7 +10,7 @@
 #include <base/optional.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
-#include "diagnostics/mojom/external/network_diagnostics.mojom.h"
+#include "mojo/network_diagnostics.mojom.h"
 
 namespace diagnostics {
 

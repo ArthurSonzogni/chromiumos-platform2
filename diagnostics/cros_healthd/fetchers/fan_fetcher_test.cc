@@ -21,8 +21,8 @@
 #include "diagnostics/cros_healthd/executor/mock_executor_adapter.h"
 #include "diagnostics/cros_healthd/fetchers/fan_fetcher.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
-#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "mojo/cros_healthd_executor.mojom.h"
+#include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 namespace {

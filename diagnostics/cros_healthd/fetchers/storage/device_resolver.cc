@@ -16,7 +16,7 @@
 #include "diagnostics/common/status_macros.h"
 #include "diagnostics/common/statusor.h"
 #include "diagnostics/cros_healthd/fetchers/storage/platform.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 

@@ -20,7 +20,7 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 
 #include "diagnostics/cros_healthd/process/process_with_output.h"
-#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
+#include "mojo/cros_healthd_executor.mojom.h"
 
 namespace diagnostics {
 

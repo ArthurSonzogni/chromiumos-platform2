@@ -17,7 +17,7 @@
 #include "diagnostics/common/system/mock_debugd_adapter.h"
 #include "diagnostics/cros_healthd/routines/nvme_self_test/nvme_self_test.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
-#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "mojo/cros_healthd_diagnostics.mojom.h"
 
 using testing::_;
 using testing::Invoke;

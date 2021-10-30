@@ -5,15 +5,15 @@
 // This file is copied and modified from,
 // https://chrome-internal.googlesource.com/chromeos/platform/drivefs/+/HEAD/mojom/time_mojom_traits.h
 
-#ifndef DIAGNOSTICS_MOJOM_EXTERNAL_TIME_MOJOM_TRAITS_H_
-#define DIAGNOSTICS_MOJOM_EXTERNAL_TIME_MOJOM_TRAITS_H_
+#ifndef DIAGNOSTICS_MOJO_TIME_MOJOM_TRAITS_H_
+#define DIAGNOSTICS_MOJO_TIME_MOJOM_TRAITS_H_
 
 #include <limits>
 
 #include <base/time/time.h>
 #include <mojo/public/cpp/bindings/struct_traits.h>
 
-#include "diagnostics/mojom/external/time.mojom.h"
+#include "mojo/time.mojom.h"
 
 namespace mojo {
 
@@ -45,4 +45,4 @@ struct StructTraits<mojo_base::mojom::TimeDeltaDataView, base::TimeDelta> {
 
 }  // namespace mojo
 
-#endif  // DIAGNOSTICS_MOJOM_EXTERNAL_TIME_MOJOM_TRAITS_H_
+#endif  // DIAGNOSTICS_MOJO_TIME_MOJOM_TRAITS_H_

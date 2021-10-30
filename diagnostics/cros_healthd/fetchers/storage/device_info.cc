@@ -27,7 +27,7 @@
 #include "diagnostics/cros_healthd/fetchers/storage/storage_device_adapter.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/cros_healthd/utils/file_utils.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 

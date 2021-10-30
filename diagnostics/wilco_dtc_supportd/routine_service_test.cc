@@ -15,9 +15,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/wilco_dtc_supportd/fake_diagnostics_service.h"
 #include "diagnostics/wilco_dtc_supportd/routine_service.h"
+#include "mojo/cros_healthd_diagnostics.mojom.h"
 
 using testing::ElementsAreArray;
 

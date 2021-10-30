@@ -52,7 +52,6 @@
 #include "diagnostics/common/system/fake_bluetooth_client.h"
 #include "diagnostics/common/system/fake_powerd_adapter.h"
 #include "diagnostics/common/system/mock_debugd_adapter.h"
-#include "diagnostics/mojom/public/wilco_dtc_supportd.mojom.h"
 #include "diagnostics/wilco_dtc_supportd/core.h"
 #include "diagnostics/wilco_dtc_supportd/dbus_service.h"
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
@@ -69,6 +68,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/fake_bluetooth_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/fake_ec_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/fake_powerd_event_service.h"
+#include "mojo/wilco_dtc_supportd.mojom.h"
 #include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include_directory)
 
 using testing::_;

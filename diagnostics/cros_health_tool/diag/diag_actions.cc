@@ -21,7 +21,7 @@
 
 #include "diagnostics/common/mojo_utils.h"
 #include "diagnostics/cros_healthd_mojo_adapter/cros_healthd_mojo_adapter.h"
-#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "mojo/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
 

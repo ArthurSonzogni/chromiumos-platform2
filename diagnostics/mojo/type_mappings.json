@@ -4,7 +4,7 @@
       "hashable": false,
       "typename": "base::Time",
       "traits_headers": [
-        "diagnostics/mojom/external/time_mojom_traits.h"
+        "diagnostics/mojo/time_mojom_traits.h"
       ],
       "copyable_pass_by_value": true,
       "force_serialize": false,
@@ -19,7 +19,7 @@
       "hashable": false,
       "typename": "base::TimeDelta",
       "traits_headers": [
-        "diagnostics/mojom/external/time_mojom_traits.h"
+        "diagnostics/mojo/time_mojom_traits.h"
       ],
       "copyable_pass_by_value": true,
       "force_serialize": false,

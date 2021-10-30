@@ -12,8 +12,8 @@
 #include <vector>
 
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
-#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "mojo/cros_healthd_executor.mojom.h"
+#include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 constexpr char kRelativeWirelessPowerSchemePath[] =

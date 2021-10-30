@@ -1,0 +1,69 @@
+# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/mojom_bindings_generator.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":cros_healthd_mojo_bindings",
+    ":network_diagnostics_mojo_bindings",
+    ":network_health_mojo_bindings",
+  ]
+}
+
+generate_mojom_bindings("cros_healthd_mojo_bindings") {
+  mojo_root = "//diagnostics"
+  standalone = true
+  deps = [
+    ":network_diagnostics_mojo_bindings",
+    ":network_health_mojo_bindings",
+  ]
+  sources = [
+    "cros_healthd.mojom",
+    "cros_healthd_diagnostics.mojom",
+    "cros_healthd_events.mojom",
+    "cros_healthd_probe.mojom",
+    "nullable_primitives.mojom",
+    "wilco_ec.mojom",
+  ]
+}
+
+generate_mojom_bindings("network_diagnostics_mojo_bindings") {
+  mojo_root = "//diagnostics"
+  standalone = true
+  sources = [
+    "network_diagnostics.mojom",
+    "time.mojom",
+  ]
+  mojo_extra_args = [
+    "--typemap",
+    rebase_path("type_mappings.json"),
+  ]
+}
+
+source_set("diagnostics_mojo_bindings_lib") {
+  sources = [ "time_mojom_traits.h" ]
+  public_deps = [ ":network_diagnostics_mojo_bindings" ]
+}
+
+generate_mojom_bindings("network_health_mojo_bindings") {
+  mojo_root = "//diagnostics"
+  standalone = true
+  sources = [
+    "network_health.mojom",
+    "network_types.mojom",
+  ]
+}
+
+generate_mojom_bindings("wilco_dtc_supportd_mojo_bindings") {
+  mojo_root = "//diagnostics"
+  sources = [ "wilco_dtc_supportd.mojom" ]
+  deps = [ ":cros_healthd_mojo_bindings" ]
+}
+
+generate_mojom_bindings("cros_healthd_executor_mojo_bindings") {
+  mojo_root = "//diagnostics"
+  sources = [ "cros_healthd_executor.mojom" ]
+}

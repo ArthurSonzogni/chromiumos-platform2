@@ -12,7 +12,7 @@
 
 #include <mojo/public/cpp/bindings/struct_ptr.h>
 
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "mojo/cros_healthd_probe.mojom.h"
 
 namespace chromeos {
 namespace cros_healthd {

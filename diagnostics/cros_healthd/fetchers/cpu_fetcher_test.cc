@@ -23,7 +23,7 @@
 #include "diagnostics/cros_healthd/system/system_utilities_constants.h"
 #include "diagnostics/cros_healthd/utils/cpu_file_helpers.h"
 #include "diagnostics/cros_healthd/utils/procfs_utils.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 namespace {

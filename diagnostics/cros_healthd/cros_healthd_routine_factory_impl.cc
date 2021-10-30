@@ -40,7 +40,7 @@
 #include "diagnostics/cros_healthd/routines/smartctl_check/smartctl_check.h"
 #include "diagnostics/cros_healthd/routines/urandom/urandom.h"
 #include "diagnostics/cros_healthd/routines/video_conferencing/video_conferencing.h"
-#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
+#include "mojo/nullable_primitives.mojom.h"
 
 namespace diagnostics {
 

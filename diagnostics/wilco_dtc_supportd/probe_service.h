@@ -10,8 +10,8 @@
 #include <base/callback.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 
-#include "diagnostics/mojom/public/cros_healthd.mojom.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "mojo/cros_healthd.mojom.h"
+#include "mojo/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 

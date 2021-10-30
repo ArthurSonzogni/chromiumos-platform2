@@ -8,7 +8,7 @@
 #include <base/optional.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
-#include "diagnostics/mojom/public/cros_healthd.mojom.h"
+#include "mojo/cros_healthd.mojom.h"
 
 namespace diagnostics {
 

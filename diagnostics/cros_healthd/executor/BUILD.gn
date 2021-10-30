@@ -18,7 +18,7 @@ source_set("libcros_healthd_executor") {
   deps = [
     "//diagnostics/cros_healthd/process:libcros_healthd_process",
     "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
-    "//diagnostics/mojom/private:cros_healthd_executor_mojo_bindings",
+    "//diagnostics/mojo:cros_healthd_executor_mojo_bindings",
   ]
   sources = [
     "executor.cc",
@@ -29,7 +29,7 @@ source_set("libcros_healthd_executor") {
 
 if (use.test || use.fuzzer) {
   source_set("libcros_healthd_executor_test_utils") {
-    deps = [ "//diagnostics/mojom/private:cros_healthd_executor_mojo_bindings" ]
+    deps = [ "//diagnostics/mojo:cros_healthd_executor_mojo_bindings" ]
     sources = [ "mock_executor_adapter.cc" ]
   }
 }

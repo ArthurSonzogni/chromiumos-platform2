@@ -19,9 +19,9 @@
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/system/buffer.h>
 
-#include "diagnostics/mojom/public/cros_healthd.mojom.h"
-#include "diagnostics/mojom/public/wilco_dtc_supportd.mojom.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_grpc_adapter.h"
+#include "mojo/cros_healthd.mojom.h"
+#include "mojo/wilco_dtc_supportd.mojom.h"
 
 namespace diagnostics {
 
