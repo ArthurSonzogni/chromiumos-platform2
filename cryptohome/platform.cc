@@ -211,17 +211,7 @@ std::vector<DecodedProcMountInfo> Platform::ReadMountInfoFile() {
 
 bool Platform::GetLoopDeviceMounts(
     std::multimap<const FilePath, const FilePath>* mounts) {
-  std::vector<DecodedProcMountInfo> proc_mounts = ReadMountInfoFile();
-
-  // Populate all mounts from loop devices "/dev/loop*".
-  for (const auto& mount : proc_mounts) {
-    if (!base::StartsWith(mount.mount_source, kLoopPrefix,
-                          base::CompareCase::SENSITIVE))
-      continue;
-    mounts->insert(std::pair<const FilePath, const FilePath>(
-        FilePath(mount.mount_source), FilePath(mount.mount_point)));
-  }
-  return mounts && mounts->size() > 0;
+  return GetMountsByDevicePrefix(kLoopPrefix, mounts);
 }
 
 bool Platform::GetMountsBySourcePrefix(
@@ -246,6 +236,26 @@ bool Platform::GetMountsBySourcePrefix(
         root_dir, FilePath(mount.mount_point)));
   }
   return mounts && mounts->size();
+}
+
+bool Platform::GetMountsByDevicePrefix(
+    const std::string& from_prefix,
+    std::multimap<const FilePath, const FilePath>* mounts) {
+  std::vector<DecodedProcMountInfo> proc_mounts = ReadMountInfoFile();
+
+  // If there is no mounts pointer, we can return false right away.
+  if (!mounts) {
+    return false;
+  }
+
+  for (const auto& mount : proc_mounts) {
+    if (!base::StartsWith(mount.mount_source, from_prefix,
+                          base::CompareCase::SENSITIVE)) {
+      continue;
+    }
+    mounts->insert({FilePath(mount.mount_source), FilePath(mount.mount_point)});
+  }
+  return !mounts->empty();
 }
 
 bool Platform::IsDirectoryMounted(const FilePath& directory) {

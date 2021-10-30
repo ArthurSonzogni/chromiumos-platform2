@@ -279,6 +279,11 @@ class MockPlatform : public Platform {
   MOCK_METHOD(bool, Unmount, (const base::FilePath&, bool, bool*), (override));
   MOCK_METHOD(void, LazyUnmount, (const base::FilePath&), (override));
   MOCK_METHOD(bool,
+              GetMountsByDevicePrefix,
+              (const std::string&,
+               (std::multimap<const base::FilePath, const base::FilePath>*)),
+              (override));
+  MOCK_METHOD(bool,
               GetLoopDeviceMounts,
               ((std::multimap<const base::FilePath, const base::FilePath>*)),
               (override));

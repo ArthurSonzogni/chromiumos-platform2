@@ -16,6 +16,7 @@
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>
 #include <base/notreached.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/system/sys_info.h>
 #include <base/threading/thread_task_runner_handle.h>
@@ -56,6 +57,7 @@ namespace cryptohome {
 
 constexpr char kMountThreadName[] = "MountThread";
 constexpr char kNotFirstBootFilePath[] = "/run/cryptohome/not_first_boot";
+constexpr char kDeviceMapperDevicePrefix[] = "/dev/mapper/dmcrypt";
 
 namespace {
 // Some utility functions used by UserDataAuth.
@@ -142,6 +144,27 @@ bool PrefixPresent(const std::vector<FilePath>& prefixes,
         return base::StartsWith(path, prefix.value(),
                                 base::CompareCase::INSENSITIVE_ASCII);
       });
+}
+
+// Groups dm-crypt mounts for each user. Mounts for a user may have a source
+// in either dmcrypt-<>-data or dmcrypt-<>-cache. Strip the application
+// specific suffix for the device and use <> as the group key.
+void GroupDmcryptDeviceMounts(
+    std::multimap<const FilePath, const FilePath>* mounts,
+    std::multimap<const FilePath, const FilePath>* grouped_mounts) {
+  for (auto match = mounts->begin(); match != mounts->end(); ++match) {
+    // Group dmcrypt-<>-data and dmcrypt-<>-cache mounts. Strip out last
+    // '-' from the path.
+    size_t last_component_index = match->first.value().find_last_of("-");
+
+    if (last_component_index == std::string::npos) {
+      continue;
+    }
+
+    base::FilePath device_group(
+        match->first.value().substr(0, last_component_index));
+    grouped_mounts->insert({device_group, match->second});
+  }
 }
 
 }  // namespace
@@ -770,6 +793,8 @@ bool UserDataAuth::CleanUpStaleMounts(bool force) {
   // Stale shadow and ephemeral mounts.
   std::multimap<const FilePath, const FilePath> shadow_mounts;
   std::multimap<const FilePath, const FilePath> ephemeral_mounts;
+  std::multimap<const FilePath, const FilePath> dmcrypt_mounts,
+      grouped_dmcrypt_mounts;
 
   // Active mounts that we don't intend to unmount.
   std::multimap<const FilePath, const FilePath> active_mounts;
@@ -777,11 +802,16 @@ bool UserDataAuth::CleanUpStaleMounts(bool force) {
   // Retrieve all the mounts that's currently mounted by the kernel and concerns
   // us
   platform_->GetMountsBySourcePrefix(ShadowRoot(), &shadow_mounts);
+  platform_->GetMountsByDevicePrefix(kDeviceMapperDevicePrefix,
+                                     &dmcrypt_mounts);
+  GroupDmcryptDeviceMounts(&dmcrypt_mounts, &grouped_dmcrypt_mounts);
   GetEphemeralLoopDevicesMounts(&ephemeral_mounts);
 
   // Remove mounts that we've a record of or have open files on them
-  bool skipped = FilterActiveMounts(&shadow_mounts, &active_mounts, force) ||
-                 FilterActiveMounts(&ephemeral_mounts, &active_mounts, force);
+  bool skipped =
+      FilterActiveMounts(&shadow_mounts, &active_mounts, force) ||
+      FilterActiveMounts(&ephemeral_mounts, &active_mounts, force) ||
+      FilterActiveMounts(&grouped_dmcrypt_mounts, &active_mounts, force);
 
   // Unload PKCS#11 tokens on any mount that we're going to unmount.
   std::vector<FilePath> excluded_mount_points;
@@ -791,6 +821,14 @@ bool UserDataAuth::CleanUpStaleMounts(bool force) {
   UnloadPkcs11Tokens(excluded_mount_points);
 
   // Unmount anything left.
+  for (const auto& match : grouped_dmcrypt_mounts) {
+    LOG(WARNING) << "Lazily unmounting stale dmcrypt mount: "
+                 << match.second.value() << " for " << match.first.value();
+    // true for lazy unmount, nullptr for us not needing to know if it's really
+    // unmounted.
+    platform_->Unmount(match.second, true, nullptr);
+  }
+
   for (const auto& match : shadow_mounts) {
     LOG(WARNING) << "Lazily unmounting stale shadow mount: "
                  << match.second.value() << " from " << match.first.value();

@@ -249,6 +249,18 @@ class Platform {
       const base::FilePath& from_prefix,
       std::multimap<const base::FilePath, const base::FilePath>* mounts);
 
+  // Returns true if any mounts match. Populates |mounts| with list of mounts
+  // from devices with prefix |from_prefix|. Note that this differs from
+  // GetMountBySourcePrefix, which applies to mounts which have a source
+  // in another directory (eg. bind mounts, eCryptfs, overlayfs).
+  //
+  // Parameters
+  //   from_prefix - Prefix for matching mount device
+  //   mounts - matching mounted paths, can't be NULL
+  virtual bool GetMountsByDevicePrefix(
+      const std::string& from_prefix,
+      std::multimap<const base::FilePath, const base::FilePath>* mounts);
+
   // Returns true if the directory is in the mount_info
   //
   // Parameters

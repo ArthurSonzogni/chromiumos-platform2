@@ -1718,6 +1718,36 @@ const std::vector<Mounts> kShadowMounts = {
      FilePath("/daemon-store/server/b")},
 };
 
+const std::vector<Mounts> kDmcryptMounts = {
+    {FilePath("/dev/mapper/dmcrypt-4567-data"), FilePath("/home/root/1")},
+    {FilePath("/dev/mapper/dmcrypt-4567-data"), FilePath("/home/user/1")},
+    {FilePath("/dev/mapper/dmcrypt-1234-data"), FilePath("/home/root/0")},
+    {FilePath("/dev/mapper/dmcrypt-1234-data"), FilePath("/home/user/0")},
+    {FilePath("/dev/mapper/dmcrypt-1234-data"), FilePath("/home/chronos/user")},
+    {FilePath("/dev/mapper/dmcrypt-1234-data"),
+     FilePath("/home/chronos/user/MyFiles/Downloads")},
+    {FilePath("/dev/mapper/dmcrypt-1234-data"),
+     FilePath("/daemon-store/server/a")},
+    {FilePath("/dev/mapper/dmcrypt-1234-data"),
+     FilePath("/home/chronos/u-b/MyFiles/Downloads")},
+    {FilePath("/dev/mapper/dmcrypt-1234-data"),
+     FilePath("/home/user/b/MyFiles/Downloads")},
+    {FilePath("/dev/mapper/dmcrypt-1234-data"),
+     FilePath("/daemon-store/server/b")},
+    {FilePath("/dev/mapper/dmcrypt-1234-data"),
+     FilePath("/home/chronos/user/Cache")},
+    {FilePath("/dev/mapper/dmcrypt-1234-data"),
+     FilePath("/home/chronos/user/GCache")},
+    {FilePath("/dev/mapper/dmcrypt-1234-data"),
+     FilePath("/home/chronos/u-1234/Cache")},
+    {FilePath("/dev/mapper/dmcrypt-1234-data"),
+     FilePath("/home/chronos/u-1234/GCache")},
+    {FilePath("/dev/mapper/dmcrypt-1234-data"),
+     FilePath("/home/user/1234/Cache")},
+    {FilePath("/dev/mapper/dmcrypt-1234-data"),
+     FilePath("/home/user/1234/GCache")},
+};
+
 // Ephemeral mounts must be at the beginning.
 const std::vector<Mounts> kLoopDevMounts = {
     {FilePath("/dev/loop7"), FilePath("/run/cryptohome/ephemeral_mount/1")},
@@ -1761,6 +1791,16 @@ bool StaleShadowMounts(const FilePath& from_prefix,
   return i > 0;
 }
 
+bool DmcryptDeviceMounts(
+    const std::string& from_prefix,
+    std::multimap<const FilePath, const FilePath>* mounts) {
+  if (!mounts)
+    return false;
+  for (const auto& m : kDmcryptMounts)
+    mounts->insert(std::make_pair(m.src, m.dst));
+  return true;
+}
+
 bool LoopDeviceMounts(std::multimap<const FilePath, const FilePath>* mounts) {
   if (!mounts)
     return false;
@@ -1779,6 +1819,73 @@ bool EnumerateSparseFiles(const base::FilePath& path,
 }
 
 }  // namespace
+
+TEST_F(UserDataAuthTest, CleanUpStale_NoOpenFiles_Dmcrypt) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+  // Check that when we have dm-crypt mounts, no active mounts,
+  // and no open filehandles, all stale mounts are unmounted.
+
+  EXPECT_CALL(platform_, GetMountsByDevicePrefix("/dev/mapper/dmcrypt", _))
+      .WillOnce(Invoke(DmcryptDeviceMounts));
+
+  EXPECT_CALL(platform_, ExpireMount(_))
+      .Times(kDmcryptMounts.size())
+      .WillRepeatedly(Return(ExpireMountResult::kMarked));
+
+  for (int i = 0; i < kDmcryptMounts.size(); ++i) {
+    EXPECT_CALL(platform_, Unmount(kDmcryptMounts[i].dst, true, _))
+        .WillRepeatedly(Return(true));
+  }
+
+  EXPECT_FALSE(userdataauth_->CleanUpStaleMounts(false));
+}
+
+TEST_F(UserDataAuthTest, CleanUpStale_OpenFiles_Dmcrypt) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+  // Check that when we have dm-crypt mounts, files open on dm-crypt cryptohome
+  // for one user and no open filehandles, all stale mounts for the second user
+  // are unmounted.
+  EXPECT_CALL(platform_, GetMountsByDevicePrefix("/dev/mapper/dmcrypt", _))
+      .WillOnce(Invoke(DmcryptDeviceMounts));
+
+  // The number of expired mounts depends on when the first busy mount is
+  // traversed through. In this case, /home/chronos/user is the 3rd mount in
+  // the list, so ExpireMount() is called for the first two non-busy mounts for
+  // user 1234 and then for the non-busy stale mounts for user 4567.
+  const int kBusyMountIndex = 4;
+  EXPECT_CALL(platform_, ExpireMount(_))
+      .Times(kBusyMountIndex)
+      .WillRepeatedly(Return(ExpireMountResult::kMarked));
+
+  EXPECT_CALL(platform_, ExpireMount(kDmcryptMounts[kBusyMountIndex].dst))
+      .Times(1)
+      .WillRepeatedly(Return(ExpireMountResult::kBusy));
+
+  // Only user 4567's mounts will be unmounted.
+  for (int i = 0; i < 2; ++i) {
+    EXPECT_CALL(platform_, Unmount(kDmcryptMounts[i].dst, true, _))
+        .WillRepeatedly(Return(true));
+  }
+
+  EXPECT_TRUE(userdataauth_->CleanUpStaleMounts(false));
+}
+
+TEST_F(UserDataAuthTest, CleanUpStale_OpenFiles_Dmcrypt_Forced) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+  // Check that when we have dm-crypt mounts, files open on dm-crypt
+  // and no open filehandles, all stale mounts are unmounted.
+
+  EXPECT_CALL(platform_, GetMountsByDevicePrefix("/dev/mapper/dmcrypt", _))
+      .WillOnce(Invoke(DmcryptDeviceMounts));
+  EXPECT_CALL(platform_, ExpireMount(_)).Times(0);
+
+  for (int i = 0; i < kDmcryptMounts.size(); ++i) {
+    EXPECT_CALL(platform_, Unmount(kDmcryptMounts[i].dst, true, _))
+        .WillRepeatedly(Return(true));
+  }
+
+  EXPECT_FALSE(userdataauth_->CleanUpStaleMounts(true));
+}
 
 TEST_F(UserDataAuthTest, CleanUpStale_NoOpenFiles_Ephemeral) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
