@@ -1681,7 +1681,8 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       .SetCpus(cpus)
       .AppendDisks(std::move(disks))
       .EnableSmt(false /* enable */)
-      .SetGpuCachePath(std::move(gpu_cache_path));
+      .SetGpuCachePath(std::move(gpu_cache_path))
+      .SetWaylandSocket(request.vm().wayland_server());
   if (!image_spec.rootfs.empty()) {
     vm_builder.SetRootfs({.device = std::move(rootfs_device),
                           .path = std::move(image_spec.rootfs),

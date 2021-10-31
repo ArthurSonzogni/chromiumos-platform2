@@ -12,6 +12,10 @@
 
 namespace vm_tools {
 namespace concierge {
+namespace {
+// Path to the default wayland socket.
+constexpr char kWaylandSocket[] = "/run/chrome/wayland-0";
+}  // namespace
 
 VmBuilder::VmBuilder() = default;
 
@@ -96,7 +100,25 @@ VmBuilder& VmBuilder::AppendSerialDevice(const std::string& device) {
   return *this;
 }
 
-VmBuilder& VmBuilder::AppendWaylandSocket(const std::string& socket) {
+VmBuilder& VmBuilder::SetWaylandSocket(const std::string& socket) {
+  // The "true" socket, which is the visual one, must be set first.
+  DCHECK(wayland_sockets_.empty());
+  if (socket.empty()) {
+    // We want the empty string to mean "use the default socket", since that is
+    // the behaviour we want if the user does not set the wayland socket in the
+    // VirtualMachineSpec proto.
+    wayland_sockets_.push_back(kWaylandSocket);
+  } else {
+    wayland_sockets_.push_back(socket);
+  }
+  return *this;
+}
+
+VmBuilder& VmBuilder::AddExtraWaylandSocket(const std::string& socket) {
+  // Additional sockets must only be added after the "true" socket, since the
+  // first socket provided to the VM will always be interpreted as the visual
+  // one.
+  DCHECK(!wayland_sockets_.empty());
   wayland_sockets_.push_back(socket);
   return *this;
 }

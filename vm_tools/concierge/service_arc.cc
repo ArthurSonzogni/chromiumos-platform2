@@ -221,7 +221,8 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
       .AppendSharedDir(shared_data_media)
       .AppendSharedDir(shared_stub)
       .EnableSmt(false /* enable */)
-      .EnablePerVmCoreScheduling(request.use_per_vm_core_scheduling());
+      .EnablePerVmCoreScheduling(request.use_per_vm_core_scheduling())
+      .SetWaylandSocket(request.vm().wayland_server());
 
   if (request.enable_rt_vcpu()) {
     vm_builder.AppendCustomParam("--rt-cpus", topology.RTCPUMask());

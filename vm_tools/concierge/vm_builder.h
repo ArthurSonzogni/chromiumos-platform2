@@ -51,10 +51,15 @@ class VmBuilder {
   VmBuilder& AppendKernelParam(const std::string& param);
   VmBuilder& AppendAudioDevice(const std::string& device);
   VmBuilder& AppendSerialDevice(const std::string& device);
-  VmBuilder& AppendWaylandSocket(const std::string& socket);
   VmBuilder& AppendSharedDir(const std::string& shared_dir);
   VmBuilder& AppendCustomParam(const std::string& key,
                                const std::string& value);
+
+  // Instructs this VM to use a wayland socket, if the empty string is provided
+  // the default path to the socket will be used, otherwise |socket| will be the
+  // path.
+  VmBuilder& SetWaylandSocket(const std::string& socket = "");
+  VmBuilder& AddExtraWaylandSocket(const std::string& socket);
 
   VmBuilder& EnableGpu(bool enable);
   VmBuilder& EnableVulkan(bool enable);

@@ -44,9 +44,6 @@ namespace {
 // Name of the control socket used for controlling crosvm.
 constexpr char kCrosvmSocket[] = "arcvm.sock";
 
-// Path to the wayland socket.
-constexpr char kWaylandSocket[] = "/run/chrome/wayland-0";
-
 // How long to wait before timing out on child process exits.
 constexpr base::TimeDelta kChildExitTimeout = base::TimeDelta::FromSeconds(10);
 
@@ -289,8 +286,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .SetBalloonBias("48")
       .SetVsockCid(vsock_cid_)
       .SetSocketPath(GetVmSocketPath())
-      .AppendWaylandSocket(kWaylandSocket)
-      .AppendWaylandSocket("/run/arcvm/mojo/mojo-proxy.sock,name=mojo")
+      .AddExtraWaylandSocket("/run/arcvm/mojo/mojo-proxy.sock,name=mojo")
       .SetSyslogTag(base::StringPrintf("ARCVM(%u)", vsock_cid_))
       .EnableGpu(true /* enable */)
       .AppendAudioDevice("backend=cras,capture=true,client_type=arcvm")

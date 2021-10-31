@@ -48,9 +48,6 @@ constexpr StartTerminaRequest_Feature kEnabledTerminaFeatures[] = {
 // Name of the control socket used for controlling crosvm.
 constexpr char kCrosvmSocket[] = "crosvm.sock";
 
-// Path to the wayland socket.
-constexpr char kWaylandSocket[] = "/run/chrome/wayland-0";
-
 // How long to wait before timing out on shutdown RPCs.
 constexpr int64_t kShutdownTimeoutSeconds = 30;
 
@@ -222,7 +219,6 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
   }
 
   vm_builder.AppendTapFd(std::move(tap_fd))
-      .AppendWaylandSocket(kWaylandSocket)
       .SetVsockCid(vsock_cid_)
       .SetSocketPath(GetVmSocketPath())
       .SetMemory(GetVmMemoryMiB())
