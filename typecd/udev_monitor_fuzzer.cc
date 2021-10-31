@@ -5,7 +5,6 @@
 #include "typecd/udev_monitor.h"
 
 #include <base/logging.h>
-#include <base/test/task_environment.h>
 #include <brillo/udev/mock_udev.h>
 #include <brillo/udev/mock_udev_device.h>
 #include <brillo/udev/mock_udev_enumerate.h>
@@ -50,8 +49,7 @@ namespace typecd {
 // Setup/Teardown code adapted from UdevMonitorTest.
 class UdevMonitorFuzzer {
  public:
-  UdevMonitorFuzzer()
-      : task_environment_(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {
+  UdevMonitorFuzzer() {
     observer_ = std::make_unique<FuzzerObserver>();
 
     monitor_ = std::make_unique<typecd::UdevMonitor>();
@@ -69,11 +67,7 @@ class UdevMonitorFuzzer {
 
   void CallScanDevices() { monitor_->ScanDevices(); }
 
-  void CallRunUntilIdle() { task_environment_.RunUntilIdle(); }
-
  private:
-  // Add a task environment to keep the FileDescriptorWatcher code happy.
-  base::test::TaskEnvironment task_environment_;
   std::unique_ptr<FuzzerObserver> observer_;
   std::unique_ptr<typecd::UdevMonitor> monitor_;
 };
@@ -120,8 +114,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   fuzzer.SetUdev(std::move(udev));
   fuzzer.CallScanDevices();
-
-  fuzzer.CallRunUntilIdle();
 
   return 0;
 }
