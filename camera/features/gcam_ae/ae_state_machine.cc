@@ -362,8 +362,8 @@ void AeStateMachine::ConvergeToTargetTet(const AeFrameInfo& frame_info,
   VLOGFID(1, frame_info.frame_number)
       << "converge_tet_delta_log=" << converge_tet_delta_log;
   if (converge_tet_delta_log < tuning_parameters_.tet_converge_threshold_log2) {
-    converged_tet_ = actual_tet_set;
-    converged_hdr_ratio_ = current_ae_parameters_.long_tet / actual_tet_set;
+    converged_tet_ = *target_tet_;
+    converged_hdr_ratio_ = *target_hdr_ratio_;
     tet_retention_duration_ms_ =
         frame_info.faces->empty()
             ? tuning_parameters_.tet_retention_duration_ms_default
