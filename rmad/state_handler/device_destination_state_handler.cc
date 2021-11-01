@@ -15,10 +15,20 @@
 #include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/utils/cr50_utils_impl.h"
+#include "rmad/utils/fake_cr50_utils.h"
 
 namespace rmad {
 
 using ComponentRepairStatus = ComponentsRepairState::ComponentRepairStatus;
+
+namespace fake {
+
+FakeDeviceDestinationStateHandler::FakeDeviceDestinationStateHandler(
+    scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
+    : DeviceDestinationStateHandler(
+          json_store, std::make_unique<FakeCr50Utils>(working_dir_path)) {}
+
+}  // namespace fake
 
 DeviceDestinationStateHandler::DeviceDestinationStateHandler(
     scoped_refptr<JsonStore> json_store)
