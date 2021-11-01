@@ -51,6 +51,8 @@ namespace fake {
 
 inline constexpr char kRoVerificationStatusFilePath[] =
     "ro_verification_status";
+inline constexpr char kHwVerificationResultFilePath[] =
+    "hardware_verification_result";
 
 }  // namespace fake
 

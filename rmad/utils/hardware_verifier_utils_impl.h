@@ -15,7 +15,7 @@ namespace rmad {
 class HardwareVerifierUtilsImpl : public HardwareVerifierUtils {
  public:
   HardwareVerifierUtilsImpl() = default;
-  ~HardwareVerifierUtilsImpl() = default;
+  ~HardwareVerifierUtilsImpl() override = default;
 
   bool GetHardwareVerificationResult(
       HardwareVerificationResult* result) const override;

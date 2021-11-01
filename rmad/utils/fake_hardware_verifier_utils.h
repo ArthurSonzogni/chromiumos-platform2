@@ -7,21 +7,28 @@
 
 #include "rmad/utils/hardware_verifier_utils.h"
 
+#include <base/files/file_path.h>
+
 #include "rmad/proto_bindings/rmad.pb.h"
 
 namespace rmad {
+namespace fake {
 
 // A fake |HardwareVerifierUtils| that always returns the same verification
 // result.
 class FakeHardwareVerifierUtils : public HardwareVerifierUtils {
  public:
-  FakeHardwareVerifierUtils() = default;
+  explicit FakeHardwareVerifierUtils(const base::FilePath& working_dir_path);
   ~FakeHardwareVerifierUtils() override = default;
 
   bool GetHardwareVerificationResult(
       HardwareVerificationResult* result) const override;
+
+ private:
+  base::FilePath working_dir_path_;
 };
 
+}  // namespace fake
 }  // namespace rmad
 
 #endif  // RMAD_UTILS_FAKE_HARDWARE_VERIFIER_UTILS_H_

@@ -10,6 +10,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/sequenced_task_runner.h>
 
 #include "rmad/utils/hardware_verifier_utils.h"
@@ -51,6 +52,19 @@ class WelcomeScreenStateHandler : public BaseStateHandler {
       hardware_verification_result_signal_sender_;
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
 };
+
+namespace fake {
+
+class FakeWelcomeScreenStateHandler : public WelcomeScreenStateHandler {
+ public:
+  FakeWelcomeScreenStateHandler(scoped_refptr<JsonStore> json_store,
+                                const base::FilePath& working_dir_path);
+
+ protected:
+  ~FakeWelcomeScreenStateHandler() override = default;
+};
+
+}  // namespace fake
 
 }  // namespace rmad
 

@@ -7,14 +7,27 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 
+#include "rmad/utils/fake_hardware_verifier_utils.h"
 #include "rmad/utils/hardware_verifier_utils_impl.h"
 
 namespace rmad {
+
+namespace fake {
+
+FakeWelcomeScreenStateHandler::FakeWelcomeScreenStateHandler(
+    scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
+    : WelcomeScreenStateHandler(
+          json_store,
+          std::make_unique<fake::FakeHardwareVerifierUtils>(working_dir_path)) {
+}
+
+}  // namespace fake
 
 WelcomeScreenStateHandler::WelcomeScreenStateHandler(
     scoped_refptr<JsonStore> json_store)
@@ -70,6 +83,8 @@ void WelcomeScreenStateHandler::RunHardwareVerifier() const {
   HardwareVerificationResult result;
   if (hardware_verifier_utils_->GetHardwareVerificationResult(&result)) {
     hardware_verification_result_signal_sender_->Run(result);
+  } else {
+    LOG(ERROR) << "Failed to get hardware verification result";
   }
 }
 

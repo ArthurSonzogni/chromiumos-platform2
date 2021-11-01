@@ -84,8 +84,45 @@ void StateHandlerManager::RegisterStateHandlers() {
 }
 
 void StateHandlerManager::RegisterFakeStateHandlers() {
+  const base::FilePath test_dir_path =
+      base::FilePath(kDefaultWorkingDirPath).AppendASCII(kTestDirPath);
+  RegisterStateHandler(
+      base::MakeRefCounted<fake::FakeWelcomeScreenStateHandler>(json_store_,
+                                                                test_dir_path));
   // TODO(chenghan): Use fake state handlers.
-  RegisterStateHandlers();
+  RegisterStateHandler(
+      base::MakeRefCounted<ComponentsRepairStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<DeviceDestinationStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<WriteProtectDisableMethodStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<WriteProtectDisableRsuStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<WriteProtectDisablePhysicalStateHandler>(
+          json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<WriteProtectDisableCompleteStateHandler>(
+          json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<UpdateRoFirmwareStateHandler>(json_store_));
+  RegisterStateHandler(base::MakeRefCounted<RestockStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<UpdateDeviceInfoStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<CheckCalibrationStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<SetupCalibrationStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<RunCalibrationStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<ProvisionDeviceStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<WriteProtectEnablePhysicalStateHandler>(
+          json_store_));
+  RegisterStateHandler(base::MakeRefCounted<FinalizeStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<RepairCompleteStateHandler>(json_store_));
 }
 
 scoped_refptr<BaseStateHandler> StateHandlerManager::GetStateHandler(
