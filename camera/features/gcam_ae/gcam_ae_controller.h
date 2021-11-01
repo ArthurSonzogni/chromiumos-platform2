@@ -29,35 +29,27 @@ class GcamAeController {
 
   struct Options {
     // Whether the GcamAeController is enabled.
-    base::Optional<bool> enabled;
+    bool enabled = true;
 
-    // The duty cycle of the GcamAeController.  The AE controller will
+    // The duty cycle of the GcamAeController. The AE controller will
     // calculate and update AE parameters once every |ae_frame_interval| frames.
-    base::Optional<int> ae_frame_interval;
+    int ae_frame_interval = 2;
 
-    // The maximum allowed HDR ratio.  Needed by Gcam AE as input argument.
-    base::Optional<base::flat_map<float, float>> max_hdr_ratio;
+    // A map with (gain, max_hdr_ratio) entries defining the max HDR ratio
+    // passed to Gcam AE based on the gain (analog * digital) used to capture
+    // the frame.
+    base::flat_map<float, float> max_hdr_ratio = {{1.0, 5.0},  {2.0, 5.0},
+                                                  {4.0, 5.0},  {8.0, 4.0},
+                                                  {16.0, 2.0}, {32.0, 1.1}};
 
-    // Whether to use CrOS face detector instead of vendor's implementation for
-    // face detection.
-    base::Optional<bool> use_cros_face_detector;
+    // Controls how Gcam AE gets the AE stats input parameters.
+    AeStatsInputMode ae_stats_input_mode = AeStatsInputMode::kFromVendorAeStats;
 
-    // The duty cycle of the CrOS face detector.  The face detector should run
-    // once every |fd_frame_interval| frames.
-    base::Optional<int> fd_frame_interval;
+    // Controls how GcamAeController overrides camera HAL's AE decision.
+    AeOverrideMode ae_override_mode = AeOverrideMode::kWithManualSensorControl;
 
-    // The AE stats input to Gcam AE.
-    base::Optional<AeStatsInputMode> ae_stats_input_mode;
-
-    // The mechanism used to override AE decisions from the camera HAL.
-    base::Optional<AeOverrideMode> ae_override_mode;
-
-    // The exposure compensation in stops applied to Gcam AE results.
-    base::Optional<float> exposure_compensation;
-
-    // MetadataLogger instance for logging and dumping per-frame metadata.
-    // Mainly used for testing and debugging.
-    base::Optional<MetadataLogger*> metadata_logger;
+    // The exposure compensation in stops set to every capture request.
+    float exposure_compensation = 0.0f;
   };
 
   virtual ~GcamAeController() = default;
@@ -75,7 +67,11 @@ class GcamAeController {
   // algorithm.
   virtual void RecordAeMetadata(Camera3CaptureDescriptor* result) = 0;
 
-  virtual void SetOptions(const Options& options) = 0;
+  // Callback for new options |json_values| in JSON format. |metadata_logger|,
+  // if set, triggers logging per-frame metadata.
+  virtual void OnOptionsUpdated(
+      const base::Value& json_values,
+      base::Optional<MetadataLogger*> metadata_logger) = 0;
 
   // Gets the HDR ratio calculated by Gcam AE.  This is normally used to get the
   // input argument to the HDRnet processing pipeline.

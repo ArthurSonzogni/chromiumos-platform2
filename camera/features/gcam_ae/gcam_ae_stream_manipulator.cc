@@ -6,11 +6,8 @@
 
 #include "features/gcam_ae/gcam_ae_stream_manipulator.h"
 
-#include <string>
 #include <utility>
 
-#include <base/files/file_util.h>
-#include <base/strings/string_number_conversions.h>
 #include <system/camera_metadata.h>
 
 #include "cros-camera/camera_buffer_manager.h"
@@ -24,13 +21,8 @@ namespace {
 
 constexpr char kMetadataDumpPath[] = "/run/camera/gcam_ae_frame_metadata.json";
 
-constexpr char kAeFrameIntervalKey[] = "ae_frame_interval";
-constexpr char kAeOverrideModeKey[] = "ae_override_mode";
-constexpr char kAeStatsInputModeKey[] = "ae_stats_input_mode";
-constexpr char kExposureCompensationKey[] = "exp_comp";
 constexpr char kGcamAeEnableKey[] = "gcam_ae_enable";
 constexpr char kLogFrameMetadataKey[] = "log_frame_metadata";
-constexpr char kMaxHdrRatioKey[] = "max_hdr_ratio";
 
 }  // namespace
 
@@ -169,56 +161,6 @@ void GcamAeStreamManipulator::OnOptionsUpdated(const base::Value& json_values) {
   if (gcam_ae_enable) {
     options_.gcam_ae_enable = *gcam_ae_enable;
   }
-  auto ae_frame_interval = json_values.FindIntKey(kAeFrameIntervalKey);
-  if (ae_frame_interval) {
-    options_.ae_frame_interval = *ae_frame_interval;
-  }
-  auto max_hdr_ratio = json_values.FindDictKey(kMaxHdrRatioKey);
-  if (max_hdr_ratio) {
-    base::flat_map<float, float> hdr_ratio_map;
-    for (auto [k, v] : max_hdr_ratio->DictItems()) {
-      double gain;
-      if (!base::StringToDouble(k, &gain)) {
-        LOGF(ERROR) << "Invalid gain value: " << k;
-        continue;
-      }
-      base::Optional<double> ratio = v.GetIfDouble();
-      if (!ratio) {
-        LOGF(ERROR) << "Invalid max_hdr_ratio";
-        continue;
-      }
-      hdr_ratio_map.insert({gain, *ratio});
-    }
-    options_.max_hdr_ratio = std::move(hdr_ratio_map);
-  }
-  auto ae_stats_input_mode = json_values.FindIntKey(kAeStatsInputModeKey);
-  if (ae_stats_input_mode) {
-    if (*ae_stats_input_mode ==
-            static_cast<int>(AeStatsInputMode::kFromVendorAeStats) ||
-        *ae_stats_input_mode ==
-            static_cast<int>(AeStatsInputMode::kFromYuvImage)) {
-      options_.ae_stats_input_mode =
-          static_cast<AeStatsInputMode>(*ae_stats_input_mode);
-    } else {
-      LOGF(ERROR) << "Invalid AE stats input mode: " << *ae_stats_input_mode;
-    }
-  }
-  auto ae_override_method = json_values.FindIntKey(kAeOverrideModeKey);
-  if (ae_override_method) {
-    if (*ae_override_method ==
-            static_cast<int>(AeOverrideMode::kWithExposureCompensation) ||
-        *ae_override_method ==
-            static_cast<int>(AeOverrideMode::kWithManualSensorControl)) {
-      options_.ae_override_mode =
-          static_cast<AeOverrideMode>(*ae_override_method);
-    } else {
-      LOGF(ERROR) << "Invalid AE override method: " << *ae_override_method;
-    }
-  }
-  auto exp_comp = json_values.FindDoubleKey(kExposureCompensationKey);
-  if (exp_comp) {
-    options_.exposure_compensation = *exp_comp;
-  }
   auto log_frame_metadata = json_values.FindBoolKey(kLogFrameMetadataKey);
   if (log_frame_metadata) {
     if (options_.log_frame_metadata && !log_frame_metadata.value()) {
@@ -232,29 +174,13 @@ void GcamAeStreamManipulator::OnOptionsUpdated(const base::Value& json_values) {
   if (VLOG_IS_ON(1)) {
     VLOGF(1) << "Gcam AE config:"
              << " gcam_ae_enable=" << options_.gcam_ae_enable
-             << " ae_frame_interval=" << options_.ae_frame_interval
-             << " ae_stats_input_mode="
-             << static_cast<int>(options_.ae_stats_input_mode)
-             << " exposure_compensation=" << options_.exposure_compensation
              << " log_frame_metadata=" << options_.log_frame_metadata;
-    VLOGF(1) << "max_hdr_ratio:";
-    for (auto [gain, ratio] : options_.max_hdr_ratio) {
-      VLOGF(1) << "  " << gain << ": " << ratio;
-    }
   }
 
   base::AutoLock lock(ae_controller_lock_);
   if (ae_controller_) {
-    ae_controller_->SetOptions({
-        .enabled = options_.gcam_ae_enable,
-        .ae_frame_interval = options_.ae_frame_interval,
-        .max_hdr_ratio = options_.max_hdr_ratio,
-        .ae_stats_input_mode = options_.ae_stats_input_mode,
-        .ae_override_mode = options_.ae_override_mode,
-        .exposure_compensation = options_.exposure_compensation,
-        .metadata_logger =
-            options_.log_frame_metadata ? &metadata_logger_ : nullptr,
-    });
+    ae_controller_->OnOptionsUpdated(
+        json_values, options_.log_frame_metadata ? &metadata_logger_ : nullptr);
   }
 }
 

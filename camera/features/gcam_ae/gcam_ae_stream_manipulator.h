@@ -33,26 +33,6 @@ class GcamAeStreamManipulator : public StreamManipulator {
     // Enables Gcam AE to produce exposure settings and HDR ratio.
     bool gcam_ae_enable = true;
 
-    // The duty cycle of the GcamAeAeController. The AE controller will
-    // calculate and update AE parameters once every |ae_frame_interval| frames.
-    int ae_frame_interval = 2;
-
-    // A map with (gain, max_hdr_ratio) entries defining the max HDR ratio
-    // passed to Gcam AE based on the gain (analog * digital) used to capture
-    // the frame.
-    base::flat_map<float, float> max_hdr_ratio = {{1.0, 5.0},  {2.0, 5.0},
-                                                  {4.0, 5.0},  {8.0, 4.0},
-                                                  {16.0, 2.0}, {32.0, 1.1}};
-
-    // Controls how Gcam AE gets the AE stats input parameters.
-    AeStatsInputMode ae_stats_input_mode = AeStatsInputMode::kFromVendorAeStats;
-
-    // Controls how GcamAeController overrides camera HAL's AE decision.
-    AeOverrideMode ae_override_mode = AeOverrideMode::kWithManualSensorControl;
-
-    // The exposure compensation in stops set to every capture request.
-    float exposure_compensation = 0.0f;
-
     // Whether to log per-frame metadata using MetadataLogger.
     bool log_frame_metadata = false;
   };

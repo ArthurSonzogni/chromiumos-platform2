@@ -11,6 +11,8 @@
 #include <tuple>
 #include <utility>
 
+#include <base/strings/string_number_conversions.h>
+
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
@@ -22,6 +24,13 @@
 namespace cros {
 
 namespace {
+
+constexpr char kAeFrameIntervalKey[] = "ae_frame_interval";
+constexpr char kAeOverrideModeKey[] = "ae_override_mode";
+constexpr char kAeStatsInputModeKey[] = "ae_stats_input_mode";
+constexpr char kExposureCompensationKey[] = "exp_comp";
+constexpr char kGcamAeEnableKey[] = "gcam_ae_enable";
+constexpr char kMaxHdrRatioKey[] = "max_hdr_ratio";
 
 // The AE compensation delta range in stops limiting the amount of AE
 // compensation step changes in each frame. This can be tuned to avoid large
@@ -136,7 +145,7 @@ GcamAeControllerImpl::GcamAeControllerImpl(
 void GcamAeControllerImpl::RecordYuvBuffer(int frame_number,
                                            buffer_handle_t buffer,
                                            base::ScopedFD acquire_fence) {
-  if (ae_stats_input_mode_ != AeStatsInputMode::kFromYuvImage) {
+  if (options_.ae_stats_input_mode != AeStatsInputMode::kFromYuvImage) {
     return;
   }
   AeFrameInfo* frame_info = GetAeFrameInfoEntry(frame_number);
@@ -313,47 +322,100 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
   MaybeRunAE(result->frame_number());
 }
 
-void GcamAeControllerImpl::SetOptions(const Options& options) {
-  if (options.enabled) {
-    enabled_ = *options.enabled;
-    if (!enabled_) {
+void GcamAeControllerImpl::OnOptionsUpdated(
+    const base::Value& json_values,
+    base::Optional<MetadataLogger*> metadata_logger) {
+  auto gcam_ae_enable = json_values.FindBoolKey(kGcamAeEnableKey);
+  if (gcam_ae_enable) {
+    options_.enabled = *gcam_ae_enable;
+    if (!options_.enabled) {
       ae_state_machine_.OnReset();
     }
   }
 
-  if (options.ae_frame_interval) {
-    const int ae_frame_interval = *options.ae_frame_interval;
-    if (ae_frame_interval > 0) {
-      ae_frame_interval_ = ae_frame_interval;
+  auto ae_frame_interval = json_values.FindIntKey(kAeFrameIntervalKey);
+  if (ae_frame_interval) {
+    if (*ae_frame_interval > 0) {
+      options_.ae_frame_interval = *ae_frame_interval;
     } else {
-      LOGF(ERROR) << "Invalid AE frame interval: " << ae_frame_interval;
+      LOGF(ERROR) << "Invalid AE frame interval: " << *ae_frame_interval;
     }
   }
 
-  if (options.max_hdr_ratio) {
-    max_hdr_ratio_ = std::move(*options.max_hdr_ratio);
+  auto max_hdr_ratio = json_values.FindDictKey(kMaxHdrRatioKey);
+  if (max_hdr_ratio) {
+    base::flat_map<float, float> hdr_ratio_map;
+    for (auto [k, v] : max_hdr_ratio->DictItems()) {
+      double gain;
+      if (!base::StringToDouble(k, &gain)) {
+        LOGF(ERROR) << "Invalid gain value: " << k;
+        continue;
+      }
+      base::Optional<double> ratio = v.GetIfDouble();
+      if (!ratio) {
+        LOGF(ERROR) << "Invalid max_hdr_ratio";
+        continue;
+      }
+      hdr_ratio_map.insert({gain, *ratio});
+    }
+    options_.max_hdr_ratio = std::move(hdr_ratio_map);
   }
 
-  if (options.ae_stats_input_mode) {
-    ae_stats_input_mode_ = *options.ae_stats_input_mode;
+  auto ae_stats_input_mode = json_values.FindIntKey(kAeStatsInputModeKey);
+  if (ae_stats_input_mode) {
+    if (*ae_stats_input_mode ==
+            static_cast<int>(AeStatsInputMode::kFromVendorAeStats) ||
+        *ae_stats_input_mode ==
+            static_cast<int>(AeStatsInputMode::kFromYuvImage)) {
+      options_.ae_stats_input_mode =
+          static_cast<AeStatsInputMode>(*ae_stats_input_mode);
+    } else {
+      LOGF(ERROR) << "Invalid AE stats input mode: " << *ae_stats_input_mode;
+    }
   }
 
-  if (options.ae_override_mode) {
-    ae_override_mode_ = *options.ae_override_mode;
+  auto ae_override_mode = json_values.FindIntKey(kAeOverrideModeKey);
+  if (ae_override_mode) {
+    if (*ae_override_mode ==
+            static_cast<int>(AeOverrideMode::kWithExposureCompensation) ||
+        *ae_override_mode ==
+            static_cast<int>(AeOverrideMode::kWithManualSensorControl)) {
+      options_.ae_override_mode =
+          static_cast<AeOverrideMode>(*ae_override_mode);
+    } else {
+      LOGF(ERROR) << "Invalid AE override method: " << *ae_override_mode;
+    }
   }
 
-  if (options.exposure_compensation) {
-    base_exposure_compensation_ = *options.exposure_compensation;
+  auto exp_comp = json_values.FindDoubleKey(kExposureCompensationKey);
+  if (exp_comp) {
+    options_.exposure_compensation = *exp_comp;
   }
 
-  if (options.metadata_logger) {
-    metadata_logger_ = *options.metadata_logger;
+  if (metadata_logger) {
+    metadata_logger_ = *metadata_logger;
   }
+
+  if (VLOG_IS_ON(1)) {
+    VLOGF(1) << "GcamAeController config:"
+             << " enabled=" << options_.enabled
+             << " ae_frame_interval=" << options_.ae_frame_interval
+             << " ae_stats_input_mode="
+             << static_cast<int>(options_.ae_stats_input_mode)
+             << " exposure_compensation=" << options_.exposure_compensation
+             << " log_frame_metadata=" << !!metadata_logger_;
+    VLOGF(1) << "max_hdr_ratio:";
+    for (auto [gain, ratio] : options_.max_hdr_ratio) {
+      VLOGF(1) << "  " << gain << ": " << ratio;
+    }
+  }
+
+  ae_state_machine_.OnOptionsUpdated(json_values);
 }
 
 base::Optional<float> GcamAeControllerImpl::GetCalculatedHdrRatio(
     int frame_number) {
-  if (!enabled_) {
+  if (!options_.enabled) {
     return base::nullopt;
   }
   AeFrameInfo* frame_info = GetAeFrameInfoEntry(frame_number);
@@ -371,7 +433,7 @@ base::Optional<float> GcamAeControllerImpl::GetCalculatedHdrRatio(
 
 void GcamAeControllerImpl::SetRequestAeParameters(
     Camera3CaptureDescriptor* request) {
-  if (!enabled_) {
+  if (!options_.enabled) {
     return;
   }
 
@@ -391,7 +453,7 @@ void GcamAeControllerImpl::SetRequestAeParameters(
                           frame_info->target_hdr_ratio);
   }
 
-  frame_info->target_ae_compensation = base_exposure_compensation_;
+  frame_info->target_ae_compensation = options_.exposure_compensation;
   if (frame_info->client_request_settings.ae_exposure_compensation) {
     frame_info->target_ae_compensation +=
         frame_info->client_request_settings.ae_exposure_compensation.value() *
@@ -426,7 +488,7 @@ void GcamAeControllerImpl::SetRequestAeParameters(
     return;
   }
 
-  switch (ae_override_mode_) {
+  switch (options_.ae_override_mode) {
     case AeOverrideMode::kWithExposureCompensation:
       SetExposureCompensation(request);
       break;
@@ -440,7 +502,7 @@ void GcamAeControllerImpl::SetRequestAeParameters(
 
 void GcamAeControllerImpl::SetResultAeMetadata(
     Camera3CaptureDescriptor* result) {
-  if (!enabled_) {
+  if (!options_.enabled) {
     return;
   }
 
@@ -449,7 +511,7 @@ void GcamAeControllerImpl::SetResultAeMetadata(
     return;
   }
 
-  if (ae_override_mode_ == AeOverrideMode::kWithManualSensorControl) {
+  if (options_.ae_override_mode == AeOverrideMode::kWithManualSensorControl) {
     std::array<uint8_t, 1> ae_state = {ae_state_machine_.GetAndroidAeState()};
     if (!result->UpdateMetadata<uint8_t>(ANDROID_CONTROL_AE_STATE, ae_state)) {
       LOGF(ERROR) << "Cannot set ANDROID_CONTROL_AE_STATE";
@@ -467,8 +529,9 @@ void GcamAeControllerImpl::MaybeRunAE(int frame_number) {
     return;
   }
 
-  float max_hdr_ratio = LookUpHdrRatio(
-      max_hdr_ratio_, frame_info->analog_gain * frame_info->digital_gain);
+  float max_hdr_ratio =
+      LookUpHdrRatio(options_.max_hdr_ratio,
+                     frame_info->analog_gain * frame_info->digital_gain);
   VLOGFID(1, frame_info->frame_number)
       << "total gain=" << frame_info->analog_gain * frame_info->digital_gain
       << " max_hdr_ratio=" << max_hdr_ratio;
@@ -736,7 +799,7 @@ void GcamAeControllerImpl::SetManualSensorControls(
 }
 
 bool GcamAeControllerImpl::ShouldRunAe(int frame_number) const {
-  return enabled_ && (frame_number % ae_frame_interval_ == 0);
+  return options_.enabled && (frame_number % options_.ae_frame_interval == 0);
 }
 
 AeFrameInfo* GcamAeControllerImpl::CreateAeFrameInfoEntry(int frame_number) {
@@ -745,7 +808,7 @@ AeFrameInfo* GcamAeControllerImpl::CreateAeFrameInfoEntry(int frame_number) {
   if (entry.frame_number != frame_number) {
     // Clear the data of the outdated frame.
     entry = AeFrameInfo({.frame_number = frame_number,
-                         .ae_stats_input_mode = ae_stats_input_mode_,
+                         .ae_stats_input_mode = options_.ae_stats_input_mode,
                          .active_array_dimension = active_array_dimension_});
   }
   return &entry;

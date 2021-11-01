@@ -18,6 +18,17 @@ namespace cros {
 
 namespace {
 
+constexpr char kConvergingStepLog2[] = "converging_step_log2";
+constexpr char kTetConvergeStabilizeDurationMs[] =
+    "tet_converge_stabilize_duration_ms";
+constexpr char kTetConvergeThresholdLog2[] = "tet_converge_threshold_log2";
+constexpr char kTetRescanThresholdLog2[] = "tet_rescan_threshold_log2";
+constexpr char kTetRetentionDurationMsDefault[] =
+    "tet_retention_duration_ms_default";
+constexpr char kTetRetentionDurationMsWithFace[] =
+    "tet_retention_duration_ms_with_face";
+constexpr char kTetTargetThresholdLog2[] = "tet_target_threshold_log2";
+
 // The log2 IIR filter strength for the long/short TET computed by Gcam AE.
 constexpr float kFilterStrength = 0.85f;
 
@@ -278,6 +289,71 @@ void AeStateMachine::OnReset() {
   locked_tet_.reset();
   locked_hdr_ratio_.reset();
   ae_locked_ = false;
+}
+
+void AeStateMachine::OnOptionsUpdated(const base::Value& json_values) {
+  base::AutoLock lock(lock_);
+
+  {
+    auto v = json_values.FindDoubleKey(kTetTargetThresholdLog2);
+    if (v) {
+      tuning_parameters_.tet_target_threshold_log2 = *v;
+    }
+  }
+  {
+    auto v = json_values.FindDoubleKey(kConvergingStepLog2);
+    if (v) {
+      tuning_parameters_.converging_step_log2 = *v;
+    }
+  }
+  {
+    auto v = json_values.FindIntKey(kTetConvergeStabilizeDurationMs);
+    if (v) {
+      tuning_parameters_.tet_converge_stabilize_duration_ms = *v;
+    }
+  }
+  {
+    auto v = json_values.FindDoubleKey(kTetConvergeThresholdLog2);
+    if (v) {
+      tuning_parameters_.tet_converge_threshold_log2 = *v;
+    }
+  }
+  {
+    auto v = json_values.FindDoubleKey(kTetRescanThresholdLog2);
+    if (v) {
+      tuning_parameters_.tet_rescan_threshold_log2 = *v;
+    }
+  }
+  {
+    auto v = json_values.FindDoubleKey(kTetRetentionDurationMsDefault);
+    if (v) {
+      tuning_parameters_.tet_retention_duration_ms_default = *v;
+    }
+  }
+  {
+    auto v = json_values.FindDoubleKey(kTetRetentionDurationMsWithFace);
+    if (v) {
+      tuning_parameters_.tet_retention_duration_ms_with_face = *v;
+    }
+  }
+
+  if (VLOG_IS_ON(1)) {
+    VLOGF(1) << "AeStateMachine tuning parameters:"
+             << " tet_target_threshold_log2="
+             << tuning_parameters_.tet_target_threshold_log2
+             << " converging_step_log2="
+             << tuning_parameters_.converging_step_log2
+             << " tet_converge_stabilize_duration_ms="
+             << tuning_parameters_.tet_converge_stabilize_duration_ms
+             << " tet_converge_threshold_log2="
+             << tuning_parameters_.tet_converge_threshold_log2
+             << " tet_rescan_threshold_log2="
+             << tuning_parameters_.tet_rescan_threshold_log2
+             << " tet_retention_duration_ms_default="
+             << tuning_parameters_.tet_retention_duration_ms_default
+             << " tet_retention_duration_ms_with_face="
+             << tuning_parameters_.tet_retention_duration_ms_with_face;
+  }
 }
 
 float AeStateMachine::GetCaptureTet() {

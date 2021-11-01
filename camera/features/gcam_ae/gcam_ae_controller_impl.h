@@ -38,7 +38,9 @@ class GcamAeControllerImpl : public GcamAeController {
                        buffer_handle_t buffer,
                        base::ScopedFD acquire_fence) override;
   void RecordAeMetadata(Camera3CaptureDescriptor* result) override;
-  void SetOptions(const Options& options) override;
+  void OnOptionsUpdated(
+      const base::Value& json_values,
+      base::Optional<MetadataLogger*> metadata_logger) override;
   base::Optional<float> GetCalculatedHdrRatio(int frame_number) override;
   void SetRequestAeParameters(Camera3CaptureDescriptor* request) override;
   void SetResultAeMetadata(Camera3CaptureDescriptor* result) override;
@@ -63,11 +65,10 @@ class GcamAeControllerImpl : public GcamAeController {
   AeFrameInfo* CreateAeFrameInfoEntry(int frame_number);
   AeFrameInfo* GetAeFrameInfoEntry(int frame_number);
 
+  Options options_;
+
   // AE loop controls.
-  bool enabled_ = true;
-  int ae_frame_interval_ = 2;
   Range<float> ae_compensation_step_delta_range_;
-  int ae_override_interval_while_converging_ = 10;
 
   AeStateMachine ae_state_machine_;
 
@@ -87,12 +88,6 @@ class GcamAeControllerImpl : public GcamAeController {
   // Device-specific AE adapter that handles AE stats extraction and AE
   // parameters computation.
   std::unique_ptr<GcamAeDeviceAdapter> ae_device_adapter_;
-
-  // AE algorithm input parameters.
-  base::flat_map<float, float> max_hdr_ratio_;
-  float base_exposure_compensation_ = 0.0f;
-  AeStatsInputMode ae_stats_input_mode_ = AeStatsInputMode::kFromVendorAeStats;
-  AeOverrideMode ae_override_mode_;
 
   // AE algorithm outputs.
   float filtered_ae_compensation_steps_ = 0.0f;
