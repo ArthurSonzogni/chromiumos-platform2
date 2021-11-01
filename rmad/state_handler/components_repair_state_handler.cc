@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "rmad/constants.h"
+#include "rmad/system/fake_runtime_probe_client.h"
 #include "rmad/system/runtime_probe_client_impl.h"
 #include "rmad/utils/dbus_utils.h"
 
@@ -88,6 +89,15 @@ RmadState ConvertDictionaryToState(
 }
 
 }  // namespace
+
+namespace fake {
+
+FakeComponentsRepairStateHandler::FakeComponentsRepairStateHandler(
+    scoped_refptr<JsonStore> json_store)
+    : ComponentsRepairStateHandler(
+          json_store, std::make_unique<FakeRuntimeProbeClient>()) {}
+
+}  // namespace fake
 
 ComponentsRepairStateHandler::ComponentsRepairStateHandler(
     scoped_refptr<JsonStore> json_store)

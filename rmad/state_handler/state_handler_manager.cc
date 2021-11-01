@@ -89,9 +89,10 @@ void StateHandlerManager::RegisterFakeStateHandlers() {
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeWelcomeScreenStateHandler>(json_store_,
                                                                 test_dir_path));
-  // TODO(chenghan): Use fake state handlers.
   RegisterStateHandler(
-      base::MakeRefCounted<ComponentsRepairStateHandler>(json_store_));
+      base::MakeRefCounted<fake::FakeComponentsRepairStateHandler>(
+          json_store_));
+  // TODO(chenghan): Use fake state handlers.
   RegisterStateHandler(
       base::MakeRefCounted<DeviceDestinationStateHandler>(json_store_));
   RegisterStateHandler(

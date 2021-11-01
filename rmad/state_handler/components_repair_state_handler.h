@@ -40,6 +40,19 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
   std::unique_ptr<RuntimeProbeClient> runtime_probe_client_;
 };
 
+namespace fake {
+
+class FakeComponentsRepairStateHandler : public ComponentsRepairStateHandler {
+ public:
+  explicit FakeComponentsRepairStateHandler(
+      scoped_refptr<JsonStore> json_store);
+
+ protected:
+  ~FakeComponentsRepairStateHandler() override = default;
+};
+
+}  // namespace fake
+
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_COMPONENTS_REPAIR_STATE_HANDLER_H_
