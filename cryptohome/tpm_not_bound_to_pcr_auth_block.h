@@ -21,7 +21,7 @@
 
 namespace cryptohome {
 
-class TpmNotBoundToPcrAuthBlock : public AuthBlock {
+class TpmNotBoundToPcrAuthBlock : public SyncAuthBlock {
  public:
   TpmNotBoundToPcrAuthBlock(Tpm* tpm,
                             CryptohomeKeysManager* cryptohome_keys_manager);

@@ -14,7 +14,7 @@
 
 namespace cryptohome {
 
-class PinWeaverAuthBlock : public AuthBlock {
+class PinWeaverAuthBlock : public SyncAuthBlock {
  public:
   explicit PinWeaverAuthBlock(LECredentialManager* le_manager,
                               CryptohomeKeysManager* cryptohome_keys_manager);

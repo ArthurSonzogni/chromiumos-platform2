@@ -21,7 +21,7 @@ namespace cryptohome {
 // happen to have embedded the metadata. Before Derive() is called, those
 // encryption blobs are put into the AuthBlockState from a VaultKeyset so
 // Derive() can parse the metadata from them to derive the same scrypt keys.
-class LibScryptCompatAuthBlock : public AuthBlock {
+class LibScryptCompatAuthBlock : public SyncAuthBlock {
  public:
   LibScryptCompatAuthBlock();
   ~LibScryptCompatAuthBlock() = default;

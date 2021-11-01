@@ -317,7 +317,7 @@ bool VaultKeyset::DecryptVaultKeyset(const SecureBlob& vault_key,
 
   // TODO(crbug.com/1216659): Move AuthBlock instantiation to AuthFactor once it
   // is ready.
-  std::unique_ptr<AuthBlock> auth_block = GetAuthBlockForDerivation();
+  std::unique_ptr<SyncAuthBlock> auth_block = GetAuthBlockForDerivation();
   if (!auth_block) {
     LOG(ERROR) << "Keyset wrapped with unknown method.";
     return false;
@@ -939,7 +939,7 @@ bool VaultKeyset::EncryptVaultKeyset(const SecureBlob& vault_key,
                                      AuthBlockState* out_state) {
   // TODO(crbug.com/1216659): Move AuthBlock instantiation to AuthFactor once it
   // is ready.
-  std::unique_ptr<AuthBlock> auth_block = GetAuthBlockForCreation();
+  std::unique_ptr<SyncAuthBlock> auth_block = GetAuthBlockForCreation();
   if (!auth_block) {
     LOG(ERROR) << "Failed to retrieve auth block.";
     return false;
@@ -984,7 +984,7 @@ bool VaultKeyset::EncryptVaultKeyset(const SecureBlob& vault_key,
 }
 
 // TODO(crbug.com/1216659): Move AuthBlock to AuthFactor once it is ready.
-std::unique_ptr<AuthBlock> VaultKeyset::GetAuthBlockForCreation() const {
+std::unique_ptr<SyncAuthBlock> VaultKeyset::GetAuthBlockForCreation() const {
   if (IsLECredential()) {
     ReportCreateAuthBlock(AuthBlockType::kPinWeaver);
     return std::make_unique<PinWeaverAuthBlock>(
@@ -1024,7 +1024,7 @@ std::unique_ptr<AuthBlock> VaultKeyset::GetAuthBlockForCreation() const {
 }
 
 // TODO(crbug.com/1216659): Move AuthBlock to AuthFactor once it is ready.
-std::unique_ptr<AuthBlock> VaultKeyset::GetAuthBlockForDerivation() {
+std::unique_ptr<SyncAuthBlock> VaultKeyset::GetAuthBlockForDerivation() {
   if (MatchFlags(kPinWeaverFlags, flags_)) {
     ReportDeriveAuthBlock(AuthBlockType::kPinWeaver);
     return std::make_unique<PinWeaverAuthBlock>(

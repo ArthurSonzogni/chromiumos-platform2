@@ -23,7 +23,7 @@
 
 namespace cryptohome {
 
-class TpmEccAuthBlock : public AuthBlock {
+class TpmEccAuthBlock : public SyncAuthBlock {
  public:
   TpmEccAuthBlock(Tpm* tpm, CryptohomeKeysManager* cryptohome_keys_manager);
   TpmEccAuthBlock(const TpmEccAuthBlock&) = delete;

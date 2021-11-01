@@ -33,7 +33,7 @@ namespace cryptohome {
 
 TpmNotBoundToPcrAuthBlock::TpmNotBoundToPcrAuthBlock(
     Tpm* tpm, CryptohomeKeysManager* cryptohome_keys_manager)
-    : AuthBlock(kTpmBackedNonPcrBound),
+    : SyncAuthBlock(kTpmBackedNonPcrBound),
       tpm_(tpm),
       cryptohome_key_loader_(
           cryptohome_keys_manager->GetKeyLoader(CryptohomeKeyType::kRSA)),

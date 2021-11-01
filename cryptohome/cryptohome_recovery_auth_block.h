@@ -16,7 +16,7 @@ namespace cryptohome {
 // AuthBlock for Cryptohome Recovery flow. Secret is generated on the device and
 // later derived by Cryptohome Recovery process using data stored on the device
 // and by Recovery Mediator service.
-class CryptohomeRecoveryAuthBlock : public AuthBlock {
+class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
  public:
   CryptohomeRecoveryAuthBlock();
   CryptohomeRecoveryAuthBlock(const CryptohomeRecoveryAuthBlock&) = delete;

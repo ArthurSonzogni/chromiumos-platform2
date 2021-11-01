@@ -20,9 +20,9 @@ enum DerivationType : int;
 // This is a pure virtual interface designed to be implemented by the different
 // authentication methods - U2F, PinWeaver, TPM backed passwords, etc. - so that
 // they take some arbitrary user input and give out a key.
-class AuthBlock {
+class SyncAuthBlock {
  public:
-  virtual ~AuthBlock() = default;
+  virtual ~SyncAuthBlock() = default;
 
   // This is implemented by concrete auth methods to create a fresh key from
   // user input. The key will then be used to wrap the keyset.
@@ -43,7 +43,7 @@ class AuthBlock {
 
  protected:
   // This is a virtual interface that should not be directly constructed.
-  explicit AuthBlock(DerivationType derivation_type)
+  explicit SyncAuthBlock(DerivationType derivation_type)
       : derivation_type_(derivation_type) {}
 
  private:

@@ -32,7 +32,7 @@
 namespace cryptohome {
 
 struct KeyBlobs;
-class AuthBlock;
+class SyncAuthBlock;
 class VaultKeyset;
 
 class Crypto {

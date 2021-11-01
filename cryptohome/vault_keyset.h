@@ -232,12 +232,12 @@ class VaultKeyset {
 
   // This function serves as a factory method to return the authblock used in
   // authentication creation.
-  std::unique_ptr<AuthBlock> GetAuthBlockForCreation() const;
+  std::unique_ptr<SyncAuthBlock> GetAuthBlockForCreation() const;
 
   // This function serves as a factory method to return the authblock used in
   // authentication derivation. The type of the AuthBlock is determined based on
   // |flags_|.which derived from vault keyset.
-  std::unique_ptr<AuthBlock> GetAuthBlockForDerivation();
+  std::unique_ptr<SyncAuthBlock> GetAuthBlockForDerivation();
 
   // This function decrypts a keyset that is encrypted with a VaultKeysetKey.
   //

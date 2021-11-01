@@ -140,7 +140,7 @@ const struct {
 PinWeaverAuthBlock::PinWeaverAuthBlock(
     LECredentialManager* le_manager,
     CryptohomeKeysManager* cryptohome_keys_manager)
-    : AuthBlock(kLowEntropyCredential),
+    : SyncAuthBlock(kLowEntropyCredential),
       le_manager_(le_manager),
       cryptohome_key_loader_(
           cryptohome_keys_manager->GetKeyLoader(CryptohomeKeyType::kRSA)) {

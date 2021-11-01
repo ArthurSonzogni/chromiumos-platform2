@@ -29,7 +29,7 @@ using cryptohome::cryptorecovery::RecoveryCryptoImpl;
 namespace cryptohome {
 
 CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock()
-    : AuthBlock(/*derivation_type=*/kCryptohomeRecovery) {}
+    : SyncAuthBlock(/*derivation_type=*/kCryptohomeRecovery) {}
 
 base::Optional<AuthBlockState> CryptohomeRecoveryAuthBlock::Create(
     const AuthInput& auth_input, KeyBlobs* key_blobs, CryptoError* error) {

@@ -68,11 +68,11 @@ bool ParseHeaderAndDerive(const brillo::SecureBlob& wrapped_blob,
 }  // namespace
 
 LibScryptCompatAuthBlock::LibScryptCompatAuthBlock()
-    : AuthBlock(kScryptBacked) {}
+    : SyncAuthBlock(kScryptBacked) {}
 
 LibScryptCompatAuthBlock::LibScryptCompatAuthBlock(
     DerivationType derivation_type)
-    : AuthBlock(derivation_type) {}
+    : SyncAuthBlock(derivation_type) {}
 
 base::Optional<AuthBlockState> LibScryptCompatAuthBlock::Create(
     const AuthInput& auth_input, KeyBlobs* key_blobs, CryptoError* error) {
