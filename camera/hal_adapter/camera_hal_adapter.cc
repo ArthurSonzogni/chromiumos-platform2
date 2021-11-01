@@ -129,8 +129,8 @@ void CameraHalAdapter::OpenCameraHal(
   uint32_t module_id = module_id_++;
   module_delegate->Bind(
       std::move(camera_module_receiver),
-      base::Bind(&CameraHalAdapter::ResetModuleDelegateOnThread,
-                 base::Unretained(this), module_id));
+      base::BindOnce(&CameraHalAdapter::ResetModuleDelegateOnThread,
+                     base::Unretained(this), module_id));
   base::AutoLock l(module_delegates_lock_);
   module_delegates_[module_id] = std::move(module_delegate);
   VLOGF(1) << "CameraModule " << module_id << " connected";
@@ -214,15 +214,17 @@ int32_t CameraHalAdapter::OpenDevice(
   const camera_metadata_t* metadata = GetUpdatedCameraMetadata(
       camera_id, camera_client_type, info.static_camera_characteristics);
   base::RepeatingCallback<int(int)> get_internal_camera_id_callback =
-      base::Bind(&CameraHalAdapter::GetInternalId, base::Unretained(this));
-  base::RepeatingCallback<int(int)> get_public_camera_id_callback = base::Bind(
-      &CameraHalAdapter::GetPublicId, base::Unretained(this), module_id);
+      base::BindRepeating(&CameraHalAdapter::GetInternalId,
+                          base::Unretained(this));
+  base::RepeatingCallback<int(int)> get_public_camera_id_callback =
+      base::BindRepeating(&CameraHalAdapter::GetPublicId,
+                          base::Unretained(this), module_id);
   // This method is called by |camera_module_delegate_| on its mojo IPC
   // handler thread.
   // The CameraHalAdapter (and hence |camera_module_delegate_|) must out-live
   // the CameraDeviceAdapters, so it's safe to keep a reference to the task
   // runner of the current thread in the callback functor.
-  base::Callback<void()> close_callback = base::Bind(
+  base::OnceCallback<void()> close_callback = base::BindOnce(
       &CameraHalAdapter::CloseDeviceCallback, base::Unretained(this),
       base::ThreadTaskRunnerHandle::Get(), camera_id, camera_client_type);
   StreamManipulator::Options options = {
@@ -232,16 +234,16 @@ int32_t CameraHalAdapter::OpenDevice(
   device_adapters_[camera_id] = std::make_unique<CameraDeviceAdapter>(
       camera_device, info.device_version, metadata,
       std::move(get_internal_camera_id_callback),
-      std::move(get_public_camera_id_callback), close_callback,
+      std::move(get_public_camera_id_callback), std::move(close_callback),
       StreamManipulator::GetEnabledStreamManipulators(std::move(options)));
 
   CameraDeviceAdapter::HasReprocessEffectVendorTagCallback
-      has_reprocess_effect_vendor_tag_callback =
-          base::Bind(&ReprocessEffectManager::HasReprocessEffectVendorTag,
-                     base::Unretained(&reprocess_effect_manager_));
+      has_reprocess_effect_vendor_tag_callback = base::BindRepeating(
+          &ReprocessEffectManager::HasReprocessEffectVendorTag,
+          base::Unretained(&reprocess_effect_manager_));
   CameraDeviceAdapter::ReprocessEffectCallback reprocess_effect_callback =
-      base::Bind(&ReprocessEffectManager::ReprocessRequest,
-                 base::Unretained(&reprocess_effect_manager_));
+      base::BindRepeating(&ReprocessEffectManager::ReprocessRequest,
+                          base::Unretained(&reprocess_effect_manager_));
   if (!device_adapters_[camera_id]->Start(
           std::move(has_reprocess_effect_vendor_tag_callback),
           std::move(reprocess_effect_callback))) {
@@ -368,8 +370,8 @@ void CameraHalAdapter::GetVendorTagOps(
   uint32_t vendor_tag_ops_id = vendor_tag_ops_id_++;
   vendor_tag_ops_delegate->Bind(
       std::move(vendor_tag_ops_receiver),
-      base::Bind(&CameraHalAdapter::ResetVendorTagOpsDelegateOnThread,
-                 base::Unretained(this), vendor_tag_ops_id));
+      base::BindOnce(&CameraHalAdapter::ResetVendorTagOpsDelegateOnThread,
+                     base::Unretained(this), vendor_tag_ops_id));
   vendor_tag_ops_delegates_[vendor_tag_ops_id] =
       std::move(vendor_tag_ops_delegate);
   VLOGF(1) << "VendorTagOps " << vendor_tag_ops_id << " connected";
@@ -540,13 +542,13 @@ void CameraHalAdapter::TorchModeStatusChange(
   }
 }
 
-void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
+void CameraHalAdapter::StartOnThread(base::OnceCallback<void(bool)> callback) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
 
   if (reprocess_effect_manager_.Initialize(mojo_manager_token_) != 0) {
     LOGF(ERROR) << "Failed to initialize reprocess effect manager";
-    callback.Run(false);
+    std::move(callback).Run(false);
     return;
   }
 
@@ -555,13 +557,13 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
                                kArcvmVendorTagHostTimeTagName, TYPE_INT64)) {
     LOGF(ERROR)
         << "Failed to add the vendor tag for ARCVM timestamp synchronization";
-    callback.Run(false);
+    std::move(callback).Run(false);
     return;
   }
 
   if (!vendor_tag_manager_.Add(&reprocess_effect_manager_)) {
     LOGF(ERROR) << "Failed to add the vendor tags of reprocess effect manager";
-    callback.Run(false);
+    std::move(callback).Run(false);
     return;
   }
 
@@ -593,7 +595,7 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
       if (!vendor_tag_manager_.Add(&ops)) {
         LOGF(ERROR) << "Failed to add the vendor tags of camera module "
                     << std::quoted(m->common.name);
-        callback.Run(false);
+        std::move(callback).Run(false);
         return;
       }
     }
@@ -620,7 +622,7 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
         }
         LOGF(ERROR) << "Failed to init camera module "
                     << std::quoted(m->common.name);
-        callback.Run(false);
+        std::move(callback).Run(false);
         return;
       }
     }
@@ -652,7 +654,7 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
     aux->adapter = this;
     if (m->set_callbacks(aux.get()) != 0) {
       LOGF(ERROR) << "Failed to set_callbacks on camera module " << module_id;
-      callback.Run(false);
+      std::move(callback).Run(false);
       return;
     }
     callbacks_auxs_.push_back(std::move(aux));
@@ -662,7 +664,7 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
       if (m->get_camera_info(camera_id, &info) != 0) {
         LOGF(ERROR) << "Failed to get info of camera " << camera_id
                     << " from module " << module_id;
-        callback.Run(false);
+        std::move(callback).Run(false);
         return;
       }
 
@@ -672,7 +674,7 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
                                         &entry) != 0) {
         LOGF(ERROR) << "Failed to get flash info in metadata of camera "
                     << camera_id << " from module " << module_id;
-        callback.Run(false);
+        std::move(callback).Run(false);
         return;
       }
 
@@ -688,7 +690,7 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
         LOGF(ERROR) << "Failed to find ANDROID_REQUEST_AVAILABLE_CAPABILITIES "
                        "from camera "
                     << camera_id << " from module " << module_id;
-        callback.Run(false);
+        std::move(callback).Run(false);
         return;
       }
       if (std::find(
@@ -705,7 +707,7 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
         LOGF(ERROR)
             << "Failed to get the list of physical camera IDs for camera "
             << camera_id;
-        callback.Run(false);
+        std::move(callback).Run(false);
         return;
       }
       auto& physical_camera_ids =
@@ -721,7 +723,7 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
                                    &physical_camera_id)) {
               LOGF(ERROR) << "Invalid physical camera ID: "
                           << physical_camera_id_str;
-              callback.Run(false);
+              std::move(callback).Run(false);
               return;
             }
             physical_camera_ids.push_back(physical_camera_id);
@@ -783,7 +785,7 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
              << " and " << unexposed_physical_cameras.size()
              << " unexposed physical cameras";
 
-  callback.Run(true);
+  std::move(callback).Run(true);
 }
 
 void CameraHalAdapter::NotifyCameraDeviceStatusChange(
@@ -895,8 +897,8 @@ int32_t CameraHalAdapter::SetCallbacks(
   uint32_t callbacks_id = callbacks_id_++;
   callbacks_delegate->Bind(
       std::move(callbacks),
-      base::Bind(&CameraHalAdapter::ResetCallbacksDelegateOnThread,
-                 base::Unretained(this), callbacks_id));
+      base::BindOnce(&CameraHalAdapter::ResetCallbacksDelegateOnThread,
+                     base::Unretained(this), callbacks_id));
 
   // Send latest status to the new client, so all presented external cameras are
   // available to the client after SetCallbacks() returns.

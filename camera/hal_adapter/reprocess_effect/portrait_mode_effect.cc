@@ -145,8 +145,8 @@ int32_t PortraitModeEffect::ReprocessRequest(
     uint32_t rgb_buf_stride = width * kRGBNumOfChannels;
     int result = 0;
     base::ScopedClosureRunner result_metadata_runner(
-        base::Bind(&PortraitModeEffect::UpdateResultMetadata,
-                   base::Unretained(this), result_metadata, &result));
+        base::BindOnce(&PortraitModeEffect::UpdateResultMetadata,
+                       base::Unretained(this), result_metadata, &result));
     result = ConvertYUVToRGB(v4l2_format, *input_ycbcr,
                              input_rgb_shm_mapping.memory(), rgb_buf_stride,
                              width, height);
@@ -208,7 +208,8 @@ int32_t PortraitModeEffect::ReprocessRequest(
     return_status_ = -ETIMEDOUT;
     gpu_algo_manager_->Request(
         req_header, -1 /* buffers are passed in the header */,
-        base::Bind(&PortraitModeEffect::ReturnCallback, base::AsWeakPtr(this)));
+        base::BindOnce(&PortraitModeEffect::ReturnCallback,
+                       base::AsWeakPtr(this)));
     base::AutoLock auto_lock(lock_);
     condvar_.TimedWait(
         base::TimeDelta::FromSeconds(kPortraitProcessorTimeoutSecs));

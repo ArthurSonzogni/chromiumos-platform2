@@ -6,6 +6,7 @@
 
 #include "hal_adapter/reprocess_effect/gpu_algo_manager.h"
 
+#include <utility>
 #include <vector>
 
 #include <base/containers/contains.h>
@@ -42,12 +43,12 @@ int32_t GPUAlgoManager::RegisterBuffer(int buffer_fd) {
 
 void GPUAlgoManager::Request(const std::vector<uint8_t>& req_header,
                              int32_t buffer_handle,
-                             base::Callback<void(uint32_t, int32_t)> cb) {
+                             base::OnceCallback<void(uint32_t, int32_t)> cb) {
   uint32_t req_id = 0;
   {
     base::AutoLock l(lock_);
     req_id = req_id_++;
-    cb_map_[req_id] = cb;
+    cb_map_[req_id] = std::move(cb);
   }
   bridge_->Request(req_id, req_header, buffer_handle);
 }
@@ -74,17 +75,17 @@ void GPUAlgoManager::ReturnCallbackForwarder(
 void GPUAlgoManager::ReturnCallback(uint32_t req_id,
                                     uint32_t status,
                                     int32_t buffer_handle) {
-  base::Callback<void(uint32_t, int32_t)> cb;
+  base::OnceCallback<void(uint32_t, int32_t)> cb;
   {
     base::AutoLock l(lock_);
     if (!base::Contains(cb_map_, req_id)) {
       LOGF(ERROR) << "Failed to find callback for request " << req_id;
       return;
     }
-    cb = cb_map_.at(req_id);
+    cb = std::move(cb_map_.at(req_id));
     cb_map_.erase(req_id);
   }
-  cb.Run(status, buffer_handle);
+  std::move(cb).Run(status, buffer_handle);
 }
 
 }  // namespace cros

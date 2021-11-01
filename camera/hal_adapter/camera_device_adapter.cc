@@ -87,10 +87,10 @@ void CameraMonitor::Detach() {
   base::OneShotTimer::Stop();
 }
 
-void CameraMonitor::SetTaskRunnerOnThread(base::Callback<void()> callback) {
+void CameraMonitor::SetTaskRunnerOnThread(base::OnceCallback<void()> callback) {
   DCHECK(thread_.task_runner()->BelongsToCurrentThread());
   base::OneShotTimer::SetTaskRunner(thread_.task_runner());
-  callback.Run();
+  std::move(callback).Run();
 }
 
 void CameraMonitor::StartMonitorOnThread() {
@@ -101,7 +101,7 @@ void CameraMonitor::StartMonitorOnThread() {
 
   base::OneShotTimer::Start(
       FROM_HERE, kMonitorTimeDelta,
-      base::Bind(&CameraMonitor::MonitorTimeout, base::Unretained(this)));
+      base::BindOnce(&CameraMonitor::MonitorTimeout, base::Unretained(this)));
   LOGF(INFO) << "Start " << name_ << " monitor";
 }
 
@@ -113,7 +113,7 @@ void CameraMonitor::MaybeResumeMonitorOnThread() {
 
   base::OneShotTimer::Start(
       FROM_HERE, kMonitorTimeDelta,
-      base::Bind(&CameraMonitor::MonitorTimeout, base::Unretained(this)));
+      base::BindOnce(&CameraMonitor::MonitorTimeout, base::Unretained(this)));
   LOGF(INFO) << "Resume " << name_ << " monitor";
 }
 
@@ -123,7 +123,7 @@ void CameraMonitor::MonitorTimeout() {
   if (is_kicked_) {
     base::OneShotTimer::Start(
         FROM_HERE, kMonitorTimeDelta,
-        base::Bind(&CameraMonitor::MonitorTimeout, base::Unretained(this)));
+        base::BindOnce(&CameraMonitor::MonitorTimeout, base::Unretained(this)));
   } else {
     LOGF(WARNING) << "No " << name_ << " for more than " << kMonitorTimeDelta;
     if (timeout_callback_) {
@@ -139,7 +139,7 @@ CameraDeviceAdapter::CameraDeviceAdapter(
     const camera_metadata_t* static_info,
     base::RepeatingCallback<int(int)> get_internal_camera_id_callback,
     base::RepeatingCallback<int(int)> get_public_camera_id_callback,
-    base::Callback<void()> close_callback,
+    base::OnceCallback<void()> close_callback,
     std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators)
     : camera_device_ops_thread_("CameraDeviceOpsThread"),
       camera_callback_ops_thread_("CameraCallbackOpsThread"),
@@ -147,7 +147,7 @@ CameraDeviceAdapter::CameraDeviceAdapter(
       reprocess_effect_thread_("ReprocessEffectThread"),
       get_internal_camera_id_callback_(get_internal_camera_id_callback),
       get_public_camera_id_callback_(get_public_camera_id_callback),
-      close_callback_(close_callback),
+      close_callback_(std::move(close_callback)),
       close_called_(false),
       camera_device_(camera_device),
       device_api_version_(device_api_version),
@@ -214,8 +214,8 @@ void CameraDeviceAdapter::Bind(
   device_ops_delegate_->Bind(
       std::move(device_ops_receiver),
       // Close the device when the Mojo channel breaks.
-      base::Bind(base::IgnoreResult(&CameraDeviceAdapter::Close),
-                 base::Unretained(this)));
+      base::BindOnce(base::IgnoreResult(&CameraDeviceAdapter::Close),
+                     base::Unretained(this)));
 }
 
 int32_t CameraDeviceAdapter::Initialize(
@@ -250,8 +250,8 @@ int32_t CameraDeviceAdapter::Initialize(
       camera_callback_ops_thread_.task_runner()));
   callback_ops_delegate_->Bind(
       std::move(callback_ops),
-      base::Bind(&CameraDeviceAdapter::ResetCallbackOpsDelegateOnThread,
-                 base::Unretained(this)));
+      base::BindOnce(&CameraDeviceAdapter::ResetCallbackOpsDelegateOnThread,
+                     base::Unretained(this)));
   return camera_device_->ops->initialize(camera_device_, this);
 }
 
@@ -651,7 +651,7 @@ int32_t CameraDeviceAdapter::Close() {
   }
   FreeAllocatedStreamBuffers();
 
-  close_callback_.Run();
+  std::move(close_callback_).Run();
   return ret;
 }
 
@@ -1251,9 +1251,9 @@ void CameraDeviceAdapter::ReprocessEffectsOnReprocessEffectThread(
 
 void CameraDeviceAdapter::ProcessReprocessRequestOnDeviceOpsThread(
     std::unique_ptr<Camera3CaptureDescriptor> desc,
-    base::Callback<void(int32_t)> callback) {
+    base::OnceCallback<void(int32_t)> callback) {
   VLOGF_ENTER();
-  callback.Run(camera_device_->ops->process_capture_request(
+  std::move(callback).Run(camera_device_->ops->process_capture_request(
       camera_device_, desc->LockForRequest()));
 }
 

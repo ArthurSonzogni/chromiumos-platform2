@@ -115,7 +115,7 @@ class CameraHalAdapter {
 
   // Initialize all underlying camera HALs on |camera_module_thread_| and
   // build the mapping table for camera id.
-  virtual void StartOnThread(base::Callback<void(bool)> callback);
+  virtual void StartOnThread(base::OnceCallback<void(bool)> callback);
 
   virtual void NotifyCameraDeviceStatusChange(
       CameraModuleCallbacksAssociatedDelegate* delegate,

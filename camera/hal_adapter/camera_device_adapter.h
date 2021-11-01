@@ -62,7 +62,7 @@ class CameraMonitor : public base::OneShotTimer {
   bool HasBeenKicked();
 
  private:
-  void SetTaskRunnerOnThread(base::Callback<void()> callback);
+  void SetTaskRunnerOnThread(base::OnceCallback<void()> callback);
   void StartMonitorOnThread();
   void MaybeResumeMonitorOnThread();
   void MonitorTimeout();
@@ -85,20 +85,20 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
       const camera_metadata_t* static_info,
       base::RepeatingCallback<int(int)> get_internal_camera_id_callback,
       base::RepeatingCallback<int(int)> get_public_camera_id_callback,
-      base::Callback<void()> close_callback,
+      base::OnceCallback<void()> close_callback,
       std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators);
 
   ~CameraDeviceAdapter();
 
   using HasReprocessEffectVendorTagCallback =
-      base::Callback<bool(const camera_metadata_t&)>;
+      base::RepeatingCallback<bool(const camera_metadata_t&)>;
   using ReprocessEffectCallback =
-      base::Callback<int32_t(const camera_metadata_t&,
-                             ScopedYUVBufferHandle*,
-                             uint32_t,
-                             uint32_t,
-                             android::CameraMetadata*,
-                             ScopedYUVBufferHandle*)>;
+      base::RepeatingCallback<int32_t(const camera_metadata_t&,
+                                      ScopedYUVBufferHandle*,
+                                      uint32_t,
+                                      uint32_t,
+                                      android::CameraMetadata*,
+                                      ScopedYUVBufferHandle*)>;
   using AllocatedBuffers =
       base::flat_map<uint64_t, std::vector<mojom::Camera3StreamBufferPtr>>;
   // Starts the camera device adapter.  This method must be called before all
@@ -201,7 +201,7 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   void ProcessReprocessRequestOnDeviceOpsThread(
       std::unique_ptr<Camera3CaptureDescriptor> req,
-      base::Callback<void(int32_t)> callback);
+      base::OnceCallback<void(int32_t)> callback);
 
   void ResetDeviceOpsDelegateOnThread();
   void ResetCallbackOpsDelegateOnThread();
@@ -238,7 +238,7 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   base::RepeatingCallback<int(int)> get_public_camera_id_callback_;
 
   // The callback to run when the device is closed.
-  base::Callback<void()> close_callback_;
+  base::OnceCallback<void()> close_callback_;
 
   // Since Close() can be called in |camera_device_ops_thread_| or in
   // main thread, use lock to protect |close_called_|.

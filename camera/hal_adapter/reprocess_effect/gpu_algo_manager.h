@@ -27,7 +27,7 @@ class GPUAlgoManager final : public camera_algorithm_callback_ops_t {
 
   void Request(const std::vector<uint8_t>& req_header,
                int32_t buffer_handle,
-               base::Callback<void(uint32_t, int32_t)> cb);
+               base::OnceCallback<void(uint32_t, int32_t)> cb);
 
   void DeregisterBuffers(const std::vector<int32_t>& buffer_handles);
 
@@ -53,7 +53,7 @@ class GPUAlgoManager final : public camera_algorithm_callback_ops_t {
 
   uint32_t req_id_;
 
-  std::map<uint32_t, base::Callback<void(uint32_t, int32_t)>> cb_map_;
+  std::map<uint32_t, base::OnceCallback<void(uint32_t, int32_t)>> cb_map_;
 };
 
 }  // namespace cros

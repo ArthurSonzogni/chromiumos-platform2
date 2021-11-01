@@ -28,11 +28,11 @@ class CameraModuleCallbacksAssociatedDelegate
  private:
   void CameraDeviceStatusChangeOnThread(int camera_id,
                                         int new_status,
-                                        base::Closure callback);
+                                        base::OnceClosure callback);
 
   void TorchModeStatusChangeOnThread(int camera_id,
                                      int new_status,
-                                     base::Closure callback);
+                                     base::OnceClosure callback);
 
   cros::CancellationRelay relay_;
 

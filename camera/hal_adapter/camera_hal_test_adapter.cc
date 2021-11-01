@@ -96,14 +96,15 @@ int32_t CameraHalTestAdapter::SetTorchMode(int32_t camera_id, bool enabled) {
   return CameraHalAdapter::SetTorchMode(*unremapped_id, enabled);
 }
 
-void CameraHalTestAdapter::StartOnThread(base::Callback<void(bool)> callback) {
+void CameraHalTestAdapter::StartOnThread(
+    base::OnceCallback<void(bool)> callback) {
   VLOGF_ENTER();
 
   auto future = cros::Future<bool>::Create(nullptr);
   CameraHalAdapter::StartOnThread(cros::GetFutureCallback(future));
 
   if (!future.get()) {
-    callback.Run(false);
+    std::move(callback).Run(false);
     return;
   }
 
@@ -117,7 +118,7 @@ void CameraHalTestAdapter::StartOnThread(base::Callback<void(bool)> callback) {
     int ret = m->get_camera_info(internal_id, &info);
     if (ret != 0) {
       LOGF(ERROR) << "Failed to get info of camera " << cam_id;
-      callback.Run(false);
+      std::move(callback).Run(false);
       return;
     }
 
@@ -132,7 +133,7 @@ void CameraHalTestAdapter::StartOnThread(base::Callback<void(bool)> callback) {
     }
   }
   LOGF(INFO) << "Enable total " << enable_camera_ids_.size() << " cameras";
-  callback.Run(true);
+  std::move(callback).Run(true);
 }
 
 void CameraHalTestAdapter::NotifyCameraDeviceStatusChange(

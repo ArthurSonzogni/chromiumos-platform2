@@ -45,7 +45,7 @@ class CameraHalTestAdapter : public CameraHalAdapter {
   int32_t SetTorchMode(int32_t camera_id, bool enabled) override;
 
  protected:
-  void StartOnThread(base::Callback<void(bool)> callback) override;
+  void StartOnThread(base::OnceCallback<void(bool)> callback) override;
 
   void NotifyCameraDeviceStatusChange(
       CameraModuleCallbacksAssociatedDelegate* delegate,

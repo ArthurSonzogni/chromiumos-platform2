@@ -114,8 +114,8 @@ void CameraHalServerImpl::IPCBridge::Start(
   mojo::PendingRemote<mojom::CameraHalServer> server =
       receiver_.BindNewPipeAndPassRemote();
   receiver_.set_disconnect_handler(
-      base::Bind(&CameraHalServerImpl::IPCBridge::OnServiceMojoChannelError,
-                 GetWeakPtr()));
+      base::BindOnce(&CameraHalServerImpl::IPCBridge::OnServiceMojoChannelError,
+                     GetWeakPtr()));
   mojo_manager_->RegisterServer(
       std::move(server),
       base::BindOnce(&CameraHalServerImpl::IPCBridge::OnServerRegistered,
@@ -248,7 +248,7 @@ int CameraHalServerImpl::LoadCameraHal() {
     camera_interfaces.push_back({module, cros_camera_hal});
   }
 
-  auto active_callback = base::Bind(
+  auto active_callback = base::BindRepeating(
       &CameraHalServerImpl::OnCameraActivityChange, base::Unretained(this));
   if (enable_front && enable_back && enable_external) {
     camera_hal_adapter_.reset(new CameraHalAdapter(
@@ -287,7 +287,9 @@ void CameraHalServerImpl::ExitOnMainThread(int exit_status) {
     auto future = Future<void>::Create(nullptr);
     auto delete_ipc_bridge = base::BindOnce(
         [](std::unique_ptr<IPCBridge> ipc_bridge,
-           base::Callback<void(void)> callback) { std::move(callback).Run(); },
+           base::OnceCallback<void(void)> callback) {
+          std::move(callback).Run();
+        },
         std::move(ipc_bridge_), cros::GetFutureCallback(future));
     mojo_manager_->GetIpcTaskRunner()->PostTask(FROM_HERE,
                                                 std::move(delete_ipc_bridge));

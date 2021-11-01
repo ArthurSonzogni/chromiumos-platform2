@@ -48,21 +48,21 @@ void CameraModuleCallbacksAssociatedDelegate::TorchModeStatusChange(
 }
 
 void CameraModuleCallbacksAssociatedDelegate::CameraDeviceStatusChangeOnThread(
-    int camera_id, int new_status, base::Closure callback) {
+    int camera_id, int new_status, base::OnceClosure callback) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   remote_->CameraDeviceStatusChange(
       camera_id, static_cast<mojom::CameraDeviceStatus>(new_status));
-  callback.Run();
+  std::move(callback).Run();
 }
 
 void CameraModuleCallbacksAssociatedDelegate::TorchModeStatusChangeOnThread(
-    int camera_id, int new_status, base::Closure callback) {
+    int camera_id, int new_status, base::OnceClosure callback) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   remote_->TorchModeStatusChange(
       camera_id, static_cast<mojom::TorchModeStatus>(new_status));
-  callback.Run();
+  std::move(callback).Run();
 }
 
 }  // namespace cros
