@@ -5,9 +5,10 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_ADAPTER_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_ADAPTER_IMPL_H_
 
-#include "diagnostics/cros_healthd/executor/executor_adapter.h"
-#include "mojo/cros_healthd_executor.mojom.h"
 #include <string>
+
+#include "diagnostics/cros_healthd/executor/executor_adapter.h"
+#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
 
 namespace diagnostics {
 

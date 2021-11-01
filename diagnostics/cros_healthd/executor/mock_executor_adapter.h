@@ -9,7 +9,7 @@
 #include <gmock/gmock.h>
 
 #include "diagnostics/cros_healthd/executor/executor_adapter.h"
-#include "mojo/cros_healthd_executor.mojom.h"
+#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
 
 namespace diagnostics {
 

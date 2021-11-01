@@ -15,7 +15,7 @@ source_set("storage_data_source") {
   deps = [
     "//diagnostics/common:libcommon",
     "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
-    "//diagnostics/mojo:cros_healthd_mojo_bindings",
+    "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
   ]
   libs = [
     "mount",

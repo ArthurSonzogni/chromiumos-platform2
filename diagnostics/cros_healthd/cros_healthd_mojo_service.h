@@ -18,8 +18,8 @@
 #include "diagnostics/cros_healthd/events/power_events.h"
 #include "diagnostics/cros_healthd/events/udev_events.h"
 #include "diagnostics/cros_healthd/fetch_aggregator.h"
-#include "mojo/cros_healthd.mojom.h"
-#include "mojo/network_health.mojom.h"
+#include "diagnostics/mojom/external/network_health.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd.mojom.h"
 
 namespace diagnostics {
 

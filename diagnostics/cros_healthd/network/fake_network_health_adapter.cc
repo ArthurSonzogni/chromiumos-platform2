@@ -8,7 +8,7 @@
 
 #include <base/optional.h>
 
-#include "mojo/network_health.mojom.h"
+#include "diagnostics/mojom/external/network_health.mojom.h"
 
 namespace {
 

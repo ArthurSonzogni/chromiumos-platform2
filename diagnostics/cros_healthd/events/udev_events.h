@@ -7,7 +7,7 @@
 
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
-#include "mojo/cros_healthd_events.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
 

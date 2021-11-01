@@ -8,7 +8,7 @@
 #include <base/callback_forward.h>
 
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
-#include "mojo/cros_healthd_probe.mojom-forward.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
 

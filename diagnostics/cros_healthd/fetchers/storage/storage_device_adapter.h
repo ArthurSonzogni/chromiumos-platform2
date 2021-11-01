@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <string>
 #include "diagnostics/common/statusor.h"
-#include "mojo/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 

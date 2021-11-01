@@ -17,8 +17,8 @@
 #include "diagnostics/cros_healthd/routines/dns_resolution/dns_resolution.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
-#include "mojo/cros_healthd_diagnostics.mojom.h"
-#include "mojo/network_diagnostics.mojom.h"
+#include "diagnostics/mojom/external/network_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 using testing::_;
 using testing::Invoke;

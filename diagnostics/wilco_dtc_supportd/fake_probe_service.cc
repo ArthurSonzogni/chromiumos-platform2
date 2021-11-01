@@ -9,7 +9,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 
-#include "mojo/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 

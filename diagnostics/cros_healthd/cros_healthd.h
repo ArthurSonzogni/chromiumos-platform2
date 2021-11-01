@@ -25,7 +25,7 @@
 #include "diagnostics/cros_healthd/events/udev_events.h"
 #include "diagnostics/cros_healthd/fetch_aggregator.h"
 #include "diagnostics/cros_healthd/system/context.h"
-#include "mojo/cros_healthd.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd.mojom.h"
 
 namespace diagnostics {
 

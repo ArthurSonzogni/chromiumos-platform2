@@ -7,7 +7,7 @@
 #include <utility>
 
 #include "diagnostics/common/mojo_utils.h"
-#include "mojo/nullable_primitives.mojom.h"
+#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;

@@ -16,8 +16,8 @@
 
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 #include "diagnostics/cros_healthd/system/context.h"
-#include "mojo/cros_healthd_diagnostics.mojom.h"
-#include "mojo/cros_healthd_executor.mojom.h"
+#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
 

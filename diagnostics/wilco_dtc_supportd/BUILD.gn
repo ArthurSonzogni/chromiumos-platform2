@@ -20,8 +20,8 @@ source_set("libwilco_dtc_supportd") {
     "//diagnostics/common:libcommon",
     "//diagnostics/constants:libconstants",
     "//diagnostics/grpc:wilco_dtc_grpc_protos",
-    "//diagnostics/mojo:cros_healthd_mojo_bindings",
-    "//diagnostics/mojo:wilco_dtc_supportd_mojo_bindings",
+    "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
+    "//diagnostics/mojom/public:wilco_dtc_supportd_mojo_bindings",
   ]
   sources = [
     "core.cc",

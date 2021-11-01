@@ -11,8 +11,8 @@
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/cros_healthd_mojo_adapter/cros_healthd_mojo_adapter.h"
-#include "mojo/cros_healthd_events.mojom.h"
-#include "mojo/network_health.mojom.h"
+#include "diagnostics/mojom/external/network_health.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
 

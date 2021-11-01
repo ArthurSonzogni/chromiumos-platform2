@@ -13,7 +13,7 @@
 
 module chromeos.network_diagnostics.mojom;
 
-import "mojo/time.mojom";
+import "diagnostics/mojom/external/time.mojom";
 
 // Enumeration of the possible network diagnostic routines. See
 // NetworkDiagnosticsRoutines interface for more details.

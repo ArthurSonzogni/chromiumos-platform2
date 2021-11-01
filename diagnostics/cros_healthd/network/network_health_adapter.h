@@ -9,7 +9,7 @@
 #include <base/optional.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
-#include "mojo/network_health.mojom-forward.h"
+#include "diagnostics/mojom/external/network_health.mojom-forward.h"
 
 namespace diagnostics {
 

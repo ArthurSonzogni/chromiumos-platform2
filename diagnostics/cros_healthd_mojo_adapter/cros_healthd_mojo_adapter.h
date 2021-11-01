@@ -17,11 +17,11 @@
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
-#include "mojo/cros_healthd.mojom.h"
-#include "mojo/cros_healthd_diagnostics.mojom.h"
-#include "mojo/cros_healthd_events.mojom.h"
-#include "mojo/cros_healthd_probe.mojom.h"
-#include "mojo/network_health.mojom.h"
+#include "diagnostics/mojom/external/network_health.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 

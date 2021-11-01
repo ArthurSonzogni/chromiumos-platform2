@@ -10,9 +10,9 @@
 #include <vector>
 
 #include "diagnostics/common/mojo_utils.h"
-#include "mojo/cros_healthd.mojom.h"
-#include "mojo/cros_healthd_diagnostics.mojom.h"
-#include "mojo/nullable_primitives.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 #include <base/check.h>
 #include <base/check_op.h>

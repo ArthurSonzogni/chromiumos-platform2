@@ -12,7 +12,7 @@
 #include <base/logging.h>
 
 #include "diagnostics/cros_healthd/fetchers/process_fetcher.h"
-#include "mojo/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;

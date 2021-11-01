@@ -15,7 +15,7 @@
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
-#include "mojo/wilco_dtc_supportd.mojom.h"
+#include "diagnostics/mojom/public/wilco_dtc_supportd.mojom.h"
 
 namespace diagnostics {
 

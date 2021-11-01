@@ -13,7 +13,7 @@
 #include "diagnostics/common/statusor.h"
 #include "diagnostics/cros_healthd/fetchers/storage/device_info.h"
 #include "diagnostics/cros_healthd/fetchers/storage/mock/mock_platform.h"
-#include "mojo/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 using testing::_;
 using testing::Return;

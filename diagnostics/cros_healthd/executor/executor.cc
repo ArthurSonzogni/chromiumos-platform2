@@ -14,7 +14,7 @@
 #include <mojo/public/cpp/system/message_pipe.h>
 
 #include "diagnostics/cros_healthd/executor/executor_constants.h"
-#include "mojo/cros_healthd_executor.mojom.h"
+#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
 
 namespace diagnostics {
 

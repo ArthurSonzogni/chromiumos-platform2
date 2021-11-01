@@ -13,8 +13,8 @@
 #include <base/values.h>
 
 #include "diagnostics/cros_healthd/routines/simple_routine.h"
-#include "mojo/cros_healthd_diagnostics.mojom.h"
-#include "mojo/network_diagnostics.mojom.h"
+#include "diagnostics/mojom/external/network_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
 

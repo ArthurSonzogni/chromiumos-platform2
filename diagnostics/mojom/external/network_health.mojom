@@ -13,7 +13,7 @@
 
 module chromeos.network_health.mojom;
 
-import "mojo/network_types.mojom";
+import "diagnostics/mojom/external/network_types.mojom";
 
 [Stable, Extensible]
 enum NetworkState {

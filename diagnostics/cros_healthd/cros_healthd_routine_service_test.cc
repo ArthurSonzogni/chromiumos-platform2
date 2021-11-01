@@ -20,8 +20,8 @@
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
-#include "mojo/cros_healthd_diagnostics.mojom.h"
-#include "mojo/nullable_primitives.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 using testing::StrictMock;
 

@@ -10,7 +10,11 @@ pkg_config("libtelemetry_pkg_deps") {
 
 source_set("libtelemetry") {
   configs += [ ":libtelemetry_pkg_deps" ]
-  deps = [ "//diagnostics/common:libcommon" ]
+  deps = [
+    "//diagnostics/common:libcommon",
+    "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
+    "//diagnostics/mojom/public:wilco_dtc_supportd_mojo_bindings",
+  ]
   sources = [
     "bluetooth_event_service.cc",
     "bluetooth_event_service_impl.cc",
@@ -25,7 +29,10 @@ source_set("libtelemetry") {
 if (use.test) {
   source_set("telemetry_test") {
     configs += [ ":libtelemetry_pkg_deps" ]
-    deps = [ "//diagnostics/common:libcommon_test_utils" ]
+    deps = [
+      ":libtelemetry",
+      "//diagnostics/common:libcommon_test_utils",
+    ]
     sources = [
       "bluetooth_event_service_impl_test.cc",
       "ec_service_test.cc",
