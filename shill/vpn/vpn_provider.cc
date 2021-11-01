@@ -23,6 +23,7 @@
 #include "shill/store_interface.h"
 #include "shill/vpn/arc_vpn_driver.h"
 #include "shill/vpn/l2tp_ipsec_driver.h"
+#include "shill/vpn/new_l2tp_ipsec_driver.h"
 #include "shill/vpn/openvpn_driver.h"
 #include "shill/vpn/third_party_vpn_driver.h"
 #include "shill/vpn/vpn_service.h"
@@ -228,7 +229,14 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const std::string& type,
   if (type == kProviderOpenVpn) {
     driver.reset(new OpenVPNDriver(manager_, ProcessManager::GetInstance()));
   } else if (type == kProviderL2tpIpsec) {
-    driver.reset(new L2TPIPsecDriver(manager_, ProcessManager::GetInstance()));
+    Error err;
+    if (manager_->GetUseSwanctlDriver(&err)) {
+      driver.reset(
+          new NewL2TPIPsecDriver(manager_, ProcessManager::GetInstance()));
+    } else {
+      driver.reset(
+          new L2TPIPsecDriver(manager_, ProcessManager::GetInstance()));
+    }
   } else if (type == kProviderThirdPartyVpn) {
     // For third party VPN host contains extension ID
     driver.reset(

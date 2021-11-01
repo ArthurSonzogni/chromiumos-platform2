@@ -352,6 +352,7 @@ void NewL2TPIPsecDriver::OnIPsecConnected(
     LOG(ERROR) << "OnIPsecConnected() triggered in illegal service state";
     return;
   }
+  LOG(INFO) << "VPN connection established";
   ReportConnectionMetrics();
   ip_properties_ = ip_properties;
   event_handler_->OnDriverConnected(link_name, interface_index);

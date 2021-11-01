@@ -101,6 +101,10 @@ class Manager {
     // servers. This member stores the value set via the DBus
     // |DNSProxyDOHProviders| property.
     KeyValueStore dns_proxy_doh_providers;
+    // b/204261554: Controls if the new swanctl-based L2TPIPsecDriver should be
+    // used instead of the legacy one based on ipsec script and stroke. This
+    // property will be deprecated and removed when the migration is done.
+    std::optional<bool> use_swanctl_driver;
 
 #if !defined(DISABLE_WIFI)
     base::Optional<bool> ft_enabled;
@@ -510,6 +514,9 @@ class Manager {
 
   bool ShouldBlackholeUserTraffic(const std::string& device_name) const;
 
+  // Returns whether the swanctl-based driver should be used.
+  bool GetUseSwanctlDriver(Error* error);
+
   const std::vector<uint32_t>& user_traffic_uids() const {
     return user_traffic_uids_;
   }
@@ -663,6 +670,7 @@ class Manager {
                                  Error* error);
   std::string GetProhibitedTechnologies(Error* error);
   void OnTechnologyProhibited(Technology technology, const Error& error);
+  bool SetUseSwanctlDriver(const bool& use_swanctl_driver, Error* error);
 
   std::string GetDNSProxyIPv4Address(Error* error);
   void UseDNSProxy(const std::string& proxy_addr);

@@ -11,9 +11,7 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/manager.h"
 #include "shill/portal_detector.h"
-#if !defined(DISABLE_WIFI)
 #include "shill/property_accessor.h"
-#endif  // DISABLE_WIFI
 #include "shill/resolver.h"
 #include "shill/store_interface.h"
 
@@ -46,6 +44,8 @@ const char DefaultProfile::kStorageNoAutoConnectTechnologies[] =
 // static
 const char DefaultProfile::kStorageProhibitedTechnologies[] =
     "ProhibitedTechnologies";
+// static
+const char DefaultProfile::kStorageUseSwanctlDriver[] = "UseSwanctlDriver";
 #if !defined(DISABLE_WIFI)
 // static
 const char DefaultProfile::kStorageWifiGlobalFTEnabled[] =
@@ -69,6 +69,8 @@ DefaultProfile::DefaultProfile(Manager* manager,
                              &manager_props.no_auto_connect_technologies);
   store->RegisterConstString(kProhibitedTechnologiesProperty,
                              &manager_props.prohibited_technologies);
+  HelpRegisterConstDerivedBool(kUseSwanctlDriver,
+                               &DefaultProfile::GetUseSwanctlDriver);
 #if !defined(DISABLE_WIFI)
   HelpRegisterConstDerivedBool(kWifiGlobalFTEnabledProperty,
                                &DefaultProfile::GetFTEnabled);
@@ -79,7 +81,6 @@ DefaultProfile::DefaultProfile(Manager* manager,
 
 DefaultProfile::~DefaultProfile() = default;
 
-#if !defined(DISABLE_WIFI)
 void DefaultProfile::HelpRegisterConstDerivedBool(
     const std::string& name, bool (DefaultProfile::*get)(Error*)) {
   this->mutable_store()->RegisterDerivedBool(
@@ -87,6 +88,11 @@ void DefaultProfile::HelpRegisterConstDerivedBool(
                 this, get, nullptr, nullptr)));
 }
 
+bool DefaultProfile::GetUseSwanctlDriver(Error* error) {
+  return manager()->GetUseSwanctlDriver(error);
+}
+
+#if !defined(DISABLE_WIFI)
 bool DefaultProfile::GetFTEnabled(Error* error) {
   return manager()->GetFTEnabled(error);
 }
@@ -119,6 +125,12 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props,
   if (!storage()->GetString(kStorageId, kStorageProhibitedTechnologies,
                             &manager_props->prohibited_technologies)) {
     manager_props->prohibited_technologies = "";
+  }
+
+  bool use_swanctl_driver;
+  if (storage()->GetBool(kStorageId, kStorageUseSwanctlDriver,
+                         &use_swanctl_driver)) {
+    manager_props->use_swanctl_driver = use_swanctl_driver;
   }
 #if !defined(DISABLE_WIFI)
   bool ft_enabled;
@@ -162,6 +174,10 @@ bool DefaultProfile::Save() {
                        props_.no_auto_connect_technologies);
   storage()->SetString(kStorageId, kStorageProhibitedTechnologies,
                        props_.prohibited_technologies);
+  if (props_.use_swanctl_driver.has_value()) {
+    storage()->SetBool(kStorageId, kStorageUseSwanctlDriver,
+                       props_.use_swanctl_driver.value());
+  }
 #if !defined(DISABLE_WIFI)
   if (props_.ft_enabled.has_value()) {
     storage()->SetBool(kStorageId, kStorageWifiGlobalFTEnabled,

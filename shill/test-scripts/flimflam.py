@@ -434,6 +434,13 @@ class FlimFlam(object):
     def SetArpGateway(self, do_arp_gateway):
         self.manager.SetProperty('ArpGateway', do_arp_gateway)
 
+    def GetUseSwanctlDriver(self):
+        properties = self.manager.GetProperties(**utf8_kwargs)
+        return properties['UseSwanctlDriver']
+
+    def SetUseSwanctlDriver(self, use_swanctl_driver):
+        self.manager.SetProperty('UseSwanctlDriver', use_swanctl_driver)
+
 
 class DeviceManager(object):
     # DEPRECATED

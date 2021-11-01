@@ -21,6 +21,12 @@ class DefaultProfile : public Profile {
  public:
   static const char kDefaultId[];
 
+  // b/204261554: The property name in the D-Bus API which controls if the new
+  // swanctl-based L2TPIPsecDriver should be used instead of the legacy one
+  // based on ipsec script and stroke. This property will be deprecated and
+  // removed when the migration is done.
+  static constexpr char kUseSwanctlDriver[] = "UseSwanctlDriver";
+
   DefaultProfile(Manager* manager,
                  const base::FilePath& storage_directory,
                  const std::string& profile_id,
@@ -49,6 +55,8 @@ class DefaultProfile : public Profile {
 
   bool IsDefault() const override { return true; }
 
+  bool GetUseSwanctlDriver(Error* error);
+
 #if !defined(DISABLE_WIFI)
   bool GetFTEnabled(Error* error);
 #endif  // DISABLE_WIFI
@@ -67,12 +75,13 @@ class DefaultProfile : public Profile {
   static const char kStorageName[];
   static const char kStorageNoAutoConnectTechnologies[];
   static const char kStorageProhibitedTechnologies[];
+  static const char kStorageUseSwanctlDriver[];
 #if !defined(DISABLE_WIFI)
   static const char kStorageWifiGlobalFTEnabled[];
+#endif  // DISABLE_WIFI
 
   void HelpRegisterConstDerivedBool(const std::string& name,
                                     bool (DefaultProfile::*get)(Error* error));
-#endif  // DISABLE_WIFI
 
   const std::string profile_id_;
   const Manager::Properties& props_;

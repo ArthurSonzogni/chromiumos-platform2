@@ -301,6 +301,9 @@ Manager::Manager(ControlInterface* control_interface,
                                    &Manager::GetDNSProxyDOHProviders,
                                    &Manager::SetDNSProxyDOHProviders);
   store_.RegisterConstString(kSupportedVPNTypesProperty, &supported_vpn_);
+  HelpRegisterDerivedBool(DefaultProfile::kUseSwanctlDriver,
+                          &Manager::GetUseSwanctlDriver,
+                          &Manager::SetUseSwanctlDriver);
 
   UpdateProviderMapping();
 
@@ -3212,6 +3215,20 @@ void Manager::DetectMultiHomedDevices() {
       device_list.back()->SetIsMultiHomed(false);
     }
   }
+}
+
+bool Manager::GetUseSwanctlDriver(Error* error) {
+  if (props_.use_swanctl_driver.has_value()) {
+    return props_.use_swanctl_driver.value();
+  }
+  // Default is using the legacy driver.
+  return false;
+}
+
+bool Manager::SetUseSwanctlDriver(const bool& use_swanctl_driver,
+                                  Error* error) {
+  props_.use_swanctl_driver = use_swanctl_driver;
+  return true;
 }
 
 }  // namespace shill

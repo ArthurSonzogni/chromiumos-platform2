@@ -129,6 +129,7 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
   EXPECT_EQ(PortalDetector::kDefaultFallbackHttpUrls,
             manager_props.portal_fallback_http_urls);
   EXPECT_EQ("", manager_props.prohibited_technologies);
+  EXPECT_FALSE(manager_props.use_swanctl_driver.has_value());
 #if !defined(DISABLE_WIFI)
   EXPECT_FALSE(manager_props.ft_enabled.has_value());
 #endif  // DISABLE_WIFI
@@ -154,6 +155,8 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   storage->SetString(DefaultProfile::kStorageId,
                      DefaultProfile::kStorageProhibitedTechnologies,
                      prohibited_technologies);
+  storage->SetBool(DefaultProfile::kStorageId,
+                   DefaultProfile::kStorageUseSwanctlDriver, true);
 #if !defined(DISABLE_WIFI)
   storage->SetBool(DefaultProfile::kStorageId,
                    DefaultProfile::kStorageWifiGlobalFTEnabled, true);
@@ -172,6 +175,8 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   EXPECT_EQ(no_auto_connect_technologies,
             manager_props.no_auto_connect_technologies);
   EXPECT_EQ(prohibited_technologies, manager_props.prohibited_technologies);
+  EXPECT_TRUE(manager_props.use_swanctl_driver.has_value());
+  EXPECT_TRUE(manager_props.use_swanctl_driver.value());
 #if !defined(DISABLE_WIFI)
   EXPECT_TRUE(manager_props.ft_enabled.has_value());
   EXPECT_TRUE(manager_props.ft_enabled.value());
