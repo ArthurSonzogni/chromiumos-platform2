@@ -180,12 +180,6 @@ extern const char kDisableHibernatePref[];
 // the feature to be enabled.
 extern const char kLowerPowerFromSuspendSecPref[];
 
-// sysfs device directories with power/dark_resume_active and
-// power/dark_resume_source files, respectively, that are used to control
-// whether dark resume is enabled in the kernel.
-extern const char kDarkResumeDevicesPref[];
-extern const char kDarkResumeSourcesPref[];
-
 // If true, policies sent by Chrome will be ignored.
 extern const char kIgnoreExternalPolicyPref[];
 

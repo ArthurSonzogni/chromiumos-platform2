@@ -140,8 +140,6 @@ powerd_prefs: &powerd_prefs
   lower-power-from-suspend-sec:
     <<: *powerd_prefs_default
     default: "259200"
-  dark-resume-devices: *powerd_prefs_default
-  dark-resume-sources: *powerd_prefs_default
   ignore-external-policy:
     <<: *powerd_prefs_default
     default: "0"
