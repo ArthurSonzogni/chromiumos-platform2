@@ -66,9 +66,9 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge {
     ~IPCBridge();
 
     void Initialize(const camera_algorithm_callback_ops_t* callback_ops,
-                    base::Callback<void(int32_t)> cb);
+                    base::OnceCallback<void(int32_t)> cb);
 
-    void RegisterBuffer(int buffer_fd, base::Callback<void(int32_t)> cb);
+    void RegisterBuffer(int buffer_fd, base::OnceCallback<void(int32_t)> cb);
 
     void Request(uint32_t req_id,
                  std::vector<uint8_t> req_header,

@@ -162,11 +162,11 @@ CameraAlgorithmBridgeImpl::IPCBridge::~IPCBridge() {
 
 void CameraAlgorithmBridgeImpl::IPCBridge::Initialize(
     const camera_algorithm_callback_ops_t* callback_ops,
-    base::Callback<void(int32_t)> cb) {
+    base::OnceCallback<void(int32_t)> cb) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
   if (!callback_ops || !callback_ops->return_callback) {
-    cb.Run(-EINVAL);
+    std::move(cb).Run(-EINVAL);
     return;
   }
   if (cb_impl_) {
@@ -183,7 +183,7 @@ void CameraAlgorithmBridgeImpl::IPCBridge::Initialize(
       break;
     case CameraAlgorithmBackend::kVendorGpu:
       if (!base::PathExists(base::FilePath(kGpuAlgoJobFilePath))) {
-        cb.Run(-EINVAL);
+        std::move(cb).Run(-EINVAL);
         return;
       }
       remote_ = mojo_manager_->CreateCameraAlgorithmOpsRemote(
@@ -191,7 +191,7 @@ void CameraAlgorithmBridgeImpl::IPCBridge::Initialize(
       break;
     case CameraAlgorithmBackend::kGoogleGpu:
       if (!base::PathExists(base::FilePath(kGpuAlgoJobFilePath))) {
-        cb.Run(-EINVAL);
+        std::move(cb).Run(-EINVAL);
         return;
       }
       remote_ = mojo_manager_->CreateCameraAlgorithmOpsRemote(
@@ -204,35 +204,35 @@ void CameraAlgorithmBridgeImpl::IPCBridge::Initialize(
   }
   if (!remote_) {
     LOGF(ERROR) << "Failed to connect to the server";
-    cb.Run(-EAGAIN);
+    std::move(cb).Run(-EAGAIN);
     return;
   }
   remote_.set_disconnect_handler(base::BindOnce(
       &CameraAlgorithmBridgeImpl::IPCBridge::OnConnectionError, GetWeakPtr()));
   cb_impl_.reset(
       new CameraAlgorithmCallbackOpsImpl(ipc_task_runner_, callback_ops));
-  remote_->Initialize(cb_impl_->CreatePendingRemote(), cb);
+  remote_->Initialize(cb_impl_->CreatePendingRemote(), std::move(cb));
   callback_ops_ = callback_ops;
   VLOGF_EXIT();
 }
 
 void CameraAlgorithmBridgeImpl::IPCBridge::RegisterBuffer(
-    int buffer_fd, base::Callback<void(int32_t)> cb) {
+    int buffer_fd, base::OnceCallback<void(int32_t)> cb) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
   if (!remote_.is_bound()) {
     LOGF(ERROR) << "Interface is not bound probably because IPC is broken";
-    cb.Run(-ECONNRESET);
+    std::move(cb).Run(-ECONNRESET);
     return;
   }
   int dup_fd = dup(buffer_fd);
   if (dup_fd < 0) {
     PLOGF(ERROR) << "Failed to dup fd: ";
-    cb.Run(-errno);
+    std::move(cb).Run(-errno);
     return;
   }
   remote_->RegisterBuffer(
-      mojo::WrapPlatformFile(base::ScopedPlatformFile(dup_fd)), cb);
+      mojo::WrapPlatformFile(base::ScopedPlatformFile(dup_fd)), std::move(cb));
 }
 
 void CameraAlgorithmBridgeImpl::IPCBridge::Request(
