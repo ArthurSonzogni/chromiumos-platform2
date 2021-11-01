@@ -71,4 +71,47 @@ void ReloadableConfigFile::OnConfigFileUpdated(const base::FilePath& file_path,
   }
 }
 
+bool LoadIfExist(const base::Value& json_values,
+                 const char* key,
+                 float* output) {
+  if (!output) {
+    LOGF(ERROR) << "output cannot be nullptr";
+    return false;
+  }
+  auto value = json_values.FindDoubleKey(key);
+  if (!value) {
+    return false;
+  }
+  *output = *value;
+  return true;
+}
+
+bool LoadIfExist(const base::Value& json_values, const char* key, int* output) {
+  if (!output) {
+    LOGF(ERROR) << "output cannot be nullptr";
+    return false;
+  }
+  auto value = json_values.FindIntKey(key);
+  if (!value) {
+    return false;
+  }
+  *output = *value;
+  return true;
+}
+
+bool LoadIfExist(const base::Value& json_values,
+                 const char* key,
+                 bool* output) {
+  if (!output) {
+    LOGF(ERROR) << "output cannot be nullptr";
+    return false;
+  }
+  auto value = json_values.FindBoolKey(key);
+  if (!value) {
+    return false;
+  }
+  *output = *value;
+  return true;
+}
+
 }  // namespace cros

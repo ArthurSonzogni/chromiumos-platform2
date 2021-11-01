@@ -57,6 +57,15 @@ class ReloadableConfigFile {
   base::Value json_values_ GUARDED_BY(options_lock_);
 };
 
+// Helper functions to look up |key| in |json_values| and, if key exists, load
+// the corresponding value into |output|. Returns true if |output| is loaded
+// with the value found, false otherwise.
+bool LoadIfExist(const base::Value& json_values,
+                 const char* key,
+                 float* output);
+bool LoadIfExist(const base::Value& json_values, const char* key, int* output);
+bool LoadIfExist(const base::Value& json_values, const char* key, bool* output);
+
 }  // namespace cros
 
 #endif  // CAMERA_COMMON_RELOADABLE_CONFIG_FILE_H_
