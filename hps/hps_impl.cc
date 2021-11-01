@@ -406,7 +406,7 @@ bool HPS_impl::WriteFile(uint8_t bank, const base::FilePath& source) {
   int64_t total_bytes = file.GetLength();
   uint32_t address = 0;
   int rd;
-  base::TimeTicks start_time = base::TimeTicks::Now();
+  base::ElapsedTimer timer;
   /*
    * Leave room for a 32 bit address at the start of the block to be written.
    * The address is updated for each block to indicate
@@ -440,13 +440,15 @@ bool HPS_impl::WriteFile(uint8_t bank, const base::FilePath& source) {
       bytes += static_cast<uint64_t>(rd);
       if (download_observer_) {
         download_observer_.Run(source, static_cast<uint32_t>(total_bytes),
-                               bytes, base::TimeTicks::Now() - start_time);
+                               bytes, timer.Elapsed());
       }
     }
   } while (rd > 0);  // A read returning 0 indicates EOF.
-  VLOG(1) << "Wrote " << bytes << " bytes from " << source;
+  VLOG(1) << "Wrote " << bytes << " bytes from " << source << " in "
+          << timer.Elapsed().InMilliseconds() << "ms";
   // Wait for the bank to become ready again to ensure the write is complete.
   this->WaitForBankReady(bank);
+  hps_metrics_.SendHpsUpdateDuration(bank, timer.Elapsed());
   return true;
 }
 

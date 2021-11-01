@@ -9,10 +9,13 @@
 #include <utility>
 
 #include <metrics/metrics_library.h>
+#include <base/time/time.h>
 
 namespace hps {
 
 constexpr char kHpsTurnOnResult[] = "ChromeOS.HPS.TurnOn.Result";
+constexpr char kHpsUpdateMcuDuration[] = "ChromeOS.HPS.Update.Mcu.Duration";
+constexpr char kHpsUpdateSpiDuration[] = "ChromeOS.HPS.Update.Spi.Duration";
 
 // These values are logged to UMA. Entries should not be renumbered and
 // numeric values should never be reused. Please keep in sync with
@@ -40,6 +43,7 @@ class HpsMetrics {
   ~HpsMetrics() = default;
 
   bool SendHpsTurnOnResult(HpsTurnOnResult result);
+  bool SendHpsUpdateDuration(int bank, base::TimeDelta duration);
 
   void SetMetricsLibraryForTesting(
       std::unique_ptr<MetricsLibraryInterface> metrics_lib) {

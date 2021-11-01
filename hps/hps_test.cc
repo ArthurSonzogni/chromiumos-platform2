@@ -155,6 +155,9 @@ TEST_F(HPSTest, Download) {
   const int len = 1024;
   CreateBlob(f, len);
   // Download allowed to mcu flash in pre-booted state.
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(hps::kHpsUpdateMcuDuration, _, _, _, _))
+      .Times(1);
   ASSERT_TRUE(hps_->Download(hps::HpsBank::kMcuFlash, f));
   // Make sure the right amount was written.
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
@@ -184,6 +187,9 @@ TEST_F(HPSTest, DownloadSmallBlocks) {
   CreateBlob(f, len);
   fake_->SetBlockSizeBytes(32);
   // Download allowed to mcu flash in pre-booted state.
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(hps::kHpsUpdateMcuDuration, _, _, _, _))
+      .Times(1);
   ASSERT_TRUE(hps_->Download(hps::HpsBank::kMcuFlash, f));
   // Make sure the right amount was written.
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
@@ -213,12 +219,16 @@ TEST_F(HPSTest, DownloadProgressObserver) {
     EXPECT_CALL(observer, OnProgress(f1, kLen1, kBlockSize * 2, _));
     EXPECT_CALL(observer, OnProgress(f1, kLen1, kBlockSize * 3, _));
     EXPECT_CALL(observer, OnProgress(f1, kLen1, kLen1, _));
+    EXPECT_CALL(*GetMetricsLibraryMock(),
+                SendToUMA(hps::kHpsUpdateMcuDuration, _, _, _, _));
     ASSERT_TRUE(hps_->Download(hps::HpsBank::kMcuFlash, f1));
   }
   {
     // Download a file that is smaller than the block size.
     testing::InSequence s;
     EXPECT_CALL(observer, OnProgress(f2, kLen2, kLen2, _));
+    EXPECT_CALL(*GetMetricsLibraryMock(),
+                SendToUMA(hps::kHpsUpdateMcuDuration, _, _, _, _));
     ASSERT_TRUE(hps_->Download(hps::HpsBank::kMcuFlash, f2));
   }
 }
@@ -294,6 +304,9 @@ TEST_F(HPSTest, McuUpdate) {
       SendEnumToUMA(hps::kHpsTurnOnResult,
                     static_cast<int>(hps::HpsTurnOnResult::kMcuNotVerified), _))
       .Times(1);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(hps::kHpsUpdateMcuDuration, _, _, _, _))
+      .Times(1);
   EXPECT_CALL(
       *GetMetricsLibraryMock(),
       SendEnumToUMA(hps::kHpsTurnOnResult,
@@ -332,6 +345,9 @@ TEST_F(HPSTest, SpiUpdate) {
       *GetMetricsLibraryMock(),
       SendEnumToUMA(hps::kHpsTurnOnResult,
                     static_cast<int>(hps::HpsTurnOnResult::kSpiNotVerified), _))
+      .Times(1);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(hps::kHpsUpdateSpiDuration, _, _, _, _))
       .Times(1);
   EXPECT_CALL(
       *GetMetricsLibraryMock(),
@@ -376,10 +392,16 @@ TEST_F(HPSTest, BothUpdate) {
       SendEnumToUMA(hps::kHpsTurnOnResult,
                     static_cast<int>(hps::HpsTurnOnResult::kMcuNotVerified), _))
       .Times(1);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(hps::kHpsUpdateMcuDuration, _, _, _, _))
+      .Times(1);
   EXPECT_CALL(
       *GetMetricsLibraryMock(),
       SendEnumToUMA(hps::kHpsTurnOnResult,
                     static_cast<int>(hps::HpsTurnOnResult::kSpiNotVerified), _))
+      .Times(1);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(hps::kHpsUpdateSpiDuration, _, _, _, _))
       .Times(1);
   EXPECT_CALL(
       *GetMetricsLibraryMock(),
@@ -459,10 +481,16 @@ TEST_F(HPSTest, VersionUpdate) {
                     static_cast<int>(hps::HpsTurnOnResult::kMcuVersionMismatch),
                     _))
       .Times(1);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(hps::kHpsUpdateMcuDuration, _, _, _, _))
+      .Times(1);
   EXPECT_CALL(
       *GetMetricsLibraryMock(),
       SendEnumToUMA(hps::kHpsTurnOnResult,
                     static_cast<int>(hps::HpsTurnOnResult::kSpiNotVerified), _))
+      .Times(1);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(hps::kHpsUpdateSpiDuration, _, _, _, _))
       .Times(1);
   EXPECT_CALL(
       *GetMetricsLibraryMock(),
