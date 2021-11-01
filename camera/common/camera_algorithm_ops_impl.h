@@ -37,7 +37,7 @@ class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
   bool Bind(mojo::PendingReceiver<mojom::CameraAlgorithmOps> pending_receiver,
             camera_algorithm_ops_t* cam_algo,
             scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
-            const base::Closure& ipc_lost_handler);
+            base::OnceClosure ipc_lost_handler);
 
   // Unbinds the underlying pipe.
   void Unbind();

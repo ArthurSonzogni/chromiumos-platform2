@@ -38,7 +38,7 @@ bool CameraAlgorithmOpsImpl::Bind(
     mojo::PendingReceiver<mojom::CameraAlgorithmOps> pending_receiver,
     camera_algorithm_ops_t* cam_algo,
     scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
-    const base::Closure& ipc_lost_handler) {
+    base::OnceClosure ipc_lost_handler) {
   DCHECK(ipc_task_runner->BelongsToCurrentThread());
   if (receiver_.is_bound()) {
     LOGF(ERROR) << "Algorithm Ops is already bound";
@@ -50,7 +50,7 @@ bool CameraAlgorithmOpsImpl::Bind(
   receiver_.Bind(std::move(pending_receiver));
   cam_algo_ = cam_algo;
   ipc_task_runner_ = std::move(ipc_task_runner);
-  receiver_.set_disconnect_handler(ipc_lost_handler);
+  receiver_.set_disconnect_handler(std::move(ipc_lost_handler));
   return true;
 }
 
