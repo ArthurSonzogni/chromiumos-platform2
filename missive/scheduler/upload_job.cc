@@ -87,14 +87,14 @@ void UploadJob::RecordProcessor::ProcessRecord(
 }
 
 void UploadJob::RecordProcessor::ProcessGap(
-    SequencingInformation start,
+    SequenceInformation start,
     uint64_t count,
     base::OnceCallback<void(bool)> processed_cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);  // Guaranteed by storage
   // We'll process the whole gap request, even if it goes over our max.
   for (uint64_t i = 0; i < count; ++i) {
     records_->emplace_back();
-    *records_->rbegin()->mutable_sequencing_information() = start;
+    *records_->rbegin()->mutable_sequence_information() = start;
     start.set_sequencing_id(start.sequencing_id() + 1);
     current_size_ += records_->rbegin()->ByteSizeLong();
   }

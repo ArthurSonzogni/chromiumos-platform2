@@ -182,15 +182,15 @@ void MissiveDaemon::ConfirmRecordUpload(
     response->Return(response_body);
     return;
   }
-  if (!in_request.has_sequencing_information()) {
+  if (!in_request.has_sequence_information()) {
     auto* status = response_body.mutable_status();
     status->set_code(error::INVALID_ARGUMENT);
-    status->set_error_message("Request had no SequencingInformation");
+    status->set_error_message("Request had no SequenceInformation");
     response->Return(response_body);
     return;
   }
 
-  storage_module_->ReportSuccess(in_request.sequencing_information(),
+  storage_module_->ReportSuccess(in_request.sequence_information(),
                                  in_request.force_confirm());
 
   response->Return(response_body);

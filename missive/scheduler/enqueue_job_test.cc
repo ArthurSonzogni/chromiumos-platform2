@@ -54,7 +54,7 @@ class MockStorageModule : public StorageModuleInterface {
               Flush,
               (Priority, base::OnceCallback<void(Status)>),
               (override));
-  MOCK_METHOD(void, ReportSuccess, (SequencingInformation, bool), (override));
+  MOCK_METHOD(void, ReportSuccess, (SequenceInformation, bool), (override));
   MOCK_METHOD(void, UpdateEncryptionKey, (SignedEncryptionInfo), (override));
 };
 

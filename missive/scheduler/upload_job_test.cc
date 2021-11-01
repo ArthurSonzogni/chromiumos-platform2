@@ -157,11 +157,11 @@ TEST_F(UploadJobTest, UploadsRecords) {
     EncryptedRecord& encrypted_record = records.back();
     encrypted_record.set_encrypted_wrapped_record(kTestData);
 
-    SequencingInformation* sequencing_information =
-        encrypted_record.mutable_sequencing_information();
-    sequencing_information->set_sequencing_id(seq_id);
-    sequencing_information->set_generation_id(kGenerationId);
-    sequencing_information->set_priority(kPriority);
+    SequenceInformation* sequence_information =
+        encrypted_record.mutable_sequence_information();
+    sequence_information->set_sequencing_id(seq_id);
+    sequence_information->set_generation_id(kGenerationId);
+    sequence_information->set_priority(kPriority);
   }
 
   std::unique_ptr<dbus::Response> dbus_response = dbus::Response::CreateEmpty();

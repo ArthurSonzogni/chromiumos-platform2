@@ -126,11 +126,11 @@ TEST_F(UploadClientTest, SuccessfulCall) {
   const int64_t kSequenceId = 42;
   const int64_t kGenerationId = 1701;
   const Priority kPriority = Priority::SLOW_BATCH;
-  SequencingInformation* sequencing_information =
-      encrypted_record.mutable_sequencing_information();
-  sequencing_information->set_sequencing_id(kSequenceId);
-  sequencing_information->set_generation_id(kGenerationId);
-  sequencing_information->set_priority(kPriority);
+  SequenceInformation* sequence_information =
+      encrypted_record.mutable_sequence_information();
+  sequence_information->set_sequencing_id(kSequenceId);
+  sequence_information->set_generation_id(kGenerationId);
+  sequence_information->set_priority(kPriority);
 
   // We have to own the response here so that it lives throughout the rest of
   // the test.

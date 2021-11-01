@@ -39,7 +39,7 @@
     <method name="ConfirmRecordUpload">
       <tp:docstring>
         Sent by Chrome to indicate the record was succesfully uploaded.
-        Record indicated by the provided SequencingInformation.
+        Record indicated by the provided SequenceInformation.
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"

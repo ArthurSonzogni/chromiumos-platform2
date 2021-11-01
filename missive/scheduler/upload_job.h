@@ -62,7 +62,7 @@ class UploadJob : public Scheduler::Job {
     void ProcessRecord(EncryptedRecord record,
                        base::OnceCallback<void(bool)> processed_cb) override;
 
-    void ProcessGap(SequencingInformation start,
+    void ProcessGap(SequenceInformation start,
                     uint64_t count,
                     base::OnceCallback<void(bool)> processed_cb) override;
 
