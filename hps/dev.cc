@@ -9,6 +9,7 @@
 #include "hps/dev.h"
 
 #include "base/logging.h"
+#include <base/strings/stringprintf.h>
 #include "hps/hps_reg.h"
 #include "hps/utils.h"
 
@@ -16,19 +17,19 @@ namespace hps {
 
 bool DevInterface::Read(uint8_t cmd, uint8_t* data, size_t len) {
   if (this->ReadDevice(cmd, data, len)) {
-    VLOG(2) << "Read: " << cmd << " " << len << " OK";
+    VLOG(2) << base::StringPrintf("Read: cmd: 0x%x len: %zd OK", cmd, len);
     return true;
   }
-  VLOG(2) << "Read: " << cmd << " " << len << " FAILED";
+  VLOG(2) << base::StringPrintf("Read: cmd: 0x%x len: %zd FAILED", cmd, len);
   return false;
 }
 
 bool DevInterface::Write(uint8_t cmd, const uint8_t* data, size_t len) {
   if (this->WriteDevice(cmd, data, len)) {
-    VLOG(2) << "Write: " << cmd << " " << len << " OK";
+    VLOG(2) << base::StringPrintf("Write: cmd: 0x%x len: %zd OK", cmd, len);
     return true;
   }
-  VLOG(2) << "Write: " << cmd << " " << len << " FAILED";
+  VLOG(2) << base::StringPrintf("Write: cmd: 0x%x len: %zd FAILED", cmd, len);
   return false;
 }
 
@@ -44,7 +45,8 @@ int DevInterface::ReadReg(HpsReg r) {
   for (int i = 0; i < 2; i++) {
     if (this->ReadDevice(I2cReg(r), res, sizeof(res))) {
       int ret = (static_cast<int>(res[0]) << 8) | static_cast<int>(res[1]);
-      VLOG(2) << "ReadReg: " << HpsRegToString(r) << " " << ret << " OK";
+      VLOG(2) << base::StringPrintf("ReadReg: %s : 0x%.4x OK",
+                                    HpsRegToString(r), ret);
       return ret;
     }
   }
@@ -63,10 +65,12 @@ bool DevInterface::WriteReg(HpsReg r, uint16_t data) {
   buf[1] = data & 0xFF;
 
   if (this->WriteDevice(I2cReg(r), buf, sizeof(buf))) {
-    VLOG(2) << "WriteReg: " << HpsRegToString(r) << " " << data << " OK";
+    VLOG(2) << base::StringPrintf("WriteReg: %s : 0x%.4x OK", HpsRegToString(r),
+                                  data);
     return true;
   } else {
-    VLOG(2) << "WriteReg: " << HpsRegToString(r) << " " << data << " FAILED";
+    VLOG(2) << base::StringPrintf("WriteReg: %s : 0x%.4x FAILED",
+                                  HpsRegToString(r), data);
     return false;
   }
 }
