@@ -99,6 +99,13 @@ Service::ConnectFailure ExitStatusToFailure(int status) {
   }
 }
 
+void ReportConnectionEndReason(Metrics* metrics,
+                               Service::ConnectFailure failure) {
+  metrics->SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecStrokeEndReason,
+                         Metrics::ConnectFailureToServiceErrorEnum(failure),
+                         Metrics::kMetricVpnL2tpIpsecStrokeEndReasonMax);
+}
+
 }  // namespace
 
 // static
@@ -156,6 +163,7 @@ base::TimeDelta L2TPIPsecDriver::ConnectAsync(EventHandler* handler) {
 
 void L2TPIPsecDriver::Disconnect() {
   SLOG(this, 2) << __func__;
+  ReportConnectionEndReason(metrics(), Service::kFailureDisconnect);
   Cleanup();
   event_handler_ = nullptr;
 }
@@ -177,6 +185,9 @@ void L2TPIPsecDriver::FailService(Service::ConnectFailure failure) {
                 << ")";
   Cleanup();
   if (event_handler_) {
+    // Only reports metrics when |event_handler_| exists to ensure reporting
+    // only once for each connection.
+    ReportConnectionEndReason(metrics(), failure);
     event_handler_->OnDriverFailure(failure, Service::kErrorDetailsNone);
     event_handler_ = nullptr;
   }

@@ -237,6 +237,14 @@ class L2TPIPsecDriverTest : public testing::Test, public RpcTaskDelegate {
                       Metrics::kMetricVpnL2tpIpsecEspIntegrityAlgorithmMax));
   }
 
+  void ExpectEndReasonMetricsReported(Service::ConnectFailure failure) {
+    EXPECT_CALL(
+        metrics_,
+        SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecStrokeEndReason,
+                      Metrics::ConnectFailureToServiceErrorEnum(failure),
+                      Metrics::kMetricVpnL2tpIpsecStrokeEndReasonMax));
+  }
+
   void SaveLoginPassword(const std::string& password_str) {
     driver_->password_provider_ =
         std::make_unique<password_provider::FakePasswordProvider>();
@@ -326,6 +334,7 @@ TEST_F(L2TPIPsecDriverTest, Cleanup) {
   SetEventHandler(&event_handler_);
   EXPECT_CALL(event_handler_,
               OnDriverFailure(Service::kFailureBadPassphrase, _));
+  ExpectEndReasonMetricsReported(Service::kFailureBadPassphrase);
   driver_->FailService(Service::kFailureBadPassphrase);  // Trigger Cleanup.
   EXPECT_TRUE(IsPSKFileCleared(psk_file));
   EXPECT_TRUE(IsXauthCredentialsFileCleared(xauth_credentials_file));
@@ -333,6 +342,7 @@ TEST_F(L2TPIPsecDriverTest, Cleanup) {
   EXPECT_FALSE(driver_->external_task_);
 
   SetEventHandler(&event_handler_);
+  ExpectEndReasonMetricsReported(Service::kFailureDisconnect);
   driver_->Disconnect();
   EXPECT_FALSE(driver_->event_handler_);
 }
@@ -596,6 +606,7 @@ TEST_F(L2TPIPsecDriverTest, OnL2TPIPsecVPNDied) {
   const int kPID = 123456;
   SetEventHandler(&event_handler_);
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureDNSLookup, _));
+  ExpectEndReasonMetricsReported(Service::kFailureDNSLookup);
   driver_->OnL2TPIPsecVPNDied(kPID,
                               vpn_manager::kServiceErrorResolveHostnameFailed);
   EXPECT_FALSE(driver_->event_handler_);
@@ -637,6 +648,7 @@ TEST_F(L2TPIPsecDriverTest, Connect) {
 
 TEST_F(L2TPIPsecDriverTest, Disconnect) {
   SetEventHandler(&event_handler_);
+  ExpectEndReasonMetricsReported(Service::kFailureDisconnect);
   driver_->Disconnect();
   EXPECT_FALSE(driver_->event_handler_);
 }
@@ -644,6 +656,7 @@ TEST_F(L2TPIPsecDriverTest, Disconnect) {
 TEST_F(L2TPIPsecDriverTest, OnConnectTimeout) {
   SetEventHandler(&event_handler_);
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureConnect, _));
+  ExpectEndReasonMetricsReported(Service::kFailureConnect);
   driver_->OnConnectTimeout();
   EXPECT_FALSE(driver_->event_handler_);
 }
@@ -750,6 +763,7 @@ TEST_F(L2TPIPsecDriverTest, NotifyDisconnected) {
       &control_, &process_manager_, weak_factory_.GetWeakPtr(), death_callback);
   driver_->external_task_.reset(local_external_task);  // passes ownership
   EXPECT_CALL(event_handler_, OnDriverFailure(_, _));
+  ExpectEndReasonMetricsReported(Service::kFailureUnknown);
   EXPECT_CALL(*local_external_task, OnDelete());
   driver_->Notify(kPPPReasonDisconnect, dict);
   EXPECT_EQ(nullptr, driver_->external_task_);

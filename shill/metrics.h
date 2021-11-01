@@ -961,6 +961,12 @@ class Metrics : public DefaultServiceObserver {
   static const int kMetricVpnL2tpIpsecEspEncryptionAlgorithmMax;
   static const char kMetricVpnL2tpIpsecEspIntegrityAlgorithm[];
   static const int kMetricVpnL2tpIpsecEspIntegrityAlgorithmMax;
+  // Temporary metrics for comparing the robustness of the two L2TP/IPsec
+  // drivers (b/204261554).
+  static const char kMetricVpnL2tpIpsecStrokeEndReason[];
+  static const int kMetricVpnL2tpIpsecStrokeEndReasonMax;
+  static const char kMetricVpnL2tpIpsecSwanctlEndReason[];
+  static const int kMetricVpnL2tpIpsecSwanctlEndReasonMax;
 
   // WireGuard connection statistics.
   // Key pair source (e.g., user input) used in a WireGuard Connection.
@@ -1089,6 +1095,10 @@ class Metrics : public DefaultServiceObserver {
   // Converts portal detection result to UMA portal result enumerator.
   static PortalResult PortalDetectionResultToEnum(
       const PortalDetector::Result& result);
+
+  // Converts service connect failure to UMA service error enumerator.
+  static NetworkServiceError ConnectFailureToServiceErrorEnum(
+      Service::ConnectFailure failure);
 
   // Callback for accumulating per-technology connected time.
   static void AccumulateTimeOnTechnology(

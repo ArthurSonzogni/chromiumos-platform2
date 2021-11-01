@@ -156,6 +156,13 @@ std::unique_ptr<L2TPConnection::Config> MakeL2TPConfig(
   return config;
 }
 
+void ReportConnectionEndReason(Metrics* metrics,
+                               Service::ConnectFailure failure) {
+  metrics->SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecSwanctlEndReason,
+                         Metrics::ConnectFailureToServiceErrorEnum(failure),
+                         Metrics::kMetricVpnL2tpIpsecSwanctlEndReasonMax);
+}
+
 }  // namespace
 
 const VPNDriver::Property NewL2TPIPsecDriver::kProperties[] = {
@@ -258,6 +265,7 @@ std::unique_ptr<VPNConnection> NewL2TPIPsecDriver::CreateL2TPConnection(
 
 void NewL2TPIPsecDriver::Disconnect() {
   event_handler_ = nullptr;
+  ReportConnectionEndReason(metrics(), Service::kFailureDisconnect);
   if (!ipsec_connection_) {
     LOG(ERROR) << "Disconnect() called but IPsecConnection is not running";
     return;
@@ -328,6 +336,9 @@ void NewL2TPIPsecDriver::NotifyServiceOfFailure(
   LOG(ERROR) << "Driver failure due to "
              << Service::ConnectFailureToString(failure);
   if (event_handler_) {
+    // Only reports metrics when |event_handler_| exists to ensure reporting
+    // only once for each connection.
+    ReportConnectionEndReason(metrics(), failure);
     event_handler_->OnDriverFailure(failure, Service::kErrorDetailsNone);
     event_handler_ = nullptr;
   }

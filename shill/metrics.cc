@@ -432,6 +432,14 @@ const char Metrics::kMetricVpnL2tpIpsecEspIntegrityAlgorithm[] =
     "Network.Shill.Vpn.L2tpIpsec.EspIntegrityAlgorithm";
 const int Metrics::kMetricVpnL2tpIpsecEspIntegrityAlgorithmMax =
     Metrics::kVpnIpsecIntegrityAlgorithmMax;
+const char Metrics::kMetricVpnL2tpIpsecStrokeEndReason[] =
+    "Network.Shill.Vpn.L2tpIpsec.StrokeEndReason";
+const int Metrics::kMetricVpnL2tpIpsecStrokeEndReasonMax =
+    Metrics::kNetworkServiceErrorMax;
+const char Metrics::kMetricVpnL2tpIpsecSwanctlEndReason[] =
+    "Network.Shill.Vpn.L2tpIpsec.SwanctlEndReason";
+const int Metrics::kMetricVpnL2tpIpsecSwanctlEndReasonMax =
+    Metrics::kNetworkServiceErrorMax;
 
 // static
 const char Metrics::kMetricVpnWireGuardKeyPairSource[] =
@@ -774,6 +782,73 @@ Metrics::PortalResult Metrics::PortalDetectionResultToEnum(
   }
 
   return retval;
+}
+
+// static
+Metrics::NetworkServiceError Metrics::ConnectFailureToServiceErrorEnum(
+    Service::ConnectFailure failure) {
+  // Explicitly map all possible failures. So when new failures are added,
+  // they will need to be mapped as well. Otherwise, the compiler will
+  // complain.
+  switch (failure) {
+    case Service::kFailureNone:
+      return kNetworkServiceErrorNone;
+    case Service::kFailureAAA:
+      return kNetworkServiceErrorAAA;
+    case Service::kFailureActivation:
+      return kNetworkServiceErrorActivation;
+    case Service::kFailureBadPassphrase:
+      return kNetworkServiceErrorBadPassphrase;
+    case Service::kFailureBadWEPKey:
+      return kNetworkServiceErrorBadWEPKey;
+    case Service::kFailureConnect:
+      return kNetworkServiceErrorConnect;
+    case Service::kFailureDHCP:
+      return kNetworkServiceErrorDHCP;
+    case Service::kFailureDNSLookup:
+      return kNetworkServiceErrorDNSLookup;
+    case Service::kFailureEAPAuthentication:
+      return kNetworkServiceErrorEAPAuthentication;
+    case Service::kFailureEAPLocalTLS:
+      return kNetworkServiceErrorEAPLocalTLS;
+    case Service::kFailureEAPRemoteTLS:
+      return kNetworkServiceErrorEAPRemoteTLS;
+    case Service::kFailureHTTPGet:
+      return kNetworkServiceErrorHTTPGet;
+    case Service::kFailureIPsecCertAuth:
+      return kNetworkServiceErrorIPsecCertAuth;
+    case Service::kFailureIPsecPSKAuth:
+      return kNetworkServiceErrorIPsecPSKAuth;
+    case Service::kFailureInternal:
+      return kNetworkServiceErrorInternal;
+    case Service::kFailureNeedEVDO:
+      return kNetworkServiceErrorNeedEVDO;
+    case Service::kFailureNeedHomeNetwork:
+      return kNetworkServiceErrorNeedHomeNetwork;
+    case Service::kFailureNotAssociated:
+      return kNetworkServiceErrorNotAssociated;
+    case Service::kFailureNotAuthenticated:
+      return kNetworkServiceErrorNotAuthenticated;
+    case Service::kFailureOTASP:
+      return kNetworkServiceErrorOTASP;
+    case Service::kFailureOutOfRange:
+      return kNetworkServiceErrorOutOfRange;
+    case Service::kFailurePPPAuth:
+      return kNetworkServiceErrorPPPAuth;
+    case Service::kFailureSimLocked:
+      return kNetworkServiceErrorSimLocked;
+    case Service::kFailureNotRegistered:
+      return kNetworkServiceErrorNotRegistered;
+    case Service::kFailurePinMissing:
+      return kNetworkServiceErrorPinMissing;
+    case Service::kFailureTooManySTAs:
+      return kNetworkServiceErrorTooManySTAs;
+    case Service::kFailureDisconnect:
+      return kNetworkServiceErrorDisconnect;
+    case Service::kFailureUnknown:
+    case Service::kFailureMax:
+      return kNetworkServiceErrorUnknown;
+  }
 }
 
 void Metrics::Start() {
@@ -2077,97 +2152,8 @@ void Metrics::UpdateServiceStateTransitionMetrics(
 }
 
 void Metrics::SendServiceFailure(const Service& service) {
-  NetworkServiceError error = kNetworkServiceErrorUnknown;
-  // Explicitly map all possible failures. So when new failures are added,
-  // they will need to be mapped as well. Otherwise, the compiler will
-  // complain.
-  switch (service.failure()) {
-    case Service::kFailureNone:
-      error = kNetworkServiceErrorNone;
-      break;
-    case Service::kFailureAAA:
-      error = kNetworkServiceErrorAAA;
-      break;
-    case Service::kFailureActivation:
-      error = kNetworkServiceErrorActivation;
-      break;
-    case Service::kFailureBadPassphrase:
-      error = kNetworkServiceErrorBadPassphrase;
-      break;
-    case Service::kFailureBadWEPKey:
-      error = kNetworkServiceErrorBadWEPKey;
-      break;
-    case Service::kFailureConnect:
-      error = kNetworkServiceErrorConnect;
-      break;
-    case Service::kFailureDHCP:
-      error = kNetworkServiceErrorDHCP;
-      break;
-    case Service::kFailureDNSLookup:
-      error = kNetworkServiceErrorDNSLookup;
-      break;
-    case Service::kFailureEAPAuthentication:
-      error = kNetworkServiceErrorEAPAuthentication;
-      break;
-    case Service::kFailureEAPLocalTLS:
-      error = kNetworkServiceErrorEAPLocalTLS;
-      break;
-    case Service::kFailureEAPRemoteTLS:
-      error = kNetworkServiceErrorEAPRemoteTLS;
-      break;
-    case Service::kFailureHTTPGet:
-      error = kNetworkServiceErrorHTTPGet;
-      break;
-    case Service::kFailureIPsecCertAuth:
-      error = kNetworkServiceErrorIPsecCertAuth;
-      break;
-    case Service::kFailureIPsecPSKAuth:
-      error = kNetworkServiceErrorIPsecPSKAuth;
-      break;
-    case Service::kFailureInternal:
-      error = kNetworkServiceErrorInternal;
-      break;
-    case Service::kFailureNeedEVDO:
-      error = kNetworkServiceErrorNeedEVDO;
-      break;
-    case Service::kFailureNeedHomeNetwork:
-      error = kNetworkServiceErrorNeedHomeNetwork;
-      break;
-    case Service::kFailureNotAssociated:
-      error = kNetworkServiceErrorNotAssociated;
-      break;
-    case Service::kFailureNotAuthenticated:
-      error = kNetworkServiceErrorNotAuthenticated;
-      break;
-    case Service::kFailureOTASP:
-      error = kNetworkServiceErrorOTASP;
-      break;
-    case Service::kFailureOutOfRange:
-      error = kNetworkServiceErrorOutOfRange;
-      break;
-    case Service::kFailurePPPAuth:
-      error = kNetworkServiceErrorPPPAuth;
-      break;
-    case Service::kFailureSimLocked:
-      error = kNetworkServiceErrorSimLocked;
-      break;
-    case Service::kFailureNotRegistered:
-      error = kNetworkServiceErrorNotRegistered;
-      break;
-    case Service::kFailurePinMissing:
-      error = kNetworkServiceErrorPinMissing;
-      break;
-    case Service::kFailureTooManySTAs:
-      error = kNetworkServiceErrorTooManySTAs;
-      break;
-    case Service::kFailureDisconnect:
-      error = kNetworkServiceErrorDisconnect;
-      break;
-    case Service::kFailureUnknown:
-    case Service::kFailureMax:
-      error = kNetworkServiceErrorUnknown;
-      break;
-  }
+  NetworkServiceError error =
+      ConnectFailureToServiceErrorEnum(service.failure());
 
   const auto histogram =
       GetFullMetricName(kMetricNetworkServiceErrorSuffix, service.technology());
