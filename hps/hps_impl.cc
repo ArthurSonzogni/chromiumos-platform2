@@ -20,10 +20,13 @@
 
 namespace hps {
 
+// Observed times are 2.5ms for a normal write, and 250ms for a block erase
+// write. Set the sleep to 1/5 of the normal time, and the timeout to 10x the
+// expected max time.
 static constexpr base::TimeDelta kBankReadySleep =
-    base::TimeDelta::FromMilliseconds(5);
+    base::TimeDelta::FromMicroseconds(500);
 static constexpr base::TimeDelta kBankReadyTimeout =
-    base::TimeDelta::FromMilliseconds(250);
+    base::TimeDelta::FromMilliseconds(2500);
 
 static constexpr base::TimeDelta kMagicTimeout =
     base::TimeDelta::FromMilliseconds(1000);
