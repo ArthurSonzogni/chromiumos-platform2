@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 # Copyright (C) 2021 The Android Open Source Project
 
-access: 1
 brk: 1
 clock_nanosleep: 1
 close: 1
