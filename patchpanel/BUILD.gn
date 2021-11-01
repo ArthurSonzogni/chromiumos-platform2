@@ -31,6 +31,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libmetrics",
     "libshill-client",
     "libshill-net",
     "protobuf-lite",

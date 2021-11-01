@@ -17,6 +17,7 @@
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/process/process_reaper.h>
 #include <chromeos/dbus/service_constants.h>
+#include <metrics/metrics_library.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"
@@ -202,31 +203,38 @@ class Manager final : public brillo::DBusDaemon {
 
   friend std::ostream& operator<<(std::ostream& stream, const Manager& manager);
 
+  // UMA metrics client.
+  std::unique_ptr<MetricsLibraryInterface> metrics_;
+  // Shill Dbus client.
   std::unique_ptr<ShillClient> shill_client_;
+  // High level routing and iptables controller service.
+  std::unique_ptr<Datapath> datapath_;
+  // Routing service.
   std::unique_ptr<RoutingService> routing_svc_;
-
-  // Guest services.
+  // ARC++/ARCVM service.
   std::unique_ptr<ArcService> arc_svc_;
+  // Crostini and other VM service.
   std::unique_ptr<CrostiniService> cros_svc_;
-
-  // DBus service.
+  // Patchpanel DBus service.
   dbus::ExportedObject* dbus_svc_path_;  // Owned by |bus_|.
-
   // Other services.
   brillo::ProcessReaper process_reaper_;
+  // adb connection forwarder service.
   std::unique_ptr<HelperProcess> adb_proxy_;
+  // IPv4 and IPv6 Multicast forwarder service.
   std::unique_ptr<HelperProcess> mcast_proxy_;
+  // IPv6 neighbor discovery forwarder service.
   std::unique_ptr<HelperProcess> nd_proxy_;
+  // Traffic counter service.
   std::unique_ptr<CountersService> counters_svc_;
+  // L2 neighbor monitor service.
   std::unique_ptr<NetworkMonitorService> network_monitor_svc_;
-
+  // IPv4 prefix and address manager.
   AddressManager addr_mgr_;
 
   // |cached_feature_enabled| stores the cached result of if a feature should be
   // enabled.
   static std::map<const std::string, bool> cached_feature_enabled_;
-
-  std::unique_ptr<Datapath> datapath_;
 
   // TODO(b/174538233) Introduce ForwardingGroup to properly track the state of
   // traffic forwarding (ndproxy, multicast) between upstream devices managed by

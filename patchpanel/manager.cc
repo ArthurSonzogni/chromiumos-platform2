@@ -31,6 +31,7 @@
 #include "patchpanel/guest_type.h"
 #include "patchpanel/ipc.pb.h"
 #include "patchpanel/mac_address_generator.h"
+#include "patchpanel/metrics.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/scoped_ns.h"
@@ -79,6 +80,11 @@ void FillDeviceProto(const Device& virtual_device,
   output->set_phys_ifname(virtual_device.phys_ifname());
   output->set_ipv4_addr(virtual_device.config().guest_ipv4_addr());
   output->set_host_ipv4_addr(virtual_device.config().host_ipv4_addr());
+}
+
+void RecordDbusEvent(std::unique_ptr<MetricsLibraryInterface>& metrics,
+                     DbusUmaEvent event) {
+  metrics->SendEnumToUMA(kDbusUmaEventMetrics, event);
 }
 
 }  // namespace
@@ -200,6 +206,7 @@ void Manager::InitialSetup() {
                << " object";
   }
 
+  metrics_ = std::make_unique<MetricsLibrary>();
   shill_client_ = std::make_unique<ShillClient>(bus_);
 
   using ServiceMethod =
@@ -669,6 +676,7 @@ std::unique_ptr<dbus::Response> Manager::OnGetDevices(
 std::unique_ptr<dbus::Response> Manager::OnArcStartup(
     dbus::MethodCall* method_call) {
   LOG(INFO) << "ARC++ starting up";
+  RecordDbusEvent(metrics_, DbusUmaEvent::kArcStartup);
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -688,6 +696,7 @@ std::unique_ptr<dbus::Response> Manager::OnArcStartup(
   if (!StartArc(request.pid()))
     LOG(ERROR) << "Failed to start ARC++ network service";
 
+  RecordDbusEvent(metrics_, DbusUmaEvent::kArcStartupSuccess);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
@@ -695,6 +704,7 @@ std::unique_ptr<dbus::Response> Manager::OnArcStartup(
 std::unique_ptr<dbus::Response> Manager::OnArcShutdown(
     dbus::MethodCall* method_call) {
   LOG(INFO) << "ARC++ shutting down";
+  RecordDbusEvent(metrics_, DbusUmaEvent::kArcShutdown);
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -713,6 +723,7 @@ std::unique_ptr<dbus::Response> Manager::OnArcShutdown(
 
   StopArc();
 
+  RecordDbusEvent(metrics_, DbusUmaEvent::kArcShutdownSuccess);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
@@ -720,6 +731,7 @@ std::unique_ptr<dbus::Response> Manager::OnArcShutdown(
 std::unique_ptr<dbus::Response> Manager::OnArcVmStartup(
     dbus::MethodCall* method_call) {
   LOG(INFO) << "ARCVM starting up";
+  RecordDbusEvent(metrics_, DbusUmaEvent::kArcVmStartup);
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -755,6 +767,7 @@ std::unique_ptr<dbus::Response> Manager::OnArcVmStartup(
     dev->set_guest_type(NetworkDevice::ARCVM);
   }
 
+  RecordDbusEvent(metrics_, DbusUmaEvent::kArcVmStartupSuccess);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
@@ -762,6 +775,7 @@ std::unique_ptr<dbus::Response> Manager::OnArcVmStartup(
 std::unique_ptr<dbus::Response> Manager::OnArcVmShutdown(
     dbus::MethodCall* method_call) {
   LOG(INFO) << "ARCVM shutting down";
+  RecordDbusEvent(metrics_, DbusUmaEvent::kArcVmShutdown);
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -780,6 +794,7 @@ std::unique_ptr<dbus::Response> Manager::OnArcVmShutdown(
 
   StopArcVm(request.cid());
 
+  RecordDbusEvent(metrics_, DbusUmaEvent::kArcVmShutdownSuccess);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
@@ -787,6 +802,7 @@ std::unique_ptr<dbus::Response> Manager::OnArcVmShutdown(
 std::unique_ptr<dbus::Response> Manager::OnTerminaVmStartup(
     dbus::MethodCall* method_call) {
   LOG(INFO) << "Termina VM starting up";
+  RecordDbusEvent(metrics_, DbusUmaEvent::kTerminaVmStartup);
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -837,6 +853,7 @@ std::unique_ptr<dbus::Response> Manager::OnTerminaVmStartup(
   FillSubnetProto(*termina_subnet, dev->mutable_ipv4_subnet());
   FillSubnetProto(*lxd_subnet, response.mutable_container_subnet());
 
+  RecordDbusEvent(metrics_, DbusUmaEvent::kTerminaVmStartupSuccess);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
@@ -844,6 +861,7 @@ std::unique_ptr<dbus::Response> Manager::OnTerminaVmStartup(
 std::unique_ptr<dbus::Response> Manager::OnTerminaVmShutdown(
     dbus::MethodCall* method_call) {
   LOG(INFO) << "Termina VM shutting down";
+  RecordDbusEvent(metrics_, DbusUmaEvent::kTerminaVmShutdown);
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -862,6 +880,7 @@ std::unique_ptr<dbus::Response> Manager::OnTerminaVmShutdown(
 
   StopCrosVm(request.cid(), GuestMessage::TERMINA_VM);
 
+  RecordDbusEvent(metrics_, DbusUmaEvent::kTerminaVmShutdownSuccess);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
@@ -869,6 +888,7 @@ std::unique_ptr<dbus::Response> Manager::OnTerminaVmShutdown(
 std::unique_ptr<dbus::Response> Manager::OnPluginVmStartup(
     dbus::MethodCall* method_call) {
   LOG(INFO) << "Plugin VM starting up";
+  RecordDbusEvent(metrics_, DbusUmaEvent::kPluginVmStartup);
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -910,6 +930,7 @@ std::unique_ptr<dbus::Response> Manager::OnPluginVmStartup(
   FillDeviceProto(*tap, dev);
   FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
 
+  RecordDbusEvent(metrics_, DbusUmaEvent::kPluginVmStartupSuccess);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
@@ -917,6 +938,7 @@ std::unique_ptr<dbus::Response> Manager::OnPluginVmStartup(
 std::unique_ptr<dbus::Response> Manager::OnPluginVmShutdown(
     dbus::MethodCall* method_call) {
   LOG(INFO) << "Plugin VM shutting down";
+  RecordDbusEvent(metrics_, DbusUmaEvent::kPluginVmShutdown);
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -935,12 +957,15 @@ std::unique_ptr<dbus::Response> Manager::OnPluginVmShutdown(
 
   StopCrosVm(request.id(), GuestMessage::PLUGIN_VM);
 
+  RecordDbusEvent(metrics_, DbusUmaEvent::kPluginVmShutdownSuccess);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
 
 std::unique_ptr<dbus::Response> Manager::OnSetVpnIntent(
     dbus::MethodCall* method_call) {
+  RecordDbusEvent(metrics_, DbusUmaEvent::kSetVpnIntent);
+
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
 
@@ -964,12 +989,15 @@ std::unique_ptr<dbus::Response> Manager::OnSetVpnIntent(
 
   response.set_success(success);
 
+  RecordDbusEvent(metrics_, DbusUmaEvent::kSetVpnIntentSuccess);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
 
 std::unique_ptr<dbus::Response> Manager::OnConnectNamespace(
     dbus::MethodCall* method_call) {
+  RecordDbusEvent(metrics_, DbusUmaEvent::kConnectNamespace);
+
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
 
@@ -1017,13 +1045,19 @@ std::unique_ptr<dbus::Response> Manager::OnConnectNamespace(
     return dbus_response;
   }
 
-  auto response = ConnectNamespace(std::move(client_fd), request);
+  const auto response = ConnectNamespace(std::move(client_fd), request);
+  if (!response->netns_name().empty()) {
+    RecordDbusEvent(metrics_, DbusUmaEvent::kConnectNamespaceSuccess);
+  }
+
   writer.AppendProtoAsArrayOfBytes(*response);
   return dbus_response;
 }
 
 std::unique_ptr<dbus::Response> Manager::OnGetTrafficCounters(
     dbus::MethodCall* method_call) {
+  RecordDbusEvent(metrics_, DbusUmaEvent::kGetTrafficCounters);
+
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
 
@@ -1055,12 +1089,15 @@ std::unique_ptr<dbus::Response> Manager::OnGetTrafficCounters(
     traffic_counter->set_tx_packets(counter.tx_packets);
   }
 
+  RecordDbusEvent(metrics_, DbusUmaEvent::kGetTrafficCountersSuccess);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
 
 std::unique_ptr<dbus::Response> Manager::OnModifyPortRule(
     dbus::MethodCall* method_call) {
+  RecordDbusEvent(metrics_, DbusUmaEvent::kModifyPortRule);
+
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
 
@@ -1076,13 +1113,19 @@ std::unique_ptr<dbus::Response> Manager::OnModifyPortRule(
     return dbus_response;
   }
 
-  response.set_success(datapath_->ModifyPortRule(request));
+  bool success = datapath_->ModifyPortRule(request);
+  response.set_success(success);
+  if (success) {
+    RecordDbusEvent(metrics_, DbusUmaEvent::kModifyPortRuleSuccess);
+  }
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
 
 std::unique_ptr<dbus::Response> Manager::OnSetVpnLockdown(
     dbus::MethodCall* method_call) {
+  RecordDbusEvent(metrics_, DbusUmaEvent::kSetVpnLockdown);
+
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
 
@@ -1098,12 +1141,15 @@ std::unique_ptr<dbus::Response> Manager::OnSetVpnLockdown(
     LOG(ERROR) << "Unable to parse SetVpnLockdownRequest";
   }
 
+  RecordDbusEvent(metrics_, DbusUmaEvent::kSetVpnLockdownSuccess);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
 
 std::unique_ptr<dbus::Response> Manager::OnSetDnsRedirectionRule(
     dbus::MethodCall* method_call) {
+  RecordDbusEvent(metrics_, DbusUmaEvent::kSetDnsRedirectionRule);
+
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
 
@@ -1127,7 +1173,11 @@ std::unique_ptr<dbus::Response> Manager::OnSetDnsRedirectionRule(
     return dbus_response;
   }
 
-  response.set_success(RedirectDns(std::move(client_fd), request));
+  bool success = RedirectDns(std::move(client_fd), request);
+  response.set_success(success);
+  if (success) {
+    RecordDbusEvent(metrics_, DbusUmaEvent::kSetDnsRedirectionRuleSuccess);
+  }
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
