@@ -229,7 +229,15 @@ bool CrosFpBiometricsManager::ReadRecordsForSingleUser(
   cros_dev_->SetContext(user_id);
   auto result = biod_storage_->ReadRecordsForSingleUser(user_id);
   bool all_records_valid = true;
-  for (const auto& record : result) {
+  for (auto& record : result) {
+    // Make record invalid if it doesn't contain validation value.
+    if (record.metadata.validation_val.empty()) {
+      LOG(INFO) << "Marking record " << LogSafeID(record.metadata.record_id)
+                << " as invalid because it doesn't contain"
+                << " validation value.";
+      record.valid = false;
+    }
+
     all_records_valid &= record.valid;
     if (record.valid) {
       LoadRecord(std::move(record));
