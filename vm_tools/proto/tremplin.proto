@@ -8,7 +8,8 @@ option cc_enable_arenas = true;
 
 // This file defines services for tremplin, the container springboard service.
 package vm_tools.tremplin;
-option go_package = "tremplin_proto";
+
+option go_package = "chromiumos/vm_tools/tremplin_proto";
 
 // This needs to be duplicated because the gyp rule for building
 // go code makes it difficult to have imports.

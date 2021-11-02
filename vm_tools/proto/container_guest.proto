@@ -10,6 +10,8 @@ option cc_enable_arenas = true;
 // will be used by the host.
 package vm_tools.container;
 
+option go_package = "chromiumos/vm_tools/container_proto";
+
 // Request protobuf for launching an application in the container.
 message LaunchApplicationRequest {
   // Display scaling of the app windows.

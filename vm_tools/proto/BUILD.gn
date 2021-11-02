@@ -7,6 +7,7 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":common-protos",
+    ":common-goprotos",
     ":container-rpcs",
     ":fuzzer-protos",
     ":tremplin-gorpcs",
@@ -25,6 +26,14 @@ proto_library("common-protos") {
   gen_grpc = true
   sources = [ "${proto_in_dir}/common.proto" ]
   standalone = true
+}
+
+goproto_library("common-goprotos") {
+  proto_in_dir = "./"
+  proto_out_dir = "go/src/"
+  sources = [
+    "${proto_in_dir}/common.proto",
+  ]
 }
 
 proto_library("container-rpcs") {
@@ -58,10 +67,9 @@ proto_library("vm-crash-rpcs") {
 
 goproto_library("vm-crash-gorpcs") {
   proto_in_dir = "./"
-  proto_out_dir = "go/src/chromiumos/vm_tools/vm_crash"
+  proto_out_dir = "go/src/"
   gen_grpc = true
   sources = [
-    "${proto_in_dir}/common.proto",
     "${proto_in_dir}/vm_crash.proto",
   ]
 }
@@ -95,7 +103,7 @@ proto_library("tremplin-rpcs") {
 
 goproto_library("tremplin-gorpcs") {
   proto_in_dir = "./"
-  proto_out_dir = "go/src/chromiumos/vm_tools/tremplin_proto"
+  proto_out_dir = "go/src/"
   gen_grpc = true
   sources = [ "${proto_in_dir}/tremplin.proto" ]
 }
@@ -118,10 +126,9 @@ proto_library("vm-rpcs") {
 
 goproto_library("vm-gorpcs") {
   proto_in_dir = "./"
-  proto_out_dir = "go/src/chromiumos/vm_tools/vm_rpc"
+  proto_out_dir = "go/src/"
   gen_grpc = true
   sources = [
-    "${proto_in_dir}/common.proto",
     "${proto_in_dir}/vm_guest.proto",
     "${proto_in_dir}/vm_host.proto",
   ]

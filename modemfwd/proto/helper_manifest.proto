@@ -6,6 +6,8 @@ syntax = "proto3";
 
 package modemfwd;
 
+option go_package = "chromiumos/modemfwd";
+
 message HelperEntry {
   string filename = 1;
   repeated string device_id = 2;

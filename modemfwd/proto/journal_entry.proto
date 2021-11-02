@@ -6,6 +6,8 @@ syntax = "proto3";
 
 package modemfwd;
 
+option go_package = "chromiumos/modemfwd";
+
 enum JournalEntryType {
   UNKNOWN = 0;
   MAIN = 1;

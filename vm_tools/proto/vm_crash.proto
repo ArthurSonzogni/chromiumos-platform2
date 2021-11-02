@@ -7,7 +7,8 @@ syntax = "proto3";
 option cc_enable_arenas = true;
 
 package vm_tools.cicerone;
-option go_package = "vm_crash";
+
+option go_package = "chromiumos/vm_tools/vm_crash";
 
 import "common.proto";
 

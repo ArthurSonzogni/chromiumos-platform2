@@ -36,7 +36,7 @@ proto_library("wilco_dtc_grpc_protos") {
 # Generates go proto and gRPC definitions.
 goproto_library("wilco_dtc_go_grpc_protos") {
   proto_in_dir = "."
-  proto_out_dir = "go/src/chromiumos/wilco_dtc/"
+  proto_out_dir = "go/src/"
   gen_grpc = true
   sources = [
     "wilco_dtc.proto",

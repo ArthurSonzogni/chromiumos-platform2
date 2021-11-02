@@ -6,6 +6,8 @@ syntax = "proto3";
 
 package modemfwd;
 
+option go_package = "chromiumos/modemfwd";
+
 // For Compression. Will be moved when manifest v1 is removed.
 import "firmware_manifest.proto";
 

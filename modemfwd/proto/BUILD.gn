@@ -23,7 +23,7 @@ proto_library("modemfw-protos") {
 
 goproto_library("modemfw-goprotos") {
   proto_in_dir = "."
-  proto_out_dir = "go/src/chromiumos/modemfwd"
+  proto_out_dir = "go/src/"
   sources = [
     "${proto_in_dir}/firmware_manifest.proto",
     "${proto_in_dir}/firmware_manifest_v2.proto",
