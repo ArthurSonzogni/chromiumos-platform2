@@ -44,30 +44,8 @@ using testing::ReturnRef;
 class CrosFpBiometricsManagerPeer {
  public:
   CrosFpBiometricsManagerPeer(
-      std::unique_ptr<MockCrosFpRecordManager> mock_record_manager,
-      std::unique_ptr<MockCrosFpDevice> mock_cros_dev) {
-    dbus::Bus::Options options;
-    options.bus_type = dbus::Bus::SYSTEM;
-    const auto mock_bus = base::MakeRefCounted<dbus::MockBus>(options);
-
-    // Set EXPECT_CALL, otherwise gmock forces an failure due to "uninteresting
-    // call" because we use StrictMock.
-    // https://github.com/google/googletest/blob/fb49e6c164490a227bbb7cf5223b846c836a0305/googlemock/docs/cook_book.md#the-nice-the-strict-and-the-naggy-nicestrictnaggy
-    const auto power_manager_proxy =
-        base::MakeRefCounted<dbus::MockObjectProxy>(
-            mock_bus.get(), power_manager::kPowerManagerServiceName,
-            dbus::ObjectPath(power_manager::kPowerManagerServicePath));
-    EXPECT_CALL(*mock_bus,
-                GetObjectProxy(
-                    power_manager::kPowerManagerServiceName,
-                    dbus::ObjectPath(power_manager::kPowerManagerServicePath)))
-        .WillOnce(testing::Return(power_manager_proxy.get()));
-
-    cros_fp_biometrics_manager_ = std::make_unique<CrosFpBiometricsManager>(
-        PowerButtonFilter::Create(mock_bus), std::move(mock_cros_dev),
-        std::make_unique<metrics::MockBiodMetrics>(),
-        std::move(mock_record_manager));
-  }
+      std::unique_ptr<CrosFpBiometricsManager> cros_fp_biometrics_manager)
+      : cros_fp_biometrics_manager_(std::move(cros_fp_biometrics_manager)) {}
 
   // Methods to execute CrosFpBiometricsManager private methods.
 
@@ -89,14 +67,29 @@ class CrosFpBiometricsManagerPeer {
   }
 
  private:
-  base::test::TaskEnvironment task_environment_{
-      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   std::unique_ptr<CrosFpBiometricsManager> cros_fp_biometrics_manager_;
 };
 
 class CrosFpBiometricsManagerTest : public ::testing::Test {
  public:
   CrosFpBiometricsManagerTest() {
+    dbus::Bus::Options options;
+    options.bus_type = dbus::Bus::SYSTEM;
+    const auto mock_bus = base::MakeRefCounted<dbus::MockBus>(options);
+
+    // Set EXPECT_CALL, otherwise gmock forces an failure due to "uninteresting
+    // call" because we use StrictMock.
+    // https://github.com/google/googletest/blob/fb49e6c164490a227bbb7cf5223b846c836a0305/googlemock/docs/cook_book.md#the-nice-the-strict-and-the-naggy-nicestrictnaggy
+    const auto power_manager_proxy =
+        base::MakeRefCounted<dbus::MockObjectProxy>(
+            mock_bus.get(), power_manager::kPowerManagerServiceName,
+            dbus::ObjectPath(power_manager::kPowerManagerServicePath));
+    EXPECT_CALL(*mock_bus,
+                GetObjectProxy(
+                    power_manager::kPowerManagerServiceName,
+                    dbus::ObjectPath(power_manager::kPowerManagerServicePath)))
+        .WillOnce(testing::Return(power_manager_proxy.get()));
+
     auto mock_cros_dev = std::make_unique<MockCrosFpDevice>();
     // Keep a pointer to the fake device to manipulate it later.
     mock_cros_dev_ = mock_cros_dev.get();
@@ -109,14 +102,21 @@ class CrosFpBiometricsManagerTest : public ::testing::Test {
     EXPECT_CALL(*mock_cros_dev_, SupportsPositiveMatchSecret())
         .WillRepeatedly(Return(true));
 
-    cros_fp_biometrics_manager_peer_.emplace(std::move(mock_record_manager),
-                                             std::move(mock_cros_dev));
+    auto cros_fp_biometrics_manager = std::make_unique<CrosFpBiometricsManager>(
+        PowerButtonFilter::Create(mock_bus), std::move(mock_cros_dev),
+        std::make_unique<metrics::MockBiodMetrics>(),
+        std::move(mock_record_manager));
+    cros_fp_biometrics_manager_ = cros_fp_biometrics_manager.get();
+
+    cros_fp_biometrics_manager_peer_.emplace(
+        std::move(cros_fp_biometrics_manager));
   }
 
  protected:
   std::optional<CrosFpBiometricsManagerPeer> cros_fp_biometrics_manager_peer_;
   MockCrosFpRecordManager* mock_record_manager_;
   MockCrosFpDevice* mock_cros_dev_;
+  CrosFpBiometricsManager* cros_fp_biometrics_manager_;
 };
 
 TEST_F(CrosFpBiometricsManagerTest, TestComputeValidationValue) {
