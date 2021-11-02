@@ -154,6 +154,7 @@ if (use.test) {
       "system/runtime_probe_client_test.cc",
       "system/shill_client_test.cc",
       "system/tpm_manager_client_test.cc",
+      "utils/cbi_utils_test.cc",
       "utils/cmd_utils_test.cc",
       "utils/cros_config_utils_test.cc",
       "utils/fake_hardware_verifier_utils.cc",

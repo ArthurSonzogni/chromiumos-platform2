@@ -4,14 +4,17 @@
 
 #include "rmad/utils/cbi_utils_impl.h"
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/logging.h>
-#include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <re2/re2.h>
+
+#include "rmad/utils/cmd_utils_impl.h"
 
 namespace rmad {
 
@@ -25,14 +28,21 @@ constexpr int kCbiTagDramPartNum = 3;
 
 }  // namespace
 
+CbiUtilsImpl::CbiUtilsImpl() {
+  cmd_utils_ = std::make_unique<CmdUtilsImpl>();
+}
+
+CbiUtilsImpl::CbiUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils)
+    : cmd_utils_(std::move(cmd_utils)) {}
+
 bool CbiUtilsImpl::GetSku(uint64_t* sku) const {
-  DCHECK(sku);
+  CHECK(sku);
 
   return GetCbi(kCbiTagSkuId, sku);
 }
 
 bool CbiUtilsImpl::GetDramPartNum(std::string* dram_part_num) const {
-  DCHECK(dram_part_num);
+  CHECK(dram_part_num);
 
   return GetCbi(kCbiTagDramPartNum, dram_part_num);
 }
@@ -63,7 +73,7 @@ bool CbiUtilsImpl::SetCbi(int tag, const std::string& value, int set_flag) {
                                 "0",
                                 base::NumberToString(set_flag)};
   static std::string unused_output;
-  return base::GetAppOutput(argv, &unused_output);
+  return cmd_utils_->GetOutput(argv, &unused_output);
 }
 
 bool CbiUtilsImpl::GetCbi(int tag, std::string* value, int get_flag) const {
@@ -72,7 +82,7 @@ bool CbiUtilsImpl::GetCbi(int tag, std::string* value, int get_flag) const {
   std::vector<std::string> argv{kEctoolCmdPath, "cbi", "get",
                                 base::NumberToString(tag),
                                 base::NumberToString(get_flag)};
-  if (!base::GetAppOutput(argv, value)) {
+  if (!cmd_utils_->GetOutput(argv, value)) {
     return false;
   }
 
@@ -93,7 +103,7 @@ bool CbiUtilsImpl::SetCbi(int tag, uint64_t value, int size, int set_flag) {
                                 base::NumberToString(size),
                                 base::NumberToString(set_flag)};
   static std::string unused_output;
-  return base::GetAppOutput(argv, &unused_output);
+  return cmd_utils_->GetOutput(argv, &unused_output);
 }
 
 bool CbiUtilsImpl::GetCbi(int tag, uint64_t* value, int get_flag) const {
@@ -103,7 +113,7 @@ bool CbiUtilsImpl::GetCbi(int tag, uint64_t* value, int get_flag) const {
                                 base::NumberToString(tag),
                                 base::NumberToString(get_flag)};
   std::string output;
-  if (!base::GetAppOutput(argv, &output)) {
+  if (!cmd_utils_->GetOutput(argv, &output)) {
     return false;
   }
 
