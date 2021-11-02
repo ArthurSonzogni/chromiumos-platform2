@@ -27,12 +27,20 @@ class MockVpdUtils : public VpdUtils {
               GetCalibbias,
               (const std::vector<std::string>&, std::vector<int>*),
               (const, override));
+  MOCK_METHOD(bool,
+              GetRegistrationCode,
+              (std::string*, std::string*),
+              (const, override));
   MOCK_METHOD(bool, SetSerialNumber, (const std::string&), (override));
   MOCK_METHOD(bool, SetWhitelabelTag, (const std::string&), (override));
   MOCK_METHOD(bool, SetRegion, (const std::string&), (override));
   MOCK_METHOD(bool,
               SetCalibbias,
               ((const std::map<std::string, int>&)),
+              (override));
+  MOCK_METHOD(bool,
+              SetRegistrationCode,
+              (const std::string&, const std::string&),
               (override));
   MOCK_METHOD(bool, FlushOutRoVpdCache, (), (override));
   MOCK_METHOD(bool, FlushOutRwVpdCache, (), (override));

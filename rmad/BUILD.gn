@@ -161,6 +161,7 @@ if (use.test) {
       "utils/iio_sensor_probe_utils_impl_test.cc",
       "utils/json_store_test.cc",
       "utils/regions_utils_impl_test.cc",
+      "utils/vpd_utils_test.cc",
     ]
     configs += [
       "//common-mk:test",

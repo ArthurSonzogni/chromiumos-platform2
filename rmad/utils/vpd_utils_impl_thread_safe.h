@@ -39,9 +39,10 @@ class VpdUtilsImplThreadSafe
   bool FlushOutRoVpdCache() override;
   bool FlushOutRwVpdCache() override;
 
+ protected:
   friend base::RefCountedThreadSafe<VpdUtilsImplThreadSafe>;
   // Refcounted object must have destructor declared protected or private.
-  ~VpdUtilsImplThreadSafe() = default;
+  ~VpdUtilsImplThreadSafe() override = default;
 
  private:
   mutable base::Lock lock_;

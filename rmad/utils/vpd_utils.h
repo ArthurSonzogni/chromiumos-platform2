@@ -31,6 +31,10 @@ class VpdUtils {
   virtual bool GetCalibbias(const std::vector<std::string>& entries,
                             std::vector<int>* calibbias) const = 0;
 
+  // Get the registration codes from vpd.
+  virtual bool GetRegistrationCode(std::string* ubind,
+                                   std::string* gbind) const = 0;
+
   // Save the serial number in the cache until flush is called and set to vpd.
   // Return true if it succeeds, otherwise return false.
   virtual bool SetSerialNumber(const std::string& serial_number) = 0;
@@ -47,6 +51,10 @@ class VpdUtils {
   // called and set to vpd.
   // Return true if it succeeds, otherwise return false.
   virtual bool SetCalibbias(const std::map<std::string, int>& calibbias) = 0;
+
+  // Save the registration codes.
+  virtual bool SetRegistrationCode(const std::string& ubind,
+                                   const std::string& gbind) = 0;
 
   // Since setting the value to vpd requires a lot of overhead, we cache all
   // (key, value) pairs and then flush it all at once.

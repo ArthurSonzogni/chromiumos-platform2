@@ -4,13 +4,15 @@
 
 #include "rmad/utils/vpd_utils_impl.h"
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/logging.h>
 #include <base/process/launch.h>
 
-namespace rmad {
+#include "rmad/utils/cmd_utils_impl.h"
 
 namespace {
 
@@ -19,8 +21,19 @@ const char kVpdCmdPath[] = "/usr/sbin/vpd";
 constexpr char kVpdKeySerialNumber[] = "serial_number";
 constexpr char kVpdKeyWhitelabelTag[] = "whitelabel_tag";
 constexpr char kVpdKeyRegion[] = "region";
+constexpr char kVpdKeyUbindAttribute[] = "ubind_attribute";
+constexpr char kVpdKeyGbindAttribute[] = "gbind_attribute";
 
 }  // namespace
+
+namespace rmad {
+
+VpdUtilsImpl::VpdUtilsImpl() : VpdUtils() {
+  cmd_utils_ = std::make_unique<CmdUtilsImpl>();
+}
+
+VpdUtilsImpl::VpdUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils)
+    : VpdUtils(), cmd_utils_(std::move(cmd_utils)) {}
 
 // We flush all caches into
 VpdUtilsImpl::~VpdUtilsImpl() {
@@ -67,7 +80,22 @@ bool VpdUtilsImpl::GetCalibbias(const std::vector<std::string>& entries,
   }
 
   *calibbias = values;
+  return true;
+}
 
+bool VpdUtilsImpl::GetRegistrationCode(std::string* ubind,
+                                       std::string* gbind) const {
+  CHECK(ubind);
+  CHECK(gbind);
+
+  std::string temp_ubind, temp_gbind;
+  if (!GetRwVpd(kVpdKeyUbindAttribute, &temp_ubind) ||
+      !GetRwVpd(kVpdKeyGbindAttribute, &temp_gbind)) {
+    return false;
+  }
+
+  *ubind = temp_ubind;
+  *gbind = temp_gbind;
   return true;
 }
 
@@ -91,6 +119,13 @@ bool VpdUtilsImpl::SetCalibbias(const std::map<std::string, int>& calibbias) {
     cache_ro_[key] = base::NumberToString(value);
   }
 
+  return true;
+}
+
+bool VpdUtilsImpl::SetRegistrationCode(const std::string& ubind,
+                                       const std::string& gbind) {
+  cache_rw_[kVpdKeyUbindAttribute] = ubind;
+  cache_rw_[kVpdKeyGbindAttribute] = gbind;
   return true;
 }
 
@@ -124,7 +159,7 @@ bool VpdUtilsImpl::SetRoVpd(
   }
 
   static std::string unused_output;
-  if (!base::GetAppOutput(argv, &unused_output)) {
+  if (!cmd_utils_->GetOutput(argv, &unused_output)) {
     LOG(ERROR) << "Failed to flush " << log_msg << "into RO_PVD.";
     return false;
   }
@@ -139,7 +174,7 @@ bool VpdUtilsImpl::GetRoVpd(const std::string& key, std::string* value) const {
   }
 
   std::vector<std::string> argv{kVpdCmdPath, "-i", "RO_VPD", "-g", key};
-  return base::GetAppOutput(argv, value);
+  return cmd_utils_->GetOutput(argv, value);
 }
 
 bool VpdUtilsImpl::SetRwVpd(
@@ -154,7 +189,7 @@ bool VpdUtilsImpl::SetRwVpd(
   }
 
   static std::string unused_output;
-  if (!base::GetAppOutput(argv, &unused_output)) {
+  if (!cmd_utils_->GetOutput(argv, &unused_output)) {
     LOG(ERROR) << "Failed to flush " << log_msg << "into RW_PVD.";
     return false;
   }
@@ -169,7 +204,7 @@ bool VpdUtilsImpl::GetRwVpd(const std::string& key, std::string* value) const {
   }
 
   std::vector<std::string> argv{kVpdCmdPath, "-i", "RW_VPD", "-g", key};
-  return base::GetAppOutput(argv, value);
+  return cmd_utils_->GetOutput(argv, value);
 }
 
 }  // namespace rmad

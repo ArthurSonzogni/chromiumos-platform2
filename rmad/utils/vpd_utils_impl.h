@@ -8,8 +8,11 @@
 #include "rmad/utils/vpd_utils.h"
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
+
+#include "rmad/utils/cmd_utils.h"
 
 namespace rmad {
 
@@ -18,18 +21,23 @@ namespace rmad {
 // as root.
 class VpdUtilsImpl : public VpdUtils {
  public:
-  VpdUtilsImpl() = default;
-  ~VpdUtilsImpl();
+  VpdUtilsImpl();
+  explicit VpdUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils);
+  ~VpdUtilsImpl() override;
 
   bool GetSerialNumber(std::string* serial_number) const override;
   bool GetWhitelabelTag(std::string* whitelabel_tag) const override;
   bool GetRegion(std::string* region) const override;
   bool GetCalibbias(const std::vector<std::string>& entries,
                     std::vector<int>* calibbias) const override;
+  bool GetRegistrationCode(std::string* ubind,
+                           std::string* gbind) const override;
   bool SetSerialNumber(const std::string& serial_number) override;
   bool SetWhitelabelTag(const std::string& whitelabel_tag) override;
   bool SetRegion(const std::string& region) override;
   bool SetCalibbias(const std::map<std::string, int>& calibbias) override;
+  bool SetRegistrationCode(const std::string& ubind,
+                           const std::string& gbind) override;
   bool FlushOutRoVpdCache() override;
   bool FlushOutRwVpdCache() override;
 
@@ -46,6 +54,8 @@ class VpdUtilsImpl : public VpdUtils {
   std::map<std::string, std::string> cache_ro_;
   // RW VPD
   std::map<std::string, std::string> cache_rw_;
+
+  std::unique_ptr<CmdUtils> cmd_utils_;
 };
 
 }  // namespace rmad
