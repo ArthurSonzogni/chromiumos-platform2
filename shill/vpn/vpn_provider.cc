@@ -40,6 +40,14 @@ static std::string ObjectID(const VPNProvider* v) {
 
 namespace {
 
+#if !defined(DISABLE_VPN)
+// b/204261554: Temporary VPN types for the two drivers of L2TP/IPsec. Will only
+// be used in the tast tests. Can be removed after the swanctl migration is
+// done.
+constexpr char kProviderL2tpIpsecStroke[] = "l2tpipsec-stroke";
+constexpr char kProviderL2tpIpsecSwanctl[] = "l2tpipsec-swanctl";
+#endif
+
 // Populates |type_ptr|, |name_ptr| and |host_ptr| with the appropriate
 // values from |args|.  Returns True on success, otherwise if any of
 // these arguments are not available, |error| is populated and False is
@@ -237,6 +245,13 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const std::string& type,
       driver.reset(
           new L2TPIPsecDriver(manager_, ProcessManager::GetInstance()));
     }
+  } else if (type == kProviderL2tpIpsecStroke) {
+    // Only used in the tast tests.
+    driver.reset(new L2TPIPsecDriver(manager_, ProcessManager::GetInstance()));
+  } else if (type == kProviderL2tpIpsecSwanctl) {
+    // Only used in the tast tests.
+    driver.reset(
+        new NewL2TPIPsecDriver(manager_, ProcessManager::GetInstance()));
   } else if (type == kProviderThirdPartyVpn) {
     // For third party VPN host contains extension ID
     driver.reset(
