@@ -98,9 +98,10 @@ void StateHandlerManager::RegisterFakeStateHandlers() {
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeWriteProtectDisableMethodStateHandler>(
           json_store_));
-  // TODO(chenghan): Use fake state handlers.
   RegisterStateHandler(
-      base::MakeRefCounted<WriteProtectDisableRsuStateHandler>(json_store_));
+      base::MakeRefCounted<fake::FakeWriteProtectDisableRsuStateHandler>(
+          json_store_, test_dir_path));
+  // TODO(chenghan): Use fake state handlers.
   RegisterStateHandler(
       base::MakeRefCounted<WriteProtectDisablePhysicalStateHandler>(
           json_store_));

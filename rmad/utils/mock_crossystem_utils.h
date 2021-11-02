@@ -17,7 +17,7 @@ namespace rmad {
 class MockCrosSystemUtils : public CrosSystemUtils {
  public:
   MockCrosSystemUtils() = default;
-  ~MockCrosSystemUtils() = default;
+  ~MockCrosSystemUtils() override = default;
 
   MOCK_METHOD(bool, SetInt, (const std::string&, int), (override));
   MOCK_METHOD(bool, GetInt, (const std::string&, int*), (const, override));

@@ -478,6 +478,13 @@ void RmadInterfaceImpl::MonitorTestRequests() {
     base::DeleteFile(reboot_request_file_path);
     power_manager_client_->Restart();
   }
+  // Check if shutdown is requested.
+  const base::FilePath shutdown_request_file_path =
+      test_dir_path.AppendASCII(fake::kShutdownRequestFilePath);
+  if (base::PathExists(shutdown_request_file_path)) {
+    base::DeleteFile(shutdown_request_file_path);
+    power_manager_client_->Shutdown();
+  }
 }
 
 }  // namespace rmad

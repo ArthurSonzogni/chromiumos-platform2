@@ -9,7 +9,15 @@
 
 #include <memory>
 
+#include <base/files/file_path.h>
 #include <base/timer/timer.h>
+
+#include "rmad/system/power_manager_client.h"
+#include "rmad/utils/cr50_utils.h"
+#include "rmad/utils/crossystem_utils.h"
+#include "rmad/utils/dbus_utils.h"
+#include "rmad/utils/fake_cr50_utils.h"
+#include "rmad/utils/fake_crossystem_utils.h"
 
 namespace rmad {
 
@@ -51,6 +59,21 @@ class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
   std::unique_ptr<PowerManagerClient> power_manager_client_;
   base::OneShotTimer timer_;
 };
+
+namespace fake {
+
+class FakeWriteProtectDisableRsuStateHandler
+    : public WriteProtectDisableRsuStateHandler {
+ public:
+  FakeWriteProtectDisableRsuStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      const base::FilePath& working_dir_path);
+
+ protected:
+  ~FakeWriteProtectDisableRsuStateHandler() override = default;
+};
+
+}  // namespace fake
 
 }  // namespace rmad
 

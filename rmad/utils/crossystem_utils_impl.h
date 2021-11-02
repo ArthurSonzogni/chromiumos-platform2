@@ -11,10 +11,12 @@
 
 namespace rmad {
 
+// The implementation directly calls crossystem functions, so we don't have
+// unittest for the class.
 class CrosSystemUtilsImpl : public CrosSystemUtils {
  public:
   CrosSystemUtilsImpl() = default;
-  ~CrosSystemUtilsImpl() = default;
+  ~CrosSystemUtilsImpl() override = default;
 
   bool SetInt(const std::string& key, int value) override;
   bool GetInt(const std::string& key, int* value) const override;

@@ -41,6 +41,7 @@ pkg_config("target_defaults") {
 static_library("libsystem") {
   sources = [
     "system/cryptohome_client_impl.cc",
+    "system/fake_power_manager_client.cc",
     "system/fake_runtime_probe_client.cc",
     "system/fake_tpm_manager_client.cc",
     "system/power_manager_client_impl.cc",
@@ -62,6 +63,7 @@ static_library("libutils") {
     "utils/crossystem_utils_impl.cc",
     "utils/dbus_utils.cc",
     "utils/fake_cr50_utils.cc",
+    "utils/fake_crossystem_utils.cc",
     "utils/fake_hardware_verifier_utils.cc",
     "utils/gyroscope_calibration_utils_impl.cc",
     "utils/hardware_verifier_utils_impl.cc",
@@ -164,6 +166,7 @@ if (use.test) {
       "utils/cmd_utils_test.cc",
       "utils/cr50_utils_test.cc",
       "utils/cros_config_utils_test.cc",
+      "utils/crossystem_utils_test.cc",
       "utils/dbus_utils_test.cc",
       "utils/iio_sensor_probe_utils_impl_test.cc",
       "utils/json_store_test.cc",

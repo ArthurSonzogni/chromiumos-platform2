@@ -50,6 +50,7 @@ inline constexpr std::array<RmadComponent, 2> kComponentsNeedAutoCalibration = {
 namespace fake {
 
 inline constexpr char kRebootRequestFilePath[] = "reboot_request";
+inline constexpr char kShutdownRequestFilePath[] = "shutdown_request";
 
 inline constexpr char kRoVerificationStatusFilePath[] =
     "ro_verification_status";
@@ -59,6 +60,7 @@ inline constexpr char kHwwpDisabledFilePath[] =
     "hardware_write_protect_disabled";
 inline constexpr char kFactoryModeEnabledFilePath[] = "factory_mode_enabled";
 inline constexpr char kBlockCcdFilePath[] = "block_ccd";
+inline constexpr char kCrosSystemFilePath[] = "crossystem";
 
 }  // namespace fake
 
