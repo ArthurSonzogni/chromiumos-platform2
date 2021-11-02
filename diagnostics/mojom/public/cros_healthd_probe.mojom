@@ -711,7 +711,7 @@ union NetworkResult {
 union NetworkInterfaceResult {
   // Valid network interfaces.
   array<NetworkInterfaceInfo> network_interface_info;
-  // Error occured while fetching network interface data.
+  // Error occurred while fetching network interface data.
   ProbeError error;
 };
 
