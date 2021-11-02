@@ -375,7 +375,7 @@ properties:
                       description: Subdirectory for model-specific configuration.
                       type: string
                     disable-profile:
-                      description: Optional --disable_profile parameter for CRAS deamon.
+                      description: Optional --disable_profile parameter for CRAS daemon.
                       type: string
                     ucm-suffix:
                       description: Optional UCM suffix used to determine model specific
