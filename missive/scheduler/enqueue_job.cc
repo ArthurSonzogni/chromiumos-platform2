@@ -11,6 +11,8 @@
 #include <base/bind_post_task.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/task/task_traits.h>
+#include <base/task/thread_pool.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 
 #include "missive/proto/interface.pb.h"

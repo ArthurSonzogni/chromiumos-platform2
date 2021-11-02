@@ -27,8 +27,6 @@ class EnqueueJob : public Scheduler::Job {
             response);
 
    private:
-    friend Scheduler::Job;
-
     Status Complete() override;
     Status Cancel(Status status) override;
 

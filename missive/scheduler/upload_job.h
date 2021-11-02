@@ -40,8 +40,6 @@ class UploadJob : public Scheduler::Job {
     SetRecordsCb GetSetRecordsCb();
 
    private:
-    friend Scheduler::Job;
-
     Status Complete() override;
     Status Cancel(Status status) override;
 

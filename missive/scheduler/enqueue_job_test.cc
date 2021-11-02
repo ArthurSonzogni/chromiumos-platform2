@@ -10,6 +10,8 @@
 
 #include <base/bind.h>
 #include <base/run_loop.h>
+#include <base/task/task_traits.h>
+#include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/mock_dbus_method_response.h>

@@ -12,9 +12,11 @@
 #include <base/callback.h>
 #include <base/callback_helpers.h>
 #include <base/memory/ptr_util.h>
-#include <base/sequenced_task_runner.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
+#include <base/sequenced_task_runner.h>
+#include <base/task/task_traits.h>
+#include <base/task/thread_pool.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 
 #include "missive/dbus/upload_client.h"
@@ -139,7 +141,6 @@ StatusOr<Scheduler::Job::SmartPtr<UploadJob>> UploadJob::Create(
 }
 
 void UploadJob::StartImpl() {
-  DCHECK(base::SequencedTaskRunnerHandle::IsSet());
   std::move(start_cb_).Run(std::make_unique<RecordProcessor>(base::BindPostTask(
       sequenced_task_runner(),
       base::BindOnce(&UploadJob::Done, weak_ptr_factory_.GetWeakPtr()))));
