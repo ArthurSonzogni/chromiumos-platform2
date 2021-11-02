@@ -796,8 +796,10 @@ void SlotManagerImpl::UnloadToken(const SecureBlob& isolate_credential,
     return;
   }
   int slot_id = path_slot_map_[path];
-  if (!IsTokenAccessible(isolate_credential, slot_id))
+  if (!IsTokenAccessible(isolate_credential, slot_id)) {
     LOG(WARNING) << "Attempted to unload token with invalid isolate credential";
+    return;
+  }
 
   // Wait for initialization to be finished before cleaning up.
   if (slot_list_[slot_id].worker_thread.get())
