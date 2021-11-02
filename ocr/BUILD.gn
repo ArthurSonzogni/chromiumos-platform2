@@ -15,6 +15,9 @@ group("all") {
   if (use.test) {
     deps += [ ":ocr_service_test" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":ocr_service_fuzzer" ]
+  }
 }
 
 generate_mojom_bindings("ocr_mojo_bindings") {
@@ -78,5 +81,16 @@ if (use.test) {
       ":libocr",
       "//common-mk/testrunner:testrunner",
     ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("ocr_service_fuzzer") {
+    sources = [ "ocr_service_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    deps = [ ":libocr" ]
   }
 }
