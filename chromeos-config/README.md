@@ -484,6 +484,7 @@ In the tables below,
 | disable-profile | string |  | False |  | False | Optional --disable_profile parameter for CRAS daemon. |
 | files | array - [files](#files) |  | False |  | True |  |
 | sound-card-init-conf | string |  | False |  | False | Optional model specific config filename for sound_card_init. |
+| speaker-amp | string |  | False |  | False | Specifies the name of the speaker amplifier on the device. |
 | ucm-suffix | string |  | False |  | False | Optional UCM suffix used to determine model specific config. |
 
 ### files

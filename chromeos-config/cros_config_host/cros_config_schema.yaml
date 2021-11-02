@@ -384,6 +384,9 @@ properties:
                     sound-card-init-conf:
                       description: Optional model specific config filename for sound_card_init.
                       type: string
+                    speaker-amp:
+                      description: Specifies the name of the speaker amplifier on the device.
+                      type: string
                     files:
                       type: array
                       build-only-element: true
