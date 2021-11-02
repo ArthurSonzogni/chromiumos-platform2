@@ -85,6 +85,18 @@ class TPMUtilityMock : public TPMUtility {
                     const std::string&,
                     std::string*));
   MOCK_METHOD0(IsSRKReady, bool());
+  MOCK_METHOD5(SealData,
+               bool(int,
+                    const std::string&,
+                    const brillo::SecureBlob& auth_value,
+                    std::string*,
+                    std::string*));
+  MOCK_METHOD5(UnsealData,
+               bool(int,
+                    const std::string&,
+                    const std::string&,
+                    const brillo::SecureBlob& auth_value,
+                    brillo::SecureBlob*));
 };
 
 }  // namespace chaps

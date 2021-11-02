@@ -118,6 +118,16 @@ class TPM2UtilityImpl : public TPMUtility {
             const std::string& input,
             std::string* signature) override;
   bool IsSRKReady() override;
+  bool SealData(int slot_id,
+                const std::string& unsealed_data,
+                const brillo::SecureBlob& auth_value,
+                std::string* key_blob,
+                std::string* encrypted_data) override;
+  bool UnsealData(int slot_id,
+                  const std::string& key_blob,
+                  const std::string& encrypted_data,
+                  const brillo::SecureBlob& auth_value,
+                  brillo::SecureBlob* unsealed_data) override;
 
   // Convert the RSA Key in the specified in |public_data| to the openssl RSA
   // object and return it if successful, otherwise, nullptr is returned.

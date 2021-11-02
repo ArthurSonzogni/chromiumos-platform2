@@ -138,6 +138,22 @@ class TPMUtilityStub : public TPMUtility {
   }
 
   bool IsSRKReady() override { return false; }
+
+  bool SealData(int slot_id,
+                const std::string& unsealed_data,
+                const brillo::SecureBlob& auth_value,
+                std::string* key_blob,
+                std::string* encrypted_data) override {
+    return false;
+  }
+
+  bool UnsealData(int slot_id,
+                  const std::string& key_blob,
+                  const std::string& encrypted_data,
+                  const brillo::SecureBlob& auth_value,
+                  brillo::SecureBlob* unsealed_data) override {
+    return false;
+  }
 };
 
 }  // namespace chaps

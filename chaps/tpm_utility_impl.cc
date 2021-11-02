@@ -32,6 +32,12 @@ using trousers::ScopedTssKey;
 using trousers::ScopedTssObject;
 using trousers::ScopedTssPolicy;
 
+namespace {
+constexpr int kKeySizeForSealingData = 2048;
+constexpr char kPublicExponentForSealingData[] = "\x01\x00\x01";
+constexpr int kPublicExponentForSealingDataSize = 3;
+}  // namespace
+
 namespace chaps {
 
 // TSSEncryptedData wraps a TSS encrypted data object. The underlying TSS object
@@ -974,6 +980,40 @@ bool TPMUtilityImpl::ReloadKey(int key_handle) {
     return false;
   }
   key_info->tss_handle = scoped_key.release();
+  return true;
+}
+
+bool TPMUtilityImpl::SealData(int slot_id,
+                              const std::string& unsealed_data,
+                              const brillo::SecureBlob& auth_value,
+                              std::string* key_blob,
+                              std::string* encrypted_data) {
+  // No need to lock here, because GenerateRSAKey & Bind would acquire the lock.
+  int auth_key_handle;
+  std::string public_exponent(kPublicExponentForSealingData,
+                              kPublicExponentForSealingDataSize);
+  if (!GenerateRSAKey(slot_id, kKeySizeForSealingData, public_exponent,
+                      auth_value, key_blob, &auth_key_handle)) {
+    LOG(ERROR) << "Failed to generate authentication key for sealing data.";
+    return false;
+  }
+  if (!Bind(auth_key_handle, unsealed_data, encrypted_data)) {
+    LOG(ERROR) << "Failed to bind encryption key for sealing data.";
+    return false;
+  }
+  return true;
+}
+
+bool TPMUtilityImpl::UnsealData(int slot_id,
+                                const std::string& key_blob,
+                                const std::string& encrypted_data,
+                                const brillo::SecureBlob& auth_value,
+                                brillo::SecureBlob* unsealed_data) {
+  if (!Authenticate(slot_id, auth_value, key_blob, encrypted_data,
+                    unsealed_data)) {
+    LOG(ERROR) << "Authentication failed for unsealing data.";
+    return false;
+  }
   return true;
 }
 

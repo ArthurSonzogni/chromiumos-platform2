@@ -106,6 +106,16 @@ class TPMUtilityImpl : public TPMUtility {
             const std::string& input,
             std::string* signature) override;
   bool IsSRKReady() override;
+  bool SealData(int slot_id,
+                const std::string& unsealed_data,
+                const brillo::SecureBlob& auth_value,
+                std::string* key_blob,
+                std::string* encrypted_data) override;
+  bool UnsealData(int slot_id,
+                  const std::string& key_blob,
+                  const std::string& encrypted_data,
+                  const brillo::SecureBlob& auth_value,
+                  brillo::SecureBlob* unsealed_data) override;
   // Stringifies TSS error codes.
   static std::string ResultToString(TSS_RESULT result);
 

@@ -254,6 +254,33 @@ class TPMUtility {
   // Returns true iff the Storage Root Key is initialized and ready.  The SRK is
   // expected to not be ready until ownership of the TPM has been taken.
   virtual bool IsSRKReady() = 0;
+
+  // Seals the data to TPM and wraps it with the SRK.
+  //   unsealed_data - The data that needs to be sealed.
+  //   auth_data - Authorization data which will be associated with the sealed
+  //   data. key_blob - Will be populated with the wrapped key blob as provided
+  //   by the
+  //              TPM. This should be saved so the key can be loaded again
+  //              in the future.
+  //   encrypted_data - The data that is needed to retrieve the unsealed data.
+  // Returns true on success.
+  virtual bool SealData(int slot_id,
+                        const std::string& unsealed_data,
+                        const brillo::SecureBlob& auth_value,
+                        std::string* key_blob,
+                        std::string* encrypted_data) = 0;
+
+  // Unseals the data from TPM.
+  //   key_blob - The key blob as provided by SealData.
+  //   encrypted_data - The data that is needed to retrieve the unsealed data.
+  //   auth_data - Authorization data that associated with the sealed data.
+  //   unsealed_data - The unsealed data.
+  // Returns true on success.
+  virtual bool UnsealData(int slot_id,
+                          const std::string& key_blob,
+                          const std::string& encrypted_data,
+                          const brillo::SecureBlob& auth_value,
+                          brillo::SecureBlob* unsealed_data) = 0;
 };
 
 }  // namespace chaps

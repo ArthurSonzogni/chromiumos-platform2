@@ -49,6 +49,10 @@ constexpr struct {
     {trunks::TPM_ECC_NIST_P256, NID_X9_62_prime256v1},
 };
 
+constexpr int kKeySizeForSealingData = 2048;
+constexpr char kPublicExponentForSealingData[] = "\x01\x00\x01";
+constexpr int kPublicExponentForSealingDataSize = 3;
+
 // Supported digest algorithms in TPM 2.0.
 constexpr struct {
   trunks::TPM_ALG_ID id;
@@ -345,6 +349,7 @@ bool TPM2UtilityImpl::Init() {
     return false;
   }
 #ifndef CHAPS_TPM2_USE_PER_OP_SESSIONS
+  AutoLock lock(lock_);
   result = session_->StartUnboundSession(false /* salted */,
                                          false /* enable_encryption */);
   if (result != TPM_RC_SUCCESS) {
@@ -1084,6 +1089,40 @@ bool TPM2UtilityImpl::UnbindInternal(int key_handle,
 void TPM2UtilityImpl::FlushHandle(int key_handle) {
   handle_auth_data_.erase(key_handle);
   handle_name_.erase(key_handle);
+}
+
+bool TPM2UtilityImpl::SealData(int slot_id,
+                               const std::string& unsealed_data,
+                               const brillo::SecureBlob& auth_value,
+                               std::string* key_blob,
+                               std::string* encrypted_data) {
+  // No need to lock here, because GenerateRSAKey & Bind would acquire the lock.
+  int auth_key_handle;
+  std::string public_exponent(kPublicExponentForSealingData,
+                              kPublicExponentForSealingDataSize);
+  if (!GenerateRSAKey(slot_id, kKeySizeForSealingData, public_exponent,
+                      auth_value, key_blob, &auth_key_handle)) {
+    LOG(ERROR) << "Failed to generate authentication key for sealing data.";
+    return false;
+  }
+  if (!Bind(auth_key_handle, unsealed_data, encrypted_data)) {
+    LOG(ERROR) << "Failed to bind encryption key for sealing data.";
+    return false;
+  }
+  return true;
+}
+
+bool TPM2UtilityImpl::UnsealData(int slot_id,
+                                 const std::string& key_blob,
+                                 const std::string& encrypted_data,
+                                 const brillo::SecureBlob& auth_value,
+                                 brillo::SecureBlob* unsealed_data) {
+  if (!Authenticate(slot_id, auth_value, key_blob, encrypted_data,
+                    unsealed_data)) {
+    LOG(ERROR) << "Authentication failed for unsealing data.";
+    return false;
+  }
+  return true;
 }
 
 }  // namespace chaps
