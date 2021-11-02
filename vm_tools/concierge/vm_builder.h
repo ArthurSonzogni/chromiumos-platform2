@@ -14,6 +14,7 @@
 #include <base/optional.h>
 #include <dbus/object_proxy.h>
 
+#include "vm_tools/concierge/vm_interface.h"
 #include "vm_tools/concierge/vm_util.h"
 
 namespace vm_tools {
@@ -92,6 +93,8 @@ class VmBuilder {
   // Override block size for already appended disks.
   VmBuilder& SetBlockSize(size_t block_size);
 
+  VmBuilder& SetVmMemoryId(VmMemoryId id);
+
   // Builds the command line required to start a VM.
   base::StringPairs BuildVmArgs() const;
 
@@ -138,6 +141,8 @@ class VmBuilder {
   std::vector<std::string> wayland_sockets_;
   std::vector<std::string> shared_dirs_;
   std::vector<std::vector<int32_t>> cpu_clusters_;
+
+  base::Optional<VmMemoryId> vm_memory_id_;
 
   base::StringPairs custom_params_;
 };

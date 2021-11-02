@@ -809,6 +809,35 @@ void Service::RunBalloonPolicy() {
       return;
     }
   }
+
+  std::vector<std::pair<uint32_t, BalloonStats>> balloon_stats;
+  std::vector<uint32_t> ids;
+  for (auto& vm_entry : vms_) {
+    auto& vm = vm_entry.second;
+    if (!vm->GetBalloonPolicy(*memory_margins_, vm_entry.first.name())) {
+      // Skip VMs that don't have a memory policy. It may just not be ready
+      // yet.
+      continue;
+    }
+    if (!USE_CROSVM_SIBLINGS) {
+      auto stats_opt = vm->GetBalloonStats();
+      if (stats_opt) {
+        balloon_stats.emplace_back(vm->GetInfo().vm_memory_id, *stats_opt);
+      }
+    } else {
+      ids.emplace_back(vm->GetInfo().vm_memory_id);
+    }
+  }
+
+  if (!USE_CROSVM_SIBLINGS) {
+    FinishBalloonPolicy(std::move(balloon_stats));
+  } else {
+    mms_->GetBalloonStats(ids, base::BindOnce(&Service::FinishBalloonPolicy,
+                                              weak_ptr_factory_.GetWeakPtr()));
+  }
+}
+
+void Service::FinishBalloonPolicy(TaggedBalloonStats stats) {
   const auto available_memory = GetAvailableMemory();
   if (!available_memory.has_value()) {
     return;
@@ -825,6 +854,8 @@ void Service::RunBalloonPolicy() {
       return;
     }
   }
+
+  TaggedMemoryMiBDeltas deltas;
   const auto foreground_vm_name = GameModeToForegroundVmName(*game_mode);
   for (auto& vm_entry : vms_) {
     auto& vm = vm_entry.second;
@@ -832,31 +863,42 @@ void Service::RunBalloonPolicy() {
       // Skip suspended VMs since there is no effect.
       continue;
     }
-    const std::unique_ptr<BalloonPolicyInterface>& policy =
-        vm->GetBalloonPolicy(*memory_margins_, vm_entry.first.name());
-    if (!policy) {
-      // Skip VMs that don't have a memory policy. It may just not be ready yet.
+    auto stats_iter = std::find_if(
+        stats.begin(), stats.end(),
+        [&vm](auto& pair) { return pair.first == vm->GetInfo().vm_memory_id; });
+    if (stats_iter == stats.end()) {
+      // Stats not available. Skip running policies.
       continue;
     }
+    BalloonStats stats = stats_iter->second;
+    const std::unique_ptr<BalloonPolicyInterface>& policy =
+        vm->GetBalloonPolicy(*memory_margins_, vm_entry.first.name());
 
     // Switch available memory for this VM based on the current game mode.
     bool is_in_game_mode = foreground_vm_name.has_value() &&
                            vm_entry.first.name() == foreground_vm_name;
     const int64_t available_memory_for_vm =
         is_in_game_mode ? *foreground_available_memory : *available_memory;
-    auto stats_opt = vm->GetBalloonStats();
-    if (!stats_opt) {
-      // Stats not available. Skip running policies.
-      continue;
-    }
-    BalloonStats stats = *stats_opt;
 
     int64_t delta = policy->ComputeBalloonDelta(
         stats, available_memory_for_vm, is_in_game_mode, vm_entry.first.name());
-    int64_t target = std::max(INT64_C(0), stats.balloon_actual + delta);
-    if (target != stats.balloon_actual) {
-      vm->SetBalloonSize(target);
+
+    if (!USE_CROSVM_SIBLINGS) {
+      int64_t target = std::max(INT64_C(0), stats.balloon_actual + delta);
+      if (target != stats.balloon_actual) {
+        vm->SetBalloonSize(target);
+      }
+    } else {
+      if (delta)
+        deltas.emplace_back(vm->GetInfo().vm_memory_id, delta);
     }
+  }
+
+  if (USE_CROSVM_SIBLINGS && !deltas.empty()) {
+    mms_->RebalanceMemory(std::move(deltas), base::BindOnce([](bool success) {
+                            if (!success)
+                              LOG(ERROR) << "Failed to fully rebalance memory";
+                          }));
   }
 }
 
@@ -1152,12 +1194,17 @@ bool Service::Init() {
       {
           {kReclaimVmMemoryMethod, &Service::ReclaimVmMemory},
           {kStartVmMethod,
-           &Service::StartVmHelper<StartVmRequest, &Service::StartVm>},
+           &Service::StartVmHelper<StartVmRequest, &Service::GetVmMemoryMiB,
+                                   &Service::StartVm>},
+          // TODO(b/220235105): Query pvm memsize and then make the return
+          // type a plain int64_t.
           {kStartPluginVmMethod,
-           &Service::StartVmHelper<StartPluginVmRequest,
+           &Service::StartVmHelper<StartPluginVmRequest, nullptr,
                                    &Service::StartPluginVm>},
           {kStartArcVmMethod,
-           &Service::StartVmHelper<StartArcVmRequest, &Service::StartArcVm>},
+           &Service::StartVmHelper<StartArcVmRequest,
+                                   &Service::GetArcVmMemoryMiB,
+                                   &Service::StartArcVm>},
       };
 
   if (!AsyncNoReject(
@@ -1295,6 +1342,14 @@ bool Service::Init() {
   balloon_resizing_timer_.Start(FROM_HERE, base::Seconds(1), this,
                                 &Service::RunBalloonPolicy);
 
+  if (USE_CROSVM_SIBLINGS) {
+    mms_ = ManateeMemoryService::Create();
+    if (!mms_) {
+      LOG(ERROR) << "Failed to connect to manatee memory service";
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -1333,6 +1388,11 @@ void Service::HandleChildExit() {
     });
 
     if (iter != vms_.end()) {
+      if (USE_CROSVM_SIBLINGS) {
+        // Notify HMS that the VM has exited.
+        mms_->RemoveVm(iter->second->GetInfo().vm_memory_id);
+      }
+
       // Notify that the VM has exited.
       NotifyVmStopped(iter->first, iter->second->GetInfo().cid, VM_EXITED);
 
@@ -1350,7 +1410,8 @@ void Service::HandleSigterm() {
 }
 
 StartVmResponse Service::StartVm(StartVmRequest request,
-                                 std::unique_ptr<dbus::MessageReader> reader) {
+                                 std::unique_ptr<dbus::MessageReader> reader,
+                                 VmMemoryId vm_memory_id) {
   LOG(INFO) << "Received StartVm request";
   StartVmResponse response;
   response.set_status(VM_STATUS_FAILURE);
@@ -1756,12 +1817,16 @@ StartVmResponse Service::StartVm(StartVmRequest request,
     }
   }
 
-  auto vm = TerminaVm::Create(vsock_cid, std::move(network_client),
-                              std::move(server_proxy), std::move(runtime_dir),
-                              std::move(log_path), std::move(stateful_device),
-                              std::move(stateful_size), GetVmMemoryMiB(request),
-                              features, vm_permission_service_proxy_, bus_,
-                              vm_id, classification, std::move(vm_builder));
+  if (USE_CROSVM_SIBLINGS) {
+    vm_builder.SetVmMemoryId(vm_memory_id);
+  }
+
+  auto vm = TerminaVm::Create(
+      vsock_cid, std::move(network_client), std::move(server_proxy),
+      std::move(runtime_dir), vm_memory_id, std::move(log_path),
+      std::move(stateful_device), std::move(stateful_size),
+      GetVmMemoryMiB(request), features, vm_permission_service_proxy_, bus_,
+      vm_id, classification, std::move(vm_builder));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 
@@ -1927,35 +1992,43 @@ std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
+  VmId vm_id(request.owner_id(), request.name());
 
-  auto iter = FindVm(request.owner_id(), request.name());
+  if (!StopVm(vm_id, STOP_VM_REQUESTED)) {
+    LOG(ERROR) << "Unable to shut down VM";
+    response.set_failure_reason("Unable to shut down VM");
+  } else {
+    response.set_success(true);
+  }
+
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+bool Service::StopVm(const VmId& vm_id, VmStopReason reason) {
+  auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist";
     // This is not an error to Chrome
-    response.set_success(true);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return true;
   }
 
   // Notify that we are about to stop a VM.
   NotifyVmStopping(iter->first, iter->second->GetInfo().cid);
 
   if (!iter->second->Shutdown()) {
-    LOG(ERROR) << "Unable to shut down VM";
+    return false;
+  }
 
-    response.set_failure_reason("Unable to shut down VM");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+  if (USE_CROSVM_SIBLINGS) {
+    mms_->RemoveVm(iter->second->GetInfo().vm_memory_id);
   }
 
   // Notify that we have stopped a VM.
-  NotifyVmStopped(iter->first, iter->second->GetInfo().cid, STOP_VM_REQUESTED);
+  NotifyVmStopped(iter->first, iter->second->GetInfo().cid, reason);
 
   vms_.erase(iter);
-  response.set_success(true);
-  writer.AppendProtoAsArrayOfBytes(response);
-
-  return dbus_response;
+  return true;
 }
 
 // Wrapper to destroy VM in another thread
@@ -1986,6 +2059,7 @@ void Service::StopAllVmsImpl(VmStopReason reason) {
   struct ThreadContext {
     base::PlatformThreadHandle handle;
     uint32_t cid;
+    base::Optional<uint32_t> vm_memory_id;
     VMDelegate delegate;
   };
   std::vector<ThreadContext> ctxs(vms_.size());
@@ -1998,6 +2072,7 @@ void Service::StopAllVmsImpl(VmStopReason reason) {
     // Copy out cid from the VM object, as we will need it after the VM has been
     // destroyed.
     ctx.cid = iter.second->GetInfo().cid;
+    ctx.vm_memory_id = iter.second->GetInfo().vm_memory_id;
 
     // Notify that we are about to stop a VM.
     NotifyVmStopping(iter.first, ctx.cid);
@@ -2014,6 +2089,11 @@ void Service::StopAllVmsImpl(VmStopReason reason) {
   for (auto& iter : vms_) {
     ThreadContext& ctx = ctxs[i++];
     base::PlatformThread::Join(ctx.handle);
+
+    if (USE_CROSVM_SIBLINGS) {
+      // Notify HMS that the VM has exited.
+      mms_->RemoveVm(*ctx.vm_memory_id);
+    }
 
     // Notify that we have stopped a VM.
     NotifyVmStopped(iter.first, ctx.cid, reason);
@@ -2727,9 +2807,8 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
   if (iter != vms_.end()) {
     LOG(INFO) << "Shutting down VM";
 
-    // Notify that we are about to stop a VM.
-    NotifyVmStopping(iter->first, iter->second->GetInfo().cid);
-    if (!iter->second->Shutdown()) {
+    if (!StopVm(VmId(request.cryptohome_id(), request.vm_name()),
+                DESTROY_DISK_IMAGE_REQUESTED)) {
       LOG(ERROR) << "Unable to shut down VM";
 
       response.set_status(DISK_STATUS_FAILED);
@@ -2737,11 +2816,6 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
       writer.AppendProtoAsArrayOfBytes(response);
       return dbus_response;
     }
-
-    // Notify that we have stopped a VM.
-    NotifyVmStopped(iter->first, iter->second->GetInfo().cid,
-                    DESTROY_DISK_IMAGE_REQUESTED);
-    vms_.erase(iter);
   }
 
   base::FilePath disk_path;

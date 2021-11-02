@@ -43,6 +43,7 @@ class PluginVm final : public VmBaseImpl {
       base::FilePath iso_dir,
       base::FilePath root_dir,
       base::FilePath runtime_dir,
+      VmMemoryId vm_memory_id,
       std::unique_ptr<patchpanel::Client> network_client,
       int subnet_index,
       bool enable_vnet_hdr,
@@ -111,7 +112,8 @@ class PluginVm final : public VmBaseImpl {
            dbus::ObjectProxy* vmplugin_service_proxy,
            base::FilePath iso_dir,
            base::FilePath root_dir,
-           base::FilePath runtime_dir);
+           base::FilePath runtime_dir,
+           VmMemoryId vm_memory_id);
   PluginVm(const PluginVm&) = delete;
   PluginVm& operator=(const PluginVm&) = delete;
 

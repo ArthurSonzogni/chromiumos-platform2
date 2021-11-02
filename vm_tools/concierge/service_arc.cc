@@ -38,8 +38,9 @@ constexpr char kArcvmVcpuCpuCgroup[] = "/sys/fs/cgroup/cpu/arcvm-vcpus";
 
 }  // namespace
 
-StartVmResponse Service::StartArcVm(
-    StartArcVmRequest request, std::unique_ptr<dbus::MessageReader> reader) {
+StartVmResponse Service::StartArcVm(StartArcVmRequest request,
+                                    std::unique_ptr<dbus::MessageReader> reader,
+                                    VmMemoryId vm_memory_id) {
   LOG(INFO) << "Received StartArcVm request";
   StartVmResponse response;
   response.set_status(VM_STATUS_FAILURE);
@@ -242,10 +243,14 @@ StartVmResponse Service::StartArcVm(
     vm_builder.AppendCustomParam("--hugepages", "");
   }
 
-  auto vm =
-      ArcVm::Create(base::FilePath(kKernelPath), vsock_cid,
-                    std::move(network_client), std::move(server_proxy),
-                    std::move(runtime_dir), features, std::move(vm_builder));
+  if (USE_CROSVM_SIBLINGS) {
+    vm_builder.SetVmMemoryId(vm_memory_id);
+  }
+
+  auto vm = ArcVm::Create(base::FilePath(kKernelPath), vsock_cid,
+                          std::move(network_client), std::move(server_proxy),
+                          std::move(runtime_dir), vm_memory_id, features,
+                          std::move(vm_builder));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 

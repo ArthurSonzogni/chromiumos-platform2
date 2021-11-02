@@ -55,6 +55,7 @@ config("host_target_defaults") {
     "USE_CROSVM_VIRTIO_VIDEO=${use.crosvm_virtio_video}",
     "USE_CROSVM_VULKAN=${use.vulkan}",
     "USE_BIG_GL=${use.libglvnd}",
+    "USE_CROSVM_SIBLINGS=${use.crosvm_siblings}",
   ]
 }
 
@@ -132,6 +133,7 @@ static_library("libconcierge") {
     "../concierge/balloon_policy.cc",
     "../concierge/disk_image.cc",
     "../concierge/dlc_helper.cc",
+    "../concierge/manatee_memory_service.cc",
     "../concierge/plugin_vm.cc",
     "../concierge/plugin_vm_helper.cc",
     "../concierge/power_manager_client.cc",

@@ -96,7 +96,9 @@ bool GetPlugin9PSocketPath(const std::string& vm_id, base::FilePath* path_out) {
 }  // namespace
 
 StartVmResponse Service::StartPluginVm(
-    StartPluginVmRequest request, std::unique_ptr<dbus::MessageReader> reader) {
+    StartPluginVmRequest request,
+    std::unique_ptr<dbus::MessageReader> reader,
+    VmMemoryId vm_memory_id) {
   LOG(INFO) << "Received StartPluginVm request";
   StartVmResponse response;
   response.set_status(VM_STATUS_FAILURE);
@@ -220,10 +222,14 @@ StartVmResponse Service::StartPluginVm(
     vm_builder.AppendCustomParam(std::string("--params=") + param, "");
   }
 
+  if (USE_CROSVM_SIBLINGS) {
+    vm_builder.SetVmMemoryId(vm_memory_id);
+  }
+
   auto vm = PluginVm::Create(
       vm_id, std::move(stateful_dir), std::move(iso_dir), root_dir.Take(),
-      runtime_dir.Take(), std::move(network_client), request.subnet_index(),
-      request.net_options().enable_vnet_hdr(), bus_,
+      runtime_dir.Take(), vm_memory_id, std::move(network_client),
+      request.subnet_index(), request.net_options().enable_vnet_hdr(), bus_,
       std::move(seneschal_server_proxy), vm_permission_service_proxy_,
       vmplugin_service_proxy_, std::move(vm_builder));
   if (!vm) {

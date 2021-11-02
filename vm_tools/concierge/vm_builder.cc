@@ -4,6 +4,7 @@
 
 #include "vm_tools/concierge/vm_builder.h"
 
+#include <string>
 #include <utility>
 
 #include <base/strings/string_util.h>
@@ -233,6 +234,11 @@ VmBuilder& VmBuilder::SetBlockSize(size_t block_size) {
   return *this;
 }
 
+VmBuilder& VmBuilder::SetVmMemoryId(VmMemoryId vm_memory_id) {
+  vm_memory_id_ = base::make_optional(vm_memory_id);
+  return *this;
+}
+
 base::StringPairs VmBuilder::BuildVmArgs() const {
   base::StringPairs args = {{kCrosvmBin, "run"}};
 
@@ -362,6 +368,13 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
 
   if (!bios_.empty())
     args.emplace_back("--bios", bios_.value());
+
+  if (vm_memory_id_) {
+    std::string mms_control_socket = "/run/mms_control_";
+    mms_control_socket += std::to_string(*vm_memory_id_);
+    mms_control_socket += ".sock";
+    args.emplace_back("--balloon-control", mms_control_socket);
+  }
 
   // Kernel should be at the end.
   if (!kernel_.empty())

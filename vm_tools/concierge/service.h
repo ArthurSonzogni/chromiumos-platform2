@@ -35,6 +35,7 @@
 #include "featured/feature_library.h"
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/disk_image.h"
+#include "vm_tools/concierge/manatee_memory_service.h"
 #include "vm_tools/concierge/power_manager_client.h"
 #include "vm_tools/concierge/shill_client.h"
 #include "vm_tools/concierge/startup_listener_impl.h"
@@ -97,15 +98,19 @@ class Service final {
   void HandleSigterm();
 
   // Helper function that is used by StartVm, StartPluginVm and StartArcVm
-  template <class StartXXRequest,
-            StartVmResponse (Service::*StartVm)(
-                StartXXRequest, std::unique_ptr<dbus::MessageReader>)>
+  template <
+      class StartXXRequest,
+      int64_t (Service::*GetVmMemory)(const StartXXRequest&),
+      StartVmResponse (Service::*StartVm)(StartXXRequest,
+                                          std::unique_ptr<dbus::MessageReader>,
+                                          VmMemoryId vm_memory_id)>
   void StartVmHelper(dbus::MethodCall* method_call,
                      dbus::ExportedObject::ResponseSender response_sender);
 
   // Handles a request to start a VM.
   StartVmResponse StartVm(StartVmRequest request,
-                          std::unique_ptr<dbus::MessageReader> reader);
+                          std::unique_ptr<dbus::MessageReader> reader,
+                          VmMemoryId vm_memory_id);
 
   // Returns how many mebibyte of physical memory to use for the
   // VM being started with the given request.
@@ -113,11 +118,13 @@ class Service final {
 
   // Handles a request to start a plugin-based VM.
   StartVmResponse StartPluginVm(StartPluginVmRequest request,
-                                std::unique_ptr<dbus::MessageReader> reader);
+                                std::unique_ptr<dbus::MessageReader> reader,
+                                VmMemoryId vm_memory_id);
 
   // Handles a request to start ARCVM.
   StartVmResponse StartArcVm(StartArcVmRequest request,
-                             std::unique_ptr<dbus::MessageReader> reader);
+                             std::unique_ptr<dbus::MessageReader> reader,
+                             VmMemoryId vm_memory_id);
 
   // Returns how many mebibyte of physical memory to use for the
   // VM being started with the given request.
@@ -126,6 +133,9 @@ class Service final {
   // Handles a request to stop a VM.  |method_call| must have a StopVmRequest
   // protobuf serialized as an array of bytes.
   std::unique_ptr<dbus::Response> StopVm(dbus::MethodCall* method_call);
+
+  // Handles a request to stop a VM.
+  bool StopVm(const VmId& vm_id, VmStopReason reason);
 
   // Handles a request to suspend a VM.  |method_call| must have a
   // SuspendVmRequest protobuf serialized as an array of bytes.
@@ -323,6 +333,8 @@ class Service final {
   base::Optional<MemoryMargins> GetMemoryMargins();
   base::Optional<resource_manager::GameMode> GetGameMode();
   void RunBalloonPolicy();
+  void FinishBalloonPolicy(
+      std::vector<std::pair<uint32_t, BalloonStats>> stats);
 
   bool ListVmDisksInLocation(const std::string& cryptohome_id,
                              StorageLocation location,
@@ -440,6 +452,13 @@ class Service final {
 
   // Thread on which memory reclaim operations are performed.
   base::Thread reclaim_thread_{"memory reclaim thread"};
+
+  // The connection to the manatee manatee memory service.
+  std::unique_ptr<ManateeMemoryService> mms_;
+
+  // The next vm memory id. Only used for non-manatee builds, since
+  // the manatee memory service specifies the id on manatee builds.
+  VmMemoryId next_vm_memory_id_ = 0;
 
   // The timer which invokes the balloon resizing logic.
   base::RepeatingTimer balloon_resizing_timer_;

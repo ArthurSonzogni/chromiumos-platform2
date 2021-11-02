@@ -22,6 +22,9 @@
 namespace vm_tools {
 namespace concierge {
 
+// See VmInterface.Info.vm_memory_id
+typedef uint32_t VmMemoryId;
+
 // Represents a single instance of a virtual machine.
 class VmInterface {
  public:
@@ -43,6 +46,13 @@ class VmInterface {
     // The vsock context id for the VM, if one exists.  Must be set to 0 if
     // there is no vsock context id.
     uint32_t cid;
+
+    // ID for identifying a VM in the context of managing memory. This field is
+    // valid for all VMs. On non-manaTEE systems, this is set by concierge. On
+    // manaTEE, it is specified by the manatee memory service, and it specifies
+    // the balloon control socket that this VM's crosvm instance should connect
+    // to - /run/mms_control_%d.sock.
+    VmMemoryId vm_memory_id;
 
     // The handle for the 9P server managed by seneschal on behalf of this VM
     // if one exists, 0 otherwise.

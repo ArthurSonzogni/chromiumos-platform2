@@ -5,8 +5,10 @@
 #ifndef VM_TOOLS_CONCIERGE_SHARED_DATA_H_
 #define VM_TOOLS_CONCIERGE_SHARED_DATA_H_
 
+#include <memory>
 #include <string>
 #include <tuple>
+#include <utility>
 
 #include <base/check.h>
 #include <base/logging.h>
@@ -60,8 +62,9 @@ void SendDbusResponse(dbus::ExportedObject::ResponseSender response_sender,
                       const vm_tools::concierge::StartVmResponse& response);
 
 template <class StartXXRequest,
+          int64_t (Service::*GetVmMemory)(const StartXXRequest&),
           StartVmResponse (Service::*StartVm)(
-              StartXXRequest, std::unique_ptr<dbus::MessageReader>)>
+              StartXXRequest, std::unique_ptr<dbus::MessageReader>, VmMemoryId)>
 void Service::StartVmHelper(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
@@ -146,9 +149,76 @@ void Service::StartVmHelper(
     return;
   }
 
-  response = (this->*StartVm)(std::move(request), std::move(reader));
-  SendDbusResponse(std::move(response_sender), method_call, response);
-  return;
+  if (!USE_CROSVM_SIBLINGS) {
+    response = (this->*StartVm)(std::move(request), std::move(reader),
+                                next_vm_memory_id_++);
+    SendDbusResponse(std::move(response_sender), method_call, response);
+    return;
+  }
+
+  if (GetVmMemory == nullptr) {
+    LOG(ERROR) << "Unable to determine required memory";
+    response.set_failure_reason("Memory size unspecified");
+    SendDbusResponse(std::move(response_sender), method_call, response);
+    return;
+  }
+  auto resp_ptr = std::make_unique<StartVmResponse>();
+  // Setting this to true here allows send_resp to determine if a failure
+  // originated in do_launch or somewhere in mms_.
+  resp_ptr->set_success(true);
+
+  auto do_launch = [](base::WeakPtr<Service> service, StartXXRequest request,
+                      std::unique_ptr<dbus::MessageReader> reader,
+                      StartVmResponse* response,
+                      VmMemoryId vm_memory_id) -> bool {
+    if (!service) {
+      LOG(ERROR) << "Service destroyed";
+      response->set_failure_reason("Service destroyed");
+      response->set_success(false);
+    } else {
+      *response = (service.get()->*StartVm)(std::move(request),
+                                            std::move(reader), vm_memory_id);
+    }
+    return response->success();
+  };
+  auto do_stop = [](base::WeakPtr<Service> service, VmId vm_id) {
+    LOG(ERROR) << "Stopping VM";
+    if (service) {
+      // This should only happen if the VM in question dies during
+      // startup, in which case the crash handling should clean it
+      // up. However, stop it anyway just in case. At worst, this
+      // should just result in some extra error logs.
+      service->StopVm(vm_id, VM_EXITED);
+    }
+  };
+  auto send_resp = [](dbus::ExportedObject::ResponseSender response_sender,
+                      dbus::MethodCall* method_call,
+                      std::unique_ptr<StartVmResponse> response, bool success) {
+    if (!success) {
+      response->clear_vm_info();
+      response->set_status(VM_STATUS_FAILURE);
+      if (response->success()) {
+        response->set_failure_reason("Manatee memory service failure");
+        response->set_success(false);
+      }
+    }
+    SendDbusResponse(std::move(response_sender), method_call, *response);
+    return;
+  };
+
+  // |response_sender| owns the unique_ptr which the raw |method_call| raw ptr
+  // refers to, so it is safe to pass objects which reference the raw ptr to
+  // other callbacks, since |send_resp_cb| is always invoked last. Also,
+  // |launch_cb| is only invoked if |stop_cb| has not yet been invoked, so the
+  // raw resp_ptr is safe.
+  auto launch_cb =
+      base::BindOnce(do_launch, weak_ptr_factory_.GetWeakPtr(),
+                     std::move(request), std::move(reader), resp_ptr.get());
+  auto stop_cb = base::BindOnce(do_stop, weak_ptr_factory_.GetWeakPtr(), vm_id);
+  auto send_resp_cb = base::BindOnce(send_resp, std::move(response_sender),
+                                     method_call, std::move(resp_ptr));
+  mms_->LaunchVm((this->*GetVmMemory)(request), std::move(launch_cb),
+                 std::move(stop_cb), std::move(send_resp_cb));
 }
 
 }  // namespace concierge

@@ -181,12 +181,14 @@ ArcVm::ArcVm(int32_t vsock_cid,
              std::unique_ptr<patchpanel::Client> network_client,
              std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
              base::FilePath runtime_dir,
+             VmMemoryId vm_memory_id,
              ArcVmFeatures features)
     : VmBaseImpl(std::move(network_client),
                  vsock_cid,
                  std::move(seneschal_server_proxy),
                  kCrosvmSocket,
-                 std::move(runtime_dir)),
+                 std::move(runtime_dir),
+                 vm_memory_id),
       features_(features),
       balloon_refresh_time_(base::Time::Now() + kBalloonRefreshTime) {}
 
@@ -200,11 +202,12 @@ std::unique_ptr<ArcVm> ArcVm::Create(
     std::unique_ptr<patchpanel::Client> network_client,
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
     base::FilePath runtime_dir,
+    VmMemoryId vm_memory_id,
     ArcVmFeatures features,
     VmBuilder vm_builder) {
   auto vm = std::unique_ptr<ArcVm>(new ArcVm(
       vsock_cid, std::move(network_client), std::move(seneschal_server_proxy),
-      std::move(runtime_dir), features));
+      std::move(runtime_dir), vm_memory_id, features));
 
   if (!vm->Start(std::move(kernel), std::move(vm_builder))) {
     vm.reset();
@@ -563,6 +566,7 @@ VmInterface::Info ArcVm::GetInfo() {
       .ipv4_address = IPv4Address(),
       .pid = pid(),
       .cid = cid(),
+      .vm_memory_id = vm_memory_id_,
       .seneschal_server_handle = seneschal_server_handle(),
       .status = VmInterface::Status::RUNNING,
       .type = VmInfo::ARC_VM,

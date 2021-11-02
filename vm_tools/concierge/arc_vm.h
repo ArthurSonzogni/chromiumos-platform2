@@ -49,6 +49,7 @@ class ArcVm final : public VmBaseImpl {
       std::unique_ptr<patchpanel::Client> network_client,
       std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
       base::FilePath runtime_dir,
+      VmMemoryId vm_memory_id,
       ArcVmFeatures features,
       VmBuilder vm_builder);
   ~ArcVm() override;
@@ -111,6 +112,7 @@ class ArcVm final : public VmBaseImpl {
         std::unique_ptr<patchpanel::Client> network_client,
         std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
         base::FilePath runtime_dir,
+        VmMemoryId vm_memory_id,
         ArcVmFeatures features);
   ArcVm(const ArcVm&) = delete;
   ArcVm& operator=(const ArcVm&) = delete;
