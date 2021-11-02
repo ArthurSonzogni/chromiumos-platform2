@@ -24,6 +24,21 @@ class WriteProtectDisableMethodStateHandler : public BaseStateHandler {
   ~WriteProtectDisableMethodStateHandler() override = default;
 };
 
+namespace fake {
+
+// Nothing needs to be faked.
+class FakeWriteProtectDisableMethodStateHandler
+    : public WriteProtectDisableMethodStateHandler {
+ public:
+  explicit FakeWriteProtectDisableMethodStateHandler(
+      scoped_refptr<JsonStore> json_store);
+
+ protected:
+  ~FakeWriteProtectDisableMethodStateHandler() override = default;
+};
+
+}  // namespace fake
+
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_WRITE_PROTECT_DISABLE_METHOD_STATE_HANDLER_H_

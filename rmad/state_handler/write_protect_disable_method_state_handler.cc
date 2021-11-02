@@ -9,6 +9,15 @@
 
 namespace rmad {
 
+namespace fake {
+
+FakeWriteProtectDisableMethodStateHandler::
+    FakeWriteProtectDisableMethodStateHandler(
+        scoped_refptr<JsonStore> json_store)
+    : WriteProtectDisableMethodStateHandler(json_store) {}
+
+}  // namespace fake
+
 WriteProtectDisableMethodStateHandler::WriteProtectDisableMethodStateHandler(
     scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store) {}
