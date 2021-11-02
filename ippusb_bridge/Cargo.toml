@@ -10,8 +10,8 @@ getopts = "0.2.18"
 httparse = "1.3.4"
 libc = "0.2.44"
 rusb = "0.6.2"
-sync = { path = "../../platform/crosvm/sync" } # provided by ebuild
-sys_util = { path = "../../platform/crosvm/sys_util" } # provided by ebuild
+sync = { path = "../../platform/crosvm/common/sync" } # provided by ebuild
+sys_util = { path = "../../platform/crosvm/common/sys_util" } # provided by ebuild
 tiny_http = "0.8.0"
 
 [profile.release]

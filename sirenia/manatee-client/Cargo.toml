@@ -22,6 +22,6 @@ libchromeos = { path = "../../libchromeos-rs" } # provided by ebuild
 libsirenia = { path = "../libsirenia" } # provided by ebuild
 log = "0.4.0"
 stderrlog = "0.5.0"
-sys_util = { path = "../../../platform/crosvm/sys_util" } # provided by ebuild
+sys_util = { path = "../../../platform/crosvm/common/sys_util" } # provided by ebuild
 thiserror = "1.0.20"
 which = "4.0"

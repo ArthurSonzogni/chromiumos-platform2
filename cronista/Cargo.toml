@@ -13,7 +13,7 @@ overflow-checks = true
 getopts = "0.2"
 libchromeos = { path = "../libchromeos-rs", features = ['chromeos-module'] } # provided by ebuild
 libsirenia = { path = "../sirenia/libsirenia" } # provided by ebuild
-sys_util = { path = "../../platform/crosvm/sys_util" } # provided by ebuild
+sys_util = { path = "../../platform/crosvm/common/sys_util" } # provided by ebuild
 thiserror = "1.0.20"
 
 # These can be removed when the chromeos module is moved out.

@@ -12,5 +12,5 @@ path = "src/demo-app.rs"
 [dependencies]
 libsirenia = { path = "../libsirenia" } # provided by ebuild
 serde = { version = "1.0.114", features = ["derive"] }
-sync = { path = "../../../platform/crosvm/sync" } # provided by ebuild
-sys_util = { path = "../../../platform/crosvm/sys_util" } # provided by ebuild
+sync = { path = "../../../platform/crosvm/common/sync" } # provided by ebuild
+sys_util = { path = "../../../platform/crosvm/common/sys_util" } # provided by ebuild
