@@ -57,7 +57,9 @@ class TestBroadcastForwarder : public BroadcastForwarder {
 
   ssize_t ReceiveMessage(int fd, struct msghdr* msg) override {
     ssize_t msg_len = std::min(payload.size(), msg->msg_iov->iov_len);
-    memcpy(msg->msg_iov->iov_base, payload.data(), msg_len);
+    if (msg_len > 0) {
+      memcpy(msg->msg_iov->iov_base, payload.data(), msg_len);
+    }
     return msg_len;
   }
 
