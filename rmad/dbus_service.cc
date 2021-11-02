@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/process/launch.h>
@@ -20,6 +21,7 @@
 #include <dbus/rmad/dbus-constants.h>
 
 #include "rmad/constants.h"
+#include "rmad/system/fake_tpm_manager_client.h"
 #include "rmad/system/tpm_manager_client_impl.h"
 #include "rmad/utils/dbus_utils.h"
 
@@ -295,8 +297,15 @@ int DBusService::OnEventLoopStarted() {
 
   if (!is_external_utils_initialized_) {
     // TODO(chenghan): Use fake tpm_manager client if running in test mode.
-    tpm_manager_client_ =
-        std::make_unique<TpmManagerClientImpl>(GetSystemBus());
+    if (test_mode_) {
+      const base::FilePath test_dir_path =
+          base::FilePath(kDefaultWorkingDirPath).AppendASCII(kTestDirPath);
+      tpm_manager_client_ =
+          std::make_unique<fake::FakeTpmManagerClient>(test_dir_path);
+    } else {
+      tpm_manager_client_ =
+          std::make_unique<TpmManagerClientImpl>(GetSystemBus());
+    }
     is_external_utils_initialized_ = true;
   }
   is_rma_required_ = IsRmaRequired();

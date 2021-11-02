@@ -2,14 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rmad/system/fake_tpm_manager_client.h"
+#include "rmad/system/tpm_manager_client_impl.h"
+
 #include <memory>
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
-#include "rmad/system/tpm_manager_client_impl.h"
+#include "rmad/constants.h"
 
 using testing::_;
 using testing::DoAll;
@@ -19,6 +25,7 @@ using testing::StrictMock;
 
 namespace rmad {
 
+// Tests for |TpmManagerClientImpl|.
 class TpmManagerClientTest : public testing::Test {
  public:
   TpmManagerClientTest() = default;
@@ -131,5 +138,77 @@ TEST_F(TpmManagerClientTest, RoVerificationTpmManagerError) {
   EXPECT_FALSE(
       tpm_manager_client->GetRoVerificationStatus(&ro_verification_status));
 }
+
+namespace fake {
+
+// Tests for |FakeTpmManager|.
+class FakeTpmManagerClientTest : public testing::Test {
+ public:
+  FakeTpmManagerClientTest() = default;
+  ~FakeTpmManagerClientTest() override = default;
+
+  bool WriteRoVerificationStatus(const std::string& str) {
+    base::FilePath ro_verification_status_file_path =
+        temp_dir_.GetPath().AppendASCII(kRoVerificationStatusFilePath);
+    return base::WriteFile(ro_verification_status_file_path, str);
+  }
+
+ protected:
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    fake_tpm_manager_client_ =
+        std::make_unique<FakeTpmManagerClient>(temp_dir_.GetPath());
+  }
+
+  base::ScopedTempDir temp_dir_;
+  std::unique_ptr<FakeTpmManagerClient> fake_tpm_manager_client_;
+};
+
+TEST_F(FakeTpmManagerClientTest, RoVerification_NotTriggered) {
+  WriteRoVerificationStatus("NOT_TRIGGERED");
+  RoVerificationStatus ro_verification_status;
+  EXPECT_TRUE(fake_tpm_manager_client_->GetRoVerificationStatus(
+      &ro_verification_status));
+  EXPECT_EQ(ro_verification_status, RoVerificationStatus::NOT_TRIGGERED);
+}
+
+TEST_F(FakeTpmManagerClientTest, RoVerification_Pass) {
+  WriteRoVerificationStatus("PASS");
+  RoVerificationStatus ro_verification_status;
+  EXPECT_TRUE(fake_tpm_manager_client_->GetRoVerificationStatus(
+      &ro_verification_status));
+  EXPECT_EQ(ro_verification_status, RoVerificationStatus::PASS);
+}
+
+TEST_F(FakeTpmManagerClientTest, RoVerification_Fail) {
+  WriteRoVerificationStatus("FAIL");
+  RoVerificationStatus ro_verification_status;
+  EXPECT_TRUE(fake_tpm_manager_client_->GetRoVerificationStatus(
+      &ro_verification_status));
+  EXPECT_EQ(ro_verification_status, RoVerificationStatus::FAIL);
+}
+
+TEST_F(FakeTpmManagerClientTest, RoVerification_Unsupported) {
+  WriteRoVerificationStatus("UNSUPPORTED");
+  RoVerificationStatus ro_verification_status;
+  EXPECT_TRUE(fake_tpm_manager_client_->GetRoVerificationStatus(
+      &ro_verification_status));
+  EXPECT_EQ(ro_verification_status, RoVerificationStatus::UNSUPPORTED);
+}
+
+TEST_F(FakeTpmManagerClientTest, RoVerification_ParseError) {
+  WriteRoVerificationStatus("ABCDE");
+  RoVerificationStatus ro_verification_status;
+  EXPECT_FALSE(fake_tpm_manager_client_->GetRoVerificationStatus(
+      &ro_verification_status));
+}
+
+TEST_F(FakeTpmManagerClientTest, RoVerification_NoFile) {
+  RoVerificationStatus ro_verification_status;
+  EXPECT_FALSE(fake_tpm_manager_client_->GetRoVerificationStatus(
+      &ro_verification_status));
+}
+
+}  // namespace fake
 
 }  // namespace rmad

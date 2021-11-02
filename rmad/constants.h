@@ -15,6 +15,7 @@ namespace rmad {
 inline constexpr char kDefaultWorkingDirPath[] = "/var/lib/rmad/";
 inline constexpr char kDefaultJsonStoreFilePath[] =
     "/mnt/stateful_partition/unencrypted/rma-data/state";
+inline constexpr char kTestDirPath[] = ".test";
 
 // Files for pre-stop script to read.
 inline constexpr char kPowerwashRequestFilePath[] = ".powerwash_request";
@@ -44,6 +45,14 @@ inline constexpr std::array<RmadComponent, 2> kComponentsNeedAutoCalibration = {
     RMAD_COMPONENT_AUDIO_CODEC,
     RMAD_COMPONENT_TOUCHSCREEN,
 };
+
+// Constants for fake utilities.
+namespace fake {
+
+inline constexpr char kRoVerificationStatusFilePath[] =
+    "ro_verification_status";
+
+}  // namespace fake
 
 }  // namespace rmad
 

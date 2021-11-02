@@ -41,6 +41,8 @@ pkg_config("target_defaults") {
 static_library("libsystem") {
   sources = [
     "system/cryptohome_client_impl.cc",
+    "system/fake_runtime_probe_client.cc",
+    "system/fake_tpm_manager_client.cc",
     "system/power_manager_client_impl.cc",
     "system/runtime_probe_client_impl.cc",
     "system/shill_client_impl.cc",

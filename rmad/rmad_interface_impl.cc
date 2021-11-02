@@ -10,12 +10,16 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/values.h>
 
 #include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
+#include "rmad/system/fake_runtime_probe_client.h"
+#include "rmad/system/fake_shill_client.h"
+#include "rmad/system/fake_tpm_manager_client.h"
 #include "rmad/system/runtime_probe_client_impl.h"
 #include "rmad/system/shill_client_impl.h"
 #include "rmad/system/tpm_manager_client_impl.h"
@@ -59,22 +63,32 @@ bool RmadInterfaceImpl::StoreStateHistory() {
   return json_store_->SetValue(kStateHistory, state_history);
 }
 
-bool RmadInterfaceImpl::SetUp() {
-  // Initialize external utilities if needed.
-  if (!external_utils_initialized_) {
-    json_store_ = base::MakeRefCounted<JsonStore>(
-        base::FilePath(kDefaultJsonStoreFilePath));
-    state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
-    if (test_mode_) {
-      state_handler_manager_->RegisterFakeStateHandlers();
-    } else {
-      state_handler_manager_->RegisterStateHandlers();
-    }
+void RmadInterfaceImpl::InitializeExternalUtils() {
+  json_store_ = base::MakeRefCounted<JsonStore>(
+      base::FilePath(kDefaultJsonStoreFilePath));
+  state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
+  if (test_mode_) {
+    state_handler_manager_->RegisterFakeStateHandlers();
+    const base::FilePath test_dir_path =
+        base::FilePath(kDefaultWorkingDirPath).AppendASCII(kTestDirPath);
+    runtime_probe_client_ = std::make_unique<fake::FakeRuntimeProbeClient>();
+    shill_client_ = std::make_unique<fake::FakeShillClient>();
+    tpm_manager_client_ =
+        std::make_unique<fake::FakeTpmManagerClient>(test_dir_path);
+  } else {
+    state_handler_manager_->RegisterStateHandlers();
     runtime_probe_client_ =
         std::make_unique<RuntimeProbeClientImpl>(GetSystemBus());
     shill_client_ = std::make_unique<ShillClientImpl>(GetSystemBus());
     tpm_manager_client_ =
         std::make_unique<TpmManagerClientImpl>(GetSystemBus());
+  }
+}
+
+bool RmadInterfaceImpl::SetUp() {
+  // Initialize external utilities if needed.
+  if (!external_utils_initialized_) {
+    InitializeExternalUtils();
     external_utils_initialized_ = true;
   }
   // Initialize |current state_|, |state_history_|, and |can_abort_| flag.

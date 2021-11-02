@@ -76,6 +76,8 @@ class RmadInterfaceImpl final : public RmadInterface {
   void SetTestMode() { test_mode_ = true; }
 
  private:
+  void InitializeExternalUtils();
+
   // Get and initialize the state handler for |state case|, and store it to
   // |state_handler|. If there's no state handler for |state_case|, or the
   // initialization fails, return an error, and |state_handler| is unchanged.
