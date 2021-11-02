@@ -16,9 +16,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/threading/thread.h>
 
-#define LOGF(level)                                              \
-  LOG(level) << "(" << base::PlatformThread::CurrentId() << ") " \
-             << __FUNCTION__ << "(): "
+#define LOGF(level) LOG(level) << __FUNCTION__ << "(): "
 #define LOGFID(level, id) LOG(level) << __FUNCTION__ << "(): id: " << id << ": "
 #define LOGF_IF(level, res) LOG_IF(level, res) << __FUNCTION__ << "(): "
 
@@ -27,14 +25,32 @@
   PLOG(level) << __FUNCTION__ << "(): id: " << id << ": "
 #define PLOGF_IF(level, res) PLOG_IF(level, res) << __FUNCTION__ << "(): "
 
-#define VLOGF(level)                                              \
-  VLOG(level) << "(" << base::PlatformThread::CurrentId() << ") " \
-              << __FUNCTION__ << "(): "
+#define VLOGF(level) VLOG(level) << __FUNCTION__ << "(): "
 #define VLOGFID(level, id) \
   VLOG(level) << __FUNCTION__ << "(): id: " << id << ": "
 
 #define VLOGF_ENTER() VLOGF(1) << "enter"
 #define VLOGF_EXIT() VLOGF(1) << "exit"
+
+// To keep compatibility with the existing code paths enabled by NDEBUG or
+// DCHECK_ALWAYS_ON, we still enable the DVLOGF*() macros when DCHECK_IS_ON().
+// The ENABLE_VERBOSE_DEBUG_LOGS is for when the image is built without NDEBUG
+// (i.e. without the cros-debug USE flag). We can still turn on the debug logs
+// by recompiling the binaries with ENABLE_VERBOSE_DEBUG_LOGS defined in
+// //camera/build/BUILD.gn without breaking ABI compatibility with the libchrome
+// in the image.
+#if DCHECK_IS_ON() || ENABLE_VERBOSE_DEBUG_LOGS
+
+#define DVLOGF(level) VLOG(level) << __FUNCTION__ << "(): "
+#define DVLOGFID(level, id) \
+  VLOG(level) << __FUNCTION__ << "(): id: " << id << ": "
+
+#else
+
+#define DVLOGF(level) EAT_STREAM_PARAMETERS
+#define DVLOGFID(level, id) EAT_STREAM_PARAMETERS
+
+#endif  // DCHECK_IS_ON() || ENABLE_VERBOSE_DEBUG_LOGS
 
 inline std::string FormatToString(int32_t format) {
   return std::string(reinterpret_cast<char*>(&format), 4);

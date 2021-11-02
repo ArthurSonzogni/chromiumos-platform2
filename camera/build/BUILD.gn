@@ -20,6 +20,9 @@ config("cros_camera_common") {
     "USE_CAMERA_FEATURE_PORTRAIT_MODE=${use.camera_feature_portrait_mode}",
   ]
 
+  # Uncomment to enable DVLOGF*() logs.
+  # defines += [ "ENABLE_VERBOSE_DEBUG_LOGS" ]
+
   include_dirs = [
     "//camera",
     "//camera/include",
