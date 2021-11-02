@@ -21,6 +21,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <brillo/message_loops/base_message_loop.h>
 #include <brillo/secure_blob.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
@@ -238,7 +239,13 @@ class TokenTermThread : public base::PlatformThread::Delegate {
   ~TokenTermThread() override {}
 
   // PlatformThread::Delegate interface.
-  void ThreadMain() override { tpm_utility_->UnloadKeysForSlot(slot_id_); }
+  void ThreadMain() override {
+    // Create a message loop for this thread.
+    brillo::BaseMessageLoop loop;
+    loop.SetAsCurrent();
+
+    tpm_utility_->UnloadKeysForSlot(slot_id_);
+  }
 
  private:
   int slot_id_;
@@ -259,6 +266,10 @@ TokenInitThread::TokenInitThread(int slot_id,
       system_shutdown_blocker_(system_shutdown_blocker) {}
 
 void TokenInitThread::ThreadMain() {
+  // Create a message loop for this thread.
+  brillo::BaseMessageLoop loop;
+  loop.SetAsCurrent();
+
   // Block system shutdown while TokenInitThread is running. Unblock shutdown
   // once TokenInitThread completes or a fallback timeout of
   // |kTokenInitBlockSystemShutdownFallbackTimeout| has expired.
@@ -293,9 +304,9 @@ void TokenInitThread::ThreadMain() {
     // saved hash.
     object_pool_->GetInternalBlob(kAuthDataHash, &saved_auth_data_hash);
     if (!SanityCheckAuthData(auth_data_hash, saved_auth_data_hash) ||
-        !tpm_utility_->Authenticate(slot_id_, Sha1(auth_data_), auth_key_blob,
-                                    encrypted_root_key, &root_key)) {
-      LOG(ERROR) << "Authentication failed for token at " << path_.value()
+        !tpm_utility_->UnsealData(slot_id_, auth_key_blob, encrypted_root_key,
+                                  Sha1(auth_data_), &root_key)) {
+      LOG(ERROR) << "Failed to unseal for token at " << path_.value()
                  << ", reinitializing token.";
       CreateTokenReinitializedFlagFile(path_);
       tpm_utility_->UnloadKeysForSlot(slot_id_);
@@ -327,18 +338,10 @@ bool TokenInitThread::InitializeKeyHierarchy(SecureBlob* root_key) {
   }
   *root_key = SecureBlob(root_key_str.begin(), root_key_str.end());
   string auth_key_blob;
-  int auth_key_handle;
-  const int key_size = 2048;
-  const string public_exponent("\x01\x00\x01", 3);
-  if (!tpm_utility_->GenerateRSAKey(slot_id_, key_size, public_exponent,
-                                    Sha1(auth_data_), &auth_key_blob,
-                                    &auth_key_handle)) {
-    LOG(ERROR) << "Failed to generate user authentication key.";
-    return false;
-  }
   string encrypted_root_key;
-  if (!tpm_utility_->Bind(auth_key_handle, root_key_str, &encrypted_root_key)) {
-    LOG(ERROR) << "Failed to bind user encryption key.";
+  if (!tpm_utility_->SealData(slot_id_, root_key_str, Sha1(auth_data_),
+                              &auth_key_blob, &encrypted_root_key)) {
+    LOG(ERROR) << "Failed to seal user encryption key.";
     return false;
   }
   if (!object_pool_->SetInternalBlob(kEncryptedAuthKey, auth_key_blob) ||

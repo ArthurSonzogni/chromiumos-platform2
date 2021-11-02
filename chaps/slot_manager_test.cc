@@ -88,8 +88,8 @@ void ConfigureTPMUtility(TPMUtilityMock* tpm) {
   EXPECT_CALL(*tpm, Init()).WillRepeatedly(Return(true));
   EXPECT_CALL(*tpm, UnloadKeysForSlot(_)).Times(AnyNumber());
   EXPECT_CALL(
-      *tpm, Authenticate(_, Sha1(MakeBlob(kAuthData)), string("auth_key_blob"),
-                         string("encrypted_root_key"), _))
+      *tpm, UnsealData(_, string("auth_key_blob"), string("encrypted_root_key"),
+                       Sha1(MakeBlob(kAuthData)), _))
       .WillRepeatedly(
           DoAll(SetArgPointee<4>(MakeBlob("root_key")), Return(true)));
   EXPECT_CALL(*tpm, ChangeAuthData(_, Sha1(MakeBlob(kAuthData)),
@@ -101,13 +101,10 @@ void ConfigureTPMUtility(TPMUtilityMock* tpm) {
       .WillRepeatedly(
           DoAll(SetArgPointee<1>(string("root_key")), Return(true)));
   string exponent(kDefaultPubExp, kDefaultPubExpSize);
-  EXPECT_CALL(*tpm,
-              GenerateRSAKey(1, 2048, exponent, MakeBlob(kAuthData), _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<4>(string("auth_key_blob")),
-                            SetArgPointee<5>(1), Return(true)));
-  EXPECT_CALL(*tpm, Bind(1, string("root_key"), _))
-      .WillRepeatedly(
-          DoAll(SetArgPointee<2>(string("encrypted_root_key")), Return(true)));
+  EXPECT_CALL(*tpm, SealData(1, string("root_key"), MakeBlob(kAuthData), _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<3>(string("auth_key_blob")),
+                            SetArgPointee<4>(string("encrypted_root_key")),
+                            Return(true)));
   EXPECT_CALL(*tpm, IsSRKReady()).WillRepeatedly(Return(true));
   EXPECT_CALL(*tpm, IsTPMAvailable()).WillRepeatedly(Return(true));
 }
