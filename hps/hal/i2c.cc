@@ -19,6 +19,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
 
 namespace hps {
@@ -29,7 +30,8 @@ I2CDev::I2CDev(const char* bus, uint8_t addr)
 int I2CDev::Open() {
   this->fd_ = open(this->bus_, O_RDWR);
   if (this->fd_ < 0) {
-    perror(this->bus_);
+    int err = errno;
+    LOG(ERROR) << "Cannot open: " << this->bus_ << " : " << strerror(err);
   }
   return this->fd_;
 }
