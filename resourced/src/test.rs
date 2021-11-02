@@ -224,10 +224,9 @@ processor	: 0
 vendor_id	: AuthenticAMD
 cpu family	: 23
 model		: 24"#;
-    assert_eq!(
-        true,
-        AmdDeviceConfig::has_amd_tag_in_cpu_info(mock_cpuinfo.as_bytes())
-    );
+    assert!(AmdDeviceConfig::has_amd_tag_in_cpu_info(
+        mock_cpuinfo.as_bytes()
+    ));
 }
 
 #[test]
@@ -238,20 +237,17 @@ processor	: 0
 vendor_id	: GenuineIntel
 cpu family	: 23
 model		: 24"#;
-    assert_eq!(
-        false,
-        AmdDeviceConfig::has_amd_tag_in_cpu_info(mock_cpuinfo.as_bytes())
-    );
+    assert!(!AmdDeviceConfig::has_amd_tag_in_cpu_info(
+        mock_cpuinfo.as_bytes()
+    ));
 
     // missing vendor ID
-    assert_eq!(
-        false,
-        AmdDeviceConfig::has_amd_tag_in_cpu_info("".to_string().as_bytes())
-    );
-    assert_eq!(
-        false,
-        AmdDeviceConfig::has_amd_tag_in_cpu_info("processor: 0".to_string().as_bytes())
-    );
+    assert!(!AmdDeviceConfig::has_amd_tag_in_cpu_info(
+        "".to_string().as_bytes()
+    ));
+    assert!(!AmdDeviceConfig::has_amd_tag_in_cpu_info(
+        "processor: 0".to_string().as_bytes()
+    ));
 }
 
 #[test]
@@ -303,16 +299,12 @@ model name	: AMD Ryzen 7 3700C  with Radeon Vega Mobile Gfx
 stepping	: 1
 microcode	: 0x8108109"#;
 
-    assert_eq!(
-        true,
-        dev.is_supported_dev_family(mock_cpuinfo.as_bytes())
-            .unwrap()
-    );
-    assert_eq!(
-        true,
-        dev.is_supported_dev_family("model name	: AMD Ryzen 5 3700C".as_bytes())
-            .unwrap()
-    );
+    assert!(dev
+        .is_supported_dev_family(mock_cpuinfo.as_bytes())
+        .unwrap());
+    assert!(dev
+        .is_supported_dev_family("model name	: AMD Ryzen 5 3700C".as_bytes())
+        .unwrap());
 }
 
 #[test]
@@ -328,27 +320,19 @@ model name	: AMD Ryzen 3 3700C  with Radeon Vega Mobile Gfx
 stepping	: 1
 microcode	: 0x8108109"#;
 
-    assert_eq!(
-        false,
-        dev.is_supported_dev_family(mock_cpuinfo.as_bytes())
-            .unwrap()
-    );
-    assert_eq!(
-        false,
-        dev.is_supported_dev_family("model name	: AMD Ryzen 5 2700C".as_bytes())
-            .unwrap()
-    );
-    assert_eq!(
-        false,
-        dev.is_supported_dev_family("model name	: AMD Ryzen 3 3700C".as_bytes())
-            .unwrap()
-    );
-    assert_eq!(
-        false,
-        dev.is_supported_dev_family("model name	: malformed".as_bytes())
-            .unwrap()
-    );
-    assert_eq!(false, dev.is_supported_dev_family("".as_bytes()).unwrap());
+    assert!(!dev
+        .is_supported_dev_family(mock_cpuinfo.as_bytes())
+        .unwrap());
+    assert!(!dev
+        .is_supported_dev_family("model name	: AMD Ryzen 5 2700C".as_bytes())
+        .unwrap());
+    assert!(!dev
+        .is_supported_dev_family("model name	: AMD Ryzen 3 3700C".as_bytes())
+        .unwrap());
+    assert!(!dev
+        .is_supported_dev_family("model name	: malformed".as_bytes())
+        .unwrap());
+    assert!(!dev.is_supported_dev_family("".as_bytes()).unwrap());
 }
 
 #[test]

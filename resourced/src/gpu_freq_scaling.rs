@@ -124,7 +124,7 @@ fn cleanup_gpu_scaling() {
 ///
 /// Returns the current power limit.  Can be buffered and sent in the subsequent call.
 pub fn evaluate_gpu_frequency(config: &DeviceGpuConfigParams, last_pl_val: u32) -> Result<u32> {
-    let current_pl = get_sysfs_val(&config, SupportedPaths::PowerLimitCurrent)?;
+    let current_pl = get_sysfs_val(config, SupportedPaths::PowerLimitCurrent)?;
 
     println!("Last PL =\t {}\nCurrent PL =\t {}", last_pl_val, current_pl);
     if current_pl == last_pl_val {
@@ -152,7 +152,7 @@ pub fn evaluate_gpu_frequency(config: &DeviceGpuConfigParams, last_pl_val: u32) 
                 requested_gpu_freq = gpu_max;
                 break;
             } else {
-                prev_thr = pl_thr.clone();
+                prev_thr = pl_thr;
             }
 
             continue;
@@ -181,12 +181,12 @@ pub fn evaluate_gpu_frequency(config: &DeviceGpuConfigParams, last_pl_val: u32) 
     // TODO: Compare against GPU_MIN+buffer instead of 0.  Need to read GPU min from sysfs.
     // This block will assign a new GPU max if needed.
     if requested_gpu_freq > 0
-        && requested_gpu_freq != get_sysfs_val(&config, SupportedPaths::GpuMax)?
+        && requested_gpu_freq != get_sysfs_val(config, SupportedPaths::GpuMax)?
     {
         println!("Setting GPU max to {}", requested_gpu_freq);
         // For the initial version, gpu_max = turbo.
-        set_sysfs_val(&config, SupportedPaths::GpuMax, requested_gpu_freq)?;
-        set_sysfs_val(&config, SupportedPaths::GpuTurbo, requested_gpu_freq)?;
+        set_sysfs_val(config, SupportedPaths::GpuMax, requested_gpu_freq)?;
+        set_sysfs_val(config, SupportedPaths::GpuTurbo, requested_gpu_freq)?;
     }
 
     Ok(current_pl)
@@ -231,7 +231,7 @@ fn get_supported_path(
 
 // TODO: Move the R/W functions to traits to allow mocking and stubbing for unit testing.
 fn get_sysfs_val(config: &DeviceGpuConfigParams, path_type: SupportedPaths) -> Result<u32> {
-    let path_buf = get_supported_path(&config, path_type)?;
+    let path_buf = get_supported_path(config, path_type)?;
     Ok(common::read_file_to_u64(path_buf.as_path())? as u32)
 }
 
@@ -240,7 +240,7 @@ fn set_sysfs_val(
     path_type: SupportedPaths,
     val: u32,
 ) -> Result<()> {
-    let path_buf = get_supported_path(&config, path_type)?;
+    let path_buf = get_supported_path(config, path_type)?;
     let path = path_buf.as_path();
 
     match Path::new(path).exists() {
@@ -316,10 +316,8 @@ pub mod amd_device {
                 .context("Couldn't read cpuinfo");
 
             match reader {
-                Ok(reader_unwrap) => {
-                    return AmdDeviceConfig::has_amd_tag_in_cpu_info(reader_unwrap);
-                }
-                Err(_) => return false,
+                Ok(reader_unwrap) => AmdDeviceConfig::has_amd_tag_in_cpu_info(reader_unwrap),
+                Err(_) => false,
             }
         }
 
@@ -329,16 +327,10 @@ pub mod amd_device {
             // processor	: 0
             // vendor_id	: AuthenticAMD
             // cpu family	: 23
-            for line in reader.lines() {
-                if let Ok(line) = line {
-                    // Only check CPU0 and fail early.
-                    if line.starts_with("vendor_id") {
-                        if line.ends_with("AuthenticAMD") {
-                            return true;
-                        } else {
-                            return false;
-                        }
-                    }
+            for line in reader.lines().flatten() {
+                // Only check CPU0 and fail early.
+                if line.starts_with("vendor_id") {
+                    return line.ends_with("AuthenticAMD");
                 }
             }
             false
@@ -379,16 +371,10 @@ pub mod amd_device {
 
             // Sample cpuinfo line:
             // model name	: AMD Ryzen 7 3000C with Radeon Vega Graphics
-            for line in reader.lines() {
-                if let Ok(line) = line {
-                    // Only check CPU0 and fail early.
-                    if line.starts_with("model name") {
-                        if model_re.is_match(&line) {
-                            return Ok(true);
-                        } else {
-                            return Ok(false);
-                        }
-                    }
+            for line in reader.lines().flatten() {
+                // Only check CPU0 and fail early.
+                if line.starts_with("model name") {
+                    return Ok(model_re.is_match(&line));
                 }
             }
             Ok(false)
@@ -430,11 +416,11 @@ pub mod amd_device {
 
                 // Selected frequency is denoted by '*', which adds a 3rd token
                 if tokens.len() == 3 && tokens[2] == "*" {
-                    selected = tokens[0].trim_end_matches(":").parse::<u32>()?;
+                    selected = tokens[0].trim_end_matches(':').parse::<u32>()?;
                 }
             }
 
-            if sclks.len() == 0 {
+            if sclks.is_empty() {
                 bail!("No sys clk options found.");
             }
 
