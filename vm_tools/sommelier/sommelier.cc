@@ -844,51 +844,8 @@ void sl_create_window(struct sl_context* ctx,
                       int height,
                       int border_width) {
   TRACE_EVENT("surface", "sl_create_window");
-  struct sl_window* window =
-      static_cast<sl_window*>(malloc(sizeof(struct sl_window)));
+  sl_window* window = new sl_window(ctx, id, x, y, width, height, border_width);
   uint32_t values[1];
-  assert(window);
-  window->ctx = ctx;
-  window->id = id;
-  window->frame_id = XCB_WINDOW_NONE;
-  window->host_surface_id = 0;
-  window->unpaired = 1;
-  window->x = x;
-  window->y = y;
-  window->width = width;
-  window->height = height;
-  window->border_width = border_width;
-  window->depth = 0;
-  window->managed = 0;
-  window->realized = 0;
-  window->activated = 0;
-  window->fullscreen = 0;
-  window->maximized = 0;
-  window->allow_resize = 1;
-  window->transient_for = XCB_WINDOW_NONE;
-  window->client_leader = XCB_WINDOW_NONE;
-  window->decorated = 0;
-  window->name = NULL;
-  window->clazz = NULL;
-  window->startup_id = NULL;
-  window->dark_frame = 0;
-  window->size_flags = P_POSITION;
-  window->focus_model_take_focus = 0;
-  window->min_width = 0;
-  window->min_height = 0;
-  window->max_width = 0;
-  window->max_height = 0;
-  window->xdg_surface = NULL;
-  window->xdg_toplevel = NULL;
-  window->xdg_popup = NULL;
-  window->aura_surface = NULL;
-  window->next_config.serial = 0;
-  window->next_config.mask = 0;
-  window->next_config.states_length = 0;
-  window->pending_config.serial = 0;
-  window->pending_config.mask = 0;
-  window->pending_config.states_length = 0;
-  wl_list_insert(&ctx->unpaired_windows, &window->link);
   values[0] = XCB_EVENT_MASK_PROPERTY_CHANGE | XCB_EVENT_MASK_FOCUS_CHANGE;
   xcb_change_window_attributes(ctx->connection, window->id, XCB_CW_EVENT_MASK,
                                values);
@@ -899,11 +856,6 @@ static void sl_destroy_window(struct sl_window* window) {
   if (window->frame_id != XCB_WINDOW_NONE)
     xcb_destroy_window(window->ctx->connection, window->frame_id);
 
-  if (window->ctx->host_focus_window == window) {
-    window->ctx->host_focus_window = NULL;
-    window->ctx->needs_set_input_focus = 1;
-  }
-
   if (window->xdg_popup)
     xdg_popup_destroy(window->xdg_popup);
   if (window->xdg_toplevel)
@@ -913,15 +865,7 @@ static void sl_destroy_window(struct sl_window* window) {
   if (window->aura_surface)
     zaura_surface_destroy(window->aura_surface);
 
-  if (window->name)
-    free(window->name);
-  if (window->clazz)
-    free(window->clazz);
-  if (window->startup_id)
-    free(window->startup_id);
-
-  wl_list_remove(&window->link);
-  free(window);
+  delete window;
 }
 
 static int sl_is_window(struct sl_window* window, xcb_window_t id) {

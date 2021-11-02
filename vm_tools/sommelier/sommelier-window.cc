@@ -19,6 +19,35 @@
 #define WM_CLASS_APPLICATION_ID_FORMAT \
   APPLICATION_ID_FORMAT_PREFIX ".wmclass.%s"
 
+sl_window::sl_window(struct sl_context* ctx,
+                     xcb_window_t id,
+                     int x,
+                     int y,
+                     int width,
+                     int height,
+                     int border_width)
+    : ctx(ctx),
+      id(id),
+      x(x),
+      y(y),
+      width(width),
+      height(height),
+      border_width(border_width) {
+  wl_list_insert(&ctx->unpaired_windows, &link);
+}
+
+sl_window::~sl_window() {
+  if (this == ctx->host_focus_window) {
+    ctx->host_focus_window = nullptr;
+    ctx->needs_set_input_focus = 1;
+  }
+
+  free(name);
+  free(clazz);
+  free(startup_id);
+  wl_list_remove(&link);
+}
+
 void sl_configure_window(struct sl_window* window) {
   TRACE_EVENT("surface", "sl_configure_window", "id", window->id);
   assert(!window->pending_config.serial);

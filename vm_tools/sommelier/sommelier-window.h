@@ -20,51 +20,60 @@
 #define P_WIN_GRAVITY (1L << 9)
 
 struct sl_config {
-  uint32_t serial;
-  uint32_t mask;
+  uint32_t serial = 0;
+  uint32_t mask = 0;
   uint32_t values[5];
-  uint32_t states_length;
+  uint32_t states_length = 0;
   uint32_t states[3];
 };
 
 struct sl_window {
-  struct sl_context* ctx;
-  xcb_window_t id;
-  xcb_window_t frame_id;
-  uint32_t host_surface_id;
-  int unpaired;
-  int x;
-  int y;
-  int width;
-  int height;
-  int border_width;
-  int depth;
-  int managed;
-  int realized;
-  int activated;
-  int fullscreen;
-  int maximized;
-  int allow_resize;
-  xcb_window_t transient_for;
-  xcb_window_t client_leader;
-  int decorated;
-  char* name;
-  char* clazz;
-  char* startup_id;
-  int dark_frame;
-  uint32_t size_flags;
-  int focus_model_take_focus;
-  int min_width;
-  int min_height;
-  int max_width;
-  int max_height;
+  sl_window(struct sl_context* ctx,
+            xcb_window_t id,
+            int x,
+            int y,
+            int width,
+            int height,
+            int border_width);
+  ~sl_window();
+
+  struct sl_context* ctx = nullptr;
+  xcb_window_t id = XCB_WINDOW_NONE;
+  xcb_window_t frame_id = XCB_WINDOW_NONE;
+  uint32_t host_surface_id = 0;
+  int unpaired = 1;
+  int x = 0;
+  int y = 0;
+  int width = 0;
+  int height = 0;
+  int border_width = 0;
+  int depth = 0;
+  int managed = 0;
+  int realized = 0;
+  int activated = 0;
+  int fullscreen = 0;
+  int maximized = 0;
+  int allow_resize = 1;
+  xcb_window_t transient_for = XCB_WINDOW_NONE;
+  xcb_window_t client_leader = XCB_WINDOW_NONE;
+  int decorated = 0;
+  char* name = nullptr;
+  char* clazz = nullptr;
+  char* startup_id = nullptr;
+  int dark_frame = 0;
+  uint32_t size_flags = P_POSITION;
+  int focus_model_take_focus = 0;
+  int min_width = 0;
+  int min_height = 0;
+  int max_width = 0;
+  int max_height = 0;
   struct sl_config next_config;
   struct sl_config pending_config;
-  struct xdg_surface* xdg_surface;
-  struct xdg_toplevel* xdg_toplevel;
-  struct xdg_popup* xdg_popup;
-  struct zaura_surface* aura_surface;
-  struct wl_list link;
+  struct xdg_surface* xdg_surface = nullptr;
+  struct xdg_toplevel* xdg_toplevel = nullptr;
+  struct xdg_popup* xdg_popup = nullptr;
+  struct zaura_surface* aura_surface = nullptr;
+  struct wl_list link = {};
 };
 
 enum {
