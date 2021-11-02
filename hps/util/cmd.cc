@@ -36,9 +36,9 @@ int SendCmd(std::unique_ptr<hps::HPS> hps,
   if (args[1] == "reset") {
     cmd = hps::R3::kReset;
   } else if (args[1] == "launch") {
-    cmd = hps::R3::kLaunch;
+    cmd = hps::R3::kLaunch1;
   } else if (args[1] == "appl") {
-    cmd = hps::R3::kEnable;
+    cmd = hps::R3::kLaunchAppl;
   } else {
     std::cerr << args[0] << ": Unknown command (" << args[1] << ")"
               << std::endl;

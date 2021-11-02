@@ -143,6 +143,18 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
       return base::JoinString(ret, "|");
 
     case HpsReg::kError:
+      if (val & RError::kBufORun) {
+        ret.push_back("kBufORun");
+        val ^= RError::kBufORun;
+      }
+      if (val & RError::kBufNAvail) {
+        ret.push_back("kBufNAvail");
+        val ^= RError::kBufNAvail;
+      }
+      if (val & RError::kI2cBadReq) {
+        ret.push_back("kI2cBadReq");
+        val ^= RError::kI2cBadReq;
+      }
       if (val & RError::kSpiFlash) {
         ret.push_back("kSpiFlash");
         val ^= RError::kSpiFlash;

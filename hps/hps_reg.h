@@ -57,8 +57,8 @@ enum R2 : uint16_t {
 // Register 3 (WO) - System command register.
 enum R3 : uint16_t {
   kReset = BIT(0),
-  kLaunch = BIT(1),
-  kEnable = BIT(2),
+  kLaunch1 = BIT(1),
+  kLaunchAppl = BIT(2),
 };
 
 // Register 7 (RW) - Feature enable bit mask.
@@ -73,6 +73,9 @@ enum RFeat : uint16_t {
 };
 
 enum RError : uint16_t {
+  kBufORun = BIT(9),
+  kBufNAvail = BIT(8),
+  kI2cBadReq = BIT(7),
   kSpiFlash = BIT(6),
   kCamera = BIT(5),
   kI2cORun = BIT(4),

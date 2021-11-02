@@ -151,7 +151,7 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
   // Inspect stage0 flags and either fail, update, or launch stage1 and continue
   switch (this->CheckStage0()) {
     case BootResult::kOk:
-      this->device_->WriteReg(HpsReg::kSysCmd, R3::kLaunch);
+      this->device_->WriteReg(HpsReg::kSysCmd, R3::kLaunch1);
       break;
     case BootResult::kFail:
       return BootResult::kFail;
@@ -167,7 +167,7 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
   // Inspect stage1 flags and either fail, update, or launch stage2 and continue
   switch (this->CheckStage1()) {
     case BootResult::kOk:
-      this->device_->WriteReg(HpsReg::kSysCmd, R3::kEnable);
+      this->device_->WriteReg(HpsReg::kSysCmd, R3::kLaunchAppl);
       break;
     case BootResult::kFail:
       return BootResult::kFail;

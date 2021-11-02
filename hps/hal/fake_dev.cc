@@ -176,12 +176,12 @@ void FakeDev::WriteRegister(HpsReg reg, uint16_t value) {
     case HpsReg::kSysCmd:
       if (value & hps::R3::kReset) {
         this->SetStage(Stage::kStage0);
-      } else if (value & hps::R3::kLaunch) {
+      } else if (value & hps::R3::kLaunch1) {
         // Only valid in stage0
         if (this->stage_ == Stage::kStage0) {
           this->SetStage(Stage::kStage1);
         }
-      } else if (value & hps::R3::kEnable) {
+      } else if (value & hps::R3::kLaunchAppl) {
         // Only valid in stage1
         if (this->stage_ == Stage::kStage1) {
           this->SetStage(Stage::kAppl);
