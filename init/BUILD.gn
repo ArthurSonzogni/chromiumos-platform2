@@ -6,6 +6,7 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":chromeos_startup",
     ":clobber-state",
     ":cros_sysrq_init",
     ":file_attrs_cleaner_tool",
@@ -28,7 +29,12 @@ group("all") {
 pkg_config("target_defaults") {
   defines = [
     "USE_LVM_STATEFUL_PARTITION=${use.lvm_stateful_partition}",
+    "USE_DIRENCRYPTION=${use.direncryption}",
+    "USE_ENCRYPTED_REBOOT_VAULT=${use.encrypted_reboot_vault}",
     "USE_ENCRYPTED_STATEFUL=${use.encrypted_stateful}",
+    "USE_TPM2=${use.tpm2}",
+    "USE_FSVERITY=${use.fsverity}",
+    "USE_PRJQUOTA=${use.prjquota}",
   ]
   pkg_deps = [
     "libbrillo",
@@ -38,6 +44,7 @@ pkg_config("target_defaults") {
     "vboot_host",
   ]
   libs = [
+    "bootstat",
     "rootdev",
     "secure_erase_file",
   ]
@@ -57,6 +64,17 @@ static_library("utils") {
   configs += [ ":target_defaults" ]
 }
 
+static_library("libcrosstartup") {
+  sources = [
+    "startup/chromeos_startup.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":libclobber",
+    ":libcrossystem",
+  ]
+}
+
 static_library("libclobber") {
   sources = [
     "clobber_state.cc",
@@ -64,6 +82,16 @@ static_library("libclobber") {
   ]
   configs += [ ":target_defaults" ]
   deps = [ ":utils" ]
+}
+
+executable("chromeos_startup") {
+  sources = [ "startup/main.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":libclobber",
+    ":libcrosstartup",
+    ":libcrossystem",
+  ]
 }
 
 executable("clobber-state") {
