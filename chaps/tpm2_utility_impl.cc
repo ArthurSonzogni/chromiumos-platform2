@@ -49,10 +49,6 @@ constexpr struct {
     {trunks::TPM_ECC_NIST_P256, NID_X9_62_prime256v1},
 };
 
-constexpr int kKeySizeForSealingData = 2048;
-constexpr char kPublicExponentForSealingData[] = "\x01\x00\x01";
-constexpr int kPublicExponentForSealingDataSize = 3;
-
 // Supported digest algorithms in TPM 2.0.
 constexpr struct {
   trunks::TPM_ALG_ID id;
@@ -1096,19 +1092,27 @@ bool TPM2UtilityImpl::SealData(int slot_id,
                                const brillo::SecureBlob& auth_value,
                                std::string* key_blob,
                                std::string* encrypted_data) {
-  // No need to lock here, because GenerateRSAKey & Bind would acquire the lock.
-  int auth_key_handle;
-  std::string public_exponent(kPublicExponentForSealingData,
-                              kPublicExponentForSealingDataSize);
-  if (!GenerateRSAKey(slot_id, kKeySizeForSealingData, public_exponent,
-                      auth_value, key_blob, &auth_key_handle)) {
-    LOG(ERROR) << "Failed to generate authentication key for sealing data.";
+  AutoLock lock(lock_);
+  if (unsealed_data.length() > MAX_SYM_DATA) {
+    LOG(ERROR) << "The data to seal is too large.";
     return false;
   }
-  if (!Bind(auth_key_handle, unsealed_data, encrypted_data)) {
-    LOG(ERROR) << "Failed to bind encryption key for sealing data.";
+  // No special policy digest.
+  std::string policy_digest("");
+  ScopedSession session_scope(factory_, &session_);
+  if (!session_) {
     return false;
   }
+  session_->SetEntityAuthorizationValue("");  // SRK Authorization Value.
+  TPM_RC result = trunks_tpm_utility_->SealData(
+      unsealed_data, policy_digest, auth_value.to_string(),
+      session_->GetDelegate(), key_blob);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Failed to seal data to TPM: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  encrypted_data->clear();
   return true;
 }
 
@@ -1117,11 +1121,31 @@ bool TPM2UtilityImpl::UnsealData(int slot_id,
                                  const std::string& encrypted_data,
                                  const brillo::SecureBlob& auth_value,
                                  brillo::SecureBlob* unsealed_data) {
-  if (!Authenticate(slot_id, auth_value, key_blob, encrypted_data,
-                    unsealed_data)) {
-    LOG(ERROR) << "Authentication failed for unsealing data.";
+  if (!encrypted_data.empty()) {
+    // Use the legacy method to unseal data for backward compatibility.
+    if (!Authenticate(slot_id, auth_value, key_blob, encrypted_data,
+                      unsealed_data)) {
+      LOG(ERROR) << "Authentication failed for unsealing data.";
+      return false;
+    }
+    return true;
+  }
+
+  AutoLock lock(lock_);
+  std::string data;
+  ScopedSession session_scope(factory_, &session_);
+  if (!session_) {
     return false;
   }
+  session_->SetEntityAuthorizationValue(auth_value.to_string());
+  TPM_RC result =
+      trunks_tpm_utility_->UnsealData(key_blob, session_->GetDelegate(), &data);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Failed to seal data to TPM: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  unsealed_data->assign(data.begin(), data.end());
   return true;
 }
 

@@ -1083,4 +1083,107 @@ TEST_F(TPM2UtilityTest, GetECCPublicKeyFail) {
   EXPECT_FALSE(utility.GetECCPublicKey(kKeyHandle, &public_point));
 }
 
+TEST_F(TPM2UtilityTest, SealDataSuccess) {
+  TPM2UtilityImpl utility(factory_.get());
+  std::string unsealed_data("unsealed_data");
+  std::string auth_data_str("auth_data_str");
+  SecureBlob auth_data(auth_data_str.begin(), auth_data_str.end());
+  std::string key_blob;
+  std::string encrypted_data;
+  std::string empty_policy_digest("");
+  EXPECT_CALL(mock_tpm_utility_,
+              SealData(unsealed_data, empty_policy_digest, auth_data_str, _, _))
+      .WillOnce(DoAll(SetArgPointee<4>("key_blob"), Return(TPM_RC_SUCCESS)));
+  EXPECT_TRUE(utility.SealData(1, unsealed_data, auth_data, &key_blob,
+                               &encrypted_data));
+  EXPECT_EQ(key_blob, "key_blob");
+}
+
+TEST_F(TPM2UtilityTest, SealDataFail) {
+  TPM2UtilityImpl utility(factory_.get());
+  std::string unsealed_data("unsealed_data");
+  std::string auth_data_str("auth_data_str");
+  SecureBlob auth_data(auth_data_str.begin(), auth_data_str.end());
+  std::string key_blob;
+  std::string encrypted_data;
+  std::string empty_policy_digest("");
+  EXPECT_CALL(mock_tpm_utility_,
+              SealData(unsealed_data, empty_policy_digest, auth_data_str, _, _))
+      .WillOnce(DoAll(Return(TPM_RC_FAILURE)));
+  EXPECT_FALSE(utility.SealData(1, unsealed_data, auth_data, &key_blob,
+                                &encrypted_data));
+}
+
+TEST_F(TPM2UtilityTest, UnsealDataSuccess) {
+  TPM2UtilityImpl utility(factory_.get());
+  std::string key_blob("key_blob");
+  // Empty encrypted data.
+  std::string encrypted_data("");
+  std::string auth_data_str("auth_data_str");
+  SecureBlob auth_data(auth_data_str.begin(), auth_data_str.end());
+  SecureBlob unsealed_data;
+  EXPECT_CALL(mock_tpm_utility_, UnsealData(key_blob, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>("unsealed_data"), Return(TPM_RC_SUCCESS)));
+  EXPECT_TRUE(utility.UnsealData(1, key_blob, encrypted_data, auth_data,
+                                 &unsealed_data));
+  EXPECT_EQ(unsealed_data.to_string(), "unsealed_data");
+}
+
+TEST_F(TPM2UtilityTest, UnsealDataLeagcySuccess) {
+  TPM2UtilityImpl utility(factory_.get());
+  std::string key_blob("key_blob");
+  // Empty encrypted data.
+  std::string encrypted_data("encrypted_data");
+  std::string auth_data_str("auth_data_str");
+  SecureBlob auth_data(auth_data_str.begin(), auth_data_str.end());
+
+  int key_handle = 0x239487;
+  std::string modulus("encrypted_data_modulus");
+
+  EXPECT_CALL(mock_tpm_utility_, LoadKey(key_blob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(key_handle), Return(TPM_RC_SUCCESS)));
+
+  trunks::TPMT_PUBLIC public_data;
+  public_data.type = trunks::TPM_ALG_RSA;
+  public_data.parameters.rsa_detail.exponent = 0x10001;
+  public_data.unique.rsa = trunks::Make_TPM2B_PUBLIC_KEY_RSA(modulus);
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(public_data), Return(TPM_RC_SUCCESS)));
+
+  SecureBlob unsealed_data;
+  EXPECT_CALL(mock_tpm_utility_, UnsealData(_, _, _)).Times(0);
+  EXPECT_TRUE(utility.UnsealData(1, key_blob, encrypted_data, auth_data,
+                                 &unsealed_data));
+}
+
+TEST_F(TPM2UtilityTest, UnsealDataFail) {
+  TPM2UtilityImpl utility(factory_.get());
+  std::string key_blob("key_blob");
+  // Empty encrypted data.
+  std::string encrypted_data("");
+  std::string auth_data_str("auth_data_str");
+  SecureBlob auth_data(auth_data_str.begin(), auth_data_str.end());
+  SecureBlob unsealed_data;
+  EXPECT_CALL(mock_tpm_utility_, UnsealData(key_blob, _, _))
+      .WillOnce(DoAll(Return(TPM_RC_FAILURE)));
+  EXPECT_FALSE(utility.UnsealData(1, key_blob, encrypted_data, auth_data,
+                                  &unsealed_data));
+}
+
+TEST_F(TPM2UtilityTest, UnsealDataLeagcyFail) {
+  TPM2UtilityImpl utility(factory_.get());
+  std::string key_blob("key_blob");
+  // Empty encrypted data.
+  std::string encrypted_data("encrypted_data");
+  std::string auth_data_str("auth_data_str");
+  SecureBlob auth_data(auth_data_str.begin(), auth_data_str.end());
+  SecureBlob unsealed_data;
+  EXPECT_CALL(mock_tpm_utility_, LoadKey(key_blob, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_CALL(mock_tpm_utility_, UnsealData(_, _, _)).Times(0);
+  EXPECT_FALSE(utility.UnsealData(1, key_blob, encrypted_data, auth_data,
+                                  &unsealed_data));
+}
+
 }  // namespace chaps
