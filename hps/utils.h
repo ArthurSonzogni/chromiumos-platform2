@@ -13,7 +13,7 @@
 
 namespace hps {
 
-constexpr int kVersionOffset = 18;
+constexpr int kVersionOffset = 20;
 
 // Read the version number from the mcu firmware file.
 // Returns false on failure.
