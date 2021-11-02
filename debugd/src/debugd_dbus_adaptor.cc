@@ -304,20 +304,31 @@ bool DebugdDBusAdaptor::PacketCaptureStart(
     const brillo::VariantDictionary& options,
     std::string* handle) {
   bool is_dev_mode = dev_features_tool_wrapper_->restriction().InDevMode();
+  // Use base::Unretained(this) as the packet_capture_tool_ is a member of
+  // `this` and if packet_capture_tool_ is alive to execute the bound function,
+  // it means DebugdDBusAdaptor should also be alive.
   bool packet_capture_started = packet_capture_tool_->Start(
-      is_dev_mode, statfd, outfd, options, handle, error);
+      is_dev_mode, statfd, outfd, options, handle,
+      base::BindOnce(&DebugdDBusAdaptor::OnPacketCaptureStopped,
+                     base::Unretained(this)),
+      error);
   if (packet_capture_started) {
     SendPacketCaptureStartSignal();
   }
   return packet_capture_started;
 }
 
+void DebugdDBusAdaptor::OnPacketCaptureStopped() {
+  // Send PacketCaptureStopSignal if there are no active packet capture
+  // processes running.
+  if (!packet_capture_tool_->HasActivePacketCaptureProcess()) {
+    SendPacketCaptureStopSignal();
+  }
+}
+
 bool DebugdDBusAdaptor::PacketCaptureStop(brillo::ErrorPtr* error,
                                           const std::string& handle) {
   bool packet_capture_stopped = packet_capture_tool_->Stop(handle, error);
-  if (packet_capture_stopped) {
-    SendPacketCaptureStopSignal();
-  }
   return packet_capture_stopped;
 }
 

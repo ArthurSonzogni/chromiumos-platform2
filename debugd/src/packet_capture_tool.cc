@@ -4,9 +4,18 @@
 
 #include "debugd/src/packet_capture_tool.h"
 
+#include <memory>
+#include <string>
+#include <unistd.h>
+#include <utility>
+#include <sys/select.h>
+
+#include <base/bind.h>
+#include <base/callback.h>
+#include <base/files/file_descriptor_watcher_posix.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
-#include <string>
 
 #include "debugd/src/error_utils.h"
 #include "debugd/src/helper_utils.h"
@@ -20,6 +29,49 @@ namespace {
 
 const char kPacketCaptureToolErrorString[] =
     "org.chromium.debugd.error.PacketCapture";
+
+bool CreateStatusPipe(base::ScopedFD* read_fd, base::ScopedFD* write_fd) {
+  int pipe_fd[2];
+  int ret = pipe(pipe_fd);
+  if (ret != 0) {
+    return false;
+  }
+  read_fd->reset(pipe_fd[0]);
+  write_fd->reset(pipe_fd[1]);
+  return true;
+}
+
+// Reads the status from the given file descriptor with a timeout of 3 seconds.
+// Returns true if "1" is successfully read from the pipe, returns false
+// otherwise.
+bool ReadStatusFromPipe(int read_fd) {
+  fd_set set;
+  struct timeval timeout;
+  int rv;
+  // The helper process (capture_packets.cc) will write "1" to the pipe on
+  // successful start.
+  char buff[1];
+  int len = 1;
+
+  FD_ZERO(&set);
+  FD_SET(read_fd, &set);
+
+  // The timeout will be three seconds for read.
+  timeout.tv_sec = 3;
+  timeout.tv_usec = 0;
+
+  rv = select(read_fd + 1, &set, NULL, NULL, &timeout);
+  if (rv == -1) {
+    PLOG(ERROR) << "packet_capture: failed to read from pipe";
+    return false;
+  } else if (rv == 0) {
+    // The read operation didn't complete on time.
+    return false;
+  } else {
+    // The character we read must be "1".
+    return base::ReadFromFD(read_fd, buff, len) && buff[0] == '1';
+  }
+}
 
 bool ValidateInterfaceName(const std::string& name) {
   for (char c : name) {
@@ -216,11 +268,28 @@ PacketCaptureTool::CreateCaptureProcessForDeviceBasedCapture(
   return p;
 }
 
+void PacketCaptureTool::OnPacketCaptureStopped(std::string helper_process) {
+  auto process_info_iter = helper_processes_.find(helper_process);
+  if (process_info_iter == helper_processes_.end()) {
+    // Helper process has already been cleaned up. Don't need to do anything.
+    return;
+  }
+  base::OnceClosure callback =
+      std::move(process_info_iter->second.on_stopped_callback);
+  helper_processes_.erase(process_info_iter);
+  std::move(callback).Run();
+}
+
+bool PacketCaptureTool::HasActivePacketCaptureProcess() {
+  return !helper_processes_.empty();
+}
+
 bool PacketCaptureTool::Start(bool is_dev_mode,
                               const base::ScopedFD& status_fd,
                               const base::ScopedFD& output_fd,
                               const brillo::VariantDictionary& options,
                               std::string* out_id,
+                              base::OnceClosure on_stopped_callback,
                               brillo::ErrorPtr* error) {
   if (!IsDevicePacketCaptureAllowed(error)) {
     DEBUGD_ADD_ERROR(error, kPacketCaptureToolErrorString,
@@ -255,11 +324,44 @@ bool PacketCaptureTool::Start(bool is_dev_mode,
                      "Failed to create helper process.");
     return false;
   }
+  // Create a pipe to check the child process state and send the write end of
+  // the pipe to the child process.
+  base::ScopedFD write_fd, read_fd;
+  if (!CreateStatusPipe(&read_fd, &write_fd)) {
+    DEBUGD_ADD_ERROR(error, kPacketCaptureToolErrorString,
+                     "Cannot create a pipe");
+    return false;
+  }
+  p->AddArg(std::to_string(write_fd.get()));
+
   p->BindFd(output_fd.get(), child_output_fd);
   p->BindFd(status_fd.get(), STDOUT_FILENO);
   p->BindFd(status_fd.get(), STDERR_FILENO);
+  p->BindFd(write_fd.get(), write_fd.get());
+
   LOG(INFO) << "packet_capture: running process id: " << p->id();
   p->Start();
+
+  // Read the helper process status from the pipe and check if it was
+  // successful.
+  if (!ReadStatusFromPipe(read_fd.get())) {
+    DEBUGD_ADD_ERROR(error, kPacketCaptureToolErrorString,
+                     "Packet capture helper process failed to start.");
+    return false;
+  }
+
+  // Watch the read end of the pipe. Since we read from the pipe already, the
+  // pipe will be readable again when the helper process closes the pipe. It
+  // means the packet capture has stopped.
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> fd_watcher =
+      base::FileDescriptorWatcher::WatchReadable(
+          read_fd.get(),
+          base::BindRepeating(&PacketCaptureTool::OnPacketCaptureStopped,
+                              base::Unretained(this), p->id()));
+
+  helper_processes_.insert(std::make_pair(
+      p->id(), ChildProcessInfo(std::move(read_fd), std::move(fd_watcher),
+                                std::move(on_stopped_callback))));
   *out_id = p->id();
   return true;
 }

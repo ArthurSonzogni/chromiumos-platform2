@@ -246,6 +246,8 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
                            const std::string& log) override;
 
  private:
+  void OnPacketCaptureStopped();
+
   brillo::dbus_utils::DBusObject dbus_object_;
   brillo::dbus_utils::ExportedProperty<bool> crash_sender_test_mode_;
 

@@ -529,6 +529,7 @@ main ()
   local center_freq
   local monitor_connection_on
   local output_file
+  local status_pipe
   while [ $# -gt 0 ] ; do
     param="${1}"
     shift
@@ -565,6 +566,10 @@ main ()
         ;;
       --output-file)
         output_file="${1}"
+        shift
+        ;;
+      --status-pipe)
+        status_pipe="${1}"
         shift
         ;;
       --help)
@@ -625,7 +630,7 @@ main ()
     done
   fi
 
-  start_capture "${device}" "${output_file}" "${max_size}"
+  start_capture "${device}" "${output_file}" "${max_size}" "${status_pipe}"
 }
 
 set -e  # exit on failures
