@@ -156,6 +156,9 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     // This pref is required by policy::ShutdownFromSuspend.
     prefs_->SetBool(kDisableHibernatePref, false);
 
+    resourced_call_count_ = 0;
+    resourced_fail_ = 0;
+
     daemon_.reset(new Daemon(this, run_dir_.GetPath()));
     daemon_->set_wakeup_count_path_for_testing(wakeup_count_path_);
     daemon_->set_oobe_completed_path_for_testing(oobe_completed_path_);
@@ -367,6 +370,28 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     return 0;
   }
 
+  // DBusWrapperStub::MethodCallback implementation used to handle resourced
+  // D-Bus call (resource_manager::kSetFullscreenVideoWithTimeout).
+  int resourced_call_count_;
+  int resourced_fail_;
+  std::unique_ptr<dbus::Response> HandleResourcedMethodCall(
+      dbus::ObjectProxy* proxy, dbus::MethodCall* method_call) {
+    resourced_call_count_++;
+    if (resourced_call_count_ != 1) {
+      return nullptr;
+    }
+
+    if (method_call->GetInterface() !=
+        resource_manager::kResourceManagerInterface) {
+      resourced_fail_ = 1;
+      return nullptr;
+    }
+
+    std::unique_ptr<dbus::Response> response =
+        dbus::Response::FromMethodCall(method_call);
+    return response;
+  }
+
  protected:
   // Send the appropriate events to put StateController into docked mode.
   void EnterDockedMode() {
@@ -549,6 +574,8 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
             keyboard_backlight_controller_->user_activity_reports()[0]);
 
   // Video activity reports.
+  dbus_wrapper_->SetMethodCallback(base::BindRepeating(
+      &DaemonTest::HandleResourcedMethodCall, base::Unretained(this)));
   dbus::MethodCall video_call(kPowerManagerInterface,
                               kHandleVideoActivityMethod);
   dbus::MessageWriter(&video_call).AppendBool(true /* fullscreen */);
@@ -557,6 +584,8 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
   EXPECT_EQ(true, internal_backlight_controller_->video_activity_reports()[0]);
   ASSERT_EQ(1, keyboard_backlight_controller_->video_activity_reports().size());
   EXPECT_EQ(true, keyboard_backlight_controller_->video_activity_reports()[0]);
+  ASSERT_EQ(0, resourced_fail_);
+  ASSERT_EQ(1, resourced_call_count_);
 
   // Display mode / projecting changes.
   dbus::MethodCall display_call(kPowerManagerInterface, kSetIsProjectingMethod);

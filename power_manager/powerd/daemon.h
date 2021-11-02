@@ -293,6 +293,9 @@ class Daemon :
   void SetBacklightsOffForInactivity(bool off);
   void SetBacklightsSuspended(bool suspended);
 
+  // Set fullscreen video with a timeout.
+  void SetFullscreenVideoWithTimeout(bool active, int timeout_seconds);
+
   DaemonDelegate* delegate_;  // weak
 
   std::unique_ptr<PrefsInterface> prefs_;
@@ -301,6 +304,8 @@ class Daemon :
 
   // The |session_manager_dbus_proxy_| is owned by |dbus_wrapper_|
   dbus::ObjectProxy* session_manager_dbus_proxy_ = nullptr;
+  // The |resource_manager_dbus_proxy_| is owned by |dbus_wrapper_|
+  dbus::ObjectProxy* resource_manager_dbus_proxy_ = nullptr;
   // DBus proxy for contacting tpm_managerd. May be null if the TPM status is
   // not needed.
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;

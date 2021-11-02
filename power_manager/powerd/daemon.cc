@@ -123,6 +123,7 @@ constexpr base::TimeDelta kShutdownLockfileRetryInterval =
 const int kSessionManagerDBusTimeoutMs = 3000;
 constexpr base::TimeDelta kTpmManagerdDBusTimeout =
     base::TimeDelta::FromMinutes(2);
+const int kResourceManagerDBusTimeoutMs = 3000;
 
 // Interval between log messages while user, audio, or video activity is
 // ongoing, in seconds.
@@ -955,6 +956,9 @@ void Daemon::InitDBus() {
   session_manager_dbus_proxy_ =
       dbus_wrapper_->GetObjectProxy(login_manager::kSessionManagerServiceName,
                                     login_manager::kSessionManagerServicePath);
+  resource_manager_dbus_proxy_ = dbus_wrapper_->GetObjectProxy(
+      resource_manager::kResourceManagerServiceName,
+      resource_manager::kResourceManagerServicePath);
   dbus_wrapper_->RegisterForServiceAvailability(
       session_manager_dbus_proxy_,
       base::Bind(&Daemon::HandleSessionManagerAvailableOrRestarted,
@@ -1214,6 +1218,19 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestSuspendMethod(
   return nullptr;
 }
 
+void Daemon::SetFullscreenVideoWithTimeout(bool active, int timeout_seconds) {
+  dbus::MethodCall method_call(
+      resource_manager::kResourceManagerInterface,
+      resource_manager::kSetFullscreenVideoWithTimeout);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendByte(static_cast<char>(active));
+  writer.AppendUint32(timeout_seconds);
+
+  dbus_wrapper_->CallMethodSync(
+      resource_manager_dbus_proxy_, &method_call,
+      base::TimeDelta::FromMilliseconds(kResourceManagerDBusTimeoutMs));
+}
+
 std::unique_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(
     dbus::MethodCall* method_call) {
   bool fullscreen = false;
@@ -1226,6 +1243,10 @@ std::unique_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(
   for (auto controller : all_backlight_controllers_)
     controller->HandleVideoActivity(fullscreen);
   state_controller_->HandleVideoActivity();
+
+  if (fullscreen)
+    SetFullscreenVideoWithTimeout(true /* active */,
+                                  10 /* timeout in seconds */);
   return nullptr;
 }
 
