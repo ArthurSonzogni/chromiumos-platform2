@@ -4,12 +4,16 @@
 
 #include <rmad/utils/cr50_utils_impl.h>
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/logging.h>
 #include <base/process/launch.h>
 #include <base/strings/string_util.h>
+
+#include "rmad/utils/cmd_utils_impl.h"
 
 namespace rmad {
 
@@ -24,11 +28,18 @@ const std::vector<std::string> kEnableFactoryModeArgv{kGsctoolCmd, "-a", "-F",
 
 }  // namespace
 
+Cr50UtilsImpl::Cr50UtilsImpl() : Cr50Utils() {
+  cmd_utils_ = std::make_unique<CmdUtilsImpl>();
+}
+
+Cr50UtilsImpl::Cr50UtilsImpl(std::unique_ptr<CmdUtils> cmd_utils)
+    : Cr50Utils(), cmd_utils_(std::move(cmd_utils)) {}
+
 bool Cr50UtilsImpl::GetRsuChallengeCode(std::string* challenge_code) const {
   // TODO(chenghan): Check with cr50 team if we can expose a tpm_managerd API
   //                 for this, so we don't need to depend on `gsctool` output
   //                 format to do extra string parsing.
-  if (base::GetAppOutput(kRsuArgv, challenge_code)) {
+  if (cmd_utils_->GetOutput(kRsuArgv, challenge_code)) {
     base::RemoveChars(*challenge_code, base::kWhitespaceASCII, challenge_code);
     base::ReplaceFirstSubstringAfterOffset(challenge_code, 0, "Challenge:", "");
     LOG(INFO) << "Challenge code: " << *challenge_code;
@@ -41,7 +52,7 @@ bool Cr50UtilsImpl::PerformRsu(const std::string& unlock_code) const {
   std::vector<std::string> argv(kRsuArgv);
   argv.push_back(unlock_code);
   std::string output;
-  if (base::GetAppOutput(argv, &output)) {
+  if (cmd_utils_->GetOutput(argv, &output)) {
     LOG(INFO) << "RSU succeeded.";
     return true;
   }
@@ -52,14 +63,15 @@ bool Cr50UtilsImpl::PerformRsu(const std::string& unlock_code) const {
 
 bool Cr50UtilsImpl::EnableFactoryMode() const {
   if (!IsFactoryModeEnabled()) {
-    return base::GetAppOutput(kEnableFactoryModeArgv, nullptr);
+    std::string unused_output;
+    return cmd_utils_->GetOutput(kEnableFactoryModeArgv, &unused_output);
   }
   return true;
 }
 
 bool Cr50UtilsImpl::IsFactoryModeEnabled() const {
   std::string output;
-  base::GetAppOutput(kCcdInfoArgv, &output);
+  cmd_utils_->GetOutput(kCcdInfoArgv, &output);
   return output.find(kFactoryModeMatchStr) != std::string::npos;
 }
 

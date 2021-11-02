@@ -7,19 +7,26 @@
 
 #include <rmad/utils/cr50_utils.h>
 
+#include <memory>
 #include <string>
+
+#include "rmad/utils/cmd_utils.h"
 
 namespace rmad {
 
 class Cr50UtilsImpl : public Cr50Utils {
  public:
-  Cr50UtilsImpl() = default;
-  ~Cr50UtilsImpl() = default;
+  Cr50UtilsImpl();
+  explicit Cr50UtilsImpl(std::unique_ptr<CmdUtils> cmd_utils);
+  ~Cr50UtilsImpl() override = default;
 
   bool GetRsuChallengeCode(std::string* challenge_code) const override;
   bool PerformRsu(const std::string& unlock_code) const override;
   bool EnableFactoryMode() const override;
   bool IsFactoryModeEnabled() const override;
+
+ private:
+  std::unique_ptr<CmdUtils> cmd_utils_;
 };
 
 }  // namespace rmad

@@ -156,6 +156,7 @@ if (use.test) {
       "system/tpm_manager_client_test.cc",
       "utils/cbi_utils_test.cc",
       "utils/cmd_utils_test.cc",
+      "utils/cr50_utils_test.cc",
       "utils/cros_config_utils_test.cc",
       "utils/fake_hardware_verifier_utils.cc",
       "utils/iio_sensor_probe_utils_impl_test.cc",
