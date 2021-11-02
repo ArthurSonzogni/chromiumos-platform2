@@ -124,32 +124,21 @@ bool BiodStorage::WriteRecord(const BiometricsManagerRecord& record,
 }
 
 std::unique_ptr<std::vector<uint8_t>>
-BiodStorage::ReadValidationValueFromRecord(int record_format_version,
-                                           const base::Value& record_dictionary,
+BiodStorage::ReadValidationValueFromRecord(const base::Value& record_dictionary,
                                            const FilePath& record_path) {
   std::string validation_val_str;
-  if (record_format_version == kRecordFormatVersion) {
-    const std::string* validation_val_str_ptr =
-        record_dictionary.FindStringKey(kValidationVal);
-    if (!validation_val_str_ptr) {
-      LOG(ERROR) << "Cannot read validation value from " << record_path.value()
+
+  const std::string* validation_val_str_ptr =
+      record_dictionary.FindStringKey(kValidationVal);
+  if (!validation_val_str_ptr) {
+    LOG(WARNING) << "Cannot read validation value from " << record_path.value()
                  << ".";
-      return nullptr;
-    }
-    validation_val_str = *validation_val_str_ptr;
-    if (!base::Base64Decode(validation_val_str, &validation_val_str)) {
-      LOG(ERROR) << "Unable to base64 decode validation value from "
-                 << record_path.value() << ".";
-      return nullptr;
-    }
-  } else if (record_format_version == kRecordFormatVersionNoValidationValue) {
-    // If the record has format version 1, it should have no validation value
-    // field. In that case, load an empty validation value.
-    LOG(INFO) << "Record from " << record_path.value() << " does not have "
-              << "validation value and needs migration.";
-  } else {
-    LOG(ERROR) << "Invalid format version from record " << record_path.value()
-               << ".";
+    return nullptr;
+  }
+  validation_val_str = *validation_val_str_ptr;
+  if (!base::Base64Decode(validation_val_str, &validation_val_str)) {
+    LOG(ERROR) << "Unable to base64 decode validation value from "
+               << record_path.value() << ".";
     return nullptr;
   }
 
@@ -244,12 +233,27 @@ BiodStorageInterface::ReadRecordResult BiodStorage::ReadRecordsForSingleUser(
     }
     cur_record.metadata.record_format_version = *record_format_version;
 
-    std::unique_ptr<std::vector<uint8_t>> validation_val =
-        ReadValidationValueFromRecord(*record_format_version, record_dictionary,
-                                      record_path);
-    if (!validation_val) {
+    if (*record_format_version < 0 ||
+        *record_format_version > kRecordFormatVersion) {
+      LOG(ERROR) << "Invalid format version from record " << record_path.value()
+                 << ".";
       ret.invalid_records.emplace_back(cur_record);
       continue;
+    }
+
+    std::unique_ptr<std::vector<uint8_t>> validation_val =
+        ReadValidationValueFromRecord(record_dictionary, record_path);
+    // Validation value was introduced in format version 2, so it might not be
+    // present in older records.
+    if (!validation_val) {
+      // If format version is older than 2, then it is valid old record (without
+      // validation value).
+      if (*record_format_version < kRecordFormatVersion) {
+        validation_val = std::make_unique<std::vector<uint8_t>>();
+      } else {
+        ret.invalid_records.emplace_back(cur_record);
+        continue;
+      }
     }
     cur_record.metadata.validation_val = *validation_val;
 

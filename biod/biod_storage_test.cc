@@ -30,8 +30,6 @@ const char kBiometricsManagerName[] = "BiometricsManager";
 
 const base::FilePath kFilePath("TestFile");
 
-constexpr int kInvalidRecordFormatVersion = -1;
-
 const char kRecordId1[] = "00000000_0000_0000_0000_000000000001";
 const char kUserId1[] = "0000000000000000000000000000000000000001";
 const char kLabel1[] = "record1";
@@ -331,27 +329,10 @@ TEST_F(BiodStorageBaseTest, TestEqualOperator) {
 
 TEST_F(BiodStorageBaseTest, TestReadValidationValueFromRecord) {
   auto record_dictionary = CreateRecordDictionary(kValidationVal1);
-  auto ret = biod_storage_->ReadValidationValueFromRecord(
-      kRecordFormatVersion, record_dictionary, kFilePath);
+  auto ret = biod_storage_->ReadValidationValueFromRecord(record_dictionary,
+                                                          kFilePath);
   EXPECT_TRUE(ret != nullptr);
   EXPECT_EQ(*ret, kValidationVal1);
-}
-
-TEST_F(BiodStorageBaseTest, TestReadValidationValueFromRecordOldVersion) {
-  auto record_dictionary = CreateRecordDictionary(kValidationVal1);
-  std::vector<uint8_t> empty;
-  auto ret = biod_storage_->ReadValidationValueFromRecord(
-      kRecordFormatVersionNoValidationValue, record_dictionary, kFilePath);
-  EXPECT_TRUE(ret != nullptr);
-  EXPECT_EQ(*ret, empty);
-}
-
-TEST_F(BiodStorageBaseTest, TestReadValidationValueFromRecordInvalidVersion) {
-  auto record_dictionary = CreateRecordDictionary(kValidationVal1);
-  std::vector<uint8_t> empty;
-  auto ret = biod_storage_->ReadValidationValueFromRecord(
-      kInvalidRecordFormatVersion, record_dictionary, kFilePath);
-  EXPECT_EQ(ret, nullptr);
 }
 
 INSTANTIATE_TEST_SUITE_P(RecordsSupportPositiveMatchSecret,
@@ -403,6 +384,23 @@ TEST_F(BiodStorageInvalidRecordTest, MissingFormatVersion) {
     "label": "some_label",
     "data": "some_data",
     "match_validation_value": "4567"
+  })";
+
+  EXPECT_TRUE(
+      base::ImportantFileWriter::WriteFileAtomically(record_name_, record));
+
+  auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
+  EXPECT_EQ(read_result.valid_records.size(), 0);
+  EXPECT_EQ(read_result.invalid_records.size(), 1);
+}
+
+TEST_F(BiodStorageInvalidRecordTest, InvalidFormatVersion) {
+  auto record = R"({
+    "record_id": "1234",
+    "label": "some_label",
+    "data": "some_data",
+    "match_validation_value": "4567",
+    "version": -1
   })";
 
   EXPECT_TRUE(
@@ -492,6 +490,25 @@ TEST_F(BiodStorageInvalidRecordTest, ValidationValueNotBase64) {
   auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
   EXPECT_EQ(read_result.valid_records.size(), 0);
   EXPECT_EQ(read_result.invalid_records.size(), 1);
+}
+
+TEST_F(BiodStorageInvalidRecordTest, VersionOneWithoutValidationValueIsValid) {
+  auto record = R"({
+    "record_id": "1234",
+    "label": "some_label",
+    "data": "some_data",
+    "version": 1
+  })";
+
+  EXPECT_TRUE(
+      base::ImportantFileWriter::WriteFileAtomically(record_name_, record));
+
+  auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
+  EXPECT_EQ(read_result.valid_records.size(), 1);
+  EXPECT_EQ(read_result.invalid_records.size(), 0);
+  EXPECT_TRUE(read_result.valid_records[0].metadata.validation_val.empty());
+  EXPECT_EQ(read_result.valid_records[0].metadata.record_format_version,
+            kRecordFormatVersionNoValidationValue);
 }
 
 /**

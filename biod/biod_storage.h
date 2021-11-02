@@ -94,7 +94,6 @@ class BiodStorage : public BiodStorageInterface {
 
   // Read validation value from |record_dictionary| and store in |output|.
   static std::unique_ptr<std::vector<uint8_t>> ReadValidationValueFromRecord(
-      int record_format_version,
       const base::Value& record_dictionary,
       const base::FilePath& record_path);
 
