@@ -139,12 +139,13 @@ TEST_F(HdrNetProcessorTest, FullPipelineTest) {
   if (g_args.input_file) {
     fixture_.LoadInputFile(*g_args.input_file);
   }
+  HdrnetMetrics metrics;
   for (int i = 0; i < g_args.iterations; ++i) {
     Camera3CaptureDescriptor result = fixture_.ProduceFakeCaptureResult();
     fixture_.processor()->ProcessResultMetadata(&result);
     base::ScopedFD fence = fixture_.processor()->Run(
         i, HdrNetConfig::Options(), fixture_.input_image(), base::ScopedFD(),
-        fixture_.output_buffers());
+        fixture_.output_buffers(), &metrics);
     constexpr int kFenceWaitTimeoutMs = 300;
     ASSERT_EQ(sync_wait(fence.get(), kFenceWaitTimeoutMs), 0);
   }

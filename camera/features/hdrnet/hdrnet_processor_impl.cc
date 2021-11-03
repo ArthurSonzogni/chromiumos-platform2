@@ -13,6 +13,7 @@
 #include <hardware/gralloc.h>
 #include <sync/sync.h>
 
+#include "base/timer/elapsed_timer.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_buffer_utils.h"
 #include "cros-camera/camera_metadata_utils.h"
@@ -130,13 +131,16 @@ base::ScopedFD HdrNetProcessorImpl::Run(
     const HdrNetConfig::Options& options,
     const SharedImage& input_yuv,
     base::ScopedFD input_release_fence,
-    const std::vector<buffer_handle_t>& output_nv12_buffers) {
+    const std::vector<buffer_handle_t>& output_nv12_buffers,
+    HdrnetMetrics* hdrnet_metrics) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  DCHECK(hdrnet_metrics);
 
   for (const auto& b : output_nv12_buffers) {
     if (CameraBufferManager::GetWidth(b) > input_yuv.y_texture().width() ||
         CameraBufferManager::GetHeight(b) > input_yuv.y_texture().height()) {
       LOGF(ERROR) << "Output buffer has larger dimension than the input buffer";
+      ++hdrnet_metrics->errors[HdrnetError::kHdrnetProcessorError];
       return base::ScopedFD();
     }
   }
@@ -151,13 +155,16 @@ base::ScopedFD HdrNetProcessorImpl::Run(
       LOGF(ERROR) << "Failed to create Y/UV texture for the output buffer";
       // TODO(jcliang): We should probably find a way to return a result error
       // here.
+      ++hdrnet_metrics->errors[HdrnetError::kHdrnetProcessorError];
       continue;
     }
     output_images.emplace_back(std::move(output_nv12));
   }
 
   if (input_release_fence.is_valid()) {
-    sync_wait(input_release_fence.get(), 300);
+    if (sync_wait(input_release_fence.get(), 300)) {
+      ++hdrnet_metrics->errors[HdrnetError::kSyncWaitError];
+    }
   }
 
   if (!options.hdrnet_enable) {
@@ -168,9 +175,14 @@ base::ScopedFD HdrNetProcessorImpl::Run(
   } else {
     bool success = false;
     do {
-      // Run the HDRnet pipeline.
-      success = processor_device_adapter_->Preprocess(options, input_yuv,
-                                                      intermediates_[0]);
+      {
+        base::ElapsedTimer t;
+        // Run the HDRnet pipeline.
+        success = processor_device_adapter_->Preprocess(options, input_yuv,
+                                                        intermediates_[0]);
+        hdrnet_metrics->accumulated_preprocessing_latency_us +=
+            t.Elapsed().InMicroseconds();
+      }
       if (options.dump_buffer) {
         DumpGpuTextureSharedImage(
             intermediates_[0],
@@ -181,12 +193,19 @@ base::ScopedFD HdrNetProcessorImpl::Run(
       }
       if (!success) {
         LOGF(ERROR) << "Failed to pre-process HDRnet pipeline input";
+        ++hdrnet_metrics->errors[HdrnetError::kPreprocessingError];
         break;
       }
-      success =
-          RunLinearRgbPipeline(options, intermediates_[0], intermediates_[1]);
+      {
+        base::ElapsedTimer t;
+        success =
+            RunLinearRgbPipeline(options, intermediates_[0], intermediates_[1]);
+        hdrnet_metrics->accumulated_rgb_pipeline_latency_us +=
+            t.Elapsed().InMicroseconds();
+      }
       if (!success) {
         LOGF(ERROR) << "Failed to run HDRnet pipeline";
+        ++hdrnet_metrics->errors[HdrnetError::kRgbPipelineError];
         break;
       }
       if (options.dump_buffer) {
@@ -200,10 +219,16 @@ base::ScopedFD HdrNetProcessorImpl::Run(
       for (const auto& output_nv12 : output_images) {
         // Here we assume all the streams have the same aspect ratio, so no
         // cropping is done.
-        success = processor_device_adapter_->Postprocess(
-            options, intermediates_[1], output_nv12);
+        {
+          base::ElapsedTimer t;
+          success = processor_device_adapter_->Postprocess(
+              options, intermediates_[1], output_nv12);
+          hdrnet_metrics->accumulated_postprocessing_latency_us +=
+              t.Elapsed().InMicroseconds();
+        }
         if (!success) {
           LOGF(ERROR) << "Failed to post-process HDRnet pipeline output";
+          ++hdrnet_metrics->errors[HdrnetError::kPostprocessingError];
           break;
         }
         if (options.dump_buffer) {
@@ -229,6 +254,7 @@ base::ScopedFD HdrNetProcessorImpl::Run(
       }
     } while (0);
 
+    ++hdrnet_metrics->num_frames_processed;
     if (!success) {
       for (const auto& output_nv12 : output_images) {
         YUVToNV12(input_yuv, output_nv12);

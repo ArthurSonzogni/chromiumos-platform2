@@ -32,6 +32,51 @@ enum class FaceAeFunction {
   kMaxValue = kForceDisabled,
 };
 
+enum class HdrnetStreamConfiguration {
+  kSingleYuvStream = 0,
+  kSingleYuvStreamWithBlob = 1,
+  kMultipleYuvStreams = 2,
+  kMultipleYuvStreamsWithBlob = 3,
+  kMultipleYuvStreamsOfDifferentAspectRatio = 4,
+  kMultipleYuvStreamsOfDifferentAspectRatioWithBlob = 5,
+  kMaxValue = kMultipleYuvStreamsOfDifferentAspectRatioWithBlob,
+};
+
+enum class HdrnetStreamType {
+  // HDRnet stream for YUV output.
+  kYuv,
+  // HDRnet stream for BLOB output.
+  kBlob
+};
+
+enum class HdrnetProcessingType {
+  // Pre-processing of input YUV into linear RGB domain.
+  kPreprocessing,
+  // Main HDRnet inferencing and rendering.
+  kRgbPipeline,
+  // Post-processing of HDRnet RGB output to final YUV output(s).
+  kPostprocessing,
+};
+
+enum class HdrnetError {
+  kNoError = 0,
+  // Error during HDRnet stream manipulator initialization.
+  kInitializationError = 1,
+  // Error when waiting for buffer acquire fence.
+  kSyncWaitError = 2,
+  // Error when running HDRnet processor.
+  kHdrnetProcessorError = 3,
+  // Error in pre-processing input buffer to the HDRnet pipeline.
+  kPreprocessingError = 4,
+  // Error when running linear RGB pipeline.
+  kRgbPipelineError = 5,
+  // Error in post-processing the RGB buffer to produce the output buffers.
+  kPostprocessingError = 6,
+  // Error triggered by camera HAL.
+  kCameraHal3Error = 7,
+  kMaxValue = kCameraHal3Error,
+};
+
 class CROS_CAMERA_EXPORT CameraMetrics {
  public:
   static std::unique_ptr<CameraMetrics> New();
@@ -77,6 +122,50 @@ class CROS_CAMERA_EXPORT CameraMetrics {
 
   // Records the max number of detected faces in a camera session
   virtual void SendFaceAeMaxDetectedFaces(int number) = 0;
+
+  // *** HDRnet metrics ***
+
+  // Records the stream configuration including the number of streams, the type
+  // of streams, and if the streams are of the same aspect ratio.
+  virtual void SendHdrnetStreamConfiguration(
+      HdrnetStreamConfiguration config) = 0;
+
+  // Records the maximum size (in width * height) of the HDRnet stream
+  // configured for |stream_type| output.
+  virtual void SendHdrnetMaxStreamSize(HdrnetStreamType stream_type,
+                                       int size) = 0;
+
+  // Records the number of concurrent HDRnet streams in a session.
+  virtual void SendHdrnetNumConcurrentStreams(int num_streams) = 0;
+
+  // Records the maximum number of output buffers a HDRnet stream produces (> 1
+  // means there are multiple streams with the same aspect ratio) in a session.
+  virtual void SendHdrnetMaxOutputBuffersRendered(int num_buffers) = 0;
+
+  // Records whether there's an error that can compromise the HDRnet feature,
+  // either causing frame drops or stops the pipeline from running completely,
+  // in a session.
+  virtual void SendHdrnetError(HdrnetError error) = 0;
+
+  // Records the number of HDRnet-rendered still capture shots taken in a
+  // session.
+  virtual void SendHdrnetNumStillShotsTaken(int num_shots) = 0;
+
+  // Records the average CPU latency in processing |processing_type| in a
+  // session.
+  virtual void SendHdrnetAvgLatency(HdrnetProcessingType processing_type,
+                                    int latency_us) = 0;
+
+  // *** Gcam AE metrics ***
+
+  // Records the average AE convergence latency in frame count per session.
+  virtual void SendGcamAeAvgConvergenceLatency(int latency_frames) = 0;
+
+  // Records the average HDR ratio per session.
+  virtual void SendGcamAeAvgHdrRatio(int hdr_ratio) = 0;
+
+  // Records the average total exposure time (TET) per session.
+  virtual void SendGcamAeAvgTet(int tet) = 0;
 };
 
 }  // namespace cros

@@ -18,6 +18,7 @@
 #include "common/camera_hal3_helpers.h"
 #include "cros-camera/common_types.h"
 #include "features/hdrnet/hdrnet_config.h"
+#include "features/hdrnet/hdrnet_metrics.h"
 #include "features/hdrnet/hdrnet_processor_device_adapter.h"
 #include "gpu/image_processor.h"
 #include "gpu/shared_image.h"
@@ -71,7 +72,8 @@ class HdrNetProcessor {
       const HdrNetConfig::Options& options,
       const SharedImage& input_yuv,
       base::ScopedFD input_release_fence,
-      const std::vector<buffer_handle_t>& output_nv12_buffers) = 0;
+      const std::vector<buffer_handle_t>& output_nv12_buffers,
+      HdrnetMetrics* hdrnet_metrics) = 0;
 };
 
 }  // namespace cros

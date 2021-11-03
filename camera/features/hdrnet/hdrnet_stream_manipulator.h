@@ -23,6 +23,7 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_thread.h"
 #include "features/hdrnet/hdrnet_config.h"
+#include "features/hdrnet/hdrnet_metrics.h"
 #include "features/hdrnet/hdrnet_processor.h"
 #include "gpu/shared_image.h"
 
@@ -186,6 +187,7 @@ class HdrNetStreamManipulator : public StreamManipulator {
       camera3_stream_t* hdrnet);
 
   void OnOptionsUpdated(const base::Value& json_values);
+  void UploadMetrics();
 
   CameraThread gpu_thread_;
   HdrNetProcessor::Factory hdrnet_processor_factory_;
@@ -204,6 +206,9 @@ class HdrNetStreamManipulator : public StreamManipulator {
   std::map<uint32_t, HdrNetBufferInfoList> request_buffer_info_;
   std::map<camera3_stream_t*, HdrNetStreamContext*> request_stream_mapping_;
   std::map<camera3_stream_t*, HdrNetStreamContext*> result_stream_mapping_;
+
+  HdrnetMetrics hdrnet_metrics_;
+  std::unique_ptr<CameraMetrics> camera_metrics_;
 
   // Metadata logger for tests and debugging.
   MetadataLogger metadata_logger_;

@@ -13,12 +13,13 @@ namespace cros {
 
 void RunHdrnetProcessor(benchmark::State& state,
                         HdrNetProcessorTestFixture& fixture) {
+  HdrnetMetrics metrics;
   for (auto _ : state) {
     auto result = fixture.ProduceFakeCaptureResult();
     fixture.processor()->ProcessResultMetadata(&result);
     base::ScopedFD fence = fixture.processor()->Run(
         result.frame_number(), HdrNetConfig::Options(), fixture.input_image(),
-        base::ScopedFD(), fixture.output_buffers());
+        base::ScopedFD(), fixture.output_buffers(), &metrics);
     constexpr int kFenceWaitTimeoutMs = 300;
     CHECK_EQ(sync_wait(fence.get(), kFenceWaitTimeoutMs), 0);
   }

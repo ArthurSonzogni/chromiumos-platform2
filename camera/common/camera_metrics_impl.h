@@ -44,6 +44,19 @@ class CameraMetricsImpl : public CameraMetrics {
   void SendFaceAeFunction(FaceAeFunction function) override;
   void SendFaceAeMaxDetectedFaces(int number) override;
 
+  void SendHdrnetStreamConfiguration(HdrnetStreamConfiguration config) override;
+  void SendHdrnetMaxStreamSize(HdrnetStreamType stream_type, int size) override;
+  void SendHdrnetNumConcurrentStreams(int num_streams) override;
+  void SendHdrnetMaxOutputBuffersRendered(int num_buffers) override;
+  void SendHdrnetError(HdrnetError error) override;
+  void SendHdrnetNumStillShotsTaken(int num_shots) override;
+  void SendHdrnetAvgLatency(HdrnetProcessingType processing_type,
+                            int latency_us) override;
+
+  void SendGcamAeAvgConvergenceLatency(int latency_us) override;
+  void SendGcamAeAvgHdrRatio(int hdr_ratio) override;
+  void SendGcamAeAvgTet(int tet) override;
+
  private:
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
 };

@@ -45,12 +45,12 @@ class HdrNetProcessorImpl : public HdrNetProcessor {
   void SetOptions(const Options& options) override;
   bool WriteRequestParameters(Camera3CaptureDescriptor* request) override;
   void ProcessResultMetadata(Camera3CaptureDescriptor* result) override;
-  base::ScopedFD Run(
-      int frame_number,
-      const HdrNetConfig::Options& options,
-      const SharedImage& input_yuv,
-      base::ScopedFD input_release_fence,
-      const std::vector<buffer_handle_t>& output_nv12_buffers) override;
+  base::ScopedFD Run(int frame_number,
+                     const HdrNetConfig::Options& options,
+                     const SharedImage& input_yuv,
+                     base::ScopedFD input_release_fence,
+                     const std::vector<buffer_handle_t>& output_nv12_buffers,
+                     HdrnetMetrics* hdrnet_metrics) override;
 
  private:
   void YUVToNV12(const SharedImage& input_yuv, const SharedImage& output_nv12);

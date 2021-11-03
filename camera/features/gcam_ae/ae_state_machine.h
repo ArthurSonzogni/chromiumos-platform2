@@ -7,13 +7,17 @@
 #ifndef CAMERA_FEATURES_GCAM_AE_AE_STATE_MACHINE_H_
 #define CAMERA_FEATURES_GCAM_AE_AE_STATE_MACHINE_H_
 
+#include <memory>
+
 #include <base/optional.h>
 #include <base/synchronization/lock.h>
 #include <base/timer/timer.h>
 
 #include "common/camera_hal3_helpers.h"
 #include "common/metadata_logger.h"
+#include "cros-camera/camera_metrics.h"
 #include "features/gcam_ae/ae_info.h"
+#include "features/gcam_ae/gcam_ae_metrics.h"
 
 namespace cros {
 
@@ -179,8 +183,8 @@ class AeStateMachine {
     kLocked,
   };
 
-  AeStateMachine() = default;
-  ~AeStateMachine() = default;
+  AeStateMachine();
+  ~AeStateMachine();
 
   void OnNewAeParameters(InputParameters inputs,
                          MetadataLogger* metadata_logger = nullptr);
@@ -202,6 +206,8 @@ class AeStateMachine {
                            const InputParameters& inputs,
                            const float actual_tet_set);
   void MaybeToggleAeLock(const AeFrameInfo& frame_info);
+
+  void UploadMetrics();
 
   // For synchronizing all the internal state.
   base::Lock lock_;
@@ -230,6 +236,8 @@ class AeStateMachine {
   base::Optional<float> converged_hdr_ratio_ GUARDED_BY(lock_);
   base::Optional<base::TimeTicks> converged_start_time_ GUARDED_BY(lock_);
   base::Optional<int> tet_retention_duration_ms_ GUARDED_BY(lock_);
+  static constexpr int kInvalidFrame = -1;
+  int convergence_starting_frame_ GUARDED_BY(lock_) = kInvalidFrame;
 
   // The last time when |converged_tet_| is still considered valid.
   base::TimeTicks last_converged_time_ GUARDED_BY(lock_);
@@ -238,6 +246,9 @@ class AeStateMachine {
   base::Optional<float> locked_tet_ GUARDED_BY(lock_);
   base::Optional<float> locked_hdr_ratio_ GUARDED_BY(lock_);
   bool ae_locked_ GUARDED_BY(lock_) = false;
+
+  GcamAeMetrics gcam_ae_metrics_ GUARDED_BY(lock_);
+  std::unique_ptr<CameraMetrics> camera_metrics_;
 };
 
 std::ostream& operator<<(std::ostream& os, AeStateMachine::State state);

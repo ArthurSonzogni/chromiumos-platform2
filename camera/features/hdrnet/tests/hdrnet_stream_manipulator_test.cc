@@ -139,7 +139,8 @@ class MockHdrNetProcessor : public HdrNetProcessor {
                const HdrNetConfig::Options& options,
                const SharedImage& input_external_yuv,
                base::ScopedFD input_release_fence,
-               const std::vector<buffer_handle_t>& output_nv12_buffers),
+               const std::vector<buffer_handle_t>& output_nv12_buffers,
+               HdrnetMetrics* hdrnet_metrics),
               (override));
 
  private:

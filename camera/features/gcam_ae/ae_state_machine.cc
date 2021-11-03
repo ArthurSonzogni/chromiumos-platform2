@@ -10,8 +10,6 @@
 #include <cmath>
 #include <string>
 
-#include <base/timer/elapsed_timer.h>
-
 #include "cros-camera/common.h"
 
 namespace cros {
@@ -68,6 +66,12 @@ int ElapsedTimeMs(base::TimeTicks since) {
 
 }  // namespace
 
+AeStateMachine::AeStateMachine() : camera_metrics_(CameraMetrics::New()) {}
+
+AeStateMachine::~AeStateMachine() {
+  UploadMetrics();
+}
+
 void AeStateMachine::OnNewAeParameters(InputParameters inputs,
                                        MetadataLogger* metadata_logger) {
   base::AutoLock lock(lock_);
@@ -92,11 +96,18 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
                       raw_ae_parameters.short_tet, kFilterStrength);
   }
 
+  const float hdr_ratio =
+      current_ae_parameters_.long_tet / current_ae_parameters_.short_tet;
   VLOGFID(1, frame_info.frame_number)
       << "Filtered AE parameters:"
       << " short_tet=" << current_ae_parameters_.short_tet
-      << " long_tet=" << current_ae_parameters_.long_tet << " hdr_ratio="
-      << current_ae_parameters_.long_tet / current_ae_parameters_.short_tet;
+      << " long_tet=" << current_ae_parameters_.long_tet
+      << " hdr_ratio=" << hdr_ratio;
+
+  gcam_ae_metrics_.accumulated_hdr_ratio += hdr_ratio;
+  ++gcam_ae_metrics_.num_hdr_ratio_samples;
+  gcam_ae_metrics_.accumulated_tet += current_ae_parameters_.short_tet;
+  ++gcam_ae_metrics_.num_tet_samples;
 
   if (metadata_logger) {
     metadata_logger->Log(frame_info.frame_number, kTagShortTet,
@@ -119,6 +130,9 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
   switch (current_state_) {
     case State::kInactive:
       next_state = State::kSearching;
+
+      // For camera cold start.
+      convergence_starting_frame_ = frame_info.frame_number;
       break;
 
     case State::kSearching:
@@ -145,6 +159,16 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
               ElapsedTimeMs(*converged_start_time_) >
                   tuning_parameters_.tet_converge_stabilize_duration_ms) {
             next_state = State::kConverged;
+
+            // Record convergence latency whenever we transition to the
+            // Converged state. Only count the metrics here so that we exclude
+            // the AE lock convergence latency.
+            if (convergence_starting_frame_ != kInvalidFrame) {
+              gcam_ae_metrics_.accumulated_convergence_latency_frames +=
+                  frame_info.frame_number - convergence_starting_frame_;
+              ++gcam_ae_metrics_.num_convergence_samples;
+              convergence_starting_frame_ = kInvalidFrame;
+            }
             break;
           }
           if (!converged_start_time_) {
@@ -178,6 +202,9 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
         } else {
           next_state = State::kSearching;
         }
+        // Start convergence timer whenever we transition out of the Converged
+        // state.
+        convergence_starting_frame_ = frame_info.frame_number;
         break;
       } else {
         next_state = State::kConverged;
@@ -466,6 +493,24 @@ void AeStateMachine::MaybeToggleAeLock(const AeFrameInfo& frame_info) {
       locked_tet_.reset();
       locked_hdr_ratio_.reset();
     }
+  }
+}
+
+void AeStateMachine::UploadMetrics() {
+  base::AutoLock lock(lock_);
+  if (gcam_ae_metrics_.num_convergence_samples > 0) {
+    camera_metrics_->SendGcamAeAvgConvergenceLatency(
+        gcam_ae_metrics_.accumulated_convergence_latency_frames /
+        gcam_ae_metrics_.num_convergence_samples);
+  }
+  if (gcam_ae_metrics_.num_hdr_ratio_samples > 0) {
+    camera_metrics_->SendGcamAeAvgHdrRatio(
+        gcam_ae_metrics_.accumulated_hdr_ratio /
+        gcam_ae_metrics_.num_hdr_ratio_samples);
+  }
+  if (gcam_ae_metrics_.num_tet_samples > 0) {
+    camera_metrics_->SendGcamAeAvgTet(gcam_ae_metrics_.accumulated_tet /
+                                      gcam_ae_metrics_.num_tet_samples);
   }
 }
 

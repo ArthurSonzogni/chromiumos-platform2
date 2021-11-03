@@ -72,6 +72,66 @@ constexpr char kCameraFaceAeMaxDetectedFaces[] =
     "ChromeOS.Camera.FaceAe.MaxDetectedFaces";
 constexpr int kMaxNumFaces = 10;
 
+// *** HDRnet metrics ***
+
+constexpr char kHdrnetStreamTypeYuv[] = "YUV";
+constexpr char kHdrnetStreamTypeBlob[] = "BLOB";
+
+constexpr char kHdrnetProcessingTypePreprocessing[] = "Preprocessing";
+constexpr char kHdrnetProcessingTypeRgbPipeline[] = "RgbPipeline";
+constexpr char kHdrnetProcessingTypePostprocessing[] = "Postprocessing";
+
+constexpr char kCameraHdrnetStreamConfiguration[] =
+    "ChromeOS.Camera.HDRnet.StreamConfiguration";
+
+constexpr char kCameraHdrnetMaxStreamSize[] =
+    "ChromeOS.Camera.HDRnet.MaxStreamSize.%s";
+constexpr char kCameraHdrnetNumConcurrentStreams[] =
+    "ChromeOS.Camera.HDRnet.NumConcurrentStreams";
+constexpr int kMinNumConcurrentHdrnetStreams = 1;
+constexpr int kMaxNumConcurrentHdrnetStreams = 4;
+constexpr int kNumConcurrentCameraStreamsBuckets = 4;
+
+constexpr char kCameraHdrnetMaxOutputBuffersRendered[] =
+    "ChromeOS.Camera.HDRnet.MaxOutputBuffersRendered";
+constexpr int kMinNumOutputBuffers = 1;
+constexpr int kMaxNumOutputBuffers = 4;
+constexpr int kNumOutputBuffersBuckets = 4;
+
+constexpr char kCameraHdrnetError[] = "ChromeOS.Camera.HDRnet.Error";
+
+constexpr char kCameraHdrnetNumStillShotsTaken[] =
+    "ChromeOS.Camera.HDRnet.NumStillShotsTaken";
+constexpr int kMinNumShotsTaken = 0;
+constexpr int kMaxNumShotsTaken = 1000;
+constexpr int kNumShotsTakenBuckets = 10;
+
+constexpr char kCameraHdrnetAvgLatency[] =
+    "ChromeOS.Camera.HDRnet.AverageLatency.%s";
+constexpr int kMinHdrnetLatencyUs = 1;
+constexpr int kMaxHdrnetLatencyUs = 50000;
+constexpr int kHdrnetLatencyBuckets = 50;
+
+// *** Gcam AE metrics ***
+
+constexpr char kCameraGcamAeAvgConvergenceLatency[] =
+    "ChromeOS.Camera.GcamAutoExposure.AverageConvergenceLatency";
+constexpr int kMinConvergenceLatencyFrames = 1;
+constexpr int kMaxConvergenceLatencyFrames = 3000;
+constexpr int kConvergenceLatencyBuckets = 50;
+
+constexpr char kCameraGcamAeAvgHdrRatio[] =
+    "ChromeOS.Camera.GcamAutoExposure.AverageHdrRatio";
+constexpr int kMinHdrRatio = 1;
+constexpr int kMaxHdrRatio = 30;
+constexpr int kHdrRatioBuckets = 15;
+
+constexpr char kCameraGcamAeAvgTet[] =
+    "ChromeOS.Camera.GcamAutoExposure.AverageTet";
+constexpr int kMinTet = 1;
+constexpr int kMaxTet = 10000;
+constexpr int kTetBuckets = 50;
+
 }  // namespace
 
 // static
@@ -196,6 +256,91 @@ void CameraMetricsImpl::SendFaceAeMaxDetectedFaces(int number) {
   }
   metrics_lib_->SendEnumToUMA(kCameraFaceAeMaxDetectedFaces, number,
                               kMaxNumFaces + 1);
+}
+
+void CameraMetricsImpl::SendHdrnetStreamConfiguration(
+    HdrnetStreamConfiguration config) {
+  metrics_lib_->SendEnumToUMA(kCameraHdrnetStreamConfiguration, config);
+}
+
+void CameraMetricsImpl::SendHdrnetMaxStreamSize(HdrnetStreamType stream_type,
+                                                int size) {
+  std::string type_str;
+  switch (stream_type) {
+    case HdrnetStreamType::kYuv:
+      type_str = kHdrnetStreamTypeYuv;
+      break;
+
+    case HdrnetStreamType::kBlob:
+      type_str = kHdrnetStreamTypeBlob;
+      break;
+  }
+  std::string key =
+      base::StringPrintf(kCameraHdrnetMaxStreamSize, type_str.c_str());
+  metrics_lib_->SendToUMA(key, size, kMinResolutionInPixels,
+                          kMaxResolutionInPixels, kBucketResolutionInPixels);
+}
+
+void CameraMetricsImpl::SendHdrnetNumConcurrentStreams(int num_streams) {
+  metrics_lib_->SendToUMA(kCameraHdrnetNumConcurrentStreams, num_streams,
+                          kMinNumConcurrentHdrnetStreams,
+                          kMaxNumConcurrentHdrnetStreams,
+                          kNumConcurrentCameraStreamsBuckets);
+}
+
+void CameraMetricsImpl::SendHdrnetMaxOutputBuffersRendered(int num_buffers) {
+  metrics_lib_->SendToUMA(kCameraHdrnetMaxOutputBuffersRendered, num_buffers,
+                          kMinNumOutputBuffers, kMaxNumOutputBuffers,
+                          kNumOutputBuffersBuckets);
+}
+
+void CameraMetricsImpl::SendHdrnetError(HdrnetError error) {
+  metrics_lib_->SendEnumToUMA(kCameraHdrnetError, error);
+}
+
+void CameraMetricsImpl::SendHdrnetNumStillShotsTaken(int num_shots) {
+  metrics_lib_->SendToUMA(kCameraHdrnetNumStillShotsTaken, num_shots,
+                          kMinNumShotsTaken, kMaxNumShotsTaken,
+                          kNumShotsTakenBuckets);
+}
+
+void CameraMetricsImpl::SendHdrnetAvgLatency(
+    HdrnetProcessingType processing_type, int latency_us) {
+  std::string type_str;
+  switch (processing_type) {
+    case HdrnetProcessingType::kPreprocessing:
+      type_str = kHdrnetProcessingTypePreprocessing;
+      break;
+
+    case HdrnetProcessingType::kRgbPipeline:
+      type_str = kHdrnetProcessingTypeRgbPipeline;
+      break;
+
+    case HdrnetProcessingType::kPostprocessing:
+      type_str = kHdrnetProcessingTypePostprocessing;
+      break;
+  }
+  std::string key =
+      base::StringPrintf(kCameraHdrnetAvgLatency, type_str.c_str());
+  metrics_lib_->SendToUMA(key, latency_us, kMinHdrnetLatencyUs,
+                          kMaxHdrnetLatencyUs, kHdrnetLatencyBuckets);
+}
+
+void CameraMetricsImpl::SendGcamAeAvgConvergenceLatency(int latency_frames) {
+  metrics_lib_->SendToUMA(kCameraGcamAeAvgConvergenceLatency, latency_frames,
+                          kMinConvergenceLatencyFrames,
+                          kMaxConvergenceLatencyFrames,
+                          kConvergenceLatencyBuckets);
+}
+
+void CameraMetricsImpl::SendGcamAeAvgHdrRatio(int hdr_ratio) {
+  metrics_lib_->SendToUMA(kCameraGcamAeAvgHdrRatio, hdr_ratio, kMinHdrRatio,
+                          kMaxHdrRatio, kHdrRatioBuckets);
+}
+
+void CameraMetricsImpl::SendGcamAeAvgTet(int tet) {
+  metrics_lib_->SendToUMA(kCameraGcamAeAvgTet, tet, kMinTet, kMaxTet,
+                          kTetBuckets);
 }
 
 }  // namespace cros

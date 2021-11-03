@@ -6,6 +6,7 @@
 
 #include "features/hdrnet/hdrnet_stream_manipulator.h"
 
+#include <algorithm>
 #include <string>
 #include <utility>
 
@@ -128,6 +129,7 @@ HdrNetStreamManipulator::HdrNetStreamManipulator(
       config_(HdrNetConfig::kDefaultHdrNetConfigFile,
               HdrNetConfig::kOverrideHdrNetConfigFile),
       still_capture_processor_(std::move(still_capture_processor)),
+      camera_metrics_(CameraMetrics::New()),
       metadata_logger_({.dump_path = base::FilePath(kMetadataDumpPath)}) {
   CHECK(gpu_thread_.Start());
   config_.SetCallback(base::BindRepeating(
@@ -135,6 +137,9 @@ HdrNetStreamManipulator::HdrNetStreamManipulator(
 }
 
 HdrNetStreamManipulator::~HdrNetStreamManipulator() {
+  gpu_thread_.PostTaskAsync(
+      FROM_HERE, base::BindOnce(&HdrNetStreamManipulator::ResetStateOnGpuThread,
+                                base::Unretained(this)));
   gpu_thread_.Stop();
 }
 
@@ -275,6 +280,8 @@ bool HdrNetStreamManipulator::ConfigureStreamsOnGpuThread(
   base::span<camera3_stream_t* const> client_requested_streams =
       stream_config->GetStreams();
   std::vector<camera3_stream_t*> modified_streams;
+  int num_yuv_streams = 0;
+  int num_blob_streams = 0;
   for (size_t i = 0; i < client_requested_streams.size(); ++i) {
     camera3_stream_t* s = client_requested_streams[i];
     if (s->stream_type != CAMERA3_STREAM_OUTPUT) {
@@ -303,6 +310,11 @@ bool HdrNetStreamManipulator::ConfigureStreamsOnGpuThread(
       switch (context->mode) {
         case HdrNetStreamContext::Mode::kReplaceYuv:
           modified_streams.push_back(context->hdrnet_stream.get());
+          ++num_yuv_streams;
+          hdrnet_metrics_.max_yuv_stream_size =
+              std::max(static_cast<int>(context->hdrnet_stream->width *
+                                        context->hdrnet_stream->height),
+                       hdrnet_metrics_.max_yuv_stream_size);
           break;
 
         case HdrNetStreamContext::Mode::kAppendWithBlob:
@@ -310,12 +322,51 @@ bool HdrNetStreamManipulator::ConfigureStreamsOnGpuThread(
           still_capture_processor_->Initialize(s, result_callback_);
           modified_streams.push_back(s);
           modified_streams.push_back(context->hdrnet_stream.get());
+          ++num_blob_streams;
+          hdrnet_metrics_.max_blob_stream_size =
+              std::max(static_cast<int>(context->hdrnet_stream->width *
+                                        context->hdrnet_stream->height),
+                       hdrnet_metrics_.max_blob_stream_size);
           break;
       }
     }
   }
 
   stream_config->SetStreams(modified_streams);
+
+  hdrnet_metrics_.num_concurrent_hdrnet_streams = hdrnet_stream_context_.size();
+  bool has_different_aspect_ratio = false;
+  for (size_t i = 1; i < hdrnet_stream_context_.size(); ++i) {
+    const auto* s1 = hdrnet_stream_context_[i - 1]->hdrnet_stream.get();
+    const auto* s2 = hdrnet_stream_context_[i]->hdrnet_stream.get();
+    if (s1->width * s2->height != s2->width * s1->height) {
+      has_different_aspect_ratio = true;
+      break;
+    }
+  }
+  if (num_yuv_streams == 1) {
+    if (num_blob_streams == 0) {
+      hdrnet_metrics_.stream_config =
+          HdrnetStreamConfiguration::kSingleYuvStream;
+    } else {
+      hdrnet_metrics_.stream_config =
+          HdrnetStreamConfiguration::kSingleYuvStreamWithBlob;
+    }
+  } else if (num_yuv_streams > 1) {
+    if (num_blob_streams == 0) {
+      hdrnet_metrics_.stream_config =
+          has_different_aspect_ratio
+              ? HdrnetStreamConfiguration::
+                    kMultipleYuvStreamsOfDifferentAspectRatio
+              : HdrnetStreamConfiguration::kMultipleYuvStreams;
+    } else {
+      hdrnet_metrics_.stream_config =
+          has_different_aspect_ratio
+              ? HdrnetStreamConfiguration::
+                    kMultipleYuvStreamsOfDifferentAspectRatioWithBlob
+              : HdrnetStreamConfiguration::kMultipleYuvStreamsWithBlob;
+    }
+  }
 
   if (VLOG_IS_ON(1)) {
     VLOGF(1) << "After stream manipulation:";
@@ -619,7 +670,8 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
         stream_context->shared_images[request_buffer_info->buffer_index];
     request_buffer_info->release_fence = stream_context->processor->Run(
         result->frame_number(), processor_config, image,
-        base::ScopedFD(hdrnet_buffer.release_fence), buffers_to_render);
+        base::ScopedFD(hdrnet_buffer.release_fence), buffers_to_render,
+        &hdrnet_metrics_);
 
     OnBuffersRendered(result->frame_number(), stream_context,
                       &(*request_buffer_info), &output_buffers_to_client);
@@ -681,6 +733,8 @@ bool HdrNetStreamManipulator::NotifyOnGpuThread(camera3_notify_msg_t* msg) {
     if (stream_context) {
       error.error_stream = stream_context->original_stream;
     }
+
+    ++hdrnet_metrics_.errors[HdrnetError::kCameraHal3Error];
   }
 
   return true;
@@ -756,6 +810,7 @@ bool HdrNetStreamManipulator::GetBuffersToRender(
             LOGF(WARNING) << "sync_wait timeout on acquiring requested buffer";
             // TODO(jcliang): We should trigger a notify message of
             // buffer error here.
+            ++hdrnet_metrics_.errors[HdrnetError::kSyncWaitError];
             return false;
           }
           close(requested_buffer.acquire_fence);
@@ -763,6 +818,9 @@ bool HdrNetStreamManipulator::GetBuffersToRender(
         }
         buffers_to_write->push_back(*requested_buffer.buffer);
       }
+      hdrnet_metrics_.max_output_buffers_rendered =
+          std::max(static_cast<int>(buffers_to_write->size()),
+                   hdrnet_metrics_.max_output_buffers_rendered);
       break;
 
     case HdrNetStreamContext::Mode::kAppendWithBlob:
@@ -770,6 +828,7 @@ bool HdrNetStreamManipulator::GetBuffersToRender(
       // which will then be encoded into the JPEG image client
       // requested.
       buffers_to_write->push_back(*stream_context->still_capture_intermediate);
+      ++hdrnet_metrics_.num_still_shot_taken;
       break;
   }
   return true;
@@ -818,11 +877,13 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
     egl_context_ = EglContext::GetSurfacelessContext();
     if (!egl_context_->IsValid()) {
       LOGF(ERROR) << "Failed to create EGL context";
+      ++hdrnet_metrics_.errors[HdrnetError::kInitializationError];
       return false;
     }
   }
   if (!egl_context_->MakeCurrent()) {
     LOGF(ERROR) << "Failed to make EGL context current";
+    ++hdrnet_metrics_.errors[HdrnetError::kInitializationError];
     return false;
   }
 
@@ -847,6 +908,7 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
     context->processor->Initialize(stream_size, viable_output_sizes);
     if (!context->processor) {
       LOGF(ERROR) << "Failed to initialize HDRnet processor";
+      ++hdrnet_metrics_.errors[HdrnetError::kInitializationError];
       return false;
     }
 
@@ -859,6 +921,7 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
           stream->width, stream->height, stream->format, kBufferUsage);
       if (!buffer) {
         LOGF(ERROR) << "Cannot allocate HDRnet buffers";
+        ++hdrnet_metrics_.errors[HdrnetError::kInitializationError];
         return false;
       }
       SharedImage shared_image = SharedImage::CreateFromBuffer(
@@ -866,6 +929,7 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
       if (!shared_image.y_texture().IsValid() ||
           !shared_image.uv_texture().IsValid()) {
         LOGF(ERROR) << "Cannot create SharedImage for the HDRnet buffer";
+        ++hdrnet_metrics_.errors[HdrnetError::kInitializationError];
         return false;
       }
       // Let the SharedImage own the buffer.
@@ -896,6 +960,9 @@ void HdrNetStreamManipulator::ResetStateOnGpuThread() {
   hdrnet_stream_context_.clear();
   request_stream_mapping_.clear();
   result_stream_mapping_.clear();
+
+  UploadMetrics();
+  hdrnet_metrics_ = HdrnetMetrics();
 }
 
 HdrNetStreamManipulator::HdrNetStreamContext*
@@ -968,6 +1035,63 @@ void HdrNetStreamManipulator::OnOptionsUpdated(const base::Value& json_values) {
              << " hdr_ratio=" << options_.hdr_ratio
              << " dump_buffer=" << options_.dump_buffer
              << " log_frame_metadata=" << options_.log_frame_metadata;
+  }
+}
+
+void HdrNetStreamManipulator::UploadMetrics() {
+  if (hdrnet_metrics_.errors.empty() &&
+      (hdrnet_metrics_.num_concurrent_hdrnet_streams == 0 ||
+       hdrnet_metrics_.num_frames_processed == 0)) {
+    // Avoid uploading metrics short-lived session that does not really do
+    // anything. Short-lived session can happen when we first open a camera,
+    // where the framework and the HAL may re-configure the streams more than
+    // once.
+    return;
+  }
+  camera_metrics_->SendHdrnetStreamConfiguration(hdrnet_metrics_.stream_config);
+  camera_metrics_->SendHdrnetMaxStreamSize(HdrnetStreamType::kYuv,
+                                           hdrnet_metrics_.max_yuv_stream_size);
+  camera_metrics_->SendHdrnetMaxStreamSize(
+      HdrnetStreamType::kBlob, hdrnet_metrics_.max_blob_stream_size);
+  camera_metrics_->SendHdrnetNumConcurrentStreams(
+      hdrnet_metrics_.num_concurrent_hdrnet_streams);
+  camera_metrics_->SendHdrnetMaxOutputBuffersRendered(
+      hdrnet_metrics_.max_output_buffers_rendered);
+  camera_metrics_->SendHdrnetNumStillShotsTaken(
+      hdrnet_metrics_.num_still_shot_taken);
+
+  if (hdrnet_metrics_.errors.empty()) {
+    camera_metrics_->SendHdrnetError(HdrnetError::kNoError);
+  } else {
+    for (auto [e, c] : hdrnet_metrics_.errors) {
+      if (e == HdrnetError::kNoError) {
+        NOTREACHED();
+        continue;
+      }
+      if (c > 0) {
+        // Since we want to normalize all our metrics by camera sessions, we
+        // only report whether an type of error is happened and print the number
+        // of error occurrences as error.
+        LOGF(ERROR) << "There were " << c << " occurrences of error "
+                    << static_cast<int>(e);
+        camera_metrics_->SendHdrnetError(e);
+      }
+    }
+  }
+
+  if (hdrnet_metrics_.num_frames_processed > 0) {
+    camera_metrics_->SendHdrnetAvgLatency(
+        HdrnetProcessingType::kPreprocessing,
+        hdrnet_metrics_.accumulated_preprocessing_latency_us /
+            hdrnet_metrics_.num_frames_processed);
+    camera_metrics_->SendHdrnetAvgLatency(
+        HdrnetProcessingType::kRgbPipeline,
+        hdrnet_metrics_.accumulated_rgb_pipeline_latency_us /
+            hdrnet_metrics_.num_frames_processed);
+    camera_metrics_->SendHdrnetAvgLatency(
+        HdrnetProcessingType::kPostprocessing,
+        hdrnet_metrics_.accumulated_postprocessing_latency_us /
+            hdrnet_metrics_.num_frames_processed);
   }
 }
 
