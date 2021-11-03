@@ -191,6 +191,7 @@ static const char* kActions[] = {"mount_ex",
                                  "start_auth_session",
                                  "add_credentials",
                                  "authenticate_auth_session",
+                                 "invalidate_auth_session",
                                  NULL};
 enum ActionEnum {
   ACTION_MOUNT_EX,
@@ -275,7 +276,8 @@ enum ActionEnum {
   ACTION_END_FINGERPRINT_AUTH_SESSION,
   ACTION_START_AUTH_SESSION,
   ACTION_ADD_CREDENTIALS,
-  ACTION_AUTHENTICATE_AUTH_SESSION
+  ACTION_AUTHENTICATE_AUTH_SESSION,
+  ACTION_INVALIDATE_AUTH_SESSION
 };
 static const char kUserSwitch[] = "user";
 static const char kPasswordSwitch[] = "password";
@@ -2913,6 +2915,36 @@ int main(int argc, char** argv) {
     }
 
     printf("Auth session authentication succeeded.\n");
+  } else if (!strcmp(
+                 switches::kActions[switches::ACTION_INVALIDATE_AUTH_SESSION],
+                 action.c_str())) {
+    user_data_auth::InvalidateAuthSessionRequest req;
+    user_data_auth::InvalidateAuthSessionReply reply;
+
+    std::string auth_session_id_hex, auth_session_id;
+
+    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+      return 1;
+    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
+    req.set_auth_session_id(auth_session_id);
+
+    brillo::ErrorPtr error;
+    VLOG(1) << "Attempting to invalidate auth session";
+    if (!userdataauth_proxy.InvalidateAuthSession(req, &reply, &error,
+                                                  timeout_ms) ||
+        error) {
+      printf("InvalidateAuthSession call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("Auth session failed to invalidate.\n");
+      return static_cast<int>(reply.error());
+    }
+
+    printf("Auth session invalidated.\n");
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)

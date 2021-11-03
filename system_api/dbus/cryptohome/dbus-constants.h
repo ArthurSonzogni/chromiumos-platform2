@@ -46,6 +46,7 @@ const char kGetAccountDiskUsage[] = "GetAccountDiskUsage";
 const char kStartAuthSession[] = "StartAuthSession";
 const char kAddCredentials[] = "AddCredentials";
 const char kAuthenticateAuthSession[] = "AuthenticateAuthSession";
+const char kInvalidateAuthSession[] = "InvalidateAuthSession";
 
 // Methods of the |kArcQuotaInterface| interface:
 const char kGetArcDiskFeatures[] = "GetArcDiskFeatures";

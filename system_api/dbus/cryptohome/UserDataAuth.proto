@@ -577,6 +577,17 @@ message AuthenticateAuthSessionReply {
   bool authenticated = 2;
 }
 
+message InvalidateAuthSessionRequest {
+  // Serialized form of token that is used to identify Auth Session that needs
+  // to be invalidated.
+  bytes auth_session_id = 1;
+}
+
+message InvalidateAuthSessionReply {
+  // Error if any to invalidate the Auth Session.
+  CryptohomeErrorCode error = 1;
+}
+
 // ------------------------- ArcQuota Interface -------------------------
 
 // Input parameters to GetArcDiskFeatures().

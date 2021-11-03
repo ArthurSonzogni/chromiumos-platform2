@@ -3789,6 +3789,58 @@ TEST_F(UserDataAuthExTest, MountUnauthenticatedAuthSession) {
             userdataauth_->auth_sessions_.end());
 }
 
+TEST_F(UserDataAuthExTest, InvalidateAuthSession) {
+  // Setup.
+  PrepareArguments();
+  start_auth_session_req_->mutable_account_id()->set_account_id(
+      "foo@example.com");
+  user_data_auth::StartAuthSessionReply auth_session_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartAuthSession(
+        *start_auth_session_req_,
+        base::BindOnce(
+            [](user_data_auth::StartAuthSessionReply* auth_reply_ptr,
+               const user_data_auth::StartAuthSessionReply& reply) {
+              *auth_reply_ptr = reply;
+            },
+            base::Unretained(&auth_session_reply)));
+  }
+  EXPECT_EQ(auth_session_reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  base::Optional<base::UnguessableToken> auth_session_id =
+      AuthSession::GetTokenFromSerializedString(
+          auth_session_reply.auth_session_id());
+  EXPECT_TRUE(auth_session_id.has_value());
+  EXPECT_NE(userdataauth_->auth_sessions_.find(auth_session_id.value()),
+            userdataauth_->auth_sessions_.end());
+
+  // Test.
+  user_data_auth::InvalidateAuthSessionRequest inv_auth_session_req;
+  inv_auth_session_req.set_auth_session_id(
+      auth_session_reply.auth_session_id());
+
+  // Invalidate the AuthSession immediately.
+  bool invalidated = false;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->InvalidateAuthSession(
+        inv_auth_session_req,
+        base::BindOnce(
+            [](bool& invalidated_ref,
+               const user_data_auth::InvalidateAuthSessionReply& reply) {
+              EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+                        reply.error());
+              invalidated_ref = true;
+            },
+            std::ref(invalidated)));
+    EXPECT_EQ(TRUE, invalidated);
+  }
+
+  EXPECT_EQ(userdataauth_->auth_sessions_.find(auth_session_id.value()),
+            userdataauth_->auth_sessions_.end());
+}
+
 class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
  public:
   static constexpr const char* kUser = "chromeos-user";

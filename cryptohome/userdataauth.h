@@ -654,6 +654,11 @@ class UserDataAuth {
       base::OnceCallback<
           void(const user_data_auth::AuthenticateAuthSessionReply&)> on_done);
 
+  bool InvalidateAuthSession(
+      user_data_auth::InvalidateAuthSessionRequest request,
+      base::OnceCallback<
+          void(const user_data_auth::InvalidateAuthSessionReply&)> on_done);
+
  private:
   // base::Thread subclass so we can implement CleanUp.
   class MountThread : public base::Thread {
@@ -1221,6 +1226,7 @@ class UserDataAuth {
   friend class UserDataAuthExTest;
   FRIEND_TEST(UserDataAuthExTest, StartAuthSession);
   FRIEND_TEST(UserDataAuthExTest, MountUnauthenticatedAuthSession);
+  FRIEND_TEST(UserDataAuthExTest, InvalidateAuthSession);
 };
 
 }  // namespace cryptohome

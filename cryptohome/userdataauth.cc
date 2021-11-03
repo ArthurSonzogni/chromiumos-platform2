@@ -3287,4 +3287,27 @@ bool UserDataAuth::AuthenticateAuthSession(
   return false;
 }
 
+bool UserDataAuth::InvalidateAuthSession(
+    user_data_auth::InvalidateAuthSessionRequest request,
+    base::OnceCallback<void(const user_data_auth::InvalidateAuthSessionReply&)>
+        on_done) {
+  AssertOnMountThread();
+  base::Optional<base::UnguessableToken> token =
+      AuthSession::GetTokenFromSerializedString(request.auth_session_id());
+  user_data_auth::InvalidateAuthSessionReply reply;
+  if (!token.has_value() ||
+      auth_sessions_.find(token.value()) == auth_sessions_.end()) {
+    // Token lookup failed.
+    reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+    std::move(on_done).Run(reply);
+    return false;
+  }
+
+  // RemoveAuthSessionWithToken is a void function.
+  RemoveAuthSessionWithToken(token.value());
+  reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  std::move(on_done).Run(reply);
+  return true;
+}
+
 }  // namespace cryptohome
