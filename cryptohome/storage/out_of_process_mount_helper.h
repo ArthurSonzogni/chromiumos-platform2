@@ -25,7 +25,6 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/storage/mount_helper.h"
-#include "cryptohome/storage/mount_namespace.h"
 
 using base::FilePath;
 
@@ -38,16 +37,9 @@ class OutOfProcessMountResponse;
 
 class OutOfProcessMountHelper : public MountHelperInterface {
  public:
-  OutOfProcessMountHelper(std::unique_ptr<MountNamespace> chrome_mnt_ns,
-                          bool legacy_home,
+  OutOfProcessMountHelper(bool legacy_home,
                           bool bind_mount_downloads,
-                          Platform* platform)
-      : chrome_mnt_ns_(std::move(chrome_mnt_ns)),
-        legacy_home_(legacy_home),
-        bind_mount_downloads_(bind_mount_downloads),
-        platform_(platform),
-        username_(),
-        write_to_helper_(-1) {}
+                          Platform* platform);
   OutOfProcessMountHelper(const OutOfProcessMountHelper&) = delete;
   OutOfProcessMountHelper& operator=(const OutOfProcessMountHelper&) = delete;
 
@@ -92,9 +84,6 @@ class OutOfProcessMountHelper : public MountHelperInterface {
   // Tears down the existing cryptohome mount by terminating the out-of-process
   // helper.
   bool TearDownExistingMount();
-
-  // If populated, mount namespace where to perform the mount.
-  std::unique_ptr<MountNamespace> chrome_mnt_ns_;
 
   // Whether to make the legacy home directory (/home/chronos/user) available.
   bool legacy_home_;

@@ -24,6 +24,8 @@
 #include <brillo/process/process.h>
 #include <brillo/secure_blob.h>
 
+#include <chromeos/constants/cryptohome.h>
+
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/storage/mount_constants.h"
@@ -107,6 +109,20 @@ std::map<cryptohome::MountType, cryptohome::OutOfProcessMountRequest_MountType>
 
 namespace cryptohome {
 
+//  cryptohome_namespace_mounter enters the Chrome mount namespace and mounts
+//  the user cryptohome in that mount namespace if the flags are enabled.
+//  Chrome mount namespace is created by session_manager. cryptohome knows
+//  the path at which this mount namespace is created and uses that path to
+//  enter it.
+OutOfProcessMountHelper::OutOfProcessMountHelper(bool legacy_home,
+                                                 bool bind_mount_downloads,
+                                                 Platform* platform)
+    : legacy_home_(legacy_home),
+      bind_mount_downloads_(bind_mount_downloads),
+      platform_(platform),
+      username_(),
+      write_to_helper_(-1) {}
+
 bool OutOfProcessMountHelper::CanPerformEphemeralMount() const {
   return !helper_process_ || helper_process_->pid() == 0;
 }
@@ -155,8 +171,8 @@ bool OutOfProcessMountHelper::PerformEphemeralMount(
   request.set_legacy_home(legacy_home_);
   request.set_bind_mount_downloads(bind_mount_downloads_);
   request.set_mount_namespace_path(
-      chrome_mnt_ns_ && username == brillo::cryptohome::home::kGuestUserName
-          ? chrome_mnt_ns_->path().value()
+      username == brillo::cryptohome::home::kGuestUserName
+          ? kUserSessionMountNamespacePath
           : "");
   request.set_type(cryptohome::OutOfProcessMountRequest_MountType_EPHEMERAL);
   request.set_ephemeral_loop_device(ephemeral_loop_device.value());
@@ -270,9 +286,8 @@ bool OutOfProcessMountHelper::PerformMount(const Options& mount_opts,
   request.set_username(username);
   request.set_bind_mount_downloads(bind_mount_downloads_);
   request.set_legacy_home(legacy_home_);
-  request.set_mount_namespace_path(chrome_mnt_ns_ && IsolateUserSession()
-                                       ? chrome_mnt_ns_->path().value()
-                                       : "");
+  request.set_mount_namespace_path(
+      IsolateUserSession() ? kUserSessionMountNamespacePath : "");
   request.set_type(mount_type[mount_opts.type]);
   request.set_to_migrate_from_ecryptfs(mount_opts.to_migrate_from_ecryptfs);
   request.set_fek_signature(fek_signature);

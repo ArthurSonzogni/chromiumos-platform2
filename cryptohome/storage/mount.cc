@@ -103,18 +103,8 @@ bool Mount::Init(bool use_local_mounter) {
     return true;
   }
 
-  //  cryptohome_namespace_mounter enters the Chrome mount namespace and mounts
-  //  the user cryptohome in that mount namespace if the flags are enabled.
-  //  Chrome mount namespace is created by session_manager. cryptohome knows
-  //  the path at which this mount namespace is created and uses that path to
-  //  enter it.
-  std::unique_ptr<MountNamespace> chrome_mnt_ns =
-      std::make_unique<MountNamespace>(
-          base::FilePath(kUserSessionMountNamespacePath), platform_);
-
-  active_mounter_.reset(
-      new OutOfProcessMountHelper(std::move(chrome_mnt_ns), legacy_mount_,
-                                  bind_mount_downloads_, platform_));
+  active_mounter_.reset(new OutOfProcessMountHelper(
+      legacy_mount_, bind_mount_downloads_, platform_));
 
   return true;
 }

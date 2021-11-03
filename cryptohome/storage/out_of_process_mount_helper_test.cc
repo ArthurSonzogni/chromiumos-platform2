@@ -38,7 +38,7 @@ using ::testing::Return;
 
 namespace {
 
-const FilePath kChromeMountNamespace("/run/namespace/mnt_chrome");
+constexpr char kChromeMountNamespace[] = "/run/namespaces/mnt_chrome";
 
 constexpr pid_t kOOPHelperPid = 2;
 
@@ -64,8 +64,7 @@ class OutOfProcessMountHelperTest : public ::testing::Test {
     platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt);
 
     out_of_process_mounter_.reset(new OutOfProcessMountHelper(
-        std::unique_ptr<MountNamespace>(), true /* legacy_mount */,
-        true /* bind_mount_downloads */, &platform_));
+        true /* legacy_mount */, true /* bind_mount_downloads */, &platform_));
   }
 
   void TearDown() {
@@ -153,7 +152,7 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPWriteProtobuf) {
   OutOfProcessMountRequest r;
   ASSERT_TRUE(ReadProtobuf(read_end.get(), &r));
   EXPECT_EQ(r.username(), kGuestUserName);
-  EXPECT_EQ(r.mount_namespace_path(), "");
+  EXPECT_EQ(r.mount_namespace_path(), kChromeMountNamespace);
 
   EXPECT_CALL(*process, Kill(SIGTERM, _)).WillOnce(Return(true));
   out_of_process_mounter_->UnmountAll();
@@ -172,11 +171,8 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPNonRootMountNamespace) {
   EXPECT_CALL(*process, pid()).WillRepeatedly(Return(kOOPHelperPid));
   EXPECT_CALL(*process, Kill(SIGTERM, _)).WillOnce(Return(true));
 
-  std::unique_ptr<MountNamespace> mnt_ns =
-      std::make_unique<MountNamespace>(kChromeMountNamespace, &platform_);
-  out_of_process_mounter_.reset(
-      new OutOfProcessMountHelper(std::move(mnt_ns), true /* legacy_mount */,
-                                  true /* bind_mount_downloads */, &platform_));
+  out_of_process_mounter_.reset(new OutOfProcessMountHelper(
+      true /* legacy_mount */, true /* bind_mount_downloads */, &platform_));
 
   // Reading from the helper always succeeds.
   base::ScopedFD dev_zero = GetDevZeroFd();
@@ -196,7 +192,7 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPNonRootMountNamespace) {
   OutOfProcessMountRequest r;
   ASSERT_TRUE(ReadProtobuf(read_end.get(), &r));
   EXPECT_EQ(r.username(), kGuestUserName);
-  EXPECT_EQ(r.mount_namespace_path(), kChromeMountNamespace.value());
+  EXPECT_EQ(r.mount_namespace_path(), kChromeMountNamespace);
 
   out_of_process_mounter_->UnmountAll();
 }
