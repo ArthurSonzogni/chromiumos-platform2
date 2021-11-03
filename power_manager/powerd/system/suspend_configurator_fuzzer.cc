@@ -6,7 +6,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/test/task_environment.h>
+#include <base/task/single_thread_task_executor.h>
 #include "fuzzer/FuzzedDataProvider.h"
 
 #include "power_manager/common/fake_prefs.h"
@@ -30,7 +30,7 @@ void CreateSysfsFileInTempRootDir(const base::FilePath& temp_root_dir,
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   FuzzedDataProvider data_provider(data, size);
-  base::test::TaskEnvironment task_environment;
+  base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
 
   // Create fake directory structure.
   base::ScopedTempDir temp_root_dir;
