@@ -404,10 +404,6 @@ def _GenerateInferredAshSwitches(device_config):
   ash_switches = set()
   ash_switches |= set(ui_config.get('extra-ash-flags', []))
 
-  help_content_id = ui_config.get('help-content-id')
-  if help_content_id:
-    ash_switches.add('--device-help-content-id=%s' % help_content_id)
-
   extra_web_apps_dir = ui_config.get('apps', {}).get('extra-web-apps-dir')
   if extra_web_apps_dir:
     ash_switches.add('--extra-web-apps-dir=%s' % extra_web_apps_dir)

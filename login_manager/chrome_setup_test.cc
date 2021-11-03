@@ -223,6 +223,17 @@ TEST_F(ChromeSetupTest, TestPowerButtonPosition) {
   EXPECT_EQ(json_position_info, GetFlag(argv, "--ash-power-button-position"));
 }
 
+TEST_F(ChromeSetupTest, TestHelpContentSwitch) {
+  login_manager::SetUpHelpContentSwitch(&builder_, &cros_config_);
+  std::vector<std::string> argv = builder_.arguments();
+  ASSERT_EQ(0, argv.size());
+
+  cros_config_.SetString("/ui", "help-content-id", "GOOGLE-EVE");
+  login_manager::SetUpHelpContentSwitch(&builder_, &cros_config_);
+  argv = builder_.arguments();
+  EXPECT_EQ("GOOGLE-EVE", GetFlag(argv, "--device-help-content-id"));
+}
+
 TEST_F(ChromeSetupTest, TestRegulatoryLabel) {
   login_manager::SetUpRegulatoryLabelFlag(&builder_, &cros_config_);
   std::vector<std::string> argv = builder_.arguments();

@@ -74,7 +74,7 @@
             "edge": "left",
             "position": "0.3"
           },
-          "serialized-ash-switches": "--demo-mode-highlights-extension=iggildboghmjpbjcpmobahnkmoefkike\u0000--demo-mode-screensaver-extension=gdobaoeekhiklaljmhladjfdfkigampc\u0000--device-help-content-id=some\u0000--extra-web-apps-dir=some\u0000"
+          "serialized-ash-switches": "--demo-mode-highlights-extension=iggildboghmjpbjcpmobahnkmoefkike\u0000--demo-mode-screensaver-extension=gdobaoeekhiklaljmhladjfdfkigampc\u0000--extra-web-apps-dir=some\u0000"
         },
         "wallpaper": "some",
         "wifi": {
@@ -152,7 +152,7 @@
             "edge": "left",
             "position": "0.3"
           },
-          "serialized-ash-switches": "--demo-mode-highlights-extension=iggildboghmjpbjcpmobahnkmoefkike\u0000--demo-mode-screensaver-extension=gdobaoeekhiklaljmhladjfdfkigampc\u0000--device-help-content-id=some\u0000--extra-web-apps-dir=some\u0000"
+          "serialized-ash-switches": "--demo-mode-highlights-extension=iggildboghmjpbjcpmobahnkmoefkike\u0000--demo-mode-screensaver-extension=gdobaoeekhiklaljmhladjfdfkigampc\u0000--extra-web-apps-dir=some\u0000"
         },
         "wallpaper": "some",
         "wifi": {
@@ -229,7 +229,7 @@
             "edge": "left",
             "position": "0.3"
           },
-          "serialized-ash-switches": "--demo-mode-highlights-extension=iggildboghmjpbjcpmobahnkmoefkike\u0000--demo-mode-screensaver-extension=gdobaoeekhiklaljmhladjfdfkigampc\u0000--device-help-content-id=some2\u0000--extra-web-apps-dir=some2\u0000"
+          "serialized-ash-switches": "--demo-mode-highlights-extension=iggildboghmjpbjcpmobahnkmoefkike\u0000--demo-mode-screensaver-extension=gdobaoeekhiklaljmhladjfdfkigampc\u0000--extra-web-apps-dir=some2\u0000"
         },
         "wallpaper": "some"
       },
@@ -263,7 +263,7 @@
             "edge": "left",
             "position": "0.3"
           },
-          "serialized-ash-switches": "--bam\u0000--bar-flag=baz\u0000--device-help-content-id=another\u0000--extra-web-apps-dir=another\u0000--foo-flag\u0000"
+          "serialized-ash-switches": "--bam\u0000--bar-flag=baz\u0000--extra-web-apps-dir=another\u0000--foo-flag\u0000"
         },
         "wallpaper": "default",
         "wifi": {
@@ -284,8 +284,7 @@
         },
         "name": "some_customization",
         "ui": {
-          "help-content-id": "SomeCustomization",
-          "serialized-ash-switches": "--device-help-content-id=SomeCustomization\u0000"
+          "help-content-id": "SomeCustomization"
         }
       },
       {
@@ -342,7 +341,7 @@
             "edge": "left",
             "position": "0.3"
           },
-          "serialized-ash-switches": "--device-help-content-id=whitelabel1\u0000--extra-web-apps-dir=whitelabel\u0000"
+          "serialized-ash-switches": "--extra-web-apps-dir=whitelabel\u0000"
         },
         "wallpaper": "wallpaper-wl1"
       },
@@ -400,7 +399,7 @@
             "edge": "left",
             "position": "0.3"
           },
-          "serialized-ash-switches": "--device-help-content-id=whitelabel1\u0000--extra-web-apps-dir=whitelabel\u0000"
+          "serialized-ash-switches": "--extra-web-apps-dir=whitelabel\u0000"
         },
         "wallpaper": "wallpaper-wl1"
       },
@@ -458,7 +457,7 @@
             "edge": "left",
             "position": "0.3"
           },
-          "serialized-ash-switches": "--device-help-content-id=whitelabel2\u0000--extra-web-apps-dir=whitelabel\u0000"
+          "serialized-ash-switches": "--extra-web-apps-dir=whitelabel\u0000"
         },
         "wallpaper": "wallpaper-wl2"
       },
@@ -516,7 +515,7 @@
             "edge": "left",
             "position": "0.3"
           },
-          "serialized-ash-switches": "--device-help-content-id=whitelabel2\u0000--extra-web-apps-dir=whitelabel\u0000"
+          "serialized-ash-switches": "--extra-web-apps-dir=whitelabel\u0000"
         },
         "wallpaper": "wallpaper-wl2"
       }

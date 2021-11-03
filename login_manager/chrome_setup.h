@@ -122,6 +122,11 @@ void SetUpWallpaperFlags(
     brillo::CrosConfigInterface* cros_config,
     base::Callback<bool(const base::FilePath&)> path_exists);
 
+// Add "--device-help-content-id" switch to specify the help content
+// to be displayed in the Showoff app.
+void SetUpHelpContentSwitch(chromeos::ui::ChromiumCommandBuilder* builder,
+                            brillo::CrosConfigInterface* cros_config);
+
 // Add "--regulatory-label-dir" flag to specify the regulatory label directory
 // containing per-region sub-directories, if the model-specific
 // regulatory-label read from |cros_config| is non-null.

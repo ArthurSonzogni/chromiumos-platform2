@@ -44,6 +44,7 @@ namespace login_manager {
 
 constexpr char kUiPath[] = "/ui";
 constexpr char kSerializedAshSwitchesProperty[] = "serialized-ash-switches";
+constexpr char kHelpContentIdProperty[] = "help-content-id";
 
 const char kWallpaperProperty[] = "wallpaper";
 
@@ -563,6 +564,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
 
   SetUpPowerButtonPositionFlag(builder, cros_config);
   SetUpSideVolumeButtonPositionFlag(builder, cros_config);
+  SetUpHelpContentSwitch(builder, cros_config);
   SetUpRegulatoryLabelFlag(builder, cros_config);
   SetUpInternalStylusFlag(builder, cros_config);
   SetUpFingerprintSensorLocationFlag(builder, cros_config);
@@ -636,6 +638,15 @@ void AddSerializedAshSwitches(ChromiumCommandBuilder* builder,
        base::SplitString(serialized_ash_switches, "\0"s, base::KEEP_WHITESPACE,
                          base::SPLIT_WANT_NONEMPTY)) {
     builder->AddArg(flag);
+  }
+}
+
+void SetUpHelpContentSwitch(ChromiumCommandBuilder* builder,
+                            brillo::CrosConfigInterface* cros_config) {
+  std::string help_content_id;
+  if (cros_config && cros_config->GetString(kUiPath, kHelpContentIdProperty,
+                                            &help_content_id)) {
+    builder->AddArg("--device-help-content-id=" + help_content_id);
   }
 }
 
