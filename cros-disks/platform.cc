@@ -232,36 +232,19 @@ MountErrorType Platform::Mount(const std::string& source_path,
                                const std::string& filesystem_type,
                                const uint64_t flags,
                                const std::string& options) const {
-  // Pass the nosymfollow option as both a flag and a string option for
-  // compatibility across kernels.  The mount syscall ignores unknown flags,
-  // so kernels that don't have MS_NOSYMFOLLOW will pick up nosymfollow from
-  // the data parameter through the chromiumos LSM.  Kernels that do have
-  // MS_NOSYMFOLLOW will pick up the same behavior directly from the flag;
-  // our LSM ignores the string option in that case.
-  //
-  // TODO(b/152074038): Remove the string option once all devices have been
-  // upreved to a kernel that supports MS_NOSYMFOLLOW (currently 5.4+).
-  std::string mount_options = options;
-  if ((flags & MS_NOSYMFOLLOW) == MS_NOSYMFOLLOW) {
-    if (!mount_options.empty()) {
-      mount_options += ",";
-    }
-    mount_options += "nosymfollow";
-  }
-
   error_t error = 0;
   if (mount(source_path.c_str(), target_path.c_str(), filesystem_type.c_str(),
-            flags, mount_options.c_str()) != 0) {
+            flags, options.c_str()) != 0) {
     error = errno;
     PLOG(ERROR) << "Cannot create mount point " << quote(target_path) << " for "
                 << quote(source_path) << " as filesystem "
                 << quote(filesystem_type) << " with flags 0x" << std::hex
-                << flags << " and options " << quote(mount_options);
+                << flags << " and options " << quote(options);
   } else {
     LOG(INFO) << "Created mount point " << quote(target_path) << " for "
               << quote(source_path) << " as filesystem "
               << quote(filesystem_type) << " with flags 0x" << std::hex << flags
-              << " and options " << quote(mount_options);
+              << " and options " << quote(options);
   }
 
   switch (error) {

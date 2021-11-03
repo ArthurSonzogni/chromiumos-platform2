@@ -318,9 +318,7 @@ bool Platform::Bind(const FilePath& from,
   uint32_t mount_flags = MS_REMOUNT | MS_BIND | kDefaultMountFlags;
   std::string options;
   if (nosymfollow) {
-    // Works only in 4.x+ kernels so far.
     mount_flags |= MS_NOSYMFOLLOW;
-    options = "nosymfollow";
   }
 
   if (mount(nullptr, to.value().c_str(), nullptr, mount_flags, options.c_str()))
