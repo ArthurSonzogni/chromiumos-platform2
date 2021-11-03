@@ -13,8 +13,9 @@
 #include <dbus/message.h>
 
 namespace {
-constexpr int kDbusTimeoutMs = 20;
-constexpr uint32_t kRetrySleepTimeoutMs = 20;
+// TODO(b/206518847): See if we can avoid timeouts.
+constexpr int kDbusTimeoutMs = 100;
+constexpr uint32_t kRetrySleepTimeoutMs = 100;
 }  // namespace
 
 namespace typecd {
