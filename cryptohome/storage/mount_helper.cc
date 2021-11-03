@@ -90,6 +90,63 @@ constexpr mode_t kGroupWriteAccess = S_IWGRP;
 
 namespace cryptohome {
 
+namespace {
+
+struct DirectoryACL {
+  base::FilePath path;
+  mode_t mode;
+  uid_t uid;
+  gid_t gid;
+};
+
+std::vector<DirectoryACL> GetCacheSubdirectories() {
+  return std::vector<DirectoryACL>{
+      {FilePath(kUserHomeSuffix).Append(kGCacheDir), kAccessMode, kChronosUid,
+       kChronosAccessGid},
+      {FilePath(kUserHomeSuffix).Append(kCacheDir), kTrackedDirMode,
+       kChronosUid, kChronosGid},
+      {FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(kGCacheVersion2Dir),
+       kAccessMode | kGroupWriteAccess, kChronosUid, kChronosAccessGid}};
+}
+
+std::vector<DirectoryACL> GetCommonSubdirectories() {
+  auto result = std::vector<DirectoryACL>{
+      {FilePath(kRootHomeSuffix), kRootDirMode, kRootUid, kDaemonStoreGid},
+      {FilePath(kUserHomeSuffix), kAccessMode, kChronosUid, kChronosAccessGid},
+      {FilePath(kUserHomeSuffix).Append(kDownloadsDir), kAccessMode,
+       kChronosUid, kChronosAccessGid},
+      {FilePath(kUserHomeSuffix).Append(kMyFilesDir), kAccessMode, kChronosUid,
+       kChronosAccessGid},
+      {FilePath(kUserHomeSuffix).Append(kMyFilesDir).Append(kDownloadsDir),
+       kAccessMode, kChronosUid, kChronosAccessGid},
+  };
+  auto cache_subdirs = GetCacheSubdirectories();
+  result.insert(result.end(), cache_subdirs.begin(), cache_subdirs.end());
+  return result;
+}
+
+std::vector<DirectoryACL> GetDmcryptSubdirectories() {
+  auto data_volume_subdirs = GetCommonSubdirectories();
+  auto cache_volume_subdirs = GetCacheSubdirectories();
+
+  // Construct data volume subdirectories.
+  for (auto& subdir : data_volume_subdirs) {
+    subdir.path = FilePath(kMountDir).Append(subdir.path);
+  }
+
+  // Construct cache volume subdirectories.
+  for (auto& subdir : cache_volume_subdirs) {
+    subdir.path = FilePath(kDmcryptCacheDir).Append(subdir.path);
+  }
+
+  auto result = cache_volume_subdirs;
+  result.insert(result.end(), data_volume_subdirs.begin(),
+                data_volume_subdirs.end());
+  return result;
+}
+
+}  // namespace
+
 const char kDefaultHomeDir[] = "/home/chronos/user";
 
 MountHelper::MountHelper(bool legacy_mount,
@@ -98,59 +155,6 @@ MountHelper::MountHelper(bool legacy_mount,
     : legacy_mount_(legacy_mount),
       bind_mount_downloads_(bind_mount_downloads),
       platform_(platform) {}
-
-std::vector<DirectoryACL> MountHelper::GetCommonSubdirectories(
-    uid_t uid, gid_t gid, gid_t access_gid) {
-  return std::vector<DirectoryACL>{
-      {FilePath(kUserHomeSuffix).Append(kDownloadsDir), kAccessMode, uid,
-       access_gid},
-      {FilePath(kUserHomeSuffix).Append(kMyFilesDir), kAccessMode, uid,
-       access_gid},
-      {FilePath(kUserHomeSuffix).Append(kMyFilesDir).Append(kDownloadsDir),
-       kAccessMode, uid, access_gid},
-  };
-}
-
-std::vector<DirectoryACL> MountHelper::GetCacheSubdirectories(
-    uid_t uid, gid_t gid, gid_t access_gid) {
-  return std::vector<DirectoryACL>{
-      {FilePath(kUserHomeSuffix).Append(kGCacheDir), kAccessMode, uid,
-       access_gid},
-      {FilePath(kUserHomeSuffix).Append(kCacheDir), kTrackedDirMode, uid, gid},
-  };
-}
-
-std::vector<DirectoryACL> MountHelper::GetGCacheSubdirectories(
-    uid_t uid, gid_t gid, gid_t access_gid) {
-  DirectoryACL gcache_v2_subdir = {
-      FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(kGCacheVersion2Dir),
-      kAccessMode | kGroupWriteAccess, uid, access_gid};
-
-  return {gcache_v2_subdir};
-}
-
-std::vector<DirectoryACL> MountHelper::GetTrackedSubdirectories(
-    uid_t uid, gid_t gid, gid_t access_gid) {
-  std::vector<DirectoryACL> durable_only_subdirs{
-      {FilePath(kRootHomeSuffix), kRootDirMode, kRootUid, kDaemonStoreGid},
-      {FilePath(kUserHomeSuffix), kAccessMode, uid, access_gid},
-  };
-
-  std::vector<DirectoryACL> common_subdirs =
-      GetCommonSubdirectories(uid, gid, access_gid);
-
-  std::vector<DirectoryACL> cache_subdirs =
-      GetCacheSubdirectories(uid, gid, access_gid);
-
-  std::vector<DirectoryACL> gcache_subdirs =
-      GetGCacheSubdirectories(uid, gid, access_gid);
-
-  auto result = durable_only_subdirs;
-  result.insert(result.end(), common_subdirs.begin(), common_subdirs.end());
-  result.insert(result.end(), cache_subdirs.begin(), cache_subdirs.end());
-  result.insert(result.end(), gcache_subdirs.begin(), gcache_subdirs.end());
-  return result;
-}
 
 // static
 FilePath MountHelper::GetNewUserPath(const std::string& username) {
@@ -379,31 +383,11 @@ void MountHelper::CopySkeleton(const FilePath& destination) const {
   RecursiveCopy(SkelDir(), destination);
 }
 
-std::vector<DirectoryACL> MountHelper::GetEphemeralSubdirectories(
-    uid_t uid, gid_t gid, gid_t access_gid) {
-  std::vector<DirectoryACL> common_subdirs =
-      GetCommonSubdirectories(uid, gid, access_gid);
-
-  std::vector<DirectoryACL> cache_subdirs =
-      GetCacheSubdirectories(uid, gid, access_gid);
-
-  std::vector<DirectoryACL> gcache_subdirs =
-      GetGCacheSubdirectories(uid, gid, access_gid);
-
-  auto result = common_subdirs;
-  result.insert(result.end(), cache_subdirs.begin(), cache_subdirs.end());
-  result.insert(result.end(), gcache_subdirs.begin(), gcache_subdirs.end());
-  return result;
-}
-
 bool MountHelper::SetUpEphemeralCryptohome(const FilePath& source_path) {
   FilePath user_home = source_path.Append(kUserHomeSuffix);
   CopySkeleton(user_home);
 
-  const auto subdirs =
-      GetEphemeralSubdirectories(kChronosUid, kChronosGid, kChronosAccessGid);
-
-  for (const auto& subdir : subdirs) {
+  for (const auto& subdir : GetCommonSubdirectories()) {
     FilePath path = FilePath(source_path).Append(subdir.path);
     if (platform_->DirectoryExists(path))
       continue;
@@ -633,8 +617,7 @@ bool MountHelper::CreateTrackedSubdirectories(
   // want to have as many of the specified tracked directories created as
   // possible.
   bool result = true;
-  for (const auto& tracked_dir :
-       GetTrackedSubdirectories(kChronosUid, kChronosGid, kChronosAccessGid)) {
+  for (const auto& tracked_dir : GetCommonSubdirectories()) {
     const FilePath tracked_dir_path = dest_dir.Append(tracked_dir.path);
 
     // Create pass-through directory.
@@ -688,45 +671,12 @@ bool MountHelper::CreateTrackedSubdirectories(
   return result;
 }
 
-std::vector<DirectoryACL> MountHelper::GetDmcryptSubdirectories(
-    uid_t uid, gid_t gid, gid_t access_gid) {
-  auto common_subdirs = GetCommonSubdirectories(uid, gid, access_gid);
-  auto cache_subdirs = GetCacheSubdirectories(uid, gid, access_gid);
-  auto gcache_subdirs = GetGCacheSubdirectories(uid, gid, access_gid);
-
-  // Construct data volume subdirectories.
-  std::vector<DirectoryACL> data_volume_subdirs;
-  data_volume_subdirs.insert(data_volume_subdirs.end(), common_subdirs.begin(),
-                             common_subdirs.end());
-  data_volume_subdirs.insert(data_volume_subdirs.end(), cache_subdirs.begin(),
-                             cache_subdirs.end());
-
-  for (auto& subdir : data_volume_subdirs) {
-    subdir.path = FilePath(kMountDir).Append(subdir.path);
-  }
-
-  // Construct cache volume subdirectories.
-  auto cache_volume_subdirs = cache_subdirs;
-  cache_volume_subdirs.insert(cache_volume_subdirs.end(),
-                              gcache_subdirs.begin(), gcache_subdirs.end());
-  for (auto& subdir : cache_volume_subdirs) {
-    subdir.path = FilePath(kDmcryptCacheDir).Append(subdir.path);
-  }
-
-  auto result = cache_volume_subdirs;
-  result.insert(result.end(), data_volume_subdirs.begin(),
-                data_volume_subdirs.end());
-  return result;
-}
-
 bool MountHelper::CreateDmcryptSubdirectories(
     const std::string& obfuscated_username) {
   FilePath user_shadow_dir = ShadowRoot().Append(obfuscated_username);
-  const std::vector<DirectoryACL> dmcrypt_subdirs =
-      GetDmcryptSubdirectories(kChronosUid, kChronosGid, kChronosAccessGid);
 
   // Set up directories.
-  for (const auto& subdir : dmcrypt_subdirs) {
+  for (const auto& subdir : GetDmcryptSubdirectories()) {
     FilePath dir = user_shadow_dir.Append(subdir.path);
     // Ensure that the directory exists.
     if (!platform_->DirectoryExists(dir)) {

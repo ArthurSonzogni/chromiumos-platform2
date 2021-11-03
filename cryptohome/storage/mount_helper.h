@@ -32,13 +32,6 @@ namespace cryptohome {
 extern const char kDefaultHomeDir[];
 extern const char kEphemeralCryptohomeRootContext[];
 
-struct DirectoryACL {
-  base::FilePath path;
-  mode_t mode;
-  uid_t uid;
-  gid_t gid;
-};
-
 // Objects that implement MountHelperInterface can perform mount operations.
 // This interface will be used as we transition all cryptohome mounts to be
 // performed out-of-process.
@@ -161,36 +154,6 @@ class MountHelper : public MountHelperInterface {
   std::vector<base::FilePath> MountedPaths() const;
 
  private:
-  // Returns the names of all common subdirectories and its proper ACLs.
-  static std::vector<DirectoryACL> GetCommonSubdirectories(uid_t uid,
-                                                           gid_t gid,
-                                                           gid_t access_gid);
-
-  // Returns the names of all cache subdirectories and its proper ACLs.
-  static std::vector<DirectoryACL> GetCacheSubdirectories(uid_t uid,
-                                                          gid_t gid,
-                                                          gid_t access_gid);
-
-  // Returns the names of all GCache subdirectories and its proper ACLs.
-  static std::vector<DirectoryACL> GetGCacheSubdirectories(uid_t uid,
-                                                           gid_t gid,
-                                                           gid_t access_gid);
-
-  // Returns the names of all tracked subdirectories and its proper ACLs.
-  static std::vector<DirectoryACL> GetTrackedSubdirectories(uid_t uid,
-                                                            gid_t gid,
-                                                            gid_t access_gid);
-
-  // Returns the names of all ephemeral subdirectories and its proper ACLs.
-  static std::vector<DirectoryACL> GetEphemeralSubdirectories(uid_t uid,
-                                                              gid_t gid,
-                                                              gid_t access_gid);
-
-  // Returns the names of all dm-crypt subdirectories and its proper ACLs.
-  static std::vector<DirectoryACL> GetDmcryptSubdirectories(uid_t uid,
-                                                            gid_t gid,
-                                                            gid_t access_gid);
-
   // Returns the mounted userhome path (e.g. /home/.shadow/.../mount/user)
   //
   // Parameters
