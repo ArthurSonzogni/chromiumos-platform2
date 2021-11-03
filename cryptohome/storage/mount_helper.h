@@ -271,10 +271,6 @@ class MountHelper : public MountHelperInterface {
   //   destination - Where to copy files to
   void RecursiveCopy(const FilePath& source, const FilePath& destination) const;
 
-  // Sets up a freshly mounted ephemeral cryptohome by adjusting its permissions
-  // and populating it with a skeleton directory and file structure.
-  bool SetUpEphemeralCryptohome(const FilePath& source_path);
-
   bool legacy_mount_ = true;
   bool bind_mount_downloads_ = true;
 

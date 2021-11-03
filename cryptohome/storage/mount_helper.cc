@@ -383,24 +383,6 @@ void MountHelper::CopySkeleton(const FilePath& destination) const {
   RecursiveCopy(SkelDir(), destination);
 }
 
-bool MountHelper::SetUpEphemeralCryptohome(const FilePath& source_path) {
-  FilePath user_home = source_path.Append(kUserHomeSuffix);
-  CopySkeleton(user_home);
-
-  for (const auto& subdir : GetCommonSubdirectories()) {
-    FilePath path = FilePath(source_path).Append(subdir.path);
-    if (platform_->DirectoryExists(path))
-      continue;
-
-    if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-            path, subdir.mode, subdir.uid, subdir.gid)) {
-      LOG(ERROR) << "Couldn't create user path directory: " << path.value();
-      return false;
-    }
-  }
-  return true;
-}
-
 bool MountHelper::MountLegacyHome(const FilePath& from) {
   VLOG(1) << "MountLegacyHome from " << from.value();
   // Multiple mounts can't live on the legacy mountpoint.
@@ -899,8 +881,18 @@ bool MountHelper::PerformEphemeralMount(const std::string& username,
   const FilePath root_home =
       GetMountedEphemeralRootHomePath(obfuscated_username);
 
-  if (!SetUpEphemeralCryptohome(mount_point)) {
-    return false;
+  CopySkeleton(user_home);
+
+  for (const auto& subdir : GetCommonSubdirectories()) {
+    FilePath path = mount_point.Append(subdir.path);
+    if (platform_->DirectoryExists(path))
+      continue;
+
+    if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
+            path, subdir.mode, subdir.uid, subdir.gid)) {
+      LOG(ERROR) << "Couldn't create user path directory: " << path.value();
+      return false;
+    }
   }
 
   if (!MountHomesAndDaemonStores(username, obfuscated_username, user_home,
