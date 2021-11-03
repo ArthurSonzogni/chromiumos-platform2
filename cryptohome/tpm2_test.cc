@@ -1557,7 +1557,7 @@ TEST_F(Tpm2Test, HasResetLockPermissionsFailure) {
 }
 
 TEST_F(Tpm2Test, GetRecoveryCryptoBackend) {
-  EXPECT_FALSE(tpm_->GetRecoveryCryptoBackend());
+  EXPECT_TRUE(tpm_->GetRecoveryCryptoBackend());
 }
 
 namespace {

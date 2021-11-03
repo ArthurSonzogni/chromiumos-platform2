@@ -15,6 +15,7 @@ pkg_config("cryptohome-test-tool_config") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "system_api",
   ]
 }
 
@@ -29,7 +30,10 @@ executable("cryptohome-test-tool") {
     "//cryptohome/libs:target_defaults",
   ]
   libs = [ "cbor" ]
-  deps = [ "//cryptohome/libs:libcrosplatform" ]
+  deps = [
+    "//cryptohome/libs:libcrosplatform",
+    "//cryptohome/libs:libcrostpm",
+  ]
 }
 
 pkg_config("cryptohome-tpm-live-test_config") {

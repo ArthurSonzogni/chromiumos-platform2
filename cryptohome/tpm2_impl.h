@@ -25,6 +25,7 @@
 #include <trunks/trunks_factory.h>
 #include <trunks/trunks_factory_impl.h>
 
+#include "cryptohome/cryptorecovery/recovery_crypto_tpm2_backend_impl.h"
 #include "cryptohome/le_credential_backend.h"
 #include "cryptohome/pinweaver_le_credential_backend.h"
 #include "cryptohome/signature_sealing_backend_tpm2_impl.h"
@@ -264,6 +265,7 @@ class Tpm2Impl : public Tpm {
   PinweaverLECredentialBackend le_credential_backend_{this};
 #endif
   SignatureSealingBackendTpm2Impl signature_sealing_backend_{this};
+  cryptorecovery::RecoveryCryptoTpm2BackendImpl recovery_crypto_backend_{this};
 };
 
 }  // namespace cryptohome

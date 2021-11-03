@@ -19,7 +19,6 @@
 
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
-#include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
@@ -37,6 +36,22 @@ using cryptohome::cryptorecovery::RecoveryResponse;
 using cryptohome::cryptorecovery::RequestMetadata;
 
 namespace {
+
+cryptohome::cryptorecovery::RecoveryCryptoTpmBackend*
+GetRecoveryCryptoTpmBackend() {
+  cryptohome::Tpm* tpm = cryptohome::Tpm::GetSingleton();
+  if (!tpm) {
+    LOG(ERROR) << "Failed to get tpm singleton";
+    return nullptr;
+  }
+  cryptohome::cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend =
+      tpm->GetRecoveryCryptoBackend();
+  if (!tpm_backend) {
+    LOG(ERROR) << "RecoveryCryptoTpmBackend is null";
+    return nullptr;
+  }
+  return tpm_backend;
+}
 
 bool CheckMandatoryFlag(const std::string& flag_name,
                         const std::string& flag_value) {
@@ -73,10 +88,8 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
     const FilePath& channel_priv_key_out_file_path,
     const FilePath& serialized_hsm_payload_out_file_path,
     const FilePath& recovery_secret_out_file_path) {
-  cryptohome::cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
-      recovery_crypto_fake_tpm_backend;
   std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
-      RecoveryCryptoImpl::Create(&recovery_crypto_fake_tpm_backend);
+      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend());
   if (!recovery_crypto) {
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;
@@ -138,10 +151,9 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
     LOG(ERROR) << "Failed to deserialize HSM payload.";
     return false;
   }
-  cryptohome::cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
-      recovery_crypto_fake_tpm_backend;
+
   std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
-      RecoveryCryptoImpl::Create(&recovery_crypto_fake_tpm_backend);
+      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend());
   if (!recovery_crypto) {
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;
@@ -219,10 +231,8 @@ bool DoRecoveryCryptoDecryptAction(
   SecureBlob epoch_pub_key;
   CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key));
 
-  cryptohome::cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
-      recovery_crypto_fake_tpm_backend;
   std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
-      RecoveryCryptoImpl::Create(&recovery_crypto_fake_tpm_backend);
+      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend());
   if (!recovery_crypto) {
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;

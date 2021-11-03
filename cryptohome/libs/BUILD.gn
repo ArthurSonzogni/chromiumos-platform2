@@ -242,6 +242,7 @@ static_library("libcrostpm") {
   public_deps = [ ":cryptohome-proto" ]
   if (use.tpm2) {
     sources += [
+      "../cryptorecovery/recovery_crypto_tpm2_backend_impl.cc",
       "../pinweaver_le_credential_backend.cc",
       "../signature_sealing_backend_tpm2_impl.cc",
       "../tpm2_impl.cc",
