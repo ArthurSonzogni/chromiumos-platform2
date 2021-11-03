@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <ctype.h>
 #include <iostream>
 #include <string>
 
@@ -13,6 +14,8 @@
 
 #include "sommelier.h"  // NOLINT(build/include_directory)
 #include "virtualization/wayland_channel.h"  // NOLINT(build/include_directory)
+
+#include "aura-shell-client-protocol.h"      // NOLINT(build/include_directory)
 #include "xdg-shell-client-protocol.h"       // NOLINT(build/include_directory)
 
 // Help gtest print Wayland message streams on expectation failure.
@@ -31,7 +34,22 @@ std::ostream& operator<<(std::ostream& os, const WaylandSendReceive& w) {
     uint16_t message_size_in_bytes = second_word >> 16;
     uint16_t opcode = second_word & 0xffff;
     os << "[object ID " << object_id << ", opcode " << opcode << ", length "
-       << message_size_in_bytes << "] ";
+       << message_size_in_bytes;
+
+    uint16_t size = MIN(message_size_in_bytes, w.data_size - i);
+    if (size > sizeof(uint32_t) * 2) {
+      os << ", args=[";
+      for (int j = sizeof(uint32_t) * 2; j < size; ++j) {
+        char byte = w.data[i + j];
+        if (isprint(byte)) {
+          os << byte;
+        } else {
+          os << "\\" << static_cast<int>(byte);
+        }
+      }
+      os << "]";
+    }
+    os << "]";
     i += message_size_in_bytes;
   }
   if (i != w.data_size) {
@@ -45,6 +63,7 @@ namespace vm_tools {
 namespace sommelier {
 
 using ::testing::_;
+using ::testing::AllOf;
 using ::testing::DoAll;
 using ::testing::NiceMock;
 using ::testing::PrintToString;
@@ -57,15 +76,19 @@ class MockWaylandChannel : public WaylandChannel {
 
   MOCK_METHOD(int32_t, init, ());
   MOCK_METHOD(bool, supports_dmabuf, ());
-  MOCK_METHOD(int32_t, create_context, (int& out_socket_fd));
-  MOCK_METHOD(int32_t, create_pipe, (int& out_pipe_fd));
+  MOCK_METHOD(int32_t,
+              create_context,
+              (int& out_socket_fd));  // NOLINT(runtime/references)
+  MOCK_METHOD(int32_t,
+              create_pipe,
+              (int& out_pipe_fd));  // NOLINT(runtime/references)
   MOCK_METHOD(int32_t, send, (const struct WaylandSendReceive& send));
   MOCK_METHOD(
       int32_t,
       handle_channel_event,
-      (enum WaylandChannelEvent & event_type,
-       struct WaylandSendReceive& receive,  // NOLINT(runtime/references)
-       int& out_read_pipe));
+      (enum WaylandChannelEvent & event_type,  // NOLINT(runtime/references)
+       struct WaylandSendReceive& receive,     // NOLINT(runtime/references)
+       int& out_read_pipe));                   // NOLINT(runtime/references)
 
   MOCK_METHOD(int32_t,
               allocate,
@@ -75,7 +98,9 @@ class MockWaylandChannel : public WaylandChannel {
   MOCK_METHOD(int32_t, sync, (int dmabuf_fd, uint64_t flags));
   MOCK_METHOD(int32_t,
               handle_pipe,
-              (int read_fd, bool readable, bool& hang_up));
+              (int read_fd,
+               bool readable,
+               bool& hang_up));  // NOLINT(runtime/references)
   MOCK_METHOD(size_t, max_send_size, ());
 
  protected:
@@ -107,6 +132,20 @@ MATCHER_P2(ExactlyOneMessage,
          message_size_in_bytes == send.data_size;
 };
 
+// Match a WaylandSendReceive buffer containing a string.
+// TODO(cpelling): This is currently very naive; it doesn't respect
+// boundaries between messages or their arguments. Fix me.
+MATCHER_P(AnyMessageContainsString,
+          str,
+          std::string("a Wayland message containing string ") + str) {
+  const struct WaylandSendReceive& send = arg;
+  size_t prefix_len = sizeof(uint32_t) * 2;
+  std::string data_as_str(reinterpret_cast<char*>(send.data + prefix_len),
+                          send.data_size - prefix_len);
+
+  return data_as_str.find(str) != std::string::npos;
+}
+
 // Fixture for tests which exercise only Wayland functionality.
 class WaylandTest : public ::testing::Test {
  public:
@@ -130,6 +169,8 @@ class WaylandTest : public ::testing::Test {
   void TearDown() override {
     // Process any pending messages before the test exits.
     Pump();
+
+    // TODO(cpelling): Destroy context and any created windows?
   }
 
   // Flush and dispatch Wayland client calls to the mock host.
@@ -162,27 +203,10 @@ class WaylandTest : public ::testing::Test {
 
     // Fake the Wayland server advertising globals.
     uint32_t id = 1;
-    sl_registry_handler(&ctx, registry, id++, "xdg_wm_base", 1);
-  }
-
-  virtual sl_window* CreateWindowWithoutRole() {
-    xcb_window_t window_id = 1;
-    sl_create_window(&ctx, window_id, 0, 0, 800, 600, 0);
-    sl_window* window = sl_lookup_window(&ctx, window_id);
-    EXPECT_NE(window, nullptr);
-    return window;
-  }
-
-  virtual sl_window* CreateToplevelWindow() {
-    sl_window* window = CreateWindowWithoutRole();
-    wl_surface* surface =
-        wl_compositor_create_surface(ctx.compositor->internal);
-    window->host_surface_id =
-        wl_proxy_get_id(reinterpret_cast<wl_proxy*>(surface));
-    window->xdg_surface =
-        xdg_wm_base_get_xdg_surface(ctx.xdg_shell->internal, surface);
-    window->xdg_toplevel = xdg_surface_get_toplevel(window->xdg_surface);
-    return window;
+    sl_registry_handler(&ctx, registry, id++, "xdg_wm_base",
+                        XDG_WM_BASE_GET_XDG_SURFACE_SINCE_VERSION);
+    sl_registry_handler(&ctx, registry, id++, "zaura_shell",
+                        ZAURA_SURFACE_SET_FULLSCREEN_MODE_SINCE_VERSION);
   }
 
   testing::NiceMock<MockWaylandChannel> mock_wayland_channel_;
@@ -201,7 +225,41 @@ class X11Test : public WaylandTest {
     WaylandTest::Connect();
     ctx.connection = xcb_connect(NULL, NULL);
   }
+
+  virtual sl_window* CreateWindowWithoutRole() {
+    xcb_window_t window_id = 1;
+    sl_create_window(&ctx, window_id, 0, 0, 800, 600, 0);
+    sl_window* window = sl_lookup_window(&ctx, window_id);
+    EXPECT_NE(window, nullptr);
+    return window;
+  }
+
+  virtual sl_window* CreateToplevelWindow() {
+    sl_window* window = CreateWindowWithoutRole();
+    wl_surface* surface =
+        wl_compositor_create_surface(ctx.compositor->internal);
+    window->host_surface_id =
+        wl_proxy_get_id(reinterpret_cast<wl_proxy*>(surface));
+
+    window->xdg_surface =
+        xdg_wm_base_get_xdg_surface(ctx.xdg_shell->internal, surface);
+    window->xdg_toplevel = xdg_surface_get_toplevel(window->xdg_surface);
+
+    window->aura_surface =
+        zaura_shell_get_aura_surface(ctx.aura_shell->internal, surface);
+    return window;
+  }
 };
+
+namespace {
+uint32_t XdgToplevelId(sl_window* window) {
+  return wl_proxy_get_id(reinterpret_cast<wl_proxy*>(window->xdg_toplevel));
+}
+
+uint32_t AuraSurfaceId(sl_window* window) {
+  return wl_proxy_get_id(reinterpret_cast<wl_proxy*>(window->aura_surface));
+}
+}  // namespace
 
 TEST_F(WaylandTest, CanCommitToEmptySurface) {
   wl_surface* surface = wl_compositor_create_surface(ctx.compositor->internal);
@@ -211,8 +269,7 @@ TEST_F(WaylandTest, CanCommitToEmptySurface) {
 TEST_F(X11Test, TogglesFullscreenOnWmStateFullscreen) {
   // Arrange: Create an xdg_toplevel surface. Initially it's not fullscreen.
   sl_window* window = CreateToplevelWindow();
-  uint32_t xdg_toplevel_id =
-      wl_proxy_get_id(reinterpret_cast<wl_proxy*>(window->xdg_toplevel));
+  uint32_t xdg_toplevel_id = XdgToplevelId(window);
   EXPECT_EQ(window->fullscreen, 0);
   Pump();  // exclude pending messages from EXPECT_CALL()s below
 
@@ -257,8 +314,7 @@ TEST_F(X11Test, TogglesFullscreenOnWmStateFullscreen) {
 TEST_F(X11Test, TogglesMaximizeOnWmStateMaximize) {
   // Arrange: Create an xdg_toplevel surface. Initially it's not maximized.
   sl_window* window = CreateToplevelWindow();
-  uint32_t xdg_toplevel_id =
-      wl_proxy_get_id(reinterpret_cast<wl_proxy*>(window->xdg_toplevel));
+  uint32_t xdg_toplevel_id = XdgToplevelId(window);
   EXPECT_EQ(window->maximized, 0);
   Pump();  // exclude pending messages from EXPECT_CALL()s below
 
@@ -299,8 +355,7 @@ TEST_F(X11Test, TogglesMaximizeOnWmStateMaximize) {
 TEST_F(X11Test, CanEnterFullscreenIfAlreadyMaximized) {
   // Arrange
   sl_window* window = CreateToplevelWindow();
-  uint32_t xdg_toplevel_id =
-      wl_proxy_get_id(reinterpret_cast<wl_proxy*>(window->xdg_toplevel));
+  uint32_t xdg_toplevel_id = XdgToplevelId(window);
   Pump();  // exclude pending messages from EXPECT_CALL()s below
 
   // Act: Pretend an X11 client owns the surface, and requests to maximize it.
@@ -342,6 +397,89 @@ TEST_F(X11Test, CanEnterFullscreenIfAlreadyMaximized) {
   EXPECT_CALL(
       mock_wayland_channel_,
       send(ExactlyOneMessage(xdg_toplevel_id, XDG_TOPLEVEL_SET_FULLSCREEN)))
+      .RetiresOnSaturation();
+  Pump();
+}
+
+TEST_F(X11Test, UpdatesApplicationIdFromContext) {
+  sl_window* window = CreateToplevelWindow();
+  Pump();
+
+  window->managed = 1;  // pretend window is mapped
+  // Should be ignored; global app id from context takes priority.
+  window->app_id_property = "org.chromium.appid.from.window";
+
+  ctx.application_id = "org.chromium.appid.from.context";
+  sl_update_application_id(&ctx, window);
+  EXPECT_CALL(mock_wayland_channel_,
+              send(AllOf(ExactlyOneMessage(AuraSurfaceId(window),
+                                           ZAURA_SURFACE_SET_APPLICATION_ID),
+                         AnyMessageContainsString(ctx.application_id))))
+      .RetiresOnSaturation();
+  Pump();
+}
+
+TEST_F(X11Test, UpdatesApplicationIdFromWindow) {
+  sl_window* window = CreateToplevelWindow();
+  Pump();
+
+  window->managed = 1;  // pretend window is mapped
+  window->app_id_property = "org.chromium.appid.from.window";
+  sl_update_application_id(&ctx, window);
+  EXPECT_CALL(mock_wayland_channel_,
+              send(AllOf(ExactlyOneMessage(AuraSurfaceId(window),
+                                           ZAURA_SURFACE_SET_APPLICATION_ID),
+                         AnyMessageContainsString(window->app_id_property))))
+      .RetiresOnSaturation();
+  Pump();
+}
+
+TEST_F(X11Test, UpdatesApplicationIdFromWindowClass) {
+  sl_window* window = CreateToplevelWindow();
+  Pump();
+
+  window->managed = 1;                    // pretend window is mapped
+  window->clazz = strdup("very_classy");  // not const, can't use a literal
+  ctx.vm_id = "testvm";
+  sl_update_application_id(&ctx, window);
+  EXPECT_CALL(mock_wayland_channel_,
+              send(AllOf(ExactlyOneMessage(AuraSurfaceId(window),
+                                           ZAURA_SURFACE_SET_APPLICATION_ID),
+                         AnyMessageContainsString(
+                             "org.chromium.testvm.wmclass.very_classy"))))
+      .RetiresOnSaturation();
+  Pump();
+  free(window->clazz);
+}
+
+TEST_F(X11Test, UpdatesApplicationIdFromClientLeader) {
+  sl_window* window = CreateToplevelWindow();
+  Pump();
+
+  window->managed = 1;  // pretend window is mapped
+  window->client_leader = window->id;
+  ctx.vm_id = "testvm";
+  sl_update_application_id(&ctx, window);
+  EXPECT_CALL(mock_wayland_channel_,
+              send(AllOf(ExactlyOneMessage(AuraSurfaceId(window),
+                                           ZAURA_SURFACE_SET_APPLICATION_ID),
+                         AnyMessageContainsString(
+                             "org.chromium.testvm.wmclientleader."))))
+      .RetiresOnSaturation();
+  Pump();
+}
+
+TEST_F(X11Test, UpdatesApplicationIdFromXid) {
+  sl_window* window = CreateToplevelWindow();
+  Pump();
+
+  window->managed = 1;  // pretend window is mapped
+  ctx.vm_id = "testvm";
+  sl_update_application_id(&ctx, window);
+  EXPECT_CALL(mock_wayland_channel_,
+              send(AllOf(ExactlyOneMessage(AuraSurfaceId(window),
+                                           ZAURA_SURFACE_SET_APPLICATION_ID),
+                         AnyMessageContainsString("org.chromium.testvm.xid."))))
       .RetiresOnSaturation();
   Pump();
 }

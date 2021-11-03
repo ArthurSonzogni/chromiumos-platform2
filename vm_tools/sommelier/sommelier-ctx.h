@@ -6,6 +6,7 @@
 #define VM_TOOLS_SOMMELIER_SOMMELIER_CTX_H_
 
 #include <memory>
+#include <string>
 #include <wayland-server.h>
 #include <wayland-util.h>
 #include <xcb/xcb.h>
@@ -88,7 +89,6 @@ struct sl_context {
   int virtwl_display_fd;
   std::unique_ptr<struct wl_event_source> wayland_channel_event_source;
   std::unique_ptr<struct wl_event_source> virtwl_socket_event_source;
-  const char* vm_id;
   const char* drm_device;
   struct gbm_device* gbm;
   int xwayland;
@@ -114,7 +114,18 @@ struct sl_context {
 #endif
   double desired_scale;
   double scale;
+
+  // If non-null, all X11 client apps will be given this application ID.
   const char* application_id;
+
+  // VM name embedded in application IDs, if application_id is null.
+  const char* vm_id;
+
+  // A custom X11 property to append to application IDs, if application_id
+  // is null. Used in preference to other X11 properties such as WM_CLASS.
+  const char* application_id_property_name;
+  xcb_atom_t application_id_property_atom = XCB_ATOM_NONE;
+
   int exit_with_child;
   const char* sd_notify;
   int clipboard_manager;
@@ -167,6 +178,7 @@ struct sl_context {
 //
 // If the given value is out of range of the ATOM_ enum, returns NULL.
 const char* sl_context_atom_name(int atom_enum);
+
 void sl_context_init_default(struct sl_context* ctx);
 
 bool sl_context_init_wayland_channel(struct sl_context* ctx,

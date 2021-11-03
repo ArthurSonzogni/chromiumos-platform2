@@ -18,6 +18,8 @@
   APPLICATION_ID_FORMAT_PREFIX ".wmclientleader.%d"
 #define WM_CLASS_APPLICATION_ID_FORMAT \
   APPLICATION_ID_FORMAT_PREFIX ".wmclass.%s"
+#define X11_PROPERTY_APPLICATION_ID_FORMAT \
+  APPLICATION_ID_FORMAT_PREFIX ".xprop.%s"
 
 sl_window::sl_window(struct sl_context* ctx,
                      xcb_window_t id,
@@ -311,7 +313,11 @@ void sl_update_application_id(struct sl_context* ctx,
   // that should appear in application lists.
   if (!ctx->xwayland || window->managed) {
     char* application_id_str;
-    if (window->clazz) {
+    if (!window->app_id_property.empty()) {
+      application_id_str =
+          sl_xasprintf(X11_PROPERTY_APPLICATION_ID_FORMAT, ctx->vm_id,
+                       window->app_id_property.c_str());
+    } else if (window->clazz) {
       application_id_str = sl_xasprintf(WM_CLASS_APPLICATION_ID_FORMAT,
                                         ctx->vm_id, window->clazz);
     } else if (window->client_leader != XCB_WINDOW_NONE) {

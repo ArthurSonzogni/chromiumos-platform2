@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <cerrno>
+#include <string>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <wayland-util.h>
@@ -142,6 +143,7 @@ void sl_context_init_default(struct sl_context* ctx) {
   ctx->desired_scale = 1.0;
   ctx->scale = 1.0;
   ctx->application_id = NULL;
+  ctx->application_id_property_name = NULL;
   ctx->exit_with_child = 1;
   ctx->sd_notify = NULL;
   ctx->clipboard_manager = 0;

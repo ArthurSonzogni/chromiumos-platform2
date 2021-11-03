@@ -979,6 +979,15 @@ static const char* sl_decode_wm_class(struct sl_window* window,
   return nullptr;
 }
 
+static void sl_set_application_id_from_atom(struct sl_context* ctx,
+                                            struct sl_window* window,
+                                            xcb_get_property_reply_t* reply) {
+  if (reply->type == XCB_ATOM_CARDINAL) {
+    uint32_t value = *static_cast<uint32_t*>(xcb_get_property_value(reply));
+    window->app_id_property = std::to_string(value);
+  }
+}
+
 static void sl_handle_map_request(struct sl_context* ctx,
                                   xcb_map_request_event_t* event) {
   TRACE_EVENT("shm", "sl_handle_map_request", [&](perfetto::EventContext p) {
@@ -1001,6 +1010,7 @@ static void sl_handle_map_request(struct sl_context* ctx,
       {PROPERTY_GTK_THEME_VARIANT, ctx->atoms[ATOM_GTK_THEME_VARIANT].value},
       {PROPERTY_XWAYLAND_RANDR_EMU_MONITOR_RECTS,
        ctx->atoms[ATOM_XWAYLAND_RANDR_EMU_MONITOR_RECTS].value},
+      {PROPERTY_SPECIFIED_FOR_APP_ID, ctx->application_id_property_atom},
   };
   xcb_get_geometry_cookie_t geometry_cookie;
   xcb_get_property_cookie_t property_cookies[ARRAY_SIZE(properties)];
@@ -1157,6 +1167,10 @@ static void sl_handle_map_request(struct sl_context* ctx,
         if (xcb_get_property_value_length(reply) >= 4)
           window->dark_frame = !strcmp(
               static_cast<char*>(xcb_get_property_value(reply)), "dark");
+        break;
+      case PROPERTY_SPECIFIED_FOR_APP_ID:
+        sl_set_application_id_from_atom(ctx, window, reply);
+        value = window->app_id_property.c_str();
         break;
       default:
         break;
@@ -1907,6 +1921,24 @@ static void sl_handle_property_notify(struct sl_context* ctx,
       free(reply);
     }
     sl_update_application_id(ctx, window);
+  } else if (event->atom == ctx->application_id_property_atom) {
+    struct sl_window* window = sl_lookup_window(ctx, event->window);
+    if (!window || event->state == XCB_PROPERTY_DELETE)
+      return;
+
+    // TODO(cpelling): Support other atom types (e.g. strings) if/when a use
+    // case arises. The current use case is for cardinals (uint32) but this
+    // is easy enough to extend later.
+    xcb_get_property_cookie_t cookie = xcb_get_property(
+        ctx->connection, 0, window->id, ctx->application_id_property_atom,
+        XCB_ATOM_CARDINAL, 0, 1);
+    xcb_get_property_reply_t* reply =
+        xcb_get_property_reply(ctx->connection, cookie, NULL);
+    if (reply) {
+      sl_set_application_id_from_atom(ctx, window, reply);
+      sl_update_application_id(ctx, window);
+      free(reply);
+    }
   } else if (event->atom == XCB_ATOM_WM_NORMAL_HINTS) {
     struct sl_window* window = sl_lookup_window(ctx, event->window);
     if (!window)
@@ -2564,10 +2596,17 @@ static void sl_connect(struct sl_context* ctx) {
   xcb_prefetch_extension_data(ctx->connection, &xcb_xfixes_id);
   xcb_prefetch_extension_data(ctx->connection, &xcb_composite_id);
 
+  // Send requests to fetch/create ("intern") all the atoms we'll need later.
   for (i = 0; i < ARRAY_SIZE(ctx->atoms); ++i) {
     const char* name = ctx->atoms[i].name;
     ctx->atoms[i].cookie =
         xcb_intern_atom(ctx->connection, 0, strlen(name), name);
+  }
+  xcb_intern_atom_cookie_t app_id_atom_cookie;
+  if (ctx->application_id_property_name) {
+    app_id_atom_cookie = xcb_intern_atom(
+        ctx->connection, 0, strlen(ctx->application_id_property_name),
+        ctx->application_id_property_name);
   }
 
   setup = xcb_get_setup(ctx->connection);
@@ -2620,11 +2659,19 @@ static void sl_connect(struct sl_context* ctx) {
                     1, 0, XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, 0,
                     NULL);
 
+  // Wait on results for all the atom intern requests we sent above.
   for (i = 0; i < ARRAY_SIZE(ctx->atoms); ++i) {
     atom_reply =
         xcb_intern_atom_reply(ctx->connection, ctx->atoms[i].cookie, &error);
     assert(!error);
     ctx->atoms[i].value = atom_reply->atom;
+    free(atom_reply);
+  }
+  if (ctx->application_id_property_name) {
+    atom_reply =
+        xcb_intern_atom_reply(ctx->connection, app_id_atom_cookie, &error);
+    assert(!error);
+    ctx->application_id_property_atom = atom_reply->atom;
     free(atom_reply);
   }
 
@@ -2933,12 +2980,18 @@ static void sl_print_usage() {
       "  --parent\t\t\tRun as parent and spawn child processes\n"
       "  --socket=SOCKET\t\tName of socket to listen on\n"
       "  --display=DISPLAY\t\tWayland display to connect to\n"
-      "  --vm-identifier=NAME\t\tName of the VM, used to identify X11 windows\n"
       "  --scale=SCALE\t\t\tScale factor for contents\n"
       "  --dpi=[DPI[,DPI...]]\t\tDPI buckets\n"
       "  --peer-cmd-prefix=PREFIX\tPeer process command line prefix\n"
       "  --accelerators=ACCELERATORS\tList of keyboard accelerators\n"
-      "  --application-id=ID\t\tForced application ID for X11 clients\n"
+      "  --application-id=ID\t\tForced application ID for all X11 windows\n"
+      "  --vm-identifier=NAME\t\tName of the VM, used to identify X11 "
+      "windows.\n"
+      "\t\t\t\tIgnored if --application-id is set.\n"
+      "  --application-id-x11-property=PROPERTY\n"
+      "\tA cardinal window property used to identify X11 windows, as follows:\n"
+      "\t  org.chromium.<vm-identifier>.xprop.<application-id-x11-property>\n"
+      "\tIgnored if --application-id is set.\n"
       "  --x-display=DISPLAY\t\tX11 display to listen on\n"
       "  --xwayland-path=PATH\t\tPath to Xwayland executable\n"
       "  --xwayland-gl-driver-path=PATH\tPath to GL drivers for Xwayland\n"
@@ -2951,7 +3004,7 @@ static void sl_print_usage() {
       "  --virtwl-device=DEVICE\tVirtWL device to use\n"
       "  --drm-device=DEVICE\t\tDRM device to use\n"
       "  --glamor\t\t\tUse glamor to accelerate X11 clients\n"
-      "  --timing-filename=PATH\t\tPath to timing output log\n"
+      "  --timing-filename=PATH\tPath to timing output log\n"
 #ifdef PERFETTO_TRACING
       "  --trace-filename=PATH\t\tPath to Perfetto trace filename\n"
       "  --trace-system\t\tPerfetto trace to system daemon\n"
@@ -3026,8 +3079,6 @@ int real_main(int argc, char** argv) {
       socket_name = sl_arg_value(arg);
     } else if (strstr(arg, "--display") == arg) {
       display = sl_arg_value(arg);
-    } else if (strstr(arg, "--vm-identifier") == arg) {
-      ctx.vm_id = sl_arg_value(arg);
     } else if (strstr(arg, "--peer-pid") == arg) {
       ctx.peer_pid = atoi(sl_arg_value(arg));
     } else if (strstr(arg, "--peer-cmd-prefix") == arg) {
@@ -3042,6 +3093,11 @@ int real_main(int argc, char** argv) {
       dpi = sl_arg_value(arg);
     } else if (strstr(arg, "--accelerators") == arg) {
       accelerators = sl_arg_value(arg);
+    } else if (strstr(arg, "--vm-identifier") == arg) {
+      ctx.vm_id = sl_arg_value(arg);
+    } else if (strstr(arg, "--application-id-x11-property") == arg) {
+      // NB: Must be parsed before --application-id.
+      ctx.application_id_property_name = sl_arg_value(arg);
     } else if (strstr(arg, "--application-id") == arg) {
       ctx.application_id = sl_arg_value(arg);
     } else if (strstr(arg, "-X") == arg) {
@@ -3098,6 +3154,15 @@ int real_main(int argc, char** argv) {
       ctx.runprog = &argv[i];
       break;
     }
+  }
+
+  if (ctx.application_id && ctx.vm_id) {
+    fprintf(stderr, "warning: --application-id overrides --vm-identifier\n");
+  }
+  if (ctx.application_id && ctx.application_id_property_name) {
+    fprintf(stderr,
+            "warning: --application-id overrides"
+            " --application-id-x11-property\n");
   }
 
   runtime_dir = getenv("XDG_RUNTIME_DIR");

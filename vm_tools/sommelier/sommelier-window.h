@@ -6,6 +6,7 @@
 #define VM_TOOLS_SOMMELIER_SOMMELIER_WINDOW_H_
 
 #include <wayland-server-core.h>
+#include <string>
 #include <xcb/xcb.h>
 
 #define US_POSITION (1L << 0)
@@ -60,6 +61,7 @@ struct sl_window {
   char* name = nullptr;
   char* clazz = nullptr;
   char* startup_id = nullptr;
+  std::string app_id_property;
   int dark_frame = 0;
   uint32_t size_flags = P_POSITION;
   int focus_model_take_focus = 0;
@@ -88,6 +90,10 @@ enum {
   PROPERTY_NET_WM_STATE,
   PROPERTY_GTK_THEME_VARIANT,
   PROPERTY_XWAYLAND_RANDR_EMU_MONITOR_RECTS,
+
+  // The atom corresponding to this property changes depending on the
+  // --application-id-format command-line argument.
+  PROPERTY_SPECIFIED_FOR_APP_ID,
 };
 
 struct sl_wm_size_hints {
