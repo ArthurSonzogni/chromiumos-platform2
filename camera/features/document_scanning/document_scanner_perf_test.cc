@@ -36,7 +36,7 @@ constexpr int kWarmUpIterationCount = 5;
 constexpr int kActualIterationCount = 20;
 
 constexpr char kLibDocumentScannerLibraryPath[] =
-    "/opt/google/chrome/ml_models/document_scanning/libdocumentscanner.so";
+    "/usr/share/cros-camera/libfs/libdocumentscanner.so";
 
 std::vector<uint8_t> ReadFile(const base::FilePath& path) {
   int64_t size;
@@ -80,7 +80,8 @@ class DocumentScannerPerfTestEnvironment : public ::testing::Environment {
     base::FilePath library_path(kLibDocumentScannerLibraryPath);
     library_ = base::ScopedNativeLibrary(base::LoadNativeLibraryWithOptions(
         library_path, native_library_options, &error));
-    ASSERT_TRUE(library_.is_valid()) << "Library is inavlid";
+    ASSERT_TRUE(library_.is_valid())
+        << "Library is invalid: " << error.ToString();
 
     create_fn_ = reinterpret_cast<CreateDocumentScannerFn>(
         library_.GetFunctionPointer("CreateDocumentScanner"));

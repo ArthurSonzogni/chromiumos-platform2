@@ -20,9 +20,9 @@ namespace ml {
 
 using LibDocumentScanner = chromeos_camera::document_scanning::DocumentScanner;
 
-// Default document scanning model directory on rootfs.
+// Default document scanning model directory.
 constexpr char kLibDocumentScannerDefaultDir[] =
-    "/opt/google/chrome/ml_models/document_scanning/";
+    "/usr/share/cros-camera/libfs/";
 
 struct DocumentScannerLibraryParams {
   base::FilePath root_dir = base::FilePath(kLibDocumentScannerDefaultDir);

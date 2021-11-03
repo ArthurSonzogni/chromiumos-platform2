@@ -20,9 +20,9 @@ namespace cros {
 
 // This class only supports gray type model. See go/facessd for more details.
 const char kFaceModelPath[] =
-    "/opt/google/cros-camera/ml_models/fssd_small_8bit_gray_4orient_v4.tflite";
+    "/usr/share/cros-camera/ml_models/fssd_small_8bit_gray_4orient_v4.tflite";
 const char kFaceAnchorPath[] =
-    "/opt/google/cros-camera/ml_models/fssd_anchors_v4.pb";
+    "/usr/share/cros-camera/ml_models/fssd_anchors_v4.pb";
 const float kScoreThreshold = 0.5;
 const int kImageSizeForDetection = 160;
 

@@ -24,7 +24,7 @@ namespace cros {
 
 namespace {
 
-constexpr const char kModelDir[] = "/opt/google/cros-camera/ml_models/hdrnet";
+constexpr const char kModelDir[] = "/usr/share/cros-camera/ml_models/hdrnet";
 
 }  // namespace
 

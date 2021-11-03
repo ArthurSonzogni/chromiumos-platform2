@@ -2,12 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/files/file_path.h>
 #include <gtest/gtest.h>
 
 #include "ml/document_scanner_library.h"
 #include "ml/util.h"
 
 namespace ml {
+
+namespace {
+
+DocumentScannerLibraryParams GetTestingParams() {
+  DocumentScannerLibraryParams params;
+  params.root_dir = base::FilePath("/build/share/cros_camera/");
+  return params;
+}
+
+}  // namespace
 
 TEST(DocumentScannerLibraryTest, CanLoadLibrary) {
   auto* const library = DocumentScannerLibrary::GetInstance();
@@ -17,7 +28,7 @@ TEST(DocumentScannerLibraryTest, CanLoadLibrary) {
   }
 
   if (DocumentScannerLibrary::IsSupported()) {
-    EXPECT_EQ(library->Initialize(),
+    EXPECT_EQ(library->Initialize(GetTestingParams()),
               DocumentScannerLibrary::InitializeResult::kOk);
   }
 }
@@ -29,7 +40,7 @@ TEST(DocumentScannerLibraryTest, GetScanner) {
   }
 
   auto* const library = DocumentScannerLibrary::GetInstance();
-  ASSERT_EQ(library->Initialize(),
+  ASSERT_EQ(library->Initialize(GetTestingParams()),
             DocumentScannerLibrary::InitializeResult::kOk);
 
   auto scanner = library->CreateDocumentScanner();

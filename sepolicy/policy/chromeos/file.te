@@ -433,6 +433,10 @@ type cros_var_spool_power_manager, file_type, cros_file_type, cros_var_file_type
 # /var/tmp
 type cros_var_tmp, file_type, cros_file_type, cros_var_file_type;
 
+# /usr/share/cros-camera
+type camera_lib, file_type, cros_file_type, cros_system_file_type;
+type camera_libs_dir, file_type, cros_file_type, cros_system_file_type;
+
 type arc_dir, file_type, cros_file_type, cros_run_file_type; # compatible to pre-work label names for /run/chrome.
 type camera_dir, file_type, cros_file_type, cros_run_file_type; # compatible to existing Android names.
 type camera_socket, file_type, cros_file_type, cros_run_file_type; # compatible to existing Android names.
