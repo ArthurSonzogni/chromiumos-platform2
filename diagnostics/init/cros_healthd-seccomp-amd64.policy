@@ -40,6 +40,7 @@ getrandom: 1
 #   0xc0186474 == DRM_IOCTL_I915_GEM_CONTEXT_GETPARAM
 #   0xc0186475 == DRM_IOCTL_I915_GEM_CONTEXT_SETPARAM
 #   0xc0206464 == DRM_IOCTL_I915_GEM_MMAP_OFFSET
+#   0xc028645e == DRM_IOCTL_I915_GEM_MMAP
 #   0xc0406400 == DRM_IOCTL_VERSION
 #   0xc0106442 == DRM_IOCTL_AMDGPU_CTX DRM_IOCTL_ETNAVIV_GEM_NEW or
 #                 DRM_IOCTL_LIMA_GEM_INFO or DRM_IOCTL_MSM_GEM_NEW or
@@ -55,9 +56,10 @@ ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0xc008646d || arg1 == 0xc00c6466 || arg1 == 0xc0106446 || \
        arg1 == 0xc010645b || arg1 == 0xc0106461 || arg1 == 0xc0106471 || \
        arg1 == 0xc0106479 || arg1 == 0xc0186472 || arg1 == 0xc0186474 || \
-       arg1 == 0xc0186475 || arg1 == 0xc0206464 || arg1 == 0xc0406400 || \
-       arg1 == 0xc0106442 || arg1 == 0xc010640c || arg1 == 0xc0286448 || \
-       arg1 == 0xc0086441 || arg1 == 0x40206445 || arg1 == 0xc0206440
+       arg1 == 0xc0186475 || arg1 == 0xc0206464 || arg1 == 0xc028645e || \
+       arg1 == 0xc0406400 || arg1 == 0xc0106442 || arg1 == 0xc010640c || \
+       arg1 == 0xc0286448 || arg1 == 0xc0086441 || arg1 == 0x40206445 || \
+       arg1 == 0xc0206440
 geteuid: 1
 brk: 1
 getuid: 1
