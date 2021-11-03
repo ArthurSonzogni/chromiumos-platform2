@@ -636,17 +636,6 @@ bool MountHelper::CreateTrackedSubdirectories(
   for (const auto& tracked_dir :
        GetTrackedSubdirectories(kChronosUid, kChronosGid, kChronosAccessGid)) {
     const FilePath tracked_dir_path = dest_dir.Append(tracked_dir.path);
-    if (mount_type == MountType::ECRYPTFS) {
-      // TODO(dlunev): this is unnecessary anymore, remove this if all together
-      // once unittests are rewritten.
-      const FilePath userside_dir = mount_dir.Append(tracked_dir.path);
-      // If non-pass-through dir with the same name existed - delete it
-      // to prevent duplication.
-      if (platform_->DirectoryExists(userside_dir) &&
-          !platform_->DirectoryExists(tracked_dir_path)) {
-        platform_->DeletePathRecursively(userside_dir);
-      }
-    }
 
     // Create pass-through directory.
     if (!platform_->DirectoryExists(tracked_dir_path)) {
