@@ -52,20 +52,20 @@ base::Optional<EllipticCurve> EllipticCurve::Create(CurveType curve,
     LOG(ERROR) << "Failed to get EC_GROUP order: " << GetOpenSSLErrors();
     return base::nullopt;
   }
-  return EllipticCurve(std::move(group), std::move(order));
+  return EllipticCurve(curve, std::move(group), std::move(order));
 }
 
-EllipticCurve::EllipticCurve(crypto::ScopedEC_GROUP group,
+EllipticCurve::EllipticCurve(CurveType curve,
+                             crypto::ScopedEC_GROUP group,
                              crypto::ScopedBIGNUM order)
-    : group_(std::move(group)), order_(std::move(order)) {}
+    : curve_(curve), group_(std::move(group)), order_(std::move(order)) {}
 
 EllipticCurve::~EllipticCurve() = default;
 
 crypto::ScopedEC_POINT EllipticCurve::PointAtInfinityForTesting() const {
-  crypto::ScopedEC_POINT result(EC_POINT_new(group_.get()));
+  crypto::ScopedEC_POINT result = CreatePoint();
   if (!result) {
-    LOG(ERROR) << "Failed to allocate EC_POINT structure: "
-               << GetOpenSSLErrors();
+    // The error is already logged by CreatePoint().
     return nullptr;
   }
   if (EC_POINT_set_to_infinity(group_.get(), result.get()) != 1) {
@@ -104,25 +104,36 @@ bool EllipticCurve::IsScalarValid(const BIGNUM& scalar) const {
   return BN_is_negative(&scalar) == 0 && BN_cmp(&scalar, order_.get()) < 0;
 }
 
-int EllipticCurve::FieldElementSizeInBytes() const {
+int EllipticCurve::AffineCoordinateSizeInBytes() const {
   unsigned int degree_bits = EC_GROUP_get_degree(group_.get());
   return (degree_bits + 7) >> 3;
 }
 
-crypto::ScopedBIGNUM EllipticCurve::GetAffineCoordinateX(
-    const EC_POINT& point, BN_CTX* context) const {
+bool EllipticCurve::GetAffineCoordinates(const EC_POINT& point,
+                                         BN_CTX* context,
+                                         BIGNUM* x,
+                                         BIGNUM* y) const {
   if (!IsPointValidAndFinite(point, context)) {
-    LOG(ERROR) << "Failed to convert EC_POINT to SecureBlob: input point is "
-                  "invalid or infinite";
+    LOG(ERROR) << "Failed to get affine coordinates: input point is invalid or "
+                  "infinite";
+    return false;
+  }
+  if (EC_POINT_get_affine_coordinates(group_.get(), &point, x, y, context) !=
+      1) {
+    LOG(ERROR) << "Failed to get affine coordinates: " << GetOpenSSLErrors();
+    return false;
+  }
+  return true;
+}
+
+crypto::ScopedEC_POINT EllipticCurve::CreatePoint() const {
+  crypto::ScopedEC_POINT result(EC_POINT_new(group_.get()));
+  if (!result) {
+    LOG(ERROR) << "Failed to allocate EC_POINT structure: "
+               << GetOpenSSLErrors();
     return nullptr;
   }
-  crypto::ScopedBIGNUM x(BN_secure_new());
-  if (EC_POINT_get_affine_coordinates(group_.get(), &point, x.get(),
-                                      /*y=*/nullptr, context) != 1) {
-    LOG(ERROR) << "Failed to get affine X coordinate: " << GetOpenSSLErrors();
-    return nullptr;
-  }
-  return x;
+  return result;
 }
 
 crypto::ScopedBIGNUM EllipticCurve::RandomNonZeroScalar(BN_CTX* context) const {
@@ -185,10 +196,9 @@ crypto::ScopedEC_POINT EllipticCurve::Multiply(const EC_POINT& point,
                   "in the expected range [0..curve order-1]";
     return nullptr;
   }
-  crypto::ScopedEC_POINT result(EC_POINT_new(group_.get()));
+  crypto::ScopedEC_POINT result = CreatePoint();
   if (!result) {
-    LOG(ERROR) << "Failed to allocate EC_POINT structure: "
-               << GetOpenSSLErrors();
+    // The error is already logged by CreatePoint().
     return nullptr;
   }
   if (EC_POINT_mul(group_.get(), result.get(), nullptr, &point, &scalar,
@@ -220,10 +230,9 @@ crypto::ScopedEC_POINT EllipticCurve::MultiplyWithGenerator(
                   "in the expected range [-curve_order..curve order-1]";
     return nullptr;
   }
-  crypto::ScopedEC_POINT result(EC_POINT_new(group_.get()));
+  crypto::ScopedEC_POINT result = CreatePoint();
   if (!result) {
-    LOG(ERROR) << "Failed to allocate EC_POINT structure: "
-               << GetOpenSSLErrors();
+    // The error is already logged by CreatePoint().
     return nullptr;
   }
   if (EC_POINT_mul(group_.get(), result.get(), scalar_mod.get(), nullptr,
@@ -242,10 +251,9 @@ crypto::ScopedEC_POINT EllipticCurve::Add(const EC_POINT& point1,
     LOG(ERROR) << "Failed to perform addition: input point is not on curve";
     return nullptr;
   }
-  crypto::ScopedEC_POINT result(EC_POINT_new(group_.get()));
+  crypto::ScopedEC_POINT result = CreatePoint();
   if (!result) {
-    LOG(ERROR) << "Failed to allocate EC_POINT structure: "
-               << GetOpenSSLErrors();
+    // The error is already logged by CreatePoint().
     return nullptr;
   }
   if (EC_POINT_add(group_.get(), result.get(), &point1, &point2, context) !=
@@ -258,10 +266,9 @@ crypto::ScopedEC_POINT EllipticCurve::Add(const EC_POINT& point1,
 
 crypto::ScopedEC_POINT EllipticCurve::SecureBlobToPoint(
     const brillo::SecureBlob& blob, BN_CTX* context) const {
-  crypto::ScopedEC_POINT result(EC_POINT_new(group_.get()));
+  crypto::ScopedEC_POINT result = CreatePoint();
   if (!result) {
-    LOG(ERROR) << "Failed to allocate EC_POINT structure: "
-               << GetOpenSSLErrors();
+    // The error is already logged by CreatePoint().
     return nullptr;
   }
   if (EC_POINT_oct2point(group_.get(), result.get(), blob.data(), blob.size(),

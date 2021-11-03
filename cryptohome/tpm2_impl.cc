@@ -149,7 +149,8 @@ TPMErrorBase DeriveTpmEccPointFromSeed(const SecureBlob& seed,
   }
 
   if (!trunks::OpensslToTpmEccPoint(*ec->GetGroup(), *public_point,
-                                    ec->FieldElementSizeInBytes(), out_point)) {
+                                    ec->AffineCoordinateSizeInBytes(),
+                                    out_point)) {
     return CreateError<TPMError>("Error converting OpenSSL to TPM ECC point",
                                  TPMRetryAction::kNoRetry);
   }

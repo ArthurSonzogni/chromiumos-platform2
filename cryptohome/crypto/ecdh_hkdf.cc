@@ -43,14 +43,18 @@ bool ComputeEcdhSharedSecret(const EllipticCurve& ec,
     return false;
   }
   // Get shared point's affine X coordinate.
-  crypto::ScopedBIGNUM shared_x =
-      ec.GetAffineCoordinateX(*shared_point, context.get());
+  crypto::ScopedBIGNUM shared_x = CreateBigNum();
   if (!shared_x) {
-    LOG(ERROR) << "Failed to get affine X coordinate";
+    LOG(ERROR) << "Failed to allocate BIGNUM";
+    return false;
+  }
+  if (!ec.GetAffineCoordinates(*shared_point, context.get(), shared_x.get(),
+                               /*y=*/nullptr)) {
+    LOG(ERROR) << "Failed to get shared_point x coordinate";
     return false;
   }
   // Convert X coordinate to fixed-size blob.
-  if (!BigNumToSecureBlob(*shared_x, ec.FieldElementSizeInBytes(),
+  if (!BigNumToSecureBlob(*shared_x, ec.AffineCoordinateSizeInBytes(),
                           shared_secret)) {
     LOG(ERROR) << "Failed to convert BIGNUM to SecureBlob";
     return false;

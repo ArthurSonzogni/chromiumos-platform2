@@ -186,15 +186,19 @@ bool RecoveryCryptoImpl::GenerateRecoveryKey(
     return false;
   }
   // Get point's affine X coordinate.
-  crypto::ScopedBIGNUM recovery_dh_x =
-      ec_.GetAffineCoordinateX(*point_dh, context.get());
+  crypto::ScopedBIGNUM recovery_dh_x = CreateBigNum();
   if (!recovery_dh_x) {
-    LOG(ERROR) << "Failed to get affine X coordinate of point_dh";
+    LOG(ERROR) << "Failed to allocate BIGNUM";
+    return false;
+  }
+  if (!ec_.GetAffineCoordinates(*point_dh, context.get(), recovery_dh_x.get(),
+                                /*y=*/nullptr)) {
+    LOG(ERROR) << "Failed to get point_dh x coordinate";
     return false;
   }
   brillo::SecureBlob hkdf_secret;
   // Convert X coordinate to fixed-size blob.
-  if (!BigNumToSecureBlob(*recovery_dh_x, ec_.FieldElementSizeInBytes(),
+  if (!BigNumToSecureBlob(*recovery_dh_x, ec_.AffineCoordinateSizeInBytes(),
                           &hkdf_secret)) {
     LOG(ERROR) << "Failed to convert recovery_dh_x BIGNUM to SecureBlob";
     return false;
@@ -538,15 +542,19 @@ bool RecoveryCryptoImpl::RecoverDestination(
     return false;
   }
   // Get point's affine X coordinate.
-  crypto::ScopedBIGNUM destination_dh_x =
-      ec_.GetAffineCoordinateX(*point_dest, context.get());
+  crypto::ScopedBIGNUM destination_dh_x = CreateBigNum();
   if (!destination_dh_x) {
-    LOG(ERROR) << "Failed to get affine X coordinate of point_dest";
+    LOG(ERROR) << "Failed to allocate BIGNUM";
+    return false;
+  }
+  if (!ec_.GetAffineCoordinates(*point_dest, context.get(),
+                                destination_dh_x.get(), /*y=*/nullptr)) {
+    LOG(ERROR) << "Failed to get point_dest x coordinate";
     return false;
   }
   brillo::SecureBlob hkdf_secret;
   // Convert X coordinate to fixed-size blob.
-  if (!BigNumToSecureBlob(*destination_dh_x, ec_.FieldElementSizeInBytes(),
+  if (!BigNumToSecureBlob(*destination_dh_x, ec_.AffineCoordinateSizeInBytes(),
                           &hkdf_secret)) {
     LOG(ERROR) << "Failed to convert destination_dh_x BIGNUM to SecureBlob";
     return false;

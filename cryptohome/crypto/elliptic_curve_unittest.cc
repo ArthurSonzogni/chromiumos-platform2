@@ -109,9 +109,26 @@ class EllipticCurveTest : public testing::Test {
   base::Optional<EllipticCurve> ec_;
 };
 
-TEST_F(EllipticCurveTest, ScalarAndFieldSizeInBytes) {
+TEST_F(EllipticCurveTest, GetCurveType) {
+  base::Optional<EllipticCurve> ec_256 = EllipticCurve::Create(
+      EllipticCurve::CurveType::kPrime256, context_.get());
+  ASSERT_TRUE(ec_256);
+  EXPECT_EQ(ec_256->GetCurveType(), EllipticCurve::CurveType::kPrime256);
+
+  base::Optional<EllipticCurve> ec_384 = EllipticCurve::Create(
+      EllipticCurve::CurveType::kPrime384, context_.get());
+  ASSERT_TRUE(ec_384);
+  EXPECT_EQ(ec_384->GetCurveType(), EllipticCurve::CurveType::kPrime384);
+
+  base::Optional<EllipticCurve> ec_521 = EllipticCurve::Create(
+      EllipticCurve::CurveType::kPrime521, context_.get());
+  ASSERT_TRUE(ec_521);
+  EXPECT_EQ(ec_521->GetCurveType(), EllipticCurve::CurveType::kPrime521);
+}
+
+TEST_F(EllipticCurveTest, ScalarAndAffineCoordinateSizeInBytes) {
   EXPECT_EQ(ec_->ScalarSizeInBytes(), kScalarSizeInBytes);
-  EXPECT_EQ(ec_->FieldElementSizeInBytes(), kFieldElementSizeInBytes);
+  EXPECT_EQ(ec_->AffineCoordinateSizeInBytes(), kFieldElementSizeInBytes);
 }
 
 TEST_F(EllipticCurveTest, PointAtInfinity) {

@@ -53,12 +53,19 @@ class EllipticCurve final {
   bool IsScalarValid(const BIGNUM& scalar) const;
 
   // Returns field element (affine coordinate) size in bytes.
-  int FieldElementSizeInBytes() const;
+  int AffineCoordinateSizeInBytes() const;
 
-  // Returns affine X coordinate of a given `point` or nullptr if error
-  // occurred.
-  crypto::ScopedBIGNUM GetAffineCoordinateX(const EC_POINT& point,
-                                            BN_CTX* context) const;
+  // Returns affine coordinates of a given `point`: when `x` is non-null it's
+  // assigned to the x coordinate, and when `y` is non-null it's assigned to the
+  // y coordinate.
+  bool GetAffineCoordinates(const EC_POINT& point,
+                            BN_CTX* context,
+                            BIGNUM* x,
+                            BIGNUM* y) const;
+
+  // Allocates the EC_POINT object, which is in a valid but unspecified state.
+  // Returns nullptr on failure.
+  crypto::ScopedEC_POINT CreatePoint() const;
 
   // Generates random non-zero scalar of the elliptic curve order. Returns
   // nullptr if error occurred.
@@ -133,10 +140,14 @@ class EllipticCurve final {
   // Returns group.
   const EC_GROUP* GetGroup() const { return group_.get(); }
 
+  // Returns curve type.
+  CurveType GetCurveType() const { return curve_; }
+
  private:
   // Constructor is private. A user of the class should use `Create` method
   // instead.
-  explicit EllipticCurve(crypto::ScopedEC_GROUP group,
+  explicit EllipticCurve(CurveType curve,
+                         crypto::ScopedEC_GROUP group,
                          crypto::ScopedBIGNUM order);
 
   // Converts point to buffer of bytes in OpenSSL octet form.
@@ -145,6 +156,7 @@ class EllipticCurve final {
                     crypto::ScopedOpenSSLBytes* ret_buf,
                     BN_CTX* context) const;
 
+  CurveType curve_;
   crypto::ScopedEC_GROUP group_;
   crypto::ScopedBIGNUM order_;
 };
