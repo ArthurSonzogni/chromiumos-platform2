@@ -58,9 +58,9 @@ ObjectPool* CreateObjectPoolMock() {
   EXPECT_CALL(*object_pool, GetInternalBlob(kEncryptedAuthKey, _))
       .WillRepeatedly(
           DoAll(SetArgPointee<1>(string("auth_key_blob")), Return(true)));
-  EXPECT_CALL(*object_pool, GetInternalBlob(kEncryptedMasterKey, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(string("encrypted_master_key")),
-                            Return(true)));
+  EXPECT_CALL(*object_pool, GetInternalBlob(kEncryptedRootKey, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<1>(string("encrypted_root_key")), Return(true)));
   EXPECT_CALL(*object_pool, GetInternalBlob(kImportedTracker, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(string()), Return(false)));
   EXPECT_CALL(*object_pool, GetInternalBlob(kAuthDataHash, _))
@@ -72,8 +72,8 @@ ObjectPool* CreateObjectPoolMock() {
   EXPECT_CALL(*object_pool,
               SetInternalBlob(kEncryptedAuthKey, string("new_auth_key_blob")))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*object_pool, SetInternalBlob(kEncryptedMasterKey,
-                                            string("encrypted_master_key")))
+  EXPECT_CALL(*object_pool,
+              SetInternalBlob(kEncryptedRootKey, string("encrypted_root_key")))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*object_pool, SetInternalBlob(kImportedTracker, string()))
       .WillRepeatedly(Return(true));
@@ -89,9 +89,9 @@ void ConfigureTPMUtility(TPMUtilityMock* tpm) {
   EXPECT_CALL(*tpm, UnloadKeysForSlot(_)).Times(AnyNumber());
   EXPECT_CALL(
       *tpm, Authenticate(_, Sha1(MakeBlob(kAuthData)), string("auth_key_blob"),
-                         string("encrypted_master_key"), _))
+                         string("encrypted_root_key"), _))
       .WillRepeatedly(
-          DoAll(SetArgPointee<4>(MakeBlob("master_key")), Return(true)));
+          DoAll(SetArgPointee<4>(MakeBlob("root_key")), Return(true)));
   EXPECT_CALL(*tpm, ChangeAuthData(_, Sha1(MakeBlob(kAuthData)),
                                    Sha1(MakeBlob(kNewAuthData)),
                                    string("auth_key_blob"), _))
@@ -99,15 +99,15 @@ void ConfigureTPMUtility(TPMUtilityMock* tpm) {
           DoAll(SetArgPointee<4>(string("new_auth_key_blob")), Return(true)));
   EXPECT_CALL(*tpm, GenerateRandom(_, _))
       .WillRepeatedly(
-          DoAll(SetArgPointee<1>(string("master_key")), Return(true)));
+          DoAll(SetArgPointee<1>(string("root_key")), Return(true)));
   string exponent(kDefaultPubExp, kDefaultPubExpSize);
   EXPECT_CALL(*tpm,
               GenerateRSAKey(1, 2048, exponent, MakeBlob(kAuthData), _, _))
       .WillRepeatedly(DoAll(SetArgPointee<4>(string("auth_key_blob")),
                             SetArgPointee<5>(1), Return(true)));
-  EXPECT_CALL(*tpm, Bind(1, string("master_key"), _))
-      .WillRepeatedly(DoAll(SetArgPointee<2>(string("encrypted_master_key")),
-                            Return(true)));
+  EXPECT_CALL(*tpm, Bind(1, string("root_key"), _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<2>(string("encrypted_root_key")), Return(true)));
   EXPECT_CALL(*tpm, IsSRKReady()).WillRepeatedly(Return(true));
   EXPECT_CALL(*tpm, IsTPMAvailable()).WillRepeatedly(Return(true));
 }
@@ -642,9 +642,9 @@ TEST_F(SoftwareOnlyTest, BadAuth) {
   EXPECT_EQ(1, delete_all_num_calls_);
 }
 
-TEST_F(SoftwareOnlyTest, CorruptMasterKey) {
+TEST_F(SoftwareOnlyTest, CorruptRootKey) {
   InitializeObjectPoolBlobs();
-  pool_blobs_[kEncryptedMasterKey] = "bad";
+  pool_blobs_[kEncryptedRootKey] = "bad";
   // We expect the token to be successfully recreated.
   int slot_id = 0;
   EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob(kAuthData),
@@ -724,12 +724,12 @@ TEST_F(SoftwareOnlyTest, ChangeAuthWithBadOldAuth) {
   EXPECT_EQ(0, delete_all_num_calls_);
 }
 
-TEST_F(SoftwareOnlyTest, ChangeAuthWithCorruptMasterKey) {
+TEST_F(SoftwareOnlyTest, ChangeAuthWithCorruptRootKey) {
   InitializeObjectPoolBlobs();
-  pool_blobs_[kEncryptedMasterKey] = "bad";
+  pool_blobs_[kEncryptedRootKey] = "bad";
   slot_manager_->ChangeTokenAuthData(kTestTokenPath, MakeBlob(kAuthData),
                                      MakeBlob("new"));
-  EXPECT_EQ("bad", pool_blobs_[kEncryptedMasterKey]);
+  EXPECT_EQ("bad", pool_blobs_[kEncryptedRootKey]);
 }
 
 TEST_F(SoftwareOnlyTest, ChangeAuthWithWriteErrors) {

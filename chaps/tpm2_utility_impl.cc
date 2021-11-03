@@ -392,21 +392,21 @@ TPMVersion TPM2UtilityImpl::GetTPMVersion() {
 bool TPM2UtilityImpl::Authenticate(int slot_id,
                                    const SecureBlob& auth_data,
                                    const std::string& auth_key_blob,
-                                   const std::string& encrypted_master_key,
-                                   SecureBlob* master_key) {
-  CHECK(master_key);
+                                   const std::string& encrypted_root_key,
+                                   SecureBlob* root_key) {
+  CHECK(root_key);
   AutoLock lock(lock_);
   int key_handle = 0;
   if (!LoadKeyWithParentInternal(slot_id, auth_key_blob, auth_data,
                                  kStorageRootKey, &key_handle)) {
     return false;
   }
-  std::string master_key_str;
-  if (!UnbindInternal(key_handle, encrypted_master_key, &master_key_str)) {
+  std::string root_key_str;
+  if (!UnbindInternal(key_handle, encrypted_root_key, &root_key_str)) {
     return false;
   }
-  *master_key = SecureBlob(master_key_str);
-  master_key_str.clear();
+  *root_key = SecureBlob(root_key_str);
+  root_key_str.clear();
   return true;
 }
 

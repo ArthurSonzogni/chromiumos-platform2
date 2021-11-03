@@ -64,12 +64,12 @@ class OpencryptokiImporter : public ObjectImporter {
   //   load_private - Specifies whether to load the public or private hierarchy.
   bool LoadKeyHierarchy(bool load_private);
 
-  // Uses the TPM to decrypt the opencryptoki master key. Returns true on
+  // Uses the TPM to decrypt the opencryptoki root key. Returns true on
   // success.
-  bool DecryptMasterKey(const std::string& encrypted_master_key,
-                        brillo::SecureBlob* master_key);
+  bool DecryptRootKey(const std::string& encrypted_root_key,
+                      brillo::SecureBlob* root_key);
 
-  // Decrypts an object that was encrypted with the opencryptoki master key.
+  // Decrypts an object that was encrypted with the opencryptoki root key.
   // Returns true on success.
   bool DecryptObject(const brillo::SecureBlob& key,
                      const std::string& encrypted_object_data,
@@ -104,8 +104,8 @@ class OpencryptokiImporter : public ObjectImporter {
   std::string private_leaf_blob_;
   std::string public_root_blob_;
   std::string public_leaf_blob_;
-  // The path to the encrypted master key file.
-  base::FilePath master_key_path_;
+  // The path to the encrypted root key file.
+  base::FilePath root_key_path_;
   // Stores encrypted objects to be imported pending decryption.
   std::map<std::string, std::string> encrypted_objects_;
   // Stores decrypted, unflattened objects ready for import.

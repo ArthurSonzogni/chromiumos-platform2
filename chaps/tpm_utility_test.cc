@@ -111,13 +111,13 @@ class TestTPMUtility : public ::testing::Test {
 TEST_F(TestTPMUtility, Authenticate) {
   EXPECT_TRUE(InjectKey());
   // Setup for authentication.
-  string master = "master_key";
-  string encrypted_master;
-  EXPECT_TRUE(tpm_->Bind(key_, master, &encrypted_master));
+  string root = "root_key";
+  string encrypted_root;
+  EXPECT_TRUE(tpm_->Bind(key_, root, &encrypted_root));
   // Successful authentication.
-  brillo::SecureBlob master2;
-  EXPECT_TRUE(tpm_->Authenticate(0, auth_, blob_, encrypted_master, &master2));
-  EXPECT_TRUE(master == master2.to_string());
+  brillo::SecureBlob root2;
+  EXPECT_TRUE(tpm_->Authenticate(0, auth_, blob_, encrypted_root, &root2));
+  EXPECT_TRUE(root == root2.to_string());
   tpm_->UnloadKeysForSlot(0);
   // Change password.
   unsigned char random[20];
@@ -127,8 +127,8 @@ TEST_F(TestTPMUtility, Authenticate) {
   EXPECT_TRUE(tpm_->ChangeAuthData(0, auth_, auth2, blob_, &blob2));
   tpm_->UnloadKeysForSlot(0);
   // Authenticate with new password.
-  EXPECT_TRUE(tpm_->Authenticate(0, auth2, blob2, encrypted_master, &master2));
-  EXPECT_TRUE(master == master2.to_string());
+  EXPECT_TRUE(tpm_->Authenticate(0, auth2, blob2, encrypted_root, &root2));
+  EXPECT_TRUE(root == root2.to_string());
   tpm_->UnloadKeysForSlot(0);
 }
 
@@ -164,8 +164,8 @@ TEST_F(TestTPMUtility, BadAuthSize) {
   EXPECT_TRUE(InjectKey());
   brillo::SecureBlob bad(48);
   brillo::SecureBlob tmp;
-  string master("master"), encrypted;
-  EXPECT_TRUE(tpm_->Bind(key_, master, &encrypted));
+  string root("root"), encrypted;
+  EXPECT_TRUE(tpm_->Bind(key_, root, &encrypted));
   tpm_->UnloadKeysForSlot(0);
   EXPECT_FALSE(tpm_->Authenticate(0, bad, blob_, encrypted, &tmp));
   EXPECT_FALSE(tpm_->GenerateRSAKey(0, size_, e_, bad, &blob_, &key_));

@@ -20,8 +20,8 @@ class SlotPolicy;
 enum InternalBlobId {
   // The token authorization key, encrypted by the TPM.
   kEncryptedAuthKey,
-  // The token master key, encrypted by the authorization key.
-  kEncryptedMasterKey,
+  // The token root key, encrypted by the authorization key.
+  kEncryptedRootKey,
   // Tracks whether legacy objects have been imported. This is not actually a
   // blob but its existence indicates that objects have been imported and we
   // don't need to attempt that work again.

@@ -300,17 +300,17 @@ bool TPMUtilityImpl::InitSRK() {
 bool TPMUtilityImpl::Authenticate(int slot_id,
                                   const SecureBlob& auth_data,
                                   const string& auth_key_blob,
-                                  const string& encrypted_master_key,
-                                  SecureBlob* master_key) {
+                                  const string& encrypted_root_key,
+                                  SecureBlob* root_key) {
   VLOG(1) << "TPMUtilityImpl::Authenticate enter";
   int key_handle = 0;
   if (!LoadKey(slot_id, auth_key_blob, auth_data, &key_handle))
     return false;
-  string master_key_str;
-  if (!Unbind(key_handle, encrypted_master_key, &master_key_str))
+  string root_key_str;
+  if (!Unbind(key_handle, encrypted_root_key, &root_key_str))
     return false;
-  *master_key = SecureBlob(master_key_str.begin(), master_key_str.end());
-  brillo::SecureClearContainer(master_key_str);
+  *root_key = SecureBlob(root_key_str.begin(), root_key_str.end());
+  brillo::SecureClearContainer(root_key_str);
   VLOG(1) << "TPMUtilityImpl::Authenticate success";
   return true;
 }

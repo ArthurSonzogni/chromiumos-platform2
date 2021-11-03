@@ -31,8 +31,8 @@ class TPMUtilityStub : public TPMUtility {
   bool Authenticate(int slot_id,
                     const brillo::SecureBlob& auth_data,
                     const std::string& auth_key_blob,
-                    const std::string& encrypted_master_key,
-                    brillo::SecureBlob* master_key) override {
+                    const std::string& encrypted_root_key,
+                    brillo::SecureBlob* root_key) override {
     return false;
   }
 

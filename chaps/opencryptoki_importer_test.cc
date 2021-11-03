@@ -38,7 +38,7 @@ using testing::Values;
 
 namespace chaps {
 
-const unsigned char kSampleMasterKeyEncrypted[] = {
+const unsigned char kSampleRootKeyEncrypted[] = {
     80,  118, 191, 150, 143, 171, 162, 61,  89,  32,  95,  219, 44,  244, 51,
     84,  117, 228, 36,  225, 240, 122, 234, 92,  182, 224, 133, 238, 100, 18,
     116, 130, 166, 177, 7,   103, 223, 122, 112, 136, 126, 30,  191, 253, 137,
@@ -58,10 +58,10 @@ const unsigned char kSampleMasterKeyEncrypted[] = {
     66,  8,   144, 72,  20,  92,  246, 229, 255, 55,  148, 160, 153, 9,   150,
     16};
 
-const unsigned char kSampleMasterKey[] = {
-    116, 62,  77,  252, 196, 57,  225, 14,  115, 52,  68,
-    60,  227, 254, 22,  162, 163, 22,  186, 125, 203, 138,
-    205, 98,  151, 202, 179, 203, 86,  98,  149, 208};
+const unsigned char kSampleRootKey[] = {116, 62,  77,  252, 196, 57,  225, 14,
+                                        115, 52,  68,  60,  227, 254, 22,  162,
+                                        163, 22,  186, 125, 203, 138, 205, 98,
+                                        151, 202, 179, 203, 86,  98,  149, 208};
 
 const unsigned char kSampleAuthDataEncrypted[] = {
     37,  239, 160, 111, 19,  123, 167, 118, 161, 223, 61,  242, 63,  146, 22,
@@ -106,10 +106,9 @@ void RunCommand(string command) {
 // sample token data for this test, they are not useful in general.
 bool MockUnbind(int key, const string& input, string* output) {
   map<string, string> transforms;
-  string encrypted = Bytes2String(kSampleMasterKeyEncrypted,
-                                  base::size(kSampleMasterKeyEncrypted));
-  string decrypted =
-      Bytes2String(kSampleMasterKey, base::size(kSampleMasterKey));
+  string encrypted = Bytes2String(kSampleRootKeyEncrypted,
+                                  base::size(kSampleRootKeyEncrypted));
+  string decrypted = Bytes2String(kSampleRootKey, base::size(kSampleRootKey));
   transforms[encrypted] = decrypted;
   encrypted = Bytes2String(kSampleAuthDataEncrypted,
                            base::size(kSampleAuthDataEncrypted));
@@ -254,7 +253,7 @@ ModifierResult DeleteAllObjectFiles(const char* object_path) {
   return kModifierNone;
 }
 
-ModifierResult DeleteMasterKey(const char* object_path) {
+ModifierResult DeleteRootKey(const char* object_path) {
   FilePath token_path = FilePath(object_path).DirName();
   RunCommand(
       base::StringPrintf("rm -f %s/MK_PRIVATE", token_path.value().c_str()));
@@ -324,7 +323,7 @@ INSTANTIATE_TEST_SUITE_P(ModifierTests,
                          Values(NoModify,
                                 DeleteAll,
                                 DeleteAllObjectFiles,
-                                DeleteMasterKey,
+                                DeleteRootKey,
                                 DeleteObjectIndex,
                                 DeleteAllButIndex,
                                 DeleteHierarchyFile,

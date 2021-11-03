@@ -59,14 +59,14 @@ OpencryptokiImporter::~OpencryptokiImporter() {}
 bool OpencryptokiImporter::ImportObjects(ObjectPool* object_pool) {
   const char kOpencryptokiDir[] = ".tpm";
   const char kOpencryptokiObjectDir[] = "TOK_OBJ";
-  const char kOpencryptokiMasterKey[] = "MK_PRIVATE";
+  const char kOpencryptokiRootKey[] = "MK_PRIVATE";
   const char kOpencryptokiObjectIndex[] = "OBJ.IDX";
 
   LOG(INFO) << "Importing opencryptoki objects.";
   FilePath base_path = path_.DirName().Append(kOpencryptokiDir);
   FilePath object_path = base_path.Append(kOpencryptokiObjectDir);
   FilePath index_path = object_path.Append(kOpencryptokiObjectIndex);
-  master_key_path_ = base_path.Append(kOpencryptokiMasterKey);
+  root_key_path_ = base_path.Append(kOpencryptokiRootKey);
   if (!base::PathExists(index_path)) {
     LOG(WARNING) << "Did not find any opencryptoki objects to import.";
     return true;
@@ -97,7 +97,7 @@ bool OpencryptokiImporter::ImportObjects(ObjectPool* object_pool) {
       continue;
     }
     if (is_encrypted) {
-      // We can't process encrypted files until we have the master key.
+      // We can't process encrypted files until we have the root key.
       encrypted_objects_[object_files[i]] = flat_object;
       continue;
     }
@@ -313,22 +313,22 @@ bool OpencryptokiImporter::LoadKeyHierarchy(bool load_private) {
   return true;
 }
 
-bool OpencryptokiImporter::DecryptMasterKey(const string& encrypted_master_key,
-                                            SecureBlob* master_key) {
+bool OpencryptokiImporter::DecryptRootKey(const string& encrypted_root_key,
+                                          SecureBlob* root_key) {
   if (!LoadKeyHierarchy(true)) {
     LOG(ERROR) << "Failed to load private key hierarchy.";
     return false;
   }
   // Trousers defines the handle value 0 as NULL_HKEY so this check works.
   CHECK(private_leaf_key_);
-  // The master key is encrypted with a simple bind to the private leaf key.
-  string master_key_str;
-  if (!tpm_->Unbind(private_leaf_key_, encrypted_master_key, &master_key_str)) {
-    LOG(ERROR) << "Failed to decrypt master key.";
+  // The root key is encrypted with a simple bind to the private leaf key.
+  string root_key_str;
+  if (!tpm_->Unbind(private_leaf_key_, encrypted_root_key, &root_key_str)) {
+    LOG(ERROR) << "Failed to decrypt root key.";
     return false;
   }
-  *master_key = SecureBlob(master_key_str.begin(), master_key_str.end());
-  brillo::SecureClearContainer(master_key_str);
+  *root_key = SecureBlob(root_key_str.begin(), root_key_str.end());
+  brillo::SecureClearContainer(root_key_str);
   return true;
 }
 
@@ -442,21 +442,21 @@ bool OpencryptokiImporter::IsPrivateKey(const AttributeMap& attributes) {
 
 bool OpencryptokiImporter::DecryptPendingObjects() {
   if (encrypted_objects_.size() > 0) {
-    string encrypted_master_key;
-    if (!base::PathExists(master_key_path_) ||
-        !base::ReadFileToString(master_key_path_, &encrypted_master_key)) {
-      LOG(ERROR) << "Failed to read encrypted master key.";
+    string encrypted_root_key;
+    if (!base::PathExists(root_key_path_) ||
+        !base::ReadFileToString(root_key_path_, &encrypted_root_key)) {
+      LOG(ERROR) << "Failed to read encrypted root key.";
       return false;
     }
-    SecureBlob master_key;
-    if (!DecryptMasterKey(encrypted_master_key, &master_key)) {
-      LOG(ERROR) << "Failed to decrypt the master key.";
+    SecureBlob root_key;
+    if (!DecryptRootKey(encrypted_root_key, &root_key)) {
+      LOG(ERROR) << "Failed to decrypt the root key.";
       return false;
     }
     for (map<string, string>::iterator iter = encrypted_objects_.begin();
          iter != encrypted_objects_.end(); ++iter) {
       string flat_object;
-      if (!DecryptObject(master_key, iter->second, &flat_object)) {
+      if (!DecryptObject(root_key, iter->second, &flat_object)) {
         LOG(WARNING) << "Failed to decrypt an encrypted object: "
                      << iter->first;
         continue;

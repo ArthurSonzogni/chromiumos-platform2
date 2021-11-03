@@ -135,11 +135,11 @@ class SlotManagerImpl : public SlotManager,
   //                used to store internal blobs related to the key hierarchy.
   //  auth_data - Authorization data to be used for the key hierarchy. This same
   //              data will be required to use the key hierarchy in the future.
-  //  master_key - On success will be assigned the new master key for the token.
+  //  root_key - On success will be assigned the new root key for the token.
   bool InitializeKeyHierarchy(int slot_id,
                               ObjectPool* object_pool,
                               const std::string& auth_data,
-                              std::string* master_key);
+                              std::string* root_key);
 
   // Searches for slot that does not currently contain a token. If no such slot
   // exists a new slot is created. The slot identifier of the empty slot is
@@ -171,7 +171,7 @@ class SlotManagerImpl : public SlotManager,
                          const std::string& label,
                          int* slot_id);
 
-  // Loads the master key for a software-only token.
+  // Loads the root key for a software-only token.
   bool LoadSoftwareToken(const brillo::SecureBlob& auth_data,
                          ObjectPool* object_pool);
 
