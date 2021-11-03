@@ -301,6 +301,23 @@ TEST_F(OpenVPNManagementServerTest, OnInputStop) {
   OnInput(&data);
 }
 
+TEST_F(OpenVPNManagementServerTest, OnInputStatus) {
+  std::string s =
+      "OpenVPN STATISTICS\n"
+      "Updated,Wed Nov  3 14:11:13 2021\n"
+      "TUN/TAP read bytes,0\n"
+      "TUN/TAP write bytes,0\n"
+      "TCP/UDP read bytes,3495\n"
+      "TCP/UDP write bytes,3354\n"
+      "Auth read bytes,0\n"
+      "Data channel cipher,AES-256-GCM\n"
+      "END";
+  InputData data = CreateInputDataFromString(s);
+  SetSockets();
+  EXPECT_CALL(driver_, ReportCipherMetrics("AES-256-GCM"));
+  OnInput(&data);
+}
+
 TEST_F(OpenVPNManagementServerTest, ProcessMessage) {
   ProcessMessage("foo");
   ProcessMessage(">INFO:");
@@ -335,6 +352,13 @@ TEST_F(OpenVPNManagementServerTest, ProcessStateMessage) {
   EXPECT_TRUE(ProcessStateMessage(">STATE:123,RECONNECTING,detail,...,..."));
   EXPECT_EQ(OpenVPNManagementServer::kStateReconnecting, server_.state());
   EXPECT_TRUE(ProcessStateMessage(">STATE:123,RECONNECTING,tls-error,...,..."));
+}
+
+TEST_F(OpenVPNManagementServerTest, ProcessStateMessageConnected) {
+  EXPECT_TRUE(server_.state().empty());
+  SetConnectedSocket();
+  ExpectSend("status\n");
+  EXPECT_TRUE(ProcessStateMessage(">STATE:123,CONNECTED,SUCCESS,...,..."));
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuthSC) {

@@ -38,6 +38,7 @@ const char kPasswordTagAuth[] = "Auth";
 }  // namespace
 
 const char OpenVPNManagementServer::kStateAuth[] = "AUTH";
+const char OpenVPNManagementServer::kStateConnected[] = "CONNECTED";
 const char OpenVPNManagementServer::kStateReconnecting[] = "RECONNECTING";
 const char OpenVPNManagementServer::kStateResolve[] = "RESOLVE";
 
@@ -188,7 +189,8 @@ void OpenVPNManagementServer::ProcessMessage(const std::string& message) {
   if (!ProcessInfoMessage(message) && !ProcessNeedPasswordMessage(message) &&
       !ProcessFailedPasswordMessage(message) &&
       !ProcessAuthTokenMessage(message) && !ProcessStateMessage(message) &&
-      !ProcessHoldMessage(message) && !ProcessSuccessMessage(message)) {
+      !ProcessHoldMessage(message) && !ProcessSuccessMessage(message) &&
+      !ProcessStatusMessage(message)) {
     LOG(WARNING) << "Message ignored: " << message;
   }
 }
@@ -393,6 +395,10 @@ bool OpenVPNManagementServer::ProcessStateMessage(const std::string& message) {
         driver_->OnReconnecting(reconnect_reason);
       }
     }
+    if (new_state == kStateConnected) {
+      // Ask for status once state become connected to collect cipher info
+      SendStatus();
+    }
     state_ = new_state;
   }
 
@@ -418,6 +424,34 @@ bool OpenVPNManagementServer::ProcessSuccessMessage(
     return false;
   }
   LOG(INFO) << message;
+  return true;
+}
+
+bool OpenVPNManagementServer::ProcessStatusMessage(const std::string& message) {
+  if (base::StartsWith(message, "OpenVPN STATISTICS",
+                       base::CompareCase::SENSITIVE) ||
+      base::StartsWith(message, "Updated,", base::CompareCase::SENSITIVE) ||
+      base::StartsWith(message, "TUN/TAP ", base::CompareCase::SENSITIVE) ||
+      base::StartsWith(message, "TCP/UDP ", base::CompareCase::SENSITIVE) ||
+      base::StartsWith(message, "Auth read bytes,",
+                       base::CompareCase::SENSITIVE) ||
+      message == "END") {
+    // Ignore unconcerned status lines
+    return true;
+  }
+  // Note that this line comes from a CHROMIUM-only patch in crrev.com/c/3256270
+  // and is not in upstream openvpn code.
+  if (!base::StartsWith(message, "Data channel cipher,",
+                        base::CompareCase::SENSITIVE)) {
+    return false;
+  }
+  auto details = base::SplitString(message, ",", base::TRIM_WHITESPACE,
+                                   base::SPLIT_WANT_ALL);
+  if (details.size() == 2) {
+    std::string cipher = details[1];
+    LOG(INFO) << "Negotiated cipher: " << cipher;
+    driver_->ReportCipherMetrics(cipher);
+  }
   return true;
 }
 
@@ -469,6 +503,11 @@ void OpenVPNManagementServer::SendPassword(const std::string& tag,
 void OpenVPNManagementServer::SendSignal(const std::string& signal) {
   SLOG(this, 2) << __func__ << "(" << signal << ")";
   Send(base::StringPrintf("signal %s\n", signal.c_str()));
+}
+
+void OpenVPNManagementServer::SendStatus() {
+  SLOG(this, 2) << __func__;
+  Send(base::StringPrintf("status\n"));
 }
 
 void OpenVPNManagementServer::SendHoldRelease() {

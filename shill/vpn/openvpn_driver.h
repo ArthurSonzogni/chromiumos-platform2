@@ -95,6 +95,8 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
                   const std::string& option,
                   std::vector<std::vector<std::string>>* options);
 
+  virtual void ReportCipherMetrics(const std::string& cipher);
+
  private:
   friend class OpenVPNDriverTest;
   FRIEND_TEST(OpenVPNDriverTest, Cleanup);

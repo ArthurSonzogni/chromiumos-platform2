@@ -531,6 +531,14 @@ class Metrics : public DefaultServiceObserver {
     kVpnIpsecDHGroupMax,
   };
 
+  enum VpnOpenVPNCipher {
+    kVpnOpenVPNCipherUnknown = 0,
+    kVpnOpenVPNCipher_BF_CBC = 1,
+    kVpnOpenVPNCipher_AES_256_GCM = 2,
+    kVpnOpenVPNCipher_AES_128_GCM = 3,
+    kVpnOpenVPNCipherMax
+  };
+
   enum VpnWireGuardKeyPairSource {
     kVpnWireguardKeyPairSourceUnknown = 0,
     kVpnWireGuardKeyPairSourceUserInput = 1,
@@ -967,6 +975,11 @@ class Metrics : public DefaultServiceObserver {
   static const int kMetricVpnL2tpIpsecStrokeEndReasonMax;
   static const char kMetricVpnL2tpIpsecSwanctlEndReason[];
   static const int kMetricVpnL2tpIpsecSwanctlEndReasonMax;
+
+  // OpenVPN connection statistics.
+  // Cipher algorithm used after negotiating with server.
+  static const char kMetricVpnOpenVPNCipher[];
+  static const int kMetricVpnOpenVPNCipherMax;
 
   // WireGuard connection statistics.
   // Key pair source (e.g., user input) used in a WireGuard Connection.

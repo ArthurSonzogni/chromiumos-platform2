@@ -1152,4 +1152,20 @@ void OpenVPNDriver::ReportConnectionMetrics() {
   }
 }
 
+void OpenVPNDriver::ReportCipherMetrics(const std::string& cipher) {
+  static const std::map<std::string, Metrics::VpnOpenVPNCipher> str2enum = {
+      {"BF-CBC", Metrics::kVpnOpenVPNCipher_BF_CBC},
+      {"AES-256-GCM", Metrics::kVpnOpenVPNCipher_AES_256_GCM},
+      {"AES-128-GCM", Metrics::kVpnOpenVPNCipher_AES_128_GCM},
+  };
+  Metrics::VpnOpenVPNCipher metric = Metrics::kVpnOpenVPNCipherUnknown;
+  const auto it = str2enum.find(cipher);
+  if (it != str2enum.end()) {
+    metric = it->second;
+  }
+
+  metrics()->SendEnumToUMA(Metrics::kMetricVpnOpenVPNCipher, metric,
+                           Metrics::kMetricVpnOpenVPNCipherMax);
+}
+
 }  // namespace shill

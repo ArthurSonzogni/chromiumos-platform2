@@ -26,6 +26,7 @@ class Sockets;
 class OpenVPNManagementServer {
  public:
   static const char kStateAuth[];
+  static const char kStateConnected[];
   static const char kStateReconnecting[];
   static const char kStateResolve[];
 
@@ -104,6 +105,7 @@ class OpenVPNManagementServer {
   void SendPassword(const std::string& tag, const std::string& password);
   void SendHoldRelease();
   void SendSignal(const std::string& signal);
+  void SendStatus();
 
   void ProcessMessage(const std::string& message);
   bool ProcessInfoMessage(const std::string& message);
@@ -113,6 +115,7 @@ class OpenVPNManagementServer {
   bool ProcessStateMessage(const std::string& message);
   bool ProcessHoldMessage(const std::string& message);
   bool ProcessSuccessMessage(const std::string& message);
+  bool ProcessStatusMessage(const std::string& message);
 
   void PerformStaticChallenge(const std::string& tag);
   void PerformAuthentication(const std::string& tag);

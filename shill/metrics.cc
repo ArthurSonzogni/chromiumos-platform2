@@ -441,6 +441,10 @@ const char Metrics::kMetricVpnL2tpIpsecSwanctlEndReason[] =
 const int Metrics::kMetricVpnL2tpIpsecSwanctlEndReasonMax =
     Metrics::kNetworkServiceErrorMax;
 
+const char Metrics::kMetricVpnOpenVPNCipher[] =
+    "Network.Shill.Vpn.OpenVPNCipher";
+const int Metrics::kMetricVpnOpenVPNCipherMax = Metrics::kVpnOpenVPNCipherMax;
+
 // static
 const char Metrics::kMetricVpnWireGuardKeyPairSource[] =
     "Network.Shill.Vpn.WireGuardKeyPairSource";
