@@ -1059,60 +1059,6 @@ class Platform {
   FRIEND_TEST(PlatformTest, ReadMountInfoFileGood);
 };
 
-class ProcessInformation {
- public:
-  ProcessInformation() : cmd_line_(), process_id_(-1) {}
-  virtual ~ProcessInformation() {}
-
-  std::string GetCommandLine() const {
-    std::string result;
-    for (const auto& cmd : cmd_line_) {
-      if (result.length() != 0) {
-        result.append(" ");
-      }
-      result.append(cmd);
-    }
-    return result;
-  }
-
-  // Set the command line array.  This method DOES swap out the contents of
-  // |value|.  The caller should expect an empty vector on return.
-  void set_cmd_line(std::vector<std::string>* value) {
-    cmd_line_.clear();
-    cmd_line_.swap(*value);
-  }
-
-  const std::vector<std::string>& get_cmd_line() const { return cmd_line_; }
-
-  // Set the open file array.  This method DOES swap out the contents of
-  // |value|.  The caller should expect an empty set on return.
-  void set_open_files(std::set<base::FilePath>* value) {
-    open_files_.clear();
-    open_files_.swap(*value);
-  }
-
-  const std::set<base::FilePath>& get_open_files() const { return open_files_; }
-
-  // Set the command line array.  This method DOES swap out the contents of
-  // |value|.  The caller should expect an empty string on return.
-  void set_cwd(std::string* value) {
-    cwd_.clear();
-    cwd_.swap(*value);
-  }
-
-  const std::string& get_cwd() const { return cwd_; }
-
-  void set_process_id(int value) { process_id_ = value; }
-
-  int get_process_id() const { return process_id_; }
-
- private:
-  std::vector<std::string> cmd_line_;
-  std::set<base::FilePath> open_files_;
-  std::string cwd_;
-  int process_id_;
-};
-
 }  // namespace cryptohome
 
 #endif  // CRYPTOHOME_PLATFORM_H_
