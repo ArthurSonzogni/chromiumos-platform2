@@ -151,7 +151,10 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
   // Inspect stage0 flags and either fail, update, or launch stage1 and continue
   switch (this->CheckStage0()) {
     case BootResult::kOk:
-      this->device_->WriteReg(HpsReg::kSysCmd, R3::kLaunch1);
+      VLOG(1) << "Launching stage 1";
+      if (!this->device_->WriteReg(HpsReg::kSysCmd, R3::kLaunch1)) {
+        LOG(FATAL) << "Launch stage 1 failed";
+      }
       break;
     case BootResult::kFail:
       return BootResult::kFail;
@@ -167,7 +170,10 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
   // Inspect stage1 flags and either fail, update, or launch stage2 and continue
   switch (this->CheckStage1()) {
     case BootResult::kOk:
-      this->device_->WriteReg(HpsReg::kSysCmd, R3::kLaunchAppl);
+      VLOG(1) << "Launching stage 1";
+      if (!this->device_->WriteReg(HpsReg::kSysCmd, R3::kLaunchAppl)) {
+        LOG(FATAL) << "Launch stage 1 failed";
+      }
       break;
     case BootResult::kFail:
       return BootResult::kFail;
@@ -355,10 +361,14 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage2() {
 }
 
 // Reboot the hardware module.
-void HPS_impl::Reboot() {
+bool HPS_impl::Reboot() {
   LOG(INFO) << "Rebooting";
   // Send a reset cmd - maybe should power cycle.
-  this->device_->WriteReg(HpsReg::kSysCmd, R3::kReset);
+  if (!this->device_->WriteReg(HpsReg::kSysCmd, R3::kReset)) {
+    LOG(FATAL) << "Reboot failed";
+    return false;
+  }
+  return true;
 }
 
 // Fault bit seen, attempt to dump status information

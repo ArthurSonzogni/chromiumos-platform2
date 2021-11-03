@@ -11,6 +11,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <base/compiler_specific.h>
+
 #include <hps/hps_reg.h>
 
 namespace hps {
@@ -22,24 +24,28 @@ class DevInterface {
    * Returns true on successful read, false on error.
    * In the event of an error, the contents may have been modified.
    */
-  virtual bool Read(uint8_t cmd, uint8_t* data, size_t len);
+  virtual bool Read(uint8_t cmd, uint8_t* data, size_t len) WARN_UNUSED_RESULT;
 
   /*
    * Write the data to the device.
    * Returns true on successful write, false on error.
    */
-  virtual bool Write(uint8_t cmd, const uint8_t* data, size_t len);
+  virtual bool Write(uint8_t cmd,
+                     const uint8_t* data,
+                     size_t len) WARN_UNUSED_RESULT;
 
   /*
    * Read 1 register.
    * Returns value read, or -1 for error.
    */
-  virtual int ReadReg(HpsReg r);
+  virtual int ReadReg(HpsReg r) WARN_UNUSED_RESULT;
+
   /*
    * Write 1 register.
    * Returns false on failure.
    */
-  virtual bool WriteReg(HpsReg r, uint16_t data);
+  virtual bool WriteReg(HpsReg r, uint16_t data) WARN_UNUSED_RESULT;
+
   /*
    * Return the maximum download block size (in bytes).
    * This value is the actual data to be written, not including the

@@ -65,7 +65,7 @@ class HPS_impl : public HPS {
   BootResult CheckStage0();
   BootResult CheckStage1();
   BootResult CheckStage2();
-  void Reboot();
+  bool Reboot();
   void Fault();
   bool WaitForBankReady(uint8_t bank);
   bool WriteFile(uint8_t bank, const base::FilePath& source);
