@@ -159,42 +159,41 @@ int main(int argc, char** argv) {
           &cryptohome::MountHelper::UnmountAll, base::Unretained(&mounter)));
   if (is_ephemeral) {
     cryptohome::ReportTimerStart(cryptohome::kPerformEphemeralMountTimer);
-    if (!mounter.PerformEphemeralMount(
-            request.username(),
-            base::FilePath(request.ephemeral_loop_device()))) {
-      cryptohome::ForkAndCrash("PerformEphemeralMount failed");
-      return EX_SOFTWARE;
-    }
+    error = mounter.PerformEphemeralMount(
+        request.username(), base::FilePath(request.ephemeral_loop_device()));
 
     cryptohome::ReportTimerStop(cryptohome::kPerformEphemeralMountTimer);
-    VLOG(1) << "PerformEphemeralMount succeeded";
   } else {
     cryptohome::MountHelperInterface::Options mount_options;
     mount_options.type = static_cast<cryptohome::MountType>(request.type());
     mount_options.to_migrate_from_ecryptfs = request.to_migrate_from_ecryptfs();
 
     cryptohome::ReportTimerStart(cryptohome::kPerformMountTimer);
-    if (!mounter.PerformMount(mount_options, request.username(),
-                              request.fek_signature(), request.fnek_signature(),
-                              request.is_pristine(), &error)) {
-      cryptohome::ForkAndCrash("PerformMount failed");
-      return EX_SOFTWARE;
-    }
+    error = mounter.PerformMount(
+        mount_options, request.username(), request.fek_signature(),
+        request.fnek_signature(), request.is_pristine());
 
     cryptohome::ReportTimerStop(cryptohome::kPerformMountTimer);
-    response.set_mount_error(static_cast<uint32_t>(error));
-    VLOG(1) << "PerformMount succeeded";
   }
 
   for (const auto& path : mounter.MountedPaths()) {
     response.add_paths(path.value());
   }
 
+  response.set_mount_error(static_cast<uint32_t>(error));
   if (!cryptohome::WriteProtobuf(STDOUT_FILENO, response)) {
     cryptohome::ForkAndCrash("Failed to write response protobuf");
     return EX_OSERR;
   }
-  VLOG(1) << "Sent protobuf";
+
+  if (error != cryptohome::MOUNT_ERROR_NONE) {
+    if (is_ephemeral) {
+      cryptohome::ForkAndCrash("PerformEphemeralMount failed");
+    } else {
+      cryptohome::ForkAndCrash("PerformMount failed");
+    }
+    return EX_SOFTWARE;
+  }
 
   base::RunLoop run_loop;
 

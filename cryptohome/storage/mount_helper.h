@@ -55,7 +55,7 @@ class MountHelperInterface {
   virtual bool IsPathMounted(const base::FilePath& path) const = 0;
 
   // Carries out an ephemeral mount for user |username|.
-  virtual bool PerformEphemeralMount(
+  virtual MountError PerformEphemeralMount(
       const std::string& username,
       const base::FilePath& ephemeral_loop_device) = 0;
 
@@ -63,12 +63,11 @@ class MountHelperInterface {
   virtual void UnmountAll() = 0;
 
   // Carries out mount operations for a regular cryptohome.
-  virtual bool PerformMount(const Options& mount_opts,
-                            const std::string& username,
-                            const std::string& fek_signature,
-                            const std::string& fnek_signature,
-                            bool is_pristine,
-                            MountError* error) = 0;
+  virtual MountError PerformMount(const Options& mount_opts,
+                                  const std::string& username,
+                                  const std::string& fek_signature,
+                                  const std::string& fnek_signature,
+                                  bool is_pristine) = 0;
 };
 
 class MountHelper : public MountHelperInterface {
@@ -124,16 +123,15 @@ class MountHelper : public MountHelperInterface {
 
   // Carries out eCryptfs/dircrypto mount(2) operations for a regular
   // cryptohome.
-  bool PerformMount(const Options& mount_opts,
-                    const std::string& username,
-                    const std::string& fek_signature,
-                    const std::string& fnek_signature,
-                    bool is_pristine,
-                    MountError* error) override;
+  MountError PerformMount(const Options& mount_opts,
+                          const std::string& username,
+                          const std::string& fek_signature,
+                          const std::string& fnek_signature,
+                          bool is_pristine) override;
 
   // Carries out dircrypto mount(2) operations for an ephemeral cryptohome.
   // Does not clean up on failure.
-  bool PerformEphemeralMount(
+  MountError PerformEphemeralMount(
       const std::string& username,
       const base::FilePath& ephemeral_loop_device) override;
 

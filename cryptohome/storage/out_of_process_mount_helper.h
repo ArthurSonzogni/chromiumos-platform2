@@ -47,7 +47,7 @@ class OutOfProcessMountHelper : public MountHelperInterface {
 
   // Carries out dircrypto mount(2) operations for an ephemeral cryptohome,
   // but does so out of process.
-  bool PerformEphemeralMount(
+  MountError PerformEphemeralMount(
       const std::string& username,
       const base::FilePath& ephemeral_loop_device) override;
 
@@ -63,12 +63,11 @@ class OutOfProcessMountHelper : public MountHelperInterface {
   bool IsPathMounted(const base::FilePath& path) const override;
 
   // Carries out dircrypto mount(2) operations for a regular cryptohome.
-  bool PerformMount(const Options& mount_opts,
-                    const std::string& username,
-                    const std::string& fek_signature,
-                    const std::string& fnek_signature,
-                    bool is_pristine,
-                    MountError* error) override;
+  MountError PerformMount(const Options& mount_opts,
+                          const std::string& username,
+                          const std::string& fek_signature,
+                          const std::string& fnek_signature,
+                          bool is_pristine) override;
 
  private:
   // Launches an out-of-process helper, sends |request|, and waits until it

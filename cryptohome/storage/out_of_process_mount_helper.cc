@@ -164,7 +164,7 @@ void OutOfProcessMountHelper::KillOutOfProcessHelperIfNecessary() {
   helper_process_->Reset(0);
 }
 
-bool OutOfProcessMountHelper::PerformEphemeralMount(
+MountError OutOfProcessMountHelper::PerformEphemeralMount(
     const std::string& username, const base::FilePath& ephemeral_loop_device) {
   OutOfProcessMountRequest request;
   request.set_username(username);
@@ -179,7 +179,7 @@ bool OutOfProcessMountHelper::PerformEphemeralMount(
 
   OutOfProcessMountResponse response;
   if (!LaunchOutOfProcessHelper(request, &response)) {
-    return false;
+    return MOUNT_ERROR_FATAL;
   }
 
   username_ = request.username();
@@ -189,7 +189,7 @@ bool OutOfProcessMountHelper::PerformEphemeralMount(
     }
   }
 
-  return true;
+  return static_cast<MountError>(response.mount_error());
 }
 
 bool OutOfProcessMountHelper::LaunchOutOfProcessHelper(
@@ -276,12 +276,12 @@ bool OutOfProcessMountHelper::TearDownExistingMount() {
   return true;
 }
 
-bool OutOfProcessMountHelper::PerformMount(const Options& mount_opts,
-                                           const std::string& username,
-                                           const std::string& fek_signature,
-                                           const std::string& fnek_signature,
-                                           bool is_pristine,
-                                           MountError* error) {
+MountError OutOfProcessMountHelper::PerformMount(
+    const Options& mount_opts,
+    const std::string& username,
+    const std::string& fek_signature,
+    const std::string& fnek_signature,
+    bool is_pristine) {
   OutOfProcessMountRequest request;
   request.set_username(username);
   request.set_bind_mount_downloads(bind_mount_downloads_);
@@ -296,7 +296,7 @@ bool OutOfProcessMountHelper::PerformMount(const Options& mount_opts,
 
   OutOfProcessMountResponse response;
   if (!LaunchOutOfProcessHelper(request, &response)) {
-    return false;
+    return MOUNT_ERROR_FATAL;
   }
 
   username_ = request.username();
@@ -306,8 +306,7 @@ bool OutOfProcessMountHelper::PerformMount(const Options& mount_opts,
     }
   }
 
-  *error = static_cast<MountError>(response.mount_error());
-  return true;
+  return static_cast<MountError>(response.mount_error());
 }
 
 }  // namespace cryptohome

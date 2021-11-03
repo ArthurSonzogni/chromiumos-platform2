@@ -170,10 +170,9 @@ TEST_F(UserSessionTest, MountVaultOk) {
   // Test with ecryptfs since it has a simpler existence check.
   mount_args_create.create_as_ecryptfs = true;
 
-  EXPECT_CALL(*mount_,
-              MountCryptohome(users_[0].name, _,
-                              MountArgsEqual(mount_args_create), true, _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(*mount_, MountCryptohome(users_[0].name, _,
+                                       MountArgsEqual(mount_args_create), true))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(true));
   EXPECT_CALL(platform_, GetCurrentTime())
       .Times(2)  // Initial set and update on mount.
@@ -214,8 +213,8 @@ TEST_F(UserSessionTest, MountVaultOk) {
 
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _,
-                              MountArgsEqual(mount_args_no_create), false, _))
-      .WillOnce(Return(true));
+                              MountArgsEqual(mount_args_no_create), false))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(true));
   EXPECT_CALL(platform_, GetCurrentTime())
       .WillOnce(Return(base::Time::FromInternalValue(kTs2)));
@@ -272,10 +271,9 @@ TEST_F(UserSessionTest, MountVaultWrongCreds) {
   // Test with ecryptfs since it has a simpler existence check.
   mount_args_create.create_as_ecryptfs = true;
 
-  EXPECT_CALL(*mount_,
-              MountCryptohome(users_[0].name, _,
-                              MountArgsEqual(mount_args_create), true, _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(*mount_, MountCryptohome(users_[0].name, _,
+                                       MountArgsEqual(mount_args_create), true))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(true));
   EXPECT_CALL(platform_, GetCurrentTime())
       .Times(2)  // Initial set and update on mount.
@@ -305,7 +303,7 @@ TEST_F(UserSessionTest, MountVaultWrongCreds) {
 
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _,
-                              MountArgsEqual(mount_args_no_create), false, _))
+                              MountArgsEqual(mount_args_no_create), false))
       .Times(0);
 
   Credentials wrong_creds(users_[0].name, brillo::SecureBlob("wrong"));
@@ -422,10 +420,9 @@ TEST_F(UserSessionTest, WebAuthnSecretReadTwice) {
   // Test with ecryptfs since it has a simpler existence check.
   mount_args_create.create_as_ecryptfs = true;
 
-  EXPECT_CALL(*mount_,
-              MountCryptohome(users_[0].name, _,
-                              MountArgsEqual(mount_args_create), true, _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(*mount_, MountCryptohome(users_[0].name, _,
+                                       MountArgsEqual(mount_args_create), true))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(true));
 
   ASSERT_EQ(MOUNT_ERROR_NONE,
@@ -469,10 +466,9 @@ TEST_F(UserSessionTest, WebAuthnSecretTimeout) {
   // Test with ecryptfs since it has a simpler existence check.
   mount_args_create.create_as_ecryptfs = true;
 
-  EXPECT_CALL(*mount_,
-              MountCryptohome(users_[0].name, _,
-                              MountArgsEqual(mount_args_create), true, _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(*mount_, MountCryptohome(users_[0].name, _,
+                                       MountArgsEqual(mount_args_create), true))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(true));
 
   ASSERT_EQ(MOUNT_ERROR_NONE,

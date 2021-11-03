@@ -75,11 +75,10 @@ MountError UserSession::MountVault(const Credentials& credentials,
   }
   FileSystemKeyset fs_keyset(*vk);
 
-  if (!mount_->MountCryptohome(credentials.username(), fs_keyset, mount_args,
-                               is_pristine, &code)) {
-    // In the weird case where MountCryptohome returns false with ERROR_NONE
-    // code report it as FATAL.
-    return code == MOUNT_ERROR_NONE ? MOUNT_ERROR_FATAL : code;
+  code = mount_->MountCryptohome(credentials.username(), fs_keyset, mount_args,
+                                 is_pristine);
+  if (code != MOUNT_ERROR_NONE) {
+    return code;
   }
   SetCredentials(credentials, vk->GetLegacyIndex());
   UpdateActivityTimestamp(0);
@@ -89,7 +88,7 @@ MountError UserSession::MountVault(const Credentials& credentials,
 
   PrepareWebAuthnSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
 
-  return code;
+  return MOUNT_ERROR_NONE;
 }
 
 MountError UserSession::MountVault(AuthSession* auth_session,
@@ -104,14 +103,12 @@ MountError UserSession::MountVault(AuthSession* auth_session,
   // AuthSession was started, then that means the user was created.
   bool created = !auth_session->user_exists();
 
-  MountError code = MOUNT_ERROR_NONE;
   const FileSystemKeyset fs_keyset = auth_session->file_system_keyset();
 
-  if (!mount_->MountCryptohome(auth_session->username(), fs_keyset, mount_args,
-                               created, &code)) {
-    // In the weird case where MountCryptohome returns false with ERROR_NONE
-    // code report it as FATAL.
-    return code == MOUNT_ERROR_NONE ? MOUNT_ERROR_FATAL : code;
+  MountError code = mount_->MountCryptohome(auth_session->username(), fs_keyset,
+                                            mount_args, created);
+  if (code != MOUNT_ERROR_NONE) {
+    return code;
   }
   // Set credentials for verification using AuthSession.
   SetCredentials(auth_session);
@@ -122,7 +119,7 @@ MountError UserSession::MountVault(AuthSession* auth_session,
 
   PrepareWebAuthnSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
 
-  return code;
+  return MOUNT_ERROR_NONE;
 }
 
 MountError UserSession::MountEphemeral(const Credentials& credentials) {

@@ -87,11 +87,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //                * Whether to ensure that the mount is ephemeral.
   //   is_pristine - Whether it is the first mount of the vault.
   //   error - The specific error condition on failure
-  virtual bool MountCryptohome(const std::string& username,
-                               const FileSystemKeyset& file_system_keys,
-                               const MountArgs& mount_args,
-                               bool is_pristine,
-                               MountError* error);
+  virtual MountError MountCryptohome(const std::string& username,
+                                     const FileSystemKeyset& file_system_keys,
+                                     const MountArgs& mount_args,
+                                     bool is_pristine);
 
   // Attempts to mount an ephemeral cryptohome for the given username.
   //

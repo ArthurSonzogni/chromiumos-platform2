@@ -140,10 +140,11 @@ MountError Mount::MountEphemeralCryptohome(const std::string& username) {
     return error;
   }
 
-  if (!active_mounter_->PerformEphemeralMount(
-          username, user_cryptohome_vault_->GetContainerBackingLocation())) {
+  error = active_mounter_->PerformEphemeralMount(
+      username, user_cryptohome_vault_->GetContainerBackingLocation());
+  if (error != MOUNT_ERROR_NONE) {
     LOG(ERROR) << "PerformEphemeralMount() failed, aborting ephemeral mount";
-    return MOUNT_ERROR_FATAL;
+    return error;
   }
 
   ignore_result(cleanup_runner.Release());
@@ -151,11 +152,10 @@ MountError Mount::MountEphemeralCryptohome(const std::string& username) {
   return MOUNT_ERROR_NONE;
 }
 
-bool Mount::MountCryptohome(const std::string& username,
-                            const FileSystemKeyset& file_system_keyset,
-                            const Mount::MountArgs& mount_args,
-                            bool is_pristine,
-                            MountError* mount_error) {
+MountError Mount::MountCryptohome(const std::string& username,
+                                  const FileSystemKeyset& file_system_keyset,
+                                  const Mount::MountArgs& mount_args,
+                                  bool is_pristine) {
   username_ = username;
   std::string obfuscated_username = SanitizeUserName(username_);
 
@@ -170,26 +170,26 @@ bool Mount::MountCryptohome(const std::string& username,
 
   vault_options.migrate = mount_args.to_migrate_from_ecryptfs;
 
+  MountError mount_error = MOUNT_ERROR_NONE;
   user_cryptohome_vault_ = homedirs_->GenerateCryptohomeVault(
       obfuscated_username, file_system_keyset.KeyReference(), vault_options,
-      is_pristine, mount_error);
-  if (*mount_error != MOUNT_ERROR_NONE) {
-    return false;
+      is_pristine, &mount_error);
+  if (mount_error != MOUNT_ERROR_NONE) {
+    return mount_error;
   }
 
   if (GetMountType() == MountType::NONE) {
     // TODO(dlunev): there should be a more proper error code set. CREATE_FAILED
     // is a temporary returned error to keep the behaviour unchanged while
     // refactoring.
-    *mount_error = MOUNT_ERROR_CREATE_CRYPTOHOME_FAILED;
-    return false;
+    return MOUNT_ERROR_CREATE_CRYPTOHOME_FAILED;
   }
 
   // Set up the cryptohome vault for mount.
-  *mount_error =
+  mount_error =
       user_cryptohome_vault_->Setup(file_system_keyset.Key(), is_pristine);
-  if (*mount_error != MOUNT_ERROR_NONE) {
-    return false;
+  if (mount_error != MOUNT_ERROR_NONE) {
+    return mount_error;
   }
 
   // Ensure we don't leave any mounts hanging on intermediate errors.
@@ -220,11 +220,11 @@ bool Mount::MountCryptohome(const std::string& username,
                                      mount_args.to_migrate_from_ecryptfs};
 
   cryptohome::ReportTimerStart(cryptohome::kPerformMountTimer);
-  if (!active_mounter_->PerformMount(mount_opts, username_, key_signature,
-                                     fnek_signature, is_pristine,
-                                     mount_error)) {
-    LOG(ERROR) << "MountHelper::PerformMount failed, error = " << *mount_error;
-    return false;
+  mount_error = active_mounter_->PerformMount(
+      mount_opts, username_, key_signature, fnek_signature, is_pristine);
+  if (mount_error != MOUNT_ERROR_NONE) {
+    LOG(ERROR) << "MountHelper::PerformMount failed, error = " << mount_error;
+    return mount_error;
   }
 
   cryptohome::ReportTimerStop(cryptohome::kPerformMountTimer);
@@ -243,8 +243,6 @@ bool Mount::MountCryptohome(const std::string& username,
 
   // At this point we're done mounting.
   ignore_result(cleanup_runner.Release());
-
-  *mount_error = MOUNT_ERROR_NONE;
 
   user_cryptohome_vault_->ReportVaultEncryptionType();
 
@@ -266,7 +264,7 @@ bool Mount::MountCryptohome(const std::string& username,
                << GetUserDirectoryForUser(obfuscated_username) << ") failed.";
   }
 
-  return true;
+  return MOUNT_ERROR_NONE;
 }
 
 bool Mount::UnmountCryptohome() {

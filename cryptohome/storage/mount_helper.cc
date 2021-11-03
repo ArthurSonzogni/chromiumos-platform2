@@ -773,18 +773,16 @@ bool MountHelper::SetUpDmcryptMount(const std::string& obfuscated_username) {
   return true;
 }
 
-bool MountHelper::PerformMount(const Options& mount_opts,
-                               const std::string& username,
-                               const std::string& fek_signature,
-                               const std::string& fnek_signature,
-                               bool is_pristine,
-                               MountError* error) {
+MountError MountHelper::PerformMount(const Options& mount_opts,
+                                     const std::string& username,
+                                     const std::string& fek_signature,
+                                     const std::string& fnek_signature,
+                                     bool is_pristine) {
   const std::string obfuscated_username = SanitizeUserName(username);
 
   if (!EnsureUserMountPoints(username)) {
     LOG(ERROR) << "Error creating mountpoint.";
-    *error = MOUNT_ERROR_CREATE_CRYPTOHOME_FAILED;
-    return false;
+    return MOUNT_ERROR_CREATE_CRYPTOHOME_FAILED;
   }
 
   // Since Service::Mount cleans up stale mounts, we should only reach
@@ -793,8 +791,7 @@ bool MountHelper::PerformMount(const Options& mount_opts,
           GetUserMountDirectory(obfuscated_username))) {
     LOG(ERROR) << "Mount point is busy: "
                << GetUserMountDirectory(obfuscated_username);
-    *error = MOUNT_ERROR_FATAL;
-    return false;
+    return MOUNT_ERROR_FATAL;
   }
 
   bool should_mount_ecryptfs = mount_opts.type == MountType::ECRYPTFS ||
@@ -804,8 +801,7 @@ bool MountHelper::PerformMount(const Options& mount_opts,
       !SetUpEcryptfsMount(obfuscated_username, fek_signature, fnek_signature,
                           mount_opts.to_migrate_from_ecryptfs)) {
     LOG(ERROR) << "eCryptfs mount failed";
-    *error = MOUNT_ERROR_MOUNT_ECRYPTFS_FAILED;
-    return false;
+    return MOUNT_ERROR_MOUNT_ECRYPTFS_FAILED;
   }
 
   if (mount_opts.type == MountType::DIR_CRYPTO)
@@ -814,8 +810,7 @@ bool MountHelper::PerformMount(const Options& mount_opts,
   if (mount_opts.type == MountType::DMCRYPT &&
       !SetUpDmcryptMount(obfuscated_username)) {
     LOG(ERROR) << "Dm-crypt mount failed";
-    *error = MOUNT_ERROR_MOUNT_DMCRYPT_FAILED;
-    return false;
+    return MOUNT_ERROR_MOUNT_DMCRYPT_FAILED;
   }
 
   const FilePath user_home = GetMountedUserHomePath(obfuscated_username);
@@ -828,8 +823,7 @@ bool MountHelper::PerformMount(const Options& mount_opts,
   if (!mount_opts.to_migrate_from_ecryptfs &&
       !MountHomesAndDaemonStores(username, obfuscated_username, user_home,
                                  root_home)) {
-    *error = MOUNT_ERROR_MOUNT_HOMES_AND_DAEMON_STORES_FAILED;
-    return false;
+    return MOUNT_ERROR_MOUNT_HOMES_AND_DAEMON_STORES_FAILED;
   }
 
   // Mount tracked subdirectories from the cache volume.
@@ -837,15 +831,16 @@ bool MountHelper::PerformMount(const Options& mount_opts,
       !MountCacheSubdirectories(obfuscated_username)) {
     LOG(ERROR)
         << "Failed to mount tracked subdirectories from the cache volume";
-    *error = MOUNT_ERROR_MOUNT_DMCRYPT_FAILED;
-    return false;
+    return MOUNT_ERROR_MOUNT_DMCRYPT_FAILED;
   }
 
-  return true;
+  return MOUNT_ERROR_NONE;
 }
 
-bool MountHelper::PerformEphemeralMount(const std::string& username,
-                                        const FilePath& ephemeral_loop_device) {
+// TODO(dlunev): make specific errors returned. MOUNT_ERROR_FATAL for now
+// to preserve the existing expectations..
+MountError MountHelper::PerformEphemeralMount(
+    const std::string& username, const FilePath& ephemeral_loop_device) {
   const std::string obfuscated_username = SanitizeUserName(username);
   const FilePath mount_point =
       GetUserEphemeralMountDirectory(obfuscated_username);
@@ -853,26 +848,26 @@ bool MountHelper::PerformEphemeralMount(const std::string& username,
 
   if (!platform_->CreateDirectory(mount_point)) {
     PLOG(ERROR) << "Directory creation failed for " << mount_point.value();
-    return false;
+    return MOUNT_ERROR_FATAL;
   }
   if (!MountAndPush(ephemeral_loop_device, mount_point, kEphemeralMountType,
                     kEphemeralMountOptions)) {
     LOG(ERROR) << "Can't mount ephemeral mount point";
-    return false;
+    return MOUNT_ERROR_FATAL;
   }
 
   // Set SELinux context first, so that the created user & root directory have
   // the correct context.
   if (!::SetUpSELinuxContextForEphemeralCryptohome(platform_, mount_point)) {
     // Logging already done in SetUpSELinuxContextForEphemeralCryptohome.
-    return false;
+    return MOUNT_ERROR_FATAL;
   }
 
   // Create user & root directories.
   CreateHomeSubdirectories(mount_point);
 
   if (!EnsureUserMountPoints(username)) {
-    return false;
+    return MOUNT_ERROR_FATAL;
   }
 
   const FilePath user_home =
@@ -891,16 +886,16 @@ bool MountHelper::PerformEphemeralMount(const std::string& username,
     if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
             path, subdir.mode, subdir.uid, subdir.gid)) {
       LOG(ERROR) << "Couldn't create user path directory: " << path.value();
-      return false;
+      return MOUNT_ERROR_FATAL;
     }
   }
 
   if (!MountHomesAndDaemonStores(username, obfuscated_username, user_home,
                                  root_home)) {
-    return false;
+    return MOUNT_ERROR_FATAL;
   }
 
-  return true;
+  return MOUNT_ERROR_NONE;
 }
 
 void MountHelper::UnmountAll() {
