@@ -444,10 +444,14 @@ bool SlotManagerImpl::OpenIsolate(SecureBlob* isolate_credential,
     brillo::SecureClearContainer(credential_string);
 
     if (isolate_map_.find(new_isolate_credential) != isolate_map_.end()) {
+// TODO(b/211950732, b/211951349): Remove the compilation flag and FATAL once we
+// do better error handling.
+#if !USE_FUZZER
       // A collision on 128 bits should be extremely unlikely if the random
       // number generator is working properly. If there is a problem with the
       // random number generator we want to get out.
       LOG(FATAL) << "Collision when trying to create new isolate credential.";
+#endif  // !USE_FUZZER
       return false;
     }
 

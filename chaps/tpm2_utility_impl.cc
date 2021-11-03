@@ -31,6 +31,13 @@
 #include <trunks/trunks_dbus_proxy.h>
 #include <trunks/trunks_factory_impl.h>
 
+// TODO(b/211952043): correctly handle the different errors instead of crashing.
+#if USE_FUZZER
+#define LOG_FATAL_WHEN_NOT_FUZZING(x)
+#else
+#define LOG_FATAL_WHEN_NOT_FUZZING(x) LOG(FATAL) << x
+#endif  // USE_FUZZER
+
 using brillo::SecureBlob;
 using std::map;
 using std::set;
@@ -227,14 +234,16 @@ class ScopedSession {
     if (result != TPM_RC_SUCCESS) {
       LOG(ERROR) << "Error starting an AuthorizationSession: "
                  << trunks::GetErrorString(result);
-      LOG_IF(FATAL, result == trunks::SAPI_RC_NO_CONNECTION)
-          << "Fatal failure - opening session failed due to TPM daemon "
-             "unavailability.";
-      *target_session_ = nullptr;
+      if (result == trunks::SAPI_RC_NO_CONNECTION) {
+        LOG_FATAL_WHEN_NOT_FUZZING(
+            "Fatal failure - opening session failed due to TPM daemon "
+            "unavailability.");
+        *target_session_ = nullptr;
+      }
     } else {
       *target_session_ = std::move(new_session);
     }
-  }
+  }  // namespace chaps
   ~ScopedSession() { *target_session_ = nullptr; }
 
  private:
@@ -348,10 +357,13 @@ bool TPM2UtilityImpl::Init() {
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting an AuthorizationSession: "
                << trunks::GetErrorString(result);
-    LOG_IF(FATAL, result == trunks::SAPI_RC_NO_CONNECTION &&
-                      is_trunks_proxy_initialized_)
-        << "Fatal failure - initialization failed due to TPM daemon becoming "
-           "unavailable.";
+    if (result == trunks::SAPI_RC_NO_CONNECTION &&
+        is_trunks_proxy_initialized_) {
+      LOG_FATAL_WHEN_NOT_FUZZING(
+
+          "Fatal failure - initialization failed due to TPM daemon becoming "
+          "unavailable.");
+    }
     return false;
   }
 #endif
@@ -1000,18 +1012,22 @@ bool TPM2UtilityImpl::LoadKeyWithParentInternal(std::optional<int> slot,
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error loading key into TPM: "
                << trunks::GetErrorString(result);
-    LOG_IF(FATAL, result == trunks::SAPI_RC_NO_CONNECTION)
-        << "Fatal failure - key loading failed due to TPM daemon "
-           "unavailability.";
+    if (result == trunks::SAPI_RC_NO_CONNECTION) {
+      LOG_FATAL_WHEN_NOT_FUZZING(
+          "Fatal failure - key loading failed due to TPM daemon "
+          "unavailability.");
+    }
     return false;
   }
   std::string key_name;
   result = trunks_tpm_utility_->GetKeyName(*key_handle, &key_name);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting key name: " << trunks::GetErrorString(result);
-    LOG_IF(FATAL, result == trunks::SAPI_RC_NO_CONNECTION)
-        << "Fatal failure - key loading failed due to TPM daemon "
-           "unavailability.";
+    if (result == trunks::SAPI_RC_NO_CONNECTION) {
+      LOG_FATAL_WHEN_NOT_FUZZING(
+          "Fatal failure - key loading failed due to TPM daemon "
+          "unavailability.");
+    }
     return false;
   }
   handle_auth_data_[*key_handle] = auth_data;
@@ -1030,9 +1046,12 @@ bool TPM2UtilityImpl::UnbindInternal(int key_handle,
       trunks_tpm_utility_->GetKeyPublicArea(key_handle, &public_data);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting key public data: " << result;
-    LOG_IF(FATAL, result == trunks::SAPI_RC_NO_CONNECTION)
-        << "Fatal failure - key unbinding failed due to TPM daemon "
-           "unavailability.";
+
+    if (result == trunks::SAPI_RC_NO_CONNECTION) {
+      LOG_FATAL_WHEN_NOT_FUZZING(
+          "Fatal failure - key unbinding failed due to TPM daemon "
+          "unavailability.");
+    }
     return false;
   }
   if (input.size() > public_data.unique.rsa.size) {
@@ -1051,9 +1070,12 @@ bool TPM2UtilityImpl::UnbindInternal(int key_handle,
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error performing unbind operation: "
                << trunks::GetErrorString(result);
-    LOG_IF(FATAL, result == trunks::SAPI_RC_NO_CONNECTION)
-        << "Fatal failure - key unbinding failed due to TPM daemon "
-           "unavailability.";
+
+    if (result == trunks::SAPI_RC_NO_CONNECTION) {
+      LOG_FATAL_WHEN_NOT_FUZZING(
+          "Fatal failure - key unbinding failed due to TPM daemon "
+          "unavailability.");
+    }
     return false;
   }
   return true;

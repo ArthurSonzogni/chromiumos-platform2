@@ -42,6 +42,7 @@ group("all") {
     deps += [
       ":chaps_attributes_fuzzer",
       ":chaps_object_store_fuzzer",
+      ":chaps_slot_manager_fuzzer",
       ":chaps_utility_fuzzer",
     ]
   }
@@ -55,6 +56,7 @@ pkg_config("target_defaults") {
     "USE_TPM1=${use.tpm}",
     "USE_TPM2=${use.tpm2}",
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
+    "USE_FUZZER=${use.fuzzer}",
   ]
 
   # NOSORT
@@ -132,6 +134,7 @@ shared_library("libchaps") {
     "USE_TPM1=${use.tpm}",
     "USE_TPM2=${use.tpm2}",
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
+    "USE_FUZZER=${use.fuzzer}",
   ]
   libs = [ "system_api" ]
   pkg_deps = [
@@ -593,6 +596,36 @@ if (use.fuzzer) {
       "nss",
     ]
     deps = [ ":libchaps_static" ]
+  }
+
+  if (use.tpm2) {
+    executable("chaps_slot_manager_fuzzer") {
+      sources = [
+        "fuzzers/fuzzed_chaps_factory.cc",
+        "fuzzers/fuzzed_object_pool.cc",
+        "fuzzers/fuzzed_tpm_manager_utility.cc",
+        "fuzzers/slot_manager_fuzzer.cc",
+        "session_mock.cc",
+        "slot_manager_impl.cc",
+        "system_shutdown_blocker.cc",
+        "tpm2_utility_impl.cc",
+        "tpm_thread_utility_impl.cc",
+      ]
+      configs += [
+        "//common-mk/common_fuzzer:common_fuzzer",
+        "//common-mk:test",
+        ":target_defaults",
+      ]
+      libs = [ "trunks_test" ]
+      pkg_deps = [
+        "absl",
+        "libchrome-test",
+
+        # nss is needed because we use pkcs11 headers from nss.
+        "nss",
+      ]
+      deps = [ ":libchaps_static" ]
+    }
   }
 }
 
