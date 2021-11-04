@@ -203,8 +203,8 @@ TEST_F(TPM2UtilityTest, AuthenticateSuccess) {
   SecureBlob new_root_key;
   std::string key_blob;
   std::string encrypted_root;
-  EXPECT_TRUE(utility.Authenticate(1, auth_data, key_blob, encrypted_root,
-                                   &new_root_key));
+  EXPECT_TRUE(
+      utility.Authenticate(auth_data, key_blob, encrypted_root, &new_root_key));
 }
 
 TEST_F(TPM2UtilityTest, AuthenticateLoadFail) {
@@ -215,8 +215,8 @@ TEST_F(TPM2UtilityTest, AuthenticateLoadFail) {
   std::string encrypted_root;
   EXPECT_CALL(mock_tpm_utility_, LoadKey(key_blob, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(utility.Authenticate(1, auth_data, key_blob, encrypted_root,
-                                    &new_root_key));
+  EXPECT_FALSE(
+      utility.Authenticate(auth_data, key_blob, encrypted_root, &new_root_key));
 }
 
 TEST_F(TPM2UtilityTest, AuthenticateUnbindFail) {
@@ -227,8 +227,8 @@ TEST_F(TPM2UtilityTest, AuthenticateUnbindFail) {
   std::string encrypted_root;
   EXPECT_CALL(mock_tpm_utility_, AsymmetricDecrypt(_, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(utility.Authenticate(1, auth_data, key_blob, encrypted_root,
-                                    &new_root_key));
+  EXPECT_FALSE(
+      utility.Authenticate(auth_data, key_blob, encrypted_root, &new_root_key));
 }
 
 TEST_F(TPM2UtilityTest, ChangeAuthDataSuccess) {
@@ -239,8 +239,7 @@ TEST_F(TPM2UtilityTest, ChangeAuthDataSuccess) {
   std::string new_blob;
   EXPECT_CALL(mock_tpm_utility_, ChangeKeyAuthorizationData(_, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_TRUE(
-      utility.ChangeAuthData(1, old_auth, new_auth, old_blob, &new_blob));
+  EXPECT_TRUE(utility.ChangeAuthData(old_auth, new_auth, old_blob, &new_blob));
 }
 
 TEST_F(TPM2UtilityTest, ChangeAuthDataLoadFail) {
@@ -251,8 +250,7 @@ TEST_F(TPM2UtilityTest, ChangeAuthDataLoadFail) {
   std::string new_blob;
   EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(
-      utility.ChangeAuthData(1, old_auth, new_auth, old_blob, &new_blob));
+  EXPECT_FALSE(utility.ChangeAuthData(old_auth, new_auth, old_blob, &new_blob));
 }
 
 TEST_F(TPM2UtilityTest, ChangeAuthDataChangeAuthFail) {
@@ -263,23 +261,7 @@ TEST_F(TPM2UtilityTest, ChangeAuthDataChangeAuthFail) {
   std::string new_blob;
   EXPECT_CALL(mock_tpm_utility_, ChangeKeyAuthorizationData(_, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(
-      utility.ChangeAuthData(1, old_auth, new_auth, old_blob, &new_blob));
-}
-
-TEST_F(TPM2UtilityTest, ChangeAuthDataFlushContextFail) {
-  TPM2UtilityImpl utility(factory_.get());
-  SecureBlob old_auth;
-  SecureBlob new_auth;
-  std::string old_blob;
-  std::string new_blob;
-  trunks::TPM_HANDLE key_handle = trunks::TPM_RH_FIRST;
-  EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<2>(key_handle), Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_, FlushContextSync(key_handle, NULL))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(
-      utility.ChangeAuthData(1, old_auth, new_auth, old_blob, &new_blob));
+  EXPECT_FALSE(utility.ChangeAuthData(old_auth, new_auth, old_blob, &new_blob));
 }
 
 TEST_F(TPM2UtilityTest, GenerateRandomSuccess) {
@@ -1122,8 +1104,8 @@ TEST_F(TPM2UtilityTest, SealDataSuccess) {
               SealData(unsealed_data, empty_policy_digest, auth_data_str,
                        /*require_admin_with_policy=*/false, _, _))
       .WillOnce(DoAll(SetArgPointee<5>("key_blob"), Return(TPM_RC_SUCCESS)));
-  EXPECT_TRUE(utility.SealData(1, unsealed_data, auth_data, &key_blob,
-                               &encrypted_data));
+  EXPECT_TRUE(
+      utility.SealData(unsealed_data, auth_data, &key_blob, &encrypted_data));
   EXPECT_EQ(key_blob, "key_blob");
 }
 
@@ -1139,8 +1121,8 @@ TEST_F(TPM2UtilityTest, SealDataFail) {
               SealData(unsealed_data, empty_policy_digest, auth_data_str,
                        /*require_admin_with_policy=*/false, _, _))
       .WillOnce(DoAll(Return(TPM_RC_FAILURE)));
-  EXPECT_FALSE(utility.SealData(1, unsealed_data, auth_data, &key_blob,
-                                &encrypted_data));
+  EXPECT_FALSE(
+      utility.SealData(unsealed_data, auth_data, &key_blob, &encrypted_data));
 }
 
 TEST_F(TPM2UtilityTest, UnsealDataSuccess) {
@@ -1154,8 +1136,8 @@ TEST_F(TPM2UtilityTest, UnsealDataSuccess) {
   EXPECT_CALL(mock_tpm_utility_, UnsealData(key_blob, _, _))
       .WillOnce(
           DoAll(SetArgPointee<2>("unsealed_data"), Return(TPM_RC_SUCCESS)));
-  EXPECT_TRUE(utility.UnsealData(1, key_blob, encrypted_data, auth_data,
-                                 &unsealed_data));
+  EXPECT_TRUE(
+      utility.UnsealData(key_blob, encrypted_data, auth_data, &unsealed_data));
   EXPECT_EQ(unsealed_data.to_string(), "unsealed_data");
 }
 
@@ -1182,8 +1164,8 @@ TEST_F(TPM2UtilityTest, UnsealDataLeagcySuccess) {
 
   SecureBlob unsealed_data;
   EXPECT_CALL(mock_tpm_utility_, UnsealData(_, _, _)).Times(0);
-  EXPECT_TRUE(utility.UnsealData(1, key_blob, encrypted_data, auth_data,
-                                 &unsealed_data));
+  EXPECT_TRUE(
+      utility.UnsealData(key_blob, encrypted_data, auth_data, &unsealed_data));
 }
 
 TEST_F(TPM2UtilityTest, UnsealDataFail) {
@@ -1196,8 +1178,8 @@ TEST_F(TPM2UtilityTest, UnsealDataFail) {
   SecureBlob unsealed_data;
   EXPECT_CALL(mock_tpm_utility_, UnsealData(key_blob, _, _))
       .WillOnce(DoAll(Return(TPM_RC_FAILURE)));
-  EXPECT_FALSE(utility.UnsealData(1, key_blob, encrypted_data, auth_data,
-                                  &unsealed_data));
+  EXPECT_FALSE(
+      utility.UnsealData(key_blob, encrypted_data, auth_data, &unsealed_data));
 }
 
 TEST_F(TPM2UtilityTest, UnsealDataLeagcyFail) {
@@ -1211,8 +1193,8 @@ TEST_F(TPM2UtilityTest, UnsealDataLeagcyFail) {
   EXPECT_CALL(mock_tpm_utility_, LoadKey(key_blob, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_CALL(mock_tpm_utility_, UnsealData(_, _, _)).Times(0);
-  EXPECT_FALSE(utility.UnsealData(1, key_blob, encrypted_data, auth_data,
-                                  &unsealed_data));
+  EXPECT_FALSE(
+      utility.UnsealData(key_blob, encrypted_data, auth_data, &unsealed_data));
 }
 
 }  // namespace chaps

@@ -305,30 +305,26 @@ void TokenInitThread::ThreadMain() {
     LOG(INFO) << "Initializing key hierarchy for token at " << path_.value();
     if (!InitializeKeyHierarchy(&root_key)) {
       LOG(ERROR) << "Failed to initialize key hierarchy at " << path_.value();
-      tpm_utility_->UnloadKeysForSlot(slot_id_);
     }
   } else {
     // Don't send the auth data to the TPM if it fails to verify against the
     // saved hash.
     object_pool_->GetInternalBlob(kAuthDataHash, &saved_auth_data_hash);
     if (!SanityCheckAuthData(auth_data_hash, saved_auth_data_hash) ||
-        !tpm_utility_->UnsealData(slot_id_, auth_key_blob, encrypted_root_key,
+        !tpm_utility_->UnsealData(auth_key_blob, encrypted_root_key,
                                   Sha1(auth_data_), &root_key)) {
       LOG(ERROR) << "Failed to unseal for token at " << path_.value()
                  << ", reinitializing token.";
       CreateTokenReinitializedFlagFile(path_);
-      tpm_utility_->UnloadKeysForSlot(slot_id_);
       if (object_pool_->DeleteAll() != ObjectPool::Result::Success)
         LOG(WARNING) << "Failed to delete all existing objects.";
       if (!InitializeKeyHierarchy(&root_key)) {
         LOG(ERROR) << "Failed to initialize key hierarchy at " << path_.value();
-        tpm_utility_->UnloadKeysForSlot(slot_id_);
       }
     }
   }
   if (!object_pool_->SetEncryptionKey(root_key)) {
     LOG(ERROR) << "SetEncryptionKey failed for token at " << path_.value();
-    tpm_utility_->UnloadKeysForSlot(slot_id_);
     return;
   }
   if (!root_key.empty()) {
@@ -347,8 +343,8 @@ bool TokenInitThread::InitializeKeyHierarchy(SecureBlob* root_key) {
   *root_key = SecureBlob(root_key_str.begin(), root_key_str.end());
   string auth_key_blob;
   string encrypted_root_key;
-  if (!tpm_utility_->SealData(slot_id_, root_key_str, Sha1(auth_data_),
-                              &auth_key_blob, &encrypted_root_key)) {
+  if (!tpm_utility_->SealData(root_key_str, Sha1(auth_data_), &auth_key_blob,
+                              &encrypted_root_key)) {
     LOG(ERROR) << "Failed to seal user encryption key.";
     return false;
   }
@@ -846,13 +842,11 @@ void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
   ObjectPool* object_pool = NULL;
   std::unique_ptr<ObjectPool> scoped_object_pool;
   int slot_id = 0;
-  bool unload = false;
   if (path_slot_map_.find(path) == path_slot_map_.end()) {
     object_pool = factory_->CreateObjectPool(
         this, nullptr, factory_->CreateObjectStore(path), nullptr);
     scoped_object_pool.reset(object_pool);
     slot_id = FindEmptySlot();
-    unload = true;
   } else {
     slot_id = path_slot_map_[path];
     object_pool = slot_list_[slot_id].token_object_pool.get();
@@ -871,7 +865,7 @@ void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
     string new_auth_key_blob;
     if (!object_pool->GetInternalBlob(kEncryptedAuthKey, &auth_key_blob)) {
       LOG(INFO) << "Token not initialized; ignoring change auth data event.";
-    } else if (!tpm_utility_->ChangeAuthData(slot_id, Sha1(old_auth_data),
+    } else if (!tpm_utility_->ChangeAuthData(Sha1(old_auth_data),
                                              Sha1(new_auth_data), auth_key_blob,
                                              &new_auth_key_blob)) {
       LOG(ERROR) << "Failed to change auth data for token at " << path.value();
@@ -884,8 +878,6 @@ void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
       LOG(ERROR) << "Failed to write auth data hash for token at "
                  << path.value();
     }
-    if (unload)
-      tpm_utility_->UnloadKeysForSlot(slot_id);
   } else {
     // We're working with a software-only token.
     string encrypted_root_key;

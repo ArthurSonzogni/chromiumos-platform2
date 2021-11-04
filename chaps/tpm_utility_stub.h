@@ -28,16 +28,14 @@ class TPMUtilityStub : public TPMUtility {
 
   TPMVersion GetTPMVersion() override { return TPMVersion::TPM1_2; }
 
-  bool Authenticate(int slot_id,
-                    const brillo::SecureBlob& auth_data,
+  bool Authenticate(const brillo::SecureBlob& auth_data,
                     const std::string& auth_key_blob,
                     const std::string& encrypted_root_key,
                     brillo::SecureBlob* root_key) override {
     return false;
   }
 
-  bool ChangeAuthData(int slot_id,
-                      const brillo::SecureBlob& old_auth_data,
+  bool ChangeAuthData(const brillo::SecureBlob& old_auth_data,
                       const brillo::SecureBlob& new_auth_data,
                       const std::string& old_auth_key_blob,
                       std::string* new_auth_key_blob) override {
@@ -139,16 +137,14 @@ class TPMUtilityStub : public TPMUtility {
 
   bool IsSRKReady() override { return false; }
 
-  bool SealData(int slot_id,
-                const std::string& unsealed_data,
+  bool SealData(const std::string& unsealed_data,
                 const brillo::SecureBlob& auth_value,
                 std::string* key_blob,
                 std::string* encrypted_data) override {
     return false;
   }
 
-  bool UnsealData(int slot_id,
-                  const std::string& key_blob,
+  bool UnsealData(const std::string& key_blob,
                   const std::string& encrypted_data,
                   const brillo::SecureBlob& auth_value,
                   brillo::SecureBlob* unsealed_data) override {

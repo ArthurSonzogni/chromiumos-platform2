@@ -87,23 +87,23 @@ ObjectPool* CreateObjectPoolMock() {
 void ConfigureTPMUtility(TPMUtilityMock* tpm) {
   EXPECT_CALL(*tpm, Init()).WillRepeatedly(Return(true));
   EXPECT_CALL(*tpm, UnloadKeysForSlot(_)).Times(AnyNumber());
-  EXPECT_CALL(
-      *tpm, UnsealData(_, string("auth_key_blob"), string("encrypted_root_key"),
-                       Sha1(MakeBlob(kAuthData)), _))
+  EXPECT_CALL(*tpm,
+              UnsealData(string("auth_key_blob"), string("encrypted_root_key"),
+                         Sha1(MakeBlob(kAuthData)), _))
       .WillRepeatedly(
-          DoAll(SetArgPointee<4>(MakeBlob("root_key")), Return(true)));
-  EXPECT_CALL(*tpm, ChangeAuthData(_, Sha1(MakeBlob(kAuthData)),
+          DoAll(SetArgPointee<3>(MakeBlob("root_key")), Return(true)));
+  EXPECT_CALL(*tpm, ChangeAuthData(Sha1(MakeBlob(kAuthData)),
                                    Sha1(MakeBlob(kNewAuthData)),
                                    string("auth_key_blob"), _))
       .WillRepeatedly(
-          DoAll(SetArgPointee<4>(string("new_auth_key_blob")), Return(true)));
+          DoAll(SetArgPointee<3>(string("new_auth_key_blob")), Return(true)));
   EXPECT_CALL(*tpm, GenerateRandom(_, _))
       .WillRepeatedly(
           DoAll(SetArgPointee<1>(string("root_key")), Return(true)));
   string exponent(kDefaultPubExp, kDefaultPubExpSize);
-  EXPECT_CALL(*tpm, SealData(1, string("root_key"), MakeBlob(kAuthData), _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<3>(string("auth_key_blob")),
-                            SetArgPointee<4>(string("encrypted_root_key")),
+  EXPECT_CALL(*tpm, SealData(string("root_key"), MakeBlob(kAuthData), _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(string("auth_key_blob")),
+                            SetArgPointee<3>(string("encrypted_root_key")),
                             Return(true)));
   EXPECT_CALL(*tpm, IsSRKReady()).WillRepeatedly(Return(true));
   EXPECT_CALL(*tpm, IsTPMAvailable()).WillRepeatedly(Return(true));

@@ -5,6 +5,7 @@
 #include "chaps/tpm_utility_impl.h"
 
 #include <map>
+#include <optional>
 #include <set>
 #include <sstream>
 #include <string>
@@ -34,8 +35,6 @@ using trousers::ScopedTssPolicy;
 
 namespace {
 constexpr int kKeySizeForSealingData = 2048;
-constexpr char kPublicExponentForSealingData[] = "\x01\x00\x01";
-constexpr int kPublicExponentForSealingDataSize = 3;
 }  // namespace
 
 namespace chaps {
@@ -159,8 +158,7 @@ TPMUtilityImpl::~TPMUtilityImpl() {
   for (it = slot_handles_.begin(); it != slot_handles_.end(); ++it) {
     set<int>* slot_handles = &it->second.handles_;
     for (it2 = slot_handles->begin(); it2 != slot_handles->end(); ++it2) {
-      Tspi_Key_UnloadKey(GetTssHandle(*it2));
-      Tspi_Context_CloseObject(tsp_context_, GetTssHandle(*it2));
+      FlushHandle(*it2);
     }
   }
   // These can't use ScopedTssObject because they must be closed before the
@@ -306,39 +304,51 @@ bool TPMUtilityImpl::InitSRK() {
   return true;
 }
 
-bool TPMUtilityImpl::Authenticate(int slot_id,
-                                  const SecureBlob& auth_data,
+bool TPMUtilityImpl::Authenticate(const SecureBlob& auth_data,
                                   const string& auth_key_blob,
                                   const string& encrypted_root_key,
                                   SecureBlob* root_key) {
   VLOG(1) << "TPMUtilityImpl::Authenticate enter";
   int key_handle = 0;
-  if (!LoadKey(slot_id, auth_key_blob, auth_data, &key_handle))
+  if (!LoadKeyWithParentInternal(std::nullopt, auth_key_blob, auth_data, srk_,
+                                 &key_handle))
     return false;
   string root_key_str;
-  if (!Unbind(key_handle, encrypted_root_key, &root_key_str))
+  if (!Unbind(key_handle, encrypted_root_key, &root_key_str)) {
+    AutoLock lock(lock_);
+    FlushHandle(key_handle);
     return false;
+  }
   *root_key = SecureBlob(root_key_str.begin(), root_key_str.end());
   brillo::SecureClearContainer(root_key_str);
+
   VLOG(1) << "TPMUtilityImpl::Authenticate success";
+  AutoLock lock(lock_);
+  FlushHandle(key_handle);
   return true;
 }
 
-bool TPMUtilityImpl::ChangeAuthData(int slot_id,
-                                    const SecureBlob& old_auth_data,
+bool TPMUtilityImpl::ChangeAuthData(const SecureBlob& old_auth_data,
                                     const SecureBlob& new_auth_data,
                                     const string& old_auth_key_blob,
                                     string* new_auth_key_blob) {
   VLOG(1) << "TPMUtilityImpl::ChangeAuthData enter";
   int key_handle = 0;
-  if (!LoadKey(slot_id, old_auth_key_blob, old_auth_data, &key_handle))
+  if (!LoadKeyWithParentInternal(std::nullopt, old_auth_key_blob, old_auth_data,
+                                 srk_, &key_handle))
     return false;
   // Make sure the old auth data is ok.
   string encrypted, decrypted;
-  if (!Bind(key_handle, "testdata", &encrypted))
+  if (!Bind(key_handle, "testdata", &encrypted)) {
+    AutoLock lock(lock_);
+    FlushHandle(key_handle);
     return false;
-  if (!Unbind(key_handle, encrypted, &decrypted))
+  }
+  if (!Unbind(key_handle, encrypted, &decrypted)) {
+    AutoLock lock(lock_);
+    FlushHandle(key_handle);
     return false;
+  }
   // Change the secret.
   AutoLock lock(lock_);
   TSS_RESULT result = TSS_SUCCESS;
@@ -346,6 +356,7 @@ bool TPMUtilityImpl::ChangeAuthData(int slot_id,
   result = Tspi_Context_CreateObject(tsp_context_, TSS_OBJECT_TYPE_POLICY,
                                      TSS_POLICY_USAGE, policy.ptr());
   if (result != TSS_SUCCESS) {
+    FlushHandle(key_handle);
     LOG(ERROR) << "Tspi_Context_CreateObject - " << ResultToString(result);
     return false;
   }
@@ -353,17 +364,22 @@ bool TPMUtilityImpl::ChangeAuthData(int slot_id,
       Tspi_Policy_SetSecret(policy, TSS_SECRET_MODE_SHA1, new_auth_data.size(),
                             const_cast<BYTE*>(new_auth_data.data()));
   if (result != TSS_SUCCESS) {
+    FlushHandle(key_handle);
     LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
     return false;
   }
   result = Tspi_ChangeAuth(GetTssHandle(key_handle), srk_, policy.release());
   if (result != TSS_SUCCESS) {
+    FlushHandle(key_handle);
     LOG(ERROR) << "Tspi_ChangeAuth - " << ResultToString(result);
     return false;
   }
-  if (!GetKeyBlob(GetTssHandle(key_handle), new_auth_key_blob))
+  if (!GetKeyBlob(GetTssHandle(key_handle), new_auth_key_blob)) {
+    FlushHandle(key_handle);
     return false;
+  }
   VLOG(1) << "TPMUtilityImpl::ChangeAuthData success";
+  FlushHandle(key_handle);
   return true;
 }
 
@@ -419,6 +435,17 @@ bool TPMUtilityImpl::GenerateRSAKey(int slot,
                                     const SecureBlob& auth_data,
                                     string* key_blob,
                                     int* key_handle) {
+  // Call the internal function.
+  return GenerateRSAKeyInternal(slot, modulus_bits, public_exponent, auth_data,
+                                key_blob, key_handle);
+}
+
+bool TPMUtilityImpl::GenerateRSAKeyInternal(std::optional<int> slot,
+                                            int modulus_bits,
+                                            const string& public_exponent,
+                                            const SecureBlob& auth_data,
+                                            string* key_blob,
+                                            int* key_handle) {
   VLOG(1) << "TPMUtilityImpl::GenerateRSAKey enter";
   AutoLock lock(lock_);
   if (!InitSRK())
@@ -594,10 +621,20 @@ bool TPMUtilityImpl::LoadKeyWithParent(int slot,
                                        const SecureBlob& auth_data,
                                        int parent_key_handle,
                                        int* key_handle) {
+  // Call the internal function.
+  return LoadKeyWithParentInternal(slot, key_blob, auth_data, parent_key_handle,
+                                   key_handle);
+}
+
+bool TPMUtilityImpl::LoadKeyWithParentInternal(std::optional<int> slot,
+                                               const string& key_blob,
+                                               const SecureBlob& auth_data,
+                                               int parent_key_handle,
+                                               int* key_handle) {
   AutoLock lock(lock_);
   if (!InitSRK())
     return false;
-  if (IsAlreadyLoaded(slot, key_blob, key_handle))
+  if (slot.has_value() && IsAlreadyLoaded(slot.value(), key_blob, key_handle))
     return true;
   VLOG(1) << "TPMUtilityImpl::LoadKeyWithParent enter";
   ScopedTssKey key(tsp_context_);
@@ -617,8 +654,7 @@ void TPMUtilityImpl::UnloadKeysForSlot(int slot) {
   set<int>* handles = &slot_handles_[slot].handles_;
   set<int>::iterator it;
   for (it = handles->begin(); it != handles->end(); ++it) {
-    Tspi_Key_UnloadKey(GetTssHandle(*it));
-    Tspi_Context_CloseObject(tsp_context_, GetTssHandle(*it));
+    FlushHandle(*it);
   }
   slot_handles_.erase(slot);
   LOG(INFO) << "Unloaded keys for slot " << slot;
@@ -751,19 +787,28 @@ bool TPMUtilityImpl::IsSRKReady() {
   return is_enabled && is_owned && InitSRK();
 }
 
-int TPMUtilityImpl::CreateHandle(int slot,
+int TPMUtilityImpl::CreateHandle(std::optional<int> slot,
                                  TSS_HKEY key,
                                  const string& key_blob,
                                  const SecureBlob& auth_data) {
   int handle = ++last_handle_;
-  HandleInfo* handle_info = &slot_handles_[slot];
-  handle_info->handles_.insert(handle);
-  handle_info->blob_handle_[key_blob] = handle;
+  if (slot.has_value()) {
+    HandleInfo* handle_info = &slot_handles_[slot.value()];
+    handle_info->handles_.insert(handle);
+    handle_info->blob_handle_[key_blob] = handle;
+  }
   KeyInfo* key_info = &handle_info_[handle];
   key_info->tss_handle = key;
   key_info->blob = key_blob;
   key_info->auth_data = auth_data;
   return handle;
+}
+
+void TPMUtilityImpl::FlushHandle(int handle) {
+  TSS_HKEY tss_handle = GetTssHandle(handle);
+  Tspi_Key_UnloadKey(tss_handle);
+  Tspi_Context_CloseObject(tsp_context_, tss_handle);
+  handle_info_.erase(handle);
 }
 
 bool TPMUtilityImpl::CreateKeyPolicy(TSS_HKEY key,
@@ -983,34 +1028,34 @@ bool TPMUtilityImpl::ReloadKey(int key_handle) {
   return true;
 }
 
-bool TPMUtilityImpl::SealData(int slot_id,
-                              const std::string& unsealed_data,
+bool TPMUtilityImpl::SealData(const std::string& unsealed_data,
                               const brillo::SecureBlob& auth_value,
                               std::string* key_blob,
                               std::string* encrypted_data) {
   // No need to lock here, because GenerateRSAKey & Bind would acquire the lock.
   int auth_key_handle;
-  std::string public_exponent(kPublicExponentForSealingData,
-                              kPublicExponentForSealingDataSize);
-  if (!GenerateRSAKey(slot_id, kKeySizeForSealingData, public_exponent,
-                      auth_value, key_blob, &auth_key_handle)) {
+  if (!GenerateRSAKeyInternal(std::nullopt, kKeySizeForSealingData,
+                              default_exponent_, auth_value, key_blob,
+                              &auth_key_handle)) {
     LOG(ERROR) << "Failed to generate authentication key for sealing data.";
     return false;
   }
   if (!Bind(auth_key_handle, unsealed_data, encrypted_data)) {
     LOG(ERROR) << "Failed to bind encryption key for sealing data.";
+    AutoLock lock(lock_);
+    FlushHandle(auth_key_handle);
     return false;
   }
+  AutoLock lock(lock_);
+  FlushHandle(auth_key_handle);
   return true;
 }
 
-bool TPMUtilityImpl::UnsealData(int slot_id,
-                                const std::string& key_blob,
+bool TPMUtilityImpl::UnsealData(const std::string& key_blob,
                                 const std::string& encrypted_data,
                                 const brillo::SecureBlob& auth_value,
                                 brillo::SecureBlob* unsealed_data) {
-  if (!Authenticate(slot_id, auth_value, key_blob, encrypted_data,
-                    unsealed_data)) {
+  if (!Authenticate(auth_value, key_blob, encrypted_data, unsealed_data)) {
     LOG(ERROR) << "Authentication failed for unsealing data.";
     return false;
   }

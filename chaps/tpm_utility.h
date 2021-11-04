@@ -53,16 +53,14 @@ class TPMUtility {
   //                          key.
   //   root_key - Will be populated with the decrypted root key.
   // Returns true on success.
-  virtual bool Authenticate(int slot_id,
-                            const brillo::SecureBlob& auth_data,
+  virtual bool Authenticate(const brillo::SecureBlob& auth_data,
                             const std::string& auth_key_blob,
                             const std::string& encrypted_root_key,
                             brillo::SecureBlob* root_key) = 0;
 
   // Changes authorization data for a user's authorization key. Returns true on
   // success.
-  virtual bool ChangeAuthData(int slot_id,
-                              const brillo::SecureBlob& old_auth_data,
+  virtual bool ChangeAuthData(const brillo::SecureBlob& old_auth_data,
                               const brillo::SecureBlob& new_auth_data,
                               const std::string& old_auth_key_blob,
                               std::string* new_auth_key_blob) = 0;
@@ -264,8 +262,7 @@ class TPMUtility {
   //              in the future.
   //   encrypted_data - The data that is needed to retrieve the unsealed data.
   // Returns true on success.
-  virtual bool SealData(int slot_id,
-                        const std::string& unsealed_data,
+  virtual bool SealData(const std::string& unsealed_data,
                         const brillo::SecureBlob& auth_value,
                         std::string* key_blob,
                         std::string* encrypted_data) = 0;
@@ -276,8 +273,7 @@ class TPMUtility {
   //   auth_data - Authorization data that associated with the sealed data.
   //   unsealed_data - The unsealed data.
   // Returns true on success.
-  virtual bool UnsealData(int slot_id,
-                          const std::string& key_blob,
+  virtual bool UnsealData(const std::string& key_blob,
                           const std::string& encrypted_data,
                           const brillo::SecureBlob& auth_value,
                           brillo::SecureBlob* unsealed_data) = 0;

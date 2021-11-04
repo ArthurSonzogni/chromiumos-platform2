@@ -27,15 +27,13 @@ class TPMUtilityMock : public TPMUtility {
   MOCK_METHOD0(Init, bool());
   MOCK_METHOD0(IsTPMAvailable, bool());
   MOCK_METHOD0(GetTPMVersion, TPMVersion());
-  MOCK_METHOD5(Authenticate,
-               bool(int,
-                    const brillo::SecureBlob&,
+  MOCK_METHOD4(Authenticate,
+               bool(const brillo::SecureBlob&,
                     const std::string&,
                     const std::string&,
                     brillo::SecureBlob*));
-  MOCK_METHOD5(ChangeAuthData,
-               bool(int,
-                    const brillo::SecureBlob&,
+  MOCK_METHOD4(ChangeAuthData,
+               bool(const brillo::SecureBlob&,
                     const brillo::SecureBlob&,
                     const std::string&,
                     std::string*));
@@ -85,15 +83,13 @@ class TPMUtilityMock : public TPMUtility {
                     const std::string&,
                     std::string*));
   MOCK_METHOD0(IsSRKReady, bool());
-  MOCK_METHOD5(SealData,
-               bool(int,
-                    const std::string&,
+  MOCK_METHOD4(SealData,
+               bool(const std::string&,
                     const brillo::SecureBlob& auth_value,
                     std::string*,
                     std::string*));
-  MOCK_METHOD5(UnsealData,
-               bool(int,
-                    const std::string&,
+  MOCK_METHOD4(UnsealData,
+               bool(const std::string&,
                     const std::string&,
                     const brillo::SecureBlob& auth_value,
                     brillo::SecureBlob*));

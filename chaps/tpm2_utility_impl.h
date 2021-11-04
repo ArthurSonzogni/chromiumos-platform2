@@ -10,6 +10,7 @@
 #include <atomic>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 
@@ -53,13 +54,11 @@ class TPM2UtilityImpl : public TPMUtility {
   bool Init() override;
   bool IsTPMAvailable() override;
   TPMVersion GetTPMVersion() override;
-  bool Authenticate(int slot_id,
-                    const brillo::SecureBlob& auth_data,
+  bool Authenticate(const brillo::SecureBlob& auth_data,
                     const std::string& auth_key_blob,
                     const std::string& encrypted_root_key,
                     brillo::SecureBlob* root_key) override;
-  bool ChangeAuthData(int slot_id,
-                      const brillo::SecureBlob& old_auth_data,
+  bool ChangeAuthData(const brillo::SecureBlob& old_auth_data,
                       const brillo::SecureBlob& new_auth_data,
                       const std::string& old_auth_key_blob,
                       std::string* new_auth_key_blob) override;
@@ -118,13 +117,11 @@ class TPM2UtilityImpl : public TPMUtility {
             const std::string& input,
             std::string* signature) override;
   bool IsSRKReady() override;
-  bool SealData(int slot_id,
-                const std::string& unsealed_data,
+  bool SealData(const std::string& unsealed_data,
                 const brillo::SecureBlob& auth_value,
                 std::string* key_blob,
                 std::string* encrypted_data) override;
-  bool UnsealData(int slot_id,
-                  const std::string& key_blob,
+  bool UnsealData(const std::string& key_blob,
                   const std::string& encrypted_data,
                   const brillo::SecureBlob& auth_value,
                   brillo::SecureBlob* unsealed_data) override;
@@ -143,7 +140,7 @@ class TPM2UtilityImpl : public TPMUtility {
   // These internal methods implement the LoadKeyWithParent and Unbind methods.
   // They are implemented with no locking to allow the public methods above to
   // implement synchronization.
-  bool LoadKeyWithParentInternal(int slot,
+  bool LoadKeyWithParentInternal(std::optional<int> slot,
                                  const std::string& key_blob,
                                  const brillo::SecureBlob& auth_data,
                                  int parent_key_handle,

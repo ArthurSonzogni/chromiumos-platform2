@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <iterator>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -294,9 +295,7 @@ TPM2UtilityImpl::~TPM2UtilityImpl() {
   for (const auto& it : slot_handles_) {
     set<int> slot_handles = it.second;
     for (const auto& it2 : slot_handles) {
-      if (factory_->GetTpm()->FlushContextSync(it2, NULL) != TPM_RC_SUCCESS) {
-        LOG(WARNING) << "Error flushing handle: " << it2;
-      }
+      FlushHandle(it2);
     }
   }
 
@@ -390,45 +389,46 @@ TPMVersion TPM2UtilityImpl::GetTPMVersion() {
   return TPMVersion::TPM2_0;
 }
 
-bool TPM2UtilityImpl::Authenticate(int slot_id,
-                                   const SecureBlob& auth_data,
+bool TPM2UtilityImpl::Authenticate(const SecureBlob& auth_data,
                                    const std::string& auth_key_blob,
                                    const std::string& encrypted_root_key,
                                    SecureBlob* root_key) {
   CHECK(root_key);
   AutoLock lock(lock_);
   int key_handle = 0;
-  if (!LoadKeyWithParentInternal(slot_id, auth_key_blob, auth_data,
+  if (!LoadKeyWithParentInternal(std::nullopt, auth_key_blob, auth_data,
                                  kStorageRootKey, &key_handle)) {
     return false;
   }
   std::string root_key_str;
   if (!UnbindInternal(key_handle, encrypted_root_key, &root_key_str)) {
+    FlushHandle(key_handle);
     return false;
   }
+  FlushHandle(key_handle);
   *root_key = SecureBlob(root_key_str);
   root_key_str.clear();
   return true;
 }
 
-bool TPM2UtilityImpl::ChangeAuthData(int slot_id,
-                                     const SecureBlob& old_auth_data,
+bool TPM2UtilityImpl::ChangeAuthData(const SecureBlob& old_auth_data,
                                      const SecureBlob& new_auth_data,
                                      const std::string& old_auth_key_blob,
                                      std::string* new_auth_key_blob) {
   AutoLock lock(lock_);
-  int key_handle;
+  int key_handle = 0;
   if (new_auth_data.size() > SHA256_DIGEST_SIZE) {
     LOG(ERROR) << "Authorization cannot be larger than SHA256 Digest size.";
     return false;
   }
-  if (!LoadKeyWithParentInternal(slot_id, old_auth_key_blob, old_auth_data,
+  if (!LoadKeyWithParentInternal(std::nullopt, old_auth_key_blob, old_auth_data,
                                  kStorageRootKey, &key_handle)) {
     LOG(ERROR) << "Error loading key under old authorization data.";
     return false;
   }
   ScopedSession session_scope(factory_, &session_);
   if (!session_) {
+    FlushHandle(key_handle);
     return false;
   }
   session_->SetEntityAuthorizationValue(old_auth_data.to_string());
@@ -438,15 +438,9 @@ bool TPM2UtilityImpl::ChangeAuthData(int slot_id,
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error changing authorization data: "
                << trunks::GetErrorString(result);
+    FlushHandle(key_handle);
     return false;
   }
-  result = factory_->GetTpm()->FlushContextSync(key_handle, NULL);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error unloading key under old authorization: "
-               << trunks::GetErrorString(result);
-    return false;
-  }
-  slot_handles_[slot_id].erase(key_handle);
   FlushHandle(key_handle);
   return true;
 }
@@ -707,9 +701,6 @@ bool TPM2UtilityImpl::LoadKeyWithParent(int slot,
 void TPM2UtilityImpl::UnloadKeysForSlot(int slot) {
   AutoLock Lock(lock_);
   for (const auto& it : slot_handles_[slot]) {
-    if (factory_->GetTpm()->FlushContextSync(it, NULL) != TPM_RC_SUCCESS) {
-      LOG(WARNING) << "Error flushing handle: " << it;
-    }
     FlushHandle(it);
   }
   slot_handles_.erase(slot);
@@ -1006,7 +997,7 @@ bool TPM2UtilityImpl::IsSRKReady() {
   return Init();
 }
 
-bool TPM2UtilityImpl::LoadKeyWithParentInternal(int slot,
+bool TPM2UtilityImpl::LoadKeyWithParentInternal(std::optional<int> slot,
                                                 const std::string& key_blob,
                                                 const SecureBlob& auth_data,
                                                 int parent_key_handle,
@@ -1044,7 +1035,9 @@ bool TPM2UtilityImpl::LoadKeyWithParentInternal(int slot,
   }
   handle_auth_data_[*key_handle] = auth_data;
   handle_name_[*key_handle] = key_name;
-  slot_handles_[slot].insert(*key_handle);
+  if (slot.has_value()) {
+    slot_handles_[slot.value()].insert(*key_handle);
+  }
   return true;
 }
 
@@ -1086,12 +1079,15 @@ bool TPM2UtilityImpl::UnbindInternal(int key_handle,
 }
 
 void TPM2UtilityImpl::FlushHandle(int key_handle) {
+  if (factory_->GetTpm()->FlushContextSync(key_handle, nullptr) !=
+      TPM_RC_SUCCESS) {
+    LOG(WARNING) << "Error flushing handle: " << key_handle;
+  }
   handle_auth_data_.erase(key_handle);
   handle_name_.erase(key_handle);
 }
 
-bool TPM2UtilityImpl::SealData(int slot_id,
-                               const std::string& unsealed_data,
+bool TPM2UtilityImpl::SealData(const std::string& unsealed_data,
                                const brillo::SecureBlob& auth_value,
                                std::string* key_blob,
                                std::string* encrypted_data) {
@@ -1119,15 +1115,13 @@ bool TPM2UtilityImpl::SealData(int slot_id,
   return true;
 }
 
-bool TPM2UtilityImpl::UnsealData(int slot_id,
-                                 const std::string& key_blob,
+bool TPM2UtilityImpl::UnsealData(const std::string& key_blob,
                                  const std::string& encrypted_data,
                                  const brillo::SecureBlob& auth_value,
                                  brillo::SecureBlob* unsealed_data) {
   if (!encrypted_data.empty()) {
     // Use the legacy method to unseal data for backward compatibility.
-    if (!Authenticate(slot_id, auth_value, key_blob, encrypted_data,
-                      unsealed_data)) {
+    if (!Authenticate(auth_value, key_blob, encrypted_data, unsealed_data)) {
       LOG(ERROR) << "Authentication failed for unsealing data.";
       return false;
     }
