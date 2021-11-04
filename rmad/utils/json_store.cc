@@ -110,8 +110,18 @@ bool JsonStore::SetValue(const std::string& key, base::Value&& value) {
   }
   const base::Value* result = data_.FindKey(key);
   if (!result || *result != value) {
+    base::Value* result_backup = result ? result->DeepCopy() : nullptr;
     data_.SetKey(key, std::move(value));
-    return WriteToFile();
+    bool ret = WriteToFile();
+    if (!ret) {
+      if (result_backup) {
+        data_.SetKey(key, std::move(*result_backup));
+      } else {
+        data_.RemoveKey(key);
+      }
+      read_only_ = true;
+    }
+    return ret;
   }
   return true;
 }
