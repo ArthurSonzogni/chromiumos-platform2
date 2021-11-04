@@ -25,6 +25,7 @@
 *.gch
 *.gcda
 *.gcno
+lcov.info
 
 # Common output files.
 *.dump
@@ -58,6 +59,9 @@ tags_sorted_by_file
 
 # Cargo lock file.
 Cargo.lock
+
+# Define rust files.
+*.rs.bk
 
 # Cargo build directories.
 target/
