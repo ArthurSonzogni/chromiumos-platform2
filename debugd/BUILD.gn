@@ -150,6 +150,7 @@ static_library("libdebugd") {
   deps = [
     ":debugd-adaptors",
     ":external-proto",
+    ":scheduler_configuration_utils",
   ]
 }
 
@@ -158,6 +159,11 @@ static_library("debugd_dbus_utils") {
     "src/helpers/shill_proxy.cc",
     "src/helpers/system_service_proxy.cc",
   ]
+  configs += [ ":target_defaults" ]
+}
+
+static_library("scheduler_configuration_utils") {
+  sources = [ "src/helpers/scheduler_configuration_utils.cc" ]
   configs += [ ":target_defaults" ]
 }
 
@@ -366,7 +372,6 @@ if (use.test) {
       "src/helpers/dev_features_password_utils_test.cc",
       "src/helpers/modetest_helper_utils.cc",
       "src/helpers/modetest_helper_utils_test.cc",
-      "src/helpers/scheduler_configuration_utils.cc",
       "src/helpers/scheduler_configuration_utils_test.cc",
       "src/helpers/typec_connector_class_helper_test.cc",
       "src/helpers/typec_connector_class_helper_utils.cc",
@@ -387,6 +392,7 @@ if (use.test) {
     deps = [
       ":debugd_dbus_utils",
       ":libdebugd",
+      ":scheduler_configuration_utils",
       "//common-mk/testrunner",
     ]
   }

@@ -5,14 +5,16 @@
 #ifndef DEBUGD_SRC_PERF_TOOL_H_
 #define DEBUGD_SRC_PERF_TOOL_H_
 
-#include <stdint.h>
 #include <sys/utsname.h>
 
+#include <cstdint>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <brillo/asynchronous_signal_handler.h>
 #include <brillo/errors/error.h>
@@ -65,7 +67,21 @@ class PerfTool {
   // and gathers perf output right away.
   bool StopPerf(uint64_t session_id, brillo::ErrorPtr* error);
 
+  // Runs the perf tool with the given |quipper_args| and returns either a
+  // perf_data or perf_stat protobuf in serialized form over the passed
+  // |stdout_fd| file descriptor, or nothing if there was an error. |session_id|
+  // is returned to the client to optionally stop the perf tool before it runs
+  // for the full duration.
+  // If |disable_cpu_idle| is true, this will temporarily disable all CPUs from
+  // entering the idle states while running the perf command.
+  bool GetPerfOutputV2(const std::vector<std::string>& quipper_args,
+                       bool disable_cpu_idle,
+                       const base::ScopedFD& stdout_fd,
+                       uint64_t* session_id,
+                       brillo::ErrorPtr* error);
+
  private:
+  inline bool perf_running() const { return quipper_process_ != nullptr; }
   void OnQuipperProcessExited(const siginfo_t& siginfo);
 
   // Change the proper strobbing settings before starting ETM collection.
@@ -73,12 +89,21 @@ class PerfTool {
   // strobbing.
   void EtmStrobbingSettings();
 
+  // Disable the cpuidle states for all online CPUs and sets cpuidle_states_
+  // with filepath to prior state pairs. It returns false when any error
+  // occurs or cpuidle_states_ is not empty.
+  bool DisableCpuIdleStates();
+
+  // Restore the cpuidle states based on cpuidle_states_.
+  void RestoreCpuIdleStates();
+
   std::optional<uint64_t> profiler_session_id_;
   std::unique_ptr<SandboxedProcess> quipper_process_;
   base::ScopedFD quipper_process_output_fd_;
   brillo::AsynchronousSignalHandler signal_handler_;
   brillo::ProcessReaper process_reaper_;
   bool etm_available;
+  std::map<base::FilePath, std::string> cpuidle_states_;
 };
 
 }  // namespace debugd

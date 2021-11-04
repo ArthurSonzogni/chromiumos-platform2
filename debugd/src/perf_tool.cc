@@ -9,16 +9,17 @@
 #include <unistd.h>
 
 #include <map>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
-#include "base/files/file_util.h"
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 
 #include "debugd/src/error_utils.h"
+#include "debugd/src/helpers/scheduler_configuration_utils.h"
 #include "debugd/src/process_with_output.h"
 
 namespace debugd {
@@ -38,6 +39,13 @@ const char kArgsError[] =
 
 // Location of quipper on ChromeOS.
 const char kQuipperLocation[] = "/usr/bin/quipper";
+
+// Location of the file which contains the range of online CPU numbers.
+const char kCpuTopologyLocation[] = "/sys/devices/system/cpu/online";
+// Pattern of the directories that contain information about the idle state of
+// a CPU on the system.
+const char kCpuIdleStatePathPattern[] =
+    "/sys/devices/system/cpu/cpu%s/cpuidle/state%d/disable";
 
 // Location of the default ETM strobbing settings in configfs.
 const char kStrobbingSettingPathPattern[] =
@@ -135,6 +143,120 @@ PerfTool::PerfTool() {
   EtmStrobbingSettings();
 }
 
+bool PerfTool::DisableCpuIdleStates() {
+  if (!cpuidle_states_.empty()) {
+    LOG(ERROR) << "The cpuidle states are disabled already.";
+    return false;
+  }
+  std::string cpu_range;
+  if (!base::ReadFileToString(base::FilePath(kCpuTopologyLocation),
+                              &cpu_range)) {
+    PLOG(ERROR) << "File listing online CPU range missing.";
+    return false;
+  }
+
+  std::vector<std::string> cpu_nums;
+  if (!SchedulerConfigurationUtils::ParseCPUNumbers(cpu_range, &cpu_nums)) {
+    PLOG(ERROR) << "Failed to parse CPU range: " << cpu_range << ".";
+    return false;
+  }
+
+  for (const auto& cpu : cpu_nums) {
+    for (int state = 0;; ++state) {
+      const auto disable_file = base::FilePath(
+          base::StringPrintf(kCpuIdleStatePathPattern, cpu.c_str(), state));
+      if (!base::PathExists(disable_file))
+        break;
+
+      std::string disable_state;
+      base::ReadFileToString(disable_file, &disable_state);
+      cpuidle_states_.emplace(disable_file, disable_state);
+      base::WriteFile(disable_file, "1");
+    }
+  }
+  return true;
+}
+
+void PerfTool::RestoreCpuIdleStates() {
+  for (const auto& [path, disable_state] : cpuidle_states_) {
+    if (base::PathExists(path))
+      base::WriteFile(path, disable_state);
+  }
+  cpuidle_states_.clear();
+}
+
+bool PerfTool::GetPerfOutputV2(const std::vector<std::string>& quipper_args,
+                               bool disable_cpu_idle,
+                               const base::ScopedFD& stdout_fd,
+                               uint64_t* session_id,
+                               brillo::ErrorPtr* error) {
+  PerfSubcommand subcommand;
+  if (!ValidateQuipperArguments(quipper_args, subcommand, error))
+    return false;
+
+  if (perf_running()) {
+    // Do not run multiple sessions at the same time. Attempt to start another
+    // profiler session using this method yields a DBus error. Note that
+    // starting another session using GetPerfOutput() will still succeed.
+    DEBUGD_ADD_ERROR(error, kProcessErrorName, "Existing perf tool running.");
+    return false;
+  }
+
+  if (disable_cpu_idle) {
+    if (!DisableCpuIdleStates()) {
+      DEBUGD_ADD_ERROR(error, kProcessErrorName,
+                       "Failed to disable CPU idle states");
+      return false;
+    }
+  }
+
+  DCHECK(!profiler_session_id_);
+
+  auto quipper_process = std::make_unique<SandboxedProcess>();
+  quipper_process->SandboxAs("root", "root");
+  if (!quipper_process->Init()) {
+    DEBUGD_ADD_ERROR(error, kProcessErrorName,
+                     "Process initialization failure.");
+    return false;
+  }
+
+  AddQuipperArguments(quipper_process.get(), 0, quipper_args);
+  quipper_process->BindFd(stdout_fd.get(), 1);
+
+  if (!quipper_process->Start()) {
+    DEBUGD_ADD_ERROR(error, kProcessErrorName, "Process start failure.");
+    return false;
+  }
+  quipper_process_ = std::move(quipper_process);
+  DCHECK_GT(quipper_process_->pid(), 0);
+
+  process_reaper_.WatchForChild(
+      FROM_HERE, quipper_process_->pid(),
+      base::BindOnce(&PerfTool::OnQuipperProcessExited,
+                     base::Unretained(this)));
+
+  // When GetPerfOutputV2() is used to run the perf tool, the user will read
+  // from the read end of |stdout_fd| until the write end is closed.  At that
+  // point, it may make another call to GetPerfOutputFd() and expect that will
+  // start another perf run. |stdout_fd| will be closed when the last process
+  // holding it exits, which is minijail0 in this case. However, the kernel
+  // closes fds before signaling process exit. Therefore, it's possible for
+  // |stdout_fd| to be closed and the user tries to run another
+  // GetPerfOutputFd() before we're signaled of the process exit. To mitigate
+  // this, hold on to a dup() of |stdout_fd| until we're signaled that the
+  // process has exited. This guarantees that the caller can make a new
+  // GetPerfOutputFd() call when it finishes reading the output.
+  quipper_process_output_fd_.reset(dup(stdout_fd.get()));
+  DCHECK(quipper_process_output_fd_.is_valid());
+
+  // Generate an opaque, pseudo-unique, session ID using time and process ID.
+  profiler_session_id_ = *session_id =
+      static_cast<uint64_t>(base::Time::Now().ToTimeT()) << 32 |
+      (quipper_process_->pid() & 0xffffffff);
+
+  return true;
+}
+
 bool PerfTool::GetPerfOutput(uint32_t duration_secs,
                              const std::vector<std::string>& perf_args,
                              std::vector<uint8_t>* perf_data,
@@ -202,6 +324,9 @@ void PerfTool::OnQuipperProcessExited(const siginfo_t& siginfo) {
   quipper_process_output_fd_.reset();
 
   profiler_session_id_.reset();
+
+  if (!cpuidle_states_.empty())
+    RestoreCpuIdleStates();
 }
 
 bool PerfTool::GetPerfOutputFd(uint32_t duration_secs,
@@ -224,7 +349,7 @@ bool PerfTool::GetPerfOutputFd(uint32_t duration_secs,
     return false;
   }
 
-  if (quipper_process_) {
+  if (perf_running()) {
     // Do not run multiple sessions at the same time. Attempt to start another
     // profiler session using this method yields a DBus error. Note that
     // starting another session using GetPerfOutput() will still succeed.
@@ -234,21 +359,22 @@ bool PerfTool::GetPerfOutputFd(uint32_t duration_secs,
 
   DCHECK(!profiler_session_id_);
 
-  quipper_process_ = std::make_unique<SandboxedProcess>();
-  quipper_process_->SandboxAs("root", "root");
-  if (!quipper_process_->Init()) {
+  auto quipper_process = std::make_unique<SandboxedProcess>();
+  quipper_process->SandboxAs("root", "root");
+  if (!quipper_process->Init()) {
     DEBUGD_ADD_ERROR(error, kProcessErrorName,
                      "Process initialization failure.");
     return false;
   }
 
-  AddQuipperArguments(quipper_process_.get(), duration_secs, perf_args);
-  quipper_process_->BindFd(stdout_fd.get(), 1);
+  AddQuipperArguments(quipper_process.get(), duration_secs, perf_args);
+  quipper_process->BindFd(stdout_fd.get(), 1);
 
-  if (!quipper_process_->Start()) {
+  if (!quipper_process->Start()) {
     DEBUGD_ADD_ERROR(error, kProcessErrorName, "Process start failure.");
     return false;
   }
+  quipper_process_ = std::move(quipper_process);
   DCHECK_GT(quipper_process_->pid(), 0);
 
   process_reaper_.WatchForChild(

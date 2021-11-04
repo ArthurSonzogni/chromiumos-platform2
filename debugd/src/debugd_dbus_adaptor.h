@@ -106,6 +106,11 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
                        const base::ScopedFD& stdout_fd,
                        uint64_t* session_id) override;
   bool StopPerf(brillo::ErrorPtr* error, uint64_t session_id) override;
+  bool GetPerfOutputV2(brillo::ErrorPtr* error,
+                       const std::vector<std::string>& quipper_args,
+                       bool disable_cpu_idle,
+                       const base::ScopedFD& stdout_fd,
+                       uint64_t* session_id) override;
   void DumpDebugLogs(bool is_compressed, const base::ScopedFD& fd) override;
   void SetDebugMode(const std::string& subsystem) override;
   std::string GetLog(const std::string& name) override;

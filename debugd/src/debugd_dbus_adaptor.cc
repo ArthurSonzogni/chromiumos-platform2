@@ -191,6 +191,16 @@ bool DebugdDBusAdaptor::StopPerf(brillo::ErrorPtr* error, uint64_t session_id) {
   return perf_tool_->StopPerf(session_id, error);
 }
 
+bool DebugdDBusAdaptor::GetPerfOutputV2(
+    brillo::ErrorPtr* error,
+    const std::vector<std::string>& quipper_args,
+    bool disable_cpu_idle,
+    const base::ScopedFD& stdout_fd,
+    uint64_t* session_id) {
+  return perf_tool_->GetPerfOutputV2(quipper_args, disable_cpu_idle, stdout_fd,
+                                     session_id, error);
+}
+
 void DebugdDBusAdaptor::DumpDebugLogs(bool is_compressed,
                                       const base::ScopedFD& fd) {
   debug_logs_tool_->GetDebugLogs(is_compressed, fd);
