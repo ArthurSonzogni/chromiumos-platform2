@@ -459,7 +459,7 @@ void Manager::GetNextImage(
   base::ScopedClosureRunner release_device(base::BindOnce(
       [](base::WeakPtr<Manager> manager, const std::string& uuid) {
         if (manager) {
-          base::AutoLock(manager->active_scans_lock_);
+          base::AutoLock auto_lock(manager->active_scans_lock_);
           auto state_entry = manager->active_scans_.find(uuid);
           if (state_entry == manager->active_scans_.end())
             return;
