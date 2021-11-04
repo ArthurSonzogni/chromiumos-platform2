@@ -157,18 +157,16 @@ bool GcamAeStreamManipulator::Flush() {
 }
 
 void GcamAeStreamManipulator::OnOptionsUpdated(const base::Value& json_values) {
-  auto gcam_ae_enable = json_values.FindBoolKey(kGcamAeEnableKey);
-  if (gcam_ae_enable) {
-    options_.gcam_ae_enable = *gcam_ae_enable;
-  }
-  auto log_frame_metadata = json_values.FindBoolKey(kLogFrameMetadataKey);
-  if (log_frame_metadata) {
-    if (options_.log_frame_metadata && !log_frame_metadata.value()) {
+  LoadIfExist(json_values, kGcamAeEnableKey, &options_.gcam_ae_enable);
+
+  bool log_frame_metadata;
+  if (LoadIfExist(json_values, kLogFrameMetadataKey, &log_frame_metadata)) {
+    if (options_.log_frame_metadata && !log_frame_metadata) {
       // Dump frame metadata when metadata logging if turned off.
       metadata_logger_.DumpMetadata();
       metadata_logger_.Clear();
     }
-    options_.log_frame_metadata = *log_frame_metadata;
+    options_.log_frame_metadata = log_frame_metadata;
   }
 
   if (VLOG_IS_ON(1)) {

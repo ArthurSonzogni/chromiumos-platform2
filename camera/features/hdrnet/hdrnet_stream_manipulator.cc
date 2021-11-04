@@ -1007,26 +1007,18 @@ HdrNetStreamManipulator::GetHdrNetContextFromHdrNetStream(
 }
 
 void HdrNetStreamManipulator::OnOptionsUpdated(const base::Value& json_values) {
-  auto hdrnet_enable = json_values.FindBoolKey(kHdrNetEnableKey);
-  if (hdrnet_enable) {
-    options_.hdrnet_enable = *hdrnet_enable;
-  }
-  auto hdr_ratio = json_values.FindDoubleKey(kHdrRatioKey);
-  if (hdr_ratio) {
-    options_.hdr_ratio = *hdr_ratio;
-  }
-  auto dump_buffer = json_values.FindBoolKey(kDumpBufferKey);
-  if (dump_buffer) {
-    options_.dump_buffer = *dump_buffer;
-  }
-  auto log_frame_metadata = json_values.FindBoolKey(kLogFrameMetadataKey);
-  if (log_frame_metadata) {
-    if (options_.log_frame_metadata && !log_frame_metadata.value()) {
+  LoadIfExist(json_values, kHdrNetEnableKey, &options_.hdrnet_enable);
+  LoadIfExist(json_values, kHdrRatioKey, &options_.hdr_ratio);
+  LoadIfExist(json_values, kDumpBufferKey, &options_.dump_buffer);
+
+  bool log_frame_metadata;
+  if (LoadIfExist(json_values, kLogFrameMetadataKey, &log_frame_metadata)) {
+    if (options_.log_frame_metadata && !log_frame_metadata) {
       // Dump frame metadata when metadata logging if turned off.
       metadata_logger_.DumpMetadata();
       metadata_logger_.Clear();
     }
-    options_.log_frame_metadata = *log_frame_metadata;
+    options_.log_frame_metadata = log_frame_metadata;
   }
 
   if (VLOG_IS_ON(1)) {

@@ -314,22 +314,17 @@ FaceDetectionStreamManipulator::GetOrCreateFrameInfoEntry(int frame_number) {
 
 void FaceDetectionStreamManipulator::OnOptionsUpdated(
     const base::Value& json_values) {
-  auto fd_enable = json_values.FindBoolKey(kFaceDetectionEnableKey);
-  if (fd_enable) {
-    options_.enable = *fd_enable;
-  }
-  auto fd_frame_interval = json_values.FindIntKey(kFdFrameIntervalKey);
-  if (fd_frame_interval) {
-    options_.fd_frame_interval = *fd_frame_interval;
-  }
-  auto log_frame_metadata = json_values.FindBoolKey(kLogFrameMetadataKey);
-  if (log_frame_metadata) {
-    if (options_.log_frame_metadata && !log_frame_metadata.value()) {
+  LoadIfExist(json_values, kFaceDetectionEnableKey, &options_.enable);
+  LoadIfExist(json_values, kFdFrameIntervalKey, &options_.fd_frame_interval);
+
+  bool log_frame_metadata;
+  if (LoadIfExist(json_values, kLogFrameMetadataKey, &log_frame_metadata)) {
+    if (options_.log_frame_metadata && !log_frame_metadata) {
       // Dump frame metadata when metadata logging is turned off.
       metadata_logger_.DumpMetadata();
       metadata_logger_.Clear();
     }
-    options_.log_frame_metadata = *log_frame_metadata;
+    options_.log_frame_metadata = log_frame_metadata;
   }
 
   VLOGF(1) << "Face detection config:"

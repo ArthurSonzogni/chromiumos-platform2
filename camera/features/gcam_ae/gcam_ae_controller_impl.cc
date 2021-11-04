@@ -13,6 +13,7 @@
 
 #include <base/strings/string_number_conversions.h>
 
+#include "common/reloadable_config_file.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
@@ -325,20 +326,20 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
 void GcamAeControllerImpl::OnOptionsUpdated(
     const base::Value& json_values,
     base::Optional<MetadataLogger*> metadata_logger) {
-  auto gcam_ae_enable = json_values.FindBoolKey(kGcamAeEnableKey);
-  if (gcam_ae_enable) {
-    options_.enabled = *gcam_ae_enable;
-    if (!options_.enabled) {
+  bool enabled;
+  if (LoadIfExist(json_values, kGcamAeEnableKey, &enabled)) {
+    if (options_.enabled && !enabled) {
       ae_state_machine_.OnReset();
     }
+    options_.enabled = enabled;
   }
 
-  auto ae_frame_interval = json_values.FindIntKey(kAeFrameIntervalKey);
-  if (ae_frame_interval) {
-    if (*ae_frame_interval > 0) {
-      options_.ae_frame_interval = *ae_frame_interval;
+  int ae_frame_interval;
+  if (LoadIfExist(json_values, kAeFrameIntervalKey, &ae_frame_interval)) {
+    if (ae_frame_interval > 0) {
+      options_.ae_frame_interval = ae_frame_interval;
     } else {
-      LOGF(ERROR) << "Invalid AE frame interval: " << *ae_frame_interval;
+      LOGF(ERROR) << "Invalid AE frame interval: " << ae_frame_interval;
     }
   }
 
@@ -361,36 +362,33 @@ void GcamAeControllerImpl::OnOptionsUpdated(
     options_.max_hdr_ratio = std::move(hdr_ratio_map);
   }
 
-  auto ae_stats_input_mode = json_values.FindIntKey(kAeStatsInputModeKey);
-  if (ae_stats_input_mode) {
-    if (*ae_stats_input_mode ==
+  int ae_stats_input_mode;
+  if (LoadIfExist(json_values, kAeStatsInputModeKey, &ae_stats_input_mode)) {
+    if (ae_stats_input_mode ==
             static_cast<int>(AeStatsInputMode::kFromVendorAeStats) ||
-        *ae_stats_input_mode ==
+        ae_stats_input_mode ==
             static_cast<int>(AeStatsInputMode::kFromYuvImage)) {
       options_.ae_stats_input_mode =
-          static_cast<AeStatsInputMode>(*ae_stats_input_mode);
+          static_cast<AeStatsInputMode>(ae_stats_input_mode);
     } else {
-      LOGF(ERROR) << "Invalid AE stats input mode: " << *ae_stats_input_mode;
+      LOGF(ERROR) << "Invalid AE stats input mode: " << ae_stats_input_mode;
     }
   }
 
-  auto ae_override_mode = json_values.FindIntKey(kAeOverrideModeKey);
-  if (ae_override_mode) {
-    if (*ae_override_mode ==
+  int ae_override_mode;
+  if (LoadIfExist(json_values, kAeOverrideModeKey, &ae_override_mode)) {
+    if (ae_override_mode ==
             static_cast<int>(AeOverrideMode::kWithExposureCompensation) ||
-        *ae_override_mode ==
+        ae_override_mode ==
             static_cast<int>(AeOverrideMode::kWithManualSensorControl)) {
-      options_.ae_override_mode =
-          static_cast<AeOverrideMode>(*ae_override_mode);
+      options_.ae_override_mode = static_cast<AeOverrideMode>(ae_override_mode);
     } else {
-      LOGF(ERROR) << "Invalid AE override method: " << *ae_override_mode;
+      LOGF(ERROR) << "Invalid AE override method: " << ae_override_mode;
     }
   }
 
-  auto exp_comp = json_values.FindDoubleKey(kExposureCompensationKey);
-  if (exp_comp) {
-    options_.exposure_compensation = *exp_comp;
-  }
+  LoadIfExist(json_values, kExposureCompensationKey,
+              &options_.exposure_compensation);
 
   if (metadata_logger) {
     metadata_logger_ = *metadata_logger;

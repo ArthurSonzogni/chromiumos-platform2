@@ -10,6 +10,7 @@
 #include <cmath>
 #include <string>
 
+#include "common/reloadable_config_file.h"
 #include "cros-camera/common.h"
 
 namespace cros {
@@ -321,48 +322,20 @@ void AeStateMachine::OnReset() {
 void AeStateMachine::OnOptionsUpdated(const base::Value& json_values) {
   base::AutoLock lock(lock_);
 
-  {
-    auto v = json_values.FindDoubleKey(kTetTargetThresholdLog2);
-    if (v) {
-      tuning_parameters_.tet_target_threshold_log2 = *v;
-    }
-  }
-  {
-    auto v = json_values.FindDoubleKey(kConvergingStepLog2);
-    if (v) {
-      tuning_parameters_.converging_step_log2 = *v;
-    }
-  }
-  {
-    auto v = json_values.FindIntKey(kTetConvergeStabilizeDurationMs);
-    if (v) {
-      tuning_parameters_.tet_converge_stabilize_duration_ms = *v;
-    }
-  }
-  {
-    auto v = json_values.FindDoubleKey(kTetConvergeThresholdLog2);
-    if (v) {
-      tuning_parameters_.tet_converge_threshold_log2 = *v;
-    }
-  }
-  {
-    auto v = json_values.FindDoubleKey(kTetRescanThresholdLog2);
-    if (v) {
-      tuning_parameters_.tet_rescan_threshold_log2 = *v;
-    }
-  }
-  {
-    auto v = json_values.FindDoubleKey(kTetRetentionDurationMsDefault);
-    if (v) {
-      tuning_parameters_.tet_retention_duration_ms_default = *v;
-    }
-  }
-  {
-    auto v = json_values.FindDoubleKey(kTetRetentionDurationMsWithFace);
-    if (v) {
-      tuning_parameters_.tet_retention_duration_ms_with_face = *v;
-    }
-  }
+  LoadIfExist(json_values, kTetTargetThresholdLog2,
+              &tuning_parameters_.tet_target_threshold_log2);
+  LoadIfExist(json_values, kConvergingStepLog2,
+              &tuning_parameters_.converging_step_log2);
+  LoadIfExist(json_values, kTetConvergeStabilizeDurationMs,
+              &tuning_parameters_.tet_converge_stabilize_duration_ms);
+  LoadIfExist(json_values, kTetConvergeThresholdLog2,
+              &tuning_parameters_.tet_converge_threshold_log2);
+  LoadIfExist(json_values, kTetRescanThresholdLog2,
+              &tuning_parameters_.tet_rescan_threshold_log2);
+  LoadIfExist(json_values, kTetRetentionDurationMsDefault,
+              &tuning_parameters_.tet_retention_duration_ms_default);
+  LoadIfExist(json_values, kTetRetentionDurationMsWithFace,
+              &tuning_parameters_.tet_retention_duration_ms_with_face);
 
   if (VLOG_IS_ON(1)) {
     VLOGF(1) << "AeStateMachine tuning parameters:"
