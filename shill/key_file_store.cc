@@ -14,11 +14,11 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/containers/cxx20_erase.h>
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
 #include <base/logging.h>
 #include <base/optional.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
