@@ -150,9 +150,8 @@ void BroadcastForwarder::AddrMsgHandler(const shill::RTNLMessage& msg) {
   if (msg.mode() != shill::RTNLMessage::kModeAdd)
     return;
 
-  shill::ByteString b(msg.GetAttribute(IFA_LABEL));
-  std::string ifname(reinterpret_cast<const char*>(
-      b.GetSubstring(0, IFNAMSIZ).GetConstData()));
+  shill::ByteString b(msg.GetAttribute(IFA_LABEL).GetSubstring(0, IFNAMSIZ));
+  std::string ifname(b.GetConstCString(), b.GetLength());
   if (ifname != dev_ifname_)
     return;
 
