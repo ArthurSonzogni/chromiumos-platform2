@@ -517,37 +517,6 @@ TEST_F(KeysetManagementTest, AddKeysetInvalidCreds) {
   VerifyKeysetNotPresentWithCreds(new_credentials);
 }
 
-// Fail to add new keyset due to lacking privilieges.
-TEST_F(KeysetManagementTest, AddKeysetInvalidPrivileges) {
-  // SETUP
-
-  KeyData vk_key_data;
-  vk_key_data.mutable_privileges()->set_add(false);
-
-  KeysetSetUpWithKeyData(vk_key_data);
-
-  brillo::SecureBlob new_passkey("new pass");
-  Credentials new_credentials(users_[0].name, new_passkey);
-
-  // TEST
-
-  int index = -1;
-  ASSERT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED,
-            keyset_management_->AddKeyset(users_[0].credentials, new_passkey,
-                                          nullptr, false, &index));
-  EXPECT_EQ(index, -1);
-
-  // VERIFY
-  // Invalid permissions cause an addition error. Old keyset shall still be
-  // readable with old credentials, and the new one shall not  exist.
-
-  VerifyKeysetIndicies({kInitialKeysetIndex});
-
-  VerifyKeysetPresentWithCredsAtIndex(users_[0].credentials,
-                                      kInitialKeysetIndex);
-  VerifyKeysetNotPresentWithCreds(new_credentials);
-}
-
 // Fail to add new keyset due to index pool exhaustion.
 TEST_F(KeysetManagementTest, AddKeysetNoFreeIndices) {
   // SETUP
@@ -768,32 +737,6 @@ TEST_F(KeysetManagementTest, RemoveKeysetInvalidCreds) {
   // VERIFY
   // Wrong credentials. Nothing changes, initial keyset still available
   // with old credentials.
-
-  VerifyKeysetIndicies({kInitialKeysetIndex});
-
-  VerifyKeysetPresentWithCredsAtIndex(users_[0].credentials,
-                                      kInitialKeysetIndex);
-}
-
-// Fails to remove due to lacking privilieges.
-TEST_F(KeysetManagementTest, RemoveKeysetInvalidPrivileges) {
-  // SETUP
-
-  KeyData vk_key_data;
-  vk_key_data.mutable_privileges()->set_remove(false);
-  vk_key_data.set_label(kPasswordLabel);
-
-  KeysetSetUpWithKeyData(vk_key_data);
-
-  // TEST
-
-  EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED,
-            keyset_management_->RemoveKeyset(users_[0].credentials,
-                                             users_[0].credentials.key_data()));
-
-  // VERIFY
-  // Wrong permission on the keyset. Nothing changes, initial keyset still
-  // available with old credentials.
 
   VerifyKeysetIndicies({kInitialKeysetIndex});
 

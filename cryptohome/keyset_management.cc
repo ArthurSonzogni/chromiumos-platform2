@@ -486,15 +486,6 @@ CryptohomeErrorCode KeysetManagement::AddKeyset(
     return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED;
   }
 
-  // Check the privileges to ensure Add is allowed.
-  // Keys without extended data are considered fully privileged.
-  if (vk->HasKeyData() && !vk->GetKeyData().privileges().add()) {
-    // TODO(wad) Ensure this error can be returned as a KEY_DENIED error
-    //           for AddKeyEx.
-    LOG(WARNING) << "AddKeyset: no add() privilege";
-    return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED;
-  }
-
   // If the VaultKeyset doesn't have a reset seed, simply generate
   // one and re-encrypt before proceeding.
   bool has_reset_seed = vk->HasWrappedResetSeed();
@@ -660,13 +651,6 @@ CryptohomeErrorCode KeysetManagement::RemoveKeyset(
     return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED;
   }
 
-  // Legacy keys can remove any other key. Otherwise a key needs explicit
-  // privileges.
-  if (vk->HasKeyData() && !vk->GetKeyData().privileges().remove()) {
-    LOG(WARNING) << "RemoveKeyset: no remove() privilege";
-    return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED;
-  }
-
   if (!ForceRemoveKeyset(obfuscated, remove_vk->GetLegacyIndex())) {
     LOG(ERROR) << "RemoveKeyset: failed to remove keyset file";
     return CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
@@ -769,11 +753,6 @@ bool KeysetManagement::Migrate(const Credentials& newcreds,
   const KeyData* key_data = NULL;
   if (vk->HasKeyData()) {
     key_data = &(vk->GetKeyData());
-    // legacy keys are full privs
-    if (!key_data->privileges().add() || !key_data->privileges().remove()) {
-      LOG(ERROR) << "Migrate: key lacks sufficient privileges()";
-      return false;
-    }
   }
 
   int new_key_index = -1;

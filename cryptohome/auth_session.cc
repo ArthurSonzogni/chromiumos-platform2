@@ -82,13 +82,6 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
       LOG(WARNING) << "Add Credentials: tried adding kiosk auth for user";
       return MountErrorToCryptohomeError(MOUNT_ERROR_UNPRIVILEGED_KEY);
     }
-    // Check the privileges to ensure Add is allowed.
-    // Keys without extended data are considered fully privileged.
-    if (auth_factor_->vault_keyset().HasKeyData() &&
-        !auth_factor_->vault_keyset().GetKeyData().privileges().add()) {
-      LOG(WARNING) << "Add Credentials: no add() privilege";
-      return user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED;
-    }
 
     return keyset_management_->AddKeyset(*credentials,
                                          auth_factor_->vault_keyset());
