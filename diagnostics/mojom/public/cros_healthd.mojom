@@ -519,8 +519,8 @@ interface CrosHealthdEventService {
   //
   // The request:
   // * |observer| - Thunderbolt observer to be added to cros_healthd.
-  AddThunderboltObserver@5(pending_remote<
-                                CrosHealthdThunderboltObserver> observer);
+  AddThunderboltObserver@5(
+      pending_remote<CrosHealthdThunderboltObserver> observer);
 };
 
 // Probe interface exposed by the cros_healthd daemon.
