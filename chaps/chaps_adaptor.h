@@ -31,7 +31,6 @@ class TokenManagerInterface;
 class ChapsAdaptor {
  public:
   ChapsAdaptor(scoped_refptr<dbus::Bus> bus,
-               base::Lock* lock,
                ChapsInterface* service,
                TokenManagerInterface* token_manager);
   ChapsAdaptor(const ChapsAdaptor&) = delete;
@@ -392,7 +391,6 @@ class ChapsAdaptor {
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
 
-  base::Lock* lock_;
   ChapsInterface* service_;
   TokenManagerInterface* token_manager_;
 };

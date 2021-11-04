@@ -66,7 +66,6 @@ using std::string;
 namespace {
 
 const char kTpmThreadName[] = "tpm_background_thread";
-const char kInitThreadName[] = "async_init_thread";
 
 void MaskSignals() {
   sigset_t signal_mask;
@@ -75,27 +74,6 @@ void MaskSignals() {
     CHECK_EQ(0, sigaddset(&signal_mask, signal));
   }
   CHECK_EQ(0, sigprocmask(SIG_BLOCK, &signal_mask, nullptr));
-}
-
-void InitAsync(WaitableEvent* started_event,
-               Lock* lock,
-               chaps::TPMUtility* tpm,
-               chaps::SlotManagerImpl* slot_manager) {
-  // It's important that we acquire 'lock' before signaling 'started_event'.
-  // This will prevent any D-Bus requests from being processed until we've
-  // finished initialization.
-  AutoLock auto_lock(*lock);
-  started_event->Signal();
-  LOG(INFO) << "Starting asynchronous initialization.";
-  if (!tpm->Init())
-    // Just warn and continue in this case.  The effect will be a functional
-    // daemon which handles dbus requests but any attempt to load a token will
-    // fail.  To a PKCS #11 client this will look like a library with a few
-    // empty slots.
-    LOG(WARNING) << "TPM initialization failed (this is expected if no TPM is"
-                 << " available).  PKCS #11 tokens will not be available.";
-  if (!slot_manager->Init())
-    LOG(FATAL) << "Slot initialization failed.";
 }
 
 void SetProcessUserAndGroup(const char* user_name, const char* group_name) {
@@ -120,17 +98,11 @@ class Daemon : public brillo::DBusServiceDaemon {
       : DBusServiceDaemon(kChapsServiceName),
         srk_auth_data_(srk_auth_data),
         auto_load_system_token_(auto_load_system_token),
-        tpm_background_thread_(kTpmThreadName),
-        async_init_thread_(kInitThreadName) {}
+        tpm_background_thread_(kTpmThreadName) {}
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
 
   ~Daemon() override {
-    // We join these two threads here so that the code running in these two
-    // threads can be certain that all the other members of this class will
-    // be available when the thread is still running.
-    async_init_thread_.Stop();
-
     // adaptor_ contains a pointer to service_
     adaptor_.reset();
 
@@ -173,19 +145,20 @@ class Daemon : public brillo::DBusServiceDaemon {
                                             system_shutdown_blocker_.get()));
     service_.reset(new ChapsServiceImpl(slot_manager_.get()));
 
-    // Initialize the TPM utility and slot manager asynchronously because
-    // we might be able to serve some requests while they are being
-    // initialized.
-    WaitableEvent init_started(WaitableEvent::ResetPolicy::MANUAL,
-                               WaitableEvent::InitialState::NOT_SIGNALED);
-    CHECK(async_init_thread_.StartWithOptions(base::Thread::Options(
-        base::MessagePumpType::IO, 0 /* use default stack size */)));
-    async_init_thread_.task_runner()->PostTask(
-        FROM_HERE, base::Bind(&InitAsync, &init_started, &lock_, tpm_.get(),
-                              slot_manager_.get()));
-    // We're not finished with initialization until the initialization thread
-    // has had a chance to acquire the lock.
-    init_started.Wait();
+    // Initialize the TPM.
+    if (!tpm_->Init()) {
+      // Just warn and continue in this case.  The effect will be a functional
+      // daemon which handles dbus requests but any attempt to load a token will
+      // fail.  To a PKCS #11 client this will look like a library with a few
+      // empty slots.
+      LOG(WARNING) << "TPM initialization failed (this is expected if no TPM is"
+                   << " available).  PKCS #11 tokens will not be available.";
+    }
+
+    // Initialize the slot manager.
+    if (!slot_manager_->Init()) {
+      LOG(FATAL) << "Slot initialization failed.";
+    }
 
     // Now we can export D-Bus objects.
     int return_code = DBusServiceDaemon::OnInit();
@@ -206,8 +179,7 @@ class Daemon : public brillo::DBusServiceDaemon {
 
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
-    adaptor_.reset(
-        new ChapsAdaptor(bus_, &lock_, service_.get(), slot_manager_.get()));
+    adaptor_.reset(new ChapsAdaptor(bus_, service_.get(), slot_manager_.get()));
     adaptor_->RegisterAsync(
         sequencer->GetHandler("RegisterAsync() failed", true));
   }
@@ -227,8 +199,6 @@ class Daemon : public brillo::DBusServiceDaemon {
   std::string srk_auth_data_;
   bool auto_load_system_token_;
   base::Thread tpm_background_thread_;
-  base::Thread async_init_thread_;
-  Lock lock_;
 
   std::unique_ptr<TPMUtility> tpm_;
   std::unique_ptr<ChapsFactory> factory_;
