@@ -7,11 +7,10 @@
 
 #include "rmad/utils/regions_utils.h"
 
-#include <memory>
 #include <string>
 #include <vector>
 
-#include <base/files/file.h>
+#include <base/files/file_path.h>
 
 namespace rmad {
 

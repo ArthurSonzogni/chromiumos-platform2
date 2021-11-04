@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "rmad/utils/cros_config_utils_impl.h"
+#include "rmad/utils/fake_cros_config_utils.h"
 
 #include <memory>
 #include <string>
@@ -147,5 +148,75 @@ TEST_F(CrosConfigUtilsImplTest, GetWhitelabelTagList_Success) {
   EXPECT_TRUE(cros_config_utils->GetWhitelabelTagList(&whitelabel_tag_list));
   EXPECT_EQ(whitelabel_tag_list, kTargetWhitelabelTagList);
 }
+
+namespace fake {
+
+class FakeCrosConfigUtilsTest : public testing::Test {
+ public:
+  FakeCrosConfigUtilsTest() = default;
+  ~FakeCrosConfigUtilsTest() override = default;
+
+ protected:
+  void SetUp() override {
+    fake_cros_config_utils_ = std::make_unique<FakeCrosConfigUtils>();
+  }
+
+  std::unique_ptr<FakeCrosConfigUtils> fake_cros_config_utils_;
+};
+
+TEST_F(FakeCrosConfigUtilsTest, GetModelName_Success) {
+  std::string model_name;
+  EXPECT_TRUE(fake_cros_config_utils_->GetModelName(&model_name));
+  EXPECT_EQ(model_name, "fake_model");
+}
+
+TEST_F(FakeCrosConfigUtilsTest, GetModelName_Nullptr) {
+  EXPECT_DEATH(fake_cros_config_utils_->GetModelName(nullptr), "");
+}
+
+TEST_F(FakeCrosConfigUtilsTest, GetCurrentSkuId_Success) {
+  int sku_id;
+  EXPECT_TRUE(fake_cros_config_utils_->GetCurrentSkuId(&sku_id));
+  EXPECT_EQ(sku_id, 1);
+}
+
+TEST_F(FakeCrosConfigUtilsTest, GetCurrentSkuId_Nullptr) {
+  EXPECT_DEATH(fake_cros_config_utils_->GetCurrentSkuId(nullptr), "");
+}
+
+TEST_F(FakeCrosConfigUtilsTest, GetCurrentWhitelabelTag_Success) {
+  std::string wl_tag;
+  EXPECT_TRUE(fake_cros_config_utils_->GetCurrentWhitelabelTag(&wl_tag));
+  EXPECT_EQ(wl_tag, "fake_whitelabel_1");
+}
+
+TEST_F(FakeCrosConfigUtilsTest, GetCurrentWhitelabelTag_Nullptr) {
+  EXPECT_DEATH(fake_cros_config_utils_->GetCurrentWhitelabelTag(nullptr), "");
+}
+
+TEST_F(FakeCrosConfigUtilsTest, GetSkuIdList_Success) {
+  std::vector<int> sku_id_list;
+  const std::vector<int> expected_sku_id_list = {1, 2, 3, 4};
+  EXPECT_TRUE(fake_cros_config_utils_->GetSkuIdList(&sku_id_list));
+  EXPECT_EQ(sku_id_list, expected_sku_id_list);
+}
+
+TEST_F(FakeCrosConfigUtilsTest, GetSkuIdList_Nullptr) {
+  EXPECT_DEATH(fake_cros_config_utils_->GetSkuIdList(nullptr), "");
+}
+
+TEST_F(FakeCrosConfigUtilsTest, GetWhitelabelTagList_Success) {
+  std::vector<std::string> wl_tag_list;
+  const std::vector<std::string> expected_wl_tag_list = {"fake_whitelabel_1",
+                                                         "fake_whitelabel_2"};
+  EXPECT_TRUE(fake_cros_config_utils_->GetWhitelabelTagList(&wl_tag_list));
+  EXPECT_EQ(wl_tag_list, expected_wl_tag_list);
+}
+
+TEST_F(FakeCrosConfigUtilsTest, GetWhitelabelTagList_Nullptr) {
+  EXPECT_DEATH(fake_cros_config_utils_->GetWhitelabelTagList(nullptr), "");
+}
+
+}  // namespace fake
 
 }  // namespace rmad

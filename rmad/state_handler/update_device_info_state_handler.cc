@@ -15,10 +15,12 @@
 #include "rmad/constants.h"
 #include "rmad/utils/cbi_utils_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
+#include "rmad/utils/fake_cbi_utils.h"
+#include "rmad/utils/fake_cros_config_utils.h"
+#include "rmad/utils/fake_regions_utils.h"
+#include "rmad/utils/fake_vpd_utils.h"
 #include "rmad/utils/regions_utils_impl.h"
 #include "rmad/utils/vpd_utils_impl.h"
-
-namespace rmad {
 
 namespace {
 
@@ -37,6 +39,21 @@ bool IsRepeatedFieldSame(const T& list1, const T& list2) {
 }
 
 }  // namespace
+
+namespace rmad {
+
+namespace fake {
+
+FakeUpdateDeviceInfoStateHandler::FakeUpdateDeviceInfoStateHandler(
+    scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
+    : UpdateDeviceInfoStateHandler(
+          json_store,
+          std::make_unique<FakeCbiUtils>(working_dir_path),
+          std::make_unique<FakeCrosConfigUtils>(),
+          std::make_unique<FakeRegionsUtils>(),
+          std::make_unique<FakeVpdUtils>(working_dir_path)) {}
+
+}  // namespace fake
 
 UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(
     scoped_refptr<JsonStore> json_store)

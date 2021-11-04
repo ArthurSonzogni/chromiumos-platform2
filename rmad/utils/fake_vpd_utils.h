@@ -2,28 +2,27 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RMAD_UTILS_VPD_UTILS_IMPL_H_
-#define RMAD_UTILS_VPD_UTILS_IMPL_H_
+#ifndef RMAD_UTILS_FAKE_VPD_UTILS_H_
+#define RMAD_UTILS_FAKE_VPD_UTILS_H_
 
 #include "rmad/utils/vpd_utils.h"
 
 #include <map>
-#include <memory>
 #include <string>
 #include <vector>
 
-#include "rmad/utils/cmd_utils.h"
+#include <base/files/file_path.h>
+#include <base/memory/scoped_refptr.h>
+
+#include "rmad/utils/json_store.h"
 
 namespace rmad {
+namespace fake {
 
-// Calls `vpd` command to set/get RO/RW VPD values. The subprocess needs access
-// to /dev/mem and has CAP_SYS_RAWIO,CAP_DAC_OVERRIDE capability if not running
-// as root.
-class VpdUtilsImpl : public VpdUtils {
+class FakeVpdUtils : public VpdUtils {
  public:
-  VpdUtilsImpl();
-  explicit VpdUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils);
-  ~VpdUtilsImpl() override;
+  explicit FakeVpdUtils(const base::FilePath& working_dir_path);
+  ~FakeVpdUtils() override = default;
 
   bool GetSerialNumber(std::string* serial_number) const override;
   bool GetWhitelabelTag(std::string* whitelabel_tag) const override;
@@ -43,21 +42,13 @@ class VpdUtilsImpl : public VpdUtils {
   bool FlushOutRoVpdCache() override;
   bool FlushOutRwVpdCache() override;
 
- protected:
-  bool SetRoVpd(const std::map<std::string, std::string>& key_value_map);
-  bool GetRoVpd(const std::string& key, std::string* value) const;
-  bool SetRwVpd(const std::map<std::string, std::string>& key_value_map);
-  bool GetRwVpd(const std::string& key, std::string* value) const;
-
  private:
-  // RO VPD
-  std::map<std::string, std::string> cache_ro_;
-  // RW VPD
-  std::map<std::string, std::string> cache_rw_;
-
-  std::unique_ptr<CmdUtils> cmd_utils_;
+  base::FilePath working_dir_path_;
+  // Use |JsonStore| to read the fake VPD values.
+  scoped_refptr<JsonStore> json_store_;
 };
 
+}  // namespace fake
 }  // namespace rmad
 
-#endif  // RMAD_UTILS_VPD_UTILS_IMPL_H_
+#endif  // RMAD_UTILS_FAKE_VPD_UTILS_H_

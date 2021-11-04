@@ -61,7 +61,9 @@ inline constexpr char kHwwpDisabledFilePath[] =
 inline constexpr char kFactoryModeEnabledFilePath[] = "factory_mode_enabled";
 inline constexpr char kIsEnrolledFilePath[] = "is_enrolled";
 inline constexpr char kBlockCcdFilePath[] = "block_ccd";
+inline constexpr char kCbiFilePath[] = "cbi";
 inline constexpr char kCrosSystemFilePath[] = "crossystem";
+inline constexpr char kVpdFilePath[] = "vpd";
 
 }  // namespace fake
 

@@ -25,25 +25,6 @@ class CbiUtils {
 
   // Set the dram part number of the device to cbi.
   virtual bool SetDramPartNum(const std::string& dram_part_num) = 0;
-
- protected:
-  // Set a (tag, value) pair to CBI. Return true if successfully set the value,
-  // false if fail to set the value.
-  virtual bool SetCbi(int tag, const std::string& value, int set_flag) = 0;
-
-  // Get the value associated with tag |tag| in CBI, and store it to |value|
-  // with a string. Return true if successfully get the value, false if fail to
-  // get the value.
-  virtual bool GetCbi(int tag, std::string* value, int get_flag) const = 0;
-
-  // Set a (tag, value, size) tuple to CBI. Return true if successfully set the
-  // value, false if fail to set the value.
-  virtual bool SetCbi(int tag, uint64_t value, int size, int set_flag) = 0;
-
-  // Get the value associated with tag |tag| in CBI, and store it to |value|
-  // with a uint64_t. Return true if successfully get the value, false if fail
-  // to get the value.
-  virtual bool GetCbi(int tag, uint64_t* value, int get_flag) const = 0;
 };
 
 }  // namespace rmad

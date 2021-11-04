@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rmad/utils/fake_vpd_utils.h"
 #include "rmad/utils/vpd_utils_impl.h"
 
 #include <memory>
@@ -9,6 +10,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_path.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -328,5 +331,133 @@ TEST_F(VpdUtilsTest, FlushRwFail) {
   EXPECT_TRUE(vpd_utils->SetRegistrationCode("abc", "def"));
   EXPECT_FALSE(vpd_utils->FlushOutRwVpdCache());
 }
+
+namespace fake {
+
+class FakeVpdUtilsTest : public testing::Test {
+ public:
+  FakeVpdUtilsTest() = default;
+  ~FakeVpdUtilsTest() override = default;
+
+ protected:
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    fake_vpd_utils_ = std::make_unique<FakeVpdUtils>(temp_dir_.GetPath());
+  }
+
+  base::ScopedTempDir temp_dir_;
+  std::unique_ptr<FakeVpdUtils> fake_vpd_utils_;
+};
+
+TEST_F(FakeVpdUtilsTest, SetSerialNumber_Success_GetSerialNumber_Success) {
+  EXPECT_TRUE(fake_vpd_utils_->SetSerialNumber("fake_serial_number"));
+  std::string serial_number;
+  EXPECT_TRUE(fake_vpd_utils_->GetSerialNumber(&serial_number));
+  EXPECT_EQ(serial_number, "fake_serial_number");
+}
+
+TEST_F(FakeVpdUtilsTest, GetSerialNumber_Fail) {
+  std::string serial_number;
+  EXPECT_FALSE(fake_vpd_utils_->GetSerialNumber(&serial_number));
+}
+
+TEST_F(FakeVpdUtilsTest, GetSerialNumber_Nullptr) {
+  EXPECT_DEATH(fake_vpd_utils_->GetSerialNumber(nullptr), "");
+}
+
+TEST_F(FakeVpdUtilsTest, SetWhitelabelTag_Success_GetWhitelabelTag_Success) {
+  EXPECT_TRUE(fake_vpd_utils_->SetWhitelabelTag("fake_whitelabel_tag"));
+  std::string whitelabel_tag;
+  EXPECT_TRUE(fake_vpd_utils_->GetWhitelabelTag(&whitelabel_tag));
+  EXPECT_EQ(whitelabel_tag, "fake_whitelabel_tag");
+}
+
+TEST_F(FakeVpdUtilsTest, GetWhitelabelTag_Empty) {
+  std::string whitelabel_tag;
+  EXPECT_TRUE(fake_vpd_utils_->GetWhitelabelTag(&whitelabel_tag));
+  EXPECT_EQ(whitelabel_tag, "");
+}
+
+TEST_F(FakeVpdUtilsTest, GetWhitelabelTag_Nullptr) {
+  EXPECT_DEATH(fake_vpd_utils_->GetWhitelabelTag(nullptr), "");
+}
+
+TEST_F(FakeVpdUtilsTest, SetRegion_Success_GetRegion_Success) {
+  EXPECT_TRUE(fake_vpd_utils_->SetRegion("fake_region"));
+  std::string region;
+  EXPECT_TRUE(fake_vpd_utils_->GetRegion(&region));
+  EXPECT_EQ(region, "fake_region");
+}
+
+TEST_F(FakeVpdUtilsTest, GetRegion_Fail) {
+  std::string region;
+  EXPECT_FALSE(fake_vpd_utils_->GetRegion(&region));
+}
+
+TEST_F(FakeVpdUtilsTest, GetRegion_Nullptr) {
+  EXPECT_DEATH(fake_vpd_utils_->GetRegion(nullptr), "");
+}
+
+TEST_F(FakeVpdUtilsTest, SetCalibbias_Success_GetCalibbias_Success) {
+  EXPECT_TRUE(fake_vpd_utils_->SetCalibbias({{"x", 1}, {"y", 2}}));
+  std::vector<int> calibbias;
+  std::vector<int> expected_calibbias = {1, 2};
+  EXPECT_TRUE(fake_vpd_utils_->GetCalibbias({"x", "y"}, &calibbias));
+  EXPECT_EQ(calibbias, expected_calibbias);
+}
+
+TEST_F(FakeVpdUtilsTest, GetCalibbias_Fail) {
+  std::vector<int> calibbias;
+  EXPECT_FALSE(fake_vpd_utils_->GetCalibbias({"x", "y"}, &calibbias));
+}
+
+TEST_F(FakeVpdUtilsTest, GetCalibbias_Nullptr) {
+  EXPECT_DEATH(fake_vpd_utils_->GetCalibbias({"x", "y"}, nullptr), "");
+}
+
+TEST_F(FakeVpdUtilsTest,
+       SetRegistrationCode_Success_GetRegistrationCode_Success) {
+  EXPECT_TRUE(fake_vpd_utils_->SetRegistrationCode("fake_ubind", "fake_gbind"));
+  std::string ubind, gbind;
+  EXPECT_TRUE(fake_vpd_utils_->GetRegistrationCode(&ubind, &gbind));
+  EXPECT_EQ(ubind, "fake_ubind");
+  EXPECT_EQ(gbind, "fake_gbind");
+}
+
+TEST_F(FakeVpdUtilsTest, GetRegistrationCode_Fail) {
+  std::string ubind, gbind;
+  EXPECT_FALSE(fake_vpd_utils_->GetRegistrationCode(&ubind, &gbind));
+}
+
+TEST_F(FakeVpdUtilsTest, GetRegistrationCode_Nullptr) {
+  EXPECT_DEATH(fake_vpd_utils_->GetRegistrationCode(nullptr, nullptr), "");
+}
+
+TEST_F(FakeVpdUtilsTest,
+       SetStableDeviceSecret_Success_GetStableDeviceSecret_Success) {
+  EXPECT_TRUE(fake_vpd_utils_->SetStableDeviceSecret("fake_secret"));
+  std::string stable_device_secret;
+  EXPECT_TRUE(fake_vpd_utils_->GetStableDeviceSecret(&stable_device_secret));
+  EXPECT_EQ(stable_device_secret, "fake_secret");
+}
+
+TEST_F(FakeVpdUtilsTest, GetStableDeviceSecret_Fail) {
+  std::string stable_device_secret;
+  EXPECT_FALSE(fake_vpd_utils_->GetStableDeviceSecret(&stable_device_secret));
+}
+
+TEST_F(FakeVpdUtilsTest, GetStableDeviceSecret_Nullptr) {
+  EXPECT_DEATH(fake_vpd_utils_->GetStableDeviceSecret(nullptr), "");
+}
+
+TEST_F(FakeVpdUtilsTest, FlushOutRoVpdCache) {
+  EXPECT_TRUE(fake_vpd_utils_->FlushOutRoVpdCache());
+}
+
+TEST_F(FakeVpdUtilsTest, FlushOutRwVpdCache) {
+  EXPECT_TRUE(fake_vpd_utils_->FlushOutRwVpdCache());
+}
+
+}  // namespace fake
 
 }  // namespace rmad

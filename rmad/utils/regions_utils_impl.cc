@@ -13,8 +13,6 @@
 #include <base/logging.h>
 #include <base/values.h>
 
-namespace rmad {
-
 namespace {
 
 const base::FilePath kCrosRegionsDatabaseDefaultPath(
@@ -22,6 +20,8 @@ const base::FilePath kCrosRegionsDatabaseDefaultPath(
 constexpr char kConfirmedRegionKey[] = "confirmed";
 
 }  // namespace
+
+namespace rmad {
 
 RegionsUtilsImpl::RegionsUtilsImpl() {
   regions_file_path_ = kCrosRegionsDatabaseDefaultPath;

@@ -70,25 +70,6 @@ class VpdUtils {
   // (key, value) pairs and then flush it all at once.
   virtual bool FlushOutRoVpdCache() = 0;
   virtual bool FlushOutRwVpdCache() = 0;
-
- protected:
-  // Set multiple (key, value) pairs to RO VPD. Return true if successfully set
-  // all values, false if any value fails to be set.
-  virtual bool SetRoVpd(
-      const std::map<std::string, std::string>& key_value_map) = 0;
-
-  // Get the value associated with key `key` in RO VPD, and store it to `value`.
-  // Return true if successfully get the value, false if fail to get the value.
-  virtual bool GetRoVpd(const std::string& key, std::string* value) const = 0;
-
-  // Set multiple (key, value) pairs to RW VPD. Return true if successfully set
-  // all values, false if any value fails to be set.
-  virtual bool SetRwVpd(
-      const std::map<std::string, std::string>& key_value_map) = 0;
-
-  // Get the value associated with key `key` in RW VPD, and store it to `value`.
-  // Return true if successfully get the value, false if fail to get the value.
-  virtual bool GetRwVpd(const std::string& key, std::string* value) const = 0;
 };
 
 }  // namespace rmad

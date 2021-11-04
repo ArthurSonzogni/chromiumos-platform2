@@ -16,8 +16,6 @@
 
 #include "rmad/utils/cmd_utils_impl.h"
 
-namespace rmad {
-
 namespace {
 
 constexpr char kEctoolCmdPath[] = "/usr/sbin/ectool";
@@ -27,6 +25,8 @@ constexpr int kCbiTagSkuId = 2;
 constexpr int kCbiTagDramPartNum = 3;
 
 }  // namespace
+
+namespace rmad {
 
 CbiUtilsImpl::CbiUtilsImpl() {
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();

@@ -109,11 +109,12 @@ void StateHandlerManager::RegisterFakeStateHandlers() {
           json_store_));
   RegisterStateHandler(base::MakeRefCounted<fake::FakeRestockStateHandler>(
       json_store_, test_dir_path));
+  RegisterStateHandler(
+      base::MakeRefCounted<fake::FakeUpdateDeviceInfoStateHandler>(
+          json_store_, test_dir_path));
   // TODO(chenghan): Use fake state handlers.
   RegisterStateHandler(
       base::MakeRefCounted<UpdateRoFirmwareStateHandler>(json_store_));
-  RegisterStateHandler(
-      base::MakeRefCounted<UpdateDeviceInfoStateHandler>(json_store_));
   RegisterStateHandler(
       base::MakeRefCounted<CheckCalibrationStateHandler>(json_store_));
   RegisterStateHandler(

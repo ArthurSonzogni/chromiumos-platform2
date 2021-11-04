@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rmad/utils/fake_regions_utils.h"
 #include "rmad/utils/regions_utils_impl.h"
 
 #include <memory>
@@ -95,5 +96,34 @@ TEST_F(RegionsUtilsImplTest, GetRegionList_WrongContentFailed) {
   // untouched.
   EXPECT_EQ(region_list, std::vector<std::string>());
 }
+
+namespace fake {
+
+class FakeRegionsUtilsTest : public testing::Test {
+ public:
+  FakeRegionsUtilsTest() = default;
+  ~FakeRegionsUtilsTest() override = default;
+
+ protected:
+  void SetUp() override {
+    fake_regions_utils_ = std::make_unique<FakeRegionsUtils>();
+  }
+
+  std::unique_ptr<FakeRegionsUtils> fake_regions_utils_;
+};
+
+TEST_F(FakeRegionsUtilsTest, GetRegionList_Success) {
+  std::vector<std::string> region_list;
+  const std::vector<std::string> expected_region_list = {"fake_region_1",
+                                                         "fake_region_2"};
+  EXPECT_TRUE(fake_regions_utils_->GetRegionList(&region_list));
+  EXPECT_EQ(region_list, expected_region_list);
+}
+
+TEST_F(FakeRegionsUtilsTest, GetRegionList_Nullptr) {
+  EXPECT_DEATH(fake_regions_utils_->GetRegionList(nullptr), "");
+}
+
+}  // namespace fake
 
 }  // namespace rmad

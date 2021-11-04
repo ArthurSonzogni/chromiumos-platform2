@@ -135,6 +135,7 @@ class JsonStore : public base::RefCounted<JsonStore> {
 
   static bool GetValueInternal(const base::Value* data, bool* result);
   static bool GetValueInternal(const base::Value* data, int* result);
+  static bool GetValueInternal(const base::Value* data, uint64_t* result);
   static bool GetValueInternal(const base::Value* data, double* result);
   static bool GetValueInternal(const base::Value* data, std::string* result);
 
