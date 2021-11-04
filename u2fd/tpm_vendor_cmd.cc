@@ -59,10 +59,6 @@ bool TpmVendorCommandProxy::Init() {
   return transceiver_->Init();
 }
 
-base::Lock& TpmVendorCommandProxy::GetLock() {
-  return lock_;
-}
-
 uint32_t TpmVendorCommandProxy::VendorCommand(uint16_t cc,
                                               const std::string& input,
                                               std::string* output) {

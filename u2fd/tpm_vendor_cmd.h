@@ -9,7 +9,6 @@
 #include <string>
 
 #include <base/macros.h>
-#include <base/synchronization/lock.h>
 #include <trunks/command_transceiver.h>
 #include <trunks/cr50_headers/u2f.h>
 
@@ -84,9 +83,6 @@ class TpmVendorCommandProxy {
   // response was invalid.
   virtual uint32_t GetG2fCertificate(std::string* cert_out);
 
-  // Returns a reference to |lock_|.
-  virtual base::Lock& GetLock();
-
  private:
   // Sends the TPM command with vendor-specific command code |cc| and the
   // payload in |input|, get the reply in |output|. Returns the TPM response
@@ -117,11 +113,6 @@ class TpmVendorCommandProxy {
   void LogIndividualCertificate();
 
   std::unique_ptr<trunks::CommandTransceiver> transceiver_;
-
-  // A lock to ensure public SendU2fGenerate, SendU2fSign and SendU2fAttest are
-  // executed sequentially. Client code is responsible for acquiring the lock.
-  // TODO(louiscollard): Change to something more robust.
-  base::Lock lock_;
 };
 
 }  // namespace u2f

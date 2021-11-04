@@ -774,7 +774,7 @@ WebAuthnHandler::SendU2fGenerateWaitForPresence(
     std::vector<uint8_t>* credential_id,
     std::vector<uint8_t>* credential_public_key) {
   uint32_t generate_status = -1;
-  base::AutoLock(tpm_proxy_->GetLock());
+
   CallAndWaitForPresence(
       [this, generate_req, generate_resp]() {
         return tpm_proxy_->SendU2fGenerate(*generate_req, generate_resp);
@@ -1089,7 +1089,7 @@ WebAuthnHandler::SendU2fSignWaitForPresence(Request* sign_req,
                                             struct u2f_sign_resp* sign_resp,
                                             std::vector<uint8_t>* signature) {
   uint32_t sign_status = -1;
-  base::AutoLock(tpm_proxy_->GetLock());
+
   CallAndWaitForPresence(
       [this, sign_req, sign_resp]() {
         return tpm_proxy_->SendU2fSign(*sign_req, sign_resp);
@@ -1114,7 +1114,6 @@ MakeCredentialResponse::MakeCredentialStatus WebAuthnHandler::DoG2fAttest(
     const std::vector<uint8_t>& data,
     uint8_t format,
     std::vector<uint8_t>* signature_out) {
-  base::AutoLock(tpm_proxy_->GetLock());
   base::Optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
   if (!user_secret.has_value()) {
     return MakeCredentialResponse::INTERNAL_ERROR;
@@ -1340,7 +1339,7 @@ WebAuthnHandler::DoU2fSignCheckOnly(
     }
 
     struct u2f_sign_resp sign_resp;
-    base::AutoLock(tpm_proxy_->GetLock());
+
     sign_status = tpm_proxy_->SendU2fSign(sign_req, &sign_resp);
     brillo::SecureClearContainer(sign_req.userSecret);
   } else if (credential_id.size() == sizeof(u2f_key_handle)) {
@@ -1359,7 +1358,7 @@ WebAuthnHandler::DoU2fSignCheckOnly(
     }
 
     struct u2f_sign_resp sign_resp;
-    base::AutoLock(tpm_proxy_->GetLock());
+
     sign_status = tpm_proxy_->SendU2fSign(sign_req, &sign_resp);
     brillo::SecureClearContainer(sign_req.userSecret);
   } else {
