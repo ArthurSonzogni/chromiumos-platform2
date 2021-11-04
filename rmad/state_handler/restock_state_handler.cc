@@ -7,13 +7,25 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 
+#include "rmad/system/fake_power_manager_client.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/dbus_utils.h"
 
 namespace rmad {
+
+namespace fake {
+
+FakeRestockStateHandler::FakeRestockStateHandler(
+    scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
+    : RestockStateHandler(
+          json_store,
+          std::make_unique<FakePowerManagerClient>(working_dir_path)) {}
+
+}  // namespace fake
 
 RestockStateHandler::RestockStateHandler(scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store) {

@@ -9,6 +9,7 @@
 
 #include <memory>
 
+#include <base/files/file_path.h>
 #include <base/timer/timer.h>
 
 #include "rmad/system/power_manager_client.h"
@@ -41,6 +42,19 @@ class RestockStateHandler : public BaseStateHandler {
   std::unique_ptr<PowerManagerClient> power_manager_client_;
   base::OneShotTimer timer_;
 };
+
+namespace fake {
+
+class FakeRestockStateHandler : public RestockStateHandler {
+ public:
+  FakeRestockStateHandler(scoped_refptr<JsonStore> json_store,
+                          const base::FilePath& working_dir_path);
+
+ protected:
+  ~FakeRestockStateHandler() override = default;
+};
+
+}  // namespace fake
 
 }  // namespace rmad
 
