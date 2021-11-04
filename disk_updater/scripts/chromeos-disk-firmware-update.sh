@@ -571,7 +571,13 @@ disk_nvme_upgrade() {
   local max_slot="$(disk_nvme_get_max_writable_slot "${frmw}")"
   local new_slot rc
 
-  if [ "${curr_slot}" -eq "${max_slot}" ]; then
+  if echo "${fw_options}" | grep -q "bh799"; then
+    # BH799 requires to use the current slot (3). Other slots are used for eMMC
+    # firmware upgrade.
+    new_slot="$((curr_slot))"
+    # BH799 only support action 1, not 0+2.
+    action=1
+  elif [ "${curr_slot}" -eq "${max_slot}" ]; then
     new_slot="${min_slot}"
   else
     new_slot="$((curr_slot + 1))"
@@ -592,16 +598,18 @@ disk_nvme_upgrade() {
   fi
 
   # Use action 0 to download image into slot.
-  "${FLAGS_nvme}" fw-activate "/dev/${device}" --slot="${new_slot}" --action=0
-  rc=$?
-  if [ "${rc}" -ne 0 ]; then
-     log_msg "Unable to load ${fw_file} to ${device}"
-     return "${rc}"
+  if [ "${action}" -ne 1 ]; then
+    "${FLAGS_nvme}" fw-activate "/dev/${device}" --slot="${new_slot}" --action=0
+    rc=$?
+    if [ "${rc}" -ne 0 ]; then
+       log_msg "Unable to load ${fw_file} to ${device}"
+       return "${rc}"
+    fi
   fi
   "${FLAGS_nvme}" fw-activate "/dev/${device}" --slot="${new_slot}" \
     --action="${action}"
   rc=$?
-  if [ "${rc}" -eq 11 ] && [ "${action}" -eq 2 ]; then
+  if [ "${rc}" -eq 11 ] && [ "${action}" -ne 0 ]; then
     disk_nmve_reset "${device}"
   elif [ "${rc}" -ne 0 ]; then
     log_msg "Unable to activate ${fw_file} to ${device}"

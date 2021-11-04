@@ -5,8 +5,8 @@
 #
 # Command for unit test.
 echo "$(basename "$0")" "$@" | sed -E "s#/tmp/test_fw\..{6}#temp_dir#g"
-if echo "$@" | grep -qe "--action=2"; then
-  exit 11
-else
-  exit 0
-fi
+case "$@" in
+  *--action=1) exit 11;;
+  *--action=2) exit 11;;
+  *) exit 0;;
+esac
