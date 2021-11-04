@@ -13,7 +13,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/synchronization/lock.h>
 #include <brillo/secure_blob.h>
 #include <openssl/rand.h>
 #include <trousers/scoped_tss_type.h>
@@ -21,7 +20,6 @@
 
 #include "chaps/chaps_utility.h"
 
-using base::AutoLock;
 using brillo::SecureBlob;
 using std::hex;
 using std::map;
@@ -185,7 +183,6 @@ bool TPMUtilityImpl::Init() {
     }
   }
 
-  AutoLock lock(lock_);
   TSS_RESULT result = TSS_SUCCESS;
   result = Tspi_Context_Create(tsp_context_.ptr());
   if (result != TSS_SUCCESS) {
@@ -300,7 +297,6 @@ bool TPMUtilityImpl::Authenticate(const SecureBlob& auth_data,
     return false;
   string root_key_str;
   if (!Unbind(key_handle, encrypted_root_key, &root_key_str)) {
-    AutoLock lock(lock_);
     FlushHandle(key_handle);
     return false;
   }
@@ -308,7 +304,6 @@ bool TPMUtilityImpl::Authenticate(const SecureBlob& auth_data,
   brillo::SecureClearContainer(root_key_str);
 
   VLOG(1) << "TPMUtilityImpl::Authenticate success";
-  AutoLock lock(lock_);
   FlushHandle(key_handle);
   return true;
 }
@@ -325,17 +320,14 @@ bool TPMUtilityImpl::ChangeAuthData(const SecureBlob& old_auth_data,
   // Make sure the old auth data is ok.
   string encrypted, decrypted;
   if (!Bind(key_handle, "testdata", &encrypted)) {
-    AutoLock lock(lock_);
     FlushHandle(key_handle);
     return false;
   }
   if (!Unbind(key_handle, encrypted, &decrypted)) {
-    AutoLock lock(lock_);
     FlushHandle(key_handle);
     return false;
   }
   // Change the secret.
-  AutoLock lock(lock_);
   TSS_RESULT result = TSS_SUCCESS;
   ScopedTssPolicy policy(tsp_context_);
   result = Tspi_Context_CreateObject(tsp_context_, TSS_OBJECT_TYPE_POLICY,
@@ -370,7 +362,6 @@ bool TPMUtilityImpl::ChangeAuthData(const SecureBlob& old_auth_data,
 
 bool TPMUtilityImpl::GenerateRandom(int num_bytes, string* random_data) {
   VLOG(1) << "TPMUtilityImpl::GenerateRandom enter";
-  AutoLock lock(lock_);
   if (!InitSRK())
     return false;
   TSS_RESULT result = TSS_SUCCESS;
@@ -394,7 +385,6 @@ bool TPMUtilityImpl::GenerateRandom(int num_bytes, string* random_data) {
 
 bool TPMUtilityImpl::StirRandom(const string& entropy_data) {
   VLOG(1) << "TPMUtilityImpl::StirRandom enter";
-  AutoLock lock(lock_);
   if (!InitSRK())
     return false;
   TSS_RESULT result = TSS_SUCCESS;
@@ -432,7 +422,6 @@ bool TPMUtilityImpl::GenerateRSAKeyInternal(std::optional<int> slot,
                                             string* key_blob,
                                             int* key_handle) {
   VLOG(1) << "TPMUtilityImpl::GenerateRSAKey enter";
-  AutoLock lock(lock_);
   if (!InitSRK())
     return false;
   TSS_RESULT result = TSS_SUCCESS;
@@ -478,7 +467,6 @@ bool TPMUtilityImpl::GetRSAPublicKey(int key_handle,
                                      string* public_exponent,
                                      string* modulus) {
   VLOG(1) << "TPMUtilityImpl::GetRSAPublicKey enter";
-  AutoLock lock(lock_);
   if (!InitSRK())
     return false;
   if (!GetKeyAttributeData(GetTssHandle(key_handle), TSS_TSPATTRIB_RSAKEY_INFO,
@@ -518,7 +506,6 @@ bool TPMUtilityImpl::WrapRSAKey(int slot,
                                 string* key_blob,
                                 int* key_handle) {
   VLOG(1) << "TPMUtilityImpl::WrapRSAKey enter";
-  AutoLock lock(lock_);
   if (!InitSRK())
     return false;
   if (!GetSRKPublicKey())
@@ -616,7 +603,6 @@ bool TPMUtilityImpl::LoadKeyWithParentInternal(std::optional<int> slot,
                                                const SecureBlob& auth_data,
                                                int parent_key_handle,
                                                int* key_handle) {
-  AutoLock lock(lock_);
   if (!InitSRK())
     return false;
   if (slot.has_value() && IsAlreadyLoaded(slot.value(), key_blob, key_handle))
@@ -633,7 +619,6 @@ bool TPMUtilityImpl::LoadKeyWithParentInternal(std::optional<int> slot,
 
 void TPMUtilityImpl::UnloadKeysForSlot(int slot) {
   VLOG(1) << "TPMUtilityImpl::UnloadKeysForSlot enter";
-  AutoLock lock(lock_);
   if (!InitSRK())
     return;
   set<int>* handles = &slot_handles_[slot].handles_;
@@ -648,7 +633,6 @@ void TPMUtilityImpl::UnloadKeysForSlot(int slot) {
 
 bool TPMUtilityImpl::Bind(int key_handle, const string& input, string* output) {
   VLOG(1) << "TPMUtilityImpl::Bind enter";
-  AutoLock lock(lock_);
   if (!InitSRK())
     return false;
   TSSEncryptedData encrypted(tsp_context_);
@@ -671,7 +655,6 @@ bool TPMUtilityImpl::Unbind(int key_handle,
                             const string& input,
                             string* output) {
   VLOG(1) << "TPMUtilityImpl::Unbind enter";
-  AutoLock lock(lock_);
   if (!InitSRK())
     return false;
   TSSEncryptedData encrypted(tsp_context_);
@@ -709,7 +692,6 @@ bool TPMUtilityImpl::Sign(int key_handle,
                           const string& input,
                           string* signature) {
   VLOG(1) << "TPMUtilityImpl::Sign enter";
-  AutoLock lock(lock_);
   DigestAlgorithm digest_algorithm = GetDigestAlgorithm(signing_mechanism);
 
   // Using the TSS_SS_RSASSAPKCS1V15_DER scheme, we need to manually
@@ -754,7 +736,6 @@ bool TPMUtilityImpl::Sign(int key_handle,
 
 bool TPMUtilityImpl::IsSRKReady() {
   VLOG(1) << "TPMUtilityImpl::IsSRKReady";
-  AutoLock lock(lock_);
   if (!tpm_manager_utility_) {
     LOG(ERROR) << "Accessing invalid tpm_manager utility.";
     return false;
@@ -1027,11 +1008,9 @@ bool TPMUtilityImpl::SealData(const std::string& unsealed_data,
   }
   if (!Bind(auth_key_handle, unsealed_data, encrypted_data)) {
     LOG(ERROR) << "Failed to bind encryption key for sealing data.";
-    AutoLock lock(lock_);
     FlushHandle(auth_key_handle);
     return false;
   }
-  AutoLock lock(lock_);
   FlushHandle(auth_key_handle);
   return true;
 }

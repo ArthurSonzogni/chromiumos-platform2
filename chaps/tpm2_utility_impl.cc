@@ -31,7 +31,6 @@
 #include <trunks/trunks_dbus_proxy.h>
 #include <trunks/trunks_factory_impl.h>
 
-using base::AutoLock;
 using brillo::SecureBlob;
 using std::map;
 using std::set;
@@ -332,7 +331,7 @@ bool TPM2UtilityImpl::Init() {
   bool is_owned = false;
   bool is_owner_password_present = false;
   bool has_reset_lock_permissions = false;
-  if (!tpm_manager_utility_.load()->GetTpmNonsensitiveStatus(
+  if (!tpm_manager_utility_->GetTpmNonsensitiveStatus(
           &is_enabled, &is_owned, &is_owner_password_present,
           &has_reset_lock_permissions)) {
     LOG(ERROR) << ": failed to get TPM status from tpm_manager.";
@@ -344,7 +343,6 @@ bool TPM2UtilityImpl::Init() {
     return false;
   }
 #ifndef CHAPS_TPM2_USE_PER_OP_SESSIONS
-  AutoLock lock(lock_);
   result = session_->StartUnboundSession(false /* salted */,
                                          false /* enable_encryption */);
   if (result != TPM_RC_SUCCESS) {
@@ -376,7 +374,7 @@ bool TPM2UtilityImpl::IsTPMAvailable() {
   bool is_owned = false;
   bool is_owner_password_present = false;
   bool has_reset_lock_permissions = false;
-  if (!tpm_manager_utility_.load()->GetTpmNonsensitiveStatus(
+  if (!tpm_manager_utility_->GetTpmNonsensitiveStatus(
           &is_enabled, &is_owned, &is_owner_password_present,
           &has_reset_lock_permissions)) {
     LOG(ERROR) << ": failed to get TPM status from tpm_manager.";
@@ -394,7 +392,6 @@ bool TPM2UtilityImpl::Authenticate(const SecureBlob& auth_data,
                                    const std::string& encrypted_root_key,
                                    SecureBlob* root_key) {
   CHECK(root_key);
-  AutoLock lock(lock_);
   int key_handle = 0;
   if (!LoadKeyWithParentInternal(std::nullopt, auth_key_blob, auth_data,
                                  kStorageRootKey, &key_handle)) {
@@ -415,7 +412,6 @@ bool TPM2UtilityImpl::ChangeAuthData(const SecureBlob& old_auth_data,
                                      const SecureBlob& new_auth_data,
                                      const std::string& old_auth_key_blob,
                                      std::string* new_auth_key_blob) {
-  AutoLock lock(lock_);
   int key_handle = 0;
   if (new_auth_data.size() > SHA256_DIGEST_SIZE) {
     LOG(ERROR) << "Authorization cannot be larger than SHA256 Digest size.";
@@ -446,7 +442,6 @@ bool TPM2UtilityImpl::ChangeAuthData(const SecureBlob& old_auth_data,
 }
 
 bool TPM2UtilityImpl::GenerateRandom(int num_bytes, std::string* random_data) {
-  AutoLock lock(lock_);
   TPM_RC result =
       trunks_tpm_utility_->GenerateRandom(num_bytes, nullptr, random_data);
   if (result != TPM_RC_SUCCESS) {
@@ -458,7 +453,6 @@ bool TPM2UtilityImpl::GenerateRandom(int num_bytes, std::string* random_data) {
 }
 
 bool TPM2UtilityImpl::StirRandom(const std::string& entropy_data) {
-  AutoLock lock(lock_);
   TPM_RC result = trunks_tpm_utility_->StirRandom(entropy_data, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error seeding TPM random number generator: "
@@ -474,7 +468,6 @@ bool TPM2UtilityImpl::GenerateRSAKey(int slot,
                                      const SecureBlob& auth_data,
                                      std::string* key_blob,
                                      int* key_handle) {
-  AutoLock lock(lock_);
   if (public_exponent.size() > 4) {
     LOG(ERROR) << "Incorrectly formatted public_exponent.";
     return false;
@@ -514,7 +507,6 @@ bool TPM2UtilityImpl::GenerateRSAKey(int slot,
 bool TPM2UtilityImpl::GetRSAPublicKey(int key_handle,
                                       std::string* public_exponent,
                                       std::string* modulus) {
-  AutoLock lock(lock_);
   trunks::TPMT_PUBLIC public_data;
   TPM_RC result =
       trunks_tpm_utility_->GetKeyPublicArea(key_handle, &public_data);
@@ -542,7 +534,6 @@ bool TPM2UtilityImpl::GenerateECCKey(int slot,
                                      const SecureBlob& auth_data,
                                      std::string* key_blob,
                                      int* key_handle) {
-  AutoLock lock(lock_);
   if (!IsECCurveSupported(nid)) {
     LOG(ERROR) << "Not supported NID";
     return false;
@@ -577,7 +568,6 @@ bool TPM2UtilityImpl::GenerateECCKey(int slot,
 }
 
 bool TPM2UtilityImpl::GetECCPublicKey(int key_handle, std::string* ec_point) {
-  AutoLock lock(lock_);
   trunks::TPMT_PUBLIC public_area;
   TPM_RC result =
       trunks_tpm_utility_->GetKeyPublicArea(key_handle, &public_area);
@@ -609,7 +599,6 @@ bool TPM2UtilityImpl::WrapRSAKey(int slot,
                                  const SecureBlob& auth_data,
                                  std::string* key_blob,
                                  int* key_handle) {
-  AutoLock lock(lock_);
   if (public_exponent.size() > 4) {
     LOG(ERROR) << "Incorrectly formatted public_exponent.";
     return false;
@@ -651,8 +640,6 @@ bool TPM2UtilityImpl::WrapECCKey(int slot,
                                  const brillo::SecureBlob& auth_data,
                                  std::string* key_blob,
                                  int* key_handle) {
-  AutoLock lock(lock_);
-
   ScopedSession session_scope(factory_, &session_);
   if (!session_) {
     return false;
@@ -683,7 +670,6 @@ bool TPM2UtilityImpl::LoadKey(int slot,
                               const std::string& key_blob,
                               const SecureBlob& auth_data,
                               int* key_handle) {
-  AutoLock lock(lock_);
   return LoadKeyWithParentInternal(slot, key_blob, auth_data, kStorageRootKey,
                                    key_handle);
 }
@@ -693,13 +679,11 @@ bool TPM2UtilityImpl::LoadKeyWithParent(int slot,
                                         const SecureBlob& auth_data,
                                         int parent_key_handle,
                                         int* key_handle) {
-  AutoLock lock(lock_);
   return LoadKeyWithParentInternal(slot, key_blob, auth_data, parent_key_handle,
                                    key_handle);
 }
 
 void TPM2UtilityImpl::UnloadKeysForSlot(int slot) {
-  AutoLock Lock(lock_);
   for (const auto& it : slot_handles_[slot]) {
     FlushHandle(it);
   }
@@ -769,7 +753,6 @@ bool TPM2UtilityImpl::Bind(int key_handle,
 bool TPM2UtilityImpl::Unbind(int key_handle,
                              const std::string& input,
                              std::string* output) {
-  AutoLock lock(lock_);
   return UnbindInternal(key_handle, input, output);
 }
 
@@ -778,8 +761,6 @@ bool TPM2UtilityImpl::Sign(int key_handle,
                            const std::string& mechanism_parameter,
                            const std::string& input,
                            std::string* signature) {
-  AutoLock Lock(lock_);
-
   // Parse the various parameters for this method.
   DigestAlgorithm digest_algorithm = GetDigestAlgorithm(signing_mechanism);
   // Parse RSA PSS Parameters if applicable.
@@ -1091,7 +1072,6 @@ bool TPM2UtilityImpl::SealData(const std::string& unsealed_data,
                                const brillo::SecureBlob& auth_value,
                                std::string* key_blob,
                                std::string* encrypted_data) {
-  AutoLock lock(lock_);
   if (unsealed_data.length() > MAX_SYM_DATA) {
     LOG(ERROR) << "The data to seal is too large.";
     return false;
@@ -1128,7 +1108,6 @@ bool TPM2UtilityImpl::UnsealData(const std::string& key_blob,
     return true;
   }
 
-  AutoLock lock(lock_);
   std::string data;
   ScopedSession session_scope(factory_, &session_);
   if (!session_) {

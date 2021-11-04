@@ -19,7 +19,6 @@
 #include "chaps/isolate.h"
 #include "pkcs11/cryptoki.h"
 
-using base::AutoLock;
 using brillo::Blob;
 using brillo::SecureBlob;
 using brillo::dbus_utils::ExtractMethodCallResults;

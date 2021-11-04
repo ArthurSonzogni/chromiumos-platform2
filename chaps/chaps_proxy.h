@@ -11,7 +11,6 @@
 
 #include <base/at_exit.h>
 #include <base/memory/ref_counted.h>
-#include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <brillo/secure_blob.h>
 #include <chaps/proto_bindings/ck_structs.pb.h>

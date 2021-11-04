@@ -35,7 +35,6 @@
 #include "chaps/slot_policy_shared_slot.h"
 #include "pkcs11/cryptoki.h"
 
-using base::AutoLock;
 using base::FilePath;
 using brillo::SecureBlob;
 using std::map;
@@ -935,7 +934,6 @@ bool SlotManagerImpl::IsTokenPresent(int slot_id) const {
 }
 
 int SlotManagerImpl::CreateHandle() {
-  AutoLock lock(handle_generator_lock_);
   // If we use this many handles, we have a problem.
   CHECK(last_handle_ < std::numeric_limits<int>::max());
   return ++last_handle_;

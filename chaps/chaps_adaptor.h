@@ -15,10 +15,6 @@
 #include <dbus/bus.h>
 #include <chaps/proto_bindings/ck_structs.pb.h>
 
-namespace base {
-class Lock;
-}  // namespace base
-
 namespace chaps {
 
 const char kPersistentLogLevelPath[] = "/var/lib/chaps/.loglevel";

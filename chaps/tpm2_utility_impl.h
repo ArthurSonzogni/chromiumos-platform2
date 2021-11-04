@@ -7,7 +7,6 @@
 
 #include "chaps/tpm_utility.h"
 
-#include <atomic>
 #include <map>
 #include <memory>
 #include <optional>
@@ -15,8 +14,6 @@
 #include <string>
 
 #include <base/macros.h>
-#include <base/single_thread_task_runner.h>
-#include <base/synchronization/lock.h>
 #include <gtest/gtest_prod.h>
 #include <tpm_manager/client/tpm_manager_utility.h>
 #include <trunks/hmac_session.h>
@@ -164,20 +161,15 @@ class TPM2UtilityImpl : public TPMUtility {
   std::unique_ptr<trunks::TrunksFactoryImpl> default_factory_;
   trunks::TrunksFactory* factory_;
   bool is_trunks_proxy_initialized_ = false;
-  // |Init| had been completely run. This implies TPM is enabled and owned.
-  std::atomic<bool> is_initialized_ = false;
+  bool is_initialized_ = false;
   // TPM is enabled.
-  std::atomic<bool> is_enabled_ = false;
-  base::Lock lock_;
+  bool is_enabled_ = false;
   std::unique_ptr<trunks::HmacSession> session_;
   std::unique_ptr<trunks::TpmUtility> trunks_tpm_utility_;
   std::map<int, std::set<int>> slot_handles_;
   std::map<int, brillo::SecureBlob> handle_auth_data_;
   std::map<int, std::string> handle_name_;
-  // The |tpm_manager_utility_| may be used in |Init| & |IsTPMAvailable| in
-  // the same time, using std::atomic here could prevent the potential race
-  // condition.
-  std::atomic<tpm_manager::TpmManagerUtility*> tpm_manager_utility_;
+  tpm_manager::TpmManagerUtility* tpm_manager_utility_;
 
   FRIEND_TEST(TPM2UtilityTest, IsTPMAvailable);
   FRIEND_TEST(TPM2UtilityTest, LoadKeySuccess);

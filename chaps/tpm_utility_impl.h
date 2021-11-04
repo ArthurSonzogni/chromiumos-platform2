@@ -13,7 +13,6 @@
 #include <string>
 
 #include <base/macros.h>
-#include <base/synchronization/lock.h>
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
 #include <tpm_manager/client/tpm_manager_utility.h>
@@ -181,7 +180,6 @@ class TPMUtilityImpl : public TPMUtility {
   const std::string default_exponent_;
   std::map<int, HandleInfo> slot_handles_;
   std::map<int, KeyInfo> handle_info_;
-  base::Lock lock_;
   int last_handle_;
   tpm_manager::TpmManagerUtility* tpm_manager_utility_;
 };

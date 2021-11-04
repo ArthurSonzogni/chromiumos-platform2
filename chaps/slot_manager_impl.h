@@ -18,7 +18,6 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <base/synchronization/lock.h>
 
 #include "chaps/chaps_factory.h"
 #include "chaps/object_pool.h"
@@ -237,7 +236,6 @@ class SlotManagerImpl : public SlotManager,
   std::map<int, int> session_slot_map_;
   std::map<brillo::SecureBlob, Isolate> isolate_map_;
   AsyncTPMUtility* tpm_utility_;
-  base::Lock handle_generator_lock_;
   bool auto_load_system_token_;
   bool is_initialized_;
   SystemShutdownBlocker* system_shutdown_blocker_;

@@ -8,7 +8,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/synchronization/lock.h>
 #include <dbus/object_path.h>
 
 #include "chaps/chaps.h"
@@ -17,9 +16,7 @@
 #include "chaps/dbus_bindings/constants.h"
 #include "chaps/token_manager_interface.h"
 
-using base::AutoLock;
 using base::FilePath;
-using base::Lock;
 using brillo::SecureBlob;
 using std::string;
 using std::vector;
