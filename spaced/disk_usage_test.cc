@@ -53,8 +53,8 @@ TEST(DiskUsageUtilTest, FailedVfsCall) {
   DiskUsageUtilMock disk_usage_mock(st, base::nullopt);
   base::FilePath path("/foo/bar");
 
-  EXPECT_EQ(disk_usage_mock.GetFreeDiskSpace(path), 0);
-  EXPECT_EQ(disk_usage_mock.GetTotalDiskSpace(path), 0);
+  EXPECT_EQ(disk_usage_mock.GetFreeDiskSpace(path), -1);
+  EXPECT_EQ(disk_usage_mock.GetTotalDiskSpace(path), -1);
 }
 
 TEST(DiskUsageUtilTest, FilesystemData) {
@@ -165,13 +165,13 @@ class DiskUsageRootdevMock : public DiskUsageUtil {
     return rootdev_path_;
   }
 
-  uint64_t GetBlockDeviceSize(const base::FilePath& device) override {
+  int64_t GetBlockDeviceSize(const base::FilePath& device) override {
     // At the moment, only the root device size is queried from spaced.
     // Once more block devices are queried, move this into a map.
     if (device == rootdev_path_)
       return rootdev_size_;
 
-    return 0;
+    return -1;
   }
 
  private:

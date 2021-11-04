@@ -77,78 +77,71 @@ base::Optional<brillo::Thinpool> DiskUsageUtil::GetThinpool() {
   return lvm_->GetThinpool(*vg, "thinpool");
 }
 
-uint64_t DiskUsageUtil::GetFreeDiskSpace(const base::FilePath& path) {
+int64_t DiskUsageUtil::GetFreeDiskSpace(const base::FilePath& path) {
   // Use statvfs() to get the free space for the given path.
   struct statvfs stat;
 
   if (StatVFS(path, &stat) != 0) {
     LOG(ERROR) << "Failed to run statvfs() on " << path;
-    return 0;
+    return -1;
   }
 
-  uint64_t free_disk_space =
-      static_cast<uint64_t>(stat.f_bavail) * stat.f_frsize;
+  int64_t free_disk_space = static_cast<int64_t>(stat.f_bavail) * stat.f_frsize;
 
   base::Optional<brillo::Thinpool> thinpool = GetThinpool();
   int64_t thinpool_free_space;
   if (thinpool && thinpool->IsValid() &&
       thinpool->GetFreeSpace(&thinpool_free_space)) {
-    // TODO(sarthakkukreti@): Temporarily case for this CL, we move to int64_t
-    // in the next CL.
-    free_disk_space =
-        std::min(free_disk_space, static_cast<uint64_t>(thinpool_free_space));
+    free_disk_space = std::min(free_disk_space, thinpool_free_space);
   }
 
   return free_disk_space;
 }
 
-uint64_t DiskUsageUtil::GetTotalDiskSpace(const base::FilePath& path) {
+int64_t DiskUsageUtil::GetTotalDiskSpace(const base::FilePath& path) {
   // Use statvfs() to get the total space for the given path.
   struct statvfs stat;
 
   if (StatVFS(path, &stat) != 0) {
     LOG(ERROR) << "Failed to run statvfs() on " << path;
-    return 0;
+    return -1;
   }
 
-  uint64_t total_disk_space =
-      static_cast<uint64_t>(stat.f_blocks) * stat.f_frsize;
+  int64_t total_disk_space =
+      static_cast<int64_t>(stat.f_blocks) * stat.f_frsize;
 
   base::Optional<brillo::Thinpool> thinpool = GetThinpool();
   int64_t thinpool_total_space;
   if (thinpool && thinpool->IsValid() &&
       thinpool->GetTotalSpace(&thinpool_total_space)) {
-    // TODO(sarthakkukreti@): Temporarily case for this CL, we move to int64_t
-    // in the next CL.
-    total_disk_space =
-        std::min(total_disk_space, static_cast<uint64_t>(thinpool_total_space));
+    total_disk_space = std::min(total_disk_space, thinpool_total_space);
   }
 
   return total_disk_space;
 }
 
-uint64_t DiskUsageUtil::GetBlockDeviceSize(const base::FilePath& device) {
+int64_t DiskUsageUtil::GetBlockDeviceSize(const base::FilePath& device) {
   base::ScopedFD fd(HANDLE_EINTR(
       open(device.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC)));
   if (!fd.is_valid()) {
     PLOG(ERROR) << "open " << device.value();
-    return 0;
+    return -1;
   }
 
-  uint64_t size;
+  int64_t size;
   if (ioctl(fd.get(), BLKGETSIZE64, &size)) {
     PLOG(ERROR) << "ioctl(BLKGETSIZE): " << device.value();
-    return 0;
+    return -1;
   }
   return size;
 }
 
-uint64_t DiskUsageUtil::GetRootDeviceSize() {
+int64_t DiskUsageUtil::GetRootDeviceSize() {
   base::Optional<base::FilePath> root_device = GetRootDevice();
 
   if (!root_device) {
     LOG(WARNING) << "Failed to get root device";
-    return 0;
+    return -1;
   }
 
   return GetBlockDeviceSize(*root_device);

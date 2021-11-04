@@ -31,15 +31,15 @@ void DBusAdaptor::RegisterAsync(
   dbus_object_.RegisterAsync(cb);
 }
 
-uint64_t DBusAdaptor::GetFreeDiskSpace(const std::string& path) {
+int64_t DBusAdaptor::GetFreeDiskSpace(const std::string& path) {
   return disk_usage_util_->GetFreeDiskSpace(base::FilePath(path));
 }
 
-uint64_t DBusAdaptor::GetTotalDiskSpace(const std::string& path) {
+int64_t DBusAdaptor::GetTotalDiskSpace(const std::string& path) {
   return disk_usage_util_->GetTotalDiskSpace(base::FilePath(path));
 }
 
-uint64_t DBusAdaptor::GetRootDeviceSize() {
+int64_t DBusAdaptor::GetRootDeviceSize() {
   return disk_usage_util_->GetRootDeviceSize();
 }
 

@@ -20,9 +20,9 @@ class BRILLO_EXPORT DiskUsageProxy : public DiskUsageUtil {
   DiskUsageProxy();
   ~DiskUsageProxy() override = default;
 
-  uint64_t GetFreeDiskSpace(const base::FilePath& path) override;
-  uint64_t GetTotalDiskSpace(const base::FilePath& path) override;
-  uint64_t GetRootDeviceSize() override;
+  int64_t GetFreeDiskSpace(const base::FilePath& path) override;
+  int64_t GetTotalDiskSpace(const base::FilePath& path) override;
+  int64_t GetRootDeviceSize() override;
 
  private:
   std::unique_ptr<org::chromium::SpacedProxy> spaced_proxy_;

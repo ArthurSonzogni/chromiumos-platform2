@@ -22,43 +22,43 @@ DiskUsageProxy::DiskUsageProxy() {
   spaced_proxy_ = std::make_unique<org::chromium::SpacedProxy>(bus);
 }
 
-uint64_t DiskUsageProxy::GetFreeDiskSpace(const base::FilePath& path) {
-  uint64_t free_disk_space;
+int64_t DiskUsageProxy::GetFreeDiskSpace(const base::FilePath& path) {
+  int64_t free_disk_space;
   brillo::ErrorPtr error;
   // Return false if call fails.
   if (!spaced_proxy_->GetFreeDiskSpace(path.value(), &free_disk_space,
                                        &error)) {
     LOG(ERROR) << "Failed to call GetFreeDiskSpace, error: "
                << error->GetMessage();
-    return 0;
+    return -1;
   }
 
   return free_disk_space;
 }
 
-uint64_t DiskUsageProxy::GetTotalDiskSpace(const base::FilePath& path) {
-  uint64_t total_disk_space;
+int64_t DiskUsageProxy::GetTotalDiskSpace(const base::FilePath& path) {
+  int64_t total_disk_space;
   brillo::ErrorPtr error;
   // Return false if call fails.
   if (!spaced_proxy_->GetTotalDiskSpace(path.value(), &total_disk_space,
                                         &error)) {
     LOG(ERROR) << "Failed to call GetTotalDiskSpace, error: "
                << error->GetMessage();
-    return 0;
+    return -1;
   }
 
   return total_disk_space;
 }
 
-uint64_t DiskUsageProxy::GetRootDeviceSize() {
-  uint64_t root_device_size;
+int64_t DiskUsageProxy::GetRootDeviceSize() {
+  int64_t root_device_size;
 
   brillo::ErrorPtr error;
   // Return false if call fails.
   if (!spaced_proxy_->GetRootDeviceSize(&root_device_size, &error)) {
     LOG(ERROR) << "Failed to call GetRootDeviceSize, error: "
                << error->GetMessage();
-    return 0;
+    return -1;
   }
 
   return root_device_size;
