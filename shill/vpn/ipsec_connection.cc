@@ -330,10 +330,13 @@ IPsecConnection::~IPsecConnection() {
     return;
   }
 
-  // This is unexpected but cannot be fully avoided. Call OnDisconnect() to make
-  // sure resources are released.
+  // This is unexpected but cannot be fully avoided, e.g., shill stops or
+  // restarts (or the corresponding service is removed) while the
+  // IPsecConnection is still connected or connecting (this is very likely to
+  // happen in the tast tests). Call StopCharon() to make sure that we at least
+  // send a SIGTERM to the charon process.
   LOG(WARNING) << "Destructor called but the current state is " << state();
-  OnDisconnect();
+  StopCharon();
 }
 
 void IPsecConnection::OnConnect() {
