@@ -126,9 +126,6 @@ class SessionManagerImpl
   // How much time to wait for the key generator job to stop before killing it.
   static const base::TimeDelta kKeyGenTimeout;
 
-  // How much time to give the browser to shutdown cleanly before killing it.
-  static const base::TimeDelta kBrowserTimeout;
-
   // Time window before or after suspend/resume in which the session should be
   // ended if Chrome crashes. This is done as a precaution to avoid showing an
   // unlocked screen if the crash made Chrome fail to lock the screen:

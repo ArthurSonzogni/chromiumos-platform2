@@ -603,8 +603,9 @@ void SessionManagerService::CleanupChildrenBeforeExit(ExitCode code) {
       code == ExitCode::SUCCESS
           ? ArcContainerStopReason::SESSION_MANAGER_SHUTDOWN
           : ArcContainerStopReason::BROWSER_SHUTDOWN);
-  DLOG(INFO) << "Waiting up to "
-             << SessionManagerImpl::kBrowserTimeout.InSeconds()
+
+  const base::TimeDelta browser_timeout = GetKillTimeout();
+  DLOG(INFO) << "Waiting up to " << browser_timeout.InSeconds()
              << " seconds for browser process group to exit";
 
   // We're going to wait several times for various processes to exit, but we
@@ -613,12 +614,11 @@ void SessionManagerService::CleanupChildrenBeforeExit(ExitCode code) {
   // timeouts by that time.
   const base::TimeTicks timeout_start = base::TimeTicks::Now();
 
-  if (!browser_->WaitForExit(SessionManagerImpl::kBrowserTimeout)) {
+  if (!browser_->WaitForExit(browser_timeout)) {
     LOG(WARNING) << "Browser process did not exit "
-                 << SessionManagerImpl::kBrowserTimeout.InSeconds()
-                 << " seconds after SIGTERM.";
+                 << browser_timeout.InSeconds() << " seconds after SIGTERM.";
     WriteBrowserPidFile(shutdown_browser_pid_path_);
-    browser_->AbortAndKillAll(GetKillTimeout());
+    browser_->AbortAndKillAll(browser_timeout);
   }
   if (code == SessionManagerService::SUCCESS) {
     // Only record shutdown time for normal exit.

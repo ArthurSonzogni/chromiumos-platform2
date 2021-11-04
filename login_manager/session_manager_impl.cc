@@ -126,9 +126,6 @@ constexpr base::TimeDelta SessionManagerImpl::kContainerTimeout =
 constexpr base::TimeDelta SessionManagerImpl::kKeyGenTimeout =
     base::TimeDelta::FromSeconds(1);
 
-constexpr base::TimeDelta SessionManagerImpl::kBrowserTimeout =
-    base::TimeDelta::FromSeconds(3);
-
 constexpr base::TimeDelta SessionManagerImpl::kCrashBeforeSuspendInterval =
     base::TimeDelta::FromSeconds(5);
 constexpr base::TimeDelta SessionManagerImpl::kCrashAfterSuspendInterval =
