@@ -8,6 +8,7 @@
 
 #include <base/containers/adapters.h>
 #include <base/containers/contains.h>
+#include <base/containers/cxx20_erase.h>
 #include <base/strings/string_util.h>
 #include <base/strings/strcat.h>
 
