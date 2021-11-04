@@ -203,21 +203,6 @@ bool TPMUtilityImpl::Init() {
     LOG(ERROR) << "Tspi_Context_GetDefaultPolicy - " << ResultToString(result);
     return false;
   }
-  // Make sure we can communicate with the TPM.
-  TSS_HTPM tpm;
-  result = Tspi_Context_GetTpmObject(tsp_context_, &tpm);
-  if (result != TSS_SUCCESS) {
-    LOG(ERROR) << "Tspi_Context_GetTpmObject - " << ResultToString(result);
-    return false;
-  }
-  BYTE* random_bytes = NULL;
-  result = Tspi_TPM_GetRandom(tpm, 4, &random_bytes);
-  if (result != TSS_SUCCESS) {
-    LOG(ERROR) << "Tspi_TPM_GetRandom - " << ResultToString(result);
-    return false;
-  }
-  Tspi_Context_FreeMemory(tsp_context_, random_bytes);
-  VLOG(1) << "TPMUtilityImpl::Init success";
   is_initialized_ = true;
   return true;
 }
