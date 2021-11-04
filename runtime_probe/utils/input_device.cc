@@ -12,6 +12,8 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
+#include "runtime_probe/proto_bindings/runtime_probe.pb.h"
+
 namespace runtime_probe {
 
 namespace {
@@ -155,15 +157,15 @@ bool InputDeviceImpl::IsTouchscreenDevice() const {
   return !IsTouchpadDevice() && ev_abs[kAbsMtSlot];
 }
 
-std::string InputDeviceImpl::type() const {
+InputDevice::Type InputDeviceImpl::type() const {
   if (IsStylusDevice()) {
-    return InputDeviceImpl::Type::STYLUS;
+    return InputDevice::TYPE_STYLUS;
   } else if (IsTouchpadDevice()) {
-    return InputDeviceImpl::Type::TOUCHPAD;
+    return InputDevice::TYPE_TOUCHPAD;
   } else if (IsTouchscreenDevice()) {
-    return InputDeviceImpl::Type::TOUCHSCREEN;
+    return InputDevice::TYPE_TOUCHSCREEN;
   } else {
-    return InputDeviceImpl::Type::UNKNOWN;
+    return InputDevice::TYPE_UNKNOWN;
   }
 }
 

@@ -14,10 +14,12 @@
 #include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
+#include "runtime_probe/proto_bindings/runtime_probe.pb.h"
 #include "runtime_probe/utils/file_utils.h"
 #include "runtime_probe/utils/input_device.h"
 
@@ -32,6 +34,22 @@ const std::vector<FieldType> kTouchscreenI2cFields = {
     {"name", "name"}, {"product", "hw_version"}, {"fw_version", "fw_version"}};
 const std::map<std::string, std::string> kTouchscreenI2cDriverToVid = {
     {"elants_i2c", "04f3"}, {"raydium_ts", "27a3"}, {"atmel_ext_ts", "03eb"}};
+
+std::string DeviceTypeEnumToString(InputDevice::Type device_type) {
+  switch (device_type) {
+    case InputDevice::TYPE_STYLUS:
+      return "stylus";
+    case InputDevice::TYPE_TOUCHPAD:
+      return "touchpad";
+    case InputDevice::TYPE_TOUCHSCREEN:
+      return "touchscreen";
+    case InputDevice::TYPE_UNKNOWN:
+      return "unknown";
+    default:
+      NOTREACHED() << "Invalid device_type: " << device_type;
+      return "unknown";
+  }
+}
 
 std::string GetDriverName(const base::FilePath& node_path) {
   const auto driver_path = node_path.Append("driver");
@@ -73,7 +91,7 @@ void FixTouchscreenI2cDevice(base::Value* device) {
 void AppendInputDevice(InputDeviceFunction::DataType* list_value,
                        std::unique_ptr<InputDeviceImpl> input_device,
                        const std::string& device_type_filter) {
-  std::string device_type = input_device->type();
+  const auto device_type = DeviceTypeEnumToString(input_device->type());
   if (!device_type_filter.empty() && device_type_filter != device_type)
     return;
   base::Value value(base::Value::Type::DICTIONARY);
@@ -85,7 +103,8 @@ void AppendInputDevice(InputDeviceFunction::DataType* list_value,
   value.SetStringKey("version", input_device->version);
   value.SetStringKey("path",
                      base::StringPrintf("/sys%s", input_device->sysfs.c_str()));
-  value.SetStringKey("device_type", device_type);
+  value.SetStringKey("device_type",
+                     InputDevice::Type_Name(input_device->type()));
   FixTouchscreenI2cDevice(&value);
   list_value->push_back(std::move(value));
 }

@@ -304,6 +304,13 @@ message Camera {
 
 // Things about input_device.
 message InputDevice {
+  enum Type {
+    TYPE_UNSPECIFIED = 0;
+    TYPE_UNKNOWN = 1;
+    TYPE_STYLUS = 2;
+    TYPE_TOUCHPAD = 3;
+    TYPE_TOUCHSCREEN = 4;
+  }
   message Fields {
     // The name of the device.
     string name = 1;
@@ -321,6 +328,8 @@ message InputDevice {
     uint32 version = 7;
     // The firmware version.
     string fw_version = 8;
+    // The type of the device.
+    Type device_type = 9;
   }
   // Component alias.
   string name = 1;

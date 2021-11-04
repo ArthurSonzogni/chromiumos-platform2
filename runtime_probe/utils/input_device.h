@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include <base/values.h>
+#include "runtime_probe/proto_bindings/runtime_probe.pb.h"
 
 namespace runtime_probe {
 
@@ -30,7 +30,7 @@ class InputDeviceImpl {
   bool IsTouchscreenDevice() const;
 
   // Gets the device's type.
-  std::string type() const;
+  InputDevice::Type type() const;
 
   std::string bus;
   std::string event;
@@ -39,13 +39,6 @@ class InputDeviceImpl {
   std::string sysfs;
   std::string vendor;
   std::string version;
-
-  struct Type {
-    inline static const std::string UNKNOWN = "unknown";
-    inline static const std::string STYLUS = "stylus";
-    inline static const std::string TOUCHPAD = "touchpad";
-    inline static const std::string TOUCHSCREEN = "touchscreen";
-  };
 
  private:
   static constexpr size_t kEvKeyMax = 0x2ff;
