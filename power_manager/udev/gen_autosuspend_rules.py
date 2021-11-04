@@ -234,6 +234,8 @@ PCI_IDS += [
     '8086:4ded',
     # Volteer xHCI controller
     '8086:a0ed',
+    # Brya xHCI controller
+    '8086:51ed',
     # Graphics
     '8086:9b41',
     # DSP
