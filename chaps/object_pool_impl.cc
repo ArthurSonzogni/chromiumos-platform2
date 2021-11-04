@@ -11,8 +11,6 @@
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/synchronization/lock.h>
-#include <base/synchronization/waitable_event.h>
 
 #include "chaps/chaps.h"
 #include "chaps/chaps_factory.h"
@@ -24,8 +22,6 @@
 #include "chaps/proto_bindings/attributes.pb.h"
 #include "chaps/slot_policy.h"
 
-using base::AutoLock;
-using base::AutoUnlock;
 using brillo::SecureBlob;
 using std::map;
 using std::shared_ptr;
@@ -51,14 +47,12 @@ ObjectPoolImpl::ObjectPoolImpl(ChapsFactory* factory,
 ObjectPoolImpl::~ObjectPoolImpl() {}
 
 bool ObjectPoolImpl::Init() {
-  AutoLock lock(lock_);
   if (store_.get()) {
     if (!LoadPublicObjects())
       return false;
     // Import legacy objects. The existence of the 'imported' blob indicates
     // that legacy objects have already been imported. The contents of this blob
     // are ignored.
-    AutoUnlock unlock(lock_);
     string imported_blob;
     if (importer_.get() && !GetInternalBlob(kImportedTracker, &imported_blob)) {
       finish_import_required_ = importer_->ImportObjects(this);
@@ -74,21 +68,18 @@ bool ObjectPoolImpl::Init() {
 }
 
 bool ObjectPoolImpl::GetInternalBlob(int blob_id, string* blob) {
-  AutoLock lock(lock_);
   if (store_.get())
     return store_->GetInternalBlob(blob_id, blob);
   return false;
 }
 
 bool ObjectPoolImpl::SetInternalBlob(int blob_id, const string& blob) {
-  AutoLock lock(lock_);
   if (store_.get())
     return store_->SetInternalBlob(blob_id, blob);
   return false;
 }
 
 bool ObjectPoolImpl::SetEncryptionKey(const SecureBlob& key) {
-  AutoLock lock(lock_);
   if (key.empty())
     LOG(WARNING) << "WARNING: Private object services will not be available.";
   if (store_.get() && !key.empty()) {
@@ -99,8 +90,6 @@ bool ObjectPoolImpl::SetEncryptionKey(const SecureBlob& key) {
       LOG(WARNING) << "Failed to load private objects.";
     if (finish_import_required_) {
       CHECK(importer_.get());
-      // Unlock because FinishImportAsync inserts objects into this pool.
-      AutoUnlock unlock(lock_);
       if (!importer_->FinishImportAsync(this))
         LOG(WARNING) << "Failed to finish importing objects.";
     }
@@ -134,7 +123,6 @@ Result ObjectPoolImpl::AddObject(Object* object, bool from_external_source) {
     return Result::Failure;
   }
 
-  AutoLock lock(lock_);
   if (objects_.find(object) != objects_.end())
     return Result::Failure;
   if (store_.get()) {
@@ -158,7 +146,6 @@ Result ObjectPoolImpl::AddObject(Object* object, bool from_external_source) {
 }
 
 Result ObjectPoolImpl::Delete(const Object* object) {
-  AutoLock lock(lock_);
   if (objects_.find(object) == objects_.end())
     return Result::Failure;
   if (store_.get()) {
@@ -175,7 +162,6 @@ Result ObjectPoolImpl::Delete(const Object* object) {
 }
 
 Result ObjectPoolImpl::DeleteAll() {
-  AutoLock lock(lock_);
   objects_.clear();
   handle_object_map_.clear();
   if (store_.get())
@@ -185,7 +171,6 @@ Result ObjectPoolImpl::DeleteAll() {
 
 Result ObjectPoolImpl::Find(const Object* search_template,
                             vector<const Object*>* matching_objects) {
-  AutoLock lock(lock_);
   // If we're looking for private objects we need to wait until private objects
   // have been loaded.
   if (((search_template->IsAttributePresent(CKA_PRIVATE) &&
@@ -202,7 +187,6 @@ Result ObjectPoolImpl::Find(const Object* search_template,
 }
 
 Result ObjectPoolImpl::FindByHandle(int handle, const Object** object) {
-  AutoLock lock(lock_);
   CHECK(object);
   HandleObjectMap::iterator it = handle_object_map_.find(handle);
   if (it == handle_object_map_.end())
@@ -216,7 +200,6 @@ Object* ObjectPoolImpl::GetModifiableObject(const Object* object) {
 }
 
 Result ObjectPoolImpl::Flush(const Object* object) {
-  AutoLock lock(lock_);
   if (objects_.find(object) == objects_.end())
     return Result::Failure;
   if (store_.get()) {

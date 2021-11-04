@@ -14,8 +14,6 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <base/synchronization/lock.h>
-#include <base/synchronization/waitable_event.h>
 
 #include "chaps/object_store.h"
 
@@ -84,7 +82,6 @@ class ObjectPoolImpl : public ObjectPool {
   std::unique_ptr<ObjectStore> store_;
   std::unique_ptr<ObjectImporter> importer_;
   bool is_private_loaded_;
-  base::Lock lock_;
   bool finish_import_required_;
 };
 
