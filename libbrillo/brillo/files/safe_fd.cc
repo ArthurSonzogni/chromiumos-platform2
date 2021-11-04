@@ -330,6 +330,13 @@ SafeFD::SafeFDResult SafeFD::MakeFile(const base::FilePath& path,
   if (!file.first.is_valid()) {
     return file;
   }
+
+  // We may not have permission to chown, so check the ownership first.
+  SafeFD::Error err = CheckAttributes(file.first.get(), permissions, uid, gid);
+  if (!IsError(err)) {
+    return file;
+  }
+
   if (HANDLE_EINTR(fchown(file.first.get(), uid, gid)) != 0) {
     PLOG(ERROR) << "Failed to set ownership in MakeFile() for \""
                 << path.value() << '"';
@@ -386,6 +393,12 @@ SafeFD::SafeFDResult SafeFD::MakeDir(const base::FilePath& path,
   }
 
   if (made_dir) {
+    // We may not have permission to chown, so check the ownership first.
+    SafeFD::Error err = CheckAttributes(dir.get(), permissions, uid, gid);
+    if (!IsError(err)) {
+      return MakeSuccessResult(std::move(dir));
+    }
+
     // If the directory was created, set the ownership.
     if (HANDLE_EINTR(fchown(dir.get(), uid, gid)) != 0) {
       PLOG(ERROR) << "Failed to set ownership in MakeDir() for \""
