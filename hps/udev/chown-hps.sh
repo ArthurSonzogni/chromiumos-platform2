@@ -15,4 +15,6 @@
 # HPS *peripheral* in $1. We map that to its corresponding I2C *controller*
 # by looking up one directory.
 
-chgrp hpsd /dev/"$(basename "$(dirname "$1")")"
+dev_name=/dev/"$(basename "$(dirname "$1")")"
+chgrp hpsd "${dev_name}"
+chcon -t cros_hps_device "${dev_name}"
