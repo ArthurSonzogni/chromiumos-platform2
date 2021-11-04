@@ -705,11 +705,8 @@ bool MountHelper::MountCacheSubdirectories(
 bool MountHelper::SetUpEcryptfsMount(const std::string& obfuscated_username,
                                      const std::string& fek_signature,
                                      const std::string& fnek_signature,
-                                     bool should_migrate) {
+                                     const FilePath& mount_point) {
   const FilePath vault_path = GetEcryptfsUserVaultPath(obfuscated_username);
-  const FilePath mount_point =
-      should_migrate ? GetUserTemporaryMountDirectory(obfuscated_username)
-                     : GetUserMountDirectory(obfuscated_username);
 
   // Specify the ecryptfs options for mounting the user's cryptohome.
   std::string ecryptfs_options = StringPrintf(
@@ -728,8 +725,10 @@ bool MountHelper::SetUpEcryptfsMount(const std::string& obfuscated_username,
   CreateTrackedSubdirectories(obfuscated_username, MountType::ECRYPTFS);
 
   // b/115997660: Mount eCryptfs after creating the tracked subdirectories.
-  if (!MountAndPush(vault_path, mount_point, "ecryptfs", ecryptfs_options))
+  if (!MountAndPush(vault_path, mount_point, "ecryptfs", ecryptfs_options)) {
+    LOG(ERROR) << "eCryptfs mount failed";
     return false;
+  }
 
   return true;
 }
@@ -773,7 +772,7 @@ bool MountHelper::SetUpDmcryptMount(const std::string& obfuscated_username) {
   return true;
 }
 
-MountError MountHelper::PerformMount(const Options& mount_opts,
+MountError MountHelper::PerformMount(MountType mount_type,
                                      const std::string& username,
                                      const std::string& fek_signature,
                                      const std::string& fnek_signature,
@@ -794,23 +793,34 @@ MountError MountHelper::PerformMount(const Options& mount_opts,
     return MOUNT_ERROR_FATAL;
   }
 
-  bool should_mount_ecryptfs = mount_opts.type == MountType::ECRYPTFS ||
-                               mount_opts.to_migrate_from_ecryptfs;
-
-  if (should_mount_ecryptfs &&
-      !SetUpEcryptfsMount(obfuscated_username, fek_signature, fnek_signature,
-                          mount_opts.to_migrate_from_ecryptfs)) {
-    LOG(ERROR) << "eCryptfs mount failed";
-    return MOUNT_ERROR_MOUNT_ECRYPTFS_FAILED;
-  }
-
-  if (mount_opts.type == MountType::DIR_CRYPTO)
-    SetUpDircryptoMount(obfuscated_username);
-
-  if (mount_opts.type == MountType::DMCRYPT &&
-      !SetUpDmcryptMount(obfuscated_username)) {
-    LOG(ERROR) << "Dm-crypt mount failed";
-    return MOUNT_ERROR_MOUNT_DMCRYPT_FAILED;
+  switch (mount_type) {
+    case MountType::ECRYPTFS:
+      if (!SetUpEcryptfsMount(obfuscated_username, fek_signature,
+                              fnek_signature,
+                              GetUserMountDirectory(obfuscated_username))) {
+        return MOUNT_ERROR_MOUNT_ECRYPTFS_FAILED;
+      }
+      break;
+    case MountType::ECRYPTFS_TO_DIR_CRYPTO:
+      if (!SetUpEcryptfsMount(
+              obfuscated_username, fek_signature, fnek_signature,
+              GetUserTemporaryMountDirectory(obfuscated_username))) {
+        return MOUNT_ERROR_MOUNT_ECRYPTFS_FAILED;
+      }
+      SetUpDircryptoMount(obfuscated_username);
+      return MOUNT_ERROR_NONE;
+    case MountType::DIR_CRYPTO:
+      SetUpDircryptoMount(obfuscated_username);
+      break;
+    case MountType::DMCRYPT:
+      if (!SetUpDmcryptMount(obfuscated_username)) {
+        LOG(ERROR) << "Dm-crypt mount failed";
+        return MOUNT_ERROR_MOUNT_DMCRYPT_FAILED;
+      }
+      break;
+    case MountType::EPHEMERAL:
+    case MountType::NONE:
+      NOTREACHED();
   }
 
   const FilePath user_home = GetMountedUserHomePath(obfuscated_username);
@@ -820,14 +830,15 @@ MountError MountHelper::PerformMount(const Options& mount_opts,
     CopySkeleton(user_home);
 
   // When migrating, it's better to avoid exposing the new ext4 crypto dir.
-  if (!mount_opts.to_migrate_from_ecryptfs &&
-      !MountHomesAndDaemonStores(username, obfuscated_username, user_home,
+  if (!MountHomesAndDaemonStores(username, obfuscated_username, user_home,
                                  root_home)) {
     return MOUNT_ERROR_MOUNT_HOMES_AND_DAEMON_STORES_FAILED;
   }
 
-  // Mount tracked subdirectories from the cache volume.
-  if (mount_opts.type == MountType::DMCRYPT &&
+  // TODO(sarthakkukreti): This can't be moved due to child mount propagation
+  // issues. Figure out how to make it propagate properly to move to the switch
+  // above.
+  if (mount_type == MountType::DMCRYPT &&
       !MountCacheSubdirectories(obfuscated_username)) {
     LOG(ERROR)
         << "Failed to mount tracked subdirectories from the cache volume";

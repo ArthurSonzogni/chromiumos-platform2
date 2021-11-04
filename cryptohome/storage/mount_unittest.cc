@@ -691,12 +691,8 @@ TEST_F(PersistentSystemTest, BindDownloads) {
   MountHelper mnt_helper(true /*legacy_mount*/, true /* bind_mount_downloads */,
                          &platform_);
 
-  MountHelper::Options options;
-  options.type = MountType::DIR_CRYPTO;
-  options.to_migrate_from_ecryptfs = false;
-
   ASSERT_THAT(
-      mnt_helper.PerformMount(options, kUser,
+      mnt_helper.PerformMount(MountType::DIR_CRYPTO, kUser,
                               SecureBlobToHex(keyset.KeyReference().fek_sig),
                               SecureBlobToHex(keyset.KeyReference().fnek_sig),
                               /*is_pristine=*/true),
@@ -719,7 +715,7 @@ TEST_F(PersistentSystemTest, BindDownloads) {
                                           kContent));
 
   ASSERT_THAT(
-      mnt_helper.PerformMount(options, kUser,
+      mnt_helper.PerformMount(MountType::DIR_CRYPTO, kUser,
                               SecureBlobToHex(keyset.KeyReference().fek_sig),
                               SecureBlobToHex(keyset.KeyReference().fnek_sig),
                               /*is_pristine=*/false),
@@ -753,12 +749,8 @@ TEST_F(PersistentSystemTest, NoBindDownloads) {
   MountHelper mnt_helper(true /*legacy_mount*/,
                          false /* bind_mount_downloads */, &platform_);
 
-  MountHelper::Options options;
-  options.type = MountType::DIR_CRYPTO;
-  options.to_migrate_from_ecryptfs = false;
-
   ASSERT_THAT(
-      mnt_helper.PerformMount(options, kUser,
+      mnt_helper.PerformMount(MountType::DIR_CRYPTO, kUser,
                               SecureBlobToHex(keyset.KeyReference().fek_sig),
                               SecureBlobToHex(keyset.KeyReference().fnek_sig),
                               /*is_pristine=*/true),
@@ -780,7 +772,7 @@ TEST_F(PersistentSystemTest, NoBindDownloads) {
       kContent));
 
   ASSERT_THAT(
-      mnt_helper.PerformMount(options, kUser,
+      mnt_helper.PerformMount(MountType::DIR_CRYPTO, kUser,
                               SecureBlobToHex(keyset.KeyReference().fek_sig),
                               SecureBlobToHex(keyset.KeyReference().fnek_sig),
                               /*is_pristine=*/false),
@@ -815,11 +807,8 @@ TEST_F(PersistentSystemTest, Dmcrypt_MountUnmount) {
   MountHelper mnt_helper(true /*legacy_mount*/, true /* bind_mount_downloads */,
                          &platform_);
 
-  MountHelper::Options options;
-  options.type = MountType::DMCRYPT;
-  options.to_migrate_from_ecryptfs = false;
   ASSERT_THAT(
-      mnt_helper.PerformMount(options, kUser,
+      mnt_helper.PerformMount(MountType::DMCRYPT, kUser,
                               SecureBlobToHex(keyset.KeyReference().fek_sig),
                               SecureBlobToHex(keyset.KeyReference().fnek_sig),
                               /*is_prisinte=*/true),

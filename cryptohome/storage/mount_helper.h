@@ -39,11 +39,6 @@ class MountHelperInterface {
  public:
   virtual ~MountHelperInterface() {}
 
-  struct Options {
-    MountType type = MountType::NONE;
-    bool to_migrate_from_ecryptfs = false;
-  };
-
   // Ephemeral mounts cannot be performed twice, so cryptohome needs to be able
   // to check whether an ephemeral mount can be performed.
   virtual bool CanPerformEphemeralMount() const = 0;
@@ -63,7 +58,7 @@ class MountHelperInterface {
   virtual void UnmountAll() = 0;
 
   // Carries out mount operations for a regular cryptohome.
-  virtual MountError PerformMount(const Options& mount_opts,
+  virtual MountError PerformMount(MountType mount_type,
                                   const std::string& username,
                                   const std::string& fek_signature,
                                   const std::string& fnek_signature,
@@ -113,7 +108,7 @@ class MountHelper : public MountHelperInterface {
   bool SetUpEcryptfsMount(const std::string& obfuscated_username,
                           const std::string& fek_signature,
                           const std::string& fnek_signature,
-                          bool should_migrate);
+                          const FilePath& mount_type);
 
   // Sets up the dircrypto mount.
   void SetUpDircryptoMount(const std::string& obfuscated_username);
@@ -123,7 +118,7 @@ class MountHelper : public MountHelperInterface {
 
   // Carries out eCryptfs/dircrypto mount(2) operations for a regular
   // cryptohome.
-  MountError PerformMount(const Options& mount_opts,
+  MountError PerformMount(MountType mount_type,
                           const std::string& username,
                           const std::string& fek_signature,
                           const std::string& fnek_signature,

@@ -54,6 +54,9 @@ std::map<cryptohome::MountType, cryptohome::OutOfProcessMountRequest_MountType>
         // Encrypted with dircrypto.
         {cryptohome::MountType::DIR_CRYPTO,
          cryptohome::OutOfProcessMountRequest_MountType_DIR_CRYPTO},
+        // Vault Migration.
+        {cryptohome::MountType::ECRYPTFS_TO_DIR_CRYPTO,
+         cryptohome::OutOfProcessMountRequest_MountType_ECRYPTFS_TO_DIR_CRYPTO},
         // Ephemeral mount.
         {cryptohome::MountType::EPHEMERAL,
          cryptohome::OutOfProcessMountRequest_MountType_EPHEMERAL},
@@ -164,13 +167,12 @@ int main(int argc, char** argv) {
 
     cryptohome::ReportTimerStop(cryptohome::kPerformEphemeralMountTimer);
   } else {
-    cryptohome::MountHelperInterface::Options mount_options;
-    mount_options.type = static_cast<cryptohome::MountType>(request.type());
-    mount_options.to_migrate_from_ecryptfs = request.to_migrate_from_ecryptfs();
+    cryptohome::MountType mount_type =
+        static_cast<cryptohome::MountType>(request.type());
 
     cryptohome::ReportTimerStart(cryptohome::kPerformMountTimer);
     error = mounter.PerformMount(
-        mount_options, request.username(), request.fek_signature(),
+        mount_type, request.username(), request.fek_signature(),
         request.fnek_signature(), request.is_pristine());
 
     cryptohome::ReportTimerStop(cryptohome::kPerformMountTimer);

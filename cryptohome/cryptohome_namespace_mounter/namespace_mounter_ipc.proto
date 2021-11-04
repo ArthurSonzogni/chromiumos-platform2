@@ -18,10 +18,12 @@ message OutOfProcessMountRequest {
     ECRYPTFS = 1;
     // Encrypted with dircrypto.
     DIR_CRYPTO = 2;
+    // Vault Migration.
+    ECRYPTFS_TO_DIR_CRYPTO = 3;
     // Encrypted with dmcrypt.
-    DMCRYPT = 3;
+    DMCRYPT = 4;
     // Ephemeral mount.
-    EPHEMERAL = 4;
+    EPHEMERAL = 5;
   }
   // Username used in login.
   string username = 1;
@@ -33,20 +35,18 @@ message OutOfProcessMountRequest {
   // Mount type for the current user. The type is set to dircrypto when
   // migrating to dircrypto even if there is an eCryptfs vault.
   MountType type = 4;
-  // Whether migration from eCryptfs to dircrypto is needed.
-  bool to_migrate_from_ecryptfs = 5;
   // File encryption key (FEK) used to encrypt the file contents when the file
   // is persisted to the lower filesystem by eCryptfs.
-  string fek_signature = 6;
+  string fek_signature = 5;
   // File name encryption key (FNEK) used to encrypt the file name when the file
   // is persisted to the lower filesystem by eCryptfs.
-  string fnek_signature = 7;
+  string fnek_signature = 6;
   // True, if the cryptohome is being created.
-  bool is_pristine = 8;
+  bool is_pristine = 7;
   // True, if the Cryptohomed should bind mount Downloads/.
-  bool bind_mount_downloads = 9;
+  bool bind_mount_downloads = 8;
   // Path to the loop device for the ephemeral mount.
-  string ephemeral_loop_device = 10;
+  string ephemeral_loop_device = 9;
 }
 
 message OutOfProcessMountResponse {

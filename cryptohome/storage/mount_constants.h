@@ -10,11 +10,12 @@
 namespace cryptohome {
 
 enum class MountType {
-  NONE,        // Not mounted.
-  ECRYPTFS,    // Encrypted with ecryptfs.
-  DIR_CRYPTO,  // Encrypted with dircrypto.
-  DMCRYPT,     // Encrypted with dmcrypt over a logical volume.
-  EPHEMERAL,   // Ephemeral mount.
+  NONE,                    // Not mounted.
+  ECRYPTFS,                // Encrypted with ecryptfs.
+  DIR_CRYPTO,              // Encrypted with dircrypto.
+  ECRYPTFS_TO_DIR_CRYPTO,  // Vault migration.
+  DMCRYPT,                 // Encrypted with dmcrypt over a logical volume.
+  EPHEMERAL,               // Ephemeral mount.
 };
 
 // Paths to sparse file for ephemeral mounts.

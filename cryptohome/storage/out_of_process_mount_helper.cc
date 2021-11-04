@@ -87,7 +87,7 @@ bool WaitForHelper(int read_from_helper, const base::TimeDelta& timeout) {
 }
 
 std::map<cryptohome::MountType, cryptohome::OutOfProcessMountRequest_MountType>
-    mount_type = {
+    kProtobufMountType = {
         // Not mounted.
         {cryptohome::MountType::NONE,
          cryptohome::OutOfProcessMountRequest_MountType_NONE},
@@ -97,6 +97,9 @@ std::map<cryptohome::MountType, cryptohome::OutOfProcessMountRequest_MountType>
         // Encrypted with dircrypto.
         {cryptohome::MountType::DIR_CRYPTO,
          cryptohome::OutOfProcessMountRequest_MountType_DIR_CRYPTO},
+        // Vault Migration.
+        {cryptohome::MountType::ECRYPTFS_TO_DIR_CRYPTO,
+         cryptohome::OutOfProcessMountRequest_MountType_ECRYPTFS_TO_DIR_CRYPTO},
         // Ephemeral mount.
         {cryptohome::MountType::EPHEMERAL,
          cryptohome::OutOfProcessMountRequest_MountType_EPHEMERAL},
@@ -277,7 +280,7 @@ bool OutOfProcessMountHelper::TearDownExistingMount() {
 }
 
 MountError OutOfProcessMountHelper::PerformMount(
-    const Options& mount_opts,
+    MountType mount_type,
     const std::string& username,
     const std::string& fek_signature,
     const std::string& fnek_signature,
@@ -288,8 +291,7 @@ MountError OutOfProcessMountHelper::PerformMount(
   request.set_legacy_home(legacy_home_);
   request.set_mount_namespace_path(
       IsolateUserSession() ? kUserSessionMountNamespacePath : "");
-  request.set_type(mount_type[mount_opts.type]);
-  request.set_to_migrate_from_ecryptfs(mount_opts.to_migrate_from_ecryptfs);
+  request.set_type(kProtobufMountType[mount_type]);
   request.set_fek_signature(fek_signature);
   request.set_fnek_signature(fnek_signature);
   request.set_is_pristine(is_pristine);

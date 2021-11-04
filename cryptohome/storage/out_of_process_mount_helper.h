@@ -63,7 +63,7 @@ class OutOfProcessMountHelper : public MountHelperInterface {
   bool IsPathMounted(const base::FilePath& path) const override;
 
   // Carries out dircrypto mount(2) operations for a regular cryptohome.
-  MountError PerformMount(const Options& mount_opts,
+  MountError PerformMount(MountType mount_type,
                           const std::string& username,
                           const std::string& fek_signature,
                           const std::string& fnek_signature,

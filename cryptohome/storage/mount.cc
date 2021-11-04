@@ -216,12 +216,9 @@ MountError Mount::MountCryptohome(const std::string& username,
   std::string fnek_signature =
       SecureBlobToHex(file_system_keyset.KeyReference().fnek_sig);
 
-  MountHelper::Options mount_opts = {GetMountType(),
-                                     mount_args.to_migrate_from_ecryptfs};
-
   cryptohome::ReportTimerStart(cryptohome::kPerformMountTimer);
   mount_error = active_mounter_->PerformMount(
-      mount_opts, username_, key_signature, fnek_signature, is_pristine);
+      GetMountType(), username_, key_signature, fnek_signature, is_pristine);
   if (mount_error != MOUNT_ERROR_NONE) {
     LOG(ERROR) << "MountHelper::PerformMount failed, error = " << mount_error;
     return mount_error;
@@ -323,6 +320,8 @@ std::string Mount::GetMountTypeString() const {
       return "ecryptfs";
     case MountType::DIR_CRYPTO:
       return "dircrypto";
+    case MountType::ECRYPTFS_TO_DIR_CRYPTO:
+      return "ecryptfs-to-dircrypto";
     case MountType::EPHEMERAL:
       return "ephemeral";
     case MountType::DMCRYPT:
@@ -337,7 +336,7 @@ bool Mount::MigrateToDircrypto(
   std::string obfuscated_username = SanitizeUserName(username_);
   FilePath temporary_mount =
       GetUserTemporaryMountDirectory(obfuscated_username);
-  if (!IsMounted() || GetMountType() != MountType::DIR_CRYPTO ||
+  if (!IsMounted() || GetMountType() != MountType::ECRYPTFS_TO_DIR_CRYPTO ||
       !platform_->DirectoryExists(temporary_mount) ||
       !OwnsMountPoint(temporary_mount)) {
     LOG(ERROR) << "Not mounted for eCryptfs->dircrypto migration.";

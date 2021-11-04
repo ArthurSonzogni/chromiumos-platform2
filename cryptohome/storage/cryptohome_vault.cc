@@ -142,11 +142,12 @@ void CryptohomeVault::ReportVaultEncryptionType() {
 }
 
 MountType CryptohomeVault::GetMountType() {
-  EncryptedContainerType type = migrating_container_
-                                    ? migrating_container_->GetType()
-                                    : container_->GetType();
+  EncryptedContainerType type = container_->GetType();
   switch (type) {
     case EncryptedContainerType::kEcryptfs:
+      if (migrating_container_) {
+        return MountType::ECRYPTFS_TO_DIR_CRYPTO;
+      }
       return MountType::ECRYPTFS;
     case EncryptedContainerType::kFscrypt:
       return MountType::DIR_CRYPTO;
