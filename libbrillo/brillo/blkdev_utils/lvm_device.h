@@ -91,8 +91,8 @@ class BRILLO_EXPORT Thinpool {
   }
   bool IsValid() { return !thinpool_name_.empty(); }
   bool Remove();
-  uint64_t GetTotalSpace();
-  uint64_t GetFreeSpace();
+  bool GetTotalSpace(int64_t* size);
+  bool GetFreeSpace(int64_t* size);
 
  private:
   std::string thinpool_name_;

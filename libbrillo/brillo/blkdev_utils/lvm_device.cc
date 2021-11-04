@@ -195,9 +195,9 @@ bool Thinpool::Remove() {
   return ret;
 }
 
-uint64_t Thinpool::GetTotalSpace() {
+bool Thinpool::GetTotalSpace(int64_t* size) {
   if (thinpool_name_.empty() || !lvm_)
-    return 0;
+    return false;
 
   std::string output;
 
@@ -206,7 +206,7 @@ uint64_t Thinpool::GetTotalSpace() {
            "json", "--units", "b", volume_group_name_ + "/" + thinpool_name_},
           &output)) {
     LOG(ERROR) << "Failed to get output from lvdisplay.";
-    return 0;
+    return false;
   }
 
   base::Optional<base::Value> report_contents =
@@ -214,42 +214,41 @@ uint64_t Thinpool::GetTotalSpace() {
 
   if (!report_contents || !report_contents->is_dict()) {
     LOG(ERROR) << "Failed to get report contents.";
-    return 0;
+    return false;
   }
 
   // Get the thinpool size.
   std::string* thinpool_size = report_contents->FindStringKey("lv_size");
   if (!thinpool_size) {
     LOG(ERROR) << "Failed to get thinpool size.";
-    return 0;
+    return false;
   }
 
   if (thinpool_size->empty()) {
     LOG(ERROR) << "Empty thinpool size string.";
-    return 0;
+    return false;
   }
 
   // Last character for size is always "B".
   if (thinpool_size->back() != 'B') {
     LOG(ERROR) << "Last character of thinpool size string should always be B.";
-    return 0;
+    return false;
   }
 
-  // Use base::StringToUint64 to validate the returned thinpool size.
-  uint64_t size;
-  if (!base::StringToUint64(
+  // Use base::StringToInt64 to validate the returned thinpool size.
+  if (!base::StringToInt64(
           base::StringPiece(thinpool_size->data(), thinpool_size->length() - 1),
-          &size)) {
+          size)) {
     LOG(ERROR) << "Failed to convert thinpool size to a numeric value";
-    return 0;
+    return false;
   }
 
-  return size;
+  return true;
 }
 
-uint64_t Thinpool::GetFreeSpace() {
+bool Thinpool::GetFreeSpace(int64_t* size) {
   if (thinpool_name_.empty() || !lvm_)
-    return 0;
+    return false;
 
   std::string output;
 
@@ -258,7 +257,7 @@ uint64_t Thinpool::GetFreeSpace() {
            "json", "--units", "b", volume_group_name_ + "/" + thinpool_name_},
           &output)) {
     LOG(ERROR) << "Failed to get output from lvdisplay.";
-    return 0;
+    return false;
   }
 
   base::Optional<base::Value> report_contents =
@@ -266,7 +265,7 @@ uint64_t Thinpool::GetFreeSpace() {
 
   if (!report_contents || !report_contents->is_dict()) {
     LOG(ERROR) << "Failed to get report contents.";
-    return 0;
+    return false;
   }
 
   // Get the percentage of used data from the thinpool. The value is stored as a
@@ -275,17 +274,24 @@ uint64_t Thinpool::GetFreeSpace() {
       report_contents->FindStringKey("data_percent");
   if (!data_used_percent) {
     LOG(ERROR) << "Failed to get percentage size of thinpool used.";
-    return 0;
+    return false;
   }
 
   double used_percent;
   if (!base::StringToDouble(*data_used_percent, &used_percent)) {
     LOG(ERROR) << "Failed to convert used percentage string to double.";
-    return 0;
+    return false;
   }
 
-  return static_cast<uint64_t>((100.0 - used_percent) / 100.0 *
-                               GetTotalSpace());
+  int64_t total_size;
+  if (!GetTotalSpace(&total_size)) {
+    LOG(ERROR) << "Failed to get total thinpool size.";
+    return false;
+  }
+
+  *size = static_cast<int64_t>((100.0 - used_percent) / 100.0 * total_size);
+
+  return true;
 }
 
 LvmCommandRunner::LvmCommandRunner() {}

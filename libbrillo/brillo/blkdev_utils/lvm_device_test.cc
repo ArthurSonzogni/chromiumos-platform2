@@ -89,8 +89,11 @@ TEST(ThinpoolTest, ThinpoolSpaceTest) {
   EXPECT_CALL(*lvm, RunProcess(_, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
 
-  EXPECT_EQ(thinpool.GetTotalSpace(), 1000000UL);
-  EXPECT_EQ(thinpool.GetFreeSpace(), 975000UL);
+  int64_t total_space, free_space;
+  EXPECT_TRUE(thinpool.GetTotalSpace(&total_space));
+  EXPECT_TRUE(thinpool.GetFreeSpace(&free_space));
+  EXPECT_EQ(total_space, 1000000LL);
+  EXPECT_EQ(free_space, 975000LL);
 }
 
 TEST(LogicalVolumeTest, InvalidLogicalVolumeTest) {

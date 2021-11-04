@@ -90,8 +90,13 @@ uint64_t DiskUsageUtil::GetFreeDiskSpace(const base::FilePath& path) {
       static_cast<uint64_t>(stat.f_bavail) * stat.f_frsize;
 
   base::Optional<brillo::Thinpool> thinpool = GetThinpool();
-  if (thinpool && thinpool->IsValid()) {
-    free_disk_space = std::min(free_disk_space, thinpool->GetFreeSpace());
+  int64_t thinpool_free_space;
+  if (thinpool && thinpool->IsValid() &&
+      thinpool->GetFreeSpace(&thinpool_free_space)) {
+    // TODO(sarthakkukreti@): Temporarily case for this CL, we move to int64_t
+    // in the next CL.
+    free_disk_space =
+        std::min(free_disk_space, static_cast<uint64_t>(thinpool_free_space));
   }
 
   return free_disk_space;
@@ -110,8 +115,13 @@ uint64_t DiskUsageUtil::GetTotalDiskSpace(const base::FilePath& path) {
       static_cast<uint64_t>(stat.f_blocks) * stat.f_frsize;
 
   base::Optional<brillo::Thinpool> thinpool = GetThinpool();
-  if (thinpool && thinpool->IsValid()) {
-    total_disk_space = std::min(total_disk_space, thinpool->GetTotalSpace());
+  int64_t thinpool_total_space;
+  if (thinpool && thinpool->IsValid() &&
+      thinpool->GetTotalSpace(&thinpool_total_space)) {
+    // TODO(sarthakkukreti@): Temporarily case for this CL, we move to int64_t
+    // in the next CL.
+    total_disk_space =
+        std::min(total_disk_space, static_cast<uint64_t>(thinpool_total_space));
   }
 
   return total_disk_space;
