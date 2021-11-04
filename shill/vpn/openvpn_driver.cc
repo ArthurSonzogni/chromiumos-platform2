@@ -236,14 +236,11 @@ bool OpenVPNDriver::WriteConfigFile(
                  << openvpn_config_directory_.value();
       return false;
     }
-    // OpenVPN running as user 'openvpn' needs access to the config directory,
-    // and openvpn user is not member of shill group so make the dir
-    // world-readable. We'd rather not have openvpn belong to shill group since
-    // shill is more privileged than openvpn, hence the idea of 'dropping'
-    // UID/GID from shill to openvpn. Moreover since shill no longer runs with
-    // CAP_CHOWN, we can't chown the dir to shill:openvpn.
-    if (chmod(openvpn_config_directory_.value().c_str(),
-              S_IRWXU | S_IRWXG | S_IROTH)) {
+    // TODO(b/177984585): We are in the migration stage that VPN application
+    // config dirs are owned by shill:shill and user vpn being a member of
+    // group shill. It will be later to migrated to dirs owned by shill:vpn and
+    // and user shill being member of group vpn.
+    if (chmod(openvpn_config_directory_.value().c_str(), S_IRWXU | S_IRWXG)) {
       LOG(ERROR) << "Failed to set permissions on "
                  << openvpn_config_directory_.value();
       base::DeletePathRecursively(openvpn_config_directory_);
@@ -297,9 +294,8 @@ bool OpenVPNDriver::SpawnOpenVPN() {
   };
 
   ProcessManager::MinijailOptions minijail_options;
-  // TODO(b/177984585): Change user and group to "vpn".
-  minijail_options.user = "shill";
-  minijail_options.group = "shill";
+  minijail_options.user = "vpn";
+  minijail_options.group = "vpn";
   minijail_options.capmask = CAP_TO_MASK(CAP_NET_ADMIN) |
                              CAP_TO_MASK(CAP_NET_RAW) |
                              CAP_TO_MASK(CAP_SETUID) | CAP_TO_MASK(CAP_SETGID);
@@ -758,8 +754,8 @@ void OpenVPNDriver::InitOptions(std::vector<std::vector<std::string>>* options,
 
   // Drop root privileges on connection and enable callback scripts to send
   // notify messages.
-  AppendOption("user", "openvpn", options);
-  AppendOption("group", "openvpn", options);
+  AppendOption("user", "vpn", options);
+  AppendOption("group", "vpn", options);
 }
 
 bool OpenVPNDriver::InitCAOptions(
