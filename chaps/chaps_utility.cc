@@ -1036,8 +1036,7 @@ const EVP_MD* GetOpenSSLDigestForMGF(const CK_RSA_PKCS_MGF_TYPE mgf) {
   }
 }
 
-bool ParseRSAPSSParams(CK_MECHANISM_TYPE signing_mechanism,
-                       const std::string& mechanism_parameter,
+bool ParseRSAPSSParams(const std::string& mechanism_parameter,
                        const CK_RSA_PKCS_PSS_PARAMS** pss_params_out,
                        const EVP_MD** mgf1_hash_out,
                        DigestAlgorithm* digest_algorithm_out) {

@@ -791,8 +791,8 @@ bool TPM2UtilityImpl::Sign(int key_handle,
   const EVP_MD* mgf1_hash = nullptr;
   if (padding_scheme == RsaPaddingScheme::RSASSA_PSS) {
     // Check the parameters
-    if (!ParseRSAPSSParams(signing_mechanism, mechanism_parameter, &pss_params,
-                           &mgf1_hash, &digest_algorithm)) {
+    if (!ParseRSAPSSParams(mechanism_parameter, &pss_params, &mgf1_hash,
+                           &digest_algorithm)) {
       LOG(ERROR) << "Failed to parse RSA PSS parameters in TPM2 Sign().";
       return false;
     }

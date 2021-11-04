@@ -530,8 +530,8 @@ class RSASignerVerifierImplPSS : public RSASignerVerifier {
     // Parse the RSA PSS Parameters.
     const CK_RSA_PKCS_PSS_PARAMS* pss_params = nullptr;
     const EVP_MD* mgf1_hash = nullptr;
-    if (!ParseRSAPSSParams(context->mechanism_, context->parameter_,
-                           &pss_params, &mgf1_hash, &digest_algorithm)) {
+    if (!ParseRSAPSSParams(context->parameter_, &pss_params, &mgf1_hash,
+                           &digest_algorithm)) {
       LOG(ERROR) << __func__ << ": Failed to parse RSA PSS parameters.";
       return false;
     }
@@ -574,8 +574,8 @@ class RSASignerVerifierImplPSS : public RSASignerVerifier {
     // Parse the RSA PSS Parameters.
     const CK_RSA_PKCS_PSS_PARAMS* pss_params = nullptr;
     const EVP_MD* mgf1_hash = nullptr;
-    if (!ParseRSAPSSParams(context->mechanism_, context->parameter_,
-                           &pss_params, &mgf1_hash, &digest_algorithm)) {
+    if (!ParseRSAPSSParams(context->parameter_, &pss_params, &mgf1_hash,
+                           &digest_algorithm)) {
       LOG(ERROR) << __func__ << ": Failed to parse RSA PSS parameters.";
       return CKR_SIGNATURE_INVALID;
     }
