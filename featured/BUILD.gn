@@ -6,7 +6,13 @@ import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":featured" ]
+  deps = [
+    ":featured",
+    ":libfeatures",
+  ]
+  if (use.test) {
+    deps += [ ":feature_library_test" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -30,4 +36,32 @@ executable("featured") {
   ]
   configs += [ ":target_defaults" ]
   deps = [ ":featured-adaptors" ]
+}
+
+shared_library("libfeatures") {
+  sources = [ "feature_library.cc" ]
+  configs += [ ":target_defaults" ]
+}
+
+if (use.test) {
+  pkg_config("test_helper_config") {
+    pkg_deps = [
+      "libbrillo",
+      "libbrillo-test",
+      "libchrome",
+      "libchrome-test",
+    ]
+  }
+
+  executable("feature_library_test") {
+    sources = [ "feature_library_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":test_helper_config",
+    ]
+    deps = [
+      ":libfeatures",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
 }
