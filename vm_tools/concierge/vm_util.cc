@@ -17,6 +17,7 @@
 #include <utility>
 
 #include <base/base64.h>
+#include <base/containers/cxx20_erase.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -24,7 +25,6 @@
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
-#include <base/stl_util.h>
 #include <base/strings/safe_sprintf.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
