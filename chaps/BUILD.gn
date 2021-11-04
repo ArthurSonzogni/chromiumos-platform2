@@ -42,6 +42,7 @@ group("all") {
     deps += [
       ":chaps_attributes_fuzzer",
       ":chaps_object_store_fuzzer",
+      ":chaps_utility_fuzzer",
     ]
   }
   if (!use.systemd) {
@@ -571,6 +572,18 @@ if (use.fuzzer) {
     ]
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
     defines = [ "NO_METRICS" ]
+    pkg_deps = [
+      "libchrome-test",
+
+      # nss is needed because we use pkcs11 headers from nss.
+      "nss",
+    ]
+    deps = [ ":libchaps_static" ]
+  }
+
+  executable("chaps_utility_fuzzer") {
+    sources = [ "chaps_utility_fuzzer.cc" ]
+    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
     pkg_deps = [
       "libchrome-test",
 
