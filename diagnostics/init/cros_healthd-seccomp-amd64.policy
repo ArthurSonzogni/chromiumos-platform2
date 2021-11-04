@@ -50,6 +50,9 @@ getrandom: 1
 #   0xc0086441 == DRM_IOCTL_AMDGPU_GEM_MMAP
 #   0x40206445 == DRM_IOCTL_AMDGPU_INFO or DRM_IOCTL_SIS_FB_FREE
 #   0xc0206440 == DRM_IOCTL_AMDGPU_GEM_CREATE or DRM_IOCTL_VIA_ALLOCMEM
+#   0xc00864bf == DRM_IOCTL_SYNCOBJ_CREATE
+#   0xc00864c0 == DRM_IOCTL_SYNCOBJ_DESTROY
+#   0xc02064c3 == DRM_IOCTL_SYNCOBJ_WAIT
 ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0x40086409 || arg1 == 0x4008646e || arg1 == 0x400c645f || \
        arg1 == 0x40406469 || arg1 == 0x80106463 || arg1 == 0xc0086457 || \
@@ -59,7 +62,8 @@ ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0xc0186475 || arg1 == 0xc0206464 || arg1 == 0xc028645e || \
        arg1 == 0xc0406400 || arg1 == 0xc0106442 || arg1 == 0xc010640c || \
        arg1 == 0xc0286448 || arg1 == 0xc0086441 || arg1 == 0x40206445 || \
-       arg1 == 0xc0206440
+       arg1 == 0xc0206440 || arg1 == 0xc00864bf || arg1 == 0xc00864c0 || \
+       arg1 == 0xc02064c3
 geteuid: 1
 brk: 1
 getuid: 1
