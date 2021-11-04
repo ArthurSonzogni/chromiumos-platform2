@@ -26,6 +26,20 @@ class WriteProtectDisableCompleteStateHandler : public BaseStateHandler {
   ~WriteProtectDisableCompleteStateHandler() override = default;
 };
 
+namespace fake {
+
+class FakeWriteProtectDisableCompleteStateHandler
+    : public WriteProtectDisableCompleteStateHandler {
+ public:
+  FakeWriteProtectDisableCompleteStateHandler(
+      scoped_refptr<JsonStore> json_store);
+
+ protected:
+  ~FakeWriteProtectDisableCompleteStateHandler() override = default;
+};
+
+}  // namespace fake
+
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_WRITE_PROTECT_DISABLE_COMPLETE_STATE_HANDLER_H_

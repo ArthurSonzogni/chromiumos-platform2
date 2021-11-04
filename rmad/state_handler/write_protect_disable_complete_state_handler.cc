@@ -7,11 +7,20 @@
 #include <memory>
 #include <utility>
 
-#include "rmad/constants.h"
-
 #include <base/logging.h>
 
+#include "rmad/constants.h"
+
 namespace rmad {
+
+namespace fake {
+
+FakeWriteProtectDisableCompleteStateHandler::
+    FakeWriteProtectDisableCompleteStateHandler(
+        scoped_refptr<JsonStore> json_store)
+    : WriteProtectDisableCompleteStateHandler(json_store) {}
+
+}  // namespace fake
 
 WriteProtectDisableCompleteStateHandler::
     WriteProtectDisableCompleteStateHandler(scoped_refptr<JsonStore> json_store)
