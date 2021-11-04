@@ -10,6 +10,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/timer/timer.h>
 
 #include "rmad/system/cryptohome_client.h"
@@ -68,6 +69,21 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
       write_protect_signal_sender_;
   base::RepeatingTimer timer_;
 };
+
+namespace fake {
+
+class FakeWriteProtectDisablePhysicalStateHandler
+    : public WriteProtectDisablePhysicalStateHandler {
+ public:
+  FakeWriteProtectDisablePhysicalStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      const base::FilePath& working_dir_path);
+
+ protected:
+  ~FakeWriteProtectDisablePhysicalStateHandler() override = default;
+};
+
+}  // namespace fake
 
 }  // namespace rmad
 

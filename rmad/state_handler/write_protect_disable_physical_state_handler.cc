@@ -11,12 +11,14 @@
 
 #include "rmad/constants.h"
 #include "rmad/system/cryptohome_client_impl.h"
+#include "rmad/system/fake_cryptohome_client.h"
+#include "rmad/system/fake_power_manager_client.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
-
-namespace rmad {
+#include "rmad/utils/fake_cr50_utils.h"
+#include "rmad/utils/fake_crossystem_utils.h"
 
 namespace {
 
@@ -24,6 +26,23 @@ namespace {
 constexpr char kHwwpProperty[] = "wpsw_cur";
 
 }  // namespace
+
+namespace rmad {
+
+namespace fake {
+
+FakeWriteProtectDisablePhysicalStateHandler::
+    FakeWriteProtectDisablePhysicalStateHandler(
+        scoped_refptr<JsonStore> json_store,
+        const base::FilePath& working_dir_path)
+    : WriteProtectDisablePhysicalStateHandler(
+          json_store,
+          std::make_unique<FakeCr50Utils>(working_dir_path),
+          std::make_unique<FakeCrosSystemUtils>(working_dir_path),
+          std::make_unique<FakePowerManagerClient>(working_dir_path),
+          std::make_unique<FakeCryptohomeClient>(working_dir_path)) {}
+
+}  // namespace fake
 
 WriteProtectDisablePhysicalStateHandler::
     WriteProtectDisablePhysicalStateHandler(scoped_refptr<JsonStore> json_store)
