@@ -16,6 +16,7 @@
 #include "hermes/apdu.h"
 #include "hermes/euicc_interface.h"
 #include "hermes/hermes_common.h"
+#include "hermes/modem_manager_proxy.h"
 
 namespace hermes {
 
@@ -36,11 +37,14 @@ constexpr uint8_t kInvalidChannel = 0;
 template <typename T>
 class Modem : public EuiccInterface {
  public:
-  Modem(Logger* logger, Executor* executor)
+  Modem(Logger* logger,
+        Executor* executor,
+        std::unique_ptr<ModemManagerProxy> modem_manager_proxy)
       : euicc_manager_(nullptr),
         logger_(logger),
         executor_(executor),
         retry_count_(0),
+        modem_manager_proxy_(std::move(modem_manager_proxy)),
         current_transaction_id_(static_cast<uint16_t>(-1)),
         weak_factory_(this) {
     // Set SGP.22 specification version supported by this implementation (this
@@ -125,6 +129,7 @@ class Modem : public EuiccInterface {
   std::string imei_;
   int retry_count_;
   base::OnceClosure retry_initialization_callback_;
+  std::unique_ptr<ModemManagerProxy> modem_manager_proxy_;
 
  private:
   uint16_t current_transaction_id_;
@@ -174,20 +179,25 @@ uint16_t Modem<T>::AllocateId() {
 
 template <typename T>
 void Modem<T>::RetryInitialization(ResultCallback cb) {
+  Shutdown();
   if (retry_count_ > kMaxRetries) {
     LOG(INFO) << __func__ << ": Max retry count(" << kMaxRetries
-              << ") exceeded, will not retry initialization.";
+              << ") exceeded. Waiting for a new modem object...";
     retry_count_ = 0;
     while (!tx_queue_.empty()) {
       std::move(tx_queue_[0].cb_).Run(kModemMessageProcessingError);
       tx_queue_.pop_front();
     }
-    std::move(cb).Run(kModemMessageProcessingError);
+    modem_manager_proxy_->RegisterModemAppearedCallback(
+        base::BindOnce(&Modem<T>::Initialize, weak_factory_.GetWeakPtr(),
+                       euicc_manager_, base::DoNothing()));
+
+    if (!cb.is_null())
+      std::move(cb).Run(kModemMessageProcessingError);
     return;
   }
   LOG(INFO) << "Reprobing for eSIM in " << kInitRetryDelay.InSeconds()
             << " seconds";
-  Shutdown();
   retry_initialization_callback_.Reset();
   retry_initialization_callback_ =
       base::BindOnce(&Modem<T>::Initialize, weak_factory_.GetWeakPtr(),
