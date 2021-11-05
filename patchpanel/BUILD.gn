@@ -13,6 +13,7 @@ group("all") {
   ]
   if (use.fuzzer) {
     deps += [
+      ":big_endian_fuzzer",
       ":broadcast_forwarder_fuzzer",
       ":counters_service_fuzzer",
       ":datapath_fuzzer",
@@ -150,8 +151,8 @@ if (use.fuzzer) {
     pkg_deps = [ "libchrome-test" ]
   }
 
-  executable("multicast_forwarder_fuzzer") {
-    sources = [ "multicast_forwarder_fuzzer.cc" ]
+  executable("big_endian_fuzzer") {
+    sources = [ "dns/big_endian_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
@@ -160,8 +161,18 @@ if (use.fuzzer) {
     deps = [ ":libpatchpanel" ]
   }
 
-  executable("ndproxy_fuzzer") {
-    sources = [ "ndproxy_fuzzer.cc" ]
+  executable("broadcast_forwarder_fuzzer") {
+    sources = [ "broadcast_forwarder_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+      ":fuzzing_config",
+    ]
+    deps = [ ":libpatchpanel" ]
+  }
+
+  executable("counters_service_fuzzer") {
+    sources = [ "counters_service_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
@@ -200,8 +211,8 @@ if (use.fuzzer) {
     deps = [ ":libpatchpanel" ]
   }
 
-  executable("counters_service_fuzzer") {
-    sources = [ "counters_service_fuzzer.cc" ]
+  executable("multicast_forwarder_fuzzer") {
+    sources = [ "multicast_forwarder_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
@@ -210,8 +221,8 @@ if (use.fuzzer) {
     deps = [ ":libpatchpanel" ]
   }
 
-  executable("broadcast_forwarder_fuzzer") {
-    sources = [ "broadcast_forwarder_fuzzer.cc" ]
+  executable("ndproxy_fuzzer") {
+    sources = [ "ndproxy_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
