@@ -27,7 +27,7 @@ namespace brillo {
 namespace dbus_utils {
 class DBusObject;
 class FileDescriptor;
-}
+}  // namespace dbus_utils
 }  // namespace brillo
 
 namespace dlp {

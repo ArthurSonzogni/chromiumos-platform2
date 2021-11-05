@@ -13,17 +13,10 @@
 #include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/run_loop.h>
-#include <base/task/single_thread_task_executor.h>
-#include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
-#include <brillo/message_loops/base_message_loop.h>
-#include <dbus/object_path.h>
-#include <dbus/mock_bus.h>
-#include <dbus/mock_exported_object.h>
-#include <dbus/mock_object_proxy.h>
 #include <gtest/gtest.h>
-#include <dbus/dlp/dbus-constants.h>
-#include <dbus/login_manager/dbus-constants.h>
+
+#include "dlp/dlp_adaptor_test_helper.h"
 
 using testing::_;
 using testing::Invoke;
@@ -34,8 +27,6 @@ namespace {
 
 // Some arbitrary D-Bus message serial number. Required for mocking D-Bus calls.
 constexpr int kDBusSerial = 123;
-
-constexpr char kObjectPath[] = "/object/path";
 constexpr int kPid = 1234;
 
 class FileOpenRequestResultWaiter {
@@ -86,42 +77,16 @@ bool IsFdClosed(int fd) {
 
 class DlpAdaptorTest : public ::testing::Test {
  public:
-  DlpAdaptorTest() {
-    const dbus::ObjectPath object_path(kObjectPath);
-    bus_ = base::MakeRefCounted<dbus::MockBus>(dbus::Bus::Options());
-
-    // Mock out D-Bus initialization.
-    mock_exported_object_ =
-        base::MakeRefCounted<dbus::MockExportedObject>(bus_.get(), object_path);
-
-    EXPECT_CALL(*bus_, GetExportedObject(_))
-        .WillRepeatedly(Return(mock_exported_object_.get()));
-
-    EXPECT_CALL(*mock_exported_object_, ExportMethod(_, _, _, _))
-        .Times(testing::AnyNumber());
-
-    mock_dlp_files_policy_service_proxy_ =
-        base::MakeRefCounted<dbus::MockObjectProxy>(
-            bus_.get(), dlp::kDlpFilesPolicyServiceName,
-            dbus::ObjectPath(dlp::kDlpFilesPolicyServicePath));
-    EXPECT_CALL(*bus_, GetObjectProxy(dlp::kDlpFilesPolicyServiceName, _))
-        .WillRepeatedly(Return(mock_dlp_files_policy_service_proxy_.get()));
-
-    mock_session_manager_proxy_ = base::MakeRefCounted<dbus::MockObjectProxy>(
-        bus_.get(), login_manager::kSessionManagerServiceName,
-        dbus::ObjectPath(login_manager::kSessionManagerServicePath));
-    EXPECT_CALL(*bus_,
-                GetObjectProxy(login_manager::kSessionManagerServiceName, _))
-        .WillRepeatedly(Return(mock_session_manager_proxy_.get()));
-
-    adaptor_ = std::make_unique<DlpAdaptor>(
-        std::make_unique<brillo::dbus_utils::DBusObject>(nullptr, bus_,
-                                                         object_path));
-  }
+  DlpAdaptorTest() = default;
+  ~DlpAdaptorTest() override = default;
 
   DlpAdaptorTest(const DlpAdaptorTest&) = delete;
   DlpAdaptorTest& operator=(const DlpAdaptorTest&) = delete;
-  ~DlpAdaptorTest() override = default;
+
+  DlpAdaptor* GetDlpAdaptor() { return helper_.adaptor(); }
+  scoped_refptr<dbus::MockObjectProxy> GetMockDlpFilesPolicyServiceProxy() {
+    return helper_.mock_dlp_files_policy_service_proxy();
+  }
 
   std::vector<uint8_t> CreateSerializedAddFileRequest(
       const std::string& file,
@@ -182,22 +147,14 @@ class DlpAdaptorTest : public ::testing::Test {
   }
 
  protected:
-  scoped_refptr<dbus::MockBus> bus_;
-  scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
-  scoped_refptr<dbus::MockObjectProxy> mock_dlp_files_policy_service_proxy_;
-  scoped_refptr<dbus::MockObjectProxy> mock_session_manager_proxy_;
+  bool is_file_policy_restricted_;
 
-  bool is_file_policy_restricted_ = false;
-
-  std::unique_ptr<DlpAdaptor> adaptor_;
-
-  base::SingleThreadTaskExecutor task_executor_{base::MessagePumpType::IO};
-  brillo::BaseMessageLoop brillo_loop_{task_executor_.task_runner()};
+  DlpAdaptorTestHelper helper_;
 };
 
 TEST_F(DlpAdaptorTest, AllowedWithoutDatabase) {
   FileOpenRequestResultWaiter waiter;
-  adaptor_->ProcessFileOpenRequest(
+  GetDlpAdaptor()->ProcessFileOpenRequest(
       /*inode=*/1, kPid, waiter.GetCallback());
 
   EXPECT_TRUE(waiter.GetResult());
@@ -206,10 +163,10 @@ TEST_F(DlpAdaptorTest, AllowedWithoutDatabase) {
 TEST_F(DlpAdaptorTest, AllowedWithDatabase) {
   base::FilePath database_directory;
   base::CreateNewTempDirectory("dlpdatabase", &database_directory);
-  adaptor_->InitDatabase(database_directory);
+  GetDlpAdaptor()->InitDatabase(database_directory);
 
   FileOpenRequestResultWaiter waiter;
-  adaptor_->ProcessFileOpenRequest(
+  GetDlpAdaptor()->ProcessFileOpenRequest(
       /*inode=*/1, kPid, waiter.GetCallback());
 
   EXPECT_TRUE(waiter.GetResult());
@@ -218,21 +175,22 @@ TEST_F(DlpAdaptorTest, AllowedWithDatabase) {
 TEST_F(DlpAdaptorTest, NotRestrictedFileAddedAndAllowed) {
   base::FilePath database_directory;
   base::CreateNewTempDirectory("dlpdatabase", &database_directory);
-  adaptor_->InitDatabase(database_directory);
+  GetDlpAdaptor()->InitDatabase(database_directory);
 
   base::FilePath file_path;
   base::CreateTemporaryFile(&file_path);
-  adaptor_->AddFile(
+  GetDlpAdaptor()->AddFile(
       CreateSerializedAddFileRequest(file_path.value(), "source", "referrer"));
 
-  ino_t inode = adaptor_->GetInodeValue(file_path.value());
+  ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
 
-  EXPECT_CALL(*mock_dlp_files_policy_service_proxy_,
+  is_file_policy_restricted_ = false;
+  EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
               DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsDlpPolicyMatched));
 
   FileOpenRequestResultWaiter waiter;
-  adaptor_->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
+  GetDlpAdaptor()->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
 
   EXPECT_TRUE(waiter.GetResult());
 }
@@ -240,22 +198,22 @@ TEST_F(DlpAdaptorTest, NotRestrictedFileAddedAndAllowed) {
 TEST_F(DlpAdaptorTest, RestrictedFileAddedAndNotAllowed) {
   base::FilePath database_directory;
   base::CreateNewTempDirectory("dlpdatabase", &database_directory);
-  adaptor_->InitDatabase(database_directory);
+  GetDlpAdaptor()->InitDatabase(database_directory);
 
   base::FilePath file_path;
   base::CreateTemporaryFile(&file_path);
-  adaptor_->AddFile(
+  GetDlpAdaptor()->AddFile(
       CreateSerializedAddFileRequest(file_path.value(), "source", "referrer"));
 
-  ino_t inode = adaptor_->GetInodeValue(file_path.value());
+  ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
 
   is_file_policy_restricted_ = true;
-  EXPECT_CALL(*mock_dlp_files_policy_service_proxy_,
+  EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
               DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsDlpPolicyMatched));
 
   FileOpenRequestResultWaiter waiter;
-  adaptor_->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
+  GetDlpAdaptor()->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
 
   EXPECT_FALSE(waiter.GetResult());
 }
@@ -264,20 +222,20 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed) {
   // Create database.
   base::FilePath database_directory;
   base::CreateNewTempDirectory("dlpdatabase", &database_directory);
-  adaptor_->InitDatabase(database_directory);
+  GetDlpAdaptor()->InitDatabase(database_directory);
 
   // Create file to request access by inode.
   base::FilePath file_path;
   base::CreateTemporaryFile(&file_path);
-  const ino_t inode = adaptor_->GetInodeValue(file_path.value());
+  const ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
 
   // Add the file to the database.
-  adaptor_->AddFile(
+  GetDlpAdaptor()->AddFile(
       CreateSerializedAddFileRequest(file_path.value(), "source", "referrer"));
 
   // Setup callback for DlpFilesPolicyService::IsRestricted()
   is_file_policy_restricted_ = false;
-  EXPECT_CALL(*mock_dlp_files_policy_service_proxy_,
+  EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
               DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsRestricted));
 
@@ -298,7 +256,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed) {
         *lifeline_fd = brillo::dbus_utils::FileDescriptor(fd.get());
       },
       &allowed, &lifeline_fd));
-  adaptor_->RequestFileAccess(
+  GetDlpAdaptor()->RequestFileAccess(
       std::move(response),
       CreateSerializedRequestFileAccessRequest(inode, kPid, "destination"));
 
@@ -307,13 +265,13 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed) {
 
   // Access the file.
   FileOpenRequestResultWaiter waiter;
-  adaptor_->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
+  GetDlpAdaptor()->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
 
   EXPECT_TRUE(waiter.GetResult());
 
   // Second request still allowed.
   FileOpenRequestResultWaiter waiter2;
-  adaptor_->ProcessFileOpenRequest(inode, kPid, waiter2.GetCallback());
+  GetDlpAdaptor()->ProcessFileOpenRequest(inode, kPid, waiter2.GetCallback());
 
   EXPECT_TRUE(waiter2.GetResult());
 }
@@ -322,20 +280,20 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
   // Create database.
   base::FilePath database_directory;
   base::CreateNewTempDirectory("dlpdatabase", &database_directory);
-  adaptor_->InitDatabase(database_directory);
+  GetDlpAdaptor()->InitDatabase(database_directory);
 
   // Create file to request access by inode.
   base::FilePath file_path;
   base::CreateTemporaryFile(&file_path);
-  const ino_t inode = adaptor_->GetInodeValue(file_path.value());
+  const ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
 
   // Add the file to the database.
-  adaptor_->AddFile(
+  GetDlpAdaptor()->AddFile(
       CreateSerializedAddFileRequest(file_path.value(), "source", "referrer"));
 
   // Setup callback for DlpFilesPolicyService::IsRestricted()
   is_file_policy_restricted_ = true;
-  EXPECT_CALL(*mock_dlp_files_policy_service_proxy_,
+  EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
               DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsRestricted));
 
@@ -356,7 +314,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
         *lifeline_fd = brillo::dbus_utils::FileDescriptor(fd.get());
       },
       &allowed, &lifeline_fd));
-  adaptor_->RequestFileAccess(
+  GetDlpAdaptor()->RequestFileAccess(
       std::move(response),
       CreateSerializedRequestFileAccessRequest(inode, kPid, "destination"));
 
@@ -365,13 +323,13 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
 
   // Setup callback for DlpFilesPolicyService::IsDlpPolicyMatched()
   is_file_policy_restricted_ = true;
-  EXPECT_CALL(*mock_dlp_files_policy_service_proxy_,
+  EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
               DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsDlpPolicyMatched));
 
   // Request access to the file.
   FileOpenRequestResultWaiter waiter;
-  adaptor_->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
+  GetDlpAdaptor()->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
 
   EXPECT_FALSE(waiter.GetResult());
 }
@@ -380,20 +338,20 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
   // Create database.
   base::FilePath database_directory;
   base::CreateNewTempDirectory("dlpdatabase", &database_directory);
-  adaptor_->InitDatabase(database_directory);
+  GetDlpAdaptor()->InitDatabase(database_directory);
 
   // Create file to request access by inode.
   base::FilePath file_path;
   base::CreateTemporaryFile(&file_path);
-  const ino_t inode = adaptor_->GetInodeValue(file_path.value());
+  const ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
 
   // Add the file to the database.
-  adaptor_->AddFile(
+  GetDlpAdaptor()->AddFile(
       CreateSerializedAddFileRequest(file_path.value(), "source", "referrer"));
 
   // Setup callback for DlpFilesPolicyService::IsRestricted()
   is_file_policy_restricted_ = false;
-  EXPECT_CALL(*mock_dlp_files_policy_service_proxy_,
+  EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
               DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsRestricted));
 
@@ -414,7 +372,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
         *lifeline_fd = brillo::dbus_utils::FileDescriptor(fd.get());
       },
       &allowed, &lifeline_fd));
-  adaptor_->RequestFileAccess(
+  GetDlpAdaptor()->RequestFileAccess(
       std::move(response),
       CreateSerializedRequestFileAccessRequest(inode, kPid, "destination"));
 
@@ -429,13 +387,13 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
 
   // Setup callback for DlpFilesPolicyService::IsDlpPolicyMatched()
   is_file_policy_restricted_ = true;
-  EXPECT_CALL(*mock_dlp_files_policy_service_proxy_,
+  EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
               DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsDlpPolicyMatched));
 
   // Request access to the file.
   FileOpenRequestResultWaiter waiter;
-  adaptor_->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
+  GetDlpAdaptor()->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
 
   EXPECT_FALSE(waiter.GetResult());
 }
