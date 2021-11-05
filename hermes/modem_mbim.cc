@@ -38,8 +38,10 @@ constexpr int kChannelGroupId = 2;
 namespace hermes {
 
 /* static */
-std::unique_ptr<ModemMbim> ModemMbim::Create(Logger* logger,
-                                             Executor* executor) {
+std::unique_ptr<ModemMbim> ModemMbim::Create(
+    Logger* logger,
+    Executor* executor,
+    std::unique_ptr<ModemManagerProxy> modem_manager_proxy) {
   VLOG(2) << __func__;
   GFile* file = NULL;
   const gchar* const path = "/dev/cdc-wdm0";
@@ -48,11 +50,15 @@ std::unique_ptr<ModemMbim> ModemMbim::Create(Logger* logger,
     LOG(ERROR) << __func__ << " :No file exist";
     return nullptr;
   }
-  return std::unique_ptr<ModemMbim>(new ModemMbim(file, logger, executor));
+  return std::unique_ptr<ModemMbim>(
+      new ModemMbim(file, logger, executor, std::move(modem_manager_proxy)));
 }
 
-ModemMbim::ModemMbim(GFile* file, Logger* logger, Executor* executor)
-    : Modem<MbimCmd>(logger, executor),
+ModemMbim::ModemMbim(GFile* file,
+                     Logger* logger,
+                     Executor* executor,
+                     std::unique_ptr<ModemManagerProxy> modem_manager_proxy)
+    : Modem<MbimCmd>(logger, executor, std::move(modem_manager_proxy)),
       channel_(kInvalidChannel),
       pending_response_(false),
       ready_state_(MBIM_SUBSCRIBER_READY_STATE_NOT_INITIALIZED),
@@ -73,6 +79,11 @@ void ModemMbim::Initialize(EuiccManagerInterface* euicc_manager,
   euicc_manager_ = euicc_manager;
   init_done_cb_ = std::move(cb);
   current_state_.Transition(State::kMbimInitializeStarted);
+  modem_manager_proxy_->WaitForModem(
+      base::BindOnce(&ModemMbim::OnModemAvailable, weak_factory_.GetWeakPtr()));
+}
+
+void ModemMbim::OnModemAvailable() {
   mbim_device_new(file_, /* cancellable */ NULL,
                   (GAsyncReadyCallback)MbimCreateNewDeviceCb, this);
 }
@@ -142,6 +153,7 @@ void ModemMbim::MbimCreateNewDeviceCb(GObject* source,
                                       ModemMbim* modem_mbim) {
   /* Open the device */
   VLOG(2) << __func__;
+  CHECK(modem_mbim) << "modem_mbim does not exist";
   g_autoptr(GError) error = NULL;
   glib_bridge::ScopedGObject<MbimDevice> mbimdevice(
       mbim_device_new_finish(res, &error));

@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/generate-dbus-proxies.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
@@ -17,6 +18,8 @@ group("all") {
 
 pkg_config("target_defaults") {
   pkg_deps = [
+    "ModemManager",
+    "dbus-1",
     "gio-2.0",
     "gio-unix-2.0",
     "glib-2.0",
@@ -36,6 +39,16 @@ pkg_config("target_defaults") {
   } else {
     libs = [ "mbim-glib" ]
   }
+}
+
+generate_dbus_proxies("modemmanager_proxies") {
+  modemmanager_in_dir = "${sysroot}/usr/share/dbus-1/interfaces/"
+  proxy_output_file = "include/hermes/dbus_bindings/mm-proxies.h"
+  sources = [
+    "${modemmanager_in_dir}/org.freedesktop.ModemManager1.Modem.xml",
+    "${modemmanager_in_dir}/org.freedesktop.ModemManager1.xml",
+    "dbus_bindings/dbus-objectmanager.dbus-xml",
+  ]
 }
 
 generate_dbus_adaptors("hermes_adaptors") {
@@ -61,6 +74,7 @@ static_library("libhermes") {
     "lpa_util.cc",
     "manager.cc",
     "manager_dbus_adaptor.cc",
+    "modem_manager_proxy.cc",
     "profile.cc",
     "sgp_22.cc",
     "smdp.cc",
@@ -80,7 +94,10 @@ static_library("libhermes") {
 
   configs += [ ":target_defaults" ]
   defines = [ "USE_QRTR=${use.qrtr}" ]
-  deps = [ ":hermes_adaptors" ]
+  deps = [
+    ":hermes_adaptors",
+    ":modemmanager_proxies",
+  ]
 }
 
 executable("hermes") {

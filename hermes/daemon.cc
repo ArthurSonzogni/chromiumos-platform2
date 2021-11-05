@@ -14,6 +14,7 @@
 #include <google-lpa/lpa/core/lpa.h>
 
 #include "hermes/context.h"
+#include "hermes/modem_manager_proxy.h"
 #if USE_QRTR
 #include "hermes/modem_qrtr.h"
 #include "hermes/socket_qrtr.h"
@@ -32,11 +33,13 @@ Daemon::Daemon()
 
 void Daemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
+  auto modem_manager_proxy = std::make_unique<ModemManagerProxy>(bus_);
 #if USE_QRTR
-  modem_ =
-      ModemQrtr::Create(std::make_unique<SocketQrtr>(), &logger_, &executor_);
+  modem_ = ModemQrtr::Create(std::make_unique<SocketQrtr>(), &logger_,
+                             &executor_, std::move(modem_manager_proxy));
 #else
-  modem_ = ModemMbim::Create(&logger_, &executor_);
+  modem_ =
+      ModemMbim::Create(&logger_, &executor_, std::move(modem_manager_proxy));
 #endif
 
   lpa::core::Lpa::Builder b;
@@ -54,7 +57,7 @@ void Daemon::RegisterDBusObjectsAsync(
   auto cb = base::BindOnce([](int err) {
     if (err) {
       LOG(INFO) << "Could not find eSIM:" << err;
-      exit(EXIT_SUCCESS);
+      return;
     }
     LOG(INFO) << "eSIM init finished";
   });

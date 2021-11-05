@@ -25,6 +25,7 @@
 #include "hermes/mbim_cmd.h"
 #include "hermes/modem.h"
 #include "hermes/modem_control_interface.h"
+#include "hermes/modem_manager_proxy.h"
 #include "hermes/socket_interface.h"
 
 namespace hermes {
@@ -32,7 +33,10 @@ namespace hermes {
 // messages.
 class ModemMbim : public Modem<MbimCmd> {
  public:
-  static std::unique_ptr<ModemMbim> Create(Logger* logger, Executor* executor);
+  static std::unique_ptr<ModemMbim> Create(
+      Logger* logger,
+      Executor* executor,
+      std::unique_ptr<ModemManagerProxy> modem_manager_proxy);
   virtual ~ModemMbim();
   // EuiccInterface overrides
   void Initialize(EuiccManagerInterface* euicc_manager,
@@ -46,7 +50,11 @@ class ModemMbim : public Modem<MbimCmd> {
   bool IsSimValidAfterDisable() override;
 
  private:
-  ModemMbim(GFile* file, Logger* logger, Executor* executor);
+  ModemMbim(GFile* file,
+            Logger* logger,
+            Executor* executor,
+            std::unique_ptr<ModemManagerProxy> modem_manager_proxy);
+  void OnModemAvailable();
   void Shutdown() override;
   void TransmitFromQueue() override;
   std::unique_ptr<MbimCmd> GetTagForSendApdu() override;
