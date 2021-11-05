@@ -13,6 +13,14 @@
 
 namespace rmad {
 
+namespace fake {
+
+FakeFinalizeStateHandler::FakeFinalizeStateHandler(
+    scoped_refptr<JsonStore> json_store)
+    : FinalizeStateHandler(json_store) {}
+
+}  // namespace fake
+
 FinalizeStateHandler::FinalizeStateHandler(scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store) {}
 

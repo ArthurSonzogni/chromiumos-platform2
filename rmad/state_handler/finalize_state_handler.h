@@ -58,6 +58,18 @@ class FinalizeStateHandler : public BaseStateHandler {
   base::RepeatingTimer finalize_timer_;
 };
 
+namespace fake {
+
+class FakeFinalizeStateHandler : public FinalizeStateHandler {
+ public:
+  explicit FakeFinalizeStateHandler(scoped_refptr<JsonStore> json_store);
+
+ protected:
+  ~FakeFinalizeStateHandler() override = default;
+};
+
+}  // namespace fake
+
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_FINALIZE_STATE_HANDLER_H_

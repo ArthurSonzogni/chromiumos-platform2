@@ -10,6 +10,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/timer/timer.h>
 
 namespace rmad {
@@ -53,6 +54,21 @@ class WriteProtectEnablePhysicalStateHandler : public BaseStateHandler {
       write_protect_signal_sender_;
   base::RepeatingTimer timer_;
 };
+
+namespace fake {
+
+class FakeWriteProtectEnablePhysicalStateHandler
+    : public WriteProtectEnablePhysicalStateHandler {
+ public:
+  FakeWriteProtectEnablePhysicalStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      const base::FilePath& working_dir_path);
+
+ protected:
+  ~FakeWriteProtectEnablePhysicalStateHandler() override = default;
+};
+
+}  // namespace fake
 
 }  // namespace rmad
 

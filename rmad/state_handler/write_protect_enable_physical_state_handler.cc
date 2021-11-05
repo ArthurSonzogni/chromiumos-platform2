@@ -7,11 +7,12 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/file_path.h>
+
 #include "rmad/utils/crossystem_utils_impl.h"
+#include "rmad/utils/fake_crossystem_utils.h"
 
 #include <base/logging.h>
-
-namespace rmad {
 
 namespace {
 
@@ -19,6 +20,20 @@ namespace {
 constexpr char kWriteProtectProperty[] = "wpsw_cur";
 
 }  // namespace
+
+namespace rmad {
+
+namespace fake {
+
+FakeWriteProtectEnablePhysicalStateHandler::
+    FakeWriteProtectEnablePhysicalStateHandler(
+        scoped_refptr<JsonStore> json_store,
+        const base::FilePath& working_dir_path)
+    : WriteProtectEnablePhysicalStateHandler(
+          json_store, std::make_unique<FakeCrosSystemUtils>(working_dir_path)) {
+}
+
+}  // namespace fake
 
 WriteProtectEnablePhysicalStateHandler::WriteProtectEnablePhysicalStateHandler(
     scoped_refptr<JsonStore> json_store)
