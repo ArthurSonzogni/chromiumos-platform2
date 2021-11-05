@@ -103,7 +103,7 @@ class ArcBugReportLog : public LogTool::Log {
 
 // NOTE: IF YOU ADD AN ENTRY TO THIS LIST, PLEASE:
 // * add a row to http://go/cros-feedback-audit and fill it out
-// * email cros-telemetry@
+// * email cros-feedback-app@
 // (Eventually we'll have a better process, but for now please do this.)
 // clang-format off
 const std::vector<Log> kCommandLogs {
@@ -419,11 +419,19 @@ const std::vector<Log> kCommandLogs {
 };
 // clang-format on
 
+// NOTE: IF YOU ADD AN ENTRY TO THIS LIST, PLEASE:
+// * add a row to http://go/cros-feedback-audit and fill it out
+// * email cros-feedback-app@
+// (Eventually we'll have a better process, but for now please do this.)
 const std::vector<Log> kCommandLogsVerbose{
     // PCI config space accesses are limited without CAP_SYS_ADMIN.
     {kCommand, "lspci_verbose", "/usr/sbin/lspci -vvvnn", kRoot, kRoot},
 };
 
+// NOTE: IF YOU ADD AN ENTRY TO THIS LIST, PLEASE:
+// * add a row to http://go/cros-feedback-audit and fill it out
+// * email cros-feedback-app@
+// (Eventually we'll have a better process, but for now please do this.)
 const std::vector<Log> kCommandLogsShort{
     {kCommand, "lspci", "/usr/sbin/lspci"},
 };
@@ -431,6 +439,10 @@ const std::vector<Log> kCommandLogsShort{
 // Extra logs are logs such as netstat and logcat which should appear in
 // chrome://system but not in feedback reports.  Open sockets may have privacy
 // implications, and logcat is already incorporated via arc-bugreport.
+// NOTE: IF YOU ADD AN ENTRY TO THIS LIST, PLEASE:
+// * add a row to http://go/cros-feedback-audit and fill it out
+// * email cros-feedback-app@
+// (Eventually we'll have a better process, but for now please do this.)
 //
 // clang-format off
 const std::vector<Log> kExtraLogs {
@@ -451,6 +463,10 @@ const std::vector<Log> kExtraLogs {
 };
 // clang-format on
 
+// NOTE: IF YOU ADD AN ENTRY TO THIS LIST, PLEASE:
+// * add a row to http://go/cros-feedback-audit and fill it out
+// * email cros-feedback-app@
+// (Eventually we'll have a better process, but for now please do this.)
 // clang-format off
 const std::vector<Log> kFeedbackLogs {
   {kFile, "auth_failure", "/var/log/tcsd/auth_failure.permanent"},
