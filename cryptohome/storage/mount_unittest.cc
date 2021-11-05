@@ -219,17 +219,17 @@ void CheckRootAndDaemonStoreMounts(Platform* platform,
   const std::multimap<const base::FilePath, const base::FilePath>
       expected_root_mount_map{
           {
-              vault_mount_point.Append("root"),
+              vault_mount_point.Append(kRootHomeSuffix),
               brillo::cryptohome::home::GetRootPath(username),
           },
           {
-              vault_mount_point.Append("root").Append(kSomeDaemon),
+              vault_mount_point.Append(kRootHomeSuffix).Append(kSomeDaemon),
               base::FilePath(kRunDaemonStore)
                   .Append(kSomeDaemon)
                   .Append(obfuscated_username),
           },
           {
-              vault_mount_point.Append("root").Append(kAnotherDaemon),
+              vault_mount_point.Append(kRootHomeSuffix).Append(kAnotherDaemon),
               base::FilePath(kRunDaemonStore)
                   .Append(kAnotherDaemon)
                   .Append(obfuscated_username),
@@ -242,19 +242,20 @@ void CheckRootAndDaemonStoreMounts(Platform* platform,
               expect_present);
   if (expect_present) {
     ASSERT_TRUE(platform->GetMountsBySourcePrefix(
-        vault_mount_point.Append("root"), &root_mount_map));
+        vault_mount_point.Append(kRootHomeSuffix), &root_mount_map));
     ASSERT_THAT(root_mount_map,
                 ::testing::UnorderedElementsAreArray(expected_root_mount_map));
   }
-  CheckExistanceAndPermissions(platform, vault_mount_point.Append("root"),
-                               01770, kRootUid, kDaemonStoreGid,
-                               expect_present);
+  CheckExistanceAndPermissions(platform,
+                               vault_mount_point.Append(kRootHomeSuffix), 01770,
+                               kRootUid, kDaemonStoreGid, expect_present);
   CheckExistanceAndPermissions(
-      platform, vault_mount_point.Append("root").Append(kSomeDaemon),
+      platform, vault_mount_point.Append(kRootHomeSuffix).Append(kSomeDaemon),
       kSomeDaemonAttributes.mode, kSomeDaemonAttributes.uid,
       kSomeDaemonAttributes.gid, expect_present);
   CheckExistanceAndPermissions(
-      platform, vault_mount_point.Append("root").Append(kAnotherDaemon),
+      platform,
+      vault_mount_point.Append(kRootHomeSuffix).Append(kAnotherDaemon),
       kAnotherDaemonAttributes.mode, kAnotherDaemonAttributes.uid,
       kAnotherDaemonAttributes.gid, expect_present);
 
@@ -284,17 +285,20 @@ void CheckUserMountPoints(Platform* platform,
 
   std::multimap<const base::FilePath, const base::FilePath>
       expected_user_mount_map{
-          {vault_mount_point.Append("user"), vault_mount_point.Append("user")},
-          {vault_mount_point.Append("user"),
+          {vault_mount_point.Append(kUserHomeSuffix),
+           vault_mount_point.Append(kUserHomeSuffix)},
+          {vault_mount_point.Append(kUserHomeSuffix),
            brillo::cryptohome::home::GetUserPath(username)},
-          {vault_mount_point.Append("user"), chronos_hash_user_mount_point},
-          {vault_mount_point.Append("user"), base::FilePath(kHomeChronosUser)},
+          {vault_mount_point.Append(kUserHomeSuffix),
+           chronos_hash_user_mount_point},
+          {vault_mount_point.Append(kUserHomeSuffix),
+           base::FilePath(kHomeChronosUser)},
       };
 
   if (downloads_bind_mount) {
     expected_user_mount_map.insert(
-        {vault_mount_point.Append("user").Append(kDownloadsDir),
-         vault_mount_point.Append("user")
+        {vault_mount_point.Append(kUserHomeSuffix).Append(kDownloadsDir),
+         vault_mount_point.Append(kUserHomeSuffix)
              .Append(kMyFilesDir)
              .Append(kDownloadsDir)});
   }
@@ -308,13 +312,14 @@ void CheckUserMountPoints(Platform* platform,
   ASSERT_THAT(platform->IsDirectoryMounted(chronos_hash_user_mount_point),
               expect_present);
 
-  ASSERT_THAT(platform->IsDirectoryMounted(vault_mount_point.Append("user")
-                                               .Append(kMyFilesDir)
-                                               .Append(kDownloadsDir)),
-              expect_present && downloads_bind_mount);
+  ASSERT_THAT(
+      platform->IsDirectoryMounted(vault_mount_point.Append(kUserHomeSuffix)
+                                       .Append(kMyFilesDir)
+                                       .Append(kDownloadsDir)),
+      expect_present && downloads_bind_mount);
   if (expect_present) {
     ASSERT_TRUE(platform->GetMountsBySourcePrefix(
-        vault_mount_point.Append("user"), &user_mount_map));
+        vault_mount_point.Append(kUserHomeSuffix), &user_mount_map));
     ASSERT_THAT(user_mount_map,
                 ::testing::UnorderedElementsAreArray(expected_user_mount_map));
   }
@@ -450,7 +455,7 @@ class PersistentSystemTest : public ::testing::Test {
         expect_present, downloads_bind_mount));
 
     const std::vector<base::FilePath> user_vault_and_mounts{
-        GetUserMountDirectory(obfuscated_username).Append("user"),
+        GetUserMountDirectory(obfuscated_username).Append(kUserHomeSuffix),
         base::FilePath(kHomeChronosUser),
         brillo::cryptohome::home::GetUserPath(username),
         ChronosHashPath(username),
@@ -601,16 +606,16 @@ class PersistentSystemTest : public ::testing::Test {
     const std::multimap<const base::FilePath, const base::FilePath>
         expected_cache_mount_map{
             {GetDmcryptUserCacheDirectory(obfuscated_username)
-                 .Append("user")
+                 .Append(kUserHomeSuffix)
                  .Append(kCacheDir),
              GetUserMountDirectory(obfuscated_username)
-                 .Append("user")
+                 .Append(kUserHomeSuffix)
                  .Append(kCacheDir)},
             {GetDmcryptUserCacheDirectory(obfuscated_username)
-                 .Append("user")
+                 .Append(kUserHomeSuffix)
                  .Append(kGCacheDir),
              GetUserMountDirectory(obfuscated_username)
-                 .Append("user")
+                 .Append(kUserHomeSuffix)
                  .Append(kGCacheDir)},
         };
     std::multimap<const base::FilePath, const base::FilePath> volume_mount_map;
@@ -623,12 +628,12 @@ class PersistentSystemTest : public ::testing::Test {
                 expect_present);
     ASSERT_THAT(
         platform_.IsDirectoryMounted(GetUserMountDirectory(obfuscated_username)
-                                         .Append("user")
+                                         .Append(kUserHomeSuffix)
                                          .Append(kCacheDir)),
         expect_present);
     ASSERT_THAT(
         platform_.IsDirectoryMounted(GetUserMountDirectory(obfuscated_username)
-                                         .Append("user")
+                                         .Append(kUserHomeSuffix)
                                          .Append(kGCacheDir)),
         expect_present);
     if (expect_present) {
@@ -708,11 +713,12 @@ TEST_F(PersistentSystemTest, BindDownloads) {
   const base::FilePath dircrypto_mount_point =
       GetUserMountDirectory(obfuscated_username);
 
-  ASSERT_TRUE(platform_.WriteStringToFile(dircrypto_mount_point.Append("user")
-                                              .Append(kMyFilesDir)
-                                              .Append(kDownloadsDir)
-                                              .Append(kFile),
-                                          kContent));
+  ASSERT_TRUE(
+      platform_.WriteStringToFile(dircrypto_mount_point.Append(kUserHomeSuffix)
+                                      .Append(kMyFilesDir)
+                                      .Append(kDownloadsDir)
+                                      .Append(kFile),
+                                  kContent));
 
   ASSERT_THAT(
       mnt_helper.PerformMount(MountType::DIR_CRYPTO, kUser,
@@ -727,14 +733,17 @@ TEST_F(PersistentSystemTest, BindDownloads) {
   // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
 
   // The file should migrate to user/Downloads
-  ASSERT_FALSE(platform_.FileExists(dircrypto_mount_point.Append("user")
-                                        .Append(kMyFilesDir)
-                                        .Append(kDownloadsDir)
-                                        .Append(kFile)));
+  ASSERT_FALSE(
+      platform_.FileExists(dircrypto_mount_point.Append(kUserHomeSuffix)
+                               .Append(kMyFilesDir)
+                               .Append(kDownloadsDir)
+                               .Append(kFile)));
   std::string result;
-  ASSERT_TRUE(platform_.ReadFileToString(
-      dircrypto_mount_point.Append("user").Append(kDownloadsDir).Append(kFile),
-      &result));
+  ASSERT_TRUE(
+      platform_.ReadFileToString(dircrypto_mount_point.Append(kUserHomeSuffix)
+                                     .Append(kDownloadsDir)
+                                     .Append(kFile),
+                                 &result));
   ASSERT_THAT(result, kContent);
 }
 
@@ -767,9 +776,11 @@ TEST_F(PersistentSystemTest, NoBindDownloads) {
   const base::FilePath dircrypto_mount_point =
       GetUserMountDirectory(obfuscated_username);
 
-  ASSERT_TRUE(platform_.WriteStringToFile(
-      dircrypto_mount_point.Append("user").Append(kDownloadsDir).Append(kFile),
-      kContent));
+  ASSERT_TRUE(
+      platform_.WriteStringToFile(dircrypto_mount_point.Append(kUserHomeSuffix)
+                                      .Append(kDownloadsDir)
+                                      .Append(kFile),
+                                  kContent));
 
   ASSERT_THAT(
       mnt_helper.PerformMount(MountType::DIR_CRYPTO, kUser,
@@ -785,15 +796,17 @@ TEST_F(PersistentSystemTest, NoBindDownloads) {
   // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
 
   // The file should migrate to user/MyFiles/Downloads
-  ASSERT_FALSE(platform_.FileExists(dircrypto_mount_point.Append("user")
-                                        .Append(kDownloadsDir)
-                                        .Append(kFile)));
+  ASSERT_FALSE(
+      platform_.FileExists(dircrypto_mount_point.Append(kUserHomeSuffix)
+                               .Append(kDownloadsDir)
+                               .Append(kFile)));
   std::string result;
-  ASSERT_TRUE(platform_.ReadFileToString(dircrypto_mount_point.Append("user")
-                                             .Append(kMyFilesDir)
-                                             .Append(kDownloadsDir)
-                                             .Append(kFile),
-                                         &result));
+  ASSERT_TRUE(
+      platform_.ReadFileToString(dircrypto_mount_point.Append(kUserHomeSuffix)
+                                     .Append(kMyFilesDir)
+                                     .Append(kDownloadsDir)
+                                     .Append(kFile),
+                                 &result));
   ASSERT_THAT(result, kContent);
 }
 
@@ -1097,7 +1110,7 @@ class EphemeralSystemTest : public ::testing::Test {
         &platform_, username, EphemeralMountPoint(username), expect_present));
 
     const std::vector<base::FilePath> user_vault_and_mounts{
-        EphemeralMountPoint(username).Append("user"),
+        EphemeralMountPoint(username).Append(kUserHomeSuffix),
         base::FilePath(kHomeChronosUser),
         brillo::cryptohome::home::GetUserPath(username),
         ChronosHashPath(username),
