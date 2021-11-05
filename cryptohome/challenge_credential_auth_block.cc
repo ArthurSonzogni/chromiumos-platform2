@@ -20,43 +20,43 @@ namespace cryptohome {
 ChallengeCredentialAuthBlock::ChallengeCredentialAuthBlock()
     : LibScryptCompatAuthBlock(kSignatureChallengeProtected) {}
 
-base::Optional<AuthBlockState> ChallengeCredentialAuthBlock::Create(
-    const AuthInput& user_input, KeyBlobs* key_blobs, CryptoError* error) {
-  auto auth_state =
-      LibScryptCompatAuthBlock::Create(user_input, key_blobs, error);
-  if (auth_state == base::nullopt) {
+CryptoError ChallengeCredentialAuthBlock::Create(
+    const AuthInput& user_input,
+    AuthBlockState* auth_block_state,
+    KeyBlobs* key_blobs) {
+  AuthBlockState auth_state;
+  CryptoError error =
+      LibScryptCompatAuthBlock::Create(user_input, &auth_state, key_blobs);
+  if (error != CryptoError::CE_NONE) {
     LOG(ERROR) << "scrypt derivation failed for challenge credential";
-    return base::nullopt;
+    return error;
   }
   if (auto* scrypt_state =
-          absl::get_if<LibScryptCompatAuthBlockState>(&auth_state->state)) {
+          absl::get_if<LibScryptCompatAuthBlockState>(&auth_state.state)) {
     ChallengeCredentialAuthBlockState cc_state = {.scrypt_state =
                                                       std::move(*scrypt_state)};
-    AuthBlockState final_state = {.state = std::move(cc_state)};
-    return final_state;
+    *auth_block_state = AuthBlockState{.state = std::move(cc_state)};
+    return CryptoError::CE_NONE;
 
   } else {
     // This should never happen, but handling it anyway on the safe side.
     NOTREACHED() << "scrypt derivation failed for challenge credential";
-    return base::nullopt;
+    return CryptoError::CE_OTHER_CRYPTO;
   }
 }
 
-bool ChallengeCredentialAuthBlock::Derive(const AuthInput& user_input,
-                                          const AuthBlockState& state,
-                                          KeyBlobs* key_blobs,
-                                          CryptoError* error) {
+CryptoError ChallengeCredentialAuthBlock::Derive(const AuthInput& user_input,
+                                                 const AuthBlockState& state,
+                                                 KeyBlobs* key_blobs) {
   const ChallengeCredentialAuthBlockState* cc_state =
       absl::get_if<ChallengeCredentialAuthBlockState>(&state.state);
   if (cc_state == nullptr) {
     LOG(ERROR) << "Invalid state for challenge credential AuthBlock";
-    *error = CryptoError::CE_OTHER_FATAL;
-    return false;
+    return CryptoError::CE_OTHER_FATAL;
   }
 
   AuthBlockState scrypt_state = {.state = cc_state->scrypt_state};
-  return LibScryptCompatAuthBlock::Derive(user_input, scrypt_state, key_blobs,
-                                          error);
+  return LibScryptCompatAuthBlock::Derive(user_input, scrypt_state, key_blobs);
 }
 
 }  // namespace cryptohome

@@ -326,7 +326,8 @@ bool VaultKeyset::DecryptVaultKeyset(const SecureBlob& vault_key,
 
   AuthInput auth_input = {vault_key, locked_to_single_user};
   KeyBlobs vkk_data;
-  if (!auth_block->Derive(auth_input, auth_state, &vkk_data, error)) {
+  *error = auth_block->Derive(auth_input, auth_state, &vkk_data);
+  if (*error != CryptoError::CE_NONE) {
     return false;
   }
 
@@ -935,7 +936,7 @@ bool VaultKeyset::Encrypt(const SecureBlob& key,
 
 bool VaultKeyset::EncryptVaultKeyset(const SecureBlob& vault_key,
                                      const std::string& obfuscated_username,
-                                     AuthBlockState* out_state) {
+                                     AuthBlockState* auth_state) {
   // TODO(crbug.com/1216659): Move AuthBlock instantiation to AuthFactor once it
   // is ready.
   std::unique_ptr<SyncAuthBlock> auth_block = GetAuthBlockForCreation();
@@ -953,13 +954,11 @@ bool VaultKeyset::EncryptVaultKeyset(const SecureBlob& vault_key,
                           obfuscated_username, reset_secret};
 
   KeyBlobs key_blobs;
-  CryptoError error;
-  auto auth_state = auth_block->Create(user_input, &key_blobs, &error);
-  if (auth_state == base::nullopt) {
+  CryptoError error = auth_block->Create(user_input, auth_state, &key_blobs);
+  if (error != CryptoError::CE_NONE) {
     LOG(ERROR) << "Failed to create the credential: " << error;
     return false;
   }
-  *out_state = auth_state.value();
 
   bool wrapping_succeeded;
   bool is_scrypt_wrapped =

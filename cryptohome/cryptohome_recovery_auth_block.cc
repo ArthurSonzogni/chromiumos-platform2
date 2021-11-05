@@ -31,8 +31,10 @@ namespace cryptohome {
 CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock()
     : SyncAuthBlock(/*derivation_type=*/kCryptohomeRecovery) {}
 
-base::Optional<AuthBlockState> CryptohomeRecoveryAuthBlock::Create(
-    const AuthInput& auth_input, KeyBlobs* key_blobs, CryptoError* error) {
+CryptoError CryptohomeRecoveryAuthBlock::Create(
+    const AuthInput& auth_input,
+    AuthBlockState* auth_block_state,
+    KeyBlobs* key_blobs) {
   DCHECK(key_blobs);
   DCHECK(auth_input.cryptohome_recovery_auth_input.has_value());
   auto cryptohome_recovery_auth_input =
@@ -47,8 +49,7 @@ base::Optional<AuthBlockState> CryptohomeRecoveryAuthBlock::Create(
 
   std::unique_ptr<RecoveryCryptoImpl> recovery = RecoveryCryptoImpl::Create();
   if (!recovery) {
-    PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
-    return base::nullopt;
+    return CryptoError::CE_OTHER_CRYPTO;
   }
 
   // Generates HSM payload that would be persisted on a chromebook.
@@ -65,8 +66,7 @@ base::Optional<AuthBlockState> CryptohomeRecoveryAuthBlock::Create(
           /*onboarding_metadata=*/brillo::SecureBlob(), &hsm_payload,
           &destination_share, &recovery_key, &channel_pub_key,
           &channel_priv_key)) {
-    PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
-    return base::nullopt;
+    return CryptoError::CE_OTHER_CRYPTO;
   }
 
   // Generate wrapped keys from the recovery key.
@@ -74,8 +74,7 @@ base::Optional<AuthBlockState> CryptohomeRecoveryAuthBlock::Create(
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
   brillo::SecureBlob vkk_iv(kAesBlockSize);
   if (!DeriveSecretsScrypt(recovery_key, salt, {&aes_skey, &vkk_iv})) {
-    PopulateError(error, CryptoError::CE_OTHER_FATAL);
-    return base::nullopt;
+    return CryptoError::CE_OTHER_FATAL;
   }
   key_blobs->vkk_key = aes_skey;
   key_blobs->vkk_iv = vkk_iv;
@@ -86,8 +85,7 @@ base::Optional<AuthBlockState> CryptohomeRecoveryAuthBlock::Create(
 
   brillo::SecureBlob hsm_payload_cbor;
   if (!SerializeHsmPayloadToCbor(hsm_payload, &hsm_payload_cbor)) {
-    PopulateError(error, CryptoError::CE_OTHER_FATAL);
-    return base::nullopt;
+    return CryptoError::CE_OTHER_FATAL;
   }
   auth_state.hsm_payload = hsm_payload_cbor;
 
@@ -97,20 +95,19 @@ base::Optional<AuthBlockState> CryptohomeRecoveryAuthBlock::Create(
   auth_state.channel_priv_key = channel_priv_key;
   auth_state.channel_pub_key = channel_pub_key;
   auth_state.salt = std::move(salt);
-  AuthBlockState auth_block_state = {.state = std::move(auth_state)};
-  return auth_block_state;
+  *auth_block_state = AuthBlockState{.state = std::move(auth_state)};
+  return CryptoError::CE_NONE;
 }
 
-bool CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
-                                         const AuthBlockState& state,
-                                         KeyBlobs* key_blobs,
-                                         CryptoError* error) {
+CryptoError CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
+                                                const AuthBlockState& state,
+                                                KeyBlobs* key_blobs) {
   DCHECK(key_blobs);
   const CryptohomeRecoveryAuthBlockState* auth_state;
   if (!(auth_state =
             absl::get_if<CryptohomeRecoveryAuthBlockState>(&state.state))) {
     DLOG(FATAL) << "Invalid AuthBlockState";
-    return false;
+    return CryptoError::CE_OTHER_CRYPTO;
   }
   DCHECK(auth_input.cryptohome_recovery_auth_input.has_value());
   auto cryptohome_recovery_auth_input =
@@ -132,16 +129,14 @@ bool CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
 
   std::unique_ptr<RecoveryCryptoImpl> recovery = RecoveryCryptoImpl::Create();
   if (!recovery) {
-    PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
-    return false;
+    return CryptoError::CE_OTHER_CRYPTO;
   }
 
   HsmResponsePlainText response_plain_text;
   if (!recovery->DecryptResponsePayload(channel_priv_key, epoch_pub_key,
                                         recovery_response_cbor,
                                         &response_plain_text)) {
-    PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
-    return false;
+    return CryptoError::CE_OTHER_CRYPTO;
   }
 
   brillo::SecureBlob recovery_key;
@@ -149,8 +144,7 @@ bool CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
           response_plain_text.dealer_pub_key, plaintext_destination_share,
           ephemeral_pub_key, response_plain_text.mediated_point,
           &recovery_key)) {
-    PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
-    return false;
+    return CryptoError::CE_OTHER_CRYPTO;
   }
 
   // Generate wrapped keys from the recovery key.
@@ -158,14 +152,13 @@ bool CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   brillo::SecureBlob aes_skey(kDefaultAesKeySize);
   brillo::SecureBlob vkk_iv(kAesBlockSize);
   if (!DeriveSecretsScrypt(recovery_key, salt, {&aes_skey, &vkk_iv})) {
-    PopulateError(error, CryptoError::CE_OTHER_FATAL);
-    return false;
+    return CryptoError::CE_OTHER_FATAL;
   }
   key_blobs->vkk_key = aes_skey;
   key_blobs->vkk_iv = vkk_iv;
   key_blobs->chaps_iv = vkk_iv;
 
-  return true;
+  return CryptoError::CE_NONE;
 }
 
 }  // namespace cryptohome

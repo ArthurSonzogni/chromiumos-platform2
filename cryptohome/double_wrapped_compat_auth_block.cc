@@ -25,31 +25,33 @@ DoubleWrappedCompatAuthBlock::DoubleWrappedCompatAuthBlock(
       tpm_auth_block_(tpm, cryptohome_keys_manager),
       lib_scrypt_compat_auth_block_() {}
 
-base::Optional<AuthBlockState> DoubleWrappedCompatAuthBlock::Create(
-    const AuthInput& user_input, KeyBlobs* key_blobs, CryptoError* error) {
+CryptoError DoubleWrappedCompatAuthBlock::Create(
+    const AuthInput& user_input,
+    AuthBlockState* auth_block_state,
+    KeyBlobs* key_blobs) {
   LOG(FATAL) << "Cannot create a keyset wrapped with both scrypt and TPM.";
-  return base::nullopt;
+  return CryptoError::CE_OTHER_CRYPTO;
 }
 
-bool DoubleWrappedCompatAuthBlock::Derive(const AuthInput& auth_input,
-                                          const AuthBlockState& state,
-                                          KeyBlobs* key_blobs,
-                                          CryptoError* error) {
+CryptoError DoubleWrappedCompatAuthBlock::Derive(const AuthInput& auth_input,
+                                                 const AuthBlockState& state,
+                                                 KeyBlobs* key_blobs) {
   const DoubleWrappedCompatAuthBlockState* auth_state;
   if (!(auth_state =
             absl::get_if<DoubleWrappedCompatAuthBlockState>(&state.state))) {
     DLOG(FATAL) << "Invalid AuthBlockState";
-    return false;
+    return CryptoError::CE_OTHER_CRYPTO;
   }
 
   AuthBlockState scrypt_state = {.state = auth_state->scrypt_state};
-  if (lib_scrypt_compat_auth_block_.Derive(auth_input, scrypt_state, key_blobs,
-                                           error)) {
-    return true;
+  CryptoError error =
+      lib_scrypt_compat_auth_block_.Derive(auth_input, scrypt_state, key_blobs);
+  if (error == CryptoError::CE_NONE) {
+    return CryptoError::CE_NONE;
   }
 
   AuthBlockState tpm_state = {.state = auth_state->tpm_state};
-  return tpm_auth_block_.Derive(auth_input, tpm_state, key_blobs, error);
+  return tpm_auth_block_.Derive(auth_input, tpm_state, key_blobs);
 }
 
 }  // namespace cryptohome

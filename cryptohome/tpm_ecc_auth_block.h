@@ -29,38 +29,35 @@ class TpmEccAuthBlock : public SyncAuthBlock {
   TpmEccAuthBlock(const TpmEccAuthBlock&) = delete;
   TpmEccAuthBlock& operator=(const TpmEccAuthBlock&) = delete;
 
-  base::Optional<AuthBlockState> Create(const AuthInput& auth_input,
-                                        KeyBlobs* key_blobs,
-                                        CryptoError* error) override;
+  CryptoError Create(const AuthInput& auth_input,
+                     AuthBlockState* auth_block_state,
+                     KeyBlobs* key_blobs) override;
 
-  bool Derive(const AuthInput& auth_input,
-              const AuthBlockState& state,
-              KeyBlobs* key_blobs,
-              CryptoError* error) override;
+  CryptoError Derive(const AuthInput& auth_input,
+                     const AuthBlockState& state,
+                     KeyBlobs* key_blobs) override;
 
  private:
   // The create process may fail due to the scalar of EC_POINT_mul out of range.
-  // We should retry the process again when this function sets |retry| to true.
-  base::Optional<AuthBlockState> TryCreate(const AuthInput& auth_input,
-                                           KeyBlobs* key_blobs,
-                                           CryptoError* error,
-                                           bool* retry);
+  // We should retry the process again when retry_limit is not zero.
+  CryptoError TryCreate(const AuthInput& auth_input,
+                        AuthBlockState* auth_block_state,
+                        KeyBlobs* key_blobs,
+                        int retry_limit);
 
   // Derive the VKK from the user input and auth state.
-  base::Optional<brillo::SecureBlob> DeriveVkk(
-      bool locked_to_single_user,
-      const brillo::SecureBlob& user_input,
-      const TpmEccAuthBlockState& auth_state,
-      CryptoError* error);
+  CryptoError DeriveVkk(bool locked_to_single_user,
+                        const brillo::SecureBlob& user_input,
+                        const TpmEccAuthBlockState& auth_state,
+                        brillo::SecureBlob* vkk);
 
   // Derive the HVKKM from sealed HVKKM, preload handle.
-  base::Optional<brillo::SecureBlob> DeriveHvkkm(
-      bool locked_to_single_user,
-      brillo::SecureBlob pass_blob,
-      const brillo::SecureBlob& sealed_hvkkm,
-      ScopedKeyHandle* preload_handle,
-      uint32_t auth_value_rounds,
-      CryptoError* error);
+  CryptoError DeriveHvkkm(bool locked_to_single_user,
+                          brillo::SecureBlob pass_blob,
+                          const brillo::SecureBlob& sealed_hvkkm,
+                          ScopedKeyHandle* preload_handle,
+                          uint32_t auth_value_rounds,
+                          brillo::SecureBlob* vkk);
 
   Tpm* tpm_;
   CryptohomeKeyLoader* cryptohome_key_loader_;

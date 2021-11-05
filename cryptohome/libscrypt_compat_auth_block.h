@@ -29,15 +29,15 @@ class LibScryptCompatAuthBlock : public SyncAuthBlock {
   // Derives a high entropy secret from the user's password with scrypt.
   // Returns a key for each field that must be wrapped by scrypt, such as the
   // wrapped_chaps_key, etc.
-  base::Optional<AuthBlockState> Create(const AuthInput& user_input,
-                                        KeyBlobs* key_blobs,
-                                        CryptoError* error) override;
+  CryptoError Create(const AuthInput& user_input,
+                     AuthBlockState* auth_block_state,
+
+                     KeyBlobs* key_blobs) override;
 
   // This uses Scrypt to derive high entropy keys from the user's password.
-  bool Derive(const AuthInput& auth_input,
-              const AuthBlockState& state,
-              KeyBlobs* key_blobs,
-              CryptoError* error) override;
+  CryptoError Derive(const AuthInput& auth_input,
+                     const AuthBlockState& state,
+                     KeyBlobs* key_blobs) override;
 
  protected:
   explicit LibScryptCompatAuthBlock(DerivationType);

@@ -48,8 +48,8 @@ bool TpmAuthBlockUtils::TPMErrorIsRetriable(
          action == hwsec::error::TPMRetryAction::kCommunication;
 }
 
-bool TpmAuthBlockUtils::IsTPMPubkeyHash(const brillo::SecureBlob& hash,
-                                        CryptoError* error) const {
+CryptoError TpmAuthBlockUtils::IsTPMPubkeyHash(
+    const brillo::SecureBlob& hash) const {
   brillo::SecureBlob pub_key_hash;
   if (TPMErrorBase err = tpm_->GetPublicKeyHash(
           cryptohome_key_loader_->GetCryptohomeKey(), &pub_key_hash)) {
@@ -57,8 +57,7 @@ bool TpmAuthBlockUtils::IsTPMPubkeyHash(const brillo::SecureBlob& hash,
       if (!cryptohome_key_loader_->ReloadCryptohomeKey()) {
         LOG(ERROR) << "Unable to reload key.";
         ReportCryptohomeError(kCannotReadTpmPublicKey);
-        PopulateError(error, CryptoError::CE_NO_PUBLIC_KEY_HASH);
-        return false;
+        return CryptoError::CE_NO_PUBLIC_KEY_HASH;
       } else {
         err = tpm_->GetPublicKeyHash(cryptohome_key_loader_->GetCryptohomeKey(),
                                      &pub_key_hash);
@@ -68,30 +67,26 @@ bool TpmAuthBlockUtils::IsTPMPubkeyHash(const brillo::SecureBlob& hash,
       LOG(ERROR) << "Unable to get the cryptohome public key from the TPM: "
                  << *err;
       ReportCryptohomeError(kCannotReadTpmPublicKey);
-      PopulateError(error, TPMErrorToCrypto(err));
-      return false;
+      return TPMErrorToCrypto(err);
     }
   }
 
   if ((hash.size() != pub_key_hash.size()) ||
       (brillo::SecureMemcmp(hash.data(), pub_key_hash.data(),
                             pub_key_hash.size()))) {
-    PopulateError(error, CryptoError::CE_TPM_FATAL);
-    return false;
+    return CryptoError::CE_TPM_FATAL;
   }
-  return true;
+  return CryptoError::CE_NONE;
 }
 
-bool TpmAuthBlockUtils::CheckTPMReadiness(
+CryptoError TpmAuthBlockUtils::CheckTPMReadiness(
     bool has_tpm_key,
     bool has_tpm_public_key_hash,
-    const brillo::SecureBlob& tpm_public_key_hash,
-    CryptoError* error) {
+    const brillo::SecureBlob& tpm_public_key_hash) {
   if (!has_tpm_key) {
     LOG(ERROR) << "Decrypting with TPM, but no TPM key present.";
     ReportCryptohomeError(kDecryptAttemptButTpmKeyMissing);
-    PopulateError(error, CryptoError::CE_TPM_FATAL);
-    return false;
+    return CryptoError::CE_TPM_FATAL;
   }
 
   // If the TPM is enabled but not owned, and the keyset is TPM wrapped, then
@@ -103,8 +98,7 @@ bool TpmAuthBlockUtils::CheckTPMReadiness(
                << "keyset was wrapped by the TPM.  It is impossible to "
                << "recover this keyset.";
     ReportCryptohomeError(kDecryptAttemptButTpmNotOwned);
-    PopulateError(error, CryptoError::CE_TPM_FATAL);
-    return false;
+    return CryptoError::CE_TPM_FATAL;
   }
 
   if (!cryptohome_key_loader_->HasCryptohomeKey()) {
@@ -115,20 +109,20 @@ bool TpmAuthBlockUtils::CheckTPMReadiness(
     LOG(ERROR) << "Vault keyset is wrapped by the TPM, but the TPM is "
                << "unavailable.";
     ReportCryptohomeError(kDecryptAttemptButTpmNotAvailable);
-    PopulateError(error, CryptoError::CE_TPM_COMM_ERROR);
-    return false;
+    return CryptoError::CE_TPM_COMM_ERROR;
   }
 
   // This is a validity check that the keys still match.
   if (has_tpm_public_key_hash) {
-    if (!IsTPMPubkeyHash(tpm_public_key_hash, error)) {
+    CryptoError error = IsTPMPubkeyHash(tpm_public_key_hash);
+    if (error != CryptoError::CE_NONE) {
       LOG(ERROR) << "TPM public key hash mismatch.";
       ReportCryptohomeError(kDecryptAttemptButTpmKeyMismatch);
-      return false;
+      return error;
     }
   }
 
-  return true;
+  return CryptoError::CE_NONE;
 }
 
 }  // namespace cryptohome

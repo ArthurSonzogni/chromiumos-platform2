@@ -90,18 +90,19 @@ TEST(TpmBoundToPcrTest, CreateTest) {
                           obfuscated_username,
                           /*reset_secret=*/base::nullopt};
   KeyBlobs vkk_data;
-  CryptoError error;
 
   TpmBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
-  auto auth_state = auth_block.Create(user_input, &vkk_data, &error);
+  AuthBlockState auth_state;
+  EXPECT_EQ(CryptoError::CE_NONE,
+            auth_block.Create(user_input, &auth_state, &vkk_data));
   EXPECT_TRUE(
-      absl::holds_alternative<TpmBoundToPcrAuthBlockState>(auth_state->state));
+      absl::holds_alternative<TpmBoundToPcrAuthBlockState>(auth_state.state));
 
   EXPECT_NE(vkk_data.vkk_key, base::nullopt);
   EXPECT_NE(vkk_data.vkk_iv, base::nullopt);
   EXPECT_NE(vkk_data.chaps_iv, base::nullopt);
 
-  auto& tpm_state = absl::get<TpmBoundToPcrAuthBlockState>(auth_state->state);
+  auto& tpm_state = absl::get<TpmBoundToPcrAuthBlockState>(auth_state.state);
 
   EXPECT_TRUE(tpm_state.salt.has_value());
   const brillo::SecureBlob& salt = tpm_state.salt.value();
@@ -129,9 +130,10 @@ TEST(TpmBoundToPcrTest, CreateFailTest) {
                           obfuscated_username,
                           /*reset_secret=*/base::nullopt};
   KeyBlobs vkk_data;
-  CryptoError error;
   TpmBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
-  EXPECT_EQ(base::nullopt, auth_block.Create(user_input, &vkk_data, &error));
+  AuthBlockState auth_state;
+  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO,
+            auth_block.Create(user_input, &auth_state, &vkk_data));
 }
 
 TEST(TpmNotBoundToPcrTest, CreateTest) {
@@ -152,18 +154,18 @@ TEST(TpmNotBoundToPcrTest, CreateTest) {
                           obfuscated_username,
                           /*reset_secret=*/base::nullopt};
   KeyBlobs vkk_data;
-  CryptoError error;
   TpmNotBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
-  auto auth_state = auth_block.Create(user_input, &vkk_data, &error);
+  AuthBlockState auth_state;
+  EXPECT_EQ(CryptoError::CE_NONE,
+            auth_block.Create(user_input, &auth_state, &vkk_data));
   EXPECT_TRUE(absl::holds_alternative<TpmNotBoundToPcrAuthBlockState>(
-      auth_state->state));
+      auth_state.state));
 
   EXPECT_NE(vkk_data.vkk_key, base::nullopt);
   EXPECT_NE(vkk_data.vkk_iv, base::nullopt);
   EXPECT_NE(vkk_data.chaps_iv, base::nullopt);
 
-  auto& tpm_state =
-      absl::get<TpmNotBoundToPcrAuthBlockState>(auth_state->state);
+  auto& tpm_state = absl::get<TpmNotBoundToPcrAuthBlockState>(auth_state.state);
 
   EXPECT_TRUE(tpm_state.salt.has_value());
   const brillo::SecureBlob& salt = tpm_state.salt.value();
@@ -189,9 +191,10 @@ TEST(TpmNotBoundToPcrTest, CreateFailTest) {
                           obfuscated_username,
                           /*reset_secret=*/base::nullopt};
   KeyBlobs vkk_data;
-  CryptoError error;
   TpmNotBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
-  EXPECT_EQ(base::nullopt, auth_block.Create(user_input, &vkk_data, &error));
+  AuthBlockState auth_state;
+  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO,
+            auth_block.Create(user_input, &auth_state, &vkk_data));
 }
 
 // Check required field |salt| in TpmNotBoundToPcrAuthBlockState.
@@ -208,9 +211,9 @@ TEST(TpmNotBoundToPcrTest, DeriveFailureMissingSalt) {
   auth_state.state = std::move(state);
 
   KeyBlobs key_blobs;
-  CryptoError error;
   AuthInput auth_input = {};
-  EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
+  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
+            auth_block.Derive(auth_input, auth_state, &key_blobs));
 }
 
 // Check required field |tpm_key| in TpmNotBoundToPcrAuthBlockState.
@@ -227,9 +230,9 @@ TEST(TpmNotBoundToPcrTest, DeriveFailureMissingTpmKey) {
   auth_state.state = std::move(state);
 
   KeyBlobs key_blobs;
-  CryptoError error;
   AuthInput auth_input = {};
-  EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
+  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
+            auth_block.Derive(auth_input, auth_state, &key_blobs));
 }
 
 TEST(TpmNotBoundToPcrTest, DeriveSuccess) {
@@ -251,9 +254,9 @@ TEST(TpmNotBoundToPcrTest, DeriveSuccess) {
   auth_state.state = std::move(state);
 
   KeyBlobs key_blobs;
-  CryptoError error;
   AuthInput auth_input = {.user_input = vault_key};
-  EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
+  EXPECT_EQ(CryptoError::CE_NONE,
+            auth_block.Derive(auth_input, auth_state, &key_blobs));
 }
 
 TEST(PinWeaverAuthBlockTest, CreateTest) {
@@ -274,15 +277,15 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
                           /*locked_to_single_user=*/base::nullopt,
                           obfuscated_username, reset_secret};
   KeyBlobs vkk_data;
-  CryptoError error;
 
   PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
-  auto auth_state = auth_block.Create(user_input, &vkk_data, &error);
-  EXPECT_NE(base::nullopt, auth_state);
+  AuthBlockState auth_state;
+  EXPECT_EQ(CryptoError::CE_NONE,
+            auth_block.Create(user_input, &auth_state, &vkk_data));
   EXPECT_TRUE(
-      absl::holds_alternative<PinWeaverAuthBlockState>(auth_state->state));
+      absl::holds_alternative<PinWeaverAuthBlockState>(auth_state.state));
 
-  auto& pin_state = absl::get<PinWeaverAuthBlockState>(auth_state->state);
+  auto& pin_state = absl::get<PinWeaverAuthBlockState>(auth_state.state);
 
   EXPECT_TRUE(pin_state.salt.has_value());
   const brillo::SecureBlob& salt = pin_state.salt.value();
@@ -309,9 +312,9 @@ TEST(PinWeaverAuthBlockTest, CreateFailTest) {
                           /*locked_to_single_user=*/base::nullopt,
                           obfuscated_username, reset_secret};
   KeyBlobs vkk_data;
-  CryptoError error;
-  EXPECT_EQ(base::nullopt,
-            auth_block_fail.Create(user_input, &vkk_data, &error));
+  AuthBlockState auth_state;
+  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
+            auth_block_fail.Create(user_input, &auth_state, &vkk_data));
 }
 
 // Check required field |le_label| in PinWeaverAuthBlockState.
@@ -332,10 +335,10 @@ TEST(PinWeaverAuthBlockTest, DeriveFailureMissingLeLabel) {
   state.fek_iv = fek_iv;
   auth_state.state = std::move(state);
 
-  CryptoError error;
   KeyBlobs key_blobs;
   AuthInput auth_input = {};
-  EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
+  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
+            auth_block.Derive(auth_input, auth_state, &key_blobs));
 }
 
 // Check required field |salt| in PinWeaverAuthBlockState.
@@ -355,10 +358,10 @@ TEST(PinWeaverAuthBlockTest, DeriveFailureMissingSalt) {
   state.fek_iv = fek_iv;
   auth_state.state = std::move(state);
 
-  CryptoError error;
   KeyBlobs key_blobs;
   AuthInput auth_input = {};
-  EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
+  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
+            auth_block.Derive(auth_input, auth_state, &key_blobs));
 }
 
 TEST(PinWeaverAuthBlockTest, DeriveTest) {
@@ -394,10 +397,10 @@ TEST(PinWeaverAuthBlockTest, DeriveTest) {
   AuthBlockState auth_state;
   EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
 
-  CryptoError error;
   KeyBlobs key_blobs;
   AuthInput auth_input = {vault_key};
-  EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
+  EXPECT_EQ(CryptoError::CE_NONE,
+            auth_block.Derive(auth_input, auth_state, &key_blobs));
 
   // Set expectations of the key blobs.
   EXPECT_NE(key_blobs.reset_secret, base::nullopt);
@@ -441,11 +444,10 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
   AuthBlockState auth_state;
   EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
 
-  CryptoError error;
   KeyBlobs key_blobs;
   AuthInput auth_input = {vault_key};
-  EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
-  EXPECT_EQ(CryptoError::CE_LE_INVALID_SECRET, error);
+  EXPECT_EQ(CryptoError::CE_LE_INVALID_SECRET,
+            auth_block.Derive(auth_input, auth_state, &key_blobs));
 }
 
 TEST(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
@@ -490,13 +492,12 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
   AuthBlockState auth_state;
   EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
 
-  CryptoError error;
   KeyBlobs key_blobs;
   AuthInput auth_input = {vault_key};
   for (int i = 0; i < 10; i++) {
-    EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
-    EXPECT_NE(CryptoError::CE_OTHER_FATAL, error);
+    CryptoError error = auth_block.Derive(auth_input, auth_state, &key_blobs);
     EXPECT_NE(CryptoError::CE_TPM_FATAL, error);
+    EXPECT_NE(CryptoError::CE_OTHER_FATAL, error);
   }
 }
 
@@ -529,11 +530,10 @@ TEST(TPMAuthBlockTest, DecryptBoundToPcrTest) {
                                            _, auth_value, _, _))
       .Times(Exactly(1));
 
-  CryptoError error = CryptoError::CE_NONE;
   TpmBoundToPcrAuthBlock tpm_auth_block(&tpm, &cryptohome_keys_manager);
-  EXPECT_TRUE(tpm_auth_block.DecryptTpmBoundToPcr(vault_key, tpm_key, salt,
-                                                  &error, &vkk_iv, &vkk_key));
-  EXPECT_EQ(CryptoError::CE_NONE, error);
+  EXPECT_EQ(CryptoError::CE_NONE,
+            tpm_auth_block.DecryptTpmBoundToPcr(vault_key, tpm_key, salt,
+                                                &vkk_iv, &vkk_key));
 }
 
 TEST(TPMAuthBlockTest, DecryptBoundToPcrNoPreloadTest) {
@@ -560,11 +560,10 @@ TEST(TPMAuthBlockTest, DecryptBoundToPcrNoPreloadTest) {
   EXPECT_CALL(tpm, UnsealWithAuthorization(nullopt, _, auth_value, _, _))
       .Times(Exactly(1));
 
-  CryptoError error = CryptoError::CE_NONE;
   TpmBoundToPcrAuthBlock tpm_auth_block(&tpm, &cryptohome_keys_manager);
-  EXPECT_TRUE(tpm_auth_block.DecryptTpmBoundToPcr(vault_key, tpm_key, salt,
-                                                  &error, &vkk_iv, &vkk_key));
-  EXPECT_EQ(CryptoError::CE_NONE, error);
+  EXPECT_EQ(CryptoError::CE_NONE,
+            tpm_auth_block.DecryptTpmBoundToPcr(vault_key, tpm_key, salt,
+                                                &vkk_iv, &vkk_key));
 }
 
 TEST(TPMAuthBlockTest, DecryptNotBoundToPcrTest) {
@@ -586,11 +585,10 @@ TEST(TPMAuthBlockTest, DecryptNotBoundToPcrTest) {
   tpm_state.scrypt_derived = true;
   tpm_state.password_rounds = 0x5000;
 
-  CryptoError error = CryptoError::CE_NONE;
   TpmNotBoundToPcrAuthBlock tpm_auth_block(&tpm, &cryptohome_keys_manager);
-  EXPECT_TRUE(tpm_auth_block.DecryptTpmNotBoundToPcr(
-      tpm_state, vault_key, tpm_key, salt, &error, &vkk_iv, &vkk_key));
-  EXPECT_EQ(CryptoError::CE_NONE, error);
+  EXPECT_EQ(CryptoError::CE_NONE,
+            tpm_auth_block.DecryptTpmNotBoundToPcr(
+                tpm_state, vault_key, tpm_key, salt, &vkk_iv, &vkk_key));
 }
 
 TEST(TpmAuthBlockTest, DeriveTest) {
@@ -626,8 +624,8 @@ TEST(TpmAuthBlockTest, DeriveTest) {
   AuthBlockState auth_state;
   EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
 
-  CryptoError error;
-  EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
+  EXPECT_EQ(CryptoError::CE_NONE,
+            auth_block.Derive(auth_input, auth_state, &key_out_data));
 
   // Assert that the returned key blobs isn't uninitialized.
   EXPECT_NE(key_out_data.vkk_iv, base::nullopt);
@@ -651,8 +649,8 @@ TEST(TpmAuthBlockTest, DeriveFailureMissingSalt) {
 
   KeyBlobs key_blobs;
   AuthInput auth_input = {};
-  CryptoError error;
-  EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
+  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
+            auth_block.Derive(auth_input, auth_state, &key_blobs));
 }
 
 // Check required field |tpm_key| in TpmBoundToPcrAuthBlockState.
@@ -672,8 +670,8 @@ TEST(TpmAuthBlockTest, DeriveFailureMissingTpmKey) {
 
   KeyBlobs key_blobs;
   AuthInput auth_input = {};
-  CryptoError error;
-  EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
+  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
+            auth_block.Derive(auth_input, auth_state, &key_blobs));
 }
 
 // Check required field |extended_tpm_key| in TpmBoundToPcrAuthBlockState.
@@ -693,8 +691,8 @@ TEST(TpmAuthBlockTest, DeriveFailureMissingExtendedTpmKey) {
 
   KeyBlobs key_blobs;
   AuthInput auth_input = {};
-  CryptoError error;
-  EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &key_blobs, &error));
+  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
+            auth_block.Derive(auth_input, auth_state, &key_blobs));
 }
 
 TEST(DoubleWrappedCompatAuthBlockTest, DeriveTest) {
@@ -788,8 +786,8 @@ TEST(DoubleWrappedCompatAuthBlockTest, DeriveTest) {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   DoubleWrappedCompatAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
 
-  CryptoError error;
-  EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
+  EXPECT_EQ(CryptoError::CE_NONE,
+            auth_block.Derive(auth_input, auth_state, &key_out_data));
 }
 
 TEST(LibScryptCompatAuthBlockTest, CreateTest) {
@@ -797,10 +795,11 @@ TEST(LibScryptCompatAuthBlockTest, CreateTest) {
   auth_input.user_input = brillo::SecureBlob("foo");
 
   KeyBlobs blobs;
-  CryptoError error;
 
   LibScryptCompatAuthBlock auth_block;
-  EXPECT_NE(base::nullopt, auth_block.Create(auth_input, &blobs, &error));
+  AuthBlockState auth_state;
+  EXPECT_EQ(CryptoError::CE_NONE,
+            auth_block.Create(auth_input, &auth_state, &blobs));
 
   // Because the salt is generated randomly inside the auth block, this test
   // cannot check the exact values returned. The salt() could be passed through
@@ -898,9 +897,9 @@ TEST(LibScryptCompatAuthBlockTest, DeriveTest) {
   AuthBlockState auth_state;
   EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
 
-  CryptoError error;
   LibScryptCompatAuthBlock auth_block;
-  EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
+  EXPECT_EQ(CryptoError::CE_NONE,
+            auth_block.Derive(auth_input, auth_state, &key_out_data));
 
   brillo::SecureBlob derived_key = {
       0x58, 0x2A, 0x41, 0x1F, 0xC0, 0x27, 0x2D, 0xC7, 0xF8, 0xEC, 0xA3,
@@ -946,19 +945,19 @@ TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
 
   // Create recovery key and generate Cryptohome Recovery secrets.
   KeyBlobs created_key_blobs;
-  CryptoError create_error;
+
   CryptohomeRecoveryAuthBlock auth_block;
-  auto auth_state =
-      auth_block.Create(auth_input, &created_key_blobs, &create_error);
+  AuthBlockState auth_state;
+  EXPECT_EQ(CryptoError::CE_NONE,
+            auth_block.Create(auth_input, &auth_state, &created_key_blobs));
   ASSERT_TRUE(created_key_blobs.vkk_key.has_value());
   ASSERT_TRUE(created_key_blobs.vkk_iv.has_value());
   ASSERT_TRUE(created_key_blobs.chaps_iv.has_value());
-  ASSERT_TRUE(auth_state.has_value());
   ASSERT_TRUE(absl::holds_alternative<CryptohomeRecoveryAuthBlockState>(
-      auth_state->state));
+      auth_state.state));
 
   const CryptohomeRecoveryAuthBlockState& cryptohome_recovery_state =
-      absl::get<CryptohomeRecoveryAuthBlockState>(auth_state->state);
+      absl::get<CryptohomeRecoveryAuthBlockState>(auth_state.state);
   ASSERT_TRUE(cryptohome_recovery_state.hsm_payload.has_value());
   ASSERT_TRUE(
       cryptohome_recovery_state.plaintext_destination_share.has_value());
@@ -1011,9 +1010,8 @@ TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
       derive_cryptohome_recovery_auth_input;
 
   KeyBlobs derived_key_blobs;
-  CryptoError derive_error;
-  ASSERT_TRUE(auth_block.Derive(auth_input, auth_state.value(),
-                                &derived_key_blobs, &derive_error));
+  EXPECT_EQ(CryptoError::CE_NONE,
+            auth_block.Derive(auth_input, auth_state, &derived_key_blobs));
   ASSERT_TRUE(derived_key_blobs.vkk_key.has_value());
   ASSERT_TRUE(derived_key_blobs.vkk_iv.has_value());
   ASSERT_TRUE(derived_key_blobs.chaps_iv.has_value());
@@ -1056,17 +1054,18 @@ TEST(TpmEccAuthBlockTest, CreateTest) {
                           obfuscated_username,
                           /*reset_secret=*/base::nullopt};
   KeyBlobs vkk_data;
-  CryptoError error;
 
   TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
-  auto auth_state = auth_block.Create(user_input, &vkk_data, &error);
-  EXPECT_TRUE(absl::holds_alternative<TpmEccAuthBlockState>(auth_state->state));
+  AuthBlockState auth_state;
+  EXPECT_EQ(CryptoError::CE_NONE,
+            auth_block.Create(user_input, &auth_state, &vkk_data));
+  EXPECT_TRUE(absl::holds_alternative<TpmEccAuthBlockState>(auth_state.state));
 
   EXPECT_NE(vkk_data.vkk_key, base::nullopt);
   EXPECT_NE(vkk_data.vkk_iv, base::nullopt);
   EXPECT_NE(vkk_data.chaps_iv, base::nullopt);
 
-  auto& tpm_state = absl::get<TpmEccAuthBlockState>(auth_state->state);
+  auto& tpm_state = absl::get<TpmEccAuthBlockState>(auth_state.state);
 
   EXPECT_TRUE(tpm_state.salt.has_value());
   const brillo::SecureBlob& salt = tpm_state.salt.value();
@@ -1074,8 +1073,6 @@ TEST(TpmEccAuthBlockTest, CreateTest) {
   EXPECT_TRUE(
       DeriveSecretsScrypt(vault_key, salt, {&scrypt_derived_key_result}));
   EXPECT_EQ(scrypt_derived_key, scrypt_derived_key_result);
-
-  EXPECT_EQ(CryptoError::CE_NONE, error);
 }
 
 // Test the retry function of TpmEccAuthBlock::Create works correctly.
@@ -1130,17 +1127,18 @@ TEST(TpmEccAuthBlockTest, CreateRetryTest) {
                           obfuscated_username,
                           /*reset_secret=*/base::nullopt};
   KeyBlobs vkk_data;
-  CryptoError error;
 
   TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
-  auto auth_state = auth_block.Create(user_input, &vkk_data, &error);
-  EXPECT_TRUE(absl::holds_alternative<TpmEccAuthBlockState>(auth_state->state));
+  AuthBlockState auth_state;
+  EXPECT_EQ(CryptoError::CE_NONE,
+            auth_block.Create(user_input, &auth_state, &vkk_data));
+  EXPECT_TRUE(absl::holds_alternative<TpmEccAuthBlockState>(auth_state.state));
 
   EXPECT_NE(vkk_data.vkk_key, base::nullopt);
   EXPECT_NE(vkk_data.vkk_iv, base::nullopt);
   EXPECT_NE(vkk_data.chaps_iv, base::nullopt);
 
-  auto& tpm_state = absl::get<TpmEccAuthBlockState>(auth_state->state);
+  auto& tpm_state = absl::get<TpmEccAuthBlockState>(auth_state.state);
 
   EXPECT_TRUE(tpm_state.salt.has_value());
   const brillo::SecureBlob& salt = tpm_state.salt.value();
@@ -1148,8 +1146,6 @@ TEST(TpmEccAuthBlockTest, CreateRetryTest) {
   EXPECT_TRUE(
       DeriveSecretsScrypt(vault_key, salt, {&scrypt_derived_key_result}));
   EXPECT_EQ(scrypt_derived_key, scrypt_derived_key_result);
-
-  EXPECT_EQ(CryptoError::CE_NONE, error);
 }
 
 // Test the retry function of TpmEccAuthBlock::Create failed as expected.
@@ -1177,11 +1173,10 @@ TEST(TpmEccAuthBlockTest, CreateRetryFailTest) {
                           obfuscated_username,
                           /*reset_secret=*/base::nullopt};
   KeyBlobs vkk_data;
-  CryptoError error;
   TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
-  EXPECT_EQ(base::nullopt, auth_block.Create(user_input, &vkk_data, &error));
-
-  EXPECT_EQ(CryptoError::CE_TPM_REBOOT, error);
+  AuthBlockState auth_state;
+  EXPECT_EQ(CryptoError::CE_TPM_REBOOT,
+            auth_block.Create(user_input, &auth_state, &vkk_data));
 }
 
 // Test SealToPcr in TpmEccAuthBlock::Create failed as expected.
@@ -1211,11 +1206,10 @@ TEST(TpmEccAuthBlockTest, CreateSealToPcrFailTest) {
                           obfuscated_username,
                           /*reset_secret=*/base::nullopt};
   KeyBlobs vkk_data;
-  CryptoError error;
   TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
-  EXPECT_EQ(base::nullopt, auth_block.Create(user_input, &vkk_data, &error));
-
-  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO, error);
+  AuthBlockState auth_state;
+  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO,
+            auth_block.Create(user_input, &auth_state, &vkk_data));
 }
 
 // Test second SealToPcr in TpmEccAuthBlock::Create failed as expected.
@@ -1246,11 +1240,10 @@ TEST(TpmEccAuthBlockTest, CreateSecondSealToPcrFailTest) {
                           obfuscated_username,
                           /*reset_secret=*/base::nullopt};
   KeyBlobs vkk_data;
-  CryptoError error;
   TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
-  EXPECT_EQ(base::nullopt, auth_block.Create(user_input, &vkk_data, &error));
-
-  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO, error);
+  AuthBlockState auth_state;
+  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO,
+            auth_block.Create(user_input, &auth_state, &vkk_data));
 }
 
 // Test GetEccAuthValue in TpmEccAuthBlock::Create failed as expected.
@@ -1273,11 +1266,10 @@ TEST(TpmEccAuthBlockTest, CreateEccAuthValueFailTest) {
                           obfuscated_username,
                           /*reset_secret=*/base::nullopt};
   KeyBlobs vkk_data;
-  CryptoError error;
   TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
-  EXPECT_EQ(base::nullopt, auth_block.Create(user_input, &vkk_data, &error));
-
-  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO, error);
+  AuthBlockState auth_state;
+  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO,
+            auth_block.Create(user_input, &auth_state, &vkk_data));
 }
 
 // Test TpmEccAuthBlock::DeriveTest works correctly.
@@ -1287,7 +1279,7 @@ TEST(TpmEccAuthBlockTest, DeriveTest) {
   brillo::SecureBlob fake_hash(32, 'X');
   auth_block_state.tpm_public_key_hash = fake_hash;
 
-  // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
+  // Set up the mock expectations.
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
@@ -1310,22 +1302,20 @@ TEST(TpmEccAuthBlockTest, DeriveTest) {
 
   AuthBlockState auth_state{.state = std::move(auth_block_state)};
 
-  CryptoError error;
-  EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
+  EXPECT_EQ(CryptoError::CE_NONE,
+            auth_block.Derive(auth_input, auth_state, &key_out_data));
 
   // Assert that the returned key blobs isn't uninitialized.
   EXPECT_NE(key_out_data.vkk_iv, base::nullopt);
   EXPECT_NE(key_out_data.vkk_key, base::nullopt);
   EXPECT_EQ(key_out_data.vkk_iv.value(), key_out_data.chaps_iv.value());
-
-  EXPECT_EQ(CryptoError::CE_NONE, error);
 }
 
 // Test the retry function of TpmEccAuthBlock::Derive works correctly.
 TEST(TpmEccAuthBlockTest, DeriveRetryTest) {
   TpmEccAuthBlockState auth_block_state = GetDefaultEccAuthBlockState();
 
-  // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
+  // Set up the mock expectations.
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
 
@@ -1363,22 +1353,20 @@ TEST(TpmEccAuthBlockTest, DeriveRetryTest) {
 
   AuthBlockState auth_state{.state = std::move(auth_block_state)};
 
-  CryptoError error;
-  EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
+  EXPECT_EQ(CryptoError::CE_NONE,
+            auth_block.Derive(auth_input, auth_state, &key_out_data));
 
   // Assert that the returned key blobs isn't uninitialized.
   EXPECT_NE(key_out_data.vkk_iv, base::nullopt);
   EXPECT_NE(key_out_data.vkk_key, base::nullopt);
   EXPECT_EQ(key_out_data.vkk_iv.value(), key_out_data.chaps_iv.value());
-
-  EXPECT_EQ(CryptoError::CE_NONE, error);
 }
 
 // Test GetEccAuthValue in TpmEccAuthBlock::Derive failed as expected.
 TEST(TpmEccAuthBlockTest, DeriveGetEccAuthFailTest) {
   TpmEccAuthBlockState auth_block_state = GetDefaultEccAuthBlockState();
 
-  // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
+  // Set up the mock expectations.
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   EXPECT_CALL(tpm, PreloadSealedData(_, _))
@@ -1396,18 +1384,15 @@ TEST(TpmEccAuthBlockTest, DeriveGetEccAuthFailTest) {
 
   AuthBlockState auth_state{.state = std::move(auth_block_state)};
 
-  CryptoError error;
-  EXPECT_FALSE(
-      auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
-
-  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO, error);
+  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO,
+            auth_block.Derive(auth_input, auth_state, &key_out_data));
 }
 
 // Test PreloadSealedData in TpmEccAuthBlock::Derive failed as expected.
 TEST(TpmEccAuthBlockTest, DerivePreloadSealedDataFailTest) {
   TpmEccAuthBlockState auth_block_state = GetDefaultEccAuthBlockState();
 
-  // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
+  // Set up the mock expectations.
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   EXPECT_CALL(tpm, PreloadSealedData(_, _))
@@ -1422,11 +1407,8 @@ TEST(TpmEccAuthBlockTest, DerivePreloadSealedDataFailTest) {
 
   AuthBlockState auth_state{.state = std::move(auth_block_state)};
 
-  CryptoError error;
-  EXPECT_FALSE(
-      auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
-
-  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO, error);
+  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO,
+            auth_block.Derive(auth_input, auth_state, &key_out_data));
 }
 
 // Test GetPublicKeyHash in TpmEccAuthBlock::Derive failed as expected.
@@ -1435,7 +1417,7 @@ TEST(TpmEccAuthBlockTest, DeriveGetPublicKeyHashFailTest) {
 
   auth_block_state.tpm_public_key_hash = brillo::SecureBlob(32, 'X');
 
-  // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
+  // Set up the mock expectations.
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
@@ -1450,11 +1432,8 @@ TEST(TpmEccAuthBlockTest, DeriveGetPublicKeyHashFailTest) {
 
   AuthBlockState auth_state{.state = std::move(auth_block_state)};
 
-  CryptoError error;
-  EXPECT_FALSE(
-      auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
-
-  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO, error);
+  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO,
+            auth_block.Derive(auth_input, auth_state, &key_out_data));
 }
 
 // Test PublicKeyHashMismatch in TpmEccAuthBlock::Derive failed as expected.
@@ -1464,7 +1443,7 @@ TEST(TpmEccAuthBlockTest, DerivePublicKeyHashMismatchTest) {
   auth_block_state.tpm_public_key_hash = brillo::SecureBlob(32, 'X');
 
   brillo::SecureBlob fake_hash(32, 'Z');
-  // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
+  // Set up the mock expectations.
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
@@ -1480,18 +1459,15 @@ TEST(TpmEccAuthBlockTest, DerivePublicKeyHashMismatchTest) {
 
   AuthBlockState auth_state{.state = std::move(auth_block_state)};
 
-  CryptoError error;
-  EXPECT_FALSE(
-      auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
-
-  EXPECT_EQ(CryptoError::CE_TPM_FATAL, error);
+  EXPECT_EQ(CryptoError::CE_TPM_FATAL,
+            auth_block.Derive(auth_input, auth_state, &key_out_data));
 }
 
 // Test the retry function in TpmEccAuthBlock::Derive failed as expected.
 TEST(TpmEccAuthBlockTest, DeriveRetryFailTest) {
   TpmEccAuthBlockState auth_block_state = GetDefaultEccAuthBlockState();
 
-  // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
+  // Set up the mock expectations.
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   EXPECT_CALL(tpm, PreloadSealedData(_, _))
@@ -1511,11 +1487,8 @@ TEST(TpmEccAuthBlockTest, DeriveRetryFailTest) {
 
   AuthBlockState auth_state{.state = std::move(auth_block_state)};
 
-  CryptoError error;
-  EXPECT_FALSE(
-      auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
-
-  EXPECT_EQ(CryptoError::CE_TPM_REBOOT, error);
+  EXPECT_EQ(CryptoError::CE_TPM_REBOOT,
+            auth_block.Derive(auth_input, auth_state, &key_out_data));
 }
 
 // Test Unseal in TpmEccAuthBlock::Derive failed as expected.
@@ -1525,7 +1498,7 @@ TEST(TpmEccAuthBlockTest, DeriveUnsealFailTest) {
   brillo::SecureBlob fake_hash(32, 'X');
   auth_block_state.tpm_public_key_hash = fake_hash;
 
-  // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
+  // Set up the mock expectations.
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
@@ -1547,18 +1520,15 @@ TEST(TpmEccAuthBlockTest, DeriveUnsealFailTest) {
 
   AuthBlockState auth_state{.state = std::move(auth_block_state)};
 
-  CryptoError error;
-  EXPECT_FALSE(
-      auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
-
-  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO, error);
+  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO,
+            auth_block.Derive(auth_input, auth_state, &key_out_data));
 }
 
 // Test CryptohomeKey in TpmEccAuthBlock::Derive failed as expected.
 TEST(TpmEccAuthBlockTest, DeriveCryptohomeKeyFailTest) {
   TpmEccAuthBlockState auth_block_state = GetDefaultEccAuthBlockState();
 
-  // Make sure TpmAuthBlock calls DecryptTpmBoundToPcr in this case.
+  // Set up the mock expectations.
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
 
@@ -1575,11 +1545,8 @@ TEST(TpmEccAuthBlockTest, DeriveCryptohomeKeyFailTest) {
 
   AuthBlockState auth_state{.state = std::move(auth_block_state)};
 
-  CryptoError error;
-  EXPECT_FALSE(
-      auth_block.Derive(auth_input, auth_state, &key_out_data, &error));
-
-  EXPECT_EQ(CryptoError::CE_TPM_REBOOT, error);
+  EXPECT_EQ(CryptoError::CE_TPM_REBOOT,
+            auth_block.Derive(auth_input, auth_state, &key_out_data));
 }
 
 }  // namespace cryptohome

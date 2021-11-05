@@ -21,14 +21,13 @@ class PinWeaverAuthBlock : public SyncAuthBlock {
   PinWeaverAuthBlock(const PinWeaverAuthBlock&) = delete;
   PinWeaverAuthBlock& operator=(const PinWeaverAuthBlock&) = delete;
 
-  base::Optional<AuthBlockState> Create(const AuthInput& user_input,
-                                        KeyBlobs* key_blobs,
-                                        CryptoError* error) override;
+  CryptoError Create(const AuthInput& user_input,
+                     AuthBlockState* auth_block_state,
+                     KeyBlobs* key_blobs) override;
 
-  bool Derive(const AuthInput& auth_input,
-              const AuthBlockState& state,
-              KeyBlobs* key_blobs,
-              CryptoError* error) override;
+  CryptoError Derive(const AuthInput& auth_input,
+                     const AuthBlockState& state,
+                     KeyBlobs* key_blobs) override;
 
  private:
   // Handler for Low Entropy credentials.

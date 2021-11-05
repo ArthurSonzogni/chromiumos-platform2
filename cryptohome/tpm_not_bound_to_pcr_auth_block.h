@@ -29,25 +29,24 @@ class TpmNotBoundToPcrAuthBlock : public SyncAuthBlock {
   TpmNotBoundToPcrAuthBlock& operator=(const TpmNotBoundToPcrAuthBlock&) =
       delete;
 
-  base::Optional<AuthBlockState> Create(const AuthInput& user_input,
-                                        KeyBlobs* key_blobs,
-                                        CryptoError* error) override;
+  CryptoError Create(const AuthInput& user_input,
+                     AuthBlockState* auth_block_state,
+                     KeyBlobs* key_blobs) override;
 
-  bool Derive(const AuthInput& auth_input,
-              const AuthBlockState& state,
-              KeyBlobs* key_blobs,
-              CryptoError* error) override;
+  CryptoError Derive(const AuthInput& auth_input,
+                     const AuthBlockState& state,
+                     KeyBlobs* key_blobs) override;
 
  private:
   // Decrypt the |vault_key| that is not bound to PCR, returning the |vkk_iv|
   // and |vkk_key|.
-  bool DecryptTpmNotBoundToPcr(const TpmNotBoundToPcrAuthBlockState& tpm_state,
-                               const brillo::SecureBlob& vault_key,
-                               const brillo::SecureBlob& tpm_key,
-                               const brillo::SecureBlob& salt,
-                               CryptoError* error,
-                               brillo::SecureBlob* vkk_iv,
-                               brillo::SecureBlob* vkk_key) const;
+  CryptoError DecryptTpmNotBoundToPcr(
+      const TpmNotBoundToPcrAuthBlockState& tpm_state,
+      const brillo::SecureBlob& vault_key,
+      const brillo::SecureBlob& tpm_key,
+      const brillo::SecureBlob& salt,
+      brillo::SecureBlob* vkk_iv,
+      brillo::SecureBlob* vkk_key) const;
 
   Tpm* tpm_;
   CryptohomeKeyLoader* cryptohome_key_loader_;

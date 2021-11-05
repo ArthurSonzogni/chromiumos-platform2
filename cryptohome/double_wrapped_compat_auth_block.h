@@ -31,15 +31,14 @@ class DoubleWrappedCompatAuthBlock : public SyncAuthBlock {
 
   // This auth block represents legacy keysets left in an inconsistent state, so
   // calling Create() here is FATAL.
-  base::Optional<AuthBlockState> Create(const AuthInput& user_input,
-                                        KeyBlobs* key_blobs,
-                                        CryptoError* error) override;
+  CryptoError Create(const AuthInput& user_input,
+                     AuthBlockState* auth_block_state,
+                     KeyBlobs* key_blobs) override;
 
   // First tries to derive the keys with scrypt, and falls back to the TPM.
-  bool Derive(const AuthInput& auth_input,
-              const AuthBlockState& state,
-              KeyBlobs* key_blobs,
-              CryptoError* error) override;
+  CryptoError Derive(const AuthInput& auth_input,
+                     const AuthBlockState& state,
+                     KeyBlobs* key_blobs) override;
 
  private:
   TpmNotBoundToPcrAuthBlock tpm_auth_block_;

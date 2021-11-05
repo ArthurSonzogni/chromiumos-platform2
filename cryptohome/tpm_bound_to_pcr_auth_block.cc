@@ -53,8 +53,9 @@ TpmBoundToPcrAuthBlock::TpmBoundToPcrAuthBlock(
   scrypt_task_runner_ = scrypt_thread_->task_runner();
 }
 
-base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
-    const AuthInput& user_input, KeyBlobs* key_blobs, CryptoError* error) {
+CryptoError TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
+                                           AuthBlockState* auth_block_state,
+                                           KeyBlobs* key_blobs) {
   const brillo::SecureBlob& vault_key = user_input.user_input.value();
   brillo::SecureBlob salt =
       CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
@@ -68,13 +69,13 @@ base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
 
   // If the key still isn't loaded, fail the operation.
   if (!cryptohome_key_loader_->HasCryptohomeKey())
-    return base::nullopt;
+    return CryptoError::CE_TPM_CRYPTO;
 
   const auto vkk_key = CreateSecureRandomBlob(kDefaultAesKeySize);
   brillo::SecureBlob pass_blob(kDefaultPassBlobSize);
   brillo::SecureBlob vkk_iv(kAesBlockSize);
   if (!DeriveSecretsScrypt(vault_key, salt, {&pass_blob, &vkk_iv}))
-    return base::nullopt;
+    return CryptoError::CE_OTHER_CRYPTO;
 
   std::map<uint32_t, std::string> default_pcr_map =
       tpm_->GetPcrMap(obfuscated_username, false /* use_extended_pcr */);
@@ -96,7 +97,7 @@ base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
 
     if (!TpmAuthBlockUtils::TPMErrorIsRetriable(err)) {
       LOG(ERROR) << "Failed to get auth value: " << *err;
-      return base::nullopt;
+      return TpmAuthBlockUtils::TPMErrorToCrypto(err);
     }
 
     // If the error is retriable, reload the key first.
@@ -104,7 +105,9 @@ base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
       LOG(ERROR) << "Unable to reload Cryptohome key while creating "
                     "TpmBoundToPcrAuthBlock:"
                  << *err;
-      return base::nullopt;
+      // This would happen when the TPM daemons go into a strange state (e.g.
+      // crased). Asking the user to reboot may resolve this issue.
+      return CryptoError::CE_TPM_REBOOT;
     }
   }
 
@@ -113,7 +116,7 @@ base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
       vkk_key, auth_value, default_pcr_map, &tpm_key);
   if (err != nullptr) {
     LOG(ERROR) << "Failed to wrap vkk with creds: " << *err;
-    return base::nullopt;
+    return TpmAuthBlockUtils::TPMErrorToCrypto(err);
   }
 
   brillo::SecureBlob extended_tpm_key;
@@ -121,7 +124,7 @@ base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
                                          &extended_tpm_key);
   if (err != nullptr) {
     LOG(ERROR) << "Failed to wrap vkk with creds for extended PCR: " << *err;
-    return base::nullopt;
+    return TpmAuthBlockUtils::TPMErrorToCrypto(err);
   }
 
   TpmBoundToPcrAuthBlockState tpm_state;
@@ -150,45 +153,45 @@ base::Optional<AuthBlockState> TpmBoundToPcrAuthBlock::Create(
   key_blobs->vkk_iv = vkk_iv;
   key_blobs->chaps_iv = vkk_iv;
 
-  AuthBlockState auth_block_state = {.state = std::move(tpm_state)};
-  return auth_block_state;
+  *auth_block_state = AuthBlockState{.state = std::move(tpm_state)};
+  return CryptoError::CE_NONE;
 }
 
-bool TpmBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
-                                    const AuthBlockState& state,
-                                    KeyBlobs* key_out_data,
-                                    CryptoError* error) {
+CryptoError TpmBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
+                                           const AuthBlockState& state,
+                                           KeyBlobs* key_out_data) {
   const TpmBoundToPcrAuthBlockState* tpm_state;
   if (!(tpm_state = absl::get_if<TpmBoundToPcrAuthBlockState>(&state.state))) {
     LOG(ERROR) << "Invalid AuthBlockState";
-    return false;
+    return CryptoError::CE_OTHER_CRYPTO;
   }
 
   if (!tpm_state->scrypt_derived) {
     LOG(ERROR) << "All TpmBoundtoPcr operations should be scrypt derived.";
-    return false;
+    return CryptoError::CE_OTHER_CRYPTO;
   }
   if (!tpm_state->salt.has_value()) {
     LOG(ERROR) << "Invalid TpmBoundToPcrAuthBlockState: missing salt";
-    return false;
+    return CryptoError::CE_OTHER_CRYPTO;
   }
   if (!tpm_state->tpm_key.has_value()) {
     LOG(ERROR) << "Invalid TpmBoundToPcrAuthBlockState: missing tpm_key";
-    return false;
+    return CryptoError::CE_OTHER_CRYPTO;
   }
   if (!tpm_state->extended_tpm_key.has_value()) {
     LOG(ERROR)
         << "Invalid TpmBoundToPcrAuthBlockState: missing extended_tpm_key";
-    return false;
+    return CryptoError::CE_OTHER_CRYPTO;
   }
 
   brillo::SecureBlob tpm_public_key_hash =
       tpm_state->tpm_public_key_hash.value_or(brillo::SecureBlob());
 
-  if (!utils_.CheckTPMReadiness(tpm_state->tpm_key.has_value(),
-                                tpm_state->tpm_public_key_hash.has_value(),
-                                tpm_public_key_hash, error)) {
-    return false;
+  CryptoError error = utils_.CheckTPMReadiness(
+      tpm_state->tpm_key.has_value(),
+      tpm_state->tpm_public_key_hash.has_value(), tpm_public_key_hash);
+  if (error != CryptoError::CE_NONE) {
+    return error;
   }
 
   key_out_data->vkk_iv = brillo::SecureBlob(kAesBlockSize);
@@ -199,26 +202,25 @@ bool TpmBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
   brillo::SecureBlob tpm_key = locked_to_single_user
                                    ? tpm_state->extended_tpm_key.value()
                                    : tpm_state->tpm_key.value();
-  if (!DecryptTpmBoundToPcr(auth_input.user_input.value(), tpm_key, salt, error,
-                            &key_out_data->vkk_iv.value(),
-                            &key_out_data->vkk_key.value())) {
-    return false;
+  error = DecryptTpmBoundToPcr(auth_input.user_input.value(), tpm_key, salt,
+                               &key_out_data->vkk_iv.value(),
+                               &key_out_data->vkk_key.value());
+  if (error != CryptoError::CE_NONE) {
+    if (!tpm_state->tpm_public_key_hash.has_value()) {
+      return CryptoError::CE_NO_PUBLIC_KEY_HASH;
+    }
+    return error;
   }
 
   key_out_data->chaps_iv = key_out_data->vkk_iv;
 
-  if (!tpm_state->tpm_public_key_hash.has_value() && error) {
-    *error = CryptoError::CE_NO_PUBLIC_KEY_HASH;
-  }
-
-  return true;
+  return CryptoError::CE_NONE;
 }
 
-bool TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
+CryptoError TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
     const brillo::SecureBlob& vault_key,
     const brillo::SecureBlob& tpm_key,
     const brillo::SecureBlob& salt,
-    CryptoError* error,
     brillo::SecureBlob* vkk_iv,
     brillo::SecureBlob* vkk_key) const {
   brillo::SecureBlob pass_blob(kDefaultPassBlobSize);
@@ -260,12 +262,12 @@ bool TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
 
   if (!derive_result) {
     LOG(ERROR) << "scrypt derivation failed";
-    return false;
+    return CryptoError::CE_OTHER_CRYPTO;
   }
 
   if (err != nullptr) {
     LOG(ERROR) << "Failed to preload the sealed data: " << *err;
-    return false;
+    return TpmAuthBlockUtils::TPMErrorToCrypto(err);
   }
 
   // On TPM1.2 devices, preloading sealed data is meaningless and
@@ -285,7 +287,7 @@ bool TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
       err = tpm_->UnsealWithAuthorization(handle, tpm_key, auth_value, pcr_map,
                                           vkk_key);
       if (err == nullptr) {
-        return true;
+        return CryptoError::CE_NONE;
       }
     }
 
@@ -304,8 +306,7 @@ bool TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
   if (err != nullptr) {
     LOG(ERROR) << "Failed to unwrap VKK with creds: " << *err;
   }
-  *error = TpmAuthBlockUtils::TPMErrorToCrypto(err);
-  return false;
+  return TpmAuthBlockUtils::TPMErrorToCrypto(err);
 }
 
 }  // namespace cryptohome

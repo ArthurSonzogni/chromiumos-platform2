@@ -26,18 +26,17 @@ class SyncAuthBlock {
 
   // This is implemented by concrete auth methods to create a fresh key from
   // user input. The key will then be used to wrap the keyset.
-  // On success, it returns a constructed object, such as a
-  // SerializedVaultKeyset, in the optional object, or base::nullopt on failure.
-  virtual base::Optional<AuthBlockState> Create(const AuthInput& user_input,
-                                                KeyBlobs* key_blobs,
-                                                CryptoError* error) = 0;
+  // On success, it returns CryptoError::CE_NONE, or the specific error on
+  // failure.
+  virtual CryptoError Create(const AuthInput& user_input,
+                             AuthBlockState* auth_block_state,
+                             KeyBlobs* key_blobs) = 0;
 
   // This is implemented by concrete auth methods to map the user secret
   // input into a key. This method should successfully authenticate the user.
-  virtual bool Derive(const AuthInput& auth_input,
-                      const AuthBlockState& state,
-                      KeyBlobs* key_blobs,
-                      CryptoError* error) = 0;
+  virtual CryptoError Derive(const AuthInput& auth_input,
+                             const AuthBlockState& state,
+                             KeyBlobs* key_blobs) = 0;
 
   DerivationType derivation_type() const { return derivation_type_; }
 
