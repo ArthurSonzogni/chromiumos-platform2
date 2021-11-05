@@ -49,6 +49,19 @@ class RepairCompleteStateHandler : public BaseStateHandler {
   base::OneShotTimer timer_;
 };
 
+namespace fake {
+
+class FakeRepairCompleteStateHandler : public RepairCompleteStateHandler {
+ public:
+  FakeRepairCompleteStateHandler(scoped_refptr<JsonStore> json_store,
+                                 const base::FilePath& working_dir_path);
+
+ protected:
+  ~FakeRepairCompleteStateHandler() override = default;
+};
+
+}  // namespace fake
+
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_REPAIR_COMPLETE_STATE_HANDLER_H_

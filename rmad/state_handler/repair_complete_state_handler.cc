@@ -14,10 +14,22 @@
 #include <brillo/file_utils.h>
 
 #include "rmad/constants.h"
+#include "rmad/system/fake_power_manager_client.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/dbus_utils.h"
 
 namespace rmad {
+
+namespace fake {
+
+FakeRepairCompleteStateHandler::FakeRepairCompleteStateHandler(
+    scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
+    : RepairCompleteStateHandler(
+          json_store,
+          working_dir_path,
+          std::make_unique<FakePowerManagerClient>(working_dir_path)) {}
+
+}  // namespace fake
 
 RepairCompleteStateHandler::RepairCompleteStateHandler(
     scoped_refptr<JsonStore> json_store)
@@ -62,13 +74,15 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
   json_store_->GetValue(kPowerwashRequest, &powerwash_request);
   if (same_owner || powerwash_request ||
       base::PathExists(
-          working_dir_path_.AppendASCII(kDisablePowerwashFilePath))) {
+          working_dir_path_.AppendASCII(kDisablePowerwashFilePath)) ||
+      base::PathExists(working_dir_path_.AppendASCII(kTestDirPath))) {
     // Clear the state file and shutdown/reboot/cutoff if the device is
     // returning to the same user, or it's already done a powerwash. We don't
     // set |kPowerwashRequest| back to false because the state file is getting
     // removed anyway. |kDisablePowerwashFilePath| is a file for testing
     // convenience. Manually touch this file if we want to avoid powerwash
-    // during testing.
+    // during testing. Powerwash is also disabled when the test mode directory
+    // exists.
     // TODO(chenghan): Check if powerwash is successful.
     // TODO(chenghan): Write to metrics before removing the state file.
     if (!json_store_->ClearAndDeleteFile()) {
