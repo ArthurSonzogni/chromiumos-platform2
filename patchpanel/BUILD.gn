@@ -17,6 +17,7 @@ group("all") {
       ":broadcast_forwarder_fuzzer",
       ":counters_service_fuzzer",
       ":datapath_fuzzer",
+      ":dns_query_fuzzer",
       ":dns_util_fuzzer",
       ":firewall_fuzzer",
       ":multicast_forwarder_fuzzer",
@@ -183,6 +184,16 @@ if (use.fuzzer) {
 
   executable("datapath_fuzzer") {
     sources = [ "datapath_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+      ":fuzzing_config",
+    ]
+    deps = [ ":libpatchpanel" ]
+  }
+
+  executable("dns_query_fuzzer") {
+    sources = [ "dns/dns_query_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
