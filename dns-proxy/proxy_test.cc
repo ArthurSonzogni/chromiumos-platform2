@@ -1173,8 +1173,10 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   EXPECT_CALL(
       *mock_client,
       RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _, _))
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(*mock_client, GetDevices())
+      .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}))
       .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
   EXPECT_CALL(*mock_client,
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
@@ -1183,11 +1185,11 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   EXPECT_CALL(*mock_client,
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
                           "vmtap0", "::1", IsEmpty()))
-      .Times(0);
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
 
   proxy.OnPatchpanelReady(true);
   proxy.Enable();
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 4);
 
   // Default device changed.
   shill::Client::Device default_device;
@@ -1204,21 +1206,14 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   EXPECT_CALL(*mock_client,
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _,
                           ipv6_dns_addresses))
-      .Times(0);
-  EXPECT_CALL(*mock_client, GetDevices())
-      .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
-  EXPECT_CALL(*mock_client,
-              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
-                          "vmtap0", "10.10.10.10", IsEmpty()))
-      .Times(0);
-
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy.OnDefaultDeviceChanged(&default_device);
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 4);
 
   // Guest stopped.
   signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_REMOVED);
   proxy.OnVirtualDeviceChanged(signal);
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 }
 
 TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
@@ -1259,9 +1254,9 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
   EXPECT_CALL(*mock_client,
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _,
                           ipv6_dns_addresses))
-      .Times(0);
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy.OnDefaultDeviceChanged(&default_device);
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 
   // Guest started.
   patchpanel::NetworkDeviceChangedSignal signal;
@@ -1278,14 +1273,14 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
   EXPECT_CALL(*mock_client,
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
                           "vmtap0", "::1", IsEmpty()))
-      .Times(0);
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy.OnVirtualDeviceChanged(signal);
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 4);
 
   // Guest stopped.
   signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_REMOVED);
   proxy.OnVirtualDeviceChanged(signal);
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 }
 
 TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
@@ -1301,6 +1296,7 @@ TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
   EXPECT_CALL(
       *mock_client,
       RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _, _))
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(
       *mock_client,
@@ -1329,10 +1325,10 @@ TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
       .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
   proxy.OnPatchpanelReady(true);
   proxy.Enable();
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 
   proxy.OnVirtualDeviceChanged(signal);
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 }
 
 TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleFeatureDisabled) {
@@ -1464,11 +1460,11 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
   EXPECT_CALL(*mock_client,
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _,
                           ipv6_dns_addresses))
-      .Times(0);
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(*mock_client,
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
                           "vmtap0", peer_ipv6_addr, IsEmpty()))
-      .Times(0);
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
 
   // Proxy's ConnectedNamespace peer interface name is set to empty and
   // RTNL message's interface index is set to 0 in order to match.
@@ -1610,10 +1606,10 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   EXPECT_CALL(*mock_client,
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::ARC,
                           "arc_eth0", "::1", IsEmpty()))
-      .Times(0);
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy.OnPatchpanelReady(true);
   proxy.Enable();
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 }
 
 TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted) {
@@ -1655,9 +1651,9 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted) {
   EXPECT_CALL(*mock_client,
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::ARC,
                           "arc_eth0", "::1", IsEmpty()))
-      .Times(0);
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy.OnVirtualDeviceChanged(signal);
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 }
 
 TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
@@ -1803,7 +1799,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added) {
   EXPECT_CALL(*mock_client,
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::ARC,
                           "arc_eth0", peer_ipv6_addr, IsEmpty()))
-      .Times(0);
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
 
   // Proxy's ConnectedNamespace peer interface name is set to empty and
   // RTNL message's interface index is set to 0 in order to match.
