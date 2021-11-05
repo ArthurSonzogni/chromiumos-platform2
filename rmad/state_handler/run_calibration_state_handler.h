@@ -93,6 +93,18 @@ class RunCalibrationStateHandler : public BaseStateHandler {
   scoped_refptr<VpdUtilsImplThreadSafe> vpd_utils_thread_safe_;
 };
 
+namespace fake {
+
+class FakeRunCalibrationStateHandler : public RunCalibrationStateHandler {
+ public:
+  explicit FakeRunCalibrationStateHandler(scoped_refptr<JsonStore> json_store);
+
+ protected:
+  ~FakeRunCalibrationStateHandler() override = default;
+};
+
+}  // namespace fake
+
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_RUN_CALIBRATION_STATE_HANDLER_H_
