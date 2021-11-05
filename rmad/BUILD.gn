@@ -84,6 +84,12 @@ static_library("libutils") {
   deps = [ "//hardware_verifier/proto:hardware_verifier-protos" ]
 }
 
+static_library("libmetrics") {
+  sources = [ "metrics/metrics_utils_impl.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ "//metrics/structured:libstructuredmetrics" ]
+}
+
 static_library("libstate_handler") {
   sources = [
     "state_handler/base_state_handler.cc",
@@ -108,6 +114,7 @@ static_library("libstate_handler") {
   ]
   configs += [ ":target_defaults" ]
   deps = [
+    ":libmetrics",
     ":libsystem",
     ":libutils",
   ]
@@ -120,6 +127,7 @@ static_library("librmad") {
   ]
   configs += [ ":target_defaults" ]
   deps = [
+    ":libmetrics",
     ":libstate_handler",
     ":libutils",
   ]
@@ -144,6 +152,7 @@ if (use.test) {
   executable("rmad_test") {
     sources = [
       "dbus_service_test.cc",
+      "metrics/metrics_utils_impl_test.cc",
       "rmad_interface_test.cc",
       "state_handler/check_calibration_state_handler_test.cc",
       "state_handler/components_repair_state_handler_test.cc",
