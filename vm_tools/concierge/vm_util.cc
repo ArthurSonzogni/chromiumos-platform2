@@ -170,7 +170,8 @@ Disk::Disk(base::FilePath path, const Disk::Config& config)
     : path_(std::move(path)),
       writable_(config.writable),
       sparse_(config.sparse),
-      o_direct_(config.o_direct) {}
+      o_direct_(config.o_direct),
+      block_size_(config.block_size) {}
 
 Disk::Disk(Disk&&) = default;
 

@@ -88,6 +88,10 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   Disk::Config config{};
   config.o_direct = false;
   config.writable = request.rootfs_writable();
+  const size_t rootfs_block_size = request.rootfs_block_size();
+  if (rootfs_block_size) {
+    config.block_size = rootfs_block_size;
+  }
   disks.push_back(Disk(std::move(rootfs), config));
   for (const auto& disk : request.disks()) {
     if (!base::PathExists(base::FilePath(disk.path()))) {
@@ -97,6 +101,10 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
       return dbus_response;
     }
     config.writable = disk.writable();
+    const size_t block_size = disk.block_size();
+    if (block_size) {
+      config.block_size = block_size;
+    }
     disks.push_back(Disk(base::FilePath(disk.path()), config));
   }
 

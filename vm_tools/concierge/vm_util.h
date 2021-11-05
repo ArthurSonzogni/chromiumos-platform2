@@ -34,6 +34,7 @@ class Disk {
     bool writable{false};
     base::Optional<bool> sparse;
     base::Optional<bool> o_direct;
+    base::Optional<size_t> block_size;
   };
 
   Disk(base::FilePath path, bool writable);
@@ -64,7 +65,7 @@ class Disk {
   base::Optional<bool> o_direct_;
 
   // Block size.
-  base::Optional<size_t> block_size_{};
+  base::Optional<size_t> block_size_;
 };
 
 // Path to the crosvm binary.
