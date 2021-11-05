@@ -19,6 +19,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <brillo/blkdev_utils/lvm.h>
 #include <brillo/process/process.h>
 #include <brillo/secure_blob.h>
 
@@ -200,6 +201,7 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
     const base::FilePath& rootdir,
     cryptohome::Platform* platform,
     brillo::DeviceMapper* device_mapper,
+    brillo::LogicalVolumeManager* lvm,
     cryptohome::EncryptedContainerFactory* encrypted_container_factory) {
   // Calculate the maximum size of the encrypted stateful partition.
   // truncate()/ftruncate() use int64_t for file size.
@@ -222,12 +224,38 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
   }
 
   // Initialize the encrypted container.
-  cryptohome::BackingDeviceConfig backing_device_config(
-      {.type = cryptohome::BackingDeviceType::kLoopbackDevice,
-       .name = dmcrypt_name,
-       .size = fs_bytes_max,
-       .loopback = {.backing_file_path =
-                        rootdir.Append(STATEFUL_MNT "/encrypted.block")}});
+  cryptohome::BackingDeviceConfig backing_device_config;
+
+  base::FilePath sparse_backing_file =
+      rootdir.Append(STATEFUL_MNT "/encrypted.block");
+
+  base::FilePath stateful_device = platform->GetStatefulDevice();
+  base::Optional<brillo::PhysicalVolume> pv =
+      lvm->GetPhysicalVolume(stateful_device);
+
+  // Use the loopback sparse file in 2 cases:
+  // 1. If the device is set up using an ext4 stateful partition.
+  // 2. If the device already has an existing sparse loopback file: this
+  //    situation can occur during migration of a device to an LVM stateful
+  //    stateful partition.
+  // TODO(sarthakkukreti@): Loopback backing devices use size in bytes whereas
+  // logical volume backing devices use size in megabytes. Fix this
+  // inconsistency.
+  if (!pv || !pv->IsValid() || base::PathExists(sparse_backing_file)) {
+    backing_device_config = {
+        .type = cryptohome::BackingDeviceType::kLoopbackDevice,
+        .name = dmcrypt_name,
+        .size = fs_bytes_max,
+        .loopback = {.backing_file_path =
+                         rootdir.Append(STATEFUL_MNT "/encrypted.block")}};
+  } else {
+    backing_device_config = {
+        .type = cryptohome::BackingDeviceType::kLogicalVolumeBackingDevice,
+        .name = dmcrypt_name,
+        .size = fs_bytes_max / (1024 * 1024),
+        .logical_volume = {.thinpool_name = "thinpool",
+                           .physical_volume = stateful_device}};
+  }
 
   cryptohome::EncryptedContainerConfig container_config(
       {.type = cryptohome::EncryptedContainerType::kDmcrypt,
