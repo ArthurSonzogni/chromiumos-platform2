@@ -26,7 +26,14 @@ namespace anomaly {
 // `type=AVC msg=audit(1588751099.358:13): avc:  denied  { module_request }`
 // ` for  pid=1795 comm="init" kmod="fs-cgroup2" scontext=u:r:init:s0`
 // ` tcontext=u:r:kernel:s0 tclass=system permissive=0`
-constexpr char kAuditLogPattern[] = R"([^(]+\(([\d\.]+)\S+ (.+))";
+// we do *not* want to match SYSCALL logs, e.g.
+// type=SYSCALL msg=audit(1629139955.888:3466): arch=c000003e syscall=54
+// success=yes exit=0 a0=9f a1=1 a2=10 a3=7a34728220d0 items=0 ppid=1865
+// pid=1887 auid=4294967295 uid=1000 gid=1000 euid=1000 suid=1000 fsuid=1000
+// egid=1000 sgid=1000 fsgid=1000 tty=(none) ses=4294967295
+// comm="ThreadPoolForeg" exe="/opt/google/chrome/chrome"
+// subj=u:r:cros_browser:s0 key=(null)
+constexpr char kAuditLogPattern[] = R"(type=AVC [^(]+\(([\d\.]+)\S+ (.+))";
 
 // First group captures timestamp in RFC3339 format.
 // Second group captures the tag (i.e. service name).
