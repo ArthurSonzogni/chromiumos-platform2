@@ -31,31 +31,29 @@ using brillo::cryptohome::home::GetUserPath;
 using brillo::cryptohome::home::SanitizeUserName;
 
 namespace cryptohome {
-const char kEphemeralCryptohomeRootContext[] =
-    "u:object_r:cros_home_shadow_uid:s0";
-}
-
 namespace {
 
+const char kEphemeralCryptohomeRootContext[] =
+    "u:object_r:cros_home_shadow_uid:s0";
 const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
 
 FilePath GetUserEphemeralMountDirectory(
     const std::string& obfuscated_username) {
-  return FilePath(cryptohome::kEphemeralCryptohomeDir)
-      .Append(cryptohome::kEphemeralMountDir)
+  return FilePath(kEphemeralCryptohomeDir)
+      .Append(kEphemeralMountDir)
       .Append(obfuscated_username);
 }
 
 FilePath GetMountedEphemeralRootHomePath(
     const std::string& obfuscated_username) {
   return GetUserEphemeralMountDirectory(obfuscated_username)
-      .Append(cryptohome::kRootHomeSuffix);
+      .Append(kRootHomeSuffix);
 }
 
 FilePath GetMountedEphemeralUserHomePath(
     const std::string& obfuscated_username) {
   return GetUserEphemeralMountDirectory(obfuscated_username)
-      .Append(cryptohome::kUserHomeSuffix);
+      .Append(kUserHomeSuffix);
 }
 
 // Sets up the SELinux context for a freshly mounted ephemeral cryptohome.
@@ -64,8 +62,8 @@ bool SetUpSELinuxContextForEphemeralCryptohome(cryptohome::Platform* platform,
   // Note that this is needed because the newly mounted ephemeral cryptohome is
   // a new file system, and thus the SELinux context that applies to the
   // mountpoint will not apply to the new root directory in the filesystem.
-  return platform->SetSELinuxContext(
-      source_path, cryptohome::kEphemeralCryptohomeRootContext);
+  return platform->SetSELinuxContext(source_path,
+                                     kEphemeralCryptohomeRootContext);
 }
 
 constexpr mode_t kSkeletonSubDirMode = S_IRWXU | S_IRGRP | S_IXGRP;
@@ -77,12 +75,6 @@ constexpr mode_t kRootDirMode = S_IRWXU | S_IRWXG | S_ISVTX;
 constexpr mode_t kTrackedDirMode = S_IRWXU;
 constexpr mode_t kPathComponentDirMode = S_IRWXU;
 constexpr mode_t kGroupWriteAccess = S_IWGRP;
-
-}  // namespace
-
-namespace cryptohome {
-
-namespace {
 
 struct DirectoryACL {
   base::FilePath path;
@@ -798,7 +790,7 @@ MountError MountHelper::PerformEphemeralMount(
 
   // Set SELinux context first, so that the created user & root directory have
   // the correct context.
-  if (!::SetUpSELinuxContextForEphemeralCryptohome(platform_, mount_point)) {
+  if (!SetUpSELinuxContextForEphemeralCryptohome(platform_, mount_point)) {
     // Logging already done in SetUpSELinuxContextForEphemeralCryptohome.
     return MOUNT_ERROR_FATAL;
   }
