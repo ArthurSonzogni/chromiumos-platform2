@@ -10,6 +10,14 @@
 
 namespace rmad {
 
+namespace fake {
+
+FakeSetupCalibrationStateHandler::FakeSetupCalibrationStateHandler(
+    scoped_refptr<JsonStore> json_store)
+    : SetupCalibrationStateHandler(json_store) {}
+
+}  // namespace fake
+
 SetupCalibrationStateHandler::SetupCalibrationStateHandler(
     scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store) {}

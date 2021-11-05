@@ -38,6 +38,19 @@ class SetupCalibrationStateHandler : public BaseStateHandler {
   CalibrationSetupInstruction running_setup_instruction_;
 };
 
+namespace fake {
+
+class FakeSetupCalibrationStateHandler : public SetupCalibrationStateHandler {
+ public:
+  explicit FakeSetupCalibrationStateHandler(
+      scoped_refptr<JsonStore> json_store);
+
+ protected:
+  ~FakeSetupCalibrationStateHandler() override = default;
+};
+
+}  // namespace fake
+
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_SETUP_CALIBRATION_STATE_HANDLER_H_
