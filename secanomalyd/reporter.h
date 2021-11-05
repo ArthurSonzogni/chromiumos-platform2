@@ -29,9 +29,11 @@ MaybeReport GenerateAnomalousSystemReport(const MountEntryMap& wx_mounts,
 
 bool SendReport(base::StringPiece report,
                 brillo::Process* crash_reporter,
+                int weight,
                 bool report_in_dev_mode);
 
 bool ReportAnomalousSystem(const MountEntryMap& wx_mounts,
+                           int weight,
                            bool report_in_dev_mode);
 
 }  // namespace secanomalyd

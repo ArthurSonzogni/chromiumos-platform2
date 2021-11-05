@@ -11,6 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/rand_util.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -28,6 +29,8 @@
 namespace secanomalyd {
 
 namespace {
+
+constexpr int kSampleFrequency = 100;
 
 constexpr base::TimeDelta kCheckInterval = base::TimeDelta::FromSeconds(30);
 // Per Platform.DailyUseTime histogram this interval should ensure that enough
@@ -112,11 +115,6 @@ void Daemon::DoWXMountCheck() {
             LOG(WARNING) << "Could not upload metrics";
           }
         }
-
-        // And report the system as anomalous, when required to.
-        if (generate_reports_) {
-          ReportAnomalousSystem(wx_mounts_, dev_);
-        }
       }
     }
   }
@@ -126,6 +124,26 @@ void Daemon::DoWXMountCountReporting() {
   if (ShouldReport(dev_)) {
     if (!SendWXMountCountToUMA(wx_mounts_.size())) {
       LOG(WARNING) << "Could not upload W+X mount count";
+    }
+
+    // Should we send an anomalous system report?
+    if (generate_reports_ && !has_reported_ && wx_mounts_.size() > 0) {
+      // Send one out of every |kSampleFrequency| reports, unless |dev_| is
+      // set. Once a report succeeds, stop reporting.
+      // |base::RandInt()| returns a random int in [min, max].
+      int range = dev_ ? 1 : kSampleFrequency;
+      if (base::RandInt(1, range) > 1) {
+        return;
+      }
+
+      if (ReportAnomalousSystem(wx_mounts_, range, dev_)) {
+        // Record a successful upload. secanomalyd will stop reporting for this
+        // execution.
+        has_reported_ = true;
+      } else {
+        // Reporting is best-effort so on failure we just print a warning.
+        LOG(WARNING) << "Failed to report anomalous system";
+      }
     }
   }
 }

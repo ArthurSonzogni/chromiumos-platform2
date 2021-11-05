@@ -12,6 +12,7 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
 #include <crypto/sha2.h>
 #include <vboot/crossystem.h>
@@ -25,8 +26,10 @@ namespace {
 
 constexpr size_t kHashPrefixLengthInBytes = 5u;
 
+constexpr char kRootPathReplacement[] = "slashroot";
 constexpr char kCrashReporterPath[] = "/sbin/crash_reporter";
 constexpr char kSecurityAnomalyFlag[] = "--security_anomaly";
+constexpr char kWeightFlag[] = "--weight";
 
 }  // namespace
 
@@ -44,7 +47,13 @@ std::string GenerateSignature(const MountEntryMap& wx_mounts) {
 
   std::string signature;
   // Use the first path as a visible sentinel for the signature.
-  base::ReplaceChars(dests[0], "/", "-", &signature);
+  // If the anomalous mount is on '/', replace the destination path with a
+  // default value so that the signature doesn't have consecutive dashes.
+  if (dests[0] != "/") {
+    base::ReplaceChars(dests[0], "/", "-", &signature);
+  } else {
+    signature = kRootPathReplacement;
+  }
 
   // Hash the string resulting from joining all mount destinations separated
   // by newlines. Take the first five bytes and use that to complete the
@@ -115,11 +124,15 @@ MaybeReport GenerateAnomalousSystemReport(const MountEntryMap& wx_mounts,
     lines.emplace_back("Could not obtain processes");
   }
 
+  // Ensure reports have a trailing newline. Trailing newlines make reports
+  // easier to read in a terminal.
+  lines.emplace_back("");
   return MaybeReport(base::JoinString(lines, "\n"));
 }
 
 bool SendReport(base::StringPiece report,
                 brillo::Process* crash_reporter,
+                int weight,
                 bool report_in_dev_mode) {
   if (!ShouldReport(report_in_dev_mode)) {
     VLOG(1) << "Not in Verified mode, not reporting";
@@ -130,6 +143,7 @@ bool SendReport(base::StringPiece report,
 
   crash_reporter->AddArg(kCrashReporterPath);
   crash_reporter->AddArg(kSecurityAnomalyFlag);
+  crash_reporter->AddArg(base::StringPrintf("%s=%d", kWeightFlag, weight));
 
   crash_reporter->RedirectUsingPipe(STDIN_FILENO, true /*is_input*/);
 
@@ -143,17 +157,21 @@ bool SendReport(base::StringPiece report,
     LOG(ERROR) << "Failed to get stdin pipe for crash reporting process";
     return false;
   }
-  base::ScopedFD stdin(stdin_fd);
 
-  if (!base::WriteFileDescriptor(stdin_fd, report)) {
-    LOG(ERROR) << "Failed to write report to crash reporting process' stdin";
-    return false;
+  {
+    base::ScopedFD stdin(stdin_fd);
+
+    if (!base::WriteFileDescriptor(stdin_fd, report)) {
+      LOG(ERROR) << "Failed to write report to crash reporting process' stdin";
+      return false;
+    }
   }
 
   return crash_reporter->Wait();
 }
 
 bool ReportAnomalousSystem(const MountEntryMap& wx_mounts,
+                           int weight,
                            bool report_in_dev_mode) {
   MaybeReport anomaly_report =
       GenerateAnomalousSystemReport(wx_mounts, base::nullopt, base::nullopt);
@@ -164,7 +182,7 @@ bool ReportAnomalousSystem(const MountEntryMap& wx_mounts,
   }
 
   brillo::ProcessImpl crash_reporter;
-  if (!SendReport(anomaly_report.value(), &crash_reporter,
+  if (!SendReport(anomaly_report.value(), &crash_reporter, weight,
                   report_in_dev_mode)) {
     LOG(ERROR) << "Failed to send anomalous system report";
     return false;

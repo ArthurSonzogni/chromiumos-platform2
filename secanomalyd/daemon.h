@@ -33,6 +33,8 @@ class Daemon : public brillo::Daemon {
   bool generate_reports_ = false;
   bool dev_ = false;
 
+  bool has_reported_ = false;
+
   MountEntryMap wx_mounts_;
 };
 

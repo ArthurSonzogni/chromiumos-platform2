@@ -30,6 +30,8 @@ namespace secanomalyd {
 
 namespace {
 
+constexpr int kWeight = 100;
+
 constexpr char kUsrLocal[] = "/usr/local";
 
 constexpr char kWxMountUsrLocal[] =
@@ -52,6 +54,14 @@ TEST(SignatureTest, SignatureForOneMount) {
 
   std::string signature = GenerateSignature(wx_mounts);
   EXPECT_THAT(signature, MatchesRegex("-usr-local-[0-9A-F]{10}"));
+}
+
+TEST(SignatureTest, SignatureForRoot) {
+  MountEntryMap wx_mounts;
+  wx_mounts.emplace("/", "/dev/root / ext2 rw,seclabel,relatime 0 0");
+
+  std::string signature = GenerateSignature(wx_mounts);
+  EXPECT_THAT(signature, MatchesRegex("slashroot-[0-9A-F]{10}"));
 }
 
 TEST(SignatureTest, SignatureForThreeMounts) {
@@ -150,7 +160,7 @@ TEST(ReporterTest, CrashReporterSuceeds) {
       .WillOnce(Return(dev_null.get()));
   EXPECT_CALL(*crash_reporter, Wait()).WillOnce(Return(true));
 
-  EXPECT_TRUE(SendReport("This is a report", crash_reporter.get(),
+  EXPECT_TRUE(SendReport("This is a report", crash_reporter.get(), kWeight,
                          true /*report_in_dev_mode*/));
 
   // SendReport() puts the subprocess' stdin fd into a scoper class, so it's
@@ -171,7 +181,7 @@ TEST(ReporterTest, StartFails) {
   EXPECT_CALL(*crash_reporter,
               RedirectUsingPipe(STDIN_FILENO, true /*is_input*/));
 
-  EXPECT_FALSE(SendReport("This is a report", crash_reporter.get(),
+  EXPECT_FALSE(SendReport("This is a report", crash_reporter.get(), kWeight,
                           true /*report_in_dev_mode*/));
 }
 
@@ -188,7 +198,7 @@ TEST(ReporterTest, GetPipeFails) {
   // Return -1 which is the error value for GetPipe().
   EXPECT_CALL(*crash_reporter, GetPipe(STDIN_FILENO)).WillOnce(Return(-1));
 
-  EXPECT_FALSE(SendReport("This is a report", crash_reporter.get(),
+  EXPECT_FALSE(SendReport("This is a report", crash_reporter.get(), kWeight,
                           true /*report_in_dev_mode*/));
 }
 
@@ -209,7 +219,7 @@ TEST(ReporterTest, WriteFileDescriptorFails) {
   EXPECT_CALL(*crash_reporter, GetPipe(STDIN_FILENO))
       .WillOnce(Return(dev_zero.get()));
 
-  EXPECT_FALSE(SendReport("This is a report", crash_reporter.get(),
+  EXPECT_FALSE(SendReport("This is a report", crash_reporter.get(), kWeight,
                           true /*report_in_dev_mode*/));
 
   // SendReport() puts the subprocess' stdin fd into a scoper class, so it's
@@ -233,7 +243,7 @@ TEST(ReporterTest, WaitFails) {
       .WillOnce(Return(dev_null.get()));
   EXPECT_CALL(*crash_reporter, Wait()).WillOnce(Return(true));
 
-  EXPECT_TRUE(SendReport("This is a report", crash_reporter.get(),
+  EXPECT_TRUE(SendReport("This is a report", crash_reporter.get(), kWeight,
                          true /*report_in_dev_mode*/));
 
   // SendReport() puts the subprocess' stdin fd into a scoper class, so it's
