@@ -79,6 +79,10 @@ message DiskImage {
 
   // Image type of the disk.
   DiskImageType image_type = 8;
+
+  // The block size of the device. The default block size is used when zero.
+  // Only ARCVM supports the field at the moment.
+  uint32 block_size = 9;
 }
 
 // Information about a particular VM.
@@ -322,6 +326,9 @@ message StartArcVmRequest {
   // scheduling is not used, and all vCPU threads can be assigned to any CPU
   // cores without restrictions.
   bool use_per_vm_core_scheduling = 14;
+
+  // The block size of the rootfs. The default block size is used when zero.
+  uint32 rootfs_block_size = 15;
 }
 
 enum VmStatus {
