@@ -420,10 +420,15 @@ bool MountHelper::MountLegacyHome(const FilePath& from) {
   return true;
 }
 
-bool MountHelper::BindMyFilesDownloads(const base::FilePath& user_home) {
+bool MountHelper::HandleMyFilesDownloads(const base::FilePath& user_home) {
   const FilePath downloads = user_home.Append(kDownloadsDir);
   const FilePath downloads_in_myfiles =
       user_home.Append(kMyFilesDir).Append(kDownloadsDir);
+
+  if (!bind_mount_downloads_) {
+    MigrateDirectory(downloads_in_myfiles, downloads);
+    return true;
+  }
 
   // User could have saved files in MyFiles/Downloads in case cryptohome
   // crashed and bind mounts were removed by error. See crbug.com/1080730.
@@ -590,19 +595,9 @@ bool MountHelper::MountHomesAndDaemonStores(
   if (!BindAndPush(root_home, root_multi_home, RemountOption::kMountsFlowIn))
     return false;
 
-  if (bind_mount_downloads_) {
-    // Mount Downloads to MyFiles/Downloads in the user shadow directory.
-    if (!BindMyFilesDownloads(user_home)) {
-      return false;
-    }
-  } else {
-    // If we are not doing the downloads bind mount, move the content of the
-    // Downloads to MyFiles/Downloads. Doing it file by file in case there is
-    // a content in the MyFiles/Downloads already.
-    auto downloads = user_home.Append(kDownloadsDir);
-    auto downloads_in_myfiles =
-        user_home.Append(kMyFilesDir).Append(kDownloadsDir);
-    MigrateDirectory(downloads_in_myfiles, downloads);
+  // Mount Downloads to MyFiles/Downloads in the user shadow directory.
+  if (!HandleMyFilesDownloads(user_home)) {
+    return false;
   }
 
   // Mount directories used by daemons to store per-user data.
