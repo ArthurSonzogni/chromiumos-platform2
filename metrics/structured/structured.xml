@@ -305,6 +305,103 @@
       <summary>
         Indicates the source of the APN. Options are: MODB == 0 , UI == 1,
         MODEM == 2.
+        </summary>
+    </metric>
+  </event>
+</project>
+
+<project name="rmad">
+  <owner>genechang@google.com</owner>
+  <id>per-project</id>
+  <summary>
+    Project for rmad to record Shimless RMA metrics. The metrics of the whole
+    RMA procedure are only recorded once after it is completed or aborted.
+  </summary>
+
+  <event name="ShimlessRmaReport">
+    <summary>
+      Record a shimless rma report once it is completed or aborted.
+    </summary>
+    <metric name="OverallTime" type="int">
+      <summary>Overall time spent to complete the whole process.</summary>
+    </metric>
+    <metric name="RunningTime" type="int">
+      <summary>Time spent with RMA daemon running.</summary>
+    </metric>
+    <metric name="IsComplete" type="int">
+      <summary>
+        Invocation of Shimless RMA:
+          1: RMA is complete, 0: RMA is aborted.
+      </summary>
+    </metric>
+    <metric name="RoVerification" type="int">
+      <summary>
+        RO verification of Shimless RMA:
+          0: Shimless RMA run with unknown RO verification status
+          1: Shimless RMA run with RO verification successful
+          2: Shimless RMA run with RO verification unsupported
+      </summary>
+    </metric>
+    <metric name="ReturningOwner" type="int">
+      <summary>
+        Destination of Shimless RMA:
+          0: Shimless RMA haven't known the returning owner yet
+          1: Shimless RMA run with the device returning to the same owner
+          2: Shimless RMA run with the device returning to a different owner
+      </summary>
+    </metric>
+    <metric name="MainboardReplacement" type="int">
+      <summary>
+        Replacement MLB of Shimless RMA:
+          0: Shimless RMA haven't known the mainboard replacement status
+          1: Shimless RMA run with a replaced MLB
+          2: Shimless RMA run with the original MLB
+      </summary>
+    </metric>
+    <metric name="WriteProtectDisableMethod" type="int">
+      <summary>
+        Write protection disable status of Shimless RMA:
+          0: Shimless RMA haven't known the write-protect status
+          1: Shimless RMA skip disabling write-protect
+          2: Shimless RMA run with write-protect being disabled via RSU
+          3: Shimless RMA run with write-protect being manually disabled with
+             immediate re-enablement
+          4: Shimless RMA run with write-protect being manually disabled and
+             keep the device open
+      </summary>
+    </metric>
+  </event>
+  <event name="ReplacedComponent">
+    <summary>
+      Record a component replaced in Shimless RMA. The event will be sent
+      several times per run, depending on how many components are replaced.
+    </summary>
+    <metric name="ComponentCategory" type="int">
+      <summary>
+        The category of the recorded component.
+        Enum for components defined in rmad.proto.
+      </summary>
+    </metric>
+  </event>
+  <event name="OccurredError">
+    <summary>Shimless RMA run with triggering of Error XYZ.</summary>
+    <metric name="ErrorType" type="int">
+      <summary>
+        The type of the recorded error.
+        Enum for errors defined in rmad.proto.
+      </summary>
+    </metric>
+  </event>
+  <event name="AdditionalActivity">
+    <summary>
+      Shimless RMA completed and an additional activity undertaken.
+    </summary>
+    <metric name="ActivityType" type="int">
+      <summary>
+        1: shutdown
+        2: reboot
+        3: battery cutoff
+        4: diagnostics
       </summary>
     </metric>
   </event>
