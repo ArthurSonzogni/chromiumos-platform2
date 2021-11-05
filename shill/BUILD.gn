@@ -32,6 +32,9 @@ group("all") {
       ":verizon_subscription_state_fuzzer",
       ":wifi_ies_fuzzer",
     ]
+    if (use.vpn) {
+      deps += [ ":openvpn_management_server_fuzzer" ]
+    }
   }
   if (use.test) {
     deps += [ ":shill_unittest" ]
@@ -498,15 +501,30 @@ if (use.cellular || use.vpn || use.pppoe) {
 }
 
 if (use.fuzzer) {
-  pkg_config("fuzzed_data_config") {
-    pkg_deps = [ "libchrome-test" ]
-  }
   executable("cellular_pco_fuzzer") {
     sources = [ "cellular/cellular_pco_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":fuzzed_data_config",
       ":target_defaults",
+    ]
+    deps = [ ":libshill" ]
+  }
+  executable("dhcpv4_static_routes_fuzzer") {
+    sources = [ "dhcp/dhcpv4_static_routes_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+      ":shill_config",
+    ]
+    deps = [ ":libshill" ]
+  }
+  executable("openvpn_management_server_fuzzer") {
+    sources = [ "vpn/openvpn_management_server_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+      ":shill_config",
     ]
     deps = [ ":libshill" ]
   }
@@ -527,14 +545,8 @@ if (use.fuzzer) {
     ]
     deps = [ ":libshill" ]
   }
-  executable("dhcpv4_static_routes_fuzzer") {
-    sources = [ "dhcp/dhcpv4_static_routes_fuzzer.cc" ]
-    configs += [
-      "//common-mk/common_fuzzer",
-      ":target_defaults",
-      ":shill_config",
-    ]
-    deps = [ ":libshill" ]
+  pkg_config("fuzzed_data_config") {
+    pkg_deps = [ "libchrome-test" ]
   }
 }
 

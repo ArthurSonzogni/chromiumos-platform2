@@ -64,6 +64,7 @@ class OpenVPNManagementServer {
 
  private:
   friend class OpenVPNDriverTest;
+  friend class OpenVPNManagementServerFuzzer;
   friend class OpenVPNManagementServerTest;
   FRIEND_TEST(OpenVPNManagementServerTest, EscapeToQuote);
   FRIEND_TEST(OpenVPNManagementServerTest, Hold);
