@@ -389,6 +389,9 @@ class Datapath {
                                  const std::string& protocol,
                                  const std::string& ifname,
                                  const std::string& dns_ipv4_addr);
+  bool ModifyDnsProxyMasquerade(IpFamily family,
+                                const std::string& op,
+                                const std::string& chain);
   bool ModifyRedirectDnsJumpRule(IpFamily family,
                                  const std::string& op,
                                  const std::string& chain,

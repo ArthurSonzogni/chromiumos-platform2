@@ -76,10 +76,13 @@ constexpr char kVpnLockdownChain[] = "vpn_lockdown";
 constexpr char kIngressDefaultForwardingChain[] = "ingress_default_forwarding";
 // nat PREROUTING chains for egress traffic from downstream guests.
 constexpr char kRedirectArcDnsChain[] = "redirect_arc_dns";
-constexpr char kRedirectChromeDnsChain[] = "redirect_chrome_dns";
-// nat OUTPUT chains for egress traffic from processes running on the host.
 constexpr char kRedirectDefaultDnsChain[] = "redirect_default_dns";
+// nat OUTPUT chains for egress traffic from processes running on the host.
+constexpr char kRedirectChromeDnsChain[] = "redirect_chrome_dns";
 constexpr char kRedirectUserDnsChain[] = "redirect_user_dns";
+// nat POSTROUTING chains for egress traffic from processes running on the host.
+constexpr char kSnatChromeDnsChain[] = "snat_chrome_dns";
+constexpr char kSnatUserDnsChain[] = "snat_user_dns";
 
 // Maximum length of an iptables chain name.
 constexpr int kIptablesMaxChainLength = 28;
@@ -182,6 +185,12 @@ void Datapath::Start() {
       {IpFamily::Dual, "nat", kRedirectDefaultDnsChain},
       {IpFamily::Dual, "nat", kRedirectUserDnsChain},
       {IpFamily::Dual, "nat", kRedirectChromeDnsChain},
+      // Set up nat chains for SNAT-ing egress DNS queries to the DNS proxy
+      // instances.
+      {IpFamily::Dual, "nat", kSnatChromeDnsChain},
+      // For the case of non-Chrome "user" DNS queries, there is already an IPv4
+      // SNAT rule with the ConnectNamespace. Only IPv6 USER SNAT is needed.
+      {IpFamily::IPv6, "nat", kSnatUserDnsChain},
       // b/178331695 Sets up a nat chain used in OUTPUT for redirecting DNS
       // queries of system services. When a VPN is connected, a query routed
       // through a physical network is redirected to the primary nameserver of
@@ -372,6 +381,18 @@ void Datapath::Start() {
                                  true /* redirect_on_mark */)) {
     LOG(ERROR) << "Failed to add jump rule for user DNS redirection";
   }
+  if (!ModifyRedirectDnsJumpRule(
+          IpFamily::Dual, "-A", "POSTROUTING", "" /* ifname */,
+          kSnatChromeDnsChain, Fwmark::FromSource(TrafficSource::CHROME),
+          kFwmarkAllSourcesMask, true /* redirect_on_mark */)) {
+    LOG(ERROR) << "Failed to add jump rule for chrome DNS SNAT";
+  }
+  if (!ModifyRedirectDnsJumpRule(IpFamily::IPv6, "-A", "POSTROUTING",
+                                 "" /* ifname */, kSnatUserDnsChain,
+                                 kFwmarkRouteOnVpn, kFwmarkVpnMask,
+                                 true /* redirect_on_mark */)) {
+    LOG(ERROR) << "Failed to add jump rule for user DNS SNAT";
+  }
 
   // All local outgoing DNS traffic eligible to VPN routing should skip the VPN
   // routing chain and instead go through DNS proxy.
@@ -482,6 +503,8 @@ void Datapath::ResetIptables() {
       {IpFamily::Dual, "nat", kRedirectArcDnsChain, true},
       {IpFamily::Dual, "nat", kRedirectChromeDnsChain, true},
       {IpFamily::Dual, "nat", kRedirectUserDnsChain, true},
+      {IpFamily::Dual, "nat", kSnatChromeDnsChain, true},
+      {IpFamily::IPv6, "nat", kSnatUserDnsChain, true},
       {IpFamily::IPv4, "nat", kRedirectDnsChain, true},
       {IpFamily::IPv4, "nat", kIngressDefaultForwardingChain, true},
   };
@@ -933,14 +956,9 @@ bool Datapath::ModifyChromeDnsRedirect(IpFamily family,
         success = false;
       }
     }
-    if (!ModifyIptables(family, "nat",
-                        {op, "POSTROUTING", "-p", protocol, "--dport",
-                         kDefaultDnsPort, "-m", "mark", "--mark",
-                         Fwmark::FromSource(TrafficSource::CHROME).ToString() +
-                             "/" + kFwmarkAllSourcesMask.ToString(),
-                         "-j", "MASQUERADE", "-w"})) {
-      success = false;
-    }
+  }
+  if (!ModifyDnsProxyMasquerade(family, op, kSnatChromeDnsChain)) {
+    success = false;
   }
   return success;
 }
@@ -965,6 +983,21 @@ bool Datapath::ModifyDnsProxyDNAT(IpFamily family,
     args.push_back("--to-destination");
     args.push_back(rule.proxy_address);
     args.push_back("-w");
+    if (!ModifyIptables(family, "nat", args)) {
+      success = false;
+    }
+  }
+  return success;
+}
+
+bool Datapath::ModifyDnsProxyMasquerade(IpFamily family,
+                                        const std::string& op,
+                                        const std::string& chain) {
+  bool success = true;
+  for (const auto& protocol : {"udp", "tcp"}) {
+    std::vector<std::string> args = {op,       chain,        "-p",
+                                     protocol, "--dport",    kDefaultDnsPort,
+                                     "-j",     "MASQUERADE", "-w"};
     if (!ModifyIptables(family, "nat", args)) {
       success = false;
     }
@@ -1023,6 +1056,13 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
         LOG(ERROR) << "Failed to add user DNS DNAT rule";
         return false;
       }
+
+      // Add MASQUERADE rule for user traffic.
+      if (family == IpFamily::IPv6 &&
+          !ModifyDnsProxyMasquerade(family, "-A", kSnatUserDnsChain)) {
+        LOG(ERROR) << "Failed to add user DNS MASQUERADE rule";
+        return false;
+      }
       return true;
     }
     default:
@@ -1065,6 +1105,9 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
       ModifyDnsProxyDNAT(family, rule, "-D", "" /* ifname */,
                          kRedirectUserDnsChain);
       ModifyDnsRedirectionSkipVpnRule(family, "-D");
+      if (family == IpFamily::IPv6) {
+        ModifyDnsProxyMasquerade(family, "-D", kSnatUserDnsChain);
+      }
       break;
     }
     default:

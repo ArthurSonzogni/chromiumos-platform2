@@ -323,6 +323,12 @@ TEST(DatapathTest, Start) {
       {Dual, "nat -L redirect_user_dns -w"},
       {Dual, "nat -F redirect_user_dns -w"},
       {Dual, "nat -X redirect_user_dns -w"},
+      {Dual, "nat -L snat_chrome_dns -w"},
+      {Dual, "nat -F snat_chrome_dns -w"},
+      {Dual, "nat -X snat_chrome_dns -w"},
+      {IPv6, "nat -L snat_user_dns -w"},
+      {IPv6, "nat -F snat_user_dns -w"},
+      {IPv6, "nat -X snat_user_dns -w"},
       {IPv4, "nat -F POSTROUTING -w"},
       {Dual, "nat -F OUTPUT -w"},
       // Asserts for SNAT rules of traffic forwarded from downstream interfaces.
@@ -460,6 +466,14 @@ TEST(DatapathTest, Start) {
       {Dual,
        "nat -A OUTPUT -m mark --mark 0x00008000/0x0000c000 -j "
        "redirect_user_dns -w"},
+      {Dual, "nat -N snat_chrome_dns -w"},
+      {IPv6, "nat -N snat_user_dns -w"},
+      {Dual,
+       "nat -A POSTROUTING -m mark --mark 0x00000100/0x00003f00 -j "
+       "snat_chrome_dns -w"},
+      {IPv6,
+       "nat -A POSTROUTING -m mark --mark 0x00008000/0x0000c000 -j "
+       "snat_user_dns -w"},
       // Asserts for egress and ingress port firewall chains
       {Dual, "filter -N ingress_port_firewall -w"},
       {Dual, "filter -A INPUT -j ingress_port_firewall -w"},
@@ -544,6 +558,12 @@ TEST(DatapathTest, Stop) {
       {Dual, "nat -L redirect_user_dns -w"},
       {Dual, "nat -F redirect_user_dns -w"},
       {Dual, "nat -X redirect_user_dns -w"},
+      {Dual, "nat -L snat_chrome_dns -w"},
+      {Dual, "nat -F snat_chrome_dns -w"},
+      {Dual, "nat -X snat_chrome_dns -w"},
+      {IPv6, "nat -L snat_user_dns -w"},
+      {IPv6, "nat -F snat_user_dns -w"},
+      {IPv6, "nat -X snat_user_dns -w"},
       {IPv4, "nat -F POSTROUTING -w"},
       {Dual, "nat -F OUTPUT -w"},
   };
@@ -1471,11 +1491,11 @@ TEST(DatapathTest, StartDnsRedirection_User) {
       "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
       "0 -j DNAT --to-destination 1.1.1.1 -w");
   Verify_iptables(*runner, IPv4,
-                  "nat -I POSTROUTING -p udp --dport 53 -m mark --mark "
-                  "0x00000100/0x00003f00 -j MASQUERADE -w");
+                  "nat -I snat_chrome_dns -p udp --dport 53 -j "
+                  "MASQUERADE -w");
   Verify_iptables(*runner, IPv4,
-                  "nat -I POSTROUTING -p tcp --dport 53 -m mark --mark "
-                  "0x00000100/0x00003f00 -j MASQUERADE -w");
+                  "nat -I snat_chrome_dns -p tcp --dport 53 -j "
+                  "MASQUERADE -w");
   Verify_iptables(*runner, IPv4,
                   "nat -A redirect_user_dns -p udp --dport 53 -j DNAT "
                   "--to-destination 100.115.92.130 -w");
@@ -1576,11 +1596,11 @@ TEST(DatapathTest, StopDnsRedirection_User) {
       "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
       "0 -j DNAT --to-destination 1.1.1.1 -w");
   Verify_iptables(*runner, IPv4,
-                  "nat -D POSTROUTING -p udp --dport 53 -m mark --mark "
-                  "0x00000100/0x00003f00 -j MASQUERADE -w");
+                  "nat -D snat_chrome_dns -p udp --dport 53 -j "
+                  "MASQUERADE -w");
   Verify_iptables(*runner, IPv4,
-                  "nat -D POSTROUTING -p tcp --dport 53 -m mark --mark "
-                  "0x00000100/0x00003f00 -j MASQUERADE -w");
+                  "nat -D snat_chrome_dns -p tcp --dport 53 -j "
+                  "MASQUERADE -w");
   Verify_iptables(*runner, IPv4,
                   "nat -D redirect_user_dns -p udp --dport 53 -j DNAT "
                   "--to-destination 100.115.92.130 -w");
