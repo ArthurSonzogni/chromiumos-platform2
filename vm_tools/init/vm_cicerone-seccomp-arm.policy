@@ -6,14 +6,15 @@ gettid: 1
 futex: 1
 futex_time64: 1
 # Disallow mprotect with PROT_EXEC set.
-mprotect: arg2 in 0xfffffffb
+mprotect: arg2 in ~PROT_EXEC
 recvmsg: 1
 epoll_wait: 1
 sendmsg: 1
 write: 1
 read: 1
 pread64: 1
-mmap2: 1
+# Don't allow mmap2 with both PROT_WRITE and PROT_EXEC.
+mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 sendto: 1
 poll: 1
 epoll_ctl: 1
