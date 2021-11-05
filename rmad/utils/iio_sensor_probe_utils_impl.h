@@ -12,7 +12,7 @@
 
 #include <libmems/iio_context.h>
 
-#include "rmad/constants.h"
+#include "rmad/proto_bindings/rmad.pb.h"
 
 namespace rmad {
 

@@ -14,6 +14,8 @@
 #include <libmems/iio_channel.h>
 #include <libmems/iio_context_impl.h>
 
+#include "rmad/proto_bindings/rmad.pb.h"
+
 namespace {
 
 constexpr char kIioDeviceAttributeLocation[] = "location";

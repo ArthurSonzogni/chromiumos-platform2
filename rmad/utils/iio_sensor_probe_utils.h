@@ -7,7 +7,7 @@
 
 #include <set>
 
-#include "rmad/constants.h"
+#include "rmad/proto_bindings/rmad.pb.h"
 
 namespace rmad {
 

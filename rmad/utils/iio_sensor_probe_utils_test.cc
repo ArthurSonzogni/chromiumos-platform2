@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rmad/utils/fake_iio_sensor_probe_utils.h"
 #include "rmad/utils/iio_sensor_probe_utils_impl.h"
 
 #include <memory>
@@ -79,5 +80,28 @@ TEST_F(IioSensorProbeUtilsImplTest, Probe_Success) {
   EXPECT_EQ(probed_components.count(RMAD_COMPONENT_LID_GYROSCOPE), 1);
   EXPECT_EQ(probed_components.size(), 4);
 }
+
+namespace fake {
+
+class FakeIioSensorProbeUtilsTest : public testing::Test {
+ public:
+  FakeIioSensorProbeUtilsTest() = default;
+  ~FakeIioSensorProbeUtilsTest() override = default;
+};
+
+TEST_F(FakeIioSensorProbeUtilsTest, Probe_Success) {
+  auto fake_iio_sensor_probe_utils =
+      std::make_unique<FakeIioSensorProbeUtils>();
+
+  std::set<RmadComponent> probed_components =
+      fake_iio_sensor_probe_utils->Probe();
+  EXPECT_EQ(probed_components.count(RMAD_COMPONENT_BASE_ACCELEROMETER), 1);
+  EXPECT_EQ(probed_components.count(RMAD_COMPONENT_BASE_GYROSCOPE), 1);
+  EXPECT_EQ(probed_components.count(RMAD_COMPONENT_LID_ACCELEROMETER), 1);
+  EXPECT_EQ(probed_components.count(RMAD_COMPONENT_LID_GYROSCOPE), 1);
+  EXPECT_EQ(probed_components.size(), 4);
+}
+
+}  // namespace fake
 
 }  // namespace rmad

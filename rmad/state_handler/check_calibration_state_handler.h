@@ -48,6 +48,19 @@ class CheckCalibrationStateHandler : public BaseStateHandler {
   InstructionCalibrationStatusMap calibration_map_;
 };
 
+namespace fake {
+
+class FakeCheckCalibrationStateHandler : public CheckCalibrationStateHandler {
+ public:
+  explicit FakeCheckCalibrationStateHandler(
+      scoped_refptr<JsonStore> json_store);
+
+ protected:
+  ~FakeCheckCalibrationStateHandler() override = default;
+};
+
+}  // namespace fake
+
 }  // namespace rmad
 
 #endif  // RMAD_STATE_HANDLER_CHECK_CALIBRATION_STATE_HANDLER_H_

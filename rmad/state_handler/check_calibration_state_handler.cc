@@ -13,6 +13,7 @@
 
 #include "rmad/constants.h"
 #include "rmad/utils/calibration_utils.h"
+#include "rmad/utils/fake_iio_sensor_probe_utils.h"
 #include "rmad/utils/iio_sensor_probe_utils_impl.h"
 
 namespace rmad {
@@ -51,6 +52,15 @@ RmadState ConvertDictionaryToState(
 }
 
 }  // namespace
+
+namespace fake {
+
+FakeCheckCalibrationStateHandler::FakeCheckCalibrationStateHandler(
+    scoped_refptr<JsonStore> json_store)
+    : CheckCalibrationStateHandler(
+          json_store, std::make_unique<FakeIioSensorProbeUtils>()) {}
+
+}  // namespace fake
 
 CheckCalibrationStateHandler::CheckCalibrationStateHandler(
     scoped_refptr<JsonStore> json_store)

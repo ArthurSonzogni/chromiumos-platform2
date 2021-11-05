@@ -11,6 +11,8 @@
 
 #include <gmock/gmock.h>
 
+#include "rmad/proto_bindings/rmad.pb.h"
+
 namespace rmad {
 
 class MockIioSensorProbeUtils : public IioSensorProbeUtils {
