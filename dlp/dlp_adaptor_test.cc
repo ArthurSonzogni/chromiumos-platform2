@@ -398,4 +398,36 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
   EXPECT_FALSE(waiter.GetResult());
 }
 
+// DlpAdaptor::RequestFileAccess crashes if file access is requested while the
+// database isn't created yet. This test makes sure this doesn't happen anymore.
+// https://crbug.com/1267295.
+TEST_F(DlpAdaptorTest, RequestAllowedWithoutDatabase) {
+  // Create file to request access by inode.
+  base::FilePath file_path;
+  base::CreateTemporaryFile(&file_path);
+  const ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
+
+  // Request access to the file.
+  std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<
+      std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>
+      response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
+          std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
+  bool allowed;
+  brillo::dbus_utils::FileDescriptor lifeline_fd;
+  response->set_return_callback(base::BindRepeating(
+      [](bool* allowed, brillo::dbus_utils::FileDescriptor* lifeline_fd,
+         const std::vector<uint8_t>& proto_blob,
+         const brillo::dbus_utils::FileDescriptor& fd) {
+        RequestFileAccessResponse response;
+        response.ParseFromArray(proto_blob.data(), proto_blob.size());
+        *allowed = response.allowed();
+      },
+      &allowed, &lifeline_fd));
+  GetDlpAdaptor()->RequestFileAccess(
+      std::move(response),
+      CreateSerializedRequestFileAccessRequest(inode, kPid, "destination"));
+
+  EXPECT_TRUE(allowed);
+}
+
 }  // namespace dlp

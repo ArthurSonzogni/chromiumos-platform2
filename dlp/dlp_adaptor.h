@@ -70,6 +70,7 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   FRIEND_TEST(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed);
   FRIEND_TEST(DlpAdaptorTest,
               RestrictedFileAddedRequestedAndCancelledNotAllowed);
+  FRIEND_TEST(DlpAdaptorTest, RequestAllowedWithoutDatabase);
 
   // Opens the database |db_| to store files sources.
   void InitDatabase(const base::FilePath database_path);

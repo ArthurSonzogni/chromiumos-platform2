@@ -214,6 +214,13 @@ void DlpAdaptor::RequestFileAccess(
     return;
   }
 
+  if (!db_) {
+    ReplyOnRequestFileAccess(std::move(response), std::move(remote_fd),
+                             /*allowed=*/true,
+                             /*error_message=*/std::string());
+    return;
+  }
+
   const std::string inode_s = base::NumberToString(request.inode());
   std::string serialized_proto;
   const leveldb::Status get_status =
