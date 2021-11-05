@@ -117,7 +117,7 @@ void Smdp::SendHttps(const std::string& path,
                                      server_transport_);
   http_request.SetContentType("application/json");
   http_request.SetUserAgent("gsma-rsp-lpad");
-  http_request.AddHeader("X-Admin-Protocol", "gsma/rsp/v2.0.0");
+  http_request.AddHeader("X-Admin-Protocol", "gsma/rsp/v2.2.0");
   http_request.AddRequestBody(&request[0], request.size(), &error);
   CHECK(!error);
 
