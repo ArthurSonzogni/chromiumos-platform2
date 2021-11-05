@@ -104,3 +104,4 @@ mremap: 1
 getrandom: 1
 madvise: arg2 == MADV_DONTNEED
 newfstatat: 1
+lchown: 1

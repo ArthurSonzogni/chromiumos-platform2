@@ -154,6 +154,7 @@ if (use.test) {
       "dbus_service_test.cc",
       "metrics/metrics_utils_impl_test.cc",
       "rmad_interface_test.cc",
+      "state_handler/base_state_handler_test.cc",
       "state_handler/check_calibration_state_handler_test.cc",
       "state_handler/components_repair_state_handler_test.cc",
       "state_handler/device_destination_state_handler_test.cc",

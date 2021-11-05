@@ -14,9 +14,11 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/time/time.h>
 #include <base/values.h>
 
 #include "rmad/constants.h"
+#include "rmad/metrics/metrics_utils_impl.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/system/fake_runtime_probe_client.h"
 #include "rmad/system/fake_shill_client.h"
@@ -47,7 +49,8 @@ RmadInterfaceImpl::RmadInterfaceImpl(
     std::unique_ptr<RuntimeProbeClient> runtime_probe_client,
     std::unique_ptr<ShillClient> shill_client,
     std::unique_ptr<TpmManagerClient> tpm_manager_client,
-    std::unique_ptr<PowerManagerClient> power_manager_client)
+    std::unique_ptr<PowerManagerClient> power_manager_client,
+    std::unique_ptr<MetricsUtils> metrics_utils)
     : RmadInterface(),
       json_store_(json_store),
       state_handler_manager_(std::move(state_handler_manager)),
@@ -55,6 +58,7 @@ RmadInterfaceImpl::RmadInterfaceImpl(
       shill_client_(std::move(shill_client)),
       tpm_manager_client_(std::move(tpm_manager_client)),
       power_manager_client_(std::move(power_manager_client)),
+      metrics_utils_(std::move(metrics_utils)),
       external_utils_initialized_(true),
       current_state_case_(RmadState::STATE_NOT_SET),
       test_mode_(false) {}
@@ -99,6 +103,7 @@ bool RmadInterfaceImpl::SetUp() {
   if (!external_utils_initialized_) {
     InitializeExternalUtils();
     external_utils_initialized_ = true;
+    metrics_utils_ = std::make_unique<MetricsUtilsImpl>();
   }
   // Initialize |current state_|, |state_history_|, and |can_abort_| flag.
   current_state_case_ = RmadState::STATE_NOT_SET;
@@ -159,6 +164,25 @@ bool RmadInterfaceImpl::SetUp() {
       //                 a message can be displayed.
       return false;
     }
+
+    // TODO(b/181000999): We assume that all triggers will get here, but now
+    // only "PASS" will get here.
+    if (!json_store_->SetValue(kRoFirmwareVerified,
+                               status == RoVerificationStatus::PASS)) {
+      LOG(ERROR) << "Could not store RO firmware verification status";
+    }
+  }
+
+  double current_timestamp = base::Time::Now().ToDoubleT();
+  if (!json_store_->SetValue(kSetupTimestamp, current_timestamp)) {
+    LOG(ERROR) << "Could not store setup time";
+    return false;
+  }
+  if (double first_setup_time;
+      !json_store_->GetValue(kFirstSetupTimestamp, &first_setup_time) &&
+      !json_store_->SetValue(kFirstSetupTimestamp, current_timestamp)) {
+    LOG(ERROR) << "Could not store first setup time";
+    return false;
   }
 
   // If we are in the RMA process:
@@ -440,6 +464,9 @@ void RmadInterfaceImpl::AbortRma(const AbortRmaCallback& callback) {
     reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
   } else if (can_abort_) {
     VLOG(1) << "AbortRma: Abort allowed.";
+    if (!metrics_utils_->Record(json_store_, false)) {
+      LOG(ERROR) << "AbortRma: Failed to generate and record metrics.";
+    }
     if (json_store_->ClearAndDeleteFile()) {
       current_state_case_ = RmadState::STATE_NOT_SET;
       reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);

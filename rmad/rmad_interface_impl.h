@@ -13,6 +13,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/timer/timer.h>
 
+#include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/state_handler_manager.h"
 #include "rmad/system/power_manager_client.h"
 #include "rmad/system/runtime_probe_client.h"
@@ -29,14 +30,15 @@ class RmadInterfaceImpl final : public RmadInterface {
 
   RmadInterfaceImpl();
   // Used to inject mocked |json_store_|, |state_handler_manager_|,
-  // |runtime_probe_client_|, |shill_client_|, |tpm_manager_client_| and
-  // |power_manager_client_|.
+  // |runtime_probe_client_|, |shill_client_|, |tpm_manager_client_|,
+  // |power_manager_client_| and |metrics_utils_|.
   RmadInterfaceImpl(scoped_refptr<JsonStore> json_store,
                     std::unique_ptr<StateHandlerManager> state_handler_manager,
                     std::unique_ptr<RuntimeProbeClient> runtime_probe_client,
                     std::unique_ptr<ShillClient> shill_client,
                     std::unique_ptr<TpmManagerClient> tpm_manager_client,
-                    std::unique_ptr<PowerManagerClient> power_manager_client);
+                    std::unique_ptr<PowerManagerClient> power_manager_client,
+                    std::unique_ptr<MetricsUtils> metrics_utils);
   RmadInterfaceImpl(const RmadInterfaceImpl&) = delete;
   RmadInterfaceImpl& operator=(const RmadInterfaceImpl&) = delete;
 
@@ -117,6 +119,7 @@ class RmadInterfaceImpl final : public RmadInterface {
   std::unique_ptr<ShillClient> shill_client_;
   std::unique_ptr<TpmManagerClient> tpm_manager_client_;
   std::unique_ptr<PowerManagerClient> power_manager_client_;
+  std::unique_ptr<MetricsUtils> metrics_utils_;
 
   // Internal states.
   bool external_utils_initialized_;

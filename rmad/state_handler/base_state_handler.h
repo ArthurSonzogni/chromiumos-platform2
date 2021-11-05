@@ -11,6 +11,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 
+#include "rmad/metrics/metrics_constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/utils/json_store.h"
 
@@ -92,6 +93,22 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
 
   // Retrieve the state from |json_store_|.
   bool RetrieveState();
+
+  // Return the state_case and store the error code and the additional activity
+  // to |json_store_| if needed.
+  GetNextStateCaseReply NextStateCaseWrapper(RmadState::StateCase state_case,
+                                             RmadErrorCode error,
+                                             AdditionalActivity activity);
+
+  GetNextStateCaseReply NextStateCaseWrapper(RmadState::StateCase state_case);
+
+  GetNextStateCaseReply NextStateCaseWrapper(RmadErrorCode error);
+
+  // Store the error code to |json_store_|.
+  bool StoreErrorCode(RmadErrorCode error);
+
+  // Store the additional activity to |json_store_|.
+  bool StoreAdditionalActivity(AdditionalActivity activity);
 
  protected:
   friend class base::RefCounted<BaseStateHandler>;
