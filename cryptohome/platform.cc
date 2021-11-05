@@ -219,6 +219,11 @@ bool Platform::GetMountsBySourcePrefix(
     std::multimap<const FilePath, const FilePath>* mounts) {
   std::vector<DecodedProcMountInfo> proc_mounts = ReadMountInfoFile();
 
+  // If there is no mounts pointer, we can return false right away.
+  if (!mounts) {
+    return false;
+  }
+
   // When using ecryptfs, we compare the mount device, otherwise,
   // we use the root directory .
   for (const auto& mount : proc_mounts) {
@@ -229,13 +234,11 @@ bool Platform::GetMountsBySourcePrefix(
       root_dir = FilePath(mount.root);
     if (!from_prefix.IsParent(root_dir))
       continue;
-    // If there is no mounts pointer, we can return true right away.
-    if (!mounts)
-      return true;
+
     mounts->insert(std::pair<const FilePath, const FilePath>(
         root_dir, FilePath(mount.mount_point)));
   }
-  return mounts && mounts->size();
+  return !mounts->empty();
 }
 
 bool Platform::GetMountsByDevicePrefix(
