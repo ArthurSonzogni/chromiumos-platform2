@@ -466,6 +466,10 @@ class PersistentSystemTest : public ::testing::Test {
           CheckUserMountPaths(&platform_, base_path, expect_present));
       ASSERT_NO_FATAL_FAILURE(CheckSkel(&platform_, base_path, expect_present));
     }
+
+    if (type == MountType::DIR_CRYPTO && expect_present) {
+      CheckTrackingXattr(username);
+    }
   }
 
   void MockPreclearKeyring(bool success) {
@@ -646,6 +650,58 @@ class PersistentSystemTest : public ::testing::Test {
       ASSERT_THAT(cache_mount_map, ::testing::UnorderedElementsAreArray(
                                        expected_cache_mount_map));
     }
+  }
+
+  void CheckTrackingXattr(const std::string& username) {
+    const std::string obfuscated_username =
+        brillo::cryptohome::home::SanitizeUserName(username);
+    const base::FilePath mount_point =
+        GetUserMountDirectory(obfuscated_username);
+
+    std::string result;
+    ASSERT_TRUE(platform_.GetExtendedFileAttributeAsString(
+        mount_point.Append(kRootHomeSuffix), kTrackedDirectoryNameAttribute,
+        &result));
+    ASSERT_THAT(result, Eq(kRootHomeSuffix));
+
+    ASSERT_TRUE(platform_.GetExtendedFileAttributeAsString(
+        mount_point.Append(kUserHomeSuffix), kTrackedDirectoryNameAttribute,
+        &result));
+    ASSERT_THAT(result, Eq(kUserHomeSuffix));
+
+    ASSERT_TRUE(platform_.GetExtendedFileAttributeAsString(
+        mount_point.Append(kUserHomeSuffix).Append(kGCacheDir),
+        kTrackedDirectoryNameAttribute, &result));
+    ASSERT_THAT(result, Eq(kGCacheDir));
+
+    ASSERT_TRUE(platform_.GetExtendedFileAttributeAsString(
+        mount_point.Append(kUserHomeSuffix)
+            .Append(kGCacheDir)
+            .Append(kGCacheVersion2Dir),
+        kTrackedDirectoryNameAttribute, &result));
+    ASSERT_THAT(result, Eq(kGCacheVersion2Dir));
+
+    ASSERT_TRUE(platform_.GetExtendedFileAttributeAsString(
+        mount_point.Append(kUserHomeSuffix).Append(kCacheDir),
+        kTrackedDirectoryNameAttribute, &result));
+    ASSERT_THAT(result, Eq(kCacheDir));
+
+    ASSERT_TRUE(platform_.GetExtendedFileAttributeAsString(
+        mount_point.Append(kUserHomeSuffix).Append(kDownloadsDir),
+        kTrackedDirectoryNameAttribute, &result));
+    ASSERT_THAT(result, Eq(kDownloadsDir));
+
+    ASSERT_TRUE(platform_.GetExtendedFileAttributeAsString(
+        mount_point.Append(kUserHomeSuffix).Append(kMyFilesDir),
+        kTrackedDirectoryNameAttribute, &result));
+    ASSERT_THAT(result, Eq(kMyFilesDir));
+
+    ASSERT_TRUE(platform_.GetExtendedFileAttributeAsString(
+        mount_point.Append(kUserHomeSuffix)
+            .Append(kMyFilesDir)
+            .Append(kDownloadsDir),
+        kTrackedDirectoryNameAttribute, &result));
+    ASSERT_THAT(result, Eq(kDownloadsDir));
   }
 };
 
