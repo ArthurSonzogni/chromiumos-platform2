@@ -6,7 +6,8 @@ ioctl: 1
 write: 1
 timerfd_settime: 1
 timerfd_settime64: 1
-mmap2: 1
+# Don't allow mmap2 with both PROT_WRITE and PROT_EXEC.
+mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mremap: 1
 close: 1
 open: 1
@@ -14,7 +15,8 @@ poll: 1
 clock_gettime: 1
 clock_gettime64: 1
 munmap: 1
-mprotect: 1
+# Don't allow mprotect with PROT_EXEC.
+mprotect: arg2 in ~PROT_EXEC
 lseek: 1
 getdents: 1
 fcntl64: 1
