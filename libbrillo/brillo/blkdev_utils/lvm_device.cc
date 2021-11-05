@@ -69,7 +69,7 @@ bool PhysicalVolume::Remove() {
   if (device_path_.empty() || !lvm_)
     return false;
 
-  bool ret = lvm_->RunCommand({"pvremove", device_path_.value()});
+  bool ret = lvm_->RunCommand({"pvremove", "-ff", device_path_.value()});
   device_path_ = base::FilePath();
   return ret;
 }
@@ -112,7 +112,7 @@ bool VolumeGroup::Deactivate() {
 bool VolumeGroup::Remove() {
   if (volume_group_name_.empty() || !lvm_)
     return false;
-  bool ret = lvm_->RunCommand({"vgremove", volume_group_name_});
+  bool ret = lvm_->RunCommand({"vgremove", "-f", volume_group_name_});
   volume_group_name_ = "";
   return ret;
 }

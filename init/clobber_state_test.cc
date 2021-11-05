@@ -1608,13 +1608,14 @@ TEST_F(LogicalVolumeStatefulPartitionTest, RemoveLogicalVolumeStackCheck) {
       RunCommand(std::vector<std::string>({"vgchange", "-an", "stateful"})))
       .Times(1)
       .WillOnce(Return(true));
-  EXPECT_CALL(*lvm_command_runner_.get(),
-              RunCommand(std::vector<std::string>({"vgremove", "stateful"})))
-      .Times(1)
-      .WillOnce(Return(true));
   EXPECT_CALL(
       *lvm_command_runner_.get(),
-      RunCommand(std::vector<std::string>({"pvremove", "/dev/mmcblk0p1"})))
+      RunCommand(std::vector<std::string>({"vgremove", "-f", "stateful"})))
+      .Times(1)
+      .WillOnce(Return(true));
+  EXPECT_CALL(*lvm_command_runner_.get(),
+              RunCommand(std::vector<std::string>(
+                  {"pvremove", "-ff", "/dev/mmcblk0p1"})))
       .Times(1)
       .WillOnce(Return(true));
 
