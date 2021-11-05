@@ -81,22 +81,6 @@ class MountHelper : public MountHelperInterface {
   // Returns false if the mountpoints were not present and could not be created.
   bool EnsureUserMountPoints(const std::string& username) const;
 
-  // Creates the tracked subdirectories in a user's cryptohome.
-  // If the cryptohome did not have tracked directories, but had them untracked,
-  // migrate their contents.
-  //
-  // Parameters
-  //   obfuscated_username - The obfuscated form of the username
-  //   type - Mount type: eCryptfs or dircrypto
-  bool CreateTrackedSubdirectories(const std::string& obfuscated_username,
-                                   const MountType& type) const;
-
-  // Creates the subdirectories in a user's cryptohome.
-  //
-  // Parameters
-  //   obfuscated_username - The obfuscated form of the username
-  bool CreateDmcryptSubdirectories(const std::string& obfuscated_username);
-
   // Mounts the tracked subdirectories from a separate cache directory. This
   // is used by LVM dm-crypt cryptohomes to separate the cache directory.
   //

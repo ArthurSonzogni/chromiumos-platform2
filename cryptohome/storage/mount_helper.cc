@@ -99,50 +99,93 @@ struct DirectoryACL {
   gid_t gid;
 };
 
-std::vector<DirectoryACL> GetCacheSubdirectories() {
+std::vector<DirectoryACL> GetCacheSubdirectories(const FilePath& dir) {
   return std::vector<DirectoryACL>{
-      {FilePath(kUserHomeSuffix).Append(kGCacheDir), kAccessMode, kChronosUid,
+      {dir.Append(kUserHomeSuffix).Append(kGCacheDir), kAccessMode, kChronosUid,
        kChronosAccessGid},
-      {FilePath(kUserHomeSuffix).Append(kCacheDir), kTrackedDirMode,
+      {dir.Append(kUserHomeSuffix).Append(kCacheDir), kTrackedDirMode,
        kChronosUid, kChronosGid},
-      {FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(kGCacheVersion2Dir),
+      {dir.Append(kUserHomeSuffix)
+           .Append(kGCacheDir)
+           .Append(kGCacheVersion2Dir),
        kAccessMode | kGroupWriteAccess, kChronosUid, kChronosAccessGid}};
 }
 
-std::vector<DirectoryACL> GetCommonSubdirectories() {
+std::vector<DirectoryACL> GetCommonSubdirectories(const FilePath& dir) {
   auto result = std::vector<DirectoryACL>{
-      {FilePath(kRootHomeSuffix), kRootDirMode, kRootUid, kDaemonStoreGid},
-      {FilePath(kUserHomeSuffix), kAccessMode, kChronosUid, kChronosAccessGid},
-      {FilePath(kUserHomeSuffix).Append(kDownloadsDir), kAccessMode,
-       kChronosUid, kChronosAccessGid},
-      {FilePath(kUserHomeSuffix).Append(kMyFilesDir), kAccessMode, kChronosUid,
+      {dir.Append(kRootHomeSuffix), kRootDirMode, kRootUid, kDaemonStoreGid},
+      {dir.Append(kUserHomeSuffix), kAccessMode, kChronosUid,
        kChronosAccessGid},
-      {FilePath(kUserHomeSuffix).Append(kMyFilesDir).Append(kDownloadsDir),
+      {dir.Append(kUserHomeSuffix).Append(kDownloadsDir), kAccessMode,
+       kChronosUid, kChronosAccessGid},
+      {dir.Append(kUserHomeSuffix).Append(kMyFilesDir), kAccessMode,
+       kChronosUid, kChronosAccessGid},
+      {dir.Append(kUserHomeSuffix).Append(kMyFilesDir).Append(kDownloadsDir),
        kAccessMode, kChronosUid, kChronosAccessGid},
   };
-  auto cache_subdirs = GetCacheSubdirectories();
+  auto cache_subdirs = GetCacheSubdirectories(dir);
   result.insert(result.end(), cache_subdirs.begin(), cache_subdirs.end());
   return result;
 }
 
-std::vector<DirectoryACL> GetDmcryptSubdirectories() {
-  auto data_volume_subdirs = GetCommonSubdirectories();
-  auto cache_volume_subdirs = GetCacheSubdirectories();
-
-  // Construct data volume subdirectories.
-  for (auto& subdir : data_volume_subdirs) {
-    subdir.path = FilePath(kMountDir).Append(subdir.path);
-  }
-
-  // Construct cache volume subdirectories.
-  for (auto& subdir : cache_volume_subdirs) {
-    subdir.path = FilePath(kDmcryptCacheDir).Append(subdir.path);
-  }
+std::vector<DirectoryACL> GetDmcryptSubdirectories(const FilePath& dir) {
+  auto data_volume_subdirs = GetCommonSubdirectories(dir.Append(kMountDir));
+  auto cache_volume_subdirs =
+      GetCacheSubdirectories(dir.Append(kDmcryptCacheDir));
 
   auto result = cache_volume_subdirs;
   result.insert(result.end(), data_volume_subdirs.begin(),
                 data_volume_subdirs.end());
   return result;
+}
+
+bool CreateVaultDirectoryStructure(
+    Platform* platform, const std::vector<DirectoryACL>& directories) {
+  bool success = true;
+  for (const auto& subdir : directories) {
+    const FilePath path = subdir.path;
+    if (platform->DirectoryExists(path)) {
+      // We make the mode for chronos-access accessible directories more
+      // permissive, thus we need to change mode. It is unfortunate we need
+      // to do it explicitly, unlike with mountpoints which we could just
+      // recreate, but we must preserve user data while doing so.
+      if (!platform->SafeDirChmod(path, subdir.mode)) {
+        PLOG(ERROR) << "Couldn't change directory's mode: " << path;
+      }
+      continue;
+    }
+
+    if (!platform->DeletePathRecursively(path)) {
+      LOG(ERROR) << "Couldn't cleanup user path element: " << path;
+      success = false;
+      continue;
+    }
+
+    if (!platform->SafeCreateDirAndSetOwnershipAndPermissions(
+            path, subdir.mode, subdir.uid, subdir.gid)) {
+      LOG(ERROR) << "Couldn't create user path directory: " << path;
+      ignore_result(platform->DeletePathRecursively(path));
+      success = false;
+      continue;
+    }
+  }
+  return success;
+}
+
+bool SetTrackingXattr(Platform* platform,
+                      const std::vector<DirectoryACL>& directories) {
+  bool success = true;
+  for (const auto& subdir : directories) {
+    const FilePath path = subdir.path;
+    std::string name = path.BaseName().value();
+    if (!platform->SetExtendedFileAttribute(
+            path, kTrackedDirectoryNameAttribute, name.data(), name.length())) {
+      PLOG(ERROR) << "Unable to set xattr on " << path;
+      success = false;
+      continue;
+    }
+  }
+  return success;
 }
 
 }  // namespace
@@ -573,107 +616,19 @@ bool MountHelper::MountHomesAndDaemonStores(
     if (!BindMyFilesDownloads(user_home)) {
       return false;
     }
+  } else {
+    // If we are not doing the downloads bind mount, move the content of the
+    // Downloads to MyFiles/Downloads. Doing it file by file in case there is
+    // a content in the MyFiles/Downloads already.
+    auto downloads = user_home.Append(kDownloadsDir);
+    auto downloads_in_myfiles =
+        user_home.Append(kMyFilesDir).Append(kDownloadsDir);
+    MigrateDirectory(downloads_in_myfiles, downloads);
   }
 
   // Mount directories used by daemons to store per-user data.
   if (!MountDaemonStoreDirectories(root_home, obfuscated_username))
     return false;
-
-  return true;
-}
-
-bool MountHelper::CreateTrackedSubdirectories(
-    const std::string& obfuscated_username, const MountType& mount_type) const {
-  // Add the subdirectories if they do not exist.
-  const FilePath dest_dir(mount_type == MountType::ECRYPTFS
-                              ? GetEcryptfsUserVaultPath(obfuscated_username)
-                              : GetUserMountDirectory(obfuscated_username));
-  if (!platform_->DirectoryExists(dest_dir)) {
-    LOG(ERROR) << "Can't create tracked subdirectories for a missing user.";
-    return false;
-  }
-
-  const FilePath mount_dir(GetUserMountDirectory(obfuscated_username));
-
-  // The call is allowed to partially fail if directory creation fails, but we
-  // want to have as many of the specified tracked directories created as
-  // possible.
-  bool result = true;
-  for (const auto& tracked_dir : GetCommonSubdirectories()) {
-    const FilePath tracked_dir_path = dest_dir.Append(tracked_dir.path);
-
-    // Create pass-through directory.
-    if (!platform_->DirectoryExists(tracked_dir_path)) {
-      // Delete the existing file or symbolic link if any.
-      platform_->DeleteFile(tracked_dir_path);
-      VLOG(1) << "Creating pass-through directory " << tracked_dir_path.value();
-      if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-              tracked_dir_path, tracked_dir.mode, tracked_dir.uid,
-              tracked_dir.gid)) {
-        PLOG(ERROR) << "Couldn't create directory: "
-                    << tracked_dir_path.value();
-        platform_->DeletePathRecursively(tracked_dir_path);
-        result = false;
-        continue;
-      }
-    } else {
-      // We make the mode for chronos-access accessible directories more
-      // permissive, thus we need to change mode. it is unfortunate we need
-      // to do it explicitly, unlike with mountpoints which we could just
-      // recreate, but we must preservce user data while doing so.
-      if (!platform_->SafeDirChmod(tracked_dir_path, tracked_dir.mode)) {
-        PLOG(ERROR) << "Couldn't change directory's mode: "
-                    << tracked_dir_path.value();
-      }
-    }
-    if (mount_type == MountType::DIR_CRYPTO) {
-      // Set xattr to make this directory trackable.
-      std::string name = tracked_dir_path.BaseName().value();
-      if (!platform_->SetExtendedFileAttribute(tracked_dir_path,
-                                               kTrackedDirectoryNameAttribute,
-                                               name.data(), name.length())) {
-        PLOG(ERROR) << "Unable to set xattr on " << tracked_dir_path.value();
-        result = false;
-        continue;
-      }
-    }
-  }
-
-  if (!bind_mount_downloads_) {
-    // If we are not doing the downloads bind mount, move the content of the
-    // Downloads to MyFiles/Downloads. Doing it file by file in case there is
-    // a content in the MyFiles/Downloads already.
-    auto downloads = dest_dir.Append(kUserHomeSuffix).Append(kDownloadsDir);
-    auto downloads_in_myfiles = dest_dir.Append(kUserHomeSuffix)
-                                    .Append(kMyFilesDir)
-                                    .Append(kDownloadsDir);
-    MigrateDirectory(downloads_in_myfiles, downloads);
-  }
-
-  return result;
-}
-
-bool MountHelper::CreateDmcryptSubdirectories(
-    const std::string& obfuscated_username) {
-  FilePath user_shadow_dir = ShadowRoot().Append(obfuscated_username);
-
-  // Set up directories.
-  for (const auto& subdir : GetDmcryptSubdirectories()) {
-    FilePath dir = user_shadow_dir.Append(subdir.path);
-    // Ensure that the directory exists.
-    if (!platform_->DirectoryExists(dir)) {
-      // Delete the existing file or symbolic link if any.
-      platform_->DeletePathRecursively(dir);
-      VLOG(1) << "Creating directory " << dir.value();
-      if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-              dir, subdir.mode, subdir.uid, subdir.gid)) {
-        PLOG(ERROR) << "SafeCreateDirAndSetOwnershipAndPermissions() failed: "
-                    << dir.value();
-        platform_->DeletePathRecursively(dir);
-        return false;
-      }
-    }
-  }
 
   return true;
 }
@@ -719,10 +674,8 @@ bool MountHelper::SetUpEcryptfsMount(const std::string& obfuscated_username,
 
   // Create <vault_path>/user and <vault_path>/root.
   CreateHomeSubdirectories(vault_path);
-
-  // Move the tracked subdirectories from <mount_point_>/user to <vault_path>
-  // as passthrough directories.
-  CreateTrackedSubdirectories(obfuscated_username, MountType::ECRYPTFS);
+  ignore_result(CreateVaultDirectoryStructure(
+      platform_, GetCommonSubdirectories(vault_path)));
 
   // b/115997660: Mount eCryptfs after creating the tracked subdirectories.
   if (!MountAndPush(vault_path, mount_point, "ecryptfs", ecryptfs_options)) {
@@ -737,7 +690,10 @@ void MountHelper::SetUpDircryptoMount(const std::string& obfuscated_username) {
   const FilePath mount_point = GetUserMountDirectory(obfuscated_username);
 
   CreateHomeSubdirectories(mount_point);
-  CreateTrackedSubdirectories(obfuscated_username, MountType::DIR_CRYPTO);
+  ignore_result(CreateVaultDirectoryStructure(
+      platform_, GetCommonSubdirectories(mount_point)));
+  ignore_result(
+      SetTrackingXattr(platform_, GetCommonSubdirectories(mount_point)));
 }
 
 bool MountHelper::SetUpDmcryptMount(const std::string& obfuscated_username) {
@@ -767,7 +723,9 @@ bool MountHelper::SetUpDmcryptMount(const std::string& obfuscated_username) {
   }
 
   CreateHomeSubdirectories(data_mount_point);
-  CreateDmcryptSubdirectories(obfuscated_username);
+  ignore_result(CreateVaultDirectoryStructure(
+      platform_,
+      GetDmcryptSubdirectories(ShadowRoot().Append(obfuscated_username))));
 
   return true;
 }
@@ -889,16 +847,9 @@ MountError MountHelper::PerformEphemeralMount(
 
   CopySkeleton(user_home);
 
-  for (const auto& subdir : GetCommonSubdirectories()) {
-    FilePath path = mount_point.Append(subdir.path);
-    if (platform_->DirectoryExists(path))
-      continue;
-
-    if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-            path, subdir.mode, subdir.uid, subdir.gid)) {
-      LOG(ERROR) << "Couldn't create user path directory: " << path.value();
-      return MOUNT_ERROR_FATAL;
-    }
+  if (!CreateVaultDirectoryStructure(platform_,
+                                     GetCommonSubdirectories(mount_point))) {
+    return MOUNT_ERROR_FATAL;
   }
 
   if (!MountHomesAndDaemonStores(username, obfuscated_username, user_home,
