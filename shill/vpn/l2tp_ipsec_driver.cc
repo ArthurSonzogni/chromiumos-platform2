@@ -25,6 +25,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -136,6 +137,64 @@ const VPNDriver::Property L2TPIPsecDriver::kProperties[] = {
      Property::kCredential | Property::kWriteOnly},
     {kL2TPIPsecLcpEchoDisabledProperty, 0},
 };
+
+// static
+bool L2TPIPsecDriver::ParseStrokeStatusAllOutput(
+    const std::string& stroke_output,
+    IPsecConnection::CipherSuite* ike_cipher,
+    IPsecConnection::CipherSuite* esp_cipher) {
+  CHECK(ike_cipher);
+  CHECK(esp_cipher);
+
+  // Does some basic check at first to make sure the SA is established. If the
+  // check failed, we cannot any reasonable results so we don't need to report
+  // an unknown to UMA.
+  constexpr char kSAHeaderLine[] =
+      "Security Associations (1 up, 0 connecting):";
+  if (stroke_output.find(kSAHeaderLine) == std::string::npos) {
+    LOG(ERROR) << "The output of stroke does not contain the SA header line, "
+                  "output is: "
+               << stroke_output;
+    return false;
+  }
+
+  // Will log |stdout_str| if any part of the parsing fails.
+  bool success = true;
+
+  // The IKE part has a prompt before it and a space after it. See
+  // l2tp_ipsec_driver_test.cc for the example. See `stroke_list.c:log_ike_sa()`
+  // for how this part is output.
+  std::string ike_matched_part;
+  static constexpr LazyRE2 kIKECipherSuite = {
+      R"(IKE proposal: ((?:[^/\s]+)(?:/[^/\s]+)*)\s+)"};
+  if (!RE2::PartialMatch(stroke_output, *kIKECipherSuite, &ike_matched_part)) {
+    LOG(ERROR) << "Failed to parse the IKE cipher suite";
+    success = false;
+  }
+  *ike_cipher = IPsecConnection::ParseCipherSuite(ike_matched_part);
+
+  // Matches the ESP part. There might be several child SAs at the same time.
+  // For each child SA, the cipher suite for ESP will be output at the second
+  // line, so we find the first line (the currently installed SA) at first and
+  // then match the cipher part on the second line. Note that "managed" is the
+  // name of the connection which is hard-coded in vpn-manager. See
+  // l2tp_ipsec_driver_test.cc for the example. See
+  // `stroke_list.c:log_child_sa()` for how this part is output.
+  std::string esp_matched_part;
+  static constexpr LazyRE2 kESPCipherSuite = {
+      R"(managed{\d+}:  INSTALLED, TRANSPORT,[^\n]*\n +managed{\d+}:  ((?:[^/\s,]+)(?:/[^/\s,]+)*),)"};
+  if (!RE2::PartialMatch(stroke_output, *kESPCipherSuite, &esp_matched_part)) {
+    LOG(ERROR) << "Failed to parse the ESP cipher suite";
+    success = false;
+  }
+  *esp_cipher = IPsecConnection::ParseCipherSuite(esp_matched_part);
+
+  if (!success) {
+    LOG(ERROR) << "The output of stroke is: " << stroke_output;
+  }
+
+  return true;
+}
 
 L2TPIPsecDriver::L2TPIPsecDriver(Manager* manager,
                                  ProcessManager* process_manager)
@@ -610,51 +669,9 @@ void L2TPIPsecDriver::ParseCipherSuitesAndReport(
     return;
   }
 
-  // Does some basic check at first to make sure the SA is established. If the
-  // check failed, we cannot any reasonable results so we don't need to report
-  // an unknown to UMA.
-  constexpr char kSAHeaderLine[] =
-      "Security Associations (1 up, 0 connecting):";
-  if (stdout_str.find(kSAHeaderLine) == std::string::npos) {
-    LOG(ERROR) << "The output of stroke does not contain the SA header line, "
-                  "output is: "
-               << stdout_str;
+  IPsecConnection::CipherSuite ike_cipher, esp_cipher;
+  if (!ParseStrokeStatusAllOutput(stdout_str, &ike_cipher, &esp_cipher)) {
     return;
-  }
-
-  // Will log |stdout_str| if any part of the parsing fails.
-  bool success = true;
-
-  // The IKE part has a prompt before it and a space after it. See
-  // l2tp_ipsec_driver_test.cc for the example. See `stroke_list.c:log_ike_sa()`
-  // for how this part is output.
-  std::string ike_matched_part;
-  static constexpr LazyRE2 kIKECipherSuite = {
-      R"(IKE proposal: ((?:[^/\s]+)(?:/[^/\s]+)*)\s+)"};
-  if (!RE2::PartialMatch(stdout_str, *kIKECipherSuite, &ike_matched_part)) {
-    LOG(ERROR) << "Failed to parse the IKE cipher suite";
-    success = false;
-  }
-  const auto ike_cipher = IPsecConnection::ParseCipherSuite(ike_matched_part);
-
-  // Matches the ESP part. There might be several child SAs at the same time.
-  // For each child SA, the cipher suite for ESP will be output at the second
-  // line, so we find the first line (the currently installed SA) at first and
-  // then match the cipher part on the second line. Note that "managed" is the
-  // name of the connection which is hard-coded in vpn-manager. See
-  // l2tp_ipsec_driver_test.cc for the example. See
-  // `stroke_list.c:log_child_sa()` for how this part is output.
-  std::string esp_matched_part;
-  static constexpr LazyRE2 kESPCipherSuite = {
-      R"(managed{\d+}:  INSTALLED, TRANSPORT,[^\n]*\n +managed{\d+}:  ((?:[^/\s,]+)(?:/[^/\s,]+)*),)"};
-  if (!RE2::PartialMatch(stdout_str, *kESPCipherSuite, &esp_matched_part)) {
-    LOG(ERROR) << "Failed to parse the ESP cipher suite";
-    success = false;
-  }
-  const auto esp_cipher = IPsecConnection::ParseCipherSuite(esp_matched_part);
-
-  if (!success) {
-    LOG(ERROR) << "The output of stroke is: " << stdout_str;
   }
 
   // Reports cipher suite for IKE.

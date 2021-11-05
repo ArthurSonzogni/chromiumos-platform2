@@ -82,10 +82,10 @@ class IPsecConnection : public VPNConnection {
 
   // Parses the cipher suite from an string output by swanctl or stroke. |input|
   // is like "AES_CBC-128/HMAC_SHA2_256_128/PRF_HMAC_SHA2_256/MODP_3072".
-  static std::tuple<Metrics::VpnIpsecEncryptionAlgorithm,
-                    Metrics::VpnIpsecIntegrityAlgorithm,
-                    Metrics::VpnIpsecDHGroup>
-  ParseCipherSuite(const std::string& input);
+  using CipherSuite = std::tuple<Metrics::VpnIpsecEncryptionAlgorithm,
+                                 Metrics::VpnIpsecIntegrityAlgorithm,
+                                 Metrics::VpnIpsecDHGroup>;
+  static CipherSuite ParseCipherSuite(const std::string& input);
 
   explicit IPsecConnection(std::unique_ptr<Config> config,
                            std::unique_ptr<Callbacks> callbacks,
@@ -117,7 +117,7 @@ class IPsecConnection : public VPNConnection {
   void OnDisconnect() override;
 
   // Run tasks for connecting in order based on the current |step|.
-  mockable void ScheduleConnectTask(ConnectStep step);
+  virtual void ScheduleConnectTask(ConnectStep step);
 
   // Tasks scheduled by ScheduleConnectTask(). Each function should call
   // ScheduleConnectTask() (either directly or using a callback) on the task

@@ -18,6 +18,7 @@
 
 #include "shill/ipconfig.h"
 #include "shill/rpc_task.h"
+#include "shill/vpn/ipsec_connection.h"
 #include "shill/vpn/vpn_driver.h"
 
 namespace shill {
@@ -27,6 +28,14 @@ class ExternalTask;
 
 class L2TPIPsecDriver : public VPNDriver, public RpcTaskDelegate {
  public:
+  // Parses the output of `stroke statusall` and gets cipher suites used by this
+  // connection. Returns whether the metrics should be reported. This function
+  // is supposed to only be used in this class. Make it static for testing.
+  static bool ParseStrokeStatusAllOutput(
+      const std::string& stroke_output,
+      IPsecConnection::CipherSuite* ike_cipher,
+      IPsecConnection::CipherSuite* esp_cipher);
+
   L2TPIPsecDriver(Manager* manager, ProcessManager* process_manager);
   L2TPIPsecDriver(const L2TPIPsecDriver&) = delete;
   L2TPIPsecDriver& operator=(const L2TPIPsecDriver&) = delete;

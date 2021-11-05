@@ -33,7 +33,11 @@ group("all") {
       ":wifi_ies_fuzzer",
     ]
     if (use.vpn) {
-      deps += [ ":openvpn_management_server_fuzzer" ]
+      deps += [
+        ":openvpn_management_server_fuzzer",
+        ":vpn_ipsec_connection_fuzzer",
+        ":vpn_l2tp_ipsec_driver_fuzzer",
+      ]
     }
   }
   if (use.test) {
@@ -533,6 +537,24 @@ if (use.fuzzer) {
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
+    ]
+    deps = [ ":libshill" ]
+  }
+  executable("vpn_ipsec_connection_fuzzer") {
+    sources = [ "vpn/ipsec_connection_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+      ":shill_config",
+    ]
+    deps = [ ":libshill" ]
+  }
+  executable("vpn_l2tp_ipsec_driver_fuzzer") {
+    sources = [ "vpn/l2tp_ipsec_driver_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+      ":shill_config",
     ]
     deps = [ ":libshill" ]
   }
