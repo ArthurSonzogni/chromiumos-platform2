@@ -195,12 +195,6 @@ class MountHelper : public MountHelperInterface {
   //   dest - Mount point to unmount
   void ForceUnmount(const base::FilePath& src, const base::FilePath& dest);
 
-  // Creates subdirectories for the user's cryptohome.
-  //
-  // Parameters
-  //   vault_path - path to create subdirectories under.
-  void CreateHomeSubdirectories(const FilePath& vault_path) const;
-
   // Facilitates migration of files from one directory to another, removing the
   // duplicates.
   void MigrateDirectory(const base::FilePath& dst,

@@ -58,14 +58,6 @@ FilePath GetMountedEphemeralUserHomePath(
       .Append(cryptohome::kUserHomeSuffix);
 }
 
-FilePath VaultPathToUserPath(const FilePath& vault) {
-  return vault.Append(cryptohome::kUserHomeSuffix);
-}
-
-FilePath VaultPathToRootPath(const FilePath& vault) {
-  return vault.Append(cryptohome::kRootHomeSuffix);
-}
-
 // Sets up the SELinux context for a freshly mounted ephemeral cryptohome.
 bool SetUpSELinuxContextForEphemeralCryptohome(cryptohome::Platform* platform,
                                                const FilePath& source_path) {
@@ -139,35 +131,78 @@ std::vector<DirectoryACL> GetDmcryptSubdirectories(const FilePath& dir) {
   return result;
 }
 
+// Returns true if the directory should be root owned, but is missing or has
+// wrong attributes.
+bool IsRootDirectoryAndTampered(Platform* platform, DirectoryACL dir) {
+  if (dir.uid != kRootUid) {
+    // Shouldn't be owned by root - ignore.
+    return false;
+  }
+
+  base::stat_wrapper_t st;
+  if (!platform->Stat(dir.path, &st)) {
+    // Couldn't stat it, which means something is wrong, consider tampered.
+    return true;
+  }
+
+  const mode_t st_mode = st.st_mode & 01777;
+  if (S_ISDIR(st.st_mode) && st_mode == dir.mode && st.st_uid == dir.uid &&
+      st.st_gid == dir.gid) {
+    // Attributes are correct, not tampered
+    return false;
+  }
+
+  LOG(ERROR) << "Root owned directory was tampered with, will be recreated.";
+  return true;
+}
+
+void MaybeCorrectUserDirectoryAttrs(Platform* platform, DirectoryACL dir) {
+  // Ignore root owned directories - those are recreated if they have wrong
+  // attributes.
+  if (dir.uid == kRootUid) {
+    return;
+  }
+  // The check is intended to correct, report and fix a group mismatch for the
+  // <vault> directories. It is initially required for crbug.com/1205308, but
+  // since we are doing the chown anyway, there is no drama to do it for all
+  // user directories.
+  if (!platform->SafeDirChown(dir.path, dir.uid, dir.gid)) {
+    LOG(ERROR) << "Failed to fix ownership of path directory" << dir.path;
+  }
+
+  // We make the mode for chronos-access accessible directories more
+  // permissive, thus we need to change mode. It is unfortunate we need
+  // to do it explicitly, unlike with mountpoints which we could just
+  // recreate, but we must preserve user data while doing so.
+  if (!platform->SafeDirChmod(dir.path, dir.mode)) {
+    PLOG(ERROR) << "Failed to fix mode of path directory: " << dir.path;
+  }
+}
+
 bool CreateVaultDirectoryStructure(
     Platform* platform, const std::vector<DirectoryACL>& directories) {
   bool success = true;
   for (const auto& subdir : directories) {
-    const FilePath path = subdir.path;
-    if (platform->DirectoryExists(path)) {
-      // We make the mode for chronos-access accessible directories more
-      // permissive, thus we need to change mode. It is unfortunate we need
-      // to do it explicitly, unlike with mountpoints which we could just
-      // recreate, but we must preserve user data while doing so.
-      if (!platform->SafeDirChmod(path, subdir.mode)) {
-        PLOG(ERROR) << "Couldn't change directory's mode: " << path;
-      }
+    if (platform->DirectoryExists(subdir.path) &&
+        !IsRootDirectoryAndTampered(platform, subdir)) {
+      MaybeCorrectUserDirectoryAttrs(platform, subdir);
       continue;
     }
 
-    if (!platform->DeletePathRecursively(path)) {
-      LOG(ERROR) << "Couldn't cleanup user path element: " << path;
+    if (!platform->DeletePathRecursively(subdir.path)) {
+      LOG(ERROR) << "Couldn't cleanup path element: " << subdir.path;
       success = false;
       continue;
     }
 
     if (!platform->SafeCreateDirAndSetOwnershipAndPermissions(
-            path, subdir.mode, subdir.uid, subdir.gid)) {
-      LOG(ERROR) << "Couldn't create user path directory: " << path;
-      ignore_result(platform->DeletePathRecursively(path));
+            subdir.path, subdir.mode, subdir.uid, subdir.gid)) {
+      LOG(ERROR) << "Couldn't create path directory: " << subdir.path;
+      ignore_result(platform->DeletePathRecursively(subdir.path));
       success = false;
       continue;
     }
+    LOG(INFO) << "Created vault subdirectory: " << subdir.path;
   }
   return success;
 }
@@ -176,11 +211,11 @@ bool SetTrackingXattr(Platform* platform,
                       const std::vector<DirectoryACL>& directories) {
   bool success = true;
   for (const auto& subdir : directories) {
-    const FilePath path = subdir.path;
-    std::string name = path.BaseName().value();
-    if (!platform->SetExtendedFileAttribute(
-            path, kTrackedDirectoryNameAttribute, name.data(), name.length())) {
-      PLOG(ERROR) << "Unable to set xattr on " << path;
+    std::string name = subdir.path.BaseName().value();
+    if (!platform->SetExtendedFileAttribute(subdir.path,
+                                            kTrackedDirectoryNameAttribute,
+                                            name.data(), name.length())) {
+      PLOG(ERROR) << "Unable to set xattr on " << subdir.path;
       success = false;
       continue;
     }
@@ -252,62 +287,6 @@ bool MountHelper::EnsurePathComponent(const FilePath& check_path,
     }
   }
   return true;
-}
-
-void MountHelper::CreateHomeSubdirectories(const FilePath& vault_path) const {
-  FilePath user_path(VaultPathToUserPath(vault_path));
-  FilePath root_path(VaultPathToRootPath(vault_path));
-  base::stat_wrapper_t st;
-
-  // This check makes the creation idempotent; if we completed creation,
-  // root_path will exist and we're done, and if we didn't complete it, we can
-  // finish it.
-  if (platform_->Stat(root_path, &st) && S_ISDIR(st.st_mode) &&
-      st.st_mode & S_ISVTX && st.st_uid == kRootUid &&
-      st.st_gid == kDaemonStoreGid) {
-    // This reports whether the existing user directory has the correct group.
-    // TODO(crbug.com/1205308): Remove once the root cause is fixed and we stop
-    // seeing cases where this directory has the wrong group owner.
-    if (platform_->Stat(user_path, &st)) {
-      bool correct = st.st_gid == kChronosAccessGid;
-      ReportUserSubdirHasCorrectGroup(correct);
-      if (!correct) {
-        LOG(ERROR) << "Group mismatch in user directory: " << user_path.value()
-                   << " " << st.st_gid << " != " << kChronosAccessGid;
-        if (!platform_->SafeDirChown(user_path, kChronosUid,
-                                     kChronosAccessGid)) {
-          LOG(ERROR) << "Failed to fix ownership of user directory";
-        }
-      }
-    }
-    return;
-  }
-
-  // There are three ways to get here:
-  // 1) the Stat() call above succeeded, but what we saw was not a root-owned
-  //    directory.
-  // 2) the Stat() call above failed with -ENOENT
-  // 3) the Stat() call above failed for some other reason
-  // In any of these cases, it is safe for us to rm root_path, since the only
-  // way it could have gotten there is if someone undertook some funny business
-  // as root.
-  platform_->DeletePathRecursively(root_path);
-
-  if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-          user_path, kAccessMode, kChronosUid, kChronosAccessGid)) {
-    PLOG(ERROR) << "SafeCreateDirAndSetOwnershipAndPermissions() failed: "
-                << user_path.value();
-    return;
-  }
-
-  // Create root_path at the end as a sentinel for migration.
-  if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-          root_path, kRootDirMode, kRootUid, kDaemonStoreGid)) {
-    PLOG(ERROR) << "SafeCreateDirAndSetOwnershipAndPermissions() failed: "
-                << root_path.value();
-    return;
-  }
-  LOG(INFO) << "Created user directory: " << vault_path.value();
 }
 
 bool MountHelper::EnsureMountPointPath(const FilePath& dir) const {
@@ -673,7 +652,6 @@ bool MountHelper::SetUpEcryptfsMount(const std::string& obfuscated_username,
       kDefaultEcryptfsKeySize, fnek_signature.c_str(), fek_signature.c_str());
 
   // Create <vault_path>/user and <vault_path>/root.
-  CreateHomeSubdirectories(vault_path);
   ignore_result(CreateVaultDirectoryStructure(
       platform_, GetCommonSubdirectories(vault_path)));
 
@@ -689,7 +667,6 @@ bool MountHelper::SetUpEcryptfsMount(const std::string& obfuscated_username,
 void MountHelper::SetUpDircryptoMount(const std::string& obfuscated_username) {
   const FilePath mount_point = GetUserMountDirectory(obfuscated_username);
 
-  CreateHomeSubdirectories(mount_point);
   ignore_result(CreateVaultDirectoryStructure(
       platform_, GetCommonSubdirectories(mount_point)));
   ignore_result(
@@ -722,7 +699,6 @@ bool MountHelper::SetUpDmcryptMount(const std::string& obfuscated_username) {
     return false;
   }
 
-  CreateHomeSubdirectories(data_mount_point);
   ignore_result(CreateVaultDirectoryStructure(
       platform_,
       GetDmcryptSubdirectories(ShadowRoot().Append(obfuscated_username))));
@@ -832,9 +808,6 @@ MountError MountHelper::PerformEphemeralMount(
     return MOUNT_ERROR_FATAL;
   }
 
-  // Create user & root directories.
-  CreateHomeSubdirectories(mount_point);
-
   if (!EnsureUserMountPoints(username)) {
     return MOUNT_ERROR_FATAL;
   }
@@ -845,12 +818,12 @@ MountError MountHelper::PerformEphemeralMount(
   const FilePath root_home =
       GetMountedEphemeralRootHomePath(obfuscated_username);
 
-  CopySkeleton(user_home);
-
   if (!CreateVaultDirectoryStructure(platform_,
                                      GetCommonSubdirectories(mount_point))) {
     return MOUNT_ERROR_FATAL;
   }
+
+  CopySkeleton(user_home);
 
   if (!MountHomesAndDaemonStores(username, obfuscated_username, user_home,
                                  root_home)) {
