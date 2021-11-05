@@ -59,7 +59,10 @@ bool FakeCr50Utils::EnableFactoryMode() const {
       !base::PathExists(block_ccd_file_path)) {
     const base::FilePath factory_mode_enabled_file_path =
         working_dir_path_.AppendASCII(kFactoryModeEnabledFilePath);
+    const base::FilePath reboot_request_file_path =
+        working_dir_path_.AppendASCII(kRebootRequestFilePath);
     brillo::TouchFile(factory_mode_enabled_file_path);
+    brillo::TouchFile(reboot_request_file_path);
     return true;
   }
   return false;

@@ -11,6 +11,7 @@
 
 #include <base/check.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/values.h>
@@ -20,6 +21,7 @@
 #include "rmad/system/fake_runtime_probe_client.h"
 #include "rmad/system/fake_shill_client.h"
 #include "rmad/system/fake_tpm_manager_client.h"
+#include "rmad/system/power_manager_client_impl.h"
 #include "rmad/system/runtime_probe_client_impl.h"
 #include "rmad/system/shill_client_impl.h"
 #include "rmad/system/tpm_manager_client_impl.h"
@@ -44,13 +46,15 @@ RmadInterfaceImpl::RmadInterfaceImpl(
     std::unique_ptr<StateHandlerManager> state_handler_manager,
     std::unique_ptr<RuntimeProbeClient> runtime_probe_client,
     std::unique_ptr<ShillClient> shill_client,
-    std::unique_ptr<TpmManagerClient> tpm_manager_client)
+    std::unique_ptr<TpmManagerClient> tpm_manager_client,
+    std::unique_ptr<PowerManagerClient> power_manager_client)
     : RmadInterface(),
       json_store_(json_store),
       state_handler_manager_(std::move(state_handler_manager)),
       runtime_probe_client_(std::move(runtime_probe_client)),
       shill_client_(std::move(shill_client)),
       tpm_manager_client_(std::move(tpm_manager_client)),
+      power_manager_client_(std::move(power_manager_client)),
       external_utils_initialized_(true),
       current_state_case_(RmadState::STATE_NOT_SET),
       test_mode_(false) {}
@@ -75,6 +79,9 @@ void RmadInterfaceImpl::InitializeExternalUtils() {
     shill_client_ = std::make_unique<fake::FakeShillClient>();
     tpm_manager_client_ =
         std::make_unique<fake::FakeTpmManagerClient>(test_dir_path);
+    // Still use the real power_manager.
+    power_manager_client_ =
+        std::make_unique<PowerManagerClientImpl>(GetSystemBus());
   } else {
     state_handler_manager_->RegisterStateHandlers();
     runtime_probe_client_ =
@@ -82,6 +89,8 @@ void RmadInterfaceImpl::InitializeExternalUtils() {
     shill_client_ = std::make_unique<ShillClientImpl>(GetSystemBus());
     tpm_manager_client_ =
         std::make_unique<TpmManagerClientImpl>(GetSystemBus());
+    power_manager_client_ =
+        std::make_unique<PowerManagerClientImpl>(GetSystemBus());
   }
 }
 
@@ -152,9 +161,11 @@ bool RmadInterfaceImpl::SetUp() {
     }
   }
 
-  // If we are in the RMA process, disable cellular to prevent accidentally
-  // using it.
-  // TODO(chenghan): Do this in a separate thread to shorten the response time.
+  // If we are in the RMA process:
+  //   1. Disable cellular to prevent accidentally using it.
+  //   2. Start monitoring test files if we are running in test mode.
+  // TODO(chenghan): Disable cellular in a separate thread to shorten the
+  //                 response time.
   if (current_state_case_ != RmadState::STATE_NOT_SET) {
     if (std::set<RmadComponent> components;
         runtime_probe_client_->ProbeCategories({RMAD_COMPONENT_CELLULAR},
@@ -162,6 +173,10 @@ bool RmadInterfaceImpl::SetUp() {
         components.count(RMAD_COMPONENT_CELLULAR) > 0) {
       LOG(INFO) << "Disabling cellular network";
       DCHECK(shill_client_->DisableCellular());
+    }
+    if (test_mode_) {
+      test_mode_monitor_timer_.Start(FROM_HERE, kTestModeMonitorInterval, this,
+                                     &RmadInterfaceImpl::MonitorTestRequests);
     }
   }
 
@@ -451,6 +466,18 @@ bool RmadInterfaceImpl::CanGoBack() const {
             prev_state_handler->IsRepeatable());
   }
   return false;
+}
+
+void RmadInterfaceImpl::MonitorTestRequests() {
+  const base::FilePath test_dir_path =
+      base::FilePath(kDefaultWorkingDirPath).AppendASCII(kTestDirPath);
+  // Check if reboot is requested.
+  const base::FilePath reboot_request_file_path =
+      test_dir_path.AppendASCII(fake::kRebootRequestFilePath);
+  if (base::PathExists(reboot_request_file_path)) {
+    base::DeleteFile(reboot_request_file_path);
+    power_manager_client_->Restart();
+  }
 }
 
 }  // namespace rmad

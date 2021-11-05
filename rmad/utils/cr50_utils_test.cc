@@ -165,6 +165,22 @@ class FakeCr50UtilsTest : public testing::Test {
   FakeCr50UtilsTest() = default;
   ~FakeCr50UtilsTest() override = default;
 
+  base::FilePath GetHwwpDisabledFilePath() const {
+    return temp_dir_.GetPath().AppendASCII(kHwwpDisabledFilePath);
+  }
+
+  base::FilePath GetFactoryModeEnabledFilePath() const {
+    return temp_dir_.GetPath().AppendASCII(kFactoryModeEnabledFilePath);
+  }
+
+  base::FilePath GetBlockCcdFilePath() const {
+    return temp_dir_.GetPath().AppendASCII(kBlockCcdFilePath);
+  }
+
+  base::FilePath GetRebootRequestFilePath() const {
+    return temp_dir_.GetPath().AppendASCII(kRebootRequestFilePath);
+  }
+
  protected:
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -182,34 +198,26 @@ TEST_F(FakeCr50UtilsTest, GetRsuChallengCode) {
 }
 
 TEST_F(FakeCr50UtilsTest, PerformRsu_Success) {
-  const base::FilePath factory_mode_enabled_file_path =
-      temp_dir_.GetPath().AppendASCII(kFactoryModeEnabledFilePath);
-  ASSERT_FALSE(base::PathExists(factory_mode_enabled_file_path));
+  ASSERT_FALSE(base::PathExists(GetFactoryModeEnabledFilePath()));
   ASSERT_TRUE(fake_cr50_utils_->PerformRsu("AAAAAAAA"));
-  ASSERT_TRUE(base::PathExists(factory_mode_enabled_file_path));
+  ASSERT_TRUE(base::PathExists(GetFactoryModeEnabledFilePath()));
 }
 
 TEST_F(FakeCr50UtilsTest, PerformRsu_AlreadyEnabled) {
-  const base::FilePath factory_mode_enabled_file_path =
-      temp_dir_.GetPath().AppendASCII(kFactoryModeEnabledFilePath);
-  brillo::TouchFile(factory_mode_enabled_file_path);
-  ASSERT_TRUE(base::PathExists(factory_mode_enabled_file_path));
+  brillo::TouchFile(GetFactoryModeEnabledFilePath());
+  ASSERT_TRUE(base::PathExists(GetFactoryModeEnabledFilePath()));
   ASSERT_TRUE(fake_cr50_utils_->PerformRsu("AAAAAAAA"));
-  ASSERT_TRUE(base::PathExists(factory_mode_enabled_file_path));
+  ASSERT_TRUE(base::PathExists(GetFactoryModeEnabledFilePath()));
 }
 
 TEST_F(FakeCr50UtilsTest, PerformRsu_Fail) {
-  const base::FilePath factory_mode_enabled_file_path =
-      temp_dir_.GetPath().AppendASCII(kFactoryModeEnabledFilePath);
-  ASSERT_FALSE(base::PathExists(factory_mode_enabled_file_path));
+  ASSERT_FALSE(base::PathExists(GetFactoryModeEnabledFilePath()));
   ASSERT_FALSE(fake_cr50_utils_->PerformRsu("AAAAAAAB"));
-  ASSERT_FALSE(base::PathExists(factory_mode_enabled_file_path));
+  ASSERT_FALSE(base::PathExists(GetFactoryModeEnabledFilePath()));
 }
 
 TEST_F(FakeCr50UtilsTest, IsFactoryModeEnabled_Enabled) {
-  const base::FilePath factory_mode_enabled_file_path =
-      temp_dir_.GetPath().AppendASCII(kFactoryModeEnabledFilePath);
-  brillo::TouchFile(factory_mode_enabled_file_path);
+  brillo::TouchFile(GetFactoryModeEnabledFilePath());
   ASSERT_TRUE(fake_cr50_utils_->IsFactoryModeEnabled());
 }
 
@@ -218,46 +226,31 @@ TEST_F(FakeCr50UtilsTest, IsFactoryModeEnabled_Disabled) {
 }
 
 TEST_F(FakeCr50UtilsTest, EnableFactoryMode_Success) {
-  const base::FilePath hwwp_disabled_file_path =
-      temp_dir_.GetPath().AppendASCII(kHwwpDisabledFilePath);
-  brillo::TouchFile(hwwp_disabled_file_path);
-
-  const base::FilePath factory_mode_enabled_file_path =
-      temp_dir_.GetPath().AppendASCII(kFactoryModeEnabledFilePath);
-  ASSERT_FALSE(base::PathExists(factory_mode_enabled_file_path));
+  brillo::TouchFile(GetHwwpDisabledFilePath());
+  ASSERT_FALSE(base::PathExists(GetFactoryModeEnabledFilePath()));
+  ASSERT_FALSE(base::PathExists(GetRebootRequestFilePath()));
   ASSERT_TRUE(fake_cr50_utils_->EnableFactoryMode());
-  ASSERT_TRUE(base::PathExists(factory_mode_enabled_file_path));
+  ASSERT_TRUE(base::PathExists(GetFactoryModeEnabledFilePath()));
+  ASSERT_TRUE(base::PathExists(GetRebootRequestFilePath()));
 }
 
 TEST_F(FakeCr50UtilsTest, EnableFactoryMode_AlreadyEnabled) {
-  const base::FilePath factory_mode_enabled_file_path =
-      temp_dir_.GetPath().AppendASCII(kFactoryModeEnabledFilePath);
-  brillo::TouchFile(factory_mode_enabled_file_path);
-
-  ASSERT_TRUE(base::PathExists(factory_mode_enabled_file_path));
+  brillo::TouchFile(GetFactoryModeEnabledFilePath());
+  ASSERT_TRUE(base::PathExists(GetFactoryModeEnabledFilePath()));
   ASSERT_TRUE(fake_cr50_utils_->EnableFactoryMode());
-  ASSERT_TRUE(base::PathExists(factory_mode_enabled_file_path));
+  ASSERT_TRUE(base::PathExists(GetFactoryModeEnabledFilePath()));
 }
 
 TEST_F(FakeCr50UtilsTest, EnableFactoryMode_HwwpDisabled) {
-  const base::FilePath factory_mode_enabled_file_path =
-      temp_dir_.GetPath().AppendASCII(kFactoryModeEnabledFilePath);
   ASSERT_FALSE(fake_cr50_utils_->EnableFactoryMode());
-  ASSERT_FALSE(base::PathExists(factory_mode_enabled_file_path));
+  ASSERT_FALSE(base::PathExists(GetFactoryModeEnabledFilePath()));
 }
 
 TEST_F(FakeCr50UtilsTest, EnableFactoryMode_CcdBlocked) {
-  const base::FilePath hwwp_disabled_file_path =
-      temp_dir_.GetPath().AppendASCII(kHwwpDisabledFilePath);
-  const base::FilePath block_ccd_file_path =
-      temp_dir_.GetPath().AppendASCII(kBlockCcdFilePath);
-  brillo::TouchFile(hwwp_disabled_file_path);
-  brillo::TouchFile(block_ccd_file_path);
-
-  const base::FilePath factory_mode_enabled_file_path =
-      temp_dir_.GetPath().AppendASCII(kFactoryModeEnabledFilePath);
+  brillo::TouchFile(GetHwwpDisabledFilePath());
+  brillo::TouchFile(GetBlockCcdFilePath());
   ASSERT_FALSE(fake_cr50_utils_->EnableFactoryMode());
-  ASSERT_FALSE(base::PathExists(factory_mode_enabled_file_path));
+  ASSERT_FALSE(base::PathExists(GetFactoryModeEnabledFilePath()));
 }
 
 }  // namespace fake

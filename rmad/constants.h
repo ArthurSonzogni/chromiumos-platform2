@@ -49,6 +49,8 @@ inline constexpr std::array<RmadComponent, 2> kComponentsNeedAutoCalibration = {
 // Constants for fake utilities.
 namespace fake {
 
+inline constexpr char kRebootRequestFilePath[] = "reboot_request";
+
 inline constexpr char kRoVerificationStatusFilePath[] =
     "ro_verification_status";
 inline constexpr char kHwVerificationResultFilePath[] =
