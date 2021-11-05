@@ -19,8 +19,14 @@
 #include <base/notreached.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/auth_block_state.h"
-#include "cryptohome/challenge_credential_auth_block.h"
+#include "cryptohome/auth_blocks/auth_block_state.h"
+#include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
+#include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
+#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
+#include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
+#include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
+#include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
+#include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto/secure_blob_util.h"
@@ -28,17 +34,11 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/double_wrapped_compat_auth_block.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/libscrypt_compat.h"
-#include "cryptohome/libscrypt_compat_auth_block.h"
-#include "cryptohome/pin_weaver_auth_block.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm.h"
-#include "cryptohome/tpm_bound_to_pcr_auth_block.h"
-#include "cryptohome/tpm_ecc_auth_block.h"
-#include "cryptohome/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 using base::FilePath;

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/auth_block.h"
+#include "cryptohome/auth_blocks/auth_block.h"
 
 #include <memory>
 #include <string>
@@ -14,26 +14,26 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
-#include "cryptohome/auth_block_state.h"
+#include "cryptohome/auth_blocks/auth_block_state.h"
+#include "cryptohome/auth_blocks/cryptohome_recovery_auth_block.h"
+#include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
+#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
+#include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
+#include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
+#include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
+#include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/elliptic_curve_error.h"
 #include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/crypto_error.h"
-#include "cryptohome/cryptohome_recovery_auth_block.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
-#include "cryptohome/double_wrapped_compat_auth_block.h"
-#include "cryptohome/libscrypt_compat_auth_block.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_le_credential_backend.h"
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_tpm.h"
-#include "cryptohome/pin_weaver_auth_block.h"
-#include "cryptohome/tpm_bound_to_pcr_auth_block.h"
-#include "cryptohome/tpm_ecc_auth_block.h"
-#include "cryptohome/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/vault_keyset.h"
 
 using cryptohome::cryptorecovery::FakeRecoveryMediatorCrypto;

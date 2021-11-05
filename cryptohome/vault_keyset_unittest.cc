@@ -20,7 +20,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "cryptohome/auth_block_state.h"
+#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hmac.h"

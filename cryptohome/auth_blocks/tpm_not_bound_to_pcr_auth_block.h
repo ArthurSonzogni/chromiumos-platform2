@@ -2,21 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_TPM_NOT_BOUND_TO_PCR_AUTH_BLOCK_H_
-#define CRYPTOHOME_TPM_NOT_BOUND_TO_PCR_AUTH_BLOCK_H_
+#ifndef CRYPTOHOME_AUTH_BLOCKS_TPM_NOT_BOUND_TO_PCR_AUTH_BLOCK_H_
+#define CRYPTOHOME_AUTH_BLOCKS_TPM_NOT_BOUND_TO_PCR_AUTH_BLOCK_H_
 
-#include "cryptohome/auth_block.h"
+#include "cryptohome/auth_blocks/auth_block.h"
 
 #include <string>
 
 #include <base/gtest_prod_util.h>
 #include <base/macros.h>
 
-#include "cryptohome/auth_block_state.h"
+#include "cryptohome/auth_blocks/auth_block_state.h"
+#include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/tpm.h"
-#include "cryptohome/tpm_auth_block_utils.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
@@ -57,4 +57,4 @@ class TpmNotBoundToPcrAuthBlock : public SyncAuthBlock {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_TPM_NOT_BOUND_TO_PCR_AUTH_BLOCK_H_
+#endif  // CRYPTOHOME_AUTH_BLOCKS_TPM_NOT_BOUND_TO_PCR_AUTH_BLOCK_H_

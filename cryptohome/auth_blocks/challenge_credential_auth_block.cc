@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/challenge_credential_auth_block.h"
+#include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
 
 #include <utility>
 
@@ -10,10 +10,10 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 
-#include "cryptohome/auth_block_state.h"
+#include "cryptohome/auth_blocks/auth_block_state.h"
+#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/libscrypt_compat_auth_block.h"
 
 namespace cryptohome {
 

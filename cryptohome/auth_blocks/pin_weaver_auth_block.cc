@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/pin_weaver_auth_block.h"
+#include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 
 #include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -20,7 +20,7 @@
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/auth_block_state.h"
+#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto/secure_blob_util.h"
@@ -169,8 +169,9 @@ CryptoError PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   }
 
   // Create a randomly generated high entropy secret, derive VKKSeed from it,
-  // and use that to generate a VKK. The HE secret will be stored in the
-  // LECredentialManager, along with the LE secret (which is |le_secret| here).
+  // and use that to generate a VKK. The High Entropy secret will be stored in
+  // the LECredentialManager, along with the LE secret (which is |le_secret|
+  // here).
   brillo::SecureBlob he_secret = CreateSecureRandomBlob(kDefaultSecretSize);
 
   // Derive the VKK_seed by performing an HMAC on he_secret.
@@ -189,7 +190,8 @@ CryptoError PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   key_blobs->chaps_iv = chaps_iv;
 
   // Once we are able to correctly set up the VaultKeyset encryption,
-  // store the LE and HE credential in the LECredentialManager.
+  // store the Low Entropy and High Entropy credential in the
+  // LECredentialManager.
 
   // Use the default delay schedule for now.
   std::map<uint32_t, uint32_t> delay_sched;
@@ -254,7 +256,7 @@ CryptoError PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
   key_blobs->chaps_iv = auth_state->chaps_iv.value();
   key_blobs->vkk_iv = auth_state->fek_iv.value();
 
-  // Try to obtain the HE Secret from the LECredentialManager.
+  // Try to obtain the High Entropy Secret from the LECredentialManager.
   brillo::SecureBlob he_secret;
   int ret = le_manager_->CheckCredential(auth_state->le_label.value(),
                                          le_secret, &he_secret,

@@ -15,7 +15,7 @@
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/auth_block_state.h"
+#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"

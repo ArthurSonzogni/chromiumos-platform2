@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/libscrypt_compat_auth_block.h"
+#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
 
 #include <memory>
 #include <utility>
@@ -10,7 +10,7 @@
 #include <absl/types/variant.h>
 #include <base/logging.h>
 
-#include "cryptohome/auth_block_state.h"
+#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_metrics.h"

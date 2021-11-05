@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_TPM_AUTH_BLOCK_UTILS_H_
-#define CRYPTOHOME_TPM_AUTH_BLOCK_UTILS_H_
+#ifndef CRYPTOHOME_AUTH_BLOCKS_TPM_AUTH_BLOCK_UTILS_H_
+#define CRYPTOHOME_AUTH_BLOCKS_TPM_AUTH_BLOCK_UTILS_H_
 
 #include <base/macros.h>
 
@@ -47,4 +47,4 @@ class TpmAuthBlockUtils {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_TPM_AUTH_BLOCK_UTILS_H_
+#endif  // CRYPTOHOME_AUTH_BLOCKS_TPM_AUTH_BLOCK_UTILS_H_

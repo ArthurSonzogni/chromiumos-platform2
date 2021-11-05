@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include "cryptohome/auth_block.h"
+#include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/keyset_management.h"

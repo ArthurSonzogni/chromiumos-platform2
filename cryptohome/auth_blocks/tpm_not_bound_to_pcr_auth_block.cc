@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/tpm_not_bound_to_pcr_auth_block.h"
+#include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 
 #include <map>
 #include <string>
@@ -14,6 +14,7 @@
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hmac.h"
@@ -23,7 +24,6 @@
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/tpm.h"
-#include "cryptohome/tpm_auth_block_utils.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 using hwsec::error::TPMErrorBase;

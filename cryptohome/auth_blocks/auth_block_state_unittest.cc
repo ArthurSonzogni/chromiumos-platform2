@@ -10,8 +10,8 @@
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
-#include "cryptohome/auth_block_state.h"
 #include "cryptohome/auth_block_state_generated.h"
+#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/flatbuffer_secure_allocator_bridge.h"
 
 namespace cryptohome {

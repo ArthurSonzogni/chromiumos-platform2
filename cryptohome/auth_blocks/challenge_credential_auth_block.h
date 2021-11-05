@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_CHALLENGE_CREDENTIAL_AUTH_BLOCK_H_
-#define CRYPTOHOME_CHALLENGE_CREDENTIAL_AUTH_BLOCK_H_
+#ifndef CRYPTOHOME_AUTH_BLOCKS_CHALLENGE_CREDENTIAL_AUTH_BLOCK_H_
+#define CRYPTOHOME_AUTH_BLOCKS_CHALLENGE_CREDENTIAL_AUTH_BLOCK_H_
 
-#include "cryptohome/auth_block_state.h"
-#include "cryptohome/libscrypt_compat_auth_block.h"
+#include "cryptohome/auth_blocks/auth_block_state.h"
+#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
 
 namespace cryptohome {
 
@@ -28,4 +28,4 @@ class ChallengeCredentialAuthBlock : public LibScryptCompatAuthBlock {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_CHALLENGE_CREDENTIAL_AUTH_BLOCK_H_
+#endif  // CRYPTOHOME_AUTH_BLOCKS_CHALLENGE_CREDENTIAL_AUTH_BLOCK_H_

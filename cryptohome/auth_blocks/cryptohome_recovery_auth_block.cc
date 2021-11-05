@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/cryptohome_recovery_auth_block.h"
+#include "cryptohome/auth_blocks/cryptohome_recovery_auth_block.h"
 
 #include <memory>
 #include <utility>
@@ -12,7 +12,7 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/auth_block_state.h"
+#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hkdf.h"
 #include "cryptohome/crypto/scrypt.h"

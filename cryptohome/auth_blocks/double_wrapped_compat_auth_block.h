@@ -2,19 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_DOUBLE_WRAPPED_COMPAT_AUTH_BLOCK_H_
-#define CRYPTOHOME_DOUBLE_WRAPPED_COMPAT_AUTH_BLOCK_H_
+#ifndef CRYPTOHOME_AUTH_BLOCKS_DOUBLE_WRAPPED_COMPAT_AUTH_BLOCK_H_
+#define CRYPTOHOME_AUTH_BLOCKS_DOUBLE_WRAPPED_COMPAT_AUTH_BLOCK_H_
 
-#include "cryptohome/auth_block.h"
+#include "cryptohome/auth_blocks/auth_block.h"
 
 #include <memory>
 
 #include <base/gtest_prod_util.h>
 #include <base/macros.h>
 
-#include "cryptohome/auth_block_state.h"
-#include "cryptohome/libscrypt_compat_auth_block.h"
-#include "cryptohome/tpm_not_bound_to_pcr_auth_block.h"
+#include "cryptohome/auth_blocks/auth_block_state.h"
+#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
+#include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 
 namespace cryptohome {
 
@@ -47,4 +47,4 @@ class DoubleWrappedCompatAuthBlock : public SyncAuthBlock {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_DOUBLE_WRAPPED_COMPAT_AUTH_BLOCK_H_
+#endif  // CRYPTOHOME_AUTH_BLOCKS_DOUBLE_WRAPPED_COMPAT_AUTH_BLOCK_H_

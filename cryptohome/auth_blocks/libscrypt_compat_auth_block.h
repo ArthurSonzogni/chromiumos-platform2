@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_LIBSCRYPT_COMPAT_AUTH_BLOCK_H_
-#define CRYPTOHOME_LIBSCRYPT_COMPAT_AUTH_BLOCK_H_
+#ifndef CRYPTOHOME_AUTH_BLOCKS_LIBSCRYPT_COMPAT_AUTH_BLOCK_H_
+#define CRYPTOHOME_AUTH_BLOCKS_LIBSCRYPT_COMPAT_AUTH_BLOCK_H_
 
-#include "cryptohome/auth_block.h"
-#include "cryptohome/auth_block_state.h"
+#include "cryptohome/auth_blocks/auth_block.h"
+#include "cryptohome/auth_blocks/auth_block_state.h"
 
 namespace cryptohome {
 
@@ -45,4 +45,4 @@ class LibScryptCompatAuthBlock : public SyncAuthBlock {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_LIBSCRYPT_COMPAT_AUTH_BLOCK_H_
+#endif  // CRYPTOHOME_AUTH_BLOCKS_LIBSCRYPT_COMPAT_AUTH_BLOCK_H_
