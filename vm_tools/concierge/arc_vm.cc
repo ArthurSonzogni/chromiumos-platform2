@@ -70,9 +70,6 @@ constexpr char kKeyToOverrideKernelPath[] = "KERNEL_PATH";
 // Custom parameter key to override the o_direct= disk parameter.
 constexpr char kKeyToOverrideODirect[] = "O_DIRECT";
 
-// Custom parameter key to override the o_direct= disk parameter.
-constexpr char kKeyToBlockSize[] = "BLOCK_SIZE";
-
 // Shared directories and their tags
 constexpr char kOemEtcSharedDir[] = "/run/arcvm/host_generated/oem/etc";
 constexpr char kOemEtcSharedDirTag[] = "oem_etc";
@@ -316,18 +313,6 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
         return false;
       }
       custom_parameters = CustomParametersForDev(data);
-    }
-  }
-
-  if (auto block_size_string =
-          custom_parameters.ObtainSpecialParameter(kKeyToBlockSize);
-      block_size_string) {
-    uint64_t block_size_number;
-    if (base::StringToUint64(block_size_string.value(), &block_size_number)) {
-      vm_builder.SetBlockSize(block_size_number);
-    } else {
-      LOG(ERROR) << block_size_string.value() << " is not a valid number";
-      return false;
     }
   }
 

@@ -4,6 +4,7 @@
 
 #include "vm_tools/concierge/vm_util.h"
 
+#include <base/containers/contains.h>
 #include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -14,6 +15,13 @@ namespace {
 void LoadCustomParameters(const std::string& data, base::StringPairs* args) {
   CustomParametersForDev custom(data);
   custom.Apply(args);
+}
+std::string JoinStringPairs(const base::StringPairs& pairs) {
+  std::string result;
+  for (auto& pair : pairs) {
+    result += (pair.first + "=" + pair.second + " ");
+  }
+  return result;
 }
 }  // namespace
 
@@ -150,22 +158,17 @@ TEST(CustomParametersForDevTest, ODirect) {
   EXPECT_THAT(o_direct, "true");
 }
 
-TEST(CustomParametersForDevTest, BlockSize) {
-  base::StringPairs args = {{"--Key1", "Value1"}};
-  CustomParametersForDev custom(R"(BLOCK_SIZE=4096)");
-  custom.Apply(&args);
+TEST(VMUtilTest, BlockSize) {
+  Disk::Config config;
+  Disk disk(base::FilePath("/path/to/image.img"), config);
+  EXPECT_FALSE(
+      base::Contains(JoinStringPairs(disk.GetCrosvmArgs()), "block_size"));
 
-  auto block_size_string = custom.ObtainSpecialParameter("BLOCK_SIZE");
-  EXPECT_TRUE(block_size_string);
-  uint64_t block_size_number;
+  config.block_size = 4096;
+  Disk disk_with_block_size(base::FilePath("/path/to/image.img"), config);
   EXPECT_TRUE(
-      base::StringToUint64(block_size_string.value(), &block_size_number));
-  EXPECT_EQ(block_size_number, 4096);
-
-  base::StringPairs expected{
-      {"--Key1", "Value1"},
-  };
-  EXPECT_THAT(args, testing::ContainerEq(expected));
+      base::Contains(JoinStringPairs(disk_with_block_size.GetCrosvmArgs()),
+                     "block_size=4096"));
 }
 
 TEST(VMUtilTest, GetCpuAffinityFromClustersNoGroups) {
