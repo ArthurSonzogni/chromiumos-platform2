@@ -303,8 +303,6 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
 
   // A PPP authentication failure means the Service is not auto-connectable.
   service_->SetFailure(Service::kFailurePPPAuth);
-  // Reset Service::time_since_failed_ to avoid triggering the throttle.
-  service_->failed_time_ = base::Time();
   EXPECT_FALSE(IsAutoConnectable(&reason));
   EXPECT_STREQ(CellularService::kAutoConnBadPPPCredentials, reason);
 

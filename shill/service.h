@@ -299,10 +299,6 @@ class Service : public base::RefCounted<Service> {
   // Returns a TimeDelta from |failed_time_| or nullopt if unset (no failure).
   base::Optional<base::TimeDelta> GetTimeSinceFailed() const;
 
-  void set_failed_time_for_testing(base::Time failed_time) {
-    failed_time_ = failed_time;
-  }
-
   unsigned int serial_number() const { return serial_number_; }
   const std::string& log_name() const { return log_name_; }
 
@@ -794,7 +790,6 @@ class Service : public base::RefCounted<Service> {
   static const char kAutoConnTechnologyNotAutoConnectable[];
   static const char kAutoConnThrottled[];
   static const char kAutoConnMediumUnavailable[];
-  static const char kAutoConnRecentConnFailure[];
 
  private:
   friend class EthernetEapServiceTest;

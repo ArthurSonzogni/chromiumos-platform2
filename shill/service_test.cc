@@ -148,10 +148,6 @@ class ServiceTest : public PropertyStoreTest {
     return service_->previous_state_;
   }
 
-  void SetTechnology(Technology technology) {
-    service_->technology_ = technology;
-  }
-
   void NoteFailureEvent() { service_->NoteFailureEvent(); }
 
   EventHistory* GetDisconnects() { return &service_->disconnects_; }
@@ -192,10 +188,6 @@ class ServiceTest : public PropertyStoreTest {
   bool GetAutoConnect(Error* error) { return service_->GetAutoConnect(error); }
 
   void ClearAutoConnect(Error* error) { service_->ClearAutoConnect(error); }
-
-  bool IsAutoConnectable(const char** reason) {
-    return service_->IsAutoConnectable(reason);
-  }
 
   bool SetAutoConnectFull(bool connect, Error* error) {
     return service_->SetAutoConnectFull(connect, error);
@@ -1117,20 +1109,6 @@ TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
   reason = "";
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
   EXPECT_STREQ("", reason);
-}
-
-TEST_F(ServiceTest, SkipAutoConnectAfterRecentConnectionFailure) {
-  const char* reason;
-  service_->SetConnectable(true);
-  SetTechnology(Technology::kWifi);
-  EXPECT_TRUE(IsAutoConnectable(&reason));
-
-  service_->set_failed_time_for_testing(base::Time::Now());
-  ScopedMockLog log;
-  EXPECT_CALL(
-      log, Log(logging::LOGGING_INFO, _, HasSubstr("Skipping autoconnect to")))
-      .Times(1);
-  service_->AutoConnect();
 }
 
 TEST_F(ServiceTest, ConfigureBadProperty) {
