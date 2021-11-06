@@ -133,8 +133,7 @@ BRILLO_EXPORT uint16_t Ipv4Checksum(const iphdr* ip);
 BRILLO_EXPORT uint16_t Udpv4Checksum(const uint8_t* udp_packet, ssize_t len);
 
 // ICMPv6 checksum is defined in RFC 8200 Section 8.1
-BRILLO_EXPORT uint16_t Icmpv6Checksum(const ip6_hdr* ip6,
-                                      const icmp6_hdr* icmp6);
+BRILLO_EXPORT uint16_t Icmpv6Checksum(const uint8_t* icmp6_packet, ssize_t len);
 
 // Returns true if multicast forwarding should be enabled for this interface.
 BRILLO_EXPORT bool IsMulticastInterface(const std::string& ifname);

@@ -117,7 +117,9 @@ class NDProxy {
                                      uint8_t opt_type,
                                      const MacAddress& target_mac);
 
-  static void ReplaceSourceIP(uint8_t* frame, const in6_addr& src_ip);
+  static void ReplaceSourceIP(uint8_t* frame,
+                              ssize_t frame_len,
+                              const in6_addr& src_ip);
 
   // Get MAC address on a local interface through ioctl().
   // Returns false upon failure.

@@ -276,7 +276,15 @@ uint16_t Udpv4Checksum(const uint8_t* udp_packet, ssize_t len) {
   return FoldChecksum(sum);
 }
 
-uint16_t Icmpv6Checksum(const ip6_hdr* ip6, const icmp6_hdr* icmp6) {
+uint16_t Icmpv6Checksum(const uint8_t* ip6_packet, ssize_t len) {
+  if (len < sizeof(ip6_hdr) + sizeof(icmp6_hdr)) {
+    LOG(ERROR) << "ICMPv6 packet length is too small";
+    return 0;
+  }
+
+  const struct ip6_hdr* ip6 =
+      reinterpret_cast<const struct ip6_hdr*>(ip6_packet);
+
   uint32_t sum = 0;
   // Src and Dst IP
   for (size_t i = 0; i < (sizeof(struct in6_addr) >> 1); ++i)
@@ -290,7 +298,10 @@ uint16_t Icmpv6Checksum(const ip6_hdr* ip6, const icmp6_hdr* icmp6) {
   sum += IPPROTO_ICMPV6 << 8;
 
   // ICMP
-  sum += NetChecksum(icmp6, ntohs(ip6->ip6_plen));
+  const struct icmp6_hdr* icmp6 =
+      reinterpret_cast<const struct icmp6_hdr*>(ip6_packet + sizeof(ip6_hdr));
+  ssize_t icmp6_len = len - sizeof(ip6_hdr);
+  sum += NetChecksum(icmp6, icmp6_len);
 
   return FoldChecksum(sum);
 }

@@ -35,11 +35,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   Udpv4Checksum(data, size);
 
   // Icmpv6Checksum
-  ip6_hdr ip6;
-  icmp6_hdr icmp6;
-  memcpy(&ip6, data, std::min(size, sizeof(ip6_hdr)));
-  memcpy(&icmp6, data, std::min(size, sizeof(icmp6_hdr)));
-  Icmpv6Checksum(&ip6, &icmp6);
+  Icmpv6Checksum(data, size);
 
   // GetIpFamily
   std::string ip_address(reinterpret_cast<const char*>(data), size);

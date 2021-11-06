@@ -228,13 +228,24 @@ ssize_t NDProxy::TranslateNDFrame(const uint8_t* in_frame,
   // We need to clear the old checksum first so checksum calculation does not
   // wrongly take old checksum into account.
   icmp6->icmp6_cksum = 0;
-  icmp6->icmp6_cksum = Icmpv6Checksum(ip6, icmp6);
+
+  // Just get the length of the ip6 packet.
+  ssize_t ip6_len = frame_len - ETHER_HDR_LEN;
+  icmp6->icmp6_cksum =
+      Icmpv6Checksum(reinterpret_cast<const uint8_t*>(ip6), ip6_len);
 
   memcpy(eth->h_source, local_mac_addr.data(), ETHER_ADDR_LEN);
   return frame_len;
 }
 
-void NDProxy::ReplaceSourceIP(uint8_t* frame, const in6_addr& src_ip) {
+void NDProxy::ReplaceSourceIP(uint8_t* frame,
+                              ssize_t frame_len,
+                              const in6_addr& src_ip) {
+  if (frame_len < (ETHER_HDR_LEN + sizeof(ip6_hdr) + sizeof(icmp6_hdr))) {
+    LOG(ERROR) << "Invalid frame length for ICMPv6 frame " << frame_len;
+    return;
+  }
+
   ip6_hdr* ip6 = reinterpret_cast<ip6_hdr*>(frame + ETHER_HDR_LEN);
   icmp6_hdr* icmp6 =
       reinterpret_cast<icmp6_hdr*>(frame + ETHER_HDR_LEN + sizeof(ip6_hdr));
@@ -243,7 +254,11 @@ void NDProxy::ReplaceSourceIP(uint8_t* frame, const in6_addr& src_ip) {
 
   // Recalculate checksum.
   icmp6->icmp6_cksum = 0;
-  icmp6->icmp6_cksum = Icmpv6Checksum(ip6, icmp6);
+
+  // Exclude the ether header from the checksum.
+  ssize_t ip6_len = frame_len - ETHER_HDR_LEN;
+  icmp6->icmp6_cksum =
+      Icmpv6Checksum(reinterpret_cast<const uint8_t*>(ip6), ip6_len);
 }
 
 void NDProxy::ReadAndProcessOneFrame(int fd) {
@@ -419,7 +434,7 @@ void NDProxy::ReadAndProcessOneFrame(int fd) {
                      << target_if;
         return;
       }
-      ReplaceSourceIP(out_frame_buffer_, new_src);
+      ReplaceSourceIP(out_frame_buffer_, len, new_src);
     }
 
     struct iovec iov_out = {
