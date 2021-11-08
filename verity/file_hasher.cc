@@ -12,6 +12,7 @@
 #include <linux/fs.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 
 #include <string>
 #include <vector>
