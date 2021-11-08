@@ -9,9 +9,13 @@ group("all") {
   deps = [
     ":featured",
     ":libfeatures",
+    ":libfeatures_c",
   ]
   if (use.test) {
-    deps += [ ":feature_library_test" ]
+    deps += [
+      ":c_feature_check_example",
+      ":feature_library_test",
+    ]
   }
 }
 
@@ -43,6 +47,12 @@ shared_library("libfeatures") {
   configs += [ ":target_defaults" ]
 }
 
+shared_library("libfeatures_c") {
+  sources = [ "c_feature_library.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libfeatures" ]
+}
+
 if (use.test) {
   pkg_config("test_helper_config") {
     pkg_deps = [
@@ -63,5 +73,10 @@ if (use.test) {
       ":libfeatures",
       "//common-mk/testrunner:testrunner",
     ]
+  }
+
+  executable("c_feature_check_example") {
+    sources = [ "c_feature_check_example.c" ]
+    deps = [ ":libfeatures_c" ]
   }
 }
