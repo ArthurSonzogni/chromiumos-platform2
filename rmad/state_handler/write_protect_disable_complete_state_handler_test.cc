@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 
 #include "rmad/constants.h"
+#include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/write_protect_disable_complete_state_handler.h"
 
@@ -27,42 +28,30 @@ class WriteProtectDisableCompleteStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest,
-       InitializeState_KeepDeviceOpen_WpDisableSkipped) {
-  // Should not happen in real use case.
-  auto handler = CreateStateHandler(true, true);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  EXPECT_EQ(handler->GetState().wp_disable_complete().keep_device_open(), true);
-  EXPECT_EQ(handler->GetState().wp_disable_complete().wp_disable_skipped(),
-            true);
-}
-
-TEST_F(WriteProtectDisableCompleteStateHandlerTest,
        InitializeState_KeepDeviceOpen_WpDisableNotSkipped) {
   auto handler = CreateStateHandler(true, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  EXPECT_EQ(handler->GetState().wp_disable_complete().keep_device_open(), true);
-  EXPECT_EQ(handler->GetState().wp_disable_complete().wp_disable_skipped(),
-            false);
+  EXPECT_EQ(handler->GetState().wp_disable_complete().action(),
+            WriteProtectDisableCompleteState::
+                RMAD_WP_DISABLE_COMPLETE_KEEP_DEVICE_OPEN);
 }
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest,
        InitializeState_CanCloseDevice_WpDisableSkipped) {
   auto handler = CreateStateHandler(false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  EXPECT_EQ(handler->GetState().wp_disable_complete().keep_device_open(),
-            false);
-  EXPECT_EQ(handler->GetState().wp_disable_complete().wp_disable_skipped(),
-            true);
+  EXPECT_EQ(handler->GetState().wp_disable_complete().action(),
+            WriteProtectDisableCompleteState::
+                RMAD_WP_DISABLE_SKIPPED_ASSEMBLE_DEVICE);
 }
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest,
        InitializeState_CanCloseDevice_WpDisableNotSkipped) {
   auto handler = CreateStateHandler(false, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  EXPECT_EQ(handler->GetState().wp_disable_complete().keep_device_open(),
-            false);
-  EXPECT_EQ(handler->GetState().wp_disable_complete().wp_disable_skipped(),
-            false);
+  EXPECT_EQ(handler->GetState().wp_disable_complete().action(),
+            WriteProtectDisableCompleteState::
+                RMAD_WP_DISABLE_COMPLETE_ASSEMBLE_DEVICE);
 }
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest, GetNextStateCase_Success) {

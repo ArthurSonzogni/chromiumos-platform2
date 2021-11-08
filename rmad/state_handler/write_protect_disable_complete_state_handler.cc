@@ -10,6 +10,7 @@
 #include <base/logging.h>
 
 #include "rmad/constants.h"
+#include "rmad/proto_bindings/rmad.pb.h"
 
 namespace rmad {
 
@@ -28,18 +29,27 @@ WriteProtectDisableCompleteStateHandler::
 }
 
 RmadErrorCode WriteProtectDisableCompleteStateHandler::InitializeState() {
-  // Always probe again when entering the state.
+  // Always check again when entering the state.
   auto wp_disable_complete =
       std::make_unique<WriteProtectDisableCompleteState>();
-  // Need to keep device open to disable hardware write protect if the flag is
-  // set in |json_store_|.
-  bool keep_device_open = false;
-  json_store_->GetValue(kKeepDeviceOpen, &keep_device_open);
-  wp_disable_complete->set_keep_device_open(keep_device_open);
-  // Check if WP disabling steps are skipped.
   bool wp_disable_skipped = false;
   json_store_->GetValue(kWpDisableSkipped, &wp_disable_skipped);
-  wp_disable_complete->set_wp_disable_skipped(wp_disable_skipped);
+  bool keep_device_open = false;
+  json_store_->GetValue(kKeepDeviceOpen, &keep_device_open);
+
+  if (wp_disable_skipped) {
+    wp_disable_complete->set_action(
+        WriteProtectDisableCompleteState::
+            RMAD_WP_DISABLE_SKIPPED_ASSEMBLE_DEVICE);
+  } else if (keep_device_open) {
+    wp_disable_complete->set_action(
+        WriteProtectDisableCompleteState::
+            RMAD_WP_DISABLE_COMPLETE_KEEP_DEVICE_OPEN);
+  } else {
+    wp_disable_complete->set_action(
+        WriteProtectDisableCompleteState::
+            RMAD_WP_DISABLE_COMPLETE_ASSEMBLE_DEVICE);
+  }
 
   state_.set_allocated_wp_disable_complete(wp_disable_complete.release());
   return RMAD_ERROR_OK;
