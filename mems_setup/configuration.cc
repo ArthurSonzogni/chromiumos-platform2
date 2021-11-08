@@ -62,7 +62,7 @@ constexpr char kCalibrationScale[] = "scale";
 constexpr char kSysfsTriggerPrefix[] = "sysfstrig";
 
 constexpr int kGyroMaxVpdCalibration = 16384;  // 16dps
-constexpr int kAccelMaxVpdCalibration = 103;   // .100g
+constexpr int kAccelMaxVpdCalibration = 256;   // .250g
 constexpr int kAccelSysfsTriggerId = 0;
 
 constexpr int kSysfsTriggerId = -1;
