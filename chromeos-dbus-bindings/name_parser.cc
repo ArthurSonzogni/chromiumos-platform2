@@ -4,6 +4,7 @@
 
 #include "chromeos-dbus-bindings/name_parser.h"
 
+#include <iostream>
 #include <string>
 
 #include <base/check.h>
