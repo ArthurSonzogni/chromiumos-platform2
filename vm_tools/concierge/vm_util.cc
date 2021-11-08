@@ -39,13 +39,17 @@ namespace concierge {
 
 const char kCrosvmBin[] = "/usr/bin/crosvm";
 
-const char kAndroidUidMap[] = "0 655360 5000,5000 600 50,5050 660410 1994950";
+namespace {
 
-const char kAndroidGidMap[] =
+// Uid and gid mappings for the android data directory. This is a
+// comma-separated list of 3 values: <start of range inside the user namespace>
+// <start of range outside the user namespace> <count>. The values are taken
+// from platform2/arc/container-bundle/pi/config.json.
+constexpr char kAndroidUidMap[] =
+    "0 655360 5000,5000 600 50,5050 660410 1994950";
+constexpr char kAndroidGidMap[] =
     "0 655360 1065,1065 20119 1,1066 656426 3934,5000 600 50,5050 660410 "
     "1994950";
-
-namespace {
 
 // Examples of the format of the given string can be seen at the enum
 // UsbControlResponseType definition.

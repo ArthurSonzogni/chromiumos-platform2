@@ -70,13 +70,6 @@ class Disk {
 // Path to the crosvm binary.
 extern const char kCrosvmBin[];
 
-// Uid and gid mappings for the android data directory. This is a
-// comma-separated list of 3 values: <start of range inside the user namespace>
-// <start of range outside the user namespace> <count>. The values are taken
-// from platform2/arc/container-bundle/pi/config.json.
-extern const char kAndroidUidMap[];
-extern const char kAndroidGidMap[];
-
 // Calculates the amount of memory to give the virtual machine. Currently
 // configured to provide 75% of system memory. This is deliberately over
 // provisioned with the expectation that we will use the balloon driver to

@@ -77,9 +77,6 @@ constexpr char kKeyToBlockSize[] = "BLOCK_SIZE";
 constexpr char kOemEtcSharedDir[] = "/run/arcvm/host_generated/oem/etc";
 constexpr char kOemEtcSharedDirTag[] = "oem_etc";
 
-constexpr char kMediaSharedDir[] = "/run/arcvm/media";
-constexpr char kMediaSharedDirTag[] = "media";
-
 constexpr char kTestHarnessSharedDir[] = "/run/arcvm/testharness";
 constexpr char kTestHarnessSharedDirTag[] = "testharness";
 
@@ -256,9 +253,6 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       "security-xattrs=true",
       kOemEtcSharedDir, kOemEtcSharedDirTag, oem_etc_uid_map.c_str(),
       oem_etc_gid_map.c_str());
-  std::string shared_media = base::StringPrintf(
-      "%s:%s:type=9p:cache=never:uidmap=%s:gidmap=%s:ascii_casefold=true",
-      kMediaSharedDir, kMediaSharedDirTag, kAndroidUidMap, kAndroidGidMap);
   const base::FilePath testharness_dir(kTestHarnessSharedDir);
   std::string shared_testharness = CreateSharedDataParam(
       testharness_dir, kTestHarnessSharedDirTag, true, false, true, {});
@@ -293,9 +287,6 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       // Second AC97 for the aaudio path.
       .AppendAudioDevice("backend=cras,capture=true,client_type=arcvm")
       .AppendSharedDir(oem_etc_shared_dir)
-      // TODO(b/182870415): Stop sharing shared_media once we have started to
-      // use virtio-fs for MyFiles and removable media on the Android side.
-      .AppendSharedDir(shared_media)
       .AppendSharedDir(shared_testharness)
       .AppendSharedDir(shared_apkcache)
       .AppendSharedDir(shared_fonts)
