@@ -613,7 +613,7 @@ TEST_F(CellularServiceTest, SetRoamingState) {
   EXPECT_EQ(kRoamingStateHome, service_->roaming_state());
 
   // Check that a disconnect occurs if we begin roaming when it isn't allowed.
-  service_->set_allow_roaming_for_testing(false);
+  service_->set_allow_roaming(false);
   EXPECT_CALL(*device_, Disconnect(_, _)).Times(1);
   EXPECT_CALL(*adaptor_,
               EmitStringChanged(kRoamingStateProperty, kRoamingStateRoaming));

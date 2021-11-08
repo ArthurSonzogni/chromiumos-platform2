@@ -248,6 +248,18 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
       SLOG(this, 1) << "Creating Cellular service for ICCID: " << service_iccid;
       service = new CellularService(manager_, service_imsi, service_iccid,
                                     service_eid);
+      // Device.AllowRoaming was used to store roaming preferences before M94.
+      // To honor settings for services created before M94, we default
+      // Service.AllowRoaming to the value of Device.AllowRoaming.
+      // If a value for Service.AllowRoaming was persisted when the service was
+      // last used, the default is overridden in Service::Load,
+      // else the default value is stored to disk during AddService, thus the
+      // value of Device.AllowRoaming is copied over to the service. This
+      // completes the migration of Device.AllowRoaming to Service.AllowRoaming.
+      // The plan is to remove references to device->allow_roaming_ in M108,
+      // when we assume all services created before M94 have been used at least
+      // once between M94 and M108, and thus have migrated their AllowRoaming.
+      service->set_allow_roaming(device->allow_roaming());
       service->Load(storage);
       service->SetDevice(device);
       AddService(service);

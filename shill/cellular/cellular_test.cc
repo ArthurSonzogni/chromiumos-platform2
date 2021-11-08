@@ -1137,14 +1137,14 @@ TEST_P(CellularTest, Connect) {
 
   error.Reset();
   device_->set_state_for_testing(Cellular::State::kRegistered);
-  device_->allow_roaming_ = false;
+  device_->service_->allow_roaming_ = false;
   device_->service_->roaming_state_ = kRoamingStateRoaming;
   device_->Connect(device_->service().get(), &error);
   EXPECT_EQ(Error::kNotOnHomeNetwork, error.type());
 
   // Check that connect fails if policy restricts roaming
   error.Reset();
-  device_->allow_roaming_ = true;
+  device_->service_->allow_roaming_ = true;
   device_->policy_allow_roaming_ = false;
   device_->Connect(device_->service().get(), &error);
   EXPECT_EQ(Error::kNotOnHomeNetwork, error.type());
@@ -1166,7 +1166,7 @@ TEST_P(CellularTest, Connect) {
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::State::kConnected, device_->state());
 
-  device_->allow_roaming_ = true;
+  device_->service_->allow_roaming_ = true;
   device_->service_->roaming_state_ = kRoamingStateRoaming;
   device_->set_state_for_testing(Cellular::State::kRegistered);
   device_->Connect(device_->service().get(), &error);
@@ -1176,7 +1176,7 @@ TEST_P(CellularTest, Connect) {
 
   // Check that provider_requires_roaming_ will override all other roaming
   // settings
-  device_->allow_roaming_ = false;
+  device_->service_->allow_roaming_ = false;
   device_->policy_allow_roaming_ = false;
   device_->provider_requires_roaming_ = true;
   device_->service_->roaming_state_ = kRoamingStateRoaming;

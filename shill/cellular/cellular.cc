@@ -1523,8 +1523,10 @@ bool Cellular::IsActivating() const {
   return capability_ && capability_->IsActivating();
 }
 
+// TODO(b/184375691): Remove access to Device.allow_roaming_ via DBus, since
+//  it is no longer used.
 bool Cellular::GetAllowRoaming(Error* /*error*/) {
-  return service_ ? service_->GetAllowRoaming() : allow_roaming_;
+  return allow_roaming_;
 }
 
 bool Cellular::SetAllowRoaming(const bool& value, Error* error) {

@@ -103,9 +103,6 @@ class CellularService : public Service {
   // Returns true if we are registered on a roaming network, but roaming is
   // disallowed.
   bool IsRoamingRuleViolated();
-  // Returns allow_roaming_ for the service. If allow_roaming_ is nullopt,
-  // returns any persisted value prior to M92.
-  bool GetAllowRoaming();
 
   const std::string& ppp_username() const { return ppp_username_; }
   const std::string& ppp_password() const { return ppp_password_; }
@@ -127,11 +124,12 @@ class CellularService : public Service {
   static const char kStorageSimCardId[];
   static const char kStorageAllowRoaming[];
 
+  // Used to copy the value of Device.AllowRoaming by service_provider for
+  // SIM's inserted before M94. Also used by unit tests.
+  void set_allow_roaming(bool allow_roaming) { allow_roaming_ = allow_roaming; }
+
   void set_activation_state_for_testing(const std::string& activation_state) {
     activation_state_ = activation_state;
-  }
-  void set_allow_roaming_for_testing(bool allow_roaming) {
-    allow_roaming_ = allow_roaming;
   }
   void set_apn_info_for_testing(const Stringmap& apn_info) {
     apn_info_ = apn_info;
@@ -204,7 +202,6 @@ class CellularService : public Service {
   bool IsOutOfCredits(Error* /*error*/);
   bool SetAllowRoaming(const bool& value, Error* error);
   bool GetAllowRoaming(Error* /*error*/);
-  void ClearAllowRoaming(Error* /*error*/);
 
   // The IMSI for the SIM. This is saved in the Profile and emitted as a
   // property so that it is available for non primary SIM Profiles.
@@ -232,7 +229,7 @@ class CellularService : public Service {
   Stringmap last_attach_apn_info_;
   std::string ppp_username_;
   std::string ppp_password_;
-  base::Optional<bool> allow_roaming_;
+  bool allow_roaming_ = false;
   bool provider_requires_roaming_ = false;
 
   // The storage identifier defaults to cellular_{iccid}.

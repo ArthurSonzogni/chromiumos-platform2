@@ -203,8 +203,7 @@ CellularService::CellularService(Manager* manager,
       kCellularAllowRoamingProperty,
       BoolAccessor(new CustomAccessor<CellularService, bool>(
           this, &CellularService::GetAllowRoaming,
-          &CellularService::SetAllowRoaming,
-          &CellularService::ClearAllowRoaming)));
+          &CellularService::SetAllowRoaming)));
   storage_identifier_ = GetDefaultStorageIdentifier();
   SLOG(this, 1) << "CellularService Created: " << log_name();
 }
@@ -346,12 +345,7 @@ bool CellularService::Load(const StoreInterface* storage) {
     SetState(kStateIdle);
   }
 
-  // If Chrome called SetAllowRoaming, we would have persisted the preference.
-  // If Chrome has never called SetAllowRoaming, we do not persist
-  // allow_roaming_
-  bool allow_roaming;
-  if (storage->GetBool(id, kStorageAllowRoaming, &allow_roaming))
-    allow_roaming_ = allow_roaming;
+  storage->GetBool(id, kStorageAllowRoaming, &allow_roaming_);
 
   return true;
 }
@@ -362,6 +356,7 @@ bool CellularService::Unload() {
 }
 
 bool CellularService::Save(StoreInterface* storage) {
+  SLOG(this, 2) << __func__;
   // Save properties common to all Services.
   if (!Service::Save(storage))
     return false;
@@ -376,10 +371,7 @@ bool CellularService::Save(StoreInterface* storage) {
   SaveStringOrClear(storage, id, kStoragePPPUsername, ppp_username_);
   SaveStringOrClear(storage, id, kStoragePPPPassword, ppp_password_);
 
-  if (allow_roaming_.has_value())
-    storage->SetBool(id, kStorageAllowRoaming, allow_roaming_.value());
-  else
-    storage->DeleteKey(id, kStorageAllowRoaming);
+  storage->SetBool(id, kStorageAllowRoaming, allow_roaming_);
 
   return true;
 }
@@ -494,7 +486,7 @@ void CellularService::SetRoamingState(const std::string& state) {
 bool CellularService::IsRoamingAllowed() {
   if (cellular_ && cellular_->provider_requires_roaming())
     return true;
-  return GetAllowRoaming() && cellular_ && cellular_->policy_allow_roaming();
+  return allow_roaming_ && cellular_ && cellular_->policy_allow_roaming();
 }
 
 bool CellularService::IsRoamingRuleViolated() {
@@ -502,10 +494,6 @@ bool CellularService::IsRoamingRuleViolated() {
     return false;
 
   return !IsRoamingAllowed();
-}
-
-bool CellularService::GetAllowRoaming() {
-  return allow_roaming_.value_or(cellular_ && cellular_->allow_roaming());
 }
 
 Stringmap* CellularService::GetUserSpecifiedApn() {
@@ -819,11 +807,7 @@ bool CellularService::SetAllowRoaming(const bool& value, Error* error) {
 }
 
 bool CellularService::GetAllowRoaming(Error* /*error*/) {
-  return GetAllowRoaming();
-}
-
-void CellularService::ClearAllowRoaming(Error* /*error*/) {
-  allow_roaming_.reset();
+  return allow_roaming_;
 }
 
 }  // namespace shill
