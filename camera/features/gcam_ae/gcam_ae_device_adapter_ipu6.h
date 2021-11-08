@@ -25,6 +25,8 @@ class GcamAeDeviceAdapterIpu6 : public GcamAeDeviceAdapter {
   // GcamAeDeviceAdapter implementations.
   ~GcamAeDeviceAdapterIpu6() override = default;
   bool WriteRequestParameters(Camera3CaptureDescriptor* request) override;
+  bool SetExposureTargetVendorTag(Camera3CaptureDescriptor* request,
+                                  float exposure_target) override;
   bool ExtractAeStats(Camera3CaptureDescriptor* result,
                       MetadataLogger* metadata_logger = nullptr) override;
   bool HasAeStats(int frame_number) override;

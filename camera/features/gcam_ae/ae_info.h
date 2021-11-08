@@ -71,6 +71,10 @@ enum class AeOverrideMode {
 
   // Let GcamAeController override AE decision with manual sensor control.
   kWithManualSensorControl = 1,
+
+  // Let GcamAeController override AE decision by passing the exposure target in
+  // vendor-specific metadata to the vendor camera HAL.
+  kWithVendorTag = 2,
 };
 
 // A collection of all the info needed for producing the input arguments to the

@@ -50,11 +50,19 @@ typedef enum vendor_metadata_section_start {
 typedef enum vendor_metadata_tag {
   INTEL_VENDOR_CAMERA_CALLBACK_RGBS =  // enum         | public
   INTEL_VENDOR_CAMERA_START,
-  INTEL_VENDOR_CAMERA_RGBS_GRID_SIZE,      // int32[]      | public
-  INTEL_VENDOR_CAMERA_SHADING_CORRECTION,  // enum         | public
-  INTEL_VENDOR_CAMERA_RGBS_STATS_BLOCKS,   // byte[]       | public
-  INTEL_VENDOR_CAMERA_CALLBACK_TM_CURVE,   // enum         | public
-  INTEL_VENDOR_CAMERA_TONE_MAP_CURVE,      // float[]      | public
+  INTEL_VENDOR_CAMERA_RGBS_GRID_SIZE,         // int32[]      | public
+  INTEL_VENDOR_CAMERA_SHADING_CORRECTION,     // enum         | public
+  INTEL_VENDOR_CAMERA_RGBS_STATS_BLOCKS,      // byte[]       | public
+  INTEL_VENDOR_CAMERA_CALLBACK_TM_CURVE,      // enum         | public
+  INTEL_VENDOR_CAMERA_TONE_MAP_CURVE,         // float[]      | public
+  INTEL_VENDOR_CAMERA_POWER_MODE,             // enum         | public
+  INTEL_VENDOR_CAMERA_IC_CAPS,                // int32        | public
+  INTEL_VENDOR_CAMERA_IC_PEACE_FEATURES,      // int32[]      | public
+  INTEL_VENDOR_CAMERA_IC_ECC_MODE,            // enum         | public
+  INTEL_VENDOR_CAMERA_IC_BC_MODE,             // enum         | public
+  INTEL_VENDOR_CAMERA_IC_BR_PARAMETERS,       // int32[]      | public
+  INTEL_VENDOR_CAMERA_IC_FF_MODE,             // enum         | public
+  INTEL_VENDOR_CAMERA_TOTAL_EXPOSURE_TARGET,  // int64        | public
   INTEL_VENDOR_CAMERA_END,
 } vendor_metadata_tag_t;
 
@@ -79,3 +87,28 @@ typedef enum vendor_metadata_enum_intel_vendor_camera_callback_tm_curve {
   INTEL_VENDOR_CAMERA_CALLBACK_TM_CURVE_FALSE,
   INTEL_VENDOR_CAMERA_CALLBACK_TM_CURVE_TRUE,
 } vendor_metadata_enum_intel_vendor_camera_callback_tm_curve_t;
+
+// INTEL_VENDOR_CAMERA_POWER_MODE
+typedef enum vendor_metadata_enum_intel_vendor_camera_power_mode {
+  INTEL_VENDOR_CAMERA_POWER_MODE_LOW_POWER,
+  INTEL_VENDOR_CAMERA_POWER_MODE_HIGH_QUALITY,
+} vendor_metadata_enum_intel_vendor_camera_power_mode_t;
+
+// INTEL_VENDOR_CAMERA_IC_ECC_MODE
+typedef enum vendor_metadata_enum_intel_vendor_camera_ic_ecc_mode {
+  INTEL_VENDOR_CAMERA_IC_ECC_MODE_OFF,
+  INTEL_VENDOR_CAMERA_IC_ECC_MODE_ON,
+} vendor_metadata_enum_intel_vendor_camera_ic_ecc_mode_t;
+
+// INTEL_VENDOR_CAMERA_IC_BC_MODE
+typedef enum vendor_metadata_enum_intel_vendor_camera_ic_bc_mode {
+  INTEL_VENDOR_CAMERA_IC_BC_MODE_OFF,
+  INTEL_VENDOR_CAMERA_IC_BC_MODE_BLUR,
+  INTEL_VENDOR_CAMERA_IC_BC_MODE_REPLACEMENT,
+} vendor_metadata_enum_intel_vendor_camera_ic_bc_mode_t;
+
+// INTEL_VENDOR_CAMERA_IC_FF_MODE
+typedef enum vendor_metadata_enum_intel_vendor_camera_ic_ff_mode {
+  INTEL_VENDOR_CAMERA_IC_FF_MODE_OFF,
+  INTEL_VENDOR_CAMERA_IC_FF_MODE_AUTO,
+} vendor_metadata_enum_intel_vendor_camera_ic_ff_mode_t;

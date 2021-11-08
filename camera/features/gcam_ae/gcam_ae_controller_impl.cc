@@ -380,7 +380,8 @@ void GcamAeControllerImpl::OnOptionsUpdated(
     if (ae_override_mode ==
             static_cast<int>(AeOverrideMode::kWithExposureCompensation) ||
         ae_override_mode ==
-            static_cast<int>(AeOverrideMode::kWithManualSensorControl)) {
+            static_cast<int>(AeOverrideMode::kWithManualSensorControl) ||
+        ae_override_mode == static_cast<int>(AeOverrideMode::kWithVendorTag)) {
       options_.ae_override_mode = static_cast<AeOverrideMode>(ae_override_mode);
     } else {
       LOGF(ERROR) << "Invalid AE override method: " << ae_override_mode;
@@ -492,6 +493,13 @@ void GcamAeControllerImpl::SetRequestAeParameters(
       break;
     case AeOverrideMode::kWithManualSensorControl:
       SetManualSensorControls(request);
+      break;
+    case AeOverrideMode::kWithVendorTag:
+      if (!ae_device_adapter_->SetExposureTargetVendorTag(
+              request, frame_info->target_tet)) {
+        DVLOGFID(2, request->frame_number())
+            << "Failed to override AE with vendor tag";
+      }
       break;
     default:
       NOTREACHED() << "Invalid AeOverrideMethod";

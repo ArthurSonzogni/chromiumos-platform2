@@ -30,6 +30,17 @@ class GcamAeDeviceAdapter {
   // control metadata (e.g. vendor tags) for each capture request.
   virtual bool WriteRequestParameters(Camera3CaptureDescriptor* request);
 
+  // Called by GcamAeController to set the exposure target through vendor tag.
+  // Returns true if the camera HAL accepts the exposure target vendor tag and
+  // |tet| is successfully configured. Returns false if the camera HAL does not
+  // support setting exposure target through vendor tag, or the tag is not
+  // successfully configured.
+  //
+  // |exposure_target| has the same format as the TET computed by Gcam AE:
+  //   exposure_time (ms) * analog_gain * digital_gain
+  virtual bool SetExposureTargetVendorTag(Camera3CaptureDescriptor* request,
+                                          float exposure_target);
+
   // Called by GcamAeController to extract the device specific AE stats from
   // |result|.
   virtual bool ExtractAeStats(Camera3CaptureDescriptor* result,

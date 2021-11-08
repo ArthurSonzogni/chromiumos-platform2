@@ -26,6 +26,13 @@ bool GcamAeDeviceAdapter::WriteRequestParameters(
   return true;
 }
 
+bool SetExposureTargetVendorTag(Camera3CaptureDescriptor* request,
+                                float exposure_target) {
+  // Returns false by default indicating the exposure target vendor tag is not
+  // supported.
+  return false;
+}
+
 bool GcamAeDeviceAdapter::ExtractAeStats(Camera3CaptureDescriptor* result,
                                          MetadataLogger* metadata_logger) {
   return true;

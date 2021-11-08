@@ -41,6 +41,24 @@ bool GcamAeDeviceAdapterIpu6::WriteRequestParameters(
   return true;
 }
 
+bool GcamAeDeviceAdapterIpu6::SetExposureTargetVendorTag(
+    Camera3CaptureDescriptor* request, float exposure_target) {
+  // Gcam AE computes TET using ms, but Intel IPU6 HAL expects exposure time in
+  // ns.
+  constexpr float kNsPerMs = 1.0e6f;
+  std::array<int64_t, 1> tet = {
+      static_cast<int64_t>(exposure_target * kNsPerMs)};
+  DVLOGFID(1, request->frame_number()) << "tet=" << tet[0];
+  if (!request->UpdateMetadata<int64_t>(
+          INTEL_VENDOR_CAMERA_TOTAL_EXPOSURE_TARGET, tet)) {
+    LOGFID(ERROR, request->frame_number())
+        << "Cannot set INTEL_VENDOR_CAMERA_TOTAL_EXPOSURE_TARGET to " << tet[0]
+        << " in request metadata";
+    return false;
+  }
+  return true;
+}
+
 bool GcamAeDeviceAdapterIpu6::ExtractAeStats(Camera3CaptureDescriptor* result,
                                              MetadataLogger* metadata_logger_) {
   base::span<const int32_t> rgbs_grid_size =
