@@ -10,11 +10,11 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <base/task/task_traits.h>
-#include <base/task/thread_pool.h>
+#include <base/threading/sequenced_task_runner_handle.h>
 
-#include "rmad/utils/fake_hardware_verifier_utils.h"
-#include "rmad/utils/hardware_verifier_utils_impl.h"
+#include "rmad/system/fake_hardware_verifier_client.h"
+#include "rmad/system/hardware_verifier_client_impl.h"
+#include "rmad/utils/dbus_utils.h"
 
 namespace rmad {
 
@@ -24,31 +24,28 @@ FakeWelcomeScreenStateHandler::FakeWelcomeScreenStateHandler(
     scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
     : WelcomeScreenStateHandler(
           json_store,
-          std::make_unique<fake::FakeHardwareVerifierUtils>(working_dir_path)) {
-}
+          std::make_unique<fake::FakeHardwareVerifierClient>(
+              working_dir_path)) {}
 
 }  // namespace fake
 
 WelcomeScreenStateHandler::WelcomeScreenStateHandler(
     scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store) {
-  hardware_verifier_utils_ = std::make_unique<HardwareVerifierUtilsImpl>();
+  hardware_verifier_client_ =
+      std::make_unique<HardwareVerifierClientImpl>(GetSystemBus());
 }
 
 WelcomeScreenStateHandler::WelcomeScreenStateHandler(
     scoped_refptr<JsonStore> json_store,
-    std::unique_ptr<HardwareVerifierUtils> hardware_verifier_utils)
+    std::unique_ptr<HardwareVerifierClient> hardware_verifier_client)
     : BaseStateHandler(json_store),
-      hardware_verifier_utils_(std::move(hardware_verifier_utils)) {}
+      hardware_verifier_client_(std::move(hardware_verifier_client)) {}
 
 RmadErrorCode WelcomeScreenStateHandler::InitializeState() {
-  if (!task_runner_) {
-    task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
-        {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
-  }
   if (!state_.has_welcome()) {
     state_.set_allocated_welcome(new WelcomeState);
-    task_runner_->PostTask(
+    base::SequencedTaskRunnerHandle::Get()->PostTask(
         FROM_HERE,
         base::BindOnce(&WelcomeScreenStateHandler::RunHardwareVerifier,
                        base::Unretained(this)));
@@ -81,7 +78,7 @@ WelcomeScreenStateHandler::GetNextStateCase(const RmadState& state) {
 
 void WelcomeScreenStateHandler::RunHardwareVerifier() const {
   HardwareVerificationResult result;
-  if (hardware_verifier_utils_->GetHardwareVerificationResult(&result)) {
+  if (hardware_verifier_client_->GetHardwareVerificationResult(&result)) {
     hardware_verification_result_signal_sender_->Run(result);
   } else {
     LOG(ERROR) << "Failed to get hardware verification result";

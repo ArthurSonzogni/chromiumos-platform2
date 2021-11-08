@@ -11,19 +11,18 @@
 #include <utility>
 
 #include <base/files/file_path.h>
-#include <base/sequenced_task_runner.h>
 
-#include "rmad/utils/hardware_verifier_utils.h"
+#include "rmad/system/hardware_verifier_client.h"
 
 namespace rmad {
 
 class WelcomeScreenStateHandler : public BaseStateHandler {
  public:
   explicit WelcomeScreenStateHandler(scoped_refptr<JsonStore> json_store);
-  // Used to inject mock |hardware_verifier_utils_| for testing.
+  // Used to inject mock |hardware_verifier_client_| for testing.
   WelcomeScreenStateHandler(
       scoped_refptr<JsonStore> json_store,
-      std::unique_ptr<HardwareVerifierUtils> hardware_verifier_utils);
+      std::unique_ptr<HardwareVerifierClient> hardware_verifier_client);
 
   ASSIGN_STATE(RmadState::StateCase::kWelcome);
   SET_REPEATABLE;
@@ -37,20 +36,15 @@ class WelcomeScreenStateHandler : public BaseStateHandler {
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
 
-  scoped_refptr<base::SequencedTaskRunner> GetTaskRunner() {
-    return task_runner_;
-  }
-
   void RunHardwareVerifier() const;
 
  protected:
   ~WelcomeScreenStateHandler() override = default;
 
  private:
-  std::unique_ptr<HardwareVerifierUtils> hardware_verifier_utils_;
+  std::unique_ptr<HardwareVerifierClient> hardware_verifier_client_;
   std::unique_ptr<HardwareVerificationResultSignalCallback>
       hardware_verification_result_signal_sender_;
-  scoped_refptr<base::SequencedTaskRunner> task_runner_;
 };
 
 namespace fake {

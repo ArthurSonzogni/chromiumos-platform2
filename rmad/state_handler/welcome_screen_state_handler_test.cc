@@ -8,7 +8,6 @@
 
 #include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/run_loop.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -16,8 +15,8 @@
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/welcome_screen_state_handler.h"
+#include "rmad/system/mock_hardware_verifier_client.h"
 #include "rmad/utils/json_store.h"
-#include "rmad/utils/mock_hardware_verifier_utils.h"
 
 using testing::_;
 using testing::Invoke;
@@ -40,10 +39,10 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
 
   scoped_refptr<WelcomeScreenStateHandler> CreateStateHandler(
       int hw_verification_result) {
-    // Mock |HardwareVerifierUtils|.
-    auto mock_hardware_verifier_utils =
-        std::make_unique<NiceMock<MockHardwareVerifierUtils>>();
-    ON_CALL(*mock_hardware_verifier_utils, GetHardwareVerificationResult(_))
+    // Mock |HardwareVerifierClient|.
+    auto mock_hardware_verifier_client =
+        std::make_unique<NiceMock<MockHardwareVerifierClient>>();
+    ON_CALL(*mock_hardware_verifier_client, GetHardwareVerificationResult(_))
         .WillByDefault(
             [hw_verification_result](HardwareVerificationResult* result) {
               if (hw_verification_result == 0) {
@@ -59,7 +58,7 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
               }
             });
     auto handler = base::MakeRefCounted<WelcomeScreenStateHandler>(
-        json_store_, std::move(mock_hardware_verifier_utils));
+        json_store_, std::move(mock_hardware_verifier_client));
     auto callback = std::make_unique<
         base::RepeatingCallback<bool(const HardwareVerificationResult&)>>(
         base::BindRepeating(&SignalSender::SendHardwareVerificationResultSignal,
@@ -68,17 +67,11 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
     return handler;
   }
 
-  void RunHandlerTaskRunner(scoped_refptr<WelcomeScreenStateHandler> handler) {
-    handler->GetTaskRunner()->PostTask(FROM_HERE, run_loop_.QuitClosure());
-    run_loop_.Run();
-  }
-
  protected:
   StrictMock<SignalSender> signal_sender_;
 
   // Variables for TaskRunner.
   base::test::TaskEnvironment task_environment_;
-  base::RunLoop run_loop_;
 };
 
 TEST_F(WelcomeScreenStateHandlerTest,
@@ -92,7 +85,7 @@ TEST_F(WelcomeScreenStateHandlerTest,
         EXPECT_EQ(result.error_str(), "mock_hardware_verifier_error_string");
         return true;
       }));
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 }
 
 TEST_F(WelcomeScreenStateHandlerTest,
@@ -106,7 +99,7 @@ TEST_F(WelcomeScreenStateHandlerTest,
         EXPECT_EQ(result.error_str(), "mock_hardware_verifier_error_string");
         return true;
       }));
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 }
 
 TEST_F(WelcomeScreenStateHandlerTest,
@@ -114,7 +107,7 @@ TEST_F(WelcomeScreenStateHandlerTest,
   auto handler = CreateStateHandler(-1);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 }
 
 TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_Success) {
@@ -130,7 +123,7 @@ TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_Success) {
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kComponentsRepair);
 
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 }
 
 TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_MissingState) {
@@ -144,7 +137,7 @@ TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_MissingState) {
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_INVALID);
   EXPECT_EQ(state_case, RmadState::StateCase::kWelcome);
 
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 }
 
 TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_MissingArgs) {
@@ -160,7 +153,7 @@ TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_MissingArgs) {
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_MISSING);
   EXPECT_EQ(state_case, RmadState::StateCase::kWelcome);
 
-  RunHandlerTaskRunner(handler);
+  task_environment_.RunUntilIdle();
 }
 
 }  // namespace rmad
