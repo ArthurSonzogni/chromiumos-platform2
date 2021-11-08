@@ -213,6 +213,7 @@ class Profile : public base::RefCounted<Profile> {
  private:
   friend class ManagerTest;
   friend class ProfileAdaptorInterface;
+  friend class ShillProfileFuzz;
   FRIEND_TEST(ManagerTest, CreateDuplicateProfileWithMissingKeyfile);
   FRIEND_TEST(ManagerTest, RemoveProfile);
   FRIEND_TEST(ProfileTest, DeleteEntry);
