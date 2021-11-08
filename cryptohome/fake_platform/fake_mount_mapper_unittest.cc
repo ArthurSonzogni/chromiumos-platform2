@@ -32,6 +32,9 @@ class FakeMountMapperTest : public ::testing::Test {
                                           kRedirect3}))) {}
 
  protected:
+  // NOTE: mounts and binds done in the test may not represent mounts and binds
+  // that happen in the real system, this file just tests the behaviour of the
+  // mapper.
   const base::FilePath kRoot{"/tmp/root"};
   const base::FilePath kRedirect1{"/tmp/redirect1"};
   const base::FilePath kRedirect2{"/tmp/redirect2"};
@@ -394,6 +397,17 @@ TEST_F(FakeMountMapperTest, ResolveMountBindChain) {
   EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1File),
               Eq(kRedirect1.Append(kFile)));
 
+  EXPECT_THAT(
+      fake_mapper_->ReverseResolvePath(kRedirect1.Append(kFile), kTarget0),
+      Eq(kTarget0.Append(kFile)));
+  EXPECT_THAT(fake_mapper_->ReverseResolvePath(kRedirect1, kTarget0),
+              Eq(kTarget0));
+  EXPECT_THAT(
+      fake_mapper_->ReverseResolvePath(kRedirect1.Append(kFile), kTarget1),
+      Eq(kTarget1File));
+  EXPECT_THAT(fake_mapper_->ReverseResolvePath(kRedirect1, kTarget1),
+              Eq(kTarget1));
+
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget1));
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
@@ -412,6 +426,19 @@ TEST_F(FakeMountMapperTest, ResolveMountInnerBindChain) {
               Eq(kRedirect1.Append(kDirectory)));
   EXPECT_THAT(fake_mapper_->ResolvePath(kTarget1File),
               Eq(kRedirect1.Append(kDirectory).Append(kFile)));
+
+  EXPECT_THAT(
+      fake_mapper_->ReverseResolvePath(kRedirect1.Append(kDirectory), kTarget0),
+      Eq(kTarget0.Append(kDirectory)));
+  EXPECT_THAT(fake_mapper_->ReverseResolvePath(
+                  kRedirect1.Append(kDirectory).Append(kFile), kTarget0),
+              Eq(kTarget0.Append(kDirectory).Append(kFile)));
+  EXPECT_THAT(
+      fake_mapper_->ReverseResolvePath(kRedirect1.Append(kDirectory), kTarget1),
+      Eq(kTarget1));
+  EXPECT_THAT(fake_mapper_->ReverseResolvePath(
+                  kRedirect1.Append(kDirectory).Append(kFile), kTarget1),
+              Eq(kTarget1File));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget1));
@@ -432,6 +459,14 @@ TEST_F(FakeMountMapperTest, ResolveSameTargetPrefixMountBindChain) {
   EXPECT_THAT(fake_mapper_->ResolvePath(kTarget0InnerDirectory.Append(kFile)),
               Eq(kRedirect1.Append(kDirectory).Append(kFile)));
 
+  EXPECT_THAT(fake_mapper_->ReverseResolvePath(kRedirect1.Append(kDirectory),
+                                               kTarget0InnerDirectory),
+              Eq(kTarget0InnerDirectory));
+  EXPECT_THAT(
+      fake_mapper_->ReverseResolvePath(
+          kRedirect1.Append(kDirectory).Append(kFile), kTarget0InnerDirectory),
+      Eq(kTarget0InnerDirectory.Append(kFile)));
+
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0InnerDirectory));
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
@@ -450,6 +485,23 @@ TEST_F(FakeMountMapperTest, ResolveBindBindChain) {
   EXPECT_THAT(
       fake_mapper_->ResolvePath(kTarget1File),
       Eq(fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kFile)));
+
+  EXPECT_THAT(fake_mapper_->ReverseResolvePath(
+                  fake_platform::SpliceTestFilePath(kRoot, kSource1), kTarget0),
+              Eq(kTarget0));
+  EXPECT_THAT(
+      fake_mapper_->ReverseResolvePath(
+          fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kFile),
+          kTarget0),
+      Eq(kTarget0.Append(kFile)));
+  EXPECT_THAT(fake_mapper_->ReverseResolvePath(
+                  fake_platform::SpliceTestFilePath(kRoot, kSource1), kTarget1),
+              Eq(kTarget1));
+  EXPECT_THAT(
+      fake_mapper_->ReverseResolvePath(
+          fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kFile),
+          kTarget1),
+      Eq(kTarget1.Append(kFile)));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget1));
@@ -472,6 +524,29 @@ TEST_F(FakeMountMapperTest, ResolveBindInnerBindChain) {
                      .Append(kDirectory)
                      .Append(kFile)));
 
+  EXPECT_THAT(
+      fake_mapper_->ReverseResolvePath(
+          fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kDirectory),
+          kTarget0),
+      Eq(kTarget0.Append(kDirectory)));
+  EXPECT_THAT(fake_mapper_->ReverseResolvePath(
+                  fake_platform::SpliceTestFilePath(kRoot, kSource1)
+                      .Append(kDirectory)
+                      .Append(kFile),
+                  kTarget0),
+              Eq(kTarget0.Append(kDirectory).Append(kFile)));
+  EXPECT_THAT(
+      fake_mapper_->ReverseResolvePath(
+          fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kDirectory),
+          kTarget1),
+      Eq(kTarget1));
+  EXPECT_THAT(fake_mapper_->ReverseResolvePath(
+                  fake_platform::SpliceTestFilePath(kRoot, kSource1)
+                      .Append(kDirectory)
+                      .Append(kFile),
+                  kTarget1),
+              Eq(kTarget1File));
+
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget1));
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0));
@@ -493,6 +568,18 @@ TEST_F(FakeMountMapperTest, ResolveSameTargetPrefixBindBindChain) {
               Eq(fake_platform::SpliceTestFilePath(kRoot, kSource1)
                      .Append(kDirectory)
                      .Append(kFile)));
+
+  EXPECT_THAT(
+      fake_mapper_->ReverseResolvePath(
+          fake_platform::SpliceTestFilePath(kRoot, kSource1).Append(kDirectory),
+          kTarget0InnerDirectory),
+      Eq(kTarget0InnerDirectory));
+  EXPECT_THAT(fake_mapper_->ReverseResolvePath(
+                  fake_platform::SpliceTestFilePath(kRoot, kSource1)
+                      .Append(kDirectory)
+                      .Append(kFile),
+                  kTarget0InnerDirectory),
+              Eq(kTarget0InnerDirectory.Append(kFile)));
 
   // Unmount
   ASSERT_TRUE(fake_mapper_->Unmount(kTarget0InnerDirectory));

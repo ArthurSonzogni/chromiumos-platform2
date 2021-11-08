@@ -25,8 +25,14 @@ class FakeMountMapping final {
   // Given the path, translate it from the target to the source.
   base::FilePath TranslateTargetToSource(const base::FilePath&) const;
 
+  // Given the path, translate it from the source to the target.
+  base::FilePath TranslateSourceToTarget(const base::FilePath&) const;
+
   // Given the path, translate it from the target to the redirect.
   base::FilePath TranslateTargetToRedirect(const base::FilePath&) const;
+
+  // Given the path, translate it from the redirect to the target.
+  base::FilePath TranslateRedirectToTarget(const base::FilePath&) const;
 
   const base::FilePath& GetSource() const;
   const base::FilePath& GetTarget() const;
@@ -82,6 +88,16 @@ class FakeMountMapper final {
   // Translates a path within the "represented" file system to the actual
   // physical location in tmpfs.
   base::FilePath ResolvePath(const base::FilePath& path) const;
+
+  // Transforms a physical location in tmpfs to a logical location within
+  // a "represented" filesystem. Since the transformation may yield multiple
+  // results (a directory mounted to multiple places), `expected_parent` defines
+  // which result should be used - it needs to be a child of `expected_parent`.
+  // If matching `expected_parent` also yields multiple results, then the method
+  // returns any matching path out of all possible (the choice is not guaranteed
+  // to be deterministic and may wary among invocations and program runs).
+  base::FilePath ReverseResolvePath(
+      const base::FilePath& path, const base::FilePath& expected_parent) const;
 
  private:
   const base::FilePath tmpfs_rootfs_;

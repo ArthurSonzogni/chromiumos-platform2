@@ -31,23 +31,20 @@ namespace {
 
 class ProxyFileEnumerator : public FileEnumerator {
  public:
-  ProxyFileEnumerator(const base::FilePath& tmpfs_rootfs,
+  ProxyFileEnumerator(const base::FilePath& original_path,
                       FakePlatform* fake_platform,
+                      FakeMountMapper* fake_mount_mapper,
                       FileEnumerator* real_enumerator)
-      : tmpfs_rootfs_(tmpfs_rootfs),
+      : original_path_(NormalizePath(original_path)),
         fake_platform_(fake_platform),
+        fake_mount_mapper_(fake_mount_mapper),
         real_enumerator_(real_enumerator) {}
 
   // Removed tmpfs prefix from the returned path.
   base::FilePath Next() override {
     base::FilePath next = real_enumerator_->Next();
-    if (!tmpfs_rootfs_.IsParent(next)) {
-      return next;
-    }
-    base::FilePath assumed_path("/");
-    CHECK(tmpfs_rootfs_.AppendRelativePath(next, &assumed_path));
-    last_path_ = assumed_path;
-    return assumed_path;
+    last_path_ = fake_mount_mapper_->ReverseResolvePath(next, original_path_);
+    return last_path_;
   }
 
   FileEnumerator::FileInfo GetInfo() override {
@@ -58,10 +55,11 @@ class ProxyFileEnumerator : public FileEnumerator {
   }
 
  private:
-  base::FilePath tmpfs_rootfs_;
-  base::FilePath last_path_;
+  base::FilePath original_path_;
   FakePlatform* fake_platform_;
+  FakeMountMapper* fake_mount_mapper_;
   std::unique_ptr<FileEnumerator> real_enumerator_;
+  base::FilePath last_path_;
 };
 
 template <typename KeyType>
@@ -419,7 +417,7 @@ bool FakePlatform::CloseFile(FILE* file) {
 FileEnumerator* FakePlatform::GetFileEnumerator(const base::FilePath& path,
                                                 bool recursive,
                                                 int file_type) {
-  return new ProxyFileEnumerator(tmpfs_rootfs_, this,
+  return new ProxyFileEnumerator(path, this, fake_mount_mapper_.get(),
                                  real_platform_.GetFileEnumerator(
                                      TestFilePath(path), recursive, file_type));
 }

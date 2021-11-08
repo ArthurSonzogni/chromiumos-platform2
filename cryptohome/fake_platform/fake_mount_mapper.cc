@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -52,6 +53,22 @@ base::FilePath FakeMountMapping::TranslateTargetToSource(
   return result;
 }
 
+base::FilePath FakeMountMapping::TranslateSourceToTarget(
+    const base::FilePath& path) const {
+  // AppendRelativePath works only when source is a strict parent, so handle the
+  // case when the path is the source separately.
+  if (path == source_) {
+    return target_;
+  }
+
+  base::FilePath result = target_;
+  if (!source_.AppendRelativePath(path, &result)) {
+    return path;
+  }
+
+  return result;
+}
+
 base::FilePath FakeMountMapping::TranslateTargetToRedirect(
     const base::FilePath& path) const {
   // AppendRelativePath works only when target is a strict parent, so handle the
@@ -62,6 +79,22 @@ base::FilePath FakeMountMapping::TranslateTargetToRedirect(
 
   base::FilePath result = redirect_;
   if (!target_.AppendRelativePath(path, &result)) {
+    return path;
+  }
+
+  return result;
+}
+
+base::FilePath FakeMountMapping::TranslateRedirectToTarget(
+    const base::FilePath& path) const {
+  // AppendRelativePath works only when redirect is a strict parent, so handle
+  // the case when the path is the redirect separately.
+  if (path == redirect_) {
+    return target_;
+  }
+
+  base::FilePath result = target_;
+  if (!redirect_.AppendRelativePath(path, &result)) {
     return path;
   }
 
@@ -117,8 +150,8 @@ bool FakeMountMapper::Bind(const base::FilePath& source,
   // fake filesystem. That way we can ensure the modifications happen to the
   // same underlying elements, regardless of whether we access it through the
   // source or target path.
-  return MountImpl(source, target,
-                   fake_platform::SpliceTestFilePath(tmpfs_rootfs_, source));
+
+  return MountImpl(source, target, ResolvePath(source));
 }
 
 bool FakeMountMapper::Unmount(const base::FilePath& target) {
@@ -203,6 +236,49 @@ std::optional<FakeMountMapping> FakeMountMapper::FindMapping(
     }
   }
   return result;
+}
+
+base::FilePath FakeMountMapper::ReverseResolvePath(
+    const base::FilePath& path, const base::FilePath& expected_parent) const {
+  std::unordered_set<base::FilePath> candidates;
+
+  // Get "represented" paths candidates - find all redirects which could be
+  // the potential mappings for the `path`, and use those to remap tmpfs path
+  // to "represented" path.
+  for (const auto& [target, mapping] : target_to_mount_) {
+    const base::FilePath redirect = mapping.GetRedirect();
+    if (redirect == path || redirect.IsParent(path)) {
+      candidates.insert(mapping.TranslateRedirectToTarget(path));
+    }
+  }
+
+  // If we have not found any candidates, see if the path is on the primary
+  // tmpfs path. If it is, make it a candidate by stripping the prefix.
+  if (candidates.empty() && tmpfs_rootfs_.IsParent(path)) {
+    candidates.insert(fake_platform::StripTestFilePath(tmpfs_rootfs_, path));
+  }
+
+  // Walk the mapping chain for each candidate until we stumble upon one which
+  // makes the "represented" path to be under `expected_parent`.
+  while (!candidates.empty()) {
+    std::unordered_set<base::FilePath> next_candidates;
+    for (const auto& candidate : candidates) {
+      if (expected_parent == candidate || expected_parent.IsParent(candidate)) {
+        // Found the candidate which is under the `expected_parent`.
+        return candidate;
+      }
+
+      // If we can't map it to the next element of chain - drop the candidate.
+      std::optional<FakeMountMapping> maybe_mapping = FindMapping(candidate);
+      if (maybe_mapping.has_value()) {
+        next_candidates.insert(
+            maybe_mapping->TranslateTargetToSource(candidate));
+      }
+    }
+    candidates = next_candidates;
+  }
+
+  return base::FilePath();
 }
 
 base::FilePath FakeMountMapper::ResolvePath(const base::FilePath& path) const {
