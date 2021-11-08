@@ -142,8 +142,6 @@ TEST_F(TPM2UtilityTest, InitSuccess) {
   utility.set_tpm_manager_utility_for_testing(&mock_tpm_manager_utility_);
   EXPECT_CALL(mock_tpm_manager_utility_, GetTpmNonsensitiveStatus(_, _, _, _))
       .WillOnce(
-          DoAll(SetArgPointee<0>(true), SetArgPointee<1>(true), Return(true)))
-      .WillOnce(
           DoAll(SetArgPointee<0>(true), SetArgPointee<1>(true), Return(true)));
   EXPECT_TRUE(utility.Init());
 }
@@ -181,18 +179,17 @@ TEST_F(TPM2UtilityTest, IsTPMAvailable) {
   TPM2UtilityImpl utility(factory_.get());
   utility.set_tpm_manager_utility_for_testing(&mock_tpm_manager_utility_);
 
-  utility.is_enabled_ = true;
+  utility.is_initialized_ = true;
   EXPECT_TRUE(utility.IsTPMAvailable());
 
-  utility.is_enabled_ = false;
+  utility.is_initialized_ = false;
   EXPECT_CALL(mock_tpm_manager_utility_, GetTpmNonsensitiveStatus(_, _, _, _))
       .WillOnce(Return(false));
   EXPECT_FALSE(utility.IsTPMAvailable());
 
-  utility.is_enabled_ = false;
+  utility.is_initialized_ = false;
   EXPECT_CALL(mock_tpm_manager_utility_, GetTpmNonsensitiveStatus(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<0>(true), Return(true)));
-  EXPECT_TRUE(utility.IsTPMAvailable());
   EXPECT_TRUE(utility.IsTPMAvailable());
 }
 

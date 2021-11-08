@@ -148,10 +148,7 @@ class TPMUtilityImpl : public TPMUtility {
   bool ReloadKey(int key_handle);
   bool InitSRK();
 
-  // |Init| had been completely run. This implies TPM is enabled and owned.
   bool is_initialized_;
-  // TPM is enabled.
-  bool is_enabled_;
   bool is_srk_ready_;
   trousers::ScopedTssContext tsp_context_;
   TSS_HPOLICY default_policy_;
