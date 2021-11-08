@@ -15,7 +15,9 @@ clock_getres: 1
 clock_gettime: 1
 gettimeofday: 1
 
-socket: arg0 == AF_UNIX
+# This call should return EPERM when calling with wrong argument.
+socket: arg0 == AF_UNIX; return 1
+
 socketpair: 1
 connect: 1
 getsockname: 1
@@ -36,6 +38,7 @@ ppoll: 1
 openat: 1
 read: 1
 write: 1
+unlinkat: 1
 close: 1
 # For device policy to walk through the directory of interest.
 getdents64: 1
@@ -93,6 +96,7 @@ getrandom: 1
 # These calls are attempted but apparently not necessary; return EPERM.
 ioctl: return 1
 prctl: return 1
+
 prlimit64: arg2 == 0 && arg3 != 0
 
 sched_getattr: 1

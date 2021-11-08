@@ -18,8 +18,10 @@ clock_gettime64: 1
 gettimeofday: 1
 time: 1
 
+# This call should return EPERM when calling with wrong argument.
+socket: arg0 == AF_UNIX; return 1
+
 socketcall: 1
-socket: arg0 == AF_UNIX
 socketpair: 1
 connect: 1
 getsockname: 1
@@ -44,6 +46,8 @@ openat: 1
 creat: 1
 read: 1
 write: 1
+unlink: 1
+unlinkat: 1
 close: 1
 access: 1
 faccessat: 1
@@ -102,6 +106,7 @@ clock_nanosleep_time64: 1
 sched_yield: 1
 sysinfo: 1
 getrandom: 1
+uname: 1
 
 # These calls are attempted but apparently not necessary; return EPERM.
 ioctl: return 1
