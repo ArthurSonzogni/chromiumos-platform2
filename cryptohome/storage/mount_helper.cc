@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 
 #include <memory>
+#include <unordered_set>
 #include <vector>
 
 #include <base/bind.h>
@@ -397,6 +398,44 @@ void MountHelper::CopySkeleton(const FilePath& destination) const {
   RecursiveCopy(SkelDir(), destination);
 }
 
+bool MountHelper::IsFirstMountComplete(
+    const std::string& obfuscated_username) const {
+  const FilePath mount_point = GetUserMountDirectory(obfuscated_username);
+  const FilePath user_home = GetMountedUserHomePath(obfuscated_username);
+
+  // Generate the set of the top level nodes that a mount creates.
+  std::unordered_set<FilePath> initial_nodes;
+  for (const auto& dir : GetCommonSubdirectories(mount_point)) {
+    initial_nodes.insert(dir.path);
+  }
+  std::unique_ptr<cryptohome::FileEnumerator> skel_enumerator(
+      platform_->GetFileEnumerator(
+          SkelDir(), false,
+          base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES));
+  for (FilePath next = skel_enumerator->Next(); !next.empty();
+       next = skel_enumerator->Next()) {
+    initial_nodes.insert(user_home.Append(next.BaseName()));
+  }
+
+  // If we have any nodes within the vault that are not in the set created
+  // above - it means we have successfully entered a user session prior.
+  std::unique_ptr<cryptohome::FileEnumerator> vault_enumerator(
+      platform_->GetFileEnumerator(
+          user_home, false,
+          base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES));
+  for (FilePath next = vault_enumerator->Next(); !next.empty();
+       next = vault_enumerator->Next()) {
+    if (initial_nodes.count(next) == 0) {
+      // Found a file not from initial list, first mount was completed.
+      // Log the file name to debug in case we ever see problems with
+      // something racing the vault creation.
+      LOG(INFO) << "Not a first mount, since found: " << next;
+      return true;
+    }
+  }
+  return false;
+}
+
 bool MountHelper::MountLegacyHome(const FilePath& from) {
   VLOG(1) << "MountLegacyHome from " << from.value();
   // Multiple mounts can't live on the legacy mountpoint.
@@ -696,8 +735,7 @@ bool MountHelper::SetUpDmcryptMount(const std::string& obfuscated_username) {
 MountError MountHelper::PerformMount(MountType mount_type,
                                      const std::string& username,
                                      const std::string& fek_signature,
-                                     const std::string& fnek_signature,
-                                     bool is_pristine) {
+                                     const std::string& fnek_signature) {
   const std::string obfuscated_username = SanitizeUserName(username);
 
   if (!EnsureUserMountPoints(username)) {
@@ -747,8 +785,9 @@ MountError MountHelper::PerformMount(MountType mount_type,
   const FilePath user_home = GetMountedUserHomePath(obfuscated_username);
   const FilePath root_home = GetMountedRootHomePath(obfuscated_username);
 
-  if (is_pristine)
+  if (!IsFirstMountComplete(obfuscated_username)) {
     CopySkeleton(user_home);
+  }
 
   // When migrating, it's better to avoid exposing the new ext4 crypto dir.
   if (!MountHomesAndDaemonStores(username, obfuscated_username, user_home,

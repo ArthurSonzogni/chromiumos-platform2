@@ -41,12 +41,10 @@ message OutOfProcessMountRequest {
   // File name encryption key (FNEK) used to encrypt the file name when the file
   // is persisted to the lower filesystem by eCryptfs.
   string fnek_signature = 6;
-  // True, if the cryptohome is being created.
-  bool is_pristine = 7;
   // True, if the Cryptohomed should bind mount Downloads/.
-  bool bind_mount_downloads = 8;
+  bool bind_mount_downloads = 7;
   // Path to the loop device for the ephemeral mount.
-  string ephemeral_loop_device = 9;
+  string ephemeral_loop_device = 8;
 }
 
 message OutOfProcessMountResponse {

@@ -61,8 +61,7 @@ class MountHelperInterface {
   virtual MountError PerformMount(MountType mount_type,
                                   const std::string& username,
                                   const std::string& fek_signature,
-                                  const std::string& fnek_signature,
-                                  bool is_pristine) = 0;
+                                  const std::string& fnek_signature) = 0;
 };
 
 class MountHelper : public MountHelperInterface {
@@ -105,8 +104,7 @@ class MountHelper : public MountHelperInterface {
   MountError PerformMount(MountType mount_type,
                           const std::string& username,
                           const std::string& fek_signature,
-                          const std::string& fnek_signature,
-                          bool is_pristine) override;
+                          const std::string& fnek_signature) override;
 
   // Carries out dircrypto mount(2) operations for an ephemeral cryptohome.
   // Does not clean up on failure.
@@ -243,6 +241,10 @@ class MountHelper : public MountHelperInterface {
   //   source - Where to copy files from
   //   destination - Where to copy files to
   void RecursiveCopy(const FilePath& source, const FilePath& destination) const;
+
+  // Returns true if we think there was at least one successful mount in
+  // the past.
+  bool IsFirstMountComplete(const std::string& obfuscated_username) const;
 
   bool legacy_mount_ = true;
   bool bind_mount_downloads_ = true;

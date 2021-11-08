@@ -66,8 +66,7 @@ class OutOfProcessMountHelper : public MountHelperInterface {
   MountError PerformMount(MountType mount_type,
                           const std::string& username,
                           const std::string& fek_signature,
-                          const std::string& fnek_signature,
-                          bool is_pristine) override;
+                          const std::string& fnek_signature) override;
 
  private:
   // Launches an out-of-process helper, sends |request|, and waits until it

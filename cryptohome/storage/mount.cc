@@ -217,8 +217,8 @@ MountError Mount::MountCryptohome(const std::string& username,
       SecureBlobToHex(file_system_keyset.KeyReference().fnek_sig);
 
   cryptohome::ReportTimerStart(cryptohome::kPerformMountTimer);
-  mount_error = active_mounter_->PerformMount(
-      GetMountType(), username_, key_signature, fnek_signature, is_pristine);
+  mount_error = active_mounter_->PerformMount(GetMountType(), username_,
+                                              key_signature, fnek_signature);
   if (mount_error != MOUNT_ERROR_NONE) {
     LOG(ERROR) << "MountHelper::PerformMount failed, error = " << mount_error;
     return mount_error;

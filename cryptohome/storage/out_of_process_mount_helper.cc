@@ -283,8 +283,7 @@ MountError OutOfProcessMountHelper::PerformMount(
     MountType mount_type,
     const std::string& username,
     const std::string& fek_signature,
-    const std::string& fnek_signature,
-    bool is_pristine) {
+    const std::string& fnek_signature) {
   OutOfProcessMountRequest request;
   request.set_username(username);
   request.set_bind_mount_downloads(bind_mount_downloads_);
@@ -294,7 +293,6 @@ MountError OutOfProcessMountHelper::PerformMount(
   request.set_type(kProtobufMountType[mount_type]);
   request.set_fek_signature(fek_signature);
   request.set_fnek_signature(fnek_signature);
-  request.set_is_pristine(is_pristine);
 
   OutOfProcessMountResponse response;
   if (!LaunchOutOfProcessHelper(request, &response)) {

@@ -171,9 +171,9 @@ int main(int argc, char** argv) {
         static_cast<cryptohome::MountType>(request.type());
 
     cryptohome::ReportTimerStart(cryptohome::kPerformMountTimer);
-    error = mounter.PerformMount(
-        mount_type, request.username(), request.fek_signature(),
-        request.fnek_signature(), request.is_pristine());
+    error =
+        mounter.PerformMount(mount_type, request.username(),
+                             request.fek_signature(), request.fnek_signature());
 
     cryptohome::ReportTimerStop(cryptohome::kPerformMountTimer);
   }
