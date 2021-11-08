@@ -292,9 +292,19 @@ message WriteProtectDisablePhysicalState {
 
 // Display confirmation that HWWP has been disabled.
 message WriteProtectDisableCompleteState {
+  enum Action {
+    RMAD_WP_DISABLE_UNKNOWN = 0;
+    RMAD_WP_DISABLE_SKIPPED_ASSEMBLE_DEVICE = 1;
+    RMAD_WP_DISABLE_COMPLETE_ASSEMBLE_DEVICE = 2;
+    RMAD_WP_DISABLE_COMPLETE_KEEP_DEVICE_OPEN = 3;
+  }
   // Provided by daemon.
+  // Deprecated.
   bool keep_device_open = 1;
+  // Deprecated
   bool wp_disable_skipped = 2;
+
+  Action action = 3;
 }
 
 // Select method to update firmware.
