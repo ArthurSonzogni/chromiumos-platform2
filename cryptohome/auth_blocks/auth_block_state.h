@@ -10,6 +10,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/auth_block_state_generated.h"
+#include "cryptohome/signature_sealing/structures.h"
 
 namespace cryptohome {
 // TODO(b/199531643): Check the impact of using empty blobs stored in every
@@ -84,6 +85,7 @@ struct LibScryptCompatAuthBlockState {
 
 struct ChallengeCredentialAuthBlockState {
   struct LibScryptCompatAuthBlockState scrypt_state;
+  base::Optional<structure::SignatureChallengeInfo> keyset_challenge_info;
 };
 
 struct DoubleWrappedCompatAuthBlockState {
