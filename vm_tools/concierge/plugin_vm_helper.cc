@@ -20,6 +20,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/logging.h>
+#include <base/optional.h>
 #include <base/values.h>
 #include <chromeos/scoped_minijail.h>
 #include <dbus/object_proxy.h>
@@ -195,45 +196,39 @@ bool ExecutePvmHelper(const std::string& owner_id,
   }
 }
 
-static std::unique_ptr<base::DictionaryValue> GetVmInfo(const VmId& vm_id) {
+static base::Optional<base::Value> GetVmInfo(const VmId& vm_id) {
   std::string output;
   if (!ExecutePvmHelper(vm_id.owner_id(),
                         {"list", "--info", "--json", vm_id.name()}, &output)) {
-    return nullptr;
+    return base::nullopt;
   }
 
   auto result = base::JSONReader::Read(output);
   if (!result) {
     LOG(ERROR) << "GetVmInfo(" << vm_id << "): Failed to parse VM info";
-    return nullptr;
+    return base::nullopt;
   }
 
   if (!result->is_list()) {
     LOG(ERROR) << "GetVmInfo(" << vm_id
                << "): Expected to find a list at top level";
-    return nullptr;
+    return base::nullopt;
   }
 
-  const base::ListValue* list;
-  if (!result->GetAsList(&list)) {
-    LOG(ERROR) << "GetVmInfo(" << vm_id << "): Failed to parse top level list";
-    return nullptr;
-  }
-
-  if (list->GetSize() != 1) {
+  if (result->GetList().size() != 1) {
     LOG(ERROR) << "GetVmInfo(" << vm_id << "): Unexpected list size of "
-               << list->GetSize();
-    return nullptr;
+               << result->GetList().size() << ", expect 1";
+    return base::nullopt;
   }
 
-  const base::DictionaryValue* vm_info;
-  if (!list->GetDictionary(0, &vm_info)) {
+  base::Value& vm_info = result->GetList()[0];
+  if (!vm_info.is_dict()) {
     LOG(ERROR) << "GetVmInfo(" << vm_id
                << "): Failed to fetch VM info dictionary";
-    return nullptr;
+    return base::nullopt;
   }
 
-  return vm_info->CreateDeepCopy();
+  return std::move(vm_info);
 }
 
 bool DisconnectDevice(const VmId& vm_id, const std::string& device_name) {
@@ -286,43 +281,42 @@ void CleanUpAfterInstall(const VmId& vm_id, const base::FilePath& iso_path) {
     return;
   }
 
-  const base::DictionaryValue* hardware;
-  if (!vm_info->GetDictionary("Hardware", &hardware)) {
+  const base::Value* hardware = vm_info->FindDictKey("Hardware");
+  if (!hardware) {
     LOG(ERROR) << "Failed to obtain hardware info for " << vm_id;
     return;
   }
 
-  base::DictionaryValue::Iterator it(*hardware);
-  for (; !it.IsAtEnd(); it.Advance()) {
-    if (!base::StartsWith(it.key(), "cdrom"))
+  for (const auto& kv : hardware->DictItems()) {
+    if (!base::StartsWith(kv.first, "cdrom"))
       continue;
 
-    const base::DictionaryValue* cdrom;
-    if (!it.value().GetAsDictionary(&cdrom)) {
-      LOG(WARNING) << "Hardware node " << it.key() << " in " << vm_id
+    const base::Value& cdrom = kv.second;
+    if (!cdrom.is_dict()) {
+      LOG(WARNING) << "Hardware node " << kv.first << " in " << vm_id
                    << "is not a dictionary";
       continue;
     }
 
-    std::string image_name;
-    if (!cdrom->GetString("image", &image_name))
+    const std::string* image_name = cdrom.FindStringKey("image");
+    if (!image_name)
       continue;  // The device is not backed by an image.
 
-    LOG(INFO) << "CDROM image: " << image_name;
+    LOG(INFO) << "CDROM image: " << *image_name;
 
-    if (image_name != "/iso/install.iso" &&
-        image_name != "/opt/pita/tools/prl-tools-win.iso")
+    if (*image_name != "/iso/install.iso" &&
+        *image_name != "/opt/pita/tools/prl-tools-win.iso")
       continue;
 
-    std::string state;
-    if (!cdrom->GetString("state", &state) || state != "disconnected") {
-      if (!DisconnectDevice(vm_id, it.key())) {
-        LOG(ERROR) << "Failed to disconnect " << it.key() << " from " << vm_id;
+    const std::string* state = cdrom.FindStringKey("state");
+    if (!state || *state != "disconnected") {
+      if (!DisconnectDevice(vm_id, kv.first)) {
+        LOG(ERROR) << "Failed to disconnect " << kv.first << " from " << vm_id;
         continue;
       }
     }
 
-    if (image_name == "/iso/install.iso") {
+    if (*image_name == "/iso/install.iso") {
       base::FilePath image_path = iso_path.Append("install.iso");
       if (base::PathExists(image_path) && !DeleteFile(image_path)) {
         LOG(WARNING) << "Failed to delete " << image_path.value();
