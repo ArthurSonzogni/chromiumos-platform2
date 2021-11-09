@@ -221,6 +221,7 @@ static_library("libcrostpm") {
     "../persistent_lookup_table.cc",
     "../pkcs11_init.cc",
     "../sign_in_hash_tree.cc",
+    "../signature_sealing/structures_proto.cc",
     "../tpm.cc",
     "../vault_keyset.cc",
   ]
