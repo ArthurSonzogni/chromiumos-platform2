@@ -4,11 +4,11 @@
 
 #include "cryptohome/crypto/rsa.h"
 
+#include <iterator>
 #include <utility>
 #include <openssl/err.h>
 
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <crypto/scoped_openssl_types.h>
 
 #include "cryptohome/crypto/aes.h"
@@ -270,7 +270,7 @@ bool TpmCompatibleOAEPEncrypt(RSA* key,
   const unsigned char* input_buffer = input.data();
   int result = RSA_padding_add_PKCS1_OAEP(padded_buffer, padded_input.size(),
                                           input_buffer, input.size(),
-                                          oaep_param, base::size(oaep_param));
+                                          oaep_param, std::size(oaep_param));
   if (!result) {
     LOG(ERROR) << "Failed to add OAEP padding.";
     return false;

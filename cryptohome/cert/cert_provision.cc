@@ -4,6 +4,7 @@
 //
 // Library that provides certificate provisioning/signing interface.
 
+#include <iterator>
 #include <string>
 
 #include <base/check.h>
@@ -13,7 +14,6 @@
 
 #include <attestation-client/attestation/dbus-proxies.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 
@@ -275,7 +275,7 @@ Status GetCertificate(const std::string& label,
   } else {
     pos = provision_status.certificate_chain().find(kEndCertificate);
     if (pos != std::string::npos) {
-      pos += base::size(kEndCertificate) - 1;
+      pos += std::size(kEndCertificate) - 1;
     }
   }
   cert->assign(provision_status.certificate_chain().substr(0, pos));

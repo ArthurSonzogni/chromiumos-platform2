@@ -4,9 +4,10 @@
 //
 // KeyStore interface classes for cert_provision library.
 
+#include <iterator>
+
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 
 #include "cryptohome/cert/cert_provision_keystore.h"
 #include <openssl/sha.h>
@@ -30,7 +31,7 @@ std::vector<CK_ATTRIBUTE> GetProvisionStatusAttributes(
       {CKA_CLASS, const_cast<CK_OBJECT_CLASS*>(&kDataClass),
        sizeof(kDataClass)},
       {CKA_APPLICATION, const_cast<char*>(kApplicationID),
-       base::size(kApplicationID)},
+       std::size(kApplicationID)},
       {CKA_TOKEN, const_cast<CK_BBOOL*>(&kTrue), sizeof(kTrue)},
       {CKA_PRIVATE, const_cast<CK_BBOOL*>(&kTrue), sizeof(kTrue)},
       {CKA_MODIFIABLE, const_cast<CK_BBOOL*>(&kFalse), sizeof(kFalse)},
@@ -151,7 +152,7 @@ OpResult KeyStoreImpl::Sign(const std::string& id,
       {CKA_LABEL, const_cast<char*>(label.c_str()), label.size()},
   };
   std::vector<CK_OBJECT_HANDLE> objects;
-  OpResult result = Find(attributes, base::size(attributes), &objects);
+  OpResult result = Find(attributes, std::size(attributes), &objects);
   if (!result) {
     return result;
   }
@@ -171,7 +172,7 @@ OpResult KeyStoreImpl::Sign(const std::string& id,
         {CKA_MODULUS, nullptr, 0},
     };
     CK_RV ret = C_GetAttributeValue(session_, objects[0], attribute_template,
-                                    base::size(attribute_template));
+                                    std::size(attribute_template));
     if (ret != CKR_OK) {
       return KeyStoreResError("Failed to get attribute value", ret);
     }
@@ -277,7 +278,7 @@ OpResult KeyStoreImpl::DeleteKeys(const std::string& id,
       {CKA_LABEL, const_cast<char*>(label.c_str()), label.size()},
   };
   std::vector<CK_OBJECT_HANDLE> objects;
-  OpResult result = Find(attributes, base::size(attributes), &objects);
+  OpResult result = Find(attributes, std::size(attributes), &objects);
   if (!result) {
     return result;
   }

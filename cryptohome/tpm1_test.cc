@@ -6,6 +6,7 @@
 
 #include "cryptohome/tpm_impl.h"
 
+#include <iterator>
 #include <map>
 #include <string>
 #include <vector>
@@ -20,7 +21,6 @@
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
 
 #include <base/macros.h>
-#include <base/stl_util.h>
 
 namespace {
 
@@ -83,7 +83,7 @@ TEST_F(TpmImplTest, GetPcrMapExtended) {
       0x94, 0xce, 0x1b, 0x97, 0x40, 0xfd, 0x5b, 0x1e, 0x8c, 0x64,
       0xb0, 0xd5, 0x38, 0xac, 0x88, 0xb5, 0xb4, 0x52, 0x4f, 0x67};
   std::string expected_result(reinterpret_cast<char*>(expected_result_bytes),
-                              base::size(expected_result_bytes));
+                              std::size(expected_result_bytes));
   EXPECT_EQ(expected_result, result_str);
 }
 

@@ -6,12 +6,13 @@
 
 #include "cryptohome/cert/cert_provision_util.h"
 
+#include <iterator>
+
 // This group goes first so the next group can see the needed definitions.
 #include <attestation/proto_bindings/interface.pb.h>
 
 #include <attestation-client/attestation/dbus-proxies.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <brillo/secure_blob.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
@@ -77,7 +78,7 @@ std::string GetKeyID(const brillo::SecureBlob& public_key) {
   SHA1_Update(&sha_context, modulus.data(), modulus.size());
   SHA1_Final(md_value, &sha_context);
 
-  return std::string(reinterpret_cast<char*>(md_value), base::size(md_value));
+  return std::string(reinterpret_cast<char*>(md_value), std::size(md_value));
 }
 
 // static

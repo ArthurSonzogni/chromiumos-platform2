@@ -4,11 +4,11 @@
 
 #include "cryptohome/cryptohome_metrics.h"
 
+#include <iterator>
 #include <string>
 
 #include <base/logging.h>
 #include <base/macros.h>
-#include <base/stl_util.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 
@@ -149,14 +149,14 @@ const TimerHistogramParams kTimerHistogramParams[] = {
     {"Cryptohome.TimeToGenerateEccAuthValue", 0, 5000, 50},
 };
 
-static_assert(base::size(kTimerHistogramParams) == cryptohome::kNumTimerTypes,
+static_assert(std::size(kTimerHistogramParams) == cryptohome::kNumTimerTypes,
               "kTimerHistogramParams out of sync with enum TimerType");
 
 // List of strings for a patterned histogram for legacy locations.
 const char* kLegacyCodePathLocations[] = {".AddKeyResetSeedGeneration"};
 
 static_assert(
-    base::size(kLegacyCodePathLocations) ==
+    std::size(kLegacyCodePathLocations) ==
         static_cast<int>(cryptohome::LegacyCodePathLocation::kMaxValue) + 1,
     "kLegacyCodePathLocations out of sync with enum LegacyCodePathLocation");
 
@@ -399,7 +399,7 @@ void ReportAlertsData(const Tpm::AlertsData& alerts) {
     return;
   }
 
-  for (int i = 0; i < base::size(alerts.counters); i++) {
+  for (int i = 0; i < std::size(alerts.counters); i++) {
     uint16_t counter = alerts.counters[i];
     if (counter) {
       LOG(INFO) << "TPM alert of type " << i << " reported " << counter
@@ -407,7 +407,7 @@ void ReportAlertsData(const Tpm::AlertsData& alerts) {
     }
     for (int c = 0; c < counter; c++) {
       g_metrics->SendEnumToUMA(kTpmAlertsHistogram, i,
-                               base::size(alerts.counters));
+                               std::size(alerts.counters));
     }
   }
 }
