@@ -2004,6 +2004,7 @@ TEST_F(DocumentScannerTest, PostProcessing) {
   bool infer_callback_done = false;
   scanner_->DoPostProcessing(
       ToSharedMemory(std::move(fake_jpeg_image)), std::move(fake_corners),
+      chromeos::machine_learning::mojom::Rotation::ROTATION_0,
       base::BindOnce(
           [](bool* infer_callback_done, DoPostProcessingResultPtr result) {
             EXPECT_EQ(result->status, DocumentScannerResultStatus::OK);

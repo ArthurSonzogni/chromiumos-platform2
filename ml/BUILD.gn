@@ -36,6 +36,7 @@ generate_mojom_bindings("ml_mojo_bindings") {
   }
   sources = [
     "mojom/document_scanner.mojom",
+    "mojom/document_scanner_param_types.mojom",
     "mojom/geometry.mojom",
     "mojom/grammar_checker.mojom",
     "mojom/graph_executor.mojom",

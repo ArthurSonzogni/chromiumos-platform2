@@ -158,7 +158,10 @@ TEST_F(DocumentScannerPerfTest, DoPostProcessing) {
                      std::vector<uint8_t> processed_jpeg_image;
                      scanner_->DoPostProcessingFromJPEGImage(
                          g_env->jpeg_image_.data(), g_env->jpeg_image_.size(),
-                         corners, &processed_jpeg_image);
+                         corners,
+                         chromeos_camera::document_scanning::DocumentScanner::
+                             Rotation::ROTATION_0,
+                         &processed_jpeg_image);
                      ASSERT_GT(processed_jpeg_image.size(), 0);
                    }));
 }

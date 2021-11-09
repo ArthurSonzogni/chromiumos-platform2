@@ -162,6 +162,7 @@ void DocumentScannerImpl::DetectCornersFromJPEGImage(
 void DocumentScannerImpl::DoPostProcessing(
     ReadOnlySharedMemoryRegionPtr jpeg_image,
     std::vector<PointFPtr> gfx_corners,
+    chromeos::machine_learning::mojom::Rotation rotation,
     DoPostProcessingCallback callback) {
   RequestMetrics request_metrics("DocumentScanner", "DoPostProcessing");
   request_metrics.StartRecordingPerformanceMetrics();
@@ -187,9 +188,25 @@ void DocumentScannerImpl::DoPostProcessing(
     corners.push_back(FromGfxCorner(gfx_corner));
   }
 
+  auto imageRotation = ([rotation]() {
+    using MojoRotation = chromeos::machine_learning::mojom::Rotation;
+    using Rotation =
+        chromeos_camera::document_scanning::DocumentScanner::Rotation;
+    switch (rotation) {
+      case MojoRotation::ROTATION_0:
+        return Rotation::ROTATION_0;
+      case MojoRotation::ROTATION_90:
+        return Rotation::ROTATION_90;
+      case MojoRotation::ROTATION_180:
+        return Rotation::ROTATION_180;
+      case MojoRotation::ROTATION_270:
+        return Rotation::ROTATION_270;
+    }
+  })();
   std::vector<uint8_t> processed_jpeg_image;
-  if (!scanner_->DoPostProcessingFromJPEGImage(
-          image.data(), image.size(), corners, &processed_jpeg_image)) {
+  if (!scanner_->DoPostProcessingFromJPEGImage(image.data(), image.size(),
+                                               corners, imageRotation,
+                                               &processed_jpeg_image)) {
     LOG(ERROR) << "Failed to do post processing";
     error_callback();
     return;

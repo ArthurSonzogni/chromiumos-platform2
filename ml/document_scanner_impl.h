@@ -38,6 +38,7 @@ class DocumentScannerImpl
   void DoPostProcessing(
       mojo_base::mojom::ReadOnlySharedMemoryRegionPtr jpeg_image,
       std::vector<gfx::mojom::PointFPtr> corners,
+      chromeos::machine_learning::mojom::Rotation rotation,
       DoPostProcessingCallback callback) override;
 
   const std::unique_ptr<chromeos_camera::document_scanning::DocumentScanner>
