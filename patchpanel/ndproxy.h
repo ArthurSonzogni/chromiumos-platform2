@@ -39,6 +39,7 @@ class NDProxy {
   static constexpr ssize_t kTranslateErrorNotNDFrame = -2;
   static constexpr ssize_t kTranslateErrorInsufficientLength = -3;
   static constexpr ssize_t kTranslateErrorBufferMisaligned = -4;
+  static constexpr ssize_t kTranslateErrorMismatchedIp6Length = -5;
 
   NDProxy();
   NDProxy(const NDProxy&) = delete;

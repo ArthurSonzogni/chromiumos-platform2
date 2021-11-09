@@ -74,6 +74,7 @@ constexpr ssize_t NDProxy::kTranslateErrorNotICMPv6Frame;
 constexpr ssize_t NDProxy::kTranslateErrorNotNDFrame;
 constexpr ssize_t NDProxy::kTranslateErrorInsufficientLength;
 constexpr ssize_t NDProxy::kTranslateErrorBufferMisaligned;
+constexpr ssize_t NDProxy::kTranslateErrorMismatchedIp6Length;
 
 NDProxy::NDProxy()
     : in_frame_buffer_(AlignFrameBuffer(in_frame_buffer_extended_)),
@@ -169,6 +170,11 @@ ssize_t NDProxy::TranslateNDFrame(const uint8_t* in_frame,
           IPPROTO_ICMPV6) {
     return kTranslateErrorNotICMPv6Frame;
   }
+  if (ntohs(reinterpret_cast<const ip6_hdr*>(in_frame + ETHER_HDR_LEN)
+                ->ip6_plen) !=
+      (frame_len - ETHER_HDR_LEN - sizeof(struct ip6_hdr))) {
+    return kTranslateErrorMismatchedIp6Length;
+  }
 
   memcpy(out_frame, in_frame, frame_len);
   ethhdr* eth = reinterpret_cast<ethhdr*>(out_frame);
@@ -249,6 +255,14 @@ void NDProxy::ReplaceSourceIP(uint8_t* frame,
   ip6_hdr* ip6 = reinterpret_cast<ip6_hdr*>(frame + ETHER_HDR_LEN);
   icmp6_hdr* icmp6 =
       reinterpret_cast<icmp6_hdr*>(frame + ETHER_HDR_LEN + sizeof(ip6_hdr));
+
+  if (ntohs(ip6->ip6_plen) !=
+      (frame_len - ETHER_HDR_LEN - sizeof(struct ip6_hdr))) {
+    LOG(ERROR) << "Mismatched expected ip6_plen " << ntohs(ip6->ip6_plen)
+               << " with actual received length "
+               << frame_len - ETHER_HDR_LEN - sizeof(struct ip6_hdr);
+    return;
+  }
 
   memcpy(&ip6->ip6_src, &src_ip, sizeof(in6_addr));
 
@@ -417,6 +431,11 @@ void NDProxy::ReadAndProcessOneFrame(int fd) {
         case kTranslateErrorInsufficientLength:
           LOG(DFATAL) << "TranslateNDFrame failed: frame_len = " << len
                       << " is too small";
+          return;
+        case kTranslateErrorMismatchedIp6Length:
+          LOG(DFATAL) << "TranslateNDFrame failed: expected ip6_plen = "
+                      << ntohs(ip6->ip6_plen) << ", received length = "
+                      << (len - ETHER_HDR_LEN - sizeof(struct ip6_hdr));
           return;
         default:
           LOG(DFATAL) << "Unknown error in TranslateNDFrame";
