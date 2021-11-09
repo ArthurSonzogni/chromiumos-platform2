@@ -1,6 +1,5 @@
 # SELinux policy for hpsd.
 type cros_hpsd, domain, chromeos_domain;
-permissive cros_hpsd;
 
 # Enable sandboxing.
 from_minijail_static(cros_hpsd, cros_hpsd_exec);
