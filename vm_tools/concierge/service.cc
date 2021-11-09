@@ -1053,9 +1053,8 @@ bool Service::Init() {
     return false;
   }
 
-  base::Thread::Options thread_options;
-  thread_options.message_pump_type = base::MessagePumpType::IO;
-  if (!dbus_thread_.StartWithOptions(thread_options)) {
+  if (!dbus_thread_.StartWithOptions(
+          base::Thread::Options(base::MessagePumpType::IO, 0))) {
     LOG(ERROR) << "Failed to start dbus thread";
     return false;
   }

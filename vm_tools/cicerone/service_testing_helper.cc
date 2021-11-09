@@ -563,9 +563,8 @@ void ServiceTestingHelper::SetupDBus(MockType mock_type) {
 
   SetDbusCallbackNames();
 
-  base::Thread::Options dbus_thread_options;
-  dbus_thread_options.message_pump_type = base::MessagePumpType::IO;
-  CHECK(dbus_thread_.StartWithOptions(dbus_thread_options));
+  CHECK(dbus_thread_.StartWithOptions(
+      base::Thread::Options(base::MessagePumpType::IO, 0)));
 
   dbus::Bus::Options opts;
   constexpr char kFakeServicePath[] = "/fake/path";
