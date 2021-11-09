@@ -59,7 +59,14 @@ void ReloadableConfigFile::ReadConfigFileLocked(
     LOGF(ERROR) << "Failed to load the config file content of " << file_path;
     return;
   }
-  json_values_ = std::move(*json_values);
+  if (json_values_.is_dict() && json_values->is_dict()) {
+    // Merge the new and existing config if both are dictionary. Keys that are
+    // present both in the existing and new config will be overwritten with the
+    // new value.
+    json_values_.MergeDictionary(&json_values.value());
+  } else {
+    json_values_ = std::move(*json_values);
+  }
 }
 
 void ReloadableConfigFile::OnConfigFileUpdated(const base::FilePath& file_path,
