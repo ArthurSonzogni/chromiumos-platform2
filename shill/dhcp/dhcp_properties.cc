@@ -4,13 +4,13 @@
 
 #include "shill/dhcp/dhcp_properties.h"
 
+#include <iterator>
 #include <memory>
 #include <string>
 
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/macros.h>
-#include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/key_value_store.h"
@@ -118,7 +118,7 @@ bool DhcpProperties::GetValueForProperty(const std::string& name,
 
 void DhcpProperties::ClearMappedStringProperty(const size_t& index,
                                                Error* error) {
-  CHECK(index < base::size(kPropertyNames));
+  CHECK(index < std::size(kPropertyNames));
   if (properties_.Contains<std::string>(kPropertyNames[index])) {
     properties_.Remove(kPropertyNames[index]);
   } else {
@@ -128,7 +128,7 @@ void DhcpProperties::ClearMappedStringProperty(const size_t& index,
 
 std::string DhcpProperties::GetMappedStringProperty(const size_t& index,
                                                     Error* error) {
-  CHECK(index < base::size(kPropertyNames));
+  CHECK(index < std::size(kPropertyNames));
   const std::string& key = kPropertyNames[index];
   SLOG(this, 3) << __func__ << ": " << key;
   if (properties_.Contains<std::string>(key)) {
@@ -141,7 +141,7 @@ std::string DhcpProperties::GetMappedStringProperty(const size_t& index,
 bool DhcpProperties::SetMappedStringProperty(const size_t& index,
                                              const std::string& value,
                                              Error* error) {
-  CHECK(index < base::size(kPropertyNames));
+  CHECK(index < std::size(kPropertyNames));
   const std::string& key = kPropertyNames[index];
   SLOG(this, 3) << __func__ << ": " << key << " = " << value;
   if (properties_.Contains<std::string>(key) &&

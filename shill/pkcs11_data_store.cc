@@ -4,6 +4,8 @@
 
 #include "shill/pkcs11_data_store.h"
 
+#include <iterator>
+
 #include <base/strings/string_util.h>
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
@@ -76,7 +78,7 @@ bool Pkcs11DataStore::Read(CK_SLOT_ID slot,
     return false;
   }
   key_data->resize(attribute.ulValueLen);
-  attribute.pValue = base::data(*key_data);
+  attribute.pValue = std::data(*key_data);
   if (C_GetAttributeValue(session.handle(), key_handle, &attribute, 1) !=
       CKR_OK) {
     LOG(ERROR) << "Pkcs11DataStore: Failed to read key data: " << key_name;
@@ -107,15 +109,15 @@ bool Pkcs11DataStore::Write(CK_SLOT_ID slot,
   CK_BBOOL false_value = CK_FALSE;
   CK_ATTRIBUTE attributes[] = {
       {CKA_CLASS, &object_class, sizeof(object_class)},
-      {CKA_LABEL, base::data(mutable_key_name), mutable_key_name.size()},
-      {CKA_VALUE, base::data(mutable_key_data), mutable_key_data.size()},
-      {CKA_APPLICATION, base::data(mutable_application_id),
+      {CKA_LABEL, std::data(mutable_key_name), mutable_key_name.size()},
+      {CKA_VALUE, std::data(mutable_key_data), mutable_key_data.size()},
+      {CKA_APPLICATION, std::data(mutable_application_id),
        mutable_application_id.size()},
       {CKA_TOKEN, &true_value, sizeof(true_value)},
       {CKA_PRIVATE, &true_value, sizeof(true_value)},
       {CKA_MODIFIABLE, &false_value, sizeof(false_value)}};
   CK_OBJECT_HANDLE key_handle = CK_INVALID_HANDLE;
-  if (C_CreateObject(session.handle(), attributes, base::size(attributes),
+  if (C_CreateObject(session.handle(), attributes, std::size(attributes),
                      &key_handle) != CKR_OK) {
     LOG(ERROR) << "Pkcs11DataStore: Failed to write key data: " << key_name;
     return false;
@@ -168,15 +170,15 @@ CK_OBJECT_HANDLE Pkcs11DataStore::FindObject(CK_SESSION_HANDLE session_handle,
   CK_BBOOL false_value = CK_FALSE;
   CK_ATTRIBUTE attributes[] = {
       {CKA_CLASS, &object_class, sizeof(object_class)},
-      {CKA_LABEL, base::data(mutable_key_name), mutable_key_name.size()},
-      {CKA_APPLICATION, base::data(mutable_application_id),
+      {CKA_LABEL, std::data(mutable_key_name), mutable_key_name.size()},
+      {CKA_APPLICATION, std::data(mutable_application_id),
        mutable_application_id.size()},
       {CKA_TOKEN, &true_value, sizeof(true_value)},
       {CKA_PRIVATE, &true_value, sizeof(true_value)},
       {CKA_MODIFIABLE, &false_value, sizeof(false_value)}};
   CK_OBJECT_HANDLE key_handle = CK_INVALID_HANDLE;
   CK_ULONG count = 0;
-  if ((C_FindObjectsInit(session_handle, attributes, base::size(attributes)) !=
+  if ((C_FindObjectsInit(session_handle, attributes, std::size(attributes)) !=
        CKR_OK) ||
       (C_FindObjects(session_handle, &key_handle, 1, &count) != CKR_OK) ||
       (C_FindObjectsFinal(session_handle) != CKR_OK)) {
@@ -198,7 +200,7 @@ bool Pkcs11DataStore::EnumObjects(
   CK_BBOOL false_value = CK_FALSE;
   CK_ATTRIBUTE attributes[] = {
       {CKA_CLASS, &object_class, sizeof(object_class)},
-      {CKA_APPLICATION, base::data(mutable_application_id),
+      {CKA_APPLICATION, std::data(mutable_application_id),
        mutable_application_id.size()},
       {CKA_TOKEN, &true_value, sizeof(true_value)},
       {CKA_PRIVATE, &true_value, sizeof(true_value)},
@@ -206,7 +208,7 @@ bool Pkcs11DataStore::EnumObjects(
   const CK_ULONG kMaxHandles = 100;  // Arbitrary.
   CK_OBJECT_HANDLE handles[kMaxHandles];
   CK_ULONG count = 0;
-  if ((C_FindObjectsInit(session_handle, attributes, base::size(attributes)) !=
+  if ((C_FindObjectsInit(session_handle, attributes, std::size(attributes)) !=
        CKR_OK) ||
       (C_FindObjects(session_handle, handles, kMaxHandles, &count) != CKR_OK)) {
     LOG(ERROR) << "Key search failed.";
@@ -248,7 +250,7 @@ bool Pkcs11DataStore::GetKeyName(CK_SESSION_HANDLE session_handle,
     return false;
   }
   key_name->resize(attribute.ulValueLen);
-  attribute.pValue = base::data(*key_name);
+  attribute.pValue = std::data(*key_name);
   if (C_GetAttributeValue(session_handle, object_handle, &attribute, 1) !=
       CKR_OK) {
     LOG(ERROR) << "C_GetAttributeValue(CKA_LABEL) failed.";

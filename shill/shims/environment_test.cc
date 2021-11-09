@@ -4,8 +4,9 @@
 
 #include "shill/shims/environment.h"
 
+#include <iterator>
+
 #include <base/containers/contains.h>
-#include <base/stl_util.h>
 #include <gtest/gtest.h>
 
 namespace shill {
@@ -26,7 +27,7 @@ TEST_F(EnvironmentTest, GetVariable) {
       "",
   };
   static const char kVarName[] = "SHILL_SHIMS_GET_VARIABLE_TEST";
-  for (size_t i = 0; i < base::size(kVarValues); i++) {
+  for (size_t i = 0; i < std::size(kVarValues); i++) {
     EXPECT_FALSE(environment_->GetVariable(kVarName, nullptr));
     EXPECT_EQ(0, setenv(kVarName, kVarValues[i], 0)) << kVarValues[i];
     std::string value;
@@ -47,12 +48,12 @@ TEST_F(EnvironmentTest, AsMap) {
       "",
       "VALUE 2",
   };
-  ASSERT_EQ(base::size(kVarNames), base::size(kVarValues));
-  for (size_t i = 0; i < base::size(kVarNames); i++) {
+  ASSERT_EQ(std::size(kVarNames), std::size(kVarValues));
+  for (size_t i = 0; i < std::size(kVarNames); i++) {
     EXPECT_EQ(0, setenv(kVarNames[i], kVarValues[i], 0)) << kVarNames[i];
   }
   std::map<std::string, std::string> env = environment_->AsMap();
-  for (size_t i = 0; i < base::size(kVarNames); i++) {
+  for (size_t i = 0; i < std::size(kVarNames); i++) {
     EXPECT_TRUE(base::Contains(env, kVarNames[i])) << kVarNames[i];
     EXPECT_EQ(kVarValues[i], env[kVarNames[i]]) << kVarNames[i];
     EXPECT_EQ(0, unsetenv(kVarNames[i])) << kVarNames[i];

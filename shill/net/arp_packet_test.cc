@@ -4,7 +4,8 @@
 
 #include "shill/net/arp_packet.h"
 
-#include <base/stl_util.h>
+#include <iterator>
+
 #include <gtest/gtest.h>
 
 #include "shill/mock_log.h"
@@ -40,9 +41,9 @@ class ArpPacketTest : public Test {
         ipv4_address1_(IPAddress::kFamilyIPv4),
         ipv6_address0_(IPAddress::kFamilyIPv6),
         ipv6_address1_(IPAddress::kFamilyIPv6),
-        mac_address0_(kMacAddress0, base::size(kMacAddress0)),
-        mac_address1_(kMacAddress1, base::size(kMacAddress1)),
-        inserted_byte_(kInsertedByte, base::size(kInsertedByte)) {}
+        mac_address0_(kMacAddress0, std::size(kMacAddress0)),
+        mac_address1_(kMacAddress1, std::size(kMacAddress1)),
+        inserted_byte_(kInsertedByte, std::size(kInsertedByte)) {}
   ~ArpPacketTest() override = default;
 
   void SetUp() override {
@@ -87,7 +88,7 @@ TEST_F(ArpPacketTest, ParseTinyPacket) {
                        HasSubstr("too short to contain ARP header.")))
       .Times(1);
 
-  ByteString arp_bytes(kArpReplyV4, base::size(kArpReplyV4));
+  ByteString arp_bytes(kArpReplyV4, std::size(kArpReplyV4));
   arp_bytes.Resize(arp_bytes.GetLength() - 1);
   EXPECT_FALSE(packet_.Parse(arp_bytes));
 }
@@ -98,7 +99,7 @@ TEST_F(ArpPacketTest, ParseBadHRDType) {
                        HasSubstr("Packet is of unknown ARPHRD type 257")))
       .Times(1);
 
-  ByteString arp_bytes(kArpReplyV4, base::size(kArpReplyV4));
+  ByteString arp_bytes(kArpReplyV4, std::size(kArpReplyV4));
   arp_bytes.GetData()[0] = 0x1;
   EXPECT_FALSE(packet_.Parse(arp_bytes));
 }
@@ -109,7 +110,7 @@ TEST_F(ArpPacketTest, ParseBadProtocol) {
                        HasSubstr("Packet has unknown protocol 2049")))
       .Times(1);
 
-  ByteString arp_bytes(kArpReplyV4, base::size(kArpReplyV4));
+  ByteString arp_bytes(kArpReplyV4, std::size(kArpReplyV4));
   arp_bytes.GetData()[3] = 0x1;
   EXPECT_FALSE(packet_.Parse(arp_bytes));
 }
@@ -121,7 +122,7 @@ TEST_F(ArpPacketTest, ParseBadHardwareLength) {
                   HasSubstr("Packet has unexpected hardware address length")))
       .Times(1);
 
-  ByteString arp_bytes(kArpReplyV4, base::size(kArpReplyV4));
+  ByteString arp_bytes(kArpReplyV4, std::size(kArpReplyV4));
   arp_bytes.GetData()[4] = 0x1;
   EXPECT_FALSE(packet_.Parse(arp_bytes));
 }
@@ -133,7 +134,7 @@ TEST_F(ArpPacketTest, ParseBadProtocolLength) {
                   HasSubstr("Packet has unexpected protocol address length")))
       .Times(1);
 
-  ByteString arp_bytes(kArpReplyV4, base::size(kArpReplyV4));
+  ByteString arp_bytes(kArpReplyV4, std::size(kArpReplyV4));
   arp_bytes.GetData()[5] = 0x1;
   EXPECT_FALSE(packet_.Parse(arp_bytes));
 }
@@ -146,7 +147,7 @@ TEST_F(ArpPacketTest, ParseBadOpCode) {
           HasSubstr("Packet is not an ARP reply or request but of type 258")))
       .Times(1);
 
-  ByteString arp_bytes(kArpReplyV4, base::size(kArpReplyV4));
+  ByteString arp_bytes(kArpReplyV4, std::size(kArpReplyV4));
   arp_bytes.GetData()[6] = 0x1;
   EXPECT_FALSE(packet_.Parse(arp_bytes));
 }
@@ -157,7 +158,7 @@ TEST_F(ArpPacketTest, ParseShortPacket) {
                        HasSubstr("is too small to contain entire ARP payload")))
       .Times(1);
 
-  ByteString arp_bytes(kArpReplyV6, base::size(kArpReplyV6));
+  ByteString arp_bytes(kArpReplyV6, std::size(kArpReplyV6));
   arp_bytes.Append(mac_address1_);
   arp_bytes.Append(ipv6_address0_.address());
   arp_bytes.Append(mac_address0_);
@@ -167,7 +168,7 @@ TEST_F(ArpPacketTest, ParseShortPacket) {
 }
 
 TEST_F(ArpPacketTest, ParseIPv4) {
-  ByteString arp_bytes(kArpReplyV4, base::size(kArpReplyV4));
+  ByteString arp_bytes(kArpReplyV4, std::size(kArpReplyV4));
   arp_bytes.Append(mac_address0_);
   arp_bytes.Append(ipv4_address0_.address());
   arp_bytes.Append(mac_address1_);
@@ -185,7 +186,7 @@ TEST_F(ArpPacketTest, ParseIPv4) {
 }
 
 TEST_F(ArpPacketTest, ParseIPv6) {
-  ByteString arp_bytes(kArpReplyV6, base::size(kArpReplyV6));
+  ByteString arp_bytes(kArpReplyV6, std::size(kArpReplyV6));
   arp_bytes.Append(mac_address1_);
   arp_bytes.Append(ipv6_address0_.address());
   arp_bytes.Append(mac_address0_);
@@ -199,7 +200,7 @@ TEST_F(ArpPacketTest, ParseIPv6) {
 }
 
 TEST_F(ArpPacketTest, ParseRequest) {
-  ByteString arp_bytes(kArpRequestV4, base::size(kArpRequestV4));
+  ByteString arp_bytes(kArpRequestV4, std::size(kArpRequestV4));
   arp_bytes.Append(mac_address0_);
   arp_bytes.Append(ipv4_address0_.address());
   arp_bytes.Append(mac_address1_);
@@ -264,7 +265,7 @@ TEST_F(ArpPacketTest, FormatRequestIPv4) {
   packet_.set_remote_mac_address(mac_address1_);
   EXPECT_TRUE(packet_.FormatRequest(&arp_bytes));
 
-  ByteString expected_bytes(kArpRequestV4, base::size(kArpRequestV4));
+  ByteString expected_bytes(kArpRequestV4, std::size(kArpRequestV4));
   expected_bytes.Append(mac_address0_);
   expected_bytes.Append(ipv4_address0_.address());
   expected_bytes.Append(mac_address1_);
@@ -281,7 +282,7 @@ TEST_F(ArpPacketTest, FormatRequestIPv6) {
   packet_.set_remote_mac_address(mac_address0_);
   EXPECT_TRUE(packet_.FormatRequest(&arp_bytes));
 
-  ByteString expected_bytes(kArpRequestV6, base::size(kArpRequestV6));
+  ByteString expected_bytes(kArpRequestV6, std::size(kArpRequestV6));
   expected_bytes.Append(mac_address1_);
   expected_bytes.Append(ipv6_address0_.address());
   expected_bytes.Append(mac_address0_);

@@ -4,6 +4,7 @@
 
 #include "shill/vpn/new_l2tp_ipsec_driver.h"
 
+#include <iterator>
 #include <memory>
 #include <string>
 #include <utility>
@@ -191,8 +192,8 @@ const VPNDriver::Property NewL2TPIPsecDriver::kProperties[] = {
 
 NewL2TPIPsecDriver::NewL2TPIPsecDriver(Manager* manager,
                                        ProcessManager* process_manager)
-    : VPNDriver(
-          manager, process_manager, kProperties, base::size(kProperties)) {}
+    : VPNDriver(manager, process_manager, kProperties, std::size(kProperties)) {
+}
 
 NewL2TPIPsecDriver::~NewL2TPIPsecDriver() {}
 

@@ -4,11 +4,11 @@
 
 #include "shill/tethering.h"
 
+#include <iterator>
 #include <set>
 #include <vector>
 
 #include <base/macros.h>
-#include <base/stl_util.h>
 
 namespace shill {
 
@@ -21,11 +21,11 @@ const uint8_t Tethering::kLocallyAdministratedMacBit = 0x02;
 // static
 bool Tethering::IsAndroidBSSID(const std::vector<uint8_t>& bssid) {
   std::vector<uint8_t> truncated_bssid = bssid;
-  truncated_bssid.resize(base::size(kAndroidBSSIDPrefix));
+  truncated_bssid.resize(std::size(kAndroidBSSIDPrefix));
   return truncated_bssid ==
          std::vector<uint8_t>(
              kAndroidBSSIDPrefix,
-             kAndroidBSSIDPrefix + base::size(kAndroidBSSIDPrefix));
+             kAndroidBSSIDPrefix + std::size(kAndroidBSSIDPrefix));
 }
 
 // static

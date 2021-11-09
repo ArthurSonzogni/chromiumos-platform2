@@ -11,12 +11,12 @@
 
 #include "shill/net/nl80211_message.h"
 
+#include <iterator>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -380,7 +380,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN) {
   {
     std::vector<uint32_t> list;
     EXPECT_TRUE(GetScanFrequenciesFromMessage(*message, &list));
-    EXPECT_EQ(list.size(), base::size(kScanFrequencyTrigger));
+    EXPECT_EQ(list.size(), std::size(kScanFrequencyTrigger));
     int i = 0;
     auto j = list.begin();
     while (j != list.end()) {
@@ -434,7 +434,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS) {
   {
     std::vector<uint32_t> list;
     EXPECT_TRUE(GetScanFrequenciesFromMessage(*message, &list));
-    EXPECT_EQ(base::size(kScanFrequencyResults), list.size());
+    EXPECT_EQ(std::size(kScanFrequencyResults), list.size());
     int i = 0;
     auto j = list.begin();
     while (j != list.end()) {
@@ -626,7 +626,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_CONNECT) {
     EXPECT_TRUE(message->const_attributes()->GetRawAttributeValue(
         NL80211_ATTR_RESP_IE, &rawdata));
     EXPECT_TRUE(
-        rawdata.Equals(ByteString(kRespIeBytes, base::size(kRespIeBytes))));
+        rawdata.Equals(ByteString(kRespIeBytes, std::size(kRespIeBytes))));
   }
 }
 
@@ -647,7 +647,7 @@ TEST_F(NetlinkMessageTest, Build_NL80211_CMD_CONNECT) {
       NL80211_ATTR_MAC, NetlinkMessage::MessageContext()));
   EXPECT_TRUE(message.attributes()->SetRawAttributeValue(
       NL80211_ATTR_MAC,
-      ByteString(kMacAddressBytes, base::size(kMacAddressBytes))));
+      ByteString(kMacAddressBytes, std::size(kMacAddressBytes))));
 
   // In the middle, let's try adding an attribute without populating it.
   EXPECT_TRUE(message.attributes()->CreateNl80211Attribute(
@@ -661,8 +661,7 @@ TEST_F(NetlinkMessageTest, Build_NL80211_CMD_CONNECT) {
   EXPECT_TRUE(message.attributes()->CreateNl80211Attribute(
       NL80211_ATTR_RESP_IE, NetlinkMessage::MessageContext()));
   EXPECT_TRUE(message.attributes()->SetRawAttributeValue(
-      NL80211_ATTR_RESP_IE,
-      ByteString(kRespIeBytes, base::size(kRespIeBytes))));
+      NL80211_ATTR_RESP_IE, ByteString(kRespIeBytes, std::size(kRespIeBytes))));
 
   // Encode the message to a ByteString and remove all the run-specific
   // values.
@@ -675,7 +674,7 @@ TEST_F(NetlinkMessageTest, Build_NL80211_CMD_CONNECT) {
 
   // Verify that the messages are equal.
   EXPECT_TRUE(message_bytes.Equals(
-      ByteString(kNL80211_CMD_CONNECT, base::size(kNL80211_CMD_CONNECT))));
+      ByteString(kNL80211_CMD_CONNECT, std::size(kNL80211_CMD_CONNECT))));
 }
 
 TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DEAUTHENTICATE) {

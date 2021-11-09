@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <iterator>
 #include <utility>
 
 #include <base/check.h>
@@ -14,7 +15,6 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/posix/eintr_wrapper.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>
@@ -75,7 +75,7 @@ ThirdPartyVpnDriver* ThirdPartyVpnDriver::active_client_ = nullptr;
 
 ThirdPartyVpnDriver::ThirdPartyVpnDriver(Manager* manager,
                                          ProcessManager* process_manager)
-    : VPNDriver(manager, process_manager, kProperties, base::size(kProperties)),
+    : VPNDriver(manager, process_manager, kProperties, std::size(kProperties)),
       tun_fd_(-1),
       ip_properties_set_(false),
       io_handler_factory_(IOHandlerFactory::GetInstance()),

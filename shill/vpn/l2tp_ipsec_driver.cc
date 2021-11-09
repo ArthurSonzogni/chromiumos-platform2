@@ -21,6 +21,7 @@
 
 #include "shill/vpn/l2tp_ipsec_driver.h"
 
+#include <iterator>
 #include <memory>
 #include <utility>
 
@@ -29,7 +30,6 @@
 #include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -197,7 +197,7 @@ bool L2TPIPsecDriver::ParseStrokeStatusAllOutput(
 
 L2TPIPsecDriver::L2TPIPsecDriver(Manager* manager,
                                  ProcessManager* process_manager)
-    : VPNDriver(manager, process_manager, kProperties, base::size(kProperties)),
+    : VPNDriver(manager, process_manager, kProperties, std::size(kProperties)),
       certificate_file_(new CertificateFile()),
       password_provider_(
           std::make_unique<password_provider::PasswordProvider>()),

@@ -9,7 +9,6 @@
 
 #include <base/check_op.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
 
@@ -28,7 +27,7 @@ const char* const kScopeNames[] = {
     "service",  "storage",    "task",     "tc",       "vpn",   "wifi",
 };
 
-static_assert(base::size(kScopeNames) == ScopeLogger::kNumScopes,
+static_assert(std::size(kScopeNames) == ScopeLogger::kNumScopes,
               "Scope tags do not have expected number of strings");
 
 }  // namespace
@@ -66,7 +65,7 @@ std::string ScopeLogger::GetAllScopeNames() const {
 
 std::string ScopeLogger::GetEnabledScopeNames() const {
   std::vector<std::string> names;
-  for (size_t i = 0; i < base::size(kScopeNames); ++i) {
+  for (size_t i = 0; i < std::size(kScopeNames); ++i) {
     if (scope_enabled_[i])
       names.push_back(kScopeNames[i]);
   }
@@ -99,13 +98,13 @@ void ScopeLogger::EnableScopesByName(const std::string& expression) {
       continue;
 
     size_t i;
-    for (i = 0; i < base::size(kScopeNames); ++i) {
+    for (i = 0; i < std::size(kScopeNames); ++i) {
       if (tokenizer.token() == kScopeNames[i]) {
         SetScopeEnabled(static_cast<Scope>(i), enable_scope);
         break;
       }
     }
-    LOG_IF(WARNING, i == base::size(kScopeNames))
+    LOG_IF(WARNING, i == std::size(kScopeNames))
         << "Unknown scope '" << tokenizer.token() << "'";
   }
 }
@@ -119,7 +118,7 @@ void ScopeLogger::RegisterScopeEnableChangedCallback(
 
 void ScopeLogger::DisableAllScopes() {
   // Iterate over all scopes so the notification side-effect occurs.
-  for (size_t i = 0; i < base::size(kScopeNames); ++i) {
+  for (size_t i = 0; i < std::size(kScopeNames); ++i) {
     SetScopeEnabled(static_cast<Scope>(i), false);
   }
 }

@@ -4,6 +4,7 @@
 
 #include "shill/metrics.h"
 
+#include <iterator>
 #include <memory>
 #include <utility>
 
@@ -883,18 +884,17 @@ void Metrics::Start() {
   };
   static const std::vector<std::string> daily_cumulative_names(
       daily_cumulative_names_array,
-      daily_cumulative_names_array + base::size(daily_cumulative_names_array));
+      daily_cumulative_names_array + std::size(daily_cumulative_names_array));
   static const std::vector<std::string> monthly_cumulative_names(
       monthly_cumulative_names_array,
       monthly_cumulative_names_array +
-          base::size(monthly_cumulative_names_array));
+          std::size(monthly_cumulative_names_array));
   static const std::vector<std::string> daily_histogram_names(
       daily_histogram_names_array,
-      daily_histogram_names_array + base::size(daily_histogram_names_array));
+      daily_histogram_names_array + std::size(daily_histogram_names_array));
   static const std::vector<std::string> monthly_histogram_names(
       monthly_histogram_names_array,
-      monthly_histogram_names_array +
-          base::size(monthly_histogram_names_array));
+      monthly_histogram_names_array + std::size(monthly_histogram_names_array));
 
   base::FilePath backing_path(kMetricsCumulativeDirectory);
 

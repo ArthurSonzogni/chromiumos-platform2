@@ -7,6 +7,7 @@
 #include <poll.h>
 #include <sys/utsname.h>
 
+#include <iterator>
 #include <set>
 #include <string>
 #include <utility>
@@ -19,7 +20,6 @@
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
@@ -202,7 +202,7 @@ const VPNDriver::Property WireGuardDriver::kProperties[] = {
 
 WireGuardDriver::WireGuardDriver(Manager* manager,
                                  ProcessManager* process_manager)
-    : VPNDriver(manager, process_manager, kProperties, base::size(kProperties)),
+    : VPNDriver(manager, process_manager, kProperties, std::size(kProperties)),
       vpn_util_(VPNUtil::New()) {}
 
 WireGuardDriver::~WireGuardDriver() {

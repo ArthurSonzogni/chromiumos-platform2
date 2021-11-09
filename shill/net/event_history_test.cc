@@ -5,11 +5,11 @@
 #include "shill/net/event_history.h"
 
 #include <deque>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include <base/stl_util.h>
 #include <gtest/gtest.h>
 
 #include "shill/net/mock_time.h"
@@ -227,14 +227,14 @@ TEST_F(EventHistoryTest, ConvertTimestampsToStrings) {
   const Timestamp kValues[] = {
       GetTimestamp(123, 123, "2012-12-09T12:41:22.123456+0100"),
       GetTimestamp(234, 234, "2012-12-31T23:59:59.012345+0100")};
-  for (size_t i = 0; i < base::size(kValues); ++i) {
+  for (size_t i = 0; i < std::size(kValues); ++i) {
     RecordEvent(kValues[i]);
   }
 
   std::vector<std::string> strings = ExtractWallClockToStrings();
-  EXPECT_GT(base::size(kValues), 0);
-  ASSERT_EQ(base::size(kValues), strings.size());
-  for (size_t i = 0; i < base::size(kValues); i++) {
+  EXPECT_GT(std::size(kValues), 0);
+  ASSERT_EQ(std::size(kValues), strings.size());
+  for (size_t i = 0; i < std::size(kValues); i++) {
     EXPECT_EQ(kValues[i].wall_clock, strings[i]);
   }
 }

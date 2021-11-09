@@ -4,11 +4,11 @@
 
 #include "shill/vpn/vpn_provider.h"
 
+#include <iterator>
 #include <memory>
 #include <set>
 #include <utility>
 
-#include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
@@ -239,7 +239,7 @@ TEST_F(VPNProviderTest, CreateService) {
   static const char* const kTypes[] = {kProviderOpenVpn, kProviderL2tpIpsec,
                                        kProviderThirdPartyVpn,
                                        kProviderWireGuard};
-  const size_t kTypesCount = base::size(kTypes);
+  const size_t kTypesCount = std::size(kTypes);
   EXPECT_CALL(manager_, RegisterService(_)).Times(kTypesCount);
   for (auto type : kTypes) {
     Error error;

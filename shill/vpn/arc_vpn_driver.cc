@@ -7,11 +7,11 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <iterator>
 #include <utility>
 
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <base/stl_util.h>
 #include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -38,8 +38,8 @@ const VPNDriver::Property ArcVpnDriver::kProperties[] = {
     {kArcVpnTunnelChromeProperty, 0}};
 
 ArcVpnDriver::ArcVpnDriver(Manager* manager, ProcessManager* process_manager)
-    : VPNDriver(
-          manager, process_manager, kProperties, base::size(kProperties)) {}
+    : VPNDriver(manager, process_manager, kProperties, std::size(kProperties)) {
+}
 
 base::TimeDelta ArcVpnDriver::ConnectAsync(EventHandler* handler) {
   SLOG(this, 2) << __func__;

@@ -6,6 +6,7 @@
 
 #include <arpa/inet.h>
 
+#include <iterator>
 #include <limits>
 #include <utility>
 
@@ -13,7 +14,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -147,7 +147,7 @@ const char OpenVPNDriver::kDefaultOpenVPNConfigurationDirectory[] =
     RUNDIR "/openvpn_config";
 
 OpenVPNDriver::OpenVPNDriver(Manager* manager, ProcessManager* process_manager)
-    : VPNDriver(manager, process_manager, kProperties, base::size(kProperties)),
+    : VPNDriver(manager, process_manager, kProperties, std::size(kProperties)),
       management_server_(new OpenVPNManagementServer(this)),
       certificate_file_(new CertificateFile()),
       extra_certificates_file_(new CertificateFile()),

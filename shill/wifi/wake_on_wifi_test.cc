@@ -6,13 +6,13 @@
 
 #include <linux/nl80211.h>
 
+#include <iterator>
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
 #include <base/check_op.h>
-#include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
 #include <chromeos/dbus/service_constants.h>
@@ -1510,7 +1510,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, ParseWakeOnSSIDResults) {
   ASSERT_TRUE(triggers->ConstGetNestedAttributeList(
       NL80211_WOWLAN_TRIG_NET_DETECT_RESULTS, &results_list));
   WiFi::FreqSet freqs = ParseWakeOnSSIDResults(results_list);
-  EXPECT_EQ(base::size(kSSID1FreqMatches), freqs.size());
+  EXPECT_EQ(std::size(kSSID1FreqMatches), freqs.size());
   for (uint32_t freq : kSSID1FreqMatches) {
     EXPECT_TRUE(freqs.find(freq) != freqs.end());
   }
@@ -2037,7 +2037,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   const int kTimeSeconds[] = {10, 20, 30};
   CHECK_EQ(static_cast<const unsigned int>(
                WakeOnWiFi::kMaxDarkResumesPerPeriodShort),
-           base::size(kTimeSeconds));
+           std::size(kTimeSeconds));
   std::vector<ByteString> allowed;
   EnableWakeOnWiFiFeaturesDarkConnect();
 
@@ -2092,7 +2092,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   const int kTimeSeconds[] = {10, 70, 130, 190, 250, 310, 370, 430, 490, 550};
   CHECK_EQ(
       static_cast<const unsigned int>(WakeOnWiFi::kMaxDarkResumesPerPeriodLong),
-      base::size(kTimeSeconds));
+      std::size(kTimeSeconds));
   std::vector<ByteString> allowed;
   EnableWakeOnWiFiFeaturesDarkConnect();
 
@@ -2433,7 +2433,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_SSID) {
   EXPECT_CALL(*this, RecordDarkResumeWakeReasonCallback(kWakeOnWiFiReasonSSID));
   OnWakeupReasonReceived(msg);
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerSSID, GetLastWakeReason());
-  EXPECT_EQ(base::size(kSSID1FreqMatches), GetLastSSIDMatchFreqs().size());
+  EXPECT_EQ(std::size(kSSID1FreqMatches), GetLastSSIDMatchFreqs().size());
   for (uint32_t freq : kSSID1FreqMatches) {
     EXPECT_TRUE(GetLastSSIDMatchFreqs().find(freq) !=
                 GetLastSSIDMatchFreqs().end());

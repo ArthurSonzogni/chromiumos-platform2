@@ -4,11 +4,11 @@
 
 #include "shill/metrics.h"
 
+#include <iterator>
 #include <string>
 #include <vector>
 
 #include <base/files/scoped_temp_dir.h>
-#include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/metrics_library_mock.h>
 #include <metrics/timer_mock.h>
@@ -600,7 +600,7 @@ TEST_F(MetricsTest, CellularDrop) {
   const uint16_t signal_strength = 100;
   const int kInterfaceIndex = 1;
   metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
-  for (size_t index = 0; index < base::size(kUMATechnologyStrings); ++index) {
+  for (size_t index = 0; index < std::size(kUMATechnologyStrings); ++index) {
     EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricCellularDrop, index,
                                         Metrics::kCellularDropTechnologyMax));
     EXPECT_CALL(

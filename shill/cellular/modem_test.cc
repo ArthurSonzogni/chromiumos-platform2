@@ -4,6 +4,7 @@
 
 #include "shill/cellular/modem.h"
 
+#include <iterator>
 #include <tuple>
 #include <utility>
 
@@ -11,7 +12,6 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 
-#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
@@ -85,7 +85,7 @@ class ModemTest : public Test {
   }
 
   void SetUp() {
-    expected_address_ = ByteString(kAddress, base::size(kAddress));
+    expected_address_ = ByteString(kAddress, std::size(kAddress));
 
     EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(kLinkName))
         .WillRepeatedly(Return(kTestInterfaceIndex));

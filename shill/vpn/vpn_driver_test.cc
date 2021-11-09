@@ -4,9 +4,9 @@
 
 #include "shill/vpn/vpn_driver.h"
 
+#include <iterator>
 #include <vector>
 
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
@@ -78,7 +78,7 @@ const VPNDriverUnderTest::Property VPNDriverUnderTest::kProperties[] = {
 };
 
 VPNDriverUnderTest::VPNDriverUnderTest(Manager* manager)
-    : VPNDriver(manager, nullptr, kProperties, base::size(kProperties)) {}
+    : VPNDriver(manager, nullptr, kProperties, std::size(kProperties)) {}
 
 class VPNDriverTest : public Test {
  public:
