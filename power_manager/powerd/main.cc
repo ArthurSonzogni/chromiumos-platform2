@@ -63,6 +63,7 @@
 #include "power_manager/powerd/system/input_watcher.h"
 #include "power_manager/powerd/system/internal_backlight.h"
 #include "power_manager/powerd/system/lockfile_checker.h"
+#include "power_manager/powerd/system/machine_quirks.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/pluggable_internal_backlight.h"
 #include "power_manager/powerd/system/power_supply.h"
@@ -286,6 +287,11 @@ class DaemonDelegateImpl : public DaemonDelegate {
       const base::FilePath& dir,
       const std::vector<base::FilePath>& files) override {
     return std::make_unique<system::LockfileChecker>(dir, files);
+  }
+
+  std::unique_ptr<system::MachineQuirksInterface> CreateMachineQuirks()
+      override {
+    return std::make_unique<system::MachineQuirks>();
   }
 
   std::unique_ptr<MetricsSenderInterface> CreateMetricsSender() override {

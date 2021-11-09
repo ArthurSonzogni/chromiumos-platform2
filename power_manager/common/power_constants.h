@@ -239,6 +239,9 @@ extern const char kSuspendToIdlePref[];
 // The pref for cgroup A will be "|kSuspendFreezerDepsPrefix|A".
 extern const char kSuspendFreezerDepsPrefix[];
 
+// If true, enable machine quirk detection feature.
+extern const char kHasMachineQuirks[];
+
 // If true, return Far when at least one of the sensors report far.
 extern const char kSetTransmitPowerPreferFarForProximityPref[];
 

@@ -42,6 +42,7 @@
 #include "power_manager/powerd/system/external_ambient_light_sensor_factory_stub.h"
 #include "power_manager/powerd/system/input_watcher_stub.h"
 #include "power_manager/powerd/system/lockfile_checker_stub.h"
+#include "power_manager/powerd/system/machine_quirks_stub.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/power_supply_stub.h"
@@ -89,6 +90,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
         passed_dark_resume_(new system::DarkResumeStub()),
         passed_audio_client_(new system::AudioClientStub()),
         passed_lockfile_checker_(new system::LockfileCheckerStub()),
+        passed_machine_quirks_(new system::MachineQuirksStub()),
         passed_metrics_sender_(new MetricsSenderStub()),
         passed_charge_controller_helper_(
             new system::ChargeControllerHelperStub()),
@@ -121,6 +123,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
         dark_resume_(passed_dark_resume_.get()),
         audio_client_(passed_audio_client_.get()),
         lockfile_checker_(passed_lockfile_checker_.get()),
+        machine_quirks_(passed_machine_quirks_.get()),
         metrics_sender_(passed_metrics_sender_.get()),
         pid_(2) {
     CHECK(run_dir_.CreateUniqueTempDir());
@@ -346,6 +349,10 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
       const std::vector<base::FilePath>& files) override {
     return std::move(passed_lockfile_checker_);
   }
+  std::unique_ptr<system::MachineQuirksInterface> CreateMachineQuirks()
+      override {
+    return std::move(passed_machine_quirks_);
+  }
   std::unique_ptr<MetricsSenderInterface> CreateMetricsSender() override {
     return std::move(passed_metrics_sender_);
   }
@@ -420,6 +427,14 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
                               ShutdownReasonToString(reason).c_str());
   }
 
+  bool IsSuspendCommandIdle() {
+    std::string suspend_arg = "--suspend_to_idle";
+    async_commands_.clear();
+    sync_commands_.clear();
+    daemon_->DoSuspend(1, true, base::TimeDelta::FromMilliseconds(0), false);
+    return sync_commands_[0].find(suspend_arg) != std::string::npos;
+  }
+
   // Commands for forcing the lid open or stopping forcing it open.
   const std::string kForceLidOpenCommand =
       std::string(kSetuidHelperPath) +
@@ -457,6 +472,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<system::DarkResumeStub> passed_dark_resume_;
   std::unique_ptr<system::AudioClientStub> passed_audio_client_;
   std::unique_ptr<system::LockfileCheckerStub> passed_lockfile_checker_;
+  std::unique_ptr<system::MachineQuirksStub> passed_machine_quirks_;
   std::unique_ptr<MetricsSenderStub> passed_metrics_sender_;
   std::unique_ptr<system::ChargeControllerHelperInterface>
       passed_charge_controller_helper_;
@@ -489,6 +505,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   system::DarkResumeStub* dark_resume_;
   system::AudioClientStub* audio_client_;
   system::LockfileCheckerStub* lockfile_checker_;
+  system::MachineQuirksStub* machine_quirks_;
   MetricsSenderStub* metrics_sender_;
 
   // Run directory passed to |daemon_|.
@@ -857,6 +874,26 @@ TEST_F(DaemonTest, FirstRunAfterBootWhenFalse) {
   Init();
   EXPECT_FALSE(daemon_->first_run_after_boot_for_testing());
   EXPECT_TRUE(base::PathExists(already_ran_path));
+}
+
+TEST_F(DaemonTest, SuspendToIdleQuirkPrecedence) {
+  // When SuspendToIdle quirk is detected, override pref value.
+  // If this test fails, it could be because the suspend_to_idle setting was
+  // modified before MachineQuirks prefs were set
+  prefs_->SetInt64(kSuspendToIdlePref, 0);
+  machine_quirks_->SetSuspendToIdleQuirkDetected(true);
+  Init();
+  EXPECT_EQ(true, IsSuspendCommandIdle());
+}
+
+TEST_F(DaemonTest, NoSuspendToIdleFromQuirk) {
+  // When no quirks are detected, MachineQuirks does not write to the
+  // SuspendToIdle pref.
+  prefs_->SetInt64(kSuspendToIdlePref, 0);
+  // Set IsSuspendToIdle to false.
+  machine_quirks_->SetSuspendToIdleQuirkDetected(false);
+  Init();
+  EXPECT_EQ(false, IsSuspendCommandIdle());
 }
 
 TEST_F(DaemonTest, FactoryMode) {

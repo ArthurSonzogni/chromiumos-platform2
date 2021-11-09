@@ -36,6 +36,7 @@ class EcHelperInterface;
 class ExternalAmbientLightSensorFactoryInterface;
 class InputWatcherInterface;
 class LockfileCheckerInterface;
+class MachineQuirksInterface;
 class PeripheralBatteryWatcher;
 class PowerSupplyInterface;
 class SensorServiceHandler;
@@ -164,6 +165,9 @@ class DaemonDelegate {
   virtual std::unique_ptr<system::LockfileCheckerInterface>
   CreateLockfileChecker(const base::FilePath& dir,
                         const std::vector<base::FilePath>& files) = 0;
+
+  virtual std::unique_ptr<system::MachineQuirksInterface>
+  CreateMachineQuirks() = 0;
 
   virtual std::unique_ptr<MetricsSenderInterface> CreateMetricsSender() = 0;
 

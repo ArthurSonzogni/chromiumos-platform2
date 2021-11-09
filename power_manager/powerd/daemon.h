@@ -33,6 +33,7 @@
 #include "power_manager/powerd/policy/wifi_controller.h"
 #include "power_manager/powerd/system/audio_observer.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
+#include "power_manager/powerd/system/machine_quirks.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
 #include "power_manager/powerd/system/sensor_service_handler.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
@@ -349,6 +350,7 @@ class Daemon :
   std::unique_ptr<system::DarkResumeInterface> dark_resume_;
   std::unique_ptr<policy::ShutdownFromSuspend> shutdown_from_suspend_;
   std::unique_ptr<policy::Suspender> suspender_;
+  std::unique_ptr<system::MachineQuirksInterface> machine_quirks_;
   std::unique_ptr<policy::WifiController> wifi_controller_;
   std::unique_ptr<policy::CellularController> cellular_controller_;
   std::unique_ptr<system::SuspendConfiguratorInterface> suspend_configurator_;
