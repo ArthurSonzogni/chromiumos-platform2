@@ -41,8 +41,8 @@ class ProxyFileSystemTest : public testing::Test,
 
     ASSERT_TRUE(delegate_thread_.Start());
 
-    base::Thread::Options options(base::MessagePumpType::IO, 0);
-    ASSERT_TRUE(file_system_thread_.StartWithOptions(options));
+    ASSERT_TRUE(file_system_thread_.StartWithOptions(
+        base::Thread::Options(base::MessagePumpType::IO, 0)));
 
     file_system_ = std::make_unique<ProxyFileSystem>(
         this, delegate_thread_.task_runner(), mount_dir_.GetPath());
