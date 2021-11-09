@@ -12,9 +12,9 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
-#include "cryptohome/key.pb.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/rpc.pb.h"
+#include "cryptohome/signature_sealing/structures.h"
 
 namespace cryptohome {
 
@@ -82,7 +82,7 @@ class KeyChallengeServiceMockController final {
       const std::string& expected_username,
       const brillo::Blob& expected_public_key_spki_der,
       const brillo::Blob& expected_challenge_value,
-      ChallengeSignatureAlgorithm expected_signature_algorithm);
+      structure::ChallengeSignatureAlgorithm expected_signature_algorithm);
 
   // Whether the mocked ChallengeKey() has been called.
   //

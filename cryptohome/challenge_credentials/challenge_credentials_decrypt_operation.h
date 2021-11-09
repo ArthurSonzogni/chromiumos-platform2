@@ -17,9 +17,9 @@
 
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
 #include "cryptohome/key.pb.h"
+#include "cryptohome/signature_sealing/structures.h"
 #include "cryptohome/signature_sealing_backend.h"
 #include "cryptohome/tpm.h"
-#include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
 
@@ -35,9 +35,6 @@ class KeyChallengeService;
 class ChallengeCredentialsDecryptOperation final
     : public ChallengeCredentialsOperation {
  public:
-  using KeysetSignatureChallengeInfo =
-      SerializedVaultKeyset_SignatureChallengeInfo;
-
   // If the operation succeeds, |credentials| will contain the decrypted
   // credentials that can be used for decryption of the user's vault keyset.
   using CompletionCallback =
@@ -56,7 +53,7 @@ class ChallengeCredentialsDecryptOperation final
       const brillo::Blob& delegate_secret,
       const std::string& account_id,
       const KeyData& key_data,
-      const KeysetSignatureChallengeInfo& keyset_challenge_info,
+      const structure::SignatureChallengeInfo& keyset_challenge_info,
       CompletionCallback completion_callback);
 
   ~ChallengeCredentialsDecryptOperation() override;
@@ -95,7 +92,7 @@ class ChallengeCredentialsDecryptOperation final
   const brillo::Blob delegate_secret_;
   const std::string account_id_;
   const KeyData key_data_;
-  const KeysetSignatureChallengeInfo keyset_challenge_info_;
+  const structure::SignatureChallengeInfo keyset_challenge_info_;
   std::unique_ptr<brillo::Blob> salt_signature_;
   CompletionCallback completion_callback_;
   SignatureSealingBackend* const signature_sealing_backend_;

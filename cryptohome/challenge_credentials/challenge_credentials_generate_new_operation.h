@@ -17,8 +17,8 @@
 
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
 #include "cryptohome/key.pb.h"
+#include "cryptohome/signature_sealing/structures.h"
 #include "cryptohome/signature_sealing_backend.h"
-#include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
 
@@ -35,9 +35,6 @@ class Tpm;
 class ChallengeCredentialsGenerateNewOperation final
     : public ChallengeCredentialsOperation {
  public:
-  using KeysetSignatureChallengeInfo =
-      SerializedVaultKeyset_SignatureChallengeInfo;
-
   // If the operation succeeds, |credentials| will contain the generated
   // credentials that can be used for encryption of the user's vault keyset,
   // with the challenge_credentials_keyset_info() field containing the data to
@@ -92,9 +89,10 @@ class ChallengeCredentialsGenerateNewOperation final
   // Generates the result if all necessary pieces are computed.
   void ProceedIfComputationsDone();
 
-  // Constructs the SignatureChallengeInfo protobuf that will be persisted as
-  // part of the vault keyset.
-  KeysetSignatureChallengeInfo ConstructKeysetSignatureChallengeInfo() const;
+  // Constructs the SignatureChallengeInfo that will be persisted as
+  // part of the auth block state.
+  structure::SignatureChallengeInfo ConstructKeysetSignatureChallengeInfo()
+      const;
 
   Tpm* const tpm_;
   const brillo::Blob delegate_blob_;
@@ -106,11 +104,11 @@ class ChallengeCredentialsGenerateNewOperation final
   SignatureSealingBackend* const signature_sealing_backend_;
   ChallengePublicKeyInfo public_key_info_;
   brillo::Blob salt_;
-  ChallengeSignatureAlgorithm salt_signature_algorithm_ =
-      CHALLENGE_RSASSA_PKCS1_V1_5_SHA1;
+  structure::ChallengeSignatureAlgorithm salt_signature_algorithm_ =
+      structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
   std::unique_ptr<brillo::Blob> salt_signature_;
   std::unique_ptr<brillo::SecureBlob> tpm_protected_secret_value_;
-  SignatureSealedData tpm_sealed_secret_data_;
+  structure::SignatureSealedData tpm_sealed_secret_data_;
   base::WeakPtrFactory<ChallengeCredentialsGenerateNewOperation>
       weak_ptr_factory_{this};
 };

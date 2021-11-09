@@ -3869,12 +3869,12 @@ class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
   };
 
   struct ReplyToDecrypt {
-    void operator()(const std::string& account_id,
-                    const KeyData& key_data,
-                    const SerializedVaultKeyset_SignatureChallengeInfo&
-                        keyset_challenge_info,
-                    std::unique_ptr<KeyChallengeService> key_challenge_service,
-                    ChallengeCredentialsHelper::DecryptCallback callback) {
+    void operator()(
+        const std::string& account_id,
+        const KeyData& key_data,
+        const structure::SignatureChallengeInfo& keyset_challenge_info,
+        std::unique_ptr<KeyChallengeService> key_challenge_service,
+        ChallengeCredentialsHelper::DecryptCallback callback) {
       std::unique_ptr<Credentials> credentials_to_pass;
       if (credentials)
         credentials_to_pass = std::make_unique<Credentials>(*credentials);

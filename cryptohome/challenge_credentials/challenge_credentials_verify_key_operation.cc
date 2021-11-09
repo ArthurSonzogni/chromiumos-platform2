@@ -15,6 +15,7 @@
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
+#include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/tpm.h"
 
 using brillo::Blob;
@@ -29,37 +30,41 @@ namespace {
 constexpr int kChallengeByteCount = 20;
 
 // Returns the signature algorithm to be used for the verification.
-base::Optional<ChallengeSignatureAlgorithm> ChooseChallengeAlgorithm(
+base::Optional<structure::ChallengeSignatureAlgorithm> ChooseChallengeAlgorithm(
     const ChallengePublicKeyInfo& public_key_info) {
   DCHECK(public_key_info.signature_algorithm_size());
-  base::Optional<ChallengeSignatureAlgorithm> currently_chosen_algorithm;
+  base::Optional<structure::ChallengeSignatureAlgorithm>
+      currently_chosen_algorithm;
   // Respect the input's algorithm prioritization, with the exception of
   // considering SHA-1 as the least preferred option.
   for (int index = 0; index < public_key_info.signature_algorithm_size();
        ++index) {
-    currently_chosen_algorithm = public_key_info.signature_algorithm(index);
-    if (*currently_chosen_algorithm != CHALLENGE_RSASSA_PKCS1_V1_5_SHA1)
+    currently_chosen_algorithm =
+        proto::FromProto(public_key_info.signature_algorithm(index));
+    if (*currently_chosen_algorithm !=
+        structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1)
       break;
   }
   return currently_chosen_algorithm;
 }
 
-int GetOpenSslSignatureAlgorithmNid(ChallengeSignatureAlgorithm algorithm) {
+int GetOpenSslSignatureAlgorithmNid(
+    structure::ChallengeSignatureAlgorithm algorithm) {
   switch (algorithm) {
-    case CHALLENGE_RSASSA_PKCS1_V1_5_SHA1:
+    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1:
       return NID_sha1;
-    case CHALLENGE_RSASSA_PKCS1_V1_5_SHA256:
+    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256:
       return NID_sha256;
-    case CHALLENGE_RSASSA_PKCS1_V1_5_SHA384:
+    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384:
       return NID_sha384;
-    case CHALLENGE_RSASSA_PKCS1_V1_5_SHA512:
+    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512:
       return NID_sha512;
   }
   return 0;
 }
 
 bool IsValidSignature(const Blob& public_key_spki_der,
-                      ChallengeSignatureAlgorithm algorithm,
+                      structure::ChallengeSignatureAlgorithm algorithm,
                       const Blob& input,
                       const Blob& signature) {
   const int openssl_algorithm_nid = GetOpenSslSignatureAlgorithmNid(algorithm);
@@ -149,8 +154,8 @@ void ChallengeCredentialsVerifyKeyOperation::Start() {
     Complete(&completion_callback_, /*is_key_valid=*/false);
     return;
   }
-  const base::Optional<ChallengeSignatureAlgorithm> chosen_challenge_algorithm =
-      ChooseChallengeAlgorithm(public_key_info);
+  const base::Optional<structure::ChallengeSignatureAlgorithm>
+      chosen_challenge_algorithm = ChooseChallengeAlgorithm(public_key_info);
   if (!chosen_challenge_algorithm) {
     LOG(ERROR) << "Failed to choose verification signature challenge algorithm";
     Complete(&completion_callback_, /*is_key_valid=*/false);
@@ -181,7 +186,7 @@ void ChallengeCredentialsVerifyKeyOperation::Abort() {
 
 void ChallengeCredentialsVerifyKeyOperation::OnChallengeResponse(
     const Blob& public_key_spki_der,
-    ChallengeSignatureAlgorithm challenge_algorithm,
+    structure::ChallengeSignatureAlgorithm challenge_algorithm,
     const Blob& challenge,
     std::unique_ptr<Blob> challenge_response) {
   DCHECK(thread_checker_.CalledOnValidThread());

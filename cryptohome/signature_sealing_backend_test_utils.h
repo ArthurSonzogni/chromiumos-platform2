@@ -22,7 +22,7 @@ class MockUnsealingSession;
 
 // Creates the SignatureSealedData protobuf message filled with some fake
 // values.
-SignatureSealedData MakeFakeSignatureSealedData(
+structure::SignatureSealedData MakeFakeSignatureSealedData(
     const brillo::Blob& public_key_spki_der);
 
 // Helper for setting up mock expectation and mock response for the
@@ -46,7 +46,8 @@ class SignatureSealedCreationMocker final {
     public_key_spki_der_ = public_key_spki_der;
   }
   void set_key_algorithms(
-      const std::vector<ChallengeSignatureAlgorithm>& key_algorithms) {
+      const std::vector<structure::ChallengeSignatureAlgorithm>&
+          key_algorithms) {
     key_algorithms_ = key_algorithms;
   }
   void set_pcr_restrictions(
@@ -72,7 +73,7 @@ class SignatureSealedCreationMocker final {
  private:
   MockSignatureSealingBackend* const mock_backend_;
   brillo::Blob public_key_spki_der_;
-  std::vector<ChallengeSignatureAlgorithm> key_algorithms_;
+  std::vector<structure::ChallengeSignatureAlgorithm> key_algorithms_;
   std::vector<std::map<uint32_t, brillo::Blob>> pcr_restrictions_;
   brillo::Blob delegate_blob_;
   brillo::Blob delegate_secret_;
@@ -103,7 +104,8 @@ class SignatureSealedUnsealingMocker final {
     public_key_spki_der_ = public_key_spki_der;
   }
   void set_key_algorithms(
-      const std::vector<ChallengeSignatureAlgorithm>& key_algorithms) {
+      const std::vector<structure::ChallengeSignatureAlgorithm>&
+          key_algorithms) {
     key_algorithms_ = key_algorithms;
   }
   void set_delegate_blob(const brillo::Blob& delegate_blob) {
@@ -112,7 +114,8 @@ class SignatureSealedUnsealingMocker final {
   void set_delegate_secret(const brillo::Blob& delegate_secret) {
     delegate_secret_ = delegate_secret;
   }
-  void set_chosen_algorithm(ChallengeSignatureAlgorithm chosen_algorithm) {
+  void set_chosen_algorithm(
+      structure::ChallengeSignatureAlgorithm chosen_algorithm) {
     chosen_algorithm_ = chosen_algorithm;
   }
   void set_challenge_value(const brillo::Blob& challenge_value) {
@@ -143,11 +146,11 @@ class SignatureSealedUnsealingMocker final {
 
   MockSignatureSealingBackend* const mock_backend_;
   brillo::Blob public_key_spki_der_;
-  std::vector<ChallengeSignatureAlgorithm> key_algorithms_;
+  std::vector<structure::ChallengeSignatureAlgorithm> key_algorithms_;
   brillo::Blob delegate_blob_;
   brillo::Blob delegate_secret_;
-  ChallengeSignatureAlgorithm chosen_algorithm_ =
-      CHALLENGE_RSASSA_PKCS1_V1_5_SHA1;
+  structure::ChallengeSignatureAlgorithm chosen_algorithm_ =
+      structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
   brillo::Blob challenge_value_;
   brillo::Blob challenge_signature_;
   brillo::Blob secret_value_;

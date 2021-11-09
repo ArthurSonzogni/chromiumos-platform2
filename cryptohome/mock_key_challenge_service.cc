@@ -35,7 +35,7 @@ void KeyChallengeServiceMockController::ExpectSignatureChallenge(
     const std::string& expected_username,
     const Blob& expected_public_key_spki_der,
     const Blob& expected_challenge_value,
-    ChallengeSignatureAlgorithm expected_signature_algorithm) {
+    structure::ChallengeSignatureAlgorithm expected_signature_algorithm) {
   AccountIdentifier account_identifier;
   account_identifier.set_account_id(expected_username);
 
@@ -47,7 +47,8 @@ void KeyChallengeServiceMockController::ExpectSignatureChallenge(
   request_data.set_data_to_sign(BlobToString(expected_challenge_value));
   request_data.set_public_key_spki_der(
       BlobToString(expected_public_key_spki_der));
-  request_data.set_signature_algorithm(expected_signature_algorithm);
+  request_data.set_signature_algorithm(
+      proto::ToProto(expected_signature_algorithm));
 
   EXPECT_CALL(*mock_service_,
               ChallengeKeyMovable(ProtobufEquals(account_identifier),

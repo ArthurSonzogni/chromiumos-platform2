@@ -51,10 +51,11 @@ class ChallengeCredentialsVerifyKeyOperation final
   void Abort() override;
 
  private:
-  void OnChallengeResponse(const brillo::Blob& public_key_spki_der,
-                           ChallengeSignatureAlgorithm challenge_algorithm,
-                           const brillo::Blob& challenge,
-                           std::unique_ptr<brillo::Blob> challenge_signature);
+  void OnChallengeResponse(
+      const brillo::Blob& public_key_spki_der,
+      structure::ChallengeSignatureAlgorithm challenge_algorithm,
+      const brillo::Blob& challenge,
+      std::unique_ptr<brillo::Blob> challenge_signature);
 
   Tpm* const tpm_;
   const std::string account_id_;

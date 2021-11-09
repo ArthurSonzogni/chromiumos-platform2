@@ -5,15 +5,17 @@
 #include "cryptohome/signature_sealing_backend_test_utils.h"
 
 #include <memory>
+#include <string>
 
 #include <gmock/gmock.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/mock_signature_sealing_backend.h"
 #include "cryptohome/protobuf_test_utils.h"
-#include "cryptohome/signature_sealed_data.pb.h"
+#include "cryptohome/signature_sealing/structures.h"
 
 using brillo::Blob;
+using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::SecureBlob;
 using ::hwsec::error::TPMError;
@@ -31,18 +33,18 @@ using testing::StrictMock;
 
 namespace cryptohome {
 
-SignatureSealedData MakeFakeSignatureSealedData(
+structure::SignatureSealedData MakeFakeSignatureSealedData(
     const Blob& public_key_spki_der) {
   constexpr char kFakeTpm2SrkWrappedSecret[] = "ab";
-  SignatureSealedData sealed_data;
+  structure::SignatureSealedData sealed_data;
   // Fill some fields of the protobuf message just to make test/mock assertions
   // more meaningful. Note that it's unimportant that we use TPM2-specific
   // fields here.
-  SignatureSealedData_Tpm2PolicySignedData& sealed_data_contents =
-      *sealed_data.mutable_tpm2_policy_signed_data();
-  sealed_data_contents.set_public_key_spki_der(
-      BlobToString(public_key_spki_der));
-  sealed_data_contents.set_srk_wrapped_secret(kFakeTpm2SrkWrappedSecret);
+  structure::Tpm2PolicySignedData sealed_data_contents;
+  sealed_data_contents.public_key_spki_der = public_key_spki_der;
+  sealed_data_contents.srk_wrapped_secret =
+      BlobFromString(kFakeTpm2SrkWrappedSecret);
+  sealed_data = sealed_data_contents;
   return sealed_data;
 }
 
@@ -53,7 +55,7 @@ SignatureSealedCreationMocker::SignatureSealedCreationMocker(
 SignatureSealedCreationMocker::~SignatureSealedCreationMocker() = default;
 
 void SignatureSealedCreationMocker::SetUpSuccessfulMock() {
-  const SignatureSealedData sealed_data_to_return =
+  const structure::SignatureSealedData sealed_data_to_return =
       MakeFakeSignatureSealedData(public_key_spki_der_);
   EXPECT_CALL(*mock_backend_,
               CreateSealedSecret(public_key_spki_der_, key_algorithms_,
@@ -87,11 +89,11 @@ void SignatureSealedUnsealingMocker::SetUpSuccessfulMock() {
 
 void SignatureSealedUnsealingMocker::SetUpCreationFailingMock(
     bool mock_repeatedly) {
-  const SignatureSealedData expected_sealed_data =
+  const structure::SignatureSealedData expected_sealed_data =
       MakeFakeSignatureSealedData(public_key_spki_der_);
   auto& expected_call =
       EXPECT_CALL(*mock_backend_,
-                  CreateUnsealingSession(ProtobufEquals(expected_sealed_data),
+                  CreateUnsealingSession(StructureEquals(expected_sealed_data),
                                          public_key_spki_der_, key_algorithms_,
                                          delegate_blob_, delegate_secret_, _));
   if (mock_repeatedly)
@@ -118,10 +120,10 @@ MockUnsealingSession* SignatureSealedUnsealingMocker::AddSessionCreationMock() {
   // ownership to its caller.
   StrictMock<MockUnsealingSession>* mock_unsealing_session =
       new StrictMock<MockUnsealingSession>;
-  const SignatureSealedData expected_sealed_data =
+  const structure::SignatureSealedData expected_sealed_data =
       MakeFakeSignatureSealedData(public_key_spki_der_);
   EXPECT_CALL(*mock_backend_,
-              CreateUnsealingSession(ProtobufEquals(expected_sealed_data),
+              CreateUnsealingSession(StructureEquals(expected_sealed_data),
                                      public_key_spki_der_, key_algorithms_,
                                      delegate_blob_, delegate_secret_, _))
       .WillOnce(Invoke([mock_unsealing_session](auto&&, auto&&, auto&&, auto&&,

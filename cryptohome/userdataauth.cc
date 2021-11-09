@@ -40,6 +40,7 @@
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_challenge_service_factory_impl.h"
 #include "cryptohome/pkcs11/real_pkcs11_token_factory.h"
+#include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/stateful_recovery.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/mount_utils.h"
@@ -1627,7 +1628,8 @@ void UserDataAuth::DoChallengeResponseMount(
     // Home directory already exist and we are not doing ephemeral mount, so
     // we'll decrypt existing VaultKeyset.
     challenge_credentials_helper_->Decrypt(
-        account_id, key_data, vault_keyset->GetSignatureChallengeInfo(),
+        account_id, key_data,
+        proto::FromProto(vault_keyset->GetSignatureChallengeInfo()),
         std::move(key_challenge_service),
         base::BindOnce(
             &UserDataAuth::OnChallengeResponseMountCredentialsObtained,
@@ -2370,7 +2372,7 @@ void UserDataAuth::DoFullChallengeResponseCheckKey(
   }
   challenge_credentials_helper_->Decrypt(
       account_id, authorization.key().data(),
-      vault_keyset->GetSignatureChallengeInfo(),
+      proto::FromProto(vault_keyset->GetSignatureChallengeInfo()),
       std::move(key_challenge_service),
       base::BindOnce(&UserDataAuth::OnFullChallengeResponseCheckKeyDone,
                      base::Unretained(this), std::move(on_done)));

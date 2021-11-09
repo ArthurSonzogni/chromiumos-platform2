@@ -507,8 +507,9 @@ struct SignatureSealedSecretTestCaseParam {
       const std::string& test_case_description,
       Tpm* tpm,
       int key_size_bits,
-      const std::vector<ChallengeSignatureAlgorithm>& supported_algorithms,
-      base::Optional<ChallengeSignatureAlgorithm> expected_algorithm,
+      const std::vector<structure::ChallengeSignatureAlgorithm>&
+          supported_algorithms,
+      base::Optional<structure::ChallengeSignatureAlgorithm> expected_algorithm,
       int openssl_algorithm_nid)
       : test_case_description(test_case_description),
         tpm(tpm),
@@ -524,8 +525,9 @@ struct SignatureSealedSecretTestCaseParam {
       const std::string& test_case_description,
       Tpm* tpm,
       int key_size_bits,
-      const std::vector<ChallengeSignatureAlgorithm>& supported_algorithms,
-      ChallengeSignatureAlgorithm expected_algorithm,
+      const std::vector<structure::ChallengeSignatureAlgorithm>&
+          supported_algorithms,
+      structure::ChallengeSignatureAlgorithm expected_algorithm,
       int openssl_algorithm_nid) {
     return SignatureSealedSecretTestCaseParam(
         test_case_description, tpm, key_size_bits, supported_algorithms,
@@ -536,7 +538,8 @@ struct SignatureSealedSecretTestCaseParam {
       const std::string& test_case_description,
       Tpm* tpm,
       int key_size_bits,
-      const std::vector<ChallengeSignatureAlgorithm>& supported_algorithms) {
+      const std::vector<structure::ChallengeSignatureAlgorithm>&
+          supported_algorithms) {
     return SignatureSealedSecretTestCaseParam(
         test_case_description, tpm, key_size_bits, supported_algorithms, {}, 0);
   }
@@ -546,8 +549,8 @@ struct SignatureSealedSecretTestCaseParam {
   std::string test_case_description;
   Tpm* tpm;
   int key_size_bits;
-  std::vector<ChallengeSignatureAlgorithm> supported_algorithms;
-  base::Optional<ChallengeSignatureAlgorithm> expected_algorithm;
+  std::vector<structure::ChallengeSignatureAlgorithm> supported_algorithms;
+  base::Optional<structure::ChallengeSignatureAlgorithm> expected_algorithm;
   int openssl_algorithm_nid;
 };
 
@@ -589,7 +592,7 @@ class SignatureSealedSecretTestCase final {
     }
     // Create a secret.
     SecureBlob secret_value;
-    SignatureSealedData sealed_secret_data;
+    structure::SignatureSealedData sealed_secret_data;
     if (!CreateSecret(&secret_value, &sealed_secret_data)) {
       LOG(ERROR) << "Error creating a secret";
       return false;
@@ -643,7 +646,7 @@ class SignatureSealedSecretTestCase final {
     }
     // Create and unseal another secret - it has a different value.
     SecureBlob another_secret_value;
-    SignatureSealedData another_sealed_secret_data;
+    structure::SignatureSealedData another_sealed_secret_data;
     if (!CreateSecret(&another_secret_value, &another_sealed_secret_data)) {
       LOG(ERROR) << "Error creating another secret";
       return false;
@@ -803,7 +806,7 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CreateSecret(SecureBlob* secret_value,
-                    SignatureSealedData* sealed_secret_data) {
+                    structure::SignatureSealedData* sealed_secret_data) {
     std::map<uint32_t, Blob> pcr_values;
     if (!GetCurrentPcrValues(&pcr_values)) {
       LOG(ERROR) << "Error reading PCR values";
@@ -826,7 +829,7 @@ class SignatureSealedSecretTestCase final {
       return false;
     }
     SecureBlob secret_value;
-    SignatureSealedData sealed_secret_data;
+    structure::SignatureSealedData sealed_secret_data;
     if (TPMErrorBase err = backend()->CreateSealedSecret(
             key_spki_der_, param_.supported_algorithms, {pcr_values},
             delegate_blob_, delegate_secret_, &secret_value,
@@ -850,7 +853,7 @@ class SignatureSealedSecretTestCase final {
     return true;
   }
 
-  bool Unseal(const SignatureSealedData& sealed_secret_data,
+  bool Unseal(const structure::SignatureSealedData& sealed_secret_data,
               Blob* challenge_value,
               Blob* challenge_signature,
               SecureBlob* unsealed_value) {
@@ -889,7 +892,7 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CheckUnsealingFailsWithOldSignature(
-      const SignatureSealedData& sealed_secret_data,
+      const structure::SignatureSealedData& sealed_secret_data,
       const Blob& challenge_signature) {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (TPMErrorBase err = backend()->CreateUnsealingSession(
@@ -909,7 +912,7 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CheckUnsealingFailsWithBadAlgorithmSignature(
-      const SignatureSealedData& sealed_secret_data) {
+      const structure::SignatureSealedData& sealed_secret_data) {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (TPMErrorBase err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
@@ -935,7 +938,7 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CheckUnsealingFailsWithBadSignature(
-      const SignatureSealedData& sealed_secret_data) {
+      const structure::SignatureSealedData& sealed_secret_data) {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (TPMErrorBase err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
@@ -960,11 +963,12 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CheckUnsealingFailsWithWrongAlgorithm(
-      const SignatureSealedData& sealed_secret_data) {
-    const ChallengeSignatureAlgorithm wrong_algorithm =
-        *param_.expected_algorithm == CHALLENGE_RSASSA_PKCS1_V1_5_SHA1
-            ? CHALLENGE_RSASSA_PKCS1_V1_5_SHA256
-            : CHALLENGE_RSASSA_PKCS1_V1_5_SHA1;
+      const structure::SignatureSealedData& sealed_secret_data) {
+    const structure::ChallengeSignatureAlgorithm wrong_algorithm =
+        *param_.expected_algorithm ==
+                structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1
+            ? structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256
+            : structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (TPMErrorBase err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, {wrong_algorithm},
@@ -979,7 +983,7 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CheckUnsealingFailsWithWrongKey(
-      const SignatureSealedData& sealed_secret_data) {
+      const structure::SignatureSealedData& sealed_secret_data) {
     crypto::ScopedEVP_PKEY other_pkey;
     Blob other_key_spki_der;
     if (!GenerateRsaKey(param_.key_size_bits, &other_pkey,
@@ -1001,7 +1005,7 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CheckUnsealingFailsWithChangedPcrs(
-      const SignatureSealedData& sealed_secret_data) {
+      const structure::SignatureSealedData& sealed_secret_data) {
     if (!tpm()->ExtendPCR(kPcrIndexToExtend,
                           BlobFromString("01234567890123456789"))) {
       LOG(ERROR) << "Error extending PCR";
@@ -1078,44 +1082,54 @@ bool TpmLiveTest::SignatureSealedSecretTest() {
   std::vector<TestCaseParam> test_case_params;
   for (int key_size_bits : {1024, 2048}) {
     test_case_params.push_back(TestCaseParam::MakeSuccessful(
-        "SHA-1", tpm_, key_size_bits, {CHALLENGE_RSASSA_PKCS1_V1_5_SHA1},
-        CHALLENGE_RSASSA_PKCS1_V1_5_SHA1, NID_sha1));
+        "SHA-1", tpm_, key_size_bits,
+        {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1},
+        structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1, NID_sha1));
     if (tpm_->GetVersion() == Tpm::TPM_1_2) {
-      test_case_params.push_back(
-          TestCaseParam::MakeFailing("SHA-256", tpm_, key_size_bits,
-                                     {CHALLENGE_RSASSA_PKCS1_V1_5_SHA256}));
-      test_case_params.push_back(
-          TestCaseParam::MakeFailing("SHA-384", tpm_, key_size_bits,
-                                     {CHALLENGE_RSASSA_PKCS1_V1_5_SHA384}));
-      test_case_params.push_back(
-          TestCaseParam::MakeFailing("SHA-512", tpm_, key_size_bits,
-                                     {CHALLENGE_RSASSA_PKCS1_V1_5_SHA512}));
+      test_case_params.push_back(TestCaseParam::MakeFailing(
+          "SHA-256", tpm_, key_size_bits,
+          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256}));
+      test_case_params.push_back(TestCaseParam::MakeFailing(
+          "SHA-384", tpm_, key_size_bits,
+          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384}));
+      test_case_params.push_back(TestCaseParam::MakeFailing(
+          "SHA-512", tpm_, key_size_bits,
+          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512}));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
           "{SHA-1,SHA-256}", tpm_, key_size_bits,
-          {CHALLENGE_RSASSA_PKCS1_V1_5_SHA256,
-           CHALLENGE_RSASSA_PKCS1_V1_5_SHA1},
-          CHALLENGE_RSASSA_PKCS1_V1_5_SHA1, NID_sha1));
+          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
+           structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1},
+          structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1,
+          NID_sha1));
     } else {
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
-          "SHA-256", tpm_, key_size_bits, {CHALLENGE_RSASSA_PKCS1_V1_5_SHA256},
-          CHALLENGE_RSASSA_PKCS1_V1_5_SHA256, NID_sha256));
+          "SHA-256", tpm_, key_size_bits,
+          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256},
+          structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
+          NID_sha256));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
-          "SHA-384", tpm_, key_size_bits, {CHALLENGE_RSASSA_PKCS1_V1_5_SHA384},
-          CHALLENGE_RSASSA_PKCS1_V1_5_SHA384, NID_sha384));
+          "SHA-384", tpm_, key_size_bits,
+          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384},
+          structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384,
+          NID_sha384));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
-          "SHA-512", tpm_, key_size_bits, {CHALLENGE_RSASSA_PKCS1_V1_5_SHA512},
-          CHALLENGE_RSASSA_PKCS1_V1_5_SHA512, NID_sha512));
+          "SHA-512", tpm_, key_size_bits,
+          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512},
+          structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512,
+          NID_sha512));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
           "{SHA-384,SHA-256,SHA-512}", tpm_, key_size_bits,
-          {CHALLENGE_RSASSA_PKCS1_V1_5_SHA384,
-           CHALLENGE_RSASSA_PKCS1_V1_5_SHA256,
-           CHALLENGE_RSASSA_PKCS1_V1_5_SHA512},
-          CHALLENGE_RSASSA_PKCS1_V1_5_SHA384, NID_sha384));
+          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384,
+           structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
+           structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512},
+          structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384,
+          NID_sha384));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
           "{SHA-1,SHA-256}", tpm_, key_size_bits,
-          {CHALLENGE_RSASSA_PKCS1_V1_5_SHA1,
-           CHALLENGE_RSASSA_PKCS1_V1_5_SHA256},
-          CHALLENGE_RSASSA_PKCS1_V1_5_SHA256, NID_sha256));
+          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1,
+           structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256},
+          structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
+          NID_sha256));
     }
   }
   for (auto&& test_case_param : test_case_params) {

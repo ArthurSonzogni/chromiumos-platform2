@@ -27,19 +27,20 @@ class MockSignatureSealingBackend : public SignatureSealingBackend {
   MOCK_METHOD(hwsec::error::TPMErrorBase,
               CreateSealedSecret,
               (const brillo::Blob&,
-               const std::vector<ChallengeSignatureAlgorithm>&,
+               const std::vector<structure::ChallengeSignatureAlgorithm>&,
                (const std::vector<std::map<uint32_t, brillo::Blob>>&),
                const brillo::Blob&,
                const brillo::Blob&,
                brillo::SecureBlob*,
-               SignatureSealedData*),
+               structure::SignatureSealedData*),
               (override));
 
   MOCK_METHOD(hwsec::error::TPMErrorBase,
               CreateUnsealingSession,
-              (const SignatureSealedData& sealed_secret_data,
+              (const structure::SignatureSealedData& sealed_secret_data,
                const brillo::Blob& public_key_spki_der,
-               const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
+               const std::vector<structure::ChallengeSignatureAlgorithm>&
+                   key_algorithms,
                const brillo::Blob& delegate_blob,
                const brillo::Blob& delegate_secret,
                std::unique_ptr<UnsealingSession>* unsealing_session),
@@ -51,7 +52,7 @@ class MockUnsealingSession : public SignatureSealingBackend::UnsealingSession {
   MockUnsealingSession();
   ~MockUnsealingSession() override;
 
-  MOCK_METHOD(ChallengeSignatureAlgorithm,
+  MOCK_METHOD(structure::ChallengeSignatureAlgorithm,
               GetChallengeAlgorithm,
               (),
               (override));

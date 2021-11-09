@@ -16,6 +16,7 @@
 
 #include "cryptohome/key.pb.h"
 #include "cryptohome/signature_sealed_data.pb.h"
+#include "cryptohome/signature_sealing/structures.h"
 
 namespace cryptohome {
 
@@ -35,7 +36,7 @@ class SignatureSealingBackend {
     virtual ~UnsealingSession() = default;
 
     // Returns the algorithm to be used for signing the challenge value.
-    virtual ChallengeSignatureAlgorithm GetChallengeAlgorithm() = 0;
+    virtual structure::ChallengeSignatureAlgorithm GetChallengeAlgorithm() = 0;
 
     // Returns the challenge value to be signed.
     virtual brillo::Blob GetChallengeValue() = 0;
@@ -79,12 +80,12 @@ class SignatureSealingBackend {
   //   sealed_secret_data - Securely sealed representation of the secret value.
   virtual hwsec::error::TPMErrorBase CreateSealedSecret(
       const brillo::Blob& public_key_spki_der,
-      const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
+      const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
       const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret,
       brillo::SecureBlob* secret_value,
-      SignatureSealedData* sealed_secret_data) = 0;
+      structure::SignatureSealedData* sealed_secret_data) = 0;
 
   // Initiates a session for unsealing the passed sealed data.
   // Note: the implementation may impose restrictions on the number of unsealing
@@ -102,9 +103,9 @@ class SignatureSealingBackend {
   //   delegate_blob - The blob for the owner delegation.
   //   delegate_secret - The delegate secret for the delegate blob.
   virtual hwsec::error::TPMErrorBase CreateUnsealingSession(
-      const SignatureSealedData& sealed_secret_data,
+      const structure::SignatureSealedData& sealed_secret_data,
       const brillo::Blob& public_key_spki_der,
-      const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
+      const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret,
       std::unique_ptr<UnsealingSession>* unsealing_session) = 0;

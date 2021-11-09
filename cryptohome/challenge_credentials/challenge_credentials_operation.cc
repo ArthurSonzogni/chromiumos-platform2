@@ -11,6 +11,7 @@
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/rpc.pb.h"
+#include "cryptohome/signature_sealing/structures_proto.h"
 
 using brillo::Blob;
 using brillo::BlobFromString;
@@ -67,7 +68,7 @@ void ChallengeCredentialsOperation::MakeKeySignatureChallenge(
     const std::string& account_id,
     const Blob& public_key_spki_der,
     const Blob& data_to_sign,
-    ChallengeSignatureAlgorithm signature_algorithm,
+    structure::ChallengeSignatureAlgorithm signature_algorithm,
     KeySignatureChallengeCallback response_callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
 
@@ -82,7 +83,8 @@ void ChallengeCredentialsOperation::MakeKeySignatureChallenge(
   challenge_request_data.set_data_to_sign(BlobToString(data_to_sign));
   challenge_request_data.set_public_key_spki_der(
       BlobToString(public_key_spki_der));
-  challenge_request_data.set_signature_algorithm(signature_algorithm);
+  challenge_request_data.set_signature_algorithm(
+      proto::ToProto(signature_algorithm));
 
   key_challenge_service_->ChallengeKey(
       account_identifier, challenge_request,

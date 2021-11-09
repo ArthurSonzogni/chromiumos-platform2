@@ -18,7 +18,7 @@
 #include "cryptohome/key.pb.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/rpc.pb.h"
-#include "cryptohome/vault_keyset.pb.h"
+#include "cryptohome/signature_sealing/structures.h"
 
 namespace cryptohome {
 
@@ -37,9 +37,6 @@ namespace cryptohome {
 // This class must be used on a single thread only.
 class ChallengeCredentialsHelper {
  public:
-  using KeysetSignatureChallengeInfo =
-      SerializedVaultKeyset_SignatureChallengeInfo;
-
   // This callback reports result of a GenerateNew() call.
   //
   // If the operation succeeds, |credentials| will contain the freshly generated
@@ -111,7 +108,7 @@ class ChallengeCredentialsHelper {
   virtual void Decrypt(
       const std::string& account_id,
       const KeyData& key_data,
-      const KeysetSignatureChallengeInfo& keyset_challenge_info,
+      const structure::SignatureChallengeInfo& keyset_challenge_info,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
       DecryptCallback callback) = 0;
 

@@ -40,7 +40,7 @@ class MockChallengeCredentialsHelper : public ChallengeCredentialsHelper {
               Decrypt,
               (const std::string& account_id,
                const KeyData& key_data,
-               const KeysetSignatureChallengeInfo& keyset_challenge_info,
+               const structure::SignatureChallengeInfo& keyset_challenge_info,
                std::unique_ptr<KeyChallengeService> key_challenge_service,
                DecryptCallback callback),
               (override));

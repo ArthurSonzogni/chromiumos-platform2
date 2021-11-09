@@ -58,7 +58,7 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
       GenerateNewCallback callback) override;
   void Decrypt(const std::string& account_id,
                const KeyData& key_data,
-               const KeysetSignatureChallengeInfo& keyset_challenge_info,
+               const structure::SignatureChallengeInfo& keyset_challenge_info,
                std::unique_ptr<KeyChallengeService> key_challenge_service,
                DecryptCallback callback) override;
   void VerifyKey(const std::string& account_id,
@@ -70,7 +70,7 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
   void StartDecryptOperation(
       const std::string& account_id,
       const KeyData& key_data,
-      const KeysetSignatureChallengeInfo& keyset_challenge_info,
+      const structure::SignatureChallengeInfo& keyset_challenge_info,
       int attempt_number,
       DecryptCallback callback);
 
@@ -90,7 +90,7 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
   void OnDecryptCompleted(
       const std::string& account_id,
       const KeyData& key_data,
-      const KeysetSignatureChallengeInfo& keyset_challenge_info,
+      const structure::SignatureChallengeInfo& keyset_challenge_info,
       int attempt_number,
       DecryptCallback original_callback,
       hwsec::error::TPMErrorBase retry_action,

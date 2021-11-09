@@ -152,7 +152,7 @@ class UnsealingSessionTpm1Impl final
   ~UnsealingSessionTpm1Impl() override;
 
   // UnsealingSession:
-  ChallengeSignatureAlgorithm GetChallengeAlgorithm() override;
+  structure::ChallengeSignatureAlgorithm GetChallengeAlgorithm() override;
   Blob GetChallengeValue() override;
   TPMErrorBase Unseal(const Blob& signed_challenge_value,
                       SecureBlob* unsealed_value) override;
@@ -933,15 +933,14 @@ bool GenerateCmk(TpmImpl* const tpm,
 
 // Given the list of alternative sets of PCR-bound items, returns the one that
 // is currently satisfied. Returns null if none is satisfied.
-const SignatureSealedData_Tpm12PcrBoundItem* GetSatisfiedPcrRestriction(
-    const google::protobuf::RepeatedPtrField<
-        SignatureSealedData_Tpm12PcrBoundItem>& pcr_bound_items,
+const structure::Tpm12PcrBoundItem* GetSatisfiedPcrRestriction(
+    const std::vector<structure::Tpm12PcrBoundItem>& pcr_bound_items,
     Tpm* tpm) {
   std::map<uint32_t, Blob> current_pcr_values;
-  for (const auto& pcr_bound_item_proto : pcr_bound_items) {
+  for (const auto& pcr_bound_item : pcr_bound_items) {
     bool is_satisfied = true;
-    for (const auto& pcr_value_proto : pcr_bound_item_proto.pcr_values()) {
-      const uint32_t pcr_index = pcr_value_proto.pcr_index();
+    for (const auto& pcr_value : pcr_bound_item.pcr_values) {
+      const uint32_t pcr_index = pcr_value.pcr_index;
       if (!current_pcr_values.count(pcr_index)) {
         Blob pcr_value;
         if (!tpm->ReadPCR(pcr_index, &pcr_value)) {
@@ -950,14 +949,13 @@ const SignatureSealedData_Tpm12PcrBoundItem* GetSatisfiedPcrRestriction(
         }
         current_pcr_values.emplace(pcr_index, pcr_value);
       }
-      if (current_pcr_values[pcr_index] !=
-          BlobFromString(pcr_value_proto.pcr_value())) {
+      if (current_pcr_values[pcr_index] != pcr_value.pcr_value) {
         is_satisfied = false;
         break;
       }
     }
     if (is_satisfied)
-      return &pcr_bound_item_proto;
+      return &pcr_bound_item;
   }
   return nullptr;
 }
@@ -994,8 +992,9 @@ UnsealingSessionTpm1Impl::UnsealingSessionTpm1Impl(
 
 UnsealingSessionTpm1Impl::~UnsealingSessionTpm1Impl() = default;
 
-ChallengeSignatureAlgorithm UnsealingSessionTpm1Impl::GetChallengeAlgorithm() {
-  return CHALLENGE_RSASSA_PKCS1_V1_5_SHA1;
+structure::ChallengeSignatureAlgorithm
+UnsealingSessionTpm1Impl::GetChallengeAlgorithm() {
+  return structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
 }
 
 Blob UnsealingSessionTpm1Impl::GetChallengeValue() {
@@ -1089,7 +1088,7 @@ TPMErrorBase UnsealingSessionTpm1Impl::Unseal(
                                  TPMRetryAction::kNoRetry);
   }
   // Unseal the secret value bound to PCRs and the AuthData value.
-  brillo::SecureBlob auth_value;
+  SecureBlob auth_value;
   if (TPMErrorBase err =
           tpm_->GetAuthValue(base::nullopt, auth_data, &auth_value)) {
     return WrapError<TPMError>(std::move(err), "Failed to get auth value");
@@ -1112,17 +1111,18 @@ SignatureSealingBackendTpm1Impl::~SignatureSealingBackendTpm1Impl() = default;
 
 TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     const Blob& public_key_spki_der,
-    const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
+    const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
     const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
     const Blob& delegate_blob,
     const Blob& delegate_secret,
-    brillo::SecureBlob* secret_value,
-    SignatureSealedData* sealed_secret_data) {
+    SecureBlob* secret_value,
+    structure::SignatureSealedData* sealed_secret_data) {
   // TODO(chromium:806788,b:77799573): Support absence of PCR restrictions.
   DCHECK(!pcr_restrictions.empty());
   // Only the |kRsassaPkcs1V15Sha1| algorithm is supported.
   if (std::find(key_algorithms.begin(), key_algorithms.end(),
-                CHALLENGE_RSASSA_PKCS1_V1_5_SHA1) == key_algorithms.end()) {
+                structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1) ==
+      key_algorithms.end()) {
     return CreateError<TPMError>(
         "The key doesn't support RSASSA-PKCS1-v1_5 with SHA-1",
         TPMRetryAction::kNoRetry);
@@ -1224,7 +1224,7 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
           BlobToString(pcr_index_and_value.second);
     }
 
-    brillo::SecureBlob auth_value;
+    SecureBlob auth_value;
     if (TPMErrorBase err =
             tpm_->GetAuthValue(base::nullopt, auth_data, &auth_value)) {
       return WrapError<TPMError>(std::move(err), "Failed to get auth value");
@@ -1240,63 +1240,81 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
         Blob(pcr_bound_secret_value.begin(), pcr_bound_secret_value.end()));
   }
   // Fill the resulting proto with data required for unsealing.
-  sealed_secret_data->Clear();
-  SignatureSealedData_Tpm12CertifiedMigratableKeyData* const data_proto =
-      sealed_secret_data->mutable_tpm12_certified_migratable_key_data();
-  data_proto->set_public_key_spki_der(BlobToString(public_key_spki_der));
-  data_proto->set_srk_wrapped_cmk(BlobToString(srk_wrapped_cmk));
-  data_proto->set_cmk_pubkey(BlobToString(cmk_pubkey));
-  data_proto->set_cmk_wrapped_auth_data(BlobToString(cmk_wrapped_auth_data));
+  structure::Tpm12CertifiedMigratableKeyData data;
+  data.public_key_spki_der = public_key_spki_der;
+  data.srk_wrapped_cmk = srk_wrapped_cmk;
+  data.cmk_pubkey = cmk_pubkey;
+  data.cmk_wrapped_auth_data = cmk_wrapped_auth_data;
   DCHECK_EQ(pcr_restrictions.size(), pcr_bound_secret_values.size());
   for (size_t restriction_index = 0;
        restriction_index < pcr_restrictions.size(); ++restriction_index) {
     const auto& pcr_values = pcr_restrictions[restriction_index];
-    SignatureSealedData_Tpm12PcrBoundItem* const pcr_bound_item_proto =
-        data_proto->add_pcr_bound_items();
+    structure::Tpm12PcrBoundItem pcr_bound_item;
     for (const auto& pcr_index_and_value : pcr_values) {
-      SignatureSealedData_PcrValue* const pcr_value_proto =
-          pcr_bound_item_proto->add_pcr_values();
-      pcr_value_proto->set_pcr_index(pcr_index_and_value.first);
-      pcr_value_proto->set_pcr_value(BlobToString(pcr_index_and_value.second));
+      structure::PcrValue pcr_value;
+      pcr_value.pcr_index = pcr_index_and_value.first;
+      pcr_value.pcr_value = pcr_index_and_value.second;
+      pcr_bound_item.pcr_values.push_back(pcr_value);
     }
-    pcr_bound_item_proto->set_bound_secret(
-        BlobToString(pcr_bound_secret_values[restriction_index]));
+    pcr_bound_item.bound_secret = pcr_bound_secret_values[restriction_index];
+    data.pcr_bound_items.push_back(pcr_bound_item);
   }
+  *sealed_secret_data = data;
   return nullptr;
 }
 
 TPMErrorBase SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
-    const SignatureSealedData& sealed_secret_data,
+    const structure::SignatureSealedData& sealed_secret_data,
     const Blob& public_key_spki_der,
-    const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
+    const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
     const Blob& delegate_blob,
     const Blob& delegate_secret,
     std::unique_ptr<SignatureSealingBackend::UnsealingSession>*
         unsealing_session) {
   // Validate the parameters.
-  if (!sealed_secret_data.has_tpm12_certified_migratable_key_data()) {
+  auto* sealed_secret_data_ptr =
+      absl::get_if<structure::Tpm12CertifiedMigratableKeyData>(
+          &sealed_secret_data);
+  if (!sealed_secret_data_ptr) {
     return CreateError<TPMError>(
         "Sealed data is empty or uses unexpected method",
         TPMRetryAction::kNoRetry);
   }
-  const SignatureSealedData_Tpm12CertifiedMigratableKeyData& data_proto =
-      sealed_secret_data.tpm12_certified_migratable_key_data();
-  if (data_proto.public_key_spki_der() != BlobToString(public_key_spki_der)) {
+  const structure::Tpm12CertifiedMigratableKeyData& data =
+      *sealed_secret_data_ptr;
+
+  if (data.public_key_spki_der.empty()) {
+    return CreateError<TPMError>("Empty public key", TPMRetryAction::kNoRetry);
+  }
+  if (data.srk_wrapped_cmk.empty()) {
+    return CreateError<TPMError>("Empty SRK wrapped CMK",
+                                 TPMRetryAction::kNoRetry);
+  }
+  if (data.cmk_wrapped_auth_data.empty()) {
+    return CreateError<TPMError>("Empty CMK wrapped auth data",
+                                 TPMRetryAction::kNoRetry);
+  }
+  if (data.cmk_pubkey.empty()) {
+    return CreateError<TPMError>("Empty CMK public key",
+                                 TPMRetryAction::kNoRetry);
+  }
+
+  if (data.public_key_spki_der != public_key_spki_der) {
     return CreateError<TPMError>("Wrong subject public key info",
                                  TPMRetryAction::kNoRetry);
   }
   if (std::find(key_algorithms.begin(), key_algorithms.end(),
-                CHALLENGE_RSASSA_PKCS1_V1_5_SHA1) == key_algorithms.end()) {
+                structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1) ==
+      key_algorithms.end()) {
     return CreateError<TPMError>(
         "Failed to choose the algorithm: the key doesn't support "
         "RSASSA-PKCS1-v1_5 with SHA-1",
         TPMRetryAction::kNoRetry);
   }
   // Determine the satisfied set of PCR restrictions.
-  const SignatureSealedData_Tpm12PcrBoundItem* const
-      satisfied_pcr_bound_item_proto =
-          GetSatisfiedPcrRestriction(data_proto.pcr_bound_items(), tpm_);
-  if (!satisfied_pcr_bound_item_proto) {
+  const structure::Tpm12PcrBoundItem* const satisfied_pcr_bound_item =
+      GetSatisfiedPcrRestriction(data.pcr_bound_items, tpm_);
+  if (!satisfied_pcr_bound_item) {
     return CreateError<TPMError>("None of PCR restrictions is satisfied",
                                  TPMRetryAction::kNoRetry);
   }
@@ -1364,11 +1382,9 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
         TPMRetryAction::kNoRetry);
   }
   *unsealing_session = std::make_unique<UnsealingSessionTpm1Impl>(
-      tpm_, BlobFromString(data_proto.srk_wrapped_cmk()),
-      BlobFromString(data_proto.cmk_wrapped_auth_data()),
-      BlobFromString(satisfied_pcr_bound_item_proto->bound_secret()),
-      public_key_spki_der, delegate_blob, delegate_secret,
-      BlobFromString(data_proto.cmk_pubkey()),
+      tpm_, data.srk_wrapped_cmk, data.cmk_wrapped_auth_data,
+      satisfied_pcr_bound_item->bound_secret, public_key_spki_der,
+      delegate_blob, delegate_secret, data.cmk_pubkey,
       Blob(protection_key_pubkey.begin(), protection_key_pubkey.end()),
       std::move(migration_destination_rsa),
       Blob(migration_destination_key_pubkey.begin(),

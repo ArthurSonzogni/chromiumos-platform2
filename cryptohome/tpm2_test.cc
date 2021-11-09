@@ -1560,8 +1560,9 @@ namespace {
 
 struct Tpm2RsaSignatureSecretSealingTestParam {
   Tpm2RsaSignatureSecretSealingTestParam(
-      const std::vector<ChallengeSignatureAlgorithm>& supported_algorithms,
-      ChallengeSignatureAlgorithm chosen_algorithm,
+      const std::vector<structure::ChallengeSignatureAlgorithm>&
+          supported_algorithms,
+      structure::ChallengeSignatureAlgorithm chosen_algorithm,
       TPM_ALG_ID chosen_scheme,
       TPM_ALG_ID chosen_hash_alg)
       : supported_algorithms(supported_algorithms),
@@ -1569,8 +1570,8 @@ struct Tpm2RsaSignatureSecretSealingTestParam {
         chosen_scheme(chosen_scheme),
         chosen_hash_alg(chosen_hash_alg) {}
 
-  std::vector<ChallengeSignatureAlgorithm> supported_algorithms;
-  ChallengeSignatureAlgorithm chosen_algorithm;
+  std::vector<structure::ChallengeSignatureAlgorithm> supported_algorithms;
+  structure::ChallengeSignatureAlgorithm chosen_algorithm;
   TPM_ALG_ID chosen_scheme;
   TPM_ALG_ID chosen_hash_alg;
 };
@@ -1614,10 +1615,11 @@ class Tpm2RsaSignatureSecretSealingTest
              BN_bn2bin(n, reinterpret_cast<unsigned char*>(&key_modulus_[0])));
   }
 
-  const std::vector<ChallengeSignatureAlgorithm>& supported_algorithms() const {
+  const std::vector<structure::ChallengeSignatureAlgorithm>&
+  supported_algorithms() const {
     return GetParam().supported_algorithms;
   }
-  ChallengeSignatureAlgorithm chosen_algorithm() const {
+  structure::ChallengeSignatureAlgorithm chosen_algorithm() const {
     return GetParam().chosen_algorithm;
   }
   TPM_ALG_ID chosen_scheme() const { return GetParam().chosen_scheme; }
@@ -1678,21 +1680,22 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Seal) {
 
   // Trigger the secret creation.
   SecureBlob secret_value;
-  SignatureSealedData sealed_data;
+  structure::SignatureSealedData sealed_data;
   EXPECT_EQ(nullptr,
             signature_sealing_backend()->CreateSealedSecret(
                 key_spki_der_, supported_algorithms(), {pcr_values},
                 Blob() /* delegate_blob */, Blob() /* delegate_secret */,
                 &secret_value, &sealed_data));
   EXPECT_EQ(secret_value, SecureBlob(kSecretValue));
-  ASSERT_TRUE(sealed_data.has_tpm2_policy_signed_data());
-  const SignatureSealedData_Tpm2PolicySignedData& sealed_data_contents =
-      sealed_data.tpm2_policy_signed_data();
-  EXPECT_EQ(BlobToString(key_spki_der_),
-            sealed_data_contents.public_key_spki_der());
-  EXPECT_EQ(kSealedSecretValue, sealed_data_contents.srk_wrapped_secret());
-  EXPECT_EQ(chosen_scheme(), sealed_data_contents.scheme());
-  EXPECT_EQ(chosen_hash_alg(), sealed_data_contents.hash_alg());
+  ASSERT_TRUE(
+      absl::holds_alternative<structure::Tpm2PolicySignedData>(sealed_data));
+  const structure::Tpm2PolicySignedData& sealed_data_contents =
+      absl::get<structure::Tpm2PolicySignedData>(sealed_data);
+  EXPECT_EQ(key_spki_der_, sealed_data_contents.public_key_spki_der);
+  EXPECT_EQ(kSealedSecretValue,
+            BlobToString(sealed_data_contents.srk_wrapped_secret));
+  EXPECT_EQ(chosen_scheme(), sealed_data_contents.scheme);
+  EXPECT_EQ(chosen_hash_alg(), sealed_data_contents.hash_alg);
 
   // Validate values passed to mocks.
   ASSERT_EQ(chosen_scheme(), tpmt_signature.sig_alg);
@@ -1708,22 +1711,23 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
   const std::string kPolicyDigest("fake digest");
   const std::string kPcrValue("fake PCR");
 
-  SignatureSealedData sealed_data;
-  SignatureSealedData_Tpm2PolicySignedData* const sealed_data_contents =
-      sealed_data.mutable_tpm2_policy_signed_data();
-  sealed_data_contents->set_public_key_spki_der(BlobToString(key_spki_der_));
-  sealed_data_contents->set_srk_wrapped_secret(kSealedSecretValue);
-  sealed_data_contents->set_scheme(chosen_scheme());
-  sealed_data_contents->set_hash_alg(chosen_hash_alg());
-  SignatureSealedData_Tpm2PcrRestriction* const pcr_restriction =
-      sealed_data_contents->add_pcr_restrictions();
+  structure::SignatureSealedData sealed_data;
+  structure::Tpm2PolicySignedData sealed_data_contents;
+  sealed_data_contents.public_key_spki_der = key_spki_der_;
+  sealed_data_contents.srk_wrapped_secret = BlobFromString(kSealedSecretValue);
+  sealed_data_contents.scheme = chosen_scheme();
+  sealed_data_contents.hash_alg = chosen_hash_alg();
+  structure::Tpm2PcrRestriction pcr_restriction;
   for (uint32_t pcr_index : kPcrIndexes) {
-    SignatureSealedData_PcrValue* const pcr_values_item =
-        pcr_restriction->add_pcr_values();
-    pcr_values_item->set_pcr_index(pcr_index);
-    pcr_values_item->set_pcr_value(kPcrValue);
+    structure::PcrValue pcr_values_item;
+    pcr_values_item.pcr_index = pcr_index;
+    pcr_values_item.pcr_value = BlobFromString(kPcrValue);
+    pcr_restriction.pcr_values.push_back(pcr_values_item);
   }
-  pcr_restriction->set_policy_digest(std::string(SHA256_DIGEST_LENGTH, '\1'));
+  pcr_restriction.policy_digest =
+      BlobFromString(std::string(SHA256_DIGEST_LENGTH, '\1'));
+  sealed_data_contents.pcr_restrictions.push_back(pcr_restriction);
+  sealed_data = sealed_data_contents;
 
   // Set up mock expectations for the challenge generation.
   for (uint32_t pcr_index : kPcrIndexes) {
@@ -1749,8 +1753,8 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
                          Blob() /* delegate_secret */, &unsealing_session));
   ASSERT_TRUE(unsealing_session);
   EXPECT_EQ(chosen_algorithm(), unsealing_session->GetChallengeAlgorithm());
-  EXPECT_EQ(BlobFromString(kChallengeValue),
-            unsealing_session->GetChallengeValue());
+  EXPECT_EQ(kChallengeValue,
+            BlobToString(unsealing_session->GetChallengeValue()));
 
   // Set up mock expectations for the unsealing.
   EXPECT_CALL(mock_tpm_utility_,
@@ -1788,42 +1792,44 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
                             tpmt_signature.signature.rsassa.sig.size));
 }
 
-INSTANTIATE_TEST_SUITE_P(SingleAlgorithm,
-                         Tpm2RsaSignatureSecretSealingTest,
-                         Values(Tpm2RsaSignatureSecretSealingTestParam(
-                                    {CHALLENGE_RSASSA_PKCS1_V1_5_SHA1},
-                                    CHALLENGE_RSASSA_PKCS1_V1_5_SHA1,
-                                    trunks::TPM_ALG_RSASSA,
-                                    trunks::TPM_ALG_SHA1),
-                                Tpm2RsaSignatureSecretSealingTestParam(
-                                    {CHALLENGE_RSASSA_PKCS1_V1_5_SHA256},
-                                    CHALLENGE_RSASSA_PKCS1_V1_5_SHA256,
-                                    trunks::TPM_ALG_RSASSA,
-                                    trunks::TPM_ALG_SHA256),
-                                Tpm2RsaSignatureSecretSealingTestParam(
-                                    {CHALLENGE_RSASSA_PKCS1_V1_5_SHA384},
-                                    CHALLENGE_RSASSA_PKCS1_V1_5_SHA384,
-                                    trunks::TPM_ALG_RSASSA,
-                                    trunks::TPM_ALG_SHA384),
-                                Tpm2RsaSignatureSecretSealingTestParam(
-                                    {CHALLENGE_RSASSA_PKCS1_V1_5_SHA512},
-                                    CHALLENGE_RSASSA_PKCS1_V1_5_SHA512,
-                                    trunks::TPM_ALG_RSASSA,
-                                    trunks::TPM_ALG_SHA512)));
-INSTANTIATE_TEST_SUITE_P(MultipleAlgorithms,
-                         Tpm2RsaSignatureSecretSealingTest,
-                         Values(Tpm2RsaSignatureSecretSealingTestParam(
-                                    {CHALLENGE_RSASSA_PKCS1_V1_5_SHA384,
-                                     CHALLENGE_RSASSA_PKCS1_V1_5_SHA256,
-                                     CHALLENGE_RSASSA_PKCS1_V1_5_SHA512},
-                                    CHALLENGE_RSASSA_PKCS1_V1_5_SHA384,
-                                    trunks::TPM_ALG_RSASSA,
-                                    trunks::TPM_ALG_SHA384),
-                                Tpm2RsaSignatureSecretSealingTestParam(
-                                    {CHALLENGE_RSASSA_PKCS1_V1_5_SHA1,
-                                     CHALLENGE_RSASSA_PKCS1_V1_5_SHA256},
-                                    CHALLENGE_RSASSA_PKCS1_V1_5_SHA256,
-                                    trunks::TPM_ALG_RSASSA,
-                                    trunks::TPM_ALG_SHA256)));
+INSTANTIATE_TEST_SUITE_P(
+    SingleAlgorithm,
+    Tpm2RsaSignatureSecretSealingTest,
+    Values(Tpm2RsaSignatureSecretSealingTestParam(
+               {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1},
+               structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1,
+               trunks::TPM_ALG_RSASSA,
+               trunks::TPM_ALG_SHA1),
+           Tpm2RsaSignatureSecretSealingTestParam(
+               {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256},
+               structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
+               trunks::TPM_ALG_RSASSA,
+               trunks::TPM_ALG_SHA256),
+           Tpm2RsaSignatureSecretSealingTestParam(
+               {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384},
+               structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384,
+               trunks::TPM_ALG_RSASSA,
+               trunks::TPM_ALG_SHA384),
+           Tpm2RsaSignatureSecretSealingTestParam(
+               {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512},
+               structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512,
+               trunks::TPM_ALG_RSASSA,
+               trunks::TPM_ALG_SHA512)));
+INSTANTIATE_TEST_SUITE_P(
+    MultipleAlgorithms,
+    Tpm2RsaSignatureSecretSealingTest,
+    Values(Tpm2RsaSignatureSecretSealingTestParam(
+               {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384,
+                structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
+                structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512},
+               structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384,
+               trunks::TPM_ALG_RSASSA,
+               trunks::TPM_ALG_SHA384),
+           Tpm2RsaSignatureSecretSealingTestParam(
+               {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1,
+                structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256},
+               structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256,
+               trunks::TPM_ALG_RSASSA,
+               trunks::TPM_ALG_SHA256)));
 
 }  // namespace cryptohome

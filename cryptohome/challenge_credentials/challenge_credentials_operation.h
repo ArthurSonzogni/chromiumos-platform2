@@ -15,7 +15,7 @@
 #include <base/threading/thread_checker.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/key.pb.h"
+#include "cryptohome/signature_sealing/structures.h"
 
 namespace cryptohome {
 
@@ -85,7 +85,7 @@ class ChallengeCredentialsOperation {
       const std::string& account_id,
       const brillo::Blob& public_key_spki_der,
       const brillo::Blob& data_to_sign,
-      ChallengeSignatureAlgorithm signature_algorithm,
+      structure::ChallengeSignatureAlgorithm signature_algorithm,
       KeySignatureChallengeCallback response_callback);
 
   base::ThreadChecker thread_checker_;

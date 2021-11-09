@@ -65,7 +65,7 @@ class UnsealingSessionTpm2Impl final
       Tpm2Impl::TrunksClientContext* trunks,
       const Blob& srk_wrapped_secret,
       const Blob& public_key_spki_der,
-      ChallengeSignatureAlgorithm algorithm,
+      structure::ChallengeSignatureAlgorithm algorithm,
       TPM_ALG_ID scheme,
       TPM_ALG_ID hash_alg,
       std::unique_ptr<trunks::PolicySession> policy_session,
@@ -76,7 +76,7 @@ class UnsealingSessionTpm2Impl final
   ~UnsealingSessionTpm2Impl() override;
 
   // UnsealingSession:
-  ChallengeSignatureAlgorithm GetChallengeAlgorithm() override;
+  structure::ChallengeSignatureAlgorithm GetChallengeAlgorithm() override;
   Blob GetChallengeValue() override;
   TPMErrorBase Unseal(const Blob& signed_challenge_value,
                       SecureBlob* unsealed_value) override;
@@ -88,7 +88,7 @@ class UnsealingSessionTpm2Impl final
   Tpm2Impl::TrunksClientContext* const trunks_;
   const Blob srk_wrapped_secret_;
   const Blob public_key_spki_der_;
-  const ChallengeSignatureAlgorithm algorithm_;
+  const structure::ChallengeSignatureAlgorithm algorithm_;
   const TPM_ALG_ID scheme_;
   const TPM_ALG_ID hash_alg_;
   const std::unique_ptr<trunks::PolicySession> policy_session_;
@@ -98,23 +98,23 @@ class UnsealingSessionTpm2Impl final
 
 // Obtains the TPM 2.0 signature scheme and hashing algorithms that correspond
 // to the provided challenge signature algorithm.
-bool GetAlgIdsByAlgorithm(ChallengeSignatureAlgorithm algorithm,
+bool GetAlgIdsByAlgorithm(structure::ChallengeSignatureAlgorithm algorithm,
                           TPM_ALG_ID* scheme,
                           TPM_ALG_ID* hash_alg) {
   switch (algorithm) {
-    case CHALLENGE_RSASSA_PKCS1_V1_5_SHA1:
+    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1:
       *scheme = trunks::TPM_ALG_RSASSA;
       *hash_alg = trunks::TPM_ALG_SHA1;
       return true;
-    case CHALLENGE_RSASSA_PKCS1_V1_5_SHA256:
+    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256:
       *scheme = trunks::TPM_ALG_RSASSA;
       *hash_alg = trunks::TPM_ALG_SHA256;
       return true;
-    case CHALLENGE_RSASSA_PKCS1_V1_5_SHA384:
+    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha384:
       *scheme = trunks::TPM_ALG_RSASSA;
       *hash_alg = trunks::TPM_ALG_SHA384;
       return true;
-    case CHALLENGE_RSASSA_PKCS1_V1_5_SHA512:
+    case structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512:
       *scheme = trunks::TPM_ALG_RSASSA;
       *hash_alg = trunks::TPM_ALG_SHA512;
       return true;
@@ -125,15 +125,14 @@ bool GetAlgIdsByAlgorithm(ChallengeSignatureAlgorithm algorithm,
 
 // Given the list of alternative sets of PCR restrictions, returns the one that
 // is currently satisfied. Returns null if none is satisfied.
-const SignatureSealedData_Tpm2PcrRestriction* GetSatisfiedPcrRestriction(
-    const google::protobuf::RepeatedPtrField<
-        SignatureSealedData_Tpm2PcrRestriction>& pcr_restrictions,
+const structure::Tpm2PcrRestriction* GetSatisfiedPcrRestriction(
+    const std::vector<structure::Tpm2PcrRestriction>& pcr_restrictions,
     Tpm* tpm) {
   std::map<uint32_t, Blob> current_pcr_values;
-  for (const auto& pcr_restriction_proto : pcr_restrictions) {
+  for (const auto& pcr_restriction : pcr_restrictions) {
     bool is_satisfied = true;
-    for (const auto& pcr_value_proto : pcr_restriction_proto.pcr_values()) {
-      const uint32_t pcr_index = pcr_value_proto.pcr_index();
+    for (const auto& pcr_value : pcr_restriction.pcr_values) {
+      const uint32_t pcr_index = pcr_value.pcr_index;
       if (pcr_index >= IMPLEMENTATION_PCR) {
         LOG(WARNING) << "Invalid PCR index " << pcr_index;
         is_satisfied = false;
@@ -147,14 +146,13 @@ const SignatureSealedData_Tpm2PcrRestriction* GetSatisfiedPcrRestriction(
         }
         current_pcr_values.emplace(pcr_index, pcr_value);
       }
-      if (current_pcr_values[pcr_index] !=
-          BlobFromString(pcr_value_proto.pcr_value())) {
+      if (current_pcr_values[pcr_index] != pcr_value.pcr_value) {
         is_satisfied = false;
         break;
       }
     }
     if (is_satisfied)
-      return &pcr_restriction_proto;
+      return &pcr_restriction;
   }
   return nullptr;
 }
@@ -164,7 +162,7 @@ UnsealingSessionTpm2Impl::UnsealingSessionTpm2Impl(
     Tpm2Impl::TrunksClientContext* trunks,
     const Blob& srk_wrapped_secret,
     const Blob& public_key_spki_der,
-    ChallengeSignatureAlgorithm algorithm,
+    structure::ChallengeSignatureAlgorithm algorithm,
     TPM_ALG_ID scheme,
     TPM_ALG_ID hash_alg,
     std::unique_ptr<trunks::PolicySession> policy_session,
@@ -183,7 +181,8 @@ UnsealingSessionTpm2Impl::~UnsealingSessionTpm2Impl() {
   DCHECK(thread_checker_.CalledOnValidThread());
 }
 
-ChallengeSignatureAlgorithm UnsealingSessionTpm2Impl::GetChallengeAlgorithm() {
+structure::ChallengeSignatureAlgorithm
+UnsealingSessionTpm2Impl::GetChallengeAlgorithm() {
   DCHECK(thread_checker_.CalledOnValidThread());
   return algorithm_;
 }
@@ -258,12 +257,12 @@ SignatureSealingBackendTpm2Impl::~SignatureSealingBackendTpm2Impl() = default;
 
 TPMErrorBase SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     const Blob& public_key_spki_der,
-    const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
+    const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
     const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
     const Blob& /* delegate_blob */,
     const Blob& /* delegate_secret */,
-    brillo::SecureBlob* secret_value,
-    SignatureSealedData* sealed_secret_data) {
+    SecureBlob* secret_value,
+    structure::SignatureSealedData* sealed_secret_data) {
   // Choose the algorithm. Respect the input's algorithm prioritization, with
   // the exception of considering SHA-1 as the least preferred option.
   TPM_ALG_ID scheme = TPM_ALG_NULL;
@@ -399,61 +398,70 @@ TPMErrorBase SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     return WrapError<TPMError>(std::move(err), "Error sealing secret data");
   }
   // Fill the resulting proto with data required for unsealing.
-  sealed_secret_data->Clear();
-  SignatureSealedData_Tpm2PolicySignedData* const data_proto =
-      sealed_secret_data->mutable_tpm2_policy_signed_data();
-  data_proto->set_public_key_spki_der(BlobToString(public_key_spki_der));
-  data_proto->set_srk_wrapped_secret(sealed_value);
-  data_proto->set_scheme(scheme);
-  data_proto->set_hash_alg(hash_alg);
+  structure::Tpm2PolicySignedData data;
+  data.public_key_spki_der = public_key_spki_der;
+  data.srk_wrapped_secret = BlobFromString(sealed_value);
+  data.scheme = scheme;
+  data.hash_alg = hash_alg;
   for (size_t restriction_index = 0;
        restriction_index < pcr_restrictions.size(); ++restriction_index) {
     const auto& pcr_values = pcr_restrictions[restriction_index];
-    SignatureSealedData_Tpm2PcrRestriction* const pcr_restriction_proto =
-        data_proto->add_pcr_restrictions();
+    structure::Tpm2PcrRestriction pcr_restriction;
     for (const auto& pcr_index_and_value : pcr_values) {
-      SignatureSealedData_PcrValue* const pcr_value_proto =
-          pcr_restriction_proto->add_pcr_values();
-      pcr_value_proto->set_pcr_index(pcr_index_and_value.first);
-      pcr_value_proto->set_pcr_value(BlobToString(pcr_index_and_value.second));
+      structure::PcrValue pcr_value;
+      pcr_value.pcr_index = pcr_index_and_value.first;
+      pcr_value.pcr_value = pcr_index_and_value.second;
+      pcr_restriction.pcr_values.push_back(pcr_value);
     }
-    pcr_restriction_proto->set_policy_digest(
-        pcr_policy_digests[restriction_index]);
+    pcr_restriction.policy_digest =
+        BlobFromString(pcr_policy_digests[restriction_index]);
+    data.pcr_restrictions.push_back(pcr_restriction);
   }
+  *sealed_secret_data = data;
   return nullptr;
 }
 
 TPMErrorBase SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
-    const SignatureSealedData& sealed_secret_data,
+    const structure::SignatureSealedData& sealed_secret_data,
     const Blob& public_key_spki_der,
-    const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
+    const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
     const Blob& /* delegate_blob */,
     const Blob& /* delegate_secret */,
     std::unique_ptr<SignatureSealingBackend::UnsealingSession>*
         unsealing_session) {
   // Validate the parameters.
-  if (!sealed_secret_data.has_tpm2_policy_signed_data()) {
+  auto* sealed_secret_data_ptr =
+      absl::get_if<structure::Tpm2PolicySignedData>(&sealed_secret_data);
+  if (!sealed_secret_data_ptr) {
     return CreateError<TPMError>(
         "Sealed data is empty or uses unexpected method",
         TPMRetryAction::kNoRetry);
   }
-  const SignatureSealedData_Tpm2PolicySignedData& data_proto =
-      sealed_secret_data.tpm2_policy_signed_data();
-  if (data_proto.public_key_spki_der() != BlobToString(public_key_spki_der)) {
+  const structure::Tpm2PolicySignedData& data = *sealed_secret_data_ptr;
+
+  if (data.public_key_spki_der.empty()) {
+    return CreateError<TPMError>("Empty public key", TPMRetryAction::kNoRetry);
+  }
+  if (data.srk_wrapped_secret.empty()) {
+    return CreateError<TPMError>("Empty SRK wrapped secret",
+                                 TPMRetryAction::kNoRetry);
+  }
+
+  if (data.public_key_spki_der != public_key_spki_der) {
     return CreateError<TPMError>("Wrong subject public key info",
                                  TPMRetryAction::kNoRetry);
   }
-  if (!base::IsValueInRangeForNumericType<TPM_ALG_ID>(data_proto.scheme())) {
+  if (!base::IsValueInRangeForNumericType<TPM_ALG_ID>(data.scheme)) {
     return CreateError<TPMError>("Error parsing signature scheme",
                                  TPMRetryAction::kNoRetry);
   }
-  const TPM_ALG_ID scheme = static_cast<TPM_ALG_ID>(data_proto.scheme());
-  if (!base::IsValueInRangeForNumericType<TPM_ALG_ID>(data_proto.hash_alg())) {
+  const TPM_ALG_ID scheme = static_cast<TPM_ALG_ID>(data.scheme);
+  if (!base::IsValueInRangeForNumericType<TPM_ALG_ID>(data.hash_alg)) {
     return CreateError<TPMError>("Error parsing signature hash algorithm",
                                  TPMRetryAction::kNoRetry);
   }
-  const TPM_ALG_ID hash_alg = static_cast<TPM_ALG_ID>(data_proto.hash_alg());
-  base::Optional<ChallengeSignatureAlgorithm> chosen_algorithm;
+  const TPM_ALG_ID hash_alg = static_cast<TPM_ALG_ID>(data.hash_alg);
+  base::Optional<structure::ChallengeSignatureAlgorithm> chosen_algorithm;
   for (auto algorithm : key_algorithms) {
     TPM_ALG_ID current_scheme = TPM_ALG_NULL;
     TPM_ALG_ID current_hash_alg = TPM_ALG_NULL;
@@ -483,20 +491,18 @@ TPMErrorBase SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
                                "Error starting a policy session");
   }
   // If PCR restrictions were applied, update the policy correspondingly.
-  if (data_proto.pcr_restrictions_size()) {
+  if (data.pcr_restrictions.size()) {
     // Determine the satisfied set of PCR restrictions and update the policy
     // with it.
-    const SignatureSealedData_Tpm2PcrRestriction* const
-        satisfied_pcr_restriction_proto =
-            GetSatisfiedPcrRestriction(data_proto.pcr_restrictions(), tpm_);
-    if (!satisfied_pcr_restriction_proto) {
+    const structure::Tpm2PcrRestriction* const satisfied_pcr_restriction =
+        GetSatisfiedPcrRestriction(data.pcr_restrictions, tpm_);
+    if (!satisfied_pcr_restriction) {
       return CreateError<TPMError>("None of PCR restrictions is satisfied",
                                    TPMRetryAction::kNoRetry);
     }
     std::map<uint32_t, std::string> pcrs_to_apply;
-    for (const auto& pcr_value_proto :
-         satisfied_pcr_restriction_proto->pcr_values()) {
-      pcrs_to_apply.emplace(pcr_value_proto.pcr_index(), std::string());
+    for (const auto& pcr_value : satisfied_pcr_restriction->pcr_values) {
+      pcrs_to_apply.emplace(pcr_value.pcr_index, std::string());
     }
 
     if (auto err =
@@ -506,15 +512,15 @@ TPMErrorBase SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
     }
     // If more than one set of PCR restrictions was originally specified, update
     // the policy with the disjunction of their policy digests.
-    if (data_proto.pcr_restrictions_size() > 1) {
+    if (data.pcr_restrictions.size() > 1) {
       std::vector<std::string> pcr_policy_digests;
-      for (const auto& pcr_restriction_proto : data_proto.pcr_restrictions()) {
-        if (pcr_restriction_proto.policy_digest().size() !=
-            SHA256_DIGEST_SIZE) {
+      for (const auto& pcr_restriction : data.pcr_restrictions) {
+        if (pcr_restriction.policy_digest.size() != SHA256_DIGEST_SIZE) {
           return CreateError<TPMError>("Invalid policy digest size",
                                        TPMRetryAction::kNoRetry);
         }
-        pcr_policy_digests.push_back(pcr_restriction_proto.policy_digest());
+        pcr_policy_digests.push_back(
+            BlobToString(pcr_restriction.policy_digest));
       }
       if (auto err = CreateError<TPM2Error>(
               policy_session->PolicyOR(pcr_policy_digests))) {
@@ -532,9 +538,9 @@ TPMErrorBase SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
   }
   // Create the unsealing session that will keep the required state.
   *unsealing_session = std::make_unique<UnsealingSessionTpm2Impl>(
-      tpm_, trunks, BlobFromString(data_proto.srk_wrapped_secret()),
-      public_key_spki_der, *chosen_algorithm, scheme, hash_alg,
-      std::move(policy_session), BlobFromString(tpm_nonce));
+      tpm_, trunks, data.srk_wrapped_secret, public_key_spki_der,
+      *chosen_algorithm, scheme, hash_alg, std::move(policy_session),
+      BlobFromString(tpm_nonce));
   return nullptr;
 }
 
