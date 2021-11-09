@@ -532,18 +532,21 @@ void GcamAeControllerImpl::MaybeRunAE(int frame_number) {
   float max_hdr_ratio =
       LookUpHdrRatio(options_.max_hdr_ratio,
                      frame_info->analog_gain * frame_info->digital_gain);
+  // From 0.1 ms with 1x gain to maximum possible exposure time with maximum
+  // analog plus digital gain.
+  Range<float> device_tet_range = {
+      0.1, static_cast<float>((1000.0 / frame_info->target_fps_range.lower()) *
+                              max_total_gain_)};
   VLOGFID(1, frame_info->frame_number)
       << "total gain=" << frame_info->analog_gain * frame_info->digital_gain
-      << " max_hdr_ratio=" << max_hdr_ratio;
+      << " max_hdr_ratio=" << max_hdr_ratio
+      << " tet_range=" << device_tet_range;
   AeParameters ae_parameters = ae_device_adapter_->ComputeAeParameters(
-      frame_number, *frame_info, max_hdr_ratio);
+      frame_number, *frame_info, device_tet_range, max_hdr_ratio);
 
-  Range<float> tet_range = {
-      1e-6, static_cast<float>((1000.0 / frame_info->target_fps_range.lower()) *
-                               max_total_gain_)};
   ae_state_machine_.OnNewAeParameters({.ae_frame_info = *frame_info,
                                        .ae_parameters = ae_parameters,
-                                       .tet_range = tet_range},
+                                       .tet_range = device_tet_range},
                                       metadata_logger_);
 
   // Compute AE exposure compensation based on the filtered TETs.

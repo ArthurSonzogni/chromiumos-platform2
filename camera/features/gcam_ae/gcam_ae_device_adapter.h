@@ -39,10 +39,11 @@ class GcamAeDeviceAdapter {
   virtual bool HasAeStats(int frame_number);
 
   // Compute the AE parameters from |frame_info| and the AE stats previously
-  // extracted for frame |frame_number|.  |max_hdr_ratio| is passed a input
-  // parameter to Gcam AE.
+  // extracted for frame |frame_number|.  |device_tet_range| and |max_hdr_ratio|
+  // are passed as input parameter to Gcam AE.
   virtual AeParameters ComputeAeParameters(int frame_number,
                                            const AeFrameInfo& frame_info,
+                                           const Range<float>& device_tet_range,
                                            float max_hdr_ratio);
 };
 

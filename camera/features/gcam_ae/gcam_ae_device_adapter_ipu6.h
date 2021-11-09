@@ -30,6 +30,7 @@ class GcamAeDeviceAdapterIpu6 : public GcamAeDeviceAdapter {
   bool HasAeStats(int frame_number) override;
   AeParameters ComputeAeParameters(int frame_number,
                                    const AeFrameInfo& frame_info,
+                                   const Range<float>& device_tet_range,
                                    float max_hdr_ratio) override;
 
  private:

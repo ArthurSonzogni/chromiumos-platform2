@@ -128,7 +128,10 @@ bool GcamAeDeviceAdapterIpu6::HasAeStats(int frame_number) {
 }
 
 AeParameters GcamAeDeviceAdapterIpu6::ComputeAeParameters(
-    int frame_number, const AeFrameInfo& frame_info, float max_hdr_ratio) {
+    int frame_number,
+    const AeFrameInfo& frame_info,
+    const Range<float>& device_tet_range,
+    float max_hdr_ratio) {
   AeParameters ae_parameters;
   AeFrameMetadata ae_metadata{
       .actual_analog_gain = frame_info.analog_gain,
@@ -166,7 +169,8 @@ AeParameters GcamAeDeviceAdapterIpu6::ComputeAeParameters(
     ae_result = gcam_ae_->ComputeGcamAe(
         frame_info.active_array_dimension.width,
         frame_info.active_array_dimension.height, ae_metadata, awb_info,
-        **ae_stats, max_hdr_ratio);
+        **ae_stats, {device_tet_range.lower(), device_tet_range.upper()},
+        max_hdr_ratio);
   } else {  // AeStatsInputMode::kFromYuvImage
     if (!frame_info.HasYuvBuffer()) {
       return ae_parameters;
