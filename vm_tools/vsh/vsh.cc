@@ -206,7 +206,7 @@ bool ListenForVshd(dbus::ObjectProxy* cicerone_proxy,
   struct pollfd pollfds[] = {
       {listen_fd.get(), POLLIN, 0},
   };
-  const int num_pollfds = base::size(pollfds);
+  const int num_pollfds = std::size(pollfds);
 
   if (HANDLE_EINTR(poll(pollfds, num_pollfds, 5000)) < 0) {
     PLOG(ERROR) << "Failed to poll";

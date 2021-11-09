@@ -161,7 +161,7 @@ int main(int argc, char** argv) {
       {signal_fd.get(), POLLIN, 0},
       {sock_fd.get(), POLLIN, 0},
   };
-  const int num_pollfds = base::size(pollfds);
+  const int num_pollfds = std::size(pollfds);
 
   while (true) {
     if (poll(pollfds, num_pollfds, -1) < 0) {

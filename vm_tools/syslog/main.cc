@@ -88,7 +88,7 @@ bool LogToKmsg(logging::LogSeverity severity,
     count += iov.iov_len;
   }
 
-  ssize_t ret = HANDLE_EINTR(writev(g_kmsg_fd, iovs, base::size(iovs)));
+  ssize_t ret = HANDLE_EINTR(writev(g_kmsg_fd, iovs, std::size(iovs)));
 
   // Even if the write wasn't successful, we can't log anything here because
   // this _is_ the logging function.  Just return whether the write succeeded.

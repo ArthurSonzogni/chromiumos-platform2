@@ -597,7 +597,7 @@ std::unique_ptr<dbus::Response> Service::StartServer(
   }
 
   // Add android-everybody for access to android files.
-  minijail_set_supplementary_gids(jail.get(), base::size(kSupplementaryGroups),
+  minijail_set_supplementary_gids(jail.get(), std::size(kSupplementaryGroups),
                                   kSupplementaryGroups);
   minijail_change_uid(jail.get(), kChronosUid);
   minijail_change_gid(jail.get(), kChronosGid);

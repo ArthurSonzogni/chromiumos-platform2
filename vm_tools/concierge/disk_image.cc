@@ -481,9 +481,9 @@ void VmExportOperation::Finalize() {
   // Calculate and store the image hash.
   if (out_digest_fd_.is_valid()) {
     std::vector<uint8_t> digest(sha256_->GetHashLength());
-    sha256_->Finish(base::data(digest), digest.size());
+    sha256_->Finish(std::data(digest), digest.size());
     std::string str = base::StringPrintf(
-        "%s\n", base::HexEncode(base::data(digest), digest.size()).c_str());
+        "%s\n", base::HexEncode(std::data(digest), digest.size()).c_str());
     bool written = base::WriteFileDescriptor(out_digest_fd_.get(), str);
     out_digest_fd_.reset();
     if (!written) {
