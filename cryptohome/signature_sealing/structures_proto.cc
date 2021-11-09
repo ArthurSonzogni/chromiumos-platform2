@@ -167,5 +167,43 @@ structure::SignatureSealedData FromProto(const SignatureSealedData& obj) {
   return {};
 }
 
+SerializedVaultKeyset_SignatureChallengeInfo ToProto(
+    const structure::SignatureChallengeInfo& obj) {
+  SerializedVaultKeyset_SignatureChallengeInfo result;
+  result.set_public_key_spki_der(BlobToString(obj.public_key_spki_der));
+  *result.mutable_sealed_secret() = ToProto(obj.sealed_secret);
+  result.set_salt(BlobToString(obj.salt));
+  result.set_salt_signature_algorithm(ToProto(obj.salt_signature_algorithm));
+  return result;
+}
+
+structure::SignatureChallengeInfo FromProto(
+    const SerializedVaultKeyset_SignatureChallengeInfo& obj) {
+  structure::SignatureChallengeInfo result;
+  result.public_key_spki_der = BlobFromString(obj.public_key_spki_der());
+  result.sealed_secret = FromProto(obj.sealed_secret());
+  result.salt = BlobFromString(obj.salt());
+  result.salt_signature_algorithm = FromProto(obj.salt_signature_algorithm());
+  return result;
+}
+
+ChallengePublicKeyInfo ToProto(const structure::ChallengePublicKeyInfo& obj) {
+  ChallengePublicKeyInfo result;
+  result.set_public_key_spki_der(BlobToString(obj.public_key_spki_der));
+  for (const auto& content : obj.signature_algorithm)
+    result.add_signature_algorithm(ToProto(content));
+  return result;
+}
+
+structure::ChallengePublicKeyInfo FromProto(const ChallengePublicKeyInfo& obj) {
+  structure::ChallengePublicKeyInfo result;
+  result.public_key_spki_der = BlobFromString(obj.public_key_spki_der());
+  for (const auto& content : obj.signature_algorithm()) {
+    result.signature_algorithm.push_back(
+        FromProto(ChallengeSignatureAlgorithm{content}));
+  }
+  return result;
+}
+
 }  // namespace proto
 }  // namespace cryptohome

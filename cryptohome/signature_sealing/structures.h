@@ -100,6 +100,42 @@ struct Tpm12CertifiedMigratableKeyData {
 using SignatureSealedData =
     absl::variant<Tpm2PolicySignedData, Tpm12CertifiedMigratableKeyData>;
 
+// Fields specific to the challenge-response protection.
+// The Scrypt KDF passphrase, used for the protection of the keyset, is
+// defined as a concatenation of two values:
+// * The first is the blob which is sealed in |sealed_secret|.
+// * The second is the deterministic signature of |salt| using the
+//   |salt_signature_algorithm| algorithm.
+// The cryptographic key specified in |public_key_spki_der| is used for both.
+struct SignatureChallengeInfo {
+  // DER-encoded blob of the X.509 Subject Public Key Info of the key to be
+  // challenged in order to obtain the KDF passphrase for decrypting the vault
+  // keyset.
+  brillo::Blob public_key_spki_der;
+  // Container with the secret data which is sealed using the TPM in a way
+  // that the process of its unsealing involves signature challenges against
+  // the specified key. This secret data is one of the sources for building
+  // the KDF passphrase.
+  SignatureSealedData sealed_secret;
+  // Salt whose signature is another source for building the KDF passphrase.
+  brillo::Blob salt;
+  // Signature algorithm to be used for signing |salt|.
+  // NOTE: the signature algorithm has to be deterministic (that is, always
+  // produce the same output for the same input).
+  ChallengeSignatureAlgorithm salt_signature_algorithm;
+};
+
+// Description of a public key of an asymmetric cryptographic key. Used with
+// challenge-response cryptohome keys.
+struct ChallengePublicKeyInfo {
+  // DER-encoded blob of the X.509 Subject Public Key Info.
+  brillo::Blob public_key_spki_der;
+  // Supported signature algorithms, in the order of preference (starting from
+  // the most preferred). Absence of this field denotes that the key cannot be
+  // used for signing.
+  std::vector<ChallengeSignatureAlgorithm> signature_algorithm;
+};
+
 }  // namespace structure
 }  // namespace cryptohome
 

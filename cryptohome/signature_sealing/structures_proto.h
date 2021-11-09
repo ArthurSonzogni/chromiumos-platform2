@@ -8,6 +8,7 @@
 #include "cryptohome/key.pb.h"
 #include "cryptohome/signature_sealed_data.pb.h"
 #include "cryptohome/signature_sealing/structures.h"
+#include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
 namespace proto {
@@ -18,6 +19,14 @@ structure::ChallengeSignatureAlgorithm FromProto(
 
 SignatureSealedData ToProto(const structure::SignatureSealedData& obj);
 structure::SignatureSealedData FromProto(const SignatureSealedData& obj);
+
+SerializedVaultKeyset_SignatureChallengeInfo ToProto(
+    const structure::SignatureChallengeInfo& obj);
+structure::SignatureChallengeInfo FromProto(
+    const SerializedVaultKeyset_SignatureChallengeInfo& obj);
+
+ChallengePublicKeyInfo ToProto(const structure::ChallengePublicKeyInfo& obj);
+structure::ChallengePublicKeyInfo FromProto(const ChallengePublicKeyInfo& obj);
 
 }  // namespace proto
 }  // namespace cryptohome
