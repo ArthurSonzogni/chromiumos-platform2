@@ -4,10 +4,11 @@
 
 // Note: These tests are not generated. They test generated code.
 
+#include <iterator>
+
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/run_loop.h>
-#include <base/stl_util.h>
 #include <base/test/task_environment.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <gtest/gtest.h>
@@ -83,7 +84,7 @@ TEST(GeneratorTest, SerializeParseEmptyStruct) {
 
 TEST(GeneratorTest, SerializeBufferOverflow) {
   TPM2B_MAX_BUFFER value;
-  value.size = base::size(value.buffer) + 1;
+  value.size = std::size(value.buffer) + 1;
   std::string tmp;
   EXPECT_EQ(TPM_RC_INSUFFICIENT, Serialize_TPM2B_MAX_BUFFER(value, &tmp));
 }

@@ -4,11 +4,12 @@
 
 #include "trunks/tpm_generated.h"
 
+#include <iterator>
+
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <crypto/secure_hash.h>
 
@@ -147,7 +148,7 @@ TPM_RC Tpm::SerializeCommand_PolicyFidoSigned(
   command_size += auth_bytes.size();
 
   std::string command_hash(32, 0);
-  hash->Finish(base::data(command_hash), command_hash.size());
+  hash->Finish(std::data(command_hash), command_hash.size());
 
   // Construct the authorization section
   std::string authorization_section_bytes;
@@ -257,7 +258,7 @@ TPM_RC Tpm::ParseResponse_PolicyFidoSigned(
   hash->Update(command_code_bytes.data(), command_code_bytes.size());
   hash->Update(buffer.data(), buffer.size());
   std::string response_hash(32, 0);
-  hash->Finish(base::data(response_hash), response_hash.size());
+  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(

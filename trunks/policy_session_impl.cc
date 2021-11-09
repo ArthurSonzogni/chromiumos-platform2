@@ -4,6 +4,7 @@
 
 #include "trunks/policy_session_impl.h"
 
+#include <iterator>
 #include <map>
 #include <string>
 #include <vector>
@@ -11,7 +12,6 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/macros.h>
-#include <base/stl_util.h>
 #include <crypto/sha2.h>
 #include <openssl/rand.h>
 
@@ -81,7 +81,7 @@ TPM_RC PolicySessionImpl::GetDigest(std::string* digest) {
 
 TPM_RC PolicySessionImpl::PolicyOR(const std::vector<std::string>& digests) {
   TPML_DIGEST tpm_digests;
-  if (digests.size() >= base::size(tpm_digests.digests)) {
+  if (digests.size() >= std::size(tpm_digests.digests)) {
     LOG(ERROR) << "TPM2.0 Spec only allows for up to 8 digests.";
     return SAPI_RC_BAD_PARAMETER;
   }

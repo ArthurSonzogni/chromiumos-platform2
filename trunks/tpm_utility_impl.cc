@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <iterator>
 #include <memory>
 #include <optional>
 
@@ -14,7 +15,6 @@
 #include <base/hash/sha1.h>
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/sys_byteorder.h>
 #include <crypto/libcrypto-compat.h>
@@ -2652,7 +2652,7 @@ TPM_RC TpmUtilityImpl::EncryptPrivateData(const TPMT_SENSITIVE& sensitive_area,
   unsigned char iv[MAX_AES_BLOCK_SIZE_BYTES] = {0};
   AES_cfb128_encrypt(
       reinterpret_cast<const unsigned char*>(unencrypted_private_data.data()),
-      reinterpret_cast<unsigned char*>(base::data(private_data_string)),
+      reinterpret_cast<unsigned char*>(std::data(private_data_string)),
       unencrypted_private_data.size(), &key, iv, &iv_in, AES_ENCRYPT);
   *encrypted_private_data = Make_TPM2B_PRIVATE(private_data_string);
   if (result != TPM_RC_SUCCESS) {
@@ -3177,7 +3177,7 @@ TPM_RC TpmUtilityImpl::GetRsuDeviceIdInternal(std::string* device_id) {
   }
   *device_id = crypto::SHA256HashString(
       std::string(reinterpret_cast<const char*>(c.device_id),
-                  base::size(c.device_id)) +
+                  std::size(c.device_id)) +
       kRsuSalt);
   return result;
 }

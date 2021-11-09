@@ -6,6 +6,8 @@
 
 #include <unistd.h>
 
+#include <iterator>
+
 #include <base/check_op.h>
 
 #if defined(USE_SIMULATOR)
@@ -23,7 +25,6 @@ extern "C" {
 #include <base/callback.h>
 #include <base/hash/sha1.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <crypto/sha2.h>
 
 #include "trunks/error_codes.h"
@@ -137,7 +138,7 @@ std::string TpmSimulatorHandle::SendCommandAndWait(const std::string& command) {
   unsigned char* response;
   std::string mutable_command(command);
   ExecuteCommand(command.size(),
-                 reinterpret_cast<unsigned char*>(base::data(mutable_command)),
+                 reinterpret_cast<unsigned char*>(std::data(mutable_command)),
                  &response_size, &response);
   return std::string(reinterpret_cast<char*>(response), response_size);
 #else

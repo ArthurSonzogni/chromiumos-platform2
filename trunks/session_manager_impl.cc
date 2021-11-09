@@ -4,12 +4,12 @@
 
 #include "trunks/session_manager_impl.h"
 
+#include <iterator>
 #include <string>
 
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 #include <crypto/openssl_util.h>
@@ -201,7 +201,7 @@ trunks::TPM_RC GenerateRsaSessionSalt(const trunks::TPMT_PUBLIC& public_area,
   size_t out_length = EVP_PKEY_size(salting_key.get());
   encrypted_salt->resize(out_length);
   if (!EVP_PKEY_encrypt(salt_encrypt_context.get(),
-                        reinterpret_cast<uint8_t*>(base::data(*encrypted_salt)),
+                        reinterpret_cast<uint8_t*>(std::data(*encrypted_salt)),
                         &out_length, salt->data(), salt->size())) {
     LOG(ERROR) << "Error encrypting salt: "
                << hwsec_foundation::utility::GetOpensslError();
@@ -283,7 +283,7 @@ trunks::TPM_RC GenerateEccSessionSalt(const trunks::TPMT_PUBLIC& public_area,
   unsigned int final_seed_size = 0;
   if (!EVP_DigestInit(ctx.get(), digest_type) ||
       !EVP_DigestUpdate(ctx.get(), marshaled_counter,
-                        base::size(marshaled_counter)) ||
+                        std::size(marshaled_counter)) ||
       !EVP_DigestUpdate(ctx.get(), z_value.buffer, z_value.size) ||
       !EVP_DigestUpdate(ctx.get(), kSessionKeyLabelValue,
                         kSessionKeyLabelLength) ||

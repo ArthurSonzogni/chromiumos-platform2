@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <iterator>
+
 #include <base/check_op.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <crypto/sha2.h>
 #include <gmock/gmock.h>
@@ -164,7 +165,7 @@ class TpmUtilityTest : public testing::Test {
     std::string unencrypted_private(private_data.size, 0);
     AES_cfb128_encrypt(
         reinterpret_cast<const unsigned char*>(private_data.buffer),
-        reinterpret_cast<unsigned char*>(base::data(unencrypted_private)),
+        reinterpret_cast<unsigned char*>(std::data(unencrypted_private)),
         private_data.size, &key, iv, &iv_in, AES_DECRYPT);
     TPM2B_DIGEST inner_integrity;
     EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPM2B_DIGEST(&unencrypted_private,

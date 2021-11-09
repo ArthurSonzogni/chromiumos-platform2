@@ -84,12 +84,12 @@ _HEADER_FILE_GUARD_FOOTER = """
 #endif  // %(name)s
 """
 _HEADER_FILE_INCLUDES = """
+#include <iterator>
 #include <string>
 
 #include <base/callback_forward.h>
 #include <base/check.h>
 #include <base/macros.h>
-#include <base/stl_util.h>
 
 #include "trunks/trunks_export.h"
 """
@@ -416,7 +416,7 @@ TPM_RC Serialize_%(type)s(
   }
 """
   _SERIALIZE_FIELD_ARRAY = """
-  if (base::size(value.%(name)s) < value.%(count)s) {
+  if (std::size(value.%(name)s) < value.%(count)s) {
     return TPM_RC_INSUFFICIENT;
   }
   for (uint32_t i = 0; i < value.%(count)s; ++i) {
@@ -471,7 +471,7 @@ TPM_RC Parse_%(type)s(
   }
 """
   _PARSE_FIELD_ARRAY = """
-  if (base::size(value->%(name)s) < value->%(count)s) {
+  if (std::size(value->%(name)s) < value->%(count)s) {
     return TPM_RC_INSUFFICIENT;
   }
   for (uint32_t i = 0; i < value->%(count)s; ++i) {
@@ -532,7 +532,7 @@ TPM_RC Serialize_%(union_type)s(
 """
   _SERIALIZE_UNION_FIELD_ARRAY = """
   if (selector == %(selector_value)s) {
-    if (base::size(value.%(field_name)s) < %(count)s) {
+    if (std::size(value.%(field_name)s) < %(count)s) {
       return TPM_RC_INSUFFICIENT;
     }
     for (uint32_t i = 0; i < %(count)s; ++i) {
@@ -565,7 +565,7 @@ TPM_RC Parse_%(union_type)s(
 """
   _PARSE_UNION_FIELD_ARRAY = """
   if (selector == %(selector_value)s) {
-    if (base::size(value->%(field_name)s) < %(count)s) {
+    if (std::size(value->%(field_name)s) < %(count)s) {
       return TPM_RC_INSUFFICIENT;
     }
     for (uint32_t i = 0; i < %(count)s; ++i) {
@@ -1279,7 +1279,7 @@ TPM_RC Tpm::SerializeCommand_%(method_name)s(%(method_args)s) {
   command_size += %(var_name)s_bytes.size();"""
   _AUTHORIZE_COMMAND = """
   std::string command_hash(32, 0);
-  hash->Finish(base::data(command_hash), command_hash.size());
+  hash->Finish(std::data(command_hash), command_hash.size());
   std::string authorization_section_bytes;
   std::string authorization_size_bytes;
   if (authorization_delegate) {
@@ -1365,7 +1365,7 @@ TPM_RC Tpm::ParseResponse_%(method_name)s(%(method_args)s) {
   }"""
   _AUTHORIZE_RESPONSE = """
   std::string response_hash(32, 0);
-  hash->Finish(base::data(response_hash), response_hash.size());
+  hash->Finish(std::data(response_hash), response_hash.size());
   if (tag == TPM_ST_SESSIONS) {
     CHECK(authorization_delegate) << "Authorization delegate missing!";
     if (!authorization_delegate->CheckResponseAuthorization(

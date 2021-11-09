@@ -5,6 +5,7 @@
 #include "trunks/trunks_client_test.h"
 
 #include <algorithm>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <random>
@@ -18,7 +19,6 @@
 #include <base/check_op.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
-#include <base/stl_util.h>
 #include <crypto/openssl_util.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
@@ -1191,12 +1191,12 @@ void TrunksClientTest::GenerateRSAKeyPair(std::string* modulus,
   modulus->resize(RSA_size(rsa.get()), 0);
   const BIGNUM* n;
   RSA_get0_key(rsa.get(), &n, nullptr, nullptr);
-  CHECK(BN_bn2bin(n, reinterpret_cast<unsigned char*>(base::data(*modulus))));
+  CHECK(BN_bn2bin(n, reinterpret_cast<unsigned char*>(std::data(*modulus))));
   const BIGNUM* p;
   RSA_get0_factors(rsa.get(), &p, nullptr);
   prime_factor->resize(BN_num_bytes(p), 0);
-  CHECK(BN_bn2bin(p,
-                  reinterpret_cast<unsigned char*>(base::data(*prime_factor))));
+  CHECK(
+      BN_bn2bin(p, reinterpret_cast<unsigned char*>(std::data(*prime_factor))));
   if (public_key) {
     unsigned char* buffer = NULL;
     int length = i2d_RSAPublicKey(rsa.get(), &buffer);
@@ -1217,7 +1217,7 @@ bool TrunksClientTest::VerifyRSASignature(const std::string& public_key,
   auto digest_buffer = reinterpret_cast<const unsigned char*>(digest.data());
   std::string mutable_signature(signature);
   unsigned char* signature_buffer =
-      reinterpret_cast<unsigned char*>(base::data(mutable_signature));
+      reinterpret_cast<unsigned char*>(std::data(mutable_signature));
   return (RSA_verify(NID_sha256, digest_buffer, digest.size(), signature_buffer,
                      signature.size(), rsa.get()) == 1);
 }
@@ -1298,7 +1298,7 @@ bool TrunksClientTest::GetRSAPublicKeyFromHandle(
   }
   public_key->resize(der_length);
   unsigned char* der_buffer =
-      reinterpret_cast<unsigned char*>(base::data(*public_key));
+      reinterpret_cast<unsigned char*>(std::data(*public_key));
   der_length = i2d_RSAPublicKey(rsa.get(), &der_buffer);
   if (der_length < 0) {
     LOG(ERROR) << "Failed to DER-encode public key.";
