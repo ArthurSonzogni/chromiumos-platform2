@@ -1539,30 +1539,6 @@ bool Cellular::IsActivating() const {
   return capability_ && capability_->IsActivating();
 }
 
-// TODO(b/184375691): Remove access to Device.allow_roaming_ via DBus, since
-//  it is no longer used.
-bool Cellular::GetAllowRoaming(Error* /*error*/) {
-  return allow_roaming_;
-}
-
-bool Cellular::SetAllowRoaming(const bool& value, Error* error) {
-  if (allow_roaming_ == value)
-    return false;
-
-  LOG(INFO) << __func__ << ": " << allow_roaming_ << "->" << value;
-
-  allow_roaming_ = value;
-  adaptor()->EmitBoolChanged(kCellularAllowRoamingProperty, value);
-  manager()->UpdateDevice(this);
-
-  if (service_ && service_->IsRoamingRuleViolated()) {
-    Error error;
-    Disconnect(&error, __func__);
-  }
-
-  return true;
-}
-
 bool Cellular::GetPolicyAllowRoaming(Error* /*error*/) {
   return policy_allow_roaming_;
 }
@@ -2063,9 +2039,6 @@ void Cellular::RegisterProperties() {
   HelpRegisterConstDerivedString(kTechnologyFamilyProperty,
                                  &Cellular::GetTechnologyFamily);
   HelpRegisterConstDerivedString(kDeviceIdProperty, &Cellular::GetDeviceId);
-  HelpRegisterDerivedBool(kCellularAllowRoamingProperty,
-                          &Cellular::GetAllowRoaming,
-                          &Cellular::SetAllowRoaming);
   HelpRegisterDerivedBool(kCellularPolicyAllowRoamingProperty,
                           &Cellular::GetPolicyAllowRoaming,
                           &Cellular::SetPolicyAllowRoaming);

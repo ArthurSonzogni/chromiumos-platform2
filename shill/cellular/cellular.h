@@ -544,8 +544,6 @@ class Cellular : public Device,
   void ReAttachOnDetachComplete(const Error& error);
 
   // DBus accessors
-  bool GetAllowRoaming(Error* /*error*/);
-  bool SetAllowRoaming(const bool& value, Error* error);
   bool GetPolicyAllowRoaming(Error* /*error*/);
   bool SetPolicyAllowRoaming(const bool& value, Error* error);
   bool GetInhibited(Error* /*error*/);

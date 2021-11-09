@@ -1421,15 +1421,6 @@ TEST_P(CellularTest, StopModemCallbackFail) {
   EXPECT_EQ(device_->service(), nullptr);
 }
 
-TEST_P(CellularTest, SetAllowRoaming) {
-  EXPECT_FALSE(device_->allow_roaming_);
-  EXPECT_CALL(manager_, UpdateDevice(_));
-  Error error;
-  device_->SetAllowRoaming(true, &error);
-  EXPECT_TRUE(error.IsSuccess());
-  EXPECT_TRUE(device_->allow_roaming_);
-}
-
 TEST_P(CellularTest, SetPolicyAllowRoaming) {
   EXPECT_TRUE(device_->policy_allow_roaming_);
   EXPECT_CALL(manager_, UpdateDevice(_));
@@ -2131,15 +2122,6 @@ TEST_P(CellularTest, OnAfterResumeDisabledWantEnabled) {
   EXPECT_TRUE(device_->enabled_pending());
   EXPECT_TRUE(device_->enabled_persistent());
   EXPECT_EQ(Cellular::State::kModemStarted, device_->state());
-}
-
-// Custom property setters should return false, and make no changes, if
-// the new value is the same as the old value.
-TEST_P(CellularTest, CustomSetterNoopChange) {
-  Error error;
-  EXPECT_FALSE(device_->allow_roaming_);
-  EXPECT_FALSE(device_->SetAllowRoaming(false, &error));
-  EXPECT_TRUE(error.IsSuccess());
 }
 
 #if !defined(DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS)

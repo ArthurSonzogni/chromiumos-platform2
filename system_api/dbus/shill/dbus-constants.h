@@ -161,6 +161,7 @@ const char kONCSourceProperty[] = "ONCSource";
 // Cellular Service property names.
 const char kActivationStateProperty[] = "Cellular.ActivationState";
 const char kActivationTypeProperty[] = "Cellular.ActivationType";
+const char kCellularAllowRoamingProperty[] = "Cellular.AllowRoaming";
 const char kCellularApnProperty[] = "Cellular.APN";
 const char kCellularLastGoodApnProperty[] = "Cellular.LastGoodAPN";
 const char kCellularLastAttachApnProperty[] = "Cellular.LastAttachAPN";
@@ -393,7 +394,6 @@ const char kSelectedServiceProperty[] = "SelectedService";
 const char kTransmitByteCountProperty[] = "TransmitByteCount";
 
 // Property names common to Cellular Device and Cellular Service.
-const char kCellularAllowRoamingProperty[] = "Cellular.AllowRoaming";
 const char kEidProperty[] = "Cellular.EID";
 const char kIccidProperty[] = "Cellular.ICCID";
 const char kImsiProperty[] = "Cellular.IMSI";

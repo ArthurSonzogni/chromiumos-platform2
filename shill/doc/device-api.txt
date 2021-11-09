@@ -209,33 +209,6 @@ Properties	string Address [readonly]
 			A change to this property takes affect on the next
 			association.
 
-		boolean Cellular.AllowRoaming [readwrite]
-
-			(Cellular only) Will be deprecated once Chrome completes
-			the transition to Cellular.PolicyAllowRoaming and
-			Service.AllowRoaming.
-
-			Whether cellular data connections
-			are allowed when the device is roaming (i.e,
-			not registered on the home network). When this
-			property is false, data connections are not
-			allowed while roaming (regardless of the AutoConnect
-			setting of associated services).
-
-			If a connection was established while on the home
-			network, and the device begins roaming, the data
-			connection is terminated.
-
-			If the property is true, and a data connection was
-			established while roaming, and then the property is
-			set to false, the connection is terminated.
-
-			If the Cellular.ProviderRequiresRoaming property
-			is true, that setting will override this property's
-			setting.
-
-			By default Cellular.AllowRoaming is false.
-
 		string Cellular.DeviceID [readonly]
 
 			(Cellular only) The device ID of the physical
