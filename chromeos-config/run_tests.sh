@@ -13,9 +13,13 @@ cd "$(dirname "$(realpath -e "${BASH_SOURCE[0]}")")"
 
 python3 -m unittest discover -p '*test.py' -v
 
+for unittest in scripts/*_unittest.sh; do
+    bash "${unittest}"
+done
+
 # Run linter
 # TODO(https://crbug.com/1101555): "cros lint" doesn't work when run as part of
 # an ebuild.
 if which cros; then
-  find . -name '*.py' -exec cros lint {} +
+    find . -name '*.py' -exec cros lint {} +
 fi
