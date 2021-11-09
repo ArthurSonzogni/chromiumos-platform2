@@ -39,6 +39,13 @@ bool VpdUtilsImplThreadSafe::GetCalibbias(
   return VpdUtilsImpl::GetCalibbias(entries, calibbias);
 }
 
+bool VpdUtilsImplThreadSafe::GetRegistrationCode(std::string* ubind,
+                                                 std::string* gbind) const {
+  base::AutoLock scoped_lock(lock_);
+
+  return VpdUtilsImpl::GetRegistrationCode(ubind, gbind);
+}
+
 bool VpdUtilsImplThreadSafe::SetSerialNumber(const std::string& serial_number) {
   base::AutoLock scoped_lock(lock_);
 
@@ -63,6 +70,13 @@ bool VpdUtilsImplThreadSafe::SetCalibbias(
   base::AutoLock scoped_lock(lock_);
 
   return VpdUtilsImpl::SetCalibbias(calibbias);
+}
+
+bool VpdUtilsImplThreadSafe::SetRegistrationCode(const std::string& ubind,
+                                                 const std::string& gbind) {
+  base::AutoLock scoped_lock(lock_);
+
+  return VpdUtilsImpl::SetRegistrationCode(ubind, gbind);
 }
 
 bool VpdUtilsImplThreadSafe::FlushOutRoVpdCache() {

@@ -32,10 +32,14 @@ class VpdUtilsImplThreadSafe
   bool GetRegion(std::string* region) const override;
   bool GetCalibbias(const std::vector<std::string>& entries,
                     std::vector<int>* calibbias) const override;
+  bool GetRegistrationCode(std::string* ubind,
+                           std::string* gbind) const override;
   bool SetSerialNumber(const std::string& serial_number) override;
   bool SetWhitelabelTag(const std::string& whitelabel_tag) override;
   bool SetRegion(const std::string& region) override;
   bool SetCalibbias(const std::map<std::string, int>& calibbias) override;
+  bool SetRegistrationCode(const std::string& ubind,
+                           const std::string& gbind) override;
   bool FlushOutRoVpdCache() override;
   bool FlushOutRwVpdCache() override;
 
