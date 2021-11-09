@@ -51,12 +51,12 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   // Mounts disk backed vault for the user of supplied credentials, if the
   // credentials are valid.
   MountError MountVault(const Credentials& credentials,
-                        const Mount::MountArgs& mount_args,
+                        const CryptohomeVault::Options& vault_options,
                         bool is_pristine);
 
   // Mounts disk backed vault for the user of supplied auth_session.
   MountError MountVault(AuthSession* auth_session,
-                        const Mount::MountArgs& mount_args);
+                        const CryptohomeVault::Options& vault_options);
 
   // Creates and mounts a ramdisk backed ephemeral session for the user
   // of supplied credentials;

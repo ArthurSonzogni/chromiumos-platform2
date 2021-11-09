@@ -330,8 +330,6 @@ class UserDataAuthTestTasked : public UserDataAuthTestBase {
 
   void CreatePkcs11TokenInSession(scoped_refptr<NiceMock<MockMount>> mount,
                                   scoped_refptr<UserSession> session) {
-    Mount::MountArgs mount_args;
-
     auto vk = std::make_unique<VaultKeyset>();
     EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
         .WillOnce(Return(ByMove(std::move(vk))));
@@ -342,8 +340,9 @@ class UserDataAuthTestTasked : public UserDataAuthTestBase {
     EXPECT_CALL(pkcs11_token_factory_, New(_, _, _))
         .WillOnce(Return(ByMove(std::move(token))));
 
-    ASSERT_EQ(MOUNT_ERROR_NONE, session->MountVault(Credentials(), mount_args,
-                                                    false /*created*/));
+    ASSERT_EQ(MOUNT_ERROR_NONE,
+              session->MountVault(Credentials(), CryptohomeVault::Options(),
+                                  /*is_pristine*/ false));
   }
 
   void InitializePkcs11TokenInSession(scoped_refptr<NiceMock<MockMount>> mount,

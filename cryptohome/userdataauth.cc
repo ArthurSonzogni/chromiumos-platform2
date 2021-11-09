@@ -105,6 +105,20 @@ bool KeyMatchesForLightweightChallengeResponseCheck(
   return true;
 }
 
+CryptohomeVault::Options MountArgsToVaultOptions(
+    const UserDataAuth::MountArgs& mount_args) {
+  CryptohomeVault::Options vault_options;
+  if (mount_args.force_dircrypto) {
+    // If dircrypto is forced, it's an error to mount ecryptfs home unless
+    // we are migrating from ecryptfs.
+    vault_options.block_ecryptfs = true;
+  } else if (mount_args.create_as_ecryptfs) {
+    vault_options.force_type = EncryptedContainerType::kEcryptfs;
+  }
+  vault_options.migrate = mount_args.to_migrate_from_ecryptfs;
+  return vault_options;
+}
+
 // Returns true if any of the path in |prefixes| starts with |path|
 // Note that this function is case insensitive
 bool PrefixPresent(const std::vector<FilePath>& prefixes,
@@ -1437,7 +1451,7 @@ void UserDataAuth::DoMount(
 
   // MountArgs is a set of parameters that we'll be passing around to
   // ContinueMountWithCredentials() and DoChallengeResponseMount().
-  Mount::MountArgs mount_args;
+  UserDataAuth::MountArgs mount_args;
 
   // request.has_create() represents a CreateRequest, telling the API to
   // create a user with the credentials in CreateRequest. create_if_missing
@@ -1553,7 +1567,7 @@ bool UserDataAuth::InitForChallengeResponseAuth(
 
 void UserDataAuth::DoChallengeResponseMount(
     const user_data_auth::MountRequest& request,
-    const Mount::MountArgs& mount_args,
+    const UserDataAuth::MountArgs& mount_args,
     base::OnceCallback<void(const user_data_auth::MountReply&)> on_done) {
   AssertOnMountThread();
   DCHECK_EQ(request.authorization().key().data().type(),
@@ -1646,7 +1660,7 @@ void UserDataAuth::DoChallengeResponseMount(
 
 void UserDataAuth::OnChallengeResponseMountCredentialsObtained(
     const user_data_auth::MountRequest& request,
-    const Mount::MountArgs mount_args,
+    const UserDataAuth::MountArgs mount_args,
     base::OnceCallback<void(const user_data_auth::MountReply&)> on_done,
     std::unique_ptr<Credentials> credentials) {
   AssertOnMountThread();
@@ -1680,7 +1694,7 @@ void UserDataAuth::ContinueMountWithCredentials(
     const user_data_auth::MountRequest& request,
     std::unique_ptr<Credentials> credentials,
     base::Optional<base::UnguessableToken> token,
-    const Mount::MountArgs& mount_args,
+    const UserDataAuth::MountArgs& mount_args,
     base::OnceCallback<void(const user_data_auth::MountReply&)> on_done) {
   AssertOnMountThread();
   // Setup a reply for use during error handling.
@@ -1877,7 +1891,7 @@ void UserDataAuth::ContinueMountWithCredentials(
 
 MountError UserDataAuth::AttemptUserMount(
     const Credentials& credentials,
-    const Mount::MountArgs& mount_args,
+    const UserDataAuth::MountArgs& mount_args,
     scoped_refptr<UserSession> user_session) {
   if (user_session->GetMount()->IsMounted()) {
     return MOUNT_ERROR_MOUNT_POINT_BUSY;
@@ -1908,12 +1922,13 @@ MountError UserDataAuth::AttemptUserMount(
     created = true;
   }
 
-  return user_session->MountVault(credentials, mount_args, created);
+  return user_session->MountVault(credentials,
+                                  MountArgsToVaultOptions(mount_args), created);
 }
 
 MountError UserDataAuth::AttemptUserMount(
     AuthSession* auth_session,
-    const Mount::MountArgs& mount_args,
+    const UserDataAuth::MountArgs& mount_args,
     scoped_refptr<UserSession> user_session) {
   if (user_session->GetMount()->IsMounted()) {
     return MOUNT_ERROR_MOUNT_POINT_BUSY;
@@ -1923,7 +1938,8 @@ MountError UserDataAuth::AttemptUserMount(
     return user_session->MountEphemeral(auth_session);
   }
 
-  return user_session->MountVault(auth_session, mount_args);
+  return user_session->MountVault(auth_session,
+                                  MountArgsToVaultOptions(mount_args));
 }
 
 bool UserDataAuth::MigrateVaultKeyset(const Credentials& existing_credentials,

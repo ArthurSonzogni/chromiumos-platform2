@@ -51,21 +51,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Called before mount cryptohome.
   using PreMountCallback = base::RepeatingCallback<void()>;
 
-  struct MountArgs {
-    bool create_if_missing = false;
-    // Whether the mount has to be ephemeral.
-    bool is_ephemeral = false;
-    // When creating a new cryptohome from scratch, use ecryptfs.
-    bool create_as_ecryptfs = false;
-    // Forces dircrypto, i.e., makes it an error to mount ecryptfs.
-    bool force_dircrypto = false;
-    // Enables version 2 fscrypt interface.
-    bool enable_dircrypto_v2 = false;
-    // Mount the existing ecryptfs vault to a temporary location while setting
-    // up a new dircrypto directory.
-    bool to_migrate_from_ecryptfs = false;
-  };
-
   // Sets up Mount with the default locations, username, etc., as defined above.
   Mount();
   Mount(Platform* platform, HomeDirs* homedirs);
@@ -87,10 +72,11 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //                * Whether to ensure that the mount is ephemeral.
   //   is_pristine - Whether it is the first mount of the vault.
   //   error - The specific error condition on failure
-  virtual MountError MountCryptohome(const std::string& username,
-                                     const FileSystemKeyset& file_system_keys,
-                                     const MountArgs& mount_args,
-                                     bool is_pristine);
+  virtual MountError MountCryptohome(
+      const std::string& username,
+      const FileSystemKeyset& file_system_keys,
+      const CryptohomeVault::Options& vault_options,
+      bool is_pristine);
 
   // Attempts to mount an ephemeral cryptohome for the given username.
   //

@@ -53,6 +53,22 @@ class UserDataAuth {
     kMountThread,
   };
 
+  struct MountArgs {
+    // Whether to create the vault if it is missing.
+    bool create_if_missing = false;
+    // Whether the mount has to be ephemeral.
+    bool is_ephemeral = false;
+    // When creating a new cryptohome from scratch, use ecryptfs.
+    bool create_as_ecryptfs = false;
+    // Forces dircrypto, i.e., makes it an error to mount ecryptfs.
+    bool force_dircrypto = false;
+    // Enables version 2 fscrypt interface.
+    bool enable_dircrypto_v2 = false;
+    // Mount the existing ecryptfs vault to a temporary location while setting
+    // up a new dircrypto directory.
+    bool to_migrate_from_ecryptfs = false;
+  };
+
   UserDataAuth();
   ~UserDataAuth();
 
@@ -673,12 +689,12 @@ class UserDataAuth {
   // =============== Mount Related Utilities ===============
   // Performs a single attempt to Mount a non-annonimous user.
   MountError AttemptUserMount(const Credentials& credentials,
-                              const Mount::MountArgs& mount_args,
+                              const MountArgs& mount_args,
                               scoped_refptr<UserSession> user_session);
 
   // Performs a single attempt to Mount a non-annonimous user with AuthSession
   MountError AttemptUserMount(AuthSession* auth_session,
-                              const Mount::MountArgs& mount_args,
+                              const MountArgs& mount_args,
                               scoped_refptr<UserSession> user_session);
 
   // Returns the UserSession object associated with the given username
@@ -765,14 +781,14 @@ class UserDataAuth {
   // for the storage is sealed.
   void DoChallengeResponseMount(
       const user_data_auth::MountRequest& request,
-      const Mount::MountArgs& mount_args,
+      const MountArgs& mount_args,
       base::OnceCallback<void(const user_data_auth::MountReply&)> on_done);
 
   // This is a utility function used by DoChallengeResponseMount(), and is
   // called once we're done doing challenge response authentication.
   void OnChallengeResponseMountCredentialsObtained(
       const user_data_auth::MountRequest& request,
-      const Mount::MountArgs mount_args,
+      const MountArgs mount_args,
       base::OnceCallback<void(const user_data_auth::MountReply&)> on_done,
       std::unique_ptr<Credentials> credentials);
 
@@ -784,7 +800,7 @@ class UserDataAuth {
       const user_data_auth::MountRequest& request,
       std::unique_ptr<Credentials> credentials,
       base::Optional<base::UnguessableToken> token,
-      const Mount::MountArgs& mount_args,
+      const MountArgs& mount_args,
       base::OnceCallback<void(const user_data_auth::MountReply&)> on_done);
 
   // Called on Mount thread. This triggers the credentials verification steps

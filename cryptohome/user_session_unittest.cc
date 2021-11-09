@@ -159,8 +159,8 @@ class UserSessionTest : public ::testing::Test {
   }
 };
 
-MATCHER_P(MountArgsEqual, mount_args, "") {
-  return memcmp(&mount_args, &arg, sizeof(mount_args)) == 0;
+MATCHER_P(VaultOptionsEqual, options, "") {
+  return memcmp(&options, &arg, sizeof(options)) == 0;
 }
 
 // Mount twice: first time with create, and the second time for the existing
@@ -172,12 +172,13 @@ TEST_F(UserSessionTest, MountVaultOk) {
   const base::Time kTs2 = base::Time::FromInternalValue(43);
   const base::Time kTs3 = base::Time::FromInternalValue(44);
 
-  Mount::MountArgs mount_args_create;
   // Test with ecryptfs since it has a simpler existence check.
-  mount_args_create.create_as_ecryptfs = true;
+  CryptohomeVault::Options options = {
+      .force_type = EncryptedContainerType::kEcryptfs,
+  };
 
   EXPECT_CALL(*mount_, MountCryptohome(users_[0].name, _,
-                                       MountArgsEqual(mount_args_create), true))
+                                       VaultOptionsEqual(options), true))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, GetCurrentTime())
       .Times(2)  // Initial set and update on mount.
@@ -186,8 +187,8 @@ TEST_F(UserSessionTest, MountVaultOk) {
   // TEST
 
   ASSERT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].credentials, mount_args_create,
-                                 true /*created*/));
+            session_->MountVault(users_[0].credentials, options,
+                                 /*is_pristine=*/true));
 
   // VERIFY
   // Vault created.
@@ -214,19 +215,18 @@ TEST_F(UserSessionTest, MountVaultOk) {
   // call. Remove it when we are not mocking mount.
   platform_.CreateDirectory(GetEcryptfsUserVaultPath(users_[0].obfuscated));
 
-  Mount::MountArgs mount_args_no_create;
+  options = {};
 
-  EXPECT_CALL(*mount_,
-              MountCryptohome(users_[0].name, _,
-                              MountArgsEqual(mount_args_no_create), false))
+  EXPECT_CALL(*mount_, MountCryptohome(users_[0].name, _,
+                                       VaultOptionsEqual(options), false))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, GetCurrentTime()).WillOnce(Return(kTs2));
 
   // TEST
 
   ASSERT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].credentials, mount_args_no_create,
-                                 false /*created*/));
+            session_->MountVault(users_[0].credentials, options,
+                                 /*can_create=*/false));
 
   // VERIFY
   // Vault still exists when tried to remount with no create.
@@ -269,20 +269,21 @@ TEST_F(UserSessionTest, MountVaultWrongCreds) {
 
   const base::Time kTs1 = base::Time::FromInternalValue(42);
 
-  Mount::MountArgs mount_args_create;
   // Test with ecryptfs since it has a simpler existence check.
-  mount_args_create.create_as_ecryptfs = true;
+  CryptohomeVault::Options options = {
+      .force_type = EncryptedContainerType::kEcryptfs,
+  };
 
   EXPECT_CALL(*mount_, MountCryptohome(users_[0].name, _,
-                                       MountArgsEqual(mount_args_create), true))
+                                       VaultOptionsEqual(options), true))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, GetCurrentTime())
       .Times(2)  // Initial set and update on mount.
       .WillRepeatedly(Return(kTs1));
 
   ASSERT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].credentials, mount_args_create,
-                                 true /*created*/));
+            session_->MountVault(users_[0].credentials, options,
+                                 /*can_create=*/true));
 
   EXPECT_THAT(user_activity_timestamp_manager_->GetLastUserActivityTimestamp(
                   users_[0].obfuscated),
@@ -298,11 +299,10 @@ TEST_F(UserSessionTest, MountVaultWrongCreds) {
   // call. Remove it when we are not mocking mount.
   platform_.CreateDirectory(GetEcryptfsUserVaultPath(users_[0].obfuscated));
 
-  Mount::MountArgs mount_args_no_create;
+  options = {};
 
-  EXPECT_CALL(*mount_,
-              MountCryptohome(users_[0].name, _,
-                              MountArgsEqual(mount_args_no_create), false))
+  EXPECT_CALL(*mount_, MountCryptohome(users_[0].name, _,
+                                       VaultOptionsEqual(options), false))
       .Times(0);
 
   Credentials wrong_creds(users_[0].name, brillo::SecureBlob("wrong"));
@@ -310,8 +310,7 @@ TEST_F(UserSessionTest, MountVaultWrongCreds) {
   // TEST
 
   ASSERT_EQ(MOUNT_ERROR_KEY_FAILURE,
-            session_->MountVault(wrong_creds, mount_args_no_create,
-                                 false /*created*/));
+            session_->MountVault(wrong_creds, options, /*can_create=*/false));
   EXPECT_EQ(session_->GetPkcs11Token(), nullptr);
 
   // VERIFY
@@ -414,17 +413,18 @@ TEST_F(UserSessionTest, EphemeralMountPolicyTest) {
 TEST_F(UserSessionTest, WebAuthnSecretReadTwice) {
   // SETUP
 
-  Mount::MountArgs mount_args_create;
   // Test with ecryptfs since it has a simpler existence check.
-  mount_args_create.create_as_ecryptfs = true;
+  CryptohomeVault::Options options = {
+      .force_type = EncryptedContainerType::kEcryptfs,
+  };
 
   EXPECT_CALL(*mount_, MountCryptohome(users_[0].name, _,
-                                       MountArgsEqual(mount_args_create), true))
+                                       VaultOptionsEqual(options), true))
       .WillOnce(Return(MOUNT_ERROR_NONE));
 
   ASSERT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].credentials, mount_args_create,
-                                 true /*created*/));
+            session_->MountVault(users_[0].credentials, options,
+                                 /*can_create=*/true));
 
   MountError code = MOUNT_ERROR_NONE;
   std::unique_ptr<VaultKeyset> vk =
@@ -459,17 +459,18 @@ TEST_F(UserSessionTest, WebAuthnSecretReadTwice) {
 TEST_F(UserSessionTest, WebAuthnSecretTimeout) {
   // SETUP
 
-  Mount::MountArgs mount_args_create;
   // Test with ecryptfs since it has a simpler existence check.
-  mount_args_create.create_as_ecryptfs = true;
+  CryptohomeVault::Options options = {
+      .force_type = EncryptedContainerType::kEcryptfs,
+  };
 
   EXPECT_CALL(*mount_, MountCryptohome(users_[0].name, _,
-                                       MountArgsEqual(mount_args_create), true))
+                                       VaultOptionsEqual(options), true))
       .WillOnce(Return(MOUNT_ERROR_NONE));
 
   ASSERT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].credentials, mount_args_create,
-                                 true /*created*/));
+            session_->MountVault(users_[0].credentials, options,
+                                 /*can_create=*/true));
 
   // TEST
 

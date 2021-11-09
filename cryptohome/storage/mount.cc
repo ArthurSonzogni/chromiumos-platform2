@@ -154,21 +154,10 @@ MountError Mount::MountEphemeralCryptohome(const std::string& username) {
 
 MountError Mount::MountCryptohome(const std::string& username,
                                   const FileSystemKeyset& file_system_keyset,
-                                  const Mount::MountArgs& mount_args,
+                                  const CryptohomeVault::Options& vault_options,
                                   bool is_pristine) {
   username_ = username;
   std::string obfuscated_username = SanitizeUserName(username_);
-
-  CryptohomeVault::Options vault_options;
-  if (mount_args.force_dircrypto) {
-    // If dircrypto is forced, it's an error to mount ecryptfs home unless
-    // we are migrating from ecryptfs.
-    vault_options.block_ecryptfs = true;
-  } else if (mount_args.create_as_ecryptfs) {
-    vault_options.force_type = EncryptedContainerType::kEcryptfs;
-  }
-
-  vault_options.migrate = mount_args.to_migrate_from_ecryptfs;
 
   MountError mount_error = MOUNT_ERROR_NONE;
   user_cryptohome_vault_ = homedirs_->GenerateCryptohomeVault(

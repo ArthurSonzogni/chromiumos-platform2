@@ -51,12 +51,12 @@ UserSession::UserSession(
       system_salt_(salt),
       mount_(mount) {}
 
-MountError UserSession::MountVault(const Credentials& credentials,
-                                   const Mount::MountArgs& mount_args,
-                                   bool is_pristine) {
+MountError UserSession::MountVault(
+    const Credentials& credentials,
+    const CryptohomeVault::Options& vault_options,
+    bool is_pristine) {
   const std::string obfuscated_username =
       credentials.GetObfuscatedUsername(system_salt_);
-
   if (is_pristine) {
     if (!keyset_management_->AddInitialKeyset(credentials)) {
       LOG(ERROR) << "Error adding intial keyset.";
@@ -79,8 +79,8 @@ MountError UserSession::MountVault(const Credentials& credentials,
   }
   FileSystemKeyset fs_keyset(*vk);
 
-  code = mount_->MountCryptohome(credentials.username(), fs_keyset, mount_args,
-                                 is_pristine);
+  code = mount_->MountCryptohome(credentials.username(), fs_keyset,
+                                 vault_options, is_pristine);
   if (code != MOUNT_ERROR_NONE) {
     return code;
   }
@@ -96,8 +96,8 @@ MountError UserSession::MountVault(const Credentials& credentials,
   return MOUNT_ERROR_NONE;
 }
 
-MountError UserSession::MountVault(AuthSession* auth_session,
-                                   const Mount::MountArgs& mount_args) {
+MountError UserSession::MountVault(
+    AuthSession* auth_session, const CryptohomeVault::Options& vault_options) {
   // Cannot proceed with mount if the AuthSession is not authenticated yet.
   if (auth_session->GetStatus() != AuthStatus::kAuthStatusAuthenticated) {
     return MOUNT_ERROR_FATAL;
@@ -111,7 +111,7 @@ MountError UserSession::MountVault(AuthSession* auth_session,
   const FileSystemKeyset fs_keyset = auth_session->file_system_keyset();
 
   MountError code = mount_->MountCryptohome(auth_session->username(), fs_keyset,
-                                            mount_args, created);
+                                            vault_options, created);
   if (code != MOUNT_ERROR_NONE) {
     return code;
   }

@@ -24,7 +24,7 @@ class MockMount : public Mount {
               MountCryptohome,
               (const std::string&,
                const FileSystemKeyset&,
-               const Mount::MountArgs&,
+               const CryptohomeVault::Options&,
                bool),
               (override));
   MOCK_METHOD(MountError,
