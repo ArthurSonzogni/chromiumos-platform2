@@ -469,7 +469,7 @@ GpuVdaImpl::~GpuVdaImpl() = default;
 std::vector<vda_input_format_t> GpuVdaImpl::GetSupportedInputFormats() {
   std::vector<vda_input_format_t> supported_input_formats;
 
-  for (int i = 0; i < base::size(kInputFormats); i++) {
+  for (int i = 0; i < std::size(kInputFormats); i++) {
     auto* context = InitDecodeSession(kInputFormats[i].profile);
     if (context) {
       supported_input_formats.emplace_back(kInputFormats[i]);

@@ -117,9 +117,9 @@ vda_result FakeContext::Flush() {
 
 FakeVdaImpl::FakeVdaImpl() {
   LOG(INFO) << "Creating new fake implementation.";
-  capabilities_.num_input_formats = base::size(kInputFormats);
+  capabilities_.num_input_formats = std::size(kInputFormats);
   capabilities_.input_formats = kInputFormats;
-  capabilities_.num_output_formats = base::size(kOutputFormats);
+  capabilities_.num_output_formats = std::size(kOutputFormats);
   capabilities_.output_formats = kOutputFormats;
 }
 
