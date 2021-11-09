@@ -70,13 +70,11 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   mount_args - The options for the call to mount:
   //                * Whether to create the cryptohome if it doesn't exist.
   //                * Whether to ensure that the mount is ephemeral.
-  //   is_pristine - Whether it is the first mount of the vault.
   //   error - The specific error condition on failure
   virtual MountError MountCryptohome(
       const std::string& username,
       const FileSystemKeyset& file_system_keys,
-      const CryptohomeVault::Options& vault_options,
-      bool is_pristine);
+      const CryptohomeVault::Options& vault_options);
 
   // Attempts to mount an ephemeral cryptohome for the given username.
   //

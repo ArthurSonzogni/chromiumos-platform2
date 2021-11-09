@@ -119,21 +119,16 @@ MountError Mount::MountEphemeralCryptohome(const std::string& username) {
   // Ephemeral cryptohome can't be mounted twice.
   CHECK(active_mounter_->CanPerformEphemeralMount());
 
-  MountError error = MOUNT_ERROR_NONE;
-  CryptohomeVault::Options vault_options = {
-      .force_type = EncryptedContainerType::kEphemeral,
-  };
+  user_cryptohome_vault_ = homedirs_->GetVaultFactory()->Generate(
+      obfuscated_username, FileSystemKeyReference(),
+      EncryptedContainerType::kEphemeral);
 
-  user_cryptohome_vault_ = homedirs_->GenerateCryptohomeVault(
-      obfuscated_username, FileSystemKeyReference(), vault_options,
-      /*is_pristine=*/true, &error);
-
-  if (error != MOUNT_ERROR_NONE || !user_cryptohome_vault_) {
-    LOG(ERROR) << "Failed to generate ephemeral vault with error=" << error;
-    return error != MOUNT_ERROR_NONE ? error : MOUNT_ERROR_FATAL;
+  if (!user_cryptohome_vault_) {
+    LOG(ERROR) << "Failed to generate ephemeral vault";
+    return MOUNT_ERROR_FATAL;
   }
 
-  error = user_cryptohome_vault_->Setup(FileSystemKey());
+  MountError error = user_cryptohome_vault_->Setup(FileSystemKey());
   if (error != MOUNT_ERROR_NONE) {
     LOG(ERROR) << "Failed to setup ephemeral vault with error=" << error;
     user_cryptohome_vault_.reset();
@@ -152,20 +147,22 @@ MountError Mount::MountEphemeralCryptohome(const std::string& username) {
   return MOUNT_ERROR_NONE;
 }
 
-MountError Mount::MountCryptohome(const std::string& username,
-                                  const FileSystemKeyset& file_system_keyset,
-                                  const CryptohomeVault::Options& vault_options,
-                                  bool is_pristine) {
+MountError Mount::MountCryptohome(
+    const std::string& username,
+    const FileSystemKeyset& file_system_keyset,
+    const CryptohomeVault::Options& vault_options) {
   username_ = username;
   std::string obfuscated_username = SanitizeUserName(username_);
 
   MountError mount_error = MOUNT_ERROR_NONE;
-  user_cryptohome_vault_ = homedirs_->GenerateCryptohomeVault(
-      obfuscated_username, file_system_keyset.KeyReference(), vault_options,
-      is_pristine, &mount_error);
+  EncryptedContainerType vault_type = homedirs_->PickVaultType(
+      obfuscated_username, vault_options, &mount_error);
   if (mount_error != MOUNT_ERROR_NONE) {
     return mount_error;
   }
+
+  user_cryptohome_vault_ = homedirs_->GetVaultFactory()->Generate(
+      obfuscated_username, file_system_keyset.KeyReference(), vault_type);
 
   if (GetMountType() == MountType::NONE) {
     // TODO(dlunev): there should be a more proper error code set. CREATE_FAILED
@@ -186,18 +183,6 @@ MountError Mount::MountCryptohome(const std::string& username,
   // destructor at the latest.
   base::ScopedClosureRunner cleanup_runner(base::BindOnce(
       base::IgnoreResult(&Mount::UnmountCryptohome), base::Unretained(this)));
-
-  // Mount cryptohome
-  // /home/.shadow: owned by root
-  // /home/.shadow/$hash: owned by root
-  // /home/.shadow/$hash/vault: owned by root
-  // /home/.shadow/$hash/mount: owned by root
-  // /home/.shadow/$hash/mount/root: owned by root
-  // /home/.shadow/$hash/mount/user: owned by chronos
-  // /home/chronos: owned by chronos
-  // /home/chronos/user: owned by chronos
-  // /home/user/$hash: owned by chronos
-  // /home/root/$hash: owned by root
 
   std::string key_signature =
       SecureBlobToHex(file_system_keyset.KeyReference().fek_sig);

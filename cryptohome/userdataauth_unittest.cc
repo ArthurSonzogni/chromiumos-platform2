@@ -333,7 +333,7 @@ class UserDataAuthTestTasked : public UserDataAuthTestBase {
     auto vk = std::make_unique<VaultKeyset>();
     EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
         .WillOnce(Return(ByMove(std::move(vk))));
-    EXPECT_CALL(*mount, MountCryptohome(_, _, _, _))
+    EXPECT_CALL(*mount, MountCryptohome(_, _, _))
         .WillOnce(Return(MOUNT_ERROR_NONE));
 
     auto token = std::make_unique<FakePkcs11Token>();
@@ -2118,7 +2118,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   auto vk = std::make_unique<VaultKeyset>();
   EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk))));
-  EXPECT_CALL(*mount, MountCryptohome(_, _, _, _))
+  EXPECT_CALL(*mount, MountCryptohome(_, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
   EXPECT_CALL(platform_, GetAttachedLoopDevices())
@@ -2221,7 +2221,7 @@ TEST_F(UserDataAuthTest,
   auto vk = std::make_unique<VaultKeyset>();
   EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk))));
-  EXPECT_CALL(*mount, MountCryptohome(_, _, _, _))
+  EXPECT_CALL(*mount, MountCryptohome(_, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
   EXPECT_CALL(platform_, GetAttachedLoopDevices())
@@ -2778,7 +2778,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
     auto vk = std::make_unique<VaultKeyset>();
     EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
         .WillOnce(Return(ByMove(std::move(vk))));
-    EXPECT_CALL(*mount_, MountCryptohome(_, _, _, _))
+    EXPECT_CALL(*mount_, MountCryptohome(_, _, _))
         .WillOnce(Return(MOUNT_ERROR_NONE));
     return true;
   }));
@@ -2815,7 +2815,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
   auto vk = std::make_unique<VaultKeyset>();
   EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk))));
-  EXPECT_CALL(*mount_, MountCryptohome(_, _, _, _))
+  EXPECT_CALL(*mount_, MountCryptohome(_, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
 
   bool called = false;

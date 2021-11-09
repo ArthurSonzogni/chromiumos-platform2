@@ -346,113 +346,79 @@ EncryptedContainerType HomeDirs::ChooseVaultType() {
   }
 }
 
-std::unique_ptr<CryptohomeVault> HomeDirs::CreatePristineVault(
-    const std::string& obfuscated_username,
-    const FileSystemKeyReference& key_reference,
-    CryptohomeVault::Options options,
-    MountError* mount_error) {
-  EncryptedContainerType container_type =
-      options.force_type == EncryptedContainerType::kUnknown
-          ? ChooseVaultType()
-          : options.force_type;
-
-  if (container_type == EncryptedContainerType::kUnknown) {
-    LOG(ERROR) << "Pristine mount attempted with unknown vault type";
-    *mount_error = MOUNT_ERROR_UNEXPECTED_MOUNT_TYPE;
-    return nullptr;
-  }
-
-  return vault_factory_->Generate(obfuscated_username, key_reference,
-                                  container_type,
-                                  EncryptedContainerType::kUnknown);
-}
-
-std::unique_ptr<CryptohomeVault> HomeDirs::CreateNonMigratingVault(
-    const std::string& obfuscated_username,
-    const FileSystemKeyReference& key_reference,
-    CryptohomeVault::Options options,
-    MountError* mount_error) {
-  EncryptedContainerType container_type = EncryptedContainerType::kUnknown;
+EncryptedContainerType HomeDirs::GetVaultType(
+    const std::string& obfuscated_username, MountError* error) {
   if (EcryptfsCryptohomeExists(obfuscated_username)) {
-    if (DircryptoCryptohomeExists(obfuscated_username, mount_error)) {
-      if (*mount_error != MOUNT_ERROR_NONE) {
-        // Preserve dircrypto encryption check error
-        return nullptr;
-      }
-      // If both types of home directory existed, it implies that the
-      // migration attempt was aborted in the middle before doing clean up.
-      LOG(ERROR) << "Mount failed because both eCryptfs and dircrypto home"
-                 << " directories were found. Need to resume and finish"
-                 << " migration first.";
-      *mount_error = MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE;
-      return nullptr;
+    if (DircryptoCryptohomeExists(obfuscated_username, error)) {
+      return EncryptedContainerType::kEcryptfsToFscrypt;
     }
-
-    if (options.block_ecryptfs) {
-      LOG(ERROR) << "Mount attempt with block_ecryptfs on eCryptfs.";
-      *mount_error = MOUNT_ERROR_OLD_ENCRYPTION;
-      return nullptr;
-    }
-
-    container_type = EncryptedContainerType::kEcryptfs;
-  } else if (DircryptoCryptohomeExists(obfuscated_username, mount_error)) {
-    if (*mount_error != MOUNT_ERROR_NONE) {
-      // Preserve dircrypto encryption check error
-      return nullptr;
-    }
-    container_type = EncryptedContainerType::kFscrypt;
+    return EncryptedContainerType::kEcryptfs;
+  } else if (DircryptoCryptohomeExists(obfuscated_username, error)) {
+    return EncryptedContainerType::kFscrypt;
   } else if (DmcryptCryptohomeExists(obfuscated_username)) {
-    container_type = EncryptedContainerType::kDmcrypt;
-  } else {
-    LOG(ERROR) << "Non-migrating mount attempted with unknown vault type";
-    *mount_error = MOUNT_ERROR_UNEXPECTED_MOUNT_TYPE;
-    return nullptr;
+    return EncryptedContainerType::kDmcrypt;
   }
-
-  return vault_factory_->Generate(obfuscated_username, key_reference,
-                                  container_type,
-                                  EncryptedContainerType::kUnknown);
+  return EncryptedContainerType::kUnknown;
 }
 
-std::unique_ptr<CryptohomeVault> HomeDirs::CreateMigratingVault(
+EncryptedContainerType HomeDirs::PickVaultType(
     const std::string& obfuscated_username,
-    const FileSystemKeyReference& key_reference,
-    CryptohomeVault::Options options,
-    MountError* mount_error) {
-  EncryptedContainerType container_type = EncryptedContainerType::kUnknown;
-  EncryptedContainerType migrating_container_type =
-      EncryptedContainerType::kUnknown;
-  if (EcryptfsCryptohomeExists(obfuscated_username)) {
-    container_type = EncryptedContainerType::kEcryptfs;
-    migrating_container_type = EncryptedContainerType::kFscrypt;
-  } else {
-    LOG(ERROR) << "Mount attempt with migration on non-eCryptfs mount";
-    *mount_error = MOUNT_ERROR_UNEXPECTED_MOUNT_TYPE;
-    return nullptr;
+    const CryptohomeVault::Options& options,
+    MountError* error) {
+  // See if the vault exists.
+  EncryptedContainerType vault_type = GetVaultType(obfuscated_username, error);
+  // If existing vault is ecryptfs and migrate == true - make migrating vault.
+  if (vault_type == EncryptedContainerType::kEcryptfs && options.migrate) {
+    vault_type = EncryptedContainerType::kEcryptfsToFscrypt;
   }
 
-  return vault_factory_->Generate(obfuscated_username, key_reference,
-                                  container_type, migrating_container_type);
-}
-
-std::unique_ptr<CryptohomeVault> HomeDirs::GenerateCryptohomeVault(
-    const std::string& obfuscated_username,
-    const FileSystemKeyReference& key_reference,
-    CryptohomeVault::Options options,
-    bool is_pristine,
-    MountError* mount_error) {
-  if (is_pristine) {
-    return CreatePristineVault(obfuscated_username, key_reference, options,
-                               mount_error);
+  // Validate exiting vault options.
+  if (vault_type != EncryptedContainerType::kUnknown) {
+    *error = VerifyVaultType(vault_type, options);
+    if (*error != MOUNT_ERROR_NONE) {
+      return EncryptedContainerType::kUnknown;
+    }
+    return vault_type;
   }
 
   if (options.migrate) {
-    return CreateMigratingVault(obfuscated_username, key_reference, options,
-                                mount_error);
+    LOG(ERROR) << "Can not set up migration for a non-existing vault.";
+    *error = MOUNT_ERROR_UNEXPECTED_MOUNT_TYPE;
+    return EncryptedContainerType::kUnknown;
   }
 
-  return CreateNonMigratingVault(obfuscated_username, key_reference, options,
-                                 mount_error);
+  if (options.block_ecryptfs) {
+    LOG(WARNING) << "Ecryptfs mount block flag has no effect for new vaults.";
+  }
+
+  // If there is no existing vault, see if we are asked for a specific type.
+  // Otherwise choose the best type based on configuration.
+  return options.force_type != EncryptedContainerType::kUnknown
+             ? options.force_type
+             : ChooseVaultType();
+}
+
+// TODO(dlunev): this should merge with PickVaultType when we have absl.
+MountError HomeDirs::VerifyVaultType(EncryptedContainerType vault_type,
+                                     const CryptohomeVault::Options& options) {
+  if (vault_type == EncryptedContainerType::kEcryptfs &&
+      options.block_ecryptfs) {
+    LOG(ERROR) << "Mount attempt with block_ecryptfs on eCryptfs.";
+    return MOUNT_ERROR_OLD_ENCRYPTION;
+  }
+  if (vault_type == EncryptedContainerType::kEcryptfsToFscrypt &&
+      !options.migrate) {
+    LOG(ERROR) << "Mount failed because both eCryptfs and dircrypto home"
+               << " directories were found. Need to resume and finish"
+               << " migration first.";
+    return MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE;
+  }
+  if (vault_type != EncryptedContainerType::kEcryptfsToFscrypt &&
+      options.migrate) {
+    LOG(ERROR) << "Mount attempt with migration on non-eCryptfs mount";
+    return MOUNT_ERROR_UNEXPECTED_MOUNT_TYPE;
+  }
+  return MOUNT_ERROR_NONE;
 }
 
 bool HomeDirs::GetPlainOwner(std::string* owner) {
@@ -503,8 +469,7 @@ bool HomeDirs::Remove(const std::string& obfuscated) {
 
   if (DmcryptCryptohomeExists(obfuscated)) {
     auto vault = vault_factory_->Generate(obfuscated, FileSystemKeyReference(),
-                                          EncryptedContainerType::kDmcrypt,
-                                          EncryptedContainerType::kUnknown);
+                                          EncryptedContainerType::kDmcrypt);
     ret = vault->Purge();
   }
 

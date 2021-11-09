@@ -33,6 +33,7 @@
 
 using ::testing::_;
 using ::testing::DoAll;
+using ::testing::Eq;
 using ::testing::NiceMock;
 using ::testing::Return;
 
@@ -472,23 +473,16 @@ class HomeDirsVaultTest : public ::testing::Test {
   HomeDirsVaultTest()
       : user_({.obfuscated = "foo",
                .homedir_path = base::FilePath(ShadowRoot().Append("foo"))}),
-        key_reference_({.fek_sig = brillo::SecureBlob("random keyref")}),
-        crypto_(&platform_),
-        mock_device_policy_(new policy::MockDevicePolicy()) {}
+        key_reference_({.fek_sig = brillo::SecureBlob("random keyref")}) {}
   ~HomeDirsVaultTest() override = default;
 
-  void SetUp() override {
-    HomeDirs::RemoveCallback remove_callback;
-    homedirs_ = std::make_unique<HomeDirs>(
-        &platform_,
-        std::make_unique<policy::PolicyProvider>(
-            std::unique_ptr<policy::MockDevicePolicy>(mock_device_policy_)),
-        remove_callback);
-  }
 // TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
   void ExpectLogicalVolumeStatefulPartition(
-      const std::string& obfuscated_username, bool existing_cryptohome) {
+      MockPlatform* platform,
+      HomeDirs* homedirs,
+      const std::string& obfuscated_username,
+      bool existing_cryptohome) {
     brillo::PhysicalVolume pv(base::FilePath("/dev/mmcblk0p1"), nullptr);
     brillo::VolumeGroup vg("stateful", nullptr);
     brillo::Thinpool thinpool("thinpool", "stateful", nullptr);
@@ -498,9 +492,9 @@ class HomeDirsVaultTest : public ::testing::Test {
     std::unique_ptr<brillo::MockLogicalVolumeManager> lvm(
         new brillo::MockLogicalVolumeManager());
 
-    EXPECT_CALL(platform_, GetStatefulDevice())
+    EXPECT_CALL(*platform, GetStatefulDevice())
         .WillRepeatedly(Return(base::FilePath("/dev/mmcblk0")));
-    EXPECT_CALL(platform_, GetBlkSize(_, _))
+    EXPECT_CALL(*platform, GetBlkSize(_, _))
         .WillRepeatedly(
             DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
     EXPECT_CALL(*lvm.get(), GetPhysicalVolume(_)).WillRepeatedly(Return(pv));
@@ -509,212 +503,241 @@ class HomeDirsVaultTest : public ::testing::Test {
     if (existing_cryptohome) {
       EXPECT_CALL(*lvm.get(), GetLogicalVolume(_, _))
           .WillRepeatedly(Return(lv));
+    } else {
+      EXPECT_CALL(*lvm.get(), GetLogicalVolume(_, _))
+          .WillRepeatedly(Return(base::nullopt));
     }
 
-    homedirs_->SetLogicalVolumeManagerForTesting(std::move(lvm));
+    homedirs->SetLogicalVolumeManagerForTesting(std::move(lvm));
   }
 #endif  // USE_LVM_STATEFUL_PARTITION
 
  protected:
+  struct HomedirsTestCase {
+    std::string name;
+    bool lvm_supported;
+    bool fscrypt_supported;
+    EncryptedContainerType existing_container_type;
+    CryptohomeVault::Options options;
+
+    EncryptedContainerType expected_type;
+    MountError expected_error;
+  };
+
   const UserInfo user_;
   const FileSystemKeyReference key_reference_;
 
-  NiceMock<MockPlatform> platform_;
-  Crypto crypto_;
-  policy::MockDevicePolicy* mock_device_policy_;  // owned by homedirs_
-  std::unique_ptr<HomeDirs> homedirs_;
-};
-
-// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
+  void PrepareTestCase(const HomedirsTestCase& test_case,
+                       MockPlatform* platform,
+                       HomeDirs* homedirs) {
 #if USE_LVM_STATEFUL_PARTITION
-TEST_F(HomeDirsVaultTest, PristineVaultLvmStatefulSupport) {
-  ExpectLogicalVolumeStatefulPartition(user_.obfuscated,
-                                       /*existing_cryptohome=*/false);
-
-  CryptohomeVault::Options options;
-  MountError mount_error = MOUNT_ERROR_NONE;
-
-  auto vault = homedirs_->GenerateCryptohomeVault(
-      user_.obfuscated, key_reference_, options, /*is_pristine=*/true,
-      &mount_error);
-  EXPECT_EQ(vault->GetContainerType(), EncryptedContainerType::kDmcrypt);
-  EXPECT_EQ(vault->GetMigratingContainerType(),
-            EncryptedContainerType::kUnknown);
-  EXPECT_EQ(vault->GetCacheContainerType(), EncryptedContainerType::kDmcrypt);
-  EXPECT_EQ(mount_error, MOUNT_ERROR_NONE);
-}
-
-TEST_F(HomeDirsVaultTest, ExistingDmcryptContainer) {
-  ExpectLogicalVolumeStatefulPartition(user_.obfuscated,
-                                       /*existing_cryptohome=*/true);
-
-  CryptohomeVault::Options options;
-  MountError mount_error = MOUNT_ERROR_NONE;
-
-  auto vault = homedirs_->GenerateCryptohomeVault(
-      user_.obfuscated, key_reference_, options, /*is_pristine=*/false,
-      &mount_error);
-  EXPECT_EQ(vault->GetContainerType(), EncryptedContainerType::kDmcrypt);
-  EXPECT_EQ(vault->GetMigratingContainerType(),
-            EncryptedContainerType::kUnknown);
-  EXPECT_EQ(vault->GetCacheContainerType(), EncryptedContainerType::kDmcrypt);
-  EXPECT_EQ(mount_error, MOUNT_ERROR_NONE);
-}
+    if (test_case.lvm_supported) {
+      auto type = test_case.existing_container_type;
+      ExpectLogicalVolumeStatefulPartition(
+          platform, homedirs, user_.obfuscated,
+          type == EncryptedContainerType::kDmcrypt);
+    }
 #endif  // USE_LVM_STATEFUL_PARTITION
 
-// Tests cryptohome vault generation with fscrypt support.
-TEST_F(HomeDirsVaultTest, PristineVault) {
-  EXPECT_CALL(platform_, GetDirCryptoKeyState(_))
-      .WillOnce(Return(dircrypto::KeyState::NO_KEY));
+    dircrypto::KeyState root_keystate =
+        test_case.fscrypt_supported ? dircrypto::KeyState::NO_KEY
+                                    : dircrypto::KeyState::NOT_SUPPORTED;
+    ON_CALL(*platform, GetDirCryptoKeyState(ShadowRoot()))
+        .WillByDefault(Return(root_keystate));
 
-  CryptohomeVault::Options options;
-  MountError mount_error = MOUNT_ERROR_NONE;
+    switch (test_case.existing_container_type) {
+      case EncryptedContainerType::kEcryptfs:
+        ignore_result(platform->CreateDirectory(
+            GetEcryptfsUserVaultPath(user_.obfuscated)));
+        ignore_result(
+            platform->CreateDirectory(GetUserMountDirectory(user_.obfuscated)));
+        break;
+      case EncryptedContainerType::kFscrypt:
+        ignore_result(
+            platform->CreateDirectory(GetUserMountDirectory(user_.obfuscated)));
+        ON_CALL(*platform,
+                GetDirCryptoKeyState(GetUserMountDirectory(user_.obfuscated)))
+            .WillByDefault(Return(dircrypto::KeyState::ENCRYPTED));
+        break;
+      case EncryptedContainerType::kEcryptfsToFscrypt:
+        ignore_result(platform->CreateDirectory(
+            GetEcryptfsUserVaultPath(user_.obfuscated)));
+        ignore_result(
+            platform->CreateDirectory(GetUserMountDirectory(user_.obfuscated)));
+        ON_CALL(*platform,
+                GetDirCryptoKeyState(GetUserMountDirectory(user_.obfuscated)))
+            .WillByDefault(Return(dircrypto::KeyState::ENCRYPTED));
+        break;
+      default:
+        // kDmcrypt is handled above.
+        // kEphemeral doesn't need special preparations.
+        break;
+    }
+  }
+};
 
-  auto vault = homedirs_->GenerateCryptohomeVault(
-      user_.obfuscated, key_reference_, options, /*is_pristine=*/true,
-      &mount_error);
-  EXPECT_EQ(vault->GetContainerType(), EncryptedContainerType::kFscrypt);
-  EXPECT_EQ(vault->GetMigratingContainerType(),
-            EncryptedContainerType::kUnknown);
-  EXPECT_EQ(mount_error, MOUNT_ERROR_NONE);
+namespace {
+TEST_F(HomeDirsVaultTest, PickVaultType) {
+  const std::vector<HomeDirsVaultTest::HomedirsTestCase> test_cases = {
+    {
+        .name = "new_ecryptfs_allowed",
+        .lvm_supported = false,
+        .fscrypt_supported = false,
+        .existing_container_type = EncryptedContainerType::kUnknown,
+        .options = {},
+        .expected_type = EncryptedContainerType::kEcryptfs,
+        .expected_error = MOUNT_ERROR_NONE,
+    },
+    {
+        .name = "new_ecryptfs_block_no_effect",
+        .lvm_supported = false,
+        .fscrypt_supported = false,
+        .existing_container_type = EncryptedContainerType::kUnknown,
+        .options = {.block_ecryptfs = true},
+        .expected_type = EncryptedContainerType::kEcryptfs,
+        .expected_error = MOUNT_ERROR_NONE,
+    },
+    {
+        .name = "new_ecryptfs_cant_migrate",
+        .lvm_supported = false,
+        .fscrypt_supported = false,
+        .existing_container_type = EncryptedContainerType::kUnknown,
+        .options = {.migrate = true},
+        .expected_type = EncryptedContainerType::kUnknown,
+        .expected_error = MOUNT_ERROR_UNEXPECTED_MOUNT_TYPE,
+    },
+    {
+        .name = "new_ecryptfs_forced",
+        .lvm_supported = false,
+        .fscrypt_supported = true,
+        .existing_container_type = EncryptedContainerType::kUnknown,
+        .options = {.force_type = EncryptedContainerType::kEcryptfs},
+        .expected_type = EncryptedContainerType::kEcryptfs,
+        .expected_error = MOUNT_ERROR_NONE,
+    },
+    {
+        .name = "new_fscrypt",
+        .lvm_supported = false,
+        .fscrypt_supported = true,
+        .existing_container_type = EncryptedContainerType::kUnknown,
+        .options = {},
+        .expected_type = EncryptedContainerType::kFscrypt,
+        .expected_error = MOUNT_ERROR_NONE,
+    },
+    {
+        .name = "existing_ecryptfs_allowed",
+        .lvm_supported = false,
+        .fscrypt_supported = true,
+        .existing_container_type = EncryptedContainerType::kEcryptfs,
+        .options = {},
+        .expected_type = EncryptedContainerType::kEcryptfs,
+        .expected_error = MOUNT_ERROR_NONE,
+    },
+    {
+        .name = "existing_ecryptfs_not_allowed",
+        .lvm_supported = false,
+        .fscrypt_supported = true,
+        .existing_container_type = EncryptedContainerType::kEcryptfs,
+        .options = {.block_ecryptfs = true},
+        .expected_type = EncryptedContainerType::kUnknown,
+        .expected_error = MOUNT_ERROR_OLD_ENCRYPTION,
+    },
+    {
+        .name = "existing_ecryptfs_migrate",
+        .lvm_supported = false,
+        .fscrypt_supported = true,
+        .existing_container_type = EncryptedContainerType::kEcryptfs,
+        .options = {.migrate = true},
+        .expected_type = EncryptedContainerType::kEcryptfsToFscrypt,
+        .expected_error = MOUNT_ERROR_NONE,
+    },
+    {
+        .name = "existing_fscrypt",
+        .lvm_supported = false,
+        .fscrypt_supported = true,
+        .existing_container_type = EncryptedContainerType::kFscrypt,
+        .options = {},
+        .expected_type = EncryptedContainerType::kFscrypt,
+        .expected_error = MOUNT_ERROR_NONE,
+    },
+    {
+        .name = "existing_fscrypt_force_ignored",
+        .lvm_supported = false,
+        .fscrypt_supported = true,
+        .existing_container_type = EncryptedContainerType::kFscrypt,
+        .options = {.force_type = EncryptedContainerType::kEcryptfs},
+        .expected_type = EncryptedContainerType::kFscrypt,
+        .expected_error = MOUNT_ERROR_NONE,
+    },
+    {
+        .name = "existing_fscrypt_migrate_not_allowed",
+        .lvm_supported = false,
+        .fscrypt_supported = true,
+        .existing_container_type = EncryptedContainerType::kFscrypt,
+        .options = {.migrate = true},
+        .expected_type = EncryptedContainerType::kUnknown,
+        .expected_error = MOUNT_ERROR_UNEXPECTED_MOUNT_TYPE,
+    },
+    {
+        .name = "existing_migration",
+        .lvm_supported = false,
+        .fscrypt_supported = true,
+        .existing_container_type = EncryptedContainerType::kEcryptfsToFscrypt,
+        .options = {.migrate = true},
+        .expected_type = EncryptedContainerType::kEcryptfsToFscrypt,
+        .expected_error = MOUNT_ERROR_NONE,
+    },
+    {
+        .name = "existing_migration_without_flag",
+        .lvm_supported = false,
+        .fscrypt_supported = true,
+        .existing_container_type = EncryptedContainerType::kEcryptfsToFscrypt,
+        .options = {},
+        .expected_type = EncryptedContainerType::kUnknown,
+        .expected_error = MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE,
+    },
+#if USE_LVM_STATEFUL_PARTITION
+    {
+        .name = "new_lvm",
+        .lvm_supported = true,
+        .fscrypt_supported = true,
+        .existing_container_type = EncryptedContainerType::kUnknown,
+        .options = {},
+        .expected_type = EncryptedContainerType::kDmcrypt,
+        .expected_error = MOUNT_ERROR_NONE,
+    },
+    {
+        .name = "existing_lvm",
+        .lvm_supported = true,
+        .fscrypt_supported = true,
+        .existing_container_type = EncryptedContainerType::kDmcrypt,
+        .options = {},
+        .expected_type = EncryptedContainerType::kDmcrypt,
+        .expected_error = MOUNT_ERROR_NONE,
+    },
+#endif  // USE_LVM_STATEFUL_PARTITION
+  };
+
+  for (const auto& test_case : test_cases) {
+    brillo::SecureBlob system_salt;
+    NiceMock<MockPlatform> platform;
+    Crypto crypto(&platform);
+    InitializeFilesystemLayout(&platform, &crypto, &system_salt);
+    HomeDirs homedirs(&platform,
+                      std::make_unique<policy::PolicyProvider>(
+                          std::make_unique<policy::MockDevicePolicy>()),
+                      HomeDirs::RemoveCallback());
+
+    PrepareTestCase(test_case, &platform, &homedirs);
+    MountError error = MOUNT_ERROR_NONE;
+    auto vault_type =
+        homedirs.PickVaultType(user_.obfuscated, test_case.options, &error);
+    EXPECT_THAT(vault_type, Eq(test_case.expected_type))
+        << "TestCase: " << test_case.name;
+    ASSERT_THAT(error, Eq(test_case.expected_error))
+        << "TestCase: " << test_case.name;
+  }
 }
-
-// Tests cryptohome vault generation in absence of fscrypt support.
-TEST_F(HomeDirsVaultTest, PristineVaultNoFscrypt) {
-  EXPECT_CALL(platform_, GetDirCryptoKeyState(_))
-      .WillOnce(Return(dircrypto::KeyState::NOT_SUPPORTED));
-
-  CryptohomeVault::Options options;
-  MountError mount_error = MOUNT_ERROR_NONE;
-
-  auto vault = homedirs_->GenerateCryptohomeVault(
-      user_.obfuscated, key_reference_, options, /*is_pristine=*/true,
-      &mount_error);
-  EXPECT_EQ(vault->GetContainerType(), EncryptedContainerType::kEcryptfs);
-  EXPECT_EQ(vault->GetMigratingContainerType(),
-            EncryptedContainerType::kUnknown);
-  EXPECT_EQ(mount_error, MOUNT_ERROR_NONE);
-}
-
-// Tests cryptohome vault generation with forced eCryptfs usage.
-TEST_F(HomeDirsVaultTest, PristineVaultForceEcryptfs) {
-  CryptohomeVault::Options options;
-  options.force_type = EncryptedContainerType::kEcryptfs;
-  MountError mount_error = MOUNT_ERROR_NONE;
-
-  auto vault = homedirs_->GenerateCryptohomeVault(
-      user_.obfuscated, key_reference_, options, /*is_pristine=*/true,
-      &mount_error);
-  EXPECT_EQ(vault->GetContainerType(), EncryptedContainerType::kEcryptfs);
-  EXPECT_EQ(vault->GetMigratingContainerType(),
-            EncryptedContainerType::kUnknown);
-  EXPECT_EQ(mount_error, MOUNT_ERROR_NONE);
-}
-
-// Tests cryptohome vault generation for an existing eCryptfs container with
-// forced fscrypt usage.
-TEST_F(HomeDirsVaultTest, PristineForceFscrypt) {
-  CryptohomeVault::Options options;
-  options.force_type = EncryptedContainerType::kFscrypt;
-  MountError mount_error = MOUNT_ERROR_NONE;
-
-  auto vault = homedirs_->GenerateCryptohomeVault(
-      user_.obfuscated, key_reference_, options, /*is_pristine=*/true,
-      &mount_error);
-  EXPECT_EQ(vault->GetContainerType(), EncryptedContainerType::kFscrypt);
-  EXPECT_EQ(vault->GetMigratingContainerType(),
-            EncryptedContainerType::kUnknown);
-  EXPECT_EQ(mount_error, MOUNT_ERROR_NONE);
-}
-
-// Tests cryptohome vault generation for an existing eCryptfs container with no
-// migration.
-TEST_F(HomeDirsVaultTest, ExistingEcryptfsContainerNoMigrate) {
-  ASSERT_TRUE(
-      platform_.CreateDirectory(user_.homedir_path.Append(kEcryptfsVaultDir)));
-
-  CryptohomeVault::Options options;
-  MountError mount_error = MOUNT_ERROR_NONE;
-
-  auto vault = homedirs_->GenerateCryptohomeVault(
-      user_.obfuscated, key_reference_, options, /*is_pristine=*/false,
-      &mount_error);
-  EXPECT_EQ(vault->GetContainerType(), EncryptedContainerType::kEcryptfs);
-  EXPECT_EQ(vault->GetMigratingContainerType(),
-            EncryptedContainerType::kUnknown);
-  EXPECT_EQ(mount_error, MOUNT_ERROR_NONE);
-}
-
-// Tests cryptohome vault generation for an existing eCryptfs container with
-// migration.
-TEST_F(HomeDirsVaultTest, ExistingEcryptfsContainerMigrate) {
-  ASSERT_TRUE(
-      platform_.CreateDirectory(user_.homedir_path.Append(kEcryptfsVaultDir)));
-
-  CryptohomeVault::Options options;
-  options.migrate = true;
-  MountError mount_error = MOUNT_ERROR_NONE;
-
-  auto vault = homedirs_->GenerateCryptohomeVault(
-      user_.obfuscated, key_reference_, options, /*is_pristine*/ false,
-      &mount_error);
-  EXPECT_EQ(vault->GetContainerType(), EncryptedContainerType::kEcryptfs);
-  EXPECT_EQ(vault->GetMigratingContainerType(),
-            EncryptedContainerType::kFscrypt);
-  EXPECT_EQ(mount_error, MOUNT_ERROR_NONE);
-}
-
-// Tests cryptohome vault generation if there is an existing eCryptfs container
-// and a fscrypt container but migration is not enabled.
-TEST_F(HomeDirsVaultTest, ExistingEcryptfsContainerNoMigrateFscryptExists) {
-  ASSERT_TRUE(platform_.CreateDirectory(user_.homedir_path.Append(kMountDir)));
-  ASSERT_TRUE(
-      platform_.CreateDirectory(user_.homedir_path.Append(kEcryptfsVaultDir)));
-  EXPECT_CALL(platform_, GetDirCryptoKeyState(_))
-      .WillOnce(Return(dircrypto::KeyState::ENCRYPTED));
-
-  CryptohomeVault::Options options;
-  MountError mount_error = MOUNT_ERROR_NONE;
-
-  auto vault = homedirs_->GenerateCryptohomeVault(
-      user_.obfuscated, key_reference_, options, /*is_pristine=*/false,
-      &mount_error);
-  EXPECT_EQ(vault, nullptr);
-  EXPECT_EQ(mount_error, MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE);
-}
-
-// Tests cryptohome vault generation if there is an existing eCryptfs container,
-// but migration is not enabled and dircrypto is forced.
-TEST_F(HomeDirsVaultTest, ExistingEcryptfsContainerNoMigrateForceFscrypt) {
-  ASSERT_TRUE(
-      platform_.CreateDirectory(user_.homedir_path.Append(kEcryptfsVaultDir)));
-
-  CryptohomeVault::Options options;
-  options.block_ecryptfs = true;
-  MountError mount_error = MOUNT_ERROR_NONE;
-
-  auto vault = homedirs_->GenerateCryptohomeVault(
-      user_.obfuscated, key_reference_, options, /*is_pristine=*/false,
-      &mount_error);
-  EXPECT_EQ(vault, nullptr);
-  EXPECT_EQ(mount_error, MOUNT_ERROR_OLD_ENCRYPTION);
-}
-
-// Tests cryptohome vault generation if there is an existing fscrypt container.
-TEST_F(HomeDirsVaultTest, ExistingFscryptContainer) {
-  ASSERT_TRUE(platform_.CreateDirectory(user_.homedir_path.Append(kMountDir)));
-  EXPECT_CALL(platform_, GetDirCryptoKeyState(_))
-      .WillRepeatedly(Return(dircrypto::KeyState::ENCRYPTED));
-
-  CryptohomeVault::Options options;
-  MountError mount_error = MOUNT_ERROR_NONE;
-  auto vault = homedirs_->GenerateCryptohomeVault(
-      user_.obfuscated, key_reference_, options, /*is_pristine=*/false,
-      &mount_error);
-  EXPECT_EQ(vault->GetContainerType(), EncryptedContainerType::kFscrypt);
-  EXPECT_EQ(vault->GetMigratingContainerType(),
-            EncryptedContainerType::kUnknown);
-  EXPECT_EQ(mount_error, MOUNT_ERROR_NONE);
-}
+}  // namespace
 
 }  // namespace cryptohome

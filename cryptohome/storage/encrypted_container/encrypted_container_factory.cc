@@ -62,6 +62,9 @@ std::unique_ptr<EncryptedContainer> EncryptedContainerFactory::Generate(
       return std::make_unique<EphemeralContainer>(std::move(backing_device),
                                                   platform_);
     }
+    case EncryptedContainerType::kEcryptfsToFscrypt:
+      // The migrating type is handled by the higher level abstraction.
+      // FALLTHROUGH
     case EncryptedContainerType::kUnknown:
       return nullptr;
   }

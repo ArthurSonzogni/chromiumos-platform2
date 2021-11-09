@@ -31,8 +31,7 @@ class CryptohomeVaultFactory {
   virtual std::unique_ptr<CryptohomeVault> Generate(
       const std::string& obfuscated_username,
       const FileSystemKeyReference& key_reference,
-      EncryptedContainerType container_type,
-      EncryptedContainerType migrating_container_type);
+      EncryptedContainerType vault_type);
 
  private:
   virtual std::unique_ptr<EncryptedContainer> GenerateEncryptedContainer(

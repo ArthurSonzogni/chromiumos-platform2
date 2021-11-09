@@ -108,6 +108,9 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
       config.type = EncryptedContainerType::kEphemeral;
       config.backing_file_name = obfuscated_username;
       break;
+    case EncryptedContainerType::kEcryptfsToFscrypt:
+      // The migrating type is handled by the higher level abstraction.
+      // FALLTHROUGH
     case EncryptedContainerType::kUnknown:
       return nullptr;
   }
@@ -118,8 +121,18 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
 std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
     const std::string& obfuscated_username,
     const FileSystemKeyReference& key_reference,
-    EncryptedContainerType container_type,
-    EncryptedContainerType migrating_container_type) {
+    EncryptedContainerType vault_type) {
+  EncryptedContainerType container_type = EncryptedContainerType::kUnknown;
+  EncryptedContainerType migrating_container_type =
+      EncryptedContainerType::kUnknown;
+
+  if (vault_type != EncryptedContainerType::kEcryptfsToFscrypt) {
+    container_type = vault_type;
+  } else {
+    container_type = EncryptedContainerType::kEcryptfs;
+    migrating_container_type = EncryptedContainerType::kFscrypt;
+  }
+
   // Generate containers for the vault.
   std::unique_ptr<EncryptedContainer> container =
       GenerateEncryptedContainer(container_type, obfuscated_username,

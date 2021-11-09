@@ -21,8 +21,9 @@ namespace cryptohome {
 // Type of encrypted containers.
 enum class EncryptedContainerType {
   kUnknown = 0,
-  kFscrypt,
   kEcryptfs,
+  kFscrypt,
+  kEcryptfsToFscrypt,
   kDmcrypt,
   kEphemeral,
 };

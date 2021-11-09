@@ -167,39 +167,15 @@ class HomeDirs {
   virtual void set_enterprise_owned(bool value) { enterprise_owned_ = value; }
   virtual bool enterprise_owned() const { return enterprise_owned_; }
 
-  // Choose the vault type for new vaults.
-  virtual EncryptedContainerType ChooseVaultType();
-
-  // Generates the cryptohome vault for a newly created home directory.
-  virtual std::unique_ptr<CryptohomeVault> CreatePristineVault(
+  // Pick the most appropriate vault type for the user.
+  virtual EncryptedContainerType PickVaultType(
       const std::string& obfuscated_username,
-      const FileSystemKeyReference& key_reference,
-      CryptohomeVault::Options options,
-      MountError* mount_error);
+      const CryptohomeVault::Options& options,
+      MountError* error);
 
-  // Generates the cryptohome vault for an existing home directory that needs
-  // to be migrated.
-  virtual std::unique_ptr<CryptohomeVault> CreateMigratingVault(
-      const std::string& obfuscated_username,
-      const FileSystemKeyReference& key_reference,
-      CryptohomeVault::Options options,
-      MountError* mount_error);
-
-  // Generates the cryptohome vault for an existing home directory that will
-  // not be migrated in the current mount.
-  virtual std::unique_ptr<CryptohomeVault> CreateNonMigratingVault(
-      const std::string& obfuscated_username,
-      const FileSystemKeyReference& key_reference,
-      CryptohomeVault::Options options,
-      MountError* mount_error);
-
-  // Generate the cryptohome vault depending on the on-disk state.
-  virtual std::unique_ptr<CryptohomeVault> GenerateCryptohomeVault(
-      const std::string& obfuscated_username,
-      const FileSystemKeyReference& key_reference,
-      CryptohomeVault::Options options,
-      bool is_pristine,
-      MountError* mount_error);
+  virtual CryptohomeVaultFactory* GetVaultFactory() {
+    return vault_factory_.get();
+  }
 
 // TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
@@ -210,6 +186,17 @@ class HomeDirs {
 #endif  // USE_LVM_STATEFUL_PARTITION
 
  private:
+  // Choose the vault type for new vaults.
+  EncryptedContainerType ChooseVaultType();
+
+  // Verifies that flags match the vault type.
+  MountError VerifyVaultType(EncryptedContainerType vault_type,
+                             const CryptohomeVault::Options& options);
+
+  // Get the type of an existing vault.
+  EncryptedContainerType GetVaultType(const std::string& obfuscated_username,
+                                      MountError* error);
+
   base::TimeDelta GetUserInactivityThresholdForRemoval();
   // Loads the device policy, either by initializing it or reloading the
   // existing one.

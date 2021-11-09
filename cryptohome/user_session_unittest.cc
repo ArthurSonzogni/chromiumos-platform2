@@ -177,8 +177,8 @@ TEST_F(UserSessionTest, MountVaultOk) {
       .force_type = EncryptedContainerType::kEcryptfs,
   };
 
-  EXPECT_CALL(*mount_, MountCryptohome(users_[0].name, _,
-                                       VaultOptionsEqual(options), true))
+  EXPECT_CALL(*mount_,
+              MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, GetCurrentTime())
       .Times(2)  // Initial set and update on mount.
@@ -217,8 +217,8 @@ TEST_F(UserSessionTest, MountVaultOk) {
 
   options = {};
 
-  EXPECT_CALL(*mount_, MountCryptohome(users_[0].name, _,
-                                       VaultOptionsEqual(options), false))
+  EXPECT_CALL(*mount_,
+              MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, GetCurrentTime()).WillOnce(Return(kTs2));
 
@@ -274,8 +274,8 @@ TEST_F(UserSessionTest, MountVaultWrongCreds) {
       .force_type = EncryptedContainerType::kEcryptfs,
   };
 
-  EXPECT_CALL(*mount_, MountCryptohome(users_[0].name, _,
-                                       VaultOptionsEqual(options), true))
+  EXPECT_CALL(*mount_,
+              MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, GetCurrentTime())
       .Times(2)  // Initial set and update on mount.
@@ -301,8 +301,8 @@ TEST_F(UserSessionTest, MountVaultWrongCreds) {
 
   options = {};
 
-  EXPECT_CALL(*mount_, MountCryptohome(users_[0].name, _,
-                                       VaultOptionsEqual(options), false))
+  EXPECT_CALL(*mount_,
+              MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .Times(0);
 
   Credentials wrong_creds(users_[0].name, brillo::SecureBlob("wrong"));
@@ -418,8 +418,8 @@ TEST_F(UserSessionTest, WebAuthnSecretReadTwice) {
       .force_type = EncryptedContainerType::kEcryptfs,
   };
 
-  EXPECT_CALL(*mount_, MountCryptohome(users_[0].name, _,
-                                       VaultOptionsEqual(options), true))
+  EXPECT_CALL(*mount_,
+              MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
 
   ASSERT_EQ(MOUNT_ERROR_NONE,
@@ -464,8 +464,8 @@ TEST_F(UserSessionTest, WebAuthnSecretTimeout) {
       .force_type = EncryptedContainerType::kEcryptfs,
   };
 
-  EXPECT_CALL(*mount_, MountCryptohome(users_[0].name, _,
-                                       VaultOptionsEqual(options), true))
+  EXPECT_CALL(*mount_,
+              MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
 
   ASSERT_EQ(MOUNT_ERROR_NONE,

@@ -992,9 +992,8 @@ TEST_F(PersistentSystemTest, Ecryptfs_MountPristineTouchFileUnmountMountAgain) {
 
   MockPreclearKeyring(/*success=*/true);
   MockEcryptfsKeyringSetup(keyset, /*success=*/true);
-  ASSERT_THAT(
-      mount_->MountCryptohome(kUser, keyset, options, /*is_pristine=*/true),
-      Eq(MOUNT_ERROR_NONE));
+  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options),
+              Eq(MOUNT_ERROR_NONE));
   VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/true);
 
   ASSERT_TRUE(platform_.WriteStringToFile(
@@ -1009,8 +1008,7 @@ TEST_F(PersistentSystemTest, Ecryptfs_MountPristineTouchFileUnmountMountAgain) {
 
   MockPreclearKeyring(/*success=*/true);
   MockEcryptfsKeyringSetup(keyset, /*success=*/true);
-  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options,
-                                      /*is_pristine=*/false),
+  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options),
               Eq(MOUNT_ERROR_NONE));
   VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/true);
 
@@ -1038,9 +1036,8 @@ TEST_F(PersistentSystemTest,
   MockPreclearKeyring(/*success=*/true);
   MockDircryptoKeyringSetup(kUser, keyset, /*existing_dir=*/false,
                             /*success=*/true);
-  ASSERT_THAT(
-      mount_->MountCryptohome(kUser, keyset, options, /*is_pristine=*/true),
-      Eq(MOUNT_ERROR_NONE));
+  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options),
+              Eq(MOUNT_ERROR_NONE));
   VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true);
 
   ASSERT_TRUE(platform_.WriteStringToFile(
@@ -1057,8 +1054,7 @@ TEST_F(PersistentSystemTest,
   MockPreclearKeyring(/*success=*/true);
   MockDircryptoKeyringSetup(kUser, keyset, /*existing_dir=*/true,
                             /*success=*/true);
-  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options,
-                                      /*is_pristine=*/false),
+  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options),
               Eq(MOUNT_ERROR_NONE));
   VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true);
 
@@ -1084,9 +1080,7 @@ TEST_F(PersistentSystemTest, NoEcryptfsMountWhenForcedDircrypto) {
 
   MockPreclearKeyring(/*success=*/true);
   MockEcryptfsKeyringSetup(keyset, /*success=*/true);
-  ASSERT_THAT(
-      mount_->MountCryptohome(kUser, keyset, options, /*is_pristine=*/true),
-      MOUNT_ERROR_NONE)
+  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options), MOUNT_ERROR_NONE)
       << "ERROR: " << error;
   VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/true);
 
@@ -1097,8 +1091,7 @@ TEST_F(PersistentSystemTest, NoEcryptfsMountWhenForcedDircrypto) {
   options = {
       .block_ecryptfs = true,
   };
-  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options,
-                                      /*is_pristine=*/false),
+  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options),
               Eq(MOUNT_ERROR_OLD_ENCRYPTION));
 }
 
@@ -1114,9 +1107,8 @@ TEST_F(PersistentSystemTest, EcryptfsMigration) {
   };
   MockPreclearKeyring(/*success=*/true);
   MockEcryptfsKeyringSetup(keyset, /*success=*/true);
-  ASSERT_THAT(
-      mount_->MountCryptohome(kUser, keyset, options, /*is_pristine=*/true),
-      MOUNT_ERROR_NONE);
+  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options),
+              MOUNT_ERROR_NONE);
 
   ASSERT_TRUE(platform_.WriteStringToFile(
       base::FilePath(kHomeChronosUser).Append(kFile), kContent));
@@ -1132,9 +1124,8 @@ TEST_F(PersistentSystemTest, EcryptfsMigration) {
   MockEcryptfsKeyringSetup(keyset, /*success=*/true);
   MockDircryptoKeyringSetup(kUser, keyset, /*existing_dir=*/false,
                             /*success=*/true);
-  ASSERT_THAT(
-      mount_->MountCryptohome(kUser, keyset, options, /*is_pristine=*/false),
-      MOUNT_ERROR_NONE);
+  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options),
+              MOUNT_ERROR_NONE);
 
   MockEcryptfsKeyringTeardown(/*success=*/true);
   MockDircryptoKeyringTeardown(kUser, keyset, /*success=*/true);
@@ -1153,9 +1144,8 @@ TEST_F(PersistentSystemTest, EcryptfsMigration) {
   MockEcryptfsKeyringSetup(keyset, /*success=*/true);
   MockDircryptoKeyringSetup(kUser, keyset, /*existing_dir=*/false,
                             /*success=*/true);
-  ASSERT_THAT(
-      new_mount->MountCryptohome(kUser, keyset, options, /*is_pristine=*/false),
-      MOUNT_ERROR_NONE);
+  ASSERT_THAT(new_mount->MountCryptohome(kUser, keyset, options),
+              MOUNT_ERROR_NONE);
 
   MockEcryptfsKeyringTeardown(/*success=*/true);
   MockDircryptoKeyringTeardown(kUser, keyset, /*success=*/true);
@@ -1181,9 +1171,8 @@ TEST_F(PersistentSystemTest, EcryptfsMigration) {
   MockPreclearKeyring(/*success=*/true);
   MockDircryptoKeyringSetup(kUser, keyset, /*existing_dir=*/true,
                             /*success=*/true);
-  ASSERT_THAT(
-      mount_->MountCryptohome(kUser, keyset, options, /*is_pristine=*/false),
-      MOUNT_ERROR_NONE);
+  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options),
+              MOUNT_ERROR_NONE);
   VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true);
 
   std::string result;

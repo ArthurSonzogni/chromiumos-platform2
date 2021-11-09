@@ -68,28 +68,30 @@ MountError UserSession::MountVault(
 
   // Verifies user's credentials and retrieves the user's file system encryption
   // keys.
-  MountError code = MOUNT_ERROR_NONE;
+  MountError error = MOUNT_ERROR_NONE;
   std::unique_ptr<VaultKeyset> vk =
-      keyset_management_->LoadUnwrappedKeyset(credentials, &code);
-  if (code != MOUNT_ERROR_NONE) {
-    return code;
+      keyset_management_->LoadUnwrappedKeyset(credentials, &error);
+  if (error != MOUNT_ERROR_NONE) {
+    return error;
   }
   if (!vk) {
     return MOUNT_ERROR_FATAL;
   }
+
+  const std::string username = credentials.username();
   FileSystemKeyset fs_keyset(*vk);
 
-  code = mount_->MountCryptohome(credentials.username(), fs_keyset,
-                                 vault_options, is_pristine);
-  if (code != MOUNT_ERROR_NONE) {
-    return code;
+  error = mount_->MountCryptohome(username, fs_keyset, vault_options);
+  if (error != MOUNT_ERROR_NONE) {
+    return error;
   }
+  // Set credentials for verification using AuthSession.
   SetCredentials(credentials);
   user_activity_timestamp_manager_->UpdateTimestamp(obfuscated_username,
                                                     base::TimeDelta());
 
   pkcs11_token_ = pkcs11_token_factory_->New(
-      username_, homedirs_->GetChapsTokenDir(username_), fs_keyset.chaps_key());
+      username, homedirs_->GetChapsTokenDir(username), fs_keyset.chaps_key());
 
   PrepareWebAuthnSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
 
@@ -102,26 +104,23 @@ MountError UserSession::MountVault(
   if (auth_session->GetStatus() != AuthStatus::kAuthStatusAuthenticated) {
     return MOUNT_ERROR_FATAL;
   }
-  const std::string obfuscated_username =
-      SanitizeUserName(auth_session->username());
-  // If the AuthSession is authenticated and the user did not exist when
-  // AuthSession was started, then that means the user was created.
-  bool created = !auth_session->user_exists();
 
+  const std::string username = auth_session->username();
   const FileSystemKeyset fs_keyset = auth_session->file_system_keyset();
 
-  MountError code = mount_->MountCryptohome(auth_session->username(), fs_keyset,
-                                            vault_options, created);
-  if (code != MOUNT_ERROR_NONE) {
-    return code;
+  MountError error;
+  error = mount_->MountCryptohome(username, fs_keyset, vault_options);
+  if (error != MOUNT_ERROR_NONE) {
+    return error;
   }
+
   // Set credentials for verification using AuthSession.
   SetCredentials(auth_session);
-  user_activity_timestamp_manager_->UpdateTimestamp(obfuscated_username,
+  user_activity_timestamp_manager_->UpdateTimestamp(obfuscated_username_,
                                                     base::TimeDelta());
 
   pkcs11_token_ = pkcs11_token_factory_->New(
-      username_, homedirs_->GetChapsTokenDir(username_), fs_keyset.chaps_key());
+      username, homedirs_->GetChapsTokenDir(username), fs_keyset.chaps_key());
 
   PrepareWebAuthnSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
 
