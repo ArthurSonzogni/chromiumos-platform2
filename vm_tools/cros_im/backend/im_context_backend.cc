@@ -69,6 +69,10 @@ void IMContextBackend::Activate(wl_seat* seat, wl_surface* surface) {
 void IMContextBackend::Deactivate() {
   if (!text_input_)
     return;
+  if (!seat_) {
+    printf("Attempted to deactivate text input which was not activated.\n");
+    return;
+  }
   zwp_text_input_v1_hide_input_panel(text_input_);
   zwp_text_input_v1_deactivate(text_input_, seat_);
   seat_ = nullptr;

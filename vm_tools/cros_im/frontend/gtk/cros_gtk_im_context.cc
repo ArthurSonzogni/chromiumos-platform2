@@ -97,6 +97,23 @@ PangoAttribute* ToPangoAttribute(const PreeditStyle& style) {
   return attr;
 }
 
+GtkWindow* GdkWindowToGtkWindow(GdkWindow* window) {
+  if (!window)
+    return nullptr;
+  // TODO(timloh): This doesn't fully work yet (e.g. click the Open button in
+  // gedit). From GTK 3.24.19 (bullseye), set_client_window is changed to
+  // set_client_widget and this may no longer be necessary.
+  GdkWindow* toplevel = gdk_window_get_toplevel(window);
+  for (GList* list = gtk_window_list_toplevels(); list; list = list->next) {
+    GtkWindow* gtk_window = GTK_WINDOW(list->data);
+    if (gtk_widget_get_window(GTK_WIDGET(gtk_window)) == toplevel) {
+      return gtk_window;
+    }
+  }
+  g_warning("Failed to find GtkWindow matching GdkWindow.");
+  return nullptr;
+}
+
 }  // namespace
 
 void CrosGtkIMContext::RegisterType(GTypeModule* module) {
@@ -115,22 +132,8 @@ CrosGtkIMContext::CrosGtkIMContext()
 CrosGtkIMContext::~CrosGtkIMContext() = default;
 
 void CrosGtkIMContext::SetClientWindow(GdkWindow* window) {
-  window_ = window;
-  gtk_window_ = nullptr;
-  if (!window)
-    return;
-
-  GdkWindow* toplevel = gdk_window_get_toplevel(window);
-  GList* toplevels = gtk_window_list_toplevels();
-  while (toplevels) {
-    GtkWindow* gtk_window = GTK_WINDOW(toplevels->data);
-    if (gtk_widget_get_window(GTK_WIDGET(gtk_window)) == toplevel) {
-      gtk_window_ = gtk_window;
-      break;
-    }
-  }
-  if (!gtk_window_)
-    g_warning("Failed to find GtkWindow");
+  g_set_object(&window_, window);
+  g_set_object(&gtk_window_, GdkWindowToGtkWindow(window));
 }
 
 void CrosGtkIMContext::GetPreeditString(char** preedit,
@@ -155,9 +158,18 @@ gboolean CrosGtkIMContext::FilterKeypress(GdkEventKey* event) {
 }
 
 void CrosGtkIMContext::FocusIn() {
-  if (!window_)
+  if (!window_) {
+    g_warning("Received focus_in event without active window.");
     return;
-  backend_->Activate(GetSeat(), gdk_wayland_window_get_wl_surface(window_));
+  }
+
+  wl_surface* surface = gdk_wayland_window_get_wl_surface(window_);
+  if (!surface) {
+    g_warning("GdkWindow doesn't have an associated wl_surface.");
+    return;
+  }
+
+  backend_->Activate(GetSeat(), surface);
 
   // TODO(timloh): Set content type.
 
@@ -240,8 +252,8 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
       state == KeyState::kPressed ? GDK_KEY_PRESS : GDK_KEY_RELEASE);
 
   GdkEventKey* event = reinterpret_cast<GdkEventKey*>(raw_event);
-  event->window = context_->window_;
-  g_object_ref(event->window);  // Ref is dropped in gdk_event_free.
+  // Ref is dropped in gdk_event_free.
+  g_set_object(&event->window, context_->window_);
   event->send_event = true;
   event->time = GDK_CURRENT_TIME;
   event->state = 0;

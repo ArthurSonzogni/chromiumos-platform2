@@ -64,6 +64,7 @@ class CrosGtkIMContext : public GtkIMContext {
     CrosGtkIMContext* context_;
   };
 
+  // Ref counted
   GdkWindow* window_ = nullptr;
   GtkWindow* gtk_window_ = nullptr;
 
