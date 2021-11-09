@@ -71,7 +71,7 @@ std::unique_ptr<ChapsProxyImpl> ChapsProxyImpl::Create(bool shadow_at_exit) {
   base::Thread::Options options(base::MessagePumpType::IO, 0);
   chaps_proxy_impl->dbus_thread_ =
       std::make_unique<ChapsProxyThread>(chaps_proxy_impl.get());
-  chaps_proxy_impl->dbus_thread_->StartWithOptions(options);
+  chaps_proxy_impl->dbus_thread_->StartWithOptions(std::move(options));
 
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
