@@ -5,6 +5,7 @@
 #include <sys/vfs.h>
 
 #include <memory>
+#include <utility>
 
 #include <base/at_exit.h>
 #include <base/bind.h>
@@ -157,7 +158,7 @@ int main(int argc, char** argv) {
                                                       &size_map);
   base::Thread::Options options;
   options.message_pump_type = base::MessagePumpType::IO;
-  service_thread.StartWithOptions(options);
+  service_thread.StartWithOptions(std::move(options));
 
   // Enter the FUSE main loop.
   virtual_file_provider::FuseMainDelegateImpl delegate(&service_thread,
