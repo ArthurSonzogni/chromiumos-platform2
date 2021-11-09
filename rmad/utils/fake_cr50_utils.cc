@@ -68,6 +68,16 @@ bool FakeCr50Utils::EnableFactoryMode() const {
   return false;
 }
 
+bool FakeCr50Utils::DisableFactoryMode() const {
+  // Always succeeds.
+  if (IsFactoryModeEnabled()) {
+    const base::FilePath factory_mode_enabled_file_path =
+        working_dir_path_.AppendASCII(kFactoryModeEnabledFilePath);
+    base::DeleteFile(factory_mode_enabled_file_path);
+  }
+  return true;
+}
+
 bool FakeCr50Utils::IsFactoryModeEnabled() const {
   const base::FilePath factory_mode_enabled_file_path =
       working_dir_path_.AppendASCII(kFactoryModeEnabledFilePath);

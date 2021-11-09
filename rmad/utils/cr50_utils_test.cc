@@ -158,6 +158,44 @@ TEST_F(Cr50UtilsTest, EnableFactoryMode_AlreadyEnabled) {
   EXPECT_TRUE(cr50_utils->EnableFactoryMode());
 }
 
+TEST_F(Cr50UtilsTest, DisableFactoryMode_Success) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  {
+    InSequence seq;
+    EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+        .WillOnce(
+            DoAll(SetArgPointee<1>(kFactoryModeEnabledResponse), Return(true)));
+    EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(true));
+  }
+  auto cr50_utils = std::make_unique<Cr50UtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_TRUE(cr50_utils->DisableFactoryMode());
+}
+
+TEST_F(Cr50UtilsTest, DisableFactoryMode_Fail) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  {
+    InSequence seq;
+    EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+        .WillOnce(
+            DoAll(SetArgPointee<1>(kFactoryModeEnabledResponse), Return(true)));
+    EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
+  }
+  auto cr50_utils = std::make_unique<Cr50UtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_FALSE(cr50_utils->DisableFactoryMode());
+}
+
+TEST_F(Cr50UtilsTest, DisableFactoryMode_AlreadyDisabled) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kFactoryModeDisabledResponse), Return(true)));
+  auto cr50_utils = std::make_unique<Cr50UtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_TRUE(cr50_utils->DisableFactoryMode());
+}
+
 namespace fake {
 
 class FakeCr50UtilsTest : public testing::Test {
@@ -250,6 +288,19 @@ TEST_F(FakeCr50UtilsTest, EnableFactoryMode_CcdBlocked) {
   brillo::TouchFile(GetHwwpDisabledFilePath());
   brillo::TouchFile(GetBlockCcdFilePath());
   ASSERT_FALSE(fake_cr50_utils_->EnableFactoryMode());
+  ASSERT_FALSE(base::PathExists(GetFactoryModeEnabledFilePath()));
+}
+
+TEST_F(FakeCr50UtilsTest, DisableFactoryMode_Success) {
+  brillo::TouchFile(GetFactoryModeEnabledFilePath());
+  ASSERT_TRUE(base::PathExists(GetFactoryModeEnabledFilePath()));
+  ASSERT_TRUE(fake_cr50_utils_->DisableFactoryMode());
+  ASSERT_FALSE(base::PathExists(GetFactoryModeEnabledFilePath()));
+}
+
+TEST_F(FakeCr50UtilsTest, DisableFactoryMode_AlreadyDisabled) {
+  ASSERT_FALSE(base::PathExists(GetFactoryModeEnabledFilePath()));
+  ASSERT_TRUE(fake_cr50_utils_->DisableFactoryMode());
   ASSERT_FALSE(base::PathExists(GetFactoryModeEnabledFilePath()));
 }
 

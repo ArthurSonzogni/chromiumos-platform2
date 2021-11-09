@@ -23,6 +23,7 @@ class Cr50UtilsImpl : public Cr50Utils {
   bool GetRsuChallengeCode(std::string* challenge_code) const override;
   bool PerformRsu(const std::string& unlock_code) const override;
   bool EnableFactoryMode() const override;
+  bool DisableFactoryMode() const override;
   bool IsFactoryModeEnabled() const override;
 
  private:

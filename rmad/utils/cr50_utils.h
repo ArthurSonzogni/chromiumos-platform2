@@ -27,6 +27,10 @@ class Cr50Utils {
   // FWMP).
   virtual bool EnableFactoryMode() const = 0;
 
+  // Disable factory mode. Return true if the command succeeds, false if fails
+  // to disable factory mode.
+  virtual bool DisableFactoryMode() const = 0;
+
   // Check if cr50 factory mode is enabled.
   virtual bool IsFactoryModeEnabled() const = 0;
 };

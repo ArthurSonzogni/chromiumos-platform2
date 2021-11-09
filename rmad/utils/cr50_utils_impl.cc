@@ -24,6 +24,8 @@ const std::vector<std::string> kRsuArgv{kGsctoolCmd, "-a", "-r"};
 const std::vector<std::string> kCcdInfoArgv{kGsctoolCmd, "-a", "-I"};
 const std::vector<std::string> kEnableFactoryModeArgv{kGsctoolCmd, "-a", "-F",
                                                       "enable"};
+const std::vector<std::string> kDisableFactoryModeArgv{kGsctoolCmd, "-a", "-F",
+                                                       "disable"};
 
 }  // namespace
 
@@ -64,6 +66,14 @@ bool Cr50UtilsImpl::EnableFactoryMode() const {
   if (!IsFactoryModeEnabled()) {
     std::string unused_output;
     return cmd_utils_->GetOutput(kEnableFactoryModeArgv, &unused_output);
+  }
+  return true;
+}
+
+bool Cr50UtilsImpl::DisableFactoryMode() const {
+  if (IsFactoryModeEnabled()) {
+    std::string unused_output;
+    return cmd_utils_->GetOutput(kDisableFactoryModeArgv, &unused_output);
   }
   return true;
 }
