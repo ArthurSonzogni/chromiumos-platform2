@@ -49,7 +49,7 @@ TpmBoundToPcrAuthBlock::TpmBoundToPcrAuthBlock(
   base::Thread::Options options;
   options.message_pump_type = base::MessagePumpType::IO;
   scrypt_thread_ = std::make_unique<base::Thread>("scrypt_thread");
-  scrypt_thread_->StartWithOptions(options);
+  scrypt_thread_->StartWithOptions(std::move(options));
   scrypt_task_runner_ = scrypt_thread_->task_runner();
 }
 

@@ -8,6 +8,7 @@
 #include <deque>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <errno.h>
@@ -206,7 +207,7 @@ class MigrationHelper::WorkerPool {
           "MigrationHelper worker #" + base::NumberToString(i));
       base::Thread::Options options;
       options.message_pump_type = base::MessagePumpType::IO;
-      if (!job_threads_[i]->StartWithOptions(options)) {
+      if (!job_threads_[i]->StartWithOptions(std::move(options))) {
         LOG(ERROR) << "Failed to start a job thread.";
         return false;
       }

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <string>
+#include <utility>
 
 #include <base/check.h>
 #include <base/synchronization/waitable_event.h>
@@ -52,7 +53,7 @@ class ServiceBlocker {
     // because ListenForServiceOwnerChange() needs it.
     base::Thread::Options options;
     options.message_pump_type = base::MessagePumpType::IO;
-    dbus_thread_.StartWithOptions(options);
+    dbus_thread_.StartWithOptions(std::move(options));
 
     dbus_thread_.task_runner()->PostTask(
         FROM_HERE,

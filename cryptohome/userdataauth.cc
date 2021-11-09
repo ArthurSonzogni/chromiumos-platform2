@@ -321,7 +321,7 @@ bool UserDataAuth::Initialize() {
   if (!mount_task_runner_) {
     base::Thread::Options options;
     options.message_pump_type = base::MessagePumpType::IO;
-    mount_thread_->StartWithOptions(options);
+    mount_thread_->StartWithOptions(std::move(options));
     mount_task_runner_ = mount_thread_->task_runner();
   }
 
