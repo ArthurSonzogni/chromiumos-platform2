@@ -5,6 +5,7 @@
 #include "virtual_file_provider/fuse_main.h"
 
 #include <algorithm>
+#include <iterator>
 #include <string>
 #include <utility>
 
@@ -16,7 +17,6 @@
 #include <base/logging.h>
 #include <base/optional.h>
 #include <base/posix/eintr_wrapper.h>
-#include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "virtual_file_provider/operation_throttle.h"
@@ -194,7 +194,7 @@ int FuseMain(const base::FilePath& mount_path,
   FusePrivateData private_data;
   private_data.delegate = delegate;
   private_data.operation_throttle = &operation_throttle;
-  return fuse_main(base::size(fuse_argv), const_cast<char**>(fuse_argv),
+  return fuse_main(std::size(fuse_argv), const_cast<char**>(fuse_argv),
                    &operations, &private_data);
 }
 
