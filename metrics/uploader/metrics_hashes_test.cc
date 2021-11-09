@@ -23,7 +23,7 @@ TEST(MetricsUtilTest, HashMetricName) {
       {"NewTab", "0x290eb683f96572f1"},
   };
 
-  for (size_t i = 0; i < base::size(cases); ++i) {
+  for (size_t i = 0; i < std::size(cases); ++i) {
     uint64_t hash = HashMetricName(cases[i].input);
     std::string hash_hex = base::StringPrintf("0x%016" PRIx64, hash);
     EXPECT_EQ(cases[i].output, hash_hex);

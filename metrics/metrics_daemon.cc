@@ -1076,7 +1076,7 @@ void MetricsDaemon::ReportProcessGroupStats(
     const char* const uma_names[MEM_KINDS_COUNT],
     const ProcessMemoryStats& stats) {
   const uint64_t MiB = 1 << 20;
-  for (int i = 0; i < base::size(stats.rss_sizes); i++) {
+  for (int i = 0; i < std::size(stats.rss_sizes); i++) {
     SendSample(uma_names[i], stats.rss_sizes[i] / MiB, 1, kMaxMemSizeMiB, 50);
   }
 }
@@ -1323,7 +1323,7 @@ bool MetricsDaemon::ProcessMeminfo(const string& meminfo_raw) {
       // { "SUnreclaim", "SUnreclaim" },
   };
   vector<MeminfoRecord> fields(fields_array,
-                               fields_array + base::size(fields_array));
+                               fields_array + std::size(fields_array));
   if (!FillMeminfo(meminfo_raw, &fields)) {
     return false;
   }
@@ -1453,7 +1453,7 @@ void MetricsDaemon::MemuseCallback() {
     // Report stats and advance the measurement interval unless there are
     // errors or we've completed the last interval.
     if (MemuseCallbackWork() &&
-        memuse_interval_index_ < base::size(kMemuseIntervals)) {
+        memuse_interval_index_ < std::size(kMemuseIntervals)) {
       double interval = kMemuseIntervals[memuse_interval_index_++];
       memuse_final_time_ = now + interval;
       ScheduleMemuseCallback(interval);
@@ -1478,7 +1478,7 @@ bool MetricsDaemon::ProcessMemuse(const string& meminfo_raw) {
       {"InactiveAnon", "Inactive(anon)"},
   };
   vector<MeminfoRecord> fields(fields_array,
-                               fields_array + base::size(fields_array));
+                               fields_array + std::size(fields_array));
   if (!FillMeminfo(meminfo_raw, &fields)) {
     return false;
   }

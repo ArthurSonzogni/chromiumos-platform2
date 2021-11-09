@@ -17,7 +17,6 @@
 #include <iostream>
 
 #include <base/files/file_path.h>
-#include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/flag_helper.h>
 
@@ -28,7 +27,7 @@ namespace {
 const char* kGroupNames[] = {"browser", "gpu", "renderers",
                              "arc",     "vms", "daemons"};
 
-static_assert(base::size(kGroupNames) == PG_KINDS_COUNT,
+static_assert(std::size(kGroupNames) == PG_KINDS_COUNT,
               "wrong number of kGroupNames");
 
 }  // namespace
