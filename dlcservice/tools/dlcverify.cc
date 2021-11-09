@@ -69,7 +69,8 @@ class DlcVerify {
 
   bool ParseManifest() {
     manifest_ = GetDlcManifest(
-        rootfs_mount_.Append(imageloader::kDlcManifestRootpath), id_, package_);
+        rootfs_mount_.Append(imageloader::kRelativeDlcManifestRootpath), id_,
+        package_);
     // Let `GetDlcManifest()` log the error.
     return manifest_ != nullptr;
   }
