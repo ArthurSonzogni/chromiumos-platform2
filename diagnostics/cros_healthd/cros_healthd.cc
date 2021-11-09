@@ -27,12 +27,28 @@
 #include "diagnostics/cros_healthd/events/lid_events_impl.h"
 #include "diagnostics/cros_healthd/events/power_events_impl.h"
 #include "diagnostics/cros_healthd/events/udev_events_impl.h"
+#include "diagnostics/mojom/external/cros_healthd_internal.mojom.h"
 
 namespace diagnostics {
+namespace {
+base::ScopedFD DuplicateScopeFD(const base::ScopedFD& fd) {
+  base::ScopedFD fd_copy(HANDLE_EINTR(dup(fd.get())));
+  if (!fd_copy.is_valid()) {
+    PLOG(ERROR) << "Failed to duplicate the Mojo file descriptor";
+    return base::ScopedFD();
+  }
+  if (!base::SetCloseOnExec(fd_copy.get())) {
+    PLOG(ERROR) << "Failed to set FD_CLOEXEC on Mojo file descriptor";
+    return base::ScopedFD();
+  }
+  return fd_copy;
+}
+}  // namespace
 
 CrosHealthd::CrosHealthd(mojo::PlatformChannelEndpoint endpoint,
                          std::unique_ptr<brillo::UdevMonitor>&& udev_monitor)
-    : DBusServiceDaemon(kCrosHealthdServiceName /* service_name */) {
+    : DBusServiceDaemon(kCrosHealthdServiceName /* service_name */),
+      service_bootstrap_receiver_(this) {
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       base::ThreadTaskRunnerHandle::Get() /* io_thread_task_runner */,
       mojo::core::ScopedIPCSupport::ShutdownPolicy::
@@ -88,6 +104,9 @@ void CrosHealthd::RegisterDBusObjectsAsync(
   dbus_interface->AddSimpleMethodHandler(
       kCrosHealthdBootstrapMojoConnectionMethod, base::Unretained(this),
       &CrosHealthd::BootstrapMojoConnection);
+  dbus_interface->AddSimpleMethodHandler(
+      kBootstrapChromeMojoConnectionMethod, base::Unretained(this),
+      &CrosHealthd::BootstrapChromeMojoConnection);
   dbus_object_->RegisterAsync(sequencer->GetHandler(
       "Failed to register D-Bus object" /* descriptive_message */,
       true /* failure_is_fatal */));
@@ -172,6 +191,44 @@ std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
   return token;
 }
 
+void CrosHealthd::BootstrapChromeMojoConnection(const base::ScopedFD& mojo_fd) {
+  VLOG(1) << "Received BootstrapChromeMojoConnection D-Bus request";
+
+  if (!mojo_fd.is_valid()) {
+    LOG(ERROR) << "Invalid Mojo file descriptor";
+    return;
+  }
+  // We need a file descriptor that stays alive after the current method
+  // finishes, but libbrillo's D-Bus wrappers currently don't support passing
+  // base::ScopedFD by value.
+  base::ScopedFD mojo_fd_copy = DuplicateScopeFD(mojo_fd);
+  if (!mojo_fd_copy.is_valid())
+    return;
+
+  if (service_bootstrap_receiver_.is_bound()) {
+    // This should not normally be triggered, since the other endpoint - the
+    // browser process - should bootstrap the Mojo connection only once, and
+    // when that process is killed the Mojo shutdown notification should have
+    // been received earlier. But handle this case to be on the safe side.
+    // After we restart, the browser process is expected to invoke the
+    // bootstrapping again.
+    ShutDownDueToMojoError(
+        "Repeated Mojo bootstrap request received" /* debug_reason */);
+    return;
+  }
+  mojo::IncomingInvitation invitation =
+      mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
+          mojo::PlatformHandle(std::move(mojo_fd_copy))));
+  // Each invitation has only one pipe attached to it. Thus we can always use 0
+  // as the pipe name.
+  auto pipe = invitation.ExtractMessagePipe(0 /* name*/);
+  service_bootstrap_receiver_.Bind(
+      mojo::PendingReceiver<
+          chromeos::cros_healthd::internal::mojom::ServiceBootstrap>(
+          std::move(pipe)));
+  VLOG(1) << "Successfully bootstrapped Mojo connection from chrome";
+}
+
 void CrosHealthd::GetProbeService(
     mojo::PendingReceiver<
         chromeos::cros_healthd::mojom::CrosHealthdProbeService> service) {
@@ -208,6 +265,36 @@ void CrosHealthd::SendNetworkDiagnosticsRoutines(
         network_diagnostics_routines) {
   context_->network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       std::move(network_diagnostics_routines));
+}
+
+void CrosHealthd::GetCrosHealthdServiceFactory(
+    mojo::PendingReceiver<
+        chromeos::cros_healthd::mojom::CrosHealthdServiceFactory> receiver) {
+  // TODO(b/204145496): Remove |is_chorme| argument after migration to new dbus
+  // method.
+  service_factory_receiver_set_.Add(this /* impl */, std::move(receiver), true);
+}
+
+void CrosHealthd::SetCrosHealthdInternalServiceFactory(
+    mojo::PendingRemote<chromeos::cros_healthd::internal::mojom::
+                            CrosHealthdInternalServiceFactory> remote) {
+  context_->internal_service_factory_relay()->Bind(std::move(remote));
+  // TODO(b/204145496): Move this to context initialization after migration.
+  mojo::Remote<chromeos::network_health::mojom::NetworkHealthService>
+      network_health_remote;
+  context_->internal_service_factory_relay()->Get()->GetNetworkHealthService(
+      network_health_remote.BindNewPipeAndPassReceiver());
+  context_->network_health_adapter()->SetServiceRemote(
+      network_health_remote.Unbind());
+
+  mojo::Remote<chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines>
+      network_diag_remote;
+  context_->internal_service_factory_relay()
+      ->Get()
+      ->GetNetworkDiagnosticsRoutines(
+          network_diag_remote.BindNewPipeAndPassReceiver());
+  context_->network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
+      network_diag_remote.Unbind());
 }
 
 void CrosHealthd::ShutDownDueToMojoError(const std::string& debug_reason) {

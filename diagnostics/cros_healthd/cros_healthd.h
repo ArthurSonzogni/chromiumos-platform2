@@ -25,6 +25,7 @@
 #include "diagnostics/cros_healthd/events/udev_events.h"
 #include "diagnostics/cros_healthd/fetch_aggregator.h"
 #include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/mojom/external/cros_healthd_internal.mojom-forward.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 
 namespace diagnostics {
@@ -32,7 +33,8 @@ namespace diagnostics {
 // Daemon class for cros_healthd.
 class CrosHealthd final
     : public brillo::DBusServiceDaemon,
-      public chromeos::cros_healthd::mojom::CrosHealthdServiceFactory {
+      public chromeos::cros_healthd::mojom::CrosHealthdServiceFactory,
+      public chromeos::cros_healthd::internal::mojom::ServiceBootstrap {
  public:
   explicit CrosHealthd(mojo::PlatformChannelEndpoint endpoint,
                        std::unique_ptr<brillo::UdevMonitor>&& udev_monitor);
@@ -68,14 +70,32 @@ class CrosHealthd final
           chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines>
           network_diagnostics_routines) override;
 
+  // chromeos::cros_healthd::internal::mojom::ServiceBootstrap overrides:
+  void GetCrosHealthdServiceFactory(
+      mojo::PendingReceiver<
+          chromeos::cros_healthd::mojom::CrosHealthdServiceFactory> receiver)
+      override;
+  void SetCrosHealthdInternalServiceFactory(
+      mojo::PendingRemote<chromeos::cros_healthd::internal::mojom::
+                              CrosHealthdInternalServiceFactory> remote)
+      override;
+
   // Implementation of the "org.chromium.CrosHealthdInterface" D-Bus interface
   // exposed by the cros_healthd daemon (see constants for the API methods at
   // src/platform2/system_api/dbus/cros_healthd/dbus-constants.h). When
   // |is_chrome| = false, this method will return a unique token that can be
   // used to connect to cros_healthd via mojo. When |is_chrome| = true, the
   // returned string has no meaning.
+  //
+  // TODO(b/204145496,b/205671927): Remove this after migration.
   std::string BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
                                       bool is_chrome);
+
+  // Implementation of the "org.chromium.CrosHealthdInterface" D-Bus interface
+  // exposed by the cros_healthd daemon (see constants for the API methods at
+  // src/platform2/system_api/dbus/cros_healthd/dbus-constants.h).
+  // This method bootstrap the connection between Chrome and Helathd.
+  void BootstrapChromeMojoConnection(const base::ScopedFD& mojo_fd);
 
   void ShutDownDueToMojoError(const std::string& debug_reason);
 
@@ -127,8 +147,12 @@ class CrosHealthd final
   // detecting repeated Mojo bootstrapping attempts.
   bool mojo_service_bind_attempted_ = false;
 
-  // Connects BootstrapMojoConnection with the methods of the D-Bus object
-  // exposed by the cros_healthd daemon.
+  // Receiver of the ServiceBootstrap.
+  mojo::Receiver<chromeos::cros_healthd::internal::mojom::ServiceBootstrap>
+      service_bootstrap_receiver_;
+
+  // Connects BootstrapMojoConnection with the methods of the D-Bus
+  // object exposed by the cros_healthd daemon.
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 };
 
