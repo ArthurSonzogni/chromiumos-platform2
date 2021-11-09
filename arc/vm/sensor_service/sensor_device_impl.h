@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/files/file_descriptor_watcher_posix.h>
+#include <base/files/file_path.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "arc/vm/sensor_service/sensor_data_forwarder.h"
