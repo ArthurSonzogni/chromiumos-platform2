@@ -317,7 +317,7 @@ void BroadcastForwarder::RemoveGuest(const std::string& br_ifname) {
 
 void BroadcastForwarder::OnFileCanReadWithoutBlocking(int fd) {
   alignas(4) uint8_t buffer[kBufSize];
-  uint8_t* data = buffer + sizeof(iphdr) + sizeof(udphdr);
+  uint8_t* data = buffer + sizeof(struct iphdr) + sizeof(struct udphdr);
 
   sockaddr_ll dst_addr;
   struct iovec iov = {
@@ -345,17 +345,22 @@ void BroadcastForwarder::OnFileCanReadWithoutBlocking(int fd) {
 
   // These headers are taken directly from the buffer and is 4 bytes aligned.
   struct iphdr* ip_hdr = (struct iphdr*)(buffer);
-  struct udphdr* udp_hdr = (struct udphdr*)(buffer + sizeof(iphdr));
+  struct udphdr* udp_hdr = (struct udphdr*)(buffer + sizeof(struct iphdr));
+
+  // Check that the IP header and UDP header have been filled.
+  if (msg_len < sizeof(struct iphdr) + sizeof(struct udphdr))
+    return;
 
   // Drop fragmented packets.
   if ((ntohs(ip_hdr->frag_off) & (kIpFragOffsetMask | IP_MF)) != 0)
     return;
 
-  // Store the length of the message without its headers.
-  ssize_t len = ntohs(udp_hdr->len) - sizeof(udphdr);
+  // Store the length of the message data without its headers.
+  ssize_t len = ntohs(udp_hdr->len) - sizeof(struct udphdr);
 
-  // Validate UDP length.
-  if ((len + sizeof(udphdr) + sizeof(iphdr) > msg_len) || (len < 0))
+  // Validate message data length.
+  if ((len + sizeof(struct udphdr) + sizeof(struct iphdr) > msg_len) ||
+      (len < 0))
     return;
 
   struct sockaddr_in fromaddr = {0};
