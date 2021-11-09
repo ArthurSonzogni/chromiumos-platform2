@@ -28,6 +28,11 @@ LECredentialManagerImpl::LECredentialManagerImpl(
 
   hash_tree_ = std::make_unique<SignInHashTree>(kLengthLabels, kBitsPerLevel,
                                                 le_basedir);
+  if (!hash_tree_->IsValid()) {
+    LOG(ERROR)
+        << "Failed to initialize LE credential manager: invalid hash tree";
+    return;
+  }
 
   // Reset the root hash in the TPM to its initial value.
   if (new_hash_tree) {
@@ -43,7 +48,7 @@ LECredError LECredentialManagerImpl::InsertCredential(
     const DelaySchedule& delay_sched,
     const ValidPcrCriteria& valid_pcr_criteria,
     uint64_t* ret_label) {
-  if (!Sync()) {
+  if (!hash_tree_->IsValid() || !Sync()) {
     return LE_CRED_ERROR_HASH_TREE;
   }
 
@@ -119,7 +124,7 @@ LECredError LECredentialManagerImpl::ResetCredential(
 }
 
 LECredError LECredentialManagerImpl::RemoveCredential(const uint64_t& label) {
-  if (!Sync()) {
+  if (!hash_tree_->IsValid() || !Sync()) {
     return LE_CRED_ERROR_HASH_TREE;
   }
 
@@ -167,7 +172,7 @@ LECredError LECredentialManagerImpl::CheckSecret(
     brillo::SecureBlob* he_secret,
     brillo::SecureBlob* reset_secret,
     bool is_le_secret) {
-  if (!Sync()) {
+  if (!hash_tree_->IsValid() || !Sync()) {
     return LE_CRED_ERROR_HASH_TREE;
   }
 
@@ -232,6 +237,9 @@ LECredError LECredentialManagerImpl::CheckSecret(
 }
 
 bool LECredentialManagerImpl::NeedsPcrBinding(const uint64_t& label) {
+  if (!hash_tree_->IsValid()) {
+    return false;
+  }
   SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
 
   std::vector<uint8_t> orig_cred, orig_mac;
@@ -246,6 +254,9 @@ bool LECredentialManagerImpl::NeedsPcrBinding(const uint64_t& label) {
 }
 
 int LECredentialManagerImpl::GetWrongAuthAttempts(const uint64_t& label) {
+  if (!hash_tree_->IsValid()) {
+    return -1;
+  }
   SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
 
   std::vector<uint8_t> orig_cred, orig_mac;
@@ -474,8 +485,12 @@ bool LECredentialManagerImpl::ReplayResetTree() {
 
   ReportLEResult(kLEOpSync, kLEActionSaveToDisk, LE_CRED_SUCCESS);
 
-  hash_tree_ =
+  auto new_hash_tree =
       std::make_unique<SignInHashTree>(kLengthLabels, kBitsPerLevel, basedir_);
+  if (!new_hash_tree->IsValid()) {
+    return false;
+  }
+  hash_tree_ = move(new_hash_tree);
   hash_tree_->GenerateAndStoreHashCache();
   return true;
 }

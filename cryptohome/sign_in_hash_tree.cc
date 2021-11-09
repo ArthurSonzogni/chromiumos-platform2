@@ -13,6 +13,7 @@
 #include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto/secure_blob_util.h"
@@ -26,7 +27,8 @@ constexpr size_t SignInHashTree::kHashSize;
 SignInHashTree::SignInHashTree(uint32_t leaf_length,
                                uint8_t bits_per_level,
                                base::FilePath basedir)
-    : leaf_length_(leaf_length),
+    : is_valid_(true),
+      leaf_length_(leaf_length),
       fan_out_(1 << bits_per_level),
       bits_per_level_(bits_per_level),
       p_(new Platform()),
@@ -61,7 +63,20 @@ SignInHashTree::SignInHashTree(uint32_t leaf_length,
   base::FilePath leaf_cache_file = basedir.Append(kLeafCacheFileName);
   auto leaf_cache_fd = std::make_unique<base::ScopedFD>(open(
       leaf_cache_file.value().c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR));
-  CHECK(leaf_cache_fd->is_valid());
+  if (!leaf_cache_fd->is_valid()) {
+    PLOG(ERROR) << "Failed to open the leaf_cache_file: "
+                << leaf_cache_file.value();
+    struct stat sb;
+    if (stat(leaf_cache_file.value().c_str(), &sb) == -1) {
+      PLOG(ERROR) << "Failed to stat the leaf_cache_file: "
+                  << leaf_cache_file.value();
+    } else {
+      LOG(INFO) << "leaf_cache_file mode: "
+                << base::StringPrintf("%03o", sb.st_mode);
+    }
+    is_valid_ = false;
+    return;
+  }
   CHECK(!ftruncate(leaf_cache_fd->get(), (1 << leaf_length_) * kHashSize));
   leaf_cache_fd.reset();
 
@@ -72,6 +87,10 @@ SignInHashTree::SignInHashTree(uint32_t leaf_length,
 }
 
 SignInHashTree::~SignInHashTree() {}
+
+bool SignInHashTree::IsValid() {
+  return is_valid_;
+}
 
 std::vector<SignInHashTree::Label> SignInHashTree::GetAuxiliaryLabels(
     const Label& leaf_label) {

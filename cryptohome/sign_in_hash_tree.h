@@ -178,6 +178,8 @@ class SignInHashTree {
 
   ~SignInHashTree();
 
+  bool IsValid();
+
   // Return a vector of labels required to recompute the root node hash,
   // given the leaf node label |key|. This function will return a list
   // of relevant labels on success, and an empty list otherwise.
@@ -307,6 +309,7 @@ class SignInHashTree {
   // Populate the |leaf_cache_| with the MAC values of all leaf labels.
   void PopulateLeafCache();
 
+  bool is_valid_;
   // Length of the leaf node label.
   uint32_t leaf_length_;
   // Fan out of the hash tree, i.e number of children of each inner node.
