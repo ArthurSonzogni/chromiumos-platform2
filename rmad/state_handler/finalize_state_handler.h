@@ -10,8 +10,12 @@
 #include <memory>
 #include <utility>
 
-#include <base/synchronization/lock.h>
+#include <base/files/file_util.h>
+#include <base/memory/scoped_refptr.h>
+#include <base/sequenced_task_runner.h>
 #include <base/timer/timer.h>
+
+#include "rmad/utils/cr50_utils.h"
 
 namespace rmad {
 
@@ -20,11 +24,10 @@ class FinalizeStateHandler : public BaseStateHandler {
   // Report status every second.
   static constexpr base::TimeDelta kReportStatusInterval =
       base::TimeDelta::FromSeconds(1);
-  // Mock finalize progress. Update every 2 seconds.
-  static constexpr base::TimeDelta kUpdateProgressInterval =
-      base::TimeDelta::FromSeconds(2);
 
   explicit FinalizeStateHandler(scoped_refptr<JsonStore> json_store);
+  FinalizeStateHandler(scoped_refptr<JsonStore> json_store,
+                       std::unique_ptr<Cr50Utils> cr50_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kFinalize);
   SET_UNREPEATABLE;
@@ -38,6 +41,8 @@ class FinalizeStateHandler : public BaseStateHandler {
   void CleanUpState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
 
+  void StartTasks();
+
  protected:
   ~FinalizeStateHandler() override = default;
 
@@ -47,22 +52,21 @@ class FinalizeStateHandler : public BaseStateHandler {
   void StopStatusTimer();
 
   void StartFinalize();
-  void UpdateProgress(bool restart);
+  void FinalizeTask();
 
+  std::unique_ptr<Cr50Utils> cr50_utils_;
   FinalizeStatus status_;
   std::unique_ptr<FinalizeSignalCallback> finalize_signal_sender_;
   base::RepeatingTimer status_timer_;
-  mutable base::Lock lock_;
-
-  // Used to mock finalize progress.
-  base::RepeatingTimer finalize_timer_;
+  scoped_refptr<base::SequencedTaskRunner> task_runner_;
 };
 
 namespace fake {
 
 class FakeFinalizeStateHandler : public FinalizeStateHandler {
  public:
-  explicit FakeFinalizeStateHandler(scoped_refptr<JsonStore> json_store);
+  FakeFinalizeStateHandler(scoped_refptr<JsonStore> json_store,
+                           const base::FilePath& working_dir_path);
 
  protected:
   ~FakeFinalizeStateHandler() override = default;

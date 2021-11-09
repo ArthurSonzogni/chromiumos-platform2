@@ -7,22 +7,26 @@
 #include <algorithm>
 
 #include <base/bind.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/synchronization/lock.h>
+#include <base/task/task_traits.h>
+#include <base/task/thread_pool.h>
+
+#include "rmad/utils/cr50_utils_impl.h"
+#include "rmad/utils/fake_cr50_utils.h"
 
 namespace rmad {
 
-namespace fake {
-
-FakeFinalizeStateHandler::FakeFinalizeStateHandler(
-    scoped_refptr<JsonStore> json_store)
-    : FinalizeStateHandler(json_store) {}
-
-}  // namespace fake
-
 FinalizeStateHandler::FinalizeStateHandler(scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {}
+    : BaseStateHandler(json_store) {
+  cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
+}
+
+FinalizeStateHandler::FinalizeStateHandler(
+    scoped_refptr<JsonStore> json_store, std::unique_ptr<Cr50Utils> cr50_utils)
+    : BaseStateHandler(json_store), cr50_utils_(std::move(cr50_utils)) {}
 
 RmadErrorCode FinalizeStateHandler::InitializeState() {
   if (!state_.has_finalize()) {
@@ -33,12 +37,20 @@ RmadErrorCode FinalizeStateHandler::InitializeState() {
   if (!finalize_signal_sender_) {
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
+  if (!task_runner_) {
+    task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
+        {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
+  }
 
+  StartTasks();
+  return RMAD_ERROR_OK;
+}
+
+void FinalizeStateHandler::StartTasks() {
   StartStatusTimer();
   if (status_.status() == FinalizeStatus::RMAD_FINALIZE_STATUS_UNKNOWN) {
     StartFinalize();
   }
-  return RMAD_ERROR_OK;
 }
 
 void FinalizeStateHandler::CleanUpState() {
@@ -71,6 +83,7 @@ BaseStateHandler::GetNextStateCaseReply FinalizeStateHandler::GetNextStateCase(
         default:
           break;
       }
+      NOTREACHED();
       break;
     case FinalizeState::RMAD_FINALIZE_CHOICE_RETRY:
       StartFinalize();
@@ -100,36 +113,30 @@ void FinalizeStateHandler::StopStatusTimer() {
 }
 
 void FinalizeStateHandler::StartFinalize() {
-  UpdateProgress(true);
-
-  // Mock finalize progress.
-  if (finalize_timer_.IsRunning()) {
-    finalize_timer_.Stop();
-  }
-  finalize_timer_.Start(
-      FROM_HERE, kUpdateProgressInterval,
-      base::BindRepeating(&FinalizeStateHandler::UpdateProgress,
-                          base::Unretained(this), false));
+  status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS);
+  status_.set_progress(0);
+  task_runner_->PostTask(FROM_HERE,
+                         base::BindOnce(&FinalizeStateHandler::FinalizeTask,
+                                        base::Unretained(this)));
 }
 
-void FinalizeStateHandler::UpdateProgress(bool restart) {
-  base::AutoLock scoped_lock(lock_);
-  if (restart) {
-    status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS);
-    status_.set_progress(0);
+void FinalizeStateHandler::FinalizeTask() {
+  if (!cr50_utils_->DisableFactoryMode()) {
+    LOG(ERROR) << "Failed to disable factory mode";
+    status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
     return;
   }
-
-  // This is currently fake.
-  if (status_.status() != FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS) {
-    return;
-  }
-  status_.set_progress(status_.progress() + 0.3);
-  if (status_.progress() >= 1) {
-    status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE);
-    status_.set_progress(1);
-    finalize_timer_.Stop();
-  }
+  status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE);
+  status_.set_progress(1);
 }
+
+namespace fake {
+
+FakeFinalizeStateHandler::FakeFinalizeStateHandler(
+    scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
+    : FinalizeStateHandler(json_store,
+                           std::make_unique<FakeCr50Utils>(working_dir_path)) {}
+
+}  // namespace fake
 
 }  // namespace rmad

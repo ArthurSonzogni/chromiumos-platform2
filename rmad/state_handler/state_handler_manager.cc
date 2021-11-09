@@ -126,8 +126,8 @@ void StateHandlerManager::RegisterFakeStateHandlers() {
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeWriteProtectEnablePhysicalStateHandler>(
           json_store_, test_dir_path));
-  RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeFinalizeStateHandler>(json_store_));
+  RegisterStateHandler(base::MakeRefCounted<fake::FakeFinalizeStateHandler>(
+      json_store_, test_dir_path));
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeRepairCompleteStateHandler>(
           json_store_, test_dir_path));
