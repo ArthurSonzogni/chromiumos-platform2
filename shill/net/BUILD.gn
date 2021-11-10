@@ -10,6 +10,7 @@ group("all") {
   if (use.fuzzer) {
     deps += [
       ":arp_client_fuzzer",
+      ":netlink_attribute_list_fuzzer",
       ":nl80211_message_fuzzer",
       ":rtnl_handler_fuzzer",
     ]
@@ -92,6 +93,14 @@ if (use.fuzzer) {
       "//common-mk:test",
       "//common-mk/common_fuzzer",
       ":fuzzed_data_config",
+      ":target_defaults",
+    ]
+    deps = [ ":libshill-net" ]
+  }
+  executable("netlink_attribute_list_fuzzer") {
+    sources = [ "attribute_list_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
       ":target_defaults",
     ]
     deps = [ ":libshill-net" ]
