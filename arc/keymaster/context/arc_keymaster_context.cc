@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <utility>
@@ -15,7 +16,6 @@
 #include <base/check_op.h>
 #include <base/logging.h>
 #include <base/optional.h>
-#include <base/stl_util.h>
 #include <keymaster/android_keymaster_utils.h>
 #include <keymaster/key_blob_utils/integrity_assured_key_blob.h>
 #include <keymaster/key_blob_utils/software_keyblobs.h>
@@ -54,7 +54,7 @@ bool DeserializeKeyDataToBlob(const KeyData& key_data,
 void SerializeAuthorizationSet(const ::keymaster::AuthorizationSet& auth_set,
                                std::string* output) {
   output->resize(auth_set.SerializedSize());
-  uint8_t* buffer = reinterpret_cast<uint8_t*>(base::data(*output));
+  uint8_t* buffer = reinterpret_cast<uint8_t*>(std::data(*output));
   auth_set.Serialize(buffer, buffer + output->size());
 }
 
@@ -62,7 +62,7 @@ bool DeserializeAuthorizationSet(const std::string& serialized_auth_set,
                                  ::keymaster::AuthorizationSet* output) {
   std::string mutable_auth_set(serialized_auth_set);
   const uint8_t* buffer =
-      reinterpret_cast<uint8_t*>(base::data(mutable_auth_set));
+      reinterpret_cast<uint8_t*>(std::data(mutable_auth_set));
   return output->Deserialize(&buffer, buffer + serialized_auth_set.size());
 }
 

@@ -7,7 +7,6 @@
 #include <iterator>
 
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <chaps/pkcs11/cryptoki.h>
 #include <chaps/proto_bindings/key_permissions.pb.h>
 #include <chromeos/constants/pkcs11_custom_attributes.h>
@@ -207,19 +206,19 @@ base::Optional<CK_OBJECT_HANDLE> ChapsClient::FindKey(
   CK_BBOOL true_value = CK_TRUE;
   CK_BBOOL false_value = CK_FALSE;
   CK_ATTRIBUTE attributes[] = {
-      {CKA_APPLICATION, base::data(mutable_application_id),
+      {CKA_APPLICATION, std::data(mutable_application_id),
        mutable_application_id.size()},
       {CKA_CLASS, &object_class, sizeof(object_class)},
       {CKA_TOKEN, &true_value, sizeof(true_value)},
-      {CKA_LABEL, base::data(mutable_label), mutable_label.size()},
+      {CKA_LABEL, std::data(mutable_label), mutable_label.size()},
       {CKA_PRIVATE, &true_value, sizeof(true_value)},
       {CKA_MODIFIABLE, &false_value, sizeof(false_value)}};
   CK_OBJECT_HANDLE handles[kMaxHandles];
   CK_ULONG count = 0;
 
   for (size_t attempts = 0; attempts < kMaxAttemps; ++attempts) {
-    CK_RV rv = C_FindObjectsInit(*session_handle(), attributes,
-                                 base::size(attributes));
+    CK_RV rv =
+        C_FindObjectsInit(*session_handle(), attributes, std::size(attributes));
     if (CKR_SESSION_HANDLE_INVALID == rv) {
       session_.reset();
       continue;
@@ -230,7 +229,7 @@ base::Optional<CK_OBJECT_HANDLE> ChapsClient::FindKey(
     }
 
     count = 0;
-    rv = C_FindObjects(*session_handle(), handles, base::size(handles), &count);
+    rv = C_FindObjects(*session_handle(), handles, std::size(handles), &count);
     if (CKR_SESSION_HANDLE_INVALID == rv) {
       session_.reset();
       continue;
@@ -294,8 +293,8 @@ base::Optional<CK_OBJECT_HANDLE> ChapsClient::FindObject(
   CK_ULONG count = 0;
 
   for (size_t attempts = 0; attempts < kMaxAttemps; ++attempts) {
-    CK_RV rv = C_FindObjectsInit(*session_handle(), attributes,
-                                 base::size(attributes));
+    CK_RV rv =
+        C_FindObjectsInit(*session_handle(), attributes, std::size(attributes));
     if (CKR_SESSION_HANDLE_INVALID == rv) {
       session_.reset();
       continue;
@@ -388,11 +387,11 @@ base::Optional<CK_OBJECT_HANDLE> ChapsClient::GenerateEncryptionKey() {
   CK_BBOOL true_value = CK_TRUE;
   CK_BBOOL false_value = CK_FALSE;
   CK_ATTRIBUTE attributes[] = {
-      {CKA_APPLICATION, base::data(mutable_application_id),
+      {CKA_APPLICATION, std::data(mutable_application_id),
        mutable_application_id.size()},
       {CKA_CLASS, &object_class, sizeof(object_class)},
       {CKA_TOKEN, &true_value, sizeof(true_value)},
-      {CKA_LABEL, base::data(mutable_label), mutable_label.size()},
+      {CKA_LABEL, std::data(mutable_label), mutable_label.size()},
       {CKA_PRIVATE, &true_value, sizeof(true_value)},
       {CKA_MODIFIABLE, &false_value, sizeof(false_value)},
       {CKA_EXTRACTABLE, &true_value, sizeof(true_value)},
@@ -405,7 +404,7 @@ base::Optional<CK_OBJECT_HANDLE> ChapsClient::GenerateEncryptionKey() {
 
   for (size_t attempts = 0; attempts < kMaxAttemps; ++attempts) {
     CK_RV rv = C_GenerateKey(*session_handle(), &mechanism, attributes,
-                             base::size(attributes), &key_handle);
+                             std::size(attributes), &key_handle);
     if (CKR_SESSION_HANDLE_INVALID == rv) {
       session_.reset();
       continue;
