@@ -3,6 +3,7 @@
     "mojo_base.mojom.Time": {
       "hashable": false,
       "typename": "base::Time",
+      "forward_declaration": null,
       "traits_headers": [
         "diagnostics/mojom/external/time_mojom_traits.h"
       ],
@@ -18,6 +19,7 @@
     "mojo_base.mojom.TimeDelta": {
       "hashable": false,
       "typename": "base::TimeDelta",
+      "forward_declaration": null,
       "traits_headers": [
         "diagnostics/mojom/external/time_mojom_traits.h"
       ],
