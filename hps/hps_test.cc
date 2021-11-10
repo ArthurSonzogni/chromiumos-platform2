@@ -255,13 +255,14 @@ TEST_F(HPSTest, NormalBoot) {
   // Create MCU and SPI flash filenames (but do not
   // create the files themselves).
   auto mcu = temp_dir.GetPath().Append("mcu");
-  auto spi = temp_dir.GetPath().Append("spi");
+  auto spi1 = temp_dir.GetPath().Append("spi1");
+  auto spi2 = temp_dir.GetPath().Append("spi2");
 
   // Set the expected version
   const uint32_t version = 0x01020304;
   fake_->SetVersion(version);
   // Set up the version and files.
-  hps_->Init(version, mcu, spi);
+  hps_->Init(version, mcu, spi1, spi2);
 
   // Boot the module.
   EXPECT_CALL(
@@ -275,6 +276,7 @@ TEST_F(HPSTest, NormalBoot) {
   EXPECT_TRUE(hps_->Enable(0));
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), 0);
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSpiFlash), 0);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSocRom), 0);
 }
 
 /*
@@ -286,7 +288,8 @@ TEST_F(HPSTest, McuUpdate) {
   // Create MCU and SPI flash filenames (but do not
   // create the files themselves).
   auto mcu = temp_dir.GetPath().Append("mcu");
-  auto spi = temp_dir.GetPath().Append("spi");
+  auto spi1 = temp_dir.GetPath().Append("spi1");
+  auto spi2 = temp_dir.GetPath().Append("spi2");
   const int len = 1024;
   CreateBlob(mcu, len);
 
@@ -296,7 +299,7 @@ TEST_F(HPSTest, McuUpdate) {
   fake_->Set(hps::FakeDev::Flags::kApplNotVerified);
   fake_->Set(hps::FakeDev::Flags::kResetApplVerification);
   // Set up the version and files.
-  hps_->Init(version, mcu, spi);
+  hps_->Init(version, mcu, spi1, spi2);
 
   // Boot the module.
   EXPECT_CALL(
@@ -317,6 +320,7 @@ TEST_F(HPSTest, McuUpdate) {
   // Check that MCU was downloaded.
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSpiFlash), 0);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSocRom), 0);
 }
 
 /*
@@ -328,9 +332,12 @@ TEST_F(HPSTest, SpiUpdate) {
   // Create MCU and SPI flash filenames (but do not
   // create the files themselves).
   auto mcu = temp_dir.GetPath().Append("mcu");
-  auto spi = temp_dir.GetPath().Append("spi");
+  auto spi1 = temp_dir.GetPath().Append("spi1");
+  auto spi2 = temp_dir.GetPath().Append("spi2");
+
   const int len = 1024;
-  CreateBlob(spi, len);
+  CreateBlob(spi1, len);
+  CreateBlob(spi2, len + 1);
 
   // Set the expected version
   const uint32_t version = 0x01020304;
@@ -338,7 +345,7 @@ TEST_F(HPSTest, SpiUpdate) {
   fake_->Set(hps::FakeDev::Flags::kSpiNotVerified);
   fake_->Set(hps::FakeDev::Flags::kResetSpiVerification);
   // Set up the version and files.
-  hps_->Init(version, mcu, spi);
+  hps_->Init(version, mcu, spi1, spi2);
 
   // Boot the module.
   EXPECT_CALL(
@@ -359,6 +366,7 @@ TEST_F(HPSTest, SpiUpdate) {
   // Check that SPI was downloaded.
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), 0);
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSpiFlash), len);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSocRom), len + 1);
 }
 
 /*
@@ -371,10 +379,13 @@ TEST_F(HPSTest, BothUpdate) {
   // Create MCU and SPI flash filenames (but do not
   // create the files themselves).
   auto mcu = temp_dir.GetPath().Append("mcu");
-  auto spi = temp_dir.GetPath().Append("spi");
+  auto spi1 = temp_dir.GetPath().Append("spi1");
+  auto spi2 = temp_dir.GetPath().Append("spi2");
+
   const int len = 1024;
-  CreateBlob(spi, len);
   CreateBlob(mcu, len);
+  CreateBlob(spi1, len + 1);
+  CreateBlob(spi2, len + 2);
 
   // Set the expected version
   const uint32_t version = 0x01020304;
@@ -384,7 +395,7 @@ TEST_F(HPSTest, BothUpdate) {
   fake_->Set(hps::FakeDev::Flags::kSpiNotVerified);
   fake_->Set(hps::FakeDev::Flags::kResetSpiVerification);
   // Set up the version and files.
-  hps_->Init(version, mcu, spi);
+  hps_->Init(version, mcu, spi1, spi2);
 
   // Boot the module.
   EXPECT_CALL(
@@ -412,7 +423,8 @@ TEST_F(HPSTest, BothUpdate) {
 
   // Check that both MCU and SPI blobs were updated.
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
-  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSpiFlash), len);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSpiFlash), len + 1);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSocRom), len + 2);
 }
 
 /*
@@ -425,10 +437,13 @@ TEST_F(HPSTest, WpOffUpdate) {
   // Create MCU and SPI flash filenames (but do not
   // create the files themselves).
   auto mcu = temp_dir.GetPath().Append("mcu");
-  auto spi = temp_dir.GetPath().Append("spi");
+  auto spi1 = temp_dir.GetPath().Append("spi1");
+  auto spi2 = temp_dir.GetPath().Append("spi2");
+
   const int len = 1024;
-  CreateBlob(spi, len);
   CreateBlob(mcu, len);
+  CreateBlob(spi1, len + 1);
+  CreateBlob(spi2, len + 2);
 
   // This is the reported version when not verified
   const uint32_t version = 0xFFFFFFFF;
@@ -436,7 +451,7 @@ TEST_F(HPSTest, WpOffUpdate) {
   fake_->Set(hps::FakeDev::Flags::kSpiNotVerified);
   fake_->Set(hps::FakeDev::Flags::kWpOff);
   // Set up the version and files.
-  hps_->Init(version, mcu, spi);
+  hps_->Init(version, mcu, spi1, spi2);
 
   // Boot the module.
   EXPECT_CALL(
@@ -449,6 +464,7 @@ TEST_F(HPSTest, WpOffUpdate) {
   // Check that neither MCU nor SPI blobs were updated.
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), 0);
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSpiFlash), 0);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSocRom), 0);
 }
 
 /*
@@ -460,10 +476,13 @@ TEST_F(HPSTest, VersionUpdate) {
   // Create MCU and SPI flash filenames (but do not
   // create the files themselves).
   auto mcu = temp_dir.GetPath().Append("mcu");
-  auto spi = temp_dir.GetPath().Append("spi");
+  auto spi1 = temp_dir.GetPath().Append("spi1");
+  auto spi2 = temp_dir.GetPath().Append("spi2");
+
   const int len = 1024;
-  CreateBlob(spi, len);
   CreateBlob(mcu, len);
+  CreateBlob(spi1, len + 1);
+  CreateBlob(spi2, len + 2);
 
   // Set the current version
   const uint32_t version = 0x01020304;
@@ -472,7 +491,7 @@ TEST_F(HPSTest, VersionUpdate) {
   fake_->Set(hps::FakeDev::Flags::kResetSpiVerification);
   fake_->Set(hps::FakeDev::Flags::kIncrementVersion);
   // Set up the version to be the next version.
-  hps_->Init(version + 1, mcu, spi);
+  hps_->Init(version + 1, mcu, spi1, spi2);
 
   // Boot the module.
   EXPECT_CALL(
@@ -501,7 +520,8 @@ TEST_F(HPSTest, VersionUpdate) {
 
   // Check that both MCU and SPI were downloaded.
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
-  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSpiFlash), len);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSpiFlash), len + 1);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSocRom), len + 2);
 }
 
 // Check ReadVersionFromFile reads the right endianness from the right index

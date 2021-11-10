@@ -36,17 +36,20 @@ static constexpr base::TimeDelta kMagicSleep =
 // Initialise the firmware parameters.
 void HPS_impl::Init(uint32_t appl_version,
                     const base::FilePath& mcu,
-                    const base::FilePath& spi) {
+                    const base::FilePath& fpga_bitstream,
+                    const base::FilePath& fpga_app_image) {
   this->appl_version_ = appl_version;
   this->mcu_blob_ = mcu;
-  this->spi_blob_ = spi;
+  this->fpga_bitstream_ = fpga_bitstream;
+  this->fpga_app_image_ = fpga_app_image;
 }
 
 // Attempt the boot sequence
 // returns true if booting completed
 bool HPS_impl::Boot() {
   // Make sure blobs are set etc.
-  if (this->mcu_blob_.empty() || this->spi_blob_.empty()) {
+  if (this->mcu_blob_.empty() || this->fpga_bitstream_.empty() ||
+      this->fpga_app_image_.empty()) {
     LOG(ERROR) << "No HPS firmware to download.";
     return false;
   }
@@ -179,7 +182,8 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
       return BootResult::kFail;
     case BootResult::kUpdate:
       LOG(INFO) << "Updating SPI flash";
-      if (this->WriteFile(1, this->spi_blob_)) {
+      if (this->WriteFile(1, this->fpga_bitstream_) &&
+          this->WriteFile(2, this->fpga_app_image_)) {
         return BootResult::kUpdate;
       } else {
         return BootResult::kFail;

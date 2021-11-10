@@ -69,10 +69,10 @@ void FakeDev::SetStage(Stage s) {
       this->bank_ = 0;
       break;
     case Stage::kStage0:
-      this->bank_ = 0x0001;
+      this->bank_ = BIT(0);
       break;
     case Stage::kStage1:
-      this->bank_ = 0x0002;
+      this->bank_ = BIT(1) | BIT(2);
       break;
     case Stage::kAppl:
       this->bank_ = 0;
@@ -238,7 +238,7 @@ bool FakeDev::WriteMemory(HpsBank bank, const uint8_t* data, size_t len) {
       break;
     case Stage::kStage1:
       // Stage1 allows the SPI flash to be written.
-      if (bank == HpsBank::kSpiFlash) {
+      if (bank == HpsBank::kSpiFlash || bank == HpsBank::kSocRom) {
         this->bank_len_[bank] += len - sizeof(uint32_t);
         // Check if the fake needs to reset the not-verified bit.
         if (this->Flag(Flags::kResetSpiVerification)) {

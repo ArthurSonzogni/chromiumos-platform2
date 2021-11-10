@@ -31,8 +31,9 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(test, false, "Use internal test fake");
   DEFINE_bool(skipboot, false, "Skip boot sequence");
   DEFINE_int64(version, -1, "Override MCU firmware file version");
-  DEFINE_string(mcu_path, "", "MCU firmware file");
-  DEFINE_string(spi_path, "", "SPI firmware file");
+  DEFINE_string(mcu_fw_image, "", "MCU firmware file");
+  DEFINE_string(fpga_bitstream, "", "FPGA bitstream file");
+  DEFINE_string(fpga_app_image, "", "FPGA application file");
   DEFINE_uint32(poll_timer_ms, 500,
                 "How frequently to poll HPS hardware for results (in ms).");
   brillo::FlagHelper::Init(argc, argv, "hps_daemon - HPS services daemon");
@@ -45,7 +46,8 @@ int main(int argc, char* argv[]) {
 
   uint32_t version;
   if (FLAGS_version < 0) {
-    if (!hps::ReadVersionFromFile(base::FilePath(FLAGS_mcu_path), &version)) {
+    if (!hps::ReadVersionFromFile(base::FilePath(FLAGS_mcu_fw_image),
+                                  &version)) {
       return 1;
     }
   } else {
@@ -70,8 +72,9 @@ int main(int argc, char* argv[]) {
   LOG(INFO) << "Starting HPS Service.";
   auto hps = std::make_unique<hps::HPS_impl>(std::move(dev));
   if (!FLAGS_skipboot) {
-    hps->Init(version, base::FilePath(FLAGS_mcu_path),
-              base::FilePath(FLAGS_spi_path));
+    hps->Init(version, base::FilePath(FLAGS_mcu_fw_image),
+              base::FilePath(FLAGS_fpga_bitstream),
+              base::FilePath(FLAGS_fpga_app_image));
     // TODO(amcrae): Likely need a better recovery mechanism.
     CHECK(hps->Boot()) << "Hardware failed to boot";
   }

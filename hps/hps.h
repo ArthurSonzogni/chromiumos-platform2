@@ -21,7 +21,8 @@ class HPS {
   // Set the application version and firmware.
   virtual void Init(uint32_t appl_version,
                     const base::FilePath& mcu,
-                    const base::FilePath& spi) = 0;
+                    const base::FilePath& fpga_bitstream,
+                    const base::FilePath& fpga_app_image) = 0;
 
   //
   // Boot the module, returns true if the module is working and ready.

@@ -23,28 +23,36 @@ namespace {
 
 int Boot(std::unique_ptr<hps::HPS> hps,
          const base::CommandLine::StringVector& args) {
-  if (args.size() != 3 && args.size() != 4) {
-    std::cerr << "Arg error: " << args[0] << " mcu-file spi-file [version]"
-              << std::endl;
-    return 1;
+  std::string mcu = "/usr/lib/firmware/hps/mcu_stage1.bin";
+  std::string fpga_bitstream = "/usr/lib/firmware/hps/hps_platform.bit";
+  std::string fpga_app_image = "/usr/lib/firmware/hps/bios.bin";
+  if (args.size() > 1) {
+    mcu = args[1];
+  }
+  if (args.size() > 2) {
+    fpga_bitstream = args[2];
+  }
+  if (args.size() > 3) {
+    fpga_app_image = args[3];
   }
 
   uint32_t version;
-  if (args.size() == 4) {
+  if (args.size() > 4) {
     // there is no StringToUint32
     uint64_t version64;
-    if (!base::StringToUint64(args[3], &version64)) {
-      std::cerr << "Arg error: version: " << args[3] << std::endl;
+    if (!base::StringToUint64(args[4], &version64)) {
+      std::cerr << "Arg error: version: " << args[4] << std::endl;
       return 1;
     }
     version = base::checked_cast<uint32_t>(version64);
   } else {
-    if (!hps::ReadVersionFromFile(base::FilePath(args[1]), &version)) {
+    if (!hps::ReadVersionFromFile(base::FilePath(mcu), &version)) {
       return 1;
     }
   }
 
-  hps->Init(version, base::FilePath(args[1]), base::FilePath(args[2]));
+  hps->Init(version, base::FilePath(mcu), base::FilePath(fpga_bitstream),
+            base::FilePath(fpga_app_image));
   if (hps->Boot()) {
     std::cout << "Successful boot" << std::endl;
   } else {
@@ -54,7 +62,8 @@ int Boot(std::unique_ptr<hps::HPS> hps,
 }
 
 Command bootcmd("boot",
-                "boot mcu-file spi-file [version] - Boot module.",
+                "boot [mcu-file [fpga-bitstream [fpga-application [version]]]] "
+                "- Boot module.",
                 Boot);
 
 }  // namespace

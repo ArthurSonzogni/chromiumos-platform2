@@ -35,7 +35,8 @@ class HPS_impl : public HPS {
   // Methods for HPS
   void Init(uint32_t appl_version,
             const base::FilePath& mcu,
-            const base::FilePath& spi) override;
+            const base::FilePath& fpga_bitstream,
+            const base::FilePath& fpga_app_image) override;
   bool Boot() override;
   bool Enable(uint8_t feature) override;
   bool Disable(uint8_t feature) override;
@@ -76,7 +77,8 @@ class HPS_impl : public HPS {
   bool write_protect_off_;
   uint16_t feat_enabled_;
   base::FilePath mcu_blob_;
-  base::FilePath spi_blob_;
+  base::FilePath fpga_bitstream_;
+  base::FilePath fpga_app_image_;
   DownloadObserver download_observer_{};
 };
 
