@@ -40,6 +40,7 @@ int crosid_read_file(const char *dir, const char *file, char **data_ptr,
 {
 	FILE *f;
 	char *buf = NULL;
+	ssize_t seek_size;
 	ssize_t size;
 	char full_path[PATH_MAX] = { 0 };
 	/*
@@ -66,31 +67,37 @@ int crosid_read_file(const char *dir, const char *file, char **data_ptr,
 		return -1;
 	}
 
-	size = get_file_size(f);
-	if (size < 0) {
+	seek_size = get_file_size(f);
+	if (seek_size < 0) {
 		crosid_log(LOG_ERR,
 			   "Failed to get file size while reading \"%s\": %s\n",
 			   full_path, strerror(errno));
 		goto err;
 	}
 
-	buf = malloc(size + 1);
+	buf = malloc(seek_size + 1);
 	if (!buf) {
 		crosid_log(LOG_ERR,
 			   "Failed to allocate %zu bytes while reading %s\n",
-			   size + 1, full_path);
+			   seek_size + 1, full_path);
 		goto err;
 	}
 
-	buf[size] = '\0';
-
-	if (size && fread(buf, size, 1, f) != 1) {
-		crosid_log(LOG_ERR,
-			   "Unexpected number of bytes read while reading %s\n",
+	/*
+	 * 0 <= fread() <= size
+	 * Normally we'd expect the return value to be the size, but
+	 * in SMBIOS sysfs, the kernel lets us seek further than we
+	 * can read, thus, we have to handle getting a value less than
+	 * the size we got thru seek.
+	 */
+	size = fread(buf, 1, seek_size, f);
+	if (size != seek_size && !feof(f)) {
+		crosid_log(LOG_ERR, "%s was not at EOF after reading\n",
 			   full_path);
 		goto err;
 	}
 
+	buf[size] = '\0';
 	fclose(f);
 
 	*data_ptr = buf;
