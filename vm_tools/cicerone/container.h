@@ -28,6 +28,7 @@ class Container {
   struct Icon {
     std::string desktop_file_id;
     std::string content;
+    vm_tools::container::DesktopIcon::Format format;
   };
   // Information about a Linux package file.
   struct LinuxPackageInfo {

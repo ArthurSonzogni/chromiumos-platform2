@@ -58,10 +58,18 @@ message IconRequest {
 
 // One desktop file ID and the icon found for it.
 message DesktopIcon {
+  enum Format {
+    PNG = 0;
+    SVG = 1;
+  }
+
   string desktop_file_id = 1;
 
-  // Icon data in png format.
+  // Icon data as uninterpreted bytes.
   bytes icon = 2;
+
+  // Interpretation hint for icon bytes
+  Format format = 3;
 }
 
 // Response proto for getting an application icon.

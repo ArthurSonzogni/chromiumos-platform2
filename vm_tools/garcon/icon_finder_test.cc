@@ -31,6 +31,8 @@ class IconFinderTest : public ::testing::Test {
     icon_theme_dir_ = data_dir_.Append("icons").Append("hicolor");
     icon_dir_ = icon_theme_dir_.Append("48x48").Append("apps");
     CHECK(base::CreateDirectory(icon_dir_));
+    scalable_icon_dir_ = icon_theme_dir_.Append("scalable").Append("apps");
+    CHECK(base::CreateDirectory(scalable_icon_dir_));
   }
   IconFinderTest(const IconFinderTest&) = delete;
   IconFinderTest& operator=(const IconFinderTest&) = delete;
@@ -53,6 +55,7 @@ class IconFinderTest : public ::testing::Test {
   const base::FilePath& icon_theme_dir() { return icon_theme_dir_; }
   const base::FilePath& icon_dir() { return icon_dir_; }
   const base::FilePath& data_dir() { return data_dir_; }
+  const base::FilePath& scalable_icon_dir() { return scalable_icon_dir_; }
 
  private:
   base::ScopedTempDir temp_dir_;
@@ -60,6 +63,7 @@ class IconFinderTest : public ::testing::Test {
   base::FilePath desktop_file_dir_;
   base::FilePath icon_theme_dir_;
   base::FilePath icon_dir_;
+  base::FilePath scalable_icon_dir_;
 };
 
 }  // namespace
@@ -149,6 +153,31 @@ TEST_F(IconFinderTest, HappyCase) {
       "Context=Applications\n"
       "Type=Threshold\n\n");
   base::FilePath icon_file_path = icon_dir().Append("gimp.png");
+  base::WriteFile(icon_file_path, "", 0);
+  EXPECT_TRUE(LocateIconFile("gimp", 48, 1) == icon_file_path);
+}
+
+// This test verifies that correct icon file path is returned.
+TEST_F(IconFinderTest, HappyScalableCase) {
+  std::unique_ptr<base::Environment> env = base::Environment::Create();
+  env->SetVar("XDG_DATA_DIRS", data_dir().value());
+  WriteDesktopFile("gimp.desktop",
+                   "[Desktop Entry]\n"
+                   "Type=Application\n"
+                   "Name=gimp\n"
+                   "Icon=gimp");
+  WriteIndexThemeFile(
+      "[Icon Theme]\n"
+      "Name=Hicolor\n"
+      "Comment=Fallback icon theme\n"
+      "Hidden=true\n"
+      "Directories=scalable/apps\n"
+      "\n\n"
+      "[scalable/apps]\n"
+      "Size=48\n"
+      "Context=Applications\n"
+      "Type=Threshold\n\n");
+  base::FilePath icon_file_path = scalable_icon_dir().Append("gimp.svg");
   base::WriteFile(icon_file_path, "", 0);
   EXPECT_TRUE(LocateIconFile("gimp", 48, 1) == icon_file_path);
 }

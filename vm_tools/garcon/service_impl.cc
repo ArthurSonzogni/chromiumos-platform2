@@ -155,6 +155,11 @@ grpc::Status ServiceImpl::GetIcon(
     container::DesktopIcon* desktop_icon = response->add_desktop_icons();
     desktop_icon->set_desktop_file_id(desktop_file_id);
     desktop_icon->set_icon(icon_data);
+    if (icon_filepath.Extension() == ".svg") {
+      desktop_icon->set_format(container::DesktopIcon::SVG);
+    } else {
+      desktop_icon->set_format(container::DesktopIcon::PNG);
+    }
   }
 
   return grpc::Status::OK;

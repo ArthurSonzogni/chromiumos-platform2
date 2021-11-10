@@ -1879,6 +1879,19 @@ std::unique_ptr<dbus::Response> Service::LaunchContainerApplication(
   return dbus_response;
 }
 
+namespace {
+DesktopIcon::Format ConvertFormat(
+    vm_tools::container::DesktopIcon::Format format) {
+  switch (format) {
+    case container::DesktopIcon::SVG:
+      return DesktopIcon::SVG;
+
+    default:
+      return DesktopIcon::PNG;
+  }
+}
+}  // namespace
+
 std::unique_ptr<dbus::Response> Service::GetContainerAppIcon(
     dbus::MethodCall* method_call) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
@@ -1938,6 +1951,7 @@ std::unique_ptr<dbus::Response> Service::GetContainerAppIcon(
     *icon->mutable_desktop_file_id() =
         std::move(container_icon.desktop_file_id);
     *icon->mutable_icon() = std::move(container_icon.content);
+    icon->set_format(ConvertFormat(container_icon.format));
   }
 
   writer.AppendProtoAsArrayOfBytes(response);

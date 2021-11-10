@@ -22,7 +22,9 @@ namespace garcon {
 namespace {
 
 constexpr char kDefaultPixmapsDir[] = "/usr/share/pixmaps/";
+constexpr char kScalable[] = "scalable";
 const char* const kThemeDirs[] = {"gnome", "hicolor"};
+
 const int kDefaultIconSizeDirs[] = {256, 128, 96, 64, 48, 32};
 constexpr char kDefaultIconSubdir[] = "apps";
 
@@ -88,10 +90,11 @@ base::FilePath LocateIconFile(const std::string& desktop_file_id,
   }
   const base::FilePath desktop_file_icon_filepath(desktop_file->icon());
   if (desktop_file_icon_filepath.IsAbsolute()) {
-    if (desktop_file_icon_filepath.Extension() == ".png") {
+    const auto& extension = desktop_file_icon_filepath.Extension();
+    if (extension == ".png" || extension == ".svg") {
       return desktop_file_icon_filepath;
     } else {
-      LOG(INFO) << desktop_file_id << " icon file is not a png file";
+      LOG(INFO) << desktop_file_id << " icon file is not supported";
       return base::FilePath();
     }
   }
@@ -101,8 +104,21 @@ base::FilePath LocateIconFile(const std::string& desktop_file_id,
     for (const base::FilePath& curr_path :
          GetPathsForIcons(icon_dir, icon_size, scale)) {
       base::FilePath test_path = curr_path.Append(icon_filename);
-      if (base::PathExists(test_path))
+      if (base::PathExists(test_path)) {
         return test_path;
+      }
+    }
+  }
+
+  std::string svg_icon_filename =
+      desktop_file_icon_filepath.AddExtension("svg").value();
+  // Check for .svg files in scalable
+  for (base::FilePath dir : GetPathsForIconIndexDirs()) {
+    base::FilePath test_path = dir.Append(kScalable)
+                                   .Append(kDefaultIconSubdir)
+                                   .Append(svg_icon_filename);
+    if (base::PathExists(test_path)) {
+      return test_path;
     }
   }
 
