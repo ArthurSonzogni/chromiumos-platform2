@@ -142,8 +142,13 @@ bool SystemConfig::SmartCtlSupported() {
 
 bool SystemConfig::IsWilcoDevice() {
   const auto wilco_devices = GetWilcoBoardNames();
-  return std::count(wilco_devices.begin(), wilco_devices.end(),
-                    base::SysInfo::GetLsbReleaseBoard());
+  return std::any_of(wilco_devices.begin(), wilco_devices.end(),
+                     [](const std::string& s) -> bool {
+                       // Check if the given wilco device name is a
+                       // prefix for the actual board name.
+                       return base::SysInfo::GetLsbReleaseBoard().rfind(s, 0) ==
+                              0;
+                     });
 }
 
 base::Optional<std::string> SystemConfig::GetMarketingName() {

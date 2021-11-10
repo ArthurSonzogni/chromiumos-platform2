@@ -167,6 +167,13 @@ TEST_F(SystemConfigTest, WilcoDeviceTrue) {
   ASSERT_TRUE(system_config()->IsWilcoDevice());
 }
 
+TEST_F(SystemConfigTest, WilcoKernelNextDeviceTrue) {
+  const auto wilco_board = *GetWilcoBoardNames().begin();
+  auto lsb_release = "CHROMEOS_RELEASE_BOARD=" + wilco_board + "-kernelnext";
+  base::test::ScopedChromeOSVersionInfo version(lsb_release, base::Time::Now());
+  ASSERT_TRUE(system_config()->IsWilcoDevice());
+}
+
 TEST_F(SystemConfigTest, WilcoDeviceFalse) {
   auto lsb_release = "CHROMEOS_RELEASE_BOARD=mario";
   base::test::ScopedChromeOSVersionInfo version(lsb_release, base::Time::Now());
