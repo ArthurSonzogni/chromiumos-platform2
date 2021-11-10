@@ -3,6 +3,7 @@
     "smbfs.mojom.Password": {
       "hashable": false,
       "typename": "std::unique_ptr<password_provider::Password>",
+      "forward_declaration": null,
       "traits_headers": [
         "smbfs/mojom/password_mojom_traits.h"
       ],
@@ -18,6 +19,7 @@
     "smbfs.mojom.FilePath": {
       "hashable": false,
       "typename": "base::FilePath",
+      "forward_declaration": null,
       "traits_headers": [
         "smbfs/mojom/file_path_mojom_traits.h"
       ],
