@@ -99,7 +99,7 @@ void MissiveDaemon::AsyncStartUpload(
   if (!upload_job_result.ok()) {
     // In the event that UploadJob::Create fails, it will call
     // |uploader_result_cb| with a failure status.
-    LOG(ERROR) << "UploadJob was unable to create status:"
+    LOG(ERROR) << "Was unable to create UploadJob, status:"
                << upload_job_result.status();
     return;
   }
