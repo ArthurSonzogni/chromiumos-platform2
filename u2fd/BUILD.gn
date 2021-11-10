@@ -63,6 +63,7 @@ static_library("libu2fd") {
     "allowlisting_util.cc",
     "tpm_vendor_cmd.cc",
     "u2f_apdu.cc",
+    "u2f_command_processor_gsc.cc",
     "u2f_daemon.cc",
     "u2f_msg_handler.cc",
     "u2fhid.cc",
@@ -163,6 +164,7 @@ if (use.test) {
   executable("u2fd_test_runner") {
     sources = [
       "allowlisting_util_test.cc",
+      "u2f_command_processor_gsc_test.cc",
       "u2f_msg_handler_test.cc",
       "webauthn_handler_test.cc",
       "webauthn_storage_test.cc",

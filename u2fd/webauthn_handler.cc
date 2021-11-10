@@ -21,6 +21,7 @@
 #include <openssl/rand.h>
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 
+#include "u2fd/u2f_command_processor_gsc.h"
 #include "u2fd/util.h"
 
 namespace u2f {
@@ -29,13 +30,8 @@ namespace {
 
 // User a big timeout for cryptohome. See b/172945202.
 constexpr base::TimeDelta kCryptohomeTimeout = base::TimeDelta::FromMinutes(2);
-constexpr base::TimeDelta kVerificationTimeout =
-    base::TimeDelta::FromSeconds(10);
-constexpr int kCancelUVFlowTimeoutMs = 5000;
 
-// Cr50 Response codes.
-// TODO(louiscollard): Don't duplicate these.
-constexpr uint32_t kCr50StatusNotAllowed = 0x507;
+constexpr int kCancelUVFlowTimeoutMs = 5000;
 
 constexpr char kAttestationFormatNone[] = "none";
 // \xa0 is empty map in CBOR
@@ -141,9 +137,11 @@ std::vector<uint8_t> EncodeU2fAttestationStatementInCBOR(
 }  // namespace
 
 WebAuthnHandler::WebAuthnHandler()
-    : tpm_proxy_(nullptr),
-      user_state_(nullptr),
-      webauthn_storage_(std::make_unique<WebAuthnStorage>()) {}
+    : user_state_(nullptr),
+      webauthn_storage_(std::make_unique<WebAuthnStorage>()),
+      u2f_command_processor_(std::unique_ptr<U2fCommandProcessor>()) {}
+
+WebAuthnHandler::~WebAuthnHandler() {}
 
 void WebAuthnHandler::Initialize(
     dbus::Bus* bus,
@@ -159,14 +157,12 @@ void WebAuthnHandler::Initialize(
   }
 
   metrics_ = metrics;
-  tpm_proxy_ = tpm_proxy;
   user_state_ = user_state;
   user_state_->SetSessionStartedCallback(
       base::Bind(&WebAuthnHandler::OnSessionStarted, base::Unretained(this)));
   user_state_->SetSessionStoppedCallback(
       base::Bind(&WebAuthnHandler::OnSessionStopped, base::Unretained(this)));
   u2f_mode_ = u2f_mode;
-  request_presence_ = request_presence;
   allowlisting_util_ = std::move(allowlisting_util);
   bus_ = bus;
   auth_dialog_dbus_proxy_ = bus_->GetObjectProxy(
@@ -177,6 +173,9 @@ void WebAuthnHandler::Initialize(
     cryptohome_proxy_ =
         std::make_unique<org::chromium::UserDataAuthInterfaceProxy>(bus_);
   DCHECK(auth_dialog_dbus_proxy_);
+
+  u2f_command_processor_ =
+      std::make_unique<U2fCommandProcessorGsc>(tpm_proxy, request_presence);
 
   if (user_state_->HasUser()) {
     // WebAuthnHandler should normally initialize on boot, before any user has
@@ -189,7 +188,7 @@ void WebAuthnHandler::Initialize(
 }
 
 bool WebAuthnHandler::Initialized() {
-  return tpm_proxy_ != nullptr && user_state_ != nullptr;
+  return u2f_command_processor_ && user_state_;
 }
 
 bool WebAuthnHandler::AllowPresenceMode() {
@@ -497,8 +496,9 @@ void WebAuthnHandler::DoMakeCredential(
   }
 
   MakeCredentialResponse::MakeCredentialStatus generate_status =
-      DoU2fGenerate(rp_id_hash, credential_secret, presence_requirement,
-                    uv_compatible, &credential_id, &credential_public_key);
+      u2f_command_processor_->U2fGenerate(
+          rp_id_hash, credential_secret, presence_requirement, uv_compatible,
+          auth_time_secret_hash_.get(), &credential_id, &credential_public_key);
 
   if (generate_status != MakeCredentialResponse::SUCCESS) {
     response.set_status(generate_status);
@@ -511,9 +511,6 @@ void WebAuthnHandler::DoMakeCredential(
     session.response->Return(response);
     return;
   }
-
-  if (uv_compatible)
-    InsertAuthTimeSecretHashToCredentialId(&credential_id);
 
   auto ret = HasExcludedCredentials(session.request);
   if (ret == HasCredentialsResponse::INTERNAL_ERROR) {
@@ -661,7 +658,7 @@ WebAuthnHandler::MakeFidoU2fAttestationStatement(
   if (attestation_conveyance_preference == MakeCredentialRequest::G2F &&
       u2f_mode_ == U2fMode::kU2fExtended) {
     base::Optional<std::vector<uint8_t>> g2f_cert =
-        util::GetG2fCert(tpm_proxy_);
+        u2f_command_processor_->GetG2fCert();
     if (g2f_cert.has_value()) {
       attestation_cert = *g2f_cert;
     } else {
@@ -669,8 +666,16 @@ WebAuthnHandler::MakeFidoU2fAttestationStatement(
       return base::nullopt;
     }
 
+    base::Optional<brillo::SecureBlob> user_secret =
+        user_state_->GetUserSecret();
+    if (!user_secret.has_value()) {
+      LOG(ERROR) << "No user secret.";
+      return base::nullopt;
+    }
+
     MakeCredentialResponse::MakeCredentialStatus attest_status =
-        DoG2fAttest(data_to_sign, U2F_ATTEST_FORMAT_REG_RESP, &signature);
+        u2f_command_processor_->G2fAttest(
+            data_to_sign, *user_secret, U2F_ATTEST_FORMAT_REG_RESP, &signature);
 
     if (attest_status != MakeCredentialResponse::SUCCESS) {
       LOG(ERROR) << "Failed to do G2f attestation for MakeCredential";
@@ -690,123 +695,6 @@ WebAuthnHandler::MakeFidoU2fAttestationStatement(
   }
 
   return EncodeU2fAttestationStatementInCBOR(signature, attestation_cert);
-}
-
-void WebAuthnHandler::CallAndWaitForPresence(std::function<uint32_t()> fn,
-                                             uint32_t* status) {
-  *status = fn();
-  base::TimeTicks verification_start = base::TimeTicks::Now();
-  while (*status == kCr50StatusNotAllowed &&
-         base::TimeTicks::Now() - verification_start < kVerificationTimeout) {
-    // We need user presence. Show a notification requesting it, and try again.
-    // We have a delay in request_presence_, so we didn't need to sleep again.
-    request_presence_();
-    *status = fn();
-  }
-}
-
-MakeCredentialResponse::MakeCredentialStatus WebAuthnHandler::DoU2fGenerate(
-    const std::vector<uint8_t>& rp_id_hash,
-    const std::vector<uint8_t>& credential_secret,
-    PresenceRequirement presence_requirement,
-    bool uv_compatible,
-    std::vector<uint8_t>* credential_id,
-    std::vector<uint8_t>* credential_public_key) {
-  DCHECK(rp_id_hash.size() == SHA256_DIGEST_LENGTH);
-
-  struct u2f_generate_req generate_req = {};
-  if (!util::VectorToObject(rp_id_hash, generate_req.appId,
-                            sizeof(generate_req.appId))) {
-    return MakeCredentialResponse::INVALID_REQUEST;
-  }
-  if (!util::VectorToObject(credential_secret, generate_req.userSecret,
-                            sizeof(generate_req.userSecret))) {
-    return MakeCredentialResponse::INVALID_REQUEST;
-  }
-
-  if (uv_compatible) {
-    if (!auth_time_secret_hash_) {
-      LOG(ERROR) << "No auth-time secret hash to use for u2f_generate.";
-      return MakeCredentialResponse::INTERNAL_ERROR;
-    }
-    generate_req.flags |= U2F_UV_ENABLED_KH;
-    memcpy(generate_req.authTimeSecretHash, auth_time_secret_hash_->data(),
-           auth_time_secret_hash_->size());
-    struct u2f_generate_versioned_resp generate_resp = {};
-
-    if (presence_requirement != PresenceRequirement::kPowerButton) {
-      uint32_t generate_status =
-          tpm_proxy_->SendU2fGenerate(generate_req, &generate_resp);
-      if (generate_status != 0)
-        return MakeCredentialResponse::INTERNAL_ERROR;
-
-      util::AppendToVector(generate_resp.pubKey, credential_public_key);
-      util::AppendToVector(generate_resp.keyHandle, credential_id);
-      return MakeCredentialResponse::SUCCESS;
-    }
-
-    // Require user presence, consume.
-    generate_req.flags |= U2F_AUTH_ENFORCE;
-    return SendU2fGenerateWaitForPresence(&generate_req, &generate_resp,
-                                          credential_id, credential_public_key);
-  } else {
-    // Non-versioned KH must be signed with power button press.
-    if (presence_requirement != PresenceRequirement::kPowerButton)
-      return MakeCredentialResponse::INTERNAL_ERROR;
-    // Require user presence, consume.
-    generate_req.flags |= U2F_AUTH_ENFORCE;
-    struct u2f_generate_resp generate_resp = {};
-    return SendU2fGenerateWaitForPresence(&generate_req, &generate_resp,
-                                          credential_id, credential_public_key);
-  }
-}
-
-template <typename Response>
-MakeCredentialResponse::MakeCredentialStatus
-WebAuthnHandler::SendU2fGenerateWaitForPresence(
-    struct u2f_generate_req* generate_req,
-    Response* generate_resp,
-    std::vector<uint8_t>* credential_id,
-    std::vector<uint8_t>* credential_public_key) {
-  uint32_t generate_status = -1;
-
-  CallAndWaitForPresence(
-      [this, generate_req, generate_resp]() {
-        return tpm_proxy_->SendU2fGenerate(*generate_req, generate_resp);
-      },
-      &generate_status);
-  brillo::SecureClearContainer(generate_req->userSecret);
-
-  if (generate_status == 0) {
-    util::AppendToVector(generate_resp->pubKey, credential_public_key);
-    util::AppendToVector(generate_resp->keyHandle, credential_id);
-    return MakeCredentialResponse::SUCCESS;
-  }
-
-  return MakeCredentialResponse::VERIFICATION_FAILED;
-}
-
-// TODO(b/172971998): Remove this workaround once cr50 handles this.
-void WebAuthnHandler::InsertAuthTimeSecretHashToCredentialId(
-    std::vector<uint8_t>* input) {
-  CHECK(input->size() == sizeof(u2f_versioned_key_handle));
-  // The auth time secret hash should be inserted right after the header and
-  // the authorization salt, before the authorization hmac.
-  input->insert(
-      input->cbegin() + offsetof(u2f_versioned_key_handle, authorization_hmac),
-      auth_time_secret_hash_->cbegin(), auth_time_secret_hash_->cend());
-}
-
-// TODO(b/172971998): Remove this workaround once cr50 handles this.
-void WebAuthnHandler::RemoveAuthTimeSecretHashFromCredentialId(
-    std::vector<uint8_t>* input) {
-  CHECK_EQ(input->size(),
-           sizeof(u2f_versioned_key_handle) + SHA256_DIGEST_LENGTH);
-  // The auth time secret hash is after the header and the authorization salt,
-  // before the authorization hmac. Remove it so that cr50 recognizes the KH.
-  const std::vector<uint8_t>::const_iterator remove_begin =
-      input->cbegin() + offsetof(u2f_versioned_key_handle, authorization_hmac);
-  input->erase(remove_begin, remove_begin + SHA256_DIGEST_LENGTH);
 }
 
 HasCredentialsResponse::HasCredentialsStatus
@@ -980,8 +868,9 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
 
   std::vector<uint8_t> signature;
   GetAssertionResponse::GetAssertionStatus sign_status =
-      DoU2fSign(rp_id_hash, hash_to_sign, util::ToVector(session.credential_id),
-                *credential_secret, presence_requirement, &signature);
+      u2f_command_processor_->U2fSign(
+          rp_id_hash, hash_to_sign, util::ToVector(session.credential_id),
+          *credential_secret, presence_requirement, &signature);
   response.set_status(sign_status);
   if (sign_status == GetAssertionResponse::SUCCESS) {
     auto* assertion = response.add_assertion();
@@ -992,161 +881,6 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
   }
 
   session.response->Return(response);
-}
-
-GetAssertionResponse::GetAssertionStatus WebAuthnHandler::DoU2fSign(
-    const std::vector<uint8_t>& rp_id_hash,
-    const std::vector<uint8_t>& hash_to_sign,
-    const std::vector<uint8_t>& credential_id,
-    const std::vector<uint8_t>& credential_secret,
-    PresenceRequirement presence_requirement,
-    std::vector<uint8_t>* signature) {
-  DCHECK(rp_id_hash.size() == SHA256_DIGEST_LENGTH);
-
-  if (credential_id.size() ==
-      sizeof(u2f_versioned_key_handle) + SHA256_DIGEST_SIZE) {
-    // Allow waiving presence if sign_req.authTimeSecret is correct.
-    struct u2f_sign_versioned_req sign_req = {};
-    if (!util::VectorToObject(rp_id_hash, sign_req.appId,
-                              sizeof(sign_req.appId))) {
-      return GetAssertionResponse::INVALID_REQUEST;
-    }
-    if (!util::VectorToObject(credential_secret, sign_req.userSecret,
-                              sizeof(sign_req.userSecret))) {
-      return GetAssertionResponse::INVALID_REQUEST;
-    }
-    std::vector<uint8_t> key_handle(credential_id);
-    RemoveAuthTimeSecretHashFromCredentialId(&key_handle);
-    if (!util::VectorToObject(key_handle, &sign_req.keyHandle,
-                              sizeof(sign_req.keyHandle))) {
-      return GetAssertionResponse::INVALID_REQUEST;
-    }
-    if (!util::VectorToObject(hash_to_sign, sign_req.hash,
-                              sizeof(sign_req.hash))) {
-      return GetAssertionResponse::INVALID_REQUEST;
-    }
-    struct u2f_sign_resp sign_resp = {};
-
-    if (presence_requirement != PresenceRequirement::kPowerButton) {
-      uint32_t sign_status = tpm_proxy_->SendU2fSign(sign_req, &sign_resp);
-      if (sign_status != 0)
-        return GetAssertionResponse::INTERNAL_ERROR;
-
-      base::Optional<std::vector<uint8_t>> opt_signature =
-          util::SignatureToDerBytes(sign_resp.sig_r, sign_resp.sig_s);
-      if (!opt_signature.has_value()) {
-        return GetAssertionResponse::INTERNAL_ERROR;
-      }
-      *signature = *opt_signature;
-      return GetAssertionResponse::SUCCESS;
-    }
-
-    // Require user presence, consume.
-    sign_req.flags |= U2F_AUTH_ENFORCE;
-    return SendU2fSignWaitForPresence(&sign_req, &sign_resp, signature);
-  } else if (credential_id.size() == sizeof(u2f_key_handle)) {
-    // Non-versioned KH must be signed with power button press.
-    if (presence_requirement != PresenceRequirement::kPowerButton)
-      return GetAssertionResponse::INTERNAL_ERROR;
-
-    struct u2f_sign_req sign_req = {
-        .flags = U2F_AUTH_ENFORCE  // Require user presence, consume.
-    };
-    if (!util::VectorToObject(rp_id_hash, sign_req.appId,
-                              sizeof(sign_req.appId))) {
-      return GetAssertionResponse::INVALID_REQUEST;
-    }
-    if (!util::VectorToObject(credential_secret, sign_req.userSecret,
-                              sizeof(sign_req.userSecret))) {
-      return GetAssertionResponse::INVALID_REQUEST;
-    }
-    if (!util::VectorToObject(credential_id, &sign_req.keyHandle,
-                              sizeof(sign_req.keyHandle))) {
-      return GetAssertionResponse::INVALID_REQUEST;
-    }
-    if (!util::VectorToObject(hash_to_sign, sign_req.hash,
-                              sizeof(sign_req.hash))) {
-      return GetAssertionResponse::INVALID_REQUEST;
-    }
-
-    struct u2f_sign_resp sign_resp = {};
-    return SendU2fSignWaitForPresence(&sign_req, &sign_resp, signature);
-  } else {
-    return GetAssertionResponse::UNKNOWN_CREDENTIAL_ID;
-  }
-}
-
-template <typename Request>
-GetAssertionResponse::GetAssertionStatus
-WebAuthnHandler::SendU2fSignWaitForPresence(Request* sign_req,
-                                            struct u2f_sign_resp* sign_resp,
-                                            std::vector<uint8_t>* signature) {
-  uint32_t sign_status = -1;
-
-  CallAndWaitForPresence(
-      [this, sign_req, sign_resp]() {
-        return tpm_proxy_->SendU2fSign(*sign_req, sign_resp);
-      },
-      &sign_status);
-  brillo::SecureClearContainer(sign_req->userSecret);
-
-  if (sign_status == 0) {
-    base::Optional<std::vector<uint8_t>> opt_signature =
-        util::SignatureToDerBytes(sign_resp->sig_r, sign_resp->sig_s);
-    if (!opt_signature.has_value()) {
-      return GetAssertionResponse::INTERNAL_ERROR;
-    }
-    *signature = *opt_signature;
-    return GetAssertionResponse::SUCCESS;
-  }
-
-  return GetAssertionResponse::VERIFICATION_FAILED;
-}
-
-MakeCredentialResponse::MakeCredentialStatus WebAuthnHandler::DoG2fAttest(
-    const std::vector<uint8_t>& data,
-    uint8_t format,
-    std::vector<uint8_t>* signature_out) {
-  base::Optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
-  if (!user_secret.has_value()) {
-    return MakeCredentialResponse::INTERNAL_ERROR;
-  }
-
-  struct u2f_attest_req attest_req = {
-      .format = format, .dataLen = static_cast<uint8_t>(data.size())};
-  if (!util::VectorToObject(*user_secret, attest_req.userSecret,
-                            sizeof(attest_req.userSecret))) {
-    return MakeCredentialResponse::INTERNAL_ERROR;
-  }
-  if (!util::VectorToObject(data, attest_req.data, sizeof(attest_req.data))) {
-    return MakeCredentialResponse::INTERNAL_ERROR;
-  }
-
-  struct u2f_attest_resp attest_resp = {};
-  uint32_t attest_status = tpm_proxy_->SendU2fAttest(attest_req, &attest_resp);
-
-  brillo::SecureClearBytes(&attest_req.userSecret,
-                           sizeof(attest_req.userSecret));
-
-  if (attest_status != 0) {
-    // We are attesting to a key handle that we just created, so if
-    // attestation fails we have hit some internal error.
-    LOG(ERROR) << "U2F_ATTEST failed, status: " << std::hex
-               << static_cast<uint32_t>(attest_status);
-    return MakeCredentialResponse::INTERNAL_ERROR;
-  }
-
-  base::Optional<std::vector<uint8_t>> signature =
-      util::SignatureToDerBytes(attest_resp.sig_r, attest_resp.sig_s);
-
-  if (!signature.has_value()) {
-    LOG(ERROR) << "DER encoding of U2F_ATTEST signature failed.";
-    return MakeCredentialResponse::INTERNAL_ERROR;
-  }
-
-  *signature_out = *signature;
-
-  return MakeCredentialResponse::SUCCESS;
 }
 
 MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
@@ -1164,8 +898,8 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
     if (!credential_secret)
       continue;
 
-    auto ret = DoU2fSignCheckOnly(rp_id_hash, util::ToVector(credential_id),
-                                  *credential_secret);
+    auto ret = u2f_command_processor_->U2fSignCheckOnly(
+        rp_id_hash, util::ToVector(credential_id), *credential_secret);
     if (ret == HasCredentialsResponse::INTERNAL_ERROR) {
       result.has_internal_error = true;
       return result;
@@ -1185,9 +919,10 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
   // it will only appear in result.legacy_credentials_for_rp_id.
   for (const auto& credential_id : all_credentials) {
     // First try matching rp_id.
-    HasCredentialsResponse::HasCredentialsStatus ret = DoU2fSignCheckOnly(
-        rp_id_hash, util::ToVector(credential_id),
-        std::vector<uint8_t>(user_secret->begin(), user_secret->end()));
+    HasCredentialsResponse::HasCredentialsStatus ret =
+        u2f_command_processor_->U2fSignCheckOnly(
+            rp_id_hash, util::ToVector(credential_id),
+            std::vector<uint8_t>(user_secret->begin(), user_secret->end()));
     DCHECK(HasCredentialsResponse::HasCredentialsStatus_IsValid(ret));
     switch (ret) {
       case HasCredentialsResponse::SUCCESS:
@@ -1208,7 +943,7 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
     }
 
     // Try matching app_id.
-    ret = DoU2fSignCheckOnly(
+    ret = u2f_command_processor_->U2fSignCheckOnly(
         app_id_hash, util::ToVector(credential_id),
         std::vector<uint8_t>(user_secret->begin(), user_secret->end()));
     DCHECK(HasCredentialsResponse::HasCredentialsStatus_IsValid(ret));
@@ -1304,63 +1039,6 @@ HasCredentialsResponse WebAuthnHandler::HasLegacyCredentials(
                           ? HasCredentialsResponse::SUCCESS
                           : HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID);
   return response;
-}
-
-HasCredentialsResponse::HasCredentialsStatus
-WebAuthnHandler::DoU2fSignCheckOnly(
-    const std::vector<uint8_t>& rp_id_hash,
-    const std::vector<uint8_t>& credential_id,
-    const std::vector<uint8_t>& credential_secret) {
-  uint32_t sign_status;
-
-  if (credential_id.size() ==
-      sizeof(u2f_versioned_key_handle) + SHA256_DIGEST_SIZE) {
-    struct u2f_sign_versioned_req sign_req = {.flags = U2F_AUTH_CHECK_ONLY};
-    if (!util::VectorToObject(rp_id_hash, sign_req.appId,
-                              sizeof(sign_req.appId))) {
-      return HasCredentialsResponse::INVALID_REQUEST;
-    }
-    if (!util::VectorToObject(credential_secret, sign_req.userSecret,
-                              sizeof(sign_req.userSecret))) {
-      return HasCredentialsResponse::INVALID_REQUEST;
-    }
-    std::vector<uint8_t> key_handle(credential_id);
-    RemoveAuthTimeSecretHashFromCredentialId(&key_handle);
-    if (!util::VectorToObject(key_handle, &sign_req.keyHandle,
-                              sizeof(sign_req.keyHandle))) {
-      return HasCredentialsResponse::INVALID_REQUEST;
-    }
-
-    struct u2f_sign_resp sign_resp;
-
-    sign_status = tpm_proxy_->SendU2fSign(sign_req, &sign_resp);
-    brillo::SecureClearContainer(sign_req.userSecret);
-  } else if (credential_id.size() == sizeof(u2f_key_handle)) {
-    struct u2f_sign_req sign_req = {.flags = U2F_AUTH_CHECK_ONLY};
-    if (!util::VectorToObject(rp_id_hash, sign_req.appId,
-                              sizeof(sign_req.appId))) {
-      return HasCredentialsResponse::INVALID_REQUEST;
-    }
-    if (!util::VectorToObject(credential_secret, sign_req.userSecret,
-                              sizeof(sign_req.userSecret))) {
-      return HasCredentialsResponse::INVALID_REQUEST;
-    }
-    if (!util::VectorToObject(credential_id, &sign_req.keyHandle,
-                              sizeof(sign_req.keyHandle))) {
-      return HasCredentialsResponse::INVALID_REQUEST;
-    }
-
-    struct u2f_sign_resp sign_resp;
-
-    sign_status = tpm_proxy_->SendU2fSign(sign_req, &sign_resp);
-    brillo::SecureClearContainer(sign_req.userSecret);
-  } else {
-    return HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID;
-  }
-
-  // Return status of 0 indicates the credential is valid.
-  return (sign_status == 0) ? HasCredentialsResponse::SUCCESS
-                            : HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID;
 }
 
 IsU2fEnabledResponse WebAuthnHandler::IsU2fEnabled(
@@ -1497,6 +1175,11 @@ void WebAuthnHandler::SetCryptohomeInterfaceProxyForTesting(
     std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
         cryptohome_proxy) {
   cryptohome_proxy_ = std::move(cryptohome_proxy);
+}
+
+void WebAuthnHandler::SetU2fCommandProcessorForTesting(
+    std::unique_ptr<U2fCommandProcessor> helper) {
+  u2f_command_processor_ = std::move(helper);
 }
 
 }  // namespace u2f
