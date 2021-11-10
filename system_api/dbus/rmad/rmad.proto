@@ -130,6 +130,9 @@ enum RmadErrorCode {
 
   // RMA daemon initialization failed.
   RMAD_ERROR_DAEMON_INITIALIZATION_FAILED = 39;
+
+  // Update RO firmware failed.
+  RMAD_ERROR_UPDATE_RO_FIRMWARE_FAILED = 40;
 }
 
 // Defined Rmad components.
@@ -170,7 +173,18 @@ message HardwareVerificationResult {
   string error_str = 2;
 }
 
-// Defined steup instructions for Calibration.
+// Defined update RO firmware status.
+enum UpdateRoFirmwareStatus {
+  RMAD_UPDATE_RO_FIRMWARE_UNKNOWN = 0;
+  RMAD_UPDATE_RO_FIRMWARE_WAIT_USB = 1;
+  RMAD_UPDATE_RO_FIRMWARE_FILE_NOT_FOUND = 2;
+  RMAD_UPDATE_RO_FIRMWARE_DOWNLOADING = 3;
+  RMAD_UPDATE_RO_FIRMWARE_UPDATING = 4;
+  RMAD_UPDATE_RO_FIRMWARE_REBOOTING = 5;
+  RMAD_UPDATE_RO_FIRMWARE_COMPLETE = 6;
+}
+
+// Defined setup instructions for Calibration.
 // This is used in SetupCalibration.
 enum CalibrationSetupInstruction {
   RMAD_CALIBRATION_INSTRUCTION_UNKNOWN = 0;
@@ -309,14 +323,22 @@ message WriteProtectDisableCompleteState {
 
 // Select method to update firmware.
 message UpdateRoFirmwareState {
+  // TODO(chenghan): Deprecated. Remove it in the future.
   enum UpdateFirmware {
     RMAD_UPDATE_FIRMWARE_UNKNOWN = 0;
     RMAD_UPDATE_FIRMWARE_DOWNLOAD = 1;
     RMAD_UPDATE_FIRMWARE_RECOVERY_UTILITY = 2;
     RMAD_UPDATE_SKIP = 3;
   }
+  enum UpdateChoice {
+    RMAD_UPDATE_CHOICE_UNKNOWN = 0;
+    RMAD_UPDATE_CHOICE_CONTINUE = 1;
+    RMAD_UPDATE_CHOICE_SKIP = 2;
+  }
+
   bool optional = 1;  // If optional is set true by rmad then skip is allowed.
   UpdateFirmware update = 2;
+  UpdateChoice choice = 3;
 }
 
 // Pause RMA for restock.

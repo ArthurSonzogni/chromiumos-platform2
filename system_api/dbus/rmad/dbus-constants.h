@@ -24,6 +24,7 @@ const char kGetLogMethod[] = "GetLog";
 // Signals.
 const char kErrorSignal[] = "Error";
 const char kHardwareVerificationResultSignal[] = "HardwareVerificationResult";
+const char kUpdateRoFirmwareStatusSignal[] = "UpdateRoFirmwareStatus";
 const char kCalibrationOverallSignal[] = "CalibrationOverall";
 const char kCalibrationProgressSignal[] = "CalibrationProgress";
 const char kProvisioningProgressSignal[] = "ProvisioningProgress";
