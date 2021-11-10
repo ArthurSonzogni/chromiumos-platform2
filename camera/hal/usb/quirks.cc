@@ -44,6 +44,8 @@ const QuirksMap& GetQuirksMap() {
       {{"04f2", "b72f"}, kQuirkReportLeastFpsRanges},
       // AZWAVE AM-ABA5521-A (b/194751857)
       {{"13d3", "5521"}, kQuirkPreferLargePreviewResolution},
+      // FO50AF-810H-1 (b/196305314)
+      {{"05c8", "0609"}, kQuirkPreferLargePreviewResolution},
   });
   return *kQuirksMap;
 }
