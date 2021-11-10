@@ -20,7 +20,8 @@ message EnqueueRecordRequest {
   // Record the user wants to enqueue.
   optional Record record = 1;
 
-  // Priority from record_constants.proto
+  // Priority from
+  // //chrome/cros/reporting/api/proto/synced/record_constants.proto
   // indicates what priority queue the record should be included in.
   optional Priority priority = 2;
 }
