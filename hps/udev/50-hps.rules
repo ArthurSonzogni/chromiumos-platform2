@@ -3,5 +3,5 @@
 # found in the LICENSE file.
 
 ACTION=="add", KERNEL=="i2c-GOOG0020:00", \
-    RUN{program}+="/lib/udev/chown-hps.sh %p", \
+    RUN{program}+="/lib/udev/hps-dev.sh %p", \
     RUN{program}+="/sbin/initctl start --no-wait hpsd"

@@ -1,4 +1,0 @@
-env HPS_HW_FLAGS="--bus=/dev/i2c-2 --addr=0x40"
-env FW_APPL_PATH="/lib/firmware/hps-appl.fw"
-env FW_SPI_PATH="/lib/firmware/hps-spi.fw"
-env FW_VERSION="123"

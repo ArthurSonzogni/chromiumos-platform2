@@ -18,3 +18,4 @@
 dev_name=/dev/"$(basename "$(dirname "$1")")"
 chgrp hpsd "${dev_name}"
 chcon -t cros_hps_device "${dev_name}"
+ln --symbolic "${dev_name}" /dev/i2c-hps-controller
