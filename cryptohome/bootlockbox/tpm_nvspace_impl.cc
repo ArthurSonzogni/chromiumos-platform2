@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string>
 #include <utility>
 
 #include <base/bind.h>
@@ -206,6 +207,14 @@ bool TPMNVSpaceImpl::ReadNVSpace(std::string* digest, NVSpaceState* result) {
                << kNVSpaceSize << ", got " << nvram_data.size();
     return false;
   }
+
+  if (nvram_data == std::string(kNVSpaceSize, '\0') ||
+      nvram_data == std::string(kNVSpaceSize, 0xff)) {
+    LOG(ERROR) << "Empty nvram data.";
+    *result = NVSpaceState::kNVSpaceUninitialized;
+    return false;
+  }
+
   BootLockboxNVSpace BootLockboxNVSpace;
   memcpy(&BootLockboxNVSpace, nvram_data.data(), kNVSpaceSize);
   if (BootLockboxNVSpace.version != kNVSpaceVersion) {

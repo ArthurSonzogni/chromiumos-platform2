@@ -127,6 +127,24 @@ TEST_F(TPMNVSpaceImplTest, ReadNVSpaceLengthFail) {
   std::string data;
   NVSpaceState state;
   EXPECT_FALSE(nvspace_utility_->ReadNVSpace(&data, &state));
+  EXPECT_EQ(state, NVSpaceState::kNVSpaceError);
+}
+
+TEST_F(TPMNVSpaceImplTest, ReadNVSpaceUninitializedFail) {
+  EXPECT_CALL(mock_tpm_nvram_, ReadSpace(_, _, _, _))
+      .WillOnce(Invoke([](const tpm_manager::ReadSpaceRequest& request,
+                          tpm_manager::ReadSpaceReply* reply, brillo::ErrorPtr*,
+                          int) {
+        std::string nvram_data = std::string(kNVSpaceSize, '\0');
+        // return success to trigger error.
+        reply->set_result(tpm_manager::NVRAM_RESULT_SUCCESS);
+        reply->set_data(nvram_data);
+        return true;
+      }));
+  std::string data;
+  NVSpaceState state;
+  EXPECT_FALSE(nvspace_utility_->ReadNVSpace(&data, &state));
+  EXPECT_EQ(state, NVSpaceState::kNVSpaceUninitialized);
 }
 
 TEST_F(TPMNVSpaceImplTest, ReadNVSpaceVersionFail) {
@@ -146,6 +164,7 @@ TEST_F(TPMNVSpaceImplTest, ReadNVSpaceVersionFail) {
   std::string data;
   NVSpaceState state;
   EXPECT_FALSE(nvspace_utility_->ReadNVSpace(&data, &state));
+  EXPECT_EQ(state, NVSpaceState::kNVSpaceError);
 }
 
 TEST_F(TPMNVSpaceImplTest, ReadNVSpaceSuccess) {
@@ -169,6 +188,7 @@ TEST_F(TPMNVSpaceImplTest, ReadNVSpaceSuccess) {
   std::string data;
   NVSpaceState state;
   EXPECT_TRUE(nvspace_utility_->ReadNVSpace(&data, &state));
+  EXPECT_EQ(state, NVSpaceState::kNVSpaceNormal);
   EXPECT_EQ(data, test_digest);
 }
 
