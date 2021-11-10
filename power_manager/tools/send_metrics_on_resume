@@ -200,11 +200,11 @@ get_start_resume_time() {
     "Back to C!" \
     "Low-level resume complete" \
     "Suspended for" \
+    "PM: resume from suspend-to-idle" \
     "Resume caused by" \
     "TSC at resume" \
     "post sleep, preparing to return" \
-    "Enabling non-boot CPUs ..." \
-    "PM: resume from suspend-to-idle"
+    "Enabling non-boot CPUs ..."
 }
 
 # Find a message related to the end of resume and parse out its timestamp. It
