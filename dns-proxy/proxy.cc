@@ -141,6 +141,7 @@ int Proxy::OnInit() {
 
 void Proxy::OnShutdown(int* code) {
   LOG(INFO) << "Stopping DNS proxy " << opts_ << "(" << *code << ")";
+  addr_listener_.reset();
   if (opts_.type == Type::kSystem)
     SetShillProperty("");
 }
