@@ -20,14 +20,25 @@
 #include "diagnostics/cros_healthd/minijail/minijail_configuration.h"
 #include "diagnostics/cros_healthd/system/context.h"
 
+namespace {
+void SetVerbosityLevel(uint32_t verbosity_level) {
+  verbosity_level = std::min(verbosity_level, 3u);
+  // VLOG uses negative log level.
+  logging::SetMinLogLevel(-(static_cast<int32_t>(verbosity_level)));
+}
+}  // namespace
+
 int main(int argc, char** argv) {
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
+
+  DEFINE_uint32(verbosity, 0, "Set verbosity level. Allowed value: 0 to 3");
   brillo::FlagHelper::Init(
       argc, argv, "cros_healthd - Device telemetry and diagnostics daemon.");
 
-  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
+  SetVerbosityLevel(FLAGS_verbosity);
 
-  // Init the Mojo Embedder API here, since both the executor and cros_healthd
-  // use it.
+  // Init the Mojo Embedder API here, since both the executor and
+  // cros_healthd use it.
   mojo::core::Init();
 
   // The parent and child processes will each keep one end of this message pipe
