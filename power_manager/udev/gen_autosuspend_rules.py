@@ -134,6 +134,10 @@ USB_IDS += [
     '2cb7:0007',
     # Fibocom (NL668, NL652)
     '2cb7:01a0',
+    # Fibocom (FM101-GL) (mbim)
+    '2cb7:01a2',
+    # Fibocom (FM101-GL) (adb)
+    '2cb7:01a4',
 ]
 
 # Mass Storage
@@ -321,20 +325,20 @@ LABEL="autosuspend_end"
 
 
 def main():
-  pci_rules = ''
-  for dev_ids in PCI_IDS:
-    vendor, device = dev_ids.split(':')
-    pci_rules += ('ATTR{vendor}=="0x%s", ATTR{device}=="0x%s", '
-                  'GOTO="autosuspend_enable"\n' % (vendor, device))
+    pci_rules = ''
+    for dev_ids in PCI_IDS:
+        vendor, device = dev_ids.split(':')
+        pci_rules += ('ATTR{vendor}=="0x%s", ATTR{device}=="0x%s", '
+                      'GOTO="autosuspend_enable"\n' % (vendor, device))
 
-  usb_rules = ''
-  for dev_ids in USB_IDS:
-    vid, pid = dev_ids.split(':')
-    usb_rules += ('ATTR{idVendor}=="%s", ATTR{idProduct}=="%s", '
-                  'GOTO="autosuspend_enable"\n' % (vid, pid))
+    usb_rules = ''
+    for dev_ids in USB_IDS:
+        vid, pid = dev_ids.split(':')
+        usb_rules += ('ATTR{idVendor}=="%s", ATTR{idProduct}=="%s", '
+                      'GOTO="autosuspend_enable"\n' % (vid, pid))
 
-  print(UDEV_RULE % {'pci_rules': pci_rules, 'usb_rules': usb_rules})
+    print(UDEV_RULE % {'pci_rules': pci_rules, 'usb_rules': usb_rules})
 
 
 if __name__ == '__main__':
-  main()
+    main()
