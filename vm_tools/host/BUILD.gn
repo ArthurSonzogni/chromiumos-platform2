@@ -169,6 +169,7 @@ static_library("libconcierge") {
   # TODO(crbug.com/1082873): Remove after fixing usage of deprecated
   # declarations.
   cflags_cc = [ "-Wno-error=deprecated-declarations" ]
+  deps = [ "//featured:libfeatures" ]
 }
 
 executable("vm_concierge") {

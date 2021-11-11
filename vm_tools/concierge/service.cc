@@ -196,6 +196,10 @@ constexpr const char kMDSFilePath[] =
 
 constexpr gid_t kCrosvmUGid = 299;
 
+// Needs to be const as libfeatures does pointers checking.
+const Feature kArcVmInitialThrottleFeature{"CrOSLateBootArcVmInitialThrottle",
+                                           FEATURE_DISABLED_BY_DEFAULT};
+
 // Used with the |IsUntrustedVMAllowed| function.
 struct UntrustedVMCheckResult {
   UntrustedVMCheckResult(bool untrusted_vm_allowed, bool skip_host_checks)
@@ -1245,6 +1249,8 @@ bool Service::Init() {
                << resource_manager::kResourceManagerServiceName;
     return false;
   }
+
+  platform_features_ = feature::PlatformFeatures::New(bus_);
 
   // Setup & start the gRPC listener services.
   if (!SetupListenerService(
@@ -3535,7 +3541,7 @@ std::unique_ptr<dbus::Response> Service::SetVmCpuRestriction(
     return dbus_response;
   }
 
-  bool success = false;
+  bool initial_throttle = false, success = false;
   const CpuRestrictionState state = request.cpu_restriction_state();
   switch (request.cpu_cgroup()) {
     case CPU_CGROUP_TERMINA:
@@ -3545,7 +3551,9 @@ std::unique_ptr<dbus::Response> Service::SetVmCpuRestriction(
       success = PluginVm::SetVmCpuRestriction(state);
       break;
     case CPU_CGROUP_ARCVM:
-      success = ArcVm::SetVmCpuRestriction(state);
+      initial_throttle =
+          platform_features_->IsEnabledBlocking(kArcVmInitialThrottleFeature);
+      success = ArcVm::SetVmCpuRestriction(state, initial_throttle);
       break;
     default:
       LOG(ERROR) << "Unknown cpu_group";

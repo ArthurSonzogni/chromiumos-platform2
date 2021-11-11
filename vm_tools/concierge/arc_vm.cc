@@ -99,6 +99,10 @@ constexpr char kSbinSharedDirTag[] = "sbin";
 constexpr char kUsrBinSharedDir[] = "/usr/bin";
 constexpr char kUsrBinSharedDirTag[] = "usr_bin";
 
+// The percentage of CPU to limit the ArcVm CGroup when a vCPU thread's
+// CPU usage is restricted.
+constexpr int kCpuPercentThrottle = 25;
+
 // For |kOemEtcSharedDir|, map host's crosvm to guest's root, also arc-camera
 // (603) to vendor_arc_camera (5003).
 constexpr char kOemEtcUgidMapTemplate[] = "0 %u 1, 5000 600 50";
@@ -504,9 +508,35 @@ void ArcVm::HandleSuspendDone() {
 }
 
 // static
-bool ArcVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state) {
-  return VmBaseImpl::SetVmCpuRestriction(cpu_restriction_state,
-                                         kArcvmCpuCgroup);
+bool ArcVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
+                                bool initial_throttle) {
+  // Did we ever restrict ArcVm to the foreground or background before?
+  static bool bg_before = false;
+  const bool ret =
+      VmBaseImpl::SetVmCpuRestriction(cpu_restriction_state, kArcvmCpuCgroup);
+
+  // Apply quota restrictions only until the first time ArcVm is foregrounded.
+  if (!ret || !initial_throttle)
+    return ret;
+
+  switch (cpu_restriction_state) {
+    case CPU_RESTRICTION_FOREGROUND:
+      // Reset/remove the quota. Needed to handle the case where user signs out
+      // before quota was reset.
+      return UpdateCpuQuota(base::FilePath(kArcvmCpuCgroup), -1);
+    case CPU_RESTRICTION_BACKGROUND:
+      // Quota is set only the first time a transition to background happens.
+      if (bg_before)
+        return ret;
+
+      bg_before = true;
+      // Apply quotas when ArcVm transitions to the background the first time.
+      return UpdateCpuQuota(base::FilePath(kArcvmCpuCgroup),
+                            kCpuPercentThrottle);
+    default:
+      NOTREACHED();
+  }
+  return false;
 }
 
 uint32_t ArcVm::IPv4Address() const {

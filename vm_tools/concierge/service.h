@@ -32,6 +32,7 @@
 #include <grpcpp/grpcpp.h>
 
 #include "base/files/file_path.h"
+#include "featured/feature_library.h"
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/disk_image.h"
 #include "vm_tools/concierge/power_manager_client.h"
@@ -346,6 +347,9 @@ class Service final {
   dbus::ObjectProxy* vm_permission_service_proxy_;     // Owned by |bus_|.
   dbus::ObjectProxy* vmplugin_service_proxy_;          // Owned by |bus_|.
   dbus::ObjectProxy* resource_manager_service_proxy_;  // Owned by |bus_|.
+
+  // Used communicating with featured.
+  std::unique_ptr<feature::PlatformFeatures> platform_features_;
 
   // The port number to assign to the next shared directory server.
   uint32_t next_seneschal_server_port_;

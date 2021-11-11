@@ -548,6 +548,38 @@ bool UpdateCpuShares(const base::FilePath& cpu_cgroup, int cpu_shares) {
                          cpu_shares_str.size()) == cpu_shares_str.size();
 }
 
+// This will limit the tasks in the CGroup to P @percent of CPU.
+// Although P can be > 100, its maximum value depends on the number of CPUs.
+// For now, limit to a certain percent of 1 CPU. @percent=-1 disables quota.
+bool UpdateCpuQuota(const base::FilePath& cpu_cgroup, int percent) {
+  LOG_ASSERT(percent <= 100 && (percent >= 0 || percent == -1));
+
+  // Set period to 100000us and quota to percent * 1000us.
+  const std::string cpu_period_str = std::to_string(100000);
+  if (base::WriteFile(cpu_cgroup.Append("cpu.cfs_period_us"),
+                      cpu_period_str.c_str(),
+                      cpu_period_str.size()) != cpu_period_str.size()) {
+    PLOG(ERROR) << "Failed to set cpu.cfs_period_us";
+    return false;
+  }
+
+  int quota_int;
+  if (percent == -1)
+    quota_int = -1;
+  else
+    quota_int = percent * 1000;
+
+  const std::string cpu_quota_str = std::to_string(quota_int);
+  if (base::WriteFile(cpu_cgroup.Append("cpu.cfs_quota_us"),
+                      cpu_quota_str.c_str(),
+                      cpu_quota_str.size()) != cpu_quota_str.size()) {
+    PLOG(ERROR) << "Failed to set cpu.cfs_quota_us";
+    return false;
+  }
+
+  return true;
+}
+
 CustomParametersForDev::CustomParametersForDev(const std::string& data) {
   std::vector<base::StringPiece> lines = base::SplitStringPiece(
       data, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);

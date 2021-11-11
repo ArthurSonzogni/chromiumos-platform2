@@ -143,6 +143,10 @@ bool CrosvmDiskResize(std::string socket_path,
 // Updates |cpu_cgroup|'s cpu.shares to |cpu_shares|.
 bool UpdateCpuShares(const base::FilePath& cpu_cgroup, int cpu_shares);
 
+// Updates |cpu_cgroup|'s cpu.cfs_quota_us and cpu.cfs_period_us
+// based on |percent|.
+bool UpdateCpuQuota(const base::FilePath& cpu_cgroup, int percent);
+
 class CustomParametersForDev {
  public:
   // By default this class would do nothing.

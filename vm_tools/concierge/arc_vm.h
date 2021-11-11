@@ -103,7 +103,8 @@ class ArcVm final : public VmBaseImpl {
   void VmIdChanged() override { vm_upgraded_ = true; }
 
   // Adjusts the amount of CPU the ARCVM processes are allowed to use.
-  static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state);
+  static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
+                                  bool initial_throttle);
 
  private:
   ArcVm(int32_t vsock_cid,
