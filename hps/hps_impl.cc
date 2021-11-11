@@ -34,11 +34,11 @@ static constexpr base::TimeDelta kMagicSleep =
     base::TimeDelta::FromMilliseconds(100);
 
 // Initialise the firmware parameters.
-void HPS_impl::Init(uint32_t appl_version,
+void HPS_impl::Init(uint32_t stage1_version,
                     const base::FilePath& mcu,
                     const base::FilePath& fpga_bitstream,
                     const base::FilePath& fpga_app_image) {
-  this->appl_version_ = appl_version;
+  this->stage1_version_ = stage1_version;
   this->mcu_blob_ = mcu;
   this->fpga_bitstream_ = fpga_bitstream;
   this->fpga_app_image_ = fpga_app_image;
@@ -173,9 +173,9 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
   // Inspect stage1 flags and either fail, update, or launch stage2 and continue
   switch (this->CheckStage1()) {
     case BootResult::kOk:
-      VLOG(1) << "Launching stage 1";
+      VLOG(1) << "Launching Application";
       if (!this->device_->WriteReg(HpsReg::kSysCmd, R3::kLaunchAppl)) {
-        LOG(FATAL) << "Launch stage 1 failed";
+        LOG(FATAL) << "Launch Application failed";
       }
       break;
     case BootResult::kFail:
@@ -261,8 +261,8 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
 
   // Send an update only when WP is off and there is no verified signal
   if (!this->write_protect_off_ && !(status & R2::kApplVerified)) {
-    // Appl not verified, so need to update it.
-    LOG(INFO) << "Appl flash not verified";
+    // Stage1 not verified, so need to update it.
+    LOG(INFO) << "Stage1 flash not verified";
     hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kMcuNotVerified);
     return BootResult::kUpdate;
   }
@@ -277,14 +277,14 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
   }
   uint32_t version = static_cast<uint32_t>((version_high << 16) |
                                            static_cast<uint16_t>(version_low));
-  if (version == this->appl_version_) {
-    // Application is verified, launch it.
-    VLOG(1) << "Appl version OK";
+  if (version == this->stage1_version_) {
+    // Stage 1 is verified
+    VLOG(1) << "Stage1 version OK";
     return BootResult::kOk;
   } else {
     // Versions do not match, need to update.
-    LOG(INFO) << "Appl version mismatch, module: " << version
-              << " expected: " << this->appl_version_;
+    LOG(INFO) << "Stage1 version mismatch, module: " << version
+              << " expected: " << this->stage1_version_;
     hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kMcuVersionMismatch);
     return BootResult::kUpdate;
   }
@@ -326,7 +326,7 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage1() {
     hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kSpiNotVerified);
     return BootResult::kUpdate;
   } else {
-    VLOG(1) << "Enabling application";
+    VLOG(1) << "SPI flash ready to start";
     return BootResult::kOk;
   }
 }

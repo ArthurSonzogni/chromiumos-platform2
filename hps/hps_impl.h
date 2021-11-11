@@ -28,12 +28,12 @@ class HPS_impl : public HPS {
   explicit HPS_impl(std::unique_ptr<DevInterface> dev)
       : device_(std::move(dev)),
         hw_rev_(0),
-        appl_version_(0),
+        stage1_version_(0),
         write_protect_off_(false),
         feat_enabled_(0) {}
 
   // Methods for HPS
-  void Init(uint32_t appl_version,
+  void Init(uint32_t stage1_version,
             const base::FilePath& mcu,
             const base::FilePath& fpga_bitstream,
             const base::FilePath& fpga_app_image) override;
@@ -73,7 +73,7 @@ class HPS_impl : public HPS {
   std::unique_ptr<DevInterface> device_;
   HpsMetrics hps_metrics_;
   uint16_t hw_rev_;
-  uint32_t appl_version_;
+  uint32_t stage1_version_;
   bool write_protect_off_;
   uint16_t feat_enabled_;
   base::FilePath mcu_blob_;

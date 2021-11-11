@@ -19,7 +19,7 @@ class HPS {
   virtual ~HPS() = default;
 
   // Set the application version and firmware.
-  virtual void Init(uint32_t appl_version,
+  virtual void Init(uint32_t stage1_version,
                     const base::FilePath& mcu,
                     const base::FilePath& fpga_bitstream,
                     const base::FilePath& fpga_app_image) = 0;
