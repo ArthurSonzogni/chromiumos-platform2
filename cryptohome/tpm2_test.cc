@@ -1552,6 +1552,10 @@ TEST_F(Tpm2Test, HasResetLockPermissionsFailure) {
   EXPECT_FALSE(tpm_->HasResetLockPermissions());
 }
 
+TEST_F(Tpm2Test, GetRecoveryCryptoBackend) {
+  EXPECT_FALSE(tpm_->GetRecoveryCryptoBackend());
+}
+
 namespace {
 
 struct Tpm2RsaSignatureSecretSealingTestParam {

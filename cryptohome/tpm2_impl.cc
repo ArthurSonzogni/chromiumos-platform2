@@ -1559,6 +1559,11 @@ LECredentialBackend* Tpm2Impl::GetLECredentialBackend() {
 SignatureSealingBackend* Tpm2Impl::GetSignatureSealingBackend() {
   return &signature_sealing_backend_;
 }
+// TODO(b:196192089): Replace it with RecoveryCryptoTpm2BackendImpl when
+// available
+cryptorecovery::RecoveryCryptoTpmBackend* Tpm2Impl::GetRecoveryCryptoBackend() {
+  return nullptr;
+}
 
 bool Tpm2Impl::GetDelegate(brillo::Blob* /*blob*/,
                            brillo::Blob* /*secret*/,

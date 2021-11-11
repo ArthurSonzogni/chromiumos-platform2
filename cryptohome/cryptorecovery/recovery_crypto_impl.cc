@@ -46,7 +46,9 @@ brillo::SecureBlob GetResponsePayloadPlainTextHkdfInfo() {
 }
 }  // namespace
 
-std::unique_ptr<RecoveryCryptoImpl> RecoveryCryptoImpl::Create() {
+std::unique_ptr<RecoveryCryptoImpl> RecoveryCryptoImpl::Create(
+    RecoveryCryptoTpmBackend* tpm_backend) {
+  DCHECK(tpm_backend);
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
@@ -60,10 +62,14 @@ std::unique_ptr<RecoveryCryptoImpl> RecoveryCryptoImpl::Create() {
   }
   // using wrapUnique because the constructor is private and make_unique calls
   // the constructor externally
-  return base::WrapUnique(new RecoveryCryptoImpl(std::move(*ec)));
+  return base::WrapUnique(new RecoveryCryptoImpl(std::move(*ec), tpm_backend));
 }
 
-RecoveryCryptoImpl::RecoveryCryptoImpl(EllipticCurve ec) : ec_(std::move(ec)) {}
+RecoveryCryptoImpl::RecoveryCryptoImpl(EllipticCurve ec,
+                                       RecoveryCryptoTpmBackend* tpm_backend)
+    : ec_(std::move(ec)), tpm_backend_(tpm_backend) {
+  DCHECK(tpm_backend_);
+}
 
 RecoveryCryptoImpl::~RecoveryCryptoImpl() = default;
 
@@ -334,9 +340,9 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     }
   } while (BN_is_zero(secret.get()));
 
-  if (!BigNumToSecureBlob(*destination_share_bn, ec_.ScalarSizeInBytes(),
-                          destination_share)) {
-    LOG(ERROR) << "Failed to convert destination_share BIGNUM to SecureBlob";
+  if (!tpm_backend_->EncryptEccPrivateKey(ec_, *destination_share_bn,
+                                          destination_share)) {
+    LOG(ERROR) << "Failed to encrypt destination share";
     return false;
   }
 
@@ -497,7 +503,8 @@ bool RecoveryCryptoImpl::RecoverDestination(
   }
   // Performs scalar multiplication of dealer_pub_point and destination_share.
   crypto::ScopedEC_POINT point_dh =
-      ec_.Multiply(*dealer_pub_point, *destination_share_bn, context.get());
+      tpm_backend_->GenerateDiffieHellmanSharedSecret(ec_, destination_share,
+                                                      *dealer_pub_point);
   /*ec_.Multiply(*dealer_pub_point, *destination_share_bn, context.get());*/
   if (!point_dh) {
     LOG(ERROR) << "Failed to perform scalar multiplication of dealer_pub_point "

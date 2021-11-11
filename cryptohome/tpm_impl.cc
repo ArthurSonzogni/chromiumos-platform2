@@ -2136,6 +2136,12 @@ SignatureSealingBackend* TpmImpl::GetSignatureSealingBackend() {
   return &signature_sealing_backend_;
 }
 
+// TODO(b:196191918): Replace it with RecoveryCryptoTpm1BackendImpl when
+// available
+cryptorecovery::RecoveryCryptoTpmBackend* TpmImpl::GetRecoveryCryptoBackend() {
+  return nullptr;
+}
+
 bool TpmImpl::GetDelegate(brillo::Blob* blob,
                           brillo::Blob* secret,
                           bool* has_reset_lock_permissions) {

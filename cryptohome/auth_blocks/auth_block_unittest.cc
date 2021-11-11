@@ -28,6 +28,7 @@
 #include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
@@ -946,7 +947,12 @@ TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   // Create recovery key and generate Cryptohome Recovery secrets.
   KeyBlobs created_key_blobs;
 
-  CryptohomeRecoveryAuthBlock auth_block;
+  cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
+      recovery_crypto_fake_tpm_backend;
+  NiceMock<MockTpm> tpm;
+  EXPECT_CALL(tpm, GetRecoveryCryptoBackend())
+      .WillRepeatedly(Return(&recovery_crypto_fake_tpm_backend));
+  CryptohomeRecoveryAuthBlock auth_block(&tpm);
   AuthBlockState auth_state;
   EXPECT_EQ(CryptoError::CE_NONE,
             auth_block.Create(auth_input, &auth_state, &created_key_blobs));
@@ -976,7 +982,9 @@ TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   EXPECT_TRUE(DeserializeHsmPayloadFromCbor(hsm_payload_cbor, &hsm_payload));
 
   // Start recovery process.
-  std::unique_ptr<RecoveryCryptoImpl> recovery = RecoveryCryptoImpl::Create();
+  std::unique_ptr<cryptorecovery::RecoveryCryptoImpl> recovery =
+      cryptorecovery::RecoveryCryptoImpl::Create(
+          tpm.GetRecoveryCryptoBackend());
   ASSERT_TRUE(recovery);
   brillo::SecureBlob ephemeral_pub_key;
   brillo::SecureBlob recovery_request_cbor;

@@ -7,6 +7,7 @@
 #include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 
@@ -88,7 +89,7 @@ class RecoveryCryptoTest : public testing::Test {
     ASSERT_TRUE(
         FakeRecoveryMediatorCrypto::GetFakeEpochPrivateKey(&epoch_priv_key_));
 
-    recovery_ = RecoveryCryptoImpl::Create();
+    recovery_ = RecoveryCryptoImpl::Create(&recovery_crypto_fake_tpm_backend_);
     ASSERT_TRUE(recovery_);
     mediator_ = FakeRecoveryMediatorCrypto::Create();
     ASSERT_TRUE(mediator_);
@@ -122,6 +123,9 @@ class RecoveryCryptoTest : public testing::Test {
   SecureBlob rsa_pub_key_;
   SecureBlob enrollment_metadata_ = SecureBlob(kFakeEnrollmentMetaData);
   SecureBlob request_metadata_ = SecureBlob(kFakeRequestMetaData);
+
+  cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
+      recovery_crypto_fake_tpm_backend_;
 
   SecureBlob mediator_pub_key_;
   SecureBlob mediator_priv_key_;

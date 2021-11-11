@@ -25,6 +25,9 @@
 #include <openssl/rsa.h>
 
 namespace cryptohome {
+namespace cryptorecovery {
+class RecoveryCryptoTpmBackend;
+}  //  namespace cryptorecovery
 
 using TpmKeyHandle = uint32_t;
 
@@ -590,6 +593,12 @@ class Tpm {
   // performing signature-sealing operations. Returns nullptr if the
   // implementation does not support signature-sealing operations.
   virtual SignatureSealingBackend* GetSignatureSealingBackend() = 0;
+
+  // Get a pointer to the RecoveryCryptoBackend object, which is used for
+  // performing recovery-crypto operations. Returns nullptr if the
+  // implementation does not support recovery-crypto operations.
+  virtual cryptorecovery::RecoveryCryptoTpmBackend*
+  GetRecoveryCryptoBackend() = 0;
 
   // Gets owner auth delegate. Returns |true| iff the operation succeeds. Once
   // returning |true|, |blob| and |secret| are set to the blob and secret of

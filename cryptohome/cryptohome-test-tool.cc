@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include <base/at_exit.h>
 #include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -18,9 +19,11 @@
 
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
+#include "cryptohome/tpm.h"
 
 using base::FilePath;
 using brillo::SecureBlob;
@@ -68,13 +71,14 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
     const FilePath& channel_priv_key_out_file_path,
     const FilePath& serialized_hsm_payload_out_file_path,
     const FilePath& recovery_secret_out_file_path) {
+  cryptohome::cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
+      recovery_crypto_fake_tpm_backend;
   std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
-      RecoveryCryptoImpl::Create();
+      RecoveryCryptoImpl::Create(&recovery_crypto_fake_tpm_backend);
   if (!recovery_crypto) {
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;
   }
-
   SecureBlob mediator_pub_key;
   CHECK(
       FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(&mediator_pub_key));
@@ -132,9 +136,10 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
     LOG(ERROR) << "Failed to deserialize HSM payload.";
     return false;
   }
-
+  cryptohome::cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
+      recovery_crypto_fake_tpm_backend;
   std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
-      RecoveryCryptoImpl::Create();
+      RecoveryCryptoImpl::Create(&recovery_crypto_fake_tpm_backend);
   if (!recovery_crypto) {
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;
@@ -212,8 +217,10 @@ bool DoRecoveryCryptoDecryptAction(
   SecureBlob epoch_pub_key;
   CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key));
 
+  cryptohome::cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
+      recovery_crypto_fake_tpm_backend;
   std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
-      RecoveryCryptoImpl::Create();
+      RecoveryCryptoImpl::Create(&recovery_crypto_fake_tpm_backend);
   if (!recovery_crypto) {
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;
@@ -242,6 +249,7 @@ bool DoRecoveryCryptoDecryptAction(
 
 int main(int argc, char* argv[]) {
   brillo::InitLog(brillo::kLogToStderr);
+  base::AtExitManager exit_manager;
 
   DEFINE_string(
       action, "",

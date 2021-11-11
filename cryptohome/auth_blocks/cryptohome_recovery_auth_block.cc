@@ -19,17 +19,35 @@
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
+#include "cryptohome/tpm.h"
 
 using cryptohome::cryptorecovery::HsmPayload;
 using cryptohome::cryptorecovery::HsmResponsePlainText;
 using cryptohome::cryptorecovery::RecoveryCryptoImpl;
 
 namespace cryptohome {
+namespace {
 
-CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock()
-    : SyncAuthBlock(/*derivation_type=*/kCryptohomeRecovery) {}
+cryptorecovery::RecoveryCryptoTpmBackend* GetRecoveryCryptoTpmBackend(
+    Tpm* tpm) {
+  cryptorecovery::RecoveryCryptoTpmBackend* tpm_backend =
+      tpm->GetRecoveryCryptoBackend();
+  if (!tpm_backend) {
+    LOG(ERROR) << "RecoveryCryptoTpmBackend is null";
+    return nullptr;
+  }
+  return tpm_backend;
+}
+
+}  // namespace
+
+CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(Tpm* tpm)
+    : SyncAuthBlock(/*derivation_type=*/kCryptohomeRecovery), tpm_(tpm) {
+  DCHECK(tpm != nullptr);
+}
 
 CryptoError CryptohomeRecoveryAuthBlock::Create(
     const AuthInput& auth_input,
@@ -46,8 +64,8 @@ CryptoError CryptohomeRecoveryAuthBlock::Create(
 
   const brillo::SecureBlob& mediator_pub_key =
       cryptohome_recovery_auth_input.mediator_pub_key.value();
-
-  std::unique_ptr<RecoveryCryptoImpl> recovery = RecoveryCryptoImpl::Create();
+  std::unique_ptr<RecoveryCryptoImpl> recovery =
+      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend(tpm_));
   if (!recovery) {
     return CryptoError::CE_OTHER_CRYPTO;
   }
@@ -127,7 +145,8 @@ CryptoError CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   brillo::SecureBlob channel_priv_key = auth_state->channel_priv_key.value();
   brillo::SecureBlob salt = auth_state->salt.value();
 
-  std::unique_ptr<RecoveryCryptoImpl> recovery = RecoveryCryptoImpl::Create();
+  std::unique_ptr<RecoveryCryptoImpl> recovery =
+      RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend(tpm_));
   if (!recovery) {
     return CryptoError::CE_OTHER_CRYPTO;
   }

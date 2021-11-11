@@ -9,6 +9,7 @@
 #include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/key_objects.h"
+#include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
@@ -18,7 +19,8 @@ namespace cryptohome {
 // and by Recovery Mediator service.
 class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
  public:
-  CryptohomeRecoveryAuthBlock();
+  // the `tpm` pointer must outlive `this`
+  explicit CryptohomeRecoveryAuthBlock(Tpm* tpm);
   CryptohomeRecoveryAuthBlock(const CryptohomeRecoveryAuthBlock&) = delete;
   CryptohomeRecoveryAuthBlock& operator=(const CryptohomeRecoveryAuthBlock&) =
       delete;
@@ -37,6 +39,9 @@ class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
   CryptoError Derive(const AuthInput& auth_input,
                      const AuthBlockState& state,
                      KeyBlobs* key_blobs) override;
+
+ private:
+  Tpm* const tpm_;
 };
 
 }  // namespace cryptohome

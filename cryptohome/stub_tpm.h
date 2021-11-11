@@ -199,6 +199,10 @@ class StubTpm : public Tpm {
   SignatureSealingBackend* GetSignatureSealingBackend() override {
     return nullptr;
   }
+  cryptorecovery::RecoveryCryptoTpmBackend* GetRecoveryCryptoBackend()
+      override {
+    return nullptr;
+  }
   hwsec::error::TPMErrorBase IsDelegateBoundToPcr(bool* result) override {
     *result = true;
     return nullptr;

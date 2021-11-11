@@ -139,6 +139,7 @@ class TpmImpl : public Tpm {
   bool GetRsuDeviceId(std::string* device_id) override;
   LECredentialBackend* GetLECredentialBackend() override;
   SignatureSealingBackend* GetSignatureSealingBackend() override;
+  cryptorecovery::RecoveryCryptoTpmBackend* GetRecoveryCryptoBackend() override;
   bool GetDelegate(brillo::Blob* blob,
                    brillo::Blob* secret,
                    bool* has_reset_lock_permissions) override;

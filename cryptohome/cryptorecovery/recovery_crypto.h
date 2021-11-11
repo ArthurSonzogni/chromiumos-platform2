@@ -8,6 +8,9 @@
 #include <memory>
 
 #include <brillo/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
+#include <openssl/bn.h>
+#include <openssl/ec.h>
 
 #include "cryptohome/crypto/ecdh_hkdf.h"
 #include "cryptohome/crypto/elliptic_curve.h"
@@ -15,6 +18,27 @@
 
 namespace cryptohome {
 namespace cryptorecovery {
+// RecoveryCryptoTpmBackend - class for performing cryptorecovery
+// encryption/decryption in the TPM. For cryptorecovery, the TPM may be used as
+// a way to strengthen the secret shares/ private keys stored on disk.
+class RecoveryCryptoTpmBackend {
+ public:
+  virtual ~RecoveryCryptoTpmBackend() = default;
+  // Encrypts the provided ECC private key using TPM, and returns it via
+  // `encrypted_own_priv_key`, which is one's own private key. (the format of
+  // this blob is TPM-specific). Returns false on failure.
+  virtual bool EncryptEccPrivateKey(
+      const EllipticCurve& ec,
+      const BIGNUM& own_priv_key_bn,
+      brillo::SecureBlob* encrypted_own_priv_key) = 0;
+  // Multiplies the private key, provided in encrypted form, with the given the
+  // other party's public EC point. Returns the multiplication, or nullptr on
+  // failure.
+  virtual crypto::ScopedEC_POINT GenerateDiffieHellmanSharedSecret(
+      const EllipticCurve& ec,
+      const brillo::SecureBlob& encrypted_own_priv_key,
+      const EC_POINT& others_pub_point) = 0;
+};
 
 // Cryptographic operations for cryptohome recovery.
 // Recovery mechanism involves dealer, publisher, mediator and destination. The
@@ -61,9 +85,6 @@ class RecoveryCrypto {
 
   // Length of the salt (in bytes) used by HKDF for encrypting mediator share.
   static const unsigned int kHkdfSaltLength;
-
-  // Creates instance. Returns nullptr if error occurred.
-  static std::unique_ptr<RecoveryCrypto> Create();
 
   virtual ~RecoveryCrypto();
 

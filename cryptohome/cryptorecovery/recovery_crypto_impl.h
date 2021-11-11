@@ -15,12 +15,13 @@
 
 namespace cryptohome {
 namespace cryptorecovery {
-// Cryptographic operations for cryptohome recovery performed on CPU (software
-// emulation)
+// Cryptographic operations for cryptohome recovery performed on either CPU
+// (software emulation) or TPM modules depending on the TPM backend.
 class RecoveryCryptoImpl : public RecoveryCrypto {
  public:
   // Creates instance. Returns nullptr if error occurred.
-  static std::unique_ptr<RecoveryCryptoImpl> Create();
+  static std::unique_ptr<RecoveryCryptoImpl> Create(
+      RecoveryCryptoTpmBackend* tpm_backend);
 
   RecoveryCryptoImpl(const RecoveryCryptoImpl&) = delete;
   RecoveryCryptoImpl& operator=(const RecoveryCryptoImpl&) = delete;
@@ -55,7 +56,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
       HsmResponsePlainText* response_plain_text) const override;
 
  private:
-  explicit RecoveryCryptoImpl(EllipticCurve ec);
+  RecoveryCryptoImpl(EllipticCurve ec, RecoveryCryptoTpmBackend* tpm_backend);
   // Encrypts mediator share and stores as `encrypted_ms` with
   // embedded ephemeral public key, AES-GCM tag and iv. Returns false if error
   // occurred.
@@ -77,6 +78,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
                                  brillo::SecureBlob* publisher_pub_key) const;
 
   EllipticCurve ec_;
+  RecoveryCryptoTpmBackend* const tpm_backend_;
 };
 
 }  // namespace cryptorecovery

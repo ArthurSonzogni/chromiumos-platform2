@@ -184,6 +184,10 @@ class MockTpm : public Tpm {
               GetSignatureSealingBackend,
               (),
               (override));
+  MOCK_METHOD(cryptorecovery::RecoveryCryptoTpmBackend*,
+              GetRecoveryCryptoBackend,
+              (),
+              (override));
   MOCK_METHOD(bool,
               GetDelegate,
               (brillo::Blob*, brillo::Blob*, bool*),
