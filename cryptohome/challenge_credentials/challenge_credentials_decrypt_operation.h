@@ -35,15 +35,15 @@ class KeyChallengeService;
 class ChallengeCredentialsDecryptOperation final
     : public ChallengeCredentialsOperation {
  public:
-  // If the operation succeeds, |credentials| will contain the decrypted
-  // credentials that can be used for decryption of the user's vault keyset.
+  // If the operation succeeds, |passkey| can be used for decryption of the
+  // user's vault keyset.
   using CompletionCallback =
       base::OnceCallback<void(hwsec::error::TPMErrorBase error,
-                              std::unique_ptr<Credentials> credentials)>;
+                              std::unique_ptr<brillo::SecureBlob> passkey)>;
 
   // |key_challenge_service| is a non-owned pointer which must outlive the
   // created instance.
-  // |key_data| must have the |KEY_TYPE_CHALLENGE_RESPONSE| type.
+  // |public_key_info| describes the challenge-response public key information.
   // |keyset_challenge_info| contains the encrypted representation of secrets.
   // The result is reported via |completion_callback|.
   ChallengeCredentialsDecryptOperation(
@@ -52,7 +52,7 @@ class ChallengeCredentialsDecryptOperation final
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret,
       const std::string& account_id,
-      const KeyData& key_data,
+      const ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
       CompletionCallback completion_callback);
 
@@ -85,18 +85,17 @@ class ChallengeCredentialsDecryptOperation final
 
   // Completes with returning the specified results.
   void Resolve(hwsec::error::TPMErrorBase error,
-               std::unique_ptr<Credentials> credentials);
+               std::unique_ptr<brillo::SecureBlob> passkey);
 
   Tpm* const tpm_;
   const brillo::Blob delegate_blob_;
   const brillo::Blob delegate_secret_;
   const std::string account_id_;
-  const KeyData key_data_;
+  const ChallengePublicKeyInfo public_key_info_;
   const structure::SignatureChallengeInfo keyset_challenge_info_;
   std::unique_ptr<brillo::Blob> salt_signature_;
   CompletionCallback completion_callback_;
   SignatureSealingBackend* const signature_sealing_backend_;
-  ChallengePublicKeyInfo public_key_info_;
   std::unique_ptr<SignatureSealingBackend::UnsealingSession> unsealing_session_;
   std::unique_ptr<brillo::SecureBlob> unsealed_secret_;
   base::WeakPtrFactory<ChallengeCredentialsDecryptOperation> weak_ptr_factory_{

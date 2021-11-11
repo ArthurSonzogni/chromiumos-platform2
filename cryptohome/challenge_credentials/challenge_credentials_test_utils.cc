@@ -12,7 +12,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "cryptohome/credentials.h"
 
 using brillo::Blob;
 using brillo::SecureBlob;
@@ -25,10 +24,14 @@ MakeChallengeCredentialsGenerateNewResultWriter(
   DCHECK(!*result);
   return base::BindOnce(
       [](std::unique_ptr<ChallengeCredentialsGenerateNewResult>* result,
-         std::unique_ptr<Credentials> credentials) {
+         std::unique_ptr<structure::SignatureChallengeInfo>
+             signature_challenge_info,
+         std::unique_ptr<brillo::SecureBlob> passkey) {
         ASSERT_FALSE(*result);
         *result = std::make_unique<ChallengeCredentialsGenerateNewResult>();
-        (*result)->credentials = std::move(credentials);
+        (*result)->signature_challenge_info =
+            std::move(signature_challenge_info);
+        (*result)->passkey = std::move(passkey);
       },
       base::Unretained(result));
 }
@@ -39,44 +42,38 @@ MakeChallengeCredentialsDecryptResultWriter(
   DCHECK(!*result);
   return base::BindOnce(
       [](std::unique_ptr<ChallengeCredentialsDecryptResult>* result,
-         std::unique_ptr<Credentials> credentials) {
+         std::unique_ptr<brillo::SecureBlob> passkey) {
         ASSERT_FALSE(*result);
         *result = std::make_unique<ChallengeCredentialsDecryptResult>();
-        (*result)->credentials = std::move(credentials);
+        (*result)->passkey = std::move(passkey);
       },
       base::Unretained(result));
 }
 
 void VerifySuccessfulChallengeCredentialsGenerateNewResult(
     const ChallengeCredentialsGenerateNewResult& result,
-    const std::string& expected_username,
     const SecureBlob& expected_passkey) {
-  ASSERT_TRUE(result.credentials);
-  EXPECT_EQ(expected_username, result.credentials->username());
-  EXPECT_EQ(expected_passkey, result.credentials->passkey());
-  EXPECT_EQ(KeyData::KEY_TYPE_CHALLENGE_RESPONSE,
-            result.credentials->key_data().type());
+  ASSERT_TRUE(result.passkey);
+  ASSERT_TRUE(result.signature_challenge_info);
+  EXPECT_EQ(expected_passkey, *result.passkey);
 }
 
 void VerifySuccessfulChallengeCredentialsDecryptResult(
     const ChallengeCredentialsDecryptResult& result,
-    const std::string& expected_username,
     const SecureBlob& expected_passkey) {
-  ASSERT_TRUE(result.credentials);
-  EXPECT_EQ(expected_username, result.credentials->username());
-  EXPECT_EQ(expected_passkey, result.credentials->passkey());
-  EXPECT_EQ(KeyData::KEY_TYPE_CHALLENGE_RESPONSE,
-            result.credentials->key_data().type());
+  ASSERT_TRUE(result.passkey);
+  EXPECT_EQ(expected_passkey, *result.passkey);
 }
 
 void VerifyFailedChallengeCredentialsGenerateNewResult(
     const ChallengeCredentialsGenerateNewResult& result) {
-  EXPECT_FALSE(result.credentials);
+  EXPECT_FALSE(result.passkey);
+  EXPECT_FALSE(result.signature_challenge_info);
 }
 
 void VerifyFailedChallengeCredentialsDecryptResult(
     const ChallengeCredentialsDecryptResult& result) {
-  EXPECT_FALSE(result.credentials);
+  EXPECT_FALSE(result.passkey);
 }
 
 }  // namespace cryptohome

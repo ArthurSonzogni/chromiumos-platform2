@@ -14,7 +14,6 @@
 #include <base/callback.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/credentials.h"
 #include "cryptohome/key.pb.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/rpc.pb.h"
@@ -39,21 +38,22 @@ class ChallengeCredentialsHelper {
  public:
   // This callback reports result of a GenerateNew() call.
   //
-  // If the operation succeeds, |credentials| will contain the freshly generated
-  // credentials that should be used for encrypting the new vault keyset, with
-  // the challenge_credentials_keyset_info() field containing the data to be
-  // stored in the created vault keyset.
-  // If the operation fails, the argument will be null.
+  // If the operation succeeds, |passkey| can be used for decryption of the
+  // user's vault keyset, and |signature_challenge_info| containing the data to
+  // be stored in the auth block state.
+  // If the operation fails, the arguments will be null.
   using GenerateNewCallback =
-      base::OnceCallback<void(std::unique_ptr<Credentials> /* credentials */)>;
+      base::OnceCallback<void(std::unique_ptr<structure::SignatureChallengeInfo>
+                                  signature_challenge_info,
+                              std::unique_ptr<brillo::SecureBlob> passkey)>;
 
   // This callback reports result of a Decrypt() call.
   //
-  // If the operation succeeds, |credentials| will contain the built credentials
-  // that should be used for decrypting the user's vault keyset.
+  // If the operation succeeds, |passkey| can be used for decryption of the
+  // user's vault keyset.
   // If the operation fails, the argument will be null.
   using DecryptCallback =
-      base::OnceCallback<void(std::unique_ptr<Credentials> /* credentials */)>;
+      base::OnceCallback<void(std::unique_ptr<brillo::SecureBlob> passkey)>;
 
   // This callback reports result of a VerifyKey() call.
   //
@@ -77,8 +77,6 @@ class ChallengeCredentialsHelper {
   // be stored in the created vault keyset. This operation may involve making
   // challenge request(s) against the specified key.
   //
-  // |key_data| must have the |KEY_TYPE_CHALLENGE_RESPONSE| type.
-  //
   // |pcr_restrictions| is the list of PCR sets; the created credentials will be
   // protected in a way that decrypting them back is possible iff at least one
   // of these sets is satisfied. Each PCR value set must be non-empty; pass
@@ -89,7 +87,7 @@ class ChallengeCredentialsHelper {
   // The result is reported via |callback|.
   virtual void GenerateNew(
       const std::string& account_id,
-      const KeyData& key_data,
+      const ChallengePublicKeyInfo& public_key_info,
       const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
       GenerateNewCallback callback) = 0;
@@ -101,13 +99,12 @@ class ChallengeCredentialsHelper {
   // supported algorithms may be tolerated in some cases. This operation
   // involves making challenge request(s) against the key.
   //
-  // |key_data| must have the |KEY_TYPE_CHALLENGE_RESPONSE| type.
   // |keyset_challenge_info| is the encrypted representation of secrets as
   // created via GenerateNew().
   // The result is reported via |callback|.
   virtual void Decrypt(
       const std::string& account_id,
-      const KeyData& key_data,
+      const ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
       DecryptCallback callback) = 0;
@@ -117,11 +114,10 @@ class ChallengeCredentialsHelper {
   // against the key. This method is intended as a lightweight analog of
   // Decrypt() for cases where the actual credentials aren't needed.
   //
-  // |key_data| must have the |KEY_TYPE_CHALLENGE_RESPONSE| type.
   // The result is reported via |callback|.
   virtual void VerifyKey(
       const std::string& account_id,
-      const KeyData& key_data,
+      const ChallengePublicKeyInfo& public_key_info,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
       VerifyKeyCallback callback) = 0;
 };

@@ -21,7 +21,6 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_test_utils.h"
-#include "cryptohome/credentials.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/key.pb.h"
 #include "cryptohome/mock_key_challenge_service.h"
@@ -54,18 +53,15 @@ namespace cryptohome {
 
 namespace {
 
-KeyData MakeKeyData(
+ChallengePublicKeyInfo MakeChallengePublicKeyInfo(
     const Blob& set_public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms) {
-  KeyData key_data;
-  key_data.set_type(KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
-  ChallengePublicKeyInfo* const public_key_info =
-      key_data.add_challenge_response_key();
-  public_key_info->set_public_key_spki_der(
+  ChallengePublicKeyInfo public_key_info;
+  public_key_info.set_public_key_spki_der(
       BlobToString(set_public_key_spki_der));
   for (auto key_algorithm : key_algorithms)
-    public_key_info->add_signature_algorithm(proto::ToProto(key_algorithm));
-  return key_data;
+    public_key_info.add_signature_algorithm(proto::ToProto(key_algorithm));
+  return public_key_info;
 }
 
 structure::SignatureChallengeInfo MakeFakeKeysetChallengeInfo(
@@ -102,9 +98,11 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
       std::unique_ptr<ChallengeCredentialsGenerateNewResult>*
           generate_new_result) {
     DCHECK(challenge_service_);
-    const KeyData key_data = MakeKeyData(kPublicKeySpkiDer, key_algorithms);
+    const ChallengePublicKeyInfo public_key_info =
+        MakeChallengePublicKeyInfo(kPublicKeySpkiDer, key_algorithms);
     challenge_credentials_helper_.GenerateNew(
-        kUserEmail, key_data, kPcrRestrictions, std::move(challenge_service_),
+        kUserEmail, public_key_info, kPcrRestrictions,
+        std::move(challenge_service_),
         MakeChallengeCredentialsGenerateNewResultWriter(generate_new_result));
   }
 
@@ -116,12 +114,13 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
       const Blob& salt,
       std::unique_ptr<ChallengeCredentialsDecryptResult>* decrypt_result) {
     DCHECK(challenge_service_);
-    const KeyData key_data = MakeKeyData(kPublicKeySpkiDer, key_algorithms);
+    const ChallengePublicKeyInfo public_key_info =
+        MakeChallengePublicKeyInfo(kPublicKeySpkiDer, key_algorithms);
     const structure::SignatureChallengeInfo keyset_challenge_info =
         MakeFakeKeysetChallengeInfo(kPublicKeySpkiDer, salt,
                                     salt_challenge_algorithm);
     challenge_credentials_helper_.Decrypt(
-        kUserEmail, key_data, keyset_challenge_info,
+        kUserEmail, public_key_info, keyset_challenge_info,
         std::move(challenge_service_),
         MakeChallengeCredentialsDecryptResultWriter(decrypt_result));
   }
@@ -147,16 +146,15 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
         std::make_unique<MockKeyChallengeService>();
     EXPECT_CALL(*mock_key_challenge_service, ChallengeKeyMovable(_, _, _))
         .Times(AnyNumber());
-    const KeyData key_data = MakeKeyData(
+    const ChallengePublicKeyInfo public_key_info = MakeChallengePublicKeyInfo(
         kLocalPublicKeySpkiDer, {kLocalAlgorithm} /* key_algorithms */);
     const structure::SignatureChallengeInfo keyset_challenge_info =
         MakeFakeKeysetChallengeInfo(
             kLocalPublicKeySpkiDer, kSalt,
             kLocalAlgorithm /* salt_challenge_algorithm */);
     challenge_credentials_helper_.Decrypt(
-        kUserEmail, key_data, keyset_challenge_info,
-        std::move(mock_key_challenge_service),
-        base::BindOnce([](std::unique_ptr<Credentials>) {}));
+        kUserEmail, public_key_info, keyset_challenge_info,
+        std::move(mock_key_challenge_service), base::DoNothing());
   }
 
   // Assert that the given GenerateNew() operation result is a valid success
@@ -164,16 +162,14 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
   void VerifySuccessfulGenerateNewResult(
       const ChallengeCredentialsGenerateNewResult& generate_new_result) const {
     VerifySuccessfulChallengeCredentialsGenerateNewResult(
-        generate_new_result, kUserEmail,
-        SecureBlob(kPasskey.begin(), kPasskey.end()));
+        generate_new_result, SecureBlob(kPasskey.begin(), kPasskey.end()));
   }
 
   // Assert that the given Decrypt() operation result is a valid success result.
   void VerifySuccessfulDecryptResult(
       const ChallengeCredentialsDecryptResult& decrypt_result) const {
     VerifySuccessfulChallengeCredentialsDecryptResult(
-        decrypt_result, kUserEmail,
-        SecureBlob(kPasskey.begin(), kPasskey.end()));
+        decrypt_result, SecureBlob(kPasskey.begin(), kPasskey.end()));
   }
 
   // Returns a helper object that aids mocking of the sealed secret creation

@@ -24,12 +24,13 @@ class Credentials;
 
 // for ChallengeCredentialsHelper::GenerateNew():
 struct ChallengeCredentialsGenerateNewResult {
-  std::unique_ptr<Credentials> credentials;
+  std::unique_ptr<brillo::SecureBlob> passkey;
+  std::unique_ptr<structure::SignatureChallengeInfo> signature_challenge_info;
 };
 
 // for ChallengeCredentialsHelper::Decrypt():
 struct ChallengeCredentialsDecryptResult {
-  std::unique_ptr<Credentials> credentials;
+  std::unique_ptr<brillo::SecureBlob> passkey;
 };
 
 // Functions that make callbacks for ChallengeCredentialsHelper that store the
@@ -52,13 +53,11 @@ MakeChallengeCredentialsDecryptResultWriter(
 // for ChallengeCredentialsHelper::GenerateNew():
 void VerifySuccessfulChallengeCredentialsGenerateNewResult(
     const ChallengeCredentialsGenerateNewResult& result,
-    const std::string& expected_username,
     const brillo::SecureBlob& expected_passkey);
 
 // for ChallengeCredentialsHelper::Decrypt():
 void VerifySuccessfulChallengeCredentialsDecryptResult(
     const ChallengeCredentialsDecryptResult& result,
-    const std::string& expected_username,
     const brillo::SecureBlob& expected_passkey);
 
 // Functions that verify that the result returned from the

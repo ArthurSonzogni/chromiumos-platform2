@@ -118,15 +118,13 @@ ChallengeCredentialsVerifyKeyOperation::ChallengeCredentialsVerifyKeyOperation(
     KeyChallengeService* key_challenge_service,
     Tpm* tpm,
     const std::string& account_id,
-    const KeyData& key_data,
+    const ChallengePublicKeyInfo& public_key_info,
     CompletionCallback completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
       tpm_(tpm),
       account_id_(account_id),
-      key_data_(key_data),
-      completion_callback_(std::move(completion_callback)) {
-  DCHECK_EQ(key_data.type(), KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
-}
+      public_key_info_(public_key_info),
+      completion_callback_(std::move(completion_callback)) {}
 
 ChallengeCredentialsVerifyKeyOperation::
     ~ChallengeCredentialsVerifyKeyOperation() = default;
@@ -134,28 +132,15 @@ ChallengeCredentialsVerifyKeyOperation::
 void ChallengeCredentialsVerifyKeyOperation::Start() {
   DCHECK(thread_checker_.CalledOnValidThread());
 
-  if (!key_data_.challenge_response_key_size()) {
-    LOG(ERROR) << "Missing challenge-response key information";
-    Complete(&completion_callback_, /*is_key_valid=*/false);
-    return;
-  }
-  if (key_data_.challenge_response_key_size() > 1) {
-    LOG(ERROR)
-        << "Using multiple challenge-response keys at once is unsupported";
-    Complete(&completion_callback_, /*is_key_valid=*/false);
-    return;
-  }
-  const ChallengePublicKeyInfo public_key_info =
-      key_data_.challenge_response_key(0);
   const Blob public_key_spki_der =
-      BlobFromString(public_key_info.public_key_spki_der());
-  if (!public_key_info.signature_algorithm_size()) {
+      BlobFromString(public_key_info_.public_key_spki_der());
+  if (!public_key_info_.signature_algorithm_size()) {
     LOG(ERROR) << "The key does not support any signature algorithm";
     Complete(&completion_callback_, /*is_key_valid=*/false);
     return;
   }
   const base::Optional<structure::ChallengeSignatureAlgorithm>
-      chosen_challenge_algorithm = ChooseChallengeAlgorithm(public_key_info);
+      chosen_challenge_algorithm = ChooseChallengeAlgorithm(public_key_info_);
   if (!chosen_challenge_algorithm) {
     LOG(ERROR) << "Failed to choose verification signature challenge algorithm";
     Complete(&completion_callback_, /*is_key_valid=*/false);

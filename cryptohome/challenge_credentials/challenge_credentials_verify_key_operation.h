@@ -34,14 +34,14 @@ class ChallengeCredentialsVerifyKeyOperation final
 
   // |key_challenge_service| is a non-owned pointer which must outlive the
   // created instance.
-  // |key_data| must have the |KEY_TYPE_CHALLENGE_RESPONSE| type.
+  // |public_key_info| describes the challenge-response public key information.
   //
   // The result is reported via |completion_callback|.
   ChallengeCredentialsVerifyKeyOperation(
       KeyChallengeService* key_challenge_service,
       Tpm* tpm,
       const std::string& account_id,
-      const KeyData& key_data,
+      const ChallengePublicKeyInfo& public_key_info,
       CompletionCallback completion_callback);
 
   ~ChallengeCredentialsVerifyKeyOperation() override;
@@ -59,7 +59,7 @@ class ChallengeCredentialsVerifyKeyOperation final
 
   Tpm* const tpm_;
   const std::string account_id_;
-  const KeyData key_data_;
+  const ChallengePublicKeyInfo public_key_info_;
   CompletionCallback completion_callback_;
   base::WeakPtrFactory<ChallengeCredentialsVerifyKeyOperation>
       weak_ptr_factory_{this};

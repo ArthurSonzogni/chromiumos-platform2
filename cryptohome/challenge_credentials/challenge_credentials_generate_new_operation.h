@@ -35,16 +35,17 @@ class Tpm;
 class ChallengeCredentialsGenerateNewOperation final
     : public ChallengeCredentialsOperation {
  public:
-  // If the operation succeeds, |credentials| will contain the generated
-  // credentials that can be used for encryption of the user's vault keyset,
-  // with the challenge_credentials_keyset_info() field containing the data to
-  // be stored in the created vault keyset.
+  // If the operation succeeds, |passkey| can be used for decryption of the
+  // user's vault keyset, and |signature_challenge_info| containing the data to
+  // be stored in the auth block state.
   using CompletionCallback =
-      base::OnceCallback<void(std::unique_ptr<Credentials> credentials)>;
+      base::OnceCallback<void(std::unique_ptr<structure::SignatureChallengeInfo>
+                                  signature_challenge_info,
+                              std::unique_ptr<brillo::SecureBlob> passkey)>;
 
   // |key_challenge_service| is a non-owned pointer which must outlive the
   // created instance.
-  // |key_data| must have the |KEY_TYPE_CHALLENGE_RESPONSE| type.
+  // |public_key_info| describes the challenge-response public key information.
   //
   // |pcr_restrictions| is the list of PCR sets; the created credentials will be
   // protected in a way that decrypting them back is possible iff at least one
@@ -60,7 +61,7 @@ class ChallengeCredentialsGenerateNewOperation final
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret,
       const std::string& account_id,
-      const KeyData& key_data,
+      const ChallengePublicKeyInfo& public_key_info,
       const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
       CompletionCallback completion_callback);
 
@@ -98,11 +99,10 @@ class ChallengeCredentialsGenerateNewOperation final
   const brillo::Blob delegate_blob_;
   const brillo::Blob delegate_secret_;
   const std::string account_id_;
-  const KeyData key_data_;
+  const ChallengePublicKeyInfo public_key_info_;
   const std::vector<std::map<uint32_t, brillo::Blob>> pcr_restrictions_;
   CompletionCallback completion_callback_;
   SignatureSealingBackend* const signature_sealing_backend_;
-  ChallengePublicKeyInfo public_key_info_;
   brillo::Blob salt_;
   structure::ChallengeSignatureAlgorithm salt_signature_algorithm_ =
       structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;

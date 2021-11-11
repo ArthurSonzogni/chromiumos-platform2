@@ -800,7 +800,9 @@ class UserDataAuth {
       const user_data_auth::MountRequest& request,
       const MountArgs mount_args,
       base::OnceCallback<void(const user_data_auth::MountReply&)> on_done,
-      std::unique_ptr<Credentials> credentials);
+      std::unique_ptr<structure::SignatureChallengeInfo>
+          signature_challenge_info,
+      std::unique_ptr<brillo::SecureBlob> passkey);
 
   // This is a utility function used by DoMount(). It is called either by
   // DoMount() (when using password for authentication.), or by
@@ -833,8 +835,9 @@ class UserDataAuth {
       const user_data_auth::CheckKeyRequest& request,
       base::OnceCallback<void(user_data_auth::CryptohomeErrorCode)> on_done);
   void OnFullChallengeResponseCheckKeyDone(
+      const user_data_auth::CheckKeyRequest& request,
       base::OnceCallback<void(user_data_auth::CryptohomeErrorCode)> on_done,
-      std::unique_ptr<Credentials> credentials);
+      std::unique_ptr<brillo::SecureBlob> passkey);
 
   // ================= Key Management Related Helper Methods ============
 

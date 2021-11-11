@@ -16,7 +16,6 @@
 #include <gmock/gmock.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
-#include "cryptohome/credentials.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/vault_keyset.pb.h"
 
@@ -31,7 +30,7 @@ class MockChallengeCredentialsHelper : public ChallengeCredentialsHelper {
       void,
       GenerateNew,
       (const std::string& account_id,
-       const KeyData& key_data,
+       const ChallengePublicKeyInfo& public_key_info,
        (const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions),
        std::unique_ptr<KeyChallengeService> key_challenge_service,
        GenerateNewCallback callback),
@@ -39,7 +38,7 @@ class MockChallengeCredentialsHelper : public ChallengeCredentialsHelper {
   MOCK_METHOD(void,
               Decrypt,
               (const std::string& account_id,
-               const KeyData& key_data,
+               const ChallengePublicKeyInfo& public_key_info,
                const structure::SignatureChallengeInfo& keyset_challenge_info,
                std::unique_ptr<KeyChallengeService> key_challenge_service,
                DecryptCallback callback),
@@ -47,7 +46,7 @@ class MockChallengeCredentialsHelper : public ChallengeCredentialsHelper {
   MOCK_METHOD(void,
               VerifyKey,
               (const std::string& account_id,
-               const KeyData& key_data,
+               const ChallengePublicKeyInfo& public_key_info,
                std::unique_ptr<KeyChallengeService> key_challenge_service,
                VerifyKeyCallback callback),
               (override));

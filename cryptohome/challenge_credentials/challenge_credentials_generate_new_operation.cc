@@ -13,7 +13,6 @@
 #include <base/optional.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
-#include "cryptohome/credentials.h"
 #include "cryptohome/signature_sealed_data.pb.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/tpm.h"
@@ -70,7 +69,7 @@ ChallengeCredentialsGenerateNewOperation::
         const brillo::Blob& delegate_blob,
         const brillo::Blob& delegate_secret,
         const std::string& account_id,
-        const KeyData& key_data,
+        const ChallengePublicKeyInfo& public_key_info,
         const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
         CompletionCallback completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
@@ -78,12 +77,10 @@ ChallengeCredentialsGenerateNewOperation::
       delegate_blob_(delegate_blob),
       delegate_secret_(delegate_secret),
       account_id_(account_id),
-      key_data_(key_data),
+      public_key_info_(public_key_info),
       pcr_restrictions_(pcr_restrictions),
       completion_callback_(std::move(completion_callback)),
-      signature_sealing_backend_(tpm_->GetSignatureSealingBackend()) {
-  DCHECK_EQ(key_data.type(), KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
-}
+      signature_sealing_backend_(tpm_->GetSignatureSealingBackend()) {}
 
 ChallengeCredentialsGenerateNewOperation::
     ~ChallengeCredentialsGenerateNewOperation() = default;
@@ -108,7 +105,8 @@ void ChallengeCredentialsGenerateNewOperation::Abort() {
   // cancellation is not supported by the challenges IPC API currently, neither
   // it is supported by the API for smart card drivers in Chrome OS.
   weak_ptr_factory_.InvalidateWeakPtrs();
-  Complete(&completion_callback_, nullptr /* credentials */);
+  Complete(&completion_callback_, nullptr /* signature_challenge_info */,
+           nullptr /* passkey */);
   // |this| can be already destroyed at this point.
 }
 
@@ -117,16 +115,6 @@ bool ChallengeCredentialsGenerateNewOperation::StartProcessing() {
     LOG(ERROR) << "Signature sealing is disabled";
     return false;
   }
-  if (!key_data_.challenge_response_key_size()) {
-    LOG(ERROR) << "Missing challenge-response key information";
-    return false;
-  }
-  if (key_data_.challenge_response_key_size() > 1) {
-    LOG(ERROR)
-        << "Using multiple challenge-response keys at once is unsupported";
-    return false;
-  }
-  public_key_info_ = key_data_.challenge_response_key(0);
   if (!public_key_info_.signature_algorithm_size()) {
     LOG(ERROR) << "The key does not support any signature algorithm";
     return false;
@@ -207,13 +195,15 @@ void ChallengeCredentialsGenerateNewOperation::OnSaltChallengeResponse(
 void ChallengeCredentialsGenerateNewOperation::ProceedIfComputationsDone() {
   if (!salt_signature_ || !tpm_protected_secret_value_)
     return;
-  auto credentials = std::make_unique<Credentials>(
-      account_id_,
+
+  auto signature_challenge_info =
+      std::make_unique<structure::SignatureChallengeInfo>(
+          ConstructKeysetSignatureChallengeInfo());
+
+  auto passkey = std::make_unique<brillo::SecureBlob>(
       ConstructPasskey(*tpm_protected_secret_value_, *salt_signature_));
-  credentials->set_key_data(key_data_);
-  credentials->set_challenge_credentials_keyset_info(
-      proto::ToProto(ConstructKeysetSignatureChallengeInfo()));
-  Complete(&completion_callback_, std::move(credentials));
+  Complete(&completion_callback_, std::move(signature_challenge_info),
+           std::move(passkey));
   // |this| can be already destroyed at this point.
 }
 

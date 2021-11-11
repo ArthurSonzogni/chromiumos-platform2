@@ -14,7 +14,6 @@
 #include <base/logging.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
-#include "cryptohome/credentials.h"
 #include "cryptohome/signature_sealing/structures.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 
@@ -51,7 +50,7 @@ ChallengeCredentialsDecryptOperation::ChallengeCredentialsDecryptOperation(
     const Blob& delegate_blob,
     const Blob& delegate_secret,
     const std::string& account_id,
-    const KeyData& key_data,
+    const ChallengePublicKeyInfo& public_key_info,
     const structure::SignatureChallengeInfo& keyset_challenge_info,
     CompletionCallback completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
@@ -59,12 +58,10 @@ ChallengeCredentialsDecryptOperation::ChallengeCredentialsDecryptOperation(
       delegate_blob_(delegate_blob),
       delegate_secret_(delegate_secret),
       account_id_(account_id),
-      key_data_(key_data),
+      public_key_info_(public_key_info),
       keyset_challenge_info_(keyset_challenge_info),
       completion_callback_(std::move(completion_callback)),
-      signature_sealing_backend_(tpm_->GetSignatureSealingBackend()) {
-  DCHECK_EQ(key_data.type(), KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
-}
+      signature_sealing_backend_(tpm_->GetSignatureSealingBackend()) {}
 
 ChallengeCredentialsDecryptOperation::~ChallengeCredentialsDecryptOperation() =
     default;
@@ -74,7 +71,7 @@ void ChallengeCredentialsDecryptOperation::Start() {
   if (TPMErrorBase err = StartProcessing()) {
     Resolve(WrapError<TPMError>(std::move(err),
                                 "Failed to start the decryption operation"),
-            nullptr /* credentials */);
+            nullptr /* passkey */);
     // |this| can be already destroyed at this point.
   }
 }
@@ -82,7 +79,7 @@ void ChallengeCredentialsDecryptOperation::Start() {
 void ChallengeCredentialsDecryptOperation::Abort() {
   DCHECK(thread_checker_.CalledOnValidThread());
   Resolve(CreateError<TPMError>("aborted", TPMRetryAction::kNoRetry),
-          nullptr /* credentials */);
+          nullptr /* passkey */);
   // |this| can be already destroyed at this point.
 }
 
@@ -91,16 +88,6 @@ TPMErrorBase ChallengeCredentialsDecryptOperation::StartProcessing() {
     return CreateError<TPMError>("Signature sealing is disabled",
                                  TPMRetryAction::kNoRetry);
   }
-  if (!key_data_.challenge_response_key_size()) {
-    return CreateError<TPMError>("Missing challenge-response key information",
-                                 TPMRetryAction::kNoRetry);
-  }
-  if (key_data_.challenge_response_key_size() > 1) {
-    return CreateError<TPMError>(
-        "Using multiple challenge-response keys at once is unsupported",
-        TPMRetryAction::kNoRetry);
-  }
-  public_key_info_ = key_data_.challenge_response_key(0);
   if (!public_key_info_.signature_algorithm_size()) {
     return CreateError<TPMError>(
         "The key does not support any signature algorithm",
@@ -173,7 +160,7 @@ void ChallengeCredentialsDecryptOperation::OnSaltChallengeResponse(
   if (!salt_signature) {
     Resolve(CreateError<TPMError>("Salt signature challenge failed",
                                   TPMRetryAction::kNoRetry),
-            nullptr /* credentials */);
+            nullptr /* passkey */);
     // |this| can be already destroyed at this point.
     return;
   }
@@ -187,7 +174,7 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
   if (!challenge_signature) {
     Resolve(CreateError<TPMError>("Unsealing signature challenge failed",
                                   TPMRetryAction::kNoRetry),
-            nullptr /* credentials */);
+            nullptr /* passkey */);
     // |this| can be already destroyed at this point.
     return;
   }
@@ -197,7 +184,7 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
     // TODO(crbug.com/842791): Determine the retry action based on the type of
     // the error.
     Resolve(WrapError<TPMError>(std::move(err), "Failed to unseal the secret"),
-            nullptr /* credentials */);
+            nullptr /* passkey */);
     // |this| can be already destroyed at this point.
     return;
   }
@@ -208,15 +195,14 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
 void ChallengeCredentialsDecryptOperation::ProceedIfChallengesDone() {
   if (!salt_signature_ || !unsealed_secret_)
     return;
-  auto credentials = std::make_unique<Credentials>(
-      account_id_, ConstructPasskey(*unsealed_secret_, *salt_signature_));
-  credentials->set_key_data(key_data_);
-  Resolve(nullptr, std::move(credentials));
+  auto passkey = std::make_unique<brillo::SecureBlob>(
+      ConstructPasskey(*unsealed_secret_, *salt_signature_));
+  Resolve(nullptr, std::move(passkey));
   // |this| can be already destroyed at this point.
 }
 
 void ChallengeCredentialsDecryptOperation::Resolve(
-    TPMErrorBase error, std::unique_ptr<Credentials> credentials) {
+    TPMErrorBase error, std::unique_ptr<brillo::SecureBlob> passkey) {
   // Invalidate weak pointers in order to cancel all jobs that are currently
   // waiting, to prevent them from running and consuming resources after our
   // abortion (in case |this| doesn't get destroyed immediately).
@@ -226,7 +212,7 @@ void ChallengeCredentialsDecryptOperation::Resolve(
   // cancellation is not supported by the challenges IPC API currently, neither
   // it is supported by the API for smart card drivers in Chrome OS.
   weak_ptr_factory_.InvalidateWeakPtrs();
-  Complete(&completion_callback_, std::move(error), std::move(credentials));
+  Complete(&completion_callback_, std::move(error), std::move(passkey));
 }
 
 }  // namespace cryptohome

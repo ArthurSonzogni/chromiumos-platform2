@@ -1586,6 +1586,24 @@ void UserDataAuth::DoChallengeResponseMount(
       SanitizeUserNameWithSalt(account_id, system_salt_);
   const KeyData key_data = request.authorization().key().data();
 
+  if (!key_data.challenge_response_key_size()) {
+    LOG(ERROR) << "Missing challenge-response key information";
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
+    std::move(on_done).Run(reply);
+    return;
+  }
+
+  if (key_data.challenge_response_key_size() > 1) {
+    LOG(ERROR)
+        << "Using multiple challenge-response keys at once is unsupported";
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
+    std::move(on_done).Run(reply);
+    return;
+  }
+
+  const ChallengePublicKeyInfo& public_key_info =
+      key_data.challenge_response_key(0);
+
   if (!request.authorization().has_key_delegate() ||
       !request.authorization().key_delegate().has_dbus_service_name()) {
     LOG(ERROR) << "Cannot do challenge-response mount without key delegate "
@@ -1627,13 +1645,20 @@ void UserDataAuth::DoChallengeResponseMount(
   if (use_existing_credentials && vault_keyset->HasSignatureChallengeInfo()) {
     // Home directory already exist and we are not doing ephemeral mount, so
     // we'll decrypt existing VaultKeyset.
+    // Note: We don't need the |signature_challenge_info| when we are decrypting
+    // the challenge credential, because the keyset managerment doesn't need to
+    // read the |signature_challenge_info| from the credentials in this case.
+    // This behavior would eventually be replaced by the asynchronous challenge
+    // credential auth block, we can get rid of the |signature_challenge_info|
+    // from the credentials after we move it into the auth block state.
     challenge_credentials_helper_->Decrypt(
-        account_id, key_data,
+        account_id, public_key_info,
         proto::FromProto(vault_keyset->GetSignatureChallengeInfo()),
         std::move(key_challenge_service),
         base::BindOnce(
             &UserDataAuth::OnChallengeResponseMountCredentialsObtained,
-            base::Unretained(this), request, mount_args, std::move(on_done)));
+            base::Unretained(this), request, mount_args, std::move(on_done),
+            /*signature_challenge_info=*/nullptr));
   } else {
     // We'll create a new VaultKeyset that accepts challenge response
     // authentication.
@@ -1648,7 +1673,7 @@ void UserDataAuth::DoChallengeResponseMount(
     GetChallengeCredentialsPcrRestrictions(obfuscated_username,
                                            &pcr_restrictions);
     challenge_credentials_helper_->GenerateNew(
-        account_id, key_data, pcr_restrictions,
+        account_id, public_key_info, pcr_restrictions,
         std::move(key_challenge_service),
         base::BindOnce(
             &UserDataAuth::OnChallengeResponseMountCredentialsObtained,
@@ -1660,7 +1685,8 @@ void UserDataAuth::OnChallengeResponseMountCredentialsObtained(
     const user_data_auth::MountRequest& request,
     const UserDataAuth::MountArgs mount_args,
     base::OnceCallback<void(const user_data_auth::MountReply&)> on_done,
-    std::unique_ptr<Credentials> credentials) {
+    std::unique_ptr<structure::SignatureChallengeInfo> signature_challenge_info,
+    std::unique_ptr<brillo::SecureBlob> passkey) {
   AssertOnMountThread();
   // If we get here, that means the ChallengeCredentialsHelper have finished the
   // process of doing challenge response authentication, either successful or
@@ -1672,13 +1698,22 @@ void UserDataAuth::OnChallengeResponseMountCredentialsObtained(
   DCHECK_EQ(request.authorization().key().data().type(),
             KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
 
-  if (!credentials) {
+  if (!passkey) {
     // Challenge response authentication have failed.
     LOG(ERROR) << "Could not mount due to failure to obtain challenge-response "
                   "credentials";
     reply.set_error(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
     std::move(on_done).Run(reply);
     return;
+  }
+
+  const std::string& account_id = GetAccountId(request.account());
+  auto credentials = std::make_unique<Credentials>(account_id, *passkey);
+  credentials->set_key_data(request.authorization().key().data());
+
+  if (signature_challenge_info != nullptr) {
+    credentials->set_challenge_credentials_keyset_info(
+        proto::ToProto(*signature_challenge_info));
   }
 
   DCHECK_EQ(credentials->key_data().type(),
@@ -2309,9 +2344,27 @@ void UserDataAuth::TryLightweightChallengeResponseCheckKey(
     return;
   }
 
+  if (!found_session_key_data->challenge_response_key_size()) {
+    LOG(ERROR) << "Missing challenge-response key information";
+    OnLightweightChallengeResponseCheckKeyDone(request, std::move(on_done),
+                                               /*success=*/false);
+    return;
+  }
+
+  if (found_session_key_data->challenge_response_key_size() > 1) {
+    LOG(ERROR)
+        << "Using multiple challenge-response keys at once is unsupported";
+    OnLightweightChallengeResponseCheckKeyDone(request, std::move(on_done),
+                                               /*success=*/false);
+    return;
+  }
+
+  const ChallengePublicKeyInfo& public_key_info =
+      found_session_key_data->challenge_response_key(0);
+
   // Attempt the lightweight check against the found user session.
   challenge_credentials_helper_->VerifyKey(
-      account_id, *found_session_key_data, std::move(key_challenge_service),
+      account_id, public_key_info, std::move(key_challenge_service),
       base::BindOnce(&UserDataAuth::OnLightweightChallengeResponseCheckKeyDone,
                      base::Unretained(this), request, std::move(on_done)));
 }
@@ -2370,24 +2423,49 @@ void UserDataAuth::DoFullChallengeResponseCheckKey(
     std::move(on_done).Run(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
     return;
   }
+
+  if (!authorization.key().data().challenge_response_key_size()) {
+    LOG(ERROR) << "Missing challenge-response key information";
+    std::move(on_done).Run(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
+    return;
+  }
+
+  if (authorization.key().data().challenge_response_key_size() > 1) {
+    LOG(ERROR)
+        << "Using multiple challenge-response keys at once is unsupported";
+    std::move(on_done).Run(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
+    return;
+  }
+
+  const ChallengePublicKeyInfo& public_key_info =
+      authorization.key().data().challenge_response_key(0);
+
   challenge_credentials_helper_->Decrypt(
-      account_id, authorization.key().data(),
+      account_id, public_key_info,
       proto::FromProto(vault_keyset->GetSignatureChallengeInfo()),
       std::move(key_challenge_service),
       base::BindOnce(&UserDataAuth::OnFullChallengeResponseCheckKeyDone,
-                     base::Unretained(this), std::move(on_done)));
+                     base::Unretained(this), request, std::move(on_done)));
 }
 
 void UserDataAuth::OnFullChallengeResponseCheckKeyDone(
+    const user_data_auth::CheckKeyRequest& request,
     base::OnceCallback<void(user_data_auth::CryptohomeErrorCode)> on_done,
-    std::unique_ptr<Credentials> credentials) {
+    std::unique_ptr<brillo::SecureBlob> passkey) {
   AssertOnMountThread();
-  if (!credentials) {
+  if (!passkey) {
     LOG(ERROR) << "Key checking failed due to failure to obtain "
                   "challenge-response credentials";
     std::move(on_done).Run(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
     return;
   }
+
+  const auto& authorization = request.authorization_request();
+  const auto& identifier = request.account_id();
+  const std::string& account_id = GetAccountId(identifier);
+
+  auto credentials = std::make_unique<Credentials>(account_id, *passkey);
+  credentials->set_key_data(authorization.key().data());
 
   // Entered the right creds, so reset LE credentials.
   keyset_management_->ResetLECredentials(*credentials);
