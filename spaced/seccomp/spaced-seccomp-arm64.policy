@@ -6,6 +6,7 @@ brk: 1
 clock_nanosleep: 1
 clone: 1
 close: 1
+clock_gettime: 1
 connect: 1
 dup: 1
 dup3: 1
@@ -31,6 +32,7 @@ getresgid: 1
 getresuid: 1
 getsockname: 1
 gettid: 1
+gettimeofday: 1
 getuid: 1
 io_destroy: 1
 io_getevents: 1
@@ -40,6 +42,7 @@ ioctl: arg1 == 0xc138fd00 || arg1 == 0xc138fd07 || arg1 == 0xc138fd0c || \
        arg1 == BLKGETSIZE64
 lseek: 1
 memfd_create: 1
+mkdirat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
@@ -50,6 +53,7 @@ ppoll: 1
 pread64: 1
 prlimit64: 1
 read: 1
+readlinkat: 1
 recvmsg: 1
 renameat: 1
 restart_syscall: 1

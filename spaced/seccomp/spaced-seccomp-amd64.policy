@@ -9,6 +9,7 @@ faccessat2: 1
 arch_prctl: 1
 brk: 1
 clock_getres: 1
+clock_gettime: 1
 clock_nanosleep: 1
 clone: 1
 close: 1
@@ -35,6 +36,7 @@ getppid: 1
 getresgid: 1
 getresuid: 1
 getsockname: 1
+gettimeofday: 1
 gettid: 1
 getuid: 1
 io_destroy: 1
@@ -46,6 +48,7 @@ ioctl: arg1 == 0xc138fd00 || arg1 == 0xc138fd07 || arg1 == 0xc138fd0c || \
 lseek: 1
 lstat: 1
 memfd_create: 1
+mkdir: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
@@ -56,6 +59,7 @@ poll: 1
 pread64: 1
 prlimit64: 1
 read: 1
+readlink: 1
 recvmsg: 1
 rename: 1
 restart_syscall: 1
