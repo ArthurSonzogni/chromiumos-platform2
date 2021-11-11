@@ -178,7 +178,8 @@ const std::vector<std::string> kDefaultExt4FormatOpts(
      // ^has_journal: Do not create journal.
      "-O", "^huge_file,^flex_bg,^has_journal",
      // Attempt to discard blocks at mkfs time.
-     "-E", "discard"});
+     // Assume that the storage device is already zeroed out.
+     "-E", "discard,assume_storage_prezeroed=1"});
 
 Platform::Platform()
     : mount_info_path_(FilePath(kProcDir)
