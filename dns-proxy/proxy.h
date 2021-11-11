@@ -20,6 +20,7 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <shill/dbus/client/client.h>
+#include <shill/net/byte_string.h>
 #include <shill/net/rtnl_listener.h>
 
 #include "dns-proxy/chrome_features_service_client.h"
@@ -250,7 +251,7 @@ class Proxy : public brillo::DBusDaemon {
 
   base::ScopedFD ns_fd_;
   patchpanel::ConnectNamespaceResponse ns_;
-  std::string ns_peer_ipv6_address_;
+  shill::ByteString ns_peer_ipv6_address_;
 
   std::unique_ptr<Resolver> resolver_;
   DoHConfig doh_config_;

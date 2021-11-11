@@ -250,7 +250,7 @@ void Proxy::StartDnsRedirection(const std::string& ifname,
   }
 
   // Request IPv6 DNS redirection rule only if the IPv6 address is available.
-  if (sa_family == AF_INET6 && ns_peer_ipv6_address_.empty()) {
+  if (sa_family == AF_INET6 && ns_peer_ipv6_address_.IsEmpty()) {
     return;
   }
 
@@ -274,10 +274,12 @@ void Proxy::StartDnsRedirection(const std::string& ifname,
     type = patchpanel::SetDnsRedirectionRuleRequest::USER;
   }
 
-  auto peer_addr =
-      sa_family == AF_INET
-          ? patchpanel::IPv4AddressToString(ns_.peer_ipv4_address())
-          : ns_peer_ipv6_address_;
+  const auto& peer_addr =
+      sa_family == AF_INET6
+          ? patchpanel::IPv6AddressToString(
+                *reinterpret_cast<const struct in6_addr*>(
+                    ns_peer_ipv6_address_.GetConstData()))
+          : patchpanel::IPv4AddressToString(ns_.peer_ipv4_address());
   auto fd = patchpanel_->RedirectDns(type, ifname, peer_addr, nameservers);
   // Restart the proxy if DNS redirection rules are failed to be set up. This
   // is necessary because when DNS proxy is running, /etc/resolv.conf is
@@ -866,8 +868,14 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
   }
 
   switch (msg.mode()) {
-    case shill::RTNLMessage::kModeAdd:
-      ns_peer_ipv6_address_ = msg.GetIfaAddress().ToString();
+    case shill::RTNLMessage::kModeAdd: {
+      const auto& peer_ipv6_addr = msg.GetIfaAddress();
+      if (ns_peer_ipv6_address_.Equals(peer_ipv6_addr.address())) {
+        return;
+      }
+      ns_peer_ipv6_address_ =
+          shill::ByteString(peer_ipv6_addr.address().GetConstData(),
+                            peer_ipv6_addr.address().GetLength());
       if (opts_.type == Type::kDefault && device_) {
         StartDnsRedirection("" /* ifname */, AF_INET6,
                             doh_config_.ipv6_nameservers());
@@ -876,8 +884,9 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
         StartGuestDnsRedirection(d, AF_INET6);
       }
       return;
+    }
     case shill::RTNLMessage::kModeDelete:
-      ns_peer_ipv6_address_.clear();
+      ns_peer_ipv6_address_.Clear();
       if (opts_.type == Type::kDefault) {
         StopDnsRedirection("" /* ifname */, AF_INET6);
       }

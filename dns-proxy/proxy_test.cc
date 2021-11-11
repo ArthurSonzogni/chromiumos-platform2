@@ -21,6 +21,7 @@
 #include <shill/dbus/client/fake_client.h>
 #include <shill/dbus-constants.h>
 #include <shill/dbus-proxy-mocks.h>
+#include <shill/net/byte_string.h>
 #include <shill/net/rtnl_handler.h>
 
 using testing::ElementsAreArray;
@@ -31,6 +32,7 @@ constexpr base::TimeDelta kRequestTimeout = base::TimeDelta::FromSeconds(10000);
 constexpr base::TimeDelta kRequestRetryDelay =
     base::TimeDelta::FromMilliseconds(200);
 constexpr int32_t kRequestMaxRetry = 1;
+constexpr struct in6_addr kIPv6Addr = IN6ADDR_LOOPBACK_INIT;
 
 int make_fd() {
   std::string fn(
@@ -1087,7 +1089,8 @@ TEST_F(ProxyTest, SystemProxy_NeverSetsDnsRedirectionRule) {
               ShillClient());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ =
+      shill::ByteString(kIPv6Addr.s6_addr, sizeof(kIPv6Addr.s6_addr));
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
   // System proxy must not request a redirect DNS rule.
@@ -1149,7 +1152,8 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
               ShillClient());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ =
+      shill::ByteString(kIPv6Addr.s6_addr, sizeof(kIPv6Addr.s6_addr));
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
   // Expect ConnectNamespace call and set the namespace address.
@@ -1223,7 +1227,8 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
               ShillClient());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ =
+      shill::ByteString(kIPv6Addr.s6_addr, sizeof(kIPv6Addr.s6_addr));
 
   // Expect ConnectNamespace call and set the namespace address.
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
@@ -1290,7 +1295,8 @@ TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
               ShillClient());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ =
+      shill::ByteString(kIPv6Addr.s6_addr, sizeof(kIPv6Addr.s6_addr));
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
   EXPECT_CALL(
@@ -1338,7 +1344,8 @@ TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleFeatureDisabled) {
               ShillClient());
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.shill_ready_ = true;
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ =
+      shill::ByteString(kIPv6Addr.s6_addr, sizeof(kIPv6Addr.s6_addr));
   proxy.feature_enabled_ = false;
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
@@ -1576,7 +1583,8 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
               std::move(client), ShillClient());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ =
+      shill::ByteString(kIPv6Addr.s6_addr, sizeof(kIPv6Addr.s6_addr));
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
   // Expect ConnectNamespace call and set the namespace address.
@@ -1619,7 +1627,8 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted) {
               std::move(client), ShillClient());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ =
+      shill::ByteString(kIPv6Addr.s6_addr, sizeof(kIPv6Addr.s6_addr));
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
   // Expect ConnectNamespace call and set the namespace address.
@@ -1663,7 +1672,8 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
               std::move(client), ShillClient());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ =
+      shill::ByteString(kIPv6Addr.s6_addr, sizeof(kIPv6Addr.s6_addr));
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _)).Times(0);
@@ -1703,7 +1713,8 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherIfname) {
               std::move(client), ShillClient());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ =
+      shill::ByteString(kIPv6Addr.s6_addr, sizeof(kIPv6Addr.s6_addr));
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _)).Times(0);
@@ -1743,7 +1754,8 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleFeatureDisabled) {
               std::move(client), ShillClient());
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.shill_ready_ = true;
-  proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.ns_peer_ipv6_address_ =
+      shill::ByteString(kIPv6Addr.s6_addr, sizeof(kIPv6Addr.s6_addr));
   proxy.feature_enabled_ = false;
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
