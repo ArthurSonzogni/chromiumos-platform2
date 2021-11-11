@@ -45,7 +45,7 @@ class CryptohomeVault {
   ~CryptohomeVault();
 
   // Sets up the cryptohome vault for mounting.
-  MountError Setup(const FileSystemKey& filesystem_key, bool create);
+  MountError Setup(const FileSystemKey& filesystem_key);
 
   // Removes the vault.
   bool Purge();

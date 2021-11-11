@@ -55,7 +55,7 @@ class EncryptedContainer {
   virtual bool Purge() = 0;
   // Sets up the encrypted container, including creating the container if
   // needed.
-  virtual bool Setup(const FileSystemKey& encryption_key, bool create) = 0;
+  virtual bool Setup(const FileSystemKey& encryption_key) = 0;
   // Tears down the container, removing the encryption key if it was added.
   virtual bool Teardown() = 0;
   // Checks if the container exists on disk.

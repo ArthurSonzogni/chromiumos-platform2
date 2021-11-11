@@ -38,16 +38,11 @@ bool EphemeralContainer::Purge() {
   return backing_device_->Purge();
 }
 
-bool EphemeralContainer::Setup(const FileSystemKey& encryption_key,
-                               bool create) {
+bool EphemeralContainer::Setup(const FileSystemKey& encryption_key) {
   // This is a validity check. Higher level code shouldn't even try using an
   // ephemeral container with keys, or try to re-use an existing one.
   if (encryption_key != FileSystemKey()) {
     LOG(ERROR) << "Encryption key for ephemeral must be empty";
-    return false;
-  }
-  if (!create) {
-    LOG(ERROR) << "Ephemeral setup should always have 'create' flag set";
     return false;
   }
 
@@ -58,6 +53,14 @@ bool EphemeralContainer::Setup(const FileSystemKey& encryption_key,
         ignore_result(container->Purge());
       },
       base::Unretained(this), base::Unretained(backing_device_.get())));
+
+  // Clean any pre-existing ram disks for the user.
+  if (backing_device_->Exists()) {
+    ignore_result(backing_device_->Teardown());
+    if (!backing_device_->Purge()) {
+      LOG(ERROR) << "Can't teardown previous backing store for the ephemeral.";
+    }
+  }
 
   // Create and setup the backing device the backing device.
   if (!backing_device_->Create()) {

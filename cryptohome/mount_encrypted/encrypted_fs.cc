@@ -287,9 +287,13 @@ result_code EncryptedFs::Setup(const cryptohome::FileSystemKey& encryption_key,
 
     // Create new sparse file.
     LOG(INFO) << "Creating sparse backing file with size " << fs_size_;
+  } else if (!container_->Exists()) {
+    // If not rebuilding, we expect the container to be present.
+    LOG(ERROR) << "Encrypted container doesn't exist";
+    return rc;
   }
 
-  if (!container_->Setup(encryption_key, rebuild)) {
+  if (!container_->Setup(encryption_key)) {
     LOG(ERROR) << "Failed to set up encrypted container";
     TeardownByStage(TeardownStage::kTeardownContainer, true);
     return rc;

@@ -49,18 +49,19 @@ TEST_F(EcryptfsContainerTest, SetupCreateCheck) {
       .Times(2)
       .WillRepeatedly(Return(true));
 
-  EXPECT_TRUE(container_->Setup(key_, true));
+  EXPECT_TRUE(container_->Setup(key_));
   EXPECT_TRUE(platform_.DirectoryExists(backing_dir_));
 }
 
 // Tests the setup path for an existing eCryptFs container.
 TEST_F(EcryptfsContainerTest, SetupNoCreateCheck) {
+  EXPECT_TRUE(platform_.CreateDirectory(backing_dir_));
   EXPECT_CALL(platform_,
               AddEcryptfsAuthToken(_, testing::MatchesRegex("[0-9a-z]*"), _))
       .Times(2)
       .WillRepeatedly(Return(true));
 
-  EXPECT_TRUE(container_->Setup(key_, false));
+  EXPECT_TRUE(container_->Setup(key_));
 }
 
 // Tests the failure path on failing to add the eCryptFs auth token to the
@@ -70,7 +71,7 @@ TEST_F(EcryptfsContainerTest, SetupFailedEncryptionKeyAdd) {
               AddEcryptfsAuthToken(_, testing::MatchesRegex("[0-9a-z]*"), _))
       .WillOnce(Return(false));
 
-  EXPECT_FALSE(container_->Setup(key_, false));
+  EXPECT_FALSE(container_->Setup(key_));
 }
 
 // Tests the failure path on failing to invalidate the user keyring.

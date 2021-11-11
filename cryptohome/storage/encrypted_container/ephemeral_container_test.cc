@@ -46,7 +46,7 @@ TEST_F(EphemeralContainerTest, Construct) {
   auto container_ = CreateContainer();
   EXPECT_FALSE(container_->Exists());
   EXPECT_THAT(container_->GetBackingLocation(), Eq(base::FilePath()));
-  EXPECT_TRUE(container_->Setup(FileSystemKey(), /*create=*/true));
+  EXPECT_TRUE(container_->Setup(FileSystemKey()));
   EXPECT_TRUE(container_->Exists());
   EXPECT_THAT(container_->GetBackingLocation(), Eq(base::FilePath(kDevice)));
   EXPECT_TRUE(container_->Teardown());

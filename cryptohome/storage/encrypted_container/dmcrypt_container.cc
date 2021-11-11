@@ -129,14 +129,18 @@ bool DmcryptContainer::Exists() {
   return backing_device_->Exists();
 }
 
-bool DmcryptContainer::Setup(const FileSystemKey& encryption_key, bool create) {
+bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
   // Check whether the kernel keyring provisioning is supported by the current
   // kernel.
   bool keyring_support =
       IsKernelKeyringSupported(device_mapper_->GetTargetVersion("crypt"));
-  if (create && !backing_device_->Create()) {
-    LOG(ERROR) << "Failed to create backing device";
-    return false;
+  bool created = false;
+  if (!backing_device_->Exists()) {
+    if (!backing_device_->Create()) {
+      LOG(ERROR) << "Failed to create backing device";
+      return false;
+    }
+    created = true;
   }
 
   if (!backing_device_->Setup()) {
@@ -227,7 +231,7 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key, bool create) {
   }
 
   // Create filesystem.
-  if (create && !platform_->FormatExt4(dmcrypt_device_path, mkfs_opts_, 0)) {
+  if (created && !platform_->FormatExt4(dmcrypt_device_path, mkfs_opts_, 0)) {
     PLOG(ERROR) << "Failed to format ext4 filesystem";
     return false;
   }

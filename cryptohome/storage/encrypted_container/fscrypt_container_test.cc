@@ -45,18 +45,19 @@ TEST_F(FscryptContainerTest, SetupCreateCheck) {
   EXPECT_CALL(platform_, SetDirCryptoKey(backing_dir_, _))
       .WillOnce(Return(true));
 
-  EXPECT_TRUE(container_->Setup(key_, true));
+  EXPECT_TRUE(container_->Setup(key_));
   EXPECT_TRUE(platform_.DirectoryExists(backing_dir_));
 }
 
 // Tests the setup path for an existing fscrypt container.
 TEST_F(FscryptContainerTest, SetupNoCreateCheck) {
+  EXPECT_TRUE(platform_.CreateDirectory(backing_dir_));
   EXPECT_CALL(platform_, AddDirCryptoKeyToKeyring(_, _)).WillOnce(Return(true));
 
   EXPECT_CALL(platform_, SetDirCryptoKey(backing_dir_, _))
       .WillOnce(Return(true));
 
-  EXPECT_TRUE(container_->Setup(key_, false));
+  EXPECT_TRUE(container_->Setup(key_));
 }
 
 // Tests failure path when adding the encryption key to the kernel/filesystem
@@ -65,7 +66,7 @@ TEST_F(FscryptContainerTest, SetupFailedEncryptionKeyAdd) {
   EXPECT_CALL(platform_, AddDirCryptoKeyToKeyring(_, _))
       .WillOnce(Return(false));
 
-  EXPECT_FALSE(container_->Setup(key_, false));
+  EXPECT_FALSE(container_->Setup(key_));
 }
 
 // Tests failure path when setting the encryption policy for the backing
@@ -76,7 +77,7 @@ TEST_F(FscryptContainerTest, SetupFailedEncryptionKeySet) {
   EXPECT_CALL(platform_, SetDirCryptoKey(backing_dir_, _))
       .WillOnce(Return(false));
 
-  EXPECT_FALSE(container_->Setup(key_, false));
+  EXPECT_FALSE(container_->Setup(key_));
 }
 
 // Tests failure path on failing to invalidate an added key from the

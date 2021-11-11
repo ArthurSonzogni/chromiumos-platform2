@@ -70,7 +70,7 @@ TEST_F(DmcryptContainerTest, SetupCreateCheck) {
 
   GenerateContainer();
 
-  EXPECT_TRUE(container_->Setup(key_, /*create=*/true));
+  EXPECT_TRUE(container_->Setup(key_));
   // Check that the device mapper target exists.
   EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
             brillo::SecureBlobToSecureHex(key_.fek));
@@ -87,21 +87,11 @@ TEST_F(DmcryptContainerTest, SetupNoCreateCheck) {
   backing_device_->Create();
   GenerateContainer();
 
-  EXPECT_TRUE(container_->Setup(key_, /*create=*/false));
+  EXPECT_TRUE(container_->Setup(key_));
   // Check that the device mapper target exists.
   EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
             brillo::SecureBlobToSecureHex(key_.fek));
   EXPECT_TRUE(device_mapper_.Remove(config_.dmcrypt_device_name));
-}
-
-// Tests failure path if the backing device fails to setup.
-TEST_F(DmcryptContainerTest, SetupFailedBackingDeviceSetup) {
-  GenerateContainer();
-
-  EXPECT_FALSE(container_->Setup(key_, /*create=*/false));
-  // Check that the device mapper target doesn't exist.
-  EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
-            brillo::SecureBlob());
 }
 
 // Tests failure path if the filesystem setup fails.
@@ -113,7 +103,7 @@ TEST_F(DmcryptContainerTest, SetupFailedFormatExt4) {
 
   GenerateContainer();
 
-  EXPECT_FALSE(container_->Setup(key_, /*create=*/true));
+  EXPECT_FALSE(container_->Setup(key_));
   // Check that the device mapper target doesn't exist.
   EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
             brillo::SecureBlob());
@@ -129,7 +119,7 @@ TEST_F(DmcryptContainerTest, SetupFailedTune2fs) {
   backing_device_->Create();
   GenerateContainer();
 
-  EXPECT_FALSE(container_->Setup(key_, /*create=*/false));
+  EXPECT_FALSE(container_->Setup(key_));
   // Check that the device mapper target doesn't exist.
   EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
             brillo::SecureBlob());
@@ -146,7 +136,7 @@ TEST_F(DmcryptContainerTest, TeardownCheck) {
   backing_device_->Create();
   GenerateContainer();
 
-  EXPECT_TRUE(container_->Setup(key_, /*create=*/false));
+  EXPECT_TRUE(container_->Setup(key_));
   // Now, attempt teardown of the device.
   EXPECT_TRUE(container_->Teardown());
   // Check that the device mapper target doesn't exist.

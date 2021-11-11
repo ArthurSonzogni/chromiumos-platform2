@@ -38,8 +38,7 @@ CryptohomeVault::~CryptohomeVault() {
   ignore_result(Teardown());
 }
 
-MountError CryptohomeVault::Setup(const FileSystemKey& filesystem_key,
-                                  bool create) {
+MountError CryptohomeVault::Setup(const FileSystemKey& filesystem_key) {
   if (!platform_->ClearUserKeyring()) {
     LOG(ERROR) << "Failed to clear user keyring";
   }
@@ -51,7 +50,7 @@ MountError CryptohomeVault::Setup(const FileSystemKey& filesystem_key,
 
   // If there is a migrating data container, we need to set up the existing
   // data container.
-  if (!container_->Setup(filesystem_key, create)) {
+  if (!container_->Setup(filesystem_key)) {
     LOG(ERROR) << "Failed to setup container.";
     // TODO(sarthakkukreti): MOUNT_ERROR_KEYRING_FAILED should be replaced with
     // a more specific type.
@@ -60,9 +59,7 @@ MountError CryptohomeVault::Setup(const FileSystemKey& filesystem_key,
 
   // If migration is allowed, set up the migrating container, depending on
   // whether it has already been set up or not.
-  if (migrating_container_ &&
-      !migrating_container_->Setup(filesystem_key,
-                                   !migrating_container_->Exists())) {
+  if (migrating_container_ && !migrating_container_->Setup(filesystem_key)) {
     LOG(ERROR) << "Failed to setup migrating container.";
     // TODO(sarthakkukreti): MOUNT_ERROR_KEYRING_FAILED should be replaced
     //  with a more specific type.
@@ -70,8 +67,7 @@ MountError CryptohomeVault::Setup(const FileSystemKey& filesystem_key,
   }
 
   // If we are mounting a dm-crypt cryptohome, setup a separate cache container.
-  if (cache_container_ &&
-      !cache_container_->Setup(filesystem_key, !cache_container_->Exists())) {
+  if (cache_container_ && !cache_container_->Setup(filesystem_key)) {
     LOG(ERROR) << "Failed to setup cache container.";
     // TODO(sarthakkukreti): MOUNT_ERROR_KEYRING_FAILED should be replaced
     //  with a more specific type.

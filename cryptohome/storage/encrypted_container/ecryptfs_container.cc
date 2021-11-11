@@ -29,9 +29,8 @@ bool EcryptfsContainer::Exists() {
   return platform_->DirectoryExists(backing_dir_);
 }
 
-bool EcryptfsContainer::Setup(const FileSystemKey& encryption_key,
-                              bool create) {
-  if (create) {
+bool EcryptfsContainer::Setup(const FileSystemKey& encryption_key) {
+  if (!platform_->DirectoryExists(backing_dir_)) {
     if (!platform_->CreateDirectory(backing_dir_)) {
       LOG(ERROR) << "Failed to create backing directory";
       return false;

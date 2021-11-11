@@ -133,7 +133,7 @@ MountError Mount::MountEphemeralCryptohome(const std::string& username) {
     return error != MOUNT_ERROR_NONE ? error : MOUNT_ERROR_FATAL;
   }
 
-  error = user_cryptohome_vault_->Setup(FileSystemKey(), /*create=*/true);
+  error = user_cryptohome_vault_->Setup(FileSystemKey());
   if (error != MOUNT_ERROR_NONE) {
     LOG(ERROR) << "Failed to setup ephemeral vault with error=" << error;
     user_cryptohome_vault_.reset();
@@ -175,8 +175,7 @@ MountError Mount::MountCryptohome(const std::string& username,
   }
 
   // Set up the cryptohome vault for mount.
-  mount_error =
-      user_cryptohome_vault_->Setup(file_system_keyset.Key(), is_pristine);
+  mount_error = user_cryptohome_vault_->Setup(file_system_keyset.Key());
   if (mount_error != MOUNT_ERROR_NONE) {
     return mount_error;
   }

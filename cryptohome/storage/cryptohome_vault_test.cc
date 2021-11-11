@@ -292,8 +292,7 @@ TEST_P(CryptohomeVaultTest, FailedProcessKeyringSetup) {
                 /*create_migrating_container=*/false,
                 /*create_cache_container=*/false);
   EXPECT_CALL(platform_, SetupProcessKeyring()).WillOnce(Return(false));
-  EXPECT_EQ(vault_->Setup(key_, /*create=*/true),
-            MOUNT_ERROR_SETUP_PROCESS_KEYRING_FAILED);
+  EXPECT_EQ(vault_->Setup(key_), MOUNT_ERROR_SETUP_PROCESS_KEYRING_FAILED);
   ExpectVaultTeardownOnDestruction();
 }
 
@@ -303,7 +302,7 @@ TEST_P(CryptohomeVaultTest, ContainerSetupFailed) {
                 /*create_migrating_container=*/false,
                 /*create_cache_container=*/false);
   ExpectVaultSetup();
-  EXPECT_EQ(vault_->Setup(key_, /*create=*/true), MOUNT_ERROR_KEYRING_FAILED);
+  EXPECT_EQ(vault_->Setup(key_), MOUNT_ERROR_KEYRING_FAILED);
   ExpectVaultTeardownOnDestruction();
 }
 
@@ -322,7 +321,7 @@ TEST_P(CryptohomeVaultTest, MigratingContainerSetupFailed) {
           ? MOUNT_ERROR_KEYRING_FAILED
           : MOUNT_ERROR_NONE;
 
-  EXPECT_EQ(vault_->Setup(key_, /*create=*/true), error);
+  EXPECT_EQ(vault_->Setup(key_), error);
   ExpectVaultTeardownOnDestruction();
 }
 
@@ -336,7 +335,7 @@ TEST_P(CryptohomeVaultTest, CreateVault) {
   ExpectContainerSetup(MigratingContainerType());
   ExpectCacheContainerSetup(CacheContainerType());
 
-  EXPECT_EQ(vault_->Setup(key_, /*create=*/true), MOUNT_ERROR_NONE);
+  EXPECT_EQ(vault_->Setup(key_), MOUNT_ERROR_NONE);
 
   CheckContainersExist();
   ExpectVaultTeardownOnDestruction();
@@ -353,7 +352,7 @@ TEST_P(CryptohomeVaultTest, ExistingVaultNoMigratingVault) {
   ExpectContainerSetup(MigratingContainerType());
   ExpectCacheContainerSetup(CacheContainerType());
 
-  EXPECT_EQ(vault_->Setup(key_, /*create=*/false), MOUNT_ERROR_NONE);
+  EXPECT_EQ(vault_->Setup(key_), MOUNT_ERROR_NONE);
 
   CheckContainersExist();
   ExpectVaultTeardownOnDestruction();
@@ -369,7 +368,7 @@ TEST_P(CryptohomeVaultTest, ExistingMigratingVault) {
   ExpectContainerSetup(MigratingContainerType());
   ExpectCacheContainerSetup(CacheContainerType());
 
-  EXPECT_EQ(vault_->Setup(key_, /*create=*/false), MOUNT_ERROR_NONE);
+  EXPECT_EQ(vault_->Setup(key_), MOUNT_ERROR_NONE);
 
   CheckContainersExist();
   ExpectVaultTeardownOnDestruction();
@@ -385,7 +384,7 @@ TEST_P(CryptohomeVaultTest, ExistingCacheContainer) {
   ExpectContainerSetup(MigratingContainerType());
   ExpectCacheContainerSetup(CacheContainerType());
 
-  EXPECT_EQ(vault_->Setup(key_, /*create=*/false), MOUNT_ERROR_NONE);
+  EXPECT_EQ(vault_->Setup(key_), MOUNT_ERROR_NONE);
 
   CheckContainersExist();
   ExpectVaultTeardownOnDestruction();

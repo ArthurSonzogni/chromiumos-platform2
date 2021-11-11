@@ -23,7 +23,7 @@ class EcryptfsContainer : public EncryptedContainer {
                     Platform* platform);
   ~EcryptfsContainer() = default;
 
-  bool Setup(const FileSystemKey& encryption_key, bool create) override;
+  bool Setup(const FileSystemKey& encryption_key) override;
   bool Teardown() override;
   bool Exists() override;
   bool Purge() override;

@@ -43,7 +43,7 @@ class DmcryptContainer : public EncryptedContainer {
 
   bool Purge() override;
 
-  bool Setup(const FileSystemKey& encryption_key, bool create) override;
+  bool Setup(const FileSystemKey& encryption_key) override;
 
   bool Teardown() override;
 

@@ -31,8 +31,8 @@ bool FscryptContainer::Exists() {
              dircrypto::KeyState::ENCRYPTED;
 }
 
-bool FscryptContainer::Setup(const FileSystemKey& encryption_key, bool create) {
-  if (create) {
+bool FscryptContainer::Setup(const FileSystemKey& encryption_key) {
+  if (!platform_->DirectoryExists(backing_dir_)) {
     if (!platform_->CreateDirectory(backing_dir_)) {
       LOG(ERROR) << "Failed to create directory " << backing_dir_;
       return false;

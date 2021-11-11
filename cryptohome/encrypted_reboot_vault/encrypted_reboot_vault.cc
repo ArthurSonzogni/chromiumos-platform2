@@ -123,7 +123,7 @@ bool EncryptedRebootVault::CreateVault() {
   }
 
   // Set up the encrypted reboot vault.
-  if (!encrypted_container_->Setup(transient_encryption_key, /*create=*/true)) {
+  if (!encrypted_container_->Setup(transient_encryption_key)) {
     LOG(ERROR) << "Failed to setup encrypted container";
     return false;
   }
@@ -170,9 +170,9 @@ bool EncryptedRebootVault::UnlockVault() {
     return false;
   }
 
-  // Unlock vault.
-  if (!encrypted_container_->Setup(transient_encryption_key,
-                                   /*create=*/false)) {
+  // Unlock vault. We expect the container to be present in this situation.
+  if (!encrypted_container_->Exists() ||
+      !encrypted_container_->Setup(transient_encryption_key)) {
     LOG(ERROR) << "Failed to add key to keyring.";
     return false;
   }
