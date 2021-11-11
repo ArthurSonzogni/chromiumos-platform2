@@ -248,6 +248,8 @@ const std::vector<Log> kCommandLogs {
       "edid-decode --skip-hex-dump \"${f}\" 2>/dev/null; "
     "done"},
   {kFile, "eventlog", "/var/log/eventlog.txt"},
+  {kCommand, "folder_size_dump", "/usr/libexec/debugd/helpers/folder_size_dump",
+    kRoot, kRoot, 1 * 1024 * 1024 /* 1 MiB*/, LogTool::Encoding::kUtf8, true},
   {kCommand, "font_info", "/usr/share/userfeedback/scripts/font_info"},
   {kGlob, "framebuffer", "/sys/kernel/debug/dri/?/framebuffer",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},

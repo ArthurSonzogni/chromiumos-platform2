@@ -20,6 +20,7 @@ group("all") {
     ":dev_features_ssh",
     ":dev_features_usb_boot",
     ":external-proto",
+    ":folder_size_dump",
     ":generate_logs",
     ":icmp",
     ":libdebugd",
@@ -228,6 +229,18 @@ executable("dev_features_usb_boot") {
     ":target_defaults",
   ]
   deps = [ ":libdebugd" ]
+}
+
+pkg_config("folder_size_dump_config") {
+  pkg_deps = [ "re2" ]
+}
+
+executable("folder_size_dump") {
+  sources = [ "src/helpers/folder_size_dump.cc" ]
+  configs += [
+    ":target_defaults",
+    ":folder_size_dump_config",
+  ]
 }
 
 executable("generate_logs") {

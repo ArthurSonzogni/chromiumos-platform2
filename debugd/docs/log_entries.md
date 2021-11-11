@@ -138,6 +138,19 @@ Expected size is ~20 KiB.
 
 ## eventlog
 
+## folder_size_dump
+
+The folder_size_dump helper dumps the actual disk usage (in bytes) of various
+system folders by calling
+`du --human-readable --total --summarize --one-file-system`.
+The list of folders and filtering can be found in `folder_size_dump.cc`. Each
+entry calls du individually with a sorted list of subfolders.
+
+The output of the `df` command is available separately for comparison.
+
+0 sized entries are filtered out to reduce the size of the report, this does not
+provide a complete folder contents listing.
+
 ## font_info
 
 ## framebuffer
