@@ -86,6 +86,7 @@ sendto: 1
 set_robust_list: 1
 set_tid_address: 1
 setgroups: 1
+setpriority: 1
 setresgid: 1
 setresuid: 1
 signalfd4: 1
