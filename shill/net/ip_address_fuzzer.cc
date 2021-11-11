@@ -37,26 +37,29 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   struct sockaddr* sockaddr_p = reinterpret_cast<struct sockaddr*>(&sockaddr);
 
   IPAddress addr1(family, bytestring);
-  addr1.GetMinPrefixLength();
-  addr1.GetDefaultBroadcast();
-  addr1.GetNetworkPart();
-  addr1.IntoString(&out);
-  addr1.IntoSockAddr(sockaddr_p, sizeof(sockaddr));
+  if (addr1.IsValid()) {
+    addr1.GetDefaultBroadcast();
+    addr1.GetNetworkPart();
+    addr1.IntoString(&out);
+    addr1.IntoSockAddr(sockaddr_p, sizeof(sockaddr));
+  }
 
   IPAddress addr2(str);
-  addr2.GetMinPrefixLength();
-  addr2.GetDefaultBroadcast();
-  addr2.GetNetworkPart();
-  addr2.IntoString(&out);
-  addr2.IntoSockAddr(sockaddr_p, sizeof(sockaddr));
+  if (addr2.IsValid()) {
+    addr2.GetDefaultBroadcast();
+    addr2.GetNetworkPart();
+    addr2.IntoString(&out);
+    addr2.IntoSockAddr(sockaddr_p, sizeof(sockaddr));
+  }
 
   IPAddress addr3(family);
   addr3.SetAddressAndPrefixFromString(str);
-  addr3.GetMinPrefixLength();
-  addr3.GetDefaultBroadcast();
-  addr3.GetNetworkPart();
-  addr3.IntoString(&out);
-  addr3.IntoSockAddr(sockaddr_p, sizeof(sockaddr));
+  if (addr3.IsValid()) {
+    addr3.GetDefaultBroadcast();
+    addr3.GetNetworkPart();
+    addr3.IntoString(&out);
+    addr3.IntoSockAddr(sockaddr_p, sizeof(sockaddr));
+  }
 
   IPAddress::GetPrefixLengthFromMask(family, str);
   IPAddress::GetAddressMaskFromPrefix(family, prefixlen);

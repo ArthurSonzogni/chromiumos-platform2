@@ -89,29 +89,6 @@ size_t IPAddress::GetMaxPrefixLength(Family family) {
   return GetAddressLength(family) * kBitsPerByte;
 }
 
-size_t IPAddress::GetMinPrefixLength() const {
-  if (family() != kFamilyIPv4) {
-    NOTIMPLEMENTED() << ": only implemented for IPv4";
-    return GetMaxPrefixLength(family());
-  }
-
-  CHECK(IsValid());
-  in_addr_t address_val;
-  memcpy(&address_val, GetConstData(), sizeof(address_val));
-  // IN_CLASSx() macros operate on addresses in host-order.
-  address_val = ntohl(address_val);
-  if (IN_CLASSA(address_val)) {
-    return GetMaxPrefixLength(family()) - IN_CLASSA_NSHIFT;
-  } else if (IN_CLASSB(address_val)) {
-    return GetMaxPrefixLength(family()) - IN_CLASSB_NSHIFT;
-  } else if (IN_CLASSC(address_val)) {
-    return GetMaxPrefixLength(family()) - IN_CLASSC_NSHIFT;
-  }
-
-  LOG(ERROR) << "Invalid IPv4 address class";
-  return GetMaxPrefixLength(family());
-}
-
 // static
 size_t IPAddress::GetPrefixLengthFromMask(Family family,
                                           const std::string& mask) {

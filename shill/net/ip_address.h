@@ -72,17 +72,6 @@ class SHILL_EXPORT IPAddress {
   // the length of this address type in bits.
   static size_t GetMaxPrefixLength(Family family);
 
-  // Provides a guideline for the minimum sensible prefix for this IP
-  // address.  As opposed to GetMaxPrefixLength() above, this function
-  // takes into account the class of this IP address to determine the
-  // smallest prefix that makes sense for this class of address to have.
-  // Since this function uses classful (pre-CIDR) rules to perform this
-  // estimate, this is not an absolute rule and others methods like
-  // IsValid() do not consider this a criteria.  It is only useful for
-  // making guesses as to the mimimal plausible prefix that might be
-  // viable for an address when the supplied prefix is obviously incorrect.
-  size_t GetMinPrefixLength() const;
-
   // Returns the prefix length given an address |family| and a |mask|. For
   // example, returns 24 for an IPv4 mask 255.255.255.0.
   static size_t GetPrefixLengthFromMask(Family family, const std::string& mask);

@@ -422,12 +422,6 @@ struct MinPrefixLengthMapping {
 class IPAddressMinPrefixLengthMappingTest
     : public testing::TestWithParam<MinPrefixLengthMapping> {};
 
-TEST_P(IPAddressMinPrefixLengthMappingTest, TestMinPrefixLengthMapping) {
-  IPAddress address(GetParam().family);
-  EXPECT_TRUE(address.SetAddressFromString(GetParam().address));
-  EXPECT_EQ(GetParam().expected_min_prefix, address.GetMinPrefixLength());
-}
-
 INSTANTIATE_TEST_SUITE_P(
     IPAddressMinPrefixLengthMappingTestRun,
     IPAddressMinPrefixLengthMappingTest,
