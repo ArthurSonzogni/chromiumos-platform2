@@ -19,12 +19,12 @@
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/cryptorecovery/recovery_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 
 using cryptohome::cryptorecovery::HsmPayload;
 using cryptohome::cryptorecovery::HsmResponsePlainText;
-using cryptohome::cryptorecovery::RecoveryCrypto;
+using cryptohome::cryptorecovery::RecoveryCryptoImpl;
 
 namespace cryptohome {
 
@@ -45,7 +45,7 @@ base::Optional<AuthBlockState> CryptohomeRecoveryAuthBlock::Create(
   const brillo::SecureBlob& mediator_pub_key =
       cryptohome_recovery_auth_input.mediator_pub_key.value();
 
-  std::unique_ptr<RecoveryCrypto> recovery = RecoveryCrypto::Create();
+  std::unique_ptr<RecoveryCryptoImpl> recovery = RecoveryCryptoImpl::Create();
   if (!recovery) {
     PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
     return base::nullopt;
@@ -130,7 +130,7 @@ bool CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   brillo::SecureBlob channel_priv_key = auth_state->channel_priv_key.value();
   brillo::SecureBlob salt = auth_state->salt.value();
 
-  std::unique_ptr<RecoveryCrypto> recovery = RecoveryCrypto::Create();
+  std::unique_ptr<RecoveryCryptoImpl> recovery = RecoveryCryptoImpl::Create();
   if (!recovery) {
     PopulateError(error, CryptoError::CE_OTHER_CRYPTO);
     return false;

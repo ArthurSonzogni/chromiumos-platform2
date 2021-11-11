@@ -18,8 +18,8 @@
 
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
-#include "cryptohome/cryptorecovery/recovery_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
 using base::FilePath;
@@ -27,7 +27,7 @@ using brillo::SecureBlob;
 using cryptohome::cryptorecovery::FakeRecoveryMediatorCrypto;
 using cryptohome::cryptorecovery::HsmPayload;
 using cryptohome::cryptorecovery::HsmResponsePlainText;
-using cryptohome::cryptorecovery::RecoveryCrypto;
+using cryptohome::cryptorecovery::RecoveryCryptoImpl;
 using cryptohome::cryptorecovery::RecoveryRequest;
 using cryptohome::cryptorecovery::RecoveryResponse;
 
@@ -68,7 +68,8 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
     const FilePath& channel_priv_key_out_file_path,
     const FilePath& serialized_hsm_payload_out_file_path,
     const FilePath& recovery_secret_out_file_path) {
-  std::unique_ptr<RecoveryCrypto> recovery_crypto = RecoveryCrypto::Create();
+  std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
+      RecoveryCryptoImpl::Create();
   if (!recovery_crypto) {
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;
@@ -132,7 +133,8 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
     return false;
   }
 
-  std::unique_ptr<RecoveryCrypto> recovery_crypto = RecoveryCrypto::Create();
+  std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
+      RecoveryCryptoImpl::Create();
   if (!recovery_crypto) {
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;
@@ -210,7 +212,8 @@ bool DoRecoveryCryptoDecryptAction(
   SecureBlob epoch_pub_key;
   CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key));
 
-  std::unique_ptr<RecoveryCrypto> recovery_crypto = RecoveryCrypto::Create();
+  std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
+      RecoveryCryptoImpl::Create();
   if (!recovery_crypto) {
     LOG(ERROR) << "Failed to create recovery crypto object.";
     return false;

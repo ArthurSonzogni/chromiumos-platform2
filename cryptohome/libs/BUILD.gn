@@ -146,6 +146,7 @@ static_library("libcrosplatform") {
     "../cryptohome_metrics.cc",
     "../cryptorecovery/recovery_crypto.cc",
     "../cryptorecovery/recovery_crypto_hsm_cbor_serialization.cc",
+    "../cryptorecovery/recovery_crypto_impl.cc",
     "../cryptorecovery/recovery_crypto_util.h",
     "../dircrypto_util.cc",
     "../libscrypt_compat.cc",

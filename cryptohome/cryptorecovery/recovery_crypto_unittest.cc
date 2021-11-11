@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/cryptorecovery/recovery_crypto.h"
 
 #include "cryptohome/crypto/big_num_util.h"
 #include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 
 #include <gtest/gtest.h>
 
@@ -88,7 +88,7 @@ class RecoveryCryptoTest : public testing::Test {
     ASSERT_TRUE(
         FakeRecoveryMediatorCrypto::GetFakeEpochPrivateKey(&epoch_priv_key_));
 
-    recovery_ = RecoveryCrypto::Create();
+    recovery_ = RecoveryCryptoImpl::Create();
     ASSERT_TRUE(recovery_);
     mediator_ = FakeRecoveryMediatorCrypto::Create();
     ASSERT_TRUE(mediator_);
@@ -127,7 +127,7 @@ class RecoveryCryptoTest : public testing::Test {
   SecureBlob mediator_priv_key_;
   SecureBlob epoch_pub_key_;
   SecureBlob epoch_priv_key_;
-  std::unique_ptr<RecoveryCrypto> recovery_;
+  std::unique_ptr<RecoveryCryptoImpl> recovery_;
   std::unique_ptr<FakeRecoveryMediatorCrypto> mediator_;
 };
 

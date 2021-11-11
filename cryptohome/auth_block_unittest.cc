@@ -22,8 +22,8 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_recovery_auth_block.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
-#include "cryptohome/cryptorecovery/recovery_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/double_wrapped_compat_auth_block.h"
 #include "cryptohome/libscrypt_compat_auth_block.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
@@ -37,7 +37,7 @@
 #include "cryptohome/vault_keyset.h"
 
 using cryptohome::cryptorecovery::FakeRecoveryMediatorCrypto;
-using cryptohome::cryptorecovery::RecoveryCrypto;
+using cryptohome::cryptorecovery::RecoveryCryptoImpl;
 using ::hwsec::error::TPMError;
 using ::hwsec::error::TPMErrorBase;
 using ::hwsec::error::TPMRetryAction;
@@ -977,7 +977,7 @@ TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   EXPECT_TRUE(DeserializeHsmPayloadFromCbor(hsm_payload_cbor, &hsm_payload));
 
   // Start recovery process.
-  std::unique_ptr<RecoveryCrypto> recovery = RecoveryCrypto::Create();
+  std::unique_ptr<RecoveryCryptoImpl> recovery = RecoveryCryptoImpl::Create();
   ASSERT_TRUE(recovery);
   brillo::SecureBlob ephemeral_pub_key;
   brillo::SecureBlob recovery_request_cbor;
