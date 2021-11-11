@@ -53,12 +53,9 @@ int LoopDeviceIoctl(const base::FilePath& device,
     return -EINVAL;
   }
 
-  int rc = ioctl(device_fd.get(), type, arg);
-
-  if (rc < 0)
-    PLOG(ERROR) << "ioctl failed.";
-
-  return rc;
+  // Some ioctl failures may be informational (eg. on non-existent loop
+  // devices) so it is left to users of this function to log actual errors.
+  return ioctl(device_fd.get(), type, arg);
 }
 
 // Parse the device number for a valid /sys/block/loopX path
@@ -114,20 +111,25 @@ LoopDevice::LoopDevice(int device_number,
       loop_ioctl_(ioctl_runner) {}
 
 bool LoopDevice::SetStatus(struct loop_info64 info) {
-  if (loop_ioctl_.Run(GetDevicePath(), LOOP_SET_STATUS64,
-                      reinterpret_cast<uint64_t>(&info),
-                      kLoopDeviceIoctlFlags) < 0) {
-    LOG(ERROR) << "ioctl(LOOP_SET_STATUS64) failed";
+  int err =
+      loop_ioctl_.Run(GetDevicePath(), LOOP_SET_STATUS64,
+                      reinterpret_cast<uint64_t>(&info), kLoopDeviceIoctlFlags);
+  if (err < 0) {
+    LOG_IF(ERROR, err != -ENXIO) << "ioctl(LOOP_SET_STATUS64) failed";
     return false;
   }
   return true;
 }
 
 bool LoopDevice::GetStatus(struct loop_info64* info) {
-  if (loop_ioctl_.Run(GetDevicePath(), LOOP_GET_STATUS64,
-                      reinterpret_cast<uint64_t>(info),
-                      kLoopDeviceIoctlFlags) < 0) {
-    LOG(ERROR) << "ioctl(LOOP_GET_STATUS64) failed";
+  int err =
+      loop_ioctl_.Run(GetDevicePath(), LOOP_GET_STATUS64,
+                      reinterpret_cast<uint64_t>(info), kLoopDeviceIoctlFlags);
+
+  if (err < 0) {
+    // Loop devices that are not attached to a file will fail with -ENXIO.
+    LOG_IF(ERROR, err != -ENXIO)
+        << "ioctl(LOOP_GET_STATUS64) failed, err: " << err;
     return false;
   }
   return true;
@@ -143,9 +145,10 @@ bool LoopDevice::SetName(const std::string& name) {
 }
 
 bool LoopDevice::Detach() {
-  if (loop_ioctl_.Run(GetDevicePath(), LOOP_CLR_FD, 0, kLoopDeviceIoctlFlags) !=
-      0) {
-    LOG(ERROR) << "ioctl(LOOP_CLR_FD) failed";
+  int err =
+      loop_ioctl_.Run(GetDevicePath(), LOOP_CLR_FD, 0, kLoopDeviceIoctlFlags);
+  if (err < 0) {
+    LOG_IF(ERROR, err != -ENXIO) << "ioctl(LOOP_CLR_FD) failed, err: " << err;
     return false;
   }
 
@@ -243,8 +246,9 @@ std::unique_ptr<LoopDevice> LoopDeviceManager::GetAttachedDeviceByName(
   for (auto& attached_device : devices) {
     struct loop_info64 device_info;
 
+    // GetStatus() can fail for loop devices that have LOOP_CLEAR_FD called
+    // while the device node still hasn't been cleaned up by udev.
     if (!attached_device->GetStatus(&device_info)) {
-      LOG(ERROR) << "GetStatus failed";
       continue;
     }
 
@@ -278,9 +282,17 @@ LoopDeviceManager::SearchLoopDevicePaths(int device_number) {
     for (auto loopdev = loopdev_enum.Next(); !loopdev.empty();
          loopdev = loopdev_enum.Next()) {
       int dev_number = GetDeviceNumber(loopdev);
-      if (dev_number != -1)
-        devices.push_back(
-            CreateLoopDevice(dev_number, GetBackingFile(loopdev)));
+      if (dev_number != -1) {
+        auto attached_device =
+            CreateLoopDevice(dev_number, GetBackingFile(loopdev));
+
+        struct loop_info64 device_info;
+        // GetStatus() can fail for loop devices that have LOOP_CLEAR_FD called
+        // while the device node still hasn't been cleaned up by udev.
+        if (attached_device->GetStatus(&device_info)) {
+          devices.push_back(std::move(attached_device));
+        }
+      }
     }
   }
   return devices;
