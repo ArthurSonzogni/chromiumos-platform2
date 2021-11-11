@@ -138,8 +138,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   datapath.StopVpnRouting(ifname);
   datapath.MaskInterfaceFlags(ifname, provider.ConsumeIntegral<uint16_t>(),
                               provider.ConsumeIntegral<uint16_t>());
-  datapath.AddIPv6Forwarding(ifname, ifname2);
-  datapath.RemoveIPv6Forwarding(ifname, ifname2);
   datapath.AddIPv6HostRoute(ifname, ipv6_addr_str, prefix_len);
   datapath.RemoveIPv6HostRoute(ifname, ipv6_addr_str, prefix_len);
   datapath.AddIPv6Address(ifname, ipv6_addr_str);

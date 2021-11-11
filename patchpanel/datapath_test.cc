@@ -353,7 +353,6 @@ TEST(DatapathTest, Start) {
       // Asserts for AddForwardEstablishedRule
       {IPv4,
        "filter -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT -w"},
-      {IPv4, "filter -A FORWARD -i arc+ -j ACCEPT -w"},
       // Asserts for AddSourceIPv4DropRule() calls.
       {IPv4, "filter -N drop_guest_ipv4_prefix -w"},
       {IPv4, "filter -I OUTPUT -j drop_guest_ipv4_prefix -w"},
@@ -779,8 +778,8 @@ TEST(DatapathTest, StartRoutingNamespace) {
             "addr add 100.115.92.129/30 brd 100.115.92.131 dev arc_ns0");
   Verify_ip(*runner,
             "link set dev arc_ns0 up addr 06:05:04:03:02:01 multicast off");
-  Verify_iptables(*runner, IPv4, "filter -A FORWARD -o arc_ns0 -j ACCEPT -w");
-  Verify_iptables(*runner, IPv4, "filter -A FORWARD -i arc_ns0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "filter -A FORWARD -o arc_ns0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "filter -A FORWARD -i arc_ns0 -j ACCEPT -w");
   Verify_iptables(*runner, Dual, "mangle -N PREROUTING_arc_ns0 -w");
   Verify_iptables(*runner, Dual, "mangle -F PREROUTING_arc_ns0 -w");
   Verify_iptables(*runner, Dual,
@@ -821,8 +820,8 @@ TEST(DatapathTest, StopRoutingNamespace) {
   auto firewall = new MockFirewall();
   auto system = new FakeSystem();
 
-  Verify_iptables(*runner, IPv4, "filter -D FORWARD -o arc_ns0 -j ACCEPT -w");
-  Verify_iptables(*runner, IPv4, "filter -D FORWARD -i arc_ns0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "filter -D FORWARD -o arc_ns0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "filter -D FORWARD -i arc_ns0 -j ACCEPT -w");
   Verify_iptables(*runner, Dual,
                   "mangle -D PREROUTING -i arc_ns0 -j PREROUTING_arc_ns0 -w");
   Verify_iptables(*runner, Dual, "mangle -F PREROUTING_arc_ns0 -w");
@@ -874,10 +873,8 @@ TEST(DatapathTest, StartRoutingDevice_Arc) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   auto system = new FakeSystem();
-  Verify_iptables(*runner, IPv4,
-                  "filter -A FORWARD -i eth0 -o arc_eth0 -j ACCEPT -w");
-  Verify_iptables(*runner, IPv4,
-                  "filter -A FORWARD -i arc_eth0 -o eth0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "filter -A FORWARD -o arc_eth0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "filter -A FORWARD -i arc_eth0 -j ACCEPT -w");
   Verify_iptables(*runner, Dual, "mangle -N PREROUTING_arc_eth0 -w");
   Verify_iptables(*runner, Dual, "mangle -F PREROUTING_arc_eth0 -w");
   Verify_iptables(*runner, Dual,
@@ -902,8 +899,8 @@ TEST(DatapathTest, StartRoutingDevice_CrosVM) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   auto system = new FakeSystem();
-  Verify_iptables(*runner, IPv4, "filter -A FORWARD -o vmtap0 -j ACCEPT -w");
-  Verify_iptables(*runner, IPv4, "filter -A FORWARD -i vmtap0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "filter -A FORWARD -o vmtap0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "filter -A FORWARD -i vmtap0 -j ACCEPT -w");
   Verify_iptables(*runner, Dual, "mangle -N PREROUTING_vmtap0 -w");
   Verify_iptables(*runner, Dual, "mangle -F PREROUTING_vmtap0 -w");
   Verify_iptables(*runner, Dual,
@@ -931,10 +928,8 @@ TEST(DatapathTest, StopRoutingDevice_Arc) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   auto system = new FakeSystem();
-  Verify_iptables(*runner, IPv4,
-                  "filter -D FORWARD -i eth0 -o arc_eth0 -j ACCEPT -w");
-  Verify_iptables(*runner, IPv4,
-                  "filter -D FORWARD -i arc_eth0 -o eth0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "filter -D FORWARD -o arc_eth0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "filter -D FORWARD -i arc_eth0 -j ACCEPT -w");
   Verify_iptables(*runner, Dual,
                   "mangle -D PREROUTING -i arc_eth0 -j PREROUTING_arc_eth0 -w");
   Verify_iptables(*runner, Dual, "mangle -F PREROUTING_arc_eth0 -w");
@@ -949,8 +944,8 @@ TEST(DatapathTest, StopRoutingDevice_CrosVM) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   auto system = new FakeSystem();
-  Verify_iptables(*runner, IPv4, "filter -D FORWARD -o vmtap0 -j ACCEPT -w");
-  Verify_iptables(*runner, IPv4, "filter -D FORWARD -i vmtap0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "filter -D FORWARD -o vmtap0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "filter -D FORWARD -i vmtap0 -j ACCEPT -w");
   Verify_iptables(*runner, Dual,
                   "mangle -D PREROUTING -i vmtap0 -j PREROUTING_vmtap0 -w");
   Verify_iptables(*runner, Dual, "mangle -F PREROUTING_vmtap0 -w");
@@ -1098,11 +1093,9 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
                   "nat -D OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
                   "redirect_dns -w");
   Verify_iptables(*runner, Dual, "filter -F vpn_accept -w");
-  // Start tun0 <-> arcbr0 routing
-  Verify_iptables(*runner, IPv4,
-                  "filter -A FORWARD -i tun0 -o arcbr0 -j ACCEPT -w");
-  Verify_iptables(*runner, IPv4,
-                  "filter -A FORWARD -i arcbr0 -o tun0 -j ACCEPT -w");
+  // Start arcbr0 routing
+  Verify_iptables(*runner, Dual, "filter -A FORWARD -o arcbr0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "filter -A FORWARD -i arcbr0 -j ACCEPT -w");
   Verify_iptables(*runner, Dual, "mangle -N PREROUTING_arcbr0 -w");
   Verify_iptables(*runner, Dual, "mangle -F PREROUTING_arcbr0 -w",
                   2 /* Start and Stop */);
@@ -1117,11 +1110,9 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
   Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING_arcbr0 -j MARK --set-mark "
                   "0x03ed0000/0xffff0000 -w");
-  // Stop tun0 <-> arcbr0 routing
-  Verify_iptables(*runner, IPv4,
-                  "filter -D FORWARD -i tun0 -o arcbr0 -j ACCEPT -w");
-  Verify_iptables(*runner, IPv4,
-                  "filter -D FORWARD -i arcbr0 -o tun0 -j ACCEPT -w");
+  // Stop arcbr0 routing
+  Verify_iptables(*runner, Dual, "filter -D FORWARD -o arcbr0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "filter -D FORWARD -i arcbr0 -j ACCEPT -w");
   Verify_iptables(*runner, Dual,
                   "mangle -D PREROUTING -i arcbr0 -j PREROUTING_arcbr0 -w");
   Verify_iptables(*runner, Dual, "mangle -X PREROUTING_arcbr0 -w");
@@ -1180,67 +1171,6 @@ TEST(DatapathTest, MaskInterfaceFlags) {
   std::vector<ioctl_req_t> expected = {SIOCGIFFLAGS, SIOCSIFFLAGS};
   EXPECT_EQ(system->ioctl_reqs, expected);
   // EXPECT_TRUE(system->ioctl_u32_args[1] & IFF_DEBUG);
-}
-
-TEST(DatapathTest, AddIPv6Forwarding) {
-  auto runner = new MockProcessRunner();
-  auto firewall = new MockFirewall();
-  auto system = new FakeSystem();
-  // Return 1 on iptables -C to simulate rule not existing case
-  EXPECT_CALL(*runner,
-              ip6tables(StrEq("filter"),
-                        ElementsAre("-C", "FORWARD", "-i", "eth0", "-o",
-                                    "arc_eth0", "-j", "ACCEPT", "-w"),
-                        false, nullptr))
-      .WillOnce(Return(1));
-  EXPECT_CALL(*runner,
-              ip6tables(StrEq("filter"),
-                        ElementsAre("-A", "FORWARD", "-i", "eth0", "-o",
-                                    "arc_eth0", "-j", "ACCEPT", "-w"),
-                        true, nullptr));
-  EXPECT_CALL(*runner,
-              ip6tables(StrEq("filter"),
-                        ElementsAre("-C", "FORWARD", "-i", "arc_eth0", "-o",
-                                    "eth0", "-j", "ACCEPT", "-w"),
-                        false, nullptr))
-      .WillOnce(Return(1));
-  EXPECT_CALL(*runner,
-              ip6tables(StrEq("filter"),
-                        ElementsAre("-A", "FORWARD", "-i", "arc_eth0", "-o",
-                                    "eth0", "-j", "ACCEPT", "-w"),
-                        true, nullptr));
-  Datapath datapath(runner, firewall, system);
-  datapath.AddIPv6Forwarding("eth0", "arc_eth0");
-}
-
-TEST(DatapathTest, AddIPv6ForwardingRuleExists) {
-  auto runner = new MockProcessRunner();
-  auto firewall = new MockFirewall();
-  auto system = new FakeSystem();
-  EXPECT_CALL(*runner,
-              ip6tables(StrEq("filter"),
-                        ElementsAre("-C", "FORWARD", "-i", "eth0", "-o",
-                                    "arc_eth0", "-j", "ACCEPT", "-w"),
-                        false, nullptr));
-  EXPECT_CALL(*runner,
-              ip6tables(StrEq("filter"),
-                        ElementsAre("-C", "FORWARD", "-i", "arc_eth0", "-o",
-                                    "eth0", "-j", "ACCEPT", "-w"),
-                        false, nullptr));
-  Datapath datapath(runner, firewall, system);
-  datapath.AddIPv6Forwarding("eth0", "arc_eth0");
-}
-
-TEST(DatapathTest, RemoveIPv6Forwarding) {
-  auto runner = new MockProcessRunner();
-  auto firewall = new MockFirewall();
-  auto system = new FakeSystem();
-  Verify_iptables(*runner, IPv6,
-                  "filter -D FORWARD -i eth0 -o arc_eth0 -j ACCEPT -w");
-  Verify_iptables(*runner, IPv6,
-                  "filter -D FORWARD -i arc_eth0 -o eth0 -j ACCEPT -w");
-  Datapath datapath(runner, firewall, system);
-  datapath.RemoveIPv6Forwarding("eth0", "arc_eth0");
 }
 
 TEST(DatapathTest, AddIPv6HostRoute) {

@@ -285,14 +285,6 @@ void Datapath::Start() {
                                             "-j", "ACCEPT", "-w"}) != 0)
     LOG(ERROR) << "Failed to install forwarding rule for ICMP6";
 
-  // Create a FORWARD rule for accepting any ARC originated traffic regardless
-  // of the output interface. This enables for ARC certain multihoming
-  // scenarios (b/182594063).
-  if (!ModifyJumpRule(IpFamily::IPv4, "filter", "-A", "FORWARD", "ACCEPT",
-                      "arc+", "" /*oif*/)) {
-    LOG(ERROR) << "Failed to install forwarding rule for ARC traffic";
-  }
-
   // chromium:898210: Drop any locally originated traffic that would exit a
   // physical interface with a source IPv4 address from the subnet of IPs used
   // for VMs, containers, and connected namespaces This is needed to prevent
@@ -1121,14 +1113,14 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
                                   TrafficSource source,
                                   bool route_on_vpn,
                                   uint32_t peer_ipv4_addr) {
-  if (!ModifyIpForwarding(IpFamily::IPv4, "-A", ext_ifname, int_ifname)) {
-    LOG(ERROR) << "Failed to enable IP forwarding for " << ext_ifname << "->"
-               << int_ifname;
+  if (!ModifyJumpRule(IpFamily::Dual, "filter", "-A", "FORWARD", "ACCEPT",
+                      "" /*iif*/, int_ifname)) {
+    LOG(ERROR) << "Failed to enable IP forwarding from " << ext_ifname;
   }
 
-  if (!ModifyIpForwarding(IpFamily::IPv4, "-A", int_ifname, ext_ifname)) {
-    LOG(ERROR) << "Failed to enable IP forwarding for " << ext_ifname << "<-"
-               << int_ifname;
+  if (!ModifyJumpRule(IpFamily::Dual, "filter", "-A", "FORWARD", "ACCEPT",
+                      int_ifname, "" /*oif*/)) {
+    LOG(ERROR) << "Failed to enable IP forwarding to " << ext_ifname;
   }
 
   std::string subchain = "PREROUTING_" + int_ifname;
@@ -1214,8 +1206,10 @@ void Datapath::StopRoutingDevice(const std::string& ext_ifname,
                                  uint32_t int_ipv4_addr,
                                  TrafficSource source,
                                  bool route_on_vpn) {
-  ModifyIpForwarding(IpFamily::IPv4, "-D", ext_ifname, int_ifname);
-  ModifyIpForwarding(IpFamily::IPv4, "-D", int_ifname, ext_ifname);
+  ModifyJumpRule(IpFamily::Dual, "filter", "-D", "FORWARD", "ACCEPT",
+                 "" /*iif*/, int_ifname);
+  ModifyJumpRule(IpFamily::Dual, "filter", "-D", "FORWARD", "ACCEPT",
+                 int_ifname, "" /*oif*/);
 
   std::string subchain = "PREROUTING_" + int_ifname;
   ModifyJumpRule(IpFamily::Dual, "mangle", "-D", "PREROUTING", subchain,
@@ -1682,20 +1676,6 @@ bool Datapath::ModifyFwmark(IpFamily family,
   return ModifyIptables(family, "mangle", args, log_failures);
 }
 
-bool Datapath::ModifyIpForwarding(IpFamily family,
-                                  const std::string& op,
-                                  const std::string& iif,
-                                  const std::string& oif,
-                                  bool log_failures) {
-  if (iif.empty() && oif.empty()) {
-    LOG(ERROR) << "Cannot change IP forwarding with no input or output "
-                  "interface specified";
-    return false;
-  }
-  return ModifyJumpRule(family, "filter", op, "FORWARD", "ACCEPT", iif, oif,
-                        log_failures);
-}
-
 bool Datapath::ModifyJumpRule(IpFamily family,
                               const std::string& table,
                               const std::string& op,
@@ -1824,32 +1804,6 @@ std::string Datapath::DumpIptables(IpFamily family, const std::string& table) {
       LOG(ERROR) << "Could not dump iptables: incorrect IP family " << family;
   }
   return result;
-}
-
-bool Datapath::AddIPv6Forwarding(const std::string& ifname1,
-                                 const std::string& ifname2) {
-  // Only start Ipv6 forwarding if -C returns false and it had not been
-  // started yet.
-  if (!ModifyIpForwarding(IpFamily::IPv6, "-C", ifname1, ifname2,
-                          false /*log_failures*/) &&
-      !ModifyIpForwarding(IpFamily::IPv6, "-A", ifname1, ifname2)) {
-    return false;
-  }
-
-  if (!ModifyIpForwarding(IpFamily::IPv6, "-C", ifname2, ifname1,
-                          false /*log_failures*/) &&
-      !ModifyIpForwarding(IpFamily::IPv6, "-A", ifname2, ifname1)) {
-    RemoveIPv6Forwarding(ifname1, ifname2);
-    return false;
-  }
-
-  return true;
-}
-
-void Datapath::RemoveIPv6Forwarding(const std::string& ifname1,
-                                    const std::string& ifname2) {
-  ModifyIpForwarding(IpFamily::IPv6, "-D", ifname1, ifname2);
-  ModifyIpForwarding(IpFamily::IPv6, "-D", ifname2, ifname1);
 }
 
 bool Datapath::AddIPv4Route(uint32_t gateway_addr,

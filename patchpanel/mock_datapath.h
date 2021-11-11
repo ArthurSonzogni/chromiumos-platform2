@@ -67,10 +67,6 @@ class MockDatapath : public Datapath {
                     bool route_on_vpn));
   MOCK_METHOD3(MaskInterfaceFlags,
                bool(const std::string& ifname, uint16_t on, uint16_t off));
-  MOCK_METHOD2(AddIPv6Forwarding,
-               bool(const std::string& ifname1, const std::string& ifname2));
-  MOCK_METHOD2(RemoveIPv6Forwarding,
-               void(const std::string& ifname1, const std::string& ifname2));
   MOCK_METHOD3(AddIPv4Route, bool(uint32_t gw, uint32_t dst, uint32_t netmask));
   MOCK_METHOD1(SetConntrackHelpers, bool(const bool enable_helpers));
   MOCK_METHOD2(SetRouteLocalnet,

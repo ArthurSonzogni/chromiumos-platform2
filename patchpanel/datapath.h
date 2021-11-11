@@ -255,13 +255,6 @@ class Datapath {
                                   uint16_t on,
                                   uint16_t off = 0);
 
-  // Convenience functions for enabling or disabling IPv6 forwarding in both
-  // directions between a pair of interfaces
-  virtual bool AddIPv6Forwarding(const std::string& ifname1,
-                                 const std::string& ifname2);
-  virtual void RemoveIPv6Forwarding(const std::string& ifname1,
-                                    const std::string& ifname2);
-
   virtual bool AddIPv6HostRoute(const std::string& ifname,
                                 const std::string& ipv6_addr,
                                 int ipv6_prefix_len);
@@ -442,11 +435,6 @@ class Datapath {
                     Fwmark mark,
                     Fwmark mask,
                     bool log_failures = true);
-  bool ModifyIpForwarding(IpFamily family,
-                          const std::string& op,
-                          const std::string& iif,
-                          const std::string& oif,
-                          bool log_failures = true);
   bool ModifyJumpRule(IpFamily family,
                       const std::string& table,
                       const std::string& op,

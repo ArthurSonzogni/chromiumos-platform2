@@ -1430,10 +1430,6 @@ void Manager::StartForwarding(const std::string& ifname_physical,
     LOG(INFO) << "Starting IPv6 forwarding from " << ifname_physical << " to "
               << ifname_virtual;
 
-    if (!datapath_->AddIPv6Forwarding(ifname_physical, ifname_virtual)) {
-      LOG(ERROR) << "Failed to setup iptables forwarding rule for IPv6 from "
-                 << ifname_physical << " to " << ifname_virtual;
-    }
     if (!datapath_->MaskInterfaceFlags(ifname_physical, IFF_ALLMULTI)) {
       LOG(WARNING) << "Failed to setup all multicast mode for interface "
                    << ifname_physical;
@@ -1475,7 +1471,6 @@ void Manager::StopForwarding(const std::string& ifname_physical,
     } else {
       LOG(INFO) << "Stopping IPv6 forwarding from " << ifname_physical << " to "
                 << ifname_virtual;
-      datapath_->RemoveIPv6Forwarding(ifname_physical, ifname_virtual);
     }
     nd_proxy_->SendMessage(ipm);
   }
