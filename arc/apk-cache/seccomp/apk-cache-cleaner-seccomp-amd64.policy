@@ -58,3 +58,4 @@ fchmod: 1
 # Used by sqlite3 to get thread id.
 gettid: 1
 clock_gettime: 1
+gettimeofday: 1
