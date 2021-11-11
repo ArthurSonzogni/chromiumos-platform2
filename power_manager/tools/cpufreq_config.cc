@@ -259,6 +259,11 @@ int main(int argc, char* argv[]) {
 
   CpufreqConf conf(kCpufreqConfPath);
 
+  if (!ConfigureIntelPstate(conf)) {
+    LOG(ERROR) << "Failed to configure intel_pstate settings";
+    return EXIT_FAILURE;
+  }
+
   base::Optional<std::string> governorOption = GetGovernor(conf);
   // No governor == do nothing.
   if (!governorOption.has_value())
@@ -270,11 +275,6 @@ int main(int argc, char* argv[]) {
 
   if (!SetGovernor(governor)) {
     LOG(ERROR) << "Could not set governor: " << governor;
-    return EXIT_FAILURE;
-  }
-
-  if (!ConfigureIntelPstate(conf)) {
-    LOG(ERROR) << "Failed to configure intel_pstate settings";
     return EXIT_FAILURE;
   }
 
