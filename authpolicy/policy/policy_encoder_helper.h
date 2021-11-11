@@ -73,13 +73,7 @@ bool LoadPRegFilesIntoDict(const std::vector<base::FilePath>& preg_files,
 // Similar to base::Value::GetAsBoolean(), but in addition it converts int
 // values of 0 or 1 to bool. Returns true on success and stores the output in
 // bool_value.
-bool GetAsBoolean(const base::Value* value, bool* bool_value);
-
-// Same as base::Value::GetAsInteger(), no type conversion (yet).
-bool GetAsInteger(const base::Value* value, int* int_value);
-
-// Same as base::Value::GetAsString(), no type conversion (yet).
-bool GetAsString(const base::Value* value, std::string* string_value);
+base::Optional<bool> GetAsBoolean(const base::Value* value, bool* bool_value);
 
 // Prints an error log. Used if value cannot be converted to a target type.
 void PrintConversionError(const base::Value* value,

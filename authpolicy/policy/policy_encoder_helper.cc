@@ -69,26 +69,18 @@ bool LoadPRegFilesIntoDict(const std::vector<base::FilePath>& preg_files,
   return true;
 }
 
-bool GetAsBoolean(const base::Value* value, bool* bool_value) {
-  if (value->GetAsBoolean(bool_value))
-    return true;
+base::Optional<bool> GetAsBoolean(const base::Value* value) {
+  if (value->is_bool())
+    return value->GetBool();
 
-  // Boolean policies are represented as integer 0/1 in the registry.
-  int int_value = 0;
-  if (value->GetAsInteger(&int_value) && (int_value == 0 || int_value == 1)) {
-    *bool_value = int_value != 0;
-    return true;
+  if (value->is_int()) {
+    // Boolean policies are represented as integer 0/1 in the registry.
+    int int_value = value->GetInt();
+    if (int_value == 0 || int_value == 1)
+      return int_value != 0;
   }
 
-  return false;
-}
-
-bool GetAsInteger(const base::Value* value, int* int_value) {
-  return value->GetAsInteger(int_value);
-}
-
-bool GetAsString(const base::Value* value, std::string* string_value) {
-  return value->GetAsString(string_value);
+  return base::nullopt;
 }
 
 void PrintConversionError(const base::Value* value,
@@ -106,11 +98,12 @@ bool GetAsIntegerInRangeAndPrintError(const base::Value* value,
                                       int range_max,
                                       const char* policy_name,
                                       int* int_value) {
-  *int_value = 0;
-  if (!GetAsInteger(value, int_value)) {
+  if (!value->is_int()) {
+    *int_value = 0;
     PrintConversionError(value, "integer", policy_name);
     return false;
   }
+  *int_value = value->GetInt();
 
   if (*int_value < range_min || *int_value > range_max) {
     LOG(ERROR) << "Value of policy '" << policy_name << "' is " << *int_value
@@ -147,17 +140,17 @@ base::Optional<bool> EncodeBooleanPolicy(const char* policy_name,
     return base::nullopt;
 
   // Get actual value, doing type conversion if necessary.
-  bool bool_value;
-  if (!GetAsBoolean(value, &bool_value)) {
+  base::Optional<bool> bool_value = GetAsBoolean(value);
+  if (!bool_value.has_value()) {
     PrintConversionError(value, "boolean", policy_name);
     return base::nullopt;
   }
 
   LOG_IF(INFO, log_policy_value)
       << authpolicy::kColorPolicy << "  " << policy_name << " = "
-      << (bool_value ? "true" : "false") << authpolicy::kColorReset;
+      << (*bool_value ? "true" : "false") << authpolicy::kColorReset;
 
-  return base::make_optional(bool_value);
+  return bool_value;
 }
 
 base::Optional<int> EncodeIntegerInRangePolicy(
@@ -194,17 +187,17 @@ base::Optional<std::string> EncodeStringPolicy(
     return base::nullopt;
 
   // Get actual value, doing type conversion if necessary.
-  std::string string_value;
-  if (!GetAsString(value, &string_value)) {
+  if (!value->is_string()) {
     PrintConversionError(value, "string", policy_name);
     return base::nullopt;
   }
 
+  const std::string& string_value = value->GetString();
   LOG_IF(INFO, log_policy_value)
       << authpolicy::kColorPolicy << "  " << policy_name << " = "
       << string_value << authpolicy::kColorReset;
 
-  return base::make_optional(string_value);
+  return string_value;
 }
 
 base::Optional<std::vector<std::string>> EncodeStringListPolicy(
@@ -219,12 +212,11 @@ base::Optional<std::vector<std::string>> EncodeStringListPolicy(
     if (!value)
       break;
 
-    std::string string_value;
-    if (!GetAsString(value, &string_value)) {
+    if (!value->is_string()) {
       PrintConversionError(value, "string", policy_name, &index_str);
       return base::nullopt;
     }
-    string_values.push_back(string_value);
+    string_values.push_back(value->GetString());
   }
 
   if (log_policy_value && LOG_IS_ON(INFO)) {

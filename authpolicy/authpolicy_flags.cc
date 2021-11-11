@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <utility>
 
 #include <base/base64.h>
 #include <base/check.h>
@@ -30,22 +31,6 @@ std::string Align(const char* str) {
   return std::string(kAlignSize - std::min(kAlignSize - 1, strlen(str)), ' ');
 }
 
-// Removes the value with the key |name| from |dict|, checks |type| and returns
-// the value if the type matches. Prints an error message otherwise.
-std::unique_ptr<base::Value> GetValueOfType(base::DictionaryValue* dict,
-                                            const char* name,
-                                            base::Value::Type type) {
-  std::unique_ptr<base::Value> value;
-  if (!dict->Remove(name, &value))
-    return nullptr;
-  if (value->type() != type) {
-    LOG(ERROR) << name << " must be a "
-               << base::Value::GetTypeName(value->type());
-    return nullptr;
-  }
-  return value;
-}
-
 // Metadata used for defining a bool-type flag.
 class BoolFlag {
  public:
@@ -55,13 +40,14 @@ class BoolFlag {
       : name_(name), setter_(setter), getter_(getter) {}
 
   // Remove the value with key |name_| from |dict| and puts it into |flags|.
-  void Handle(protos::DebugFlags* flags, base::DictionaryValue* dict) const {
-    std::unique_ptr<base::Value> value =
-        GetValueOfType(dict, name_, base::Value::Type::BOOLEAN);
+  // Prints an error message if the value is not a Boolean.
+  void Handle(protos::DebugFlags* flags, base::Value* dict) const {
+    auto value = dict->ExtractKey(name_);
     if (value) {
-      bool bool_value = false;
-      CHECK(value->GetAsBoolean(&bool_value));
-      (flags->*setter_)(bool_value);
+      if (value->is_bool())
+        (flags->*setter_)(value->GetBool());
+      else
+        LOG(ERROR) << name_ << " must be a boolean";
     }
   }
 
@@ -86,13 +72,14 @@ class StringFlag {
       : name_(name), setter_(setter), getter_(getter) {}
 
   // Remove the value with key |name_| from |dict| and puts it into |flags|.
-  void Handle(protos::DebugFlags* flags, base::DictionaryValue* dict) const {
-    std::unique_ptr<base::Value> value =
-        GetValueOfType(dict, name_, base::Value::Type::STRING);
+  // Prints an error message if the value is not a string.
+  void Handle(protos::DebugFlags* flags, base::Value* dict) const {
+    auto value = dict->ExtractKey(name_);
     if (value) {
-      std::string string_value;
-      CHECK(value->GetAsString(&string_value));
-      (flags->*setter_)(string_value);
+      if (value->is_string())
+        (flags->*setter_)(value->GetString());
+      else
+        LOG(ERROR) << name_ << " must be a string";
     }
   }
 
@@ -200,25 +187,25 @@ bool AuthPolicyFlags::LoadFromJsonFile(const base::FilePath& path) {
 void AuthPolicyFlags::LoadFromJsonString(const std::string& flags_json) {
   auto root = base::JSONReader::ReadAndReturnValueWithError(
       flags_json, base::JSON_ALLOW_TRAILING_COMMAS);
-  base::DictionaryValue* dict = nullptr;
-  if (!root.value || !root.value->GetAsDictionary(&dict)) {
+  if (!root.value || !root.value->is_dict()) {
     LOG(ERROR) << "Fail to parse flags: "
                << (root.error_message.empty() ? "Invalid JSON"
                                               : root.error_message);
     return;
   }
+  base::Value dict = std::move(root.value.value());
 
   // Check bool flags.
   for (const BoolFlag& bool_flag : kBoolFlags)
-    bool_flag.Handle(&flags_, dict);
+    bool_flag.Handle(&flags_, &dict);
 
   // Check string flags.
   for (const StringFlag& string_flag : kStringFlags)
-    string_flag.Handle(&flags_, dict);
+    string_flag.Handle(&flags_, &dict);
 
   // Print warnings for other parameters.
-  for (base::DictionaryValue::Iterator it(*dict); !it.IsAtEnd(); it.Advance())
-    LOG(WARNING) << "Unhandled flag " << it.key();
+  for (const auto& kv : dict.DictItems())
+    LOG(WARNING) << "Unhandled flag " << kv.first;
 }
 
 void AuthPolicyFlags::Dump() const {
