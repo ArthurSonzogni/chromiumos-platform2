@@ -24,6 +24,8 @@ class VPNUtilImpl : public VPNUtil {
  public:
   bool WriteConfigFile(const base::FilePath& filename,
                        const std::string& contents) const override;
+  bool PrepareConfigDirectory(
+      const base::FilePath& directory_path) const override;
   std::pair<base::ScopedFD, base::FilePath> WriteAnonymousConfigFile(
       const std::string& contents) const override;
   base::ScopedTempDir CreateScopedTempDir(
@@ -44,6 +46,31 @@ bool VPNUtilImpl::WriteConfigFile(const base::FilePath& filename,
 
   if (chown(filename.value().c_str(), -1, kVPNGid) != 0) {
     PLOG(ERROR) << "Failed to change gid of config file";
+    return false;
+  }
+
+  return true;
+}
+
+bool VPNUtilImpl::PrepareConfigDirectory(
+    const base::FilePath& directory_path) const {
+  if (!base::DirectoryExists(directory_path) &&
+      !base::CreateDirectory(directory_path)) {
+    PLOG(ERROR) << "Unable to create configuration directory  "
+                << directory_path.value();
+    return false;
+  }
+
+  if (chown(directory_path.value().c_str(), -1, VPNUtil::kVPNGid) != 0) {
+    PLOG(ERROR) << "Failed to change owner group of configuration directory "
+                << directory_path.value();
+    base::DeletePathRecursively(directory_path);
+    return false;
+  }
+
+  if (chmod(directory_path.value().c_str(), S_IRWXU | S_IRGRP | S_IXGRP)) {
+    LOG(ERROR) << "Failed to set permissions on " << directory_path.value();
+    base::DeletePathRecursively(directory_path);
     return false;
   }
 

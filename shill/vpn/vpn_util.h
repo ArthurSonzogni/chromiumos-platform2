@@ -51,6 +51,11 @@ class VPNUtil {
   virtual bool WriteConfigFile(const base::FilePath& filename,
                                const std::string& contents) const = 0;
 
+  // Creates a directory at |directory_path|, changes its group owner to "vpn",
+  // and makes it group-accessible (rwx).
+  virtual bool PrepareConfigDirectory(
+      const base::FilePath& directory_path) const = 0;
+
   // Writes |contents| into an anonymous file created by memfd_create(), and
   // returns its fd and the file path. Returns an invalid ScopedFD on failure.
   // Compared with the WriteConfigFile() function above, the file created by

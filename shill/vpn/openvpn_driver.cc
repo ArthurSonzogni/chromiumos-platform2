@@ -153,7 +153,8 @@ OpenVPNDriver::OpenVPNDriver(Manager* manager, ProcessManager* process_manager)
       extra_certificates_file_(new CertificateFile()),
       lsb_release_file_(kLSBReleaseFile),
       openvpn_config_directory_(kDefaultOpenVPNConfigurationDirectory),
-      pid_(0) {}
+      pid_(0),
+      vpn_util_(VPNUtil::New()) {}
 
 OpenVPNDriver::~OpenVPNDriver() {
   Cleanup();
@@ -230,35 +231,19 @@ std::string OpenVPNDriver::JoinOptions(
 bool OpenVPNDriver::WriteConfigFile(
     const std::vector<std::vector<std::string>>& options,
     base::FilePath* config_file) {
-  if (!base::DirectoryExists(openvpn_config_directory_)) {
-    if (!base::CreateDirectory(openvpn_config_directory_)) {
-      LOG(ERROR) << "Unable to create configuration directory  "
-                 << openvpn_config_directory_.value();
-      return false;
-    }
-    // TODO(b/177984585): We are in the migration stage that VPN application
-    // config dirs are owned by shill:shill and user vpn being a member of
-    // group shill. It will be later to migrated to dirs owned by shill:vpn and
-    // and user shill being member of group vpn.
-    if (chmod(openvpn_config_directory_.value().c_str(), S_IRWXU | S_IRWXG)) {
-      LOG(ERROR) << "Failed to set permissions on "
-                 << openvpn_config_directory_.value();
-      base::DeletePathRecursively(openvpn_config_directory_);
-      return false;
-    }
+  if (!vpn_util_->PrepareConfigDirectory(openvpn_config_directory_)) {
+    LOG(ERROR) << "Unable to setup OpenVPN config directory.";
+    return false;
   }
 
   std::string contents = JoinOptions(options, '\n');
   contents.push_back('\n');
   if (!base::CreateTemporaryFileInDir(openvpn_config_directory_, config_file) ||
-      base::WriteFile(*config_file, contents.data(), contents.size()) !=
-          static_cast<int>(contents.size()) ||
-      chmod(config_file->value().c_str(), S_IRWXU | S_IRWXG | S_IROTH)) {
-    // Make the config file world-readable. Same rationale as listed above for
-    // the config directory.
+      !vpn_util_->WriteConfigFile(*config_file, contents)) {
     LOG(ERROR) << "Unable to setup OpenVPN config file.";
     return false;
   }
+
   return true;
 }
 
@@ -827,8 +812,7 @@ bool OpenVPNDriver::InitExtraCertOptions(
 
 void OpenVPNDriver::InitPKCS11Options(
     std::vector<std::vector<std::string>>* options) {
-  const auto id =
-      args()->Lookup<std::string>(kOpenVPNClientCertIdProperty, "");
+  const auto id = args()->Lookup<std::string>(kOpenVPNClientCertIdProperty, "");
   if (!id.empty()) {
     AppendOption("pkcs11-providers", kDefaultPKCS11Provider, options);
     AppendOption("pkcs11-id", id, options);

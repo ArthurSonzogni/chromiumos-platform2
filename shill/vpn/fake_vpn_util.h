@@ -25,9 +25,13 @@ class FakeVPNUtil : public VPNUtil {
   ~FakeVPNUtil() = default;
 
   // Writes |contents| into file with path |filename| without changing
-  // permissions.
+  // ownerships.
   bool WriteConfigFile(const base::FilePath& filename,
                        const std::string& contents) const override;
+
+  // Create |directory_path| without changing ownerships.
+  bool PrepareConfigDirectory(
+      const base::FilePath& directory_path) const override;
 
   // Same as the real implementation.
   std::pair<base::ScopedFD, base::FilePath> WriteAnonymousConfigFile(

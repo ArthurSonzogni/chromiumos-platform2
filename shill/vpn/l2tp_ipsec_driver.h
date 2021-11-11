@@ -20,6 +20,7 @@
 #include "shill/rpc_task.h"
 #include "shill/vpn/ipsec_connection.h"
 #include "shill/vpn/vpn_driver.h"
+#include "shill/vpn/vpn_util.h"
 
 namespace shill {
 
@@ -144,6 +145,7 @@ class L2TPIPsecDriver : public VPNDriver, public RpcTaskDelegate {
   EventHandler* event_handler_ = nullptr;
   std::unique_ptr<password_provider::PasswordProviderInterface>
       password_provider_;
+  std::unique_ptr<VPNUtil> vpn_util_;
 
   base::WeakPtrFactory<L2TPIPsecDriver> weak_factory_{this};
 };

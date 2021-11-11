@@ -50,7 +50,6 @@
 #include "shill/scope_logger.h"
 #include "shill/vpn/ipsec_connection.h"
 #include "shill/vpn/vpn_service.h"
-#include "shill/vpn/vpn_util.h"
 
 namespace shill {
 
@@ -201,7 +200,8 @@ L2TPIPsecDriver::L2TPIPsecDriver(Manager* manager,
     : VPNDriver(manager, process_manager, kProperties, base::size(kProperties)),
       certificate_file_(new CertificateFile()),
       password_provider_(
-          std::make_unique<password_provider::PasswordProvider>()) {}
+          std::make_unique<password_provider::PasswordProvider>()),
+      vpn_util_(VPNUtil::New()) {}
 
 L2TPIPsecDriver::~L2TPIPsecDriver() {
   Cleanup();
@@ -382,9 +382,7 @@ bool L2TPIPsecDriver::InitPSKOptions(std::vector<std::string>* options,
   const auto psk = args()->Lookup<std::string>(kL2TPIPsecPskProperty, "");
   if (!psk.empty()) {
     if (!base::CreateTemporaryFileInDir(manager()->run_path(), &psk_file_) ||
-        chmod(psk_file_.value().c_str(), S_IRUSR | S_IWUSR | S_IRGRP) ||
-        base::WriteFile(psk_file_, psk.data(), psk.size()) !=
-            static_cast<int>(psk.size())) {
+        !vpn_util_->WriteConfigFile(psk_file_, psk)) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                             "Unable to setup psk file.");
       return false;
@@ -431,11 +429,7 @@ bool L2TPIPsecDriver::InitXauthOptions(std::vector<std::string>* options,
   const std::string xauth_credentials = user + "\n" + password + "\n";
   if (!base::CreateTemporaryFileInDir(manager()->run_path(),
                                       &xauth_credentials_file_) ||
-      chmod(xauth_credentials_file_.value().c_str(),
-            S_IRUSR | S_IWUSR | S_IRGRP) ||
-      base::WriteFile(xauth_credentials_file_, xauth_credentials.data(),
-                      xauth_credentials.size()) !=
-          static_cast<int>(xauth_credentials.size())) {
+      !vpn_util_->WriteConfigFile(xauth_credentials_file_, xauth_credentials)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                           "Unable to setup XAUTH credentials file.");
     return false;

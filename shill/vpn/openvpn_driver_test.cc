@@ -32,6 +32,7 @@
 #include "shill/rpc_task.h"
 #include "shill/technology.h"
 #include "shill/virtual_device.h"
+#include "shill/vpn/fake_vpn_util.h"
 #include "shill/vpn/mock_openvpn_management_server.h"
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_provider.h"
@@ -94,6 +95,7 @@ class OpenVPNDriverTest
     CHECK(temporary_directory_.CreateUniqueTempDir());
     driver_->openvpn_config_directory_ =
         temporary_directory_.GetPath().Append(kOpenVPNConfigDirectory);
+    driver_->vpn_util_ = std::make_unique<FakeVPNUtil>();
   }
 
   ~OpenVPNDriverTest() override = default;

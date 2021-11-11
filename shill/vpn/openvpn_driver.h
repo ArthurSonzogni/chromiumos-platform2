@@ -17,6 +17,7 @@
 #include "shill/net/sockets.h"
 #include "shill/rpc_task.h"
 #include "shill/vpn/vpn_driver.h"
+#include "shill/vpn/vpn_util.h"
 
 namespace shill {
 
@@ -244,6 +245,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   int interface_index_ = -1;
 
   EventHandler* event_handler_ = nullptr;
+  std::unique_ptr<VPNUtil> vpn_util_;
 
   base::WeakPtrFactory<OpenVPNDriver> weak_factory_{this};
 };

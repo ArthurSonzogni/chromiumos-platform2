@@ -30,6 +30,7 @@
 #include "shill/mock_ppp_device.h"
 #include "shill/mock_process_manager.h"
 #include "shill/test_event_dispatcher.h"
+#include "shill/vpn/fake_vpn_util.h"
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_provider.h"
 
@@ -82,6 +83,7 @@ class L2TPIPsecDriverTest : public testing::Test, public RpcTaskDelegate {
         weak_factory_(this) {
     manager_.set_mock_device_info(&device_info_);
     driver_->certificate_file_.reset(certificate_file_);  // Passes ownership.
+    driver_->vpn_util_ = std::make_unique<FakeVPNUtil>();
   }
 
   ~L2TPIPsecDriverTest() override = default;
@@ -430,7 +432,7 @@ TEST_F(L2TPIPsecDriverTest, InitPSKOptions) {
   EXPECT_EQ(kPSK, contents);
   struct stat buf;
   ASSERT_EQ(0, stat(driver_->psk_file_.value().c_str(), &buf));
-  EXPECT_EQ(S_IFREG | S_IRUSR | S_IWUSR | S_IRGRP, buf.st_mode);
+  EXPECT_EQ(S_IFREG | S_IRUSR | S_IRGRP, buf.st_mode);
 }
 
 TEST_F(L2TPIPsecDriverTest, InitPEMOptions) {
@@ -509,7 +511,7 @@ TEST_F(L2TPIPsecDriverTest, InitXauthOptions) {
   EXPECT_EQ(expected_contents, contents);
   struct stat buf;
   ASSERT_EQ(0, stat(driver_->xauth_credentials_file_.value().c_str(), &buf));
-  EXPECT_EQ(S_IFREG | S_IRUSR | S_IWUSR | S_IRGRP, buf.st_mode);
+  EXPECT_EQ(S_IFREG | S_IRUSR | S_IRGRP, buf.st_mode);
 }
 
 TEST_F(L2TPIPsecDriverTest, AppendValueOption) {
