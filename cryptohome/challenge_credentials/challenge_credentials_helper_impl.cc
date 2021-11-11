@@ -51,7 +51,7 @@ ChallengeCredentialsHelperImpl::~ChallengeCredentialsHelperImpl() {
 
 void ChallengeCredentialsHelperImpl::GenerateNew(
     const std::string& account_id,
-    const ChallengePublicKeyInfo& public_key_info,
+    const structure::ChallengePublicKeyInfo& public_key_info,
     const std::vector<std::map<uint32_t, Blob>>& pcr_restrictions,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     GenerateNewCallback callback) {
@@ -69,7 +69,7 @@ void ChallengeCredentialsHelperImpl::GenerateNew(
 
 void ChallengeCredentialsHelperImpl::Decrypt(
     const std::string& account_id,
-    const ChallengePublicKeyInfo& public_key_info,
+    const structure::ChallengePublicKeyInfo& public_key_info,
     const structure::SignatureChallengeInfo& keyset_challenge_info,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     DecryptCallback callback) {
@@ -83,7 +83,7 @@ void ChallengeCredentialsHelperImpl::Decrypt(
 
 void ChallengeCredentialsHelperImpl::VerifyKey(
     const std::string& account_id,
-    const ChallengePublicKeyInfo& public_key_info,
+    const structure::ChallengePublicKeyInfo& public_key_info,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     VerifyKeyCallback callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
@@ -99,7 +99,7 @@ void ChallengeCredentialsHelperImpl::VerifyKey(
 
 void ChallengeCredentialsHelperImpl::StartDecryptOperation(
     const std::string& account_id,
-    const ChallengePublicKeyInfo& public_key_info,
+    const structure::ChallengePublicKeyInfo& public_key_info,
     const structure::SignatureChallengeInfo& keyset_challenge_info,
     int attempt_number,
     DecryptCallback callback) {
@@ -140,7 +140,7 @@ void ChallengeCredentialsHelperImpl::OnGenerateNewCompleted(
 
 void ChallengeCredentialsHelperImpl::OnDecryptCompleted(
     const std::string& account_id,
-    const ChallengePublicKeyInfo& public_key_info,
+    const structure::ChallengePublicKeyInfo& public_key_info,
     const structure::SignatureChallengeInfo& keyset_challenge_info,
     int attempt_number,
     DecryptCallback original_callback,

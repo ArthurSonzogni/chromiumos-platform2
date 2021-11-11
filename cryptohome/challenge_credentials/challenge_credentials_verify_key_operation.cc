@@ -15,11 +15,9 @@
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
-#include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/tpm.h"
 
 using brillo::Blob;
-using brillo::BlobFromString;
 using hwsec::error::TPMErrorBase;
 
 namespace cryptohome {
@@ -31,16 +29,13 @@ constexpr int kChallengeByteCount = 20;
 
 // Returns the signature algorithm to be used for the verification.
 base::Optional<structure::ChallengeSignatureAlgorithm> ChooseChallengeAlgorithm(
-    const ChallengePublicKeyInfo& public_key_info) {
-  DCHECK(public_key_info.signature_algorithm_size());
+    const structure::ChallengePublicKeyInfo& public_key_info) {
   base::Optional<structure::ChallengeSignatureAlgorithm>
       currently_chosen_algorithm;
   // Respect the input's algorithm prioritization, with the exception of
   // considering SHA-1 as the least preferred option.
-  for (int index = 0; index < public_key_info.signature_algorithm_size();
-       ++index) {
-    currently_chosen_algorithm =
-        proto::FromProto(public_key_info.signature_algorithm(index));
+  for (auto algo : public_key_info.signature_algorithm) {
+    currently_chosen_algorithm = algo;
     if (*currently_chosen_algorithm !=
         structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1)
       break;
@@ -118,7 +113,7 @@ ChallengeCredentialsVerifyKeyOperation::ChallengeCredentialsVerifyKeyOperation(
     KeyChallengeService* key_challenge_service,
     Tpm* tpm,
     const std::string& account_id,
-    const ChallengePublicKeyInfo& public_key_info,
+    const structure::ChallengePublicKeyInfo& public_key_info,
     CompletionCallback completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
       tpm_(tpm),
@@ -132,9 +127,9 @@ ChallengeCredentialsVerifyKeyOperation::
 void ChallengeCredentialsVerifyKeyOperation::Start() {
   DCHECK(thread_checker_.CalledOnValidThread());
 
-  const Blob public_key_spki_der =
-      BlobFromString(public_key_info_.public_key_spki_der());
-  if (!public_key_info_.signature_algorithm_size()) {
+  const brillo::Blob& public_key_spki_der =
+      public_key_info_.public_key_spki_der;
+  if (!public_key_info_.signature_algorithm.size()) {
     LOG(ERROR) << "The key does not support any signature algorithm";
     Complete(&completion_callback_, /*is_key_valid=*/false);
     return;

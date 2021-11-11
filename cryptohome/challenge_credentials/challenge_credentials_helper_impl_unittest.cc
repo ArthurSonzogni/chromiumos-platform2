@@ -22,14 +22,10 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_test_utils.h"
 #include "cryptohome/crypto/sha.h"
-#include "cryptohome/key.pb.h"
 #include "cryptohome/mock_key_challenge_service.h"
 #include "cryptohome/mock_signature_sealing_backend.h"
 #include "cryptohome/mock_tpm.h"
-#include "cryptohome/rpc.pb.h"
-#include "cryptohome/signature_sealed_data.pb.h"
 #include "cryptohome/signature_sealing/structures.h"
-#include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/signature_sealing_backend.h"
 #include "cryptohome/signature_sealing_backend_test_utils.h"
 
@@ -53,14 +49,13 @@ namespace cryptohome {
 
 namespace {
 
-ChallengePublicKeyInfo MakeChallengePublicKeyInfo(
+structure::ChallengePublicKeyInfo MakeChallengePublicKeyInfo(
     const Blob& set_public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms) {
-  ChallengePublicKeyInfo public_key_info;
-  public_key_info.set_public_key_spki_der(
-      BlobToString(set_public_key_spki_der));
+  structure::ChallengePublicKeyInfo public_key_info;
+  public_key_info.public_key_spki_der = set_public_key_spki_der;
   for (auto key_algorithm : key_algorithms)
-    public_key_info.add_signature_algorithm(proto::ToProto(key_algorithm));
+    public_key_info.signature_algorithm.push_back(key_algorithm);
   return public_key_info;
 }
 
@@ -98,7 +93,7 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
       std::unique_ptr<ChallengeCredentialsGenerateNewResult>*
           generate_new_result) {
     DCHECK(challenge_service_);
-    const ChallengePublicKeyInfo public_key_info =
+    const structure::ChallengePublicKeyInfo public_key_info =
         MakeChallengePublicKeyInfo(kPublicKeySpkiDer, key_algorithms);
     challenge_credentials_helper_.GenerateNew(
         kUserEmail, public_key_info, kPcrRestrictions,
@@ -114,7 +109,7 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
       const Blob& salt,
       std::unique_ptr<ChallengeCredentialsDecryptResult>* decrypt_result) {
     DCHECK(challenge_service_);
-    const ChallengePublicKeyInfo public_key_info =
+    const structure::ChallengePublicKeyInfo public_key_info =
         MakeChallengePublicKeyInfo(kPublicKeySpkiDer, key_algorithms);
     const structure::SignatureChallengeInfo keyset_challenge_info =
         MakeFakeKeysetChallengeInfo(kPublicKeySpkiDer, salt,
@@ -146,8 +141,9 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
         std::make_unique<MockKeyChallengeService>();
     EXPECT_CALL(*mock_key_challenge_service, ChallengeKeyMovable(_, _, _))
         .Times(AnyNumber());
-    const ChallengePublicKeyInfo public_key_info = MakeChallengePublicKeyInfo(
-        kLocalPublicKeySpkiDer, {kLocalAlgorithm} /* key_algorithms */);
+    const structure::ChallengePublicKeyInfo public_key_info =
+        MakeChallengePublicKeyInfo(kLocalPublicKeySpkiDer,
+                                   {kLocalAlgorithm} /* key_algorithms */);
     const structure::SignatureChallengeInfo keyset_challenge_info =
         MakeFakeKeysetChallengeInfo(
             kLocalPublicKeySpkiDer, kSalt,

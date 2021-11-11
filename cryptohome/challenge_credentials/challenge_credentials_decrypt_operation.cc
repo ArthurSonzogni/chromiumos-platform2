@@ -15,11 +15,8 @@
 
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
 #include "cryptohome/signature_sealing/structures.h"
-#include "cryptohome/signature_sealing/structures_proto.h"
 
 using brillo::Blob;
-using brillo::BlobFromString;
-using brillo::BlobToString;
 using brillo::SecureBlob;
 using hwsec::error::TPMError;
 using hwsec::error::TPMErrorBase;
@@ -29,28 +26,13 @@ using hwsec_foundation::error::WrapError;
 
 namespace cryptohome {
 
-namespace {
-
-std::vector<structure::ChallengeSignatureAlgorithm> GetSealingAlgorithms(
-    const ChallengePublicKeyInfo& public_key_info) {
-  std::vector<structure::ChallengeSignatureAlgorithm> sealing_algorithms;
-  for (int index = 0; index < public_key_info.signature_algorithm_size();
-       ++index) {
-    sealing_algorithms.push_back(
-        proto::FromProto(public_key_info.signature_algorithm(index)));
-  }
-  return sealing_algorithms;
-}
-
-}  // namespace
-
 ChallengeCredentialsDecryptOperation::ChallengeCredentialsDecryptOperation(
     KeyChallengeService* key_challenge_service,
     Tpm* tpm,
     const Blob& delegate_blob,
     const Blob& delegate_secret,
     const std::string& account_id,
-    const ChallengePublicKeyInfo& public_key_info,
+    const structure::ChallengePublicKeyInfo& public_key_info,
     const structure::SignatureChallengeInfo& keyset_challenge_info,
     CompletionCallback completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
@@ -88,13 +70,14 @@ TPMErrorBase ChallengeCredentialsDecryptOperation::StartProcessing() {
     return CreateError<TPMError>("Signature sealing is disabled",
                                  TPMRetryAction::kNoRetry);
   }
-  if (!public_key_info_.signature_algorithm_size()) {
+  if (!public_key_info_.signature_algorithm.size()) {
     return CreateError<TPMError>(
         "The key does not support any signature algorithm",
         TPMRetryAction::kNoRetry);
   }
-  if (public_key_info_.public_key_spki_der() !=
-      BlobToString(keyset_challenge_info_.public_key_spki_der)) {
+
+  if (public_key_info_.public_key_spki_der !=
+      keyset_challenge_info_.public_key_spki_der) {
     return CreateError<TPMError>("Wrong public key", TPMRetryAction::kNoRetry);
   }
   if (TPMErrorBase err = StartProcessingSalt()) {
@@ -110,6 +93,10 @@ TPMErrorBase ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
   if (keyset_challenge_info_.salt.empty()) {
     return CreateError<TPMError>("Missing salt", TPMRetryAction::kNoRetry);
   }
+  if (public_key_info_.public_key_spki_der.empty()) {
+    return CreateError<TPMError>("Missing public key",
+                                 TPMRetryAction::kNoRetry);
+  }
   const Blob& salt = keyset_challenge_info_.salt;
   // IMPORTANT: Verify that the salt is correctly prefixed. See the comment on
   // GetChallengeCredentialsSaltConstantPrefix() for details. Note also that, as
@@ -124,7 +111,7 @@ TPMErrorBase ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
                                  TPMRetryAction::kNoRetry);
   }
   MakeKeySignatureChallenge(
-      account_id_, BlobFromString(public_key_info_.public_key_spki_der()), salt,
+      account_id_, public_key_info_.public_key_spki_der, salt,
       keyset_challenge_info_.salt_signature_algorithm,
       base::BindOnce(
           &ChallengeCredentialsDecryptOperation::OnSaltChallengeResponse,
@@ -134,18 +121,21 @@ TPMErrorBase ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
 
 TPMErrorBase
 ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
+  if (public_key_info_.public_key_spki_der.empty()) {
+    return CreateError<TPMError>("Missing public key",
+                                 TPMRetryAction::kNoRetry);
+  }
   const std::vector<structure::ChallengeSignatureAlgorithm>
-      key_sealing_algorithms = GetSealingAlgorithms(public_key_info_);
+      key_sealing_algorithms = public_key_info_.signature_algorithm;
   if (TPMErrorBase err = signature_sealing_backend_->CreateUnsealingSession(
           keyset_challenge_info_.sealed_secret,
-          BlobFromString(public_key_info_.public_key_spki_der()),
-          key_sealing_algorithms, delegate_blob_, delegate_secret_,
-          &unsealing_session_)) {
+          public_key_info_.public_key_spki_der, key_sealing_algorithms,
+          delegate_blob_, delegate_secret_, &unsealing_session_)) {
     return WrapError<TPMError>(
         std::move(err), "Failed to start unsealing session for the secret");
   }
   MakeKeySignatureChallenge(
-      account_id_, BlobFromString(public_key_info_.public_key_spki_der()),
+      account_id_, public_key_info_.public_key_spki_der,
       unsealing_session_->GetChallengeValue(),
       unsealing_session_->GetChallengeAlgorithm(),
       base::BindOnce(

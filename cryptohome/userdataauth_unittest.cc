@@ -3859,7 +3859,7 @@ class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
 
   struct ReplyToVerifyKey {
     void operator()(const std::string& account_id,
-                    const ChallengePublicKeyInfo& public_key_info,
+                    const structure::ChallengePublicKeyInfo& public_key_info,
                     std::unique_ptr<KeyChallengeService> key_challenge_service,
                     ChallengeCredentialsHelper::VerifyKeyCallback callback) {
       std::move(callback).Run(is_key_valid);
@@ -3871,7 +3871,7 @@ class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
   struct ReplyToDecrypt {
     void operator()(
         const std::string& account_id,
-        const ChallengePublicKeyInfo& public_key_info,
+        const structure::ChallengePublicKeyInfo& public_key_info,
         const structure::SignatureChallengeInfo& keyset_challenge_info,
         std::unique_ptr<KeyChallengeService> key_challenge_service,
         ChallengeCredentialsHelper::DecryptCallback callback) {
@@ -3892,7 +3892,7 @@ class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
     key_public_info->set_public_key_spki_der(kSpkiDer);
     key_public_info->add_signature_algorithm(kAlgorithm);
 
-    public_key_info_ = *key_public_info;
+    public_key_info_ = proto::FromProto(*key_public_info);
 
     PrepareArguments();
     check_req_->mutable_account_id()->set_account_id(kUser);
@@ -3923,7 +3923,7 @@ class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
 
  protected:
   KeyData key_data_;
-  ChallengePublicKeyInfo public_key_info_;
+  structure::ChallengePublicKeyInfo public_key_info_;
 };
 
 // Tests the CheckKey lightweight check scenario for challenge-response
@@ -3935,7 +3935,7 @@ TEST_F(ChallengeResponseUserDataAuthExTest, LightweightCheckKey) {
 
   // Simulate a successful key verification.
   EXPECT_CALL(challenge_credentials_helper_,
-              VerifyKey(kUser, ProtobufEquals(public_key_info_), _, _))
+              VerifyKey(kUser, StructureEquals(public_key_info_), _, _))
       .WillOnce(ReplyToVerifyKey{/*is_key_valid=*/true});
 
   CallCheckKeyAndVerify(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -3949,10 +3949,10 @@ TEST_F(ChallengeResponseUserDataAuthExTest, FallbackLightweightCheckKey) {
 
   // Simulate a failure in the lightweight check and a successful decryption.
   EXPECT_CALL(challenge_credentials_helper_,
-              VerifyKey(kUser, ProtobufEquals(public_key_info_), _, _))
+              VerifyKey(kUser, StructureEquals(public_key_info_), _, _))
       .WillOnce(ReplyToVerifyKey{/*is_key_valid=*/false});
   EXPECT_CALL(challenge_credentials_helper_,
-              Decrypt(kUser, ProtobufEquals(public_key_info_), _, _, _))
+              Decrypt(kUser, StructureEquals(public_key_info_), _, _, _))
       .WillOnce(ReplyToDecrypt{SecureBlob(kPasskey)});
 
   CallCheckKeyAndVerify(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);

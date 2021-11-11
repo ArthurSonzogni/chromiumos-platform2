@@ -14,9 +14,7 @@
 #include <base/callback.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/key.pb.h"
 #include "cryptohome/key_challenge_service.h"
-#include "cryptohome/rpc.pb.h"
 #include "cryptohome/signature_sealing/structures.h"
 
 namespace cryptohome {
@@ -87,7 +85,7 @@ class ChallengeCredentialsHelper {
   // The result is reported via |callback|.
   virtual void GenerateNew(
       const std::string& account_id,
-      const ChallengePublicKeyInfo& public_key_info,
+      const structure::ChallengePublicKeyInfo& public_key_info,
       const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
       GenerateNewCallback callback) = 0;
@@ -104,7 +102,7 @@ class ChallengeCredentialsHelper {
   // The result is reported via |callback|.
   virtual void Decrypt(
       const std::string& account_id,
-      const ChallengePublicKeyInfo& public_key_info,
+      const structure::ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
       DecryptCallback callback) = 0;
@@ -117,7 +115,7 @@ class ChallengeCredentialsHelper {
   // The result is reported via |callback|.
   virtual void VerifyKey(
       const std::string& account_id,
-      const ChallengePublicKeyInfo& public_key_info,
+      const structure::ChallengePublicKeyInfo& public_key_info,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
       VerifyKeyCallback callback) = 0;
 };

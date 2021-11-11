@@ -16,7 +16,6 @@
 #include <libhwsec/error/tpm_error.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
-#include "cryptohome/key.pb.h"
 #include "cryptohome/signature_sealing/structures.h"
 #include "cryptohome/signature_sealing_backend.h"
 #include "cryptohome/tpm.h"
@@ -52,7 +51,7 @@ class ChallengeCredentialsDecryptOperation final
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret,
       const std::string& account_id,
-      const ChallengePublicKeyInfo& public_key_info,
+      const structure::ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
       CompletionCallback completion_callback);
 
@@ -91,7 +90,7 @@ class ChallengeCredentialsDecryptOperation final
   const brillo::Blob delegate_blob_;
   const brillo::Blob delegate_secret_;
   const std::string account_id_;
-  const ChallengePublicKeyInfo public_key_info_;
+  const structure::ChallengePublicKeyInfo public_key_info_;
   const structure::SignatureChallengeInfo keyset_challenge_info_;
   std::unique_ptr<brillo::Blob> salt_signature_;
   CompletionCallback completion_callback_;

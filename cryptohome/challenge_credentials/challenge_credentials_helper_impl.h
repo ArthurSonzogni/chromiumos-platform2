@@ -18,11 +18,8 @@
 
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
-#include "cryptohome/key.pb.h"
 #include "cryptohome/key_challenge_service.h"
-#include "cryptohome/rpc.pb.h"
 #include "cryptohome/tpm.h"
-#include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
 
@@ -51,24 +48,24 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
   // ChallengeCredentialsHelper:
   void GenerateNew(
       const std::string& account_id,
-      const ChallengePublicKeyInfo& public_key_info,
+      const structure::ChallengePublicKeyInfo& public_key_info,
       const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
       GenerateNewCallback callback) override;
   void Decrypt(const std::string& account_id,
-               const ChallengePublicKeyInfo& public_key_info,
+               const structure::ChallengePublicKeyInfo& public_key_info,
                const structure::SignatureChallengeInfo& keyset_challenge_info,
                std::unique_ptr<KeyChallengeService> key_challenge_service,
                DecryptCallback callback) override;
   void VerifyKey(const std::string& account_id,
-                 const ChallengePublicKeyInfo& public_key_info,
+                 const structure::ChallengePublicKeyInfo& public_key_info,
                  std::unique_ptr<KeyChallengeService> key_challenge_service,
                  VerifyKeyCallback callback) override;
 
  private:
   void StartDecryptOperation(
       const std::string& account_id,
-      const ChallengePublicKeyInfo& public_key_info,
+      const structure::ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
       int attempt_number,
       DecryptCallback callback);
@@ -90,7 +87,7 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
   // callback.
   void OnDecryptCompleted(
       const std::string& account_id,
-      const ChallengePublicKeyInfo& public_key_info,
+      const structure::ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
       int attempt_number,
       DecryptCallback original_callback,

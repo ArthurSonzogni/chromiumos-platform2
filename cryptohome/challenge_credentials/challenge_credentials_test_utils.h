@@ -11,9 +11,6 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
-#include "cryptohome/key.pb.h"
-#include "cryptohome/rpc.pb.h"
-#include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
 

@@ -13,7 +13,6 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
-#include "cryptohome/key.pb.h"
 
 namespace cryptohome {
 
@@ -41,7 +40,7 @@ class ChallengeCredentialsVerifyKeyOperation final
       KeyChallengeService* key_challenge_service,
       Tpm* tpm,
       const std::string& account_id,
-      const ChallengePublicKeyInfo& public_key_info,
+      const structure::ChallengePublicKeyInfo& public_key_info,
       CompletionCallback completion_callback);
 
   ~ChallengeCredentialsVerifyKeyOperation() override;
@@ -59,7 +58,7 @@ class ChallengeCredentialsVerifyKeyOperation final
 
   Tpm* const tpm_;
   const std::string account_id_;
-  const ChallengePublicKeyInfo public_key_info_;
+  const structure::ChallengePublicKeyInfo public_key_info_;
   CompletionCallback completion_callback_;
   base::WeakPtrFactory<ChallengeCredentialsVerifyKeyOperation>
       weak_ptr_factory_{this};

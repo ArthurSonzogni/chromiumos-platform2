@@ -13,13 +13,9 @@
 #include <base/optional.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
-#include "cryptohome/signature_sealed_data.pb.h"
-#include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/tpm.h"
 
 using brillo::Blob;
-using brillo::BlobFromString;
-using brillo::BlobToString;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
 using hwsec::error::TPMErrorBase;
@@ -28,31 +24,19 @@ namespace cryptohome {
 
 namespace {
 
-std::vector<structure::ChallengeSignatureAlgorithm> GetSealingAlgorithms(
-    const ChallengePublicKeyInfo& public_key_info) {
-  std::vector<structure::ChallengeSignatureAlgorithm> sealing_algorithms;
-  for (int index = 0; index < public_key_info.signature_algorithm_size();
-       ++index) {
-    sealing_algorithms.push_back(
-        proto::FromProto(public_key_info.signature_algorithm(index)));
-  }
-  return sealing_algorithms;
-}
-
 // Returns the signature algorithm that should be used for signing salt from the
 // set of algorithms supported by the given key. Returns nullopt when no
 // suitable algorithm was found.
 base::Optional<structure::ChallengeSignatureAlgorithm>
-ChooseSaltSignatureAlgorithm(const ChallengePublicKeyInfo& public_key_info) {
-  DCHECK(public_key_info.signature_algorithm_size());
+ChooseSaltSignatureAlgorithm(
+    const structure::ChallengePublicKeyInfo& public_key_info) {
+  DCHECK(public_key_info.signature_algorithm.size());
   base::Optional<structure::ChallengeSignatureAlgorithm>
       currently_chosen_algorithm;
   // Respect the input's algorithm prioritization, with the exception of
   // considering SHA-1 as the least preferred option.
-  for (int index = 0; index < public_key_info.signature_algorithm_size();
-       ++index) {
-    currently_chosen_algorithm =
-        proto::FromProto(public_key_info.signature_algorithm(index));
+  for (auto algo : public_key_info.signature_algorithm) {
+    currently_chosen_algorithm = algo;
     if (*currently_chosen_algorithm !=
         structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1)
       break;
@@ -69,7 +53,7 @@ ChallengeCredentialsGenerateNewOperation::
         const brillo::Blob& delegate_blob,
         const brillo::Blob& delegate_secret,
         const std::string& account_id,
-        const ChallengePublicKeyInfo& public_key_info,
+        const structure::ChallengePublicKeyInfo& public_key_info,
         const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
         CompletionCallback completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
@@ -115,7 +99,7 @@ bool ChallengeCredentialsGenerateNewOperation::StartProcessing() {
     LOG(ERROR) << "Signature sealing is disabled";
     return false;
   }
-  if (!public_key_info_.signature_algorithm_size()) {
+  if (!public_key_info_.signature_algorithm.size()) {
     LOG(ERROR) << "The key does not support any signature algorithm";
     return false;
   }
@@ -155,8 +139,8 @@ bool ChallengeCredentialsGenerateNewOperation::StartGeneratingSaltSignature() {
   }
   salt_signature_algorithm_ = *chosen_salt_signature_algorithm;
   MakeKeySignatureChallenge(
-      account_id_, BlobFromString(public_key_info_.public_key_spki_der()),
-      salt_, salt_signature_algorithm_,
+      account_id_, public_key_info_.public_key_spki_der, salt_,
+      salt_signature_algorithm_,
       base::BindOnce(
           &ChallengeCredentialsGenerateNewOperation::OnSaltChallengeResponse,
           weak_ptr_factory_.GetWeakPtr()));
@@ -166,8 +150,8 @@ bool ChallengeCredentialsGenerateNewOperation::StartGeneratingSaltSignature() {
 bool ChallengeCredentialsGenerateNewOperation::CreateTpmProtectedSecret() {
   SecureBlob local_tpm_protected_secret_value;
   if (TPMErrorBase err = signature_sealing_backend_->CreateSealedSecret(
-          BlobFromString(public_key_info_.public_key_spki_der()),
-          GetSealingAlgorithms(public_key_info_), pcr_restrictions_,
+          public_key_info_.public_key_spki_der,
+          public_key_info_.signature_algorithm, pcr_restrictions_,
           delegate_blob_, delegate_secret_, &local_tpm_protected_secret_value,
           &tpm_sealed_secret_data_)) {
     LOG(ERROR) << "Failed to create TPM-protected secret: " << *err;
@@ -211,7 +195,7 @@ structure::SignatureChallengeInfo ChallengeCredentialsGenerateNewOperation::
     ConstructKeysetSignatureChallengeInfo() const {
   structure::SignatureChallengeInfo keyset_signature_challenge_info;
   keyset_signature_challenge_info.public_key_spki_der =
-      BlobFromString(public_key_info_.public_key_spki_der());
+      public_key_info_.public_key_spki_der;
   keyset_signature_challenge_info.sealed_secret = tpm_sealed_secret_data_;
   keyset_signature_challenge_info.salt = salt_;
   keyset_signature_challenge_info.salt_signature_algorithm =

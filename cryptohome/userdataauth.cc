@@ -1652,7 +1652,7 @@ void UserDataAuth::DoChallengeResponseMount(
     // credential auth block, we can get rid of the |signature_challenge_info|
     // from the credentials after we move it into the auth block state.
     challenge_credentials_helper_->Decrypt(
-        account_id, public_key_info,
+        account_id, proto::FromProto(public_key_info),
         proto::FromProto(vault_keyset->GetSignatureChallengeInfo()),
         std::move(key_challenge_service),
         base::BindOnce(
@@ -1673,7 +1673,7 @@ void UserDataAuth::DoChallengeResponseMount(
     GetChallengeCredentialsPcrRestrictions(obfuscated_username,
                                            &pcr_restrictions);
     challenge_credentials_helper_->GenerateNew(
-        account_id, public_key_info, pcr_restrictions,
+        account_id, proto::FromProto(public_key_info), pcr_restrictions,
         std::move(key_challenge_service),
         base::BindOnce(
             &UserDataAuth::OnChallengeResponseMountCredentialsObtained,
@@ -2364,7 +2364,8 @@ void UserDataAuth::TryLightweightChallengeResponseCheckKey(
 
   // Attempt the lightweight check against the found user session.
   challenge_credentials_helper_->VerifyKey(
-      account_id, public_key_info, std::move(key_challenge_service),
+      account_id, proto::FromProto(public_key_info),
+      std::move(key_challenge_service),
       base::BindOnce(&UserDataAuth::OnLightweightChallengeResponseCheckKeyDone,
                      base::Unretained(this), request, std::move(on_done)));
 }
@@ -2441,7 +2442,7 @@ void UserDataAuth::DoFullChallengeResponseCheckKey(
       authorization.key().data().challenge_response_key(0);
 
   challenge_credentials_helper_->Decrypt(
-      account_id, public_key_info,
+      account_id, proto::FromProto(public_key_info),
       proto::FromProto(vault_keyset->GetSignatureChallengeInfo()),
       std::move(key_challenge_service),
       base::BindOnce(&UserDataAuth::OnFullChallengeResponseCheckKeyDone,
