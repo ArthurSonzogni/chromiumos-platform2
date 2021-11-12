@@ -46,7 +46,7 @@ fn smoke_test() {
     let (server_transport, client_transport) = create_transport_from_pipes().unwrap();
 
     let handler: Box<dyn TestRpcServer> = Box::new(TestRpcServerImpl {});
-    let mut dispatcher = RpcDispatcher::new(handler, server_transport).unwrap();
+    let mut dispatcher = RpcDispatcher::new_nonblocking(handler, server_transport).unwrap();
 
     // Queue the client RPC:
     let client_thread = spawn(move || {

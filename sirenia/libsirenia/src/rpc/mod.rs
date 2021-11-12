@@ -38,6 +38,16 @@ pub enum Error {
     ResponseMismatch,
     #[error("failed to set non-blocking: {0}")]
     SetNonBlocking(#[source] sys_util::Error),
+    #[error("partial read.")]
+    PartialRead,
+    #[error("read failed: {0}")]
+    ReadFailed(String),
+    #[error("write failed: {0}")]
+    WriteFailed(#[source] communication::Error),
+    #[error("invoke failed")]
+    InvokeFailed,
+    #[error("end of stream")]
+    EndOfStream,
 }
 
 type Result<T> = StdResult<T, Error>;
@@ -98,23 +108,55 @@ pub struct RpcDispatcher<H: MessageHandler + 'static> {
 }
 
 impl<H: MessageHandler + 'static> RpcDispatcher<H> {
-    pub fn new(handler: H, transport: Transport) -> Result<Self> {
-        set_nonblocking(transport.r.as_raw_fd()).map_err(Error::SetNonBlocking)?;
-        Ok(RpcDispatcher {
+    pub fn new(handler: H, transport: Transport) -> Self {
+        RpcDispatcher {
             handler,
             transport,
             reader: NonBlockingMessageReader::default(),
             message_count: 0,
-        })
+        }
+    }
+
+    pub fn new_nonblocking(handler: H, transport: Transport) -> Result<Self> {
+        let mut dispatcher = RpcDispatcher::new(handler, transport);
+        dispatcher.set_nonblocking()?;
+        Ok(dispatcher)
+    }
+
+    pub fn set_nonblocking(&mut self) -> Result<()> {
+        set_nonblocking(self.transport.r.as_raw_fd()).map_err(Error::SetNonBlocking)
     }
 
     pub fn new_as_boxed_mutator(handler: H, transport: Transport) -> Option<Box<dyn Mutator>> {
-        match RpcDispatcher::new(handler, transport) {
+        match RpcDispatcher::new_nonblocking(handler, transport) {
             Ok(dispatcher) => Some(Box::new(AddEventSourceMutator::from(dispatcher))),
             Err(err) => {
                 error!("failed to create dispatcher: {}", err);
                 None
             }
+        }
+    }
+
+    pub fn read_once(&mut self) -> Result<()> {
+        match self.reader.read_message(&mut self.transport.r) {
+            Ok(Option::<H::Request>::Some(r)) => {
+                self.message_count += 1;
+                let response = self
+                    .handler
+                    .handle_message(r)
+                    .map_err(|_| Error::InvokeFailed)?;
+                write_message(&mut self.transport.w, response).map_err(Error::WriteFailed)
+            }
+            Ok(Option::<H::Request>::None) => {
+                // Wait for more bytes.
+                Ok(())
+            }
+            Err(communication::Error::EmptyRead) => Err(if self.reader.partial_read() {
+                Error::PartialRead
+            } else {
+                Error::EndOfStream
+            }),
+            Err(e) => Err(Error::ReadFailed(format!("{:?}", e))),
         }
     }
 
@@ -163,36 +205,15 @@ impl<H: MessageHandler + 'static> Debug for RpcDispatcher<H> {
 /// Reads RPC messages from the transport and dispatches them to RPC handler.
 impl<H: MessageHandler + 'static> EventSource for RpcDispatcher<H> {
     fn on_event(&mut self) -> StdResult<Option<Box<dyn Mutator>>, String> {
-        Ok(match self.reader.read_message(&mut self.transport.r) {
-            Ok(Option::<H::Request>::Some(r)) => {
-                self.message_count += 1;
-                if let Ok(response) = self.handler.handle_message(r) {
-                    match write_message(&mut self.transport.w, response) {
-                        Ok(()) => None,
-                        _ => Some(()),
-                    }
-                } else {
-                    Some(())
-                }
-            }
-            Ok(Option::<H::Request>::None) => {
-                // Wait for more bytes.
-                None
-            }
-            Err(communication::Error::EmptyRead) => {
-                if self.reader.partial_read() {
-                    error!("RpcHandler error: partial read.");
-                }
-                Some(())
-            }
+        match self.read_once() {
+            Ok(()) => return Ok(None),
+            Err(Error::EndOfStream) => {}
             Err(e) => {
                 error!("RpcHandler error: {:?}", e);
-                Some(())
             }
-        }
-        // Some errors result in a transport that is no longer valid and should be removed. Rather
-        // than creating the removal mutator in each case, map () to the removal mutator.
-        .map(|()| -> Box<dyn Mutator> { Box::new(RemoveFdMutator(self.transport.as_raw_fd())) }))
+        };
+        // The transport is no longer valid and should be removed.
+        Ok(Some(Box::new(RemoveFdMutator(self.transport.as_raw_fd()))))
     }
 }
 

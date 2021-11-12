@@ -122,7 +122,7 @@ pub mod tests {
         let handler: Box<dyn TeeApiServer> = Box::new(TeeApiServerImpl {
             map: Rc::new(RefCell::new(Map::new())),
         });
-        let dispatcher = RpcDispatcher::new(handler, server_transport).unwrap();
+        let dispatcher = RpcDispatcher::new(handler, server_transport);
 
         (dispatcher, TrichechusStorage::from(client_transport))
     }
