@@ -329,11 +329,28 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
       continue;
     }
 
+    auto before_cleanup = AmountOfFreeDiskSpace();
+    if (!before_cleanup) {
+      LOG(ERROR) << "Failed to get the amount of free space";
+      return false;
+    }
+
     LOG(INFO) << "Freeing disk space by deleting user " << dir->obfuscated;
     if (!routines_->DeleteUserProfile(dir->obfuscated))
       result = false;
     timestamp_manager_->RemoveUser(dir->obfuscated);
     ++deleted_users_count;
+
+    auto after_cleanup = AmountOfFreeDiskSpace();
+    if (!after_cleanup) {
+      LOG(ERROR) << "Failed to get the amount of free space";
+      return false;
+    }
+
+    auto cleaned_in_mb =
+        MAX(0, after_cleanup.value() - before_cleanup.value()) / 1024 / 1024;
+    LOG(INFO) << "Removing user " << dir->obfuscated << " freed "
+              << cleaned_in_mb << " MiB";
 
     if (HasTargetFreeSpace())
       break;
