@@ -4,10 +4,11 @@
 
 #include "login_manager/server_backed_state_key_generator.h"
 
+#include <iterator>
+
 #include <base/bind.h>
 #include <base/callback_helpers.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -108,9 +109,8 @@ bool ServerBackedStateKeyGenerator::InitMachineInfo(
     const std::map<std::string, std::string>& params) {
   machine_info_available_ = true;
 
-  for (size_t i = 0; i < base::size(kMachineInfoSerialNumberKeys); i++) {
-    std::string candidate =
-        GetMapValue(params, kMachineInfoSerialNumberKeys[i]);
+  for (const char* key : kMachineInfoSerialNumberKeys) {
+    std::string candidate = GetMapValue(params, key);
     if (!candidate.empty()) {
       machine_serial_number_ = candidate;
       break;

@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <set>
@@ -18,7 +19,6 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/optional.h>
-#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <chromeos/switches/chrome_switches.h>
 #include <gmock/gmock.h>
@@ -101,8 +101,7 @@ const char BrowserJobTest::kHash[] = "fake_hash";
 const char BrowserJobTest::kChromeMountNamespacePath[] = "mnt_chrome";
 
 void BrowserJobTest::SetUp() {
-  argv_ = std::vector<std::string>(kArgv,
-                                   kArgv + base::size(BrowserJobTest::kArgv));
+  argv_.assign(std::begin(kArgv), std::end(kArgv));
   job_.reset(new BrowserJob(
       argv_, env_, &checker_, &metrics_, &utils_,
       BrowserJob::Config{false, false, base::nullopt},
@@ -478,8 +477,8 @@ TEST_F(BrowserJobTest, SetExtraArguments) {
 
 TEST_F(BrowserJobTest, SetTestArguments) {
   const char* kTestArgs[] = {"--test", "--it", "--all"};
-  std::vector<std::string> test_args(kTestArgs,
-                                     kTestArgs + base::size(kTestArgs));
+  std::vector<std::string> test_args(std::begin(kTestArgs),
+                                     std::end(kTestArgs));
   job_->SetTestArguments(test_args);
 
   std::vector<std::string> job_args = job_->ExportArgv();
@@ -489,13 +488,13 @@ TEST_F(BrowserJobTest, SetTestArguments) {
 
 TEST_F(BrowserJobTest, SetTestArgumentsAndSetExtraArgumentsDontConflict) {
   const char* kTestArgs[] = {"--test", "--it", "--all"};
-  std::vector<std::string> test_args(kTestArgs,
-                                     kTestArgs + base::size(kTestArgs));
+  std::vector<std::string> test_args(std::begin(kTestArgs),
+                                     std::end(kTestArgs));
   job_->SetTestArguments(test_args);
 
   const char* kExtraArgs[] = {"--ichi", "--ni", "--san"};
-  std::vector<std::string> extra_args(kExtraArgs,
-                                      kExtraArgs + base::size(kExtraArgs));
+  std::vector<std::string> extra_args(std::begin(kExtraArgs),
+                                      std::end(kExtraArgs));
   job_->SetExtraArguments(extra_args);
 
   std::vector<std::string> job_args = job_->ExportArgv();
@@ -504,8 +503,8 @@ TEST_F(BrowserJobTest, SetTestArgumentsAndSetExtraArgumentsDontConflict) {
   ExpectArgsToContainAll(job_args, extra_args);
 
   const char* kNewTestArgs[] = {"--debugging=sucks", "--testing=rocks"};
-  std::vector<std::string> new_test_args(
-      kNewTestArgs, kNewTestArgs + base::size(kNewTestArgs));
+  std::vector<std::string> new_test_args(std::begin(kNewTestArgs),
+                                         std::end(kNewTestArgs));
   job_->SetTestArguments(new_test_args);
   job_args = job_->ExportArgv();
   ExpectArgsToContainAll(job_args, argv_);
@@ -514,8 +513,8 @@ TEST_F(BrowserJobTest, SetTestArgumentsAndSetExtraArgumentsDontConflict) {
   EXPECT_THAT(job_args, Not(IsSupersetOf(test_args)));
 
   const char* kNewExtraArgs[] = {"--uno", "--dos"};
-  std::vector<std::string> new_extra_args(
-      kNewExtraArgs, kNewExtraArgs + base::size(kNewExtraArgs));
+  std::vector<std::string> new_extra_args(std::begin(kNewExtraArgs),
+                                          std::end(kNewExtraArgs));
   job_->SetExtraArguments(new_extra_args);
   job_args = job_->ExportArgv();
   ExpectArgsToContainAll(job_args, argv_);
@@ -537,7 +536,7 @@ TEST_F(BrowserJobTest, FeatureFlags) {
 }
 
 TEST_F(BrowserJobTest, ExportArgv) {
-  std::vector<std::string> argv(kArgv, kArgv + base::size(kArgv));
+  std::vector<std::string> argv(std::begin(kArgv), std::end(kArgv));
   BrowserJob job(argv, env_, &checker_, &metrics_, &utils_,
                  BrowserJob::Config{false, false, base::nullopt},
                  std::make_unique<login_manager::Subprocess>(1, &utils_));
@@ -549,7 +548,7 @@ TEST_F(BrowserJobTest, ExportArgv) {
 }
 
 TEST_F(BrowserJobTest, SetAdditionalEnvironmentVariables) {
-  std::vector<std::string> argv(kArgv, kArgv + base::size(kArgv));
+  std::vector<std::string> argv(std::begin(kArgv), std::end(kArgv));
   BrowserJob job(argv, {"A=a"}, &checker_, &metrics_, &utils_,
                  BrowserJob::Config{false, false, base::nullopt},
                  std::make_unique<login_manager::Subprocess>(1, &utils_));
