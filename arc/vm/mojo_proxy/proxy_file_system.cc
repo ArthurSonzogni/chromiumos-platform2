@@ -7,6 +7,7 @@
 #include <errno.h>
 
 #include <algorithm>
+#include <iterator>
 #include <string>
 #include <utility>
 #include <vector>
@@ -16,7 +17,6 @@
 #include <base/logging.h>
 #include <base/optional.h>
 #include <base/posix/eintr_wrapper.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
 #include <base/synchronization/waitable_event.h>
@@ -122,7 +122,7 @@ bool ProxyFileSystem::Init() {
       .readdir = arc::ReadDir,
   };
   fuse_mount_ = std::make_unique<FuseMount>(mount_path_, kFileSystemName);
-  if (!fuse_mount_->Init(base::size(fuse_argv), const_cast<char**>(fuse_argv),
+  if (!fuse_mount_->Init(std::size(fuse_argv), const_cast<char**>(fuse_argv),
                          operations, this)) {
     return false;
   }
