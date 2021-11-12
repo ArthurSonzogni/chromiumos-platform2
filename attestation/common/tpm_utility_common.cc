@@ -99,10 +99,8 @@ void TpmUtilityCommon::BuildValidPCR0Values() {
                                          {0, 1, 1}, {1, 0, 0}, {1, 0, 1},
                                          {1, 1, 0}, {1, 1, 1}};
 
-  for (size_t i = 0; i < base::size(kKnownBootModes); i++) {
-    const std::string mode(std::begin(kKnownBootModes[i]),
-                           std::end(kKnownBootModes[i]));
-
+  for (const auto& mode_array : kKnownBootModes) {
+    const std::string mode(std::begin(mode_array), std::end(mode_array));
     valid_pcr0_values_.insert(GetPCRValueForMode(mode));
   }
 }

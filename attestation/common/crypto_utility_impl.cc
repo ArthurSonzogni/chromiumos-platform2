@@ -4,6 +4,7 @@
 
 #include "attestation/common/crypto_utility_impl.h"
 
+#include <iterator>
 #include <limits>
 #include <string>
 #include <vector>
@@ -13,7 +14,6 @@
 #include <base/check_op.h>
 #include <base/hash/sha1.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
@@ -47,7 +47,7 @@ std::string GetOpenSSLError() {
 }
 
 unsigned char* StringAsOpenSSLBuffer(std::string* s) {
-  return reinterpret_cast<unsigned char*>(base::data(*s));
+  return reinterpret_cast<unsigned char*>(std::data(*s));
 }
 
 const unsigned char* StringAsConstOpenSSLBuffer(const std::string& s) {
@@ -479,7 +479,7 @@ bool CryptoUtilityImpl::AesEncrypt(const EVP_CIPHER* cipher,
   // Allocate enough space for the output (including padding).
   encrypted_data->resize(data.size() + kAesBlockSize);
   auto output_buffer =
-      reinterpret_cast<unsigned char*>(base::data(*encrypted_data));
+      reinterpret_cast<unsigned char*>(std::data(*encrypted_data));
   int output_size = 0;
   crypto::ScopedEVP_CIPHER_CTX encryption_context(EVP_CIPHER_CTX_new());
   if (!encryption_context) {
@@ -737,7 +737,7 @@ bool CryptoUtilityImpl::OAEPEncryptWithLabel(const std::string& label,
   std::string padded_input;
   padded_input.resize(RSA_size(key));
   auto padded_buffer =
-      reinterpret_cast<unsigned char*>(base::data(padded_input));
+      reinterpret_cast<unsigned char*>(std::data(padded_input));
   auto input_buffer = reinterpret_cast<const unsigned char*>(input.data());
   auto label_buffer = reinterpret_cast<const unsigned char*>(label.data());
   int result = RSA_padding_add_PKCS1_OAEP_mgf1(
@@ -749,7 +749,7 @@ bool CryptoUtilityImpl::OAEPEncryptWithLabel(const std::string& label,
     return false;
   }
   output->resize(padded_input.size());
-  auto output_buffer = reinterpret_cast<unsigned char*>(base::data(*output));
+  auto output_buffer = reinterpret_cast<unsigned char*>(std::data(*output));
   result = RSA_public_encrypt(padded_input.size(), padded_buffer, output_buffer,
                               key, RSA_NO_PADDING);
   if (result == -1) {
@@ -1004,7 +1004,7 @@ bool CryptoUtilityImpl::GetCertificatePublicKey(const std::string& certificate,
   }
   public_key->resize(der_length);
   unsigned char* der_buffer =
-      reinterpret_cast<unsigned char*>(base::data(*public_key));
+      reinterpret_cast<unsigned char*>(std::data(*public_key));
   if (i2d_RSAPublicKey(rsa.get(), &der_buffer) < 0) {
     LOG(ERROR) << __func__
                << ": Bad length of der-encoded output: " << GetOpenSSLError();
@@ -1022,7 +1022,7 @@ bool CryptoUtilityImpl::GetCertificateIssuerName(const std::string& certificate,
   }
   char issuer_buf[100];  // A longer CN will truncate.
   X509_NAME_get_text_by_NID(X509_get_issuer_name(x509.get()), NID_commonName,
-                            issuer_buf, base::size(issuer_buf));
+                            issuer_buf, std::size(issuer_buf));
   issuer_name->assign(issuer_buf);
   return true;
 }

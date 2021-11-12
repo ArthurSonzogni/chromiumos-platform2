@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <iterator>
 #include <vector>
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
@@ -101,7 +101,7 @@ class TpmUtilityTest : public testing::Test {
     trunks::TPMT_PUBLIC public_area = {};
     std::vector<uint8_t> point_tmp_buffer;
     CHECK(base::HexStringToBytes(kValidECPointX, &point_tmp_buffer));
-    CHECK_EQ(point_tmp_buffer.size(), base::size(kValidECPointX) / 2);
+    CHECK_EQ(point_tmp_buffer.size(), std::size(kValidECPointX) / 2);
     public_area.unique.ecc.x.size = point_tmp_buffer.size();
     memcpy(public_area.unique.ecc.x.buffer, point_tmp_buffer.data(),
            point_tmp_buffer.size());
@@ -111,7 +111,7 @@ class TpmUtilityTest : public testing::Test {
 
     point_tmp_buffer.clear();
     CHECK(base::HexStringToBytes(kValidECPointY, &point_tmp_buffer));
-    CHECK_EQ(point_tmp_buffer.size(), base::size(kValidECPointY) / 2);
+    CHECK_EQ(point_tmp_buffer.size(), std::size(kValidECPointY) / 2);
     public_area.unique.ecc.y.size = point_tmp_buffer.size();
     memcpy(public_area.unique.ecc.y.buffer, point_tmp_buffer.data(),
            point_tmp_buffer.size());

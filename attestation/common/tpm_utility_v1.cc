@@ -13,7 +13,6 @@
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
 #include <base/notreached.h>
-#include <base/stl_util.h>
 #include <brillo/secure_blob.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
@@ -26,6 +25,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <iterator>
 #include <memory>
 #include <vector>
 
@@ -54,7 +54,7 @@ constexpr unsigned char kSha256DigestInfo[] = {
 constexpr size_t kSelectBitmapSize = 2;
 
 BYTE* StringAsTSSBuffer(std::string* s) {
-  return reinterpret_cast<BYTE*>(base::data(*s));
+  return reinterpret_cast<BYTE*>(std::data(*s));
 }
 
 BYTE* StringAsTSSBuffer(const std::string* s) {
@@ -554,12 +554,12 @@ bool TpmUtilityV1::GetEndorsementCertificate(KeyType key_type,
     return false;
   }
   if (memcmp(kStoredCertHeader, &nvram_value[kStoredCertHeaderOffset],
-             base::size(kStoredCertHeader)) != 0) {
+             std::size(kStoredCertHeader)) != 0) {
     LOG(ERROR) << "Malformed EK certificate: Bad PCCLIENT_STORED_CERT.";
     return false;
   }
   if (memcmp(kFullCertHeader, &nvram_value[kFullCertHeaderOffset],
-             base::size(kFullCertHeader)) != 0) {
+             std::size(kFullCertHeader)) != 0) {
     LOG(ERROR) << "Malformed EK certificate: Bad PCCLIENT_FULL_CERT.";
     return false;
   }
@@ -573,7 +573,7 @@ bool TpmUtilityV1::GetEndorsementCertificate(KeyType key_type,
   }
   // The X.509 certificate follows the header bytes.
   size_t full_cert_end =
-      kTotalHeaderBytes + full_cert_size - base::size(kFullCertHeader);
+      kTotalHeaderBytes + full_cert_size - std::size(kFullCertHeader);
   certificate->assign(nvram_value.begin() + kTotalHeaderBytes,
                       nvram_value.begin() + full_cert_end);
   return true;
@@ -1263,7 +1263,7 @@ bool TpmUtilityV1::GetRSAPublicKeyFromTpmPublicKey(
   }
   public_key_der->resize(der_length);
   unsigned char* der_buffer =
-      reinterpret_cast<unsigned char*>(base::data(*public_key_der));
+      reinterpret_cast<unsigned char*>(std::data(*public_key_der));
   der_length = i2d_RSAPublicKey(rsa.get(), &der_buffer);
   if (der_length < 0) {
     LOG(ERROR) << "Failed to DER-encode public key.";
@@ -1403,7 +1403,7 @@ bool TpmUtilityV1::MakeIdentity(std::string* identity_public_key_der,
   }
   result = Tspi_SetAttribData(pca_public_key_object, TSS_TSPATTRIB_RSAKEY_INFO,
                               TSS_TSPATTRIB_KEYINFO_RSA_MODULUS,
-                              base::size(modulus_buffer), modulus_buffer);
+                              std::size(modulus_buffer), modulus_buffer);
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result)
         << "MakeIdentity: Cannot set modulus to PCA public key.";
