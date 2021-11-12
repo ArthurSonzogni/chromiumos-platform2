@@ -2196,10 +2196,10 @@ TEST_F(StateControllerTest, ScreenDimTriggered) {
   base::RunLoop().RunUntilIdle();
   EXPECT_EQ(chromeos::kMlDecisionServiceShouldDeferScreenDimMethod,
             GetDBusMethodCalls());
-  // THe StepTimeAndTriggerTimeout above will cause
-  // smart_dim_requestor_.RequestSmartDimDecision to be called which will
-  // eventually calls controller_.HandleDeferFromSmartDim, and thus
-  // resets the GetLastActivityTimeForScreenDim(now) to be now. Therefore
+  // THe StepTimeAndTriggerTimeout above will cause RequestSmartDimDecision
+  // to be called which will eventually calls
+  // controller_.HandleDeferFromSmartDim, and thus resets the
+  // GetLastActivityTimeForScreenDim(now) to be now. Therefore
   // screen_dim_duration is 0 now, and ShouldRequestSmartDim should return false
   EXPECT_FALSE(controller_.ShouldRequestSmartDim(now_));
 

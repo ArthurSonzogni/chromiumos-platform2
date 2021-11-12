@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/policy/smart_dim_requestor.h"
+#include "power_manager/powerd/policy/dim_advisor.h"
 
 #include <memory>
 #include <string>
@@ -27,18 +27,20 @@ class MockStateController : public StateController {
   MOCK_METHOD(void, HandleDeferFromSmartDim, ());
 };
 
-class SmartDimRequestorTest : public ::testing::Test {
+class DimAdvisorTest : public ::testing::Test {
  public:
-  SmartDimRequestorTest() {}
+  DimAdvisorTest() {}
   void SetUp() override {
     ml_decision_dbus_proxy_ = dbus_wrapper_.GetObjectProxy(
         chromeos::kMlDecisionServiceName, chromeos::kMlDecisionServicePath);
     dbus_wrapper_.SetMethodCallback(base::BindRepeating(
-        &SmartDimRequestorTest::HandleMethodCall, base::Unretained(this)));
+        &DimAdvisorTest::HandleMethodCall, base::Unretained(this)));
+    hps_dbus_proxy_ = dbus_wrapper_.GetObjectProxy(hps::kHpsServiceName,
+                                                   hps::kHpsServicePath);
   }
-  // Initialize smart_dim_requestor_.
+  // Initialize dim_advisor_.
   void InitWithMlServiceAvailability(const bool available) {
-    smart_dim_requestor_.Init(&dbus_wrapper_, &mock_state_controller_);
+    dim_advisor_.Init(&dbus_wrapper_, &mock_state_controller_);
     dbus_wrapper_.NotifyServiceAvailable(ml_decision_dbus_proxy_, available);
   }
 
@@ -69,25 +71,33 @@ class SmartDimRequestorTest : public ::testing::Test {
     return response;
   }
 
+  void SendHpsSignal(const bool value) {
+    dbus::Signal signal(hps::kHpsServiceInterface, hps::kHpsSenseChanged);
+    dbus::MessageWriter writer(&signal);
+    writer.AppendBool(value);
+    dbus_wrapper_.EmitRegisteredSignal(hps_dbus_proxy_, &signal);
+  }
+
   system::DBusWrapperStub dbus_wrapper_;
-  SmartDimRequestor smart_dim_requestor_;
+  DimAdvisor dim_advisor_;
   MockStateController mock_state_controller_;
   int num_of_method_calls_ = 0;
   bool should_defer_ = false;
   dbus::ObjectProxy* ml_decision_dbus_proxy_ = nullptr;
+  dbus::ObjectProxy* hps_dbus_proxy_ = nullptr;
 };
 
-TEST_F(SmartDimRequestorTest, NotEnabledIfMlServiceUnavailable) {
+TEST_F(DimAdvisorTest, NotEnabledIfMlServiceUnavailable) {
   InitWithMlServiceAvailability(false);
-  EXPECT_FALSE(smart_dim_requestor_.IsEnabled());
+  EXPECT_FALSE(dim_advisor_.IsSmartDimEnabled());
 }
 
-TEST_F(SmartDimRequestorTest, EnabledIfMlServiceAvailable) {
+TEST_F(DimAdvisorTest, EnabledIfMlServiceAvailable) {
   InitWithMlServiceAvailability(true);
-  EXPECT_TRUE(smart_dim_requestor_.IsEnabled());
+  EXPECT_TRUE(dim_advisor_.IsSmartDimEnabled());
 }
 
-TEST_F(SmartDimRequestorTest, NotReadyIfLessThanDimImminent) {
+TEST_F(DimAdvisorTest, NotReadyIfLessThanDimImminent) {
   InitWithMlServiceAvailability(true);
 
   base::TimeDelta screen_dim_imminent = base::TimeDelta::FromSeconds(2);
@@ -95,10 +105,10 @@ TEST_F(SmartDimRequestorTest, NotReadyIfLessThanDimImminent) {
   // now is set to be half of the duration of screen_dim_imminent.
   base::TimeTicks now = base::TimeTicks() + screen_dim_imminent / 2;
 
-  EXPECT_FALSE(smart_dim_requestor_.ReadyForRequest(now, screen_dim_imminent));
+  EXPECT_FALSE(dim_advisor_.ReadyForSmartDimRequest(now, screen_dim_imminent));
 }
 
-TEST_F(SmartDimRequestorTest, HandleSmartDimShouldDefer) {
+TEST_F(DimAdvisorTest, HandleSmartDimShouldDefer) {
   InitWithMlServiceAvailability(true);
 
   base::TimeDelta screen_dim_imminent = base::TimeDelta::FromSeconds(2);
@@ -107,13 +117,13 @@ TEST_F(SmartDimRequestorTest, HandleSmartDimShouldDefer) {
   // The HandleDeferFromSmartDim should be called once.
   EXPECT_CALL(mock_state_controller_, HandleDeferFromSmartDim).Times(1);
   should_defer_ = true;
-  smart_dim_requestor_.RequestSmartDimDecision(now);
+  dim_advisor_.RequestSmartDimDecision(now);
   base::RunLoop().RunUntilIdle();
   // Exactly one dbus call should be sent.
   EXPECT_EQ(num_of_method_calls_, 1);
 }
 
-TEST_F(SmartDimRequestorTest, HandleSmartDimShouldNotDefer) {
+TEST_F(DimAdvisorTest, HandleSmartDimShouldNotDefer) {
   InitWithMlServiceAvailability(true);
 
   base::TimeDelta screen_dim_imminent = base::TimeDelta::FromSeconds(2);
@@ -122,9 +132,29 @@ TEST_F(SmartDimRequestorTest, HandleSmartDimShouldNotDefer) {
   // Exactly one dbus call should be sent.
   should_defer_ = false;
   EXPECT_CALL(mock_state_controller_, HandleDeferFromSmartDim).Times(0);
-  smart_dim_requestor_.RequestSmartDimDecision(now);
+  dim_advisor_.RequestSmartDimDecision(now);
   base::RunLoop().RunUntilIdle();
   EXPECT_EQ(num_of_method_calls_, 1);
+}
+
+TEST_F(DimAdvisorTest, HpsIsEnabledAfterGettingFirstSignal) {
+  InitWithMlServiceAvailability(false);
+
+  EXPECT_FALSE(dim_advisor_.IsHpsSenseEnabled());
+  SendHpsSignal(true);
+  EXPECT_TRUE(dim_advisor_.IsHpsSenseEnabled());
+}
+
+TEST_F(DimAdvisorTest, HandleHpsResultChange) {
+  InitWithMlServiceAvailability(false);
+
+  EXPECT_EQ(dim_advisor_.GetHpsResult(), DimAdvisor::HpsResult::UNKNOWN);
+
+  SendHpsSignal(false);
+  EXPECT_EQ(dim_advisor_.GetHpsResult(), DimAdvisor::HpsResult::NEGATIVE);
+
+  SendHpsSignal(true);
+  EXPECT_EQ(dim_advisor_.GetHpsResult(), DimAdvisor::HpsResult::POSITIVE);
 }
 
 }  // namespace policy

@@ -633,7 +633,8 @@ bool StateController::ShouldRequestSmartDim(base::TimeTicks now) {
   return !screen_dimmed_ && delays_.screen_dim_imminent > base::TimeDelta() &&
          now - GetLastActivityTimeForScreenDim(now) >=
              delays_.screen_dim_imminent &&
-         smart_dim_requestor_.ReadyForRequest(now, delays_.screen_dim_imminent);
+         smart_dim_requestor_.ReadyForSmartDimRequest(
+             now, delays_.screen_dim_imminent);
 }
 
 void StateController::HandleDeferFromSmartDim() {
@@ -1277,7 +1278,7 @@ void StateController::ScheduleActionTimeout(base::TimeTicks now) {
   // Find the minimum of the delays that haven't yet occurred.
   base::TimeDelta timeout_delay;
   if (!IsScreenDimBlocked()) {
-    if (smart_dim_requestor_.IsEnabled()) {
+    if (smart_dim_requestor_.IsSmartDimEnabled()) {
       UpdateActionTimeout(now, GetLastActivityTimeForScreenDim(now),
                           delays_.screen_dim_imminent, &timeout_delay);
     }

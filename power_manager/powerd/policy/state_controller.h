@@ -20,7 +20,7 @@
 #include "power_manager/common/activity_logger.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs_observer.h"
-#include "power_manager/powerd/policy/smart_dim_requestor.h"
+#include "power_manager/powerd/policy/dim_advisor.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 
 namespace dbus {
@@ -559,7 +559,7 @@ class StateController : public PrefsObserver {
 
   // Class that decides whether to defer the imminent screen dimming via dbus
   // method call to kMlDecisionServiceInterface.
-  SmartDimRequestor smart_dim_requestor_;
+  DimAdvisor smart_dim_requestor_;
 
   base::WeakPtrFactory<StateController> weak_ptr_factory_;
 };
