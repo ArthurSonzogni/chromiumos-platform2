@@ -4,6 +4,7 @@
 
 #include "oobe_config/rollback_helper.h"
 
+#include <iterator>
 #include <vector>
 
 #include <fcntl.h>
@@ -17,7 +18,6 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "oobe_config/oobe_config.h"
@@ -200,7 +200,7 @@ bool IsSymlink(const base::FilePath& path) {
     return false;
   char buf[PATH_MAX];
   ssize_t count = readlink(base::StringPrintf("/proc/self/fd/%d", fd).c_str(),
-                           buf, base::size(buf));
+                           buf, std::size(buf));
   if (count <= 0)
     return false;
   base::FilePath real(std::string(buf, count));
