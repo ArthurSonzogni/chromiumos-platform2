@@ -61,6 +61,8 @@ static const std::map<WiFiService::RandomizationPolicy, std::string>
          kWifiRandomMacPolicyOUIRandom},
         {WiFiService::RandomizationPolicy::PersistentRandom,
          kWifiRandomMacPolicyPersistentRandom},
+        {WiFiService::RandomizationPolicy::NonPersistentRandom,
+         kWifiRandomMacPolicyNonPersistentRandom},
 };
 
 static const std::map<WiFiService::RandomizationPolicy, int32_t>
@@ -73,6 +75,8 @@ static const std::map<WiFiService::RandomizationPolicy, int32_t>
          WPASupplicant::kMACAddrPolicyOUIRandom},
         {WiFiService::RandomizationPolicy::PersistentRandom,
          WPASupplicant::kMACAddrPolicyPersistentRandom},
+        {WiFiService::RandomizationPolicy::NonPersistentRandom,
+         WPASupplicant::kMACAddrPolicyPersistentRandom},
 };
 
 }  // namespace
@@ -82,6 +86,7 @@ const int WiFiService::kSuspectedCredentialFailureThreshold = 3;
 
 const char WiFiService::kStorageMACAddress[] = "WiFi.MACAddress";
 const char WiFiService::kStorageMACPolicy[] = "WiFi.MACPolicy";
+const char WiFiService::kStoragePortalDetected[] = "WiFi.PortalDetected";
 const char WiFiService::kStorageCredentialPassphrase[] = "WiFi.Passphrase";
 const char WiFiService::kStorageHiddenSSID[] = "WiFi.HiddenSSID";
 const char WiFiService::kStorageMode[] = "WiFi.Mode";
@@ -89,6 +94,9 @@ const char WiFiService::kStorageSecurityClass[] = "WiFi.SecurityClass";
 const char WiFiService::kStorageSSID[] = "SSID";
 
 bool WiFiService::logged_signal_warning = false;
+// Clock for time-related events.
+std::unique_ptr<base::Clock> WiFiService::clock_ =
+    std::make_unique<base::DefaultClock>();
 
 WiFiService::WiFiService(Manager* manager,
                          WiFiProvider* provider,
@@ -353,28 +361,7 @@ bool WiFiService::SetMACPolicy(const std::string& policy, Error* error) {
     return false;
   }
   random_mac_policy_ = ret->first;
-  if (random_mac_policy_ == RandomizationPolicy::PersistentRandom &&
-      !mac_address_.is_set()) {
-    SetMACAddress();
-  }
   return true;
-}
-
-void WiFiService::SetMACAddress(const std::string* mac_str) {
-  SLOG(this, 2) << __func__;
-  if (mac_str) {
-    if (mac_address_.Set(*mac_str)) {
-      SLOG(this, 2) << "Using MAC Address: " << mac_address_;
-    } else {
-      LOG(ERROR) << "Invalid MAC argument: " << *mac_str
-                 << ", Using Random MAC Address instead.";
-      // The best way to handle error here is to re-roll the address.
-      mac_address_.Randomize();
-    }
-  } else {
-    mac_address_.Randomize();
-    SLOG(this, 2) << "Generated Random MAC Address: " << mac_address_;
-  }
 }
 
 std::string WiFiService::GetTethering(Error* /*error*/) const {
@@ -436,10 +423,15 @@ bool WiFiService::Load(const StoreInterface* storage) {
   // Load properties specific to WiFi services.
   storage->GetBool(id, kStorageHiddenSSID, &hidden_ssid_);
 
-  std::string mac_str;
-  if (storage->GetString(id, kStorageMACAddress, &mac_str)) {
-    SetMACAddress(&mac_str);
+  // MAC address-related load is done inside its object.
+  if (!mac_address_.Load(storage, id)) {
+    LOG(ERROR) << "Failed to load MAC Address. Using Random address instead.";
+    // Make sure address is cleared.
+    mac_address_.Clear();
+    // Address will be re-randomized at next UpdateMACAddress().
+    // The error has been handled here, do not return false;
   }
+  storage->GetBool(id, kStoragePortalDetected, &was_portal_detected_);
 
   std::string mac_policy;
   Error error;
@@ -494,9 +486,9 @@ bool WiFiService::Save(StoreInterface* storage) {
   const std::string id = GetStorageIdentifier();
   storage->SetBool(id, kStorageHiddenSSID, hidden_ssid_);
   storage->SetString(id, kStorageMode, mode_);
-  if (mac_address_.is_set()) {
-    storage->SetString(id, kStorageMACAddress, mac_address_.ToString());
-  }
+  // MAC Address-related data is saved by its object.
+  mac_address_.Save(storage, id);
+  storage->SetBool(id, kStoragePortalDetected, was_portal_detected_);
   storage->SetString(id, kStorageMACPolicy,
                      RandomizationPolicyMap.at(random_mac_policy_));
   // This saves both the plaintext and rot47 versions of the passphrase.
@@ -533,6 +525,11 @@ bool WiFiService::Unload() {
 
 void WiFiService::SetState(ConnectState state) {
   Service::SetState(state);
+  // In case we're pretty much sure we are dealing with a Captive Portal,
+  // remember this fact, so that we won't reshuffle MAC address later.
+  if (state == kStateRedirectFound) {
+    was_portal_detected_ = true;
+  }
   SetRoamState(Service::kRoamStateIdle);
   NotifyIfVisibilityChanged();
 }
@@ -690,6 +687,39 @@ void WiFiService::OnConnect(Error* error) {
   wifi->ConnectTo(this, error);
 }
 
+void WiFiService::UpdateMACAddress() {
+  const auto now = clock_->Now();
+  switch (random_mac_policy_) {
+    case RandomizationPolicy::PersistentRandom:
+      // If MAC address has not been set yet, we need to randomize it.
+      if (!mac_address_.is_set() ||
+          // If MAC address has expired, we need to double-check if network is
+          // open and captive portal hasn't been detected in the mean time.
+          (mac_address_.IsExpired(now) && security_ == kSecurityNone &&
+           !was_portal_detected_)) {
+        mac_address_.Randomize();
+        // For non-portalled open networks, address may be rotated periodically.
+        if (security_ == kSecurityNone && !was_portal_detected_) {
+          mac_address_.set_expiration_time(now +
+                                           MACAddress::kDefaultExpirationTime);
+        }
+      }
+      break;
+    case RandomizationPolicy::NonPersistentRandom:
+      // For forced non-persistent random we don't check for captive portal.
+      if (!mac_address_.is_set() || mac_address_.IsExpired(now) ||
+          // Addresses with policy changed recently should be refreshed.
+          !mac_address_.will_expire()) {
+        mac_address_.Randomize();
+        mac_address_.set_expiration_time(now +
+                                         MACAddress::kDefaultExpirationTime);
+      }
+      break;
+    default:
+      break;  // Other modes do not require explicit address to be set.
+  }
+}
+
 KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
   KeyValueStore params;
 
@@ -775,9 +805,16 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
                 << " to supplicant.";
   params.Set(WPASupplicant::kNetworkPropertyMACAddrPolicy,
              RandomizationPolicyToSupplicantPolicy.at(random_mac_policy_));
-  if (random_mac_policy_ == RandomizationPolicy::PersistentRandom) {
-    params.Set(WPASupplicant::kNetworkPropertyMACAddrValue,
-               mac_address_.ToString());
+  switch (random_mac_policy_) {
+    case RandomizationPolicy::PersistentRandom:
+    // Fall through. For non-persistent policy we use the same WPA supplicant
+    // policy as in persistent case, just supply MAC that is non-persistent.
+    case RandomizationPolicy::NonPersistentRandom:
+      params.Set(WPASupplicant::kNetworkPropertyMACAddrValue,
+                 mac_address_.ToString());
+      break;
+    default:
+      break;  // No address needs filling in for other policies.
   }
   return params;
 }

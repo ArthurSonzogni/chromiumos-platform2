@@ -11,6 +11,10 @@
 #include <string>
 #include <vector>
 
+#include <base/time/clock.h>
+#include <base/time/time.h>
+#include <base/time/default_clock.h>
+
 #include "shill/event_dispatcher.h"
 #include "shill/key_value_store.h"
 #include "shill/mac_address.h"
@@ -45,7 +49,9 @@ class WiFiService : public Service {
     FullRandom,        // Change whole MAC every time we associate.
     OUIRandom,         // Change non-OUI MAC part every time we associate.
     PersistentRandom,  // Set per-SSID/profile persistent MAC.
-    // Not supported currently: NonPersistentRandom
+    // Contrary to previous values, NonPersistentRandom has no equivalent in
+    // WPA Supplicant. PersistentRandom with non-persistent MAC is used there.
+    NonPersistentRandom,
   };
 
   WiFiService(Manager* manager,
@@ -182,6 +188,9 @@ class WiFiService : public Service {
   // std::numeric_limits<int>::min().
   mockable int16_t SignalLevel() const;
 
+  // Update MAC Address when necessary e.g. when it needs to be re-rolled.
+  void UpdateMACAddress();
+
   void set_expecting_disconnect(bool val) { expecting_disconnect_ = val; }
   bool expecting_disconnect() const { return expecting_disconnect_; }
 
@@ -221,12 +230,16 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, ChooseDevice);
   FRIEND_TEST(WiFiServiceTest, SetMACAddress);
   FRIEND_TEST(WiFiServiceTest, SetMACPolicy);
+  FRIEND_TEST(WiFiServiceTest, UpdateMACAddress);
+  FRIEND_TEST(WiFiServiceTest, UpdateMACAddressOpenNetwork);
+  FRIEND_TEST(WiFiServiceTest, UpdateMACAddressPolicySwitch);
 
   static const char kAnyDeviceAddress[];
   static const int kSuspectedCredentialFailureThreshold;
 
   static const char kStorageMACAddress[];
   static const char kStorageMACPolicy[];
+  static const char kStoragePortalDetected[];
 
   // Override the base clase implementation, because we need to allow
   // arguments that aren't base class methods.
@@ -330,13 +343,10 @@ class WiFiService : public Service {
   // Set MAC address randomization policy.
   bool SetMACPolicy(const std::string& policy, Error* error);
 
-  // Sets MAC address to be used for this service.  The input is optional, if
-  // provided the 'mac_str' is parsed and used otherwise random MAC value is
-  // generated.
-  void SetMACAddress(const std::string* mac_str = nullptr);
-
   void SetWiFi(const WiFiRefPtr& new_wifi);
 
+  // Clock for time-related events.
+  static std::unique_ptr<base::Clock> clock_;
   // Properties
   std::string passphrase_;
   bool need_passphrase_;
@@ -353,6 +363,12 @@ class WiFiService : public Service {
   // MAC Address used when |random_mac_policy_| is set to |PersistentRandom|.
   // Empty otherwise.
   MACAddress mac_address_;
+  // This tracks if particular service ever encountered Captive portal.
+  // In order to improve user experience with MAC Address randomization,
+  // we rotate (reshuffle) MAC Address periodically only if |security_|
+  // is Open and only if user never encountered a captive portal.
+  // Once this flag is set and saved, it never gets erased.
+  bool was_portal_detected_ = false;
   uint16_t frequency_;
   std::vector<uint16_t> frequency_list_;
   uint16_t physical_mode_;

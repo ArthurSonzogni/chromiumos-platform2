@@ -310,6 +310,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // kMaxPassiveScanRetries, kMaxFreqsForPassiveScanRetries
   FRIEND_TEST(WiFiMainTest, InitiateScanInDarkResume_Idle);
   FRIEND_TEST(WiFiServiceTest, SetMACPolicy);
+  FRIEND_TEST(WiFiServiceTest, UpdateMACAddress);
+  FRIEND_TEST(WiFiServiceTest, UpdateMACAddressOpenNetwork);
+  FRIEND_TEST(WiFiServiceTest, UpdateMACAddressPolicySwitch);
 
   using EndpointMap = std::map<const RpcIdentifier, WiFiEndpointRefPtr>;
   using ReverseServiceMap = std::map<const WiFiService*, RpcIdentifier>;

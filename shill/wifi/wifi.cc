@@ -457,6 +457,7 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
   Error unused_error;
   network_rpcid = FindNetworkRpcidForService(service, &unused_error);
   if (network_rpcid.value().empty()) {
+    service->UpdateMACAddress();
     KeyValueStore service_params =
         service->GetSupplicantConfigurationParameters();
     const uint32_t scan_ssid = 1;  // "True": Use directed probe.
