@@ -1,0 +1,42 @@
+{
+  "name": "HDRnet",
+  "key": "hdrnet",
+  "summary": "Tuning options for HDRnet",
+  "default_config_file": "/etc/camera/hdrnet_config.json",
+  "override_config_file": "/run/camera/hdrnet_config.json",
+  "options": [
+    {
+      "name": "Enable",
+      "key": "hdrnet_enable",
+      "summary": "Switch HDRnet on/off.",
+      "type": "switch",
+      "default": true
+    },
+    {
+      "name": "HDR ratio",
+      "key": "hdr_ratio",
+      "summary": "Customized HDR ratio to apply. Only takes effect when Gcam AE is disabled",
+      "type": "number",
+      "value_descriptor": {
+        "min": 1.0,
+        "max": 30,
+        "step": 0.1
+      },
+      "default": 3
+    },
+    {
+      "name": "Dump buffers",
+      "key": "dump_buffer",
+      "summary": "Dump the intermediate buffers produced by HDRnet pipeline for debugging",
+      "type": "switch",
+      "default": false
+    },
+    {
+      "name": "Log frame metadata",
+      "key": "log_frame_metadata",
+      "summary": "Turn on the start logging per-frame metadata. The metadata are written to /run/camera/hdrnet_frame_metadata.json when turned off",
+      "type": "switch",
+      "default": false
+    }
+  ]
+}
