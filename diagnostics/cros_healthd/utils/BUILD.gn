@@ -6,7 +6,11 @@ import("//common-mk/pkg_config.gni")
 
 # Library that provides utilities used by cros_healthd.
 pkg_config("libcros_healthd_utils_pkg_deps") {
-  pkg_deps = [ "libchrome" ]
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "libudev",
+  ]
 }
 
 source_set("libcros_healthd_utils") {
@@ -16,6 +20,7 @@ source_set("libcros_healthd_utils") {
     "file_utils.cc",
     "helper_tool_utils.cc",
     "procfs_utils.cc",
+    "usb_utils.cc",
   ]
 }
 
@@ -33,6 +38,7 @@ if (use.test) {
       "file_utils_test.cc",
       "helper_tool_utils_test.cc",
       "procfs_utils_test.cc",
+      "usb_utils_test.cc",
     ]
     configs += [
       ":libcros_healthd_utils_test_pkg_deps",
