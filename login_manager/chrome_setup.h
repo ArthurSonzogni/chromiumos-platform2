@@ -184,6 +184,9 @@ void SetUpInstantTetheringFlag(chromeos::ui::ChromiumCommandBuilder* builder,
 // appropriate.
 void AddCrashHandlerFlag(chromeos::ui::ChromiumCommandBuilder* builder);
 
+// Add appropriate patterns to the --vmodule argument.
+void AddVmodulePatterns(chromeos::ui::ChromiumCommandBuilder* builder);
+
 }  // namespace login_manager
 
 #endif  // LOGIN_MANAGER_CHROME_SETUP_H_

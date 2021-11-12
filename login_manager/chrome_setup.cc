@@ -581,32 +581,6 @@ void AddEnterpriseFlags(ChromiumCommandBuilder* builder) {
   builder->AddArg("--enterprise-enrollment-modulus-limit=19");
 }
 
-// Adds patterns to the --vmodule flag.
-void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
-  // Turn on basic logging for Ozone platform implementations.
-  builder->AddVmodulePattern("*/ui/ozone/*=1");
-
-  // Turn on basic logging for enrollment flow.
-  builder->AddVmodulePattern("*/browser/ash/login/enrollment/*=1");
-  builder->AddVmodulePattern("enrollment_screen_handler=1");
-
-  // Turn on basic logging for full restore.
-  builder->AddVmodulePattern("*/browser/ash/full_restore/*=1");
-
-  // Turn on OOBE/Login logs.
-  builder->AddVmodulePattern("*/browser/ash/login/screens/*=1");
-  builder->AddVmodulePattern("*/webui/chromeos/login/*=1");
-  builder->AddVmodulePattern("wizard_controller=1");
-  builder->AddVmodulePattern("existing_user_controller=1");
-
-  // TODO(https://crbug.com/907158): Needed for investigating issues with tablet
-  // mode detection and internal input device event blocking logic.
-  builder->AddVmodulePattern("*/ash/wm/tablet_mode/*=1");
-
-  if (builder->UseFlagIsSet("cheets"))
-    builder->AddVmodulePattern("*arc/*=1");
-}
-
 }  // namespace
 
 void SetUpSchedulerFlags(ChromiumCommandBuilder* builder,
@@ -883,6 +857,35 @@ void AddMlFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--ondevice_document_scanner=use_rootfs");
 
   SetUpHandwritingRecognitionWebPlatformApiFlag(builder, cros_config);
+}
+
+// Adds patterns to the --vmodule flag.
+void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
+  // Turn on basic logging for Ozone platform implementations.
+  builder->AddVmodulePattern("*/ui/ozone/*=1");
+
+  // Turn on basic logging for enrollment flow.
+  builder->AddVmodulePattern("*/browser/ash/login/enrollment/*=1");
+  builder->AddVmodulePattern("enrollment_screen_handler=1");
+
+  // Turn on basic logging for full restore.
+  builder->AddVmodulePattern("*/browser/ash/full_restore/*=1");
+
+  // Turn on OOBE/Login logs.
+  builder->AddVmodulePattern("*/browser/ash/login/screens/*=1");
+  builder->AddVmodulePattern("*/webui/chromeos/login/*=1");
+  builder->AddVmodulePattern("wizard_controller=1");
+  builder->AddVmodulePattern("existing_user_controller=1");
+
+  // TODO(https://crbug.com/907158): Needed for investigating issues with tablet
+  // mode detection and internal input device event blocking logic.
+  builder->AddVmodulePattern("*/ash/wm/tablet_mode/*=1");
+
+  // TODO(https://crbug.com/1180205): Remove after investigation.
+  builder->AddVmodulePattern("automatic_reboot_manager=2");
+
+  if (builder->UseFlagIsSet("cheets"))
+    builder->AddVmodulePattern("*arc/*=1");
 }
 
 void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
