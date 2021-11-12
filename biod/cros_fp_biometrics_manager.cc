@@ -233,6 +233,11 @@ bool CrosFpBiometricsManager::ReadRecordsForSingleUser(
     all_records_valid &= record.valid;
     if (record.valid) {
       LoadRecord(std::move(record));
+    } else {
+      LOG(INFO) << "Deleting invalid record "
+                << LogSafeID(record.metadata.record_id) << ".";
+      biod_storage_->DeleteRecord(record.metadata.user_id,
+                                  record.metadata.record_id);
     }
   }
   return all_records_valid;
