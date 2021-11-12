@@ -158,13 +158,25 @@ void BroadcastForwarder::AddrMsgHandler(const shill::RTNLMessage& msg) {
   // Interface address is added.
   if (msg.HasAttribute(IFA_ADDRESS)) {
     shill::ByteString b(msg.GetAttribute(IFA_ADDRESS));
-    memcpy(&dev_socket_->addr, b.GetConstData(), b.GetLength());
+    if (b.GetLength() != sizeof(dev_socket_->addr)) {
+      LOG(WARNING) << "Expected IFA_ADDRESS length "
+                   << sizeof(dev_socket_->addr) << " but got " << b.GetLength();
+      return;
+    }
+    memcpy(&dev_socket_->addr, b.GetConstData(), sizeof(dev_socket_->addr));
   }
 
   // Broadcast address is added.
   if (msg.HasAttribute(IFA_BROADCAST)) {
     shill::ByteString b(msg.GetAttribute(IFA_BROADCAST));
-    memcpy(&dev_socket_->broadaddr, b.GetConstData(), b.GetLength());
+    if (b.GetLength() != sizeof(dev_socket_->broadaddr)) {
+      LOG(WARNING) << "Expected IFA_BROADCAST length "
+                   << sizeof(dev_socket_->broadaddr) << " but got "
+                   << b.GetLength();
+      return;
+    }
+    memcpy(&dev_socket_->broadaddr, b.GetConstData(),
+           sizeof(dev_socket_->broadaddr));
 
     base::ScopedFD dev_fd(BindRaw(dev_ifname_));
     if (!dev_fd.is_valid()) {
