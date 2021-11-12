@@ -238,7 +238,8 @@ uint32_t NetChecksum(const void* data, ssize_t len) {
   for (; len > 1; len -= 2)
     sum += *word++;
   if (len)
-    sum += *word & htons(0x0000ffff);
+    // Cast it as a uint8_t since there's only one byte left.
+    sum += *(reinterpret_cast<const uint8_t*>(word));
   return sum;
 }
 
