@@ -30,8 +30,8 @@ class KeyFileStore : public StoreInterface {
  public:
   static constexpr CK_SLOT_ID kInvalidSlot = ULONG_MAX;
 
-  KeyFileStore(const base::FilePath& path,
-               CK_SLOT_ID slot_id = KeyFileStore::kInvalidSlot);
+  explicit KeyFileStore(const base::FilePath& path,
+                        const std::string& user_hash = "");
   KeyFileStore(const KeyFileStore&) = delete;
   KeyFileStore& operator=(const KeyFileStore&) = delete;
 
@@ -108,9 +108,12 @@ class KeyFileStore : public StoreInterface {
   bool DoesGroupMatchProperties(const std::string& group,
                                 const KeyValueStore& properties) const;
 
+  bool TryGetPKCS11SlotID() const;
+
   std::unique_ptr<KeyFile> key_file_;
   const base::FilePath path_;
-  const CK_SLOT_ID slot_id_;
+  const std::string user_hash_;
+  mutable CK_SLOT_ID slot_id_;
 };
 
 // Creates a store, implementing StoreInterface, at the specified |path|.
