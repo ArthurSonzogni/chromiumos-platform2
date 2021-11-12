@@ -5,6 +5,7 @@
 #include "brillo/timezone/tzif_parser.h"
 
 #include <arpa/inet.h>
+#include <iterator>
 #include <stdint.h>
 #include <string.h>
 #include <utility>
@@ -14,7 +15,6 @@
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 
 namespace {
@@ -150,7 +150,7 @@ base::Optional<std::string> GetPosixTimezone(const base::FilePath& tzif_path) {
   int64_t offset = tzfile.Seek(base::File::FROM_CURRENT, second_body_size);
 
   std::string time_string(tzfile.GetLength() - offset, '\0');
-  if (tzfile.ReadAtCurrentPos(base::data(time_string), time_string.size()) !=
+  if (tzfile.ReadAtCurrentPos(time_string.data(), time_string.size()) !=
       time_string.size()) {
     return base::nullopt;
   }

@@ -8,13 +8,13 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <iterator>
 #include <string>
 
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/rand_util.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <gtest/gtest.h>
 
@@ -31,8 +31,8 @@ constexpr int kPermissions755 = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
 std::string GetRandomSuffix() {
   const int kBufferSize = 6;
   unsigned char buffer[kBufferSize];
-  base::RandBytes(buffer, base::size(buffer));
-  return base::HexEncode(buffer, base::size(buffer));
+  base::RandBytes(buffer, std::size(buffer));
+  return base::HexEncode(buffer, std::size(buffer));
 }
 
 bool IsNonBlockingFD(int fd) {

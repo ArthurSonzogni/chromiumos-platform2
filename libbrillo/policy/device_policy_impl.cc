@@ -5,6 +5,7 @@
 #include "policy/device_policy_impl.h"
 
 #include <algorithm>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <set>
@@ -17,7 +18,6 @@
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ptr_util.h>
-#include <base/stl_util.h>
 #include <base/time/time.h>
 #include <base/values.h>
 #include <openssl/evp.h>
@@ -102,7 +102,7 @@ std::string DecodeConnectionType(int type) {
       "ethernet", "wifi", "wimax", "bluetooth", "cellular",
   };
 
-  if (type < 0 || type >= static_cast<int>(base::size(kConnectionTypes)))
+  if (type < 0 || type >= static_cast<int>(std::size(kConnectionTypes)))
     return std::string();
 
   return kConnectionTypes[type];
