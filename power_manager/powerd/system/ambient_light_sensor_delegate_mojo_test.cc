@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/system/ambient_light_sensor_delegate_mojo.h"
 
+#include <iterator>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -105,7 +106,7 @@ class AmbientLightSensorDelegateMojoTest : public ::testing::Test {
   // The indices of [0, 1, 2, 3] imply channels [lux, ChannelType::X,
   // ChannelType::Y, ChannelType::Z].
   void WriteColorLux(int64_t lux, std::vector<int64_t> color_lux) {
-    CHECK_EQ(color_lux.size(), base::size(kColorChannelConfig));
+    CHECK_EQ(color_lux.size(), std::size(kColorChannelConfig));
 
     base::flat_map<int32_t, int64_t> sample;
     sample[0] = lux;

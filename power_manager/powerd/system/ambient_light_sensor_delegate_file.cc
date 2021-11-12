@@ -10,6 +10,7 @@
 #include <cerrno>
 #include <cmath>
 #include <cstring>
+#include <iterator>
 #include <map>
 #include <utility>
 
@@ -19,7 +20,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -203,7 +203,7 @@ void AmbientLightSensorDelegateFile::ErrorColorChannelCallback(
 
 void AmbientLightSensorDelegateFile::CollectChannelReadings() {
   if (!set_lux_callback_ || !clear_reading_.has_value() ||
-      color_readings_.size() != base::size(kColorChannelConfig)) {
+      color_readings_.size() != std::size(kColorChannelConfig)) {
     return;
   }
 
@@ -269,8 +269,8 @@ bool AmbientLightSensorDelegateFile::CheckPath(
       return false;
     }
   }
-  for (unsigned int i = 0; i < base::size(input_names); i++) {
-    base::FilePath als_path = check_path.Append(input_names[i]);
+  for (const auto& name : input_names) {
+    base::FilePath als_path = check_path.Append(name);
     if (!base::PathExists(als_path))
       continue;
     if (!als_file_.Init(als_path))

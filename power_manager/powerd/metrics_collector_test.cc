@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include <cmath>
+#include <iterator>
 #include <memory>
 #include <set>
 #include <string>
@@ -19,7 +20,6 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/timer/timer.h>
 #include <chromeos/dbus/service_constants.h>
@@ -283,12 +283,12 @@ TEST_F(MetricsCollectorTest, BatteryInfoWhenChargeStarts) {
   metrics_to_test_.insert(kBatteryRemainingWhenChargeStartsName);
   metrics_to_test_.insert(kBatteryChargeHealthName);
 
-  for (size_t i = 0; i < base::size(kBatteryPercentages); ++i) {
+  for (const auto& percentage : kBatteryPercentages) {
     IgnoreHandlePowerStatusUpdateMetrics();
 
     power_status_.line_power_on = false;
-    power_status_.battery_charge_full = kBatteryPercentages[i];
-    power_status_.battery_percentage = kBatteryPercentages[i];
+    power_status_.battery_charge_full = percentage;
+    power_status_.battery_percentage = percentage;
     collector_.HandlePowerStatusUpdate(power_status_);
 
     power_status_.line_power_on = true;
@@ -309,14 +309,14 @@ TEST_F(MetricsCollectorTest, SessionStartOrStop) {
   const uint kUserAdjustments[] = {0, 200};
   const double kBatteryPercentages[] = {10.5, 23.0};
   const int kSessionSecs[] = {900, kLengthOfSessionMax + 10};
-  ASSERT_EQ(base::size(kAlsAdjustments), base::size(kUserAdjustments));
-  ASSERT_EQ(base::size(kAlsAdjustments), base::size(kBatteryPercentages));
-  ASSERT_EQ(base::size(kAlsAdjustments), base::size(kSessionSecs));
+  ASSERT_EQ(std::size(kAlsAdjustments), std::size(kUserAdjustments));
+  ASSERT_EQ(std::size(kAlsAdjustments), std::size(kBatteryPercentages));
+  ASSERT_EQ(std::size(kAlsAdjustments), std::size(kSessionSecs));
 
   power_status_.line_power_on = false;
   Init();
 
-  for (size_t i = 0; i < base::size(kAlsAdjustments); ++i) {
+  for (size_t i = 0; i < std::size(kAlsAdjustments); ++i) {
     IgnoreHandlePowerStatusUpdateMetrics();
     power_status_.battery_percentage = kBatteryPercentages[i];
     ExpectEnumMetric(

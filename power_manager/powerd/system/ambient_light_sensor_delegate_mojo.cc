@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <map>
 #include <utility>
 
@@ -264,7 +265,7 @@ void AmbientLightSensorDelegateMojo::GetAllChannelIdsCallback(
   }
 
   if (enable_color_support_ &&
-      color_indices_.size() == base::size(kColorChannelConfig)) {
+      color_indices_.size() == std::size(kColorChannelConfig)) {
     for (const auto& color_index : color_indices_)
       channel_indices_.push_back(color_index.second);
   } else {

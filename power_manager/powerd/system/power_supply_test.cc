@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <string>
@@ -14,7 +15,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -684,8 +684,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   const char* const kUsbTypes[] = {
       "USB", "USB_DCP", "USB_CDP", "USB_ACA", "USB_C", "USB_PD",
   };
-  for (size_t i = 0; i < base::size(kUsbTypes); ++i) {
-    const char* kType = kUsbTypes[i];
+  for (const char* kType : kUsbTypes) {
     SCOPED_TRACE(kType);
     WriteValue(line2_dir, "type", kType);
     ASSERT_TRUE(UpdateStatus(&status));
@@ -739,7 +738,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
       "[",
       "]",
       "[]"};
-  for (size_t i = 0; i < base::size(kInvalidUsbTypeValues); ++i) {
+  for (size_t i = 0; i < std::size(kInvalidUsbTypeValues); ++i) {
     const char* kType = kInvalidUsbTypeValues[i];
     SCOPED_TRACE(kType);
     WriteValue(line2_dir, "usb_type", kType);
@@ -1415,8 +1414,7 @@ TEST_F(PowerSupplyTest, ConnectedToUsb) {
   // USB-related strings used by the kernel.
   PowerStatus status;
   const char* const kUsbTypes[] = {"USB", "USB_DCP", "USB_CDP", "USB_ACA"};
-  for (size_t i = 0; i < base::size(kUsbTypes); ++i) {
-    const char* kType = kUsbTypes[i];
+  for (const char* kType : kUsbTypes) {
     SCOPED_TRACE(kType);
     UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kType, kCharging);
     ASSERT_TRUE(UpdateStatus(&status));
