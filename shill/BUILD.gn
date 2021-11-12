@@ -31,6 +31,7 @@ group("all") {
       ":dhcpv4_static_routes_fuzzer",
       ":shill_http_url_fuzzer",
       ":shill_profile_fuzzer",
+      ":shill_service_fuzzer",
       ":shill_technology_fuzzer",
       ":verizon_subscription_state_fuzzer",
       ":wifi_ies_fuzzer",
@@ -546,6 +547,19 @@ if (use.fuzzer) {
   }
   executable("shill_profile_fuzzer") {
     sources = [ "profile_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":fuzzed_data_config",
+      ":target_defaults",
+      ":shill_config",
+    ]
+    deps = [ ":libshill" ]
+  }
+  executable("shill_service_fuzzer") {
+    sources = [
+      "fake_store.cc",
+      "service_fuzzer.cc",
+    ]
     configs += [
       "//common-mk/common_fuzzer",
       ":fuzzed_data_config",
