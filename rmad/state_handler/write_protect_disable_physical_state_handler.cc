@@ -46,8 +46,11 @@ WriteProtectDisablePhysicalStateHandler::
 
 RmadErrorCode WriteProtectDisablePhysicalStateHandler::InitializeState() {
   if (!state_.has_wp_disable_physical()) {
-    state_.set_allocated_wp_disable_physical(
-        new WriteProtectDisablePhysicalState);
+    auto wp_disable_physical =
+        std::make_unique<WriteProtectDisablePhysicalState>();
+    // TODO(chenghan): Set the correct value.
+    wp_disable_physical->set_keep_device_open(true);
+    state_.set_allocated_wp_disable_physical(wp_disable_physical.release());
   }
   if (!write_protect_signal_sender_) {
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;

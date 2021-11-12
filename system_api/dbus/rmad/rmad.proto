@@ -301,7 +301,10 @@ message VerifyRsuState {
 
 // Wait for tech to physically disable HWWP.
 message WriteProtectDisablePhysicalState {
-  // No state. Waits for signal that write protection is disabled.
+  // Provided by daemon.
+  // Inform the repair tech whether they need to keep the device open after
+  // disabling write protection.
+  bool keep_device_open = 1;
 }
 
 // Display confirmation that HWWP has been disabled.

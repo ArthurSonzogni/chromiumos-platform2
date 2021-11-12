@@ -97,6 +97,7 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest, InitializeState_Success) {
   auto handler = CreateStateHandler({0}, true, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  EXPECT_EQ(handler->GetState().wp_disable_physical().keep_device_open(), true);
 
   bool signal_sent = false;
   EXPECT_CALL(signal_sender_, SendHardwareWriteProtectSignal(IsFalse()))
