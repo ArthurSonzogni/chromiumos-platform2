@@ -17,13 +17,13 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <iterator>
 #include <string>
 #include <type_traits>
 #include <utility>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -162,10 +162,10 @@ void SyslogStdioAdapter::RunLoop(base::ScopedFD stdout_fd,
   }
 
   char buffer[4096];
-  struct epoll_event events[base::size(epoll_descriptors)];
+  struct epoll_event events[std::size(epoll_descriptors)];
   while (true) {
     int nfds =
-        HANDLE_EINTR(epoll_wait(epollfd.get(), events, base::size(events), -1));
+        HANDLE_EINTR(epoll_wait(epollfd.get(), events, std::size(events), -1));
     if (nfds == -1) {
       PLOG(ERROR) << "Failed to epoll_wait";
       return;

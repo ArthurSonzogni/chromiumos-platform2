@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <iterator>
 #include <memory>
 #include <ostream>
 #include <sstream>
@@ -29,7 +30,6 @@
 #include <base/macros.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/process/launch.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -667,7 +667,7 @@ int RunOci(const base::FilePath& bundle_dir,
   // logs.
   const int inherited_fds[] = {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO};
   if (container_config_inherit_fds(config.get(), inherited_fds,
-                                   base::size(inherited_fds))) {
+                                   std::size(inherited_fds))) {
     LOG(WARNING) << "Failed to inherit stdout/stderr.";
   }
 
