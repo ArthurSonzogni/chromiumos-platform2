@@ -99,12 +99,6 @@ class HomeDirs {
   // Removes the Dmcryot cache container for the named user.
   virtual bool RemoveDmcryptCacheContainer(const std::string& username);
 
-  // Renames account identified by |account_id_from| to |account_id_to|.
-  // This is called when user e-mail is replaced with GaiaId as account
-  // identifier.
-  virtual bool Rename(const std::string& account_id_from,
-                      const std::string& account_id_to);
-
   // Computes the size of cryptohome for the named user.
   // Return 0 if the given user is invalid of non-existent.
   // Negative values are reserved for future cases whereby we need to do some

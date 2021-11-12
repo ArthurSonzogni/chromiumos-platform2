@@ -495,32 +495,6 @@ void LegacyCryptohomeInterfaceAdaptor::MountGuestEx(
       kMountTimeout.InMilliseconds());
 }
 
-void LegacyCryptohomeInterfaceAdaptor::RenameCryptohome(
-    std::unique_ptr<
-        brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,
-    const cryptohome::AccountIdentifier& in_cryptohome_id_from,
-    const cryptohome::AccountIdentifier& in_cryptohome_id_to) {
-  ReportDeprecatedApiCalled(DeprecatedApiEvent::kProxyRenameCryptohome);
-
-  auto response_shared =
-      std::make_shared<SharedDBusMethodResponse<cryptohome::BaseReply>>(
-          std::move(response));
-
-  user_data_auth::RenameRequest request;
-  *request.mutable_id_from() = in_cryptohome_id_from;
-  *request.mutable_id_to() = in_cryptohome_id_to;
-  userdataauth_proxy_->RenameAsync(
-      request,
-      base::BindOnce(
-          &LegacyCryptohomeInterfaceAdaptor::ForwardBaseReplyErrorCode<
-              user_data_auth::RenameReply>,
-          response_shared),
-      base::BindOnce(&LegacyCryptohomeInterfaceAdaptor::ForwardError<
-                         cryptohome::BaseReply>,
-                     base::Unretained(this), response_shared),
-      kDefaultTimeout.InMilliseconds());
-}
-
 void LegacyCryptohomeInterfaceAdaptor::GetAccountDiskUsage(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<cryptohome::BaseReply>> response,

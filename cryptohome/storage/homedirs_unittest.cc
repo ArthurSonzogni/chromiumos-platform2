@@ -216,63 +216,6 @@ TEST_P(HomeDirsTest, RemoveNonOwnerCryptohomes) {
   EXPECT_TRUE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
 }
 
-TEST_P(HomeDirsTest, RenameCryptohome) {
-  constexpr char kNewUserId[] = "some_new_user";
-  const std::string kHashedNewUserId =
-      brillo::cryptohome::home::SanitizeUserName(kNewUserId);
-  const base::FilePath kNewUserPath = ShadowRoot().Append(kHashedNewUserId);
-
-  // Original state - pregenerated users' vaults exist, kNewUserId's vault
-  // doesn't exist
-  EXPECT_TRUE(platform_.DirectoryExists(users_[0].homedir_path));
-  EXPECT_TRUE(platform_.DirectoryExists(users_[1].homedir_path));
-  EXPECT_TRUE(platform_.DirectoryExists(users_[2].homedir_path));
-  EXPECT_TRUE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
-  EXPECT_FALSE(platform_.DirectoryExists(kNewUserPath));
-
-  // Rename user0
-  EXPECT_TRUE(homedirs_->Rename(users_[0].name, kNewUserId));
-
-  // Renamed user0 to kNewUserId, thus user0's vault doesn't exist and
-  // kNewUserId's does.
-  EXPECT_FALSE(platform_.DirectoryExists(users_[0].homedir_path));
-  EXPECT_TRUE(platform_.DirectoryExists(users_[1].homedir_path));
-  EXPECT_TRUE(platform_.DirectoryExists(users_[2].homedir_path));
-  EXPECT_TRUE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
-  EXPECT_TRUE(platform_.DirectoryExists(kNewUserPath));
-
-  // If source directory doesn't exist, assume renamed.
-  EXPECT_TRUE(homedirs_->Rename(users_[0].name, kNewUserId));
-
-  // Since renaming already renamed user, no changes are expected.
-  EXPECT_FALSE(platform_.DirectoryExists(users_[0].homedir_path));
-  EXPECT_TRUE(platform_.DirectoryExists(users_[1].homedir_path));
-  EXPECT_TRUE(platform_.DirectoryExists(users_[2].homedir_path));
-  EXPECT_TRUE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
-  EXPECT_TRUE(platform_.DirectoryExists(kNewUserPath));
-
-  // This should fail as target directory already exists.
-  EXPECT_FALSE(homedirs_->Rename(users_[1].name, users_[2].name));
-
-  // Since renaming failed, no changes are expected.
-  EXPECT_FALSE(platform_.DirectoryExists(users_[0].homedir_path));
-  EXPECT_TRUE(platform_.DirectoryExists(users_[1].homedir_path));
-  EXPECT_TRUE(platform_.DirectoryExists(users_[2].homedir_path));
-  EXPECT_TRUE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
-  EXPECT_TRUE(platform_.DirectoryExists(kNewUserPath));
-
-  // Rename back.
-  EXPECT_TRUE(homedirs_->Rename(kNewUserId, users_[0].name));
-
-  // Back to the original state - pregenerated users' vaults exist, kNewUserId's
-  // vault doesn't exist.
-  EXPECT_TRUE(platform_.DirectoryExists(users_[0].homedir_path));
-  EXPECT_TRUE(platform_.DirectoryExists(users_[1].homedir_path));
-  EXPECT_TRUE(platform_.DirectoryExists(users_[2].homedir_path));
-  EXPECT_TRUE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
-  EXPECT_FALSE(platform_.DirectoryExists(kNewUserPath));
-}
-
 TEST_P(HomeDirsTest, CreateCryptohome) {
   constexpr char kNewUserId[] = "some_new_user";
   const std::string kHashedNewUserId =

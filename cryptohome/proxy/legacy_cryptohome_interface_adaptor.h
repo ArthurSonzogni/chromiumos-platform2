@@ -167,11 +167,6 @@ class LegacyCryptohomeInterfaceAdaptor
   void MountGuestEx(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                         cryptohome::BaseReply>> response,
                     const cryptohome::MountGuestRequest& in_request) override;
-  void RenameCryptohome(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          cryptohome::BaseReply>> response,
-      const cryptohome::AccountIdentifier& in_cryptohome_id_from,
-      const cryptohome::AccountIdentifier& in_cryptohome_id_to) override;
   void GetAccountDiskUsage(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           cryptohome::BaseReply>> response,

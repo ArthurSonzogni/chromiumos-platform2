@@ -28,7 +28,6 @@ const char kIsMounted[] = "IsMounted";
 const char kUnmount[] = "Unmount";
 const char kMount[] = "Mount";
 const char kRemove[] = "Remove";
-const char kRename[] = "Rename";
 const char kListKeys[] = "ListKeys";
 const char kGetKeyData[] = "GetKeyData";
 const char kCheckKey[] = "CheckKey";

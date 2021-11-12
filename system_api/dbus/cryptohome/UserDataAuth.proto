@@ -201,21 +201,6 @@ message RemoveReply {
   CryptohomeErrorCode error = 1;
 }
 
-// Input parameters to Rename()
-message RenameRequest {
-  // Identifies the user, whose home directory to rename
-  cryptohome.AccountIdentifier id_from = 1;
-  // After the Rename() operation the home directory will have a name that is
-  // the same as if it is owned by |id_to|
-  cryptohome.AccountIdentifier id_to = 2;
-}
-
-// Output parameters for Rename()
-message RenameReply {
-  // Indicate an error when |error| is not empty.
-  CryptohomeErrorCode error = 1;
-}
-
 // Input parameters to ListKeys()
 message ListKeysRequest {
   // The default behavior is by label so any extension here should honor that.

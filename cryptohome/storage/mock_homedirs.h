@@ -33,10 +33,6 @@ class MockHomeDirs : public HomeDirs {
   MOCK_METHOD(bool, AreEphemeralUsersEnabled, (), (override));
   MOCK_METHOD(bool, Create, (const std::string&), (override));
   MOCK_METHOD(bool, Remove, (const std::string&), (override));
-  MOCK_METHOD(bool,
-              Rename,
-              (const std::string&, const std::string&),
-              (override));
   MOCK_METHOD(int64_t, ComputeDiskUsage, (const std::string&), (override));
   MOCK_METHOD(bool, Exists, (const std::string&), (const, override));
   MOCK_METHOD(bool,
