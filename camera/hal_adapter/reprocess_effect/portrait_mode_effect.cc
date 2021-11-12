@@ -11,6 +11,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <iterator>
 #include <memory>
 #include <string>
 #include <utility>
@@ -25,7 +26,6 @@
 #include <base/numerics/safe_conversions.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/process/launch.h>
-#include <base/stl_util.h>
 #include <base/values.h>
 #include <libyuv.h>
 #include <libyuv/convert_argb.h>
@@ -81,8 +81,8 @@ int32_t PortraitModeEffect::SetVendorTags(uint32_t request_vendor_tag_start,
                                           uint32_t request_vendor_tag_count,
                                           uint32_t result_vendor_tag_start,
                                           uint32_t result_vendor_tag_count) {
-  if (request_vendor_tag_count != base::size(kRequestVendorTag) ||
-      result_vendor_tag_count != base::size(kResultVendorTag)) {
+  if (request_vendor_tag_count != std::size(kRequestVendorTag) ||
+      result_vendor_tag_count != std::size(kResultVendorTag)) {
     return -EINVAL;
   }
   enable_vendor_tag_ = request_vendor_tag_start;

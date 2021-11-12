@@ -2,11 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <iterator>
 #include <set>
 #include <sstream>
 #include <vector>
-
-#include <base/stl_util.h>
 
 #include <libyuv.h>
 #include "camera3_test/camera3_exif_validator.h"
@@ -393,7 +392,7 @@ void Camera3ReprocessingTest::DoReprocessingCapture(
         exif_test_data.thumbnail_resolution.Height()};
     EXPECT_EQ(0,
               UpdateMetadata(ANDROID_JPEG_THUMBNAIL_SIZE, thumbnail_resolution,
-                             base::size(thumbnail_resolution), in_metadata));
+                             std::size(thumbnail_resolution), in_metadata));
     EXPECT_EQ(0, UpdateMetadata(ANDROID_JPEG_ORIENTATION,
                                 &exif_test_data.orientation, 1, in_metadata));
     EXPECT_EQ(0, UpdateMetadata(ANDROID_JPEG_QUALITY,

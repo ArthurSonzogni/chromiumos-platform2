@@ -13,7 +13,6 @@
 #include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 
@@ -75,9 +74,9 @@ base::Optional<cros::SensorHalClient::Location> ParseLocation(
     return cros::SensorHalClient::Location::kNone;
   }
 
-  for (size_t i = 0; i < base::size(kLocationMapping); ++i) {
-    if (*raw_location == kLocationMapping[i].first)
-      return kLocationMapping[i].second;
+  for (const auto& mapping : kLocationMapping) {
+    if (*raw_location == mapping.first)
+      return mapping.second;
   }
 
   return cros::SensorHalClient::Location::kNone;

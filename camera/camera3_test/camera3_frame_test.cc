@@ -8,6 +8,7 @@
 #include <semaphore.h>
 #include <stdio.h>
 
+#include <iterator>
 #include <limits>
 #include <list>
 #include <unordered_map>
@@ -16,7 +17,6 @@
 #include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/macros.h>
-#include <base/stl_util.h>
 #include <base/strings/string_split.h>
 #include <jpeglib.h>
 #include <libyuv.h>
@@ -612,13 +612,13 @@ TEST_P(Camera3MixedTemplateMultiFrameTest, GetFrame) {
   int32_t types[] = {CAMERA3_TEMPLATE_PREVIEW, CAMERA3_TEMPLATE_STILL_CAPTURE,
                      CAMERA3_TEMPLATE_VIDEO_RECORD,
                      CAMERA3_TEMPLATE_VIDEO_SNAPSHOT};
-  for (size_t i = 0; i < base::size(types); ++i) {
-    EXPECT_EQ(0, CreateCaptureRequestByTemplate(types[i], nullptr))
+  for (const auto& type : types) {
+    EXPECT_EQ(0, CreateCaptureRequestByTemplate(type, nullptr))
         << "Creating capture request fails";
   }
 
   struct timespec timeout;
-  for (size_t i = 0; i < base::size(types); ++i) {
+  for (size_t i = 0; i < std::size(types); ++i) {
     GetTimeOfTimeout(kDefaultTimeoutMs, &timeout);
     WaitShutterAndCaptureResult(timeout);
   }

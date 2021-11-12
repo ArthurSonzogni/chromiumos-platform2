@@ -9,11 +9,11 @@
 #include <stddef.h>
 #include <string.h>
 
+#include <iterator>
 #include <map>
 
 #include <base/files/file_util.h>
 #include <base/macros.h>
-#include <base/stl_util.h>
 #include <base/strings/utf_string_conversions.h>
 
 #include "cros-camera/common.h"
@@ -475,8 +475,8 @@ class TimezoneMap {
         {"GB", "Etc/UCT"},
     };
 
-    for (size_t i = 0; i < base::size(olson_code_data); ++i)
-      map_[olson_code_data[i].olson_code] = olson_code_data[i].country_code;
+    for (auto const& code_data : olson_code_data)
+      map_[code_data.olson_code] = code_data.country_code;
 
     // These are mapping from old codenames to new codenames. They are also
     // part of public domain, and available at
@@ -598,8 +598,8 @@ class TimezoneMap {
         {"Zulu", "Etc/UTC"},
     };
 
-    for (size_t i = 0; i < base::size(link_data); ++i)
-      map_[link_data[i].old_code] = map_[link_data[i].new_code];
+    for (auto const& data : link_data)
+      map_[data.old_code] = map_[data.new_code];
   }
 
   struct CompareCStrings {
