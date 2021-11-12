@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include <iterator>
 #include <set>
 #include <utility>
 
@@ -79,7 +80,7 @@ class SensorDeviceImplTest : public ::testing::Test {
                            cros::mojom::kScale),
         kChannelAttributeValue));
 
-    for (int i = 0; i < base::size(libmems::fakes::kFakeAccelChns); ++i) {
+    for (int i = 0; i < std::size(libmems::fakes::kFakeAccelChns); ++i) {
       auto chn = std::make_unique<libmems::fakes::FakeIioChannel>(
           libmems::fakes::kFakeAccelChns[i], true);
       if (i % 2 == 0)
@@ -219,7 +220,7 @@ TEST_F(SensorDeviceImplTest, StartAndStopReadingSamples) {
   auto fake_observer = fakes::FakeSamplesObserver::Create(
       device_, std::multiset<std::pair<int, cros::mojom::ObserverErrorType>>(),
       frequency, frequency, frequency, frequency,
-      base::size(libmems::fakes::kFakeAccelSamples));
+      std::size(libmems::fakes::kFakeAccelSamples));
 
   mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> pending_remote;
   auto pending_receiver = pending_remote.InitWithNewPipeAndPassReceiver();
@@ -244,7 +245,7 @@ TEST_F(SensorDeviceImplTest, StartAndStopReadingSamples) {
 TEST_F(SensorDeviceImplTest, SetChannels) {
   remote_->GetAllChannelIds(
       base::BindOnce([](const std::vector<std::string>& chn_ids) {
-        EXPECT_EQ(chn_ids.size(), base::size(libmems::fakes::kFakeAccelChns));
+        EXPECT_EQ(chn_ids.size(), std::size(libmems::fakes::kFakeAccelChns));
         for (int i = 0; i < chn_ids.size(); ++i)
           EXPECT_EQ(chn_ids[i], libmems::fakes::kFakeAccelChns[i]);
       }));
@@ -257,7 +258,7 @@ TEST_F(SensorDeviceImplTest, SetChannels) {
       }));
 
   indices.clear();
-  for (int i = 0; i < base::size(libmems::fakes::kFakeAccelChns); ++i)
+  for (int i = 0; i < std::size(libmems::fakes::kFakeAccelChns); ++i)
     indices.push_back(i);
 
   base::RunLoop loop;
@@ -265,7 +266,7 @@ TEST_F(SensorDeviceImplTest, SetChannels) {
       indices, base::BindOnce(
                    [](base::Closure closure, const std::vector<bool>& enabled) {
                      EXPECT_EQ(enabled.size(),
-                               base::size(libmems::fakes::kFakeAccelChns));
+                               std::size(libmems::fakes::kFakeAccelChns));
                      for (int i = 0; i < enabled.size(); ++i)
                        EXPECT_EQ(enabled[i], i % 2 == 0);
 
@@ -277,7 +278,7 @@ TEST_F(SensorDeviceImplTest, SetChannels) {
 
 TEST_F(SensorDeviceImplTest, GetChannelsAttributes) {
   std::vector<int32_t> indices;
-  for (int i = 0; i < base::size(libmems::fakes::kFakeAccelChns); ++i)
+  for (int i = 0; i < std::size(libmems::fakes::kFakeAccelChns); ++i)
     indices.push_back(i);
 
   base::RunLoop loop;
@@ -286,8 +287,7 @@ TEST_F(SensorDeviceImplTest, GetChannelsAttributes) {
       base::BindOnce(
           [](base::Closure closure,
              const std::vector<base::Optional<std::string>>& values) {
-            EXPECT_EQ(values.size(),
-                      base::size(libmems::fakes::kFakeAccelChns));
+            EXPECT_EQ(values.size(), std::size(libmems::fakes::kFakeAccelChns));
             for (int i = 0; i < values.size(); ++i) {
               if (i % 2 == 0) {
                 EXPECT_TRUE(values[i].has_value());

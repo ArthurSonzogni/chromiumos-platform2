@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include <iterator>
 #include <memory>
 #include <utility>
 
@@ -12,7 +13,6 @@
 #include <base/rand_util.h>
 #include <base/run_loop.h>
 #include <base/sequenced_task_runner.h>
-#include <base/stl_util.h>
 #include <base/test/task_environment.h>
 #include <libmems/common_types.h>
 #include <libmems/test_fakes.h>
@@ -180,9 +180,9 @@ class IioDeviceHandlerTest : public ::testing::Test,
     EXPECT_TRUE(
         device->WriteStringAttribute(libmems::kSamplingFrequencyAvailable,
                                      fakes::kFakeSamplingFrequencyAvailable));
-    for (int i = 0; i < base::size(libmems::fakes::kFakeAccelChns); ++i) {
-      auto chn = std::make_unique<libmems::fakes::FakeIioChannel>(
-          libmems::fakes::kFakeAccelChns[i], true);
+    for (const auto& channel : libmems::fakes::kFakeAccelChns) {
+      auto chn =
+          std::make_unique<libmems::fakes::FakeIioChannel>(channel, true);
       device->AddChannel(std::move(chn));
     }
 
@@ -192,12 +192,12 @@ class IioDeviceHandlerTest : public ::testing::Test,
   void TearDown() override { TearDownBase(); }
 
   void HandleAccelSample(std::vector<int64_t> accel_sample) override {
-    EXPECT_EQ(accel_sample.size(), base::size(libmems::fakes::kFakeAccelChns));
+    EXPECT_EQ(accel_sample.size(), std::size(libmems::fakes::kFakeAccelChns));
     if (!observer_)
       return;
 
     libmems::IioDevice::IioSample sample;
-    for (int i = 0; i < base::size(libmems::fakes::kFakeAccelChns); ++i)
+    for (int i = 0; i < std::size(libmems::fakes::kFakeAccelChns); ++i)
       sample.emplace(i, accel_sample[i]);
 
     observer_->OnSampleUpdated(sample);
@@ -254,7 +254,7 @@ TEST_F(IioDeviceHandlerTest, GetAttributes) {
 TEST_F(IioDeviceHandlerTest, SetFrequencyAndReadSamples) {
   std::multiset<std::pair<int, cros::mojom::ObserverErrorType>> failures;
   for (int i = 0; i < kNumFailures; ++i) {
-    int k = base::RandInt(0, base::size(libmems::fakes::kFakeAccelSamples) - 1);
+    int k = base::RandInt(0, std::size(libmems::fakes::kFakeAccelSamples) - 1);
 
     device_->AddFailedReadAtKthSample(k);
     failures.insert(
@@ -310,7 +310,7 @@ TEST_F(IioDeviceHandlerInvalidTest, MissingChannel) {
       device->WriteStringAttribute(libmems::kSamplingFrequencyAvailable,
                                    fakes::kFakeSamplingFrequencyAvailable));
   // Missing channel timestamp
-  for (int i = 0; i < base::size(libmems::fakes::kFakeAccelChns) - 1; ++i) {
+  for (int i = 0; i < std::size(libmems::fakes::kFakeAccelChns) - 1; ++i) {
     auto chn = std::make_unique<libmems::fakes::FakeIioChannel>(
         libmems::fakes::kFakeAccelChns[i], true);
     device->AddChannel(std::move(chn));

@@ -5,6 +5,7 @@
 #include "iioservice/daemon/test_fakes.h"
 
 #include <algorithm>
+#include <iterator>
 #include <vector>
 
 #include <libmems/common_types.h>
@@ -116,12 +117,12 @@ void FakeSamplesObserver::OnSampleUpdated(
   int step = GetStep();
   CHECK_GE(step, 1);
 
-  CHECK_GT(base::size(libmems::fakes::kFakeAccelSamples),
+  CHECK_GT(std::size(libmems::fakes::kFakeAccelSamples),
            sample_index_ + step - 1);
 
   if (device_->GetId() == kAccelDeviceId) {
-    for (int chnIndex = 0;
-         chnIndex < base::size(libmems::fakes::kFakeAccelChns); ++chnIndex) {
+    for (int chnIndex = 0; chnIndex < std::size(libmems::fakes::kFakeAccelChns);
+         ++chnIndex) {
       auto it = sample.find(chnIndex);
 
       // channel: accel_y isn't enabled before |pause_index_|
@@ -209,7 +210,7 @@ bool FakeSamplesObserver::FinishedObserving() const {
 
   return (frequency2_ == 0.0 && sample_index_ + step - 1 >= pause_index_) ||
          sample_index_ + step - 1 >=
-             base::size(libmems::fakes::kFakeAccelSamples);
+             std::size(libmems::fakes::kFakeAccelSamples);
 }
 
 bool FakeSamplesObserver::NoRemainingFailures() const {
@@ -251,7 +252,7 @@ FakeSamplesObserver::FakeSamplesObserver(
 
   if (frequency_ == 0.0) {
     if (frequency2_ == 0.0)
-      sample_index_ = base::size(libmems::fakes::kFakeAccelSamples);
+      sample_index_ = std::size(libmems::fakes::kFakeAccelSamples);
     else
       sample_index_ = pause_index_;
   }
@@ -267,7 +268,7 @@ int FakeSamplesObserver::GetStep() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK_GE(dev_frequency_, libmems::kFrequencyEpsilon);
 
-  int step = base::size(libmems::fakes::kFakeAccelSamples);
+  int step = std::size(libmems::fakes::kFakeAccelSamples);
   if (frequency_ >= libmems::kFrequencyEpsilon)
     step = dev_frequency_ / frequency_;
 
@@ -275,7 +276,7 @@ int FakeSamplesObserver::GetStep() const {
     return step;
 
   if (frequency2_ < libmems::kFrequencyEpsilon)
-    return base::size(libmems::fakes::kFakeAccelSamples);
+    return std::size(libmems::fakes::kFakeAccelSamples);
 
   int step2 = dev_frequency2_ / frequency2_;
 

@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <utility>
@@ -15,7 +16,6 @@
 #include <base/check_op.h>
 #include <base/rand_util.h>
 #include <base/run_loop.h>
-#include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
 #include <libmems/common_types.h>
@@ -208,9 +208,9 @@ class SamplesHandlerFusionTestWithParam
     accel_ = std::make_unique<libmems::fakes::FakeIioDevice>(
         nullptr, fakes::kAccelDeviceName, fakes::kAccelDeviceId);
 
-    for (int i = 0; i < base::size(libmems::fakes::kFakeAccelChns); ++i) {
-      accel_->AddChannel(std::make_unique<libmems::fakes::FakeIioChannel>(
-          libmems::fakes::kFakeAccelChns[i], true));
+    for (const auto& channel : libmems::fakes::kFakeAccelChns) {
+      accel_->AddChannel(
+          std::make_unique<libmems::fakes::FakeIioChannel>(channel, true));
     }
 
     EXPECT_TRUE(accel_->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr,
@@ -303,7 +303,7 @@ TEST_P(SamplesHandlerFusionTestWithParam, ReadSamplesWithFrequency) {
 
   std::multiset<std::pair<int, cros::mojom::ObserverErrorType>> rf_failures;
   for (int i = 0; i < kNumFailures; ++i) {
-    int k = base::RandInt(0, base::size(libmems::fakes::kFakeAccelSamples) - 1);
+    int k = base::RandInt(0, std::size(libmems::fakes::kFakeAccelSamples) - 1);
 
     accel_->AddFailedReadAtKthSample(k);
     rf_failures.insert(
@@ -365,7 +365,7 @@ TEST_P(SamplesHandlerFusionTestWithParam, ReadSamplesWithFrequency) {
   }
 
   // Read the rest samples.
-  ReadSamples(base::size(libmems::fakes::kFakeAccelSamples) -
+  ReadSamples(std::size(libmems::fakes::kFakeAccelSamples) -
               fakes::kPauseIndex);
 
   EXPECT_EQ(frequency_, max_freq2);

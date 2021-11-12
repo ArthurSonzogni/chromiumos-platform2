@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <iterator>
 #include <set>
 #include <string>
 #include <tuple>
@@ -99,9 +100,9 @@ class SamplesHandlerTestBase : public cros::mojom::SensorDeviceSamplesObserver {
         device_->WriteStringAttribute(libmems::kSamplingFrequencyAvailable,
                                       fakes::kFakeSamplingFrequencyAvailable));
 
-    for (int i = 0; i < base::size(libmems::fakes::kFakeAccelChns); ++i) {
-      device_->AddChannel(std::make_unique<libmems::fakes::FakeIioChannel>(
-          libmems::fakes::kFakeAccelChns[i], true));
+    for (const auto& channel : libmems::fakes::kFakeAccelChns) {
+      device_->AddChannel(
+          std::make_unique<libmems::fakes::FakeIioChannel>(channel, true));
     }
 
     EXPECT_TRUE(
@@ -440,7 +441,7 @@ TEST_P(SamplesHandlerTestWithParam, ReadSamplesWithFrequency) {
 
   std::multiset<std::pair<int, cros::mojom::ObserverErrorType>> rf_failures;
   for (int i = 0; i < kNumFailures; ++i) {
-    int k = base::RandInt(0, base::size(libmems::fakes::kFakeAccelSamples) - 1);
+    int k = base::RandInt(0, std::size(libmems::fakes::kFakeAccelSamples) - 1);
 
     device_->AddFailedReadAtKthSample(k);
     rf_failures.insert(

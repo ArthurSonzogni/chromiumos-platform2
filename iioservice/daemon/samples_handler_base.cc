@@ -29,8 +29,8 @@ SamplesHandlerBase::SamplesHandlerBase(
 void SamplesHandlerBase::SetNoBatchChannels(
     std::vector<std::string> channel_ids) {
   for (size_t i = 0; i < channel_ids.size(); ++i) {
-    for (size_t j = 0; j < base::size(kNoBatchChannels); ++j) {
-      if (channel_ids[i] == kNoBatchChannels[j]) {
+    for (const auto& channel : kNoBatchChannels) {
+      if (channel_ids[i] == channel) {
         no_batch_chn_indices_.emplace(i);
         break;
       }

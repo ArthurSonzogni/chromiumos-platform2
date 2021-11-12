@@ -11,7 +11,6 @@
 #include <base/bind.h>
 #include <base/optional.h>
 #include <base/run_loop.h>
-#include <base/stl_util.h>
 #include <base/test/task_environment.h>
 #include <libmems/common_types.h>
 #include <libmems/test_fakes.h>
@@ -55,9 +54,9 @@ class SensorDeviceFusionGravityTest : public ::testing::Test {
     EXPECT_TRUE(
         device->WriteStringAttribute(libmems::kSamplingFrequencyAvailable,
                                      fakes::kFakeSamplingFrequencyAvailable));
-    for (int i = 0; i < base::size(libmems::fakes::kFakeAccelChns); ++i) {
-      auto chn = std::make_unique<libmems::fakes::FakeIioChannel>(
-          libmems::fakes::kFakeAccelChns[i], true);
+    for (const auto& channel : libmems::fakes::kFakeAccelChns) {
+      auto chn =
+          std::make_unique<libmems::fakes::FakeIioChannel>(channel, true);
       device->AddChannel(std::move(chn));
     }
     EXPECT_TRUE(
