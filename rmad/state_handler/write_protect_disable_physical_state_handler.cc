@@ -10,6 +10,7 @@
 #include <base/logging.h>
 
 #include "rmad/constants.h"
+#include "rmad/system/cryptohome_client_impl.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
@@ -31,6 +32,7 @@ WriteProtectDisablePhysicalStateHandler::
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
+  cryptohome_client_ = std::make_unique<CryptohomeClientImpl>(GetSystemBus());
 }
 
 WriteProtectDisablePhysicalStateHandler::
@@ -38,18 +40,20 @@ WriteProtectDisablePhysicalStateHandler::
         scoped_refptr<JsonStore> json_store,
         std::unique_ptr<Cr50Utils> cr50_utils,
         std::unique_ptr<CrosSystemUtils> crossystem_utils,
-        std::unique_ptr<PowerManagerClient> power_manager_client)
+        std::unique_ptr<PowerManagerClient> power_manager_client,
+        std::unique_ptr<CryptohomeClient> cryptohome_client)
     : BaseStateHandler(json_store),
       cr50_utils_(std::move(cr50_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
-      power_manager_client_(std::move(power_manager_client)) {}
+      power_manager_client_(std::move(power_manager_client)),
+      cryptohome_client_(std::move(cryptohome_client)) {}
 
 RmadErrorCode WriteProtectDisablePhysicalStateHandler::InitializeState() {
   if (!state_.has_wp_disable_physical()) {
     auto wp_disable_physical =
         std::make_unique<WriteProtectDisablePhysicalState>();
     // TODO(chenghan): Set the correct value.
-    wp_disable_physical->set_keep_device_open(true);
+    wp_disable_physical->set_keep_device_open(cryptohome_client_->IsEnrolled());
     state_.set_allocated_wp_disable_physical(wp_disable_physical.release());
   }
   if (!write_protect_signal_sender_) {
@@ -122,12 +126,17 @@ void WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask() {
     if (IsFactoryModeTried()) {
       write_protect_signal_sender_->Run(false);
     } else {
-      // Enable cr50 factory mode if possible.
-      if (!cr50_utils_->EnableFactoryMode()) {
-        LOG(WARNING) << "WpDisablePhysical: Failed to enable factory mode";
-        json_store_->SetValue(kKeepDeviceOpen, true);
-        power_manager_client_->Restart();
+      // Enable cr50 factory mode if it's not blocked.
+      if (!state_.wp_disable_physical().keep_device_open()) {
+        if (cr50_utils_->EnableFactoryMode()) {
+          // cr50 triggers a reboot shortly after enabling factory mode.
+          return;
+        }
+        LOG(WARNING) << "WpDisablePhysical: Failed to enable factory mode"
+                     << "when device is not enrolled";
       }
+      json_store_->SetValue(kKeepDeviceOpen, true);
+      power_manager_client_->Restart();
     }
   }
 }

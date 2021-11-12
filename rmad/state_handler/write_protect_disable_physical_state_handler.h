@@ -12,6 +12,7 @@
 
 #include <base/timer/timer.h>
 
+#include "rmad/system/cryptohome_client.h"
 #include "rmad/system/power_manager_client.h"
 #include "rmad/utils/cr50_utils.h"
 #include "rmad/utils/crossystem_utils.h"
@@ -35,7 +36,8 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
       scoped_refptr<JsonStore> json_store,
       std::unique_ptr<Cr50Utils> cr50_utils,
       std::unique_ptr<CrosSystemUtils> crossystem_utils,
-      std::unique_ptr<PowerManagerClient> power_manager_client);
+      std::unique_ptr<PowerManagerClient> power_manager_client,
+      std::unique_ptr<CryptohomeClient> cryptohome_client);
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisablePhysical);
   SET_REPEATABLE;
@@ -61,6 +63,7 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   std::unique_ptr<Cr50Utils> cr50_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   std::unique_ptr<PowerManagerClient> power_manager_client_;
+  std::unique_ptr<CryptohomeClient> cryptohome_client_;
   std::unique_ptr<base::RepeatingCallback<bool(bool)>>
       write_protect_signal_sender_;
   base::RepeatingTimer timer_;
