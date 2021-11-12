@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/routines/nvme_self_test/nvme_self_test.h"
 
 #include <algorithm>
+#include <iterator>
 #include <utility>
 #include <vector>
 
@@ -14,7 +15,6 @@
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/string_split.h>
@@ -79,7 +79,7 @@ const char* const NvmeSelfTestRoutine::kSelfTestRoutineCompleteLog[] = {
 constexpr char NvmeSelfTestRoutine::kSelfTestRoutineCompleteUnknownStatus[] =
     "SelfTest status: Unknown complete status.";
 constexpr size_t NvmeSelfTestRoutine::kSelfTestRoutineCompleteLogSize =
-    base::size(NvmeSelfTestRoutine::kSelfTestRoutineCompleteLog);
+    std::size(NvmeSelfTestRoutine::kSelfTestRoutineCompleteLog);
 
 // Page ID 6 if for self-test progress info.
 constexpr uint32_t NvmeSelfTestRoutine::kNvmeLogPageId = 6;
