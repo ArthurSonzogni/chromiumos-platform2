@@ -6,12 +6,12 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <iterator>
 
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/rand_util.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
@@ -50,7 +50,7 @@ struct FrameInit {
   constexpr size_t PayloadSize() const {
     return (static_cast<size_t>(header.bcnth) << 8) + header.bcntl;
   }
-  constexpr static size_t MaxDataSize() { return base::size(decltype(data){}); }
+  constexpr static size_t MaxDataSize() { return std::size(decltype(data){}); }
   constexpr static size_t DataFits(size_t all_data_size) {
     return std::min(all_data_size, MaxDataSize());
   }
@@ -66,7 +66,7 @@ struct FrameCont {
   FrameContHeader header;
   uint8_t data[kFrameSize - sizeof(FrameContHeader)];
 
-  constexpr static size_t MaxDataSize() { return base::size(decltype(data){}); }
+  constexpr static size_t MaxDataSize() { return std::size(decltype(data){}); }
   constexpr static size_t DataFits(size_t all_data_size) {
     return std::min(all_data_size, MaxDataSize());
   }
