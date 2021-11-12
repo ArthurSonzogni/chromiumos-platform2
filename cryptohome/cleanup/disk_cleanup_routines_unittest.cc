@@ -18,8 +18,6 @@
 #include <gtest/gtest.h>
 
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/keyset_management.h"
-#include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
@@ -114,7 +112,6 @@ class DiskCleanupRoutinesTest
   }
 
   StrictMock<MockPlatform> platform_;
-  StrictMock<MockKeysetManagement> keyset_management_;
   StrictMock<MockHomeDirs> homedirs_;
 
   DiskCleanupRoutines routines_;

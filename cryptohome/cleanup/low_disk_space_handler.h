@@ -22,14 +22,17 @@ class DiskCleanup;
 class HomeDirs;
 class KeysetManagement;
 class Platform;
-class UserOldestActivityTimestampCache;
+class UserOldestActivityTimestampManager;
+
+inline constexpr int kAutoCleanupPeriodMS = 1000 * 60 * 60;         // 1 hour
+inline constexpr int kUpdateUserActivityPeriodHours = 24;           // daily
+inline constexpr int kLowDiskNotificationPeriodMS = 1000 * 60 * 1;  // 1 minute
 
 class LowDiskSpaceHandler {
  public:
   LowDiskSpaceHandler(HomeDirs* homedirs,
-                      KeysetManagement* keyset_management,
                       Platform* platform,
-                      UserOldestActivityTimestampCache* timestamp_cache);
+                      UserOldestActivityTimestampManager* timestamp_manager);
   virtual ~LowDiskSpaceHandler();
 
   // Initialize disk cleanup and low disk space checking.

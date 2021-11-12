@@ -13,6 +13,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/auth_session.h"
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/keyset_management.h"
@@ -26,11 +27,13 @@ namespace cryptohome {
 class UserSession : public base::RefCountedThreadSafe<UserSession> {
  public:
   UserSession();
-  UserSession(HomeDirs* homedirs,
-              KeysetManagement* keyset_management,
-              Pkcs11TokenFactory* pkcs11_token_factory,
-              const brillo::SecureBlob& salt,
-              const scoped_refptr<Mount> mount);
+  UserSession(
+      HomeDirs* homedirs,
+      KeysetManagement* keyset_management,
+      UserOldestActivityTimestampManager* user_activity_timestamp_manager,
+      Pkcs11TokenFactory* pkcs11_token_factory,
+      const brillo::SecureBlob& salt,
+      const scoped_refptr<Mount> mount);
   virtual ~UserSession();
 
   // Disallow Copy/Move/Assign
@@ -120,6 +123,7 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
 
   HomeDirs* homedirs_;
   KeysetManagement* keyset_management_;
+  UserOldestActivityTimestampManager* user_activity_timestamp_manager_;
   Pkcs11TokenFactory* pkcs11_token_factory_;
 
   std::string obfuscated_username_;

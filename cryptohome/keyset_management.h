@@ -13,7 +13,6 @@
 #include <brillo/secure_blob.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
-#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/platform.h"
@@ -31,7 +30,6 @@ class KeysetManagement {
   KeysetManagement(Platform* platform,
                    Crypto* crypto,
                    const brillo::SecureBlob& system_salt,
-                   UserOldestActivityTimestampCache* timestamp_cache,
                    std::unique_ptr<VaultKeysetFactory> vault_keyset_factory);
   virtual ~KeysetManagement() = default;
   KeysetManagement(const KeysetManagement&) = delete;
@@ -153,16 +151,13 @@ class KeysetManagement {
   virtual brillo::SecureBlob GetPublicMountPassKey(
       const std::string& account_id);
 
-  // Called during disk cleanup if the timestamp cache is not yet
-  // initialized. Loads the last activity timestamp from the vault keyset.
-  virtual void AddUserTimestampToCache(const std::string& obfuscated);
+  // Get timestamp from a legacy location.
+  // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
+  virtual base::Time GetKeysetBoundTimestamp(const std::string& obfuscated);
 
-  // Updates the timestamp with the current time shifted back by
-  // |time_shift_sec| and saves on disk. If the timestamp cache is initialized,
-  // updates timestamp cache as well.
-  virtual bool UpdateActivityTimestamp(const std::string& obfuscted,
-                                       int index,
-                                       int time_shift_sec);
+  // Remove legacy location for timestamp.
+  // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
+  virtual void CleanupPerIndexTimestampFiles(const std::string& obfuscated);
 
  private:
   // Check if the vault keyset needs re-encryption.
@@ -177,10 +172,13 @@ class KeysetManagement {
   bool ReSaveKeysetIfNeeded(const Credentials& credentials,
                             VaultKeyset* keyset) const;
 
+  // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
+  base::Time GetPerIndexTimestampFileData(const std::string& obfuscated,
+                                          int index);
+
   Platform* platform_;
   Crypto* crypto_;
   brillo::SecureBlob system_salt_;
-  UserOldestActivityTimestampCache* timestamp_cache_;
   std::unique_ptr<VaultKeysetFactory> vault_keyset_factory_;
 
   FRIEND_TEST(KeysetManagementTest, ReSaveOnLoadNoReSave);

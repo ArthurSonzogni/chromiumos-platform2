@@ -21,7 +21,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/hmac.h"
@@ -47,6 +46,7 @@ using ::testing::ContainerEq;
 using ::testing::DoAll;
 using ::testing::ElementsAre;
 using ::testing::EndsWith;
+using ::testing::Eq;
 using ::testing::MatchesRegex;
 using ::testing::NiceMock;
 using ::testing::Return;
@@ -101,11 +101,11 @@ class KeysetManagementTest : public ::testing::Test {
   void SetUp() override {
     InitializeFilesystemLayout(&platform_, &crypto_, &system_salt_);
     keyset_management_ = std::make_unique<KeysetManagement>(
-        &platform_, &crypto_, system_salt_, &timestamp_cache_,
+        &platform_, &crypto_, system_salt_,
         std::make_unique<VaultKeysetFactory>());
     mock_vault_keyset_factory_ = new MockVaultKeysetFactory();
     keyset_management_mock_vk_ = std::make_unique<KeysetManagement>(
-        &platform_, &crypto_, system_salt_, &timestamp_cache_,
+        &platform_, &crypto_, system_salt_,
         std::unique_ptr<VaultKeysetFactory>(mock_vault_keyset_factory_));
     platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt_);
 
@@ -126,7 +126,6 @@ class KeysetManagementTest : public ::testing::Test {
  protected:
   NiceMock<MockPlatform> platform_;
   NiceMock<MockTpm> tpm_;
-  NiceMock<MockUserOldestActivityTimestampCache> timestamp_cache_;
   Crypto crypto_;
   brillo::SecureBlob system_salt_;
   std::unique_ptr<KeysetManagement> keyset_management_;
@@ -284,48 +283,6 @@ class KeysetManagementTest : public ::testing::Test {
     EXPECT_TRUE(vk->HasWrappedResetSeed());
   }
 };
-
-TEST_F(KeysetManagementTest, AddUserTimestampToCache) {
-  VaultKeyset vk;
-  vk.Initialize(&platform_, &crypto_);
-  // Populate and encrypt keyset to satisfy confirmation check within |Save|.
-  vk.CreateRandom();
-  constexpr char kKeyFileIndexSuffix[] = "0";
-  constexpr char kKeyFileTimestampSuffix[] = "0.timestamp";
-  constexpr int kTime = 499;
-  const base::Time t = base::Time::FromInternalValue(kTime);
-  Timestamp timestamp;
-  timestamp.set_timestamp(kTime);
-  std::string timestamp_str;
-  ASSERT_TRUE(timestamp.SerializeToString(&timestamp_str));
-  ASSERT_TRUE(platform_.WriteStringToFileAtomicDurable(
-      users_[0].homedir_path.Append(kKeyFile).AddExtension(
-          kKeyFileTimestampSuffix),
-      timestamp_str, 0600));
-  ASSERT_TRUE(vk.Encrypt(brillo::SecureBlob("random"), users_[0].obfuscated));
-  ASSERT_TRUE(vk.Save(users_[0].homedir_path.Append(kKeyFile).AddExtension(
-      kKeyFileIndexSuffix)));
-
-  // TS from an external file
-  EXPECT_CALL(timestamp_cache_, AddExistingUser(users_[0].obfuscated, t))
-      .Times(1);
-  keyset_management_->AddUserTimestampToCache(users_[0].obfuscated);
-}
-
-TEST_F(KeysetManagementTest, AddUserTimestampToCacheEmpty) {
-  VaultKeyset vk;
-  vk.Initialize(&platform_, &crypto_);
-  // Populate and encrypt keyset to satisfy confirmation check within |Save|.
-  vk.CreateRandom();
-  ASSERT_TRUE(vk.Encrypt(brillo::SecureBlob("random"), users_[0].obfuscated));
-  ASSERT_TRUE(
-      vk.Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("0")));
-
-  // No user ts is added.
-  EXPECT_CALL(timestamp_cache_, AddExistingUser(users_[0].obfuscated, _))
-      .Times(0);
-  keyset_management_->AddUserTimestampToCache(users_[0].obfuscated);
-}
 
 TEST_F(KeysetManagementTest, AreCredentialsValid) {
   // SETUP
@@ -1216,7 +1173,7 @@ TEST_F(KeysetManagementTest, GetPublicMountPassKeyFail) {
   NiceMock<MockCrypto> mock_crypto;
   std::unique_ptr<KeysetManagement> keyset_management_mock_crypto;
   keyset_management_mock_crypto = std::make_unique<KeysetManagement>(
-      &platform_, &mock_crypto, system_salt_, &timestamp_cache_,
+      &platform_, &mock_crypto, system_salt_,
       std::make_unique<VaultKeysetFactory>());
 
   EXPECT_CALL(mock_crypto, GetPublicMountSalt).WillOnce(Return(false));
@@ -1783,6 +1740,39 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataLoadFail) {
   std::map<std::string, KeyData> labels_and_data_map;
   EXPECT_FALSE(keyset_management_mock_vk_->GetVaultKeysetLabelsAndData(
       users_[0].obfuscated, &labels_and_data_map));
+}
+
+// TODO(b/205759690, dlunev): can be removed after a stepping stone release.
+TEST_F(KeysetManagementTest, GetKeysetBoundTimestamp) {
+  KeysetSetUpWithKeyData(DefaultKeyData());
+
+  constexpr int kTestTimestamp = 42000000;
+  Timestamp timestamp;
+  timestamp.set_timestamp(kTestTimestamp);
+  std::string timestamp_str;
+  ASSERT_TRUE(timestamp.SerializeToString(&timestamp_str));
+  ASSERT_TRUE(platform_.WriteStringToFileAtomicDurable(
+      UserActivityPerIndexTimestampPath(users_[0].obfuscated, 0), timestamp_str,
+      kKeyFilePermissions));
+
+  ASSERT_THAT(keyset_management_->GetKeysetBoundTimestamp(users_[0].obfuscated),
+              Eq(base::Time::FromInternalValue(kTestTimestamp)));
+}
+
+// TODO(b/205759690, dlunev): can be removed after a stepping stone release.
+TEST_F(KeysetManagementTest, CleanupPerIndexTimestampFiles) {
+  for (int i = 0; i < 10; ++i) {
+    const base::FilePath ts_file =
+        UserActivityPerIndexTimestampPath(users_[0].obfuscated, i);
+    ASSERT_TRUE(platform_.WriteStringToFileAtomicDurable(
+        ts_file, "doesn't matter", kKeyFilePermissions));
+  }
+  keyset_management_->CleanupPerIndexTimestampFiles(users_[0].obfuscated);
+  for (int i = 0; i < 10; ++i) {
+    const base::FilePath ts_file =
+        UserActivityPerIndexTimestampPath(users_[0].obfuscated, i);
+    ASSERT_FALSE(platform_.FileExists(ts_file));
+  }
 }
 
 }  // namespace cryptohome

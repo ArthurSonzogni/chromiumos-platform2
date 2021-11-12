@@ -49,8 +49,9 @@ base::FilePath SystemSaltFile();
 base::FilePath PublicMountSaltFile();
 base::FilePath SkelDir();
 base::FilePath VaultKeysetPath(const std::string& obfuscated, int index);
-base::FilePath UserActivityTimestampPath(const std::string& obfuscated,
-                                         int index);
+base::FilePath UserActivityPerIndexTimestampPath(const std::string& obfuscated,
+                                                 int index);
+base::FilePath UserActivityTimestampPath(const std::string& obfuscated);
 base::FilePath UserSecretStashPath(const std::string& obfuscated_username);
 
 std::string LogicalVolumePrefix(const std::string& obfuscated_username);

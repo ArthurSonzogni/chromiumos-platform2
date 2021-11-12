@@ -10,7 +10,7 @@
 #include <base/logging.h>
 
 #include "cryptohome/cleanup/disk_cleanup.h"
-#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 
@@ -18,12 +18,10 @@ namespace cryptohome {
 
 LowDiskSpaceHandler::LowDiskSpaceHandler(
     HomeDirs* homedirs,
-    KeysetManagement* keyset_management,
     Platform* platform,
-    UserOldestActivityTimestampCache* timestamp_cache)
+    UserOldestActivityTimestampManager* timestamp_manager)
     : platform_(platform),
-      default_cleanup_(new DiskCleanup(
-          platform, homedirs, keyset_management, timestamp_cache)),
+      default_cleanup_(new DiskCleanup(platform, homedirs, timestamp_manager)),
       cleanup_(default_cleanup_.get()),
       low_disk_notification_period_(
           base::TimeDelta::FromMilliseconds(kLowDiskNotificationPeriodMS)),

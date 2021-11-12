@@ -501,6 +501,11 @@ class UserDataAuth {
     keyset_management_ = value;
   }
 
+  void set_user_activity_timestamp_manager(
+      UserOldestActivityTimestampManager* user_activity_timestamp_manager) {
+    user_activity_timestamp_manager_ = user_activity_timestamp_manager;
+  }
+
   // Override |homedirs_| for testing purpose
   void set_homedirs(cryptohome::HomeDirs* homedirs) { homedirs_ = homedirs; }
 
@@ -1057,7 +1062,10 @@ class UserDataAuth {
 
   // This holds a timestamp for each user that is the time that the user was
   // active.
-  std::unique_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
+  std::unique_ptr<UserOldestActivityTimestampManager>
+      default_user_activity_timestamp_manager_;
+  // Holds timestamp_manager for testing
+  UserOldestActivityTimestampManager* user_activity_timestamp_manager_;
 
   // The homedirs_ object in normal operation
   std::unique_ptr<HomeDirs> default_homedirs_;

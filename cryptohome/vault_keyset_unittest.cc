@@ -76,7 +76,6 @@ constexpr char kObfuscatedUsername[] = "foo@gmail.com";
 constexpr char kFakePasswordKey[] = "blabla";
 
 constexpr int kPasswordRounds = 5;
-constexpr int kTestTimestamp = 123;
 
 // Generated with this command:
 // cryptohome --action=mount_ex --user=fakeuser1@example.com
@@ -251,12 +250,6 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
   SecureBlob bytes;
 
   static const int kFscryptPolicyVersion = 2;
-  cryptohome::Timestamp timestamp;
-  timestamp.set_timestamp(kTestTimestamp);
-  SecureBlob tbytes(timestamp.ByteSizeLong());
-  google::protobuf::uint8* buf =
-      static_cast<google::protobuf::uint8*>(tbytes.data());
-  timestamp.SerializeWithCachedSizesToArray(buf);
 
   keyset.SetFSCryptPolicyVersion(kFscryptPolicyVersion);
 
@@ -264,10 +257,6 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
       .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)));
   EXPECT_CALL(platform, ReadFile(FilePath(kFilePath), _))
       .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
-
-  EXPECT_CALL(platform,
-              ReadFile(FilePath(kFilePath).AddExtension("timestamp"), _))
-      .WillOnce(WithArg<1>(CopyFromSecureBlob(&tbytes)));
 
   SecureBlob key(kPasswordKey);
   std::string obfuscated_username(kObfuscatedUsername);
@@ -277,8 +266,6 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
   VaultKeyset new_keyset;
   new_keyset.Initialize(&platform, &crypto);
   EXPECT_TRUE(new_keyset.Load(FilePath(kFilePath)));
-  ASSERT_TRUE(new_keyset.HasLastActivityTimestamp());
-  EXPECT_EQ(kTestTimestamp, new_keyset.GetLastActivityTimestamp());
   EXPECT_TRUE(new_keyset.Decrypt(key, false /* locked_to_single_user */,
                                  nullptr /* crypto_error */));
   EXPECT_EQ(new_keyset.GetFSCryptPolicyVersion(), kFscryptPolicyVersion);
@@ -677,21 +664,11 @@ TEST_F(VaultKeysetTest, DecryptTPMCommErr) {
   EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
 
-  cryptohome::Timestamp timestamp;
-  timestamp.set_timestamp(kTestTimestamp);
-  SecureBlob time_bytes(timestamp.ByteSizeLong());
-  google::protobuf::uint8* timestamp_buffer =
-      static_cast<google::protobuf::uint8*>(time_bytes.data());
-  timestamp.SerializeWithCachedSizesToArray(timestamp_buffer);
-
   SecureBlob bytes;
   EXPECT_CALL(platform_, WriteFileAtomicDurable(FilePath(kFilePath), _, _))
       .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)));
   EXPECT_CALL(platform_, ReadFile(FilePath(kFilePath), _))
       .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
-  EXPECT_CALL(platform_,
-              ReadFile(FilePath(kFilePath).AddExtension("timestamp"), _))
-      .WillOnce(WithArg<1>(CopyFromSecureBlob(&time_bytes)));
 
   VaultKeyset vk;
   vk.Initialize(&platform_, &crypto);
@@ -921,13 +898,6 @@ TEST_F(LeCredentialsManagerTest, DecryptTPMDefendLock) {
   pin_vault_keyset_.CreateRandom();
   pin_vault_keyset_.SetLowEntropyCredential(true);
 
-  cryptohome::Timestamp timestamp;
-  timestamp.set_timestamp(kTestTimestamp);
-  SecureBlob time_bytes(timestamp.ByteSizeLong());
-  google::protobuf::uint8* timestamp_buffer =
-      static_cast<google::protobuf::uint8*>(time_bytes.data());
-  timestamp.SerializeWithCachedSizesToArray(timestamp_buffer);
-
   SecureBlob bytes;
   EXPECT_CALL(platform_, WriteFileAtomicDurable(FilePath(kFilePath), _, _))
       .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)))
@@ -935,9 +905,6 @@ TEST_F(LeCredentialsManagerTest, DecryptTPMDefendLock) {
 
   EXPECT_CALL(platform_, ReadFile(FilePath(kFilePath), _))
       .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
-  EXPECT_CALL(platform_,
-              ReadFile(FilePath(kFilePath).AddExtension("timestamp"), _))
-      .WillOnce(WithArg<1>(CopyFromSecureBlob(&time_bytes)));
 
   SecureBlob key(kPasswordKey);
   std::string obfuscated_username(kObfuscatedUsername);

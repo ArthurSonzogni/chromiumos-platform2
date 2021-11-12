@@ -255,21 +255,6 @@ bool VaultKeyset::Load(const FilePath& filename) {
     encrypted_ = true;
     source_file_ = filename;
     InitializeFromSerialized(serialized);
-
-    FilePath timestamp_path = filename.AddExtension("timestamp");
-    brillo::Blob tcontents;
-    // If we fail to read the ts file, just use whatever is stored in the
-    // serialized field.
-    if (platform_->ReadFile(timestamp_path, &tcontents)) {
-      cryptohome::Timestamp timestamp;
-      if (timestamp.ParseFromArray(tcontents.data(), tcontents.size())) {
-        last_activity_timestamp_ = timestamp.timestamp();
-      } else {
-        LOG(WARNING) << "Failure to parse timestamp file: " << timestamp_path;
-      }
-    } else {
-      LOG(WARNING) << "Failure to read timestamp file: " << timestamp_path;
-    }
   }
   return loaded_;
 }
@@ -1128,10 +1113,12 @@ int32_t VaultKeyset::GetPasswordRounds() const {
   return password_rounds_.value();
 }
 
+// TODO(b/205759690, dlunev): can be removed after a stepping stone release.
 bool VaultKeyset::HasLastActivityTimestamp() const {
   return last_activity_timestamp_.has_value();
 }
 
+// TODO(b/205759690, dlunev): can be removed after a stepping stone release.
 int64_t VaultKeyset::GetLastActivityTimestamp() const {
   DCHECK(last_activity_timestamp_.has_value());
   return last_activity_timestamp_.value();
@@ -1368,10 +1355,6 @@ SerializedVaultKeyset VaultKeyset::ToSerialized() const {
     serialized.set_password_rounds(password_rounds_.value());
   }
 
-  if (last_activity_timestamp_.has_value()) {
-    serialized.set_last_activity_timestamp(last_activity_timestamp_.value());
-  }
-
   if (key_data_.has_value()) {
     *(serialized.mutable_key_data()) = key_data_.value();
   }
@@ -1436,6 +1419,7 @@ void VaultKeyset::ResetVaultKeyset() {
   legacy_index_ = -1;
   tpm_public_key_hash_.reset();
   password_rounds_.reset();
+  // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
   last_activity_timestamp_.reset();
   key_data_.reset();
   reset_iv_.reset();
@@ -1485,6 +1469,7 @@ void VaultKeyset::InitializeFromSerialized(
     password_rounds_ = serialized.password_rounds();
   }
 
+  // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
   if (serialized.has_last_activity_timestamp()) {
     last_activity_timestamp_ = serialized.last_activity_timestamp();
   }

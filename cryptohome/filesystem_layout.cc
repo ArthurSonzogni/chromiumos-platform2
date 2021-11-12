@@ -56,9 +56,13 @@ base::FilePath UserSecretStashPath(const std::string& obfuscated_username) {
       .Append(kUserSecretStashFile);
 }
 
-base::FilePath UserActivityTimestampPath(const std::string& obfuscated,
-                                         int index) {
+base::FilePath UserActivityPerIndexTimestampPath(const std::string& obfuscated,
+                                                 int index) {
   return VaultKeysetPath(obfuscated, index).AddExtension(kTsFile);
+}
+
+base::FilePath UserActivityTimestampPath(const std::string& obfuscated) {
+  return ShadowRoot().Append(obfuscated).Append(kTsFile);
 }
 
 base::FilePath GetEcryptfsUserVaultPath(const std::string& obfuscated) {

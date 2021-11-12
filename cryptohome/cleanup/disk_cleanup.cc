@@ -16,10 +16,9 @@
 #include <base/timer/elapsed_timer.h>
 
 #include "cryptohome/cleanup/disk_cleanup_routines.h"
-#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 
@@ -27,12 +26,10 @@ namespace cryptohome {
 
 DiskCleanup::DiskCleanup(Platform* platform,
                          HomeDirs* homedirs,
-                         KeysetManagement* keyset_management,
-                         UserOldestActivityTimestampCache* timestamp_cache)
+                         UserOldestActivityTimestampManager* timestamp_manager)
     : platform_(platform),
       homedirs_(homedirs),
-      keyset_management_(keyset_management),
-      timestamp_cache_(timestamp_cache),
+      timestamp_manager_(timestamp_manager),
       routines_(std::make_unique<DiskCleanupRoutines>(homedirs_, platform_)) {}
 
 base::Optional<int64_t> DiskCleanup::AmountOfFreeDiskSpace() const {
@@ -167,28 +164,14 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
   }
 
   auto homedirs = homedirs_->GetHomeDirs();
-
-  // Initialize user timestamp cache if it has not been yet. This reads the
-  // last-activity time from each homedir's SerializedVaultKeyset.  This value
-  // is only updated in the value keyset on unmount and every 24 hrs, so a
-  // currently logged in user probably doesn't have an up to date value. This
-  // is okay, since we don't delete currently logged in homedirs anyway.  (See
-  // Mount::UpdateCurrentUserActivityTimestamp()).
-  if (!timestamp_cache_->initialized()) {
-    timestamp_cache_->Initialize();
-    for (const auto& dir : homedirs) {
-      keyset_management_->AddUserTimestampToCache(dir.obfuscated);
-    }
-  }
-
   auto unmounted_homedirs = homedirs;
   FilterMountedHomedirs(&unmounted_homedirs);
 
   std::sort(
       unmounted_homedirs.begin(), unmounted_homedirs.end(),
       [&](const HomeDirs::HomeDir& a, const HomeDirs::HomeDir& b) {
-        return timestamp_cache_->GetLastUserActivityTimestamp(a.obfuscated) >
-               timestamp_cache_->GetLastUserActivityTimestamp(b.obfuscated);
+        return timestamp_manager_->GetLastUserActivityTimestamp(a.obfuscated) >
+               timestamp_manager_->GetLastUserActivityTimestamp(b.obfuscated);
       });
 
   auto normal_cleanup_homedirs = unmounted_homedirs;
@@ -349,7 +332,7 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
     LOG(INFO) << "Freeing disk space by deleting user " << dir->obfuscated;
     if (!routines_->DeleteUserProfile(dir->obfuscated))
       result = false;
-    timestamp_cache_->RemoveUser(dir->obfuscated);
+    timestamp_manager_->RemoveUser(dir->obfuscated);
     ++deleted_users_count;
 
     if (HasTargetFreeSpace())
@@ -387,7 +370,7 @@ void DiskCleanup::FilterHomedirsProcessedBeforeCutoff(
   homedirs->erase(
       std::remove_if(homedirs->begin(), homedirs->end(),
                      [&](const HomeDirs::HomeDir& dir) {
-                       return timestamp_cache_->GetLastUserActivityTimestamp(
+                       return timestamp_manager_->GetLastUserActivityTimestamp(
                                   dir.obfuscated) < cutoff;
                      }),
       homedirs->end());

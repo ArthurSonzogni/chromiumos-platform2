@@ -16,6 +16,7 @@
 #include <brillo/cryptohome.h>
 #include <cryptohome/scrypt_verifier.h>
 
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto/sha.h"
@@ -36,13 +37,16 @@ constexpr char kWebAuthnSecretHmacMessage[] = "AuthTimeWebAuthnSecret";
 
 UserSession::UserSession() {}
 UserSession::~UserSession() {}
-UserSession::UserSession(HomeDirs* homedirs,
-                         KeysetManagement* keyset_management,
-                         Pkcs11TokenFactory* pkcs11_token_factory,
-                         const brillo::SecureBlob& salt,
-                         const scoped_refptr<Mount> mount)
+UserSession::UserSession(
+    HomeDirs* homedirs,
+    KeysetManagement* keyset_management,
+    UserOldestActivityTimestampManager* user_activity_timestamp_manager,
+    Pkcs11TokenFactory* pkcs11_token_factory,
+    const brillo::SecureBlob& salt,
+    const scoped_refptr<Mount> mount)
     : homedirs_(homedirs),
       keyset_management_(keyset_management),
+      user_activity_timestamp_manager_(user_activity_timestamp_manager),
       pkcs11_token_factory_(pkcs11_token_factory),
       system_salt_(salt),
       mount_(mount) {}
@@ -58,8 +62,8 @@ MountError UserSession::MountVault(const Credentials& credentials,
       LOG(ERROR) << "Error adding intial keyset.";
       return MOUNT_ERROR_KEY_FAILURE;
     }
-    keyset_management_->UpdateActivityTimestamp(obfuscated_username,
-                                                kInitialKeysetIndex, 0);
+    user_activity_timestamp_manager_->UpdateTimestamp(obfuscated_username,
+                                                      base::TimeDelta());
   }
 
   // Verifies user's credentials and retrieves the user's file system encryption
@@ -81,7 +85,8 @@ MountError UserSession::MountVault(const Credentials& credentials,
     return code;
   }
   SetCredentials(credentials, vk->GetLegacyIndex());
-  UpdateActivityTimestamp(0);
+  user_activity_timestamp_manager_->UpdateTimestamp(obfuscated_username,
+                                                    base::TimeDelta());
 
   pkcs11_token_ = pkcs11_token_factory_->New(
       username_, homedirs_->GetChapsTokenDir(username_), fs_keyset.chaps_key());
@@ -112,7 +117,8 @@ MountError UserSession::MountVault(AuthSession* auth_session,
   }
   // Set credentials for verification using AuthSession.
   SetCredentials(auth_session);
-  UpdateActivityTimestamp(0);
+  user_activity_timestamp_manager_->UpdateTimestamp(obfuscated_username,
+                                                    base::TimeDelta());
 
   pkcs11_token_ = pkcs11_token_factory_->New(
       username_, homedirs_->GetChapsTokenDir(username_), fs_keyset.chaps_key());
@@ -158,20 +164,15 @@ MountError UserSession::MountGuest() {
 }
 
 bool UserSession::Unmount() {
-  UpdateActivityTimestamp(0);
   if (pkcs11_token_) {
     pkcs11_token_->Remove();
     pkcs11_token_.reset();
   }
-  return mount_->UnmountCryptohome();
-}
-
-bool UserSession::UpdateActivityTimestamp(int time_shift_sec) {
-  if (!mount_->IsNonEphemeralMounted()) {
-    return false;
+  if (mount_->IsNonEphemeralMounted()) {
+    user_activity_timestamp_manager_->UpdateTimestamp(obfuscated_username_,
+                                                      base::TimeDelta());
   }
-  return keyset_management_->UpdateActivityTimestamp(
-      obfuscated_username_, key_index_, time_shift_sec);
+  return mount_->UnmountCryptohome();
 }
 
 base::Value UserSession::GetStatus() const {
@@ -192,8 +193,6 @@ base::Value UserSession::GetStatus() const {
         keyset_dict.SetBoolKey("tpm", tpm);
         keyset_dict.SetBoolKey("scrypt", scrypt);
         keyset_dict.SetBoolKey("ok", true);
-        keyset_dict.SetIntKey("last_activity",
-                              keyset->GetLastActivityTimestamp());
         if (keyset->HasKeyData()) {
           keyset_dict.SetStringKey("label", keyset->GetKeyData().label());
         }

@@ -30,7 +30,7 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
 #include "cryptohome/cleanup/disk_cleanup.h"
 #include "cryptohome/cleanup/low_disk_space_handler.h"
-#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptohome_common.h"
@@ -166,7 +166,10 @@ UserDataAuth::UserDataAuth()
       install_attrs_(default_install_attrs_.get()),
       enterprise_owned_(false),
       reported_pkcs11_init_fail_(false),
-      user_timestamp_cache_(new UserOldestActivityTimestampCache()),
+      default_user_activity_timestamp_manager_(
+          new UserOldestActivityTimestampManager(platform_)),
+      user_activity_timestamp_manager_(
+          default_user_activity_timestamp_manager_.get()),
       default_homedirs_(nullptr),
       homedirs_(nullptr),
       default_keyset_management_(nullptr),
@@ -244,7 +247,7 @@ bool UserDataAuth::Initialize() {
 
   if (!keyset_management_) {
     default_keyset_management_ = std::make_unique<KeysetManagement>(
-        platform_, crypto_, system_salt_, user_timestamp_cache_.get(),
+        platform_, crypto_, system_salt_,
         std::make_unique<VaultKeysetFactory>());
     keyset_management_ = default_keyset_management_.get();
   }
@@ -268,9 +271,20 @@ bool UserDataAuth::Initialize() {
     homedirs_ = default_homedirs_.get();
   }
 
+  auto homedirs = homedirs_->GetHomeDirs();
+  for (const auto& dir : homedirs) {
+    // TODO(b/205759690, dlunev): can be changed after a stepping stone release
+    //  to `user_activity_timestamp_manager_->LoadTimestamp(dir.obfuscated);`
+    base::Time legacy_timestamp =
+        keyset_management_->GetKeysetBoundTimestamp(dir.obfuscated);
+    user_activity_timestamp_manager_->LoadTimestampWithLegacy(dir.obfuscated,
+                                                              legacy_timestamp);
+    keyset_management_->CleanupPerIndexTimestampFiles(dir.obfuscated);
+  }
+
   if (!low_disk_space_handler_) {
     default_low_disk_space_handler_ = std::make_unique<LowDiskSpaceHandler>(
-        homedirs_, keyset_management_, platform_, user_timestamp_cache_.get());
+        homedirs_, platform_, user_activity_timestamp_manager_);
     low_disk_space_handler_ = default_low_disk_space_handler_.get();
   }
   low_disk_space_handler_->disk_cleanup()->set_cleanup_threshold(
@@ -1187,7 +1201,8 @@ scoped_refptr<UserSession> UserDataAuth::GetOrCreateUserSession(
       return nullptr;
     }
     sessions_[username] = new UserSession(
-        homedirs_, keyset_management_, pkcs11_token_factory_, system_salt_, m);
+        homedirs_, keyset_management_, user_activity_timestamp_manager_,
+        pkcs11_token_factory_, system_salt_, m);
   }
   return sessions_[username];
 }
@@ -2971,7 +2986,10 @@ bool UserDataAuth::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
 
   bool success = true;
   for (const auto& session_pair : sessions_) {
-    success &= session_pair.second->UpdateActivityTimestamp(time_shift_sec);
+    const std::string obfuscated_username =
+        SanitizeUserNameWithSalt(session_pair.first, system_salt_);
+    success &= user_activity_timestamp_manager_->UpdateTimestamp(
+        obfuscated_username, base::TimeDelta::FromSeconds(time_shift_sec));
   }
 
   return success;

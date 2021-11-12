@@ -21,13 +21,13 @@
 #include <chromeos/constants/cryptohome.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
-#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
+#include "cryptohome/timestamp.pb.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset_factory.h"
 
@@ -39,12 +39,10 @@ KeysetManagement::KeysetManagement(
     Platform* platform,
     Crypto* crypto,
     const brillo::SecureBlob& system_salt,
-    UserOldestActivityTimestampCache* timestamp_cache,
     std::unique_ptr<VaultKeysetFactory> vault_keyset_factory)
     : platform_(platform),
       crypto_(crypto),
       system_salt_(system_salt),
-      timestamp_cache_(timestamp_cache),
       vault_keyset_factory_(std::move(vault_keyset_factory)) {}
 
 bool KeysetManagement::AreCredentialsValid(const Credentials& creds) {
@@ -889,59 +887,57 @@ brillo::SecureBlob KeysetManagement::GetPublicMountPassKey(
   return passkey;
 }
 
-void KeysetManagement::AddUserTimestampToCache(const std::string& obfuscated) {
-  //  Add a timestamp for every key.
+// TODO(b/205759690, dlunev): can be removed after a stepping stone release.
+base::Time KeysetManagement::GetPerIndexTimestampFileData(
+    const std::string& obfuscated, int index) {
+  brillo::Blob tcontents;
+  if (!platform_->ReadFile(UserActivityPerIndexTimestampPath(obfuscated, index),
+                           &tcontents)) {
+    return base::Time();
+  }
+
+  cryptohome::Timestamp timestamp;
+  if (!timestamp.ParseFromArray(tcontents.data(), tcontents.size())) {
+    return base::Time();
+  }
+
+  return base::Time::FromInternalValue(timestamp.timestamp());
+}
+
+// TODO(b/205759690, dlunev): can be removed after a stepping stone release.
+base::Time KeysetManagement::GetKeysetBoundTimestamp(
+    const std::string& obfuscated) {
+  base::Time timestamp = base::Time();
+
   std::vector<int> key_indices;
-  // Failure is okay since the loop falls through.
   GetVaultKeysets(obfuscated, &key_indices);
-  // Collect the most recent time for a given user by walking all
-  // vaults.  This avoids trying to keep them in sync atomically.
-  base::Time timestamp = base::Time();  // This gives the current time.
-  // Update timestamps on each keyset for the |obfuscated| username unless it is
-  // greater than the current time.
   for (int index : key_indices) {
     std::unique_ptr<VaultKeyset> keyset =
         LoadVaultKeysetForUser(obfuscated, index);
     if (keyset.get() && keyset->HasLastActivityTimestamp()) {
-      const base::Time previous_timestamp =
+      const base::Time new_timestamp =
           base::Time::FromInternalValue(keyset->GetLastActivityTimestamp());
-      if (previous_timestamp > timestamp) {
-        timestamp = previous_timestamp;
+      if (new_timestamp > timestamp) {
+        timestamp = new_timestamp;
       }
     }
+    const base::Time ts_from_index_file =
+        GetPerIndexTimestampFileData(obfuscated, index);
+    if (ts_from_index_file > timestamp) {
+      timestamp = ts_from_index_file;
+    }
   }
-  if (!timestamp.is_null()) {
-    timestamp_cache_->AddExistingUser(obfuscated, timestamp);
-  }
+
+  return timestamp;
 }
 
-bool KeysetManagement::UpdateActivityTimestamp(const std::string& obfuscated,
-                                               int index,
-                                               int time_shift_sec) {
-  base::Time timestamp = platform_->GetCurrentTime();
-  if (time_shift_sec > 0) {
-    timestamp -= base::TimeDelta::FromSeconds(time_shift_sec);
+// TODO(b/205759690, dlunev): can be removed after a stepping stone release.
+void KeysetManagement::CleanupPerIndexTimestampFiles(
+    const std::string& obfuscated) {
+  for (int i = 0; i < kKeyFileMax; ++i) {
+    ignore_result(platform_->DeleteFileDurable(
+        UserActivityPerIndexTimestampPath(obfuscated, i)));
   }
-
-  Timestamp ts_proto;
-  ts_proto.set_timestamp(timestamp.ToInternalValue());
-  std::string timestamp_str;
-  if (!ts_proto.SerializeToString(&timestamp_str)) {
-    return false;
-  }
-
-  base::FilePath ts_file = UserActivityTimestampPath(obfuscated, index);
-  if (!platform_->WriteStringToFileAtomicDurable(ts_file, timestamp_str,
-                                                 kKeyFilePermissions)) {
-    LOG(ERROR) << "Failed writing to timestamp file: " << ts_file;
-    return false;
-  }
-
-  if (timestamp_cache_ && timestamp_cache_->initialized()) {
-    timestamp_cache_->UpdateExistingUser(obfuscated, timestamp);
-  }
-
-  return true;
 }
 
 }  // namespace cryptohome

@@ -16,8 +16,7 @@
 #include <base/time/time.h>
 
 #include "cryptohome/cleanup/disk_cleanup_routines.h"
-#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
-#include "cryptohome/keyset_management.h"
+#include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 
@@ -46,8 +45,7 @@ class DiskCleanup {
   DiskCleanup() = default;
   DiskCleanup(Platform* platform,
               HomeDirs* homedirs,
-              KeysetManagement* keyset_management,
-              UserOldestActivityTimestampCache* timestamp_cache);
+              UserOldestActivityTimestampManager* timestamp_manager);
   virtual ~DiskCleanup() = default;
 
   // Return the available disk space in bytes for home directories, or nullopt
@@ -108,12 +106,10 @@ class DiskCleanup {
   void FilterHomedirsProcessedBeforeCutoff(
       base::Time cutoff, std::vector<HomeDirs::HomeDir>* homedirs);
 
-  // Not owned. Must outlive DiskCleanup. Passed with call to Init.
+  // Not owned. Must outlive DiskCleanup.
   Platform* platform_ = nullptr;
   HomeDirs* homedirs_ = nullptr;
-  // KeysetManagement object is needed to cleanup the user credentials.
-  KeysetManagement* keyset_management_ = nullptr;
-  UserOldestActivityTimestampCache* timestamp_cache_ = nullptr;
+  UserOldestActivityTimestampManager* timestamp_manager_ = nullptr;
 
   // Cleanup routines.
   std::unique_ptr<DiskCleanupRoutines> routines_;

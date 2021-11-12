@@ -20,7 +20,6 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/timestamp.pb.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
@@ -101,6 +100,7 @@ class VaultKeyset {
   virtual bool HasPasswordRounds() const;
   virtual int32_t GetPasswordRounds() const;
 
+  // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
   virtual bool HasLastActivityTimestamp() const;
   virtual int64_t GetLastActivityTimestamp() const;
 
@@ -341,6 +341,7 @@ class VaultKeyset {
   // function.
   base::Optional<int32_t> password_rounds_;
   // An optional timestamp field.
+  // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
   base::Optional<int64_t> last_activity_timestamp_;
   // Plaintet metadata describing the key.
   base::Optional<KeyData> key_data_;

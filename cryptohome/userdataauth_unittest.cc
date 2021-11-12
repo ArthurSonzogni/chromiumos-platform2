@@ -27,6 +27,7 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/cleanup/mock_low_disk_space_handler.h"
+#include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptohome_common.h"
@@ -129,6 +130,8 @@ class UserDataAuthTestBase : public ::testing::Test {
     }
     userdataauth_->set_crypto(&crypto_);
     userdataauth_->set_keyset_management(&keyset_management_);
+    userdataauth_->set_user_activity_timestamp_manager(
+        &user_activity_timestamp_manager_);
     userdataauth_->set_homedirs(&homedirs_);
     userdataauth_->set_install_attrs(attrs_.get());
     userdataauth_->set_tpm(&tpm_);
@@ -177,6 +180,7 @@ class UserDataAuthTestBase : public ::testing::Test {
     AssignSalt(&salt);
     mount_ = new NiceMock<MockMount>();
     session_ = new UserSession(&homedirs_, &keyset_management_,
+                               &user_activity_timestamp_manager_,
                                &pkcs11_token_factory_, salt, mount_);
     userdataauth_->set_session_for_user(username, session_.get());
   }
@@ -204,6 +208,11 @@ class UserDataAuthTestBase : public ::testing::Test {
   // Mock KeysetManagent object, will be passed to UserDataAuth for its internal
   // use.
   NiceMock<MockKeysetManagement> keyset_management_;
+
+  // Mock UserOldestActivityTimestampManager, will be passed to UserDataAuth for
+  // its internal use.
+  NiceMock<MockUserOldestActivityTimestampManager>
+      user_activity_timestamp_manager_;
 
   // Mock HomeDirs object, will be passed to UserDataAuth for its internal use.
   NiceMock<MockHomeDirs> homedirs_;
@@ -328,7 +337,6 @@ class UserDataAuthTestTasked : public UserDataAuthTestBase {
         .WillOnce(Return(ByMove(std::move(vk))));
     EXPECT_CALL(*mount, MountCryptohome(_, _, _, _))
         .WillOnce(Return(MOUNT_ERROR_NONE));
-    EXPECT_CALL(*mount, IsNonEphemeralMounted()).WillOnce(Return(true));
 
     auto token = std::make_unique<FakePkcs11Token>();
     EXPECT_CALL(pkcs11_token_factory_, New(_, _, _))
@@ -960,13 +968,15 @@ TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
 
   scoped_refptr<NiceMock<MockMount>> mount1 = new NiceMock<MockMount>();
   scoped_refptr<UserSession> session1 = new UserSession(
-      &homedirs_, &keyset_management_, &pkcs11_token_factory_, salt, mount1);
+      &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
+      &pkcs11_token_factory_, salt, mount1);
   userdataauth_->set_session_for_user(kUsername1, session1.get());
   CreatePkcs11TokenInSession(mount1, session1);
 
   scoped_refptr<NiceMock<MockMount>> mount2 = new NiceMock<MockMount>();
   scoped_refptr<UserSession> session2 = new UserSession(
-      &homedirs_, &keyset_management_, &pkcs11_token_factory_, salt, mount2);
+      &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
+      &pkcs11_token_factory_, salt, mount2);
   userdataauth_->set_session_for_user(kUsername2, session2.get());
   CreatePkcs11TokenInSession(mount2, session2);
 
@@ -1661,7 +1671,8 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {
   SetupMount("foo@gmail.com");
 
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, UpdateActivityTimestamp(_, _, kTimeshift))
+  EXPECT_CALL(user_activity_timestamp_manager_,
+              UpdateTimestamp(_, base::TimeDelta::FromSeconds(kTimeshift)))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(userdataauth_->UpdateCurrentUserActivityTimestamp(kTimeshift));
@@ -1671,7 +1682,8 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {
   SetupMount("bar@gmail.com");
 
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, UpdateActivityTimestamp(_, _, kTimeshift))
+  EXPECT_CALL(user_activity_timestamp_manager_,
+              UpdateTimestamp(_, base::TimeDelta::FromSeconds(kTimeshift)))
       .WillOnce(Return(true))
       .WillOnce(Return(true));
 
@@ -1686,7 +1698,8 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampFailure) {
   SetupMount("foo@gmail.com");
 
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, UpdateActivityTimestamp(_, _, kTimeshift))
+  EXPECT_CALL(user_activity_timestamp_manager_,
+              UpdateTimestamp(_, base::TimeDelta::FromSeconds(kTimeshift)))
       .WillOnce(Return(false));
 
   EXPECT_FALSE(userdataauth_->UpdateCurrentUserActivityTimestamp(kTimeshift));

@@ -295,7 +295,7 @@ static_library("libcryptohome") {
     "../cleanup/disk_cleanup.cc",
     "../cleanup/disk_cleanup_routines.cc",
     "../cleanup/low_disk_space_handler.cc",
-    "../cleanup/user_oldest_activity_timestamp_cache.cc",
+    "../cleanup/user_oldest_activity_timestamp_manager.cc",
     "../credentials.cc",
     "../dircrypto_data_migrator/atomic_flag.cc",
     "../dircrypto_data_migrator/migration_helper.cc",

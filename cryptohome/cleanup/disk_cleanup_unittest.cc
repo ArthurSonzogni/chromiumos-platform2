@@ -16,9 +16,8 @@
 #include <gtest/gtest.h>
 
 #include "cryptohome/cleanup/mock_disk_cleanup_routines.h"
-#include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_cache.h"
+#include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/mock_homedirs.h"
 
@@ -56,8 +55,8 @@ class DiskCleanupTest : public ::testing::Test {
   DiskCleanupTest() = default;
 
   void SetUp() {
-    cleanup_.reset(new DiskCleanup(&platform_, &homedirs_, &keyset_management_,
-                                   &timestamp_cache_));
+    cleanup_.reset(
+        new DiskCleanup(&platform_, &homedirs_, &timestamp_manager_));
 
     cleanup_routines_ = new StrictMock<MockDiskCleanupRoutines>;
     cleanup_->set_routines_for_testing(cleanup_routines_);
@@ -67,11 +66,10 @@ class DiskCleanupTest : public ::testing::Test {
       CHECK(base::Time::FromUTCExploded(hd.time, &t));
       homedir_times_.push_back(t);
 
-      EXPECT_CALL(timestamp_cache_, GetLastUserActivityTimestamp(hd.obfuscated))
+      EXPECT_CALL(timestamp_manager_,
+                  GetLastUserActivityTimestamp(hd.obfuscated))
           .WillRepeatedly(Return(t));
     }
-
-    EXPECT_CALL(timestamp_cache_, initialized()).WillRepeatedly(Return(true));
 
     EXPECT_CALL(platform_, GetCurrentTime).WillRepeatedly(Return(base::Time()));
 
@@ -124,8 +122,7 @@ class DiskCleanupTest : public ::testing::Test {
   StrictMock<MockPlatform> platform_;
   brillo::SecureBlob system_salt_;
   StrictMock<MockHomeDirs> homedirs_;
-  StrictMock<MockKeysetManagement> keyset_management_;
-  StrictMock<MockUserOldestActivityTimestampCache> timestamp_cache_;
+  StrictMock<MockUserOldestActivityTimestampManager> timestamp_manager_;
   StrictMock<MockDiskCleanupRoutines>* cleanup_routines_;
   std::unique_ptr<DiskCleanup> cleanup_;
 
@@ -264,30 +261,6 @@ TEST_F(DiskCleanupTest, EphemeralUsersHomedirs) {
   cleanup_->FreeDiskSpace();
 }
 
-TEST_F(DiskCleanupTest, CacheInitialization) {
-  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
-      .WillRepeatedly(Return(kFreeSpaceThresholdToTriggerCleanup - 1));
-
-  EXPECT_CALL(homedirs_, AreEphemeralUsersEnabled())
-      .WillRepeatedly(Return(false));
-
-  auto homedirs = mounted_homedirs();
-  EXPECT_CALL(homedirs_, GetHomeDirs()).WillRepeatedly(Return(homedirs));
-
-  EXPECT_CALL(timestamp_cache_, initialized())
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
-
-  EXPECT_CALL(timestamp_cache_, Initialize()).WillOnce(Return());
-
-  for (const auto& dir : homedirs)
-    EXPECT_CALL(keyset_management_, AddUserTimestampToCache(dir.obfuscated))
-        .WillOnce(Return());
-
-  cleanup_->FreeDiskSpace();
-  cleanup_->FreeDiskSpace();
-}
-
 TEST_F(DiskCleanupTest, AllMounted) {
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
       .WillRepeatedly(
@@ -328,7 +301,7 @@ TEST_F(DiskCleanupTest, OneMounted) {
       .Times(kHomedirsCount - 1);
   EXPECT_CALL(*cleanup_routines_, DeleteUserProfile(_))
       .Times(kHomedirsCount - 1);
-  EXPECT_CALL(timestamp_cache_, RemoveUser(_)).Times(kHomedirsCount - 1);
+  EXPECT_CALL(timestamp_manager_, RemoveUser(_)).Times(kHomedirsCount - 1);
 
   EXPECT_CALL(*cleanup_routines_, DeleteUserCache(homedirs[2].obfuscated))
       .Times(0);
@@ -530,7 +503,7 @@ TEST_F(DiskCleanupTest, RemoveOneProfile) {
   EXPECT_CALL(*cleanup_routines_, DeleteUserProfile(_)).Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteUserProfile(kHomedirs[0].obfuscated))
       .WillOnce(Return(true));
-  EXPECT_CALL(timestamp_cache_, RemoveUser(kHomedirs[0].obfuscated));
+  EXPECT_CALL(timestamp_manager_, RemoveUser(kHomedirs[0].obfuscated));
 
   cleanup_->FreeDiskSpace();
 }
@@ -564,7 +537,7 @@ TEST_F(DiskCleanupTest, KeepOwner) {
       EXPECT_CALL(*cleanup_routines_,
                   DeleteUserProfile(kHomedirs[i].obfuscated))
           .WillOnce(Return(true));
-      EXPECT_CALL(timestamp_cache_, RemoveUser(kHomedirs[i].obfuscated));
+      EXPECT_CALL(timestamp_manager_, RemoveUser(kHomedirs[i].obfuscated));
     }
   }
 
@@ -597,7 +570,7 @@ TEST_F(DiskCleanupTest, KeepLatest) {
       EXPECT_CALL(*cleanup_routines_,
                   DeleteUserProfile(kHomedirs[i].obfuscated))
           .WillOnce(Return(true));
-      EXPECT_CALL(timestamp_cache_, RemoveUser(kHomedirs[i].obfuscated));
+      EXPECT_CALL(timestamp_manager_, RemoveUser(kHomedirs[i].obfuscated));
     }
   }
 
@@ -661,7 +634,7 @@ TEST_F(DiskCleanupTest, RepeatNormalCleanup) {
 
   base::Time login_time;
   ASSERT_TRUE(base::Time::FromUTCExploded({2021, 4, 5, 1}, &login_time));
-  EXPECT_CALL(timestamp_cache_,
+  EXPECT_CALL(timestamp_manager_,
               GetLastUserActivityTimestamp(kHomedirs[2].obfuscated))
       .WillRepeatedly(Return(login_time));
 
@@ -699,7 +672,7 @@ TEST_F(DiskCleanupTest, RepeatAggressiveCleanup) {
 
   base::Time login_time;
   ASSERT_TRUE(base::Time::FromUTCExploded({2021, 4, 5, 1}, &login_time));
-  EXPECT_CALL(timestamp_cache_,
+  EXPECT_CALL(timestamp_manager_,
               GetLastUserActivityTimestamp(kHomedirs[2].obfuscated))
       .WillRepeatedly(Return(login_time));
 
@@ -741,7 +714,7 @@ TEST_F(DiskCleanupTest, FullAggressiveCleanupAfterNormal) {
 
   base::Time login_time;
   ASSERT_TRUE(base::Time::FromUTCExploded({2021, 4, 5, 1}, &login_time));
-  EXPECT_CALL(timestamp_cache_,
+  EXPECT_CALL(timestamp_manager_,
               GetLastUserActivityTimestamp(kHomedirs[2].obfuscated))
       .WillRepeatedly(Return(login_time));
 

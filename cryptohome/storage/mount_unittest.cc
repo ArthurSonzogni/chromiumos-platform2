@@ -35,7 +35,6 @@
 #include <gtest/gtest.h>
 #include <policy/libpolicy.h>
 
-#include "cryptohome/cleanup/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"

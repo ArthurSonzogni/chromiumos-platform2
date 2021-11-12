@@ -71,17 +71,17 @@ class MockKeysetManagement : public KeysetManagement {
   MOCK_METHOD(bool, ForceRemoveKeyset, (const std::string&, int), (override));
   MOCK_METHOD(bool, MoveKeyset, (const std::string&, int, int), (override));
   MOCK_METHOD(void, RemoveLECredentials, (const std::string&), (override));
-  MOCK_METHOD(void,
-              AddUserTimestampToCache,
-              (const std::string& obfuscated),
-              (override));
-  MOCK_METHOD(bool,
-              UpdateActivityTimestamp,
-              (const std::string& obfuscated, int index, int time_shift_sec),
-              (override));
   MOCK_METHOD(bool, UserExists, (const std::string&), (override));
   MOCK_METHOD(brillo::SecureBlob,
               GetPublicMountPassKey,
+              (const std::string&),
+              (override));
+  MOCK_METHOD(base::Time,
+              GetKeysetBoundTimestamp,
+              (const std::string&),
+              (override));
+  MOCK_METHOD(void,
+              CleanupPerIndexTimestampFiles,
               (const std::string&),
               (override));
 };
