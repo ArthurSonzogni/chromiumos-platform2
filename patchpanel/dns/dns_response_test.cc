@@ -5,11 +5,11 @@
 #include "patchpanel/dns/dns_response.h"
 
 #include <algorithm>
+#include <iterator>
 #include <memory>
 
 #include "base/big_endian.h"
 #include "base/optional.h"
-#include "base/stl_util.h"
 #include "base/time/time.h"
 
 #include "patchpanel/dns/dns_protocol.h"
@@ -49,7 +49,7 @@ static const char* const kT0IpAddresses[] = {
   "74.125.226.177", "74.125.226.178"
 };
 // +1 for the CNAME record.
-static const unsigned kT0RecordCount = base::size(kT0IpAddresses) + 1;
+static const unsigned kT0RecordCount = std::size(kT0IpAddresses) + 1;
 
 TEST(DnsRecordParserTest, Constructor) {
   const char data[] = { 0 };
