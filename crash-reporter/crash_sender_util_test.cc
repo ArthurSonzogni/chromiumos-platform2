@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <iterator>
 #include <memory>
 #include <numeric>
 #include <string>
@@ -27,7 +28,6 @@
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/macros.h>
-#include <base/stl_util.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -601,11 +601,11 @@ using CrashSenderUtilDeathTest = CrashSenderUtilTest;
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_NoFlags) {
   const char* argv[] = {"crash_sender"};
-  base::CommandLine command_line(base::size(argv), argv);
+  base::CommandLine command_line(std::size(argv), argv);
   brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
   CommandLineFlags flags;
-  ParseCommandLine(base::size(argv), argv, &flags);
+  ParseCommandLine(std::size(argv), argv, &flags);
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
   EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_FALSE(flags.ignore_rate_limits);
@@ -617,21 +617,21 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_NoFlags) {
 
 TEST_F(CrashSenderUtilDeathTest, ParseCommandLine_InvalidMaxSpreadTime) {
   const char* argv[] = {"crash_sender", "--max_spread_time=-1"};
-  base::CommandLine command_line(base::size(argv), argv);
+  base::CommandLine command_line(std::size(argv), argv);
   brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
   CommandLineFlags flags;
-  EXPECT_DEATH(ParseCommandLine(base::size(argv), argv, &flags),
+  EXPECT_DEATH(ParseCommandLine(std::size(argv), argv, &flags),
                "Invalid value for max spread time: -1");
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_ValidMaxSpreadTime) {
   const char* argv[] = {"crash_sender", "--max_spread_time=0"};
-  base::CommandLine command_line(base::size(argv), argv);
+  base::CommandLine command_line(std::size(argv), argv);
   brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
   CommandLineFlags flags;
-  ParseCommandLine(base::size(argv), argv, &flags);
+  ParseCommandLine(std::size(argv), argv, &flags);
   EXPECT_EQ(base::TimeDelta::FromSeconds(0), flags.max_spread_time);
   EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_FALSE(flags.ignore_rate_limits);
@@ -644,11 +644,11 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_ValidMaxSpreadTime) {
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreRateLimits) {
   const char* argv[] = {"crash_sender", "--ignore_rate_limits"};
-  base::CommandLine command_line(base::size(argv), argv);
+  base::CommandLine command_line(std::size(argv), argv);
   brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
   CommandLineFlags flags;
-  ParseCommandLine(base::size(argv), argv, &flags);
+  ParseCommandLine(std::size(argv), argv, &flags);
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
   EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_TRUE(flags.ignore_rate_limits);
@@ -661,11 +661,11 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreRateLimits) {
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreHoldOffTime) {
   const char* argv[] = {"crash_sender", "--ignore_hold_off_time"};
-  base::CommandLine command_line(base::size(argv), argv);
+  base::CommandLine command_line(std::size(argv), argv);
   brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
   CommandLineFlags flags;
-  ParseCommandLine(base::size(argv), argv, &flags);
+  ParseCommandLine(std::size(argv), argv, &flags);
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
   EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_FALSE(flags.ignore_rate_limits);
@@ -678,11 +678,11 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreHoldOffTime) {
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_CrashDirectory) {
   const char* argv[] = {"crash_sender", "--crash_directory=/tmp"};
-  base::CommandLine command_line(base::size(argv), argv);
+  base::CommandLine command_line(std::size(argv), argv);
   brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
   CommandLineFlags flags;
-  ParseCommandLine(base::size(argv), argv, &flags);
+  ParseCommandLine(std::size(argv), argv, &flags);
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
   EXPECT_EQ(flags.crash_directory, "/tmp");
   EXPECT_FALSE(flags.ignore_rate_limits);
@@ -695,11 +695,11 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_CrashDirectory) {
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_Dev) {
   const char* argv[] = {"crash_sender", "--dev"};
-  base::CommandLine command_line(base::size(argv), argv);
+  base::CommandLine command_line(std::size(argv), argv);
   brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
   CommandLineFlags flags;
-  ParseCommandLine(base::size(argv), argv, &flags);
+  ParseCommandLine(std::size(argv), argv, &flags);
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
   EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_FALSE(flags.ignore_rate_limits);
@@ -712,11 +712,11 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_Dev) {
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnorePauseFile) {
   const char* argv[] = {"crash_sender", "--ignore_pause_file"};
-  base::CommandLine command_line(base::size(argv), argv);
+  base::CommandLine command_line(std::size(argv), argv);
   brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
   CommandLineFlags flags;
-  ParseCommandLine(base::size(argv), argv, &flags);
+  ParseCommandLine(std::size(argv), argv, &flags);
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
   EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_FALSE(flags.ignore_rate_limits);
@@ -729,11 +729,11 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnorePauseFile) {
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_UploadOldReports) {
   const char* argv[] = {"crash_sender", "--upload_old_reports"};
-  base::CommandLine command_line(base::size(argv), argv);
+  base::CommandLine command_line(std::size(argv), argv);
   brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
   CommandLineFlags flags;
-  ParseCommandLine(base::size(argv), argv, &flags);
+  ParseCommandLine(std::size(argv), argv, &flags);
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
   EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_FALSE(flags.ignore_rate_limits);
@@ -746,11 +746,11 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_UploadOldReports) {
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_ForceUploadOnTestImages) {
   const char* argv[] = {"crash_sender", "--force_upload_on_test_images"};
-  base::CommandLine command_line(base::size(argv), argv);
+  base::CommandLine command_line(std::size(argv), argv);
   brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
   CommandLineFlags flags;
-  ParseCommandLine(base::size(argv), argv, &flags);
+  ParseCommandLine(std::size(argv), argv, &flags);
   EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
   EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_FALSE(flags.ignore_rate_limits);

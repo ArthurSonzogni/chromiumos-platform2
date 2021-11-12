@@ -5,9 +5,9 @@
 #include "crash-reporter/kernel_util.h"
 
 #include <algorithm>
+#include <iterator>
 
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -62,7 +62,7 @@ const char* const kPCFuncNameRegex[] = {
     R"(([^\+ ]+)\+0x.*)",  // X86_64 uses RIP
 };
 
-static_assert(base::size(kPCFuncNameRegex) == kernel_util::kArchCount,
+static_assert(std::size(kPCFuncNameRegex) == kernel_util::kArchCount,
               "Missing Arch PC func_name RegExp");
 
 void ProcessStackTrace(re2::StringPiece kernel_dump,
