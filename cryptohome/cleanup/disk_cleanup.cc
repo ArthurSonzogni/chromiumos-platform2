@@ -197,8 +197,8 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
     }
   }
 
-  auto freeDiskSpace = AmountOfFreeDiskSpace();
-  if (!freeDiskSpace) {
+  auto free_disk_space = AmountOfFreeDiskSpace();
+  if (!free_disk_space) {
     LOG(ERROR) << "Failed to get the amount of free space";
     return false;
   }
@@ -217,27 +217,27 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
     }
   }
 
-  auto old_free_disk_space = freeDiskSpace;
-  freeDiskSpace = AmountOfFreeDiskSpace();
-  if (!freeDiskSpace) {
+  auto old_free_disk_space = free_disk_space;
+  free_disk_space = AmountOfFreeDiskSpace();
+  if (!free_disk_space) {
     LOG(ERROR) << "Failed to get the amount of free space";
     return false;
   }
 
   const int64_t freed_gcache_space =
-      freeDiskSpace.value() - old_free_disk_space.value();
+      free_disk_space.value() - old_free_disk_space.value();
   // Report only if something was deleted.
   if (freed_gcache_space > 0) {
     ReportFreedGCacheDiskSpaceInMb(freed_gcache_space / 1024 / 1024);
   }
 
-  freeDiskSpace = AmountOfFreeDiskSpace();
-  if (!freeDiskSpace) {
+  free_disk_space = AmountOfFreeDiskSpace();
+  if (!free_disk_space) {
     LOG(ERROR) << "Failed to get the amount of free space";
     return false;
   }
 
-  bool earlyStop = false;
+  bool early_stop = false;
 
   // Purge Dmcrypt cache vaults.
   for (auto dir = normal_cleanup_homedirs.rbegin();
@@ -246,29 +246,29 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
       result = false;
 
     if (HasTargetFreeSpace()) {
-      earlyStop = true;
+      early_stop = true;
       break;
     }
   }
 
-  old_free_disk_space = freeDiskSpace;
-  freeDiskSpace = AmountOfFreeDiskSpace();
-  if (!freeDiskSpace) {
+  old_free_disk_space = free_disk_space;
+  free_disk_space = AmountOfFreeDiskSpace();
+  if (!free_disk_space) {
     LOG(ERROR) << "Failed to get the amount of free space";
     return false;
   }
 
   const int64_t freed_vault_cache_space =
-      freeDiskSpace.value() - old_free_disk_space.value();
+      free_disk_space.value() - old_free_disk_space.value();
   // Report only if something was deleted.
   if (freed_gcache_space > 0) {
     ReportFreedCacheVaultDiskSpaceInMb(freed_vault_cache_space / 1024 / 1024);
   }
 
-  if (!earlyStop)
+  if (!early_stop)
     last_normal_disk_cleanup_complete_ = platform_->GetCurrentTime();
 
-  switch (GetFreeDiskSpaceState(freeDiskSpace)) {
+  switch (GetFreeDiskSpaceState(free_disk_space)) {
     case DiskCleanup::FreeSpaceState::kAboveTarget:
       ReportDiskCleanupProgress(
           DiskCleanupProgress::kCacheVaultsCleanedAboveTarget);
@@ -304,12 +304,12 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
       result = false;
 
     if (HasTargetFreeSpace()) {
-      earlyStop = true;
+      early_stop = true;
       break;
     }
   }
 
-  if (!earlyStop)
+  if (!early_stop)
     last_aggressive_disk_cleanup_complete_ = platform_->GetCurrentTime();
 
   switch (GetFreeDiskSpaceState()) {
