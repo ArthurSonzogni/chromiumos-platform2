@@ -36,7 +36,7 @@ MockContext::MockContext() {
   tick_clock_ = std::make_unique<base::SimpleTestTickClock>();
   tpm_manager_proxy_ = std::make_unique<
       testing::StrictMock<org::chromium::TpmManagerProxyMock>>();
-  udev_ = std::make_unique<FakeUdev>();
+  udev_ = std::make_unique<brillo::MockUdev>();
   udev_monitor_ = std::make_unique<brillo::MockUdevMonitor>();
 
   CHECK(temp_dir_.CreateUniqueTempDir());
@@ -113,8 +113,8 @@ org::chromium::TpmManagerProxyMock* MockContext::mock_tpm_manager_proxy()
       tpm_manager_proxy_.get());
 }
 
-FakeUdev* MockContext::fake_udev() const {
-  return static_cast<FakeUdev*>(udev_.get());
+brillo::MockUdev* MockContext::mock_udev() const {
+  return static_cast<brillo::MockUdev*>(udev_.get());
 }
 
 brillo::MockUdevMonitor* MockContext::mock_udev_monitor() const {

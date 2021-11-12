@@ -25,7 +25,6 @@
 #include "diagnostics/cros_healthd/system/fake_pci_util.h"
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
 #include "diagnostics/cros_healthd/system/fake_system_utilities.h"
-#include "diagnostics/cros_healthd/system/fake_udev.h"
 
 namespace org {
 namespace chromium {
@@ -66,7 +65,7 @@ class MockContext final : public Context {
   MockExecutorAdapter* mock_executor() const;
   base::SimpleTestTickClock* mock_tick_clock() const;
   org::chromium::TpmManagerProxyMock* mock_tpm_manager_proxy() const;
-  FakeUdev* fake_udev() const;
+  brillo::MockUdev* mock_udev() const;
   brillo::MockUdevMonitor* mock_udev_monitor() const;
 
   MOCK_METHOD(const base::Time, time, (), (const, override));

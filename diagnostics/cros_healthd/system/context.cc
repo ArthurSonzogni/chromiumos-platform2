@@ -11,6 +11,7 @@
 #include <attestation-client/attestation/dbus-proxies.h>
 #include <base/logging.h>
 #include <base/time/default_tick_clock.h>
+#include <brillo/udev/udev.h>
 #include <chromeos/chromeos-config/libcros_config/cros_config.h>
 #include <chromeos/dbus/service_constants.h>
 #include <cras/dbus-proxies.h>
@@ -27,7 +28,6 @@
 #include "diagnostics/cros_healthd/system/pci_util_impl.h"
 #include "diagnostics/cros_healthd/system/system_config.h"
 #include "diagnostics/cros_healthd/system/system_utilities_impl.h"
-#include "diagnostics/cros_healthd/system/udev_impl.h"
 
 namespace diagnostics {
 
@@ -89,7 +89,7 @@ std::unique_ptr<Context> Context::Create(
       context->cros_config_.get(), context->debugd_adapter_.get());
   context->system_utils_ = std::make_unique<SystemUtilitiesImpl>();
   context->tick_clock_ = std::make_unique<base::DefaultTickClock>();
-  context->udev_ = std::make_unique<UdevImpl>();
+  context->udev_ = brillo::Udev::Create();
 
   return context;
 }
@@ -166,7 +166,7 @@ org::chromium::TpmManagerProxyInterface* Context::tpm_manager_proxy() const {
   return tpm_manager_proxy_.get();
 }
 
-UdevInterface* Context::udev() const {
+brillo::Udev* Context::udev() const {
   return udev_.get();
 }
 

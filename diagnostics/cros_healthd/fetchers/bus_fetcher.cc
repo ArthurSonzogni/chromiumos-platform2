@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <memory>
 #include <string>
-#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -17,11 +16,14 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/udev/udev.h>
+#include <brillo/udev/udev_device.h>
 
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher_constants.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/cros_healthd/utils/file_utils.h"
+#include "diagnostics/cros_healthd/utils/usb_utils.h"
 
 namespace diagnostics {
 namespace {
@@ -157,27 +159,6 @@ mojo_ipc::UsbBusInfoPtr FetchUsbBusInfo(const base::FilePath& path) {
   return info;
 }
 
-std::tuple<std::string, std::string> GetUsbNames(
-    const base::FilePath& path,
-    const mojo_ipc::UsbBusInfoPtr& info,
-    const std::unique_ptr<UdevHwdb>& hwdb) {
-  CHECK(info);
-  auto modalias =
-      base::StringPrintf("usb:v%04Xp%04X", info->vendor_id, info->product_id);
-  auto propertie = hwdb->GetProperties(modalias);
-  // Try to get vendor and product name from hwdb. If fail, try to read them
-  // from sysfs.
-  auto vendor = propertie[kPropertieVendor];
-  if (vendor == "") {
-    ReadAndTrimString(path, kFileUsbManufacturerName, &vendor);
-  }
-  auto product = propertie[kPropertieProduct];
-  if (product == "") {
-    ReadAndTrimString(path, kFileUsbProductName, &product);
-  }
-  return std::make_tuple(vendor, product);
-}
-
 mojo_ipc::BusDeviceClass GetUsbDeviceClass(
     const base::FilePath& path, const mojo_ipc::UsbBusInfoPtr& info) {
   CHECK(info);
@@ -198,14 +179,15 @@ mojo_ipc::BusDeviceClass GetUsbDeviceClass(
   return mojo_ipc::BusDeviceClass::kOthers;
 }
 
-mojo_ipc::BusDevicePtr FetchUsbDevice(const base::FilePath& path,
-                                      const std::unique_ptr<UdevHwdb>& hwdb) {
+mojo_ipc::BusDevicePtr FetchUsbDevice(
+    const base::FilePath& path,
+    const std::unique_ptr<brillo::UdevDevice>& udevice) {
   auto usb_info = FetchUsbBusInfo(path);
   if (usb_info.is_null())
     return nullptr;
   auto device = mojo_ipc::BusDevice::New();
-  std::tie(device->vendor_name, device->product_name) =
-      GetUsbNames(path, usb_info, hwdb);
+  device->vendor_name = GetUsbVendorName(udevice);
+  device->product_name = GetUsbProductName(udevice);
   device->device_class = GetUsbDeviceClass(path, usb_info);
 
   device->bus_info = mojo_ipc::BusInfo::NewUsbBusInfo(std::move(usb_info));
@@ -342,9 +324,10 @@ mojo_ipc::BusResultPtr BusFetcher::FetchBusDevices() {
       res.push_back(std::move(device));
     }
   }
-  auto hwdb = context_->udev()->CreateHwdb();
   for (const auto& path : ListDirectory(root.Append(kPathSysUsb))) {
-    auto device = FetchUsbDevice(path, hwdb);
+    auto udevice =
+        context_->udev()->CreateDeviceFromSysPath(path.value().c_str());
+    auto device = FetchUsbDevice(path, udevice);
     if (device) {
       res.push_back(std::move(device));
     }

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -14,6 +15,7 @@
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
+#include "diagnostics/cros_healthd/utils/usb_utils_constants.h"
 
 namespace diagnostics {
 namespace {
@@ -32,10 +34,8 @@ constexpr char kLinkUsbDriver[] = "../../../../../../bus/usb/drivers";
 
 constexpr char kFakePciVendorName[] = "Vendor:12AB";
 constexpr char kFakePciProductName[] = "Device:34CD";
-constexpr char kFakeUsbVendorName[] = "usb:v12ABp34CD";
-constexpr auto kFakeUsbProductName = kFakeUsbVendorName;
-constexpr auto kFakeUsbFallbackVendorName = "Fallback Vendor Name";
-constexpr auto kFakeUsbFallbackProductName = "Fallback Product Name";
+constexpr char kFakeUsbVendorName[] = "Usb Vendor";
+constexpr char kFakeUsbProductName[] = "Usb Product";
 constexpr uint8_t kFakeClass = 0x0a;
 constexpr uint8_t kFakeSubclass = 0x1b;
 constexpr uint8_t kFakeProg = 0x2c;
@@ -73,6 +73,21 @@ class BusFetcherTest : public BaseFileTest {
 
   void SetUp() override {
     SetTestRoot(mock_context_.root_dir());
+    ON_CALL(*mock_context_.mock_udev(), CreateDeviceFromSysPath)
+        .WillByDefault(
+            [this](const char* syspath) { return CreateMockUdevDevice(); });
+  }
+
+  std::unique_ptr<brillo::MockUdevDevice> CreateMockUdevDevice() {
+    auto udevice = std::make_unique<brillo::MockUdevDevice>();
+    ON_CALL(*udevice, GetPropertyValue).WillByDefault([](const char* key) {
+      if (key == kPropertieVendor)
+        return kFakeUsbVendorName;
+      if (key == kPropertieProduct)
+        return kFakeUsbProductName;
+      return "";
+    });
+    return udevice;
   }
 
   mojo_ipc::BusDevicePtr& AddExpectedPciDevice() {
@@ -195,8 +210,6 @@ class BusFetcherTest : public BaseFileTest {
             ToFixHexStr(usb_info->protocol_id));
     SetFile({dir, dev, kFileUsbVendor}, ToFixHexStr(usb_info->vendor_id));
     SetFile({dir, dev, kFileUsbProduct}, ToFixHexStr(usb_info->product_id));
-    SetFile({dir, dev, kFileUsbManufacturerName}, kFakeUsbFallbackVendorName);
-    SetFile({dir, dev, kFileUsbProductName}, kFakeUsbFallbackProductName);
 
     for (size_t i = 0; i < usb_info->interfaces.size(); ++i) {
       const auto dev_if = base::StringPrintf("1-%zu:1.%zu", id, i);
@@ -307,15 +320,6 @@ TEST_F(BusFetcherTest, TestFetchMultiple) {
   AddExpectedUsbDevice(3);
   AddExpectedThunderboltDevice(1);
   AddExpectedThunderboltDevice(2);
-  SetExpectedBusDevices();
-  FetchBusDevices();
-}
-
-TEST_F(BusFetcherTest, TestUsbFallback) {
-  auto& bus_info = AddExpectedUsbDevice(1);
-  bus_info->vendor_name = kFakeUsbFallbackVendorName;
-  bus_info->product_name = kFakeUsbFallbackProductName;
-  mock_context_.fake_udev()->fake_udev_hwdb()->SetReturnEmptyProperties(true);
   SetExpectedBusDevices();
   FetchBusDevices();
 }

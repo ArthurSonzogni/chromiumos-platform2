@@ -26,7 +26,10 @@
 #include "diagnostics/cros_healthd/system/pci_util.h"
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
 #include "diagnostics/cros_healthd/system/system_utilities.h"
-#include "diagnostics/cros_healthd/system/udev_interface.h"
+
+namespace brillo {
+class Udev;
+};
 
 namespace org {
 namespace chromium {
@@ -114,7 +117,7 @@ class Context {
   // from tpm manager.
   org::chromium::TpmManagerProxyInterface* tpm_manager_proxy() const;
   // Use the object returned by udev() to access udev related interfaces.
-  UdevInterface* udev() const;
+  brillo::Udev* udev() const;
 
  private:
   Context();
@@ -148,7 +151,7 @@ class Context {
   std::unique_ptr<SystemUtilities> system_utils_;
   std::unique_ptr<base::TickClock> tick_clock_;
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;
-  std::unique_ptr<UdevInterface> udev_;
+  std::unique_ptr<brillo::Udev> udev_;
   base::FilePath root_dir_;
 };
 
