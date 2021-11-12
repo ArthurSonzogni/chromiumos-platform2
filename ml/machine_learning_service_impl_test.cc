@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <iterator>
 #include <memory>
 #include <string>
 #include <utility>
@@ -12,7 +13,6 @@
 #include <base/files/file_util.h>
 #include <base/macros.h>
 #include <base/run_loop.h>
-#include <base/stl_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/remote.h>
@@ -679,7 +679,7 @@ TEST(BuiltinModelInferenceTest, SmartDim20181115) {
   base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace(
       "input", NewTensor<double>(
-                   {1, base::size(kSmartDim20181115TestInput)},
+                   {1, std::size(kSmartDim20181115TestInput)},
                    std::vector<double>(std::begin(kSmartDim20181115TestInput),
                                        std::end(kSmartDim20181115TestInput))));
   std::vector<std::string> outputs({"output"});
@@ -719,7 +719,7 @@ TEST(BuiltinModelInferenceTest, SmartDim20190221) {
   base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace(
       "input", NewTensor<double>(
-                   {1, base::size(kSmartDim20190221TestInput)},
+                   {1, std::size(kSmartDim20190221TestInput)},
                    std::vector<double>(std::begin(kSmartDim20190221TestInput),
                                        std::end(kSmartDim20190221TestInput))));
   std::vector<std::string> outputs({"output"});
@@ -759,7 +759,7 @@ TEST(BuiltinModelInferenceTest, SmartDim20190521) {
   base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace(
       "input", NewTensor<double>(
-                   {1, base::size(kSmartDim20190521TestInput)},
+                   {1, std::size(kSmartDim20190521TestInput)},
                    std::vector<double>(std::begin(kSmartDim20190521TestInput),
                                        std::end(kSmartDim20190521TestInput))));
   std::vector<std::string> outputs({"output"});
@@ -794,7 +794,7 @@ TEST(BuiltinModelInferenceTest, SearchRanker20190923) {
   // Construct input.
   base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace("input", NewTensor<double>(
-                              {1, base::size(kSearchRanker20190923TestInput)},
+                              {1, std::size(kSearchRanker20190923TestInput)},
                               std::vector<double>(
                                   std::begin(kSearchRanker20190923TestInput),
                                   std::end(kSearchRanker20190923TestInput))));
@@ -850,7 +850,7 @@ TEST(DownloadableModelInferenceTest, SmartDim20200206) {
   base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace(
       "input", NewTensor<double>(
-                   {1, base::size(kSmartDim20200206TestInput)},
+                   {1, std::size(kSmartDim20200206TestInput)},
                    std::vector<double>(std::begin(kSmartDim20200206TestInput),
                                        std::end(kSmartDim20200206TestInput))));
   std::vector<std::string> outputs({"output"});
@@ -905,7 +905,7 @@ TEST(DownloadableModelInferenceTest, SmartDim20210201) {
   base::flat_map<std::string, TensorPtr> inputs;
   inputs.emplace(
       "input", NewTensor<double>(
-                   {1, base::size(kSmartDim20210201TestInput)},
+                   {1, std::size(kSmartDim20210201TestInput)},
                    std::vector<double>(std::begin(kSmartDim20210201TestInput),
                                        std::end(kSmartDim20210201TestInput))));
   std::vector<std::string> outputs({"output"});

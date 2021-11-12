@@ -4,6 +4,7 @@
 
 #include "ml/graph_executor_delegate.h"
 
+#include <iterator>
 #include <set>
 #include <utility>
 
@@ -217,7 +218,7 @@ ExecuteResult GraphExecutorDelegate::Execute(
 
     // Check that the current input node is a supported type.
     const uint32_t cur_input_type = interpreter_->tensor(cur_input_id)->type;
-    if (cur_input_type >= base::size(kPopulateInputFns)) {
+    if (cur_input_type >= std::size(kPopulateInputFns)) {
       LOG(ERROR) << "TF lite graph contains invalid input node " << cur_input_id
                  << " of type " << cur_input_type << ".";
       request_metrics.RecordRequestEvent(ExecuteResult::EXECUTION_ERROR);
@@ -250,7 +251,7 @@ ExecuteResult GraphExecutorDelegate::Execute(
 
     // Check that the current output node is a supported type.
     const uint32_t cur_output_type = interpreter_->tensor(cur_output_id)->type;
-    if (cur_output_type >= base::size(kPopulateOutputFns)) {
+    if (cur_output_type >= std::size(kPopulateOutputFns)) {
       LOG(ERROR) << "TF lite graph contains invalid output node "
                  << cur_output_id << " of type " << cur_output_type << ".";
       request_metrics.RecordRequestEvent(ExecuteResult::EXECUTION_ERROR);
