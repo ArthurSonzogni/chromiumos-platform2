@@ -11,7 +11,8 @@
 #include <sys/capability.h>
 #include <sys/types.h>
 
-#include <base/stl_util.h>
+#include <iterator>
+
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
 #include <chromeos/libminijail.h>
@@ -33,12 +34,12 @@ int perform_capture(base::StringPiece device,
                                       CAP_NET_RAW};
   cap_t caps = cap_get_proc();
   if (cap_clear(caps) ||
-      cap_set_flag(caps, CAP_EFFECTIVE, base::size(requiredCaps), requiredCaps,
+      cap_set_flag(caps, CAP_EFFECTIVE, std::size(requiredCaps), requiredCaps,
                    CAP_SET) ||
-      cap_set_flag(caps, CAP_PERMITTED, base::size(requiredCaps), requiredCaps,
+      cap_set_flag(caps, CAP_PERMITTED, std::size(requiredCaps), requiredCaps,
                    CAP_SET) ||
-      cap_set_flag(caps, CAP_INHERITABLE, base::size(requiredCaps),
-                   requiredCaps, CAP_SET)) {
+      cap_set_flag(caps, CAP_INHERITABLE, std::size(requiredCaps), requiredCaps,
+                   CAP_SET)) {
     fprintf(
         stderr,
         "Can't clear capabilities and set flags for required capabilities.\n");

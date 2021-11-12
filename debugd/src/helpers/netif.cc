@@ -57,12 +57,12 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <iterator>
 #include <memory>
 #include <string>
 #include <utility>
 
 #include <base/json/json_writer.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
@@ -127,9 +127,9 @@ struct ifflag {
 
 Value flags2list(unsigned int flags) {
   Value lv(Value::Type::LIST);
-  for (unsigned int i = 0; i < base::size(ifflags); ++i) {
-    if (flags & ifflags[i].bit)
-      lv.Append(ifflags[i].name);
+  for (const auto& ifflag : ifflags) {
+    if (flags & ifflag.bit)
+      lv.Append(ifflag.name);
   }
   return lv;
 }
