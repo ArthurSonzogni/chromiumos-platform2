@@ -4,13 +4,13 @@
 
 #include "tpm_manager/server/tpm_initializer_impl.h"
 
+#include <iterator>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <libhwsec/overalls/overalls_api.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
@@ -372,7 +372,7 @@ bool TpmInitializerImpl::ChangeOwnerPassword(
   if (TPM_ERROR(
           result = Tspi_Policy_SetSecret(
               policy_handle, TSS_SECRET_MODE_PLAIN, owner_password.size(),
-              reinterpret_cast<BYTE*>(base::data(mutable_owner_password))))) {
+              reinterpret_cast<BYTE*>(std::data(mutable_owner_password))))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Policy_SetSecret";
     return false;
   }

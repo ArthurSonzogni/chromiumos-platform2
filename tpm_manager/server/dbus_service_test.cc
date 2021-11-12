@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <iterator>
 #include <string>
 #include <utility>
 
 #include <base/bind.h>
-#include <base/stl_util.h>
 #include <brillo/dbus/dbus_object_test_helpers.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
@@ -402,7 +402,7 @@ TEST_F(DBusServiceTest, ListSpaces) {
   ListSpacesReply reply;
   ExecuteMethod(kListSpaces, request, &reply, kTpmNvramInterface);
   EXPECT_EQ(NVRAM_RESULT_SUCCESS, reply.result());
-  EXPECT_EQ(base::size(nvram_index_list), reply.index_list_size());
+  EXPECT_EQ(std::size(nvram_index_list), reply.index_list_size());
   for (size_t i = 0; i < 3; i++) {
     EXPECT_EQ(nvram_index_list[i], reply.index_list(i));
   }
