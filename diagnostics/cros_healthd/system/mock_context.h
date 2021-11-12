@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_MOCK_CONTEXT_H_
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_MOCK_CONTEXT_H_
 
+#include <memory>
+
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/simple_test_tick_clock.h>
@@ -20,6 +22,7 @@
 #include "diagnostics/cros_healthd/network/fake_network_health_adapter.h"
 #include "diagnostics/cros_healthd/network_diagnostics/mock_network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/system/fake_pci_util.h"
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
 #include "diagnostics/cros_healthd/system/fake_system_utilities.h"
 #include "diagnostics/cros_healthd/system/fake_udev.h"
@@ -46,6 +49,8 @@ class MockContext final : public Context {
   MockContext& operator=(const MockContext&) = delete;
   ~MockContext() override = default;
 
+  std::unique_ptr<PciUtil> CreatePciUtil() override;
+
   // Accessors to the fake and mock objects held by MockContext:
   org::chromium::AttestationProxyMock* mock_attestation_proxy() const;
   FakeBluetoothClient* fake_bluetooth_client() const;
@@ -69,6 +74,8 @@ class MockContext final : public Context {
  private:
   // Used to create a temporary root directory.
   base::ScopedTempDir temp_dir_;
+  // Used to create a fake pci util.
+  FakePciUtil fake_pci_util_;
 };
 
 }  // namespace diagnostics

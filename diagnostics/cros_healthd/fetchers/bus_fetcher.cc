@@ -335,7 +335,7 @@ mojo_ipc::BusResultPtr BusFetcher::FetchBusDevices() {
   const auto& root = context_->root_dir();
   std::vector<mojo_ipc::BusDevicePtr> res;
 
-  auto pci_util = context_->udev()->CreatePciUtil();
+  auto pci_util = context_->CreatePciUtil();
   for (const auto& path : ListDirectory(root.Append(kPathSysPci))) {
     auto device = FetchPciDevice(path, pci_util);
     if (device) {

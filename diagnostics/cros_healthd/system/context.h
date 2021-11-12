@@ -23,6 +23,7 @@
 #include "diagnostics/cros_healthd/executor/executor_adapter.h"
 #include "diagnostics/cros_healthd/network/network_health_adapter.h"
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
+#include "diagnostics/cros_healthd/system/pci_util.h"
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
 #include "diagnostics/cros_healthd/system/system_utilities.h"
 #include "diagnostics/cros_healthd/system/udev_interface.h"
@@ -54,6 +55,9 @@ class Context {
   static std::unique_ptr<Context> Create(
       mojo::PlatformChannelEndpoint endpoint,
       std::unique_ptr<brillo::UdevMonitor>&& udev_monitor);
+
+  // Creates an object for accessing |PciUtil| interface.
+  virtual std::unique_ptr<PciUtil> CreatePciUtil();
 
   // Accessors for the various helper objects:
 

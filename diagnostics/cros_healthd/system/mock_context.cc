@@ -43,6 +43,10 @@ MockContext::MockContext() {
   root_dir_ = temp_dir_.GetPath();
 }
 
+std::unique_ptr<PciUtil> MockContext::CreatePciUtil() {
+  return std::unique_ptr<PciUtil>(new FakePciUtil(fake_pci_util_));
+}
+
 org::chromium::AttestationProxyMock* MockContext::mock_attestation_proxy()
     const {
   return static_cast<testing::StrictMock<org::chromium::AttestationProxyMock>*>(

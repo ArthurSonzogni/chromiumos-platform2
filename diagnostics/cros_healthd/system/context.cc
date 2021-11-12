@@ -24,6 +24,7 @@
 #include "diagnostics/cros_healthd/executor/executor_adapter_impl.h"
 #include "diagnostics/cros_healthd/network/network_health_adapter_impl.h"
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter_impl.h"
+#include "diagnostics/cros_healthd/system/pci_util_impl.h"
 #include "diagnostics/cros_healthd/system/system_config.h"
 #include "diagnostics/cros_healthd/system/system_utilities_impl.h"
 #include "diagnostics/cros_healthd/system/udev_impl.h"
@@ -91,6 +92,10 @@ std::unique_ptr<Context> Context::Create(
   context->udev_ = std::make_unique<UdevImpl>();
 
   return context;
+}
+
+std::unique_ptr<PciUtil> Context::CreatePciUtil() {
+  return std::unique_ptr<PciUtil>(new PciUtilImpl());
 }
 
 org::chromium::AttestationProxyInterface* Context::attestation_proxy() const {
