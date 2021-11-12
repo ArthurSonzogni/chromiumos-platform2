@@ -1003,7 +1003,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     CallRecordUpload(std::move(encrypted_record));
   }
 
-  // Completes sequencing information and makes a call to UploaderInterface
+  // Completes sequence information and makes a call to UploaderInterface
   // instance provided by user, which can place processing of the record on any
   // thread(s). Once it returns, it will schedule NextRecord to execute on the
   // sequential thread runner of this StorageQueue. If |encrypted_record| is
@@ -1018,13 +1018,13 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
       // Resume at ScheduleNextRecord.
       return;
     }
-    // Fill in sequencing information.
+    // Fill in sequence information.
     // Priority is attached by the Storage layer.
     *encrypted_record.mutable_sequence_information() = sequence_info_;
     uploader_->ProcessRecord(std::move(encrypted_record),
                              base::BindOnce(&ReadContext::ScheduleNextRecord,
                                             base::Unretained(this)));
-    // Move sequencing forward (ScheduleNextRecord will see this).
+    // Move sequencing id forward (ScheduleNextRecord will see this).
     sequence_info_.set_sequencing_id(sequence_info_.sequencing_id() + 1);
   }
 
@@ -1038,7 +1038,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     uploader_->ProcessGap(sequence_info_, count,
                           base::BindOnce(&ReadContext::ScheduleNextRecord,
                                          base::Unretained(this)));
-    // Move sequencing forward (ScheduleNextRecord will see this).
+    // Move sequence id forward (ScheduleNextRecord will see this).
     sequence_info_.set_sequencing_id(sequence_info_.sequencing_id() + count);
   }
 
@@ -1371,13 +1371,13 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
     }
     // Release wrapped record memory, so scoped reservation may act.
     wrapped_record.Clear();
-    CompressWrappedRecord(buffer);
+    CompressWrappedRecord(std::move(buffer));
   }
 
   void CompressWrappedRecord(std::string serialized_record) {
     // Compress the string.
     storage_queue_->compression_module_->CompressRecord(
-        serialized_record,
+        std::move(serialized_record),
         base::BindOnce(&WriteContext::OnCompressedRecordReady,
                        base::Unretained(this)));
   }

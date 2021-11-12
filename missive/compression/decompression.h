@@ -43,9 +43,6 @@ class Decompression : public base::RefCountedThreadSafe<Decompression> {
 
  private:
   friend base::RefCountedThreadSafe<Decompression>;
-
-  // Decompresses a record using snappy
-  static std::string DecompressRecordSnappy(std::string record);
 };
 
 }  // namespace reporting
