@@ -5,6 +5,7 @@
 #include "arc/container/obb-mounter/mount_obb_fuse_main.h"
 
 #include <fuse/fuse.h>
+#include <iterator>
 #include <time.h>
 #include <utility>
 
@@ -15,7 +16,6 @@
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/optional.h>
-#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/utf_string_conversions.h>
 #include <base/synchronization/lock.h>
@@ -238,7 +238,7 @@ int mount_obb_fuse_main(const std::string& file_system_name,
   SET_FAT_OP(release);
   SET_FAT_OP(readdir);
 #undef SET_FAT_OP
-  fuse_main(base::size(fuse_argv), const_cast<char**>(fuse_argv), &fat_ops,
+  fuse_main(std::size(fuse_argv), const_cast<char**>(fuse_argv), &fat_ops,
             nullptr);
   return 0;
 }

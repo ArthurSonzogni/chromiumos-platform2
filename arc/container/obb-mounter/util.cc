@@ -4,9 +4,10 @@
 
 #include "arc/container/obb-mounter/util.h"
 
+#include <iterator>
+
 #include <base/logging.h>
 #include <base/macros.h>
-#include <base/stl_util.h>
 
 namespace fat {
 
@@ -27,13 +28,13 @@ void AppendLongFileNameCharactersReversed(const msdos_dir_slot& slot,
   // the normal order. Here we append the characters in the reversed order so
   // that |out| contains all characters in the reversed order.
   out->resize(out->size() + 13);
-  for (size_t i = 0; i < base::size(slot.name0_4) / 2; ++i) {
+  for (size_t i = 0; i < std::size(slot.name0_4) / 2; ++i) {
     (*out)[out->size() - 1 - i] = GetUnalignedLE16(slot.name0_4 + i * 2);
   }
-  for (size_t i = 0; i < base::size(slot.name5_10) / 2; ++i) {
+  for (size_t i = 0; i < std::size(slot.name5_10) / 2; ++i) {
     (*out)[out->size() - 6 - i] = GetUnalignedLE16(slot.name5_10 + i * 2);
   }
-  for (size_t i = 0; i < base::size(slot.name11_12) / 2; ++i) {
+  for (size_t i = 0; i < std::size(slot.name11_12) / 2; ++i) {
     (*out)[out->size() - 12 - i] = GetUnalignedLE16(slot.name11_12 + i * 2);
   }
 }

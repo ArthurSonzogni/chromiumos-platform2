@@ -6,13 +6,14 @@
 #include <sys/capability.h>
 #include <sys/prctl.h>
 
+#include <iterator>
+
 #include <base/at_exit.h>
 #include <base/check.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_executor.h>
@@ -40,7 +41,7 @@ bool DropUnnecessaryCapabilities() {
   }
   // Drop cap bset.
   for (int i = 0; i <= last_cap; ++i) {
-    if (std::count(kKeep, kKeep + base::size(kKeep), i) == 0) {
+    if (std::count(kKeep, kKeep + std::size(kKeep), i) == 0) {
       if (prctl(PR_CAPBSET_DROP, i)) {
         PLOG(ERROR) << "Failed to drop bset " << i;
         return false;
@@ -60,11 +61,11 @@ bool DropUnnecessaryCapabilities() {
     PLOG(ERROR) << "Failed to cap_clear_flag()";
     return false;
   }
-  if (cap_set_flag(cap.get(), CAP_EFFECTIVE, base::size(kKeep), kKeep,
+  if (cap_set_flag(cap.get(), CAP_EFFECTIVE, std::size(kKeep), kKeep,
                    CAP_SET) ||
-      cap_set_flag(cap.get(), CAP_PERMITTED, base::size(kKeep), kKeep,
+      cap_set_flag(cap.get(), CAP_PERMITTED, std::size(kKeep), kKeep,
                    CAP_SET) ||
-      cap_set_flag(cap.get(), CAP_INHERITABLE, base::size(kKeep), kKeep,
+      cap_set_flag(cap.get(), CAP_INHERITABLE, std::size(kKeep), kKeep,
                    CAP_SET)) {
     PLOG(ERROR) << "Failed to cap_set_flag()";
     return false;
