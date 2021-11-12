@@ -4,6 +4,7 @@
 
 #include "authpolicy/policy/device_policy_encoder.h"
 
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <utility>
@@ -14,7 +15,6 @@
 #include <base/check.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <components/policy/core/common/registry_dict.h>
 #include <dbus/shill/dbus-constants.h>
@@ -42,7 +42,7 @@ constexpr std::pair<const char*, int> kConnectionTypes[] = {
         shill::kTypeCellular,
         em::AutoUpdateSettingsProto_ConnectionType_CONNECTION_TYPE_CELLULAR)};
 
-constexpr size_t kConnectionTypesSize = base::size(kConnectionTypes);
+constexpr size_t kConnectionTypesSize = std::size(kConnectionTypes);
 
 // Integer range for DeviceLoginScreenScreenMagnifierType policy.
 constexpr int kScreenMagnifierTypeRangeMin = 0;
@@ -67,9 +67,9 @@ bool DecodeConnectionType(const std::string& value,
                           em::AutoUpdateSettingsProto_ConnectionType* type) {
   DCHECK(type);
 
-  for (size_t n = 0; n < base::size(kConnectionTypes); ++n) {
-    if (value.compare(kConnectionTypes[n].first) == 0) {
-      int int_type = kConnectionTypes[n].second;
+  for (const auto& connection_type : kConnectionTypes) {
+    if (value.compare(connection_type.first) == 0) {
+      int int_type = connection_type.second;
       DCHECK(em::AutoUpdateSettingsProto_ConnectionType_IsValid(int_type));
       *type = static_cast<em::AutoUpdateSettingsProto_ConnectionType>(int_type);
       return true;

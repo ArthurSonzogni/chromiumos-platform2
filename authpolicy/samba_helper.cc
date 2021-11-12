@@ -5,13 +5,13 @@
 #include "authpolicy/samba_helper.h"
 
 #include <cstring>
+#include <iterator>
 #include <vector>
 
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/guid.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -185,7 +185,7 @@ bool ParseGpoVersion(const std::string& str, uint32_t* version) {
 }
 
 bool ParseGpFlags(const std::string& str, int* gp_flags) {
-  for (int flag = 0; flag < static_cast<int>(base::size(kGpFlagsStr)); ++flag) {
+  for (int flag = 0; flag < static_cast<int>(std::size(kGpFlagsStr)); ++flag) {
     if (str == kGpFlagsStr[flag]) {
       *gp_flags = flag;
       return true;
@@ -205,10 +205,9 @@ std::string GuidToOctetString(const std::string& guid) {
   DCHECK_EQ(kGuidSize, guid.size());
 
   octet_str.assign(kOctetSize, '\\');
-  for (size_t n = 0; n < base::size(octet_pos_map); ++n) {
+  for (const auto& pos : octet_pos_map) {
     for (int hex_digit = 0; hex_digit < 2; ++hex_digit) {
-      octet_str.at(octet_pos_map[n][1] + hex_digit) =
-          toupper(guid.at(octet_pos_map[n][0] + hex_digit));
+      octet_str.at(pos[1] + hex_digit) = toupper(guid.at(pos[0] + hex_digit));
     }
   }
 
@@ -221,10 +220,9 @@ std::string OctetStringToGuidForTesting(const std::string& octet_str) {
     return guid;
 
   guid.assign(kGuidSize, '-');
-  for (size_t n = 0; n < base::size(octet_pos_map); ++n) {
+  for (const auto& pos : octet_pos_map) {
     for (int hex_digit = 0; hex_digit < 2; ++hex_digit) {
-      guid.at(octet_pos_map[n][0] + hex_digit) =
-          tolower(octet_str.at(octet_pos_map[n][1] + hex_digit));
+      guid.at(pos[0] + hex_digit) = tolower(octet_str.at(pos[1] + hex_digit));
     }
   }
   return guid;
