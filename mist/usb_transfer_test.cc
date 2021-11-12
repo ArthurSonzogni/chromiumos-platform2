@@ -6,7 +6,8 @@
 
 #include <libusb.h>
 
-#include <base/stl_util.h>
+#include <iterator>
+
 #include <gtest/gtest.h>
 
 namespace mist {
@@ -170,13 +171,13 @@ TEST_F(UsbTransferTest, AllocateBuffer) {
 
   // Re-allocate the buffer should be ok.
   const uint8_t kTestData[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-  EXPECT_TRUE(transfer_.AllocateBuffer(base::size(kTestData)));
+  EXPECT_TRUE(transfer_.AllocateBuffer(std::size(kTestData)));
   EXPECT_NE(nullptr, transfer_.buffer());
-  EXPECT_EQ(base::size(kTestData), transfer_.buffer_length());
+  EXPECT_EQ(std::size(kTestData), transfer_.buffer_length());
   // Write to the allocated buffer and then read from it to ensure the buffer
   // is properly allocated.
-  memcpy(transfer_.buffer(), kTestData, base::size(kTestData));
-  EXPECT_EQ(0, memcmp(transfer_.buffer(), kTestData, base::size(kTestData)));
+  memcpy(transfer_.buffer(), kTestData, std::size(kTestData));
+  EXPECT_EQ(0, memcmp(transfer_.buffer(), kTestData, std::size(kTestData)));
 }
 
 TEST_F(UsbTransferTest, AllocateBufferAfterSubmit) {
