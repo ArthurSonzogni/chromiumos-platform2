@@ -4,6 +4,7 @@
 
 #include "croslog/log_line_reader.h"
 
+#include <iterator>
 #include <string>
 
 #include "base/files/file_path.h"
@@ -27,12 +28,13 @@ const char* kNormalLines[] = {"Lorem ipsum dolor sit amet, consectetur",
                               "reprehenderit in voluptate velit esse cillum",
                               "dolore eu fugiat nulla pariatur."};
 
-const char* kCrazyLines[] = {"",
-                             "   Lorem ipsum dolor sit amet, consectetur",
-                             " adipiscing elit, sed do eiusmod tempor ",
-                             "",
-                             "",
-                             " incididunt ut labore et dolore magna aliqua."};
+const char* kIrregularLines[] = {
+    "",
+    "   Lorem ipsum dolor sit amet, consectetur",
+    " adipiscing elit, sed do eiusmod tempor ",
+    "",
+    "",
+    " incididunt ut labore et dolore magna aliqua."};
 
 const char* kEmptyLines[] = {"", "", "", "", ""};
 
@@ -85,10 +87,10 @@ TEST_F(LogLineReaderTest, Forward) {
     LogLineReader reader(LogLineReader::Backend::FILE);
     reader.OpenFile(base::FilePath("./testdata/TEST_NORMAL_LINES"));
 
-    for (size_t i = 0; i < base::size(kNormalLines); i++) {
+    for (const auto& line : kNormalLines) {
       base::Optional<std::string> s = reader.Forward();
       EXPECT_TRUE(s.has_value());
-      EXPECT_EQ(kNormalLines[i], s.value());
+      EXPECT_EQ(line, s.value());
     }
 
     EXPECT_FALSE(reader.Forward().has_value());
@@ -97,12 +99,12 @@ TEST_F(LogLineReaderTest, Forward) {
 
   {
     LogLineReader reader(LogLineReader::Backend::FILE);
-    reader.OpenFile(base::FilePath("./testdata/TEST_CRAZY_LINES"));
+    reader.OpenFile(base::FilePath("./testdata/TEST_IRREGULAR_LINES"));
 
-    for (int i = 0; i < base::size(kCrazyLines); i++) {
+    for (const auto& line : kIrregularLines) {
       base::Optional<std::string> s = reader.Forward();
       EXPECT_TRUE(s.has_value());
-      EXPECT_EQ(kCrazyLines[i], s);
+      EXPECT_EQ(line, s);
     }
 
     EXPECT_FALSE(reader.Forward().has_value());
@@ -113,10 +115,10 @@ TEST_F(LogLineReaderTest, Forward) {
     LogLineReader reader(LogLineReader::Backend::FILE);
     reader.OpenFile(base::FilePath("./testdata/TEST_EMPTY_LINES"));
 
-    for (int i = 0; i < base::size(kEmptyLines); i++) {
+    for (const auto& line : kEmptyLines) {
       base::Optional<std::string> s = reader.Forward();
       EXPECT_TRUE(s.has_value());
-      EXPECT_EQ(kEmptyLines[i], s);
+      EXPECT_EQ(line, s);
     }
 
     EXPECT_FALSE(reader.Forward().has_value());
@@ -142,7 +144,7 @@ TEST_F(LogLineReaderTest, Backward) {
 
     reader.SetPositionLast();
 
-    for (int i = base::size(kNormalLines) - 1; i >= 0; i--) {
+    for (int i = std::size(kNormalLines) - 1; i >= 0; i--) {
       base::Optional<std::string> s = reader.Backward();
       EXPECT_TRUE(s.has_value());
       EXPECT_EQ(kNormalLines[i], s);
@@ -154,17 +156,17 @@ TEST_F(LogLineReaderTest, Backward) {
 
   {
     LogLineReader reader(LogLineReader::Backend::FILE);
-    reader.OpenFile(base::FilePath("./testdata/TEST_CRAZY_LINES"));
+    reader.OpenFile(base::FilePath("./testdata/TEST_IRREGULAR_LINES"));
 
     EXPECT_FALSE(reader.Backward().has_value());
     EXPECT_FALSE(reader.Backward().has_value());
 
     reader.SetPositionLast();
 
-    for (int i = base::size(kCrazyLines) - 1; i >= 0; i--) {
+    for (int i = std::size(kIrregularLines) - 1; i >= 0; i--) {
       base::Optional<std::string> s = reader.Backward();
       EXPECT_TRUE(s.has_value());
-      EXPECT_EQ(kCrazyLines[i], s);
+      EXPECT_EQ(kIrregularLines[i], s);
     }
 
     EXPECT_FALSE(reader.Backward().has_value());
@@ -180,7 +182,7 @@ TEST_F(LogLineReaderTest, Backward) {
 
     reader.SetPositionLast();
 
-    for (int i = base::size(kEmptyLines) - 1; i >= 0; i--) {
+    for (int i = std::size(kEmptyLines) - 1; i >= 0; i--) {
       base::Optional<std::string> s = reader.Backward();
       EXPECT_TRUE(s.has_value());
       EXPECT_EQ(kEmptyLines[i], s);
@@ -208,16 +210,16 @@ TEST_F(LogLineReaderTest, ForwardAndBackward) {
   LogLineReader reader(LogLineReader::Backend::FILE);
   reader.OpenFile(base::FilePath("./testdata/TEST_NORMAL_LINES"));
 
-  for (size_t i = 0; i < base::size(kNormalLines); i++) {
+  for (const auto& line : kNormalLines) {
     base::Optional<std::string> s = reader.Forward();
     EXPECT_TRUE(s.has_value());
-    EXPECT_EQ(kNormalLines[i], s);
+    EXPECT_EQ(line, s);
   }
 
   EXPECT_FALSE(reader.Forward().has_value());
   EXPECT_FALSE(reader.Forward().has_value());
 
-  for (int i = base::size(kNormalLines) - 1; i >= 0; i--) {
+  for (int i = std::size(kNormalLines) - 1; i >= 0; i--) {
     base::Optional<std::string> s = reader.Backward();
     EXPECT_TRUE(s.has_value());
     EXPECT_EQ(kNormalLines[i], s);
@@ -231,13 +233,13 @@ TEST_F(LogLineReaderTest, AppendingLines) {
   LogLineReader reader(LogLineReader::Backend::MEMORY_FOR_TEST);
   reader.OpenMemoryBufferForTest("", 0);
 
-  for (size_t i = 0; i < base::size(kAppendingLines); i++) {
-    const char* logFileContent = kAppendingLines[i][1];
+  for (const auto& line : kAppendingLines) {
+    const char* logFileContent = line[1];
     reader.OpenMemoryBufferForTest(logFileContent, strlen(logFileContent));
 
     base::Optional<std::string> s = reader.Forward();
     EXPECT_TRUE(s.has_value());
-    EXPECT_EQ(kAppendingLines[i][0], s);
+    EXPECT_EQ(line[0], s);
 
     EXPECT_FALSE(reader.Forward().has_value());
   }
