@@ -81,8 +81,17 @@ bool AttributeList::IterateAttributes(
   if (payload.IsEmpty())
     return true;
 
+  // Invalid offset.
+  if (payload.GetLength() < NLA_ALIGN(offset)) {
+    LOG(ERROR) << "Attribute offset " << offset
+               << " was larger than payload length " << payload.GetLength();
+    return false;
+  }
+
   const unsigned char* ptr = payload.GetConstData() + NLA_ALIGN(offset);
   const unsigned char* end = payload.GetConstData() + payload.GetLength();
+  // TODO(b/206049224) Remove all pointer arithmetic in favor of direct offset
+  // comparisons to prevent bugs caused by pointer address numeric overflow.
   while (ptr + sizeof(nlattr) <= end) {
     const nlattr* attribute = reinterpret_cast<const nlattr*>(ptr);
     if (attribute->nla_len < sizeof(*attribute) ||
