@@ -7,12 +7,12 @@
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
+#include <iterator>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <brillo/syslog_logging.h>
 
@@ -94,7 +94,7 @@ static int PrintUsage(const std::string& progname,
   struct {
     std::string usage;
     std::string description;
-  } usagestrings[base::size(subcommands)];
+  } usagestrings[std::size(subcommands)];
 
   size_t max_usage_len = 0;
   auto usagestrings_it = usagestrings;
