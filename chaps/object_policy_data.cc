@@ -4,8 +4,9 @@
 
 #include "chaps/object_policy_data.h"
 
+#include <iterator>
+
 #include <base/macros.h>
-#include <base/stl_util.h>
 
 namespace chaps {
 
@@ -23,7 +24,7 @@ static const AttributePolicy kDataPolicies[] = {
 };
 
 ObjectPolicyData::ObjectPolicyData() {
-  AddPolicies(kDataPolicies, base::size(kDataPolicies));
+  AddPolicies(kDataPolicies, std::size(kDataPolicies));
 }
 
 ObjectPolicyData::~ObjectPolicyData() {}

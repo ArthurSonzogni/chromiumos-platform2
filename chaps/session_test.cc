@@ -4,6 +4,7 @@
 
 #include "chaps/session_impl.h"
 
+#include <iterator>
 #include <memory>
 #include <string>
 #include <vector>
@@ -12,7 +13,6 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <gmock/gmock.h>
@@ -168,8 +168,8 @@ class TestSession : public ::testing::Test {
     int pubh = 0, privh = 0;
     ASSERT_EQ(CKR_OK,
               session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
-                                        base::size(pub_attr), priv_attr,
-                                        base::size(priv_attr), &pubh, &privh));
+                                        std::size(pub_attr), priv_attr,
+                                        std::size(priv_attr), &pubh, &privh));
     ASSERT_TRUE(session_->GetObject(pubh, pub));
     ASSERT_TRUE(session_->GetObject(privh, priv));
   }
@@ -209,8 +209,8 @@ class TestSession : public ::testing::Test {
     int pubh = 0, privh = 0;
     ASSERT_EQ(CKR_OK,
               session_->GenerateKeyPair(CKM_EC_KEY_PAIR_GEN, "", pub_attr,
-                                        base::size(pub_attr), priv_attr,
-                                        base::size(priv_attr), &pubh, &privh));
+                                        std::size(pub_attr), priv_attr,
+                                        std::size(priv_attr), &pubh, &privh));
     ASSERT_TRUE(session_->GetObject(pubh, pub));
     ASSERT_TRUE(session_->GetObject(privh, priv));
   }
@@ -411,7 +411,7 @@ TEST_F(TestSession, Objects) {
   int handle = 0;
   int invalid_handle = -1;
   // Create a new object.
-  ASSERT_EQ(CKR_OK, session_->CreateObject(attr, base::size(attr), &handle));
+  ASSERT_EQ(CKR_OK, session_->CreateObject(attr, std::size(attr), &handle));
   EXPECT_GT(handle, 0);
   const Object* o;
   // Get the new object from the new handle.
@@ -420,9 +420,9 @@ TEST_F(TestSession, Objects) {
   // Copy an object (try invalid and valid handles).
   EXPECT_EQ(
       CKR_OBJECT_HANDLE_INVALID,
-      session_->CopyObject(attr, base::size(attr), invalid_handle, &handle2));
+      session_->CopyObject(attr, std::size(attr), invalid_handle, &handle2));
   ASSERT_EQ(CKR_OK,
-            session_->CopyObject(attr, base::size(attr), handle, &handle2));
+            session_->CopyObject(attr, std::size(attr), handle, &handle2));
   // Ensure handles are unique.
   EXPECT_TRUE(handle != handle2);
   EXPECT_TRUE(session_->GetObject(handle2, &o));
@@ -432,9 +432,9 @@ TEST_F(TestSession, Objects) {
   EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED, session_->FindObjects(1, &v));
   EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED, session_->FindObjectsFinal());
   // Find the objects we've created (there should be 2).
-  EXPECT_EQ(CKR_OK, session_->FindObjectsInit(attr, base::size(attr)));
+  EXPECT_EQ(CKR_OK, session_->FindObjectsInit(attr, std::size(attr)));
   EXPECT_EQ(CKR_OPERATION_ACTIVE,
-            session_->FindObjectsInit(attr, base::size(attr)));
+            session_->FindObjectsInit(attr, std::size(attr)));
   // Test multi-step finds by only allowing 1 result at a time.
   EXPECT_EQ(CKR_OK, session_->FindObjects(1, &v));
   EXPECT_EQ(1, v.size());
@@ -792,20 +792,20 @@ TEST_F(TestSession, BadRSAGenerate) {
   // CKA_PUBLIC_EXPONENT too large.
   EXPECT_EQ(CKR_FUNCTION_FAILED,
             session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
-                                      base::size(pub_attr), priv_attr,
-                                      base::size(priv_attr), &pub, &priv));
+                                      std::size(pub_attr), priv_attr,
+                                      std::size(priv_attr), &pub, &priv));
   pub_attr[1].ulValueLen = 3;
   size = 20000;
   // CKA_MODULUS_BITS too large.
   EXPECT_EQ(CKR_KEY_SIZE_RANGE,
             session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
-                                      base::size(pub_attr), priv_attr,
-                                      base::size(priv_attr), &pub, &priv));
+                                      std::size(pub_attr), priv_attr,
+                                      std::size(priv_attr), &pub, &priv));
   // CKA_MODULUS_BITS missing.
   EXPECT_EQ(
       CKR_TEMPLATE_INCOMPLETE,
       session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr, 2,
-                                priv_attr, base::size(priv_attr), &pub, &priv));
+                                priv_attr, std::size(priv_attr), &pub, &priv));
 }
 
 // Test that invalid attributes for key generation are handled correctly.
@@ -891,8 +891,8 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithTPM) {
   int pubh = 0, privh = 0;
   ASSERT_EQ(CKR_OK,
             session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
-                                      base::size(pub_attr), priv_attr,
-                                      base::size(priv_attr), &pubh, &privh));
+                                      std::size(pub_attr), priv_attr,
+                                      std::size(priv_attr), &pubh, &privh));
   // There are a few sensitive attributes that MUST not exist.
   const Object* object = NULL;
   ASSERT_TRUE(session_->GetObject(privh, &object));
@@ -935,8 +935,8 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithTPMInconsistentToken) {
   int pubh = 0, privh = 0;
   ASSERT_EQ(CKR_OK,
             session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
-                                      base::size(pub_attr), priv_attr,
-                                      base::size(priv_attr), &pubh, &privh));
+                                      std::size(pub_attr), priv_attr,
+                                      std::size(priv_attr), &pubh, &privh));
   const Object* public_object = NULL;
   const Object* private_object = NULL;
   ASSERT_TRUE(session_->GetObject(pubh, &public_object));
@@ -970,8 +970,8 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithNoTPM) {
   int pubh = 0, privh = 0;
   ASSERT_EQ(CKR_OK,
             session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
-                                      base::size(pub_attr), priv_attr,
-                                      base::size(priv_attr), &pubh, &privh));
+                                      std::size(pub_attr), priv_attr,
+                                      std::size(priv_attr), &pubh, &privh));
   // For a software key, the sensitive attributes should exist.
   const Object* object = NULL;
   ASSERT_TRUE(session_->GetObject(privh, &object));
@@ -1013,8 +1013,8 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithForceSoftware) {
   int pubh = 0, privh = 0;
   ASSERT_EQ(CKR_OK,
             session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
-                                      base::size(pub_attr), priv_attr,
-                                      base::size(priv_attr), &pubh, &privh));
+                                      std::size(pub_attr), priv_attr,
+                                      std::size(priv_attr), &pubh, &privh));
   // For a software key, the sensitive attributes should exist.
   const Object* object = NULL;
   ASSERT_TRUE(session_->GetObject(privh, &object));
@@ -1111,8 +1111,8 @@ TEST_F(TestSessionWithRealObject, GenerateECCWithForceSoftware) {
                               {kForceSoftwareAttribute, &yes, sizeof(yes)}};
   int pubh = 0, privh = 0;
   ASSERT_EQ(CKR_OK, session_->GenerateKeyPair(
-                        CKM_EC_KEY_PAIR_GEN, "", pub_attr, base::size(pub_attr),
-                        priv_attr, base::size(priv_attr), &pubh, &privh));
+                        CKM_EC_KEY_PAIR_GEN, "", pub_attr, std::size(pub_attr),
+                        priv_attr, std::size(priv_attr), &pubh, &privh));
   ASSERT_TRUE(session_->GetObject(privh, &priv));
 
   // For a software key, the sensitive attributes should exist.
@@ -1192,22 +1192,22 @@ TEST_F(TestSessionWithRealObject, ImportRSAWithTPM) {
       {CKA_SENSITIVE, &true_value, sizeof(true_value)},
       {CKA_TOKEN, &true_value, sizeof(true_value)},
       {CKA_PRIVATE, &true_value, sizeof(true_value)},
-      {CKA_ID, base::data(id), id.length()},
-      {CKA_LABEL, base::data(label), label.length()},
-      {CKA_MODULUS, base::data(n), n.length()},
-      {CKA_PUBLIC_EXPONENT, base::data(e), e.length()},
-      {CKA_PRIVATE_EXPONENT, base::data(d), d.length()},
-      {CKA_PRIME_1, base::data(p), p.length()},
-      {CKA_PRIME_2, base::data(q), q.length()},
-      {CKA_EXPONENT_1, base::data(dmp1), dmp1.length()},
-      {CKA_EXPONENT_2, base::data(dmq1), dmq1.length()},
-      {CKA_COEFFICIENT, base::data(iqmp), iqmp.length()},
+      {CKA_ID, std::data(id), id.length()},
+      {CKA_LABEL, std::data(label), label.length()},
+      {CKA_MODULUS, std::data(n), n.length()},
+      {CKA_PUBLIC_EXPONENT, std::data(e), e.length()},
+      {CKA_PRIVATE_EXPONENT, std::data(d), d.length()},
+      {CKA_PRIME_1, std::data(p), p.length()},
+      {CKA_PRIME_2, std::data(q), q.length()},
+      {CKA_EXPONENT_1, std::data(dmp1), dmp1.length()},
+      {CKA_EXPONENT_2, std::data(dmq1), dmq1.length()},
+      {CKA_COEFFICIENT, std::data(iqmp), iqmp.length()},
   };
 
   int handle = 0;
   ASSERT_EQ(CKR_OK,
             session_->CreateObject(private_attributes,
-                                   base::size(private_attributes), &handle));
+                                   std::size(private_attributes), &handle));
   // There are a few sensitive attributes that MUST be removed.
   const Object* object = NULL;
   ASSERT_TRUE(session_->GetObject(handle, &object));
@@ -1271,22 +1271,22 @@ TEST_F(TestSessionWithRealObject, ImportRSAWithNoTPM) {
       {CKA_SENSITIVE, &true_value, sizeof(true_value)},
       {CKA_TOKEN, &true_value, sizeof(true_value)},
       {CKA_PRIVATE, &true_value, sizeof(true_value)},
-      {CKA_ID, base::data(id), id.length()},
-      {CKA_LABEL, base::data(label), label.length()},
-      {CKA_MODULUS, base::data(n), n.length()},
-      {CKA_PUBLIC_EXPONENT, base::data(e), e.length()},
-      {CKA_PRIVATE_EXPONENT, base::data(d), d.length()},
-      {CKA_PRIME_1, base::data(p), p.length()},
-      {CKA_PRIME_2, base::data(q), q.length()},
-      {CKA_EXPONENT_1, base::data(dmp1), dmp1.length()},
-      {CKA_EXPONENT_2, base::data(dmq1), dmq1.length()},
-      {CKA_COEFFICIENT, base::data(iqmp), iqmp.length()},
+      {CKA_ID, std::data(id), id.length()},
+      {CKA_LABEL, std::data(label), label.length()},
+      {CKA_MODULUS, std::data(n), n.length()},
+      {CKA_PUBLIC_EXPONENT, std::data(e), e.length()},
+      {CKA_PRIVATE_EXPONENT, std::data(d), d.length()},
+      {CKA_PRIME_1, std::data(p), p.length()},
+      {CKA_PRIME_2, std::data(q), q.length()},
+      {CKA_EXPONENT_1, std::data(dmp1), dmp1.length()},
+      {CKA_EXPONENT_2, std::data(dmq1), dmq1.length()},
+      {CKA_COEFFICIENT, std::data(iqmp), iqmp.length()},
   };
 
   int handle = 0;
   ASSERT_EQ(CKR_OK,
             session_->CreateObject(private_attributes,
-                                   base::size(private_attributes), &handle));
+                                   std::size(private_attributes), &handle));
   // For a software key, the sensitive attributes should still exist.
   const Object* object = NULL;
   ASSERT_TRUE(session_->GetObject(handle, &object));
@@ -1353,23 +1353,23 @@ TEST_F(TestSessionWithRealObject, ImportRSAWithForceSoftware) {
       {CKA_SENSITIVE, &true_value, sizeof(true_value)},
       {CKA_TOKEN, &true_value, sizeof(true_value)},
       {CKA_PRIVATE, &true_value, sizeof(true_value)},
-      {CKA_ID, base::data(id), id.length()},
-      {CKA_LABEL, base::data(label), label.length()},
-      {CKA_MODULUS, base::data(n), n.length()},
-      {CKA_PUBLIC_EXPONENT, base::data(e), e.length()},
-      {CKA_PRIVATE_EXPONENT, base::data(d), d.length()},
-      {CKA_PRIME_1, base::data(p), p.length()},
-      {CKA_PRIME_2, base::data(q), q.length()},
-      {CKA_EXPONENT_1, base::data(dmp1), dmp1.length()},
-      {CKA_EXPONENT_2, base::data(dmq1), dmq1.length()},
-      {CKA_COEFFICIENT, base::data(iqmp), iqmp.length()},
+      {CKA_ID, std::data(id), id.length()},
+      {CKA_LABEL, std::data(label), label.length()},
+      {CKA_MODULUS, std::data(n), n.length()},
+      {CKA_PUBLIC_EXPONENT, std::data(e), e.length()},
+      {CKA_PRIVATE_EXPONENT, std::data(d), d.length()},
+      {CKA_PRIME_1, std::data(p), p.length()},
+      {CKA_PRIME_2, std::data(q), q.length()},
+      {CKA_EXPONENT_1, std::data(dmp1), dmp1.length()},
+      {CKA_EXPONENT_2, std::data(dmq1), dmq1.length()},
+      {CKA_COEFFICIENT, std::data(iqmp), iqmp.length()},
       {kForceSoftwareAttribute, &true_value, sizeof(true_value)},
   };
 
   int handle = 0;
   ASSERT_EQ(CKR_OK,
             session_->CreateObject(private_attributes,
-                                   base::size(private_attributes), &handle));
+                                   std::size(private_attributes), &handle));
   // For a software key, the sensitive attributes should still exist.
   const Object* object = NULL;
   ASSERT_TRUE(session_->GetObject(handle, &object));
@@ -1418,16 +1418,16 @@ TEST_F(TestSessionWithRealObject, ImportECCWithTPM) {
       {CKA_SENSITIVE, &true_value, sizeof(true_value)},
       {CKA_TOKEN, &true_value, sizeof(true_value)},
       {CKA_PRIVATE, &true_value, sizeof(true_value)},
-      {CKA_ID, base::data(id), id.length()},
-      {CKA_LABEL, base::data(label), label.length()},
-      {CKA_EC_PARAMS, base::data(ec_params), ec_params.length()},
-      {CKA_VALUE, base::data(private_value), private_value.length()},
+      {CKA_ID, std::data(id), id.length()},
+      {CKA_LABEL, std::data(label), label.length()},
+      {CKA_EC_PARAMS, std::data(ec_params), ec_params.length()},
+      {CKA_VALUE, std::data(private_value), private_value.length()},
   };
 
   int handle = 0;
   ASSERT_EQ(CKR_OK,
             session_->CreateObject(private_attributes,
-                                   base::size(private_attributes), &handle));
+                                   std::size(private_attributes), &handle));
 
   // There are a few sensitive attributes that MUST be removed.
   const Object* object = NULL;
@@ -1468,16 +1468,16 @@ TEST_F(TestSessionWithRealObject, ImportECCWithNoTPM) {
       {CKA_SENSITIVE, &true_value, sizeof(true_value)},
       {CKA_TOKEN, &true_value, sizeof(true_value)},
       {CKA_PRIVATE, &true_value, sizeof(true_value)},
-      {CKA_ID, base::data(id), id.length()},
-      {CKA_LABEL, base::data(label), label.length()},
-      {CKA_EC_PARAMS, base::data(ec_params), ec_params.length()},
-      {CKA_VALUE, base::data(private_value), private_value.length()},
+      {CKA_ID, std::data(id), id.length()},
+      {CKA_LABEL, std::data(label), label.length()},
+      {CKA_EC_PARAMS, std::data(ec_params), ec_params.length()},
+      {CKA_VALUE, std::data(private_value), private_value.length()},
   };
 
   int handle = 0;
   ASSERT_EQ(CKR_OK,
             session_->CreateObject(private_attributes,
-                                   base::size(private_attributes), &handle));
+                                   std::size(private_attributes), &handle));
 
   // For a software key, the sensitive attributes should still exist.
   const Object* object = NULL;
@@ -1519,17 +1519,17 @@ TEST_F(TestSessionWithRealObject, ImportECCWithForceSoftware) {
       {CKA_SENSITIVE, &true_value, sizeof(true_value)},
       {CKA_TOKEN, &true_value, sizeof(true_value)},
       {CKA_PRIVATE, &true_value, sizeof(true_value)},
-      {CKA_ID, base::data(id), id.length()},
-      {CKA_LABEL, base::data(label), label.length()},
-      {CKA_EC_PARAMS, base::data(ec_params), ec_params.length()},
-      {CKA_VALUE, base::data(private_value), private_value.length()},
+      {CKA_ID, std::data(id), id.length()},
+      {CKA_LABEL, std::data(label), label.length()},
+      {CKA_EC_PARAMS, std::data(ec_params), ec_params.length()},
+      {CKA_VALUE, std::data(private_value), private_value.length()},
       {kForceSoftwareAttribute, &true_value, sizeof(true_value)},
   };
 
   int handle = 0;
   ASSERT_EQ(CKR_OK,
             session_->CreateObject(private_attributes,
-                                   base::size(private_attributes), &handle));
+                                   std::size(private_attributes), &handle));
 
   // For a software key, the sensitive attributes should still exist.
   const Object* object = NULL;
@@ -1557,7 +1557,7 @@ TEST_F(TestSession, CreateObjectsNoPrivate) {
   CK_OBJECT_CLASS oc = CKO_SECRET_KEY;
   CK_ATTRIBUTE attr[] = {{CKA_CLASS, &oc, sizeof(oc)}};
   EXPECT_EQ(CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS,
-            session_->CreateObject(attr, base::size(attr), &handle));
+            session_->CreateObject(attr, std::size(attr), &handle));
 
   CK_ATTRIBUTE key_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
                              {CKA_SIGN, &yes, sizeof(yes)},
@@ -1588,7 +1588,7 @@ TEST_F(TestSession, FindObjectsNoPrivate) {
   CK_OBJECT_CLASS oc = CKO_PRIVATE_KEY;
   CK_ATTRIBUTE attr[] = {{CKA_CLASS, &oc, sizeof(oc)}};
   EXPECT_EQ(CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS,
-            session_->FindObjectsInit(attr, base::size(attr)));
+            session_->FindObjectsInit(attr, std::size(attr)));
 }
 
 TEST_F(TestSession, DestroyObjectsNoPrivate) {
@@ -1599,7 +1599,7 @@ TEST_F(TestSession, DestroyObjectsNoPrivate) {
 
   CK_OBJECT_CLASS oc = CKO_SECRET_KEY;
   CK_ATTRIBUTE attr[] = {{CKA_CLASS, &oc, sizeof(oc)}};
-  ASSERT_EQ(CKR_OK, session_->CreateObject(attr, base::size(attr), &handle));
+  ASSERT_EQ(CKR_OK, session_->CreateObject(attr, std::size(attr), &handle));
   EXPECT_EQ(CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS,
             session_->DestroyObject(handle));
 }

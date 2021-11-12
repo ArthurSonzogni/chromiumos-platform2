@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 
+#include <iterator>
 #include <map>
 #include <memory>
 #include <string>
@@ -14,7 +15,6 @@
 #include <base/check.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -106,13 +106,13 @@ void RunCommand(string command) {
 // sample token data for this test, they are not useful in general.
 bool MockUnbind(int key, const string& input, string* output) {
   map<string, string> transforms;
-  string encrypted = Bytes2String(kSampleRootKeyEncrypted,
-                                  base::size(kSampleRootKeyEncrypted));
-  string decrypted = Bytes2String(kSampleRootKey, base::size(kSampleRootKey));
+  string encrypted =
+      Bytes2String(kSampleRootKeyEncrypted, std::size(kSampleRootKeyEncrypted));
+  string decrypted = Bytes2String(kSampleRootKey, std::size(kSampleRootKey));
   transforms[encrypted] = decrypted;
   encrypted = Bytes2String(kSampleAuthDataEncrypted,
-                           base::size(kSampleAuthDataEncrypted));
-  decrypted = Bytes2String(kSampleAuthData, base::size(kSampleAuthData));
+                           std::size(kSampleAuthDataEncrypted));
+  decrypted = Bytes2String(kSampleAuthData, std::size(kSampleAuthData));
   transforms[encrypted] = decrypted;
 
   map<string, string>::iterator iter = transforms.find(input);

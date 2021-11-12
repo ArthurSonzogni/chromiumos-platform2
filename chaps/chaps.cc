@@ -7,6 +7,7 @@
 
 #include "chaps/chaps.h"
 
+#include <iterator>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -17,7 +18,6 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/macros.h>
-#include <base/stl_util.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 
@@ -224,11 +224,11 @@ EXPORT_SPEC CK_RV C_GetInfo(CK_INFO_PTR pInfo) {
   pInfo->cryptokiVersion.major = CRYPTOKI_VERSION_MAJOR;
   pInfo->cryptokiVersion.minor = CRYPTOKI_VERSION_MINOR;
   chaps::CopyStringToCharBuffer("Chromium OS", pInfo->manufacturerID,
-                                base::size(pInfo->manufacturerID));
+                                std::size(pInfo->manufacturerID));
   pInfo->flags = 0;
   chaps::CopyStringToCharBuffer("Chaps Client Library",
                                 pInfo->libraryDescription,
-                                base::size(pInfo->libraryDescription));
+                                std::size(pInfo->libraryDescription));
   pInfo->libraryVersion.major = kChapsLibraryVersionMajor;
   pInfo->libraryVersion.minor = kChapsLibraryVersionMinor;
   VLOG(1) << __func__ << " - CKR_OK";

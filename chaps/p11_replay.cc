@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <iterator>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -21,7 +22,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/macros.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -66,7 +66,7 @@ CK_SLOT_ID Initialize() {
     exit(-1);
 
   CK_SLOT_ID slot_list[10];
-  CK_ULONG slot_count = base::size(slot_list);
+  CK_ULONG slot_count = std::size(slot_list);
   result = C_GetSlotList(CK_TRUE, slot_list, &slot_count);
   LOG(INFO) << "C_GetSlotList: " << chaps::CK_RVToString(result);
   if (result != CKR_OK)
@@ -157,7 +157,7 @@ void Sign(CK_SESSION_HANDLE session, const string& label) {
       {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
   };
   vector<CK_OBJECT_HANDLE> objects;
-  Find(session, attributes, base::size(attributes), &objects);
+  Find(session, attributes, std::size(attributes), &objects);
   if (objects.size() == 0) {
     LOG(INFO) << "No key.";
     exit(-1);
@@ -174,9 +174,8 @@ void Sign(CK_SESSION_HANDLE session, const string& label) {
 
   CK_BYTE data[200] = {0};
   CK_BYTE signature[2048] = {0};
-  CK_ULONG signature_length = base::size(signature);
-  result =
-      C_Sign(session, data, base::size(data), signature, &signature_length);
+  CK_ULONG signature_length = std::size(signature);
+  result = C_Sign(session, data, std::size(data), signature, &signature_length);
   LOG(INFO) << "C_Sign: " << chaps::CK_RVToString(result);
   if (result != CKR_OK)
     exit(-1);
@@ -219,8 +218,8 @@ void GenerateKeyPair(CK_SESSION_HANDLE session,
   CK_OBJECT_HANDLE public_key_handle = 0;
   CK_OBJECT_HANDLE private_key_handle = 0;
   CK_RV result = C_GenerateKeyPair(
-      session, &mechanism, public_attributes, base::size(public_attributes),
-      private_attributes, base::size(private_attributes), &public_key_handle,
+      session, &mechanism, public_attributes, std::size(public_attributes),
+      private_attributes, std::size(private_attributes), &public_key_handle,
       &private_key_handle);
   LOG(INFO) << "C_GenerateKeyPair: " << chaps::CK_RVToString(result);
   if (result != CKR_OK)
@@ -247,10 +246,10 @@ void DestroyKeyPair(CK_SESSION_HANDLE session, const string& label) {
       {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
   };
   vector<CK_OBJECT_HANDLE> public_objects;
-  Find(session, public_attributes, base::size(public_attributes),
+  Find(session, public_attributes, std::size(public_attributes),
        &public_objects);
   vector<CK_OBJECT_HANDLE> private_objects;
-  Find(session, private_attributes, base::size(private_attributes),
+  Find(session, private_attributes, std::size(private_attributes),
        &private_objects);
   if (public_objects.size() == 0 && private_objects.size() == 0) {
     LOG(INFO) << "No keypair.";
@@ -393,8 +392,8 @@ void CreateRSAPrivateKey(CK_SESSION_HANDLE session,
   };
   CK_OBJECT_HANDLE private_key_handle = 0;
   CK_RV result =
-      C_CreateObject(session, private_attributes,
-                     base::size(private_attributes), &private_key_handle);
+      C_CreateObject(session, private_attributes, std::size(private_attributes),
+                     &private_key_handle);
   LOG(INFO) << "C_CreateObject: " << chaps::CK_RVToString(result);
   if (result != CKR_OK) {
     exit(-1);
@@ -432,7 +431,7 @@ void CreateRSAPublicKey(CK_SESSION_HANDLE session,
   };
   CK_OBJECT_HANDLE public_key_handle = 0;
   CK_RV result =
-      C_CreateObject(session, public_attributes, base::size(public_attributes),
+      C_CreateObject(session, public_attributes, std::size(public_attributes),
                      &public_key_handle);
   LOG(INFO) << "C_CreateObject: " << chaps::CK_RVToString(result);
   if (result != CKR_OK)
@@ -466,7 +465,7 @@ void CreateECCPublicKey(CK_SESSION_HANDLE session,
   };
   CK_OBJECT_HANDLE public_key_handle = 0;
   CK_RV result =
-      C_CreateObject(session, public_attributes, base::size(public_attributes),
+      C_CreateObject(session, public_attributes, std::size(public_attributes),
                      &public_key_handle);
   LOG(INFO) << "C_CreateObject: " << chaps::CK_RVToString(result);
   if (result != CKR_OK) {
@@ -506,8 +505,8 @@ void CreateECCPrivateKey(CK_SESSION_HANDLE session,
   };
   CK_OBJECT_HANDLE private_key_handle = 0;
   CK_RV result =
-      C_CreateObject(session, private_attributes,
-                     base::size(private_attributes), &private_key_handle);
+      C_CreateObject(session, private_attributes, std::size(private_attributes),
+                     &private_key_handle);
   LOG(INFO) << "C_CreateObject: " << chaps::CK_RVToString(result);
   if (result != CKR_OK) {
     exit(-1);
@@ -538,7 +537,7 @@ void CreateCertificate(CK_SESSION_HANDLE session,
   };
   CK_OBJECT_HANDLE handle = 0;
   CK_RV result =
-      C_CreateObject(session, attributes, base::size(attributes), &handle);
+      C_CreateObject(session, attributes, std::size(attributes), &handle);
   LOG(INFO) << "C_CreateObject: " << chaps::CK_RVToString(result);
   if (result != CKR_OK)
     exit(-1);
@@ -747,9 +746,9 @@ void DeleteAllTestKeys(CK_SESSION_HANDLE session) {
       {CKA_CLASS, &class_value, sizeof(class_value)},
       {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)}};
   vector<CK_OBJECT_HANDLE> objects;
-  Find(session, attributes, base::size(attributes), &objects);
+  Find(session, attributes, std::size(attributes), &objects);
   class_value = CKO_PUBLIC_KEY;
-  Find(session, attributes, base::size(attributes), &objects);
+  Find(session, attributes, std::size(attributes), &objects);
   for (size_t i = 0; i < objects.size(); ++i) {
     CK_RV result = C_DestroyObject(session, objects[i]);
     LOG(INFO) << "C_DestroyObject: " << chaps::CK_RVToString(result);
@@ -783,7 +782,7 @@ CK_OBJECT_HANDLE GetObjectOrDie(CK_SESSION_HANDLE session,
        object_id.size()},
   };
   vector<CK_OBJECT_HANDLE> objects;
-  Find(session, attributes, base::size(attributes), &objects);
+  Find(session, attributes, std::size(attributes), &objects);
   if (objects.size() == 0) {
     LOG(INFO) << "No object found.";
     exit(-1);
@@ -809,7 +808,7 @@ void GetAttribute(CK_SESSION_HANDLE session,
       {attribute, nullptr, 0},
   };
   CK_RV ret = C_GetAttributeValue(session, object, attribute_template,
-                                  base::size(attribute_template));
+                                  std::size(attribute_template));
   if (ret != CKR_OK) {
     printf("Unable to access the attribute, error: %s\n",
            chaps::CK_RVToString(ret));
@@ -830,9 +829,9 @@ void GetAttribute(CK_SESSION_HANDLE session,
 
   // Get the object value.
   std::vector<uint8_t> buffer(attribute_template[0].ulValueLen, 0);
-  attribute_template[0].pValue = base::data(buffer);
+  attribute_template[0].pValue = std::data(buffer);
   ret = C_GetAttributeValue(session, object, attribute_template,
-                            base::size(attribute_template));
+                            std::size(attribute_template));
   if (ret != CKR_OK) {
     printf("Unable to read the attribute, error: %s\n",
            chaps::CK_RVToString(ret));
@@ -842,7 +841,7 @@ void GetAttribute(CK_SESSION_HANDLE session,
   // Print out the attribute value.
   if (output_format == "hex" || output_format == "") {
     printf("Attribute Data in hex: %s\n",
-           base::HexEncode(base::data(buffer), buffer.size()).c_str());
+           base::HexEncode(std::data(buffer), buffer.size()).c_str());
   } else {
     printf("Invalid output format: %s\n", output_format.c_str());
     exit(-1);
@@ -861,10 +860,10 @@ void SetAttribute(CK_SESSION_HANDLE session,
   // Cryptoki wants a non-const buffer in template.
   vector<uint8_t> buffer = data_to_write;
   CK_ATTRIBUTE attribute_template[] = {
-      {attribute, base::data(buffer), buffer.size()},
+      {attribute, std::data(buffer), buffer.size()},
   };
   CK_RV ret = C_SetAttributeValue(session, object, attribute_template,
-                                  base::size(attribute_template));
+                                  std::size(attribute_template));
   if (ret != CKR_OK) {
     printf("Failed to set attribute, error: %s\n", chaps::CK_RVToString(ret));
     exit(-1);
@@ -891,16 +890,16 @@ void CopyObject(
     value_holder.push_back(itr.second);
     auto& buffer = value_holder[value_holder.size() - 1];
 
-    copy_template[i].pValue = reinterpret_cast<CK_VOID_PTR>(base::data(buffer));
+    copy_template[i].pValue = reinterpret_cast<CK_VOID_PTR>(std::data(buffer));
     copy_template[i].ulValueLen = buffer.size();
     i++;
   }
 
   CK_OBJECT_HANDLE new_object;
-  CK_RV result = C_CopyObject(
-      session, object,
-      reinterpret_cast<CK_ATTRIBUTE_PTR>(base::data(copy_template)),
-      copy_template.size(), &new_object);
+  CK_RV result =
+      C_CopyObject(session, object,
+                   reinterpret_cast<CK_ATTRIBUTE_PTR>(std::data(copy_template)),
+                   copy_template.size(), &new_object);
   if (result != CKR_OK) {
     printf("Failed to copy the attribute, error: %s\n",
            chaps::CK_RVToString(result));
@@ -916,7 +915,7 @@ bool TestSession(CK_SESSION_HANDLE session) {
       {CKA_CLASS, &class_value, sizeof(class_value)},
   };
 
-  CK_RV result = C_FindObjectsInit(session, attributes, base::size(attributes));
+  CK_RV result = C_FindObjectsInit(session, attributes, std::size(attributes));
   LOG(INFO) << "C_FindObjectsInit: " << chaps::CK_RVToString(result);
   if (result != CKR_OK) {
     return false;
@@ -1127,9 +1126,9 @@ class DigestTestThread : public base::PlatformThread::Delegate {
   void ThreadMain() {
     const int kNumIterations = 100;
     CK_BYTE data[1024] = {0};
-    CK_ULONG data_length = base::size(data);
+    CK_ULONG data_length = std::size(data);
     CK_BYTE digest[32];
-    CK_ULONG digest_length = base::size(digest);
+    CK_ULONG digest_length = std::size(digest);
     CK_MECHANISM mechanism = {CKM_SHA256, NULL, 0};
     CK_SESSION_HANDLE session = OpenSession(slot_);
     for (int i = 0; i < kNumIterations; ++i) {
@@ -1152,7 +1151,7 @@ class DigestTestThread : public base::PlatformThread::Delegate {
 void PrintTokens() {
   CK_RV result = CKR_OK;
   CK_SLOT_ID slot_list[10];
-  CK_ULONG slot_count = base::size(slot_list);
+  CK_ULONG slot_count = std::size(slot_list);
   result = C_GetSlotList(CK_TRUE, slot_list, &slot_count);
   if (result != CKR_OK)
     exit(-1);
@@ -1168,7 +1167,7 @@ void PrintTokens() {
       if (result != CKR_OK)
         exit(-1);
       string label(reinterpret_cast<char*>(token_info.label),
-                   base::size(token_info.label));
+                   std::size(token_info.label));
       printf("%s\n", label.c_str());
     } else {
       printf("No token present.\n");

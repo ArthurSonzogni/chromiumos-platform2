@@ -4,9 +4,10 @@
 
 #include "chaps/object_policy_private_key.h"
 
+#include <iterator>
+
 #include <base/logging.h>
 #include <base/macros.h>
-#include <base/stl_util.h>
 
 #include "chaps/chaps.h"
 #include "chaps/chaps_utility.h"
@@ -45,7 +46,7 @@ static const AttributePolicy kPrivateKeyPolicies[] = {
 };
 
 ObjectPolicyPrivateKey::ObjectPolicyPrivateKey() {
-  AddPolicies(kPrivateKeyPolicies, base::size(kPrivateKeyPolicies));
+  AddPolicies(kPrivateKeyPolicies, std::size(kPrivateKeyPolicies));
 }
 
 ObjectPolicyPrivateKey::~ObjectPolicyPrivateKey() {}

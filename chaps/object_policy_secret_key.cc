@@ -4,8 +4,9 @@
 
 #include "chaps/object_policy_secret_key.h"
 
+#include <iterator>
+
 #include <base/macros.h>
-#include <base/stl_util.h>
 
 #include "chaps/chaps_utility.h"
 
@@ -28,7 +29,7 @@ static const AttributePolicy kSecretKeyPolicies[] = {
     {CKA_VALUE, true, {false, false, true}, true}};
 
 ObjectPolicySecretKey::ObjectPolicySecretKey() {
-  AddPolicies(kSecretKeyPolicies, base::size(kSecretKeyPolicies));
+  AddPolicies(kSecretKeyPolicies, std::size(kSecretKeyPolicies));
 }
 
 ObjectPolicySecretKey::~ObjectPolicySecretKey() {}

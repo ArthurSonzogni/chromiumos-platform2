@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <iterator>
 #include <utility>
 #include <vector>
 
@@ -19,7 +20,6 @@
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/optional.h>
-#include <base/stl_util.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
@@ -765,7 +765,7 @@ bool TPM2UtilityImpl::Bind(int key_handle,
   output->resize(RSA_size(rsa.get()));
   int rsa_result = RSA_public_encrypt(
       input.size(), reinterpret_cast<const unsigned char*>(input.data()),
-      reinterpret_cast<unsigned char*>(base::data(*output)), rsa.get(),
+      reinterpret_cast<unsigned char*>(std::data(*output)), rsa.get(),
       RSA_PKCS1_PADDING);
   if (rsa_result == -1) {
     LOG(ERROR) << "Error performing RSA_public_encrypt.";
@@ -856,8 +856,8 @@ bool TPM2UtilityImpl::Sign(int key_handle,
         padded_data.resize(RSA_size(rsa.get()));
         if (RSA_padding_add_PKCS1_PSS_mgf1(
                 rsa.get(),
-                reinterpret_cast<unsigned char*>(base::data(padded_data)),
-                reinterpret_cast<const unsigned char*>(base::data(input)),
+                reinterpret_cast<unsigned char*>(std::data(padded_data)),
+                reinterpret_cast<const unsigned char*>(std::data(input)),
                 GetOpenSSLDigest(digest_algorithm), mgf1_hash,
                 pss_params->sLen) != 1) {
           LOG(ERROR)

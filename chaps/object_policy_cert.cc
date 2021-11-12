@@ -4,8 +4,9 @@
 
 #include "chaps/object_policy_cert.h"
 
+#include <iterator>
+
 #include <base/logging.h>
-#include <base/stl_util.h>
 
 #include "chaps/chaps_utility.h"
 
@@ -34,7 +35,7 @@ static const AttributePolicy kCertPolicies[] = {
     {CKA_OWNER, false, {false, false, true}, false}};
 
 ObjectPolicyCert::ObjectPolicyCert() {
-  AddPolicies(kCertPolicies, base::size(kCertPolicies));
+  AddPolicies(kCertPolicies, std::size(kCertPolicies));
 }
 
 ObjectPolicyCert::~ObjectPolicyCert() {}
@@ -88,7 +89,7 @@ void ObjectPolicyCert::SetDefaultAttributes() {
                                    CKA_URL,
                                    CKA_HASH_OF_SUBJECT_PUBLIC_KEY,
                                    CKA_HASH_OF_ISSUER_PUBLIC_KEY};
-      for (size_t i = 0; i < base::size(empty); ++i) {
+      for (size_t i = 0; i < std::size(empty); ++i) {
         if (!object_->IsAttributePresent(empty[i]))
           object_->SetAttributeString(empty[i], "");
       }
@@ -98,14 +99,14 @@ void ObjectPolicyCert::SetDefaultAttributes() {
       CK_ATTRIBUTE_TYPE empty[] = {CKA_ISSUER, CKA_URL,
                                    CKA_HASH_OF_SUBJECT_PUBLIC_KEY,
                                    CKA_HASH_OF_ISSUER_PUBLIC_KEY};
-      for (size_t i = 0; i < base::size(empty); ++i) {
+      for (size_t i = 0; i < std::size(empty); ++i) {
         if (!object_->IsAttributePresent(empty[i]))
           object_->SetAttributeString(empty[i], "");
       }
     } else if (type == CKC_X_509_ATTR_CERT) {
       CK_ATTRIBUTE_TYPE empty[] = {CKA_AC_ISSUER, CKA_SERIAL_NUMBER,
                                    CKA_ATTR_TYPES};
-      for (size_t i = 0; i < base::size(empty); ++i) {
+      for (size_t i = 0; i < std::size(empty); ++i) {
         if (!object_->IsAttributePresent(empty[i]))
           object_->SetAttributeString(empty[i], "");
       }

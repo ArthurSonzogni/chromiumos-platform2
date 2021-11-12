@@ -6,6 +6,7 @@
 
 #include <string.h>
 
+#include <iterator>
 #include <limits>
 #include <map>
 #include <memory>
@@ -20,7 +21,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <brillo/secure_blob.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
@@ -696,7 +696,7 @@ bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
   slot_list_[*slot_id].slot_info.flags |= CKF_TOKEN_PRESENT;
   path_slot_map_[path] = *slot_id;
   CopyStringToCharBuffer(label, slot_list_[*slot_id].token_info.label,
-                         base::size(slot_list_[*slot_id].token_info.label));
+                         std::size(slot_list_[*slot_id].token_info.label));
 
   // Insert slot into the isolate.
   isolate.slot_ids.insert(*slot_id);
@@ -953,9 +953,9 @@ void SlotManagerImpl::GetDefaultInfo(CK_SLOT_INFO* slot_info,
                                      CK_TOKEN_INFO* token_info) {
   memset(slot_info, 0, sizeof(CK_SLOT_INFO));
   CopyStringToCharBuffer(kSlotDescription, slot_info->slotDescription,
-                         base::size(slot_info->slotDescription));
+                         std::size(slot_info->slotDescription));
   CopyStringToCharBuffer(kManufacturerID, slot_info->manufacturerID,
-                         base::size(slot_info->manufacturerID));
+                         std::size(slot_info->manufacturerID));
   // By default private key objects stored in this token is hardware backed and
   // unextractable, so the absence of CKF_HW_SLOT doesn't indicate a lowered
   // security guarantee.
@@ -965,13 +965,13 @@ void SlotManagerImpl::GetDefaultInfo(CK_SLOT_INFO* slot_info,
 
   memset(token_info, 0, sizeof(CK_TOKEN_INFO));
   CopyStringToCharBuffer(kTokenLabel, token_info->label,
-                         base::size(token_info->label));
+                         std::size(token_info->label));
   CopyStringToCharBuffer(kManufacturerID, token_info->manufacturerID,
-                         base::size(token_info->manufacturerID));
+                         std::size(token_info->manufacturerID));
   CopyStringToCharBuffer(kTokenModel, token_info->model,
-                         base::size(token_info->model));
+                         std::size(token_info->model));
   CopyStringToCharBuffer(kTokenSerialNumber, token_info->serialNumber,
-                         base::size(token_info->serialNumber));
+                         std::size(token_info->serialNumber));
   token_info->flags = CKF_RNG | CKF_USER_PIN_INITIALIZED |
                       CKF_PROTECTED_AUTHENTICATION_PATH | CKF_TOKEN_INITIALIZED;
   token_info->ulMaxSessionCount = CK_EFFECTIVELY_INFINITE;

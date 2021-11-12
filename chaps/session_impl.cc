@@ -4,6 +4,7 @@
 
 #include "chaps/session_impl.h"
 
+#include <iterator>
 #include <limits>
 #include <map>
 #include <memory>
@@ -538,9 +539,8 @@ class RSASignerVerifierImplPSS : public RSASignerVerifier {
 
     string padded_data(RSA_size(rsa.get()), 0);
     if (RSA_padding_add_PKCS1_PSS_mgf1(
-            rsa.get(),
-            reinterpret_cast<unsigned char*>(base::data(padded_data)),
-            reinterpret_cast<const unsigned char*>(base::data(context->data_)),
+            rsa.get(), reinterpret_cast<unsigned char*>(std::data(padded_data)),
+            reinterpret_cast<const unsigned char*>(std::data(context->data_)),
             GetOpenSSLDigest(digest_algorithm), mgf1_hash,
             pss_params->sLen) != 1) {
       LOG(ERROR) << __func__ << ": Failed to produce the PSA PSS paddings.";

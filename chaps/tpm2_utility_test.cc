@@ -4,10 +4,11 @@
 
 #include "chaps/tpm2_utility_impl.h"
 
+#include <iterator>
+
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -93,13 +94,13 @@ class TPM2UtilityTest : public testing::Test {
     std::vector<uint8_t> bytes;
 
     CHECK(base::HexStringToBytes(kValidECPointX, &bytes));
-    CHECK_EQ(bytes.size(), base::size(kValidECPointX) / 2);
+    CHECK_EQ(bytes.size(), std::size(kValidECPointX) / 2);
     public_area.unique.ecc.x.size = bytes.size();
     memcpy(public_area.unique.ecc.x.buffer, bytes.data(), bytes.size());
 
     bytes.clear();
     CHECK(base::HexStringToBytes(kValidECPointY, &bytes));
-    CHECK_EQ(bytes.size(), base::size(kValidECPointY) / 2);
+    CHECK_EQ(bytes.size(), std::size(kValidECPointY) / 2);
     public_area.unique.ecc.y.size = bytes.size();
     memcpy(public_area.unique.ecc.y.buffer, bytes.data(), bytes.size());
 
@@ -746,9 +747,9 @@ TEST_F(TPM2UtilityTest, SignUnrestrictedRsaPssSuccess) {
   crypto::ScopedRSA rsa = utility.PublicAreaToScopedRsa(public_data);
   EXPECT_TRUE(rsa);
   EXPECT_EQ(RSA_verify_PKCS1_PSS_mgf1(
-                rsa.get(), reinterpret_cast<const uint8_t*>(base::data(input)),
+                rsa.get(), reinterpret_cast<const uint8_t*>(std::data(input)),
                 EVP_sha1(), EVP_sha1(),
-                reinterpret_cast<const uint8_t*>(base::data(padded_input)), 20),
+                reinterpret_cast<const uint8_t*>(std::data(padded_input)), 20),
             1);
 }
 
@@ -780,9 +781,9 @@ TEST_F(TPM2UtilityTest, SignUnrestrictedGenericRsaPssSuccess) {
   crypto::ScopedRSA rsa = utility.PublicAreaToScopedRsa(public_data);
   EXPECT_TRUE(rsa);
   EXPECT_EQ(RSA_verify_PKCS1_PSS_mgf1(
-                rsa.get(), reinterpret_cast<const uint8_t*>(base::data(input)),
+                rsa.get(), reinterpret_cast<const uint8_t*>(std::data(input)),
                 EVP_sha1(), EVP_sha1(),
-                reinterpret_cast<const uint8_t*>(base::data(padded_input)), 20),
+                reinterpret_cast<const uint8_t*>(std::data(padded_input)), 20),
             1);
 }
 

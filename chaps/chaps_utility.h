@@ -7,13 +7,13 @@
 
 #include <string.h>
 
+#include <iterator>
 #include <sstream>
 #include <string>
 #include <vector>
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 
@@ -67,7 +67,7 @@ const struct {
 // Get the algorithm ID for DigestInfo structure
 inline std::string GetDigestAlgorithmEncoding(DigestAlgorithm alg) {
   size_t alg_index = static_cast<size_t>(alg);
-  if (alg_index >= base::size(kDigestAlgorithmEncoding)) {
+  if (alg_index >= std::size(kDigestAlgorithmEncoding)) {
     return std::string();
   }
   return std::string(kDigestAlgorithmEncoding[alg_index].encoding,
