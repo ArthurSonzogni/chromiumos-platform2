@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <ostream>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -45,6 +46,20 @@ class ShillClient {
     std::string ipv6_address;
     std::string ipv6_gateway;
     std::vector<std::string> ipv6_dns_addresses;
+    bool operator==(const IPConfig& b) const {
+      return ipv4_prefix_length == b.ipv4_prefix_length &&
+             ipv4_address == b.ipv4_address && ipv4_gateway == b.ipv4_gateway &&
+             std::set<std::string>(ipv4_dns_addresses.begin(),
+                                   ipv4_dns_addresses.end()) ==
+                 std::set<std::string>(b.ipv4_dns_addresses.begin(),
+                                       b.ipv4_dns_addresses.end()) &&
+             ipv6_prefix_length == b.ipv6_prefix_length &&
+             ipv6_address == b.ipv6_address && ipv6_gateway == b.ipv6_gateway &&
+             std::set<std::string>(ipv6_dns_addresses.begin(),
+                                   ipv6_dns_addresses.end()) ==
+                 std::set<std::string>(b.ipv6_dns_addresses.begin(),
+                                       b.ipv6_dns_addresses.end());
+    }
   };
 
   // Represents the properties of an object of org.chromium.flimflam.Device.
@@ -88,6 +103,12 @@ class ShillClient {
   using IPConfigsChangeHandler = base::RepeatingCallback<void(
       const std::string& ifname, const IPConfig& ipconfig)>;
 
+  // Client callback for listening to IPv6 network changes on any shill Device
+  // with interface name |ifname|. The changes are identified by IPv6 prefix
+  // change.
+  using IPv6NetworkChangeHandler = base::RepeatingCallback<void(
+      const std::string& ifname, const std ::string& ipv6_address)>;
+
   explicit ShillClient(const scoped_refptr<dbus::Bus>& bus);
   ShillClient(const ShillClient&) = delete;
   ShillClient& operator=(const ShillClient&) = delete;
@@ -107,6 +128,9 @@ class ShillClient {
   void RegisterDevicesChangedHandler(const DevicesChangeHandler& handler);
 
   void RegisterIPConfigsChangedHandler(const IPConfigsChangeHandler& handler);
+
+  void RegisterIPv6NetworkChangedHandler(
+      const IPv6NetworkChangeHandler& handler);
 
   void ScanDevices();
 
@@ -192,6 +216,9 @@ class ShillClient {
   // Tracks all network interfaces managed by shill and maps shill Device
   // identifiers to interface names.
   std::map<std::string, std::string> devices_;
+  // Tracks all network interfaces managed by shill and maps shill Device
+  // identifiers to its IPConfig.
+  std::map<std::string, IPConfig> device_ipconfigs_;
   // Stores the map from shill Device identifier to its object path in shill for
   // all the shill Devices we have seen. Unlike |devices_|, entries in this map
   // will never be removed during the lifetime of this class. We maintain this
@@ -207,6 +234,8 @@ class ShillClient {
   std::vector<DevicesChangeHandler> device_handlers_;
   // Called when the IPConfigs of any shill Device changes.
   std::vector<IPConfigsChangeHandler> ipconfigs_handlers_;
+  // Called when the IPv6 network of any shill Device changes.
+  std::vector<IPv6NetworkChangeHandler> ipv6_network_handlers_;
 
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::chromium::flimflam::ManagerProxy> manager_proxy_;

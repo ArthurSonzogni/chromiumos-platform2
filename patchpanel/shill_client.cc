@@ -11,6 +11,8 @@
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "patchpanel/net_util.h"
+
 namespace patchpanel {
 
 namespace {
@@ -285,6 +287,11 @@ void ShillClient::RegisterIPConfigsChangedHandler(
   ipconfigs_handlers_.emplace_back(handler);
 }
 
+void ShillClient::RegisterIPv6NetworkChangedHandler(
+    const IPv6NetworkChangeHandler& handler) {
+  ipv6_network_handlers_.emplace_back(handler);
+}
+
 void ShillClient::UpdateDevices(const brillo::Any& property_value) {
   std::map<std::string, std::string> new_devices;
   std::vector<std::string> added, removed;
@@ -319,6 +326,8 @@ void ShillClient::UpdateDevices(const brillo::Any& property_value) {
   for (const auto& [d, ifname] : devices_) {
     if (new_devices.find(d) == new_devices.end()) {
       removed.push_back(ifname);
+      // Clear cached IPConfig for removed device.
+      device_ipconfigs_.erase(d);
     }
   }
 
@@ -534,18 +543,37 @@ void ShillClient::OnDevicePropertyChange(const std::string& device,
   if (property_name != shill::kIPConfigsProperty)
     return;
 
-  const IPConfig& ipconfig = ParseIPConfigsProperty(device, property_value);
   const auto& it = devices_.find(device);
   if (it == devices_.end()) {
     LOG(WARNING) << "Failed to obtain interface name for shill Device "
                  << device;
     return;
   }
+  const IPConfig& ipconfig = ParseIPConfigsProperty(device, property_value);
+  const auto& old_ipconfig_it = device_ipconfigs_.find(device);
+  if (old_ipconfig_it != device_ipconfigs_.end() &&
+      old_ipconfig_it->second == ipconfig) {
+    // There is no IPConfig change, no need to run the handlers.
+    return;
+  }
+  auto old_ipconfig = old_ipconfig_it != device_ipconfigs_.end()
+                          ? old_ipconfig_it->second
+                          : IPConfig{};
+  device_ipconfigs_[device] = ipconfig;
 
-  // TODO(jiejiang): Keep a cache of the last parsed IPConfig, and only
-  // trigger handlers if there is an actual change.
   for (const auto& handler : ipconfigs_handlers_)
     handler.Run(it->second, ipconfig);
+
+  // Compares if the new IPv6 network is the same as the old one by checking
+  // its prefix.
+  if (old_ipconfig.ipv6_prefix_length == ipconfig.ipv6_prefix_length &&
+      IsIPv6PrefixEqual(StringToIPv6Address(old_ipconfig.ipv6_address),
+                        StringToIPv6Address(ipconfig.ipv6_address),
+                        ipconfig.ipv6_prefix_length)) {
+    return;
+  }
+  for (const auto& handler : ipv6_network_handlers_)
+    handler.Run(it->second, ipconfig.ipv6_address);
 }
 
 std::ostream& operator<<(std::ostream& stream, const ShillClient::Device& dev) {

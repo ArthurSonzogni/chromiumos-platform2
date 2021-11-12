@@ -71,6 +71,14 @@ std::string IPv6AddressToString(const struct in6_addr& addr) {
   return !inet_ntop(AF_INET6, &addr, buf, sizeof(buf)) ? "" : buf;
 }
 
+struct in6_addr StringToIPv6Address(const std::string& buf) {
+  struct in6_addr addr = {};
+  if (!inet_pton(AF_INET6, buf.c_str(), &addr)) {
+    memset(&addr, 0, sizeof(addr));
+  }
+  return addr;
+}
+
 std::string IPv4AddressToCidrString(uint32_t addr, uint32_t prefix_length) {
   return IPv4AddressToString(addr) + "/" + std::to_string(prefix_length);
 }
@@ -78,6 +86,26 @@ std::string IPv4AddressToCidrString(uint32_t addr, uint32_t prefix_length) {
 std::string MacAddressToString(const MacAddress& addr) {
   return base::StringPrintf("%02x:%02x:%02x:%02x:%02x:%02x", addr[0], addr[1],
                             addr[2], addr[3], addr[4], addr[5]);
+}
+
+bool IsIPv6PrefixEqual(const struct in6_addr& a,
+                       const struct in6_addr& b,
+                       int prefix_length) {
+  if (prefix_length > 128 || prefix_length < 0) {
+    LOG(ERROR) << "Invalid prefix length " << prefix_length;
+    return false;
+  }
+
+  int i = 0;
+  while (prefix_length > 8) {
+    if (a.s6_addr[i] != b.s6_addr[i]) {
+      return false;
+    }
+    prefix_length -= 8;
+    i++;
+  }
+  uint8_t mask = ~((1 << (8 - prefix_length)) - 1);
+  return (a.s6_addr[i] & mask) == (b.s6_addr[i] & mask);
 }
 
 bool FindFirstIPv6Address(const std::string& ifname, struct in6_addr* address) {

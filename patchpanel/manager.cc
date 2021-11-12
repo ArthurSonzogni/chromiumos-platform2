@@ -266,6 +266,8 @@ void Manager::InitialSetup() {
         &Manager::OnShillDevicesChanged, weak_factory_.GetWeakPtr()));
     shill_client_->RegisterIPConfigsChangedHandler(base::BindRepeating(
         &Manager::OnIPConfigsChanged, weak_factory_.GetWeakPtr()));
+    shill_client_->RegisterIPv6NetworkChangedHandler(base::BindRepeating(
+        &Manager::OnIPv6NetworkChanged, weak_factory_.GetWeakPtr()));
   }
 
   nd_proxy_->RegisterNDProxyMessageHandler(base::BindRepeating(
@@ -495,6 +497,22 @@ void Manager::OnIPConfigsChanged(const std::string& ifname,
     datapath_->RemoveRedirectDnsRule(ifname);
   } else {
     datapath_->AddRedirectDnsRule(ifname, ipconfig.ipv4_dns_addresses.front());
+  }
+}
+
+void Manager::OnIPv6NetworkChanged(const std::string& ifname,
+                                   const std::string& ipv6_address) {
+  if (ipv6_address.empty())
+    return;
+
+  for (auto& [_, nsinfo] : connected_namespaces_) {
+    if (nsinfo.outbound_ifname != ifname) {
+      continue;
+    }
+
+    // Disable and re-enable IPv6 inside the namespace. This is necessary to
+    // trigger SLAAC in the kernel to send RS.
+    RestartIPv6(nsinfo.netns_name);
   }
 }
 

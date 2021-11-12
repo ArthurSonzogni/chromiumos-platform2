@@ -201,6 +201,16 @@ TEST(Ipv6, EUI64Addr) {
   }
 }
 
+TEST(IPv6, IsIPv6PrefixEqual) {
+  // |addr1| and |addr2| has the same prefix up to the 45th bit.
+  struct in6_addr addr1 = StringToIPv6Address("2001:db8:0::52:0:1");
+  struct in6_addr addr2 = StringToIPv6Address("2001:db8:4::52:0:1");
+  int idx_prefix_equal = 45;
+  for (int i = 0; i <= 128; i++) {
+    EXPECT_EQ(i <= idx_prefix_equal, IsIPv6PrefixEqual(addr1, addr2, i));
+  }
+}
+
 TEST(Ipv4, BroadcastAddr) {
   uint32_t base = Ipv4Addr(100, 115, 92, 0);
   struct {

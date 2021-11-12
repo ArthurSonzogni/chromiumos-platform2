@@ -80,6 +80,9 @@ BRILLO_EXPORT std::string IPv4AddressToString(uint32_t addr);
 // Returns the literal representation of the IPv6 address given.
 BRILLO_EXPORT std::string IPv6AddressToString(const struct in6_addr& addr);
 
+// Returns the IPv6 address struct of the IPv6 address string given.
+BRILLO_EXPORT struct in6_addr StringToIPv6Address(const std::string& buf);
+
 // Returns the CIDR representation of an IPv4 address given in network byte
 // order.
 BRILLO_EXPORT std::string IPv4AddressToCidrString(uint32_t addr,
@@ -87,6 +90,11 @@ BRILLO_EXPORT std::string IPv4AddressToCidrString(uint32_t addr,
 
 // Returns a string representation of MAC address given.
 BRILLO_EXPORT std::string MacAddressToString(const MacAddress& addr);
+
+// Returns true if the prefix between the two IPv6 addresses is equal.
+BRILLO_EXPORT bool IsIPv6PrefixEqual(const struct in6_addr& a,
+                                     const struct in6_addr& b,
+                                     int prefix_length);
 
 BRILLO_EXPORT bool FindFirstIPv6Address(const std::string& ifname,
                                         struct in6_addr* address);

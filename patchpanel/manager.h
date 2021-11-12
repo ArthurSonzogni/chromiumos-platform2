@@ -85,6 +85,8 @@ class Manager final : public brillo::DBusDaemon {
                              const std::vector<std::string>& removed);
   void OnIPConfigsChanged(const std::string& ifname,
                           const ShillClient::IPConfig& ipconfig);
+  void OnIPv6NetworkChanged(const std::string& ifname,
+                            const std::string& ipv6_address);
 
   void OnGuestDeviceChanged(const Device& virtual_device,
                             Device::ChangeEvent event,
