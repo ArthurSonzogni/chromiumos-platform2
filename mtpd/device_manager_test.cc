@@ -10,7 +10,6 @@
 #include <gtest/gtest.h>
 
 #include <base/compiler_specific.h>
-#include <base/stl_util.h>
 #include <base/test/task_environment.h>
 
 #include "mtpd/device_event_delegate.h"
@@ -44,15 +43,15 @@ TEST_F(DeviceManagerTest, ParseStorageName) {
       {"usb:123:not_number", false, "", 0},
   };
 
-  for (size_t i = 0; i < base::size(test_cases); ++i) {
+  for (const auto& test_case : test_cases) {
     std::string bus;
     uint32_t storage_id = static_cast<uint32_t>(-1);
     bool result =
-        DeviceManager::ParseStorageName(test_cases[i].input, &bus, &storage_id);
-    EXPECT_EQ(test_cases[i].expected_result, result);
-    if (test_cases[i].expected_result) {
-      EXPECT_EQ(test_cases[i].expected_bus, bus);
-      EXPECT_EQ(test_cases[i].expected_storage_id, storage_id);
+        DeviceManager::ParseStorageName(test_case.input, &bus, &storage_id);
+    EXPECT_EQ(test_case.expected_result, result);
+    if (test_case.expected_result) {
+      EXPECT_EQ(test_case.expected_bus, bus);
+      EXPECT_EQ(test_case.expected_storage_id, storage_id);
     }
   }
 }
