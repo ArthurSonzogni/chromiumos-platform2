@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <set>
+#include <string>
 #include <vector>
 
 #include <brillo/secure_blob.h>
@@ -28,7 +30,8 @@ class MockSignatureSealingBackend : public SignatureSealingBackend {
               CreateSealedSecret,
               (const brillo::Blob&,
                const std::vector<structure::ChallengeSignatureAlgorithm>&,
-               (const std::vector<std::map<uint32_t, brillo::Blob>>&),
+               (const std::map<uint32_t, brillo::Blob>&),
+               (const std::map<uint32_t, brillo::Blob>&),
                const brillo::Blob&,
                const brillo::Blob&,
                brillo::SecureBlob*,
@@ -41,8 +44,10 @@ class MockSignatureSealingBackend : public SignatureSealingBackend {
                const brillo::Blob& public_key_spki_der,
                const std::vector<structure::ChallengeSignatureAlgorithm>&
                    key_algorithms,
+               const std::set<uint32_t>&,
                const brillo::Blob& delegate_blob,
                const brillo::Blob& delegate_secret,
+               bool locked_to_single_user,
                std::unique_ptr<UnsealingSession>* unsealing_session),
               (override));
 };

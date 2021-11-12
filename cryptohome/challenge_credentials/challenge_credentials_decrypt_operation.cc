@@ -5,6 +5,7 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_decrypt_operation.h"
 
 #include <algorithm>
+#include <set>
 #include <utility>
 #include <vector>
 
@@ -34,6 +35,7 @@ ChallengeCredentialsDecryptOperation::ChallengeCredentialsDecryptOperation(
     const std::string& account_id,
     const structure::ChallengePublicKeyInfo& public_key_info,
     const structure::SignatureChallengeInfo& keyset_challenge_info,
+    bool locked_to_single_user,
     CompletionCallback completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
       tpm_(tpm),
@@ -42,6 +44,7 @@ ChallengeCredentialsDecryptOperation::ChallengeCredentialsDecryptOperation(
       account_id_(account_id),
       public_key_info_(public_key_info),
       keyset_challenge_info_(keyset_challenge_info),
+      locked_to_single_user_(locked_to_single_user),
       completion_callback_(std::move(completion_callback)),
       signature_sealing_backend_(tpm_->GetSignatureSealingBackend()) {}
 
@@ -127,10 +130,20 @@ ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
   }
   const std::vector<structure::ChallengeSignatureAlgorithm>
       key_sealing_algorithms = public_key_info_.signature_algorithm;
+
+  // Get the PCR set from the empty user PCR map.
+  std::map<uint32_t, brillo::Blob> pcr_map =
+      tpm_->GetPcrMap("", locked_to_single_user_);
+  std::set<uint32_t> pcr_set;
+  for (const auto& [pcr_index, pcr_value] : pcr_map) {
+    pcr_set.insert(pcr_index);
+  }
+
   if (TPMErrorBase err = signature_sealing_backend_->CreateUnsealingSession(
           keyset_challenge_info_.sealed_secret,
-          public_key_info_.public_key_spki_der, key_sealing_algorithms,
-          delegate_blob_, delegate_secret_, &unsealing_session_)) {
+          public_key_info_.public_key_spki_der, key_sealing_algorithms, pcr_set,
+          delegate_blob_, delegate_secret_, locked_to_single_user_,
+          &unsealing_session_)) {
     return WrapError<TPMError>(
         std::move(err), "Failed to start unsealing session for the secret");
   }

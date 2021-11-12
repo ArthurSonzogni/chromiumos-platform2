@@ -3873,6 +3873,7 @@ class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
         const std::string& account_id,
         const structure::ChallengePublicKeyInfo& public_key_info,
         const structure::SignatureChallengeInfo& keyset_challenge_info,
+        bool locked_to_single_user,
         std::unique_ptr<KeyChallengeService> key_challenge_service,
         ChallengeCredentialsHelper::DecryptCallback callback) {
       std::unique_ptr<brillo::SecureBlob> passkey_to_pass;
@@ -3952,7 +3953,7 @@ TEST_F(ChallengeResponseUserDataAuthExTest, FallbackLightweightCheckKey) {
               VerifyKey(kUser, StructureEquals(public_key_info_), _, _))
       .WillOnce(ReplyToVerifyKey{/*is_key_valid=*/false});
   EXPECT_CALL(challenge_credentials_helper_,
-              Decrypt(kUser, StructureEquals(public_key_info_), _, _, _))
+              Decrypt(kUser, StructureEquals(public_key_info_), _, _, _, _))
       .WillOnce(ReplyToDecrypt{SecureBlob(kPasskey)});
 
   CallCheckKeyAndVerify(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);

@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 #include <cstring>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -123,40 +124,6 @@ bool GetAlgIdsByAlgorithm(structure::ChallengeSignatureAlgorithm algorithm,
   return false;
 }
 
-// Given the list of alternative sets of PCR restrictions, returns the one that
-// is currently satisfied. Returns null if none is satisfied.
-const structure::Tpm2PcrRestriction* GetSatisfiedPcrRestriction(
-    const std::vector<structure::Tpm2PcrRestriction>& pcr_restrictions,
-    Tpm* tpm) {
-  std::map<uint32_t, Blob> current_pcr_values;
-  for (const auto& pcr_restriction : pcr_restrictions) {
-    bool is_satisfied = true;
-    for (const auto& pcr_value : pcr_restriction.pcr_values) {
-      const uint32_t pcr_index = pcr_value.pcr_index;
-      if (pcr_index >= IMPLEMENTATION_PCR) {
-        LOG(WARNING) << "Invalid PCR index " << pcr_index;
-        is_satisfied = false;
-        break;
-      }
-      if (!current_pcr_values.count(pcr_index)) {
-        Blob pcr_value;
-        if (!tpm->ReadPCR(pcr_index, &pcr_value)) {
-          is_satisfied = false;
-          break;
-        }
-        current_pcr_values.emplace(pcr_index, pcr_value);
-      }
-      if (current_pcr_values[pcr_index] != pcr_value.pcr_value) {
-        is_satisfied = false;
-        break;
-      }
-    }
-    if (is_satisfied)
-      return &pcr_restriction;
-  }
-  return nullptr;
-}
-
 UnsealingSessionTpm2Impl::UnsealingSessionTpm2Impl(
     Tpm2Impl* tpm,
     Tpm2Impl::TrunksClientContext* trunks,
@@ -248,6 +215,40 @@ TPMErrorBase UnsealingSessionTpm2Impl::Unseal(
   return nullptr;
 }
 
+std::map<uint32_t, std::string> ToStrPcrMap(
+    const std::map<uint32_t, brillo::Blob>& pcr_map) {
+  std::map<uint32_t, std::string> str_pcr_map;
+  for (const auto& [index, value] : pcr_map) {
+    str_pcr_map[index] = brillo::BlobToString(value);
+  }
+  return str_pcr_map;
+}
+
+TPMError GetPcrPolicyDigest(trunks::PolicySession* policy_session,
+                            const std::map<uint32_t, brillo::Blob>& pcr_map,
+                            std::string* pcr_policy_digest) {
+  std::map<uint32_t, std::string> str_pcr_map = ToStrPcrMap(pcr_map);
+
+  // Run PolicyPCR against the PCR set.
+  if (auto err =
+          CreateError<TPM2Error>(policy_session->PolicyPCR(str_pcr_map))) {
+    return WrapError<TPMError>(std::move(err),
+                               "Error restricting policy to PCRs");
+  }
+  // Remember the policy digest for the PCR set.
+  if (auto err = CreateError<TPM2Error>(
+          policy_session->GetDigest(pcr_policy_digest))) {
+    return WrapError<TPMError>(std::move(err), "Error getting policy digest");
+  }
+
+  // Restart the policy session.
+  if (auto err = CreateError<TPM2Error>(policy_session->PolicyRestart())) {
+    return WrapError<TPMError>(std::move(err),
+                               "Error restarting the policy session");
+  }
+  return nullptr;
+}
+
 }  // namespace
 
 SignatureSealingBackendTpm2Impl::SignatureSealingBackendTpm2Impl(Tpm2Impl* tpm)
@@ -258,7 +259,8 @@ SignatureSealingBackendTpm2Impl::~SignatureSealingBackendTpm2Impl() = default;
 TPMErrorBase SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     const Blob& public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
-    const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
+    const std::map<uint32_t, brillo::Blob>& default_pcr_map,
+    const std::map<uint32_t, brillo::Blob>& extended_pcr_map,
     const Blob& /* delegate_blob */,
     const Blob& /* delegate_secret */,
     SecureBlob* secret_value,
@@ -314,50 +316,36 @@ TPMErrorBase SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     return WrapError<TPMError>(std::move(err),
                                "Error starting a trial session");
   }
+
   // Calculate policy digests for each of the sets of PCR restrictions
-  // separately. Rewind each time the policy session back to the initial state,
-  // except when we're in the degenerate case of only one set of PCRs (so that
-  // no PolicyOR command should be used, and we should just proceed with the
-  // PolicyPCR result).
+  // separately. Rewind each time the policy session back to the initial state.
   std::vector<std::string> pcr_policy_digests;
-  for (const auto& pcr_values : pcr_restrictions) {
-    DCHECK(!pcr_values.empty());
-    // Run PolicyPCR against the current PCR set.
-    std::map<uint32_t, std::string> pcr_values_strings;
-    for (const auto& pcr_index_and_value : pcr_values) {
-      pcr_values_strings[pcr_index_and_value.first] =
-          BlobToString(pcr_index_and_value.second);
-    }
-    if (auto err = CreateError<TPM2Error>(
-            policy_session->PolicyPCR(pcr_values_strings))) {
-      return WrapError<TPMError>(std::move(err),
-                                 "Error restricting policy to PCRs");
-    }
-    // Remember the policy digest for the current PCR set.
-    std::string pcr_policy_digest;
-    if (auto err = CreateError<TPM2Error>(
-            policy_session->GetDigest(&pcr_policy_digest))) {
-      return WrapError<TPMError>(std::move(err), "Error getting policy digest");
-    }
-    pcr_policy_digests.push_back(pcr_policy_digest);
-    // Restart the policy session when necessary.
-    if (pcr_restrictions.size() > 1) {
-      if (auto err = CreateError<TPM2Error>(policy_session->PolicyRestart())) {
-        return WrapError<TPMError>(std::move(err),
-                                   "Error restarting the policy session");
-      }
-    }
+
+  std::string default_pcr_policy_digest;
+  if (TPMError err = GetPcrPolicyDigest(policy_session.get(), default_pcr_map,
+                                        &default_pcr_policy_digest)) {
+    return WrapError<TPMError>(std::move(err),
+                               "Error getting default PCR policy digest");
   }
-  // If necessary, apply PolicyOR for restricting to the disjunction of the
-  // specified sets of PCR restrictions.
-  if (pcr_restrictions.size() > 1) {
-    if (auto err = CreateError<TPM2Error>(
-            policy_session->PolicyOR(pcr_policy_digests))) {
-      return WrapError<TPMError>(
-          std::move(err),
-          "Error restricting policy to logical disjunction of PCRs");
-    }
+  pcr_policy_digests.push_back(default_pcr_policy_digest);
+
+  std::string extended_pcr_policy_digest;
+  if (TPMError err = GetPcrPolicyDigest(policy_session.get(), default_pcr_map,
+                                        &extended_pcr_policy_digest)) {
+    return WrapError<TPMError>(std::move(err),
+                               "Error getting default PCR policy digest");
   }
+  pcr_policy_digests.push_back(extended_pcr_policy_digest);
+
+  // Apply PolicyOR for restricting to the disjunction of the specified sets of
+  // PCR restrictions.
+  if (auto err = CreateError<TPM2Error>(
+          policy_session->PolicyOR(pcr_policy_digests))) {
+    return WrapError<TPMError>(
+        std::move(err),
+        "Error restricting policy to logical disjunction of PCRs");
+  }
+
   // Update the policy with an empty signature that refers to the public key.
   trunks::TPMT_SIGNATURE signature;
   memset(&signature, 0, sizeof(trunks::TPMT_SIGNATURE));
@@ -403,20 +391,8 @@ TPMErrorBase SignatureSealingBackendTpm2Impl::CreateSealedSecret(
   data.srk_wrapped_secret = BlobFromString(sealed_value);
   data.scheme = scheme;
   data.hash_alg = hash_alg;
-  for (size_t restriction_index = 0;
-       restriction_index < pcr_restrictions.size(); ++restriction_index) {
-    const auto& pcr_values = pcr_restrictions[restriction_index];
-    structure::Tpm2PcrRestriction pcr_restriction;
-    for (const auto& pcr_index_and_value : pcr_values) {
-      structure::PcrValue pcr_value;
-      pcr_value.pcr_index = pcr_index_and_value.first;
-      pcr_value.pcr_value = pcr_index_and_value.second;
-      pcr_restriction.pcr_values.push_back(pcr_value);
-    }
-    pcr_restriction.policy_digest =
-        BlobFromString(pcr_policy_digests[restriction_index]);
-    data.pcr_restrictions.push_back(pcr_restriction);
-  }
+  data.default_pcr_policy_digest = BlobFromString(default_pcr_policy_digest);
+  data.extended_pcr_policy_digest = BlobFromString(extended_pcr_policy_digest);
   *sealed_secret_data = data;
   return nullptr;
 }
@@ -425,8 +401,10 @@ TPMErrorBase SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
     const structure::SignatureSealedData& sealed_secret_data,
     const Blob& public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
+    const std::set<uint32_t>& pcr_set,
     const Blob& /* delegate_blob */,
     const Blob& /* delegate_secret */,
+    bool /* locked_to_single_user */,
     std::unique_ptr<SignatureSealingBackend::UnsealingSession>*
         unsealing_session) {
   // Validate the parameters.
@@ -490,52 +468,54 @@ TPMErrorBase SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
     return WrapError<TPMError>(std::move(err),
                                "Error starting a policy session");
   }
-  // If PCR restrictions were applied, update the policy correspondingly.
-  if (data.pcr_restrictions.size()) {
-    // Determine the satisfied set of PCR restrictions and update the policy
-    // with it.
-    const structure::Tpm2PcrRestriction* const satisfied_pcr_restriction =
-        GetSatisfiedPcrRestriction(data.pcr_restrictions, tpm_);
-    if (!satisfied_pcr_restriction) {
-      return CreateError<TPMError>("None of PCR restrictions is satisfied",
-                                   TPMRetryAction::kNoRetry);
-    }
-    std::map<uint32_t, std::string> pcrs_to_apply;
-    for (const auto& pcr_value : satisfied_pcr_restriction->pcr_values) {
-      pcrs_to_apply.emplace(pcr_value.pcr_index, std::string());
-    }
 
-    if (auto err =
-            CreateError<TPM2Error>(policy_session->PolicyPCR(pcrs_to_apply))) {
-      return WrapError<TPMError>(std::move(err),
-                                 "Error restricting policy to PCRs");
-    }
-    // If more than one set of PCR restrictions was originally specified, update
-    // the policy with the disjunction of their policy digests.
-    if (data.pcr_restrictions.size() > 1) {
-      std::vector<std::string> pcr_policy_digests;
-      for (const auto& pcr_restriction : data.pcr_restrictions) {
-        if (pcr_restriction.policy_digest.size() != SHA256_DIGEST_SIZE) {
-          return CreateError<TPMError>("Invalid policy digest size",
-                                       TPMRetryAction::kNoRetry);
-        }
-        pcr_policy_digests.push_back(
-            BlobToString(pcr_restriction.policy_digest));
-      }
-      if (auto err = CreateError<TPM2Error>(
-              policy_session->PolicyOR(pcr_policy_digests))) {
-        return WrapError<TPMError>(
-            std::move(err),
-            "Error restricting policy to logical disjunction of PCRs");
-      }
-    }
+  if (data.default_pcr_policy_digest.empty() ||
+      data.extended_pcr_policy_digest.empty()) {
+    return CreateError<TPMError>("Empty PCR policy digests",
+                                 TPMRetryAction::kNoRetry);
   }
+
+  if (data.default_pcr_policy_digest.size() != SHA256_DIGEST_SIZE ||
+      data.extended_pcr_policy_digest.size() != SHA256_DIGEST_SIZE) {
+    return CreateError<TPMError>("Invalid policy digest size",
+                                 TPMRetryAction::kNoRetry);
+  }
+
+  // The PCR map with empty user name.
+  std::map<uint32_t, std::string> pcr_map;
+
+  // Create a PCR map with empty strings to use current PCR values.
+  for (uint32_t pcr_index : pcr_set) {
+    pcr_map[pcr_index] = std::string();
+  }
+
+  if (auto err = CreateError<TPM2Error>(policy_session->PolicyPCR(pcr_map))) {
+    return WrapError<TPMError>(std::move(err),
+                               "Error restricting policy to PCRs");
+  }
+
+  // Update the policy with the disjunction of their policy digests.
+  // Note: The order of items in this vector is important, it must match the
+  // order used in the CreateSealedSecret() function, and should never change
+  // due to backwards compatibility.
+  std::vector<std::string> pcr_policy_digests;
+  pcr_policy_digests.push_back(BlobToString(data.default_pcr_policy_digest));
+  pcr_policy_digests.push_back(BlobToString(data.extended_pcr_policy_digest));
+
+  if (auto err = CreateError<TPM2Error>(
+          policy_session->PolicyOR(pcr_policy_digests))) {
+    return WrapError<TPMError>(
+        std::move(err),
+        "Error restricting policy to logical disjunction of PCRs");
+  }
+
   // Obtain the TPM nonce.
   std::string tpm_nonce;
   if (!policy_session->GetDelegate()->GetTpmNonce(&tpm_nonce)) {
     return CreateError<TPMError>("Error obtaining TPM nonce",
                                  TPMRetryAction::kNoRetry);
   }
+
   // Create the unsealing session that will keep the required state.
   *unsealing_session = std::make_unique<UnsealingSessionTpm2Impl>(
       tpm_, trunks, data.srk_wrapped_secret, public_key_spki_der,

@@ -5,10 +5,11 @@
 #ifndef CRYPTOHOME_SIGNATURE_SEALING_BACKEND_H_
 #define CRYPTOHOME_SIGNATURE_SEALING_BACKEND_H_
 
-#include <stdint.h>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <set>
+#include <string>
 #include <vector>
 
 #include <brillo/secure_blob.h>
@@ -68,12 +69,12 @@ class SignatureSealingBackend {
   //                    Listed in the order of preference (starting from the
   //                    most preferred); however, the implementation is
   //                    permitted to ignore this order.
-  //   pcr_restrictions - The list of PCR value sets. The created secret will be
-  //                      bound in a way that unsealing is possible iff at least
-  //                      one of these sets is satisfied. Each PCR value set
-  //                      must be non-empty; pass empty list of sets in order to
-  //                      have no PCR binding. Implementation may impose
-  //                      constraint on the maximum allowed number of sets.
+  //   default_pcr_map - The default PCR values map; the created secret will be
+  //                     protected in a way that decrypting it back is possible
+  //                     iff at least one of the PCR value maps is satisfied.
+  //   extended_pcr_map - The extend PCR values map; the created secret will be
+  //                      protected in a way that decrypting it back is possible
+  //                      iff at least one of the PCR value maps is satisfied.
   //   delegate_blob - The blob for the owner delegation.
   //   delegate_secret - The delegate secret for the delegate blob.
   //   secret_value - The created secret value.
@@ -81,7 +82,8 @@ class SignatureSealingBackend {
   virtual hwsec::error::TPMErrorBase CreateSealedSecret(
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
-      const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
+      const std::map<uint32_t, brillo::Blob>& default_pcr_map,
+      const std::map<uint32_t, brillo::Blob>& extended_pcr_map,
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret,
       brillo::SecureBlob* secret_value,
@@ -100,14 +102,18 @@ class SignatureSealingBackend {
   //                    Listed in the order of preference (starting from the
   //                    most preferred); however, the implementation is
   //                    permitted to ignore this order.
+  //   pcr_set - The PCR values set; the set would be used to unseal the secret.
   //   delegate_blob - The blob for the owner delegation.
   //   delegate_secret - The delegate secret for the delegate blob.
+  //   locked_to_single_user - Should use extended PCR to unseal or not.
   virtual hwsec::error::TPMErrorBase CreateUnsealingSession(
       const structure::SignatureSealedData& sealed_secret_data,
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
+      const std::set<uint32_t>& pcr_set,
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret,
+      bool locked_to_single_user,
       std::unique_ptr<UnsealingSession>* unsealing_session) = 0;
 };
 

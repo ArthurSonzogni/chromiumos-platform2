@@ -53,6 +53,7 @@ class ChallengeCredentialsDecryptOperation final
       const std::string& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
+      bool locked_to_single_user,
       CompletionCallback completion_callback);
 
   ~ChallengeCredentialsDecryptOperation() override;
@@ -92,6 +93,7 @@ class ChallengeCredentialsDecryptOperation final
   const std::string account_id_;
   const structure::ChallengePublicKeyInfo public_key_info_;
   const structure::SignatureChallengeInfo keyset_challenge_info_;
+  const bool locked_to_single_user_;
   std::unique_ptr<brillo::Blob> salt_signature_;
   CompletionCallback completion_callback_;
   SignatureSealingBackend* const signature_sealing_backend_;

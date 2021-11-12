@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <map>
+#include <string>
 #include <vector>
 
 #include <base/macros.h>
@@ -50,9 +51,13 @@ class SignatureSealedCreationMocker final {
           key_algorithms) {
     key_algorithms_ = key_algorithms;
   }
-  void set_pcr_restrictions(
-      const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions) {
-    pcr_restrictions_ = pcr_restrictions;
+  void set_default_pcr_map(
+      const std::map<uint32_t, brillo::Blob>& default_pcr_map) {
+    default_pcr_map_ = default_pcr_map;
+  }
+  void set_extended_pcr_map(
+      const std::map<uint32_t, brillo::Blob>& extended_pcr_map) {
+    extended_pcr_map_ = extended_pcr_map;
   }
   void set_delegate_blob(const brillo::Blob& delegate_blob) {
     delegate_blob_ = delegate_blob;
@@ -74,7 +79,8 @@ class SignatureSealedCreationMocker final {
   MockSignatureSealingBackend* const mock_backend_;
   brillo::Blob public_key_spki_der_;
   std::vector<structure::ChallengeSignatureAlgorithm> key_algorithms_;
-  std::vector<std::map<uint32_t, brillo::Blob>> pcr_restrictions_;
+  std::map<uint32_t, brillo::Blob> default_pcr_map_;
+  std::map<uint32_t, brillo::Blob> extended_pcr_map_;
   brillo::Blob delegate_blob_;
   brillo::Blob delegate_secret_;
   brillo::Blob secret_value_;

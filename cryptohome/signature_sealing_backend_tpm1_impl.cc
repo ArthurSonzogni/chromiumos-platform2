@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -931,35 +932,6 @@ bool GenerateCmk(TpmImpl* const tpm,
   return true;
 }
 
-// Given the list of alternative sets of PCR-bound items, returns the one that
-// is currently satisfied. Returns null if none is satisfied.
-const structure::Tpm12PcrBoundItem* GetSatisfiedPcrRestriction(
-    const std::vector<structure::Tpm12PcrBoundItem>& pcr_bound_items,
-    Tpm* tpm) {
-  std::map<uint32_t, Blob> current_pcr_values;
-  for (const auto& pcr_bound_item : pcr_bound_items) {
-    bool is_satisfied = true;
-    for (const auto& pcr_value : pcr_bound_item.pcr_values) {
-      const uint32_t pcr_index = pcr_value.pcr_index;
-      if (!current_pcr_values.count(pcr_index)) {
-        Blob pcr_value;
-        if (!tpm->ReadPCR(pcr_index, &pcr_value)) {
-          is_satisfied = false;
-          break;
-        }
-        current_pcr_values.emplace(pcr_index, pcr_value);
-      }
-      if (current_pcr_values[pcr_index] != pcr_value.pcr_value) {
-        is_satisfied = false;
-        break;
-      }
-    }
-    if (is_satisfied)
-      return &pcr_bound_item;
-  }
-  return nullptr;
-}
-
 UnsealingSessionTpm1Impl::UnsealingSessionTpm1Impl(
     TpmImpl* tpm,
     const Blob& srk_wrapped_cmk,
@@ -1102,6 +1074,31 @@ TPMErrorBase UnsealingSessionTpm1Impl::Unseal(
   return nullptr;
 }
 
+TPMErrorBase MakePcrBoundSecret(TpmImpl* tpm,
+                                const SecureBlob& secret_value,
+                                const SecureBlob& auth_data,
+                                const std::map<uint32_t, brillo::Blob>& pcr_map,
+                                brillo::Blob* pcr_bound_secret) {
+  CHECK(pcr_bound_secret);
+  brillo::SecureBlob auth_value;
+  if (TPMErrorBase err =
+          tpm->GetAuthValue(base::nullopt, auth_data, &auth_value)) {
+    return WrapError<TPMError>(std::move(err), "Failed to get auth value");
+  }
+  SecureBlob secure_pcr_bound_secret;
+  if (TPMErrorBase err = tpm->SealToPcrWithAuthorization(
+          secret_value, auth_data, pcr_map, &secure_pcr_bound_secret)) {
+    return WrapError<TPMError>(
+        std::move(err),
+        "Error binding the secret value to PCRs and authorization data");
+  }
+
+  // TODO(yich): Replace with a direct usage of Blob.
+  pcr_bound_secret->assign(secure_pcr_bound_secret.begin(),
+                           secure_pcr_bound_secret.end());
+  return nullptr;
+}
+
 }  // namespace
 
 SignatureSealingBackendTpm1Impl::SignatureSealingBackendTpm1Impl(TpmImpl* tpm)
@@ -1112,13 +1109,12 @@ SignatureSealingBackendTpm1Impl::~SignatureSealingBackendTpm1Impl() = default;
 TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     const Blob& public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
-    const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
+    const std::map<uint32_t, brillo::Blob>& default_pcr_map,
+    const std::map<uint32_t, brillo::Blob>& extended_pcr_map,
     const Blob& delegate_blob,
     const Blob& delegate_secret,
     SecureBlob* secret_value,
     structure::SignatureSealedData* sealed_secret_data) {
-  // TODO(chromium:806788,b:77799573): Support absence of PCR restrictions.
-  DCHECK(!pcr_restrictions.empty());
   // Only the |kRsassaPkcs1V15Sha1| algorithm is supported.
   if (std::find(key_algorithms.begin(), key_algorithms.end(),
                 structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1) ==
@@ -1211,48 +1207,33 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
                                "Error generating random secret");
   }
   DCHECK_EQ(secret_value->size(), kSecretSizeBytes);
-  // Bind the secret value to each of the specified sets of PCR restrictions.
-  DCHECK(!pcr_restrictions.empty());
-  std::vector<Blob> pcr_bound_secret_values;
-  for (const auto& pcr_values : pcr_restrictions) {
-    DCHECK(!pcr_values.empty());
-    // Bind the secret value to the current set of PCR restrictions.
-    SecureBlob pcr_bound_secret_value;
 
-    SecureBlob auth_value;
-    if (TPMErrorBase err =
-            tpm_->GetAuthValue(base::nullopt, auth_data, &auth_value)) {
-      return WrapError<TPMError>(std::move(err), "Failed to get auth value");
-    }
-    if (TPMErrorBase err = tpm_->SealToPcrWithAuthorization(
-            *secret_value, auth_data, pcr_values, &pcr_bound_secret_value)) {
-      return WrapError<TPMError>(
-          std::move(err),
-          "Error binding the secret value to PCRs and authorization data");
-    }
-    pcr_bound_secret_values.push_back(
-        Blob(pcr_bound_secret_value.begin(), pcr_bound_secret_value.end()));
+  // Bind the secret value to the default PCR map.
+  brillo::Blob default_pcr_bound_secret;
+  if (TPMErrorBase err =
+          MakePcrBoundSecret(tpm_, *secret_value, auth_data, default_pcr_map,
+                             &default_pcr_bound_secret)) {
+    return WrapError<TPMError>(std::move(err),
+                               "Failed to make default pcr bound secret");
   }
+
+  // Bind the secret value to the extended PCR map.
+  brillo::Blob extended_pcr_bound_secret;
+  if (TPMErrorBase err =
+          MakePcrBoundSecret(tpm_, *secret_value, auth_data, extended_pcr_map,
+                             &extended_pcr_bound_secret)) {
+    return WrapError<TPMError>(std::move(err),
+                               "Failed to make extended pcr bound secret");
+  }
+
   // Fill the resulting proto with data required for unsealing.
   structure::Tpm12CertifiedMigratableKeyData data;
   data.public_key_spki_der = public_key_spki_der;
   data.srk_wrapped_cmk = srk_wrapped_cmk;
   data.cmk_pubkey = cmk_pubkey;
   data.cmk_wrapped_auth_data = cmk_wrapped_auth_data;
-  DCHECK_EQ(pcr_restrictions.size(), pcr_bound_secret_values.size());
-  for (size_t restriction_index = 0;
-       restriction_index < pcr_restrictions.size(); ++restriction_index) {
-    const auto& pcr_values = pcr_restrictions[restriction_index];
-    structure::Tpm12PcrBoundItem pcr_bound_item;
-    for (const auto& pcr_index_and_value : pcr_values) {
-      structure::PcrValue pcr_value;
-      pcr_value.pcr_index = pcr_index_and_value.first;
-      pcr_value.pcr_value = pcr_index_and_value.second;
-      pcr_bound_item.pcr_values.push_back(pcr_value);
-    }
-    pcr_bound_item.bound_secret = pcr_bound_secret_values[restriction_index];
-    data.pcr_bound_items.push_back(pcr_bound_item);
-  }
+  data.default_pcr_bound_secret = default_pcr_bound_secret;
+  data.extended_pcr_bound_secret = extended_pcr_bound_secret;
   *sealed_secret_data = data;
   return nullptr;
 }
@@ -1261,8 +1242,10 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
     const structure::SignatureSealedData& sealed_secret_data,
     const Blob& public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
+    const std::set<uint32_t>& /* pcr_set */,
     const Blob& delegate_blob,
     const Blob& delegate_secret,
+    bool locked_to_single_user,
     std::unique_ptr<SignatureSealingBackend::UnsealingSession>*
         unsealing_session) {
   // Validate the parameters.
@@ -1306,12 +1289,14 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
         TPMRetryAction::kNoRetry);
   }
   // Determine the satisfied set of PCR restrictions.
-  const structure::Tpm12PcrBoundItem* const satisfied_pcr_bound_item =
-      GetSatisfiedPcrRestriction(data.pcr_bound_items, tpm_);
-  if (!satisfied_pcr_bound_item) {
-    return CreateError<TPMError>("None of PCR restrictions is satisfied",
+  const brillo::Blob& pcr_bound_secret = locked_to_single_user
+                                             ? data.extended_pcr_bound_secret
+                                             : data.default_pcr_bound_secret;
+  if (pcr_bound_secret.empty()) {
+    return CreateError<TPMError>("Empty PCR bound secret",
                                  TPMRetryAction::kNoRetry);
   }
+
   // Obtain the TPM context and handle with the required authorization.
   ScopedTssContext tpm_context;
   TSS_HTPM tpm_handle = 0;
@@ -1376,9 +1361,8 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
         TPMRetryAction::kNoRetry);
   }
   *unsealing_session = std::make_unique<UnsealingSessionTpm1Impl>(
-      tpm_, data.srk_wrapped_cmk, data.cmk_wrapped_auth_data,
-      satisfied_pcr_bound_item->bound_secret, public_key_spki_der,
-      delegate_blob, delegate_secret, data.cmk_pubkey,
+      tpm_, data.srk_wrapped_cmk, data.cmk_wrapped_auth_data, pcr_bound_secret,
+      public_key_spki_der, delegate_blob, delegate_secret, data.cmk_pubkey,
       Blob(protection_key_pubkey.begin(), protection_key_pubkey.end()),
       std::move(migration_destination_rsa),
       Blob(migration_destination_key_pubkey.begin(),

@@ -59,18 +59,18 @@ void SignatureSealedCreationMocker::SetUpSuccessfulMock() {
       MakeFakeSignatureSealedData(public_key_spki_der_);
   EXPECT_CALL(*mock_backend_,
               CreateSealedSecret(public_key_spki_der_, key_algorithms_,
-                                 pcr_restrictions_, delegate_blob_,
-                                 delegate_secret_, _, _))
-      .WillOnce(DoAll(SetArgPointee<5>(SecureBlob(secret_value_)),
-                      SetArgPointee<6>(sealed_data_to_return),
+                                 default_pcr_map_, extended_pcr_map_,
+                                 delegate_blob_, delegate_secret_, _, _))
+      .WillOnce(DoAll(SetArgPointee<6>(SecureBlob(secret_value_)),
+                      SetArgPointee<7>(sealed_data_to_return),
                       ReturnError<TPMErrorBase>()));
 }
 
 void SignatureSealedCreationMocker::SetUpFailingMock() {
   EXPECT_CALL(*mock_backend_,
               CreateSealedSecret(public_key_spki_der_, key_algorithms_,
-                                 pcr_restrictions_, delegate_blob_,
-                                 delegate_secret_, _, _))
+                                 default_pcr_map_, extended_pcr_map_,
+                                 delegate_blob_, delegate_secret_, _, _))
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 }
 
@@ -91,11 +91,11 @@ void SignatureSealedUnsealingMocker::SetUpCreationFailingMock(
     bool mock_repeatedly) {
   const structure::SignatureSealedData expected_sealed_data =
       MakeFakeSignatureSealedData(public_key_spki_der_);
-  auto& expected_call =
-      EXPECT_CALL(*mock_backend_,
-                  CreateUnsealingSession(StructureEquals(expected_sealed_data),
-                                         public_key_spki_der_, key_algorithms_,
-                                         delegate_blob_, delegate_secret_, _));
+  auto& expected_call = EXPECT_CALL(
+      *mock_backend_,
+      CreateUnsealingSession(StructureEquals(expected_sealed_data),
+                             public_key_spki_der_, key_algorithms_, _,
+                             delegate_blob_, delegate_secret_, false, _));
   if (mock_repeatedly)
     expected_call.WillRepeatedly(
         ReturnError<TPMError>("fake", TPMRetryAction::kLater));
@@ -124,10 +124,11 @@ MockUnsealingSession* SignatureSealedUnsealingMocker::AddSessionCreationMock() {
       MakeFakeSignatureSealedData(public_key_spki_der_);
   EXPECT_CALL(*mock_backend_,
               CreateUnsealingSession(StructureEquals(expected_sealed_data),
-                                     public_key_spki_der_, key_algorithms_,
-                                     delegate_blob_, delegate_secret_, _))
+                                     public_key_spki_der_, key_algorithms_, _,
+                                     delegate_blob_, delegate_secret_,
+                                     /*locked_to_single_user=*/false, _))
       .WillOnce(Invoke([mock_unsealing_session](auto&&, auto&&, auto&&, auto&&,
-                                                auto&&,
+                                                auto&&, auto&&, auto&&,
                                                 auto* unsealing_session) {
         *unsealing_session = std::unique_ptr<StrictMock<MockUnsealingSession>>(
             mock_unsealing_session);

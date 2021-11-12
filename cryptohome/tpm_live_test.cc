@@ -808,15 +808,15 @@ class SignatureSealedSecretTestCase final {
 
   bool CreateSecret(SecureBlob* secret_value,
                     structure::SignatureSealedData* sealed_secret_data) {
-    std::map<uint32_t, Blob> pcr_values;
+    std::map<uint32_t, brillo::Blob> pcr_values;
     if (!GetCurrentPcrValues(&pcr_values)) {
       LOG(ERROR) << "Error reading PCR values";
       return false;
     }
     if (TPMErrorBase err = backend()->CreateSealedSecret(
-            key_spki_der_, param_.supported_algorithms,
-            {pcr_values, pcr_values}, delegate_blob_, delegate_secret_,
-            secret_value, sealed_secret_data)) {
+            key_spki_der_, param_.supported_algorithms, pcr_values, pcr_values,
+            delegate_blob_, delegate_secret_, secret_value,
+            sealed_secret_data)) {
       LOG(ERROR) << "Error creating signature-sealed secret: " << *err;
       return false;
     }
@@ -824,7 +824,7 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CheckSecretCreationFails() {
-    std::map<uint32_t, Blob> pcr_values;
+    std::map<uint32_t, brillo::Blob> pcr_values;
     if (!GetCurrentPcrValues(&pcr_values)) {
       LOG(ERROR) << "Error reading PCR values";
       return false;
@@ -832,7 +832,7 @@ class SignatureSealedSecretTestCase final {
     SecureBlob secret_value;
     structure::SignatureSealedData sealed_secret_data;
     if (TPMErrorBase err = backend()->CreateSealedSecret(
-            key_spki_der_, param_.supported_algorithms, {pcr_values},
+            key_spki_der_, param_.supported_algorithms, pcr_values, pcr_values,
             delegate_blob_, delegate_secret_, &secret_value,
             &sealed_secret_data)) {
       // TODO(b/174816474): check the error message is expected.
@@ -844,12 +844,14 @@ class SignatureSealedSecretTestCase final {
     return false;
   }
 
-  bool GetCurrentPcrValues(std::map<uint32_t, Blob>* pcr_values) {
+  bool GetCurrentPcrValues(std::map<uint32_t, brillo::Blob>* pcr_values) {
     for (auto pcr_index : kPcrIndexes) {
-      if (!tpm()->ReadPCR(pcr_index, &(*pcr_values)[pcr_index])) {
+      Blob blob;
+      if (!tpm()->ReadPCR(pcr_index, &blob)) {
         LOG(ERROR) << "Error reading PCR value " << pcr_index;
         return false;
       }
+      (*pcr_values)[pcr_index] = blob;
     }
     return true;
   }
@@ -861,7 +863,8 @@ class SignatureSealedSecretTestCase final {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (TPMErrorBase err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            delegate_blob_, delegate_secret_, &unsealing_session)) {
+            kPcrIndexes, delegate_blob_, delegate_secret_,
+            /*locked_to_single_user=*/false, &unsealing_session)) {
       LOG(ERROR) << "Error starting the unsealing session: " << *err;
       return false;
     }
@@ -898,7 +901,8 @@ class SignatureSealedSecretTestCase final {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (TPMErrorBase err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            delegate_blob_, delegate_secret_, &unsealing_session)) {
+            kPcrIndexes, delegate_blob_, delegate_secret_,
+            /*locked_to_single_user=*/false, &unsealing_session)) {
       LOG(ERROR) << "Error starting the unsealing session: " << *err;
       return false;
     }
@@ -917,7 +921,8 @@ class SignatureSealedSecretTestCase final {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (TPMErrorBase err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            delegate_blob_, delegate_secret_, &unsealing_session)) {
+            kPcrIndexes, delegate_blob_, delegate_secret_,
+            /*locked_to_single_user=*/false, &unsealing_session)) {
       LOG(ERROR) << "Error starting the unsealing session: " << *err;
       return false;
     }
@@ -943,7 +948,8 @@ class SignatureSealedSecretTestCase final {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (TPMErrorBase err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            delegate_blob_, delegate_secret_, &unsealing_session)) {
+            kPcrIndexes, delegate_blob_, delegate_secret_,
+            /*locked_to_single_user=*/false, &unsealing_session)) {
       LOG(ERROR) << "Error starting the unsealing session: " << *err;
       return false;
     }
@@ -972,8 +978,9 @@ class SignatureSealedSecretTestCase final {
             : structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (TPMErrorBase err = backend()->CreateUnsealingSession(
-            sealed_secret_data, key_spki_der_, {wrong_algorithm},
-            delegate_blob_, delegate_secret_, &unsealing_session)) {
+            sealed_secret_data, key_spki_der_, {wrong_algorithm}, kPcrIndexes,
+            delegate_blob_, delegate_secret_, /*locked_to_single_user=*/false,
+            &unsealing_session)) {
       // TODO(b/174816474): check the error message is expected.
       return true;
     } else {
@@ -995,7 +1002,8 @@ class SignatureSealedSecretTestCase final {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (TPMErrorBase err = backend()->CreateUnsealingSession(
             sealed_secret_data, other_key_spki_der, param_.supported_algorithms,
-            delegate_blob_, delegate_secret_, &unsealing_session)) {
+            kPcrIndexes, delegate_blob_, delegate_secret_,
+            /*locked_to_single_user=*/false, &unsealing_session)) {
       // TODO(b/174816474): check the error message is expected.
       return true;
     } else {
@@ -1015,7 +1023,8 @@ class SignatureSealedSecretTestCase final {
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (TPMErrorBase err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
-            delegate_blob_, delegate_secret_, &unsealing_session)) {
+            kPcrIndexes, delegate_blob_, delegate_secret_,
+            /*locked_to_single_user=*/false, &unsealing_session)) {
       // TODO(yich): check the error message is expected.
       LOG(INFO) << "Failed to starting the unsealing session: " << *err;
       return true;

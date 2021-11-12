@@ -22,22 +22,6 @@ enum class ChallengeSignatureAlgorithm {
   kRsassaPkcs1V15Sha512 = 4,
 };
 
-// Index and value of a TPM Platform Configuration Register (PCR).
-struct PcrValue {
-  uint32_t pcr_index = 0;
-  brillo::Blob pcr_value;
-};
-
-// Information about a single set of PCR restrictions for TPM 2.0.
-struct Tpm2PcrRestriction {
-  // List of PCR values that must be all satisfied for this restriction.
-  std::vector<PcrValue> pcr_values;
-
-  // TPM policy digest for the TPM2_PolicyPCR command executed with the PCR
-  // values specified by |pcr_values|.
-  brillo::Blob policy_digest;
-};
-
 // Data for the TPM 2.0 method based on the "TPM2_PolicySigned" feature.
 struct Tpm2PolicySignedData {
   // DER-encoded blob of the X.509 Subject Public Key Info of the key that
@@ -54,23 +38,13 @@ struct Tpm2PolicySignedData {
   // unsealing.
   int32_t hash_alg = 0;
 
-  // Multiple alternative sets of PCR restrictions that are applied to the
-  // wrapped secret. For unsealing, it's enough to satisfy only one of those
-  // restrictions.
-  // Note that the order of items here is important: it defines the order of
-  // arguments when building the TPM policy digest.
-  std::vector<Tpm2PcrRestriction> pcr_restrictions;
-};
+  // TPM policy digest for the TPM2_PolicyPCR command executed with default PCR
+  // map.
+  brillo::Blob default_pcr_policy_digest;
 
-// TPM 1.2 data that is bound to the specific set of PCRs.
-struct Tpm12PcrBoundItem {
-  // Set of PCRs to which the secret blob is bound.
-  std::vector<PcrValue> pcr_values;
-
-  // The secret blob, which is bound to the PCR values specified by
-  // |pcr_values| and with the AuthData value that is stored encrypted in
-  // |cmk_wrapped_auth_data|.
-  brillo::Blob bound_secret;
+  // TPM policy digest for the TPM2_PolicyPCR command executed with extended PCR
+  // map.
+  brillo::Blob extended_pcr_policy_digest;
 };
 
 // Data for the TPM 1.2 method based on the "Certified Migratable Key"
@@ -91,10 +65,11 @@ struct Tpm12CertifiedMigratableKeyData {
   // algorithm.
   brillo::Blob cmk_wrapped_auth_data;
 
-  // Multiple alternative representations of the secret data, where each
-  // representation is bound to its specific set of PCRs and to the AuthData
-  // value that is stored encrypted in |cmk_wrapped_auth_data|.
-  std::vector<Tpm12PcrBoundItem> pcr_bound_items;
+  // The secret blob, which is bound to the default PCR map.
+  brillo::Blob default_pcr_bound_secret;
+
+  // The secret blob, which is bound to the extended PCR map.
+  brillo::Blob extended_pcr_bound_secret;
 };
 
 using SignatureSealedData =

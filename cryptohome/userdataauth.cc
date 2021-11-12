@@ -23,6 +23,7 @@
 #include <brillo/cryptohome.h>
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
+#include <chromeos/constants/cryptohome.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
 #include "cryptohome/bootlockbox/boot_lockbox_client.h"
@@ -1216,16 +1217,6 @@ scoped_refptr<UserSession> UserDataAuth::GetOrCreateUserSession(
   return sessions_[username];
 }
 
-void UserDataAuth::GetChallengeCredentialsPcrRestrictions(
-    const std::string& obfuscated_username,
-    std::vector<std::map<uint32_t, brillo::Blob>>* pcr_restrictions) {
-  AssertOnMountThread();
-  pcr_restrictions->push_back(
-      tpm_->GetPcrMap(obfuscated_username, /*use_extended_pcr=*/false));
-  pcr_restrictions->push_back(
-      tpm_->GetPcrMap(obfuscated_username, /*use_extended_pcr=*/true));
-}
-
 bool UserDataAuth::RemoveUserSession(const std::string& username) {
   AssertOnMountThread();
 
@@ -1632,6 +1623,11 @@ void UserDataAuth::DoChallengeResponseMount(
   if (use_existing_credentials && vault_keyset->HasSignatureChallengeInfo()) {
     // Home directory already exist and we are not doing ephemeral mount, so
     // we'll decrypt existing VaultKeyset.
+
+    // TODO(b/203994461): This should be handled inside the auth block.
+    bool locked_to_single_user =
+        platform_->FileExists(base::FilePath(kLockedToSingleUserFile));
+
     // Note: We don't need the |signature_challenge_info| when we are decrypting
     // the challenge credential, because the keyset managerment doesn't need to
     // read the |signature_challenge_info| from the credentials in this case.
@@ -1641,7 +1637,7 @@ void UserDataAuth::DoChallengeResponseMount(
     challenge_credentials_helper_->Decrypt(
         account_id, proto::FromProto(public_key_info),
         proto::FromProto(vault_keyset->GetSignatureChallengeInfo()),
-        std::move(key_challenge_service),
+        locked_to_single_user, std::move(key_challenge_service),
         base::BindOnce(
             &UserDataAuth::OnChallengeResponseMountCredentialsObtained,
             base::Unretained(this), request, mount_args, std::move(on_done),
@@ -1656,11 +1652,14 @@ void UserDataAuth::DoChallengeResponseMount(
       return;
     }
 
-    std::vector<std::map<uint32_t, brillo::Blob>> pcr_restrictions;
-    GetChallengeCredentialsPcrRestrictions(obfuscated_username,
-                                           &pcr_restrictions);
+    std::map<uint32_t, brillo::Blob> default_pcr_map =
+        tpm_->GetPcrMap(obfuscated_username, false /* use_extended_pcr */);
+    std::map<uint32_t, brillo::Blob> extended_pcr_map =
+        tpm_->GetPcrMap(obfuscated_username, true /* use_extended_pcr */);
+
     challenge_credentials_helper_->GenerateNew(
-        account_id, proto::FromProto(public_key_info), pcr_restrictions,
+        account_id, proto::FromProto(public_key_info),
+        std::move(default_pcr_map), std::move(extended_pcr_map),
         std::move(key_challenge_service),
         base::BindOnce(
             &UserDataAuth::OnChallengeResponseMountCredentialsObtained,
@@ -2428,10 +2427,14 @@ void UserDataAuth::DoFullChallengeResponseCheckKey(
   const ChallengePublicKeyInfo& public_key_info =
       authorization.key().data().challenge_response_key(0);
 
+  // TODO(b/203994461): This should be handled inside the auth block.
+  bool locked_to_single_user =
+      platform_->FileExists(base::FilePath(kLockedToSingleUserFile));
+
   challenge_credentials_helper_->Decrypt(
       account_id, proto::FromProto(public_key_info),
       proto::FromProto(vault_keyset->GetSignatureChallengeInfo()),
-      std::move(key_challenge_service),
+      locked_to_single_user, std::move(key_challenge_service),
       base::BindOnce(&UserDataAuth::OnFullChallengeResponseCheckKeyDone,
                      base::Unretained(this), request, std::move(on_done)));
 }

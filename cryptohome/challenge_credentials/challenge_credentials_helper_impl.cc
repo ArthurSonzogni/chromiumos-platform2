@@ -52,7 +52,8 @@ ChallengeCredentialsHelperImpl::~ChallengeCredentialsHelperImpl() {
 void ChallengeCredentialsHelperImpl::GenerateNew(
     const std::string& account_id,
     const structure::ChallengePublicKeyInfo& public_key_info,
-    const std::vector<std::map<uint32_t, Blob>>& pcr_restrictions,
+    const std::map<uint32_t, brillo::Blob>& default_pcr_map,
+    const std::map<uint32_t, brillo::Blob>& extended_pcr_map,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     GenerateNewCallback callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
@@ -61,7 +62,7 @@ void ChallengeCredentialsHelperImpl::GenerateNew(
   key_challenge_service_ = std::move(key_challenge_service);
   operation_ = std::make_unique<ChallengeCredentialsGenerateNewOperation>(
       key_challenge_service_.get(), tpm_, delegate_blob_, delegate_secret_,
-      account_id, public_key_info, pcr_restrictions,
+      account_id, public_key_info, default_pcr_map, extended_pcr_map,
       base::BindOnce(&ChallengeCredentialsHelperImpl::OnGenerateNewCompleted,
                      base::Unretained(this), std::move(callback)));
   operation_->Start();
@@ -71,6 +72,7 @@ void ChallengeCredentialsHelperImpl::Decrypt(
     const std::string& account_id,
     const structure::ChallengePublicKeyInfo& public_key_info,
     const structure::SignatureChallengeInfo& keyset_challenge_info,
+    bool locked_to_single_user,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     DecryptCallback callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
@@ -78,7 +80,8 @@ void ChallengeCredentialsHelperImpl::Decrypt(
   CancelRunningOperation();
   key_challenge_service_ = std::move(key_challenge_service);
   StartDecryptOperation(account_id, public_key_info, keyset_challenge_info,
-                        1 /* attempt_number */, std::move(callback));
+                        locked_to_single_user, 1 /* attempt_number */,
+                        std::move(callback));
 }
 
 void ChallengeCredentialsHelperImpl::VerifyKey(
@@ -101,16 +104,17 @@ void ChallengeCredentialsHelperImpl::StartDecryptOperation(
     const std::string& account_id,
     const structure::ChallengePublicKeyInfo& public_key_info,
     const structure::SignatureChallengeInfo& keyset_challenge_info,
+    bool locked_to_single_user,
     int attempt_number,
     DecryptCallback callback) {
   DCHECK(!operation_);
   operation_ = std::make_unique<ChallengeCredentialsDecryptOperation>(
       key_challenge_service_.get(), tpm_, delegate_blob_, delegate_secret_,
-      account_id, public_key_info, keyset_challenge_info,
+      account_id, public_key_info, keyset_challenge_info, locked_to_single_user,
       base::BindOnce(&ChallengeCredentialsHelperImpl::OnDecryptCompleted,
                      base::Unretained(this), account_id, public_key_info,
-                     keyset_challenge_info, attempt_number,
-                     std::move(callback)));
+                     keyset_challenge_info, locked_to_single_user,
+                     attempt_number, std::move(callback)));
   operation_->Start();
 }
 
@@ -142,6 +146,7 @@ void ChallengeCredentialsHelperImpl::OnDecryptCompleted(
     const std::string& account_id,
     const structure::ChallengePublicKeyInfo& public_key_info,
     const structure::SignatureChallengeInfo& keyset_challenge_info,
+    bool locked_to_single_user,
     int attempt_number,
     DecryptCallback original_callback,
     TPMErrorBase error,
@@ -154,7 +159,8 @@ void ChallengeCredentialsHelperImpl::OnDecryptCompleted(
     LOG(WARNING) << "Retrying the decryption operation after transient error: "
                  << *error;
     StartDecryptOperation(account_id, public_key_info, keyset_challenge_info,
-                          attempt_number + 1, std::move(original_callback));
+                          locked_to_single_user, attempt_number + 1,
+                          std::move(original_callback));
   } else {
     if (error) {
       LOG(ERROR) << "Decryption completed with error: " << *error;

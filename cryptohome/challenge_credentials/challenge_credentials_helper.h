@@ -75,18 +75,16 @@ class ChallengeCredentialsHelper {
   // be stored in the created vault keyset. This operation may involve making
   // challenge request(s) against the specified key.
   //
-  // |pcr_restrictions| is the list of PCR sets; the created credentials will be
-  // protected in a way that decrypting them back is possible iff at least one
-  // of these sets is satisfied. Each PCR value set must be non-empty; pass
-  // empty list of sets in order to have no PCR binding. The used
-  // SignatureSealingBackend implementation may impose constraint on the maximum
-  // allowed number of sets.
+  // |default_pcr_map| and |extended_pcr_map| are the PCR values maps; the
+  // created credentials will be protected in a way that decrypting them back is
+  // possible iff at least one of these maps is satisfied.
   //
   // The result is reported via |callback|.
   virtual void GenerateNew(
       const std::string& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
-      const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
+      const std::map<uint32_t, brillo::Blob>& default_pcr_map,
+      const std::map<uint32_t, brillo::Blob>& extended_pcr_map,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
       GenerateNewCallback callback) = 0;
 
@@ -104,6 +102,7 @@ class ChallengeCredentialsHelper {
       const std::string& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
+      bool locked_to_single_user,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
       DecryptCallback callback) = 0;
 

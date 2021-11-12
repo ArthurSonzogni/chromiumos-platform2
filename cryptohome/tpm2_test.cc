@@ -1638,10 +1638,14 @@ class Tpm2RsaSignatureSecretSealingTest
 
 TEST_P(Tpm2RsaSignatureSecretSealingTest, Seal) {
   const std::string kTrialPcrPolicyDigest(SHA256_DIGEST_LENGTH, '\1');
+  const std::string kTrialExtPcrPolicyDigest(SHA256_DIGEST_LENGTH, '\3');
   const std::string kTrialPolicyDigest(SHA256_DIGEST_LENGTH, '\2');
-  std::map<uint32_t, Blob> pcr_values;
+  std::map<uint32_t, brillo::Blob> pcr_values;
   for (uint32_t pcr_index : kPcrIndexes)
-    pcr_values[pcr_index] = BlobFromString("fake PCR");
+    pcr_values[pcr_index] = brillo::BlobFromString("fake PCR");
+  std::map<uint32_t, brillo::Blob> ext_pcr_values;
+  for (uint32_t pcr_index : kPcrIndexes)
+    ext_pcr_values[pcr_index] = brillo::BlobFromString("fake ext PCR");
 
   // Set up mock expectations for the secret creation.
   EXPECT_CALL(mock_tpm_utility_,
@@ -1659,6 +1663,11 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Seal) {
         .WillOnce(Return(TPM_RC_SUCCESS));
     EXPECT_CALL(mock_trial_session_, GetDigest(_))
         .WillOnce(DoAll(SetArgPointee<0>(kTrialPcrPolicyDigest),
+                        Return(TPM_RC_SUCCESS)));
+    EXPECT_CALL(mock_trial_session_, PolicyPCR(_))
+        .WillOnce(Return(TPM_RC_SUCCESS));
+    EXPECT_CALL(mock_trial_session_, GetDigest(_))
+        .WillOnce(DoAll(SetArgPointee<0>(kTrialExtPcrPolicyDigest),
                         Return(TPM_RC_SUCCESS)));
     EXPECT_CALL(
         mock_trial_session_,
@@ -1682,9 +1691,9 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Seal) {
   structure::SignatureSealedData sealed_data;
   EXPECT_EQ(nullptr,
             signature_sealing_backend()->CreateSealedSecret(
-                key_spki_der_, supported_algorithms(), {pcr_values},
-                Blob() /* delegate_blob */, Blob() /* delegate_secret */,
-                &secret_value, &sealed_data));
+                key_spki_der_, supported_algorithms(), pcr_values,
+                ext_pcr_values, Blob() /* delegate_blob */,
+                Blob() /* delegate_secret */, &secret_value, &sealed_data));
   EXPECT_EQ(secret_value, SecureBlob(kSecretValue));
   ASSERT_TRUE(
       absl::holds_alternative<structure::Tpm2PolicySignedData>(sealed_data));
@@ -1716,31 +1725,20 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
   sealed_data_contents.srk_wrapped_secret = BlobFromString(kSealedSecretValue);
   sealed_data_contents.scheme = chosen_scheme();
   sealed_data_contents.hash_alg = chosen_hash_alg();
-  structure::Tpm2PcrRestriction pcr_restriction;
-  for (uint32_t pcr_index : kPcrIndexes) {
-    structure::PcrValue pcr_values_item;
-    pcr_values_item.pcr_index = pcr_index;
-    pcr_values_item.pcr_value = BlobFromString(kPcrValue);
-    pcr_restriction.pcr_values.push_back(pcr_values_item);
-  }
-  pcr_restriction.policy_digest =
+  sealed_data_contents.default_pcr_policy_digest =
       BlobFromString(std::string(SHA256_DIGEST_LENGTH, '\1'));
-  sealed_data_contents.pcr_restrictions.push_back(pcr_restriction);
+  sealed_data_contents.extended_pcr_policy_digest =
+      BlobFromString(std::string(SHA256_DIGEST_LENGTH, '\1'));
   sealed_data = sealed_data_contents;
 
   // Set up mock expectations for the challenge generation.
-  for (uint32_t pcr_index : kPcrIndexes) {
-    EXPECT_CALL(mock_tpm_utility_, ReadPCR(pcr_index, _))
-        .WillOnce(DoAll(SetArgPointee<1>(kPcrValue), Return(TPM_RC_SUCCESS)));
-  }
   EXPECT_CALL(mock_policy_session_, GetDelegate())
       .WillRepeatedly(Return(&mock_authorization_delegate_));
   EXPECT_CALL(mock_authorization_delegate_, GetTpmNonce(_))
       .WillOnce(DoAll(SetArgPointee<0>(kTpmNonce), Return(true)));
   std::map<uint32_t, std::string> pcr_map;
-  for (int pcr_index : kPcrIndexes) {
-    pcr_map.emplace(pcr_index, std::string());
-  }
+  pcr_map.emplace(kTpmSingleUserPCR, std::string());
+
   EXPECT_CALL(mock_policy_session_, PolicyPCR(pcr_map))
       .WillOnce(Return(TPM_RC_SUCCESS));
 
@@ -1748,8 +1746,9 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
   std::unique_ptr<SignatureSealingBackend::UnsealingSession> unsealing_session;
   EXPECT_EQ(nullptr, signature_sealing_backend()->CreateUnsealingSession(
                          sealed_data, key_spki_der_, supported_algorithms(),
-                         Blob() /* delegate_blob */,
-                         Blob() /* delegate_secret */, &unsealing_session));
+                         /*pcr_set=*/std::set<uint32_t>({kTpmSingleUserPCR}),
+                         /*delegate_blob=*/Blob(), /*delegate_secret=*/Blob(),
+                         /*locked_to_single_user=*/false, &unsealing_session));
   ASSERT_TRUE(unsealing_session);
   EXPECT_EQ(chosen_algorithm(), unsealing_session->GetChallengeAlgorithm());
   EXPECT_EQ(kChallengeValue,

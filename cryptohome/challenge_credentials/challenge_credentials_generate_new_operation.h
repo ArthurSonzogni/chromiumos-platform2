@@ -46,12 +46,9 @@ class ChallengeCredentialsGenerateNewOperation final
   // created instance.
   // |public_key_info| describes the challenge-response public key information.
   //
-  // |pcr_restrictions| is the list of PCR sets; the created credentials will be
-  // protected in a way that decrypting them back is possible iff at least one
-  // of these sets is satisfied. Each PCR value set must be non-empty; pass
-  // empty list of sets in order to have no PCR binding. The used
-  // SignatureSealingBackend implementation may impose constraint on the maximum
-  // allowed number of sets.
+  // |default_pcr_map| and |extended_pcr_map| are the PCR values maps; the
+  // created credentials will be protected in a way that decrypting them back is
+  // possible iff at least one of these maps is satisfied.
   //
   // The result is reported via |completion_callback|.
   ChallengeCredentialsGenerateNewOperation(
@@ -61,7 +58,8 @@ class ChallengeCredentialsGenerateNewOperation final
       const brillo::Blob& delegate_secret,
       const std::string& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
-      const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
+      const std::map<uint32_t, brillo::Blob>& default_pcr_map,
+      const std::map<uint32_t, brillo::Blob>& extended_pcr_map,
       CompletionCallback completion_callback);
 
   ~ChallengeCredentialsGenerateNewOperation() override;
@@ -99,7 +97,8 @@ class ChallengeCredentialsGenerateNewOperation final
   const brillo::Blob delegate_secret_;
   const std::string account_id_;
   const structure::ChallengePublicKeyInfo public_key_info_;
-  const std::vector<std::map<uint32_t, brillo::Blob>> pcr_restrictions_;
+  const std::map<uint32_t, brillo::Blob> default_pcr_map_;
+  const std::map<uint32_t, brillo::Blob> extended_pcr_map_;
   CompletionCallback completion_callback_;
   SignatureSealingBackend* const signature_sealing_backend_;
   brillo::Blob salt_;

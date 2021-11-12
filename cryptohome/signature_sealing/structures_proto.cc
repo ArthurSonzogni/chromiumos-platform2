@@ -2,10 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <utility>
+
 #include <absl/types/variant.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/signature_sealing/structures_proto.h"
+#include "cryptohome/tpm.h"
 
 using brillo::BlobFromString;
 using brillo::BlobToString;
@@ -15,38 +18,6 @@ namespace proto {
 
 // We don't need to export these functions.
 namespace {
-SignatureSealedData_PcrValue ToProto(const structure::PcrValue& obj) {
-  SignatureSealedData_PcrValue result;
-  result.set_pcr_index(obj.pcr_index);
-  result.set_pcr_value(BlobToString(obj.pcr_value));
-  return result;
-}
-
-structure::PcrValue FromProto(const SignatureSealedData_PcrValue& obj) {
-  structure::PcrValue result;
-  result.pcr_index = obj.pcr_index();
-  result.pcr_value = BlobFromString(obj.pcr_value());
-  return result;
-}
-
-SignatureSealedData_Tpm2PcrRestriction ToProto(
-    const structure::Tpm2PcrRestriction& obj) {
-  SignatureSealedData_Tpm2PcrRestriction result;
-  for (const auto& content : obj.pcr_values)
-    *result.add_pcr_values() = ToProto(content);
-  result.set_policy_digest(BlobToString(obj.policy_digest));
-  return result;
-}
-
-structure::Tpm2PcrRestriction FromProto(
-    const SignatureSealedData_Tpm2PcrRestriction& obj) {
-  structure::Tpm2PcrRestriction result;
-  for (const auto& content : obj.pcr_values())
-    result.pcr_values.push_back(FromProto(content));
-  result.policy_digest = BlobFromString(obj.policy_digest());
-  return result;
-}
-
 SignatureSealedData_Tpm2PolicySignedData ToProto(
     const structure::Tpm2PolicySignedData& obj) {
   SignatureSealedData_Tpm2PolicySignedData result;
@@ -54,8 +25,31 @@ SignatureSealedData_Tpm2PolicySignedData ToProto(
   result.set_srk_wrapped_secret(BlobToString(obj.srk_wrapped_secret));
   result.set_scheme(obj.scheme);
   result.set_hash_alg(obj.hash_alg);
-  for (const auto& content : obj.pcr_restrictions)
-    *result.add_pcr_restrictions() = ToProto(content);
+
+  // Special conversion for backwards-compatibility.
+  // Note: The order of items added here is important, as it must match the
+  // reading order in FromProto() and must never change due to backwards
+  // compatibility.
+  SignatureSealedData_PcrValue pcr_value;
+  // Ignoring the exact PCR value, because we don't need it.
+  pcr_value.set_pcr_index(kTpmSingleUserPCR);
+
+  SignatureSealedData_Tpm2PcrRestriction restriction;
+  restriction.set_policy_digest(BlobToString(obj.default_pcr_policy_digest));
+
+  *restriction.add_pcr_values() = std::move(pcr_value);
+  *result.add_pcr_restrictions() = std::move(restriction);
+
+  pcr_value = SignatureSealedData_PcrValue();
+  // Ignoring the exact PCR value, because we don't need it.
+  pcr_value.set_pcr_index(kTpmSingleUserPCR);
+
+  restriction = SignatureSealedData_Tpm2PcrRestriction();
+  restriction.set_policy_digest(BlobToString(obj.extended_pcr_policy_digest));
+
+  *restriction.add_pcr_values() = std::move(pcr_value);
+  *result.add_pcr_restrictions() = std::move(restriction);
+
   return result;
 }
 
@@ -66,26 +60,17 @@ structure::Tpm2PolicySignedData FromProto(
   result.srk_wrapped_secret = BlobFromString(obj.srk_wrapped_secret());
   result.scheme = obj.scheme();
   result.hash_alg = obj.hash_alg();
-  for (const auto& content : obj.pcr_restrictions())
-    result.pcr_restrictions.push_back(FromProto(content));
-  return result;
-}
 
-SignatureSealedData_Tpm12PcrBoundItem ToProto(
-    const structure::Tpm12PcrBoundItem& obj) {
-  SignatureSealedData_Tpm12PcrBoundItem result;
-  for (const auto& content : obj.pcr_values)
-    *result.add_pcr_values() = ToProto(content);
-  result.set_bound_secret(BlobToString(obj.bound_secret));
-  return result;
-}
+  // Special conversion for backwards-compatibility.
+  if (obj.pcr_restrictions_size() == 2) {
+    result.default_pcr_policy_digest =
+        BlobFromString(obj.pcr_restrictions(0).policy_digest());
+    result.extended_pcr_policy_digest =
+        BlobFromString(obj.pcr_restrictions(1).policy_digest());
+  } else {
+    LOG(WARNING) << "Unknown PCR restrictions size from protobuf.";
+  }
 
-structure::Tpm12PcrBoundItem FromProto(
-    const SignatureSealedData_Tpm12PcrBoundItem& obj) {
-  structure::Tpm12PcrBoundItem result;
-  for (const auto& content : obj.pcr_values())
-    result.pcr_values.push_back(FromProto(content));
-  result.bound_secret = BlobFromString(obj.bound_secret());
   return result;
 }
 
@@ -96,8 +81,31 @@ SignatureSealedData_Tpm12CertifiedMigratableKeyData ToProto(
   result.set_srk_wrapped_cmk(BlobToString(obj.srk_wrapped_cmk));
   result.set_cmk_pubkey(BlobToString(obj.cmk_pubkey));
   result.set_cmk_wrapped_auth_data(BlobToString(obj.cmk_wrapped_auth_data));
-  for (const auto& content : obj.pcr_bound_items)
-    *result.add_pcr_bound_items() = ToProto(content);
+
+  // Special conversion for backwards-compatibility.
+  // Note: The order of items added here is important, as it must match the
+  // reading order in FromProto() and must never change due to backwards
+  // compatibility.
+  SignatureSealedData_PcrValue pcr_value;
+  // Ignoring the exact PCR value, because we don't need it.
+  pcr_value.set_pcr_index(kTpmSingleUserPCR);
+
+  SignatureSealedData_Tpm12PcrBoundItem bound_item;
+  bound_item.set_bound_secret(BlobToString(obj.default_pcr_bound_secret));
+
+  *bound_item.add_pcr_values() = std::move(pcr_value);
+  *result.add_pcr_bound_items() = std::move(bound_item);
+
+  pcr_value = SignatureSealedData_PcrValue();
+  // Ignoring the exact PCR value, because we don't need it.
+  pcr_value.set_pcr_index(kTpmSingleUserPCR);
+
+  bound_item = SignatureSealedData_Tpm12PcrBoundItem();
+  bound_item.set_bound_secret(BlobToString(obj.extended_pcr_bound_secret));
+
+  *bound_item.add_pcr_values() = std::move(pcr_value);
+  *result.add_pcr_bound_items() = std::move(bound_item);
+
   return result;
 }
 
@@ -108,8 +116,17 @@ structure::Tpm12CertifiedMigratableKeyData FromProto(
   result.srk_wrapped_cmk = BlobFromString(obj.srk_wrapped_cmk());
   result.cmk_pubkey = BlobFromString(obj.cmk_pubkey());
   result.cmk_wrapped_auth_data = BlobFromString(obj.cmk_wrapped_auth_data());
-  for (const auto& content : obj.pcr_bound_items())
-    result.pcr_bound_items.push_back(FromProto(content));
+
+  // Special conversion for backwards-compatibility.
+  if (obj.pcr_bound_items_size() == 2) {
+    result.default_pcr_bound_secret =
+        BlobFromString(obj.pcr_bound_items(0).bound_secret());
+    result.extended_pcr_bound_secret =
+        BlobFromString(obj.pcr_bound_items(1).bound_secret());
+  } else {
+    LOG(WARNING) << "Unknown PCR bound items size from protobuf.";
+  }
+
   return result;
 }
 }  // namespace

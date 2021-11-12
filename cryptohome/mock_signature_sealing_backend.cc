@@ -15,7 +15,7 @@ using testing::_;
 namespace cryptohome {
 
 MockSignatureSealingBackend::MockSignatureSealingBackend() {
-  ON_CALL(*this, CreateUnsealingSession(_, _, _, _, _, _))
+  ON_CALL(*this, CreateUnsealingSession(_, _, _, _, _, _, _, _))
       .WillByDefault(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 }
 

@@ -84,6 +84,10 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
         enabled ? &sealing_backend_ : nullptr;
     EXPECT_CALL(tpm_, GetSignatureSealingBackend())
         .WillRepeatedly(Return(return_value));
+    EXPECT_CALL(tpm_, GetPcrMap("", false))
+        .WillRepeatedly(Return(kDefaultPcrMap));
+    EXPECT_CALL(tpm_, GetPcrMap("", true))
+        .WillRepeatedly(Return(kExtendedPcrMap));
   }
 
   // Starts the asynchronous GenerateNew() operation.  The result, once the
@@ -96,7 +100,7 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
     const structure::ChallengePublicKeyInfo public_key_info =
         MakeChallengePublicKeyInfo(kPublicKeySpkiDer, key_algorithms);
     challenge_credentials_helper_.GenerateNew(
-        kUserEmail, public_key_info, kPcrRestrictions,
+        kUserEmail, public_key_info, kDefaultPcrMap, kExtendedPcrMap,
         std::move(challenge_service_),
         MakeChallengeCredentialsGenerateNewResultWriter(generate_new_result));
   }
@@ -116,7 +120,7 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
                                     salt_challenge_algorithm);
     challenge_credentials_helper_.Decrypt(
         kUserEmail, public_key_info, keyset_challenge_info,
-        std::move(challenge_service_),
+        /*locked_to_single_user=*/false, std::move(challenge_service_),
         MakeChallengeCredentialsDecryptResultWriter(decrypt_result));
   }
 
@@ -150,7 +154,8 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
             kLocalAlgorithm /* salt_challenge_algorithm */);
     challenge_credentials_helper_.Decrypt(
         kUserEmail, public_key_info, keyset_challenge_info,
-        std::move(mock_key_challenge_service), base::DoNothing());
+        /*locked_to_single_user=*/false, std::move(mock_key_challenge_service),
+        base::DoNothing());
   }
 
   // Assert that the given GenerateNew() operation result is a valid success
@@ -177,7 +182,8 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
         std::make_unique<SignatureSealedCreationMocker>(&sealing_backend_);
     mocker->set_public_key_spki_der(kPublicKeySpkiDer);
     mocker->set_key_algorithms(key_algorithms);
-    mocker->set_pcr_restrictions(kPcrRestrictions);
+    mocker->set_default_pcr_map(kDefaultPcrMap);
+    mocker->set_extended_pcr_map(kExtendedPcrMap);
     mocker->set_delegate_blob(kDelegateBlob);
     mocker->set_delegate_secret(kDelegateSecret);
     mocker->set_secret_value(kTpmProtectedSecret);
@@ -303,9 +309,10 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
   // Fake PCR restrictions: a list of maps from PCR indexes to PCR values. It's
   // supplied to the GenerateNew() operation. Then it's verified to be passed
   // into the SignatureSealingBackend::CreateSealedSecret() method.
-  const std::vector<std::map<uint32_t, Blob>> kPcrRestrictions{
-      std::map<uint32_t, Blob>{{0, {9, 9, 9}}, {10, {11, 11, 11}}},
-      std::map<uint32_t, Blob>{{0, {9, 9, 9}}, {10, {12, 12, 12}}}};
+  const std::map<uint32_t, brillo::Blob> kDefaultPcrMap{{0, {9, 9, 9}},
+                                                        {10, {11, 11, 11}}};
+  const std::map<uint32_t, brillo::Blob> kExtendedPcrMap{{0, {9, 9, 9}},
+                                                         {10, {12, 12, 12}}};
 
   // Constants which are injected as fake data into intermediate steps of the
   // ChallengeCredentialsHelperImpl operations:

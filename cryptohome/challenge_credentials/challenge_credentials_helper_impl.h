@@ -46,15 +46,16 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
   ~ChallengeCredentialsHelperImpl() override;
 
   // ChallengeCredentialsHelper:
-  void GenerateNew(
-      const std::string& account_id,
-      const structure::ChallengePublicKeyInfo& public_key_info,
-      const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
-      std::unique_ptr<KeyChallengeService> key_challenge_service,
-      GenerateNewCallback callback) override;
+  void GenerateNew(const std::string& account_id,
+                   const structure::ChallengePublicKeyInfo& public_key_info,
+                   const std::map<uint32_t, brillo::Blob>& default_pcr_map,
+                   const std::map<uint32_t, brillo::Blob>& extended_pcr_map,
+                   std::unique_ptr<KeyChallengeService> key_challenge_service,
+                   GenerateNewCallback callback) override;
   void Decrypt(const std::string& account_id,
                const structure::ChallengePublicKeyInfo& public_key_info,
                const structure::SignatureChallengeInfo& keyset_challenge_info,
+               bool locked_to_single_user,
                std::unique_ptr<KeyChallengeService> key_challenge_service,
                DecryptCallback callback) override;
   void VerifyKey(const std::string& account_id,
@@ -67,6 +68,7 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
       const std::string& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
+      bool locked_to_single_user,
       int attempt_number,
       DecryptCallback callback);
 
@@ -89,6 +91,7 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
       const std::string& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
+      bool locked_to_single_user,
       int attempt_number,
       DecryptCallback original_callback,
       hwsec::error::TPMErrorBase retry_action,

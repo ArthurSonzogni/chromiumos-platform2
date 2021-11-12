@@ -54,7 +54,8 @@ ChallengeCredentialsGenerateNewOperation::
         const brillo::Blob& delegate_secret,
         const std::string& account_id,
         const structure::ChallengePublicKeyInfo& public_key_info,
-        const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
+        const std::map<uint32_t, brillo::Blob>& default_pcr_map,
+        const std::map<uint32_t, brillo::Blob>& extended_pcr_map,
         CompletionCallback completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
       tpm_(tpm),
@@ -62,7 +63,8 @@ ChallengeCredentialsGenerateNewOperation::
       delegate_secret_(delegate_secret),
       account_id_(account_id),
       public_key_info_(public_key_info),
-      pcr_restrictions_(pcr_restrictions),
+      default_pcr_map_(default_pcr_map),
+      extended_pcr_map_(extended_pcr_map),
       completion_callback_(std::move(completion_callback)),
       signature_sealing_backend_(tpm_->GetSignatureSealingBackend()) {}
 
@@ -151,9 +153,9 @@ bool ChallengeCredentialsGenerateNewOperation::CreateTpmProtectedSecret() {
   SecureBlob local_tpm_protected_secret_value;
   if (TPMErrorBase err = signature_sealing_backend_->CreateSealedSecret(
           public_key_info_.public_key_spki_der,
-          public_key_info_.signature_algorithm, pcr_restrictions_,
-          delegate_blob_, delegate_secret_, &local_tpm_protected_secret_value,
-          &tpm_sealed_secret_data_)) {
+          public_key_info_.signature_algorithm, default_pcr_map_,
+          extended_pcr_map_, delegate_blob_, delegate_secret_,
+          &local_tpm_protected_secret_value, &tpm_sealed_secret_data_)) {
     LOG(ERROR) << "Failed to create TPM-protected secret: " << *err;
     return false;
   }

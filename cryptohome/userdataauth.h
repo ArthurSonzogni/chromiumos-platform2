@@ -762,12 +762,6 @@ class UserDataAuth {
   scoped_refptr<UserSession> GetOrCreateUserSession(
       const std::string& username);
 
-  // Builds the PCR restrictions to be applied to the challenge-protected vault
-  // keyset.
-  void GetChallengeCredentialsPcrRestrictions(
-      const std::string& obfuscated_username,
-      std::vector<std::map<uint32_t, brillo::Blob>>* pcr_restrictions);
-
   // Safely removes the reference to the UserSession from. This method returns
   // true if as a result of the operation there is no reference to a session of
   // the given user (including if it was absent in the first place).
