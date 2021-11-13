@@ -9,6 +9,9 @@ group("all") {
   if (use.test) {
     deps += [ ":chromeos_dbus_bindings_unittest" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":chromeos_dbus_bindings_signature_fuzzer" ]
+  }
 }
 
 pkg_config("target_default_pkg_deps") {
@@ -84,5 +87,16 @@ if (use.test) {
       ":libchromeos-dbus-bindings",
       "//common-mk/testrunner:testrunner",
     ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("chromeos_dbus_bindings_signature_fuzzer") {
+    sources = [ "dbus_signature_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    deps = [ ":libchromeos-dbus-bindings" ]
   }
 }
