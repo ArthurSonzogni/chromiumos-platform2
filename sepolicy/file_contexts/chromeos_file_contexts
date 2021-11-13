@@ -357,6 +357,7 @@ has_arc(`
 /run/dbus.pid                   u:object_r:cros_dbus_pid_file:s0
 /run/dbus/system_bus_socket     u:object_r:cros_system_bus_socket:s0
 /run/dhcpcd                     u:object_r:cros_run_dhcpcd:s0
+/run/fuse                       u:object_r:cros_run_fuse:s0
 /run/ipsec                      u:object_r:cros_run_ipsec:s0
 /run/l2tpipsec_vpn              u:object_r:cros_run_l2tpipsec_vpn:s0
 /run/lock                       u:object_r:cros_run_lock:s0
@@ -418,6 +419,10 @@ has_arc(`
 (/usr)?/lib(/.*)?                      u:object_r:cros_system_file:s0
 /lib/modules(/.*)?                     u:object_r:cros_kernel_modules_file:s0
 /lib/modules/.*\.ko                    u:object_r:cros_kernel_modules_ko_file:s0
+
+# /sys
+# Needed for tmpfiles.d to chgrp /sys/fs/cgroup/*
+/sys/fs/cgroup/.*               u:object_r:cgroup:s0
 
 # /mnt
 /mnt/stateful_partition                      u:object_r:cros_stateful_partition:s0
