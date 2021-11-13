@@ -18,14 +18,10 @@ FakeCryptohomeClient::FakeCryptohomeClient(
     const base::FilePath& working_dir_path)
     : CryptohomeClient(), working_dir_path_(working_dir_path) {}
 
-bool FakeCryptohomeClient::HasFwmp() {
-  return IsEnrolled();
-}
-
-bool FakeCryptohomeClient::IsEnrolled() {
-  const base::FilePath is_enrolled_path =
-      working_dir_path_.AppendASCII(kIsEnrolledFilePath);
-  return base::PathExists(is_enrolled_path);
+bool FakeCryptohomeClient::IsCcdBlocked() {
+  const base::FilePath block_ccd_file_path =
+      working_dir_path_.AppendASCII(kBlockCcdFilePath);
+  return base::PathExists(block_ccd_file_path);
 }
 
 }  // namespace fake

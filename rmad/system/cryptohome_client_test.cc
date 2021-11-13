@@ -33,9 +33,9 @@ class CryptohomeClientTest : public testing::Test {
   ~CryptohomeClientTest() override = default;
 };
 
-TEST_F(CryptohomeClientTest, Fwmp_Exist_Enrolled) {
+TEST_F(CryptohomeClientTest, Fwmp_Exist_CcdBlocked) {
   user_data_auth::FirmwareManagementParameters fwmp;
-  fwmp.set_flags(0x1);
+  fwmp.set_flags(0x40);
   user_data_auth::GetFirmwareManagementParametersReply reply;
   reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   *reply.mutable_fwmp() = fwmp;
@@ -45,15 +45,13 @@ TEST_F(CryptohomeClientTest, Fwmp_Exist_Enrolled) {
   EXPECT_CALL(*mock_cryptohome_proxy,
               GetFirmwareManagementParameters(_, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(reply), Return(true)));
-
   auto cryptohome_client =
       std::make_unique<CryptohomeClientImpl>(std::move(mock_cryptohome_proxy));
 
-  EXPECT_TRUE(cryptohome_client->HasFwmp());
-  EXPECT_TRUE(cryptohome_client->IsEnrolled());
+  EXPECT_TRUE(cryptohome_client->IsCcdBlocked());
 }
 
-TEST_F(CryptohomeClientTest, Fwmp_Exist_Unenrolled) {
+TEST_F(CryptohomeClientTest, Fwmp_Exist_CcdNotBlocked) {
   user_data_auth::FirmwareManagementParameters fwmp;
   fwmp.set_flags(0x0);
   user_data_auth::GetFirmwareManagementParametersReply reply;
@@ -65,12 +63,10 @@ TEST_F(CryptohomeClientTest, Fwmp_Exist_Unenrolled) {
   EXPECT_CALL(*mock_cryptohome_proxy,
               GetFirmwareManagementParameters(_, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(reply), Return(true)));
-
   auto cryptohome_client =
       std::make_unique<CryptohomeClientImpl>(std::move(mock_cryptohome_proxy));
 
-  EXPECT_TRUE(cryptohome_client->HasFwmp());
-  EXPECT_FALSE(cryptohome_client->IsEnrolled());
+  EXPECT_FALSE(cryptohome_client->IsCcdBlocked());
 }
 
 TEST_F(CryptohomeClientTest, Fwmp_Nonexist) {
@@ -87,8 +83,7 @@ TEST_F(CryptohomeClientTest, Fwmp_Nonexist) {
   auto cryptohome_client =
       std::make_unique<CryptohomeClientImpl>(std::move(mock_cryptohome_proxy));
 
-  EXPECT_FALSE(cryptohome_client->HasFwmp());
-  EXPECT_FALSE(cryptohome_client->IsEnrolled());
+  EXPECT_FALSE(cryptohome_client->IsCcdBlocked());
 }
 
 TEST_F(CryptohomeClientTest, Proxy_Failed) {
@@ -101,8 +96,7 @@ TEST_F(CryptohomeClientTest, Proxy_Failed) {
   auto cryptohome_client =
       std::make_unique<CryptohomeClientImpl>(std::move(mock_cryptohome_proxy));
 
-  EXPECT_FALSE(cryptohome_client->HasFwmp());
-  EXPECT_FALSE(cryptohome_client->IsEnrolled());
+  EXPECT_FALSE(cryptohome_client->IsCcdBlocked());
 }
 
 namespace fake {
@@ -113,10 +107,10 @@ class FakeCryptohomeClientTest : public testing::Test {
   FakeCryptohomeClientTest() = default;
   ~FakeCryptohomeClientTest() override = default;
 
-  void SetIsEnrolled() {
-    const base::FilePath is_enrolled_file_path =
-        temp_dir_.GetPath().AppendASCII(kIsEnrolledFilePath);
-    brillo::TouchFile(is_enrolled_file_path);
+  void SetBlockCcd() {
+    const base::FilePath block_ccd_file_path =
+        temp_dir_.GetPath().AppendASCII(kBlockCcdFilePath);
+    brillo::TouchFile(block_ccd_file_path);
   }
 
  protected:
@@ -130,22 +124,13 @@ class FakeCryptohomeClientTest : public testing::Test {
   std::unique_ptr<FakeCryptohomeClient> fake_cryptohome_client_;
 };
 
-TEST_F(FakeCryptohomeClientTest, IsEnrolled_Enrolled) {
-  SetIsEnrolled();
-  EXPECT_TRUE(fake_cryptohome_client_->IsEnrolled());
+TEST_F(FakeCryptohomeClientTest, CcdBlocked) {
+  SetBlockCcd();
+  EXPECT_TRUE(fake_cryptohome_client_->IsCcdBlocked());
 }
 
-TEST_F(FakeCryptohomeClientTest, IsEnrolled_NotEnrolled) {
-  EXPECT_FALSE(fake_cryptohome_client_->IsEnrolled());
-}
-
-TEST_F(FakeCryptohomeClientTest, HasFwmp_Enrolled) {
-  SetIsEnrolled();
-  EXPECT_TRUE(fake_cryptohome_client_->HasFwmp());
-}
-
-TEST_F(FakeCryptohomeClientTest, HasFwmp_NotEnrolled) {
-  EXPECT_FALSE(fake_cryptohome_client_->HasFwmp());
+TEST_F(FakeCryptohomeClientTest, CcdNotBlocked) {
+  EXPECT_FALSE(fake_cryptohome_client_->IsCcdBlocked());
 }
 
 }  // namespace fake

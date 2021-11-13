@@ -29,8 +29,7 @@ class CryptohomeClientImpl : public CryptohomeClient {
 
   ~CryptohomeClientImpl() override = default;
 
-  bool HasFwmp() override;
-  bool IsEnrolled() override;
+  bool IsCcdBlocked() override;
 
  private:
   bool GetFwmp(uint32_t* flags);

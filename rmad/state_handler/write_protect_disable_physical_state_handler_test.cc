@@ -44,7 +44,7 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
       const std::vector<int> wp_status_list,
       bool factory_mode_enabled,
       bool enable_factory_mode_success,
-      bool is_enrolled,
+      bool is_ccd_blocked,
       bool* factory_mode_toggled = nullptr,
       bool* reboot_toggled = nullptr) {
     // Mock |Cr50Utils|, |CrosSystemUtils|, |CryptohomeClient| and
@@ -77,8 +77,8 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
 
     auto mock_cryptohome_client =
         std::make_unique<NiceMock<MockCryptohomeClient>>();
-    ON_CALL(*mock_cryptohome_client, IsEnrolled())
-        .WillByDefault(Return(is_enrolled));
+    ON_CALL(*mock_cryptohome_client, IsCcdBlocked())
+        .WillByDefault(Return(is_ccd_blocked));
 
     auto handler =
         base::MakeRefCounted<WriteProtectDisablePhysicalStateHandler>(
@@ -177,7 +177,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
-       GetNextStateCase_Success_FactoryModeDisabled_NotEnrolled_EnableSuccess) {
+       GetNextStateCase_FactoryModeDisabled_CcdNotBlocked_EnableSuccess) {
   bool factory_mode_toggled = false, reboot_toggled = false;
   auto handler = CreateStateHandler({1, 1, 0}, false, true, false,
                                     &factory_mode_toggled, &reboot_toggled);
@@ -211,7 +211,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
-       GetNextStateCase_Success_FactoryModeDisabled_NotEnrolled_EnableFailed) {
+       GetNextStateCase_FactoryModeDisabled_CcdNotBlocked_EnableFailed) {
   bool factory_mode_toggled = false, reboot_toggled = false;
   auto handler = CreateStateHandler({1, 1, 0}, false, false, false,
                                     &factory_mode_toggled, &reboot_toggled);
@@ -245,7 +245,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
-       GetNextStateCase_Success_FactoryModeDisabled_Enrolled) {
+       GetNextStateCase_Success_FactoryModeDisabled_CcdBlocked) {
   bool factory_mode_toggled = false, reboot_toggled = false;
   auto handler = CreateStateHandler({1, 1, 0}, false, false, true,
                                     &factory_mode_toggled, &reboot_toggled);

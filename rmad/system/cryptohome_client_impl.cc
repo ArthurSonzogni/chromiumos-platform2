@@ -27,16 +27,13 @@ CryptohomeClientImpl::CryptohomeClientImpl(
         install_attributes_proxy)
     : install_attributes_proxy_(std::move(install_attributes_proxy)) {}
 
-bool CryptohomeClientImpl::HasFwmp() {
-  return GetFwmp(nullptr);
-}
-
-bool CryptohomeClientImpl::IsEnrolled() {
+bool CryptohomeClientImpl::IsCcdBlocked() {
   uint32_t fwmp_flags;
   if (!GetFwmp(&fwmp_flags)) {
     return false;
   }
-  return (fwmp_flags & cryptohome::DEVELOPER_DISABLE_BOOT) != 0;
+  return (fwmp_flags &
+          cryptohome::DEVELOPER_DISABLE_CASE_CLOSED_DEBUGGING_UNLOCK) != 0;
 }
 
 bool CryptohomeClientImpl::GetFwmp(uint32_t* flags) {

@@ -18,8 +18,7 @@ class MockCryptohomeClient : public CryptohomeClient {
   MockCryptohomeClient& operator=(const MockCryptohomeClient&) = delete;
   ~MockCryptohomeClient() override = default;
 
-  MOCK_METHOD(bool, HasFwmp, (), (override));
-  MOCK_METHOD(bool, IsEnrolled, (), (override));
+  MOCK_METHOD(bool, IsCcdBlocked, (), (override));
 };
 
 }  // namespace rmad

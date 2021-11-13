@@ -14,8 +14,7 @@ class CryptohomeClient {
   CryptohomeClient() = default;
   virtual ~CryptohomeClient() = default;
 
-  virtual bool HasFwmp() = 0;
-  virtual bool IsEnrolled() = 0;
+  virtual bool IsCcdBlocked() = 0;
 };
 
 }  // namespace rmad

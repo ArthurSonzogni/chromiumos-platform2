@@ -19,8 +19,7 @@ class FakeCryptohomeClient : public CryptohomeClient {
   FakeCryptohomeClient& operator=(const FakeCryptohomeClient&) = delete;
   ~FakeCryptohomeClient() override = default;
 
-  bool HasFwmp() override;
-  bool IsEnrolled() override;
+  bool IsCcdBlocked() override;
 
  private:
   base::FilePath working_dir_path_;

@@ -72,7 +72,8 @@ RmadErrorCode WriteProtectDisablePhysicalStateHandler::InitializeState() {
     auto wp_disable_physical =
         std::make_unique<WriteProtectDisablePhysicalState>();
     // TODO(chenghan): Set the correct value.
-    wp_disable_physical->set_keep_device_open(cryptohome_client_->IsEnrolled());
+    wp_disable_physical->set_keep_device_open(
+        cryptohome_client_->IsCcdBlocked());
     state_.set_allocated_wp_disable_physical(wp_disable_physical.release());
   }
   if (!write_protect_signal_sender_) {
