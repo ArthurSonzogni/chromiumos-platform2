@@ -85,23 +85,15 @@ bool PlatformFeature::IsSupported() const {
   return true;
 }
 
-bool JsonFeatureParser::ParseFile(const base::FilePath& path,
-                                  std::string* err_str) {
-  std::string input;
-
+bool JsonFeatureParser::ParseFileContents(const std::string& file_contents,
+                                          std::string* err_str) {
   if (features_parsed_)
     return true;
 
-  if (!ReadFileToString(path, &input)) {
-    *err_str = "featured: Failed to read conf file: ";
-    *err_str += kPlatformFeaturesPath;
-    return false;
-  }
-
-  VLOG(1) << "JSON file contents: " << input;
+  VLOG(1) << "JSON file contents: " << file_contents;
 
   base::JSONReader::ValueWithError root =
-      base::JSONReader::ReadAndReturnValueWithError(input);
+      base::JSONReader::ReadAndReturnValueWithError(file_contents);
   if (!root.value) {
     *err_str = "featured: Failed to parse conf file: ";
     *err_str += kPlatformFeaturesPath;
@@ -239,7 +231,18 @@ std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
 bool DbusFeaturedService::ParseFeatureList(std::string* err_str) {
   DCHECK(err_str);
 
-  return parser_->ParseFile(base::FilePath(kPlatformFeaturesPath), err_str);
+  if (parser_->AreFeaturesParsed())
+    return true;
+
+  std::string file_contents;
+  if (!ReadFileToString(base::FilePath(kPlatformFeaturesPath),
+                        &file_contents)) {
+    *err_str = "featured: Failed to read conf file: ";
+    *err_str += kPlatformFeaturesPath;
+    return false;
+  }
+
+  return parser_->ParseFileContents(file_contents, err_str);
 }
 
 bool DbusFeaturedService::GetFeatureList(std::string* csv_list,

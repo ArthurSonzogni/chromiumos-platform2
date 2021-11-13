@@ -100,8 +100,10 @@ class PlatformFeature {
 class FeatureParserBase {
  public:
   using FeatureMap = std::unordered_map<std::string, PlatformFeature>;
-  virtual bool ParseFile(const base::FilePath& path, std::string* err_str) = 0;
+  virtual bool ParseFileContents(const std::string& file_contents,
+                                 std::string* err_str) = 0;
   virtual ~FeatureParserBase() = default;
+  bool AreFeaturesParsed() const { return features_parsed_; }
   const FeatureMap* GetFeatureMap() { return &feature_map_; }
 
  protected:
@@ -112,8 +114,9 @@ class FeatureParserBase {
 
 class JsonFeatureParser : public FeatureParserBase {
  public:
-  // Implements the meat of the JSON parsing functionality given a JSON path
-  bool ParseFile(const base::FilePath& path, std::string* err_str) override;
+  // Implements the meat of the JSON parsing functionality given a JSON blob
+  bool ParseFileContents(const std::string& file_contents,
+                         std::string* err_str) override;
 
  private:
   // Helper to build a PlatformFeature object by parsing a JSON feature object

@@ -17,6 +17,9 @@ group("all") {
       ":feature_library_test",
     ]
   }
+  if (use.fuzzer) {
+    deps += [ ":featured_json_feature_parser_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -33,13 +36,19 @@ generate_dbus_adaptors("featured-adaptors") {
   sources = [ "dbus_bindings/org.chromium.featured.xml" ]
 }
 
-executable("featured") {
-  sources = [
-    "main.cc",
-    "service.cc",
-  ]
+static_library("libfeatured") {
+  sources = [ "service.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":featured-adaptors" ]
+}
+
+executable("featured") {
+  sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":featured-adaptors",
+    ":libfeatured",
+  ]
 }
 
 shared_library("libfeatures") {
@@ -78,5 +87,16 @@ if (use.test) {
   executable("c_feature_check_example") {
     sources = [ "c_feature_check_example.c" ]
     deps = [ ":libfeatures_c" ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("featured_json_feature_parser_fuzzer") {
+    sources = [ "json_feature_parser_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    deps = [ ":libfeatured" ]
   }
 }
