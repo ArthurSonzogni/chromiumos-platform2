@@ -16,6 +16,9 @@ group("all") {
       "//croslog/log_rotator:log_rotator_testrunner",
     ]
   }
+  if (use.fuzzer) {
+    deps += [ ":croslog_log_parser_fuzzer" ]
+  }
 }
 
 source_set("log_constants") {
@@ -111,4 +114,15 @@ executable("log-metrics-collector") {
   configs += [ ":target_defaults" ]
   pkg_deps = [ "libmetrics" ]
   deps = [ ":libcroslog_static" ]
+}
+
+if (use.fuzzer) {
+  executable("croslog_log_parser_fuzzer") {
+    sources = [ "log_parser_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    deps = [ ":libcroslog_static" ]
+  }
 }
