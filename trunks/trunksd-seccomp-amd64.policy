@@ -35,6 +35,7 @@ newfstatat: 1
 stat: 1
 lseek: 1
 fcntl: 1
+readlink: 1
 readlinkat: 1
 faccessat: 1
 faccessat2: 1
