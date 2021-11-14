@@ -34,6 +34,7 @@ inline constexpr char kSameOwner[] = "same_owner";
 inline constexpr char kWpDisableSkipped[] = "wp_disable_skipped";
 inline constexpr char kKeepDeviceOpen[] = "keep_device_open";
 inline constexpr char kMlbRepair[] = "mlb_repair";
+inline constexpr char kFirmwareUpdated[] = "firmware_updated";
 inline constexpr char kCalibrationMap[] = "calibration_map";
 inline constexpr char kPowerwashRequest[] = "powerwash_request";
 
