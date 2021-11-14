@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "cros-camera/common_types.h"
+#include "cros-camera/device_config.h"
 #include "cros-camera/timezone.h"
 
 // TODO(crbug.com/661877): Wrap this with kernel version check once the
@@ -21,14 +22,6 @@
 #endif
 
 namespace cros {
-
-// The definition should match camera_metadata_enum_android_lens_facing_t
-// in camera_metadata_tags.h.
-enum class LensFacing {
-  kFront,
-  kBack,
-  kExternal,
-};
 
 struct DeviceInfo {
   int camera_id = -1;

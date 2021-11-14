@@ -51,7 +51,7 @@ executable("media_v4l2_test") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
-    "libcros_config",
+    "libcros_camera",
     "libyuv",
     "re2",
   ]

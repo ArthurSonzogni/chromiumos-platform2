@@ -20,12 +20,12 @@
 #include <base/system/sys_info.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
-#include <chromeos-config/libcros_config/cros_config.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libyuv.h>
 
 #include "cros-camera/common.h"
+#include "cros-camera/device_config.h"
 #include "hal/usb/camera_characteristics.h"
 #include "hal/usb/common_types.h"
 #include "hal/usb/v4l2_test/media_v4l2_device.h"
@@ -203,17 +203,13 @@ class V4L2TestEnvironment : public ::testing::Environment {
       : test_list_(test_list),
         device_path_(device_path),
         usb_info_(GetUsbVidPid(base::FilePath(device_path))) {
-    std::string model = []() {
-      std::string res;
-      brillo::CrosConfig cros_config;
-      if (!cros_config.Init()) {
+    std::string model = []() -> std::string {
+      base::Optional<DeviceConfig> config = DeviceConfig::Create();
+      if (!config) {
         LOGF(WARNING) << "Failed to initialize CrOS config";
-        return res;
+        return std::string();
       }
-      if (!cros_config.GetString("/", "name", &res)) {
-        LOGF(WARNING) << "Failed to get model name of CrOS device";
-      }
-      return res;
+      return config->GetModelName();
     }();
     // The WFC maximum supported resoltuion requirement is waived on some
     // models (b/158564147).

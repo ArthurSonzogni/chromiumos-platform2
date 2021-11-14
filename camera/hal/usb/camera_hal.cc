@@ -17,7 +17,6 @@
 #include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 
-#include <chromeos-config/libcros_config/cros_config.h>
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
 #include "cros-camera/cros_camera_hal.h"
@@ -258,7 +257,7 @@ std::string GetModelId(const DeviceInfo& info) {
 CameraHal::CameraHal()
     : task_runner_(nullptr),
       udev_watcher_(std::make_unique<UdevWatcher>(this, "video4linux")),
-      cros_device_config_(CrosDeviceConfig::Create()),
+      cros_device_config_(DeviceConfig::Create()),
       camera_metrics_(CameraMetrics::New()) {
   thread_checker_.DetachFromThread();
 }
@@ -296,7 +295,7 @@ int CameraHal::OpenDevice(int id,
     return -EBUSY;
   }
   if (!cameras_.empty() &&
-      (cros_device_config_ != nullptr &&
+      (cros_device_config_.has_value() &&
        (cros_device_config_->GetModelName() == "treeya360" ||
         cros_device_config_->GetModelName() == "nuwani360" ||
         cros_device_config_->GetModelName() == "pompom"))) {
@@ -397,7 +396,7 @@ int CameraHal::SetCallbacks(const camera_module_callbacks_t* callbacks) {
 int CameraHal::Init() {
   DCHECK(thread_checker_.CalledOnValidThread());
 
-  if (cros_device_config_ == nullptr) {
+  if (!cros_device_config_.has_value()) {
     LOGF(WARNING) << "Failed to initialize CrOS device config, camera HAL may "
                      "function incorrectly";
   }
@@ -663,7 +662,7 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
 
   // Mark the camera as v1 if it is a built-in camera and the CrOS device is
   // marked as a v1 device.
-  if (info_ptr != nullptr && cros_device_config_ != nullptr &&
+  if (info_ptr != nullptr && cros_device_config_.has_value() &&
       cros_device_config_->IsV1Device()) {
     info.quirks |= kQuirkV1Device;
   }

@@ -20,7 +20,6 @@
 #include <base/containers/fixed_flat_set.h>
 #include <base/no_destructor.h>
 
-#include <chromeos-config/libcros_config/cros_config.h>
 #include "cros-camera/common.h"
 #include "cros-camera/utils/camera_config.h"
 #include "hal/usb/quirks.h"

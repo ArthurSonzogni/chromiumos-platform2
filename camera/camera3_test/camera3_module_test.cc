@@ -20,7 +20,6 @@
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 #include <brillo/message_loops/base_message_loop.h>
-#include <chromeos-config/libcros_config/cros_config.h>
 #include <system/camera_metadata_hidden.h>
 
 #include "camera3_test/camera3_device.h"
@@ -30,65 +29,7 @@
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/common.h"
 #include "cros-camera/cros_camera_hal.h"
-
-namespace {
-
-// TODO(kamesan): Consolidate cros_config usages in camera HALs and here.
-struct NumberOfBuiltInCameras {
-  int mipi;
-  int usb;
-};
-
-struct CrosDeviceConfig {
-  std::string model_name;
-  base::Optional<NumberOfBuiltInCameras> num_cameras;
-};
-
-base::Optional<CrosDeviceConfig> GetCrosDeviceConfig() {
-  brillo::CrosConfig cros_config;
-  if (!cros_config.Init()) {
-    ADD_FAILURE() << "Failed to initialize CrOS config";
-    return base::nullopt;
-  }
-
-  CrosDeviceConfig config{};
-  if (!cros_config.GetString("/", "name", &config.model_name)) {
-    ADD_FAILURE() << "Failed to query model name";
-    config.model_name = "";
-  }
-
-  config.num_cameras = [&]() -> base::Optional<NumberOfBuiltInCameras> {
-    std::string count_str;
-    if (cros_config.GetString("/camera", "count", &count_str)) {
-      if (count_str == "0") {
-        return NumberOfBuiltInCameras{.mipi = 0, .usb = 0};
-      }
-    }
-    int mipi_count = 0, usb_count = 0;
-    std::string interface;
-    for (int i = 0;; ++i) {
-      if (!cros_config.GetString(base::StringPrintf("/camera/devices/%i", i),
-                                 "interface", &interface)) {
-        if (i == 0) {
-          return base::nullopt;
-        }
-        break;
-      }
-      if (interface == "mipi") {
-        ++mipi_count;
-      } else if (interface == "usb") {
-        ++usb_count;
-      } else {
-        ADD_FAILURE() << "Unknown camera interface: " << interface;
-      }
-    }
-    return NumberOfBuiltInCameras{.mipi = mipi_count, .usb = usb_count};
-  }();
-
-  return config;
-}
-
-}  // namespace
+#include "cros-camera/device_config.h"
 
 namespace camera3_test {
 
@@ -628,17 +569,20 @@ TEST_F(Camera3ModuleFixture, NumberOfCameras) {
   base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
   base::FilePath camera_hal_path =
       cmd_line->GetSwitchValuePath("camera_hal_path");
-  base::Optional<CrosDeviceConfig> config = GetCrosDeviceConfig();
-  if (config.has_value() && config->num_cameras.has_value()) {
+  base::Optional<cros::DeviceConfig> config = cros::DeviceConfig::Create();
+  if (config.has_value() && config->GetBuiltInCameraCount().has_value()) {
+    const int usb_count =
+        config->GetCameraCount(cros::Interface::kUsb).value_or(0);
+    const int mipi_count =
+        config->GetCameraCount(cros::Interface::kMipi).value_or(0);
     if (camera_hal_path.empty()) {
-      ASSERT_EQ(cam_module_.GetNumberOfCameras(),
-                config->num_cameras->usb + config->num_cameras->mipi)
+      ASSERT_EQ(cam_module_.GetNumberOfCameras(), usb_count + mipi_count)
           << "Incorrect number of cameras";
     } else if (camera_hal_path.value().find("usb") != std::string::npos) {
-      ASSERT_EQ(cam_module_.GetNumberOfCameras(), config->num_cameras->usb)
+      ASSERT_EQ(cam_module_.GetNumberOfCameras(), usb_count)
           << "Incorrect number of cameras";
     } else {
-      ASSERT_EQ(cam_module_.GetNumberOfCameras(), config->num_cameras->mipi)
+      ASSERT_EQ(cam_module_.GetNumberOfCameras(), mipi_count)
           << "Incorrect number of cameras";
     }
   } else {
@@ -1440,8 +1384,8 @@ bool InitializeTest(int* argc,
       "jelboz360",
   };
   std::string board = base::SysInfo::GetLsbReleaseBoard();
-  base::Optional<CrosDeviceConfig> config = GetCrosDeviceConfig();
-  std::string model = config.has_value() ? config->model_name : "";
+  base::Optional<cros::DeviceConfig> config = cros::DeviceConfig::Create();
+  std::string model = config.has_value() ? config->GetModelName() : "";
   if (base::Contains(kIgnoreSensorOrientationTestBoards, board) ||
       base::Contains(kIgnoreSensorOrientationTestModels, model)) {
     LOGF(INFO) << "Ignore SensorOrientationTest on " << board << "/" << model;

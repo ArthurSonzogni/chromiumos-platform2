@@ -20,13 +20,13 @@
 #include "cros-camera/camera_metrics.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/cros_camera_hal.h"
+#include "cros-camera/device_config.h"
 #include "cros-camera/future.h"
 #include "cros-camera/udev_watcher.h"
 #include "hal/usb/camera_characteristics.h"
 #include "hal/usb/camera_client.h"
 #include "hal/usb/camera_privacy_switch_monitor.h"
 #include "hal/usb/common_types.h"
-#include "hal/usb/cros_device_config.h"
 
 namespace cros {
 
@@ -111,7 +111,7 @@ class CameraHal : public UdevWatcher::Observer {
   std::unique_ptr<UdevWatcher> udev_watcher_;
 
   // Used to access to the main configuration for Chrome OS.
-  std::unique_ptr<CrosDeviceConfig> cros_device_config_;
+  base::Optional<DeviceConfig> cros_device_config_;
 
   // Map from device path to camera id.
   std::map<std::string, int> path_to_id_;

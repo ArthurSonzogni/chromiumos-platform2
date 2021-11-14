@@ -16,7 +16,6 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libcros_camera",
     "libcros_camera_android_deps",
-    "libcros_config",
     "libsync",
     "libyuv",
     "re2",
@@ -34,7 +33,6 @@ shared_library("libcamera_hal") {
     "camera_hal_device_ops.cc",
     "camera_privacy_switch_monitor.cc",
     "capture_request.cc",
-    "cros_device_config.cc",
     "frame_buffer.cc",
     "image_processor.cc",
     "metadata_handler.cc",

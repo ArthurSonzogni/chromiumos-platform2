@@ -4,12 +4,13 @@
  * found in the LICENSE file.
  */
 
-#include "hal/usb/cros_device_config.h"
+#include "cros-camera/device_config.h"
 
 #include <algorithm>
 
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
+#include <chromeos-config/libcros_config/cros_config.h>
 
 #include "cros-camera/common.h"
 
@@ -22,18 +23,18 @@ constexpr char kCrosConfigLegacyUsbKey[] = "legacy-usb";
 
 }  // namespace
 
-std::unique_ptr<CrosDeviceConfig> CrosDeviceConfig::Create() {
-  CrosDeviceConfig res = {};
+base::Optional<DeviceConfig> DeviceConfig::Create() {
+  DeviceConfig res = {};
   brillo::CrosConfig cros_config;
 
   if (!cros_config.Init()) {
     LOGF(ERROR) << "Failed to initialize CrOS config";
-    return nullptr;
+    return base::nullopt;
   }
 
   if (!cros_config.GetString("/", "name", &res.model_name_)) {
     LOGF(ERROR) << "Failed to get model name of CrOS device";
-    return nullptr;
+    return base::nullopt;
   }
 
   std::string use_legacy_usb;
@@ -74,11 +75,10 @@ std::unique_ptr<CrosDeviceConfig> CrosDeviceConfig::Create() {
     CHECK_EQ(static_cast<size_t>(*res.count_), res.devices_.size());
   }
 
-  return std::make_unique<CrosDeviceConfig>(res);
+  return base::make_optional<DeviceConfig>(res);
 }
 
-base::Optional<int> CrosDeviceConfig::GetCameraCount(
-    Interface interface) const {
+base::Optional<int> DeviceConfig::GetCameraCount(Interface interface) const {
   if (!count_.has_value())
     return base::nullopt;
   // |count_| includes both MIPI and USB cameras. If |count_| is not 0, we need
@@ -92,7 +92,7 @@ base::Optional<int> CrosDeviceConfig::GetCameraCount(
   });
 }
 
-base::Optional<int> CrosDeviceConfig::GetOrientationFromFacing(
+base::Optional<int> DeviceConfig::GetOrientationFromFacing(
     LensFacing facing) const {
   auto iter = std::find_if(devices_.begin(), devices_.end(),
                            [=](const Device& d) { return d.facing == facing; });
