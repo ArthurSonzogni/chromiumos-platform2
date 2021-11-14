@@ -8,6 +8,8 @@ brk: 1
 close: 1
 exit: 1
 exit_group: 1
+faccessat: 1
+faccessat2: 1
 fstat: 1
 gettid: 1
 lseek: 1
