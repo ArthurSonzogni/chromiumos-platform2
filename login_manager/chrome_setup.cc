@@ -877,7 +877,6 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   builder->AddVmodulePattern("*/ui/ozone/*=1");
 
   // Turn on basic logging for enrollment flow.
-  builder->AddVmodulePattern("*/browser/ash/login/enrollment/*=1");
   builder->AddVmodulePattern("enrollment_screen_handler=1");
 
   // Turn on basic logging for full restore.
