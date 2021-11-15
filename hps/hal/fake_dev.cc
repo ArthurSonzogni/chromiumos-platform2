@@ -65,11 +65,10 @@ bool FakeDev::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
 void FakeDev::SetStage(Stage s) {
   this->stage_ = s;
   switch (s) {
-    case Stage::kFault:
-      this->bank_ = 0;
-      break;
     case Stage::kStage0:
       this->bank_ = BIT(0);
+      this->fault_ = 0;
+      this->feature_on_ = 0;
       break;
     case Stage::kStage1:
       this->bank_ = BIT(1) | BIT(2);
@@ -92,11 +91,10 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
       }
       break;
     case HpsReg::kSysStatus:
-      if (this->stage_ == Stage::kFault) {
-        v = hps::R2::kFault;
-        break;
-      }
       v = hps::R2::kOK;
+      if (this->fault_) {
+        v |= hps::R2::kFault;
+      }
       if (this->Flag(Flags::kApplNotVerified)) {
         v |= hps::R2::kApplNotVerified;
       } else {
@@ -158,9 +156,12 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
       }
       break;
 
+    case HpsReg::kError:
+      v = this->fault_;
+      break;
+
     case HpsReg::kSysCmd:
     case HpsReg::kApplVers:
-    case HpsReg::kError:
     case HpsReg::kFeatEn:
     case HpsReg::kMax:
       break;
@@ -247,7 +248,6 @@ bool FakeDev::WriteMemory(HpsBank bank, const uint8_t* data, size_t len) {
         return true;
       }
       break;
-    case Stage::kFault:
     case Stage::kAppl:
       break;
   }

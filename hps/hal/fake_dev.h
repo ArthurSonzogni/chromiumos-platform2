@@ -27,21 +27,10 @@ namespace hps {
  */
 class FakeDev : public DevInterface {
  public:
-  FakeDev()
-      : feature_on_(0),
-        bank_(0),
-        flags_(0),
-        firmware_version_(0),
-        block_size_b_(256),
-        f0_result_(0),
-        f1_result_(0) {
-    this->SetStage(Stage::kStage0);
-  }
+  FakeDev() { this->SetStage(Stage::kStage0); }
   // Flags for controlling behaviour. Multiple flags can be set,
   // controlling how the fake responds under test conditions.
   enum class Flags {
-    // Set FAULT bit at boot.
-    kBootFault = 0,
     // Set MCU RW not verified status bit.
     kApplNotVerified = 1,
     // Set SPI flash not verified status bit.
@@ -63,9 +52,6 @@ class FakeDev : public DevInterface {
   void SkipBoot() { this->SetStage(Stage::kAppl); }
   void Set(Flags f) {
     this->flags_ |= static_cast<uint16_t>(1 << static_cast<int>(f));
-    if (this->Flag(Flags::kBootFault)) {
-      this->SetStage(Stage::kFault);
-    }
   }
   void Clear(Flags f) {
     this->flags_ &= ~static_cast<uint16_t>(1 << static_cast<int>(f));
@@ -88,7 +74,6 @@ class FakeDev : public DevInterface {
   // Current stage (phase) of the device.
   // The device behaves differently in different stages.
   enum class Stage {
-    kFault,
     kStage0,
     kStage1,
     kAppl,
@@ -96,13 +81,14 @@ class FakeDev : public DevInterface {
   void SetStage(Stage s);
   std::map<HpsBank, size_t> bank_len_;  // Count of writes to banks.
   Stage stage_;                      // Current stage of the device
-  uint16_t feature_on_;              // Enabled features.
-  uint16_t bank_;                    // Current memory bank readiness
-  uint16_t flags_;                   // Behaviour flags
-  uint32_t firmware_version_;        // Firmware version
-  size_t block_size_b_;              // Write block size.
-  int8_t f0_result_;                 // Result for feature 0
-  int8_t f1_result_;                 // Result for feature 1
+  uint16_t fault_ = 0;               // Fault bits
+  uint16_t feature_on_ = 0;          // Enabled features.
+  uint16_t bank_ = 0;                // Current memory bank readiness
+  uint16_t flags_ = 0;               // Behaviour flags
+  uint32_t firmware_version_ = 0;    // Firmware version
+  size_t block_size_b_ = 256;        // Write block size.
+  int8_t f0_result_ = 0;             // Result for feature 0
+  int8_t f1_result_ = 0;             // Result for feature 1
 };
 
 }  // namespace hps
