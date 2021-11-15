@@ -24,6 +24,10 @@ DEFINE_boolean warn_fatal ${FLAGS_FALSE} "Abort on WARNING dmesg lines"
 DEFINE_boolean errors_fatal ${FLAGS_TRUE} "Abort on errors"
 DEFINE_boolean fw_errors_fatal ${FLAGS_TRUE} \
                "Abort on firmware errors (subset of --errors_fatal)"
+DEFINE_boolean premature_wake_fatal ${FLAGS_FALSE} \
+               "Abort on any premature wakes from suspend"
+DEFINE_boolean late_wake_fatal ${FLAGS_FALSE} \
+               "Abort on any late wakes from suspend"
 DEFINE_boolean memory_check ${FLAGS_FALSE} "Use memory_suspend_test to suspend"
 DEFINE_boolean pm_print_times ${FLAGS_TRUE} \
                "Print the time taken by devices to suspend and resume"
@@ -196,6 +200,8 @@ echo "  fw_errors_fatal: $(boolean_value ${FLAGS_fw_errors_fatal})"
 echo "  bugs fatal:  $(boolean_value ${FLAGS_bug_fatal})"
 echo "  warnings fatal:  $(boolean_value ${FLAGS_warn_fatal})"
 echo "  crcs fatal:  $(boolean_value ${FLAGS_crc_fatal})"
+echo "  premature wake fatal: $(boolean_value ${FLAGS_premature_wake_fatal})"
+echo "  late wake fatal: $(boolean_value ${FLAGS_late_wake_fatal})"
 echo "  suspend command: ${suspend_cmd}"
 echo "  wakeup source to ignore: ${FLAGS_ignore_wakeup_source}"
 echo "  record_dmesg_dir: ${FLAGS_record_dmesg_dir}"
@@ -275,11 +281,21 @@ while true; do
   sus_time_str="slept for ${actual_sus_time}s, expected ${sus_time}s"
   if [ ${diff_sus_time} -lt ${FLAGS_suspend_time_margin_min} ]; then
     : $(( premature_wake_count += 1 ))
-    echo "Premature wake detected: ${sus_time_str} (ignoring)."
+    if [ ${FLAGS_premature_wake_fatal} -eq ${FLAGS_TRUE} ]; then
+      echo "Premature wake detected: ${sus_time_str}, test failed."
+      exit_loop=1
+    else
+      echo "Premature wake detected: ${sus_time_str} (ignoring)."
+    fi
   fi
   if [ ${diff_sus_time} -gt ${FLAGS_suspend_time_margin_max} ]; then
     : $(( late_wake_count += 1 ))
-    echo "Late wake detected: ${sus_time_str} (ignoring)."
+    if [ ${FLAGS_late_wake_fatal} -eq ${FLAGS_TRUE} ]; then
+      echo "Late wake detected: ${sus_time_str}, test failed."
+      exit_loop=1
+    else
+      echo "Late wake detected: ${sus_time_str} (ignoring)."
+    fi
   fi
   # Wakealarm is expected to be cleared after the set wakeup time,
   # which is the resume time if the device does not resume due to
