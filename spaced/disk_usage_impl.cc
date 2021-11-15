@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "spaced/disk_usage.h"
+#include "spaced/disk_usage_impl.h"
 
 #include <algorithm>
 #include <memory>
@@ -22,15 +22,19 @@
 #include <rootdev/rootdev.h>
 
 namespace spaced {
-DiskUsageUtil::DiskUsageUtil()
-    : lvm_(std::make_unique<brillo::LogicalVolumeManager>()) {}
-DiskUsageUtil::~DiskUsageUtil() {}
+DiskUsageUtilImpl::DiskUsageUtilImpl()
+    : lvm_(std::make_unique<brillo::LogicalVolumeManager>()) {
+  auto thinpool = GetThinpool();
+  if (thinpool) {
+    thinpool_ = std::make_unique<brillo::Thinpool>(*thinpool);
+  }
+}
 
-int DiskUsageUtil::StatVFS(const base::FilePath& path, struct statvfs* st) {
+int DiskUsageUtilImpl::StatVFS(const base::FilePath& path, struct statvfs* st) {
   return HANDLE_EINTR(statvfs(path.value().c_str(), st));
 }
 
-base::Optional<base::FilePath> DiskUsageUtil::GetRootDevice() {
+base::Optional<base::FilePath> DiskUsageUtilImpl::GetRootDevice() {
   // Get the root device.
   char root_device[PATH_MAX];
   int ret = rootdev(root_device, sizeof(root_device),
@@ -44,7 +48,7 @@ base::Optional<base::FilePath> DiskUsageUtil::GetRootDevice() {
   return base::FilePath(root_device);
 }
 
-base::Optional<brillo::Thinpool> DiskUsageUtil::GetThinpool() {
+base::Optional<brillo::Thinpool> DiskUsageUtilImpl::GetThinpool() {
   base::Optional<base::FilePath> root_device = GetRootDevice();
 
   if (!root_device) {
@@ -77,7 +81,7 @@ base::Optional<brillo::Thinpool> DiskUsageUtil::GetThinpool() {
   return lvm_->GetThinpool(*vg, "thinpool");
 }
 
-int64_t DiskUsageUtil::GetFreeDiskSpace(const base::FilePath& path) {
+int64_t DiskUsageUtilImpl::GetFreeDiskSpace(const base::FilePath& path) {
   // Use statvfs() to get the free space for the given path.
   struct statvfs stat;
 
@@ -88,17 +92,16 @@ int64_t DiskUsageUtil::GetFreeDiskSpace(const base::FilePath& path) {
 
   int64_t free_disk_space = static_cast<int64_t>(stat.f_bavail) * stat.f_frsize;
 
-  base::Optional<brillo::Thinpool> thinpool = GetThinpool();
   int64_t thinpool_free_space;
-  if (thinpool && thinpool->IsValid() &&
-      thinpool->GetFreeSpace(&thinpool_free_space)) {
+  if (thinpool_ && thinpool_->IsValid() &&
+      thinpool_->GetFreeSpace(&thinpool_free_space)) {
     free_disk_space = std::min(free_disk_space, thinpool_free_space);
   }
 
   return free_disk_space;
 }
 
-int64_t DiskUsageUtil::GetTotalDiskSpace(const base::FilePath& path) {
+int64_t DiskUsageUtilImpl::GetTotalDiskSpace(const base::FilePath& path) {
   // Use statvfs() to get the total space for the given path.
   struct statvfs stat;
 
@@ -110,17 +113,16 @@ int64_t DiskUsageUtil::GetTotalDiskSpace(const base::FilePath& path) {
   int64_t total_disk_space =
       static_cast<int64_t>(stat.f_blocks) * stat.f_frsize;
 
-  base::Optional<brillo::Thinpool> thinpool = GetThinpool();
   int64_t thinpool_total_space;
-  if (thinpool && thinpool->IsValid() &&
-      thinpool->GetTotalSpace(&thinpool_total_space)) {
+  if (thinpool_ && thinpool_->IsValid() &&
+      thinpool_->GetTotalSpace(&thinpool_total_space)) {
     total_disk_space = std::min(total_disk_space, thinpool_total_space);
   }
 
   return total_disk_space;
 }
 
-int64_t DiskUsageUtil::GetBlockDeviceSize(const base::FilePath& device) {
+int64_t DiskUsageUtilImpl::GetBlockDeviceSize(const base::FilePath& device) {
   base::ScopedFD fd(HANDLE_EINTR(
       open(device.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC)));
   if (!fd.is_valid()) {
@@ -136,7 +138,7 @@ int64_t DiskUsageUtil::GetBlockDeviceSize(const base::FilePath& device) {
   return size;
 }
 
-int64_t DiskUsageUtil::GetRootDeviceSize() {
+int64_t DiskUsageUtilImpl::GetRootDeviceSize() {
   base::Optional<base::FilePath> root_device = GetRootDevice();
 
   if (!root_device) {

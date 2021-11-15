@@ -41,7 +41,7 @@ generate_dbus_proxies("spaced_proxy") {
 
 shared_library("libspaced") {
   sources = [
-    "disk_usage.cc",
+    "disk_usage_impl.cc",
     "disk_usage_proxy.cc",
   ]
   libs = [ "rootdev" ]

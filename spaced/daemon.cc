@@ -16,14 +16,14 @@
 #include <dbus/bus.h>
 #include <dbus/spaced/dbus-constants.h>
 
-#include "spaced/disk_usage.h"
+#include "spaced/disk_usage_impl.h"
 
 namespace spaced {
 DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus)
     : org::chromium::SpacedAdaptor(this),
       dbus_object_(
           nullptr, bus, dbus::ObjectPath(::spaced::kSpacedServicePath)),
-      disk_usage_util_(std::make_unique<DiskUsageUtil>()) {}
+      disk_usage_util_(std::make_unique<DiskUsageUtilImpl>()) {}
 
 void DBusAdaptor::RegisterAsync(
     const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {

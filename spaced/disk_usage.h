@@ -5,41 +5,18 @@
 #ifndef SPACED_DISK_USAGE_H_
 #define SPACED_DISK_USAGE_H_
 
-#include <sys/statvfs.h>
-
-#include <memory>
-#include <utility>
-
 #include <base/files/file_path.h>
-#include <brillo/blkdev_utils/lvm.h>
-#include <brillo/brillo_export.h>
 
 namespace spaced {
-
-class BRILLO_EXPORT DiskUsageUtil {
+// Abstract class that defines the interface for both disk usage util and its
+// D-Bus proxy.
+class DiskUsageUtil {
  public:
-  DiskUsageUtil();
-  virtual ~DiskUsageUtil();
+  virtual ~DiskUsageUtil() = default;
 
-  virtual int64_t GetFreeDiskSpace(const base::FilePath& path);
-  virtual int64_t GetTotalDiskSpace(const base::FilePath& path);
-  virtual int64_t GetRootDeviceSize();
-
- protected:
-  // Runs statvfs() on a given path.
-  virtual int StatVFS(const base::FilePath& path, struct statvfs* st);
-
-  // Retrieves the stateful partition's thinpool.
-  virtual base::Optional<brillo::Thinpool> GetThinpool();
-
-  // Retrieves the root device.
-  virtual base::Optional<base::FilePath> GetRootDevice();
-
-  // Gets the block device size in bytes for a given device.
-  virtual int64_t GetBlockDeviceSize(const base::FilePath& device);
-
- private:
-  std::unique_ptr<brillo::LogicalVolumeManager> lvm_;
+  virtual int64_t GetFreeDiskSpace(const base::FilePath& path) = 0;
+  virtual int64_t GetTotalDiskSpace(const base::FilePath& path) = 0;
+  virtual int64_t GetRootDeviceSize() = 0;
 };
 
 }  // namespace spaced

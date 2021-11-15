@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <spaced/disk_usage.h>
+#include <spaced/disk_usage_impl.h>
 
 #include <sys/statvfs.h>
 
@@ -28,11 +28,14 @@ constexpr const char kSampleReport[] =
     "\"data_percent\":\"%f\"} ] } ] }";
 }  // namespace
 
-class DiskUsageUtilMock : public DiskUsageUtil {
+class DiskUsageUtilMock : public DiskUsageUtilImpl {
  public:
   DiskUsageUtilMock(struct statvfs st,
                     base::Optional<brillo::Thinpool> thinpool)
-      : st_(st), thinpool_(thinpool) {}
+      : st_(st) {
+    if (thinpool)
+      set_thinpool_for_test(*thinpool);
+  }
 
  protected:
   int StatVFS(const base::FilePath& path, struct statvfs* st) override {
@@ -40,11 +43,8 @@ class DiskUsageUtilMock : public DiskUsageUtil {
     return !st_.f_fsid;
   }
 
-  base::Optional<brillo::Thinpool> GetThinpool() override { return thinpool_; }
-
  private:
   struct statvfs st_;
-  base::Optional<brillo::Thinpool> thinpool_;
 };
 
 TEST(DiskUsageUtilTest, FailedVfsCall) {
@@ -155,9 +155,9 @@ TEST(DiskUsageUtilTest, OverprovisionedVolumeSpace) {
   EXPECT_EQ(disk_usage_mock.GetTotalDiskSpace(path), 16777216);
 }
 
-class DiskUsageRootdevMock : public DiskUsageUtil {
+class DiskUsageRootdevMock : public DiskUsageUtilImpl {
  public:
-  DiskUsageRootdevMock(uint64_t size, const base::FilePath& path)
+  DiskUsageRootdevMock(int64_t size, const base::FilePath& path)
       : rootdev_size_(size), rootdev_path_(path) {}
 
  protected:
@@ -175,7 +175,7 @@ class DiskUsageRootdevMock : public DiskUsageUtil {
   }
 
  private:
-  uint64_t rootdev_size_;
+  int64_t rootdev_size_;
   base::FilePath rootdev_path_;
 };
 
