@@ -60,3 +60,4 @@ futex: 1
 futex_time64: 1
 fstatfs64: 1
 fstatfs: 1
+unlinkat: 1
