@@ -34,6 +34,7 @@ rt_sigprocmask: 1
 rt_sigtimedwait: 1
 sendto: 1
 uname: 1
+statx: 1
 
 # for lazy evaluation of brillo::InitLog(), which is called in the control
 # process but may not be evaluated until inside the worker process.

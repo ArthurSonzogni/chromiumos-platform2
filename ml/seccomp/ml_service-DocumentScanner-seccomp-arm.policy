@@ -38,6 +38,7 @@ eventfd2: 1
 fstatfs: 1
 getrandom: 1
 madvise: 1
+statx: 1
 
 # for lazy evaluation of brillo::InitLog(), which is called in the control
 # process but may not be evaluated until inside the worker process.

@@ -33,5 +33,6 @@ rt_sigtimedwait: 1
 sched_getaffinity: 1
 sendto: 1
 socket: arg0 == AF_UNIX
+statx: 1
 uname: 1
 write: 1
