@@ -275,12 +275,10 @@ generate_dbus_adaptors("cryptohome_adaptors") {
 
 pkg_config("libcryptohome_dependent_config") {
   pkg_deps = [
+    "libbootlockbox-client",
     "libbrillo",
     "libchrome",
   ]
-  if (use.tpm2) {
-    pkg_deps += [ "libbootlockbox-client" ]
-  }
 }
 
 static_library("libcryptohome") {
