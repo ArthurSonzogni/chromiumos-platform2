@@ -7,12 +7,16 @@
 #ifndef CAMERA_INCLUDE_CROS_CAMERA_DEVICE_CONFIG_H_
 #define CAMERA_INCLUDE_CROS_CAMERA_DEVICE_CONFIG_H_
 
+#include <linux/media.h>
+
 #include <memory>
 #include <string>
 #include <vector>
 
 #include <base/optional.h>
 
+#include "base/containers/span.h"
+#include "base/files/file_path.h"
 #include "cros-camera/export.h"
 
 namespace cros {
@@ -29,6 +33,41 @@ enum class LensFacing {
   kFront,
   kBack,
   kExternal,
+};
+
+struct EepromIdBlock {
+  char os[4];
+  uint16_t crc;
+  uint8_t version;
+  uint8_t length;
+  uint16_t data_format;
+  uint16_t module_pid;
+  char module_vid[2];
+  char sensor_vid[2];
+  uint16_t sensor_pid;
+};
+
+struct EepromInfo {
+  EepromIdBlock id_block;
+  base::FilePath nvmem_path;
+};
+
+struct V4L2SensorInfo {
+  std::string name;
+  std::string vendor_id;
+  base::FilePath subdev_path;
+};
+
+struct CrosConfigCameraInfo {
+  Interface interface;
+  LensFacing facing;
+  int orientation;
+};
+
+struct PlatformCameraInfo {
+  base::Optional<EepromInfo> eeprom;
+  base::Optional<V4L2SensorInfo> v4l2_sensor;
+  std::string sysfs_name;
 };
 
 // This class wraps the brillo::CrosConfig and stores the required values.
@@ -53,24 +92,38 @@ class CROS_CAMERA_EXPORT DeviceConfig {
   // or nullopt if the information is not available.
   base::Optional<int> GetOrientationFromFacing(LensFacing facing) const;
 
- private:
-  struct Device {
-    Interface interface;
-    LensFacing facing;
-    int orientation;
-  };
+  base::span<const PlatformCameraInfo> GetPlatformCameraInfo() const {
+    return platform_cameras_;
+  }
 
+ private:
   DeviceConfig() = default;
+
+  void ProbeSensorSubdev(struct media_entity_desc* desc,
+                         const base::FilePath& path);
+  base::FilePath FindSubdevSysfsByDevId(int major, int minor);
+  void ProbeMediaController(int media_fd);
+  void AddV4L2Sensors();
+  void AddCameraEeproms();
+
+  static bool PopulateCrosConfigCameraInfo(DeviceConfig* dev_conf);
+  static void PopulatePlatformCameraInfo(DeviceConfig* dev_conf);
 
   bool is_v1_device_;
   std::string model_name_;
+
   // The number of built-in cameras, or |base::nullopt| when this information is
   // not available.
   base::Optional<int> count_;
+
   // Detailed topology of the camera devices, or empty when this information is
   // not available. |count_| has value |devices_.size()| if |devices_| is not
   // empty.
-  std::vector<Device> devices_;
+  std::vector<CrosConfigCameraInfo> cros_config_cameras_;
+
+  std::vector<PlatformCameraInfo> platform_cameras_;
+  std::vector<EepromInfo> eeproms_;
+  std::vector<V4L2SensorInfo> v4l2_sensors_;
 };
 
 }  // namespace cros
