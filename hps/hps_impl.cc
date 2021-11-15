@@ -169,7 +169,9 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
       return BootResult::kFail;
     case BootResult::kUpdate:
       LOG(INFO) << "Updating MCU flash";
+      base::ElapsedTimer timer;
       if (this->WriteFile(0, this->mcu_blob_)) {
+        hps_metrics_.SendHpsUpdateDuration(0, timer.Elapsed());
         return BootResult::kUpdate;
       } else {
         return BootResult::kFail;
@@ -188,8 +190,10 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
       return BootResult::kFail;
     case BootResult::kUpdate:
       LOG(INFO) << "Updating SPI flash";
+      base::ElapsedTimer timer;
       if (this->WriteFile(1, this->fpga_bitstream_) &&
           this->WriteFile(2, this->fpga_app_image_)) {
+        hps_metrics_.SendHpsUpdateDuration(1, timer.Elapsed());
         return BootResult::kUpdate;
       } else {
         return BootResult::kFail;
@@ -468,7 +472,6 @@ bool HPS_impl::WriteFile(uint8_t bank, const base::FilePath& source) {
           << timer.Elapsed().InMilliseconds() << "ms";
   // Wait for the bank to become ready again to ensure the write is complete.
   this->WaitForBankReady(bank);
-  hps_metrics_.SendHpsUpdateDuration(bank, timer.Elapsed());
   return true;
 }
 

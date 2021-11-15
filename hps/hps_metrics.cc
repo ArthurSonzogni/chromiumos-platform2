@@ -23,6 +23,8 @@ bool HpsMetrics::SendHpsUpdateDuration(int bank, base::TimeDelta duration) {
       return metrics_lib_->SendToUMA(
           kHpsUpdateMcuDuration, static_cast<int>(duration.InMilliseconds()), 1,
           kHpsUpdateMcuMaxDurationMilliSeconds, 50);
+    // The bank here is kSpiFlash, but the timing is for both kSpiFlash and
+    // kSocRom
     case HpsBank::kSpiFlash:
       return metrics_lib_->SendToUMA(
           kHpsUpdateSpiDuration, static_cast<int>(duration.InMilliseconds()), 1,
