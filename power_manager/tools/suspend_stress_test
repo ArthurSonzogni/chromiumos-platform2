@@ -11,10 +11,12 @@ DEFINE_integer memory_check_size 0 \
                "Amount of memory to allocate (0 means as much as possible)"
 DEFINE_integer suspend_max 10 "Max seconds to suspend"
 DEFINE_integer suspend_min 5 "Min seconds to suspend"
+DEFINE_integer suspend_time_margin_max 30 \
+               "Max seconds of the (actual - expected) suspended time diff"
+DEFINE_integer suspend_time_margin_min 0 \
+               "Min seconds of the (actual - expected) suspended time diff"
 DEFINE_integer wake_max 10 "Max seconds to stay awake for"
 DEFINE_integer wake_min 5 "Min seconds to stay awake for"
-DEFINE_integer wake_early_margin 0 "The allowable margin to wake early"
-DEFINE_integer wake_worst_case 30 "The worst case time to wake"
 DEFINE_boolean backup_rtc ${FLAGS_FALSE} "Use second rtc if present for backup"
 DEFINE_boolean bug_fatal ${FLAGS_TRUE} "Abort on BUG dmesg lines"
 DEFINE_boolean crc_fatal ${FLAGS_TRUE} "Abort on CRC error dmesg lines"
@@ -271,11 +273,11 @@ while true; do
   actual_sus_time=$(( end_time - start_time ))
   diff_sus_time=$(( actual_sus_time - sus_time ))
   sus_time_str="slept for ${actual_sus_time}s, expected ${sus_time}s"
-  if [ ${diff_sus_time} -lt -${FLAGS_wake_early_margin} ]; then
+  if [ ${diff_sus_time} -lt ${FLAGS_suspend_time_margin_min} ]; then
     : $(( premature_wake_count += 1 ))
     echo "Premature wake detected: ${sus_time_str} (ignoring)."
   fi
-  if [ ${diff_sus_time} -gt ${FLAGS_wake_worst_case} ]; then
+  if [ ${diff_sus_time} -gt ${FLAGS_suspend_time_margin_max} ]; then
     : $(( late_wake_count += 1 ))
     echo "Late wake detected: ${sus_time_str} (ignoring)."
   fi
