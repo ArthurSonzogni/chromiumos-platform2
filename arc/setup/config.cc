@@ -11,6 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
+#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 
@@ -46,21 +47,38 @@ Config::~Config() = default;
 
 bool Config::GetString(base::StringPiece name, std::string* out) const {
   base::Value* config = FindConfig(name);
-  return config ? config->GetAsString(out) : env_->GetVar(name, out);
+  if (config) {
+    if (const std::string* val = config->GetIfString()) {
+      *out = *val;
+      return true;
+    }
+    return false;
+  }
+  return env_->GetVar(name, out);
 }
 
 bool Config::GetInt(base::StringPiece name, int* out) const {
   base::Value* config = FindConfig(name);
-  if (config)
-    return config->GetAsInteger(out);
+  if (config) {
+    if (base::Optional<int> val = config->GetIfInt()) {
+      *out = *val;
+      return true;
+    }
+    return false;
+  }
   std::string env_str;
   return env_->GetVar(name, &env_str) && base::StringToInt(env_str, out);
 }
 
 bool Config::GetBool(base::StringPiece name, bool* out) const {
   base::Value* config = FindConfig(name);
-  if (config)
-    return config->GetAsBoolean(out);
+  if (config) {
+    if (base::Optional<bool> val = config->GetIfBool()) {
+      *out = *val;
+      return true;
+    }
+    return false;
+  }
   std::string env_str;
   return env_->GetVar(name, &env_str) && StringToBool(env_str, out);
 }
