@@ -203,6 +203,10 @@ bool detect_video_prot_cencv1_h264_ctr(void) {
 #if defined(USE_VAAPI)
   if (is_any_device(kDRMDevicePattern, is_vaapi_prot_h264_cencv1_ctr_device))
     return true;
+  if (is_any_device(kDRMDevicePattern, is_amd_protected_content) &&
+      detect_video_acc_h264()) {
+    return true;
+  }
 #endif  // defined(USE_VAAPI)
 
   return false;
