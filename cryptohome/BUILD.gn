@@ -424,6 +424,7 @@ if (use.test) {
     sources = [
       "auth_blocks/auth_block_state_unittest.cc",
       "auth_blocks/auth_block_unittest.cc",
+      "auth_blocks/sync_to_async_auth_block_adapter_test.cc",
       "auth_factors/password_auth_factor_unittest.cc",
       "auth_session_manager_unittest.cc",
       "auth_session_unittest.cc",
