@@ -41,6 +41,7 @@ group("all") {
       ":crash_sender_base_fuzzer",
       ":crash_sender_fuzzer",
       ":kernel_collector_fuzzer",
+      ":missed_crash_collector_fuzzer",
     ]
   }
 }
@@ -548,6 +549,20 @@ if (use.fuzzer) {
       "//common-mk/common_fuzzer:common_fuzzer",
       ":crash_reporter_test_config",
     ]
+    deps = [
+      ":libcrash",
+      ":libcrash_reporter",
+      ":libcrash_test_util",
+    ]
+  }
+
+  executable("missed_crash_collector_fuzzer") {
+    sources = [ "missed_crash_collector_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":crash_reporter_test_config",
+    ]
+    libs = [ "system_api-anomaly_detector-protos" ]
     deps = [
       ":libcrash",
       ":libcrash_reporter",
