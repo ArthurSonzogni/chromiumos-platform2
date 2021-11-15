@@ -84,7 +84,8 @@ bool HPS_impl::Boot() {
 bool HPS_impl::Enable(uint8_t feature) {
   // Only 2 features available at the moment.
   if (feature >= kFeatures) {
-    LOG(ERROR) << "Enabling unknown feature (" << feature << ")";
+    LOG(ERROR) << "Enabling unknown feature (" << static_cast<int>(feature)
+               << ")";
     return false;
   }
   // Check the application is enabled and running.
@@ -100,7 +101,8 @@ bool HPS_impl::Enable(uint8_t feature) {
 
 bool HPS_impl::Disable(uint8_t feature) {
   if (feature >= kFeatures) {
-    LOG(ERROR) << "Disabling unknown feature (" << feature << ")";
+    LOG(ERROR) << "Disabling unknown feature (" << static_cast<int>(feature)
+               << ")";
     return false;
   }
   // Check the application is enabled and running.
@@ -405,7 +407,8 @@ void HPS_impl::Fault() {
 bool HPS_impl::Download(hps::HpsBank bank, const base::FilePath& source) {
   uint8_t ibank = static_cast<uint8_t>(bank);
   if (ibank >= kNumBanks) {
-    LOG(ERROR) << "Download: Illegal bank: " << ibank << ": " << source;
+    LOG(ERROR) << "Download: Illegal bank: " << static_cast<int>(ibank) << ": "
+               << source;
     return -1;
   }
   return this->WriteFile(ibank, source);
@@ -444,7 +447,7 @@ bool HPS_impl::WriteFile(uint8_t bank, const base::FilePath& source) {
 
   do {
     if (!this->WaitForBankReady(bank)) {
-      LOG(ERROR) << "WriteFile: bank not ready: " << bank;
+      LOG(ERROR) << "WriteFile: bank not ready: " << static_cast<int>(bank);
       return false;
     }
     buf[0] = address >> 24;
@@ -457,7 +460,8 @@ bool HPS_impl::WriteFile(uint8_t bank, const base::FilePath& source) {
     if (rd > 0) {
       if (!this->device_->Write(I2cMemWrite(bank), &buf[0],
                                 static_cast<size_t>(rd) + sizeof(uint32_t))) {
-        LOG(ERROR) << "WriteFile: device write error. bank: " << bank;
+        LOG(ERROR) << "WriteFile: device write error. bank: "
+                   << static_cast<int>(bank);
         return false;
       }
       address += static_cast<uint32_t>(rd);
