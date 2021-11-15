@@ -67,13 +67,14 @@ void InsertJpegBlobDescriptor(buffer_handle_t jpeg_blob,
   blob->jpeg_size = jpeg_data_size;
 }
 
-bool ExtractAppSections(buffer_handle_t blob_buffer,
-                        std::vector<uint8_t>* out_buffer,
-                        std::map<uint16_t, base::span<uint8_t>>* out_index) {
-  ScopedMapping mapping(blob_buffer);
-  out_buffer->resize(mapping.plane(0).size);
-  uint8_t* src_addr = mapping.plane(0).addr;
-  const uint8_t* src_end = mapping.plane(0).addr + mapping.plane(0).size;
+bool ParseAppSections(base::span<uint8_t> blob,
+                      std::vector<uint8_t>* out_buffer,
+                      std::map<uint16_t, base::span<uint8_t>>* out_index) {
+  if (blob.empty())
+    return false;
+  out_buffer->resize(blob.size());
+  uint8_t* src_addr = blob.data();
+  const uint8_t* src_end = blob.data() + blob.size();
   size_t dst_offset = 0;
   while (src_addr < src_end) {
     auto parse_word = [](uint8_t* addr) -> uint16_t {
@@ -165,6 +166,15 @@ bool ExtractAppSections(buffer_handle_t blob_buffer,
 
   out_buffer->resize(dst_offset);
   return true;
+}
+
+bool ExtractAppSections(buffer_handle_t blob_buffer,
+                        std::vector<uint8_t>* out_buffer,
+                        std::map<uint16_t, base::span<uint8_t>>* out_index) {
+  ScopedMapping mapping(blob_buffer);
+  return ParseAppSections(
+      base::make_span(mapping.plane(0).addr, mapping.plane(0).size), out_buffer,
+      out_index);
 }
 
 // Compupte the cropped region of size (|out_width|, |out_height|) out of the
@@ -508,6 +518,13 @@ void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
   });
   result_callback_.Run(std::move(blob_result));
   request_contexts_.erase(frame_number);
+}
+
+bool ParseAppSectionsForTesting(
+    base::span<uint8_t> blob,
+    std::vector<uint8_t>* out_buffer,
+    std::map<uint16_t, base::span<uint8_t>>* out_index) {
+  return ParseAppSections(blob, out_buffer, out_index);
 }
 
 }  // namespace cros

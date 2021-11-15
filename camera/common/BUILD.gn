@@ -23,6 +23,10 @@ group("all") {
       "//camera/features/zsl:zsl_helper_test",
     ]
   }
+
+  if (use.fuzzer) {
+    deps += [ ":camera_still_capture_processor_impl_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -352,5 +356,16 @@ if (use.test) {
     ]
     configs += [ ":target_defaults_test" ]
     deps = [ ":embed_file_toc_test_files" ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("camera_still_capture_processor_impl_fuzzer") {
+    sources = [ "//camera/common/still_capture_processor_impl_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    deps = [ ":libcros_camera" ]
   }
 }

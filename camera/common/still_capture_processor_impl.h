@@ -9,15 +9,19 @@
 
 #include "common/still_capture_processor.h"
 
+#include <stdint.h>
+
 #include <map>
 #include <memory>
 #include <vector>
 
 #include <base/callback_helpers.h>
+#include <base/containers/span.h>
 #include <base/threading/thread.h>
 
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/common_types.h"
+#include "cros-camera/export.h"
 #include "cros-camera/jpeg_compressor.h"
 
 namespace cros {
@@ -79,6 +83,11 @@ class StillCaptureProcessorImpl : public StillCaptureProcessor {
   // Bookkeeping the RequestContext using the frame number as index.
   std::map<int, RequestContext> request_contexts_;
 };
+
+CROS_CAMERA_EXPORT bool ParseAppSectionsForTesting(
+    base::span<uint8_t> blob,
+    std::vector<uint8_t>* out_buffer,
+    std::map<uint16_t, base::span<uint8_t>>* out_index);
 
 }  // namespace cros
 
