@@ -36,6 +36,7 @@ using crypto_test_data::kFakeValidationValue2;
 using crypto_test_data::kUserID;
 
 using testing::_;
+using testing::ByMove;
 using testing::Return;
 using testing::ReturnRef;
 
@@ -291,9 +292,8 @@ TEST_F(CrosFpBiometricsManagerMockTest, TestUpdateTemplatesOnDisk) {
   const std::vector<int> dirty_list = {0};
   const std::unordered_set<uint32_t> suspicious_templates;
 
-  EXPECT_CALL(*mock_cros_dev_, GetTemplate).WillOnce([](int) {
-    return std::make_unique<VendorTemplate>();
-  });
+  EXPECT_CALL(*mock_cros_dev_, GetTemplate)
+      .WillOnce(Return(ByMove(std::make_unique<VendorTemplate>())));
 
   EXPECT_CALL(*mock_, GetLoadedRecordId(0)).WillRepeatedly(Return(kRecordID));
   EXPECT_CALL(*mock_record_manager_, GetRecordMetadata(kRecordID))
@@ -343,9 +343,7 @@ TEST_F(CrosFpBiometricsManagerMockTest,
   const std::unordered_set<uint32_t> suspicious_templates;
 
   EXPECT_CALL(*mock_, GetLoadedRecordId(0)).WillRepeatedly(Return(kRecordID));
-  EXPECT_CALL(*mock_cros_dev_, GetTemplate).WillOnce([](int) {
-    return nullptr;
-  });
+  EXPECT_CALL(*mock_cros_dev_, GetTemplate).Times(1);
   EXPECT_CALL(*mock_record_manager_, UpdateRecord).Times(0);
 
   EXPECT_TRUE(mock_->UpdateTemplatesOnDisk(dirty_list, suspicious_templates));
