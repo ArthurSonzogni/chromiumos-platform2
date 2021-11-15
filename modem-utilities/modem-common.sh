@@ -132,6 +132,10 @@ esim() {
       poll_for_dbus_service "${HERMES}"
       esim_use_test_certs "${euicc}" "$@"
       ;;
+    set_test_mode)
+      poll_for_dbus_service "${HERMES}"
+      esim_set_test_mode "${euicc}" "$@"
+      ;;
     refresh_profiles)
       poll_for_dbus_service "${HERMES}"
       esim_refresh_profiles "${euicc}" "$@"
@@ -175,7 +179,8 @@ esim() {
       ;;
     *)
       error_exit "Expected one of "\
-        "{use_test_certs|refresh_profiles|request_pending_profiles|"\
+        "{use_test_certs|set_test_mode|"\
+        "refresh_profiles|request_pending_profiles|"\
         "status|status_feedback|install|install_pending_profile|uninstall|"\
         "enable|disable}"
       ;;
@@ -230,6 +235,13 @@ esim_use_test_certs() {
   local euicc="$1"
   dbus_call "${HERMES}" "${euicc}" \
             "${HERMES_EUICC_IFACE}.UseTestCerts" \
+            boolean:"$2"
+}
+
+esim_set_test_mode() {
+  local euicc="$1"
+  dbus_call "${HERMES}" "${euicc}" \
+            "${HERMES_EUICC_IFACE}.SetTestMode" \
             boolean:"$2"
 }
 
