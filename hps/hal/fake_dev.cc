@@ -95,10 +95,10 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
       if (this->fault_) {
         v |= hps::R2::kFault;
       }
-      if (this->Flag(Flags::kApplNotVerified)) {
-        v |= hps::R2::kApplNotVerified;
+      if (this->Flag(Flags::kStage1NotVerified)) {
+        v |= hps::R2::kStage1NotVerified;
       } else {
-        v |= hps::R2::kApplVerified;
+        v |= hps::R2::kStage1Verified;
       }
       if (this->Flag(Flags::kWpOff)) {
         v |= hps::R2::kWpOff;
@@ -138,7 +138,7 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
       // Firmware version, only returned in stage0 if the
       // application has been verified.
       if (this->stage_ == Stage::kStage0 &&
-          !this->Flag(Flags::kApplNotVerified)) {
+          !this->Flag(Flags::kStage1NotVerified)) {
         v = static_cast<uint16_t>(firmware_version_ >> 16);
       } else {
         v = 0xFFFF;
@@ -149,7 +149,7 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
       // Firmware version, only returned in stage0 if the
       // application has been verified.
       if (this->stage_ == Stage::kStage0 &&
-          !this->Flag(Flags::kApplNotVerified)) {
+          !this->Flag(Flags::kStage1NotVerified)) {
         v = static_cast<uint16_t>(firmware_version_ & 0xFFFF);
       } else {
         v = 0xFFFF;
@@ -227,7 +227,7 @@ bool FakeDev::WriteMemory(HpsBank bank, const uint8_t* data, size_t len) {
         this->bank_len_[bank] += len - sizeof(uint32_t);
         // Check if the fake needs to reset the not-verified bit.
         if (this->Flag(Flags::kResetApplVerification)) {
-          this->Clear(Flags::kApplNotVerified);
+          this->Clear(Flags::kStage1NotVerified);
         }
         // Check if the fake should increment the version.
         if (this->Flag(Flags::kIncrementVersion)) {

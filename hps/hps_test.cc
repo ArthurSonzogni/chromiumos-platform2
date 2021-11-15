@@ -286,7 +286,7 @@ TEST_F(HPSTest, McuUpdate) {
   // Set the expected version
   const uint32_t version = 0x01020304;
   fake_->SetVersion(version);
-  fake_->Set(hps::FakeDev::Flags::kApplNotVerified);
+  fake_->Set(hps::FakeDev::Flags::kStage1NotVerified);
   fake_->Set(hps::FakeDev::Flags::kResetApplVerification);
   // Set up the version and files.
   hps_->Init(version, mcu, spi1, spi2);
@@ -380,7 +380,7 @@ TEST_F(HPSTest, BothUpdate) {
   // Set the expected version
   const uint32_t version = 0x01020304;
   fake_->SetVersion(version);
-  fake_->Set(hps::FakeDev::Flags::kApplNotVerified);
+  fake_->Set(hps::FakeDev::Flags::kStage1NotVerified);
   fake_->Set(hps::FakeDev::Flags::kResetApplVerification);
   fake_->Set(hps::FakeDev::Flags::kSpiNotVerified);
   fake_->Set(hps::FakeDev::Flags::kResetSpiVerification);
@@ -437,7 +437,7 @@ TEST_F(HPSTest, WpOffUpdate) {
 
   // This is the reported version when not verified
   const uint32_t version = 0xFFFFFFFF;
-  fake_->Set(hps::FakeDev::Flags::kApplNotVerified);
+  fake_->Set(hps::FakeDev::Flags::kStage1NotVerified);
   fake_->Set(hps::FakeDev::Flags::kSpiNotVerified);
   fake_->Set(hps::FakeDev::Flags::kWpOff);
   // Set up the version and files.

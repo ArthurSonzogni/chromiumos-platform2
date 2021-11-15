@@ -32,7 +32,7 @@ class FakeDev : public DevInterface {
   // controlling how the fake responds under test conditions.
   enum class Flags {
     // Set MCU RW not verified status bit.
-    kApplNotVerified = 1,
+    kStage1NotVerified = 1,
     // Set SPI flash not verified status bit.
     kSpiNotVerified = 2,
     // Set WP bit as off.

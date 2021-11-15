@@ -87,13 +87,13 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
         ret.push_back("kFault");
         val ^= kFault;
       }
-      if (val & kApplVerified) {
-        ret.push_back("kApplVerified");
-        val ^= kApplVerified;
+      if (val & kStage1Verified) {
+        ret.push_back("kStage1Verified");
+        val ^= kStage1Verified;
       }
-      if (val & kApplNotVerified) {
-        ret.push_back("kApplNotVerified");
-        val ^= kApplNotVerified;
+      if (val & kStage1NotVerified) {
+        ret.push_back("kStage1NotVerified");
+        val ^= kStage1NotVerified;
       }
       if (val & kWpOff) {
         ret.push_back("kWpOff");

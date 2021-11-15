@@ -43,8 +43,8 @@ enum class HpsReg : uint8_t {
 enum R2 : uint16_t {
   kOK = BIT(0),
   kFault = BIT(1),
-  kApplVerified = BIT(2),
-  kApplNotVerified = BIT(3),
+  kStage1Verified = BIT(2),
+  kStage1NotVerified = BIT(3),
   kWpOn = BIT(4),
   kWpOff = BIT(5),
   // Unused          BIT(6),

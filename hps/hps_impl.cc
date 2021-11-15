@@ -270,7 +270,7 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
   VLOG_IF(1, this->write_protect_off_) << "kWpOff, ignoring verified bits";
 
   // Send an update only when WP is off and there is no verified signal
-  if (!this->write_protect_off_ && !(status & R2::kApplVerified)) {
+  if (!this->write_protect_off_ && !(status & R2::kStage1Verified)) {
     // Stage1 not verified, so need to update it.
     LOG(INFO) << "Stage1 flash not verified";
     hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kMcuNotVerified);
