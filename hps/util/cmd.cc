@@ -45,18 +45,6 @@ int SendCmd(std::unique_ptr<hps::HPS> hps,
     return 1;
   }
 
-  for (auto i = 0; i < 5; i++) {
-    int result = hps->Device()->ReadReg(hps::HpsReg(i));
-    if (result < 0) {
-      std::cout << base::StringPrintf("Register %3d: error (%s)\n", i,
-                                      hps::HpsRegToString(hps::HpsReg(i)));
-    } else {
-      std::cout << base::StringPrintf("Register %3d: 0x%.4x (%s)\n", i,
-                                      static_cast<uint16_t>(result),
-                                      hps::HpsRegToString(hps::HpsReg(i)));
-    }
-  }
-
   std::cout << "Sending cmd value 0x" << std::hex << std::setfill('0')
             << std::setw(4) << cmd << " to register 3" << std::endl;
   if (hps->Device()->WriteReg(hps::HpsReg::kSysCmd, cmd)) {

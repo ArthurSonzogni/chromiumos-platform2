@@ -31,7 +31,7 @@ int Status(std::unique_ptr<hps::HPS> hps,
   switch (args.size()) {
     case 1:
       start = 0;
-      end = 4;
+      end = static_cast<int>(hps::HpsReg::kLargestRegister);
       break;
 
     case 2:
@@ -90,7 +90,7 @@ int Status(std::unique_ptr<hps::HPS> hps,
 
 Command status("status",
                "status [ start [ end ] ] - "
-               "Dump status registers (default 0 5).",
+               "Dump status registers (default all).",
                Status);
 
 }  // namespace

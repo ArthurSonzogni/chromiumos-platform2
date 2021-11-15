@@ -35,6 +35,7 @@ enum class HpsReg : uint8_t {
   kFeature1 = 9,
   kFirmwareVersionHigh = 10,
   kFirmwareVersionLow = 11,
+  kLargestRegister = kFirmwareVersionLow,  // keep this in sync
   kMax = 127,
 };
 
