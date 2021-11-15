@@ -183,6 +183,10 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
         ret.push_back("kI2cURun");
         val ^= RError::kI2cURun;
       }
+      if (val & RError::kSpiNotVer) {
+        ret.push_back("kSpiNotVerified");
+        val ^= RError::kSpiNotVer;
+      }
       if (val) {
         ret.push_back(base::StringPrintf("0x%x", val));
       }

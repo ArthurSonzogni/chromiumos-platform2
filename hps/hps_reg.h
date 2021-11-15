@@ -74,6 +74,7 @@ enum RFeat : uint16_t {
 };
 
 enum RError : uint16_t {
+  kSpiNotVer = BIT(10),
   kBufORun = BIT(9),
   kBufNAvail = BIT(8),
   kI2cBadReq = BIT(7),
