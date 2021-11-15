@@ -21,6 +21,10 @@ namespace {
 static constexpr base::TimeDelta kSmartDimDecisionTimeout =
     base::TimeDelta::FromSeconds(3);
 
+// Timeout for GetResultHpsSense.
+static constexpr base::TimeDelta kGetResultHpsSenseTimeout =
+    base::TimeDelta::FromSeconds(3);
+
 }  // namespace
 
 DimAdvisor::DimAdvisor() : weak_ptr_factory_(this) {}
@@ -47,6 +51,9 @@ void DimAdvisor::Init(system::DBusWrapperInterface* dbus_wrapper,
       hps_dbus_proxy_, hps::kHpsServiceInterface, hps::kHpsSenseChanged,
       base::BindRepeating(&DimAdvisor::HandleHpsSenseSignal,
                           weak_ptr_factory_.GetWeakPtr()));
+  dbus_wrapper->RegisterForServiceAvailability(
+      hps_dbus_proxy_, base::BindOnce(&DimAdvisor::HandleHpsServiceAvailable,
+                                      weak_ptr_factory_.GetWeakPtr()));
 }
 
 bool DimAdvisor::ReadyForSmartDimRequest(
@@ -81,10 +88,19 @@ bool DimAdvisor::IsHpsSenseEnabled() const {
 void DimAdvisor::OnDBusNameOwnerChanged(const std::string& service_name,
                                         const std::string& old_owner,
                                         const std::string& new_owner) {
+  // When MLDecisionService restarts.
   if (service_name == chromeos::kMlDecisionServiceName && !new_owner.empty()) {
     LOG(INFO) << "D-Bus " << service_name << " ownership changed to "
               << new_owner;
     HandleMlDecisionServiceAvailableOrRestarted(true);
+  }
+  // Notify StateController when HpsService stops.
+  // No action required on restart since HpsService will restart with state
+  // UNKNOWN, and as soon as that state changes to POSITIVE or NEGATIVE, a
+  // new signal will be sent from Hps to powerd.
+  if (service_name == hps::kHpsServiceName && new_owner.empty()) {
+    LOG(INFO) << "D-Bus " << service_name << " ownership changed to empty.";
+    HandleHpsServiceStopped();
   }
 }
 
@@ -95,6 +111,52 @@ void DimAdvisor::HandleMlDecisionServiceAvailableOrRestarted(bool available) {
                   "available";
     return;
   }
+}
+
+void DimAdvisor::HandleHpsServiceAvailable(bool available) {
+  if (!available) {
+    LOG(ERROR) << "Failed waiting for Hps service to become "
+                  "available";
+    return;
+  }
+
+  // Send a dbus call to get the first possible hps_result.
+  dbus::MethodCall method_call(hps::kHpsServiceInterface,
+                               hps::kGetResultHpsSense);
+
+  dbus_wrapper_->CallMethodAsync(
+      hps_dbus_proxy_, &method_call, kGetResultHpsSenseTimeout,
+      base::BindOnce(&DimAdvisor::HandleGetResultHpsSenseResponse,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void DimAdvisor::HandleHpsServiceStopped() {
+  LOG(ERROR) << "HPS Service is stopped, disable DimAdvisor for HPS signal.";
+  state_controller_->HandleHpsResultChange(hps::HpsResult::UNKNOWN);
+  hps_sense_connected_ = false;
+}
+
+void DimAdvisor::HandleGetResultHpsSenseResponse(dbus::Response* response) {
+  if (!response) {
+    LOG(ERROR) << "D-Bus method call to " << hps::kHpsServiceInterface << "."
+               << hps::kGetResultHpsSense << " failed";
+    return;
+  }
+
+  dbus::MessageReader reader(response);
+  hps::HpsResultProto result_proto;
+
+  if (!reader.PopArrayOfBytesAsProto(&result_proto)) {
+    LOG(ERROR) << "Can't read dbus response from " << hps::kHpsServiceInterface
+               << "." << hps::kGetResultHpsSense;
+    return;
+  }
+
+  // Here we should only set hps_sense_connected_ = true if the result from
+  // HpsService is not UNKNOWN.
+  hps_sense_connected_ = result_proto.value() != hps::HpsResult::UNKNOWN;
+  // Calls StateController::HandleHpsResultChange to consume first hps result.
+  state_controller_->HandleHpsResultChange(result_proto.value());
 }
 
 void DimAdvisor::HandleSmartDimResponse(dbus::Response* response) {

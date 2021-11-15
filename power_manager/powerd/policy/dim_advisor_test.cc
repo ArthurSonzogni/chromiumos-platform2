@@ -44,7 +44,10 @@ class DimAdvisorTest : public ::testing::Test {
                                                    hps::kHpsServicePath);
   }
   // Initialize dim_advisor_.
-  void InitWithMlServiceAvailability(const bool available) {
+  void InitWithMlServiceAvailabilityAndHpsResult(
+      const bool available,
+      const hps::HpsResult hps_result = hps::HpsResult::UNKNOWN) {
+    hps_sense_result_ = hps_result;
     dim_advisor_.Init(&dbus_wrapper_, &mock_state_controller_);
     dbus_wrapper_.NotifyServiceAvailable(ml_decision_dbus_proxy_, available);
   }
@@ -57,22 +60,40 @@ class DimAdvisorTest : public ::testing::Test {
     std::unique_ptr<dbus::Response> response =
         dbus::Response::FromMethodCall(method_call);
     ++num_of_method_calls_;
-    if (proxy != ml_decision_dbus_proxy_) {
+    if (proxy == ml_decision_dbus_proxy_) {
+      if (method_call->GetInterface() !=
+          chromeos::kMlDecisionServiceInterface) {
+        ADD_FAILURE() << "Unhandled method call to interface "
+                      << method_call->GetInterface();
+        response.reset();
+      } else if (method_call->GetMember() ==
+                 chromeos::kMlDecisionServiceShouldDeferScreenDimMethod) {
+        dbus::MessageWriter(response.get()).AppendBool(should_defer_);
+      } else {
+        ADD_FAILURE() << "Unhandled method call to member "
+                      << method_call->GetMember();
+        response.reset();
+      }
+    } else if (proxy == hps_dbus_proxy_) {
+      if (method_call->GetInterface() != hps::kHpsServiceInterface) {
+        ADD_FAILURE() << "Unhandled method call to interface "
+                      << method_call->GetInterface();
+        response.reset();
+      } else if (method_call->GetMember() == hps::kGetResultHpsSense) {
+        hps::HpsResultProto result_proto;
+        result_proto.set_value(hps_sense_result_);
+        dbus::MessageWriter(response.get())
+            .AppendProtoAsArrayOfBytes(result_proto);
+      } else {
+        ADD_FAILURE() << "Unhandled method call to member "
+                      << method_call->GetMember();
+        response.reset();
+      }
+    } else {
       ADD_FAILURE() << "Unhandled method call to proxy " << proxy;
       response.reset();
-    } else if (method_call->GetInterface() !=
-               chromeos::kMlDecisionServiceInterface) {
-      ADD_FAILURE() << "Unhandled method call to interface "
-                    << method_call->GetInterface();
-      response.reset();
-    } else if (method_call->GetMember() ==
-               chromeos::kMlDecisionServiceShouldDeferScreenDimMethod) {
-      dbus::MessageWriter(response.get()).AppendBool(should_defer_);
-    } else {
-      ADD_FAILURE() << "Unhandled method call to member "
-                    << method_call->GetMember();
-      response.reset();
     }
+
     return response;
   }
 
@@ -91,22 +112,23 @@ class DimAdvisorTest : public ::testing::Test {
   MockStateController mock_state_controller_;
   int num_of_method_calls_ = 0;
   bool should_defer_ = false;
+  hps::HpsResult hps_sense_result_ = hps::HpsResult::UNKNOWN;
   dbus::ObjectProxy* ml_decision_dbus_proxy_ = nullptr;
   dbus::ObjectProxy* hps_dbus_proxy_ = nullptr;
 };
 
 TEST_F(DimAdvisorTest, NotEnabledIfMlServiceUnavailable) {
-  InitWithMlServiceAvailability(false);
+  InitWithMlServiceAvailabilityAndHpsResult(false);
   EXPECT_FALSE(dim_advisor_.IsSmartDimEnabled());
 }
 
 TEST_F(DimAdvisorTest, EnabledIfMlServiceAvailable) {
-  InitWithMlServiceAvailability(true);
+  InitWithMlServiceAvailabilityAndHpsResult(true);
   EXPECT_TRUE(dim_advisor_.IsSmartDimEnabled());
 }
 
 TEST_F(DimAdvisorTest, NotReadyIfLessThanDimImminent) {
-  InitWithMlServiceAvailability(true);
+  InitWithMlServiceAvailabilityAndHpsResult(true);
 
   base::TimeDelta screen_dim_imminent = base::TimeDelta::FromSeconds(2);
   // last_smart_dim_decision_request_time_ is initialized as base::TimeTicks().
@@ -117,7 +139,7 @@ TEST_F(DimAdvisorTest, NotReadyIfLessThanDimImminent) {
 }
 
 TEST_F(DimAdvisorTest, HandleSmartDimShouldDefer) {
-  InitWithMlServiceAvailability(true);
+  InitWithMlServiceAvailabilityAndHpsResult(true);
 
   base::TimeDelta screen_dim_imminent = base::TimeDelta::FromSeconds(2);
   base::TimeTicks now = base::TimeTicks() + screen_dim_imminent;
@@ -132,7 +154,7 @@ TEST_F(DimAdvisorTest, HandleSmartDimShouldDefer) {
 }
 
 TEST_F(DimAdvisorTest, HandleSmartDimShouldNotDefer) {
-  InitWithMlServiceAvailability(true);
+  InitWithMlServiceAvailabilityAndHpsResult(true);
 
   base::TimeDelta screen_dim_imminent = base::TimeDelta::FromSeconds(2);
   base::TimeTicks now = base::TimeTicks() + screen_dim_imminent;
@@ -146,7 +168,7 @@ TEST_F(DimAdvisorTest, HandleSmartDimShouldNotDefer) {
 }
 
 TEST_F(DimAdvisorTest, HpsIsEnabledAfterGettingFirstSignal) {
-  InitWithMlServiceAvailability(false);
+  InitWithMlServiceAvailabilityAndHpsResult(false);
 
   EXPECT_FALSE(dim_advisor_.IsHpsSenseEnabled());
   EXPECT_CALL(mock_state_controller_, HandleHpsResultChange).Times(1);
@@ -155,7 +177,7 @@ TEST_F(DimAdvisorTest, HpsIsEnabledAfterGettingFirstSignal) {
 }
 
 TEST_F(DimAdvisorTest, HandleHpsResultChange) {
-  InitWithMlServiceAvailability(false);
+  InitWithMlServiceAvailabilityAndHpsResult(false);
 
   EXPECT_CALL(mock_state_controller_,
               HandleHpsResultChange(HpsResult::NEGATIVE))
@@ -170,6 +192,35 @@ TEST_F(DimAdvisorTest, HandleHpsResultChange) {
   EXPECT_CALL(mock_state_controller_, HandleHpsResultChange(HpsResult::UNKNOWN))
       .Times(1);
   EmitHpsSignal(HpsResult::UNKNOWN);
+}
+
+TEST_F(DimAdvisorTest, GetFirstHpsSenseResultOnInitialization) {
+  InitWithMlServiceAvailabilityAndHpsResult(false, hps::HpsResult::POSITIVE);
+  // There should be a GetResultHpsSenseResponse when hps_dbus_proxy_ is
+  // available.
+  EXPECT_CALL(mock_state_controller_,
+              HandleHpsResultChange(hps::HpsResult::POSITIVE))
+      .Times(1);
+  dbus_wrapper_.NotifyServiceAvailable(hps_dbus_proxy_, true);
+  base::RunLoop().RunUntilIdle();
+  EXPECT_TRUE(dim_advisor_.IsHpsSenseEnabled());
+  EXPECT_EQ(num_of_method_calls_, 1);
+
+  // There should be a call to HandleHpsResultChange when HpsService stops.
+  EXPECT_CALL(mock_state_controller_,
+              HandleHpsResultChange(hps::HpsResult::UNKNOWN))
+      .Times(1);
+  dbus_wrapper_.NotifyNameOwnerChanged(hps::kHpsServiceName, "", "");
+  EXPECT_FALSE(dim_advisor_.IsHpsSenseEnabled());
+  EXPECT_EQ(num_of_method_calls_, 1);
+
+  // There should be no call to HandleHpsResultChange when HpsService starts.
+  EXPECT_CALL(mock_state_controller_, HandleHpsResultChange(testing::_))
+      .Times(0);
+  dbus_wrapper_.NotifyNameOwnerChanged(hps::kHpsServiceName, "", "new_name");
+  // dim_advisor_ stays disabled until next signal.
+  EXPECT_FALSE(dim_advisor_.IsHpsSenseEnabled());
+  EXPECT_EQ(num_of_method_calls_, 1);
 }
 
 }  // namespace policy

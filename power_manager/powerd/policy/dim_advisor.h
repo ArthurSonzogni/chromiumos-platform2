@@ -55,6 +55,16 @@ class DimAdvisor : public system::DBusWrapperInterface::Observer {
  private:
   // Handles the `ml_decision_dbus_proxy_` becoming initially available.
   void HandleMlDecisionServiceAvailableOrRestarted(bool available);
+  // This is called when DimAdvisor is initialized to get the first possible
+  // hps_result.
+  void HandleHpsServiceAvailable(bool available);
+  // This is called when HpsService stopped. When HpsService is
+  // stopped, we may not be able to get another HpsSignal, so we send a
+  // HpsResult::UNKNOWN to StateController.
+  void HandleHpsServiceStopped();
+  // Handles GetResultHpsSense response.
+  void HandleGetResultHpsSenseResponse(dbus::Response* response);
+
   // Handles smart dim response, serves as callback in RequestSmartDimDecision.
   void HandleSmartDimResponse(dbus::Response* response);
   // Handle Hps sense signal.
