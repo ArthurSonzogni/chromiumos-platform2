@@ -263,4 +263,41 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
   EXPECT_TRUE(called);
 }
 
+// Test if AuthSession::Addcredentials skips adding/saving credential to disk
+// for an ephemeral user.
+TEST_F(AuthSessionTest, AddCredentialNewEphemeralUser) {
+  // Setup.
+  base::test::SingleThreadTaskEnvironment task_environment;
+  bool called = false;
+  auto on_timeout = base::BindOnce(
+      [](bool& called, const base::UnguessableToken&) { called = true; },
+      std::ref(called));
+  int flags =
+      user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
+  // Setting the expectation that the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
+                           &keyset_management_);
+
+  // Test.
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session.GetStatus());
+  EXPECT_FALSE(auth_session.user_exists());
+  ASSERT_TRUE(auth_session.timer_.IsRunning());
+
+  user_data_auth::AddCredentialsRequest add_cred_request;
+  cryptohome::AuthorizationRequest* authorization_request =
+      add_cred_request.mutable_authorization();
+  authorization_request->mutable_key()->set_secret(kFakePass);
+  authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
+
+  EXPECT_CALL(keyset_management_, AddInitialKeyset(_)).Times(0);
+
+  // Verify.
+  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+              auth_session.AddCredentials(add_cred_request));
+  EXPECT_EQ(auth_session.GetStatus(),
+            AuthStatus::kAuthStatusFurtherFactorRequired);
+}
+
 }  // namespace cryptohome

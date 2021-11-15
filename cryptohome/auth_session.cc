@@ -87,6 +87,12 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
                                          auth_factor_->vault_keyset());
   }
 
+  // If AuthSession is not configured as an ephemeral user, then we save the
+  // key to the disk.
+  if (is_ephemeral_user_) {
+    return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  }
+
   user_data_auth::CryptohomeErrorCode errorCode =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
   // An assumption here is that keyset management saves the user keys on disk.
