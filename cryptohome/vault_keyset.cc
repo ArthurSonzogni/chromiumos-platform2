@@ -38,6 +38,7 @@
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/libscrypt_compat.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.pb.h"
 
@@ -664,6 +665,11 @@ void VaultKeyset::SetChallengeCredentialState(
   if (auth_state.scrypt_state.salt.has_value()) {
     auth_salt_ = auth_state.scrypt_state.salt.value();
   }
+
+  if (auth_state.keyset_challenge_info.has_value()) {
+    signature_challenge_info_ =
+        proto::ToProto(auth_state.keyset_challenge_info.value());
+  }
 }
 
 void VaultKeyset::SetTpmEccState(const TpmEccAuthBlockState& auth_state) {
@@ -792,7 +798,12 @@ bool VaultKeyset::GetSignatureChallengeState(AuthBlockState* auth_state) const {
   }
 
   ChallengeCredentialAuthBlockState cc_state = {
-      .scrypt_state = std::move(*libscrypt_state)};
+      .scrypt_state = std::move(*libscrypt_state),
+  };
+  if (signature_challenge_info_.has_value()) {
+    cc_state.keyset_challenge_info =
+        proto::FromProto(signature_challenge_info_.value());
+  }
   auth_state->state = std::move(cc_state);
   return true;
 }

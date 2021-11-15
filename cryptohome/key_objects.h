@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/optional.h>
@@ -33,6 +34,17 @@ struct CryptohomeRecoveryAuthInput {
   base::Optional<brillo::SecureBlob> recovery_response;
 };
 
+// Data required for Challenge Credential flow.
+struct ChallengeCredentialAuthInput {
+  // DER-encoded blob of the X.509 Subject Public Key Info.
+  brillo::Blob public_key_spki_der;
+  // Supported signature algorithms, in the order of preference
+  // (starting from the most preferred). Absence of this field
+  // denotes that the key cannot be used for signing.
+  std::vector<structure::ChallengeSignatureAlgorithm>
+      challenge_signature_algorithms;
+};
+
 struct AuthInput {
   // The user input, such as password.
   base::Optional<brillo::SecureBlob> user_input;
@@ -44,6 +56,8 @@ struct AuthInput {
   base::Optional<brillo::SecureBlob> reset_secret;
   // Data required for Cryptohome Recovery flow.
   base::Optional<CryptohomeRecoveryAuthInput> cryptohome_recovery_auth_input;
+  // Data required for Challenge Credential flow.
+  base::Optional<ChallengeCredentialAuthInput> challenge_credential_auth_input;
 };
 
 // LibScrypt requires a salt to be passed from Create() into the encryption

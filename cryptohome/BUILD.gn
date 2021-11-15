@@ -422,6 +422,7 @@ if (use.test) {
 
   executable("cryptohome_testrunner") {
     sources = [
+      "auth_blocks/async_challenge_credential_auth_block_test.cc",
       "auth_blocks/auth_block_state_unittest.cc",
       "auth_blocks/auth_block_unittest.cc",
       "auth_blocks/sync_to_async_auth_block_adapter_test.cc",

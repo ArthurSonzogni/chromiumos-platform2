@@ -193,6 +193,7 @@ pkg_config("libcrostpm_dependent_config") {
 
 static_library("libcrostpm") {
   sources = [
+    "../auth_blocks/async_challenge_credential_auth_block.cc",
     "../auth_blocks/auth_block_state.cc",
     "../auth_blocks/challenge_credential_auth_block.cc",
     "../auth_blocks/cryptohome_recovery_auth_block.cc",
