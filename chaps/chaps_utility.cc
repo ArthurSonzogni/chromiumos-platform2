@@ -628,8 +628,11 @@ string ValueToString(CK_ATTRIBUTE_TYPE attribute,
     case CKA_NEVER_EXTRACTABLE:
     case CKA_ALWAYS_SENSITIVE:
     case CKA_ALWAYS_AUTHENTICATE:
+    case CKA_LOCAL:
       return PrintYesNo(value);
     case CKA_ID:
+    case CKA_EC_PARAMS:
+    case CKA_LABEL:
       return PrintIntVector(value);
     default:
       return "***";
