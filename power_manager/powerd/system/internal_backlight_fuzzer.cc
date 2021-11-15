@@ -43,8 +43,17 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // Create a random name backlight, and run the Init() code through it.
   const base::FilePath random_test_dir = temp_dir_path.Append("random_test");
+
+  // If the random name backlight can be interpreted as an absolute path,
+  // base::FilePath::Append() crashes (since it doesn't expect this). So check
+  // for that and return early if so.
+  auto random_backlight_dirname =
+      base::FilePath(data_provider.ConsumeRandomLengthString(100));
+  if (random_backlight_dirname.IsAbsolute())
+    return 0;
+
   const base::FilePath random_backlight_path =
-      random_test_dir.Append(data_provider.ConsumeRandomLengthString(100));
+      random_test_dir.Append(random_backlight_dirname);
   PopulateBacklightDir(random_backlight_path,
                        data_provider.ConsumeIntegral<int64_t>(),
                        data_provider.ConsumeIntegral<int64_t>());
