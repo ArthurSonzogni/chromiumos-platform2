@@ -29,6 +29,7 @@
 #include <chromeos-config/libcros_config/cros_config_interface.h>
 #include <chromeos/ui/chromium_command_builder.h>
 #include <chromeos/ui/util.h>
+#include <chromeos/constants/vm_tools.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
@@ -340,9 +341,16 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
 
   // Create a directory where the chrome process can store a reboot request so
   // that it persists across browser crashes but is always removed on reboot.
-  // This directory also houses the wayland and arc-bridge sockets that are
-  // exported to VMs and Android.
+  // This directory also houses the default wayland and arc-bridge sockets that
+  // are exported to VMs and Android.
   CHECK(EnsureDirectoryExists(base::FilePath("/run/chrome"), uid, gid, 0755));
+
+  // This directory houses secure wayland sockets that will be used by the
+  // concierge daemon (i.e. sockets used by VMs).
+  const base::FilePath wayland_dir("/run/wayland");
+  CHECK(EnsureDirectoryExists(wayland_dir, kRootUid, kRootGid, 0755));
+  CHECK(EnsureDirectoryExists(
+      wayland_dir.Append(vm_tools::kConciergeSecurityContext), uid, gid, 0755));
 
   // Ensure the existence of the directory in which the device settings and
   // other ownership-related state will live. Yes, it should be owned by root.
