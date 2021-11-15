@@ -42,6 +42,8 @@ set_tid_address: 1
 ugetrlimit: 1
 stat64: 1
 rename: 1
+readlink: 1
+readlinkat: 1
 symlink: 1
 # clone: bio_crypto_init forks a child process.
 clone: 1

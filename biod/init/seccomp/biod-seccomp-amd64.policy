@@ -72,6 +72,7 @@ sendto: 1
 socket: arg0 == AF_UNIX
 stat: 1
 readlink: 1
+readlinkat: 1
 symlink: 1
 umask: 1
 uname: 1

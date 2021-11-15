@@ -30,6 +30,7 @@ faccessat2: 1
 set_tid_address: 1
 rt_sigprocmask: 1
 prlimit64: 1
+readlinkat: 1
 renameat: 1
 symlinkat: 1
 # clone: bio_crypto_init forks a child process
