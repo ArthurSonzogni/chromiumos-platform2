@@ -111,14 +111,6 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
         ret.push_back("kAppl");
         val ^= kAppl;
       }
-      if (val & kSpiVerified) {
-        ret.push_back("kSpiVerified");
-        val ^= kSpiVerified;
-      }
-      if (val & kSpiNotVerified) {
-        ret.push_back("kSpiNotVerified");
-        val ^= kSpiNotVerified;
-      }
       if (val) {
         ret.push_back(base::StringPrintf("0x%x", val));
       }

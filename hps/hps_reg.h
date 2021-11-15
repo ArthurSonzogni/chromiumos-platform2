@@ -51,8 +51,6 @@ enum R2 : uint16_t {
   // Unused          BIT(7),
   kStage1 = BIT(8),        // Stage1 running
   kAppl = BIT(9),          // Application running
-  kSpiVerified = BIT(10),  // SPI flash verified
-  kSpiNotVerified = BIT(11),
 };
 
 // Register 3 (WO) - System command register.

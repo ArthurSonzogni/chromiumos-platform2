@@ -107,11 +107,6 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
       }
       if (this->stage_ == Stage::kStage1) {
         v |= hps::R2::kStage1;
-        if (this->Flag(Flags::kSpiNotVerified)) {
-          v |= hps::R2::kSpiNotVerified;
-        } else {
-          v |= hps::R2::kSpiVerified;
-        }
       }
       if (this->stage_ == Stage::kAppl) {
         v |= hps::R2::kAppl;
@@ -187,7 +182,12 @@ void FakeDev::WriteRegister(HpsReg reg, uint16_t value) {
       } else if (value & hps::R3::kLaunchAppl) {
         // Only valid in stage1
         if (this->stage_ == Stage::kStage1) {
-          this->SetStage(Stage::kAppl);
+          // only boot valid spi flash, else set fault bit
+          if (this->Flag(Flags::kSpiNotVerified)) {
+            this->fault_ |= hps::RError::kSpiNotVer;
+          } else {
+            this->SetStage(Stage::kAppl);
+          }
         }
       }
       break;

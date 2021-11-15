@@ -39,6 +39,13 @@ static constexpr base::TimeDelta kMagicSleep =
 static constexpr base::TimeDelta kMagicTimeout =
     base::TimeDelta::FromMilliseconds(3000);
 
+// After requesting application launch, we must wait for verification
+// Observed time is 100 seconds.
+static constexpr base::TimeDelta kApplTimeout =
+    base::TimeDelta::FromMilliseconds(200000);
+static constexpr base::TimeDelta kApplSleep =
+    base::TimeDelta::FromMilliseconds(1000);
+
 // Initialise the firmware parameters.
 void HPS_impl::Init(uint32_t stage1_version,
                     const base::FilePath& mcu,
@@ -152,9 +159,9 @@ FeatureResult HPS_impl::Result(int feature) {
 }
 
 // Attempt the boot sequence:
-// Check stage0 flags, send a MCU update or continue
-// Check stage1 flags, send a SPI update or continue
-// Check stage2 flags, return result.
+// Check stage0 flags, send a MCU update, fail or continue
+// Check stage1 flags, fail or continue
+// Check stage2 flags, send a SPI update or continue
 // returns BootResult::kOk if booting completed
 // returns BootResult::kUpdate if an update was sent
 // else returns BootResult::kFail
@@ -180,7 +187,7 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
       }
   }
 
-  // Inspect stage1 flags and either fail, update, or launch stage2 and continue
+  // Inspect stage1 flags and either fail or launch application and continue
   switch (this->CheckStage1()) {
     case BootResult::kOk:
       VLOG(1) << "Launching Application";
@@ -188,6 +195,16 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
         LOG(FATAL) << "Launch Application failed";
       }
       break;
+    case BootResult::kFail:
+    case BootResult::kUpdate:
+      return BootResult::kFail;
+  }
+
+  // Inspect application flags and either fail, send an update, or succeed
+  switch (this->CheckApplication()) {
+    case BootResult::kOk:
+      VLOG(1) << "Application Running";
+      return BootResult::kOk;
     case BootResult::kFail:
       return BootResult::kFail;
     case BootResult::kUpdate:
@@ -201,9 +218,6 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
         return BootResult::kFail;
       }
   }
-
-  // Inspect stage2 flags for success or failure
-  return this->CheckStage2();
 }
 
 // Returns true if the device replies with the expected magic number in time.
@@ -223,7 +237,8 @@ bool HPS_impl::CheckMagic() {
         return false;
       }
     } else if (magic == kHpsMagic) {
-      VLOG(1) << "Good magic number";
+      VLOG(1) << "Good magic number after " << timer.Elapsed().InMilliseconds()
+              << "ms";
       return true;
     } else {
       hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kBadMagic);
@@ -332,49 +347,54 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage1() {
     LOG(FATAL) << "Stage 1 did not start";
     return BootResult::kFail;
   }
-
-  // Send an update only when WP is on and there is no verified signal
-  if (!this->write_protect_off_ && !(status & R2::kSpiVerified)) {
-    LOG(INFO) << "SPI flash not verified";
-    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kSpiNotVerified);
-    return BootResult::kUpdate;
-  } else {
-    VLOG(1) << "SPI flash ready to start";
-    return BootResult::kOk;
-  }
+  VLOG(1) << "Stage 1 OK";
+  return BootResult::kOk;
 }
 
 // Check stage2 status:
 // Check status flags.
-// Return BootResult::kOk if booting should continue.
+// Return BootResult::kOk if application is running.
 // Return BootResult::kUpdate if an update should be sent.
 // Else returns BootResult::kFail.
-hps::HPS_impl::BootResult HPS_impl::CheckStage2() {
-  if (!CheckMagic()) {
-    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kApplNotStarted);
-    return BootResult::kFail;
-  }
+hps::HPS_impl::BootResult HPS_impl::CheckApplication() {
+  // Poll for kAppl (started) or kSpiNotVer (not started)
+  base::ElapsedTimer timer;
+  do {
+    int status = this->device_->ReadReg(HpsReg::kSysStatus);
+    if (status < 0) {
+      // TODO(evanbenn) log a metric
+      LOG(FATAL) << "ReadReg failure";
+      return BootResult::kFail;
+    }
+    if (status & R2::kAppl) {
+      VLOG(1) << "Application boot after " << timer.Elapsed().InMilliseconds()
+              << "ms";
+      hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kSuccess);
+      return BootResult::kOk;
+    }
 
-  int status = this->device_->ReadReg(HpsReg::kSysStatus);
-  if (status < 0) {
-    // TODO(evanbenn) log a metric
-    LOG(FATAL) << "ReadReg failure";
-    return BootResult::kFail;
-  }
+    int error = this->device_->ReadReg(HpsReg::kError);
+    if (error < 0) {
+      // TODO(evanbenn) log a metric
+      LOG(FATAL) << "ReadReg failure";
+      return BootResult::kFail;
+    }
+    if (error & RError::kSpiNotVer) {
+      VLOG(1) << "SPI verification failed after "
+              << timer.Elapsed().InMilliseconds() << "ms";
+      hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kSpiNotVerified);
+      return BootResult::kUpdate;
+    } else if (error) {
+      this->Fault();
+      return BootResult::kFail;
+    }
 
-  if (status & R2::kFault || !(status & R2::kOK)) {
-    this->Fault();
-    return BootResult::kFail;
-  }
+    base::PlatformThread::Sleep(kApplSleep);
+  } while (timer.Elapsed() < kApplTimeout);
 
-  if (!(status & R2::kAppl)) {
-    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kApplNotStarted);
-    LOG(FATAL) << "Application did not start";
-    return BootResult::kFail;
-  } else {
-    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kSuccess);
-    return BootResult::kOk;
-  }
+  hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kApplNotStarted);
+  LOG(FATAL) << "Application did not start";
+  return BootResult::kFail;
 }
 
 // Reboot the hardware module.

@@ -65,7 +65,7 @@ class HPS_impl : public HPS {
   bool CheckMagic();
   BootResult CheckStage0();
   BootResult CheckStage1();
-  BootResult CheckStage2();
+  BootResult CheckApplication();
   bool Reboot();
   void Fault();
   bool WaitForBankReady(uint8_t bank);
