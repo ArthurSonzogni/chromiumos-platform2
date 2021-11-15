@@ -6,12 +6,13 @@
 
 #include <sys/eventfd.h>
 
+#include <iterator>
+
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include "base/posix/eintr_wrapper.h"
-#include <base/stl_util.h>
 
 #include "libmems/common_types.h"
 
@@ -69,14 +70,14 @@ bool FakeIioChannel::WriteDoubleAttribute(const std::string& name,
 }
 
 base::Optional<int64_t> FakeIioChannel::GetData(int index) {
-  if (!enabled_ || index < 0 || index >= base::size(kFakeAccelSamples))
+  if (!enabled_ || index < 0 || index >= std::size(kFakeAccelSamples))
     return base::nullopt;
 
   auto raw = ReadNumberAttribute(kRawAttr);
   if (raw.has_value())
     return raw;
 
-  for (int i = 0; i < base::size(kFakeAccelChns); ++i) {
+  for (int i = 0; i < std::size(kFakeAccelChns); ++i) {
     if (id_.compare(kFakeAccelChns[i]) == 0)
       return kFakeAccelSamples[index][i];
   }
@@ -157,7 +158,7 @@ bool FakeIioDevice::CreateBuffer() {
   CHECK_GE(fd, 0);
   sample_fd_.reset(fd);
 
-  if (sample_index_ >= base::size(kFakeAccelSamples) || is_paused_)
+  if (sample_index_ >= std::size(kFakeAccelSamples) || is_paused_)
     return true;
 
   if (!WriteByte()) {
@@ -216,7 +217,7 @@ base::Optional<IioDevice::IioSample> FakeIioDevice::ReadSample() {
 
   sample_index_ += 1;
 
-  if (sample_index_ < base::size(kFakeAccelSamples)) {
+  if (sample_index_ < std::size(kFakeAccelSamples)) {
     if (pause_index_.has_value() && sample_index_ == pause_index_.value())
       SetPause();
     else if (!WriteByte())
@@ -245,7 +246,7 @@ void FakeIioDevice::AddFailedReadAtKthSample(int k) {
 void FakeIioDevice::SetPauseCallbackAtKthSamples(
     int k, base::OnceCallback<void()> callback) {
   CHECK_GE(k, sample_index_);
-  CHECK_LE(k, base::size(kFakeAccelSamples));
+  CHECK_LE(k, std::size(kFakeAccelSamples));
   CHECK(!pause_index_.has_value());  // pause callback hasn't been set
 
   pause_index_ = k;

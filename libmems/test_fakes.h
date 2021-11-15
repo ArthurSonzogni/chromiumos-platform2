@@ -158,7 +158,7 @@ class LIBMEMS_EXPORT FakeIioChannel : public IioChannel {
   bool WriteNumberAttribute(const std::string& name, int64_t value) override;
   bool WriteDoubleAttribute(const std::string& name, double value) override;
 
-  // |index| should be within [0, |base::size(kFakeAccelSamples)|). If the raw
+  // |index| should be within [0, |std::size(kFakeAccelSamples)|). If the raw
   // attribute exists, the value is returned; otherwise, if the channel's id is
   // within kFakeAccelChns, the corresponding value in |kFakeAccelSamples| is
   // returned.
