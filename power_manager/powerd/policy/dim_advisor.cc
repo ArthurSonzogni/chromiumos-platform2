@@ -49,7 +49,7 @@ void DimAdvisor::Init(system::DBusWrapperInterface* dbus_wrapper,
 }
 
 bool DimAdvisor::ReadyForSmartDimRequest(
-    base::TimeTicks now, base::TimeDelta screen_dim_imminent_delay) {
+    base::TimeTicks now, base::TimeDelta screen_dim_imminent_delay) const {
   return IsSmartDimEnabled() && !waiting_for_smart_dim_decision_ &&
          now - last_smart_dim_decision_request_time_ >=
              screen_dim_imminent_delay;
@@ -69,11 +69,11 @@ void DimAdvisor::RequestSmartDimDecision(base::TimeTicks now) {
                      weak_ptr_factory_.GetWeakPtr()));
 }
 
-bool DimAdvisor::IsSmartDimEnabled() {
+bool DimAdvisor::IsSmartDimEnabled() const {
   return ml_decision_service_available_;
 }
 
-bool DimAdvisor::IsHpsSenseEnabled() {
+bool DimAdvisor::IsHpsSenseEnabled() const {
   return hps_sense_connected_;
 }
 
@@ -143,7 +143,14 @@ void DimAdvisor::HandleHpsSenseSignal(dbus::Signal* signal) {
     return;
   }
 
-  hps_result_ = value ? HpsResult::POSITIVE : HpsResult::NEGATIVE;
+  HpsResult hps_result = value ? HpsResult::POSITIVE : HpsResult::NEGATIVE;
+
+  // Calls StateController::HandleHpsResultChange to consume new hps result.
+  state_controller_->HandleHpsResultChange(hps_result);
+}
+
+void DimAdvisor::UnDimFeedback(base::TimeDelta dim_duration) {
+  // TODO(charleszhao): Update the DimAdvisor based on the feedback.
 }
 
 }  // namespace policy

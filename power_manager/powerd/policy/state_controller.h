@@ -200,15 +200,19 @@ class StateController : public PrefsObserver {
   // Handles updates to the TPM status.
   void HandleTpmStatus(int dictionary_attack_count);
 
+  // Called when dim_advisor_.HandleSmartDimResponse returns
+  // "Should defer". Virtual for mocking.
+  virtual void HandleDeferFromSmartDim();
+
+  // Called when a new hps_result is sent from Hps DBus.
+  // Virtual for mocking.
+  virtual void HandleHpsResultChange(DimAdvisor::HpsResult hps_result);
+
   // PrefsInterface::Observer implementation:
   void OnPrefChanged(const std::string& pref_name) override;
 
   // Whether to request a smart dim decision.
   bool ShouldRequestSmartDim(base::TimeTicks now);
-
-  // Called when smart_dim_requestor_.HandleSmartDimResponse returns
-  // "Should defer". virtual for mocking.
-  virtual void HandleDeferFromSmartDim();
 
  private:
   // Holds a collection of delays. Unset delays take the zero value.
@@ -219,6 +223,7 @@ class StateController : public PrefsObserver {
     base::TimeDelta screen_dim;
     base::TimeDelta screen_dim_imminent;
     base::TimeDelta screen_lock;
+    base::TimeDelta quick_dim = base::TimeDelta::FromSeconds(60);
     bool operator!=(const Delays& o) const;
   };
 
@@ -314,6 +319,7 @@ class StateController : public PrefsObserver {
   // Returns the last time at which activity occurred that should defer a screen
   // timeout.
   base::TimeTicks GetLastActivityTimeForScreenDim(base::TimeTicks now) const;
+  base::TimeTicks GetLastActivityTimeForQuickDim(base::TimeTicks now) const;
   base::TimeTicks GetLastActivityTimeForScreenOff(base::TimeTicks now) const;
   base::TimeTicks GetLastActivityTimeForScreenLock(base::TimeTicks now) const;
 
@@ -397,6 +403,14 @@ class StateController : public PrefsObserver {
   // changed.
   void EmitScreenIdleStateChanged(bool dimmed, bool off);
 
+  // This is an expansion of `HandleDelay` that serves screen dim/undim only.
+  // When the screen is on and conditions of quick dim or standard dim are
+  // satisfied, dim the screen.
+  // When the screen is dimmed and Hps sense is positive or user activity
+  // happens, undim the screen.
+  void HandleDimWithHps(base::TimeTicks now,
+                        base::TimeDelta screen_dim_duration);
+
   Delegate* delegate_ = nullptr;                          // not owned
   PrefsInterface* prefs_ = nullptr;                       // not owned
   system::DBusWrapperInterface* dbus_wrapper_ = nullptr;  // not owned
@@ -465,6 +479,10 @@ class StateController : public PrefsObserver {
   // |saw_user_activity_soon_after_screen_dim_or_off_|.
   base::TimeTicks screen_turned_off_time_;
 
+  // Time of the last screen dim if screen is dimmed; it is set to be
+  // base::TimeTicks() if screen is not currently dimmed.
+  base::TimeTicks last_dim_time_;
+
   // True if user activity was observed after the screen was dimmed or soon
   // after it was turned off (which can result in delays being lengthened
   // to not annoy the user the next time).  Reset when the session state
@@ -518,6 +536,10 @@ class StateController : public PrefsObserver {
 
   // Time of the last deferring screen dim.
   base::TimeTicks last_defer_screen_dim_time_;
+  // Timestamp of the last time hps result changed.
+  base::TimeTicks last_hps_result_change_time_;
+  // HpsResult recorded.
+  DimAdvisor::HpsResult hps_result_ = DimAdvisor::HpsResult::UNKNOWN;
 
   // Information about audio activity and full-brightness, screen-on-but-dimmed,
   // and system-level wake locks.
@@ -559,7 +581,7 @@ class StateController : public PrefsObserver {
 
   // Class that decides whether to defer the imminent screen dimming via dbus
   // method call to kMlDecisionServiceInterface.
-  DimAdvisor smart_dim_requestor_;
+  DimAdvisor dim_advisor_;
 
   base::WeakPtrFactory<StateController> weak_ptr_factory_;
 };

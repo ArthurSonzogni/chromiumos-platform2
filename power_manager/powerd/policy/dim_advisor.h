@@ -39,17 +39,20 @@ class DimAdvisor : public system::DBusWrapperInterface::Observer {
             StateController* state_controller);
   // Returns whether DimAdvisor is ready for making a smart dim query.
   bool ReadyForSmartDimRequest(base::TimeTicks now,
-                               base::TimeDelta screen_dim_imminent_delay);
+                               base::TimeDelta screen_dim_imminent_delay) const;
   // Calls MLService to decide whether to defer the dimming.
   void RequestSmartDimDecision(base::TimeTicks now);
 
   // Return whether the DimAdvisor is enabled.
-  bool IsSmartDimEnabled();
+  bool IsSmartDimEnabled() const;
 
   // Return whether the Hps service is enabled.
-  bool IsHpsSenseEnabled();
+  bool IsHpsSenseEnabled() const;
 
-  HpsResult GetHpsResult() { return hps_result_; }
+  // This allows DimAdvisor to update itself accordingly when screen is undim
+  // for any reasons, `dim_duration` is the period from last dim to the current
+  // undim.
+  void UnDimFeedback(base::TimeDelta dim_duration);
 
   // DBusWrapperInterface::Observer:
   void OnDBusNameOwnerChanged(const std::string& service_name,
@@ -74,8 +77,6 @@ class DimAdvisor : public system::DBusWrapperInterface::Observer {
   // consecutive requests with intervals shorter than screen_dim_imminent_delay,
   // see ReadyForSmartDimRequest.
   base::TimeTicks last_smart_dim_decision_request_time_;
-  // HpsResult recorded.
-  HpsResult hps_result_ = HpsResult::UNKNOWN;
 
   dbus::ObjectProxy* hps_dbus_proxy_ = nullptr;           // not owned
   dbus::ObjectProxy* ml_decision_dbus_proxy_ = nullptr;   // not owned

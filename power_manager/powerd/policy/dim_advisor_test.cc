@@ -25,6 +25,7 @@ namespace policy {
 class MockStateController : public StateController {
  public:
   MOCK_METHOD(void, HandleDeferFromSmartDim, ());
+  MOCK_METHOD(void, HandleHpsResultChange, (DimAdvisor::HpsResult hps_result));
 };
 
 class DimAdvisorTest : public ::testing::Test {
@@ -141,6 +142,7 @@ TEST_F(DimAdvisorTest, HpsIsEnabledAfterGettingFirstSignal) {
   InitWithMlServiceAvailability(false);
 
   EXPECT_FALSE(dim_advisor_.IsHpsSenseEnabled());
+  EXPECT_CALL(mock_state_controller_, HandleHpsResultChange).Times(1);
   SendHpsSignal(true);
   EXPECT_TRUE(dim_advisor_.IsHpsSenseEnabled());
 }
@@ -148,13 +150,15 @@ TEST_F(DimAdvisorTest, HpsIsEnabledAfterGettingFirstSignal) {
 TEST_F(DimAdvisorTest, HandleHpsResultChange) {
   InitWithMlServiceAvailability(false);
 
-  EXPECT_EQ(dim_advisor_.GetHpsResult(), DimAdvisor::HpsResult::UNKNOWN);
-
+  EXPECT_CALL(mock_state_controller_,
+              HandleHpsResultChange(DimAdvisor::HpsResult::NEGATIVE))
+      .Times(1);
   SendHpsSignal(false);
-  EXPECT_EQ(dim_advisor_.GetHpsResult(), DimAdvisor::HpsResult::NEGATIVE);
 
+  EXPECT_CALL(mock_state_controller_,
+              HandleHpsResultChange(DimAdvisor::HpsResult::POSITIVE))
+      .Times(1);
   SendHpsSignal(true);
-  EXPECT_EQ(dim_advisor_.GetHpsResult(), DimAdvisor::HpsResult::POSITIVE);
 }
 
 }  // namespace policy

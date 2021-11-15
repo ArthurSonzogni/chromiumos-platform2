@@ -391,7 +391,7 @@ void StateController::Init(Delegate* delegate,
       base::Bind(&StateController::HandleUpdateEngineStatusUpdateSignal,
                  weak_ptr_factory_.GetWeakPtr()));
 
-  smart_dim_requestor_.Init(dbus_wrapper_, this);
+  dim_advisor_.Init(dbus_wrapper_, this);
 
   last_user_activity_time_ = clock_->GetCurrentTime();
   power_source_ = power_source;
@@ -633,8 +633,7 @@ bool StateController::ShouldRequestSmartDim(base::TimeTicks now) {
   return !screen_dimmed_ && delays_.screen_dim_imminent > base::TimeDelta() &&
          now - GetLastActivityTimeForScreenDim(now) >=
              delays_.screen_dim_imminent &&
-         smart_dim_requestor_.ReadyForSmartDimRequest(
-             now, delays_.screen_dim_imminent);
+         dim_advisor_.ReadyForSmartDimRequest(now, delays_.screen_dim_imminent);
 }
 
 void StateController::HandleDeferFromSmartDim() {
@@ -859,6 +858,12 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenDim(
   last_time = std::max(last_time, screen_wake_lock_->GetLastActiveTime(now));
 
   return last_time;
+}
+
+base::TimeTicks StateController::GetLastActivityTimeForQuickDim(
+    base::TimeTicks now) const {
+  return std::max(last_hps_result_change_time_,
+                  GetLastActivityTimeForScreenDim(now));
 }
 
 base::TimeTicks StateController::GetLastActivityTimeForScreenOff(
@@ -1144,7 +1149,7 @@ StateController::Action StateController::GetIdleAction() const {
 void StateController::UpdateState() {
   base::TimeTicks now = clock_->GetCurrentTime();
   base::TimeDelta idle_duration = now - GetLastActivityTimeForIdle(now);
-  base::TimeDelta screen_dim_duration =
+  base::TimeDelta duration_since_last_activity_for_screen_dim =
       now - GetLastActivityTimeForScreenDim(now);
   base::TimeDelta screen_off_duration =
       now - GetLastActivityTimeForScreenOff(now);
@@ -1154,18 +1159,32 @@ void StateController::UpdateState() {
   // We only want to send a smart dim request if the screen is not dimmed and it
   // has been a while since the last smart_dim_activity.
   if (ShouldRequestSmartDim(now)) {
-    smart_dim_requestor_.RequestSmartDimDecision(now);
+    dim_advisor_.RequestSmartDimDecision(now);
   }
 
   const bool screen_was_dimmed = screen_dimmed_;
-  HandleDelay(delays_.screen_dim, screen_dim_duration,
-              base::Bind(&Delegate::DimScreen, base::Unretained(delegate_)),
-              base::Bind(&Delegate::UndimScreen, base::Unretained(delegate_)),
-              "Dimming screen", "Undimming screen", &screen_dimmed_);
-  if (screen_dimmed_ && !screen_was_dimmed && audio_activity_->active() &&
-      delegate_->IsHdmiAudioActive()) {
-    LOG(INFO) << "Audio is currently being sent to display; screen will not be "
-              << "turned off for inactivity";
+
+  if (dim_advisor_.IsHpsSenseEnabled() && !delays_.quick_dim.is_zero()) {
+    // Use new dim logic with Hps.
+    HandleDimWithHps(now, duration_since_last_activity_for_screen_dim);
+  } else {
+    // Use old dim logic without Hps.
+    HandleDelay(delays_.screen_dim, duration_since_last_activity_for_screen_dim,
+                base::Bind(&Delegate::DimScreen, base::Unretained(delegate_)),
+                base::Bind(&Delegate::UndimScreen, base::Unretained(delegate_)),
+                "Dimming screen", "Undimming screen", &screen_dimmed_);
+    if (screen_dimmed_ && !screen_was_dimmed) {
+      last_dim_time_ = now;
+    } else if (!screen_dimmed_) {
+      // If screen is not dimmed, set last_dim_time_ as base::TimeTicks().
+      last_dim_time_ = base::TimeTicks();
+    }
+    if (screen_dimmed_ && !screen_was_dimmed && audio_activity_->active() &&
+        delegate_->IsHdmiAudioActive()) {
+      LOG(INFO)
+          << "Audio is currently being sent to display; screen will not be "
+          << "turned off for inactivity";
+    }
   }
 
   const bool screen_was_turned_off = screen_turned_off_;
@@ -1278,11 +1297,26 @@ void StateController::ScheduleActionTimeout(base::TimeTicks now) {
   // Find the minimum of the delays that haven't yet occurred.
   base::TimeDelta timeout_delay;
   if (!IsScreenDimBlocked()) {
-    if (smart_dim_requestor_.IsSmartDimEnabled()) {
-      UpdateActionTimeout(now, GetLastActivityTimeForScreenDim(now),
+    base::TimeTicks last_activity_time_for_screen_dim =
+        GetLastActivityTimeForScreenDim(now);
+
+    // Schedule an action for calling MLDecisionService.
+    if (dim_advisor_.IsSmartDimEnabled()) {
+      UpdateActionTimeout(now, last_activity_time_for_screen_dim,
                           delays_.screen_dim_imminent, &timeout_delay);
     }
-    UpdateActionTimeout(now, GetLastActivityTimeForScreenDim(now),
+    // Schedule an action for quick dim.
+    // We only schedule an action for quick dim if `hps_result_` is NEGATIVE.
+    // If `hps_result_` is POSITIVE, there will be no quick dim, and when that
+    // value becomes NEGATIVE, the UpdateState will be called and a quick dim
+    // action will be scheduled.
+    if (dim_advisor_.IsHpsSenseEnabled() && !delays_.quick_dim.is_zero() &&
+        !screen_dimmed_ && hps_result_ == DimAdvisor::HpsResult::NEGATIVE) {
+      UpdateActionTimeout(now, GetLastActivityTimeForQuickDim(now),
+                          delays_.quick_dim, &timeout_delay);
+    }
+
+    UpdateActionTimeout(now, last_activity_time_for_screen_dim,
                         delays_.screen_dim, &timeout_delay);
   }
   if (!IsScreenOffBlocked()) {
@@ -1404,6 +1438,70 @@ void StateController::EmitScreenIdleStateChanged(bool dimmed, bool off) {
   proto.set_off(off);
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kScreenIdleStateChangedSignal,
                                               proto);
+}
+
+void StateController::HandleDimWithHps(
+    base::TimeTicks now,
+    base::TimeDelta duration_since_last_activity_for_screen_dim) {
+  if (!screen_dimmed_) {
+    // Try to dim.
+    const bool should_quick_dim =
+        duration_since_last_activity_for_screen_dim <
+            delays_.screen_dim_imminent &&
+        hps_result_ == DimAdvisor::HpsResult::NEGATIVE &&
+        now - GetLastActivityTimeForQuickDim(now) >= delays_.quick_dim;
+
+    const bool should_standard_dim =
+        duration_since_last_activity_for_screen_dim >= delays_.screen_dim;
+
+    if (should_quick_dim || should_standard_dim) {
+      LOG(INFO) << "Dimming screen after "
+                << util::TimeDeltaToString(
+                       duration_since_last_activity_for_screen_dim);
+      delegate_->DimScreen();
+      screen_dimmed_ = true;
+      last_dim_time_ = now;
+    }
+  } else {
+    // Try to undim.
+    const bool undim_for_hps = duration_since_last_activity_for_screen_dim <
+                                   delays_.screen_dim_imminent &&
+                               hps_result_ == DimAdvisor::HpsResult::POSITIVE;
+
+    // Screen should be undimmed if there is a user_activity after last_dim_time
+    // NOTE: comparing to the original condition
+    //   duration_since_last_activity_for_screen_dim < delays_.screen_dim
+    // The new condition will skip an edge case that the screen is dimmed and
+    // the delays_.screen_dim is set to a larger value without any user activity
+    // This will undim the screen in the original condition; but not in this
+    // new condition.
+    // We don't think this edge case could happen or even if it does, a
+    // reasonably better behaviour is to apply that new delays_.screen_dim in
+    // the next dimming process.
+    bool undim_for_user_activity =
+        GetLastActivityTimeForScreenDim(now) >= last_dim_time_;
+
+    if (undim_for_hps || undim_for_user_activity) {
+      LOG(INFO) << "Undimming screen after "
+                << util::TimeDeltaToString(now - last_dim_time_);
+
+      delegate_->UndimScreen();
+      screen_dimmed_ = false;
+      last_dim_time_ = base::TimeTicks();
+
+      dim_advisor_.UnDimFeedback(now - last_dim_time_);
+    }
+  }
+}
+
+void StateController::HandleHpsResultChange(DimAdvisor::HpsResult hps_result) {
+  // Calls UpdateState to consume the new HpsResult.
+  if (hps_result_ == hps_result) {
+    return;
+  }
+  hps_result_ = hps_result;
+  last_hps_result_change_time_ = clock_->GetCurrentTime();
+  UpdateState();
 }
 
 }  // namespace policy
