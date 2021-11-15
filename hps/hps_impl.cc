@@ -271,7 +271,8 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
   this->write_protect_off_ = status & R2::kWpOff;
   VLOG_IF(1, this->write_protect_off_) << "kWpOff, ignoring verified bits";
 
-  // Send an update only when WP is off and there is no verified signal
+  // When write protect is off we ignore the verified signal.
+  // When write protect is not off we update if there is no verified signal.
   if (!this->write_protect_off_ && !(status & R2::kStage1Verified)) {
     // Stage1 not verified, so need to update it.
     LOG(INFO) << "Stage1 flash not verified";

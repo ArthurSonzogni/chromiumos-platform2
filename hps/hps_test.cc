@@ -418,8 +418,47 @@ TEST_F(HPSTest, BothUpdate) {
 }
 
 /*
- * Test that neither SPI nor MCU are updated
- * when write protect is off even if not verified.
+ * When write protect is off non verified code should not be updated
+ */
+TEST_F(HPSTest, WpOffNoUpdate) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  // Create MCU and SPI flash filenames (but do not
+  // create the files themselves).
+  auto mcu = temp_dir.GetPath().Append("mcu");
+  auto spi1 = temp_dir.GetPath().Append("spi1");
+  auto spi2 = temp_dir.GetPath().Append("spi2");
+
+  const int len = 1024;
+  CreateBlob(mcu, len);
+  CreateBlob(spi1, len + 1);
+  CreateBlob(spi2, len + 2);
+
+  // Set the expected version
+  const uint32_t version = 0x01020304;
+  fake_->SetVersion(version);
+  fake_->Set(hps::FakeDev::Flags::kStage1NotVerified);
+  fake_->Set(hps::FakeDev::Flags::kWpOff);
+  // Set up the version and files.
+  hps_->Init(version, mcu, spi1, spi2);
+
+  // Boot the module.
+  EXPECT_CALL(
+      *GetMetricsLibraryMock(),
+      SendEnumToUMA(hps::kHpsTurnOnResult,
+                    static_cast<int>(hps::HpsTurnOnResult::kSuccess), _))
+      .Times(1);
+  ASSERT_TRUE(hps_->Boot());
+
+  // Check that neither MCU nor SPI blobs were updated.
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), 0);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSpiFlash), 0);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSocRom), 0);
+}
+
+/*
+ * When write protect is off non verified code should be updated when the
+ * versions differ
  */
 TEST_F(HPSTest, WpOffUpdate) {
   base::ScopedTempDir temp_dir;
@@ -435,15 +474,25 @@ TEST_F(HPSTest, WpOffUpdate) {
   CreateBlob(spi1, len + 1);
   CreateBlob(spi2, len + 2);
 
-  // This is the reported version when not verified
-  const uint32_t version = 0xFFFFFFFF;
+  // Set the expected version
+  const uint32_t version = 0x01020304;
+  fake_->SetVersion(version);
   fake_->Set(hps::FakeDev::Flags::kStage1NotVerified);
-  fake_->Set(hps::FakeDev::Flags::kSpiNotVerified);
   fake_->Set(hps::FakeDev::Flags::kWpOff);
+  fake_->Set(hps::FakeDev::Flags::kIncrementVersion);
   // Set up the version and files.
-  hps_->Init(version, mcu, spi1, spi2);
+  hps_->Init(version + 1, mcu, spi1, spi2);
 
   // Boot the module.
+  EXPECT_CALL(
+      *GetMetricsLibraryMock(),
+      SendEnumToUMA(hps::kHpsTurnOnResult,
+                    static_cast<int>(hps::HpsTurnOnResult::kMcuVersionMismatch),
+                    _))
+      .Times(1);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(hps::kHpsUpdateMcuDuration, _, _, _, _))
+      .Times(1);
   EXPECT_CALL(
       *GetMetricsLibraryMock(),
       SendEnumToUMA(hps::kHpsTurnOnResult,
@@ -452,7 +501,7 @@ TEST_F(HPSTest, WpOffUpdate) {
   ASSERT_TRUE(hps_->Boot());
 
   // Check that neither MCU nor SPI blobs were updated.
-  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), 0);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSpiFlash), 0);
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSocRom), 0);
 }

@@ -138,7 +138,8 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
       // Firmware version, only returned in stage0 if the
       // application has been verified.
       if (this->stage_ == Stage::kStage0 &&
-          !this->Flag(Flags::kStage1NotVerified)) {
+          (!this->Flag(Flags::kStage1NotVerified) ||
+           this->Flag(Flags::kWpOff))) {
         v = static_cast<uint16_t>(firmware_version_ >> 16);
       } else {
         v = 0xFFFF;
@@ -149,7 +150,8 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
       // Firmware version, only returned in stage0 if the
       // application has been verified.
       if (this->stage_ == Stage::kStage0 &&
-          !this->Flag(Flags::kStage1NotVerified)) {
+          (!this->Flag(Flags::kStage1NotVerified) ||
+           this->Flag(Flags::kWpOff))) {
         v = static_cast<uint16_t>(firmware_version_ & 0xFFFF);
       } else {
         v = 0xFFFF;
