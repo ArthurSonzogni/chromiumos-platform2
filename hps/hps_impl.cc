@@ -20,18 +20,24 @@
 
 namespace hps {
 
-// Observed times are 2.5ms for a normal write, and 250ms for a block erase
-// write. Set the sleep to 1/5 of the normal time, and the timeout to 10x the
-// expected max time.
+// Observed times are
+// MCU: ~4ms for a normal write, ~27ms for a erase write
+// SPI: 3ms for a normal write, 250ms for a erase write
+// 5000ms for the full erase
+// Set the sleep to ~1/5 of the normal time, and the timeout to 5x the
+// expected max time. TODO(evanbenn) only do the long timeout for the
+// first spi write.
 static constexpr base::TimeDelta kBankReadySleep =
     base::TimeDelta::FromMicroseconds(500);
 static constexpr base::TimeDelta kBankReadyTimeout =
-    base::TimeDelta::FromMilliseconds(2500);
+    base::TimeDelta::FromMilliseconds(25000);
 
-static constexpr base::TimeDelta kMagicTimeout =
-    base::TimeDelta::FromMilliseconds(1000);
+// After reset, we poll the magic number register for this long.
+// Observed time is 1000ms.
 static constexpr base::TimeDelta kMagicSleep =
     base::TimeDelta::FromMilliseconds(100);
+static constexpr base::TimeDelta kMagicTimeout =
+    base::TimeDelta::FromMilliseconds(3000);
 
 // Initialise the firmware parameters.
 void HPS_impl::Init(uint32_t stage1_version,
