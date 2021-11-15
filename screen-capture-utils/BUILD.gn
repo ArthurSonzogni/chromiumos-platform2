@@ -12,6 +12,9 @@ group("all") {
   if (use.test) {
     deps += [ ":run_kmsvnc_test" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":screen-capture_png_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -76,6 +79,19 @@ if (use.test) {
     deps = [
       ":libscreen-capture",
       "//common-mk/testrunner",
+    ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("screen-capture_png_fuzzer") {
+    sources = [
+      "png.cc",
+      "png_fuzzer.cc",
+    ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
     ]
   }
 }
