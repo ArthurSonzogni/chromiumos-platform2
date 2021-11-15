@@ -44,7 +44,9 @@ class AeStateMachine {
 
     // The TET step in log2 space for TET convergence. See the comments of the
     // kConverging state below.
-    float converging_step_log2 = 0.1f;
+    float small_step_log2 = 0.1f;
+    float large_step_log2 = 0.5f;
+    float log_scene_brightness_threshold = 1.5f;
 
     // The duration for which the converged TET needs to keep stable in order to
     // transition to the kConverged state. See the comments of the kConverging
@@ -73,6 +75,8 @@ class AeStateMachine {
   //   - |previous_tet|: The TET computed in the previous iteration.
   //   - |new_tet|: The new TET computed from the AE stats of the latest frame.
   //   - |actual_tet_set|: The actual TET used to capture the latest frame.
+  //   - |tet_step_log2|: The TET step size limit in log2 space used to bound
+  //         TET change in kSearching and kConverging states.
   //
   // and we want to determine the following TET values:
   //   - |target_tet|: The TET target that the state machine will converge to
@@ -99,9 +103,9 @@ class AeStateMachine {
   //
   //   tet_delta = abs(log2(|actual_tet_set|) - log2(|target_tet|))
   //   if (tet_delta < tet_converge_threshold_log2):
-  //     converged_tet = |actual_tet_set|
+  //     |converged_tet| = |actual_tet_set|
   //   else:
-  //     converged_tet = nil
+  //     |converged_tet| = nil
   enum class State {
     // The entry state. The state machine is in this state when the camera
     // device is closed.
@@ -117,12 +121,10 @@ class AeStateMachine {
     //
     // Entry Actions:
     // * Set |next_tet_to_set| to
-    //     min(exp2(log2(|actual_tet_set|) + converging_step_log2),
-    //     |new_tet|)
+    //     min(exp2(log2(|actual_tet_set|) + |tet_step_log2|), |new_tet|)
     //   if |new_tet| > |actual_tet_set|, or
-    //     max(exp2(log2(|actual_tet_set|) - converging_step_log2),
-    //     |new_tet|)
-    //   if |new_tet| <= |actual_tet_set|
+    //     max(exp2(log2(|actual_tet_set|) - |tet_step_log2|), |new_tet|)
+    //   if |new_tet| <= |actual_tet_set|.
     //
     // State transitions:
     // * Run SearchTargetTet()
@@ -135,12 +137,10 @@ class AeStateMachine {
     //
     // Entry Action:
     // * Set |next_tet_to_set| to
-    //     min(exp2(log2(|actual_tet_set|) + converging_step_log2),
-    //     |target_tet|)
+    //     min(exp2(log2(|actual_tet_set|) + |tet_step_log2|), |target_tet|)
     //   if |target_tet| > |actual_tet_set|, or
-    //     max(exp2(log2(|actual_tet_set|) - converging_step_log2),
-    //     |target_tet|)
-    //   if |target_tet| <= |actual_tet_set|
+    //     max(exp2(log2(|actual_tet_set|) - |tet_step_log2|), |target_tet|)
+    //   if |target_tet| <= |actual_tet_set|.
     //
     // State transitions:
     // * Run SearchTargetTet()
@@ -172,6 +172,10 @@ class AeStateMachine {
     //         |converged_tet| for more than tet_retention_duration_ms_default
     //         or tet_retention_duration_ms_with_face ms depending on if a face
     //         is detected, and |target_tet| is set when the state transitions.
+    //
+    // When transitioning out of the kConverged state, select the
+    // |tet_step_log2| value based on the log scene brightness of the current
+    // and the target exposure settings.
     kConverged,
 
     // The exposure is locked and |next_tet_to_set| will remain unchanged. Any
@@ -185,6 +189,10 @@ class AeStateMachine {
     // * Run SearchTargetTet()
     //   * kSearching: if AE lock is turned off and |target_tet| is not set
     //   * kConverging: if AE lock is turned off and |target_tet| is set
+    //
+    // When transitioning out of the kLocked state, select the |tet_step_log2|
+    // value based on the log scene brightness of the current
+    // and the target exposure settings.
     kLocked,
   };
 
@@ -244,6 +252,10 @@ class AeStateMachine {
       .tet = 0.0f,
       .hdr_ratio = 1.0f,
   };
+
+  // The TET step size limit in log2 space used to bound TET change in
+  // kSearching and kConverging states.
+  float tet_step_log2_ = 0.0f;
 
   // The target TET for the state machine to converge the actual TET to.
   base::Optional<ExposureDescriptor> target_ GUARDED_BY(lock_);

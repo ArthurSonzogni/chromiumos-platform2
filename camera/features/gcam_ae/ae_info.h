@@ -46,6 +46,7 @@ constexpr char kTagIpu6RgbsStatsGridWidth[] = "ipu6.ae_stats.grid_width";
 constexpr char kTagIpu6RgbsStatsShadingCorrection[] =
     "ipu6.ae_stats.shading_correction";
 constexpr char kTagLensAperture[] = "lens_aperture";
+constexpr char kTagLogSceneBrightness[] = "log_scene_brightness";
 constexpr char kTagLongTet[] = "long_tet";
 constexpr char kTagMaxHdrRatio[] = "max_hdr_ratio";
 constexpr char kTagRequestAeCompensation[] = "request.ae_compensation";

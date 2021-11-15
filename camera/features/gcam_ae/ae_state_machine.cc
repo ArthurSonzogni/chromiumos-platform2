@@ -17,7 +17,10 @@ namespace cros {
 
 namespace {
 
-constexpr char kConvergingStepLog2[] = "converging_step_log2";
+constexpr char kSmallStepLog2[] = "small_step_log2";
+constexpr char kLargeStepLog2[] = "large_step_log2";
+constexpr char kLogSceneBrightnessThreshold[] =
+    "log_scene_brightness_threshold";
 constexpr char kTetConvergeStabilizeDurationMs[] =
     "tet_converge_stabilize_duration_ms";
 constexpr char kTetConvergeThresholdLog2[] = "tet_converge_threshold_log2";
@@ -52,7 +55,7 @@ float SmoothTetTransition(const float target,
                           const float previous,
                           const float step_log2) {
   if (target > kTetEpsilon && previous > kTetEpsilon) {
-    float prev_log = std::log2f(previous);
+    const float prev_log = std::log2f(previous);
     if (target > previous) {
       return std::min(target, std::exp2f(prev_log + step_log2));
     } else {
@@ -73,7 +76,9 @@ std::string AeStateMachine::ExposureDescriptor::ToString() const {
                             tet, hdr_ratio, log_scene_brightness);
 }
 
-AeStateMachine::AeStateMachine() : camera_metrics_(CameraMetrics::New()) {}
+AeStateMachine::AeStateMachine()
+    : tet_step_log2_(tuning_parameters_.large_step_log2),
+      camera_metrics_(CameraMetrics::New()) {}
 
 AeStateMachine::~AeStateMachine() {
   UploadMetrics();
@@ -127,6 +132,21 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
   const float new_tet = current_ae_parameters_.short_tet;
   const float actual_tet_set = frame_info.exposure_time_ms *
                                frame_info.analog_gain * frame_info.digital_gain;
+
+  auto get_tet_step = [&](float target_brightness,
+                          float previous_brightness) -> float {
+    float tet_step = tuning_parameters_.large_step_log2;
+    if (std::fabsf(target_brightness - previous_brightness) <
+        tuning_parameters_.log_scene_brightness_threshold) {
+      tet_step = tuning_parameters_.small_step_log2;
+    }
+    VLOGFID(1, frame_info.frame_number)
+        << "target_brightness=" << target_brightness;
+    VLOGFID(1, frame_info.frame_number)
+        << "previous_brightness=" << previous_brightness;
+    VLOGFID(1, frame_info.frame_number) << "tet_step=" << tet_step;
+    return tet_step;
+  };
 
   // Compute state transition.
   MaybeToggleAeLock(frame_info);
@@ -193,6 +213,9 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
         next_state = State::kConverging;
         break;
       }
+
+      // Avoid changing TET when the frame brightness change is less than
+      // |tuning_parameters_.tet_rescan_threshold_log2|.
       if (target_ &&
           std::fabs(std::log2f(converged_->tet) - std::log2f(target_->tet)) <=
               tuning_parameters_.tet_rescan_threshold_log2) {
@@ -200,11 +223,20 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
         next_state = State::kConverged;
         break;
       }
+
+      // Searching for or converging to a new TET target if we observed that the
+      // frame brightness has chnaged for more than |tet_retention_duration_ms_|
+      // ms.
       if (ElapsedTimeMs(last_converged_time_) > *tet_retention_duration_ms_) {
         if (target_) {
           next_state = State::kConverging;
+          tet_step_log2_ = get_tet_step(target_->log_scene_brightness,
+                                        converged_->log_scene_brightness);
         } else {
           next_state = State::kSearching;
+          tet_step_log2_ =
+              get_tet_step(current_ae_parameters_.log_scene_brightness,
+                           converged_->log_scene_brightness);
         }
         // Start convergence timer whenever we transition out of the Converged
         // state.
@@ -229,8 +261,15 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
       } else {
         if (!target_) {
           next_state = State::kSearching;
+          tet_step_log2_ =
+              get_tet_step(current_ae_parameters_.log_scene_brightness,
+                           converged_->log_scene_brightness);
         } else {
           next_state = State::kConverging;
+          // Determine the TET transition step bound on the brightness
+          // difference.
+          tet_step_log2_ = get_tet_step(target_->log_scene_brightness,
+                                        converged_->log_scene_brightness);
         }
       }
       break;
@@ -246,8 +285,7 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
       break;
 
     case State::kSearching: {
-      next_.tet = SmoothTetTransition(new_tet, next_.tet,
-                                      tuning_parameters_.converging_step_log2);
+      next_.tet = SmoothTetTransition(new_tet, next_.tet, tet_step_log2_);
       next_.hdr_ratio =
           current_ae_parameters_.long_tet / current_ae_parameters_.short_tet;
       next_.log_scene_brightness = current_ae_parameters_.log_scene_brightness;
@@ -255,8 +293,7 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
     }
 
     case State::kConverging: {
-      next_.tet = SmoothTetTransition(target_->tet, next_.tet,
-                                      tuning_parameters_.converging_step_log2);
+      next_.tet = SmoothTetTransition(target_->tet, next_.tet, tet_step_log2_);
       // TODO(jcliang): Test using |target_hdr_ratio_| here.
       next_.hdr_ratio =
           current_ae_parameters_.long_tet / current_ae_parameters_.short_tet;
@@ -298,6 +335,8 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
                          raw_ae_parameters.short_tet);
     metadata_logger->Log(frame_info.frame_number, kTagLongTet,
                          raw_ae_parameters.long_tet);
+    metadata_logger->Log(frame_info.frame_number, kTagLogSceneBrightness,
+                         raw_ae_parameters.log_scene_brightness);
     metadata_logger->Log(frame_info.frame_number, kTagFilteredShortTet,
                          current_ae_parameters_.short_tet);
     metadata_logger->Log(frame_info.frame_number, kTagFilteredLongTet,
@@ -330,8 +369,10 @@ void AeStateMachine::OnOptionsUpdated(const base::Value& json_values) {
 
   LoadIfExist(json_values, kTetTargetThresholdLog2,
               &tuning_parameters_.tet_target_threshold_log2);
-  LoadIfExist(json_values, kConvergingStepLog2,
-              &tuning_parameters_.converging_step_log2);
+  LoadIfExist(json_values, kSmallStepLog2, &tuning_parameters_.small_step_log2);
+  LoadIfExist(json_values, kLargeStepLog2, &tuning_parameters_.large_step_log2);
+  LoadIfExist(json_values, kLogSceneBrightnessThreshold,
+              &tuning_parameters_.log_scene_brightness_threshold);
   LoadIfExist(json_values, kTetConvergeStabilizeDurationMs,
               &tuning_parameters_.tet_converge_stabilize_duration_ms);
   LoadIfExist(json_values, kTetConvergeThresholdLog2,
@@ -348,8 +389,10 @@ void AeStateMachine::OnOptionsUpdated(const base::Value& json_values) {
     VLOGF(1) << "AeStateMachine tuning parameters:"
              << " tet_target_threshold_log2="
              << tuning_parameters_.tet_target_threshold_log2
-             << " converging_step_log2="
-             << tuning_parameters_.converging_step_log2
+             << " small_step_log2=" << tuning_parameters_.small_step_log2
+             << " large_step_log2=" << tuning_parameters_.large_step_log2
+             << " log_scene_brightness_threshold="
+             << tuning_parameters_.log_scene_brightness_threshold
              << " tet_converge_stabilize_duration_ms="
              << tuning_parameters_.tet_converge_stabilize_duration_ms
              << " tet_converge_threshold_log2="
