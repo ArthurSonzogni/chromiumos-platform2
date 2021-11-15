@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <iterator>
 #include <map>
 #include <memory>
 #include <string>
@@ -25,7 +26,6 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
-#include <base/stl_util.h>
 #include <base/strings/string_split.h>
 #include <gtest/gtest.h>
 
@@ -266,7 +266,7 @@ class ContainerTest : public ::testing::Test {
         "cgroup", "ipc", "mount", "network", "pid", "user",
     };
     container_config_namespaces(config_->get(), kNamespaces,
-                                base::size(kNamespaces));
+                                std::size(kNamespaces));
 
     container_config_set_cpu_shares(config_->get(), kTestCpuShares);
     container_config_set_cpu_cfs_params(config_->get(), kTestCpuQuota,
