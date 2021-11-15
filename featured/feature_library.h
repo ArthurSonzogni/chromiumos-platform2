@@ -5,9 +5,6 @@
 #ifndef FEATURED_FEATURE_LIBRARY_H_
 #define FEATURED_FEATURE_LIBRARY_H_
 
-#include "featured/feature_export.h"
-#include "featured/c_feature_library.h"  // for enums
-
 #include <map>
 #include <memory>
 #include <string>
@@ -24,7 +21,38 @@
 #include <dbus/object_proxy.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#define FEATURE_EXPORT __attribute__((__visibility__("default")))
+#define FEATURE_PRIVATE __attribute__((__visibility__("hidden")))
+
 namespace feature {
+
+// Specifies whether a given feature is enabled or disabled by default.
+// NOTE: The actual runtime state may be different, due to a field trial or a
+// command line switch.
+enum FEATURE_EXPORT FeatureState {
+  FEATURE_DISABLED_BY_DEFAULT,
+  FEATURE_ENABLED_BY_DEFAULT,
+};
+
+// The Feature struct is used to define the default state for a feature. See
+// comment below for more details. There must only ever be one struct instance
+// for a given feature name - generally defined as a constant global variable or
+// file static. It should never be used as a constexpr as it breaks
+// pointer-based identity lookup.
+struct FEATURE_EXPORT Feature {
+  // The name of the feature. This should be unique to each feature and is used
+  // for enabling/disabling features via command line flags and experiments.
+  // It is strongly recommended to use CamelCase style for feature names, e.g.
+  // "MyGreatFeature".
+  // In almost all cases, your feature name should start with "CrOSLateBoot",
+  // otherwise the lookup will fail.
+  const char* const name;
+
+  // The default state (i.e. enabled or disabled) for this feature.
+  // NOTE: The actual runtime state may be different, due to a field trial or a
+  // command line switch.
+  const FeatureState default_state;
+};
 
 class FEATURE_EXPORT PlatformFeaturesInterface {
  public:
@@ -60,10 +88,6 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
   void IsEnabled(const Feature& feature, IsEnabledCallback callback) override;
 
   bool IsEnabledBlocking(const Feature& feature) override;
-
-  // Shutdown the system bus. Used for C API, or when destroying it and the bus
-  // is no longer owned.
-  void ShutdownBus() { bus_->ShutdownAndBlock(); }
 
  protected:
   explicit PlatformFeatures(scoped_refptr<dbus::Bus> bus,

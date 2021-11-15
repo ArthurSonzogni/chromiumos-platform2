@@ -10,5 +10,3 @@ OUT=$1
 VER=$2
 sed -e "s/@BSLOT@/${VER}/g" \
   libfeatures.pc.in > "${OUT}/lib/libfeatures.pc"
-sed -e "s/@BSLOT@/${VER}/g" \
-  libfeatures_c.pc.in > "${OUT}/lib/libfeatures_c.pc"
