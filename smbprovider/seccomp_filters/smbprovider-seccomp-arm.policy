@@ -72,6 +72,9 @@ read: 1
 recv: 1
 recvfrom: 1
 recvmsg: 1
+rename: 1
+renameat: 1
+renameat2: 1
 restart_syscall: 1
 rmdir: 1
 rt_sigaction: 1
