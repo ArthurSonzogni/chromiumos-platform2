@@ -1,0 +1,59 @@
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+option optimize_for = LITE_RUNTIME;
+
+package vm_tools.launch;
+
+// List of valid "types" of VM, for the wayland server. This is used by chrome
+// to determine what security-sensitive features the wayland server should
+// implement.
+enum VmType {
+  DEFAULT = 0;
+  TERMINA = 1;
+  PLUGIN_VM = 2;
+  BOREALIS = 3;
+  ARC_VM = 4;
+}
+
+message Status {
+  enum ResultType {
+    SUCCESS = 0;
+    ERROR = 1;
+  }
+  ResultType result = 1;
+
+  // If the result is an error, this string may help the user.
+  string error = 2;
+}
+
+message WaylandServer {
+  // Path on the system where the wayland server lives.
+  string path = 1;
+}
+
+message StartWaylandServerRequest {
+  // The owner of the VM.
+  string owner_id = 1;
+
+  // The type of VM this server is for.
+  VmType vm_type = 2;
+}
+
+message StartWaylandServerResponse {
+  // Status of the request (i.e. if it failed or not)
+  Status status = 1;
+
+  // Information about the server that was created (if the request succeeded).
+  WaylandServer server = 2;
+}
+
+message StopWaylandServerRequest {
+  // The owner of the VM.
+  string owner_id = 1;
+
+  // Information about the server we want to remove.
+  WaylandServer server = 2;
+}
