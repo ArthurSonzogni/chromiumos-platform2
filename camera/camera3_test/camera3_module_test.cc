@@ -265,8 +265,8 @@ static std::vector<int> GetCmdLineTestCameraIds() {
 
 // static
 CameraModuleCallbacksAux* CameraModuleCallbacksAux::GetInstance() {
-  static base::NoDestructor<CameraModuleCallbacksAux> aux;
-  return aux.get();
+  static CameraModuleCallbacksAux aux;
+  return &aux;
 }
 
 CameraModuleCallbacksAux::CameraModuleCallbacksAux() {

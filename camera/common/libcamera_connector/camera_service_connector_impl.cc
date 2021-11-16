@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/files/file_path.h>
 #include <base/no_destructor.h>
 #include <base/sequence_checker.h>
 #include <mojo/core/embedder/embedder.h>
