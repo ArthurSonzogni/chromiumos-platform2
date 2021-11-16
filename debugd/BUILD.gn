@@ -31,6 +31,9 @@ group("all") {
   if (use.test) {
     deps += [ ":debugd_testrunner" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":debugd_cups_uri_helper_utils_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -317,6 +320,19 @@ if (use.test) {
       ":debugd_dbus_utils",
       ":libdebugd",
       "//common-mk/testrunner",
+    ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("debugd_cups_uri_helper_utils_fuzzer") {
+    sources = [
+      "src/helpers/cups_uri_helper_utils.cc",
+      "src/helpers/cups_uri_helper_utils_fuzzer.cc",
+    ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
     ]
   }
 }
