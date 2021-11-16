@@ -1380,8 +1380,8 @@ bool Init::Setup() {
   }
 
   // Start the worker.
-  base::Thread::Options opts(base::MessagePumpType::IO, 0 /*stack_size*/);
-  if (!worker_thread_.StartWithOptions(opts)) {
+  if (!worker_thread_.StartWithOptions(
+          base::Thread::Options(base::MessagePumpType::IO, 0 /*stack_size*/))) {
     LOG(ERROR) << "Failed to start worker thread";
     return false;
   }
