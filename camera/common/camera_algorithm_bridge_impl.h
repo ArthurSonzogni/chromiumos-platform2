@@ -54,6 +54,9 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge {
   // Deregisters buffers to the camera algorithm library.
   void DeregisterBuffers(const std::vector<int32_t>& buffer_handles);
 
+  // Returns the result for an update from the camera algorithm library.
+  void UpdateReturn(uint32_t upd_id, uint32_t status, int buffer_fd);
+
  private:
   // IPCBridge wraps all the IPC-related calls. Most of its methods should/will
   // be run on IPC thread.
@@ -75,6 +78,8 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge {
                  int32_t buffer_handle);
 
     void DeregisterBuffers(std::vector<int32_t> buffer_handles);
+
+    void UpdateReturn(uint32_t upd_id, uint32_t status, int buffer_fd);
 
     void OnConnectionError();
 

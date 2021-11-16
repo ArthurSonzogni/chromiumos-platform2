@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <semaphore.h>
+#include <sys/mman.h>
 
 #include <list>
 #include <unordered_map>
@@ -32,6 +33,8 @@ class CameraAlgorithmBridgeFixture : public testing::Test,
         req_id_(0) {
     CameraAlgorithmBridgeFixture::return_callback =
         CameraAlgorithmBridgeFixture::ReturnCallbackForwarder;
+    CameraAlgorithmBridgeFixture::update =
+        CameraAlgorithmBridgeFixture::UpdateForwarder;
     bridge_ = cros::CameraAlgorithmBridge::CreateInstance(
         cros::CameraAlgorithmBackend::kTest, mojo_manager_token_.get());
     if (!bridge_ || bridge_->Initialize(this) != 0) {
@@ -39,13 +42,17 @@ class CameraAlgorithmBridgeFixture : public testing::Test,
       return;
     }
     sem_init(&return_sem_, 0, 0);
+    sem_init(&update_sem_, 0, 0);
   }
 
   CameraAlgorithmBridgeFixture(const CameraAlgorithmBridgeFixture&) = delete;
   CameraAlgorithmBridgeFixture& operator=(const CameraAlgorithmBridgeFixture&) =
       delete;
 
-  ~CameraAlgorithmBridgeFixture() { sem_destroy(&return_sem_); }
+  ~CameraAlgorithmBridgeFixture() {
+    sem_destroy(&return_sem_);
+    sem_destroy(&update_sem_);
+  }
 
   void Request(const std::vector<uint8_t>& req_header, int32_t buffer_handle) {
     {
@@ -87,6 +94,46 @@ class CameraAlgorithmBridgeFixture : public testing::Test,
     sem_post(&return_sem_);
   }
 
+  static void UpdateForwarder(
+      const camera_algorithm_callback_ops_t* callback_ops,
+      uint32_t upd_id,
+      const uint8_t upd_header[],
+      uint32_t size,
+      int buffer_fd) {
+    if (callback_ops) {
+      auto s = const_cast<CameraAlgorithmBridgeFixture*>(
+          static_cast<const CameraAlgorithmBridgeFixture*>(callback_ops));
+      s->Update(upd_id, upd_header, size, buffer_fd);
+    }
+  }
+
+  virtual void Update(uint32_t upd_id,
+                      const uint8_t upd_header[],
+                      uint32_t size,
+                      int buffer_fd) {
+    struct stat sb;
+    if (fstat(buffer_fd, &sb) == -1) {
+      ADD_FAILURE() << "Failed to get buffer status";
+      return;
+    }
+    uint8_t* read_ptr = static_cast<uint8_t*>(
+        mmap(0, sb.st_size, PROT_WRITE, MAP_SHARED, buffer_fd, 0));
+    if (read_ptr == nullptr) {
+      ADD_FAILURE() << "Failed to map buffer";
+      return;
+    }
+    uint32_t hashcode;
+    hashcode =
+        *static_cast<const uint32_t*>(static_cast<const void*>(upd_header));
+    if (hashcode != SimpleHash(read_ptr, sb.st_size)) {
+      ADD_FAILURE() << "Shared memory content is corrupted";
+      return;
+    }
+    upd_id_ = upd_id;
+    buffer_fd_ = buffer_fd;
+    sem_post(&update_sem_);
+  }
+
   // |mojo_manager_| should only be destroyed after any usage of it. So it
   // should be declared first.
   std::unique_ptr<cros::CameraMojoChannelManagerToken> mojo_manager_token_;
@@ -96,6 +143,12 @@ class CameraAlgorithmBridgeFixture : public testing::Test,
   std::list<int32_t> status_list_;
 
   sem_t return_sem_;
+
+  uint32_t upd_id_;
+
+  int buffer_fd_;
+
+  sem_t update_sem_;
 
  private:
   uint32_t req_id_;
@@ -234,6 +287,17 @@ TEST_F(CameraAlgorithmBridgeFixture, DeadLockRecovery) {
   ASSERT_EQ(0, status_list_.front());
   std::vector<int32_t> handles({handle});
   bridge_->DeregisterBuffers(handles);
+}
+
+TEST_F(CameraAlgorithmBridgeFixture, VerifyUpdate) {
+  std::vector<uint8_t> req_header(1, REQUEST_TEST_COMMAND_VERIFY_UPDATE);
+  Request(req_header, -1);
+  struct timespec timeout = {};
+  clock_gettime(CLOCK_REALTIME, &timeout);
+  timeout.tv_sec += 1;
+  ASSERT_EQ(0, sem_timedwait(&update_sem_, &timeout));
+  bridge_->UpdateReturn(upd_id_, 0, buffer_fd_);
+  ASSERT_EQ(0, sem_timedwait(&return_sem_, &timeout));
 }
 
 class CameraAlgorithmBridgeStatusFixture : public CameraAlgorithmBridgeFixture {

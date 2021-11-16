@@ -146,6 +146,19 @@ void CameraAlgorithmBridgeImpl::DeregisterBuffers(
   VLOGF_EXIT();
 }
 
+void CameraAlgorithmBridgeImpl::UpdateReturn(uint32_t upd_id,
+                                             uint32_t status,
+                                             int buffer_fd) {
+  VLOGF_ENTER();
+
+  mojo_manager_->GetIpcTaskRunner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&CameraAlgorithmBridgeImpl::IPCBridge::UpdateReturn,
+                     ipc_bridge_->GetWeakPtr(), upd_id, status, buffer_fd));
+
+  VLOGF_EXIT();
+}
+
 CameraAlgorithmBridgeImpl::IPCBridge::IPCBridge(
     CameraAlgorithmBackend backend, CameraMojoChannelManager* mojo_manager)
     : algo_backend_(backend),
@@ -256,6 +269,21 @@ void CameraAlgorithmBridgeImpl::IPCBridge::DeregisterBuffers(
     return;
   }
   remote_->DeregisterBuffers(std::move(buffer_handles));
+}
+
+void CameraAlgorithmBridgeImpl::IPCBridge::UpdateReturn(uint32_t upd_id,
+                                                        uint32_t status,
+                                                        int buffer_fd) {
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  VLOGF_ENTER();
+  if (!remote_.is_bound()) {
+    LOGF(ERROR) << "Interface is not bound probably because IPC is broken";
+    return;
+  }
+  remote_->UpdateReturn(
+      upd_id, status,
+      mojo::WrapPlatformFile(base::ScopedPlatformFile(buffer_fd)));
+  VLOGF_EXIT();
 }
 
 void CameraAlgorithmBridgeImpl::IPCBridge::OnConnectionError() {

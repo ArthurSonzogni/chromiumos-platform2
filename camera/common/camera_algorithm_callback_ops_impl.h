@@ -7,6 +7,8 @@
 #ifndef CAMERA_COMMON_CAMERA_ALGORITHM_CALLBACK_OPS_IMPL_H_
 #define CAMERA_COMMON_CAMERA_ALGORITHM_CALLBACK_OPS_IMPL_H_
 
+#include <vector>
+
 #include <base/single_thread_task_runner.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
@@ -34,6 +36,12 @@ class CameraAlgorithmCallbackOpsImpl
   // Implementation of mojom::CameraAlgorithmCallbackOps::Return interface. It
   // is expected to be called on |CameraAlgorithmBridgeImpl::ipc_thread_|.
   void Return(uint32_t req_id, uint32_t status, int32_t buffer_handle) override;
+
+  // Implementation of mojom::CameraAlgorithmCallbackOps::Update interface. It
+  // is expected to be called on |CameraAlgorithmBridgeImpl::ipc_thread_|.
+  void Update(uint32_t upd_id,
+              const std::vector<uint8_t>& upd_header,
+              mojo::ScopedHandle buffer_fd) override;
 
   // Create the local proxy of remote CameraAlgorithmCallbackOps interface
   // implementation. It is expected to be called on

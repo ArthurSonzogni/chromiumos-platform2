@@ -31,6 +31,25 @@ typedef struct camera_algorithm_callback_ops {
                           int32_t buffer_handle);
   void (*notify)(const struct camera_algorithm_callback_ops* callback,
                  camera_algorithm_error_msg_code_t msg);
+
+  // This method allows the camera algorithm library to update status and/or
+  // control data to the HAL.
+  //
+  // Args:
+  //    |upd_id|: The ID that uniquely identifies this update and needs to be
+  //      sent back in camera_algorithm_ops_t.update_return().
+  //    |upd_header|: The update header indicating update details. The
+  //      interpretation depends on the HAL implementation. This is only valid
+  //      during the function call and is invalidated after the function
+  //      returns.
+  //    |size|: Size of update header.
+  //    |buffer_fd|: The buffer file descriptor to process. The buffer is
+  //    allocated and managed by the camera algorithm library.
+  void (*update)(const struct camera_algorithm_callback_ops* callback,
+                 uint32_t upd_id,
+                 const uint8_t upd_header[],
+                 uint32_t size,
+                 int buffer_fd) = nullptr;
 } camera_algorithm_callback_ops_t;
 
 typedef struct {
@@ -89,6 +108,19 @@ typedef struct {
   // Returns:
   //    A handle on success; -1 on failure.
   void (*deregister_buffers)(const int32_t buffer_handles[], uint32_t size);
+
+  // This method returns the result for an update from the camera algorithm
+  // library.
+  //
+  // Args:
+  //    |upd_id|: The ID that uniquely identifies the update from camera
+  //      algorithm library.
+  //    |status|: Result of the update.
+  //    |buffer_fd|: The buffer file descriptor to return.
+  //
+  // Returns:
+  //    0 on success; corresponding error code on failure.
+  void (*update_return)(uint32_t upd_id, uint32_t status, int buffer_fd);
 } camera_algorithm_ops_t;
 }
 

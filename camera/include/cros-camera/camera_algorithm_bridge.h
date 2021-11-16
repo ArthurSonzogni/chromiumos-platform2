@@ -127,6 +127,18 @@ class CROS_CAMERA_EXPORT CameraAlgorithmBridge {
   virtual void DeregisterBuffers(
       const std::vector<int32_t>& buffer_handles) = 0;
 
+  // This method returns the result for an update from the camera algorithm
+  // library.
+  //
+  // Args:
+  //    |upd_id|: The ID that uniquely identifies the update from camera
+  //      algorithm library.
+  //    |status|: Result of the update.
+  //    |buffer_fd|: The buffer file descriptor to return.
+  virtual void UpdateReturn(uint32_t upd_id,
+                            uint32_t status,
+                            int buffer_fd) = 0;
+
  protected:
   CameraAlgorithmBridge() {}
 

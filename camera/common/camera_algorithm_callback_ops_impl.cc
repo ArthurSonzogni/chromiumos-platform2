@@ -5,6 +5,7 @@
  */
 
 #include <utility>
+#include <vector>
 
 #include "common/camera_algorithm_callback_ops_impl.h"
 
@@ -29,6 +30,28 @@ void CameraAlgorithmCallbackOpsImpl::Return(uint32_t req_id,
   DCHECK(callback_ops_->return_callback);
   VLOGF_ENTER();
   callback_ops_->return_callback(callback_ops_, req_id, status, buffer_handle);
+  VLOGF_EXIT();
+}
+
+void CameraAlgorithmCallbackOpsImpl::Update(
+    uint32_t upd_id,
+    const std::vector<uint8_t>& upd_header,
+    mojo::ScopedHandle buffer_fd) {
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK(callback_ops_);
+  VLOGF_ENTER();
+  if (callback_ops_->update == nullptr) {
+    LOGF(FATAL) << "Algorithm calls unregistered update callback";
+    return;
+  }
+  base::ScopedPlatformFile fd;
+  MojoResult mojo_result = mojo::UnwrapPlatformFile(std::move(buffer_fd), &fd);
+  if (mojo_result != MOJO_RESULT_OK) {
+    LOGF(ERROR) << "Failed to unwrap handle: " << mojo_result;
+    return;
+  }
+  callback_ops_->update(callback_ops_, upd_id, upd_header.data(),
+                        upd_header.size(), fd.release());
   VLOGF_EXIT();
 }
 

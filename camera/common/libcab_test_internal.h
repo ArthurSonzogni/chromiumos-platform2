@@ -22,7 +22,11 @@ enum RequestTestCommand {
   // |status| parameter.
   REQUEST_TEST_COMMAND_VERIFY_STATUS,
   // This is to emulate a dead lock.
-  REQUEST_TEST_COMMAND_DEAD_LOCK
+  REQUEST_TEST_COMMAND_DEAD_LOCK,
+  // This is to verify the update callback. Upon receiving this command, the
+  // fake camera algorithm library should invoke the update callback with a
+  // buffer of random content and its hashcode as the header.
+  REQUEST_TEST_COMMAND_VERIFY_UPDATE,
 };
 
 inline uint32_t SimpleHash(const uint8_t buf[], uint32_t size) {
