@@ -2,24 +2,23 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-write: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 openat: 1
-close: 1
-stat: 1
+newfstatat: 1
 recvmsg: 1
+write: 1
+close: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
-fstat: 1
+pread64: 1
+socket: arg0 == AF_NETLINK || arg0 == AF_UNIX
 setsockopt: 1
+ioctl: arg1 == SIOCGIFNAME || arg1 == SIOCGIFINDEX
 fstatfs: 1
-# The following are syscalls required for iw commands.
 read: 1
-socket: arg0 == AF_UNIX || arg0 == AF_NETLINK
 brk: 1
 access: 1
-ioctl: arg1 == SIOCGIFINDEX || arg1 == SIOCGIFNAME
-rt_sigaction: 1
 sendmsg: 1
+rt_sigaction: 1
 arch_prctl: 1
 munmap: 1
 set_tid_address: 1
