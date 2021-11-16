@@ -36,19 +36,20 @@ MaybeLogEntry LogEntryReader::GetPreviousEntry() {
   // Reads preceding lines until a parsable line, which should be the first
   // line of log entry, comes.
   while (true) {
-    base::Optional<std::string> line = line_reader_.Backward();
-    if (!line.has_value()) {
-      // No more entry
+    auto [line, result] = line_reader_.Backward();
+    if (result != LogLineReader::ReadResult::NO_ERROR) {
+      // No more entry or failed to read
       return base::nullopt;
     }
 
-    MaybeLogEntry entry = parser_->Parse(std::move(*line));
+    MaybeLogEntry entry = parser_->Parse(std::move(line));
     if (entry.has_value()) {
       if (!lines.empty())
         entry->AppendLinesToMessage(lines);
       return entry;
     }
-    lines.push_front(*line);
+
+    lines.push_front(std::move(line));
   }
 }
 
@@ -57,13 +58,13 @@ MaybeLogEntry LogEntryReader::GetNextEntry() {
   if (!next_entry_.has_value()) {
     // Reads a next lines with skipping non-parsable lines.
     while (true) {
-      base::Optional<std::string> line = line_reader_.Forward();
-      if (!line.has_value()) {
-        // No more entry
+      auto [line, result] = line_reader_.Forward();
+      if (result != LogLineReader::ReadResult::NO_ERROR) {
+        // No more entry or failed to read
         return base::nullopt;
       }
 
-      MaybeLogEntry maybe_entry = parser_->Parse(std::move(*line));
+      MaybeLogEntry maybe_entry = parser_->Parse(std::move(line));
       if (!maybe_entry.has_value()) {
         // Parse failed. Go to the next line.
         continue;
@@ -81,19 +82,19 @@ MaybeLogEntry LogEntryReader::GetNextEntry() {
   // Reads succeeding lines until a parsable line, which should be the first
   // line of the next log entry, comes.
   while (true) {
-    base::Optional<std::string> line = line_reader_.Forward();
-    if (!line.has_value()) {
+    auto [line, result] = line_reader_.Forward();
+    if (result != LogLineReader::ReadResult::NO_ERROR) {
       // No more entry
       break;
     }
 
-    MaybeLogEntry maybe_entry = parser_->Parse(std::move(*line));
+    MaybeLogEntry maybe_entry = parser_->Parse(std::move(line));
     if (maybe_entry.has_value()) {
       next_entry_.emplace(std::move(*maybe_entry));
       break;
     }
 
-    lines.push_back(std::move(*line));
+    lines.push_back(std::move(line));
   }
 
   entry->AppendLinesToMessage(lines);

@@ -62,9 +62,9 @@ TEST_F(LogParserAuditTest, Parse) {
   reader.OpenFile(base::FilePath("./testdata/TEST_AUDIT_LOG"));
 
   {
-    base::Optional<std::string> maybe_line = reader.Forward();
-    EXPECT_TRUE(maybe_line.has_value());
-    MaybeLogEntry e = parser.Parse(std::move(maybe_line.value()));
+    auto [line, result] = reader.Forward();
+    EXPECT_EQ(LogLineReader::ReadResult::NO_ERROR, result);
+    MaybeLogEntry e = parser.Parse(std::move(line));
     EXPECT_TRUE(e.has_value());
 
     const std::string& s = e->entire_line();
@@ -78,9 +78,9 @@ TEST_F(LogParserAuditTest, Parse) {
   }
 
   {
-    base::Optional<std::string> maybe_line = reader.Forward();
-    EXPECT_TRUE(maybe_line.has_value());
-    MaybeLogEntry e = parser.Parse(std::move(maybe_line.value()));
+    auto [line, result] = reader.Forward();
+    EXPECT_EQ(LogLineReader::ReadResult::NO_ERROR, result);
+    MaybeLogEntry e = parser.Parse(std::move(line));
     EXPECT_TRUE(e.has_value());
 
     const std::string& s = e->entire_line();
@@ -97,9 +97,9 @@ TEST_F(LogParserAuditTest, Parse) {
   }
 
   {
-    base::Optional<std::string> maybe_line = reader.Forward();
-    EXPECT_TRUE(maybe_line.has_value());
-    MaybeLogEntry e = parser.Parse(std::move(maybe_line.value()));
+    auto [line, result] = reader.Forward();
+    EXPECT_EQ(LogLineReader::ReadResult::NO_ERROR, result);
+    MaybeLogEntry e = parser.Parse(std::move(line));
     EXPECT_TRUE(e.has_value());
 
     const std::string& s = e->entire_line();
@@ -117,9 +117,9 @@ TEST_F(LogParserAuditTest, Parse) {
   }
 
   {
-    base::Optional<std::string> maybe_line = reader.Forward();
-    EXPECT_TRUE(maybe_line.has_value());
-    MaybeLogEntry e = parser.Parse(std::move(maybe_line.value()));
+    auto [line, result] = reader.Forward();
+    EXPECT_EQ(LogLineReader::ReadResult::NO_ERROR, result);
+    MaybeLogEntry e = parser.Parse(std::move(line));
     EXPECT_TRUE(e.has_value());
 
     const std::string& s = e->entire_line();
@@ -138,9 +138,9 @@ TEST_F(LogParserAuditTest, Parse) {
   }
 
   {
-    base::Optional<std::string> maybe_line = reader.Forward();
-    EXPECT_TRUE(maybe_line.has_value());
-    MaybeLogEntry e = parser.Parse(std::move(maybe_line.value()));
+    auto [line, result] = reader.Forward();
+    EXPECT_EQ(LogLineReader::ReadResult::NO_ERROR, result);
+    MaybeLogEntry e = parser.Parse(std::move(line));
     EXPECT_TRUE(e.has_value());
 
     const std::string& s = e->entire_line();
@@ -159,9 +159,9 @@ TEST_F(LogParserAuditTest, Parse) {
   }
 
   {
-    base::Optional<std::string> maybe_line = reader.Forward();
-    EXPECT_TRUE(maybe_line.has_value());
-    MaybeLogEntry e = parser.Parse(std::move(maybe_line.value()));
+    auto [line, result] = reader.Forward();
+    EXPECT_EQ(LogLineReader::ReadResult::NO_ERROR, result);
+    MaybeLogEntry e = parser.Parse(std::move(line));
     EXPECT_TRUE(e.has_value());
 
     const std::string& s = e->entire_line();
@@ -179,9 +179,9 @@ TEST_F(LogParserAuditTest, Parse) {
   }
 
   {
-    base::Optional<std::string> maybe_line = reader.Forward();
-    EXPECT_TRUE(maybe_line.has_value());
-    MaybeLogEntry e = parser.Parse(std::move(maybe_line.value()));
+    auto [line, result] = reader.Forward();
+    EXPECT_EQ(LogLineReader::ReadResult::NO_ERROR, result);
+    MaybeLogEntry e = parser.Parse(std::move(line));
     EXPECT_TRUE(e.has_value());
 
     const std::string& s = e->entire_line();
@@ -198,8 +198,8 @@ TEST_F(LogParserAuditTest, Parse) {
   }
 
   {
-    base::Optional<std::string> maybe_line = reader.Forward();
-    EXPECT_FALSE(maybe_line.has_value());
+    auto [line, result] = reader.Forward();
+    EXPECT_EQ(LogLineReader::ReadResult::NO_MORE_LOGS, result);
   }
 }
 
@@ -211,9 +211,9 @@ TEST_F(LogParserAuditTest, ParseWithTimezone) {
   SetTimeZone("Europe/Berlin");
   {
     LogParserAudit parser;
-    base::Optional<std::string> maybe_line = reader.Forward();
-    EXPECT_TRUE(maybe_line.has_value());
-    MaybeLogEntry e = parser.Parse(std::move(maybe_line.value()));
+    auto [line, result] = reader.Forward();
+    EXPECT_EQ(LogLineReader::ReadResult::NO_ERROR, result);
+    MaybeLogEntry e = parser.Parse(std::move(line));
     EXPECT_TRUE(e.has_value());
 
     // Compare times in UTC
@@ -228,9 +228,9 @@ TEST_F(LogParserAuditTest, ParseWithTimezone) {
   SetTimeZone("Asia/Tokyo");
   {
     LogParserAudit parser;
-    base::Optional<std::string> maybe_line = reader.Forward();
-    EXPECT_TRUE(maybe_line.has_value());
-    MaybeLogEntry e = parser.Parse(std::move(maybe_line.value()));
+    auto [line, result] = reader.Forward();
+    EXPECT_EQ(LogLineReader::ReadResult::NO_ERROR, result);
+    MaybeLogEntry e = parser.Parse(std::move(line));
     EXPECT_TRUE(e.has_value());
 
     // Compare times in UTC
@@ -245,9 +245,9 @@ TEST_F(LogParserAuditTest, ParseWithTimezone) {
   SetTimeZone("America/Los_Angeles");
   {
     LogParserAudit parser;
-    base::Optional<std::string> maybe_line = reader.Forward();
-    EXPECT_TRUE(maybe_line.has_value());
-    MaybeLogEntry e = parser.Parse(std::move(maybe_line.value()));
+    auto [line, result] = reader.Forward();
+    EXPECT_EQ(LogLineReader::ReadResult::NO_ERROR, result);
+    MaybeLogEntry e = parser.Parse(std::move(line));
     EXPECT_TRUE(e.has_value());
 
     // Compare times in UTC
@@ -262,9 +262,9 @@ TEST_F(LogParserAuditTest, ParseWithTimezone) {
   SetTimeZone("Europe/Berlin");
   {
     LogParserAudit parser;
-    base::Optional<std::string> maybe_line = reader.Forward();
-    EXPECT_TRUE(maybe_line.has_value());
-    MaybeLogEntry e = parser.Parse(std::move(maybe_line.value()));
+    auto [line, result] = reader.Forward();
+    EXPECT_EQ(LogLineReader::ReadResult::NO_ERROR, result);
+    MaybeLogEntry e = parser.Parse(std::move(line));
     EXPECT_TRUE(e.has_value());
 
     // Compare times in UTC
@@ -279,9 +279,9 @@ TEST_F(LogParserAuditTest, ParseWithTimezone) {
   SetTimeZone("UTC+00");
   {
     LogParserAudit parser;
-    base::Optional<std::string> maybe_line = reader.Forward();
-    EXPECT_TRUE(maybe_line.has_value());
-    MaybeLogEntry e = parser.Parse(std::move(maybe_line.value()));
+    auto [line, result] = reader.Forward();
+    EXPECT_EQ(LogLineReader::ReadResult::NO_ERROR, result);
+    MaybeLogEntry e = parser.Parse(std::move(line));
     EXPECT_TRUE(e.has_value());
 
     // Compare times in UTC
@@ -299,9 +299,9 @@ TEST_F(LogParserAuditTest, ParseLeadingNull) {
   reader.OpenFile(base::FilePath("./testdata/TEST_AUDIT_LOG_LEADING_NULL"));
 
   {
-    base::Optional<std::string> maybe_line = reader.Forward();
-    EXPECT_TRUE(maybe_line.has_value());
-    MaybeLogEntry e = parser.Parse(std::move(maybe_line.value()));
+    auto [line, result] = reader.Forward();
+    EXPECT_EQ(LogLineReader::ReadResult::NO_ERROR, result);
+    MaybeLogEntry e = parser.Parse(std::move(line));
     EXPECT_TRUE(e.has_value());
 
     const std::string& s = e->entire_line();

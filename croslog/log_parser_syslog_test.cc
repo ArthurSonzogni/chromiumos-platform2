@@ -27,10 +27,10 @@ TEST_F(LogParserSyslogTest, Parse) {
   LogParserSyslog parser;
 
   {
-    std::string maybe_line =
+    std::string line =
         "2020-05-25T14:15:22.402258+09:00 ERROR tag[0123]: MESSAGE";
 
-    MaybeLogEntry e = parser.Parse(std::move(maybe_line));
+    MaybeLogEntry e = parser.Parse(std::move(line));
     EXPECT_TRUE(e.has_value());
     const std::string& s = e->entire_line();
     EXPECT_GT(s.size(), 32);
@@ -47,10 +47,9 @@ TEST_F(LogParserSyslogTest, Parse) {
   }
 
   {
-    std::string maybe_line =
-        "2020-05-25T14:15:22.402258+09:00 INFO kernel: MESSAGE";
+    std::string line = "2020-05-25T14:15:22.402258+09:00 INFO kernel: MESSAGE";
 
-    MaybeLogEntry e = parser.Parse(std::move(maybe_line));
+    MaybeLogEntry e = parser.Parse(std::move(line));
     EXPECT_TRUE(e.has_value());
     const std::string& s = e->entire_line();
     EXPECT_GT(s.size(), 32);
@@ -71,9 +70,9 @@ TEST_F(LogParserSyslogTest, ParseFromFile) {
   LogLineReader reader(LogLineReader::Backend::FILE);
   reader.OpenFile(base::FilePath("./testdata/TEST_NORMAL_LOG1"));
   {
-    base::Optional<std::string> maybe_line = reader.Forward();
-    EXPECT_TRUE(maybe_line.has_value());
-    MaybeLogEntry e = parser.Parse(std::move(maybe_line.value()));
+    auto [line, result] = reader.Forward();
+    EXPECT_EQ(LogLineReader::ReadResult::NO_ERROR, result);
+    MaybeLogEntry e = parser.Parse(std::move(line));
     EXPECT_TRUE(e.has_value());
     const std::string& s = e->entire_line();
     EXPECT_GT(s.size(), 32);
@@ -93,9 +92,9 @@ TEST_F(LogParserSyslogTest, ParseFromFile) {
   }
 
   {
-    base::Optional<std::string> maybe_line = reader.Forward();
-    EXPECT_TRUE(maybe_line.has_value());
-    MaybeLogEntry e = parser.Parse(std::move(maybe_line.value()));
+    auto [line, result] = reader.Forward();
+    EXPECT_EQ(LogLineReader::ReadResult::NO_ERROR, result);
+    MaybeLogEntry e = parser.Parse(std::move(line));
     EXPECT_TRUE(e.has_value());
     const std::string& s = e->entire_line();
     EXPECT_GT(s.size(), 32);

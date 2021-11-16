@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <tuple>
 
 #include "base/files/file.h"
 #include "base/files/file_path.h"
@@ -39,6 +40,15 @@ class LogLineReader : public FileChangeWatcher::Observer {
     MEMORY_FOR_TEST,
   };
 
+  enum class ReadResult {
+    // Read successfully
+    NO_ERROR,
+    // Read but there is no more logs to read
+    NO_MORE_LOGS,
+    // Error due to the file size change after the previous read.
+    ERROR_FILE_TRUNCATED,
+  };
+
   // Sets the maximum limit of length of line.
   static void SetMaxLineLengthForTest(int64_t max_line_length);
 
@@ -54,9 +64,9 @@ class LogLineReader : public FileChangeWatcher::Observer {
   void OpenMemoryBufferForTest(const char* buffer, size_t size);
 
   // Read the next line from log.
-  base::Optional<std::string> Forward();
+  std::tuple<std::string, ReadResult> Forward();
   // Read the previous line from log.
-  base::Optional<std::string> Backward();
+  std::tuple<std::string, ReadResult> Backward();
 
   // Set the position to read last.
   void SetPositionLast();

@@ -32,13 +32,13 @@ std::vector<BootRecords::BootEntry> ReadBootLogs(base::FilePath file_path) {
   reader.OpenFile(std::move(file_path));
 
   while (true) {
-    base::Optional<std::string> log = reader.Forward();
-    if (!log.has_value()) {
+    auto [log, result] = reader.Forward();
+    if (result != LogLineReader::ReadResult::NO_ERROR) {
       // EOF: finishes the read.
       break;
     }
 
-    MaybeLogEntry e = parser.Parse(std::move(*log));
+    MaybeLogEntry e = parser.Parse(std::move(log));
     if (!e.has_value()) {
       // Parse error: continuing the next line.
       continue;
