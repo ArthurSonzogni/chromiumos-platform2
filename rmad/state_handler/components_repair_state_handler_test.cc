@@ -44,7 +44,9 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
 
   std::unique_ptr<ComponentsRepairState> CreateDefaultComponentsRepairState() {
     static const std::vector<RmadComponent> default_original_components = {
-        RMAD_COMPONENT_KEYBOARD, RMAD_COMPONENT_POWER_BUTTON};
+        RMAD_COMPONENT_KEYBOARD,           RMAD_COMPONENT_POWER_BUTTON,
+        RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
+        RMAD_COMPONENT_BASE_GYROSCOPE,     RMAD_COMPONENT_LID_GYROSCOPE};
     auto components_repair = std::make_unique<ComponentsRepairState>();
     for (auto component : default_original_components) {
       ComponentRepairStatus* components = components_repair->add_components();
@@ -116,6 +118,10 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_Success_MlbRework) {
       RmadComponent_Name(RMAD_COMPONENT_BATTERY),
       RmadComponent_Name(RMAD_COMPONENT_KEYBOARD),
       RmadComponent_Name(RMAD_COMPONENT_POWER_BUTTON),
+      RmadComponent_Name(RMAD_COMPONENT_BASE_ACCELEROMETER),
+      RmadComponent_Name(RMAD_COMPONENT_LID_ACCELEROMETER),
+      RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE),
+      RmadComponent_Name(RMAD_COMPONENT_LID_GYROSCOPE),
   };
   EXPECT_EQ(replaced_components_set, expected_replaced_components_set);
 }

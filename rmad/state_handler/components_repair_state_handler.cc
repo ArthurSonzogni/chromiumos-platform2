@@ -35,8 +35,9 @@ const std::vector<RmadComponent> kProbeableComponents = {
 };
 
 const std::vector<RmadComponent> kUnprobeableComponents = {
-    RMAD_COMPONENT_KEYBOARD,
-    RMAD_COMPONENT_POWER_BUTTON,
+    RMAD_COMPONENT_KEYBOARD,           RMAD_COMPONENT_POWER_BUTTON,
+    RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
+    RMAD_COMPONENT_BASE_GYROSCOPE,     RMAD_COMPONENT_LID_GYROSCOPE,
 };
 
 // Convert the list of |ComponentRepairStatus| in |state| to a mapping table of
