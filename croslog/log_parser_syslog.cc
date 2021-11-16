@@ -23,6 +23,8 @@ int ParseTime(const std::string& entire_line, base::Time* time) {
 
   if (entire_line[26] == 'Z') {
     // Case of UTC time format like "2020-05-25T00:00:00.000000Z".
+    if (entire_line.length() < kTimeStringLengthUTC)
+      return -1;
     std::string log_time = entire_line.substr(0, kTimeStringLengthUTC);
 
     bool result = base::Time::FromString(log_time.c_str(), time);
@@ -32,6 +34,8 @@ int ParseTime(const std::string& entire_line, base::Time* time) {
     return kTimeStringLengthUTC;
   } else if (entire_line[26] == '+' || entire_line[26] == '-') {
     // Case of format with time-zone like "2020-05-25T00:00:00.000000+00:00".
+    if (entire_line.length() < kTimeStringLengthWithTimeZone)
+      return -1;
     std::string log_time = entire_line.substr(0, kTimeStringLengthWithTimeZone);
 
     bool result = base::Time::FromString(log_time.c_str(), time);
@@ -67,6 +71,7 @@ MaybeLogEntry LogParserSyslog::ParseInternal(std::string&& entire_line) {
     // Parse failed. Maybe this line doesn't contains a header.
     return base::nullopt;
   }
+  DCHECK_LE(message_start_pos, entire_line.length());
 
   int pos = message_start_pos;
   if (entire_line[pos] != ' ') {

@@ -195,6 +195,30 @@ TEST_F(LogParserSyslogTest, ParseInvalid) {
     EXPECT_EQ("2020-05-25T14:15:22.402258+09:00", s.substr(0, 32));
     EXPECT_EQ(TimeFromExploded(2020, 5, 25, 14, 15, 22, 402258, +9), e->time());
   }
+
+  {
+    // Only UTC time present.
+    std::string maybe_line = "2020-05-25T14:15:22.402258Z";
+    EXPECT_FALSE(parser.Parse(std::move(maybe_line)).has_value());
+  }
+
+  {
+    // Only time with time zone present.
+    std::string maybe_line = "2020-05-25T14:15:22.402258+09:00";
+    EXPECT_FALSE(parser.Parse(std::move(maybe_line)).has_value());
+  }
+
+  {
+    // Only incomplete time present.
+    std::string maybe_line = "2020-05-25T14:15:22.402258";
+    EXPECT_FALSE(parser.Parse(std::move(maybe_line)).has_value());
+  }
+
+  {
+    // Only incomplete time with time zone present.
+    std::string maybe_line = "2020-05-25T14:15:22.402258+09:0";
+    EXPECT_FALSE(parser.Parse(std::move(maybe_line)).has_value());
+  }
 }
 
 }  // namespace croslog
