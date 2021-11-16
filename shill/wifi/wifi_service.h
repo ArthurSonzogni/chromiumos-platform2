@@ -231,8 +231,8 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, ChooseDevice);
   FRIEND_TEST(WiFiServiceTest, SetMACAddress);
   FRIEND_TEST(WiFiServiceTest, SetMACPolicy);
-  FRIEND_TEST(WiFiServiceTest, UpdateMACAddress);
-  FRIEND_TEST(WiFiServiceTest, UpdateMACAddressOpenNetwork);
+  FRIEND_TEST(WiFiServiceTest, UpdateMACAddressNonPersistentPolicy);
+  FRIEND_TEST(WiFiServiceTest, UpdateMACAddressPersistentPolicy);
   FRIEND_TEST(WiFiServiceTest, UpdateMACAddressPolicySwitch);
 
   static const char kAnyDeviceAddress[];
@@ -241,6 +241,8 @@ class WiFiService : public Service {
   static const char kStorageMACAddress[];
   static const char kStorageMACPolicy[];
   static const char kStoragePortalDetected[];
+  static const char kStorageLeaseExpiry[];
+  static const char kStorageDisconnectTime[];
 
   // Override the base clase implementation, because we need to allow
   // arguments that aren't base class methods.
@@ -370,6 +372,11 @@ class WiFiService : public Service {
   // is Open and only if user never encountered a captive portal.
   // Once this flag is set and saved, it never gets erased.
   bool was_portal_detected_ = false;
+  // Lease time expiry and disconnect time, kept here just to know at
+  // WiFiService layer whether we can regenerate MAC address before actually
+  // connecting to the network.
+  base::Time dhcp4_lease_expiry_;
+  base::Time disconnect_time_;
   uint16_t frequency_;
   std::vector<uint16_t> frequency_list_;
   uint16_t physical_mode_;

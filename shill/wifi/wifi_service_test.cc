@@ -421,6 +421,8 @@ TEST_F(WiFiServiceTest, ConnectReportBSSes) {
 TEST_F(WiFiServiceTest, ConnectConditions) {
   Error error;
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityNone);
+  SetWiFiForService(wifi_service, wifi());
+
   // With nothing else going on, the service should attempt to connect.
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
   wifi_service->Connect(&error, "in test");
@@ -1713,12 +1715,13 @@ TEST_F(WiFiServiceTest, Unload) {
 TEST_F(WiFiServiceTest, PropertyChanges) {
   WiFiServiceRefPtr service = MakeServiceWithMockManager();
   ServiceMockAdaptor* adaptor = GetAdaptor(service.get());
-  TestCommonPropertyChanges(service, adaptor);
-  TestAutoConnectPropertyChange(service, adaptor);
 
   EXPECT_CALL(*adaptor, EmitRpcIdentifierChanged(kDeviceProperty, _));
   SetWiFi(service, wifi());
   Mock::VerifyAndClearExpectations(adaptor);
+
+  TestCommonPropertyChanges(service, adaptor);
+  TestAutoConnectPropertyChange(service, adaptor);
 
   EXPECT_CALL(*adaptor, EmitRpcIdentifierChanged(kDeviceProperty, _));
   service->ResetWiFi();
@@ -1946,7 +1949,7 @@ bool verifyAddressCorrect(const MACAddress& addr) {
                            kLocallyAdministeredBit);
 }
 
-TEST_F(WiFiServiceTest, UpdateMACAddress) {
+TEST_F(WiFiServiceTest, UpdateMACAddressNonPersistentPolicy) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityNone);
   wifi()->random_mac_supported_ = true;
   auto clock_ptr = std::make_unique<base::SimpleTestClock>();
@@ -1959,24 +1962,46 @@ TEST_F(WiFiServiceTest, UpdateMACAddress) {
   EXPECT_EQ(wifi_service->random_mac_policy_,
             WiFiService::RandomizationPolicy::NonPersistentRandom);
 
-  wifi_service->UpdateMACAddress();
+  EXPECT_FALSE(wifi_service->UpdateMACAddress().empty());
   EXPECT_TRUE(verifyAddressCorrect(wifi_service->mac_address_));
   auto addr = wifi_service->mac_address_.ToString();
   clock->Advance(MACAddress::kDefaultExpirationTime);
-  wifi_service->UpdateMACAddress();
+  // Set these times to first test MAC expiry path
+  wifi_service->disconnect_time_ = clock->Now();
+  wifi_service->dhcp4_lease_expiry_ =
+      clock->Now() + base::TimeDelta::FromHours(1);
+  EXPECT_TRUE(wifi_service->UpdateMACAddress().empty());
   EXPECT_EQ(wifi_service->mac_address_.ToString(), addr);
 
   // Make sure local admin bit is celared.
   addr[1] = 'd';
   wifi_service->mac_address_.Set(addr);
-  // Set resets expiraton time
+  // Cross the MAC expiry
   clock->Advance(base::TimeDelta::FromSeconds(1));
-  wifi_service->UpdateMACAddress();
+  EXPECT_FALSE(wifi_service->UpdateMACAddress().empty());
   EXPECT_TRUE(verifyAddressCorrect(wifi_service->mac_address_));
+  EXPECT_NE(wifi_service->mac_address_.ToString(), addr);
+
+  addr = wifi_service->mac_address_.ToString();
+  // MAC is valid for 24h now so next rotation time is disconnect + 4h.
+  // Let's test some point from (disconnect, lease_expiry) period.
+  clock->Advance(base::TimeDelta::FromMinutes(30));
+  EXPECT_TRUE(wifi_service->UpdateMACAddress().empty());
+  EXPECT_EQ(wifi_service->mac_address_.ToString(), addr);
+  // Now [lease_expiry, disconnect + 4h) period - should still be no
+  // change.
+  clock->Advance(base::TimeDelta::FromHours(2));
+  EXPECT_TRUE(wifi_service->UpdateMACAddress().empty());
+  EXPECT_EQ(wifi_service->mac_address_.ToString(), addr);
+  // Now cross the rotation deadline - address should change.
+  addr[1] = 'd';
+  wifi_service->mac_address_.Set(addr);
+  clock->Advance(base::TimeDelta::FromHours(2));
+  EXPECT_FALSE(wifi_service->UpdateMACAddress().empty());
   EXPECT_NE(wifi_service->mac_address_.ToString(), addr);
 }
 
-TEST_F(WiFiServiceTest, UpdateMACAddressOpenNetwork) {
+TEST_F(WiFiServiceTest, UpdateMACAddressPersistentPolicy) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityNone);
   wifi()->random_mac_supported_ = true;
   auto clock_ptr = std::make_unique<base::SimpleTestClock>();
@@ -1991,31 +2016,38 @@ TEST_F(WiFiServiceTest, UpdateMACAddressOpenNetwork) {
   EXPECT_EQ(wifi_service->random_mac_policy_,
             WiFiService::RandomizationPolicy::PersistentRandom);
 
-  wifi_service->UpdateMACAddress();
+  EXPECT_FALSE(wifi_service->UpdateMACAddress().empty());
   EXPECT_TRUE(verifyAddressCorrect(wifi_service->mac_address_));
   auto addr = wifi_service->mac_address_.ToString();
+  // Check if lease/disconnect time does not cause rotation
+  wifi_service->disconnect_time_ = clock->Now() - base::TimeDelta::FromHours(5);
+  wifi_service->dhcp4_lease_expiry_ =
+      clock->Now() - base::TimeDelta::FromHours(1);
+  EXPECT_TRUE(wifi_service->UpdateMACAddress().empty());
+  EXPECT_EQ(wifi_service->mac_address_.ToString(), addr);
+
   clock->Advance(MACAddress::kDefaultExpirationTime +
                  base::TimeDelta::FromSeconds(1));
-  wifi_service->UpdateMACAddress();
+  EXPECT_TRUE(wifi_service->UpdateMACAddress().empty());
   EXPECT_EQ(wifi_service->mac_address_.ToString(), addr);
   wifi_service->security_ = kSecurityNone;
   clock->Advance(MACAddress::kDefaultExpirationTime +
                  base::TimeDelta::FromSeconds(1));
-  wifi_service->UpdateMACAddress();
+  EXPECT_TRUE(wifi_service->UpdateMACAddress().empty());
   EXPECT_EQ(wifi_service->mac_address_.ToString(), addr);
   wifi_service->was_portal_detected_ = 0;
 
   wifi_service->mac_address_.Clear();
   clock->Advance(MACAddress::kDefaultExpirationTime +
                  base::TimeDelta::FromSeconds(1));
-  wifi_service->UpdateMACAddress();
+  EXPECT_FALSE(wifi_service->UpdateMACAddress().empty());
   addr = wifi_service->mac_address_.ToString();
   // Make sure local admin bit is celared.
   addr[1] = 'd';
   wifi_service->mac_address_.Set(addr);
   clock->Advance(MACAddress::kDefaultExpirationTime +
                  base::TimeDelta::FromSeconds(1));
-  wifi_service->UpdateMACAddress();
+  EXPECT_FALSE(wifi_service->UpdateMACAddress().empty());
   EXPECT_TRUE(verifyAddressCorrect(wifi_service->mac_address_));
   EXPECT_NE(wifi_service->mac_address_.ToString(), addr);
 }
@@ -2046,7 +2078,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPolicySwitch) {
       kWifiRandomMacPolicyNonPersistentRandom, &ret));
   EXPECT_EQ(wifi_service->random_mac_policy_,
             WiFiService::RandomizationPolicy::NonPersistentRandom);
-  wifi_service->UpdateMACAddress();
+  EXPECT_FALSE(wifi_service->UpdateMACAddress().empty());
   EXPECT_NE(wifi_service->mac_address_.ToString(), addr);
   EXPECT_TRUE(verifyAddressCorrect(wifi_service->mac_address_));
   EXPECT_TRUE(wifi_service->mac_address_.will_expire());
@@ -2060,7 +2092,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPolicySwitch) {
             WiFiService::RandomizationPolicy::PersistentRandom);
   clock->Advance(MACAddress::kDefaultExpirationTime +
                  base::TimeDelta::FromSeconds(1));
-  wifi_service->UpdateMACAddress();
+  EXPECT_TRUE(wifi_service->UpdateMACAddress().empty());
   EXPECT_EQ(wifi_service->mac_address_.ToString(), addr);
   EXPECT_TRUE(wifi_service->mac_address_.will_expire());
 
@@ -2071,7 +2103,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPolicySwitch) {
       kWifiRandomMacPolicyNonPersistentRandom, &ret));
   EXPECT_EQ(wifi_service->random_mac_policy_,
             WiFiService::RandomizationPolicy::NonPersistentRandom);
-  wifi_service->UpdateMACAddress();
+  EXPECT_FALSE(wifi_service->UpdateMACAddress().empty());
   EXPECT_NE(wifi_service->mac_address_.ToString(), addr);
   EXPECT_TRUE(verifyAddressCorrect(wifi_service->mac_address_));
   EXPECT_TRUE(wifi_service->mac_address_.will_expire());

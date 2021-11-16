@@ -51,6 +51,8 @@ namespace {
 // TODO(crbug.com/1084279) Remove after migration is complete.
 const char kStorageDeprecatedPassphrase[] = "Passphrase";
 
+constexpr auto kMinDisconnectOffset = base::TimeDelta::FromHours(4);
+
 static const std::map<WiFiService::RandomizationPolicy, std::string>
     RandomizationPolicyMap = {
         {WiFiService::RandomizationPolicy::Hardware,
@@ -87,6 +89,8 @@ const int WiFiService::kSuspectedCredentialFailureThreshold = 3;
 const char WiFiService::kStorageMACAddress[] = "WiFi.MACAddress";
 const char WiFiService::kStorageMACPolicy[] = "WiFi.MACPolicy";
 const char WiFiService::kStoragePortalDetected[] = "WiFi.PortalDetected";
+const char WiFiService::kStorageLeaseExpiry[] = "WiFi.LeaseExpiry";
+const char WiFiService::kStorageDisconnectTime[] = "WiFi.DisconnectTime";
 const char WiFiService::kStorageCredentialPassphrase[] = "WiFi.Passphrase";
 const char WiFiService::kStorageHiddenSSID[] = "WiFi.HiddenSSID";
 const char WiFiService::kStorageMode[] = "WiFi.Mode";
@@ -440,6 +444,16 @@ bool WiFiService::Load(const StoreInterface* storage) {
     SetMACPolicy(mac_policy, &error);
   }
 
+  uint64_t delta;
+  if (storage->GetUint64(id, kStorageLeaseExpiry, &delta)) {
+    dhcp4_lease_expiry_.FromDeltaSinceWindowsEpoch(
+        base::TimeDelta::FromMicroseconds(delta));
+  }
+  if (storage->GetUint64(id, kStorageDisconnectTime, &delta)) {
+    disconnect_time_.FromDeltaSinceWindowsEpoch(
+        base::TimeDelta::FromMicroseconds(delta));
+  }
+
   // NB: mode, security and ssid parameters are never read in from
   // Load() as they are provided from the scan.
 
@@ -491,6 +505,12 @@ bool WiFiService::Save(StoreInterface* storage) {
   storage->SetBool(id, kStoragePortalDetected, was_portal_detected_);
   storage->SetString(id, kStorageMACPolicy,
                      RandomizationPolicyMap.at(random_mac_policy_));
+  storage->SetUint64(
+      id, kStorageLeaseExpiry,
+      dhcp4_lease_expiry_.ToDeltaSinceWindowsEpoch().InMicroseconds());
+  storage->SetUint64(
+      id, kStorageDisconnectTime,
+      disconnect_time_.ToDeltaSinceWindowsEpoch().InMicroseconds());
   // This saves both the plaintext and rot47 versions of the passphrase.
   // TODO(crbug.com/1084279): Save just the plaintext passphrase after M89.
   storage->SetCryptedString(id, kStorageDeprecatedPassphrase,
@@ -529,6 +549,24 @@ void WiFiService::SetState(ConnectState state) {
   // remember this fact, so that we won't reshuffle MAC address later.
   if (state == kStateRedirectFound) {
     was_portal_detected_ = true;
+  } else if (state == kStateConnected) {
+    // Now that we are connected let's check if we have a DHCP lease ...
+    dhcp4_lease_expiry_ = base::Time();
+    if (wifi_->ipconfig() && wifi_->ipconfig()->type() == kTypeDHCP) {
+      // ... and get its expiry so that next time we attempt to connect we know
+      // if the lease is still (potentially) valid and don't regenerate MAC
+      // address for this network.
+      uint32_t lease_time;
+      if (wifi_->ipconfig()->TimeToLeaseExpiry(&lease_time)) {
+        dhcp4_lease_expiry_ =
+            clock_->Now() + base::TimeDelta::FromSeconds(lease_time);
+      } else {
+        LOG(WARNING) << "Failed to get lease time";
+      }
+    }
+  }
+  if (IsConnectedState(previous_state()) && !IsConnectedState(state)) {
+    disconnect_time_ = clock_->Now();
   }
   SetRoamState(Service::kRoamStateIdle);
   NotifyIfVisibilityChanged();
@@ -689,36 +727,42 @@ void WiFiService::OnConnect(Error* error) {
 
 std::string WiFiService::UpdateMACAddress() {
   const auto now = clock_->Now();
+  bool rotating = false;
+  bool change = false;
+
   switch (random_mac_policy_) {
     case RandomizationPolicy::PersistentRandom:
-      // If MAC address has not been set yet, we need to randomize it.
-      if (!mac_address_.is_set() ||
-          // If MAC address has expired, we need to double-check if network is
-          // open and captive portal hasn't been detected in the mean time.
-          (mac_address_.IsExpired(now) && security_ == kSecurityNone &&
-           !was_portal_detected_)) {
-        mac_address_.Randomize();
-        // For non-portalled open networks, address may be rotated periodically.
-        if (security_ == kSecurityNone && !was_portal_detected_) {
-          mac_address_.set_expiration_time(now +
-                                           MACAddress::kDefaultExpirationTime);
-        }
-        return mac_address_.ToString();
-      }
+      // For persistent policy we can rotate only in open networks and when
+      // there was no captive portal detected.
+      rotating = security_ == kSecurityNone && !was_portal_detected_;
       break;
     case RandomizationPolicy::NonPersistentRandom:
-      // For forced non-persistent random we don't check for captive portal.
-      if (!mac_address_.is_set() || mac_address_.IsExpired(now) ||
-          // Addresses with policy changed recently should be refreshed.
-          !mac_address_.will_expire()) {
-        mac_address_.Randomize();
-        mac_address_.set_expiration_time(now +
-                                         MACAddress::kDefaultExpirationTime);
-        return mac_address_.ToString();
-      }
+      // For forced non-persistent policy we always rotate.
+      rotating = true;
+      // If address is not expiring for this policy that means the policy has
+      // changed recently and address should be refreshed.
+      change = !mac_address_.will_expire();
       break;
     default:
-      break;  // Other modes do not require explicit address to be set.
+      // Other modes do not require explicit address to be set.
+      return std::string();
+  }
+  // If we get here then we need to have MAC set - make sure it is.
+  change = change || !mac_address_.is_set();
+  // For rotating MAC check its expiration and lease/disconnect times.
+  if (!change && rotating) {
+    change = mac_address_.IsExpired(now) ||
+             (!dhcp4_lease_expiry_.is_null() && now > dhcp4_lease_expiry_ &&
+              now > disconnect_time_ + kMinDisconnectOffset);
+  }
+
+  if (change) {
+    mac_address_.Randomize();
+    if (rotating) {
+      mac_address_.set_expiration_time(now +
+                                       MACAddress::kDefaultExpirationTime);
+    }
+    return mac_address_.ToString();
   }
 
   return std::string();

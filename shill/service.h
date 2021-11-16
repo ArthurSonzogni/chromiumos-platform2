@@ -772,6 +772,10 @@ class Service : public base::RefCounted<Service> {
   // imply it is metered.
   virtual bool IsMeteredByServiceProperties() const;
 
+  // Read only access to previous state for derived classes.  This is e.g. used
+  // by WiFiService to keep track of disconnect time.
+  ConnectState previous_state() const { return previous_state_; }
+
   // Service's user friendly name, mapped to the Service Object kNameProperty.
   // Use |log_name_| for logging to avoid logging PII.
   std::string friendly_name_;
