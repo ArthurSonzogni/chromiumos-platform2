@@ -167,21 +167,35 @@ if [ -d "${CPUSET_NONURGENT_DIR}" ]; then
     nr_cpus=0
     nr_small_cpus=0
     min_cap=1025
+    if [ -f "${CPUBUSDIR}/cpu0/cpufreq/cpuinfo_max_freq" ]; then
+      min_maxfreq=$(cat "${CPUBUSDIR}/cpu0/cpufreq/cpuinfo_max_freq")
+    fi
     cpus=""
     prefix="${CPUBUSDIR}/cpu"
     for cpu in ${CPUBUSDIR}/cpu*; do
-      if [ ! -f "${cpu}/cpu_capacity" ]; then
+      if [ -f "${cpu}/cpu_capacity" ]; then
+        cap=$(cat "${cpu}/cpu_capacity")
+        if [ "${cap}" -lt "${min_cap}" ]; then
+          cpus="${cpu##${prefix}}"
+          min_cap="${cap}"
+          nr_small_cpus=1
+        elif [ "${cap}" -eq "${min_cap}" ]; then
+          cpus="${cpus},${cpu##${prefix}}"
+          nr_small_cpus=$((nr_small_cpus + 1))
+        fi
+      elif [ -f "${cpu}/cpufreq/cpuinfo_max_freq" ]; then
+        maxfreq=$(cat "${cpu}/cpufreq/cpuinfo_max_freq")
+        if [ "${maxfreq}" -lt "${min_maxfreq}" ]; then
+          cpus="${cpu##${prefix}}"
+          min_maxfreq="${maxfreq}"
+          nr_small_cpus=1
+        elif [ "${maxfreq}" -eq "${min_maxfreq}" ]; then
+          cpus="${cpus},${cpu##${prefix}}"
+          nr_small_cpus=$((nr_small_cpus + 1))
+        fi
+      else
         cpus=""
         break;
-      fi
-      cap=$(cat "${cpu}/cpu_capacity")
-      if [ "${cap}" -lt "${min_cap}" ]; then
-        cpus="${cpu##${prefix}}"
-        min_cap="${cap}"
-        nr_small_cpus=1
-      elif [ "${cap}" -eq "${min_cap}" ]; then
-        cpus="${cpus},${cpu##${prefix}}"
-        nr_small_cpus=$((nr_small_cpus + 1))
       fi
       nr_cpus=$((nr_cpus + 1))
     done
