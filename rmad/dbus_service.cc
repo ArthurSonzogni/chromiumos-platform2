@@ -35,6 +35,7 @@ using rmad::HardwareVerificationResult;
 using rmad::ProvisionStatus;
 using rmad::RmadComponent;
 using rmad::RmadErrorCode;
+using rmad::UpdateRoFirmwareStatus;
 
 // Overload AppendValueToWriter() for |HardwareVerificationResult|,
 // |CalibrationComponentStatus|, |ProvisionStatus| and |FinalizeStatus|
@@ -185,6 +186,27 @@ struct DBusType<HardwareVerificationResult> {
   inline static bool Read(dbus::MessageReader* reader,
                           HardwareVerificationResult* value) {
     return PopValueFromReader(reader, value);
+  }
+};
+
+template <>
+struct DBusType<UpdateRoFirmwareStatus> {
+  inline static std::string GetSignature() {
+    return DBusType<int>::GetSignature();
+  }
+  inline static void Write(dbus::MessageWriter* writer,
+                           const UpdateRoFirmwareStatus status) {
+    DBusType<int>::Write(writer, static_cast<int>(status));
+  }
+  inline static bool Read(dbus::MessageReader* reader,
+                          UpdateRoFirmwareStatus* status) {
+    int v;
+    if (DBusType<int>::Read(reader, &v)) {
+      *status = static_cast<UpdateRoFirmwareStatus>(v);
+      return true;
+    } else {
+      return false;
+    }
   }
 };
 
@@ -350,6 +372,9 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
   hardware_verification_signal_ =
       dbus_interface->RegisterSignal<HardwareVerificationResult>(
           kHardwareVerificationResultSignal);
+  update_ro_firmware_status_signal_ =
+      dbus_interface->RegisterSignal<UpdateRoFirmwareStatus>(
+          kUpdateRoFirmwareStatusSignal);
   calibration_overall_signal_ =
       dbus_interface->RegisterSignal<CalibrationOverallStatus>(
           kCalibrationOverallSignal);
@@ -414,6 +439,11 @@ void DBusService::RegisterSignalSenders() {
               &DBusService::SendHardwareVerificationResultSignal,
               base::Unretained(this))));
   rmad_interface_->RegisterSignalSender(
+      RmadState::StateCase::kUpdateRoFirmware,
+      std::make_unique<base::RepeatingCallback<bool(UpdateRoFirmwareStatus)>>(
+          base::BindRepeating(&DBusService::SendUpdateRoFirmwareStatusSignal,
+                              base::Unretained(this))));
+  rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kRunCalibration,
       std::make_unique<base::RepeatingCallback<bool(CalibrationOverallStatus)>>(
           base::BindRepeating(&DBusService::SendCalibrationOverallSignal,
@@ -465,6 +495,12 @@ bool DBusService::SendHardwareVerificationResultSignal(
     const HardwareVerificationResult& result) {
   auto signal = hardware_verification_signal_.lock();
   return (signal.get() == nullptr) ? false : signal->Send(result);
+}
+
+bool DBusService::SendUpdateRoFirmwareStatusSignal(
+    UpdateRoFirmwareStatus status) {
+  auto signal = update_ro_firmware_status_signal_.lock();
+  return (signal.get() == nullptr) ? false : signal->Send(status);
 }
 
 bool DBusService::SendCalibrationOverallSignal(

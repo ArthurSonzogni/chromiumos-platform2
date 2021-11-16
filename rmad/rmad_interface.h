@@ -35,6 +35,12 @@ class RmadInterface {
       RmadState::StateCase state_case,
       std::unique_ptr<HardwareVerificationResultSignalCallback> callback) = 0;
 
+  using UpdateRoFirmwareStatusSignalCallback =
+      base::RepeatingCallback<bool(UpdateRoFirmwareStatus)>;
+  virtual void RegisterSignalSender(
+      RmadState::StateCase state_case,
+      std::unique_ptr<UpdateRoFirmwareStatusSignalCallback> callback) = 0;
+
   using CalibrationOverallSignalCallback =
       base::RepeatingCallback<bool(CalibrationOverallStatus)>;
   virtual void RegisterSignalSender(

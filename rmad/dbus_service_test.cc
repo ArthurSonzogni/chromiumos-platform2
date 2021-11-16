@@ -60,6 +60,12 @@ class DBusServiceTest : public testing::Test {
         mock_rmad_service_,
         RegisterSignalSender(
             _, A<std::unique_ptr<
+                   base::RepeatingCallback<bool(UpdateRoFirmwareStatus)>>>()))
+        .WillRepeatedly(Return());
+    EXPECT_CALL(
+        mock_rmad_service_,
+        RegisterSignalSender(
+            _, A<std::unique_ptr<
                    base::RepeatingCallback<bool(CalibrationOverallStatus)>>>()))
         .WillRepeatedly(Return());
     EXPECT_CALL(
@@ -166,6 +172,10 @@ class DBusServiceTest : public testing::Test {
 
   bool SignalHardwareVerification(const HardwareVerificationResult& result) {
     return dbus_service_->SendHardwareVerificationResultSignal(result);
+  }
+
+  bool SignalUpdateRoFirmwareStatus(const UpdateRoFirmwareStatus status) {
+    return dbus_service_->SendUpdateRoFirmwareStatusSignal(status);
   }
 
   bool SignalCalibrationOverall(CalibrationOverallStatus overall_status) {
@@ -374,6 +384,20 @@ TEST_F(DBusServiceTest, SignalHardwareVerification) {
   result.set_is_compliant(true);
   result.set_error_str("test_error_string");
   EXPECT_TRUE(SignalHardwareVerification(result));
+}
+
+TEST_F(DBusServiceTest, SignalUpdateRoFirmwareStatus) {
+  SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
+  EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
+      .WillRepeatedly(Invoke([](dbus::Signal* signal) {
+        EXPECT_EQ(signal->GetInterface(), "org.chromium.Rmad");
+        EXPECT_EQ(signal->GetMember(), "UpdateRoFirmwareStatus");
+        dbus::MessageReader reader(signal);
+        int error;
+        EXPECT_TRUE(reader.PopInt32(&error));
+        EXPECT_EQ(error, RMAD_UPDATE_RO_FIRMWARE_WAIT_USB);
+      }));
+  EXPECT_TRUE(SignalUpdateRoFirmwareStatus(RMAD_UPDATE_RO_FIRMWARE_WAIT_USB));
 }
 
 TEST_F(DBusServiceTest, SignalCalibrationOverall) {

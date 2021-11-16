@@ -61,6 +61,7 @@ class DBusService : public brillo::DBusServiceDaemon {
   bool SendErrorSignal(RmadErrorCode error);
   bool SendHardwareVerificationResultSignal(
       const HardwareVerificationResult& result);
+  bool SendUpdateRoFirmwareStatusSignal(UpdateRoFirmwareStatus status);
   bool SendCalibrationSetupSignal(CalibrationSetupInstruction instruction);
   bool SendCalibrationOverallSignal(CalibrationOverallStatus status);
   bool SendCalibrationProgressSignal(CalibrationComponentStatus status);
@@ -166,6 +167,8 @@ class DBusService : public brillo::DBusServiceDaemon {
   std::weak_ptr<brillo::dbus_utils::DBusSignal<RmadErrorCode>> error_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<HardwareVerificationResult>>
       hardware_verification_signal_;
+  std::weak_ptr<brillo::dbus_utils::DBusSignal<UpdateRoFirmwareStatus>>
+      update_ro_firmware_status_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<CalibrationSetupInstruction>>
       calibration_setup_signal_;
   std::weak_ptr<brillo::dbus_utils::DBusSignal<CalibrationOverallStatus>>
