@@ -136,11 +136,15 @@ TEST_F(BiodStorageBaseTest, WriteAndReadRecords) {
   // Read the record.
   std::unordered_set<std::string> user_ids({kUserId1, kUserId2});
   auto read_result = biod_storage_->ReadRecords(user_ids);
-  EXPECT_TRUE(read_result.invalid_records.empty());
 
-  EXPECT_EQ(read_result.valid_records.size(), kRecords.size());
+  EXPECT_EQ(read_result.size(), kRecords.size());
+
+  // Check if all records returned by ReadRecords have "valid" flag set.
+  EXPECT_TRUE(std::all_of(read_result.begin(), read_result.end(),
+                          [](auto const& record) { return record.valid; }));
+
   EXPECT_TRUE(std::is_permutation(kRecords.begin(), kRecords.end(),
-                                  read_result.valid_records.begin()));
+                                  read_result.begin()));
 }
 
 TEST_F(BiodStorageBaseTest, WriteRecord_InvalidAbsolutePath) {
@@ -232,17 +236,16 @@ TEST_F(BiodStorageBaseTest, DeleteRecord) {
   // Check this record is properly written.
   std::unordered_set<std::string> user_ids({kUserId1});
   auto read_result = biod_storage_->ReadRecords(user_ids);
-  EXPECT_TRUE(read_result.invalid_records.empty());
-  EXPECT_EQ(read_result.valid_records.size(), 1);
-  const auto& record = read_result.valid_records[0];
+  EXPECT_EQ(read_result.size(), 1);
+  const auto& record = read_result[0];
+  EXPECT_TRUE(record.valid);
   EXPECT_EQ(record, kRecord);
 
   EXPECT_TRUE(biod_storage_->DeleteRecord(kUserId1, kRecordId1));
 
   // Check this record is properly deleted.
   read_result = biod_storage_->ReadRecords(user_ids);
-  EXPECT_TRUE(read_result.valid_records.empty());
-  EXPECT_TRUE(read_result.invalid_records.empty());
+  EXPECT_TRUE(read_result.empty());
 }
 
 TEST_F(BiodStorageBaseTest, GenerateNewRecordId) {
@@ -259,11 +262,16 @@ TEST_F(BiodStorageBaseTest, TestEqualOperator) {
   Record record_eq = {
       {kRecordFormatVersion, kRecordId1, kUserId1, kLabel1, kValidationVal1},
       kData1};
+  Record record_eq2 = {
+      {kRecordFormatVersion, kRecordId1, kUserId1, kLabel1, kValidationVal1},
+      kData1,
+      /* valid= */ false};
   Record record_ne = {
       {kRecordFormatVersion, kRecordId1, kUserId1, kLabel1, kValidationVal2},
       kData1};
 
   EXPECT_EQ(record, record_eq);
+  EXPECT_EQ(record, record_eq2);
   EXPECT_NE(record, record_ne);
 }
 
@@ -311,8 +319,8 @@ TEST_F(BiodStorageInvalidRecordTest, InvalidJSON) {
                                                              "this is not "
                                                              "JSON"));
   auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
-  EXPECT_EQ(read_result.valid_records.size(), 0);
-  EXPECT_EQ(read_result.invalid_records.size(), 1);
+  EXPECT_EQ(read_result.size(), 1);
+  EXPECT_FALSE(read_result[0].valid);
 }
 
 TEST_F(BiodStorageInvalidRecordTest, MissingFormatVersion) {
@@ -327,8 +335,8 @@ TEST_F(BiodStorageInvalidRecordTest, MissingFormatVersion) {
       base::ImportantFileWriter::WriteFileAtomically(record_name_, record));
 
   auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
-  EXPECT_EQ(read_result.valid_records.size(), 0);
-  EXPECT_EQ(read_result.invalid_records.size(), 1);
+  EXPECT_EQ(read_result.size(), 1);
+  EXPECT_FALSE(read_result[0].valid);
 }
 
 TEST_F(BiodStorageInvalidRecordTest, InvalidFormatVersion) {
@@ -344,8 +352,8 @@ TEST_F(BiodStorageInvalidRecordTest, InvalidFormatVersion) {
       base::ImportantFileWriter::WriteFileAtomically(record_name_, record));
 
   auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
-  EXPECT_EQ(read_result.valid_records.size(), 0);
-  EXPECT_EQ(read_result.invalid_records.size(), 1);
+  EXPECT_EQ(read_result.size(), 1);
+  EXPECT_FALSE(read_result[0].valid);
 }
 
 TEST_F(BiodStorageInvalidRecordTest, MissingRecordId) {
@@ -360,8 +368,8 @@ TEST_F(BiodStorageInvalidRecordTest, MissingRecordId) {
       base::ImportantFileWriter::WriteFileAtomically(record_name_, record));
 
   auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
-  EXPECT_EQ(read_result.valid_records.size(), 0);
-  EXPECT_EQ(read_result.invalid_records.size(), 1);
+  EXPECT_EQ(read_result.size(), 1);
+  EXPECT_FALSE(read_result[0].valid);
 }
 
 TEST_F(BiodStorageInvalidRecordTest, MissingRecordLabel) {
@@ -376,8 +384,8 @@ TEST_F(BiodStorageInvalidRecordTest, MissingRecordLabel) {
       base::ImportantFileWriter::WriteFileAtomically(record_name_, record));
 
   auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
-  EXPECT_EQ(read_result.valid_records.size(), 0);
-  EXPECT_EQ(read_result.invalid_records.size(), 1);
+  EXPECT_EQ(read_result.size(), 1);
+  EXPECT_FALSE(read_result[0].valid);
 }
 
 TEST_F(BiodStorageInvalidRecordTest, MissingRecordData) {
@@ -392,8 +400,8 @@ TEST_F(BiodStorageInvalidRecordTest, MissingRecordData) {
       base::ImportantFileWriter::WriteFileAtomically(record_name_, record));
 
   auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
-  EXPECT_EQ(read_result.valid_records.size(), 0);
-  EXPECT_EQ(read_result.invalid_records.size(), 1);
+  EXPECT_EQ(read_result.size(), 1);
+  EXPECT_FALSE(read_result[0].valid);
 }
 
 TEST_F(BiodStorageInvalidRecordTest, MissingValidationValue) {
@@ -408,8 +416,8 @@ TEST_F(BiodStorageInvalidRecordTest, MissingValidationValue) {
       base::ImportantFileWriter::WriteFileAtomically(record_name_, record));
 
   auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
-  EXPECT_EQ(read_result.valid_records.size(), 0);
-  EXPECT_EQ(read_result.invalid_records.size(), 1);
+  EXPECT_EQ(read_result.size(), 1);
+  EXPECT_FALSE(read_result[0].valid);
 }
 
 TEST_F(BiodStorageInvalidRecordTest, ValidationValueNotBase64) {
@@ -425,8 +433,8 @@ TEST_F(BiodStorageInvalidRecordTest, ValidationValueNotBase64) {
       base::ImportantFileWriter::WriteFileAtomically(record_name_, record));
 
   auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
-  EXPECT_EQ(read_result.valid_records.size(), 0);
-  EXPECT_EQ(read_result.invalid_records.size(), 1);
+  EXPECT_EQ(read_result.size(), 1);
+  EXPECT_FALSE(read_result[0].valid);
 }
 
 TEST_F(BiodStorageInvalidRecordTest, VersionOneWithoutValidationValueIsValid) {
@@ -441,10 +449,10 @@ TEST_F(BiodStorageInvalidRecordTest, VersionOneWithoutValidationValueIsValid) {
       base::ImportantFileWriter::WriteFileAtomically(record_name_, record));
 
   auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
-  EXPECT_EQ(read_result.valid_records.size(), 1);
-  EXPECT_EQ(read_result.invalid_records.size(), 0);
-  EXPECT_TRUE(read_result.valid_records[0].metadata.validation_val.empty());
-  EXPECT_EQ(read_result.valid_records[0].metadata.record_format_version,
+  EXPECT_EQ(read_result.size(), 1);
+  EXPECT_TRUE(read_result[0].valid);
+  EXPECT_TRUE(read_result[0].metadata.validation_val.empty());
+  EXPECT_EQ(read_result[0].metadata.record_format_version,
             kRecordFormatVersionNoValidationValue);
 }
 
@@ -514,8 +522,8 @@ TEST_P(BiodStorageMemlockTest, ReadReadRecords) {
   EXPECT_TRUE(
       base::ImportantFileWriter::WriteFileAtomically(record_name_, record));
   auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
-  EXPECT_EQ(read_result.valid_records.size(), 1);
-  EXPECT_EQ(read_result.invalid_records.size(), 0);
+  EXPECT_EQ(read_result.size(), 1);
+  EXPECT_TRUE(read_result[0].valid);
 }
 
 INSTANTIATE_TEST_SUITE_P(

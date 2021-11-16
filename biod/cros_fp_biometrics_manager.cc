@@ -147,12 +147,8 @@ bool CrosFpBiometricsManager::ReloadAllRecords(std::string user_id) {
   // records_ which is cleared in this method.
   records_.clear();
   suspicious_templates_.clear();
-  cros_dev_->SetContext(user_id);
-  auto result = biod_storage_->ReadRecordsForSingleUser(user_id);
-  for (const auto& record : result.valid_records) {
-    LoadRecord(std::move(record));
-  }
-  return result.invalid_records.empty();
+
+  return ReadRecordsForSingleUser(user_id);
 }
 
 BiometricType CrosFpBiometricsManager::GetType() {
@@ -232,10 +228,14 @@ bool CrosFpBiometricsManager::ReadRecordsForSingleUser(
     const std::string& user_id) {
   cros_dev_->SetContext(user_id);
   auto result = biod_storage_->ReadRecordsForSingleUser(user_id);
-  for (const auto& record : result.valid_records) {
-    LoadRecord(record);
+  bool all_records_valid = true;
+  for (const auto& record : result) {
+    all_records_valid &= record.valid;
+    if (record.valid) {
+      LoadRecord(std::move(record));
+    }
   }
-  return result.invalid_records.empty();
+  return all_records_valid;
 }
 
 void CrosFpBiometricsManager::SetEnrollScanDoneHandler(

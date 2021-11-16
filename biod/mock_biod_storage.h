@@ -35,11 +35,11 @@ class MockBiodStorage : public BiodStorageInterface {
               (const BiodStorageInterface::RecordMetadata& record_metadata,
                base::Value data),
               (override));
-  MOCK_METHOD(ReadRecordResult,
+  MOCK_METHOD(std::vector<BiodStorageInterface::Record>,
               ReadRecords,
               (const std::unordered_set<std::string>& user_ids),
               (override));
-  MOCK_METHOD(ReadRecordResult,
+  MOCK_METHOD(std::vector<BiodStorageInterface::Record>,
               ReadRecordsForSingleUser,
               (const std::string& user_id),
               (override));

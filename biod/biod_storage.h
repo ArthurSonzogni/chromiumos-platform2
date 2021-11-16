@@ -87,18 +87,16 @@ class BiodStorageInterface {
     RecordMetadata metadata;
     // "data" is base64 encoded.
     std::string data;
+    bool valid = true;
 
     bool operator==(const Record& rhs) const {
+      // Please note that |valid| is not taken into account when comparing
+      // Record structures.
       return std::tie(this->metadata, this->data) ==
              std::tie(rhs.metadata, rhs.data);
     }
 
     bool operator!=(const Record& rhs) const { return !(*this == rhs); }
-  };
-
-  struct ReadRecordResult {
-    std::vector<Record> valid_records;
-    std::vector<Record> invalid_records;
   };
 
   virtual ~BiodStorageInterface() = default;
@@ -109,9 +107,9 @@ class BiodStorageInterface {
   virtual bool WriteRecord(
       const BiodStorageInterface::RecordMetadata& record_metadata,
       base::Value data) = 0;
-  virtual ReadRecordResult ReadRecords(
+  virtual std::vector<Record> ReadRecords(
       const std::unordered_set<std::string>& user_ids) = 0;
-  virtual ReadRecordResult ReadRecordsForSingleUser(
+  virtual std::vector<Record> ReadRecordsForSingleUser(
       const std::string& user_id) = 0;
   virtual bool DeleteRecord(const std::string& user_id,
                             const std::string& record_id) = 0;
@@ -150,13 +148,13 @@ class BiodStorage : public BiodStorageInterface {
 
   // Read all records from file for all users in the set. Called whenever biod
   // starts or when a new user logs in.
-  ReadRecordResult ReadRecords(
+  std::vector<Record> ReadRecords(
       const std::unordered_set<std::string>& user_ids) override;
 
   // Read all records from disk for a single user. Uses a file enumerator to
   // enumerate through all record files. Called whenever biod starts or when
   // a new user logs in.
-  ReadRecordResult ReadRecordsForSingleUser(
+  std::vector<Record> ReadRecordsForSingleUser(
       const std::string& user_id) override;
 
   // Delete one record file. User will be able to do this via UI. True if
