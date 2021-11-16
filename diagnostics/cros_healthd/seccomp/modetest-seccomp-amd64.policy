@@ -32,6 +32,7 @@ ioctl: arg1 == 0xc02064b9 || arg1 == 0xc06864a1 || arg1 == 0x4010640d || \
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
+newfstatat: 1
 openat: 1
 prlimit64: 1
 read: 1

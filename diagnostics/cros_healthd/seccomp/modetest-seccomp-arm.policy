@@ -42,5 +42,6 @@ rt_sigreturn: 1
 set_robust_list: 1
 set_tid_address: 1
 stat64: 1
+statx: 1
 ugetrlimit: 1
 write: 1
