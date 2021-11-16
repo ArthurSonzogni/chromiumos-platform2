@@ -28,6 +28,9 @@ constexpr int kWXMountCountHistogramMinBucket = 0;
 constexpr int kWXMountCountHistogramMaxBucket = 20;
 constexpr int kWXMountCountHistogramNumBuckets = 20;
 
+constexpr char kAnomalyUploadSuccess[] =
+    "ChromeOS.SecurityAnomalyUploadSuccess";
+
 MetricsLibraryInterface* metrics_library = NULL;
 
 void InitializeMetricsIfNecessary() {
@@ -51,4 +54,9 @@ bool SendWXMountCountToUMA(size_t wx_mount_count) {
       kWXMountCountHistogramName, base::checked_cast<int>(wx_mount_count),
       kWXMountCountHistogramMinBucket, kWXMountCountHistogramMaxBucket,
       kWXMountCountHistogramNumBuckets);
+}
+
+bool SendAnomalyUploadResultToUMA(bool success) {
+  InitializeMetricsIfNecessary();
+  return metrics_library->SendBoolToUMA(kAnomalyUploadSuccess, success);
 }

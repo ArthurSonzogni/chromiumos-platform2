@@ -20,4 +20,6 @@ bool SendSecurityAnomalyToUMA(SecurityAnomaly secanomaly);
 
 bool SendWXMountCountToUMA(size_t wx_mount_count);
 
+bool SendAnomalyUploadResultToUMA(bool success);
+
 #endif  // SECANOMALYD_METRICS_H_

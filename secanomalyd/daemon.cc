@@ -144,6 +144,11 @@ void Daemon::DoWXMountCountReporting() {
         // Reporting is best-effort so on failure we just print a warning.
         LOG(WARNING) << "Failed to report anomalous system";
       }
+
+      // Report whether uploading the anomalous system report succeeded.
+      if (!SendAnomalyUploadResultToUMA(has_reported_)) {
+        LOG(WARNING) << "Could not upload metrics";
+      }
     }
   }
 }
