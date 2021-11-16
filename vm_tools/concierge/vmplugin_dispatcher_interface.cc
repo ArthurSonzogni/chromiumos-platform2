@@ -20,6 +20,7 @@
 
 #include <vm_plugin_dispatcher/proto_bindings/vm_plugin_dispatcher.pb.h>
 
+#include "vm_tools/concierge/plugin_vm_config.h"
 #include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
 namespace vm_tools {
@@ -27,8 +28,6 @@ namespace concierge {
 namespace pvm {
 namespace dispatcher {
 namespace {
-
-constexpr char kVmpluginImageDir[] = "/run/pvm-images";
 
 constexpr base::TimeDelta kVmShutdownTimeout = base::TimeDelta::FromMinutes(2);
 constexpr base::TimeDelta kVmSuspendTimeout = base::TimeDelta::FromSeconds(20);
@@ -154,7 +153,7 @@ bool RegisterVm(scoped_refptr<dbus::Bus> bus,
 
   request.set_owner_id(vm_id.owner_id());
   request.set_new_name(vm_id.name());
-  base::FilePath dispatcher_image_path(base::FilePath(kVmpluginImageDir)
+  base::FilePath dispatcher_image_path(base::FilePath(kImageDir)
                                            .Append(vm_id.owner_id())
                                            .Append(image_path.BaseName()));
   LOG(INFO) << "Registering VM at " << dispatcher_image_path.value();

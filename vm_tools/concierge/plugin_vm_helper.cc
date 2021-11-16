@@ -25,6 +25,7 @@
 #include <chromeos/scoped_minijail.h>
 #include <dbus/object_proxy.h>
 
+#include "vm_tools/concierge/plugin_vm_config.h"
 #include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
 namespace vm_tools {
@@ -32,13 +33,6 @@ namespace concierge {
 namespace pvm {
 namespace helper {
 namespace {
-
-constexpr char kDlcPath[] = "/run/imageloader/pita/package/root";
-
-constexpr char kVmHelperCommand[] = "opt/pita/prlctl";
-constexpr char kVmHelperPolicyPath[] = "opt/pita/policy/pvm_helper.policy";
-
-constexpr char kDispatcherSocketPath[] = "/run/pvm/vmplugin_dispatcher.socket";
 
 // Minimal set of devices needed by the helpers.
 constexpr const char* kDeviceNames[] = {"full", "null", "urandom", "zero"};
@@ -88,13 +82,13 @@ ScopedMinijail SetupSandbox(const base::FilePath& policy_file) {
     return ScopedMinijail();
   }
 
-  if (minijail_bind(jail.get(), kDlcPath, kDlcPath, 0)) {
-    LOG(ERROR) << "Failed to bind-mount " << kDlcPath;
+  if (minijail_bind(jail.get(), kApplicationDir, kApplicationDir, 0)) {
+    LOG(ERROR) << "Failed to bind-mount " << kApplicationDir;
     return ScopedMinijail();
   }
 
-  if (minijail_bind(jail.get(), "/run/pvm", "/run/pvm", 1)) {
-    LOG(ERROR) << "Failed to bind-mount /run/pvm";
+  if (minijail_bind(jail.get(), kRuntimeDir, kRuntimeDir, 1)) {
+    LOG(ERROR) << "Failed to bind-mount " << kRuntimeDir;
     return ScopedMinijail();
   }
 
@@ -126,17 +120,17 @@ bool ExecutePvmHelper(const std::string& owner_id,
                       std::vector<std::string> params,
                       std::string* stdout_str = nullptr,
                       std::string* stderr_str = nullptr) {
-  const base::FilePath path_prefix(kDlcPath);
-  ScopedMinijail jail = SetupSandbox(path_prefix.Append(kVmHelperPolicyPath));
+  const base::FilePath path_prefix(kApplicationDir);
+  ScopedMinijail jail = SetupSandbox(path_prefix.Append(kPolicyPath));
   if (!jail)
     return false;
 
   std::vector<std::string> args;
-  args.emplace_back(path_prefix.Append(kVmHelperCommand).value());
+  args.emplace_back(path_prefix.Append(kCommand).value());
   for (auto& param : params)
     args.emplace_back(std::move(param));
   args.emplace_back("--socket-path");
-  args.emplace_back(kDispatcherSocketPath);
+  args.emplace_back(dispatcher::kSocketPath);
   args.emplace_back("--user-identity");
   args.emplace_back(owner_id);
 
@@ -234,10 +228,6 @@ bool DisconnectDevice(const VmId& vm_id, const std::string& device_name) {
 
 }  // namespace
 
-bool IsDlcVm() {
-  return base::PathExists(base::FilePath(kDlcPath));
-}
-
 bool CreateVm(const VmId& vm_id, std::vector<std::string> params) {
   std::vector<std::string> args = {
       "create",
@@ -299,8 +289,8 @@ void CleanUpAfterInstall(const VmId& vm_id, const base::FilePath& iso_path) {
 
     LOG(INFO) << "CDROM image: " << *image_name;
 
-    if (*image_name != "/iso/install.iso" &&
-        *image_name != "/opt/pita/tools/prl-tools-win.iso")
+    if (*image_name != plugin::kInstallIsoPath &&
+        *image_name != plugin::kToolsIsoPath)
       continue;
 
     const std::string* state = cdrom.FindStringKey("state");
@@ -311,8 +301,10 @@ void CleanUpAfterInstall(const VmId& vm_id, const base::FilePath& iso_path) {
       }
     }
 
-    if (*image_name == "/iso/install.iso") {
-      base::FilePath image_path = iso_path.Append("install.iso");
+    if (*image_name == plugin::kInstallIsoPath) {
+      base::FilePath iso_name =
+          base::FilePath(plugin::kInstallIsoPath).BaseName();
+      base::FilePath image_path = iso_path.Append(iso_name);
       if (base::PathExists(image_path) && !DeleteFile(image_path)) {
         LOG(WARNING) << "Failed to delete " << image_path.value();
       }

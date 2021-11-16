@@ -22,6 +22,7 @@
 #include <base/strings/stringprintf.h>
 
 #include "vm_tools/concierge/disk_image.h"
+#include "vm_tools/concierge/plugin_vm_config.h"
 #include "vm_tools/concierge/plugin_vm_helper.h"
 #include "vm_tools/concierge/service.h"
 #include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
@@ -171,14 +172,14 @@ void PluginVmCreateOperation::Finalize() {
     return;
   }
 
-  if (!pvm::helper::AttachIso(vm_id(), "cdrom0", "/iso/install.iso")) {
+  if (!pvm::helper::AttachIso(vm_id(), "cdrom0",
+                              pvm::plugin::kInstallIsoPath)) {
     MarkFailed("Failed to attach install ISO to Plugin VM", 0);
     pvm::helper::DeleteVm(vm_id());
     return;
   }
 
-  if (!pvm::helper::CreateCdromDevice(vm_id(),
-                                      "/opt/pita/tools/prl-tools-win.iso")) {
+  if (!pvm::helper::CreateCdromDevice(vm_id(), pvm::plugin::kToolsIsoPath)) {
     MarkFailed("Failed to attach tools ISO to Plugin VM", 0);
     pvm::helper::DeleteVm(vm_id());
     return;

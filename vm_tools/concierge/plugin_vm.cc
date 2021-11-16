@@ -24,6 +24,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 
+#include "vm_tools/concierge/plugin_vm_config.h"
 #include "vm_tools/concierge/plugin_vm_helper.h"
 #include "vm_tools/concierge/tap_device_builder.h"
 #include "vm_tools/concierge/vm_builder.h"
@@ -36,24 +37,6 @@ using std::string;
 namespace vm_tools {
 namespace concierge {
 namespace {
-
-// Path to the plugin binaries and other assets.
-constexpr char kPluginDir[] = "/opt/pita";
-constexpr char kPluginDlcDir[] = "/run/imageloader/pita/package/root/opt/pita";
-
-// Name of the plugin VM binary.
-constexpr char kPluginBin[] = "prl_vm_app";
-// Name of the sub-directory containing plugin's seccomp policy.
-constexpr char kPluginPolicyDir[] = "policy";
-
-// Name of the runtime directory inside the jail.
-constexpr char kRuntimeDir[] = "/run/pvm";
-
-// Name of the stateful directory inside the jail.
-constexpr char kStatefulDir[] = "/pvm";
-
-// Name of the directory holding ISOs inside the jail.
-constexpr char kIsoDir[] = "/iso";
 
 // How long we give VM to suspend.
 constexpr base::TimeDelta kVmSuspendTimeout = base::TimeDelta::FromSeconds(25);
@@ -667,7 +650,7 @@ bool PluginVm::Start(base::FilePath stateful_dir,
                      int subnet_index,
                      bool enable_vnet_hdr,
                      VmBuilder vm_builder) {
-  if (!pvm::helper::IsDlcVm()) {
+  if (!base::PathExists(base::FilePath(pvm::kApplicationDir))) {
     LOG(ERROR) << "PluginVM DLC is not installed.";
     return false;
   }
@@ -699,9 +682,10 @@ bool PluginVm::Start(base::FilePath stateful_dir,
     return false;
   }
 
-  auto plugin_bin_path = base::FilePath(kPluginDlcDir).Append(kPluginBin);
+  auto plugin_bin_path =
+      base::FilePath(pvm::kApplicationDir).Append(pvm::plugin::kCommand);
   auto plugin_policy_dir =
-      base::FilePath(kPluginDlcDir).Append(kPluginPolicyDir);
+      base::FilePath(pvm::kApplicationDir).Append(pvm::plugin::kPolicyDir);
   vm_builder.AppendTapFd(std::move(tap_fd))
       .AppendCustomParam("--plugin", plugin_bin_path.value())
       .AppendCustomParam("--seccomp-policy-dir", plugin_policy_dir.value())
@@ -711,16 +695,16 @@ bool PluginVm::Start(base::FilePath stateful_dir,
   // These are bind mounts with parts may change (i.e. they are either VM
   // or config specific).
   std::vector<string> bind_mounts = {
-      base::StringPrintf("%s:%s:false", kPluginDlcDir, kPluginDir),
       // This is directory where the VM image resides.
       base::StringPrintf("%s:%s:true", stateful_dir.value().c_str(),
-                         kStatefulDir),
+                         pvm::plugin::kStatefulDir),
       // This is directory where ISO images for the VM reside.
-      base::StringPrintf("%s:%s:false", iso_dir_.value().c_str(), kIsoDir),
+      base::StringPrintf("%s:%s:false", iso_dir_.value().c_str(),
+                         pvm::plugin::kIsoDir),
       // This is directory where control socket, 9p socket, and other axillary
       // runtime data lives.
       base::StringPrintf("%s:%s:true", runtime_dir_.GetPath().value().c_str(),
-                         kRuntimeDir),
+                         pvm::kRuntimeDir),
       // Plugin '/etc' directory.
       base::StringPrintf("%s:%s:true",
                          root_dir_.GetPath().Append("etc").value().c_str(),
@@ -744,11 +728,13 @@ bool PluginVm::Start(base::FilePath stateful_dir,
     bind_mounts.push_back("/run/cras/plugin/playback:/run/cras:true");
   }
 
-  // TODO(kimjae): This is a temporary hack to have relative files to be found
-  // even when started from DLC paths. Clean this up once a cleaner solution
-  // can be leveraged.
-  bind_mounts.push_back(
-      base::StringPrintf("%s:%s:false", kPluginDlcDir, kPluginDlcDir));
+  // Mount application files into jail, firs the DLC path, then the static
+  // path that Parallels uses to locate their components.
+  bind_mounts.push_back(base::StringPrintf("%s:%s:false", pvm::kApplicationDir,
+                                           pvm::kApplicationDir));
+  bind_mounts.push_back(base::StringPrintf("%s:%s:false", pvm::kApplicationDir,
+                                           pvm::plugin::kPitaDir));
+
   for (auto& mount : bind_mounts)
     vm_builder.AppendCustomParam("--plugin-mount", std::move(mount));
 
