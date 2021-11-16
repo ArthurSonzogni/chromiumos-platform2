@@ -37,6 +37,7 @@
 
 #include "debugd/src/bluetooth_utils.h"
 #include "debugd/src/constants.h"
+#include "debugd/src/metrics.h"
 #include "debugd/src/perf_tool.h"
 #include "debugd/src/process_with_output.h"
 
@@ -919,6 +920,7 @@ string LogTool::GetLog(const string& name) {
 }
 
 LogTool::LogMap LogTool::GetAllLogs() {
+  Stopwatch sw("Perf.GetAllLogs");
   CreateConnectivityReport(false);
   LogMap result;
   GetLogsFrom(kCommandLogsShort, &result);
@@ -930,6 +932,7 @@ LogTool::LogMap LogTool::GetAllLogs() {
 }
 
 LogTool::LogMap LogTool::GetAllDebugLogs() {
+  Stopwatch sw("Perf.GetAllDebugLogs");
   CreateConnectivityReport(true);
   LogMap result;
   GetLogsFrom(kCommandLogsShort, &result);
@@ -960,6 +963,7 @@ std::vector<std::vector<std::string>> GetAllDebugTitlesForTest() {
 
 void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd,
                                  const std::string& username) {
+  Stopwatch sw("Perf.GetBigFeedbackLogs");
   GetBluetoothBqr();
   CreateConnectivityReport(true);
   LogMap map;
