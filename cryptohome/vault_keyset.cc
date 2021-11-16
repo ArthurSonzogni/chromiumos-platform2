@@ -94,6 +94,7 @@ constexpr AuthBlockFlags kTpmBoundToPcrFlags = {
 
 constexpr AuthBlockFlags kTpmEccFlags = {
     .require_flags = SerializedVaultKeyset::TPM_WRAPPED |
+                     SerializedVaultKeyset::SCRYPT_DERIVED |
                      SerializedVaultKeyset::PCR_BOUND |
                      SerializedVaultKeyset::ECC,
     .refuse_flags = SerializedVaultKeyset::SCRYPT_WRAPPED,
@@ -665,9 +666,7 @@ void VaultKeyset::SetChallengeCredentialState(
 }
 
 void VaultKeyset::SetTpmEccState(const TpmEccAuthBlockState& auth_state) {
-  // TODO(b/204384070): Move SCRYPT_DERIVED into the require_flags after all
-  // user on dev channel migrated to the new flags.
-  flags_ = kTpmEccFlags.require_flags | SerializedVaultKeyset::SCRYPT_DERIVED;
+  flags_ = kTpmEccFlags.require_flags;
   if (auth_state.sealed_hvkkm.has_value()) {
     tpm_key_ = auth_state.sealed_hvkkm.value();
   }
