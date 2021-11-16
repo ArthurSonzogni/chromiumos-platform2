@@ -687,7 +687,7 @@ void WiFiService::OnConnect(Error* error) {
   wifi->ConnectTo(this, error);
 }
 
-void WiFiService::UpdateMACAddress() {
+std::string WiFiService::UpdateMACAddress() {
   const auto now = clock_->Now();
   switch (random_mac_policy_) {
     case RandomizationPolicy::PersistentRandom:
@@ -703,6 +703,7 @@ void WiFiService::UpdateMACAddress() {
           mac_address_.set_expiration_time(now +
                                            MACAddress::kDefaultExpirationTime);
         }
+        return mac_address_.ToString();
       }
       break;
     case RandomizationPolicy::NonPersistentRandom:
@@ -713,11 +714,14 @@ void WiFiService::UpdateMACAddress() {
         mac_address_.Randomize();
         mac_address_.set_expiration_time(now +
                                          MACAddress::kDefaultExpirationTime);
+        return mac_address_.ToString();
       }
       break;
     default:
       break;  // Other modes do not require explicit address to be set.
   }
+
+  return std::string();
 }
 
 KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
