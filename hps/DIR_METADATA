@@ -1,0 +1,7 @@
+buganizer {
+  component_id: 831886  # go/hpsbug
+}
+buganizer_public {
+  component_id: 960545  # Chrome OS Public Tracker > Peripherals > Sensors
+}
+team_email: "chromeos-platform-ml@google.com"
