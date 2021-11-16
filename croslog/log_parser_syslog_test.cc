@@ -218,6 +218,27 @@ TEST_F(LogParserSyslogTest, ParseInvalid) {
     std::string maybe_line = "2020-05-25T14:15:22.402258+09:0";
     EXPECT_FALSE(parser.Parse(std::move(maybe_line)).has_value());
   }
+
+  {
+    // Unended pid part.
+    std::string maybe_line =
+        "2020-05-25T14:15:22.402258+09:00 ERROR tag[0123 MESSAGE";
+
+    MaybeLogEntry e = parser.Parse(std::move(maybe_line));
+    EXPECT_TRUE(e.has_value());
+    const std::string& s = e->entire_line();
+    EXPECT_GT(s.size(), 32);
+
+    EXPECT_EQ("ERROR", s.substr(33, 5));
+    EXPECT_EQ(Severity::ERROR, e->severity());
+
+    EXPECT_EQ("tag", e->tag());
+    EXPECT_EQ(-1, e->pid());
+    EXPECT_EQ("[0123 MESSAGE", e->message());
+
+    EXPECT_EQ("2020-05-25T14:15:22.402258+09:00", s.substr(0, 32));
+    EXPECT_EQ(TimeFromExploded(2020, 5, 25, 14, 15, 22, 402258, +9), e->time());
+  }
 }
 
 }  // namespace croslog

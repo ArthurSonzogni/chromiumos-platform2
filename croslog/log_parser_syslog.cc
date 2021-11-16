@@ -114,12 +114,10 @@ MaybeLogEntry LogParserSyslog::ParseInternal(std::string&& entire_line) {
         std::string pid_str = entire_line.substr(pos + 1, i - pos - 1);
         if (!base::StringToInt(pid_str, &pid))
           pid = -1;
-        pos = i;
+        pos = i + 1;
         break;
       }
     }
-    DCHECK_EQ(']', entire_line[pos]);
-    pos++;
   }
 
   if (entire_line.size() > pos && entire_line[pos] == ':')
@@ -127,12 +125,15 @@ MaybeLogEntry LogParserSyslog::ParseInternal(std::string&& entire_line) {
 
   std::string message;
   if (entire_line.size() > pos) {
-    if (entire_line[pos] != ' ') {
+    if (entire_line[pos] == ' ') {
+      ++pos;
+    } else if (entire_line[pos] != '[') {
       // Parse failed. Maybe this line doesn't contains a header.
+      // Note that the '[' character can happen when there's incomplete closing
+      // brace for PID that's parsed above.
       return base::nullopt;
     }
 
-    pos++;
     message = entire_line.substr(pos, entire_line.size() - pos);
   }
 
