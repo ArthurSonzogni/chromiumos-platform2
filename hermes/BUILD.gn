@@ -13,6 +13,9 @@ group("all") {
   if (use.test) {
     deps += [ ":hermes_test" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":hermes_modem_mbim_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -110,5 +113,16 @@ if (use.test) {
       ":libhermes",
       "//common-mk/testrunner",
     ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("hermes_modem_mbim_fuzzer") {
+    sources = [ "modem_mbim_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    deps = [ ":libhermes" ]
   }
 }

@@ -513,20 +513,13 @@ void ModemMbim::UiccLowLevelAccessOpenChannelSetCb(MbimDevice* device,
 }
 
 /* static */
-void ModemMbim::UiccLowLevelAccessApduEidParse(MbimDevice* device,
-                                               GAsyncResult* res,
-                                               ModemMbim* modem_mbim) {
+bool ModemMbim::ParseEidApduResponse(const MbimMessage* response,
+                                     std::string* eid) {
   g_autoptr(GError) error = NULL;
-  g_autoptr(MbimMessage) response = NULL;
   guint32 status;
   guint32 response_size = 0;
   const guint8* out_response = NULL;
   std::vector<uint8_t> kGetEidDgiTag = {0xBF, 0x3E, 0x12, 0x5A, 0x10};
-  response = mbim_device_command_finish(device, res, &error);
-
-  // b/199808449. Close the device since we no longer need it. Hermes gets stuck
-  // in an infinite loop if the modem is reset by modemfwd
-  modem_mbim->CloseDevice();
 
   if (response &&
       mbim_message_response_get_result(response, MBIM_MESSAGE_TYPE_COMMAND_DONE,
@@ -535,8 +528,7 @@ void ModemMbim::UiccLowLevelAccessApduEidParse(MbimDevice* device,
           response, &status, &response_size, &out_response, &error)) {
     if (response_size < 2 || out_response[0] != kGetEidDgiTag[0] ||
         out_response[1] != kGetEidDgiTag[1]) {
-      modem_mbim->ProcessMbimResult(kModemMessageProcessingError);
-      return;
+      return false;
     }
 
     VLOG(2) << "Adding to payload from APDU response (" << response_size
@@ -544,9 +536,27 @@ void ModemMbim::UiccLowLevelAccessApduEidParse(MbimDevice* device,
             << base::HexEncode(&out_response[kGetEidDgiTag.size()],
                                response_size - kGetEidDgiTag.size());
     for (int j = kGetEidDgiTag.size(); j < response_size; j++) {
-      modem_mbim->eid_ += bcd_chars[(out_response[j] >> 4) & 0xF];
-      modem_mbim->eid_ += bcd_chars[out_response[j] & 0xF];
+      *eid += bcd_chars[(out_response[j] >> 4) & 0xF];
+      *eid += bcd_chars[out_response[j] & 0xF];
     }
+    return true;
+  }
+  return false;
+}
+
+/* static */
+void ModemMbim::UiccLowLevelAccessApduEidParse(MbimDevice* device,
+                                               GAsyncResult* res,
+                                               ModemMbim* modem_mbim) {
+  g_autoptr(GError) error = NULL;
+  g_autoptr(MbimMessage) response = NULL;
+  response = mbim_device_command_finish(device, res, &error);
+
+  // b/199808449. Close the device since we no longer need it. Hermes gets stuck
+  // in an infinite loop if the modem is reset by modemfwd
+  modem_mbim->CloseDevice();
+
+  if (ParseEidApduResponse(response, &modem_mbim->eid_)) {
     LOG(INFO) << "EID for physical slot: " << kEsimSlot << " is "
               << modem_mbim->eid_;
     if (modem_mbim->current_state_ == State::kMbimInitializeStarted)
@@ -559,7 +569,6 @@ void ModemMbim::UiccLowLevelAccessApduEidParse(MbimDevice* device,
   LOG(INFO) << "Could not find eSIM";
   modem_mbim->euicc_manager_->OnEuiccRemoved(kEsimSlot);
   modem_mbim->ProcessMbimResult(kModemMessageProcessingError);
-  return;
 }
 
 /* static */
@@ -765,6 +774,12 @@ bool ModemMbim::IsSimValidAfterEnable() {
 bool ModemMbim::IsSimValidAfterDisable() {
   VLOG(2) << __func__;
   return false;
+}
+
+/* static */
+bool ModemMbim::ParseEidApduResponseForTesting(const MbimMessage* response,
+                                               std::string* eid) {
+  return ParseEidApduResponse(response, eid);
 }
 
 }  // namespace hermes

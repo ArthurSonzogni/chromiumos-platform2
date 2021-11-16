@@ -45,6 +45,9 @@ class ModemMbim : public Modem<MbimCmd> {
   bool IsSimValidAfterEnable() override;
   bool IsSimValidAfterDisable() override;
 
+  static bool ParseEidApduResponseForTesting(const MbimMessage* response,
+                                             std::string* eid);
+
  private:
   ModemMbim(GFile* file, Logger* logger, Executor* executor);
   void Shutdown() override;
@@ -89,6 +92,8 @@ class ModemMbim : public Modem<MbimCmd> {
   static void UiccLowLevelAccessApduEidParse(MbimDevice* device,
                                              GAsyncResult* res,
                                              ModemMbim* modem_mbim);
+  static bool ParseEidApduResponse(const MbimMessage* response,
+                                   std::string* eid);
 
   static void UiccLowLevelAccessApduResponseParse(MbimDevice* device,
                                                   GAsyncResult* res,
