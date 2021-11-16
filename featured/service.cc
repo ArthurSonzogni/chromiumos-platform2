@@ -159,6 +159,11 @@ std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
     }
 
     for (const auto& item : support_cmd_list_obj->GetList()) {
+      if (!item.is_dict()) {
+        *err_str = "featured: support_check_commands is not list of dicts.";
+        return std::nullopt;
+      }
+
       std::string cmd_name;
 
       if (!GetStringFromKey(item, "name", &cmd_name)) {
@@ -195,6 +200,10 @@ std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
 
   std::vector<std::unique_ptr<FeatureCommand>> feature_cmds;
   for (const auto& item : cmd_list_obj->GetList()) {
+    if (!item.is_dict()) {
+      *err_str = "featured: Invalid command in features config.";
+      return std::nullopt;
+    }
     std::string cmd_name;
 
     if (!GetStringFromKey(item, "name", &cmd_name)) {
