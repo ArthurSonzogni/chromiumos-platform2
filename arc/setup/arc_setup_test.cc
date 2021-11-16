@@ -6,6 +6,7 @@
 
 #include "arc/setup/arc_setup.h"
 
+#include <iterator>
 #include <set>
 
 #include <base/command_line.h>
@@ -13,7 +14,6 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
-#include <base/stl_util.h>
 #include <gtest/gtest.h>
 
 #include "arc/setup/arc_setup_util.h"
@@ -122,7 +122,7 @@ TEST(ArcSetup, TestMockArcMounter) {
 // Tests --mode=onetime-setup and --mode=onetime-stop.
 TEST(ArcSetup, TestOnetimeSetupStop) {
   const char* argv[] = {"test", "--mode=onetime-setup"};
-  base::CommandLine::ForCurrentProcess()->InitFromArgv(base::size(argv), argv);
+  base::CommandLine::ForCurrentProcess()->InitFromArgv(std::size(argv), argv);
   std::unique_ptr<base::Environment> env(base::Environment::Create());
 
   // ArcSetup needs some config variables.
