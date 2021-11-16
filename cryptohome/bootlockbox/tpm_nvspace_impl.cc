@@ -208,6 +208,14 @@ bool TPMNVSpaceImpl::ReadNVSpace(std::string* digest, NVSpaceState* result) {
     return false;
   }
 
+  if (IsOwnerPasswordPresent()) {
+    // Remove the owner dependency if the owner presented and the space defined
+    // correctly.
+    if (!RemoveNVSpaceOwnerDependency()) {
+      LOG(ERROR) << "Failed to remove the owner dependency.";
+    }
+  }
+
   if (nvram_data == std::string(kNVSpaceSize, '\0') ||
       nvram_data == std::string(kNVSpaceSize, 0xff)) {
     LOG(ERROR) << "Empty nvram data.";
