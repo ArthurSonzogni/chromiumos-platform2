@@ -31,6 +31,7 @@
 namespace {
 
 constexpr char kFirmwareUpdaterFilePath[] = "usr/sbin/chromeos-firmwareupdate";
+constexpr char kHwwpProperty[] = "wpsw_cur";
 
 bool IsRootfsPartition(const std::string& path) {
   return re2::RE2::FullMatch(path, R"(/dev/sd[a-z]3)");
@@ -42,7 +43,7 @@ namespace rmad {
 
 UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store), active_(false) {
+    : BaseStateHandler(json_store), is_mocked_(false), active_(false) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
@@ -60,6 +61,7 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     std::unique_ptr<CrosDisksClient> cros_disks_client,
     std::unique_ptr<PowerManagerClient> power_manager_client)
     : BaseStateHandler(json_store),
+      is_mocked_(true),
       cmd_utils_(std::move(cmd_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
       flashrom_utils_(std::move(flashrom_utils)),
@@ -232,7 +234,7 @@ void UpdateRoFirmwareStateHandler::OnMountCompleted(
         status_ = RMAD_UPDATE_RO_FIRMWARE_UPDATING;
         updater_task_runner_->PostTask(
             FROM_HERE,
-            base::BindOnce(&UpdateRoFirmwareStateHandler::RunFirmwareUpdater,
+            base::BindOnce(&UpdateRoFirmwareStateHandler::UpdateFirmware,
                            base::Unretained(this), entry.mount_path,
                            firmware_updater_path.MaybeAsASCII()));
         // Unmount is done after running the firmware updater.
@@ -248,11 +250,55 @@ void UpdateRoFirmwareStateHandler::OnMountCompleted(
   poll_usb_ = true;
 }
 
-void UpdateRoFirmwareStateHandler::RunFirmwareUpdater(
+bool UpdateRoFirmwareStateHandler::RunFirmwareUpdater(
+    const std::string& firmware_updater_path) {
+  // For security reasons, we should only run the firmware update when HWWP and
+  // SWWP are off.
+
+  // First make sure the state handler is not mocked so the following
+  // HWWP/SWWP checks are real.
+  if (is_mocked_) {
+    LOG(ERROR) << "State handler is mocked. Aborting firmware update.";
+    return false;
+  }
+
+  // Make sure HWWP is off.
+  if (int hwwp_enabled;
+      !crossystem_utils_->GetInt(kHwwpProperty, &hwwp_enabled) ||
+      hwwp_enabled == 1) {
+    LOG(ERROR) << "HWWP is enabled. Aborting firmware update.";
+    return false;
+  }
+
+  // Make sure SWWP is off.
+  if (bool swwp_enabled;
+      !flashrom_utils_->GetSoftwareWriteProtectionStatus(&swwp_enabled) ||
+      swwp_enabled) {
+    LOG(ERROR) << "SWWP is enabled. Aborting firmware update.";
+    return false;
+  }
+
+  // All checks pass. Run the firmware updater.
+  bool update_success = false;
+  std::string output;
+  if (cmd_utils_->GetOutputAndError(
+          {"futility", "update", "-a", firmware_updater_path, "--mode=factory",
+           "--force"},
+          &output)) {
+    LOG(INFO) << "Firmware updater success";
+    update_success = true;
+  } else {
+    LOG(ERROR) << "Firmware updater failed";
+  }
+
+  VLOG(1) << "Firmware updater output:";
+  VLOG(1) << output;
+  return update_success;
+}
+
+void UpdateRoFirmwareStateHandler::UpdateFirmware(
     const std::string& mount_path, const std::string& firmware_updater_path) {
-  // TODO(chenghan): Run firmware updater here. This is currently fake and
-  //                 always assume the update succeeds.
-  bool update_success = true;
+  bool update_success = RunFirmwareUpdater(firmware_updater_path);
   sequenced_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&UpdateRoFirmwareStateHandler::Unmount,
                                 base::Unretained(this), mount_path));

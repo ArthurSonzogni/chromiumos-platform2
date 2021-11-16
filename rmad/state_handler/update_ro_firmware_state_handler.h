@@ -68,14 +68,18 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   void SendFirmwareUpdateStatusSignal();
   void WaitUsb();
   void OnMountCompleted(const rmad::MountEntry& entry);
-  void RunFirmwareUpdater(const std::string& mount_path,
-                          const std::string& firmware_updater_path);
+  bool RunFirmwareUpdater(const std::string& firmware_updater_path);
+  void UpdateFirmware(const std::string& mount_path,
+                      const std::string& firmware_updater_path);
   void Unmount(const std::string& mount_path);
   void OnUpdateFinished(bool update_success);
 
   // Functions for rebooting.
   void PostRebootTask();
   void Reboot();
+
+  // True if the class is not initialized with default constructor.
+  bool is_mocked_;
 
   std::unique_ptr<CmdUtils> cmd_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
