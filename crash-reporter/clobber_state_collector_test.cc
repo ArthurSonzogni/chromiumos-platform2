@@ -123,32 +123,47 @@ TEST(ClobberStateCollectorTest, TestClobberState_WarningOnly) {
 }
 
 TEST(ClobberStateCollectorTest, TestClobberState_KnownIssue) {
-  ClobberStateCollectorMock collector;
-  base::ScopedTempDir tmp_dir;
-  base::FilePath meta_path;
-  base::FilePath report_path;
-  std::string report_contents;
+  static constexpr const struct {
+    const char* log;
+    const char* sig;
+  } test_cases[] = {
+      {"Failed to create directory or subvolume "
+       "\"/var/lib/metrics/structured\": Bad message",
+       "sig=Bad message"},
+      {"Failed to create directory or subvolume "
+       "\"/var/lib/metrics/structured/chromium\": Input/output error",
+       "sig=Input/output error"},
+      {"rm_rf(/var/lib/dbus/machine-id): Read-only file system",
+       "sig=Read-only file system"},
+      {"/usr/lib/tmpfiles.d/vm_tools.conf:35: Duplicate line for path"
+       "\"/run/arc/sdcard\", ignoring.\n"
+       "Failed to open directory 'cras': Structure needs cleaning\n",
+       "sig=Structure needs cleaning"},
+  };
 
-  constexpr const char kTmpfilesContents[] =
-      "/usr/lib/tmpfiles.d/vm_tools.conf:35: Duplicate line for path"
-      "\"/run/arc/sdcard\", ignoring.\n"
-      "Failed to open directory 'cras': Structure needs cleaning\n";
-  Initialize(&collector, &tmp_dir, kTmpfilesContents);
+  for (const auto& test_case : test_cases) {
+    ClobberStateCollectorMock collector;
+    base::ScopedTempDir tmp_dir;
+    base::FilePath meta_path;
+    base::FilePath report_path;
+    std::string report_contents;
+    Initialize(&collector, &tmp_dir, test_case.log);
 
-  EXPECT_TRUE(collector.Collect());
+    EXPECT_TRUE(collector.Collect());
 
-  // Check report collection.
-  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      tmp_dir.GetPath(), "clobber_state.*.meta", &meta_path));
-  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      tmp_dir.GetPath(), "clobber_state.*.log", &report_path));
+    // Check report collection.
+    EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+        tmp_dir.GetPath(), "clobber_state.*.meta", &meta_path));
+    EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+        tmp_dir.GetPath(), "clobber_state.*.log", &report_path));
 
-  // Check meta contents.
-  std::string meta_contents;
-  EXPECT_TRUE(base::ReadFileToString(meta_path, &meta_contents));
-  EXPECT_THAT(meta_contents, HasSubstr("sig=Structure needs cleaning"));
+    // Check meta contents.
+    std::string meta_contents;
+    EXPECT_TRUE(base::ReadFileToString(meta_path, &meta_contents));
+    EXPECT_THAT(meta_contents, HasSubstr(test_case.sig));
 
-  // Check report contents.
-  EXPECT_TRUE(base::ReadFileToString(report_path, &report_contents));
-  EXPECT_EQ("found clobber.log\n", report_contents);
+    // Check report contents.
+    EXPECT_TRUE(base::ReadFileToString(report_path, &report_contents));
+    EXPECT_EQ("found clobber.log\n", report_contents);
+  }
 }

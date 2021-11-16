@@ -27,6 +27,11 @@ std::string filter_signature(const std::vector<std::string>& lines) {
       // This is associated with an EXT4-fs error in htree_dirblock_to_tree:
       // "Directory block failed checksum"
       "Bad message",
+      // This typically indicates the storage media is failing.
+      "Input/output error",
+      // Particularly bad filesystem corruption results in it being remounted
+      // read only.
+      "Read-only file system",
       // This is associated with an EXT4-fs error in ext4_xattr_block_get:
       // "corrupted xattr block ####"
       "Structure needs cleaning",
