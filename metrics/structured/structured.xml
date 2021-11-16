@@ -418,6 +418,307 @@
   </event>
 </project>
 
+<project name="WiFi">
+  <owner>druth@google.com</owner>
+  <owner>matthewmwang@chromium.org</owner>
+  <owner>norvez@chromium.org</owner>
+  <owner>cros-network-metrics@google.com</owner>
+  <id>per-project</id>
+  <summary>
+    WiFi health metrics.
+  </summary>
+
+  <event name="WiFiAdapterStateChanged">
+    <summary>
+      Records when the adapter is enabled/disabled.
+    </summary>
+    <metric name="BootId" type="hmac-string">
+      <summary>
+        Random ID generated at boot time to detect reboots.
+      </summary>
+    </metric>
+    <metric name="SystemTime" type="int">
+      <summary>
+        The time elapsed since boot, in microseconds.
+      </summary>
+    </metric>
+    <metric name="EventVersion" type="int">
+      <summary>
+        Integer version number that indicates the format of the event.
+        Used by the event processor to know which metric is available in a
+        particular event.
+        v0: unknown (should not happen)
+        v1: initial version
+      </summary>
+    </metric>
+    <metric name="AdapterState" type="int">
+      <summary>
+        The state of the WiFi adapter, 0 for disabled and 1 for enabled.
+      </summary>
+    </metric>
+    <metric name="VendorId" type="int">
+      <summary>
+        Manufacturer ID of the WiFi adapter.
+      </summary>
+    </metric>
+    <metric name="ProductId" type="int">
+      <summary>
+        Product ID of the WiFi adapter.
+      </summary>
+    </metric>
+    <metric name="SubsystemId" type="int">
+      <summary>
+        Subsystem ID of the WiFi adapter.
+      </summary>
+    </metric>
+  </event>
+
+  <event name="WiFiConnectionAttempt">
+    <summary>
+      Device starts to try to connect to a particular AP.
+    </summary>
+    <metric name="BootId" type="hmac-string">
+      <summary>
+        Random ID generated at boot time to detect reboots.
+      </summary>
+    </metric>
+    <metric name="SystemTime" type="int">
+      <summary>
+        The time elapsed since boot, in microseconds.
+      </summary>
+    </metric>
+    <metric name="EventVersion" type="int">
+      <summary>
+        Integer version number that indicates the format of the event.
+        Used by the event processor to know which metric is available in a
+        particular event.
+        v0: unknown (should not happen)
+        v1: initial version
+      </summary>
+    </metric>
+    <metric name="AttemptType" type="int">
+      <summary>
+        Type of connection attempt (e.g. autoconnect, manual connect, ...)
+      </summary>
+    </metric>
+    <metric name="APPhyMode" type="int">
+      <summary>
+        Enum |WiFiNetworkPhyMode| reporting if we are connecting to 802.11n,
+        802.11ac, 802.11ax, etc.
+      </summary>
+    </metric>
+    <metric name="APSecurityMode" type="int">
+      <summary>
+        Enum |WiFiSecurity| reporting the security mode: Open? WEP? WPA? 802.1X?
+      </summary>
+    </metric>
+    <metric name="APSecurityEAPInnerProtocol" type="int">
+      <summary>
+        Enum |EapInnerProtocol| reporting the EAP inner protocol for 802.1X.
+      </summary>
+    </metric>
+    <metric name="APSecurityEAPOuterProtocol" type="int">
+      <summary>
+        Enum |EapOuterProtocol| reporting the EAP outer protocol for 802.1X.
+      </summary>
+    </metric>
+    <metric name="APBand" type="int">
+      <summary>
+        Enum |WiFiFrequencyRange| reporting the band we're connecting to:
+        2.4GHz, 5GHz, 6GHz.
+      </summary>
+    </metric>
+    <metric name="APChannel" type="int">
+      <summary>
+        Enum |WiFiChannel| describing the frequency of the channel we're
+        connecting on.
+      </summary>
+    </metric>
+    <metric name="RSSI" type="int">
+      <summary>
+        RSSI of the AP we're trying to connect to.
+      </summary>
+    </metric>
+    <metric name="SSID" type="hmac-string">
+      <summary>
+        Pseudonymized SSID that we're connecting to.
+      </summary>
+    </metric>
+    <metric name="SSIDProvisioningMode" type="int">
+      <summary>
+        Enum describing how the SSID was provisioned. Was it configured through
+        policy? Was it manually added? Was it synced?
+      </summary>
+    </metric>
+    <metric name="SSIDHidden" type="int">
+      <summary>
+        Set to 1 if we're connecting to a hidden SSID, 0 otherwise.
+      </summary>
+    </metric>
+    <metric name="BSSID" type="hmac-string">
+      <summary>
+        Pseudonymized BSSID that we're connecting to.
+      </summary>
+    </metric>
+    <metric name="APOUI" type="int">
+      <summary>
+        OUI of the AP. The 24 least significant bits contain the OUI.
+      </summary>
+    </metric>
+  </event>
+
+  <event name="WiFiConnectionAttemptResult">
+    <summary>
+      Report if the connection attempt succeeded or not and the reason if not.
+    </summary>
+    <metric name="BootId" type="hmac-string">
+      <summary>
+        Random ID generated at boot time to detect reboots.
+      </summary>
+    </metric>
+    <metric name="SystemTime" type="int">
+      <summary>
+        The time elapsed since boot, in microseconds.
+      </summary>
+    </metric>
+    <metric name="EventVersion" type="int">
+      <summary>
+        Integer version number that indicates the format of the event.
+        Used by the event processor to know which metric is available in a
+        particular event.
+        v0: unknown (should not happen)
+        v1: initial version
+      </summary>
+    </metric>
+    <metric name="ResultCode" type="int">
+      <summary>
+        Enum |NetworkServiceError| reporting the status of the connection
+        attempt.
+        Reports the error code (e.g. "too-many-stas") if the connection attempt
+        failed.
+        Reports 0 (NetworkServiceError::kNetworkServiceErrorNone) if the
+        connection attempt succeeded.
+      </summary>
+    </metric>
+  </event>
+
+  <event name="WiFiIPConnectivityStatus">
+    <summary>
+      WiFi link is up, report if the device is fully IP provisioned or if there
+      are still IP connectivity failures (e.g. failed to get an IP address).
+    </summary>
+    <metric name="BootId" type="hmac-string">
+      <summary>
+        Random ID generated at boot time to detect reboots.
+      </summary>
+    </metric>
+    <metric name="SystemTime" type="int">
+      <summary>
+        The time elapsed since boot, in microseconds.
+      </summary>
+    </metric>
+    <metric name="EventVersion" type="int">
+      <summary>
+        Integer version number that indicates the format of the event.
+        Used by the event processor to know which metric is available in a
+        particular event.
+        v0: unknown (should not happen)
+        v1: initial version
+      </summary>
+    </metric>
+    <metric name="IPConnectivityStatus" type="int">
+      <summary>
+        Enum reporting the connectivity status (Connection OK, DHCP issues, ...)
+      </summary>
+    </metric>
+    <metric name="IPConnectivityType" type="int">
+      <summary>
+        Enum |NetworkConnectionIPType| reporting the type of connectivity (IPv4
+        or IPv6).
+      </summary>
+    </metric>
+  </event>
+
+  <event name="WiFiPortalDetectionStatus">
+    <summary>
+      IP connectivity is up, report the state of captive portal detection.
+    </summary>
+    <metric name="BootId" type="hmac-string">
+      <summary>
+        Random ID generated at boot time to detect reboots.
+      </summary>
+    </metric>
+    <metric name="SystemTime" type="int">
+      <summary>
+        The time elapsed since boot, in microseconds.
+      </summary>
+    </metric>
+    <metric name="EventVersion" type="int">
+      <summary>
+        Integer version number that indicates the format of the event.
+        Used by the event processor to know which metric is available in a
+        particular event.
+        v0: unknown (should not happen)
+        v1: initial version
+      </summary>
+    </metric>
+    <metric name="PortalDetectionStatus" type="int">
+      <summary>
+        Enum |PortalResult| reporting the status of the detection of the captive
+        portal.
+      </summary>
+    </metric>
+    <metric name="PortalDetectionMultiProbeResult" type="int">
+      <summary>
+        Enum |PortalDetectionMultiProbeResult| reporting the results of the HTTP
+        and HTTPS probes during captive portal detection.
+      </summary>
+    </metric>
+  </event>
+
+  <event name="WiFiConnectionEnd">
+    <summary>
+      Report when the device disconnects or is disconnected from the AP.
+    </summary>
+    <metric name="BootId" type="hmac-string">
+      <summary>
+        Random ID generated at boot time to detect reboots.
+      </summary>
+    </metric>
+    <metric name="SystemTime" type="int">
+      <summary>
+        The time elapsed since boot, in microseconds.
+      </summary>
+    </metric>
+    <metric name="EventVersion" type="int">
+      <summary>
+        Integer version number that indicates the format of the event.
+        Used by the event processor to know which metric is available in a
+        particular event.
+        v0: unknown (should not happen)
+        v1: initial version
+      </summary>
+    </metric>
+    <metric name="DisconnectionType" type="int">
+      <summary>
+        Log what type of disconnection happened:
+        - expected because of suspend or poweroff
+        - expected because of roaming
+        - unexpected because the AP disconnected the device
+        - unexpected because the device no longer hears the AP
+        - etc
+      </summary>
+    </metric>
+    <metric name="DisconnectionReasonCode" type="int">
+      <summary>
+        Enum |WiFiReasonCode| to report the reason there was an unexpected
+        disconnection.
+      </summary>
+    </metric>
+  </event>
+
+</project>
+
 <project name="TestProjectOne">
   <owner>tby@chromium.org</owner>
   <id>none</id>
