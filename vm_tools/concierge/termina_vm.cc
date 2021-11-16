@@ -230,6 +230,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     vm_builder.EnableGpu(true)
         .EnableVulkan(features_.vulkan)
         .EnableBigGl(features_.big_gl)
+        .EnableRenderServer(features_.vulkan)  // enable with vulkan
         .SetGpuCacheSize(kGpuCacheSizeString);
   }
 

@@ -16,6 +16,7 @@ namespace concierge {
 namespace {
 // Path to the default wayland socket.
 constexpr char kWaylandSocket[] = "/run/chrome/wayland-0";
+constexpr char kVirglRenderServerPath[] = "/usr/libexec/virgl_render_server";
 }  // namespace
 
 VmBuilder::VmBuilder() = default;
@@ -153,6 +154,11 @@ VmBuilder& VmBuilder::EnableBigGl(bool enable) {
   LOG_IF(WARNING, enable) << "Big GL is not supported on this board";
   enable_big_gl_ = false;
 #endif
+  return *this;
+}
+
+VmBuilder& VmBuilder::EnableRenderServer(bool enable) {
+  enable_render_server_ = enable;
   return *this;
 }
 
@@ -307,6 +313,13 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
       gpu_arg += ",cache-size=" + gpu_cache_size_str_;
     }
     args.emplace_back(gpu_arg, "");
+
+    if (enable_render_server_) {
+      std::string render_server_arg = "--gpu-render-server=path=";
+      render_server_arg += kVirglRenderServerPath;
+
+      args.emplace_back(render_server_arg, "");
+    }
   }
 
   if (enable_software_tpm_)
