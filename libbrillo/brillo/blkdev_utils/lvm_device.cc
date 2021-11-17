@@ -45,6 +45,37 @@ void LogLvmError(int rc, const std::string& cmd) {
   }
 }
 
+// Fetch and validate size from report.
+bool GetThinpoolSizeFromReportContents(const base::Value& report_contents,
+                                       int64_t* size) {
+  // Get thinpool size.
+  const std::string* thinpool_size = report_contents.FindStringKey("lv_size");
+  if (!thinpool_size) {
+    LOG(ERROR) << "Failed to get thinpool size.";
+    return false;
+  }
+
+  if (thinpool_size->empty()) {
+    LOG(ERROR) << "Empty thinpool size string.";
+    return false;
+  }
+
+  // Last character for size is always "B".
+  if (thinpool_size->back() != 'B') {
+    LOG(ERROR) << "Last character of thinpool size string should always be B.";
+    return false;
+  }
+
+  // Use base::StringToInt64 to validate the returned size.
+  if (!base::StringToInt64(
+          base::StringPiece(thinpool_size->data(), thinpool_size->length() - 1),
+          size)) {
+    LOG(ERROR) << "Failed to convert thinpool size to a numeric value";
+    return false;
+  }
+
+  return true;
+}
 }  // namespace
 
 PhysicalVolume::PhysicalVolume(const base::FilePath& device_path,
@@ -217,33 +248,7 @@ bool Thinpool::GetTotalSpace(int64_t* size) {
     return false;
   }
 
-  // Get the thinpool size.
-  std::string* thinpool_size = report_contents->FindStringKey("lv_size");
-  if (!thinpool_size) {
-    LOG(ERROR) << "Failed to get thinpool size.";
-    return false;
-  }
-
-  if (thinpool_size->empty()) {
-    LOG(ERROR) << "Empty thinpool size string.";
-    return false;
-  }
-
-  // Last character for size is always "B".
-  if (thinpool_size->back() != 'B') {
-    LOG(ERROR) << "Last character of thinpool size string should always be B.";
-    return false;
-  }
-
-  // Use base::StringToInt64 to validate the returned thinpool size.
-  if (!base::StringToInt64(
-          base::StringPiece(thinpool_size->data(), thinpool_size->length() - 1),
-          size)) {
-    LOG(ERROR) << "Failed to convert thinpool size to a numeric value";
-    return false;
-  }
-
-  return true;
+  return GetThinpoolSizeFromReportContents(*report_contents, size);
 }
 
 bool Thinpool::GetFreeSpace(int64_t* size) {
@@ -284,7 +289,7 @@ bool Thinpool::GetFreeSpace(int64_t* size) {
   }
 
   int64_t total_size;
-  if (!GetTotalSpace(&total_size)) {
+  if (!GetThinpoolSizeFromReportContents(*report_contents, &total_size)) {
     LOG(ERROR) << "Failed to get total thinpool size.";
     return false;
   }
