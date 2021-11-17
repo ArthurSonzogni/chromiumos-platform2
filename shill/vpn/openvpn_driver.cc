@@ -281,9 +281,7 @@ bool OpenVPNDriver::SpawnOpenVPN() {
   ProcessManager::MinijailOptions minijail_options;
   minijail_options.user = "vpn";
   minijail_options.group = "vpn";
-  minijail_options.capmask = CAP_TO_MASK(CAP_NET_ADMIN) |
-                             CAP_TO_MASK(CAP_NET_RAW) |
-                             CAP_TO_MASK(CAP_SETUID) | CAP_TO_MASK(CAP_SETGID);
+  minijail_options.capmask = 0;
   minijail_options.inherit_supplementary_groups = true;
   minijail_options.close_nonstd_fds = true;
   openvpn_pid = process_manager()->StartProcessInMinijail(
@@ -736,11 +734,6 @@ void OpenVPNDriver::InitOptions(std::vector<std::vector<std::string>>* options,
   // Disable openvpn handling since we do route+ifconfig work.
   AppendOption("route-noexec", options);
   AppendOption("ifconfig-noexec", options);
-
-  // Drop root privileges on connection and enable callback scripts to send
-  // notify messages.
-  AppendOption("user", "vpn", options);
-  AppendOption("group", "vpn", options);
 }
 
 bool OpenVPNDriver::InitCAOptions(

@@ -689,7 +689,6 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   ExpectInFlags(options, {"setenv", kRpcTaskPathVariable,
                           RpcTaskMockAdaptor::kRpcId.value()});
   ExpectInFlags(options, {"dev", kInterfaceName});
-  ExpectInFlags(options, {"group", "vpn"});
   EXPECT_EQ(kInterfaceName, driver_->interface_name_);
   ASSERT_FALSE(driver_->tls_auth_file_.empty());
   ExpectInFlags(options, {"tls-auth", driver_->tls_auth_file_.value()});
