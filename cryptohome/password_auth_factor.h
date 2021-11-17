@@ -31,10 +31,6 @@ class PasswordAuthFactor : public AuthFactor {
   // Returns the key data with which this AuthFactor is authenticated with.
   const cryptohome::KeyData& GetKeyData() override;
 
-  // This function returns the current index of the keyset that was used to
-  // Authenticate. This is useful during verification of challenge credentials.
-  const int GetKeyIndex() override;
-
   // Get VaultKeyset.
   VaultKeyset vault_keyset() override { return *vault_keyset_; };
 

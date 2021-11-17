@@ -511,7 +511,7 @@ TEST_F(UserSessionReAuthTest, VerifyUser) {
   Credentials credentials("username", SecureBlob("password"));
   scoped_refptr<UserSession> session =
       new UserSession(nullptr, nullptr, nullptr, nullptr, salt, nullptr);
-  EXPECT_TRUE(session->SetCredentials(credentials, 0));
+  EXPECT_TRUE(session->SetCredentials(credentials));
 
   EXPECT_TRUE(session->VerifyUser(credentials.GetObfuscatedUsername(salt)));
   EXPECT_FALSE(session->VerifyUser("other"));
@@ -524,17 +524,17 @@ TEST_F(UserSessionReAuthTest, VerifyCredentials) {
 
   scoped_refptr<UserSession> session =
       new UserSession(nullptr, nullptr, nullptr, nullptr, salt, nullptr);
-  EXPECT_TRUE(session->SetCredentials(credentials_1, 0));
+  EXPECT_TRUE(session->SetCredentials(credentials_1));
   EXPECT_TRUE(session->VerifyCredentials(credentials_1));
   EXPECT_FALSE(session->VerifyCredentials(credentials_2));
   EXPECT_FALSE(session->VerifyCredentials(credentials_3));
 
-  EXPECT_TRUE(session->SetCredentials(credentials_2, 0));
+  EXPECT_TRUE(session->SetCredentials(credentials_2));
   EXPECT_FALSE(session->VerifyCredentials(credentials_1));
   EXPECT_TRUE(session->VerifyCredentials(credentials_2));
   EXPECT_FALSE(session->VerifyCredentials(credentials_3));
 
-  EXPECT_TRUE(session->SetCredentials(credentials_3, 0));
+  EXPECT_TRUE(session->SetCredentials(credentials_3));
   EXPECT_FALSE(session->VerifyCredentials(credentials_1));
   EXPECT_FALSE(session->VerifyCredentials(credentials_2));
   EXPECT_TRUE(session->VerifyCredentials(credentials_3));

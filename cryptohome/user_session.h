@@ -88,13 +88,12 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   // Returns the WebAuthn secret hash.
   const brillo::SecureBlob& GetWebAuthnSecretHash() const;
 
-  // Sets credentials current session can be re-authenticated with and the
-  // index of the keyset those credentials belong to. Returns false in case
-  // anything went wrong in setting up new re-auth state.
-  bool SetCredentials(const Credentials& credentials, int key_index);
+  // Sets credentials current session can be re-authenticated with.
+  // Returns false in case anything went wrong in setting up new re-auth state.
+  bool SetCredentials(const Credentials& credentials);
 
-  // Sets credentials for the current session to re-authenticated with and the
-  // index of the keyset those credentials belong to.
+  // Sets credentials current session can be re-authenticated with.
+  // Returns false in case anything went wrong in setting up new re-auth state.
   void SetCredentials(AuthSession* auth_session);
 
   // Checks that the session belongs to the obfuscated_user.
@@ -107,9 +106,6 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
 
   // Returns key_data of the current session credentials.
   const KeyData& key_data() const { return key_data_; }
-
-  // Returns index of the keyset current credentials refer to.
-  int key_index() const { return key_index_; }
 
   Pkcs11Token* GetPkcs11Token() { return pkcs11_token_.get(); }
 
@@ -130,7 +126,6 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   std::string username_;
   brillo::SecureBlob system_salt_;
   std::unique_ptr<CredentialVerifier> credential_verifier_;
-  int key_index_ = -1;
   KeyData key_data_;
 
   // Secret for WebAuthn credentials.

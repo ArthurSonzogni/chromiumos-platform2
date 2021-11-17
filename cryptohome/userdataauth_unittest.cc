@@ -3003,7 +3003,7 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckSuccess) {
   check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
 
   Credentials credentials("another", brillo::SecureBlob(kKey));
-  session_->SetCredentials(credentials, 0);
+  session_->SetCredentials(credentials);
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
   EXPECT_CALL(keyset_management_, AreCredentialsValid(_))
       .WillOnce(Return(true));
@@ -3021,7 +3021,7 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckFail) {
 
   // Ensure failure
   Credentials credentials("another", brillo::SecureBlob(kKey));
-  session_->SetCredentials(credentials, 0);
+  session_->SetCredentials(credentials);
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(keyset_management_, AreCredentialsValid(_))
       .WillOnce(Return(false));
@@ -3039,7 +3039,7 @@ TEST_F(UserDataAuthExTest, CheckKeyMountCheckSuccess) {
   check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
 
   Credentials credentials(kUser, brillo::SecureBlob(kKey));
-  session_->SetCredentials(credentials, 0);
+  session_->SetCredentials(credentials);
 
   CallCheckKeyAndVerify(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
@@ -3053,7 +3053,7 @@ TEST_F(UserDataAuthExTest, CheckKeyMountCheckFail) {
   check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
 
   Credentials credentials(kUser, brillo::SecureBlob("wrong"));
-  session_->SetCredentials(credentials, 0);
+  session_->SetCredentials(credentials);
 
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(keyset_management_, AreCredentialsValid(_))
@@ -3538,7 +3538,7 @@ TEST_F(UserDataAuthExTest, MigrateKeyValidity) {
       GetValidKeyset(Property(&Credentials::username, kUsername1), nullptr))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_,
-              Migrate(_, Property(&Credentials::username, kUsername1), _))
+              Migrate(_, Property(&Credentials::username, kUsername1)))
       .WillOnce(Return(true));
   EXPECT_EQ(userdataauth_->MigrateKey(*migrate_req_),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -3557,7 +3557,7 @@ TEST_F(UserDataAuthExTest, MigrateKeyValidity) {
       GetValidKeyset(Property(&Credentials::username, kUsername1), nullptr))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_,
-              Migrate(_, Property(&Credentials::username, kUsername1), _))
+              Migrate(_, Property(&Credentials::username, kUsername1)))
       .WillOnce(Return(false));
   EXPECT_EQ(userdataauth_->MigrateKey(*migrate_req_),
             user_data_auth::CRYPTOHOME_ERROR_MIGRATE_KEY_FAILED);
@@ -3860,7 +3860,7 @@ class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
     SetupMount(kUser);
     Credentials credentials(kUser, brillo::SecureBlob(kKey));
     credentials.set_key_data(key_data_);
-    session_->SetCredentials(credentials, 0);
+    session_->SetCredentials(credentials);
   }
 
  protected:

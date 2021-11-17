@@ -84,7 +84,7 @@ MountError UserSession::MountVault(
   if (code != MOUNT_ERROR_NONE) {
     return code;
   }
-  SetCredentials(credentials, vk->GetLegacyIndex());
+  SetCredentials(credentials);
   user_activity_timestamp_manager_->UpdateTimestamp(obfuscated_username,
                                                     base::TimeDelta());
 
@@ -135,7 +135,7 @@ MountError UserSession::MountEphemeral(const Credentials& credentials) {
 
   MountError code = mount_->MountEphemeralCryptohome(credentials.username());
   if (code == MOUNT_ERROR_NONE) {
-    SetCredentials(credentials, -1);
+    SetCredentials(credentials);
     pkcs11_token_ = pkcs11_token_factory_->New(
         username_, homedirs_->GetChapsTokenDir(username_),
         brillo::SecureBlob());
@@ -199,10 +199,6 @@ base::Value UserSession::GetStatus() const {
       } else {
         keyset_dict.SetBoolKey("ok", false);
       }
-      // TODO(wad) Replace key_index use with key_label() use once
-      //           legacy keydata is populated.
-      if (!mount_->IsEphemeral() && key_index == key_index_)
-        keyset_dict.SetBoolKey("current", true);
       keyset_dict.SetIntKey("index", key_index);
       keysets.Append(std::move(keyset_dict));
     }
@@ -251,12 +247,10 @@ const brillo::SecureBlob& UserSession::GetWebAuthnSecretHash() const {
   return webauthn_secret_hash_;
 }
 
-bool UserSession::SetCredentials(const Credentials& credentials,
-                                 int key_index) {
+bool UserSession::SetCredentials(const Credentials& credentials) {
   obfuscated_username_ = credentials.GetObfuscatedUsername(system_salt_);
   username_ = credentials.username();
   key_data_ = credentials.key_data();
-  key_index_ = key_index;
 
   credential_verifier_.reset(new ScryptVerifier());
   return credential_verifier_->Set(credentials.passkey());

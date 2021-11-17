@@ -33,7 +33,7 @@ class MockKeysetManagement : public KeysetManagement {
   MOCK_METHOD(bool, AreCredentialsValid, (const Credentials&), (override));
   MOCK_METHOD(bool,
               Migrate,
-              (const VaultKeyset&, const Credentials&, int*),
+              (const VaultKeyset&, const Credentials&),
               (override));
   MOCK_METHOD(std::unique_ptr<VaultKeyset>,
               LoadUnwrappedKeyset,

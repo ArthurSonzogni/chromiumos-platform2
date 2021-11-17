@@ -651,9 +651,7 @@ std::unique_ptr<VaultKeyset> KeysetManagement::LoadVaultKeysetForUser(
 }
 
 bool KeysetManagement::Migrate(const VaultKeyset& old_vk,
-                               const Credentials& newcreds,
-                               int* migrated_key_index) {
-  CHECK(migrated_key_index);
+                               const Credentials& newcreds) {
   int key_index = old_vk.GetLegacyIndex();
   if (key_index == -1) {
     LOG(ERROR) << "Attempted migration of key-less mount.";
@@ -689,8 +687,6 @@ bool KeysetManagement::Migrate(const VaultKeyset& old_vk,
     LOG(INFO) << "Removing keyset " << index << " due to migration.";
     ForceRemoveKeyset(obfuscated_username, index);  // Failure is ok.
   }
-
-  *migrated_key_index = key_index;
 
   return true;
 }

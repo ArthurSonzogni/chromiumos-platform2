@@ -47,10 +47,6 @@ const cryptohome::KeyData& PasswordAuthFactor::GetKeyData() {
   return key_data_;
 }
 
-const int PasswordAuthFactor::GetKeyIndex() {
-  return vault_keyset_->GetLegacyIndex();
-}
-
 const FileSystemKeyset PasswordAuthFactor::GetFileSystemKeyset() {
   return FileSystemKeyset(*vault_keyset_);
 }

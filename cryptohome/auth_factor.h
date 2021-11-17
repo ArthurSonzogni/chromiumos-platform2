@@ -41,10 +41,6 @@ class AuthFactor {
   // Returns the key data with which this AuthFactor is authenticated with.
   virtual const cryptohome::KeyData& GetKeyData() = 0;
 
-  // This function returns the current index of the keyset that was used to
-  // Authenticate. This is useful during verification of challenge credentials.
-  virtual const int GetKeyIndex() = 0;
-
   // Get VaultKeyset.
   virtual VaultKeyset vault_keyset() = 0;
 

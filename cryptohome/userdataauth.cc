@@ -1943,18 +1943,15 @@ MountError UserDataAuth::AttemptUserMount(
 }
 
 bool UserDataAuth::MigrateVaultKeyset(const Credentials& existing_credentials,
-                                      const Credentials& new_credentials,
-                                      int* key_index) {
+                                      const Credentials& new_credentials) {
   DCHECK_EQ(existing_credentials.username(), new_credentials.username());
-  DCHECK(key_index);
   std::unique_ptr<VaultKeyset> vault_keyset =
       keyset_management_->GetValidKeyset(existing_credentials, nullptr);
   if (vault_keyset == nullptr) {
     return false;
   }
 
-  if (!keyset_management_->Migrate(*vault_keyset.get(), new_credentials,
-                                   key_index)) {
+  if (!keyset_management_->Migrate(*vault_keyset.get(), new_credentials)) {
     return false;
   }
   return true;
@@ -2554,15 +2551,14 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::MigrateKey(
 
   Credentials old_credentials(
       account_id, SecureBlob(request.authorization_request().key().secret()));
-  int key_index = -1;
-  if (!MigrateVaultKeyset(old_credentials, credentials, &key_index)) {
+  if (!MigrateVaultKeyset(old_credentials, credentials)) {
     ResetDictionaryAttackMitigation();
     return user_data_auth::CRYPTOHOME_ERROR_MIGRATE_KEY_FAILED;
   }
 
   scoped_refptr<UserSession> session = GetUserSession(account_id);
   if (session.get()) {
-    if (!session->SetCredentials(credentials, key_index)) {
+    if (!session->SetCredentials(credentials)) {
       LOG(WARNING) << "Failed to set new creds";
     }
   }

@@ -842,8 +842,7 @@ class UserDataAuth {
   //  authenticating against the existing credentials, and calls Migrate() with
   //  this vault keyset and the given new credentials.
   bool MigrateVaultKeyset(const Credentials& existing_credentials,
-                          const Credentials& new_credentials,
-                          int* key_index);
+                          const Credentials& new_credentials);
 
   // ================ Fingerprint Auth Related Methods ==================
 

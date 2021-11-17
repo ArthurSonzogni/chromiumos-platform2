@@ -87,10 +87,6 @@ class AuthSession final {
   // credentials during unlock.
   std::unique_ptr<CredentialVerifier> TakeCredentialVerifier();
 
-  // This function returns the current index of the keyset that was used to
-  // Authenticate. This is useful during verification of challenge credentials.
-  int key_index() { return auth_factor_->GetKeyIndex(); }
-
   // This functions returns if user existed when the AuthSession was started.
   bool user_exists() { return user_exists_; }
 
