@@ -11,9 +11,12 @@
 #include <string>
 #include <utility>
 
+#include <base/files/file_path.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/synchronization/lock.h>
 #include <base/timer/timer.h>
 
+#include "rmad/utils/json_store.h"
 #include "rmad/utils/vpd_utils.h"
 
 namespace rmad {
@@ -67,6 +70,19 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   base::RepeatingTimer status_timer_;
   mutable base::Lock lock_;
 };
+
+namespace fake {
+
+class FakeProvisionDeviceStateHandler : public ProvisionDeviceStateHandler {
+ public:
+  FakeProvisionDeviceStateHandler(scoped_refptr<JsonStore> json_store,
+                                  const base::FilePath& working_dir_path);
+
+ protected:
+  ~FakeProvisionDeviceStateHandler() override = default;
+};
+
+}  // namespace fake
 
 }  // namespace rmad
 

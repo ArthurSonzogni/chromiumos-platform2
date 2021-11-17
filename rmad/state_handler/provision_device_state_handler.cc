@@ -13,7 +13,9 @@
 #include <string>
 
 #include <base/bind.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/notreached.h>
 #include <base/synchronization/lock.h>
 #include <base/task/task_traits.h>
@@ -21,6 +23,8 @@
 #include <base/strings/string_number_conversions.h>
 
 #include "rmad/constants.h"
+#include "rmad/utils/fake_vpd_utils.h"
+#include "rmad/utils/json_store.h"
 #include "rmad/utils/vpd_utils_impl.h"
 
 namespace {
@@ -39,6 +43,15 @@ constexpr double kProgressFlushOutVpdCache = kProgressComplete;
 }  // namespace
 
 namespace rmad {
+
+namespace fake {
+
+FakeProvisionDeviceStateHandler::FakeProvisionDeviceStateHandler(
+    scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
+    : ProvisionDeviceStateHandler(
+          json_store, std::make_unique<fake::FakeVpdUtils>(working_dir_path)) {}
+
+}  // namespace fake
 
 ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     scoped_refptr<JsonStore> json_store)
