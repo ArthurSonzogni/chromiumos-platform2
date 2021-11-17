@@ -10,6 +10,11 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 
+#include <brillo/dbus/dbus_connection.h>
+#include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/dbus/dbus_proxy_util.h>
+#include <brillo/errors/error.h>
+
 namespace feature {
 
 PlatformFeatures::PlatformFeatures(scoped_refptr<dbus::Bus> bus,
@@ -46,8 +51,8 @@ bool PlatformFeatures::IsEnabledBlocking(const Feature& feature) {
                         chromeos::kChromeFeaturesServiceIsFeatureEnabledMethod);
   dbus::MessageWriter writer(&call);
   writer.AppendString(feature.name);
-  std::unique_ptr<dbus::Response> response =
-      proxy_->CallMethodAndBlock(&call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  std::unique_ptr<dbus::Response> response = brillo::dbus_utils::CallDBusMethod(
+      bus_, proxy_, &call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!response) {
     return feature.default_state == FEATURE_ENABLED_BY_DEFAULT;
   }
