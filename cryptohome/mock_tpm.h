@@ -36,14 +36,14 @@ class MockTpm : public Tpm {
               (TpmKeyHandle,
                const brillo::SecureBlob&,
                const brillo::SecureBlob&,
-               (const std::map<uint32_t, std::string>&),
+               (const std::map<uint32_t, brillo::Blob>&),
                brillo::SecureBlob*),
               (override));
   MOCK_METHOD(hwsec::error::TPMErrorBase,
               SealToPcrWithAuthorization,
               (const brillo::SecureBlob&,
                const brillo::SecureBlob&,
-               (const std::map<uint32_t, std::string>&),
+               (const std::map<uint32_t, brillo::Blob>&),
                brillo::SecureBlob*),
               (override));
   MOCK_METHOD(hwsec::error::TPMErrorBase,
@@ -55,7 +55,7 @@ class MockTpm : public Tpm {
               (base::Optional<TpmKeyHandle>,
                const brillo::SecureBlob&,
                const brillo::SecureBlob&,
-               (const std::map<uint32_t, std::string>&),
+               (const std::map<uint32_t, brillo::Blob>&),
                brillo::SecureBlob*),
               (override));
   MOCK_METHOD(hwsec::error::TPMErrorBase,
@@ -120,7 +120,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD(bool, ReadPCR, (uint32_t, brillo::Blob*), (override));
   MOCK_METHOD(bool,
               CreatePCRBoundKey,
-              ((const std::map<uint32_t, std::string>&),
+              ((const std::map<uint32_t, brillo::Blob>&),
                AsymmetricKeyUsage,
                brillo::SecureBlob*,
                brillo::SecureBlob*,
@@ -128,7 +128,7 @@ class MockTpm : public Tpm {
               (override));
   MOCK_METHOD(bool,
               VerifyPCRBoundKey,
-              ((const std::map<uint32_t, std::string>&),
+              ((const std::map<uint32_t, brillo::Blob>&),
                const brillo::SecureBlob&,
                const brillo::SecureBlob&),
               (override));
@@ -198,7 +198,7 @@ class MockTpm : public Tpm {
               (bool*),
               (override));
   MOCK_METHOD0(DelegateCanResetDACounter, bool());
-  MOCK_METHOD((std::map<uint32_t, std::string>),
+  MOCK_METHOD((std::map<uint32_t, brillo::Blob>),
               GetPcrMap,
               (const std::string&, bool),
               (const override));
@@ -220,7 +220,7 @@ class MockTpm : public Tpm {
       TpmKeyHandle _key,
       const brillo::SecureBlob& plaintext,
       const brillo::SecureBlob& key,
-      const std::map<uint32_t, std::string>& pcr_map,
+      const std::map<uint32_t, brillo::Blob>& pcr_map,
       brillo::SecureBlob* ciphertext) {
     return Xor(_key, plaintext, key, ciphertext);
   }

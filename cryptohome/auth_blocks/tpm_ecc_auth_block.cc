@@ -224,9 +224,9 @@ CryptoError TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
     return CryptoError::CE_OTHER_CRYPTO;
   }
 
-  std::map<uint32_t, std::string> default_pcr_map =
+  std::map<uint32_t, brillo::Blob> default_pcr_map =
       tpm_->GetPcrMap(obfuscated_username, false /* use_extended_pcr */);
-  std::map<uint32_t, std::string> extended_pcr_map =
+  std::map<uint32_t, brillo::Blob> extended_pcr_map =
       tpm_->GetPcrMap(obfuscated_username, true /* use_extended_pcr */);
 
   brillo::SecureBlob sealed_hvkkm;
@@ -470,7 +470,8 @@ CryptoError TpmEccAuthBlock::DeriveHvkkm(bool locked_to_single_user,
 
   ReportTimerStop(kGenerateEccAuthValueTimer);
 
-  std::map<uint32_t, std::string> pcr_map({{kTpmSingleUserPCR, ""}});
+  std::map<uint32_t, brillo::Blob> pcr_map(
+      {{kTpmSingleUserPCR, brillo::Blob()}});
   TPMErrorBase err = HANDLE_TPM_COMM_ERROR(tpm_->UnsealWithAuthorization(
       sealed_hvkkm_handle, sealed_hvkkm, auth_value, pcr_map, hvkkm));
   if (err != nullptr) {

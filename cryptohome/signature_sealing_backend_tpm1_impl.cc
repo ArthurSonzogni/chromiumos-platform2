@@ -1218,11 +1218,6 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     DCHECK(!pcr_values.empty());
     // Bind the secret value to the current set of PCR restrictions.
     SecureBlob pcr_bound_secret_value;
-    std::map<uint32_t, std::string> pcr_values_strings;
-    for (const auto& pcr_index_and_value : pcr_values) {
-      pcr_values_strings[pcr_index_and_value.first] =
-          BlobToString(pcr_index_and_value.second);
-    }
 
     SecureBlob auth_value;
     if (TPMErrorBase err =
@@ -1230,8 +1225,7 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
       return WrapError<TPMError>(std::move(err), "Failed to get auth value");
     }
     if (TPMErrorBase err = tpm_->SealToPcrWithAuthorization(
-            *secret_value, auth_data, pcr_values_strings,
-            &pcr_bound_secret_value)) {
+            *secret_value, auth_data, pcr_values, &pcr_bound_secret_value)) {
       return WrapError<TPMError>(
           std::move(err),
           "Error binding the secret value to PCRs and authorization data");

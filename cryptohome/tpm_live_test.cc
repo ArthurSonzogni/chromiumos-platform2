@@ -106,7 +106,7 @@ bool TpmLiveTest::SignData(const SecureBlob& pcr_bound_key,
 
 bool TpmLiveTest::EncryptAndDecryptData(
     const SecureBlob& pcr_bound_key,
-    const std::map<uint32_t, std::string>& pcr_map) {
+    const std::map<uint32_t, brillo::Blob>& pcr_map) {
   ScopedKeyHandle handle;
   if (TPMErrorBase err = tpm_->LoadWrappedKey(pcr_bound_key, &handle)) {
     LOG(ERROR) << "Error loading wrapped key: " << *err;
@@ -150,7 +150,7 @@ bool TpmLiveTest::PCRKeyTest() {
   SecureBlob creation_blob1;
   SecureBlob creation_blob2;
   SecureBlob creation_blob3;
-  std::map<uint32_t, std::string> pcr_map({{index, BlobToString(pcr_data)}});
+  std::map<uint32_t, brillo::Blob> pcr_map({{index, pcr_data}});
   // Create the keys.
   if (!tpm_->CreatePCRBoundKey(pcr_map, AsymmetricKeyUsage::kSignKey,
                                &pcr_bound_key1, &public_key_der1,
@@ -246,8 +246,8 @@ bool TpmLiveTest::MultiplePCRKeyTest() {
   SecureBlob pcr_bound_key;
   SecureBlob public_key_der;
   SecureBlob creation_blob;
-  std::map<uint32_t, std::string> pcr_map(
-      {{index1, BlobToString(pcr_data1)}, {index2, BlobToString(pcr_data2)}});
+  std::map<uint32_t, brillo::Blob> pcr_map(
+      {{index1, pcr_data1}, {index2, pcr_data2}});
   if (!tpm_->CreatePCRBoundKey(pcr_map, AsymmetricKeyUsage::kDecryptKey,
                                &pcr_bound_key, &public_key_der,
                                &creation_blob)) {
@@ -297,7 +297,7 @@ bool TpmLiveTest::MultiplePCRKeyTest() {
     return false;
   }
   // Check that the text cannot be decrypted even with the right PCR values.
-  pcr_map[index2] = BlobToString(pcr_data2);
+  pcr_map[index2] = pcr_data2;
   if (tpm_->DecryptBlob(handle.value(), ciphertext, aes_key, pcr_map,
                         &decrypted_plaintext) == nullptr) {
     LOG(ERROR) << "Decrypt succeeded without the correct PCR state.";
@@ -352,7 +352,7 @@ bool TpmLiveTest::DecryptionKeyTest() {
   }
   SecureBlob decrypted_plaintext;
   if (TPMErrorBase err = tpm_->DecryptBlob(handle.value(), ciphertext, aes_key,
-                                           std::map<uint32_t, std::string>(),
+                                           std::map<uint32_t, brillo::Blob>(),
                                            &decrypted_plaintext)) {
     LOG(ERROR) << "Error decrypting blob: " << *err;
     return false;
@@ -387,7 +387,8 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
 
   uint32_t index1 = 4;
   uint32_t index2 = 11;
-  std::map<uint32_t, std::string> pcr_map({{index1, ""}, {index2, ""}});
+  std::map<uint32_t, brillo::Blob> pcr_map(
+      {{index1, brillo::Blob()}, {index2, brillo::Blob()}});
   SecureBlob plaintext(32, 'a');
   SecureBlob pass_blob(256, 'b');
   SecureBlob ciphertext;

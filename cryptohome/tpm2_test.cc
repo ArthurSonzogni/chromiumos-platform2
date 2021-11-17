@@ -122,32 +122,30 @@ class Tpm2Test : public testing::Test {
 
 TEST_F(Tpm2Test, GetPcrMapNotExtended) {
   std::string obfuscated_username = "OBFUSCATED_USER";
-  std::map<uint32_t, std::string> result =
+  std::map<uint32_t, brillo::Blob> result =
       tpm_->GetPcrMap(obfuscated_username, /*use_extended_pcr=*/false);
 
   EXPECT_EQ(1, result.size());
-  const std::string& result_str = result[kTpmSingleUserPCR];
+  const brillo::Blob& result_blob = result[kTpmSingleUserPCR];
 
-  std::string expected_result(SHA256_DIGEST_LENGTH, 0);
-  EXPECT_EQ(expected_result, result_str);
+  brillo::Blob expected_result(SHA256_DIGEST_LENGTH, 0);
+  EXPECT_EQ(expected_result, result_blob);
 }
 
 TEST_F(Tpm2Test, GetPcrMapExtended) {
   std::string obfuscated_username = "OBFUSCATED_USER";
-  std::map<uint32_t, std::string> result =
+  std::map<uint32_t, brillo::Blob> result =
       tpm_->GetPcrMap(obfuscated_username, /*use_extended_pcr=*/true);
 
   EXPECT_EQ(1, result.size());
-  const std::string& result_str = result[kTpmSingleUserPCR];
+  const brillo::Blob& result_blob = result[kTpmSingleUserPCR];
 
   // Pre-calculated expected result.
-  unsigned char expected_result_bytes[] = {
-      0x2D, 0x5B, 0x86, 0xF2, 0xBE, 0xEE, 0xD1, 0xB7, 0x40, 0xC7, 0xCD,
-      0xE3, 0x88, 0x25, 0xA6, 0xEE, 0xE3, 0x98, 0x69, 0xA4, 0x99, 0x4D,
-      0x88, 0x09, 0x85, 0x6E, 0x0E, 0x11, 0x7A, 0x4E, 0xFD, 0x91};
-  std::string expected_result(reinterpret_cast<char*>(expected_result_bytes),
-                              sizeof(expected_result_bytes) / sizeof(uint8_t));
-  EXPECT_EQ(expected_result, result_str);
+  brillo::Blob expected_result{0x2D, 0x5B, 0x86, 0xF2, 0xBE, 0xEE, 0xD1, 0xB7,
+                               0x40, 0xC7, 0xCD, 0xE3, 0x88, 0x25, 0xA6, 0xEE,
+                               0xE3, 0x98, 0x69, 0xA4, 0x99, 0x4D, 0x88, 0x09,
+                               0x85, 0x6E, 0x0E, 0x11, 0x7A, 0x4E, 0xFD, 0x91};
+  EXPECT_EQ(expected_result, result_blob);
 }
 
 TEST_F(Tpm2Test, TakeOwnership) {
@@ -625,7 +623,7 @@ TEST_F(Tpm2Test, SealToPCR0Success) {
   SecureBlob value("value");
   SecureBlob sealed_value;
   std::string policy_digest("digest");
-  std::map<uint32_t, std::string> pcr_map;
+  std::map<uint32_t, brillo::Blob> pcr_map;
   EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValues(_, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(policy_digest), Return(TPM_RC_SUCCESS)));
   std::string data_to_seal;
@@ -738,7 +736,7 @@ TEST_F(Tpm2Test, SignFailure) {
 
 TEST_F(Tpm2Test, CreatePCRBoundKeySuccess) {
   uint32_t index = 2;
-  std::string pcr_value("pcr_value");
+  brillo::Blob pcr_value = brillo::BlobFromString("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
   uint32_t modulus = 2048;
@@ -747,36 +745,37 @@ TEST_F(Tpm2Test, CreatePCRBoundKeySuccess) {
               CreateRSAKeyPair(_, modulus, exponent, _, _, true, _, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_TRUE(tpm_->CreatePCRBoundKey(
-      std::map<uint32_t, std::string>({{index, pcr_value}}),
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}),
       AsymmetricKeyUsage::kDecryptKey, &key_blob, nullptr, &creation_blob));
 }
 
 TEST_F(Tpm2Test, CreatePCRBoundKeyPolicyFailure) {
   uint32_t index = 2;
-  std::string pcr_value("pcr_value");
+  brillo::Blob pcr_value = brillo::BlobFromString("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
   EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValues(_, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(tpm_->CreatePCRBoundKey(
-      std::map<uint32_t, std::string>({{index, pcr_value}}),
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}),
       AsymmetricKeyUsage::kDecryptKey, &key_blob, nullptr, &creation_blob));
 }
 
 TEST_F(Tpm2Test, CreatePCRBoundKeyFailure) {
   uint32_t index = 2;
-  std::string pcr_value("pcr_value");
+  brillo::Blob pcr_value = brillo::BlobFromString("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
   EXPECT_CALL(mock_tpm_utility_, CreateRSAKeyPair(_, _, _, _, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(tpm_->CreatePCRBoundKey(
-      std::map<uint32_t, std::string>({{index, pcr_value}}),
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}),
       AsymmetricKeyUsage::kDecryptKey, &key_blob, nullptr, &creation_blob));
 }
 
 TEST_F(Tpm2Test, CreateMultiplePCRBoundKeySuccess) {
-  std::map<uint32_t, std::string> pcr_map({{2, ""}, {5, ""}});
+  std::map<uint32_t, brillo::Blob> pcr_map(
+      {{2, brillo::Blob()}, {5, brillo::Blob()}});
   SecureBlob key_blob;
   SecureBlob creation_blob;
   uint32_t modulus = 2048;
@@ -819,26 +818,26 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeySuccess) {
   EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(public_area), Return(TPM_RC_SUCCESS)));
   ASSERT_TRUE(tpm_->VerifyPCRBoundKey(
-      std::map<uint32_t, std::string>({{index, BlobToString(pcr_value)}}),
-      key_blob, creation_blob));
-  EXPECT_EQ(pcr_map[index], BlobToString(pcr_value));
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
+      creation_blob));
+  EXPECT_EQ(BlobFromString(pcr_map[index]), pcr_value);
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationBlob) {
   uint32_t index = 2;
-  std::string pcr_value("pcr_value");
+  brillo::Blob pcr_value = brillo::BlobFromString("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(Return(false));
   EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
-      std::map<uint32_t, std::string>({{index, pcr_value}}), key_blob,
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
       creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationDataCount) {
   uint32_t index = 2;
-  std::string pcr_value("pcr_value");
+  brillo::Blob pcr_value = brillo::BlobFromString("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
 
@@ -847,13 +846,13 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationDataCount) {
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
   EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
-      std::map<uint32_t, std::string>({{index, pcr_value}}), key_blob,
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
       creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCRBank) {
   uint32_t index = 2;
-  std::string pcr_value("pcr_value");
+  brillo::Blob pcr_value = brillo::BlobFromString("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
 
@@ -865,13 +864,13 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCRBank) {
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
   EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
-      std::map<uint32_t, std::string>({{index, pcr_value}}), key_blob,
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
       creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCR) {
   uint32_t index = 2;
-  std::string pcr_value("pcr_value");
+  brillo::Blob pcr_value = brillo::BlobFromString("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
 
@@ -884,13 +883,13 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCR) {
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
   EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
-      std::map<uint32_t, std::string>({{index, pcr_value}}), key_blob,
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
       creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCRDigest) {
   uint32_t index = 2;
-  std::string pcr_value("pcr_value");
+  brillo::Blob pcr_value = brillo::BlobFromString("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
 
@@ -905,7 +904,7 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCRDigest) {
   EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
   EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
-      std::map<uint32_t, std::string>({{index, pcr_value}}), key_blob,
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
       creation_blob));
 }
 
@@ -929,8 +928,8 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyImportedKey) {
   EXPECT_CALL(mock_tpm_utility_, CertifyCreation(_, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
-      std::map<uint32_t, std::string>({{index, BlobToString(pcr_value)}}),
-      key_blob, creation_blob));
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
+      creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadSession) {
@@ -956,8 +955,8 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadSession) {
   EXPECT_CALL(mock_trial_session_, StartUnboundSession(true, true))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
-      std::map<uint32_t, std::string>({{index, BlobToString(pcr_value)}}),
-      key_blob, creation_blob));
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
+      creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadPolicy) {
@@ -983,8 +982,8 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadPolicy) {
   EXPECT_CALL(mock_trial_session_, PolicyPCR(_))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
-      std::map<uint32_t, std::string>({{index, BlobToString(pcr_value)}}),
-      key_blob, creation_blob));
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
+      creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadDigest) {
@@ -1007,8 +1006,8 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadDigest) {
   EXPECT_CALL(mock_trial_session_, GetDigest(_))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
-      std::map<uint32_t, std::string>({{index, BlobToString(pcr_value)}}),
-      key_blob, creation_blob));
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
+      creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadPolicyDigest) {
@@ -1038,8 +1037,8 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadPolicyDigest) {
   EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
-      std::map<uint32_t, std::string>({{index, BlobToString(pcr_value)}}),
-      key_blob, creation_blob));
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
+      creation_blob));
 }
 
 TEST_F(Tpm2Test, VerifyPCRBoundKeyBadAttributes) {
@@ -1071,8 +1070,8 @@ TEST_F(Tpm2Test, VerifyPCRBoundKeyBadAttributes) {
   EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
-      std::map<uint32_t, std::string>({{index, BlobToString(pcr_value)}}),
-      key_blob, creation_blob));
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
+      creation_blob));
 }
 
 TEST_F(Tpm2Test, ExtendPCRSuccess) {
@@ -1293,7 +1292,7 @@ TEST_F(Tpm2Test, DecryptBlobSuccess) {
   SecureBlob plaintext;
   EXPECT_EQ(nullptr,
             tpm_->DecryptBlob(handle, ciphertext, key,
-                              std::map<uint32_t, std::string>(), &plaintext));
+                              std::map<uint32_t, brillo::Blob>(), &plaintext));
 }
 
 TEST_F(Tpm2Test, DecryptBlobBadAesKey) {
@@ -1302,7 +1301,7 @@ TEST_F(Tpm2Test, DecryptBlobBadAesKey) {
   SecureBlob ciphertext(32, 'b');
   SecureBlob plaintext;
   TPMErrorBase err = tpm_->DecryptBlob(
-      handle, ciphertext, key, std::map<uint32_t, std::string>(), &plaintext);
+      handle, ciphertext, key, std::map<uint32_t, brillo::Blob>(), &plaintext);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
@@ -1313,7 +1312,7 @@ TEST_F(Tpm2Test, DecryptBlobBadCiphertext) {
   SecureBlob ciphertext(16, 'b');
   SecureBlob plaintext;
   TPMErrorBase err = tpm_->DecryptBlob(
-      handle, ciphertext, key, std::map<uint32_t, std::string>(), &plaintext);
+      handle, ciphertext, key, std::map<uint32_t, brillo::Blob>(), &plaintext);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
@@ -1326,7 +1325,7 @@ TEST_F(Tpm2Test, DecryptBlobFailure) {
       .WillOnce(Return(TPM_RC_FAILURE));
   SecureBlob plaintext;
   TPMErrorBase err = tpm_->DecryptBlob(
-      handle, ciphertext, key, std::map<uint32_t, std::string>(), &plaintext);
+      handle, ciphertext, key, std::map<uint32_t, brillo::Blob>(), &plaintext);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
@@ -1421,7 +1420,7 @@ TEST_F(Tpm2Test, SealToPcrWithAuthorizationSuccess) {
   SecureBlob sealed_data;
   EXPECT_EQ(nullptr, tpm_->SealToPcrWithAuthorization(
                          plaintext, auth_value,
-                         std::map<uint32_t, std::string>(), &sealed_data));
+                         std::map<uint32_t, brillo::Blob>(), &sealed_data));
 }
 
 TEST_F(Tpm2Test, UnsealWithAuthorizationSuccess) {
@@ -1432,7 +1431,7 @@ TEST_F(Tpm2Test, UnsealWithAuthorizationSuccess) {
   SecureBlob plaintext;
   EXPECT_EQ(nullptr, tpm_->UnsealWithAuthorization(
                          base::nullopt, sealed_data, auth_value,
-                         std::map<uint32_t, std::string>(), &plaintext));
+                         std::map<uint32_t, brillo::Blob>(), &plaintext));
 }
 
 TEST_F(Tpm2Test, UnsealWithAuthorizationWithPreloadSuccess) {
@@ -1444,7 +1443,7 @@ TEST_F(Tpm2Test, UnsealWithAuthorizationWithPreloadSuccess) {
   SecureBlob plaintext;
   TPMErrorBase err = tpm_->UnsealWithAuthorization(
       preload_handle, sealed_data, auth_value,
-      std::map<uint32_t, std::string>(), &plaintext);
+      std::map<uint32_t, brillo::Blob>(), &plaintext);
   EXPECT_EQ(nullptr, err);
 }
 

@@ -327,7 +327,7 @@ void TpmImpl::GetStatus(base::Optional<TpmKeyHandle> key_handle,
     // there was an error)
     if (TPMErrorBase err =
             DecryptBlob(key_handle.value(), data_out, key,
-                        std::map<uint32_t, std::string>(), &data)) {
+                        std::map<uint32_t, brillo::Blob>(), &data)) {
       LOG(ERROR) << __func__ << ": Failed to decrypt blob: " << *err;
       return;
     }
@@ -521,7 +521,7 @@ TPMErrorBase TpmImpl::DecryptBlob(
     TpmKeyHandle key_handle,
     const SecureBlob& ciphertext,
     const SecureBlob& key,
-    const std::map<uint32_t, std::string>& pcr_map,
+    const std::map<uint32_t, brillo::Blob>& pcr_map,
     SecureBlob* plaintext) {
   SecureBlob local_data;
   if (!UnobscureRsaMessage(ciphertext, key, &local_data)) {
@@ -603,7 +603,7 @@ bool TpmImpl::SetAuthValue(TSS_HCONTEXT context_handle,
 TPMErrorBase TpmImpl::SealToPcrWithAuthorization(
     const SecureBlob& plaintext,
     const SecureBlob& auth_value,
-    const std::map<uint32_t, std::string>& pcr_map,
+    const std::map<uint32_t, brillo::Blob>& pcr_map,
     SecureBlob* sealed_data) {
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
@@ -632,7 +632,7 @@ TPMErrorBase TpmImpl::SealToPcrWithAuthorization(
   // Process the data from pcr_map.
   for (const auto& map_pair : pcr_map) {
     uint32_t pcr_index = map_pair.first;
-    const std::string& digest = map_pair.second;
+    const brillo::Blob& digest = map_pair.second;
     if (digest.empty()) {
       UINT32 pcr_len = 0;
       ScopedTssMemory pcr_value(context_handle);
@@ -644,9 +644,8 @@ TPMErrorBase TpmImpl::SealToPcrWithAuthorization(
       Tspi_PcrComposite_SetPcrValue(pcrs_handle, pcr_index, pcr_len,
                                     pcr_value.value());
     } else {
-      Tspi_PcrComposite_SetPcrValue(
-          pcrs_handle, pcr_index, digest.size(),
-          reinterpret_cast<BYTE*>(const_cast<char*>(digest.data())));
+      Tspi_PcrComposite_SetPcrValue(pcrs_handle, pcr_index, digest.size(),
+                                    const_cast<BYTE*>(digest.data()));
     }
   }
 
@@ -691,7 +690,7 @@ TPMErrorBase TpmImpl::UnsealWithAuthorization(
     base::Optional<TpmKeyHandle> preload_handle,
     const SecureBlob& sealed_data,
     const SecureBlob& auth_value,
-    const std::map<uint32_t, std::string>& pcr_map,
+    const std::map<uint32_t, brillo::Blob>& pcr_map,
     SecureBlob* plaintext) {
   if (preload_handle) {
     LOG(DFATAL) << "TPM1.2 doesn't support preload_handle.";
@@ -1438,7 +1437,7 @@ bool TpmImpl::Sign(const SecureBlob& key_blob,
   return true;
 }
 
-bool TpmImpl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
+bool TpmImpl::CreatePCRBoundKey(const std::map<uint32_t, brillo::Blob>& pcr_map,
                                 AsymmetricKeyUsage key_type,
                                 brillo::SecureBlob* key_blob,
                                 brillo::SecureBlob* public_key_der,
@@ -1470,7 +1469,7 @@ bool TpmImpl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
 
   for (const auto& map_pair : pcr_map) {
     uint32_t pcr_index = map_pair.first;
-    Blob pcr_value(BlobFromString(map_pair.second));
+    Blob pcr_value = map_pair.second;
     if (pcr_value.empty()) {
       if (!ReadPCR(pcr_index, &pcr_value)) {
         LOG(ERROR) << __func__ << ": Failed to read PCR.";
@@ -1547,7 +1546,7 @@ bool TpmImpl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
   return true;
 }
 
-bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
+bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, brillo::Blob>& pcr_map,
                                 const brillo::SecureBlob& key_blob,
                                 const brillo::SecureBlob& creation_blob) {
   ScopedTssContext context_handle;
@@ -1592,10 +1591,10 @@ bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
   const Blob pcr_bitmap(pcr_selection.pcrSelect,
                         pcr_selection.pcrSelect + pcr_selection.sizeOfSelect);
   free(pcr_selection.pcrSelect);
-  std::string concatenated_pcr_values;
+  brillo::Blob concatenated_pcr_values;
   for (const auto& map_pair : pcr_map) {
     uint32_t pcr_index = map_pair.first;
-    const std::string pcr_value = map_pair.second;
+    const brillo::Blob pcr_value = map_pair.second;
     size_t offset = pcr_index / 8;
     unsigned char mask = 1 << (pcr_index % 8);
     if (pcr_bitmap.size() <= offset || (pcr_bitmap[offset] & mask) == 0) {
@@ -1603,7 +1602,8 @@ bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
       return false;
     }
 
-    concatenated_pcr_values += pcr_value;
+    concatenated_pcr_values.insert(concatenated_pcr_values.end(),
+                                   pcr_value.begin(), pcr_value.end());
   }
 
   // Compute the PCR composite hash we're expecting. Basically, we want to do
@@ -1613,9 +1613,9 @@ bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
   Blob pcr_value_length_blob(sizeof(UINT32));
   Trspi_LoadBlob_UINT32(&trspi_offset, pcr_value_length,
                         pcr_value_length_blob.data());
-  const SecureBlob pcr_hash = Sha1ToSecureBlob(CombineBlobs(
-      {Blob(pcr_selection_blob.begin(), pcr_selection_blob.end()),
-       pcr_value_length_blob, BlobFromString(concatenated_pcr_values)}));
+  const SecureBlob pcr_hash = Sha1ToSecureBlob(
+      CombineBlobs({Blob(pcr_selection_blob.begin(), pcr_selection_blob.end()),
+                    pcr_value_length_blob, concatenated_pcr_values}));
 
   // Check that the PCR value matches the key creation PCR value.
   SecureBlob pcr_at_creation;
@@ -2162,16 +2162,16 @@ bool TpmImpl::GetDelegate(brillo::Blob* blob,
   return !blob->empty() && !secret->empty();
 }
 
-std::map<uint32_t, std::string> TpmImpl::GetPcrMap(
+std::map<uint32_t, brillo::Blob> TpmImpl::GetPcrMap(
     const std::string& obfuscated_username, bool use_extended_pcr) const {
-  std::map<uint32_t, std::string> pcr_map;
+  std::map<uint32_t, brillo::Blob> pcr_map;
   if (use_extended_pcr) {
-    SecureBlob starting_value(SHA_DIGEST_LENGTH, 0);
-    SecureBlob digest_value = Sha1(SecureBlob::Combine(
-        starting_value, Sha1(SecureBlob(obfuscated_username))));
-    pcr_map[kTpmSingleUserPCR] = digest_value.to_string();
+    brillo::Blob starting_value(SHA_DIGEST_LENGTH, 0);
+    brillo::Blob digest_value = Sha1(brillo::CombineBlobs(
+        {starting_value, Sha1(brillo::BlobFromString(obfuscated_username))}));
+    pcr_map[kTpmSingleUserPCR] = digest_value;
   } else {
-    pcr_map[kTpmSingleUserPCR] = std::string(SHA_DIGEST_LENGTH, 0);
+    pcr_map[kTpmSingleUserPCR] = brillo::Blob(SHA_DIGEST_LENGTH, 0);
   }
 
   return pcr_map;

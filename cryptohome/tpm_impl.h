@@ -48,12 +48,12 @@ class TpmImpl : public Tpm {
       TpmKeyHandle key_handle,
       const brillo::SecureBlob& ciphertext,
       const brillo::SecureBlob& key,
-      const std::map<uint32_t, std::string>& pcr_map,
+      const std::map<uint32_t, brillo::Blob>& pcr_map,
       brillo::SecureBlob* plaintext) override;
   hwsec::error::TPMErrorBase SealToPcrWithAuthorization(
       const brillo::SecureBlob& plaintext,
       const brillo::SecureBlob& auth_value,
-      const std::map<uint32_t, std::string>& pcr_map,
+      const std::map<uint32_t, brillo::Blob>& pcr_map,
       brillo::SecureBlob* sealed_data) override;
   hwsec::error::TPMErrorBase PreloadSealedData(
       const brillo::SecureBlob& sealed_data,
@@ -62,7 +62,7 @@ class TpmImpl : public Tpm {
       base::Optional<TpmKeyHandle> preload_handle,
       const brillo::SecureBlob& sealed_data,
       const brillo::SecureBlob& auth_value,
-      const std::map<uint32_t, std::string>& pcr_map,
+      const std::map<uint32_t, brillo::Blob>& pcr_map,
       brillo::SecureBlob* plaintext) override;
   hwsec::error::TPMErrorBase GetPublicKeyHash(
       TpmKeyHandle key_handle, brillo::SecureBlob* hash) override;
@@ -97,12 +97,12 @@ class TpmImpl : public Tpm {
             const brillo::SecureBlob& input,
             uint32_t bound_pcr_index,
             brillo::SecureBlob* signature) override;
-  bool CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
+  bool CreatePCRBoundKey(const std::map<uint32_t, brillo::Blob>& pcr_map,
                          AsymmetricKeyUsage key_type,
                          brillo::SecureBlob* key_blob,
                          brillo::SecureBlob* public_key_der,
                          brillo::SecureBlob* creation_blob) override;
-  bool VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
+  bool VerifyPCRBoundKey(const std::map<uint32_t, brillo::Blob>& pcr_map,
                          const brillo::SecureBlob& key_blob,
                          const brillo::SecureBlob& creation_blob) override;
   bool ExtendPCR(uint32_t pcr_index, const brillo::Blob& extension) override;
@@ -146,7 +146,7 @@ class TpmImpl : public Tpm {
   hwsec::error::TPMErrorBase IsDelegateBoundToPcr(bool* result) override;
   bool DelegateCanResetDACounter() override;
   // Returns the map with expected PCR values for the user.
-  std::map<uint32_t, std::string> GetPcrMap(
+  std::map<uint32_t, brillo::Blob> GetPcrMap(
       const std::string& obfuscated_username,
       bool use_extended_pcr) const override;
 

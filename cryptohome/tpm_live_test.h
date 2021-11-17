@@ -37,7 +37,7 @@ class TpmLiveTest {
 
   // Helper method to try to encrypt and decrypt some data.
   bool EncryptAndDecryptData(const brillo::SecureBlob& pcr_bound_key,
-                             const std::map<uint32_t, std::string>& pcr_map);
+                             const std::map<uint32_t, brillo::Blob>& pcr_map);
 
   // This test checks if PCRs and PCR bound keys work correctly.
   bool PCRKeyTest();

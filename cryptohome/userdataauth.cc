@@ -1220,23 +1220,10 @@ void UserDataAuth::GetChallengeCredentialsPcrRestrictions(
     const std::string& obfuscated_username,
     std::vector<std::map<uint32_t, brillo::Blob>>* pcr_restrictions) {
   AssertOnMountThread();
-  {
-    std::map<uint32_t, brillo::Blob> pcrs_1;
-    for (const auto& pcr :
-         tpm_->GetPcrMap(obfuscated_username, false /* use_extended_pcr */)) {
-      pcrs_1[pcr.first] = brillo::BlobFromString(pcr.second);
-    }
-    pcr_restrictions->push_back(pcrs_1);
-  }
-
-  {
-    std::map<uint32_t, brillo::Blob> pcrs_2;
-    for (const auto& pcr :
-         tpm_->GetPcrMap(obfuscated_username, true /* use_extended_pcr */)) {
-      pcrs_2[pcr.first] = brillo::BlobFromString(pcr.second);
-    }
-    pcr_restrictions->push_back(pcrs_2);
-  }
+  pcr_restrictions->push_back(
+      tpm_->GetPcrMap(obfuscated_username, /*use_extended_pcr=*/false));
+  pcr_restrictions->push_back(
+      tpm_->GetPcrMap(obfuscated_username, /*use_extended_pcr=*/true));
 }
 
 bool UserDataAuth::RemoveUserSession(const std::string& username) {

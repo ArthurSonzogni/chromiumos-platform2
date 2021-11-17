@@ -158,6 +158,14 @@ TPMErrorBase DeriveTpmEccPointFromSeed(const SecureBlob& seed,
   return nullptr;
 }
 
+std::map<uint32_t, std::string> ToStrPcrMap(
+    const std::map<uint32_t, brillo::Blob>& pcr_map) {
+  std::map<uint32_t, std::string> str_pcr_map;
+  for (const auto& [index, value] : pcr_map) {
+    str_pcr_map[index] = brillo::BlobToString(value);
+  }
+  return str_pcr_map;
+}
 }  // namespace
 
 // Keep it with sync to UMA enum list
@@ -673,11 +681,12 @@ bool Tpm2Impl::Sign(const SecureBlob& key_blob,
   return true;
 }
 
-bool Tpm2Impl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
-                                 AsymmetricKeyUsage key_type,
-                                 SecureBlob* key_blob,
-                                 SecureBlob* public_key_der,
-                                 SecureBlob* creation_blob) {
+bool Tpm2Impl::CreatePCRBoundKey(
+    const std::map<uint32_t, brillo::Blob>& pcr_map,
+    AsymmetricKeyUsage key_type,
+    SecureBlob* key_blob,
+    SecureBlob* public_key_der,
+    SecureBlob* creation_blob) {
   CHECK(key_blob) << "No key blob argument provided.";
   CHECK(creation_blob) << "No creation blob argument provided.";
   TrunksClientContext* trunks;
@@ -685,9 +694,10 @@ bool Tpm2Impl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
     return false;
   }
   std::string policy_digest;
+  std::map<uint32_t, std::string> str_pcr_map = ToStrPcrMap(pcr_map);
   if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
           trunks->tpm_utility->GetPolicyDigestForPcrValues(
-              pcr_map, false /* use_auth_value */, &policy_digest)))) {
+              str_pcr_map, false /* use_auth_value */, &policy_digest)))) {
     LOG(ERROR) << "Error getting policy digest: " << *err;
     return false;
   }
@@ -729,9 +739,10 @@ bool Tpm2Impl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
   return true;
 }
 
-bool Tpm2Impl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
-                                 const SecureBlob& key_blob,
-                                 const SecureBlob& creation_blob) {
+bool Tpm2Impl::VerifyPCRBoundKey(
+    const std::map<uint32_t, brillo::Blob>& pcr_map,
+    const SecureBlob& key_blob,
+    const SecureBlob& creation_blob) {
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
     return false;
@@ -762,18 +773,19 @@ bool Tpm2Impl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
     LOG(ERROR) << "Incorrect creation PCR specified.";
     return false;
   }
-  std::string concatenated_pcr_values;
+  brillo::Blob concatenated_pcr_values;
   for (const auto& map_pair : pcr_map) {
     uint32_t pcr_index = map_pair.first;
-    const std::string pcr_value = map_pair.second;
+    const brillo::Blob& pcr_value = map_pair.second;
     if (pcr_index >= 8 * PCR_SELECT_MIN ||
         (pcr_selections[pcr_index / 8] & (1 << (pcr_index % 8))) == 0) {
       LOG(ERROR) << "Incorrect creation PCR specified.";
       return false;
     }
-    concatenated_pcr_values += pcr_value;
+    concatenated_pcr_values.insert(concatenated_pcr_values.end(),
+                                   pcr_value.begin(), pcr_value.end());
   }
-  Blob expected_pcr_digest = Sha256(BlobFromString(concatenated_pcr_values));
+  Blob expected_pcr_digest = Sha256(concatenated_pcr_values);
   if (creation_data.creation_data.pcr_digest.size !=
       expected_pcr_digest.size()) {
     LOG(ERROR) << "Incorrect PCR digest size.";
@@ -804,8 +816,9 @@ bool Tpm2Impl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
     LOG(ERROR) << "Error starting a trial session: " << *err;
     return false;
   }
+  std::map<uint32_t, std::string> str_pcr_map = ToStrPcrMap(pcr_map);
   if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
-          CreateError<TPM2Error>(trial_session->PolicyPCR(pcr_map)))) {
+          CreateError<TPM2Error>(trial_session->PolicyPCR(str_pcr_map)))) {
     LOG(ERROR) << "Error restricting trial policy to pcr value: " << *err;
     return false;
   }
@@ -997,7 +1010,7 @@ TPMErrorBase Tpm2Impl::DecryptBlob(
     TpmKeyHandle key_handle,
     const SecureBlob& ciphertext,
     const SecureBlob& key,
-    const std::map<uint32_t, std::string>& pcr_map,
+    const std::map<uint32_t, brillo::Blob>& pcr_map,
     SecureBlob* plaintext) {
   CHECK(plaintext);
   TrunksClientContext* trunks;
@@ -1014,6 +1027,7 @@ TPMErrorBase Tpm2Impl::DecryptBlob(
   std::unique_ptr<trunks::PolicySession> policy_session;
   std::unique_ptr<trunks::AuthorizationDelegate> default_delegate;
   if (!pcr_map.empty()) {
+    std::map<uint32_t, std::string> str_pcr_map = ToStrPcrMap(pcr_map);
     policy_session = trunks->factory->GetPolicySession();
     if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
             policy_session->StartUnboundSession(true, true)))) {
@@ -1022,7 +1036,7 @@ TPMErrorBase Tpm2Impl::DecryptBlob(
                                  TPMRetryAction::kNoRetry);
     }
     if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
-            CreateError<TPM2Error>(policy_session->PolicyPCR(pcr_map)))) {
+            CreateError<TPM2Error>(policy_session->PolicyPCR(str_pcr_map)))) {
       return WrapError<TPMError>(std::move(err), "Error creating PCR policy",
                                  TPMRetryAction::kNoRetry);
     }
@@ -1046,7 +1060,7 @@ TPMErrorBase Tpm2Impl::DecryptBlob(
 TPMErrorBase Tpm2Impl::SealToPcrWithAuthorization(
     const SecureBlob& plaintext,
     const SecureBlob& auth_value,
-    const std::map<uint32_t, std::string>& pcr_map,
+    const std::map<uint32_t, brillo::Blob>& pcr_map,
     SecureBlob* sealed_data) {
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
@@ -1054,11 +1068,13 @@ TPMErrorBase Tpm2Impl::SealToPcrWithAuthorization(
                                  TPMRetryAction::kNoRetry);
   }
 
+  std::map<uint32_t, std::string> str_pcr_map = ToStrPcrMap(pcr_map);
+
   // Get the policy digest for PCR.
   std::string policy_digest;
   if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
           trunks->tpm_utility->GetPolicyDigestForPcrValues(
-              pcr_map, true /* use_auth_value */, &policy_digest)))) {
+              str_pcr_map, true /* use_auth_value */, &policy_digest)))) {
     return WrapError<TPMError>(std::move(err), "Error getting policy digest");
   }
 
@@ -1094,7 +1110,7 @@ TPMErrorBase Tpm2Impl::UnsealWithAuthorization(
     base::Optional<TpmKeyHandle> preload_handle,
     const SecureBlob& sealed_data,
     const SecureBlob& auth_value,
-    const std::map<uint32_t, std::string>& pcr_map,
+    const std::map<uint32_t, brillo::Blob>& pcr_map,
     SecureBlob* plaintext) {
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
@@ -1114,8 +1130,10 @@ TPMErrorBase Tpm2Impl::UnsealWithAuthorization(
     return WrapError<TPMError>(std::move(err),
                                "Error setting session to use auth_value");
   }
+
+  std::map<uint32_t, std::string> str_pcr_map = ToStrPcrMap(pcr_map);
   if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
-          CreateError<TPM2Error>(policy_session->PolicyPCR(pcr_map)))) {
+          CreateError<TPM2Error>(policy_session->PolicyPCR(str_pcr_map)))) {
     return WrapError<TPMError>(std::move(err), "Error in PolicyPCR");
   }
   policy_session->SetEntityAuthorizationValue(auth_value.to_string());
@@ -1211,7 +1229,7 @@ void Tpm2Impl::GetStatus(base::Optional<TpmKeyHandle> key,
     // there was an error)
     if (TPMErrorBase err =
             DecryptBlob(key.value(), data_out, aes_key,
-                        std::map<uint32_t, std::string>(), &data)) {
+                        std::map<uint32_t, brillo::Blob>(), &data)) {
       LOG(ERROR) << __func__ << ": Failed to decrypt blob: " << *err;
       return;
     }
@@ -1582,16 +1600,16 @@ bool Tpm2Impl::DelegateCanResetDACounter() {
   return true;
 }
 
-std::map<uint32_t, std::string> Tpm2Impl::GetPcrMap(
+std::map<uint32_t, brillo::Blob> Tpm2Impl::GetPcrMap(
     const std::string& obfuscated_username, bool use_extended_pcr) const {
-  std::map<uint32_t, std::string> pcr_map;
+  std::map<uint32_t, brillo::Blob> pcr_map;
   if (use_extended_pcr) {
-    brillo::SecureBlob starting_value(SHA256_DIGEST_LENGTH, 0);
-    brillo::SecureBlob digest_value = Sha256(brillo::SecureBlob::Combine(
-        starting_value, Sha256(brillo::SecureBlob(obfuscated_username))));
-    pcr_map[kTpmSingleUserPCR] = digest_value.to_string();
+    brillo::Blob starting_value(SHA256_DIGEST_LENGTH, 0);
+    brillo::Blob digest_value = Sha256(brillo::CombineBlobs(
+        {starting_value, Sha256(brillo::BlobFromString(obfuscated_username))}));
+    pcr_map[kTpmSingleUserPCR] = digest_value;
   } else {
-    pcr_map[kTpmSingleUserPCR] = std::string(SHA256_DIGEST_LENGTH, 0);
+    pcr_map[kTpmSingleUserPCR] = brillo::Blob(SHA256_DIGEST_LENGTH, 0);
   }
 
   return pcr_map;

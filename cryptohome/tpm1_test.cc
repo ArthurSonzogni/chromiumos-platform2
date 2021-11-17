@@ -60,31 +60,29 @@ class TpmImplTest : public ::hwsec::Tpm1HwsecTest {
 
 TEST_F(TpmImplTest, GetPcrMapNotExtended) {
   std::string obfuscated_username = "OBFUSCATED_USER";
-  std::map<uint32_t, std::string> result =
+  std::map<uint32_t, brillo::Blob> result =
       GetTpm()->GetPcrMap(obfuscated_username, /*use_extended_pcr=*/false);
 
   EXPECT_EQ(1, result.size());
-  const std::string& result_str = result[kTpmSingleUserPCR];
+  const brillo::Blob& result_blob = result[kTpmSingleUserPCR];
 
-  std::string expected_result(SHA_DIGEST_LENGTH, 0);
-  EXPECT_EQ(expected_result, result_str);
+  brillo::Blob expected_result(SHA_DIGEST_LENGTH, 0);
+  EXPECT_EQ(expected_result, result_blob);
 }
 
 TEST_F(TpmImplTest, GetPcrMapExtended) {
   std::string obfuscated_username = "OBFUSCATED_USER";
-  std::map<uint32_t, std::string> result =
+  std::map<uint32_t, brillo::Blob> result =
       GetTpm()->GetPcrMap(obfuscated_username, /*use_extended_pcr=*/true);
 
   EXPECT_EQ(1, result.size());
-  const std::string& result_str = result[kTpmSingleUserPCR];
+  const brillo::Blob& result_blob = result[kTpmSingleUserPCR];
 
   // Pre-calculated expected result.
-  unsigned char expected_result_bytes[] = {
-      0x94, 0xce, 0x1b, 0x97, 0x40, 0xfd, 0x5b, 0x1e, 0x8c, 0x64,
-      0xb0, 0xd5, 0x38, 0xac, 0x88, 0xb5, 0xb4, 0x52, 0x4f, 0x67};
-  std::string expected_result(reinterpret_cast<char*>(expected_result_bytes),
-                              std::size(expected_result_bytes));
-  EXPECT_EQ(expected_result, result_str);
+  brillo::Blob expected_result{0x94, 0xce, 0x1b, 0x97, 0x40, 0xfd, 0x5b,
+                               0x1e, 0x8c, 0x64, 0xb0, 0xd5, 0x38, 0xac,
+                               0x88, 0xb5, 0xb4, 0x52, 0x4f, 0x67};
+  EXPECT_EQ(expected_result, result_blob);
 }
 
 TEST_F(TpmImplTest, TakeOwnership) {

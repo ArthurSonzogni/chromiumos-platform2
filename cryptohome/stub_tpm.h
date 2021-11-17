@@ -37,7 +37,7 @@ class StubTpm : public Tpm {
       TpmKeyHandle key_handle,
       const SecureBlob& ciphertext,
       const SecureBlob& key,
-      const std::map<uint32_t, std::string>& pcr_map,
+      const std::map<uint32_t, brillo::Blob>& pcr_map,
       SecureBlob* plaintext) override {
     return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
         "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
@@ -60,7 +60,7 @@ class StubTpm : public Tpm {
   hwsec::error::TPMErrorBase SealToPcrWithAuthorization(
       const SecureBlob& plaintext,
       const SecureBlob& auth_value,
-      const std::map<uint32_t, std::string>& pcr_map,
+      const std::map<uint32_t, brillo::Blob>& pcr_map,
       SecureBlob* sealed_data) override {
     return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
         "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
@@ -74,7 +74,7 @@ class StubTpm : public Tpm {
       base::Optional<TpmKeyHandle> preload_handle,
       const SecureBlob& sealed_data,
       const SecureBlob& auth_value,
-      const std::map<uint32_t, std::string>& pcr_map,
+      const std::map<uint32_t, brillo::Blob>& pcr_map,
       SecureBlob* plaintext) override {
     return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
         "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
@@ -132,14 +132,14 @@ class StubTpm : public Tpm {
             SecureBlob* signature) override {
     return false;
   }
-  bool CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
+  bool CreatePCRBoundKey(const std::map<uint32_t, brillo::Blob>& pcr_map,
                          AsymmetricKeyUsage key_type,
                          SecureBlob* key_blob,
                          SecureBlob* public_key_der,
                          SecureBlob* creation_blob) override {
     return false;
   }
-  bool VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
+  bool VerifyPCRBoundKey(const std::map<uint32_t, brillo::Blob>& pcr_map,
                          const SecureBlob& key_blob,
                          const SecureBlob& creation_blob) override {
     return false;
@@ -223,7 +223,7 @@ class StubTpm : public Tpm {
                    bool* has_reset_lock_permissions) override {
     return false;
   }
-  std::map<uint32_t, std::string> GetPcrMap(
+  std::map<uint32_t, brillo::Blob> GetPcrMap(
       const std::string& obfuscated_username,
       bool use_extended_pcr) const override {
     return {};

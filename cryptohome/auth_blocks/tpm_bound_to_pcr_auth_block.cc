@@ -77,9 +77,9 @@ CryptoError TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   if (!DeriveSecretsScrypt(vault_key, salt, {&pass_blob, &vkk_iv}))
     return CryptoError::CE_OTHER_CRYPTO;
 
-  std::map<uint32_t, std::string> default_pcr_map =
+  std::map<uint32_t, brillo::Blob> default_pcr_map =
       tpm_->GetPcrMap(obfuscated_username, false /* use_extended_pcr */);
-  std::map<uint32_t, std::string> extended_pcr_map =
+  std::map<uint32_t, brillo::Blob> extended_pcr_map =
       tpm_->GetPcrMap(obfuscated_username, true /* use_extended_pcr */);
 
   // Encrypt the VKK using the TPM and the user's passkey. The output is two
@@ -283,7 +283,8 @@ CryptoError TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
     brillo::SecureBlob auth_value;
     err = tpm_->GetAuthValue(cryptohome_key, pass_blob, &auth_value);
     if (err == nullptr) {
-      std::map<uint32_t, std::string> pcr_map({{kTpmSingleUserPCR, ""}});
+      std::map<uint32_t, brillo::Blob> pcr_map(
+          {{kTpmSingleUserPCR, brillo::Blob()}});
       err = tpm_->UnsealWithAuthorization(handle, tpm_key, auth_value, pcr_map,
                                           vkk_key);
       if (err == nullptr) {
