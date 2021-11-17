@@ -958,10 +958,8 @@ TEST_F(KeysetManagementTest, ReSaveKeysetNoReSave) {
 
   // TEST
 
-  MountError code;
-  std::unique_ptr<VaultKeyset> vk_load =
-      keyset_management_->LoadUnwrappedKeyset(users_[0].credentials, &code);
-  EXPECT_EQ(MOUNT_ERROR_NONE, code);
+  EXPECT_TRUE(keyset_management_->ReSaveKeysetIfNeeded(users_[0].credentials,
+                                                       vk0.get()));
 
   // VERIFY
 
@@ -981,20 +979,19 @@ TEST_F(KeysetManagementTest, ReSaveKeysetChapsRepopulation) {
 
   KeysetSetUpWithKeyData(DefaultKeyData());
 
-  std::unique_ptr<VaultKeyset> vk0 =
-      keyset_management_->LoadVaultKeysetForUser(users_[0].obfuscated, 0);
+  std::unique_ptr<VaultKeyset> vk0 = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
   ASSERT_NE(vk0.get(), nullptr);
+
   vk0->ClearWrappedChapsKey();
   EXPECT_FALSE(vk0->HasWrappedChapsKey());
   ASSERT_TRUE(vk0->Save(vk0->GetSourceFile()));
 
   // TEST
 
-  MountError code;
-  std::unique_ptr<VaultKeyset> vk_load =
-      keyset_management_->LoadUnwrappedKeyset(users_[0].credentials, &code);
-  EXPECT_EQ(MOUNT_ERROR_NONE, code);
-  EXPECT_TRUE(vk_load->HasWrappedChapsKey());
+  EXPECT_TRUE(keyset_management_->ReSaveKeysetIfNeeded(users_[0].credentials,
+                                                       vk0.get()));
+  EXPECT_TRUE(vk0->HasWrappedChapsKey());
 
   // VERIFY
 
@@ -1003,9 +1000,9 @@ TEST_F(KeysetManagementTest, ReSaveKeysetChapsRepopulation) {
   ASSERT_NE(vk0_new.get(), nullptr);
   EXPECT_TRUE(vk0_new->HasWrappedChapsKey());
 
-  ASSERT_EQ(vk0_new->GetChapsKey().size(), vk_load->GetChapsKey().size());
+  ASSERT_EQ(vk0_new->GetChapsKey().size(), vk0->GetChapsKey().size());
   ASSERT_EQ(0, brillo::SecureMemcmp(vk0_new->GetChapsKey().data(),
-                                    vk_load->GetChapsKey().data(),
+                                    vk0->GetChapsKey().data(),
                                     vk0_new->GetChapsKey().size()));
 }
 

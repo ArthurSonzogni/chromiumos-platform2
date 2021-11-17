@@ -23,10 +23,12 @@ MountError PasswordAuthFactor::AuthenticateAuthFactor(
     // keyset_management tries to fetch that persistent credential.
     MountError error = MOUNT_ERROR_NONE;
     // TODO(dlunev): fix conditional error when we switch to StatusOr.
-    vault_keyset_ = keyset_management_->LoadUnwrappedKeyset(credential, &error);
+    vault_keyset_ = keyset_management_->GetValidKeyset(credential, &error);
     if (!vault_keyset_) {
       return error == MOUNT_ERROR_NONE ? MOUNT_ERROR_FATAL : error;
     }
+    // Add the missing fields in the keyset, if any, and resave.
+    keyset_management_->ReSaveKeysetIfNeeded(credential, vault_keyset_.get());
   }
 
   // Set the credential verifier for this credential.

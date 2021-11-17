@@ -36,10 +36,6 @@ class MockKeysetManagement : public KeysetManagement {
               (const VaultKeyset&, const Credentials&),
               (override));
   MOCK_METHOD(std::unique_ptr<VaultKeyset>,
-              LoadUnwrappedKeyset,
-              (const Credentials&, MountError*),
-              (override));
-  MOCK_METHOD(std::unique_ptr<VaultKeyset>,
               GetValidKeyset,
               (const Credentials&, MountError*),
               (override));
@@ -88,6 +84,10 @@ class MockKeysetManagement : public KeysetManagement {
               CleanupPerIndexTimestampFiles,
               (const std::string&),
               (override));
+  MOCK_METHOD(bool,
+              ReSaveKeysetIfNeeded,
+              (const Credentials& credentials, VaultKeyset* keyset),
+              (const, override));
 };
 
 }  // namespace cryptohome

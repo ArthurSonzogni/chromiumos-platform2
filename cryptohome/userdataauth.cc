@@ -41,6 +41,7 @@
 #include "cryptohome/key_challenge_service_factory_impl.h"
 #include "cryptohome/pkcs11/real_pkcs11_token_factory.h"
 #include "cryptohome/stateful_recovery.h"
+#include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/user_session.h"
@@ -1884,6 +1885,29 @@ void UserDataAuth::ContinueMountWithCredentials(
   InitializePkcs11(user_session.get());
 }
 
+std::unique_ptr<VaultKeyset> UserDataAuth::LoadVaultKeyset(
+    const Credentials& credentials, bool is_new_user, MountError* error) {
+  PopulateError(error, MountError::MOUNT_ERROR_NONE);
+
+  if (is_new_user) {
+    if (!keyset_management_->AddInitialKeyset(credentials)) {
+      LOG(ERROR) << "Error adding initial keyset.";
+      PopulateError(error, MountError::MOUNT_ERROR_KEY_FAILURE);
+      return nullptr;
+    }
+  }
+  std::unique_ptr<VaultKeyset> vk =
+      keyset_management_->GetValidKeyset(credentials, error);
+  if (!vk) {
+    return nullptr;
+  }
+  // Reencrypt keyset with a TPM backed key if it is not the case, fill in
+  // missing fields in the keyset, and resave.
+  keyset_management_->ReSaveKeysetIfNeeded(credentials, vk.get());
+
+  return vk;
+}
+
 MountError UserDataAuth::AttemptUserMount(
     const Credentials& credentials,
     const UserDataAuth::MountArgs& mount_args,
@@ -1893,7 +1917,8 @@ MountError UserDataAuth::AttemptUserMount(
   }
 
   if (mount_args.is_ephemeral) {
-    return user_session->MountEphemeral(credentials);
+    user_session->SetCredentials(credentials);
+    return user_session->MountEphemeral(credentials.username());
   }
 
   MountError error = MOUNT_ERROR_NONE;
@@ -1917,8 +1942,24 @@ MountError UserDataAuth::AttemptUserMount(
     created = true;
   }
 
-  return user_session->MountVault(credentials,
-                                  MountArgsToVaultOptions(mount_args), created);
+  std::unique_ptr<VaultKeyset> vk =
+      LoadVaultKeyset(credentials, created, &error);
+  if (error != MOUNT_ERROR_NONE) {
+    return error;
+  }
+  if (vk == nullptr) {
+    return MOUNT_ERROR_FATAL;
+  }
+
+  error = user_session->MountVault(credentials.username(),
+                                   FileSystemKeyset(*vk.get()),
+                                   MountArgsToVaultOptions(mount_args));
+  if (error == MOUNT_ERROR_NONE) {
+    // Store the credentials in the cache to use on session unlock.
+    user_session->SetCredentials(credentials);
+  }
+
+  return error;
 }
 
 MountError UserDataAuth::AttemptUserMount(
@@ -1930,11 +1971,25 @@ MountError UserDataAuth::AttemptUserMount(
   }
   // Mount ephemerally using authsession
   if (mount_args.is_ephemeral) {
-    return user_session->MountEphemeral(auth_session);
+    // Store the credentials in the cache to use on session unlock.
+    user_session->SetCredentials(auth_session);
+    return user_session->MountEphemeral(auth_session->username());
   }
 
-  return user_session->MountVault(auth_session,
-                                  MountArgsToVaultOptions(mount_args));
+  // Cannot proceed with mount if the AuthSession is not authenticated yet.
+  if (auth_session->GetStatus() != AuthStatus::kAuthStatusAuthenticated) {
+    return MOUNT_ERROR_FATAL;
+  }
+
+  MountError error = user_session->MountVault(
+      auth_session->username(), auth_session->file_system_keyset(),
+      MountArgsToVaultOptions(mount_args));
+
+  if (error == MOUNT_ERROR_NONE) {
+    // Store the credentials in the cache to use on session unlock.
+    user_session->SetCredentials(auth_session);
+  }
+  return error;
 }
 
 bool UserDataAuth::MigrateVaultKeyset(const Credentials& existing_credentials,

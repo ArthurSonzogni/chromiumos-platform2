@@ -10,7 +10,6 @@
 #include "cryptohome/cryptohome_common.h"
 
 using brillo::SecureBlob;
-using brillo::cryptohome::home::SanitizeUserNameWithSalt;
 
 namespace cryptohome {
 

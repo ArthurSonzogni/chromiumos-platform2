@@ -330,9 +330,6 @@ class UserDataAuthTestTasked : public UserDataAuthTestBase {
 
   void CreatePkcs11TokenInSession(scoped_refptr<NiceMock<MockMount>> mount,
                                   scoped_refptr<UserSession> session) {
-    auto vk = std::make_unique<VaultKeyset>();
-    EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
-        .WillOnce(Return(ByMove(std::move(vk))));
     EXPECT_CALL(*mount, MountCryptohome(_, _, _))
         .WillOnce(Return(MOUNT_ERROR_NONE));
 
@@ -340,9 +337,13 @@ class UserDataAuthTestTasked : public UserDataAuthTestBase {
     EXPECT_CALL(pkcs11_token_factory_, New(_, _, _))
         .WillOnce(Return(ByMove(std::move(token))));
 
-    ASSERT_EQ(MOUNT_ERROR_NONE,
-              session->MountVault(Credentials(), CryptohomeVault::Options(),
-                                  /*is_pristine*/ false));
+    auto vk = std::make_unique<VaultKeyset>();
+    vk->Initialize(&platform_, &crypto_);
+    vk->CreateRandom();
+    ASSERT_EQ(
+        MOUNT_ERROR_NONE,
+        session->MountVault(session->username_, FileSystemKeyset(*vk.get()),
+                            CryptohomeVault::Options()));
   }
 
   void InitializePkcs11TokenInSession(scoped_refptr<NiceMock<MockMount>> mount,
@@ -2116,7 +2117,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   EXPECT_CALL(*mount, Init(_)).WillOnce(Return(true));
   EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
   auto vk = std::make_unique<VaultKeyset>();
-  EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_CALL(*mount, MountCryptohome(_, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -2219,7 +2220,7 @@ TEST_F(UserDataAuthTest,
   EXPECT_CALL(*mount, Init(_)).WillOnce(Return(true));
   EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
   auto vk = std::make_unique<VaultKeyset>();
-  EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_CALL(*mount, MountCryptohome(_, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -2743,8 +2744,10 @@ TEST_F(UserDataAuthExTest, MountInvalidArgs) {
 
 TEST_F(UserDataAuthExTest, MountPublicWithExistingMounts) {
   constexpr char kUser[] = "chromeos-user";
+  constexpr char kUsername[] = "foo@gmail.com";
+
   PrepareArguments();
-  SetupMount("foo@gmail.com");
+  SetupMount(kUsername);
 
   mount_req_->mutable_account()->set_account_id(kUser);
   mount_req_->set_public_mount(true);
@@ -2772,17 +2775,17 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
 
   mount_req_->mutable_account()->set_account_id(kUser);
   mount_req_->set_public_mount(true);
+
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(testing::InvokeWithoutArgs([&]() {
     SetupMount(kUser);
     EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
     auto vk = std::make_unique<VaultKeyset>();
-    EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
+    EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
         .WillOnce(Return(ByMove(std::move(vk))));
     EXPECT_CALL(*mount_, MountCryptohome(_, _, _))
         .WillOnce(Return(MOUNT_ERROR_NONE));
     return true;
   }));
-
   bool called = false;
   {
     TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
@@ -2801,6 +2804,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
 
 TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
   constexpr char kUser[] = "chromeos-user";
+
   PrepareArguments();
 
   mount_req_->mutable_account()->set_account_id(kUser);
@@ -2813,7 +2817,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
   EXPECT_CALL(homedirs_, Create(kUser)).WillOnce(Return(true));
   EXPECT_CALL(keyset_management_, AddInitialKeyset(_)).WillOnce(Return(true));
   auto vk = std::make_unique<VaultKeyset>();
-  EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_CALL(*mount_, MountCryptohome(_, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));

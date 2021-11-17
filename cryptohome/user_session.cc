@@ -24,6 +24,7 @@
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"
 #include "cryptohome/pkcs11/pkcs11_token_factory.h"
+#include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/mount.h"
 
 using brillo::cryptohome::home::kGuestUserName;
@@ -52,73 +53,19 @@ UserSession::UserSession(
       mount_(mount) {}
 
 MountError UserSession::MountVault(
-    const Credentials& credentials,
-    const CryptohomeVault::Options& vault_options,
-    bool is_pristine) {
-  const std::string obfuscated_username =
-      credentials.GetObfuscatedUsername(system_salt_);
-  if (is_pristine) {
-    if (!keyset_management_->AddInitialKeyset(credentials)) {
-      LOG(ERROR) << "Error adding intial keyset.";
-      return MOUNT_ERROR_KEY_FAILURE;
-    }
-    user_activity_timestamp_manager_->UpdateTimestamp(obfuscated_username,
-                                                      base::TimeDelta());
-  }
-
-  // Verifies user's credentials and retrieves the user's file system encryption
-  // keys.
+    const std::string username,
+    const FileSystemKeyset& fs_keyset,
+    const CryptohomeVault::Options& vault_options) {
   MountError error = MOUNT_ERROR_NONE;
-  std::unique_ptr<VaultKeyset> vk =
-      keyset_management_->LoadUnwrappedKeyset(credentials, &error);
-  if (error != MOUNT_ERROR_NONE) {
-    return error;
-  }
-  if (!vk) {
-    return MOUNT_ERROR_FATAL;
-  }
-
-  const std::string username = credentials.username();
-  FileSystemKeyset fs_keyset(*vk);
 
   error = mount_->MountCryptohome(username, fs_keyset, vault_options);
   if (error != MOUNT_ERROR_NONE) {
     return error;
   }
-  // Set credentials for verification using AuthSession.
-  SetCredentials(credentials);
-  user_activity_timestamp_manager_->UpdateTimestamp(obfuscated_username,
-                                                    base::TimeDelta());
 
-  pkcs11_token_ = pkcs11_token_factory_->New(
-      username, homedirs_->GetChapsTokenDir(username), fs_keyset.chaps_key());
-
-  PrepareWebAuthnSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
-
-  return MOUNT_ERROR_NONE;
-}
-
-MountError UserSession::MountVault(
-    AuthSession* auth_session, const CryptohomeVault::Options& vault_options) {
-  // Cannot proceed with mount if the AuthSession is not authenticated yet.
-  if (auth_session->GetStatus() != AuthStatus::kAuthStatusAuthenticated) {
-    return MOUNT_ERROR_FATAL;
-  }
-
-  const std::string username = auth_session->username();
-  const FileSystemKeyset fs_keyset = auth_session->file_system_keyset();
-
-  MountError error;
-  error = mount_->MountCryptohome(username, fs_keyset, vault_options);
-  if (error != MOUNT_ERROR_NONE) {
-    return error;
-  }
-
-  // Set credentials for verification using AuthSession.
-  SetCredentials(auth_session);
+  obfuscated_username_ = SanitizeUserName(username);
   user_activity_timestamp_manager_->UpdateTimestamp(obfuscated_username_,
                                                     base::TimeDelta());
-
   pkcs11_token_ = pkcs11_token_factory_->New(
       username, homedirs_->GetChapsTokenDir(username), fs_keyset.chaps_key());
 
@@ -127,35 +74,19 @@ MountError UserSession::MountVault(
   return MOUNT_ERROR_NONE;
 }
 
-MountError UserSession::MountEphemeral(const Credentials& credentials) {
-  if (homedirs_->IsOrWillBeOwner(credentials.username())) {
+MountError UserSession::MountEphemeral(const std::string username) {
+  if (homedirs_->IsOrWillBeOwner(username)) {
     return MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER;
   }
 
-  MountError code = mount_->MountEphemeralCryptohome(credentials.username());
-  if (code == MOUNT_ERROR_NONE) {
-    SetCredentials(credentials);
+  MountError error = mount_->MountEphemeralCryptohome(username);
+  if (error == MOUNT_ERROR_NONE) {
     pkcs11_token_ = pkcs11_token_factory_->New(
         username_, homedirs_->GetChapsTokenDir(username_),
         brillo::SecureBlob());
   }
 
-  return code;
-}
-
-MountError UserSession::MountEphemeral(AuthSession* auth_session) {
-  if (homedirs_->IsOrWillBeOwner(auth_session->username())) {
-    return MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER;
-  }
-
-  MountError code = mount_->MountEphemeralCryptohome(auth_session->username());
-  if (code == MOUNT_ERROR_NONE) {
-    SetCredentials(auth_session);
-    pkcs11_token_ = pkcs11_token_factory_->New(
-        username_, homedirs_->GetChapsTokenDir(username_),
-        brillo::SecureBlob());
-  }
-  return code;
+  return error;
 }
 
 MountError UserSession::MountGuest() {
@@ -266,6 +197,8 @@ bool UserSession::VerifyUser(const std::string& obfuscated_username) const {
   return obfuscated_username_ == obfuscated_username;
 }
 
+// TODO(betuls): Move credential verification to AuthBlocks once AuthBlock
+// refactor is completed.
 bool UserSession::VerifyCredentials(const Credentials& credentials) const {
   ReportTimerStart(kSessionUnlockTimer);
 

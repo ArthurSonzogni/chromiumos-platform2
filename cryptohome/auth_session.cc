@@ -47,9 +47,10 @@ AuthSession::AuthSession(
                base::BindOnce(&AuthSession::AuthSessionTimedOut,
                               base::Unretained(this)));
   user_exists_ = keyset_management_->UserExists(SanitizeUserName(username_));
-  if (user_exists_)
+  if (user_exists_) {
     keyset_management_->GetVaultKeysetLabelsAndData(SanitizeUserName(username_),
                                                     &key_label_data_);
+  }
 }
 
 AuthSession::~AuthSession() = default;
@@ -108,6 +109,7 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
 user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(
     const cryptohome::AuthorizationRequest& authorization_request) {
   MountError code;
+
   auto credentials = GetCredentials(authorization_request, &code);
   if (!credentials) {
     return MountErrorToCryptohomeError(code);

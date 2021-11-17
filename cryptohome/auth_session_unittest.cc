@@ -247,8 +247,10 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
   authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
 
   auto vk = std::make_unique<VaultKeyset>();
-  EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk))));
+  EXPECT_CALL(keyset_management_, ReSaveKeysetIfNeeded(_, _))
+      .WillOnce(Return(true));
 
   // Verify.
   EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,

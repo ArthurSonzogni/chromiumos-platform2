@@ -19,6 +19,7 @@
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"
 #include "cryptohome/pkcs11/pkcs11_token_factory.h"
+#include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount.h"
 
@@ -48,23 +49,14 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   scoped_refptr<Mount> GetMount() { return mount_; }
   const scoped_refptr<Mount> GetMount() const { return mount_; }
 
-  // Mounts disk backed vault for the user of supplied credentials, if the
-  // credentials are valid.
-  MountError MountVault(const Credentials& credentials,
-                        const CryptohomeVault::Options& vault_options,
-                        bool is_pristine);
-
-  // Mounts disk backed vault for the user of supplied auth_session.
-  MountError MountVault(AuthSession* auth_session,
+  // Mounts disk backed vault for the given username with the supplied file
+  // system keyset.
+  MountError MountVault(const std::string username,
+                        const FileSystemKeyset& fs_keyset,
                         const CryptohomeVault::Options& vault_options);
 
-  // Creates and mounts a ramdisk backed ephemeral session for the user
-  // of supplied credentials;
-  MountError MountEphemeral(const Credentials& credentials);
-
-  // Creates and mounts a ramdisk backed ephemeral session for the user
-  // of supplied credentials using auth session.
-  MountError MountEphemeral(AuthSession* auth_session);
+  // Creates and mounts a ramdisk backed ephemeral session for the given user.
+  MountError MountEphemeral(const std::string username);
 
   // Creates and mounts a ramdisk backed ephemeral session for an anonymous
   // user.
@@ -93,7 +85,6 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   bool SetCredentials(const Credentials& credentials);
 
   // Sets credentials current session can be re-authenticated with.
-  // Returns false in case anything went wrong in setting up new re-auth state.
   void SetCredentials(AuthSession* auth_session);
 
   // Checks that the session belongs to the obfuscated_user.
@@ -137,6 +128,8 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
 
   scoped_refptr<cryptohome::Mount> mount_;
   std::unique_ptr<Pkcs11Token> pkcs11_token_;
+
+  friend class UserDataAuthTestTasked;
 };
 
 }  // namespace cryptohome

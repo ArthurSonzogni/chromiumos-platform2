@@ -300,7 +300,6 @@ bool KeysetManagement::AddInitialKeyset(const Credentials& credentials) {
     LOG(ERROR) << "Failed to encrypt and write keyset for the new user.";
     return false;
   }
-
   return true;
 }
 
@@ -435,27 +434,6 @@ bool KeysetManagement::ReSaveKeysetIfNeeded(const Credentials& credentials,
   }
 
   return true;
-}
-
-std::unique_ptr<VaultKeyset> KeysetManagement::LoadUnwrappedKeyset(
-    const Credentials& credentials, MountError* error) {
-  if (error) {
-    *error = MOUNT_ERROR_NONE;
-  }
-
-  std::unique_ptr<VaultKeyset> vk = GetValidKeyset(credentials, error);
-
-  if (!vk) {
-    LOG(INFO) << "Could not find keyset matching credentials for user: "
-              << credentials.username();
-    return nullptr;
-  }
-
-  // TODO(dlunev): we shall start checking whether re-save succeeded. We are not
-  // adding the check during the refactor to preserve behaviour.
-  ReSaveKeysetIfNeeded(credentials, vk.get());
-
-  return vk;
 }
 
 CryptohomeErrorCode KeysetManagement::AddKeyset(

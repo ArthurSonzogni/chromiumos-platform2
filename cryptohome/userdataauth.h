@@ -691,7 +691,12 @@ class UserDataAuth {
   // thread.
   void CreateMountThreadDBus();
 
+  std::unique_ptr<VaultKeyset> LoadVaultKeyset(const Credentials& credentials,
+                                               bool is_new_user,
+                                               MountError* error);
+
   // =============== Mount Related Utilities ===============
+
   // Performs a single attempt to Mount a non-annonimous user.
   MountError AttemptUserMount(const Credentials& credentials,
                               const MountArgs& mount_args,

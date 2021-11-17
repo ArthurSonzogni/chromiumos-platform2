@@ -47,9 +47,13 @@ TEST_F(PasswordAuthFactorTest, PersistentAuthenticateAuthFactorTest_Success) {
   // Setup
   auto vk = std::make_unique<VaultKeyset>();
   Credentials creds(kFakeUsername, brillo::SecureBlob(kFakePassword));
-  EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
+
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(MOUNT_ERROR_NONE),
                       Return(ByMove(std::move(vk)))));
+  EXPECT_CALL(keyset_management_, ReSaveKeysetIfNeeded(_, _))
+      .WillOnce(Return(true));
+
   std::unique_ptr<AuthFactor> pass_auth_factor =
       std::make_unique<PasswordAuthFactor>(&keyset_management_);
 
@@ -67,7 +71,7 @@ TEST_F(PasswordAuthFactorTest, PersistentAuthenticateAuthFactorTest_Success) {
 TEST_F(PasswordAuthFactorTest, PersistentAuthenticateAuthFactorTest_Fail) {
   // Setup
   Credentials creds(kFakeUsername, brillo::SecureBlob(kFakePassword));
-  EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(MOUNT_ERROR_FATAL), Return(ByMove(nullptr))));
   std::unique_ptr<AuthFactor> pass_auth_factor =
@@ -85,8 +89,9 @@ TEST_F(PasswordAuthFactorTest, EphemeralAuthenticateAuthFactorTest) {
   Credentials creds(kFakeUsername, brillo::SecureBlob(kFakePassword));
   std::unique_ptr<AuthFactor> pass_auth_factor =
       std::make_unique<PasswordAuthFactor>(&keyset_management_);
-  EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _)).Times(0);
 
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _)).Times(0);
+  EXPECT_CALL(keyset_management_, ReSaveKeysetIfNeeded(_, _)).Times(0);
   // Test
   EXPECT_THAT(
       pass_auth_factor->AuthenticateAuthFactor(creds, true /*ephemeral user*/),

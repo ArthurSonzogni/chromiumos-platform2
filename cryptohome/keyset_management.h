@@ -82,11 +82,6 @@ class KeysetManagement {
   std::unique_ptr<VaultKeyset> LoadVaultKeysetForUser(
       const std::string& obfuscated_user, int index) const;
 
-  // Looks for a keyset which matches the credentals and returns it decrypted.
-  // TODO(dlunev): replace MountError with CryptohomeErrorCode.
-  virtual std::unique_ptr<VaultKeyset> LoadUnwrappedKeyset(
-      const Credentials& credentials, MountError* error);
-
   // Checks if the directory containing user keys exists.
   virtual bool UserExists(const std::string& obfuscated_username);
 

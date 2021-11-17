@@ -23,6 +23,7 @@
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/keyset_management.h"
+#include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
@@ -81,6 +82,9 @@ class UserSessionTest : public ::testing::Test {
     AddUser(kUser0, kUserPassword0);
 
     PrepareDirectoryStructure();
+
+    homedirs_->Create(kUser0);
+    keyset_management_->AddInitialKeyset(users_[0].credentials);
 
     mount_ = new NiceMock<MockMount>();
 
@@ -177,30 +181,27 @@ TEST_F(UserSessionTest, MountVaultOk) {
       .force_type = EncryptedContainerType::kEcryptfs,
   };
 
+  // Set the credentials with |users_[0].credentials| so that
+  // |obfuscated_username_| is explicitly set during the Unmount test.
+  session_->SetCredentials(users_[0].credentials);
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, nullptr /*error*/);
+  FileSystemKeyset fs_keyset(*vk.get());
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-  EXPECT_CALL(platform_, GetCurrentTime())
-      .Times(2)  // Initial set and update on mount.
-      .WillRepeatedly(Return(kTs1));
+  EXPECT_CALL(platform_, GetCurrentTime()).WillOnce(Return(kTs1));
 
   // TEST
 
-  ASSERT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].credentials, options,
-                                 /*is_pristine=*/true));
+  EXPECT_EQ(MOUNT_ERROR_NONE,
+            session_->MountVault(users_[0].name, fs_keyset, options));
 
   // VERIFY
   // Vault created.
-
-  EXPECT_TRUE(platform_.DirectoryExists(users_[0].homedir_path));
-  EXPECT_TRUE(session_->VerifyCredentials(users_[0].credentials));
-  EXPECT_TRUE(keyset_management_->AreCredentialsValid(users_[0].credentials));
-
   EXPECT_THAT(user_activity_timestamp_manager_->GetLastUserActivityTimestamp(
                   users_[0].obfuscated),
               Eq(kTs1));
-
   EXPECT_NE(session_->GetWebAuthnSecret(), nullptr);
   EXPECT_FALSE(session_->GetWebAuthnSecretHash().empty());
 
@@ -215,8 +216,12 @@ TEST_F(UserSessionTest, MountVaultOk) {
   // call. Remove it when we are not mocking mount.
   platform_.CreateDirectory(GetEcryptfsUserVaultPath(users_[0].obfuscated));
 
+  // Mount args with no create.
   options = {};
 
+  // Set the credentials with |users_[0].credentials| so that
+  // |obfuscated_username_| is explicitly set during the Unmount test.
+  session_->SetCredentials(users_[0].credentials);
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -224,18 +229,13 @@ TEST_F(UserSessionTest, MountVaultOk) {
 
   // TEST
 
-  ASSERT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].credentials, options,
-                                 /*can_create=*/false));
+  EXPECT_EQ(MOUNT_ERROR_NONE,
+            session_->MountVault(users_[0].name, fs_keyset, options));
 
   // VERIFY
   // Vault still exists when tried to remount with no create.
   // ts updated on mount
-
   EXPECT_TRUE(platform_.DirectoryExists(users_[0].homedir_path));
-  EXPECT_TRUE(session_->VerifyCredentials(users_[0].credentials));
-  EXPECT_TRUE(keyset_management_->AreCredentialsValid(users_[0].credentials));
-
   EXPECT_THAT(user_activity_timestamp_manager_->GetLastUserActivityTimestamp(
                   users_[0].obfuscated),
               Eq(kTs2));
@@ -245,7 +245,9 @@ TEST_F(UserSessionTest, MountVaultOk) {
   ASSERT_TRUE(session_->GetPkcs11Token()->IsReady());
 
   // SETUP
-
+  // Set the credentials with |users_[0].credentials| so that
+  // |obfuscated_username_| is explicitly set during the Unmount test.
+  session_->SetCredentials(users_[0].credentials);
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(true));
   EXPECT_CALL(platform_, GetCurrentTime()).WillOnce(Return(kTs3));
   EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(true));
@@ -256,91 +258,10 @@ TEST_F(UserSessionTest, MountVaultOk) {
 
   // VERIFY
   // ts updated on unmount
-
   EXPECT_THAT(user_activity_timestamp_manager_->GetLastUserActivityTimestamp(
                   users_[0].obfuscated),
               Eq(kTs3));
-
   EXPECT_EQ(session_->GetPkcs11Token(), nullptr);
-}
-
-TEST_F(UserSessionTest, MountVaultWrongCreds) {
-  // SETUP
-
-  const base::Time kTs1 = base::Time::FromInternalValue(42);
-
-  // Test with ecryptfs since it has a simpler existence check.
-  CryptohomeVault::Options options = {
-      .force_type = EncryptedContainerType::kEcryptfs,
-  };
-
-  EXPECT_CALL(*mount_,
-              MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
-  EXPECT_CALL(platform_, GetCurrentTime())
-      .Times(2)  // Initial set and update on mount.
-      .WillRepeatedly(Return(kTs1));
-
-  ASSERT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].credentials, options,
-                                 /*can_create=*/true));
-
-  EXPECT_THAT(user_activity_timestamp_manager_->GetLastUserActivityTimestamp(
-                  users_[0].obfuscated),
-              Eq(kTs1));
-
-  EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(true));
-  EXPECT_CALL(platform_, GetCurrentTime()).WillOnce(Return(kTs1));
-  EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(true));
-
-  ASSERT_TRUE(session_->Unmount());
-
-  // TODO(dlunev): this is required to mimic a real Mount::PrepareCryptohome
-  // call. Remove it when we are not mocking mount.
-  platform_.CreateDirectory(GetEcryptfsUserVaultPath(users_[0].obfuscated));
-
-  options = {};
-
-  EXPECT_CALL(*mount_,
-              MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
-      .Times(0);
-
-  Credentials wrong_creds(users_[0].name, brillo::SecureBlob("wrong"));
-
-  // TEST
-
-  ASSERT_EQ(MOUNT_ERROR_KEY_FAILURE,
-            session_->MountVault(wrong_creds, options, /*can_create=*/false));
-  EXPECT_EQ(session_->GetPkcs11Token(), nullptr);
-
-  // VERIFY
-  // Failed to remount with wrong credentials.
-
-  EXPECT_TRUE(platform_.DirectoryExists(users_[0].homedir_path));
-  EXPECT_TRUE(session_->VerifyCredentials(users_[0].credentials));
-  EXPECT_TRUE(keyset_management_->AreCredentialsValid(users_[0].credentials));
-
-  // No mount, no ts update.
-  EXPECT_THAT(user_activity_timestamp_manager_->GetLastUserActivityTimestamp(
-                  users_[0].obfuscated),
-              Eq(kTs1));
-
-  // SETUP
-
-  EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(false));
-  EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(true));
-
-  // TEST
-
-  ASSERT_TRUE(session_->Unmount());
-
-  // VERIFY
-  // No unmount, no ts update.
-  EXPECT_THAT(user_activity_timestamp_manager_->GetLastUserActivityTimestamp(
-                  users_[0].obfuscated),
-              Eq(kTs1));
-  EXPECT_NE(session_->GetWebAuthnSecret(), nullptr);
-  EXPECT_FALSE(session_->GetWebAuthnSecretHash().empty());
 }
 
 TEST_F(UserSessionTest, EphemeralMountPolicyTest) {
@@ -402,8 +323,7 @@ TEST_F(UserSessionTest, EphemeralMountPolicyTest) {
 
   for (const auto& test_case : test_cases) {
     PreparePolicy(test_case.is_enterprise, test_case.owner);
-    ASSERT_THAT(session_->MountEphemeral(Credentials(
-                    test_case.user, brillo::SecureBlob("doesn't matter"))),
+    ASSERT_THAT(session_->MountEphemeral(test_case.user),
                 test_case.expected_result)
         << "Test case: " << test_case.name;
   }
@@ -412,26 +332,23 @@ TEST_F(UserSessionTest, EphemeralMountPolicyTest) {
 // WebAuthn secret is cleared after read once.
 TEST_F(UserSessionTest, WebAuthnSecretReadTwice) {
   // SETUP
-
   // Test with ecryptfs since it has a simpler existence check.
   CryptohomeVault::Options options = {
       .force_type = EncryptedContainerType::kEcryptfs,
   };
+  MountError code = MOUNT_ERROR_NONE;
+  std::unique_ptr<VaultKeyset> vk =
+      keyset_management_->GetValidKeyset(users_[0].credentials, &code);
+  EXPECT_EQ(code, MOUNT_ERROR_NONE);
+  EXPECT_NE(vk, nullptr);
 
+  FileSystemKeyset fs_keyset(*vk.get());
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
 
-  ASSERT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].credentials, options,
-                                 /*can_create=*/true));
-
-  MountError code = MOUNT_ERROR_NONE;
-  std::unique_ptr<VaultKeyset> vk =
-      keyset_management_->LoadUnwrappedKeyset(users_[0].credentials, &code);
-  EXPECT_EQ(code, MOUNT_ERROR_NONE);
-  EXPECT_NE(vk, nullptr);
-  FileSystemKeyset fs_keyset(*vk);
+  EXPECT_EQ(MOUNT_ERROR_NONE,
+            session_->MountVault(users_[0].name, fs_keyset, options));
   const std::string message(kWebAuthnSecretHmacMessage);
   auto expected_webauthn_secret = std::make_unique<brillo::SecureBlob>(
       HmacSha256(brillo::SecureBlob::Combine(fs_keyset.Key().fnek,
@@ -468,9 +385,11 @@ TEST_F(UserSessionTest, WebAuthnSecretTimeout) {
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
 
-  ASSERT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].credentials, options,
-                                 /*can_create=*/true));
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, nullptr /*error*/);
+  EXPECT_EQ(MOUNT_ERROR_NONE,
+            session_->MountVault(users_[0].name, FileSystemKeyset(*vk.get()),
+                                 options));
 
   // TEST
 
