@@ -1088,6 +1088,7 @@ TEST_F(ProxyTest, SystemProxy_NeverSetsDnsRedirectionRule) {
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.device_ = std::make_unique<shill::Client::Device>();
 
   // System proxy must not request a redirect DNS rule.
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _)).Times(0);
@@ -1149,6 +1150,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.device_ = std::make_unique<shill::Client::Device>();
 
   // Expect ConnectNamespace call and set the namespace address.
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
@@ -1168,6 +1170,10 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   dev->set_phys_ifname("eth0");
   dev->set_guest_type(patchpanel::NetworkDevice::TERMINA_VM);
 
+  EXPECT_CALL(
+      *mock_client,
+      RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _, _))
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(*mock_client, GetDevices())
       .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
   EXPECT_CALL(*mock_client,
@@ -1178,9 +1184,10 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
                           "vmtap0", "::1", IsEmpty()))
       .Times(0);
+
   proxy.OnPatchpanelReady(true);
   proxy.Enable();
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 
   // Default device changed.
   shill::Client::Device default_device;
@@ -1198,6 +1205,13 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
               RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _,
                           ipv6_dns_addresses))
       .Times(0);
+  EXPECT_CALL(*mock_client, GetDevices())
+      .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
+  EXPECT_CALL(*mock_client,
+              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
+                          "vmtap0", "10.10.10.10", IsEmpty()))
+      .Times(0);
+
   proxy.OnDefaultDeviceChanged(&default_device);
   EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 
@@ -1282,8 +1296,16 @@ TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.device_ = std::make_unique<shill::Client::Device>();
 
-  EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _)).Times(0);
+  EXPECT_CALL(
+      *mock_client,
+      RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _, _))
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
+  EXPECT_CALL(
+      *mock_client,
+      RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT, _, _, _))
+      .Times(0);
 
   // Expect ConnectNamespace call and set the namespace address.
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
@@ -1307,10 +1329,10 @@ TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
       .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
   proxy.OnPatchpanelReady(true);
   proxy.Enable();
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 0);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
 
   proxy.OnVirtualDeviceChanged(signal);
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 0);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
 }
 
 TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleFeatureDisabled) {
@@ -1322,6 +1344,7 @@ TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleFeatureDisabled) {
   proxy.shill_ready_ = true;
   proxy.ns_peer_ipv6_address_ = "::1";
   proxy.feature_enabled_ = false;
+  proxy.device_ = std::make_unique<shill::Client::Device>();
 
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _)).Times(0);
 
@@ -1356,6 +1379,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleWithoutIPv6) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, std::move(client),
               ShillClient());
   proxy.resolver_ = std::make_unique<MockResolver>();
+  proxy.device_ = std::make_unique<shill::Client::Device>();
 
   // Expect ConnectNamespace call and set the namespace address.
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
@@ -1366,10 +1390,14 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleWithoutIPv6) {
         resp.set_peer_ipv4_address(patchpanel::Ipv4Addr(10, 10, 10, 10));
         return std::make_pair(base::ScopedFD(make_fd()), resp);
       });
-  EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _)).Times(0);
+
+  EXPECT_CALL(
+      *mock_client,
+      RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _, _))
+      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy.OnPatchpanelReady(true);
   proxy.Enable();
-  EXPECT_EQ(proxy.lifeline_fds_.size(), 0);
+  EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
 
   // Default device changed.
   shill::Client::Device default_device;
@@ -1413,6 +1441,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
               ShillClient());
   proxy.ns_.set_peer_ifname("");
   proxy.Enable();
+  proxy.device_ = std::make_unique<shill::Client::Device>();
 
   patchpanel::NetworkDeviceChangedSignal signal;
   signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
@@ -1462,6 +1491,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Deleted) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, std::move(client),
               ShillClient());
   proxy.ns_.set_peer_ifname("");
+  proxy.device_ = std::make_unique<shill::Client::Device>();
 
   proxy.device_.reset(new shill::Client::Device{});
   proxy.lifeline_fds_.emplace(std::make_pair("", AF_INET6),
@@ -1496,6 +1526,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
               ShillClient());
   proxy.ns_.set_peer_ifname("");
   proxy.Enable();
+  proxy.device_ = std::make_unique<shill::Client::Device>();
 
   patchpanel::NetworkDeviceChangedSignal signal;
   signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
@@ -1550,6 +1581,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.device_ = std::make_unique<shill::Client::Device>();
 
   // Expect ConnectNamespace call and set the namespace address.
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
@@ -1592,6 +1624,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted) {
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.device_ = std::make_unique<shill::Client::Device>();
 
   // Expect ConnectNamespace call and set the namespace address.
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
@@ -1635,6 +1668,7 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.device_ = std::make_unique<shill::Client::Device>();
 
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _)).Times(0);
 
@@ -1674,6 +1708,7 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherIfname) {
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.ns_peer_ipv6_address_ = "::1";
+  proxy.device_ = std::make_unique<shill::Client::Device>();
 
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _)).Times(0);
 
@@ -1714,6 +1749,7 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleFeatureDisabled) {
   proxy.shill_ready_ = true;
   proxy.ns_peer_ipv6_address_ = "::1";
   proxy.feature_enabled_ = false;
+  proxy.device_ = std::make_unique<shill::Client::Device>();
 
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _)).Times(0);
 
@@ -1748,6 +1784,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
               std::move(client), ShillClient());
   proxy.ns_.set_peer_ifname("");
+  proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.Enable();
 
   patchpanel::NetworkDeviceChangedSignal signal;
@@ -1820,6 +1857,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
               std::move(client), ShillClient());
   proxy.ns_.set_peer_ifname("");
+  proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.Enable();
 
   patchpanel::NetworkDeviceChangedSignal signal;

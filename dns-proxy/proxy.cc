@@ -404,7 +404,7 @@ void Proxy::OnFeatureEnabled(base::Optional<bool> enabled) {
 
 void Proxy::Enable() {
   feature_enabled_ = true;
-  if (!ns_fd_.is_valid())
+  if (!ns_fd_.is_valid() || !device_)
     return;
 
   if (opts_.type == Type::kSystem) {
@@ -412,7 +412,7 @@ void Proxy::Enable() {
     return;
   }
 
-  if (opts_.type == Type::kDefault && device_) {
+  if (opts_.type == Type::kDefault) {
     // Start DNS redirection rule for user traffic (cups, chronos, update
     // engine, etc).
     StartDnsRedirection("" /* ifname */, AF_INET,
@@ -448,6 +448,12 @@ void Proxy::Stop() {
   if (opts_.type == Type::kDefault) {
     StopDnsRedirection("" /* ifname */, AF_INET);
     StopDnsRedirection("" /* ifname */, AF_INET6);
+  }
+  if (opts_.type == Type::kDefault || opts_.type == Type::kARC) {
+    for (const auto& d : patchpanel_->GetDevices()) {
+      StopGuestDnsRedirection(d, AF_INET);
+      StopGuestDnsRedirection(d, AF_INET6);
+    }
   }
 }
 
@@ -526,6 +532,12 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
                         doh_config_.ipv4_nameservers());
     StartDnsRedirection("" /* ifname */, AF_INET6,
                         doh_config_.ipv6_nameservers());
+    // Process the current set of patchpanel devices and add necessary
+    // redirection rules.
+    for (const auto& d : patchpanel_->GetDevices()) {
+      StartGuestDnsRedirection(d, AF_INET);
+      StartGuestDnsRedirection(d, AF_INET6);
+    }
   }
 
   // For the system proxy, we have to tell shill about it. We should start
@@ -586,6 +598,13 @@ void Proxy::OnDeviceChanged(const shill::Client::Device* const device) {
       *device_.get() = *device;
       MaybeCreateResolver();
       UpdateNameServers(device->ipconfig);
+
+      // Process the current set of patchpanel devices and add necessary
+      // redirection rules.
+      for (const auto& d : patchpanel_->GetDevices()) {
+        StartGuestDnsRedirection(d, AF_INET);
+        StartGuestDnsRedirection(d, AF_INET6);
+      }
       break;
 
     default:
@@ -894,6 +913,11 @@ void Proxy::OnVirtualDeviceChanged(
 
 void Proxy::StartGuestDnsRedirection(const patchpanel::NetworkDevice& device,
                                      sa_family_t sa_family) {
+  if (!device_ || base::Contains(lifeline_fds_,
+                                 std::make_pair(device.ifname(), sa_family))) {
+    return;
+  }
+
   switch (device.guest_type()) {
     case patchpanel::NetworkDevice::TERMINA_VM:
     case patchpanel::NetworkDevice::PLUGIN_VM:
