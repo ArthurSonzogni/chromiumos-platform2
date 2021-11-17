@@ -22,7 +22,9 @@
 namespace cros {
 
 // Tags for metadata logger.
+constexpr char kTagActualTet[] = "actual_tet";
 constexpr char kTagAeExposureCompensation[] = "ae_exposure_compensation";
+constexpr char kTagAeState[] = "ae_state";
 constexpr char kTagAwbGains[] = "awb_rggb_gains";
 constexpr char kTagCaptureAnalogGain[] = "analog_gain";
 constexpr char kTagCaptureDigitalGain[] = "digital_gain";

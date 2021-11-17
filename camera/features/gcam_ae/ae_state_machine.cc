@@ -111,17 +111,6 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
   gcam_ae_metrics_.accumulated_tet += current_ae_parameters_.short_tet;
   ++gcam_ae_metrics_.num_tet_samples;
 
-  if (metadata_logger) {
-    metadata_logger->Log(frame_info.frame_number, kTagShortTet,
-                         raw_ae_parameters.short_tet);
-    metadata_logger->Log(frame_info.frame_number, kTagLongTet,
-                         raw_ae_parameters.long_tet);
-    metadata_logger->Log(frame_info.frame_number, kTagFilteredShortTet,
-                         current_ae_parameters_.short_tet);
-    metadata_logger->Log(frame_info.frame_number, kTagFilteredLongTet,
-                         current_ae_parameters_.long_tet);
-  }
-
   const float new_tet = current_ae_parameters_.short_tet;
   const float actual_tet_set = frame_info.exposure_time_ms *
                                frame_info.analog_gain * frame_info.digital_gain;
@@ -299,6 +288,21 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
   VLOGFID(1, frame_info.frame_number) << "next_tet_to_set=" << next_tet_to_set_;
   VLOGFID(1, frame_info.frame_number)
       << "next_hdr_ratio_to_set=" << next_hdr_ratio_to_set_;
+
+  if (metadata_logger) {
+    metadata_logger->Log(frame_info.frame_number, kTagShortTet,
+                         raw_ae_parameters.short_tet);
+    metadata_logger->Log(frame_info.frame_number, kTagLongTet,
+                         raw_ae_parameters.long_tet);
+    metadata_logger->Log(frame_info.frame_number, kTagFilteredShortTet,
+                         current_ae_parameters_.short_tet);
+    metadata_logger->Log(frame_info.frame_number, kTagFilteredLongTet,
+                         current_ae_parameters_.long_tet);
+    metadata_logger->Log(frame_info.frame_number, kTagAeState,
+                         static_cast<int32_t>(current_state_));
+    metadata_logger->Log(frame_info.frame_number, kTagActualTet,
+                         actual_tet_set);
+  }
 
   previous_tet_ = new_tet;
   current_state_ = next_state;
