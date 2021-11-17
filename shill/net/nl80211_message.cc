@@ -450,6 +450,11 @@ GetMeshProxyPathMessage::GetMeshProxyPathMessage()
                                    NetlinkMessage::MessageContext()));
 }
 
+const uint8_t NewPeerCandidateMessage::kCommand =
+    NL80211_CMD_NEW_PEER_CANDIDATE;
+const char NewPeerCandidateMessage::kCommandString[] =
+    "NL80211_CMD_NEW_PEER_CANDIDATE";
+
 // static
 std::unique_ptr<NetlinkMessage> Nl80211Message::CreateMessage(
     const NetlinkPacket& packet) {
@@ -538,6 +543,8 @@ std::unique_ptr<NetlinkMessage> Nl80211Message::CreateMessage(
       return std::make_unique<GetMeshPathInfoMessage>();
     case GetMeshProxyPathMessage::kCommand:
       return std::make_unique<GetMeshProxyPathMessage>();
+    case NewPeerCandidateMessage::kCommand:
+      return std::make_unique<NewPeerCandidateMessage>();
     default:
       LOG(WARNING) << base::StringPrintf(
           "Unknown/unhandled netlink nl80211 message 0x%02x", header.cmd);

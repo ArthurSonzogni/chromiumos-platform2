@@ -504,6 +504,16 @@ class SHILL_EXPORT GetMeshProxyPathMessage : public Nl80211Message {
   GetMeshProxyPathMessage& operator=(const GetMeshProxyPathMessage&) = delete;
 };
 
+class SHILL_EXPORT NewPeerCandidateMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  NewPeerCandidateMessage() : Nl80211Message(kCommand, kCommandString) {}
+  NewPeerCandidateMessage(const NewPeerCandidateMessage&) = delete;
+  NewPeerCandidateMessage& operator=(const NewPeerCandidateMessage&) = delete;
+};
+
 }  // namespace shill
 
 #endif  // SHILL_NET_NL80211_MESSAGE_H_
