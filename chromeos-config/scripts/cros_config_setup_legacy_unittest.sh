@@ -76,7 +76,7 @@ cd -- "$(dirname -- "$0")"
     assert_config_equals / name somemodel
     assert_config_equals / brand-code ZZCR
     assert_config_equals /identity platform-name Some
-    assert_config_equals /identity customization-id SOMEOEM-SOMEMODEL
+    assert_config_equals /ui help-content-id SOMEOEM-SOMEMODEL
     assert_config_equals /hardware-properties psu-type AC_only
     assert_config_equals /hardware-properties has-backlight false
     assert_config_equals /hardware-properties form-factor CHROMEBOX
