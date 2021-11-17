@@ -28,6 +28,7 @@
 #include "diagnostics/cros_healthd/system/pci_util_impl.h"
 #include "diagnostics/cros_healthd/system/system_config.h"
 #include "diagnostics/cros_healthd/system/system_utilities_impl.h"
+#include "diagnostics/cros_healthd/utils/mojo_relay_impl.h"
 
 namespace diagnostics {
 
@@ -72,6 +73,9 @@ std::unique_ptr<Context> Context::Create(
 
   // Create the mojo clients which will be initialized after connecting with
   // chrome.
+  context->internal_service_factory_relay_ =
+      std::make_unique<MojoRelayImpl<chromeos::cros_healthd::internal::mojom::
+                                         CrosHealthdInternalServiceFactory>>();
   context->network_health_adapter_ =
       std::make_unique<NetworkHealthAdapterImpl>();
   context->network_diagnostics_adapter_ =
@@ -168,6 +172,12 @@ org::chromium::TpmManagerProxyInterface* Context::tpm_manager_proxy() const {
 
 brillo::Udev* Context::udev() const {
   return udev_.get();
+}
+
+MojoRelay<
+    chromeos::cros_healthd::internal::mojom::CrosHealthdInternalServiceFactory>*
+Context::internal_service_factory_relay() {
+  return internal_service_factory_relay_.get();
 }
 
 }  // namespace diagnostics

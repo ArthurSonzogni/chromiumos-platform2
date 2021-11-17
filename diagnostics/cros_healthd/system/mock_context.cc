@@ -26,6 +26,9 @@ MockContext::MockContext() {
   debugd_proxy_ =
       std::make_unique<testing::StrictMock<org::chromium::debugdProxyMock>>();
   debugd_adapter_ = std::make_unique<testing::StrictMock<MockDebugdAdapter>>();
+  internal_service_factory_relay_ =
+      std::make_unique<MockMojoRelay<chromeos::cros_healthd::internal::mojom::
+                                         CrosHealthdInternalServiceFactory>>();
   network_health_adapter_ = std::make_unique<FakeNetworkHealthAdapter>();
   network_diagnostics_adapter_ =
       std::make_unique<MockNetworkDiagnosticsAdapter>();
@@ -75,6 +78,14 @@ org::chromium::cras::ControlProxyMock* MockContext::mock_cras_proxy() const {
 MockDebugdAdapter* MockContext::mock_debugd_adapter() const {
   return static_cast<testing::StrictMock<MockDebugdAdapter>*>(
       debugd_adapter_.get());
+}
+
+MockMojoRelay<
+    chromeos::cros_healthd::internal::mojom::CrosHealthdInternalServiceFactory>*
+MockContext::mock_internal_service_factory_relay() const {
+  return static_cast<MockMojoRelay<chromeos::cros_healthd::internal::mojom::
+                                       CrosHealthdInternalServiceFactory>*>(
+      internal_service_factory_relay_.get());
 }
 
 FakeNetworkHealthAdapter* MockContext::fake_network_health_adapter() const {

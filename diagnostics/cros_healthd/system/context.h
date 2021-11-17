@@ -26,6 +26,8 @@
 #include "diagnostics/cros_healthd/system/pci_util.h"
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
 #include "diagnostics/cros_healthd/system/system_utilities.h"
+#include "diagnostics/cros_healthd/utils/mojo_relay.h"
+#include "diagnostics/mojom/external/cros_healthd_internal.mojom.h"
 
 namespace brillo {
 class Udev;
@@ -118,6 +120,10 @@ class Context {
   org::chromium::TpmManagerProxyInterface* tpm_manager_proxy() const;
   // Use the object returned by udev() to access udev related interfaces.
   brillo::Udev* udev() const;
+  // Returns internal service factory relay object to access chrome resources.
+  MojoRelay<chromeos::cros_healthd::internal::mojom::
+                CrosHealthdInternalServiceFactory>*
+  internal_service_factory_relay();
 
  private:
   Context();
@@ -143,6 +149,9 @@ class Context {
   std::unique_ptr<org::chromium::cras::ControlProxyInterface> cras_proxy_;
   std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;
   std::unique_ptr<DebugdAdapter> debugd_adapter_;
+  std::unique_ptr<MojoRelay<chromeos::cros_healthd::internal::mojom::
+                                CrosHealthdInternalServiceFactory>>
+      internal_service_factory_relay_;
   std::unique_ptr<NetworkHealthAdapter> network_health_adapter_;
   std::unique_ptr<NetworkDiagnosticsAdapter> network_diagnostics_adapter_;
   std::unique_ptr<PowerdAdapter> powerd_adapter_;
