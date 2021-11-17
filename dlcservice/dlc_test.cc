@@ -417,7 +417,7 @@ TEST_F(DlcBaseTest, FactoryInstalledImagesUnsupportedIntialization) {
   EXPECT_FALSE(base::PathExists(unsupported_factory_image_path));
 }
 
-TEST_F(DlcBaseTest, FactoryInstalledImageDoesNotClearAfterInstallation) {
+TEST_F(DlcBaseTest, FactoryInstalledImageClearsAfterInstallation) {
   DlcBase dlc(kThirdDlc);
   dlc.Initialize();
   base::FilePath factory_image_path = SetUpDlcFactoryImage(kThirdDlc);
@@ -435,7 +435,7 @@ TEST_F(DlcBaseTest, FactoryInstalledImageDoesNotClearAfterInstallation) {
 
   EXPECT_TRUE(dlc.Install(&err_));
   EXPECT_TRUE(dlc.IsInstalled());
-  EXPECT_TRUE(base::PathExists(factory_image_path));
+  EXPECT_FALSE(base::PathExists(factory_image_path));
 }
 
 TEST_F(DlcBaseTest, FactoryInstalledImageSizeCorruption) {
