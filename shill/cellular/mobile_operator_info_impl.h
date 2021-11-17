@@ -68,6 +68,7 @@ class MobileOperatorInfoImpl {
   void UpdateOnlinePortal(const std::string& url,
                           const std::string& method,
                           const std::string& post_data);
+  void UpdateRequiresRoaming(const MobileOperatorInfo* serving_operator_info);
 
  private:
   friend class MobileOperatorInfoInitTest;
@@ -205,6 +206,7 @@ class MobileOperatorInfoImpl {
   std::vector<mobile_operator_db::OnlinePortal> raw_olp_list_;
   std::string activation_code_;
   bool requires_roaming_;
+  std::vector<mobile_operator_db::Filter> roaming_filter_list_;
   int32_t mtu_;
   // These fields store the data obtained from the Update* methods.
   // The database information is kept separate from the information gathered

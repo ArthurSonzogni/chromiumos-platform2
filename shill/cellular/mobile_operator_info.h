@@ -224,6 +224,7 @@ class MobileOperatorInfo {
   void UpdateOnlinePortal(const std::string& url,
                           const std::string& method,
                           const std::string& post_data);
+  void UpdateRequiresRoaming(const MobileOperatorInfo* serving_operator_info);
 
   // ///////////////////////////////////////////////////////////////////////////
   // Expose implementation for test purposes only.

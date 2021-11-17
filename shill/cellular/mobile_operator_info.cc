@@ -246,6 +246,13 @@ void MobileOperatorInfo::UpdateOnlinePortal(const std::string& url,
   impl_->UpdateOnlinePortal(url, method, post_data);
 }
 
+void MobileOperatorInfo::UpdateRequiresRoaming(
+    const MobileOperatorInfo* serving_operator_info) {
+  impl_->UpdateRequiresRoaming(serving_operator_info);
+  SLOG(this, 3) << GetLogPrefix(__func__)
+                << "Updated requires_roaming: " << impl_->requires_roaming();
+}
+
 void MobileOperatorInfo::Reset() {
   SLOG(this, 3) << GetLogPrefix(__func__);
   impl_->Reset();

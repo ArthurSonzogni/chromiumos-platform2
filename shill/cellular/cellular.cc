@@ -2568,6 +2568,11 @@ void Cellular::UpdateServingOperator(
   SLOG(this, 2) << __func__ << " Service: " << service()->log_name()
                 << " Name: " << service_name;
   service()->SetFriendlyName(service_name);
+  if (service()->roaming_state() == kRoamingStateRoaming &&
+      home_provider_info) {
+    home_provider_info_.get()->UpdateRequiresRoaming(operator_info);
+    SetProviderRequiresRoaming(home_provider_info->requires_roaming());
+  }
 }
 
 void Cellular::OnOperatorChanged() {

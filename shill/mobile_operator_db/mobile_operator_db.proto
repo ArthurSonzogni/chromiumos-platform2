@@ -95,6 +95,10 @@ message Data {
   // Use the 'localized_name' above for the operator name in the UI with a
   // higher priority than the information coming from the SIM card.
   optional bool prioritizes_name = 8 [default = false];
+  // 1. currently, only filtering by MCCMNC type is processed
+  // 2. Filter against serving operator info to decide if HOME provider has
+  //    requested roaming enabled by default, update |requires_roaming|.
+  repeated Filter roaming_filter = 9;
 
   // ///////////////////////////////////////////////////////////////////////////
   // GSM specific properties [21 - 40]

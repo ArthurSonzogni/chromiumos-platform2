@@ -14054,6 +14054,10 @@ mno {
     mccmnc : "311587"
     mccmnc : "311588"
     mccmnc : "311589"
+    roaming_filter {
+      type : MCCMNC
+      regex : "31[0-6]...?"
+    }
     mobile_apn {
       apn : "usccinternet"
       localized_name {
@@ -14914,7 +14918,10 @@ mvno {
   }
   data {
     uuid : "211ef5b2-97b3-4d07-a0de-25e1a14176e6"
-    requires_roaming : true
+    roaming_filter {
+      type : MCCMNC
+      regex : ".*"
+    }
     localized_name {
       name : "Google Fi"
     }
