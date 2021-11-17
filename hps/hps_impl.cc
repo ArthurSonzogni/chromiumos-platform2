@@ -68,14 +68,14 @@ bool HPS_impl::Boot() {
     return false;
   }
 
-  // TODO(evanbenn) we can't reboot here while we are using stm bootloader
-  // this->Reboot();
+  this->Reboot();
 
   // If the boot process sent an update, reboot and try again
   // A full update takes 3 boots, so try 3 times.
   for (int i = 0; i < 3; ++i) {
     switch (this->TryBoot()) {
       case BootResult::kOk:
+        LOG(INFO) << "HPS device booted";
         return true;
       case BootResult::kFail:
         return false;
@@ -400,7 +400,6 @@ hps::HPS_impl::BootResult HPS_impl::CheckApplication() {
 
 // Reboot the hardware module.
 bool HPS_impl::Reboot() {
-  LOG(INFO) << "Rebooting";
   // Send a reset cmd - maybe should power cycle.
   if (!this->device_->WriteReg(HpsReg::kSysCmd, R3::kReset)) {
     LOG(FATAL) << "Reboot failed";

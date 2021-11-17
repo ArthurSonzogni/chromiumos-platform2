@@ -270,6 +270,35 @@ TEST_F(HPSTest, NormalBoot) {
 }
 
 /*
+ * Test normal boot twice in a row, the device should boot if it is already
+ * booted.
+ */
+TEST_F(HPSTest, NormalBootTwice) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  // Create MCU and SPI flash filenames (but do not
+  // create the files themselves).
+  auto mcu = temp_dir.GetPath().Append("mcu");
+  auto spi1 = temp_dir.GetPath().Append("spi1");
+  auto spi2 = temp_dir.GetPath().Append("spi2");
+
+  // Set the expected version
+  const uint32_t version = 0x01020304;
+  fake_->SetVersion(version);
+  // Set up the version and files.
+  hps_->Init(version, mcu, spi1, spi2);
+
+  // Boot the module.
+  EXPECT_CALL(
+      *GetMetricsLibraryMock(),
+      SendEnumToUMA(hps::kHpsTurnOnResult,
+                    static_cast<int>(hps::HpsTurnOnResult::kSuccess), _))
+      .Times(2);
+  ASSERT_TRUE(hps_->Boot());
+  ASSERT_TRUE(hps_->Boot());
+}
+
+/*
  * Test that the MCU flash is updated when not verified.
  */
 TEST_F(HPSTest, McuUpdate) {

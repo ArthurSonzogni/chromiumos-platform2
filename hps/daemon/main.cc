@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
     dev = hps::I2CDev::Create(FLAGS_bus.c_str(), addr);
   }
   CHECK(dev) << "Hardware device failed to initialise";
-  LOG(INFO) << "Starting HPS Service.";
+  LOG(INFO) << "Booting HPS device";
   auto hps = std::make_unique<hps::HPS_impl>(std::move(dev));
   if (!FLAGS_skipboot) {
     hps->Init(version, base::FilePath(FLAGS_mcu_fw_image),
