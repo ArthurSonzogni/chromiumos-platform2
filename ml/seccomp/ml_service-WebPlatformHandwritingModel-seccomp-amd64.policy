@@ -19,6 +19,7 @@ fstatfs: 1
 getpid: 1
 getrandom: 1
 gettid: 1
+gettimeofday: 1
 lseek: 1
 memfd_create: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE

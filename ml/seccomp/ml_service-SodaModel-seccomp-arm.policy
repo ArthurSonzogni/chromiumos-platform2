@@ -9,6 +9,7 @@ ARM_set_tls: 1
 access: 1
 brk: 1
 clock_gettime: 1
+clock_gettime64: 1
 clock_nanosleep: 1
 clock_nanosleep_time64: 1
 clone: 1
@@ -27,6 +28,7 @@ fstat64: 1
 fstatat64: 1
 fstatfs: 1
 fstatfs64: 1
+futex_time64: 1
 futex: 1
 getdents64: 1
 geteuid32: 1
@@ -34,6 +36,7 @@ getpid: 1
 getpriority: 1
 getrandom: 1
 gettid: 1
+gettimeofday: 1
 lstat64: 1
 madvise: 1
 memfd_create: 1
