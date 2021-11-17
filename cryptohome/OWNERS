@@ -1,5 +1,6 @@
 apronin@chromium.org
 cylai@chromium.org
+dlunev@chromium.org
 kerrnel@chromium.org
 mnissler@chromium.org
 zuan@chromium.org
@@ -9,5 +10,3 @@ per-file platform*=hashimoto@chromium.org
 
 per-file dircrypto_util*=gwendal@chromium.org
 per-file dircrypto_util*=hashimoto@chromium.org
-
-per-file user_session*=dlunev@chromium.org
