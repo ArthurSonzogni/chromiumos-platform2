@@ -368,7 +368,7 @@ void StillCaptureProcessorImpl::QueuePendingYuvImageOnThread(
   if (!jpeg_compressor_->CompressImageFromHandle(
           yuv_buffer, *context.jpeg_blob, blob_stream_->width,
           blob_stream_->height, context.jpeg_quality, nullptr, 0,
-          &context.jpeg_blob_size)) {
+          &context.jpeg_blob_size, /*enable_hw_encode=*/false)) {
     LOGF(ERROR) << "Cannot encode YUV image to JPEG";
     // TODO(jcliang): Notify buffer error here.
     return;
