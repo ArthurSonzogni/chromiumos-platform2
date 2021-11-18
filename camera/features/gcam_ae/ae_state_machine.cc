@@ -82,7 +82,8 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
   VLOGFID(1, frame_info.frame_number)
       << "Raw AE parameters:"
       << " short_tet=" << raw_ae_parameters.short_tet
-      << " long_tet=" << raw_ae_parameters.long_tet;
+      << " long_tet=" << raw_ae_parameters.long_tet
+      << " log_scene_brightness=" << raw_ae_parameters.log_scene_brightness;
 
   // Filter the TET transition to avoid AE fluctuations or hunting.
   if (!current_ae_parameters_.IsValid()) {

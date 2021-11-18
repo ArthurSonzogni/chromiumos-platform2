@@ -214,6 +214,7 @@ AeParameters GcamAeDeviceAdapterIpu6::ComputeAeParameters(
 
   ae_parameters.short_tet = ae_result.short_tet;
   ae_parameters.long_tet = ae_result.long_tet;
+  ae_parameters.log_scene_brightness = ae_result.log_scene_brightness;
   return ae_parameters;
 }
 

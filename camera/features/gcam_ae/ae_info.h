@@ -142,6 +142,9 @@ struct AeParameters {
   // The ideal exposure time for HDR rendition.
   float long_tet = 0.0f;
 
+  // The log scene brightness as computed by Gcam AE.
+  float log_scene_brightness = kLogSceneBrightnessUnknown;
+
   bool IsValid() { return short_tet > 0.0f && long_tet > 0.0f; }
 };
 
