@@ -20,7 +20,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <brillo/blkdev_utils/lvm.h>
 #include <brillo/flag_helper.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
@@ -375,9 +374,8 @@ int main(int argc, const char* argv[]) {
   cryptohome::Platform platform;
   cryptohome::EncryptedContainerFactory encrypted_container_factory(&platform);
   brillo::DeviceMapper device_mapper;
-  brillo::LogicalVolumeManager lvm;
   auto encrypted_fs = mount_encrypted::EncryptedFs::Generate(
-      rootdir, &platform, &device_mapper, &lvm, &encrypted_container_factory);
+      rootdir, &platform, &device_mapper, &encrypted_container_factory);
 
   if (!encrypted_fs) {
     LOG(ERROR) << "Failed to create encrypted fs handler.";

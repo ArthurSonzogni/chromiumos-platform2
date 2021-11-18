@@ -14,7 +14,6 @@
 
 #include <base/files/file_path.h>
 #include <brillo/blkdev_utils/device_mapper.h>
-#include <brillo/blkdev_utils/lvm.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
@@ -65,7 +64,6 @@ class EncryptedFs {
       const base::FilePath& rootdir,
       cryptohome::Platform* platform,
       brillo::DeviceMapper* device_mapper,
-      brillo::LogicalVolumeManager* lvm,
       cryptohome::EncryptedContainerFactory* encrypted_container_factory);
 
   // Setup mounts the encrypted mount by:
