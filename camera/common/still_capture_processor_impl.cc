@@ -81,6 +81,10 @@ bool ParseAppSections(base::span<uint8_t> blob,
       return (*addr << 8) + *(addr + 1);
     };
 
+    if (src_addr + 2 > src_end) {
+      LOGF(ERROR) << "Incomplete marker";
+      return false;
+    }
     uint16_t marker = parse_word(src_addr);
     VLOGF(2) << "Marker: " << std::hex << marker;
     switch (marker) {
