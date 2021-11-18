@@ -588,6 +588,73 @@ message InvalidateAuthSessionReply {
   CryptohomeErrorCode error = 1;
 }
 
+message CreatePersistentUserRequest {
+  // Id of the auth session associated with the user we aim to create.
+  bytes auth_session_id = 1;
+}
+
+message CreatePersistentUserReply {
+  // The status of the operation.
+  CryptohomeErrorCode error = 1;
+}
+
+message PrepareGuestVaultRequest {}
+
+message PrepareGuestVaultReply {
+  // The status of the operation.
+  CryptohomeErrorCode error = 1;
+}
+
+message PrepareEphemeralVaultRequest {
+  // Id of the auth session associated with the user we aim to prepare vault
+  // for.
+  bytes auth_session_id = 1;
+}
+
+message PrepareEphemeralVaultReply {
+  // The status of the operation.
+  CryptohomeErrorCode error = 1;
+}
+
+enum VaultEncryptionType {
+  CRYPTOHOME_VAULT_ENCRYPTION_ANY = 0;
+  CRYPTOHOME_VAULT_ENCRYPTION_ECRYPTFS = 1;
+  CRYPTOHOME_VAULT_ENCRYPTION_FSCRYPT = 2;
+  CRYPTOHOME_VAULT_ENCRYPTION_DMCRYPT = 3;
+}
+
+message PreparePersistentVaultRequest {
+  // Id of the auth session associated with the user we aim to prepare vault
+  // for.
+  bytes auth_session_id = 1;
+  // Whether ecryptfs mount should be prohibited
+  // TODO(dlunev): deprecate the field once we migrate to the new interface.
+  // |force_encryption_type| will fully supercede it for all cases later on, but
+  // in the interim we need to preserve it for backward compatibility.
+  bool block_ecryptfs = 2;
+  // Expected encryption type.
+  // TODO(dlunev): for now it is enforced only for the vault creation. After
+  // removing the old interface it will superceded |block_ecryptfs| flag to
+  // enforce mandatory migrations.
+  VaultEncryptionType encryption_type = 3;
+}
+
+message PreparePersistentVaultReply {
+  // The status of the operation.
+  CryptohomeErrorCode error = 1;
+}
+
+message PrepareVaultForMigrationRequest {
+  // Id of the auth session associated with the user we aim to prepare vault
+  // for.
+  bytes auth_session_id = 1;
+}
+
+message PrepareVaultForMigrationReply {
+  // The status of the operation.
+  CryptohomeErrorCode error = 1;
+}
+
 // ------------------------- ArcQuota Interface -------------------------
 
 // Input parameters to GetArcDiskFeatures().

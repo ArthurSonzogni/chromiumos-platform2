@@ -665,6 +665,31 @@ class UserDataAuth {
       base::OnceCallback<
           void(const user_data_auth::InvalidateAuthSessionReply&)> on_done);
 
+  void PrepareGuestVault(
+      user_data_auth::PrepareGuestVaultRequest request,
+      base::OnceCallback<void(const user_data_auth::PrepareGuestVaultReply&)>
+          on_done);
+
+  void PrepareEphemeralVault(
+      user_data_auth::PrepareEphemeralVaultRequest request,
+      base::OnceCallback<
+          void(const user_data_auth::PrepareEphemeralVaultReply&)> on_done);
+
+  void PreparePersistentVault(
+      user_data_auth::PreparePersistentVaultRequest request,
+      base::OnceCallback<
+          void(const user_data_auth::PreparePersistentVaultReply&)> on_done);
+
+  void PrepareVaultForMigration(
+      user_data_auth::PrepareVaultForMigrationRequest request,
+      base::OnceCallback<
+          void(const user_data_auth::PrepareVaultForMigrationReply&)> on_done);
+
+  void CreatePersistentUser(
+      user_data_auth::CreatePersistentUserRequest request,
+      base::OnceCallback<void(const user_data_auth::CreatePersistentUserReply&)>
+          on_done);
+
  private:
   // base::Thread subclass so we can implement CleanUp.
   class MountThread : public base::Thread {
@@ -971,6 +996,53 @@ class UserDataAuth {
   // Ensures BootLockbox is finalized;
   void EnsureBootLockboxFinalized();
 
+  // =============== Auth Session Related Helpers ===============
+
+  // The method takes serialized auth session id and returns an authenticated
+  // auth session associated with the id. If the session is missing or not
+  // authenticated, |nullptr| is returned. The returned pointer is owner by
+  // |auth_session_manager|.
+  AuthSession* GetAuthenticatedAuthSession(
+      const std::string& auth_session_id,
+      user_data_auth::CryptohomeErrorCode* error);
+
+  // Returns a reference to the user session, if the session is mountable. The
+  // session is mountable if it is not already mounted, and the guest is not
+  // mounted. If user session object doesn't exist, this method will create
+  // one.
+  scoped_refptr<UserSession> GetMountableUserSession(
+      AuthSession* auth_session, user_data_auth::CryptohomeErrorCode* error);
+
+  // Pre-mount hook specifies operations that need to be executed before doing
+  // mount. Eventually those actions should be triggered outside of mount code.
+  // Not applicable to guest user.
+  void PreMountHook(const std::string& obfuscated_username);
+
+  // Post-mount hook specifies operations that need to be executed after doing
+  // mount. Eventually those actions should be triggered outside of mount code.
+  // Not applicable to guest user.
+  void PostMountHook(scoped_refptr<UserSession> user_session, MountError error);
+
+  // Converts the Dbus value for encryption type into internal representation.
+  EncryptedContainerType DbusEncryptionTypeToContainerType(
+      user_data_auth::VaultEncryptionType type);
+
+  // The following methods are implementations for the DBus endpoints of the
+  // new API. They are split from the actual end-points to simplify unit
+  // testing. The E2E test of the calls is done in tast.
+
+  user_data_auth::CryptohomeErrorCode PrepareGuestVaultImpl();
+
+  user_data_auth::CryptohomeErrorCode PrepareEphemeralVaultImpl(
+      const std::string& auth_session_id);
+
+  user_data_auth::CryptohomeErrorCode PreparePersistentVaultImpl(
+      const std::string& auth_session_id,
+      const CryptohomeVault::Options& vault_options);
+
+  user_data_auth::CryptohomeErrorCode CreatePersistentUserImpl(
+      const std::string& auth_session_id);
+
   // =============== Threading Related Variables ===============
 
   // The task runner that belongs to the thread that created this UserDataAuth
@@ -1231,6 +1303,8 @@ class UserDataAuth {
   FRIEND_TEST(UserDataAuthExTest, StartAuthSession);
   FRIEND_TEST(UserDataAuthExTest, MountUnauthenticatedAuthSession);
   FRIEND_TEST(UserDataAuthExTest, InvalidateAuthSession);
+
+  friend class AuthSessionInterfaceTest;
 };
 
 }  // namespace cryptohome

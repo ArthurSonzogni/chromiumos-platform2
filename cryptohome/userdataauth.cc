@@ -54,6 +54,7 @@
 using base::FilePath;
 using brillo::Blob;
 using brillo::SecureBlob;
+using brillo::cryptohome::home::SanitizeUserName;
 using brillo::cryptohome::home::SanitizeUserNameWithSalt;
 using hwsec::error::TPMErrorBase;
 
@@ -1209,6 +1210,7 @@ void UserDataAuth::EnsureBootLockboxFinalized() {
   }
 }
 
+// TODO(b/172344610, dlunev): abstract user_session through factory/manager.
 scoped_refptr<UserSession> UserDataAuth::GetOrCreateUserSession(
     const std::string& username) {
   // This method touches the |sessions_| object so it needs to run on
@@ -3419,6 +3421,326 @@ bool UserDataAuth::InvalidateAuthSession(
   reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   std::move(on_done).Run(reply);
   return true;
+}
+
+AuthSession* UserDataAuth::GetAuthenticatedAuthSession(
+    const std::string& auth_session_id,
+    user_data_auth::CryptohomeErrorCode* error) {
+  AssertOnMountThread();
+
+  // Check if the token refers to a valid AuthSession.
+  AuthSession* auth_session =
+      auth_session_manager_->FindAuthSession(auth_session_id);
+  if (!auth_session) {
+    *error = user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN;
+    LOG(ERROR) << "AuthSession not found.";
+    return nullptr;
+  }
+
+  // Check if the AuthSession is properly authenticated.
+  if (auth_session->GetStatus() != AuthStatus::kAuthStatusAuthenticated) {
+    *error = user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+    LOG(ERROR) << "AuthSession is not authenticated.";
+    return nullptr;
+  }
+
+  return auth_session;
+}
+
+scoped_refptr<UserSession> UserDataAuth::GetMountableUserSession(
+    AuthSession* auth_session, user_data_auth::CryptohomeErrorCode* error) {
+  AssertOnMountThread();
+
+  const std::string& obfuscated_username =
+      SanitizeUserName(auth_session->username());
+
+  // Check no guest is mounted.
+  scoped_refptr<UserSession> guest_session = GetUserSession(guest_user_);
+  if (guest_session && guest_session->GetMount()->IsMounted()) {
+    LOG(ERROR) << "Can not mount non-anonymous while guest session is active.";
+    *error = user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY;
+    return nullptr;
+  }
+
+  // Check the user is not already mounted.
+  scoped_refptr<UserSession> session =
+      GetOrCreateUserSession(auth_session->username());
+  if (session->GetMount()->IsMounted()) {
+    LOG(ERROR) << "User is already mounted: " << obfuscated_username;
+    *error = user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY;
+    return nullptr;
+  }
+
+  return session;
+}
+
+void UserDataAuth::PreMountHook(const std::string& obfuscated_username) {
+  AssertOnMountThread();
+
+  LOG(INFO) << "Started mounting for: " << obfuscated_username;
+
+  // Any non-guest mount attempt triggers InstallAttributes finalization.
+  // The return value is ignored as it is possible we're pre-ownership.
+  // The next login will assure finalization if possible.
+  if (install_attrs_->status() == InstallAttributes::Status::kFirstInstall) {
+    install_attrs_->Finalize();
+  }
+  // Remove all existing cryptohomes, except for the owner's one, if the
+  // ephemeral users policy is on.
+  // Note that a fresh policy value is read here, which in theory can conflict
+  // with the one used for calculation of |mount_args.is_ephemeral|. However,
+  // this inconsistency (whose probability is anyway pretty low in practice)
+  // should only lead to insignificant transient glitches, like an attempt to
+  // mount a non existing anymore cryptohome.
+  if (homedirs_->AreEphemeralUsersEnabled()) {
+    homedirs_->RemoveNonOwnerCryptohomes();
+  }
+}
+
+void UserDataAuth::PostMountHook(scoped_refptr<UserSession> user_session,
+                                 MountError mount_error) {
+  AssertOnMountThread();
+
+  if (mount_error != MOUNT_ERROR_NONE) {
+    LOG(ERROR) << "Finished mounting with status code: " << mount_error;
+    return;
+  }
+  LOG(INFO) << "Mount succeeded.";
+  InitializePkcs11(user_session.get());
+}
+
+EncryptedContainerType UserDataAuth::DbusEncryptionTypeToContainerType(
+    user_data_auth::VaultEncryptionType type) {
+  switch (type) {
+    case user_data_auth::VaultEncryptionType::CRYPTOHOME_VAULT_ENCRYPTION_ANY:
+      return EncryptedContainerType::kUnknown;
+    case user_data_auth::VaultEncryptionType::
+        CRYPTOHOME_VAULT_ENCRYPTION_ECRYPTFS:
+      return EncryptedContainerType::kEcryptfs;
+    case user_data_auth::VaultEncryptionType::
+        CRYPTOHOME_VAULT_ENCRYPTION_FSCRYPT:
+      return EncryptedContainerType::kFscrypt;
+    case user_data_auth::VaultEncryptionType::
+        CRYPTOHOME_VAULT_ENCRYPTION_DMCRYPT:
+      return EncryptedContainerType::kDmcrypt;
+    default:
+      // Default cuz proto3 enum sentinels, that's why -_-
+      return EncryptedContainerType::kUnknown;
+  }
+}
+
+void UserDataAuth::PrepareGuestVault(
+    user_data_auth::PrepareGuestVaultRequest request,
+    base::OnceCallback<void(const user_data_auth::PrepareGuestVaultReply&)>
+        on_done) {
+  AssertOnMountThread();
+
+  LOG(INFO) << "Preparing guest vault";
+  user_data_auth::PrepareGuestVaultReply reply;
+  reply.set_error(PrepareGuestVaultImpl());
+  std::move(on_done).Run(reply);
+  return;
+}
+
+void UserDataAuth::PrepareEphemeralVault(
+    user_data_auth::PrepareEphemeralVaultRequest request,
+    base::OnceCallback<void(const user_data_auth::PrepareEphemeralVaultReply&)>
+        on_done) {
+  AssertOnMountThread();
+
+  LOG(INFO) << "Preparing ephemeral vault";
+  user_data_auth::PrepareEphemeralVaultReply reply;
+  reply.set_error(PrepareEphemeralVaultImpl(request.auth_session_id()));
+  std::move(on_done).Run(reply);
+}
+
+void UserDataAuth::PreparePersistentVault(
+    user_data_auth::PreparePersistentVaultRequest request,
+    base::OnceCallback<void(const user_data_auth::PreparePersistentVaultReply&)>
+        on_done) {
+  AssertOnMountThread();
+
+  LOG(INFO) << "Preparing persistent vault";
+  CryptohomeVault::Options options = {
+      .force_type =
+          DbusEncryptionTypeToContainerType(request.encryption_type()),
+      .block_ecryptfs = request.block_ecryptfs(),
+  };
+  user_data_auth::PreparePersistentVaultReply reply;
+  reply.set_error(
+      PreparePersistentVaultImpl(request.auth_session_id(), options));
+  std::move(on_done).Run(reply);
+}
+
+void UserDataAuth::PrepareVaultForMigration(
+    user_data_auth::PrepareVaultForMigrationRequest request,
+    base::OnceCallback<
+        void(const user_data_auth::PrepareVaultForMigrationReply&)> on_done) {
+  AssertOnMountThread();
+
+  LOG(INFO) << "Preparing vault for migration";
+  CryptohomeVault::Options options = {
+      .migrate = true,
+  };
+  user_data_auth::PrepareVaultForMigrationReply reply;
+  reply.set_error(
+      PreparePersistentVaultImpl(request.auth_session_id(), options));
+  std::move(on_done).Run(reply);
+}  // namespace cryptohome
+
+void UserDataAuth::CreatePersistentUser(
+    user_data_auth::CreatePersistentUserRequest request,
+    base::OnceCallback<void(const user_data_auth::CreatePersistentUserReply&)>
+        on_done) {
+  AssertOnMountThread();
+
+  LOG(INFO) << "Creating persistent user";
+  user_data_auth::CreatePersistentUserReply reply;
+  reply.set_error(CreatePersistentUserImpl(request.auth_session_id()));
+  std::move(on_done).Run(reply);
+}
+
+user_data_auth::CryptohomeErrorCode UserDataAuth::PrepareGuestVaultImpl() {
+  AssertOnMountThread();
+
+  if (sessions_.size() != 0) {
+    LOG(ERROR) << "Can not mount guest while other sessions are active.";
+    return user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL;
+  }
+
+  scoped_refptr<UserSession> session = GetOrCreateUserSession(guest_user_);
+
+  LOG(INFO) << "Started mounting for guest";
+  ReportTimerStart(kMountGuestExTimer);
+  MountError mount_error = session->MountGuest();
+  ReportTimerStop(kMountGuestExTimer);
+  if (mount_error != MOUNT_ERROR_NONE) {
+    LOG(ERROR) << "Finished mounting with status code: " << mount_error;
+  } else {
+    LOG(INFO) << "Mount succeeded.";
+  }
+  return MountErrorToCryptohomeError(mount_error);
+}
+
+user_data_auth::CryptohomeErrorCode UserDataAuth::PrepareEphemeralVaultImpl(
+    const std::string& auth_session_id) {
+  AssertOnMountThread();
+
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
+  AuthSession* auth_session =
+      GetAuthenticatedAuthSession(auth_session_id, &error);
+  if (!auth_session) {
+    return error;
+  }
+  scoped_refptr<UserSession> session =
+      GetMountableUserSession(auth_session, &error);
+  if (!session.get()) {
+    return error;
+  }
+
+  const std::string& obfuscated_username =
+      SanitizeUserName(auth_session->username());
+  PreMountHook(obfuscated_username);
+  ReportTimerStart(kMountExTimer);
+  MountError mount_error = session->MountEphemeral(auth_session->username());
+  ReportTimerStop(kMountExTimer);
+  PostMountHook(session, mount_error);
+  return MountErrorToCryptohomeError(mount_error);
+}
+
+user_data_auth::CryptohomeErrorCode UserDataAuth::PreparePersistentVaultImpl(
+    const std::string& auth_session_id,
+    const CryptohomeVault::Options& vault_options) {
+  AssertOnMountThread();
+
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
+  AuthSession* auth_session =
+      GetAuthenticatedAuthSession(auth_session_id, &error);
+  if (!auth_session) {
+    return error;
+  }
+
+  const std::string& obfuscated_username =
+      SanitizeUserName(auth_session->username());
+  if (!homedirs_->Exists(obfuscated_username)) {
+    return user_data_auth::CryptohomeErrorCode::
+        CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
+  }
+
+  scoped_refptr<UserSession> session =
+      GetMountableUserSession(auth_session, &error);
+  if (!session.get()) {
+    return error;
+  }
+
+  PreMountHook(obfuscated_username);
+  ReportTimerStart(kMountExTimer);
+  MountError mount_error =
+      session->MountVault(auth_session->username(),
+                          auth_session->file_system_keyset(), vault_options);
+  if (mount_error == MOUNT_ERROR_TPM_COMM_ERROR) {
+    LOG(WARNING) << "TPM communication error. Retrying.";
+    mount_error =
+        session->MountVault(auth_session->username(),
+                            auth_session->file_system_keyset(), vault_options);
+  }
+  ReportTimerStop(kMountExTimer);
+  PostMountHook(session, mount_error);
+  return MountErrorToCryptohomeError(mount_error);
+}
+
+user_data_auth::CryptohomeErrorCode UserDataAuth::CreatePersistentUserImpl(
+    const std::string& auth_session_id) {
+  AssertOnMountThread();
+
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
+  AuthSession* auth_session =
+      GetAuthenticatedAuthSession(auth_session_id, &error);
+  if (!auth_session) {
+    return error;
+  }
+
+  const std::string& obfuscated_username =
+      SanitizeUserName(auth_session->username());
+  MountError mount_error = MOUNT_ERROR_NONE;
+
+  // This checks presence of the actual encrypted vault. We fail if Create is
+  // called while actual persistent vault is present.
+  if (homedirs_->CryptohomeExists(obfuscated_username, &mount_error)) {
+    LOG(ERROR) << "User already exists: " << obfuscated_username;
+    // TODO(b/208898186, dlunev): replace with a more appropriate error
+    return user_data_auth::CryptohomeErrorCode::
+        CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY;
+  }
+
+  if (mount_error != MOUNT_ERROR_NONE) {
+    LOG(ERROR) << "Failed to query vault existance for: " << obfuscated_username
+               << ", code: " << mount_error;
+    return MountErrorToCryptohomeError(mount_error);
+  }
+
+  // This checks and creates if missing the user's directory in shadow root.
+  // We need to disambiguate with vault presence, because it is possible that
+  // we have an empty shadow root directory for the user left behind after
+  // removing a profile (due to a bug or for some other reasons). To avoid weird
+  // failures in the case, just let the creation succeed, since the user is
+  // effectively not there. Eventually |Exists| will check for the presence of
+  // the USS/auth factors to determine if the user is intended to be there.
+  // This call will not create the actual volume (for efficiency, idempotency,
+  // and because that would require going the full sequence of mount and unmount
+  // because of ecryptfs possibility).
+  if (!homedirs_->Exists(obfuscated_username) &&
+      !homedirs_->Create(obfuscated_username)) {
+    LOG(ERROR) << "Failed to create shadow directory for: "
+               << obfuscated_username;
+    return user_data_auth::CryptohomeErrorCode::
+        CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
+  }
+
+  return user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
 }
 
 }  // namespace cryptohome
