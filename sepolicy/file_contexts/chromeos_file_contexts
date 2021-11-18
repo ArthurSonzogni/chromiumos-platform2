@@ -369,6 +369,8 @@ has_arc(`
 /run/mount_encrypted            u:object_r:cros_run_mount_encrypted:s0
 /run/perfetto                   u:object_r:cros_run_perfetto:s0
 /run/pvm                        u:object_r:cros_run_pvm:s0
+/run/pvm/opt                    u:object_r:cros_run_pvm_opt:s0
+/run/pvm/opt/pita               u:object_r:cros_run_pvm_opt_pita:s0
 /run/rsyslogd                   u:object_r:cros_run_rsyslogd:s0
 /run/seneschal                  u:object_r:cros_run_seneschal:s0
 /run/shill                      u:object_r:cros_run_shill:s0
