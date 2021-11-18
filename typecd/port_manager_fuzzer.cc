@@ -76,7 +76,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
       .WillRepeatedly(testing::Return(
           data_provider.ConsumeEnum<typecd::ModeEntryResult>()));
-  EXPECT_CALL(*port, CanEnterDPAltMode())
+  EXPECT_CALL(*port, CanEnterDPAltMode(nullptr))
       .WillRepeatedly(testing::Return(data_provider.ConsumeBool()));
   fuzzer.AddPort(std::move(port));
 

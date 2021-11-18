@@ -75,7 +75,8 @@ TEST_F(PortManagerTest, SimpleModeEntry) {
       .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
       .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
-  EXPECT_CALL(*port, CanEnterDPAltMode()).WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*port, CanEnterDPAltMode(_))
+      .WillRepeatedly(testing::Return(true));
   port_manager->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
 
@@ -106,7 +107,7 @@ TEST_F(PortManagerTest, SimpleModeEntry) {
       .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
       .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
-  EXPECT_CALL(*port, CanEnterDPAltMode())
+  EXPECT_CALL(*port, CanEnterDPAltMode(nullptr))
       .WillRepeatedly(testing::Return(false));
   port_manager->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
@@ -137,7 +138,8 @@ TEST_F(PortManagerTest, SimpleModeEntry) {
       .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
       .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
-  EXPECT_CALL(*port, CanEnterDPAltMode()).WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*port, CanEnterDPAltMode(nullptr))
+      .WillRepeatedly(testing::Return(true));
   port_manager->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
 
@@ -186,7 +188,8 @@ TEST_F(PortManagerTest, ModeSwitchUnlockDPandTBT) {
       .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
       .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
-  EXPECT_CALL(*port, CanEnterDPAltMode()).WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*port, CanEnterDPAltMode(nullptr))
+      .WillRepeatedly(testing::Return(true));
   port_manager->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
 
@@ -231,7 +234,7 @@ TEST_F(PortManagerTest, ModeSwitchUnlockUSB4) {
       .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
       .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
-  EXPECT_CALL(*port, CanEnterDPAltMode())
+  EXPECT_CALL(*port, CanEnterDPAltMode(nullptr))
       .WillRepeatedly(testing::Return(false));
   port_manager->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
@@ -284,7 +287,8 @@ TEST_F(PortManagerTest, ModeSwitchSessionStoppedDPandTBT) {
       .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
       .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
-  EXPECT_CALL(*port, CanEnterDPAltMode()).WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*port, CanEnterDPAltMode(nullptr))
+      .WillRepeatedly(testing::Return(true));
   port_manager->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
 
@@ -329,7 +333,7 @@ TEST_F(PortManagerTest, ModeSwitchSessionStoppedTBT) {
       .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
       .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
-  EXPECT_CALL(*port, CanEnterDPAltMode())
+  EXPECT_CALL(*port, CanEnterDPAltMode(nullptr))
       .WillRepeatedly(testing::Return(false));
   port_manager->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
@@ -382,7 +386,8 @@ TEST_F(PortManagerTest, ModeSwitchUnlockDPAndTBTNoPeripheralAccess) {
       .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
       .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
-  EXPECT_CALL(*port, CanEnterDPAltMode()).WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*port, CanEnterDPAltMode(nullptr))
+      .WillRepeatedly(testing::Return(true));
   port_manager->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
 
@@ -445,7 +450,8 @@ TEST_F(PortManagerTest, ModeSwitchDPandTBTPeripheralDataAccessChanging) {
       .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
       .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
-  EXPECT_CALL(*port, CanEnterDPAltMode()).WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*port, CanEnterDPAltMode(nullptr))
+      .WillRepeatedly(testing::Return(true));
   port_manager->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
 
@@ -510,7 +516,8 @@ TEST_F(PortManagerTest,
       .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
       .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
-  EXPECT_CALL(*port, CanEnterDPAltMode()).WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*port, CanEnterDPAltMode(nullptr))
+      .WillRepeatedly(testing::Return(true));
   port_manager->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
 
@@ -572,7 +579,7 @@ TEST_F(PortManagerTest, ModeSwitchTBTPeripheralDataAccessChanging) {
       .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
   EXPECT_CALL(*port, CanEnterTBTCompatibilityMode())
       .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
-  EXPECT_CALL(*port, CanEnterDPAltMode())
+  EXPECT_CALL(*port, CanEnterDPAltMode(nullptr))
       .WillRepeatedly(testing::Return(false));
   port_manager->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));

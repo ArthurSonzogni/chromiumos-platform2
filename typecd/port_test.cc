@@ -139,7 +139,19 @@ TEST_F(PortTest, TestDPAltModeEntryCheckTrue) {
                                 kDPVDOIndex_WD19TB));
   port->AddRemovePartnerAltMode(mode0_path, true);
 
-  EXPECT_TRUE(port->CanEnterDPAltMode());
+  // Add cable with USB3 to pass DPAltMode check. (Anker USB3.2 Gen2 Cable)
+  port->AddCable(base::FilePath(kFakePort0CableSysPath));
+  port->cable_->SetPDRevision(PDRevision::k30);
+  port->cable_->SetIdHeaderVDO(0x6c0004e8);
+  port->cable_->SetCertStatVDO(0x000f4246);
+  port->cable_->SetProductVDO(0xa0200212);
+  port->cable_->SetProductTypeVDO1(0x110000db);
+  port->cable_->SetProductTypeVDO2(0x00000000);
+  port->cable_->SetProductTypeVDO3(0x00000000);
+
+  bool invalid_dpalt_cable = false;
+  EXPECT_TRUE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
+  EXPECT_FALSE(invalid_dpalt_cable);
 }
 
 // Check that DP Alt Mode Entry checks work as expected for a specific false
@@ -170,7 +182,9 @@ TEST_F(PortTest, TestDPAltModeEntryCheckFalseWithDPSID) {
       CreateFakeAltMode(mode1_path, kTBTAltModeVID, kTBTVDO, kTBTVDOIndex));
   port->AddRemovePartnerAltMode(mode1_path, true);
 
-  EXPECT_FALSE(port->CanEnterDPAltMode());
+  bool invalid_dpalt_cable = false;
+  EXPECT_FALSE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
+  EXPECT_FALSE(invalid_dpalt_cable);
 }
 
 // Check that DP Alt Mode Entry checks work as expected for false cases.
@@ -181,7 +195,7 @@ TEST_F(PortTest, TestDPAltModeEntryCheckFalse) {
   port->partner_->SetNumAltModes(0);
 
   // Check the case where the partner doesn't support any alt modes.
-  EXPECT_FALSE(port->CanEnterDPAltMode());
+  EXPECT_FALSE(port->CanEnterDPAltMode(nullptr));
 
   port->partner_->SetNumAltModes(1);
 
@@ -193,7 +207,558 @@ TEST_F(PortTest, TestDPAltModeEntryCheckFalse) {
       CreateFakeAltMode(mode_path, kTBTAltModeVID, kTBTVDO, kTBTVDOIndex));
   port->AddRemovePartnerAltMode(mode_path, true);
 
-  EXPECT_FALSE(port->CanEnterDPAltMode());
+  EXPECT_FALSE(port->CanEnterDPAltMode(nullptr));
+}
+
+// Check that DP Alt Mode Entry works with cable check for a passing case.
+// Case: The WIMAXIT Type-C display supports DP alternate mode and the CalDigit
+// TBT4 cable supports up to USB4 so it should enter DP alternate mode and the
+// cable will not be flagged as invalid
+TEST_F(PortTest, TestDPAltModeEntryCalDigitTBT4ToDisplay) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  // Set up fake sysfs paths and add a partner.
+  port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
+
+  // PD ID VDOs for the WIMAXIT Type-C Display.
+  port->partner_->SetPDRevision(PDRevision::k30);
+  port->partner_->SetIdHeaderVDO(0x6c0004e8);
+  port->partner_->SetCertStatVDO(0xf4246);
+  port->partner_->SetProductVDO(0xa0200212);
+  port->partner_->SetProductTypeVDO1(0x110000db);
+  port->partner_->SetProductTypeVDO2(0x0);
+  port->partner_->SetProductTypeVDO3(0x0);
+
+  // Set up fake sysfs paths for partner alt modes.
+  port->partner_->SetNumAltModes(2);
+
+  // Add the DP alt mode.
+  std::string mode0_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
+  auto mode0_path = temp_dir_.Append(mode0_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kDPAltModeSID, 0x40045, 0));
+  port->AddRemovePartnerAltMode(mode0_path, true);
+
+  // Add the TBT alt mode.
+  std::string mode1_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
+  auto mode1_path = temp_dir_.Append(mode1_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode1_path, 0x04e8, 0x40045, 0));
+  port->AddRemovePartnerAltMode(mode1_path, true);
+
+  // Set up fake sysfs paths and add a cable.
+  port->AddCable(base::FilePath(kFakePort0CableSysPath));
+
+  // PD ID VDOs for the CalDigit TBT4 cable.
+  port->cable_->SetPDRevision(PDRevision::k30);
+  port->cable_->SetIdHeaderVDO(0x1c002b1d);
+  port->cable_->SetCertStatVDO(0x0);
+  port->cable_->SetProductVDO(0x15120001);
+  port->cable_->SetProductTypeVDO1(0x11082043);
+  port->cable_->SetProductTypeVDO2(0x0);
+  port->cable_->SetProductTypeVDO3(0x0);
+
+  bool invalid_dpalt_cable = false;
+  EXPECT_TRUE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
+  EXPECT_FALSE(invalid_dpalt_cable);
+}
+
+// Check that DP Alt Mode Entry works with cable check for a passing case.
+// Case: The WIMAXIT Type-C display supports DP alternate mode and the Anker
+// USB3.2 Gen2 cable supports USB3 so it should enter DP alternate mode and
+// the cable will not be flagged as invalid
+TEST_F(PortTest, TestDPAltModeEntryAnkerUsb3Gen2ToDisplay) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  // Set up fake sysfs paths and add a partner.
+  port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
+
+  // PD ID VDOs for the WIMAXIT Type-C Display.
+  port->partner_->SetPDRevision(PDRevision::k30);
+  port->partner_->SetIdHeaderVDO(0x6c0004e8);
+  port->partner_->SetCertStatVDO(0xf4246);
+  port->partner_->SetProductVDO(0xa0200212);
+  port->partner_->SetProductTypeVDO1(0x110000db);
+  port->partner_->SetProductTypeVDO2(0x0);
+  port->partner_->SetProductTypeVDO3(0x0);
+
+  // Set up fake sysfs paths for partner alt modes.
+  port->partner_->SetNumAltModes(2);
+
+  // Add the DP alt mode.
+  std::string mode0_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
+  auto mode0_path = temp_dir_.Append(mode0_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kDPAltModeSID, 0x40045, 0));
+  port->AddRemovePartnerAltMode(mode0_path, true);
+
+  // Add the TBT alt mode.
+  std::string mode1_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
+  auto mode1_path = temp_dir_.Append(mode1_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode1_path, 0x04e8, 0x40045, 0));
+  port->AddRemovePartnerAltMode(mode1_path, true);
+
+  // Set up fake sysfs paths and add a cable.
+  port->AddCable(base::FilePath(kFakePort0CableSysPath));
+
+  // PD ID VDOs for the Anker USB3.2 Gen2 cable.
+  port->cable_->SetPDRevision(PDRevision::k20);
+  port->cable_->SetIdHeaderVDO(0x1c00291a);
+  port->cable_->SetCertStatVDO(0xd0b);
+  port->cable_->SetProductVDO(0x1ff90000);
+  port->cable_->SetProductTypeVDO1(0x11082032);
+  port->cable_->SetProductTypeVDO2(0x0);
+  port->cable_->SetProductTypeVDO3(0x0);
+
+  bool invalid_dpalt_cable = false;
+  EXPECT_TRUE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
+  EXPECT_FALSE(invalid_dpalt_cable);
+}
+
+// Check that DP Alt Mode Entry works with cable check for a passing case.
+// Case: The WIMAXIT Type-C display supports DP alternate mode and the HP
+// USB3.2 Gen1 cable supports up to USB3.2 Gen1 so it should enter DP
+// alternate mode and the cable will not be flagged as invalid
+TEST_F(PortTest, TestDPAltModeEntryHPUsb3Gen1ToDisplay) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  // Set up fake sysfs paths and add a partner.
+  port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
+
+  // PD ID VDOs for the WIMAXIT Type-C Display.
+  port->partner_->SetPDRevision(PDRevision::k30);
+  port->partner_->SetIdHeaderVDO(0x6c0004e8);
+  port->partner_->SetCertStatVDO(0xf4246);
+  port->partner_->SetProductVDO(0xa0200212);
+  port->partner_->SetProductTypeVDO1(0x110000db);
+  port->partner_->SetProductTypeVDO2(0x0);
+  port->partner_->SetProductTypeVDO3(0x0);
+
+  // Set up fake sysfs paths for partner alt modes.
+  port->partner_->SetNumAltModes(2);
+
+  // Add the DP alt mode.
+  std::string mode0_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
+  auto mode0_path = temp_dir_.Append(mode0_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kDPAltModeSID, 0x40045, 0));
+  port->AddRemovePartnerAltMode(mode0_path, true);
+
+  // Add the TBT alt mode.
+  std::string mode1_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
+  auto mode1_path = temp_dir_.Append(mode1_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode1_path, 0x04e8, 0x40045, 0));
+  port->AddRemovePartnerAltMode(mode1_path, true);
+
+  // Set up fake sysfs paths and add a cable.
+  port->AddCable(base::FilePath(kFakePort0CableSysPath));
+
+  // PD ID VDOs for the HP USB3.2 Gen1 cable.
+  port->cable_->SetPDRevision(PDRevision::k30);
+  port->cable_->SetIdHeaderVDO(0x180003f0);
+  port->cable_->SetCertStatVDO(0x4295);
+  port->cable_->SetProductVDO(0x264700a0);
+  port->cable_->SetProductTypeVDO1(0x11084851);
+  port->cable_->SetProductTypeVDO2(0x0);
+  port->cable_->SetProductTypeVDO3(0x0);
+
+  bool invalid_dpalt_cable = false;
+  EXPECT_TRUE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
+  EXPECT_FALSE(invalid_dpalt_cable);
+}
+
+// Check that DP Alt Mode Entry works with cable check for a passing case.
+// Case: The WIMAXIT Type-C display supports DP alternate mode and the Apple
+// TBT3 Pro cable supports up to USB4 so it should enter DP alternate mode
+// and the cable will not be flagged as invalid
+TEST_F(PortTest, TestDPAltModeEntryAppleTBT3ToDisplay) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  // Set up fake sysfs paths and add a partner.
+  port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
+
+  // PD ID VDOs for the WIMAXIT Type-C Display.
+  port->partner_->SetPDRevision(PDRevision::k30);
+  port->partner_->SetIdHeaderVDO(0x6c0004e8);
+  port->partner_->SetCertStatVDO(0xf4246);
+  port->partner_->SetProductVDO(0xa0200212);
+  port->partner_->SetProductTypeVDO1(0x110000db);
+  port->partner_->SetProductTypeVDO2(0x0);
+  port->partner_->SetProductTypeVDO3(0x0);
+
+  // Set up fake sysfs paths for partner alt modes.
+  port->partner_->SetNumAltModes(2);
+
+  // Add the DP alt mode.
+  std::string mode0_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
+  auto mode0_path = temp_dir_.Append(mode0_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kDPAltModeSID, 0x40045, 0));
+  port->AddRemovePartnerAltMode(mode0_path, true);
+
+  // Add the TBT alt mode.
+  std::string mode1_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
+  auto mode1_path = temp_dir_.Append(mode1_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode1_path, 0x04e8, 0x40045, 0));
+  port->AddRemovePartnerAltMode(mode1_path, true);
+
+  // Set up fake sysfs paths and add a cable.
+  port->AddCable(base::FilePath(kFakePort0CableSysPath));
+
+  // PD ID VDOs for the Apple TBT3 Pro cable.
+  port->cable_->SetPDRevision(PDRevision::k30);
+  port->cable_->SetIdHeaderVDO(0x1c002b1d);
+  port->cable_->SetCertStatVDO(0x0);
+  port->cable_->SetProductVDO(0x15120001);
+  port->cable_->SetProductTypeVDO1(0x11082043);
+  port->cable_->SetProductTypeVDO2(0x0);
+  port->cable_->SetProductTypeVDO3(0x0);
+
+  port->cable_->SetNumAltModes(5);
+
+  // Set up fake sysfs paths for cable alt modes.
+  auto mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
+  auto mode_path = temp_dir_.Append(mode_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x00cb0001, 0));
+  port->AddCableAltMode(mode_path);
+
+  mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 1);
+  mode_path = temp_dir_.Append(mode_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kDPAltModeSID, 0x000c0c0c, 0));
+  port->AddCableAltMode(mode_path);
+
+  mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 2);
+  mode_path = temp_dir_.Append(mode_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, 0x05ac, 0x00000005, 0));
+  port->AddCableAltMode(mode_path);
+
+  mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 3);
+  mode_path = temp_dir_.Append(mode_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, 0x05ac, 0x00000007, 1));
+  port->AddCableAltMode(mode_path);
+
+  mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 4);
+  mode_path = temp_dir_.Append(mode_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, 0x05ac, 0x00000002, 2));
+  port->AddCableAltMode(mode_path);
+
+  bool invalid_dpalt_cable = false;
+  EXPECT_TRUE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
+  EXPECT_FALSE(invalid_dpalt_cable);
+}
+
+// Check that DP Alt Mode Entry works with cable check for a failing case.
+// Case: The WIMAXIT Type-C display supports DP alternate mode but, an unbranded
+// USB2 cable is not considered as a cable object in typecd. It should still try
+// to enter alternate mode but the cable will be flagged as invalid
+TEST_F(PortTest, TestDPAltModeEntryUnbrandedUSB2ToDisplay) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  // Set up fake sysfs paths and add a partner.
+  port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
+
+  // PD ID VDOs for the WIMAXIT Type-C Display.
+  port->partner_->SetPDRevision(PDRevision::k30);
+  port->partner_->SetIdHeaderVDO(0x6c0004e8);
+  port->partner_->SetCertStatVDO(0xf4246);
+  port->partner_->SetProductVDO(0xa0200212);
+  port->partner_->SetProductTypeVDO1(0x110000db);
+  port->partner_->SetProductTypeVDO2(0x0);
+  port->partner_->SetProductTypeVDO3(0x0);
+
+  // Set up fake sysfs paths for partner alt modes.
+  port->partner_->SetNumAltModes(2);
+
+  // Add the DP alt mode.
+  std::string mode0_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
+  auto mode0_path = temp_dir_.Append(mode0_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kDPAltModeSID, 0x40045, 0));
+  port->AddRemovePartnerAltMode(mode0_path, true);
+
+  // Add the TBT alt mode.
+  std::string mode1_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
+  auto mode1_path = temp_dir_.Append(mode1_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode1_path, 0x04e8, 0x40045, 0));
+  port->AddRemovePartnerAltMode(mode1_path, true);
+
+  // Set up fake sysfs paths and add a cable.
+  port->AddCable(base::FilePath(kFakePort0CableSysPath));
+
+  // PD ID VDOs for the unbranded USB2 cable.
+  port->cable_->SetPDRevision(PDRevision::kNone);
+  port->cable_->SetIdHeaderVDO(0x0);
+  port->cable_->SetCertStatVDO(0x0);
+  port->cable_->SetProductVDO(0x0);
+  port->cable_->SetProductTypeVDO1(0x0);
+  port->cable_->SetProductTypeVDO2(0x0);
+  port->cable_->SetProductTypeVDO3(0x0);
+
+  bool invalid_dpalt_cable = false;
+  EXPECT_TRUE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
+  EXPECT_TRUE(invalid_dpalt_cable);
+}
+
+// Check that DP Alt Mode Entry works with cable check for a failing case.
+// Case: The WIMAXIT Type-C display supports DP alternate mode but, a tested
+// Nekteck cable only supports up to USB2. The typec daemon should still try
+// to enter alternate mode but the cable will be flagged as invalid
+TEST_F(PortTest, TestDPAltModeEntryNekteckUSB2ToDisplay) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  // Set up fake sysfs paths and add a partner.
+  port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
+
+  // PD ID VDOs for the WIMAXIT Type-C Display.
+  port->partner_->SetPDRevision(PDRevision::k30);
+  port->partner_->SetIdHeaderVDO(0x6c0004e8);
+  port->partner_->SetCertStatVDO(0xf4246);
+  port->partner_->SetProductVDO(0xa0200212);
+  port->partner_->SetProductTypeVDO1(0x110000db);
+  port->partner_->SetProductTypeVDO2(0x0);
+  port->partner_->SetProductTypeVDO3(0x0);
+
+  // Set up fake sysfs paths for partner alt modes.
+  port->partner_->SetNumAltModes(2);
+
+  // Add the DP alt mode.
+  std::string mode0_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
+  auto mode0_path = temp_dir_.Append(mode0_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kDPAltModeSID, 0x40045, 0));
+  port->AddRemovePartnerAltMode(mode0_path, true);
+
+  // Add the TBT alt mode.
+  std::string mode1_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
+  auto mode1_path = temp_dir_.Append(mode1_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode1_path, 0x04e8, 0x40045, 0));
+  port->AddRemovePartnerAltMode(mode1_path, true);
+
+  // Set up fake sysfs paths and add a cable.
+  port->AddCable(base::FilePath(kFakePort0CableSysPath));
+
+  // PD ID VDOs for the Nekteck USB2 cable.
+  port->cable_->SetPDRevision(PDRevision::k30);
+  port->cable_->SetIdHeaderVDO(0x18002e98);
+  port->cable_->SetCertStatVDO(0x1533);
+  port->cable_->SetProductVDO(0x50200);
+  port->cable_->SetProductTypeVDO1(0x21084040);
+  port->cable_->SetProductTypeVDO2(0x0);
+  port->cable_->SetProductTypeVDO3(0x0);
+
+  bool invalid_dpalt_cable = false;
+  EXPECT_TRUE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
+  EXPECT_TRUE(invalid_dpalt_cable);
+}
+
+// Check that DP Alt Mode Entry works with cable check for a passing case.
+// Case: The Thinkpad Dock supports DP alternate mode and a tested unbranded
+// TBT3 cable supports up to USB3.2 Gen2 so it should enter DP alternate mode
+// and the cable will not be flagged as invalid
+TEST_F(PortTest, TestDPAltModeEntryTBT3ToDock) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  // Set up fake sysfs paths and add a partner.
+  port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
+
+  // PD ID VDOs for the ThinkPad Dock.
+  port->partner_->SetPDRevision(PDRevision::k30);
+  port->partner_->SetIdHeaderVDO(0x540017ef);
+  port->partner_->SetCertStatVDO(0x0);
+  port->partner_->SetProductVDO(0xa31e0000);
+  port->partner_->SetProductTypeVDO1(0x0);
+  port->partner_->SetProductTypeVDO2(0x0);
+  port->partner_->SetProductTypeVDO3(0x0);
+
+  // Set up fake sysfs paths for partner alt modes.
+  port->partner_->SetNumAltModes(3);
+
+  // Add the TBT alt mode.
+  std::string mode0_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
+  auto mode0_path = temp_dir_.Append(mode0_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kTBTAltModeVID, 0x1, 0));
+  port->AddRemovePartnerAltMode(mode0_path, true);
+
+  // Add the DP alt mode.
+  std::string mode1_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
+  auto mode1_path = temp_dir_.Append(mode1_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode1_path, kDPAltModeSID, 0xc3c47, 0));
+  port->AddRemovePartnerAltMode(mode1_path, true);
+
+  // Add additional alt mode. (svid = 0x17ef)
+  std::string mode2_dirname = base::StringPrintf("port%d-partner.%d", 0, 2);
+  auto mode2_path = temp_dir_.Append(mode2_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode2_path, 0x17ef, 0x1, 0));
+  port->AddRemovePartnerAltMode(mode2_path, true);
+
+  // Set up fake sysfs paths and add a cable.
+  port->AddCable(base::FilePath(kFakePort0CableSysPath));
+
+  // PD ID VDOs for the unbranded TBT3 cable.
+  port->cable_->SetPDRevision(PDRevision::k20);
+  port->cable_->SetIdHeaderVDO(0xc0020c2);
+  port->cable_->SetCertStatVDO(0x0ba);
+  port->cable_->SetProductVDO(0xa31d0310);
+  port->cable_->SetProductTypeVDO1(0x21082852);
+  port->cable_->SetProductTypeVDO2(0x0);
+  port->cable_->SetProductTypeVDO3(0x0);
+
+  bool invalid_dpalt_cable = false;
+  EXPECT_TRUE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
+  EXPECT_FALSE(invalid_dpalt_cable);
+}
+
+// Check that DP Alt Mode Entry works with cable check for a failing case.
+// Case: The Thinkpad Dock supports DP alternate mode but a tested unbranded
+// USB2 cable is not recognized by the typec daemon. It should try to enter
+// DP alternate mode but the cable will be flagged as invalid.
+TEST_F(PortTest, TestDPAltModeEntryUnbrandedUSB2ToDock) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  // Set up fake sysfs paths and add a partner.
+  port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
+
+  // PD ID VDOs for the ThinkPad Dock.
+  port->partner_->SetPDRevision(PDRevision::k30);
+  port->partner_->SetIdHeaderVDO(0x540017ef);
+  port->partner_->SetCertStatVDO(0x0);
+  port->partner_->SetProductVDO(0xa31e0000);
+  port->partner_->SetProductTypeVDO1(0x0);
+  port->partner_->SetProductTypeVDO2(0x0);
+  port->partner_->SetProductTypeVDO3(0x0);
+
+  // Set up fake sysfs paths for partner alt modes.
+  port->partner_->SetNumAltModes(3);
+
+  // Add the TBT alt mode.
+  std::string mode0_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
+  auto mode0_path = temp_dir_.Append(mode0_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kTBTAltModeVID, 0x1, 0));
+  port->AddRemovePartnerAltMode(mode0_path, true);
+
+  // Add the DP alt mode.
+  std::string mode1_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
+  auto mode1_path = temp_dir_.Append(mode1_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode1_path, kDPAltModeSID, 0xc3c47, 0));
+  port->AddRemovePartnerAltMode(mode1_path, true);
+
+  // Add additional alt mode. (svid = 0x17ef)
+  std::string mode2_dirname = base::StringPrintf("port%d-partner.%d", 0, 2);
+  auto mode2_path = temp_dir_.Append(mode2_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode2_path, 0x17ef, 0x1, 0));
+  port->AddRemovePartnerAltMode(mode2_path, true);
+
+  // Set up fake sysfs paths and add a cable.
+  port->AddCable(base::FilePath(kFakePort0CableSysPath));
+
+  // PD ID VDOs for the unbranded USB2 cable.
+  port->cable_->SetPDRevision(PDRevision::kNone);
+  port->cable_->SetIdHeaderVDO(00);
+  port->cable_->SetCertStatVDO(00);
+  port->cable_->SetProductVDO(0x0);
+  port->cable_->SetProductTypeVDO1(0x0);
+  port->cable_->SetProductTypeVDO2(0x0);
+  port->cable_->SetProductTypeVDO3(0x0);
+
+  bool invalid_dpalt_cable = false;
+  EXPECT_TRUE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
+  EXPECT_TRUE(invalid_dpalt_cable);
+}
+
+// Check that DP Alt Mode Entry works with cable check for a failing case.
+// Case: The Thinkpad Dock supports DP alternate mode but a tested Nekteck
+// type-c cable only supports up to USB2. The typec daemon should try to
+// enter DP alternate mode but the cable will be flagged as invalid.
+TEST_F(PortTest, TestDPAltModeEntryNekteckUSB2ToDock) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  // Set up fake sysfs paths and add a partner.
+  port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
+
+  // PD ID VDOs for the ThinkPad Dock.
+  port->partner_->SetPDRevision(PDRevision::k30);
+  port->partner_->SetIdHeaderVDO(0x540017ef);
+  port->partner_->SetCertStatVDO(0x0);
+  port->partner_->SetProductVDO(0xa31e0000);
+  port->partner_->SetProductTypeVDO1(0x0);
+  port->partner_->SetProductTypeVDO2(0x0);
+  port->partner_->SetProductTypeVDO3(0x0);
+
+  // Set up fake sysfs paths for partner alt modes.
+  port->partner_->SetNumAltModes(3);
+
+  // Add the TBT alt mode.
+  std::string mode0_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
+  auto mode0_path = temp_dir_.Append(mode0_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kTBTAltModeVID, 0x1, 0));
+  port->AddRemovePartnerAltMode(mode0_path, true);
+
+  // Add the DP alt mode.
+  std::string mode1_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
+  auto mode1_path = temp_dir_.Append(mode1_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode1_path, kDPAltModeSID, 0xc3c47, 0));
+  port->AddRemovePartnerAltMode(mode1_path, true);
+
+  // Add additional alt mode. (svid = 0x17ef)
+  std::string mode2_dirname = base::StringPrintf("port%d-partner.%d", 0, 2);
+  auto mode2_path = temp_dir_.Append(mode2_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode2_path, 0x17ef, 0x1, 0));
+  port->AddRemovePartnerAltMode(mode2_path, true);
+
+  // Set up fake sysfs paths and add a cable.
+  port->AddCable(base::FilePath(kFakePort0CableSysPath));
+
+  // PD ID VDOs for the Nekteck USB2 cable.
+  port->cable_->SetPDRevision(PDRevision::k30);
+  port->cable_->SetIdHeaderVDO(0x18002e98);
+  port->cable_->SetCertStatVDO(0x1533);
+  port->cable_->SetProductVDO(0x50200);
+  port->cable_->SetProductTypeVDO1(0x21084040);
+  port->cable_->SetProductTypeVDO2(0x0);
+  port->cable_->SetProductTypeVDO3(0x0);
+
+  bool invalid_dpalt_cable = false;
+  EXPECT_TRUE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
+  EXPECT_TRUE(invalid_dpalt_cable);
+}
+
+// Check that DP Alt Mode Entry works with cable check for a passing case.
+// Case: A small Cable Matters dock uses a captive cable. The type-c daemon
+// will not recognize a cable for this dock, but because the partner notes it
+// uses a captive cable typecd should enter DP Alt Mode without flagging the
+// cable as invalid
+TEST_F(PortTest, TestDPAltModeEntryCableMattersDock) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  // Set up fake sysfs paths and add a partner.
+  port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
+
+  // PD ID VDOs for the Cable Matters dock.
+  port->partner_->SetPDRevision(PDRevision::k30);
+  port->partner_->SetIdHeaderVDO(0x6c0004b4);
+  port->partner_->SetCertStatVDO(0x0);
+  port->partner_->SetProductVDO(0xf6490222);
+  port->partner_->SetProductTypeVDO1(0x8);
+  port->partner_->SetProductTypeVDO2(0x0);
+  port->partner_->SetProductTypeVDO3(0x0);
+
+  // Set up fake sysfs paths for partner alt modes.
+  port->partner_->SetNumAltModes(1);
+
+  // Add the DP alt mode.
+  std::string mode0_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
+  auto mode0_path = temp_dir_.Append(mode0_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kDPAltModeSID, 0x405, 0));
+  port->AddRemovePartnerAltMode(mode0_path, true);
+
+  // Set up fake sysfs paths and add a cable.
+  port->AddCable(base::FilePath(kFakePort0CableSysPath));
+
+  // PD ID VDOs for the Cable Matters dock
+  port->cable_->SetPDRevision(PDRevision::kNone);
+  port->cable_->SetIdHeaderVDO(0x0);
+  port->cable_->SetCertStatVDO(0x0);
+  port->cable_->SetProductVDO(0x0);
+  port->cable_->SetProductTypeVDO1(0x0);
+  port->cable_->SetProductTypeVDO2(0x0);
+  port->cable_->SetProductTypeVDO3(0x0);
+
+  bool invalid_dpalt_cable = false;
+  EXPECT_TRUE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
+  EXPECT_FALSE(invalid_dpalt_cable);
 }
 
 // Check that TBT Compat Mode Entry checks work as expected for the following

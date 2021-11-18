@@ -51,7 +51,8 @@ enum class CableSpeedMetric {
 enum class WrongConfigurationMetric {
   kTBTWrongCable = 0,
   kUSB4WrongCable = 1,
-  kMaxValue = kUSB4WrongCable,
+  kDPAltWrongCable = 2,
+  kMaxValue = kDPAltWrongCable,
 };
 
 // A class for collecting UMA metrics.

@@ -213,7 +213,7 @@ void PortManager::HandleSessionStopped() {
       continue;
 
     // If DP mode entry isn't supported, there is nothing left to do.
-    if (!port->CanEnterDPAltMode())
+    if (!port->CanEnterDPAltMode(nullptr))
       continue;
 
     // First try exiting the alt mode.
@@ -357,7 +357,7 @@ void PortManager::RunModeEntry(int port_num) {
   // becoming difficult to follow.
   if (notify_mgr_) {
     if (port->CanEnterTBTCompatibilityMode() == ModeEntryResult::kSuccess) {
-      auto notif = port->CanEnterDPAltMode()
+      auto notif = port->CanEnterDPAltMode(nullptr)
                        ? DeviceConnectedType::kThunderboltDp
                        : DeviceConnectedType::kThunderboltOnly;
       notify_mgr_->NotifyConnected(notif);
@@ -389,7 +389,7 @@ void PortManager::RunModeEntry(int port_num) {
     //
     // If DP alt mode cannot be entered, proceed to enter TBT in all cases.
     TypeCMode cur_mode = TypeCMode::kTBT;
-    if (port->CanEnterDPAltMode() &&
+    if (port->CanEnterDPAltMode(nullptr) &&
         (!GetUserActive() || (GetUserActive() && !GetPeripheralDataAccess()))) {
       cur_mode = TypeCMode::kDP;
       LOG(INFO) << "Not entering TBT compat mode since user_active: "
@@ -410,13 +410,20 @@ void PortManager::RunModeEntry(int port_num) {
     return;
   }
 
-  if (port->CanEnterDPAltMode()) {
+  bool invalid_dpalt_cable = false;
+  if (port->CanEnterDPAltMode(&invalid_dpalt_cable)) {
     if (ec_util_->EnterMode(port_num, TypeCMode::kDP)) {
       port->SetCurrentMode(TypeCMode::kDP);
       LOG(INFO) << "Entered DP mode on port " << port_num;
     } else {
       LOG(ERROR) << "Attempt to call Enter DP failed for port " << port_num;
     }
+
+    // Notification placeholder to warn the user of a cable which may not
+    // support DisplayPort alternate mode.
+    if (invalid_dpalt_cable)
+      LOG(ERROR) << "Notify - Cable may not support DPAltMode on port "
+                 << port_num;
 
     return;
   }

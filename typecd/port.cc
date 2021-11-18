@@ -136,7 +136,10 @@ PowerRole Port::GetPowerRole() {
   return power_role_;
 }
 
-bool Port::CanEnterDPAltMode() {
+bool Port::CanEnterDPAltMode(bool* invalid_dpalt_cable_ptr) {
+  bool dp_alt_available = false;
+  bool partner_is_receptacle = false;
+
   for (int i = 0; i < partner_->GetNumAltModes(); i++) {
     auto alt_mode = partner_->GetAltMode(i);
     // Only enter DP if:
@@ -144,11 +147,38 @@ bool Port::CanEnterDPAltMode() {
     // - The DP altmode VDO says it is DFP_D capable.
     if (!alt_mode || alt_mode->GetSVID() != kDPAltModeSID)
       continue;
+
     if (alt_mode->GetVDO() & kDPModeSnk)
-      return true;
+      dp_alt_available = true;
+
+    if (alt_mode->GetVDO() & kDPModeReceptacle)
+      partner_is_receptacle = true;
   }
 
-  return false;
+  // Partner does not support DPAltMode -> partner error
+  if (!dp_alt_available)
+    return false;
+
+  // If the partner supports DPAltMode and an invalid cable flag is passed to
+  // the function, check to see if the cable also supports DPAltMode.
+  if (invalid_dpalt_cable_ptr != nullptr) {
+    // First assume the cable can support DPAlt mode.
+    *invalid_dpalt_cable_ptr = false;
+
+    // Missing cable with partner indicating it is not captive -> cable error.
+    if (!cable_ && partner_is_receptacle)
+      *invalid_dpalt_cable_ptr = true;
+
+    // Cable exists and partner supports DPAltMode. If cable is usb2 and the
+    // partner is a receptacle -> cable error.
+    // Otherwise it is a captive cable, and not a cable error.
+    auto speed = cable_->GetProductTypeVDO1() & kUSBSpeedBitMask;
+    if (speed == kUSBSpeed20 && partner_is_receptacle)
+      *invalid_dpalt_cable_ptr = true;
+  }
+
+  // Partner supports DPAltMode.
+  return true;
 }
 
 // Mode entry check for TBT compatibility mode.
@@ -405,10 +435,16 @@ void Port::ReportPortMetrics(Metrics* metrics) {
   if (!IsCableDiscoveryComplete() || !IsPartnerDiscoveryComplete())
     return;
 
+  // Check cable for tracking DPAltMode cable metrics.
+  bool invalid_dpalt_cable = false;
+  bool can_enter_dpalt_mode = CanEnterDPAltMode(&invalid_dpalt_cable);
+
   if (CanEnterUSB4() == ModeEntryResult::kCableError)
     metrics->ReportWrongCableError(WrongConfigurationMetric::kUSB4WrongCable);
   else if (CanEnterTBTCompatibilityMode() == ModeEntryResult::kCableError)
     metrics->ReportWrongCableError(WrongConfigurationMetric::kTBTWrongCable);
+  else if (can_enter_dpalt_mode && invalid_dpalt_cable)
+    metrics->ReportWrongCableError(WrongConfigurationMetric::kDPAltWrongCable);
 
   metrics_reported_ = true;
   return;

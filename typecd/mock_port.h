@@ -20,7 +20,10 @@ class MockPort : public Port {
   MockPort(base::FilePath path, int port_num) : Port(path, port_num) {}
 
   MOCK_METHOD(DataRole, GetDataRole, (), (override));
-  MOCK_METHOD(bool, CanEnterDPAltMode, (), (override));
+  MOCK_METHOD(bool,
+              CanEnterDPAltMode,
+              (bool* invalid_dpalt_cable_ptr),
+              (override));
   MOCK_METHOD(ModeEntryResult, CanEnterTBTCompatibilityMode, (), (override));
   MOCK_METHOD(ModeEntryResult, CanEnterUSB4, (), (override));
   MOCK_METHOD(bool, IsPartnerDiscoveryComplete, (), (override));

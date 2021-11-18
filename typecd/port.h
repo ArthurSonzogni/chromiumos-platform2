@@ -84,7 +84,7 @@ class Port {
 
   // Check whether we can enter DP Alt Mode. This should check for the presence
   // of required attributes on the Partner and (if applicable) Cable.
-  virtual bool CanEnterDPAltMode();
+  virtual bool CanEnterDPAltMode(bool* invalid_cable_flag);
 
   // Check whether we can enter Thunderbolt Compatibility Alt Mode. This should
   // check for the presence of required attributes on the Partner and
@@ -132,6 +132,16 @@ class Port {
   FRIEND_TEST(PortTest, TestDPAltModeEntryCheckTrue);
   FRIEND_TEST(PortTest, TestDPAltModeEntryCheckFalseWithDPSID);
   FRIEND_TEST(PortTest, TestDPAltModeEntryCheckFalse);
+  FRIEND_TEST(PortTest, TestDPAltModeEntryCalDigitTBT4ToDisplay);
+  FRIEND_TEST(PortTest, TestDPAltModeEntryAnkerUsb3Gen2ToDisplay);
+  FRIEND_TEST(PortTest, TestDPAltModeEntryHPUsb3Gen1ToDisplay);
+  FRIEND_TEST(PortTest, TestDPAltModeEntryAppleTBT3ToDisplay);
+  FRIEND_TEST(PortTest, TestDPAltModeEntryUnbrandedUSB2ToDisplay);
+  FRIEND_TEST(PortTest, TestDPAltModeEntryNekteckUSB2ToDisplay);
+  FRIEND_TEST(PortTest, TestDPAltModeEntryTBT3ToDock);
+  FRIEND_TEST(PortTest, TestDPAltModeEntryUnbrandedUSB2ToDock);
+  FRIEND_TEST(PortTest, TestDPAltModeEntryNekteckUSB2ToDock);
+  FRIEND_TEST(PortTest, TestDPAltModeEntryCableMattersDock);
   FRIEND_TEST(PortTest, TestTBTCompatibilityModeEntryCheckTrueStartech);
   FRIEND_TEST(PortTest, TestTBTCompatibilityModeEntryCheckFalseStartech);
   FRIEND_TEST(PortTest, TestTBTCompatibilityModeEntryCheckTrueWD19TB);

@@ -71,6 +71,7 @@ constexpr uint16_t kDPAltModeSID = 0xff01;
 // DP altmode VDO capabilities.
 // NOTE: We only include the bit fields we are interested in.
 constexpr uint32_t kDPModeSnk = 0x1;
+constexpr uint32_t kDPModeReceptacle = 0x40;
 
 constexpr uint16_t kTBTAltModeVID = 0x8087;
 
