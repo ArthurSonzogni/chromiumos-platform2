@@ -89,3 +89,4 @@ pipe: 1
 lstat64: 1
 shutdown: 1
 sysinfo: 1
+pread64: 1

@@ -75,3 +75,4 @@ writev: 1
 pipe: 1
 shutdown: 1
 sysinfo: 1
+pread64: 1
