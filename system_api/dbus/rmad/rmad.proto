@@ -193,6 +193,7 @@ enum CalibrationSetupInstruction {
   // Reserved for additional setup instructions.
   reserved 3 to 9;
   RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION = 10;
+  RMAD_CALIBRATION_INSTRUCTION_NEED_TO_CHECK = 11;
 }
 
 // Defined overall status for Calibration.
