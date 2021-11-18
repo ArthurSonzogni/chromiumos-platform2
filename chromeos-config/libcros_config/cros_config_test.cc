@@ -125,55 +125,6 @@ TEST_F(CrosConfigTest, CheckCameraCount) {
   EXPECT_EQ("1", val);
 }
 
-TEST_F(CrosConfigTest, CheckDeviceIndex0) {
-  InitConfig("Some", 0);
-
-  int device_index;
-  ASSERT_TRUE(cros_config_.GetDeviceIndex(&device_index));
-  EXPECT_EQ(0, device_index);
-}
-
-TEST_F(CrosConfigTest, CheckDeviceIndex1) {
-  InitConfig("Some", 1);
-
-  int device_index;
-  ASSERT_TRUE(cros_config_.GetDeviceIndex(&device_index));
-  EXPECT_EQ(1, device_index);
-}
-
-TEST_F(CrosConfigTest, CheckDeviceIndex2) {
-  InitConfig("Some", 2);
-
-  int device_index;
-  ASSERT_TRUE(cros_config_.GetDeviceIndex(&device_index));
-  EXPECT_EQ(2, device_index);
-}
-
-TEST_F(CrosConfigTest, CheckDeviceIndex3) {
-  InitConfig("Another", 0);
-
-  int device_index;
-  ASSERT_TRUE(cros_config_.GetDeviceIndex(&device_index));
-  EXPECT_EQ(3, device_index);
-}
-
-TEST_F(CrosConfigTest, CheckWriteFallbackFS) {
-  base::FilePath tempdir;
-  ASSERT_TRUE(base::CreateNewTempDirectory("cros_config_test", &tempdir));
-
-  brillo::CrosConfigFallback fallback;
-  EXPECT_TRUE(fallback.WriteConfigFS(tempdir));
-
-  std::string contents;
-  ASSERT_TRUE(base::ReadFileToString(
-      tempdir.Append("firmware").Append("image-name"), &contents));
-  EXPECT_EQ("test_mosys_model_string", contents);
-
-  ASSERT_TRUE(base::ReadFileToString(
-      tempdir.Append("ui").Append("help-content-id"), &contents));
-  EXPECT_EQ("ABC123-MODEL", contents);
-}
-
 int main(int argc, char** argv) {
   logging::LoggingSettings settings;
   settings.logging_dest = logging::LOG_TO_FILE;
