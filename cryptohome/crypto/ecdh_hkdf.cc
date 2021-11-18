@@ -16,30 +16,56 @@
 
 namespace cryptohome {
 
-bool ComputeEcdhSharedSecret(const EllipticCurve& ec,
-                             const brillo::SecureBlob& pub_key,
-                             const brillo::SecureBlob& priv_key,
-                             brillo::SecureBlob* shared_secret) {
+bool ComputeEcdhSharedSecretPoint(
+    const EllipticCurve& ec,
+    const brillo::SecureBlob& others_pub_key,
+    const brillo::SecureBlob& own_priv_key,
+    brillo::SecureBlob* shared_secret_point_blob) {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
     return false;
   }
   crypto::ScopedEC_POINT pub_point =
-      ec.SecureBlobToPoint(pub_key, context.get());
+      ec.SecureBlobToPoint(others_pub_key, context.get());
   if (!pub_point) {
     LOG(ERROR) << "Failed to convert SecureBlob to EC_POINT";
     return false;
   }
-  crypto::ScopedBIGNUM priv_scalar = SecureBlobToBigNum(priv_key);
+  crypto::ScopedBIGNUM priv_scalar = SecureBlobToBigNum(own_priv_key);
   if (!priv_scalar) {
     LOG(ERROR) << "Failed to convert SecureBlob to BIGNUM";
     return false;
   }
-  crypto::ScopedEC_POINT shared_point =
+  crypto::ScopedEC_POINT shared_secret_point =
       ec.Multiply(*pub_point, *priv_scalar, context.get());
-  if (!shared_point) {
+  if (!shared_secret_point) {
     LOG(ERROR) << "Failed to perform scalar multiplication";
+    return false;
+  }
+  if (!ec.PointToSecureBlob(*shared_secret_point, shared_secret_point_blob,
+                            context.get())) {
+    LOG(ERROR) << "Failed to convert shared_secret_point to a SecureBlob";
+    return false;
+  }
+
+  return true;
+}
+
+bool ComputeEcdhSharedSecret(const EllipticCurve& ec,
+                             const brillo::SecureBlob& shared_secret_point_blob,
+                             brillo::SecureBlob* shared_secret) {
+  ScopedBN_CTX context = CreateBigNumContext();
+  if (!context) {
+    LOG(ERROR) << "Failed to allocate BN_CTX structure";
+    return false;
+  }
+
+  crypto::ScopedEC_POINT shared_secret_point =
+      ec.SecureBlobToPoint(shared_secret_point_blob, context.get());
+  if (!shared_secret_point) {
+    LOG(ERROR)
+        << "Failed to convert shared_secret_point SecureBlob to EC_POINT";
     return false;
   }
   // Get shared point's affine X coordinate.
@@ -48,9 +74,10 @@ bool ComputeEcdhSharedSecret(const EllipticCurve& ec,
     LOG(ERROR) << "Failed to allocate BIGNUM";
     return false;
   }
-  if (!ec.GetAffineCoordinates(*shared_point, context.get(), shared_x.get(),
+  if (!ec.GetAffineCoordinates(*shared_secret_point, context.get(),
+                               shared_x.get(),
                                /*y=*/nullptr)) {
-    LOG(ERROR) << "Failed to get shared_point x coordinate";
+    LOG(ERROR) << "Failed to get shared_secret_point x coordinate";
     return false;
   }
   // Convert X coordinate to fixed-size blob.
@@ -76,55 +103,32 @@ bool ComputeHkdfWithInfoSuffix(const brillo::SecureBlob& hkdf_secret,
               symmetric_key);
 }
 
-bool GenerateEcdhHkdfSenderKey(const EllipticCurve& ec,
-                               const brillo::SecureBlob& recipient_pub_key,
-                               const brillo::SecureBlob& ephemeral_pub_key,
-                               const brillo::SecureBlob& ephemeral_priv_key,
-                               const brillo::SecureBlob& hkdf_info_suffix,
-                               const brillo::SecureBlob& hkdf_salt,
-                               HkdfHash hkdf_hash,
-                               size_t symmetric_key_len,
-                               brillo::SecureBlob* symmetric_key) {
+bool GenerateEcdhHkdfSymmetricKey(
+    const EllipticCurve& ec,
+    const brillo::SecureBlob& shared_secret_point_blob,
+    const brillo::SecureBlob& source_pub_key,
+    const brillo::SecureBlob& hkdf_info_suffix,
+    const brillo::SecureBlob& hkdf_salt,
+    HkdfHash hkdf_hash,
+    size_t symmetric_key_len,
+    brillo::SecureBlob* symmetric_key) {
   brillo::SecureBlob shared_secret;
-  if (!ComputeEcdhSharedSecret(ec, recipient_pub_key, ephemeral_priv_key,
-                               &shared_secret)) {
+  if (!ComputeEcdhSharedSecret(ec, shared_secret_point_blob, &shared_secret)) {
     LOG(ERROR) << "Failed to compute shared secret";
     return false;
   }
 
-  if (!ComputeHkdfWithInfoSuffix(shared_secret, hkdf_info_suffix,
-                                 ephemeral_pub_key, hkdf_salt, hkdf_hash,
-                                 symmetric_key_len, symmetric_key)) {
-    LOG(ERROR) << "Failed to compute HKDF";
-    return false;
-  }
-  return true;
-}
-
-bool GenerateEcdhHkdfRecipientKey(const EllipticCurve& ec,
-                                  const brillo::SecureBlob& recipient_priv_key,
-                                  const brillo::SecureBlob& ephemeral_pub_key,
-                                  const brillo::SecureBlob& hkdf_info_suffix,
-                                  const brillo::SecureBlob& hkdf_salt,
-                                  HkdfHash hkdf_hash,
-                                  size_t symmetric_key_len,
-                                  brillo::SecureBlob* symmetric_key) {
-  brillo::SecureBlob shared_secret;
-  if (!ComputeEcdhSharedSecret(ec, ephemeral_pub_key, recipient_priv_key,
-                               &shared_secret)) {
-    LOG(ERROR) << "Failed to compute shared secret";
-    return false;
-  }
-
-  // Compute HKDF using info = combined ephemeral_pub_key and hkdf_info_suffix.
+  // Compute HKDF using info = combined source_pub_key and hkdf_info_suffix.
   brillo::SecureBlob info =
-      brillo::SecureBlob::Combine(ephemeral_pub_key, hkdf_info_suffix);
+      brillo::SecureBlob::Combine(source_pub_key, hkdf_info_suffix);
   if (!ComputeHkdfWithInfoSuffix(shared_secret, hkdf_info_suffix,
-                                 ephemeral_pub_key, hkdf_salt, hkdf_hash,
+                                 source_pub_key, hkdf_salt, hkdf_hash,
                                  symmetric_key_len, symmetric_key)) {
     LOG(ERROR) << "Failed to compute HKDF";
     return false;
   }
+  // Dispose shared_secret after used
+  shared_secret.clear();
   return true;
 }
 

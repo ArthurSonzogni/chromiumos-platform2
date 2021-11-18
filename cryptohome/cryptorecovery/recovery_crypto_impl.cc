@@ -79,20 +79,28 @@ bool RecoveryCryptoImpl::EncryptMediatorShare(
     return false;
   }
 
+  brillo::SecureBlob shared_secret_point;
+  if (!ComputeEcdhSharedSecretPoint(ec_, mediator_pub_key, ephemeral_priv_key,
+                                    &shared_secret_point)) {
+    LOG(ERROR) << "Failed to compute shared point from mediator_pub_key and "
+                  "ephemeral_priv_key";
+    return false;
+  }
   brillo::SecureBlob aes_gcm_key;
   // |hkdf_salt| can be empty here because the input already has a high entropy.
   // Bruteforce attacks are not an issue here and as we generate an ephemeral
   // key as input to HKDF the output will already be non-deterministic.
-  if (!GenerateEcdhHkdfSenderKey(ec_, mediator_pub_key,
-                                 encrypted_ms->ephemeral_pub_key,
-                                 ephemeral_priv_key, GetMediatorShareHkdfInfo(),
-                                 /*hkdf_salt=*/brillo::SecureBlob(), kHkdfHash,
-                                 kAesGcm256KeySize, &aes_gcm_key)) {
+  if (!GenerateEcdhHkdfSymmetricKey(
+          ec_, shared_secret_point, encrypted_ms->ephemeral_pub_key,
+          GetMediatorShareHkdfInfo(), /*hkdf_salt=*/brillo::SecureBlob(),
+          kHkdfHash, kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys for mediator share "
                   "encryption";
     return false;
   }
 
+  // Dispose shared_secret_point after used
+  shared_secret_point.clear();
   // Dispose private key.
   ephemeral_priv_key.clear();
 
@@ -226,18 +234,28 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
     return false;
   }
 
+  brillo::SecureBlob shared_secret_point;
+  if (!ComputeEcdhSharedSecretPoint(ec_, epoch_pub_key, channel_priv_key,
+                                    &shared_secret_point)) {
+    LOG(ERROR) << "Failed to compute shared point from epoch_pub_key and "
+                  "channel_priv_key";
+    return false;
+  }
   brillo::SecureBlob aes_gcm_key;
   // The static nature of `channel_pub_key` (G*s) and `epoch_pub_key` (G*r)
   // requires the need to utilize a randomized salt value in the HKDF
   // computation.
-  if (!GenerateEcdhHkdfSenderKey(
-          ec_, epoch_pub_key, channel_pub_key, channel_priv_key,
-          GetRequestPayloadPlainTextHkdfInfo(), request_ad.request_payload_salt,
-          kHkdfHash, kAesGcm256KeySize, &aes_gcm_key)) {
+  if (!GenerateEcdhHkdfSymmetricKey(ec_, shared_secret_point, channel_pub_key,
+                                    GetRequestPayloadPlainTextHkdfInfo(),
+                                    request_ad.request_payload_salt, kHkdfHash,
+                                    kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys for recovery "
                   "request plain text encryption";
     return false;
   }
+
+  // Dispose shared_secret_point after used
+  shared_secret_point.clear();
 
   brillo::SecureBlob ephemeral_inverse_pub_key;
   if (!GenerateEphemeralKey(ephemeral_pub_key, &ephemeral_inverse_pub_key)) {
@@ -392,14 +410,22 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     return false;
   }
 
+  brillo::SecureBlob shared_secret_point;
+  if (!ComputeEcdhSharedSecretPoint(ec_, mediator_pub_key, publisher_priv_key,
+                                    &shared_secret_point)) {
+    LOG(ERROR) << "Failed to compute shared point from epoch_pub_key and "
+                  "channel_priv_key";
+    return false;
+  }
   brillo::SecureBlob aes_gcm_key;
   // |hkdf_salt| can be empty here because the input already has a high entropy.
   // Bruteforce attacks are not an issue here and as we generate an ephemeral
   // key as input to HKDF the output will already be non-deterministic.
-  if (!GenerateEcdhHkdfSenderKey(ec_, mediator_pub_key, publisher_pub_key,
-                                 publisher_priv_key, GetMediatorShareHkdfInfo(),
-                                 /*hkdf_salt=*/brillo::SecureBlob(), kHkdfHash,
-                                 kAesGcm256KeySize, &aes_gcm_key)) {
+  if (!GenerateEcdhHkdfSymmetricKey(ec_, shared_secret_point, publisher_pub_key,
+                                    GetMediatorShareHkdfInfo(),
+                                    /*hkdf_salt=*/brillo::SecureBlob(),
+                                    kHkdfHash, kAesGcm256KeySize,
+                                    &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF sender keys for HSM plain text "
                   "encryption";
     return false;
@@ -415,6 +441,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   // Cleanup: all intermediate secrets must be securely disposed at the end of
   // HSM payload generation.
   aes_gcm_key.clear();
+  shared_secret_point.clear();
   plain_text_cbor.clear();
   mediator_share.clear();
   dealer_pub_key.clear();
@@ -530,8 +557,15 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
     LOG(ERROR) << "Unable to deserialize Response payload associated data";
     return false;
   }
+  brillo::SecureBlob shared_secret_point;
+  if (!ComputeEcdhSharedSecretPoint(ec_, epoch_pub_key, channel_priv_key,
+                                    &shared_secret_point)) {
+    LOG(ERROR) << "Failed to compute shared point from epoch_pub_key and "
+                  "channel_priv_key";
+    return false;
+  }
   brillo::SecureBlob aes_gcm_key;
-  if (!GenerateEcdhHkdfRecipientKey(ec_, channel_priv_key, epoch_pub_key,
+  if (!GenerateEcdhHkdfSymmetricKey(ec_, shared_secret_point, epoch_pub_key,
                                     GetResponsePayloadPlainTextHkdfInfo(),
                                     response_ad.response_payload_salt,
                                     RecoveryCrypto::kHkdfHash,
@@ -540,6 +574,10 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
                   "plain text decryption";
     return false;
   }
+
+  // Dispose shared_secret_point after used
+  shared_secret_point.clear();
+
   brillo::SecureBlob response_plain_text_cbor;
   if (!AesGcmDecrypt(recovery_response.response_payload.cipher_text,
                      recovery_response.response_payload.associated_data,

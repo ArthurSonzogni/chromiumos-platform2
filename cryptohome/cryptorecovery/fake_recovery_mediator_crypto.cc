@@ -128,9 +128,17 @@ bool FakeRecoveryMediatorCrypto::DecryptMediatorShare(
     const brillo::SecureBlob& mediator_priv_key,
     const RecoveryCrypto::EncryptedMediatorShare& encrypted_mediator_share,
     brillo::SecureBlob* mediator_share) const {
+  brillo::SecureBlob shared_secret_point;
+  if (!ComputeEcdhSharedSecretPoint(ec_,
+                                    encrypted_mediator_share.ephemeral_pub_key,
+                                    mediator_priv_key, &shared_secret_point)) {
+    LOG(ERROR) << "Failed to compute shared point from ephemeral_pub_key and "
+                  "mediator_priv_key";
+    return false;
+  }
   brillo::SecureBlob aes_gcm_key;
-  if (!GenerateEcdhHkdfRecipientKey(
-          ec_, mediator_priv_key, encrypted_mediator_share.ephemeral_pub_key,
+  if (!GenerateEcdhHkdfSymmetricKey(
+          ec_, shared_secret_point, encrypted_mediator_share.ephemeral_pub_key,
           GetMediatorShareHkdfInfo(),
           /*hkdf_salt=*/brillo::SecureBlob(), RecoveryCrypto::kHkdfHash,
           kAesGcm256KeySize, &aes_gcm_key)) {
@@ -161,11 +169,19 @@ bool FakeRecoveryMediatorCrypto::DecryptHsmPayloadPlainText(
     LOG(ERROR) << "Unable to deserialize publisher_pub_key from hsm_payload";
     return false;
   }
+  brillo::SecureBlob shared_secret_point;
+  if (!ComputeEcdhSharedSecretPoint(ec_, publisher_pub_key, mediator_priv_key,
+                                    &shared_secret_point)) {
+    LOG(ERROR) << "Failed to compute shared point from publisher_pub_key and "
+                  "mediator_priv_key";
+    return false;
+  }
   brillo::SecureBlob aes_gcm_key;
-  if (!GenerateEcdhHkdfRecipientKey(
-          ec_, mediator_priv_key, publisher_pub_key, GetMediatorShareHkdfInfo(),
-          /*hkdf_salt=*/brillo::SecureBlob(), RecoveryCrypto::kHkdfHash,
-          kAesGcm256KeySize, &aes_gcm_key)) {
+  if (!GenerateEcdhHkdfSymmetricKey(ec_, shared_secret_point, publisher_pub_key,
+                                    GetMediatorShareHkdfInfo(),
+                                    /*hkdf_salt=*/brillo::SecureBlob(),
+                                    RecoveryCrypto::kHkdfHash,
+                                    kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF recipient key for HSM "
                   "plaintext decryption";
     return false;
@@ -205,8 +221,15 @@ bool FakeRecoveryMediatorCrypto::DecryptRequestPayloadPlainText(
     return false;
   }
 
+  brillo::SecureBlob shared_secret_point;
+  if (!ComputeEcdhSharedSecretPoint(ec_, channel_pub_key, epoch_priv_key,
+                                    &shared_secret_point)) {
+    LOG(ERROR) << "Failed to compute shared point from channel_pub_key and "
+                  "epoch_priv_key";
+    return false;
+  }
   brillo::SecureBlob aes_gcm_key;
-  if (!GenerateEcdhHkdfRecipientKey(ec_, epoch_priv_key, channel_pub_key,
+  if (!GenerateEcdhHkdfSymmetricKey(ec_, shared_secret_point, channel_pub_key,
                                     GetRequestPayloadPlainTextHkdfInfo(), salt,
                                     RecoveryCrypto::kHkdfHash,
                                     kAesGcm256KeySize, &aes_gcm_key)) {
@@ -319,14 +342,21 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
     return false;
   }
 
+  brillo::SecureBlob shared_secret_point;
+  if (!ComputeEcdhSharedSecretPoint(ec_, channel_pub_key, epoch_priv_key,
+                                    &shared_secret_point)) {
+    LOG(ERROR) << "Failed to compute shared point from channel_pub_key and "
+                  "epoch_priv_key";
+    return false;
+  }
   brillo::SecureBlob aes_gcm_key;
   // The static nature of `channel_pub_key` (G*s) and `epoch_pub_key` (G*r)
   // requires the need to utilize a randomized salt value in the HKDF
   // computation.
-  if (!GenerateEcdhHkdfSenderKey(
-          ec_, channel_pub_key, epoch_pub_key, epoch_priv_key,
-          GetResponsePayloadPlainTextHkdfInfo(), salt,
-          RecoveryCrypto::kHkdfHash, kAesGcm256KeySize, &aes_gcm_key)) {
+  if (!GenerateEcdhHkdfSymmetricKey(ec_, shared_secret_point, epoch_pub_key,
+                                    GetResponsePayloadPlainTextHkdfInfo(), salt,
+                                    RecoveryCrypto::kHkdfHash,
+                                    kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR)
         << "Failed to generate ECDH+HKDF recipient key for Recovery Request "
            "plaintext encryption";
