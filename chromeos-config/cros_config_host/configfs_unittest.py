@@ -76,19 +76,6 @@ class ConfigFSTests(cros_test_lib.TestCase):
         _CheckConfigRec(entry, childpath)
     _CheckConfigRec(config, os.path.join(output_dir, 'squashfs-root/v1'))
 
-  # TODO(jrosenth): remove once we've fully moved over to struct-based
-  # identity.
-  @TestConfigs('test.json', 'test_arm.json')
-  def testConfigV1IdentityJson(self, filename, config, output_dir):
-    identity_path = os.path.join(output_dir, 'squashfs-root/v1/identity.json')
-    self.assertTrue(os.path.isfile(identity_path))
-    with open(identity_path) as f:
-      identity_data = json.load(f)
-    for device_config, identity_config in zip(
-        config['chromeos']['configs'], identity_data['chromeos']['configs']):
-      self.assertEqual(set(identity_config.keys()), {'identity'})
-      self.assertEqual(device_config['identity'], identity_config['identity'])
-
 
 if __name__ == '__main__':
   cros_test_lib.main(module=__name__)
