@@ -5,10 +5,7 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [
-    ":cros_config",
-    ":cros_configfs",
-  ]
+  deps = [ ":cros_config" ]
   if (use.test) {
     deps += [
       ":cros_config_functional_test",
@@ -43,12 +40,6 @@ shared_library("libcros_config") {
 
 executable("cros_config") {
   sources = [ "cros_config_main.cc" ]
-  configs += [ ":target_defaults" ]
-  deps = [ ":libcros_config" ]
-}
-
-executable("cros_configfs") {
-  sources = [ "cros_configfs_main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libcros_config" ]
 }
