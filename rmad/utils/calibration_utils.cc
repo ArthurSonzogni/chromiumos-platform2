@@ -11,8 +11,8 @@
 namespace rmad {
 
 bool IsValidCalibrationComponent(RmadComponent component) {
-  for (auto component_instruction : kCalibrationSetupInstruction) {
-    if (component == component_instruction.first) {
+  for (auto [grouped_component, instruction] : kCalibrationSetupInstruction) {
+    if (component == grouped_component) {
       return true;
     }
   }
@@ -23,9 +23,9 @@ CalibrationSetupInstruction GetCalibrationSetupInstruction(
     RmadComponent component) {
   CalibrationSetupInstruction setup_instruction =
       RMAD_CALIBRATION_INSTRUCTION_UNKNOWN;
-  for (auto calibration_priority : kCalibrationSetupInstruction) {
-    if (calibration_priority.first == component) {
-      setup_instruction = calibration_priority.second;
+  for (auto [grouped_component, instruction] : kCalibrationSetupInstruction) {
+    if (grouped_component == component) {
+      setup_instruction = instruction;
       break;
     }
   }
@@ -38,26 +38,22 @@ CalibrationSetupInstruction GetCalibrationSetupInstruction(
   return setup_instruction;
 }
 
-bool ShouldCalibrate(CalibrationComponentStatus::CalibrationStatus status) {
-  return status == CalibrationComponentStatus::RMAD_CALIBRATION_WAITING ||
-         status == CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS ||
-         status == CalibrationComponentStatus::RMAD_CALIBRATION_FAILED;
+bool IsWaitingForCalibration(
+    CalibrationComponentStatus::CalibrationStatus status) {
+  return status == CalibrationComponentStatus::RMAD_CALIBRATION_WAITING;
 }
 
-bool ShouldCalibrateComponent(CalibrationComponentStatus component_status) {
-  if (!IsValidCalibrationComponent(component_status.component())) {
-    LOG(WARNING) << RmadComponent_Name(component_status.component())
-                 << " is invalid for calibration.";
-    return false;
-  }
-  if (component_status.status() ==
-      CalibrationComponentStatus::RMAD_CALIBRATION_UNKNOWN) {
-    LOG(ERROR) << "Rmad: Calibration status for "
-               << component_status.component() << " is missing.";
-    return false;
-  }
+bool IsCompleteStatus(CalibrationComponentStatus::CalibrationStatus status) {
+  return status == CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE ||
+         status == CalibrationComponentStatus::RMAD_CALIBRATION_SKIP;
+}
 
-  return ShouldCalibrate(component_status.status());
+bool IsInProgressStatus(CalibrationComponentStatus::CalibrationStatus status) {
+  return status == CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS;
+}
+
+bool IsUnknownStatus(CalibrationComponentStatus::CalibrationStatus status) {
+  return status == CalibrationComponentStatus::RMAD_CALIBRATION_UNKNOWN;
 }
 
 bool GetCalibrationMap(scoped_refptr<JsonStore> json_store,
@@ -73,41 +69,41 @@ bool GetCalibrationMap(scoped_refptr<JsonStore> json_store,
     return false;
   }
 
-  for (auto instruction_components : json_value_map) {
-    CalibrationSetupInstruction setup_instruction;
-    if (!CalibrationSetupInstruction_Parse(instruction_components.first,
-                                           &setup_instruction)) {
+  for (auto [instruction_name, components] : json_value_map) {
+    CalibrationSetupInstruction instruction;
+    if (!CalibrationSetupInstruction_Parse(instruction_name, &instruction)) {
       LOG(ERROR) << "Failed to parse setup instruction from variables";
-      return false;
+      continue;
     }
 
-    for (auto component_status : instruction_components.second) {
+    for (auto [component_name, status_name] : components) {
       RmadComponent component;
-      if (!RmadComponent_Parse(component_status.first, &component)) {
+      if (!RmadComponent_Parse(component_name, &component)) {
         LOG(ERROR) << "Failed to parse component name from variables";
-        return false;
+        continue;
       }
       CalibrationComponentStatus::CalibrationStatus status;
-      if (!CalibrationComponentStatus::CalibrationStatus_Parse(
-              component_status.second, &status)) {
+      if (!CalibrationComponentStatus::CalibrationStatus_Parse(status_name,
+                                                               &status)) {
         LOG(ERROR) << "Failed to parse status name from variables";
-        return false;
+        continue;
       }
-      (*calibration_map)[setup_instruction][component] = status;
       if (component == RmadComponent::RMAD_COMPONENT_UNKNOWN) {
         LOG(ERROR) << "Rmad: Calibration component is missing.";
-        return false;
+        continue;
       }
       if (status == CalibrationComponentStatus::RMAD_CALIBRATION_UNKNOWN) {
-        LOG(ERROR) << "Rmad: Calibration status for " << component_status.first
+        LOG(ERROR) << "Rmad: Calibration status for " << component_name
                    << " is missing.";
-        return false;
+        continue;
       }
       if (!IsValidCalibrationComponent(component)) {
-        LOG(ERROR) << "Rmad: " << component_status.first
-                   << " cannot be calibrated.";
-        return false;
+        LOG(ERROR) << "Dictionary contains unsupported component "
+                   << RmadComponent_Name(component)
+                   << ", we should rewrite it again.";
+        continue;
       }
+      (*calibration_map)[instruction][component] = status;
     }
   }
 
@@ -122,41 +118,69 @@ bool SetCalibrationMap(scoped_refptr<JsonStore> json_store,
   // readable after the enum sequence is updated, we also convert its value
   // into a readable string to deal with possible updates.
   std::map<std::string, std::map<std::string, std::string>> json_value_map;
-  for (auto setup_instruction_components : calibration_map) {
-    std::string instruction =
-        CalibrationSetupInstruction_Name(setup_instruction_components.first);
-    for (auto component_status : setup_instruction_components.second) {
-      std::string component_name = RmadComponent_Name(component_status.first);
+  for (auto [instruction, components] : calibration_map) {
+    std::string instruction_name =
+        CalibrationSetupInstruction_Name(instruction);
+    for (auto [component, status] : components) {
+      if (!IsValidCalibrationComponent(component)) {
+        LOG(WARNING) << "Rmad: " << RmadComponent_Name(component)
+                     << " cannot be calibrated, just ignore it.";
+        continue;
+      }
+      std::string component_name = RmadComponent_Name(component);
       std::string status_name =
-          CalibrationComponentStatus::CalibrationStatus_Name(
-              component_status.second);
-      json_value_map[instruction][component_name] = status_name;
+          CalibrationComponentStatus::CalibrationStatus_Name(status);
+      json_value_map[instruction_name][component_name] = status_name;
     }
   }
 
   return json_store->SetValue(kCalibrationMap, json_value_map);
 }
 
-bool GetCurrentSetupInstruction(
-    const InstructionCalibrationStatusMap& calibration_map,
-    CalibrationSetupInstruction* setup_instruction) {
-  if (!setup_instruction) {
-    LOG(ERROR) << "output field is not set";
-    return false;
-  }
+CalibrationSetupInstruction GetCurrentSetupInstruction(
+    const InstructionCalibrationStatusMap& calibration_map) {
+  // If we don't find anything that needs calibration and there are no errors,
+  // we don't need to check or calibrate.
+  CalibrationSetupInstruction setup_instruction =
+      RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION;
+  CalibrationSetupInstruction running_instruction =
+      RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION;
 
-  *setup_instruction = RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION;
-
-  for (auto instruction_components : calibration_map) {
-    for (auto component_status : instruction_components.second) {
-      if (ShouldCalibrate(component_status.second) &&
-          *setup_instruction >= instruction_components.first) {
-        *setup_instruction = instruction_components.first;
+  // There are different priority situations:
+  // 0. Unsupported component error (need to check)
+  // 1. Instruction of calibration in progress (already started)
+  // 2. Instruction of waiting for calibration components (not started yet)
+  // 3. Everything is done, but some failed (need to check)
+  // 4. All complete (no need to check)
+  for (auto [instruction, components] : calibration_map) {
+    for (auto [component, status] : components) {
+      // We do not allow unsupported components in the dictionary.
+      if (!IsValidCalibrationComponent(component)) {
+        LOG(ERROR) << "Dictionary contains unsupported component "
+                   << RmadComponent_Name(component)
+                   << ", we should rewrite it again.";
+        return RMAD_CALIBRATION_INSTRUCTION_NEED_TO_CHECK;
+      }
+      if (status == CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS &&
+          running_instruction >= instruction) {
+        running_instruction = instruction;
+      } else if (IsWaitingForCalibration(status) &&
+                 setup_instruction >= instruction) {
+        setup_instruction = instruction;
+      } else if (!IsWaitingForCalibration(status) &&
+                 !IsCompleteStatus(status) &&
+                 setup_instruction ==
+                     RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION) {
+        setup_instruction = RMAD_CALIBRATION_INSTRUCTION_NEED_TO_CHECK;
       }
     }
   }
 
-  return true;
+  // If we are already running calibration, then this is the first priority.
+  if (running_instruction != RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION) {
+    return running_instruction;
+  }
+  return setup_instruction;
 }
 
 }  // namespace rmad

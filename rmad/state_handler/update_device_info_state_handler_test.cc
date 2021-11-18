@@ -301,7 +301,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_Success) {
   auto [error, state_case] = handler->GetNextStateCase(state);
 
   EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kCheckCalibration);
+  EXPECT_EQ(state_case, RmadState::StateCase::kSetupCalibration);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
 
@@ -569,7 +569,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   auto [error, state_case] = handler->GetNextStateCase(state);
 
   EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kCheckCalibration);
+  EXPECT_EQ(state_case, RmadState::StateCase::kSetupCalibration);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
 
@@ -877,7 +877,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuOverflow_Success) {
   auto [error, state_case] = handler->GetNextStateCase(state);
 
   EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kCheckCalibration);
+  EXPECT_EQ(state_case, RmadState::StateCase::kSetupCalibration);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
 

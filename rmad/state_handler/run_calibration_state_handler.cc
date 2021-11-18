@@ -86,8 +86,9 @@ RmadErrorCode RunCalibrationStateHandler::InitializeState() {
       std::make_unique<base::RepeatingTimer>();
 
   // We will run the calibration in RetrieveVarsAndCalibrate.
-  RetrieveVarsAndCalibrate();
-
+  if (!RetrieveVarsAndCalibrate()) {
+    return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
+  }
   return RMAD_ERROR_OK;
 }
 
@@ -120,87 +121,79 @@ RunCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
   // Since the actual calibration has already started in InitializeState,
   // Chrome should wait for the signal to trigger GetNextStateCaseReply. Under
   // normal circumstances, we expect that the calibration has been completed
-  // here, but it may fail or is still in progress (hanging?). This is why we
-  // should check here.
-  RmadErrorCode error_code;
-  if (ShouldRecalibrate(&error_code)) {
-    if (error_code != RMAD_ERROR_OK) {
-      LOG(ERROR) << "Rmad: The sensor calibration is failed.";
-      return NextStateCaseWrapper(RmadState::StateCase::kCheckCalibration,
-                                  error_code, AdditionalActivity::NOTHING);
-    } else {
-      LOG(INFO) << "Rmad: The sensor calibration needs another round.";
-      return NextStateCaseWrapper(RmadState::StateCase::kSetupCalibration,
-                                  error_code, AdditionalActivity::NOTHING);
-    }
+  // here.
+  CalibrationSetupInstruction instruction =
+      GetCurrentSetupInstruction(calibration_map_);
+  if (instruction == RMAD_CALIBRATION_INSTRUCTION_NEED_TO_CHECK) {
+    LOG(ERROR) << "Rmad: Sensor calibration is failed.";
+    return NextStateCaseWrapper(RmadState::StateCase::kCheckCalibration);
+  } else if (instruction == RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION) {
+    return NextStateCaseWrapper(RmadState::StateCase::kProvisionDevice);
+  } else if (instruction == running_group_) {
+    LOG(INFO) << "Rmad: Sensor calibrations is still running.";
+    return NextStateCaseWrapper(RMAD_ERROR_WAIT);
+  } else {
+    LOG(INFO) << "Rmad: Sensor calibration needs another round.";
+    return NextStateCaseWrapper(RmadState::StateCase::kSetupCalibration);
   }
-
-  state_ = state;
-
-  return NextStateCaseWrapper(RmadState::StateCase::kProvisionDevice);
 }
 
-void RunCalibrationStateHandler::RetrieveVarsAndCalibrate() {
+BaseStateHandler::GetNextStateCaseReply
+RunCalibrationStateHandler::TryGetNextStateCaseAtBoot() {
+  // Since we do not allow calibration without setup, it should not be started
+  // in this state. The transition to kCheckCalibration provides users with more
+  // information.
+  return NextStateCaseWrapper(RmadState::StateCase::kCheckCalibration);
+}
+
+bool RunCalibrationStateHandler::RetrieveVarsAndCalibrate() {
   if (!GetCalibrationMap(json_store_, &calibration_map_)) {
     calibration_overall_signal_sender_->Run(
         RMAD_CALIBRATION_OVERALL_INITIALIZATION_FAILED);
     LOG(ERROR) << "Failed to read calibration variables";
-    return;
+    return false;
   }
 
-  if (!GetCurrentSetupInstruction(calibration_map_, &running_group_)) {
+  // Mark unexpected status to failed.
+  for (auto [instruction, components] : calibration_map_) {
+    for (auto [component, status] : components) {
+      if (IsInProgressStatus(status) || IsUnknownStatus(status)) {
+        calibration_map_[instruction][component] =
+            CalibrationComponentStatus::RMAD_CALIBRATION_FAILED;
+      }
+    }
+  }
+
+  if (!SetCalibrationMap(json_store_, calibration_map_)) {
+    LOG(ERROR) << "Failed to set calibration variables";
+    return false;
+  }
+
+  running_group_ = GetCurrentSetupInstruction(calibration_map_);
+  // It failed in the beginning, this shouldn't happen.
+  if (running_group_ == RMAD_CALIBRATION_INSTRUCTION_NEED_TO_CHECK) {
     calibration_overall_signal_sender_->Run(
         RMAD_CALIBRATION_OVERALL_INITIALIZATION_FAILED);
-    LOG(ERROR) << "Failed to get components to be calibrated.";
-    return;
+    LOG(WARNING) << "Calibration process failed at the beginning, this "
+                    "shouldn't happen.";
+    return true;
   }
 
+  // It was done at the beginning, this shouldn't happen.
   if (running_group_ == RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION) {
     calibration_overall_signal_sender_->Run(RMAD_CALIBRATION_OVERALL_COMPLETE);
-    return;
+    LOG(WARNING) << "Calibration process complete at the beginning, this "
+                    "shouldn't happen.";
+    return true;
   }
 
-  for (auto component_status : calibration_map_[running_group_]) {
-    if (ShouldCalibrate(component_status.second)) {
-      CalibrateAndSendProgress(component_status.first);
-    }
-  }
-}
-
-bool RunCalibrationStateHandler::ShouldRecalibrate(RmadErrorCode* error_code) {
-  *error_code = RMAD_ERROR_OK;
-  for (auto instruction_components : calibration_map_) {
-    CalibrationSetupInstruction setup_instruction =
-        instruction_components.first;
-    for (auto component_status : instruction_components.second) {
-      if (component_status.first == RMAD_COMPONENT_UNKNOWN) {
-        *error_code = RMAD_ERROR_CALIBRATION_COMPONENT_MISSING;
-        return true;
-      }
-      if (component_status.second ==
-          CalibrationComponentStatus::RMAD_CALIBRATION_UNKNOWN) {
-        *error_code = RMAD_ERROR_CALIBRATION_STATUS_MISSING;
-        return true;
-      }
-      if (!IsValidCalibrationComponent(component_status.first)) {
-        *error_code = RMAD_ERROR_CALIBRATION_COMPONENT_INVALID;
-        return true;
-      }
-
-      if (ShouldCalibrate(component_status.second)) {
-        // Under normal situations, we expect that the calibration has been
-        // completed here, but it may fail, stuck or signal loss. Therefore, we
-        // expect Chrome to still send the request after the timeout. This is
-        // why we allow different statuses here.
-        if (setup_instruction == running_group_) {
-          *error_code = RMAD_ERROR_CALIBRATION_FAILED;
-        }
-        return true;
-      }
+  for (auto [component, status] : calibration_map_[running_group_]) {
+    if (status == CalibrationComponentStatus::RMAD_CALIBRATION_WAITING) {
+      CalibrateAndSendProgress(component);
     }
   }
 
-  return false;
+  return true;
 }
 
 void RunCalibrationStateHandler::CalibrateAndSendProgress(
@@ -244,7 +237,7 @@ void RunCalibrationStateHandler::SaveAndSend(RmadComponent component,
   CalibrationComponentStatus::CalibrationStatus status =
       CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS;
 
-  if (progress == 1.0) {
+  if (progress >= 1.0) {
     status = CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE;
   } else if (progress < 0) {
     status = CalibrationComponentStatus::RMAD_CALIBRATION_FAILED;
@@ -258,31 +251,31 @@ void RunCalibrationStateHandler::SaveAndSend(RmadComponent component,
     calibration_map_[running_group_][component] = status;
     SetCalibrationMap(json_store_, calibration_map_);
 
-    bool is_in_progress = false;
-    bool is_failed = false;
-    for (auto component_status_map : calibration_map_[running_group_]) {
-      is_in_progress |=
-          component_status_map.second ==
-          CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS;
-      is_failed |= component_status_map.second ==
-                   CalibrationComponentStatus::RMAD_CALIBRATION_FAILED;
+    bool in_progress = false;
+    bool failed = false;
+    for (auto [ignore, other_status] : calibration_map_[running_group_]) {
+      in_progress |= IsInProgressStatus(other_status) ||
+                     IsWaitingForCalibration(other_status);
+      failed |=
+          other_status == CalibrationComponentStatus::RMAD_CALIBRATION_FAILED;
     }
 
     // We only update the overall status after all calibrations are done.
-    if (!is_in_progress) {
-      is_failed |= (vpd_utils_thread_safe_.get() &&
-                    !vpd_utils_thread_safe_->FlushOutRoVpdCache());
-      if (is_failed) {
+    if (!in_progress) {
+      failed |= (vpd_utils_thread_safe_.get() &&
+                 !vpd_utils_thread_safe_->FlushOutRoVpdCache());
+      if (failed) {
         calibration_overall_signal_sender_->Run(
             CalibrationOverallStatus::
                 RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_FAILED);
-      } else if (RmadErrorCode ignore; ShouldRecalibrate(&ignore)) {
+      } else if (GetCurrentSetupInstruction(calibration_map_) ==
+                 RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION) {
+        calibration_overall_signal_sender_->Run(
+            CalibrationOverallStatus::RMAD_CALIBRATION_OVERALL_COMPLETE);
+      } else {
         calibration_overall_signal_sender_->Run(
             CalibrationOverallStatus::
                 RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE);
-      } else {
-        calibration_overall_signal_sender_->Run(
-            CalibrationOverallStatus::RMAD_CALIBRATION_OVERALL_COMPLETE);
       }
     }
   }

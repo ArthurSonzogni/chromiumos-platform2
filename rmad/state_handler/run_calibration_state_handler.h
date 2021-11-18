@@ -55,13 +55,13 @@ class RunCalibrationStateHandler : public BaseStateHandler {
   RmadErrorCode InitializeState() override;
   void CleanUpState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+  GetNextStateCaseReply TryGetNextStateCaseAtBoot() override;
 
  protected:
   ~RunCalibrationStateHandler() override = default;
 
  private:
-  void RetrieveVarsAndCalibrate();
-  bool ShouldRecalibrate(RmadErrorCode* error_code);
+  bool RetrieveVarsAndCalibrate();
   void CalibrateAndSendProgress(RmadComponent component);
 
   void CheckCalibrationTask(RmadComponent component);
