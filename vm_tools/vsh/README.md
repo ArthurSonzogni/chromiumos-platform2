@@ -62,6 +62,7 @@ vsh can:
 
 Launches a shell on the VM with [vsock] cid 3. This will work even with a
 manually launched `crosvm` instance, as long as the guest is running `vshd`.
+Check [here](#setup-a-crosvm-instance-for-vsh) for an example.
 
 ```bash
 (device) # vsh --cid=3
@@ -118,6 +119,38 @@ Writes a file `/foo` from crostini container `penguin` to `bar` on the host.
                cat /foo > bar
 ```
 
+### Setup a crosvm instance for vsh
+
+First, the guest needs the `vshd` executable. [termina] [dlc] is one way to get
+it. `vshd` is contained in `vm_tools.img`
+
+```bash
+(device) # dlcservice_util --install --id=termina-dlc
+# Prints the root mount of termina-dlc, which should be `/run/imageloader/termina-dlc/package/root`
+(device) # dlcservice_util --list
+```
+
+Launch `crosvm` with `--cid=3` and `vm_tools.img`.
+
+```bash
+(device) # crosvm run --cid=3 --disk /run/imageloader/termina-dlc/package/root/vm_tools.img ...
+```
+
+Then, run the following commands in guest to launch `vshd`.
+```bash
+(guest) # mount -t proc proc /proc
+(guest) # mount -t sysfs sys /sys
+(guest) # mount -t tmpfs tmp /tmp
+(guest) # mount -t tmpfs run /run
+(guest) # mkdir /dev/pts
+(guest) # mount -t devpts devpts /dev/pts -o mode=0620,ptmxmode=666
+(guest) # mkdir /tmp/vm_tools
+(guest) # mount /dev/vda /tmp/vm_tools # or vdx depending on disks available
+(guest) # /tmp/vm_tools/bin/vshd
+```
+
 [Tast]: https://chromium.googlesource.com/chromiumos/platform/tast/+/HEAD/README.md
 [`vm_concierge`]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/vm_tools/concierge
 [vsock]: https://www.man7.org/linux/man-pages/man7/vsock.7.html
+[termina]: https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/main/project-termina/
+[dlc]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/dlcservice/README.md
