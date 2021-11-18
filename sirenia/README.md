@@ -1,102 +1,110 @@
-# ManaTEE Runtime Design
+# ManaTEE Runtime Environment
 
-The runtime environment and middleware for ManaTEE as well as the API endpoints
-for communicating with `sirenia` from TEEs or Chrome OS. The parent directory
-for the code is named `manatee_runtime` and has 3 subdirectories.
+This [platform2] subproject includes the ManaTEE runtime environment ([`sirenia`]),
+the middleware for ManaTEE apps ([`manatee-runtime`]), and the API for communicating
+with ManaTEE from Chrome OS ([`manatee-client`]).
+
+For tips and guidance on developing [`sirenia`] see the [`sirenia` developer guide].
+The shared code for the various sub-modules mostly is located in [`libsirenia`].
+
+For tips and guidance on writing TEE apps see [creating a new TEE app].
+
+Ebuild dependencies to include:
+  * For Chrome OS use [`manatee-client`]:
+    * `dev-rust/manatee-client` for **Rust**.
+    * `chromeos-base/manatee-client` for **C++**.
+  * For **TEE applications** use
+[`chromeos-base/manatee-runtime`][`manatee-runtime`].
 
 ## Sirenia
 
-The bulk of the ManaTEE runtime code. It is named after the taxonomic family
-manatees belong to. This dir provides the support for running TEE applications,
-storage and crypto APIs to TEE applications, and the communication between the
-application and the OS. The 2 main components of sirenia are [trichechus],
-the daemon on the host machine that handles the TEE apps and interaction
-between them and the guest OS, and [dugong], the daemon on the Chrome OS
-guest that handles communication with the host machine and TEEs for Chrome OS.
-
-To interact with ManaTEE:
-  * From Chrome OS use [manatee-client]:
-    * `dev-rust/manatee-client` for **Rust**.
-    * `chromeos-base/manatee-client` for **C++**.
-  * From **TEE applications** include
-[`dev-rust/manatee-runtime`](#Manatee-Runtime).
+`sirenia` makes up the bulk of the ManaTEE runtime code. It is named after the
+taxonomic family manatees belong to. It provides the support for running
+TEE applications, providing them with storage and crypto APIs, and a
+communication channel with the OS. The 2 main components of sirenia are the
+hypervisor daemon [`trichechus`], and the Chrome OS guest daemon [`dugong`].
 
 ### Trichechus
 
-The TEE application life-cycle manager. It is named after the genus manatees
-belong to. Trichechus is a daemon that handles bringup of TEE applications,
-communication between TEE applications and Chrome OS, and all communication
-between the hypervisor/host environment and the Chrome OS guest.
-
-It serves the following purposes related to TEE applications:
+`trichechus` is the TEE application life-cycle manager. It is named after the
+genus manatees belong to. It serves the following purposes related to TEE
+applications:
 
 1. Loading and validation
-2. Instance launching and sandboxing
-3. Logging and crash dump collection
-4. Establishing communication
-5. Instance cleanup
+2. Instance management
+   - Establishing communication
+   - Launching
+   - Sandboxing
+   - Cleaning up
+3. Serving the app with APIs
+   - Storage
+   - Derived Secrets
+4. Logging and (TODO) crash dump collection
 
 ### Dugong
 
-The broker daemon implementation that communicates with Trichechus. It is named
-after the cousin genus to manatees since this will run on the Chrome OS guest
-machine, but will be closely related to Manatee and Trichechus. Communication
-to Dugong will be handled via a D-Bus handler which will then facilitate
-sending requests to Trichechus on the hypervisor side.
+`dugong` is the broker daemon on Chrome OS that communicates with Trichechus.
+It is named after the cousin genus to manatees since this runs on the Chrome OS
+guest, but is closely related to ManaTEE and Trichechus. Dugong implements the
+[`org.chromium.ManaTEEInterface`] D-Bus interface as the `org.chromium.ManaTEE`
+end point. This facilitates Chrome OS services sending requests to
+[`trichechus`].
 
 Its roles include:
 
-1. Validating permissions and routing requests from untrusted applications
-2. Providing remote storage for Trichechus
-   - application binaries
-   - application data
-3. Routes log events and crash reports.
+1. Validating permissions. This is mostly delegated to D-Bus by exposing sub
+   interfaces for each TEE app. Access control to these interfaces is enforced
+   by the [D-Bus access policy].
+2. Fetching TEE app binaries for [`trichechus`].
+3. Routing log events and (TODO) crash reports.
 
-### Library
+***note
+**Note:** per TEE app interfaces are programmatically implemented at
+`org.chromium.manatee.<app_dbus_identifier>` where `<app_dbus_identifier>`
+is the app name registered in the app-info manifest with any hyphens `-`
+replaced with underscores `_` for compatibility. This allows for
+per app D-Bus policies to be written for access control similar to the
+general [D-Bus access policy].
 
-Sirenia includes a few modules of library code specific to dugong and
-trichechus. These modules include:
+The interface description can be found in the
+`register_dbus_interface_for_app` function in [`dugong.rs`]
+***
 
-Cli: Handles the command line invocation of dugong and trichechus
+### tee_app_info_lint
 
-Communication: Defines messages that are sent between dugong and trichechus
-over the control connection to manage TEEs
+This is a tool for linting and converting TEE app-info manifest entries.
+Digests are sometimes included in manifest entries, so the linter provides some
+functionality to help populate these digests at build time.
 
-## Libsirenia
+Here are some examples for populating the digest for:
+* A binary installed to the root-fs:
+  * Manifest entry: [demo-app.json]
+* A binary installed through [DLC]:
+  * Manifest entry: [`termina.json.in`]
+  * [`termina-dlc` ebuild]
 
-The main library code for sirenia that is more general and useful for all parts
-of Sirenia including [dugong], [trichechus], [manatee-runtime], and
-[manatee-client]. These modules include:
+### Internal Modules
 
-**Communication:** General communication code that handles sending over a
-connection and serialization and deserialization.
+Sirenia includes a few modules of library code specific to [`dugong`] and/or
+[`trichechus`]. These modules include:
 
-**Linux:** All Linux specific code that is necessary for Sirenia. This includes
-events, which provides support for using EventMultiplexer, and syslog which
-provides support for working with the syslog.
+**app-info:** TEE app-info manifest handling logic.
 
-**Sandbox:** Support code for working with Minijail and sandboxing
-applications. This is used to sandbox TEE apps.
+**secrets:** Secret derivation logic.
 
-**To_sys_util:** Abstraction of various low-level libc functionality.
-
-**Transport:** Support code for transporting messages either over VSock or
-IP between a server and a client.
-
-## Manatee Runtime
-
-Provides library functions for communicating with Trichechus from a TEE
-application. More information can be found in the
-[manatee-runtime README](./manatee-runtime/README.md).
-
-## Manatee Client
-
-Provides library functions for communicating with dugong over dbus. More
-information can be found in the
-[manatee-client README](./manatee-client/README.md)
-(TODO: Add README for manatee-client).
-
-[dugong]: #Dugong
-[trichechus]: #Trichechus
-[manatee-client]: #Manatee-Client
-[manatee-runtime]: #Manatee-Runtime
+[creating a new TEE app]: ./manatee-runime/README.md#Creating-a-new-TEE-app
+[D-Bus access policy]: ./dbus/org.chromium.ManaTEE.conf
+[demo-app.json]: ./manatee-runtime/src/demo-app.json
+[DLC]: ../dlcservice/README.md
+[`dugong`]: #Dugong
+[`dugong.rs`]: ./src/dugong.rs
+[`libsirenia`]: ./libsirenia/README.md
+[`manatee-client`]: ./manatee-client/README.md
+[`manatee-runtime`]: ./manatee-runtime/README.md
+[`org.chromium.ManaTEEInterface`]: ./dbus_bindings/org.chromium.ManaTEE1.xml
+[platform2]: /README.md
+[`sirenia`]: #Sirenia
+[`sirenia` developer guide]: RUNNING_SIRENIA.md
+[`termina.json.in`]: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/chromeos-base/termina-dlc/files/termina.json.in
+[`termina-dlc` ebuild]: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/chromeos-base/termina-dlc/termina-dlc-9999.ebuild
+[`trichechus`]: #Trichechus

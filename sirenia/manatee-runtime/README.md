@@ -1,9 +1,14 @@
-# Creating a new TEE app
+# manatee-runtime
+
+`manatee-runtime` provides the TEE app facing API that provides functionality
+such as storage and secret derivation.
+
+## Creating a new TEE app
 
 Instructions for creating a new TEE application and having it installed along
 with the ManaTEE environment.
 
-## Add TEE app
+### Add TEE app
 
 Create a new file in `platform2/sirenia/manatee-runtime/src`. The convention
 for naming is `name-of-app.rs`. For an example application see: `demo-app.rs`.
@@ -73,7 +78,7 @@ name = "<app_name>"
 path = "src/<app-name>.rs"
 ```
 
-## Add app to ebuild
+### Add app to ebuild
 
 In order for the app to actually show up on the system, it needs to be installed
 via the `manatee-runtime` [ebuild]. All of the logic is already in place to
