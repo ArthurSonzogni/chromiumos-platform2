@@ -368,7 +368,7 @@ TEST_F(BiodStorageInvalidRecordTest, InvalidJSON) {
 
 TEST_F(BiodStorageInvalidRecordTest, MissingFormatVersion) {
   auto record = R"({
-    "record_id": "1234",
+    "record_id": "00000000_0000_0000_0000_000000000001",
     "label": "some_label",
     "data": "some_data",
     "match_validation_value": "4567"
@@ -384,7 +384,7 @@ TEST_F(BiodStorageInvalidRecordTest, MissingFormatVersion) {
 
 TEST_F(BiodStorageInvalidRecordTest, InvalidFormatVersion) {
   auto record = R"({
-    "record_id": "1234",
+    "record_id": "00000000_0000_0000_0000_000000000001",
     "label": "some_label",
     "data": "some_data",
     "match_validation_value": "4567",
@@ -417,7 +417,7 @@ TEST_F(BiodStorageInvalidRecordTest, MissingRecordId) {
 
 TEST_F(BiodStorageInvalidRecordTest, MissingRecordLabel) {
   auto record = R"({
-    "record_id": "1234",
+    "record_id": "00000000_0000_0000_0000_000000000001",
     "data": "some_data",
     "match_validation_value": "4567",
     "version": 2
@@ -433,7 +433,7 @@ TEST_F(BiodStorageInvalidRecordTest, MissingRecordLabel) {
 
 TEST_F(BiodStorageInvalidRecordTest, MissingRecordData) {
   auto record = R"({
-    "record_id": "1234",
+    "record_id": "00000000_0000_0000_0000_000000000001",
     "label": "some_label",
     "match_validation_value": "4567",
     "version": 2
@@ -449,7 +449,7 @@ TEST_F(BiodStorageInvalidRecordTest, MissingRecordData) {
 
 TEST_F(BiodStorageInvalidRecordTest, MissingValidationValue) {
   auto record = R"({
-    "record_id": "1234",
+    "record_id": "00000000_0000_0000_0000_000000000001",
     "label": "some_label",
     "data": "some_data",
     "version": 2
@@ -465,7 +465,7 @@ TEST_F(BiodStorageInvalidRecordTest, MissingValidationValue) {
 
 TEST_F(BiodStorageInvalidRecordTest, ValidationValueNotBase64) {
   auto record = R"({
-    "record_id": "1234",
+    "record_id": "00000000_0000_0000_0000_000000000001",
     "label": "some_label",
     "data": "some_data",
     "match_validation_value": "not valid base64",
@@ -482,7 +482,7 @@ TEST_F(BiodStorageInvalidRecordTest, ValidationValueNotBase64) {
 
 TEST_F(BiodStorageInvalidRecordTest, VersionOneWithoutValidationValueIsValid) {
   auto record = R"({
-    "record_id": "1234",
+    "record_id": "00000000_0000_0000_0000_000000000001",
     "label": "some_label",
     "data": "some_data",
     "version": 1
@@ -497,6 +497,23 @@ TEST_F(BiodStorageInvalidRecordTest, VersionOneWithoutValidationValueIsValid) {
   EXPECT_TRUE(read_result[0].metadata.validation_val.empty());
   EXPECT_EQ(read_result[0].metadata.record_format_version,
             kRecordFormatVersionNoValidationValue);
+}
+
+TEST_F(BiodStorageInvalidRecordTest, RecordIdMismatch) {
+  auto record = R"({
+    "record_id": "5678",
+    "label": "some_label",
+    "data": "some_data",
+    "match_validation_value": "4567",
+    "version": 2
+  })";
+
+  EXPECT_TRUE(
+      base::ImportantFileWriter::WriteFileAtomically(record_name_, record));
+
+  auto read_result = biod_storage_->ReadRecordsForSingleUser(kUserId1);
+  EXPECT_EQ(read_result.size(), 1);
+  EXPECT_FALSE(read_result[0].valid);
 }
 
 /**
@@ -551,7 +568,7 @@ class BiodStorageMemlockTest
 
 TEST_P(BiodStorageMemlockTest, ReadReadRecords) {
   base::Value record_value(base::Value::Type::DICTIONARY);
-  record_value.SetStringKey("record_id", "1234");
+  record_value.SetStringKey("record_id", kRecordId1);
   record_value.SetStringKey("label", "some_label");
   record_value.SetStringKey("match_validation_value", "4567");
   record_value.SetIntKey("version", 2);

@@ -214,6 +214,13 @@ base::Optional<BiodStorageInterface::Record> BiodStorage::ReadRecordFromPath(
   BiodStorageInterface::Record record;
   record.valid = false;
 
+  // Get RecordId from path. In case of mismatch this RecordId is more
+  // important because it allows upper layers to remove invalid record
+  // properly.
+  std::string record_id_path = record_path.BaseName().value();
+  record_id_path.erase(0, sizeof(kRecordFileName) - 1);
+  record.metadata.record_id = record_id_path;
+
   auto record_value = base::JSONReader::ReadAndReturnValueWithError(
       json_string, base::JSON_ALLOW_TRAILING_COMMAS);
 
@@ -235,7 +242,14 @@ base::Optional<BiodStorageInterface::Record> BiodStorage::ReadRecordFromPath(
     LOG(ERROR) << "Cannot read record id from " << record_path.value() << ".";
     return record;
   }
-  record.metadata.record_id = *record_id;
+  // If RecordId from path is different than stored in the file then
+  // record is not valid.
+  if (record.metadata.record_id != *record_id) {
+    LOG(ERROR) << "RecordId from path " << LogSafeID(record.metadata.record_id)
+               << " is different than RecordId stored in file "
+               << LogSafeID(*record_id);
+    return record;
+  }
 
   const std::string* label = record_dictionary.FindStringKey(kLabel);
 
