@@ -42,6 +42,7 @@ tgkill: 1
 sendto: 1
 gettid:1
 futex:1
+mknodat: 1
 
 # For modprobe(8)
 clone: 1
