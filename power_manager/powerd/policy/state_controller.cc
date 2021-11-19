@@ -113,8 +113,8 @@ void UpdateActionTimeout(base::TimeTicks now,
 //   that the action can be performed later.
 void HandleDelay(base::TimeDelta delay,
                  base::TimeDelta inactivity_duration,
-                 base::Closure callback,
-                 base::Closure undo_callback,
+                 base::OnceClosure callback,
+                 base::OnceClosure undo_callback,
                  const std::string& description,
                  const std::string& undo_description,
                  bool* action_already_performed) {
@@ -122,13 +122,13 @@ void HandleDelay(base::TimeDelta delay,
     if (!*action_already_performed) {
       LOG(INFO) << description << " after "
                 << util::TimeDeltaToString(inactivity_duration);
-      callback.Run();
+      std::move(callback).Run();
       *action_already_performed = true;
     }
   } else if (*action_already_performed) {
     if (!undo_callback.is_null()) {
       LOG(INFO) << undo_description;
-      undo_callback.Run();
+      std::move(undo_callback).Run();
     }
     *action_already_performed = false;
   }
@@ -375,21 +375,22 @@ void StateController::Init(Delegate* delegate,
   dbus_wrapper_ = dbus_wrapper;
   dbus_wrapper->ExportMethod(
       kGetInactivityDelaysMethod,
-      base::Bind(&StateController::HandleGetInactivityDelaysMethodCall,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&StateController::HandleGetInactivityDelaysMethodCall,
+                          weak_ptr_factory_.GetWeakPtr()));
 
   update_engine_dbus_proxy_ =
       dbus_wrapper_->GetObjectProxy(update_engine::kUpdateEngineServiceName,
                                     update_engine::kUpdateEngineServicePath);
   dbus_wrapper_->RegisterForServiceAvailability(
       update_engine_dbus_proxy_,
-      base::Bind(&StateController::HandleUpdateEngineAvailable,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&StateController::HandleUpdateEngineAvailable,
+                     weak_ptr_factory_.GetWeakPtr()));
   dbus_wrapper_->RegisterForSignal(
       update_engine_dbus_proxy_, update_engine::kUpdateEngineInterface,
       update_engine::kStatusUpdateAdvanced,
-      base::Bind(&StateController::HandleUpdateEngineStatusUpdateSignal,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(
+          &StateController::HandleUpdateEngineStatusUpdateSignal,
+          weak_ptr_factory_.GetWeakPtr()));
 
   dim_advisor_.Init(dbus_wrapper_, this);
 
@@ -403,8 +404,9 @@ void StateController::Init(Delegate* delegate,
   crash_boot_collector_watcher_.Watch(
       base::FilePath(kCrashBootCollectorDoneFile),
       base::FilePathWatcher::Type::kNonRecursive,
-      base::Bind(&StateController::MaybeStopWaitForCrashBootCollectTimer,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(
+          &StateController::MaybeStopWaitForCrashBootCollectTimer,
+          weak_ptr_factory_.GetWeakPtr()));
 
   wait_for_crash_boot_collect_timer_.Start(
       FROM_HERE, kCrashBootCollectTimeout, this,
@@ -1169,10 +1171,11 @@ void StateController::UpdateState() {
     HandleDimWithHps(now, duration_since_last_activity_for_screen_dim);
   } else {
     // Use old dim logic without Hps.
-    HandleDelay(delays_.screen_dim, duration_since_last_activity_for_screen_dim,
-                base::Bind(&Delegate::DimScreen, base::Unretained(delegate_)),
-                base::Bind(&Delegate::UndimScreen, base::Unretained(delegate_)),
-                "Dimming screen", "Undimming screen", &screen_dimmed_);
+    HandleDelay(
+        delays_.screen_dim, duration_since_last_activity_for_screen_dim,
+        base::BindOnce(&Delegate::DimScreen, base::Unretained(delegate_)),
+        base::BindOnce(&Delegate::UndimScreen, base::Unretained(delegate_)),
+        "Dimming screen", "Undimming screen", &screen_dimmed_);
     if (screen_dimmed_ && !screen_was_dimmed) {
       last_dim_time_ = now;
     } else if (!screen_dimmed_) {
@@ -1188,18 +1191,20 @@ void StateController::UpdateState() {
   }
 
   const bool screen_was_turned_off = screen_turned_off_;
-  HandleDelay(delays_.screen_off, screen_off_duration,
-              base::Bind(&Delegate::TurnScreenOff, base::Unretained(delegate_)),
-              base::Bind(&Delegate::TurnScreenOn, base::Unretained(delegate_)),
-              "Turning screen off", "Turning screen on", &screen_turned_off_);
+  HandleDelay(
+      delays_.screen_off, screen_off_duration,
+      base::BindOnce(&Delegate::TurnScreenOff, base::Unretained(delegate_)),
+      base::BindOnce(&Delegate::TurnScreenOn, base::Unretained(delegate_)),
+      "Turning screen off", "Turning screen on", &screen_turned_off_);
   if (screen_turned_off_ && !screen_was_turned_off)
     screen_turned_off_time_ = now;
   else if (!screen_turned_off_)
     screen_turned_off_time_ = base::TimeTicks();
 
-  HandleDelay(delays_.screen_lock, screen_lock_duration,
-              base::Bind(&Delegate::LockScreen, base::Unretained(delegate_)),
-              base::Closure(), "Locking screen", "", &requested_screen_lock_);
+  HandleDelay(
+      delays_.screen_lock, screen_lock_duration,
+      base::BindOnce(&Delegate::LockScreen, base::Unretained(delegate_)),
+      base::OnceClosure(), "Locking screen", "", &requested_screen_lock_);
 
   if (screen_dimmed_ != screen_was_dimmed ||
       screen_turned_off_ != screen_was_turned_off) {
