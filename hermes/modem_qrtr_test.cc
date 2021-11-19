@@ -286,9 +286,6 @@ class MockSocketQrtr : public SocketInterface {
   DataAvailableCallback cb_;
 };
 
-// Extend ModemManagerProxy to use it's protected constructor.
-class FakeModemManagerProxy : public ModemManagerProxy {};
-
 // Test framework for ModemQrtr tests. Allows for the faking of modem -> cpu
 // responses with the use of ModemReceiveData.
 class ModemQrtrTest : public testing::Test {
@@ -301,9 +298,7 @@ class ModemQrtrTest : public testing::Test {
 
     auto socket = std::make_unique<MockSocketQrtr>();
     socket_ = socket.get();
-    auto modem_manager_proxy = std::make_unique<FakeModemManagerProxy>();
-    modem_ = ModemQrtr::Create(std::move(socket), nullptr, &executor_,
-                               std::move(modem_manager_proxy));
+    modem_ = ModemQrtr::Create(std::move(socket), nullptr, &executor_);
     ASSERT_NE(modem_, nullptr);
 
     receive_ids_.clear();

@@ -34,8 +34,7 @@ class ModemQrtr : public Modem<QmiCmdInterface> {
   static std::unique_ptr<ModemQrtr> Create(
       std::unique_ptr<SocketInterface> socket,
       Logger* logger,
-      Executor* executor,
-      std::unique_ptr<ModemManagerProxy> modem_manager_proxy);
+      Executor* executor);
   virtual ~ModemQrtr();
 
   // EuiccInterface overrides
@@ -65,9 +64,9 @@ class ModemQrtr : public Modem<QmiCmdInterface> {
   static constexpr auto kSwitchSlotDelay = base::TimeDelta::FromSeconds(3);
   ModemQrtr(std::unique_ptr<SocketInterface> socket,
             Logger* logger,
-            Executor* executor,
-            std::unique_ptr<ModemManagerProxy> modem_manager_proxy);
+            Executor* executor);
   void InitializeUim();
+  void RetryInitialization(ResultCallback cb);
   void Shutdown() override;
 
   // Helper methods to create TxElements and add them to the queue.

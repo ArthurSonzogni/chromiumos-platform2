@@ -54,23 +54,21 @@ namespace hermes {
 std::unique_ptr<ModemQrtr> ModemQrtr::Create(
     std::unique_ptr<SocketInterface> socket,
     Logger* logger,
-    Executor* executor,
-    std::unique_ptr<ModemManagerProxy> modem_manager_proxy) {
+    Executor* executor) {
   // Open the socket prior to passing to ModemQrtr, such that it always has a
   // valid socket to write to.
   if (!socket || !socket->Open()) {
     LOG(ERROR) << "Failed to open socket";
     return nullptr;
   }
-  return std::unique_ptr<ModemQrtr>(new ModemQrtr(
-      std::move(socket), logger, executor, std::move(modem_manager_proxy)));
+  return std::unique_ptr<ModemQrtr>(
+      new ModemQrtr(std::move(socket), logger, executor));
 }
 
 ModemQrtr::ModemQrtr(std::unique_ptr<SocketInterface> socket,
                      Logger* logger,
-                     Executor* executor,
-                     std::unique_ptr<ModemManagerProxy> modem_manager_proxy)
-    : Modem<QmiCmdInterface>(logger, executor, std::move(modem_manager_proxy)),
+                     Executor* executor)
+    : Modem<QmiCmdInterface>(logger, executor),
       qmi_disabled_(false),
       retry_count_(0),
       channel_(kInvalidChannel),
@@ -213,6 +211,30 @@ void ModemQrtr::SendOpenLogicalChannel(base::OnceCallback<void(int)> cb) {
        std::make_unique<UimCmd>(UimCmd::QmiType::kOpenLogicalChannel),
        std::move(cb)});
   TransmitFromQueue();
+}
+
+void ModemQrtr::RetryInitialization(ResultCallback cb) {
+  if (retry_count_ > kMaxRetries) {
+    LOG(INFO) << __func__ << ": Max retry count(" << kMaxRetries
+              << ") exceeded, will not retry initialization.";
+    retry_count_ = 0;
+    while (!tx_queue_.empty()) {
+      std::move(tx_queue_[0].cb_).Run(kQmiMessageProcessingError);
+      tx_queue_.pop_front();
+    }
+    std::move(cb).Run(kQmiMessageProcessingError);
+    return;
+  }
+  LOG(INFO) << "Reprobing for eSIM in " << kInitRetryDelay.InSeconds()
+            << " seconds";
+  Shutdown();
+  retry_initialization_callback_.Reset();
+  retry_initialization_callback_ =
+      base::BindOnce(&ModemQrtr::Initialize, weak_factory_.GetWeakPtr(),
+                     euicc_manager_, std::move(cb));
+  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE, std::move(retry_initialization_callback_), kInitRetryDelay);
+  retry_count_++;
 }
 
 void ModemQrtr::Shutdown() {

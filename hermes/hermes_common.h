@@ -17,8 +17,6 @@ using ResultCallback = base::OnceCallback<void(int)>;
 constexpr char bcd_chars[] = "0123456789\0\0\0\0\0\0";
 constexpr auto kLpaRetryDelay = base::TimeDelta::FromSeconds(2);
 
-constexpr int kSuccess = 0;
-
 std::string GetTrailingChars(const std::string& pii, int num_chars);
 // Used to redact PII in logs
 std::string GetObjectPathForLog(const dbus::ObjectPath& dbus_path);
