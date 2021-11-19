@@ -470,6 +470,10 @@ void AddSystemFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("tpm_dynamic"))
     builder->AddArg("--tpm-is-dynamic");
 
+  // Enable special branded strings. This UseFlag is set only on reven board.
+  if (builder->UseFlagIsSet("reven_branding"))
+    builder->AddArg("--reven-branding");
+
   SetUpOsInstallFlags(builder);
   SetUpSchedulerFlags(builder, cros_config);
 }
