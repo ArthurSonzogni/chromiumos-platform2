@@ -115,6 +115,10 @@ class AuthSession final {
   static base::Optional<base::UnguessableToken> GetTokenFromSerializedString(
       const std::string& serialized_token);
 
+  // Extends the timer for the AuthSession by kAuthSessionExtensionInMinutes.
+  user_data_auth::CryptohomeErrorCode ExtendTimer(
+      const base::TimeDelta kAuthSessionExtension);
+
  private:
   AuthSession() = delete;
   // AuthSessionTimedOut is called when the session times out and cleans up
@@ -137,6 +141,7 @@ class AuthSession final {
 
   AuthStatus status_ = AuthStatus::kAuthStatusFurtherFactorRequired;
   base::OneShotTimer timer_;
+  base::TimeTicks start_time_;
   base::OnceCallback<void(const base::UnguessableToken&)> on_timeout_;
 
   std::unique_ptr<AuthFactor> auth_factor_;
@@ -160,6 +165,7 @@ class AuthSession final {
   FRIEND_TEST(AuthSessionTest, GetCredentialKioskUser);
   FRIEND_TEST(UserDataAuthExTest, MountUnauthenticatedAuthSession);
   FRIEND_TEST(UserDataAuthExTest, StartAuthSession);
+  FRIEND_TEST(UserDataAuthExTest, ExtendAuthSession);
 };
 
 }  // namespace cryptohome

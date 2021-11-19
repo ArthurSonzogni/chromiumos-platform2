@@ -573,6 +573,20 @@ message InvalidateAuthSessionReply {
   CryptohomeErrorCode error = 1;
 }
 
+message ExtendAuthSessionRequest {
+  // Serialized form of token that is used to identify Auth Session that needs
+  // to be extended.
+  bytes auth_session_id = 1;
+  // Duration of the extension requested in seconds, with a default of
+  // 60 seconds if not specified.
+  uint32 extension_duration = 2;
+}
+
+message ExtendAuthSessionReply {
+  // Error if any to extend the Auth Session.
+  CryptohomeErrorCode error = 1;
+}
+
 message CreatePersistentUserRequest {
   // Id of the auth session associated with the user we aim to create.
   bytes auth_session_id = 1;

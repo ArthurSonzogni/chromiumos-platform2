@@ -215,6 +215,34 @@ void UserDataAuthAdaptor::DoInvalidateAuthSession(
           std::move(response)));
 }
 
+void UserDataAuthAdaptor::ExtendAuthSession(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::ExtendAuthSessionReply>> response,
+    const user_data_auth::ExtendAuthSessionRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &UserDataAuthAdaptor::DoExtendAuthSession, base::Unretained(this),
+          ThreadSafeDBusMethodResponse<user_data_auth::ExtendAuthSessionReply>::
+              MakeThreadSafe(std::move(response)),
+          in_request));
+}
+
+void UserDataAuthAdaptor::DoExtendAuthSession(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::ExtendAuthSessionReply>> response,
+    const user_data_auth::ExtendAuthSessionRequest& in_request) {
+  service_->ExtendAuthSession(
+      in_request,
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 user_data_auth::ExtendAuthSessionReply>> local_response,
+             const user_data_auth::ExtendAuthSessionReply& reply) {
+            local_response->Return(reply);
+          },
+          std::move(response)));
+}
+
 void UserDataAuthAdaptor::CreatePersistentUser(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::CreatePersistentUserReply>> response,

@@ -55,6 +55,7 @@ AuthSession::AuthSession(
 
   // TODO(hardikgoyal): make a factory function for AuthSession so the
   // constructor doesn't need to do work
+  start_time_ = base::TimeTicks::Now();
   user_exists_ = keyset_management_->UserExists(SanitizeUserName(username_));
   if (user_exists_) {
     keyset_management_->GetVaultKeysetLabelsAndData(SanitizeUserName(username_),
@@ -66,6 +67,28 @@ void AuthSession::AuthSessionTimedOut() {
   status_ = AuthStatus::kAuthStatusTimedOut;
   // After this call back to |UserDataAuth|, |this| object will be deleted.
   std::move(on_timeout_).Run(token_);
+}
+
+user_data_auth::CryptohomeErrorCode AuthSession::ExtendTimer(
+    const base::TimeDelta extension_duration) {
+  // Check to make sure that the AuthSesion is still valid before we stop the
+  // timer.
+  if (status_ == AuthStatus::kAuthStatusTimedOut) {
+    // AuthSession timed out before timer_.Stop() could be called.
+    return user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN;
+  }
+
+  timer_.Stop();
+  // Calculate time remaining and add kAuthSessionExtensionInMinutes to it.
+  auto time_passed = base::TimeTicks::Now() - start_time_;
+  auto extended_delay =
+      (timer_.GetCurrentDelay() - time_passed) + extension_duration;
+  timer_.Start(FROM_HERE, extended_delay,
+               base::BindOnce(&AuthSession::AuthSessionTimedOut,
+                              base::Unretained(this)));
+  // Update start_time_.
+  start_time_ = base::TimeTicks::Now();
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
 user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(

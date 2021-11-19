@@ -232,6 +232,16 @@ class UserDataAuthAdaptor
           user_data_auth::InvalidateAuthSessionReply>> response,
       const user_data_auth::InvalidateAuthSessionRequest& in_request);
 
+  void ExtendAuthSession(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::ExtendAuthSessionReply>> response,
+      const user_data_auth::ExtendAuthSessionRequest& in_request) override;
+
+  void DoExtendAuthSession(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::ExtendAuthSessionReply>> response,
+      const user_data_auth::ExtendAuthSessionRequest& in_request);
+
   void CreatePersistentUser(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::CreatePersistentUserReply>> response,

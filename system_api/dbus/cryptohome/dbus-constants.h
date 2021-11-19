@@ -46,6 +46,7 @@ const char kStartAuthSession[] = "StartAuthSession";
 const char kAddCredentials[] = "AddCredentials";
 const char kAuthenticateAuthSession[] = "AuthenticateAuthSession";
 const char kInvalidateAuthSession[] = "InvalidateAuthSession";
+const char kExtendAuthSession[] = "ExtendAuthSession";
 const char kCreatePersistentUser[] = "CreatePersistentUser";
 const char kPrepareGuestVault[] = "PrepareGuestVault";
 const char kPrepareEphemeralVault[] = "PrepareEphemeralVault";

@@ -98,6 +98,12 @@ bool AssignSalt(SecureBlob* salt) {
   return true;
 }
 
+// Set to match the 5 minute timer and a 1 minute extension in AuthSession.
+constexpr int kAuthSessionExtensionDuration = 60;
+constexpr auto kAuthSessionTimeout = base::TimeDelta::FromMinutes(5);
+constexpr auto kAuthSessionExtension =
+    base::TimeDelta::FromSeconds(kAuthSessionExtensionDuration);
+
 }  // namespace
 
 // UserDataAuthTestBase is a test fixture that does not call
@@ -3786,6 +3792,67 @@ TEST_F(UserDataAuthExTest, InvalidateAuthSession) {
   EXPECT_THAT(userdataauth_->auth_session_manager_->FindAuthSession(
                   auth_session_id.value()),
               IsNull());
+}
+
+TEST_F(UserDataAuthExTest, ExtendAuthSession) {
+  // Setup.
+  PrepareArguments();
+
+  start_auth_session_req_->mutable_account_id()->set_account_id(
+      "foo@example.com");
+  user_data_auth::StartAuthSessionReply auth_session_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartAuthSession(
+        *start_auth_session_req_,
+        base::BindOnce(
+            [](user_data_auth::StartAuthSessionReply* auth_reply_ptr,
+               const user_data_auth::StartAuthSessionReply& reply) {
+              *auth_reply_ptr = reply;
+            },
+            base::Unretained(&auth_session_reply)));
+  }
+  EXPECT_EQ(auth_session_reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  base::Optional<base::UnguessableToken> auth_session_id =
+      AuthSession::GetTokenFromSerializedString(
+          auth_session_reply.auth_session_id());
+  EXPECT_TRUE(auth_session_id.has_value());
+  EXPECT_THAT(userdataauth_->auth_session_manager_->FindAuthSession(
+                  auth_session_id.value()),
+              NotNull());
+
+  // Test.
+  user_data_auth::ExtendAuthSessionRequest ext_auth_session_req;
+  ext_auth_session_req.set_auth_session_id(
+      auth_session_reply.auth_session_id());
+  ext_auth_session_req.set_extension_duration(kAuthSessionExtensionDuration);
+
+  // Extend the AuthSession.
+  bool extended = false;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->ExtendAuthSession(
+        ext_auth_session_req,
+        base::BindOnce(
+            [](bool& extended_ref,
+               const user_data_auth::ExtendAuthSessionReply& reply) {
+              EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+                        reply.error());
+              extended_ref = true;
+            },
+            std::ref(extended)));
+    EXPECT_EQ(TRUE, extended);
+  }
+
+  // Verify that timer has changed, within a resaonsable degree of error.
+  AuthSession* auth_session =
+      userdataauth_->auth_session_manager_->FindAuthSession(
+          auth_session_id.value());
+  auto requested_delay = auth_session->timer_.GetCurrentDelay();
+  auto time_difference =
+      (kAuthSessionTimeout + kAuthSessionExtension) - requested_delay;
+  EXPECT_LT(time_difference, base::TimeDelta::FromSeconds(1));
 }
 
 class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {

@@ -192,6 +192,7 @@ static const char* kActions[] = {"mount_ex",
                                  "add_credentials",
                                  "authenticate_auth_session",
                                  "invalidate_auth_session",
+                                 "extend_auth_session",
                                  "create_persistent_user",
                                  "prepare_guest_vault",
                                  "prepare_ephemeral_vault",
@@ -283,6 +284,7 @@ enum ActionEnum {
   ACTION_ADD_CREDENTIALS,
   ACTION_AUTHENTICATE_AUTH_SESSION,
   ACTION_INVALIDATE_AUTH_SESSION,
+  ACTION_EXTEND_AUTH_SESSION,
   ACTION_CREATE_PERSISTENT_USER,
   ACTION_PREPARE_GUEST_VAULT,
   ACTION_PREPARE_EPHEMERAL_VAULT,
@@ -325,6 +327,7 @@ static const char kChallengeAlgorithm[] = "challenge_alg";
 static const char kChallengeSPKI[] = "challenge_spki";
 static const char kKeyDelegateName[] = "key_delegate_name";
 static const char kKeyDelegatePath[] = "key_delegate_path";
+static const char kExtensionDuration[] = "extension_duration";
 }  // namespace switches
 
 brillo::SecureBlob GetSystemSalt(
@@ -2955,6 +2958,58 @@ int main(int argc, char** argv) {
     }
 
     printf("Auth session invalidated.\n");
+  } else if (!strcmp(switches::kActions[switches::ACTION_EXTEND_AUTH_SESSION],
+                     action.c_str())) {
+    user_data_auth::ExtendAuthSessionRequest req;
+    user_data_auth::ExtendAuthSessionReply reply;
+
+    std::string auth_session_id_hex, auth_session_id;
+
+    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+      return 1;
+    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
+    req.set_auth_session_id(auth_session_id);
+
+    // Parse extension duration from string to integer.
+    std::string extension_duration_str =
+        cl->GetSwitchValueASCII(switches::kExtensionDuration);
+    // Default value to extend is 60 seconds, if not specified.
+    int extension_duration = 60;
+    if (extension_duration_str.empty()) {
+      printf("Extension duration not specified, using default of 60 seconds\n");
+    } else if (!base::StringToInt(extension_duration_str,
+                                  &extension_duration)) {
+      printf(
+          "Extension duration specified is not a valid duration"
+          "(--%s=<extension_duration>)\n",
+          switches::kExtensionDuration);
+      return 1;
+    } else if (extension_duration < 0) {
+      printf(
+          "Extension duration specified is a negative value"
+          "(--%s=<extension_duration>)\n",
+          switches::kExtensionDuration);
+      return 1;
+    }
+    req.set_extension_duration(extension_duration);
+
+    brillo::ErrorPtr error;
+    VLOG(1) << "Attempting to extend auth session";
+    if (!userdataauth_proxy.ExtendAuthSession(req, &reply, &error,
+                                              timeout_ms) ||
+        error) {
+      printf("ExtendAuthSession call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("Auth session failed to extend.\n");
+      return static_cast<int>(reply.error());
+    }
+
+    printf("Auth session extended.\n");
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_CREATE_PERSISTENT_USER],
                  action.c_str())) {

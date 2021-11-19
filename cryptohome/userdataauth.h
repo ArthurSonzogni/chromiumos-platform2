@@ -659,6 +659,11 @@ class UserDataAuth {
       base::OnceCallback<
           void(const user_data_auth::InvalidateAuthSessionReply&)> on_done);
 
+  bool ExtendAuthSession(
+      user_data_auth::ExtendAuthSessionRequest request,
+      base::OnceCallback<void(const user_data_auth::ExtendAuthSessionReply&)>
+          on_done);
+
   void PrepareGuestVault(
       user_data_auth::PrepareGuestVaultRequest request,
       base::OnceCallback<void(const user_data_auth::PrepareGuestVaultReply&)>
@@ -1297,6 +1302,7 @@ class UserDataAuth {
   FRIEND_TEST(UserDataAuthExTest, StartAuthSession);
   FRIEND_TEST(UserDataAuthExTest, MountUnauthenticatedAuthSession);
   FRIEND_TEST(UserDataAuthExTest, InvalidateAuthSession);
+  FRIEND_TEST(UserDataAuthExTest, ExtendAuthSession);
 
   friend class AuthSessionInterfaceTest;
 };

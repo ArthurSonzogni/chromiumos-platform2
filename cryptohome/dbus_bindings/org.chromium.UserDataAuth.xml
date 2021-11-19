@@ -352,6 +352,19 @@ do.
       </arg>
     </method>
 
+    <method name="ExtendAuthSession">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::ExtendAuthSessionRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::ExtendAuthSessionReply" />
+      </arg>
+    </method>
+
     <!-- Creates an on-disk representation of a persistent user. -->
     <method name="CreatePersistentUser">
       <annotation name="org.chromium.DBus.Method.Kind"

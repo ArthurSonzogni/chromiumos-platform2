@@ -3393,6 +3393,30 @@ bool UserDataAuth::InvalidateAuthSession(
   return true;
 }
 
+bool UserDataAuth::ExtendAuthSession(
+    user_data_auth::ExtendAuthSessionRequest request,
+    base::OnceCallback<void(const user_data_auth::ExtendAuthSessionReply&)>
+        on_done) {
+  AssertOnMountThread();
+
+  AuthSession* auth_session =
+      auth_session_manager_->FindAuthSession(request.auth_session_id());
+  user_data_auth::ExtendAuthSessionReply reply;
+  if (!auth_session) {
+    // Token lookup failed.
+    reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+    std::move(on_done).Run(reply);
+    return false;
+  }
+
+  // Extend specified AuthSession.
+  auto timer_extension =
+      base::TimeDelta::FromSeconds(request.extension_duration());
+  reply.set_error(auth_session->ExtendTimer(timer_extension));
+  std::move(on_done).Run(reply);
+  return true;
+}
+
 AuthSession* UserDataAuth::GetAuthenticatedAuthSession(
     const std::string& auth_session_id,
     user_data_auth::CryptohomeErrorCode* error) {
