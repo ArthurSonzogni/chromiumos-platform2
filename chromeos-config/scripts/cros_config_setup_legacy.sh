@@ -61,4 +61,5 @@ setconfig /identity platform-name "${platform_name}"
 setconfig /identity sku-id "${sku_id}"
 setconfig /ui help-content-id "${customization_id}"
 
+mkdir -p "${MOUNTPOINT}/v1"
 mount -n -obind,ro,nodev,noexec,nosuid "${CONFIG_OUT}" "${MOUNTPOINT}/v1"

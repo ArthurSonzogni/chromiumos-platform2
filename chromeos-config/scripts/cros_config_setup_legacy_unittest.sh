@@ -50,9 +50,12 @@ cd -- "$(dirname -- "$0")"
         [ "$1" == "-n" ] || return 1
         [ "$2" == "-obind,ro,nodev,noexec,nosuid" ] || return 1
         [ "$3" == "${MOUNTPOINT}/private" ] || return 1
+        [ -d "$3" ] || return 1
         [ "$4" == "${MOUNTPOINT}/v1" ] || return 1
+        [ -d "$4" ] || return 1
 
         # Simulate sorta what the bind mount would do
+        rmdir "$4"
         cp -r "$3" "$4"
     }
 
