@@ -144,6 +144,26 @@ PasspointCredentialsRefPtr PasspointCredentials::CreatePasspointCredentials(
   // Load EAP credentials from the set of properties.
   creds->eap_.Load(args);
 
+  // Server authentication: if the caller specify a CA certificate, disable
+  // system CAs. Otherwise, verify that with the trusted system CAs an
+  // alternative name match list is specified or that a subject name match and a
+  // domain suffix match list are specified.
+  if (!creds->eap_.ca_cert_pem().empty()) {
+    creds->eap_.set_use_system_cas(false);
+  } else {
+    creds->eap_.set_use_system_cas(true);
+    bool noNameMatch = creds->eap_.subject_match().empty();
+    bool noAltnameMatchList =
+        creds->eap_.subject_alternative_name_match_list().empty();
+    bool noSuffixMatchList = creds->eap_.domain_suffix_match_list().empty();
+    if (noAltnameMatchList && (noNameMatch || noSuffixMatchList)) {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                            "EAP credentials with no CA certificate must have "
+                            "a Subject Alternative Name match list");
+      return nullptr;
+    }
+  }
+
   // Check the set of credentials is consistent.
   if (!creds->eap().IsConnectable()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,

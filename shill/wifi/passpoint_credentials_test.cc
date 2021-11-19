@@ -76,6 +76,13 @@ TEST_F(PasspointCredentialsTest, CreateChecksEapCredentials) {
   const std::string kUser("test-user");
   const std::string kPassword("test-password");
   const std::string kMethodTTLS(kEapMethodTTLS);
+  const std::string kSubjectNameMatch("domain1.com");
+  const std::vector<std::string> kCaCertPem{"pem first line",
+                                            "pem second line"};
+  const std::vector<std::string> kAlternativeNameMatchList{"domain2.com",
+                                                           "domain3.com"};
+  const std::vector<std::string> kDomainSuffixMatchList{"domain4.com",
+                                                        "domain5.com"};
   KeyValueStore properties;
   Error error;
 
@@ -92,6 +99,7 @@ TEST_F(PasspointCredentialsTest, CreateChecksEapCredentials) {
   properties.Clear();
   properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
   properties.Set(kPasspointCredentialsRealmProperty, kValidFQDN);
+  properties.Set(kEapCaCertPemProperty, kCaCertPem);
   // The following properties are enough to create a connectable EAP set.
   properties.Set(kEapMethodProperty, std::string(kEapMethodPEAP));
   properties.Set(kEapIdentityProperty, kUser);
@@ -106,10 +114,43 @@ TEST_F(PasspointCredentialsTest, CreateChecksEapCredentials) {
   properties.Clear();
   properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
   properties.Set(kPasspointCredentialsRealmProperty, kValidFQDN);
+  properties.Set(kEapCaCertPemProperty, kCaCertPem);
   properties.Set(kEapMethodProperty, kMethodTTLS);
   properties.Set(kEapPhase2AuthProperty, std::string(kEapPhase2AuthTTLSMD5));
   properties.Set(kEapIdentityProperty, kUser);
   properties.Set(kEapPasswordProperty, kPassword);
+  EXPECT_EQ(
+      PasspointCredentials::CreatePasspointCredentials(properties, &error),
+      nullptr);
+  EXPECT_EQ(error.type(), Error::kInvalidArguments);
+
+  // No CA cert and only a subject name match.
+  error.Reset();
+  properties.Clear();
+  properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
+  properties.Set(kPasspointCredentialsRealmProperty, kValidFQDN);
+  properties.Set(kEapMethodProperty, kMethodTTLS);
+  properties.Set(kEapPhase2AuthProperty,
+                 std::string(kEapPhase2AuthTTLSMSCHAPV2));
+  properties.Set(kEapIdentityProperty, kUser);
+  properties.Set(kEapPasswordProperty, kPassword);
+  properties.Set(kEapSubjectMatchProperty, kSubjectNameMatch);
+  EXPECT_EQ(
+      PasspointCredentials::CreatePasspointCredentials(properties, &error),
+      nullptr);
+  EXPECT_EQ(error.type(), Error::kInvalidArguments);
+
+  // No CA cert and only a domain suffix name match list
+  error.Reset();
+  properties.Clear();
+  properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
+  properties.Set(kPasspointCredentialsRealmProperty, kValidFQDN);
+  properties.Set(kEapMethodProperty, kMethodTTLS);
+  properties.Set(kEapPhase2AuthProperty,
+                 std::string(kEapPhase2AuthTTLSMSCHAPV2));
+  properties.Set(kEapIdentityProperty, kUser);
+  properties.Set(kEapPasswordProperty, kPassword);
+  properties.Set(kEapDomainSuffixMatchProperty, kDomainSuffixMatchList);
   EXPECT_EQ(
       PasspointCredentials::CreatePasspointCredentials(properties, &error),
       nullptr);
@@ -134,11 +175,16 @@ TEST_F(PasspointCredentialsTest, Create) {
   const std::string kPackageName("com.foo.bar");
   const std::string kCertId("cert-id");
   const std::string kKeyId("key-id");
+  const std::string kSubjectNameMatch("domain1.com");
+  const std::vector<std::string> kAlternativeNameMatchList{"domain2.com",
+                                                           "domain3.com"};
+  const std::vector<std::string> kDomainSuffixMatchList{"domain4.com",
+                                                        "domain5.com"};
 
   KeyValueStore properties;
   Error error;
 
-  // Verify Passpoint+EAP-TLS
+  // Verify Passpoint+EAP-TLS with CA cert
   properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
   properties.Set(kPasspointCredentialsRealmProperty, kValidFQDN);
   properties.Set(kPasspointCredentialsHomeOIsProperty, kOIs);
@@ -166,8 +212,9 @@ TEST_F(PasspointCredentialsTest, Create) {
   EXPECT_TRUE(creds->metered_override());
   EXPECT_EQ(kPackageName, creds->android_package_name());
   EXPECT_TRUE(creds->eap().IsConnectable());
+  EXPECT_FALSE(creds->eap().use_system_cas());
 
-  // Verify Passpoint+EAP-TTLS
+  // Verify Passpoint+EAP-TTLS with CA cert
   properties.Clear();
   properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
   properties.Set(kPasspointCredentialsRealmProperty, kValidFQDN);
@@ -183,6 +230,7 @@ TEST_F(PasspointCredentialsTest, Create) {
   properties.Set(kEapCaCertPemProperty, kCaCertPem);
   properties.Set(kEapIdentityProperty, kUser);
   properties.Set(kEapPasswordProperty, kPassword);
+  EXPECT_FALSE(creds->eap().use_system_cas());
 
   creds = PasspointCredentials::CreatePasspointCredentials(properties, &error);
   EXPECT_NE(nullptr, creds);
@@ -194,6 +242,67 @@ TEST_F(PasspointCredentialsTest, Create) {
   EXPECT_TRUE(creds->metered_override());
   EXPECT_EQ(kPackageName, creds->android_package_name());
   EXPECT_TRUE(creds->eap().IsConnectable());
+
+  // Verify Passpoint+EAP-TTLS without CA cert and with altname match list
+  properties.Clear();
+  properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
+  properties.Set(kPasspointCredentialsRealmProperty, kValidFQDN);
+  properties.Set(kPasspointCredentialsHomeOIsProperty, kOIs);
+  properties.Set(kPasspointCredentialsRequiredHomeOIsProperty, kOIs);
+  properties.Set(kPasspointCredentialsRoamingConsortiaProperty,
+                 kRoamingConsortia);
+  properties.Set(kPasspointCredentialsMeteredOverrideProperty, true);
+  properties.Set(kPasspointCredentialsAndroidPackageNameProperty, kPackageName);
+  properties.Set(kEapMethodProperty, kMethodTTLS);
+  properties.Set(kEapPhase2AuthProperty,
+                 std::string(kEapPhase2AuthTTLSMSCHAPV2));
+  properties.Set(kEapIdentityProperty, kUser);
+  properties.Set(kEapPasswordProperty, kPassword);
+  properties.Set(kEapSubjectAlternativeNameMatchProperty,
+                 kAlternativeNameMatchList);
+
+  creds = PasspointCredentials::CreatePasspointCredentials(properties, &error);
+  EXPECT_NE(nullptr, creds);
+  EXPECT_EQ(kValidFQDNs, creds->domains());
+  EXPECT_EQ(kValidFQDN, creds->realm());
+  EXPECT_EQ(kOIs, creds->home_ois());
+  EXPECT_EQ(kOIs, creds->required_home_ois());
+  EXPECT_EQ(kRoamingConsortia, creds->roaming_consortia());
+  EXPECT_TRUE(creds->metered_override());
+  EXPECT_EQ(kPackageName, creds->android_package_name());
+  EXPECT_TRUE(creds->eap().IsConnectable());
+  EXPECT_TRUE(creds->eap().use_system_cas());
+
+  // Verify Passpoint+EAP-TTLS without CA cert and with domain suffix name match
+  // list
+  properties.Clear();
+  properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
+  properties.Set(kPasspointCredentialsRealmProperty, kValidFQDN);
+  properties.Set(kPasspointCredentialsHomeOIsProperty, kOIs);
+  properties.Set(kPasspointCredentialsRequiredHomeOIsProperty, kOIs);
+  properties.Set(kPasspointCredentialsRoamingConsortiaProperty,
+                 kRoamingConsortia);
+  properties.Set(kPasspointCredentialsMeteredOverrideProperty, true);
+  properties.Set(kPasspointCredentialsAndroidPackageNameProperty, kPackageName);
+  properties.Set(kEapMethodProperty, kMethodTTLS);
+  properties.Set(kEapPhase2AuthProperty,
+                 std::string(kEapPhase2AuthTTLSMSCHAPV2));
+  properties.Set(kEapIdentityProperty, kUser);
+  properties.Set(kEapPasswordProperty, kPassword);
+  properties.Set(kEapSubjectMatchProperty, kSubjectNameMatch);
+  properties.Set(kEapDomainSuffixMatchProperty, kDomainSuffixMatchList);
+
+  creds = PasspointCredentials::CreatePasspointCredentials(properties, &error);
+  EXPECT_NE(nullptr, creds);
+  EXPECT_EQ(kValidFQDNs, creds->domains());
+  EXPECT_EQ(kValidFQDN, creds->realm());
+  EXPECT_EQ(kOIs, creds->home_ois());
+  EXPECT_EQ(kOIs, creds->required_home_ois());
+  EXPECT_EQ(kRoamingConsortia, creds->roaming_consortia());
+  EXPECT_TRUE(creds->metered_override());
+  EXPECT_EQ(kPackageName, creds->android_package_name());
+  EXPECT_TRUE(creds->eap().IsConnectable());
+  EXPECT_TRUE(creds->eap().use_system_cas());
 }
 
 }  // namespace shill
