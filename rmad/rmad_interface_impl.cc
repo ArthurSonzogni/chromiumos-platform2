@@ -287,12 +287,7 @@ void RmadInterfaceImpl::RegisterSignalSender(
 
 void RmadInterfaceImpl::TryTransitionNextStateFromCurrentState() {
   LOG(INFO) << "Trying a state transition using current state";
-  GetStateReply get_current_state_reply = GetCurrentStateInternal();
-  if (get_current_state_reply.error() == RMAD_ERROR_OK) {
-    TransitionNextStateRequest request;
-    *request.mutable_state() = get_current_state_reply.state();
-    TransitionNextStateInternal(request);
-  }
+  TransitionNextStateInternal(TransitionNextStateRequest(), true);
 }
 
 void RmadInterfaceImpl::GetCurrentState(const GetStateCallback& callback) {
@@ -324,12 +319,12 @@ GetStateReply RmadInterfaceImpl::GetCurrentStateInternal() {
 void RmadInterfaceImpl::TransitionNextState(
     const TransitionNextStateRequest& request,
     const GetStateCallback& callback) {
-  GetStateReply reply = TransitionNextStateInternal(request);
+  GetStateReply reply = TransitionNextStateInternal(request, false);
   callback.Run(reply);
 }
 
 GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
-    const TransitionNextStateRequest& request) {
+    const TransitionNextStateRequest& request, bool try_at_boot) {
   GetStateReply reply;
   if (current_state_case_ == RmadState::STATE_NOT_SET) {
     reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
@@ -352,7 +347,8 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
   reply.set_can_abort(CanAbort());
 
   auto [next_state_case_error, next_state_case] =
-      current_state_handler->GetNextStateCase(request.state());
+      try_at_boot ? current_state_handler->TryGetNextStateCaseAtBoot()
+                  : current_state_handler->GetNextStateCase(request.state());
   if (next_state_case_error != RMAD_ERROR_OK) {
     LOG(INFO) << "Transitioning to next state rejected by state "
               << current_state_case_;

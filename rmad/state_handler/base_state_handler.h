@@ -88,6 +88,12 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   // the same as GetStateCase().
   virtual GetNextStateCaseReply GetNextStateCase(const RmadState& state) = 0;
 
+  // Return the next RmadState::StateCase in the RMA flow at the boot time,
+  // depending on device status.
+  virtual GetNextStateCaseReply TryGetNextStateCaseAtBoot() {
+    return GetNextStateCase(state_);
+  }
+
   // Store the state to |json_store_|.
   bool StoreState();
 

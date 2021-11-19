@@ -100,7 +100,7 @@ class RmadInterfaceImpl final : public RmadInterface {
 
   GetStateReply GetCurrentStateInternal();
   GetStateReply TransitionNextStateInternal(
-      const TransitionNextStateRequest& request);
+      const TransitionNextStateRequest& request, bool try_at_boot);
 
   // Store the state history to |json_store_|.
   bool StoreStateHistory();
