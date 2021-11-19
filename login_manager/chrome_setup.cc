@@ -893,9 +893,6 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // mode detection and internal input device event blocking logic.
   builder->AddVmodulePattern("*/ash/wm/tablet_mode/*=1");
 
-  // TODO(https://crbug.com/1180205): Remove after investigation.
-  builder->AddVmodulePattern("automatic_reboot_manager=2");
-
   if (builder->UseFlagIsSet("cheets"))
     builder->AddVmodulePattern("*arc/*=1");
 }
