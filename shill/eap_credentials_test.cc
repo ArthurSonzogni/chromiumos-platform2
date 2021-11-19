@@ -277,6 +277,11 @@ TEST_F(EapCredentialsTest, Load) {
   const std::string kInnerMethod("auth=AnotherMethod");
   const std::string kIdentity("Red Fruit");
   const std::string kPassword("One Time Password");
+  const std::string kSubjectNameMatch("domain1.com");
+  const std::vector<std::string> kAlternativeNameMatchList{"domain2.com",
+                                                           "domain3.com"};
+  const std::vector<std::string> kDomainSuffixMatchList{"domain4.com",
+                                                        "domain5.com"};
 
   KeyValueStore store;
   store.Set(kEapCaCertPemProperty, kCaCertPem);
@@ -284,13 +289,20 @@ TEST_F(EapCredentialsTest, Load) {
   store.Set(kEapPhase2AuthProperty, kInnerMethod);
   store.Set(kEapIdentityProperty, kIdentity);
   store.Set(kEapPasswordProperty, kPassword);
+  store.Set(kEapSubjectMatchProperty, kSubjectNameMatch);
+  store.Set(kEapSubjectAlternativeNameMatchProperty, kAlternativeNameMatchList);
+  store.Set(kEapDomainSuffixMatchProperty, kDomainSuffixMatchList);
   eap_.Load(store);
 
   EXPECT_EQ(kMethod, eap_.method());
   EXPECT_EQ(kInnerMethod, eap_.inner_method());
   EXPECT_EQ(kIdentity, eap_.identity());
   EXPECT_EQ(kPassword, eap_.password_);
-  EXPECT_EQ(kCaCertPem, eap_.ca_cert_pem_);
+  EXPECT_EQ(kCaCertPem, eap_.ca_cert_pem());
+  EXPECT_EQ(kSubjectNameMatch, eap_.subject_match());
+  EXPECT_EQ(kAlternativeNameMatchList,
+            eap_.subject_alternative_name_match_list());
+  EXPECT_EQ(kDomainSuffixMatchList, eap_.domain_suffix_match_list());
   // Other fields keep their default value.
   EXPECT_TRUE(eap_.anonymous_identity_.empty());
   EXPECT_TRUE(eap_.cert_id_.empty());
@@ -298,10 +310,7 @@ TEST_F(EapCredentialsTest, Load) {
   EXPECT_TRUE(eap_.pin_.empty());
   EXPECT_TRUE(eap_.ca_cert_id_.empty());
   EXPECT_TRUE(eap_.tls_version_max_.empty());
-  EXPECT_TRUE(eap_.subject_match_.empty());
-  EXPECT_TRUE(eap_.subject_alternative_name_match_list_.empty());
-  EXPECT_TRUE(eap_.domain_suffix_match_list_.empty());
-  EXPECT_TRUE(eap_.use_system_cas_);
+  EXPECT_TRUE(eap_.use_system_cas());
   EXPECT_FALSE(eap_.use_proactive_key_caching_);
   EXPECT_FALSE(eap_.use_login_password_);
 }

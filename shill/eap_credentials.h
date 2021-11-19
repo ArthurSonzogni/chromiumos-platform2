@@ -121,9 +121,24 @@ class EapCredentials {
   virtual void set_password(const std::string& password) {
     password_ = password;
   }
+  virtual bool use_system_cas() const { return use_system_cas_; }
+  virtual void set_use_system_cas(bool use_system_cas) {
+    use_system_cas_ = use_system_cas;
+  }
   virtual const std::string& pin() const { return pin_; }
   virtual const std::string& method() const { return eap_; }
   virtual const std::string& inner_method() const { return inner_eap_; }
+  virtual const std::vector<std::string>& ca_cert_pem() const {
+    return ca_cert_pem_;
+  }
+  virtual const std::string& subject_match() const { return subject_match_; }
+  virtual const std::vector<std::string>& subject_alternative_name_match_list()
+      const {
+    return subject_alternative_name_match_list_;
+  }
+  virtual const std::vector<std::string>& domain_suffix_match_list() const {
+    return domain_suffix_match_list_;
+  }
 
  private:
   friend class EapCredentialsTest;
