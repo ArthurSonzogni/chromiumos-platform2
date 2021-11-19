@@ -119,7 +119,7 @@ class CameraHal : public UdevWatcher::Observer {
   // The number of built-in cameras.  Use |int| instead of |size_t| here to
   // avoid casting everywhere since we also use it as an upper bound of built-in
   // camera id.
-  int num_builtin_cameras_;
+  int num_builtin_cameras_ = 0;
 
   // The next id for newly plugged external camera, which is starting from
   // |num_builtin_cameras_|.

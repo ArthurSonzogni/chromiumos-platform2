@@ -566,6 +566,10 @@ int64_t Camera3Module::GetOutputMinFrameDuration(
 // Test cases
 
 TEST_F(Camera3ModuleFixture, NumberOfCameras) {
+  ASSERT_GT(cam_module_.GetNumberOfCameras(), 0) << "No cameras found";
+  ASSERT_LE(cam_module_.GetNumberOfCameras(), kMaxNumCameras)
+      << "Too many cameras found";
+
   base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
   base::FilePath camera_hal_path =
       cmd_line->GetSwitchValuePath("camera_hal_path");
@@ -575,6 +579,11 @@ TEST_F(Camera3ModuleFixture, NumberOfCameras) {
         config->GetCameraCount(cros::Interface::kUsb).value_or(0);
     const int mipi_count =
         config->GetCameraCount(cros::Interface::kMipi).value_or(0);
+    if (usb_count == 0 && mipi_count == 0) {
+      // For some older devices the cros_config isn't populated with the
+      // interface information, so there's nothing to verify here.
+      return;
+    }
     if (camera_hal_path.empty()) {
       ASSERT_EQ(cam_module_.GetNumberOfCameras(), usb_count + mipi_count)
           << "Incorrect number of cameras";
@@ -585,10 +594,6 @@ TEST_F(Camera3ModuleFixture, NumberOfCameras) {
       ASSERT_EQ(cam_module_.GetNumberOfCameras(), mipi_count)
           << "Incorrect number of cameras";
     }
-  } else {
-    ASSERT_GT(cam_module_.GetNumberOfCameras(), 0) << "No cameras found";
-    ASSERT_LE(cam_module_.GetNumberOfCameras(), kMaxNumCameras)
-        << "Too many cameras found";
   }
 }
 
