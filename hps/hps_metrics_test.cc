@@ -43,6 +43,7 @@ TEST_F(HpsMetricsTest, SendHpsTurnOnResult) {
       HpsTurnOnResult::kStage1NotStarted, HpsTurnOnResult::kApplNotStarted,
       HpsTurnOnResult::kNoResponse,       HpsTurnOnResult::kTimeout,
       HpsTurnOnResult::kBadMagic,         HpsTurnOnResult::kFault,
+      HpsTurnOnResult::kMcuUpdateFailure, HpsTurnOnResult::kSpiUpdateFailure,
   };
   // Check that we have all the values of the enum
   ASSERT_EQ(all_results.size(),

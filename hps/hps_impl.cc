@@ -178,14 +178,7 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
     case BootResult::kFail:
       return BootResult::kFail;
     case BootResult::kUpdate:
-      LOG(INFO) << "Updating MCU flash";
-      base::ElapsedTimer timer;
-      if (this->WriteFile(0, this->mcu_blob_)) {
-        hps_metrics_.SendHpsUpdateDuration(0, timer.Elapsed());
-        return BootResult::kUpdate;
-      } else {
-        return BootResult::kFail;
-      }
+      return SendStage1Update();
   }
 
   // Inspect stage1 flags and either fail or launch application and continue
@@ -210,14 +203,7 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
       return BootResult::kFail;
     case BootResult::kUpdate:
       LOG(INFO) << "Updating SPI flash";
-      base::ElapsedTimer timer;
-      if (this->WriteFile(1, this->fpga_bitstream_) &&
-          this->WriteFile(2, this->fpga_app_image_)) {
-        hps_metrics_.SendHpsUpdateDuration(1, timer.Elapsed());
-        return BootResult::kUpdate;
-      } else {
-        return BootResult::kFail;
-      }
+      return SendApplicationUpdate();
   }
 }
 
@@ -418,6 +404,35 @@ void HPS_impl::Fault() {
     LOG(FATAL) << base::StringPrintf("Fault: cause 0x%04x",
                                      static_cast<unsigned>(errors))
                       .c_str();
+  }
+}
+
+// Send the stage1 MCU flash update.
+// Returns kFail or kUpdate.
+hps::HPS_impl::BootResult HPS_impl::SendStage1Update() {
+  LOG(INFO) << "Updating MCU flash";
+  base::ElapsedTimer timer;
+  if (this->Download(HpsBank::kMcuFlash, this->mcu_blob_)) {
+    hps_metrics_.SendHpsUpdateDuration(HpsBank::kMcuFlash, timer.Elapsed());
+    return BootResult::kUpdate;
+  } else {
+    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kMcuUpdateFailure);
+    return BootResult::kFail;
+  }
+}
+
+// Send the Application SPI flash update.
+// Returns kFail or kUpdate.
+hps::HPS_impl::BootResult HPS_impl::SendApplicationUpdate() {
+  LOG(INFO) << "Updating SPI flash";
+  base::ElapsedTimer timer;
+  if (this->Download(HpsBank::kSpiFlash, this->fpga_bitstream_) &&
+      this->Download(HpsBank::kSocRom, this->fpga_app_image_)) {
+    hps_metrics_.SendHpsUpdateDuration(HpsBank::kSpiFlash, timer.Elapsed());
+    return BootResult::kUpdate;
+  } else {
+    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kSpiUpdateFailure);
+    return BootResult::kFail;
   }
 }
 

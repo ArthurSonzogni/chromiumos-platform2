@@ -69,6 +69,8 @@ class HPS_impl : public HPS {
   bool Reboot();
   void Fault();
   bool WaitForBankReady(uint8_t bank);
+  BootResult SendStage1Update();
+  BootResult SendApplicationUpdate();
   bool WriteFile(uint8_t bank, const base::FilePath& source);
   std::unique_ptr<DevInterface> device_;
   HpsMetrics hps_metrics_;

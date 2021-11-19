@@ -11,6 +11,8 @@
 #include <metrics/metrics_library.h>
 #include <base/time/time.h>
 
+#include "hps/hps_reg.h"
+
 namespace hps {
 
 constexpr char kHpsTurnOnResult[] = "ChromeOS.HPS.TurnOn.Result";
@@ -31,7 +33,9 @@ enum class HpsTurnOnResult {
   kTimeout = 7,
   kBadMagic = 8,
   kFault = 9,
-  kMaxValue = kFault,
+  kMcuUpdateFailure = 10,
+  kSpiUpdateFailure = 11,
+  kMaxValue = kSpiUpdateFailure,
 };
 
 class HpsMetrics {
@@ -43,7 +47,7 @@ class HpsMetrics {
   ~HpsMetrics() = default;
 
   bool SendHpsTurnOnResult(HpsTurnOnResult result);
-  bool SendHpsUpdateDuration(int bank, base::TimeDelta duration);
+  bool SendHpsUpdateDuration(HpsBank bank, base::TimeDelta duration);
 
   void SetMetricsLibraryForTesting(
       std::unique_ptr<MetricsLibraryInterface> metrics_lib) {

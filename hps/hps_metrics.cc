@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "hps/hps_reg.h"
-
 #include "hps/hps_metrics.h"
 
 namespace hps {
@@ -17,8 +15,8 @@ bool HpsMetrics::SendHpsTurnOnResult(HpsTurnOnResult result) {
   return metrics_lib_->SendEnumToUMA(hps::kHpsTurnOnResult, result);
 }
 
-bool HpsMetrics::SendHpsUpdateDuration(int bank, base::TimeDelta duration) {
-  switch (HpsBank(bank)) {
+bool HpsMetrics::SendHpsUpdateDuration(HpsBank bank, base::TimeDelta duration) {
+  switch (bank) {
     case HpsBank::kMcuFlash:
       return metrics_lib_->SendToUMA(
           kHpsUpdateMcuDuration, static_cast<int>(duration.InMilliseconds()), 1,
