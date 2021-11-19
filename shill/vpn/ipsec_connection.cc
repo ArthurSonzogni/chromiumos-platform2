@@ -571,10 +571,9 @@ void IPsecConnection::StartCharon() {
   std::map<std::string, std::string> env = {
       {"STRONGSWAN_CONF", strongswan_conf_path_.value()},
   };
-  // TODO(b/197199752): Consider removing CAP_SETGID.
-  constexpr uint64_t kCapMask =
-      CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
-      CAP_TO_MASK(CAP_NET_RAW) | CAP_TO_MASK(CAP_SETGID);
+  constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_ADMIN) |
+                                CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
+                                CAP_TO_MASK(CAP_NET_RAW);
   auto minijail_options = VPNUtil::BuildMinijailOptions(kCapMask);
   // Charon can have a quite large VmSize/VmPeak despite not using much resident
   // memory. This can be partially reduced by lowering charon.threads, but in

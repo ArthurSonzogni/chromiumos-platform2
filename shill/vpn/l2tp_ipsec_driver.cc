@@ -302,10 +302,9 @@ bool L2TPIPsecDriver::SpawnL2TPIPsecVPN(Error* error) {
   LOG(INFO) << "L2TP/IPsec VPN process options: "
             << base::JoinString(options, " ");
 
-  constexpr uint64_t kCapMask =
-      CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW) |
-      CAP_TO_MASK(CAP_NET_BIND_SERVICE) | CAP_TO_MASK(CAP_SETUID) |
-      CAP_TO_MASK(CAP_SETGID);
+  constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_ADMIN) |
+                                CAP_TO_MASK(CAP_NET_RAW) |
+                                CAP_TO_MASK(CAP_NET_BIND_SERVICE);
   if (!external_task_local->StartInMinijail(
           base::FilePath(kL2TPIPsecVPNPath), &options, environment,
           VPNUtil::BuildMinijailOptions(kCapMask), error)) {

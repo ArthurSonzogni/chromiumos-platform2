@@ -241,9 +241,9 @@ TEST_F(IPsecConnectionTest, StartCharon) {
   const std::vector<std::string> kExpectedArgs = {};
   const std::map<std::string, std::string> kExpectedEnv = {
       {"STRONGSWAN_CONF", kStrongSwanConfPath.value()}};
-  constexpr uint64_t kExpectedCapMask =
-      CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
-      CAP_TO_MASK(CAP_NET_RAW) | CAP_TO_MASK(CAP_SETGID);
+  constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN) |
+                                        CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
+                                        CAP_TO_MASK(CAP_NET_RAW);
   EXPECT_CALL(process_manager_,
               StartProcessInMinijail(
                   _, kExpectedProgramPath, kExpectedArgs, kExpectedEnv,
