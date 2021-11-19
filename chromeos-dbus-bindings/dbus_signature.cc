@@ -30,6 +30,9 @@ std::string DBusType::GetOutArgType(Receiver receiver) const {
 
 namespace {
 
+// Limit the maximum allowed parsing depth, to prevent stack overflow.
+const int kMaxDepth = 100;
+
 // DBusType representing simple numeric types, such as int.
 class Scalar : public DBusType {
  public:
@@ -246,7 +249,8 @@ DBusSignature::DBusSignature() = default;
 
 std::unique_ptr<DBusType> DBusSignature::Parse(const string& signature) {
   string::const_iterator end;
-  auto type = GetTypenameForSignature(signature.begin(), signature.end(), &end);
+  auto type = GetTypenameForSignature(signature.begin(), signature.end(),
+                                      /*depth=*/0, &end);
   if (!type) {
     LOG(ERROR) << "Parse failed for signature " << signature;
     return nullptr;
@@ -263,10 +267,16 @@ std::unique_ptr<DBusType> DBusSignature::Parse(const string& signature) {
 std::unique_ptr<DBusType> DBusSignature::GetTypenameForSignature(
     string::const_iterator signature,
     string::const_iterator end,
+    int nesting_depth,
     string::const_iterator* next) {
   DCHECK(next);
   if (signature == end) {
     LOG(ERROR) << "Signature is empty";
+    return nullptr;
+  }
+
+  if (nesting_depth > kMaxDepth) {
+    LOG(ERROR) << "Excessive nesting depth";
     return nullptr;
   }
 
@@ -275,10 +285,10 @@ std::unique_ptr<DBusType> DBusSignature::GetTypenameForSignature(
   std::unique_ptr<DBusType> type;
   switch (signature_value) {
     case DBUS_STRUCT_BEGIN_CHAR:
-      type = GetStructTypenameForSignature(cur, end, &cur);
+      type = GetStructTypenameForSignature(cur, end, nesting_depth, &cur);
       break;
     case DBUS_TYPE_ARRAY:
-      type = GetArrayTypenameForSignature(cur, end, &cur);
+      type = GetArrayTypenameForSignature(cur, end, nesting_depth, &cur);
       break;
     case DBUS_TYPE_BOOLEAN:
       type = std::make_unique<Scalar>(Scalar::Type::kBoolean);
@@ -337,6 +347,7 @@ bool DBusSignature::ParseChildTypes(
     string::const_iterator signature,
     string::const_iterator end,
     string::value_type end_char,
+    int nesting_depth,
     string::const_iterator* next,
     vector<std::unique_ptr<DBusType>>* children) {
   DCHECK(next);
@@ -344,7 +355,7 @@ bool DBusSignature::ParseChildTypes(
   string::const_iterator cur = signature;
 
   while (cur != end && *cur != end_char) {
-    auto child = GetTypenameForSignature(cur, end, &cur);
+    auto child = GetTypenameForSignature(cur, end, nesting_depth + 1, &cur);
     if (!child) {
       LOG(ERROR) << "Unable to decode child elements starting at "
                  << string(cur, end);
@@ -368,6 +379,7 @@ bool DBusSignature::ParseChildTypes(
 std::unique_ptr<DBusType> DBusSignature::GetArrayTypenameForSignature(
     string::const_iterator signature,
     string::const_iterator end,
+    int nesting_depth,
     string::const_iterator* next) {
   DCHECK(next);
   if (signature == end) {
@@ -376,10 +388,10 @@ std::unique_ptr<DBusType> DBusSignature::GetArrayTypenameForSignature(
   }
 
   if (*signature == DBUS_DICT_ENTRY_BEGIN_CHAR)
-    return GetDictTypenameForSignature(signature, end, next);
+    return GetDictTypenameForSignature(signature, end, nesting_depth, next);
 
   string::const_iterator cur = signature;
-  auto child = GetTypenameForSignature(cur, end, &cur);
+  auto child = GetTypenameForSignature(cur, end, nesting_depth + 1, &cur);
   if (!child) {
     LOG(ERROR) << "Unable to decode child element starting at "
                << string(cur, end);
@@ -393,6 +405,7 @@ std::unique_ptr<DBusType> DBusSignature::GetArrayTypenameForSignature(
 std::unique_ptr<DBusType> DBusSignature::GetDictTypenameForSignature(
     string::const_iterator signature,
     string::const_iterator end,
+    int nesting_depth,
     string::const_iterator* next) {
   DCHECK(next);
   string::const_iterator cur = signature;
@@ -414,7 +427,8 @@ std::unique_ptr<DBusType> DBusSignature::GetDictTypenameForSignature(
   ++cur;
 
   vector<std::unique_ptr<DBusType>> children;
-  if (!ParseChildTypes(cur, end, DBUS_DICT_ENTRY_END_CHAR, &cur, &children))
+  if (!ParseChildTypes(cur, end, DBUS_DICT_ENTRY_END_CHAR, nesting_depth, &cur,
+                       &children))
     return nullptr;
 
   if (children.size() != 2) {
@@ -431,6 +445,7 @@ std::unique_ptr<DBusType> DBusSignature::GetDictTypenameForSignature(
 std::unique_ptr<DBusType> DBusSignature::GetStructTypenameForSignature(
     string::const_iterator signature,
     string::const_iterator end,
+    int nesting_depth,
     string::const_iterator* next) {
   DCHECK(next);
 
@@ -441,8 +456,10 @@ std::unique_ptr<DBusType> DBusSignature::GetStructTypenameForSignature(
 
   string::const_iterator cur = signature;
   vector<std::unique_ptr<DBusType>> children;
-  if (!ParseChildTypes(cur, end, DBUS_STRUCT_END_CHAR, &cur, &children))
+  if (!ParseChildTypes(cur, end, DBUS_STRUCT_END_CHAR, nesting_depth, &cur,
+                       &children)) {
     return nullptr;
+  }
 
   *next = cur;
   return std::make_unique<Struct>(std::move(children));

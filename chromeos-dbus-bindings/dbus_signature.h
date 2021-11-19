@@ -70,6 +70,7 @@ class DBusSignature {
   std::unique_ptr<DBusType> GetTypenameForSignature(
       std::string::const_iterator signature,
       std::string::const_iterator end,
+      int nesting_depth,
       std::string::const_iterator* next);
 
   // Parses multiple types out of a D-Bus signature until it encounters an
@@ -77,6 +78,7 @@ class DBusSignature {
   bool ParseChildTypes(std::string::const_iterator signature,
                        std::string::const_iterator end,
                        std::string::value_type end_char,
+                       int nesting_depth,
                        std::string::const_iterator* next,
                        std::vector<std::unique_ptr<DBusType>>* children);
 
@@ -87,12 +89,14 @@ class DBusSignature {
   std::unique_ptr<DBusType> GetArrayTypenameForSignature(
       std::string::const_iterator signature,
       std::string::const_iterator end,
+      int nesting_depth,
       std::string::const_iterator* next);
 
   // Utility task for GetArrayTypenameForSignature() which handles dict objects.
   std::unique_ptr<DBusType> GetDictTypenameForSignature(
       std::string::const_iterator signature,
       std::string::const_iterator end,
+      int nesting_depth,
       std::string::const_iterator* next);
 
   // Utility task for GetTypenameForSignature() which handles structs.
@@ -100,6 +104,7 @@ class DBusSignature {
   std::unique_ptr<DBusType> GetStructTypenameForSignature(
       std::string::const_iterator signature,
       std::string::const_iterator end,
+      int nesting_depth,
       std::string::const_iterator* next);
 };
 
