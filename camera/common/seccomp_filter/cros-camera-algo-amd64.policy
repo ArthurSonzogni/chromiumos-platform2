@@ -59,6 +59,7 @@ set_tid_address: 1
 setpriority: 1
 socket: arg0 == AF_UNIX
 stat: 1
+uname: 1
 unlink: 1
 wait4: 1
 write: 1
