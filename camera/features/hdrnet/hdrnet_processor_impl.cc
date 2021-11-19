@@ -175,6 +175,25 @@ base::ScopedFD HdrNetProcessorImpl::Run(
   } else {
     bool success = false;
     do {
+      if (options.dump_buffer) {
+        CameraBufferManager* buf_mgr = CameraBufferManager::GetInstance();
+        do {
+          if (buf_mgr->Register(input_yuv.buffer()) != 0) {
+            LOGF(ERROR) << "Failed to register input YUV buffer";
+            break;
+          }
+          if (!WriteBufferIntoFile(
+                  input_yuv.buffer(),
+                  base::FilePath(base::StringPrintf(
+                      "input_yuv_%dx%d_result#%d.yuv",
+                      CameraBufferManager::GetWidth(input_yuv.buffer()),
+                      CameraBufferManager::GetHeight(input_yuv.buffer()),
+                      frame_number)))) {
+            LOGF(ERROR) << "Failed to dump input YUV buffer";
+          }
+          buf_mgr->Deregister(input_yuv.buffer());
+        } while (0);
+      }
       {
         base::ElapsedTimer t;
         // Run the HDRnet pipeline.
