@@ -710,7 +710,7 @@ void GcamAeControllerImpl::SetManualSensorControls(
       [&](uint8_t antibanding_mode) -> float {
     constexpr float kExpTimeMs50HzRounding = (kSecondInMs / 50.0) / 2.0;
     constexpr float kExpTimeMs60HzRounding = (kSecondInMs / 60.0) / 2.0;
-    constexpr float kExpTimeMsNoRounding = 1.0f;
+    constexpr float kExpTimeMsNoRounding = 0.001f;
     switch (antibanding_mode) {
       case ANDROID_CONTROL_AE_ANTIBANDING_MODE_50HZ:
         return kExpTimeMs50HzRounding;
@@ -739,12 +739,14 @@ void GcamAeControllerImpl::SetManualSensorControls(
   auto factorize_exp_time_and_gain =
       [&](const float tet, const float max_exposure_time_ms,
           const float exp_time_rounding_ms) -> std::tuple<float, float> {
-    float exp_time = std::max(std::floorf(std::min(tet, max_exposure_time_ms) /
-                                          exp_time_rounding_ms),
-                              1.0f) *
-                     exp_time_rounding_ms;
+    float exp_time = tet;
+    if (tet > exp_time_rounding_ms) {
+      exp_time = std::max(std::floorf(std::min(tet, max_exposure_time_ms) /
+                                      exp_time_rounding_ms),
+                          1.0f) *
+                 exp_time_rounding_ms;
+    }
     float gain = tet / exp_time;
-
     return std::make_tuple(exp_time, gain);
   };
 
