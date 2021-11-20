@@ -96,6 +96,41 @@ class CrashCollectorTest : public ::testing::Test {
   base::ScopedTempDir scoped_temp_dir_;
 };
 
+TEST_F(CrashCollectorTest, ExtractEnvironmentVars_Regression) {
+  constexpr const char raw_contents[] =
+      "UPSTART_INSTANCE=\0INSTANCE=\0UPSTART_JOB=arcvm-forward-pstore\0TERM="
+      "linux\0PATH=/usr/bin:/usr/sbin:/sbin:/bin:/usr/local/sbin:/usr/local/"
+      "bin\0UPSTART_EVENTS=starting\0PWD=/"
+      "\0JOB=arcvm-pre-login-services\0SECCOMP_POLICY_PATH=/usr/share/policy/"
+      "arcvm-forward-pstore-seccomp.policy\0\0D_PRELOAD=/lib64/"
+      "libminijailpreload.so\0\0_MINIJAIL_FD=3\0";
+  std::ostringstream stream;
+  std::string contents(raw_contents, sizeof(raw_contents));
+  ExtractEnvironmentVars(contents, &stream);
+  EXPECT_EQ(stream.str(),
+            "SECCOMP_POLICY_PATH=/usr/share/policy/"
+            "arcvm-forward-pstore-seccomp.policy\n");
+}
+
+// A variation on the above regression test where SECCOMP_POLICY_PATH is set
+// after the double delimiter.
+TEST_F(CrashCollectorTest, ExtractEnvironmentVars_DoubleDelimiter) {
+  constexpr const char raw_contents[] =
+      "UPSTART_INSTANCE=\0INSTANCE=\0UPSTART_JOB=arcvm-forward-pstore\0TERM="
+      "linux\0PATH=/usr/bin:/usr/sbin:/sbin:/bin:/usr/local/sbin:/usr/local/"
+      "bin\0UPSTART_EVENTS=starting\0PWD=/"
+      "\0JOB=arcvm-pre-login-services\0\0D_PRELOAD=/lib64/"
+      "libminijailpreload.so\0\0_MINIJAIL_FD=3\0SECCOMP_POLICY_PATH=/usr/share/"
+      "policy/"
+      "arcvm-forward-pstore-seccomp.policy\0";
+  std::ostringstream stream;
+  std::string contents(raw_contents, sizeof(raw_contents));
+  ExtractEnvironmentVars(contents, &stream);
+  EXPECT_EQ(stream.str(),
+            "SECCOMP_POLICY_PATH=/usr/share/policy/"
+            "arcvm-forward-pstore-seccomp.policy\n");
+}
+
 TEST_F(CrashCollectorTest, WriteNewFile) {
   FilePath test_file = test_dir_.Append("test_new");
   const char kBuffer[] = "buffer";

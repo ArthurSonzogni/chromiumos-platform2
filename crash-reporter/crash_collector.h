@@ -38,6 +38,11 @@ constexpr mode_t kSystemCrashFilesMode = 0660;
 // All parent parts must already exist else we return false.
 bool ValidatePathAndOpen(const base::FilePath& dir, int* outfd);
 
+// Extract environmental variables of interest and write them to the stream.
+// This is exported primarily for regression testing.
+void ExtractEnvironmentVars(const std::string& contents,
+                            std::ostringstream* stream);
+
 // User crash collector.
 class CrashCollector {
  public:

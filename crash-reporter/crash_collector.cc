@@ -83,7 +83,7 @@ const char kLsbChannelKey[] = "CHROMEOS_RELEASE_TRACK";
 
 // Environment variable set by minijail that includes the path to a seccomp
 // policy if one is defined.
-constexpr char kEnvSecompPolicyPath[] = "SECCOMP_POLICY_PATH";
+constexpr char kEnvSeccompPolicyPath[] = "SECCOMP_POLICY_PATH=";
 
 #if !USE_KVM_GUEST
 // Directory mode of the user crash spool directory.
@@ -172,6 +172,22 @@ bool ValidatePathAndOpen(const FilePath& dir, int* outfd) {
   }
   *outfd = parentfd;
   return true;
+}
+
+void ExtractEnvironmentVars(const std::string& contents,
+                            std::ostringstream* stream) {
+  // SplitString is used instead of base::SplitStringIntoKeyValuePairs because
+  // base::SplitStringIntoKeyValuePairs fails when there are two delimiters in
+  // a row which happens in practice.
+  std::vector<std::string> environ =
+      SplitString(contents, std::string(1, '\0'), base::TRIM_WHITESPACE,
+                  base::SPLIT_WANT_NONEMPTY);
+  for (const std::string& line : environ) {
+    if (base::StartsWith(line, kEnvSeccompPolicyPath)) {
+      *stream << line << std::endl;
+      break;
+    }
+  }
 }
 
 // Create a directory using the specified mode/user/group, and make sure it
@@ -1220,16 +1236,7 @@ bool CrashCollector::GetProcessTree(pid_t pid,
     // Include values of interest from the environment.
     if (!base::ReadFileToString(proc_path.Append("environ"), &contents))
       break;
-    base::StringPairs environ;
-    if (base::SplitStringIntoKeyValuePairs(contents, '=', '\0', &environ)) {
-      for (const auto& key_value : environ) {
-        if (key_value.first == kEnvSecompPolicyPath) {
-          stream << kEnvSecompPolicyPath << '=' << key_value.second
-                 << std::endl;
-          break;
-        }
-      }
-    }
+    ExtractEnvironmentVars(contents, &stream);
     stream << std::endl;
 
     // Pull out the parent pid from the status file.  The line will look like:
