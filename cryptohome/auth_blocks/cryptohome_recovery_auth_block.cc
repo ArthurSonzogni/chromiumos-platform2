@@ -26,6 +26,7 @@
 
 using cryptohome::cryptorecovery::HsmPayload;
 using cryptohome::cryptorecovery::HsmResponsePlainText;
+using cryptohome::cryptorecovery::OnboardingMetadata;
 using cryptohome::cryptorecovery::RecoveryCryptoImpl;
 
 namespace cryptohome {
@@ -76,14 +77,13 @@ CryptoError CryptohomeRecoveryAuthBlock::Create(
   brillo::SecureBlob recovery_key;
   brillo::SecureBlob channel_pub_key;
   brillo::SecureBlob channel_priv_key;
-  // TODO(b/184924482): add values like schema version, user id, etc to
-  // onboarding_metadata.
-  if (!recovery->GenerateHsmPayload(
-          mediator_pub_key,
-          /*rsa_pub_key=*/brillo::SecureBlob(),
-          /*onboarding_metadata=*/brillo::SecureBlob(), &hsm_payload,
-          &destination_share, &recovery_key, &channel_pub_key,
-          &channel_priv_key)) {
+  // TODO(b/184924482): set values in onboarding_metadata.
+  OnboardingMetadata onboarding_metadata;
+  if (!recovery->GenerateHsmPayload(mediator_pub_key,
+                                    /*rsa_pub_key=*/brillo::SecureBlob(),
+                                    onboarding_metadata, &hsm_payload,
+                                    &destination_share, &recovery_key,
+                                    &channel_pub_key, &channel_priv_key)) {
     return CryptoError::CE_OTHER_CRYPTO;
   }
 

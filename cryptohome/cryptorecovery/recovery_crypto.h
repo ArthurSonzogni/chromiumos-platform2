@@ -102,7 +102,7 @@ class RecoveryCrypto {
   // `recovery_request` CBOR.
   virtual bool GenerateRecoveryRequest(
       const HsmPayload& hsm_payload,
-      const brillo::SecureBlob& request_meta_data,
+      const RequestMetadata& request_meta_data,
       const brillo::SecureBlob& channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
       const brillo::SecureBlob& epoch_pub_key,
@@ -134,7 +134,7 @@ class RecoveryCrypto {
   virtual bool GenerateHsmPayload(
       const brillo::SecureBlob& mediator_pub_key,
       const brillo::SecureBlob& rsa_pub_key,
-      const brillo::SecureBlob& onboarding_metadata,
+      const OnboardingMetadata& onboarding_metadata,
       HsmPayload* hsm_payload,
       brillo::SecureBlob* destination_share,
       brillo::SecureBlob* recovery_key,

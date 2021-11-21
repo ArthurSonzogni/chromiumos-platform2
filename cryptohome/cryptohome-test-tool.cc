@@ -30,9 +30,11 @@ using brillo::SecureBlob;
 using cryptohome::cryptorecovery::FakeRecoveryMediatorCrypto;
 using cryptohome::cryptorecovery::HsmPayload;
 using cryptohome::cryptorecovery::HsmResponsePlainText;
+using cryptohome::cryptorecovery::OnboardingMetadata;
 using cryptohome::cryptorecovery::RecoveryCryptoImpl;
 using cryptohome::cryptorecovery::RecoveryRequest;
 using cryptohome::cryptorecovery::RecoveryResponse;
+using cryptohome::cryptorecovery::RequestMetadata;
 
 namespace {
 
@@ -89,11 +91,11 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
   brillo::SecureBlob recovery_key;
   brillo::SecureBlob channel_pub_key;
   brillo::SecureBlob channel_priv_key;
+  OnboardingMetadata onboarding_metadata;
   if (!recovery_crypto->GenerateHsmPayload(
           mediator_pub_key,
-          /*rsa_pub_key=*/brillo::SecureBlob(),
-          brillo::SecureBlob("Fake Enrollment Meta Data"), &hsm_payload,
-          &destination_share, &recovery_key, &channel_pub_key,
+          /*rsa_pub_key=*/brillo::SecureBlob(), onboarding_metadata,
+          &hsm_payload, &destination_share, &recovery_key, &channel_pub_key,
           &channel_priv_key)) {
     return false;
   }
@@ -150,10 +152,10 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
 
   brillo::SecureBlob ephemeral_pub_key;
   brillo::SecureBlob recovery_request_cbor;
+  RequestMetadata request_metadata;
   if (!recovery_crypto->GenerateRecoveryRequest(
-          hsm_payload, brillo::SecureBlob("Fake Request Meta Data"),
-          channel_priv_key, channel_pub_key, epoch_pub_key,
-          &recovery_request_cbor, &ephemeral_pub_key)) {
+          hsm_payload, request_metadata, channel_priv_key, channel_pub_key,
+          epoch_pub_key, &recovery_request_cbor, &ephemeral_pub_key)) {
     return false;
   }
 

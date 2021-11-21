@@ -16,7 +16,7 @@ namespace cryptohome {
 namespace cryptorecovery {
 
 // Constants that will be used as keys in the CBOR map.
-extern const char kRecoveryCryptoRequestSchemaVersion[];
+extern const char kSchemaVersion[];
 extern const char kMediatorShare[];
 extern const char kMediatedPoint[];
 extern const char kKeyAuthValue[];
@@ -40,9 +40,18 @@ extern const char kResponseMetaData[];
 extern const char kResponsePayloadSalt[];
 extern const char kResponseErrorCode[];
 extern const char kResponseErrorString[];
+extern const char kUserId[];
+extern const char kUserIdType[];
+extern const char kRequestorAuthClaim[];
+extern const char kRequestorUserId[];
+extern const char kRequestorUserIdType[];
+extern const char kGaiaAccessToken[];
+extern const char kGaiaReauthProofToken[];
 
 // Mediation protocol version.
 extern const int kProtocolVersion;
+extern const int kOnboardingMetaDataSchemaVersion;
+extern const int kRequestMetaDataSchemaVersion;
 
 // Constructs cbor-encoded binary blob for the Recovery Request.
 bool SerializeRecoveryRequestToCbor(const RecoveryRequest& request,
@@ -136,9 +145,6 @@ bool GetBytestringValueFromCborMapByKeyForTesting(
 
 bool GetHsmPayloadFromRequestAdForTesting(
     const brillo::SecureBlob& request_payload_cbor, HsmPayload* hsm_payload);
-
-bool GetRequestPayloadSchemaVersionForTesting(
-    const brillo::SecureBlob& input_cbor, int* value);
 
 // Returns number of values in CBOR map. Returns -1 if provided blob is not a
 // CBOR map.

@@ -39,6 +39,24 @@ using RequestPayload = AeadPayload;
 // DH of epoch and channel_pub_key.
 using ResponsePayload = AeadPayload;
 
+// !!! DO NOT MODIFY !!!
+// The enum values below are exchanged with the server and must be synced with
+// the server/HSM implementation (or the other party will not be able to decrypt
+// the data). Type of the `user_id` field sent in `OnboardingMetadata`.
+enum class UserIdType {
+  kUnknown = 0,
+  kGaiaId = 1,
+};
+
+// `OnboardingMetadata` contains essential information that needs to be
+// available during the Recovery workflow. This information is used by the
+// Recovery Service and may be recorded in the Ledger.
+struct OnboardingMetadata {
+  UserIdType user_id_type = UserIdType::kUnknown;
+  // Format of `user_id` is determined by `user_id_type` enum.
+  std::string user_id;
+};
+
 // `associated_data` for the HSM payload.
 // `publisher_pub_key` and `channel_pub_key` are elliptic curve points
 // encoded in OpenSSL octet form (a binary encoding of the EC_POINT
@@ -55,7 +73,7 @@ struct HsmAssociatedData {
   brillo::SecureBlob rsa_public_key;
   // The metadata generated during the Onboarding workflow on a Chromebook
   // (OMD).
-  brillo::SecureBlob onboarding_meta_data;
+  OnboardingMetadata onboarding_meta_data;
 };
 
 // Plain text for the HSM payload.
@@ -72,12 +90,32 @@ struct HsmPlainText {
   brillo::SecureBlob key_auth_value;
 };
 
+// Data used to prove user's authentication to the Recovery Service.
+struct AuthClaim {
+  // Access token with reauth scope.
+  std::string gaia_access_token;
+  // A short-lived token, it's validity will be verified by the Recovery
+  // Service.
+  std::string gaia_reauth_proof_token;
+};
+
+// `RequestMetadata` includes any information the Chromebook needs logged in the
+// ledger. Different auth_claim types can be supported by using the
+// schema_version to distinguish them.
+struct RequestMetadata {
+  AuthClaim auth_claim;
+  UserIdType requestor_user_id_type = UserIdType::kUnknown;
+  // Format of `requestor_user_id` is determined by `requestor_user_id_type`
+  // enum.
+  std::string requestor_user_id;
+};
+
 // `associated_data` for the Request payload.
 struct RecoveryRequestAssociatedData {
   // HSM payload.
   HsmPayload hsm_payload;
   // The metadata generated during the Recovery flow on a Chromebook (RMD).
-  brillo::SecureBlob request_meta_data;
+  RequestMetadata request_meta_data;
   // Current epoch beacon value (G*r).
   brillo::SecureBlob epoch_pub_key;
   // Salt used in the derivation of request payload encryption key.

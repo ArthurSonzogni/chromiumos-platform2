@@ -30,7 +30,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
 
   bool GenerateRecoveryRequest(
       const HsmPayload& hsm_payload,
-      const brillo::SecureBlob& request_meta_data,
+      const RequestMetadata& request_meta_data,
       const brillo::SecureBlob& channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
       const brillo::SecureBlob& epoch_pub_key,
@@ -38,7 +38,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
       brillo::SecureBlob* ephemeral_pub_key) const override;
   bool GenerateHsmPayload(const brillo::SecureBlob& mediator_pub_key,
                           const brillo::SecureBlob& rsa_pub_key,
-                          const brillo::SecureBlob& onboarding_metadata,
+                          const OnboardingMetadata& onboarding_metadata,
                           HsmPayload* hsm_payload,
                           brillo::SecureBlob* destination_share,
                           brillo::SecureBlob* recovery_key,
@@ -72,7 +72,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
                             brillo::SecureBlob* ephemeral_inv_pub_key) const;
   bool GenerateHsmAssociatedData(const brillo::SecureBlob& channel_pub_key,
                                  const brillo::SecureBlob& rsa_pub_key,
-                                 const brillo::SecureBlob& onboarding_metadata,
+                                 const OnboardingMetadata& onboarding_metadata,
                                  brillo::SecureBlob* hsm_associated_data,
                                  brillo::SecureBlob* publisher_priv_key,
                                  brillo::SecureBlob* publisher_pub_key) const;

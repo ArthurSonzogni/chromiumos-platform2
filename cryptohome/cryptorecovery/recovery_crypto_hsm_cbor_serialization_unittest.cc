@@ -33,8 +33,9 @@ constexpr EllipticCurve::CurveType kCurve = EllipticCurve::CurveType::kPrime256;
 constexpr size_t kEc256PubKeySize = 65;
 constexpr size_t kEc256PrivKeySize = 32;
 
-const char kOnboardingData[] = "fake onboarding data";
-const char kFakeRequestData[] = "fake request metadata";
+const char kFakeUserId[] = "fake user id";
+const char kFakeAccessToken[] = "fake access token";
+const char kFakeRapt[] = "fake RAPT";
 const char kFakeHsmPayloadCipherText[] = "fake hsm payload cipher text";
 const char kFakeHsmPayloadAd[] = "fake hsm payload ad";
 const char kFakeHsmPayloadIv[] = "fake hsm payload iv";
@@ -53,6 +54,18 @@ bool CreateCborMapForTesting(const cbor::Value::MapValue& map,
 
   serialized_cbor_map->assign(serialized.value().begin(),
                               serialized.value().end());
+  return true;
+}
+
+bool FindMapValueInCborMap(const cbor::Value::MapValue& map,
+                           const std::string& key,
+                           cbor::Value* value) {
+  const auto entry = map.find(cbor::Value(key));
+  if (entry == map.end() || !entry->second.is_map()) {
+    return false;
+  }
+
+  *value = entry->second.Clone();
   return true;
 }
 
@@ -76,6 +89,24 @@ MATCHER_P2(CborMapContainsSecureBlobValue, key, expected_value, "") {
   return result == expected_value;
 }
 
+MATCHER_P2(CborMapContainsIntegerValue, key, expected_value, "") {
+  const auto entry = arg.find(cbor::Value(key));
+  if (entry == arg.end() || !entry->second.is_integer()) {
+    return false;
+  }
+
+  return entry->second.GetInteger() == expected_value;
+}
+
+MATCHER_P2(CborMapContainsStringValue, key, expected_value, "") {
+  const auto entry = arg.find(cbor::Value(key));
+  if (entry == arg.end() || !entry->second.is_string()) {
+    return false;
+  }
+
+  return entry->second.GetString() == expected_value;
+}
+
 }  // namespace
 
 class HsmPayloadCborHelperTest : public testing::Test {
@@ -91,6 +122,9 @@ class HsmPayloadCborHelperTest : public testing::Test {
         &channel_pub_key_, &channel_priv_key_, context_.get()));
     ASSERT_TRUE(ec_->GenerateKeysAsSecureBlobs(
         &dealer_pub_key_, &dealer_priv_key_, context_.get()));
+
+    onboarding_meta_data_.user_id_type = UserIdType::kGaiaId;
+    onboarding_meta_data_.user_id = "User ID";
   }
 
  protected:
@@ -102,6 +136,7 @@ class HsmPayloadCborHelperTest : public testing::Test {
   brillo::SecureBlob channel_priv_key_;
   brillo::SecureBlob dealer_pub_key_;
   brillo::SecureBlob dealer_priv_key_;
+  OnboardingMetadata onboarding_meta_data_;
 };
 
 class AeadPayloadHelper {
@@ -150,6 +185,16 @@ class AeadPayloadHelper {
 
 class RecoveryRequestCborHelperTest : public testing::Test {
  public:
+  RecoveryRequestCborHelperTest() {
+    request_meta_data_.requestor_user_id = kFakeUserId;
+    request_meta_data_.requestor_user_id_type = UserIdType::kGaiaId;
+    AuthClaim auth_claim;
+    auth_claim.gaia_access_token = kFakeAccessToken;
+    auth_claim.gaia_reauth_proof_token = kFakeRapt;
+    request_meta_data_.auth_claim = auth_claim;
+  }
+  ~RecoveryRequestCborHelperTest() = default;
+
   void SetUp() override {
     context_ = CreateBigNumContext();
     ASSERT_TRUE(context_);
@@ -165,6 +210,7 @@ class RecoveryRequestCborHelperTest : public testing::Test {
   base::Optional<EllipticCurve> ec_;
   brillo::SecureBlob epoch_pub_key_;
   brillo::SecureBlob epoch_priv_key_;
+  RequestMetadata request_meta_data_;
 };
 
 class RecoveryResponseCborHelperTest : public testing::Test {
@@ -186,16 +232,31 @@ TEST_F(HsmPayloadCborHelperTest, GenerateAdCborWithEmptyRsaPublicKey) {
   HsmAssociatedData args;
   args.publisher_pub_key = publisher_pub_key_;
   args.channel_pub_key = channel_pub_key_;
-  args.onboarding_meta_data = brillo::SecureBlob(kOnboardingData);
+  args.onboarding_meta_data = onboarding_meta_data_;
+
   ASSERT_TRUE(SerializeHsmAssociatedDataToCbor(args, &cbor_output));
 
   EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
                                kPublisherPublicKey, publisher_pub_key_));
   EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
                                kChannelPublicKey, channel_pub_key_));
-  EXPECT_THAT(cbor_output,
-              SerializedCborMapContainsSecureBlobValue(
-                  kOnboardingMetaData, brillo::SecureBlob(kOnboardingData)));
+
+  cbor::Value deserialized_onboarding_metadata;
+  EXPECT_TRUE(GetValueFromCborMapByKeyForTesting(
+      cbor_output, kOnboardingMetaData, &deserialized_onboarding_metadata));
+  ASSERT_TRUE(deserialized_onboarding_metadata.is_map());
+  EXPECT_THAT(
+      deserialized_onboarding_metadata.GetMap(),
+      CborMapContainsStringValue(kUserId, onboarding_meta_data_.user_id));
+  EXPECT_THAT(
+      deserialized_onboarding_metadata.GetMap(),
+      CborMapContainsIntegerValue(
+          kUserIdType, static_cast<int>(onboarding_meta_data_.user_id_type)));
+  EXPECT_THAT(deserialized_onboarding_metadata.GetMap(),
+              CborMapContainsIntegerValue(kSchemaVersion,
+                                          kOnboardingMetaDataSchemaVersion));
+  EXPECT_EQ(deserialized_onboarding_metadata.GetMap().size(), 3);
+
   EXPECT_EQ(GetCborMapSize(cbor_output), 4);
 }
 
@@ -293,7 +354,7 @@ TEST_F(HsmPayloadCborHelperTest, FailedAttemptToGetPlainTextFieldFromAd) {
   HsmAssociatedData args;
   args.publisher_pub_key = publisher_pub_key_;
   args.channel_pub_key = channel_pub_key_;
-  args.onboarding_meta_data = brillo::SecureBlob(kOnboardingData);
+  args.onboarding_meta_data = onboarding_meta_data_;
   ASSERT_TRUE(SerializeHsmAssociatedDataToCbor(args, &cbor_output));
   brillo::SecureBlob deserialized_dealer_pub_key;
   EXPECT_FALSE(GetBytestringValueFromCborMapByKeyForTesting(
@@ -304,27 +365,28 @@ TEST_F(HsmPayloadCborHelperTest, FailedAttemptToGetPlainTextFieldFromAd) {
 TEST_F(RecoveryRequestCborHelperTest, GenerateAd) {
   brillo::SecureBlob salt("fake salt");
   brillo::SecureBlob cbor_output;
+
   HsmPayload hsm_payload;
   hsm_payload.cipher_text = brillo::SecureBlob(kFakeHsmPayloadCipherText);
   hsm_payload.associated_data = brillo::SecureBlob(kFakeHsmPayloadAd);
   hsm_payload.iv = brillo::SecureBlob(kFakeHsmPayloadIv);
   hsm_payload.tag = brillo::SecureBlob(kFakeHsmPayloadTag);
+
   RecoveryRequestAssociatedData request_ad;
   request_ad.hsm_payload = std::move(hsm_payload);
-  request_ad.request_meta_data = brillo::SecureBlob(kFakeRequestData);
+  request_ad.request_meta_data = request_meta_data_;
   request_ad.epoch_pub_key = epoch_pub_key_;
   request_ad.request_payload_salt = salt;
   ASSERT_TRUE(
       SerializeRecoveryRequestAssociatedDataToCbor(request_ad, &cbor_output));
 
-  HsmPayload deserialized_hsm_payload;
-  brillo::SecureBlob deserialized_epoch_pub_key;
-  brillo::SecureBlob deserialized_request_meta_data;
-  int schema_version;
-  ASSERT_TRUE(
-      GetRequestPayloadSchemaVersionForTesting(cbor_output, &schema_version));
-  EXPECT_EQ(schema_version, kProtocolVersion);
+  cbor::Value deserialized_schema_version;
+  EXPECT_TRUE(GetValueFromCborMapByKeyForTesting(cbor_output, kSchemaVersion,
+                                                 &deserialized_schema_version));
+  ASSERT_TRUE(deserialized_schema_version.is_integer());
+  EXPECT_EQ(deserialized_schema_version.GetInteger(), kProtocolVersion);
 
+  HsmPayload deserialized_hsm_payload;
   ASSERT_TRUE(GetHsmPayloadFromRequestAdForTesting(cbor_output,
                                                    &deserialized_hsm_payload));
   EXPECT_EQ(deserialized_hsm_payload.cipher_text.to_string(),
@@ -338,9 +400,38 @@ TEST_F(RecoveryRequestCborHelperTest, GenerateAd) {
                                kEpochPublicKey, epoch_pub_key_));
   EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
                                kRequestPayloadSalt, salt));
-  EXPECT_THAT(cbor_output,
-              SerializedCborMapContainsSecureBlobValue(
-                  kRequestMetaData, brillo::SecureBlob(kFakeRequestData)));
+
+  cbor::Value deserialized_request_meta_data;
+  EXPECT_TRUE(GetValueFromCborMapByKeyForTesting(
+      cbor_output, kRequestMetaData, &deserialized_request_meta_data));
+  ASSERT_TRUE(deserialized_request_meta_data.is_map());
+  EXPECT_THAT(deserialized_request_meta_data.GetMap(),
+              CborMapContainsStringValue(kRequestorUserId,
+                                         request_meta_data_.requestor_user_id));
+  EXPECT_THAT(deserialized_request_meta_data.GetMap(),
+              CborMapContainsIntegerValue(
+                  kRequestorUserIdType,
+                  static_cast<int>(request_meta_data_.requestor_user_id_type)));
+  EXPECT_THAT(deserialized_request_meta_data.GetMap(),
+              CborMapContainsIntegerValue(kSchemaVersion,
+                                          kRequestMetaDataSchemaVersion));
+
+  cbor::Value deserialized_auth_claim;
+  EXPECT_TRUE(FindMapValueInCborMap(deserialized_request_meta_data.GetMap(),
+                                    kRequestorAuthClaim,
+                                    &deserialized_auth_claim));
+  EXPECT_THAT(
+      deserialized_auth_claim.GetMap(),
+      CborMapContainsStringValue(
+          kGaiaAccessToken, request_meta_data_.auth_claim.gaia_access_token));
+  EXPECT_THAT(deserialized_auth_claim.GetMap(),
+              CborMapContainsStringValue(
+                  kGaiaReauthProofToken,
+                  request_meta_data_.auth_claim.gaia_reauth_proof_token));
+  EXPECT_EQ(deserialized_auth_claim.GetMap().size(), 2);
+
+  EXPECT_EQ(deserialized_request_meta_data.GetMap().size(), 4);
+
   // TODO(anastasiian): add schema_version to structs according to the protocol
   // description.
   // 4 fields + schema version:

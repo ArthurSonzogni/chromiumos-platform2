@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <utility>
 
 #include "cryptohome/crypto/big_num_util.h"
 #include "cryptohome/crypto/elliptic_curve.h"
@@ -10,6 +11,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
 #include <gtest/gtest.h>
 
@@ -21,8 +23,9 @@ namespace cryptorecovery {
 namespace {
 
 constexpr EllipticCurve::CurveType kCurve = EllipticCurve::CurveType::kPrime256;
-const char kFakeEnrollmentMetaData[] = "fake_enrollment_metadata";
-const char kFakeRequestMetaData[] = "fake_request_metadata";
+const char kFakeGaiaAccessToken[] = "fake access token";
+const char kFakeRapt[] = "fake rapt";
+const char kFakeUserId[] = "fake user id";
 
 SecureBlob GeneratePublicKey() {
   ScopedBN_CTX context = CreateBigNumContext();
@@ -79,6 +82,19 @@ SecureBlob GenerateScalar() {
 
 class RecoveryCryptoTest : public testing::Test {
  public:
+  RecoveryCryptoTest() {
+    onboarding_metadata_.user_id_type = UserIdType::kGaiaId;
+    onboarding_metadata_.user_id = "fake user id";
+
+    AuthClaim auth_claim;
+    auth_claim.gaia_access_token = kFakeGaiaAccessToken;
+    auth_claim.gaia_reauth_proof_token = kFakeRapt;
+    request_metadata_.auth_claim = std::move(auth_claim);
+    request_metadata_.requestor_user_id = kFakeUserId;
+    request_metadata_.requestor_user_id_type = UserIdType::kGaiaId;
+  }
+  ~RecoveryCryptoTest() = default;
+
   void SetUp() override {
     ASSERT_TRUE(FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(
         &mediator_pub_key_));
@@ -105,7 +121,7 @@ class RecoveryCryptoTest : public testing::Test {
     HsmPayload hsm_payload;
     SecureBlob channel_pub_key;
     EXPECT_TRUE(recovery_->GenerateHsmPayload(
-        mediator_pub_key_, rsa_pub_key_, enrollment_metadata_, &hsm_payload,
+        mediator_pub_key_, rsa_pub_key_, onboarding_metadata_, &hsm_payload,
         destination_share, recovery_key, &channel_pub_key, channel_priv_key));
 
     // Start recovery process.
@@ -121,8 +137,8 @@ class RecoveryCryptoTest : public testing::Test {
   }
 
   SecureBlob rsa_pub_key_;
-  SecureBlob enrollment_metadata_ = SecureBlob(kFakeEnrollmentMetaData);
-  SecureBlob request_metadata_ = SecureBlob(kFakeRequestMetaData);
+  OnboardingMetadata onboarding_metadata_;
+  RequestMetadata request_metadata_;
 
   cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
       recovery_crypto_fake_tpm_backend_;
@@ -140,7 +156,7 @@ TEST_F(RecoveryCryptoTest, RecoveryTestSuccess) {
   HsmPayload hsm_payload;
   SecureBlob destination_share, recovery_key, channel_pub_key, channel_priv_key;
   EXPECT_TRUE(recovery_->GenerateHsmPayload(
-      mediator_pub_key_, rsa_pub_key_, enrollment_metadata_, &hsm_payload,
+      mediator_pub_key_, rsa_pub_key_, onboarding_metadata_, &hsm_payload,
       &destination_share, &recovery_key, &channel_pub_key, &channel_priv_key));
 
   // Start recovery process.
@@ -174,7 +190,7 @@ TEST_F(RecoveryCryptoTest, GenerateHsmPayloadInvalidMediatorKey) {
   SecureBlob destination_share, recovery_key, channel_pub_key, channel_priv_key;
   EXPECT_FALSE(recovery_->GenerateHsmPayload(
       /*mediator_pub_key=*/SecureBlob("not a key"), rsa_pub_key_,
-      enrollment_metadata_, &hsm_payload, &destination_share, &recovery_key,
+      onboarding_metadata_, &hsm_payload, &destination_share, &recovery_key,
       &channel_pub_key, &channel_priv_key));
 }
 
@@ -183,7 +199,7 @@ TEST_F(RecoveryCryptoTest, MediateWithInvalidEpochPublicKey) {
   HsmPayload hsm_payload;
   SecureBlob destination_share, recovery_key, channel_pub_key, channel_priv_key;
   EXPECT_TRUE(recovery_->GenerateHsmPayload(
-      mediator_pub_key_, rsa_pub_key_, enrollment_metadata_, &hsm_payload,
+      mediator_pub_key_, rsa_pub_key_, onboarding_metadata_, &hsm_payload,
       &destination_share, &recovery_key, &channel_pub_key, &channel_priv_key));
 
   // Start recovery process.

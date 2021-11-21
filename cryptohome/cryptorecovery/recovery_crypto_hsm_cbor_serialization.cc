@@ -15,6 +15,8 @@
 #include <chromeos/cbor/values.h>
 #include <chromeos/cbor/writer.h>
 
+#include "cryptohome/cryptorecovery/recovery_crypto_util.h"
+
 namespace cryptohome {
 namespace cryptorecovery {
 
@@ -71,8 +73,7 @@ bool FindBytestringValueInCborMap(const cbor::Value::MapValue& map,
   return true;
 }
 
-cbor::Value::MapValue SerializeAeadPayloadMapToCbor(
-    const AeadPayload& payload) {
+cbor::Value::MapValue ConvertAeadPayloadToCborMap(const AeadPayload& payload) {
   cbor::Value::MapValue result;
 
   result.emplace(kAeadCipherText, payload.cipher_text);
@@ -83,8 +84,8 @@ cbor::Value::MapValue SerializeAeadPayloadMapToCbor(
   return result;
 }
 
-bool DeserializeAeadPayloadFromCbor(
-    const cbor::Value::MapValue& aead_payload_map, AeadPayload* aead_payload) {
+bool ConvertCborMapToAeadPayload(const cbor::Value::MapValue& aead_payload_map,
+                                 AeadPayload* aead_payload) {
   brillo::SecureBlob cipher_text;
   if (!FindBytestringValueInCborMap(aead_payload_map, kAeadCipherText,
                                     &cipher_text)) {
@@ -118,13 +119,29 @@ bool DeserializeAeadPayloadFromCbor(
   return true;
 }
 
+cbor::Value::MapValue ConvertRequestMetadataToCborMap(
+    const RequestMetadata& metadata) {
+  cbor::Value::MapValue auth_claim;
+  auth_claim.emplace(kGaiaAccessToken, metadata.auth_claim.gaia_access_token);
+  auth_claim.emplace(kGaiaReauthProofToken,
+                     metadata.auth_claim.gaia_reauth_proof_token);
+
+  cbor::Value::MapValue request_meta_data;
+  request_meta_data.emplace(kSchemaVersion, kRequestMetaDataSchemaVersion);
+  request_meta_data.emplace(kRequestorAuthClaim, std::move(auth_claim));
+  request_meta_data.emplace(kRequestorUserId, metadata.requestor_user_id);
+  request_meta_data.emplace(kRequestorUserIdType,
+                            static_cast<int>(metadata.requestor_user_id_type));
+  return request_meta_data;
+}
+
 }  // namespace
 
 // !!! DO NOT MODIFY !!!
 // All the consts below are used as keys in the CBOR blog exchanged with the
 // server and must be synced with the server/HSM implementation (or the other
 // party will not be able to decrypt the data).
-const char kRecoveryCryptoRequestSchemaVersion[] = "schema_version";
+const char kSchemaVersion[] = "schema_version";
 const char kMediatorShare[] = "mediator_share";
 const char kMediatedPoint[] = "mediated_point";
 const char kKeyAuthValue[] = "key_auth_value";
@@ -148,15 +165,24 @@ const char kResponseMetaData[] = "response_meta_data";
 const char kResponsePayloadSalt[] = "response_salt";
 const char kResponseErrorCode[] = "error_code";
 const char kResponseErrorString[] = "error_string";
+const char kUserId[] = "user_id";
+const char kUserIdType[] = "user_id_type";
+const char kRequestorAuthClaim[] = "requestor_auth_claim";
+const char kRequestorUserId[] = "requestor_user_id";
+const char kRequestorUserIdType[] = "requestor_user_id_type";
+const char kGaiaAccessToken[] = "gaia_access_token";
+const char kGaiaReauthProofToken[] = "gaia_reauth_proof_token";
 
 const int kProtocolVersion = 1;
+const int kOnboardingMetaDataSchemaVersion = 1;
+const int kRequestMetaDataSchemaVersion = 1;
 
 bool SerializeRecoveryRequestToCbor(const RecoveryRequest& request,
                                     brillo::SecureBlob* request_cbor) {
   cbor::Value::MapValue request_map;
 
   request_map.emplace(kRequestAead,
-                      SerializeAeadPayloadMapToCbor(request.request_payload));
+                      ConvertAeadPayloadToCborMap(request.request_payload));
 
   if (!SerializeCborMap(request_map, request_cbor)) {
     LOG(ERROR) << "Failed to serialize Recovery Request to CBOR";
@@ -172,7 +198,14 @@ bool SerializeHsmAssociatedDataToCbor(const HsmAssociatedData& args,
   ad_map.emplace(kPublisherPublicKey, args.publisher_pub_key);
   ad_map.emplace(kChannelPublicKey, args.channel_pub_key);
   ad_map.emplace(kRsaPublicKey, args.rsa_public_key);
-  ad_map.emplace(kOnboardingMetaData, args.onboarding_meta_data);
+
+  cbor::Value::MapValue onboarding_meta_data_map;
+  onboarding_meta_data_map.emplace(kSchemaVersion,
+                                   kOnboardingMetaDataSchemaVersion);
+  onboarding_meta_data_map.emplace(kUserId, args.onboarding_meta_data.user_id);
+  onboarding_meta_data_map.emplace(
+      kUserIdType, static_cast<int>(args.onboarding_meta_data.user_id_type));
+  ad_map.emplace(kOnboardingMetaData, std::move(onboarding_meta_data_map));
 
   if (!SerializeCborMap(ad_map, ad_cbor)) {
     LOG(ERROR) << "Failed to serialize HSM Associated Data to CBOR";
@@ -186,12 +219,14 @@ bool SerializeRecoveryRequestAssociatedDataToCbor(
     brillo::SecureBlob* request_ad_cbor) {
   cbor::Value::MapValue ad_map;
 
-  ad_map.emplace(kRecoveryCryptoRequestSchemaVersion,
+  ad_map.emplace(kSchemaVersion,
                  /*schema_version=*/kProtocolVersion);
-  ad_map.emplace(kHsmAead, SerializeAeadPayloadMapToCbor(args.hsm_payload));
-  ad_map.emplace(kRequestMetaData, args.request_meta_data);
+  ad_map.emplace(kHsmAead, ConvertAeadPayloadToCborMap(args.hsm_payload));
   ad_map.emplace(kEpochPublicKey, args.epoch_pub_key);
   ad_map.emplace(kRequestPayloadSalt, args.request_payload_salt);
+
+  ad_map.emplace(kRequestMetaData,
+                 ConvertRequestMetadataToCborMap(args.request_meta_data));
 
   if (!SerializeCborMap(ad_map, request_ad_cbor)) {
     LOG(ERROR)
@@ -248,8 +283,8 @@ bool SerializeRecoveryResponseToCbor(const RecoveryResponse& response,
                                      brillo::SecureBlob* response_cbor) {
   cbor::Value::MapValue response_map;
 
-  response_map.emplace(
-      kResponseAead, SerializeAeadPayloadMapToCbor(response.response_payload));
+  response_map.emplace(kResponseAead,
+                       ConvertAeadPayloadToCborMap(response.response_payload));
   response_map.emplace(kResponseErrorCode, response.error_code);
   response_map.emplace(kResponseErrorString, response.error_string);
 
@@ -277,7 +312,7 @@ bool SerializeHsmResponsePlainTextToCbor(const HsmResponsePlainText& plain_text,
 bool SerializeHsmPayloadToCbor(const HsmPayload& hsm_payload,
                                brillo::SecureBlob* serialized_cbor) {
   cbor::Value::MapValue hsm_payload_map =
-      SerializeAeadPayloadMapToCbor(hsm_payload);
+      ConvertAeadPayloadToCborMap(hsm_payload);
 
   if (!SerializeCborMap(hsm_payload_map, serialized_cbor)) {
     LOG(ERROR) << "Failed to serialize HSM payload to CBOR";
@@ -293,7 +328,7 @@ bool DeserializeHsmPayloadFromCbor(const brillo::SecureBlob& serialized_cbor,
     return false;
   }
 
-  if (!DeserializeAeadPayloadFromCbor(cbor->GetMap(), hsm_payload)) {
+  if (!ConvertCborMapToAeadPayload(cbor->GetMap(), hsm_payload)) {
     LOG(ERROR) << "Failed to deserialize HSM payload from CBOR.";
     return false;
   }
@@ -376,8 +411,8 @@ bool DeserializeRecoveryRequestFromCbor(
     return false;
   }
 
-  if (!DeserializeAeadPayloadFromCbor(recovery_request_entry->second.GetMap(),
-                                      &recovery_request->request_payload)) {
+  if (!ConvertCborMapToAeadPayload(recovery_request_entry->second.GetMap(),
+                                   &recovery_request->request_payload)) {
     LOG(ERROR) << "Failed to deserialize Recovery Request from CBOR.";
     return false;
   }
@@ -502,8 +537,8 @@ bool DeserializeRecoveryResponseFromCbor(
     return false;
   }
   ResponsePayload response_payload;
-  if (!DeserializeAeadPayloadFromCbor(response_payload_entry->second.GetMap(),
-                                      &response_payload)) {
+  if (!ConvertCborMapToAeadPayload(response_payload_entry->second.GetMap(),
+                                   &response_payload)) {
     LOG(ERROR) << "Failed to deserialize Response payload from CBOR.";
     return false;
   }
@@ -596,29 +631,6 @@ bool GetHsmPayloadFromRequestAdForTesting(
   hsm_payload->associated_data = std::move(associated_data);
   hsm_payload->iv = std::move(iv);
   hsm_payload->tag = std::move(tag);
-  return true;
-}
-
-bool GetRequestPayloadSchemaVersionForTesting(
-    const brillo::SecureBlob& input_cbor, int* value) {
-  const auto& cbor = ReadCborMap(input_cbor);
-  if (!cbor) {
-    return false;
-  }
-
-  const cbor::Value::MapValue& cbor_map = cbor->GetMap();
-  const auto value_entry =
-      cbor_map.find(cbor::Value(kRecoveryCryptoRequestSchemaVersion));
-  if (value_entry == cbor_map.end()) {
-    LOG(ERROR) << "No schema version encoded in the Request associated data.";
-    return false;
-  }
-  if (!value_entry->second.is_integer()) {
-    LOG(ERROR)
-        << "Schema version in Request associated data is incorrectly encoded.";
-    return false;
-  }
-  *value = value_entry->second.GetInteger();
   return true;
 }
 
