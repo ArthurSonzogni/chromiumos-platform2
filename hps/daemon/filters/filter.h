@@ -16,33 +16,43 @@ namespace hps {
 //
 class Filter {
  public:
+  // The FilterResult indicates whether the ProcessResult or CurrentResult is
+  // positive, negative or uncertain. Uncertain can happen when the result is
+  // invalid or when the result is in certain range based on the implementation
+  // of the Filter.
+  enum class FilterResult {
+    kUncertain,
+    kPositive,
+    kNegative,
+  };
+
   Filter() = default;
-  explicit Filter(bool initial_state);
+  explicit Filter(FilterResult initial_state);
   Filter(const Filter&) = delete;
   Filter& operator=(const Filter&) = delete;
   virtual ~Filter() = default;
 
   // Process an inference result from HPS. Will only be called when there is:
-  // - a valid result from HPS
   // - a new inference has been performed.
   // Parameters:
   // - result: the most recent inference result from HPS
+  // - valid: whether this inference result is valid.
   // Returns:
-  // - bool: That result of the filtered inference. Depending on the filter
-  //   implementation this can be a cumulative result.
-  bool ProcessResult(int result);
+  // - FilterResult: the result of the filtered inference. Depending on the
+  // filter, implementation this can be a cumulative result.
+  FilterResult ProcessResult(int result, bool valid);
 
   // Returns the current inference result of the filter. This is the same as
   // the last result that was returned from ProcessResult.
-  bool GetCurrentResult(void) const;
+  FilterResult GetCurrentResult(void) const;
 
  protected:
   // Called from ProcessResult, derived filters should implement their filtering
   // logic in this method.
-  virtual bool ProcessResultImpl(int result) = 0;
+  virtual FilterResult ProcessResultImpl(int result, bool valid) = 0;
 
  private:
-  bool current_result_ = false;
+  FilterResult current_result_ = FilterResult::kUncertain;
 };
 
 }  // namespace hps

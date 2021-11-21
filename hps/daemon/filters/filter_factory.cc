@@ -9,6 +9,7 @@
 
 #include <base/logging.h>
 
+#include "hps/daemon/filters/average_filter.h"
 #include "hps/daemon/filters/consecutive_results_filter.h"
 #include "hps/daemon/filters/filter_watcher.h"
 #include "hps/daemon/filters/threshold_filter.h"
@@ -29,9 +30,10 @@ std::unique_ptr<Filter> CreateFilter(const hps::FeatureConfig& config,
       break;
     case FeatureConfig::kConsecutiveResultsFilterConfig:
       filter = std::make_unique<ConsecutiveResultsFilter>(
-          config.consecutive_results_filter_config().threshold(),
-          config.consecutive_results_filter_config().count(),
-          config.consecutive_results_filter_config().initial_state());
+          config.consecutive_results_filter_config());
+      break;
+    case FeatureConfig::kAverageFilterConfig:
+      filter = std::make_unique<AverageFilter>(config.average_filter_config());
       break;
   }
   return std::make_unique<FilterWatcher>(std::move(filter), std::move(signal));

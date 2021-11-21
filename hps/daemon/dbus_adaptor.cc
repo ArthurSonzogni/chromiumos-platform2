@@ -36,18 +36,14 @@ void DBusAdaptor::PollTask() {
   for (uint8_t feature = 0; feature < kFeatures; ++feature) {
     if (enabled_features_.test(feature)) {
       FeatureResult result = this->hps_->Result(feature);
-      // TODO(slangley): If HPS starts failing, we should probably let clients
-      // know somehow.
       VLOG(2) << "Poll: Feature: " << static_cast<int>(feature)
               << " Valid: " << result.valid
               << " Result: " << static_cast<int>(result.inference_result);
-      if (result.valid) {
-        DCHECK(feature_filters_[feature]);
-        bool res =
-            feature_filters_[feature]->ProcessResult(result.inference_result);
-        VLOG(2) << "Poll: Feature: " << static_cast<int>(feature)
-                << "Filter: " << res;
-      }
+      DCHECK(feature_filters_[feature]);
+      const auto res = feature_filters_[feature]->ProcessResult(
+          result.inference_result, result.valid);
+      VLOG(2) << "Poll: Feature: " << static_cast<int>(feature)
+              << "Filter: " << static_cast<int>(res);
     }
   }
 }
@@ -101,7 +97,8 @@ bool DBusAdaptor::GetFeatureResult(brillo::ErrorPtr* error,
     return false;
   }
   DCHECK(feature_filters_[feature]);
-  *result = feature_filters_[feature]->GetCurrentResult();
+  *result = feature_filters_[feature]->GetCurrentResult() ==
+            Filter::FilterResult::kPositive;
   return true;
 }
 

@@ -137,6 +137,7 @@ static_library("hpslib") {
 
 static_library("filters") {
   sources = [
+    "daemon/filters/average_filter.cc",
     "daemon/filters/consecutive_results_filter.cc",
     "daemon/filters/filter.cc",
     "daemon/filters/filter.h",
@@ -217,6 +218,8 @@ if (use.test) {
     pkg_deps = [
       "libbrillo",
       "libchrome",
+      "protobuf-lite",
+      "system_api",
     ]
     deps = [
       ":filters",

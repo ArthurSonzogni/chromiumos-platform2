@@ -23,7 +23,7 @@ class FilterWatcher : public Filter {
 
  private:
   // Metehods for Filter
-  bool ProcessResultImpl(int result) override;
+  FilterResult ProcessResultImpl(int result, bool valid) override;
 
   std::unique_ptr<Filter> wrapped_filter_;
   StatusCallback status_changed_callback_;
