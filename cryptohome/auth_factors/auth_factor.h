@@ -28,9 +28,8 @@ class AuthFactor {
   virtual ~AuthFactor() = default;
   // AuthenticateAuthFactor validates the key should it exist on disk for the
   // user.
-  virtual bool AuthenticateAuthFactor(const Credentials& credential,
-                                      bool is_ephemeral_user,
-                                      MountError* code) = 0;
+  virtual MountError AuthenticateAuthFactor(const Credentials& credential,
+                                            bool is_ephemeral_user) = 0;
 
   // Transfer ownership of password verifier that can be used to verify
   // credentials during unlock.
@@ -39,13 +38,13 @@ class AuthFactor {
   // Temporary functions below as we transition from AuthSession to AuthFactor
   // -------------------------------------------------------------------------
   // Returns the key data with which this AuthFactor is authenticated with.
-  virtual const cryptohome::KeyData& GetKeyData() = 0;
+  virtual const cryptohome::KeyData& GetKeyData() const = 0;
 
-  // Get VaultKeyset.
-  virtual VaultKeyset vault_keyset() = 0;
+  // Return VaultKeyset of the authenticated user.
+  virtual const VaultKeyset* vault_keyset() const = 0;
 
-  // Return a const reference to FileSystemKeyset.
-  virtual const FileSystemKeyset GetFileSystemKeyset() = 0;
+  // Returns FileSystemKeyset of the authenticated user.
+  virtual const FileSystemKeyset GetFileSystemKeyset() const = 0;
 };
 
 }  // namespace cryptohome

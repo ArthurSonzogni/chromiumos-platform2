@@ -21,21 +21,22 @@ class PasswordAuthFactor : public AuthFactor {
 
   // AuthenticateAuthFactor authenticates user credentials if they exist. This
   // currently uses VaultKeyset, but will eventually use AuthBlocks and USS.
-  bool AuthenticateAuthFactor(const Credentials& credential,
-                              bool is_ephemeral_user,
-                              MountError* code) override;
+  MountError AuthenticateAuthFactor(const Credentials& credential,
+                                    bool is_ephemeral_user) override;
 
   // Transfer ownership of password verifier that can be used to verify
   // credentials during unlock.
   std::unique_ptr<CredentialVerifier> TakeCredentialVerifier() override;
   // Returns the key data with which this AuthFactor is authenticated with.
-  const cryptohome::KeyData& GetKeyData() override;
+  const cryptohome::KeyData& GetKeyData() const override;
 
-  // Get VaultKeyset.
-  VaultKeyset vault_keyset() override { return *vault_keyset_; };
+  // Return VaultKeyset of the authenticated user.
+  const VaultKeyset* vault_keyset() const override {
+    return vault_keyset_.get();
+  };
 
-  // Return a const reference to FileSystemKeyset.
-  const FileSystemKeyset GetFileSystemKeyset() override;
+  // Returns FileSystemKeyset of the authenticated user.
+  const FileSystemKeyset GetFileSystemKeyset() const override;
 
  private:
   // The creator of the PasswordAuthFactor object is responsible for the

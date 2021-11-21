@@ -13,21 +13,19 @@ namespace cryptohome {
 PasswordAuthFactor::PasswordAuthFactor(KeysetManagement* keyset_management)
     : keyset_management_(keyset_management) {}
 
-bool PasswordAuthFactor::AuthenticateAuthFactor(const Credentials& credential,
-                                                bool is_ephemeral_user,
-                                                MountError* code) {
-  if (code) {
-    *code = MOUNT_ERROR_NONE;
-  }
+MountError PasswordAuthFactor::AuthenticateAuthFactor(
+    const Credentials& credential, bool is_ephemeral_user) {
   // Store key data in current auth_factor for future use.
   key_data_ = credential.key_data();
 
   if (!is_ephemeral_user) {
     // A persistent mount will always have a persistent key on disk. Here
     // keyset_management tries to fetch that persistent credential.
-    vault_keyset_ = keyset_management_->LoadUnwrappedKeyset(credential, code);
+    MountError error = MOUNT_ERROR_NONE;
+    // TODO(dlunev): fix conditional error when we switch to StatusOr.
+    vault_keyset_ = keyset_management_->LoadUnwrappedKeyset(credential, &error);
     if (!vault_keyset_) {
-      return false;
+      return error == MOUNT_ERROR_NONE ? MOUNT_ERROR_FATAL : error;
     }
   }
 
@@ -35,7 +33,7 @@ bool PasswordAuthFactor::AuthenticateAuthFactor(const Credentials& credential,
   credential_verifier_.reset(new ScryptVerifier());
   credential_verifier_->Set(credential.passkey());
 
-  return true;
+  return MOUNT_ERROR_NONE;
 }
 
 std::unique_ptr<CredentialVerifier>
@@ -43,11 +41,11 @@ PasswordAuthFactor::TakeCredentialVerifier() {
   return std::move(credential_verifier_);
 }
 
-const cryptohome::KeyData& PasswordAuthFactor::GetKeyData() {
+const cryptohome::KeyData& PasswordAuthFactor::GetKeyData() const {
   return key_data_;
 }
 
-const FileSystemKeyset PasswordAuthFactor::GetFileSystemKeyset() {
+const FileSystemKeyset PasswordAuthFactor::GetFileSystemKeyset() const {
   return FileSystemKeyset(*vault_keyset_);
 }
 

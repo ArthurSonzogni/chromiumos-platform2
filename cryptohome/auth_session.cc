@@ -83,9 +83,11 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
       return MountErrorToCryptohomeError(MOUNT_ERROR_UNPRIVILEGED_KEY);
     }
 
+    // At this point we have to have keyset since we have to be authed.
+    DCHECK(auth_factor_->vault_keyset());
     return static_cast<user_data_auth::CryptohomeErrorCode>(
         keyset_management_->AddKeyset(
-            *credentials, auth_factor_->vault_keyset(), true /*clobber*/));
+            *credentials, *auth_factor_->vault_keyset(), true /*clobber*/));
   }
 
   // If AuthSession is not configured as an ephemeral user, then we save the
@@ -115,9 +117,8 @@ user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(
     auth_factor_ = std::make_unique<PasswordAuthFactor>(keyset_management_);
   }
 
-  bool authenticated = auth_factor_->AuthenticateAuthFactor(
-      *credentials, is_ephemeral_user_, &code);
-  if (authenticated) {
+  code = auth_factor_->AuthenticateAuthFactor(*credentials, is_ephemeral_user_);
+  if (code == MOUNT_ERROR_NONE) {
     status_ = AuthStatus::kAuthStatusAuthenticated;
   }
   return MountErrorToCryptohomeError(code);

@@ -18,8 +18,11 @@
 
 using ::testing::_;
 using ::testing::ByMove;
+using ::testing::DoAll;
+using ::testing::Eq;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::SetArgPointee;
 
 namespace cryptohome {
 
@@ -40,25 +43,40 @@ class PasswordAuthFactorTest : public ::testing::Test {
   NiceMock<MockKeysetManagement> keyset_management_;
 };
 
-TEST_F(PasswordAuthFactorTest, PersistentAuthenticateAuthFactorTest) {
+TEST_F(PasswordAuthFactorTest, PersistentAuthenticateAuthFactorTest_Success) {
   // Setup
   auto vk = std::make_unique<VaultKeyset>();
   Credentials creds(kFakeUsername, brillo::SecureBlob(kFakePassword));
   EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
-      .WillOnce(Return(ByMove(std::move(vk))));
+      .WillOnce(DoAll(SetArgPointee<1>(MOUNT_ERROR_NONE),
+                      Return(ByMove(std::move(vk)))));
   std::unique_ptr<AuthFactor> pass_auth_factor =
       std::make_unique<PasswordAuthFactor>(&keyset_management_);
-  MountError error;
 
   // Test
-  EXPECT_TRUE(pass_auth_factor->AuthenticateAuthFactor(
-      creds, false /*ephemeral user*/, &error));
+  EXPECT_THAT(
+      pass_auth_factor->AuthenticateAuthFactor(creds, false /*ephemeral user*/),
+      Eq(MOUNT_ERROR_NONE));
 
   // Verify
-  EXPECT_EQ(error, MOUNT_ERROR_NONE);
   std::unique_ptr<CredentialVerifier> verifier =
       pass_auth_factor->TakeCredentialVerifier();
   EXPECT_TRUE(verifier->Verify(brillo::SecureBlob(kFakePassword)));
+}
+
+TEST_F(PasswordAuthFactorTest, PersistentAuthenticateAuthFactorTest_Fail) {
+  // Setup
+  Credentials creds(kFakeUsername, brillo::SecureBlob(kFakePassword));
+  EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(MOUNT_ERROR_FATAL), Return(ByMove(nullptr))));
+  std::unique_ptr<AuthFactor> pass_auth_factor =
+      std::make_unique<PasswordAuthFactor>(&keyset_management_);
+
+  // Test
+  EXPECT_THAT(
+      pass_auth_factor->AuthenticateAuthFactor(creds, false /*ephemeral user*/),
+      Eq(MOUNT_ERROR_FATAL));
 }
 
 TEST_F(PasswordAuthFactorTest, EphemeralAuthenticateAuthFactorTest) {
@@ -67,18 +85,17 @@ TEST_F(PasswordAuthFactorTest, EphemeralAuthenticateAuthFactorTest) {
   Credentials creds(kFakeUsername, brillo::SecureBlob(kFakePassword));
   std::unique_ptr<AuthFactor> pass_auth_factor =
       std::make_unique<PasswordAuthFactor>(&keyset_management_);
-  MountError error;
   EXPECT_CALL(keyset_management_, LoadUnwrappedKeyset(_, _)).Times(0);
 
   // Test
-  EXPECT_TRUE(pass_auth_factor->AuthenticateAuthFactor(
-      creds, true /*ephemeral user*/, &error));
+  EXPECT_THAT(
+      pass_auth_factor->AuthenticateAuthFactor(creds, true /*ephemeral user*/),
+      Eq(MOUNT_ERROR_NONE));
   std::unique_ptr<CredentialVerifier> verifier =
       pass_auth_factor->TakeCredentialVerifier();
 
   // Verify
   EXPECT_TRUE(verifier->Verify(brillo::SecureBlob(kFakePassword)));
-  EXPECT_EQ(error, MOUNT_ERROR_NONE);
 }
 
 }  // namespace cryptohome
