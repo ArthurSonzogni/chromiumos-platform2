@@ -1360,7 +1360,9 @@ void UserDataAuth::DoMount(
     return;
   }
 
-  if (request.public_mount()) {
+  // Key generation is not needed if there is a valid AuthSession as part of the
+  // request. Key generation is handled in AuthSession.
+  if (request.public_mount() && !has_valid_auth_session) {
     // Public mount have a set of passkey/password that is generated directly
     // from the username (and a local system salt.)
     brillo::SecureBlob public_mount_passkey =
