@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <iterator>
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -80,6 +81,7 @@
 #include "vm_tools/concierge/shared_data.h"
 #include "vm_tools/concierge/ssh_keys.h"
 #include "vm_tools/concierge/vm_builder.h"
+#include "vm_tools/concierge/vm_launch_interface.h"
 #include "vm_tools/concierge/vm_permission_interface.h"
 #include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
@@ -1094,6 +1096,7 @@ bool Service::Init() {
       base::FilePath(kL1TFFilePath), base::FilePath(kMDSFilePath));
 
   dlcservice_client_ = std::make_unique<DlcHelper>(bus_);
+  vm_launch_interface_ = std::make_unique<VmLaunchInterface>(bus_);
 
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
@@ -1686,12 +1689,18 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       .SetCpus(cpus)
       .AppendDisks(std::move(disks))
       .EnableSmt(false /* enable */)
-      .SetGpuCachePath(std::move(gpu_cache_path))
-      .SetWaylandSocket(request.vm().wayland_server());
+      .SetGpuCachePath(std::move(gpu_cache_path));
   if (!image_spec.rootfs.empty()) {
     vm_builder.SetRootfs({.device = std::move(rootfs_device),
                           .path = std::move(image_spec.rootfs),
                           .writable = request.writable_rootfs()});
+  }
+
+  if (request.vm().wayland_server().empty()) {
+    vm_builder.SetWaylandSocket(vm_launch_interface_->GetWaylandSocketForVm(
+        vm_id, request.start_termina()));
+  } else {
+    vm_builder.SetWaylandSocket(request.vm().wayland_server());
   }
 
   // Group the CPUs by their physical package ID to determine CPU cluster

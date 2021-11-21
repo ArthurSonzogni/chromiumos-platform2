@@ -47,6 +47,7 @@ namespace vm_tools {
 namespace concierge {
 
 class DlcHelper;
+class VmLaunchInterface;
 
 // Used to represent kernel version.
 using KernelVersionAndMajorRevision = std::pair<int, int>;
@@ -365,6 +366,9 @@ class Service final {
 
   // The dlcservice helper D-Bus client.
   std::unique_ptr<DlcHelper> dlcservice_client_;
+
+  // Helper object for VM Launch auxiliary requests.
+  std::unique_ptr<VmLaunchInterface> vm_launch_interface_;
 
   // The StartupListener service.
   StartupListenerImpl startup_listener_;
