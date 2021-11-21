@@ -4,7 +4,7 @@
 
 // Unit tests for PasswordAuthFactor.
 
-#include "cryptohome/password_auth_factor.h"
+#include "cryptohome/auth_factors/password_auth_factor.h"
 
 #include <memory>
 #include <string>

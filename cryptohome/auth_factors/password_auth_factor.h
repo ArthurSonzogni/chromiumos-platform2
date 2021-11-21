@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_PASSWORD_AUTH_FACTOR_H_
-#define CRYPTOHOME_PASSWORD_AUTH_FACTOR_H_
+#ifndef CRYPTOHOME_AUTH_FACTORS_PASSWORD_AUTH_FACTOR_H_
+#define CRYPTOHOME_AUTH_FACTORS_PASSWORD_AUTH_FACTOR_H_
 
 #include <memory>
 
-#include "cryptohome/auth_factor.h"
+#include "cryptohome/auth_factors/auth_factor.h"
 #include "cryptohome/UserDataAuth.pb.h"
 
 namespace cryptohome {
@@ -51,4 +51,4 @@ class PasswordAuthFactor : public AuthFactor {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_PASSWORD_AUTH_FACTOR_H_
+#endif  // CRYPTOHOME_AUTH_FACTORS_PASSWORD_AUTH_FACTOR_H_

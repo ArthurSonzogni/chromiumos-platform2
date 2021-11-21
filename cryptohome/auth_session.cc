@@ -12,8 +12,8 @@
 #include <brillo/cryptohome.h>
 #include <cryptohome/scrypt_verifier.h>
 
+#include "cryptohome/auth_factors/password_auth_factor.h"
 #include "cryptohome/keyset_management.h"
-#include "cryptohome/password_auth_factor.h"
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/vault_keyset.h"
 

@@ -14,7 +14,7 @@
 #include <base/unguessable_token.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/auth_factor.h"
+#include "cryptohome/auth_factors/auth_factor.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/keyset_management.h"
