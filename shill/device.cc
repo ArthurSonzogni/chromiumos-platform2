@@ -1309,6 +1309,18 @@ bool Device::StartPortalDetection() {
     return false;
   }
 
+  if (selected_service_->HasProxyConfig()) {
+    // Services with HTTP proxy configurations should not be checked by the
+    // connection manager, since we don't have the ability to evaluate
+    // arbitrary proxy configs and their possible credentials.
+    // TODO(b/207657239) Make PortalDetector proxy-aware and compatible with
+    // web proxy configurations.
+    LOG(INFO) << link_name() << ": Service " << selected_service_->log_name()
+              << " has proxy config; marking it online.";
+    SetServiceConnectedState(Service::kStateOnline);
+    return false;
+  }
+
   portal_detector_.reset(new PortalDetector(
       dispatcher(), metrics(),
       base::Bind(&Device::PortalDetectorCallback, AsWeakPtr())));

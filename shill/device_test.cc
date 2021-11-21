@@ -1581,6 +1581,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionBadUrl) {
   EXPECT_CALL(manager_, GetPortalCheckProperties())
       .WillRepeatedly(Return(props));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline));
+  EXPECT_CALL(*service_, HasProxyConfig()).WillOnce(Return(false));
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
   EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
@@ -1605,6 +1606,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
   EXPECT_CALL(manager_, GetPortalCheckProperties())
       .WillRepeatedly(Return(props));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
+  EXPECT_CALL(*service_, HasProxyConfig()).WillOnce(Return(false));
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
   EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
@@ -1633,6 +1635,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStartIPv6) {
   EXPECT_CALL(manager_, GetPortalCheckProperties())
       .WillRepeatedly(Return(props));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
+  EXPECT_CALL(*service_, HasProxyConfig()).WillOnce(Return(false));
   EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
   EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
@@ -1751,6 +1754,15 @@ TEST_F(DevicePortalDetectionTest, RequestPortalDetectionIsNoop) {
   EXPECT_CALL(manager_, IsPortalDetectionEnabled(_)).WillOnce(Return(false));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline));
   EXPECT_FALSE(RequestPortalDetection());
+
+  // The Service has a web proxy.
+  EXPECT_CALL(*service_, IsPortalDetectionDisabled())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*service_, IsPortalDetectionAuto()).WillRepeatedly(Return(true));
+  EXPECT_CALL(manager_, IsPortalDetectionEnabled(_)).WillOnce(Return(true));
+  EXPECT_CALL(*service_, SetState(Service::kStateOnline));
+  EXPECT_CALL(*service_, HasProxyConfig()).WillOnce(Return(true));
+  EXPECT_FALSE(RequestPortalDetection());
 }
 
 TEST_F(DevicePortalDetectionTest, RequestPortalDetectionStarts) {
@@ -1772,6 +1784,7 @@ TEST_F(DevicePortalDetectionTest, RequestPortalDetectionStarts) {
   EXPECT_CALL(*service_, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*service_, IsPortalDetectionAuto()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_, HasProxyConfig()).WillOnce(Return(false));
   EXPECT_CALL(*connection_, interface_name()).WillRepeatedly(ReturnRef(ifname));
   EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
   EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
@@ -2168,6 +2181,7 @@ TEST_F(DevicePortalDetectionTest, DestroyConnection) {
   const std::vector<std::string> kDNSServers;
   EXPECT_CALL(manager_, GetPortalCheckProperties())
       .WillRepeatedly(Return(props));
+  EXPECT_CALL(*service_, HasProxyConfig()).WillOnce(Return(false));
   EXPECT_CALL(*connection, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
   EXPECT_CALL(*connection, local()).WillRepeatedly(ReturnRef(ip_addr));
