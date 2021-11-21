@@ -1217,26 +1217,6 @@ int main(int argc, char** argv) {
       printf("  Password rounds:\n");
       printf("    %d\n", serialized.password_rounds());
     }
-
-    base::Time last_activity =
-        base::Time::FromInternalValue(serialized.last_activity_timestamp());
-    FilePath timestamp_path = vault_path.AddExtension("timestamp");
-    brillo::Blob tcontents;
-    if (platform.ReadFile(timestamp_path, &tcontents)) {
-      cryptohome::Timestamp timestamp;
-      if (!timestamp.ParseFromArray(tcontents.data(), tcontents.size())) {
-        printf("Couldn't parse timestamp contents: %s.\n",
-               timestamp_path.value().c_str());
-      }
-      last_activity = base::Time::FromInternalValue(timestamp.timestamp());
-    } else {
-      printf("Couldn't load timestamp contents: %s.\n",
-             timestamp_path.value().c_str());
-    }
-
-    printf("  Last activity (days ago):\n");
-    printf("    %d\n", (base::Time::Now() - last_activity).InDays());
-
   } else if (!strcmp(switches::kActions[switches::ACTION_DUMP_LAST_ACTIVITY],
                      action.c_str())) {
     std::vector<FilePath> user_dirs;
@@ -1250,50 +1230,25 @@ int main(int argc, char** argv) {
       const std::string dir_name = it->BaseName().value();
       if (!brillo::cryptohome::home::IsSanitizedUserName(dir_name))
         continue;
-      // TODO(wad): change it so that it uses GetVaultKeysets().
-      std::unique_ptr<cryptohome::FileEnumerator> file_enumerator(
-          platform.GetFileEnumerator(*it, false, base::FileEnumerator::FILES));
-      base::Time max_activity = base::Time::UnixEpoch();
-      FilePath next_path;
-      while (!(next_path = file_enumerator->Next()).empty()) {
-        FilePath file_name = next_path.BaseName().RemoveFinalExtension();
-        // Scan for key files matching the prefix kKeyFile.
-        if (file_name.value() != cryptohome::kKeyFile)
-          continue;
-        brillo::Blob contents;
-        if (!platform.ReadFile(next_path, &contents)) {
-          LOG(ERROR) << "Couldn't load keyset: " << next_path.value();
-          continue;
-        }
-        cryptohome::SerializedVaultKeyset keyset;
-        if (!keyset.ParseFromArray(contents.data(), contents.size())) {
-          LOG(ERROR) << "Couldn't parse keyset: " << next_path.value();
-          continue;
-        }
-        base::Time last_activity =
-            base::Time::FromInternalValue(keyset.last_activity_timestamp());
+      base::Time last_activity = base::Time::UnixEpoch();
 
-        FilePath timestamp_path = next_path.AddExtension("timestamp");
-        brillo::Blob tcontents;
-        if (platform.ReadFile(timestamp_path, &tcontents)) {
-          cryptohome::Timestamp timestamp;
-          if (!timestamp.ParseFromArray(tcontents.data(), tcontents.size())) {
-            printf("Couldn't parse timestamp contents: %s.\n",
-                   timestamp_path.value().c_str());
-          }
-          last_activity = base::Time::FromInternalValue(timestamp.timestamp());
-        } else {
-          printf("Couldn't load timestamp contents: %s.\n",
+      FilePath timestamp_path = it->Append("timestamp");
+      brillo::Blob tcontents;
+      if (platform.ReadFile(timestamp_path, &tcontents)) {
+        cryptohome::Timestamp timestamp;
+        if (!timestamp.ParseFromArray(tcontents.data(), tcontents.size())) {
+          printf("Couldn't parse timestamp contents: %s.\n",
                  timestamp_path.value().c_str());
         }
-
-        if (last_activity > max_activity) {
-          max_activity = last_activity;
-        }
+        last_activity = base::Time::FromDeltaSinceWindowsEpoch(
+            base::TimeDelta::FromSeconds(timestamp.timestamp()));
+      } else {
+        printf("Couldn't load timestamp contents: %s.\n",
+               timestamp_path.value().c_str());
       }
-      if (max_activity > base::Time::UnixEpoch()) {
+      if (last_activity > base::Time::UnixEpoch()) {
         printf("%s %3d\n", dir_name.c_str(),
-               (base::Time::Now() - max_activity).InDays());
+               (base::Time::Now() - last_activity).InDays());
       }
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_STATUS],
