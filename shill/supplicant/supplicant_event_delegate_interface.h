@@ -37,6 +37,16 @@ class SupplicantEventDelegateInterface {
 
   // A scan has completed on this interface.
   virtual void ScanDone(const bool& success) = 0;
+
+  // Report a match between an endpoint |BSS| and a set of Passpoint credentials
+  // referred by |cred|. A set of complementary information gathered by
+  // supplicant (such as match types) are provided in |properties|.
+  virtual void InterworkingAPAdded(const RpcIdentifier& BSS,
+                                   const RpcIdentifier& cred,
+                                   const KeyValueStore& properties) = 0;
+
+  // Interworking match between endpoint and Passpoint credentials is over.
+  virtual void InterworkingSelectDone() = 0;
 };
 
 }  // namespace shill

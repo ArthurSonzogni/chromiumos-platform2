@@ -172,6 +172,8 @@ WiFi::WiFi(Manager* manager,
       scan_state_(kScanIdle),
       scan_method_(kScanMethodNone),
       broadcast_probe_was_skipped_(false),
+      hs20_bss_count_(0),
+      need_interworking_select_(false),
       receive_byte_count_at_connect_(0),
       wiphy_index_(kDefaultWiphyIndex),
       wifi_cqm_(new WiFiCQM(metrics(), this)),
@@ -283,6 +285,9 @@ void WiFi::Stop(Error* error, const EnabledStateChangedCallback& /*callback*/) {
   for (const auto& creds : provider_->GetCredentials()) {
     RemoveCred(creds);
   }
+  pending_matches_.clear();
+  hs20_bss_count_ = 0;
+  need_interworking_select_ = false;
   // Remove interface from supplicant.
   if (supplicant_present_ && supplicant_interface_proxy_) {
     supplicant_process_proxy()->RemoveInterface(supplicant_interface_path_);
@@ -354,6 +359,8 @@ bool WiFi::AddCred(const PasspointCredentialsRefPtr& credentials) {
     return false;
   }
   credentials->SetSupplicantId(id);
+  // There's a new credentials set, we'll need to try matching them.
+  need_interworking_select_ = true;
   return true;
 }
 
@@ -469,6 +476,81 @@ void WiFi::ScanDone(const bool& success) {
         &WiFi::ScanFailedTask, weak_ptr_factory_while_started_.GetWeakPtr()));
     dispatcher()->PostDelayedTask(FROM_HERE, scan_failed_callback_.callback(),
                                   kPostScanFailedDelayMilliseconds);
+  }
+}
+
+void WiFi::InterworkingAPAdded(const RpcIdentifier& BSS,
+                               const RpcIdentifier& cred,
+                               const KeyValueStore& properties) {
+  SLOG(this, 2) << __func__;
+
+  if (!enabled()) {
+    // Ignore spurious match events emitted after Stop().
+    SLOG(this, 2) << "Ignoring interworking matches while being disabled.";
+    return;
+  }
+
+  // Add the new match to the list. It'll be processed when the whole matching
+  // sequence will be finished.
+  pending_matches_.emplace_back(BSS, cred, properties);
+}
+
+void WiFi::InterworkingSelectDone() {
+  SLOG(this, 2) << __func__;
+
+  if (!enabled()) {
+    SLOG(this, 2) << "Ignoring interworking done while being disabled.";
+    return;
+  }
+
+  if (pending_matches_.empty()) {
+    // No matches, nothing to do.
+    return;
+  }
+
+  // Ensure credentials are available through their supplicant identifier.
+  std::map<RpcIdentifier, PasspointCredentialsRefPtr> creds_by_rpcid;
+  for (const auto& c : provider_->GetCredentials()) {
+    creds_by_rpcid[c->supplicant_id()] = c;
+  }
+
+  // Translate each interworking match to a credential match by finding the
+  // real references behind supplicant ids. Some credentials set or BSS might
+  // be missing because they can be removed while the selection is in progress,
+  // in such case the match is ignored.
+  std::vector<WiFiProvider::PasspointMatch> matches;
+  for (const auto& m : pending_matches_) {
+    PasspointCredentialsRefPtr creds = creds_by_rpcid[m.cred_path];
+    if (!creds) {
+      LOG(WARNING) << "Passpoint credentials not found: "
+                   << m.cred_path.value();
+      continue;
+    }
+
+    WiFiEndpointRefPtr endpoint = endpoint_by_rpcid_[m.bss_path];
+    if (!endpoint) {
+      LOG(WARNING) << "endpoint not found: " << m.bss_path.value();
+      continue;
+    }
+
+    const std::string type_str =
+        m.properties.Get<std::string>(WPASupplicant::kCredentialsMatchType);
+    WiFiProvider::MatchPriority type = WiFiProvider::MatchPriority::kUnknown;
+    if (type_str == WPASupplicant::kCredentialsMatchTypeHome) {
+      type = WiFiProvider::MatchPriority::kHome;
+    } else if (type_str == WPASupplicant::kCredentialsMatchTypeRoaming) {
+      type = WiFiProvider::MatchPriority::kRoaming;
+    } else if (type_str == WPASupplicant::kCredentialsMatchTypeUnknown) {
+      type = WiFiProvider::MatchPriority::kUnknown;
+    } else {
+      NOTREACHED() << __func__ << " unknown match type: " << type_str;
+    }
+
+    matches.emplace_back(creds, endpoint, type);
+  }
+  pending_matches_.clear();
+  if (!matches.empty()) {
+    provider_->OnPasspointCredentialsMatches(std::move(matches));
   }
 }
 
@@ -1637,7 +1719,7 @@ void WiFi::BSSAddedTask(const RpcIdentifier& path,
     return;
   }
 
-  provider_->OnEndpointAdded(endpoint);
+  bool service_has_matched = provider_->OnEndpointAdded(endpoint);
   // Adding a single endpoint can change the bgscan parameters for no more than
   // one active Service. Try pending_service_ only if current_service_ doesn't
   // change.
@@ -1655,6 +1737,15 @@ void WiFi::BSSAddedTask(const RpcIdentifier& path,
   // should be destroyed.)
   endpoint_by_rpcid_[path] = endpoint;
   endpoint->Start();
+
+  // Keep track of Passpoint compatible endpoints to trigger an interworking
+  // selection later if needed.
+  if (endpoint->hs20_information().supported) {
+    hs20_bss_count_++;
+  }
+  need_interworking_select_ =
+      need_interworking_select_ ||
+      (!service_has_matched && endpoint->hs20_information().supported);
 }
 
 void WiFi::BSSRemovedTask(const RpcIdentifier& path) {
@@ -1668,6 +1759,11 @@ void WiFi::BSSRemovedTask(const RpcIdentifier& path) {
   WiFiEndpointRefPtr endpoint = i->second;
   CHECK(endpoint);
   endpoint_by_rpcid_.erase(i);
+
+  if (endpoint->hs20_information().supported) {
+    CHECK_NE(hs20_bss_count_, 0u);
+    hs20_bss_count_--;
+  }
 
   WiFiServiceRefPtr service = provider_->OnEndpointRemoved(endpoint);
   if (!service) {
@@ -1889,6 +1985,16 @@ void WiFi::ScanDoneTask() {
     need_bss_flush_ = false;
   }
   StartScanTimer();
+
+  if (need_interworking_select_ && hs20_bss_count_ != 0 &&
+      provider_->has_passpoint_credentials()) {
+    LOG(INFO) << __func__ << " start interworking selection";
+    // Interworking match is started only if a compatible access point is
+    // around and there's credentials to match because such selection
+    // takes time.
+    supplicant_interface_proxy_->InterworkingSelect();
+  }
+  need_interworking_select_ = false;
 }
 
 void WiFi::ScanFailedTask() {

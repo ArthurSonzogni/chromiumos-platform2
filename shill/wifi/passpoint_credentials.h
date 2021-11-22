@@ -78,7 +78,7 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
     return android_package_name_;
   }
   const ProfileRefPtr& profile() const { return profile_; }
-  const RpcIdentifier& supplicant_id() { return supplicant_id_; }
+  const RpcIdentifier& supplicant_id() const { return supplicant_id_; }
 
  private:
   friend class WiFiProviderTest;

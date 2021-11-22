@@ -359,7 +359,17 @@ void Ethernet::PropertiesChanged(const KeyValueStore& properties) {
 }
 
 void Ethernet::ScanDone(const bool& /*success*/) {
-  NOTREACHED() << __func__ << " is not implented for Ethernet";
+  NOTREACHED() << __func__ << " is not implemented for Ethernet";
+}
+
+void Ethernet::InterworkingAPAdded(const RpcIdentifier& /*BSS*/,
+                                   const RpcIdentifier& /*cred*/,
+                                   const KeyValueStore& /*properties*/) {
+  NOTREACHED() << __func__ << " is not implemented for Ethernet";
+}
+
+void Ethernet::InterworkingSelectDone() {
+  NOTREACHED() << __func__ << " is not implemented for Ethernet";
 }
 
 EthernetEapProvider* Ethernet::GetEapProvider() {

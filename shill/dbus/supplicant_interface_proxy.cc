@@ -106,6 +106,14 @@ SupplicantInterfaceProxy::SupplicantInterfaceProxy(
       base::Bind(&SupplicantInterfaceProxy::PropertiesChanged,
                  weak_factory_.GetWeakPtr()),
       on_connected_callback);
+  interface_proxy_->RegisterInterworkingAPAddedSignalHandler(
+      base::BindRepeating(&SupplicantInterfaceProxy::InterworkingAPAdded,
+                          weak_factory_.GetWeakPtr()),
+      on_connected_callback);
+  interface_proxy_->RegisterInterworkingSelectDoneSignalHandler(
+      base::BindRepeating(&SupplicantInterfaceProxy::InterworkingSelectDone,
+                          weak_factory_.GetWeakPtr()),
+      on_connected_callback);
 
   // Connect property signals and initialize cached values. Based on
   // recommendations from src/dbus/property.h.
@@ -231,6 +239,17 @@ bool SupplicantInterfaceProxy::RemoveAllNetworks() {
   if (!interface_proxy_->RemoveAllNetworks(&error)) {
     LOG(ERROR) << "Failed to remove all networks: " << error->GetCode() << " "
                << error->GetMessage();
+    return false;
+  }
+  return true;
+}
+
+bool SupplicantInterfaceProxy::InterworkingSelect() {
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
+  brillo::ErrorPtr error;
+  if (!interface_proxy_->InterworkingSelect(&error)) {
+    LOG(ERROR) << "Failed to start passpoint interworking selection: "
+               << error->GetCode() << " " << error->GetMessage();
     return false;
   }
   return true;
@@ -462,6 +481,20 @@ void SupplicantInterfaceProxy::PropertiesChanged(
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   KeyValueStore store = KeyValueStore::ConvertFromVariantDictionary(properties);
   delegate_->PropertiesChanged(store);
+}
+
+void SupplicantInterfaceProxy::InterworkingAPAdded(
+    const dbus::ObjectPath& BSS,
+    const dbus::ObjectPath& cred,
+    const brillo::VariantDictionary& properties) {
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
+  KeyValueStore store = KeyValueStore::ConvertFromVariantDictionary(properties);
+  delegate_->InterworkingAPAdded(BSS, cred, std::move(store));
+}
+
+void SupplicantInterfaceProxy::InterworkingSelectDone() {
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
+  delegate_->InterworkingSelectDone();
 }
 
 void SupplicantInterfaceProxy::ScanDone(bool success) {

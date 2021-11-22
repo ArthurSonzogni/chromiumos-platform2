@@ -63,6 +63,7 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   bool AddCred(const KeyValueStore& args, RpcIdentifier* cred) override;
   bool RemoveCred(const RpcIdentifier& cred) override;
   bool RemoveAllCreds() override;
+  bool InterworkingSelect() override;
 
  private:
   class PropertySet : public dbus::PropertySet {
@@ -106,6 +107,10 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   void NetworkSelected(const dbus::ObjectPath& network);
   void PropertiesChanged(const brillo::VariantDictionary& properties);
   void ScanDone(bool success);
+  void InterworkingAPAdded(const dbus::ObjectPath& BSS,
+                           const dbus::ObjectPath& cred,
+                           const brillo::VariantDictionary& properties);
+  void InterworkingSelectDone();
 
   // Callback invoked when the value of property |property_name| is changed.
   void OnPropertyChanged(const std::string& property_name);

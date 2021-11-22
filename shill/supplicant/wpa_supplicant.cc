@@ -168,6 +168,10 @@ const char WPASupplicant::kCredentialsPropertyRequiredRoamingConsortium[] =
     "required_roaming_consortium";
 const char WPASupplicant::kCredentialsPropertyRoamingConsortiums[] =
     "roaming_consortiums";
+const char WPASupplicant::kCredentialsMatchType[] = "type";
+const char WPASupplicant::kCredentialsMatchTypeHome[] = "home";
+const char WPASupplicant::kCredentialsMatchTypeRoaming[] = "roaming";
+const char WPASupplicant::kCredentialsMatchTypeUnknown[] = "unknown";
 
 const char WPASupplicant::kInterfaceCapabilityMaxScanSSID[] = "MaxScanSSID";
 

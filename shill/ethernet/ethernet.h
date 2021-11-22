@@ -83,6 +83,10 @@ class Ethernet
                 const std::string& parameter) override;
   void PropertiesChanged(const KeyValueStore& properties) override;
   void ScanDone(const bool& /*success*/) override;
+  void InterworkingAPAdded(const RpcIdentifier& BSS,
+                           const RpcIdentifier& cred,
+                           const KeyValueStore& properties) override;
+  void InterworkingSelectDone() override;
 #endif  // DISABLE_WIRED_8021X
 
   std::string GetStorageIdentifier() const override;

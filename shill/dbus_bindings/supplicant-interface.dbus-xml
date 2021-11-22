@@ -57,6 +57,7 @@
       <arg name="path" type="o" direction="in"/>
     </method>
     <method name="RemoveAllCreds"/>
+    <method name="InterworkingSelect"/>
     <property name="Capabilities" type="a{sv}" access="read"/>
     <property name="State" type="s" access="read"/>
     <property name="Scanning" type="b" access="read"/>
@@ -109,6 +110,13 @@
     </signal>
     <signal name="PropertiesChanged">
       <arg name="properties" type="a{sv}"/>
+    </signal>
+    <signal name="InterworkingAPAdded">
+      <arg name="BSS" type="o"/>
+      <arg name="cred" type="o"/>
+      <arg name="properties" type="a{sv}"/>
+    </signal>
+    <signal name="InterworkingSelectDone">
     </signal>
   </interface>
 </node>

@@ -158,6 +158,10 @@ class WPASupplicant {
   static const char kCredentialsPropertyRoamingConsortium[];
   static const char kCredentialsPropertyRequiredRoamingConsortium[];
   static const char kCredentialsPropertyRoamingConsortiums[];
+  static const char kCredentialsMatchType[];
+  static const char kCredentialsMatchTypeHome[];
+  static const char kCredentialsMatchTypeRoaming[];
+  static const char kCredentialsMatchTypeUnknown[];
 
   static const char kInterfaceCapabilityMaxScanSSID[];
 

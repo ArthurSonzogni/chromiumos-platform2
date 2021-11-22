@@ -44,6 +44,7 @@ class SupplicantInterfaceProxyInterface {
   virtual bool AddCred(const KeyValueStore& args, RpcIdentifier* cred) = 0;
   virtual bool RemoveCred(const RpcIdentifier& cred) = 0;
   virtual bool RemoveAllCreds() = 0;
+  virtual bool InterworkingSelect() = 0;
 };
 
 }  // namespace shill

@@ -28,6 +28,33 @@ class WiFiService;
 // (created due to user or storage configuration) Services.
 class WiFiProvider : public ProviderInterface {
  public:
+  // Describes the priority of the network computed during the a match between
+  // a set of Passpoint credentials and a BSS.
+  enum MatchPriority : uint64_t {
+    // Network that belongs to the Passpoint service provider.
+    kHome,
+    // Network that belongs to a partner of the service provider.
+    kRoaming,
+    // Network not identified by supplicant.
+    kUnknown
+  };
+
+  // A PasspointMatch represents a match between a set of Passpoint credentials
+  // and an endpoint found during a scan. It helps to identify which service is
+  // connectable based on the contained set of credentials, and what kind of
+  // network it will provide.
+  struct PasspointMatch {
+    PasspointMatch(const PasspointCredentialsRefPtr& cred_in,
+                   const WiFiEndpointRefPtr& endp_in,
+                   MatchPriority prio_in);
+    // Set of Passpoint credentials that matched.
+    PasspointCredentialsRefPtr credentials;
+    // BSS that matched.
+    WiFiEndpointRefPtr endpoint;
+    // Priority of the network computed during the match.
+    MatchPriority priority;
+  };
+
   explicit WiFiProvider(Manager* manager);
   WiFiProvider(const WiFiProvider&) = delete;
   WiFiProvider& operator=(const WiFiProvider&) = delete;
@@ -56,7 +83,9 @@ class WiFiProvider : public ProviderInterface {
   // Find or create a Service for |endpoint| to be associated with.  This
   // method first calls FindServiceForEndpoint, and failing this, creates
   // a new Service.  It then associates |endpoint| with this service.
-  virtual void OnEndpointAdded(const WiFiEndpointConstRefPtr& endpoint);
+  // Returns true if |endpoint| is associated to a service that already matched
+  // with passpoint credentials.
+  virtual bool OnEndpointAdded(const WiFiEndpointConstRefPtr& endpoint);
 
   // Called by a Device when it removes an Endpoint.  If the Provider
   // forgets a service as a result, it returns a reference to the
@@ -110,8 +139,14 @@ class WiFiProvider : public ProviderInterface {
   // Get the list of Passpoint credentials known by the provider.
   virtual std::vector<PasspointCredentialsRefPtr> GetCredentials();
 
+  // Called by the Wi-Fi device when an interworking selection found
+  // connectable endpoint using Passpoint credentials.
+  virtual void OnPasspointCredentialsMatches(
+      const std::vector<PasspointMatch>& matches);
+
   bool disable_vht() const { return disable_vht_; }
   void set_disable_vht(bool disable_vht) { disable_vht_ = disable_vht; }
+  bool has_passpoint_credentials() const { return !credentials_by_id_.empty(); }
 
  private:
   friend class WiFiProviderTest;

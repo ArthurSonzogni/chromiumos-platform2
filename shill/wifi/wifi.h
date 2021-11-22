@@ -158,6 +158,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
                 const std::string& parameter) override;
   void PropertiesChanged(const KeyValueStore& properties) override;
   void ScanDone(const bool& success) override;
+  void InterworkingAPAdded(const RpcIdentifier& BSS,
+                           const RpcIdentifier& cred,
+                           const KeyValueStore& properties) override;
+  void InterworkingSelectDone() override;
 
   // Called by WiFiService.
   virtual void ConnectTo(WiFiService* service, Error* error);
@@ -271,6 +275,21 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
     // Cancelable closure used to process the scan results.
     base::CancelableClosure callback;
+  };
+
+  // Result of a match between an access point and a set of credentials.
+  struct InterworkingBSS {
+    InterworkingBSS(const RpcIdentifier& bss_in,
+                    const RpcIdentifier& cred_in,
+                    const KeyValueStore& properties_in)
+        : bss_path(bss_in), cred_path(cred_in), properties(properties_in) {}
+
+    // Supplicant D-Bus path of the endpoint
+    RpcIdentifier bss_path;
+    // Supplicant D-Bus path of the set of credentials
+    RpcIdentifier cred_path;
+    // Match properties (priorities, ...)
+    KeyValueStore properties;
   };
 
   friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_
@@ -769,6 +788,17 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Indicates if the last scan skipped the broadcast probe.
   bool broadcast_probe_was_skipped_;
+
+  // Count of Hotspot 2.0/Passpoint compatible endpoints currently known.
+  uint32_t hs20_bss_count_;
+
+  // Indicates that we should start an interworking selection after the next
+  // scan, either because a new  set of credentials was added or a Passpoint
+  // compatible endpoint appeared.
+  bool need_interworking_select_;
+
+  // Holds the list of interworking matches waiting to be processed.
+  std::vector<InterworkingBSS> pending_matches_;
 
   // Used to compute the number of bytes received since the link went up.
   uint64_t receive_byte_count_at_connect_;

@@ -358,9 +358,9 @@ WiFiServiceRefPtr WiFiProvider::FindServiceForEndpoint(
   return service_it->second;
 }
 
-void WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr& endpoint) {
+bool WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr& endpoint) {
   if (!running_) {
-    return;
+    return false;
   }
 
   WiFiServiceRefPtr service = FindService(
@@ -387,6 +387,9 @@ void WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr& endpoint) {
   service_by_endpoint_[endpoint.get()] = service;
 
   manager_->UpdateService(service);
+  // TODO(b/162106001) return whether the service has matched with passpoint
+  // credentials or not.
+  return false;
 }
 
 WiFiServiceRefPtr WiFiProvider::OnEndpointRemoved(
@@ -691,8 +694,21 @@ std::vector<PasspointCredentialsRefPtr> WiFiProvider::GetCredentials() {
   return list;
 }
 
+void WiFiProvider::OnPasspointCredentialsMatches(
+    const std::vector<PasspointMatch>& matches) {
+  SLOG(this, 1) << __func__;
+  // TODO(b/162106001) populate services with credentials from the matches
+  // when appropriate.
+}
+
 Metrics* WiFiProvider::metrics() const {
   return manager_->metrics();
 }
+
+WiFiProvider::PasspointMatch::PasspointMatch(
+    const PasspointCredentialsRefPtr& cred_in,
+    const WiFiEndpointRefPtr& endp_in,
+    MatchPriority prio_in)
+    : credentials(cred_in), endpoint(endp_in), priority(prio_in) {}
 
 }  // namespace shill

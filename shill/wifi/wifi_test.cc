@@ -446,6 +446,19 @@ const uint8_t kPassiveScanTriggerNlMsg[] = {
     0x99, 0x16, 0x00, 0x00, 0x08, 0x00, 0x1f, 0x00, 0xad, 0x16, 0x00, 0x00,
     0x08, 0x00, 0x20, 0x00, 0xc1, 0x16, 0x00, 0x00};
 
+void AddVendorIE(uint32_t oui,
+                 uint8_t vendor_type,
+                 const std::vector<uint8_t>& data,
+                 std::vector<uint8_t>* ies) {
+  ies->push_back(IEEE_80211::kElemIdVendor);  // type
+  ies->push_back(4 + data.size());            // length
+  ies->push_back((oui >> 16) & 0xff);         // OUI MSByte
+  ies->push_back((oui >> 8) & 0xff);          // OUI middle octet
+  ies->push_back(oui & 0xff);                 // OUI LSByte
+  ies->push_back(vendor_type);                // OUI Type
+  ies->insert(ies->end(), data.begin(), data.end());
+}
+
 }  // namespace
 
 class WiFiPropertyTest : public PropertyStoreTest {
@@ -917,6 +930,13 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
                  int16_t signal_strength,
                  uint16_t frequency,
                  const char* mode);
+  void ReportBSSWithIEs(const RpcIdentifier& bss_path,
+                        const std::string& ssid,
+                        const std::string& bssid,
+                        int16_t signal_strength,
+                        uint16_t frequency,
+                        const char* mode,
+                        const std::vector<uint8_t>& ies);
   void ReportIPConfigComplete() {
     wifi_->OnIPConfigUpdated(dhcp_config_, true);
   }
@@ -1227,6 +1247,16 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     return wifi_->RemoveCred(credentials);
   }
 
+  void ReportInterworkingAPAdded(const RpcIdentifier& BSS,
+                                 const RpcIdentifier& cred,
+                                 const KeyValueStore& properties) {
+    wifi_->InterworkingAPAdded(BSS, cred, properties);
+  }
+
+  void ReportInterworkingSelectDone() { wifi_->InterworkingSelectDone(); }
+
+  bool NeedInterworkingSelect() { return wifi_->need_interworking_select_; }
+
   std::unique_ptr<EventDispatcher> event_dispatcher_;
   MockWakeOnWiFi* wake_on_wifi_;  // Owned by |wifi_|.
   NiceMock<MockRTNLHandler> rtnl_handler_;
@@ -1328,6 +1358,19 @@ void WiFiObjectTest::ReportBSS(const RpcIdentifier& bss_path,
   wifi_->BSSAddedTask(
       bss_path,
       CreateBSSProperties(ssid, bssid, signal_strength, frequency, mode));
+}
+
+void WiFiObjectTest::ReportBSSWithIEs(const RpcIdentifier& bss_path,
+                                      const std::string& ssid,
+                                      const std::string& bssid,
+                                      int16_t signal_strength,
+                                      uint16_t frequency,
+                                      const char* mode,
+                                      const std::vector<uint8_t>& ies) {
+  KeyValueStore properties =
+      CreateBSSProperties(ssid, bssid, signal_strength, frequency, mode);
+  properties.Set<std::vector<uint8_t>>(WPASupplicant::kBSSPropertyIEs, ies);
+  wifi_->BSSAddedTask(bss_path, properties);
 }
 
 // Most of our tests involve using a real EventDispatcher object.
@@ -4794,6 +4837,140 @@ TEST_F(WiFiMainTest, ClearsAndRestoresCredentials) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveCred(_))
       .Times(2)
       .WillRepeatedly(Return(true));
+}
+
+TEST_F(WiFiMainTest, InterworkingSelectSimpleMatch) {
+  // A simple credentials set
+  MockPasspointCredentialsRefPtr cred0 = new MockPasspointCredentials("cred0");
+  std::vector<PasspointCredentialsRefPtr> credentials{cred0};
+  RpcIdentifier cred0_path("/creds/0");
+  EXPECT_CALL(*cred0, ToSupplicantProperties(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*wifi_provider(), GetCredentials())
+      .WillRepeatedly(Return(credentials));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddCred(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(cred0_path), Return(true)));
+
+  StartWiFi();
+
+  // Provide scan results
+  WiFiEndpointRefPtr ap0 = MakeEndpoint("ssid0", "00:00:00:00:00:00");
+  WiFiEndpointRefPtr ap1 = MakeEndpoint("ssid1", "00:00:00:00:00:01");
+  RpcIdentifier bss0_path("bss0"), bss1_path("bss1");
+  ReportBSS(bss0_path, ap0->ssid_string(), ap0->bssid_string(), 0, 0,
+            kNetworkModeInfrastructure);
+  ReportBSS(bss1_path, ap1->ssid_string(), ap1->bssid_string(), 0, 0,
+            kNetworkModeInfrastructure);
+  ReportScanDone();
+
+  // No credentials added, we must ignore false matches.
+  Mock::VerifyAndClearExpectations(wifi_provider());
+  EXPECT_CALL(*wifi_provider(), GetCredentials())
+      .WillRepeatedly(Return(credentials));
+  EXPECT_CALL(*wifi_provider(), OnPasspointCredentialsMatches(_)).Times(0);
+
+  KeyValueStore properties;
+  properties.Set<std::string>(WPASupplicant::kCredentialsMatchType,
+                              WPASupplicant::kCredentialsMatchTypeHome);
+  ReportInterworkingAPAdded(bss0_path, RpcIdentifier("unknown_cred"),
+                            properties);
+  ReportInterworkingSelectDone();
+
+  // Credentials set with wrong match
+  ReportInterworkingAPAdded(RpcIdentifier("unknown_bss"), cred0_path,
+                            properties);
+  ReportInterworkingSelectDone();
+
+  // Match between credentials and BSS
+  Mock::VerifyAndClearExpectations(wifi_provider());
+  EXPECT_CALL(*wifi_provider(), GetCredentials())
+      .WillRepeatedly(Return(credentials));
+  EXPECT_CALL(*wifi_provider(), OnPasspointCredentialsMatches(_)).Times(1);
+
+  ReportInterworkingAPAdded(bss0_path, cred0_path, properties);
+  ReportInterworkingSelectDone();
+}
+
+TEST_F(WiFiMainTest, InterworkingSelectMultipleMatches) {
+  MockPasspointCredentialsRefPtr cred0 = new MockPasspointCredentials("cred0");
+  RpcIdentifier cred0_path("/creds/0");
+  EXPECT_CALL(*cred0, ToSupplicantProperties(_)).WillRepeatedly(Return(true));
+
+  MockPasspointCredentialsRefPtr cred1 = new MockPasspointCredentials("cred1");
+  RpcIdentifier cred1_path("/creds/1");
+  EXPECT_CALL(*cred1, ToSupplicantProperties(_)).WillRepeatedly(Return(true));
+
+  // The provider will provide both credentials
+  std::vector<PasspointCredentialsRefPtr> credentials{cred0, cred1};
+  EXPECT_CALL(*wifi_provider(), GetCredentials())
+      .WillRepeatedly(Return(credentials));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddCred(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(cred0_path), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<1>(cred1_path), Return(true)));
+
+  StartWiFi();
+
+  // Provide scan results
+  WiFiEndpointRefPtr ap0 = MakeEndpoint("ssid0", "00:00:00:00:00:00");
+  WiFiEndpointRefPtr ap1 = MakeEndpoint("ssid1", "00:00:00:00:00:01");
+  RpcIdentifier bss0_path("bss0"), bss1_path("bss1");
+  ReportBSS(bss0_path, ap0->ssid_string(), ap0->bssid_string(), 0, 0,
+            kNetworkModeInfrastructure);
+  ReportBSS(bss1_path, ap1->ssid_string(), ap1->bssid_string(), 0, 0,
+            kNetworkModeInfrastructure);
+  ReportScanDone();
+
+  // Interworking select will find two matches and report them to the provider.
+  EXPECT_CALL(*wifi_provider(), OnPasspointCredentialsMatches(_)).Times(1);
+  KeyValueStore properties;
+  properties.Set<std::string>(WPASupplicant::kCredentialsMatchType,
+                              WPASupplicant::kCredentialsMatchTypeHome);
+  ReportInterworkingAPAdded(bss0_path, cred0_path, properties);
+  ReportInterworkingAPAdded(bss1_path, cred1_path, properties);
+  ReportInterworkingSelectDone();
+}
+
+TEST_F(WiFiMainTest, ScanTriggersInterworkingSelect) {
+  // Ensure the provider contains credentials
+  MockPasspointCredentialsRefPtr cred0 = new MockPasspointCredentials("cred0");
+  EXPECT_CALL(*cred0, ToSupplicantProperties(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddCred(_, _))
+      .WillOnce(Return(true));
+
+  std::vector<PasspointCredentialsRefPtr> credentials{cred0};
+  EXPECT_CALL(*wifi_provider(), GetCredentials())
+      .WillRepeatedly(Return(credentials));
+
+  StartWiFi();
+
+  // Prepare a scan result compatible with Passpoint.
+  std::vector<uint8_t> ies;
+  std::vector<uint8_t> data = {0x20};
+  AddVendorIE(IEEE_80211::kOUIVendorWiFiAlliance,
+              IEEE_80211::kOUITypeWiFiAllianceHS20Indicator, data, &ies);
+  RpcIdentifier bss0_path("bss0");
+  ReportBSSWithIEs(RpcIdentifier("bss0"), "ssid0", "00:00:00:00:00:00", 0, 0,
+                   kNetworkModeInfrastructure, ies);
+
+  // When a Passpoint compatible AP is found, an interworking selection is
+  // scheduled.
+  EXPECT_TRUE(NeedInterworkingSelect());
+}
+
+TEST_F(WiFiMainTest, AddCredTriggersInterworkingSelect) {
+  StartWiFi();
+
+  MockPasspointCredentialsRefPtr cred0 = new MockPasspointCredentials("cred0");
+  EXPECT_CALL(*cred0, ToSupplicantProperties(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddCred(_, _))
+      .WillOnce(Return(true));
+
+  std::vector<PasspointCredentialsRefPtr> credentials{cred0};
+  EXPECT_CALL(*wifi_provider(), GetCredentials())
+      .WillRepeatedly(Return(credentials));
+
+  EXPECT_TRUE(AddCred(cred0));
+  // The addition of a set of credentials schedules an interworking selection.
+  EXPECT_TRUE(NeedInterworkingSelect());
 }
 
 }  // namespace shill
