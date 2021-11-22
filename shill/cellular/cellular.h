@@ -593,6 +593,8 @@ class Cellular : public Device,
   void OnPPPAuthenticating();
   void OnPPPConnected(const std::map<std::string, std::string>& params);
 
+  bool ModemIsEnabledButNotRegistered();
+
   void SetPendingConnect(const std::string& iccid);
   void ConnectToPending();
   void ConnectToPendingAfterDelay();

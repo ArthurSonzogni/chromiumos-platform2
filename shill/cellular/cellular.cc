@@ -1237,7 +1237,15 @@ void Cellular::Connect(CellularService* service, Error* error) {
     NotifyCellularConnectionResult(*error, service->iccid(),
                                    service_->is_in_user_connect());
     return;
-  } else if (state_ != State::kRegistered) {
+  }
+
+  if (ModemIsEnabledButNotRegistered()) {
+    LOG(WARNING) << __func__ << ": Waiting for Modem registration.";
+    SetPendingConnect(service->iccid());
+    return;
+  }
+
+  if (state_ != State::kRegistered) {
     LOG(ERROR) << "Connect attempted while state = " << GetStateString(state_);
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotRegistered,
                           "Connect Failed: Modem not registered.");
@@ -1831,6 +1839,14 @@ void Cellular::OnPPPDied(pid_t pid, int exit) {
   Disconnect(&error, __func__);
 }
 
+bool Cellular::ModemIsEnabledButNotRegistered() {
+  // Normally the Modem becomes Registered immediately after becoming enabled.
+  // In cases where we have an attach APN or eSIM this may not be true. See
+  // b/204847937 and b/205882451 for more details.
+  // TODO(b/186482862): Fix this behavior in ModemManager.
+  return state_ == State::kEnabled && modem_state_ == kModemStateEnabled;
+}
+
 void Cellular::SetPendingConnect(const std::string& iccid) {
   if (iccid == connect_pending_iccid_)
     return;
@@ -1878,14 +1894,11 @@ void Cellular::ConnectToPending() {
     return;
   }
 
-  // Normally the Modem becomes Registered immediately after becoming enabled.
-  // For eSIM this is not always true so we need to wait for the Modem to
-  // become registered.
-  // TODO(b/186482862): Fix this behavior in ModemManager.
-  if (state_ == State::kEnabled && modem_state_ == kModemStateEnabled) {
+  if (ModemIsEnabledButNotRegistered()) {
     LOG(WARNING) << __func__ << ": Waiting for Modem registration.";
     return;
   }
+
   if (!StateIsRegistered()) {
     LOG(WARNING) << __func__ << ": Cellular not registered, State: "
                  << GetStateString(state_);
