@@ -33,33 +33,33 @@ constexpr int kLowTokenOffset = kSizeOfSerializedValueInToken;
 constexpr base::TimeDelta kAuthSessionTimeoutInMinutes =
     base::TimeDelta::FromMinutes(5);
 
+using user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
+
 AuthSession::AuthSession(
     std::string username,
     unsigned int flags,
     base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
     KeysetManagement* keyset_management)
     : username_(username),
+      token_(base::UnguessableToken::Create()),
+      serialized_token_(
+          AuthSession::GetSerializedStringFromToken(token_).value_or("")),
+      is_ephemeral_user_(flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER),
       on_timeout_(std::move(on_timeout)),
       keyset_management_(keyset_management) {
-  token_ = base::UnguessableToken::Create();
-  ProcessFlags(flags);
+  DCHECK(!serialized_token_.empty());
+  LOG(INFO) << "AuthSession Flags: is_ephemeral_user_  " << is_ephemeral_user_;
   timer_.Start(FROM_HERE, kAuthSessionTimeoutInMinutes,
                base::BindOnce(&AuthSession::AuthSessionTimedOut,
                               base::Unretained(this)));
+
+  // TODO(hardikgoyal): make a factory function for AuthSession so the
+  // constructor doesn't need to do work
   user_exists_ = keyset_management_->UserExists(SanitizeUserName(username_));
   if (user_exists_) {
     keyset_management_->GetVaultKeysetLabelsAndData(SanitizeUserName(username_),
                                                     &key_label_data_);
   }
-}
-
-AuthSession::~AuthSession() = default;
-
-void AuthSession::ProcessFlags(unsigned int flags) {
-  is_ephemeral_user_ =
-      flags &
-      user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
-  LOG(INFO) << "AuthSession Flags: is_ephemeral_user_  " << is_ephemeral_user_;
 }
 
 void AuthSession::AuthSessionTimedOut() {

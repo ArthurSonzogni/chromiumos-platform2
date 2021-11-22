@@ -51,19 +51,17 @@ class AuthSession final {
       unsigned int flags,
       base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
       KeysetManagement* keyset_management);
-  ~AuthSession();
+  ~AuthSession() = default;
 
   // Returns the full unhashed user name.
   std::string username() const { return username_; }
 
   // Returns the token which is used to identify the current AuthSession.
-  const base::UnguessableToken& token() { return token_; }
+  const base::UnguessableToken& token() const { return token_; }
+  const std::string& serialized_token() const { return serialized_token_; }
 
   // This function return the current status of this AuthSession.
   AuthStatus GetStatus() const { return status_; }
-
-  // This function return if the user that AuthSession was created with exists.
-  bool user_exists() const { return user_exists_; }
 
   // AddCredentials is called when newly created or existing user wants to add
   // new credentials.
@@ -79,7 +77,7 @@ class AuthSession final {
       const cryptohome::AuthorizationRequest& authorization_request);
 
   // Return a const reference to FileSystemKeyset.
-  const FileSystemKeyset file_system_keyset() {
+  const FileSystemKeyset file_system_keyset() const {
     return auth_factor_->GetFileSystemKeyset();
   }
 
@@ -88,18 +86,20 @@ class AuthSession final {
   std::unique_ptr<CredentialVerifier> TakeCredentialVerifier();
 
   // This functions returns if user existed when the AuthSession was started.
-  bool user_exists() { return user_exists_; }
+  bool user_exists() const { return user_exists_; }
 
   // This functions returns if the AuthSession is being setup for an ephemeral
   // user.
-  bool ephemeral_user() { return is_ephemeral_user_; }
+  bool ephemeral_user() const { return is_ephemeral_user_; }
 
   // Returns the key data with which this AuthSession is authenticated with.
-  cryptohome::KeyData current_key_data() { return auth_factor_->GetKeyData(); }
+  cryptohome::KeyData current_key_data() const {
+    return auth_factor_->GetKeyData();
+  }
 
   // Returns the map of Key label and KeyData that will be used as a result of
   // StartAuthSession request.
-  const std::map<std::string, cryptohome::KeyData>& key_label_data() {
+  const std::map<std::string, cryptohome::KeyData>& key_label_data() const {
     return key_label_data_;
   }
 
@@ -122,20 +122,18 @@ class AuthSession final {
   // this |AuthSession| reference from |UserDataAuth|.
   void AuthSessionTimedOut();
 
-  // Process the parameters received when constructing an |AuthSession|.
-  void ProcessFlags(unsigned int flags);
-
   // This function returns credentials based on the state of the current
   // |AuthSession|.
   std::unique_ptr<Credentials> GetCredentials(
       const cryptohome::AuthorizationRequest& authorization_request,
       MountError* error);
 
-  std::string username_;
-  base::UnguessableToken token_;
+  const std::string username_;
+  const base::UnguessableToken token_;
+  const std::string serialized_token_;
 
   // AuthSession's flag configuration.
-  bool is_ephemeral_user_;
+  const bool is_ephemeral_user_;
 
   AuthStatus status_ = AuthStatus::kAuthStatusFurtherFactorRequired;
   base::OneShotTimer timer_;

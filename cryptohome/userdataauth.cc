@@ -3256,15 +3256,7 @@ bool UserDataAuth::StartAuthSession(
       request.account_id().account_id(), request.flags(), std::move(on_timeout),
       keyset_management_);
   user_data_auth::StartAuthSessionReply reply;
-  base::Optional<std::string> serialized_string =
-      AuthSession::GetSerializedStringFromToken(auth_session->token());
-  if (!serialized_string.has_value()) {
-    reply.set_error(user_data_auth::CRYPTOHOME_TOKEN_SERIALIZATION_FAILED);
-    LOG(ERROR) << "Error converting token to string";
-    std::move(on_done).Run(reply);
-    return false;
-  }
-  reply.set_auth_session_id(serialized_string.value());
+  reply.set_auth_session_id(auth_session->serialized_token());
   reply.set_user_exists(auth_session->user_exists());
   google::protobuf::Map<std::string, cryptohome::KeyData> proto_key_map(
       auth_session->key_label_data().begin(),
