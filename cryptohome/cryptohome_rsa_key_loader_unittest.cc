@@ -172,7 +172,7 @@ class CryptohomeRsaKeyLoaderTest : public ::testing::Test {
   void TearDown() override {}
 
  protected:
-  bool is_tpm_owned_;
+  bool is_tpm_owned_ = false;
   std::map<base::FilePath, brillo::Blob> files_;
   NiceMock<MockTpm> tpm_;
   NiceMock<MockPlatform> platform_;
@@ -228,6 +228,7 @@ ACTION_P2(LoadWrappedKeyToHandle, tpm, handle) {
 }
 
 TEST_F(CryptohomeRsaKeyLoaderTest, LoadCryptohomeKeySuccess) {
+  SetIsTpmOwned(true);
   FileTouch(kDefaultCryptohomeKeyFile);
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
       .WillOnce(LoadWrappedKeyToHandle(&tpm_, kTestKeyHandle));
@@ -235,10 +236,19 @@ TEST_F(CryptohomeRsaKeyLoaderTest, LoadCryptohomeKeySuccess) {
   EXPECT_THAT(&cryptohome_key_loader_, HasLoadedCryptohomeKey(kTestKeyHandle));
 }
 
+TEST_F(CryptohomeRsaKeyLoaderTest, LoadCryptohomeKeyNotOwned) {
+  SetIsTpmOwned(false);
+  FileTouch(kDefaultCryptohomeKeyFile);
+  EXPECT_CALL(tpm_, LoadWrappedKey(_, _)).Times(0);
+  cryptohome_key_loader_.Init();
+  EXPECT_THAT(&cryptohome_key_loader_, HasNoLoadedCryptohomeKey());
+}
+
 TEST_F(CryptohomeRsaKeyLoaderTest, LoadCryptohomeKeyTransientFailure) {
   // Transient failure on the first attempt leads to key not being loaded.
   // But the key is not re-created. Success on the second attempt loads the
   // old key.
+  SetIsTpmOwned(true);
   FileWriteString(kDefaultCryptohomeKeyFile, "old-key");
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kCommunication))

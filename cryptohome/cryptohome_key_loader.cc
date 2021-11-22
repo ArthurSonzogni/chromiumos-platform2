@@ -65,6 +65,12 @@ legacy_upgrade_path:
 bool CryptohomeKeyLoader::LoadOrCreateCryptohomeKey(
     ScopedKeyHandle* key_handle) {
   CHECK(key_handle);
+
+  if (!GetTpm()->IsEnabled() || !GetTpm()->IsOwned()) {
+    LOG(WARNING) << "Canceled loading cryptohome key - TPM is not ready.";
+    return false;
+  }
+
   // Try to load the cryptohome key.
   if (TPMErrorBase err = LoadCryptohomeKey(key_handle)) {
     if (err->ToTPMRetryAction() == TPMRetryAction::kNoRetry) {
