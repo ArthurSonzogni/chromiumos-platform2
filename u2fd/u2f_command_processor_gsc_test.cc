@@ -76,10 +76,6 @@ std::vector<uint8_t> GetVersionedCredId() {
   return std::vector<uint8_t>(U2F_V1_KH_SIZE + SHA256_DIGEST_LENGTH, 0xFD);
 }
 
-std::vector<uint8_t> GetCredPubKey() {
-  return std::vector<uint8_t>(65, 0xAB);
-}
-
 std::vector<uint8_t> GetAuthTimeSecretHash() {
   return std::vector<uint8_t>(32, 0xFD);
 }
@@ -224,6 +220,11 @@ class U2fCommandProcessorGscTest : public ::testing::Test {
   }
 
  protected:
+  static std::vector<uint8_t> GetCredPubKey() {
+    return U2fCommandProcessorGsc::EncodeCredentialPublicKeyInCBOR(
+        std::vector<uint8_t>(65, 0xAB));
+  }
+
   void CallAndWaitForPresence(std::function<uint32_t()> fn, uint32_t* status) {
     processor_->CallAndWaitForPresence(fn, status);
   }
@@ -338,7 +339,7 @@ TEST_F(U2fCommandProcessorGscTest, U2fGenerateVersionedSuccessUserPresence) {
                         &cred_id, &cred_pubkey),
             MakeCredentialResponse::SUCCESS);
   EXPECT_EQ(cred_id, GetVersionedCredId());
-  EXPECT_EQ(cred_pubkey, GetCredPubKey());
+  EXPECT_EQ(cred_pubkey, U2fCommandProcessorGscTest::GetCredPubKey());
   presence_requested_expected_ = 1;
 }
 
@@ -373,7 +374,7 @@ TEST_F(U2fCommandProcessorGscTest, U2fGenerateSuccessUserPresence) {
                   /* uv_compatible = */ false, nullptr, &cred_id, &cred_pubkey),
       MakeCredentialResponse::SUCCESS);
   EXPECT_EQ(cred_id, GetCredId());
-  EXPECT_EQ(cred_pubkey, GetCredPubKey());
+  EXPECT_EQ(cred_pubkey, U2fCommandProcessorGscTest::GetCredPubKey());
   presence_requested_expected_ = 1;
 }
 
@@ -409,7 +410,7 @@ TEST_F(U2fCommandProcessorGscTest,
                         &auth_time_secret_hash, &cred_id, &cred_pubkey),
             MakeCredentialResponse::SUCCESS);
   EXPECT_EQ(cred_id, GetVersionedCredId());
-  EXPECT_EQ(cred_pubkey, GetCredPubKey());
+  EXPECT_EQ(cred_pubkey, U2fCommandProcessorGscTest::GetCredPubKey());
 }
 
 TEST_F(U2fCommandProcessorGscTest, U2fSignPresenceNoPresence) {

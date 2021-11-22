@@ -375,26 +375,14 @@ TEST_F(WebAuthnHandlerTestBase, MakeCredentialVerificationSuccess) {
           "(..){4}") +  // Signature counter
       base::HexEncode(aaguid.data(), aaguid.size()) +  // AAGUID
       std::string(
-          "0091"        // Credential ID length
-                        // Credential ID, from kU2fGenerateVersionedResponse:
-          "(FD){65}"    // Versioned key handle header
-          "(FD){16}"    // Authorization salt
-          "(FD){32}"    // Hash of authorization secret
-          "(FD){32}"    // Authorization hmac
-                        // CBOR encoded credential public key:
-          "A5"          // Start a CBOR map of 5 elements
-          "01"          // unsigned(1), COSE key type field
-          "02"          // unsigned(2), COSE key type EC2
-          "03"          // unsigned(3), COSE key algorithm field
-          "26"          // negative(6) = -7, COSE key algorithm ES256
-          "20"          // negative(0) = -1, COSE EC key curve field
-          "01"          // unsigned(1), COSE EC key curve
-          "21"          // negative(1) = -2, COSE EC key x coordinate field
-          "5820"        // Start a CBOR array of 32 bytes
-          "(AB){32}"    // x coordinate, from kU2fGenerateVersionedResponse
-          "22"          // negative(2) = -3, COSE EC key y coordinate field
-          "5820"        // Start a CBOR array of 32 bytes
-          "(AB){32}");  // y coordinate, from kU2fGenerateVersionedResponse
+          "0091"      // Credential ID length
+                      // Credential ID, from kU2fGenerateVersionedResponse:
+          "(FD){65}"  // Versioned key handle header
+          "(FD){16}"  // Authorization salt
+          "(FD){32}"  // Hash of authorization secret
+          "(FD){32}"  // Authorization hmac
+                      // CBOR encoded credential public key:
+          "(AB){65}");
 
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<MakeCredentialResponse>>();
@@ -981,26 +969,14 @@ TEST_F(WebAuthnHandlerTestU2fMode, MakeCredentialPresenceSuccess) {
   const std::string expected_authenticator_data_regex =
       base::HexEncode(GetRpIdHash()) +
       std::string(
-          "41"          // Flag: user present, attested credential data included
-          "2A172A17"    // kSignatureCounter in network byte order
-          "(00){16}"    // AAGUID
-          "0040"        // Credential ID length
-                        // Credential ID, from kU2fGenerateResponse:
-          "(FD){64}"    // (non-versioned) key handle
-                        // CBOR encoded credential public key:
-          "A5"          // Start a CBOR map of 5 elements
-          "01"          // unsigned(1), COSE key type field
-          "02"          // unsigned(2), COSE key type EC2
-          "03"          // unsigned(3), COSE key algorithm field
-          "26"          // negative(6) = -7, COSE key algorithm ES256
-          "20"          // negative(0) = -1, COSE EC key curve field
-          "01"          // unsigned(1), COSE EC key curve
-          "21"          // negative(1) = -2, COSE EC key x coordinate field
-          "5820"        // Start a CBOR array of 32 bytes
-          "(AB){32}"    // x coordinate, from kU2fGenerateResponse
-          "22"          // negative(2) = -3, COSE EC key y coordinate field
-          "5820"        // Start a CBOR array of 32 bytes
-          "(AB){32}");  // y coordinate, from kU2fGenerateResponse
+          "41"        // Flag: user present, attested credential data included
+          "2A172A17"  // kSignatureCounter in network byte order
+          "(00){16}"  // AAGUID
+          "0040"      // Credential ID length
+                      // Credential ID, from kU2fGenerateResponse:
+          "(FD){64}"  // (non-versioned) key handle
+                      // CBOR encoded credential public key:
+          "(AB){65}");
 
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<MakeCredentialResponse>>();

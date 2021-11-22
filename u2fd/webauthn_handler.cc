@@ -56,19 +56,6 @@ enum class AuthenticatorDataFlag : uint8_t {
   kExtensionDataIncluded = 1u << 7,
 };
 
-// COSE key parameters.
-// https://tools.ietf.org/html/rfc8152#section-7.1
-const int kCoseKeyKtyLabel = 1;
-const int kCoseKeyKtyEC2 = 2;
-const int kCoseKeyAlgLabel = 3;
-const int kCoseKeyAlgES256 = -7;
-
-// Double coordinate curve parameters.
-// https://tools.ietf.org/html/rfc8152#section-13.1.1
-const int kCoseECKeyCrvLabel = -1;
-const int kCoseECKeyXLabel = -2;
-const int kCoseECKeyYLabel = -3;
-
 // Key label in cryptohome.
 constexpr char kCryptohomePinLabel[] = "pin";
 
@@ -102,22 +89,6 @@ std::vector<uint8_t> GetTimestampSignatureCounter() {
       static_cast<uint8_t>((sign_counter >> 8) & 0xff),
       static_cast<uint8_t>(sign_counter & 0xff),
   };
-}
-
-std::vector<uint8_t> EncodeCredentialPublicKeyInCBOR(
-    const std::vector<uint8_t>& credential_public_key) {
-  DCHECK_EQ(credential_public_key.size(), sizeof(struct u2f_ec_point));
-  cbor::Value::MapValue cbor_map;
-  cbor_map[cbor::Value(kCoseKeyKtyLabel)] = cbor::Value(kCoseKeyKtyEC2);
-  cbor_map[cbor::Value(kCoseKeyAlgLabel)] = cbor::Value(kCoseKeyAlgES256);
-  cbor_map[cbor::Value(kCoseECKeyCrvLabel)] = cbor::Value(1);
-  cbor_map[cbor::Value(kCoseECKeyXLabel)] = cbor::Value(base::make_span(
-      credential_public_key.data() + offsetof(struct u2f_ec_point, x),
-      U2F_EC_KEY_SIZE));
-  cbor_map[cbor::Value(kCoseECKeyYLabel)] = cbor::Value(base::make_span(
-      credential_public_key.data() + offsetof(struct u2f_ec_point, y),
-      U2F_EC_KEY_SIZE));
-  return *cbor::Writer::Write(cbor::Value(std::move(cbor_map)));
 }
 
 std::vector<uint8_t> EncodeU2fAttestationStatementInCBOR(
@@ -525,8 +496,7 @@ void WebAuthnHandler::DoMakeCredential(
 
   const base::Optional<std::vector<uint8_t>> authenticator_data =
       MakeAuthenticatorData(
-          rp_id_hash, credential_id,
-          EncodeCredentialPublicKeyInCBOR(credential_public_key),
+          rp_id_hash, credential_id, credential_public_key,
           /* user_verified = */ session.request.verification_type() ==
               VerificationType::VERIFICATION_USER_VERIFICATION,
           /* include_attested_credential_data = */ true,

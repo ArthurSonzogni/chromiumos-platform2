@@ -5,11 +5,14 @@
 #include "u2fd/u2f_command_processor_gsc.h"
 
 #include <functional>
+#include <utility>
 #include <vector>
 
 #include <base/optional.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_method_response.h>
+#include <chromeos/cbor/values.h>
+#include <chromeos/cbor/writer.h>
 #include <openssl/sha.h>
 #include <trunks/cr50_headers/u2f.h>
 #include <u2f/proto_bindings/u2f_interface.pb.h>
@@ -22,6 +25,19 @@
 namespace u2f {
 
 namespace {
+
+// COSE key parameters.
+// https://tools.ietf.org/html/rfc8152#section-7.1
+const int kCoseKeyKtyLabel = 1;
+const int kCoseKeyKtyEC2 = 2;
+const int kCoseKeyAlgLabel = 3;
+const int kCoseKeyAlgES256 = -7;
+
+// Double coordinate curve parameters.
+// https://tools.ietf.org/html/rfc8152#section-13.1.1
+const int kCoseECKeyCrvLabel = -1;
+const int kCoseECKeyXLabel = -2;
+const int kCoseECKeyYLabel = -3;
 
 constexpr base::TimeDelta kVerificationTimeout =
     base::TimeDelta::FromSeconds(10);
@@ -74,7 +90,11 @@ U2fCommandProcessorGsc::U2fGenerate(
       if (generate_status != 0)
         return MakeCredentialResponse::INTERNAL_ERROR;
 
-      util::AppendToVector(generate_resp.pubKey, credential_public_key);
+      std::vector<uint8_t> public_key;
+      util::AppendToVector(generate_resp.pubKey, &public_key);
+
+      util::AppendToVector(EncodeCredentialPublicKeyInCBOR(public_key),
+                           credential_public_key);
       util::AppendToVector(generate_resp.keyHandle, credential_id);
       status = MakeCredentialResponse::SUCCESS;
     } else {
@@ -324,7 +344,11 @@ U2fCommandProcessorGsc::SendU2fGenerateWaitForPresence(
   brillo::SecureClearContainer(generate_req->userSecret);
 
   if (generate_status == 0) {
-    util::AppendToVector(generate_resp->pubKey, credential_public_key);
+    std::vector<uint8_t> public_key;
+    util::AppendToVector(generate_resp->pubKey, &public_key);
+
+    util::AppendToVector(EncodeCredentialPublicKeyInCBOR(public_key),
+                         credential_public_key);
     util::AppendToVector(generate_resp->keyHandle, credential_id);
     return MakeCredentialResponse::SUCCESS;
   }
@@ -371,6 +395,22 @@ void U2fCommandProcessorGsc::CallAndWaitForPresence(
     request_presence_();
     *status = fn();
   }
+}
+
+std::vector<uint8_t> U2fCommandProcessorGsc::EncodeCredentialPublicKeyInCBOR(
+    const std::vector<uint8_t>& credential_public_key) {
+  DCHECK_EQ(credential_public_key.size(), sizeof(struct u2f_ec_point));
+  cbor::Value::MapValue cbor_map;
+  cbor_map[cbor::Value(kCoseKeyKtyLabel)] = cbor::Value(kCoseKeyKtyEC2);
+  cbor_map[cbor::Value(kCoseKeyAlgLabel)] = cbor::Value(kCoseKeyAlgES256);
+  cbor_map[cbor::Value(kCoseECKeyCrvLabel)] = cbor::Value(1);
+  cbor_map[cbor::Value(kCoseECKeyXLabel)] = cbor::Value(base::make_span(
+      credential_public_key.data() + offsetof(struct u2f_ec_point, x),
+      U2F_EC_KEY_SIZE));
+  cbor_map[cbor::Value(kCoseECKeyYLabel)] = cbor::Value(base::make_span(
+      credential_public_key.data() + offsetof(struct u2f_ec_point, y),
+      U2F_EC_KEY_SIZE));
+  return *cbor::Writer::Write(cbor::Value(std::move(cbor_map)));
 }
 
 }  // namespace u2f

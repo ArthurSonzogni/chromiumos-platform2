@@ -104,6 +104,9 @@ class U2fCommandProcessorGsc : public U2fCommandProcessor {
   // repeatedly until success or timeout.
   void CallAndWaitForPresence(std::function<uint32_t()> fn, uint32_t* status);
 
+  static std::vector<uint8_t> EncodeCredentialPublicKeyInCBOR(
+      const std::vector<uint8_t>& credential_public_key);
+
   TpmVendorCommandProxy* tpm_proxy_ = nullptr;
   std::function<void()> request_presence_;
 };
