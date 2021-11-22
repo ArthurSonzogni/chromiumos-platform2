@@ -85,22 +85,6 @@ TEST_F(TpmImplTest, GetPcrMapExtended) {
   EXPECT_EQ(expected_result, result_blob);
 }
 
-TEST_F(TpmImplTest, TakeOwnership) {
-  EXPECT_CALL(mock_tpm_manager_utility_, GetOwnershipTakenSignalStatus(_, _, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_manager_utility_, TakeOwnership())
-      .WillOnce(Return(false));
-  EXPECT_FALSE(GetTpm()->TakeOwnership(0, SecureBlob{}));
-  EXPECT_CALL(mock_tpm_manager_utility_, TakeOwnership())
-      .WillOnce(Return(true));
-  EXPECT_TRUE(GetTpm()->TakeOwnership(0, SecureBlob{}));
-
-  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(true), Return(true)));
-  EXPECT_CALL(mock_tpm_manager_utility_, TakeOwnership()).Times(0);
-  EXPECT_TRUE(GetTpm()->TakeOwnership(0, SecureBlob{}));
-}
-
 TEST_F(TpmImplTest, Enabled) {
   EXPECT_CALL(mock_tpm_manager_utility_, GetOwnershipTakenSignalStatus(_, _, _))
       .Times(0);
@@ -288,15 +272,6 @@ TEST_F(TpmImplTest, RemoveTpmOwnerDependencyInvalidEnum) {
                      ".*Unexpected enum class value: 999");
 }
 
-TEST_F(TpmImplTest, ClearStoredPassword) {
-  EXPECT_CALL(mock_tpm_manager_utility_, ClearStoredOwnerPassword())
-      .WillOnce(Return(true));
-  EXPECT_TRUE(GetTpm()->ClearStoredPassword());
-  EXPECT_CALL(mock_tpm_manager_utility_, ClearStoredOwnerPassword())
-      .WillOnce(Return(false));
-  EXPECT_FALSE(GetTpm()->ClearStoredPassword());
-}
-
 TEST_F(TpmImplTest, GetVersionInfoCache) {
   Tpm::TpmVersionInfo expected_version_info;
   expected_version_info.family = 1;
@@ -340,7 +315,6 @@ TEST_F(TpmImplTest, GetVersionInfoBadInput) {
 TEST_F(TpmImplTest, BadTpmManagerUtility) {
   EXPECT_CALL(mock_tpm_manager_utility_, Initialize())
       .WillRepeatedly(Return(false));
-  EXPECT_FALSE(GetTpm()->TakeOwnership(0, SecureBlob{}));
   EXPECT_FALSE(GetTpm()->IsEnabled());
   EXPECT_FALSE(GetTpm()->IsOwned());
   EXPECT_FALSE(GetTpm()->ResetDictionaryAttackMitigation(Blob{}, Blob{}));

@@ -85,33 +85,13 @@ class TpmImpl : public Tpm {
   bool IsNvramLocked(uint32_t index) override;
   bool WriteLockNvram(uint32_t index) override;
   unsigned int GetNvramSize(uint32_t index) override;
-  bool SealToPCR0(const brillo::SecureBlob& value,
-                  brillo::SecureBlob* sealed_value) override;
-  bool Unseal(const brillo::SecureBlob& sealed_value,
-              brillo::SecureBlob* value) override;
   bool CreateDelegate(const std::set<uint32_t>& bound_pcrs,
                       uint8_t delegate_family_label,
                       uint8_t delegate_label,
                       brillo::Blob* delegate_blob,
                       brillo::Blob* delegate_secret) override;
-  bool Sign(const brillo::SecureBlob& key_blob,
-            const brillo::SecureBlob& input,
-            uint32_t bound_pcr_index,
-            brillo::SecureBlob* signature) override;
-  bool CreatePCRBoundKey(const std::map<uint32_t, brillo::Blob>& pcr_map,
-                         AsymmetricKeyUsage key_type,
-                         brillo::SecureBlob* key_blob,
-                         brillo::SecureBlob* public_key_der,
-                         brillo::SecureBlob* creation_blob) override;
-  bool VerifyPCRBoundKey(const std::map<uint32_t, brillo::Blob>& pcr_map,
-                         const brillo::SecureBlob& key_blob,
-                         const brillo::SecureBlob& creation_blob) override;
   bool ExtendPCR(uint32_t pcr_index, const brillo::Blob& extension) override;
   bool ReadPCR(uint32_t pcr_index, brillo::Blob* pcr_value) override;
-  bool IsEndorsementKeyAvailable() override;
-  bool CreateEndorsementKey() override;
-  bool TakeOwnership(int max_timeout_tries,
-                     const brillo::SecureBlob& owner_password) override;
   bool WrapRsaKey(const brillo::SecureBlob& public_modulus,
                   const brillo::SecureBlob& prime_factor,
                   brillo::SecureBlob* wrapped_key) override;
@@ -134,7 +114,6 @@ class TpmImpl : public Tpm {
       const brillo::Blob& delegate_secret) override;
   void DeclareTpmFirmwareStable() override {}
   bool RemoveOwnerDependency(Tpm::TpmOwnerDependency dependency) override;
-  bool ClearStoredPassword() override;
   bool GetVersionInfo(TpmVersionInfo* version_info) override;
   bool GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) override;
   bool GetRsuDeviceId(std::string* device_id) override;

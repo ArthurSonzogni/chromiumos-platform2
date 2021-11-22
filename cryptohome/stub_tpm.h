@@ -111,14 +111,6 @@ class StubTpm : public Tpm {
     return false;
   }
   bool WriteLockNvram(uint32_t index) override { return false; }
-  bool SealToPCR0(const brillo::SecureBlob& value,
-                  brillo::SecureBlob* sealed_value) override {
-    return false;
-  }
-  bool Unseal(const brillo::SecureBlob& sealed_value,
-              brillo::SecureBlob* value) override {
-    return false;
-  }
   bool CreateDelegate(const std::set<uint32_t>& bound_pcrs,
                       uint8_t delegate_family_label,
                       uint8_t delegate_label,
@@ -126,34 +118,10 @@ class StubTpm : public Tpm {
                       brillo::Blob* delegate_secret) override {
     return false;
   }
-  bool Sign(const SecureBlob& key_blob,
-            const SecureBlob& der_encoded_input,
-            uint32_t bound_pcr_index,
-            SecureBlob* signature) override {
-    return false;
-  }
-  bool CreatePCRBoundKey(const std::map<uint32_t, brillo::Blob>& pcr_map,
-                         AsymmetricKeyUsage key_type,
-                         SecureBlob* key_blob,
-                         SecureBlob* public_key_der,
-                         SecureBlob* creation_blob) override {
-    return false;
-  }
-  bool VerifyPCRBoundKey(const std::map<uint32_t, brillo::Blob>& pcr_map,
-                         const SecureBlob& key_blob,
-                         const SecureBlob& creation_blob) override {
-    return false;
-  }
   bool ExtendPCR(uint32_t pcr_index, const brillo::Blob& extension) override {
     return false;
   }
   bool ReadPCR(uint32_t pcr_index, brillo::Blob* pcr_value) override {
-    return false;
-  }
-  bool IsEndorsementKeyAvailable() override { return false; }
-  bool CreateEndorsementKey() override { return false; }
-  bool TakeOwnership(int max_timeout_tries,
-                     const SecureBlob& owner_password) override {
     return false;
   }
   bool WrapRsaKey(const SecureBlob& public_modulus,
@@ -189,7 +157,6 @@ class StubTpm : public Tpm {
   bool RemoveOwnerDependency(Tpm::TpmOwnerDependency dependency) override {
     return true;
   }
-  bool ClearStoredPassword() override { return true; }
   bool GetVersionInfo(TpmVersionInfo* version_info) override { return false; }
   bool GetIFXFieldUpgradeInfo(IFXFieldUpgradeInfo* info) override {
     return false;
