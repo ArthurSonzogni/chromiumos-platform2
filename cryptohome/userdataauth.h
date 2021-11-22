@@ -23,6 +23,7 @@
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "cryptohome/auth_session.h"
+#include "cryptohome/auth_session_manager.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/cleanup/low_disk_space_handler.h"
 #include "cryptohome/credentials.h"
@@ -517,6 +518,11 @@ class UserDataAuth {
     keyset_management_ = value;
   }
 
+  // Override |auth_session_manager_| for testing purpose
+  void set_auth_session_manager(AuthSessionManager* value) {
+    auth_session_manager_ = value;
+  }
+
   void set_user_activity_timestamp_manager(
       UserOldestActivityTimestampManager* user_activity_timestamp_manager) {
     user_activity_timestamp_manager_ = user_activity_timestamp_manager;
@@ -965,10 +971,6 @@ class UserDataAuth {
   // Ensures BootLockbox is finalized;
   void EnsureBootLockboxFinalized();
 
-  // =============== Auth Session Related Helpers ===============
-
-  void RemoveAuthSessionWithToken(const base::UnguessableToken& token);
-
   // =============== Threading Related Variables ===============
 
   // The task runner that belongs to the thread that created this UserDataAuth
@@ -1126,6 +1128,12 @@ class UserDataAuth {
   // only because there's no guarantee on thread safety of the HomeDirs object.
   KeysetManagement* keyset_management_;
 
+  // Manager for auth session objects.
+  std::unique_ptr<AuthSessionManager> default_auth_session_manager_;
+  // Usually set to default_auth_session_manager_, but can be overridden for
+  // tests.
+  AuthSessionManager* auth_session_manager_;
+
   // Defines a type for tracking Mount objects for each user by username.
   typedef std::map<const std::string, scoped_refptr<UserSession>>
       UserSessionMap;
@@ -1211,12 +1219,6 @@ class UserDataAuth {
   // The actual ARC Disk Quota object used by this class. Usually set to
   // default_arc_disk_quota_, but can be overridden for testing.
   ArcDiskQuota* arc_disk_quota_;
-
-  // Defines a type for tracking Auth Sessions by token.
-  typedef std::map<const base::UnguessableToken, std::unique_ptr<AuthSession>>
-      AuthSessionMap;
-
-  AuthSessionMap auth_sessions_;
 
   // A counter to count the number of parallel tasks on mount thread.
   // Recorded when a requests comes in. Counts of 1 will not reported.

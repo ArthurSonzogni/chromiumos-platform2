@@ -26,6 +26,8 @@
 #include <chromeos/constants/cryptohome.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
+#include "cryptohome/auth_session.h"
+#include "cryptohome/auth_session_manager.h"
 #include "cryptohome/bootlockbox/boot_lockbox_client.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
 #include "cryptohome/cleanup/disk_cleanup.h"
@@ -190,6 +192,8 @@ UserDataAuth::UserDataAuth()
       homedirs_(nullptr),
       default_keyset_management_(nullptr),
       keyset_management_(nullptr),
+      default_auth_session_manager_(nullptr),
+      auth_session_manager_(nullptr),
       default_low_disk_space_handler_(nullptr),
       low_disk_space_handler_(nullptr),
       disk_cleanup_threshold_(kFreeSpaceThresholdToTriggerCleanup),
@@ -266,6 +270,12 @@ bool UserDataAuth::Initialize() {
         platform_, crypto_, system_salt_,
         std::make_unique<VaultKeysetFactory>());
     keyset_management_ = default_keyset_management_.get();
+  }
+
+  if (!auth_session_manager_) {
+    default_auth_session_manager_ =
+        std::make_unique<AuthSessionManager>(keyset_management_);
+    auth_session_manager_ = default_auth_session_manager_.get();
   }
 
   if (!homedirs_) {
@@ -1301,31 +1311,29 @@ void UserDataAuth::DoMount(
   // to requiring a IdP-unique identifier.
   const std::string& account_id = GetAccountId(request.account());
 
-  base::Optional<base::UnguessableToken> token;
-  // Create a bool for better documentation for what token.has_value() means.
-  bool has_valid_auth_session = false;
+  // AuthSession associated with this request's auth_session_id. Can be empty
+  // in case auth_session_id is not supplied.
+  AuthSession* auth_session = nullptr;
+
   if (!request.auth_session_id().empty()) {
-    token =
-        AuthSession::GetTokenFromSerializedString(request.auth_session_id());
-    has_valid_auth_session = token.has_value();
-    if (has_valid_auth_session) {
-      if (auth_sessions_.find(token.value()) == auth_sessions_.end()) {
-        reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-        LOG(ERROR) << "Invalid AuthSession token provided.";
-        std::move(on_done).Run(reply);
-        return;
-      } else if (auth_sessions_[token.value()]->GetStatus() !=
-                 AuthStatus::kAuthStatusAuthenticated) {
-        reply.set_error(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-        LOG(ERROR) << "AuthSession is not authenticated";
-        std::move(on_done).Run(reply);
-        return;
-      }
+    auth_session =
+        auth_session_manager_->FindAuthSession(request.auth_session_id());
+    if (!auth_session) {
+      reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+      LOG(ERROR) << "Invalid AuthSession token provided.";
+      std::move(on_done).Run(reply);
+      return;
+    }
+    if (auth_session->GetStatus() != AuthStatus::kAuthStatusAuthenticated) {
+      reply.set_error(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+      LOG(ERROR) << "AuthSession is not authenticated";
+      std::move(on_done).Run(reply);
+      return;
     }
   }
 
   // Check for empty account ID
-  if (account_id.empty() && !has_valid_auth_session) {
+  if (account_id.empty() && !auth_session) {
     LOG(ERROR) << "No email supplied";
     reply.set_error(
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
@@ -1335,7 +1343,7 @@ void UserDataAuth::DoMount(
 
   // Key generation is not needed if there is a valid AuthSession as part of the
   // request. Key generation is handled in AuthSession.
-  if (request.public_mount() && !has_valid_auth_session) {
+  if (request.public_mount() && !auth_session) {
     // Public mount have a set of passkey/password that is generated directly
     // from the username (and a local system salt.)
     brillo::SecureBlob public_mount_passkey =
@@ -1361,7 +1369,7 @@ void UserDataAuth::DoMount(
   if (request.authorization().key().secret().empty() &&
       request.authorization().key().data().type() !=
           KeyData::KEY_TYPE_CHALLENGE_RESPONSE &&
-      !has_valid_auth_session) {
+      !auth_session) {
     LOG(ERROR) << "No key secret supplied";
     reply.set_error(
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
@@ -1369,7 +1377,7 @@ void UserDataAuth::DoMount(
     return;
   }
 
-  if (request.has_create() && !has_valid_auth_session) {
+  if (request.has_create() && !auth_session) {
     // copy_authorization_key in CreateRequest means that we'll copy the
     // authorization request's key and use it as if it's the key specified in
     // CreateRequest.
@@ -1410,15 +1418,13 @@ void UserDataAuth::DoMount(
   bool is_ephemeral = false;
   bool require_ephemeral =
       request.require_ephemeral() ||
-      (has_valid_auth_session ? auth_sessions_[token.value()]->ephemeral_user()
-                              : false);
+      (auth_session ? auth_session->ephemeral_user() : false);
   user_data_auth::CryptohomeErrorCode mount_error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
-  if (!GetShouldMountAsEphemeral(
-          account_id, require_ephemeral,
-          (request.has_create() || has_valid_auth_session), &is_ephemeral,
-          &mount_error)) {
+  if (!GetShouldMountAsEphemeral(account_id, require_ephemeral,
+                                 (request.has_create() || auth_session),
+                                 &is_ephemeral, &mount_error)) {
     reply.set_error(mount_error);
     std::move(on_done).Run(reply);
     return;
@@ -1441,8 +1447,7 @@ void UserDataAuth::DoMount(
   // can temporarily bypass create_if_missing as a first step to prevent
   // credentials from flowing to mount call. Later, this would be replaced by
   // CreateEphemeral, CreatePersistent calls.
-  mount_args.create_if_missing =
-      (request.has_create() || has_valid_auth_session);
+  mount_args.create_if_missing = (request.has_create() || auth_session);
   mount_args.is_ephemeral = is_ephemeral;
   mount_args.create_as_ecryptfs =
       force_ecryptfs_ ||
@@ -1464,9 +1469,13 @@ void UserDataAuth::DoMount(
   // Everything else can be the default.
   credentials->set_key_data(request.authorization().key().data());
 
-  ContinueMountWithCredentials(request, std::move(credentials),
-                               std::move(token), mount_args,
-                               std::move(on_done));
+  base::Optional<base::UnguessableToken> token = base::nullopt;
+  if (auth_session) {
+    token = auth_session->token();
+  }
+
+  ContinueMountWithCredentials(request, std::move(credentials), token,
+                               mount_args, std::move(on_done));
   LOG(INFO) << "Finished mount request process";
 }
 
@@ -1716,6 +1725,11 @@ void UserDataAuth::ContinueMountWithCredentials(
     const UserDataAuth::MountArgs& mount_args,
     base::OnceCallback<void(const user_data_auth::MountReply&)> on_done) {
   AssertOnMountThread();
+
+  AuthSession* auth_session =
+      token.has_value() ? auth_session_manager_->FindAuthSession(token.value())
+                        : nullptr;
+
   // Setup a reply for use during error handling.
   user_data_auth::MountReply reply;
 
@@ -1746,9 +1760,8 @@ void UserDataAuth::ContinueMountWithCredentials(
     return;
   }
 
-  std::string account_id = token.has_value()
-                               ? auth_sessions_[token.value()]->username()
-                               : GetAccountId(request.account());
+  std::string account_id =
+      auth_session ? auth_session->username() : GetAccountId(request.account());
   // Provide an authoritative filesystem-sanitized username.
   reply.set_sanitized_username(
       brillo::cryptohome::home::SanitizeUserName(account_id));
@@ -1864,18 +1877,16 @@ void UserDataAuth::ContinueMountWithCredentials(
     homedirs_->RemoveNonOwnerCryptohomes();
 
   MountError code;
-  if (token.has_value()) {
-    code = AttemptUserMount(auth_sessions_[token.value()].get(), mount_args,
-                            user_session);
+  if (auth_session) {
+    code = AttemptUserMount(auth_session, mount_args, user_session);
   } else {
     code = AttemptUserMount(*credentials, mount_args, user_session);
   }
   // Does actual mounting here.
   if (code == MOUNT_ERROR_TPM_COMM_ERROR) {
     LOG(WARNING) << "TPM communication error. Retrying.";
-    if (token.has_value()) {
-      code = AttemptUserMount(auth_sessions_[token.value()].get(), mount_args,
-                              user_session);
+    if (auth_session) {
+      code = AttemptUserMount(auth_session, mount_args, user_session);
     } else {
       code = AttemptUserMount(*credentials, mount_args, user_session);
     }
@@ -3318,31 +3329,26 @@ bool UserDataAuth::StartAuthSession(
     base::OnceCallback<void(const user_data_auth::StartAuthSessionReply&)>
         on_done) {
   AssertOnMountThread();
-  // The lifetime of UserDataAuth instance will outlast AuthSession which is why
-  // usage of |Unretained| is safe.
-  auto on_timeout = base::BindOnce(&UserDataAuth::RemoveAuthSessionWithToken,
-                                   base::Unretained(this));
-  // Assumption here is that keyset_management_ will outlive this AuthSession.
-  std::unique_ptr<AuthSession> auth_session = std::make_unique<AuthSession>(
-      request.account_id().account_id(), request.flags(), std::move(on_timeout),
-      keyset_management_);
+
   user_data_auth::StartAuthSessionReply reply;
+
+  AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
+      request.account_id().account_id(), request.flags());
+  if (!auth_session) {
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
+    std::move(on_done).Run(reply);
+    return false;
+  }
+
   reply.set_auth_session_id(auth_session->serialized_token());
   reply.set_user_exists(auth_session->user_exists());
   google::protobuf::Map<std::string, cryptohome::KeyData> proto_key_map(
       auth_session->key_label_data().begin(),
       auth_session->key_label_data().end());
   *(reply.mutable_key_label_data()) = proto_key_map;
-  auth_sessions_[auth_session->token()] = std::move(auth_session);
   std::move(on_done).Run(reply);
 
   return true;
-}
-
-void UserDataAuth::RemoveAuthSessionWithToken(
-    const base::UnguessableToken& token) {
-  AssertOnMountThread();
-  auth_sessions_.erase(token);
 }
 
 bool UserDataAuth::AddCredentials(
@@ -3350,11 +3356,12 @@ bool UserDataAuth::AddCredentials(
     base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
         on_done) {
   AssertOnMountThread();
-  base::Optional<base::UnguessableToken> token =
-      AuthSession::GetTokenFromSerializedString(request.auth_session_id());
+
   user_data_auth::AddCredentialsReply reply;
-  if (!token.has_value() ||
-      auth_sessions_.find(token.value()) == auth_sessions_.end()) {
+
+  AuthSession* auth_session =
+      auth_session_manager_->FindAuthSession(request.auth_session_id());
+  if (!auth_session) {
     reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
     std::move(on_done).Run(reply);
     return false;
@@ -3362,8 +3369,7 @@ bool UserDataAuth::AddCredentials(
 
   // Additional check if the user wants to add new credentials for an existing
   // user.
-  if (request.add_more_credentials() &&
-      !auth_sessions_[token.value()]->user_exists()) {
+  if (request.add_more_credentials() && !auth_session->user_exists()) {
     reply.set_error(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED);
     std::move(on_done).Run(reply);
     return false;
@@ -3371,9 +3377,7 @@ bool UserDataAuth::AddCredentials(
 
   // Add credentials using data in AuthorizationRequest and
   // auth_session_token.
-  user_data_auth::CryptohomeErrorCode error =
-      auth_sessions_[token.value()]->AddCredentials(request);
-  reply.set_error(error);
+  reply.set_error(auth_session->AddCredentials(request));
   std::move(on_done).Run(reply);
   return true;
 }
@@ -3383,11 +3387,12 @@ bool UserDataAuth::AuthenticateAuthSession(
     base::OnceCallback<
         void(const user_data_auth::AuthenticateAuthSessionReply&)> on_done) {
   AssertOnMountThread();
-  base::Optional<base::UnguessableToken> token =
-      AuthSession::GetTokenFromSerializedString(request.auth_session_id());
+
   user_data_auth::AuthenticateAuthSessionReply reply;
-  if (!token.has_value() ||
-      auth_sessions_.find(token.value()) == auth_sessions_.end()) {
+
+  AuthSession* auth_session =
+      auth_session_manager_->FindAuthSession(request.auth_session_id());
+  if (!auth_session) {
     reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
     std::move(on_done).Run(reply);
     return false;
@@ -3395,11 +3400,9 @@ bool UserDataAuth::AuthenticateAuthSession(
 
   // Perform authentication using data in AuthorizationRequest and
   // auth_session_token.
-  user_data_auth::CryptohomeErrorCode error =
-      auth_sessions_[token.value()]->Authenticate(request.authorization());
   // TODO(crbug.com/1157622) : Complete the API with actual authentication.
-  reply.set_error(error);
-  reply.set_authenticated(auth_sessions_[token.value()]->GetStatus() ==
+  reply.set_error(auth_session->Authenticate(request.authorization()));
+  reply.set_authenticated(auth_session->GetStatus() ==
                           AuthStatus::kAuthStatusAuthenticated);
   std::move(on_done).Run(reply);
   return false;
@@ -3410,19 +3413,9 @@ bool UserDataAuth::InvalidateAuthSession(
     base::OnceCallback<void(const user_data_auth::InvalidateAuthSessionReply&)>
         on_done) {
   AssertOnMountThread();
-  base::Optional<base::UnguessableToken> token =
-      AuthSession::GetTokenFromSerializedString(request.auth_session_id());
-  user_data_auth::InvalidateAuthSessionReply reply;
-  if (!token.has_value() ||
-      auth_sessions_.find(token.value()) == auth_sessions_.end()) {
-    // Token lookup failed.
-    reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-    std::move(on_done).Run(reply);
-    return false;
-  }
 
-  // RemoveAuthSessionWithToken is a void function.
-  RemoveAuthSessionWithToken(token.value());
+  user_data_auth::InvalidateAuthSessionReply reply;
+  auth_session_manager_->RemoveAuthSession(request.auth_session_id());
   reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   std::move(on_done).Run(reply);
   return true;

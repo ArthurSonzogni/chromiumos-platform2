@@ -75,8 +75,10 @@ using ::testing::EndsWith;
 using ::testing::Eq;
 using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
+using ::testing::IsNull;
 using ::testing::Mock;
 using ::testing::NiceMock;
+using ::testing::NotNull;
 using ::testing::Pointee;
 using ::testing::Property;
 using ::testing::Return;
@@ -3687,14 +3689,9 @@ TEST_F(UserDataAuthExTest, StartAuthSession) {
       AuthSession::GetTokenFromSerializedString(
           auth_session_reply.auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
-  EXPECT_NE(userdataauth_->auth_sessions_.find(auth_session_id.value()),
-            userdataauth_->auth_sessions_.end());
-
-  FastForwardBy(userdataauth_->auth_sessions_[auth_session_id.value()]
-                    ->timer_.GetCurrentDelay());
-
-  EXPECT_EQ(userdataauth_->auth_sessions_.find(auth_session_id.value()),
-            userdataauth_->auth_sessions_.end());
+  EXPECT_THAT(userdataauth_->auth_session_manager_->FindAuthSession(
+                  auth_session_id.value()),
+              NotNull());
 }
 
 TEST_F(UserDataAuthExTest, AuthenticateAuthSessionInvalidToken) {
@@ -3764,8 +3761,9 @@ TEST_F(UserDataAuthExTest, MountUnauthenticatedAuthSession) {
       AuthSession::GetTokenFromSerializedString(
           auth_session_reply.auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
-  EXPECT_NE(userdataauth_->auth_sessions_.find(auth_session_id.value()),
-            userdataauth_->auth_sessions_.end());
+  EXPECT_THAT(userdataauth_->auth_session_manager_->FindAuthSession(
+                  auth_session_id.value()),
+              NotNull());
 
   user_data_auth::MountRequest mount_req;
   mount_req.set_auth_session_id(auth_session_reply.auth_session_id());
@@ -3785,12 +3783,6 @@ TEST_F(UserDataAuthExTest, MountUnauthenticatedAuthSession) {
             base::Unretained(&mount_done)));
     ASSERT_EQ(TRUE, mount_done);
   }
-
-  FastForwardBy(userdataauth_->auth_sessions_[auth_session_id.value()]
-                    ->timer_.GetCurrentDelay());
-
-  EXPECT_EQ(userdataauth_->auth_sessions_.find(auth_session_id.value()),
-            userdataauth_->auth_sessions_.end());
 }
 
 TEST_F(UserDataAuthExTest, InvalidateAuthSession) {
@@ -3816,8 +3808,9 @@ TEST_F(UserDataAuthExTest, InvalidateAuthSession) {
       AuthSession::GetTokenFromSerializedString(
           auth_session_reply.auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
-  EXPECT_NE(userdataauth_->auth_sessions_.find(auth_session_id.value()),
-            userdataauth_->auth_sessions_.end());
+  EXPECT_THAT(userdataauth_->auth_session_manager_->FindAuthSession(
+                  auth_session_id.value()),
+              NotNull());
 
   // Test.
   user_data_auth::InvalidateAuthSessionRequest inv_auth_session_req;
@@ -3841,8 +3834,9 @@ TEST_F(UserDataAuthExTest, InvalidateAuthSession) {
     EXPECT_EQ(TRUE, invalidated);
   }
 
-  EXPECT_EQ(userdataauth_->auth_sessions_.find(auth_session_id.value()),
-            userdataauth_->auth_sessions_.end());
+  EXPECT_THAT(userdataauth_->auth_session_manager_->FindAuthSession(
+                  auth_session_id.value()),
+              IsNull());
 }
 
 class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
