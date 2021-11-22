@@ -338,6 +338,19 @@ int32_t VirtGpuChannel::handle_channel_event(
     int& out_read_pipe) {
   int32_t ret;
   struct CrossDomainHeader* cmd_hdr = (struct CrossDomainHeader*)ring_addr_;
+  ssize_t bytes_read;
+  struct drm_event dummy_event;
+
+  bytes_read = read(virtgpu_, &dummy_event, sizeof(struct drm_event));
+  if (bytes_read < (int)sizeof(struct drm_event)) {
+    fprintf(stderr, "invalid event size\n");
+    return -EINVAL;
+  }
+
+  if (dummy_event.type != VIRTGPU_EVENT_FENCE_SIGNALED) {
+    fprintf(stderr, "invalid event type\n");
+    return -EINVAL;
+  }
 
   if (cmd_hdr->cmd == CROSS_DOMAIN_CMD_RECEIVE) {
     event_type = WaylandChannelEvent::Receive;
