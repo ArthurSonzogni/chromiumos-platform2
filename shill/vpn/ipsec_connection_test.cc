@@ -4,6 +4,9 @@
 
 #include "shill/vpn/ipsec_connection.h"
 
+#include <sys/socket.h>
+#include <sys/un.h>
+
 #include <map>
 #include <memory>
 #include <string>
@@ -163,6 +166,22 @@ constexpr char kSwanctlListSAsOutput[] =
     remote 1.2.3.4/32[udp/l2tp]
 )";
 
+// Creates the UNIX socket at |path|, and listens on it if |start_listen| is
+// true. Returns the fd of this socket.
+base::ScopedFD CreateUnixSocketAt(const base::FilePath& path,
+                                  bool start_listen) {
+  base::ScopedFD fd(socket(AF_UNIX, SOCK_STREAM, 0));
+  CHECK(fd.is_valid());
+  struct sockaddr_un addr = {0};
+  addr.sun_family = AF_UNIX;
+  snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", path.value().c_str());
+  CHECK_EQ(bind(fd.get(), (struct sockaddr*)&addr, sizeof(addr)), 0);
+  if (start_listen) {
+    CHECK_EQ(listen(fd.get(), 1), 0);
+  }
+  return fd;
+}
+
 class MockCallbacks {
  public:
   MOCK_METHOD(void,
@@ -262,7 +281,8 @@ TEST_F(IPsecConnectionTest, StartCharon) {
   // forward the step. We use a RunLoop here instead of RunUtilIdle() since it
   // cannot be guaranteed that FilePathWatcher posted the task before
   // RunUtilIdle() is called.
-  CHECK(base::WriteFile(kViciSocketPath, ""));
+  base::ScopedFD vici_server_fd =
+      CreateUnixSocketAt(kViciSocketPath, /*start_listen=*/true);
   base::RunLoop run_loop;
   EXPECT_CALL(*ipsec_connection_,
               ScheduleConnectTask(ConnectStep::kCharonStarted))
@@ -299,6 +319,32 @@ TEST_F(IPsecConnectionTest, StartCharonFailWithCharonExited) {
 
   EXPECT_CALL(callbacks_, OnFailure(_));
   dispatcher_.task_environment().RunUntilIdle();
+}
+
+TEST_F(IPsecConnectionTest, StartCharonFailWithSocketNotListening) {
+  ipsec_connection_->set_state(VPNConnection::State::kConnecting);
+
+  const auto tmp_dir = ipsec_connection_->SetTempDir();
+  const base::FilePath kViciSocketPath = tmp_dir.Append("charon.vici");
+  ipsec_connection_->set_vici_socket_path(kViciSocketPath);
+
+  base::OnceCallback<void(int)> exit_cb;
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
+      .WillOnce(
+          WithArg<5>([&exit_cb](base::OnceCallback<void(int)> exit_callback) {
+            exit_cb = std::move(exit_callback);
+            return 123;
+          }));
+  ipsec_connection_->InvokeScheduleConnectTask(
+      ConnectStep::kStrongSwanConfigWritten);
+
+  base::ScopedFD vici_server_fd =
+      CreateUnixSocketAt(kViciSocketPath, /*start_listen=*/false);
+  base::RunLoop run_loop;
+  EXPECT_CALL(callbacks_, OnFailure(_)).WillOnce([&](Service::ConnectFailure) {
+    run_loop.Quit();
+  });
+  run_loop.Run();
 }
 
 TEST_F(IPsecConnectionTest, WriteSwanctlConfig) {

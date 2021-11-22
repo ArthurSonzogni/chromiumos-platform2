@@ -143,8 +143,14 @@ class IPsecConnection : public VPNConnection {
   // stdout of the execution. Trigger |kIPsecStatusRead| on success.
   void SwanctlListSAs();
 
+  // This function will be called when the vici socket file is created, and may
+  // be called multiple times if charon is still not listening on that socket.
+  // |remaining_attempts| controls the remaining times that this function can be
+  // entered.
+  void OnViciSocketPathEvent(int remaining_attempts,
+                             const base::FilePath& path,
+                             bool error);
   void OnCharonExitedUnexpectedly(int exit_code);
-  void OnViciSocketPathEvent(const base::FilePath& path, bool error);
   void OnSwanctlListSAsDone(const std::string& stdout_str);
 
   // Helper functions to run swanctl. RunSwanctl() executes `swanctl` with

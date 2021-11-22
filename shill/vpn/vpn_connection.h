@@ -113,6 +113,8 @@ class VPNConnection {
                               const std::string& detail);
   void NotifyStopped();
 
+  EventDispatcher* dispatcher() { return dispatcher_; }
+
  private:
   // For able to modify |state_| in the tests.
   friend class IPsecConnectionUnderTest;

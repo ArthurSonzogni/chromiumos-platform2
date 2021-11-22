@@ -4,6 +4,9 @@
 
 #include "shill/vpn/ipsec_connection.h"
 
+#include <sys/socket.h>
+#include <sys/un.h>
+
 #include <map>
 #include <memory>
 #include <string>
@@ -15,6 +18,7 @@
 #include <base/files/file_path_watcher.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -51,6 +55,14 @@ constexpr char kDefaultESPProposals[] =
     "aes128gcm16,aes128-sha256,aes128-sha1,3des-sha1,3des-md5,default";
 
 constexpr char kChildSAName[] = "managed";
+
+// The time interval between two checks for if the vici socket is connectable.
+constexpr base::TimeDelta kCheckViciConnectableInterval =
+    base::TimeDelta::FromMilliseconds(300);
+
+// The maximum number of attempts to check if the vici socket is connectable
+// before returning a failure.
+constexpr int kCheckViciConnectableMaxAttempts = 10;
 
 // The default timeout value used in `swanctl --initiate`.
 constexpr base::TimeDelta kIPsecTimeout = base::TimeDelta::FromSeconds(30);
@@ -243,6 +255,26 @@ Metrics::VpnIpsecDHGroup ParseDHGroup(const std::string& input) {
     return Metrics::kVpnIpsecDHGroupUnknown;
   }
   return it->second;
+}
+
+// Returns whether the pathname UNIX socket pointed by |path| is connect()-able.
+bool TestUnixSocketConnectable(const base::FilePath& path) {
+  base::ScopedFD fd(socket(AF_UNIX, SOCK_STREAM, 0));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << "Failed to open UNIX socket";
+    return false;
+  }
+
+  struct sockaddr_un addr = {0};
+  addr.sun_family = AF_UNIX;
+  snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", path.value().c_str());
+  if (HANDLE_EINTR(connect(fd.get(), (struct sockaddr*)&addr, sizeof(addr))) <
+      0) {
+    PLOG(WARNING) << "Failed to connect to UNIX socket file: " << path;
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace
@@ -595,7 +627,8 @@ void IPsecConnection::StartCharon() {
   if (!base::PathExists(vici_socket_path_)) {
     vici_socket_watcher_ = std::make_unique<base::FilePathWatcher>();
     auto callback = base::BindRepeating(&IPsecConnection::OnViciSocketPathEvent,
-                                        weak_factory_.GetWeakPtr());
+                                        weak_factory_.GetWeakPtr(),
+                                        kCheckViciConnectableMaxAttempts);
     if (!vici_socket_watcher_->Watch(vici_socket_path_,
                                      base::FilePathWatcher::Type::kNonRecursive,
                                      callback)) {
@@ -641,7 +674,8 @@ void IPsecConnection::SwanctlListSAs() {
              "Failed to get SA information");
 }
 
-void IPsecConnection::OnViciSocketPathEvent(const base::FilePath& /*path*/,
+void IPsecConnection::OnViciSocketPathEvent(int remaining_attempts,
+                                            const base::FilePath& /*path*/,
                                             bool error) {
   if (state() != State::kConnecting) {
     LOG(WARNING) << "OnViciSocketPathEvent triggered on state " << state();
@@ -661,9 +695,27 @@ void IPsecConnection::OnViciSocketPathEvent(const base::FilePath& /*path*/,
     return;
   }
 
+  vici_socket_watcher_ = nullptr;
+
+  if (remaining_attempts <= 0) {
+    NotifyFailure(Service::kFailureInternal,
+                  "Failed to wait for vici socket ready.");
+    return;
+  }
+
+  if (!TestUnixSocketConnectable(vici_socket_path_)) {
+    LOG(WARNING) << "vici socket is not connectable";
+    dispatcher()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&IPsecConnection::OnViciSocketPathEvent,
+                       weak_factory_.GetWeakPtr(), remaining_attempts - 1,
+                       vici_socket_path_, false),
+        kCheckViciConnectableInterval.InMilliseconds());
+    return;
+  }
+
   LOG(INFO) << "vici socket is ready";
 
-  vici_socket_watcher_ = nullptr;
   ScheduleConnectTask(ConnectStep::kCharonStarted);
 }
 
