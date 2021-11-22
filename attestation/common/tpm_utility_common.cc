@@ -7,9 +7,11 @@
 #include <memory>
 #include <vector>
 
+#include <base/bind_post_task.h>
 #include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/threading/sequenced_task_runner_handle.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
 
 namespace attestation {
@@ -29,8 +31,10 @@ bool TpmUtilityCommon::Initialize() {
     LOG(INFO) << __func__ << "Reinitialize tpm_manager utility";
     tpm_manager_utility_ = tpm_manager::TpmManagerUtility::GetSingleton();
   }
-  tpm_manager_utility_->AddOwnershipCallback(base::Bind(
-      &TpmUtilityCommon::OnOwnershipTakenSignal, base::Unretained(this)));
+  tpm_manager_utility_->AddOwnershipCallback(base::BindPostTask(
+      base::SequencedTaskRunnerHandle::Get(),
+      base::BindRepeating(&TpmUtilityCommon::OnOwnershipTakenSignal,
+                          base::Unretained(this))));
   return tpm_manager_utility_;
 }
 
@@ -51,10 +55,6 @@ void TpmUtilityCommon::OnOwnershipTakenSignal() {
   if (!tpm_manager_utility_->GetOwnershipTakenSignalStatus(nullptr, nullptr,
                                                            &local_data)) {
     LOG(ERROR) << __func__ << ": Failed to get local data.";
-    return;
-  }
-  base::AutoLock lock(tpm_state_lock_);
-  if (is_ready_) {
     return;
   }
   is_ready_ = true;
@@ -85,13 +85,9 @@ bool TpmUtilityCommon::IsTpmReady() {
     LOG(ERROR) << __func__ << ": Failed to get tpm status from tpm_manager.";
     return false;
   }
-  base::AutoLock lock(tpm_state_lock_);
-  if (is_ready_) {
-    return true;
-  }
   is_ready_ = is_enabled && is_owned;
   UpdateTpmLocalData(local_data);
-  return true;
+  return is_ready_;
 }
 
 void TpmUtilityCommon::BuildValidPCR0Values() {

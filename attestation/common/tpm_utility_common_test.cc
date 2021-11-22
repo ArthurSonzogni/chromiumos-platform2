@@ -81,6 +81,13 @@ TEST_F(TpmUtilityCommonTest, IsTpmReadySuccess) {
   EXPECT_TRUE(this->tpm_utility_->IsTpmReady());
 }
 
+TEST_F(TpmUtilityCommonTest, IsTpmReadyNotOwned) {
+  EXPECT_CALL(this->mock_tpm_manager_utility_, GetTpmStatus(_, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<0>(true), SetArgPointee<1>(false), Return(true)));
+  EXPECT_FALSE(this->tpm_utility_->IsTpmReady());
+}
+
 TEST_F(TpmUtilityCommonTest, IsTpmReadyWithOwnershipTakenSignal) {
   EXPECT_CALL(this->mock_tpm_manager_utility_, GetTpmStatus(_, _, _))
       .WillOnce(Return(false));

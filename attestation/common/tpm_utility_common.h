@@ -60,9 +60,6 @@ class TpmUtilityCommon : public TpmUtility {
 
   std::unordered_set<std::string> valid_pcr0_values_;
 
-  // This Lock is used before updating is_ready_ or UpdateTpmLocalData().
-  base::Lock tpm_state_lock_;
-
   tpm_manager::TpmManagerUtility* tpm_manager_utility_;
 
   // For testing purpose.

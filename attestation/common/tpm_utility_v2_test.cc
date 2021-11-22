@@ -8,6 +8,7 @@
 #include <base/check_op.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
@@ -141,7 +142,8 @@ class TpmUtilityTest : public testing::Test {
     local_data.set_owner_password("password");
     local_data.set_endorsement_password("endorsement_password");
     EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _))
-        .WillOnce(DoAll(SetArgPointee<2>(local_data), Return(true)));
+        .WillOnce(DoAll(SetArgPointee<0>(true), SetArgPointee<1>(true),
+                        SetArgPointee<2>(local_data), Return(true)));
   }
 
   tpm_manager::GetTpmStatusReply tpm_status_;
@@ -152,6 +154,7 @@ class TpmUtilityTest : public testing::Test {
   NiceMock<trunks::MockBlobParser> mock_blob_parser_;
   trunks::TrunksFactoryForTest trunks_factory_for_test_;
   std::unique_ptr<TpmUtilityV2> tpm_utility_;
+  base::test::SingleThreadTaskEnvironment task_environment_;
 };
 
 TEST_F(TpmUtilityTest, ActivateIdentity) {
