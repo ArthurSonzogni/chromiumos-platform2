@@ -20,6 +20,7 @@
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 #include "u2fd/sign_manager/sign_manager.h"
+#include "u2fd/sign_manager/sign_manager_tpm_v1.h"
 #include "u2fd/user_state.h"
 #include "u2fd/util.h"
 #include "u2fd/webauthn_handler.h"
@@ -62,7 +63,8 @@ U2fCommandProcessorGeneric::U2fCommandProcessorGeneric(UserState* user_state,
                                                        dbus::Bus* bus)
     : user_state_(user_state),
       cryptohome_proxy_(
-          std::make_unique<org::chromium::UserDataAuthInterfaceProxy>(bus)) {}
+          std::make_unique<org::chromium::UserDataAuthInterfaceProxy>(bus)),
+      sign_manager_(std::make_unique<SignManagerTpmV1>()) {}
 
 U2fCommandProcessorGeneric::U2fCommandProcessorGeneric(
     UserState* user_state,
