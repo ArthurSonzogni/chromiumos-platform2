@@ -365,6 +365,76 @@ do.
       </arg>
     </method>
 
+    <!-- Creates an on-disk representation of a persistent user. -->
+    <method name="CreatePersistentUser">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::CreatePersistentUserRequest"/>
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::CreatePersistentUserReply"/>
+      </arg>
+    </method>
+
+    <!-- Prepares user datastore for a guest session. -->
+    <method name="PrepareGuestVault">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::PrepareGuestVaultRequest"/>
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::PrepareGuestVaultReply"/>
+      </arg>
+    </method>
+
+    <!-- Prepares user datastore for an ephemeral session. -->
+    <method name="PrepareEphemeralVault">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::PrepareEphemeralVaultRequest"/>
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::PrepareEphemeralVaultReply"/>
+      </arg>
+    </method>
+
+    <!-- Prepares user datastore for a persistent session. -->
+    <method name="PreparePersistentVault">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::PreparePersistentVaultRequest"/>
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::PreparePersistentVaultReply"/>
+      </arg>
+    </method>
+
+    <!-- Prepares user datastore for a migration. -->
+    <method name="PrepareVaultForMigration">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::PrepareVaultForMigrationRequest"/>
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::PrepareVaultForMigrationReply"/>
+      </arg>
+    </method>
+
     <!-- LowDiskSpace: Emitted when the system is running low on disk space
                        for home directories. -->
     <signal name="LowDiskSpace">

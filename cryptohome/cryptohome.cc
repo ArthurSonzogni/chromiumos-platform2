@@ -192,6 +192,11 @@ static const char* kActions[] = {"mount_ex",
                                  "add_credentials",
                                  "authenticate_auth_session",
                                  "invalidate_auth_session",
+                                 "create_persistent_user",
+                                 "prepare_guest_vault",
+                                 "prepare_ephemeral_vault",
+                                 "prepare_persistent_vault",
+                                 "prepare_vault_for_migration",
                                  NULL};
 enum ActionEnum {
   ACTION_MOUNT_EX,
@@ -277,7 +282,12 @@ enum ActionEnum {
   ACTION_START_AUTH_SESSION,
   ACTION_ADD_CREDENTIALS,
   ACTION_AUTHENTICATE_AUTH_SESSION,
-  ACTION_INVALIDATE_AUTH_SESSION
+  ACTION_INVALIDATE_AUTH_SESSION,
+  ACTION_CREATE_PERSISTENT_USER,
+  ACTION_PREPARE_GUEST_VAULT,
+  ACTION_PREPARE_EPHEMERAL_VAULT,
+  ACTION_PREPARE_PERSISTENT_VAULT,
+  ACTION_PREPARE_VAULT_FOR_MIGRATION,
 };
 static const char kUserSwitch[] = "user";
 static const char kPasswordSwitch[] = "password";
@@ -2945,6 +2955,147 @@ int main(int argc, char** argv) {
     }
 
     printf("Auth session invalidated.\n");
+  } else if (!strcmp(
+                 switches::kActions[switches::ACTION_CREATE_PERSISTENT_USER],
+                 action.c_str())) {
+    user_data_auth::CreatePersistentUserRequest req;
+    user_data_auth::CreatePersistentUserReply reply;
+
+    std::string auth_session_id_hex, auth_session_id;
+    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+      return 1;
+    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
+
+    req.set_auth_session_id(auth_session_id);
+
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.CreatePersistentUser(req, &reply, &error,
+                                                 timeout_ms) ||
+        error) {
+      printf("CreatePersistentUser call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("Failed to create persistent user.\n");
+      return static_cast<int>(reply.error());
+    }
+
+    printf("Created persistent user.\n");
+  } else if (!strcmp(switches::kActions[switches::ACTION_PREPARE_GUEST_VAULT],
+                     action.c_str())) {
+    user_data_auth::PrepareGuestVaultRequest req;
+    user_data_auth::PrepareGuestVaultReply reply;
+
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.PrepareGuestVault(req, &reply, &error,
+                                              timeout_ms) ||
+        error) {
+      printf("PrepareGuestVault call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("Failed to prepare guest vault.\n");
+      return static_cast<int>(reply.error());
+    }
+
+    printf("Prepared guest vault.\n");
+  } else if (!strcmp(
+                 switches::kActions[switches::ACTION_PREPARE_EPHEMERAL_VAULT],
+                 action.c_str())) {
+    user_data_auth::PrepareEphemeralVaultRequest req;
+    user_data_auth::PrepareEphemeralVaultReply reply;
+
+    std::string auth_session_id_hex, auth_session_id;
+    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+      return 1;
+    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
+
+    req.set_auth_session_id(auth_session_id);
+
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.PrepareEphemeralVault(req, &reply, &error,
+                                                  timeout_ms) ||
+        error) {
+      printf("PrepareEphemeralVault call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("Failed to prepare ephemeral vault.\n");
+      return static_cast<int>(reply.error());
+    }
+
+    printf("Prepared ephemeral vault.\n");
+  } else if (!strcmp(
+                 switches::kActions[switches::ACTION_PREPARE_PERSISTENT_VAULT],
+                 action.c_str())) {
+    user_data_auth::PreparePersistentVaultRequest req;
+    user_data_auth::PreparePersistentVaultReply reply;
+
+    std::string auth_session_id_hex, auth_session_id;
+    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+      return 1;
+    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
+
+    req.set_auth_session_id(auth_session_id);
+    if (cl->HasSwitch(switches::kEcryptfsSwitch)) {
+      req.set_encryption_type(
+          user_data_auth::CRYPTOHOME_VAULT_ENCRYPTION_ECRYPTFS);
+    }
+
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.PreparePersistentVault(req, &reply, &error,
+                                                   timeout_ms) ||
+        error) {
+      printf("PreparePersistentVault call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("Failed to prepare persistent vault.\n");
+      return static_cast<int>(reply.error());
+    }
+
+    printf("Prepared persistent vault.\n");
+  } else if (!strcmp(switches::kActions
+                         [switches::ACTION_PREPARE_VAULT_FOR_MIGRATION],
+                     action.c_str())) {
+    user_data_auth::PrepareVaultForMigrationRequest req;
+    user_data_auth::PrepareVaultForMigrationReply reply;
+
+    std::string auth_session_id_hex, auth_session_id;
+    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+      return 1;
+    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
+
+    req.set_auth_session_id(auth_session_id);
+
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.PrepareVaultForMigration(req, &reply, &error,
+                                                     timeout_ms) ||
+        error) {
+      printf("PrepareVaultForMigration call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("Failed to prepare vault for migration.\n");
+      return static_cast<int>(reply.error());
+    }
+
+    printf("Prepared vault for migration.\n");
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)

@@ -215,6 +215,149 @@ void UserDataAuthAdaptor::DoInvalidateAuthSession(
           std::move(response)));
 }
 
+void UserDataAuthAdaptor::CreatePersistentUser(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::CreatePersistentUserReply>> response,
+    const user_data_auth::CreatePersistentUserRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE, base::BindOnce(&UserDataAuthAdaptor::DoCreatePersistentUser,
+                                base::Unretained(this),
+                                ThreadSafeDBusMethodResponse<
+                                    user_data_auth::CreatePersistentUserReply>::
+                                    MakeThreadSafe(std::move(response)),
+                                in_request));
+}
+
+void UserDataAuthAdaptor::DoCreatePersistentUser(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::CreatePersistentUserReply>> response,
+    const user_data_auth::CreatePersistentUserRequest& in_request) {
+  service_->CreatePersistentUser(
+      in_request,
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 user_data_auth::CreatePersistentUserReply>> local_response,
+             const user_data_auth::CreatePersistentUserReply& reply) {
+            local_response->Return(reply);
+          },
+          std::move(response)));
+}
+
+void UserDataAuthAdaptor::PrepareGuestVault(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::PrepareGuestVaultReply>> response,
+    const user_data_auth::PrepareGuestVaultRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &UserDataAuthAdaptor::DoPrepareGuestVault, base::Unretained(this),
+          ThreadSafeDBusMethodResponse<user_data_auth::PrepareGuestVaultReply>::
+              MakeThreadSafe(std::move(response)),
+          in_request));
+}
+
+void UserDataAuthAdaptor::DoPrepareGuestVault(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::PrepareGuestVaultReply>> response,
+    const user_data_auth::PrepareGuestVaultRequest& in_request) {
+  service_->PrepareGuestVault(
+      in_request,
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 user_data_auth::PrepareGuestVaultReply>> local_response,
+             const user_data_auth::PrepareGuestVaultReply& reply) {
+            local_response->Return(reply);
+          },
+          std::move(response)));
+}
+
+void UserDataAuthAdaptor::PrepareEphemeralVault(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::PrepareEphemeralVaultReply>> response,
+    const user_data_auth::PrepareEphemeralVaultRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(&UserDataAuthAdaptor::DoPrepareEphemeralVault,
+                     base::Unretained(this),
+                     ThreadSafeDBusMethodResponse<
+                         user_data_auth::PrepareEphemeralVaultReply>::
+                         MakeThreadSafe(std::move(response)),
+                     in_request));
+}
+
+void UserDataAuthAdaptor::DoPrepareEphemeralVault(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::PrepareEphemeralVaultReply>> response,
+    const user_data_auth::PrepareEphemeralVaultRequest& in_request) {
+  service_->PrepareEphemeralVault(
+      in_request,
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 user_data_auth::PrepareEphemeralVaultReply>> local_response,
+             const user_data_auth::PrepareEphemeralVaultReply& reply) {
+            local_response->Return(reply);
+          },
+          std::move(response)));
+}
+
+void UserDataAuthAdaptor::PreparePersistentVault(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::PreparePersistentVaultReply>> response,
+    const user_data_auth::PreparePersistentVaultRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(&UserDataAuthAdaptor::DoPreparePersistentVault,
+                     base::Unretained(this),
+                     ThreadSafeDBusMethodResponse<
+                         user_data_auth::PreparePersistentVaultReply>::
+                         MakeThreadSafe(std::move(response)),
+                     in_request));
+}
+
+void UserDataAuthAdaptor::DoPreparePersistentVault(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::PreparePersistentVaultReply>> response,
+    const user_data_auth::PreparePersistentVaultRequest& in_request) {
+  service_->PreparePersistentVault(
+      in_request,
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 user_data_auth::PreparePersistentVaultReply>> local_response,
+             const user_data_auth::PreparePersistentVaultReply& reply) {
+            local_response->Return(reply);
+          },
+          std::move(response)));
+}
+
+void UserDataAuthAdaptor::PrepareVaultForMigration(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::PrepareVaultForMigrationReply>> response,
+    const user_data_auth::PrepareVaultForMigrationRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(&UserDataAuthAdaptor::DoPrepareVaultForMigration,
+                     base::Unretained(this),
+                     ThreadSafeDBusMethodResponse<
+                         user_data_auth::PrepareVaultForMigrationReply>::
+                         MakeThreadSafe(std::move(response)),
+                     in_request));
+}
+
+void UserDataAuthAdaptor::DoPrepareVaultForMigration(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::PrepareVaultForMigrationReply>> response,
+    const user_data_auth::PrepareVaultForMigrationRequest& in_request) {
+  service_->PrepareVaultForMigration(
+      in_request,
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 user_data_auth::PrepareVaultForMigrationReply>> local_response,
+             const user_data_auth::PrepareVaultForMigrationReply& reply) {
+            local_response->Return(reply);
+          },
+          std::move(response)));
+}
+
 void UserDataAuthAdaptor::Remove(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::RemoveReply>> response,

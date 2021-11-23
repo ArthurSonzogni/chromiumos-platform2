@@ -239,6 +239,57 @@ class UserDataAuthAdaptor
           user_data_auth::InvalidateAuthSessionReply>> response,
       const user_data_auth::InvalidateAuthSessionRequest& in_request);
 
+  void CreatePersistentUser(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::CreatePersistentUserReply>> response,
+      const user_data_auth::CreatePersistentUserRequest& in_request) override;
+
+  void DoCreatePersistentUser(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::CreatePersistentUserReply>> response,
+      const user_data_auth::CreatePersistentUserRequest& in_request);
+
+  void PrepareGuestVault(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::PrepareGuestVaultReply>> response,
+      const user_data_auth::PrepareGuestVaultRequest& in_request) override;
+
+  void DoPrepareGuestVault(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::PrepareGuestVaultReply>> response,
+      const user_data_auth::PrepareGuestVaultRequest& in_request);
+
+  void PrepareEphemeralVault(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::PrepareEphemeralVaultReply>> response,
+      const user_data_auth::PrepareEphemeralVaultRequest& in_request) override;
+
+  void DoPrepareEphemeralVault(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::PrepareEphemeralVaultReply>> response,
+      const user_data_auth::PrepareEphemeralVaultRequest& in_request);
+
+  void PreparePersistentVault(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::PreparePersistentVaultReply>> response,
+      const user_data_auth::PreparePersistentVaultRequest& in_request) override;
+
+  void DoPreparePersistentVault(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::PreparePersistentVaultReply>> response,
+      const user_data_auth::PreparePersistentVaultRequest& in_request);
+
+  void PrepareVaultForMigration(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::PrepareVaultForMigrationReply>> response,
+      const user_data_auth::PrepareVaultForMigrationRequest& in_request)
+      override;
+
+  void DoPrepareVaultForMigration(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::PrepareVaultForMigrationReply>> response,
+      const user_data_auth::PrepareVaultForMigrationRequest& in_request);
+
   // This is called by UserDataAuth when it detects that it's running low on
   // disk space. All we do here is send the signal.
   void LowDiskSpaceCallback(uint64_t free_disk_space);

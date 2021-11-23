@@ -47,6 +47,11 @@ const char kStartAuthSession[] = "StartAuthSession";
 const char kAddCredentials[] = "AddCredentials";
 const char kAuthenticateAuthSession[] = "AuthenticateAuthSession";
 const char kInvalidateAuthSession[] = "InvalidateAuthSession";
+const char kCreatePersistentUser[] = "CreatePersistentUser";
+const char kPrepareGuestVault[] = "PrepareGuestVault";
+const char kPrepareEphemeralVault[] = "PrepareEphemeralVault";
+const char kPreparePersistentVault[] = "PreparePersistentVault";
+const char kPrepareVaultForMigration[] = "PrepareVaultForMigration";
 
 // Methods of the |kArcQuotaInterface| interface:
 const char kGetArcDiskFeatures[] = "GetArcDiskFeatures";
