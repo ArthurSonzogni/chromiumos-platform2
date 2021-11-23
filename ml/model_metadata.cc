@@ -21,26 +21,6 @@ std::map<BuiltinModelId, BuiltinModelMetadata> GetBuiltinModelMetadata() {
           },
       },
       {
-          BuiltinModelId::SMART_DIM_20181115,
-          {
-              BuiltinModelId::SMART_DIM_20181115,
-              "mlservice-model-smart_dim-20181115.tflite",
-              {{"input", 3}},
-              {{"output", 4}},
-              "SmartDimModel",
-          },
-      },
-      {
-          BuiltinModelId::SMART_DIM_20190221,
-          {
-              BuiltinModelId::SMART_DIM_20190221,
-              "mlservice-model-smart_dim-20190221.tflite",
-              {{"input", 3}},
-              {{"output", 4}},
-              "SmartDimModel",
-          },
-      },
-      {
           BuiltinModelId::SMART_DIM_20190521,
           {
               BuiltinModelId::SMART_DIM_20190521,

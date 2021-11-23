@@ -57,51 +57,6 @@ constexpr double kSearchRanker20190923TestInput[] = {
     0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,
 };
 
-constexpr double kSmartDim20181115TestInput[] = {
-    0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0,
-    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-};
-
-constexpr double kSmartDim20190221TestInput[] = {
-    0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-};
-
 constexpr double kSmartDim20190521TestInput[] = {
     0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0,
     1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -649,87 +604,6 @@ TEST(MachineLearningServiceImplTest, TestModelString) {
   graph_executor->Execute(std::move(inputs), std::move(outputs),
                           base::BindOnce(&CheckOutputTensor, expected_shape,
                                          0.75, &infer_callback_done));
-  base::RunLoop().RunUntilIdle();
-  ASSERT_TRUE(infer_callback_done);
-}
-
-// Tests that the Smart Dim (20181115) model file loads correctly and produces
-// the expected inference result.
-TEST(BuiltinModelInferenceTest, SmartDim20181115) {
-  // Set the mlservice to single process mode for testing here.
-  Process::GetInstance()->SetTypeForTesting(
-      Process::Type::kSingleProcessForTest);
-
-  mojo::Remote<MachineLearningService> ml_service;
-  const MachineLearningServiceImplForTesting ml_service_impl(
-      ml_service.BindNewPipeAndPassReceiver());
-
-  // Load model.
-  mojo::Remote<Model> model;
-  ASSERT_TRUE(LoadBuiltinModelForTesting(
-      ml_service, BuiltinModelId::SMART_DIM_20181115, &model));
-  ASSERT_TRUE(model.is_bound());
-
-  // Get graph executor.
-  mojo::Remote<GraphExecutor> graph_executor;
-  ASSERT_TRUE(CreateGraphExecutorForTesting(model, &graph_executor));
-  ASSERT_TRUE(graph_executor.is_bound());
-
-  // Construct input.
-  base::flat_map<std::string, TensorPtr> inputs;
-  inputs.emplace(
-      "input", NewTensor<double>(
-                   {1, std::size(kSmartDim20181115TestInput)},
-                   std::vector<double>(std::begin(kSmartDim20181115TestInput),
-                                       std::end(kSmartDim20181115TestInput))));
-  std::vector<std::string> outputs({"output"});
-  std::vector<int64_t> expected_shape{1L, 1L};
-
-  // Perform inference.
-  bool infer_callback_done = false;
-  graph_executor->Execute(std::move(inputs), std::move(outputs),
-                          base::BindOnce(&CheckOutputTensor, expected_shape,
-                                         -3.36311, &infer_callback_done));
-  base::RunLoop().RunUntilIdle();
-  ASSERT_TRUE(infer_callback_done);
-}
-
-// Tests that the Smart Dim (20190221) model file loads correctly and produces
-// the expected inference result.
-TEST(BuiltinModelInferenceTest, SmartDim20190221) {
-  // Set the mlservice to single process mode for testing here.
-  Process::GetInstance()->SetTypeForTesting(
-      Process::Type::kSingleProcessForTest);
-
-  mojo::Remote<MachineLearningService> ml_service;
-  const MachineLearningServiceImplForTesting ml_service_impl(
-      ml_service.BindNewPipeAndPassReceiver());
-
-  // Load model and create graph executor.
-  mojo::Remote<Model> model;
-  ASSERT_TRUE(LoadBuiltinModelForTesting(
-      ml_service, BuiltinModelId::SMART_DIM_20190221, &model));
-  ASSERT_TRUE(model.is_bound());
-
-  mojo::Remote<GraphExecutor> graph_executor;
-  ASSERT_TRUE(CreateGraphExecutorForTesting(model, &graph_executor));
-  ASSERT_TRUE(graph_executor.is_bound());
-
-  // Construct input.
-  base::flat_map<std::string, TensorPtr> inputs;
-  inputs.emplace(
-      "input", NewTensor<double>(
-                   {1, std::size(kSmartDim20190221TestInput)},
-                   std::vector<double>(std::begin(kSmartDim20190221TestInput),
-                                       std::end(kSmartDim20190221TestInput))));
-  std::vector<std::string> outputs({"output"});
-  std::vector<int64_t> expected_shape{1L, 1L};
-
-  // Perform inference.
-  bool infer_callback_done = false;
-  graph_executor->Execute(std::move(inputs), std::move(outputs),
-                          base::BindOnce(&CheckOutputTensor, expected_shape,
-                                         -0.900591, &infer_callback_done));
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(infer_callback_done);
 }
