@@ -66,7 +66,7 @@ def LoadYaml(stream):
   # While libyaml is available in the chroot, this supports execution
   # in non-chroot environments like LUCI builders.
   if yaml.__with_libyaml__:
-    loader = yaml.CLoader
+    loader = yaml.CSafeLoader
   else:
     loader = yaml.SafeLoader
 
