@@ -113,20 +113,6 @@ class CROS_CAMERA_EXPORT CameraThread {
     return 0;
   }
 
-  // Original function signatures with old-style callbacks. Temporarily in place
-  // to allow non-platform2 dependencies to be migrated.
-  template <typename T>
-  int PostTaskSync(const base::Location& from_here,
-                   base::Callback<T()> task,
-                   T* result) {
-    return PostTaskSync(from_here, base::OnceCallback<T()>(std::move(task)),
-                        result);
-  }
-  template <typename T>
-  int PostTaskAsync(const base::Location& from_here, base::Callback<T()> task) {
-    return PostTaskAsync(from_here, base::OnceCallback<T()>(std::move(task)));
-  }
-
   scoped_refptr<base::SingleThreadTaskRunner> task_runner() const {
     return thread_.task_runner();
   }
