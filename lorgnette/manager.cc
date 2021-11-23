@@ -267,7 +267,24 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
   std::vector<ScannerInfo> probed_scanners =
       epson_probe::ProbeForScanners(firewall_manager_.get());
   activity_callback_.Run(Daemon::kNormalShutdownTimeoutMilliseconds);
-  for (const ScannerInfo& scanner : probed_scanners) {
+  for (ScannerInfo& scanner : probed_scanners) {
+    // Generate an 'epsonds:net:IP_ADDRESS' version of the device name.
+    // Epsonds will never connect to an unsupported device, but epson2 will
+    // occasionally open a device it fails to operate. If a device responds to
+    // both, epsonds should be prioritized.
+    std::string epsonds_name = scanner.name();
+    epsonds_name = epsonds_name.replace(0, 6, "epsonds");
+    std::unique_ptr<SaneDevice> epsonds_device =
+        sane_client_->ConnectToDevice(nullptr, nullptr, epsonds_name);
+    activity_callback_.Run(Daemon::kNormalShutdownTimeoutMilliseconds);
+    // If the device works for epsonds, replace the epson2 version the epsonds
+    // device name.
+    if (epsonds_device) {
+      LOG(INFO) << "Found epsonds device for " << epsonds_name;
+      scanner.set_name(epsonds_name);
+      scanners.push_back(scanner);
+      continue;
+    }
     std::unique_ptr<SaneDevice> device =
         sane_client_->ConnectToDevice(nullptr, nullptr, scanner.name());
     activity_callback_.Run(Daemon::kNormalShutdownTimeoutMilliseconds);
