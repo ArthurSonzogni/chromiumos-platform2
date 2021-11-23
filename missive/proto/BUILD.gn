@@ -33,6 +33,14 @@ proto_library("record_proto") {
   deps = [ ":record_constants" ]
 }
 
+proto_library("test_proto") {
+  sources = [ "test.proto" ]
+
+  proto_in_dir = "//missive/proto"
+  proto_out_dir = "include/missive/proto"
+  standalone = true
+}
+
 proto_library("interface_proto") {
   sources = [ "synced/interface.proto" ]
 

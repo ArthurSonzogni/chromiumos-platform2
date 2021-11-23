@@ -9,8 +9,8 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
-    ":libmessaging_layer",
     ":missived",
+    "//missive/client:report_queue_factory",
   ]
   if (use.test) {
     deps += [ ":missived_testrunner" ]
@@ -88,6 +88,14 @@ if (use.test) {
 
   executable("missived_testrunner") {
     sources = [
+      "client/empty_dm_token_retriever_test.cc",
+      "client/report_queue_configuration_test.cc",
+      "client/report_queue_factory_test.cc",
+      "client/report_queue_impl_test.cc",
+      "client/report_queue_provider_test.cc",
+      "client/report_queue_provider_test_helper.cc",
+      "client/report_queue_provider_test_helper.h",
+      "client/report_queue_test.cc",
       "compression/compression_module_test.cc",
       "dbus/upload_client_test.cc",
       "missive_daemon_test.cc",
@@ -113,6 +121,7 @@ if (use.test) {
     deps = [
       ":libmessaging_layer",
       "//common-mk/testrunner",
+      "//missive/client:client_test_support",
       "//missive/compression:compression_module",
       "//missive/compression:compression_test_support",
       "//missive/dbus:upload_client",
