@@ -6,6 +6,7 @@ allow cros_spaced cros_run_dbus:dir search;
 
 allow cros_spaced cros_run_lock:dir { add_name remove_name write };
 allow cros_spaced cros_run_lock:file { append create getattr lock open read unlink };
+allow cros_spaced cros_var_lock:dir { getattr search };
 
 allow cros_spaced cros_run_udev:dir search;
 log_writer(cros_spaced)
