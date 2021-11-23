@@ -35,8 +35,8 @@ bool ArchiveManager::Initialize() {
 
   {
     SandboxedExecutable executable = {
-        base::FilePath("/usr/bin/fuse-zip"),
-        base::FilePath("/usr/share/policy/fuse-zip-seccomp.policy")};
+        base::FilePath("/usr/bin/mount-zip"),
+        base::FilePath("/usr/share/policy/mount-zip-seccomp.policy")};
 
     auto sandbox_factory =
         CreateSandboxFactory(std::move(executable), "fuse-zip");
@@ -45,9 +45,17 @@ bool ArchiveManager::Initialize() {
         36,   // ZIP_ER_BASE + ZIP_ER_NOPASSWD
         37};  // ZIP_ER_BASE + ZIP_ER_WRONGPASSWD
 
+    std::vector<std::string> opts = {"-o", "nosymlinks,nospecials"};
+    if (LOG_IS_ON(INFO)) {
+      opts.push_back("--verbose");
+    } else {
+      opts.push_back("--redact");
+    }
+
     mounters_.push_back(std::make_unique<ArchiveMounter>(
         platform(), process_reaper(), "zip", metrics(), "FuseZip",
-        std::move(password_needed_exit_codes), std::move(sandbox_factory)));
+        std::move(password_needed_exit_codes), std::move(sandbox_factory),
+        std::move(opts)));
   }
 
   {
