@@ -90,7 +90,7 @@ bool HdrNetProcessorImpl::Initialize(Size input_size,
   }
 
   for (auto& i : intermediates_) {
-    i = SharedImage::CreateFromGpuTexture(GL_RGBA8, input_size.width,
+    i = SharedImage::CreateFromGpuTexture(GL_RGBA16F, input_size.width,
                                           input_size.height);
   }
 
@@ -300,7 +300,7 @@ HdrNetLinearRgbPipelineCrOS::Texture2DInfo CreateTextureInfo(
     const SharedImage& image) {
   return HdrNetLinearRgbPipelineCrOS::Texture2DInfo{
       .id = base::checked_cast<GLint>(image.texture().handle()),
-      .internal_format = GL_RGBA8,
+      .internal_format = GL_RGBA16F,
       .width = image.texture().width(),
       .height = image.texture().height()};
 }
