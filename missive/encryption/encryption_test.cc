@@ -25,8 +25,8 @@
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 using ::testing::Eq;
 using ::testing::Ne;

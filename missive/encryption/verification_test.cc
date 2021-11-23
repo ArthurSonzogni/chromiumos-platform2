@@ -8,8 +8,8 @@
 
 #include "missive/encryption/primitives.h"
 #include "missive/encryption/testing_primitives.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 using ::testing::Eq;
 using ::testing::HasSubstr;

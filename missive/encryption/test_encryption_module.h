@@ -11,8 +11,8 @@
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/proto/record.pb.h"
 #include "missive/util/statusor.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 namespace reporting {
 namespace test {

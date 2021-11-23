@@ -6,13 +6,13 @@
 
 #include "missive/resources/resource_interface.h"
 
-#include "base/task/post_task.h"
-#include "base/task/thread_pool.h"
-#include "base/task_runner.h"
-#include "base/test/task_environment.h"
+#include <base/task/post_task.h>
+#include <base/task/thread_pool.h>
+#include <base/task_runner.h>
+#include <base/test/task_environment.h>
 #include "missive/util/test_support_callbacks.h"
-#include "testing/gmock/include/gmock/gmock.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 using ::testing::Eq;
 
