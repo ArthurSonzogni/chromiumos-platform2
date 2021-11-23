@@ -40,47 +40,6 @@ namespace {
 
 constexpr char kMetricPrefix[] = "Network.Shill";
 
-constexpr char kMetricsDailyChosenTechnologyAny[] = "daily.chosentech.any";
-constexpr char kMetricsDailyChosenTechnologyWifi[] = "daily.chosentech.wifi";
-constexpr char kMetricsDailyChosenTechnologyCellular[] =
-    "daily.chosentech.cellular";
-
-constexpr char kMetricsDailyChosenTimeOnlineAny[] =
-    "Network.Shill.DailyChosenTimeOnline.Any";
-constexpr char kMetricsDailyChosenTimeOnlineCellular[] =
-    "Network.Shill.DailyChosenTimeOnline.Cellular";
-constexpr char kMetricsDailyChosenTimeOnlineWifi[] =
-    "Network.Shill.DailyChosenTimeOnline.Wifi";
-constexpr char kMetricsDailyChosenFractionOnlineCellular[] =
-    "Network.Shill.DailyChosenFractionOnline.Cellular";
-constexpr char kMetricsDailyChosenFractionOnlineWifi[] =
-    "Network.Shill.DailyChosenFractionOnline.Wifi";
-constexpr base::TimeDelta kMetricsDailyTimeOnlineSamplePeriod =
-    base::TimeDelta::FromMinutes(5);
-constexpr base::TimeDelta kMetricsDailyTimeOnlineAccumulationPeriod =
-    base::TimeDelta::FromDays(1);
-
-constexpr char kMetricsMonthlyChosenTechnologyAny[] = "monthly.chosentech.any";
-constexpr char kMetricsMonthlyChosenTechnologyWifi[] =
-    "monthly.chosentech.wifi";
-constexpr char kMetricsMonthlyChosenTechnologyCellular[] =
-    "monthly.chosentech.cellular";
-
-constexpr char kMetricsMonthlyChosenTimeOnlineAny[] =
-    "Network.Shill.MonthlyChosenTimeOnline.Any";
-constexpr char kMetricsMonthlyChosenTimeOnlineCellular[] =
-    "Network.Shill.MonthlyChosenTimeOnline.Cellular";
-constexpr char kMetricsMonthlyChosenTimeOnlineWifi[] =
-    "Network.Shill.MonthlyChosenTimeOnline.Wifi";
-constexpr char kMetricsMonthlyChosenFractionOnlineCellular[] =
-    "Network.Shill.MonthlyChosenFractionOnline.Cellular";
-constexpr char kMetricsMonthlyChosenFractionOnlineWifi[] =
-    "Network.Shill.MonthlyChosenFractionOnline.Wifi";
-constexpr base::TimeDelta kMetricsMonthlyTimeOnlineSamplePeriod =
-    base::TimeDelta::FromMinutes(5);
-constexpr base::TimeDelta kMetricsMonthlyTimeOnlineAccumulationPeriod =
-    base::TimeDelta::FromDays(30);
-
 Metrics::CellularConnectResult ConvertErrorToCellularConnectResult(
     const Error::Type& error) {
   switch (error) {
@@ -184,10 +143,6 @@ const int Metrics::kMetricTimeToConnectMillisecondsNumBuckets = 60;
 
 const char Metrics::kMetricTimeToScanAndConnectMillisecondsSuffix[] =
     "TimeToScanAndConnect";
-
-constexpr char Metrics::kMetricsCumulativeDirectory[] =
-    "/var/lib/shill/metrics";
-constexpr int Metrics::kMetricsCumulativeTimeOnlineBucketCount = 40;
 
 const char Metrics::kMetricTimeToDropSeconds[] = "Network.Shill.TimeToDrop";
 const int Metrics::kMetricTimeToDropSecondsMax = 8 * 60 * 60;  // 8 hours
@@ -857,65 +812,6 @@ Metrics::NetworkServiceError Metrics::ConnectFailureToServiceErrorEnum(
 
 void Metrics::Start() {
   SLOG(this, 2) << __func__;
-  static const char* const daily_cumulative_names_array[] = {
-      [CHOSEN_ANY] = kMetricsDailyChosenTechnologyAny,
-      [CHOSEN_CELLULAR] = kMetricsDailyChosenTechnologyCellular,
-      [CHOSEN_WIFI] = kMetricsDailyChosenTechnologyWifi,
-  };
-  static const char* const monthly_cumulative_names_array[] = {
-      [CHOSEN_ANY] = kMetricsMonthlyChosenTechnologyAny,
-      [CHOSEN_CELLULAR] = kMetricsMonthlyChosenTechnologyCellular,
-      [CHOSEN_WIFI] = kMetricsMonthlyChosenTechnologyWifi,
-  };
-  static const char* const daily_histogram_names_array[] = {
-      [CHOSEN_ANY] = kMetricsDailyChosenTimeOnlineAny,
-      [CHOSEN_CELLULAR] = kMetricsDailyChosenTimeOnlineCellular,
-      [CHOSEN_WIFI] = kMetricsDailyChosenTimeOnlineWifi,
-      [CHOSEN_FRACTION_CELLULAR] = kMetricsDailyChosenFractionOnlineCellular,
-      [CHOSEN_FRACTION_WIFI] = kMetricsDailyChosenFractionOnlineWifi,
-  };
-  static const char* const monthly_histogram_names_array[] = {
-      [CHOSEN_ANY] = kMetricsMonthlyChosenTimeOnlineAny,
-      [CHOSEN_CELLULAR] = kMetricsMonthlyChosenTimeOnlineCellular,
-      [CHOSEN_WIFI] = kMetricsMonthlyChosenTimeOnlineWifi,
-      [CHOSEN_FRACTION_CELLULAR] = kMetricsMonthlyChosenFractionOnlineCellular,
-      [CHOSEN_FRACTION_WIFI] = kMetricsMonthlyChosenFractionOnlineWifi,
-  };
-  static const std::vector<std::string> daily_cumulative_names(
-      daily_cumulative_names_array,
-      daily_cumulative_names_array + std::size(daily_cumulative_names_array));
-  static const std::vector<std::string> monthly_cumulative_names(
-      monthly_cumulative_names_array,
-      monthly_cumulative_names_array +
-          std::size(monthly_cumulative_names_array));
-  static const std::vector<std::string> daily_histogram_names(
-      daily_histogram_names_array,
-      daily_histogram_names_array + std::size(daily_histogram_names_array));
-  static const std::vector<std::string> monthly_histogram_names(
-      monthly_histogram_names_array,
-      monthly_histogram_names_array + std::size(monthly_histogram_names_array));
-
-  base::FilePath backing_path(kMetricsCumulativeDirectory);
-
-  daily_metrics_.reset(new chromeos_metrics::CumulativeMetrics(
-      backing_path, daily_cumulative_names, kMetricsDailyTimeOnlineSamplePeriod,
-      base::Bind(&AccumulateTimeOnTechnology, this, daily_cumulative_names),
-      kMetricsDailyTimeOnlineAccumulationPeriod,
-      base::Bind(
-          &ReportTimeOnTechnology, base::Unretained(&metrics_library_),
-          daily_histogram_names, 10 /* histogram min (seconds) */,
-          kMetricsDailyTimeOnlineAccumulationPeriod.InSeconds() /* max */,
-          daily_cumulative_names)));
-  monthly_metrics_.reset(new chromeos_metrics::CumulativeMetrics(
-      backing_path, monthly_cumulative_names,
-      kMetricsMonthlyTimeOnlineSamplePeriod,
-      base::Bind(&AccumulateTimeOnTechnology, this, monthly_cumulative_names),
-      kMetricsMonthlyTimeOnlineAccumulationPeriod,
-      base::Bind(
-          &ReportTimeOnTechnology, base::Unretained(&metrics_library_),
-          monthly_histogram_names, 10 /* histogram min (seconds) */,
-          kMetricsMonthlyTimeOnlineAccumulationPeriod.InSeconds() /* max */,
-          monthly_cumulative_names)));
 }
 
 void Metrics::Stop() {
@@ -955,69 +851,6 @@ void Metrics::AddServiceStateTransitionTimer(const Service& service,
   service_metrics->start_on_state[start_state].push_back(timer.get());
   service_metrics->stop_on_state[stop_state].push_back(timer.get());
   service_metrics->timers.push_back(std::move(timer));
-}
-
-// static
-void Metrics::AccumulateTimeOnTechnology(
-    const Metrics* metrics,
-    const std::vector<std::string> cumulative_names,
-    chromeos_metrics::CumulativeMetrics* cm) {
-  // Only accumulate time on line.
-  if (!metrics->was_last_online_)
-    return;
-
-  int64_t active_time = cm->ActiveTimeSinceLastUpdate().InSeconds();
-  bool wifi_is_available = metrics->IsTechnologyPresent(Technology::kWifi);
-  bool cellular_is_available =
-      metrics->IsTechnologyPresent(Technology::kCellular);
-
-  if (wifi_is_available && cellular_is_available) {
-    cm->Add(cumulative_names[CHOSEN_ANY], active_time);
-  }
-
-  switch (metrics->last_default_technology_) {
-    case Technology::kCellular:
-      if (wifi_is_available) {
-        cm->Add(cumulative_names[CHOSEN_CELLULAR], active_time);
-      }
-      break;
-    case Technology::kWifi:
-      if (cellular_is_available) {
-        cm->Add(cumulative_names[CHOSEN_WIFI], active_time);
-      }
-      break;
-    default:
-      break;
-  }
-}
-
-// static
-void Metrics::ReportTimeOnTechnology(
-    MetricsLibraryInterface* mli,
-    const std::vector<std::string> histogram_names,
-    const int min_seconds,
-    const int max_seconds,
-    const std::vector<std::string> cumulative_names,
-    chromeos_metrics::CumulativeMetrics* cm) {
-  const int nbuckets = kMetricsCumulativeTimeOnlineBucketCount;
-
-  int64_t chosen_any = cm->Get(cumulative_names[CHOSEN_ANY]);
-  int64_t chosen_cellular = cm->Get(cumulative_names[CHOSEN_CELLULAR]);
-  int64_t chosen_wifi = cm->Get(cumulative_names[CHOSEN_WIFI]);
-
-  mli->SendToUMA(histogram_names[CHOSEN_ANY], chosen_any, min_seconds,
-                 max_seconds, nbuckets);
-  mli->SendToUMA(histogram_names[CHOSEN_CELLULAR], chosen_cellular, min_seconds,
-                 max_seconds, nbuckets);
-  mli->SendToUMA(histogram_names[CHOSEN_WIFI], chosen_wifi, min_seconds,
-                 max_seconds, nbuckets);
-
-  if (chosen_any > 0) {
-    mli->SendEnumToUMA(histogram_names[CHOSEN_FRACTION_CELLULAR],
-                       chosen_cellular * 100 / chosen_any, 100);
-    mli->SendEnumToUMA(histogram_names[CHOSEN_FRACTION_WIFI],
-                       chosen_wifi * 100 / chosen_any, 100);
-  }
 }
 
 void Metrics::OnDefaultLogicalServiceChanged(

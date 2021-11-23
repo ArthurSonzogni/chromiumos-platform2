@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-#include <metrics/cumulative_metrics.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
@@ -710,16 +709,6 @@ class Metrics : public DefaultServiceObserver {
     kDarkResumeScanRetryResultMax
   };
 
-  // Identifiers for indices in cumulative name arrays.  The FRACTION entries
-  // must be last.
-  enum CumulativeName {
-    CHOSEN_ANY = 0,
-    CHOSEN_CELLULAR = 1,
-    CHOSEN_WIFI = 2,
-    CHOSEN_FRACTION_CELLULAR = 3,
-    CHOSEN_FRACTION_WIFI = 4,
-  };
-
   // Corresponds to RegulatoryDomain enum values in
   // /chromium/src/tools/metrics/histograms/enums.xml.
   enum RegulatoryDomain {
@@ -1112,22 +1101,6 @@ class Metrics : public DefaultServiceObserver {
   // Converts service connect failure to UMA service error enumerator.
   static NetworkServiceError ConnectFailureToServiceErrorEnum(
       Service::ConnectFailure failure);
-
-  // Callback for accumulating per-technology connected time.
-  static void AccumulateTimeOnTechnology(
-      const Metrics* metrics,
-      std::vector<std::string> cumulative_names,
-      chromeos_metrics::CumulativeMetrics* cm);
-
-  // Callback for reporting UMA stats on connected time per device per time
-  // period.
-  static void ReportTimeOnTechnology(
-      MetricsLibraryInterface* mli,
-      const std::vector<std::string> histogram_names,
-      const int min,
-      const int max,
-      const std::vector<std::string> cumulative_names,
-      chromeos_metrics::CumulativeMetrics* cm);
 
   // Starts this object.  Call this during initialization.
   virtual void Start();
@@ -1611,8 +1584,6 @@ class Metrics : public DefaultServiceObserver {
   bool wake_on_wifi_throttled_;
   bool wake_reason_received_;
   int dark_resume_scan_retries_;
-  std::unique_ptr<chromeos_metrics::CumulativeMetrics> daily_metrics_;
-  std::unique_ptr<chromeos_metrics::CumulativeMetrics> monthly_metrics_;
 };
 
 }  // namespace shill

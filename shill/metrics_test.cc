@@ -34,39 +34,6 @@ using testing::Test;
 
 namespace shill {
 
-class CumulativeMetricsMock : public chromeos_metrics::CumulativeMetrics {
- public:
-  CumulativeMetricsMock(const base::FilePath& backing_dir,
-                        const std::vector<std::string>& names,
-                        base::TimeDelta update_period,
-                        Callback update_callback,
-                        base::TimeDelta accumulation_period,
-                        Callback cycle_end_callback)
-      : CumulativeMetrics(backing_dir,
-                          names,
-                          update_period,
-                          update_callback,
-                          accumulation_period,
-                          cycle_end_callback) {}
-  void SetActiveTimes(std::vector<int> times);
-  virtual base::TimeDelta ActiveTimeSinceLastUpdate() const;
-
- private:
-  std::vector<int> active_times_;
-  mutable int active_times_index_;
-};
-
-void CumulativeMetricsMock::SetActiveTimes(std::vector<int> times) {
-  active_times_ = times;
-  active_times_index_ = 0;
-}
-
-base::TimeDelta CumulativeMetricsMock::ActiveTimeSinceLastUpdate() const {
-  auto time = active_times_.at(active_times_index_);
-  active_times_index_ += 1;
-  return base::TimeDelta::FromSeconds(time);
-}
-
 class MetricsTest : public Test {
  public:
   MetricsTest()
@@ -1186,78 +1153,6 @@ TEST_F(MetricsTest, NotifyApChannelSwitch) {
                                       Metrics::kWiFiApChannelSwitchUndef,
                                       Metrics::kWiFiApChannelSwitchMax));
   metrics_.NotifyApChannelSwitch(3000, 3000);
-}
-
-TEST_F(MetricsTest, CumulativeCellWifiTest) {
-  const int kCellIndex = 0;
-  const int kWifiIndex = 1;
-
-  // Set up a cumulative metric object, but don't wait for (real or fake) time
-  // to trigger callbacks.  Instead call the Accumulate and Report functions
-  // manually and verify that they accumulate quantities and send samples
-  // correctly.
-  const std::vector<std::string> cumulative_names = {
-      "TimeOnlineAny",
-      "TimeOnlineCell",
-      "TimeOnlineWifi",
-  };
-  const std::vector<std::string> histogram_names = {
-      "Histogram.TimeOnlineAny",      "Histogram.TimeOnlineCell",
-      "Histogram.TimeOnlineWifi",     "Histogram.FractionOnlineCell",
-      "Histogram.FractionOnlineWifi",
-  };
-
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath backing_path(temp_dir.GetPath());
-  auto cumulative_metrics = std::make_unique<CumulativeMetricsMock>(
-      backing_path, cumulative_names, base::TimeDelta::FromSeconds(9999),
-      base::Bind(&Metrics::AccumulateTimeOnTechnology, &metrics_,
-                 cumulative_names),
-      base::TimeDelta::FromSeconds(999999),
-      base::Bind(&Metrics::ReportTimeOnTechnology, base::Unretained(&library_),
-                 histogram_names, 10 /* histogram min (seconds) */,
-                 1000 /* max */, cumulative_names));
-
-  // Create two services, to be passed to NotifyDefaultServiceChange.
-  scoped_refptr<MockService> cell_service(new MockService(&manager_));
-  scoped_refptr<MockService> wifi_service(new MockService(&manager_));
-
-  // Register both cellular and wifi devices.
-  metrics_.RegisterDevice(kCellIndex, Technology::kCellular);
-  metrics_.RegisterDevice(kWifiIndex, Technology::kWifi);
-
-  // Set up mock elapsed times.
-  std::vector<int> times = {1, 1, 1};
-  cumulative_metrics->SetActiveTimes(times);
-
-  // Accumulate samples.  The number of calls to AccumulateTimeOnTechnology
-  // must not exceed the length of the |times| vector above.
-
-  EXPECT_CALL(*wifi_service, technology()).WillOnce(Return(Technology::kWifi));
-  metrics_.OnDefaultLogicalServiceChanged(wifi_service);
-  Metrics::AccumulateTimeOnTechnology(&metrics_, cumulative_names,
-                                      cumulative_metrics.get());
-
-  EXPECT_CALL(*cell_service, technology())
-      .WillOnce(Return(Technology::kCellular));
-  metrics_.OnDefaultLogicalServiceChanged(cell_service);
-  Metrics::AccumulateTimeOnTechnology(&metrics_, cumulative_names,
-                                      cumulative_metrics.get());
-
-  EXPECT_CALL(*wifi_service, technology()).WillOnce(Return(Technology::kWifi));
-  metrics_.OnDefaultLogicalServiceChanged(wifi_service);
-  Metrics::AccumulateTimeOnTechnology(&metrics_, cumulative_names,
-                                      cumulative_metrics.get());
-  EXPECT_CALL(library_, SendToUMA("Histogram.TimeOnlineAny", 3, _, _, _));
-  EXPECT_CALL(library_, SendToUMA("Histogram.TimeOnlineCell", 1, _, _, _));
-  EXPECT_CALL(library_, SendToUMA("Histogram.TimeOnlineWifi", 2, _, _, _));
-  EXPECT_CALL(library_,
-              SendEnumToUMA("Histogram.FractionOnlineCell", 1 * 100 / 3, _));
-  EXPECT_CALL(library_,
-              SendEnumToUMA("Histogram.FractionOnlineWifi", 2 * 100 / 3, _));
-  Metrics::ReportTimeOnTechnology(&library_, histogram_names, 0, 100,
-                                  cumulative_names, cumulative_metrics.get());
 }
 
 TEST_F(MetricsTest, NotifyNeighborLinkMonitorFailure) {
