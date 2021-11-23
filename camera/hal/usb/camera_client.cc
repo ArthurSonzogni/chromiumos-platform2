@@ -405,14 +405,15 @@ int CameraClient::StreamOn(Size stream_on_resolution,
   }
 
   auto future = cros::Future<int>::Create(nullptr);
-  base::Callback<void(int, int)> streamon_callback =
-      base::Bind(&CameraClient::StreamOnCallback, base::Unretained(this),
-                 base::RetainedRef(future), num_buffers);
+  base::OnceCallback<void(int, int)> streamon_callback =
+      base::BindOnce(&CameraClient::StreamOnCallback, base::Unretained(this),
+                     base::RetainedRef(future), num_buffers);
   request_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&CameraClient::RequestHandler::StreamOn,
-                                base::Unretained(request_handler_.get()),
-                                stream_on_resolution, crop_rotate_scale_degrees,
-                                use_native_sensor_ratio, streamon_callback));
+      FROM_HERE,
+      base::BindOnce(&CameraClient::RequestHandler::StreamOn,
+                     base::Unretained(request_handler_.get()),
+                     stream_on_resolution, crop_rotate_scale_degrees,
+                     use_native_sensor_ratio, std::move(streamon_callback)));
   return future->Get();
 }
 
@@ -420,13 +421,13 @@ void CameraClient::StreamOff() {
   DCHECK(ops_thread_checker_.CalledOnValidThread());
   if (request_handler_.get()) {
     auto future = cros::Future<int>::Create(nullptr);
-    base::Callback<void(int)> streamoff_callback =
-        base::Bind(&CameraClient::StreamOffCallback, base::Unretained(this),
-                   base::RetainedRef(future));
+    base::OnceCallback<void(int)> streamoff_callback =
+        base::BindOnce(&CameraClient::StreamOffCallback, base::Unretained(this),
+                       base::RetainedRef(future));
     request_task_runner_->PostTask(
         FROM_HERE, base::BindOnce(&CameraClient::RequestHandler::StreamOff,
                                   base::Unretained(request_handler_.get()),
-                                  streamoff_callback));
+                                  std::move(streamoff_callback)));
     int ret = future->Get();
     if (ret) {
       LOGFID(ERROR, id_) << "StreamOff failed";
@@ -575,7 +576,7 @@ void CameraClient::RequestHandler::StreamOn(
     Size stream_on_resolution,
     int crop_rotate_scale_degrees,
     bool use_native_sensor_ratio,
-    const base::Callback<void(int, int)>& callback) {
+    base::OnceCallback<void(int, int)> callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
   crop_rotate_scale_degrees_ = crop_rotate_scale_degrees;
@@ -588,13 +589,13 @@ void CameraClient::RequestHandler::StreamOn(
         << "Cannot find resolution in supported list: width "
         << stream_on_resolution.width << ", height "
         << stream_on_resolution.height;
-    callback.Run(0, -EINVAL);
+    std::move(callback).Run(0, -EINVAL);
     return;
   }
   int ret = StreamOnImpl(stream_on_resolution, use_native_sensor_ratio,
                          GetMaximumFrameRate(*format));
   if (ret) {
-    callback.Run(0, ret);
+    std::move(callback).Run(0, ret);
     return;
   }
   default_resolution_ = stream_on_resolution;
@@ -603,14 +604,14 @@ void CameraClient::RequestHandler::StreamOn(
   // ConfigureStream can make sure there is no delay to output frames.
   // NOTE: ConfigureStream should be returned in 1000 ms.
   SkipFramesAfterStreamOn(1);
-  callback.Run(input_buffers_.size(), 0);
+  std::move(callback).Run(input_buffers_.size(), 0);
 }
 
 void CameraClient::RequestHandler::StreamOff(
-    const base::Callback<void(int)>& callback) {
+    base::OnceCallback<void(int)> callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   int ret = StreamOffImpl();
-  callback.Run(ret);
+  std::move(callback).Run(ret);
 }
 
 void CameraClient::RequestHandler::HandleRequest(
@@ -772,7 +773,7 @@ void CameraClient::RequestHandler::HandleRequest(
 }
 
 void CameraClient::RequestHandler::HandleFlush(
-    const base::Callback<void(int)>& callback) {
+    base::OnceCallback<void(int)> callback) {
   VLOGFID(1, device_id_);
   {
     base::AutoLock l(flush_lock_);
@@ -780,7 +781,7 @@ void CameraClient::RequestHandler::HandleFlush(
   }
   task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&CameraClient::RequestHandler::FlushDone,
-                                base::Unretained(this), callback));
+                                base::Unretained(this), std::move(callback)));
 }
 
 int CameraClient::RequestHandler::GetMaxNumDetectedFaces() {
@@ -1165,10 +1166,10 @@ int CameraClient::RequestHandler::EnqueueV4L2Buffer() {
 }
 
 void CameraClient::RequestHandler::FlushDone(
-    const base::Callback<void(int)>& callback) {
+    base::OnceCallback<void(int)> callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   VLOGFID(1, device_id_);
-  callback.Run(0);
+  std::move(callback).Run(0);
   {
     base::AutoLock l(flush_lock_);
     flush_started_ = false;

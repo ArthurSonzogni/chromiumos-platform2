@@ -179,9 +179,9 @@ int CameraDevice::Init(mojo::PendingRemote<mojom::IpCameraDevice> ip_device,
       receiver_.BindNewPipeAndPassRemote();
 
   receiver_.set_disconnect_handler(
-      base::Bind(&CameraDevice::OnConnectionError, base::Unretained(this)));
+      base::BindOnce(&CameraDevice::OnConnectionError, base::Unretained(this)));
   ip_device_.set_disconnect_handler(
-      base::Bind(&CameraDevice::OnConnectionError, base::Unretained(this)));
+      base::BindOnce(&CameraDevice::OnConnectionError, base::Unretained(this)));
 
   if (ip_device_) {
     ip_device_->RegisterFrameListener(std::move(remote));

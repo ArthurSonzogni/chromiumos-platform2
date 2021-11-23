@@ -163,12 +163,12 @@ void CameraHal::InitOnIpcThread(scoped_refptr<Future<int>> return_val) {
   detector_.Bind(
       mojo::PendingRemote<mojom::IpCameraDetector>(std::move(pipe), 0u));
   detector_.set_disconnect_handler(
-      base::Bind(&CameraHal::OnConnectionError, base::Unretained(this)));
+      base::BindOnce(&CameraHal::OnConnectionError, base::Unretained(this)));
 
   mojo::PendingRemote<IpCameraConnectionListener> listener =
       receiver_.BindNewPipeAndPassRemote();
   receiver_.set_disconnect_handler(
-      base::Bind(&CameraHal::OnConnectionError, base::Unretained(this)));
+      base::BindOnce(&CameraHal::OnConnectionError, base::Unretained(this)));
 
   detector_->RegisterConnectionListener(std::move(listener));
   return_val->Set(0);

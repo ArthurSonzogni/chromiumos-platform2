@@ -184,16 +184,16 @@ class CameraClient {
     void StreamOn(Size stream_on_resolution,
                   int crop_rotate_scale_degrees,
                   bool use_native_sensor_ratio,
-                  const base::Callback<void(int, int)>& callback);
+                  base::OnceCallback<void(int, int)> callback);
 
     // Synchronous call to stop streaming.
-    void StreamOff(const base::Callback<void(int)>& callback);
+    void StreamOff(base::OnceCallback<void(int)> callback);
 
     // Handle one request.
     void HandleRequest(std::unique_ptr<CaptureRequest> request);
 
     // Handle flush request. This function can be called on any thread.
-    void HandleFlush(const base::Callback<void(int)>& callback);
+    void HandleFlush(base::OnceCallback<void(int)> callback);
 
     // Get the maximum number of detected faces.
     int GetMaxNumDetectedFaces();
@@ -258,7 +258,7 @@ class CameraClient {
     void DiscardOutdatedBuffers();
 
     // Used to notify caller that all requests are handled.
-    void FlushDone(const base::Callback<void(int)>& callback);
+    void FlushDone(base::OnceCallback<void(int)> callback);
 
     // Resolved to a supported frame rate within the given target fps range in
     // |metadata|. If it fails, try the one that is closest to the target range.
