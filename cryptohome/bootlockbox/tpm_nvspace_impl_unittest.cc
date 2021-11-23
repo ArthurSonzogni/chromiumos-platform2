@@ -4,6 +4,8 @@
 
 #include "cryptohome/bootlockbox/tpm_nvspace_impl.h"
 
+#include <utility>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
@@ -264,6 +266,59 @@ TEST_F(TPMNVSpaceImplTest, ReadNVSpaceClearOwnerPassSuccess) {
             reply->set_status(tpm_manager::STATUS_SUCCESS);
             return true;
           }));
+  std::string data;
+  NVSpaceState state;
+  EXPECT_TRUE(nvspace_utility_->ReadNVSpace(&data, &state));
+  EXPECT_EQ(state, NVSpaceState::kNVSpaceNormal);
+  EXPECT_EQ(data, test_digest);
+}
+
+TEST_F(TPMNVSpaceImplTest, ReadNVSpaceClearOwnerPassNotOwnedSuccess) {
+  std::string test_digest(SHA256_DIGEST_LENGTH, 'a');
+  EXPECT_CALL(mock_tpm_nvram_, ReadSpace(_, _, _, _))
+      .WillOnce(
+          Invoke([test_digest](const tpm_manager::ReadSpaceRequest& request,
+                               tpm_manager::ReadSpaceReply* reply,
+                               brillo::ErrorPtr*, int) {
+            BootLockboxNVSpace data;
+            data.version = 1;
+            data.flags = 0;
+            memcpy(data.digest, test_digest.c_str(), SHA256_DIGEST_LENGTH);
+            std::string nvram_data =
+                std::string(reinterpret_cast<char*>(&data), kNVSpaceSize);
+            // return success to trigger error.
+            reply->set_result(tpm_manager::NVRAM_RESULT_SUCCESS);
+            reply->set_data(nvram_data);
+            return true;
+          }));
+  EXPECT_CALL(mock_tpm_owner_, GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillOnce(
+          Invoke([](const tpm_manager::GetTpmNonsensitiveStatusRequest& request,
+                    tpm_manager::GetTpmNonsensitiveStatusReply* reply,
+                    brillo::ErrorPtr*, int) {
+            reply->set_is_enabled(true);
+            reply->set_is_owned(false);
+            reply->set_is_owner_password_present(false);
+            reply->set_status(tpm_manager::STATUS_SUCCESS);
+            return true;
+          }));
+  EXPECT_CALL(mock_tpm_owner_, RemoveOwnerDependency(_, _, _, _))
+      .WillOnce(
+          Invoke([](const tpm_manager::RemoveOwnerDependencyRequest& request,
+                    tpm_manager::RemoveOwnerDependencyReply* reply,
+                    brillo::ErrorPtr*, int) {
+            EXPECT_EQ(tpm_manager::kTpmOwnerDependency_Bootlockbox,
+                      request.owner_dependency());
+            reply->set_status(tpm_manager::STATUS_SUCCESS);
+            return true;
+          }));
+
+  EXPECT_CALL(mock_tpm_owner_,
+              DoRegisterSignalOwnershipTakenSignalHandler(_, _))
+      .WillOnce([](auto&& signal_callback, auto&& connect_callback) {
+        std::move(*connect_callback).Run("", "", true);
+        signal_callback.Run(tpm_manager::OwnershipTakenSignal());
+      });
   std::string data;
   NVSpaceState state;
   EXPECT_TRUE(nvspace_utility_->ReadNVSpace(&data, &state));

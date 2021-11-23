@@ -71,8 +71,8 @@ class TPMNVSpaceImpl : public TPMNVSpace {
       const base::RepeatingClosure& callback) override;
 
  private:
-  // Check the owner password presents in tpm_manager.
-  bool IsOwnerPasswordPresent();
+  // Get the TPM status from tpm_manager.
+  bool GetTPMStatus(bool* owned, bool* owner_password_present);
 
   // This method removes owner dependency from tpm_manager.
   bool RemoveNVSpaceOwnerDependency();

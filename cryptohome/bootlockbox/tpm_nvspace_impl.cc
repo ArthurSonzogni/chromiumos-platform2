@@ -99,7 +99,13 @@ bool TPMNVSpaceImpl::Initialize() {
 }
 
 bool TPMNVSpaceImpl::DefineNVSpace() {
-  if (!IsOwnerPasswordPresent()) {
+  bool owned = false;
+  bool owner_password_present = false;
+  if (!GetTPMStatus(&owned, &owner_password_present)) {
+    LOG(INFO) << "Failed to get TPM status.";
+    return false;
+  }
+  if (!owner_password_present) {
     LOG(INFO) << "Try to define nvram without owner password present.";
     return false;
   }
@@ -208,7 +214,24 @@ bool TPMNVSpaceImpl::ReadNVSpace(std::string* digest, NVSpaceState* result) {
     return false;
   }
 
-  if (IsOwnerPasswordPresent()) {
+  bool owned = false;
+  bool owner_password_present = false;
+  if (!GetTPMStatus(&owned, &owner_password_present)) {
+    LOG(INFO) << "Failed to get TPM status.";
+    return false;
+  }
+  if (!owned) {
+    // Remove the owner dependency after the TPM ownership has been taken.
+    base::RepeatingClosure callback =
+        base::BindRepeating(&TPMNVSpaceImpl::RemoveNVSpaceOwnerDependency,
+                            base::Unretained(this))
+            .Then(base::BindRepeating([](bool result) {
+              if (!result) {
+                LOG(ERROR) << "Failed to remove the owner dependency.";
+              }
+            }));
+    RegisterOwnershipTakenCallback(callback);
+  } else if (owner_password_present) {
     // Remove the owner dependency if the owner presented and the space defined
     // correctly.
     if (!RemoveNVSpaceOwnerDependency()) {
@@ -258,7 +281,7 @@ bool TPMNVSpaceImpl::LockNVSpace() {
   return true;
 }
 
-bool TPMNVSpaceImpl::IsOwnerPasswordPresent() {
+bool TPMNVSpaceImpl::GetTPMStatus(bool* owned, bool* owner_password_present) {
   tpm_manager::GetTpmNonsensitiveStatusRequest request;
   tpm_manager::GetTpmNonsensitiveStatusReply reply;
   brillo::ErrorPtr error;
@@ -268,7 +291,9 @@ bool TPMNVSpaceImpl::IsOwnerPasswordPresent() {
                << error->GetMessage();
     return false;
   }
-  return reply.is_owner_password_present();
+  *owned = reply.is_owned();
+  *owner_password_present = reply.is_owner_password_present();
+  return true;
 }
 
 void TPMNVSpaceImpl::RegisterOwnershipTakenCallback(
