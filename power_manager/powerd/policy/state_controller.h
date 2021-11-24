@@ -223,7 +223,7 @@ class StateController : public PrefsObserver {
     base::TimeDelta screen_dim;
     base::TimeDelta screen_dim_imminent;
     base::TimeDelta screen_lock;
-    base::TimeDelta quick_dim = base::TimeDelta::FromSeconds(60);
+    base::TimeDelta quick_dim;
     bool operator!=(const Delays& o) const;
   };
 
@@ -508,6 +508,11 @@ class StateController : public PrefsObserver {
   // inactivity?  This is controlled by the |kDisableIdleSuspendPref| pref
   // and overrides |policy_|.
   bool disable_idle_suspend_ = false;
+
+  // Whether to send feedback to `dim_advisor_` to possibly disable it if a
+  // quick dim is undone by hps or by a user activity. This is controlled by the
+  // |kSendFeedbackIfUndimmedPref| pref and gets overridden by |policy_|.
+  bool send_feedback_if_undimmed_ = false;
 
   // Is the device using a factory image? This is controlled by the
   // |kFactoryModePref| pref and overrides |policy_|.

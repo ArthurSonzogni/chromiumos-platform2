@@ -180,9 +180,11 @@ class StateControllerTest : public testing::Test {
         default_ac_suspend_delay_(base::TimeDelta::FromSeconds(120)),
         default_ac_screen_off_delay_(base::TimeDelta::FromSeconds(100)),
         default_ac_screen_dim_delay_(base::TimeDelta::FromSeconds(90)),
+        default_ac_quick_dim_delay_(base::TimeDelta::FromSeconds(70)),
         default_battery_suspend_delay_(base::TimeDelta::FromSeconds(60)),
         default_battery_screen_off_delay_(base::TimeDelta::FromSeconds(40)),
         default_battery_screen_dim_delay_(base::TimeDelta::FromSeconds(30)),
+        default_battery_quick_dim_delay_(base::TimeDelta::FromSeconds(20)),
         default_disable_idle_suspend_(0),
         default_factory_mode_(0),
         default_require_usb_input_device_to_suspend_(0),
@@ -212,9 +214,12 @@ class StateControllerTest : public testing::Test {
     SetMillisecondPref(kPluggedSuspendMsPref, default_ac_suspend_delay_);
     SetMillisecondPref(kPluggedOffMsPref, default_ac_screen_off_delay_);
     SetMillisecondPref(kPluggedDimMsPref, default_ac_screen_dim_delay_);
+    SetMillisecondPref(kPluggedQuickDimMsPref, default_ac_quick_dim_delay_);
     SetMillisecondPref(kUnpluggedSuspendMsPref, default_battery_suspend_delay_);
     SetMillisecondPref(kUnpluggedOffMsPref, default_battery_screen_off_delay_);
     SetMillisecondPref(kUnpluggedDimMsPref, default_battery_screen_dim_delay_);
+    SetMillisecondPref(kUnpluggedQuickDimMsPref,
+                       default_battery_quick_dim_delay_);
     prefs_.SetInt64(kDisableIdleSuspendPref, default_disable_idle_suspend_);
     prefs_.SetInt64(kFactoryModePref, default_factory_mode_);
     prefs_.SetInt64(kRequireUsbInputDeviceToSuspendPref,
@@ -422,9 +427,11 @@ class StateControllerTest : public testing::Test {
   base::TimeDelta default_ac_suspend_delay_;
   base::TimeDelta default_ac_screen_off_delay_;
   base::TimeDelta default_ac_screen_dim_delay_;
+  base::TimeDelta default_ac_quick_dim_delay_;
   base::TimeDelta default_battery_suspend_delay_;
   base::TimeDelta default_battery_screen_off_delay_;
   base::TimeDelta default_battery_screen_dim_delay_;
+  base::TimeDelta default_battery_quick_dim_delay_;
   int64_t default_disable_idle_suspend_;
   int64_t default_factory_mode_;
   int64_t default_require_usb_input_device_to_suspend_;
@@ -2269,19 +2276,16 @@ TEST_F(StateControllerTest, ShouldNotRequestSmartDim) {
 }
 
 TEST_F(StateControllerTest, ScheduleForQuickDim) {
+  initial_power_source_ = PowerSource::AC;
   Init();
-  // Set screen_dim_ms to a fix number.
-  constexpr base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(90);
-  PowerManagementPolicy policy;
-  policy.mutable_ac_delays()->set_screen_dim_ms(kDimDelay.InMilliseconds());
-  controller_.HandlePolicyChange(policy);
+
   const base::TimeDelta kDimImminentDelay =
-      kDimDelay - StateController::kScreenDimImminentInterval;
-  const base::TimeDelta kQuickDimDelay = base::TimeDelta::FromSeconds(60);
+      default_ac_screen_dim_delay_ -
+      StateController::kScreenDimImminentInterval;
 
   // The next schedule should be at kDimDelay if
   // !IsSmartDimEnabled && !IsHpsSenseEnabled()
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kDimDelay));
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   // Turn the screen back on.
   controller_.HandleUserActivity();
@@ -2291,7 +2295,7 @@ TEST_F(StateControllerTest, ScheduleForQuickDim) {
   // hps_result_ is positive by EmitHpsSignal(true); thus a standard dim
   // should be scheduled at kDimDelay.
   EmitHpsSignal(true);
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kDimDelay));
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   // Turn the screen back on.
   controller_.HandleUserActivity();
@@ -2300,7 +2304,7 @@ TEST_F(StateControllerTest, ScheduleForQuickDim) {
   // The next block verifies that a quick dim should be scheduled at
   // kQuickDimDelay if if hps_result_ is negative by EmitHpsSignal(false).
   EmitHpsSignal(false);
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kQuickDimDelay));
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   // Turn the screen back on.
   controller_.HandleUserActivity();
@@ -2332,7 +2336,7 @@ TEST_F(StateControllerTest, ScheduleForQuickDim) {
   AdvanceTime(base::TimeDelta::FromSeconds(1));
   EmitHpsSignal(false);
   // Next quick dim will be scheduled after kQuickDimDelay.
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kQuickDimDelay));
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   // Turn the screen back on.
   controller_.HandleUserActivity();
@@ -2347,7 +2351,7 @@ TEST_F(StateControllerTest, ScheduleForQuickDim) {
   AdvanceTime(base::TimeDelta::FromSeconds(1));
   controller_.HandleUserActivity();
   // Next quick dim will be scheduled after kQuickDimDelay.
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kQuickDimDelay));
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   // Turn the screen back on.
   controller_.HandleUserActivity();
@@ -2369,22 +2373,18 @@ TEST_F(StateControllerTest, ScheduleForQuickDim) {
 }
 
 TEST_F(StateControllerTest, QuickDimAndUndim) {
+  initial_power_source_ = PowerSource::AC;
   Init();
   // Turn on the MLDecision Service.
   dbus_wrapper_.NotifyServiceAvailable(ml_decision_proxy_, true);
 
-  // Set screen_dim_ms to a fix number.
-  constexpr base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(90);
-  PowerManagementPolicy policy;
-  policy.mutable_ac_delays()->set_screen_dim_ms(kDimDelay.InMilliseconds());
-  controller_.HandlePolicyChange(policy);
   const base::TimeDelta kDimImminentDelay =
-      kDimDelay - StateController::kScreenDimImminentInterval;
-  const base::TimeDelta kQuickDimDelay = base::TimeDelta::FromSeconds(60);
+      default_ac_screen_dim_delay_ -
+      StateController::kScreenDimImminentInterval;
 
   // Case (1) a quick dim undimmed by user activity.
   EmitHpsSignal(false);
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kQuickDimDelay));
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   // undim by user activity.
   controller_.HandleUserActivity();
@@ -2393,7 +2393,7 @@ TEST_F(StateControllerTest, QuickDimAndUndim) {
 
   // Case (2) a quick dim undimed by hps.
   EmitHpsSignal(false);
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kQuickDimDelay));
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   // undim by Hps.
   EmitHpsSignal(true);
@@ -2401,9 +2401,9 @@ TEST_F(StateControllerTest, QuickDimAndUndim) {
   controller_.HandleUserActivity();
 
   // Case (3) a quick dim will not happen after kDimImminentDelay.
-  AdvanceTime(kDimImminentDelay - kQuickDimDelay);
+  AdvanceTime(kDimImminentDelay - default_ac_quick_dim_delay_);
   EmitHpsSignal(false);
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kQuickDimDelay));
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
   // A quick dim will not happen because it is after kDimImminentDelay.
   EXPECT_EQ("", delegate_.GetActions());
   // Instead a standard dim is scheduled.
@@ -2417,10 +2417,10 @@ TEST_F(StateControllerTest, QuickDimAndUndim) {
 
   // Case (4) a hps signal can't revert a quick dim after kDimImminentDelay.
   EmitHpsSignal(false);
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kQuickDimDelay));
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   // Advance to kDimImminentDelay.
-  AdvanceTime(kDimImminentDelay - kQuickDimDelay);
+  AdvanceTime(kDimImminentDelay - default_ac_quick_dim_delay_);
   // Send Hps positive signal.
   EmitHpsSignal(true);
   // undim will not happen because it is after kDimImminentDelay.
@@ -2456,6 +2456,50 @@ TEST_F(StateControllerTest, IgnoreDisplayModeChangesAfterScreenOff) {
   controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, nullptr),
             delegate_.GetActions());
+}
+
+TEST_F(StateControllerTest, LoadPrefShouldSetCorrectQuickDimDelaysAC) {
+  initial_power_source_ = PowerSource::AC;
+  Init();
+  EmitHpsSignal(false);
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+}
+
+TEST_F(StateControllerTest, LoadPrefShouldSetCorrectQuickDimDelaysBattery) {
+  initial_power_source_ = PowerSource::BATTERY;
+  Init();
+  EmitHpsSignal(false);
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_battery_quick_dim_delay_));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+}
+
+TEST_F(StateControllerTest, HandlePolicyChangeShouldSetCorrectDelays) {
+  Init();
+
+  const base::TimeDelta quick_dim_delay = base::TimeDelta::FromSeconds(52);
+
+  // Next block verifies that delays are set properly from HandlePolicyChange.
+  PowerManagementPolicy policy;
+  auto& ac_delays = *policy.mutable_ac_delays();
+  ac_delays.set_quick_dim_ms(quick_dim_delay.InMilliseconds());
+  controller_.HandlePolicyChange(policy);
+  EmitHpsSignal(false);
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(quick_dim_delay));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+
+  // undim by user activity.
+  controller_.HandleUserActivity();
+  EXPECT_EQ(kScreenUndim, delegate_.GetActions());
+  EmitHpsSignal(true);
+
+  // If quick_dim_delay > default_ac_screen_dim_delay_ then a standard dim will
+  // will happen.
+  ac_delays.set_quick_dim_ms(default_ac_screen_dim_delay_.InMilliseconds() + 1);
+  controller_.HandlePolicyChange(policy);
+  EmitHpsSignal(false);
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
 }
 
 }  // namespace policy

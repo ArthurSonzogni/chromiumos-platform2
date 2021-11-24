@@ -157,6 +157,8 @@ std::string GetPolicyDelaysDebugString(
   std::string str;
   if (delays.has_screen_dim_ms())
     str += prefix + "_dim=" + MsToString(delays.screen_dim_ms()) + " ";
+  if (delays.has_quick_dim_ms())
+    str += prefix + "_quick_dim=" + MsToString(delays.quick_dim_ms()) + " ";
   if (delays.has_screen_off_ms())
     str += prefix + "_screen_off=" + MsToString(delays.screen_off_ms()) + " ";
   if (delays.has_screen_lock_ms())
@@ -236,7 +238,7 @@ bool StateController::Delays::operator!=(
   // based solely on screen_dim.
   return idle != o.idle || idle_warning != o.idle_warning ||
          screen_off != o.screen_off || screen_dim != o.screen_dim ||
-         screen_lock != o.screen_lock;
+         screen_lock != o.screen_lock || quick_dim != o.quick_dim;
 }
 
 class StateController::ActivityInfo {
@@ -341,7 +343,10 @@ std::string StateController::GetPolicyDebugString(
                policy.force_nonzero_brightness_for_user_activity()) +
            " ";
   }
-
+  if (policy.has_send_feedback_if_undimmed()) {
+    str += "send_feedback_if_undimmed=" +
+           base::NumberToString(policy.send_feedback_if_undimmed()) + " ";
+  }
   if (policy.has_reason())
     str += "(" + policy.reason() + ")";
 
@@ -616,6 +621,8 @@ PowerManagementPolicy::Delays StateController::CreateInactivityDelaysProto()
     proto.set_screen_off_ms(delays_.screen_off.InMilliseconds());
   if (!delays_.screen_dim.is_zero())
     proto.set_screen_dim_ms(delays_.screen_dim.InMilliseconds());
+  if (!delays_.quick_dim.is_zero())
+    proto.set_quick_dim_ms(delays_.quick_dim.InMilliseconds());
   if (!delays_.screen_lock.is_zero())
     proto.set_screen_lock_ms(delays_.screen_lock.InMilliseconds());
   return proto;
@@ -721,6 +728,11 @@ void StateController::SanitizeDelays(Delays* delays) {
     delays->screen_dim = base::TimeDelta();
   }
 
+  // A quick_dim after screen_dim will never happen.
+  if (delays->quick_dim >= delays->screen_dim) {
+    delays->quick_dim = base::TimeDelta();
+  }
+
   // Cap the idle-warning timeout to the idle-action timeout.
   if (delays->idle_warning > base::TimeDelta())
     delays->idle_warning = std::min(delays->idle_warning, delays->idle);
@@ -752,6 +764,10 @@ void StateController::MergeDelaysFromPolicy(
   if (policy_delays.has_screen_dim_ms() && policy_delays.screen_dim_ms() >= 0) {
     delays_out->screen_dim =
         base::TimeDelta::FromMilliseconds(policy_delays.screen_dim_ms());
+  }
+  if (policy_delays.has_quick_dim_ms() && policy_delays.quick_dim_ms() >= 0) {
+    delays_out->quick_dim =
+        base::TimeDelta::FromMilliseconds(policy_delays.quick_dim_ms());
   }
   if (policy_delays.has_screen_off_ms() && policy_delays.screen_off_ms() >= 0) {
     delays_out->screen_off =
@@ -900,6 +916,7 @@ void StateController::LoadPrefs() {
   prefs_->GetBool(kAvoidSuspendWhenHeadphoneJackPluggedPref,
                   &avoid_suspend_when_headphone_jack_plugged_);
   prefs_->GetBool(kDisableIdleSuspendPref, &disable_idle_suspend_);
+  prefs_->GetBool(kSendFeedbackIfUndimmedPref, &send_feedback_if_undimmed_);
   prefs_->GetBool(kFactoryModePref, &factory_mode_);
   prefs_->GetBool(kIgnoreExternalPolicyPref, &ignore_external_policy_);
 
@@ -919,6 +936,8 @@ void StateController::LoadPrefs() {
                            &pref_ac_delays_.screen_off));
   CHECK(GetMillisecondPref(prefs_, kPluggedDimMsPref,
                            &pref_ac_delays_.screen_dim));
+  CHECK(GetMillisecondPref(prefs_, kPluggedQuickDimMsPref,
+                           &pref_ac_delays_.quick_dim));
 
   CHECK(GetMillisecondPref(prefs_, kUnpluggedSuspendMsPref,
                            &pref_battery_delays_.idle));
@@ -926,6 +945,8 @@ void StateController::LoadPrefs() {
                            &pref_battery_delays_.screen_off));
   CHECK(GetMillisecondPref(prefs_, kUnpluggedDimMsPref,
                            &pref_battery_delays_.screen_dim));
+  CHECK(GetMillisecondPref(prefs_, kUnpluggedQuickDimMsPref,
+                           &pref_battery_delays_.quick_dim));
 
   SanitizeDelays(&pref_ac_delays_);
   SanitizeDelays(&pref_battery_delays_);
@@ -983,6 +1004,9 @@ void StateController::UpdateSettingsAndState() {
       wait_for_initial_user_activity_ =
           policy_.wait_for_initial_user_activity();
     }
+    if (policy_.has_send_feedback_if_undimmed()) {
+      send_feedback_if_undimmed_ = policy_.send_feedback_if_undimmed();
+    }
   }
 
   if (presenting)
@@ -1039,6 +1063,7 @@ void StateController::UpdateSettingsAndState() {
 
   // Most functionality is disabled in factory mode.
   if (factory_mode_) {
+    delays_.quick_dim = base::TimeDelta();
     delays_.screen_dim = base::TimeDelta();
     delays_.screen_off = base::TimeDelta();
     delays_.screen_lock = base::TimeDelta();
@@ -1095,6 +1120,7 @@ void StateController::LogSettings() {
 
   LOG(INFO) << "Updated settings:"
             << " dim=" << util::TimeDeltaToString(delays_.screen_dim)
+            << " quick_dim=" << util::TimeDeltaToString(delays_.quick_dim)
             << " screen_off=" << util::TimeDeltaToString(delays_.screen_off)
             << " lock=" << util::TimeDeltaToString(delays_.screen_lock)
             << " idle_warn=" << util::TimeDeltaToString(delays_.idle_warning)
@@ -1494,7 +1520,9 @@ void StateController::HandleDimWithHps(
       screen_dimmed_ = false;
       last_dim_time_ = base::TimeTicks();
 
-      dim_advisor_.UnDimFeedback(now - last_dim_time_);
+      if (send_feedback_if_undimmed_) {
+        dim_advisor_.UnDimFeedback(now - last_dim_time_);
+      }
     }
   }
 }

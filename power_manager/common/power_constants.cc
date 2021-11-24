@@ -14,11 +14,14 @@ namespace power_manager {
 const char kLowBatteryShutdownTimePref[] = "low_battery_shutdown_time_s";
 const char kLowBatteryShutdownPercentPref[] = "low_battery_shutdown_percent";
 const char kPluggedDimMsPref[] = "plugged_dim_ms";
+const char kPluggedQuickDimMsPref[] = "plugged_quick_dim_ms";
 const char kPluggedOffMsPref[] = "plugged_off_ms";
 const char kPluggedSuspendMsPref[] = "plugged_suspend_ms";
 const char kUnpluggedDimMsPref[] = "unplugged_dim_ms";
+const char kUnpluggedQuickDimMsPref[] = "unplugged_quick_dim_ms";
 const char kUnpluggedOffMsPref[] = "unplugged_off_ms";
 const char kUnpluggedSuspendMsPref[] = "unplugged_suspend_ms";
+const char kSendFeedbackIfUndimmedPref[] = "send_feedback_if_undimmed";
 const char kDisableIdleSuspendPref[] = "disable_idle_suspend";
 const char kFactoryModePref[] = "factory_mode";
 const char kUseLidPref[] = "use_lid";

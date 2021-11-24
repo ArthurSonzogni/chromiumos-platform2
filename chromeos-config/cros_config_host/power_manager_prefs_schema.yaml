@@ -10,6 +10,9 @@ powerd_prefs: &powerd_prefs
   plugged-dim-ms:
     <<: *powerd_prefs_default
     default: "420000"
+  plugged-quick-dim-ms:
+    <<: *powerd_prefs_default
+    default: "120000"
   plugged-off-ms:
     <<: *powerd_prefs_default
     default: "450000"
@@ -19,12 +22,18 @@ powerd_prefs: &powerd_prefs
   unplugged-dim-ms:
     <<: *powerd_prefs_default
     default: "300000"
+  unplugged-quick-dim-ms:
+    <<: *powerd_prefs_default
+    default: "60000"
   unplugged-off-ms:
     <<: *powerd_prefs_default
     default: "330000"
   unplugged-suspend-ms:
     <<: *powerd_prefs_default
     default: "390000"
+  send-feedback-if-undimmed:
+    <<: *powerd_prefs_default
+    default: "1"
   disable-idle-suspend: *powerd_prefs_default
   factory-mode: *powerd_prefs_default
   use-lid:

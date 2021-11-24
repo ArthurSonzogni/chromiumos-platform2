@@ -25,11 +25,16 @@ extern const char kLowBatteryShutdownPercentPref[];
 // the system while on AC and battery power. Note that these values are
 // overriden by policy messages sent from Chrome.
 extern const char kPluggedDimMsPref[];
+extern const char kPluggedQuickDimMsPref[];
 extern const char kPluggedOffMsPref[];
 extern const char kPluggedSuspendMsPref[];
 extern const char kUnpluggedDimMsPref[];
+extern const char kUnpluggedQuickDimMsPref[];
 extern const char kUnpluggedOffMsPref[];
 extern const char kUnpluggedSuspendMsPref[];
+
+// If true, the feedback will be sent to DimAdvisor on an undimming.
+extern const char kSendFeedbackIfUndimmedPref[];
 
 // If true, the system will not suspend due to user inactivity.
 extern const char kDisableIdleSuspendPref[];
