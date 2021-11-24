@@ -21,8 +21,6 @@ class MockMetrics : public Metrics {
 
   ~MockMetrics() override;
 
-  MOCK_METHOD(void, Start, (), (override));
-  MOCK_METHOD(void, Stop, (), (override));
   MOCK_METHOD(void,
               AddServiceStateTransitionTimer,
               (const Service&,

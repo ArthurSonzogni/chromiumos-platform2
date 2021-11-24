@@ -130,7 +130,6 @@ TEST_F(DaemonTaskTest, StartStop) {
   // The result is that we request the dump of the routing table and when that
   // completes, we request the dump of the links.  For each link found, we
   // create and start the device.
-  EXPECT_CALL(*metrics_, Start());
   EXPECT_CALL(rtnl_handler_, Start(RTMGRP_LINK | RTMGRP_IPV4_IFADDR |
                                    RTMGRP_IPV4_ROUTE | RTMGRP_IPV6_IFADDR |
                                    RTMGRP_IPV6_ROUTE | RTMGRP_ND_USEROPT));
@@ -147,11 +146,9 @@ TEST_F(DaemonTaskTest, StartStop) {
 #endif  // !defined(DISABLE_WIFI)
   EXPECT_CALL(*manager_, Start()).After(routing_table_started);
   StartDaemon();
-  Mock::VerifyAndClearExpectations(metrics_);
   Mock::VerifyAndClearExpectations(manager_);
 
   EXPECT_CALL(*manager_, Stop());
-  EXPECT_CALL(*metrics_, Stop());
   EXPECT_CALL(process_manager_, Stop());
   StopDaemon();
 }

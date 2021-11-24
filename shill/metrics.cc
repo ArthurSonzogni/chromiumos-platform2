@@ -810,14 +810,6 @@ Metrics::NetworkServiceError Metrics::ConnectFailureToServiceErrorEnum(
   }
 }
 
-void Metrics::Start() {
-  SLOG(this, 2) << __func__;
-}
-
-void Metrics::Stop() {
-  SLOG(this, 2) << __func__;
-}
-
 void Metrics::RegisterService(const Service& service) {
   SLOG(this, 2) << __func__;
   LOG_IF(WARNING, base::Contains(services_metrics_, &service))

@@ -143,7 +143,6 @@ void DaemonTask::StopAndReturnToMain() {
 }
 
 void DaemonTask::Start() {
-  metrics_->Start();
   rtnl_handler_->Start(RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
                        RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE |
                        RTMGRP_ND_USEROPT);
@@ -172,7 +171,6 @@ void DaemonTask::Start() {
 void DaemonTask::Stop() {
   manager_->Stop();
   manager_ = nullptr;  // Release manager resources, including DBus adaptor.
-  metrics_->Stop();
   dhcp_provider_->Stop();
   process_manager_->Stop();
   metrics_ = nullptr;

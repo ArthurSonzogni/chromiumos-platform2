@@ -1102,12 +1102,6 @@ class Metrics : public DefaultServiceObserver {
   static NetworkServiceError ConnectFailureToServiceErrorEnum(
       Service::ConnectFailure failure);
 
-  // Starts this object.  Call this during initialization.
-  virtual void Start();
-
-  // Stops this object.  Call this during cleanup.
-  virtual void Stop();
-
   // Registers a service with this object so it can use the timers to track
   // state transition metrics.
   void RegisterService(const Service& service);
