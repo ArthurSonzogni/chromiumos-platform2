@@ -54,7 +54,8 @@ ArchiveMounter::ArchiveMounter(
     Metrics* metrics,
     std::string metrics_name,
     std::vector<int> password_needed_exit_codes,
-    std::unique_ptr<SandboxedProcessFactory> sandbox_factory)
+    std::unique_ptr<SandboxedProcessFactory> sandbox_factory,
+    std::vector<std::string> extra_command_line_options)
     : FUSEMounter(
           platform, process_reaper, archive_type + "fs", {.read_only = true}),
       archive_type_(archive_type),
@@ -63,6 +64,7 @@ ArchiveMounter::ArchiveMounter(
       metrics_name_(std::move(metrics_name)),
       password_needed_exit_codes_(std::move(password_needed_exit_codes)),
       sandbox_factory_(std::move(sandbox_factory)),
+      extra_command_line_options_(std::move(extra_command_line_options)),
       format_raw_(IsFormatRaw(archive_type)) {}
 
 ArchiveMounter::~ArchiveMounter() = default;
@@ -144,10 +146,25 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
     }
   }
 
-  *error = FormatInvocationCommand(path, std::move(params), sandbox.get());
-  if (*error != MOUNT_ERROR_NONE) {
-    return nullptr;
+  // Bind-mount parts of a multipart archive if any.
+  for (const std::string& part : GetBindPaths(path.value())) {
+    if (!sandbox->BindMount(part, part, /* writeable= */ false,
+                            /* recursive= */ false)) {
+      PLOG(ERROR) << "Cannot bind-mount archive " << redact(part);
+      *error = MOUNT_ERROR_INTERNAL;
+      return nullptr;
+    }
   }
+
+  // Prepare command line arguments.
+  sandbox->AddArgument("-o");
+  sandbox->AddArgument(base::StringPrintf("ro,umask=0222,uid=%d,gid=%d",
+                                          kChronosUID, kChronosAccessGID));
+
+  for (const auto& opt : extra_command_line_options_)
+    sandbox->AddArgument(opt);
+
+  sandbox->AddArgument(path.value());
 
   if (mount_ns) {
     // Sandbox will need to enter Chrome's namespace too to access files.
@@ -155,39 +172,8 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
     sandbox->EnterExistingMountNamespace(kChromeNamespace);
   }
 
+  *error = MOUNT_ERROR_NONE;
   return sandbox;
-}
-
-MountErrorType ArchiveMounter::FormatInvocationCommand(
-    const base::FilePath& archive,
-    std::vector<std::string> /*params*/,
-    SandboxedProcess* sandbox) const {
-  // Make the source available in the sandbox.
-  if (!sandbox->BindMount(archive.value(), archive.value(),
-                          /* writeable= */ false,
-                          /* recursive= */ false)) {
-    LOG(ERROR) << "Cannot bind-mount archive " << redact(archive);
-    return MOUNT_ERROR_INTERNAL;
-  }
-
-  std::vector<std::string> opts = {
-      "ro", "umask=0222", base::StringPrintf("uid=%d", kChronosUID),
-      base::StringPrintf("gid=%d", kChronosAccessGID)};
-  // The fuse-archive program takes additional command line options.
-  if (metrics_name_ == kFuseArchiveMetricsName) {
-    opts.push_back("passphrase");
-    opts.push_back("redact");
-  }
-
-  std::string options;
-  if (!JoinParamsIntoOptions(opts, &options)) {
-    return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
-  }
-  sandbox->AddArgument("-o");
-  sandbox->AddArgument(options);
-  sandbox->AddArgument(archive.value());
-
-  return MOUNT_ERROR_NONE;
 }
 
 }  // namespace cros_disks

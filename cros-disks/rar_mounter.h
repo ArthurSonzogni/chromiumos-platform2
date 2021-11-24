@@ -29,12 +29,6 @@ class RarMounter : public ArchiveMounter {
 
   ~RarMounter() override;
 
- protected:
-  MountErrorType FormatInvocationCommand(
-      const base::FilePath& archive,
-      std::vector<std::string> params,
-      SandboxedProcess* sandbox) const override;
-
  private:
   // Increments a sequence of digits or letters [begin, end). Returns true if
   // success, and false in case of overflow.
@@ -112,7 +106,8 @@ class RarMounter : public ArchiveMounter {
   // ...
   // basename999.rar
   // etc.
-  std::vector<std::string> GetBindPaths(base::StringPiece original_path) const;
+  std::vector<std::string> GetBindPaths(
+      base::StringPiece original_path) const override;
 
   FRIEND_TEST(RarMounterTest, Increment);
   FRIEND_TEST(RarMounterTest, ParseDigits);

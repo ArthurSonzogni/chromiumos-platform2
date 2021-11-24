@@ -18,7 +18,6 @@ class Metrics;
 // An implementation of FUSEMounter tailored for mounting archives.
 class ArchiveMounter : public FUSEMounter {
  public:
-  static constexpr char kFuseArchiveMetricsName[] = "FuseArchive";
   static constexpr char kChromeNamespace[] = "/run/namespaces/mnt_chrome";
 
   ArchiveMounter(const Platform* platform,
@@ -27,7 +26,8 @@ class ArchiveMounter : public FUSEMounter {
                  Metrics* metrics,
                  std::string metrics_name,
                  std::vector<int> password_needed_exit_codes,
-                 std::unique_ptr<SandboxedProcessFactory> sandbox_factory);
+                 std::unique_ptr<SandboxedProcessFactory> sandbox_factory,
+                 std::vector<std::string> extra_command_line_options = {});
   ArchiveMounter(const ArchiveMounter&) = delete;
   ArchiveMounter& operator=(const ArchiveMounter&) = delete;
 
@@ -49,10 +49,10 @@ class ArchiveMounter : public FUSEMounter {
       std::vector<std::string> params,
       MountErrorType* error) const final;
 
-  virtual MountErrorType FormatInvocationCommand(
-      const base::FilePath& archive,
-      std::vector<std::string> params,
-      SandboxedProcess* sandbox) const;
+  virtual std::vector<std::string> GetBindPaths(
+      base::StringPiece original_path) const {
+    return {std::string(original_path)};
+  }
 
  private:
   const std::string archive_type_;
@@ -61,6 +61,7 @@ class ArchiveMounter : public FUSEMounter {
   const std::string metrics_name_;
   const std::vector<int> password_needed_exit_codes_;
   const std::unique_ptr<SandboxedProcessFactory> sandbox_factory_;
+  const std::vector<std::string> extra_command_line_options_;
 
   // Archivemount can read "foo.bz2" and "bar.qux.gz" files that are compressed
   // but aren't archives (multiple source files rolled into one). It calls
@@ -72,10 +73,7 @@ class ArchiveMounter : public FUSEMounter {
   // two-part extensions ("a.gz", "b.gz", ..., "qux.gz", ..., "tar.gz", ...),
   //
   // This format_raw_ field being true, based only on the archive_type
-  // constructor argument and not the archive's actual path name (passed to
-  // FormatInvocationCommand, possibly a different value for each
-  // FormatInvocationCommand call), means that it *can* be raw, but
-  // FormatInvocationCommand might override that and state that it's not raw.
+  // constructor argument and not the archive's actual path name.
   //
   // "archivemount" in this comment means a specific program
   // (https://github.com/cybernoid/archivemount). This C++ class is also called

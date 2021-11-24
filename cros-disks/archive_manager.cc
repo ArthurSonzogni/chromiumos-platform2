@@ -103,10 +103,14 @@ bool ArchiveManager::Initialize() {
         // couldn't use the password even if it's correct.
     };
 
+    std::vector<std::string> opts = {"--passphrase"};
+    if (!LOG_IS_ON(INFO))
+      opts.push_back("--redact");
+
     mounters_.push_back(std::make_unique<ArchiveMounter>(
-        platform(), process_reaper(), ext, metrics(),
-        ArchiveMounter::kFuseArchiveMetricsName,
-        std::move(password_needed_exit_codes), std::move(sandbox_factory)));
+        platform(), process_reaper(), ext, metrics(), "FuseArchive",
+        std::move(password_needed_exit_codes), std::move(sandbox_factory),
+        std::move(opts)));
   }
 
   return true;
