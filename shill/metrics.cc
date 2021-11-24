@@ -576,7 +576,6 @@ Metrics::Metrics()
       time_termination_actions_timer(new chromeos_metrics::Timer),
       time_suspend_actions_timer(new chromeos_metrics::Timer),
       time_dark_resume_actions_timer(new chromeos_metrics::Timer),
-      collect_bootstats_(true),
       num_scan_results_expected_in_dark_resume_(0),
       wake_on_wifi_throttled_(false),
       wake_reason_received_(false),
@@ -1075,13 +1074,11 @@ void Metrics::NotifyServiceStateChanged(const Service& service,
   if (new_state == Service::kStateFailure)
     SendServiceFailure(service);
 
-  if (collect_bootstats_) {
-    bootstat::BootStat().LogEvent(
-        base::StringPrintf("network-%s-%s",
-                           service.technology().GetName().c_str(),
-                           service.GetStateString().c_str())
-            .c_str());
-  }
+  bootstat::BootStat().LogEvent(
+      base::StringPrintf("network-%s-%s",
+                         service.technology().GetName().c_str(),
+                         service.GetStateString().c_str())
+          .c_str());
 
   if (new_state != Service::kStateConnected)
     return;
@@ -1435,7 +1432,7 @@ void Metrics::NotifyWiFiSupplicantSuccess(int attempts) {
 void Metrics::RegisterDevice(int interface_index, Technology technology) {
   SLOG(this, 2) << __func__ << ": " << interface_index;
 
-  if (collect_bootstats_ && technology.IsPrimaryConnectivityTechnology()) {
+  if (technology.IsPrimaryConnectivityTechnology()) {
     bootstat::BootStat().LogEvent(
         base::StringPrintf("network-%s-registered",
                            technology.GetName().c_str())

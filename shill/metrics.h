@@ -1606,7 +1606,6 @@ class Metrics : public DefaultServiceObserver {
   std::unique_ptr<chromeos_metrics::Timer> time_termination_actions_timer;
   std::unique_ptr<chromeos_metrics::Timer> time_suspend_actions_timer;
   std::unique_ptr<chromeos_metrics::Timer> time_dark_resume_actions_timer;
-  bool collect_bootstats_;
   DeviceMetricsLookupMap devices_metrics_;
   int num_scan_results_expected_in_dark_resume_;
   bool wake_on_wifi_throttled_;

@@ -102,7 +102,6 @@ class MetricsTest : public Test {
 #if !defined(DISABLE_WIFI)
     eap_wifi_service_->eap_.reset(eap_);  // Passes ownership.
 #endif                                    // DISABLE_WIFI
-    metrics_.collect_bootstats_ = false;
   }
 
  protected:
