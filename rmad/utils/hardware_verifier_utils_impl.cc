@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include <base/logging.h>
 #include <base/process/launch.h>
 #include <hardware_verifier/hardware_verifier.pb.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
