@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <stdlib.h>  // for setenv()
+#include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -328,6 +329,12 @@ bool L2tpManager::Start() {
   l2tpd_->AddArg("-D");
   l2tpd_->AddStringOption("-p", kXl2tpdPidFilePath);
   l2tpd_->RedirectUsingPipe(STDERR_FILENO, false);
+  l2tpd_->SetPreExecCallback(base::BindOnce([]() {
+    // The xl2tpd process will get a SIGTERM when the parent (this) process
+    // dies.
+    prctl(PR_SET_PDEATHSIG, SIGTERM);
+    return true;
+  }));
   l2tpd_->Start();
   output_fd_ = l2tpd_->GetPipe(STDERR_FILENO);
   start_ticks_ = base::TimeTicks::Now();
