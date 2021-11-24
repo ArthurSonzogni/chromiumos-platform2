@@ -15,6 +15,7 @@ pkg_config("libcros_healthd_utils_pkg_deps") {
 
 source_set("libcros_healthd_utils") {
   configs += [ ":libcros_healthd_utils_pkg_deps" ]
+  deps = [ "//diagnostics/mojom/public:cros_healthd_mojo_bindings" ]
   sources = [
     "cpu_file_helpers.cc",
     "file_utils.cc",
