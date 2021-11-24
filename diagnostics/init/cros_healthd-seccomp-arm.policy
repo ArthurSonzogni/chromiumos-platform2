@@ -109,6 +109,7 @@ _llseek: 1
 geteuid32: 1
 getrandom: 1
 dup2: 1
+pipe: 1
 prlimit64: 1
 prctl: arg0 == PR_SET_NO_NEW_PRIVS || arg0 == PR_SET_NAME
 sysinfo: 1
