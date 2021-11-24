@@ -149,10 +149,11 @@ class MockTpmUtility : public TpmUtility {
                       TPM_HANDLE*));
   MOCK_METHOD2(GetKeyName, TPM_RC(TPM_HANDLE, std::string*));
   MOCK_METHOD2(GetKeyPublicArea, TPM_RC(TPM_HANDLE, TPMT_PUBLIC*));
-  MOCK_METHOD5(SealData,
+  MOCK_METHOD6(SealData,
                TPM_RC(const std::string&,
                       const std::string&,
                       const std::string&,
+                      bool,
                       AuthorizationDelegate*,
                       std::string*));
   MOCK_METHOD3(UnsealData,

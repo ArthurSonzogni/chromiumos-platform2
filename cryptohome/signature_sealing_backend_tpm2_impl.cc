@@ -381,7 +381,8 @@ TPMErrorBase SignatureSealingBackendTpm2Impl::CreateSealedSecret(
   // Seal the secret value.
   std::string sealed_value;
   if (auto err = CreateError<TPM2Error>(trunks->tpm_utility->SealData(
-          secret_value->to_string(), policy_digest, "", session->GetDelegate(),
+          secret_value->to_string(), policy_digest, "",
+          /*require_admin_with_policy=*/true, session->GetDelegate(),
           &sealed_value))) {
     return WrapError<TPMError>(std::move(err), "Error sealing secret data");
   }

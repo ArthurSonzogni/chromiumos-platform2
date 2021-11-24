@@ -565,7 +565,8 @@ bool Tpm2Impl::SealToPCR0(const brillo::SecureBlob& value,
   std::string sealed_data;
   if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trunks->tpm_utility->SealData(
-              data_to_seal, policy_digest, "", session->GetDelegate(),
+              data_to_seal, policy_digest, "",
+              /*require_admin_with_policy=*/true, session->GetDelegate(),
               &sealed_data)))) {
     LOG(ERROR) << "Error sealing data to PCR0: " << *err;
     return false;
@@ -1089,7 +1090,8 @@ TPMErrorBase Tpm2Impl::SealToPcrWithAuthorization(
   if (TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trunks->tpm_utility->SealData(
               plaintext.to_string(), policy_digest, auth_value.to_string(),
-              session->GetDelegate(), &sealed_str)))) {
+              /*require_admin_with_policy=*/true, session->GetDelegate(),
+              &sealed_str)))) {
     return WrapError<TPMError>(std::move(err),
                                "Error sealing data to PCR with authorization");
   }

@@ -639,7 +639,8 @@ bool TpmUtilityV2::SealToPCR0(const std::string& data,
   std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
       trunks_factory_->GetPasswordAuthorization(std::string());
   result = trunks_utility_->SealData(
-      data, policy_digest, "", empty_password_authorization.get(), sealed_data);
+      data, policy_digest, "", /*require_admin_with_policy=*/true,
+      empty_password_authorization.get(), sealed_data);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__
                << ": Failed to seal data: " << trunks::GetErrorString(result);

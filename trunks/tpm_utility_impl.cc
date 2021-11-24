@@ -1492,6 +1492,7 @@ TPM_RC TpmUtilityImpl::GetKeyPublicArea(TPM_HANDLE handle,
 TPM_RC TpmUtilityImpl::SealData(const std::string& data_to_seal,
                                 const std::string& policy_digest,
                                 const std::string& auth_value,
+                                bool require_admin_with_policy,
                                 AuthorizationDelegate* delegate,
                                 std::string* sealed_data) {
   CHECK(sealed_data);
@@ -1500,6 +1501,14 @@ TPM_RC TpmUtilityImpl::SealData(const std::string& data_to_seal,
     result = SAPI_RC_INVALID_SESSIONS;
     LOG(ERROR) << __func__
                << ": This method needs a valid authorization delegate: "
+               << GetErrorString(result);
+    return result;
+  }
+  if (require_admin_with_policy && policy_digest.empty()) {
+    result = SAPI_RC_BAD_PARAMETER;
+    LOG(ERROR) << __func__
+               << ": This method needs a valid policy_digest when we only use "
+                  "policy session to do authorization: "
                << GetErrorString(result);
     return result;
   }
@@ -1514,7 +1523,12 @@ TPM_RC TpmUtilityImpl::SealData(const std::string& data_to_seal,
   // decrypt attributes disabled.
   TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_KEYEDHASH);
   public_area.auth_policy = Make_TPM2B_DIGEST(policy_digest);
-  public_area.object_attributes = kAdminWithPolicy | kNoDA;
+  public_area.object_attributes = kNoDA;
+  if (require_admin_with_policy) {
+    public_area.object_attributes |= kAdminWithPolicy;
+  } else {
+    public_area.object_attributes |= kUserWithAuth;
+  }
   public_area.unique.keyed_hash.size = 0;
   TPML_PCR_SELECTION creation_pcrs = {};
   TPMS_SENSITIVE_CREATE sensitive;

@@ -307,6 +307,7 @@ bool TrunksClientTest::SealedDataTest() {
   std::string auth_value("auth_value");
   std::string sealed_data;
   result = utility->SealData(data_to_seal, policy_digest, auth_value,
+                             /*require_admin_with_policy=*/true,
                              session->GetDelegate(), &sealed_data);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating Sealed Object: " << GetErrorString(result);
@@ -394,6 +395,7 @@ bool TrunksClientTest::SealedToMultiplePCRDataTest() {
   std::string data_to_seal("seal_data");
   std::string sealed_data;
   result = utility->SealData(data_to_seal, policy_digest, "",
+                             /*require_admin_with_policy=*/true,
                              session->GetDelegate(), &sealed_data);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating Sealed Object: " << GetErrorString(result);
@@ -1428,6 +1430,7 @@ bool TrunksClientTest::PolicyFidoSignedTest(TPM_ALG_ID signing_algo) {
   std::string sealed_data;
 
   result = utility->SealData(data_to_seal, policy_digest, "",
+                             /*require_admin_with_policy=*/true,
                              session->GetDelegate(), &sealed_data);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating Sealed Object: " << GetErrorString(result);

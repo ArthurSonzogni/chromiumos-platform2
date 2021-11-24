@@ -374,9 +374,14 @@ class TRUNKS_EXPORT TpmUtility {
   // retrieved by fulfilling the policy represented by |policy_digest|. The
   // session used to unseal the data will need to have the
   // EntityAuthorizationValue set to |auth_value| if non-empty.
+  // |require_admin_with_policy| specifies if we can use HmacSession in
+  // addition to PolicySession to authorize use of this data.
+  // NOTE: if |require_admin_with_policy| is set to true,
+  // parameter_encryption must be disabled when unsealing the data.
   virtual TPM_RC SealData(const std::string& data_to_seal,
                           const std::string& policy_digest,
                           const std::string& auth_value,
+                          bool require_admin_with_policy,
                           AuthorizationDelegate* delegate,
                           std::string* sealed_data) = 0;
 

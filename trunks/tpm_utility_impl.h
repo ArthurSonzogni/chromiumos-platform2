@@ -154,6 +154,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC SealData(const std::string& data_to_seal,
                   const std::string& policy_digest,
                   const std::string& auth_value,
+                  bool require_admin_with_policy,
                   AuthorizationDelegate* delegate,
                   std::string* sealed_data) override;
   TPM_RC UnsealData(const std::string& sealed_data,

@@ -1109,7 +1109,7 @@ bool TPM2UtilityImpl::SealData(int slot_id,
   session_->SetEntityAuthorizationValue("");  // SRK Authorization Value.
   TPM_RC result = trunks_tpm_utility_->SealData(
       unsealed_data, policy_digest, auth_value.to_string(),
-      session_->GetDelegate(), key_blob);
+      /*require_admin_with_policy=*/false, session_->GetDelegate(), key_blob);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Failed to seal data to TPM: "
                << trunks::GetErrorString(result);

@@ -1119,8 +1119,9 @@ TEST_F(TPM2UtilityTest, SealDataSuccess) {
   std::string encrypted_data;
   std::string empty_policy_digest("");
   EXPECT_CALL(mock_tpm_utility_,
-              SealData(unsealed_data, empty_policy_digest, auth_data_str, _, _))
-      .WillOnce(DoAll(SetArgPointee<4>("key_blob"), Return(TPM_RC_SUCCESS)));
+              SealData(unsealed_data, empty_policy_digest, auth_data_str,
+                       /*require_admin_with_policy=*/false, _, _))
+      .WillOnce(DoAll(SetArgPointee<5>("key_blob"), Return(TPM_RC_SUCCESS)));
   EXPECT_TRUE(utility.SealData(1, unsealed_data, auth_data, &key_blob,
                                &encrypted_data));
   EXPECT_EQ(key_blob, "key_blob");
@@ -1135,7 +1136,8 @@ TEST_F(TPM2UtilityTest, SealDataFail) {
   std::string encrypted_data;
   std::string empty_policy_digest("");
   EXPECT_CALL(mock_tpm_utility_,
-              SealData(unsealed_data, empty_policy_digest, auth_data_str, _, _))
+              SealData(unsealed_data, empty_policy_digest, auth_data_str,
+                       /*require_admin_with_policy=*/false, _, _))
       .WillOnce(DoAll(Return(TPM_RC_FAILURE)));
   EXPECT_FALSE(utility.SealData(1, unsealed_data, auth_data, &key_blob,
                                 &encrypted_data));
