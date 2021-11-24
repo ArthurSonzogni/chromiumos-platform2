@@ -461,12 +461,16 @@ bool HPS_impl::WriteFile(uint8_t bank, const base::FilePath& source) {
   base::File file(source,
                   base::File::Flags::FLAG_OPEN | base::File::Flags::FLAG_READ);
   if (!file.IsValid()) {
-    LOG(ERROR) << "WriteFile: " << source << ": "
-               << base::File::ErrorToString(file.error_details());
+    PLOG(ERROR) << "WriteFile: \"" << source << "\": Open failed: "
+                << base::File::ErrorToString(file.error_details());
     return false;
   }
   uint64_t bytes = 0;
   int64_t total_bytes = file.GetLength();
+  if (total_bytes < 0) {
+    PLOG(ERROR) << "WriteFile: \"" << source << "\" GetLength failed: ";
+    return false;
+  }
   uint32_t address = 0;
   int rd;
   base::ElapsedTimer timer;
@@ -493,6 +497,10 @@ bool HPS_impl::WriteFile(uint8_t bank, const base::FilePath& source) {
     rd = file.ReadAtCurrentPos(
         reinterpret_cast<char*>(&buf[sizeof(uint32_t)]),
         static_cast<int>(this->device_->BlockSizeBytes()));
+    if (rd < 0) {
+      PLOG(ERROR) << "WriteFile: \"" << source << "\" Read failed: ";
+      return false;
+    }
     if (rd > 0) {
       if (!this->device_->Write(I2cMemWrite(bank), &buf[0],
                                 static_cast<size_t>(rd) + sizeof(uint32_t))) {
@@ -510,8 +518,6 @@ bool HPS_impl::WriteFile(uint8_t bank, const base::FilePath& source) {
   } while (rd > 0);  // A read returning 0 indicates EOF.
   VLOG(1) << "Wrote " << bytes << " bytes from " << source << " in "
           << timer.Elapsed().InMilliseconds() << "ms";
-  // Wait for the bank to become ready again to ensure the write is complete.
-  this->WaitForBankReady(bank);
   return true;
 }
 

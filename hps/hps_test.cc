@@ -152,25 +152,28 @@ TEST_F(HPSTest, Download) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   auto f = temp_dir.GetPath().Append("blob");
-  const int len = 1024;
+  const int len = 1021;
   CreateBlob(f, len);
+
   // Download allowed to mcu flash in pre-booted state.
   ASSERT_TRUE(hps_->Download(hps::HpsBank::kMcuFlash, f));
   // Make sure the right amount was written.
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
+
+  // Downloading a non existant file fails
+  EXPECT_FALSE(hps_->Download(hps::HpsBank::kMcuFlash,
+                              temp_dir.GetPath().Append("fake")));
+
   // Fail the memory write and confirm that the request fails.
-  // TODO(amcrae): Refactor to use enum directly.
   fake_->Set(hps::FakeDev::Flags::kMemFail);
   ASSERT_FALSE(hps_->Download(hps::HpsBank::kMcuFlash, f));
   // No change to length.
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
   fake_->Clear(hps::FakeDev::Flags::kMemFail);
-  // Download not allowed to spi flash in pre-booted state.
+
+  // Download fails when bank not ready
   EXPECT_FALSE(hps_->Download(hps::HpsBank::kSpiFlash, f));
-  fake_->SkipBoot();
-  // No downloads allowed when running.
-  EXPECT_FALSE(hps_->Download(hps::HpsBank::kMcuFlash, f));
-  EXPECT_FALSE(hps_->Download(hps::HpsBank::kSpiFlash, f));
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSpiFlash), 0);
 }
 
 /*

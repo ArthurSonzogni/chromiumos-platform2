@@ -30,8 +30,7 @@ bool ReadVersionFromFile(const base::FilePath& mcu, uint32_t* version) {
   int read = file.Read(kVersionOffset, reinterpret_cast<char*>(&version_tmp),
                        sizeof(version_tmp));
   if (read < 0) {
-    LOG(ERROR) << "ReadVersionFromFile: \"" << mcu
-               << "\": " << base::File::ErrorToString(file.GetLastFileError());
+    PLOG(ERROR) << "ReadVersionFromFile: \"" << mcu << "\": ";
     return false;
   }
   if (sizeof(version_tmp) != read) {
