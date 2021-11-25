@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libhwsec-foundation/error/caller_info.h"
 #include "libhwsec-foundation/error/error.h"
 #include "libhwsec-foundation/error/error_message.h"
 #include "libhwsec-foundation/error/testing_helper.h"
@@ -173,15 +172,6 @@ TEST_F(TestingErrorTest, TestForCreateError) {
   EXPECT_FALSE((TestForCreateError<Error, int>::Check::value));
   EXPECT_FALSE(
       (TestForCreateError<Error, std::string, std::string>::Check::value));
-
-  using StringCallerError = CallerInfoError<Error>;
-  EXPECT_FALSE((TestForCreateError<StringCallerError>::Check::value));
-  EXPECT_FALSE(
-      (TestForCreateError<StringCallerError, std::string>::Check::value));
-  EXPECT_FALSE((TestForCreateError<StringCallerError, const char[],
-                                   const char[], int>::Check::value));
-  EXPECT_TRUE((TestForCreateError<StringCallerError, const char[], const char[],
-                                  int, std::string>::Check::value));
 }
 
 TEST_F(TestingErrorTest, TestForWrapError) {
@@ -234,13 +224,6 @@ TEST_F(TestingErrorTest, AsIsCast) {
   EXPECT_NE(nullptr, err6);
   EXPECT_EQ("1 0 XD", err6->ToReadableString());
   EXPECT_EQ("1 0 XD: 12 0.56 BBB: Magic", err6->ToFullReadableString());
-}
-
-TEST_F(TestingErrorTest, CallerInfoError) {
-  using StringCallerError = CallerInfoError<Error>;
-  auto err = CreateError<StringCallerError>(CALLER_INFO_ARGS, "Magic");
-  EXPECT_NE(err->ToFullReadableString().find("Magic"), std::string::npos);
-  auto err2 = err->FullCopy();
 }
 
 }  // namespace error
