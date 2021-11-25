@@ -123,5 +123,14 @@ const int kDarkResumeWakeDurationMsMax = 10 * 60 * 1000;
 
 const char kS0ixResidencyRateName[] = "Power.S0ixResidencyRate";  // %
 
+const char kDimEvent[] = "Power.DimEvent";
+const int kDimEventDurationMin = 1;        // One second.
+const int kDimEventDurationMax = 60 * 60;  // One Hour.
+const char kQuickDimDurationBeforeRevertedByHpsSec[] =
+    "Power.QuickDimRevertedByHps.DurationSeconds";
+const char kQuickDimDurationBeforeRevertedByUserSec[] =
+    "Power.QuickDimRevertedByUser.DurationSeconds";
+const char kStandardDimDurationBeforeRevertedByUserSec[] =
+    "Power.StandardDimRevertedByUser.DurationSeconds";
 }  // namespace metrics
 }  // namespace power_manager

@@ -30,6 +30,7 @@
 
 #include "power_manager/common/activity_logger.h"
 #include "power_manager/common/battery_percentage_converter.h"
+#include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -248,6 +249,16 @@ class Daemon::StateControllerDelegate
 
   void ReportUserActivityMetrics() override {
     daemon_->metrics_collector_->GenerateUserActivityMetrics();
+  }
+
+  void ReportDimEventMetrics(metrics::DimEvent sample) override {
+    daemon_->metrics_collector_->GenerateDimEventMetrics(sample);
+  }
+
+  void ReportDimEventDurationMetrics(const std::string& event_name,
+                                     base::TimeDelta duration) override {
+    daemon_->metrics_collector_->GenerateDimEventDurationMetrics(event_name,
+                                                                 duration);
   }
 
  private:

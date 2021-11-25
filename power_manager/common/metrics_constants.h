@@ -118,6 +118,12 @@ extern const int kDarkResumeWakeDurationMsMax;
 
 extern const char kS0ixResidencyRateName[];
 
+extern const char kDimEvent[];
+extern const int kDimEventDurationMin;
+extern const int kDimEventDurationMax;
+extern const char kQuickDimDurationBeforeRevertedByHpsSec[];
+extern const char kQuickDimDurationBeforeRevertedByUserSec[];
+extern const char kStandardDimDurationBeforeRevertedByUserSec[];
 // Values for kBatteryInfoSampleName.
 enum class BatteryInfoSampleResult {
   READ,
@@ -151,6 +157,16 @@ enum class ConnectedChargingPorts {
   TOO_MANY_PORTS = 4,
   // Keep this last and increment it if a new value is inserted.
   MAX = 5,
+};
+
+// Values for dim/undim event in StateController.
+enum class DimEvent {
+  STANDARD_DIM,
+  QUICK_DIM,
+  QUICK_DIM_TRANSITIONED_TO_STANDARD_DIM,
+  QUICK_DIM_REVERTED_BY_HPS,
+  QUICK_DIM_REVERTED_BY_USER,
+  MAX
 };
 
 }  // namespace metrics

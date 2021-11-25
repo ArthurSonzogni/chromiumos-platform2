@@ -25,6 +25,7 @@
 #include "power_manager/common/action_recorder.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
+#include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/proto_bindings/idle.pb.h"
@@ -54,6 +55,18 @@ const char kReportUserActivityMetrics[] = "metrics";
 // requested.
 const char kNoActions[] = "";
 
+// Return a string representation of DimEvent.
+std::string GetDimEventString(metrics::DimEvent sample) {
+  return base::StringPrintf("DimEvent-%d", sample);
+}
+
+// Return a string representation of event name and duration.
+std::string GetDimEventDurationString(const std::string& event_name,
+                                      base::TimeDelta duration) {
+  return base::StringPrintf("%s:%d", event_name.c_str(),
+                            static_cast<int>(duration.InSeconds()));
+}
+
 // StateController::Delegate implementation that records requested actions.
 class TestDelegate : public StateController::Delegate, public ActionRecorder {
  public:
@@ -65,6 +78,9 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
 
   void set_record_metrics_actions(bool record) {
     record_metrics_actions_ = record;
+  }
+  void set_record_dim_event_metrics(bool record) {
+    record_dim_event_metrics_ = record;
   }
   void set_usb_input_device_connected(bool connected) {
     usb_input_device_connected_ = connected;
@@ -100,15 +116,32 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
   }
   void StopSession() override { AppendAction(kStopSession); }
   void ShutDown() override { AppendAction(kShutDown); }
+
   void ReportUserActivityMetrics() override {
     if (record_metrics_actions_)
       AppendAction(kReportUserActivityMetrics);
+  }
+  void ReportDimEventMetrics(metrics::DimEvent sample) override {
+    if (record_dim_event_metrics_) {
+      AppendAction(GetDimEventString(sample));
+    }
+  }
+  void ReportDimEventDurationMetrics(const std::string& event_name,
+                                     base::TimeDelta duration) override {
+    if (record_dim_event_metrics_) {
+      AppendAction(GetDimEventDurationString(event_name, duration));
+    }
   }
 
  private:
   // Should calls to ReportUserActivityMetrics be recorded in |actions_|? These
   // are noisy, so by default, they aren't recorded.
   bool record_metrics_actions_ = false;
+
+  // Should calls to ReportDimEventMetrics and
+  // ReportDimEventDurationMetrics be recorded in |actions_|? These are noisy,
+  // so by default, they aren't recorded.
+  bool record_dim_event_metrics_ = false;
 
   // Should IsUsbInputDeviceConnected() return true?
   bool usb_input_device_connected_ = false;
@@ -2458,6 +2491,94 @@ TEST_F(StateControllerTest, QuickDimAndUndim) {
   // A user activity will always undim the screen.
   controller_.HandleUserActivity();
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
+}
+
+TEST_F(StateControllerTest, QuickDimAndUndimMetrics) {
+  Init();
+
+  const base::TimeDelta kTimeForward = base::TimeDelta::FromSeconds(6);
+
+  delegate_.set_record_dim_event_metrics(true);
+  // Send Hps positive signal to enable HpsSense.
+  EmitHpsSignal(HpsResult::POSITIVE);
+
+  // Case (1) trigger a standard dim.
+  const std::string standard_dim_event =
+      GetDimEventString(metrics::DimEvent::STANDARD_DIM);
+  const std::string quick_dim_event =
+      GetDimEventString(metrics::DimEvent::QUICK_DIM);
+
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  EXPECT_EQ(JoinActions(kScreenDim, standard_dim_event.c_str(), nullptr),
+            delegate_.GetActions());
+
+  // Case (2) revert a standard dim.
+  AdvanceTime(kTimeForward);
+  controller_.HandleUserActivity();
+  const std::string standard_dim_revert_duration_event =
+      GetDimEventDurationString(
+          metrics::kStandardDimDurationBeforeRevertedByUserSec, kTimeForward);
+  EXPECT_EQ(JoinActions(kScreenUndim,
+                        standard_dim_revert_duration_event.c_str(), nullptr),
+            delegate_.GetActions());
+
+  // Case (3) revert a quick dim with hps.
+  EmitHpsSignal(HpsResult::NEGATIVE);
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
+  // No metrics is logged, we recorded quick_dim when it is reverted.
+  EXPECT_EQ(JoinActions(kScreenDim, quick_dim_event.c_str(), nullptr),
+            delegate_.GetActions());
+  AdvanceTime(kTimeForward);
+  EmitHpsSignal(HpsResult::POSITIVE);
+  const std::string quick_dim_revert_by_hps_duration_event =
+      GetDimEventDurationString(
+          metrics::kQuickDimDurationBeforeRevertedByHpsSec, kTimeForward);
+  const std::string quick_dim_revert_by_hps_event =
+      GetDimEventString(metrics::DimEvent::QUICK_DIM_REVERTED_BY_HPS);
+  EXPECT_EQ(
+      JoinActions(kScreenUndim, quick_dim_revert_by_hps_duration_event.c_str(),
+                  quick_dim_revert_by_hps_event.c_str(), nullptr),
+      delegate_.GetActions());
+
+  // Case (4) revert a quick dim with user activity before transitioning to a
+  // standard dim.
+  // Reset LastUserActivityForScreenDim.
+  controller_.HandleUserActivity();
+  EmitHpsSignal(HpsResult::NEGATIVE);
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
+  // No metrics is logged, we recorded quick_dim when it is reverted.
+  EXPECT_EQ(JoinActions(kScreenDim, quick_dim_event.c_str(), nullptr),
+            delegate_.GetActions());
+  AdvanceTime(kTimeForward);
+  controller_.HandleUserActivity();
+  std::string quick_dim_revert_by_user_duration_event =
+      GetDimEventDurationString(
+          metrics::kQuickDimDurationBeforeRevertedByUserSec, kTimeForward);
+  const std::string quick_dim_revert_by_user_event =
+      GetDimEventString(metrics::DimEvent::QUICK_DIM_REVERTED_BY_USER);
+  EXPECT_EQ(
+      JoinActions(kScreenUndim, quick_dim_revert_by_user_duration_event.c_str(),
+                  quick_dim_revert_by_user_event.c_str(), nullptr),
+      delegate_.GetActions());
+
+  // Case (5) revert a quick dim with user activity after transitioning to
+  // standard dim.
+  EmitHpsSignal(HpsResult::NEGATIVE);
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
+  // No metrics is logged, we recorded quick_dim when it is reverted.
+  EXPECT_EQ(JoinActions(kScreenDim, quick_dim_event.c_str(), nullptr),
+            delegate_.GetActions());
+  AdvanceTime(default_ac_screen_dim_delay_);
+  controller_.HandleUserActivity();
+  quick_dim_revert_by_user_duration_event = GetDimEventDurationString(
+      metrics::kQuickDimDurationBeforeRevertedByUserSec,
+      default_ac_screen_dim_delay_);
+  const std::string quick_dim_revert_transite_event = GetDimEventString(
+      metrics::DimEvent::QUICK_DIM_TRANSITIONED_TO_STANDARD_DIM);
+  EXPECT_EQ(
+      JoinActions(kScreenUndim, quick_dim_revert_by_user_duration_event.c_str(),
+                  quick_dim_revert_transite_event.c_str(), nullptr),
+      delegate_.GetActions());
 }
 
 // Tests that display mode changes are ignored if the screens have been recently

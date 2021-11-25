@@ -760,6 +760,34 @@ TEST_F(MetricsCollectorTest, TestBatteryMetricsAtBootOnAC) {
   Init();
 }
 
+TEST_F(MetricsCollectorTest, DimEventMetricsAC) {
+  power_status_.line_power_on = true;
+  Init();
+  ExpectEnumMetric(
+      MetricsCollector::AppendPowerSourceToEnumName(kDimEvent, PowerSource::AC),
+      static_cast<int>(DimEvent::STANDARD_DIM),
+      static_cast<int>(DimEvent::MAX));
+  collector_.GenerateDimEventMetrics(DimEvent::STANDARD_DIM);
+}
+
+TEST_F(MetricsCollectorTest, DimEventMetricsBattery) {
+  power_status_.line_power_on = false;
+  Init();
+  ExpectEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
+                       kDimEvent, PowerSource::BATTERY),
+                   static_cast<int>(DimEvent::QUICK_DIM_REVERTED_BY_HPS),
+                   static_cast<int>(DimEvent::MAX));
+  collector_.GenerateDimEventMetrics(DimEvent::QUICK_DIM_REVERTED_BY_HPS);
+}
+
+TEST_F(MetricsCollectorTest, GenerateDimEventDurationMetrics) {
+  Init();
+  ExpectMetric(kQuickDimDurationBeforeRevertedByHpsSec, 13, 1, 3600, 50);
+  collector_.GenerateDimEventDurationMetrics(
+      kQuickDimDurationBeforeRevertedByHpsSec,
+      base::TimeDelta::FromSeconds(13));
+}
+
 // Base class for S0ix residency rate related tests.
 class S0ixResidencyMetricsTest : public MetricsCollectorTest {
  public:

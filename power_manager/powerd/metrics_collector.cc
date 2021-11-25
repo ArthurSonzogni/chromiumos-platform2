@@ -385,6 +385,17 @@ void MetricsCollector::GenerateBacklightLevelMetrics() {
   }
 }
 
+void MetricsCollector::GenerateDimEventMetrics(const DimEvent sample) {
+  SendEnumMetricWithPowerSource(kDimEvent, static_cast<int>(sample),
+                                static_cast<int>(DimEvent::MAX));
+}
+
+void MetricsCollector::GenerateDimEventDurationMetrics(
+    const std::string& event_name, base::TimeDelta duration) {
+  SendMetric(event_name, duration.InSeconds(), kDimEventDurationMin,
+             kDimEventDurationMax, kDefaultBuckets);
+}
+
 void MetricsCollector::HandlePowerButtonEvent(ButtonState state) {
   switch (state) {
     case ButtonState::DOWN:

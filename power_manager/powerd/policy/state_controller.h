@@ -19,6 +19,7 @@
 
 #include "hps/proto_bindings/hps_service.pb.h"
 #include "power_manager/common/activity_logger.h"
+#include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/powerd/policy/dim_advisor.h"
@@ -100,6 +101,13 @@ class StateController : public PrefsObserver {
 
     // Reports metrics in response to user activity.
     virtual void ReportUserActivityMetrics() = 0;
+
+    // Reports metrics when a dim/undim happens.
+    virtual void ReportDimEventMetrics(metrics::DimEvent sample) = 0;
+
+    // Reports duration metrics when a dim/undim happens.
+    virtual void ReportDimEventDurationMetrics(const std::string& event_name,
+                                               base::TimeDelta duration) = 0;
   };
 
   class TestApi {
@@ -568,6 +576,9 @@ class StateController : public PrefsObserver {
   // go/cros-pdd#bookmark=id.7emuxnhxv638 and Chrome OS Privacy before
   // using.
   hps::HpsResult hps_result_ = hps::HpsResult::UNKNOWN;
+  // This records how much earlier a quick dim is compared to a standard dim.
+  // Used for estimating the effectiveness of a quick dim.
+  base::TimeDelta quick_dim_ahead_;
 
   // Information about audio activity and full-brightness, screen-on-but-dimmed,
   // and system-level wake locks.

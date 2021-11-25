@@ -25,6 +25,7 @@
 #include <update_engine/proto_bindings/update_engine.pb.h>
 
 #include "power_manager/common/clock.h"
+#include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
@@ -1257,6 +1258,8 @@ void StateController::UpdateState() {
         "Dimming screen", "Undimming screen", &screen_dimmed_);
     if (screen_dimmed_ && !screen_was_dimmed) {
       last_dim_time_ = now;
+      // quick_dim_ahead_ is reset on a standard dim.
+      quick_dim_ahead_ = base::TimeDelta();
     } else if (!screen_dimmed_) {
       // If screen is not dimmed, set last_dim_time_ as base::TimeTicks().
       last_dim_time_ = base::TimeTicks();
@@ -1563,12 +1566,26 @@ void StateController::HandleDimWithHps(
       delegate_->DimScreen();
       screen_dimmed_ = true;
       last_dim_time_ = now;
+
+      if (should_quick_dim) {
+        // Quick dim is not recorded here, but recorded when it got reverted or
+        // successfully transitioned to a standard dim.
+
+        // `quick_dim_ahead_` records how far from a standard dim when this
+        // quick dim happens; so that later on, when this quick dim got reverted
+        // eventually, we'll know whether the quick_dim stayed long enough to
+        // transition to a standard dim.
+        quick_dim_ahead_ =
+            delays_.screen_dim - duration_since_last_activity_for_screen_dim;
+        delegate_->ReportDimEventMetrics(metrics::DimEvent::QUICK_DIM);
+      } else {
+        // Record a standard dim event.
+        delegate_->ReportDimEventMetrics(metrics::DimEvent::STANDARD_DIM);
+        quick_dim_ahead_ = base::TimeDelta();
+      }
     }
   } else {
     // Try to undim.
-    const bool undim_for_hps = duration_since_last_activity_for_screen_dim <
-                                   delays_.screen_dim_imminent &&
-                               hps_result_ == hps::HpsResult::POSITIVE;
 
     // Screen should be undimmed if there is a user_activity after last_dim_time
     // NOTE: comparing to the original condition
@@ -1582,9 +1599,16 @@ void StateController::HandleDimWithHps(
     bool undim_for_user_activity =
         GetLastActivityTimeForScreenDim(now) >= last_dim_time_;
 
+    const bool undim_for_hps = !undim_for_user_activity &&
+                               duration_since_last_activity_for_screen_dim <
+                                   delays_.screen_dim_imminent &&
+                               hps_result_ == hps::HpsResult::POSITIVE;
+
     if (undim_for_hps || undim_for_user_activity) {
+      const base::TimeDelta duration_since_last_dim = now - last_dim_time_;
+
       LOG(INFO) << "Undimming screen after "
-                << util::TimeDeltaToString(now - last_dim_time_);
+                << util::TimeDeltaToString(duration_since_last_dim);
 
       delegate_->UndimScreen();
       screen_dimmed_ = false;
@@ -1592,6 +1616,42 @@ void StateController::HandleDimWithHps(
 
       if (send_feedback_if_undimmed_) {
         dim_advisor_.UnDimFeedback(now - last_dim_time_);
+      }
+
+      if (undim_for_hps) {
+        // Undimmed by hps.
+
+        delegate_->ReportDimEventDurationMetrics(
+            metrics::kQuickDimDurationBeforeRevertedByHpsSec,
+            duration_since_last_dim);
+        delegate_->ReportDimEventMetrics(
+            metrics::DimEvent::QUICK_DIM_REVERTED_BY_HPS);
+      } else {
+        // Undimmed by user.
+
+        if (quick_dim_ahead_.is_zero()) {
+          // A standard dim was undimmed.
+          delegate_->ReportDimEventDurationMetrics(
+              metrics::kStandardDimDurationBeforeRevertedByUserSec,
+              duration_since_last_dim);
+        } else {
+          // A quick dim was undimmed.
+          delegate_->ReportDimEventDurationMetrics(
+              metrics::kQuickDimDurationBeforeRevertedByUserSec,
+              duration_since_last_dim);
+          // We know that quick_dim happened quick_dim_ahead_ before standard
+          // dim, and duration_since_last_dim has passed since last dim.
+          // duration_since_last_dim >= quick_dim_ahead_ means we would have a
+          // standard dim by now if the quick_dim didn't happen.
+          // We consider such case as a successful quick dim.
+          if (duration_since_last_dim >= quick_dim_ahead_) {
+            delegate_->ReportDimEventMetrics(
+                metrics::DimEvent::QUICK_DIM_TRANSITIONED_TO_STANDARD_DIM);
+          } else {
+            delegate_->ReportDimEventMetrics(
+                metrics::DimEvent::QUICK_DIM_REVERTED_BY_USER);
+          }
+        }
       }
     }
   }

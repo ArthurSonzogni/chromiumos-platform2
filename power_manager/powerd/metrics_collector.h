@@ -17,6 +17,7 @@
 #include <gtest/gtest_prod.h>
 
 #include "power_manager/common/clock.h"
+#include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/suspender.h"
 #include "power_manager/powerd/system/power_supply.h"
@@ -114,6 +115,13 @@ class MetricsCollector {
 
   // Generates UMA metrics about the current backlight level.
   void GenerateBacklightLevelMetrics();
+
+  // Generates UMA metrics about dimming events.
+  void GenerateDimEventMetrics(DimEvent sample);
+
+  // Generates UMA metrics about dimming events durations.
+  void GenerateDimEventDurationMetrics(const std::string& event_name,
+                                       base::TimeDelta duration);
 
   // Handles the power button being pressed or released.
   void HandlePowerButtonEvent(ButtonState state);
