@@ -18,6 +18,20 @@
 #include "trunks/error_codes.h"
 #include "trunks/tpm_generated.h"
 
+namespace {
+
+// Returns a serialized representation of the unmodified handle. This is useful
+// for predefined handle values, like TPM_RH_OWNER. For details on what types of
+// handles use this name formula see Table 3 in the TPM 2.0 Library Spec Part 1
+// (Section 16 - Names).
+std::string NameFromHandle(trunks::TPM_HANDLE handle) {
+  std::string name;
+  trunks::Serialize_TPM_HANDLE(handle, &name);
+  return name;
+}
+
+}  // namespace
+
 namespace trunks {
 
 PolicySessionImpl::PolicySessionImpl(const TrunksFactory& factory)
@@ -271,6 +285,40 @@ TPM_RC PolicySessionImpl::PolicyFidoSigned(
     return result;
   }
   return TPM_RC_SUCCESS;
+}
+
+TPM_RC PolicySessionImpl::PolicyNV(uint32_t index,
+                                   uint32_t offset,
+                                   bool using_owner_authorization,
+                                   TPM2B_OPERAND operand,
+                                   TPM_EO operation,
+                                   AuthorizationDelegate* delegate) {
+  TPM_RC result;
+  std::string nv_name;
+  result = factory_.GetTpmUtility()->GetNVSpaceName(index, &nv_name);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Could not find space at " << index << " "
+               << GetErrorString(result);
+    return result;
+  }
+  uint32_t nv_index = NV_INDEX_FIRST + index;
+  TPMI_RH_NV_AUTH auth_entity = nv_index;
+  std::string auth_entity_name = nv_name;
+  if (using_owner_authorization) {
+    auth_entity = TPM_RH_OWNER;
+    auth_entity_name = NameFromHandle(TPM_RH_OWNER);
+  }
+
+  TPM_HANDLE policy_session_handle = session_manager_->GetSessionHandle();
+  std::string policy_session_name = NameFromHandle(policy_session_handle);
+
+  result = factory_.GetTpm()->PolicyNVSync(
+      auth_entity, auth_entity_name, nv_index, nv_name, policy_session_handle,
+      policy_session_name, operand, offset, operation, delegate);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error performing PolicyNV: " << GetErrorString(result);
+  }
+  return result;
 }
 
 }  // namespace trunks

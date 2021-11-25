@@ -164,6 +164,10 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                               AuthorizationDelegate* delegate,
                               std::string* unsealed_data) override;
   TPM_RC StartSession(HmacSession* session) override;
+  TPM_RC AddPcrValuesToPolicySession(
+      const std::map<uint32_t, std::string>& pcr_map,
+      bool use_auth_value,
+      PolicySession* policy_session) override;
   TPM_RC GetPolicyDigestForPcrValues(
       const std::map<uint32_t, std::string>& pcr_map,
       bool use_auth_value,
@@ -187,6 +191,9 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                       bool using_owner_authorization,
                       bool extend,
                       AuthorizationDelegate* delegate) override;
+  TPM_RC IncrementNVCounter(uint32_t index,
+                            bool using_owner_authorization,
+                            AuthorizationDelegate* delegate) override;
   TPM_RC ReadNVSpace(uint32_t index,
                      uint32_t offset,
                      size_t num_bytes,

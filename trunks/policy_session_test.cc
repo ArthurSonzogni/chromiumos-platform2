@@ -11,6 +11,7 @@
 #include "trunks/error_codes.h"
 #include "trunks/mock_session_manager.h"
 #include "trunks/mock_tpm.h"
+#include "trunks/mock_tpm_utility.h"
 #include "trunks/tpm_generated.h"
 #include "trunks/trunks_factory_for_test.h"
 
@@ -49,6 +50,7 @@ class PolicySessionTest : public testing::Test {
   void SetUp() override {
     factory_.set_session_manager(&mock_session_manager_);
     factory_.set_tpm(&mock_tpm_);
+    factory_.set_tpm_utility(&mock_tpm_utility_);
   }
 
   HmacAuthorizationDelegate* GetHmacDelegate(PolicySessionImpl* session) {
@@ -59,6 +61,7 @@ class PolicySessionTest : public testing::Test {
   TrunksFactoryForTest factory_;
   NiceMock<MockSessionManager> mock_session_manager_;
   NiceMock<MockTpm> mock_tpm_;
+  NiceMock<MockTpmUtility> mock_tpm_utility_;
 };
 
 TEST_F(PolicySessionTest, GetDelegateUninitialized) {
@@ -286,6 +289,106 @@ TEST_F(PolicySessionTest, EntityAuthorizationForwardingTest) {
   HmacAuthorizationDelegate* hmac_delegate = GetHmacDelegate(&session);
   std::string entity_auth = hmac_delegate->entity_authorization_value();
   EXPECT_EQ(0, test_auth.compare(entity_auth));
+}
+
+TEST_F(PolicySessionTest, PolicyNVSuccessNoOwnerAuth) {
+  PolicySessionImpl session(factory_);
+
+  const uint32_t index = 0x100e;
+  const uint32_t offset = 0;
+  const TPM_EO operation = trunks::TPM_EO_EQ;
+  const std::string operand_b = "data";
+  const std::string nv_name = "name";
+  const std::unique_ptr<AuthorizationDelegate> authorization_delegate =
+      factory_.GetPasswordAuthorization("");
+  const TPM_HANDLE policy_session_handle = kUninitializedHandle;
+  std::string policy_session_name;
+  Serialize_TPM_HANDLE(policy_session_handle, &policy_session_name);
+
+  EXPECT_CALL(mock_tpm_utility_, GetNVSpaceName(index, _))
+      .WillOnce(DoAll(SetArgPointee<1>(nv_name), Return(TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(mock_session_manager_, GetSessionHandle)
+      .WillOnce(Return(policy_session_handle));
+
+  trunks::TPM2B_OPERAND called_operand_b;
+  EXPECT_CALL(
+      mock_tpm_,
+      PolicyNVSync(NV_INDEX_FIRST + index, nv_name, NV_INDEX_FIRST + index,
+                   nv_name, policy_session_handle, policy_session_name, _,
+                   offset, operation, authorization_delegate.get()))
+      .WillOnce(DoAll(SaveArg<6>(&called_operand_b), Return(TPM_RC_SUCCESS)));
+
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            session.PolicyNV(index, offset, /*using_owner_authorization=*/false,
+                             trunks::Make_TPM2B_DIGEST(operand_b),
+                             trunks::TPM_EO_EQ, authorization_delegate.get()));
+  EXPECT_EQ(operand_b, StringFrom_TPM2B_DIGEST(called_operand_b));
+}
+
+TEST_F(PolicySessionTest, PolicyNVSuccessOwnerAuth) {
+  PolicySessionImpl session(factory_);
+
+  const uint32_t index = 0x100e;
+  const uint32_t offset = 0;
+  const TPM_EO operation = trunks::TPM_EO_EQ;
+  const std::string operand_b = "data";
+  const std::string nv_name = "name";
+  const std::unique_ptr<AuthorizationDelegate> authorization_delegate =
+      factory_.GetPasswordAuthorization("");
+  const TPM_HANDLE policy_session_handle = kUninitializedHandle;
+  std::string policy_session_name;
+  Serialize_TPM_HANDLE(policy_session_handle, &policy_session_name);
+  const TPM_HANDLE owner_handle = TPM_RH_OWNER;
+  std::string owner_handle_name;
+  trunks::Serialize_TPM_HANDLE(owner_handle, &owner_handle_name);
+
+  EXPECT_CALL(mock_tpm_utility_, GetNVSpaceName(index, _))
+      .WillOnce(DoAll(SetArgPointee<1>(nv_name), Return(TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(mock_session_manager_, GetSessionHandle)
+      .WillOnce(Return(policy_session_handle));
+
+  trunks::TPM2B_OPERAND called_operand_b;
+  EXPECT_CALL(
+      mock_tpm_,
+      PolicyNVSync(owner_handle, owner_handle_name, NV_INDEX_FIRST + index,
+                   nv_name, policy_session_handle, policy_session_name, _,
+                   offset, operation, authorization_delegate.get()))
+      .WillOnce(DoAll(SaveArg<6>(&called_operand_b), Return(TPM_RC_SUCCESS)));
+
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            session.PolicyNV(index, offset, /*using_owner_authorization=*/true,
+                             trunks::Make_TPM2B_DIGEST(operand_b), operation,
+                             authorization_delegate.get()));
+  EXPECT_EQ(operand_b, StringFrom_TPM2B_DIGEST(called_operand_b));
+}
+
+TEST_F(PolicySessionTest, PolicyNVFailure) {
+  PolicySessionImpl session(factory_);
+
+  EXPECT_CALL(mock_tpm_, PolicyNVSync).WillOnce(Return(TPM_RC_FAILURE));
+
+  EXPECT_EQ(
+      TPM_RC_FAILURE,
+      session.PolicyNV(/*index=*/0x100e, /*offset=*/0,
+                       /*using_owner_authorization=*/false,
+                       trunks::Make_TPM2B_DIGEST("data"), trunks::TPM_EO_EQ,
+                       factory_.GetPasswordAuthorization("").get()));
+}
+
+TEST_F(PolicySessionTest, PolicyNVFailureAtGetName) {
+  PolicySessionImpl session(factory_);
+
+  EXPECT_CALL(mock_tpm_utility_, GetNVSpaceName)
+      .WillOnce(Return(TPM_RC_FAILURE));
+
+  EXPECT_EQ(
+      TPM_RC_FAILURE,
+      session.PolicyNV(/*index=*/0x100e, /*offset=*/0,
+                       /*using_owner_authorization=*/false,
+                       trunks::Make_TPM2B_DIGEST("data"), trunks::TPM_EO_EQ,
+                       factory_.GetPasswordAuthorization("").get()));
 }
 
 }  // namespace trunks

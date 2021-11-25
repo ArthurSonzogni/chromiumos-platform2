@@ -14,6 +14,7 @@
 
 #include "trunks/hmac_session.h"
 #include "trunks/pinweaver.pb.h"
+#include "trunks/policy_session.h"
 #include "trunks/tpm_alerts.h"
 #include "trunks/tpm_generated.h"
 #include "trunks/trunks_export.h"
@@ -399,14 +400,21 @@ class TRUNKS_EXPORT TpmUtility {
   // true. Returns an TPM_RC_SUCCESS on success.
   virtual TPM_RC StartSession(HmacSession* session) = 0;
 
-  // This method uses a trial session to compute the |policy_digest| when
-  // the policy is bound to a given map of pcr_index -> pcr_value in |pcr_map|.
+  // Adds pcr values to the given |policy_session|.
+  // The policy is bound to a given map of pcr_index -> pcr_value in |pcr_map|.
   // If some values in the map are empty, the method uses the current value of
   // the pcr for the corresponding indexes. If |use_auth_value| is set to true
   // then a authorization value will be required when using the digest. In this
   // case PolicyAuthValue is called on session first, and PolicyPCR is called
   // after this. Those two calls must be made in the same order when we need to
   // reveal the secret guarded by the authorization value.
+  virtual TPM_RC AddPcrValuesToPolicySession(
+      const std::map<uint32_t, std::string>& pcr_map,
+      bool use_auth_value,
+      PolicySession* policy_session) = 0;
+
+  // Calculates the policy digest for a given pcr_map. Uses current value of
+  // the pcr for empty values.
   virtual TPM_RC GetPolicyDigestForPcrValues(
       const std::map<uint32_t, std::string>& pcr_map,
       bool use_auth_value,
@@ -449,6 +457,11 @@ class TRUNKS_EXPORT TpmUtility {
                               bool using_owner_authorization,
                               bool extend,
                               AuthorizationDelegate* delegate) = 0;
+
+  // Increments non-volatile counter at |index|.
+  virtual TPM_RC IncrementNVCounter(uint32_t index,
+                                    bool using_owner_authorization,
+                                    AuthorizationDelegate* delegate) = 0;
 
   // This method reads |num_bytes| of data from the |offset| located at the
   // non-volatile space defined by |index|. This method returns an error if

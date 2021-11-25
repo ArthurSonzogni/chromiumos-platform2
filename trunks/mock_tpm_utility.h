@@ -165,6 +165,10 @@ class MockTpmUtility : public TpmUtility {
                       AuthorizationDelegate*,
                       std::string*));
   MOCK_METHOD1(StartSession, TPM_RC(HmacSession*));
+  MOCK_METHOD3(AddPcrValuesToPolicySession,
+               TPM_RC(const std::map<uint32_t, std::string>&,
+                      bool,
+                      PolicySession*));
   MOCK_METHOD3(GetPolicyDigestForPcrValues,
                TPM_RC(const std::map<uint32_t, std::string>&,
                       bool,
@@ -186,6 +190,8 @@ class MockTpmUtility : public TpmUtility {
                       bool,
                       bool,
                       AuthorizationDelegate*));
+  MOCK_METHOD3(IncrementNVCounter,
+               TPM_RC(uint32_t, bool, AuthorizationDelegate*));
   MOCK_METHOD6(ReadNVSpace,
                TPM_RC(uint32_t,
                       uint32_t,

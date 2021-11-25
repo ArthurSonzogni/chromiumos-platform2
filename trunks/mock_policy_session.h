@@ -62,6 +62,13 @@ class MockPolicySession : public PolicySession {
   MOCK_METHOD0(PolicyAuthValue, TPM_RC());
   MOCK_METHOD0(PolicyRestart, TPM_RC());
   MOCK_METHOD1(SetEntityAuthorizationValue, void(const std::string&));
+  MOCK_METHOD6(PolicyNV,
+               TPM_RC(uint32_t,
+                      uint32_t,
+                      bool,
+                      TPM2B_OPERAND,
+                      TPM_EO,
+                      AuthorizationDelegate*));
 };
 
 }  // namespace trunks

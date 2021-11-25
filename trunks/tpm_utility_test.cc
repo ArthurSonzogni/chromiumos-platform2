@@ -2800,6 +2800,66 @@ TEST_F(NVTpmUtilityTest, WriteNVSpaceFailureGetChunkSize) {
                                   &mock_authorization_delegate_));
 }
 
+TEST_F(NVTpmUtilityTest, IncrementNVCounterReadPublicFailure) {
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(kNvTpmIndex, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+
+  EXPECT_EQ(TPM_RC_FAILURE,
+            utility_.IncrementNVCounter(kNvIndex,
+                                        /*using_owner_authorization=*/false,
+                                        &mock_authorization_delegate_));
+}
+
+TEST_F(NVTpmUtilityTest, IncrementNVCounterIncrementFailure) {
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(kNvTpmIndex, _, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(kTpm2bNvPublic), Return(TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(mock_tpm_, NV_IncrementSync(_, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+
+  EXPECT_EQ(TPM_RC_FAILURE,
+            utility_.IncrementNVCounter(kNvIndex,
+                                        /*using_owner_authorization=*/true,
+                                        &mock_authorization_delegate_));
+}
+
+TEST_F(NVTpmUtilityTest, IncrementNVCounterNotOwnerSuccess) {
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(kNvTpmIndex, _, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(kTpm2bNvPublic), Return(TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(mock_tpm_, NV_IncrementSync(kNvTpmIndex, _, kNvTpmIndex, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.IncrementNVCounter(kNvIndex,
+                                        /*using_owner_authorization=*/false,
+                                        &mock_authorization_delegate_));
+
+  TPMS_NV_PUBLIC public_area;
+  EXPECT_EQ(TPM_RC_SUCCESS, GetNVRAMMap(kNvIndex, &public_area));
+  EXPECT_EQ(kNvAttributes | TPMA_NV_WRITTEN, public_area.attributes);
+}
+
+TEST_F(NVTpmUtilityTest, IncrementNVCounterOwnerSuccess) {
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(kNvTpmIndex, _, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(kTpm2bNvPublic), Return(TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(mock_tpm_, NV_IncrementSync(TPM_RH_OWNER, _, kNvTpmIndex, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.IncrementNVCounter(kNvIndex,
+                                        /*using_owner_authorization=*/true,
+                                        &mock_authorization_delegate_));
+
+  TPMS_NV_PUBLIC public_area;
+  EXPECT_EQ(TPM_RC_SUCCESS, GetNVRAMMap(kNvIndex, &public_area));
+  EXPECT_EQ(kNvAttributes | TPMA_NV_WRITTEN, public_area.attributes);
+}
+
 TEST_F(NVTpmUtilityTest, ReadNVSpaceSuccess) {
   uint32_t offset = 5;
   EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(kNvTpmIndex, _, _, _, _))

@@ -375,6 +375,14 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->StartSession(session);
   }
 
+  TPM_RC AddPcrValuesToPolicySession(
+      const std::map<uint32_t, std::string>& pcr_map,
+      bool use_auth_value,
+      PolicySession* policy_session) override {
+    return target_->AddPcrValuesToPolicySession(pcr_map, use_auth_value,
+                                                policy_session);
+  }
+
   TPM_RC GetPolicyDigestForPcrValues(
       const std::map<uint32_t, std::string>& pcr_map,
       bool use_auth_value,
@@ -415,6 +423,13 @@ class TpmUtilityForwarder : public TpmUtility {
                       AuthorizationDelegate* delegate) override {
     return target_->WriteNVSpace(index, offset, nvram_data,
                                  using_owner_authorization, extend, delegate);
+  }
+
+  TPM_RC IncrementNVCounter(uint32_t index,
+                            bool using_owner_authorization,
+                            AuthorizationDelegate* delegate) override {
+    return target_->IncrementNVCounter(index, using_owner_authorization,
+                                       delegate);
   }
 
   TPM_RC ReadNVSpace(uint32_t index,
@@ -756,6 +771,16 @@ class PolicySessionForwarder : public PolicySession {
                           AuthorizationDelegate* delegate) override {
     return target_->PolicyFidoSigned(auth_entity, auth_entity_name, auth_data,
                                      auth_data_descr, signature, delegate);
+  }
+
+  TPM_RC PolicyNV(uint32_t index,
+                  uint32_t offset,
+                  bool using_owner_authorization,
+                  TPM2B_OPERAND operand,
+                  TPM_EO operation,
+                  AuthorizationDelegate* delegate) override {
+    return target_->PolicyNV(index, offset, using_owner_authorization, operand,
+                             operation, delegate);
   }
 
   TPM_RC PolicyAuthValue() override { return target_->PolicyAuthValue(); }

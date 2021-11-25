@@ -1630,19 +1630,11 @@ TPM_RC TpmUtilityImpl::StartSession(HmacSession* session) {
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC TpmUtilityImpl::GetPolicyDigestForPcrValues(
+TPM_RC TpmUtilityImpl::AddPcrValuesToPolicySession(
     const std::map<uint32_t, std::string>& pcr_map,
     bool use_auth_value,
-    std::string* policy_digest) {
-  CHECK(policy_digest);
-  std::unique_ptr<PolicySession> session = factory_.GetTrialSession();
-  TPM_RC result = session->StartUnboundSession(true, false);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Error starting unbound trial session: "
-               << GetErrorString(result);
-    return result;
-  }
-
+    PolicySession* policy_session) {
+  CHECK(policy_session);
   // the construction of `pcr_map_with_values` can be in O(n)
   std::map<uint32_t, std::string> pcr_map_with_values = pcr_map;
   for (const auto& map_pair : pcr_map) {
@@ -1653,7 +1645,7 @@ TPM_RC TpmUtilityImpl::GetPolicyDigestForPcrValues(
     }
 
     std::string mutable_pcr_value;
-    result = ReadPCR(pcr_index, &mutable_pcr_value);
+    TPM_RC result = ReadPCR(pcr_index, &mutable_pcr_value);
     if (result != TPM_RC_SUCCESS) {
       LOG(ERROR) << __func__
                  << ": Error reading pcr_value: " << GetErrorString(result);
@@ -1662,20 +1654,42 @@ TPM_RC TpmUtilityImpl::GetPolicyDigestForPcrValues(
     pcr_map_with_values[pcr_index] = mutable_pcr_value;
   }
   if (use_auth_value) {
-    result = session->PolicyAuthValue();
+    TPM_RC result = policy_session->PolicyAuthValue();
     if (result != TPM_RC_SUCCESS) {
       LOG(ERROR) << __func__ << ": Error setting session to use auth_value: "
                  << GetErrorString(result);
       return result;
     }
   }
-  result = session->PolicyPCR(pcr_map_with_values);
+  TPM_RC result = policy_session->PolicyPCR(pcr_map_with_values);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error restricting policy to PCR value: "
                << GetErrorString(result);
     return result;
   }
-  result = session->GetDigest(policy_digest);
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::GetPolicyDigestForPcrValues(
+    const std::map<uint32_t, std::string>& pcr_map,
+    bool use_auth_value,
+    std::string* policy_digest) {
+  CHECK(policy_digest);
+  std::unique_ptr<PolicySession> policy_session = factory_.GetTrialSession();
+  TPM_RC result = policy_session->StartUnboundSession(true, false);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Error starting unbound trial session: "
+               << GetErrorString(result);
+    return result;
+  }
+  result = AddPcrValuesToPolicySession(pcr_map, use_auth_value,
+                                       policy_session.get());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Error getting policy pcr session: "
+               << GetErrorString(result);
+    return result;
+  }
+  result = policy_session->GetDigest(policy_digest);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__
                << ": Error getting policy digest: " << GetErrorString(result);
@@ -1875,6 +1889,38 @@ TPM_RC TpmUtilityImpl::WriteNVSpace(uint32_t index,
   }
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error writing to non-volatile space: "
+               << GetErrorString(result);
+    return result;
+  }
+  auto it = nvram_public_area_map_.find(index);
+  if (it != nvram_public_area_map_.end()) {
+    it->second.attributes |= TPMA_NV_WRITTEN;
+  }
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::IncrementNVCounter(uint32_t index,
+                                          bool using_owner_authorization,
+                                          AuthorizationDelegate* delegate) {
+  TPM_RC result;
+  std::string nv_name;
+  result = GetNVSpaceName(index, &nv_name);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Could not find space at " << index << " "
+               << GetErrorString(result);
+    return result;
+  }
+  const uint32_t nv_index = NV_INDEX_FIRST + index;
+  TPMI_RH_NV_AUTH auth_target = nv_index;
+  std::string auth_target_name = nv_name;
+  if (using_owner_authorization) {
+    auth_target = TPM_RH_OWNER;
+    auth_target_name = NameFromHandle(TPM_RH_OWNER);
+  }
+  result = factory_.GetTpm()->NV_IncrementSync(auth_target, auth_target_name,
+                                               nv_index, nv_name, delegate);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Error incrementing non-volatile space: "
                << GetErrorString(result);
     return result;
   }

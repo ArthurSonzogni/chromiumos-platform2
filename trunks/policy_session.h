@@ -139,6 +139,15 @@ class PolicySession {
       const std::vector<FIDO_DATA_RANGE>& auth_data_descr,
       const TPMT_SIGNATURE& signature,
       AuthorizationDelegate* delegate) = 0;
+
+  // This method binds the PolicySession to a provided NV index based on the
+  // given |offset|, |operand| and |operation|.
+  virtual TPM_RC PolicyNV(uint32_t index,
+                          uint32_t offset,
+                          bool using_owner_authorization,
+                          TPM2B_OPERAND operand,
+                          TPM_EO operation,
+                          AuthorizationDelegate* delegate) = 0;
 };
 
 }  // namespace trunks
