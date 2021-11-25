@@ -14,6 +14,7 @@
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/threading/thread.h>
 
 #include "hps/dev.h"
 #include "hps/hps.h"
@@ -61,6 +62,10 @@ class HPS_impl : public HPS {
     kUpdate,
   };
 
+  // This is is virtual to allow unit tests to override
+  virtual void Sleep(base::TimeDelta duration) {
+    base::PlatformThread::Sleep(duration);
+  }
   BootResult TryBoot();
   bool CheckMagic();
   BootResult CheckStage0();

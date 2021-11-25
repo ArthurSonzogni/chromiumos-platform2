@@ -10,6 +10,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/sys_byteorder.h>
+#include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 
 #include "hps/dev.h"
@@ -69,12 +70,30 @@ class HPSTestButUsingAMock : public testing::Test {
   std::unique_ptr<hps::HPS_impl> hps_;
 };
 
+// Override sleep to use MOCK_TIME functionality
+class HPS_fake_sleep_for_test : public HPS_impl {
+ public:
+  HPS_fake_sleep_for_test(
+      std::unique_ptr<DevInterface> dev,
+      base::test::SingleThreadTaskEnvironment* task_environment)
+      : HPS_impl(std::move(dev)), task_environment_(task_environment) {}
+
+  void Sleep(base::TimeDelta duration) override {
+    task_environment_->AdvanceClock(duration);
+  }
+  base::test::SingleThreadTaskEnvironment* task_environment_;
+};
+
 class HPSTest : public testing::Test {
  protected:
+  base::test::SingleThreadTaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+
   void SetUp() override {
     auto fake = std::make_unique<hps::FakeDev>();
     fake_ = fake.get();
-    hps_ = std::make_unique<hps::HPS_impl>(std::move(fake));
+    hps_ = std::make_unique<hps::HPS_fake_sleep_for_test>(std::move(fake),
+                                                          &task_environment_);
     hps_->SetMetricsLibraryForTesting(std::make_unique<MetricsLibraryMock>());
   }
 
@@ -90,7 +109,7 @@ class HPSTest : public testing::Test {
   }
 
   hps::FakeDev* fake_;
-  std::unique_ptr<hps::HPS_impl> hps_;
+  std::unique_ptr<hps::HPS_fake_sleep_for_test> hps_;
 };
 
 class MockDownloadObserver {

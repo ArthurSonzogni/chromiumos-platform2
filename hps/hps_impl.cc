@@ -11,7 +11,6 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
 
@@ -217,7 +216,7 @@ bool HPS_impl::CheckMagic() {
     int magic = this->device_->ReadReg(HpsReg::kMagic);
     if (magic < 0) {
       if (timer.Elapsed() < kMagicTimeout) {
-        base::PlatformThread::Sleep(kMagicSleep);
+        Sleep(kMagicSleep);
         continue;
       } else {
         LOG(FATAL) << "Timeout waiting for boot magic number";
@@ -376,7 +375,7 @@ hps::HPS_impl::BootResult HPS_impl::CheckApplication() {
       return BootResult::kFail;
     }
 
-    base::PlatformThread::Sleep(kApplSleep);
+    Sleep(kApplSleep);
   } while (timer.Elapsed() < kApplTimeout);
 
   hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kApplNotStarted);
@@ -531,7 +530,7 @@ bool HPS_impl::WaitForBankReady(uint8_t bank) {
     if (result & (1 << bank)) {
       return true;
     }
-    base::PlatformThread::Sleep(kBankReadySleep);
+    Sleep(kBankReadySleep);
   } while (timer.Elapsed() < kBankReadyTimeout);
   return false;
 }
