@@ -4,12 +4,14 @@
 
 #include "shill/wifi/passpoint_credentials.h"
 
-#include <chromeos/dbus/shill/dbus-constants.h>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 #include <limits>
 #include <string>
 #include <vector>
+
+#include <base/strings/string_number_conversions.h>
+#include <chromeos/dbus/shill/dbus-constants.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "shill/error.h"
 #include "shill/key_value_store.h"
@@ -18,6 +20,16 @@
 #include "shill/supplicant/wpa_supplicant.h"
 
 namespace shill {
+
+namespace {
+std::vector<std::string> toStringList(std::vector<uint64_t> list) {
+  std::vector<std::string> out;
+  for (uint64_t value : list) {
+    out.push_back(base::NumberToString(value));
+  }
+  return out;
+}
+}  // namespace
 
 class PasspointCredentialsTest : public ::testing::Test {
  public:
@@ -84,6 +96,7 @@ TEST_F(PasspointCredentialsTest, CreateChecksEapCredentials) {
                                                            "domain3.com"};
   const std::vector<std::string> kDomainSuffixMatchList{"domain4.com",
                                                         "domain5.com"};
+  const std::vector<std::string> kInvalidOis{"1122", "notanumber"};
   KeyValueStore properties;
   Error error;
 
@@ -156,6 +169,54 @@ TEST_F(PasspointCredentialsTest, CreateChecksEapCredentials) {
       PasspointCredentials::CreatePasspointCredentials(properties, &error),
       nullptr);
   EXPECT_EQ(error.type(), Error::kInvalidArguments);
+
+  // Incorrect home OIs
+  properties.Clear();
+  properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
+  properties.Set(kPasspointCredentialsRealmProperty, kValidFQDN);
+  properties.Set(kPasspointCredentialsHomeOIsProperty, kInvalidOis);
+  properties.Set(kEapMethodProperty, kMethodTTLS);
+  properties.Set(kEapPhase2AuthProperty,
+                 std::string(kEapPhase2AuthTTLSMSCHAPV2));
+  properties.Set(kEapCaCertPemProperty, kCaCertPem);
+  properties.Set(kEapIdentityProperty, kUser);
+  properties.Set(kEapPasswordProperty, kPassword);
+  EXPECT_EQ(
+      PasspointCredentials::CreatePasspointCredentials(properties, &error),
+      nullptr);
+  EXPECT_EQ(error.type(), Error::kInvalidArguments);
+
+  // Incorrect required home OIs
+  properties.Clear();
+  properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
+  properties.Set(kPasspointCredentialsRealmProperty, kValidFQDN);
+  properties.Set(kPasspointCredentialsRequiredHomeOIsProperty, kInvalidOis);
+  properties.Set(kEapMethodProperty, kMethodTTLS);
+  properties.Set(kEapPhase2AuthProperty,
+                 std::string(kEapPhase2AuthTTLSMSCHAPV2));
+  properties.Set(kEapCaCertPemProperty, kCaCertPem);
+  properties.Set(kEapIdentityProperty, kUser);
+  properties.Set(kEapPasswordProperty, kPassword);
+  EXPECT_EQ(
+      PasspointCredentials::CreatePasspointCredentials(properties, &error),
+      nullptr);
+  EXPECT_EQ(error.type(), Error::kInvalidArguments);
+
+  // Incorrect roaming consortia OIs
+  properties.Clear();
+  properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
+  properties.Set(kPasspointCredentialsRealmProperty, kValidFQDN);
+  properties.Set(kPasspointCredentialsRoamingConsortiaProperty, kInvalidOis);
+  properties.Set(kEapMethodProperty, kMethodTTLS);
+  properties.Set(kEapPhase2AuthProperty,
+                 std::string(kEapPhase2AuthTTLSMSCHAPV2));
+  properties.Set(kEapCaCertPemProperty, kCaCertPem);
+  properties.Set(kEapIdentityProperty, kUser);
+  properties.Set(kEapPasswordProperty, kPassword);
+  EXPECT_EQ(
+      PasspointCredentials::CreatePasspointCredentials(properties, &error),
+      nullptr);
+  EXPECT_EQ(error.type(), Error::kInvalidArguments);
 }
 
 TEST_F(PasspointCredentialsTest, Create) {
@@ -188,10 +249,11 @@ TEST_F(PasspointCredentialsTest, Create) {
   // Verify Passpoint+EAP-TLS with CA cert
   properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
   properties.Set(kPasspointCredentialsRealmProperty, kValidFQDN);
-  properties.Set(kPasspointCredentialsHomeOIsProperty, kOIs);
-  properties.Set(kPasspointCredentialsRequiredHomeOIsProperty, kOIs);
+  properties.Set(kPasspointCredentialsHomeOIsProperty, toStringList(kOIs));
+  properties.Set(kPasspointCredentialsRequiredHomeOIsProperty,
+                 toStringList(kOIs));
   properties.Set(kPasspointCredentialsRoamingConsortiaProperty,
-                 kRoamingConsortia);
+                 toStringList(kRoamingConsortia));
   properties.Set(kPasspointCredentialsMeteredOverrideProperty, true);
   properties.Set(kPasspointCredentialsAndroidPackageNameProperty, kPackageName);
   properties.Set(kEapMethodProperty, kMethodTLS);
@@ -219,10 +281,11 @@ TEST_F(PasspointCredentialsTest, Create) {
   properties.Clear();
   properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
   properties.Set(kPasspointCredentialsRealmProperty, kValidFQDN);
-  properties.Set(kPasspointCredentialsHomeOIsProperty, kOIs);
-  properties.Set(kPasspointCredentialsRequiredHomeOIsProperty, kOIs);
+  properties.Set(kPasspointCredentialsHomeOIsProperty, toStringList(kOIs));
+  properties.Set(kPasspointCredentialsRequiredHomeOIsProperty,
+                 toStringList(kOIs));
   properties.Set(kPasspointCredentialsRoamingConsortiaProperty,
-                 kRoamingConsortia);
+                 toStringList(kRoamingConsortia));
   properties.Set(kPasspointCredentialsMeteredOverrideProperty, true);
   properties.Set(kPasspointCredentialsAndroidPackageNameProperty, kPackageName);
   properties.Set(kEapMethodProperty, kMethodTTLS);
@@ -248,10 +311,11 @@ TEST_F(PasspointCredentialsTest, Create) {
   properties.Clear();
   properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
   properties.Set(kPasspointCredentialsRealmProperty, kValidFQDN);
-  properties.Set(kPasspointCredentialsHomeOIsProperty, kOIs);
-  properties.Set(kPasspointCredentialsRequiredHomeOIsProperty, kOIs);
+  properties.Set(kPasspointCredentialsHomeOIsProperty, toStringList(kOIs));
+  properties.Set(kPasspointCredentialsRequiredHomeOIsProperty,
+                 toStringList(kOIs));
   properties.Set(kPasspointCredentialsRoamingConsortiaProperty,
-                 kRoamingConsortia);
+                 toStringList(kRoamingConsortia));
   properties.Set(kPasspointCredentialsMeteredOverrideProperty, true);
   properties.Set(kPasspointCredentialsAndroidPackageNameProperty, kPackageName);
   properties.Set(kEapMethodProperty, kMethodTTLS);
@@ -279,10 +343,11 @@ TEST_F(PasspointCredentialsTest, Create) {
   properties.Clear();
   properties.Set(kPasspointCredentialsDomainsProperty, kValidFQDNs);
   properties.Set(kPasspointCredentialsRealmProperty, kValidFQDN);
-  properties.Set(kPasspointCredentialsHomeOIsProperty, kOIs);
-  properties.Set(kPasspointCredentialsRequiredHomeOIsProperty, kOIs);
+  properties.Set(kPasspointCredentialsHomeOIsProperty, toStringList(kOIs));
+  properties.Set(kPasspointCredentialsRequiredHomeOIsProperty,
+                 toStringList(kOIs));
   properties.Set(kPasspointCredentialsRoamingConsortiaProperty,
-                 kRoamingConsortia);
+                 toStringList(kRoamingConsortia));
   properties.Set(kPasspointCredentialsMeteredOverrideProperty, true);
   properties.Set(kPasspointCredentialsAndroidPackageNameProperty, kPackageName);
   properties.Set(kEapMethodProperty, kMethodTTLS);

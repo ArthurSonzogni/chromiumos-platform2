@@ -4,9 +4,11 @@
 
 #include "shill/wifi/passpoint_credentials.h"
 
-#include <chromeos/dbus/shill/dbus-constants.h>
 #include <string>
 #include <vector>
+
+#include <base/strings/string_number_conversions.h>
+#include <chromeos/dbus/shill/dbus-constants.h>
 #include <uuid/uuid.h>
 
 #include "shill/data_types.h"
@@ -20,6 +22,33 @@
 #include "shill/supplicant/wpa_supplicant.h"
 
 namespace shill {
+
+namespace {
+
+// Retrieve the list of OIs encoded as decimal strings from the given DBus
+// property dictionary |args| (as a shill's KeyValueStore), convert them to
+// uint64 values and add them to |parsed_ois|. If a string-to-number conversion
+// error happens, populate |error| and return false.
+bool ParsePasspointOiList(const KeyValueStore& args,
+                          const std::string& property,
+                          std::vector<uint64_t>* parsed_ois,
+                          Error* error) {
+  const auto raw_ois = args.Lookup<std::vector<std::string>>(property, {});
+  for (const auto& raw_oi : raw_ois) {
+    uint64_t oi;
+    if (!base::StringToUint64(raw_oi, &oi)) {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                            "invalid " + property + " list: \"" + raw_oi +
+                                "\" was not a valid decimal string");
+      parsed_ois->clear();
+      return false;
+    }
+    parsed_ois->push_back(oi);
+  }
+  return true;
+}
+
+}  // namespace
 
 // Size of an UUID string.
 constexpr size_t kUUIDStringLength = 37;
@@ -151,12 +180,21 @@ PasspointCredentialsRefPtr PasspointCredentials::CreatePasspointCredentials(
     return nullptr;
   }
 
-  home_ois = args.Lookup<std::vector<uint64_t>>(
-      kPasspointCredentialsHomeOIsProperty, std::vector<uint64_t>());
-  required_home_ois = args.Lookup<std::vector<uint64_t>>(
-      kPasspointCredentialsRequiredHomeOIsProperty, std::vector<uint64_t>());
-  roaming_consortia = args.Lookup<std::vector<uint64_t>>(
-      kPasspointCredentialsRoamingConsortiaProperty, std::vector<uint64_t>());
+  if (!ParsePasspointOiList(args, kPasspointCredentialsHomeOIsProperty,
+                            &home_ois, error)) {
+    return nullptr;
+  }
+
+  if (!ParsePasspointOiList(args, kPasspointCredentialsRequiredHomeOIsProperty,
+                            &required_home_ois, error)) {
+    return nullptr;
+  }
+
+  if (!ParsePasspointOiList(args, kPasspointCredentialsRoamingConsortiaProperty,
+                            &roaming_consortia, error)) {
+    return nullptr;
+  }
+
   metered_override =
       args.Lookup<bool>(kPasspointCredentialsMeteredOverrideProperty, false);
   android_package_name = args.Lookup<std::string>(

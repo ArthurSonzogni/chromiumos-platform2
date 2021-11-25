@@ -5,13 +5,16 @@
 #ifndef SHILL_WIFI_PASSPOINT_CREDENTIALS_H_
 #define SHILL_WIFI_PASSPOINT_CREDENTIALS_H_
 
-#include <base/memory/ref_counted.h>
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <string>
 #include <vector>
 
+#include <base/memory/ref_counted.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
+
 #include "shill/data_types.h"
 #include "shill/eap_credentials.h"
+#include "shill/error.h"
+#include "shill/key_value_store.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
