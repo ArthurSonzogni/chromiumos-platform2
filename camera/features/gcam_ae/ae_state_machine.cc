@@ -27,6 +27,7 @@ constexpr char kTetRetentionDurationMsDefault[] =
 constexpr char kTetRetentionDurationMsWithFace[] =
     "tet_retention_duration_ms_with_face";
 constexpr char kTetTargetThresholdLog2[] = "tet_target_threshold_log2";
+constexpr char kInitialTet[] = "initial_tet";
 
 // The log2 IIR filter strength for the long/short TET computed by Gcam AE.
 constexpr float kFilterStrength = 0.85f;
@@ -88,7 +89,12 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
   // Filter the TET transition to avoid AE fluctuations or hunting.
   if (!current_ae_parameters_.IsValid()) {
     // This is the first set of AE parameters we get.
-    current_ae_parameters_ = raw_ae_parameters;
+    current_ae_parameters_.long_tet =
+        IirFilterLog2(tuning_parameters_.initial_tet,
+                      raw_ae_parameters.long_tet, kFilterStrength);
+    current_ae_parameters_.short_tet =
+        IirFilterLog2(tuning_parameters_.initial_tet,
+                      raw_ae_parameters.short_tet, kFilterStrength);
   } else {
     current_ae_parameters_.long_tet =
         IirFilterLog2(current_ae_parameters_.long_tet,
@@ -341,6 +347,7 @@ void AeStateMachine::OnOptionsUpdated(const base::Value& json_values) {
               &tuning_parameters_.tet_retention_duration_ms_default);
   LoadIfExist(json_values, kTetRetentionDurationMsWithFace,
               &tuning_parameters_.tet_retention_duration_ms_with_face);
+  LoadIfExist(json_values, kInitialTet, &tuning_parameters_.initial_tet);
 
   if (VLOG_IS_ON(1)) {
     VLOGF(1) << "AeStateMachine tuning parameters:"
@@ -357,7 +364,8 @@ void AeStateMachine::OnOptionsUpdated(const base::Value& json_values) {
              << " tet_retention_duration_ms_default="
              << tuning_parameters_.tet_retention_duration_ms_default
              << " tet_retention_duration_ms_with_face="
-             << tuning_parameters_.tet_retention_duration_ms_with_face;
+             << tuning_parameters_.tet_retention_duration_ms_with_face
+             << " initial_tet=" << tuning_parameters_.initial_tet;
   }
 }
 

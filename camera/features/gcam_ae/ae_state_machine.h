@@ -62,6 +62,10 @@ class AeStateMachine {
     // See the comments for the kConverged state below.
     int tet_retention_duration_ms_default = 1000;
     int tet_retention_duration_ms_with_face = 3000;
+
+    // The initial TET value. Useful for smoothing the TET transition during
+    // camera initialization.
+    float initial_tet = 33.33f;
   };
 
   // We get the following inputs for each AE iteration:
