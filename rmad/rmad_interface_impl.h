@@ -107,6 +107,7 @@ class RmadInterfaceImpl final : public RmadInterface {
   bool CanGoBack() const;
 
   // Monitor files created by fake state handlers in test mode.
+  void ClearTestRequests();
   void MonitorTestRequests();
 
   // External utilities.

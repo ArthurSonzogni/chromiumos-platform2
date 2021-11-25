@@ -175,6 +175,7 @@ bool RmadInterfaceImpl::SetUp() {
       DCHECK(shill_client_->DisableCellular());
     }
     if (test_mode_) {
+      ClearTestRequests();
       test_mode_monitor_timer_.Start(FROM_HERE, kTestModeMonitorInterval, this,
                                      &RmadInterfaceImpl::MonitorTestRequests);
     }
@@ -466,6 +467,28 @@ bool RmadInterfaceImpl::CanGoBack() const {
             prev_state_handler->IsRepeatable());
   }
   return false;
+}
+
+void RmadInterfaceImpl::ClearTestRequests() {
+  // Check if powerwash or cutoff is requested in test mode. The files are
+  // created in the test directory so they are not picked up by the init script
+  // rmad.conf.
+  const base::FilePath test_dir_path =
+      base::FilePath(kDefaultWorkingDirPath).AppendASCII(kTestDirPath);
+  // Check if powerwash is requested.
+  const base::FilePath powerwash_request_file_path =
+      test_dir_path.AppendASCII(kPowerwashRequestFilePath);
+  if (base::PathExists(powerwash_request_file_path)) {
+    base::DeleteFile(powerwash_request_file_path);
+    LOG(INFO) << "Powerwash requested and ignored";
+  }
+  // Check if cutoff is requested.
+  const base::FilePath cutoff_request_file_path =
+      test_dir_path.AppendASCII(kCutoffRequestFilePath);
+  if (base::PathExists(cutoff_request_file_path)) {
+    base::DeleteFile(cutoff_request_file_path);
+    LOG(INFO) << "Cutoff requested and ignored";
+  }
 }
 
 void RmadInterfaceImpl::MonitorTestRequests() {
