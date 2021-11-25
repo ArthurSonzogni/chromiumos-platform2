@@ -27,6 +27,9 @@ namespace {
 // Default D-Bus call Timeout
 constexpr base::TimeDelta kDefaultTimeout = base::TimeDelta::FromMinutes(2);
 
+constexpr uint32_t kNvramCounterOffset = 0;
+constexpr size_t kNvramCounterBytes = 8;
+
 // Version tag at the start of serialized sealed blob.
 enum SerializedVer : char {
   kSerializedVer1 = 0x01,
@@ -50,11 +53,6 @@ class SecureSHA256_CTX {
  private:
   SHA256_CTX ctx_;
 };
-
-// Get an 'empty policy' digest for the case when no PCR bindings are specified.
-std::string GetEmptyPolicy() {
-  return std::string(kPolicySize, 0);
-}
 
 // Get value to extend to a requested PCR.
 std::string GetExtendValue() {
@@ -330,34 +328,40 @@ bool SealedStorage::PrepareSealingKeyObject(
   }
   VLOG(2) << "Obtained endorsement password";
 
-  std::string policy_digest;
+  std::unique_ptr<trunks::PolicySession> trial_session =
+      trunks_factory_->GetTrialSession();
+  trunks::TPM_RC result = trial_session->StartUnboundSession(true, false);
+  if (!CheckTpmResult(result, "start trial session")) {
+    return false;
+  }
+
   if (!policy_.pcr_map.empty()) {
     auto tpm_utility = trunks_factory_->GetTpmUtility();
-    auto result = tpm_utility->GetPolicyDigestForPcrValues(
-        policy_.pcr_map, false /* use_auth_value */, &policy_digest);
+    result = tpm_utility->AddPcrValuesToPolicySession(
+        policy_.pcr_map, false /* use_auth_value */, trial_session.get());
     if (!CheckTpmResult(result, "calculate pcr policy")) {
       return false;
     }
-  } else {
-    policy_digest = GetEmptyPolicy();
   }
+
+  if (policy_.nvram_counter_index.has_value()) {
+    if (!AddNvramCounterToSession(trial_session.get())) {
+      return false;
+    }
+  }
+
   if (!policy_.secret.empty()) {
-    auto trial_session = trunks_factory_->GetTrialSession();
-    auto result = trial_session->StartUnboundSession(true, false);
-    if (!CheckTpmResult(result, "start unbounded trial session")) {
-      return false;
-    }
-    result =
-        trial_session->PolicyOR({policy_digest, policy_.secret.to_string()});
-    if (!CheckTpmResult(result,
-                        "create policy with secret included in digest")) {
-      return false;
-    }
-    result = trial_session->GetDigest(&policy_digest);
-    if (!CheckTpmResult(result, "calculate policy with secret")) {
+    if (!AddSecretToSession(trial_session.get())) {
       return false;
     }
   }
+
+  std::string policy_digest;
+  result = trial_session->GetDigest(&policy_digest);
+  if (!CheckTpmResult(result, "Get policy digest")) {
+    return false;
+  }
+
   VLOG(2) << "Created policy digest: " << HexDump(policy_digest);
   if (expected_digest.has_value() && expected_digest.value() != policy_digest) {
     VLOG(2) << "Expected policy digest: " << HexDump(expected_digest.value());
@@ -522,15 +526,14 @@ bool SealedStorage::RestoreEncryptionSeeds(const PubSeeds& pub_seeds,
     }
   }
 
-  if (!policy_.secret.empty()) {
-    std::string current_digest;
-    result = policy_session->GetDigest(&current_digest);
-    if (!CheckTpmResult(result, "obtain policy digest")) {
+  if (policy_.nvram_counter_index.has_value()) {
+    if (!AddNvramCounterToSession(policy_session.get())) {
       return false;
     }
-    result =
-        policy_session->PolicyOR({current_digest, policy_.secret.to_string()});
-    if (!CheckTpmResult(result, "create policy with secret")) {
+  }
+
+  if (!policy_.secret.empty()) {
+    if (!AddSecretToSession(policy_session.get())) {
       return false;
     }
   }
@@ -791,6 +794,50 @@ base::Optional<SecretData> Key::Decrypt(const Data& encrypted_data) const {
   decrypted_data.resize(decrypted_size);
 
   return decrypted_data;
+}
+
+bool SealedStorage::AddNvramCounterToSession(
+    trunks::PolicySession* session) const {
+  DCHECK(policy_.nvram_counter_index.has_value());
+  DCHECK(session);
+
+  // Currently this code path is only used for a counter readable and writable
+  // using empty password authorization.
+  auto authorization_delegate = trunks_factory_->GetPasswordAuthorization("");
+
+  std::string data;
+  trunks::TPM_RC result = trunks_factory_->GetTpmUtility()->ReadNVSpace(
+      *policy_.nvram_counter_index, kNvramCounterOffset, kNvramCounterBytes,
+      /*using_owner_authorization=*/false, &data, authorization_delegate.get());
+  if (!CheckTpmResult(result, "read NV space")) {
+    return false;
+  }
+  trunks::TPM2B_OPERAND operand_b = trunks::Make_TPM2B_DIGEST(data);
+
+  result = session->PolicyNV(*policy_.nvram_counter_index, kNvramCounterOffset,
+                             /*using_owner_authorization=*/false, operand_b,
+                             trunks::TPM_EO_EQ, authorization_delegate.get());
+  if (!CheckTpmResult(result, "calculcate NVRAM policy")) {
+    return false;
+  }
+  return true;
+}
+
+bool SealedStorage::AddSecretToSession(trunks::PolicySession* session) const {
+  DCHECK(!policy_.secret.empty());
+  DCHECK(session);
+
+  std::string policy_digest;
+  trunks::TPM_RC result = session->GetDigest(&policy_digest);
+  if (!CheckTpmResult(result, "Get policy digest")) {
+    return false;
+  }
+
+  result = session->PolicyOR({policy_digest, policy_.secret.to_string()});
+  if (!CheckTpmResult(result, "create policy with secret included in digest")) {
+    return false;
+  }
+  return true;
 }
 
 }  // namespace sealed_storage
