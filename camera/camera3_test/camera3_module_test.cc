@@ -566,35 +566,38 @@ int64_t Camera3Module::GetOutputMinFrameDuration(
 // Test cases
 
 TEST_F(Camera3ModuleFixture, NumberOfCameras) {
-  ASSERT_GT(cam_module_.GetNumberOfCameras(), 0) << "No cameras found";
-  ASSERT_LE(cam_module_.GetNumberOfCameras(), kMaxNumCameras)
-      << "Too many cameras found";
-
   base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
   base::FilePath camera_hal_path =
       cmd_line->GetSwitchValuePath("camera_hal_path");
   base::Optional<cros::DeviceConfig> config = cros::DeviceConfig::Create();
-  if (config.has_value() && config->GetBuiltInCameraCount().has_value()) {
-    const int usb_count =
-        config->GetCameraCount(cros::Interface::kUsb).value_or(0);
-    const int mipi_count =
-        config->GetCameraCount(cros::Interface::kMipi).value_or(0);
-    if (usb_count == 0 && mipi_count == 0) {
-      // For some older devices the cros_config isn't populated with the
-      // interface information, so there's nothing to verify here.
-      return;
-    }
+  if (config.has_value()) {
+    base::Optional<int> usb_count =
+        config->GetCameraCount(cros::Interface::kUsb);
+    base::Optional<int> mipi_count =
+        config->GetCameraCount(cros::Interface::kMipi);
     if (camera_hal_path.empty()) {
-      ASSERT_EQ(cam_module_.GetNumberOfCameras(), usb_count + mipi_count)
-          << "Incorrect number of cameras";
+      if (usb_count.has_value() && mipi_count.has_value()) {
+        ASSERT_EQ(cam_module_.GetNumberOfCameras(), *usb_count + *mipi_count)
+            << "Incorrect number of built-in cameras";
+        return;
+      }
     } else if (camera_hal_path.value().find("usb") != std::string::npos) {
-      ASSERT_EQ(cam_module_.GetNumberOfCameras(), usb_count)
-          << "Incorrect number of cameras";
+      if (usb_count.has_value()) {
+        ASSERT_EQ(cam_module_.GetNumberOfCameras(), *usb_count)
+            << "Incorrect number of USB cameras";
+        return;
+      }
     } else {
-      ASSERT_EQ(cam_module_.GetNumberOfCameras(), mipi_count)
-          << "Incorrect number of cameras";
+      if (mipi_count.has_value()) {
+        ASSERT_EQ(cam_module_.GetNumberOfCameras(), *mipi_count)
+            << "Incorrect number of MIPI cameras";
+        return;
+      }
     }
   }
+  ASSERT_GT(cam_module_.GetNumberOfCameras(), 0) << "No cameras found";
+  ASSERT_LE(cam_module_.GetNumberOfCameras(), kMaxNumCameras)
+      << "Too many cameras found";
 }
 
 TEST_F(Camera3ModuleFixture, OpenDeviceOfBadIndices) {
