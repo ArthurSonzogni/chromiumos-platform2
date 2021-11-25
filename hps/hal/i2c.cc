@@ -24,14 +24,17 @@
 
 namespace hps {
 
-I2CDev::I2CDev(const char* bus, uint8_t addr)
+I2CDev::I2CDev(const std::string& bus, uint8_t addr)
     : bus_(bus), address_(addr), fd_(-1) {}
 
 int I2CDev::Open() {
-  this->fd_ = open(this->bus_, O_RDWR);
+  if (this->bus_.empty()) {
+    LOG(ERROR) << "Empty i2c path: \"" << this->bus_ << "\"";
+    return -1;
+  }
+  this->fd_ = open(this->bus_.c_str(), O_RDWR);
   if (this->fd_ < 0) {
-    int err = errno;
-    LOG(ERROR) << "Cannot open: " << this->bus_ << " : " << strerror(err);
+    PLOG(ERROR) << "Cannot open: \"" << this->bus_ << "\"";
   }
   return this->fd_;
 }
@@ -71,15 +74,16 @@ bool I2CDev::Ioc(struct i2c_msg* msg, size_t count) {
   ioblk.nmsgs = static_cast<uint32_t>(count);
   int ret = ioctl(this->fd_, I2C_RDWR, &ioblk);
   if (ret < 0) {
-    perror(this->bus_);
+    VPLOG(3) << "i2c read/write failed";
   }
   return ret != -1;
 }
 
 // Static factory method.
-std::unique_ptr<DevInterface> I2CDev::Create(const char* dev, uint8_t addr) {
+std::unique_ptr<DevInterface> I2CDev::Create(const std::string& bus,
+                                             uint8_t addr) {
   // Use new so that private constructor can be accessed.
-  auto i2c_dev = std::unique_ptr<I2CDev>(new I2CDev(dev, addr));
+  auto i2c_dev = std::unique_ptr<I2CDev>(new I2CDev(bus, addr));
   CHECK_GE(i2c_dev->Open(), 0);
   return std::unique_ptr<DevInterface>(std::move(i2c_dev));
 }

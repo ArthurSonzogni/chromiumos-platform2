@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
     fake->SkipBoot();
     dev = std::move(fake);
   } else {
-    dev = hps::I2CDev::Create(FLAGS_bus.c_str(), addr);
+    dev = hps::I2CDev::Create(FLAGS_bus, addr);
   }
   CHECK(dev) << "Hardware device failed to initialise";
   LOG(INFO) << "Booting HPS device";
