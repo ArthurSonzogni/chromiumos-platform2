@@ -50,19 +50,20 @@ typedef enum vendor_metadata_section_start {
 typedef enum vendor_metadata_tag {
   INTEL_VENDOR_CAMERA_CALLBACK_RGBS =  // enum         | public
   INTEL_VENDOR_CAMERA_START,
-  INTEL_VENDOR_CAMERA_RGBS_GRID_SIZE,         // int32[]      | public
-  INTEL_VENDOR_CAMERA_SHADING_CORRECTION,     // enum         | public
-  INTEL_VENDOR_CAMERA_RGBS_STATS_BLOCKS,      // byte[]       | public
-  INTEL_VENDOR_CAMERA_CALLBACK_TM_CURVE,      // enum         | public
-  INTEL_VENDOR_CAMERA_TONE_MAP_CURVE,         // float[]      | public
-  INTEL_VENDOR_CAMERA_POWER_MODE,             // enum         | public
-  INTEL_VENDOR_CAMERA_IC_CAPS,                // int32        | public
-  INTEL_VENDOR_CAMERA_IC_PEACE_FEATURES,      // int32[]      | public
-  INTEL_VENDOR_CAMERA_IC_ECC_MODE,            // enum         | public
-  INTEL_VENDOR_CAMERA_IC_BC_MODE,             // enum         | public
-  INTEL_VENDOR_CAMERA_IC_BR_PARAMETERS,       // int32[]      | public
-  INTEL_VENDOR_CAMERA_IC_FF_MODE,             // enum         | public
-  INTEL_VENDOR_CAMERA_TOTAL_EXPOSURE_TARGET,  // int64        | public
+  INTEL_VENDOR_CAMERA_RGBS_GRID_SIZE,               // int32[]      | public
+  INTEL_VENDOR_CAMERA_SHADING_CORRECTION,           // enum         | public
+  INTEL_VENDOR_CAMERA_RGBS_STATS_BLOCKS,            // byte[]       | public
+  INTEL_VENDOR_CAMERA_CALLBACK_TM_CURVE,            // enum         | public
+  INTEL_VENDOR_CAMERA_TONE_MAP_CURVE,               // float[]      | public
+  INTEL_VENDOR_CAMERA_POWER_MODE,                   // enum         | public
+  INTEL_VENDOR_CAMERA_IC_CAPS,                      // int32        | public
+  INTEL_VENDOR_CAMERA_IC_PEACE_FEATURES,            // int32[]      | public
+  INTEL_VENDOR_CAMERA_IC_ECC_MODE,                  // enum         | public
+  INTEL_VENDOR_CAMERA_IC_BC_MODE,                   // enum         | public
+  INTEL_VENDOR_CAMERA_IC_BR_PARAMETERS,             // int32[]      | public
+  INTEL_VENDOR_CAMERA_IC_FF_MODE,                   // enum         | public
+  INTEL_VENDOR_CAMERA_TOTAL_EXPOSURE_TARGET,        // int64        | public
+  INTEL_VENDOR_CAMERA_TOTAL_EXPOSURE_TARGET_RANGE,  // int64[]      | public
   INTEL_VENDOR_CAMERA_END,
 } vendor_metadata_tag_t;
 

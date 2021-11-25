@@ -107,21 +107,33 @@ bool GcamAeDeviceAdapterIpu6::ExtractAeStats(Camera3CaptureDescriptor* result,
 
   // We should create the entry only when there's valid AE stats, so that when
   // HasAeStats() returns true there's indeed valid AE stats.
-  base::Optional<AeStatsIntelIpu6*> ae_stats =
+  base::Optional<AeStatsEntry*> entry =
       GetAeStatsEntry(result->frame_number(), /*create_entry=*/true);
 
-  (*ae_stats)->white_level = kIpu6WhiteLevel;
-  (*ae_stats)->grid_width = grid_width;
-  (*ae_stats)->grid_height = grid_height;
+  (*entry)->ae_stats.white_level = kIpu6WhiteLevel;
+  (*entry)->ae_stats.grid_width = grid_width;
+  (*entry)->ae_stats.grid_height = grid_height;
   int num_grid_blocks = grid_width * grid_height;
   for (int i = 0; i < num_grid_blocks; ++i) {
     int base = i * 5;
-    AeStatsGridBlockIntelIpu6& block = (*ae_stats)->grid_blocks[i];
+    AeStatsGridBlockIntelIpu6& block = (*entry)->ae_stats.grid_blocks[i];
     block.avg_gr = ae_stats_blocks[base];
     block.avg_r = ae_stats_blocks[base + 1];
     block.avg_b = ae_stats_blocks[base + 2];
     block.avg_gb = ae_stats_blocks[base + 3];
     block.sat = ae_stats_blocks[base + 4];
+  }
+
+  base::span<const int64_t> tet_range = result->GetMetadata<int64_t>(
+      INTEL_VENDOR_CAMERA_TOTAL_EXPOSURE_TARGET_RANGE);
+  if (tet_range.empty()) {
+    DVLOGF(2) << "Cannot get INTEL_VENDOR_CAMERA_TOTAL_EXPOSURE_TARGET_RANGE";
+  } else {
+    // Intel camera HAL reports the TET range in us, while Gcam AE expects the
+    // TET range in ms.
+    constexpr float kUsInMs = 1000.0f;
+    (*entry)->tet_range = {static_cast<float>(tet_range[0]) / kUsInMs,
+                           static_cast<float>(tet_range[1]) / kUsInMs};
   }
 
   if (metadata_logger_) {
@@ -136,6 +148,10 @@ bool GcamAeDeviceAdapterIpu6::ExtractAeStats(Camera3CaptureDescriptor* result,
                           ae_stats_shading_correction[0]);
     metadata_logger_->Log(result->frame_number(), kTagIpu6RgbsStatsBlocks,
                           ae_stats_blocks);
+    if (!tet_range.empty()) {
+      metadata_logger_->Log(result->frame_number(), kTagIpu6TetRange,
+                            tet_range);
+    }
   }
 
   return true;
@@ -150,7 +166,7 @@ AeParameters GcamAeDeviceAdapterIpu6::ComputeAeParameters(
     const AeFrameInfo& frame_info,
     const Range<float>& device_tet_range,
     float max_hdr_ratio) {
-  AeParameters ae_parameters;
+  AeParameters ae_parameters = {.tet_range = device_tet_range};
   AeFrameMetadata ae_metadata{
       .actual_analog_gain = frame_info.analog_gain,
       .applied_digital_gain = frame_info.digital_gain,
@@ -172,8 +188,8 @@ AeParameters GcamAeDeviceAdapterIpu6::ComputeAeParameters(
 
   AeResult ae_result;
   if (frame_info.ae_stats_input_mode == AeStatsInputMode::kFromVendorAeStats) {
-    base::Optional<AeStatsIntelIpu6*> ae_stats = GetAeStatsEntry(frame_number);
-    if (!ae_stats) {
+    base::Optional<AeStatsEntry*> entry = GetAeStatsEntry(frame_number);
+    if (!entry) {
       LOGF(ERROR) << "Cannot find AE stats entry for frame " << frame_number;
       return ae_parameters;
     }
@@ -184,11 +200,19 @@ AeParameters GcamAeDeviceAdapterIpu6::ComputeAeParameters(
     for (int i = 0; i < 9; ++i) {
       awb_info.ccm[i] = frame_info.ccm[i];
     }
+    const Range<float>& tet_range = (*entry)->tet_range.has_value()
+                                        ? (*entry)->tet_range.value()
+                                        : device_tet_range;
+    if ((*entry)->tet_range.has_value()) {
+      DVLOGF(2) << "Using TET range from IPU6 camera HAL: "
+                << (*entry)->tet_range.value();
+    }
     ae_result = gcam_ae_->ComputeGcamAe(
         frame_info.active_array_dimension.width,
         frame_info.active_array_dimension.height, ae_metadata, awb_info,
-        **ae_stats, {device_tet_range.lower(), device_tet_range.upper()},
+        (*entry)->ae_stats, {tet_range.lower(), tet_range.upper()},
         max_hdr_ratio);
+    ae_parameters.tet_range = tet_range;
   } else {  // AeStatsInputMode::kFromYuvImage
     if (!frame_info.HasYuvBuffer()) {
       return ae_parameters;
@@ -236,8 +260,8 @@ AeParameters GcamAeDeviceAdapterIpu6::ComputeAeParameters(
   return ae_parameters;
 }
 
-base::Optional<AeStatsIntelIpu6*> GcamAeDeviceAdapterIpu6::GetAeStatsEntry(
-    int frame_number, bool create_entry) {
+base::Optional<GcamAeDeviceAdapterIpu6::AeStatsEntry*>
+GcamAeDeviceAdapterIpu6::GetAeStatsEntry(int frame_number, bool create_entry) {
   int index = frame_number % ae_stats_.size();
   AeStatsEntry& entry = ae_stats_[index];
   if (entry.frame_number != frame_number) {
@@ -248,7 +272,7 @@ base::Optional<AeStatsIntelIpu6*> GcamAeDeviceAdapterIpu6::GetAeStatsEntry(
     entry.frame_number = frame_number;
     entry.ae_stats = {};
   }
-  return &entry.ae_stats;
+  return &entry;
 }
 
 }  // namespace cros

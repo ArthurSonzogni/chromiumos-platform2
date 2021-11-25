@@ -36,14 +36,16 @@ class GcamAeDeviceAdapterIpu6 : public GcamAeDeviceAdapter {
                                    float max_hdr_ratio) override;
 
  private:
-  base::Optional<AeStatsIntelIpu6*> GetAeStatsEntry(int frame_number,
-                                                    bool create_entry = false);
-
   static constexpr size_t kAeStatsRingBufferSize = 6;
   struct AeStatsEntry {
     int frame_number = -1;
     AeStatsIntelIpu6 ae_stats;
+    base::Optional<Range<float>> tet_range;
   };
+
+  base::Optional<AeStatsEntry*> GetAeStatsEntry(int frame_number,
+                                                bool create_entry = false);
+
   std::array<AeStatsEntry, kAeStatsRingBufferSize> ae_stats_;
 
   std::unique_ptr<GcamAe> gcam_ae_;

@@ -45,6 +45,7 @@ constexpr char kTagIpu6RgbsStatsGridHeight[] = "ipu6.ae_stats.grid_height";
 constexpr char kTagIpu6RgbsStatsGridWidth[] = "ipu6.ae_stats.grid_width";
 constexpr char kTagIpu6RgbsStatsShadingCorrection[] =
     "ipu6.ae_stats.shading_correction";
+constexpr char kTagIpu6TetRange[] = "ipu6.total_exposure_target_range";
 constexpr char kTagLensAperture[] = "lens_aperture";
 constexpr char kTagLogSceneBrightness[] = "log_scene_brightness";
 constexpr char kTagLongTet[] = "long_tet";
@@ -151,6 +152,9 @@ struct AeParameters {
 
   // The log scene brightness as computed by Gcam AE.
   float log_scene_brightness = kLogSceneBrightnessUnknown;
+
+  // The usable TET range that |short_tet| and |long_tet| are computed with.
+  Range<float> tet_range = {0.1f, 10.0e6f};
 
   bool IsValid() { return short_tet > 0.0f && long_tet > 0.0f; }
 };
