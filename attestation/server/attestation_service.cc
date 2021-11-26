@@ -712,12 +712,14 @@ void AttestationService::ShutdownTask() {
 void AttestationService::GetKeyInfo(const GetKeyInfoRequest& request,
                                     const GetKeyInfoCallback& callback) {
   auto result = std::make_shared<GetKeyInfoReply>();
-  base::Closure task = base::Bind(&AttestationService::GetKeyInfoTask,
-                                  base::Unretained(this), request, result);
-  base::Closure reply =
-      base::Bind(&AttestationService::TaskRelayCallback<GetKeyInfoReply>,
-                 GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::GetKeyInfoTask,
+                     base::Unretained(this), request, result);
+  base::OnceClosure reply =
+      base::BindOnce(&AttestationService::TaskRelayCallback<GetKeyInfoReply>,
+                     GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 void AttestationService::GetKeyInfoTask(
@@ -752,12 +754,14 @@ void AttestationService::GetEndorsementInfo(
     const GetEndorsementInfoRequest& request,
     const GetEndorsementInfoCallback& callback) {
   auto result = std::make_shared<GetEndorsementInfoReply>();
-  base::Closure task = base::Bind(&AttestationService::GetEndorsementInfoTask,
-                                  base::Unretained(this), request, result);
-  base::Closure reply = base::Bind(
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::GetEndorsementInfoTask,
+                     base::Unretained(this), request, result);
+  base::OnceClosure reply = base::BindOnce(
       &AttestationService::TaskRelayCallback<GetEndorsementInfoReply>,
-      GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+      GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 base::Optional<std::string> AttestationService::GetEndorsementPublicKey()
@@ -831,13 +835,14 @@ void AttestationService::GetAttestationKeyInfo(
     const GetAttestationKeyInfoRequest& request,
     const GetAttestationKeyInfoCallback& callback) {
   auto result = std::make_shared<GetAttestationKeyInfoReply>();
-  base::Closure task =
-      base::Bind(&AttestationService::GetAttestationKeyInfoTask,
-                 base::Unretained(this), request, result);
-  base::Closure reply = base::Bind(
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::GetAttestationKeyInfoTask,
+                     base::Unretained(this), request, result);
+  base::OnceClosure reply = base::BindOnce(
       &AttestationService::TaskRelayCallback<GetAttestationKeyInfoReply>,
-      GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+      GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 void AttestationService::GetAttestationKeyInfoTask(
@@ -900,13 +905,14 @@ void AttestationService::ActivateAttestationKey(
     const ActivateAttestationKeyRequest& request,
     const ActivateAttestationKeyCallback& callback) {
   auto result = std::make_shared<ActivateAttestationKeyReply>();
-  base::Closure task =
-      base::Bind(&AttestationService::ActivateAttestationKeyTask,
-                 base::Unretained(this), request, result);
-  base::Closure reply = base::Bind(
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::ActivateAttestationKeyTask,
+                     base::Unretained(this), request, result);
+  base::OnceClosure reply = base::BindOnce(
       &AttestationService::TaskRelayCallback<ActivateAttestationKeyReply>,
-      GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+      GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 void AttestationService::ActivateAttestationKeyTask(
@@ -933,12 +939,14 @@ void AttestationService::CreateCertifiableKey(
     const CreateCertifiableKeyRequest& request,
     const CreateCertifiableKeyCallback& callback) {
   auto result = std::make_shared<CreateCertifiableKeyReply>();
-  base::Closure task = base::Bind(&AttestationService::CreateCertifiableKeyTask,
-                                  base::Unretained(this), request, result);
-  base::Closure reply = base::Bind(
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::CreateCertifiableKeyTask,
+                     base::Unretained(this), request, result);
+  base::OnceClosure reply = base::BindOnce(
       &AttestationService::TaskRelayCallback<CreateCertifiableKeyReply>,
-      GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+      GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 void AttestationService::CreateCertifiableKeyTask(
@@ -965,12 +973,14 @@ void AttestationService::CreateCertifiableKeyTask(
 void AttestationService::Decrypt(const DecryptRequest& request,
                                  const DecryptCallback& callback) {
   auto result = std::make_shared<DecryptReply>();
-  base::Closure task = base::Bind(&AttestationService::DecryptTask,
-                                  base::Unretained(this), request, result);
-  base::Closure reply =
-      base::Bind(&AttestationService::TaskRelayCallback<DecryptReply>,
-                 GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::DecryptTask, base::Unretained(this),
+                     request, result);
+  base::OnceClosure reply =
+      base::BindOnce(&AttestationService::TaskRelayCallback<DecryptReply>,
+                     GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 void AttestationService::DecryptTask(
@@ -992,12 +1002,13 @@ void AttestationService::DecryptTask(
 void AttestationService::Sign(const SignRequest& request,
                               const SignCallback& callback) {
   auto result = std::make_shared<SignReply>();
-  base::Closure task = base::Bind(&AttestationService::SignTask,
-                                  base::Unretained(this), request, result);
-  base::Closure reply =
-      base::Bind(&AttestationService::TaskRelayCallback<SignReply>,
-                 GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+  base::OnceClosure task = base::BindOnce(
+      &AttestationService::SignTask, base::Unretained(this), request, result);
+  base::OnceClosure reply =
+      base::BindOnce(&AttestationService::TaskRelayCallback<SignReply>,
+                     GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 void AttestationService::SignTask(const SignRequest& request,
@@ -1019,13 +1030,14 @@ void AttestationService::RegisterKeyWithChapsToken(
     const RegisterKeyWithChapsTokenRequest& request,
     const RegisterKeyWithChapsTokenCallback& callback) {
   auto result = std::make_shared<RegisterKeyWithChapsTokenReply>();
-  base::Closure task =
-      base::Bind(&AttestationService::RegisterKeyWithChapsTokenTask,
-                 base::Unretained(this), request, result);
-  base::Closure reply = base::Bind(
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::RegisterKeyWithChapsTokenTask,
+                     base::Unretained(this), request, result);
+  base::OnceClosure reply = base::BindOnce(
       &AttestationService::TaskRelayCallback<RegisterKeyWithChapsTokenReply>,
-      GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+      GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 void AttestationService::RegisterKeyWithChapsTokenTask(
@@ -2067,13 +2079,14 @@ void AttestationService::GetEnrollmentPreparations(
     const GetEnrollmentPreparationsRequest& request,
     const GetEnrollmentPreparationsCallback& callback) {
   auto result = std::make_shared<GetEnrollmentPreparationsReply>();
-  base::Closure task =
-      base::Bind(&AttestationService::GetEnrollmentPreparationsTask,
-                 base::Unretained(this), request, result);
-  base::Closure reply = base::Bind(
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::GetEnrollmentPreparationsTask,
+                     base::Unretained(this), request, result);
+  base::OnceClosure reply = base::BindOnce(
       &AttestationService::TaskRelayCallback<GetEnrollmentPreparationsReply>,
-      GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+      GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 void AttestationService::GetEnrollmentPreparationsTask(
@@ -2091,12 +2104,14 @@ void AttestationService::GetEnrollmentPreparationsTask(
 void AttestationService::GetStatus(const GetStatusRequest& request,
                                    const GetStatusCallback& callback) {
   auto result = std::make_shared<GetStatusReply>();
-  base::Closure task = base::Bind(&AttestationService::GetStatusTask,
-                                  base::Unretained(this), request, result);
-  base::Closure reply =
-      base::Bind(&AttestationService::TaskRelayCallback<GetStatusReply>,
-                 GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::GetStatusTask, base::Unretained(this),
+                     request, result);
+  base::OnceClosure reply =
+      base::BindOnce(&AttestationService::TaskRelayCallback<GetStatusReply>,
+                     GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 bool AttestationService::IsVerifiedMode() const {
@@ -2143,12 +2158,13 @@ void AttestationService::GetStatusTask(
 void AttestationService::Verify(const VerifyRequest& request,
                                 const VerifyCallback& callback) {
   auto result = std::make_shared<VerifyReply>();
-  base::Closure task = base::Bind(&AttestationService::VerifyTask,
-                                  base::Unretained(this), request, result);
-  base::Closure reply =
-      base::Bind(&AttestationService::TaskRelayCallback<VerifyReply>,
-                 GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+  base::OnceClosure task = base::BindOnce(
+      &AttestationService::VerifyTask, base::Unretained(this), request, result);
+  base::OnceClosure reply =
+      base::BindOnce(&AttestationService::TaskRelayCallback<VerifyReply>,
+                     GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 bool AttestationService::VerifyIdentityBinding(const IdentityBinding& binding) {
@@ -2512,13 +2528,14 @@ void AttestationService::CreateEnrollRequest(
     const CreateEnrollRequestRequest& request,
     const CreateEnrollRequestCallback& callback) {
   auto result = std::make_shared<CreateEnrollRequestReply>();
-  base::Closure task = base::Bind(
+  base::OnceClosure task = base::BindOnce(
       &AttestationService::CreateEnrollRequestTask<CreateEnrollRequestRequest>,
       base::Unretained(this), request, result);
-  base::Closure reply = base::Bind(
+  base::OnceClosure reply = base::BindOnce(
       &AttestationService::TaskRelayCallback<CreateEnrollRequestReply>,
-      GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+      GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 template <typename RequestType>
@@ -2535,13 +2552,14 @@ void AttestationService::CreateEnrollRequestTask(
 void AttestationService::FinishEnroll(const FinishEnrollRequest& request,
                                       const FinishEnrollCallback& callback) {
   auto result = std::make_shared<FinishEnrollReply>();
-  base::Closure task =
-      base::Bind(&AttestationService::FinishEnrollTask<FinishEnrollReply>,
-                 base::Unretained(this), request, result);
-  base::Closure reply =
-      base::Bind(&AttestationService::TaskRelayCallback<FinishEnrollReply>,
-                 GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::FinishEnrollTask<FinishEnrollReply>,
+                     base::Unretained(this), request, result);
+  base::OnceClosure reply =
+      base::BindOnce(&AttestationService::TaskRelayCallback<FinishEnrollReply>,
+                     GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 template <typename ReplyType>
@@ -2563,9 +2581,10 @@ void AttestationService::PostStartEnrollTask(
     const std::shared_ptr<AttestationFlowData>& data) {
   base::Closure task = base::Bind(&AttestationService::StartEnrollTask,
                                   base::Unretained(this), data);
-  base::Closure reply =
-      base::Bind(&AttestationService::OnEnrollAction, GetWeakPtr(), data);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+  base::OnceClosure reply =
+      base::BindOnce(&AttestationService::OnEnrollAction, GetWeakPtr(), data);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 void AttestationService::Enroll(const EnrollRequest& request,
@@ -2579,9 +2598,10 @@ void AttestationService::SendEnrollRequest(
   auto on_success = base::Bind(&AttestationService::HandlePcaAgentEnrollReply,
                                GetWeakPtr(), data);
   auto on_error =
-      base::Bind(&AttestationService::HandlePcaAgentEnrollRequestError,
-                 GetWeakPtr(), data);
-  pca_agent_proxy_->EnrollAsync(pca_request, on_success, on_error,
+      base::BindOnce(&AttestationService::HandlePcaAgentEnrollRequestError,
+                     GetWeakPtr(), data);
+  pca_agent_proxy_->EnrollAsync(pca_request, std::move(on_success),
+                                std::move(on_error),
                                 kPcaAgentDBusTimeout.InMilliseconds());
 }
 
@@ -2759,11 +2779,12 @@ void AttestationService::PostStartCertificateTaskOrReturn(
     data->ReturnStatus();
     return;
   }
-  base::Closure task = base::Bind(&AttestationService::StartCertificateTask,
-                                  base::Unretained(this), data);
-  base::Closure reply = base::Bind(&AttestationService::OnGetCertificateAction,
-                                   GetWeakPtr(), data);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+  base::OnceClosure task = base::BindOnce(
+      &AttestationService::StartCertificateTask, base::Unretained(this), data);
+  base::OnceClosure reply = base::BindOnce(
+      &AttestationService::OnGetCertificateAction, GetWeakPtr(), data);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 void AttestationService::StartCertificateTask(
@@ -2846,25 +2867,27 @@ void AttestationService::HandlePcaAgentEnrollReply(
     return;
   }
   data->set_result_response(pca_reply.response());
-  base::Closure task = base::Bind(&AttestationService::FinishEnrollTaskV2,
-                                  base::Unretained(this), data);
-  base::Closure reply =
-      base::Bind(&AttestationService::OnEnrollAction, GetWeakPtr(), data);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+  base::OnceClosure task = base::BindOnce(
+      &AttestationService::FinishEnrollTaskV2, base::Unretained(this), data);
+  base::OnceClosure reply =
+      base::BindOnce(&AttestationService::OnEnrollAction, GetWeakPtr(), data);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 void AttestationService::CreateCertificateRequest(
     const CreateCertificateRequestRequest& request,
     const CreateCertificateRequestCallback& callback) {
   auto result = std::make_shared<CreateCertificateRequestReply>();
-  base::Closure task =
-      base::Bind(&AttestationService::CreateCertificateRequestTask<
-                     CreateCertificateRequestRequest>,
-                 base::Unretained(this), request, result);
-  base::Closure reply = base::Bind(
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::CreateCertificateRequestTask<
+                         CreateCertificateRequestRequest>,
+                     base::Unretained(this), request, result);
+  base::OnceClosure reply = base::BindOnce(
       &AttestationService::TaskRelayCallback<CreateCertificateRequestReply>,
-      GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+      GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 template <typename RequestType>
@@ -2932,14 +2955,15 @@ void AttestationService::FinishCertificateRequest(
     const FinishCertificateRequestRequest& request,
     const FinishCertificateRequestCallback& callback) {
   auto result = std::make_shared<FinishCertificateRequestReply>();
-  base::Closure task =
-      base::Bind(&AttestationService::FinishCertificateRequestTask<
-                     FinishCertificateRequestReply>,
-                 base::Unretained(this), request, result);
-  base::Closure reply = base::Bind(
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::FinishCertificateRequestTask<
+                         FinishCertificateRequestReply>,
+                     base::Unretained(this), request, result);
+  base::OnceClosure reply = base::BindOnce(
       &AttestationService::TaskRelayCallback<FinishCertificateRequestReply>,
-      GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+      GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 template <typename ReplyType>
@@ -2999,12 +3023,13 @@ void AttestationService::SendGetCertificateRequest(
     const std::shared_ptr<AttestationFlowData>& data) {
   auto pca_request = ToPcaAgentCertRequest(*data);
   auto on_success =
-      base::Bind(&AttestationService::HandlePcaAgentGetCertificateReply,
-                 GetWeakPtr(), data);
-  auto on_error =
-      base::Bind(&AttestationService::HandlePcaAgentGetCertificateRequestError,
-                 GetWeakPtr(), data);
-  pca_agent_proxy_->GetCertificateAsync(pca_request, on_success, on_error,
+      base::BindOnce(&AttestationService::HandlePcaAgentGetCertificateReply,
+                     GetWeakPtr(), data);
+  auto on_error = base::BindOnce(
+      &AttestationService::HandlePcaAgentGetCertificateRequestError,
+      GetWeakPtr(), data);
+  pca_agent_proxy_->GetCertificateAsync(pca_request, std::move(on_success),
+                                        std::move(on_error),
                                         kPcaAgentDBusTimeout.InMilliseconds());
 }
 
@@ -3028,11 +3053,12 @@ void AttestationService::HandlePcaAgentGetCertificateReply(
     return;
   }
   data->set_result_response(pca_reply.response());
-  base::Closure task = base::Bind(&AttestationService::FinishCertificateTask,
-                                  base::Unretained(this), data);
-  base::Closure reply = base::Bind(&AttestationService::OnGetCertificateAction,
-                                   GetWeakPtr(), data);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+  base::OnceClosure task = base::BindOnce(
+      &AttestationService::FinishCertificateTask, base::Unretained(this), data);
+  base::OnceClosure reply = base::BindOnce(
+      &AttestationService::OnGetCertificateAction, GetWeakPtr(), data);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 bool AttestationService::ValidateEnterpriseChallenge(
@@ -3073,13 +3099,14 @@ void AttestationService::SignEnterpriseChallenge(
     const SignEnterpriseChallengeRequest& request,
     const SignEnterpriseChallengeCallback& callback) {
   auto result = std::make_shared<SignEnterpriseChallengeReply>();
-  base::Closure task =
-      base::Bind(&AttestationService::SignEnterpriseChallengeTask,
-                 base::Unretained(this), request, result);
-  base::Closure reply = base::Bind(
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::SignEnterpriseChallengeTask,
+                     base::Unretained(this), request, result);
+  base::OnceClosure reply = base::BindOnce(
       &AttestationService::TaskRelayCallback<SignEnterpriseChallengeReply>,
-      GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+      GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 void AttestationService::SignEnterpriseChallengeTask(
@@ -3197,12 +3224,14 @@ void AttestationService::SignSimpleChallenge(
     const SignSimpleChallengeRequest& request,
     const SignSimpleChallengeCallback& callback) {
   auto result = std::make_shared<SignSimpleChallengeReply>();
-  base::Closure task = base::Bind(&AttestationService::SignSimpleChallengeTask,
-                                  base::Unretained(this), request, result);
-  base::Closure reply = base::Bind(
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::SignSimpleChallengeTask,
+                     base::Unretained(this), request, result);
+  base::OnceClosure reply = base::BindOnce(
       &AttestationService::TaskRelayCallback<SignSimpleChallengeReply>,
-      GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+      GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 void AttestationService::SignSimpleChallengeTask(
@@ -3249,12 +3278,14 @@ bool AttestationService::SignChallengeData(const CertifiedKey& key,
 void AttestationService::SetKeyPayload(const SetKeyPayloadRequest& request,
                                        const SetKeyPayloadCallback& callback) {
   auto result = std::make_shared<SetKeyPayloadReply>();
-  base::Closure task = base::Bind(&AttestationService::SetKeyPayloadTask,
-                                  base::Unretained(this), request, result);
-  base::Closure reply =
-      base::Bind(&AttestationService::TaskRelayCallback<SetKeyPayloadReply>,
-                 GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::SetKeyPayloadTask,
+                     base::Unretained(this), request, result);
+  base::OnceClosure reply =
+      base::BindOnce(&AttestationService::TaskRelayCallback<SetKeyPayloadReply>,
+                     GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 void AttestationService::SetKeyPayloadTask(
@@ -3275,12 +3306,14 @@ void AttestationService::SetKeyPayloadTask(
 void AttestationService::DeleteKeys(const DeleteKeysRequest& request,
                                     const DeleteKeysCallback& callback) {
   auto result = std::make_shared<DeleteKeysReply>();
-  base::Closure task = base::Bind(&AttestationService::DeleteKeysTask,
-                                  base::Unretained(this), request, result);
-  base::Closure reply =
-      base::Bind(&AttestationService::TaskRelayCallback<DeleteKeysReply>,
-                 GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::DeleteKeysTask,
+                     base::Unretained(this), request, result);
+  base::OnceClosure reply =
+      base::BindOnce(&AttestationService::TaskRelayCallback<DeleteKeysReply>,
+                     GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 void AttestationService::DeleteKeysTask(
@@ -3303,12 +3336,14 @@ void AttestationService::DeleteKeysTask(
 void AttestationService::ResetIdentity(const ResetIdentityRequest& request,
                                        const ResetIdentityCallback& callback) {
   auto result = std::make_shared<ResetIdentityReply>();
-  base::Closure task = base::Bind(&AttestationService::ResetIdentityTask,
-                                  base::Unretained(this), request, result);
-  base::Closure reply =
-      base::Bind(&AttestationService::TaskRelayCallback<ResetIdentityReply>,
-                 GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::ResetIdentityTask,
+                     base::Unretained(this), request, result);
+  base::OnceClosure reply =
+      base::BindOnce(&AttestationService::TaskRelayCallback<ResetIdentityReply>,
+                     GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 void AttestationService::ResetIdentityTask(
@@ -3322,13 +3357,15 @@ void AttestationService::GetEnrollmentId(
     const GetEnrollmentIdRequest& request,
     const GetEnrollmentIdCallback& callback) {
   auto result = std::make_shared<GetEnrollmentIdReply>();
-  base::Closure task = base::Bind(&AttestationService::GetEnrollmentIdTask,
-                                  base::Unretained(this), request, result);
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::GetEnrollmentIdTask,
+                     base::Unretained(this), request, result);
 
-  base::Closure reply =
-      base::Bind(&AttestationService::TaskRelayCallback<GetEnrollmentIdReply>,
-                 GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+  base::OnceClosure reply = base::BindOnce(
+      &AttestationService::TaskRelayCallback<GetEnrollmentIdReply>,
+      GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 void AttestationService::GetEnrollmentIdTask(
@@ -3361,13 +3398,15 @@ void AttestationService::GetCertifiedNvIndex(
     const GetCertifiedNvIndexRequest& request,
     const GetCertifiedNvIndexCallback& callback) {
   auto result = std::make_shared<GetCertifiedNvIndexReply>();
-  base::Closure task = base::Bind(&AttestationService::GetCertifiedNvIndexTask,
-                                  base::Unretained(this), request, result);
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::GetCertifiedNvIndexTask,
+                     base::Unretained(this), request, result);
 
-  base::Closure reply = base::Bind(
+  base::OnceClosure reply = base::BindOnce(
       &AttestationService::TaskRelayCallback<GetCertifiedNvIndexReply>,
-      GetWeakPtr(), callback, result);
-  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+      GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
 }
 
 void AttestationService::GetCertifiedNvIndexTask(

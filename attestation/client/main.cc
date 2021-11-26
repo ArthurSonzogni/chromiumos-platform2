@@ -186,7 +186,7 @@ class ClientLoop : public ClientLoopBase {
  private:
   // Posts tasks according to the command line options.
   int ScheduleCommand() {
-    base::Closure task;
+    base::OnceClosure task;
     base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
     const auto& args = command_line->GetArgs();
     if (command_line->HasSwitch("help") || command_line->HasSwitch("h") ||
@@ -202,17 +202,19 @@ class ClientLoop : public ClientLoopBase {
       } else {
         return EX_USAGE;
       }
-      task = base::Bind(&ClientLoop::CallCreateCertifiableKey,
-                        weak_factory_.GetWeakPtr(),
-                        command_line->GetSwitchValueASCII("label"),
-                        command_line->GetSwitchValueASCII("user"), usage);
+      task = base::BindOnce(&ClientLoop::CallCreateCertifiableKey,
+                            weak_factory_.GetWeakPtr(),
+                            command_line->GetSwitchValueASCII("label"),
+                            command_line->GetSwitchValueASCII("user"), usage);
     } else if (args.front() == kStatusCommand) {
-      task = base::Bind(&ClientLoop::CallGetStatus, weak_factory_.GetWeakPtr(),
-                        command_line->HasSwitch("extended"));
+      task =
+          base::BindOnce(&ClientLoop::CallGetStatus, weak_factory_.GetWeakPtr(),
+                         command_line->HasSwitch("extended"));
     } else if (args.front() == kInfoCommand) {
-      task = base::Bind(&ClientLoop::CallGetKeyInfo, weak_factory_.GetWeakPtr(),
-                        command_line->GetSwitchValueASCII("label"),
-                        command_line->GetSwitchValueASCII("user"));
+      task = base::BindOnce(&ClientLoop::CallGetKeyInfo,
+                            weak_factory_.GetWeakPtr(),
+                            command_line->GetSwitchValueASCII("label"),
+                            command_line->GetSwitchValueASCII("user"));
     } else if (args.front() == kSetKeyPayloadCommand) {
       if (!command_line->HasSwitch("input")) {
         return EX_USAGE;
@@ -223,35 +225,36 @@ class ClientLoop : public ClientLoopBase {
         LOG(ERROR) << "Failed to read file: " << filename.value();
         return EX_NOINPUT;
       }
-      task =
-          base::Bind(&ClientLoop::CallSetKeyPayload, weak_factory_.GetWeakPtr(),
-                     input, command_line->GetSwitchValueASCII("label"),
-                     command_line->GetSwitchValueASCII("user"));
+      task = base::BindOnce(&ClientLoop::CallSetKeyPayload,
+                            weak_factory_.GetWeakPtr(), input,
+                            command_line->GetSwitchValueASCII("label"),
+                            command_line->GetSwitchValueASCII("user"));
     } else if (args.front() == kDeleteKeysCommand) {
       if (command_line->HasSwitch("label") &&
           command_line->HasSwitch("prefix")) {
         return EX_USAGE;
       }
-      task = base::Bind(&ClientLoop::CallDeleteKeys, weak_factory_.GetWeakPtr(),
-                        command_line->GetSwitchValueASCII("prefix"),
-                        command_line->GetSwitchValueASCII("label"),
-                        command_line->GetSwitchValueASCII("user"));
+      task = base::BindOnce(&ClientLoop::CallDeleteKeys,
+                            weak_factory_.GetWeakPtr(),
+                            command_line->GetSwitchValueASCII("prefix"),
+                            command_line->GetSwitchValueASCII("label"),
+                            command_line->GetSwitchValueASCII("user"));
     } else if (args.front() == kEndorsementCommand) {
-      task = base::Bind(&ClientLoop::CallGetEndorsementInfo,
-                        weak_factory_.GetWeakPtr());
+      task = base::BindOnce(&ClientLoop::CallGetEndorsementInfo,
+                            weak_factory_.GetWeakPtr());
     } else if (args.front() == kAttestationKeyCommand) {
       ACAType aca_type;
       int status = GetCertificateAuthorityServerType(command_line, &aca_type);
       if (status != EX_OK) {
         return status;
       }
-      task = base::Bind(&ClientLoop::CallGetAttestationKeyInfo,
-                        weak_factory_.GetWeakPtr(), aca_type);
+      task = base::BindOnce(&ClientLoop::CallGetAttestationKeyInfo,
+                            weak_factory_.GetWeakPtr(), aca_type);
     } else if (args.front() == kVerifyAttestationCommand) {
-      task = base::Bind(&ClientLoop::CallVerifyAttestation,
-                        weak_factory_.GetWeakPtr(),
-                        command_line->HasSwitch("cros-core"),
-                        command_line->HasSwitch("ek-only"));
+      task = base::BindOnce(&ClientLoop::CallVerifyAttestation,
+                            weak_factory_.GetWeakPtr(),
+                            command_line->HasSwitch("cros-core"),
+                            command_line->HasSwitch("ek-only"));
     } else if (args.front() == kActivateCommand) {
       ACAType aca_type;
       int status = GetCertificateAuthorityServerType(command_line, &aca_type);
@@ -267,9 +270,9 @@ class ClientLoop : public ClientLoopBase {
         LOG(ERROR) << "Failed to read file: " << filename.value();
         return EX_NOINPUT;
       }
-      task = base::Bind(&ClientLoop::CallActivateAttestationKey,
-                        weak_factory_.GetWeakPtr(), aca_type, input,
-                        command_line->HasSwitch("save"));
+      task = base::BindOnce(&ClientLoop::CallActivateAttestationKey,
+                            weak_factory_.GetWeakPtr(), aca_type, input,
+                            command_line->HasSwitch("save"));
     } else if (args.front() == kEncryptForActivateCommand) {
       if (!command_line->HasSwitch("input") ||
           !command_line->HasSwitch("output")) {
@@ -281,8 +284,8 @@ class ClientLoop : public ClientLoopBase {
         LOG(ERROR) << "Failed to read file: " << filename.value();
         return EX_NOINPUT;
       }
-      task = base::Bind(&ClientLoop::EncryptForActivate,
-                        weak_factory_.GetWeakPtr(), input);
+      task = base::BindOnce(&ClientLoop::EncryptForActivate,
+                            weak_factory_.GetWeakPtr(), input);
     } else if (args.front() == kEncryptCommand) {
       if (!command_line->HasSwitch("input") ||
           !command_line->HasSwitch("output")) {
@@ -294,9 +297,9 @@ class ClientLoop : public ClientLoopBase {
         LOG(ERROR) << "Failed to read file: " << filename.value();
         return EX_NOINPUT;
       }
-      task = base::Bind(&ClientLoop::Encrypt, weak_factory_.GetWeakPtr(),
-                        command_line->GetSwitchValueASCII("label"),
-                        command_line->GetSwitchValueASCII("user"), input);
+      task = base::BindOnce(&ClientLoop::Encrypt, weak_factory_.GetWeakPtr(),
+                            command_line->GetSwitchValueASCII("label"),
+                            command_line->GetSwitchValueASCII("user"), input);
     } else if (args.front() == kDecryptCommand) {
       if (!command_line->HasSwitch("input")) {
         return EX_USAGE;
@@ -307,9 +310,10 @@ class ClientLoop : public ClientLoopBase {
         LOG(ERROR) << "Failed to read file: " << filename.value();
         return EX_NOINPUT;
       }
-      task = base::Bind(&ClientLoop::CallDecrypt, weak_factory_.GetWeakPtr(),
-                        command_line->GetSwitchValueASCII("label"),
-                        command_line->GetSwitchValueASCII("user"), input);
+      task =
+          base::BindOnce(&ClientLoop::CallDecrypt, weak_factory_.GetWeakPtr(),
+                         command_line->GetSwitchValueASCII("label"),
+                         command_line->GetSwitchValueASCII("user"), input);
     } else if (args.front() == kSignCommand) {
       if (!command_line->HasSwitch("input")) {
         return EX_USAGE;
@@ -320,9 +324,9 @@ class ClientLoop : public ClientLoopBase {
         LOG(ERROR) << "Failed to read file: " << filename.value();
         return EX_NOINPUT;
       }
-      task = base::Bind(&ClientLoop::CallSign, weak_factory_.GetWeakPtr(),
-                        command_line->GetSwitchValueASCII("label"),
-                        command_line->GetSwitchValueASCII("user"), input);
+      task = base::BindOnce(&ClientLoop::CallSign, weak_factory_.GetWeakPtr(),
+                            command_line->GetSwitchValueASCII("label"),
+                            command_line->GetSwitchValueASCII("user"), input);
     } else if (args.front() == kVerifyCommand) {
       if (!command_line->HasSwitch("input") ||
           !command_line->HasSwitch("signature")) {
@@ -340,22 +344,23 @@ class ClientLoop : public ClientLoopBase {
         LOG(ERROR) << "Failed to read file: " << filename2.value();
         return EX_NOINPUT;
       }
-      task = base::Bind(
+      task = base::BindOnce(
           &ClientLoop::VerifySignature, weak_factory_.GetWeakPtr(),
           command_line->GetSwitchValueASCII("label"),
           command_line->GetSwitchValueASCII("user"), input, signature);
     } else if (args.front() == kRegisterCommand) {
-      task = base::Bind(&ClientLoop::CallRegister, weak_factory_.GetWeakPtr(),
-                        command_line->GetSwitchValueASCII("label"),
-                        command_line->GetSwitchValueASCII("user"));
+      task =
+          base::BindOnce(&ClientLoop::CallRegister, weak_factory_.GetWeakPtr(),
+                         command_line->GetSwitchValueASCII("label"),
+                         command_line->GetSwitchValueASCII("user"));
     } else if (args.front() == kCreateEnrollRequestCommand) {
       ACAType aca_type;
       int status = GetCertificateAuthorityServerType(command_line, &aca_type);
       if (status != EX_OK) {
         return status;
       }
-      task = base::Bind(&ClientLoop::CallCreateEnrollRequest,
-                        weak_factory_.GetWeakPtr(), aca_type);
+      task = base::BindOnce(&ClientLoop::CallCreateEnrollRequest,
+                            weak_factory_.GetWeakPtr(), aca_type);
     } else if (args.front() == kFinishEnrollCommand) {
       ACAType aca_type;
       int status = GetCertificateAuthorityServerType(command_line, &aca_type);
@@ -371,8 +376,8 @@ class ClientLoop : public ClientLoopBase {
         LOG(ERROR) << "Failed to read file: " << filename.value();
         return EX_NOINPUT;
       }
-      task = base::Bind(&ClientLoop::CallFinishEnroll,
-                        weak_factory_.GetWeakPtr(), aca_type, input);
+      task = base::BindOnce(&ClientLoop::CallFinishEnroll,
+                            weak_factory_.GetWeakPtr(), aca_type, input);
     } else if (args.front() == kEnrollCommand) {
       ACAType aca_type;
       int status = GetCertificateAuthorityServerType(command_line, &aca_type);
@@ -380,8 +385,8 @@ class ClientLoop : public ClientLoopBase {
         return status;
       }
       bool forced = command_line->HasSwitch("forced");
-      task = base::Bind(&ClientLoop::CallEnroll, weak_factory_.GetWeakPtr(),
-                        aca_type, forced);
+      task = base::BindOnce(&ClientLoop::CallEnroll, weak_factory_.GetWeakPtr(),
+                            aca_type, forced);
     } else if (args.front() == kCreateCertRequestCommand) {
       ACAType aca_type;
       int status = GetCertificateAuthorityServerType(command_line, &aca_type);
@@ -412,10 +417,10 @@ class ClientLoop : public ClientLoopBase {
       } else {
         return EX_USAGE;
       }
-      task = base::Bind(&ClientLoop::CallCreateCertRequest,
-                        weak_factory_.GetWeakPtr(), aca_type, profile,
-                        command_line->GetSwitchValueASCII("user"),
-                        command_line->GetSwitchValueASCII("origin"));
+      task = base::BindOnce(&ClientLoop::CallCreateCertRequest,
+                            weak_factory_.GetWeakPtr(), aca_type, profile,
+                            command_line->GetSwitchValueASCII("user"),
+                            command_line->GetSwitchValueASCII("origin"));
     } else if (args.front() == kFinishCertRequestCommand) {
       if (!command_line->HasSwitch("input")) {
         return EX_USAGE;
@@ -426,10 +431,10 @@ class ClientLoop : public ClientLoopBase {
         LOG(ERROR) << "Failed to read file: " << filename.value();
         return EX_NOINPUT;
       }
-      task = base::Bind(&ClientLoop::CallFinishCertRequest,
-                        weak_factory_.GetWeakPtr(), input,
-                        command_line->GetSwitchValueASCII("label"),
-                        command_line->GetSwitchValueASCII("user"));
+      task = base::BindOnce(&ClientLoop::CallFinishCertRequest,
+                            weak_factory_.GetWeakPtr(), input,
+                            command_line->GetSwitchValueASCII("label"),
+                            command_line->GetSwitchValueASCII("user"));
     } else if (args.front() == kGetCertCommand) {
       ACAType aca_type;
       int status = GetCertificateAuthorityServerType(command_line, &aca_type);
@@ -468,12 +473,12 @@ class ClientLoop : public ClientLoopBase {
 
       bool forced = command_line->HasSwitch("forced");
       bool shall_trigger_enrollment = command_line->HasSwitch("enroll");
-      task = base::Bind(&ClientLoop::CallGetCert, weak_factory_.GetWeakPtr(),
-                        aca_type, profile,
-                        command_line->GetSwitchValueASCII("label"),
-                        command_line->GetSwitchValueASCII("user"),
-                        command_line->GetSwitchValueASCII("origin"), key_type,
-                        forced, shall_trigger_enrollment);
+      task = base::BindOnce(&ClientLoop::CallGetCert,
+                            weak_factory_.GetWeakPtr(), aca_type, profile,
+                            command_line->GetSwitchValueASCII("label"),
+                            command_line->GetSwitchValueASCII("user"),
+                            command_line->GetSwitchValueASCII("origin"),
+                            key_type, forced, shall_trigger_enrollment);
     } else if (args.front() == kSignChallengeCommand) {
       if (!command_line->HasSwitch("input")) {
         return EX_USAGE;
@@ -490,33 +495,33 @@ class ClientLoop : public ClientLoopBase {
         if (status != EX_OK) {
           return status;
         }
-        task = base::Bind(&ClientLoop::CallSignEnterpriseChallenge,
-                          weak_factory_.GetWeakPtr(), va_type, input,
-                          command_line->GetSwitchValueASCII("label"),
-                          command_line->GetSwitchValueASCII("user"),
-                          command_line->GetSwitchValueASCII("domain"),
-                          command_line->GetSwitchValueASCII("device_id"),
-                          command_line->HasSwitch("spkac"));
+        task = base::BindOnce(&ClientLoop::CallSignEnterpriseChallenge,
+                              weak_factory_.GetWeakPtr(), va_type, input,
+                              command_line->GetSwitchValueASCII("label"),
+                              command_line->GetSwitchValueASCII("user"),
+                              command_line->GetSwitchValueASCII("domain"),
+                              command_line->GetSwitchValueASCII("device_id"),
+                              command_line->HasSwitch("spkac"));
       } else {
-        task = base::Bind(&ClientLoop::CallSignSimpleChallenge,
-                          weak_factory_.GetWeakPtr(), input,
-                          command_line->GetSwitchValueASCII("label"),
-                          command_line->GetSwitchValueASCII("user"));
+        task = base::BindOnce(&ClientLoop::CallSignSimpleChallenge,
+                              weak_factory_.GetWeakPtr(), input,
+                              command_line->GetSwitchValueASCII("label"),
+                              command_line->GetSwitchValueASCII("user"));
       }
     } else if (args.front() == kGetEnrollmentId) {
-      task =
-          base::Bind(&ClientLoop::GetEnrollmentId, weak_factory_.GetWeakPtr(),
-                     command_line->HasSwitch("ignore_cache"));
+      task = base::BindOnce(&ClientLoop::GetEnrollmentId,
+                            weak_factory_.GetWeakPtr(),
+                            command_line->HasSwitch("ignore_cache"));
     } else if (args.front() == kGetCertifiedNvIndex) {
-      task = base::Bind(&ClientLoop::GetCertifiedNvIndex,
-                        weak_factory_.GetWeakPtr(),
-                        command_line->GetSwitchValueASCII("index"),
-                        command_line->GetSwitchValueASCII("size"),
-                        command_line->GetSwitchValueASCII("key_label"));
+      task = base::BindOnce(&ClientLoop::GetCertifiedNvIndex,
+                            weak_factory_.GetWeakPtr(),
+                            command_line->GetSwitchValueASCII("index"),
+                            command_line->GetSwitchValueASCII("size"),
+                            command_line->GetSwitchValueASCII("key_label"));
     } else {
       return EX_USAGE;
     }
-    base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, task);
+    base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, std::move(task));
     return EX_OK;
   }
 
@@ -604,9 +609,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_extended_status(extended_status);
     attestation_->GetStatusAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<GetStatusReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<GetStatusReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -616,9 +622,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_username(username);
     attestation_->GetKeyInfoAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<GetKeyInfoReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<GetKeyInfoReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -631,9 +638,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_payload(payload);
     attestation_->SetKeyPayloadAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<SetKeyPayloadReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<SetKeyPayloadReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -652,9 +660,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_username(username);
     attestation_->DeleteKeysAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<DeleteKeysReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<DeleteKeysReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -662,9 +671,10 @@ class ClientLoop : public ClientLoopBase {
     GetEndorsementInfoRequest request;
     attestation_->GetEndorsementInfoAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<GetEndorsementInfoReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<GetEndorsementInfoReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -673,9 +683,11 @@ class ClientLoop : public ClientLoopBase {
     request.set_aca_type(aca_type);
     attestation_->GetAttestationKeyInfoAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<GetAttestationKeyInfoReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(
+            &ClientLoop::PrintReplyAndQuit<GetAttestationKeyInfoReply>,
+            weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -685,9 +697,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_ek_only(ek_only);
     attestation_->VerifyAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<VerifyReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<VerifyReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -700,9 +713,11 @@ class ClientLoop : public ClientLoopBase {
     request.set_save_certificate(save_certificate);
     attestation_->ActivateAttestationKeyAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<ActivateAttestationKeyReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(
+            &ClientLoop::PrintReplyAndQuit<ActivateAttestationKeyReply>,
+            weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -710,9 +725,10 @@ class ClientLoop : public ClientLoopBase {
     GetEndorsementInfoRequest request;
     attestation_->GetEndorsementInfoAsync(
         request,
-        base::Bind(&ClientLoop::EncryptForActivate2, weak_factory_.GetWeakPtr(),
-                   input),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::EncryptForActivate2,
+                       weak_factory_.GetWeakPtr(), input),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -724,9 +740,10 @@ class ClientLoop : public ClientLoopBase {
     GetAttestationKeyInfoRequest request;
     attestation_->GetAttestationKeyInfoAsync(
         request,
-        base::Bind(&ClientLoop::EncryptForActivate3, weak_factory_.GetWeakPtr(),
-                   input, endorsement_info),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::EncryptForActivate3,
+                       weak_factory_.GetWeakPtr(), input, endorsement_info),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -771,9 +788,11 @@ class ClientLoop : public ClientLoopBase {
     request.set_key_usage(usage);
     attestation_->CreateCertifiableKeyAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<CreateCertifiableKeyReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(
+            &ClientLoop::PrintReplyAndQuit<CreateCertifiableKeyReply>,
+            weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -785,8 +804,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_username(username);
     attestation_->GetKeyInfoAsync(
         request,
-        base::Bind(&ClientLoop::Encrypt2, weak_factory_.GetWeakPtr(), input),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::Encrypt2, weak_factory_.GetWeakPtr(),
+                       input),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -809,9 +830,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_encrypted_data(input);
     attestation_->DecryptAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<DecryptReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<DecryptReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -824,8 +846,9 @@ class ClientLoop : public ClientLoopBase {
     request.set_data_to_sign(input);
     attestation_->SignAsync(
         request,
-        base::Bind(&ClientLoop::OnSignComplete, weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::OnSignComplete, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -846,9 +869,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_username(username);
     attestation_->GetKeyInfoAsync(
         request,
-        base::Bind(&ClientLoop::VerifySignature2, weak_factory_.GetWeakPtr(),
-                   input, signature),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::VerifySignature2,
+                       weak_factory_.GetWeakPtr(), input, signature),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -871,10 +895,11 @@ class ClientLoop : public ClientLoopBase {
     request.set_username(username);
     attestation_->RegisterKeyWithChapsTokenAsync(
         request,
-        base::Bind(
+        base::BindOnce(
             &ClientLoop::PrintReplyAndQuit<RegisterKeyWithChapsTokenReply>,
             weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -883,9 +908,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_aca_type(aca_type);
     attestation_->CreateEnrollRequestAsync(
         request,
-        base::Bind(&ClientLoop::OnCreateEnrollRequestComplete,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::OnCreateEnrollRequestComplete,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -903,9 +929,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_pca_response(pca_response);
     attestation_->FinishEnrollAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<FinishEnrollReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<FinishEnrollReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -915,9 +942,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_forced(forced);
     attestation_->EnrollAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<EnrollReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<EnrollReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -932,9 +960,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_request_origin(origin);
     attestation_->CreateCertificateRequestAsync(
         request,
-        base::Bind(&ClientLoop::OnCreateCertRequestComplete,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::OnCreateCertRequestComplete,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -955,10 +984,11 @@ class ClientLoop : public ClientLoopBase {
     request.set_username(username);
     attestation_->FinishCertificateRequestAsync(
         request,
-        base::Bind(
+        base::BindOnce(
             &ClientLoop::PrintReplyAndQuit<FinishCertificateRequestReply>,
             weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -981,9 +1011,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_shall_trigger_enrollment(shall_trigger_enrollment);
     attestation_->GetCertificateAsync(
         request,
-        base::Bind(&ClientLoop::PrintReplyAndQuit<GetCertificateReply>,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<GetCertificateReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -1004,9 +1035,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_challenge(input);
     attestation_->SignEnterpriseChallengeAsync(
         request,
-        base::Bind(&ClientLoop::OnSignEnterpriseChallengeComplete,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::OnSignEnterpriseChallengeComplete,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -1028,9 +1060,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_challenge(input);
     attestation_->SignSimpleChallengeAsync(
         request,
-        base::Bind(&ClientLoop::OnSignSimpleChallengeComplete,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::OnSignSimpleChallengeComplete,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -1047,9 +1080,10 @@ class ClientLoop : public ClientLoopBase {
     request.set_ignore_cache(ignore_cache);
     attestation_->GetEnrollmentIdAsync(
         request,
-        base::Bind(&ClientLoop::OnGetEnrollmentIdComplete,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::OnGetEnrollmentIdComplete,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
@@ -1075,9 +1109,10 @@ class ClientLoop : public ClientLoopBase {
 
     attestation_->GetCertifiedNvIndexAsync(
         request,
-        base::Bind(&ClientLoop::OnGetCertifiedNvIndexComplete,
-                   weak_factory_.GetWeakPtr()),
-        base::Bind(&ClientLoop::PrintErrorAndQuit, weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::OnGetCertifiedNvIndexComplete,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
         kDefaultTimeout.InMilliseconds());
   }
 
