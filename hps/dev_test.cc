@@ -70,7 +70,7 @@ class DevInterfaceTest : public testing::Test {
 TEST_F(DevInterfaceTest, ReadReg) {
   dev_.data_[0] = 0x12;
   dev_.data_[1] = 0x34;
-  int d = dev_.ReadReg(hps::HpsReg::kMagic);
+  std::optional<uint16_t> d = dev_.ReadReg(hps::HpsReg::kMagic);
   EXPECT_EQ(d, 0x1234);
   EXPECT_EQ(dev_.len_, 2);
   EXPECT_EQ(dev_.cmd_, 0x80);

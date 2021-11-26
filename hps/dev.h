@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 
 #include <base/compiler_specific.h>
 
@@ -38,7 +39,7 @@ class DevInterface {
    * Read 1 register.
    * Returns value read, or -1 for error.
    */
-  virtual int ReadReg(HpsReg r) WARN_UNUSED_RESULT;
+  virtual std::optional<uint16_t> ReadReg(HpsReg r) WARN_UNUSED_RESULT;
 
   /*
    * Write 1 register.

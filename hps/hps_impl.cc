@@ -96,8 +96,8 @@ bool HPS_impl::Enable(uint8_t feature) {
     return false;
   }
   // Check the application is enabled and running.
-  int status = this->device_->ReadReg(HpsReg::kSysStatus);
-  if (status < 0 || (status & R2::kAppl) == 0) {
+  std::optional<uint16_t> status = this->device_->ReadReg(HpsReg::kSysStatus);
+  if (!status || !(status.value() & R2::kAppl)) {
     LOG(ERROR) << "Module not ready for feature control";
     return false;
   }
@@ -113,8 +113,8 @@ bool HPS_impl::Disable(uint8_t feature) {
     return false;
   }
   // Check the application is enabled and running.
-  int status = this->device_->ReadReg(HpsReg::kSysStatus);
-  if (status < 0 || (status & R2::kAppl) == 0) {
+  std::optional<uint16_t> status = this->device_->ReadReg(HpsReg::kSysStatus);
+  if (!status || !(status.value() & R2::kAppl)) {
     LOG(ERROR) << "Module not ready for feature control";
     return false;
   }
@@ -125,15 +125,15 @@ bool HPS_impl::Disable(uint8_t feature) {
 
 FeatureResult HPS_impl::Result(int feature) {
   // Check the application is enabled and running.
-  int status = this->device_->ReadReg(HpsReg::kSysStatus);
-  if (status < 0 || (status & R2::kAppl) == 0) {
+  std::optional<uint16_t> status = this->device_->ReadReg(HpsReg::kSysStatus);
+  if (!status || !(status.value() & R2::kAppl)) {
     return {.valid = false};
   }
   // Check that feature is enabled.
   if (((1 << feature) & this->feat_enabled_) == 0) {
     return {.valid = false};
   }
-  int hps_result;
+  std::optional<uint16_t> hps_result = std::nullopt;
   switch (feature) {
     case 0:
       hps_result = this->device_->ReadReg(HpsReg::kFeature0);
@@ -141,20 +141,18 @@ FeatureResult HPS_impl::Result(int feature) {
     case 1:
       hps_result = this->device_->ReadReg(HpsReg::kFeature1);
       break;
-    default:
-      hps_result = -1;
   }
-  if (hps_result < 0) {
+  if (!hps_result) {
     return {.valid = false};
   }
   // TODO(slangley): Clean this up when we introduce sequence numbers for
   // inference results.
   FeatureResult result;
-  result.valid = (hps_result & RFeat::kValid) == RFeat::kValid;
+  result.valid = (hps_result.value() & RFeat::kValid) == RFeat::kValid;
 
   // The lower 8 bits are an int8_t.
   // We are extracting that byte here, not converting the uint16_t.
-  result.inference_result = static_cast<int8_t>(hps_result & 0xFF);
+  result.inference_result = static_cast<int8_t>(hps_result.value() & 0xFF);
   return result;
 }
 
@@ -213,8 +211,8 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
 bool HPS_impl::CheckMagic() {
   base::ElapsedTimer timer;
   for (;;) {
-    int magic = this->device_->ReadReg(HpsReg::kMagic);
-    if (magic < 0) {
+    std::optional<uint16_t> magic = this->device_->ReadReg(HpsReg::kMagic);
+    if (!magic) {
       if (timer.Elapsed() < kMagicTimeout) {
         Sleep(kMagicSleep);
         continue;
@@ -228,7 +226,8 @@ bool HPS_impl::CheckMagic() {
       return true;
     } else {
       hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kBadMagic);
-      LOG(FATAL) << base::StringPrintf("Bad magic number 0x%04x", magic);
+      LOG(FATAL) << base::StringPrintf("Bad magic number 0x%04x",
+                                       magic.value());
       return false;
     }
   }
@@ -248,33 +247,32 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
     return BootResult::kFail;
   }
 
-  int status = this->device_->ReadReg(HpsReg::kSysStatus);
-  if (status < 0) {
+  std::optional<uint16_t> status = this->device_->ReadReg(HpsReg::kSysStatus);
+  if (!status) {
     // TODO(evanbenn) log a metric
     LOG(FATAL) << "ReadReg failure";
     return BootResult::kFail;
   }
 
-  if (status & R2::kFault || !(status & R2::kOK)) {
+  if (status.value() & R2::kFault || !(status.value() & R2::kOK)) {
     this->Fault();
     return BootResult::kFail;
   }
 
-  int hwrev = this->device_->ReadReg(HpsReg::kHwRev);
-  if (hwrev >= 0) {
-    this->hw_rev_ = base::checked_cast<uint16_t>(hwrev);
-  } else {
+  std::optional<uint16_t> hwrev = this->device_->ReadReg(HpsReg::kHwRev);
+  if (!hwrev) {
     // TODO(evanbenn) log a metric
     LOG(FATAL) << "Failed to read hwrev";
     return BootResult::kFail;
   }
+  this->hw_rev_ = hwrev.value();
 
-  this->write_protect_off_ = status & R2::kWpOff;
+  this->write_protect_off_ = status.value() & R2::kWpOff;
   VLOG_IF(1, this->write_protect_off_) << "kWpOff, ignoring verified bits";
 
   // When write protect is off we ignore the verified signal.
   // When write protect is not off we update if there is no verified signal.
-  if (!this->write_protect_off_ && !(status & R2::kStage1Verified)) {
+  if (!this->write_protect_off_ && !(status.value() & R2::kStage1Verified)) {
     // Stage1 not verified, so need to update it.
     LOG(INFO) << "Stage1 flash not verified";
     hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kMcuNotVerified);
@@ -282,15 +280,17 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
   }
 
   // Verified, so now check the version. If it is different, update it.
-  int version_low = this->device_->ReadReg(HpsReg::kFirmwareVersionLow);
-  int version_high = this->device_->ReadReg(HpsReg::kFirmwareVersionHigh);
-  if (version_low < 0 || version_high < 0) {
+  std::optional<uint16_t> version_low =
+      this->device_->ReadReg(HpsReg::kFirmwareVersionLow);
+  std::optional<uint16_t> version_high =
+      this->device_->ReadReg(HpsReg::kFirmwareVersionHigh);
+  if (!version_low || !version_high) {
     // TODO(evanbenn) log a metric
     LOG(FATAL) << "ReadReg failure";
     return BootResult::kFail;
   }
-  uint32_t version = static_cast<uint32_t>((version_high << 16) |
-                                           static_cast<uint16_t>(version_low));
+  uint32_t version =
+      static_cast<uint32_t>(version_high.value() << 16) | version_low.value();
   if (version == this->stage1_version_) {
     // Stage 1 is verified
     VLOG(1) << "Stage1 version OK";
@@ -316,19 +316,19 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage1() {
     return BootResult::kFail;
   }
 
-  int status = this->device_->ReadReg(HpsReg::kSysStatus);
-  if (status < 0) {
+  std::optional<uint16_t> status = this->device_->ReadReg(HpsReg::kSysStatus);
+  if (!status) {
     // TODO(evanbenn) log a metric
     LOG(FATAL) << "ReadReg failure";
     return BootResult::kFail;
   }
 
-  if (status & R2::kFault || !(status & R2::kOK)) {
+  if (status.value() & R2::kFault || !(status.value() & R2::kOK)) {
     this->Fault();
     return BootResult::kFail;
   }
 
-  if (!(status & R2::kStage1)) {
+  if (!(status.value() & R2::kStage1)) {
     hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kStage1NotStarted);
     LOG(FATAL) << "Stage 1 did not start";
     return BootResult::kFail;
@@ -346,31 +346,31 @@ hps::HPS_impl::BootResult HPS_impl::CheckApplication() {
   // Poll for kAppl (started) or kSpiNotVer (not started)
   base::ElapsedTimer timer;
   do {
-    int status = this->device_->ReadReg(HpsReg::kSysStatus);
-    if (status < 0) {
+    std::optional<uint16_t> status = this->device_->ReadReg(HpsReg::kSysStatus);
+    if (!status) {
       // TODO(evanbenn) log a metric
       LOG(FATAL) << "ReadReg failure";
       return BootResult::kFail;
     }
-    if (status & R2::kAppl) {
+    if (status.value() & R2::kAppl) {
       VLOG(1) << "Application boot after " << timer.Elapsed().InMilliseconds()
               << "ms";
       hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kSuccess);
       return BootResult::kOk;
     }
 
-    int error = this->device_->ReadReg(HpsReg::kError);
-    if (error < 0) {
+    std::optional<uint16_t> error = this->device_->ReadReg(HpsReg::kError);
+    if (!error) {
       // TODO(evanbenn) log a metric
       LOG(FATAL) << "ReadReg failure";
       return BootResult::kFail;
     }
-    if (error & RError::kSpiNotVer) {
+    if (error.value() & RError::kSpiNotVer) {
       VLOG(1) << "SPI verification failed after "
               << timer.Elapsed().InMilliseconds() << "ms";
       hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kSpiNotVerified);
       return BootResult::kUpdate;
-    } else if (error) {
+    } else if (error.value()) {
       this->Fault();
       return BootResult::kFail;
     }
@@ -396,13 +396,11 @@ bool HPS_impl::Reboot() {
 // Fault bit seen, attempt to dump status information
 void HPS_impl::Fault() {
   hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kFault);
-  int errors = this->device_->ReadReg(HpsReg::kError);
-  if (errors < 0) {
+  std::optional<uint16_t> errors = this->device_->ReadReg(HpsReg::kError);
+  if (!errors) {
     LOG(FATAL) << "Fault: cause unknown";
   } else {
-    LOG(FATAL) << base::StringPrintf("Fault: cause 0x%04x",
-                                     static_cast<unsigned>(errors))
-                      .c_str();
+    LOG(FATAL) << base::StringPrintf("Fault: cause 0x%04x", errors.value());
   }
 }
 
@@ -523,11 +521,11 @@ bool HPS_impl::WriteFile(uint8_t bank, const base::FilePath& source) {
 bool HPS_impl::WaitForBankReady(uint8_t bank) {
   base::ElapsedTimer timer;
   do {
-    int result = this->device_->ReadReg(HpsReg::kBankReady);
-    if (result < 0) {
+    std::optional<uint16_t> result = this->device_->ReadReg(HpsReg::kBankReady);
+    if (!result) {
       return false;
     }
-    if (result & (1 << bank)) {
+    if (result.value() & (1 << bank)) {
       return true;
     }
     Sleep(kBankReadySleep);
