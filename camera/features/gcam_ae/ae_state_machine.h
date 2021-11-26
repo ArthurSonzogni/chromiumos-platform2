@@ -8,6 +8,7 @@
 #define CAMERA_FEATURES_GCAM_AE_AE_STATE_MACHINE_H_
 
 #include <memory>
+#include <string>
 
 #include <base/optional.h>
 #include <base/synchronization/lock.h>
@@ -203,6 +204,17 @@ class AeStateMachine {
   AeStateMachine& operator=(const AeStateMachine& other) = delete;
 
  private:
+  struct ExposureDescriptor {
+    static constexpr float kInvalidTet = -1.0f;
+    static constexpr float kInvalidHdrRatio = -1.0f;
+
+    float tet = kInvalidTet;
+    float hdr_ratio = kInvalidHdrRatio;
+    float log_scene_brightness = kLogSceneBrightnessUnknown;
+
+    std::string ToString() const;
+  };
+
   void SearchTargetTet(const AeFrameInfo& frame_info,
                        const InputParameters& inputs,
                        const float new_tet);
@@ -228,16 +240,16 @@ class AeStateMachine {
 
   // The TET value to set to the vendor camera HAL for actual frame exposure of
   // the next frame(s).
-  float next_tet_to_set_ GUARDED_BY(lock_) = 0;
-  float next_hdr_ratio_to_set_ GUARDED_BY(lock_) = 1.0f;
+  ExposureDescriptor next_ GUARDED_BY(lock_) = {
+      .tet = 0.0f,
+      .hdr_ratio = 1.0f,
+  };
 
   // The target TET for the state machine to converge the actual TET to.
-  base::Optional<float> target_tet_ GUARDED_BY(lock_);
-  base::Optional<float> target_hdr_ratio_ GUARDED_BY(lock_);
+  base::Optional<ExposureDescriptor> target_ GUARDED_BY(lock_);
 
   // The converged TET that the state machine has settled with.
-  base::Optional<float> converged_tet_ GUARDED_BY(lock_);
-  base::Optional<float> converged_hdr_ratio_ GUARDED_BY(lock_);
+  base::Optional<ExposureDescriptor> converged_ GUARDED_BY(lock_);
   base::Optional<base::TimeTicks> converged_start_time_ GUARDED_BY(lock_);
   base::Optional<int> tet_retention_duration_ms_ GUARDED_BY(lock_);
   static constexpr int kInvalidFrame = -1;
@@ -247,8 +259,7 @@ class AeStateMachine {
   base::TimeTicks last_converged_time_ GUARDED_BY(lock_);
 
   // Whether the AE needs to be locked.
-  base::Optional<float> locked_tet_ GUARDED_BY(lock_);
-  base::Optional<float> locked_hdr_ratio_ GUARDED_BY(lock_);
+  base::Optional<ExposureDescriptor> locked_ GUARDED_BY(lock_);
   bool ae_locked_ GUARDED_BY(lock_) = false;
 
   GcamAeMetrics gcam_ae_metrics_ GUARDED_BY(lock_);

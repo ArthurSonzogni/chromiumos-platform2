@@ -164,6 +164,8 @@ void GcamAeStreamManipulator::OnOptionsUpdated(const base::Value& json_values) {
     if (options_.log_frame_metadata && !log_frame_metadata) {
       // Dump frame metadata when metadata logging if turned off.
       metadata_logger_.DumpMetadata();
+    } else if (!options_.log_frame_metadata && log_frame_metadata) {
+      // Clear the old metadata before logging new ones.
       metadata_logger_.Clear();
     }
     options_.log_frame_metadata = log_frame_metadata;
