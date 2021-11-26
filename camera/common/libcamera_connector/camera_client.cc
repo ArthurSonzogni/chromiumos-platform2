@@ -89,8 +89,8 @@ CameraClient::CameraClient()
     : ipc_thread_("CamClientIpc"),
       info_thread_("CamClientInfo"),
       camera_hal_client_(this),
-      camera_module_callbacks_(base::Bind(&CameraClient::OnDeviceStatusChange,
-                                          base::Unretained(this))),
+      camera_module_callbacks_(base::BindRepeating(
+          &CameraClient::OnDeviceStatusChange, base::Unretained(this))),
       cam_info_callback_(nullptr) {}
 
 void CameraClient::Init(RegisterClientCallback register_client_callback,
@@ -551,8 +551,8 @@ int CameraClient::StartCaptureOnIpcThread(SessionRequest* request) {
   context_.info = std::move(request->info);
   context_.result_callback = std::move(request->result_callback);
   auto device_ops_receiver = context_.client_ops.Init(
-      device_api_version_,
-      base::Bind(&CameraClient::SendCaptureResult, base::Unretained(this)));
+      device_api_version_, base::BindRepeating(&CameraClient::SendCaptureResult,
+                                               base::Unretained(this)));
   camera_module_->OpenDevice(
       context_.info.camera_id, std::move(device_ops_receiver),
       base::BindOnce(&CameraClient::OnOpenedDevice, base::Unretained(this)));
@@ -618,7 +618,7 @@ int CameraClient::StopCaptureOnIpcThread(SessionRequest* request) {
   context_.state = SessionState::kStopping;
   context_.result_callback = std::move(request->result_callback);
   context_.client_ops.StopCapture(
-      base::Bind(&CameraClient::OnClosedDevice, base::Unretained(this)));
+      base::BindOnce(&CameraClient::OnClosedDevice, base::Unretained(this)));
   return 0;
 }
 

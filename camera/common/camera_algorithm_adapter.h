@@ -51,7 +51,7 @@ class CameraAlgorithmAdapter {
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 
   // Callback to handle IPC channel lost event
-  base::Callback<void(void)> ipc_lost_cb_;
+  base::OnceCallback<void(void)> ipc_lost_cb_;
 
   // Store observers for future locks
   cros::CancellationRelay relay_;

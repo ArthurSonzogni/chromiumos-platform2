@@ -52,7 +52,7 @@ class CameraClientOps : public mojom::Camera3CallbackOps {
   static const int kStreamId = 0;
 
   using CaptureResultCallback =
-      base::Callback<void(const cros_cam_capture_result_t&)>;
+      base::RepeatingCallback<void(const cros_cam_capture_result_t&)>;
 
   CameraClientOps();
 

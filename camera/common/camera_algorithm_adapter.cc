@@ -100,10 +100,11 @@ void CameraAlgorithmAdapter::InitializeOnIpcThread(std::string pipe_name,
     return;
   }
 
-  base::Closure ipc_lost_handler = base::Bind(
+  base::OnceClosure ipc_lost_handler = base::BindOnce(
       &CameraAlgorithmAdapter::DestroyOnIpcThread, base::Unretained(this));
   if (!algo_impl_->Bind(std::move(pending_receiver), cam_algo,
-                        ipc_thread_.task_runner(), ipc_lost_handler)) {
+                        ipc_thread_.task_runner(),
+                        std::move(ipc_lost_handler))) {
     LOGF(ERROR) << "Failed to bind algorithm implementation";
     DestroyOnIpcThread();
     return;
@@ -121,7 +122,7 @@ void CameraAlgorithmAdapter::DestroyOnIpcThread() {
   if (algo_dll_handle_) {
     dlclose(algo_dll_handle_);
   }
-  ipc_lost_cb_.Run();
+  std::move(ipc_lost_cb_).Run();
   VLOGF_EXIT();
 }
 
