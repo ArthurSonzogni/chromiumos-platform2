@@ -35,10 +35,10 @@ constexpr char kTestChallengeCode[] = "ABCDEFGH";
 constexpr char kTestUnlockCode[] = "abcdefgh";
 constexpr char kWrongUnlockCode[] = "aaa";
 constexpr char kHwidProperty[] = "hwid";
-constexpr char kTestHwid[] = "test_hwid";
+constexpr char kTestHwid[] = "MODEL TEST";
 constexpr char kTestUrl[] =
     "https://www.google.com/chromeos/partner/console/"
-    "cr50reset?challenge=ABCDEFGH&hwid=test_hwid";
+    "cr50reset?challenge=ABCDEFGH&hwid=MODEL_TEST";
 constexpr char kHwwpProperty[] = "wpsw_cur";
 
 }  // namespace

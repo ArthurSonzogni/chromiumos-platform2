@@ -9,6 +9,8 @@
 #include <string>
 #include <utility>
 
+#include <base/strings/string_util.h>
+
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
@@ -75,11 +77,15 @@ RmadErrorCode WriteProtectDisableRsuStateHandler::InitializeState() {
 
     // 256 is enough for the URL.
     char url[256];
-    int ret = std::snprintf(url, sizeof(url), kRsuUrlFormat,
-                            challenge_code.c_str(), hwid.c_str());
-    DCHECK_GT(ret, 0);
-    wp_disable_rsu->set_challenge_url(std::string(url));
+    CHECK_GT(std::snprintf(url, sizeof(url), kRsuUrlFormat,
+                           challenge_code.c_str(), hwid.c_str()),
+             0);
 
+    // Replace space with underscore.
+    std::string url_string;
+    base::ReplaceChars(url, " ", "_", &url_string);
+
+    wp_disable_rsu->set_challenge_url(url_string);
     state_.set_allocated_wp_disable_rsu(wp_disable_rsu.release());
   }
   return RMAD_ERROR_OK;
