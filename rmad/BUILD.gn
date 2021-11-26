@@ -61,6 +61,7 @@ static_library("libutils") {
     "utils/calibration_utils.cc",
     "utils/cbi_utils_impl.cc",
     "utils/cmd_utils_impl.cc",
+    "utils/component_utils.cc",
     "utils/cr50_utils_impl.cc",
     "utils/cros_config_utils_impl.cc",
     "utils/crossystem_utils_impl.cc",

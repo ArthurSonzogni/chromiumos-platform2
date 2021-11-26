@@ -14,6 +14,7 @@
 #include <dbus/mock_object_proxy.h>
 #include <dbus/hardware_verifier/dbus-constants.h>
 #include <gmock/gmock.h>
+#include <google/protobuf/text_format.h>
 #include <gtest/gtest.h>
 #include <hardware_verifier/hardware_verifier.pb.h>
 #include <rmad/proto_bindings/rmad.pb.h>
@@ -24,6 +25,260 @@
 using testing::_;
 using testing::Return;
 using testing::StrictMock;
+
+namespace {
+
+const char kVerifyComponentsReplyCompliant[] = R"(
+  error: ERROR_OK
+  hw_verification_report: {
+    is_compliant: true
+    found_component_infos: [
+      {
+        component_category: audio_codec
+        qualification_status: QUALIFIED
+        component_fields: {
+          audio_codec: {
+            name: "Audio1"
+          }
+        }
+      }
+    ]
+  }
+)";
+
+const char kVerifyComponentsReplyNotCompliant[] = R"(
+  error: ERROR_OK
+  hw_verification_report: {
+    is_compliant: false
+    found_component_infos: [
+      {
+        component_category: audio_codec
+        qualification_status: QUALIFIED
+        component_fields: {
+          audio_codec: {
+            name: "Audio1"
+          }
+        }
+      },
+      {
+        component_category: battery
+        qualification_status: UNQUALIFIED
+        component_fields: {
+          battery: {
+            manufacturer: "ABC"
+            model_name: "abc"
+          }
+        }
+      }
+    ]
+  }
+)";
+
+const char kVerifyComponentsReplyError[] = R"(
+  error: ERROR_OTHER_ERROR
+)";
+
+const char kVerifyComponentsReplyAllComponents[] = R"(
+  error: ERROR_OK
+  hw_verification_report: {
+    is_compliant: false
+    found_component_infos: [
+      {
+        component_category: audio_codec
+        qualification_status: UNQUALIFIED
+        component_fields: {
+          audio_codec: {
+            name: "AudioName"
+          }
+        }
+      },
+      {
+        component_category: battery
+        qualification_status: UNQUALIFIED
+        component_fields: {
+          battery: {
+            manufacturer: "BatteryManufacturer"
+            model_name: "BatteryModelName"
+          }
+        }
+      },
+      {
+        component_category: storage
+        qualification_status: UNQUALIFIED
+        component_fields: {
+          storage: {
+            type: "MMC",
+            mmc_manfid: 10
+            mmc_name: "MmcName"
+          }
+        }
+      },
+      {
+        component_category: storage
+        qualification_status: UNQUALIFIED
+        component_fields: {
+          storage: {
+            type: "NVMe",
+            pci_vendor: 10
+            pci_device: 11
+          }
+        }
+      },
+      {
+        component_category: storage
+        qualification_status: UNQUALIFIED
+        component_fields: {
+          storage: {
+            type: "ATA",
+            ata_vendor: "AtaVendor"
+            ata_model: "AtaModel"
+          }
+        }
+      },
+      {
+        component_category: storage
+        qualification_status: UNQUALIFIED
+        component_fields: {
+          storage: {
+            type: "*(&]",
+          }
+        }
+      },
+      {
+        component_category: camera
+        qualification_status: UNQUALIFIED
+        component_fields: {
+          camera: {
+            usb_vendor_id: 10
+            usb_product_id: 11
+          }
+        }
+      },
+      {
+        component_category: stylus
+        qualification_status: UNQUALIFIED
+        component_fields: {
+          stylus: {
+            vendor: 10
+            product: 11
+          }
+        }
+      },
+      {
+        component_category: touchpad
+        qualification_status: UNQUALIFIED
+        component_fields: {
+          touchpad: {
+            vendor: 10
+            product: 11
+          }
+        }
+      },
+      {
+        component_category: touchscreen
+        qualification_status: UNQUALIFIED
+        component_fields: {
+          touchscreen: {
+            vendor: 10
+            product: 11
+          }
+        }
+      },
+      {
+        component_category: dram
+        qualification_status: UNQUALIFIED
+        component_fields: {
+          dram: {
+            part: "DramPart"
+          }
+        }
+      },
+      {
+        component_category: display_panel
+        qualification_status: UNQUALIFIED
+        component_fields: {
+          display_panel: {
+            vendor: "DisplayVendor"
+            product_id: 10
+          }
+        }
+      },
+      {
+        component_category: cellular
+        qualification_status: UNQUALIFIED
+        component_fields: {
+          cellular: {
+            type: "cellular"
+            bus_type: "pci"
+            pci_vendor_id: 10
+            pci_device_id: 11
+          }
+        }
+      },
+      {
+        component_category: ethernet
+        qualification_status: UNQUALIFIED
+        component_fields: {
+          cellular: {
+            type: "ethernet"
+            bus_type: "usb"
+            usb_vendor_id: 10
+            usb_product_id: 11
+          }
+        }
+      },
+      {
+        component_category: wireless
+        qualification_status: UNQUALIFIED
+        component_fields: {
+          cellular: {
+            type: "wireless"
+            bus_type: "sdio"
+            sdio_vendor_id: 10
+            sdio_device_id: 11
+          }
+        }
+      },
+      {
+        component_category: wireless
+        qualification_status: UNQUALIFIED
+        component_fields: {
+          cellular: {
+            type: "wireless"
+            bus_type: "*(&]"
+            sdio_vendor_id: 10
+            sdio_device_id: 11
+          }
+        }
+      },
+      {
+        component_category: network
+        qualification_status: UNQUALIFIED
+      }
+    ]
+  }
+)";
+
+const char kVerifyComponentsErrorStrAllComponents[] =
+    "Audio_AudioName\n"
+    "Battery_BatteryManufacturer_BatteryModelName\n"
+    "Storage(eMMC)_0a_MmcName\n"
+    "Storage(NVMe)_000a_000b\n"
+    "Storage(SATA)_AtaVendor_AtaModel\n"
+    "Storage(unknown)\n"
+    "Camera_000a_000b\n"
+    "Stylus_000a_000b\n"
+    "Touchpad_000a_000b\n"
+    "Touchscreen_000a_000b\n"
+    "Memory_DramPart\n"
+    "Display_DisplayVendor_000a\n"
+    "Network(cellular:pci)_000a_000b\n"
+    "Network(ethernet:usb)_000a_000b\n"
+    "Network(wireless:sdio)_000a_000b\n"
+    "Network(wireless:unknown)\n"
+    "UnknownComponent\n";
+
+}  // namespace
 
 namespace rmad {
 
@@ -60,13 +315,11 @@ TEST_F(HardwareVerifierClientTest, GetHardwareVerificationResult_Compliant) {
       .WillOnce([](dbus::MethodCall*, int) {
         std::unique_ptr<dbus::Response> hardware_verifier_response =
             dbus::Response::CreateEmpty();
-        hardware_verifier::HwVerificationReport report;
-        report.set_is_compliant(true);
-        hardware_verifier::VerifyComponentsReply verify_reply;
-        verify_reply.set_error(hardware_verifier::ERROR_OK);
-        *verify_reply.mutable_hw_verification_report() = report;
+        hardware_verifier::VerifyComponentsReply reply;
+        CHECK(google::protobuf::TextFormat::ParseFromString(
+            kVerifyComponentsReplyCompliant, &reply));
         dbus::MessageWriter writer(hardware_verifier_response.get());
-        writer.AppendProtoAsArrayOfBytes(verify_reply);
+        writer.AppendProtoAsArrayOfBytes(reply);
         return hardware_verifier_response;
       });
 
@@ -82,26 +335,11 @@ TEST_F(HardwareVerifierClientTest, GetHardwareVerificationResult_NotCompliant) {
       .WillOnce([](dbus::MethodCall*, int) {
         std::unique_ptr<dbus::Response> hardware_verifier_response =
             dbus::Response::CreateEmpty();
-        hardware_verifier::HwVerificationReport report;
-        report.set_is_compliant(false);
-        hardware_verifier::ComponentInfo* found_component_info =
-            report.add_found_component_infos();
-        found_component_info->set_component_category(
-            runtime_probe::ProbeRequest::audio_codec);
-        found_component_info->set_component_uuid("audio_codec_uuid");
-        found_component_info->set_qualification_status(
-            hardware_verifier::QUALIFIED);
-        found_component_info = report.add_found_component_infos();
-        found_component_info->set_component_category(
-            runtime_probe::ProbeRequest::battery);
-        found_component_info->set_component_uuid("battery_uuid");
-        found_component_info->set_qualification_status(
-            hardware_verifier::UNQUALIFIED);
-        hardware_verifier::VerifyComponentsReply verify_reply;
-        verify_reply.set_error(hardware_verifier::ERROR_OK);
-        *verify_reply.mutable_hw_verification_report() = report;
+        hardware_verifier::VerifyComponentsReply reply;
+        CHECK(google::protobuf::TextFormat::ParseFromString(
+            kVerifyComponentsReplyNotCompliant, &reply));
         dbus::MessageWriter writer(hardware_verifier_response.get());
-        writer.AppendProtoAsArrayOfBytes(verify_reply);
+        writer.AppendProtoAsArrayOfBytes(reply);
         return hardware_verifier_response;
       });
 
@@ -109,7 +347,28 @@ TEST_F(HardwareVerifierClientTest, GetHardwareVerificationResult_NotCompliant) {
   EXPECT_TRUE(
       hardware_verifier_client_->GetHardwareVerificationResult(&result));
   EXPECT_EQ(result.is_compliant(), false);
-  EXPECT_EQ(result.error_str(), "battery\n");
+  EXPECT_EQ(result.error_str(), "Battery_ABC_abc\n");
+}
+
+TEST_F(HardwareVerifierClientTest,
+       GetHardwareVerificationResult_AllComponents) {
+  EXPECT_CALL(*mock_object_proxy_, CallMethodAndBlock(_, _))
+      .WillOnce([](dbus::MethodCall*, int) {
+        std::unique_ptr<dbus::Response> hardware_verifier_response =
+            dbus::Response::CreateEmpty();
+        hardware_verifier::VerifyComponentsReply reply;
+        CHECK(google::protobuf::TextFormat::ParseFromString(
+            kVerifyComponentsReplyAllComponents, &reply));
+        dbus::MessageWriter writer(hardware_verifier_response.get());
+        writer.AppendProtoAsArrayOfBytes(reply);
+        return hardware_verifier_response;
+      });
+
+  HardwareVerificationResult result;
+  EXPECT_TRUE(
+      hardware_verifier_client_->GetHardwareVerificationResult(&result));
+  EXPECT_EQ(result.is_compliant(), false);
+  EXPECT_EQ(result.error_str(), kVerifyComponentsErrorStrAllComponents);
 }
 
 TEST_F(HardwareVerifierClientTest, GetHardwareVerificationResult_NoResponse) {
@@ -138,10 +397,11 @@ TEST_F(HardwareVerifierClientTest,
       .WillOnce([](dbus::MethodCall*, int) {
         std::unique_ptr<dbus::Response> hardware_verifier_response =
             dbus::Response::CreateEmpty();
-        hardware_verifier::VerifyComponentsReply verify_reply;
-        verify_reply.set_error(hardware_verifier::ERROR_OTHER_ERROR);
+        hardware_verifier::VerifyComponentsReply reply;
+        CHECK(google::protobuf::TextFormat::ParseFromString(
+            kVerifyComponentsReplyError, &reply));
         dbus::MessageWriter writer(hardware_verifier_response.get());
-        writer.AppendProtoAsArrayOfBytes(verify_reply);
+        writer.AppendProtoAsArrayOfBytes(reply);
         return hardware_verifier_response;
       });
 

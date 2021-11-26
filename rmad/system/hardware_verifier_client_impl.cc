@@ -15,17 +15,8 @@
 #include <dbus/hardware_verifier/dbus-constants.h>
 #include <hardware_verifier/hardware_verifier.pb.h>
 #include <rmad/proto_bindings/rmad.pb.h>
-#include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
-namespace {
-
-std::string GetComponentIdentifier(
-    const hardware_verifier::ComponentInfo& info) {
-  return runtime_probe::ProbeRequest::SupportCategory_Name(
-      info.component_category());
-}
-
-}  // namespace
+#include "rmad/utils/component_utils.h"
 
 namespace rmad {
 
