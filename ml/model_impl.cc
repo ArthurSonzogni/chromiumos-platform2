@@ -19,6 +19,7 @@
 namespace ml {
 
 using ::chromeos::machine_learning::mojom::CreateGraphExecutorResult;
+using ::chromeos::machine_learning::mojom::GpuDelegateApi;
 using ::chromeos::machine_learning::mojom::GraphExecutor;
 using ::chromeos::machine_learning::mojom::GraphExecutorOptions;
 using ::chromeos::machine_learning::mojom::GraphExecutorOptionsPtr;
@@ -68,7 +69,8 @@ void ModelImpl::CreateGraphExecutor(
     CreateGraphExecutorCallback callback) {
   GraphExecutorDelegate* graph_executor_delegate;
   auto result = model_delegate_->CreateGraphExecutorDelegate(
-      options->use_nnapi, options->use_gpu, &graph_executor_delegate);
+      options->use_nnapi, options->use_gpu, options->gpu_delegate_api,
+      &graph_executor_delegate);
   if (result != CreateGraphExecutorResult::OK) {
     std::move(callback).Run(result);
     return;

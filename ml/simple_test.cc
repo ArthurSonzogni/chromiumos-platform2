@@ -12,7 +12,7 @@ namespace {
 
 void TestAdd(const double x, const double y, const double expected) {
   // TODO(avg): tests for NNAPI, when available
-  auto result = Add(x, y, false, false);
+  auto result = Add(x, y, false, false, "OPENGL");
   ASSERT_NEAR(result.sum, expected, 0.0001);
   ASSERT_EQ(result.status, "OK");
 }

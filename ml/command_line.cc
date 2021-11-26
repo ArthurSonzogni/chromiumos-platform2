@@ -31,6 +31,8 @@ int main(int argc, char** argv) {
   DEFINE_double(y, 4.0, "Second operand for add");
   DEFINE_bool(nnapi, false, "Whether to use NNAPI");
   DEFINE_bool(gpu, false, "Whether to use GPU");
+  DEFINE_string(gpu_delegate_api, "OPENGL",
+                "Graphics API to use with GPU delegate");
   brillo::FlagHelper::Init(argc, argv, "ML Service commandline tool");
 
   // TODO(avg): add ability to run arbitrary models
@@ -40,8 +42,12 @@ int main(int argc, char** argv) {
   if (FLAGS_gpu)
     processing = "GPU";
   std::cout << "Adding " << FLAGS_x << " and " << FLAGS_y << " with "
-            << processing << std::endl;
-  auto result = ml::simple::Add(FLAGS_x, FLAGS_y, FLAGS_nnapi, FLAGS_gpu);
+            << processing;
+  if (FLAGS_gpu)
+    std::cout << " (API: " << FLAGS_gpu_delegate_api << ")";
+  std::cout << std::endl;
+  auto result = ml::simple::Add(FLAGS_x, FLAGS_y, FLAGS_nnapi, FLAGS_gpu,
+                                FLAGS_gpu_delegate_api);
   std::cout << "Status: " << result.status << std::endl;
   std::cout << "Sum: " << result.sum << std::endl;
 

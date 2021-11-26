@@ -17,6 +17,7 @@
 namespace ml {
 
 using ::chromeos::machine_learning::mojom::CreateGraphExecutorResult;
+using ::chromeos::machine_learning::mojom::GpuDelegateApi;
 
 // Holds 4-byte aligned char[] data suitable for a flatbuffer model.
 class AlignedModelData {
@@ -73,6 +74,7 @@ class ModelDelegate {
   CreateGraphExecutorResult CreateGraphExecutorDelegate(
       bool use_nnapi,
       bool use_gpu,
+      GpuDelegateApi gpu_delegate_api,
       GraphExecutorDelegate** graph_executor_delegate);
 
  private:

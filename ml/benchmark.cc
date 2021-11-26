@@ -29,6 +29,7 @@
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "ml/benchmark.pb.h"
+#include "ml/model_conversions.h"
 #include "ml/model_impl.h"
 #include "ml/mojom/graph_executor.mojom.h"
 #include "ml/mojom/machine_learning_service.mojom.h"
@@ -42,8 +43,10 @@ using ::chrome::ml_benchmark::CrOSBenchmarkConfig;
 using ::chrome::ml_benchmark::Metric;
 using ::chromeos::machine_learning::mojom::CreateGraphExecutorResult;
 using ::chromeos::machine_learning::mojom::ExecuteResult;
+using ::chromeos::machine_learning::mojom::GpuDelegateApi;
 using ::chromeos::machine_learning::mojom::GraphExecutor;
 using ::chromeos::machine_learning::mojom::GraphExecutorOptions;
+using ::chromeos::machine_learning::mojom::GraphExecutorOptionsPtr;
 using ::chromeos::machine_learning::mojom::LoadModelResult;
 using ::chromeos::machine_learning::mojom::Model;
 using ::chromeos::machine_learning::mojom::TensorPtr;
@@ -138,14 +141,32 @@ bool ConstructModel(const FlatBufferModelSpecProto& model_proto,
   return true;
 }
 
+void CheckGraphExecutorOptions(
+    const TfliteBenchmarkConfig& tflite_config,
+    const GraphExecutorOptions& graph_executor_options) {
+  if ((tflite_config.use_gpu()) &&
+      (graph_executor_options.gpu_delegate_api == GpuDelegateApi::UNKNOWN)) {
+    LOG(FATAL) << "Must specify GPU delegate API during benchmarking when "
+                  "using GPU delegate";
+  }
+}
+
 // Constructs `graph_executor`; returns whether the construction is successful.
 bool ConstructGraphExecutor(const mojo::Remote<Model>& model,
                             const TfliteBenchmarkConfig& tflite_config,
                             mojo::Remote<GraphExecutor>* const graph_executor) {
   bool succeeded = false;
+
+  GpuDelegateApi gpu_delegate_api(
+      GpuDelegateApiFromProto(tflite_config.gpu_delegate_api()));
+  GraphExecutorOptionsPtr graph_executor_options(GraphExecutorOptions::New(
+      /*use_nnapi=*/false,
+      /*use_gpu=*/tflite_config.use_gpu(),
+      /*gpu_delegate_api=*/gpu_delegate_api));
+  CheckGraphExecutorOptions(tflite_config, *graph_executor_options);
+
   model->CreateGraphExecutor(
-      GraphExecutorOptions::New(/*use_nnapi=*/false,
-                                /*use_gpu=*/tflite_config.use_gpu()),
+      std::move(graph_executor_options),
       graph_executor->BindNewPipeAndPassReceiver(),
       base::BindOnce(
           [](bool* succeeded, const CreateGraphExecutorResult result) {

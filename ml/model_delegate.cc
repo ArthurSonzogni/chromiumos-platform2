@@ -70,9 +70,25 @@ ModelDelegate::ModelDelegate(std::map<std::string, int> required_inputs,
                     nullptr /*model_data*/,
                     metrics_model_name) {}
 
+TfLiteGpuDelegateOptionsV2 MakeGpuDelegateOptions(
+    GpuDelegateApi gpu_delegate_api) {
+  TfLiteGpuDelegateOptionsV2 options(TfLiteGpuDelegateOptionsV2Default());
+
+  switch (gpu_delegate_api) {
+    case GpuDelegateApi::OPENCL:
+      options.experimental_flags = TFLITE_GPU_EXPERIMENTAL_FLAGS_CL_ONLY;
+      break;
+    default:
+      options.experimental_flags = TFLITE_GPU_EXPERIMENTAL_FLAGS_GL_ONLY;
+  }
+
+  return options;
+}
+
 CreateGraphExecutorResult ModelDelegate::CreateGraphExecutorDelegate(
     const bool use_nnapi,
     const bool use_gpu,
+    GpuDelegateApi gpu_delegate_api,
     GraphExecutorDelegate** graph_executor_delegate) {
   DCHECK(!metrics_model_name_.empty());
 
@@ -125,7 +141,9 @@ CreateGraphExecutorResult ModelDelegate::CreateGraphExecutorDelegate(
 
   // If requested, load and apply GPU
   if (use_gpu) {
-    TfLiteDelegate* delegate = TfLiteGpuDelegateV2Create(/*options=*/nullptr);
+    TfLiteGpuDelegateOptionsV2 options(
+        MakeGpuDelegateOptions(gpu_delegate_api));
+    TfLiteDelegate* delegate = TfLiteGpuDelegateV2Create(&options);
     if (!delegate) {
       LOG(ERROR) << "GPU requested but not available.";
       request_metrics.RecordRequestEvent(

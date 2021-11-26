@@ -135,6 +135,7 @@ static_library("ml_common") {
     "handwriting_recognizer_impl.cc",
     "machine_learning_service_impl.cc",
     "metrics.cc",
+    "model_conversions.cc",
     "model_delegate.cc",
     "model_impl.cc",
     "model_metadata.cc",
@@ -175,6 +176,7 @@ static_library("ml_common") {
   ]
   public_deps = [ ":ml_mojo_bindings_lib" ]
   deps = [
+    ":benchmark_proto",
     ":example_preprocessor",
     ":ml_assist_ranker_proto",
     ":ml_grammar_proto",
@@ -223,6 +225,7 @@ shared_library("libml_for_benchmark") {
     "graph_executor_delegate.cc",
     "graph_executor_impl.cc",
     "metrics.cc",
+    "model_conversions.cc",
     "model_delegate.cc",
     "model_impl.cc",
     "model_metadata.cc",

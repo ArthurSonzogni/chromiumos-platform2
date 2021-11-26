@@ -15,6 +15,7 @@
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "ml/machine_learning_service_impl.h"
+#include "ml/model_conversions.h"
 #include "ml/mojom/graph_executor.mojom.h"
 #include "ml/mojom/machine_learning_service.mojom.h"
 #include "ml/mojom/model.mojom.h"
@@ -25,6 +26,7 @@ using ::chromeos::machine_learning::mojom::BuiltinModelSpec;
 using ::chromeos::machine_learning::mojom::BuiltinModelSpecPtr;
 using ::chromeos::machine_learning::mojom::CreateGraphExecutorResult;
 using ::chromeos::machine_learning::mojom::ExecuteResult;
+using ::chromeos::machine_learning::mojom::GpuDelegateApi;
 using ::chromeos::machine_learning::mojom::GraphExecutor;
 using ::chromeos::machine_learning::mojom::GraphExecutorOptions;
 using ::chromeos::machine_learning::mojom::LoadModelResult;
@@ -51,7 +53,8 @@ TensorPtr NewSingleValueTensor(const double value) {
 AddResult Add(const double x,
               const double y,
               const bool use_nnapi,
-              const bool use_gpu) {
+              const bool use_gpu,
+              const std::string& gpu_delegate_api_str) {
   AddResult result = {"Not completed.", -1.0};
 
   // Create ML Service
@@ -80,7 +83,11 @@ AddResult Add(const double x,
   // Get graph executor for model.
   mojo::Remote<GraphExecutor> graph_executor;
   bool graph_executor_ok = false;
-  auto options = GraphExecutorOptions::New(use_nnapi, use_gpu);
+
+  GpuDelegateApi gpu_delegate_api(
+      GpuDelegateApiFromString(gpu_delegate_api_str));
+  auto options =
+      GraphExecutorOptions::New(use_nnapi, use_gpu, gpu_delegate_api);
   model->CreateGraphExecutor(
       std::move(options), graph_executor.BindNewPipeAndPassReceiver(),
       base::BindOnce(

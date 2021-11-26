@@ -14,6 +14,7 @@
 
 #include "chrome/knowledge/assist_ranker/ranker_example.pb.h"
 #include "ml/example_preprocessor/example_preprocessing.h"
+#include "ml/mojom/model.mojom.h"
 #include "ml/request_metrics.h"
 
 namespace ml {
@@ -21,6 +22,7 @@ namespace {
 
 using ::chromeos::machine_learning::mojom::CreateGraphExecutorResult;
 using ::chromeos::machine_learning::mojom::FloatList;
+using ::chromeos::machine_learning::mojom::GpuDelegateApi;
 using ::chromeos::machine_learning::mojom::Int64List;
 using ::chromeos::machine_learning::mojom::Tensor;
 using ::chromeos::machine_learning::mojom::ValueList;
@@ -85,8 +87,9 @@ TfModelGraphExecutor::TfModelGraphExecutor(
 
   GraphExecutorDelegate* graph_executor_delegate;
   if (model_delegate_->CreateGraphExecutorDelegate(
-          false /*use_nnapi*/, false /*use_gpu*/, &graph_executor_delegate) !=
-      CreateGraphExecutorResult::OK) {
+          false /*use_nnapi*/, false /*use_gpu*/,
+          GpuDelegateApi::OPENGL /*gpu_delegate_api*/,
+          &graph_executor_delegate) != CreateGraphExecutorResult::OK) {
     request_metrics.RecordRequestEvent(
         TfModelGraphExecutorEvent::kCreateGraphExecutorError);
     return;

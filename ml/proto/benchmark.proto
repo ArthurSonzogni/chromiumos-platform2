@@ -6,6 +6,18 @@ syntax = "proto3";
 
 package ml;
 
+// GPU delegate APIs.
+enum TfliteGpuDelegateApi {
+  // Unspecified.
+  GPU_DELEGATE_API_UNKNOWN = 0;
+
+  // OpenGL
+  GPU_DELEGATE_API_OPENGL = 1;
+
+  // OpenCL
+  GPU_DELEGATE_API_OPENCL = 2;
+}
+
 // TfliteBenchmarkConfig contains configurations used for tflite benchmarking.
 message TfliteBenchmarkConfig {
   // The path on the device to load the tflite_model.
@@ -16,6 +28,8 @@ message TfliteBenchmarkConfig {
   int32 num_runs = 3;
   // delegate to gpu
   bool use_gpu = 4;
+  // Specific backend to use when delegating to GPU.
+  TfliteGpuDelegateApi gpu_delegate_api = 5;
 }
 
 // FlatBufferModelSpecProto contains full information of a tflite model.
