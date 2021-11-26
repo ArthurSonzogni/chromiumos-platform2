@@ -134,11 +134,12 @@ class FrameCapturer {
   // cros::GetFutureCallback() returns base::OnceCallback.
   void RunAsync(int id,
                 cros_cam_format_info_t format,
-                base::Callback<void(int)> callback) {
+                base::OnceCallback<void(int)> callback) {
     int ret = StartCapture(id, std::move(format));
     if (ret != 0) {
       LOGF(ERROR) << "Failed to start capture";
-      callback.Run(ret);
+      std::move(callback).Run(ret);
+      return;
     }
     thread_.task_runner()->PostTask(
         FROM_HERE, base::BindOnce(&FrameCapturer::WaitForCaptureResult,
@@ -163,7 +164,7 @@ class FrameCapturer {
                                   this);
   }
 
-  void WaitForCaptureResult(base::Callback<void(int)> callback) {
+  void WaitForCaptureResult(base::OnceCallback<void(int)> callback) {
     // Wait until |duration_| passed or |num_frames_| captured. Fires |callback|
     // with the number of frames captured or the error status if an error is
     // encountered.
@@ -173,7 +174,8 @@ class FrameCapturer {
     }
     LOGF(INFO) << "Last status = " << last_status_;
     LOGF(INFO) << "Captured " << num_frames_captured_ << " frames";
-    callback.Run(last_status_ != 0 ? last_status_ : num_frames_captured_);
+    std::move(callback).Run(last_status_ != 0 ? last_status_
+                                              : num_frames_captured_);
   }
 
   // Non-zero return value should stop the capture.
