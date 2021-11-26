@@ -44,28 +44,28 @@ bool LogicalVolumeManager::ValidatePhysicalVolume(
     return false;
   }
 
-  base::Optional<base::Value> report_contents =
+  base::Optional<base::Value> pv_dictionary =
       lvm_->UnwrapReportContents(output, "pv");
-  base::DictionaryValue* pv_dictionary;
 
-  if (!report_contents || !report_contents->GetAsDictionary(&pv_dictionary)) {
+  if (!pv_dictionary || !pv_dictionary->is_dict()) {
     LOG(ERROR) << "Failed to get report contents";
     return false;
   }
 
-  std::string pv_name;
-  if (!pv_dictionary->GetString("pv_name", &pv_name) &&
-      pv_name != device_path.value()) {
+  const std::string* pv_name = pv_dictionary->FindStringKey("pv_name");
+  if (!pv_name && *pv_name != device_path.value()) {
     LOG(ERROR) << "Mismatched value: expected: " << device_path
-               << " actual: " << pv_name;
+               << " actual: " << *pv_name;
     return false;
   }
 
   if (volume_group_name) {
-    if (!pv_dictionary->GetString("vg_name", volume_group_name)) {
+    const std::string* vg_name = pv_dictionary->FindStringKey("vg_name");
+    if (!vg_name) {
       LOG(ERROR) << "Failed to fetch volume group name";
       return false;
     }
+    *volume_group_name = *vg_name;
   }
 
   return true;
@@ -101,20 +101,18 @@ bool LogicalVolumeManager::ValidateLogicalVolume(const VolumeGroup& vg,
     return false;
   }
 
-  base::Optional<base::Value> report_contents =
+  base::Optional<base::Value> lv_dictionary =
       lvm_->UnwrapReportContents(output, "lv");
-  base::DictionaryValue* lv_dictionary;
 
-  if (!report_contents || !report_contents->GetAsDictionary(&lv_dictionary)) {
+  if (!lv_dictionary || !lv_dictionary->is_dict()) {
     LOG(ERROR) << "Failed to get report contents";
     return false;
   }
 
-  std::string output_lv_name;
-  if (!lv_dictionary->GetString("lv_name", &output_lv_name) &&
-      output_lv_name != lv_name) {
+  const std::string* output_lv_name = lv_dictionary->FindStringKey("lv_name");
+  if (!output_lv_name && *output_lv_name != lv_name) {
     LOG(ERROR) << "Mismatched value: expected: " << lv_name
-               << " actual: " << output_lv_name;
+               << " actual: " << *output_lv_name;
     return false;
   }
 
@@ -148,28 +146,26 @@ std::vector<LogicalVolume> LogicalVolumeManager::ListLogicalVolumes(
     return lv_vector;
   }
 
-  base::Optional<base::Value> report_contents =
+  base::Optional<base::Value> lv_list =
       lvm_->UnwrapReportContents(output, "lv");
-  base::ListValue* lv_list;
-  if (!report_contents || !report_contents->GetAsList(&lv_list)) {
+  if (!lv_list || !lv_list->is_list()) {
     LOG(ERROR) << "Failed to get report contents";
     return lv_vector;
   }
 
-  for (size_t i = 0; i < lv_list->GetSize(); i++) {
-    base::DictionaryValue* lv_dictionary;
-    if (!lv_list->GetDictionary(i, &lv_dictionary)) {
+  for (const auto& lv_dictionary : lv_list->GetList()) {
+    if (!lv_dictionary.is_dict()) {
       LOG(ERROR) << "Failed to get dictionary value for physical volume";
       continue;
     }
 
-    std::string output_lv_name;
-    if (!lv_dictionary->GetString("lv_name", &output_lv_name)) {
+    const std::string* output_lv_name = lv_dictionary.FindStringKey("lv_name");
+    if (!output_lv_name) {
       LOG(ERROR) << "Failed to get logical volume name";
       continue;
     }
 
-    lv_vector.push_back(LogicalVolume(output_lv_name, vg_name, lvm_));
+    lv_vector.push_back(LogicalVolume(*output_lv_name, vg_name, lvm_));
   }
 
   return lv_vector;
@@ -191,39 +187,41 @@ base::Optional<VolumeGroup> LogicalVolumeManager::CreateVolumeGroup(
 }
 
 base::Optional<Thinpool> LogicalVolumeManager::CreateThinpool(
-    const VolumeGroup& vg, const base::DictionaryValue& config) {
+    const VolumeGroup& vg, const base::Value& config) {
   std::vector<std::string> cmd = {"lvcreate"};
-  std::string size, metadata_size, name;
-  if (!config.GetString("size", &size) || !config.GetString("name", &name) ||
-      !config.GetString("metadata_size", &metadata_size)) {
+  const std::string* size = config.FindStringKey("size");
+  const std::string* metadata_size = config.FindStringKey("metadata_size");
+  const std::string* name = config.FindStringKey("name");
+  if (!size || !name || !metadata_size) {
     LOG(ERROR) << "Invalid configuration";
     return base::nullopt;
   }
 
   cmd.insert(cmd.end(),
-             {"--size", size + "M", "--poolmetadatasize", metadata_size + "M",
-              "--thinpool", name, vg.GetName()});
+             {"--size", *size + "M", "--poolmetadatasize", *metadata_size + "M",
+              "--thinpool", *name, vg.GetName()});
 
   return lvm_->RunCommand(cmd)
-             ? base::make_optional(Thinpool(name, vg.GetName(), lvm_))
+             ? base::make_optional(Thinpool(*name, vg.GetName(), lvm_))
              : base::nullopt;
 }
 
 base::Optional<LogicalVolume> LogicalVolumeManager::CreateLogicalVolume(
     const VolumeGroup& vg,
     const Thinpool& thinpool,
-    const base::DictionaryValue& config) {
+    const base::Value& config) {
   std::vector<std::string> cmd = {"lvcreate", "--thin"};
-  std::string size, name;
-  if (!config.GetString("size", &size) || !config.GetString("name", &name)) {
+  const std::string* size = config.FindStringKey("size");
+  const std::string* name = config.FindStringKey("name");
+  if (!size || !name) {
     LOG(ERROR) << "Invalid configuration";
     return base::nullopt;
   }
 
-  cmd.insert(cmd.end(), {"-V", size + "M", "-n", name, thinpool.GetName()});
+  cmd.insert(cmd.end(), {"-V", *size + "M", "-n", *name, thinpool.GetName()});
 
   return lvm_->RunCommand(cmd)
-             ? base::make_optional(LogicalVolume(name, vg.GetName(), lvm_))
+             ? base::make_optional(LogicalVolume(*name, vg.GetName(), lvm_))
              : base::nullopt;
 }
 

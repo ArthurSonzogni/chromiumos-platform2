@@ -74,13 +74,11 @@ class MockLogicalVolumeManager : public LogicalVolumeManager {
               (override));
   MOCK_METHOD(base::Optional<Thinpool>,
               CreateThinpool,
-              (const VolumeGroup&, const base::DictionaryValue&),
+              (const VolumeGroup&, const base::Value&),
               (override));
   MOCK_METHOD(base::Optional<LogicalVolume>,
               CreateLogicalVolume,
-              (const VolumeGroup&,
-               const Thinpool&,
-               const base::DictionaryValue&),
+              (const VolumeGroup&, const Thinpool&, const base::Value&),
               (override));
 };
 

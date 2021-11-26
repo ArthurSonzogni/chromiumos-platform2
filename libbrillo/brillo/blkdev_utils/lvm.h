@@ -55,15 +55,15 @@ class BRILLO_EXPORT LogicalVolumeManager {
       const PhysicalVolume& pv, const std::string& vg_name);
 
   // Creates a thinpool with configuration |config| on volume group |vg|.
-  virtual base::Optional<Thinpool> CreateThinpool(
-      const VolumeGroup& vg, const base::DictionaryValue& config);
+  virtual base::Optional<Thinpool> CreateThinpool(const VolumeGroup& vg,
+                                                  const base::Value& config);
 
   // Creates a thin logical volume with configuration |config| on volume group
   // |vg|.
   virtual base::Optional<LogicalVolume> CreateLogicalVolume(
       const VolumeGroup& vg,
       const Thinpool& thinpool,
-      const base::DictionaryValue& config);
+      const base::Value& config);
 
  private:
   // Validates whether |lv_name| exists as either a logical volume or thinpool
