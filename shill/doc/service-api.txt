@@ -211,12 +211,12 @@ Methods		dict GetProperties()
 
 			Resets the current traffic counters for a Service.
 
-		Signals	PropertyChanged(string name, variant value)
+Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
 			property.
 
-		Properties string ArcVpn.TunnelChrome [writeonly]
+Properties	string ArcVpn.TunnelChrome [writeonly]
 
 			(VPN services of type arcvpn only) Specify whether
 			the service should tunnel Chrome traffic.  This

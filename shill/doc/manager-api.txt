@@ -5,8 +5,7 @@ Service		org.chromium.flimflam
 Interface	org.chromium.flimflam.Manager
 Object path	/
 
-Methods
-		dict GetProperties()
+Methods		dict GetProperties()
 
 			Return the global system properties specified
 			in the Properties section.
@@ -439,7 +438,7 @@ Signals		PropertyChanged(string name, variant value)
 			current state and so can avoid to be woken up when
 			other details changes.
 
-Properties 	object ActiveProfile [readonly]
+Properties	object ActiveProfile [readonly]
 
 			Object path of the top-most Profile in the Profile stack.
 
