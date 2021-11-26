@@ -119,11 +119,11 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
 
   Pkcs11Token* GetPkcs11Token() { return pkcs11_token_.get(); }
 
- private:
   // Computes a public derivative from |fek| and |fnek| for u2fd to fetch.
   void PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
                              const brillo::SecureBlob& fnek);
 
+ private:
   // Clears the WebAuthn secret if it's not read yet.
   void ClearWebAuthnSecret();
 

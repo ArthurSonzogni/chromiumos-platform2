@@ -160,11 +160,8 @@ void UserSession::PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
                  brillo::Blob(message.cbegin(), message.cend())));
   webauthn_secret_hash_ = Sha256(*webauthn_secret_);
 
-  // TODO(b/184393647): Since GetWebAuthnSecret is not currently used yet,
-  // minimize the timer for clearing WebAuthn secret for security. Set the timer
-  // to appropriate duration after secret enforcement.
   clear_webauthn_secret_timer_.Start(
-      FROM_HERE, base::Seconds(0),
+      FROM_HERE, base::Seconds(10),
       base::BindOnce(&UserSession::ClearWebAuthnSecret,
                      base::Unretained(this)));
 }

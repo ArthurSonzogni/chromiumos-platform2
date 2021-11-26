@@ -407,10 +407,6 @@ TEST_F(UserSessionTest, WebAuthnSecretTimeout) {
 
   // TEST
 
-  // TODO(b/184393647): Since GetWebAuthnSecret is not currently used yet,
-  // the timer for clearing WebAuthn secret for security is minimized. It will
-  // be set to appropriate duration after secret enforcement.
-  // The hibernate timer, however, is used.
   task_environment_.FastForwardBy(base::Seconds(600));
 
   // VERIFY

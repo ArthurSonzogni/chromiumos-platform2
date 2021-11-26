@@ -1086,6 +1086,11 @@ class UserDataAuth {
   user_data_auth::CryptohomeErrorCode CreatePersistentUserImpl(
       const std::string& auth_session_id);
 
+  // =============== WebAuthn Related Helpers ===============
+
+  void PrepareWebAuthnSecret(const std::string& account_id,
+                             const VaultKeyset& vk);
+
   // =============== Threading Related Variables ===============
 
   // The task runner that belongs to the thread that created this UserDataAuth

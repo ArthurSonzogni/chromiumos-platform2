@@ -2238,7 +2238,20 @@ void UserDataAuth::CheckKey(
   if (found_valid_credentials) {
     // Entered the right creds, so reset LE credentials.
     keyset_management_->ResetLECredentials(credentials);
+
+    // Run the completion callback before deriving webauthn secret to speed up
+    // the check key process.
     std::move(on_done).Run(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+    // Both check key and GetWebAuthnSecret is processed on the mount thread, so
+    // there won't be race condition of PrepareWebAuthnSecret and
+    // GetWebAuthnSecret even if we derive the secret after running the
+    // completion callback.
+    std::unique_ptr<VaultKeyset> vk =
+        keyset_management_->GetValidKeyset(credentials, nullptr /* error */);
+    if (vk) {
+      PrepareWebAuthnSecret(account_id, *vk);
+    }
     return;
   }
 
@@ -2248,7 +2261,9 @@ void UserDataAuth::CheckKey(
     return;
   }
 
-  if (!keyset_management_->AreCredentialsValid(credentials)) {
+  std::unique_ptr<VaultKeyset> vk =
+      keyset_management_->GetValidKeyset(credentials, nullptr /* error */);
+  if (!vk) {
     // TODO(wad) Should this pass along KEY_NOT_FOUND too?
     std::move(on_done).Run(
         user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
@@ -2257,8 +2272,27 @@ void UserDataAuth::CheckKey(
   }
 
   keyset_management_->ResetLECredentials(credentials);
+
+  // Run the completion callback before deriving webauthn secret to speed up
+  // the check key process.
   std::move(on_done).Run(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Both check key and GetWebAuthnSecret is processed on the mount thread, so
+  // there won't be race condition of PrepareWebAuthnSecret and
+  // GetWebAuthnSecret even if we derive the secret after running the
+  // completion callback.
+  PrepareWebAuthnSecret(account_id, *vk);
   return;
+}
+
+void UserDataAuth::PrepareWebAuthnSecret(const std::string& account_id,
+                                         const VaultKeyset& vk) {
+  scoped_refptr<UserSession> session = GetUserSession(account_id);
+  if (!session) {
+    return;
+  }
+  FileSystemKeyset fs_keyset(vk);
+  session->PrepareWebAuthnSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
 }
 
 void UserDataAuth::CompleteFingerprintCheckKey(

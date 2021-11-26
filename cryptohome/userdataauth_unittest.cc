@@ -2108,8 +2108,8 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_NoOpenFiles_ShadowOnly_Forced) {
   // Expect the cleanup to clear user keys.
   EXPECT_CALL(platform_, ClearUserKeyring()).WillOnce(Return(true));
   EXPECT_CALL(platform_, InvalidateDirCryptoKey(_, _))
-    .Times(kShadowMounts.size())
-    .WillRepeatedly(Return(true));
+      .Times(kShadowMounts.size())
+      .WillRepeatedly(Return(true));
 
   EXPECT_FALSE(userdataauth_->CleanUpStaleMounts(true));
 }
@@ -3067,8 +3067,8 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckSuccess) {
   Credentials credentials("another", brillo::SecureBlob(kKey));
   session_->SetCredentials(credentials);
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, AreCredentialsValid(_))
-      .WillOnce(Return(true));
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
 
   CallCheckKeyAndVerify(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
@@ -3085,8 +3085,8 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckFail) {
   Credentials credentials("another", brillo::SecureBlob(kKey));
   session_->SetCredentials(credentials);
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, AreCredentialsValid(_))
-      .WillOnce(Return(false));
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
+      .WillOnce(Return(ByMove(std::unique_ptr<VaultKeyset>())));
 
   CallCheckKeyAndVerify(
       user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
@@ -3118,8 +3118,8 @@ TEST_F(UserDataAuthExTest, CheckKeyMountCheckFail) {
   session_->SetCredentials(credentials);
 
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, AreCredentialsValid(_))
-      .WillOnce(Return(false));
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
+      .WillOnce(Return(ByMove(std::unique_ptr<VaultKeyset>())));
 
   CallCheckKeyAndVerify(user_data_auth::CryptohomeErrorCode::
                             CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
