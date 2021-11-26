@@ -517,7 +517,8 @@ void GcamAeControllerImpl::SetResultAeMetadata(
     return;
   }
 
-  if (options_.ae_override_mode == AeOverrideMode::kWithManualSensorControl) {
+  if (options_.ae_override_mode == AeOverrideMode::kWithManualSensorControl ||
+      options_.ae_override_mode == AeOverrideMode::kWithVendorTag) {
     std::array<uint8_t, 1> ae_state = {ae_state_machine_.GetAndroidAeState()};
     if (!result->UpdateMetadata<uint8_t>(ANDROID_CONTROL_AE_STATE, ae_state)) {
       LOGF(ERROR) << "Cannot set ANDROID_CONTROL_AE_STATE";
