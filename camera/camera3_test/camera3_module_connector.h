@@ -133,7 +133,7 @@ class CameraHalClient final : public cros::mojom::CameraHalClient,
  private:
   // Establishes a connection to dispatcher and registers to CameraHalDispatcher
   // to acquire camera HAL handle.
-  void ConnectToDispatcher(base::Callback<void(int)> callback);
+  void ConnectToDispatcher(base::OnceCallback<void(int)> callback);
 
   // Implementation of cros::mojom::CameraHalClient.
   void SetUpChannel(
@@ -148,13 +148,13 @@ class CameraHalClient final : public cros::mojom::CameraHalClient,
   void OnGotTagName(uint32_t tag, const base::Optional<std::string>& name);
   void OnGotTagType(uint32_t tag, int32_t type);
 
-  void GetNumberOfCamerasOnIpcThread(base::Callback<void(int32_t)> cb);
+  void GetNumberOfCamerasOnIpcThread(base::OnceCallback<void(int32_t)> cb);
   void GetCameraInfoOnIpcThread(int cam_id,
                                 camera_info* info,
-                                base::Callback<void(int32_t)> cb);
+                                base::OnceCallback<void(int32_t)> cb);
   void OnGotCameraInfo(int cam_id,
                        camera_info* info,
-                       base::Callback<void(int32_t)> cb,
+                       base::OnceCallback<void(int32_t)> cb,
                        int32_t result,
                        cros::mojom::CameraInfoPtr camera_info);
 
@@ -162,7 +162,7 @@ class CameraHalClient final : public cros::mojom::CameraHalClient,
       cros::mojom::Camera3DeviceOpsRequest dev_ops_req);
   void OpenDeviceOnIpcThread(int cam_id,
                              cros::mojom::Camera3DeviceOpsRequest dev_ops_req,
-                             base::Callback<void(int32_t)> cb);
+                             base::OnceCallback<void(int32_t)> cb);
   void CameraDeviceStatusChange(
       int32_t camera_id, cros::mojom::CameraDeviceStatus new_status) override;
   void TorchModeStatusChange(int32_t camera_id,

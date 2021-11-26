@@ -224,7 +224,8 @@ int CameraHalClient::Start(camera_module_callbacks_t* callbacks) {
   return 0;
 }
 
-void CameraHalClient::ConnectToDispatcher(base::Callback<void(int)> callback) {
+void CameraHalClient::ConnectToDispatcher(
+    base::OnceCallback<void(int)> callback) {
   VLOGF_ENTER();
   ASSERT_TRUE(ipc_thread_.task_runner()->BelongsToCurrentThread());
   mojo::ScopedMessagePipeHandle child_pipe;
@@ -232,7 +233,7 @@ void CameraHalClient::ConnectToDispatcher(base::Callback<void(int)> callback) {
   if (cros::CreateMojoChannelToParentByUnixDomainSocket(
           socket_path, &child_pipe) != MOJO_RESULT_OK) {
     LOGF(ERROR) << "Failed to create mojo channel";
-    callback.Run(-EIO);
+    std::move(callback).Run(-EIO);
     return;
   }
 
@@ -241,14 +242,14 @@ void CameraHalClient::ConnectToDispatcher(base::Callback<void(int)> callback) {
           std::move(child_pipe), 0u));
   if (!dispatcher_.is_bound()) {
     LOGF(ERROR) << "Failed to bind mojo dispatcher";
-    callback.Run(-EIO);
+    std::move(callback).Run(-EIO);
     return;
   }
 
   base::UnguessableToken token = ReadTestClientToken();
   if (token.is_empty()) {
     LOGF(ERROR) << "Failed to read test client token";
-    callback.Run(-EIO);
+    std::move(callback).Run(-EIO);
     return;
   }
   auto mojo_token = mojo_base::mojom::UnguessableToken::New();
@@ -265,12 +266,12 @@ void CameraHalClient::SetUpChannel(
   VLOGF_ENTER();
   ASSERT_TRUE(ipc_thread_.task_runner()->BelongsToCurrentThread());
   camera_module_.Bind(std::move(camera_module));
-  camera_module_.set_disconnect_handler(base::Bind(
+  camera_module_.set_disconnect_handler(base::BindOnce(
       &CameraHalClient::onIpcConnectionLost, base::Unretained(this)));
 
   camera_module_->SetCallbacksAssociated(
       mojo_module_callbacks_.BindNewEndpointAndPassRemote(),
-      base::Bind(&CameraHalClient::OnSetCallbacks, base::Unretained(this)));
+      base::BindOnce(&CameraHalClient::OnSetCallbacks, base::Unretained(this)));
 }
 
 void CameraHalClient::OnSetCallbacks(int32_t result) {
@@ -283,13 +284,14 @@ void CameraHalClient::OnSetCallbacks(int32_t result) {
 
   camera_module_->GetVendorTagOps(
       vendor_tag_ops_.BindNewPipeAndPassReceiver(),
-      base::Bind(&CameraHalClient::OnGotVendorTagOps, base::Unretained(this)));
+      base::BindOnce(&CameraHalClient::OnGotVendorTagOps,
+                     base::Unretained(this)));
 }
 
 void CameraHalClient::OnGotVendorTagOps() {
   VLOGF_ENTER();
   vendor_tag_ops_->GetAllTags(
-      base::Bind(&CameraHalClient::OnGotAllTags, base::Unretained(this)));
+      base::BindOnce(&CameraHalClient::OnGotAllTags, base::Unretained(this)));
 }
 
 void CameraHalClient::OnGotAllTags(const std::vector<uint32_t>& tag_array) {
@@ -301,8 +303,8 @@ void CameraHalClient::OnGotAllTags(const std::vector<uint32_t>& tag_array) {
   vendor_tag_count_ = tag_array.size();
   for (const auto& tag : tag_array) {
     vendor_tag_ops_->GetSectionName(
-        tag, base::Bind(&CameraHalClient::OnGotSectionName,
-                        base::Unretained(this), tag));
+        tag, base::BindOnce(&CameraHalClient::OnGotSectionName,
+                            base::Unretained(this), tag));
   }
 }
 
@@ -312,8 +314,9 @@ void CameraHalClient::OnGotSectionName(
   ASSERT_NE(base::nullopt, name);
   vendor_tag_map_[tag].section_name = *name;
 
-  vendor_tag_ops_->GetTagName(tag, base::Bind(&CameraHalClient::OnGotTagName,
-                                              base::Unretained(this), tag));
+  vendor_tag_ops_->GetTagName(tag,
+                              base::BindOnce(&CameraHalClient::OnGotTagName,
+                                             base::Unretained(this), tag));
 }
 
 void CameraHalClient::OnGotTagName(uint32_t tag,
@@ -322,8 +325,9 @@ void CameraHalClient::OnGotTagName(uint32_t tag,
   ASSERT_NE(base::nullopt, name);
   vendor_tag_map_[tag].tag_name = *name;
 
-  vendor_tag_ops_->GetTagType(tag, base::Bind(&CameraHalClient::OnGotTagType,
-                                              base::Unretained(this), tag));
+  vendor_tag_ops_->GetTagType(tag,
+                              base::BindOnce(&CameraHalClient::OnGotTagType,
+                                             base::Unretained(this), tag));
 }
 
 void CameraHalClient::OnGotTagType(uint32_t tag, int32_t type) {
@@ -359,13 +363,13 @@ int CameraHalClient::GetNumberOfCameras() {
 }
 
 void CameraHalClient::GetNumberOfCamerasOnIpcThread(
-    base::Callback<void(int32_t)> cb) {
+    base::OnceCallback<void(int32_t)> cb) {
   VLOGF_ENTER();
   if (!ipc_initialized_.IsSignaled()) {
-    cb.Run(-ENODEV);
+    std::move(cb).Run(-ENODEV);
     return;
   }
-  camera_module_->GetNumberOfCameras(cb);
+  camera_module_->GetNumberOfCameras(std::move(cb));
 }
 
 int CameraHalClient::GetCameraInfo(int cam_id, camera_info* info) {
@@ -386,20 +390,21 @@ int CameraHalClient::GetCameraInfo(int cam_id, camera_info* info) {
 }
 
 void CameraHalClient::GetCameraInfoOnIpcThread(
-    int cam_id, camera_info* info, base::Callback<void(int32_t)> cb) {
+    int cam_id, camera_info* info, base::OnceCallback<void(int32_t)> cb) {
   VLOGF_ENTER();
   if (!ipc_initialized_.IsSignaled()) {
-    cb.Run(-ENODEV);
+    std::move(cb).Run(-ENODEV);
     return;
   }
   camera_module_->GetCameraInfo(
-      cam_id, base::Bind(&CameraHalClient::OnGotCameraInfo,
-                         base::Unretained(this), cam_id, info, cb));
+      cam_id,
+      base::BindOnce(&CameraHalClient::OnGotCameraInfo, base::Unretained(this),
+                     cam_id, info, std::move(cb)));
 }
 
 void CameraHalClient::OnGotCameraInfo(int cam_id,
                                       camera_info* info,
-                                      base::Callback<void(int32_t)> cb,
+                                      base::OnceCallback<void(int32_t)> cb,
                                       int32_t result,
                                       cros::mojom::CameraInfoPtr info_ptr) {
   VLOGF_ENTER();
@@ -428,7 +433,7 @@ void CameraHalClient::OnGotCameraInfo(int cam_id,
     info->conflicting_devices_length = conflicting_devices_map_[cam_id].size();
     info->conflicting_devices = conflicting_devices_map_[cam_id].data();
   }
-  cb.Run(result);
+  std::move(cb).Run(result);
 }
 
 void CameraHalClient::OpenDevice(
@@ -448,13 +453,13 @@ void CameraHalClient::OpenDevice(
 void CameraHalClient::OpenDeviceOnIpcThread(
     int cam_id,
     cros::mojom::Camera3DeviceOpsRequest dev_ops_req,
-    base::Callback<void(int32_t)> cb) {
+    base::OnceCallback<void(int32_t)> cb) {
   VLOGF_ENTER();
   if (!ipc_initialized_.IsSignaled()) {
-    cb.Run(-ENODEV);
+    std::move(cb).Run(-ENODEV);
     return;
   }
-  camera_module_->OpenDevice(cam_id, std::move(dev_ops_req), cb);
+  camera_module_->OpenDevice(cam_id, std::move(dev_ops_req), std::move(cb));
 }
 
 bool CameraHalClient::GetVendorTagByName(const std::string name,

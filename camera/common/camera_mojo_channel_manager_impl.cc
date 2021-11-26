@@ -297,8 +297,8 @@ void CameraMojoChannelManagerImpl::TryConnectToDispatcher() {
       mojo::PendingRemote<cros::mojom::CameraHalDispatcher>(
           std::move(child_pipe), 0u));
   dispatcher_.set_disconnect_handler(
-      base::Bind(&CameraMojoChannelManagerImpl::ResetDispatcherPtr,
-                 base::Unretained(this)));
+      base::BindOnce(&CameraMojoChannelManagerImpl::ResetDispatcherPtr,
+                     base::Unretained(this)));
   bound_socket_inode_num_ = socket_inode_num;
 
   TryConsumePendingMojoTasks();

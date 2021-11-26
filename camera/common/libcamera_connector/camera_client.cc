@@ -175,7 +175,7 @@ void CameraClient::SetUpChannel(
   LOGF(INFO) << "Received camera module from camera HAL dispatcher";
   camera_module_.Bind(std::move(camera_module));
   camera_module_.set_disconnect_handler(
-      base::Bind(&CameraClient::ResetClientState, base::Unretained(this)));
+      base::BindOnce(&CameraClient::ResetClientState, base::Unretained(this)));
 
   GetAllCameraInfo();
 }
@@ -255,8 +255,8 @@ void CameraClient::GetAllCameraInfo() {
   VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
-  camera_module_->GetNumberOfCameras(
-      base::Bind(&CameraClient::OnGotNumberOfCameras, base::Unretained(this)));
+  camera_module_->GetNumberOfCameras(base::BindOnce(
+      &CameraClient::OnGotNumberOfCameras, base::Unretained(this)));
 }
 
 void CameraClient::OnGotNumberOfCameras(int32_t num_builtin_cameras) {
@@ -278,7 +278,7 @@ void CameraClient::SetCallbacks() {
 
   camera_module_->SetCallbacksAssociated(
       camera_module_callbacks_.GetModuleCallbacks(),
-      base::Bind(&CameraClient::OnSetCallbacks, base::Unretained(this)));
+      base::BindOnce(&CameraClient::OnSetCallbacks, base::Unretained(this)));
 }
 
 void CameraClient::OnSetCallbacks(int32_t result) {
@@ -316,8 +316,8 @@ void CameraClient::GetCameraInfo() {
     it = pending_camera_id_set_.erase(it);
     processing_camera_id_set_.insert(camera_id);
     camera_module_->GetCameraInfo(
-        camera_id, base::Bind(&CameraClient::OnGotCameraInfo,
-                              base::Unretained(this), camera_id));
+        camera_id, base::BindOnce(&CameraClient::OnGotCameraInfo,
+                                  base::Unretained(this), camera_id));
   }
 }
 
@@ -555,7 +555,7 @@ int CameraClient::StartCaptureOnIpcThread(SessionRequest* request) {
       base::Bind(&CameraClient::SendCaptureResult, base::Unretained(this)));
   camera_module_->OpenDevice(
       context_.info.camera_id, std::move(device_ops_receiver),
-      base::Bind(&CameraClient::OnOpenedDevice, base::Unretained(this)));
+      base::BindOnce(&CameraClient::OnOpenedDevice, base::Unretained(this)));
   return 0;
 }
 

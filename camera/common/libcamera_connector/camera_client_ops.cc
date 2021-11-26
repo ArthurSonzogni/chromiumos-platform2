@@ -198,8 +198,8 @@ void CameraClientOps::InitializeDevice() {
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
 
   device_ops_->Initialize(camera3_callback_ops_.BindNewPipeAndPassRemote(),
-                          base::Bind(&CameraClientOps::OnInitializedDevice,
-                                     base::Unretained(this)));
+                          base::BindOnce(&CameraClientOps::OnInitializedDevice,
+                                         base::Unretained(this)));
 }
 
 void CameraClientOps::OnInitializedDevice(int32_t result) {
@@ -249,8 +249,8 @@ void CameraClientOps::ConfigureStreams() {
 
   device_ops_->ConfigureStreamsAndGetAllocatedBuffers(
       std::move(stream_config),
-      base::Bind(&CameraClientOps::OnConfiguredStreams,
-                 base::Unretained(this)));
+      base::BindOnce(&CameraClientOps::OnConfiguredStreams,
+                     base::Unretained(this)));
 }
 
 void CameraClientOps::OnConfiguredStreams(
@@ -286,8 +286,8 @@ void CameraClientOps::ConstructDefaultRequestSettings() {
       mojom::Camera3RequestTemplate::CAMERA3_TEMPLATE_PREVIEW;
   device_ops_->ConstructDefaultRequestSettings(
       request_template,
-      base::Bind(&CameraClientOps::OnConstructedDefaultRequestSettings,
-                 base::Unretained(this)));
+      base::BindOnce(&CameraClientOps::OnConstructedDefaultRequestSettings,
+                     base::Unretained(this)));
 }
 
 void CameraClientOps::OnConstructedDefaultRequestSettings(
@@ -350,8 +350,8 @@ void CameraClientOps::ProcessCaptureRequest(
 
   device_ops_->ProcessCaptureRequest(
       std::move(request),
-      base::Bind(&CameraClientOps::OnProcessedCaptureRequest,
-                 base::Unretained(this)));
+      base::BindOnce(&CameraClientOps::OnProcessedCaptureRequest,
+                     base::Unretained(this)));
 }
 
 void CameraClientOps::OnProcessedCaptureRequest(int32_t result) {
