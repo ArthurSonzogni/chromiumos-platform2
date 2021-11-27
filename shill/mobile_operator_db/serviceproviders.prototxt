@@ -14184,6 +14184,20 @@ mno {
 
 mno {
   data {
+    uuid : "b7566324-83e5-4a57-8924-7c88b3ae731c"
+    country : "us"
+    localized_name {
+      name : "Ubigi"
+    }
+    mccmnc : "90137"
+    mobile_apn {
+      apn : "mbb"
+    }
+  }
+}
+
+mno {
+  data {
     uuid : "7342feb6-4bcb-4e23-8a46-a7b08cbba0b4"
     country : "us"
     localized_name {
