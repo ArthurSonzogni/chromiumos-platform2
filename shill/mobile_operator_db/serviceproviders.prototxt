@@ -2605,6 +2605,7 @@ mno {
     }
     mccmnc : "46000"
     mccmnc : "46002"
+    mccmnc : "46007"
     mobile_apn {
       apn : "cmwap"
       localized_name {
