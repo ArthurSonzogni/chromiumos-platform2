@@ -31,6 +31,7 @@ constexpr char kTetRetentionDurationMsWithFace[] =
     "tet_retention_duration_ms_with_face";
 constexpr char kTetTargetThresholdLog2[] = "tet_target_threshold_log2";
 constexpr char kInitialTet[] = "initial_tet";
+constexpr char kHdrRatioStep[] = "hdr_ratio_step";
 
 // The log2 IIR filter strength for the long/short TET computed by Gcam AE.
 constexpr float kFilterStrength = 0.85f;
@@ -63,6 +64,18 @@ float SmoothTetTransition(const float target,
     }
   }
   return target;
+}
+
+// Gets a smoothed HDR ratio value moving from |previous| to |target| with no
+// more than |step| difference.
+float SmoothHdrRatioTransition(const float target,
+                               const float previous,
+                               const float step) {
+  if (target > previous) {
+    return std::min(target, previous + step);
+  } else {
+    return std::max(target, previous - step);
+  }
 }
 
 int ElapsedTimeMs(base::TimeTicks since) {
@@ -130,6 +143,8 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
   ++gcam_ae_metrics_.num_tet_samples;
 
   const float new_tet = current_ae_parameters_.short_tet;
+  const float new_hdr_ratio =
+      current_ae_parameters_.long_tet / current_ae_parameters_.short_tet;
   const float actual_tet_set = frame_info.exposure_time_ms *
                                frame_info.analog_gain * frame_info.digital_gain;
 
@@ -286,23 +301,27 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
 
     case State::kSearching: {
       next_.tet = SmoothTetTransition(new_tet, next_.tet, tet_step_log2_);
-      next_.hdr_ratio =
-          current_ae_parameters_.long_tet / current_ae_parameters_.short_tet;
+      next_.hdr_ratio = SmoothHdrRatioTransition(
+          new_hdr_ratio, next_.hdr_ratio, tuning_parameters_.hdr_ratio_step);
       next_.log_scene_brightness = current_ae_parameters_.log_scene_brightness;
       break;
     }
 
     case State::kConverging: {
       next_.tet = SmoothTetTransition(target_->tet, next_.tet, tet_step_log2_);
-      // TODO(jcliang): Test using |target_hdr_ratio_| here.
       next_.hdr_ratio =
-          current_ae_parameters_.long_tet / current_ae_parameters_.short_tet;
+          SmoothHdrRatioTransition(target_->hdr_ratio, next_.hdr_ratio,
+                                   tuning_parameters_.hdr_ratio_step);
       next_.log_scene_brightness = current_ae_parameters_.log_scene_brightness;
       break;
     }
 
     case State::kConverged:
-      next_ = *converged_;
+      next_.tet = converged_->tet;
+      next_.hdr_ratio =
+          SmoothHdrRatioTransition(converged_->hdr_ratio, next_.hdr_ratio,
+                                   tuning_parameters_.hdr_ratio_step);
+      next_.log_scene_brightness = converged_->log_scene_brightness;
       break;
 
     case State::kLocked:
@@ -384,6 +403,7 @@ void AeStateMachine::OnOptionsUpdated(const base::Value& json_values) {
   LoadIfExist(json_values, kTetRetentionDurationMsWithFace,
               &tuning_parameters_.tet_retention_duration_ms_with_face);
   LoadIfExist(json_values, kInitialTet, &tuning_parameters_.initial_tet);
+  LoadIfExist(json_values, kHdrRatioStep, &tuning_parameters_.hdr_ratio_step);
 
   if (VLOG_IS_ON(1)) {
     VLOGF(1) << "AeStateMachine tuning parameters:"
@@ -403,7 +423,8 @@ void AeStateMachine::OnOptionsUpdated(const base::Value& json_values) {
              << tuning_parameters_.tet_retention_duration_ms_default
              << " tet_retention_duration_ms_with_face="
              << tuning_parameters_.tet_retention_duration_ms_with_face
-             << " initial_tet=" << tuning_parameters_.initial_tet;
+             << " initial_tet=" << tuning_parameters_.initial_tet
+             << " hdr_ratio_step=" << tuning_parameters_.hdr_ratio_step;
   }
 }
 

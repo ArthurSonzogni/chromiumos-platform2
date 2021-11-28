@@ -69,6 +69,10 @@ class AeStateMachine {
     // The initial TET value. Useful for smoothing the TET transition during
     // camera initialization.
     float initial_tet = 33.33f;
+
+    // The bound for the inter-frame HDR ratio transition. We need to bound the
+    // HDR ratio delta to avoid having sudden frame brightness changes.
+    float hdr_ratio_step = 0.2f;
   };
 
   // We get the following inputs for each AE iteration:
