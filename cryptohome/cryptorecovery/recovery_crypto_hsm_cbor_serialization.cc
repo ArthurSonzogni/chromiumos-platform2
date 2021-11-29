@@ -173,7 +173,7 @@ const char kRequestorUserIdType[] = "requestor_user_id_type";
 const char kGaiaAccessToken[] = "gaia_access_token";
 const char kGaiaReauthProofToken[] = "gaia_reauth_proof_token";
 
-const int kProtocolVersion = 1;
+const int kHsmAssociatedDataSchemaVersion = 1;
 const int kOnboardingMetaDataSchemaVersion = 1;
 const int kRequestMetaDataSchemaVersion = 1;
 
@@ -195,6 +195,7 @@ bool SerializeHsmAssociatedDataToCbor(const HsmAssociatedData& args,
                                       brillo::SecureBlob* ad_cbor) {
   cbor::Value::MapValue ad_map;
 
+  ad_map.emplace(kSchemaVersion, kHsmAssociatedDataSchemaVersion);
   ad_map.emplace(kPublisherPublicKey, args.publisher_pub_key);
   ad_map.emplace(kChannelPublicKey, args.channel_pub_key);
   ad_map.emplace(kRsaPublicKey, args.rsa_public_key);
@@ -219,8 +220,6 @@ bool SerializeRecoveryRequestAssociatedDataToCbor(
     brillo::SecureBlob* request_ad_cbor) {
   cbor::Value::MapValue ad_map;
 
-  ad_map.emplace(kSchemaVersion,
-                 /*schema_version=*/kProtocolVersion);
   ad_map.emplace(kHsmAead, ConvertAeadPayloadToCborMap(args.hsm_payload));
   ad_map.emplace(kEpochPublicKey, args.epoch_pub_key);
   ad_map.emplace(kRequestPayloadSalt, args.request_payload_salt);

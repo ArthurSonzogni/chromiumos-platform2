@@ -107,6 +107,10 @@ MATCHER_P2(CborMapContainsStringValue, key, expected_value, "") {
   return entry->second.GetString() == expected_value;
 }
 
+MATCHER_P(CborIntegerEq, expected_value, "") {
+  return arg.is_integer() && arg.GetInteger() == expected_value;
+}
+
 }  // namespace
 
 class HsmPayloadCborHelperTest : public testing::Test {
@@ -241,6 +245,12 @@ TEST_F(HsmPayloadCborHelperTest, GenerateAdCborWithEmptyRsaPublicKey) {
   EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
                                kChannelPublicKey, channel_pub_key_));
 
+  cbor::Value deserialized_schema_version;
+  EXPECT_TRUE(GetValueFromCborMapByKeyForTesting(cbor_output, kSchemaVersion,
+                                                 &deserialized_schema_version));
+  EXPECT_THAT(deserialized_schema_version,
+              CborIntegerEq(kHsmAssociatedDataSchemaVersion));
+
   cbor::Value deserialized_onboarding_metadata;
   EXPECT_TRUE(GetValueFromCborMapByKeyForTesting(
       cbor_output, kOnboardingMetaData, &deserialized_onboarding_metadata));
@@ -257,7 +267,8 @@ TEST_F(HsmPayloadCborHelperTest, GenerateAdCborWithEmptyRsaPublicKey) {
                                           kOnboardingMetaDataSchemaVersion));
   EXPECT_EQ(deserialized_onboarding_metadata.GetMap().size(), 3);
 
-  EXPECT_EQ(GetCborMapSize(cbor_output), 4);
+  // 4 fields + schema version:
+  EXPECT_EQ(GetCborMapSize(cbor_output), 5);
 }
 
 // Verifies serialization of HSM payload plain text encrypted payload to CBOR.
@@ -380,12 +391,6 @@ TEST_F(RecoveryRequestCborHelperTest, GenerateAd) {
   ASSERT_TRUE(
       SerializeRecoveryRequestAssociatedDataToCbor(request_ad, &cbor_output));
 
-  cbor::Value deserialized_schema_version;
-  EXPECT_TRUE(GetValueFromCborMapByKeyForTesting(cbor_output, kSchemaVersion,
-                                                 &deserialized_schema_version));
-  ASSERT_TRUE(deserialized_schema_version.is_integer());
-  EXPECT_EQ(deserialized_schema_version.GetInteger(), kProtocolVersion);
-
   HsmPayload deserialized_hsm_payload;
   ASSERT_TRUE(GetHsmPayloadFromRequestAdForTesting(cbor_output,
                                                    &deserialized_hsm_payload));
@@ -432,10 +437,7 @@ TEST_F(RecoveryRequestCborHelperTest, GenerateAd) {
 
   EXPECT_EQ(deserialized_request_meta_data.GetMap().size(), 4);
 
-  // TODO(anastasiian): add schema_version to structs according to the protocol
-  // description.
-  // 4 fields + schema version:
-  EXPECT_EQ(GetCborMapSize(cbor_output), 5);
+  EXPECT_EQ(GetCborMapSize(cbor_output), 4);
 }
 
 // Verifies serialization of Recovery Request payload plain text encrypted
@@ -687,8 +689,7 @@ TEST_F(RecoveryResponseCborHelperTest, SerializeRecoveryResponse) {
   cbor::Value deserialized_error_code;
   EXPECT_TRUE(GetValueFromCborMapByKeyForTesting(
       cbor_output, kResponseErrorCode, &deserialized_error_code));
-  ASSERT_TRUE(deserialized_error_code.is_integer());
-  EXPECT_EQ(deserialized_error_code.GetInteger(), response.error_code);
+  EXPECT_THAT(deserialized_error_code, CborIntegerEq(response.error_code));
 
   cbor::Value deserialized_error_string;
   EXPECT_TRUE(GetValueFromCborMapByKeyForTesting(

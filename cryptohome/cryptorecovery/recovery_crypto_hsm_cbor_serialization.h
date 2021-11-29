@@ -49,7 +49,7 @@ extern const char kGaiaAccessToken[];
 extern const char kGaiaReauthProofToken[];
 
 // Mediation protocol version.
-extern const int kProtocolVersion;
+extern const int kHsmAssociatedDataSchemaVersion;
 extern const int kOnboardingMetaDataSchemaVersion;
 extern const int kRequestMetaDataSchemaVersion;
 
