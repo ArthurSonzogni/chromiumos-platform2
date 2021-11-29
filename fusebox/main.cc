@@ -24,8 +24,15 @@ using base::CommandLine;
 
 namespace {
 
+static std::string* g_device;
+
 void SetupLogging() {
   brillo::InitLog(brillo::kLogToStderr);
+
+  static std::string device;
+  device = CommandLine::ForCurrentProcess()->GetSwitchValueASCII("storage");
+  LOG_IF(INFO, !device.empty()) << "device: " << device;
+  g_device = &device;
 }
 
 static bool g_use_fake_file_system;
