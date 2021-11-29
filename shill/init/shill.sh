@@ -72,9 +72,5 @@ fi
 #     CAP_NET_BIND_SERVICE | CAP_SETPCAP | CAP_SETUID | CAP_SETGID | CAP_KILL
 #   --ambient so child processes can inherit runtime capabilities.
 #   -i to lose the dangling minijail0 process.
-#   -b /var/lib/metrics/structured: Write UMA Structured metrics
-#   -Kslave and -v are applied to propagate metrics mounts into shill's mount
 exec /sbin/minijail0 -u shill -g shill -G -n -B 20 -c 800003de0 --ambient -i \
-     -Kslave -v \
-     -b /var/lib/metrics/structured,,1 \
      -- /usr/bin/shill "$@"
