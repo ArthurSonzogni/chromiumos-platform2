@@ -58,6 +58,7 @@ CameraHalServerImpl::~CameraHalServerImpl() {
 
 void CameraHalServerImpl::Start() {
   VLOGF_ENTER();
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 
   int result = LoadCameraHal();
   if (result != 0) {
@@ -67,7 +68,6 @@ void CameraHalServerImpl::Start() {
   // We assume that |camera_hal_adapter_| will only be set once. If the
   // assumption changed, we should consider another way to provide
   // CameraHalAdapter.
-  base::AutoLock l(ipc_bridge_lock_);
   mojo_manager_->GetIpcTaskRunner()->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraHalServerImpl::IPCBridge::Start,
@@ -208,6 +208,7 @@ int CameraHalServerImpl::LoadCameraHal() {
   VLOGF_ENTER();
   DCHECK(!camera_hal_adapter_);
   DCHECK_EQ(cros_camera_hals_.size(), 0);
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 
   std::vector<std::pair<camera_module_t*, cros_camera_hal_t*>>
       camera_interfaces;
@@ -248,8 +249,9 @@ int CameraHalServerImpl::LoadCameraHal() {
     camera_interfaces.push_back({module, cros_camera_hal});
   }
 
-  auto active_callback = base::BindRepeating(
-      &CameraHalServerImpl::OnCameraActivityChange, base::Unretained(this));
+  auto active_callback =
+      base::BindRepeating(&CameraHalServerImpl::OnCameraActivityChange,
+                          base::Unretained(this), ipc_bridge_->GetWeakPtr());
   if (enable_front && enable_back && enable_external) {
     camera_hal_adapter_.reset(new CameraHalAdapter(
         camera_interfaces, mojo_manager_.get(), active_callback));
@@ -277,24 +279,16 @@ void CameraHalServerImpl::ExitOnMainThread(int exit_status) {
     cros_camera_hal->tear_down();
   }
 
-  // We need to wrap the following into a scope since we need to acquire
-  // |ipc_bridge_lock_| when deleting the ipc bridge. However, when resetting
-  // |camera_hal_adapter_|, it also has chance to acquire |ipc_bridge_lock_|
-  // (e.g. Calling CameraHalServerImpl::OnCameraActivityChange()). To avoid
-  // causing a deadlock, we should release the lock right after the usage.
-  {
-    base::AutoLock l(ipc_bridge_lock_);
-    auto future = Future<void>::Create(nullptr);
-    auto delete_ipc_bridge = base::BindOnce(
-        [](std::unique_ptr<IPCBridge> ipc_bridge,
-           base::OnceCallback<void(void)> callback) {
-          std::move(callback).Run();
-        },
-        std::move(ipc_bridge_), cros::GetFutureCallback(future));
-    mojo_manager_->GetIpcTaskRunner()->PostTask(FROM_HERE,
-                                                std::move(delete_ipc_bridge));
-    future->Wait(-1);
-  }
+  auto future = Future<void>::Create(nullptr);
+  auto delete_ipc_bridge = base::BindOnce(
+      [](std::unique_ptr<IPCBridge> ipc_bridge,
+         base::OnceCallback<void(void)> callback) {
+        std::move(callback).Run();
+      },
+      std::move(ipc_bridge_), cros::GetFutureCallback(future));
+  mojo_manager_->GetIpcTaskRunner()->PostTask(FROM_HERE,
+                                              std::move(delete_ipc_bridge));
+  future->Wait(-1);
 
   // To make sure all the devices are properly closed before triggering the exit
   // handlers on Camera HALs side, we explicitly reset the CameraHalAdapter.
@@ -303,15 +297,16 @@ void CameraHalServerImpl::ExitOnMainThread(int exit_status) {
   exit(exit_status);
 }
 
-void CameraHalServerImpl::OnCameraActivityChange(int32_t camera_id,
-                                                 bool opened,
-                                                 mojom::CameraClientType type) {
-  base::AutoLock l(ipc_bridge_lock_);
+void CameraHalServerImpl::OnCameraActivityChange(
+    base::WeakPtr<IPCBridge> ipc_bridge,
+    int32_t camera_id,
+    bool opened,
+    mojom::CameraClientType type) {
   mojo_manager_->GetIpcTaskRunner()->PostTask(
       FROM_HERE,
       base::BindOnce(
           &CameraHalServerImpl::IPCBridge::NotifyCameraActivityChange,
-          ipc_bridge_->GetWeakPtr(), camera_id, opened, type));
+          ipc_bridge, camera_id, opened, type));
 }
 
 }  // namespace cros

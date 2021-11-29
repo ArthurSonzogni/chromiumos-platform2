@@ -117,7 +117,8 @@ class CameraHalServerImpl final {
 
   void ExitOnMainThread(int exit_status);
 
-  void OnCameraActivityChange(int32_t camera_id,
+  void OnCameraActivityChange(base::WeakPtr<IPCBridge> ipc_bridge,
+                              int32_t camera_id,
                               bool opened,
                               mojom::CameraClientType type);
 
@@ -125,8 +126,7 @@ class CameraHalServerImpl final {
 
   // The instance which deals with the IPC-related calls. It should always run
   // and be deleted on IPC thread.
-  base::Lock ipc_bridge_lock_;
-  std::unique_ptr<IPCBridge> ipc_bridge_ GUARDED_BY(ipc_bridge_lock_);
+  std::unique_ptr<IPCBridge> ipc_bridge_;
 
   // Interfaces of Camera HALs.
   std::vector<cros_camera_hal_t*> cros_camera_hals_;
