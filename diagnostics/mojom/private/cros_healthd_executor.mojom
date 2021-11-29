@@ -90,4 +90,6 @@ interface Executor {
   // * |contents| - contains the value of 64-bit MSR register value.
   ReadMsr(uint32 msr_reg) => (ProcessResult result, uint64 value);
 
+  // Get UEFI Secure Boot variable file content
+  GetUEFISecureBootContent() => (string contents);
 };

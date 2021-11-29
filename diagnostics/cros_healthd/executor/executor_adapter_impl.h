@@ -40,6 +40,8 @@ class ExecutorAdapterImpl final : public ExecutorAdapter {
       Executor::RunModetestCallback callback) override;
   void ReadMsr(const uint32_t msr_reg,
                Executor::ReadMsrCallback callback) override;
+  void GetUEFISecureBootContent(
+      Executor::GetUEFISecureBootContentCallback callback) override;
 
  private:
   // Mojo endpoint to call the executor's methods.

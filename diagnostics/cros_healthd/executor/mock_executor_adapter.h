@@ -56,6 +56,10 @@ class MockExecutorAdapter final : public ExecutorAdapter {
               ReadMsr,
               (uint32_t msr_reg, Executor::ReadMsrCallback),
               (override));
+  MOCK_METHOD(void,
+              GetUEFISecureBootContent,
+              (Executor::GetUEFISecureBootContentCallback),
+              (override));
 };
 
 }  // namespace diagnostics

@@ -77,6 +77,15 @@ constexpr char kMsrPath[] = "/dev/cpu/0/msr";
 // (0x981) and IA32_TME_ACTIVATE_MSR (0x982) to report tme telemetry data.
 constexpr std::array<uint32_t, 2> kMsrAccessAllowList{0x981, 0x982};
 
+// Path to the UEFI SecureBoot file. This file can be read by root only.
+// It's one of EFI globally defined variables (EFI_GLOBAL_VARIABLE, fixed UUID
+// 8be4df61-93ca-11d2-aa0d-00e098032b8c)
+// See also:
+// https://uefi.org/sites/default/files/resources/UEFI_Spec_2_9_2021_03_18.pdf
+constexpr char kUEFISecureBootVarPath[] =
+    "/sys/firmware/efi/vars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c/"
+    "data";
+
 // All Mojo callbacks need to be ran by the Mojo task runner, so this provides a
 // convenient wrapper that can be bound and ran by that specific task runner.
 void RunMojoProcessResultCallback(
@@ -413,6 +422,20 @@ void ExecutorMojoService::ReadMsr(const uint32_t msr_reg,
   val = *reinterpret_cast<uint64_t*>(&msr_buf[0]);
   status.return_code = EXIT_SUCCESS;
   std::move(callback).Run(status.Clone(), val);
+}
+
+void ExecutorMojoService::GetUEFISecureBootContent(
+    GetUEFISecureBootContentCallback callback) {
+  std::string content;
+
+  base::FilePath f = base::FilePath(kUEFISecureBootVarPath);
+  if (!base::ReadFileToString(f, &content)) {
+    LOG(ERROR) << "Failed to read file: " << f.value();
+    std::move(callback).Run("");
+    return;
+  }
+
+  std::move(callback).Run(content);
 }
 
 void ExecutorMojoService::RunUntrackedBinary(

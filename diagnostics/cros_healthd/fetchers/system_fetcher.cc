@@ -25,6 +25,7 @@ namespace diagnostics {
 
 namespace {
 
+namespace executor_ipc = chromeos::cros_healthd_executor::mojom;
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 // Fetches information from DMI. Since there are several devices that do not
@@ -142,78 +143,121 @@ bool FetchOsVersion(mojo_ipc::OsVersionPtr* out_os_version,
   return true;
 }
 
-bool IsUEFISecurityBoot(const base::FilePath& root_dir) {
-  std::string s;
-  auto f = root_dir.Append(kFileUEFISecurityBoot);
-  if (!base::ReadFileToString(f, &s)) {
-    LOG(ERROR) << "Cannot read file: " << f.value();
-    return false;
-  }
+bool IsUEFISecureBoot(const std::string& s) {
   if (s.size() != 1) {
-    LOG(ERROR) << "Expected file " << f.value()
-               << " contains one byte, but got " << s.size() << " bytes.";
+    LOG(ERROR) << "Expected 1 byte from UEFISecureBoot variable, but got "
+               << s.size() << " bytes.";
     return false;
   }
   switch (s.back()) {
-    case 0x0:
+    case '\x00':
       return false;
-    case 0x1:
+    case '\x01':
       return true;
     default:
-      LOG(ERROR) << "Unexpected security boot value: " << (uint32_t)(s.back());
+      LOG(ERROR) << "Unexpected secure boot value: " << (uint32_t)(s.back());
       return false;
   }
 }
 
-mojo_ipc::BootMode FetchBootMode(const base::FilePath& root_dir) {
-  std::string cmdline;
-  const auto path = root_dir.Append(kFilePathProcCmdline);
-  if (!ReadAndTrimString(path, &cmdline))
-    return mojo_ipc::BootMode::kUnknown;
-  auto tokens = base::SplitString(cmdline, " ", base::TRIM_WHITESPACE,
-                                  base::SPLIT_WANT_NONEMPTY);
-  for (const auto& token : tokens) {
-    if (token == "cros_secure")
-      return mojo_ipc::BootMode::kCrosSecure;
-    if (token == "cros_efi")
-      return IsUEFISecurityBoot(root_dir) ? mojo_ipc::BootMode::kCrosEfiSecure
-                                          : mojo_ipc::BootMode::kCrosEfi;
-    if (token == "cros_legacy")
-      return mojo_ipc::BootMode::kCrosLegacy;
+void HandleSecureBootResponse(SystemFetcher::FetchSystemInfoV2Callback callback,
+                              mojo_ipc::SystemInfoV2Ptr system_info_v2,
+                              const std::string& content) {
+  DCHECK(system_info_v2);
+
+  system_info_v2->os_info->boot_mode = !IsUEFISecureBoot(content)
+                                           ? mojo_ipc::BootMode::kCrosEfi
+                                           : mojo_ipc::BootMode::kCrosEfiSecure;
+
+  std::move(callback).Run(
+      mojo_ipc::SystemResultV2::NewSystemInfoV2(std::move(system_info_v2)));
+}
+
+void HandleSystemInfoV2Response(SystemFetcher::FetchSystemInfoCallback callback,
+                                mojo_ipc::SystemResultV2Ptr result) {
+  if (result->is_error()) {
+    std::move(callback).Run(
+        mojo_ipc::SystemResult::NewError(result->get_error()->Clone()));
+    return;
   }
-  return mojo_ipc::BootMode::kUnknown;
+  CHECK(result->is_system_info_v2());
+  auto system_info =
+      SystemFetcher::ConvertToSystemInfo(result->get_system_info_v2());
+  std::move(callback).Run(
+      mojo_ipc::SystemResult::NewSystemInfo(std::move(system_info)));
 }
 
 }  // namespace
 
-bool SystemFetcher::FetchOsInfo(mojo_ipc::OsInfoPtr* out_os_info,
-                                mojo_ipc::ProbeErrorPtr* out_error) {
+void SystemFetcher::FetchBootMode(mojo_ipc::SystemInfoV2Ptr system_info_v2,
+                                  const base::FilePath& root_dir,
+                                  FetchSystemInfoV2Callback callback) {
+  mojo_ipc::BootMode* boot_mode = &system_info_v2->os_info->boot_mode;
+  // default unknown if there's no match
+  *boot_mode = mojo_ipc::BootMode::kUnknown;
+
+  std::string cmdline;
+  const auto path = root_dir.Append(kFilePathProcCmdline);
+  if (!ReadAndTrimString(path, &cmdline)) {
+    std::move(callback).Run(
+        mojo_ipc::SystemResultV2::NewSystemInfoV2(std::move(system_info_v2)));
+    return;
+  }
+
+  auto tokens = base::SplitString(cmdline, " ", base::TRIM_WHITESPACE,
+                                  base::SPLIT_WANT_NONEMPTY);
+  for (const auto& token : tokens) {
+    if (token == "cros_secure") {
+      *boot_mode = mojo_ipc::BootMode::kCrosSecure;
+      break;
+    }
+    if (token == "cros_efi") {
+      context_->executor()->GetUEFISecureBootContent(
+          base::BindOnce(&HandleSecureBootResponse, std::move(callback),
+                         std::move(system_info_v2)));
+      return;
+    }
+    if (token == "cros_legacy") {
+      *boot_mode = mojo_ipc::BootMode::kCrosLegacy;
+      break;
+    }
+  }
+
+  std::move(callback).Run(
+      mojo_ipc::SystemResultV2::NewSystemInfoV2(std::move(system_info_v2)));
+}
+
+bool SystemFetcher::FetchOsInfoWithoutBootMode(
+    mojo_ipc::OsInfoPtr* out_os_info, mojo_ipc::ProbeErrorPtr* out_error) {
   auto os_info = mojo_ipc::OsInfo::New();
   os_info->code_name = context_->system_config()->GetCodeName();
   os_info->marketing_name = context_->system_config()->GetMarketingName();
   if (!FetchOsVersion(&os_info->os_version, out_error))
     return false;
-  os_info->boot_mode = FetchBootMode(context_->root_dir());
   *out_os_info = std::move(os_info);
   return true;
 }
 
-mojo_ipc::SystemResultV2Ptr SystemFetcher::FetchSystemInfoV2() {
+void SystemFetcher::FetchSystemInfoV2(FetchSystemInfoV2Callback callback) {
   const auto& root_dir = context_->root_dir();
-  auto system_info = mojo_ipc::SystemInfoV2::New();
   mojo_ipc::ProbeErrorPtr error;
+  auto system_info_v2 = mojo_ipc::SystemInfoV2::New();
 
-  auto& vpd_info = system_info->vpd_info;
-  auto& dmi_info = system_info->dmi_info;
-  auto& os_info = system_info->os_info;
+  auto& vpd_info = system_info_v2->vpd_info;
+  auto& dmi_info = system_info_v2->dmi_info;
+  auto& os_info = system_info_v2->os_info;
   if (!FetchCachedVpdInfo(root_dir, context_->system_config()->HasSkuNumber(),
                           &vpd_info, &error) ||
       !FetchDmiInfo(root_dir, &dmi_info, &error) ||
-      !FetchOsInfo(&os_info, &error)) {
-    return mojo_ipc::SystemResultV2::NewError(std::move(error));
+      !FetchOsInfoWithoutBootMode(&os_info, &error)) {
+    std::move(callback).Run(
+        mojo_ipc::SystemResultV2::NewError(std::move(error)));
+    return;
   }
 
-  return mojo_ipc::SystemResultV2::NewSystemInfoV2(std::move(system_info));
+  // os_info.boot_mode requires ipc with executor, handle separately
+  FetchBootMode(std::move(system_info_v2), context_->root_dir(),
+                std::move(callback));
 }
 
 mojo_ipc::SystemInfoPtr SystemFetcher::ConvertToSystemInfo(
@@ -249,13 +293,9 @@ mojo_ipc::SystemInfoPtr SystemFetcher::ConvertToSystemInfo(
   return system_info;
 }
 
-mojo_ipc::SystemResultPtr SystemFetcher::FetchSystemInfo() {
-  auto result = FetchSystemInfoV2();
-  if (result->is_error())
-    return mojo_ipc::SystemResult::NewError(result->get_error()->Clone());
-  CHECK(result->is_system_info_v2());
-  auto system_info = ConvertToSystemInfo(result->get_system_info_v2());
-  return mojo_ipc::SystemResult::NewSystemInfo(std::move(system_info));
+void SystemFetcher::FetchSystemInfo(FetchSystemInfoCallback callback) {
+  FetchSystemInfoV2(
+      base::BindOnce(&HandleSystemInfoV2Response, std::move(callback)));
 }
 
 }  // namespace diagnostics

@@ -60,6 +60,10 @@ class ExecutorAdapter {
   // Read MSR register.
   virtual void ReadMsr(const uint32_t msr_reg,
                        Executor::ReadMsrCallback callback) = 0;
+
+  // Get UEFI Secure Boot variable file content
+  virtual void GetUEFISecureBootContent(
+      Executor::GetUEFISecureBootContentCallback callback) = 0;
 };
 
 }  // namespace diagnostics

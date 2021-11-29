@@ -111,10 +111,6 @@ void ConfigureAndEnterMinijail() {
       base::FilePath("/sys/class/dmi/id"));  // Files related to the
                                              // system's DMI information.
 
-  BindMountIfPathExists(
-      jail.get(),
-      base::FilePath("/sys/firmware/efi/vars/"));  // Files with UEFI vars.
-
   // Files with Arm device tree compatible string info.
   BindMountIfPathExists(
       jail.get(), base::FilePath("/sys/firmware/devicetree/base/compatible"));
@@ -235,6 +231,9 @@ void NewMountNamespace() {
                                MS_BIND | MS_REC, nullptr)) {
     LOG(FATAL) << "minijail_mount_with_data(\"/dev\") failed";
   }
+
+  minijail_mount_with_data(j.get(), "tmpfs", "/sys", "tmpfs", 0, "");
+  BindMountIfPathExists(j.get(), base::FilePath("/sys/firmware/efi/vars"));
 
   minijail_enter(j.get());
 }

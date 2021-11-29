@@ -111,4 +111,11 @@ void ExecutorAdapterImpl::ReadMsr(const uint32_t msr_reg,
                      std::move(callback));
 }
 
+void ExecutorAdapterImpl::GetUEFISecureBootContent(
+    Executor::GetUEFISecureBootContentCallback callback) {
+  DCHECK(executor_.is_bound());
+
+  executor_->GetUEFISecureBootContent(std::move(callback));
+}
+
 }  // namespace diagnostics

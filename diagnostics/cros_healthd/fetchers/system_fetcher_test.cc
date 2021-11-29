@@ -11,12 +11,15 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/optional.h>
+#include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/scoped_chromeos_version_info.h>
+#include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/common/mojo_type_utils.h"
+#include "diagnostics/cros_healthd/executor/mock_executor_adapter.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -24,7 +27,12 @@
 namespace diagnostics {
 namespace {
 
+namespace executor_ipc = chromeos::cros_healthd_executor::mojom;
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+
+using ::testing::_;
+using ::testing::Invoke;
+using ::testing::WithArg;
 
 template <typename T>
 base::Optional<std::string> GetMockValue(const T& value) {
@@ -36,6 +44,16 @@ base::Optional<std::string> GetMockValue(
   if (ptr)
     return std::to_string(ptr->value);
   return base::nullopt;
+}
+
+void OnGetSystemInfoResponse(mojo_ipc::SystemResultPtr* response_update,
+                             mojo_ipc::SystemResultPtr response) {
+  *response_update = std::move(response);
+}
+
+void OnGetSystemInfoV2Response(mojo_ipc::SystemResultV2Ptr* response_update,
+                               mojo_ipc::SystemResultV2Ptr response) {
+  *response_update = std::move(response);
 }
 
 class SystemUtilsTest : public BaseFileTest {
@@ -132,7 +150,7 @@ class SystemUtilsTest : public BaseFileTest {
         os_info->marketing_name);
     mock_context_.fake_system_config()->SetCodeName(os_info->code_name);
     SetOsVersion(os_info->os_version);
-    SetBootMode(os_info->boot_mode);
+    SetBootModeInProcCmd(os_info->boot_mode);
   }
 
   void SetOsVersion(const mojo_ipc::OsVersionPtr& os_version) {
@@ -145,19 +163,16 @@ class SystemUtilsTest : public BaseFileTest {
         os_version->patch_number.c_str(), os_version->release_channel.c_str()));
   }
 
-  void SetBootMode(const mojo_ipc::BootMode& boot_mode) {
+  void SetBootModeInProcCmd(const mojo_ipc::BootMode& boot_mode) {
     base::Optional<std::string> proc_cmd;
-    base::Optional<std::string> efi_secure;
     switch (boot_mode) {
       case mojo_ipc::BootMode::kCrosSecure:
         proc_cmd = "Foo Bar=1 cros_secure Foo Bar=1";
         break;
       case mojo_ipc::BootMode::kCrosEfi:
-        efi_secure = std::string{0x0};
         proc_cmd = "Foo Bar=1 cros_efi Foo Bar=1";
         break;
       case mojo_ipc::BootMode::kCrosEfiSecure:
-        efi_secure = std::string{0x1};
         proc_cmd = "Foo Bar=1 cros_efi Foo Bar=1";
         break;
       case mojo_ipc::BootMode::kCrosLegacy:
@@ -168,7 +183,15 @@ class SystemUtilsTest : public BaseFileTest {
         break;
     }
     SetMockFile(kFilePathProcCmdline, proc_cmd);
-    SetMockFile(kFileUEFISecurityBoot, efi_secure);
+  }
+
+  void SetUEFISceureBootResponse(const std::string& content) {
+    // Set the mock executor response.
+    EXPECT_CALL(*mock_executor(), GetUEFISecureBootContent(_))
+        .Times(2)
+        .WillRepeatedly(WithArg<0>(Invoke(
+            [content](executor_ipc::Executor::GetUEFISecureBootContentCallback
+                          callback) { std::move(callback).Run(content); })));
   }
 
   // Sets the mock file with |value|. If the |value| is omitted, deletes the
@@ -196,7 +219,7 @@ class SystemUtilsTest : public BaseFileTest {
   }
 
   void ExpectFetchSystemInfo() {
-    auto system_result = system_fetcher_.FetchSystemInfoV2();
+    auto system_result = FetchSystemInfoV2();
     ASSERT_FALSE(system_result.is_null());
     ASSERT_FALSE(system_result->is_error());
     ASSERT_TRUE(system_result->is_system_info_v2());
@@ -204,7 +227,7 @@ class SystemUtilsTest : public BaseFileTest {
     EXPECT_EQ(res, expected_system_info_)
         << GetDiffString(res, expected_system_info_);
 
-    auto system_result_old = system_fetcher_.FetchSystemInfo();
+    auto system_result_old = FetchSystemInfo();
     ASSERT_FALSE(system_result_old.is_null());
     ASSERT_FALSE(system_result_old->is_error());
     ASSERT_TRUE(system_result_old->is_system_info());
@@ -213,15 +236,34 @@ class SystemUtilsTest : public BaseFileTest {
   }
 
   void ExpectFetchProbeError(const mojo_ipc::ErrorType& expected) {
-    auto system_result = system_fetcher_.FetchSystemInfo();
+    auto system_result = FetchSystemInfo();
     ASSERT_TRUE(system_result->is_error());
     EXPECT_EQ(system_result->get_error()->type, expected);
   }
 
  protected:
   mojo_ipc::SystemInfoV2Ptr expected_system_info_;
+  MockExecutorAdapter* mock_executor() { return mock_context_.mock_executor(); }
+  mojo_ipc::SystemResultPtr FetchSystemInfo() {
+    base::RunLoop run_loop;
+    mojo_ipc::SystemResultPtr result;
+    system_fetcher_.FetchSystemInfo(
+        base::BindOnce(&OnGetSystemInfoResponse, &result));
+    run_loop.RunUntilIdle();
+    return result;
+  }
+  mojo_ipc::SystemResultV2Ptr FetchSystemInfoV2() {
+    base::RunLoop run_loop;
+    mojo_ipc::SystemResultV2Ptr result;
+    system_fetcher_.FetchSystemInfoV2(
+        base::BindOnce(&OnGetSystemInfoV2Response, &result));
+    run_loop.RunUntilIdle();
+    return result;
+  }
 
  private:
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
   MockContext mock_context_;
   SystemFetcher system_fetcher_{&mock_context_};
   base::FilePath relative_vpd_rw_dir_;
@@ -327,6 +369,7 @@ TEST_F(SystemUtilsTest, TestBootMode) {
   ExpectFetchSystemInfo();
 
   expected_system_info_->os_info->boot_mode = mojo_ipc::BootMode::kCrosEfi;
+  SetUEFISceureBootResponse("\x00");
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 
@@ -340,6 +383,20 @@ TEST_F(SystemUtilsTest, TestBootMode) {
 
   expected_system_info_->os_info->boot_mode =
       mojo_ipc::BootMode::kCrosEfiSecure;
+  SetUEFISceureBootResponse("\x01");
+  SetSystemInfo(expected_system_info_);
+  ExpectFetchSystemInfo();
+}
+
+// Test that the executor fails to read UEFISecureBoot file content and returns
+// kCrosEfi as default value
+TEST_F(SystemUtilsTest, TestUEFISceureBootFailure) {
+  expected_system_info_->os_info->boot_mode = mojo_ipc::BootMode::kCrosEfi;
+  EXPECT_CALL(*mock_executor(), GetUEFISecureBootContent(_))
+      .Times(2)
+      .WillRepeatedly(WithArg<0>(
+          Invoke([](executor_ipc::Executor::GetUEFISecureBootContentCallback
+                        callback) { std::move(callback).Run(""); })));
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 }

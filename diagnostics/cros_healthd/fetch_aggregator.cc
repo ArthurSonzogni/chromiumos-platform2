@@ -111,13 +111,17 @@ void FetchAggregator::Run(
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kSystem: {
-        WrapFetchProbeData(category, state, &info->system_result,
-                           system_fetcher_.FetchSystemInfo());
+        system_fetcher_.FetchSystemInfo(base::BindOnce(
+            &FetchAggregator::WrapFetchProbeData<mojo_ipc::SystemResultPtr>,
+            weak_factory_.GetWeakPtr(), category, std::cref(state),
+            &info->system_result));
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kSystem2: {
-        WrapFetchProbeData(category, state, &info->system_result_v2,
-                           system_fetcher_.FetchSystemInfoV2());
+        system_fetcher_.FetchSystemInfoV2(base::BindOnce(
+            &FetchAggregator::WrapFetchProbeData<mojo_ipc::SystemResultV2Ptr>,
+            weak_factory_.GetWeakPtr(), category, std::cref(state),
+            &info->system_result_v2));
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kNetwork: {
