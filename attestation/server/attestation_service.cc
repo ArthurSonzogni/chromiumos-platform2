@@ -710,7 +710,7 @@ void AttestationService::ShutdownTask() {
 }
 
 void AttestationService::GetKeyInfo(const GetKeyInfoRequest& request,
-                                    const GetKeyInfoCallback& callback) {
+                                    GetKeyInfoCallback callback) {
   auto result = std::make_shared<GetKeyInfoReply>();
   base::OnceClosure task =
       base::BindOnce(&AttestationService::GetKeyInfoTask,
@@ -752,7 +752,7 @@ void AttestationService::GetKeyInfoTask(
 
 void AttestationService::GetEndorsementInfo(
     const GetEndorsementInfoRequest& request,
-    const GetEndorsementInfoCallback& callback) {
+    GetEndorsementInfoCallback callback) {
   auto result = std::make_shared<GetEndorsementInfoReply>();
   base::OnceClosure task =
       base::BindOnce(&AttestationService::GetEndorsementInfoTask,
@@ -833,7 +833,7 @@ void AttestationService::GetEndorsementInfoTask(
 
 void AttestationService::GetAttestationKeyInfo(
     const GetAttestationKeyInfoRequest& request,
-    const GetAttestationKeyInfoCallback& callback) {
+    GetAttestationKeyInfoCallback callback) {
   auto result = std::make_shared<GetAttestationKeyInfoReply>();
   base::OnceClosure task =
       base::BindOnce(&AttestationService::GetAttestationKeyInfoTask,
@@ -903,7 +903,7 @@ void AttestationService::GetAttestationKeyInfoTask(
 
 void AttestationService::ActivateAttestationKey(
     const ActivateAttestationKeyRequest& request,
-    const ActivateAttestationKeyCallback& callback) {
+    ActivateAttestationKeyCallback callback) {
   auto result = std::make_shared<ActivateAttestationKeyReply>();
   base::OnceClosure task =
       base::BindOnce(&AttestationService::ActivateAttestationKeyTask,
@@ -937,7 +937,7 @@ void AttestationService::ActivateAttestationKeyTask(
 
 void AttestationService::CreateCertifiableKey(
     const CreateCertifiableKeyRequest& request,
-    const CreateCertifiableKeyCallback& callback) {
+    CreateCertifiableKeyCallback callback) {
   auto result = std::make_shared<CreateCertifiableKeyReply>();
   base::OnceClosure task =
       base::BindOnce(&AttestationService::CreateCertifiableKeyTask,
@@ -971,7 +971,7 @@ void AttestationService::CreateCertifiableKeyTask(
 }
 
 void AttestationService::Decrypt(const DecryptRequest& request,
-                                 const DecryptCallback& callback) {
+                                 DecryptCallback callback) {
   auto result = std::make_shared<DecryptReply>();
   base::OnceClosure task =
       base::BindOnce(&AttestationService::DecryptTask, base::Unretained(this),
@@ -1000,7 +1000,7 @@ void AttestationService::DecryptTask(
 }
 
 void AttestationService::Sign(const SignRequest& request,
-                              const SignCallback& callback) {
+                              SignCallback callback) {
   auto result = std::make_shared<SignReply>();
   base::OnceClosure task = base::BindOnce(
       &AttestationService::SignTask, base::Unretained(this), request, result);
@@ -1028,7 +1028,7 @@ void AttestationService::SignTask(const SignRequest& request,
 
 void AttestationService::RegisterKeyWithChapsToken(
     const RegisterKeyWithChapsTokenRequest& request,
-    const RegisterKeyWithChapsTokenCallback& callback) {
+    RegisterKeyWithChapsTokenCallback callback) {
   auto result = std::make_shared<RegisterKeyWithChapsTokenReply>();
   base::OnceClosure task =
       base::BindOnce(&AttestationService::RegisterKeyWithChapsTokenTask,
@@ -2077,7 +2077,7 @@ bool AttestationService::ActivateAttestationKeyInternal(
 
 void AttestationService::GetEnrollmentPreparations(
     const GetEnrollmentPreparationsRequest& request,
-    const GetEnrollmentPreparationsCallback& callback) {
+    GetEnrollmentPreparationsCallback callback) {
   auto result = std::make_shared<GetEnrollmentPreparationsReply>();
   base::OnceClosure task =
       base::BindOnce(&AttestationService::GetEnrollmentPreparationsTask,
@@ -2102,7 +2102,7 @@ void AttestationService::GetEnrollmentPreparationsTask(
 }
 
 void AttestationService::GetStatus(const GetStatusRequest& request,
-                                   const GetStatusCallback& callback) {
+                                   GetStatusCallback callback) {
   auto result = std::make_shared<GetStatusReply>();
   base::OnceClosure task =
       base::BindOnce(&AttestationService::GetStatusTask, base::Unretained(this),
@@ -2156,7 +2156,7 @@ void AttestationService::GetStatusTask(
 }
 
 void AttestationService::Verify(const VerifyRequest& request,
-                                const VerifyCallback& callback) {
+                                VerifyCallback callback) {
   auto result = std::make_shared<VerifyReply>();
   base::OnceClosure task = base::BindOnce(
       &AttestationService::VerifyTask, base::Unretained(this), request, result);
@@ -2526,7 +2526,7 @@ void AttestationService::VerifyTask(
 
 void AttestationService::CreateEnrollRequest(
     const CreateEnrollRequestRequest& request,
-    const CreateEnrollRequestCallback& callback) {
+    CreateEnrollRequestCallback callback) {
   auto result = std::make_shared<CreateEnrollRequestReply>();
   base::OnceClosure task = base::BindOnce(
       &AttestationService::CreateEnrollRequestTask<CreateEnrollRequestRequest>,
@@ -2550,7 +2550,7 @@ void AttestationService::CreateEnrollRequestTask(
 }
 
 void AttestationService::FinishEnroll(const FinishEnrollRequest& request,
-                                      const FinishEnrollCallback& callback) {
+                                      FinishEnrollCallback callback) {
   auto result = std::make_shared<FinishEnrollReply>();
   base::OnceClosure task =
       base::BindOnce(&AttestationService::FinishEnrollTask<FinishEnrollReply>,
@@ -2579,8 +2579,8 @@ void AttestationService::FinishEnrollTask(
 
 void AttestationService::PostStartEnrollTask(
     const std::shared_ptr<AttestationFlowData>& data) {
-  base::Closure task = base::Bind(&AttestationService::StartEnrollTask,
-                                  base::Unretained(this), data);
+  base::OnceClosure task = base::BindOnce(&AttestationService::StartEnrollTask,
+                                          base::Unretained(this), data);
   base::OnceClosure reply =
       base::BindOnce(&AttestationService::OnEnrollAction, GetWeakPtr(), data);
   worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
@@ -2595,8 +2595,8 @@ void AttestationService::Enroll(const EnrollRequest& request,
 void AttestationService::SendEnrollRequest(
     const std::shared_ptr<AttestationFlowData>& data) {
   auto pca_request = ToPcaAgentEnrollRequest(*data);
-  auto on_success = base::Bind(&AttestationService::HandlePcaAgentEnrollReply,
-                               GetWeakPtr(), data);
+  auto on_success = base::BindOnce(
+      &AttestationService::HandlePcaAgentEnrollReply, GetWeakPtr(), data);
   auto on_error =
       base::BindOnce(&AttestationService::HandlePcaAgentEnrollRequestError,
                      GetWeakPtr(), data);
@@ -2877,7 +2877,7 @@ void AttestationService::HandlePcaAgentEnrollReply(
 
 void AttestationService::CreateCertificateRequest(
     const CreateCertificateRequestRequest& request,
-    const CreateCertificateRequestCallback& callback) {
+    CreateCertificateRequestCallback callback) {
   auto result = std::make_shared<CreateCertificateRequestReply>();
   base::OnceClosure task =
       base::BindOnce(&AttestationService::CreateCertificateRequestTask<
@@ -2953,7 +2953,7 @@ void AttestationService::CreateCertificateRequestTask(
 
 void AttestationService::FinishCertificateRequest(
     const FinishCertificateRequestRequest& request,
-    const FinishCertificateRequestCallback& callback) {
+    FinishCertificateRequestCallback callback) {
   auto result = std::make_shared<FinishCertificateRequestReply>();
   base::OnceClosure task =
       base::BindOnce(&AttestationService::FinishCertificateRequestTask<
@@ -3097,7 +3097,7 @@ bool AttestationService::EncryptEnterpriseKeyInfo(
 
 void AttestationService::SignEnterpriseChallenge(
     const SignEnterpriseChallengeRequest& request,
-    const SignEnterpriseChallengeCallback& callback) {
+    SignEnterpriseChallengeCallback callback) {
   auto result = std::make_shared<SignEnterpriseChallengeReply>();
   base::OnceClosure task =
       base::BindOnce(&AttestationService::SignEnterpriseChallengeTask,
@@ -3222,7 +3222,7 @@ void AttestationService::SignEnterpriseChallengeTask(
 
 void AttestationService::SignSimpleChallenge(
     const SignSimpleChallengeRequest& request,
-    const SignSimpleChallengeCallback& callback) {
+    SignSimpleChallengeCallback callback) {
   auto result = std::make_shared<SignSimpleChallengeReply>();
   base::OnceClosure task =
       base::BindOnce(&AttestationService::SignSimpleChallengeTask,
@@ -3276,7 +3276,7 @@ bool AttestationService::SignChallengeData(const CertifiedKey& key,
 }
 
 void AttestationService::SetKeyPayload(const SetKeyPayloadRequest& request,
-                                       const SetKeyPayloadCallback& callback) {
+                                       SetKeyPayloadCallback callback) {
   auto result = std::make_shared<SetKeyPayloadReply>();
   base::OnceClosure task =
       base::BindOnce(&AttestationService::SetKeyPayloadTask,
@@ -3304,7 +3304,7 @@ void AttestationService::SetKeyPayloadTask(
 }
 
 void AttestationService::DeleteKeys(const DeleteKeysRequest& request,
-                                    const DeleteKeysCallback& callback) {
+                                    DeleteKeysCallback callback) {
   auto result = std::make_shared<DeleteKeysReply>();
   base::OnceClosure task =
       base::BindOnce(&AttestationService::DeleteKeysTask,
@@ -3334,7 +3334,7 @@ void AttestationService::DeleteKeysTask(
 }
 
 void AttestationService::ResetIdentity(const ResetIdentityRequest& request,
-                                       const ResetIdentityCallback& callback) {
+                                       ResetIdentityCallback callback) {
   auto result = std::make_shared<ResetIdentityReply>();
   base::OnceClosure task =
       base::BindOnce(&AttestationService::ResetIdentityTask,
@@ -3353,9 +3353,8 @@ void AttestationService::ResetIdentityTask(
   result->set_status(STATUS_NOT_SUPPORTED);
 }
 
-void AttestationService::GetEnrollmentId(
-    const GetEnrollmentIdRequest& request,
-    const GetEnrollmentIdCallback& callback) {
+void AttestationService::GetEnrollmentId(const GetEnrollmentIdRequest& request,
+                                         GetEnrollmentIdCallback callback) {
   auto result = std::make_shared<GetEnrollmentIdReply>();
   base::OnceClosure task =
       base::BindOnce(&AttestationService::GetEnrollmentIdTask,
@@ -3396,7 +3395,7 @@ void AttestationService::GetEnrollmentIdTask(
 
 void AttestationService::GetCertifiedNvIndex(
     const GetCertifiedNvIndexRequest& request,
-    const GetCertifiedNvIndexCallback& callback) {
+    GetCertifiedNvIndexCallback callback) {
   auto result = std::make_shared<GetCertifiedNvIndexReply>();
   base::OnceClosure task =
       base::BindOnce(&AttestationService::GetCertifiedNvIndexTask,

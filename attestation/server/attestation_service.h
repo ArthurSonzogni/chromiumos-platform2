@@ -98,62 +98,55 @@ class AttestationService : public AttestationInterface {
   bool Initialize() override;
   void GetEnrollmentPreparations(
       const GetEnrollmentPreparationsRequest& request,
-      const GetEnrollmentPreparationsCallback& callback) override;
+      GetEnrollmentPreparationsCallback callback) override;
   void GetKeyInfo(const GetKeyInfoRequest& request,
-                  const GetKeyInfoCallback& callback) override;
+                  GetKeyInfoCallback callback) override;
   void GetEndorsementInfo(const GetEndorsementInfoRequest& request,
-                          const GetEndorsementInfoCallback& callback) override;
-  void GetAttestationKeyInfo(
-      const GetAttestationKeyInfoRequest& request,
-      const GetAttestationKeyInfoCallback& callback) override;
-  void ActivateAttestationKey(
-      const ActivateAttestationKeyRequest& request,
-      const ActivateAttestationKeyCallback& callback) override;
-  void CreateCertifiableKey(
-      const CreateCertifiableKeyRequest& request,
-      const CreateCertifiableKeyCallback& callback) override;
+                          GetEndorsementInfoCallback callback) override;
+  void GetAttestationKeyInfo(const GetAttestationKeyInfoRequest& request,
+                             GetAttestationKeyInfoCallback callback) override;
+  void ActivateAttestationKey(const ActivateAttestationKeyRequest& request,
+                              ActivateAttestationKeyCallback callback) override;
+  void CreateCertifiableKey(const CreateCertifiableKeyRequest& request,
+                            CreateCertifiableKeyCallback callback) override;
   void Decrypt(const DecryptRequest& request,
-               const DecryptCallback& callback) override;
-  void Sign(const SignRequest& request, const SignCallback& callback) override;
+               DecryptCallback callback) override;
+  void Sign(const SignRequest& request, SignCallback callback) override;
   void RegisterKeyWithChapsToken(
       const RegisterKeyWithChapsTokenRequest& request,
-      const RegisterKeyWithChapsTokenCallback& callback) override;
+      RegisterKeyWithChapsTokenCallback callback) override;
   void GetStatus(const GetStatusRequest& request,
-                 const GetStatusCallback& callback) override;
-  void Verify(const VerifyRequest& request,
-              const VerifyCallback& callback) override;
-  void CreateEnrollRequest(
-      const CreateEnrollRequestRequest& request,
-      const CreateEnrollRequestCallback& callback) override;
+                 GetStatusCallback callback) override;
+  void Verify(const VerifyRequest& request, VerifyCallback callback) override;
+  void CreateEnrollRequest(const CreateEnrollRequestRequest& request,
+                           CreateEnrollRequestCallback callback) override;
   void FinishEnroll(const FinishEnrollRequest& request,
-                    const FinishEnrollCallback& callback) override;
+                    FinishEnrollCallback callback) override;
   void Enroll(const EnrollRequest& request,
               const EnrollCallback& callback) override;
   void CreateCertificateRequest(
       const CreateCertificateRequestRequest& request,
-      const CreateCertificateRequestCallback& callback) override;
+      CreateCertificateRequestCallback callback) override;
   void FinishCertificateRequest(
       const FinishCertificateRequestRequest& request,
-      const FinishCertificateRequestCallback& callback) override;
+      FinishCertificateRequestCallback callback) override;
   void GetCertificate(const GetCertificateRequest& request,
                       const GetCertificateCallback& callback) override;
   void SignEnterpriseChallenge(
       const SignEnterpriseChallengeRequest& request,
-      const SignEnterpriseChallengeCallback& callback) override;
-  void SignSimpleChallenge(
-      const SignSimpleChallengeRequest& request,
-      const SignSimpleChallengeCallback& callback) override;
+      SignEnterpriseChallengeCallback callback) override;
+  void SignSimpleChallenge(const SignSimpleChallengeRequest& request,
+                           SignSimpleChallengeCallback callback) override;
   void SetKeyPayload(const SetKeyPayloadRequest& request,
-                     const SetKeyPayloadCallback& callback) override;
+                     SetKeyPayloadCallback callback) override;
   void DeleteKeys(const DeleteKeysRequest& request,
-                  const DeleteKeysCallback& callback) override;
+                  DeleteKeysCallback callback) override;
   void ResetIdentity(const ResetIdentityRequest& request,
-                     const ResetIdentityCallback& callback) override;
+                     ResetIdentityCallback callback) override;
   void GetEnrollmentId(const GetEnrollmentIdRequest& request,
-                       const GetEnrollmentIdCallback& callback) override;
-  void GetCertifiedNvIndex(
-      const GetCertifiedNvIndexRequest& request,
-      const GetCertifiedNvIndexCallback& callback) override;
+                       GetEnrollmentIdCallback callback) override;
+  void GetCertifiedNvIndex(const GetCertifiedNvIndexRequest& request,
+                           GetCertifiedNvIndexCallback callback) override;
 
   // Same as initialize but calls callback when tasks finish.
   bool InitializeWithCallback(InitializeCompleteCallback callback);
@@ -230,9 +223,9 @@ class AttestationService : public AttestationInterface {
   // to TaskRunner::PostTaskAndReply.
   template <typename ReplyProtobufType>
   void TaskRelayCallback(
-      const base::Callback<void(const ReplyProtobufType&)> callback,
+      base::OnceCallback<void(const ReplyProtobufType&)> callback,
       const std::shared_ptr<ReplyProtobufType>& reply) {
-    callback.Run(*reply);
+    std::move(callback).Run(*reply);
   }
 
   // Initialization to be run on the worker thread.

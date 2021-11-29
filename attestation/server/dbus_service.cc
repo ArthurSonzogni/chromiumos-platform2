@@ -100,7 +100,7 @@ void DBusService::HandleGetKeyInfo(
                      const GetKeyInfoReply& reply) { response->Return(reply); };
   service_->GetKeyInfo(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleGetEndorsementInfo(
@@ -119,7 +119,7 @@ void DBusService::HandleGetEndorsementInfo(
   };
   service_->GetEndorsementInfo(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleGetAttestationKeyInfo(
@@ -138,7 +138,7 @@ void DBusService::HandleGetAttestationKeyInfo(
   };
   service_->GetAttestationKeyInfo(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleActivateAttestationKey(
@@ -157,7 +157,7 @@ void DBusService::HandleActivateAttestationKey(
   };
   service_->ActivateAttestationKey(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleCreateCertifiableKey(
@@ -176,7 +176,7 @@ void DBusService::HandleCreateCertifiableKey(
   };
   service_->CreateCertifiableKey(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleDecrypt(
@@ -192,7 +192,7 @@ void DBusService::HandleDecrypt(
                      const DecryptReply& reply) { response->Return(reply); };
   service_->Decrypt(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleSign(
@@ -208,7 +208,7 @@ void DBusService::HandleSign(
                      const SignReply& reply) { response->Return(reply); };
   service_->Sign(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleRegisterKeyWithChapsToken(
@@ -227,7 +227,7 @@ void DBusService::HandleRegisterKeyWithChapsToken(
   };
   service_->RegisterKeyWithChapsToken(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleGetEnrollmentPreparations(
@@ -246,7 +246,7 @@ void DBusService::HandleGetEnrollmentPreparations(
   };
   service_->GetEnrollmentPreparations(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleGetStatus(
@@ -262,7 +262,7 @@ void DBusService::HandleGetStatus(
                      const GetStatusReply& reply) { response->Return(reply); };
   service_->GetStatus(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleVerify(
@@ -278,7 +278,7 @@ void DBusService::HandleVerify(
                      const VerifyReply& reply) { response->Return(reply); };
   service_->Verify(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleCreateEnrollRequest(
@@ -297,7 +297,7 @@ void DBusService::HandleCreateEnrollRequest(
   };
   service_->CreateEnrollRequest(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleFinishEnroll(
@@ -315,7 +315,7 @@ void DBusService::HandleFinishEnroll(
   };
   service_->FinishEnroll(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleEnroll(
@@ -350,7 +350,7 @@ void DBusService::HandleCreateCertificateRequest(
   };
   service_->CreateCertificateRequest(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleFinishCertificateRequest(
@@ -369,7 +369,7 @@ void DBusService::HandleFinishCertificateRequest(
   };
   service_->FinishCertificateRequest(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleGetCertificate(
@@ -406,7 +406,7 @@ void DBusService::HandleSignEnterpriseChallenge(
   };
   service_->SignEnterpriseChallenge(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleSignSimpleChallenge(
@@ -425,7 +425,7 @@ void DBusService::HandleSignSimpleChallenge(
   };
   service_->SignSimpleChallenge(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleSetKeyPayload(
@@ -443,7 +443,7 @@ void DBusService::HandleSetKeyPayload(
   };
   service_->SetKeyPayload(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleDeleteKeys(
@@ -459,7 +459,7 @@ void DBusService::HandleDeleteKeys(
                      const DeleteKeysReply& reply) { response->Return(reply); };
   service_->DeleteKeys(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleResetIdentity(
@@ -477,7 +477,7 @@ void DBusService::HandleResetIdentity(
   };
   service_->ResetIdentity(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleGetEnrollmentId(
@@ -496,7 +496,7 @@ void DBusService::HandleGetEnrollmentId(
   };
   service_->GetEnrollmentId(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleGetCertifiedNvIndex(
@@ -515,7 +515,7 @@ void DBusService::HandleGetCertifiedNvIndex(
   };
   service_->GetCertifiedNvIndex(
       request,
-      base::Bind(callback, SharedResponsePointer(std::move(response))));
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 }  // namespace attestation
