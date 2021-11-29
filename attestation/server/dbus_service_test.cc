@@ -60,27 +60,6 @@ class DBusServiceTest : public testing::Test {
   std::unique_ptr<DBusService> dbus_service_;
 };
 
-TEST_F(DBusServiceTest, CopyableCallback) {
-  EXPECT_CALL(mock_service_, GetAttestationKeyInfo(_, _))
-      .WillOnce(WithArgs<1>(
-          Invoke([](const AttestationInterface::GetAttestationKeyInfoCallback&
-                        callback) {
-            // Copy the callback, then call the original.
-            GetAttestationKeyInfoReply reply;
-            base::Closure copy = base::Bind(callback, reply);
-            callback.Run(reply);
-          })));
-  std::unique_ptr<dbus::MethodCall> call =
-      CreateMethodCall(kGetAttestationKeyInfo);
-  GetAttestationKeyInfoRequest request;
-  dbus::MessageWriter writer(call.get());
-  writer.AppendProtoAsArrayOfBytes(request);
-  auto response = CallMethod(call.get());
-  dbus::MessageReader reader(response.get());
-  GetAttestationKeyInfoReply reply;
-  EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&reply));
-}
-
 TEST_F(DBusServiceTest, GetKeyInfo) {
   GetKeyInfoRequest request;
   request.set_key_label("label");
