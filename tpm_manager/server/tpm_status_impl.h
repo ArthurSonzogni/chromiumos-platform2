@@ -51,16 +51,19 @@ class TpmStatusImpl : public TpmStatus {
 
  private:
   // Tests if the TPM owner password is the default one. Returns:
-  // 1. true if the test succeed.
-  // 2. false if authentication fails with the default owner password.
-  // 3. base::nullopt if any other errors.
+  // 1. TpmOwnershipStatus::kTpmPreOwned if the test succeed.
+  // 2. TpmOwnershipStatus::kTpmOwned if authentication fails with the default
+  // owner password.
+  // 3. TpmOwnershipStatus::kTpmDisabled if the TPM is disabled.
+  // 4. base::nullopt if any other errors.
   //
   // Note that, w/o any useful cache data, testing tpm with owner auth means it
   // could increase DA counter or even fail during DA lockout. In case of no
   // useful delegate to reset DA, we don't have any way to reset DA so the all
   // the hwsec daemons cannot function correctly until DA unlocks itself after
   // timeout (crbug/1110741).
-  base::Optional<bool> TestTpmWithDefaultOwnerPassword();
+  base::Optional<TpmStatus::TpmOwnershipStatus>
+  TestTpmWithDefaultOwnerPassword();
   // Tests if the TPM SRK with default auth. Returns:
   // 1. true if the test succeed.
   // 2. false if authentication fails with the default auth.
@@ -99,7 +102,7 @@ class TpmStatusImpl : public TpmStatus {
 
   // Whether current owner password in the TPM is the default one; in case of
   // nullopt the password status is not determined yet.
-  base::Optional<bool> is_owner_password_default_;
+  base::Optional<TpmStatus::TpmOwnershipStatus> owner_password_status_;
 
   // Whether current SRK auth in the TPM is the default one(either the empty
   // password or the well-known SRK password); in case of nullopt the password

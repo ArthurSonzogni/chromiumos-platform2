@@ -106,14 +106,16 @@ bool TpmStatusImpl::GetTpmOwned(TpmStatus::TpmOwnershipStatus* status) {
     return true;
   }
 
-  const base::Optional<bool> is_default_owner_password =
+  const base::Optional<TpmStatus::TpmOwnershipStatus> owner_password_status =
       TestTpmWithDefaultOwnerPassword();
-  if (!is_default_owner_password.has_value()) {
+  if (!owner_password_status.has_value()) {
     LOG(ERROR) << __func__ << ": Failed to test default owner password.";
     return false;
   }
-  if (*is_default_owner_password) {
-    ownership_status_ = kTpmPreOwned;
+
+  if (*owner_password_status == TpmStatus::kTpmPreOwned ||
+      *owner_password_status == TpmStatus::kTpmDisabled) {
+    ownership_status_ = *owner_password_status;
     *status = ownership_status_;
     return true;
   }
@@ -265,13 +267,14 @@ bool TpmStatusImpl::GetVersionInfo(uint32_t* family,
   return true;
 }
 
-base::Optional<bool> TpmStatusImpl::TestTpmWithDefaultOwnerPassword() {
+base::Optional<TpmStatus::TpmOwnershipStatus>
+TpmStatusImpl::TestTpmWithDefaultOwnerPassword() {
   if (base::PathExists(base::FilePath(kTpmFullyInitializedPath))) {
-    is_owner_password_default_ = false;
+    owner_password_status_ = TpmStatus::kTpmOwned;
   }
 
-  if (is_owner_password_default_.has_value()) {
-    return is_owner_password_default_;
+  if (owner_password_status_.has_value()) {
+    return owner_password_status_;
   }
 
   TpmConnection connection(GetDefaultOwnerPassword());
@@ -286,17 +289,22 @@ base::Optional<bool> TpmStatusImpl::TestTpmWithDefaultOwnerPassword() {
       Tspi_TPM_GetStatus(tpm_handle, TSS_TPMSTATUS_DISABLED, &current_status);
 
   if (result == TPM_SUCCESS) {
-    is_owner_password_default_ = true;
+    owner_password_status_ = TpmStatus::kTpmPreOwned;
   } else if (result == TPM_ERROR(TPM_E_AUTHFAIL)) {
-    is_owner_password_default_ = false;
+    owner_password_status_ = TpmStatus::kTpmOwned;
     if (!TouchTpmFullyInitializedPath()) {
       LOG(WARNING) << __func__ << ": Failed to touch "
                    << kTpmFullyInitializedPath;
     }
+  } else if (result == TPM_ERROR(TPM_E_DISABLED)) {
+    is_enable_initialized_ = true;
+    is_enabled_ = false;
+    owner_password_status_ = TpmStatus::kTpmDisabled;
+    LOG(WARNING) << __func__ << ": TPM is disabled.";
   } else {
     TPM_LOG(ERROR, result) << "Unexpected error calling |Tspi_TPM_GetStatus|.";
   }
-  return is_owner_password_default_;
+  return owner_password_status_;
 }
 
 base::Optional<bool> TpmStatusImpl::TestTpmSrkWithDefaultAuth() {
@@ -436,7 +444,7 @@ void TpmStatusImpl::MarkRandomOwnerPasswordSet() {
   // Also makes sure the state machine is consistent.
   is_enable_initialized_ = is_enabled_ = is_owned_ = true;
   ownership_status_ = kTpmOwned;
-  is_owner_password_default_ = false;
+  owner_password_status_ = TpmStatus::kTpmOwned;
   if (!TouchTpmFullyInitializedPath()) {
     LOG(WARNING) << __func__ << ": Failed to touch "
                  << kTpmFullyInitializedPath;

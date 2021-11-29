@@ -91,6 +91,7 @@ class NvIndexAuthenticator {
         return password_delegate_.get();
       case TpmStatus::kTpmOwned:
       case TpmStatus::kTpmSrkNoAuth:
+      case TpmStatus::kTpmDisabled:
         // return error if TPM is owned but the owner_password is not available
         if (owner_password.empty()) {
           // The owner password has been destroyed.

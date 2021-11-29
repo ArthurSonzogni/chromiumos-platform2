@@ -32,6 +32,9 @@ class TpmStatus {
     // TPM initialization is completed. But the ownership taken process is
     // completed by the other system. The TPM is not owned by tpm_manager.
     kTpmSrkNoAuth,
+
+    // TPM is disabled.
+    kTpmDisabled,
   };
 
   TpmStatus() = default;

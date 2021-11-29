@@ -279,6 +279,14 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
                  "lockout reset.";
   }
 
+  if (ownership_status == TpmStatus::kTpmDisabled) {
+    LOG(WARNING) << __func__
+                 << ": TPM is disabled when we testing the ownership.";
+    reply->set_enabled(false);
+    reply->set_status(STATUS_SUCCESS);
+    return reply;
+  }
+
   // The precondition of DA reset is not satisfied; resets the timer so it
   // doesn't get triggered immediately.
   if (ownership_status != TpmStatus::kTpmOwned && wait_for_ownership_) {
@@ -464,19 +472,21 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::GetTpmStatusTask(
     return reply;
   }
 
-  reply->set_enabled(tpm_status_->IsTpmEnabled());
+  bool is_enabled = tpm_status_->IsTpmEnabled();
+  reply->set_enabled(is_enabled);
 
-  TpmStatus::TpmOwnershipStatus ownership_status;
-  if (!tpm_status_->GetTpmOwned(&ownership_status)) {
-    LOG(ERROR) << __func__ << ": failed to get tpm ownership status";
-    reply->set_status(STATUS_DEVICE_ERROR);
-    return reply;
-  }
-  reply->set_owned(TpmStatus::kTpmOwned == ownership_status);
-
-  LocalData local_data;
-  if (local_data_store_ && local_data_store_->Read(&local_data)) {
-    *reply->mutable_local_data() = local_data;
+  if (is_enabled) {
+    TpmStatus::TpmOwnershipStatus ownership_status;
+    if (!tpm_status_->GetTpmOwned(&ownership_status)) {
+      LOG(ERROR) << __func__ << ": failed to get tpm ownership status";
+      reply->set_status(STATUS_DEVICE_ERROR);
+      return reply;
+    }
+    reply->set_owned(TpmStatus::kTpmOwned == ownership_status);
+    LocalData local_data;
+    if (local_data_store_ && local_data_store_->Read(&local_data)) {
+      *reply->mutable_local_data() = local_data;
+    }
   }
 
   reply->set_status(STATUS_SUCCESS);
