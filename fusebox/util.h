@@ -7,6 +7,9 @@
 
 #include <string>
 
+// Returns errno for an |error| that matches base::File::Error codes.
+int FileErrorToErrno(int error);
+
 // Returns fuse open flags string: eg., "O_RDWR|O_CREAT|O_TRUNC".
 std::string OpenFlagsToString(int flags);
 

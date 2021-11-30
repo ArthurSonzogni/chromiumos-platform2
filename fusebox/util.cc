@@ -7,7 +7,51 @@
 #include <fcntl.h>
 #include <fuse_lowlevel.h>
 
+#include <base/files/file.h>
 #include <base/strings/stringprintf.h>
+
+int FileErrorToErrno(int error) {
+  const auto file_error = static_cast<base::File::Error>(error);
+
+  switch (file_error) {
+    case base::File::Error::FILE_OK:
+      return 0;
+    case base::File::Error::FILE_ERROR_FAILED:
+      return EFAULT;
+    case base::File::Error::FILE_ERROR_IN_USE:
+      return EBUSY;
+    case base::File::Error::FILE_ERROR_EXISTS:
+      return EEXIST;
+    case base::File::Error::FILE_ERROR_NOT_FOUND:
+      return ENOENT;
+    case base::File::Error::FILE_ERROR_ACCESS_DENIED:
+      return EACCES;
+    case base::File::Error::FILE_ERROR_TOO_MANY_OPENED:
+      return EMFILE;
+    case base::File::Error::FILE_ERROR_NO_MEMORY:
+      return ENOMEM;
+    case base::File::Error::FILE_ERROR_NO_SPACE:
+      return ENOSPC;
+    case base::File::Error::FILE_ERROR_NOT_A_DIRECTORY:
+      return ENOTDIR;
+    case base::File::Error::FILE_ERROR_INVALID_OPERATION:
+      return ENOTSUP;
+    case base::File::Error::FILE_ERROR_SECURITY:
+      return EACCES;
+    case base::File::Error::FILE_ERROR_ABORT:
+      return ENOTSUP;
+    case base::File::Error::FILE_ERROR_NOT_A_FILE:
+      return EINVAL;
+    case base::File::Error::FILE_ERROR_NOT_EMPTY:
+      return ENOTEMPTY;
+    case base::File::Error::FILE_ERROR_INVALID_URL:
+      return EINVAL;
+    case base::File::Error::FILE_ERROR_IO:
+      return EIO;
+    default:
+      return EFAULT;
+  }
+}
 
 namespace {
 

@@ -7,9 +7,24 @@
 #include <fcntl.h>
 #include <fuse_lowlevel.h>
 
+#include <base/files/file.h>
 #include <gtest/gtest.h>
 
 namespace fusebox {
+
+TEST(UtilTest, FileErrorToErrno) {
+  int ok = static_cast<int>(base::File::Error::FILE_OK);
+  EXPECT_EQ(0, FileErrorToErrno(ok));
+
+  int not_found = static_cast<int>(base::File::Error::FILE_ERROR_NOT_FOUND);
+  EXPECT_EQ(ENOENT, FileErrorToErrno(not_found));
+
+  int security = static_cast<int>(base::File::Error::FILE_ERROR_SECURITY);
+  EXPECT_EQ(EACCES, FileErrorToErrno(security));
+
+  int io = static_cast<int>(base::File::Error::FILE_ERROR_IO);
+  EXPECT_EQ(EIO, FileErrorToErrno(io));
+}
 
 TEST(UtilTest, OpenFlagsToString) {
   std::string flags = OpenFlagsToString(O_RDONLY);
