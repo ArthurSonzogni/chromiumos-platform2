@@ -1243,10 +1243,11 @@ void Cellular::Connect(CellularService* service, Error* error) {
                           "Connect Failed: Modem not registered.");
     NotifyCellularConnectionResult(*error, service->iccid(),
                                    service_->is_in_user_connect());
-    // Send detailed metrics since |kNotRegistered| is a very common error when
-    // using Attach APNs.
-    NotifyDetailedCellularConnectionResult(*error,
-                                           *service_->GetLastAttachApn());
+    // If using an attach APN, send detailed metrics since |kNotRegistered| is
+    // a very common error when using Attach APNs.
+    if (service_->GetLastAttachApn())
+      NotifyDetailedCellularConnectionResult(*error,
+                                             *service_->GetLastAttachApn());
     return;
   }
 
