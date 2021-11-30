@@ -38,7 +38,7 @@ Daemon::Daemon(bool has_session_manager)
                     &process_reaper_,
                     &disk_monitor_,
                     &device_ejector_),
-      format_manager_(&process_reaper_),
+      format_manager_(&platform_, &process_reaper_),
       partition_manager_(&process_reaper_, &disk_monitor_),
       rename_manager_(&platform_, &process_reaper_),
       fuse_manager_(kFUSEMountRootDirectory,

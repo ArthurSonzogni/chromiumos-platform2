@@ -16,6 +16,7 @@
 
 #include "cros-disks/filesystem_label.h"
 #include "cros-disks/format_manager_observer_interface.h"
+#include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
 
 namespace cros_disks {
@@ -25,6 +26,8 @@ namespace {
 struct FormatOptions {
   std::string label;
 };
+
+const char kFormatUserAndGroupName[] = "mkfs";
 
 // Expected locations of an external format program
 const char* const kFormatProgramPaths[] = {
@@ -110,6 +113,7 @@ std::vector<std::string> CreateFormatArguments(const std::string& filesystem,
 FormatErrorType StartFormatProcess(const std::string& device_file,
                                    const std::string& format_program,
                                    const std::vector<std::string>& arguments,
+                                   const Platform* platform_,
                                    SandboxedProcess* process) {
   process->SetNoNewPrivileges();
   process->NewMountNamespace();
@@ -137,6 +141,19 @@ FormatErrorType StartFormatProcess(const std::string& device_file,
     LOG(WARNING) << "Could not preserve device fd";
     return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
   }
+
+  uid_t user_id;
+  gid_t group_id;
+  if (!platform_->GetUserAndGroupId(kFormatUserAndGroupName, &user_id,
+                                    &group_id)) {
+    LOG(ERROR) << "Cannot find user and group with name "
+               << quote(kFormatUserAndGroupName);
+    return FORMAT_ERROR_INTERNAL;
+  }
+
+  process->SetUserId(user_id);
+  process->SetGroupId(group_id);
+
   process->CloseOpenFds();
 
   process->AddArgument(format_program);
@@ -158,8 +175,11 @@ FormatErrorType StartFormatProcess(const std::string& device_file,
 
 }  // namespace
 
-FormatManager::FormatManager(brillo::ProcessReaper* process_reaper)
-    : process_reaper_(process_reaper), weak_ptr_factory_(this) {}
+FormatManager::FormatManager(Platform* platform,
+                             brillo::ProcessReaper* process_reaper)
+    : platform_(platform),
+      process_reaper_(process_reaper),
+      weak_ptr_factory_(this) {}
 
 FormatManager::~FormatManager() = default;
 
@@ -203,7 +223,7 @@ FormatErrorType FormatManager::StartFormatting(
 
   FormatErrorType error = StartFormatProcess(
       device_file, format_program,
-      CreateFormatArguments(filesystem, format_options), process);
+      CreateFormatArguments(filesystem, format_options), platform_, process);
   if (error == FORMAT_ERROR_NONE) {
     process_reaper_->WatchForChild(
         FROM_HERE, process->pid(),

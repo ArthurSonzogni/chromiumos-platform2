@@ -18,11 +18,14 @@
 
 namespace cros_disks {
 
+class Platform;
+
 class FormatManagerObserverInterface;
 
 class FormatManager {
  public:
-  explicit FormatManager(brillo::ProcessReaper* process_reaper);
+  explicit FormatManager(Platform* platform,
+                         brillo::ProcessReaper* process_reaper);
   FormatManager(const FormatManager&) = delete;
   FormatManager& operator=(const FormatManager&) = delete;
 
@@ -52,6 +55,9 @@ class FormatManager {
 
   // Returns true if formatting a given file system is supported.
   bool IsFilesystemSupported(const std::string& filesystem) const;
+
+  // Platform service.
+  Platform* const platform_;
 
   brillo::ProcessReaper* process_reaper_;
 

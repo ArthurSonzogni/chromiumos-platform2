@@ -2,18 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <gmock/gmock.h>
 #include "cros-disks/format_manager.h"
+#include "cros-disks/mock_platform.h"
+#include "cros-disks/platform.h"
 
 #include <gtest/gtest.h>
 
 namespace cros_disks {
 
 class FormatManagerTest : public ::testing::Test {
- public:
-  FormatManagerTest() : manager_(nullptr) {}
-
  protected:
-  FormatManager manager_;
+  MockPlatform platform_;
+  FormatManager manager_{&platform_, nullptr};
 };
 
 TEST_F(FormatManagerTest, GetFormatProgramPath) {
