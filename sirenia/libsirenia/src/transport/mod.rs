@@ -212,6 +212,19 @@ pub struct Transport {
     pub id: TransportType,
 }
 
+impl Transport {
+    pub fn new(r: Box<dyn TransportRead>, w: Box<dyn TransportWrite>, id: TransportType) -> Self {
+        Transport { r, w, id }
+    }
+
+    pub fn from_files(r: File, w: File) -> Self {
+        let r: Box<dyn TransportRead> = Box::new(r);
+        let w: Box<dyn TransportWrite> = Box::new(w);
+        let id = TransportType::Pipe(r.as_raw_fd(), w.as_raw_fd());
+        Transport::new(r, w, id)
+    }
+}
+
 impl
     From<(
         Box<dyn TransportRead>,
@@ -226,11 +239,7 @@ impl
             TransportType,
         ),
     ) -> Transport {
-        Transport {
-            r: v.0,
-            w: v.1,
-            id: v.2,
-        }
+        Transport::new(v.0, v.1, v.2)
     }
 }
 
@@ -243,6 +252,12 @@ impl From<Transport>
 {
     fn from(t: Transport) -> Self {
         (t.r, t.w, t.id)
+    }
+}
+
+impl From<(File, File)> for Transport {
+    fn from((r, w): (File, File)) -> Self {
+        Transport::from_files(r, w)
     }
 }
 

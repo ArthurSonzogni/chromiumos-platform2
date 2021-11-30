@@ -308,11 +308,7 @@ fn setup_pty(connection: &mut Transport) -> Result<[Box<dyn Mutator>; 4]> {
     let dup_main: File = dup(main.as_raw_fd()).context("failed dup pty main")?;
     let dup_client: File = dup(client.as_raw_fd()).context("failed dup pty client")?;
 
-    let id = (client.as_raw_fd(), dup_client.as_raw_fd());
-    let client_r: Box<dyn TransportRead> = Box::new(client);
-    let client_w: Box<dyn TransportWrite> = Box::new(dup_client);
-    let Transport { r, w, id: _ } =
-        replace(connection, Transport::from((client_r, client_w, id.into())));
+    let Transport { r, w, id: _ } = replace(connection, Transport::from_files(client, dup_client));
 
     let main_r: Box<dyn TransportRead> = Box::new(main);
     let main_w: Box<dyn TransportWrite> = Box::new(dup_main);
