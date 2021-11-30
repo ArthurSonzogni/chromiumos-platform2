@@ -18,6 +18,7 @@
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cr50_utils.h"
+#include "rmad/utils/mock_flashrom_utils.h"
 
 using testing::_;
 using testing::Invoke;
@@ -44,8 +45,14 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
     auto mock_cr50_utils = std::make_unique<NiceMock<MockCr50Utils>>();
     ON_CALL(*mock_cr50_utils, DisableFactoryMode())
         .WillByDefault(Return(disable_factory_mode_success));
+    // Mock |FlashromUtils|.
+    auto mock_flashrom_utils = std::make_unique<NiceMock<MockFlashromUtils>>();
+    ON_CALL(*mock_flashrom_utils, EnableSoftwareWriteProtection())
+        .WillByDefault(Return(true));
+
     auto handler = base::MakeRefCounted<FinalizeStateHandler>(
-        json_store_, std::move(mock_cr50_utils));
+        json_store_, std::move(mock_cr50_utils),
+        std::move(mock_flashrom_utils));
     auto callback =
         std::make_unique<base::RepeatingCallback<bool(const FinalizeStatus&)>>(
             base::BindRepeating(&SignalSender::SendFinalizeProgressSignal,

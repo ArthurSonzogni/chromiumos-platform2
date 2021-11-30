@@ -16,23 +16,39 @@
 
 #include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/fake_cr50_utils.h"
+#include "rmad/utils/fake_flashrom_utils.h"
+#include "rmad/utils/flashrom_utils_impl.h"
 
 namespace rmad {
+
+namespace fake {
+
+FakeFinalizeStateHandler::FakeFinalizeStateHandler(
+    scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
+    : FinalizeStateHandler(json_store,
+                           std::make_unique<FakeCr50Utils>(working_dir_path),
+                           std::make_unique<FakeFlashromUtils>()) {}
+
+}  // namespace fake
 
 FinalizeStateHandler::FinalizeStateHandler(scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
+  flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
 }
 
 FinalizeStateHandler::FinalizeStateHandler(
-    scoped_refptr<JsonStore> json_store, std::unique_ptr<Cr50Utils> cr50_utils)
-    : BaseStateHandler(json_store), cr50_utils_(std::move(cr50_utils)) {}
+    scoped_refptr<JsonStore> json_store,
+    std::unique_ptr<Cr50Utils> cr50_utils,
+    std::unique_ptr<FlashromUtils> flashrom_utils)
+    : BaseStateHandler(json_store),
+      cr50_utils_(std::move(cr50_utils)),
+      flashrom_utils_(std::move(flashrom_utils)) {}
 
 RmadErrorCode FinalizeStateHandler::InitializeState() {
   if (!state_.has_finalize()) {
     state_.set_allocated_finalize(new FinalizeState);
     status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_UNKNOWN);
-    status_.set_progress(0);
   }
   if (!finalize_signal_sender_) {
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
@@ -123,17 +139,14 @@ void FinalizeStateHandler::FinalizeTask() {
     status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
     return;
   }
+  status_.set_progress(0.5);
+  if (!flashrom_utils_->EnableSoftwareWriteProtection()) {
+    LOG(ERROR) << "Failed to enable software write protection";
+    status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
+    return;
+  }
   status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE);
   status_.set_progress(1);
 }
-
-namespace fake {
-
-FakeFinalizeStateHandler::FakeFinalizeStateHandler(
-    scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
-    : FinalizeStateHandler(json_store,
-                           std::make_unique<FakeCr50Utils>(working_dir_path)) {}
-
-}  // namespace fake
 
 }  // namespace rmad

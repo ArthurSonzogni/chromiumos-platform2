@@ -9,12 +9,18 @@
 
 #include <memory>
 
+#include "rmad/utils/flashrom_utils.h"
+
 namespace rmad {
 
 class WriteProtectDisableCompleteStateHandler : public BaseStateHandler {
  public:
   explicit WriteProtectDisableCompleteStateHandler(
       scoped_refptr<JsonStore> json_store);
+  // Used to inject mock |flashrom_utils_| for testing.
+  explicit WriteProtectDisableCompleteStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      std::unique_ptr<FlashromUtils> flashrom_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisableComplete);
   SET_UNREPEATABLE;
@@ -24,6 +30,9 @@ class WriteProtectDisableCompleteStateHandler : public BaseStateHandler {
 
  protected:
   ~WriteProtectDisableCompleteStateHandler() override = default;
+
+ private:
+  std::unique_ptr<FlashromUtils> flashrom_utils_;
 };
 
 namespace fake {

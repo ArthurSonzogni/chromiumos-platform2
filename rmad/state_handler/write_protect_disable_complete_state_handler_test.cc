@@ -13,6 +13,10 @@
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/write_protect_disable_complete_state_handler.h"
+#include "rmad/utils/mock_flashrom_utils.h"
+
+using testing::NiceMock;
+using testing::Return;
 
 namespace rmad {
 
@@ -20,10 +24,15 @@ class WriteProtectDisableCompleteStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<WriteProtectDisableCompleteStateHandler> CreateStateHandler(
       bool keep_device_open, bool wp_disable_skipped) {
+    // Mock |FlashromUtils|.
+    auto mock_flashrom_utils = std::make_unique<NiceMock<MockFlashromUtils>>();
+    ON_CALL(*mock_flashrom_utils, DisableSoftwareWriteProtection())
+        .WillByDefault(Return(true));
+
     EXPECT_TRUE(json_store_->SetValue(kKeepDeviceOpen, keep_device_open));
     EXPECT_TRUE(json_store_->SetValue(kWpDisableSkipped, wp_disable_skipped));
     return base::MakeRefCounted<WriteProtectDisableCompleteStateHandler>(
-        json_store_);
+        json_store_, std::move(mock_flashrom_utils));
   }
 };
 

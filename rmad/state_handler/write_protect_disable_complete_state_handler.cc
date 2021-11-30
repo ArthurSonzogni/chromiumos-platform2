@@ -11,6 +11,8 @@
 
 #include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
+#include "rmad/utils/fake_flashrom_utils.h"
+#include "rmad/utils/flashrom_utils_impl.h"
 
 namespace rmad {
 
@@ -19,13 +21,23 @@ namespace fake {
 FakeWriteProtectDisableCompleteStateHandler::
     FakeWriteProtectDisableCompleteStateHandler(
         scoped_refptr<JsonStore> json_store)
-    : WriteProtectDisableCompleteStateHandler(json_store) {}
+    : WriteProtectDisableCompleteStateHandler(
+          json_store, std::make_unique<FakeFlashromUtils>()) {}
 
 }  // namespace fake
 
 WriteProtectDisableCompleteStateHandler::
     WriteProtectDisableCompleteStateHandler(scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {}
+    : BaseStateHandler(json_store) {
+  flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
+}
+
+WriteProtectDisableCompleteStateHandler::
+    WriteProtectDisableCompleteStateHandler(
+        scoped_refptr<JsonStore> json_store,
+        std::unique_ptr<FlashromUtils> flashrom_utils)
+    : BaseStateHandler(json_store),
+      flashrom_utils_(std::move(flashrom_utils)) {}
 
 RmadErrorCode WriteProtectDisableCompleteStateHandler::InitializeState() {
   // Always check again when entering the state.
@@ -62,6 +74,10 @@ WriteProtectDisableCompleteStateHandler::GetNextStateCase(
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
+  if (!flashrom_utils_->DisableSoftwareWriteProtection()) {
+    LOG(ERROR) << "Failed to enable software write protect";
+    return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
+  }
   return NextStateCaseWrapper(RmadState::StateCase::kUpdateRoFirmware);
 }
 

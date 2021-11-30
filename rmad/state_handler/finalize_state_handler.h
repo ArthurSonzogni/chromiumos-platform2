@@ -16,6 +16,7 @@
 #include <base/timer/timer.h>
 
 #include "rmad/utils/cr50_utils.h"
+#include "rmad/utils/flashrom_utils.h"
 
 namespace rmad {
 
@@ -26,8 +27,10 @@ class FinalizeStateHandler : public BaseStateHandler {
       base::TimeDelta::FromSeconds(1);
 
   explicit FinalizeStateHandler(scoped_refptr<JsonStore> json_store);
+  // Used to inject mock |cr50_utils_| and |flashrom_utils_| for testing.
   FinalizeStateHandler(scoped_refptr<JsonStore> json_store,
-                       std::unique_ptr<Cr50Utils> cr50_utils);
+                       std::unique_ptr<Cr50Utils> cr50_utils,
+                       std::unique_ptr<FlashromUtils> flashrom_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kFinalize);
   SET_UNREPEATABLE;
@@ -55,6 +58,7 @@ class FinalizeStateHandler : public BaseStateHandler {
   void FinalizeTask();
 
   std::unique_ptr<Cr50Utils> cr50_utils_;
+  std::unique_ptr<FlashromUtils> flashrom_utils_;
   FinalizeStatus status_;
   std::unique_ptr<FinalizeSignalCallback> finalize_signal_sender_;
   base::RepeatingTimer status_timer_;
