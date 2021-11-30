@@ -21,6 +21,7 @@
 /sys/devices/system/cpu/cpufreq/ondemand/up_threshold           u:object_r:sysfs:s0
 /sys/devices/system/cpu/cpufreq/schedutil/down_rate_limit_us    u:object_r:sysfs:s0
 /sys/devices/system/cpu/cpufreq/schedutil/up_rate_limit_us      u:object_r:sysfs:s0
+/sys/devices/system/cpu/cpufreq/schedutil/rate_limit_us         u:object_r:sysfs:s0
 /sys/devices/system/cpu/cpufreq/policy[0-9]+/cpb                u:object_r:sysfs:s0
 /sys/devices/system/cpu/cpufreq/policy[0-9]+/stats/reset        u:object_r:sysfs:s0
 /sys/devices/system/cpu/(cpu[0-9]+/)?(cache/)?(index[0-9]+/)?hotplug/fail               u:object_r:sysfs:s0
