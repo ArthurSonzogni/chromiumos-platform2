@@ -4,6 +4,7 @@
 
 brk: 1
 close: 1
+dup: 1
 execve: 1
 exit_group: 1
 exit: 1
@@ -12,11 +13,13 @@ fcntl: 1
 fstatfs: 1
 fsync: 1
 getcwd: 1
+getdents64: 1
 getpid: 1
 ioctl: 1
 lseek: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mremap: 1
 munmap: 1
 newfstatat: 1
 openat: 1
@@ -25,4 +28,5 @@ read: 1
 readlinkat: 1
 restart_syscall: 1
 rt_sigreturn: 1
+uname: 1
 write: 1

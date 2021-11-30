@@ -29,6 +29,8 @@ struct FormatOptions {
 
 const char kFormatUserAndGroupName[] = "mkfs";
 
+const char kFormatSeccompPolicy[] = "/usr/share/policy/mkfs-seccomp.policy";
+
 // Expected locations of an external format program
 const char* const kFormatProgramPaths[] = {
     "/usr/sbin/mkfs.",
@@ -141,6 +143,8 @@ FormatErrorType StartFormatProcess(const std::string& device_file,
     LOG(WARNING) << "Could not preserve device fd";
     return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
   }
+
+  process->LoadSeccompFilterPolicy(kFormatSeccompPolicy);
 
   uid_t user_id;
   gid_t group_id;
