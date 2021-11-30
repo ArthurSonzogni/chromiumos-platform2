@@ -27,9 +27,10 @@
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.pb.h"
 
-using hwsec::error::TPMError;
-using hwsec::error::TPMErrorBase;
-using hwsec::error::TPMRetryAction;
+using hwsec::StatusChain;
+using hwsec::TPMError;
+using hwsec::TPMErrorBase;
+using hwsec::TPMRetryAction;
 using hwsec_foundation::error::WrapError;
 
 namespace cryptohome {
@@ -89,14 +90,14 @@ CryptoError TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   brillo::SecureBlob auth_value;
 
   for (int i = 0; i < kTpmDecryptMaxRetries; ++i) {
-    TPMErrorBase err =
+    StatusChain<TPMErrorBase> err =
         tpm_->GetAuthValue(cryptohome_key, pass_blob, &auth_value);
     if (err == nullptr) {
       break;
     }
 
     if (!TpmAuthBlockUtils::TPMErrorIsRetriable(err)) {
-      LOG(ERROR) << "Failed to get auth value: " << *err;
+      LOG(ERROR) << "Failed to get auth value: " << err;
       return TpmAuthBlockUtils::TPMErrorToCrypto(err);
     }
 
@@ -104,7 +105,7 @@ CryptoError TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
     if (!cryptohome_key_loader_->ReloadCryptohomeKey()) {
       LOG(ERROR) << "Unable to reload Cryptohome key while creating "
                     "TpmBoundToPcrAuthBlock:"
-                 << *err;
+                 << err;
       // This would happen when the TPM daemons go into a strange state (e.g.
       // crased). Asking the user to reboot may resolve this issue.
       return CryptoError::CE_TPM_REBOOT;
@@ -112,10 +113,10 @@ CryptoError TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   }
 
   brillo::SecureBlob tpm_key;
-  TPMErrorBase err = tpm_->SealToPcrWithAuthorization(
+  StatusChain<TPMErrorBase> err = tpm_->SealToPcrWithAuthorization(
       vkk_key, auth_value, default_pcr_map, &tpm_key);
   if (err != nullptr) {
-    LOG(ERROR) << "Failed to wrap vkk with creds: " << *err;
+    LOG(ERROR) << "Failed to wrap vkk with creds: " << err;
     return TpmAuthBlockUtils::TPMErrorToCrypto(err);
   }
 
@@ -123,7 +124,7 @@ CryptoError TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   err = tpm_->SealToPcrWithAuthorization(vkk_key, auth_value, extended_pcr_map,
                                          &extended_tpm_key);
   if (err != nullptr) {
-    LOG(ERROR) << "Failed to wrap vkk with creds for extended PCR: " << *err;
+    LOG(ERROR) << "Failed to wrap vkk with creds for extended PCR: " << err;
     return TpmAuthBlockUtils::TPMErrorToCrypto(err);
   }
 
@@ -135,7 +136,7 @@ CryptoError TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   brillo::SecureBlob pub_key_hash;
   err = tpm_->GetPublicKeyHash(cryptohome_key, &pub_key_hash);
   if (err != nullptr) {
-    LOG(ERROR) << "Failed to get the TPM public key hash: " << *err;
+    LOG(ERROR) << "Failed to get the TPM public key hash: " << err;
   } else {
     tpm_state.tpm_public_key_hash = pub_key_hash;
   }
@@ -247,7 +248,7 @@ CryptoError TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
 
   // Preload the sealed data while deriving secrets in scrypt.
   ScopedKeyHandle preload_handle;
-  TPMErrorBase err;
+  StatusChain<TPMErrorBase> err;
   for (int i = 0; i < kTpmDecryptMaxRetries; ++i) {
     err = tpm_->PreloadSealedData(tpm_key, &preload_handle);
     if (err == nullptr)
@@ -266,7 +267,7 @@ CryptoError TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
   }
 
   if (err != nullptr) {
-    LOG(ERROR) << "Failed to preload the sealed data: " << *err;
+    LOG(ERROR) << "Failed to preload the sealed data: " << err;
     return TpmAuthBlockUtils::TPMErrorToCrypto(err);
   }
 
@@ -300,12 +301,12 @@ CryptoError TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
     if (!cryptohome_key_loader_->ReloadCryptohomeKey()) {
       LOG(ERROR) << "Unable to reload Cryptohome key while decrypting "
                     "TpmBoundToPcrAuthBlock:"
-                 << *err;
+                 << err;
       break;
     }
   }
   if (err != nullptr) {
-    LOG(ERROR) << "Failed to unwrap VKK with creds: " << *err;
+    LOG(ERROR) << "Failed to unwrap VKK with creds: " << err;
   }
   return TpmAuthBlockUtils::TPMErrorToCrypto(err);
 }

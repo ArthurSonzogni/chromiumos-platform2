@@ -26,61 +26,62 @@ class StubTpm : public Tpm {
 
   // See tpm.h for comments
   TpmVersion GetVersion() override { return TpmVersion::TPM_UNKNOWN; }
-  hwsec::error::TPMErrorBase EncryptBlob(TpmKeyHandle key_handle,
-                                         const SecureBlob& plaintext,
-                                         const SecureBlob& key,
-                                         SecureBlob* ciphertext) override {
-    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
-        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
+  hwsec::StatusChain<hwsec::TPMErrorBase> EncryptBlob(
+      TpmKeyHandle key_handle,
+      const SecureBlob& plaintext,
+      const SecureBlob& key,
+      SecureBlob* ciphertext) override {
+    return hwsec_foundation::error::CreateError<hwsec::TPMError>(
+        "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
-  hwsec::error::TPMErrorBase DecryptBlob(
+  hwsec::StatusChain<hwsec::TPMErrorBase> DecryptBlob(
       TpmKeyHandle key_handle,
       const SecureBlob& ciphertext,
       const SecureBlob& key,
       const std::map<uint32_t, brillo::Blob>& pcr_map,
       SecureBlob* plaintext) override {
-    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
-        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
+    return hwsec_foundation::error::CreateError<hwsec::TPMError>(
+        "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
-  hwsec::error::TPMErrorBase GetAuthValue(
+  hwsec::StatusChain<hwsec::TPMErrorBase> GetAuthValue(
       base::Optional<TpmKeyHandle> key_handle,
       const brillo::SecureBlob& pass_blob,
       brillo::SecureBlob* auth_value) override {
-    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
-        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
+    return hwsec_foundation::error::CreateError<hwsec::TPMError>(
+        "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
-  hwsec::error::TPMErrorBase GetEccAuthValue(
+  hwsec::StatusChain<hwsec::TPMErrorBase> GetEccAuthValue(
       base::Optional<TpmKeyHandle> key_handle,
       const brillo::SecureBlob& pass_blob,
       brillo::SecureBlob* auth_value) override {
-    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
-        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
+    return hwsec_foundation::error::CreateError<hwsec::TPMError>(
+        "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
 
-  hwsec::error::TPMErrorBase SealToPcrWithAuthorization(
+  hwsec::StatusChain<hwsec::TPMErrorBase> SealToPcrWithAuthorization(
       const SecureBlob& plaintext,
       const SecureBlob& auth_value,
       const std::map<uint32_t, brillo::Blob>& pcr_map,
       SecureBlob* sealed_data) override {
-    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
-        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
+    return hwsec_foundation::error::CreateError<hwsec::TPMError>(
+        "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
-  hwsec::error::TPMErrorBase PreloadSealedData(
+  hwsec::StatusChain<hwsec::TPMErrorBase> PreloadSealedData(
       const SecureBlob& sealed_data, ScopedKeyHandle* preload_handle) override {
-    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
-        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
+    return hwsec_foundation::error::CreateError<hwsec::TPMError>(
+        "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
-  hwsec::error::TPMErrorBase UnsealWithAuthorization(
+  hwsec::StatusChain<hwsec::TPMErrorBase> UnsealWithAuthorization(
       base::Optional<TpmKeyHandle> preload_handle,
       const SecureBlob& sealed_data,
       const SecureBlob& auth_value,
       const std::map<uint32_t, brillo::Blob>& pcr_map,
       SecureBlob* plaintext) override {
-    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
-        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
+    return hwsec_foundation::error::CreateError<hwsec::TPMError>(
+        "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
-  hwsec::error::TPMErrorBase GetPublicKeyHash(TpmKeyHandle key_handle,
-                                              SecureBlob* hash) override {
+  hwsec::StatusChain<hwsec::TPMErrorBase> GetPublicKeyHash(
+      TpmKeyHandle key_handle, SecureBlob* hash) override {
     return nullptr;
   }
   bool IsEnabled() override { return false; }
@@ -89,19 +90,20 @@ class StubTpm : public Tpm {
   bool IsNvramDefined(uint32_t index) override { return false; }
   bool IsNvramLocked(uint32_t index) override { return false; }
   unsigned int GetNvramSize(uint32_t index) override { return 0; }
-  hwsec::error::TPMErrorBase GetRandomDataBlob(size_t length,
-                                               brillo::Blob* data) override {
-    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
-        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
+  hwsec::StatusChain<hwsec::TPMErrorBase> GetRandomDataBlob(
+      size_t length, brillo::Blob* data) override {
+    return hwsec_foundation::error::CreateError<hwsec::TPMError>(
+        "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
-  hwsec::error::TPMErrorBase GetRandomDataSecureBlob(
+  hwsec::StatusChain<hwsec::TPMErrorBase> GetRandomDataSecureBlob(
       size_t length, brillo::SecureBlob* data) override {
-    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
-        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
+    return hwsec_foundation::error::CreateError<hwsec::TPMError>(
+        "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
-  hwsec::error::TPMErrorBase GetAlertsData(Tpm::AlertsData* alerts) override {
-    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
-        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
+  hwsec::StatusChain<hwsec::TPMErrorBase> GetAlertsData(
+      Tpm::AlertsData* alerts) override {
+    return hwsec_foundation::error::CreateError<hwsec::TPMError>(
+        "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
   bool DefineNvram(uint32_t index, size_t length, uint32_t flags) override {
     return false;
@@ -130,10 +132,10 @@ class StubTpm : public Tpm {
     return false;
   }
   bool CreateWrappedEccKey(SecureBlob* wrapped_key) override { return false; }
-  hwsec::error::TPMErrorBase LoadWrappedKey(
+  hwsec::StatusChain<hwsec::TPMErrorBase> LoadWrappedKey(
       const SecureBlob& wrapped_key, ScopedKeyHandle* key_handle) override {
-    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
-        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
+    return hwsec_foundation::error::CreateError<hwsec::TPMError>(
+        "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
   bool LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
                                SecureBlob* key_blob) override {
@@ -170,7 +172,8 @@ class StubTpm : public Tpm {
       override {
     return nullptr;
   }
-  hwsec::error::TPMErrorBase IsDelegateBoundToPcr(bool* result) override {
+  hwsec::StatusChain<hwsec::TPMErrorBase> IsDelegateBoundToPcr(
+      bool* result) override {
     *result = true;
     return nullptr;
   }
@@ -181,9 +184,9 @@ class StubTpm : public Tpm {
                        const brillo::SecureBlob& blob) override {
     return false;
   }
-  hwsec::error::TPMErrorBase IsSrkRocaVulnerable(bool*) override {
-    return hwsec_foundation::error::CreateError<hwsec::error::TPMError>(
-        "stub tpm operation", hwsec::error::TPMRetryAction::kNoRetry);
+  hwsec::StatusChain<hwsec::TPMErrorBase> IsSrkRocaVulnerable(bool*) override {
+    return hwsec_foundation::error::CreateError<hwsec::TPMError>(
+        "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
   bool GetDelegate(brillo::Blob* blob,
                    brillo::Blob* secret,

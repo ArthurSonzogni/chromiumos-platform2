@@ -36,7 +36,11 @@ static_library("overalls_library") {
 }
 
 source_set("error_library") {
-  sources = [ "error/tpm_retry_handler.cc" ]
+  sources = [
+    "error/error_linkage.cc",
+    "error/tpm_error.cc",
+    "error/tpm_retry_handler.cc",
+  ]
   if (use.tpm2 || use.fuzzer) {
     sources += [ "error/tpm2_error.cc" ]
   }

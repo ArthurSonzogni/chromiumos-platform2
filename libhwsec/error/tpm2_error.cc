@@ -23,17 +23,12 @@ std::string FormatTrunksErrorCode(trunks::TPM_RC result) {
 }  // namespace
 
 namespace hwsec {
-namespace error {
 
-std::string TPM2ErrorObj::ToReadableString() const {
-  return FormatTrunksErrorCode(error_code_);
-}
+TPM2Error::TPM2Error(trunks::TPM_RC error_code)
+    : TPMErrorBase(FormatTrunksErrorCode(error_code)),
+      error_code_(error_code) {}
 
-hwsec_foundation::error::ErrorBase TPM2ErrorObj::SelfCopy() const {
-  return std::make_unique<TPM2ErrorObj>(error_code_);
-}
-
-TPMRetryAction TPM2ErrorObj::ToTPMRetryAction() const {
+TPMRetryAction TPM2Error::ToTPMRetryAction() const {
   trunks::TPM_RC error_code = error_code_;
   // For hardware TPM errors and TPM-equivalent response codes produced by
   // Resource Manager, use just the error number and strip everything else.
@@ -88,5 +83,4 @@ TPMRetryAction TPM2ErrorObj::ToTPMRetryAction() const {
   return status;
 }
 
-}  // namespace error
 }  // namespace hwsec

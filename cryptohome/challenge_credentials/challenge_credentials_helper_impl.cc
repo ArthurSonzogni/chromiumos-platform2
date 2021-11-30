@@ -19,9 +19,10 @@
 #include "cryptohome/signature_sealing_backend.h"
 
 using brillo::Blob;
-using hwsec::error::TPMError;
-using hwsec::error::TPMErrorBase;
-using hwsec::error::TPMRetryAction;
+using hwsec::StatusChain;
+using hwsec::TPMError;
+using hwsec::TPMErrorBase;
+using hwsec::TPMRetryAction;
 using hwsec_foundation::error::CreateError;
 using hwsec_foundation::error::WrapError;
 
@@ -29,7 +30,7 @@ namespace cryptohome {
 
 namespace {
 
-bool IsOperationFailureTransient(const TPMErrorBase& error) {
+bool IsOperationFailureTransient(const StatusChain<TPMErrorBase>& error) {
   TPMRetryAction action = error->ToTPMRetryAction();
   return action == TPMRetryAction::kCommunication ||
          action == TPMRetryAction::kLater;
@@ -149,7 +150,7 @@ void ChallengeCredentialsHelperImpl::OnDecryptCompleted(
     bool locked_to_single_user,
     int attempt_number,
     DecryptCallback original_callback,
-    TPMErrorBase error,
+    StatusChain<TPMErrorBase> error,
     std::unique_ptr<brillo::SecureBlob> passkey) {
   DCHECK(thread_checker_.CalledOnValidThread());
   DCHECK_EQ(passkey == nullptr, error != nullptr);
@@ -157,13 +158,13 @@ void ChallengeCredentialsHelperImpl::OnDecryptCompleted(
   if (error && IsOperationFailureTransient(error) &&
       attempt_number < kRetryAttemptCount) {
     LOG(WARNING) << "Retrying the decryption operation after transient error: "
-                 << *error;
+                 << error;
     StartDecryptOperation(account_id, public_key_info, keyset_challenge_info,
                           locked_to_single_user, attempt_number + 1,
                           std::move(original_callback));
   } else {
     if (error) {
-      LOG(ERROR) << "Decryption completed with error: " << *error;
+      LOG(ERROR) << "Decryption completed with error: " << error;
     }
     std::move(original_callback).Run(std::move(passkey));
   }

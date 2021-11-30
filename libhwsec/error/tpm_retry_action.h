@@ -6,7 +6,6 @@
 #define LIBHWSEC_ERROR_TPM_RETRY_ACTION_H_
 
 namespace hwsec {
-namespace error {
 
 enum class TPMRetryAction {
   // Action succeeded - Succeeded.
@@ -47,7 +46,6 @@ enum class TPMRetryAction {
   kNoRetry,
 };
 
-}  // namespace error
 }  // namespace hwsec
 
 #endif  // LIBHWSEC_ERROR_TPM_RETRY_ACTION_H_

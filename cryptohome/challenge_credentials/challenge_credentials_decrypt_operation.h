@@ -37,7 +37,7 @@ class ChallengeCredentialsDecryptOperation final
   // If the operation succeeds, |passkey| can be used for decryption of the
   // user's vault keyset.
   using CompletionCallback =
-      base::OnceCallback<void(hwsec::error::TPMErrorBase error,
+      base::OnceCallback<void(hwsec::StatusChain<hwsec::TPMErrorBase> error,
                               std::unique_ptr<brillo::SecureBlob> passkey)>;
 
   // |key_challenge_service| is a non-owned pointer which must outlive the
@@ -64,14 +64,14 @@ class ChallengeCredentialsDecryptOperation final
 
  private:
   // Starts the processing.
-  hwsec::error::TPMErrorBase StartProcessing();
+  hwsec::StatusChain<hwsec::TPMErrorBase> StartProcessing();
 
   // Makes a challenge request with the salt.
-  hwsec::error::TPMErrorBase StartProcessingSalt();
+  hwsec::StatusChain<hwsec::TPMErrorBase> StartProcessingSalt();
 
   // Begins unsealing the secret, and makes a challenge request for unsealing
   // it.
-  hwsec::error::TPMErrorBase StartProcessingSealedSecret();
+  hwsec::StatusChain<hwsec::TPMErrorBase> StartProcessingSealedSecret();
 
   // Called when signature for the salt is received.
   void OnSaltChallengeResponse(std::unique_ptr<brillo::Blob> salt_signature);
@@ -84,7 +84,7 @@ class ChallengeCredentialsDecryptOperation final
   void ProceedIfChallengesDone();
 
   // Completes with returning the specified results.
-  void Resolve(hwsec::error::TPMErrorBase error,
+  void Resolve(hwsec::StatusChain<hwsec::TPMErrorBase> error,
                std::unique_ptr<brillo::SecureBlob> passkey);
 
   Tpm* const tpm_;

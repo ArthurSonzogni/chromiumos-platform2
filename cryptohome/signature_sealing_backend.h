@@ -52,7 +52,7 @@ class SignatureSealingBackend {
     //                            GetChallengeValue() using the algorithm as
     //                            returned by GetChallengeAlgorithm().
     //   unsealed_value - The unsealed value, if the function returned true.
-    virtual hwsec::error::TPMErrorBase Unseal(
+    virtual hwsec::StatusChain<hwsec::TPMErrorBase> Unseal(
         const brillo::Blob& signed_challenge_value,
         brillo::SecureBlob* unsealed_value) = 0;
   };
@@ -79,7 +79,7 @@ class SignatureSealingBackend {
   //   delegate_secret - The delegate secret for the delegate blob.
   //   secret_value - The created secret value.
   //   sealed_secret_data - Securely sealed representation of the secret value.
-  virtual hwsec::error::TPMErrorBase CreateSealedSecret(
+  virtual hwsec::StatusChain<hwsec::TPMErrorBase> CreateSealedSecret(
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
       const std::map<uint32_t, brillo::Blob>& default_pcr_map,
@@ -106,7 +106,7 @@ class SignatureSealingBackend {
   //   delegate_blob - The blob for the owner delegation.
   //   delegate_secret - The delegate secret for the delegate blob.
   //   locked_to_single_user - Should use extended PCR to unseal or not.
-  virtual hwsec::error::TPMErrorBase CreateUnsealingSession(
+  virtual hwsec::StatusChain<hwsec::TPMErrorBase> CreateUnsealingSession(
       const structure::SignatureSealedData& sealed_secret_data,
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,

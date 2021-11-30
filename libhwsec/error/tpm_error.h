@@ -9,115 +9,115 @@
 #include <string>
 #include <utility>
 
-#include <libhwsec-foundation/error/error.h>
-
+#include <libhwsec/error/error.h>
 #include "libhwsec/error/tpm_retry_action.h"
+#include "libhwsec/hwsec_export.h"
 
 /* The most important function of TPM error is representing a TPM retry action.
  *
- * Using CreateError<> could simply convert a TPM error code to an TPM error.
+ * MakeStatus<TPM1Error>/MakeStatus<TPM2Error> converts the raw error code from
+ * the daemon to a Status object.
  *
  * For example:
- *   auto err = CreateError<TPM1Error>(
+ *   StatusChain<TPM1Error> status = MakeStatus<TPM1Error>(
  *       Tspi_TPM_CreateEndorsementKey(tpm_handle, local_key_handle, NULL));
  *
  * And it could also creating software based TPM error.
  *
  * For example:
- *   auto err = CreateError<TPMError>("Failed to get trunks context",
- *                                    TPMRetryAction::kNoRetry);
+ *   StatusChain<TPMError> status =
+ *       MakeStatus<TPMError>("Failed to get trunks context",
+ *                            TPMRetryAction::kNoRetry);
  *
- * Using WrapError<> could wrap a TPM error into a new TPM error, and it
- * would transfer the retry action to the new TPM error.
+ * Using Wrap() could wrap a TPM error into a new TPM error, and it
+ * would transfer the retry action to the new TPM error (due to Wrap
+ * overload).
  *
  * For example:
- *   if (auto err = GetPublicKeyBlob(...))) {
- *     return WrapError<TPMError>(std::move(err),
- *                                      "Failed to get TPM public key hash");
+ *   if (StatusChain<TPMErrorBase> status = GetPublicKeyBlob(...))) {
+ *     return MakeStatus<TPMError>("Failed to get TPM public key hash")
+ *        .Wrap(std::move(status));
  *   }
  *
  * And it could also overwrite the original retry action.
  *
  * For example:
- *   if (auto err = CreateError<TPM2Error>(...)) {
- *     return WrapError<TPMError>(std::move(err), "Error ...",
- *                                      TPMRetryAction::kNoRetry);
+ *   if (StatusChain<TPM2Error> status = MakeStatus<TPM2Error>(...)) {
+ *     return MakeStatus<TPMError>(
+ *        "Error ...", TPMRetryAction::kNoRetry).Wrap(std::move(status));
  *   }
+ *
+ * It can also be used with status_macros helpers. For more info see
+ * `platform2/libhwsec-foundation/error/status_macros.h`.
+ *
+ * RETURN_IF_ERROR(
+ *     MakeStatus<TPM1Error>(
+ *         Tspi_TPM_CreateEndorsementKey(tpm_handle, local_key_handle, NULL),
+ *     AsStatusChain<TPMError>("Failed to create endorsement key")));
  */
 
 namespace hwsec {
-namespace error {
 
-// A base class of all kinds of TPM ErrorBase.
-class TPMErrorBaseObj : public hwsec_foundation::error::ErrorBaseObj {
+// A base class for TPM errors.
+class HWSEC_EXPORT TPMErrorBase : public Error {
  public:
-  TPMErrorBaseObj() = default;
-  virtual ~TPMErrorBaseObj() = default;
+  using MakeStatusTrait = ForbidMakeStatus;
+
+  explicit TPMErrorBase(std::string message);
+  ~TPMErrorBase() override = default;
 
   // Returns what the action should do after this error happen.
   virtual TPMRetryAction ToTPMRetryAction() const = 0;
-
- protected:
-  TPMErrorBaseObj(TPMErrorBaseObj&&) = default;
 };
-using TPMErrorBase = std::unique_ptr<TPMErrorBaseObj>;
 
-// A TPM error which contains an error message and retry action instead of an
-// error code.
-class TPMErrorObj : public TPMErrorBaseObj {
+// A TPM error which contains error message and retry action. Doesn't contain
+// an error code on its own.
+class HWSEC_EXPORT TPMError : public TPMErrorBase {
  public:
-  TPMErrorObj(const std::string& error_message, TPMRetryAction action)
-      : error_message_(error_message), retry_action_(action) {}
-  TPMErrorObj(std::string&& error_message, TPMRetryAction action)
-      : error_message_(std::move(error_message)), retry_action_(action) {}
-  virtual ~TPMErrorObj() = default;
+  // Overload MakeStatus to prevent issuing un-actioned TPMErrors. Attempting to
+  // create a StatusChain<TPMError> without an action will create a stub object
+  // that caches the message and waits for the Wrap call with an appropriate
+  // Status to complete the definition and construct a proper TPMError. That
+  // intends to ensure that all TPMError object propagated contain an action
+  // either explicitly specified or inherited from a specific tpm-type dependent
+  // error object.
+  struct MakeStatusTrait {
+    class Unactioned {
+     public:
+      explicit Unactioned(std::string error_message)
+          : error_message_(error_message) {}
 
-  hwsec_foundation::error::ErrorBase SelfCopy() const {
-    return std::make_unique<TPMErrorObj>(error_message_, retry_action_);
-  }
+      // Wrap will convert the stab into the appropriate Status type.
+      auto Wrap(StatusChain<TPMErrorBase> status) && {
+        return NewStatus<TPMError>(error_message_, status->ToTPMRetryAction())
+            .Wrap(std::move(status));
+      }
 
-  TPMRetryAction ToTPMRetryAction() const { return retry_action_; }
+     private:
+      const std::string error_message_;
+    };
 
-  std::string ToReadableString() const { return error_message_; }
+    // Returns a stub that doesn't convert to Status. The stub will wait for a
+    // Wrap.
+    auto operator()(std::string error_message) {
+      return Unactioned(error_message);
+    }
 
- protected:
-  TPMErrorObj(TPMErrorObj&&) = default;
+    // If we get action as an argument - create the Status directly.
+    auto operator()(std::string error_message, TPMRetryAction action) {
+      return NewStatus<TPMError>(error_message, action);
+    }
+  };
+
+  TPMError(std::string error_message, TPMRetryAction action);
+  ~TPMError() override = default;
+
+  TPMRetryAction ToTPMRetryAction() const override { return retry_action_; }
 
  private:
-  const std::string error_message_;
   const TPMRetryAction retry_action_;
 };
-using TPMError = std::unique_ptr<TPMErrorObj>;
 
-}  // namespace error
 }  // namespace hwsec
-
-namespace hwsec_foundation {
-namespace error {
-
-// Overloads the helper to wrap a TPMErrorBase into a TPMError without
-// specifying the retry action.
-template <typename ErrorType,
-          typename InnerErrorType,
-          typename StringType,
-          typename std::enable_if<
-              std::is_same<ErrorType, hwsec::error::TPMError>::value>::type* =
-              nullptr,
-          typename std::enable_if<std::is_base_of<
-              hwsec::error::TPMErrorBaseObj,
-              typename UnwarpErrorType<InnerErrorType>::type>::value>::type* =
-              nullptr,
-          decltype(hwsec::error::TPMErrorObj(
-              std::forward<StringType>(std::declval<StringType&&>()),
-              std::declval<hwsec::error::TPMRetryAction>()))* = nullptr>
-hwsec::error::TPMError WrapError(InnerErrorType err,
-                                 StringType&& error_message) {
-  hwsec::error::TPMRetryAction action = err->ToTPMRetryAction();
-  return WrapError<hwsec::error::TPMError>(
-      std::move(err), std::forward<StringType>(error_message), action);
-}
-
-}  // namespace error
-}  // namespace hwsec_foundation
 
 #endif  // LIBHWSEC_ERROR_TPM_ERROR_H_

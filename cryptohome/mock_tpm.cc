@@ -8,7 +8,7 @@
 
 #include <libhwsec-foundation/error/testing_helper.h>
 
-using hwsec::error::TPMErrorBase;
+using hwsec::TPMErrorBase;
 using hwsec_foundation::error::testing::ReturnError;
 using testing::_;
 using testing::DoAll;

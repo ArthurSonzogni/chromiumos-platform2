@@ -27,6 +27,9 @@
 namespace cryptohome {
 namespace cryptorecovery {
 
+using hwsec::StatusChain;
+using hwsec::TPMErrorBase;
+
 namespace {
 // Size of the auth_value blob to be randomly generated.
 //
@@ -70,11 +73,11 @@ bool RecoveryCryptoTpm1BackendImpl::EncryptEccPrivateKey(
   // and if auth_value is provided, one's own private key will be sealed.
   if (!auth_value.has_value()) {
     *encrypted_own_priv_key = own_priv_key;
-  } else if (hwsec::error::TPMErrorBase err =
+  } else if (StatusChain<TPMErrorBase> err =
                  tpm_impl_->SealToPcrWithAuthorization(
                      own_priv_key, auth_value.value(), /*pcr_map=*/{{}},
                      encrypted_own_priv_key)) {
-    LOG(ERROR) << "Error sealing the blob: " << *err;
+    LOG(ERROR) << "Error sealing the blob: " << err;
     return false;
   }
   return true;
@@ -98,12 +101,11 @@ RecoveryCryptoTpm1BackendImpl::GenerateDiffieHellmanSharedSecret(
   // and if auth_value is provided, one's own private key will be unsealed.
   if (!auth_value.has_value()) {
     unencrypted_own_priv_key = encrypted_own_priv_key;
-  } else if (hwsec::error::TPMErrorBase err =
-                 tpm_impl_->UnsealWithAuthorization(
-                     /*preload_handle=*/base::nullopt, encrypted_own_priv_key,
-                     auth_value.value(),
-                     /* pcr_map=*/{}, &unencrypted_own_priv_key)) {
-    LOG(ERROR) << "Failed to unseal the secret value: " << *err;
+  } else if (StatusChain<TPMErrorBase> err = tpm_impl_->UnsealWithAuthorization(
+                 /*preload_handle=*/base::nullopt, encrypted_own_priv_key,
+                 auth_value.value(),
+                 /* pcr_map=*/{}, &unencrypted_own_priv_key)) {
+    LOG(ERROR) << "Failed to unseal the secret value: " << err;
     return nullptr;
   }
 

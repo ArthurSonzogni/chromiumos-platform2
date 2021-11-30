@@ -14,9 +14,10 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 
-using ::hwsec::error::TPMError;
-using ::hwsec::error::TPMErrorBase;
-using ::hwsec::error::TPMRetryAction;
+using ::hwsec::StatusChain;
+using ::hwsec::TPMError;
+using ::hwsec::TPMErrorBase;
+using ::hwsec::TPMRetryAction;
 using ::hwsec_foundation::error::testing::ReturnError;
 using ::testing::_;
 using ::testing::Invoke;
@@ -43,12 +44,13 @@ class CryptohomeRsaKeyLoaderTest : public ::testing::Test {
   // For TPM-related flags: enabled is always true, other flags are settable.
   bool IsTpmOwned() const { return is_tpm_owned_; }
   void SetIsTpmOwned(bool is_tpm_owned) { is_tpm_owned_ = is_tpm_owned; }
-  TPMErrorBase GetRandomDataBlob(size_t length, brillo::Blob* data) const {
+  StatusChain<TPMErrorBase> GetRandomDataBlob(size_t length,
+                                              brillo::Blob* data) const {
     data->resize(length, 0);
     return nullptr;
   }
-  TPMErrorBase GetRandomDataSecureBlob(size_t length,
-                                       brillo::SecureBlob* data) const {
+  StatusChain<TPMErrorBase> GetRandomDataSecureBlob(
+      size_t length, brillo::SecureBlob* data) const {
     data->resize(length, 0);
     return nullptr;
   }

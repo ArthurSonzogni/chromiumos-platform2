@@ -38,10 +38,11 @@ using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
-using hwsec::error::TPM2Error;
-using hwsec::error::TPMError;
-using hwsec::error::TPMErrorBase;
-using hwsec::error::TPMRetryAction;
+using hwsec::StatusChain;
+using hwsec::TPM2Error;
+using hwsec::TPMError;
+using hwsec::TPMErrorBase;
+using hwsec::TPMRetryAction;
 using hwsec_foundation::error::CreateError;
 using hwsec_foundation::error::WrapError;
 using trunks::GetErrorString;
@@ -79,8 +80,8 @@ class UnsealingSessionTpm2Impl final
   // UnsealingSession:
   structure::ChallengeSignatureAlgorithm GetChallengeAlgorithm() override;
   Blob GetChallengeValue() override;
-  TPMErrorBase Unseal(const Blob& signed_challenge_value,
-                      SecureBlob* unsealed_value) override;
+  StatusChain<TPMErrorBase> Unseal(const Blob& signed_challenge_value,
+                                   SecureBlob* unsealed_value) override;
 
  private:
   // Unowned.
@@ -160,7 +161,7 @@ Blob UnsealingSessionTpm2Impl::GetChallengeValue() {
   return CombineBlobs({policy_session_tpm_nonce_, expiration_blob});
 }
 
-TPMErrorBase UnsealingSessionTpm2Impl::Unseal(
+StatusChain<TPMErrorBase> UnsealingSessionTpm2Impl::Unseal(
     const Blob& signed_challenge_value, SecureBlob* unsealed_value) {
   DCHECK(thread_checker_.CalledOnValidThread());
   // Start a TPM authorization session.
@@ -224,9 +225,10 @@ std::map<uint32_t, std::string> ToStrPcrMap(
   return str_pcr_map;
 }
 
-TPMError GetPcrPolicyDigest(trunks::PolicySession* policy_session,
-                            const std::map<uint32_t, brillo::Blob>& pcr_map,
-                            std::string* pcr_policy_digest) {
+StatusChain<TPMError> GetPcrPolicyDigest(
+    trunks::PolicySession* policy_session,
+    const std::map<uint32_t, brillo::Blob>& pcr_map,
+    std::string* pcr_policy_digest) {
   std::map<uint32_t, std::string> str_pcr_map = ToStrPcrMap(pcr_map);
 
   // Run PolicyPCR against the PCR set.
@@ -256,7 +258,7 @@ SignatureSealingBackendTpm2Impl::SignatureSealingBackendTpm2Impl(Tpm2Impl* tpm)
 
 SignatureSealingBackendTpm2Impl::~SignatureSealingBackendTpm2Impl() = default;
 
-TPMErrorBase SignatureSealingBackendTpm2Impl::CreateSealedSecret(
+StatusChain<TPMErrorBase> SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     const Blob& public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
     const std::map<uint32_t, brillo::Blob>& default_pcr_map,
@@ -322,16 +324,16 @@ TPMErrorBase SignatureSealingBackendTpm2Impl::CreateSealedSecret(
   std::vector<std::string> pcr_policy_digests;
 
   std::string default_pcr_policy_digest;
-  if (TPMError err = GetPcrPolicyDigest(policy_session.get(), default_pcr_map,
-                                        &default_pcr_policy_digest)) {
+  if (StatusChain<TPMError> err = GetPcrPolicyDigest(
+          policy_session.get(), default_pcr_map, &default_pcr_policy_digest)) {
     return WrapError<TPMError>(std::move(err),
                                "Error getting default PCR policy digest");
   }
   pcr_policy_digests.push_back(default_pcr_policy_digest);
 
   std::string extended_pcr_policy_digest;
-  if (TPMError err = GetPcrPolicyDigest(policy_session.get(), default_pcr_map,
-                                        &extended_pcr_policy_digest)) {
+  if (StatusChain<TPMError> err = GetPcrPolicyDigest(
+          policy_session.get(), default_pcr_map, &extended_pcr_policy_digest)) {
     return WrapError<TPMError>(std::move(err),
                                "Error getting default PCR policy digest");
   }
@@ -398,7 +400,8 @@ TPMErrorBase SignatureSealingBackendTpm2Impl::CreateSealedSecret(
   return nullptr;
 }
 
-TPMErrorBase SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
+StatusChain<TPMErrorBase>
+SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
     const structure::SignatureSealedData& sealed_secret_data,
     const Blob& public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,

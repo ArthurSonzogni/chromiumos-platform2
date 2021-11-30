@@ -30,9 +30,10 @@
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.pb.h"
 
-using hwsec::error::TPMError;
-using hwsec::error::TPMErrorBase;
-using hwsec::error::TPMRetryAction;
+using hwsec::StatusChain;
+using hwsec::TPMError;
+using hwsec::TPMErrorBase;
+using hwsec::TPMRetryAction;
 using hwsec_foundation::error::WrapError;
 
 namespace {
@@ -159,7 +160,7 @@ CryptoError TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
 
   for (int i = 0; i < auth_state.auth_value_rounds.value(); i++) {
     brillo::SecureBlob tmp_value;
-    TPMErrorBase err;
+    StatusChain<TPMErrorBase> err;
     for (int k = 0; k < kTpmDecryptMaxRetries; k++) {
       err = HANDLE_TPM_COMM_ERROR(
           tpm_->GetEccAuthValue(cryptohome_key, auth_value, &tmp_value));
@@ -167,10 +168,10 @@ CryptoError TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
         break;
       }
 
-      LOG(ERROR) << "Failed to get ECC auth value: " << *err;
+      LOG(ERROR) << "Failed to get ECC auth value: " << err;
 
-      auto ecc_err = err->As<EllipticCurveError>();
-      if (ecc_err != nullptr &&
+      auto ecc_err = err.Find<EllipticCurveError>();
+      if (ecc_err &&
           ecc_err->ErrorCode() == EllipticCurveErrorCode::kScalarOutOfRange) {
         // The scalar for EC_POINT multiplication is out of range.
         // We should retry the process again.
@@ -194,7 +195,7 @@ CryptoError TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
     }
 
     if (err != nullptr) {
-      LOG(ERROR) << "Failed to get ECC auth value: " << *err;
+      LOG(ERROR) << "Failed to get ECC auth value: " << err;
       // Tell user to reboot the device may resolve this issue.
       return CryptoError::CE_TPM_REBOOT;
     }
@@ -230,10 +231,11 @@ CryptoError TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
       tpm_->GetPcrMap(obfuscated_username, true /* use_extended_pcr */);
 
   brillo::SecureBlob sealed_hvkkm;
-  TPMErrorBase err = HANDLE_TPM_COMM_ERROR(tpm_->SealToPcrWithAuthorization(
-      hvkkm, auth_value, default_pcr_map, &sealed_hvkkm));
+  StatusChain<TPMErrorBase> err =
+      HANDLE_TPM_COMM_ERROR(tpm_->SealToPcrWithAuthorization(
+          hvkkm, auth_value, default_pcr_map, &sealed_hvkkm));
   if (err != nullptr) {
-    LOG(ERROR) << "Failed to wrap HVKKM with creds: " << *err;
+    LOG(ERROR) << "Failed to wrap HVKKM with creds: " << err;
     return TpmAuthBlockUtils::TPMErrorToCrypto(err);
   }
 
@@ -242,7 +244,7 @@ CryptoError TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
       hvkkm, auth_value, extended_pcr_map, &extended_sealed_hvkkm));
   if (err != nullptr) {
     LOG(ERROR) << "Failed to wrap hvkkm with creds for extended user state: "
-               << *err;
+               << err;
     return TpmAuthBlockUtils::TPMErrorToCrypto(err);
   }
 
@@ -253,7 +255,7 @@ CryptoError TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
   err = HANDLE_TPM_COMM_ERROR(
       tpm_->GetPublicKeyHash(cryptohome_key, &pub_key_hash));
   if (err != nullptr) {
-    LOG(ERROR) << "Failed to get the TPM public key hash: " << *err;
+    LOG(ERROR) << "Failed to get the TPM public key hash: " << err;
     return TpmAuthBlockUtils::TPMErrorToCrypto(err);
   } else {
     auth_state.tpm_public_key_hash = std::move(pub_key_hash);
@@ -370,11 +372,11 @@ CryptoError TpmEccAuthBlock::DeriveVkk(bool locked_to_single_user,
         base::Unretained(&scrypt_done)));
 
     // Preload the sealed data while deriving secrets in scrypt.
-    TPMErrorBase err = HANDLE_TPM_COMM_ERROR(
+    StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
         tpm_->PreloadSealedData(sealed_hvkkm, &preload_handle));
 
     if (err != nullptr) {
-      LOG(ERROR) << "Failed to preload the sealed data: " << *err;
+      LOG(ERROR) << "Failed to preload the sealed data: " << err;
       return TpmAuthBlockUtils::TPMErrorToCrypto(err);
     }
   }
@@ -434,7 +436,7 @@ CryptoError TpmEccAuthBlock::DeriveHvkkm(bool locked_to_single_user,
 
   for (int i = 0; i < auth_value_rounds; i++) {
     brillo::SecureBlob tmp_value;
-    TPMErrorBase err;
+    StatusChain<TPMErrorBase> err;
     for (int k = 0; k < kTpmDecryptMaxRetries; k++) {
       err = HANDLE_TPM_COMM_ERROR(
           tpm_->GetEccAuthValue(cryptohome_key, auth_value, &tmp_value));
@@ -442,7 +444,7 @@ CryptoError TpmEccAuthBlock::DeriveHvkkm(bool locked_to_single_user,
         break;
       }
 
-      LOG(ERROR) << "Failed to get ECC auth value: " << *err;
+      LOG(ERROR) << "Failed to get ECC auth value: " << err;
 
       if (err->ToTPMRetryAction() != TPMRetryAction::kLater) {
         return TpmAuthBlockUtils::TPMErrorToCrypto(err);
@@ -460,7 +462,7 @@ CryptoError TpmEccAuthBlock::DeriveHvkkm(bool locked_to_single_user,
     }
 
     if (err != nullptr) {
-      LOG(ERROR) << "Failed to get ECC auth value: " << *err;
+      LOG(ERROR) << "Failed to get ECC auth value: " << err;
       // Tell the user to reboot the device may resolve this issue.
       return CryptoError::CE_TPM_REBOOT;
     }
@@ -472,10 +474,11 @@ CryptoError TpmEccAuthBlock::DeriveHvkkm(bool locked_to_single_user,
 
   std::map<uint32_t, brillo::Blob> pcr_map(
       {{kTpmSingleUserPCR, brillo::Blob()}});
-  TPMErrorBase err = HANDLE_TPM_COMM_ERROR(tpm_->UnsealWithAuthorization(
-      sealed_hvkkm_handle, sealed_hvkkm, auth_value, pcr_map, hvkkm));
+  StatusChain<TPMErrorBase> err =
+      HANDLE_TPM_COMM_ERROR(tpm_->UnsealWithAuthorization(
+          sealed_hvkkm_handle, sealed_hvkkm, auth_value, pcr_map, hvkkm));
   if (err != nullptr) {
-    LOG(ERROR) << "Failed to unwrap VKK with creds: " << *err;
+    LOG(ERROR) << "Failed to unwrap VKK with creds: " << err;
     return TpmAuthBlockUtils::TPMErrorToCrypto(err);
   }
 

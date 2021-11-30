@@ -14,8 +14,8 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 
-using ::hwsec::error::TPMError;
-using ::hwsec::error::TPMRetryAction;
+using ::hwsec::TPMError;
+using ::hwsec::TPMRetryAction;
 using ::hwsec_foundation::error::testing::ReturnError;
 using ::testing::_;
 using ::testing::Invoke;

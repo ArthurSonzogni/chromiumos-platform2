@@ -7,8 +7,8 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 using brillo::Blob;
-using ::hwsec::error::TPMError;
-using ::hwsec::error::TPMRetryAction;
+using ::hwsec::TPMError;
+using ::hwsec::TPMRetryAction;
 using ::hwsec_foundation::error::testing::ReturnError;
 using testing::_;
 

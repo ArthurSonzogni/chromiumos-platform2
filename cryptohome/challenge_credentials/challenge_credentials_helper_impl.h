@@ -94,7 +94,7 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
       bool locked_to_single_user,
       int attempt_number,
       DecryptCallback original_callback,
-      hwsec::error::TPMErrorBase retry_action,
+      hwsec::StatusChain<hwsec::TPMErrorBase> retry_action,
       std::unique_ptr<brillo::SecureBlob> passkey);
 
   // Wrapper for the completion callback of VerifyKey(). Cleans up resources

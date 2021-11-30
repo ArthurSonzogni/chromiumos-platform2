@@ -56,7 +56,8 @@ using brillo::Blob;
 using brillo::SecureBlob;
 using brillo::cryptohome::home::SanitizeUserName;
 using brillo::cryptohome::home::SanitizeUserNameWithSalt;
-using hwsec::error::TPMErrorBase;
+using hwsec::StatusChain;
+using hwsec::TPMErrorBase;
 
 namespace cryptohome {
 
@@ -1504,10 +1505,11 @@ bool UserDataAuth::InitForChallengeResponseAuth(
 
   // Fail if the TPM is known to be vulnerable and we're not in a test image.
   bool is_srk_roca_vulnerable;
-  if (TPMErrorBase err = tpm_->IsSrkRocaVulnerable(&is_srk_roca_vulnerable)) {
+  if (StatusChain<TPMErrorBase> err =
+          tpm_->IsSrkRocaVulnerable(&is_srk_roca_vulnerable)) {
     LOG(ERROR) << "Cannot do challenge-response mount: Failed to check for "
                   "ROCA vulnerability: "
-               << *err;
+               << err;
     *error_code = user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL;
     return false;
   }
@@ -3267,11 +3269,11 @@ void UserDataAuth::UploadAlertsDataCallback() {
   Tpm::AlertsData alerts;
 
   CHECK(tpm_);
-  if (TPMErrorBase err = tpm_->GetAlertsData(&alerts)) {
+  if (StatusChain<TPMErrorBase> err = tpm_->GetAlertsData(&alerts)) {
     // TODO(b/141294469): Change the code to retry even when it fails.
     LOG(INFO) << "The TPM chip does not support GetAlertsData. Stop "
                  "UploadAlertsData task: "
-              << *err;
+              << err;
   } else {
     ReportAlertsData(alerts);
 
@@ -3287,9 +3289,9 @@ void UserDataAuth::SeedUrandom() {
   AssertOnOriginThread();
 
   brillo::Blob random;
-  if (TPMErrorBase err =
+  if (StatusChain<TPMErrorBase> err =
           tpm_->GetRandomDataBlob(kDefaultRandomSeedLength, &random)) {
-    LOG(ERROR) << "Could not get random data from the TPM " << *err;
+    LOG(ERROR) << "Could not get random data from the TPM " << err;
   }
   if (!platform_->WriteFile(FilePath(kDefaultEntropySourcePath), random)) {
     LOG(ERROR) << "Error writing data to " << kDefaultEntropySourcePath;

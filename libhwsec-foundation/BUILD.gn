@@ -71,7 +71,6 @@ if (use.test) {
   executable("hwsec-foundation_testrunner") {
     sources = [
       "da_reset/da_resetter_test.cc",
-      "error/error_test.cc",
       "status/impl/error_linkage.cc",
       "status/status_chain_test.cc",
       "tpm_error/auth_failure_analysis_test.cc",

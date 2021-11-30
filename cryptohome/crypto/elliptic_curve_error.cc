@@ -9,12 +9,15 @@
 
 #include "cryptohome/crypto/elliptic_curve_error.h"
 
-using hwsec::error::TPMRetryAction;
+using hwsec::TPMErrorBase;
+using hwsec::TPMRetryAction;
 
 namespace cryptohome {
 
-std::string EllipticCurveErrorObj::ToReadableString() const {
-  switch (error_code_) {
+namespace {
+
+std::string FormatEllipticCurveError(EllipticCurveErrorCode code) {
+  switch (code) {
     case EllipticCurveErrorCode::kScalarOutOfRange:
       return "Elliptic curve error: Scalar out of range";
   }
@@ -22,11 +25,13 @@ std::string EllipticCurveErrorObj::ToReadableString() const {
   return "Unknown elliptic curve error";
 }
 
-hwsec_foundation::error::ErrorBase EllipticCurveErrorObj::SelfCopy() const {
-  return std::make_unique<EllipticCurveErrorObj>(error_code_);
-}
+}  // namespace
 
-TPMRetryAction EllipticCurveErrorObj::ToTPMRetryAction() const {
+EllipticCurveError::EllipticCurveError(EllipticCurveErrorCode error_code)
+    : TPMErrorBase(FormatEllipticCurveError(error_code)),
+      error_code_(error_code) {}
+
+TPMRetryAction EllipticCurveError::ToTPMRetryAction() const {
   switch (error_code_) {
     case EllipticCurveErrorCode::kScalarOutOfRange:
       return TPMRetryAction::kLater;

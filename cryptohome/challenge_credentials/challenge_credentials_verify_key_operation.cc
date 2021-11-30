@@ -18,7 +18,8 @@
 #include "cryptohome/tpm.h"
 
 using brillo::Blob;
-using hwsec::error::TPMErrorBase;
+using hwsec::StatusChain;
+using hwsec::TPMErrorBase;
 
 namespace cryptohome {
 
@@ -142,11 +143,11 @@ void ChallengeCredentialsVerifyKeyOperation::Start() {
     return;
   }
   Blob challenge;
-  if (TPMErrorBase err =
+  if (StatusChain<TPMErrorBase> err =
           tpm_->GetRandomDataBlob(kChallengeByteCount, &challenge)) {
     LOG(ERROR)
         << "Failed to generate random bytes for the verification challenge: "
-        << *err;
+        << err;
     Complete(&completion_callback_, /*is_key_valid=*/false);
     return;
   }

@@ -31,7 +31,8 @@
 
 using base::FilePath;
 using brillo::SecureBlob;
-using hwsec::error::TPMErrorBase;
+using hwsec::StatusChain;
+using hwsec::TPMErrorBase;
 
 namespace cryptohome {
 namespace {
@@ -152,9 +153,9 @@ bool Lockbox::Store(const brillo::Blob& blob, LockboxError* error) {
   // Grab key material from the TPM.
   brillo::SecureBlob key_material(contents->key_material_size());
   if (IsKeyMaterialInLockbox()) {
-    if (TPMErrorBase err =
+    if (StatusChain<TPMErrorBase> err =
             tpm_->GetRandomDataSecureBlob(key_material.size(), &key_material)) {
-      LOG(ERROR) << "Failed to get key material from the TPM: " << *err;
+      LOG(ERROR) << "Failed to get key material from the TPM: " << err;
       *error = LockboxError::kTpmError;
       return false;
     }

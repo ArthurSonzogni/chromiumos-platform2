@@ -26,9 +26,9 @@
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_tpm.h"
 
-using ::hwsec::error::TPMError;
-using ::hwsec::error::TPMErrorBase;
-using ::hwsec::error::TPMRetryAction;
+using ::hwsec::TPMError;
+using ::hwsec::TPMErrorBase;
+using ::hwsec::TPMRetryAction;
 using ::hwsec_foundation::error::testing::ReturnError;
 using ::testing::_;
 using ::testing::DoAll;

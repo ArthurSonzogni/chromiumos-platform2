@@ -39,9 +39,10 @@
 
 using cryptohome::cryptorecovery::FakeRecoveryMediatorCrypto;
 using cryptohome::cryptorecovery::RecoveryCryptoImpl;
-using ::hwsec::error::TPMError;
-using ::hwsec::error::TPMErrorBase;
-using ::hwsec::error::TPMRetryAction;
+using ::hwsec::StatusChain;
+using ::hwsec::TPMError;
+using ::hwsec::TPMErrorBase;
+using ::hwsec::TPMRetryAction;
 using ::hwsec_foundation::error::testing::ReturnError;
 using ::testing::_;
 using ::testing::DoAll;

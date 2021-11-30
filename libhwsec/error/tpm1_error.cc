@@ -20,17 +20,12 @@ std::string FormatTrousersErrorCode(TSS_RESULT result) {
 }  // namespace
 
 namespace hwsec {
-namespace error {
 
-std::string TPM1ErrorObj::ToReadableString() const {
-  return FormatTrousersErrorCode(error_code_);
-}
+TPM1Error::TPM1Error(TSS_RESULT error_code)
+    : TPMErrorBase(FormatTrousersErrorCode(error_code)),
+      error_code_(error_code) {}
 
-hwsec_foundation::error::ErrorBase TPM1ErrorObj::SelfCopy() const {
-  return std::make_unique<TPM1ErrorObj>(error_code_);
-}
-
-TPMRetryAction TPM1ErrorObj::ToTPMRetryAction() const {
+TPMRetryAction TPM1Error::ToTPMRetryAction() const {
   TPMRetryAction status = TPMRetryAction::kNoRetry;
   switch (ERROR_CODE(error_code_)) {
     case ERROR_CODE(TSS_SUCCESS):
@@ -68,5 +63,4 @@ TPMRetryAction TPM1ErrorObj::ToTPMRetryAction() const {
   return status;
 }
 
-}  // namespace error
 }  // namespace hwsec

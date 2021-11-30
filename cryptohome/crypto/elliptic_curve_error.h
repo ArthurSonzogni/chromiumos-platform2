@@ -18,24 +18,18 @@ enum class EllipticCurveErrorCode {
 };
 
 // An EllipticCurve error.
-class EllipticCurveErrorObj : public hwsec::error::TPMErrorBaseObj {
+class EllipticCurveError : public hwsec::TPMErrorBase {
  public:
-  inline explicit EllipticCurveErrorObj(
-      const EllipticCurveErrorCode& error_code)
-      : error_code_(error_code) {}
-  virtual ~EllipticCurveErrorObj() = default;
-  std::string ToReadableString() const;
-  hwsec_foundation::error::ErrorBase SelfCopy() const;
-  hwsec::error::TPMRetryAction ToTPMRetryAction() const;
-  inline EllipticCurveErrorCode ErrorCode() { return error_code_; }
+  using MakeStatusTrait = hwsec::DefaultMakeStatus<EllipticCurveError>;
 
- protected:
-  EllipticCurveErrorObj(EllipticCurveErrorObj&&) = default;
+  explicit EllipticCurveError(EllipticCurveErrorCode error_code);
+  ~EllipticCurveError() override = default;
+  hwsec::TPMRetryAction ToTPMRetryAction() const override;
+  EllipticCurveErrorCode ErrorCode() const { return error_code_; }
 
  private:
   const EllipticCurveErrorCode error_code_;
 };
-using EllipticCurveError = std::unique_ptr<EllipticCurveErrorObj>;
 
 }  // namespace cryptohome
 

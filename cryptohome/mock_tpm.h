@@ -24,14 +24,14 @@ class MockTpm : public Tpm {
   MockTpm();
   ~MockTpm();
   MOCK_METHOD(TpmVersion, GetVersion, (), (override));
-  MOCK_METHOD(hwsec::error::TPMErrorBase,
+  MOCK_METHOD(hwsec::StatusChain<hwsec::TPMErrorBase>,
               EncryptBlob,
               (TpmKeyHandle,
                const brillo::SecureBlob&,
                const brillo::SecureBlob&,
                brillo::SecureBlob*),
               (override));
-  MOCK_METHOD(hwsec::error::TPMErrorBase,
+  MOCK_METHOD(hwsec::StatusChain<hwsec::TPMErrorBase>,
               DecryptBlob,
               (TpmKeyHandle,
                const brillo::SecureBlob&,
@@ -39,18 +39,18 @@ class MockTpm : public Tpm {
                (const std::map<uint32_t, brillo::Blob>&),
                brillo::SecureBlob*),
               (override));
-  MOCK_METHOD(hwsec::error::TPMErrorBase,
+  MOCK_METHOD(hwsec::StatusChain<hwsec::TPMErrorBase>,
               SealToPcrWithAuthorization,
               (const brillo::SecureBlob&,
                const brillo::SecureBlob&,
                (const std::map<uint32_t, brillo::Blob>&),
                brillo::SecureBlob*),
               (override));
-  MOCK_METHOD(hwsec::error::TPMErrorBase,
+  MOCK_METHOD(hwsec::StatusChain<hwsec::TPMErrorBase>,
               PreloadSealedData,
               (const brillo::SecureBlob&, ScopedKeyHandle*),
               (override));
-  MOCK_METHOD(hwsec::error::TPMErrorBase,
+  MOCK_METHOD(hwsec::StatusChain<hwsec::TPMErrorBase>,
               UnsealWithAuthorization,
               (base::Optional<TpmKeyHandle>,
                const brillo::SecureBlob&,
@@ -58,7 +58,7 @@ class MockTpm : public Tpm {
                (const std::map<uint32_t, brillo::Blob>&),
                brillo::SecureBlob*),
               (override));
-  MOCK_METHOD(hwsec::error::TPMErrorBase,
+  MOCK_METHOD(hwsec::StatusChain<hwsec::TPMErrorBase>,
               GetPublicKeyHash,
               (TpmKeyHandle, brillo::SecureBlob*),
               (override));
@@ -66,15 +66,15 @@ class MockTpm : public Tpm {
   MOCK_METHOD(bool, IsOwned, (), (override));
   MOCK_METHOD(bool, IsOwnerPasswordPresent, (), (override));
   MOCK_METHOD(bool, HasResetLockPermissions, (), (override));
-  MOCK_METHOD(hwsec::error::TPMErrorBase,
+  MOCK_METHOD(hwsec::StatusChain<hwsec::TPMErrorBase>,
               GetRandomDataBlob,
               (size_t, brillo::Blob*),
               (override));
-  MOCK_METHOD(hwsec::error::TPMErrorBase,
+  MOCK_METHOD(hwsec::StatusChain<hwsec::TPMErrorBase>,
               GetRandomDataSecureBlob,
               (size_t, brillo::SecureBlob*),
               (override));
-  MOCK_METHOD(hwsec::error::TPMErrorBase,
+  MOCK_METHOD(hwsec::StatusChain<hwsec::TPMErrorBase>,
               GetAlertsData,
               (Tpm::AlertsData*),
               (override));
@@ -110,7 +110,7 @@ class MockTpm : public Tpm {
                brillo::SecureBlob*),
               (override));
   MOCK_METHOD(bool, CreateWrappedEccKey, (brillo::SecureBlob*), (override));
-  MOCK_METHOD(hwsec::error::TPMErrorBase,
+  MOCK_METHOD(hwsec::StatusChain<hwsec::TPMErrorBase>,
               LoadWrappedKey,
               (const brillo::SecureBlob&, ScopedKeyHandle*),
               (override));
@@ -123,7 +123,7 @@ class MockTpm : public Tpm {
               GetStatus,
               (base::Optional<TpmKeyHandle>, TpmStatusInfo*),
               (override));
-  MOCK_METHOD(hwsec::error::TPMErrorBase,
+  MOCK_METHOD(hwsec::StatusChain<hwsec::TPMErrorBase>,
               IsSrkRocaVulnerable,
               (bool*),
               (override));
@@ -157,7 +157,7 @@ class MockTpm : public Tpm {
               (brillo::Blob*, brillo::Blob*, bool*),
               (override));
   MOCK_METHOD2(SetDelegateData, void(const std::string&, bool));
-  MOCK_METHOD(hwsec::error::TPMErrorBase,
+  MOCK_METHOD(hwsec::StatusChain<hwsec::TPMErrorBase>,
               IsDelegateBoundToPcr,
               (bool*),
               (override));
@@ -166,13 +166,13 @@ class MockTpm : public Tpm {
               GetPcrMap,
               (const std::string&, bool),
               (const override));
-  MOCK_METHOD(hwsec::error::TPMErrorBase,
+  MOCK_METHOD(hwsec::StatusChain<hwsec::TPMErrorBase>,
               GetAuthValue,
               (base::Optional<TpmKeyHandle> key_handle,
                const brillo::SecureBlob& pass_blob,
                brillo::SecureBlob* auth_value),
               (override));
-  MOCK_METHOD(hwsec::error::TPMErrorBase,
+  MOCK_METHOD(hwsec::StatusChain<hwsec::TPMErrorBase>,
               GetEccAuthValue,
               (base::Optional<TpmKeyHandle> key_handle,
                const brillo::SecureBlob& pass_blob,
@@ -180,7 +180,7 @@ class MockTpm : public Tpm {
               (override));
 
  private:
-  hwsec::error::TPMErrorBase XorDecrypt(
+  hwsec::StatusChain<hwsec::TPMErrorBase> XorDecrypt(
       TpmKeyHandle _key,
       const brillo::SecureBlob& plaintext,
       const brillo::SecureBlob& key,
@@ -188,10 +188,11 @@ class MockTpm : public Tpm {
       brillo::SecureBlob* ciphertext) {
     return Xor(_key, plaintext, key, ciphertext);
   }
-  hwsec::error::TPMErrorBase Xor(TpmKeyHandle _key,
-                                 const brillo::SecureBlob& plaintext,
-                                 const brillo::SecureBlob& key,
-                                 brillo::SecureBlob* ciphertext) {
+  hwsec::StatusChain<hwsec::TPMErrorBase> Xor(
+      TpmKeyHandle _key,
+      const brillo::SecureBlob& plaintext,
+      const brillo::SecureBlob& key,
+      brillo::SecureBlob* ciphertext) {
     brillo::SecureBlob local_data_out(plaintext.size());
     for (unsigned int i = 0; i < local_data_out.size(); i++) {
       local_data_out[i] = plaintext[i] ^ 0x1e;
@@ -200,13 +201,13 @@ class MockTpm : public Tpm {
     return nullptr;
   }
 
-  hwsec::error::TPMErrorBase FakeGetRandomDataBlob(size_t num_bytes,
-                                                   brillo::Blob* blob) {
+  hwsec::StatusChain<hwsec::TPMErrorBase> FakeGetRandomDataBlob(
+      size_t num_bytes, brillo::Blob* blob) {
     blob->resize(num_bytes);
     return nullptr;
   }
 
-  hwsec::error::TPMErrorBase FakeGetRandomDataSecureBlob(
+  hwsec::StatusChain<hwsec::TPMErrorBase> FakeGetRandomDataSecureBlob(
       size_t num_bytes, brillo::SecureBlob* sblob) {
     sblob->resize(num_bytes);
     return nullptr;

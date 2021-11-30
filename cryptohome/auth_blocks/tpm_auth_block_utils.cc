@@ -15,7 +15,8 @@
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.pb.h"
 
-using hwsec::error::TPMErrorBase;
+using hwsec::StatusChain;
+using hwsec::TPMErrorBase;
 
 namespace cryptohome {
 
@@ -24,15 +25,15 @@ TpmAuthBlockUtils::TpmAuthBlockUtils(Tpm* tpm,
     : tpm_(tpm), cryptohome_key_loader_(cryptohome_key_loader) {}
 
 CryptoError TpmAuthBlockUtils::TPMErrorToCrypto(
-    const hwsec::error::TPMErrorBase& err) {
-  hwsec::error::TPMRetryAction action = err->ToTPMRetryAction();
+    const StatusChain<hwsec::TPMErrorBase>& err) {
+  hwsec::TPMRetryAction action = err->ToTPMRetryAction();
   switch (action) {
-    case hwsec::error::TPMRetryAction::kCommunication:
-    case hwsec::error::TPMRetryAction::kLater:
+    case hwsec::TPMRetryAction::kCommunication:
+    case hwsec::TPMRetryAction::kLater:
       return CryptoError::CE_TPM_COMM_ERROR;
-    case hwsec::error::TPMRetryAction::kDefend:
+    case hwsec::TPMRetryAction::kDefend:
       return CryptoError::CE_TPM_DEFEND_LOCK;
-    case hwsec::error::TPMRetryAction::kReboot:
+    case hwsec::TPMRetryAction::kReboot:
       return CryptoError::CE_TPM_REBOOT;
     default:
       // TODO(chromium:709646): kNoRetry maps here now. Find
@@ -42,16 +43,16 @@ CryptoError TpmAuthBlockUtils::TPMErrorToCrypto(
 }
 
 bool TpmAuthBlockUtils::TPMErrorIsRetriable(
-    const hwsec::error::TPMErrorBase& err) {
-  hwsec::error::TPMRetryAction action = err->ToTPMRetryAction();
-  return action == hwsec::error::TPMRetryAction::kLater ||
-         action == hwsec::error::TPMRetryAction::kCommunication;
+    const StatusChain<hwsec::TPMErrorBase>& err) {
+  hwsec::TPMRetryAction action = err->ToTPMRetryAction();
+  return action == hwsec::TPMRetryAction::kLater ||
+         action == hwsec::TPMRetryAction::kCommunication;
 }
 
 CryptoError TpmAuthBlockUtils::IsTPMPubkeyHash(
     const brillo::SecureBlob& hash) const {
   brillo::SecureBlob pub_key_hash;
-  if (TPMErrorBase err = tpm_->GetPublicKeyHash(
+  if (StatusChain<TPMErrorBase> err = tpm_->GetPublicKeyHash(
           cryptohome_key_loader_->GetCryptohomeKey(), &pub_key_hash)) {
     if (TPMErrorIsRetriable(err)) {
       if (!cryptohome_key_loader_->ReloadCryptohomeKey()) {
@@ -65,7 +66,7 @@ CryptoError TpmAuthBlockUtils::IsTPMPubkeyHash(
     }
     if (err) {
       LOG(ERROR) << "Unable to get the cryptohome public key from the TPM: "
-                 << *err;
+                 << err;
       ReportCryptohomeError(kCannotReadTpmPublicKey);
       return TPMErrorToCrypto(err);
     }

@@ -9,9 +9,10 @@
 #include <base/logging.h>
 
 using brillo::SecureBlob;
-using hwsec::error::TPMError;
-using hwsec::error::TPMErrorBase;
-using hwsec::error::TPMRetryAction;
+using hwsec::StatusChain;
+using hwsec::TPMError;
+using hwsec::TPMErrorBase;
+using hwsec::TPMRetryAction;
 using hwsec_foundation::error::CreateError;
 using hwsec_foundation::error::WrapError;
 namespace cryptohome {
@@ -30,15 +31,16 @@ bool CryptohomeKeyLoader::SaveCryptohomeKey(const SecureBlob& wrapped_key) {
   return ok;
 }
 
-TPMErrorBase CryptohomeKeyLoader::LoadCryptohomeKey(
+StatusChain<TPMErrorBase> CryptohomeKeyLoader::LoadCryptohomeKey(
     ScopedKeyHandle* key_handle) {
   CHECK(key_handle);
   // First, try loading the key from the key file.
   SecureBlob raw_key;
   if (platform_->ReadFileToSecureBlob(cryptohome_key_path_, &raw_key)) {
-    if (TPMErrorBase err = tpm_->LoadWrappedKey(raw_key, key_handle)) {
+    if (StatusChain<TPMErrorBase> err =
+            tpm_->LoadWrappedKey(raw_key, key_handle)) {
       if (err->ToTPMRetryAction() == TPMRetryAction::kNoRetry) {
-        LOG(INFO) << "Using legacy upgrade path: " << *err;
+        LOG(INFO) << "Using legacy upgrade path: " << err;
         goto legacy_upgrade_path;
       }
       return WrapError<TPMError>(std::move(err), "Failed to load wrapped key");
@@ -72,7 +74,7 @@ bool CryptohomeKeyLoader::LoadOrCreateCryptohomeKey(
   }
 
   // Try to load the cryptohome key.
-  if (TPMErrorBase err = LoadCryptohomeKey(key_handle)) {
+  if (StatusChain<TPMErrorBase> err = LoadCryptohomeKey(key_handle)) {
     if (err->ToTPMRetryAction() == TPMRetryAction::kNoRetry) {
       // The key couldn't be loaded, and it wasn't due to a transient error,
       // so we must create the key.
@@ -87,7 +89,7 @@ bool CryptohomeKeyLoader::LoadOrCreateCryptohomeKey(
       }
     }
     if (err) {
-      LOG(ERROR) << "Failed to load or create cryptohome key: " << *err;
+      LOG(ERROR) << "Failed to load or create cryptohome key: " << err;
       return false;
     }
   }
@@ -111,8 +113,8 @@ bool CryptohomeKeyLoader::ReloadCryptohomeKey() {
   // TODO(crbug.com/687330): change to closing the handle and ignoring errors
   // once checking for stale virtual handles is implemented in trunksd.
   cryptohome_key_.release();
-  if (TPMErrorBase err = LoadCryptohomeKey(&cryptohome_key_)) {
-    LOG(ERROR) << "Error reloading Cryptohome key: " << *err;
+  if (StatusChain<TPMErrorBase> err = LoadCryptohomeKey(&cryptohome_key_)) {
+    LOG(ERROR) << "Error reloading Cryptohome key: " << err;
     return false;
   }
   return true;

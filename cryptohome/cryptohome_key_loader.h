@@ -38,7 +38,8 @@ class CryptohomeKeyLoader {
   virtual bool CreateCryptohomeKey(brillo::SecureBlob* wrapped_key) = 0;
   bool SaveCryptohomeKey(const brillo::SecureBlob& wrapped_key);
 
-  hwsec::error::TPMErrorBase LoadCryptohomeKey(ScopedKeyHandle* key_handle);
+  hwsec::StatusChain<hwsec::TPMErrorBase> LoadCryptohomeKey(
+      ScopedKeyHandle* key_handle);
 
   bool LoadOrCreateCryptohomeKey(ScopedKeyHandle* key_handle);
 

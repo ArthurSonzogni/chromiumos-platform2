@@ -11,11 +11,24 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "libhwsec-foundation/error/error.h"
+#include "libhwsec-foundation/status/status_chain.h"
 
 namespace hwsec_foundation {
 namespace error {
 namespace testing {
+
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
+
+MATCHER(IsOk, "") {
+  return arg.ok();
+}
+
+MATCHER(NotOk, "") {
+  return !arg.ok();
+}
+
+// TODO(dlunev): figure out how to add error type matchers.
 
 /* A helper function to return generic error object in unittest.
  *
@@ -32,47 +45,46 @@ namespace testing {
  */
 
 template <typename T>
-using remove_const_ref =
+using remove_cvref_t =
     typename std::remove_cv<typename std::remove_reference<T>::type>::type;
 
 ACTION_P(ReturnErrorType, error_ptr) {
-  return remove_const_ref<decltype(*error_ptr)>(nullptr);
+  return OkStatus<remove_cvref_t<decltype(*error_ptr)>>();
 }
 
 ACTION_P2(ReturnErrorType, error_ptr, p1) {
-  return CreateError<remove_const_ref<decltype(*error_ptr)>>(p1);
+  return MakeStatus<remove_cvref_t<decltype(*error_ptr)>>(p1);
 }
 
 ACTION_P3(ReturnErrorType, error_ptr, p1, p2) {
-  return CreateError<remove_const_ref<decltype(*error_ptr)>>(p1, p2);
+  return MakeStatus<remove_cvref_t<decltype(*error_ptr)>>(p1, p2);
 }
 
 ACTION_P4(ReturnErrorType, error_ptr, p1, p2, p3) {
-  return CreateError<remove_const_ref<decltype(*error_ptr)>>(p1, p2, p3);
+  return MakeStatus<remove_cvref_t<decltype(*error_ptr)>>(p1, p2, p3);
 }
 
 ACTION_P5(ReturnErrorType, error_ptr, p1, p2, p3, p4) {
-  return CreateError<remove_const_ref<decltype(*error_ptr)>>(p1, p2, p3, p4);
+  return MakeStatus<remove_cvref_t<decltype(*error_ptr)>>(p1, p2, p3, p4);
 }
 
 ACTION_P6(ReturnErrorType, error_ptr, p1, p2, p3, p4, p5) {
-  return CreateError<remove_const_ref<decltype(*error_ptr)>>(p1, p2, p3, p4,
-                                                             p5);
+  return MakeStatus<remove_cvref_t<decltype(*error_ptr)>>(p1, p2, p3, p4, p5);
 }
 
 ACTION_P7(ReturnErrorType, error_ptr, p1, p2, p3, p4, p5, p6) {
-  return CreateError<remove_const_ref<decltype(*error_ptr)>>(p1, p2, p3, p4, p5,
-                                                             p6);
+  return MakeStatus<remove_cvref_t<decltype(*error_ptr)>>(p1, p2, p3, p4, p5,
+                                                          p6);
 }
 
 ACTION_P8(ReturnErrorType, error_ptr, p1, p2, p3, p4, p5, p6, p7) {
-  return CreateError<remove_const_ref<decltype(*error_ptr)>>(p1, p2, p3, p4, p5,
-                                                             p6, p7);
+  return MakeStatus<remove_cvref_t<decltype(*error_ptr)>>(p1, p2, p3, p4, p5,
+                                                          p6, p7);
 }
 
 ACTION_P9(ReturnErrorType, error_ptr, p1, p2, p3, p4, p5, p6, p7, p8) {
-  return CreateError<remove_const_ref<decltype(*error_ptr)>>(p1, p2, p3, p4, p5,
-                                                             p6, p7, p8);
+  return MakeStatus<remove_cvref_t<decltype(*error_ptr)>>(p1, p2, p3, p4, p5,
+                                                          p6, p7, p8);
 }
 
 template <typename ErrType, typename... Args>
@@ -80,47 +92,6 @@ auto ReturnError(Args&&... args) {
   return ReturnErrorType(static_cast<ErrType*>(nullptr),
                          std::forward<Args>(args)...);
 }
-
-// Test helpers for CreateError.
-template <typename ErrorType, typename... Args>
-struct TestForCreateError {
-  // primary template handles types that can't "CreateError".
-  template <typename InnerErrorType, typename = void, typename... InnerArgs>
-  struct CheckImpl : std::false_type {};
-
-  // specialization recognizes types that can "CreateError".
-  template <typename InnerErrorType, typename... InnerArgs>
-  struct CheckImpl<InnerErrorType,
-                   std::void_t<decltype(CreateError<InnerErrorType>(
-                       std::declval<InnerArgs>()...))>,
-                   InnerArgs...> : std::true_type {};
-
-  using Check = CheckImpl<ErrorType, void, Args...>;
-};
-
-// Test helpers for WrapError.
-template <typename ErrorType, typename ErrorType2, typename... Args>
-struct TestForWrapError {
-  // primary template handles types that can't "WrapError".
-  template <typename InnerErrorType,
-            typename InnerErrorType2,
-            typename = void,
-            typename... InnerArgs>
-  struct CheckImpl : std::false_type {};
-
-  // specialization recognizes types that can "WrapError".
-  template <typename InnerErrorType,
-            typename InnerErrorType2,
-            typename... InnerArgs>
-  struct CheckImpl<
-      InnerErrorType,
-      InnerErrorType2,
-      std::void_t<decltype(WrapError<InnerErrorType>(
-          std::declval<InnerErrorType2>(), std::declval<InnerArgs>()...))>,
-      InnerArgs...> : std::true_type {};
-
-  using Check = CheckImpl<ErrorType, ErrorType2, void, Args...>;
-};
 
 }  // namespace testing
 }  // namespace error

@@ -19,9 +19,10 @@
 
 using brillo::Blob;
 using brillo::SecureBlob;
-using hwsec::error::TPMError;
-using hwsec::error::TPMErrorBase;
-using hwsec::error::TPMRetryAction;
+using hwsec::StatusChain;
+using hwsec::TPMError;
+using hwsec::TPMErrorBase;
+using hwsec::TPMRetryAction;
 using hwsec_foundation::error::CreateError;
 using hwsec_foundation::error::WrapError;
 
@@ -53,7 +54,7 @@ ChallengeCredentialsDecryptOperation::~ChallengeCredentialsDecryptOperation() =
 
 void ChallengeCredentialsDecryptOperation::Start() {
   DCHECK(thread_checker_.CalledOnValidThread());
-  if (TPMErrorBase err = StartProcessing()) {
+  if (StatusChain<TPMErrorBase> err = StartProcessing()) {
     Resolve(WrapError<TPMError>(std::move(err),
                                 "Failed to start the decryption operation"),
             nullptr /* passkey */);
@@ -68,7 +69,8 @@ void ChallengeCredentialsDecryptOperation::Abort() {
   // |this| can be already destroyed at this point.
 }
 
-TPMErrorBase ChallengeCredentialsDecryptOperation::StartProcessing() {
+StatusChain<TPMErrorBase>
+ChallengeCredentialsDecryptOperation::StartProcessing() {
   if (!signature_sealing_backend_) {
     return CreateError<TPMError>("Signature sealing is disabled",
                                  TPMRetryAction::kNoRetry);
@@ -83,7 +85,7 @@ TPMErrorBase ChallengeCredentialsDecryptOperation::StartProcessing() {
       keyset_challenge_info_.public_key_spki_der) {
     return CreateError<TPMError>("Wrong public key", TPMRetryAction::kNoRetry);
   }
-  if (TPMErrorBase err = StartProcessingSalt()) {
+  if (StatusChain<TPMErrorBase> err = StartProcessingSalt()) {
     return WrapError<TPMError>(std::move(err),
                                "Failed to start processing salt");
   }
@@ -92,7 +94,8 @@ TPMErrorBase ChallengeCredentialsDecryptOperation::StartProcessing() {
   return StartProcessingSealedSecret();
 }
 
-TPMErrorBase ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
+StatusChain<TPMErrorBase>
+ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
   if (keyset_challenge_info_.salt.empty()) {
     return CreateError<TPMError>("Missing salt", TPMRetryAction::kNoRetry);
   }
@@ -122,7 +125,7 @@ TPMErrorBase ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
   return nullptr;
 }
 
-TPMErrorBase
+StatusChain<TPMErrorBase>
 ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
   if (public_key_info_.public_key_spki_der.empty()) {
     return CreateError<TPMError>("Missing public key",
@@ -139,11 +142,12 @@ ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
     pcr_set.insert(pcr_index);
   }
 
-  if (TPMErrorBase err = signature_sealing_backend_->CreateUnsealingSession(
-          keyset_challenge_info_.sealed_secret,
-          public_key_info_.public_key_spki_der, key_sealing_algorithms, pcr_set,
-          delegate_blob_, delegate_secret_, locked_to_single_user_,
-          &unsealing_session_)) {
+  if (StatusChain<TPMErrorBase> err =
+          signature_sealing_backend_->CreateUnsealingSession(
+              keyset_challenge_info_.sealed_secret,
+              public_key_info_.public_key_spki_der, key_sealing_algorithms,
+              pcr_set, delegate_blob_, delegate_secret_, locked_to_single_user_,
+              &unsealing_session_)) {
     return WrapError<TPMError>(
         std::move(err), "Failed to start unsealing session for the secret");
   }
@@ -182,7 +186,7 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
     return;
   }
   SecureBlob unsealed_secret;
-  if (TPMErrorBase err =
+  if (StatusChain<TPMErrorBase> err =
           unsealing_session_->Unseal(*challenge_signature, &unsealed_secret)) {
     // TODO(crbug.com/842791): Determine the retry action based on the type of
     // the error.
@@ -205,7 +209,8 @@ void ChallengeCredentialsDecryptOperation::ProceedIfChallengesDone() {
 }
 
 void ChallengeCredentialsDecryptOperation::Resolve(
-    TPMErrorBase error, std::unique_ptr<brillo::SecureBlob> passkey) {
+    StatusChain<TPMErrorBase> error,
+    std::unique_ptr<brillo::SecureBlob> passkey) {
   // Invalidate weak pointers in order to cancel all jobs that are currently
   // waiting, to prevent them from running and consuming resources after our
   // abortion (in case |this| doesn't get destroyed immediately).

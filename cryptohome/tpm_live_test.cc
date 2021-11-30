@@ -21,6 +21,7 @@
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
+#include <libhwsec/error/error.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <openssl/bn.h>
 #include <openssl/err.h>
@@ -44,7 +45,8 @@ using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::SecureBlob;
-using hwsec::error::TPMErrorBase;
+using hwsec::StatusChain;
+using hwsec::TPMErrorBase;
 
 namespace cryptohome {
 
@@ -86,23 +88,24 @@ bool TpmLiveTest::DecryptionKeyTest() {
     return false;
   }
   ScopedKeyHandle handle;
-  if (TPMErrorBase err = tpm_->LoadWrappedKey(wrapped_key, &handle)) {
-    LOG(ERROR) << "Error loading key: " << *err;
+  if (StatusChain<TPMErrorBase> err =
+          tpm_->LoadWrappedKey(wrapped_key, &handle)) {
+    LOG(ERROR) << "Error loading key: " << err;
     return false;
   }
   SecureBlob aes_key(32, 'a');
   SecureBlob plaintext(32, 'b');
   SecureBlob ciphertext;
-  if (TPMErrorBase err =
+  if (StatusChain<TPMErrorBase> err =
           tpm_->EncryptBlob(handle.value(), plaintext, aes_key, &ciphertext)) {
-    LOG(ERROR) << "Error encrypting blob: " << *err;
+    LOG(ERROR) << "Error encrypting blob: " << err;
     return false;
   }
   SecureBlob decrypted_plaintext;
-  if (TPMErrorBase err = tpm_->DecryptBlob(handle.value(), ciphertext, aes_key,
-                                           std::map<uint32_t, brillo::Blob>(),
-                                           &decrypted_plaintext)) {
-    LOG(ERROR) << "Error decrypting blob: " << *err;
+  if (StatusChain<TPMErrorBase> err = tpm_->DecryptBlob(
+          handle.value(), ciphertext, aes_key,
+          std::map<uint32_t, brillo::Blob>(), &decrypted_plaintext)) {
+    LOG(ERROR) << "Error decrypting blob: " << err;
     return false;
   }
   if (plaintext != decrypted_plaintext) {
@@ -128,8 +131,9 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
     return false;
   }
   ScopedKeyHandle handle;
-  if (TPMErrorBase err = tpm_->LoadWrappedKey(wrapped_key, &handle)) {
-    LOG(ERROR) << "Error loading key: " << *err;
+  if (StatusChain<TPMErrorBase> err =
+          tpm_->LoadWrappedKey(wrapped_key, &handle)) {
+    LOG(ERROR) << "Error loading key: " << err;
     return false;
   }
 
@@ -141,20 +145,20 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
   SecureBlob pass_blob(256, 'b');
   SecureBlob ciphertext;
   brillo::SecureBlob auth_value;
-  if (TPMErrorBase err =
+  if (StatusChain<TPMErrorBase> err =
           tpm_->GetAuthValue(handle.value(), pass_blob, &auth_value)) {
-    LOG(ERROR) << "Failed to get auth value: " << *err;
+    LOG(ERROR) << "Failed to get auth value: " << err;
     return false;
   }
-  if (TPMErrorBase err = tpm_->SealToPcrWithAuthorization(
+  if (StatusChain<TPMErrorBase> err = tpm_->SealToPcrWithAuthorization(
           plaintext, auth_value, pcr_map, &ciphertext)) {
-    LOG(ERROR) << "Error sealing the blob: " << *err;
+    LOG(ERROR) << "Error sealing the blob: " << err;
     return false;
   }
   SecureBlob unsealed_text;
-  if (TPMErrorBase err = tpm_->UnsealWithAuthorization(
+  if (StatusChain<TPMErrorBase> err = tpm_->UnsealWithAuthorization(
           base::nullopt, ciphertext, auth_value, pcr_map, &unsealed_text)) {
-    LOG(ERROR) << "Error unsealing blob: " << *err;
+    LOG(ERROR) << "Error unsealing blob: " << err;
     return false;
   }
   if (plaintext != unsealed_text) {
@@ -164,9 +168,9 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
 
   // Check that unsealing doesn't work with wrong pass_blob.
   pass_blob.char_data()[255] = 'a';
-  if (TPMErrorBase err =
+  if (StatusChain<TPMErrorBase> err =
           tpm_->GetAuthValue(handle.value(), pass_blob, &auth_value)) {
-    LOG(ERROR) << "Failed to get auth value: " << *err;
+    LOG(ERROR) << "Failed to get auth value: " << err;
     return false;
   }
   if (tpm_->UnsealWithAuthorization(base::nullopt, ciphertext, auth_value,
@@ -561,11 +565,11 @@ class SignatureSealedSecretTestCase final {
       LOG(ERROR) << "Error reading PCR values";
       return false;
     }
-    if (TPMErrorBase err = backend()->CreateSealedSecret(
+    if (StatusChain<TPMErrorBase> err = backend()->CreateSealedSecret(
             key_spki_der_, param_.supported_algorithms, pcr_values, pcr_values,
             delegate_blob_, delegate_secret_, secret_value,
             sealed_secret_data)) {
-      LOG(ERROR) << "Error creating signature-sealed secret: " << *err;
+      LOG(ERROR) << "Error creating signature-sealed secret: " << err;
       return false;
     }
     return true;
@@ -579,13 +583,13 @@ class SignatureSealedSecretTestCase final {
     }
     SecureBlob secret_value;
     structure::SignatureSealedData sealed_secret_data;
-    if (TPMErrorBase err = backend()->CreateSealedSecret(
+    if (StatusChain<TPMErrorBase> err = backend()->CreateSealedSecret(
             key_spki_der_, param_.supported_algorithms, pcr_values, pcr_values,
             delegate_blob_, delegate_secret_, &secret_value,
             &sealed_secret_data)) {
       // TODO(b/174816474): check the error message is expected.
       LOG(INFO) << "Successfully failed to create signature-sealed secret: "
-                << *err;
+                << err;
       return true;
     }
     LOG(ERROR) << "Error: secret creation completed unexpectedly";
@@ -609,11 +613,11 @@ class SignatureSealedSecretTestCase final {
               Blob* challenge_signature,
               SecureBlob* unsealed_value) {
     std::unique_ptr<UnsealingSession> unsealing_session;
-    if (TPMErrorBase err = backend()->CreateUnsealingSession(
+    if (StatusChain<TPMErrorBase> err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
             kPcrIndexes, delegate_blob_, delegate_secret_,
             /*locked_to_single_user=*/false, &unsealing_session)) {
-      LOG(ERROR) << "Error starting the unsealing session: " << *err;
+      LOG(ERROR) << "Error starting the unsealing session: " << err;
       return false;
     }
     if (unsealing_session->GetChallengeAlgorithm() !=
@@ -631,9 +635,9 @@ class SignatureSealedSecretTestCase final {
       LOG(ERROR) << "Error generating signature of challenge";
       return false;
     }
-    if (TPMErrorBase err =
+    if (StatusChain<TPMErrorBase> err =
             unsealing_session->Unseal(*challenge_signature, unsealed_value)) {
-      LOG(ERROR) << "Error unsealing the secret: " << *err;
+      LOG(ERROR) << "Error unsealing the secret: " << err;
       return false;
     }
     if (unsealed_value->empty()) {
@@ -647,11 +651,11 @@ class SignatureSealedSecretTestCase final {
       const structure::SignatureSealedData& sealed_secret_data,
       const Blob& challenge_signature) {
     std::unique_ptr<UnsealingSession> unsealing_session;
-    if (TPMErrorBase err = backend()->CreateUnsealingSession(
+    if (StatusChain<TPMErrorBase> err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
             kPcrIndexes, delegate_blob_, delegate_secret_,
             /*locked_to_single_user=*/false, &unsealing_session)) {
-      LOG(ERROR) << "Error starting the unsealing session: " << *err;
+      LOG(ERROR) << "Error starting the unsealing session: " << err;
       return false;
     }
     SecureBlob unsealed_value;
@@ -667,11 +671,11 @@ class SignatureSealedSecretTestCase final {
   bool CheckUnsealingFailsWithBadAlgorithmSignature(
       const structure::SignatureSealedData& sealed_secret_data) {
     std::unique_ptr<UnsealingSession> unsealing_session;
-    if (TPMErrorBase err = backend()->CreateUnsealingSession(
+    if (StatusChain<TPMErrorBase> err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
             kPcrIndexes, delegate_blob_, delegate_secret_,
             /*locked_to_single_user=*/false, &unsealing_session)) {
-      LOG(ERROR) << "Error starting the unsealing session: " << *err;
+      LOG(ERROR) << "Error starting the unsealing session: " << err;
       return false;
     }
     const int wrong_openssl_algorithm_nid =
@@ -694,11 +698,11 @@ class SignatureSealedSecretTestCase final {
   bool CheckUnsealingFailsWithBadSignature(
       const structure::SignatureSealedData& sealed_secret_data) {
     std::unique_ptr<UnsealingSession> unsealing_session;
-    if (TPMErrorBase err = backend()->CreateUnsealingSession(
+    if (StatusChain<TPMErrorBase> err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
             kPcrIndexes, delegate_blob_, delegate_secret_,
             /*locked_to_single_user=*/false, &unsealing_session)) {
-      LOG(ERROR) << "Error starting the unsealing session: " << *err;
+      LOG(ERROR) << "Error starting the unsealing session: " << err;
       return false;
     }
     Blob challenge_signature;
@@ -725,7 +729,7 @@ class SignatureSealedSecretTestCase final {
             ? structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256
             : structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
     std::unique_ptr<UnsealingSession> unsealing_session;
-    if (TPMErrorBase err = backend()->CreateUnsealingSession(
+    if (StatusChain<TPMErrorBase> err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, {wrong_algorithm}, kPcrIndexes,
             delegate_blob_, delegate_secret_, /*locked_to_single_user=*/false,
             &unsealing_session)) {
@@ -748,7 +752,7 @@ class SignatureSealedSecretTestCase final {
       return false;
     }
     std::unique_ptr<UnsealingSession> unsealing_session;
-    if (TPMErrorBase err = backend()->CreateUnsealingSession(
+    if (StatusChain<TPMErrorBase> err = backend()->CreateUnsealingSession(
             sealed_secret_data, other_key_spki_der, param_.supported_algorithms,
             kPcrIndexes, delegate_blob_, delegate_secret_,
             /*locked_to_single_user=*/false, &unsealing_session)) {
@@ -769,12 +773,12 @@ class SignatureSealedSecretTestCase final {
       return false;
     }
     std::unique_ptr<UnsealingSession> unsealing_session;
-    if (TPMErrorBase err = backend()->CreateUnsealingSession(
+    if (StatusChain<TPMErrorBase> err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
             kPcrIndexes, delegate_blob_, delegate_secret_,
             /*locked_to_single_user=*/false, &unsealing_session)) {
       // TODO(yich): check the error message is expected.
-      LOG(INFO) << "Failed to starting the unsealing session: " << *err;
+      LOG(INFO) << "Failed to starting the unsealing session: " << err;
       return true;
     }
     Blob challenge_signature;

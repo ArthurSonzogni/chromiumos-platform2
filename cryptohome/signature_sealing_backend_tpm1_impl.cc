@@ -38,10 +38,11 @@ using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
-using hwsec::error::TPM1Error;
-using hwsec::error::TPMError;
-using hwsec::error::TPMErrorBase;
-using hwsec::error::TPMRetryAction;
+using hwsec::StatusChain;
+using hwsec::TPM1Error;
+using hwsec::TPMError;
+using hwsec::TPMErrorBase;
+using hwsec::TPMRetryAction;
 using hwsec_foundation::error::CreateError;
 using hwsec_foundation::error::WrapError;
 using trousers::ScopedTssContext;
@@ -155,8 +156,8 @@ class UnsealingSessionTpm1Impl final
   // UnsealingSession:
   structure::ChallengeSignatureAlgorithm GetChallengeAlgorithm() override;
   Blob GetChallengeValue() override;
-  TPMErrorBase Unseal(const Blob& signed_challenge_value,
-                      SecureBlob* unsealed_value) override;
+  StatusChain<TPMErrorBase> Unseal(const Blob& signed_challenge_value,
+                                   SecureBlob* unsealed_value) override;
 
  private:
   // Unowned.
@@ -397,11 +398,11 @@ bool ObtainCmkMigrationSignatureTicket(
     return false;
   }
   SecureBlob local_cmk_migration_signature_ticket;
-  if (TPMErrorBase err = tpm->GetDataAttribute(
+  if (StatusChain<TPMErrorBase> err = tpm->GetDataAttribute(
           tpm_context, migdata_handle, TSS_MIGATTRIB_TICKET_DATA,
           TSS_MIGATTRIB_TICKET_SIG_TICKET,
           &local_cmk_migration_signature_ticket)) {
-    LOG(ERROR) << "Error reading the CMK migration signature ticket: " << *err;
+    LOG(ERROR) << "Error reading the CMK migration signature ticket: " << err;
     return false;
   }
   // TODO(emaxx): Replace with a direct usage of Blob for the attribute read.
@@ -528,10 +529,10 @@ bool MigrateCmk(TpmImpl* tpm,
       migration_random_buf.value(),
       migration_random_buf.value() + migration_random_buf_size);
   SecureBlob local_migrated_cmk_key12_blob;
-  if (TPMErrorBase err = tpm->GetDataAttribute(
+  if (StatusChain<TPMErrorBase> err = tpm->GetDataAttribute(
           tpm_context, migdata_handle, TSS_MIGATTRIB_MIGRATIONBLOB,
           TSS_MIGATTRIB_MIG_XOR_BLOB, &local_migrated_cmk_key12_blob)) {
-    LOG(ERROR) << "Failed to read the migrated key blob " << *err;
+    LOG(ERROR) << "Failed to read the migrated key blob " << err;
     return false;
   }
   // TODO(emaxx): Replace with a direct usage of Blob for the attribute read.
@@ -593,10 +594,10 @@ bool ObtainMaApprovalTicket(TpmImpl* const tpm,
     return false;
   }
   SecureBlob local_ma_approval_ticket;
-  if (TPMErrorBase err = tpm->GetDataAttribute(
+  if (StatusChain<TPMErrorBase> err = tpm->GetDataAttribute(
           tpm_context, migdata_handle, TSS_MIGATTRIB_AUTHORITY_DATA,
           TSS_MIGATTRIB_AUTHORITY_APPROVAL_HMAC, &local_ma_approval_ticket)) {
-    LOG(ERROR) << "Error reading migration authority approval ticket: " << *err;
+    LOG(ERROR) << "Error reading migration authority approval ticket: " << err;
     return false;
   }
   // TODO(emaxx): Replace with a direct usage of Blob for the attribute read.
@@ -910,20 +911,19 @@ bool GenerateCmk(TpmImpl* const tpm,
     return false;
   }
   SecureBlob local_cmk_pubkey;
-  if (TPMErrorBase err = tpm->GetDataAttribute(
+  if (StatusChain<TPMErrorBase> err = tpm->GetDataAttribute(
           tpm_context, cmk_handle, TSS_TSPATTRIB_KEY_BLOB,
           TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, &local_cmk_pubkey)) {
-    LOG(ERROR) << "Failed to read the certified migratable public key: "
-               << *err;
+    LOG(ERROR) << "Failed to read the certified migratable public key: " << err;
     return false;
   }
   // TODO(emaxx): Replace with a direct usage of Blob for the attribute read.
   cmk_pubkey->assign(local_cmk_pubkey.begin(), local_cmk_pubkey.end());
   SecureBlob local_srk_wrapped_cmk;
-  if (TPMErrorBase err = tpm->GetDataAttribute(
+  if (StatusChain<TPMErrorBase> err = tpm->GetDataAttribute(
           tpm_context, cmk_handle, TSS_TSPATTRIB_KEY_BLOB,
           TSS_TSPATTRIB_KEYBLOB_BLOB, &local_srk_wrapped_cmk)) {
-    LOG(ERROR) << "Failed to read the certified migratable key: " << *err;
+    LOG(ERROR) << "Failed to read the certified migratable key: " << err;
     return false;
   }
   // TODO(emaxx): Replace with a direct usage of Blob for the attribute read.
@@ -975,7 +975,7 @@ Blob UnsealingSessionTpm1Impl::GetChallengeValue() {
                        cmk_pubkey_digest_});
 }
 
-TPMErrorBase UnsealingSessionTpm1Impl::Unseal(
+StatusChain<TPMErrorBase> UnsealingSessionTpm1Impl::Unseal(
     const Blob& signed_challenge_value, SecureBlob* unsealed_value) {
   // Obtain the TPM context and handle with the required authorization.
   ScopedTssContext tpm_context;
@@ -987,7 +987,8 @@ TPMErrorBase UnsealingSessionTpm1Impl::Unseal(
   }
   // Load the required keys into Trousers.
   ScopedTssKey srk_handle(tpm_context);
-  if (TPMErrorBase err = tpm_->LoadSrk(tpm_context, srk_handle.ptr())) {
+  if (StatusChain<TPMErrorBase> err =
+          tpm_->LoadSrk(tpm_context, srk_handle.ptr())) {
     return WrapError<TPMError>(std::move(err), "Failed to load the SRK");
   }
   int protection_key_size_bits = 0;
@@ -1061,11 +1062,11 @@ TPMErrorBase UnsealingSessionTpm1Impl::Unseal(
   }
   // Unseal the secret value bound to PCRs and the AuthData value.
   SecureBlob auth_value;
-  if (TPMErrorBase err =
+  if (StatusChain<TPMErrorBase> err =
           tpm_->GetAuthValue(base::nullopt, auth_data, &auth_value)) {
     return WrapError<TPMError>(std::move(err), "Failed to get auth value");
   }
-  if (TPMErrorBase err = tpm_->UnsealWithAuthorization(
+  if (StatusChain<TPMErrorBase> err = tpm_->UnsealWithAuthorization(
           base::nullopt, SecureBlob(pcr_bound_secret_), auth_value,
           {} /* pcr_map */, unsealed_value)) {
     return WrapError<TPMError>(std::move(err),
@@ -1074,19 +1075,20 @@ TPMErrorBase UnsealingSessionTpm1Impl::Unseal(
   return nullptr;
 }
 
-TPMErrorBase MakePcrBoundSecret(TpmImpl* tpm,
-                                const SecureBlob& secret_value,
-                                const SecureBlob& auth_data,
-                                const std::map<uint32_t, brillo::Blob>& pcr_map,
-                                brillo::Blob* pcr_bound_secret) {
+StatusChain<TPMErrorBase> MakePcrBoundSecret(
+    TpmImpl* tpm,
+    const SecureBlob& secret_value,
+    const SecureBlob& auth_data,
+    const std::map<uint32_t, brillo::Blob>& pcr_map,
+    brillo::Blob* pcr_bound_secret) {
   CHECK(pcr_bound_secret);
   brillo::SecureBlob auth_value;
-  if (TPMErrorBase err =
+  if (StatusChain<TPMErrorBase> err =
           tpm->GetAuthValue(base::nullopt, auth_data, &auth_value)) {
     return WrapError<TPMError>(std::move(err), "Failed to get auth value");
   }
   SecureBlob secure_pcr_bound_secret;
-  if (TPMErrorBase err = tpm->SealToPcrWithAuthorization(
+  if (StatusChain<TPMErrorBase> err = tpm->SealToPcrWithAuthorization(
           secret_value, auth_data, pcr_map, &secure_pcr_bound_secret)) {
     return WrapError<TPMError>(
         std::move(err),
@@ -1106,7 +1108,7 @@ SignatureSealingBackendTpm1Impl::SignatureSealingBackendTpm1Impl(TpmImpl* tpm)
 
 SignatureSealingBackendTpm1Impl::~SignatureSealingBackendTpm1Impl() = default;
 
-TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
+StatusChain<TPMErrorBase> SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     const Blob& public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
     const std::map<uint32_t, brillo::Blob>& default_pcr_map,
@@ -1164,7 +1166,8 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   }
   // Load the SRK.
   ScopedTssKey srk_handle(tpm_context);
-  if (TPMErrorBase err = tpm_->LoadSrk(tpm_context, srk_handle.ptr())) {
+  if (StatusChain<TPMErrorBase> err =
+          tpm_->LoadSrk(tpm_context, srk_handle.ptr())) {
     return WrapError<TPMError>(std::move(err), "Failed to load the SRK");
   }
   // Generate the Certified Migratable Key, associated with the protection
@@ -1181,7 +1184,7 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   }
   // Generate the AuthData value randomly.
   SecureBlob auth_data;
-  if (TPMErrorBase err =
+  if (StatusChain<TPMErrorBase> err =
           tpm_->GetRandomDataSecureBlob(kAuthDataSizeBytes, &auth_data)) {
     return WrapError<TPMError>(std::move(err),
                                "Failed to generate the authorization data");
@@ -1201,7 +1204,7 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
                                  TPMRetryAction::kNoRetry);
   }
   // Generate the secret value randomly.
-  if (TPMErrorBase err =
+  if (StatusChain<TPMErrorBase> err =
           tpm_->GetRandomDataSecureBlob(kSecretSizeBytes, secret_value)) {
     return WrapError<TPMError>(std::move(err),
                                "Error generating random secret");
@@ -1210,7 +1213,7 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
 
   // Bind the secret value to the default PCR map.
   brillo::Blob default_pcr_bound_secret;
-  if (TPMErrorBase err =
+  if (StatusChain<TPMErrorBase> err =
           MakePcrBoundSecret(tpm_, *secret_value, auth_data, default_pcr_map,
                              &default_pcr_bound_secret)) {
     return WrapError<TPMError>(std::move(err),
@@ -1219,7 +1222,7 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
 
   // Bind the secret value to the extended PCR map.
   brillo::Blob extended_pcr_bound_secret;
-  if (TPMErrorBase err =
+  if (StatusChain<TPMErrorBase> err =
           MakePcrBoundSecret(tpm_, *secret_value, auth_data, extended_pcr_map,
                              &extended_pcr_bound_secret)) {
     return WrapError<TPMError>(std::move(err),
@@ -1238,7 +1241,8 @@ TPMErrorBase SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   return nullptr;
 }
 
-TPMErrorBase SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
+StatusChain<TPMErrorBase>
+SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
     const structure::SignatureSealedData& sealed_secret_data,
     const Blob& public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
