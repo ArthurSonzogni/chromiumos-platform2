@@ -14,6 +14,7 @@ assert_matches = "1.5.0"
 
 [dependencies]
 libsirenia = { path = "../libsirenia" } # provided by ebuild
+once_cell = "1.7.2"
 serde = { version = "1.0.114", features = ["derive"] }
 sync = { path = "../../../platform/crosvm/common/sync" } # provided by ebuild
 sys_util = { path = "../../../platform/crosvm/common/sys_util" } # provided by ebuild

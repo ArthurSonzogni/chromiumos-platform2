@@ -5,16 +5,17 @@
 //! Defines the messages and abstracts out communication for storage between
 //! TEE apps, Trichechus, and Dugong.
 
-use std::sync::{Arc, Once};
-
-use sync::Mutex;
+use std::sync::Arc;
 
 use libsirenia::communication::persistence::Status;
 use libsirenia::communication::{StorageRpc, StorageRpcClient};
 use libsirenia::storage::{to_read_data_error, to_write_data_error, Error, Result, Storage};
 use libsirenia::transport::{create_transport_from_default_fds, Transport};
+use once_cell::sync::OnceCell;
+use sync::Mutex;
 
 /// Holds the rpc client for the specific instance of the TEE App.
+#[derive(Clone)]
 pub struct TrichechusStorage {
     rpc: Arc<Mutex<StorageRpcClient>>,
 }
@@ -28,20 +29,16 @@ impl TrichechusStorage {
      * call made after the first will simply return the storage object.
      */
     pub fn new() -> Self {
-        static INIT: Once = Once::new();
-        static mut RPC: Option<Arc<Mutex<StorageRpcClient>>> = None;
-        // Safe because it is protected by Once
-        INIT.call_once(|| unsafe {
-            let transport = Some(Arc::new(Mutex::new(StorageRpcClient::new(
-                create_transport_from_default_fds().unwrap(),
-            ))));
-            RPC = transport;
-        });
-
-        TrichechusStorage {
-            // Safe because RPC is only written inside the Once
-            rpc: unsafe { RPC.as_ref().unwrap().clone() },
-        }
+        static RPC: OnceCell<TrichechusStorage> = OnceCell::new();
+        RPC.get_or_init(|| {
+            TrichechusStorage {
+                rpc: Arc::new(Mutex::new(StorageRpcClient::new(
+                    // Safe because this is only called once by get_or_init().
+                    unsafe { create_transport_from_default_fds() }.unwrap(),
+                ))),
+            }
+        })
+        .clone()
     }
 }
 
