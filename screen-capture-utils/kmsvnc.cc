@@ -83,11 +83,15 @@ class FpsTimer {
   double Elapsed() const {
     struct timeval end_time;
     PCHECK(gettimeofday(&end_time, NULL) != -1);
-    double seconds = (end_time.tv_sec - start_time_.tv_sec) +
-                     (end_time.tv_usec - start_time_.tv_usec) / 1000.0 / 1000.0;
+    double seconds =
+        static_cast<double>(end_time.tv_sec - start_time_.tv_sec) +
+        static_cast<double>(end_time.tv_usec - start_time_.tv_usec) / 1000.0 /
+            1000.0;
     return seconds;
   }
-  double Get(size_t frames) const { return frames / Elapsed(); }
+  double Get(size_t frames) const {
+    return static_cast<double>(frames) / Elapsed();
+  }
 };
 
 class ScopedSigaction {

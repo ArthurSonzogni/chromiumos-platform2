@@ -46,8 +46,8 @@ class EglDisplayBuffer : public DisplayBuffer {
                  float crop_y,
                  float crop_width,
                  float crop_height,
-                 uint32_t src_width,
-                 uint32_t src_height);
+                 float src_width,
+                 float src_height);
 
   const Crtc& crtc_;
   const uint32_t x_;

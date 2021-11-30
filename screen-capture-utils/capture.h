@@ -5,6 +5,8 @@
 #ifndef SCREEN_CAPTURE_UTILS_CAPTURE_H_
 #define SCREEN_CAPTURE_UTILS_CAPTURE_H_
 
+#include <stdint.h>
+
 namespace screenshot {
 
 class DisplayBuffer {

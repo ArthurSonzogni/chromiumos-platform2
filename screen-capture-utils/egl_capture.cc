@@ -298,10 +298,11 @@ DisplayBuffer::Result EglDisplayBuffer::Capture() {
                     crtc_.file().GetPlatformFile(), display_, crtc_.fb2());
     CHECK(image != EGL_NO_IMAGE_KHR) << "Failed to create image";
 
-    SetUVRect(/*crop_x=*/0, /*crop_y=*/0, /*crop_width=*/crtc_.fb2()->width,
-              /*crop_height=*/crtc_.fb2()->height,
-              /*src_width=*/crtc_.fb2()->width,
-              /*src_height=*/crtc_.fb2()->height);
+    SetUVRect(/*crop_x=*/0, /*crop_y=*/0,
+              /*crop_width=*/static_cast<float>(crtc_.fb2()->width),
+              /*crop_height=*/static_cast<float>(crtc_.fb2()->height),
+              /*src_width=*/static_cast<float>(crtc_.fb2()->width),
+              /*src_height=*/static_cast<float>(crtc_.fb2()->height));
     glViewport(0, 0, width_, height_);
     glEGLImageTargetTexture2DOES_(GL_TEXTURE_EXTERNAL_OES, image);
 
@@ -320,8 +321,9 @@ DisplayBuffer::Result EglDisplayBuffer::Capture() {
 
       // Handle the plane's crop rectangle.
       SetUVRect(plane.second.crop_x, plane.second.crop_y, plane.second.crop_w,
-                plane.second.crop_h, /*src_width=*/plane.first->width,
-                /*src_height=*/plane.first->height);
+                plane.second.crop_h,
+                /*src_width=*/static_cast<float>(plane.first->width),
+                /*src_height=*/static_cast<float>(plane.first->height));
 
       // TODO(andrescj): Handle rotation.
       glViewport(plane.second.x, plane.second.y, plane.second.w,
@@ -352,8 +354,8 @@ void EglDisplayBuffer::SetUVRect(float crop_x,
                                  float crop_y,
                                  float crop_width,
                                  float crop_height,
-                                 uint32_t src_width,
-                                 uint32_t src_height) {
+                                 float src_width,
+                                 float src_height) {
   const float uv_left = crop_x / src_width;
   const float uv_right = (crop_x + crop_width) / src_width;
   const float uv_top = crop_y / src_height;
