@@ -7,6 +7,11 @@
 
 #include <string>
 
+#include <dbus/message.h>
+
+// Returns errno from |reader| containing the |response| message.
+int GetResponseErrno(dbus::MessageReader* reader, dbus::Response* response);
+
 // Returns errno for an |error| that matches base::File::Error codes.
 int FileErrorToErrno(int error);
 

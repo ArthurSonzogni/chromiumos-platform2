@@ -7,8 +7,32 @@
 #include <fcntl.h>
 #include <fuse_lowlevel.h>
 
+#include <base/check.h>
 #include <base/files/file.h>
+#include <base/logging.h>
+#include <base/posix/safe_strerror.h>
 #include <base/strings/stringprintf.h>
+
+int GetResponseErrno(dbus::MessageReader* reader, dbus::Response* response) {
+  DCHECK(reader);
+
+  if (!response) {
+    LOG(ERROR) << "error: no server response";
+    return ENODEV;
+  }
+
+  int32_t response_file_error;
+  CHECK(reader->PopInt32(&response_file_error));
+
+  if (response_file_error != 0) {
+    int response_errno = FileErrorToErrno(response_file_error);
+    LOG(ERROR) << "error: " << base::safe_strerror(response_errno) << " ["
+               << response_file_error << "]";
+    return response_errno;
+  }
+
+  return 0;
+}
 
 int FileErrorToErrno(int error) {
   const auto file_error = static_cast<base::File::Error>(error);

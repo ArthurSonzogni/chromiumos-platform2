@@ -6,11 +6,46 @@
 
 #include <fcntl.h>
 #include <fuse_lowlevel.h>
+#include <memory>
 
 #include <base/files/file.h>
+#include <brillo/dbus/data_serialization.h>
 #include <gtest/gtest.h>
 
+using brillo::dbus_utils::AppendValueToWriter;
+
 namespace fusebox {
+
+TEST(UtilTest, GetResponseErrnoNoServerResponse) {
+  dbus::Response* response = nullptr;  // The server did not respond.
+
+  dbus::MessageReader reader(response);
+  EXPECT_EQ(ENODEV, GetResponseErrno(&reader, response));
+}
+
+TEST(UtilTest, GetResponseErrnoBusyError) {
+  std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
+
+  dbus::MessageWriter writer(response.get());
+  int busy_error = static_cast<int>(base::File::Error::FILE_ERROR_IN_USE);
+  AppendValueToWriter(&writer, busy_error);
+  ASSERT_NE(busy_error, 0);
+
+  dbus::MessageReader reader(response.get());
+  EXPECT_EQ(EBUSY, GetResponseErrno(&reader, response.get()));
+}
+
+TEST(UtilTest, GetResponseErrnoNoError) {
+  std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
+
+  dbus::MessageWriter writer(response.get());
+  int no_error = static_cast<int>(base::File::Error::FILE_OK);
+  AppendValueToWriter(&writer, no_error);
+  ASSERT_EQ(no_error, 0);
+
+  dbus::MessageReader reader(response.get());
+  EXPECT_EQ(0, GetResponseErrno(&reader, response.get()));
+}
 
 TEST(UtilTest, FileErrorToErrno) {
   int ok = static_cast<int>(base::File::Error::FILE_OK);
