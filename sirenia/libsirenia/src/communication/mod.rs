@@ -5,9 +5,9 @@
 //! Handles the communication abstraction for sirenia. Used both for
 //! communication between dugong and trichechus and between TEEs and
 //! trichechus.
-//!
 
 pub mod persistence;
+pub mod tee_api;
 pub mod trichechus;
 
 use std::convert::TryInto;
@@ -21,7 +21,6 @@ use std::result::Result as StdResult;
 use flexbuffers::FlexbufferSerializer;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use sirenia_rpc_macros::sirenia_rpc;
 use thiserror::Error as ThisError;
 
 use crate::sys::eagain_is_ok;
@@ -44,15 +43,6 @@ pub enum Error {
 
 /// The result of an operation in this crate.
 pub type Result<T> = StdResult<T, Error>;
-
-/// Definition for storage rpc needed both by manatee_runtime and sirenia
-#[sirenia_rpc]
-pub trait StorageRpc {
-    type Error;
-
-    fn read_data(&self, id: String) -> StdResult<(persistence::Status, Vec<u8>), Self::Error>;
-    fn write_data(&self, id: String, data: Vec<u8>) -> StdResult<persistence::Status, Self::Error>;
-}
 
 #[derive(Debug)]
 pub struct NonBlockingMessageReader<D: DeserializeOwned> {

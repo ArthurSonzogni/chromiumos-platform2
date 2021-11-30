@@ -8,37 +8,26 @@
 use std::sync::Arc;
 
 use libsirenia::communication::persistence::Status;
-use libsirenia::communication::{StorageRpc, StorageRpcClient};
+use libsirenia::communication::tee_api::{TeeApi, TeeApiClient};
 use libsirenia::storage::{to_read_data_error, to_write_data_error, Error, Result, Storage};
-use libsirenia::transport::{create_transport_from_default_fds, Transport};
-use once_cell::sync::OnceCell;
+use libsirenia::transport::Transport;
 use sync::Mutex;
+
+use crate::rpc_handle;
 
 /// Holds the rpc client for the specific instance of the TEE App.
 #[derive(Clone)]
 pub struct TrichechusStorage {
-    rpc: Arc<Mutex<StorageRpcClient>>,
+    rpc: Arc<Mutex<TeeApiClient>>,
 }
 
 impl TrichechusStorage {
-    /*
-     * Initialize the Transport between TEE App and Trichechus.
-     *
-     * Note: This can only be called once as it will create a file from the
-     * connection file descriptor which is unsafe if done more than once. Every
-     * call made after the first will simply return the storage object.
-     */
+    /// Initialize the storage related middleware.
+    ///
+    /// This uses the TEE API over RPC which is protected by a mutex so keep that in mind when
+    /// planning deadlock avoidance.
     pub fn new() -> Self {
-        static RPC: OnceCell<TrichechusStorage> = OnceCell::new();
-        RPC.get_or_init(|| {
-            TrichechusStorage {
-                rpc: Arc::new(Mutex::new(StorageRpcClient::new(
-                    // Safe because this is only called once by get_or_init().
-                    unsafe { create_transport_from_default_fds() }.unwrap(),
-                ))),
-            }
-        })
-        .clone()
+        TrichechusStorage { rpc: rpc_handle() }
     }
 }
 
@@ -51,7 +40,7 @@ impl Default for TrichechusStorage {
 impl From<Transport> for TrichechusStorage {
     fn from(transport: Transport) -> Self {
         TrichechusStorage {
-            rpc: Arc::new(Mutex::new(StorageRpcClient::new(transport))),
+            rpc: Arc::new(Mutex::new(TeeApiClient::new(transport))),
         }
     }
 }
@@ -90,7 +79,7 @@ pub mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use assert_matches::assert_matches;
-    use libsirenia::communication::StorageRpcServer;
+    use libsirenia::communication::tee_api::TeeApiServer;
     use libsirenia::rpc::RpcDispatcher;
     use libsirenia::storage::Error as StorageError;
     use libsirenia::transport::create_transport_from_pipes;
@@ -98,11 +87,11 @@ pub mod tests {
     const TEST_ID: &str = "id";
 
     #[derive(Clone)]
-    struct StorageRpcServerImpl {
+    struct TeeApiServerImpl {
         map: Rc<RefCell<Map<String, Vec<u8>>>>,
     }
 
-    impl StorageRpc for StorageRpcServerImpl {
+    impl TeeApi for TeeApiServerImpl {
         type Error = ();
 
         // TODO: Want to return nested Result - but Error needs to be serializable first
@@ -127,10 +116,10 @@ pub mod tests {
             .to_string()
     }
 
-    fn setup() -> (RpcDispatcher<Box<dyn StorageRpcServer>>, TrichechusStorage) {
+    fn setup() -> (RpcDispatcher<Box<dyn TeeApiServer>>, TrichechusStorage) {
         let (server_transport, client_transport) = create_transport_from_pipes().unwrap();
 
-        let handler: Box<dyn StorageRpcServer> = Box::new(StorageRpcServerImpl {
+        let handler: Box<dyn TeeApiServer> = Box::new(TeeApiServerImpl {
             map: Rc::new(RefCell::new(Map::new())),
         });
         let dispatcher = RpcDispatcher::new(handler, server_transport).unwrap();

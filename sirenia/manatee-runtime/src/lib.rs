@@ -6,14 +6,41 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use std::borrow::{Borrow, BorrowMut};
-use std::collections::BTreeMap as Map;
-use std::marker::PhantomData;
-
-use libsirenia::storage::{Storable, Storage};
+pub mod storage;
 
 pub use libsirenia::storage::{Error, Result};
-pub mod storage;
+pub use sync::Mutex;
+
+use std::borrow::{Borrow, BorrowMut};
+use std::collections::BTreeMap as Map;
+use std::fs::File;
+use std::marker::PhantomData;
+use std::os::unix::io::FromRawFd;
+use std::sync::Arc;
+
+use libsirenia::{
+    communication::tee_api::TeeApiClient,
+    storage::{Storable, Storage},
+    transport::{Transport, DEFAULT_CONNECTION_R_FD, DEFAULT_CONNECTION_W_FD},
+};
+use once_cell::sync::OnceCell;
+
+/// Return a client RPC handle for the TEE API.
+///
+/// This performs lazy initialization.
+pub fn rpc_handle() -> Arc<Mutex<TeeApiClient>> {
+    static RPC: OnceCell<Arc<Mutex<TeeApiClient>>> = OnceCell::new();
+    RPC.get_or_init(|| {
+        Arc::new(Mutex::new(TeeApiClient::new(
+            // Safe because this is only called once by get_or_init().
+            Transport::from_files(
+                unsafe { File::from_raw_fd(DEFAULT_CONNECTION_R_FD) },
+                unsafe { File::from_raw_fd(DEFAULT_CONNECTION_W_FD) },
+            ),
+        )))
+    })
+    .clone()
+}
 
 /// Represents some scoped data temporarily loaded from the backing store.
 pub struct ScopedData<S: Storable, T: Storage, R: BorrowMut<T>> {

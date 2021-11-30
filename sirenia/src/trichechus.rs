@@ -30,8 +30,8 @@ use libsirenia::{
     cli::{trichechus::initialize_common_arguments, TransportTypeOption},
     communication::{
         persistence::{Cronista, CronistaClient, Status},
+        tee_api::{TeeApi, TeeApiServer},
         trichechus::{self, AppInfo, SystemEvent, Trichechus, TrichechusServer},
-        StorageRpc, StorageRpcServer,
     },
     linux::{
         events::{AddEventSourceMutator, EventMultiplexer, Mutator},
@@ -141,7 +141,7 @@ impl TeeAppHandler {
     }
 }
 
-impl StorageRpc for TeeAppHandler {
+impl TeeApi for TeeAppHandler {
     type Error = ();
 
     fn read_data(&self, id: String) -> StdResult<(Status, Vec<u8>), Self::Error> {
@@ -351,7 +351,7 @@ impl DugongConnectionHandler {
             Ok((pid, app, transport)) => {
                 let tee_app = Rc::new(RefCell::new(app));
                 trichechus_state.running_apps.insert(pid, tee_app.clone());
-                let storage_server: Box<dyn StorageRpcServer> =
+                let storage_server: Box<dyn TeeApiServer> =
                     Box::new(TeeAppHandler { state, tee_app });
                 RpcDispatcher::new_as_boxed_mutator(storage_server, transport)?
             }

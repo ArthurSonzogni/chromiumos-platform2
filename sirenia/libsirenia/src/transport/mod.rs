@@ -20,7 +20,7 @@ use std::net::{
     ToSocketAddrs,
 };
 use std::os::raw::c_uint;
-use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
+use std::os::unix::io::{AsRawFd, IntoRawFd, RawFd};
 use std::str::FromStr;
 
 use core::mem::replace;
@@ -511,22 +511,6 @@ impl PartialEq for PipeTransportState {
             PipeTransportState::UnBound => matches!(other, PipeTransportState::UnBound),
         }
     }
-}
-
-/// # Safety
-///
-/// Safe if called from an Only. Needs to be guaranteed to be only called once
-/// from a process.
-pub unsafe fn create_transport_from_default_fds() -> Result<Transport> {
-    let (r, w): (RawFd, RawFd) = (DEFAULT_CONNECTION_R_FD, DEFAULT_CONNECTION_W_FD);
-    let id = (r, w);
-    // Safe if only called once because DEFAULT_CONNECTION_R_FD and DEFAULT_CONNECTION_W_FD are
-    // inherited file descriptors that are not owned yet.
-    Ok(Transport {
-        r: Box::new(unsafe { File::from_raw_fd(DEFAULT_CONNECTION_R_FD) }),
-        w: Box::new(unsafe { File::from_raw_fd(DEFAULT_CONNECTION_W_FD) }),
-        id: TransportType::from(id),
-    })
 }
 
 // Returns two `Transport` structs connected to each other.
