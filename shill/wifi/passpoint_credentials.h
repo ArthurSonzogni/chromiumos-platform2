@@ -46,8 +46,8 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
   void SetSupplicantId(const RpcIdentifier& id) { supplicant_id_ = id; }
 
   // Populate the wpa_supplicant D-Bus parameter map |properties| with the
-  // parameters contained in |this|.
-  virtual void ToSupplicantProperties(KeyValueStore* properties) const;
+  // parameters contained in |this| and return true if successful.
+  virtual bool ToSupplicantProperties(KeyValueStore* properties) const;
 
   // Loads the set of credentials from |storage|. Requires the credentials
   // identifier |id_| to be set before calling this.
@@ -83,6 +83,8 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
  private:
   friend class WiFiProviderTest;
   FRIEND_TEST(PasspointCredentialsTest, ToSupplicantProperties);
+  FRIEND_TEST(PasspointCredentialsTest, EncodeOI);
+  FRIEND_TEST(PasspointCredentialsTest, EncodeOIList);
 
   // Storage keys
   static constexpr char kStorageDomains[] = "Domains";
@@ -104,6 +106,13 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
 
   // Create a unique identifier for the set of credentials.
   static std::string GenerateIdentifier();
+
+  // Encode an Organisation Identifier to an hexadecimal string.
+  static std::string EncodeOI(uint64_t oi);
+
+  // Encode an Organisation Identifier list to a string of hexadecimal values
+  // separated by a ','.
+  static std::string EncodeOIList(const std::vector<uint64_t>& ois);
 
   // Home service provider FQDNs.
   std::vector<std::string> domains_;

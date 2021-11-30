@@ -376,15 +376,16 @@ TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {
                                          "green-sp.example.com"};
   const std::string realm("blue-sp.example.com");
   const std::vector<uint64_t> home_ois{0x1234, 0x5678};
+  const std::vector<uint64_t> single_home_oi{0xab89cd12};
   const std::vector<uint64_t> required_home_ois{0xabcd, 0xcdef};
   const std::vector<uint64_t> roaming_consortia{0x11111111, 0x22222222};
 
   PasspointCredentialsRefPtr creds = new PasspointCredentials(
-      "an_id", domains, realm, home_ois, required_home_ois, roaming_consortia,
+      "an_id", domains, realm, home_ois, single_home_oi, roaming_consortia,
       /*metered_override=*/false, "app_package_name");
 
   KeyValueStore properties;
-  creds->ToSupplicantProperties(&properties);
+  EXPECT_TRUE(creds->ToSupplicantProperties(&properties));
 
   EXPECT_EQ(domains[0], properties.Get<std::string>(
                             WPASupplicant::kCredentialsPropertyDomain));
@@ -395,7 +396,70 @@ TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {
   // can't be set with the constructor.
   EXPECT_TRUE(
       properties.Contains<std::string>(WPASupplicant::kNetworkPropertyEapEap));
-  // TODO(b/162106001) check home, required home and roaming consortium OIs
+  // There's one required Home OIs
+  EXPECT_EQ("AB89CD12",
+            properties.Get<std::string>(
+                WPASupplicant::kCredentialsPropertyRequiredRoamingConsortium));
+  EXPECT_EQ("11111111,22222222",
+            properties.Get<std::string>(
+                WPASupplicant::kCredentialsPropertyRoamingConsortiums));
+
+  creds = new PasspointCredentials(
+      "an_id", domains, realm, home_ois, std::vector<uint64_t>(),
+      roaming_consortia, /*metered_override=*/false, "app_package_name");
+
+  properties.Clear();
+  EXPECT_TRUE(creds->ToSupplicantProperties(&properties));
+
+  EXPECT_EQ(domains[0], properties.Get<std::string>(
+                            WPASupplicant::kCredentialsPropertyDomain));
+  EXPECT_EQ(realm, properties.Get<std::string>(
+                       WPASupplicant::kCredentialsPropertyRealm));
+  // There's no required Home OIs, we expect to find the first one from the
+  // home_ois in the list.
+  EXPECT_EQ("1234", properties.Get<std::string>(
+                        WPASupplicant::kCredentialsPropertyRoamingConsortium));
+  EXPECT_EQ("11111111,22222222",
+            properties.Get<std::string>(
+                WPASupplicant::kCredentialsPropertyRoamingConsortiums));
+
+  // For now we only support one "required" Home OI, the translation to
+  // supplicant properties has to fail if there's more while supplicant
+  // is not fixed.
+  creds = new PasspointCredentials(
+      "an_id", domains, realm, home_ois, home_ois, roaming_consortia,
+      /*metered_override=*/false, "app_package_name");
+
+  properties.Clear();
+  EXPECT_FALSE(creds->ToSupplicantProperties(&properties));
+}
+
+TEST_F(PasspointCredentialsTest, EncodeOI) {
+  // Even count of digits
+  EXPECT_EQ("506F9A", PasspointCredentials::EncodeOI(0x506F9A));
+  // Odd count of digits
+  EXPECT_EQ("0B69FE", PasspointCredentials::EncodeOI(0xB69FE));
+
+  EXPECT_EQ("123456789ABCDEF0",
+            PasspointCredentials::EncodeOI(0x123456789ABCDEF0));
+  EXPECT_EQ("FFFFFFFFFFFFFFFF", PasspointCredentials::EncodeOI(
+                                    std::numeric_limits<uint64_t>::max()));
+  EXPECT_EQ("00", PasspointCredentials::EncodeOI(
+                      std::numeric_limits<uint64_t>::min()));
+}
+
+TEST_F(PasspointCredentialsTest, EncodeOIList) {
+  const std::vector<uint64_t> empty;
+  const std::vector<uint64_t> one_value{0x80fc};
+  const std::vector<uint64_t> two_values{0x0, 0x123abc};
+  const std::vector<uint64_t> three_values{0x123456789abcdef0, 0x96,
+                                           0xbf0ac789};
+
+  EXPECT_EQ("", PasspointCredentials::EncodeOIList(empty));
+  EXPECT_EQ("80FC", PasspointCredentials::EncodeOIList(one_value));
+  EXPECT_EQ("00,123ABC", PasspointCredentials::EncodeOIList(two_values));
+  EXPECT_EQ("123456789ABCDEF0,96,BF0AC789",
+            PasspointCredentials::EncodeOIList(three_values));
 }
 
 }  // namespace shill

@@ -4723,10 +4723,14 @@ TEST_F(WiFiMainTest, AddCred) {
 
   StartWiFi();
 
+  // Failure to convert credentials to supplicant properties.
+  EXPECT_CALL(*creds, ToSupplicantProperties(_)).WillOnce(Return(false));
+  EXPECT_FALSE(AddCred(creds));
+
   // Supplicant fails to add credentials: device should fail.
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddCred(_, _))
       .WillOnce(Return(false));
-  EXPECT_CALL(*creds, ToSupplicantProperties(_));
+  EXPECT_CALL(*creds, ToSupplicantProperties(_)).WillOnce(Return(true));
   EXPECT_FALSE(AddCred(creds));
   EXPECT_EQ(DBusControl::NullRpcIdentifier(), creds->supplicant_id());
 
@@ -4734,7 +4738,7 @@ TEST_F(WiFiMainTest, AddCred) {
   RpcIdentifier path("/credentials/0");
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddCred(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(path), Return(true)));
-  EXPECT_CALL(*creds, ToSupplicantProperties(_));
+  EXPECT_CALL(*creds, ToSupplicantProperties(_)).WillOnce(Return(true));
   EXPECT_TRUE(AddCred(creds));
   EXPECT_EQ(path, creds->supplicant_id());
 }
@@ -4777,8 +4781,8 @@ TEST_F(WiFiMainTest, ClearsAndRestoresCredentials) {
   // Supplicant state is cleared and the credentials we own are added.
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveAllCreds());
   EXPECT_CALL(*wifi_provider(), GetCredentials()).WillOnce(Return(credentials));
-  EXPECT_CALL(*cred1, ToSupplicantProperties(_));
-  EXPECT_CALL(*cred2, ToSupplicantProperties(_));
+  EXPECT_CALL(*cred1, ToSupplicantProperties(_)).WillOnce(Return(true));
+  EXPECT_CALL(*cred2, ToSupplicantProperties(_)).WillOnce(Return(true));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddCred(_, _))
       .Times(2)
       .WillRepeatedly(Return(true));

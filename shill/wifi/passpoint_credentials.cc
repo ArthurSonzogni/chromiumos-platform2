@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <uuid/uuid.h>
 
@@ -73,7 +74,7 @@ PasspointCredentials::PasspointCredentials(
       profile_(nullptr),
       supplicant_id_(DBusControl::NullRpcIdentifier()) {}
 
-void PasspointCredentials::ToSupplicantProperties(
+bool PasspointCredentials::ToSupplicantProperties(
     KeyValueStore* properties) const {
   CHECK(properties);
   // A set of passpoint credentials is validated at insertion time in Shill,
@@ -92,12 +93,49 @@ void PasspointCredentials::ToSupplicantProperties(
   properties->Set<std::string>(WPASupplicant::kCredentialsPropertyRealm,
                                realm_);
 
-  // TODO(b/162106001) set the home, required home and roaming consortium OIs
-  // to the correct properties.
+  // As supplicant lacks the support for matching multiple Home Organization
+  // Identifiers (Home OIs), we need to handle them carefully. It leads to two
+  // different situations:
+  //  - "required" Home OIs: only one OI is supported. If there's more, we
+  //    can't use the credentials or we would take the risk to match with
+  //    networks we're not supposed to (see §9.1.2 from the specification).
+  //  - there's no "required" Home OIs: we take the first one of the OIs
+  //    list, but we may miss some matches.
+  // The full OIs lists are stored, so we'll be able add the support to
+  // supplicant later without breaking the credentials providers (apps, ...).
+  if (!required_home_ois_.empty()) {
+    if (required_home_ois_.size() > 1) {
+      // TODO(b/162105998) add support for multiple Home OIs in wpa_supplicant.
+      LOG(ERROR) << "Passpoint credentials does not support multiple "
+                 << "required Home OIs yet (" << required_home_ois_.size()
+                 << " found).";
+      properties->Clear();
+      return false;
+    }
+    properties->Set<std::string>(
+        WPASupplicant::kCredentialsPropertyRequiredRoamingConsortium,
+        EncodeOI(required_home_ois_[0]));
+  } else if (!home_ois_.empty()) {
+    if (home_ois_.size() > 1) {
+      // TODO(b/162105998) add support for multiple Home OIs in wpa_supplicant.
+      LOG(WARNING) << "Passpoint credentials does not support multiple "
+                   << "Home OIs yet, only the first one will be used.";
+    }
+    properties->Set<std::string>(
+        WPASupplicant::kCredentialsPropertyRoamingConsortium,
+        EncodeOI(home_ois_[0]));
+  }
+
+  if (!roaming_consortia_.empty()) {
+    properties->Set<std::string>(
+        WPASupplicant::kCredentialsPropertyRoamingConsortiums,
+        EncodeOIList(roaming_consortia_));
+  }
 
   // Supplicant requires the EAP method for interworking selection.
   properties->Set<std::string>(WPASupplicant::kNetworkPropertyEapEap,
                                eap_.method());
+  return true;
 }
 
 void PasspointCredentials::Load(const StoreInterface* storage) {
@@ -256,6 +294,35 @@ PasspointCredentialsRefPtr PasspointCredentials::CreatePasspointCredentials(
   }
 
   return creds;
+}
+
+// static
+std::string PasspointCredentials::EncodeOI(uint64_t oi) {
+  static const char kHexChars[] = "0123456789ABCDEF";
+  // Each input byte creates two output hex characters.
+  static const size_t size = sizeof(uint64_t) * 2;
+
+  std::string ret(size, '\0');
+  size_t i = size;
+  // wpa_supplicant expects an even number of char as a byte is filled by two
+  // of them.
+  do {
+    ret[--i] = kHexChars[oi & 0x0f];
+    ret[--i] = kHexChars[(oi & 0xf0) >> 4];
+    oi = oi >> 8;
+  } while (oi > 0);
+
+  return ret.substr(i);
+}
+
+// static
+std::string PasspointCredentials::EncodeOIList(
+    const std::vector<uint64_t>& ois) {
+  std::vector<std::string> strings;
+  for (const auto& oi : ois) {
+    strings.push_back(EncodeOI(oi));
+  }
+  return base::JoinString(strings, ",");
 }
 
 }  // namespace shill

@@ -342,7 +342,11 @@ bool WiFi::AddCred(const PasspointCredentialsRefPtr& credentials) {
 
   RpcIdentifier id;
   KeyValueStore properties;
-  credentials->ToSupplicantProperties(&properties);
+  if (!credentials->ToSupplicantProperties(&properties)) {
+    LOG(ERROR) << "failed to get supplicant properties from passpoint "
+               << "credentials " << credentials->id();
+    return false;
+  }
   if (!supplicant_interface_proxy_->AddCred(properties, &id)) {
     LOG(ERROR) << "failed add passpoint credentials " << credentials->id()
                << " to supplicant";

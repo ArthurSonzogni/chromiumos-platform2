@@ -22,7 +22,7 @@ class MockPasspointCredentials : public PasspointCredentials {
 
   ~MockPasspointCredentials() = default;
 
-  MOCK_METHOD(void,
+  MOCK_METHOD(bool,
               ToSupplicantProperties,
               (KeyValueStore*),
               (const, override));
