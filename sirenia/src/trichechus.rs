@@ -22,10 +22,10 @@ use std::result::Result as StdResult;
 use anyhow::{bail, Context, Result};
 use getopts::Options;
 use libchromeos::secure_blob::SecureBlob;
-use libsirenia::linux::events::{ComboMutator, CopyFdEventSource};
-use libsirenia::sys::dup;
-use libsirenia::transport::{TransportRead, TransportWrite};
 use libsirenia::{
+    app_info::{
+        self, AppManifest, AppManifestEntry, Digest, ExecutableInfo, SandboxType, StorageParameters,
+    },
     build_info::BUILD_TIMESTAMP,
     cli::{trichechus::initialize_common_arguments, TransportTypeOption},
     communication::{
@@ -33,29 +33,28 @@ use libsirenia::{
         tee_api::{TeeApi, TeeApiServer},
         trichechus::{self, AppInfo, SystemEvent, Trichechus, TrichechusServer},
     },
+    compute_sha256,
     linux::{
-        events::{AddEventSourceMutator, EventMultiplexer, Mutator},
+        events::{
+            AddEventSourceMutator, ComboMutator, CopyFdEventSource, EventMultiplexer, Mutator,
+        },
         syslog::{Syslog, SyslogReceiverMut, SYSLOG_PATH},
     },
     rpc::{self, ConnectionHandler, RpcDispatcher, TransportServer},
     sandbox::{MinijailSandbox, Sandbox, VmConfig, VmSandbox},
-    sys::{self, get_a_pty, halt, power_off, reboot},
-    transport::{
-        create_transport_from_pipes, Transport, TransportType, CROS_CID, CROS_CONNECTION_ERR_FD,
-        CROS_CONNECTION_R_FD, CROS_CONNECTION_W_FD, DEFAULT_CLIENT_PORT, DEFAULT_CONNECTION_R_FD,
-        DEFAULT_CONNECTION_W_FD, DEFAULT_CRONISTA_PORT, DEFAULT_SERVER_PORT,
-    },
-};
-use sirenia::{
-    app_info::{
-        self, AppManifest, AppManifestEntry, Digest, ExecutableInfo, SandboxType, StorageParameters,
-    },
-    compute_sha256, log_error,
     secrets::{
         self, storage_encryption::StorageEncryption, GscSecret, PlatformSecret, SecretManager,
         VersionedSecret,
     },
+    sys::{self, dup, get_a_pty, halt, power_off, reboot},
+    transport::{
+        create_transport_from_pipes, Transport, TransportRead, TransportType, TransportWrite,
+        CROS_CID, CROS_CONNECTION_ERR_FD, CROS_CONNECTION_R_FD, CROS_CONNECTION_W_FD,
+        DEFAULT_CLIENT_PORT, DEFAULT_CONNECTION_R_FD, DEFAULT_CONNECTION_W_FD,
+        DEFAULT_CRONISTA_PORT, DEFAULT_SERVER_PORT,
+    },
 };
+use sirenia::log_error;
 use sys_util::{
     self, error, getpid, getsid, info, reap_child, setsid, syslog,
     vsock::SocketAddr as VSocketAddr, warn, MemfdSeals, Pid, SharedMemory,

@@ -3,8 +3,9 @@
 // found in the LICENSE file.
 
 //! The module that defines the app_manifest.
-pub use libsirenia::communication::Digest;
-pub use libsirenia::communication::ExecutableInfo;
+
+pub use crate::communication::Digest;
+pub use crate::communication::ExecutableInfo;
 
 use std::collections::BTreeMap as Map;
 use std::fmt::Debug;
@@ -13,9 +14,10 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::result::Result as StdResult;
 
-use libsirenia::communication::persistence::Scope;
 use serde::{Deserialize, Serialize};
 use thiserror::Error as ThisError;
+
+use crate::communication::persistence::Scope;
 
 pub const DEFAULT_APP_CONFIG_PATH: &str = "/usr/share/manatee";
 pub const JSON_EXTENSION: &str = ".json";

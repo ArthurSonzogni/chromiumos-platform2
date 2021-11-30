@@ -18,15 +18,11 @@ use sys_util::{
 };
 use thiserror::Error as ThisError;
 
-use libsirenia::{
-    communication::persistence::{Cronista, Scope, Status},
-    communication::Digest,
-    rpc,
-};
-
 use crate::{
     app_info::AppManifestEntry,
-    compute_sha256,
+    communication::persistence::{Cronista, Scope, Status},
+    communication::Digest,
+    compute_sha256, rpc,
     secrets::{self, SecretManager, SecretVersion},
 };
 
@@ -390,12 +386,11 @@ mod tests {
     use assert_matches::assert_matches;
     use base64::decode_config;
     use libchromeos::secure_blob::SecureBlob;
-    use libsirenia::communication::persistence::MockCronista;
-    use libsirenia::communication::persistence::Scope;
     use sys_util::scoped_path::{get_temp_path, ScopedPath};
 
     use crate::{
         app_info::{AppManifest, ExecutableInfo, SandboxType, StorageParameters},
+        communication::persistence::{MockCronista, Scope},
         secrets::{GscSecret, PlatformSecret, VersionedSecret, MAX_VERSION},
     };
 

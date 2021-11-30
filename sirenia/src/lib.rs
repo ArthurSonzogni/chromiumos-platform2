@@ -7,21 +7,9 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
-pub mod app_info;
-pub mod secrets;
-
 include!("bindings/include_modules.rs");
 
-use libsirenia::communication::Digest;
-use openssl::{
-    error::ErrorStack,
-    hash::{hash, MessageDigest},
-};
 use sys_util::error;
-
-pub fn compute_sha256(data: &[u8]) -> Result<Digest, ErrorStack> {
-    hash(MessageDigest::sha256(), data).map(From::from)
-}
 
 pub fn log_error<T, E: std::fmt::Debug>(ret: Result<T, E>) -> Result<T, E> {
     if let Err(err) = &ret {

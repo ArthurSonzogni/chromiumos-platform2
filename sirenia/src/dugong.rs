@@ -23,12 +23,14 @@ use dbus::{
 };
 use dbus_crossroads::Crossroads;
 use getopts::Options;
-use libsirenia::build_info::BUILD_TIMESTAMP;
-use libsirenia::cli::trichechus::initialize_common_arguments;
-use libsirenia::communication::trichechus::{self, AppInfo, Trichechus, TrichechusClient};
-use libsirenia::rpc;
-use libsirenia::transport::{Transport, TransportType, DEFAULT_CLIENT_PORT, DEFAULT_SERVER_PORT};
-use sirenia::app_info::ExecutableInfo;
+use libsirenia::{
+    app_info::ExecutableInfo,
+    build_info::BUILD_TIMESTAMP,
+    cli::trichechus::initialize_common_arguments,
+    communication::trichechus::{self, AppInfo, Trichechus, TrichechusClient},
+    rpc,
+    transport::{Transport, TransportType, DEFAULT_CLIENT_PORT, DEFAULT_SERVER_PORT},
+};
 use sirenia::server::{register_org_chromium_mana_teeinterface, OrgChromiumManaTEEInterface};
 use sys_util::{error, info, syslog};
 

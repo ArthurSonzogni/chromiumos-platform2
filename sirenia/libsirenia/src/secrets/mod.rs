@@ -642,9 +642,10 @@ impl SecretManager {
 pub mod tests {
     use super::*;
 
-    use libsirenia::communication::persistence::Scope;
-
-    use crate::app_info::{ExecutableInfo, SandboxType, StorageParameters};
+    use crate::{
+        app_info::{ExecutableInfo, SandboxType, StorageParameters},
+        communication::persistence::Scope,
+    };
 
     const TEST_APP_ID: &str = "demo_app";
     const TEST_MAIN_SECRET_VERSION: usize = 1usize;

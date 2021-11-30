@@ -15,8 +15,10 @@ use std::path::{Path, PathBuf};
 use anyhow::{bail, Context, Result};
 use getopts::Options;
 use libsirenia::cli::{HelpOption, VerbosityOption};
-use sirenia::app_info::{entries_from_path, AppManifestEntry, ExecutableInfo};
-use sirenia::compute_sha256;
+use libsirenia::{
+    app_info::{entries_from_path, AppManifestEntry, ExecutableInfo},
+    compute_sha256,
+};
 
 const CHECK_ONLY: &str = "c";
 const OUTPUT_JSON: &str = "j";

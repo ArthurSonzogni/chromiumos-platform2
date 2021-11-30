@@ -10,11 +10,24 @@
 pub mod build_info {
     include!(concat!(env!("OUT_DIR"), "/build_info.rs"));
 }
+pub mod app_info;
 pub mod cli;
 pub mod communication;
 pub mod linux;
 pub mod rpc;
 pub mod sandbox;
+pub mod secrets;
 pub mod storage;
 pub mod sys;
 pub mod transport;
+
+use openssl::{
+    error::ErrorStack,
+    hash::{hash, MessageDigest},
+};
+
+use crate::communication::Digest;
+
+pub fn compute_sha256(data: &[u8]) -> Result<Digest, ErrorStack> {
+    hash(MessageDigest::sha256(), data).map(From::from)
+}
