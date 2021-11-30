@@ -20,4 +20,8 @@ void NotificationManager::NotifyConnected(DeviceConnectedType type) {
   SendDeviceConnectedSignal(static_cast<uint32_t>(type));
 }
 
+void NotificationManager::NotifyCableWarning(CableWarningType type) {
+  SendCableWarningSignal(static_cast<uint32_t>(type));
+}
+
 }  // namespace typecd

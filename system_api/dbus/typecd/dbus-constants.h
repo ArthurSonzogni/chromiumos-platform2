@@ -13,11 +13,19 @@ constexpr char kTypecdServicePath[] = "/org/chromium/typecd";
 
 // Signals.
 constexpr char kTypecdDeviceConnected[] = "DeviceConnected";
+constexpr char kTypecdCableWarning[] = "CableWarning";
 
 enum class DeviceConnectedType {
   kThunderboltOnly = 0,
   // Device supports both Thunderbolt & DisplayPort alternate modes.
   kThunderboltDp = 1,
+};
+
+enum class CableWarningType {
+  // Reserved for generic cable warnings
+  kOther = 0,
+  // Partner supports DisplayAlt mode, but the cable does not.
+  kInvalidDpCable = 1,
 };
 
 }  // namespace typecd

@@ -421,9 +421,13 @@ void PortManager::RunModeEntry(int port_num) {
 
     // Notification placeholder to warn the user of a cable which may not
     // support DisplayPort alternate mode.
-    if (invalid_dpalt_cable)
-      LOG(ERROR) << "Notify - Cable may not support DPAltMode on port "
-                 << port_num;
+    if (invalid_dpalt_cable) {
+      LOG(WARNING) << "Cable may not support DPAltMode on port " << port_num;
+
+      // Notify user of potential cable issue.
+      if (notify_mgr_)
+        notify_mgr_->NotifyCableWarning(CableWarningType::kInvalidDpCable);
+    }
 
     return;
   }

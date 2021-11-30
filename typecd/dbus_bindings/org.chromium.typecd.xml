@@ -17,5 +17,19 @@
         </tp:docstring>
       </arg>
     </signal>
+    <signal name="CableWarning">
+      <tp:docstring>
+        Cable connected may limit partner's performance or support. It can
+        be the values of typecd::CableWarningType.
+        See platform2/system_api/dbus/typecd/dbus-constants.h
+      </tp:docstring>
+      <arg name="type" type="u">
+        <tp:docstring>
+          Type of limitation caused by cable. It can be one of the enum
+          values of typecd::CableWarningType.
+          See platform2/system_api/dbus/typecd/dbus-constants.h
+        </tp:docstring>
+      </arg>
+    </signal>
   </interface>
 </node>

@@ -18,6 +18,7 @@ class NotificationManager : public org::chromium::typecdAdaptor,
   explicit NotificationManager(brillo::dbus_utils::DBusObject* dbus_object);
 
   void NotifyConnected(DeviceConnectedType type);
+  void NotifyCableWarning(CableWarningType type);
 };
 
 }  // namespace typecd
