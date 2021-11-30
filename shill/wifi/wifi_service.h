@@ -210,6 +210,7 @@ class WiFiService : public Service {
  private:
   friend class WiFiServiceSecurityTest;
   friend class WiFiServiceTest;                     // SetPassphrase
+  friend class WiFiServiceFuzzer;                   // SetPassphrase
   friend class WiFiServiceUpdateFromEndpointsTest;  // SignalToStrength
   FRIEND_TEST(MetricsTest, WiFiServicePostReady);
   FRIEND_TEST(MetricsTest, WiFiServicePostReadyEAP);
