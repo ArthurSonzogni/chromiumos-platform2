@@ -27,16 +27,21 @@ class RecoveryCryptoFakeTpmBackendImpl final : public RecoveryCryptoTpmBackend {
       const RecoveryCryptoFakeTpmBackendImpl&) = delete;
   ~RecoveryCryptoFakeTpmBackendImpl() override;
 
-  // Returns the raw ECC private key (without any encryption).
+  // Returns the raw ECC private key (without any encryption). auth_value will
+  // not be used as it's to seal the private key on TPM1 modules when ECC
+  // operations are not supported.
   bool EncryptEccPrivateKey(
       const EllipticCurve& ec,
-      const BIGNUM& own_priv_key_bn,
+      const crypto::ScopedEC_KEY& own_key_pair,
+      const base::Optional<brillo::SecureBlob>& /*auth_value*/,
       brillo::SecureBlob* encrypted_own_priv_key) override;
   // Performs the scalar multiplication of the raw private key and the
-  // supplied point in software.
+  // supplied point in software. auth_value will not be used as it's to seal
+  // the private key on TPM1 modules when ECC operations are not supported.
   crypto::ScopedEC_POINT GenerateDiffieHellmanSharedSecret(
       const EllipticCurve& ec,
       const brillo::SecureBlob& encrypted_own_priv_key,
+      const base::Optional<brillo::SecureBlob>& /*auth_value*/,
       const EC_POINT& others_pub_point) override;
 };
 

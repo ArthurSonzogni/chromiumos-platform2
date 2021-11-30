@@ -30,16 +30,21 @@ class RecoveryCryptoTpm2BackendImpl final : public RecoveryCryptoTpmBackend {
   ~RecoveryCryptoTpm2BackendImpl() override;
 
   // Performs the encryption by importing the supplied share via the TPM2_Import
-  // command.
+  // command. auth_value will not be used as it's to seal the private key on
+  // TPM1 modules when ECC operations are not supported.
   bool EncryptEccPrivateKey(
       const EllipticCurve& ec,
-      const BIGNUM& own_priv_key_bn,
+      const crypto::ScopedEC_KEY& own_key_pair,
+      const base::Optional<brillo::SecureBlob>& /*auth_value*/,
       brillo::SecureBlob* encrypted_own_priv_key) override;
   // Performs the scalar multiplication by loading the encrypted share via the
   // TPM2_Load command and multiplying it via the TPM2_ECDH_ZGen command.
+  // auth_value will not be used as it's to seal the private key on TPM1
+  // modules when ECC operations are not supported.
   crypto::ScopedEC_POINT GenerateDiffieHellmanSharedSecret(
       const EllipticCurve& ec,
       const brillo::SecureBlob& encrypted_own_priv_key,
+      const base::Optional<brillo::SecureBlob>& /*auth_value*/,
       const EC_POINT& others_pub_point) override;
 
  private:

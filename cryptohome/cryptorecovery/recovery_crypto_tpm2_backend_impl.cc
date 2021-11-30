@@ -35,7 +35,8 @@ RecoveryCryptoTpm2BackendImpl::~RecoveryCryptoTpm2BackendImpl() = default;
 
 bool RecoveryCryptoTpm2BackendImpl::EncryptEccPrivateKey(
     const EllipticCurve& ec,
-    const BIGNUM& own_priv_key_bn,
+    const crypto::ScopedEC_KEY& own_key_pair,
+    const base::Optional<brillo::SecureBlob>& /*auth_value*/,
     brillo::SecureBlob* encrypted_own_priv_key) {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
@@ -43,22 +44,26 @@ bool RecoveryCryptoTpm2BackendImpl::EncryptEccPrivateKey(
     return false;
   }
 
-  if (!ec.IsScalarValid(own_priv_key_bn)) {
+  const BIGNUM* own_priv_key_bn = EC_KEY_get0_private_key(own_key_pair.get());
+  if (!own_priv_key_bn) {
+    LOG(ERROR) << "Failed to get own_priv_key_bn";
+    return false;
+  }
+  if (!ec.IsScalarValid(*own_priv_key_bn)) {
     LOG(ERROR) << "Scalar is not valid";
     return false;
   }
   // Convert own private key to blob.
   brillo::SecureBlob own_priv_key;
-  if (!BigNumToSecureBlob(own_priv_key_bn, ec.ScalarSizeInBytes(),
+  if (!BigNumToSecureBlob(*own_priv_key_bn, ec.ScalarSizeInBytes(),
                           &own_priv_key)) {
     LOG(ERROR) << "Failed to convert BIGNUM to SecureBlob";
     return false;
   }
-  // Calculate coordinates of the EC point constructed from own private key.
-  crypto::ScopedEC_POINT pub_point =
-      ec.MultiplyWithGenerator(own_priv_key_bn, context.get());
+
+  const EC_POINT* pub_point = EC_KEY_get0_public_key(own_key_pair.get());
   if (!pub_point) {
-    LOG(ERROR) << "Failed to multiply own private key with generator";
+    LOG(ERROR) << "Failed to get pub_point";
     return false;
   }
   crypto::ScopedBIGNUM pub_point_x_bn = CreateBigNum(),
@@ -138,6 +143,7 @@ crypto::ScopedEC_POINT
 RecoveryCryptoTpm2BackendImpl::GenerateDiffieHellmanSharedSecret(
     const EllipticCurve& ec,
     const brillo::SecureBlob& encrypted_own_priv_key,
+    const base::Optional<brillo::SecureBlob>& /*auth_value*/,
     const EC_POINT& others_pub_point) {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {

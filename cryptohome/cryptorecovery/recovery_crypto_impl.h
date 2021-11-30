@@ -31,26 +31,27 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   bool GenerateRecoveryRequest(
       const HsmPayload& hsm_payload,
       const RequestMetadata& request_meta_data,
-      const brillo::SecureBlob& channel_priv_key,
+      const brillo::SecureBlob& encrypted_channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
       const brillo::SecureBlob& epoch_pub_key,
       brillo::SecureBlob* recovery_request,
       brillo::SecureBlob* ephemeral_pub_key) const override;
-  bool GenerateHsmPayload(const brillo::SecureBlob& mediator_pub_key,
-                          const brillo::SecureBlob& rsa_pub_key,
-                          const OnboardingMetadata& onboarding_metadata,
-                          HsmPayload* hsm_payload,
-                          brillo::SecureBlob* destination_share,
-                          brillo::SecureBlob* recovery_key,
-                          brillo::SecureBlob* channel_pub_key,
-                          brillo::SecureBlob* channel_priv_key) const override;
+  bool GenerateHsmPayload(
+      const brillo::SecureBlob& mediator_pub_key,
+      const brillo::SecureBlob& rsa_pub_key,
+      const OnboardingMetadata& onboarding_metadata,
+      HsmPayload* hsm_payload,
+      brillo::SecureBlob* encrypted_destination_share,
+      brillo::SecureBlob* recovery_key,
+      brillo::SecureBlob* channel_pub_key,
+      brillo::SecureBlob* encrypted_channel_priv_key) const override;
   bool RecoverDestination(const brillo::SecureBlob& dealer_pub_key,
-                          const brillo::SecureBlob& destination_share,
+                          const brillo::SecureBlob& encrypted_destination_share,
                           const brillo::SecureBlob& ephemeral_pub_key,
                           const brillo::SecureBlob& mediated_publisher_pub_key,
                           brillo::SecureBlob* destination_dh) const override;
   bool DecryptResponsePayload(
-      const brillo::SecureBlob& channel_priv_key,
+      const brillo::SecureBlob& encrypted_channel_priv_key,
       const brillo::SecureBlob& epoch_pub_key,
       const brillo::SecureBlob& recovery_response_cbor,
       HsmResponsePlainText* response_plain_text) const override;

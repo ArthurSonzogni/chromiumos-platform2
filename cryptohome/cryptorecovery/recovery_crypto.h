@@ -27,16 +27,24 @@ class RecoveryCryptoTpmBackend {
   // Encrypts the provided ECC private key using TPM, and returns it via
   // `encrypted_own_priv_key`, which is one's own private key. (the format of
   // this blob is TPM-specific). Returns false on failure.
+  // As TPM1.2 does not support ECC, instead of encrypting the ECC private key,
+  // it will seal the private key with the provided auth_value.
   virtual bool EncryptEccPrivateKey(
       const EllipticCurve& ec,
-      const BIGNUM& own_priv_key_bn,
+      const crypto::ScopedEC_KEY& own_key_pair,
+      const base::Optional<brillo::SecureBlob>& auth_value,
       brillo::SecureBlob* encrypted_own_priv_key) = 0;
   // Multiplies the private key, provided in encrypted form, with the given the
   // other party's public EC point. Returns the multiplication, or nullptr on
   // failure.
+  // As TPM1.2 does not support ECC, instead of loading the ECC private key and
+  // computing the shared secret from TPM modules, the private key will be
+  // unsealed with the provided auth_value and the shared secret will be
+  // computed via openssl lib.
   virtual crypto::ScopedEC_POINT GenerateDiffieHellmanSharedSecret(
       const EllipticCurve& ec,
       const brillo::SecureBlob& encrypted_own_priv_key,
+      const base::Optional<brillo::SecureBlob>& auth_value,
       const EC_POINT& others_pub_point) = 0;
 };
 
@@ -103,7 +111,7 @@ class RecoveryCrypto {
   virtual bool GenerateRecoveryRequest(
       const HsmPayload& hsm_payload,
       const RequestMetadata& request_meta_data,
-      const brillo::SecureBlob& channel_priv_key,
+      const brillo::SecureBlob& encrypted_channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
       const brillo::SecureBlob& epoch_pub_key,
       brillo::SecureBlob* recovery_request,
@@ -136,10 +144,10 @@ class RecoveryCrypto {
       const brillo::SecureBlob& rsa_pub_key,
       const OnboardingMetadata& onboarding_metadata,
       HsmPayload* hsm_payload,
-      brillo::SecureBlob* destination_share,
+      brillo::SecureBlob* encrypted_destination_share,
       brillo::SecureBlob* recovery_key,
       brillo::SecureBlob* channel_pub_key,
-      brillo::SecureBlob* channel_priv_key) const = 0;
+      brillo::SecureBlob* encrypted_channel_priv_key) const = 0;
 
   // Recovers destination. Returns false if error occurred.
   // Formula:
@@ -148,7 +156,7 @@ class RecoveryCrypto {
   //                                   + mediated_point))
   virtual bool RecoverDestination(
       const brillo::SecureBlob& dealer_pub_key,
-      const brillo::SecureBlob& destination_share,
+      const brillo::SecureBlob& encrypted_destination_share,
       const brillo::SecureBlob& ephemeral_pub_key,
       const brillo::SecureBlob& mediated_publisher_pub_key,
       brillo::SecureBlob* destination_recovery_key) const = 0;
@@ -162,7 +170,7 @@ class RecoveryCrypto {
   // and store the result in `response_plain_text`. The key for decryption is
   // HKDF(ECDH(channel_priv_key, epoch_pub_key)).
   virtual bool DecryptResponsePayload(
-      const brillo::SecureBlob& channel_priv_key,
+      const brillo::SecureBlob& encrypted_channel_priv_key,
       const brillo::SecureBlob& epoch_pub_key,
       const brillo::SecureBlob& recovery_response_cbor,
       HsmResponsePlainText* response_plain_text) const = 0;

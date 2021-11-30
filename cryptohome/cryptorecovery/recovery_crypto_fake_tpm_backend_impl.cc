@@ -21,10 +21,16 @@ RecoveryCryptoFakeTpmBackendImpl::~RecoveryCryptoFakeTpmBackendImpl() = default;
 
 bool RecoveryCryptoFakeTpmBackendImpl::EncryptEccPrivateKey(
     const EllipticCurve& ec,
-    const BIGNUM& own_priv_key_bn,
+    const crypto::ScopedEC_KEY& own_key_pair,
+    const base::Optional<brillo::SecureBlob>& /*auth_value*/,
     brillo::SecureBlob* encrypted_own_priv_key) {
+  const BIGNUM* own_priv_key_bn = EC_KEY_get0_private_key(own_key_pair.get());
+  if (!own_priv_key_bn) {
+    LOG(ERROR) << "Failed to get own_priv_key_bn";
+    return false;
+  }
   brillo::SecureBlob own_priv_key;
-  if (!BigNumToSecureBlob(own_priv_key_bn, ec.ScalarSizeInBytes(),
+  if (!BigNumToSecureBlob(*own_priv_key_bn, ec.ScalarSizeInBytes(),
                           &own_priv_key)) {
     LOG(ERROR) << "Failed to convert BIGNUM to SecureBlob";
     return false;
@@ -37,6 +43,7 @@ crypto::ScopedEC_POINT
 RecoveryCryptoFakeTpmBackendImpl::GenerateDiffieHellmanSharedSecret(
     const EllipticCurve& ec,
     const brillo::SecureBlob& encrypted_own_priv_key,
+    const base::Optional<brillo::SecureBlob>& /*auth_value*/,
     const EC_POINT& others_pub_point) {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
