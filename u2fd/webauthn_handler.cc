@@ -79,9 +79,6 @@ constexpr char kCryptohomePinLabel[] = "pin";
 // Relative DBus object path for fingerprint manager in biod.
 const char kCrosFpBiometricsManagerRelativePath[] = "/CrosFpBiometricsManager";
 
-constexpr char kPerformingUserVerificationMetric[] =
-    "WebAuthentication.ChromeOS.UserVerificationRequired";
-
 std::vector<uint8_t> Uint16ToByteVector(uint16_t value) {
   return std::vector<uint8_t>({static_cast<uint8_t>((value >> 8) & 0xff),
                                static_cast<uint8_t>(value & 0xff)});
@@ -305,7 +302,6 @@ void WebAuthnHandler::MakeCredential(
 
   if (session.request.verification_type() ==
       VerificationType::VERIFICATION_USER_VERIFICATION) {
-    metrics_->SendBoolToUMA(kPerformingUserVerificationMetric, true);
     dbus::MethodCall call(
         chromeos::kUserAuthenticationServiceInterface,
         chromeos::kUserAuthenticationServiceShowAuthDialogMethod);
@@ -322,7 +318,6 @@ void WebAuthnHandler::MakeCredential(
     return;
   }
 
-  metrics_->SendBoolToUMA(kPerformingUserVerificationMetric, false);
   DoMakeCredential(std::move(session), PresenceRequirement::kPowerButton);
 }
 
@@ -909,7 +904,6 @@ void WebAuthnHandler::GetAssertion(
   if (session.request.verification_type() ==
           VerificationType::VERIFICATION_USER_VERIFICATION &&
       !is_legacy_credential) {
-    metrics_->SendBoolToUMA(kPerformingUserVerificationMetric, true);
     dbus::MethodCall call(
         chromeos::kUserAuthenticationServiceInterface,
         chromeos::kUserAuthenticationServiceShowAuthDialogMethod);
@@ -926,7 +920,6 @@ void WebAuthnHandler::GetAssertion(
     return;
   }
 
-  metrics_->SendBoolToUMA(kPerformingUserVerificationMetric, false);
   DoGetAssertion(std::move(session), PresenceRequirement::kPowerButton);
 }
 
