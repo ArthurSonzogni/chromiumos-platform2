@@ -7,15 +7,14 @@ uninstall DLC modules, as well as print a list of installed modules.
 
 ## Usage
 
-To install DLC modules, set the `--install` flag and set `--dlc_ids` to a colon
-separated list of DLC IDs.
+To install a DLC module, set the `--install` flag and set `--id` to a DLC ID.
 
-`dlcservice_util --install --dlc_ids="foo:bar"`
+`dlcservice_util --install --id="foo"`
 
-To uninstall DLC modules, set the `--uninstall` flag and set `--dlc_ids` to a
-colon separated list of DLC IDs.
+To uninstall a DLC module, set the `--uninstall` flag and set `--id` to a
+DLC ID.
 
-`dlcservice_util --uninstall --dlc_ids="foo:bar"`
+`dlcservice_util --uninstall --id="foo"`
 
 To list installed modules, set the `--list` flag.
 
