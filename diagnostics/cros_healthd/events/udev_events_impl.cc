@@ -36,7 +36,6 @@ std::string GetString(const char* str) {
 }
 
 void FillUsbCategory(const std::unique_ptr<brillo::UdevDevice>& device,
-                     const base::FilePath& root_dir,
                      mojo_ipc::UsbEventInfo* info) {
   auto sys_path = GetString(device->GetSysPath());
   uint32_t class_code = 0;
@@ -65,12 +64,11 @@ void FillUsbCategory(const std::unique_ptr<brillo::UdevDevice>& device,
 }
 
 void FillUsbEventInfo(const std::unique_ptr<brillo::UdevDevice>& device,
-                      const base::FilePath& root_dir,
                       mojo_ipc::UsbEventInfo* info) {
   info->vendor = GetUsbVendorName(device);
   info->name = GetUsbProductName(device);
   std::tie(info->vid, info->pid) = GetUsbVidPid(device);
-  FillUsbCategory(device, root_dir, info);
+  FillUsbCategory(device, info);
 }
 
 }  // namespace
@@ -173,7 +171,7 @@ void UdevEventsImpl::AddUsbObserver(
 void UdevEventsImpl::OnUsbAdd(
     const std::unique_ptr<brillo::UdevDevice>& device) {
   mojo_ipc::UsbEventInfo info;
-  FillUsbEventInfo(device, context_->root_dir(), &info);
+  FillUsbEventInfo(device, &info);
   for (auto& observer : usb_observers_)
     observer->OnAdd(info.Clone());
 }
@@ -181,7 +179,7 @@ void UdevEventsImpl::OnUsbAdd(
 void UdevEventsImpl::OnUsbRemove(
     const std::unique_ptr<brillo::UdevDevice>& device) {
   mojo_ipc::UsbEventInfo info;
-  FillUsbEventInfo(device, context_->root_dir(), &info);
+  FillUsbEventInfo(device, &info);
   for (auto& observer : usb_observers_)
     observer->OnRemove(info.Clone());
 }
