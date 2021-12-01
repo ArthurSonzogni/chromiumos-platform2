@@ -29,17 +29,17 @@ pub enum Error {
     #[error("invalid app id: {0}")]
     InvalidAppId(String),
     #[error("failed to open config path: {0}")]
-    OpenConfig(io::Error),
+    OpenConfig(#[source] io::Error),
     #[error("failed to open config dir: {0}")]
-    OpenConfigDir(io::Error),
+    OpenConfigDir(#[source] io::Error),
     #[error("failed to read config: {0}")]
-    ReadConfig(io::Error),
+    ReadConfig(#[source] io::Error),
     #[error("failed to read config dir: {0}")]
-    ReadConfigDir(io::Error),
+    ReadConfigDir(#[source] io::Error),
     #[error("failed to parse flexbuffer config: {0}")]
-    FlexbufferParse(flexbuffers::DeserializationError),
+    FlexbufferParse(#[source] flexbuffers::DeserializationError),
     #[error("failed to parse json config: {0}")]
-    JsonParse(serde_json::Error),
+    JsonParse(#[source] serde_json::Error),
     #[error("invalid config name: {0:?}")]
     InvalidConfigName(PathBuf),
     #[error("failed to parse json config: {0:?}")]

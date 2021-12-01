@@ -10,7 +10,8 @@ pub mod persistence;
 pub mod tee_api;
 pub mod trichechus;
 
-use std::convert::TryInto;
+use std::array::TryFromSliceError;
+use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::fmt::Debug;
 use std::io::{self, BufWriter, Read, Write};
@@ -183,11 +184,17 @@ impl Deref for Digest {
     }
 }
 
-impl<A: AsRef<[u8]>> From<A> for Digest {
-    fn from(d: A) -> Self {
-        let mut array = [0u8; SHA256_SIZE];
-        array.copy_from_slice(d.as_ref());
-        Digest(array)
+impl From<[u8; SHA256_SIZE]> for Digest {
+    fn from(value: [u8; SHA256_SIZE]) -> Self {
+        Digest(value)
+    }
+}
+
+impl TryFrom<&[u8]> for Digest {
+    type Error = TryFromSliceError;
+
+    fn try_from(value: &[u8]) -> StdResult<Self, Self::Error> {
+        Ok(Digest(value.try_into()?))
     }
 }
 

@@ -4,6 +4,8 @@
 
 //! Provide a transparent encryption solution for the storage API.
 
+use std::convert::TryFrom;
+
 use base64::{self, encode_config};
 use flexbuffers::{from_slice, to_vec, DeserializationError, SerializationError};
 use libchromeos::secure_blob::SecureBlob;
@@ -20,10 +22,12 @@ use thiserror::Error as ThisError;
 
 use crate::{
     app_info::AppManifestEntry,
-    communication::persistence::{Cronista, Scope, Status},
-    communication::Digest,
-    compute_sha256, rpc,
-    secrets::{self, SecretManager, SecretVersion},
+    communication::{
+        persistence::{Cronista, Scope, Status},
+        Digest,
+    },
+    rpc,
+    secrets::{self, compute_sha256, SecretManager, SecretVersion},
 };
 
 const DEFAULT_STORAGE_MAJOR_VERSION: usize = 0;
@@ -51,27 +55,27 @@ enum Error {
     #[error("resulting text doesn't match expected length")]
     LengthMismatch,
     #[error("failed to hash identifier: {0:?}")]
-    HashIdentifier(ErrorStack),
+    HashIdentifier(#[source] secrets::Error),
     #[error("failed to get random bytes: {0:?}")]
     RandVec(sys_util::Error),
     #[error("failed to get storage secret version: {0:?}")]
-    StorageSecretVersion(secrets::Error),
+    StorageSecretVersion(#[source] secrets::Error),
     #[error("failed to derive storage secret: {0:?}")]
-    DeriveStorageSecret(secrets::Error),
+    DeriveStorageSecret(#[source] secrets::Error),
     #[error("failed to serialize authenticated data: {0:?}")]
-    SerializeAuthenticatedData(SerializationError),
+    SerializeAuthenticatedData(#[source] SerializationError),
     #[error("failed to serialize wrapped data: {0:?}")]
-    SerializeWrappedData(SerializationError),
+    SerializeWrappedData(#[source] SerializationError),
     #[error("storage client failed to persist the data: {0:?}")]
-    Persist(rpc::Error),
+    Persist(#[source] rpc::Error),
     #[error("failed to deserialize wrapped data: {0:?}")]
-    DeserializeWrappedData(DeserializationError),
+    DeserializeWrappedData(#[source] DeserializationError),
     #[error("failed to deserialize authenticated data: {0:?}")]
-    DeserializeAuthenticatedData(DeserializationError),
+    DeserializeAuthenticatedData(#[source] DeserializationError),
     #[error("validation of stored data failed.")]
     ValidationFailure,
     #[error("storage client failed to retrieve the data: {0:?}")]
-    Retrieve(rpc::Error),
+    Retrieve(#[source] rpc::Error),
 }
 
 enum ModeArgs<'a> {
@@ -120,8 +124,10 @@ struct WrappedData {
 }
 
 /// A one-way operation to convert a storage domain or identifier to a hash.
-fn hash_identifier(identifier: &str) -> Result<Digest, ErrorStack> {
+fn hash_identifier(identifier: &str) -> Result<Digest, Error> {
     compute_sha256(identifier.as_bytes())
+        .map(|d| Digest::try_from(d.as_ref()).expect("Digest size mismatch"))
+        .map_err(Error::HashIdentifier)
 }
 
 /// Convert a digest to a string that can be used as a filename.
@@ -189,8 +195,8 @@ impl<'a> StorageEncryption<'a> {
         data: Vec<u8>,
     ) -> Result<Status, Error> {
         let plain_text = SecureBlob::from(data);
-        let domain_hash = hash_identifier(&domain).map_err(Error::HashIdentifier)?;
-        let identifier_hash = hash_identifier(&identifier).map_err(Error::HashIdentifier)?;
+        let domain_hash = hash_identifier(&domain)?;
+        let identifier_hash = hash_identifier(&identifier)?;
 
         let iv = rand_vec(DEFAULT_IV_SIZE, Source::Random).map_err(Error::RandVec)?;
         let salt = rand_vec(DEFAULT_KEY_SIZE, Source::Random).map_err(Error::RandVec)?;
@@ -263,8 +269,8 @@ impl<'a> StorageEncryption<'a> {
         domain: String,
         identifier: String,
     ) -> Result<(Status, Vec<u8>), Error> {
-        let domain_hash = hash_identifier(&domain).map_err(Error::HashIdentifier)?;
-        let identifier_hash = hash_identifier(&identifier).map_err(Error::HashIdentifier)?;
+        let domain_hash = hash_identifier(&domain)?;
+        let identifier_hash = hash_identifier(&identifier)?;
         let (status, data) = self
             .storage_client
             .retrieve(

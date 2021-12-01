@@ -9,6 +9,7 @@ pub mod storage_encryption;
 use std::cell::RefCell;
 use std::collections::BTreeMap as Map;
 use std::fmt::Debug;
+use std::iter;
 use std::mem::size_of;
 use std::ops::Deref;
 use std::rc::{Rc, Weak};
@@ -16,7 +17,7 @@ use std::rc::{Rc, Weak};
 use libchromeos::secure_blob::SecureBlob;
 use openssl::{
     error::ErrorStack,
-    hash::{hash, MessageDigest},
+    hash::{DigestBytes, Hasher, MessageDigest},
     pkcs5::hkdf,
 };
 use thiserror::Error as ThisError;
@@ -37,18 +38,42 @@ pub const MAX_VERSION: usize = 1024;
 #[derive(ThisError, Debug)]
 pub enum Error {
     #[error("failed to derive key: {0:}")]
-    Derive(ErrorStack),
-    #[error("hash operation failed: {0:}")]
-    Hash(ErrorStack),
+    Derive(#[source] ErrorStack),
     #[error("requested API is is not enabled for `{0}`.")]
     ApiNotEnabledForApp(String),
     #[error("requested version is too large: got {0}; max {1}")]
     VersionTooLarge(String, String),
     #[error("expected secrets to have the same versions: got {0} and {1}")]
     VersionMismatch(String, String),
+    #[error("failed to create hasher: {0}")]
+    Hasher(#[source] ErrorStack),
+    #[error("failed to update hasher: {0}")]
+    Update(#[source] ErrorStack),
+    #[error("failed to finish hasher: {0}")]
+    Finish(#[source] ErrorStack),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
+
+/// Compute digest of the inputs.
+fn hash<'a>(
+    digest: MessageDigest,
+    inputs: impl IntoIterator<Item = &'a &'a [u8]>,
+) -> Result<DigestBytes> {
+    let mut hasher = Hasher::new(digest).map_err(Error::Hasher)?;
+    for input in inputs {
+        hasher.update(input).map_err(Error::Update)?;
+    }
+    hasher.finish().map_err(Error::Finish)
+}
+
+pub fn hash_sha256<'a>(inputs: impl IntoIterator<Item = &'a &'a [u8]>) -> Result<DigestBytes> {
+    hash(MessageDigest::sha256(), inputs)
+}
+
+pub fn compute_sha256(data: &[u8]) -> Result<DigestBytes> {
+    hash_sha256(std::iter::once(&data))
+}
 
 pub trait VersionedSecret: Clone + Sized {
     /// Represents the secret version.
@@ -122,11 +147,8 @@ impl VersionedSecret for HashedVersionedSecret {
         }
         let mut secret = self.secret.clone();
         for _ in version..self.version {
-            secret = SecureBlob::from(
-                openssl::hash::hash(self.message_digest, secret.as_ref())
-                    .map_err(Error::Hash)?
-                    .to_vec(),
-            );
+            secret =
+                SecureBlob::from(hash(self.message_digest, iter::once(&secret.as_ref()))?.to_vec());
         }
         Ok(HashedVersionedSecret {
             message_digest: self.message_digest,
@@ -248,9 +270,7 @@ impl<P: VersionedSecret> VersionedSecret for DerivedHashedVersionedSecret<P> {
             let mut secret = self.secret.clone();
             for _ in version.1..self.version.1 {
                 secret = SecureBlob::from(
-                    openssl::hash::hash(self.message_digest, secret.as_ref())
-                        .map_err(Error::Hash)?
-                        .to_vec(),
+                    hash(self.message_digest, iter::once(&secret.as_ref()))?.to_vec(),
                 );
             }
             let mut other = self.clone();
@@ -490,8 +510,10 @@ impl SecretManager {
 
         for entry in app_manifest.iter() {
             let app_name = &entry.app_name;
-            let salt = hash(SecretManager::default_hash_function(), app_name.as_bytes())
-                .map_err(Error::Hash)?;
+            let salt = hash(
+                SecretManager::default_hash_function(),
+                iter::once(&app_name.as_bytes()),
+            )?;
 
             if let Some(params) = &entry.secrets_parameters {
                 let input =

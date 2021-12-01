@@ -8,6 +8,7 @@
 
 use std::cell::RefCell;
 use std::collections::{BTreeMap as Map, VecDeque};
+use std::convert::TryFrom;
 use std::env;
 use std::fs::File;
 use std::io::{self, Seek, SeekFrom, Write};
@@ -33,7 +34,6 @@ use libsirenia::{
         tee_api::{TeeApi, TeeApiServer},
         trichechus::{self, AppInfo, SystemEvent, Trichechus, TrichechusServer},
     },
-    compute_sha256,
     linux::{
         events::{
             AddEventSourceMutator, ComboMutator, CopyFdEventSource, EventMultiplexer, Mutator,
@@ -43,8 +43,8 @@ use libsirenia::{
     rpc::{self, ConnectionHandler, RpcDispatcher, TransportServer},
     sandbox::{MinijailSandbox, Sandbox, VmConfig, VmSandbox},
     secrets::{
-        self, storage_encryption::StorageEncryption, GscSecret, PlatformSecret, SecretManager,
-        VersionedSecret,
+        self, compute_sha256, storage_encryption::StorageEncryption, GscSecret, PlatformSecret,
+        SecretManager, VersionedSecret,
     },
     sys::{self, dup, get_a_pty, halt, power_off, reboot},
     transport::{
@@ -452,7 +452,10 @@ fn load_app(state: &TrichechusState, app_id: &str, elf: &[u8]) -> StdResult<(), 
         .add_seals(seals)
         .map_err(|err| trichechus::Error::from(format!("Failed to seal memfd: {:?}", err)))?;
 
-    state.loaded_apps.borrow_mut().insert(actual, executable);
+    state.loaded_apps.borrow_mut().insert(
+        Digest::try_from(actual.as_ref()).expect("Digest size mismatch"),
+        executable,
+    );
     Ok(())
 }
 

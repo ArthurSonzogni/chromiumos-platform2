@@ -7,6 +7,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use std::collections::BTreeSet as Set;
+use std::convert::TryFrom;
 use std::env::args;
 use std::fs::File;
 use std::io::{stdout, Read, Stdout, Write};
@@ -17,7 +18,8 @@ use getopts::Options;
 use libsirenia::cli::{HelpOption, VerbosityOption};
 use libsirenia::{
     app_info::{entries_from_path, AppManifestEntry, ExecutableInfo},
-    compute_sha256,
+    communication::Digest,
+    secrets::compute_sha256,
 };
 
 const CHECK_ONLY: &str = "c";
@@ -54,15 +56,16 @@ fn convert_entries<A: AsRef<Path>>(target_root: A, entries: &mut [AppManifestEnt
             let exec_digest =
                 compute_sha256(&exec_data).context("Failed to compute SHA256 digest.")?;
             if let Some(expected_digest) = digest {
-                if *expected_digest != exec_digest {
+                if **expected_digest != exec_digest.as_ref() {
                     bail!(
                         "configured digest ({}) does not match executable ({})",
                         expected_digest,
-                        exec_digest
+                        Digest::try_from(exec_digest.as_ref()).expect("Digest size mismatch")
                     );
                 }
             } else {
-                *digest = Some(exec_digest);
+                *digest =
+                    Some(Digest::try_from(exec_digest.as_ref()).expect("Digest size mismatch"));
             }
         }
     }
