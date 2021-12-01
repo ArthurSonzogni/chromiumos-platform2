@@ -17,8 +17,10 @@ namespace spaced {
 
 class BRILLO_EXPORT DiskUsageProxy : public DiskUsageUtil {
  public:
-  DiskUsageProxy();
+  explicit DiskUsageProxy(const scoped_refptr<dbus::Bus>& bus);
   ~DiskUsageProxy() override = default;
+
+  static std::unique_ptr<DiskUsageProxy> Generate();
 
   int64_t GetFreeDiskSpace(const base::FilePath& path) override;
   int64_t GetTotalDiskSpace(const base::FilePath& path) override;

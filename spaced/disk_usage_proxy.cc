@@ -10,16 +10,19 @@
 
 namespace spaced {
 
-DiskUsageProxy::DiskUsageProxy() {
+DiskUsageProxy::DiskUsageProxy(const scoped_refptr<dbus::Bus>& bus)
+    : spaced_proxy_(std::make_unique<org::chromium::SpacedProxy>(bus)) {}
+
+std::unique_ptr<DiskUsageProxy> DiskUsageProxy::Generate() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
   scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
   if (!bus->Connect()) {
     LOG(ERROR) << "D-Bus system bus is not ready";
-    return;
+    return nullptr;
   }
 
-  spaced_proxy_ = std::make_unique<org::chromium::SpacedProxy>(bus);
+  return std::make_unique<DiskUsageProxy>(bus);
 }
 
 int64_t DiskUsageProxy::GetFreeDiskSpace(const base::FilePath& path) {

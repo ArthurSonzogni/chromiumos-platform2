@@ -21,18 +21,24 @@ int main(int argc, char** argv) {
 
   brillo::FlagHelper::Init(argc, argv, "Chromium OS Space Daemon CLI");
 
-  spaced::DiskUsageProxy disk_usage_proxy;
+  std::unique_ptr<spaced::DiskUsageProxy> disk_usage_proxy =
+      spaced::DiskUsageProxy::Generate();
+
+  if (!disk_usage_proxy) {
+    LOG(ERROR) << "Failed to get disk usage proxy";
+    return 1;
+  }
 
   if (!FLAGS_get_free_disk_space.empty()) {
-    std::cout << disk_usage_proxy.GetFreeDiskSpace(
+    std::cout << disk_usage_proxy->GetFreeDiskSpace(
         base::FilePath(FLAGS_get_free_disk_space));
     return 0;
   } else if (!FLAGS_get_total_disk_space.empty()) {
-    std::cout << disk_usage_proxy.GetTotalDiskSpace(
+    std::cout << disk_usage_proxy->GetTotalDiskSpace(
         base::FilePath(FLAGS_get_total_disk_space));
     return 0;
   } else if (FLAGS_get_root_device_size) {
-    std::cout << disk_usage_proxy.GetRootDeviceSize();
+    std::cout << disk_usage_proxy->GetRootDeviceSize();
     return 0;
   }
 
