@@ -44,3 +44,15 @@ preference. On the UI, the keyboard backlight brightness controller bar moves
 between the scaled percentage steps. Once the user has manually adjusted the
 brightness, powerd refrains from making any automated adjustments until the
 system reboots.
+
+On devices that have it on their keyboard, pressing the keyboard backlight toggle
+key turns the keyboard backlight on/off. Toggling the keyboard backlight on/off
+is functionally the same as forcing it on/off, with two differences. First,
+if a user-initiated brightness adjustment, e.g. an increase or decrease, is made
+while we're toggled off, we are no longer toggled off.  Second, a brightness change
+signal is emitted anytime the user changes the toggle state, even if the brightness
+percentage has not changed.
+
+At present, if the brightness percentage is set to 0 (via user adjustments),
+toggling KBL on/off does nothing.  Ticket b/212618906 has been filed to address
+this.

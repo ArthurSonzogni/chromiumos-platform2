@@ -127,12 +127,16 @@ class BacklightController {
   virtual int64_t PercentToLevel(double percent) const = 0;
   virtual double LevelToPercent(int64_t level) const = 0;
 
-  using IncreaseBrightnessCallback = base::Closure;
-  using DecreaseBrightnessCallback = base::Callback<void(bool allow_off)>;
-  using SetBrightnessCallback = base::Callback<void(
+  using IncreaseBrightnessCallback = base::RepeatingClosure;
+  using DecreaseBrightnessCallback =
+      base::RepeatingCallback<void(bool allow_off)>;
+  using SetBrightnessCallback = base::RepeatingCallback<void(
       double percent, Transition, SetBacklightBrightnessRequest_Cause)>;
   using GetBrightnessCallback =
       base::Callback<void(double* percent_out, bool* success_out)>;
+  using SetToggledOffCallback = base::RepeatingCallback<void(bool toggled_off)>;
+  using GetToggledOffCallback =
+      base::RepeatingCallback<void(bool* toggled_off)>;
 
  protected:
   // Helper methods that implementations can use to register D-Bus method call
@@ -153,6 +157,14 @@ class BacklightController {
       system::DBusWrapperInterface* dbus_wrapper,
       const std::string& method_name,
       const GetBrightnessCallback& callback);
+  static void RegisterSetToggledOffHandler(
+      system::DBusWrapperInterface* dbus_wrapper,
+      const std::string& method_name,
+      const SetToggledOffCallback& callback);
+  static void RegisterGetToggledOffHandler(
+      system::DBusWrapperInterface* dbus_wrapper,
+      const std::string& method_name,
+      const GetToggledOffCallback& callback);
 
   // Emits a D-Bus signal announcing a brightness change.
   static void EmitBrightnessChangedSignal(

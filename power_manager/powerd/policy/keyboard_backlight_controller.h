@@ -61,7 +61,6 @@ class KeyboardBacklightController : public BacklightController,
 
    private:
     KeyboardBacklightController* controller_;  // weak
-
   };
 
   // Backlight brightness percent to use when the screen is dimmed.
@@ -144,6 +143,8 @@ class KeyboardBacklightController : public BacklightController,
   void HandleIncreaseBrightnessRequest();
   void HandleDecreaseBrightnessRequest(bool allow_off);
   void HandleGetBrightnessRequest(double* percent_out, bool* success_out);
+  void HandleSetToggledOffRequest(bool toggled_off);
+  void HandleGetToggledOffRequest(bool* toggled_off);
 
   // Updates the current brightness after assessing the current state (based on
   // |dimmed_for_inactivity_|, |off_for_inactivity_|, etc.). Should be called
@@ -152,6 +153,13 @@ class KeyboardBacklightController : public BacklightController,
   // false otherwise.
   bool UpdateState(Transition transition,
                    BacklightBrightnessChange_Cause cause);
+
+  // Returns true if we want ApplyBrightnessPercent() to bypass its test for
+  // whether the brightness percentage has actually changed from
+  // current_percent_.  This is for cases where the percentage hasn't
+  // changed but we still need to officially signal a brightness change.
+  bool BypassBrightnessPercentageHasChangedTest(
+      Transition transition, BacklightBrightnessChange_Cause cause);
 
   // Sets the backlight's brightness to |percent| over |transition|.
   // Returns true and notifies observers if the brightness was changed.
@@ -170,6 +178,9 @@ class KeyboardBacklightController : public BacklightController,
 
   // Calculates scaled percentages in |user_steps_| to raw percentages.
   double PercentToRawPercent(double percent) const;
+
+  // Set whether the user has specifically toggled off just the KBL.
+  void SetToggledOff(bool toggled_off);
 
   mutable std::unique_ptr<Clock> clock_;
 
@@ -205,6 +216,9 @@ class KeyboardBacklightController : public BacklightController,
   bool shutting_down_ = false;
   bool forced_off_ = false;
   bool hovering_ = false;
+
+  // Has the user toggled off the KBL specifically?
+  bool toggled_off_ = false;
 
   // Is a fullscreen video currently being played?
   bool fullscreen_video_playing_ = false;

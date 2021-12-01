@@ -121,16 +121,29 @@ void KeyboardBacklightController::Init(
   dbus_wrapper_ = dbus_wrapper;
   RegisterIncreaseBrightnessHandler(
       dbus_wrapper_, kIncreaseKeyboardBrightnessMethod,
-      base::Bind(&KeyboardBacklightController::HandleIncreaseBrightnessRequest,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(
+          &KeyboardBacklightController::HandleIncreaseBrightnessRequest,
+          weak_ptr_factory_.GetWeakPtr()));
   RegisterDecreaseBrightnessHandler(
       dbus_wrapper_, kDecreaseKeyboardBrightnessMethod,
-      base::Bind(&KeyboardBacklightController::HandleDecreaseBrightnessRequest,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(
+          &KeyboardBacklightController::HandleDecreaseBrightnessRequest,
+          weak_ptr_factory_.GetWeakPtr()));
   RegisterGetBrightnessHandler(
       dbus_wrapper_, kGetKeyboardBrightnessPercentMethod,
-      base::Bind(&KeyboardBacklightController::HandleGetBrightnessRequest,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(
+          &KeyboardBacklightController::HandleGetBrightnessRequest,
+          weak_ptr_factory_.GetWeakPtr()));
+  RegisterSetToggledOffHandler(
+      dbus_wrapper_, kSetKeyboardBacklightToggledOffMethod,
+      base::BindRepeating(
+          &KeyboardBacklightController::HandleSetToggledOffRequest,
+          weak_ptr_factory_.GetWeakPtr()));
+  RegisterGetToggledOffHandler(
+      dbus_wrapper_, kGetKeyboardBacklightToggledOffMethod,
+      base::BindRepeating(
+          &KeyboardBacklightController::HandleGetToggledOffRequest,
+          weak_ptr_factory_.GetWeakPtr()));
 
   display_backlight_controller_ = display_backlight_controller;
   if (display_backlight_controller_)
@@ -487,9 +500,10 @@ void KeyboardBacklightController::UpdateTurnOffTimer() {
 
   turn_off_timer_.Start(
       FROM_HERE, remaining_delay,
-      base::Bind(base::IgnoreResult(&KeyboardBacklightController::UpdateState),
-                 base::Unretained(this), Transition::SLOW,
-                 BacklightBrightnessChange_Cause_OTHER));
+      base::BindRepeating(
+          base::IgnoreResult(&KeyboardBacklightController::UpdateState),
+          base::Unretained(this), Transition::SLOW,
+          BacklightBrightnessChange_Cause_OTHER));
 }
 
 void KeyboardBacklightController::HandleIncreaseBrightnessRequest() {
@@ -502,6 +516,9 @@ void KeyboardBacklightController::HandleIncreaseBrightnessRequest() {
   if (user_step_index_ < static_cast<int>(user_steps_.size()) - 1)
     user_step_index_++;
   num_user_adjustments_++;
+
+  // No longer toggled off if we're making a user-initiated adjustment.
+  toggled_off_ = false;
 
   UpdateState(Transition::FAST, BacklightBrightnessChange_Cause_USER_REQUEST);
 }
@@ -518,6 +535,9 @@ void KeyboardBacklightController::HandleDecreaseBrightnessRequest(
     user_step_index_--;
   num_user_adjustments_++;
 
+  // No longer toggled off if we're making a user-initiated adjustment.
+  toggled_off_ = false;
+
   UpdateState(Transition::FAST, BacklightBrightnessChange_Cause_USER_REQUEST);
 }
 
@@ -527,10 +547,19 @@ void KeyboardBacklightController::HandleGetBrightnessRequest(
   *success_out = true;
 }
 
+void KeyboardBacklightController::HandleSetToggledOffRequest(bool toggled_off) {
+  SetToggledOff(toggled_off);
+}
+
+void KeyboardBacklightController::HandleGetToggledOffRequest(
+    bool* toggled_off) {
+  *toggled_off = toggled_off_;
+}
+
 bool KeyboardBacklightController::UpdateState(
     Transition transition, BacklightBrightnessChange_Cause cause) {
   // Force the backlight off immediately in several special cases.
-  if (forced_off_ || shutting_down_ || suspended_ ||
+  if (forced_off_ || toggled_off_ || shutting_down_ || suspended_ ||
       lid_state_ == LidState::CLOSED || tablet_mode_ == TabletMode::ON)
     return ApplyBrightnessPercent(0.0, transition, cause);
 
@@ -567,13 +596,29 @@ bool KeyboardBacklightController::UpdateState(
   return ApplyBrightnessPercent(automated_percent_, transition, cause);
 }
 
+bool KeyboardBacklightController::BypassBrightnessPercentageHasChangedTest(
+    Transition transition, BacklightBrightnessChange_Cause cause) {
+  // The change is a user-initiated change in the toggle state.
+  bool toggling = transition == Transition::INSTANT &&
+                  (cause == BacklightBrightnessChange_Cause_USER_TOGGLED_OFF ||
+                   cause == BacklightBrightnessChange_Cause_USER_TOGGLED_ON);
+  if (toggling)
+    return true;
+
+  // A transition is in-progress.
+  if (backlight_->TransitionInProgress())
+    return true;
+
+  return false;
+}
+
 bool KeyboardBacklightController::ApplyBrightnessPercent(
     double percent,
     Transition transition,
     BacklightBrightnessChange_Cause cause) {
   const int64_t level = PercentToLevel(percent);
-  if (level == PercentToLevel(current_percent_) &&
-      !backlight_->TransitionInProgress())
+  if (!BypassBrightnessPercentageHasChangedTest(transition, cause) &&
+      level == PercentToLevel(current_percent_))
     return false;
 
   if (!backlight_->DeviceExists()) {
@@ -687,6 +732,15 @@ double KeyboardBacklightController::PercentToRawPercent(double percent) const {
     return (percent - kMinPercent) / (kMinVisiblePercent - kMinPercent) *
                (min_visible_raw_percent - min_raw_percent_) +
            min_raw_percent_;
+}
+
+void KeyboardBacklightController::SetToggledOff(bool toggled_off) {
+  if (toggled_off_ == toggled_off)
+    return;
+  toggled_off_ = toggled_off;
+  UpdateState(Transition::INSTANT,
+              toggled_off ? BacklightBrightnessChange_Cause_USER_TOGGLED_OFF
+                          : BacklightBrightnessChange_Cause_USER_TOGGLED_ON);
 }
 
 }  // namespace policy
