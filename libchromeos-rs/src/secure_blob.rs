@@ -5,11 +5,15 @@
 use std::fmt::{self, Debug, Display, Formatter};
 use std::mem::swap;
 
+use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 /// A container intended for handling sensitive data without leaving copies
 /// behind after it is dropped (inspired by libbrillo::SecureBlob).
-#[derive(Clone, Default, Zeroize)]
+///
+/// Note: when using serialize and deserialize, it is recommended to use a
+/// SecureBlob for the buffers.
+#[derive(Clone, Default, Serialize, Deserialize, Zeroize)]
 #[zeroize(drop)]
 pub struct SecureBlob {
     data: Vec<u8>,

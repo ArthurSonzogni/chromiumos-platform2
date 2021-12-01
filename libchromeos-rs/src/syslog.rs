@@ -20,7 +20,7 @@ impl log::Log for SyslogLogger {
     }
 
     fn log(&self, record: &Record) {
-        if !self.enabled(&record.metadata()) {
+        if !self.enabled(record.metadata()) {
             return;
         }
 
