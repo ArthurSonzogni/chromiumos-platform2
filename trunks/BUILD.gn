@@ -99,6 +99,7 @@ source_set("pinweaver_csme_lib") {
     "//common-mk:pic",
   ]
   defines = [ "USE_CSME_EMULATOR=${use.csme_emulator}" ]
+  deps = [ ":pinweaver_proto" ]
 }
 
 shared_library("trunks") {
