@@ -5,7 +5,10 @@
 #include "fusebox/make_stat.h"
 
 #include <unistd.h>
+#include <memory>
 
+#include <base/files/file.h>
+#include <brillo/dbus/data_serialization.h>
 #include <gtest/gtest.h>
 
 namespace fusebox {
@@ -174,6 +177,84 @@ TEST(MakeStatTest, MakeStat) {
     out = MakeStat(ino, stat, read_only);
     EXPECT_EQ(0, out.st_mode & write);
   }
+}
+
+TEST(MakeStatTest, GetServerStatFile) {
+  std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
+
+  // Write a server file stat into the DBUS response.
+  dbus::MessageWriter writer(response.get());
+  writer.AppendInt32(MakeStatModeBits(S_IFREG | 0777));
+  writer.AppendInt64(42);
+  writer.AppendDouble(43.0);
+  writer.AppendDouble(44.0);
+  writer.AppendDouble(45.0);
+
+  // Read a file stat from the DBUS response.
+  dbus::MessageReader reader(response.get());
+  struct stat stat_rw = GetServerStat(1, &reader);
+  EXPECT_EQ("-rw-rw----", StatModeToString(mode_t(stat_rw.st_mode)));
+  EXPECT_EQ(1, stat_rw.st_ino);
+  EXPECT_EQ(1, stat_rw.st_nlink);
+  EXPECT_EQ(getuid(), stat_rw.st_uid);
+  EXPECT_EQ(getgid(), stat_rw.st_gid);
+  EXPECT_EQ(42, stat_rw.st_size);
+  EXPECT_EQ(43, stat_rw.st_atime);
+  EXPECT_EQ(44, stat_rw.st_mtime);
+  EXPECT_EQ(45, stat_rw.st_ctime);
+
+  // Read a file stat from the DBUS response: read only case.
+  const bool read_only = true;
+  dbus::MessageReader reader_ro(response.get());
+  struct stat stat_ro = GetServerStat(2, &reader_ro, read_only);
+  EXPECT_EQ("-r--r-----", StatModeToString(mode_t(stat_ro.st_mode)));
+  EXPECT_EQ(2, stat_ro.st_ino);
+  EXPECT_EQ(1, stat_ro.st_nlink);
+  EXPECT_EQ(getuid(), stat_ro.st_uid);
+  EXPECT_EQ(getgid(), stat_ro.st_gid);
+  EXPECT_EQ(42, stat_ro.st_size);
+  EXPECT_EQ(43, stat_ro.st_atime);
+  EXPECT_EQ(44, stat_ro.st_mtime);
+  EXPECT_EQ(45, stat_ro.st_ctime);
+}
+
+TEST(MakeStatTest, GetServerStatDirectory) {
+  std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
+
+  // Write a server directory stat into the DBUS response.
+  dbus::MessageWriter writer(response.get());
+  writer.AppendInt32(MakeStatModeBits(S_IFDIR | 0777));
+  writer.AppendInt64(46);
+  writer.AppendDouble(47.0);
+  writer.AppendDouble(48.0);
+  writer.AppendDouble(49.0);
+
+  // Read a directory stat from the DBUS response.
+  dbus::MessageReader reader(response.get());
+  struct stat stat_rw = GetServerStat(1, &reader);
+  EXPECT_EQ("drwxrwx---", StatModeToString(mode_t(stat_rw.st_mode)));
+  EXPECT_EQ(1, stat_rw.st_ino);
+  EXPECT_EQ(1, stat_rw.st_nlink);
+  EXPECT_EQ(getuid(), stat_rw.st_uid);
+  EXPECT_EQ(getgid(), stat_rw.st_gid);
+  EXPECT_EQ(46, stat_rw.st_size);
+  EXPECT_EQ(47, stat_rw.st_atime);
+  EXPECT_EQ(48, stat_rw.st_mtime);
+  EXPECT_EQ(49, stat_rw.st_ctime);
+
+  // Read a directory stat from the DBUS response: read only case.
+  const bool read_only = true;
+  dbus::MessageReader reader_ro(response.get());
+  struct stat stat_ro = GetServerStat(2, &reader_ro, read_only);
+  EXPECT_EQ("dr-xr-x---", StatModeToString(mode_t(stat_ro.st_mode)));
+  EXPECT_EQ(2, stat_ro.st_ino);
+  EXPECT_EQ(1, stat_ro.st_nlink);
+  EXPECT_EQ(getuid(), stat_ro.st_uid);
+  EXPECT_EQ(getgid(), stat_ro.st_gid);
+  EXPECT_EQ(46, stat_ro.st_size);
+  EXPECT_EQ(47, stat_ro.st_atime);
+  EXPECT_EQ(48, stat_ro.st_mtime);
+  EXPECT_EQ(49, stat_ro.st_ctime);
 }
 
 }  // namespace fusebox

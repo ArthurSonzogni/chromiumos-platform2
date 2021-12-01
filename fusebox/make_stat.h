@@ -7,8 +7,9 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
-
 #include <string>
+
+#include <dbus/message.h>
 
 namespace fusebox {
 
@@ -20,6 +21,11 @@ mode_t MakeStatModeBits(mode_t mode, bool read_only = false);
 
 // Returns an inode |ino| stat with synthesized permission bits.
 struct stat MakeStat(ino_t ino, const struct stat& s, bool read_only = false);
+
+// Returns an inode |ino| stat from |reader| with synthesized permission bits.
+struct stat GetServerStat(ino_t ino,
+                          dbus::MessageReader* reader,
+                          bool read_only = false);
 
 // Returns mode string.
 std::string StatModeToString(mode_t mode);
