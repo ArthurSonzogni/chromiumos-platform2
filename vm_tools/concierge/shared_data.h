@@ -55,12 +55,17 @@ bool GetPluginIsoDirectory(const std::string& vm_id,
                            bool create,
                            base::FilePath* path_out);
 
-template <class StartXXRequest>
-base::Optional<std::tuple<StartXXRequest, StartVmResponse>>
-Service::StartVmHelper(dbus::MethodCall* method_call,
-                       dbus::MessageReader* reader,
-                       dbus::MessageWriter* writer) {
+template <class StartXXRequest,
+          StartVmResponse (Service::*DoStart)(
+              StartXXRequest, std::unique_ptr<dbus::MessageReader>)>
+std::unique_ptr<dbus::Response> Service::StartVmHelper(
+    dbus::MethodCall* method_call) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+  auto reader = std::make_unique<dbus::MessageReader>(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
 
   StartXXRequest request;
   StartVmResponse response;
@@ -70,24 +75,24 @@ Service::StartVmHelper(dbus::MethodCall* method_call,
   if (!reader->PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse StartVmRequest from message";
     response.set_failure_reason("Unable to parse protobuf");
-    writer->AppendProtoAsArrayOfBytes(response);
-    return base::nullopt;
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
   }
 
   // Check the CPU count.
   if (request.cpus() > base::SysInfo::NumberOfProcessors()) {
     LOG(ERROR) << "Invalid number of CPUs: " << request.cpus();
     response.set_failure_reason("Invalid CPU count");
-    writer->AppendProtoAsArrayOfBytes(response);
-    return base::nullopt;
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
   }
 
   // Make sure the VM has a name.
   if (request.name().empty()) {
     LOG(ERROR) << "Ignoring request with empty name";
     response.set_failure_reason("Missing VM name");
-    writer->AppendProtoAsArrayOfBytes(response);
-    return base::nullopt;
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
   }
 
   auto iter = FindVm(request.owner_id(), request.name());
@@ -118,8 +123,8 @@ Service::StartVmHelper(dbus::MethodCall* method_call,
     }
     response.set_success(true);
 
-    writer->AppendProtoAsArrayOfBytes(response);
-    return base::nullopt;
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
   }
 
   VmId vm_id(request.owner_id(), request.name());
@@ -135,11 +140,13 @@ Service::StartVmHelper(dbus::MethodCall* method_call,
     response.set_failure_reason("A disk operation for the VM is in progress");
     response.set_success(false);
 
-    writer->AppendProtoAsArrayOfBytes(response);
-    return base::nullopt;
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
   }
 
-  return std::make_tuple(request, response);
+  response = (this->*DoStart)(std::move(request), std::move(reader));
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
 }
 
 }  // namespace concierge

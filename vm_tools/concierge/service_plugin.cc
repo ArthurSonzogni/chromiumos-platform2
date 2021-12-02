@@ -95,22 +95,12 @@ bool GetPlugin9PSocketPath(const std::string& vm_id, base::FilePath* path_out) {
 
 }  // namespace
 
-std::unique_ptr<dbus::Response> Service::StartPluginVm(
-    dbus::MethodCall* method_call) {
+StartVmResponse Service::StartPluginVm(
+    StartPluginVmRequest request, std::unique_ptr<dbus::MessageReader> reader) {
   LOG(INFO) << "Received StartPluginVm request";
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-  StartPluginVmRequest request;
   StartVmResponse response;
-  auto helper_result =
-      StartVmHelper<StartPluginVmRequest>(method_call, &reader, &writer);
-  if (!helper_result) {
-    return dbus_response;
-  }
-  std::tie(request, response) = *helper_result;
+  response.set_status(VM_STATUS_FAILURE);
+
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_vm_type(VmInfo::PLUGIN_VM);
 
@@ -121,8 +111,7 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
     LOG(ERROR) << "Unable to create stateful directory for VM";
 
     response.set_failure_reason("Unable to create stateful directory");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // Get the directory for ISO images.
@@ -132,8 +121,7 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
     LOG(ERROR) << "Unable to create directory holding ISOs for VM";
 
     response.set_failure_reason("Unable to create ISO directory");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // Create the runtime directory.
@@ -142,8 +130,7 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
     LOG(ERROR) << "Unable to create runtime directory for VM";
 
     response.set_failure_reason("Unable to create runtime directory");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // Create the root directory.
@@ -152,14 +139,12 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
     LOG(ERROR) << "Unable to create runtime directory for VM";
 
     response.set_failure_reason("Unable to create runtime directory");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   if (!CreatePluginRootHierarchy(root_dir.GetPath())) {
     response.set_failure_reason("Unable to create plugin root hierarchy");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   if (!PluginVm::WriteResolvConf(root_dir.GetPath().Append("etc"), nameservers_,
@@ -167,8 +152,7 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
     LOG(ERROR) << "Unable to seed resolv.conf for the Plugin VM";
 
     response.set_failure_reason("Unable to seed resolv.conf");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // Generate the token used by cicerone to identify the VM and write it to
@@ -180,15 +164,13 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
     PLOG(ERROR) << "Failure writing out cicerone token to file";
 
     response.set_failure_reason("Unable to set cicerone token");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   base::FilePath p9_socket_path;
   if (!GetPlugin9PSocketPath(request.name(), &p9_socket_path)) {
     response.set_failure_reason("Internal error: unable to get 9P directory");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   base::ScopedFD p9_socket =
@@ -197,8 +179,7 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
     LOG(ERROR) << "Failed creating 9P socket for file sharing";
 
     response.set_failure_reason("Internal error: unable to create 9P socket");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   std::unique_ptr<patchpanel::Client> network_client =
@@ -207,8 +188,7 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
     LOG(ERROR) << "Unable to open networking service client";
 
     response.set_failure_reason("Unable to open network service client");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy =
@@ -218,8 +198,7 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
     LOG(ERROR) << "Unable to start shared directory server";
 
     response.set_failure_reason("Unable to start shared directory server");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // Build the plugin params.
@@ -250,8 +229,7 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
     response.set_failure_reason("Unable to start VM");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   VmInterface::Info info = vm->GetInfo();
@@ -276,13 +254,12 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
     }
   }
   response.set_success(true);
-  writer.AppendProtoAsArrayOfBytes(response);
 
   NotifyCiceroneOfVmStarted(vm_id, 0 /* cid */, info.pid, std::move(vm_token));
   SendVmStartedSignal(vm_id, *vm_info, response.status());
 
   vms_[vm_id] = std::move(vm);
-  return dbus_response;
+  return response;
 }
 
 bool Service::RenamePluginVm(const std::string& owner_id,

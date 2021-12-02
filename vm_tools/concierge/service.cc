@@ -1117,9 +1117,12 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kStartVmMethod, &Service::StartVm},
-      {kStartPluginVmMethod, &Service::StartPluginVm},
-      {kStartArcVmMethod, &Service::StartArcVm},
+      {kStartVmMethod,
+       &Service::StartVmHelper<StartVmRequest, &Service::StartVm>},
+      {kStartPluginVmMethod,
+       &Service::StartVmHelper<StartPluginVmRequest, &Service::StartPluginVm>},
+      {kStartArcVmMethod,
+       &Service::StartVmHelper<StartArcVmRequest, &Service::StartArcVm>},
       {kStopVmMethod, &Service::StopVm},
       {kStopAllVmsMethod, &Service::StopAllVms},
       {kSuspendVmMethod, &Service::SuspendVm},
@@ -1345,22 +1348,12 @@ void Service::HandleSigterm() {
   base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, quit_closure_);
 }
 
-std::unique_ptr<dbus::Response> Service::StartVm(
-    dbus::MethodCall* method_call) {
+StartVmResponse Service::StartVm(StartVmRequest request,
+                                 std::unique_ptr<dbus::MessageReader> reader) {
   LOG(INFO) << "Received StartVm request";
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-  StartVmRequest request;
   StartVmResponse response;
-  auto helper_result =
-      StartVmHelper<StartVmRequest>(method_call, &reader, &writer);
-  if (!helper_result) {
-    return dbus_response;
-  }
-  std::tie(request, response) = *helper_result;
+  response.set_status(VM_STATUS_FAILURE);
+
   VmInfo::VmType classification = ClassifyVm(request);
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_vm_type(classification);
@@ -1369,13 +1362,12 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       bios_fd;
   for (const auto& fdType : request.fds()) {
     base::ScopedFD fd;
-    if (!reader.PopFileDescriptor(&fd)) {
+    if (!reader->PopFileDescriptor(&fd)) {
       std::stringstream ss;
       ss << "failed to get a " << StartVmRequest_FdType_Name(fdType) << " FD";
       LOG(ERROR) << ss.str();
       response.set_failure_reason(ss.str());
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+      return response;
     }
     switch (fdType) {
       case StartVmRequest_FdType_KERNEL:
@@ -1404,16 +1396,14 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       !is_tremplin_started_signal_connected_) {
     LOG(ERROR) << "Can't start Termina VM without TremplinStartedSignal";
     response.set_failure_reason("TremplinStartedSignal not connected");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   if (request.disks_size() > kMaxExtraDisks) {
     LOG(ERROR) << "Rejecting request with " << request.disks_size()
                << " extra disks";
     response.set_failure_reason("Too many extra disks");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   string failure_reason;
@@ -1423,43 +1413,37 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   if (!failure_reason.empty()) {
     LOG(ERROR) << "Failed to get image paths: " << failure_reason;
     response.set_failure_reason("Failed to get image paths: " + failure_reason);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   if (!image_spec.kernel.empty() && !base::PathExists(image_spec.kernel)) {
     LOG(ERROR) << "Missing VM kernel path: " << image_spec.kernel.value();
     response.set_failure_reason("Kernel path does not exist");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   if (!image_spec.bios.empty() && !base::PathExists(image_spec.bios)) {
     LOG(ERROR) << "Missing VM BIOS path: " << image_spec.bios.value();
     response.set_failure_reason("BIOS path does not exist");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   if (image_spec.kernel.empty() && image_spec.bios.empty()) {
     LOG(ERROR) << "neither a kernel nor a BIOS were provided";
     response.set_failure_reason("neither a kernel nor a BIOS were provided");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   if (!image_spec.initrd.empty() && !base::PathExists(image_spec.initrd)) {
     LOG(ERROR) << "Missing VM initrd path: " << image_spec.initrd.value();
     response.set_failure_reason("Initrd path does not exist");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   if (!image_spec.rootfs.empty() && !base::PathExists(image_spec.rootfs)) {
     LOG(ERROR) << "Missing VM rootfs path: " << image_spec.rootfs.value();
     response.set_failure_reason("Rootfs path does not exist");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   const bool is_untrusted_vm =
@@ -1478,8 +1462,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
          << ", or the device must be in the developer mode";
       LOG(ERROR) << ss.str();
       response.set_failure_reason(ss.str());
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+      return response;
     }
 
     // For untrusted VMs -
@@ -1493,8 +1476,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
         case UntrustedVMUtils::MitigationStatus::VULNERABLE: {
           LOG(ERROR) << "Host vulnerable against untrusted VM";
           response.set_failure_reason("Host vulnerable against untrusted VM");
-          writer.AppendProtoAsArrayOfBytes(response);
-          return dbus_response;
+          return response;
         }
 
         // At this point SMT should not be a security issue. As
@@ -1531,8 +1513,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   if (request.disks().size() == 0) {
     LOG(ERROR) << "Missing required stateful disk";
     response.set_failure_reason("Missing required stateful disk");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // Assume the stateful device is the first disk in the request.
@@ -1544,16 +1525,14 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     LOG(ERROR) << "Could not determine stateful disk size";
     response.set_failure_reason(
         "Internal error: unable to determine stateful disk size");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   for (const auto& disk : request.disks()) {
     if (!base::PathExists(base::FilePath(disk.path()))) {
       LOG(ERROR) << "Missing disk path: " << disk.path();
       response.set_failure_reason("One or more disk paths do not exist");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+      return response;
     }
 
     Disk::Config config{};
@@ -1569,8 +1548,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       LOG(ERROR) << "storage fd passed for a trusted VM";
 
       response.set_failure_reason("storage fd is passed for a trusted VM");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+      return response;
     }
 
     int raw_fd = storage_fd.value().get();
@@ -1579,8 +1557,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       LOG(ERROR) << "failed to remove close-on-exec flag: " << failure_reason;
       response.set_failure_reason(
           "failed to get a path for extra storage disk: " + failure_reason);
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+      return response;
     }
 
     disks.push_back(Disk(base::FilePath(kProcFileDescriptorsPath)
@@ -1596,31 +1573,27 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
     response.set_failure_reason(
         "Internal error: unable to create runtime directory");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   if (request.name().size() > kMaxVmNameLength) {
     LOG(ERROR) << "VM name is too long";
 
     response.set_failure_reason("VM name is too long");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
   base::FilePath log_path = GetVmLogPath(request.owner_id(), request.name());
 
   if (request.enable_vulkan() && !request.enable_gpu()) {
     LOG(ERROR) << "Vulkan enabled without GPU";
     response.set_failure_reason("Vulkan enabled without GPU");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   if (request.enable_big_gl() && !request.enable_gpu()) {
     LOG(ERROR) << "Big GL enabled without GPU";
     response.set_failure_reason("Big GL enabled without GPU");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // Enable the render server for Vulkan.
@@ -1638,8 +1611,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     LOG(ERROR) << "Unable to allocate vsock context id";
 
     response.set_failure_reason("Unable to allocate vsock cid");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
   vm_info->set_cid(vsock_cid);
 
@@ -1649,8 +1621,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     LOG(ERROR) << "Unable to open networking service client";
 
     response.set_failure_reason("Unable to open network service client");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   uint32_t seneschal_server_port = next_seneschal_server_port_++;
@@ -1662,8 +1633,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     LOG(ERROR) << "Unable to start shared directory server";
 
     response.set_failure_reason("Unable to start shared directory server");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   uint32_t seneschal_server_handle = server_proxy->handle();
@@ -1732,8 +1702,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
           "Borealis VMs must have a secure wayland server. Likely borealis is "
           "disabled.");
       LOG(ERROR) << response.failure_reason();
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+      return response;
     }
     vm_builder.SetWaylandSocket(std::move(wayland_server));
   } else {
@@ -1796,8 +1765,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
     startup_listener_.RemovePendingVm(vsock_cid);
     response.set_failure_reason("Unable to start VM");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // Wait for the VM to finish starting up and for maitre'd to signal that it's
@@ -1811,8 +1779,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
     startup_listener_.RemovePendingVm(vsock_cid);
     response.set_failure_reason("VM failed to start in time");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // maitre'd is ready.  Finish setting up the VM.
@@ -1820,8 +1787,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     LOG(ERROR) << "Failed to configure VM network";
 
     response.set_failure_reason("Failed to configure VM network");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // Mount the tools disk if it exists.
@@ -1830,8 +1796,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
                    "")) {
       LOG(ERROR) << "Failed to mount tools disk";
       response.set_failure_reason("Failed to mount tools disk");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+      return response;
     }
   }
 
@@ -1852,8 +1817,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
                  << disk.mount_point();
 
       response.set_failure_reason("Failed to mount extra disk");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+      return response;
     }
   }
 
@@ -1862,8 +1826,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     LOG(ERROR) << "Failed to mount shared directory";
 
     response.set_failure_reason("Failed to mount shared directory");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // Determine the VM token. Termina doesnt use a VM token because it has
@@ -1887,8 +1850,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
                     &free_bytes)) {
     response.set_failure_reason(std::move(failure_reason));
     response.set_mount_result((StartVmResponse::MountResult)mount_result);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
   response.set_mount_result((StartVmResponse::MountResult)mount_result);
   if (free_bytes >= 0) {
@@ -1922,8 +1884,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       LOG(ERROR) << "Failed to mount " << external_disk_path;
 
       response.set_failure_reason("Failed to mount extra disk");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+      return response;
     }
   }
 
@@ -1933,12 +1894,11 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   vm_info->set_ipv4_address(vm->IPv4Address());
   vm_info->set_pid(vm->pid());
   vm_info->set_permission_token(vm->PermissionToken());
-  writer.AppendProtoAsArrayOfBytes(response);
 
   SendVmStartedSignal(vm_id, *vm_info, response.status());
 
   vms_[vm_id] = std::move(vm);
-  return dbus_response;
+  return response;
 }
 
 std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {

@@ -38,21 +38,11 @@ constexpr char kArcvmVcpuCpuCgroup[] = "/sys/fs/cgroup/cpu/arcvm-vcpus";
 
 }  // namespace
 
-std::unique_ptr<dbus::Response> Service::StartArcVm(
-    dbus::MethodCall* method_call) {
+StartVmResponse Service::StartArcVm(
+    StartArcVmRequest request, std::unique_ptr<dbus::MessageReader> reader) {
   LOG(INFO) << "Received StartArcVm request";
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-  StartArcVmRequest request;
   StartVmResponse response;
-  auto helper_result =
-      StartVmHelper<StartArcVmRequest>(method_call, &reader, &writer);
-  if (!helper_result) {
-    return dbus_response;
-  }
-  std::tie(request, response) = *helper_result;
+  response.set_status(VM_STATUS_FAILURE);
 
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_vm_type(VmInfo::ARC_VM);
@@ -62,8 +52,7 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
                << " extra disks";
 
     response.set_failure_reason("Too many extra disks");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   std::vector<Disk> disks;
@@ -81,8 +70,7 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
     if (!base::PathExists(base::FilePath(disk.path()))) {
       LOG(ERROR) << "Missing disk path: " << disk.path();
       response.set_failure_reason("One or more disk paths do not exist");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+      return response;
     }
     config.writable = disk.writable();
     const size_t block_size = disk.block_size();
@@ -100,8 +88,7 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
 
     response.set_failure_reason(
         "Internal error: unable to create runtime directory");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // Allocate resources for the VM.
@@ -110,8 +97,7 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
     LOG(ERROR) << "Unable to allocate vsock context id";
 
     response.set_failure_reason("Unable to allocate vsock cid");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
   vm_info->set_cid(vsock_cid);
 
@@ -121,8 +107,7 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
     LOG(ERROR) << "Unable to open networking service client";
 
     response.set_failure_reason("Unable to open network service client");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // Map the chronos user (1000) and the chronos-access group (1001) to the
@@ -136,8 +121,7 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
     LOG(ERROR) << "Unable to start shared directory server";
 
     response.set_failure_reason("Unable to start shared directory server");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   uint32_t seneschal_server_handle = server_proxy->handle();
@@ -168,8 +152,7 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
     LOG(WARNING) << "Android data directory does not exist";
 
     response.set_failure_reason("Android data directory does not exist");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   VmId vm_id(request.owner_id(), request.name());
@@ -272,8 +255,7 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
     LOG(ERROR) << "Unable to start VM";
 
     response.set_failure_reason("Unable to start VM");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // ARCVM is ready.
@@ -283,12 +265,12 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   response.set_status(VM_STATUS_RUNNING);
   vm_info->set_ipv4_address(vm->IPv4Address());
   vm_info->set_pid(vm->pid());
-  writer.AppendProtoAsArrayOfBytes(response);
 
   SendVmStartedSignal(vm_id, *vm_info, response.status());
 
   vms_[vm_id] = std::move(vm);
-  return dbus_response;
+
+  return response;
 }
 
 }  // namespace concierge

@@ -97,23 +97,22 @@ class Service final {
   void HandleSigterm();
 
   // Helper function that is used by StartVm, StartPluginVm and StartArcVm
-  template <class StartXXRequest>
-  base::Optional<std::tuple<StartXXRequest, StartVmResponse>> StartVmHelper(
-      dbus::MethodCall* method_call,
-      dbus::MessageReader* reader,
-      dbus::MessageWriter* writer);
+  template <class StartXXRequest,
+            StartVmResponse (Service::*StartVm)(
+                StartXXRequest, std::unique_ptr<dbus::MessageReader>)>
+  std::unique_ptr<dbus::Response> StartVmHelper(dbus::MethodCall* method_call);
 
-  // Handles a request to start a VM.  |method_call| must have a StartVmRequest
-  // protobuf serialized as an array of bytes.
-  std::unique_ptr<dbus::Response> StartVm(dbus::MethodCall* method_call);
+  // Handles a request to start a VM.
+  StartVmResponse StartVm(StartVmRequest request,
+                          std::unique_ptr<dbus::MessageReader> reader);
 
-  // Handles a request to start a plugin-based VM.  |method_call| must have a
-  // StartPluginVmRequest protobuf serialized as an array of bytes.
-  std::unique_ptr<dbus::Response> StartPluginVm(dbus::MethodCall* method_call);
+  // Handles a request to start a plugin-based VM.
+  StartVmResponse StartPluginVm(StartPluginVmRequest request,
+                                std::unique_ptr<dbus::MessageReader> reader);
 
-  // Handles a request to start ARCVM.  |method_call| must have a
-  // StartArcVmRequest protobuf serialized as an array of bytes.
-  std::unique_ptr<dbus::Response> StartArcVm(dbus::MethodCall* method_call);
+  // Handles a request to start ARCVM.
+  StartVmResponse StartArcVm(StartArcVmRequest request,
+                             std::unique_ptr<dbus::MessageReader> reader);
 
   // Handles a request to stop a VM.  |method_call| must have a StopVmRequest
   // protobuf serialized as an array of bytes.
