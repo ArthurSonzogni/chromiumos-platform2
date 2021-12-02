@@ -53,7 +53,8 @@ void EnterMinijail() {
   minijail_mount_with_data(j.get(), "tmpfs", "/var", "tmpfs", 0, nullptr);
   minijail_bind(j.get(), "/var/lib/devicesettings", "/var/lib/devicesettings",
                 0);
-  minijail_bind(j.get(), "/var/lib/structured", "/var/lib/structured", 1);
+  minijail_bind(j.get(), "/var/lib/metrics/structured",
+                "/var/lib/metrics/structured", 1);
   minijail_bind(j.get(), "/var/lib/rmad", "/var/lib/rmad", 1);
   minijail_bind(j.get(), "/var/log", "/var/log", 0);
 
