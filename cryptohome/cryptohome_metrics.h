@@ -84,7 +84,7 @@ enum CryptohomePhase { kCreated, kMounted };
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
-enum CryptohomeError {
+enum CryptohomeErrorMetric {
   kTpmFail = 1,
   kTcsKeyLoadFailed = 2,
   kTpmDefendLockRunning = 3,
@@ -496,7 +496,7 @@ void ReportWrappingKeyDerivationType(DerivationType derivation_type,
                                      CryptohomePhase crypto_phase);
 
 // The |error| value is reported to the "Cryptohome.Errors" enum histogram.
-void ReportCryptohomeError(CryptohomeError error);
+void ReportCryptohomeError(CryptohomeErrorMetric error);
 
 // The |result| value is reported to the "Cryptohome.TpmResults" enum histogram.
 void ReportTpmResult(TpmResult result);

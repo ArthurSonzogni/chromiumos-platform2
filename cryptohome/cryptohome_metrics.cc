@@ -224,7 +224,7 @@ void ReportWrappingKeyDerivationType(DerivationType derivation_type,
   }
 }
 
-void ReportCryptohomeError(CryptohomeError error) {
+void ReportCryptohomeError(CryptohomeErrorMetric error) {
   if (!g_metrics) {
     return;
   }
