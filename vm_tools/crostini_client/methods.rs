@@ -88,6 +88,7 @@ enum ChromeOSError {
     PluginVmNoPortalAccess,
     RetrieveActiveSessions,
     SourcePathDoesNotExist,
+    ToolsDlcNotAllowed(String),
     TpmOnStable,
 }
 
@@ -192,6 +193,7 @@ impl fmt::Display for ChromeOSError {
             PluginVmNoPortalAccess => write!(f, "unable to access Parallels licensing portal"),
             RetrieveActiveSessions => write!(f, "failed to retrieve active sessions"),
             SourcePathDoesNotExist => write!(f, "source media path does not exist"),
+            ToolsDlcNotAllowed(dlc) => write!(f, "tools dlc `{}` is not allowed", dlc),
             TpmOnStable => write!(f, "TPM device is not available on stable channel"),
         }
     }
@@ -1235,6 +1237,12 @@ impl Methods {
             request.mut_vm().dlc_id = dlc_id;
         }
         if let Some(tools_dlc_id) = features.tools_dlc_id {
+            // TODO(crbug/1276157): add `termina-tools` to this list when `termina-dlc` is split.
+            match tools_dlc_id.as_ref() {
+                "termina-dlc" => (),
+                _ => return Err(ToolsDlcNotAllowed(tools_dlc_id.to_owned()).into()),
+            }
+            self.install_dlc(&tools_dlc_id)?;
             request.mut_vm().tools_dlc_id = tools_dlc_id;
         }
         request.start_termina = start_termina;
