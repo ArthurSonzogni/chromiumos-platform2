@@ -35,7 +35,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
       const CryptoRecoveryEpochResponse& epoch_response,
       const brillo::SecureBlob& encrypted_channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
-      brillo::SecureBlob* recovery_request,
+      CryptoRecoveryRpcRequest* recovery_request,
       brillo::SecureBlob* ephemeral_pub_key) const override;
   bool GenerateHsmPayload(
       const brillo::SecureBlob& mediator_pub_key,

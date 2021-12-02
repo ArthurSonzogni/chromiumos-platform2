@@ -111,15 +111,15 @@ class RecoveryCrypto {
   // 4. Save G*x to `ephemeral_pub_key` parameter.
   // 5. Construct plain text PT2 = {G*-x}.
   // 6. Encrypt {AD2, PT2} using AES-GCM scheme.
-  // 7. Construct `RecoveryRequest` and serialize it to
-  // `recovery_request` CBOR.
+  // 7. Construct `CryptoRecoveryRpcRequest` which contains `RecoveryRequest`
+  // serialized to CBOR.
   virtual bool GenerateRecoveryRequest(
       const HsmPayload& hsm_payload,
       const RequestMetadata& request_meta_data,
       const CryptoRecoveryEpochResponse& epoch_response,
       const brillo::SecureBlob& encrypted_channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
-      brillo::SecureBlob* recovery_request,
+      CryptoRecoveryRpcRequest* recovery_request,
       brillo::SecureBlob* ephemeral_pub_key) const = 0;
 
   // Generates HSM payload that will be persisted on a chromebook at enrollment

@@ -19,3 +19,9 @@ message CryptoRecoveryEpochResponse {
       3;  // cbor encoded metadata of current epoch. clients can also treat this
           // as an opaque blob.
 }
+
+// Request for a cryptohome recovery
+message CryptoRecoveryRpcRequest {
+  optional int32 protocol_version = 1;            // protocol version
+  optional bytes cbor_cryptorecoveryrequest = 2;  // cbor encoded request
+}

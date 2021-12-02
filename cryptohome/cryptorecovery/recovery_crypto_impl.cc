@@ -75,6 +75,20 @@ bool GenerateRecoveryRequestAssociatedData(
       CreateSecureRandomBlob(RecoveryCrypto::kHkdfSaltLength);
   return true;
 }
+
+bool GenerateRecoveryRequestProto(const RecoveryRequest& request,
+                                  CryptoRecoveryRpcRequest* recovery_request) {
+  brillo::SecureBlob request_cbor;
+  if (!SerializeRecoveryRequestToCbor(request, &request_cbor)) {
+    LOG(ERROR) << "Failed to serialize Recovery Request to CBOR";
+    return false;
+  }
+  recovery_request->set_protocol_version(1);
+  recovery_request->set_cbor_cryptorecoveryrequest(request_cbor.data(),
+                                                   request_cbor.size());
+  return true;
+}
+
 }  // namespace
 
 std::unique_ptr<RecoveryCryptoImpl> RecoveryCryptoImpl::Create(
@@ -264,7 +278,7 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
     const CryptoRecoveryEpochResponse& epoch_response,
     const brillo::SecureBlob& encrypted_channel_priv_key,
     const brillo::SecureBlob& channel_pub_key,
-    brillo::SecureBlob* recovery_request,
+    CryptoRecoveryRpcRequest* recovery_request,
     brillo::SecureBlob* ephemeral_pub_key) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
@@ -356,8 +370,8 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
 
   RecoveryRequest request;
   request.request_payload = std::move(request_payload);
-  if (!SerializeRecoveryRequestToCbor(request, recovery_request)) {
-    LOG(ERROR) << "Failed to serialize Recovery Request to CBOR";
+  if (!GenerateRecoveryRequestProto(request, recovery_request)) {
+    LOG(ERROR) << "Failed to generate Recovery Request proto";
     return false;
   }
   return true;

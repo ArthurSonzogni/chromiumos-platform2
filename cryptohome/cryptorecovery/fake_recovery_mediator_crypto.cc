@@ -45,6 +45,25 @@ brillo::SecureBlob GetResponsePayloadPlainTextHkdfInfo() {
       RecoveryCrypto::kResponsePayloadPlainTextHkdfInfoValue);
 }
 
+bool GetRecoveryRequestFromProto(
+    const CryptoRecoveryRpcRequest& recovery_request_proto,
+    RecoveryRequest* recovery_request) {
+  if (!recovery_request_proto.has_cbor_cryptorecoveryrequest()) {
+    LOG(ERROR)
+        << "No cbor_cryptorecoveryrequest field in recovery_request_proto";
+    return false;
+  }
+  brillo::SecureBlob recovery_request_cbor(
+      recovery_request_proto.cbor_cryptorecoveryrequest().begin(),
+      recovery_request_proto.cbor_cryptorecoveryrequest().end());
+  if (!DeserializeRecoveryRequestFromCbor(recovery_request_cbor,
+                                          recovery_request)) {
+    LOG(ERROR) << "Unable to deserialize Recovery Request";
+    return false;
+  }
+  return true;
+}
+
 }  // namespace
 
 // Hardcoded fake mediator and epoch public and private keys. Do not use them in
@@ -409,7 +428,7 @@ bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
     const brillo::SecureBlob& epoch_pub_key,
     const brillo::SecureBlob& epoch_priv_key,
     const brillo::SecureBlob& mediator_priv_key,
-    const brillo::SecureBlob& recovery_request_cbor,
+    const CryptoRecoveryRpcRequest& recovery_request_proto,
     brillo::SecureBlob* recovery_response_cbor) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
@@ -418,9 +437,8 @@ bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
   }
 
   RecoveryRequest recovery_request;
-  if (!DeserializeRecoveryRequestFromCbor(recovery_request_cbor,
-                                          &recovery_request)) {
-    LOG(ERROR) << "Unable to deserialize Recovery Request";
+  if (!GetRecoveryRequestFromProto(recovery_request_proto, &recovery_request)) {
+    LOG(ERROR) << "Couldn't get recovery request from recovery_request_proto";
     return false;
   }
 

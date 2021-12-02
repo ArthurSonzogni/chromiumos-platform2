@@ -57,15 +57,17 @@ class FakeRecoveryMediatorCrypto {
   // `request_payload.associated_data`.
   // 2. Perform DH(`epoch_priv_key`, channel_pub_key), decrypt
   // `cipher_text` (CT2) from `request_payload`.
-  // 3. Deserialize `recovery_request_cbor` to `RequestPayload`.
+  // 3. Deserialize `recovery_request.cbor_cryptorecoveryrequest` to
+  // `RequestPayload`.
   // 4. Extract `hsm_payload` from `RequestPayload`.
   // 5. Do `MediateHsmPayload` with `hsm_payload` and keys (`epoch_pub_key`,
   // `epoch_priv_key`, `mediator_priv_key`).
-  bool MediateRequestPayload(const brillo::SecureBlob& epoch_pub_key,
-                             const brillo::SecureBlob& epoch_priv_key,
-                             const brillo::SecureBlob& mediator_priv_key,
-                             const brillo::SecureBlob& recovery_request_cbor,
-                             brillo::SecureBlob* recovery_response_cbor) const;
+  bool MediateRequestPayload(
+      const brillo::SecureBlob& epoch_pub_key,
+      const brillo::SecureBlob& epoch_priv_key,
+      const brillo::SecureBlob& mediator_priv_key,
+      const CryptoRecoveryRpcRequest& recovery_request_proto,
+      brillo::SecureBlob* recovery_response_cbor) const;
 
  private:
   // Constructor is private. Use Create method to instantiate.

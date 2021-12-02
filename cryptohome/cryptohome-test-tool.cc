@@ -26,6 +26,8 @@
 
 using base::FilePath;
 using brillo::SecureBlob;
+using cryptohome::cryptorecovery::CryptoRecoveryEpochResponse;
+using cryptohome::cryptorecovery::CryptoRecoveryRpcRequest;
 using cryptohome::cryptorecovery::FakeRecoveryMediatorCrypto;
 using cryptohome::cryptorecovery::HsmPayload;
 using cryptohome::cryptorecovery::HsmResponsePlainText;
@@ -159,22 +161,23 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
     return false;
   }
 
-  cryptohome::cryptorecovery::CryptoRecoveryEpochResponse epoch_response;
+  CryptoRecoveryEpochResponse epoch_response;
   CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochResponse(&epoch_response));
 
   brillo::SecureBlob ephemeral_pub_key;
-  brillo::SecureBlob recovery_request_cbor;
+  CryptoRecoveryRpcRequest recovery_request;
   RequestMetadata request_metadata;
   if (!recovery_crypto->GenerateRecoveryRequest(
           hsm_payload, request_metadata, epoch_response, channel_priv_key,
-          channel_pub_key, &recovery_request_cbor, &ephemeral_pub_key)) {
+          channel_pub_key, &recovery_request, &ephemeral_pub_key)) {
     return false;
   }
 
   return WriteHexFileLogged(ephemeral_pub_key_out_file_path,
                             ephemeral_pub_key) &&
-         WriteHexFileLogged(recovery_request_out_file_path,
-                            recovery_request_cbor);
+         WriteHexFileLogged(
+             recovery_request_out_file_path,
+             brillo::SecureBlob(recovery_request.SerializeAsString()));
 }
 
 bool DoRecoveryCryptoMediateAction(
@@ -183,6 +186,12 @@ bool DoRecoveryCryptoMediateAction(
   SecureBlob serialized_recovery_request;
   if (!ReadHexFileToSecureBlobLogged(recovery_request_in_file_path,
                                      &serialized_recovery_request)) {
+    return false;
+  }
+  CryptoRecoveryRpcRequest recovery_request;
+  if (!recovery_request.ParseFromString(
+          serialized_recovery_request.to_string())) {
+    LOG(ERROR) << "Failed to parse CryptoRecoveryRpcRequest.";
     return false;
   }
 
@@ -200,9 +209,9 @@ bool DoRecoveryCryptoMediateAction(
   CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochPrivateKey(&epoch_priv_key));
 
   brillo::SecureBlob response_cbor;
-  if (!fake_mediator->MediateRequestPayload(
-          epoch_pub_key, epoch_priv_key, mediator_priv_key,
-          serialized_recovery_request, &response_cbor)) {
+  if (!fake_mediator->MediateRequestPayload(epoch_pub_key, epoch_priv_key,
+                                            mediator_priv_key, recovery_request,
+                                            &response_cbor)) {
     return false;
   }
 

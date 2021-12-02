@@ -990,11 +990,11 @@ TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
           tpm.GetRecoveryCryptoBackend());
   ASSERT_TRUE(recovery);
   brillo::SecureBlob ephemeral_pub_key;
-  brillo::SecureBlob recovery_request_cbor;
+  cryptorecovery::CryptoRecoveryRpcRequest recovery_request;
   cryptorecovery::RequestMetadata request_metadata;
   ASSERT_TRUE(recovery->GenerateRecoveryRequest(
       hsm_payload, request_metadata, epoch_response, channel_priv_key,
-      channel_pub_key, &recovery_request_cbor, &ephemeral_pub_key));
+      channel_pub_key, &recovery_request, &ephemeral_pub_key));
 
   // Simulate mediation (it will be done by Recovery Mediator service).
   std::unique_ptr<FakeRecoveryMediatorCrypto> mediator =
@@ -1009,7 +1009,7 @@ TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
 
   brillo::SecureBlob response_cbor;
   ASSERT_TRUE(mediator->MediateRequestPayload(
-      epoch_pub_key, epoch_priv_key, mediator_priv_key, recovery_request_cbor,
+      epoch_pub_key, epoch_priv_key, mediator_priv_key, recovery_request,
       &response_cbor));
 
   CryptohomeRecoveryAuthInput derive_cryptohome_recovery_auth_input;

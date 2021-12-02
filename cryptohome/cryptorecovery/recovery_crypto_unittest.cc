@@ -7,6 +7,7 @@
 #include "cryptohome/crypto/big_num_util.h"
 #include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/crypto/secure_blob_util.h"
+#include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
@@ -127,15 +128,15 @@ class RecoveryCryptoTest : public testing::Test {
         destination_share, recovery_key, &channel_pub_key, channel_priv_key));
 
     // Start recovery process.
-    SecureBlob recovery_request_cbor;
+    CryptoRecoveryRpcRequest recovery_request;
     EXPECT_TRUE(recovery_->GenerateRecoveryRequest(
         hsm_payload, request_metadata_, epoch_response_, *channel_priv_key,
-        channel_pub_key, &recovery_request_cbor, ephemeral_pub_key));
+        channel_pub_key, &recovery_request, ephemeral_pub_key));
 
     // Simulates mediation performed by HSM.
     EXPECT_TRUE(mediator_->MediateRequestPayload(
-        epoch_pub_key_, epoch_priv_key_, mediator_priv_key_,
-        recovery_request_cbor, response_cbor));
+        epoch_pub_key_, epoch_priv_key_, mediator_priv_key_, recovery_request,
+        response_cbor));
   }
 
   SecureBlob rsa_pub_key_;
@@ -163,16 +164,17 @@ TEST_F(RecoveryCryptoTest, RecoveryTestSuccess) {
       &destination_share, &recovery_key, &channel_pub_key, &channel_priv_key));
 
   // Start recovery process.
-  SecureBlob ephemeral_pub_key, recovery_request_cbor;
+  CryptoRecoveryRpcRequest recovery_request;
+  SecureBlob ephemeral_pub_key;
   EXPECT_TRUE(recovery_->GenerateRecoveryRequest(
       hsm_payload, request_metadata_, epoch_response_, channel_priv_key,
-      channel_pub_key, &recovery_request_cbor, &ephemeral_pub_key));
+      channel_pub_key, &recovery_request, &ephemeral_pub_key));
 
   // Simulates mediation performed by HSM.
   SecureBlob response_cbor;
   EXPECT_TRUE(mediator_->MediateRequestPayload(
-      epoch_pub_key_, epoch_priv_key_, mediator_priv_key_,
-      recovery_request_cbor, &response_cbor));
+      epoch_pub_key_, epoch_priv_key_, mediator_priv_key_, recovery_request,
+      &response_cbor));
 
   HsmResponsePlainText response_plain_text;
   EXPECT_TRUE(recovery_->DecryptResponsePayload(
@@ -207,10 +209,11 @@ TEST_F(RecoveryCryptoTest, MediateWithInvalidEpochPublicKey) {
       &destination_share, &recovery_key, &channel_pub_key, &channel_priv_key));
 
   // Start recovery process.
-  SecureBlob ephemeral_pub_key, recovery_request_cbor;
+  CryptoRecoveryRpcRequest recovery_request;
+  SecureBlob ephemeral_pub_key;
   EXPECT_TRUE(recovery_->GenerateRecoveryRequest(
       hsm_payload, request_metadata_, epoch_response_, channel_priv_key,
-      channel_pub_key, &recovery_request_cbor, &ephemeral_pub_key));
+      channel_pub_key, &recovery_request, &ephemeral_pub_key));
 
   SecureBlob random_key = GeneratePublicKey();
 
@@ -218,7 +221,7 @@ TEST_F(RecoveryCryptoTest, MediateWithInvalidEpochPublicKey) {
   SecureBlob response_cbor;
   EXPECT_TRUE(mediator_->MediateRequestPayload(
       /*epoch_pub_key=*/random_key, epoch_priv_key_, mediator_priv_key_,
-      recovery_request_cbor, &response_cbor));
+      recovery_request, &response_cbor));
 
   // `DecryptResponsePayload` fails if invalid epoch value was used for
   // `MediateRequestPayload`.
