@@ -22,7 +22,7 @@ class ThresholdFilter : public Filter {
 
  private:
   // Metehods for Filter
-  FilterResult ProcessResultImpl(int result, bool valid) override;
+  HpsResult ProcessResultImpl(int result, bool valid) override;
 
   const int threshold_;
 };

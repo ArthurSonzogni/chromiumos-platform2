@@ -24,13 +24,6 @@ class StateController;
 //   (2) It listens to signals from HpsService to know the latest HpsResult.
 class DimAdvisor : public system::DBusWrapperInterface::Observer {
  public:
-  // Represents the signal result from Hps service.
-  enum class HpsResult {
-    UNKNOWN,
-    POSITIVE,
-    NEGATIVE,
-  };
-
   DimAdvisor();
   ~DimAdvisor();
 

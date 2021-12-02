@@ -20,19 +20,18 @@ ConsecutiveResultsFilter::ConsecutiveResultsFilter(
   }
 }
 
-Filter::FilterResult ConsecutiveResultsFilter::ProcessResultImpl(int result,
-                                                                 bool valid) {
-  FilterResult inference_result = FilterResult::kUncertain;
+HpsResult ConsecutiveResultsFilter::ProcessResultImpl(int result, bool valid) {
+  HpsResult inference_result = HpsResult::UNKNOWN;
   if (valid && result >= config_.positive_score_threshold()) {
     // If result is valid and above the positive threshold, then
     // inference_result
     // is positive.
-    inference_result = FilterResult::kPositive;
+    inference_result = HpsResult::POSITIVE;
   } else if (valid && result < config_.negative_score_threshold()) {
     // If result is valid and below the negative threshold, then
     // inference_result
     // is positive.
-    inference_result = FilterResult::kNegative;
+    inference_result = HpsResult::NEGATIVE;
   }
 
   // If current inference_result is the same as consecutive_result_; then
@@ -45,15 +44,15 @@ Filter::FilterResult ConsecutiveResultsFilter::ProcessResultImpl(int result,
   }
 
   // Compare consecutive_count_ with each of the count_threshold.
-  if (consecutive_result_ == FilterResult::kPositive &&
+  if (consecutive_result_ == HpsResult::POSITIVE &&
       consecutive_count_ >= config_.positive_count_threshold()) {
-    return FilterResult::kPositive;
-  } else if (consecutive_result_ == FilterResult::kNegative &&
+    return HpsResult::POSITIVE;
+  } else if (consecutive_result_ == HpsResult::NEGATIVE &&
              consecutive_count_ >= config_.negative_count_threshold()) {
-    return FilterResult::kNegative;
-  } else if (consecutive_result_ == FilterResult::kUncertain &&
+    return HpsResult::NEGATIVE;
+  } else if (consecutive_result_ == HpsResult::UNKNOWN &&
              consecutive_count_ >= config_.uncertain_count_threshold()) {
-    return FilterResult::kUncertain;
+    return HpsResult::UNKNOWN;
   }
 
   return GetCurrentResult();

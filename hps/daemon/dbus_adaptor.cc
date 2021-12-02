@@ -88,7 +88,7 @@ bool DBusAdaptor::DisableFeature(brillo::ErrorPtr* error, uint8_t feature) {
 }
 
 bool DBusAdaptor::GetFeatureResult(brillo::ErrorPtr* error,
-                                   bool* result,
+                                   HpsResultProto* result,
                                    uint8_t feature) {
   if (!enabled_features_.test(feature)) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
@@ -97,8 +97,7 @@ bool DBusAdaptor::GetFeatureResult(brillo::ErrorPtr* error,
     return false;
   }
   DCHECK(feature_filters_[feature]);
-  *result = feature_filters_[feature]->GetCurrentResult() ==
-            Filter::FilterResult::kPositive;
+  result->set_value(feature_filters_[feature]->GetCurrentResult());
   return true;
 }
 
@@ -116,7 +115,8 @@ bool DBusAdaptor::DisableHpsSense(brillo::ErrorPtr* error) {
   return DisableFeature(error, 0);
 }
 
-bool DBusAdaptor::GetResultHpsSense(brillo::ErrorPtr* error, bool* result) {
+bool DBusAdaptor::GetResultHpsSense(brillo::ErrorPtr* error,
+                                    HpsResultProto* result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return GetFeatureResult(error, result, 0);
 }
@@ -135,7 +135,8 @@ bool DBusAdaptor::DisableHpsNotify(brillo::ErrorPtr* error) {
   return DisableFeature(error, 1);
 }
 
-bool DBusAdaptor::GetResultHpsNotify(brillo::ErrorPtr* error, bool* result) {
+bool DBusAdaptor::GetResultHpsNotify(brillo::ErrorPtr* error,
+                                     HpsResultProto* result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return GetFeatureResult(error, result, 1);
 }

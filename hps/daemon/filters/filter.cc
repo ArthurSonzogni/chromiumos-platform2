@@ -6,15 +6,14 @@
 
 namespace hps {
 
-Filter::Filter(Filter::FilterResult initial_state)
-    : current_result_(initial_state) {}
+Filter::Filter(HpsResult initial_state) : current_result_(initial_state) {}
 
-Filter::FilterResult Filter::ProcessResult(int result, bool valid) {
+HpsResult Filter::ProcessResult(int result, bool valid) {
   current_result_ = ProcessResultImpl(result, valid);
   return current_result_;
 }
 
-Filter::FilterResult Filter::GetCurrentResult(void) const {
+HpsResult Filter::GetCurrentResult(void) const {
   return current_result_;
 }
 

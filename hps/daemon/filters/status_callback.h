@@ -5,12 +5,14 @@
 #ifndef HPS_DAEMON_FILTERS_STATUS_CALLBACK_H_
 #define HPS_DAEMON_FILTERS_STATUS_CALLBACK_H_
 
+#include <vector>
 #include "base/callback.h"
 
 namespace hps {
 
 // This callback is invoked whenever a filter changes state.
-using StatusCallback = base::RepeatingCallback<void(bool)>;
+using StatusCallback =
+    base::RepeatingCallback<void(const std::vector<uint8_t>&)>;
 
 }  // namespace hps
 

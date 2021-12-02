@@ -22,14 +22,18 @@
     </method>
     <method name="DisableHpsSense"></method>
     <method name="GetResultHpsSense">
-      <arg name="result" type="b" direction="out">
+      <arg name="result" type="ay" direction="out">
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="hps::HpsResultProto" />
       <tp:docstring>
         Result returned for the requested feature.
       </tp:docstring>
       </arg>
     </method>
     <signal name="HpsSenseChanged">
-      <arg name="result" direction="out" type="b" />
+      <arg name="result" direction="out" type="ay" />
+            <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="hps::HpsResultProto" />
     </signal>
 
     <method name="EnableHpsNotify">
@@ -40,14 +44,18 @@
     </method>
     <method name="DisableHpsNotify"></method>
     <method name="GetResultHpsNotify">
-      <arg name="result" type="b" direction="out">
+      <arg name="result" type="ay" direction="out">
+            <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="hps::HpsResultProto" />
       <tp:docstring>
         Result returned for the requested feature.
       </tp:docstring>
       </arg>
     </method>
     <signal name="HpsNotifyChanged">
-      <arg name="result" direction="out" type="b" />
+      <arg name="result" direction="out" type="ay" />
+            <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="hps::HpsResultProto" />
     </signal>
   </interface>
 </node>

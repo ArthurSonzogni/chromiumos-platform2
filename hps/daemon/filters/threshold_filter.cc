@@ -8,14 +8,12 @@ namespace hps {
 
 ThresholdFilter::ThresholdFilter(int threshold) : threshold_(threshold) {}
 
-Filter::FilterResult ThresholdFilter::ProcessResultImpl(int result,
-                                                        bool valid) {
+HpsResult ThresholdFilter::ProcessResultImpl(int result, bool valid) {
   if (!valid) {
-    return FilterResult::kUncertain;
+    return HpsResult::UNKNOWN;
   }
 
-  return result > threshold_ ? FilterResult::kPositive
-                             : FilterResult::kNegative;
+  return result > threshold_ ? HpsResult::POSITIVE : HpsResult::NEGATIVE;
 }
 
 }  // namespace hps

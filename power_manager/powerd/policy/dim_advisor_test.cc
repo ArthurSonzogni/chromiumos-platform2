@@ -16,16 +16,20 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "hps/proto_bindings/hps_service.pb.h"
 #include "power_manager/powerd/policy/state_controller.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 
 namespace power_manager {
 namespace policy {
 
+using HpsResult = hps::HpsResult;
+
 class MockStateController : public StateController {
  public:
   MOCK_METHOD(void, HandleDeferFromSmartDim, ());
-  MOCK_METHOD(void, HandleHpsResultChange, (DimAdvisor::HpsResult hps_result));
+  MOCK_METHOD(void, HandleHpsResultChange, (HpsResult hps_result));
 };
 
 class DimAdvisorTest : public ::testing::Test {
@@ -72,10 +76,13 @@ class DimAdvisorTest : public ::testing::Test {
     return response;
   }
 
-  void SendHpsSignal(const bool value) {
+  void EmitHpsSignal(HpsResult result) {
+    hps::HpsResultProto result_proto;
+    result_proto.set_value(result);
+
     dbus::Signal signal(hps::kHpsServiceInterface, hps::kHpsSenseChanged);
     dbus::MessageWriter writer(&signal);
-    writer.AppendBool(value);
+    writer.AppendProtoAsArrayOfBytes(result_proto);
     dbus_wrapper_.EmitRegisteredSignal(hps_dbus_proxy_, &signal);
   }
 
@@ -143,7 +150,7 @@ TEST_F(DimAdvisorTest, HpsIsEnabledAfterGettingFirstSignal) {
 
   EXPECT_FALSE(dim_advisor_.IsHpsSenseEnabled());
   EXPECT_CALL(mock_state_controller_, HandleHpsResultChange).Times(1);
-  SendHpsSignal(true);
+  EmitHpsSignal(HpsResult::POSITIVE);
   EXPECT_TRUE(dim_advisor_.IsHpsSenseEnabled());
 }
 
@@ -151,14 +158,18 @@ TEST_F(DimAdvisorTest, HandleHpsResultChange) {
   InitWithMlServiceAvailability(false);
 
   EXPECT_CALL(mock_state_controller_,
-              HandleHpsResultChange(DimAdvisor::HpsResult::NEGATIVE))
+              HandleHpsResultChange(HpsResult::NEGATIVE))
       .Times(1);
-  SendHpsSignal(false);
+  EmitHpsSignal(HpsResult::NEGATIVE);
 
   EXPECT_CALL(mock_state_controller_,
-              HandleHpsResultChange(DimAdvisor::HpsResult::POSITIVE))
+              HandleHpsResultChange(HpsResult::POSITIVE))
       .Times(1);
-  SendHpsSignal(true);
+  EmitHpsSignal(HpsResult::POSITIVE);
+
+  EXPECT_CALL(mock_state_controller_, HandleHpsResultChange(HpsResult::UNKNOWN))
+      .Times(1);
+  EmitHpsSignal(HpsResult::UNKNOWN);
 }
 
 }  // namespace policy

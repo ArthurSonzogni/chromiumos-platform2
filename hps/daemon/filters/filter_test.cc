@@ -16,40 +16,42 @@
 #include "hps/proto_bindings/hps_service.pb.h"
 
 namespace hps {
+namespace {
 
-using FilterResult = Filter::FilterResult;
 constexpr int kThreshold = 5;
+
+}  // namespace
 
 TEST(HpsFilterTest, ThresholdFilterTest) {
   ThresholdFilter filter(kThreshold);
 
-  EXPECT_EQ(filter.ProcessResult(kThreshold - 1, true),
-            FilterResult::kNegative);
-  EXPECT_EQ(filter.ProcessResult(kThreshold + 1, true),
-            FilterResult::kPositive);
-  EXPECT_EQ(filter.ProcessResult(kThreshold + 1, false),
-            FilterResult::kUncertain);
+  EXPECT_EQ(filter.ProcessResult(kThreshold - 1, true), HpsResult::NEGATIVE);
+  EXPECT_EQ(filter.ProcessResult(kThreshold + 1, true), HpsResult::POSITIVE);
+  EXPECT_EQ(filter.ProcessResult(kThreshold + 1, false), HpsResult::UNKNOWN);
 }
 
 TEST(HpsFilterTest, FilterWatcherTest) {
-  bool cb_result = false;
-  base::RepeatingCallback<void(bool)> callback =
-      base::BindLambdaForTesting([&](bool result) { cb_result = result; });
+  HpsResult cb_result;
+  StatusCallback callback =
+      base::BindLambdaForTesting([&](const std::vector<uint8_t>& bytes) {
+        // Gets HpsResult from a serialized bytes of HpsResultProto.
+        HpsResultProto result_proto;
+        DCHECK(result_proto.ParseFromArray(bytes.data(),
+                                           static_cast<int>(bytes.size())));
+        cb_result = result_proto.value();
+      });
 
   auto filter = std::make_unique<ThresholdFilter>(kThreshold);
   FilterWatcher watcher(std::move(filter), callback);
 
-  EXPECT_EQ(watcher.ProcessResult(kThreshold - 1, true),
-            FilterResult::kNegative);
-  EXPECT_EQ(watcher.ProcessResult(kThreshold + 1, true),
-            FilterResult::kPositive);
-  EXPECT_TRUE(cb_result);
-  EXPECT_EQ(watcher.ProcessResult(kThreshold - 1, true),
-            FilterResult::kNegative);
-  EXPECT_FALSE(cb_result);
-  EXPECT_EQ(watcher.ProcessResult(kThreshold - 1, false),
-            FilterResult::kUncertain);
-  EXPECT_FALSE(cb_result);
+  EXPECT_EQ(watcher.ProcessResult(kThreshold - 1, true), HpsResult::NEGATIVE);
+  EXPECT_EQ(watcher.ProcessResult(kThreshold + 1, true), HpsResult::POSITIVE);
+  EXPECT_EQ(cb_result, HpsResult::POSITIVE);
+  EXPECT_EQ(watcher.ProcessResult(kThreshold - 1, true), HpsResult::NEGATIVE);
+  EXPECT_EQ(cb_result, HpsResult::NEGATIVE);
+
+  EXPECT_EQ(watcher.ProcessResult(kThreshold - 1, false), HpsResult::UNKNOWN);
+  EXPECT_EQ(cb_result, HpsResult::UNKNOWN);
 }
 
 TEST(HpsFilterTest, ConsecutiveResultsFilterTest) {
@@ -69,29 +71,22 @@ TEST(HpsFilterTest, ConsecutiveResultsFilterTest) {
   const int uncertain_score = 5;
 
   // Only need one positive value to change the state.
-  EXPECT_EQ(filter.ProcessResult(positive_score, true),
-            FilterResult::kPositive);
+  EXPECT_EQ(filter.ProcessResult(positive_score, true), HpsResult::POSITIVE);
 
   // One negative value will not change the state.
-  EXPECT_EQ(filter.ProcessResult(negative_score, true),
-            FilterResult::kPositive);
+  EXPECT_EQ(filter.ProcessResult(negative_score, true), HpsResult::POSITIVE);
   // Two negative values will change the state.
-  EXPECT_EQ(filter.ProcessResult(negative_score, true),
-            FilterResult::kNegative);
+  EXPECT_EQ(filter.ProcessResult(negative_score, true), HpsResult::NEGATIVE);
 
   // One uncertain value will not change the state.
-  EXPECT_EQ(filter.ProcessResult(uncertain_score, true),
-            FilterResult::kNegative);
+  EXPECT_EQ(filter.ProcessResult(uncertain_score, true), HpsResult::NEGATIVE);
   // Two uncertain values will not change the state.
-  EXPECT_EQ(filter.ProcessResult(uncertain_score, true),
-            FilterResult::kNegative);
+  EXPECT_EQ(filter.ProcessResult(uncertain_score, true), HpsResult::NEGATIVE);
   // Three uncertain values will change the state.
-  EXPECT_EQ(filter.ProcessResult(uncertain_score, true),
-            FilterResult::kUncertain);
+  EXPECT_EQ(filter.ProcessResult(uncertain_score, true), HpsResult::UNKNOWN);
 
   // Only need one positive value to change the state.
-  EXPECT_EQ(filter.ProcessResult(positive_score, true),
-            FilterResult::kPositive);
+  EXPECT_EQ(filter.ProcessResult(positive_score, true), HpsResult::POSITIVE);
 
   // Alternating between negative_scores and uncertain_scores without reaching
   // count_threshold will not change the state.
@@ -99,22 +94,18 @@ TEST(HpsFilterTest, ConsecutiveResultsFilterTest) {
                                    uncertain_score, negative_score,
                                    uncertain_score, uncertain_score};
   for (const int score : scores) {
-    EXPECT_EQ(filter.ProcessResult(score, true), FilterResult::kPositive);
+    EXPECT_EQ(filter.ProcessResult(score, true), HpsResult::POSITIVE);
   }
 
   // This resets the internal consecutive_count_.
-  EXPECT_EQ(filter.ProcessResult(positive_score, true),
-            FilterResult::kPositive);
+  EXPECT_EQ(filter.ProcessResult(positive_score, true), HpsResult::POSITIVE);
 
   // One uncertain value will not change the state.
-  EXPECT_EQ(filter.ProcessResult(uncertain_score, true),
-            FilterResult::kPositive);
+  EXPECT_EQ(filter.ProcessResult(uncertain_score, true), HpsResult::POSITIVE);
   // Invalid value is treated as uncertain.
-  EXPECT_EQ(filter.ProcessResult(negative_score, false),
-            FilterResult::kPositive);
+  EXPECT_EQ(filter.ProcessResult(negative_score, false), HpsResult::POSITIVE);
   // Invalid value is treated as uncertain and three uncertain changes the state
-  EXPECT_EQ(filter.ProcessResult(negative_score, false),
-            FilterResult::kUncertain);
+  EXPECT_EQ(filter.ProcessResult(negative_score, false), HpsResult::UNKNOWN);
 }
 
 TEST(HpsFilterTest, ConsecutiveResultsFilterCompatibleTest) {
@@ -129,25 +120,19 @@ TEST(HpsFilterTest, ConsecutiveResultsFilterCompatibleTest) {
   const int negative_score = 9;
 
   // One positive value will not change the state.
-  EXPECT_EQ(filter.ProcessResult(positive_score, true),
-            FilterResult::kUncertain);
+  EXPECT_EQ(filter.ProcessResult(positive_score, true), HpsResult::UNKNOWN);
   // Two positive value will change the state.
-  EXPECT_EQ(filter.ProcessResult(positive_score, true),
-            FilterResult::kPositive);
+  EXPECT_EQ(filter.ProcessResult(positive_score, true), HpsResult::POSITIVE);
 
   // One negative value will not change the state.
-  EXPECT_EQ(filter.ProcessResult(negative_score, true),
-            FilterResult::kPositive);
+  EXPECT_EQ(filter.ProcessResult(negative_score, true), HpsResult::POSITIVE);
   // Two negative values will change the state.
-  EXPECT_EQ(filter.ProcessResult(negative_score, true),
-            FilterResult::kNegative);
+  EXPECT_EQ(filter.ProcessResult(negative_score, true), HpsResult::NEGATIVE);
 
   // One uncertain value will not change the state.
-  EXPECT_EQ(filter.ProcessResult(negative_score, false),
-            FilterResult::kNegative);
+  EXPECT_EQ(filter.ProcessResult(negative_score, false), HpsResult::NEGATIVE);
   // Two uncertain values will change the state.
-  EXPECT_EQ(filter.ProcessResult(negative_score, false),
-            FilterResult::kUncertain);
+  EXPECT_EQ(filter.ProcessResult(negative_score, false), HpsResult::UNKNOWN);
 }
 
 TEST(HpsFilterTest, AverageFilter) {
@@ -160,19 +145,19 @@ TEST(HpsFilterTest, AverageFilter) {
   AverageFilter filter(config);
 
   // Average is 10;
-  EXPECT_EQ(filter.ProcessResult(10, true), FilterResult::kPositive);
+  EXPECT_EQ(filter.ProcessResult(10, true), HpsResult::POSITIVE);
   // Average is 5;
-  EXPECT_EQ(filter.ProcessResult(0, true), FilterResult::kUncertain);
+  EXPECT_EQ(filter.ProcessResult(0, true), HpsResult::UNKNOWN);
   // Average is 3;
-  EXPECT_EQ(filter.ProcessResult(0, true), FilterResult::kNegative);
+  EXPECT_EQ(filter.ProcessResult(0, true), HpsResult::NEGATIVE);
   // Average is 5;
-  EXPECT_EQ(filter.ProcessResult(15, true), FilterResult::kUncertain);
+  EXPECT_EQ(filter.ProcessResult(15, true), HpsResult::UNKNOWN);
   // Average is 7;
-  EXPECT_EQ(filter.ProcessResult(6, true), FilterResult::kUncertain);
+  EXPECT_EQ(filter.ProcessResult(6, true), HpsResult::UNKNOWN);
   // Average is 10;
-  EXPECT_EQ(filter.ProcessResult(9, true), FilterResult::kPositive);
+  EXPECT_EQ(filter.ProcessResult(9, true), HpsResult::POSITIVE);
   // Average is 7, not 12; since default_uncertain_score is used if invalid.
-  EXPECT_EQ(filter.ProcessResult(21, false), FilterResult::kUncertain);
+  EXPECT_EQ(filter.ProcessResult(21, false), HpsResult::UNKNOWN);
 }
 
 }  // namespace hps

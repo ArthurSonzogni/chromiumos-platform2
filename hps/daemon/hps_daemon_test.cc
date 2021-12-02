@@ -124,7 +124,7 @@ TEST_F(HpsDaemonTest, DisableFeatureReady) {
 
 TEST_F(HpsDaemonTest, GetFeatureResultNotEnabled) {
   brillo::ErrorPtr error;
-  bool result;
+  HpsResultProto result;
 
   bool call_result = hps_daemon_->GetResultHpsSense(&error, &result);
   EXPECT_FALSE(call_result);

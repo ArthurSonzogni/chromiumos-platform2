@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 #include <update_engine/proto_bindings/update_engine.pb.h>
 
+#include "hps/proto_bindings/hps_service.pb.h"
 #include "power_manager/common/action_recorder.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
@@ -33,6 +34,8 @@ namespace power_manager {
 namespace policy {
 
 namespace {
+
+using HpsResult = hps::HpsResult;
 
 // Strings returned by TestDelegate::GetActions() to describe various
 // actions that were requested.
@@ -309,10 +312,13 @@ class StateControllerTest : public testing::Test {
     dbus_wrapper_.EmitRegisteredSignal(update_engine_proxy_, &signal);
   }
 
-  void EmitHpsSignal(const bool value) {
+  void EmitHpsSignal(const hps::HpsResult result) {
+    hps::HpsResultProto result_proto;
+    result_proto.set_value(result);
+
     dbus::Signal signal(hps::kHpsServiceInterface, hps::kHpsSenseChanged);
     dbus::MessageWriter writer(&signal);
-    writer.AppendBool(value);
+    writer.AppendProtoAsArrayOfBytes(result_proto);
     dbus_wrapper_.EmitRegisteredSignal(hps_dbus_proxy_, &signal);
   }
 
@@ -2292,9 +2298,9 @@ TEST_F(StateControllerTest, ScheduleForQuickDim) {
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
 
   // The next block verifies that no quick dim should be scheduled if
-  // hps_result_ is positive by EmitHpsSignal(true); thus a standard dim
-  // should be scheduled at kDimDelay.
-  EmitHpsSignal(true);
+  // hps_result_ is positive by EmitHpsSignal(HpsResult::POSITIVE); thus a
+  // standard dim should be scheduled at kDimDelay.
+  EmitHpsSignal(HpsResult::POSITIVE);
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   // Turn the screen back on.
@@ -2302,14 +2308,15 @@ TEST_F(StateControllerTest, ScheduleForQuickDim) {
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
 
   // The next block verifies that a quick dim should be scheduled at
-  // kQuickDimDelay if if hps_result_ is negative by EmitHpsSignal(false).
-  EmitHpsSignal(false);
+  // kQuickDimDelay if if hps_result_ is negative by
+  // EmitHpsSignal(HpsResult::NEGATIVE).
+  EmitHpsSignal(HpsResult::NEGATIVE);
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   // Turn the screen back on.
   controller_.HandleUserActivity();
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
-  EmitHpsSignal(true);
+  EmitHpsSignal(HpsResult::POSITIVE);
 
   // The next block verifies that a quick dim should not be scheduled if
   //  duration_since_last_activity_for_screen_dim >= kDimImminentDelay; thus a
@@ -2318,7 +2325,7 @@ TEST_F(StateControllerTest, ScheduleForQuickDim) {
   // Advance clock.
   AdvanceTime(kDimImminentDelay);
   // Send a hps negative signal.
-  EmitHpsSignal(false);
+  EmitHpsSignal(HpsResult::NEGATIVE);
   // Next action will be scheduled at after kScreenDimImminentInterval, not
   // after kQuickDimDelay.
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(
@@ -2327,26 +2334,26 @@ TEST_F(StateControllerTest, ScheduleForQuickDim) {
   // Turn the screen back on.
   controller_.HandleUserActivity();
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
-  EmitHpsSignal(true);
+  EmitHpsSignal(HpsResult::POSITIVE);
 
   // The next block verifies that a quick dim should be scheduled at
   // kQuickDimDelay after hps_result_ becomes negative if the last activity is
   // earlier.
   // Advance 1 second.
   AdvanceTime(base::TimeDelta::FromSeconds(1));
-  EmitHpsSignal(false);
+  EmitHpsSignal(HpsResult::NEGATIVE);
   // Next quick dim will be scheduled after kQuickDimDelay.
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   // Turn the screen back on.
   controller_.HandleUserActivity();
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
-  EmitHpsSignal(true);
+  EmitHpsSignal(HpsResult::POSITIVE);
 
   // The next block verifies that a quick dim should be scheduled at
   // kQuickDimDelay after last user activity if hps_result_ turned to negative
   // earlier.
-  EmitHpsSignal(false);
+  EmitHpsSignal(HpsResult::NEGATIVE);
   // Advance 1 second.
   AdvanceTime(base::TimeDelta::FromSeconds(1));
   controller_.HandleUserActivity();
@@ -2356,7 +2363,7 @@ TEST_F(StateControllerTest, ScheduleForQuickDim) {
   // Turn the screen back on.
   controller_.HandleUserActivity();
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
-  EmitHpsSignal(true);
+  EmitHpsSignal(HpsResult::POSITIVE);
 
   // The next block verifies that if MLDecision Service is available then the
   // MLDecision DBus call should be scheduled if that's earlier than the next
@@ -2366,7 +2373,7 @@ TEST_F(StateControllerTest, ScheduleForQuickDim) {
   // Advance clock.
   AdvanceTime(kDimImminentDelay - base::TimeDelta::FromSeconds(1));
   // |hps_result_| turned to negative only 1 second before kDimImminentDelay.
-  EmitHpsSignal(false);
+  EmitHpsSignal(HpsResult::NEGATIVE);
   // Next action will be scheduled at kDimImminentDelay for MLDecision query,
   // not kDimImminentDelay + kQuickDimDelay for a quick dim.
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(base::TimeDelta::FromSeconds(1)));
@@ -2383,26 +2390,26 @@ TEST_F(StateControllerTest, QuickDimAndUndim) {
       StateController::kScreenDimImminentInterval;
 
   // Case (1) a quick dim undimmed by user activity.
-  EmitHpsSignal(false);
+  EmitHpsSignal(HpsResult::NEGATIVE);
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   // undim by user activity.
   controller_.HandleUserActivity();
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
-  EmitHpsSignal(true);
+  EmitHpsSignal(HpsResult::POSITIVE);
 
   // Case (2) a quick dim undimed by hps.
-  EmitHpsSignal(false);
+  EmitHpsSignal(HpsResult::NEGATIVE);
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   // undim by Hps.
-  EmitHpsSignal(true);
+  EmitHpsSignal(HpsResult::POSITIVE);
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
   controller_.HandleUserActivity();
 
   // Case (3) a quick dim will not happen after kDimImminentDelay.
   AdvanceTime(kDimImminentDelay - default_ac_quick_dim_delay_);
-  EmitHpsSignal(false);
+  EmitHpsSignal(HpsResult::NEGATIVE);
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
   // A quick dim will not happen because it is after kDimImminentDelay.
   EXPECT_EQ("", delegate_.GetActions());
@@ -2413,16 +2420,16 @@ TEST_F(StateControllerTest, QuickDimAndUndim) {
   // undim by user activity.
   controller_.HandleUserActivity();
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
-  EmitHpsSignal(true);
+  EmitHpsSignal(HpsResult::POSITIVE);
 
   // Case (4) a hps signal can't revert a quick dim after kDimImminentDelay.
-  EmitHpsSignal(false);
+  EmitHpsSignal(HpsResult::NEGATIVE);
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   // Advance to kDimImminentDelay.
   AdvanceTime(kDimImminentDelay - default_ac_quick_dim_delay_);
   // Send Hps positive signal.
-  EmitHpsSignal(true);
+  EmitHpsSignal(HpsResult::POSITIVE);
   // undim will not happen because it is after kDimImminentDelay.
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   // A user activity will always undim the screen.
@@ -2461,7 +2468,7 @@ TEST_F(StateControllerTest, IgnoreDisplayModeChangesAfterScreenOff) {
 TEST_F(StateControllerTest, LoadPrefShouldSetCorrectQuickDimDelaysAC) {
   initial_power_source_ = PowerSource::AC;
   Init();
-  EmitHpsSignal(false);
+  EmitHpsSignal(HpsResult::NEGATIVE);
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
 }
@@ -2469,7 +2476,7 @@ TEST_F(StateControllerTest, LoadPrefShouldSetCorrectQuickDimDelaysAC) {
 TEST_F(StateControllerTest, LoadPrefShouldSetCorrectQuickDimDelaysBattery) {
   initial_power_source_ = PowerSource::BATTERY;
   Init();
-  EmitHpsSignal(false);
+  EmitHpsSignal(HpsResult::NEGATIVE);
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_battery_quick_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
 }
@@ -2484,20 +2491,20 @@ TEST_F(StateControllerTest, HandlePolicyChangeShouldSetCorrectDelays) {
   auto& ac_delays = *policy.mutable_ac_delays();
   ac_delays.set_quick_dim_ms(quick_dim_delay.InMilliseconds());
   controller_.HandlePolicyChange(policy);
-  EmitHpsSignal(false);
+  EmitHpsSignal(HpsResult::NEGATIVE);
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(quick_dim_delay));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
 
   // undim by user activity.
   controller_.HandleUserActivity();
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
-  EmitHpsSignal(true);
+  EmitHpsSignal(HpsResult::POSITIVE);
 
   // If quick_dim_delay > default_ac_screen_dim_delay_ then a standard dim will
   // will happen.
   ac_delays.set_quick_dim_ms(default_ac_screen_dim_delay_.InMilliseconds() + 1);
   controller_.HandlePolicyChange(policy);
-  EmitHpsSignal(false);
+  EmitHpsSignal(HpsResult::NEGATIVE);
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
 }

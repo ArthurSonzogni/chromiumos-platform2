@@ -9,7 +9,7 @@ namespace hps {
 AverageFilter::AverageFilter(const FeatureConfig::AverageFilterConfig& config)
     : config_(config) {}
 
-Filter::FilterResult AverageFilter::ProcessResultImpl(int result, bool valid) {
+HpsResult AverageFilter::ProcessResultImpl(int result, bool valid) {
   // If invalid, use the default value instead of the provided value.
   if (!valid) {
     result = config_.default_uncertain_score();
@@ -31,12 +31,12 @@ Filter::FilterResult AverageFilter::ProcessResultImpl(int result, bool valid) {
 
   // Compare the average with two thresholds.
   if (average >= config_.positive_score_threshold()) {
-    return FilterResult::kPositive;
+    return HpsResult::POSITIVE;
   } else if (average < config_.negative_score_threshold()) {
-    return FilterResult::kNegative;
+    return HpsResult::NEGATIVE;
   }
 
-  return FilterResult::kUncertain;
+  return HpsResult::UNKNOWN;
 }
 
 }  // namespace hps

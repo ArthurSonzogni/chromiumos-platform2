@@ -21,9 +21,9 @@ class ConsecutiveResultsFilter : public Filter {
 
  private:
   // Metehods for Filter
-  FilterResult ProcessResultImpl(int result, bool valid) override;
+  HpsResult ProcessResultImpl(int result, bool valid) override;
 
-  FilterResult consecutive_result_ = FilterResult::kUncertain;
+  HpsResult consecutive_result_ = HpsResult::UNKNOWN;
   int consecutive_count_ = 0;
   FeatureConfig::ConsecutiveResultsFilterConfig config_;
 };

@@ -1342,7 +1342,7 @@ void StateController::ScheduleActionTimeout(base::TimeTicks now) {
     // value becomes NEGATIVE, the UpdateState will be called and a quick dim
     // action will be scheduled.
     if (dim_advisor_.IsHpsSenseEnabled() && !delays_.quick_dim.is_zero() &&
-        !screen_dimmed_ && hps_result_ == DimAdvisor::HpsResult::NEGATIVE) {
+        !screen_dimmed_ && hps_result_ == hps::HpsResult::NEGATIVE) {
       UpdateActionTimeout(now, GetLastActivityTimeForQuickDim(now),
                           delays_.quick_dim, &timeout_delay);
     }
@@ -1479,7 +1479,7 @@ void StateController::HandleDimWithHps(
     const bool should_quick_dim =
         duration_since_last_activity_for_screen_dim <
             delays_.screen_dim_imminent &&
-        hps_result_ == DimAdvisor::HpsResult::NEGATIVE &&
+        hps_result_ == hps::HpsResult::NEGATIVE &&
         now - GetLastActivityTimeForQuickDim(now) >= delays_.quick_dim;
 
     const bool should_standard_dim =
@@ -1497,7 +1497,7 @@ void StateController::HandleDimWithHps(
     // Try to undim.
     const bool undim_for_hps = duration_since_last_activity_for_screen_dim <
                                    delays_.screen_dim_imminent &&
-                               hps_result_ == DimAdvisor::HpsResult::POSITIVE;
+                               hps_result_ == hps::HpsResult::POSITIVE;
 
     // Screen should be undimmed if there is a user_activity after last_dim_time
     // NOTE: comparing to the original condition
@@ -1527,7 +1527,7 @@ void StateController::HandleDimWithHps(
   }
 }
 
-void StateController::HandleHpsResultChange(DimAdvisor::HpsResult hps_result) {
+void StateController::HandleHpsResultChange(hps::HpsResult hps_result) {
   // Calls UpdateState to consume the new HpsResult.
   if (hps_result_ == hps_result) {
     return;

@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "hps/proto_bindings/hps_service.pb.h"
 #include "power_manager/powerd/policy/state_controller.h"
 
 namespace power_manager {
@@ -136,18 +137,16 @@ void DimAdvisor::HandleHpsSenseSignal(dbus::Signal* signal) {
   hps_sense_connected_ = true;
 
   dbus::MessageReader reader(signal);
-  bool value = false;
+  hps::HpsResultProto result_proto;
 
-  if (!reader.PopBool(&value)) {
+  if (!reader.PopArrayOfBytesAsProto(&result_proto)) {
     LOG(ERROR) << "Can't read dbus signal from " << hps::kHpsServiceInterface
                << "." << hps::kHpsSenseChanged;
     return;
   }
 
-  HpsResult hps_result = value ? HpsResult::POSITIVE : HpsResult::NEGATIVE;
-
   // Calls StateController::HandleHpsResultChange to consume new hps result.
-  state_controller_->HandleHpsResultChange(hps_result);
+  state_controller_->HandleHpsResultChange(result_proto.value());
 }
 
 void DimAdvisor::UnDimFeedback(base::TimeDelta dim_duration) {

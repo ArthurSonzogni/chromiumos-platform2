@@ -38,12 +38,14 @@ class DBusAdaptor : public org::chromium::HpsAdaptor,
   bool EnableHpsSense(brillo::ErrorPtr* error,
                       const hps::FeatureConfig& config) override;
   bool DisableHpsSense(brillo::ErrorPtr* error) override;
-  bool GetResultHpsSense(brillo::ErrorPtr* error, bool* result) override;
+  bool GetResultHpsSense(brillo::ErrorPtr* error,
+                         HpsResultProto* result) override;
 
   bool EnableHpsNotify(brillo::ErrorPtr* error,
                        const hps::FeatureConfig& config) override;
   bool DisableHpsNotify(brillo::ErrorPtr* error) override;
-  bool GetResultHpsNotify(brillo::ErrorPtr* error, bool* result) override;
+  bool GetResultHpsNotify(brillo::ErrorPtr* error,
+                          HpsResultProto* result) override;
 
  private:
   bool EnableFeature(brillo::ErrorPtr* error,
@@ -51,7 +53,9 @@ class DBusAdaptor : public org::chromium::HpsAdaptor,
                      uint8_t feature,
                      StatusCallback callback);
   bool DisableFeature(brillo::ErrorPtr* error, uint8_t feature);
-  bool GetFeatureResult(brillo::ErrorPtr* error, bool* result, uint8_t feature);
+  bool GetFeatureResult(brillo::ErrorPtr* error,
+                        HpsResultProto* result,
+                        uint8_t feature);
 
   brillo::dbus_utils::DBusObject dbus_object_;
   std::unique_ptr<HPS> hps_;

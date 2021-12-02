@@ -17,6 +17,7 @@
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 
+#include "hps/proto_bindings/hps_service.pb.h"
 #include "power_manager/common/activity_logger.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs_observer.h"
@@ -206,7 +207,7 @@ class StateController : public PrefsObserver {
 
   // Called when a new hps_result is sent from Hps DBus.
   // Virtual for mocking.
-  virtual void HandleHpsResultChange(DimAdvisor::HpsResult hps_result);
+  virtual void HandleHpsResultChange(hps::HpsResult hps_result);
 
   // PrefsInterface::Observer implementation:
   void OnPrefChanged(const std::string& pref_name) override;
@@ -544,7 +545,7 @@ class StateController : public PrefsObserver {
   // Timestamp of the last time hps result changed.
   base::TimeTicks last_hps_result_change_time_;
   // HpsResult recorded.
-  DimAdvisor::HpsResult hps_result_ = DimAdvisor::HpsResult::UNKNOWN;
+  hps::HpsResult hps_result_ = hps::HpsResult::UNKNOWN;
 
   // Information about audio activity and full-brightness, screen-on-but-dimmed,
   // and system-level wake locks.

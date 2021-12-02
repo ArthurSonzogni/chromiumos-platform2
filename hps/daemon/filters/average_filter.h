@@ -23,7 +23,7 @@ class AverageFilter : public Filter {
 
  private:
   // Metehods for Filter
-  FilterResult ProcessResultImpl(int result, bool valid) override;
+  HpsResult ProcessResultImpl(int result, bool valid) override;
 
   std::queue<int> last_n_results_;
   int sum_result_ = 0;
