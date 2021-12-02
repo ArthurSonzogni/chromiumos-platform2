@@ -25,3 +25,9 @@ message CryptoRecoveryRpcRequest {
   optional int32 protocol_version = 1;            // protocol version
   optional bytes cbor_cryptorecoveryrequest = 2;  // cbor encoded request
 }
+
+// Result of a cryptohome recovery
+message CryptoRecoveryRpcResponse {
+  optional int32 protocol_version = 1;             // protocol version
+  optional bytes cbor_cryptorecoveryresponse = 2;  // cbor encoded response
+}

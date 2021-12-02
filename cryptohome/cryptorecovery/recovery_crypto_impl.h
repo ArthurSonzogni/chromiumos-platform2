@@ -55,7 +55,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   bool DecryptResponsePayload(
       const brillo::SecureBlob& encrypted_channel_priv_key,
       const brillo::SecureBlob& epoch_pub_key,
-      const brillo::SecureBlob& recovery_response_cbor,
+      const CryptoRecoveryRpcResponse& recovery_response_proto,
       HsmResponsePlainText* response_plain_text) const override;
 
  private:

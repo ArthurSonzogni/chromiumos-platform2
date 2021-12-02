@@ -14,6 +14,7 @@
 #include <base/optional.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
@@ -30,8 +31,8 @@ struct CryptohomeRecoveryAuthInput {
   // Ephemeral public key for Cryptohome recovery flow.
   base::Optional<brillo::SecureBlob> ephemeral_pub_key;
   // A response received from Recovery Mediator service and used by Cryptohome
-  // recovery flow to derive the wrapping keys, serialized to CBOR.
-  base::Optional<brillo::SecureBlob> recovery_response;
+  // recovery flow to derive the wrapping keys.
+  base::Optional<cryptorecovery::CryptoRecoveryRpcResponse> recovery_response;
 };
 
 // Data required for Challenge Credential flow.

@@ -64,6 +64,20 @@ bool GetRecoveryRequestFromProto(
   return true;
 }
 
+bool GenerateRecoveryRequestProto(
+    const RecoveryResponse& response,
+    CryptoRecoveryRpcResponse* recovery_response) {
+  brillo::SecureBlob recovery_response_cbor;
+  if (!SerializeRecoveryResponseToCbor(response, &recovery_response_cbor)) {
+    LOG(ERROR) << "Failed to serialize Recovery Response to cbor";
+    return false;
+  }
+  recovery_response->set_protocol_version(1);
+  recovery_response->set_cbor_cryptorecoveryresponse(
+      recovery_response_cbor.data(), recovery_response_cbor.size());
+  return true;
+}
+
 }  // namespace
 
 // Hardcoded fake mediator and epoch public and private keys. Do not use them in
@@ -296,7 +310,7 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
     const brillo::SecureBlob& epoch_priv_key,
     const brillo::SecureBlob& ephemeral_pub_inv_key,
     const HsmPayload& hsm_payload,
-    brillo::SecureBlob* recovery_response_cbor) const {
+    CryptoRecoveryRpcResponse* recovery_response_proto) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
@@ -415,12 +429,11 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
   RecoveryResponse recovery_response;
   recovery_response.response_payload = std::move(response_payload);
   recovery_response.error_code = 0;
-  if (!SerializeRecoveryResponseToCbor(recovery_response,
-                                       recovery_response_cbor)) {
-    LOG(ERROR) << "Failed to serialize Recovery Response to cbor";
+  if (!GenerateRecoveryRequestProto(recovery_response,
+                                    recovery_response_proto)) {
+    LOG(ERROR) << "Failed to generate Recovery Response proto";
     return false;
   }
-
   return true;
 }
 
@@ -429,7 +442,7 @@ bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
     const brillo::SecureBlob& epoch_priv_key,
     const brillo::SecureBlob& mediator_priv_key,
     const CryptoRecoveryRpcRequest& recovery_request_proto,
-    brillo::SecureBlob* recovery_response_cbor) const {
+    CryptoRecoveryRpcResponse* recovery_response_proto) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
@@ -467,7 +480,7 @@ bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
 
   return MediateHsmPayload(mediator_priv_key, epoch_pub_key, epoch_priv_key,
                            plain_text.ephemeral_pub_inv_key, hsm_payload,
-                           recovery_response_cbor);
+                           recovery_response_proto);
 }
 
 }  // namespace cryptorecovery

@@ -89,6 +89,25 @@ bool GenerateRecoveryRequestProto(const RecoveryRequest& request,
   return true;
 }
 
+bool GetRecoveryResponseFromProto(
+    const CryptoRecoveryRpcResponse& recovery_response_proto,
+    RecoveryResponse* recovery_response) {
+  if (!recovery_response_proto.has_cbor_cryptorecoveryresponse()) {
+    LOG(ERROR)
+        << "No cbor_cryptorecoveryresponse field in recovery_response_proto";
+    return false;
+  }
+  brillo::SecureBlob recovery_response_cbor(
+      recovery_response_proto.cbor_cryptorecoveryresponse().begin(),
+      recovery_response_proto.cbor_cryptorecoveryresponse().end());
+  if (!DeserializeRecoveryResponseFromCbor(recovery_response_cbor,
+                                           recovery_response)) {
+    LOG(ERROR) << "Unable to deserialize Recovery Response from CBOR";
+    return false;
+  }
+  return true;
+}
+
 }  // namespace
 
 std::unique_ptr<RecoveryCryptoImpl> RecoveryCryptoImpl::Create(
@@ -642,7 +661,7 @@ bool RecoveryCryptoImpl::RecoverDestination(
 bool RecoveryCryptoImpl::DecryptResponsePayload(
     const brillo::SecureBlob& encrypted_channel_priv_key,
     const brillo::SecureBlob& epoch_pub_key,
-    const brillo::SecureBlob& recovery_response_cbor,
+    const CryptoRecoveryRpcResponse& recovery_response_proto,
     HsmResponsePlainText* response_plain_text) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
@@ -651,8 +670,8 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
   }
 
   RecoveryResponse recovery_response;
-  if (!DeserializeRecoveryResponseFromCbor(recovery_response_cbor,
-                                           &recovery_response)) {
+  if (!GetRecoveryResponseFromProto(recovery_response_proto,
+                                    &recovery_response)) {
     LOG(ERROR) << "Unable to deserialize Recovery Response from CBOR";
     return false;
   }

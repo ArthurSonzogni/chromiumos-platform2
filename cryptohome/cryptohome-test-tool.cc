@@ -28,6 +28,7 @@ using base::FilePath;
 using brillo::SecureBlob;
 using cryptohome::cryptorecovery::CryptoRecoveryEpochResponse;
 using cryptohome::cryptorecovery::CryptoRecoveryRpcRequest;
+using cryptohome::cryptorecovery::CryptoRecoveryRpcResponse;
 using cryptohome::cryptorecovery::FakeRecoveryMediatorCrypto;
 using cryptohome::cryptorecovery::HsmPayload;
 using cryptohome::cryptorecovery::HsmResponsePlainText;
@@ -208,14 +209,16 @@ bool DoRecoveryCryptoMediateAction(
   CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key));
   CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochPrivateKey(&epoch_priv_key));
 
-  brillo::SecureBlob response_cbor;
+  CryptoRecoveryRpcResponse response_proto;
   if (!fake_mediator->MediateRequestPayload(epoch_pub_key, epoch_priv_key,
                                             mediator_priv_key, recovery_request,
-                                            &response_cbor)) {
+                                            &response_proto)) {
     return false;
   }
 
-  return WriteHexFileLogged(recovery_response_out_file_path, response_cbor);
+  return WriteHexFileLogged(
+      recovery_response_out_file_path,
+      brillo::SecureBlob(response_proto.SerializeAsString()));
 }
 
 bool DoRecoveryCryptoDecryptAction(
@@ -237,6 +240,12 @@ bool DoRecoveryCryptoDecryptAction(
     return false;
   }
 
+  CryptoRecoveryRpcResponse recovery_response_proto;
+  if (!recovery_response_proto.ParseFromString(recovery_response.to_string())) {
+    LOG(ERROR) << "Failed to parse CryptoRecoveryRpcResponse.";
+    return false;
+  }
+
   SecureBlob epoch_pub_key;
   CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key));
 
@@ -249,7 +258,7 @@ bool DoRecoveryCryptoDecryptAction(
 
   HsmResponsePlainText response_plain_text;
   if (!recovery_crypto->DecryptResponsePayload(channel_priv_key, epoch_pub_key,
-                                               recovery_response,
+                                               recovery_response_proto,
                                                &response_plain_text)) {
     return false;
   }

@@ -173,7 +173,8 @@ class RecoveryCrypto {
 
   // Decrypt plain text from the Recovery Response.
   // Consists of the following steps:
-  // 1. Deserialize `recovery_response_cbor` to `RecoveryResponse`.
+  // 1. Deserialize `recovery_response_proto.cbor_cryptorecoveryresponse` to
+  // `RecoveryResponse`.
   // 2. Get cipher text, associated data, AES-GCM tag and iv from
   // `response_payload` field of `RecoveryResponse`
   // 3. Decrypt cipher text of response payload, deserialize it from CBOR
@@ -182,7 +183,7 @@ class RecoveryCrypto {
   virtual bool DecryptResponsePayload(
       const brillo::SecureBlob& encrypted_channel_priv_key,
       const brillo::SecureBlob& epoch_pub_key,
-      const brillo::SecureBlob& recovery_response_cbor,
+      const CryptoRecoveryRpcResponse& recovery_response_proto,
       HsmResponsePlainText* response_plain_text) const = 0;
 };
 

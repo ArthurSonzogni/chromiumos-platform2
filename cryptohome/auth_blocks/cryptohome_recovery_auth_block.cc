@@ -137,7 +137,7 @@ CryptoError CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   const brillo::SecureBlob& ephemeral_pub_key =
       cryptohome_recovery_auth_input.ephemeral_pub_key.value();
   DCHECK(cryptohome_recovery_auth_input.recovery_response.has_value());
-  const brillo::SecureBlob& recovery_response_cbor =
+  cryptorecovery::CryptoRecoveryRpcResponse response_proto =
       cryptohome_recovery_auth_input.recovery_response.value();
 
   brillo::SecureBlob plaintext_destination_share =
@@ -153,8 +153,7 @@ CryptoError CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
 
   HsmResponsePlainText response_plain_text;
   if (!recovery->DecryptResponsePayload(channel_priv_key, epoch_pub_key,
-                                        recovery_response_cbor,
-                                        &response_plain_text)) {
+                                        response_proto, &response_plain_text)) {
     return CryptoError::CE_OTHER_CRYPTO;
   }
 

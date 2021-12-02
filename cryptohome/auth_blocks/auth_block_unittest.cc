@@ -1008,14 +1008,14 @@ TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   ASSERT_TRUE(
       FakeRecoveryMediatorCrypto::GetFakeEpochPrivateKey(&epoch_priv_key));
 
-  brillo::SecureBlob response_cbor;
+  cryptorecovery::CryptoRecoveryRpcResponse response_proto;
   ASSERT_TRUE(mediator->MediateRequestPayload(
       epoch_pub_key, epoch_priv_key, mediator_priv_key, recovery_request,
-      &response_cbor));
+      &response_proto));
 
   CryptohomeRecoveryAuthInput derive_cryptohome_recovery_auth_input;
   // Save data required for key derivation in auth_input.
-  derive_cryptohome_recovery_auth_input.recovery_response = response_cbor;
+  derive_cryptohome_recovery_auth_input.recovery_response = response_proto;
   derive_cryptohome_recovery_auth_input.epoch_pub_key = epoch_pub_key;
   derive_cryptohome_recovery_auth_input.ephemeral_pub_key = ephemeral_pub_key;
   auth_input.cryptohome_recovery_auth_input =

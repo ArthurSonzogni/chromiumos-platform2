@@ -67,7 +67,7 @@ class FakeRecoveryMediatorCrypto {
       const brillo::SecureBlob& epoch_priv_key,
       const brillo::SecureBlob& mediator_priv_key,
       const CryptoRecoveryRpcRequest& recovery_request_proto,
-      brillo::SecureBlob* recovery_response_cbor) const;
+      CryptoRecoveryRpcResponse* recovery_response_proto) const;
 
  private:
   // Constructor is private. Use Create method to instantiate.
@@ -85,13 +85,14 @@ class FakeRecoveryMediatorCrypto {
   // 5. Generate encryption key as KDF(combine(epoch_pub_key,
   //                                     ECDH(epoch_priv_key, channel_pub_key)))
   // 6. Encrypt plain_text, generate `RecoveryResponse` and serialize it to
-  // `recovery_response_cbor`.
-  bool MediateHsmPayload(const brillo::SecureBlob& mediator_priv_key,
-                         const brillo::SecureBlob& epoch_pub_key,
-                         const brillo::SecureBlob& epoch_priv_key,
-                         const brillo::SecureBlob& ephemeral_pub_inv_key,
-                         const HsmPayload& hsm_payload,
-                         brillo::SecureBlob* recovery_response_cbor) const;
+  // `recovery_response_proto.cbor_cryptorecoveryresponse`.
+  bool MediateHsmPayload(
+      const brillo::SecureBlob& mediator_priv_key,
+      const brillo::SecureBlob& epoch_pub_key,
+      const brillo::SecureBlob& epoch_priv_key,
+      const brillo::SecureBlob& ephemeral_pub_inv_key,
+      const HsmPayload& hsm_payload,
+      CryptoRecoveryRpcResponse* recovery_response_proto) const;
 
   // Decrypts `mediator_share` using `mediator_priv_key` from
   // `encrypted_mediator_share`. Returns false if error occurred.
