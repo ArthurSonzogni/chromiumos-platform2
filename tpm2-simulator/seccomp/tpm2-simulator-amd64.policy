@@ -22,6 +22,7 @@ unlink: 1
 unlinkat: 1
 fstat: 1
 stat: 1
+newfstatat: 1
 read: 1
 write: 1
 close: 1
