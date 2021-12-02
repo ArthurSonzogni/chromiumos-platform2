@@ -401,7 +401,8 @@ bool DBusService::IsRmaRequired() const {
   CHECK(is_external_utils_initialized_);
   if (RoVerificationStatus status;
       tpm_manager_client_->GetRoVerificationStatus(&status) &&
-      status == RoVerificationStatus::PASS) {
+      (status == RoVerificationStatus::PASS ||
+       status == RoVerificationStatus::UNSUPPORTED_TRIGGERED)) {
     return true;
   }
   return false;

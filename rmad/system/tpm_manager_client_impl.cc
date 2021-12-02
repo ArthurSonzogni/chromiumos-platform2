@@ -27,7 +27,12 @@ RoVerificationStatus TpmManagerRoStatusToRmadRoStatus(
     case tpm_manager::RO_STATUS_FAIL:
       return RoVerificationStatus::FAIL;
     case tpm_manager::RO_STATUS_UNSUPPORTED:
+      // Deprecated.
       return RoVerificationStatus::UNSUPPORTED;
+    case tpm_manager::RO_STATUS_UNSUPPORTED_NOT_TRIGGERED:
+      return RoVerificationStatus::UNSUPPORTED_NOT_TRIGGERED;
+    case tpm_manager::RO_STATUS_UNSUPPORTED_TRIGGERED:
+      return RoVerificationStatus::UNSUPPORTED_TRIGGERED;
     default:
       break;
   }

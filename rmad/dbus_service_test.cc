@@ -112,7 +112,8 @@ class DBusServiceTest : public testing::Test {
     dbus_service_->RegisterDBusObjectsAsync(sequencer.get());
 
     if (state_file_exist ||
-        ro_verification_status == RoVerificationStatus::PASS) {
+        ro_verification_status == RoVerificationStatus::PASS ||
+        ro_verification_status == RoVerificationStatus::UNSUPPORTED_TRIGGERED) {
       EXPECT_CALL(mock_rmad_service_, SetUp())
           .WillRepeatedly(Return(setup_success));
       EXPECT_CALL(mock_rmad_service_, TryTransitionNextStateFromCurrentState())
@@ -229,8 +230,15 @@ TEST_F(DBusServiceTest, IsRmaRequired_NotRequired) {
   EXPECT_EQ(is_rma_required, false);
 }
 
-TEST_F(DBusServiceTest, IsRmaRequired_RoVerificationTriggered) {
+TEST_F(DBusServiceTest, IsRmaRequired_RoVerificationPass) {
   SetUpDBusService(false, RoVerificationStatus::PASS, true);
+  bool is_rma_required;
+  ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
+  EXPECT_EQ(is_rma_required, true);
+}
+
+TEST_F(DBusServiceTest, IsRmaRequired_RoVerificationUnsupportedTriggered) {
+  SetUpDBusService(false, RoVerificationStatus::UNSUPPORTED_TRIGGERED, true);
   bool is_rma_required;
   ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
   EXPECT_EQ(is_rma_required, true);

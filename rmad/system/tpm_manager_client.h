@@ -7,7 +7,14 @@
 
 namespace rmad {
 
-enum class RoVerificationStatus { NOT_TRIGGERED, PASS, FAIL, UNSUPPORTED };
+enum class RoVerificationStatus {
+  NOT_TRIGGERED,
+  PASS,
+  FAIL,
+  UNSUPPORTED,
+  UNSUPPORTED_NOT_TRIGGERED,
+  UNSUPPORTED_TRIGGERED
+};
 
 class TpmManagerClient {
  public:

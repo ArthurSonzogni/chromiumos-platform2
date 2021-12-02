@@ -270,8 +270,7 @@ TEST_F(RmadInterfaceImplTest,
   rmad_interface.GetCurrentState(base::BindRepeating(callback));
 }
 
-TEST_F(RmadInterfaceImplTest,
-       GetCurrentState_NotInRma_RoVerificationTriggered) {
+TEST_F(RmadInterfaceImplTest, GetCurrentState_NotInRma_RoVerificationPass) {
   base::FilePath json_store_file_path =
       temp_dir_.GetPath().AppendASCII("missing.json");
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
@@ -279,6 +278,27 @@ TEST_F(RmadInterfaceImplTest,
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
       CreateTpmManagerClient(RoVerificationStatus::PASS),
+      CreatePowerManagerClient(), CreateMetricsUtils(true));
+  EXPECT_TRUE(rmad_interface.SetUp());
+
+  auto callback = [](const GetStateReply& reply) {
+    EXPECT_EQ(RMAD_ERROR_OK, reply.error());
+    EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
+    EXPECT_EQ(false, reply.can_go_back());
+    EXPECT_EQ(true, reply.can_abort());
+  };
+  rmad_interface.GetCurrentState(base::BindRepeating(callback));
+}
+
+TEST_F(RmadInterfaceImplTest,
+       GetCurrentState_NotInRma_RoVerificationUnsupportedTriggered) {
+  base::FilePath json_store_file_path =
+      temp_dir_.GetPath().AppendASCII("missing.json");
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  RmadInterfaceImpl rmad_interface(
+      json_store, CreateStateHandlerManager(json_store),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      CreateTpmManagerClient(RoVerificationStatus::UNSUPPORTED_TRIGGERED),
       CreatePowerManagerClient(), CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp());
 

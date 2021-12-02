@@ -108,6 +108,48 @@ TEST_F(TpmManagerClientTest, RoVerificationUnsupported) {
   EXPECT_EQ(ro_verification_status, RoVerificationStatus::UNSUPPORTED);
 }
 
+TEST_F(TpmManagerClientTest, RoVerificationUnsupportedNotTriggered) {
+  tpm_manager::GetRoVerificationStatusReply reply;
+  reply.set_status(tpm_manager::STATUS_SUCCESS);
+  reply.set_ro_verification_status(
+      tpm_manager::RO_STATUS_UNSUPPORTED_NOT_TRIGGERED);
+
+  auto mock_tpm_manager_proxy =
+      std::make_unique<StrictMock<org::chromium::TpmManagerProxyMock>>();
+  EXPECT_CALL(*mock_tpm_manager_proxy, GetRoVerificationStatus(_, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(reply), Return(true)));
+
+  auto tpm_manager_client =
+      std::make_unique<TpmManagerClientImpl>(std::move(mock_tpm_manager_proxy));
+
+  RoVerificationStatus ro_verification_status;
+  EXPECT_TRUE(
+      tpm_manager_client->GetRoVerificationStatus(&ro_verification_status));
+  EXPECT_EQ(ro_verification_status,
+            RoVerificationStatus::UNSUPPORTED_NOT_TRIGGERED);
+}
+
+TEST_F(TpmManagerClientTest, RoVerificationUnsupportedTriggered) {
+  tpm_manager::GetRoVerificationStatusReply reply;
+  reply.set_status(tpm_manager::STATUS_SUCCESS);
+  reply.set_ro_verification_status(
+      tpm_manager::RO_STATUS_UNSUPPORTED_TRIGGERED);
+
+  auto mock_tpm_manager_proxy =
+      std::make_unique<StrictMock<org::chromium::TpmManagerProxyMock>>();
+  EXPECT_CALL(*mock_tpm_manager_proxy, GetRoVerificationStatus(_, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(reply), Return(true)));
+
+  auto tpm_manager_client =
+      std::make_unique<TpmManagerClientImpl>(std::move(mock_tpm_manager_proxy));
+
+  RoVerificationStatus ro_verification_status;
+  EXPECT_TRUE(
+      tpm_manager_client->GetRoVerificationStatus(&ro_verification_status));
+  EXPECT_EQ(ro_verification_status,
+            RoVerificationStatus::UNSUPPORTED_TRIGGERED);
+}
+
 TEST_F(TpmManagerClientTest, RoVerificationDBusError) {
   auto mock_tpm_manager_proxy =
       std::make_unique<StrictMock<org::chromium::TpmManagerProxyMock>>();

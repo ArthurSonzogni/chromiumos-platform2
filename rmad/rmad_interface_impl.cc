@@ -152,9 +152,8 @@ bool RmadInterfaceImpl::SetUp() {
     }
   } else if (RoVerificationStatus status;
              tpm_manager_client_->GetRoVerificationStatus(&status) &&
-             status == RoVerificationStatus::PASS) {
-    // TODO(b/181000999): Use the trigger flag from cr50 response when it's
-    //                    implemented.
+             (status == RoVerificationStatus::PASS ||
+              status == RoVerificationStatus::UNSUPPORTED_TRIGGERED)) {
     VLOG(1) << "RO verification triggered";
     current_state_case_ = kInitialStateCase;
     state_history_.push_back(current_state_case_);
@@ -165,8 +164,6 @@ bool RmadInterfaceImpl::SetUp() {
       return false;
     }
 
-    // TODO(b/181000999): We assume that all triggers will get here, but now
-    // only "PASS" will get here.
     if (!json_store_->SetValue(kRoFirmwareVerified,
                                status == RoVerificationStatus::PASS)) {
       LOG(ERROR) << "Could not store RO firmware verification status";
