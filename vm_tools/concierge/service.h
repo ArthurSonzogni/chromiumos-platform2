@@ -100,7 +100,8 @@ class Service final {
   template <class StartXXRequest,
             StartVmResponse (Service::*StartVm)(
                 StartXXRequest, std::unique_ptr<dbus::MessageReader>)>
-  std::unique_ptr<dbus::Response> StartVmHelper(dbus::MethodCall* method_call);
+  void StartVmHelper(dbus::MethodCall* method_call,
+                     dbus::ExportedObject::ResponseSender response_sender);
 
   // Handles a request to start a VM.
   StartVmResponse StartVm(StartVmRequest request,

@@ -87,5 +87,16 @@ bool GetPluginIsoDirectory(const std::string& vm_id,
                                 .Append(cryptohome_id),
                             "iso", vm_id, create, path_out);
 }
+
+void SendDbusResponse(dbus::ExportedObject::ResponseSender response_sender,
+                      dbus::MethodCall* method_call,
+                      const vm_tools::concierge::StartVmResponse& response) {
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+  dbus::MessageWriter writer(dbus_response.get());
+  writer.AppendProtoAsArrayOfBytes(response);
+  std::move(response_sender).Run(std::move(dbus_response));
+}
+
 }  // namespace concierge
 }  // namespace vm_tools

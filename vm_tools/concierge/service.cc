@@ -1117,12 +1117,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kStartVmMethod,
-       &Service::StartVmHelper<StartVmRequest, &Service::StartVm>},
-      {kStartPluginVmMethod,
-       &Service::StartVmHelper<StartPluginVmRequest, &Service::StartPluginVm>},
-      {kStartArcVmMethod,
-       &Service::StartVmHelper<StartArcVmRequest, &Service::StartArcVm>},
       {kStopVmMethod, &Service::StopVm},
       {kStopAllVmsMethod, &Service::StopAllVms},
       {kSuspendVmMethod, &Service::SuspendVm},
@@ -1157,6 +1151,13 @@ bool Service::Init() {
   static const std::map<const char*, AsyncServiceMethod> kAsyncServiceMethods =
       {
           {kReclaimVmMemoryMethod, &Service::ReclaimVmMemory},
+          {kStartVmMethod,
+           &Service::StartVmHelper<StartVmRequest, &Service::StartVm>},
+          {kStartPluginVmMethod,
+           &Service::StartVmHelper<StartPluginVmRequest,
+                                   &Service::StartPluginVm>},
+          {kStartArcVmMethod,
+           &Service::StartVmHelper<StartArcVmRequest, &Service::StartArcVm>},
       };
 
   if (!AsyncNoReject(
