@@ -30,6 +30,8 @@ constexpr int kModemSuccess = 0;
 constexpr int kModemMessageProcessingError = -1;
 constexpr uint8_t kInvalidChannel = 0;
 
+constexpr int kDefault3GPPRelease = 11;
+
 // Modem houses code shared by ModemQrtr and ModemMbim
 // T is the type of message that the modem implementation uses. For
 // QMI, messages are stored in objects of type QmiCmdInterface, and for MBIM,
@@ -68,6 +70,22 @@ class Modem : public EuiccInterface {
   }
   lpa::util::EuiccLog* logger() override { return logger_; }
   lpa::util::Executor* executor() override { return executor_; }
+
+  std::vector<uint8_t> GetGsmSupportedRelease() override {
+    return std::vector<uint8_t>{
+        kDefault3GPPRelease, 0,
+        0};  // Last two bytes are fixed to zero by SGP.22
+  }
+  std::vector<uint8_t> GetUtranSupportedRelease() override {
+    return std::vector<uint8_t>{
+        kDefault3GPPRelease, 0,
+        0};  // Last two bytes are fixed to zero by SGP.22
+  }
+  std::vector<uint8_t> GetEutranSupportedRelease() override {
+    return std::vector<uint8_t>{
+        kDefault3GPPRelease, 0,
+        0};  // Last two bytes are fixed to zero by SGP.22
+  };
 
  protected:
   // Base class for the tx info specific to a certain type of message to the

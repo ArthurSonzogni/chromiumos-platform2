@@ -47,6 +47,10 @@ class EuiccInterface : public lpa::card::EuiccCard,
   virtual lpa::util::EuiccLog* logger() = 0;
   virtual const lpa::proto::EuiccSpecVersion& GetCardVersion() = 0;
   virtual lpa::util::Executor* executor() = 0;
+
+  virtual std::vector<uint8_t> GetGsmSupportedRelease() = 0;
+  virtual std::vector<uint8_t> GetUtranSupportedRelease() = 0;
+  virtual std::vector<uint8_t> GetEutranSupportedRelease() = 0;
 };
 
 }  // namespace hermes
