@@ -23,7 +23,7 @@ namespace {
 constexpr size_t kMinimumDaInfoSize = 21;
 
 // Minimum size of TPM_CAP_VERSION_INFO struct.
-constexpr size_t kMinimumVersionInfoSize = 17;
+constexpr size_t kMinimumVersionInfoSize = 15;
 
 // The TPM manufacturer code of Infineon.
 constexpr uint32_t kInfineonManufacturerCode = 0x49465800;
