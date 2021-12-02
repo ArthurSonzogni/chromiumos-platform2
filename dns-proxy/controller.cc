@@ -298,10 +298,7 @@ void Controller::EvalProxyExit(const ProxyProc& proc) {
     return;
   }
 
-  brillo::ErrorPtr error;
-  if (!shill_->GetManagerProxy()->SetDNSProxyIPv4Address("", &error))
-    LOG(WARNING) << "Failed to clear shill dns-proxy property for " << proc
-                 << ": " << error->GetMessage();
+  shill_->GetManagerProxy()->ClearDNSProxyAddresses(nullptr /* error */);
 }
 
 void Controller::OnVirtualDeviceChanged(

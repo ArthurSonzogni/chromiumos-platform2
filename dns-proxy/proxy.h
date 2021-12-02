@@ -164,13 +164,17 @@ class Proxy : public brillo::DBusDaemon {
   void StopGuestDnsRedirection(const patchpanel::NetworkDevice& device,
                                sa_family_t sa_family);
 
-  // Helper func for setting the dns-proxy address in shill.
+  // Helper func for setting the dns-proxy IPv4 and IPv6 address in shill.
   // Only valid for the system proxy.
   // Will retry on failure up to |num_retries| before possibly crashing the
   // proxy.
-  void SetShillProperty(const std::string& addr,
-                        bool die_on_failure = false,
-                        uint8_t num_retries = kMaxShillPropertyRetries);
+  void SetShillDNSProxyAddresses(
+      const std::string& ipv4_addr,
+      const std::string& ipv6_addr,
+      bool die_on_failure = false,
+      uint8_t num_retries = kMaxShillPropertyRetries);
+
+  void ClearShillDNSProxyAddresses();
 
   // Callback from RTNetlink listener, invoked when the lan interface IPv6
   // address is changed.
@@ -181,8 +185,13 @@ class Proxy : public brillo::DBusDaemon {
 
   FRIEND_TEST(ProxyTest, SystemProxy_OnShutdownClearsAddressPropertyOnShill);
   FRIEND_TEST(ProxyTest, NonSystemProxy_OnShutdownDoesNotCallShill);
-  FRIEND_TEST(ProxyTest, SystemProxy_SetShillPropertyWithNoRetriesCrashes);
-  FRIEND_TEST(ProxyTest, SystemProxy_SetShillPropertyDoesntCrashIfDieFalse);
+  FRIEND_TEST(ProxyTest,
+              SystemProxy_SetShillDNSProxyAddressesWithNoRetriesCrashes);
+  FRIEND_TEST(ProxyTest,
+              SystemProxy_SetShillDNSProxyAddressesDoesntCrashIfDieFalse);
+  FRIEND_TEST(ProxyTest, SystemProxy_SetShillDNSProxyAddresses);
+  FRIEND_TEST(ProxyTest, SystemProxy_SetShillDNSProxyAddressesFeatureDisabled);
+  FRIEND_TEST(ProxyTest, SystemProxy_ClearShillDNSProxyAddresses);
   FRIEND_TEST(ProxyTest, ShillInitializedWhenReady);
   FRIEND_TEST(ProxyTest, SystemProxy_ConnectedNamedspace);
   FRIEND_TEST(ProxyTest, DefaultProxy_ConnectedNamedspace);
@@ -251,7 +260,7 @@ class Proxy : public brillo::DBusDaemon {
 
   base::ScopedFD ns_fd_;
   patchpanel::ConnectNamespaceResponse ns_;
-  shill::ByteString ns_peer_ipv6_address_;
+  std::string ns_peer_ipv6_address_;
 
   std::unique_ptr<Resolver> resolver_;
   DoHConfig doh_config_;
