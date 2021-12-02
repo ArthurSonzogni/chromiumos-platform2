@@ -131,6 +131,11 @@ bool DeserializeHsmResponseAssociatedDataFromCbor(
 bool DeserializeRecoveryResponseFromCbor(
     const brillo::SecureBlob& response_cbor, RecoveryResponse* response);
 
+// Extracts data from Epoch Metadata cbor.
+bool DeserializeEpochMetadataFromCbor(
+    const brillo::SecureBlob& epoch_metadata_cbor,
+    EpochMetadata* epoch_metadata);
+
 //============================================================================
 // The methods below are for testing only.
 //============================================================================
@@ -150,6 +155,10 @@ bool GetHsmPayloadFromRequestAdForTesting(
 // Returns number of values in CBOR map. Returns -1 if provided blob is not a
 // CBOR map.
 int GetCborMapSize(const brillo::SecureBlob& input_cbor);
+
+// Serialize cbor::Value to SecureBlob.
+bool SerializeCborForTesting(const cbor::Value& cbor,
+                             brillo::SecureBlob* serialized_cbor);
 
 }  // namespace cryptorecovery
 }  // namespace cryptohome

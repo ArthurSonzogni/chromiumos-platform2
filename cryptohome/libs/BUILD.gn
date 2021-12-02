@@ -86,6 +86,7 @@ proto_library("cryptohome-proto") {
   sources = [
     "${proto_in_dir}/attestation.proto",
     "${proto_in_dir}/boot_lockbox_key.proto",
+    "${proto_in_dir}/cryptorecovery/cryptorecovery.proto",
     "${proto_in_dir}/fake_le_credential_metadata.proto",
     "${proto_in_dir}/hash_tree_leaf_data.proto",
     "${proto_in_dir}/signature_sealed_data.proto",

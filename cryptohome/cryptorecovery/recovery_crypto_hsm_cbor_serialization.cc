@@ -550,6 +550,18 @@ bool DeserializeRecoveryResponseFromCbor(
   return true;
 }
 
+bool DeserializeEpochMetadataFromCbor(
+    const brillo::SecureBlob& epoch_metadata_cbor,
+    EpochMetadata* epoch_metadata) {
+  auto cbor = ReadCborMap(epoch_metadata_cbor);
+  if (!cbor) {
+    return false;
+  }
+
+  epoch_metadata->meta_data_cbor = std::move(cbor.value());
+  return true;
+}
+
 bool GetValueFromCborMapByKeyForTesting(const brillo::SecureBlob& input_cbor,
                                         const std::string& map_key,
                                         cbor::Value* value) {
@@ -642,6 +654,18 @@ int GetCborMapSize(const brillo::SecureBlob& input_cbor) {
   }
 
   return cbor->GetMap().size();
+}
+
+bool SerializeCborForTesting(const cbor::Value& cbor,
+                             brillo::SecureBlob* serialized_cbor) {
+  base::Optional<std::vector<uint8_t>> serialized = cbor::Writer::Write(cbor);
+  if (!serialized) {
+    LOG(ERROR) << "Failed to serialize CBOR Map.";
+    return false;
+  }
+
+  serialized_cbor->assign(serialized.value().begin(), serialized.value().end());
+  return true;
 }
 
 }  // namespace cryptorecovery

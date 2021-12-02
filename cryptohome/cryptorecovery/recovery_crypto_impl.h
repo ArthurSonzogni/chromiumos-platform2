@@ -10,6 +10,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto/elliptic_curve.h"
+#include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
 #include "cryptohome/cryptorecovery/recovery_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
@@ -31,9 +32,9 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   bool GenerateRecoveryRequest(
       const HsmPayload& hsm_payload,
       const RequestMetadata& request_meta_data,
+      const CryptoRecoveryEpochResponse& epoch_response,
       const brillo::SecureBlob& encrypted_channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
-      const brillo::SecureBlob& epoch_pub_key,
       brillo::SecureBlob* recovery_request,
       brillo::SecureBlob* ephemeral_pub_key) const override;
   bool GenerateHsmPayload(

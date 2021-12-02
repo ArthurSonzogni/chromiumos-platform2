@@ -14,6 +14,7 @@
 
 #include "cryptohome/crypto/ecdh_hkdf.h"
 #include "cryptohome/crypto/elliptic_curve.h"
+#include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
 namespace cryptohome {
@@ -101,7 +102,7 @@ class RecoveryCrypto {
   // Consist of the following steps:
   // 1. Construct associated data AD2 = {hsm_payload, `request_metadata`}.
   // 2. Generate symmetric key for encrypting plain text from (G*r)*s
-  // (`epoch_pub_key` * `channel_priv_key`).
+  // (`epoch_response::epoch_pub_key` * `channel_priv_key`).
   // 3. Generate ephemeral key pair {x, G*x} and calculate an inverse G*-x.
   // 4. Save G*x to `ephemeral_pub_key` parameter.
   // 5. Construct plain text PT2 = {G*-x}.
@@ -111,9 +112,9 @@ class RecoveryCrypto {
   virtual bool GenerateRecoveryRequest(
       const HsmPayload& hsm_payload,
       const RequestMetadata& request_meta_data,
+      const CryptoRecoveryEpochResponse& epoch_response,
       const brillo::SecureBlob& encrypted_channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
-      const brillo::SecureBlob& epoch_pub_key,
       brillo::SecureBlob* recovery_request,
       brillo::SecureBlob* ephemeral_pub_key) const = 0;
 

@@ -104,6 +104,8 @@ class RecoveryCryptoTest : public testing::Test {
         FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key_));
     ASSERT_TRUE(
         FakeRecoveryMediatorCrypto::GetFakeEpochPrivateKey(&epoch_priv_key_));
+    ASSERT_TRUE(
+        FakeRecoveryMediatorCrypto::GetFakeEpochResponse(&epoch_response_));
 
     recovery_ = RecoveryCryptoImpl::Create(&recovery_crypto_fake_tpm_backend_);
     ASSERT_TRUE(recovery_);
@@ -127,8 +129,8 @@ class RecoveryCryptoTest : public testing::Test {
     // Start recovery process.
     SecureBlob recovery_request_cbor;
     EXPECT_TRUE(recovery_->GenerateRecoveryRequest(
-        hsm_payload, request_metadata_, *channel_priv_key, channel_pub_key,
-        epoch_pub_key_, &recovery_request_cbor, ephemeral_pub_key));
+        hsm_payload, request_metadata_, epoch_response_, *channel_priv_key,
+        channel_pub_key, &recovery_request_cbor, ephemeral_pub_key));
 
     // Simulates mediation performed by HSM.
     EXPECT_TRUE(mediator_->MediateRequestPayload(
@@ -147,6 +149,7 @@ class RecoveryCryptoTest : public testing::Test {
   SecureBlob mediator_priv_key_;
   SecureBlob epoch_pub_key_;
   SecureBlob epoch_priv_key_;
+  CryptoRecoveryEpochResponse epoch_response_;
   std::unique_ptr<RecoveryCryptoImpl> recovery_;
   std::unique_ptr<FakeRecoveryMediatorCrypto> mediator_;
 };
@@ -162,8 +165,8 @@ TEST_F(RecoveryCryptoTest, RecoveryTestSuccess) {
   // Start recovery process.
   SecureBlob ephemeral_pub_key, recovery_request_cbor;
   EXPECT_TRUE(recovery_->GenerateRecoveryRequest(
-      hsm_payload, request_metadata_, channel_priv_key, channel_pub_key,
-      epoch_pub_key_, &recovery_request_cbor, &ephemeral_pub_key));
+      hsm_payload, request_metadata_, epoch_response_, channel_priv_key,
+      channel_pub_key, &recovery_request_cbor, &ephemeral_pub_key));
 
   // Simulates mediation performed by HSM.
   SecureBlob response_cbor;
@@ -205,8 +208,8 @@ TEST_F(RecoveryCryptoTest, MediateWithInvalidEpochPublicKey) {
   // Start recovery process.
   SecureBlob ephemeral_pub_key, recovery_request_cbor;
   EXPECT_TRUE(recovery_->GenerateRecoveryRequest(
-      hsm_payload, request_metadata_, channel_priv_key, channel_pub_key,
-      epoch_pub_key_, &recovery_request_cbor, &ephemeral_pub_key));
+      hsm_payload, request_metadata_, epoch_response_, channel_priv_key,
+      channel_pub_key, &recovery_request_cbor, &ephemeral_pub_key));
 
   SecureBlob random_key = GeneratePublicKey();
 

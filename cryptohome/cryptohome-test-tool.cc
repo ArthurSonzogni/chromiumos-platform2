@@ -159,15 +159,15 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
     return false;
   }
 
-  SecureBlob epoch_pub_key;
-  CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key));
+  cryptohome::cryptorecovery::CryptoRecoveryEpochResponse epoch_response;
+  CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochResponse(&epoch_response));
 
   brillo::SecureBlob ephemeral_pub_key;
   brillo::SecureBlob recovery_request_cbor;
   RequestMetadata request_metadata;
   if (!recovery_crypto->GenerateRecoveryRequest(
-          hsm_payload, request_metadata, channel_priv_key, channel_pub_key,
-          epoch_pub_key, &recovery_request_cbor, &ephemeral_pub_key)) {
+          hsm_payload, request_metadata, epoch_response, channel_priv_key,
+          channel_pub_key, &recovery_request_cbor, &ephemeral_pub_key)) {
     return false;
   }
 

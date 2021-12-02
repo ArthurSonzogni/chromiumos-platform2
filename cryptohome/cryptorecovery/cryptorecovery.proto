@@ -1,0 +1,21 @@
+syntax = "proto2";
+
+package cryptohome.cryptorecovery;
+
+// !!! DO NOT MODIFY !!!
+// The message structs below are exchanged with the server and must be synced
+// with the server/HSM implementation.
+
+// Request for the current epoch
+message CryptoRecoveryEpochRequest {
+  optional int32 protocol_version = 1;  // protocol version
+}
+
+// Epoch public key response
+message CryptoRecoveryEpochResponse {
+  optional int32 protocol_version = 1;  // protocol version
+  optional bytes epoch_pub_key = 2;     // public key of the current epoch
+  optional bytes epoch_meta_data =
+      3;  // cbor encoded metadata of current epoch. clients can also treat this
+          // as an opaque blob.
+}

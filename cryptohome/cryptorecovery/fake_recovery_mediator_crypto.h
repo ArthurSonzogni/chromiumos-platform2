@@ -47,6 +47,10 @@ class FakeRecoveryMediatorCrypto {
   // Returns false if error occurred.
   static bool GetFakeEpochPrivateKey(brillo::SecureBlob* epoch_priv_key);
 
+  // Returns `CryptoRecoveryEpochResponse` with  hardcoded fake epoch public key
+  // for encrypting request payload. Do not use this in production!
+  static bool GetFakeEpochResponse(CryptoRecoveryEpochResponse* epoch_response);
+
   // Receives `request_payload`, performs mediation and generates response
   // payload. This function consist of the following steps:
   // 1. Deserialize `channel_pub_key` from `hsm_aead_ad` in

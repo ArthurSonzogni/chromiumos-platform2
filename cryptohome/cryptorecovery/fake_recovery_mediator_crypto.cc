@@ -124,6 +124,29 @@ bool FakeRecoveryMediatorCrypto::GetFakeEpochPrivateKey(
   return true;
 }
 
+// static
+bool FakeRecoveryMediatorCrypto::GetFakeEpochResponse(
+    CryptoRecoveryEpochResponse* epoch_response) {
+  brillo::SecureBlob epoch_pub_key;
+  if (!GetFakeEpochPublicKey(&epoch_pub_key)) {
+    LOG(ERROR) << "Failed to get fake epoch public key";
+    return false;
+  }
+  brillo::SecureBlob epoch_metadata_cbor;
+  cbor::Value::MapValue meta_data_cbor;
+  meta_data_cbor.emplace("meta_data_cbor_key", "meta_data_cbor_value");
+  if (!SerializeCborForTesting(cbor::Value(meta_data_cbor),
+                               &epoch_metadata_cbor)) {
+    LOG(ERROR) << "Failed to create epoch_metadata_cbor";
+    return false;
+  }
+  epoch_response->set_protocol_version(1);
+  epoch_response->set_epoch_pub_key(epoch_pub_key.data(), epoch_pub_key.size());
+  epoch_response->set_epoch_meta_data(epoch_metadata_cbor.data(),
+                                      epoch_metadata_cbor.size());
+  return true;
+}
+
 bool FakeRecoveryMediatorCrypto::DecryptMediatorShare(
     const brillo::SecureBlob& mediator_priv_key,
     const RecoveryCrypto::EncryptedMediatorShare& encrypted_mediator_share,

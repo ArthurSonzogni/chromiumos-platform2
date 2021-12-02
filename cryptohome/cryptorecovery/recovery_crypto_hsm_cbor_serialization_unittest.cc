@@ -45,18 +45,6 @@ const char kFakeResponseSalt[] = "fake response salt";
 const char kFakeMetadataCborKey[] = "fake metadata cbor key";
 const char kFakeMetadataCborValue[] = "fake metadata cbor value";
 
-bool SerializeCborForTesting(const cbor::Value& cbor,
-                             brillo::SecureBlob* serialized_cbor) {
-  base::Optional<std::vector<uint8_t>> serialized = cbor::Writer::Write(cbor);
-  if (!serialized) {
-    LOG(ERROR) << "Failed to serialize CBOR Map.";
-    return false;
-  }
-
-  serialized_cbor->assign(serialized.value().begin(), serialized.value().end());
-  return true;
-}
-
 bool CreateCborMapForTesting(const cbor::Value::MapValue& map,
                              brillo::SecureBlob* serialized_cbor_map) {
   return SerializeCborForTesting(cbor::Value(map), serialized_cbor_map);

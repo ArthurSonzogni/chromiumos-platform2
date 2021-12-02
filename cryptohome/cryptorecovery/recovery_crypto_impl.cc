@@ -45,6 +45,35 @@ brillo::SecureBlob GetResponsePayloadPlainTextHkdfInfo() {
   return brillo::SecureBlob(
       RecoveryCrypto::kResponsePayloadPlainTextHkdfInfoValue);
 }
+
+bool GenerateRecoveryRequestAssociatedData(
+    const HsmPayload& hsm_payload,
+    const RequestMetadata& request_meta_data,
+    const CryptoRecoveryEpochResponse& epoch_response,
+    RecoveryRequestAssociatedData* request_ad) {
+  request_ad->hsm_payload = hsm_payload;
+  request_ad->request_meta_data = request_meta_data;
+  if (!epoch_response.has_epoch_meta_data()) {
+    LOG(ERROR) << "Epoch response doesn't have epoch metadata";
+    return false;
+  }
+  brillo::SecureBlob epoch_meta_data(epoch_response.epoch_meta_data().begin(),
+                                     epoch_response.epoch_meta_data().end());
+  if (!DeserializeEpochMetadataFromCbor(epoch_meta_data,
+                                        &request_ad->epoch_meta_data)) {
+    LOG(ERROR) << "Failed to deserialize epoch metadata from cbor";
+    return false;
+  }
+  if (!epoch_response.has_epoch_pub_key()) {
+    LOG(ERROR) << "Epoch response doesn't have epoch public key";
+    return false;
+  }
+  request_ad->epoch_pub_key.assign(epoch_response.epoch_pub_key().begin(),
+                                   epoch_response.epoch_pub_key().end());
+  request_ad->request_payload_salt =
+      CreateSecureRandomBlob(RecoveryCrypto::kHkdfSaltLength);
+  return true;
+}
 }  // namespace
 
 std::unique_ptr<RecoveryCryptoImpl> RecoveryCryptoImpl::Create(
@@ -231,9 +260,9 @@ bool RecoveryCryptoImpl::GenerateEphemeralKey(
 bool RecoveryCryptoImpl::GenerateRecoveryRequest(
     const HsmPayload& hsm_payload,
     const RequestMetadata& request_meta_data,
+    const CryptoRecoveryEpochResponse& epoch_response,
     const brillo::SecureBlob& encrypted_channel_priv_key,
     const brillo::SecureBlob& channel_pub_key,
-    const brillo::SecureBlob& epoch_pub_key,
     brillo::SecureBlob* recovery_request,
     brillo::SecureBlob* ephemeral_pub_key) const {
   ScopedBN_CTX context = CreateBigNumContext();
@@ -244,16 +273,21 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
 
   RequestPayload request_payload;
   RecoveryRequestAssociatedData request_ad;
-  request_ad.hsm_payload = hsm_payload;
-  request_ad.request_meta_data = request_meta_data;
-  request_ad.epoch_pub_key = epoch_pub_key;
-  request_ad.request_payload_salt = CreateSecureRandomBlob(kHkdfSaltLength);
+  if (!GenerateRecoveryRequestAssociatedData(hsm_payload, request_meta_data,
+                                             epoch_response, &request_ad)) {
+    LOG(ERROR) << "Failed to generate recovery request associated data";
+    return false;
+  }
   if (!SerializeRecoveryRequestAssociatedDataToCbor(
           request_ad, &request_payload.associated_data)) {
     LOG(ERROR)
         << "Failed to serialize recovery request associated data to cbor";
     return false;
   }
+
+  brillo::SecureBlob epoch_pub_key;
+  epoch_pub_key.assign(epoch_response.epoch_pub_key().begin(),
+                       epoch_response.epoch_pub_key().end());
 
   crypto::ScopedEC_POINT epoch_pub_point =
       ec_.SecureBlobToPoint(epoch_pub_key, context.get());
