@@ -105,8 +105,8 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
   dbus::MessageWriter writer(dbus_response.get());
   StartPluginVmRequest request;
   StartVmResponse response;
-  auto helper_result = StartVmHelper<StartPluginVmRequest>(
-      method_call, &reader, &writer, true /* allow_zero_cpus */);
+  auto helper_result =
+      StartVmHelper<StartPluginVmRequest>(method_call, &reader, &writer);
   if (!helper_result) {
     return dbus_response;
   }

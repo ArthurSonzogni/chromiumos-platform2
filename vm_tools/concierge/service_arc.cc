@@ -47,8 +47,8 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   dbus::MessageWriter writer(dbus_response.get());
   StartArcVmRequest request;
   StartVmResponse response;
-  auto helper_result = StartVmHelper<StartArcVmRequest>(
-      method_call, &reader, &writer, true /* allow_zero_cpus */);
+  auto helper_result =
+      StartVmHelper<StartArcVmRequest>(method_call, &reader, &writer);
   if (!helper_result) {
     return dbus_response;
   }
