@@ -42,19 +42,24 @@ const char kFakeHsmPayloadIv[] = "fake hsm payload iv";
 const char kFakeHsmPayloadTag[] = "fake hsm payload tag";
 const char kFakeResponseData[] = "fake response metadata";
 const char kFakeResponseSalt[] = "fake response salt";
+const char kFakeMetadataCborKey[] = "fake metadata cbor key";
+const char kFakeMetadataCborValue[] = "fake metadata cbor value";
 
-bool CreateCborMapForTesting(const cbor::Value::MapValue& map,
-                             brillo::SecureBlob* serialized_cbor_map) {
-  base::Optional<std::vector<uint8_t>> serialized =
-      cbor::Writer::Write(cbor::Value(map));
+bool SerializeCborForTesting(const cbor::Value& cbor,
+                             brillo::SecureBlob* serialized_cbor) {
+  base::Optional<std::vector<uint8_t>> serialized = cbor::Writer::Write(cbor);
   if (!serialized) {
     LOG(ERROR) << "Failed to serialize CBOR Map.";
     return false;
   }
 
-  serialized_cbor_map->assign(serialized.value().begin(),
-                              serialized.value().end());
+  serialized_cbor->assign(serialized.value().begin(), serialized.value().end());
   return true;
+}
+
+bool CreateCborMapForTesting(const cbor::Value::MapValue& map,
+                             brillo::SecureBlob* serialized_cbor_map) {
+  return SerializeCborForTesting(cbor::Value(map), serialized_cbor_map);
 }
 
 bool FindMapValueInCborMap(const cbor::Value::MapValue& map,
@@ -196,6 +201,10 @@ class RecoveryRequestCborHelperTest : public testing::Test {
     auth_claim.gaia_access_token = kFakeAccessToken;
     auth_claim.gaia_reauth_proof_token = kFakeRapt;
     request_meta_data_.auth_claim = auth_claim;
+
+    cbor::Value::MapValue meta_data_cbor;
+    meta_data_cbor.emplace(kFakeMetadataCborKey, kFakeMetadataCborValue);
+    epoch_meta_data_.meta_data_cbor = cbor::Value(meta_data_cbor);
   }
   ~RecoveryRequestCborHelperTest() = default;
 
@@ -215,6 +224,7 @@ class RecoveryRequestCborHelperTest : public testing::Test {
   brillo::SecureBlob epoch_pub_key_;
   brillo::SecureBlob epoch_priv_key_;
   RequestMetadata request_meta_data_;
+  EpochMetadata epoch_meta_data_;
 };
 
 class RecoveryResponseCborHelperTest : public testing::Test {
@@ -386,6 +396,7 @@ TEST_F(RecoveryRequestCborHelperTest, GenerateAd) {
   RecoveryRequestAssociatedData request_ad;
   request_ad.hsm_payload = std::move(hsm_payload);
   request_ad.request_meta_data = request_meta_data_;
+  request_ad.epoch_meta_data = epoch_meta_data_;
   request_ad.epoch_pub_key = epoch_pub_key_;
   request_ad.request_payload_salt = salt;
   ASSERT_TRUE(
@@ -437,7 +448,18 @@ TEST_F(RecoveryRequestCborHelperTest, GenerateAd) {
 
   EXPECT_EQ(deserialized_request_meta_data.GetMap().size(), 4);
 
-  EXPECT_EQ(GetCborMapSize(cbor_output), 4);
+  cbor::Value deserialized_epoch_meta_data;
+  EXPECT_TRUE(GetValueFromCborMapByKeyForTesting(
+      cbor_output, kEpochMetaData, &deserialized_epoch_meta_data));
+
+  brillo::SecureBlob epoch_meta_data_blob, expected_epoch_meta_data_blob;
+  ASSERT_TRUE(SerializeCborForTesting(deserialized_epoch_meta_data,
+                                      &epoch_meta_data_blob));
+  ASSERT_TRUE(SerializeCborForTesting(epoch_meta_data_.meta_data_cbor,
+                                      &expected_epoch_meta_data_blob));
+  EXPECT_EQ(epoch_meta_data_blob, expected_epoch_meta_data_blob);
+
+  EXPECT_EQ(GetCborMapSize(cbor_output), 5);
 }
 
 // Verifies serialization of Recovery Request payload plain text encrypted

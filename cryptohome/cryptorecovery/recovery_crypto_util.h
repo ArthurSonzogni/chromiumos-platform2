@@ -8,6 +8,7 @@
 #include <string>
 
 #include <brillo/secure_blob.h>
+#include <chromeos/cbor/values.h>
 
 namespace cryptohome {
 namespace cryptorecovery {
@@ -110,12 +111,35 @@ struct RequestMetadata {
   std::string requestor_user_id;
 };
 
+// `EpochMetadata` includes any information the HSM needs to compute the Epoch
+// beacon, and which will be logged into the ledger.
+struct EpochMetadata {
+  // Cbor map containing epoch metadata. This map is passed to the recovery
+  // server without being read by the client.
+  cbor::Value meta_data_cbor;
+
+  EpochMetadata() = default;
+
+  EpochMetadata(EpochMetadata const& other)
+      : meta_data_cbor(other.meta_data_cbor.Clone()) {}
+
+  EpochMetadata& operator=(const EpochMetadata& other) {
+    if (this != &other) {
+      meta_data_cbor = other.meta_data_cbor.Clone();
+    }
+    return *this;
+  }
+};
+
 // `associated_data` for the Request payload.
 struct RecoveryRequestAssociatedData {
   // HSM payload.
   HsmPayload hsm_payload;
   // The metadata generated during the Recovery flow on a Chromebook (RMD).
   RequestMetadata request_meta_data;
+  // The metadata generated on the Reverse Proxy, and retrieved by the
+  // Chromebook from the Recovery Service when it obtains the Epoch Beacon.
+  EpochMetadata epoch_meta_data;
   // Current epoch beacon value (G*r).
   brillo::SecureBlob epoch_pub_key;
   // Salt used in the derivation of request payload encryption key.

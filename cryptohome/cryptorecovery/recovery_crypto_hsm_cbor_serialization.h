@@ -47,6 +47,7 @@ extern const char kRequestorUserId[];
 extern const char kRequestorUserIdType[];
 extern const char kGaiaAccessToken[];
 extern const char kGaiaReauthProofToken[];
+extern const char kEpochMetaData[];
 
 // Mediation protocol version.
 extern const int kHsmAssociatedDataSchemaVersion;

@@ -172,6 +172,7 @@ const char kRequestorUserId[] = "requestor_user_id";
 const char kRequestorUserIdType[] = "requestor_user_id_type";
 const char kGaiaAccessToken[] = "gaia_access_token";
 const char kGaiaReauthProofToken[] = "gaia_reauth_proof_token";
+const char kEpochMetaData[] = "epoch_meta_data";
 
 const int kHsmAssociatedDataSchemaVersion = 1;
 const int kOnboardingMetaDataSchemaVersion = 1;
@@ -226,6 +227,7 @@ bool SerializeRecoveryRequestAssociatedDataToCbor(
 
   ad_map.emplace(kRequestMetaData,
                  ConvertRequestMetadataToCborMap(args.request_meta_data));
+  ad_map.emplace(kEpochMetaData, args.epoch_meta_data.meta_data_cbor.Clone());
 
   if (!SerializeCborMap(ad_map, request_ad_cbor)) {
     LOG(ERROR)
