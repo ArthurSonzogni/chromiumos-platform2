@@ -1015,21 +1015,23 @@ void MobileOperatorInfoImpl::UpdateRequiresRoaming(
     const MobileOperatorInfo* serving_operator_info) {
   if (!serving_operator_info || serving_operator_info->mccmnc().empty())
     return;
-  regex_t roaming_mccmnc_regex;
   for (const auto& filter : roaming_filter_list_) {
     if (filter.type() != mobile_operator_db::Filter_Type_MCCMNC ||
         !filter.has_regex()) {
       continue;
     }
+    regex_t roaming_mccmnc_regex;
     int regcomp_result = regcomp(&roaming_mccmnc_regex, filter.regex().c_str(),
                                  REG_EXTENDED | REG_NOSUB);
     if (regcomp_result != 0) {
       LOG(WARNING) << "Could not compile regex '" << filter.regex() << "'. ";
+      regfree(&roaming_mccmnc_regex);
       continue;
     }
     int regexec_result =
         regexec(&roaming_mccmnc_regex, serving_operator_info->mccmnc().c_str(),
                 0, nullptr, 0);
+    regfree(&roaming_mccmnc_regex);
     requires_roaming_ = regexec_result == 0;
     if (requires_roaming_) {
       SLOG(this, 1)
@@ -1041,7 +1043,6 @@ void MobileOperatorInfoImpl::UpdateRequiresRoaming(
                   << " filtering regex: " << filter.regex()
                   << " results, requires_roaming: " << requires_roaming_;
   }
-  regfree(&roaming_mccmnc_regex);
 }
 
 void MobileOperatorInfoImpl::PostNotifyOperatorChanged() {
