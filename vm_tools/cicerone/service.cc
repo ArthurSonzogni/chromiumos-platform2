@@ -674,6 +674,60 @@ void Service::LxdContainerStarting(const uint32_t cid,
   event->Signal();
 }
 
+void Service::LxdContainerStopping(const uint32_t cid,
+                                   std::string container_name,
+                                   Service::StopStatus status,
+                                   std::string failure_reason,
+                                   bool* result,
+                                   base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  CHECK(result);
+  CHECK(event);
+  *result = false;
+  VirtualMachine* vm;
+  std::string vm_name;
+  std::string owner_id;
+  if (container_name.empty()) {
+    LOG(ERROR) << "container_name must be provided";
+    event->Signal();
+    return;
+  }
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
+    event->Signal();
+    return;
+  }
+
+  dbus::Signal signal(kVmCiceroneInterface, kLxdContainerStoppingSignal);
+  vm_tools::cicerone::LxdContainerStoppingSignal proto;
+
+  proto.mutable_vm_name()->swap(vm_name);
+  proto.set_container_name(container_name);
+  proto.mutable_owner_id()->swap(owner_id);
+  proto.set_failure_reason(failure_reason);
+  switch (status) {
+    case Service::StopStatus::STOPPED:
+      proto.set_status(LxdContainerStoppingSignal::STOPPED);
+      break;
+    case Service::StopStatus::STOPPING:
+      proto.set_status(LxdContainerStoppingSignal::STOPPING);
+      break;
+    case Service::StopStatus::CANCELLED:
+      proto.set_status(LxdContainerStoppingSignal::CANCELLED);
+      break;
+    case Service::StopStatus::FAILED:
+      proto.set_status(LxdContainerStoppingSignal::FAILED);
+      break;
+    default:
+      proto.set_status(LxdContainerStoppingSignal::UNKNOWN);
+      break;
+  }
+
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
+  exported_object_->SendSignal(&signal);
+  *result = true;
+  event->Signal();
+}
+
 void Service::ContainerStartupCompleted(const std::string& container_token,
                                         const uint32_t cid,
                                         const uint32_t garcon_vsock_port,
@@ -1405,6 +1459,7 @@ bool Service::Init(
       {kCreateLxdContainerMethod, &Service::CreateLxdContainer},
       {kDeleteLxdContainerMethod, &Service::DeleteLxdContainer},
       {kStartLxdContainerMethod, &Service::StartLxdContainer},
+      {kStopLxdContainerMethod, &Service::StopLxdContainer},
       {kSetTimezoneMethod, &Service::SetTimezone},
       {kGetLxdContainerUsernameMethod, &Service::GetLxdContainerUsername},
       {kSetUpLxdContainerUserMethod, &Service::SetUpLxdContainerUser},
@@ -2433,6 +2488,61 @@ std::unique_ptr<dbus::Response> Service::StartLxdContainer(
   }
 
   response.set_failure_reason(error_msg);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::StopLxdContainer(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received StopLxdContainer request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  StopLxdContainerRequest request;
+  StopLxdContainerResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse StopLxdRequest from message";
+    response.set_failure_reason("unable to parse StopLxdRequest from message");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_failure_reason(base::StringPrintf(
+        "requested VM does not exist: %s", request.vm_name().c_str()));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string error_msg;
+  VirtualMachine::StopLxdContainerStatus status =
+      vm->StopLxdContainer(request.container_name(), &error_msg);
+
+  switch (status) {
+    case VirtualMachine::StopLxdContainerStatus::UNKNOWN:
+      response.set_status(StopLxdContainerResponse::UNKNOWN);
+      break;
+    case VirtualMachine::StopLxdContainerStatus::STOPPED:
+      response.set_status(StopLxdContainerResponse::STOPPED);
+      break;
+    case VirtualMachine::StopLxdContainerStatus::STOPPING:
+      response.set_status(StopLxdContainerResponse::STOPPING);
+      break;
+    case VirtualMachine::StopLxdContainerStatus::DOES_NOT_EXIST:
+      response.set_status(StopLxdContainerResponse::DOES_NOT_EXIST);
+      break;
+    case VirtualMachine::StopLxdContainerStatus::FAILED:
+      response.set_status(StopLxdContainerResponse::FAILED);
+      break;
+  }
+  response.set_failure_reason(error_msg);
+
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }

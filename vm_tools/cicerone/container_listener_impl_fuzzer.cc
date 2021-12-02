@@ -89,6 +89,11 @@ std::unique_ptr<vm_tools::tremplin::MockTremplinStub> CreateMockTremplinStub(
       .WillOnce(
           DoAll(SetArgPointee<2>(action.tremplin_start_container_response()),
                 Return(ToStatus(action.tremplin_start_container_status()))));
+  EXPECT_CALL(*mock_tremplin_stub, StopContainer(_, _, _))
+      .Times(AnyNumber())
+      .WillOnce(
+          DoAll(SetArgPointee<2>(action.tremplin_stop_container_response()),
+                Return(ToStatus(action.tremplin_stop_container_status()))));
   EXPECT_CALL(*mock_tremplin_stub, GetContainerUsername(_, _, _))
       .Times(AnyNumber())
       .WillOnce(DoAll(
@@ -291,6 +296,12 @@ DEFINE_PROTO_FUZZER(
           kContainerStartProgress:
         tremplin_listener->UpdateStartStatus(
             &context, &action.container_start_progress(), &tremplin_response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kContainerStopProgress:
+        tremplin_listener->UpdateStopStatus(
+            &context, &action.container_stop_progress(), &tremplin_response);
         break;
 
       case vm_tools::container::ContainerListenerFuzzerSingleAction::

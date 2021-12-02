@@ -55,6 +55,14 @@ class VirtualMachine {
     FAILED,
   };
 
+  enum class StopLxdContainerStatus {
+    UNKNOWN,
+    STOPPING,
+    STOPPED,
+    DOES_NOT_EXIST,
+    FAILED,
+  };
+
   enum class GetLxdContainerUsernameStatus {
     UNKNOWN,
     SUCCESS,
@@ -261,7 +269,7 @@ class VirtualMachine {
                                               const std::string& metadata_path,
                                               std::string* out_error);
 
-  // Deletes and LXD container.
+  // Deletes an LXD container.
   DeleteLxdContainerStatus DeleteLxdContainer(const std::string& container_name,
                                               std::string* out_error);
 
@@ -273,6 +281,10 @@ class VirtualMachine {
       const std::string& token,
       tremplin::StartContainerRequest::PrivilegeLevel privilege_level,
       std::string* out_error);
+
+  // Stop an LXD container.
+  StopLxdContainerStatus StopLxdContainer(const std::string& container_name,
+                                          std::string* out_error);
 
   // Gets the primary user of an LXD container.
   GetLxdContainerUsernameStatus GetLxdContainerUsername(

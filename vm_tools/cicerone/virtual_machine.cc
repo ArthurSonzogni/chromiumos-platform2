@@ -440,6 +440,59 @@ VirtualMachine::StartLxdContainerStatus VirtualMachine::StartLxdContainer(
   }
 }
 
+VirtualMachine::StopLxdContainerStatus VirtualMachine::StopLxdContainer(
+    const std::string& container_name, std::string* out_error) {
+  DCHECK(out_error);
+  if (!tremplin_stub_) {
+    *out_error = "tremplin is not connected";
+    return VirtualMachine::StopLxdContainerStatus::FAILED;
+  }
+
+  if (!GetContainerForName(container_name)) {
+    // We call it stopped if the container hasn't yet been registered.
+    return VirtualMachine::StopLxdContainerStatus::STOPPED;
+  }
+
+  vm_tools::tremplin::StopContainerRequest request;
+  vm_tools::tremplin::StopContainerResponse response;
+
+  request.set_container_name(container_name);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status = tremplin_stub_->StopContainer(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "StopContainer RPC failed: " << status.error_message();
+    out_error->assign(status.error_message());
+    return VirtualMachine::StopLxdContainerStatus::FAILED;
+  }
+
+  switch (response.status()) {
+    case tremplin::StopContainerResponse::STOPPING:
+      return VirtualMachine::StopLxdContainerStatus::STOPPING;
+    case tremplin::StopContainerResponse::STOPPED:
+      return VirtualMachine::StopLxdContainerStatus::STOPPED;
+    case tremplin::StopContainerResponse::DOES_NOT_EXIST:
+      return VirtualMachine::StopLxdContainerStatus::DOES_NOT_EXIST;
+
+    case tremplin::StopContainerResponse::UNKNOWN:
+    case tremplin::StopContainerResponse::FAILED:
+      LOG(ERROR) << "Failed to stop LXD container: "
+                 << response.failure_reason();
+      out_error->assign(response.failure_reason());
+      return VirtualMachine::StopLxdContainerStatus::FAILED;
+
+    default:
+      LOG(ERROR) << "Unknown response received: " << response.status() << " "
+                 << response.failure_reason();
+      out_error->assign(response.failure_reason());
+      return VirtualMachine::StopLxdContainerStatus::UNKNOWN;
+  }
+}
+
 VirtualMachine::GetLxdContainerUsernameStatus
 VirtualMachine::GetLxdContainerUsername(const std::string& container_name,
                                         std::string* out_username,

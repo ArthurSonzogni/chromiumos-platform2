@@ -57,6 +57,7 @@ class ServiceTestingHelper {
     kCreateLxdContainer,
     kDeleteLxdContainer,
     kStartLxdContainer,
+    kStopLxdContainer,
     kSetTimezone,
     kGetLxdContainerUsername,
     kSetUpLxdContainerUser,

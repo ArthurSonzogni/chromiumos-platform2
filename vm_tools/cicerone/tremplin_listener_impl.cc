@@ -200,6 +200,55 @@ grpc::Status TremplinListenerImpl::UpdateStartStatus(
   return grpc::Status::OK;
 }
 
+grpc::Status TremplinListenerImpl::UpdateStopStatus(
+    grpc::ServerContext* ctx,
+    const vm_tools::tremplin::ContainerStopProgress* request,
+    vm_tools::tremplin::EmptyMessage* response) {
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
+  if (cid == 0) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failed parsing vsock cid for TremplinListener");
+  }
+
+  bool result = false;
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+  vm_tools::cicerone::Service::StopStatus status;
+  switch (request->status()) {
+    case tremplin::ContainerStopProgress::STOPPED:
+      status = vm_tools::cicerone::Service::StopStatus::STOPPED;
+      break;
+    case tremplin::ContainerStopProgress::CANCELLED:
+      status = vm_tools::cicerone::Service::StopStatus::CANCELLED;
+      break;
+    case tremplin::ContainerStopProgress::FAILED:
+      status = vm_tools::cicerone::Service::StopStatus::FAILED;
+      break;
+    case tremplin::ContainerStopProgress::STOPPING:
+      status = vm_tools::cicerone::Service::StopStatus::STOPPING;
+      break;
+    default:
+      status = vm_tools::cicerone::Service::StopStatus::UNKNOWN;
+      break;
+  }
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&vm_tools::cicerone::Service::LxdContainerStopping,
+                     service_, cid, request->container_name(), status,
+                     request->failure_reason(), &result, &event));
+
+  event.Wait();
+  if (!result) {
+    LOG(ERROR)
+        << "Received UpdateStartStatus RPC but could not find matching VM: "
+        << ctx->peer();
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Cannot find VM for TremplinListener");
+  }
+
+  return grpc::Status::OK;
+}
+
 grpc::Status TremplinListenerImpl::UpdateExportStatus(
     grpc::ServerContext* ctx,
     const vm_tools::tremplin::ContainerExportProgress* request,

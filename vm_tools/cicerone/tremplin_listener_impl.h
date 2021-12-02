@@ -57,6 +57,11 @@ class TremplinListenerImpl final
       const vm_tools::tremplin::ContainerStartProgress* request,
       vm_tools::tremplin::EmptyMessage* response) override;
 
+  grpc::Status UpdateStopStatus(
+      grpc::ServerContext* ctx,
+      const vm_tools::tremplin::ContainerStopProgress* request,
+      vm_tools::tremplin::EmptyMessage* response) override;
+
   grpc::Status UpdateExportStatus(
       grpc::ServerContext* ctx,
       const vm_tools::tremplin::ContainerExportProgress* request,

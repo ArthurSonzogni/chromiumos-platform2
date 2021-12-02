@@ -120,6 +120,15 @@ class Service final {
     STARTING,
   };
 
+  // The status of an ongoing LXD container stop operation.
+  enum class StopStatus {
+    UNKNOWN,
+    STOPPED,
+    STOPPING,
+    CANCELLED,
+    FAILED,
+  };
+
   // Notifies the service that a VM with |cid| has finished its create
   // operation of |container_name| with |status|. |failure_reason| will describe
   // the failure reason if status != CREATED. Sets |result| to true if the VM
@@ -159,6 +168,17 @@ class Service final {
   void LxdContainerStarting(const uint32_t cid,
                             std::string container_name,
                             StartStatus status,
+                            std::string failure_reason,
+                            bool* result,
+                            base::WaitableEvent* event);
+
+  // Notifies the service that a VM with |cid| is stopping a container
+  // |container_name| with status |status|. |failure_reason| will describe the
+  // failure reason if status == FAILED. Sets |result| to true if the VM cid
+  // is known. Signals |event| when done.
+  void LxdContainerStopping(const uint32_t cid,
+                            std::string container_name,
+                            StopStatus status,
                             std::string failure_reason,
                             bool* result,
                             base::WaitableEvent* event);
@@ -595,6 +615,10 @@ class Service final {
 
   // Handles a request to start an LXD container.
   std::unique_ptr<dbus::Response> StartLxdContainer(
+      dbus::MethodCall* method_call);
+
+  // Handles a request to stop an LXD container.
+  std::unique_ptr<dbus::Response> StopLxdContainer(
       dbus::MethodCall* method_call);
 
   // Handles a request to set the default timezone for an LXD instance.

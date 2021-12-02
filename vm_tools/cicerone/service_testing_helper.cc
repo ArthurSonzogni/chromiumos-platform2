@@ -496,6 +496,7 @@ void ServiceTestingHelper::SetDbusCallbackNames() {
   dbus_callbacks_[kCreateLxdContainer].method_name = kCreateLxdContainerMethod;
   dbus_callbacks_[kDeleteLxdContainer].method_name = kDeleteLxdContainerMethod;
   dbus_callbacks_[kStartLxdContainer].method_name = kStartLxdContainerMethod;
+  dbus_callbacks_[kStopLxdContainer].method_name = kStopLxdContainerMethod;
   dbus_callbacks_[kGetLxdContainerUsername].method_name =
       kGetLxdContainerUsernameMethod;
   dbus_callbacks_[kSetTimezone].method_name = kSetTimezoneMethod;
