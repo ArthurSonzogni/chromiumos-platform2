@@ -40,14 +40,9 @@ class CameraTool {
     for (const auto& camera : cameras) {
       base::Value node(base::Value::Type::DICTIONARY);
       if (camera.eeprom) {
-        const cros::EepromIdBlock& b = camera.eeprom->id_block;
         node.SetStringKey("name", camera.sysfs_name);
-        node.SetStringKey("module_id",
-                          base::StringPrintf("%c%c%04x", b.module_vid[0],
-                                             b.module_vid[1], b.module_pid));
-        node.SetStringKey("sensor_id",
-                          base::StringPrintf("%c%c%04x", b.sensor_vid[0],
-                                             b.sensor_vid[1], b.sensor_pid));
+        node.SetStringKey("module_id", camera.module_id());
+        node.SetStringKey("sensor_id", camera.sensor_id());
       } else {
         CHECK(camera.v4l2_sensor.has_value());
         node.SetStringKey("name", camera.v4l2_sensor->name);

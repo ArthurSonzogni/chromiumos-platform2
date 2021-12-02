@@ -14,9 +14,10 @@
 #include <vector>
 
 #include <base/optional.h>
+#include <base/containers/span.h>
+#include <base/files/file_path.h>
+#include <base/strings/stringprintf.h>
 
-#include "base/containers/span.h"
-#include "base/files/file_path.h"
 #include "cros-camera/export.h"
 
 namespace cros {
@@ -68,6 +69,24 @@ struct PlatformCameraInfo {
   base::Optional<EepromInfo> eeprom;
   base::Optional<V4L2SensorInfo> v4l2_sensor;
   std::string sysfs_name;
+
+  std::string module_id() const {
+    if (!eeprom.has_value()) {
+      return "";
+    }
+    return base::StringPrintf("%c%c%04x", eeprom->id_block.module_vid[0],
+                              eeprom->id_block.module_vid[1],
+                              eeprom->id_block.module_pid);
+  }
+
+  std::string sensor_id() const {
+    if (!eeprom.has_value()) {
+      return "";
+    }
+    return base::StringPrintf("%c%c%04x", eeprom->id_block.sensor_vid[0],
+                              eeprom->id_block.sensor_vid[1],
+                              eeprom->id_block.sensor_pid);
+  }
 };
 
 // This class wraps the brillo::CrosConfig and stores the required values.
