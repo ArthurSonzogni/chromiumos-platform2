@@ -33,6 +33,11 @@ path = "src/trichechus.rs"
 required-features = ["hypervisor"]
 
 [[bin]]
+name = "manatee_memory_service"
+path = "src/manatee_memory_service.rs"
+required-features = ["hypervisor"]
+
+[[bin]]
 name = "tee_app_info_lint"
 path = "src/tee_app_info_lint.rs"
 required-features = ["sdk"]
@@ -49,6 +54,7 @@ assert_matches = "1.5.0"
 
 [dependencies]
 anyhow = "1.0.0"
+data_model = { path = "../../platform/crosvm/common/data_model" } # provided by ebuild
 dbus = "0.9"
 dbus-crossroads = "0.5.0"
 flexbuffers = "2.0.0"
@@ -61,5 +67,4 @@ serde = { version = "1.0.114", features = ["derive"] }
 serde_json = "1.0.64"
 stderrlog = "0.5.0"
 sys_util = { path = "../../platform/crosvm/common/sys_util" } # provided by ebuild
-data_model = { path = "../../platform/crosvm/common/data_model" } # provided by ebuild
 thiserror = "1.0.20"
