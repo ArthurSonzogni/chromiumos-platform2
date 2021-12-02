@@ -102,7 +102,7 @@ FakeComponentsRepairStateHandler::FakeComponentsRepairStateHandler(
 
 ComponentsRepairStateHandler::ComponentsRepairStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
+    : BaseStateHandler(json_store), active_(false) {
   runtime_probe_client_ =
       std::make_unique<RuntimeProbeClientImpl>(GetSystemBus());
 }
@@ -111,12 +111,16 @@ ComponentsRepairStateHandler::ComponentsRepairStateHandler(
     scoped_refptr<JsonStore> json_store,
     std::unique_ptr<RuntimeProbeClient> runtime_probe_client)
     : BaseStateHandler(json_store),
+      active_(false),
       runtime_probe_client_(std::move(runtime_probe_client)) {}
 
 RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
   // |state_| should always contain the full list of components, unless it's
   // just being created. Always probe again and use the probe results to update
-  // |state_|.
+  // |state_| when re-entering the state.
+  if (active_) {
+    return RMAD_ERROR_OK;
+  }
   if (!state_.has_components_repair() && !RetrieveState()) {
     state_.set_allocated_components_repair(new ComponentsRepairState);
   }
@@ -156,7 +160,12 @@ RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
 
   state_ = ConvertDictionaryToState(
       component_status_map, state_.components_repair().mainboard_rework());
+  active_ = true;
   return RMAD_ERROR_OK;
+}
+
+void ComponentsRepairStateHandler::CleanUpState() {
+  active_ = false;
 }
 
 BaseStateHandler::GetNextStateCaseReply

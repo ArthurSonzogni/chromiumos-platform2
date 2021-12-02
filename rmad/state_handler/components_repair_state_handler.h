@@ -25,6 +25,7 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
   SET_REPEATABLE;
 
   RmadErrorCode InitializeState() override;
+  void CleanUpState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
 
   // Do not auto-transition at boot as there might be new detected components.
@@ -42,6 +43,7 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
   // Store variables that can be used by other state handlers to make decisions.
   bool StoreVars() const;
 
+  bool active_;
   std::unique_ptr<RuntimeProbeClient> runtime_probe_client_;
 };
 
