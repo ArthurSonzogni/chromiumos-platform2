@@ -125,8 +125,9 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
                         dbus::Message* message,
                         const std::string& claimer_name,
                         const std::string& interface_name) override;
-  bool SetDNSProxyIPv4Address(brillo::ErrorPtr* error,
-                              const std::string& ipv4_address) override;
+  bool SetDNSProxyAddresses(brillo::ErrorPtr* error,
+                            const std::vector<std::string>& addresses) override;
+  bool ClearDNSProxyAddresses(brillo::ErrorPtr* error) override;
   bool SetDNSProxyDOHProviders(
       brillo::ErrorPtr* error,
       const brillo::VariantDictionary& providers) override;

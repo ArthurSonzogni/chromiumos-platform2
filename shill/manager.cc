@@ -1683,9 +1683,9 @@ void Manager::UpdateDefaultServices(const ServiceRefPtr& logical_service,
   if (physical_service_changed) {
     // The dns-proxy must be not be used unless the default service is online.
     if (!physical_service_online) {
-      UseDNSProxy("");
-    } else if (!props_.dns_proxy_ipv4_address.empty()) {
-      UseDNSProxy(props_.dns_proxy_ipv4_address);
+      UseDNSProxy({});
+    } else if (!props_.dns_proxy_addresses.empty()) {
+      UseDNSProxy(props_.dns_proxy_addresses);
     }
 
     last_default_physical_service_ = physical_service;
@@ -3045,49 +3045,66 @@ bool Manager::SetAlwaysOnVpnPackage(const std::string& package_name,
   return true;
 }
 
-std::string Manager::GetDNSProxyIPv4Address(Error* /* error */) {
-  return props_.dns_proxy_ipv4_address;
-}
-
-bool Manager::SetDNSProxyIPv4Address(const std::string& addr, Error* error) {
-  if (props_.dns_proxy_ipv4_address == addr)
+bool Manager::SetDNSProxyAddresses(const std::vector<std::string>& addrs,
+                                   Error* error) {
+  if (props_.dns_proxy_addresses == addrs)
     return false;
 
-  if (!addr.empty()) {
-    struct in_addr p_addr;
-    if (inet_pton(AF_INET, addr.c_str(), &p_addr) != 1) {
-      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                            "Invalid address: " + addr);
-      return false;
-    }
-    if ((p_addr.s_addr & kDNSProxyNetmask.s_addr) != kDNSProxyBaseAddr.s_addr) {
+  if (addrs.empty()) {
+    ClearDNSProxyAddresses();
+    return true;
+  }
+
+  for (const auto& addr : addrs) {
+    struct in_addr p_addr4;
+    if (inet_pton(AF_INET, addr.c_str(), &p_addr4) == 1) {
+      // Verify proxy's IPv4 address.
+      if ((p_addr4.s_addr & kDNSProxyNetmask.s_addr) ==
+          kDNSProxyBaseAddr.s_addr) {
+        continue;
+      }
+      ClearDNSProxyAddresses();
+      LOG(ERROR) << "IPv4 DNS proxy address " << addr
+                 << " is not allowed, cleared DNS proxy address(es)";
       Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidProperty,
                             "Address not allowed: " + addr);
       return false;
     }
+
+    struct in6_addr p_addr6;
+    if (inet_pton(AF_INET6, addr.c_str(), &p_addr6) != 1) {
+      ClearDNSProxyAddresses();
+      LOG(ERROR) << "DNS proxy address " << addr
+                 << " is not valid, cleared DNS proxy address(es)";
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                            "Invalid address: " + addr);
+      return false;
+    }
   }
 
-  props_.dns_proxy_ipv4_address = addr;
+  props_.dns_proxy_addresses = addrs;
 
-  // Assign or clear the dns-proxy addresses on the Resolver;
+  // Assign the dns-proxy addresses on the Resolver;
   // existing DNS configuration for the connection will be preserved.
-  // If the proxy address is being cleared, always pass this along to the
-  // resolver; otherwise only do so if the default service is online -
+  // Only pass the nameservers to the resolver if the default service is online.
   // UpdateDefaultService will propagate the change when the service comes
   // online.
-  if (addr.empty()) {
-    UseDNSProxy("");
-  } else if (last_default_physical_service_online_) {
-    UseDNSProxy(addr);
+  if (last_default_physical_service_online_) {
+    UseDNSProxy(props_.dns_proxy_addresses);
   }
   return true;
 }
 
-void Manager::UseDNSProxy(const std::string& proxy_addr) {
+void Manager::ClearDNSProxyAddresses() {
+  props_.dns_proxy_addresses.clear();
+  UseDNSProxy({});
+}
+
+void Manager::UseDNSProxy(const std::vector<std::string>& proxy_addrs) {
   if (!running_)
     return;
 
-  resolver_->SetDNSProxy(proxy_addr);
+  resolver_->SetDNSProxyAddresses(proxy_addrs);
 }
 
 KeyValueStore Manager::GetDNSProxyDOHProviders(Error* /* error */) {

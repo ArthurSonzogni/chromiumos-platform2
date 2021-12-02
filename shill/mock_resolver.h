@@ -28,7 +28,10 @@ class MockResolver : public Resolver {
               (const std::vector<std::string>&,
                const std::vector<std::string>&),
               (override));
-  MOCK_METHOD(bool, SetDNSProxy, (const std::string&), (override));
+  MOCK_METHOD(bool,
+              SetDNSProxyAddresses,
+              (const std::vector<std::string>&),
+              (override));
   MOCK_METHOD(bool, ClearDNS, (), (override));
   MOCK_METHOD(void,
               set_ignored_search_list,

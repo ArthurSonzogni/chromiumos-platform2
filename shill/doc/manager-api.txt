@@ -394,15 +394,27 @@ Methods		dict GetProperties()
 			claimer |claimer_name| back to shill. The specified device
 			will be removed from the block list and managed by shill.
 
-		void SetDNSProxyIPv4Address(string ipv4_address)
+		void SetDNSProxyAddresses(array{string} addresses)
 
-			Assigns the IPv4 address of the dns-proxy service.
-			When set, shill will use this address as the
-			system name server rather than those specified by the
-			relevant service.
+			Assigns the IPv4 and IPv6 addresses of the dns-proxy
+			service. When set, shill will use these addresses as
+			the system name servers rather than those specified by
+			the relevant service.
 
-			This address is enforced to be within a predetermined
+			If the array is empty, DNS proxy address(es) will be
+			cleared and the name servers from the current default
+			network will be used. This is the same behavior as
+			ClearDNSProxyAddresses.
+
+			This IPv4 address is enforced to be within a predetermined
 			system local subnet.
+
+		void ClearDNSProxyAddresses()
+
+			Clear any DNS proxy address stored in shill. When this
+			is called, shill will use the name servers from the
+			current default network for /etc/resolv.conf instead of
+			the proxy address(es).
 
 		void DNSProxyDOHProviders(array{string, string} providers)
 

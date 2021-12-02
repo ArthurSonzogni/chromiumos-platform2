@@ -54,9 +54,8 @@ bool Resolver::Emit() {
   }
 
   // dns-proxy always used if set.
-  const auto name_servers = !dns_proxy_addr_.empty()
-                                ? std::vector<std::string>({dns_proxy_addr_})
-                                : name_servers_;
+  const auto name_servers =
+      !dns_proxy_addrs_.empty() ? dns_proxy_addrs_ : name_servers_;
   if (name_servers.empty() && domain_search_list_.empty()) {
     SLOG(this, 2) << "DNS list is empty";
     return ClearDNS();
@@ -115,10 +114,11 @@ bool Resolver::Emit() {
   return count == static_cast<int>(contents.size());
 }
 
-bool Resolver::SetDNSProxy(const std::string& proxy_addr) {
+bool Resolver::SetDNSProxyAddresses(
+    const std::vector<std::string>& proxy_addrs) {
   SLOG(this, 2) << __func__;
 
-  dns_proxy_addr_ = proxy_addr;
+  dns_proxy_addrs_ = proxy_addrs;
   return Emit();
 }
 
@@ -132,7 +132,7 @@ bool Resolver::ClearDNS() {
 
   name_servers_.clear();
   domain_search_list_.clear();
-  dns_proxy_addr_.clear();
+  dns_proxy_addrs_.clear();
   return base::DeleteFile(path_);
 }
 

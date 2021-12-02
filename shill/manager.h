@@ -94,9 +94,10 @@ class Manager {
     // Name of Android VPN package that should be enforced for user traffic.
     // Empty string if the lockdown feature is not enabled.
     std::string always_on_vpn_package;
-    // The IPv4 address of the DNS Proxy, if applicable. When this value is set,
-    // resolv.conf should use this address as the name server.
-    std::string dns_proxy_ipv4_address;
+    // The IPv4 and IPv6 addresses of the DNS Proxy, if applicable. When these
+    // values are set, resolv.conf should use these addresses as the name
+    // servers.
+    std::vector<std::string> dns_proxy_addresses;
     // Maps DNS-over-HTTPS service providers to a list of standard DNS name
     // servers. This member stores the value set via the DBus
     // |DNSProxyDOHProviders| property.
@@ -539,8 +540,12 @@ class Manager {
   // connections.
   static std::vector<uint32_t> ComputeUserTrafficUids();
 
-  // Assigns (or clears) the IPv4 address of the dns-proxy service.
-  bool SetDNSProxyIPv4Address(const std::string& addr, Error* error);
+  // Assigns the IP address(es) of the dns-proxy service.
+  bool SetDNSProxyAddresses(const std::vector<std::string>& addrs,
+                            Error* error);
+
+  // Clears the IP address of the dns-proxy service.
+  void ClearDNSProxyAddresses();
 
   // Assigns the DNS-over-HTTPS service providers for use by the dns-proxy
   // service.
@@ -614,7 +619,7 @@ class Manager {
   FRIEND_TEST(ManagerTest, ShouldBlackholeUserTraffic);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, StartupPortalList);
-  FRIEND_TEST(ManagerTest, SetDNSProxyIPv4Address);
+  FRIEND_TEST(ManagerTest, SetDNSProxyAddresses);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
   FRIEND_TEST(VPNProviderTest, SetDefaultRoutingPolicy);
@@ -672,8 +677,7 @@ class Manager {
   void OnTechnologyProhibited(Technology technology, const Error& error);
   bool SetUseSwanctlDriver(const bool& use_swanctl_driver, Error* error);
 
-  std::string GetDNSProxyIPv4Address(Error* error);
-  void UseDNSProxy(const std::string& proxy_addr);
+  void UseDNSProxy(const std::vector<std::string>& proxy_addrs);
 
   KeyValueStore GetDNSProxyDOHProviders(Error* error);
 

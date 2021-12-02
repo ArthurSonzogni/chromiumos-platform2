@@ -115,9 +115,10 @@
 			<annotation name="org.chromium.DBus.Method.IncludeDBusMessage"
 		                value="true"/>
 		</method>
-		<method name="SetDNSProxyIPv4Address">
-			<arg type="s" direction="in"/>
+		<method name="SetDNSProxyAddresses">
+			<arg type="as" direction="in"/>
 		</method>
+		<method name="ClearDNSProxyAddresses"/>
 		<method name="SetDNSProxyDOHProviders">
 			<arg type="a{sv}" direction="in"/>
 		</method>

@@ -435,12 +435,18 @@ void ManagerDBusAdaptor::OnDeviceClaimerVanished() {
   watcher_for_device_claimer_.reset();
 }
 
-bool ManagerDBusAdaptor::SetDNSProxyIPv4Address(
-    brillo::ErrorPtr* error, const std::string& ipv4_address) {
+bool ManagerDBusAdaptor::SetDNSProxyAddresses(
+    brillo::ErrorPtr* error, const std::vector<std::string>& addresses) {
   SLOG(this, 2) << __func__;
   Error e;
-  manager_->SetDNSProxyIPv4Address(ipv4_address, &e);
+  manager_->SetDNSProxyAddresses(addresses, &e);
   return !e.ToChromeosError(error);
+}
+
+bool ManagerDBusAdaptor::ClearDNSProxyAddresses(brillo::ErrorPtr* /* error */) {
+  SLOG(this, 2) << __func__;
+  manager_->ClearDNSProxyAddresses();
+  return true;
 }
 
 bool ManagerDBusAdaptor::SetDNSProxyDOHProviders(

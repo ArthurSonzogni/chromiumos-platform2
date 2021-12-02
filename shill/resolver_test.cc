@@ -123,15 +123,15 @@ TEST_F(ResolverTest, IgnoredSearchList) {
 }
 
 TEST_F(ResolverTest, Proxy) {
-  EXPECT_TRUE(resolver_->SetDNSProxy(kNameServerProxy));
+  EXPECT_TRUE(resolver_->SetDNSProxyAddresses({kNameServerProxy}));
   EXPECT_TRUE(base::PathExists(path_));
   EXPECT_EQ(kExpectedProxyOutput, ReadFile());
 }
 
 TEST_F(ResolverTest, ProxyClear) {
-  EXPECT_TRUE(resolver_->SetDNSProxy(kNameServerProxy));
+  EXPECT_TRUE(resolver_->SetDNSProxyAddresses({kNameServerProxy}));
   EXPECT_TRUE(base::PathExists(path_));
-  EXPECT_TRUE(resolver_->SetDNSProxy(""));
+  EXPECT_TRUE(resolver_->SetDNSProxyAddresses({}));
   EXPECT_FALSE(base::PathExists(path_));
 }
 
@@ -144,7 +144,7 @@ TEST_F(ResolverTest, ProxyToggle) {
   EXPECT_TRUE(base::PathExists(path_));
   EXPECT_EQ(kExpectedOutput, ReadFile());
   // DNS proxy set
-  EXPECT_TRUE(resolver_->SetDNSProxy(kNameServerProxy));
+  EXPECT_TRUE(resolver_->SetDNSProxyAddresses({kNameServerProxy}));
   EXPECT_TRUE(base::PathExists(path_));
   EXPECT_EQ(kExpectedProxyWithSearchOutput, ReadFile());
   // Connection DNS update (no change to resolv.conf)
@@ -152,7 +152,7 @@ TEST_F(ResolverTest, ProxyToggle) {
   EXPECT_TRUE(base::PathExists(path_));
   EXPECT_EQ(kExpectedProxyWithSearchOutput, ReadFile());
   // DNS proxy cleared
-  EXPECT_TRUE(resolver_->SetDNSProxy(""));
+  EXPECT_TRUE(resolver_->SetDNSProxyAddresses({}));
   EXPECT_TRUE(base::PathExists(path_));
   EXPECT_EQ(kExpectedOutput, ReadFile());
 }

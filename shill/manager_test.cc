@@ -2423,19 +2423,21 @@ TEST_F(ManagerTest, UpdateDefaultServicesDNSProxy) {
   manager()->UpdateDefaultServices(mock_service0, mock_service0);
 
   // Online -> offline should always force dns-proxy off.
-  EXPECT_CALL(resolver_, SetDNSProxy(StrEq(""))).WillOnce(Return(true));
+  EXPECT_CALL(resolver_, SetDNSProxyAddresses(ElementsAre()))
+      .WillOnce(Return(true));
   manager()->UpdateDefaultServices(mock_service0, mock_service0);
 
   // Offline -> online should push the dns-proxy info if set.
-  manager()->props_.dns_proxy_ipv4_address = "100.115.92.100";
-  EXPECT_CALL(resolver_, SetDNSProxy(StrEq("100.115.92.100")))
+  manager()->props_.dns_proxy_addresses = {"100.115.92.100"};
+  EXPECT_CALL(resolver_, SetDNSProxyAddresses(ElementsAre("100.115.92.100")))
       .WillOnce(Return(true));
   manager()->UpdateDefaultServices(mock_service0, mock_service0);
 
   // Switching from an online service to an offline one should force dns-proxy
   // off.
   EXPECT_CALL(*mock_service1, IsOnline).WillOnce(Return(false));
-  EXPECT_CALL(resolver_, SetDNSProxy(StrEq(""))).WillOnce(Return(true));
+  EXPECT_CALL(resolver_, SetDNSProxyAddresses(ElementsAre()))
+      .WillOnce(Return(true));
   manager()->UpdateDefaultServices(mock_service1, mock_service1);
 }
 
@@ -4468,38 +4470,49 @@ TEST_F(ManagerTest, RefreshAllTrafficCountersTask) {
   EXPECT_EQ(1, service2->current_traffic_counters_.size());
 }
 
-TEST_F(ManagerTest, SetDNSProxyIPv4Address) {
+TEST_F(ManagerTest, SetDNSProxyAddresses) {
   Error err;
   // Bad cases.
-  EXPECT_FALSE(manager()->SetDNSProxyIPv4Address("10.10.10.1", &err));
+  EXPECT_FALSE(manager()->SetDNSProxyAddresses({"10.10.10.1"}, &err));
   EXPECT_TRUE(err.IsFailure());
   err.Reset();
-  EXPECT_FALSE(manager()->SetDNSProxyIPv4Address("1.1", &err));
+  EXPECT_FALSE(manager()->SetDNSProxyAddresses({"1.1"}, &err));
   EXPECT_TRUE(err.IsFailure());
   err.Reset();
-  EXPECT_FALSE(manager()->SetDNSProxyIPv4Address("blah", &err));
+  EXPECT_FALSE(manager()->SetDNSProxyAddresses({"blah"}, &err));
+  EXPECT_TRUE(err.IsFailure());
+  err.Reset();
+  EXPECT_FALSE(manager()->SetDNSProxyAddresses({"::g"}, &err));
   EXPECT_TRUE(err.IsFailure());
   err.Reset();
 
   // Good cases.
   manager()->last_default_physical_service_online_ = true;
-  EXPECT_CALL(resolver_, SetDNSProxy(StrEq("100.115.92.100")));
-  EXPECT_TRUE(manager()->SetDNSProxyIPv4Address("100.115.92.100", &err));
+  EXPECT_CALL(resolver_, SetDNSProxyAddresses(ElementsAre("100.115.92.100")));
+  EXPECT_TRUE(manager()->SetDNSProxyAddresses({"100.115.92.100"}, &err));
   EXPECT_FALSE(err.IsFailure());
   err.Reset();
   // Unchanged.
-  EXPECT_FALSE(manager()->SetDNSProxyIPv4Address("100.115.92.100", &err));
+  EXPECT_FALSE(manager()->SetDNSProxyAddresses({"100.115.92.100"}, &err));
   EXPECT_FALSE(err.IsFailure());
   err.Reset();
+  // Update.
+  EXPECT_CALL(resolver_,
+              SetDNSProxyAddresses(ElementsAre("100.115.92.100", "::1")));
+  EXPECT_TRUE(manager()->SetDNSProxyAddresses({"100.115.92.100", "::1"}, &err));
+  EXPECT_FALSE(err.IsFailure());
+  err.Reset();
+  // Unchanged.
+  EXPECT_FALSE(
+      manager()->SetDNSProxyAddresses({"100.115.92.100", "::1"}, &err));
+  EXPECT_FALSE(err.IsFailure());
+  err.Reset();
+  // Empty addresses clears.
+  EXPECT_CALL(resolver_, SetDNSProxyAddresses(ElementsAre()));
+  EXPECT_TRUE(manager()->SetDNSProxyAddresses({}, &err));
   // Clear.
-  EXPECT_CALL(resolver_, SetDNSProxy(StrEq("")));
-  EXPECT_TRUE(manager()->SetDNSProxyIPv4Address("", &err));
-  EXPECT_FALSE(err.IsFailure());
-  err.Reset();
-  // Unchanged.
-  EXPECT_FALSE(manager()->SetDNSProxyIPv4Address("", &err));
-  EXPECT_FALSE(err.IsFailure());
-  err.Reset();
+  EXPECT_CALL(resolver_, SetDNSProxyAddresses(ElementsAre()));
+  manager()->ClearDNSProxyAddresses();
 }
 
 TEST_F(ManagerTest, SetDNSProxyDOHProviders) {
