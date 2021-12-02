@@ -18,6 +18,7 @@
 
 #include <base/memory/ref_counted.h>
 #include <base/time/tick_clock.h>
+#include <base/time/time.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
@@ -115,6 +116,12 @@ class SessionManagerImpl
   static const char kStopArcInstanceImpulse[];
   static const char kContinueArcBootImpulse[];
   static const char kArcBootedImpulse[];
+
+  // TODO(b/205032502): Because upgrading the container from mini to full often
+  // takes more than 25 seconds, increasing it to 1 minute for now. Once we have
+  // the update metrics, update the timeout to a tighter value.
+  static constexpr base::TimeDelta kArcBootContinueTimeout =
+      base::TimeDelta::FromMinutes(1);
 
   // Lock screen state messages.
   static const char kScreenLockedImpulse[];

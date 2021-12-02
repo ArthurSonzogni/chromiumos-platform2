@@ -13,6 +13,10 @@ namespace dbus {
 class Response;
 }
 
+namespace base {
+class TimeDelta;
+}
+
 namespace login_manager {
 
 class InitDaemonController {
@@ -29,6 +33,15 @@ class InitDaemonController {
   };
 
   virtual ~InitDaemonController() = default;
+
+  // Asks the init daemon to emit a signal (Upstart) or start a unit (systemd)
+  // with a |timeout|. The response is null if the request failed or |mode| is
+  // ASYNC.
+  virtual std::unique_ptr<dbus::Response> TriggerImpulseWithTimeout(
+      const std::string& name,
+      const std::vector<std::string>& args_keyvals,
+      TriggerMode mode,
+      base::TimeDelta timeout) = 0;
 
   // Asks the init daemon to emit a signal (Upstart) or start a unit (systemd).
   // The response is null if the request failed or |mode| is ASYNC.

@@ -10,9 +10,11 @@
 #include <vector>
 
 #include <base/macros.h>
-
 #include "login_manager/init_daemon_controller.h"
 
+namespace base {
+class TimeDelta;
+}
 namespace dbus {
 class ObjectProxy;
 }
@@ -31,6 +33,12 @@ class SystemdUnitStarter : public InitDaemonController {
   ~SystemdUnitStarter() override;
 
   // InitDaemonController:
+  std::unique_ptr<dbus::Response> TriggerImpulseWithTimeout(
+      const std::string& unit_name,
+      const std::vector<std::string>& args_keyvals,
+      TriggerMode mode,
+      base::TimeDelta timeout) override;
+
   std::unique_ptr<dbus::Response> TriggerImpulse(
       const std::string& unit_name,
       const std::vector<std::string>& args_keyvals,

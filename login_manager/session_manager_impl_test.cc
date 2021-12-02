@@ -2578,10 +2578,12 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
     EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
   }
 
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
-                             UpgradeContainerExpectationsBuilder().Build(),
-                             InitDaemonController::TriggerMode::SYNC))
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulseWithTimeout(SessionManagerImpl::kContinueArcBootImpulse,
+                                UpgradeContainerExpectationsBuilder().Build(),
+                                InitDaemonController::TriggerMode::SYNC,
+                                SessionManagerImpl::kArcBootContinueTimeout))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
   EXPECT_CALL(
       *init_controller_,
@@ -2631,10 +2633,12 @@ TEST_F(SessionManagerImplTest,
   EXPECT_TRUE(impl_->StartArcMiniContainer(
       &error, SerializeAsBlob(StartArcMiniContainerRequest())));
 
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
-                             UpgradeContainerExpectationsBuilder().Build(),
-                             InitDaemonController::TriggerMode::SYNC))
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulseWithTimeout(SessionManagerImpl::kContinueArcBootImpulse,
+                                UpgradeContainerExpectationsBuilder().Build(),
+                                InitDaemonController::TriggerMode::SYNC,
+                                SessionManagerImpl::kArcBootContinueTimeout))
       .WillOnce(ReturnNull());
   EXPECT_CALL(
       *init_controller_,
@@ -2670,12 +2674,14 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerWithManagementTransition) {
   SetUpArcMiniContainer();
 
   // Expect continue-arc-boot and start-arc-network impulses.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
-                             UpgradeContainerExpectationsBuilder()
-                                 .SetManagementTransition(1)
-                                 .Build(),
-                             InitDaemonController::TriggerMode::SYNC))
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulseWithTimeout(SessionManagerImpl::kContinueArcBootImpulse,
+                                UpgradeContainerExpectationsBuilder()
+                                    .SetManagementTransition(1)
+                                    .Build(),
+                                InitDaemonController::TriggerMode::SYNC,
+                                SessionManagerImpl::kArcBootContinueTimeout))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
@@ -2815,15 +2821,16 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
   }
 
   // Then, upgrade it to a fully functional one.
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
-                     UpgradeContainerExpectationsBuilder()
-                         .SetSkipPackagesCache(skip_packages_cache_setup)
-                         .SetCopyPackagesCache(copy_cache_setup)
-                         .SetSkipGmsCoreCache(std::get<1>(GetParam()))
-                         .Build(),
-                     InitDaemonController::TriggerMode::SYNC))
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseWithTimeout(
+                  SessionManagerImpl::kContinueArcBootImpulse,
+                  UpgradeContainerExpectationsBuilder()
+                      .SetSkipPackagesCache(skip_packages_cache_setup)
+                      .SetCopyPackagesCache(copy_cache_setup)
+                      .SetSkipGmsCoreCache(std::get<1>(GetParam()))
+                      .Build(),
+                  InitDaemonController::TriggerMode::SYNC,
+                  SessionManagerImpl::kArcBootContinueTimeout))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
   EXPECT_CALL(
       *init_controller_,
@@ -2931,15 +2938,16 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerForDemoSession) {
     EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
   }
 
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
-                     UpgradeContainerExpectationsBuilder()
-                         .SetIsDemoSession(true)
-                         .SetDemoSessionAppsPath(
-                             "/run/imageloader/0.1/demo_apps/img.squash")
-                         .Build(),
-                     InitDaemonController::TriggerMode::SYNC))
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseWithTimeout(
+                  SessionManagerImpl::kContinueArcBootImpulse,
+                  UpgradeContainerExpectationsBuilder()
+                      .SetIsDemoSession(true)
+                      .SetDemoSessionAppsPath(
+                          "/run/imageloader/0.1/demo_apps/img.squash")
+                      .Build(),
+                  InitDaemonController::TriggerMode::SYNC,
+                  SessionManagerImpl::kArcBootContinueTimeout))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
   EXPECT_CALL(
       *init_controller_,
@@ -2986,10 +2994,11 @@ TEST_F(SessionManagerImplTest,
 
   EXPECT_CALL(
       *init_controller_,
-      TriggerImpulse(
+      TriggerImpulseWithTimeout(
           SessionManagerImpl::kContinueArcBootImpulse,
           UpgradeContainerExpectationsBuilder().SetIsDemoSession(true).Build(),
-          InitDaemonController::TriggerMode::SYNC))
+          InitDaemonController::TriggerMode::SYNC,
+          SessionManagerImpl::kArcBootContinueTimeout))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
   EXPECT_CALL(
       *init_controller_,
@@ -3013,12 +3022,14 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer_AdbSideloadingEnabled) {
   SetUpArcMiniContainer();
 
   // Expect continue-arc-boot and start-arc-network impulses.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
-                             UpgradeContainerExpectationsBuilder()
-                                 .SetEnableAdbSideload(true)
-                                 .Build(),
-                             InitDaemonController::TriggerMode::SYNC))
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulseWithTimeout(SessionManagerImpl::kContinueArcBootImpulse,
+                                UpgradeContainerExpectationsBuilder()
+                                    .SetEnableAdbSideload(true)
+                                    .Build(),
+                                InitDaemonController::TriggerMode::SYNC,
+                                SessionManagerImpl::kArcBootContinueTimeout))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   // Pretend ADB sideloading is already enabled.
@@ -3040,12 +3051,14 @@ TEST_F(SessionManagerImplTest,
   SetUpArcMiniContainer();
 
   // Expect continue-arc-boot and start-arc-network impulses.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
-                             UpgradeContainerExpectationsBuilder()
-                                 .SetEnableAdbSideload(false)
-                                 .Build(),
-                             InitDaemonController::TriggerMode::SYNC))
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulseWithTimeout(SessionManagerImpl::kContinueArcBootImpulse,
+                                UpgradeContainerExpectationsBuilder()
+                                    .SetEnableAdbSideload(false)
+                                    .Build(),
+                                InitDaemonController::TriggerMode::SYNC,
+                                SessionManagerImpl::kArcBootContinueTimeout))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   // Pretend ADB sideloading is already enabled.
@@ -3069,12 +3082,14 @@ TEST_F(SessionManagerImplTest,
   SetUpArcMiniContainer();
 
   // Expect continue-arc-boot and start-arc-network impulses.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
-                             UpgradeContainerExpectationsBuilder()
-                                 .SetEnableAdbSideload(true)
-                                 .Build(),
-                             InitDaemonController::TriggerMode::SYNC))
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulseWithTimeout(SessionManagerImpl::kContinueArcBootImpulse,
+                                UpgradeContainerExpectationsBuilder()
+                                    .SetEnableAdbSideload(true)
+                                    .Build(),
+                                InitDaemonController::TriggerMode::SYNC,
+                                SessionManagerImpl::kArcBootContinueTimeout))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   // Pretend ADB sideloading is already enabled.
@@ -3224,10 +3239,11 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
 
   EXPECT_CALL(
       *init_controller_,
-      TriggerImpulse(
+      TriggerImpulseWithTimeout(
           SessionManagerImpl::kContinueArcBootImpulse,
           UpgradeContainerExpectationsBuilder().SetDevMode(true).Build(),
-          InitDaemonController::TriggerMode::SYNC))
+          InitDaemonController::TriggerMode::SYNC,
+          SessionManagerImpl::kArcBootContinueTimeout))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
   EXPECT_CALL(
       *init_controller_,
@@ -3291,13 +3307,15 @@ TEST_F(SessionManagerImplTest, LocaleAndPreferredLanguages) {
     EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
   }
 
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
-                             UpgradeContainerExpectationsBuilder()
-                                 .SetLocale("fr_FR")
-                                 .SetPreferredLanguages("ru,en")
-                                 .Build(),
-                             InitDaemonController::TriggerMode::SYNC))
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulseWithTimeout(SessionManagerImpl::kContinueArcBootImpulse,
+                                UpgradeContainerExpectationsBuilder()
+                                    .SetLocale("fr_FR")
+                                    .SetPreferredLanguages("ru,en")
+                                    .Build(),
+                                InitDaemonController::TriggerMode::SYNC,
+                                SessionManagerImpl::kArcBootContinueTimeout))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
@@ -3315,12 +3333,14 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer_ArcNearbyShareEnabled) {
   SetUpArcMiniContainer();
 
   // Expect continue-arc-boot and start-arc-network impulses.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
-                             UpgradeContainerExpectationsBuilder()
-                                 .SetEnableArcNearbyShare(true)
-                                 .Build(),
-                             InitDaemonController::TriggerMode::SYNC))
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulseWithTimeout(SessionManagerImpl::kContinueArcBootImpulse,
+                                UpgradeContainerExpectationsBuilder()
+                                    .SetEnableArcNearbyShare(true)
+                                    .Build(),
+                                InitDaemonController::TriggerMode::SYNC,
+                                SessionManagerImpl::kArcBootContinueTimeout))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
@@ -3338,12 +3358,14 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer_ArcNearbyShareDisabled) {
   SetUpArcMiniContainer();
 
   // Expect continue-arc-boot and start-arc-network impulses.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
-                             UpgradeContainerExpectationsBuilder()
-                                 .SetEnableArcNearbyShare(false)
-                                 .Build(),
-                             InitDaemonController::TriggerMode::SYNC))
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulseWithTimeout(SessionManagerImpl::kContinueArcBootImpulse,
+                                UpgradeContainerExpectationsBuilder()
+                                    .SetEnableArcNearbyShare(false)
+                                    .Build(),
+                                InitDaemonController::TriggerMode::SYNC,
+                                SessionManagerImpl::kArcBootContinueTimeout))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
@@ -3360,12 +3382,14 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer_DisableUreadahead) {
   ExpectAndRunStartSession(kSaneEmail);
   SetUpArcMiniContainer();
 
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulse(SessionManagerImpl::kContinueArcBootImpulse,
-                             UpgradeContainerExpectationsBuilder()
-                                 .SetDisableUreadahead(true)
-                                 .Build(),
-                             InitDaemonController::TriggerMode::SYNC))
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulseWithTimeout(SessionManagerImpl::kContinueArcBootImpulse,
+                                UpgradeContainerExpectationsBuilder()
+                                    .SetDisableUreadahead(true)
+                                    .Build(),
+                                InitDaemonController::TriggerMode::SYNC,
+                                SessionManagerImpl::kArcBootContinueTimeout))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();

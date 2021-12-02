@@ -14,12 +14,24 @@
 
 #include "login_manager/init_daemon_controller.h"
 
+namespace base {
+class TimeDelta;
+}
+
 namespace login_manager {
 
 class MockInitDaemonController : public InitDaemonController {
  public:
   MockInitDaemonController();
   ~MockInitDaemonController() override;
+
+  MOCK_METHOD(std::unique_ptr<dbus::Response>,
+              TriggerImpulseWithTimeout,
+              (const std::string&,
+               const std::vector<std::string>&,
+               TriggerMode,
+               base::TimeDelta timeout),
+              (override));
 
   MOCK_METHOD(std::unique_ptr<dbus::Response>,
               TriggerImpulse,
