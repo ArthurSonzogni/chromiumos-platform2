@@ -105,6 +105,16 @@ constexpr char kUserSubdirHasCorrectGroup[] =
     "Cryptohome.UserSubdirHasCorrectGroup";
 constexpr char kLegacyCodePathUsageHistogramPrefix[] =
     "Cryptohome.LegacyCodePathUsage";
+constexpr char kEmptyLabelCountHistogram[] = "Cryptohome.EmptyLabelCount";
+constexpr char kEmptyLabelPINCountHistogram[] = "Cryptohome.EmptyLabelPINCount";
+constexpr char kPINCountHistogram[] = "Cryptohome.PINCount";
+constexpr char kSmartUnlockCountHistogram[] = "Cryptohome.SmartUnlockCount";
+constexpr char kPasswordCountHistogram[] = "Cryptohome.PasswordCount";
+constexpr char kSmartCardCountHistogram[] = "Cryptohome.SmartCardCount";
+constexpr char kFingerprintCountHistogram[] = "Cryptohome.FingerprintCount";
+constexpr char kKioskCountHistogram[] = "Cryptohome.KioskCount";
+constexpr char kUnclassifiedKeysetCountHistogram[] =
+    "Cryptohome.UnclassifedKeysetCount";
 
 // Histogram parameters. This should match the order of 'TimerType'.
 // Min and max samples are in milliseconds.
@@ -670,6 +680,37 @@ void ReportUsageOfLegacyCodePath(const LegacyCodePathLocation location,
           .append(kLegacyCodePathLocations[static_cast<int>(location)]);
 
   g_metrics->SendBoolToUMA(hist_str, result);
+}
+
+void ReportVaultKeysetMetrics(const VaultKeysetMetrics& keyset_metrics) {
+  if (!g_metrics) {
+    return;
+  }
+
+  constexpr int kMin = 0, kMax = 99, kNumBuckets = 100;
+  g_metrics->SendToUMA(kEmptyLabelCountHistogram,
+                       keyset_metrics.empty_label_count, kMin, kMax,
+                       kNumBuckets);
+  g_metrics->SendToUMA(kEmptyLabelPINCountHistogram,
+                       keyset_metrics.empty_label_le_cred_count, kMin, kMax,
+                       kNumBuckets);
+  g_metrics->SendToUMA(kPINCountHistogram, keyset_metrics.le_cred_count, kMin,
+                       kMax, kNumBuckets);
+  g_metrics->SendToUMA(kSmartUnlockCountHistogram,
+                       keyset_metrics.smart_unlock_count, kMin, kMax,
+                       kNumBuckets);
+  g_metrics->SendToUMA(kPasswordCountHistogram, keyset_metrics.password_count,
+                       kMin, kMax, kNumBuckets);
+  g_metrics->SendToUMA(kSmartCardCountHistogram, keyset_metrics.smartcard_count,
+                       kMin, kMax, kNumBuckets);
+  g_metrics->SendToUMA(kFingerprintCountHistogram,
+                       keyset_metrics.fingerprint_count, kMin, kMax,
+                       kNumBuckets);
+  g_metrics->SendToUMA(kKioskCountHistogram, keyset_metrics.kiosk_count, kMin,
+                       kMax, kNumBuckets);
+  g_metrics->SendToUMA(kUnclassifiedKeysetCountHistogram,
+                       keyset_metrics.unclassified_count, kMin, kMax,
+                       kNumBuckets);
 }
 
 }  // namespace cryptohome

@@ -18,6 +18,7 @@
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/vault_keyset.h"
@@ -160,6 +161,11 @@ class KeysetManagement {
   // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
   base::Time GetPerIndexTimestampFileData(const std::string& obfuscated,
                                           int index);
+
+  // Records various metrics about the VaultKeyset into the VaultKeysetMetrics
+  // struct.
+  bool RecordVaultKeysetMetrics(const VaultKeyset& vk,
+                                VaultKeysetMetrics& keyset_metrics) const;
 
   Platform* platform_;
   Crypto* crypto_;

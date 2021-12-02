@@ -203,6 +203,9 @@ bool KeysetManagement::GetVaultKeysetLabelsAndData(
   CHECK(key_label_data);
   base::FilePath user_dir = UserPath(obfuscated_username);
 
+  // Struct to records various metrics for UMA.
+  VaultKeysetMetrics keyset_metrics;
+
   std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
       user_dir, false /* Not recursive. */, base::FileEnumerator::FILES));
   base::FilePath next_path;
@@ -229,6 +232,9 @@ bool KeysetManagement::GetVaultKeysetLabelsAndData(
     if (!vk) {
       continue;
     }
+    if (!RecordVaultKeysetMetrics(*vk.get(), keyset_metrics)) {
+      LOG(ERROR) << "Metrics not recorded for " << vk->GetLabel();
+    }
     if (key_label_data->find(vk->GetLabel()) != key_label_data->end()) {
       // This is a confirmation check, we do not expect to hit this.
       LOG(INFO) << "Found a duplicate label, skipping it: " << vk->GetLabel();
@@ -236,6 +242,9 @@ bool KeysetManagement::GetVaultKeysetLabelsAndData(
     }
     key_label_data->insert({vk->GetLabel(), vk->GetKeyData()});
   }
+
+  // Report VaultKeyset metrics through UMA.
+  ReportVaultKeysetMetrics(keyset_metrics);
 
   return (key_label_data->size() > 0);
 }
@@ -245,6 +254,9 @@ bool KeysetManagement::GetVaultKeysetLabels(
     std::vector<std::string>* labels) const {
   CHECK(labels);
   base::FilePath user_dir = UserPath(obfuscated_username);
+
+  // Struct to records various metrics for UMA.
+  VaultKeysetMetrics keyset_metrics;
 
   std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
       user_dir, false /* Not recursive. */, base::FileEnumerator::FILES));
@@ -271,8 +283,15 @@ bool KeysetManagement::GetVaultKeysetLabels(
     if (!vk) {
       continue;
     }
+    if (!RecordVaultKeysetMetrics(*vk.get(), keyset_metrics)) {
+      LOG(ERROR) << "Metrics not recorded for " << vk->GetLabel();
+    }
+
     labels->push_back(vk->GetLabel());
   }
+
+  // Report VaultKeyset metrics through UMA.
+  ReportVaultKeysetMetrics(keyset_metrics);
 
   return (labels->size() > 0);
 }
@@ -802,6 +821,53 @@ base::Time KeysetManagement::GetKeysetBoundTimestamp(
   }
 
   return timestamp;
+}
+
+bool KeysetManagement::RecordVaultKeysetMetrics(
+    const VaultKeyset& vk, VaultKeysetMetrics& keyset_metrics) const {
+  if (!vk.HasKeyData()) {
+    LOG(ERROR) << "VaultKeyset doesn't have a valid KeyData field.";
+    return false;
+  }
+  if (vk.GetKeyData().label().empty()) {
+    // VaultKeyset label is empty.
+    if (vk.IsLECredential()) {
+      keyset_metrics.empty_label_le_cred_count++;
+    } else {
+      keyset_metrics.empty_label_count++;
+    }
+  } else if (vk.IsLECredential()) {
+    // VaultKeyset is PIN based, label is non-empty.
+    keyset_metrics.le_cred_count++;
+  } else {
+    switch (vk.GetKeyData().type()) {
+      case KeyData::KEY_TYPE_PASSWORD:
+        if (vk.GetKeyData().has_provider_data()) {
+          // VaultKeyset is based on SmartUnlock/EasyUnlock.
+          keyset_metrics.smart_unlock_count++;
+        } else {
+          // VaultKeyset is password based.
+          keyset_metrics.password_count++;
+        }
+        break;
+      case KeyData::KEY_TYPE_CHALLENGE_RESPONSE:
+        // VaultKeyset is smartcard/challenge-response based.
+        keyset_metrics.smartcard_count++;
+        break;
+      case KeyData::KEY_TYPE_FINGERPRINT:
+        // VaultKeyset is fingerprint-based.
+        keyset_metrics.fingerprint_count++;
+        break;
+      case KeyData::KEY_TYPE_KIOSK:
+        // VaultKeyset is kiosk-based.
+        keyset_metrics.kiosk_count++;
+        break;
+      default:
+        keyset_metrics.unclassified_count++;
+        break;
+    }
+  }
+  return true;
 }
 
 // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
