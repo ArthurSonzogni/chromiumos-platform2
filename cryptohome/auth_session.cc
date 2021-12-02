@@ -12,7 +12,7 @@
 #include <brillo/cryptohome.h>
 #include <cryptohome/scrypt_verifier.h>
 
-#include "cryptohome/auth_factors/password_auth_factor.h"
+#include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/vault_keyset.h"
@@ -139,7 +139,7 @@ user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(
   }
   if (authorization_request.key().data().type() == KeyData::KEY_TYPE_PASSWORD ||
       authorization_request.key().data().type() == KeyData::KEY_TYPE_KIOSK) {
-    auth_factor_ = std::make_unique<PasswordAuthFactor>(keyset_management_);
+    auth_factor_ = std::make_unique<AuthFactor>(keyset_management_);
   }
 
   code = auth_factor_->AuthenticateAuthFactor(*credentials, is_ephemeral_user_);

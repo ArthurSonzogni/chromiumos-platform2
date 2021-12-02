@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/auth_factors/password_auth_factor.h"
+#include "cryptohome/auth_factor/auth_factor.h"
 
 #include <memory>
 #include <utility>
@@ -10,11 +10,11 @@
 #include "cryptohome/scrypt_verifier.h"
 namespace cryptohome {
 
-PasswordAuthFactor::PasswordAuthFactor(KeysetManagement* keyset_management)
+AuthFactor::AuthFactor(KeysetManagement* keyset_management)
     : keyset_management_(keyset_management) {}
 
-MountError PasswordAuthFactor::AuthenticateAuthFactor(
-    const Credentials& credential, bool is_ephemeral_user) {
+MountError AuthFactor::AuthenticateAuthFactor(const Credentials& credential,
+                                              bool is_ephemeral_user) {
   // Store key data in current auth_factor for future use.
   key_data_ = credential.key_data();
 
@@ -38,16 +38,15 @@ MountError PasswordAuthFactor::AuthenticateAuthFactor(
   return MOUNT_ERROR_NONE;
 }
 
-std::unique_ptr<CredentialVerifier>
-PasswordAuthFactor::TakeCredentialVerifier() {
+std::unique_ptr<CredentialVerifier> AuthFactor::TakeCredentialVerifier() {
   return std::move(credential_verifier_);
 }
 
-const cryptohome::KeyData& PasswordAuthFactor::GetKeyData() const {
+const cryptohome::KeyData& AuthFactor::GetKeyData() const {
   return key_data_;
 }
 
-const FileSystemKeyset PasswordAuthFactor::GetFileSystemKeyset() const {
+const FileSystemKeyset AuthFactor::GetFileSystemKeyset() const {
   return FileSystemKeyset(*vault_keyset_);
 }
 

@@ -206,7 +206,7 @@ static_library("libcrostpm") {
     "../auth_blocks/tpm_bound_to_pcr_auth_block.cc",
     "../auth_blocks/tpm_ecc_auth_block.cc",
     "../auth_blocks/tpm_not_bound_to_pcr_auth_block.cc",
-    "../auth_factors/password_auth_factor.cc",
+    "../auth_factor/auth_factor.cc",
     "../auth_session.cc",
     "../auth_session_manager.cc",
     "../crc8.c",

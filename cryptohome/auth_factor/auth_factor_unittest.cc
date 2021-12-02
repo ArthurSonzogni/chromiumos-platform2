@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Unit tests for PasswordAuthFactor.
+// Unit tests for AuthFactor.
 
-#include "cryptohome/auth_factors/password_auth_factor.h"
+#include "cryptohome/auth_factor/auth_factor.h"
 
 #include <memory>
 #include <string>
@@ -30,20 +30,20 @@ namespace cryptohome {
 const char kFakeUsername[] = "test_username";
 const char kFakePassword[] = "test_pass";
 
-class PasswordAuthFactorTest : public ::testing::Test {
+class AuthFactorTest : public ::testing::Test {
  public:
-  PasswordAuthFactorTest() = default;
-  PasswordAuthFactorTest(const PasswordAuthFactorTest&) = delete;
-  PasswordAuthFactorTest& operator=(const PasswordAuthFactorTest&) = delete;
-  ~PasswordAuthFactorTest() override = default;
+  AuthFactorTest() = default;
+  AuthFactorTest(const AuthFactorTest&) = delete;
+  AuthFactorTest& operator=(const AuthFactorTest&) = delete;
+  ~AuthFactorTest() override = default;
 
  protected:
-  // Mock KeysetManagent object, will be passed to PasswordAuthFactorTest for
+  // Mock KeysetManagent object, will be passed to AuthFactorTest for
   // its internal use.
   NiceMock<MockKeysetManagement> keyset_management_;
 };
 
-TEST_F(PasswordAuthFactorTest, PersistentAuthenticateAuthFactorTest_Success) {
+TEST_F(AuthFactorTest, PersistentAuthenticateAuthFactorTest_Success) {
   // Setup
   auto vk = std::make_unique<VaultKeyset>();
   Credentials creds(kFakeUsername, brillo::SecureBlob(kFakePassword));
@@ -55,7 +55,7 @@ TEST_F(PasswordAuthFactorTest, PersistentAuthenticateAuthFactorTest_Success) {
       .WillOnce(Return(true));
 
   std::unique_ptr<AuthFactor> pass_auth_factor =
-      std::make_unique<PasswordAuthFactor>(&keyset_management_);
+      std::make_unique<AuthFactor>(&keyset_management_);
 
   // Test
   EXPECT_THAT(
@@ -68,14 +68,14 @@ TEST_F(PasswordAuthFactorTest, PersistentAuthenticateAuthFactorTest_Success) {
   EXPECT_TRUE(verifier->Verify(brillo::SecureBlob(kFakePassword)));
 }
 
-TEST_F(PasswordAuthFactorTest, PersistentAuthenticateAuthFactorTest_Fail) {
+TEST_F(AuthFactorTest, PersistentAuthenticateAuthFactorTest_Fail) {
   // Setup
   Credentials creds(kFakeUsername, brillo::SecureBlob(kFakePassword));
   EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(MOUNT_ERROR_FATAL), Return(ByMove(nullptr))));
   std::unique_ptr<AuthFactor> pass_auth_factor =
-      std::make_unique<PasswordAuthFactor>(&keyset_management_);
+      std::make_unique<AuthFactor>(&keyset_management_);
 
   // Test
   EXPECT_THAT(
@@ -83,12 +83,12 @@ TEST_F(PasswordAuthFactorTest, PersistentAuthenticateAuthFactorTest_Fail) {
       Eq(MOUNT_ERROR_FATAL));
 }
 
-TEST_F(PasswordAuthFactorTest, EphemeralAuthenticateAuthFactorTest) {
+TEST_F(AuthFactorTest, EphemeralAuthenticateAuthFactorTest) {
   // Setup
   auto vk = std::make_unique<VaultKeyset>();
   Credentials creds(kFakeUsername, brillo::SecureBlob(kFakePassword));
   std::unique_ptr<AuthFactor> pass_auth_factor =
-      std::make_unique<PasswordAuthFactor>(&keyset_management_);
+      std::make_unique<AuthFactor>(&keyset_management_);
 
   EXPECT_CALL(keyset_management_, GetValidKeyset(_, _)).Times(0);
   EXPECT_CALL(keyset_management_, ReSaveKeysetIfNeeded(_, _)).Times(0);
