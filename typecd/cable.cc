@@ -183,6 +183,9 @@ CableSpeedMetric Cable::GetCableSpeedMetric() {
     case kUSB40SuperSpeedGen3:
       ret = CableSpeedMetric::kUSB4Gen3;
       break;
+    default:
+      ret = CableSpeedMetric::kOther;
+      break;
   }
 
   // Add special handling for the PD 2.0 Cable VDO speed.
