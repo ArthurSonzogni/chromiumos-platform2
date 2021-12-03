@@ -12,10 +12,11 @@
 #include <base/files/file_path.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/debugd/dbus-constants.h>
+#include <debugd/src/session_manager_observer_interface.h>
 
 namespace debugd {
 
-class DRMTraceTool {
+class DRMTraceTool : public SessionManagerObserverInterface {
  public:
   DRMTraceTool();
   DRMTraceTool(const DRMTraceTool&) = delete;
@@ -43,6 +44,15 @@ class DRMTraceTool {
 
  private:
   friend class DRMTraceToolTest;
+
+  // From SessionManagerObserverInterface.
+  virtual void OnSessionStarted();
+
+  // From SessionManagerObserverInterface.
+  virtual void OnSessionStopped();
+
+  // Reset DRM trace parameters to default.
+  void SetToDefault();
 
   // For testing only.
   explicit DRMTraceTool(const base::FilePath& root);

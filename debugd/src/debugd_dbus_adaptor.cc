@@ -86,6 +86,11 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
           base::FilePath(debugd::kDevFeaturesChromeRemoteDebuggingFlagPath))) {
     session_manager_proxy_->EnableChromeRemoteDebugging();
   }
+  session_manager_proxy_->AddObserver(drm_trace_tool_.get());
+}
+
+DebugdDBusAdaptor::~DebugdDBusAdaptor() {
+  session_manager_proxy_->RemoveObserver(drm_trace_tool_.get());
 }
 
 void DebugdDBusAdaptor::RegisterAsync(

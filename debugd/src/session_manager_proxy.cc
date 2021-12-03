@@ -12,6 +12,12 @@
 
 namespace {
 
+// Strings for states from the session manager's SessionStateChanged signal
+// that debugd will take action on. These values are defined in the
+// session_manager codebase.
+const char kSessionStarted[] = "started";
+const char kSessionStopped[] = "stopped";
+
 void OnSignalConnected(const std::string& interface,
                        const std::string& signal,
                        bool success) {
@@ -37,6 +43,24 @@ SessionManagerProxy::SessionManagerProxy(scoped_refptr<dbus::Bus> bus)
       base::BindRepeating(&SessionManagerProxy::OnLoginPromptVisible,
                           weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&OnSignalConnected));
+  proxy_->ConnectToSignal(
+      login_manager::kSessionManagerInterface,
+      login_manager::kSessionStateChangedSignal,
+      base::BindRepeating(&SessionManagerProxy::OnSessionStateChanged,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&OnSignalConnected));
+}
+
+void SessionManagerProxy::AddObserver(
+    SessionManagerObserverInterface* observer) {
+  CHECK(observer) << "Invalid observer object";
+  observer_list_.AddObserver(observer);
+}
+
+void SessionManagerProxy::RemoveObserver(
+    SessionManagerObserverInterface* observer) {
+  CHECK(observer) << "Invalid observer object";
+  observer_list_.RemoveObserver(observer);
 }
 
 void SessionManagerProxy::OnLoginPromptVisible(dbus::Signal*) {
@@ -45,6 +69,24 @@ void SessionManagerProxy::OnLoginPromptVisible(dbus::Signal*) {
   // There might be a timing issue if debugd started too fast.  We try again
   // here if the first attempt in Init() failed.
   EnableChromeRemoteDebuggingInternal();
+}
+
+void SessionManagerProxy::OnSessionStateChanged(dbus::Signal* signal) {
+  dbus::MessageReader reader(signal);
+  std::string state;
+  if (!reader.PopString(&state)) {
+    LOG(ERROR) << "Unable to read " << login_manager::kSessionStateChangedSignal
+               << " args";
+    return;
+  }
+
+  if (state == kSessionStarted) {
+    for (SessionManagerObserverInterface& o : observer_list_)
+      o.OnSessionStarted();
+  } else if (state == kSessionStopped) {
+    for (SessionManagerObserverInterface& o : observer_list_)
+      o.OnSessionStopped();
+  }
 }
 
 void SessionManagerProxy::EnableChromeRemoteDebugging() {

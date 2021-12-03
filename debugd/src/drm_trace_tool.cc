@@ -84,7 +84,11 @@ bool ConvertSize(uint32_t size, DRMTraceSizes* out_size) {
 DRMTraceTool::DRMTraceTool() : DRMTraceTool(base::FilePath("/")) {}
 
 DRMTraceTool::DRMTraceTool(const base::FilePath& root_path)
-    : root_path_(root_path) {}
+    : root_path_(root_path) {
+  // Ensure that the DRM trace parameters are initialized to default when debugd
+  // starts.
+  SetToDefault();
+}
 
 bool DRMTraceTool::SetCategories(brillo::ErrorPtr* error, uint32_t categories) {
   base::FilePath mask_path = root_path_.Append(kTraceMaskFile);
@@ -177,6 +181,24 @@ bool DRMTraceTool::WriteToFile(brillo::ErrorPtr* error,
   }
 
   return true;
+}
+
+void DRMTraceTool::OnSessionStarted() {
+  SetToDefault();
+}
+
+void DRMTraceTool::OnSessionStopped() {
+  SetToDefault();
+}
+
+void DRMTraceTool::SetToDefault() {
+  brillo::ErrorPtr error;
+  if (!SetCategories(&error, 0))
+    LOG(WARNING) << "Failed to reset categories; drm_trace may have unexpected "
+                    "log entries.";
+  if (!SetSize(&error, DRMTraceSize_DEFAULT))
+    LOG(WARNING) << "Failed to reset trace buffer size; drm_trace may be "
+                    "larger than expected.";
 }
 
 }  // namespace debugd

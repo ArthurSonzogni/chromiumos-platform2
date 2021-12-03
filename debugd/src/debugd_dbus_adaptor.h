@@ -67,7 +67,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
                           public org::chromium::debugdInterface {
  public:
   explicit DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus);
-  ~DebugdDBusAdaptor() override = default;
+  ~DebugdDBusAdaptor() override;
 
   // Register the D-Bus object and interfaces.
   void RegisterAsync(
