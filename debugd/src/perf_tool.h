@@ -69,11 +69,17 @@ class PerfTool {
  private:
   void OnQuipperProcessExited(const siginfo_t& siginfo);
 
+  // Change the proper strobbing settings before starting ETM collection.
+  // TODO(b/209861754): remove this when we have implemented a preset for
+  // strobbing.
+  void EtmStrobbingSettings();
+
   base::Optional<uint64_t> profiler_session_id_;
   std::unique_ptr<SandboxedProcess> quipper_process_;
   base::ScopedFD quipper_process_output_fd_;
   brillo::AsynchronousSignalHandler signal_handler_;
   brillo::ProcessReaper process_reaper_;
+  bool etm_available;
 };
 
 }  // namespace debugd

@@ -13,6 +13,7 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include "base/files/file_util.h"
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
@@ -37,6 +38,12 @@ const char kArgsError[] =
 
 // Location of quipper on ChromeOS.
 const char kQuipperLocation[] = "/usr/bin/quipper";
+
+// Location of the default ETM strobbing settings in configfs.
+const char kStrobbingSettingPathPattern[] =
+    "/sys/kernel/config/cs-syscfg/features/strobing/params/%s/value";
+const int kStrobbingWindow = 512;
+const int kStrobbingPeriod = 10000;
 
 enum class OptionType {
   Boolean,  // Has no value.
@@ -125,6 +132,7 @@ bool ValidateQuipperArguments(const std::vector<std::string>& qp_args,
 PerfTool::PerfTool() {
   signal_handler_.Init();
   process_reaper_.Register(&signal_handler_);
+  EtmStrobbingSettings();
 }
 
 bool PerfTool::GetPerfOutput(uint32_t duration_secs,
@@ -294,6 +302,19 @@ bool PerfTool::StopPerf(uint64_t session_id, brillo::ErrorPtr* error) {
   }
 
   return true;
+}
+
+void PerfTool::EtmStrobbingSettings() {
+  const base::FilePath window_path = base::FilePath(
+      base::StringPrintf(kStrobbingSettingPathPattern, "window"));
+  const base::FilePath period_path = base::FilePath(
+      base::StringPrintf(kStrobbingSettingPathPattern, "period"));
+  if (!base::PathExists(window_path) || !base::PathExists(period_path))
+    return;
+
+  base::WriteFile(window_path, std::to_string(kStrobbingWindow));
+  base::WriteFile(period_path, std::to_string(kStrobbingPeriod));
+  etm_available = true;
 }
 
 }  // namespace debugd
