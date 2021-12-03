@@ -26,7 +26,12 @@ namespace reporting {
 
 UploadClient::UploadClient(scoped_refptr<dbus::Bus> bus,
                            dbus::ObjectProxy* chrome_proxy)
-    : bus_(bus), chrome_proxy_(chrome_proxy) {}
+    : bus_(bus), chrome_proxy_(chrome_proxy) {
+  chrome_proxy_->SetNameOwnerChangedCallback(base::BindRepeating(
+      &UploadClient::OwnerChanged, weak_ptr_factory_.GetWeakPtr()));
+  chrome_proxy_->WaitForServiceToBeAvailable(base::BindOnce(
+      &UploadClient::ServerAvailable, weak_ptr_factory_.GetWeakPtr()));
+}
 UploadClient::~UploadClient() = default;
 
 // static
@@ -65,7 +70,7 @@ void UploadClient::SendEncryptedRecords(
   }
   request.set_need_encryption_keys(need_encryption_keys);
 
-  // Make the call to Chrome
+  // Make the call to Chrome, if available.
   auto call = std::make_unique<dbus::MethodCall>(
       chromeos::kChromeReportingServiceInterface,
       chromeos::kChromeReportingServiceUploadEncryptedRecordMethod);
@@ -81,12 +86,28 @@ void UploadClient::SendEncryptedRecords(
     }
   }
   bus_->GetOriginTaskRunner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          &dbus::ObjectProxy::CallMethod, base::Unretained(chrome_proxy_),
-          raw_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-          base::BindOnce(&UploadClient::HandleUploadEncryptedRecordResponse,
-                         this, std::move(call), std::move(response_callback))));
+      FROM_HERE, base::BindOnce(&UploadClient::MaybeMakeCall,
+                                weak_ptr_factory_.GetWeakPtr(), std::move(call),
+                                std::move(response_callback)));
+}
+
+void UploadClient::MaybeMakeCall(
+    std::unique_ptr<dbus::MethodCall> call,
+    HandleUploadResponseCallback response_callback) {
+  dbus::MethodCall* const raw_call = call.get();
+  bus_->AssertOnOriginThread();
+  // Bail out, if Chrome is not available over dBus.
+  if (!is_available_) {
+    std::move(response_callback)
+        .Run(Status(error::UNAVAILABLE, "Chrome is not available"));
+    return;
+  }
+  // Make a dBus call.
+  chrome_proxy_->CallMethod(
+      raw_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+      base::BindOnce(&UploadClient::HandleUploadEncryptedRecordResponse,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(call),
+                     std::move(response_callback)));
 }
 
 void UploadClient::HandleUploadEncryptedRecordResponse(
@@ -109,6 +130,25 @@ void UploadClient::HandleUploadEncryptedRecordResponse(
   }
 
   std::move(response_callback).Run(std::move(response_proto));
+}
+
+void UploadClient::OwnerChanged(const std::string& old_owner,
+                                const std::string& new_owner) {
+  bus_->AssertOnOriginThread();
+  is_available_ = !new_owner.empty();
+  LOG(WARNING) << chromeos::kChromeReportingServiceInterface
+               << " changed owner, is_available=" << is_available_;
+}
+
+void UploadClient::ServerAvailable(bool service_is_available) {
+  bus_->AssertOnOriginThread();
+  is_available_ = service_is_available;
+  LOG(WARNING) << chromeos::kChromeReportingServiceInterface
+               << " became available, is_available=" << is_available_;
+}
+
+void UploadClient::SetAvailabilityForTest(bool is_available) {
+  is_available_ = is_available;
 }
 
 }  // namespace reporting

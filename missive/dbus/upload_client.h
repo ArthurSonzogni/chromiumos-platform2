@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <base/callback.h>
@@ -38,6 +39,9 @@ class UploadClient : public base::RefCountedThreadSafe<UploadClient> {
       bool need_encryption_keys,
       HandleUploadResponseCallback response_callback);
 
+  // Sets availability for testing only.
+  void SetAvailabilityForTest(bool is_available);
+
  protected:
   // Factory method for creating a UploadClient with specified |bus| and
   // |chrome_proxy|.
@@ -55,8 +59,20 @@ class UploadClient : public base::RefCountedThreadSafe<UploadClient> {
  private:
   friend base::RefCountedThreadSafe<UploadClient>;
 
+  void MaybeMakeCall(std::unique_ptr<dbus::MethodCall> call,
+                     HandleUploadResponseCallback response_callback);
+
+  void OwnerChanged(const std::string& old_owner, const std::string& new_owner);
+
+  void ServerAvailable(bool service_is_available);
+
   scoped_refptr<dbus::Bus> const bus_;
   dbus::ObjectProxy* const chrome_proxy_;
+  bool is_available_{false};
+
+  // Note: This should remain the last member so it'll be destroyed and
+  // invalidate its weak pointers before any other members are destroyed.
+  base::WeakPtrFactory<UploadClient> weak_ptr_factory_{this};
 };
 
 }  // namespace reporting

@@ -28,6 +28,7 @@
 using ::testing::_;
 using ::testing::Eq;
 using ::testing::Invoke;
+using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::StrEq;
 using ::testing::WithArgs;
@@ -49,7 +50,7 @@ class UploadClientTest : public ::testing::Test {
     dbus_task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
         {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
 
-    test::TestEvent<scoped_refptr<dbus::MockBus>> dbus_waiter;
+    test::TestEvent<scoped_refptr<NiceMock<dbus::MockBus>>> dbus_waiter;
     dbus_task_runner_->PostTask(
         FROM_HERE,
         base::BindOnce(&UploadClientTest::CreateMockDBus, dbus_waiter.cb()));
@@ -72,12 +73,15 @@ class UploadClientTest : public ::testing::Test {
     ON_CALL(*mock_bus_, AssertOnDBusThread())
         .WillByDefault(Invoke(this, &UploadClientTest::AssertOnDBusThread));
 
-    mock_chrome_proxy_ = base::WrapRefCounted(new dbus::MockObjectProxy(
-        mock_bus_.get(), chromeos::kChromeReportingServiceName,
-        dbus::ObjectPath(chromeos::kChromeReportingServicePath)));
+    mock_chrome_proxy_ =
+        base::WrapRefCounted(new NiceMock<dbus::MockObjectProxy>(
+            mock_bus_.get(), chromeos::kChromeReportingServiceName,
+            dbus::ObjectPath(chromeos::kChromeReportingServicePath)));
 
     upload_client_ = UploadClientProducer::CreateForTests(
         mock_bus_, mock_chrome_proxy_.get());
+
+    upload_client_->SetAvailabilityForTest(/*is_available=*/true);
   }
 
   void TearDown() override {
@@ -86,11 +90,12 @@ class UploadClientTest : public ::testing::Test {
   }
 
   static void CreateMockDBus(
-      base::OnceCallback<void(scoped_refptr<dbus::MockBus>)> ready_cb) {
+      base::OnceCallback<void(scoped_refptr<NiceMock<dbus::MockBus>>)>
+          ready_cb) {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    std::move(ready_cb).Run(
-        base::WrapRefCounted<dbus::MockBus>(new dbus::MockBus(options)));
+    std::move(ready_cb).Run(base::WrapRefCounted<NiceMock<dbus::MockBus>>(
+        new NiceMock<dbus::MockBus>(options)));
   }
 
   void AssertOnDBusThread() {
@@ -100,8 +105,8 @@ class UploadClientTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
 
   scoped_refptr<base::SequencedTaskRunner> dbus_task_runner_;
-  scoped_refptr<dbus::MockBus> mock_bus_;
-  scoped_refptr<dbus::MockObjectProxy> mock_chrome_proxy_;
+  scoped_refptr<NiceMock<dbus::MockBus>> mock_bus_;
+  scoped_refptr<NiceMock<dbus::MockObjectProxy>> mock_chrome_proxy_;
   scoped_refptr<UploadClient> upload_client_;
 };
 
@@ -111,7 +116,7 @@ TEST_F(UploadClientTest, SuccessfulCall) {
   auto response_callback = base::BindOnce(
       [](test::TestCallbackWaiter* waiter,
          StatusOr<UploadEncryptedRecordResponse> response) {
-        ASSERT_TRUE(response.ok());
+        ASSERT_OK(response) << response.status().ToString();
         UploadEncryptedRecordResponse upload_response =
             std::move(response.ValueOrDie());
         EXPECT_EQ(upload_response.status().code(), error::OK);
@@ -181,5 +186,47 @@ TEST_F(UploadClientTest, SuccessfulCall) {
   waiter.Wait();
 }
 
+TEST_F(UploadClientTest, CallUnavailable) {
+  upload_client_->SetAvailabilityForTest(/*is_available=*/false);
+
+  test::TestCallbackWaiter waiter;
+  waiter.Attach();
+  auto response_callback = base::BindOnce(
+      [](test::TestCallbackWaiter* waiter,
+         StatusOr<UploadEncryptedRecordResponse> response) {
+        ASSERT_FALSE(response.ok());
+        ASSERT_THAT(response.status().code(), Eq(error::UNAVAILABLE))
+            << response.status().ToString();
+        waiter->Signal();
+      },
+      &waiter);
+
+  constexpr char kTestData[] = "TEST_DATA";
+  EncryptedRecord encrypted_record;
+  encrypted_record.set_encrypted_wrapped_record(kTestData);
+
+  const int64_t kSequenceId = 42;
+  const int64_t kGenerationId = 1701;
+  const Priority kPriority = Priority::SLOW_BATCH;
+  SequenceInformation* sequence_information =
+      encrypted_record.mutable_sequence_information();
+  sequence_information->set_sequencing_id(kSequenceId);
+  sequence_information->set_generation_id(kGenerationId);
+  sequence_information->set_priority(kPriority);
+
+  // We have to own the response here so that it lives throughout the rest of
+  // the test.
+  std::unique_ptr<dbus::Response> dbus_response = dbus::Response::CreateEmpty();
+
+  EXPECT_CALL(*mock_chrome_proxy_, DoCallMethod(_, _, _)).Times(0);
+
+  std::unique_ptr<std::vector<EncryptedRecord>> records =
+      std::make_unique<std::vector<EncryptedRecord>>();
+  records->push_back(encrypted_record);
+  upload_client_->SendEncryptedRecords(std::move(records),
+                                       /*need_encryption_keys=*/false,
+                                       std::move(response_callback));
+  waiter.Wait();
+}
 }  // namespace
 }  // namespace reporting

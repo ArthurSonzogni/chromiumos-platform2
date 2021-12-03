@@ -28,6 +28,7 @@
 
 using ::testing::_;
 using ::testing::Invoke;
+using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::WithArgs;
 
@@ -92,7 +93,7 @@ class UploadJobTest : public ::testing::Test {
     dbus_task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
         {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
 
-    test::TestEvent<scoped_refptr<dbus::MockBus>> dbus_waiter;
+    test::TestEvent<scoped_refptr<NiceMock<dbus::MockBus>>> dbus_waiter;
     dbus_task_runner_->PostTask(
         FROM_HERE,
         base::BindOnce(&UploadJobTest::CreateMockDBus, dbus_waiter.cb()));
@@ -115,12 +116,15 @@ class UploadJobTest : public ::testing::Test {
     ON_CALL(*mock_bus_, AssertOnDBusThread())
         .WillByDefault(Invoke(this, &UploadJobTest::AssertOnDBusThread));
 
-    mock_chrome_proxy_ = new dbus::MockObjectProxy(
-        mock_bus_.get(), chromeos::kChromeReportingServiceName,
-        dbus::ObjectPath(chromeos::kChromeReportingServicePath));
+    mock_chrome_proxy_ =
+        base::WrapRefCounted(new NiceMock<dbus::MockObjectProxy>(
+            mock_bus_.get(), chromeos::kChromeReportingServiceName,
+            dbus::ObjectPath(chromeos::kChromeReportingServicePath)));
 
     upload_client_ = UploadClientProducer::CreateForTests(
         mock_bus_, mock_chrome_proxy_.get());
+
+    upload_client_->SetAvailabilityForTest(/*is_available=*/true);
   }
 
   void TearDown() override {
@@ -129,11 +133,12 @@ class UploadJobTest : public ::testing::Test {
   }
 
   static void CreateMockDBus(
-      base::OnceCallback<void(scoped_refptr<dbus::MockBus>)> ready_cb) {
+      base::OnceCallback<void(scoped_refptr<NiceMock<dbus::MockBus>>)>
+          ready_cb) {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    std::move(ready_cb).Run(
-        base::WrapRefCounted<dbus::MockBus>(new dbus::MockBus(options)));
+    std::move(ready_cb).Run(base::WrapRefCounted<NiceMock<dbus::MockBus>>(
+        new NiceMock<dbus::MockBus>(options)));
   }
 
   void AssertOnDBusThread() {
@@ -143,8 +148,8 @@ class UploadJobTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
 
   scoped_refptr<base::SequencedTaskRunner> dbus_task_runner_;
-  scoped_refptr<dbus::MockBus> mock_bus_;
-  scoped_refptr<dbus::MockObjectProxy> mock_chrome_proxy_;
+  scoped_refptr<NiceMock<dbus::MockBus>> mock_bus_;
+  scoped_refptr<NiceMock<dbus::MockObjectProxy>> mock_chrome_proxy_;
   scoped_refptr<UploadClient> upload_client_;
 };
 
