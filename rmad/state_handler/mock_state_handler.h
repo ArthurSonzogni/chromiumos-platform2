@@ -17,7 +17,7 @@ class MockStateHandler : public BaseStateHandler {
       : BaseStateHandler(json_store) {}
 
   MOCK_METHOD(RmadState::StateCase, GetStateCase, (), (const, override));
-  MOCK_METHOD(const RmadState&, GetState, (), (const, override));
+  MOCK_METHOD(const RmadState&, GetState, (bool), (const, override));
   MOCK_METHOD(bool, IsRepeatable, (), (const, override));
   MOCK_METHOD(RmadErrorCode, InitializeState, (), (override));
   MOCK_METHOD(void, CleanUpState, (), (override));

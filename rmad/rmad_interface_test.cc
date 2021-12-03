@@ -80,7 +80,7 @@ class RmadInterfaceImplTest : public testing::Test {
         base::MakeRefCounted<NiceMock<MockStateHandler>>(json_store);
     RmadState::StateCase state_case = state.state_case();
     ON_CALL(*mock_handler, GetStateCase()).WillByDefault(Return(state_case));
-    ON_CALL(*mock_handler, GetState()).WillByDefault(ReturnRef(state));
+    ON_CALL(*mock_handler, GetState(_)).WillByDefault(ReturnRef(state));
     ON_CALL(*mock_handler, IsRepeatable()).WillByDefault(Return(is_repeatable));
     ON_CALL(*mock_handler, InitializeState())
         .WillByDefault(Return(initialize_error));

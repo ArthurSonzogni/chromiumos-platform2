@@ -31,9 +31,9 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   // macro ASSIGN_STATE(state).
   virtual RmadState::StateCase GetStateCase() const = 0;
 
-  // TODO(gavindodd): How to mock this without making it virtual?
+  // TODO(chenghan): How to mock this without making it virtual?
   // Returns the RmadState proto for this state.
-  virtual const RmadState& GetState() const;
+  virtual const RmadState& GetState(bool do_task = false) const;
 
   // Returns whether the state is repeatable. A state is repeatable if it can be
   // run multiple times. For instance, a state that only shows system info, or
@@ -119,6 +119,10 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
  protected:
   friend class base::RefCounted<BaseStateHandler>;
   virtual ~BaseStateHandler() = default;
+
+  // Invoked when |GetState| is called with |do_task| = true. Can be overridden
+  // by child classes.
+  virtual void OnGetStateTask() const {}
 
   RmadState state_;
   scoped_refptr<JsonStore> json_store_;

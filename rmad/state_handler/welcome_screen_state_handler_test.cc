@@ -75,7 +75,7 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(WelcomeScreenStateHandlerTest,
-       InitializeState_Success_verification_pass) {
+       InitializeState_Success_VerificationPass_DoGetStateTask) {
   auto handler = CreateStateHandler(1);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -85,25 +85,26 @@ TEST_F(WelcomeScreenStateHandlerTest,
         EXPECT_EQ(result.error_str(), "mock_hardware_verifier_error_string");
         return true;
       }));
+  RmadState state = handler->GetState(true);
   task_environment_.RunUntilIdle();
 }
 
 TEST_F(WelcomeScreenStateHandlerTest,
-       InitializeState_Success_verification_fail) {
-  auto handler = CreateStateHandler(0);
+       InitializeState_Success_VerificationPass_NoGetStateTask) {
+  auto handler = CreateStateHandler(1);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  EXPECT_CALL(signal_sender_, SendHardwareVerificationResultSignal(_))
-      .WillOnce(Invoke([](const HardwareVerificationResult& result) {
-        EXPECT_EQ(result.is_compliant(), false);
-        EXPECT_EQ(result.error_str(), "mock_hardware_verifier_error_string");
-        return true;
-      }));
-  task_environment_.RunUntilIdle();
+  RmadState state = handler->GetState();
 }
 
 TEST_F(WelcomeScreenStateHandlerTest,
-       InitializeState_Success_verification_call_fail) {
+       InitializeState_Success_VerificationFail) {
+  auto handler = CreateStateHandler(0);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+}
+
+TEST_F(WelcomeScreenStateHandlerTest,
+       InitializeState_Success_VerificationCallFail) {
   auto handler = CreateStateHandler(-1);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 

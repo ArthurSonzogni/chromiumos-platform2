@@ -45,13 +45,15 @@ WelcomeScreenStateHandler::WelcomeScreenStateHandler(
 RmadErrorCode WelcomeScreenStateHandler::InitializeState() {
   if (!state_.has_welcome()) {
     state_.set_allocated_welcome(new WelcomeState);
-    base::SequencedTaskRunnerHandle::Get()->PostTask(
-        FROM_HERE,
-        base::BindOnce(&WelcomeScreenStateHandler::RunHardwareVerifier,
-                       base::Unretained(this)));
   }
 
   return RMAD_ERROR_OK;
+}
+
+void WelcomeScreenStateHandler::OnGetStateTask() const {
+  base::SequencedTaskRunnerHandle::Get()->PostTask(
+      FROM_HERE, base::BindOnce(&WelcomeScreenStateHandler::RunHardwareVerifier,
+                                base::Unretained(this)));
 }
 
 BaseStateHandler::GetNextStateCaseReply

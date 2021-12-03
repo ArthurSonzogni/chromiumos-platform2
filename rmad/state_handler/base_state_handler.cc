@@ -21,7 +21,10 @@ namespace rmad {
 BaseStateHandler::BaseStateHandler(scoped_refptr<JsonStore> json_store)
     : json_store_(json_store) {}
 
-const RmadState& BaseStateHandler::GetState() const {
+const RmadState& BaseStateHandler::GetState(bool do_task) const {
+  if (do_task) {
+    OnGetStateTask();
+  }
   return state_;
 }
 

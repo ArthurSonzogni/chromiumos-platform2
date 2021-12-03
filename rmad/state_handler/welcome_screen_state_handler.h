@@ -41,6 +41,8 @@ class WelcomeScreenStateHandler : public BaseStateHandler {
  protected:
   ~WelcomeScreenStateHandler() override = default;
 
+  void OnGetStateTask() const override;
+
  private:
   std::unique_ptr<HardwareVerifierClient> hardware_verifier_client_;
   std::unique_ptr<HardwareVerificationResultSignalCallback>
