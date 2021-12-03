@@ -29,6 +29,15 @@ using std::string;
 
 namespace {
 const char kStatefulMount[] = "/mnt/stateful_partition";
+
+bool GetKernelCommandLine(string* kernel_cmd_line) {
+  if (!base::ReadFileToString(base::FilePath("/proc/cmdline"),
+                              kernel_cmd_line)) {
+    LOG(ERROR) << "Can't read kernel commandline options";
+    return false;
+  }
+  return true;
+}
 }  // namespace
 
 bool ConfigureInstall(const string& install_dev,
@@ -70,16 +79,16 @@ bool ConfigureInstall(const string& install_dev,
   return true;
 }
 
-bool DetectBiosType(BiosType* bios_type) {
-  // Look up the current kernel command line
+bool IsRunningMiniOS() {
   string kernel_cmd_line;
-  if (!base::ReadFileToString(base::FilePath("/proc/cmdline"),
-                              &kernel_cmd_line)) {
-    LOG(ERROR) << "Can't read kernel commandline options";
-    return false;
-  }
+  return GetKernelCommandLine(&kernel_cmd_line) &&
+         kernel_cmd_line.find("cros_minios") != string::npos;
+}
 
-  return KernelConfigToBiosType(kernel_cmd_line, bios_type);
+bool DetectBiosType(BiosType* bios_type) {
+  string kernel_cmd_line;
+  return GetKernelCommandLine(&kernel_cmd_line) &&
+         KernelConfigToBiosType(kernel_cmd_line, bios_type);
 }
 
 bool KernelConfigToBiosType(const string& kernel_config, BiosType* type) {
@@ -235,7 +244,8 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
   bool is_factory_install = getenv("IS_FACTORY_INSTALL");
   bool is_recovery_install = getenv("IS_RECOVERY_INSTALL");
   bool is_install = getenv("IS_INSTALL");
-  bool is_update = !is_factory_install && !is_recovery_install && !is_install;
+  bool is_update = !is_factory_install && !is_recovery_install && !is_install &&
+                   !IsRunningMiniOS();
 
   // TODO(dgarrett): Remove when chromium:216338 is fixed.
   // If this FS was mounted read-write, we can't do deltas from it. Mark the
