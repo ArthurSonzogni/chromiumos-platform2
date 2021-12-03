@@ -409,7 +409,9 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // Helper method for ReadBatteryDirectory() that updates |status|'s
   // |battery_percentage|, |display_battery_percentage|, and |battery_state|
   // members based on existing battery information in |status|.
-  void UpdateBatteryPercentagesAndState(PowerStatus* status);
+  // Returns false if an error is encountered when reading the display battery
+  // percentage.
+  bool UpdateBatteryPercentagesAndState(PowerStatus* status);
 
   // Helper method for UpdatePowerStatus() that reads multiple battery
   // directories from sysfs using ReadBatteryDirectory() and merges the results

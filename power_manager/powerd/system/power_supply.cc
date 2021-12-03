@@ -1178,12 +1178,10 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
   status->battery_current = current;
   status->battery_energy_rate = current * voltage;
 
-  UpdateBatteryPercentagesAndState(status);
-
-  return true;
+  return UpdateBatteryPercentagesAndState(status);
 }
 
-void PowerSupply::UpdateBatteryPercentagesAndState(PowerStatus* status) {
+bool PowerSupply::UpdateBatteryPercentagesAndState(PowerStatus* status) {
   DCHECK(status);
   status->battery_percentage = util::ClampPercent(
       100.0 * status->battery_charge / status->battery_charge_full);
@@ -1191,11 +1189,17 @@ void PowerSupply::UpdateBatteryPercentagesAndState(PowerStatus* status) {
   double display_soc;
   bool is_full;
   if (GetDisplayStateOfChargeFromEC(&display_soc)) {
-    // New way
+    // If display_soc is 0%, read it again in case of a bad reading.
+    if (display_soc == 0.0) {
+      GetDisplayStateOfChargeFromEC(&display_soc);
+    }
+
+    // Error out for bad display percentages. We'll try again later.
     if (display_soc < 0.0 || 100.0 < display_soc) {
       LOG(ERROR) << "Received bad value of display SoC: " << display_soc;
-      display_soc = util::ClampPercent(display_soc);
+      return false;
     }
+
     status->display_battery_percentage = display_soc;
     is_full = status->display_battery_percentage >= 100.0;
   } else {
@@ -1220,6 +1224,8 @@ void PowerSupply::UpdateBatteryPercentagesAndState(PowerStatus* status) {
   } else {
     status->battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
   }
+
+  return true;
 }
 
 bool PowerSupply::ReadMultipleBatteryDirectories(
