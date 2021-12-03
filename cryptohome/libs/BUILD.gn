@@ -405,6 +405,7 @@ static_library("libcryptohome") {
     "../credentials.cc",
     "../dircrypto_data_migrator/atomic_flag.cc",
     "../dircrypto_data_migrator/migration_helper.cc",
+    "../error/converter.cc",
     "../error/cryptohome_error.cc",
     "../filesystem_layout.cc",
     "../fingerprint_manager.cc",
