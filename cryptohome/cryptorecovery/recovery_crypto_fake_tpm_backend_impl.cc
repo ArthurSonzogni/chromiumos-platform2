@@ -19,6 +19,10 @@ RecoveryCryptoFakeTpmBackendImpl::RecoveryCryptoFakeTpmBackendImpl() = default;
 
 RecoveryCryptoFakeTpmBackendImpl::~RecoveryCryptoFakeTpmBackendImpl() = default;
 
+brillo::SecureBlob RecoveryCryptoFakeTpmBackendImpl::GenerateKeyAuthValue() {
+  return brillo::SecureBlob();
+}
+
 bool RecoveryCryptoFakeTpmBackendImpl::EncryptEccPrivateKey(
     const EllipticCurve& ec,
     const crypto::ScopedEC_KEY& own_key_pair,

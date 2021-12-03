@@ -772,6 +772,7 @@ if (use.fuzzer) {
     # TODO(crbug/1144974): This is a workaround to let the fuzzer can build on TPM2 devices.
     if (!use.tpm) {
       sources += [
+        "cryptorecovery/recovery_crypto_tpm1_backend_impl.cc",
         "signature_sealing_backend_tpm1_impl.cc",
         "tpm1_static_utils.cc",
         "tpm_impl.cc",

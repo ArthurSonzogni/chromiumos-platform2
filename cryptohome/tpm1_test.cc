@@ -606,4 +606,8 @@ TEST_F(TpmImplTest, HasResetLockPermissionsFailure) {
       .WillOnce(Return(false));
   EXPECT_FALSE(GetTpm()->HasResetLockPermissions());
 }
+
+TEST_F(TpmImplTest, GetRecoveryCryptoBackend) {
+  EXPECT_TRUE(GetTpm()->GetRecoveryCryptoBackend());
+}
 }  // namespace cryptohome

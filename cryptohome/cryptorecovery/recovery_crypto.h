@@ -25,6 +25,10 @@ namespace cryptorecovery {
 class RecoveryCryptoTpmBackend {
  public:
   virtual ~RecoveryCryptoTpmBackend() = default;
+  // Generate key_auth_value. key auth value is required for sealing/ unsealing
+  // in TPM1.2 only and the required length is 32 bytes. The implementation for
+  // TPM2 backend will return an empty SecureBlob.
+  virtual brillo::SecureBlob GenerateKeyAuthValue() = 0;
   // Encrypts the provided ECC private key using TPM, and returns it via
   // `encrypted_own_priv_key`, which is one's own private key. (the format of
   // this blob is TPM-specific). Returns false on failure.
@@ -155,8 +159,13 @@ class RecoveryCrypto {
   //   mediated_point = `mediated_publisher_pub_key` + `ephemeral_pub_key`
   //   destination_recovery_key = HKDF((dealer_pub_key * destination_share
   //                                   + mediated_point))
+  // key_auth_value is required for unsealing destination_share on TPM1 modules
+  // whereas for TPM2, destination_share is imported into TPM2 modules, and
+  // loaded back in the form of key handle, which requires no additional crypto
+  // secret.
   virtual bool RecoverDestination(
       const brillo::SecureBlob& dealer_pub_key,
+      const brillo::SecureBlob& key_auth_value,
       const brillo::SecureBlob& encrypted_destination_share,
       const brillo::SecureBlob& ephemeral_pub_key,
       const brillo::SecureBlob& mediated_publisher_pub_key,

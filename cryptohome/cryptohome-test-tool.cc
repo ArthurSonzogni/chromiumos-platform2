@@ -247,6 +247,7 @@ bool DoRecoveryCryptoDecryptAction(
 
   brillo::SecureBlob mediated_recovery_key;
   if (!recovery_crypto->RecoverDestination(response_plain_text.dealer_pub_key,
+                                           response_plain_text.key_auth_value,
                                            destination_share, ephemeral_pub_key,
                                            response_plain_text.mediated_point,
                                            &mediated_recovery_key)) {

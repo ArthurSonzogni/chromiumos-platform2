@@ -20,6 +20,7 @@
 #include <set>
 #include <string>
 
+#include "cryptohome/cryptorecovery/recovery_crypto_tpm1_backend_impl.h"
 #include "cryptohome/signature_sealing_backend_tpm1_impl.h"
 #include "cryptohome/tpm.h"
 
@@ -325,6 +326,9 @@ class TpmImpl : public Tpm {
   // A single instance of the backend for signature-sealing operations that is
   // returned from GetSignatureSealingBackend().
   SignatureSealingBackendTpm1Impl signature_sealing_backend_{this};
+  // A single instance of the backend for cryptohome-recovery operations that is
+  // returned from GetRecoveryCryptoBackend().
+  cryptorecovery::RecoveryCryptoTpm1BackendImpl recovery_crypto_backend_{this};
 
   // wrapped tpm_manager proxy to get information from |tpm_manager|.
   tpm_manager::TpmManagerUtility* tpm_manager_utility_ = nullptr;

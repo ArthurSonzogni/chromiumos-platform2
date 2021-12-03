@@ -29,6 +29,9 @@ class RecoveryCryptoTpm2BackendImpl final : public RecoveryCryptoTpmBackend {
       const RecoveryCryptoTpm2BackendImpl&) = delete;
   ~RecoveryCryptoTpm2BackendImpl() override;
 
+  // Generate key_auth_value. key auth value is not required for in TPM2.0
+  // and therefore, an empty SecureBlob will be returned.
+  brillo::SecureBlob GenerateKeyAuthValue() override;
   // Performs the encryption by importing the supplied share via the TPM2_Import
   // command. auth_value will not be used as it's to seal the private key on
   // TPM1 modules when ECC operations are not supported.

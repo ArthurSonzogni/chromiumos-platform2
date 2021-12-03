@@ -28,6 +28,7 @@ namespace cryptohome {
 namespace cryptorecovery {
 
 namespace {
+
 brillo::SecureBlob GetRecoveryKeyHkdfInfo() {
   return brillo::SecureBlob("CryptoHome Wrapping Key");
 }
@@ -296,10 +297,13 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
     return false;
   }
   // Performs scalar multiplication of epoch_pub_point and channel_priv_key.
+  // Here we don't use key_auth_value generated from GenerateKeyAuthValue()
+  // because key_auth_value is unavailable and will only be recovered from the
+  // decrypted response afterward
   crypto::ScopedEC_POINT shared_secret_point =
       tpm_backend_->GenerateDiffieHellmanSharedSecret(
-          ec_, encrypted_channel_priv_key,
-          /*auth_value=*/base::nullopt, *epoch_pub_point);
+          ec_, encrypted_channel_priv_key, /*auth_value=*/base::nullopt,
+          *epoch_pub_point);
   if (!shared_secret_point) {
     LOG(ERROR) << "Failed to compute shared point from epoch_pub_point and "
                   "channel_priv_key";
@@ -411,8 +415,9 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     }
   } while (BN_is_zero(secret.get()));
 
+  brillo::SecureBlob key_auth_value = tpm_backend_->GenerateKeyAuthValue();
   if (!tpm_backend_->EncryptEccPrivateKey(ec_, destination_share_key_pair,
-                                          /*auth_value=*/base::nullopt,
+                                          key_auth_value,
                                           encrypted_destination_share)) {
     LOG(ERROR) << "Failed to encrypt destination share";
     return false;
@@ -443,6 +448,9 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     LOG(ERROR) << "Failed to convert channel_pub_key to a SecureBlob";
     return false;
   }
+  // Here we don't use key_auth_value generated from GenerateKeyAuthValue()
+  // because key_auth_value will be unavailable when encrypted_channel_priv_key
+  // is unsealed from TPM1.2
   if (!tpm_backend_->EncryptEccPrivateKey(ec_, channel_key_pair,
                                           /*auth_value=*/base::nullopt,
                                           encrypted_channel_priv_key)) {
@@ -482,13 +490,12 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     LOG(ERROR) << "Failed to convert mediator_share to a SecureBlob";
     return false;
   }
-  // TODO(mslus): in the initial version kav will be empty (as it should for
-  // TPM 2.0). In the next iteration we will generate kav if a non-empty value
-  // of `rsa_pub_key` is provided.
+
   brillo::SecureBlob plain_text_cbor;
   HsmPlainText hsm_plain_text;
   hsm_plain_text.mediator_share = mediator_share;
   hsm_plain_text.dealer_pub_key = dealer_pub_key;
+  hsm_plain_text.key_auth_value = key_auth_value;
   if (!SerializeHsmPlainTextToCbor(hsm_plain_text, &plain_text_cbor)) {
     LOG(ERROR) << "Failed to generate HSM plain text cbor";
     return false;
@@ -538,6 +545,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
 
 bool RecoveryCryptoImpl::RecoverDestination(
     const brillo::SecureBlob& dealer_pub_key,
+    const brillo::SecureBlob& key_auth_value,
     const brillo::SecureBlob& encrypted_destination_share,
     const brillo::SecureBlob& ephemeral_pub_key,
     const brillo::SecureBlob& mediated_publisher_pub_key,
@@ -576,8 +584,7 @@ bool RecoveryCryptoImpl::RecoverDestination(
   // Performs scalar multiplication of dealer_pub_point and destination_share.
   crypto::ScopedEC_POINT point_dh =
       tpm_backend_->GenerateDiffieHellmanSharedSecret(
-          ec_, encrypted_destination_share,
-          /*auth_value=*/base::nullopt, *dealer_pub_point);
+          ec_, encrypted_destination_share, key_auth_value, *dealer_pub_point);
   if (!point_dh) {
     LOG(ERROR) << "Failed to perform scalar multiplication of dealer_pub_point "
                   "and destination_share";
@@ -650,10 +657,13 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
     return false;
   }
   // Performs scalar multiplication of epoch_pub_point and channel_priv_key.
+  // Here we don't use key_auth_value generated from GenerateKeyAuthValue()
+  // because key_auth_value is unavailable and will only be recovered from the
+  // decrypted response afterward
   crypto::ScopedEC_POINT shared_secret_point =
       tpm_backend_->GenerateDiffieHellmanSharedSecret(
-          ec_, encrypted_channel_priv_key,
-          /*auth_value=*/base::nullopt, *epoch_pub_point);
+          ec_, encrypted_channel_priv_key, /*auth_value=*/base::nullopt,
+          *epoch_pub_point);
   if (!shared_secret_point) {
     LOG(ERROR) << "Failed to compute shared point from epoch_pub_point and "
                   "channel_priv_key";

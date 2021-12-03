@@ -160,7 +160,8 @@ CryptoError CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
 
   brillo::SecureBlob recovery_key;
   if (!recovery->RecoverDestination(
-          response_plain_text.dealer_pub_key, plaintext_destination_share,
+          response_plain_text.dealer_pub_key,
+          response_plain_text.key_auth_value, plaintext_destination_share,
           ephemeral_pub_key, response_plain_text.mediated_point,
           &recovery_key)) {
     return CryptoError::CE_OTHER_CRYPTO;

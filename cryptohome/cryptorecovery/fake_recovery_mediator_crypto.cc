@@ -351,7 +351,7 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
   HsmResponsePlainText response_plain_text;
   response_plain_text.mediated_point = mediator_dh;
   response_plain_text.dealer_pub_key = hsm_plain_text.dealer_pub_key;
-  response_plain_text.key_auth_value = brillo::SecureBlob();
+  response_plain_text.key_auth_value = hsm_plain_text.key_auth_value;
   if (!SerializeHsmResponsePlainTextToCbor(response_plain_text,
                                            &response_plain_text_cbor)) {
     LOG(ERROR) << "Unable to serialize response plain text";

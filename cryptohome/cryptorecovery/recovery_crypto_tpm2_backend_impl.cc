@@ -33,6 +33,10 @@ RecoveryCryptoTpm2BackendImpl::RecoveryCryptoTpm2BackendImpl(
 
 RecoveryCryptoTpm2BackendImpl::~RecoveryCryptoTpm2BackendImpl() = default;
 
+brillo::SecureBlob RecoveryCryptoTpm2BackendImpl::GenerateKeyAuthValue() {
+  return brillo::SecureBlob();
+}
+
 bool RecoveryCryptoTpm2BackendImpl::EncryptEccPrivateKey(
     const EllipticCurve& ec,
     const crypto::ScopedEC_KEY& own_key_pair,

@@ -27,6 +27,9 @@ class RecoveryCryptoFakeTpmBackendImpl final : public RecoveryCryptoTpmBackend {
       const RecoveryCryptoFakeTpmBackendImpl&) = delete;
   ~RecoveryCryptoFakeTpmBackendImpl() override;
 
+  // Generate key_auth_value. key auth value is not required for fake TPM
+  // and therefore, an empty SecureBlob will be returned.
+  brillo::SecureBlob GenerateKeyAuthValue() override;
   // Returns the raw ECC private key (without any encryption). auth_value will
   // not be used as it's to seal the private key on TPM1 modules when ECC
   // operations are not supported.
