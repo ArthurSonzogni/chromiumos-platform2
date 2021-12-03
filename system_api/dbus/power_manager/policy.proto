@@ -22,7 +22,7 @@ option go_package = "chromiumos/system_api/power_manager_proto";
 // opposed to continuing to use a value set by a previous message).  An
 // empty message will restore all settings to their defaults.
 //
-// Next ID to use: 25
+// Next ID to use: 30
 message PowerManagementPolicy {
 
   enum Action {
@@ -274,7 +274,28 @@ message PowerManagementPolicy {
   // quick dim for a short period of time if a quick dim is undimmed.
   optional bool send_feedback_if_undimmed = 26;
 
-  // Next value to use: 27
+  // Unused unless Adaptive Charging is supported on the system.
+  optional bool adaptive_charging_enabled = 27;
+
+  // The battery charge that will be maintained by Adaptive Charging while it is
+  // delaying charge. For example, if Adaptive Charging predicts that the system
+  // will be plugged in for 4 hours, it may delay charging above this percentage
+  // (eg 80% charge) for 2 hours.
+  // Unused unless Adaptive Charging is enabled.
+  optional int32 adaptive_charging_hold_percent = 28;
+
+  // The minimum confidence according to our prediction model for the charger
+  // being connected to hold off on charging while at
+  // |adaptive_charging_hold_percent|. This is used for evaluating the output of
+  // the ML model, which are 8 values in the range [0.0, 1.0]. Each value
+  // represents the model's confidence that the system will continue to be
+  // plugged in for the corresponding hour. For example, changing this value
+  // from 0.5 to 0.3 will make Adaptive Charging more aggressive in predicting
+  // that the system will continue to be plugged in.
+  // Unused unless Adaptive Charging is enabled.
+  optional double adaptive_charging_min_confidence = 29;
+
+  // Next value to use: 30
 }
 
 // Message included in IdleActionImminent signals.
