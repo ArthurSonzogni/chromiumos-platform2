@@ -8,15 +8,15 @@
 
 #include <utility>
 
+#include <base/files/file_util.h>
+
+#include "cros-camera/constants.h"
 #include "features/feature_profile.h"
 #include "features/zsl/zsl_stream_manipulator.h"
 
 #if USE_CAMERA_FEATURE_HDRNET
-#include <base/files/file_util.h>
-
 #include "common/still_capture_processor_impl.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
-#include "cros-camera/constants.h"
 #include "cros-camera/jpeg_compressor.h"
 #include "features/gcam_ae/gcam_ae_stream_manipulator.h"
 #include "features/hdrnet/hdrnet_stream_manipulator.h"
@@ -31,6 +31,8 @@
 #endif
 
 namespace cros {
+
+namespace {
 
 void MaybeEnableHdrNetStreamManipulator(
     const StreamManipulator::Options& options,
@@ -89,17 +91,32 @@ void MaybeEnableHdrNetStreamManipulator(
 #endif
 }
 
+void MaybeEnableAutoFramingStreamManipulator(
+    std::vector<std::unique_ptr<StreamManipulator>>* out_stream_manipulators) {
+#if USE_CAMERA_AUTO_FRAMING
+  if (base::PathExists(
+          base::FilePath(constants::kForceDisableAutoFramingPath))) {
+    // Auto-framing is forcibly disabled.
+    return;
+  }
+  if (base::PathExists(
+          base::FilePath(constants::kForceEnableAutoFramingPath))) {
+    // Auto-framing is forcibly enabled.
+    out_stream_manipulators->emplace_back(
+        std::make_unique<AutoFramingStreamManipulator>());
+  }
+#endif
+}
+
+}  // namespace
+
 // static
 std::vector<std::unique_ptr<StreamManipulator>>
 StreamManipulator::GetEnabledStreamManipulators(Options options) {
   std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators;
   FeatureProfile feature_profile;
 
-#if USE_CAMERA_FEATURE_AUTO_FRAMING
-  // Put AutoFraming at the head/tail of the capture request/result flow.
-  stream_manipulators.emplace_back(
-      std::make_unique<AutoFramingStreamManipulator>());
-#endif
+  MaybeEnableAutoFramingStreamManipulator(&stream_manipulators);
 
 #if USE_CAMERA_FEATURE_FACE_DETECTION || USE_CAMERA_FEATURE_AUTO_FRAMING
   if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kFaceDetection)) {
