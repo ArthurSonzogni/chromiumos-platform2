@@ -25,7 +25,7 @@ class FrameBuilder {
   // Constructor, both parameters must not be nullptr. |frame| is used as
   // internal buffer to store intermediate form of data to send. All spotted
   // issues are logged to |log| (by push_back()).
-  FrameBuilder(Frame* frame, std::vector<Log>* log)
+  FrameBuilder(FrameData* frame, std::vector<Log>* log)
       : frame_(frame), errors_(log) {}
 
   // Build a content of the frame from the given Package.
@@ -64,7 +64,7 @@ class FrameBuilder {
   bool WriteTNVsToBuffer(const std::list<TagNameValue>&, uint8_t** ptr);
 
   // Internal buffer.
-  Frame* frame_;
+  FrameData* frame_;
 
   // Internal log: all errors & warnings are logged here.
   std::vector<Log>* errors_;

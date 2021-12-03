@@ -36,7 +36,8 @@ class Parser {
   // Constructor, both parameters must not be nullptr. |frame| is used as
   // internal buffer to store intermediate form of parsed data. All spotted
   // issues are logged to |log| (by push_back()).
-  Parser(Frame* frame, std::vector<Log>* log) : frame_(frame), errors_(log) {}
+  Parser(FrameData* frame, std::vector<Log>* log)
+      : frame_(frame), errors_(log) {}
 
   // Parses data from given buffer and saves it to internal buffer.
   bool ReadFrameFromBuffer(const uint8_t* ptr, const uint8_t* const buf_end);
@@ -90,7 +91,7 @@ class Parser {
                      uint8_t tag);
 
   // Internal buffer.
-  Frame* frame_;
+  FrameData* frame_;
 
   // Internal log: all errors & warnings are logged here.
   std::vector<Log>* errors_;

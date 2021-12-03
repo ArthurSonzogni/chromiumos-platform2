@@ -51,14 +51,14 @@ void ClearPackage(Package* package) {
     g->Resize(0);
 }
 
-Version GetVersion(const Frame* frame) {
+Version GetVersion(const FrameData* frame) {
   uint16_t v = frame->major_version_number_;
   v <<= 8;
   v += frame->minor_version_number_;
   return static_cast<Version>(v);
 }
 
-void SetVersion(Version version, Frame* frame) {
+void SetVersion(Version version, FrameData* frame) {
   uint16_t v = static_cast<uint16_t>(version);
   frame->major_version_number_ = (v >> 8);
   frame->minor_version_number_ = (v & 0xff);
@@ -69,7 +69,7 @@ void SetVersion(Version version, Frame* frame) {
 // internal structure with all data
 struct Protocol {
   // internal buffer for current frame
-  Frame frame;
+  FrameData frame;
   // log with errors
   std::vector<Log> log;
   // parser and frame builder, both work on the frame and the log defined above

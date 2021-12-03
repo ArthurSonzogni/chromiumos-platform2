@@ -23,7 +23,7 @@ struct TagNameValue {
 };
 
 // This represents single IPP frame, described in rfc8010.
-struct Frame {
+struct FrameData {
   // Variables save to/load from a frame's header.
   uint8_t major_version_number_ = 1;
   uint8_t minor_version_number_ = 1;
