@@ -1,5 +1,6 @@
 drivefs
-fuse-zip
+fuse-archive
+mount-zip
 mount.exfat-fuse
 ntfs-3g
 rar2fs
