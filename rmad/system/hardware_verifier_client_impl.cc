@@ -19,8 +19,6 @@
 
 namespace {
 
-constexpr int kDefaultTimeoutMs = 10 * 1000;  // 10 seconds.
-
 std::string GetComponentIdentifier(
     const hardware_verifier::ComponentInfo& info) {
   return runtime_probe::ProbeRequest::SupportCategory_Name(
@@ -44,8 +42,8 @@ bool HardwareVerifierClientImpl::GetHardwareVerificationResult(
       hardware_verifier::kHardwareVerifierInterfaceName,
       hardware_verifier::kVerifyComponentsMethod);
 
-  std::unique_ptr<dbus::Response> response =
-      proxy_->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  std::unique_ptr<dbus::Response> response = proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!response.get()) {
     LOG(ERROR) << "Failed to call hardware_verifier D-Bus service";
     return false;

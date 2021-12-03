@@ -13,12 +13,6 @@
 #include <dbus/object_proxy.h>
 #include <dbus/power_manager/dbus-constants.h>
 
-namespace {
-
-constexpr int kDefaultTimeoutMs = 10 * 1000;  // 10 seconds.
-
-}  // namespace
-
 namespace rmad {
 
 PowerManagerClientImpl::PowerManagerClientImpl(
@@ -35,8 +29,8 @@ bool PowerManagerClientImpl::Restart() {
   writer.AppendInt32(power_manager::REQUEST_RESTART_OTHER);
   writer.AppendString("rmad request restart");
 
-  std::unique_ptr<dbus::Response> response =
-      proxy_->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  std::unique_ptr<dbus::Response> response = proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
 
   if (!response.get()) {
     LOG(ERROR) << "Failed to call powerd service";
@@ -52,8 +46,8 @@ bool PowerManagerClientImpl::Shutdown() {
   writer.AppendInt32(power_manager::REQUEST_SHUTDOWN_OTHER);
   writer.AppendString("rmad request shutdown");
 
-  std::unique_ptr<dbus::Response> response =
-      proxy_->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  std::unique_ptr<dbus::Response> response = proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
 
   if (!response.get()) {
     LOG(ERROR) << "Failed to call powerd service";

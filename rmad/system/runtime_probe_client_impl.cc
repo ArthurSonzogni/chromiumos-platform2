@@ -21,8 +21,6 @@
 
 namespace {
 
-constexpr int kDefaultTimeoutMs = 10 * 1000;  // 10 seconds.
-
 const std::unordered_map<rmad::RmadComponent,
                          runtime_probe::ProbeRequest::SupportCategory>
     kRmadToRuntimeProbeComponentMap = {
@@ -99,8 +97,8 @@ bool RuntimeProbeClientImpl::ProbeCategories(
     return false;
   }
 
-  std::unique_ptr<dbus::Response> response =
-      proxy_->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  std::unique_ptr<dbus::Response> response = proxy_->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!response.get()) {
     LOG(ERROR) << "Failed to call runtime_probe D-Bus service";
     return false;
