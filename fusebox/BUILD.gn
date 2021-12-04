@@ -2,13 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [
-    ":fusebox",
-    ":libfusebox",
-  ]
+  deps = [ ":fusebox" ]
   if (use.test) {
     deps += [ ":fusebox_test" ]
   }
@@ -33,6 +31,12 @@ pkg_config("target_defaults") {
   defines = [ "FUSE_USE_VERSION=26" ]
 }
 
+generate_dbus_adaptors("fusebox-adaptors") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/fusebox/dbus_adaptors"
+  sources = [ "dbus_bindings/org.chromium.FuseBoxClient.xml" ]
+}
+
 static_library("libfusebox") {
   sources = [
     "file_system.cc",
@@ -52,7 +56,6 @@ static_library("libfusebox") {
     "util.h",
   ]
   configs += [ ":target_defaults" ]
-  deps = []
 }
 
 executable("fusebox") {
@@ -61,7 +64,10 @@ executable("fusebox") {
     "main.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ ":libfusebox" ]
+  deps = [
+    ":fusebox-adaptors",
+    ":libfusebox",
+  ]
 }
 
 if (use.test) {

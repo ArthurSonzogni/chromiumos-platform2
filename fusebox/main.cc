@@ -11,10 +11,13 @@
 #include <base/logging.h>
 #include <base/no_destructor.h>
 #include <base/strings/stringprintf.h>
+
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/object_proxy.h>
 
+#include "fusebox/dbus_adaptors/org.chromium.FuseBoxClient.h"
 #include "fusebox/file_system.h"
 #include "fusebox/file_system_fake.h"
 #include "fusebox/fuse_frontend.h"
@@ -46,17 +49,26 @@ fusebox::FileSystem* CreateFakeFileSystem() {
 
 namespace fusebox {
 
-class FuseBoxClient : public FileSystem {
+class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
+                      public org::chromium::FuseBoxClientAdaptor,
+                      public FileSystem {
  public:
   FuseBoxClient(scoped_refptr<dbus::Bus> bus, FuseMount* fuse)
-      : fuse_(fuse), bus_(bus) {}
+      : org::chromium::FuseBoxClientAdaptor(this),
+        dbus_object_(nullptr, bus, dbus::ObjectPath(kFuseBoxClientPath)),
+        bus_(bus),
+        fuse_(fuse) {}
   FuseBoxClient(const FuseBoxClient&) = delete;
   FuseBoxClient& operator=(const FuseBoxClient&) = delete;
   virtual ~FuseBoxClient() = default;
 
   void RegisterDBusObjectsAsync(
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
-    // TODO(noel): register FuseBoxClient DBUS objects.
+    RegisterWithDBusObject(&dbus_object_);
+    dbus_object_.RegisterAsync(cb);
+
+    auto path = dbus::ObjectPath(fusebox::kFuseBoxServicePath);
+    dbus_proxy_ = bus_->GetObjectProxy(fusebox::kFuseBoxServiceName, path);
   }
 
   int StartFuseSession(base::OnceClosure quit_callback) {
@@ -79,12 +91,27 @@ class FuseBoxClient : public FileSystem {
     }
   }
 
+  // org::chromium::FuseBoxClient overrides.
+
+  void ReadDirBatchResponse(uint64_t file_handle,
+                            int32_t file_error,
+                            const std::vector<uint8_t>& list,
+                            bool has_more) override {
+    // TODO(noel): implement.
+  }
+
  private:
-  // Fuse mount: not owned.
-  FuseMount* fuse_ = nullptr;
+  // Client D-Bus object.
+  brillo::dbus_utils::DBusObject dbus_object_;
+
+  // Server D-Bus proxy.
+  scoped_refptr<dbus::ObjectProxy> dbus_proxy_;
 
   // D-Bus.
   scoped_refptr<dbus::Bus> bus_;
+
+  // Fuse mount: not owned.
+  FuseMount* fuse_ = nullptr;
 
   // Fuse user-space frontend.
   std::unique_ptr<FuseFrontend> fuse_frontend_;
