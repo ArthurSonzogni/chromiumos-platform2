@@ -39,6 +39,41 @@ size and complexity constraints of MiniOS, only standard ASCII characters are
 processed. Other special characters such as "ê" are ignored even if they are a
 part of the keyboard layout.
 
+## Locally testing on older devices
+MiniOS can be test on devices which don't have the newer partitions for miniOS.
+The way to test is by repartitioning the device.
+
+On locally available DUTs:
+  1. Convert to disk_layout_v3 or newer in disk_layout.json.
+  2. Enabled `minios` USE flag.
+  3. Build image.
+  4. `chromeos-install` the image from USB.
+  5. Reboot the device.
+
+On lab DUTs:
+ 1. From the labstation run:
+```
+# Find the correct SERVO_PORT (e.g. 9996, 9997)
+$> start servod PORT=$P
+$> dut-control -p $P power_state:off
+# Only for devices with battery and type-c connection to servo with PD.
+$> dut-control -p $P servo_pd_role:snk
+# Download a image to flash or use a cache server URL.
+# The flashing of USB might take some time.
+$> dut-control -p $P download_image_to_usb_dev:$PATH_OR_URL
+$> dut-control -p $P image_usbkey_direction:dut_sees_usbkey
+$> dut-control -p $P power_state:rec
+```
+ 2. From the DUT:
+```
+# Verify that the DUT has booted from USB.
+$> rootdev -s # should be /dev/sd*
+$> /usr/sbin/chromeos-install
+$> reboot
+```
+
+The device will now use the newer layout with miniOS support.
+
 [platform2/init/upstart]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/init/upstart/
 [minios/init]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/minios
 [frecon.conf]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/minios/init/frecon.conf
