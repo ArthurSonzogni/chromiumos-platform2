@@ -382,11 +382,11 @@ message UpdateDeviceInfoState {
   // Serial number of device at beginning of RMA finalization.
   string original_serial_number = 201;
   // Region index of device at beginning of RMA finalization.
-  uint32 original_region_index = 202;
+  int32 original_region_index = 202;
   // SKU index of device at beginning of RMA finalization.
-  uint32 original_sku_index = 203;
+  int32 original_sku_index = 203;
   // WL index of device at beginning of RMA finalization.
-  uint32 original_whitelabel_index = 204;
+  int32 original_whitelabel_index = 204;
   // DRAM part number of device at beginning of RMA finalization.
   string original_dram_part_number = 205;
 

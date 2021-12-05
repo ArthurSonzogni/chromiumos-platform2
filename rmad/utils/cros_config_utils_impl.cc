@@ -4,6 +4,7 @@
 
 #include "rmad/utils/cros_config_utils_impl.h"
 
+#include <algorithm>
 #include <fstream>
 #include <set>
 #include <string>
@@ -91,6 +92,8 @@ bool CrosConfigUtilsImpl::GetSkuIdList(std::vector<int>* sku_id_list) const {
       sku_id_list->push_back(sku);
     }
   }
+
+  sort(sku_id_list->begin(), sku_id_list->end());
   return true;
 }
 
@@ -110,6 +113,10 @@ bool CrosConfigUtilsImpl::GetWhitelabelTagList(
       whitelabel_tag_list->push_back(tag);
     }
   }
+
+  sort(whitelabel_tag_list->begin(), whitelabel_tag_list->end());
+  // We add an empty string to the last option, since it is always valid.
+  whitelabel_tag_list->push_back("");
   return true;
 }
 

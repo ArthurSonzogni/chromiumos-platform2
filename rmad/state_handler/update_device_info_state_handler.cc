@@ -89,11 +89,10 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   std::vector<int> sku_id_list;
   std::vector<std::string> whitelabel_tag_list;
 
-  // We reserve 0 for unmatched indexes, it may be valid or invalid
-  // depending on the type of information.
-  uint32_t region_index = 0;
-  uint32_t sku_index = 0;
-  uint32_t whitelabel_index = 0;
+  // We reserve -1 for unmatched indexes.
+  int32_t region_index = -1;
+  int32_t sku_index = -1;
+  int32_t whitelabel_index = -1;
 
   bool mlb_repair;
 
@@ -126,8 +125,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   }
   if (auto it = std::find(region_list.begin(), region_list.end(), region);
       it != region_list.end()) {
-    // We reserve 0 for unmatched.
-    region_index = std::distance(region_list.begin(), it) + 1;
+    region_index = std::distance(region_list.begin(), it);
   }
 
   if (!cros_config_utils_->GetSkuIdList(&sku_id_list)) {
@@ -137,8 +135,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   }
   if (auto it = std::find(sku_id_list.begin(), sku_id_list.end(), sku_id);
       it != sku_id_list.end()) {
-    // We reserve 0 for unmatched.
-    sku_index = std::distance(sku_id_list.begin(), it) + 1;
+    sku_index = std::distance(sku_id_list.begin(), it);
   }
 
   if (!cros_config_utils_->GetWhitelabelTagList(&whitelabel_tag_list)) {
@@ -149,8 +146,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   if (auto it = std::find(whitelabel_tag_list.begin(),
                           whitelabel_tag_list.end(), whitelabel_tag);
       it != whitelabel_tag_list.end()) {
-    // We reserve 0 for unmatched.
-    whitelabel_index = std::distance(whitelabel_tag_list.begin(), it) + 1;
+    whitelabel_index = std::distance(whitelabel_tag_list.begin(), it);
   }
 
   if (!json_store_->GetValue(kMlbRepair, &mlb_repair)) {
@@ -165,22 +161,16 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   update_dev_info->set_original_whitelabel_index(whitelabel_index);
   update_dev_info->set_original_dram_part_number(dram_part_number);
 
-  // We leave the first option blank and reserve it for unmatched.
-  update_dev_info->add_region_list("");
   for (auto region_option : region_list) {
     update_dev_info->add_region_list(region_option);
   }
 
-  // We leave the first option blank and reserve it for unmatched.
-  update_dev_info->add_sku_list(0);
   for (auto sku_option : sku_id_list) {
     // We get a vector<int> from cros_config, but we set a uint64_t to cbi.
     // Therefore, we should cast it to uint64_t here.
     update_dev_info->add_sku_list(static_cast<uint64_t>(sku_option));
   }
 
-  // We leave the first option blank and reserve it for unmatched.
-  update_dev_info->add_whitelabel_list("");
   for (auto whitelabel_option : whitelabel_tag_list) {
     update_dev_info->add_whitelabel_list(whitelabel_option);
   }

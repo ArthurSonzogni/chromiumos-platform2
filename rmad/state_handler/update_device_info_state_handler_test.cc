@@ -45,15 +45,16 @@ const std::vector<std::string> kRegionList = {"TestRegion", "TestRegion1"};
 // We get the value of type int from cros_config, but we set uint64_t in cbi.
 // This is used to mock the result of cros_config, so it is a vector<int>.
 const std::vector<int> kSkuList = {1234567890, 1234567891};
+// The last option is always an empty string, because it is always valid.
 const std::vector<std::string> kWhitelabelTagList = {
-    "TestWhitelabelTag0", "TestWhitelabelTag", "TestWhitelabelTag1"};
-constexpr uint32_t kOriginalRegionSelection = 1;
-constexpr uint32_t kOriginalSkuSelection = 1;
-constexpr uint32_t kOriginalWhitelabelSelection = 2;
+    "TestWhitelabelTag", "TestWhitelabelTag0", "TestWhitelabelTag1", ""};
+constexpr uint32_t kOriginalRegionSelection = 0;
+constexpr uint32_t kOriginalSkuSelection = 0;
+constexpr uint32_t kOriginalWhitelabelSelection = 0;
 
 constexpr char kNewSerialNumber[] = "NewTestSerialNumber";
-constexpr uint32_t kNewRegionSelection = 2;
-constexpr uint32_t kNewSkuSelection = 2;
+constexpr uint32_t kNewRegionSelection = 1;
+constexpr uint32_t kNewSkuSelection = 1;
 constexpr uint32_t kNewWhitelabelSelection = 3;
 constexpr char kNewDramPartNum[] = "NewTestDramPartNum";
 
@@ -182,42 +183,6 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
         std::move(regions_utils), std::move(vpd_utils));
   }
 
-  RmadState GetDefaultRmadState() {
-    RmadState state;
-    auto update_dev_info = std::make_unique<UpdateDeviceInfoState>();
-
-    update_dev_info->set_original_serial_number(kSerialNumber);
-
-    update_dev_info->add_region_list("");
-    for (auto region_option : kRegionList) {
-      update_dev_info->add_region_list(region_option);
-    }
-    update_dev_info->set_original_region_index(kOriginalRegionSelection);
-
-    update_dev_info->add_sku_list(0);
-    for (auto sku_option : kSkuList) {
-      // We get a vector<int> from cros_config, but we set a uint64_t to cbi.
-      // Therefore, we should cast it to uint64_t here.
-      update_dev_info->add_sku_list(static_cast<uint64_t>(sku_option));
-    }
-    update_dev_info->set_original_sku_index(kOriginalSkuSelection);
-
-    update_dev_info->add_whitelabel_list("");
-    for (auto whitelabel_option : kWhitelabelTagList) {
-      update_dev_info->add_whitelabel_list(whitelabel_option);
-    }
-    update_dev_info->set_original_whitelabel_index(
-        kOriginalWhitelabelSelection);
-
-    update_dev_info->set_original_dram_part_number(kDramPartNum);
-
-    update_dev_info->set_mlb_repair(false);
-
-    state.set_allocated_update_device_info(update_dev_info.release());
-
-    return state;
-  }
-
  protected:
   std::string serial_number_set_;
   std::string region_set_;
@@ -325,7 +290,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_Success) {
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -341,9 +306,9 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_Success) {
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
 
   // The first option is always reserved for empty option, so subtract one.
-  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection - 1]);
-  EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection - 1]);
-  EXPECT_EQ(whitelabel_set_, kWhitelabelTagList[kNewWhitelabelSelection - 1]);
+  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
+  EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection]);
+  EXPECT_EQ(whitelabel_set_, kWhitelabelTagList[kNewWhitelabelSelection]);
 
   EXPECT_EQ(dram_part_num_set_, kNewDramPartNum);
 }
@@ -367,7 +332,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_serial_numberFailed) {
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -389,7 +354,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_RegionFailed) {
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -413,7 +378,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuFailed) {
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -429,7 +394,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuFailed) {
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
 
   // The first option is always reserved for empty option, so subtract one.
-  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection - 1]);
+  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_WhitelabelFailed) {
@@ -441,7 +406,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_WhitelabelFailed) {
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -457,8 +422,8 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_WhitelabelFailed) {
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
 
   // The first option is always reserved for empty option, so subtract one.
-  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection - 1]);
-  EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection - 1]);
+  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
+  EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection]);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_DramPartNumFailed) {
@@ -470,7 +435,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_DramPartNumFailed) {
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -486,9 +451,9 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_DramPartNumFailed) {
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
 
   // The first option is always reserved for empty option, so subtract one.
-  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection - 1]);
-  EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection - 1]);
-  EXPECT_EQ(whitelabel_set_, kWhitelabelTagList[kNewWhitelabelSelection - 1]);
+  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
+  EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection]);
+  EXPECT_EQ(whitelabel_set_, kWhitelabelTagList[kNewWhitelabelSelection]);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_RegionEmptyFailed) {
@@ -496,7 +461,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_RegionEmptyFailed) {
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(0);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -517,7 +482,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_RegionWrongIndex) {
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
 
   // The first option is always reserved for empty option, so we should add
@@ -541,7 +506,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuEmptyFailed) {
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(0);
@@ -557,7 +522,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuEmptyFailed) {
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
 
   // The first option is always reserved for empty option, so subtract one.
-  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection - 1]);
+  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuWrongIndex) {
@@ -565,7 +530,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuWrongIndex) {
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
 
@@ -584,7 +549,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuWrongIndex) {
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
 
   // The first option is always reserved for empty option, so subtract one.
-  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection - 1]);
+  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
@@ -593,11 +558,12 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
-  state.mutable_update_device_info()->set_whitelabel_index(0);
+  state.mutable_update_device_info()->set_whitelabel_index(
+      kWhitelabelTagList.size() - 1);
   state.mutable_update_device_info()->set_dram_part_number(kNewDramPartNum);
 
   auto [error, state_case] = handler->GetNextStateCase(state);
@@ -608,8 +574,8 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
 
   // The first option is always empty and reserved, so subtract one.
-  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection - 1]);
-  EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection - 1]);
+  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
+  EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection]);
   EXPECT_EQ(whitelabel_set_, "");
 
   EXPECT_EQ(dram_part_num_set_, kNewDramPartNum);
@@ -621,7 +587,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -629,7 +595,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   // The first option is always reserved for empty option, so we should add
   // one to exceed the size.
   state.mutable_update_device_info()->set_whitelabel_index(
-      kWhitelabelTagList.size() + 1);
+      kWhitelabelTagList.size());
 
   state.mutable_update_device_info()->set_dram_part_number(kNewDramPartNum);
 
@@ -641,8 +607,8 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
 
   // The first option is always reserved for empty option, so subtract one.
-  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection - 1]);
-  EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection - 1]);
+  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
+  EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection]);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
@@ -651,7 +617,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -673,7 +639,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -695,7 +661,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_ReadOnlySkuFailed) {
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -718,7 +684,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -740,7 +706,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_ReadOnlyDramFailed) {
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -762,7 +728,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -784,7 +750,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -806,7 +772,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -828,7 +794,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -850,7 +816,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -872,7 +838,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
+  auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -897,10 +863,10 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuOverflow_Success) {
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto state = GetDefaultRmadState();
-  // We check if the original_sku is set to 0 by trying GetNextStateCase with
-  // |original_sku_index| = 0.
-  state.mutable_update_device_info()->set_original_sku_index(0);
+  auto state = handler->GetState();
+  // We check if the original_sku is set to unmatched by trying
+  // GetNextStateCase with |original_sku_index| = -1.
+  state.mutable_update_device_info()->set_original_sku_index(-1);
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
@@ -916,9 +882,9 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuOverflow_Success) {
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
 
   // The first option is always reserved for empty option, so subtract one.
-  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection - 1]);
-  EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection - 1]);
-  EXPECT_EQ(whitelabel_set_, kWhitelabelTagList[kNewWhitelabelSelection - 1]);
+  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
+  EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection]);
+  EXPECT_EQ(whitelabel_set_, kWhitelabelTagList[kNewWhitelabelSelection]);
 
   EXPECT_EQ(dram_part_num_set_, kNewDramPartNum);
 }
