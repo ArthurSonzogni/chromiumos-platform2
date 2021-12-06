@@ -34,6 +34,7 @@ const char kCpufreqDir[] = "/sys/devices/system/cpu/cpufreq";
 
 const char kCpufreqGovernorInteractive[] = "interactive";
 const char kCpufreqGovernorOndemand[] = "ondemand";
+const char kCpufreqGovernorConservative[] = "conservative";
 
 const char kSELinuxEnforcePath[] = "/sys/fs/selinux/enforce";
 
@@ -176,12 +177,27 @@ bool GovernorSetOptional(const CpufreqConf& conf,
 
   base::FilePath path =
       base::FilePath(kCpufreqDir).Append(governor).Append(setting);
-  if (!PathExists(path))
-    return true;
 
-  if (!base::WriteFile(path, value.value())) {
-    PLOG(ERROR) << "Failed to write " << setting << " to " << path;
-    return false;
+  if (base::PathExists(path)) {
+    if (!base::WriteFile(path, value.value())) {
+      PLOG(ERROR) << "Failed to write " << setting << " to " << path;
+      return false;
+    }
+  } else {
+    base::FileEnumerator enumerator(base::FilePath(kCpufreqDir), false,
+                                    base::FileEnumerator::DIRECTORIES,
+                                    "policy[0-9]*");
+    for (auto file = enumerator.Next(); !file.empty();
+         file = enumerator.Next()) {
+      path = file.Append(governor).Append(setting);
+
+      if (!base::PathExists(path))
+        continue;
+      if (!base::WriteFile(path, value.value())) {
+        PLOG(ERROR) << "Failed to write " << setting << " to " << path;
+        return false;
+      }
+    }
   }
 
   return true;
@@ -220,6 +236,10 @@ bool ConfigureGovernorSettings(const CpufreqConf& conf, std::string governor) {
       "io_is_busy",
       "sampling_down_factor",
       "powersave_bias",
+
+      // "conservative" settings:
+      "freq_step",
+      "down_threshold",
   };
   bool ret = true;
 
@@ -279,7 +299,8 @@ int main(int argc, char* argv[]) {
   }
 
   if ((governor == kCpufreqGovernorInteractive ||
-       governor == kCpufreqGovernorOndemand) &&
+       governor == kCpufreqGovernorOndemand ||
+       governor == kCpufreqGovernorConservative) &&
       !ConfigureGovernorSettings(conf, governor)) {
     LOG(ERROR) << "Failed to configure " << governor << " settings";
     return EXIT_FAILURE;
