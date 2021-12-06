@@ -95,7 +95,7 @@ for version in $@; do
 
     # The bullseye security repo is called "bullseye-security", while buster
     # uses "buster/updates"
-    sed -i 's/debian-security bullseye\/updates/debian-security bullseye-security/g' \
+    sed -i 's/debian-security\/\? bullseye\/updates/debian-security bullseye-security/g' \
       /etc/apt/sources.list
   fi
 
