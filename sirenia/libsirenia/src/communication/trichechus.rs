@@ -71,10 +71,14 @@ impl FromStr for SystemEvent {
 pub trait Trichechus {
     type Error;
 
-    fn start_session(&self, app_info: AppInfo) -> StdResult<Result<(), Error>, Self::Error>;
-    fn load_app(&self, app_id: String, elf: Vec<u8>) -> StdResult<Result<(), Error>, Self::Error>;
-    fn get_apps(&self) -> StdResult<Vec<(String, ExecutableInfo)>, Self::Error>;
-    fn get_logs(&self) -> StdResult<Vec<Vec<u8>>, Self::Error>;
+    fn start_session(&mut self, app_info: AppInfo) -> StdResult<Result<(), Error>, Self::Error>;
+    fn load_app(
+        &mut self,
+        app_id: String,
+        elf: Vec<u8>,
+    ) -> StdResult<Result<(), Error>, Self::Error>;
+    fn get_apps(&mut self) -> StdResult<Vec<(String, ExecutableInfo)>, Self::Error>;
+    fn get_logs(&mut self) -> StdResult<Vec<Vec<u8>>, Self::Error>;
 
-    fn system_event(&self, event: SystemEvent) -> StdResult<Result<(), String>, Self::Error>;
+    fn system_event(&mut self, event: SystemEvent) -> StdResult<Result<(), String>, Self::Error>;
 }

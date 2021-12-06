@@ -41,14 +41,14 @@ pub trait Cronista {
 
     //TODO These need to carry enough information to prove the entry was recorded in the log.
     fn persist(
-        &self,
+        &mut self,
         scope: Scope,
         domain: String,
         identifier: String,
         data: Vec<u8>,
     ) -> std::result::Result<Status, Self::Error>;
     fn retrieve(
-        &self,
+        &mut self,
         scope: Scope,
         domain: String,
         identifier: String,
@@ -111,7 +111,7 @@ impl Cronista for MockCronista {
     type Error = rpc::Error;
 
     fn persist(
-        &self,
+        &mut self,
         scope: Scope,
         domain: String,
         identifier: String,
@@ -132,7 +132,7 @@ impl Cronista for MockCronista {
     }
 
     fn retrieve(
-        &self,
+        &mut self,
         scope: Scope,
         domain: String,
         identifier: String,

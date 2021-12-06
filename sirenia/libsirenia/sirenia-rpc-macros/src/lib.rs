@@ -194,8 +194,7 @@ impl RpcMethodHelper {
         let request_arg_names = &self.request_arg_names;
         quote! {
             #signature {
-                match #libsirenia_prefix::rpc::Invoker::<Self>::invoke(
-                    ::std::ops::DerefMut::deref_mut(&mut self.transport.borrow_mut()),
+                match self.invoke(
                     #request_name::#enum_name{#(#request_arg_names),*},
                 ) {
                     Ok(#response_name::#enum_name(x)) => Ok(x),
@@ -292,7 +291,17 @@ fn sirenia_rpc_impl(item_trait: &ItemTrait) -> Result<TokenStream> {
             }
         }
 
-        impl #trait_name for #client_struct_name {
+        impl #libsirenia_prefix::rpc::Invoker::<#client_struct_name> for #client_struct_name {
+            fn invoke(&mut self, request: #request_name) ->
+                    ::std::result::Result<#response_name, #libsirenia_prefix::communication::Error> {
+                #libsirenia_prefix::rpc::Invoker::<Self>::invoke(
+                    ::std::ops::DerefMut::deref_mut(&mut self.transport.borrow_mut()),
+                    request
+                )
+            }
+        }
+
+        impl<I: #libsirenia_prefix::rpc::Invoker::<#client_struct_name>> #trait_name for I {
             type Error = #libsirenia_prefix::rpc::Error;
 
             #(#client_trait_contents)*

@@ -15,6 +15,10 @@ pub trait TeeApi {
     type Error;
 
     // Storage.
-    fn read_data(&self, id: String) -> StdResult<(persistence::Status, Vec<u8>), Self::Error>;
-    fn write_data(&self, id: String, data: Vec<u8>) -> StdResult<persistence::Status, Self::Error>;
+    fn read_data(&mut self, id: String) -> StdResult<(persistence::Status, Vec<u8>), Self::Error>;
+    fn write_data(
+        &mut self,
+        id: String,
+        data: Vec<u8>,
+    ) -> StdResult<persistence::Status, Self::Error>;
 }

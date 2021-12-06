@@ -95,14 +95,14 @@ pub mod tests {
         type Error = ();
 
         // TODO: Want to return nested Result - but Error needs to be serializable first
-        fn read_data(&self, id: String) -> StdResult<(Status, Vec<u8>), Self::Error> {
+        fn read_data(&mut self, id: String) -> StdResult<(Status, Vec<u8>), Self::Error> {
             match self.map.borrow().get(&id) {
                 Some(val) => Ok((Status::Success, val.to_vec())),
                 None => Err(()),
             }
         }
 
-        fn write_data(&self, id: String, data: Vec<u8>) -> StdResult<Status, Self::Error> {
+        fn write_data(&mut self, id: String, data: Vec<u8>) -> StdResult<Status, Self::Error> {
             self.map.borrow_mut().insert(id, data);
             Ok(Status::Success)
         }

@@ -105,7 +105,7 @@ impl OrgChromiumManaTEEInterface for DugongState {
     }
 
     fn system_event(&mut self, event: String) -> std::result::Result<String, MethodErr> {
-        let api_handle = self.trichechus_client().lock().unwrap();
+        let mut api_handle = self.trichechus_client().lock().unwrap();
         let status = api_handle
             .system_event(event.parse().map_err(|err| MethodErr::failed(&err))?)
             .map_err(|err| MethodErr::failed(&err))?;
@@ -180,7 +180,7 @@ fn request_start_tee_app(state: &DugongState, app_id: &str) -> Result<(OwnedFd, 
 
 fn handle_manatee_logs(dugong_state: &DugongState) -> Result<()> {
     const LOG_PATH: &str = "/dev/log";
-    let trichechus_client = dugong_state.trichechus_client().lock().unwrap();
+    let mut trichechus_client = dugong_state.trichechus_client().lock().unwrap();
     let logs: Vec<Vec<u8>> = trichechus_client
         .get_logs()
         .context("failed to call get_logs rpc")?;
@@ -313,7 +313,7 @@ fn main() -> Result<()> {
         anyhow!("transport connect failed: {}", e)
     })?;
     info!("Starting rpc");
-    let client = TrichechusClient::new(transport);
+    let mut client = TrichechusClient::new(transport);
     if get_logs {
         info!("Getting logs");
         let logs = client.get_logs().context("failed to fetch logs")?;

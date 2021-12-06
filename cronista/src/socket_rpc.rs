@@ -91,7 +91,7 @@ impl Cronista for CronistaServerImpl {
     type Error = ();
 
     fn persist(
-        &self,
+        &mut self,
         scope: Scope,
         domain: String,
         identifier: String,
@@ -110,7 +110,7 @@ impl Cronista for CronistaServerImpl {
     }
 
     fn retrieve(
-        &self,
+        &mut self,
         scope: Scope,
         domain: String,
         identifier: String,

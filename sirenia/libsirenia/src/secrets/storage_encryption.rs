@@ -133,14 +133,14 @@ fn digest_to_filename(digest: &[u8]) -> String {
 pub struct StorageEncryption<'a> {
     app_info: &'a AppManifestEntry,
     secret_manager: &'a SecretManager,
-    storage_client: &'a dyn Cronista<Error = rpc::Error>,
+    storage_client: &'a mut dyn Cronista<Error = rpc::Error>,
 }
 
 impl<'a> StorageEncryption<'a> {
     pub fn new(
         app_info: &'a AppManifestEntry,
         secret_manager: &'a SecretManager,
-        storage_client: &'a dyn Cronista<Error = rpc::Error>,
+        storage_client: &'a mut dyn Cronista<Error = rpc::Error>,
     ) -> Self {
         StorageEncryption {
             app_info,
@@ -182,7 +182,7 @@ impl<'a> StorageEncryption<'a> {
     }
 
     fn persist_impl(
-        &self,
+        &mut self,
         scope: Scope,
         domain: String,
         identifier: String,
@@ -258,7 +258,7 @@ impl<'a> StorageEncryption<'a> {
     }
 
     fn retrieve_impl(
-        &self,
+        &mut self,
         scope: Scope,
         domain: String,
         identifier: String,
@@ -336,7 +336,7 @@ impl<'a> Cronista for StorageEncryption<'a> {
     type Error = rpc::Error;
 
     fn persist(
-        &self,
+        &mut self,
         scope: Scope,
         domain: String,
         identifier: String,
@@ -356,7 +356,7 @@ impl<'a> Cronista for StorageEncryption<'a> {
     }
 
     fn retrieve(
-        &self,
+        &mut self,
         scope: Scope,
         domain: String,
         identifier: String,
@@ -465,8 +465,8 @@ mod tests {
     fn check_success() {
         let (manager, manifest) = get_test_secret_manager();
         let app_info = manifest.get_app_manifest_entry(TEST_APP_ID).unwrap();
-        let cronista = MockCronista::new();
-        let storage = StorageEncryption::new(app_info, &manager, &cronista);
+        let mut cronista = MockCronista::new();
+        let mut storage = StorageEncryption::new(app_info, &manager, &mut cronista);
 
         let ret = storage
             .persist(
@@ -494,8 +494,8 @@ mod tests {
     fn check_idnotfound() {
         let (manager, manifest) = get_test_secret_manager();
         let app_info = manifest.get_app_manifest_entry(TEST_APP_ID).unwrap();
-        let cronista = MockCronista::new();
-        let storage = StorageEncryption::new(app_info, &manager, &cronista);
+        let mut cronista = MockCronista::new();
+        let mut storage = StorageEncryption::new(app_info, &manager, &mut cronista);
 
         let ret = storage
             .retrieve(
@@ -512,7 +512,7 @@ mod tests {
     fn authentication_failure() {
         let (manager, manifest) = get_test_secret_manager();
         let app_info = manifest.get_app_manifest_entry(TEST_APP_ID).unwrap();
-        let cronista = MockCronista::new();
+        let mut cronista = MockCronista::new();
         let key_version = manager.get_storage_secret_version(app_info).unwrap();
 
         let domain_hash = hash_identifier(TEST_DOMAIN).unwrap();
@@ -549,7 +549,7 @@ mod tests {
 
         let mut cipher_text = vec![0; TEST_DATA.len()];
         let mut mac = vec![0u8; MAC_SIZE];
-        let storage = StorageEncryption::new(app_info, &manager, &cronista);
+        let storage = StorageEncryption::new(app_info, &manager, &mut cronista);
         storage
             .do_crypto(
                 ModeArgs::Encrypt { tag: &mut mac },

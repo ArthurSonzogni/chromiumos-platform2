@@ -83,7 +83,7 @@ impl TeeAppHandler {
         T: Sized,
         F: FnOnce(
                 &StorageParameters,
-                &dyn Cronista<Error = rpc::Error>,
+                &mut dyn Cronista<Error = rpc::Error>,
             ) -> StdResult<T, rpc::Error>
             + Copy,
     >(
@@ -105,8 +105,8 @@ impl TeeAppHandler {
         // If the operation fails with an rpc::Error, try again.
         for x in 0..=1 {
             // If already connected try once, to see if the connection dropped.
-            if let Some(persistence) = (*state.persistence.borrow().deref()).as_ref() {
-                let encryption: StorageEncryption;
+            if let Some(persistence) = (*state.persistence.borrow_mut().deref_mut()).as_mut() {
+                let mut encryption: StorageEncryption;
                 let ret = cb(
                     params,
                     match params.encryption_key_version {
@@ -114,9 +114,9 @@ impl TeeAppHandler {
                             // TODO Move this to TrichechusState.
                             encryption =
                                 StorageEncryption::new(app_info, secret_manager, persistence);
-                            &encryption as &dyn Cronista<Error = rpc::Error>
+                            &mut encryption as &mut dyn Cronista<Error = rpc::Error>
                         }
-                        None => persistence as &dyn Cronista<Error = rpc::Error>,
+                        None => persistence as &mut dyn Cronista<Error = rpc::Error>,
                     },
                 );
                 match ret {
@@ -143,13 +143,13 @@ impl TeeAppHandler {
 impl TeeApi for TeeAppHandler {
     type Error = ();
 
-    fn read_data(&self, id: String) -> StdResult<(Status, Vec<u8>), Self::Error> {
+    fn read_data(&mut self, id: String) -> StdResult<(Status, Vec<u8>), Self::Error> {
         self.conditionally_use_storage_encryption(|params, cronista| {
             cronista.retrieve(params.scope.clone(), params.domain.to_string(), id.clone())
         })
     }
 
-    fn write_data(&self, id: String, data: Vec<u8>) -> StdResult<Status, Self::Error> {
+    fn write_data(&mut self, id: String, data: Vec<u8>) -> StdResult<Status, Self::Error> {
         self.conditionally_use_storage_encryption(|params, cronista| {
             cronista.persist(
                 params.scope.clone(),
@@ -251,7 +251,10 @@ impl TrichechusServerImpl {
 impl Trichechus for TrichechusServerImpl {
     type Error = ();
 
-    fn start_session(&self, app_info: AppInfo) -> StdResult<StdResult<(), trichechus::Error>, ()> {
+    fn start_session(
+        &mut self,
+        app_info: AppInfo,
+    ) -> StdResult<StdResult<(), trichechus::Error>, ()> {
         info!("Received start session message: {:?}", &app_info);
         // The TEE app isn't started until its socket connection is accepted.
         Ok(log_error(start_session(
@@ -262,7 +265,7 @@ impl Trichechus for TrichechusServerImpl {
     }
 
     fn load_app(
-        &self,
+        &mut self,
         app_id: String,
         elf: Vec<u8>,
     ) -> StdResult<StdResult<(), trichechus::Error>, ()> {
@@ -275,7 +278,7 @@ impl Trichechus for TrichechusServerImpl {
         )))
     }
 
-    fn get_apps(&self) -> StdResult<Vec<(String, ExecutableInfo)>, ()> {
+    fn get_apps(&mut self) -> StdResult<Vec<(String, ExecutableInfo)>, ()> {
         info!("Received get apps message");
         Ok(self
             .state
@@ -286,13 +289,16 @@ impl Trichechus for TrichechusServerImpl {
             .collect())
     }
 
-    fn get_logs(&self) -> StdResult<Vec<Vec<u8>>, ()> {
+    fn get_logs(&mut self) -> StdResult<Vec<Vec<u8>>, ()> {
         let mut replacement: VecDeque<Vec<u8>> = VecDeque::new();
         swap(&mut self.state.borrow_mut().log_queue, &mut replacement);
         Ok(replacement.into())
     }
 
-    fn system_event(&self, event: SystemEvent) -> StdResult<StdResult<(), String>, Self::Error> {
+    fn system_event(
+        &mut self,
+        event: SystemEvent,
+    ) -> StdResult<StdResult<(), String>, Self::Error> {
         Ok(log_error(system_event(event)))
     }
 }

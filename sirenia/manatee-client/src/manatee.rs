@@ -14,6 +14,7 @@ use std::os::unix::io::FromRawFd;
 use std::path::{Path, PathBuf};
 use std::process::{exit, ChildStderr, Command, Stdio};
 use std::str::FromStr;
+use std::sync::Mutex;
 use std::thread::{sleep, spawn, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -62,7 +63,7 @@ fn to_dbus_error(err: Error) -> dbus::Error {
 
 /// Implementation of the D-Bus interface over a direct Vsock connection.
 struct Passthrough {
-    client: TrichechusClient,
+    client: Mutex<TrichechusClient>,
     uri: TransportType,
 }
 
@@ -99,7 +100,7 @@ impl Passthrough {
             anyhow!("transport connect failed: {}", e)
         })?;
         Ok(Passthrough {
-            client: TrichechusClient::new(transport),
+            client: Mutex::new(TrichechusClient::new(transport)),
             uri,
         })
     }
@@ -118,6 +119,8 @@ impl Passthrough {
 
         info!("Starting rpc.");
         self.client
+            .lock()
+            .unwrap()
             .start_session(app_info)
             .context("failed to call start_session rpc")?
             .context("start_session rpc failed")?;
@@ -147,7 +150,7 @@ impl OrgChromiumManaTEEInterface for Passthrough {
     }
 
     fn system_event(&self, event: &str) -> std::result::Result<String, dbus::Error> {
-        match self.client.system_event(
+        match self.client.lock().unwrap().system_event(
             event
                 .parse()
                 .map_err(|err: String| dbus::Error::new_custom("", &err))?,
@@ -277,6 +280,8 @@ fn direct_start_manatee_app(
         info!("Transmitting TEE app.");
         passthrough
             .client
+            .lock()
+            .unwrap()
             .load_app(app_id.to_string(), elf)
             .context("failed to call load_app rpc")?
             .context("load_app rpc failed")?;

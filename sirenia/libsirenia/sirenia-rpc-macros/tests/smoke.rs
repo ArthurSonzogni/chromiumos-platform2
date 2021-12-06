@@ -17,9 +17,9 @@ use sirenia_rpc_macros::sirenia_rpc;
 pub trait TestRpc {
     type Error;
 
-    fn checked_neg(&self, input: i32) -> Result<Option<i32>, Self::Error>;
-    fn checked_add(&self, addend_a: i32, addend_b: i32) -> Result<Option<i32>, Self::Error>;
-    fn terminate(&self) -> Result<(), Self::Error>;
+    fn checked_neg(&mut self, input: i32) -> Result<Option<i32>, Self::Error>;
+    fn checked_add(&mut self, addend_a: i32, addend_b: i32) -> Result<Option<i32>, Self::Error>;
+    fn terminate(&mut self) -> Result<(), Self::Error>;
 }
 
 #[derive(Clone)]
@@ -28,15 +28,15 @@ struct TestRpcServerImpl {}
 impl TestRpc for TestRpcServerImpl {
     type Error = ();
 
-    fn checked_neg(&self, input: i32) -> Result<Option<i32>, Self::Error> {
+    fn checked_neg(&mut self, input: i32) -> Result<Option<i32>, Self::Error> {
         Ok(input.checked_neg())
     }
 
-    fn checked_add(&self, addend_a: i32, addend_b: i32) -> Result<Option<i32>, Self::Error> {
+    fn checked_add(&mut self, addend_a: i32, addend_b: i32) -> Result<Option<i32>, Self::Error> {
         Ok(addend_a.checked_add(addend_b))
     }
 
-    fn terminate(&self) -> Result<(), Self::Error> {
+    fn terminate(&mut self) -> Result<(), Self::Error> {
         Err(())
     }
 }
@@ -50,7 +50,7 @@ fn smoke_test() {
 
     // Queue the client RPC:
     let client_thread = spawn(move || {
-        let rpc_client = TestRpcClient::new(client_transport);
+        let mut rpc_client = TestRpcClient::new(client_transport);
 
         let neg_resp = rpc_client.checked_neg(125).unwrap();
         assert_matches!(neg_resp, Some(-125));
