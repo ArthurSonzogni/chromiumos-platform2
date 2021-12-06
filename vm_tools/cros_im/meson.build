@@ -43,20 +43,38 @@ endforeach
 backend_sources = [
   'backend/im_context_backend.cc',
   'backend/im_context_backend.h',
+  'backend/text_input.h',
   'backend/text_input_enums.h',
+  'backend/wayland_client.h',
   'backend/wayland_manager.cc',
   'backend/wayland_manager.h',
 ]
 
+gtk_sources = backend_sources + [
+  'frontend/gtk/cros_gtk_im_context.cc',
+  'frontend/gtk/cros_gtk_im_context.h',
+  'frontend/gtk/im_cros.cc',
+]
+
 libim_cros_gtk = shared_library('im_cros_gtk',
-  sources: [
-    'frontend/gtk/cros_gtk_im_context.cc',
-    'frontend/gtk/cros_gtk_im_context.h',
-    'frontend/gtk/im_cros.cc',
-  ] + backend_sources + wl_outs,
+  sources: gtk_sources + wl_outs,
   dependencies: [
     meson.get_compiler('cpp').find_library('m'),
     dependency('gtk+-3.0'),
     dependency('wayland-client'),
   ],
+)
+
+libim_test_cros_gtk = shared_library('im_test_cros_gtk',
+  sources: [
+    'backend/test/mock_text_input.cc',
+    'backend/test/mock_text_input.h',
+    'backend/test/mock_wayland_client.cc',
+    'backend/test/mock_wayland_client.h',
+  ] + gtk_sources,
+  dependencies: [
+    meson.get_compiler('cpp').find_library('m'),
+    dependency('gtk+-3.0'),
+  ],
+  cpp_args: '-DTEST_BACKEND',
 )

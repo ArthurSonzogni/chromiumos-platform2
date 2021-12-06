@@ -15,9 +15,16 @@ namespace gtk {
 
 namespace {
 
+#ifdef TEST_BACKEND
+const GtkIMContextInfo kContextInfo = {
+    "test-cros", "Test ChromeOS IME bridge", "test-cros", "/usr/share/locale",
+    "*",
+};
+#else
 const GtkIMContextInfo kContextInfo = {
     "cros", "ChromeOS IME bridge", "cros", "/usr/share/locale", "*",
 };
+#endif
 
 const GtkIMContextInfo* kContextInfoList[] = {&kContextInfo};
 
@@ -50,7 +57,7 @@ void im_module_init(GTypeModule* module) {
 void im_module_exit() {}
 
 GtkIMContext* im_module_create(const char* context_id) {
-  g_assert_cmpstr(context_id, ==, "cros");
+  g_assert_cmpstr(context_id, ==, kContextInfo.context_id);
   return CrosGtkIMContext::Create();
 }
 

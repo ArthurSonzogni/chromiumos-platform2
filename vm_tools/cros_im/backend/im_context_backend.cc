@@ -7,10 +7,10 @@
 #include <cassert>
 #include <cstring>
 #include <utility>
-#include <wayland-client.h>
 
+#include "backend/text_input.h"
+#include "backend/wayland_client.h"
 #include "backend/wayland_manager.h"
-#include "text-input-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 
 namespace cros_im {
 

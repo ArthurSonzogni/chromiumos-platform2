@@ -4,11 +4,11 @@
 
 #include "backend/wayland_manager.h"
 
-#include <wayland-client.h>
 #include <cstdio>
 #include <cstring>
 
-#include "text-input-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
+#include "backend/text_input.h"
+#include "backend/wayland_client.h"
 
 namespace cros_im {
 
