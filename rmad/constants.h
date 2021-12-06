@@ -59,6 +59,7 @@ inline constexpr char kHwwpDisabledFilePath[] =
     "hardware_write_protect_disabled";
 inline constexpr char kFactoryModeEnabledFilePath[] = "factory_mode_enabled";
 inline constexpr char kBlockCcdFilePath[] = "block_ccd";
+inline constexpr char kPowerSourcePresentFilePath[] = "power_source_present";
 inline constexpr char kCbiFilePath[] = "cbi";
 inline constexpr char kCrosSystemFilePath[] = "crossystem";
 inline constexpr char kVpdFilePath[] = "vpd";

@@ -71,6 +71,7 @@ static_library("libutils") {
     "utils/fake_crossystem_utils.cc",
     "utils/fake_iio_sensor_probe_utils.cc",
     "utils/fake_regions_utils.cc",
+    "utils/fake_sys_utils.cc",
     "utils/fake_vpd_utils.cc",
     "utils/flashrom_utils_impl.cc",
     "utils/gyroscope_calibration_utils_impl.cc",
@@ -78,6 +79,7 @@ static_library("libutils") {
     "utils/iio_sensor_probe_utils_impl.cc",
     "utils/json_store.cc",
     "utils/regions_utils_impl.cc",
+    "utils/sys_utils_impl.cc",
     "utils/vpd_utils_impl.cc",
     "utils/vpd_utils_impl_thread_safe.cc",
   ]
@@ -194,6 +196,7 @@ if (use.test) {
       "utils/iio_sensor_probe_utils_test.cc",
       "utils/json_store_test.cc",
       "utils/regions_utils_test.cc",
+      "utils/sys_utils_test.cc",
       "utils/vpd_utils_test.cc",
     ]
     configs += [
