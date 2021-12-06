@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/strings/string_util.h>
+#include <base/logging.h>
 
 #include "vm_tools/concierge/vm_util.h"
 
@@ -145,7 +146,12 @@ VmBuilder& VmBuilder::EnableVulkan(bool enable) {
 }
 
 VmBuilder& VmBuilder::EnableBigGl(bool enable) {
+#if USE_BIG_GL
   enable_big_gl_ = enable;
+#else
+  LOG_IF(WARNING, enable) << "Big GL is not supported on this board";
+  enable_big_gl_ = false;
+#endif
   return *this;
 }
 

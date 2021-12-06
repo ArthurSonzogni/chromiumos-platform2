@@ -87,6 +87,7 @@ _IUSE = [
     'jetstream_routing',
     'kvm_guest',
     'kvm_host',
+    'libglvnd',
     'lvm_stateful_partition',
     'metrics_uploader',
     'ml_benchmark_drivers',

@@ -53,6 +53,7 @@ config("host_target_defaults") {
     "USE_PMEM_DEVICE_FOR_ROOTFS=${use.amd64}",
     "USE_CROSVM_VIRTIO_VIDEO=${use.crosvm_virtio_video}",
     "USE_CROSVM_VULKAN=${use.vulkan}",
+    "USE_BIG_GL=${use.libglvnd}",
   ]
 }
 
