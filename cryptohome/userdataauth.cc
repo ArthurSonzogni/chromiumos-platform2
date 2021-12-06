@@ -3739,4 +3739,16 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::CreatePersistentUserImpl(
   return user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
 }
 
+bool UserDataAuth::AddAuthFactor(
+    user_data_auth::AddAuthFactorRequest request,
+    base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
+        on_done) {
+  AssertOnMountThread();
+  // TODO(b/3319388): Implement AddAuthFactor.
+  user_data_auth::AddAuthFactorReply reply;
+  reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+  std::move(on_done).Run(reply);
+  return true;
+}
+
 }  // namespace cryptohome

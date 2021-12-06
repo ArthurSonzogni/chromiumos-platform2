@@ -435,6 +435,20 @@ do.
       </arg>
     </method>
 
+    <!-- Adds an auth factor for a user. -->
+    <method name="AddAuthFactor">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::AddAuthFactorRequest"/>
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::AddAuthFactorReply"/>
+      </arg>
+    </method>
+
     <!-- LowDiskSpace: Emitted when the system is running low on disk space
                        for home directories. -->
     <signal name="LowDiskSpace">

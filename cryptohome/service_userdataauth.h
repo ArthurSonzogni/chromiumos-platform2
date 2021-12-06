@@ -293,6 +293,15 @@ class UserDataAuthAdaptor
           user_data_auth::PrepareVaultForMigrationReply>> response,
       const user_data_auth::PrepareVaultForMigrationRequest& in_request);
 
+  void AddAuthFactor(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::AddAuthFactorReply>> response,
+      const user_data_auth::AddAuthFactorRequest& in_request) override;
+
+  void DoAddAuthFactor(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                           user_data_auth::AddAuthFactorReply>> response,
+                       const user_data_auth::AddAuthFactorRequest& in_request);
+
   // This is called by UserDataAuth when it detects that it's running low on
   // disk space. All we do here is send the signal.
   void LowDiskSpaceCallback(uint64_t free_disk_space);

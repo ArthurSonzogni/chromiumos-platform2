@@ -14,6 +14,7 @@ option optimize_for = LITE_RUNTIME;
 
 package user_data_auth;
 
+import "auth_factor.proto";
 import "fido.proto";
 import "key.proto";
 
@@ -1085,4 +1086,26 @@ message FidoGetAssertionReply {
   CryptohomeErrorCode error = 1;
   // Contains GetAssertionAuthenticatorResponse.
   cryptohome.fido.GetAssertionAuthenticatorResponse get_assertion_response = 2;
+}
+
+// AddAuthFactorRequest is built when a user is trying to add an AuthFactor
+// for a user. When the call is made, AuthSession should be authenticated. After
+// the operation the AuthSession would still be in the authenticated state.
+message AddAuthFactorRequest {
+  // AuthFactor cannot be added without an active AuthSession running. This id
+  // would be used to associate the AuthFactor to an AuthSession.
+  bytes auth_session_id = 1;
+  // The AuthFactor that will be added for a given user. This should be
+  // populated with any factor specific data and metadata.
+  // If AuthFactor in the request be constructed with an existing label, the
+  // call would return an error.
+  AuthFactor auth_factor = 2;
+  // In some cases, such as password, the secret would be user supplied. In
+  // those cases the secret can be passed here.
+  AuthInput auth_input = 3;
+}
+
+message AddAuthFactorReply {
+  // Return the status of the request.
+  CryptohomeErrorCode error = 1;
 }

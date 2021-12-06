@@ -197,6 +197,7 @@ static const char* kActions[] = {"mount_ex",
                                  "prepare_ephemeral_vault",
                                  "prepare_persistent_vault",
                                  "prepare_vault_for_migration",
+                                 "add_auth_factor",
                                  NULL};
 enum ActionEnum {
   ACTION_MOUNT_EX,
@@ -289,6 +290,7 @@ enum ActionEnum {
   ACTION_PREPARE_EPHEMERAL_VAULT,
   ACTION_PREPARE_PERSISTENT_VAULT,
   ACTION_PREPARE_VAULT_FOR_MIGRATION,
+  ACTION_ADD_AUTH_FACTOR
 };
 static const char kUserSwitch[] = "user";
 static const char kPasswordSwitch[] = "password";
@@ -3150,6 +3152,34 @@ int main(int argc, char** argv) {
     }
 
     printf("Prepared vault for migration.\n");
+  } else if (!strcmp(switches::kActions[switches::ACTION_ADD_AUTH_FACTOR],
+                     action.c_str())) {
+    user_data_auth::AddAuthFactorRequest req;
+    user_data_auth::AddAuthFactorReply reply;
+
+    std::string auth_session_id_hex, auth_session_id;
+
+    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+      return 1;
+    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
+    req.set_auth_session_id(auth_session_id);
+    // TODO(b/3319388): Implement building AuthFactor for request.
+    brillo::ErrorPtr error;
+    VLOG(1) << "Attempting to add AuthFactor";
+    if (!userdataauth_proxy.AddAuthFactor(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("AddAuthFactor call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("Failed to AddAuthFactor.\n");
+      return static_cast<int>(reply.error());
+    }
+
+    printf("AuthFactor added.\n");
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)
