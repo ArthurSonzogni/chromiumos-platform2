@@ -465,6 +465,10 @@ void DBusService::RegisterSignalSenders() {
       std::make_unique<base::RepeatingCallback<bool(const FinalizeStatus&)>>(
           base::BindRepeating(&DBusService::SendFinalizeProgressSignal,
                               base::Unretained(this))));
+  rmad_interface_->RegisterSignalSender(
+      RmadState::StateCase::kRepairComplete,
+      std::make_unique<base::RepeatingCallback<bool(bool)>>(base::BindRepeating(
+          &DBusService::SendPowerCableStateSignal, base::Unretained(this))));
 }
 
 bool DBusService::HandleIsRmaRequiredMethod() {

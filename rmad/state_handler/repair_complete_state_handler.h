@@ -8,6 +8,7 @@
 #include "rmad/state_handler/base_state_handler.h"
 
 #include <memory>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/timer/timer.h>
@@ -22,6 +23,9 @@ class RepairCompleteStateHandler : public BaseStateHandler {
   // Wait for 5 seconds before reboot/shutdown/cutoff.
   static constexpr base::TimeDelta kShutdownDelay =
       base::TimeDelta::FromSeconds(5);
+  // Report power cable state every second.
+  static constexpr base::TimeDelta kReportPowerCableInterval =
+      base::TimeDelta::FromSeconds(1);
 
   explicit RepairCompleteStateHandler(scoped_refptr<JsonStore> json_store);
   // Used to inject |working_dir_path_| and mocked |power_manager_client_|,
@@ -35,7 +39,13 @@ class RepairCompleteStateHandler : public BaseStateHandler {
   ASSIGN_STATE(RmadState::StateCase::kRepairComplete);
   SET_UNREPEATABLE;
 
+  void RegisterSignalSender(
+      std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) override {
+    power_cable_signal_sender_ = std::move(callback);
+  }
+
   RmadErrorCode InitializeState() override;
+  void CleanUpState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
 
  protected:
@@ -45,11 +55,15 @@ class RepairCompleteStateHandler : public BaseStateHandler {
   void Reboot();
   void Shutdown();
   void Cutoff();
+  void SendPowerCableStateSignal();
 
   base::FilePath working_dir_path_;
   std::unique_ptr<PowerManagerClient> power_manager_client_;
   std::unique_ptr<MetricsUtils> metrics_utils_;
-  base::OneShotTimer timer_;
+  std::unique_ptr<base::RepeatingCallback<bool(bool)>>
+      power_cable_signal_sender_;
+  base::OneShotTimer action_timer_;
+  base::RepeatingTimer power_cable_timer_;
 };
 
 namespace fake {

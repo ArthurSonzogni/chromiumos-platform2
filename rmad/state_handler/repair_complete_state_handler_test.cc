@@ -29,6 +29,12 @@ namespace rmad {
 
 class RepairCompleteStateHandlerTest : public StateHandlerTest {
  public:
+  // Helper class to mock the callback function to send signal.
+  class SignalSender {
+   public:
+    MOCK_METHOD(bool, SendPowerCableStateSignal, (bool), (const));
+  };
+
   scoped_refptr<RepairCompleteStateHandler> CreateStateHandler(
       bool* reboot_called,
       bool* shutdown_called,
@@ -54,9 +60,17 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
     ON_CALL(*mock_metrics_utils, Record(_, _))
         .WillByDefault(DoAll(Assign(metrics_called, true),
                              Return(record_metrics_success)));
-    return base::MakeRefCounted<RepairCompleteStateHandler>(
+    auto handler = base::MakeRefCounted<RepairCompleteStateHandler>(
         json_store_, GetTempDirPath(), std::move(mock_power_manager_client),
         std::move(mock_metrics_utils));
+    auto callback = std::make_unique<base::RepeatingCallback<bool(bool)>>(
+        base::BindRepeating(&SignalSender::SendPowerCableStateSignal,
+                            base::Unretained(&signal_sender_)));
+    handler->RegisterSignalSender(std::move(callback));
+
+    ON_CALL(signal_sender_, SendPowerCableStateSignal(_))
+        .WillByDefault(Return(true));
+    return handler;
   }
 
   base::FilePath GetPowerwashRequestFilePath() const {
@@ -76,6 +90,8 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
   }
 
  protected:
+  NiceMock<SignalSender> signal_sender_;
+
   // Variables for TaskRunner.
   base::test::SingleThreadTaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
@@ -532,6 +548,9 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_JsonFailed) {
   EXPECT_TRUE(metrics_called);
   EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
   EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+
+  // Stop the polling timer.
+  handler->CleanUpState();
 
   // Check that the power cycle won't be called if the state file cannot be
   // cleared.

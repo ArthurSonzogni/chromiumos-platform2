@@ -199,7 +199,7 @@ class DBusServiceTest : public testing::Test {
     return dbus_service_->SendHardwareWriteProtectionStateSignal(enabled);
   }
 
-  bool SignalPowerCable(bool plugged_in) {
+  bool SignalPowerCableState(bool plugged_in) {
     return dbus_service_->SendPowerCableStateSignal(plugged_in);
   }
 
@@ -500,7 +500,7 @@ TEST_F(DBusServiceTest, SignalHardwareWriteProtection) {
   EXPECT_TRUE(SignalHardwareWriteProtection(true));
 }
 
-TEST_F(DBusServiceTest, SignalPowerCable) {
+TEST_F(DBusServiceTest, SignalPowerCableState) {
   SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))
       .WillRepeatedly(Invoke([](dbus::Signal* signal) {
@@ -511,7 +511,7 @@ TEST_F(DBusServiceTest, SignalPowerCable) {
         EXPECT_TRUE(reader.PopBool(&plugged_in));
         EXPECT_TRUE(plugged_in);
       }));
-  EXPECT_TRUE(SignalPowerCable(true));
+  EXPECT_TRUE(SignalPowerCableState(true));
 }
 
 }  // namespace rmad

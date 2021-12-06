@@ -56,7 +56,14 @@ RmadErrorCode RepairCompleteStateHandler::InitializeState() {
   if (!state_.has_repair_complete() && !RetrieveState()) {
     state_.set_allocated_repair_complete(new RepairCompleteState);
   }
+  power_cable_timer_.Start(
+      FROM_HERE, kReportPowerCableInterval, this,
+      &RepairCompleteStateHandler::SendPowerCableStateSignal);
   return RMAD_ERROR_OK;
+}
+
+void RepairCompleteStateHandler::CleanUpState() {
+  power_cable_timer_.Stop();
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -102,20 +109,20 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
     switch (state.repair_complete().shutdown()) {
       case RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT:
         // Wait for a while before reboot.
-        timer_.Start(FROM_HERE, kShutdownDelay, this,
-                     &RepairCompleteStateHandler::Reboot);
+        action_timer_.Start(FROM_HERE, kShutdownDelay, this,
+                            &RepairCompleteStateHandler::Reboot);
         return {.error = RMAD_ERROR_EXPECT_REBOOT,
                 .state_case = GetStateCase()};
       case RepairCompleteState::RMAD_REPAIR_COMPLETE_SHUTDOWN:
         // Wait for a while before shutdown.
-        timer_.Start(FROM_HERE, kShutdownDelay, this,
-                     &RepairCompleteStateHandler::Shutdown);
+        action_timer_.Start(FROM_HERE, kShutdownDelay, this,
+                            &RepairCompleteStateHandler::Shutdown);
         return {.error = RMAD_ERROR_EXPECT_SHUTDOWN,
                 .state_case = GetStateCase()};
       case RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF:
         // Wait for a while before cutoff.
-        timer_.Start(FROM_HERE, kShutdownDelay, this,
-                     &RepairCompleteStateHandler::Cutoff);
+        action_timer_.Start(FROM_HERE, kShutdownDelay, this,
+                            &RepairCompleteStateHandler::Cutoff);
         return {.error = RMAD_ERROR_EXPECT_SHUTDOWN,
                 .state_case = GetStateCase()};
       default:
@@ -134,8 +141,8 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
       LOG(ERROR) << "Failed to request powerwash";
       return NextStateCaseWrapper(RMAD_ERROR_POWERWASH_FAILED);
     }
-    timer_.Start(FROM_HERE, kShutdownDelay, this,
-                 &RepairCompleteStateHandler::Reboot);
+    action_timer_.Start(FROM_HERE, kShutdownDelay, this,
+                        &RepairCompleteStateHandler::Reboot);
     return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_REBOOT,
                                 AdditionalActivity::REBOOT);
   }
@@ -168,6 +175,12 @@ void RepairCompleteStateHandler::Cutoff() {
   if (!power_manager_client_->Restart()) {
     LOG(ERROR) << "Failed to reboot";
   }
+}
+
+void RepairCompleteStateHandler::SendPowerCableStateSignal() {
+  // TODO(chenghan): This is currently fake.
+  CHECK(power_cable_signal_sender_);
+  power_cable_signal_sender_->Run(true);
 }
 
 }  // namespace rmad
