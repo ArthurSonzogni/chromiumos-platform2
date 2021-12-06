@@ -91,9 +91,6 @@ proto_library("policy-protos") {
 }
 
 group("policy-goprotos") {
-  # TODO(https://crbug.com/1164401) The protos compiled below are missing
-  # |option go_package| statements. We currently fix this by adding
-  # |import_mapping| to the build rules. The goproto libraries will need to be # updated once the packages are added.
   deps = [
     ":enterprise_management_goprotos",
     ":private_membership_goprotos",
@@ -105,16 +102,11 @@ group("policy-goprotos") {
 goproto_library("enterprise_management_goprotos") {
   proto_in_dir = "${sysroot}/usr/share/protofiles"
 
-  # Package name needs to match with the one declared in .proto files.
-  proto_out_dir = "go/src/chromiumos/policy/enterprise_management"
+  proto_out_dir = "go/src/chromiumos/policy/"
   import_mapping = [
-    "chrome_device_policy.proto=chromiumos/policy/enterprise_management",
-    "chrome_extension_policy.proto=chromiumos/policy/enterprise_management",
-    "device_management_backend.proto=chromiumos/policy/enterprise_management",
-    "policy_common_definitions.proto=chromiumos/policy/enterprise_management",
-    "private_membership.proto=chromiumos/policy/private_membership",
-    "private_membership_rlwe.proto=chromiumos/policy/private_membership.rlwe",
-    "serialization.proto=chromiumos/policy/rlwe",
+    "private_membership.proto=chromiumos/policy/github.com/google/private-membership",
+    "private_membership_rlwe.proto=chromiumos/policy/github.com/google/private-membership",
+    "serialization.proto=chromiumos/policy/github.com/google/shell-encryption",
   ]
 
   sources = [
@@ -128,12 +120,10 @@ goproto_library("enterprise_management_goprotos") {
 goproto_library("private_membership_rlwe_goprotos") {
   proto_in_dir = "${sysroot}/usr/share/protofiles"
 
-  # Package name needs to match with the one declared in .proto files.
-  proto_out_dir = "go/src/chromiumos/policy/private_membership.rlwe"
+  proto_out_dir = "go/src/chromiumos/policy/"
 
   import_mapping = [
-    "private_membership.proto=chromiumos/policy/private_membership",
-    "serialization.proto=chromiumos/policy/rlwe",
+    "serialization.proto=chromiumos/policy/github.com/google/shell-encryption",
   ]
 
   sources = [ "${proto_in_dir}/private_membership_rlwe.proto" ]
@@ -141,17 +131,13 @@ goproto_library("private_membership_rlwe_goprotos") {
 
 goproto_library("private_membership_goprotos") {
   proto_in_dir = "${sysroot}/usr/share/protofiles"
-
-  # Package name needs to match with the one declared in .proto files.
-  proto_out_dir = "go/src/chromiumos/policy/private_membership"
+  proto_out_dir = "go/src/chromiumos/policy/"
   sources = [ "${proto_in_dir}/private_membership.proto" ]
 }
 
 goproto_library("rlwe_goprotos") {
   proto_in_dir = "${sysroot}/usr/share/protofiles"
-
-  # Package name needs to match with the one declared in .proto files.
-  proto_out_dir = "go/src/chromiumos/policy/rlwe"
+  proto_out_dir = "go/src/chromiumos/policy/"
   sources = [ "${proto_in_dir}/serialization.proto" ]
 }
 
