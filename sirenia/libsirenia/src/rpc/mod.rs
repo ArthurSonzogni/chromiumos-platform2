@@ -84,13 +84,13 @@ pub trait MessageHandler: Procedure + Clone {
 
 /// The client-side of an RPC. Note that this is implemented genericly for Transport.
 pub trait Invoker<P: Procedure> {
-    fn invoke(&mut self, request: P::Request) -> StdResult<P::Response, communication::Error>;
+    fn invoke(&mut self, request: P::Request) -> Result<P::Response>;
 }
 
 impl<P: Procedure> Invoker<P> for Transport {
-    fn invoke(&mut self, request: P::Request) -> StdResult<P::Response, communication::Error> {
-        write_message(&mut self.w, request)?;
-        read_message(&mut self.r)
+    fn invoke(&mut self, request: P::Request) -> Result<P::Response> {
+        write_message(&mut self.w, request).map_err(Error::Communication)?;
+        read_message(&mut self.r).map_err(Error::Communication)
     }
 }
 
