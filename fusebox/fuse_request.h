@@ -8,6 +8,7 @@
 #include <fuse_lowlevel.h>
 
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace fusebox {
@@ -140,8 +141,12 @@ class DirEntryRequest : public FuseRequest {
 
 class DirEntryResponse {
  public:
-  explicit DirEntryResponse(uint64_t handle);
+  DirEntryResponse(fuse_ino_t ino, uint64_t handle);
 
+  // Directory ino.
+  fuse_ino_t parent() const { return parent_; }
+
+  // File handle.
   uint64_t handle() const { return handle_; }
 
   // Append |entry| DirEntry to the DirEntry list.
@@ -158,6 +163,9 @@ class DirEntryResponse {
   void Respond();
 
  private:
+  // Directory ino.
+  fuse_ino_t const parent_;
+
   // The open file handle of the directory: opendir(2).
   uint64_t const handle_;
 
@@ -176,7 +184,7 @@ class DirEntryResponse {
 
 struct DirEntry {
   fuse_ino_t ino;
-  const char* name;
+  std::string name;
   mode_t mode;
 };
 

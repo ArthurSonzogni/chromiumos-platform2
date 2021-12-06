@@ -184,7 +184,7 @@ void FileSystemFake::OpenDir(std::unique_ptr<OpenRequest> request,
   }
 
   uint64_t handle = fusebox::OpenFile();
-  readdir_[handle].reset(new DirEntryResponse(handle));
+  readdir_[handle].reset(new DirEntryResponse(node->ino, handle));
 
   LOG(INFO) << " opendir fh " << handle;
   request->ReplyOpen(handle);

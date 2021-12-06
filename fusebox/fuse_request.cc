@@ -101,7 +101,7 @@ DirEntryRequest::DirEntryRequest(
 bool DirEntryRequest::AddEntry(const struct DirEntry& entry, off_t offset) {
   DCHECK(!replied_);
 
-  const char* name = entry.name;
+  const char* name = entry.name.c_str();
   struct stat stat = {0};
   stat.st_ino = entry.ino;
   stat.st_mode = entry.mode;
@@ -129,7 +129,8 @@ void DirEntryRequest::ReplyDone() {
   replied_ = true;
 }
 
-DirEntryResponse::DirEntryResponse(uint64_t handle) : handle_(handle) {
+DirEntryResponse::DirEntryResponse(fuse_ino_t ino, uint64_t handle)
+    : parent_(ino), handle_(handle) {
   DCHECK(handle_);
 }
 
@@ -179,7 +180,7 @@ void DirEntryResponse::Respond() {
     return end_;
   };
 
-  while (!request_.empty() && !entry_.empty()) {
+  while (!request_.empty()) {
     if (!process_next_request(*request_.begin()))
       break;
     request_.erase(request_.begin());
