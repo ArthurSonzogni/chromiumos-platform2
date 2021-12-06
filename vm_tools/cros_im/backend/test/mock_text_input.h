@@ -92,4 +92,12 @@ void zwp_text_input_v1_set_surrounding_text(zwp_text_input_v1*,
 void zwp_text_input_v1_set_cursor_rectangle(
     zwp_text_input_v1*, int32_t x, int32_t y, int32_t width, int32_t height);
 
+namespace cros_im {
+namespace test {
+
+zwp_text_input_v1* GetTextInput();
+
+}  // namespace test
+}  // namespace cros_im
+
 #endif  // VM_TOOLS_CROS_IM_BACKEND_TEST_MOCK_TEXT_INPUT_H_

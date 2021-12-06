@@ -67,14 +67,35 @@ libim_cros_gtk = shared_library('im_cros_gtk',
 
 libim_test_cros_gtk = shared_library('im_test_cros_gtk',
   sources: [
+    'backend/test/backend_test.cc',
+    'backend/test/backend_test.h',
+    'backend/test/backend_test_utils.h',
+    'backend/test/event.cc',
+    'backend/test/event.h',
+    'backend/test/gtk_simple_window_test_backend.cc',
     'backend/test/mock_text_input.cc',
     'backend/test/mock_text_input.h',
     'backend/test/mock_wayland_client.cc',
     'backend/test/mock_wayland_client.h',
+    'backend/test/request.cc',
+    'backend/test/request.h',
   ] + gtk_sources,
   dependencies: [
     meson.get_compiler('cpp').find_library('m'),
     dependency('gtk+-3.0'),
   ],
   cpp_args: '-DTEST_BACKEND',
+)
+
+test_sources = [
+  'test/gtk_simple_window_test.cc',
+]
+
+executable('cros_im_tests',
+  sources: test_sources,
+  dependencies: [
+    meson.get_compiler('cpp').find_library('m'),
+    dependency('gtkmm-3.0'),
+    dependency('gtest', main: true),
+  ],
 )
