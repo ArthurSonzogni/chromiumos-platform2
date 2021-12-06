@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include "backend/text_input_enums.h"
+
 struct wl_array;
 struct wl_seat;
 struct wl_surface;
@@ -18,11 +20,11 @@ struct zwp_text_input_v1_listener;
 namespace cros_im {
 
 // As per the preedit_styling event, index and length provide the range to
-// style in bytes, and style is a zwp_text_input_v1_preedit_style value.
+// style in bytes.
 struct PreeditStyle {
   uint32_t index;
   uint32_t length;
-  uint32_t style;
+  zwp_text_input_v1_preedit_style style;
 };
 
 enum class KeyState { kPressed, kReleased };

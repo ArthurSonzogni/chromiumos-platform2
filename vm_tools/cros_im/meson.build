@@ -43,6 +43,7 @@ endforeach
 backend_sources = [
   'backend/im_context_backend.cc',
   'backend/im_context_backend.h',
+  'backend/text_input_enums.h',
   'backend/wayland_manager.cc',
   'backend/wayland_manager.h',
 ]

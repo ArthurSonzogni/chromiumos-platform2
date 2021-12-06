@@ -108,7 +108,10 @@ void IMContextBackend::MaybeInitialize() {
 void IMContextBackend::SetPreeditStyling(uint32_t index,
                                          uint32_t length,
                                          uint32_t style) {
-  styles_.push_back({.index = index, .length = length, .style = style});
+  styles_.push_back(
+      {.index = index,
+       .length = length,
+       .style = static_cast<zwp_text_input_v1_preedit_style>(style)});
 }
 
 void IMContextBackend::SetPreeditCursor(uint32_t cursor) {

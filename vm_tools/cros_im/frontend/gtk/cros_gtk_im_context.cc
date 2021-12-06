@@ -10,8 +10,6 @@
 #include <iostream>
 #include <utility>
 
-#include "text-input-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
-
 namespace cros_im {
 namespace gtk {
 
