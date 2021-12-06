@@ -36,9 +36,7 @@ pub enum Scope {
 }
 
 #[sirenia_rpc]
-pub trait Cronista {
-    type Error;
-
+pub trait Cronista<E> {
     //TODO These need to carry enough information to prove the entry was recorded in the log.
     fn persist(
         &mut self,
@@ -46,13 +44,13 @@ pub trait Cronista {
         domain: String,
         identifier: String,
         data: Vec<u8>,
-    ) -> std::result::Result<Status, Self::Error>;
+    ) -> std::result::Result<Status, E>;
     fn retrieve(
         &mut self,
         scope: Scope,
         domain: String,
         identifier: String,
-    ) -> std::result::Result<(Status, Vec<u8>), Self::Error>;
+    ) -> std::result::Result<(Status, Vec<u8>), E>;
 }
 
 #[derive(Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
@@ -107,16 +105,14 @@ impl Default for MockCronista {
     }
 }
 
-impl Cronista for MockCronista {
-    type Error = rpc::Error;
-
+impl Cronista<rpc::Error> for MockCronista {
     fn persist(
         &mut self,
         scope: Scope,
         domain: String,
         identifier: String,
         data: Vec<u8>,
-    ) -> Result<Status, Self::Error> {
+    ) -> Result<Status, rpc::Error> {
         if let Some(err) = self.next_error.lock().unwrap().deref_mut().pop_front() {
             return Err(err);
         }
@@ -136,7 +132,7 @@ impl Cronista for MockCronista {
         scope: Scope,
         domain: String,
         identifier: String,
-    ) -> Result<(Status, Vec<u8>), Self::Error> {
+    ) -> Result<(Status, Vec<u8>), rpc::Error> {
         if let Some(err) = self.next_error.lock().unwrap().deref_mut().pop_front() {
             return Err(err);
         }

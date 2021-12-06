@@ -16,7 +16,7 @@ use quote::{format_ident, quote};
 use syn::parse::{Error, Result};
 use syn::{
     parse_macro_input, FnArg, Ident, ItemTrait, PathArguments, ReturnType, Signature, TraitItem,
-    TraitItemType, Type,
+    Type,
 };
 
 /// Links the macro to the actual implementation.
@@ -50,26 +50,6 @@ fn get_libsirenia_prefix() -> TokenStream {
         quote! {crate}
     } else {
         quote! {::libsirenia}
-    }
-}
-
-/// Match trait type with "type Error;" and return an error if it has attributes, trait bounds,
-/// generics.
-fn is_error_type(item: &TraitItemType) -> Result<bool> {
-    if item.ident == "Error" {
-        if item.attrs.is_empty() && item.colon_token.is_none() && item.generics.params.is_empty() {
-            Ok(true)
-        } else {
-            Err(Error::new(
-                Span::call_site(),
-                "'type Error' should not have attributes, generics, or bounds",
-            ))
-        }
-    } else {
-        Err(Error::new(
-            Span::call_site(),
-            format!("found a type other than 'Error': {}", item.ident),
-        ))
     }
 }
 
@@ -189,7 +169,12 @@ impl RpcMethodHelper {
         request_name: &Ident,
         response_name: &Ident,
     ) -> TokenStream {
-        let signature = &self.signature;
+        let mut signature = self.signature.clone();
+        let response_arg = &self.response_arg;
+        signature.output = syn::parse2(
+            quote!(-> ::std::result::Result<#response_arg, #libsirenia_prefix::rpc::Error>),
+        )
+        .unwrap();
         let enum_name = &self.enum_name;
         let request_arg_names = &self.request_arg_names;
         quote! {
@@ -219,27 +204,21 @@ impl RpcMethodHelper {
 
 fn sirenia_rpc_impl(item_trait: &ItemTrait) -> Result<TokenStream> {
     let trait_name = &item_trait.ident;
-    let mut found_error_type = false;
 
     let mut rpc_method_helpers: Vec<RpcMethodHelper> = Vec::new();
     for x in item_trait.items.as_slice() {
         match x {
-            TraitItem::Type(trait_item_type) => {
-                if is_error_type(trait_item_type)? {
-                    found_error_type = true;
-                }
+            TraitItem::Type(_) => {
+                return Err(Error::new(
+                    Span::call_site(),
+                    "trait types not supported yet",
+                ));
             }
             TraitItem::Method(trait_item_method) => {
                 rpc_method_helpers.push(RpcMethodHelper::new(trait_item_method.sig.clone())?);
             }
             _ => {}
         }
-    }
-    if !found_error_type {
-        return Err(Error::new(
-            Span::call_site(),
-            "trait needs to define 'type Error'",
-        ));
     }
 
     let libsirenia_prefix = get_libsirenia_prefix();
@@ -301,9 +280,7 @@ fn sirenia_rpc_impl(item_trait: &ItemTrait) -> Result<TokenStream> {
             }
         }
 
-        impl<I: #libsirenia_prefix::rpc::Invoker::<#client_struct_name>> #trait_name for I {
-            type Error = #libsirenia_prefix::rpc::Error;
-
+        impl<I: #libsirenia_prefix::rpc::Invoker::<#client_struct_name>> #trait_name<#libsirenia_prefix::rpc::Error> for I {
             #(#client_trait_contents)*
         }
 
@@ -312,11 +289,11 @@ fn sirenia_rpc_impl(item_trait: &ItemTrait) -> Result<TokenStream> {
             type Response = #response_name;
         }
 
-        pub trait #server_trait_name: #trait_name<Error = ()> {
+        pub trait #server_trait_name: #trait_name<()> {
             fn box_clone(&self) -> Box<dyn #server_trait_name>;
         }
 
-        impl<T: #trait_name<Error = ()> + ::std::clone::Clone + 'static> #server_trait_name for T {
+        impl<T: #trait_name<()> + ::std::clone::Clone + 'static> #server_trait_name for T {
             fn box_clone(&self) -> ::std::boxed::Box<dyn #server_trait_name> {
                 ::std::boxed::Box::new(self.clone())
             }

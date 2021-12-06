@@ -133,14 +133,14 @@ fn digest_to_filename(digest: &[u8]) -> String {
 pub struct StorageEncryption<'a> {
     app_info: &'a AppManifestEntry,
     secret_manager: &'a SecretManager,
-    storage_client: &'a mut dyn Cronista<Error = rpc::Error>,
+    storage_client: &'a mut dyn Cronista<rpc::Error>,
 }
 
 impl<'a> StorageEncryption<'a> {
     pub fn new(
         app_info: &'a AppManifestEntry,
         secret_manager: &'a SecretManager,
-        storage_client: &'a mut dyn Cronista<Error = rpc::Error>,
+        storage_client: &'a mut dyn Cronista<rpc::Error>,
     ) -> Self {
         StorageEncryption {
             app_info,
@@ -332,16 +332,14 @@ impl<'a> StorageEncryption<'a> {
     }
 }
 
-impl<'a> Cronista for StorageEncryption<'a> {
-    type Error = rpc::Error;
-
+impl<'a> Cronista<rpc::Error> for StorageEncryption<'a> {
     fn persist(
         &mut self,
         scope: Scope,
         domain: String,
         identifier: String,
         data: Vec<u8>,
-    ) -> Result<Status, Self::Error> {
+    ) -> Result<Status, rpc::Error> {
         match self.persist_impl(scope, domain, identifier, data) {
             Ok(v) => Ok(v),
             Err(Error::Persist(rpc_err)) => Err(rpc_err),
@@ -360,7 +358,7 @@ impl<'a> Cronista for StorageEncryption<'a> {
         scope: Scope,
         domain: String,
         identifier: String,
-    ) -> Result<(Status, Vec<u8>), Self::Error> {
+    ) -> Result<(Status, Vec<u8>), rpc::Error> {
         match self.retrieve_impl(scope, domain, identifier) {
             Ok(v) => Ok(v),
             Err(Error::Retrieve(rpc_err)) => Err(rpc_err),

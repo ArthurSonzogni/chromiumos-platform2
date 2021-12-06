@@ -81,10 +81,7 @@ struct TeeAppHandler {
 impl TeeAppHandler {
     fn conditionally_use_storage_encryption<
         T: Sized,
-        F: FnOnce(
-                &StorageParameters,
-                &mut dyn Cronista<Error = rpc::Error>,
-            ) -> StdResult<T, rpc::Error>
+        F: FnOnce(&StorageParameters, &mut dyn Cronista<rpc::Error>) -> StdResult<T, rpc::Error>
             + Copy,
     >(
         &self,
@@ -114,9 +111,9 @@ impl TeeAppHandler {
                             // TODO Move this to TrichechusState.
                             encryption =
                                 StorageEncryption::new(app_info, secret_manager, persistence);
-                            &mut encryption as &mut dyn Cronista<Error = rpc::Error>
+                            &mut encryption as &mut dyn Cronista<rpc::Error>
                         }
-                        None => persistence as &mut dyn Cronista<Error = rpc::Error>,
+                        None => persistence as &mut dyn Cronista<rpc::Error>,
                     },
                 );
                 match ret {
@@ -140,16 +137,14 @@ impl TeeAppHandler {
     }
 }
 
-impl TeeApi for TeeAppHandler {
-    type Error = ();
-
-    fn read_data(&mut self, id: String) -> StdResult<(Status, Vec<u8>), Self::Error> {
+impl TeeApi<()> for TeeAppHandler {
+    fn read_data(&mut self, id: String) -> StdResult<(Status, Vec<u8>), ()> {
         self.conditionally_use_storage_encryption(|params, cronista| {
             cronista.retrieve(params.scope.clone(), params.domain.to_string(), id.clone())
         })
     }
 
-    fn write_data(&mut self, id: String, data: Vec<u8>) -> StdResult<Status, Self::Error> {
+    fn write_data(&mut self, id: String, data: Vec<u8>) -> StdResult<Status, ()> {
         self.conditionally_use_storage_encryption(|params, cronista| {
             cronista.persist(
                 params.scope.clone(),
@@ -248,9 +243,7 @@ impl TrichechusServerImpl {
     }
 }
 
-impl Trichechus for TrichechusServerImpl {
-    type Error = ();
-
+impl Trichechus<()> for TrichechusServerImpl {
     fn start_session(
         &mut self,
         app_info: AppInfo,
@@ -295,10 +288,7 @@ impl Trichechus for TrichechusServerImpl {
         Ok(replacement.into())
     }
 
-    fn system_event(
-        &mut self,
-        event: SystemEvent,
-    ) -> StdResult<StdResult<(), String>, Self::Error> {
+    fn system_event(&mut self, event: SystemEvent) -> StdResult<StdResult<(), String>, ()> {
         Ok(log_error(system_event(event)))
     }
 }

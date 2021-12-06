@@ -68,17 +68,11 @@ impl FromStr for SystemEvent {
 }
 
 #[sirenia_rpc]
-pub trait Trichechus {
-    type Error;
+pub trait Trichechus<E> {
+    fn start_session(&mut self, app_info: AppInfo) -> StdResult<Result<(), Error>, E>;
+    fn load_app(&mut self, app_id: String, elf: Vec<u8>) -> StdResult<Result<(), Error>, E>;
+    fn get_apps(&mut self) -> StdResult<Vec<(String, ExecutableInfo)>, E>;
+    fn get_logs(&mut self) -> StdResult<Vec<Vec<u8>>, E>;
 
-    fn start_session(&mut self, app_info: AppInfo) -> StdResult<Result<(), Error>, Self::Error>;
-    fn load_app(
-        &mut self,
-        app_id: String,
-        elf: Vec<u8>,
-    ) -> StdResult<Result<(), Error>, Self::Error>;
-    fn get_apps(&mut self) -> StdResult<Vec<(String, ExecutableInfo)>, Self::Error>;
-    fn get_logs(&mut self) -> StdResult<Vec<Vec<u8>>, Self::Error>;
-
-    fn system_event(&mut self, event: SystemEvent) -> StdResult<Result<(), String>, Self::Error>;
+    fn system_event(&mut self, event: SystemEvent) -> StdResult<Result<(), String>, E>;
 }

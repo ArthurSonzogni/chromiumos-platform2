@@ -14,29 +14,25 @@ use libsirenia::transport::create_transport_from_pipes;
 use sirenia_rpc_macros::sirenia_rpc;
 
 #[sirenia_rpc]
-pub trait TestRpc {
-    type Error;
-
-    fn checked_neg(&mut self, input: i32) -> Result<Option<i32>, Self::Error>;
-    fn checked_add(&mut self, addend_a: i32, addend_b: i32) -> Result<Option<i32>, Self::Error>;
-    fn terminate(&mut self) -> Result<(), Self::Error>;
+pub trait TestRpc<E> {
+    fn checked_neg(&mut self, input: i32) -> Result<Option<i32>, E>;
+    fn checked_add(&mut self, addend_a: i32, addend_b: i32) -> Result<Option<i32>, E>;
+    fn terminate(&mut self) -> Result<(), E>;
 }
 
 #[derive(Clone)]
 struct TestRpcServerImpl {}
 
-impl TestRpc for TestRpcServerImpl {
-    type Error = ();
-
-    fn checked_neg(&mut self, input: i32) -> Result<Option<i32>, Self::Error> {
+impl TestRpc<()> for TestRpcServerImpl {
+    fn checked_neg(&mut self, input: i32) -> Result<Option<i32>, ()> {
         Ok(input.checked_neg())
     }
 
-    fn checked_add(&mut self, addend_a: i32, addend_b: i32) -> Result<Option<i32>, Self::Error> {
+    fn checked_add(&mut self, addend_a: i32, addend_b: i32) -> Result<Option<i32>, ()> {
         Ok(addend_a.checked_add(addend_b))
     }
 
-    fn terminate(&mut self) -> Result<(), Self::Error> {
+    fn terminate(&mut self) -> Result<(), ()> {
         Err(())
     }
 }

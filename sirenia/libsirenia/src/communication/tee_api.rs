@@ -11,14 +11,8 @@ use sirenia_rpc_macros::sirenia_rpc;
 use crate::communication::persistence;
 
 #[sirenia_rpc]
-pub trait TeeApi {
-    type Error;
-
+pub trait TeeApi<E> {
     // Storage.
-    fn read_data(&mut self, id: String) -> StdResult<(persistence::Status, Vec<u8>), Self::Error>;
-    fn write_data(
-        &mut self,
-        id: String,
-        data: Vec<u8>,
-    ) -> StdResult<persistence::Status, Self::Error>;
+    fn read_data(&mut self, id: String) -> StdResult<(persistence::Status, Vec<u8>), E>;
+    fn write_data(&mut self, id: String, data: Vec<u8>) -> StdResult<persistence::Status, E>;
 }
