@@ -73,3 +73,15 @@ message FeatureConfig {
     AverageFilterConfig average_filter_config = 3;
   }
 }
+
+// Represent the result from Hps Daemon to other client.
+// Used for HpsNotify and HpsSense.
+enum HpsResult {
+  UNKNOWN = 0;
+  NEGATIVE = 1;
+  POSITIVE = 2;
+}
+
+message HpsResultProto {
+  HpsResult value = 1;
+}
