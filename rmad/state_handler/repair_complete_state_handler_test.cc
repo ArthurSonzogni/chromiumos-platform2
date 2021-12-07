@@ -18,6 +18,7 @@
 #include "rmad/state_handler/repair_complete_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/system/mock_power_manager_client.h"
+#include "rmad/utils/mock_sys_utils.h"
 
 using testing::_;
 using testing::Assign;
@@ -56,13 +57,16 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
       ON_CALL(*mock_power_manager_client, Shutdown())
           .WillByDefault(Return(true));
     }
+    auto mock_sys_utils = std::make_unique<NiceMock<MockSysUtils>>();
+    ON_CALL(*mock_sys_utils, IsPowerSourcePresent())
+        .WillByDefault(Return(true));
     auto mock_metrics_utils = std::make_unique<NiceMock<MockMetricsUtils>>();
     ON_CALL(*mock_metrics_utils, Record(_, _))
         .WillByDefault(DoAll(Assign(metrics_called, true),
                              Return(record_metrics_success)));
     auto handler = base::MakeRefCounted<RepairCompleteStateHandler>(
         json_store_, GetTempDirPath(), std::move(mock_power_manager_client),
-        std::move(mock_metrics_utils));
+        std::move(mock_sys_utils), std::move(mock_metrics_utils));
     auto callback = std::make_unique<base::RepeatingCallback<bool(bool)>>(
         base::BindRepeating(&SignalSender::SendPowerCableStateSignal,
                             base::Unretained(&signal_sender_)));
@@ -100,6 +104,15 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
 TEST_F(RepairCompleteStateHandlerTest, InitializeState_Success) {
   auto handler = CreateStateHandler(nullptr, nullptr, nullptr);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  // Override signal sender mock.
+  EXPECT_CALL(signal_sender_, SendPowerCableStateSignal(_))
+      .WillOnce([](bool is_connected) {
+        EXPECT_TRUE(is_connected);
+        return true;
+      });
+  task_environment_.FastForwardBy(
+      RepairCompleteStateHandler::kReportPowerCableInterval);
 }
 
 TEST_F(RepairCompleteStateHandlerTest,

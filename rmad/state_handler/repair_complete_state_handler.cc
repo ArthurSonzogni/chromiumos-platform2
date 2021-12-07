@@ -19,6 +19,8 @@
 #include "rmad/system/fake_power_manager_client.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/dbus_utils.h"
+#include "rmad/utils/fake_sys_utils.h"
+#include "rmad/utils/sys_utils_impl.h"
 
 namespace rmad {
 
@@ -30,6 +32,7 @@ FakeRepairCompleteStateHandler::FakeRepairCompleteStateHandler(
           json_store,
           working_dir_path,
           std::make_unique<FakePowerManagerClient>(working_dir_path),
+          std::make_unique<FakeSysUtils>(working_dir_path),
           std::make_unique<FakeMetricsUtils>(working_dir_path)) {}
 
 }  // namespace fake
@@ -39,6 +42,7 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
     : BaseStateHandler(json_store), working_dir_path_(kDefaultWorkingDirPath) {
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
+  sys_utils_ = std::make_unique<SysUtilsImpl>();
   metrics_utils_ = std::make_unique<MetricsUtilsImpl>();
 }
 
@@ -46,10 +50,12 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
     scoped_refptr<JsonStore> json_store,
     const base::FilePath& working_dir_path,
     std::unique_ptr<PowerManagerClient> power_manager_client,
+    std::unique_ptr<SysUtils> sys_utils,
     std::unique_ptr<MetricsUtils> metrics_utils)
     : BaseStateHandler(json_store),
       working_dir_path_(working_dir_path),
       power_manager_client_(std::move(power_manager_client)),
+      sys_utils_(std::move(sys_utils)),
       metrics_utils_(std::move(metrics_utils)) {}
 
 RmadErrorCode RepairCompleteStateHandler::InitializeState() {
@@ -180,7 +186,7 @@ void RepairCompleteStateHandler::Cutoff() {
 void RepairCompleteStateHandler::SendPowerCableStateSignal() {
   // TODO(chenghan): This is currently fake.
   CHECK(power_cable_signal_sender_);
-  power_cable_signal_sender_->Run(true);
+  power_cable_signal_sender_->Run(sys_utils_->IsPowerSourcePresent());
 }
 
 }  // namespace rmad
