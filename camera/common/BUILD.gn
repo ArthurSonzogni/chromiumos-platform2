@@ -249,6 +249,7 @@ shared_library("libcros_camera") {
     ":sensor_client",
     ":stream_manipulator",
     ":v4l2_device",
+    "//camera/features",
     "//camera/features/zsl",
   ]
   if (use.camera_feature_face_detection) {
