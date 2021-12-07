@@ -10,6 +10,13 @@
 #include <gtest/gtest.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
+#include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/receiver_set.h>
+#include <mojo/public/cpp/bindings/remote.h>
+
+#include "diagnostics/bindings/connectivity/context.h"
+#include "diagnostics/bindings/connectivity/local_state.h"
+#include "diagnostics/bindings/connectivity/remote_state.h"
 
 namespace diagnostics {
 namespace bindings {
@@ -25,12 +32,24 @@ class MojoConnectivityTest : public ::testing::Test {
         base::ThreadTaskRunnerHandle::Get() /* io_thread_task_runner */,
         ::mojo::core::ScopedIPCSupport::ShutdownPolicy::
             CLEAN /* blocking shutdown */);
+
+    mojo::PendingReceiver<mojom::State> receiver;
+    auto remote = receiver.InitWithNewPipeAndPassRemote();
+    context_ = Context::Create(LocalState::Create(std::move(receiver)),
+                               RemoteState::Create(std::move(remote)));
   }
+
+  Context* context() { return context_.get(); }
 
  private:
   base::test::SingleThreadTaskEnvironment task_environment_;
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
+  std::unique_ptr<Context> context_;
 };
+
+TEST_F(MojoConnectivityTest, TODO) {
+  ASSERT_TRUE(true);
+}
 
 }  // namespace
 }  // namespace test

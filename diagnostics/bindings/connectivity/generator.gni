@@ -157,7 +157,10 @@ template("mojom_connectivity") {
     if (defined(invoker.configs)) {
       configs += invoker.configs
     }
-    deps = [ ":${target_gen_name}" ]
+    deps = [
+      ":${target_gen_name}",
+      "//diagnostics/bindings/connectivity:libconnectivity",
+    ]
     deps += invoker.deps
 
     sources = get_target_outputs(":${target_gen_name}")
