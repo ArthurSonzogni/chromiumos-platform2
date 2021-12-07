@@ -143,16 +143,21 @@ LoadUserSecretStashWrappedKeyBlocks(
     }
     UserSecretStash::WrappedKeyBlock loaded_block;
 
-    if (wrapped_key_block->encryption_algorithm() !=
+    if (!wrapped_key_block->encryption_algorithm().has_value()) {
+      LOG(WARNING) << "Ignoring UserSecretStash wrapped key block with an "
+                      "unset algorithm";
+      continue;
+    }
+    if (wrapped_key_block->encryption_algorithm().value() !=
         UserSecretStashEncryptionAlgorithm::AES_GCM_256) {
       LOG(WARNING) << "Ignoring UserSecretStash wrapped key block with an "
                       "unknown algorithm: "
                    << static_cast<int>(
-                          wrapped_key_block->encryption_algorithm());
+                          wrapped_key_block->encryption_algorithm().value());
       continue;
     }
     loaded_block.encryption_algorithm =
-        wrapped_key_block->encryption_algorithm();
+        wrapped_key_block->encryption_algorithm().value();
 
     if (!wrapped_key_block->encrypted_key() ||
         !wrapped_key_block->encrypted_key()->size()) {
@@ -239,8 +244,12 @@ bool LoadUserSecretStashContainer(
 
   auto uss_container = GetUserSecretStashContainer(flatbuffer.data());
 
+  if (!uss_container->encryption_algorithm().has_value()) {
+    LOG(ERROR) << "UserSecretStashContainer has no algorithm set";
+    return false;
+  }
   UserSecretStashEncryptionAlgorithm algorithm =
-      uss_container->encryption_algorithm();
+      uss_container->encryption_algorithm().value();
   if (algorithm != UserSecretStashEncryptionAlgorithm::AES_GCM_256) {
     LOG(ERROR) << "UserSecretStashContainer uses unknown algorithm: "
                << static_cast<int>(algorithm);

@@ -25,8 +25,7 @@ class UserSecretStash {
   // Container for a wrapped (encrypted) USS main key.
   struct WrappedKeyBlock {
     // The algorithm used for wrapping the USS main key.
-    UserSecretStashEncryptionAlgorithm encryption_algorithm =
-        UserSecretStashEncryptionAlgorithm::NONE;
+    UserSecretStashEncryptionAlgorithm encryption_algorithm;
     // This is the encrypted USS main key.
     brillo::SecureBlob encrypted_key;
     // The random IV used in the USS main key encryption.

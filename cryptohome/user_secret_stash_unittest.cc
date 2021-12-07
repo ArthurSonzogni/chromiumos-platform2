@@ -321,8 +321,7 @@ TEST_F(UserSecretStashObjectApiTest, SmokeTest) {
 
 // Test that decryption fails when the encryption algorithm is not set.
 TEST_F(UserSecretStashObjectApiTest, DecryptErrorNoAlgorithm) {
-  uss_container_obj_.encryption_algorithm =
-      UserSecretStashEncryptionAlgorithm::NONE;
+  uss_container_obj_.encryption_algorithm.reset();
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
       GetFlatbufferFromUssContainerObj(), kMainKey));
