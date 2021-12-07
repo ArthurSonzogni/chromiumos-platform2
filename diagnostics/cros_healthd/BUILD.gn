@@ -72,6 +72,7 @@ if (use.test) {
       "routines:libroutine_test_utils",
       "system:libcros_healthd_system_test_utils",
       "wilco_ec:libcros_healthd_wilco_ec_test",
+      "//diagnostics/bindings/connectivity/test",
       "//diagnostics/common:libcommon_test",
       "//diagnostics/common:libcommon_test_utils",
       "//diagnostics/common:mojo_testrunner",

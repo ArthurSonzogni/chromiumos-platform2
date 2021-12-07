@@ -1,0 +1,19 @@
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+if (use.test) {
+  pkg_config("pkg_deps_test") {
+    pkg_deps = [
+      "libchrome",
+      "libchrome-test",
+    ]
+  }
+
+  source_set("test") {
+    configs += [ ":pkg_deps_test" ]
+    sources = [ "connectivity_test.cc" ]
+  }
+}
