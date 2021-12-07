@@ -55,6 +55,7 @@ pub const META_HASH_SIZE: usize = 32;
 /// Define the size of the hibernate data symmetric encryption key.
 pub const META_SYMMETRIC_KEY_SIZE: usize = 16;
 pub const META_SYMMETRIC_IV_SIZE: usize = META_SYMMETRIC_KEY_SIZE;
+pub const META_OCB_IV_SIZE: usize = 12;
 
 /// Define the reserved size of the unencrypted public area.
 const META_PUBLIC_SIZE: usize = 0x1000;
@@ -62,6 +63,12 @@ const META_PUBLIC_SIZE: usize = 0x1000;
 /// Define the size of the encrypted private area. Bump this up (and
 /// bump the version) if PrivateHibernateMetadata outgrows it.
 pub const META_PRIVATE_SIZE: usize = 0x1000;
+
+/// Define the size of the encryption authentication tag, in bytes.
+const META_TAG_LENGTH: usize = 16;
+
+/// Define the size of the data portion of the private metadata.
+const META_PRIVATE_DATA_SIZE: usize = META_PRIVATE_SIZE - META_TAG_LENGTH;
 
 /// Define the size of the asymmetric key pairs used to encrypt the hibernate
 /// metadata.
@@ -88,7 +95,7 @@ pub struct HibernateMetadata {
     /// the metadata key.
     pub meta_eph_public: [u8; META_ASYMMETRIC_KEY_SIZE],
     /// Random IV used for metadata encryption.
-    meta_iv: [u8; META_SYMMETRIC_IV_SIZE],
+    meta_iv: [u8; META_OCB_IV_SIZE],
     /// The not-yet-decrypted private data.
     private_blob: Option<[u8; META_PRIVATE_SIZE]>,
     /// The key used to decrypt private metadata.
@@ -120,7 +127,7 @@ pub struct PublicHibernateMetadata {
     /// the metadata key.
     meta_eph_public: [u8; META_ASYMMETRIC_KEY_SIZE],
     /// IV used for private portion of metadata.
-    private_iv: [u8; META_SYMMETRIC_IV_SIZE],
+    private_iv: [u8; META_OCB_IV_SIZE],
 }
 
 /// Define the structure of the private hibernate metadata, which is written
@@ -151,7 +158,7 @@ impl HibernateMetadata {
         Self::fill_random(&mut data_key)?;
         let mut data_iv = [0u8; META_SYMMETRIC_IV_SIZE];
         Self::fill_random(&mut data_iv)?;
-        let mut meta_iv = [0u8; META_SYMMETRIC_IV_SIZE];
+        let mut meta_iv = [0u8; META_OCB_IV_SIZE];
         Self::fill_random(&mut meta_iv)?;
         // Initialize the other keys with random junk as well to avoid bugs
         // where zeroed keys get used. These should never actually get used with
@@ -218,7 +225,7 @@ impl HibernateMetadata {
         }
 
         // Decrypt the private data.
-        let cipher = Cipher::aes_128_cbc();
+        let cipher = Cipher::aes_128_ocb();
         let mut crypter = Crypter::new(
             cipher,
             Mode::Decrypt,
@@ -227,20 +234,22 @@ impl HibernateMetadata {
         )
         .unwrap();
         crypter.pad(true);
-        let mut private_buf = vec![0u8; META_PRIVATE_SIZE + cipher.block_size()];
+        crypter.set_tag_len(META_TAG_LENGTH)?;
+        let private_blob = self.private_blob.unwrap();
+        crypter.set_tag(&private_blob[META_PRIVATE_DATA_SIZE..])?;
+        let mut private_buf = vec![0u8; META_PRIVATE_DATA_SIZE + cipher.block_size()];
         let mut decrypt_size = crypter
-            .update(&self.private_blob.unwrap(), &mut private_buf)
+            .update(&private_blob[..META_PRIVATE_DATA_SIZE], &mut private_buf)
             .context("Failed to decrypt private data")?;
 
         decrypt_size += crypter
             .finalize(&mut private_buf[decrypt_size..])
             .context("Failed to decrypt private metadata")?;
 
-        if decrypt_size != META_PRIVATE_SIZE - 1 {
+        if decrypt_size != META_PRIVATE_DATA_SIZE {
             return Err(HibernateError::MetadataError(format!(
                 "Private metadata was {:x?} bytes, expected at least {:x?}",
-                decrypt_size,
-                META_PRIVATE_SIZE - 1
+                decrypt_size, META_PRIVATE_DATA_SIZE
             )))
             .context("Cannot load private metadata");
         }
@@ -347,7 +356,7 @@ impl HibernateMetadata {
         let private_iv = if include_private {
             self.meta_iv
         } else {
-            [0u8; META_SYMMETRIC_IV_SIZE]
+            [0u8; META_OCB_IV_SIZE]
         };
 
         let meta_eph_public = if include_private {
@@ -380,7 +389,7 @@ impl HibernateMetadata {
             header_hash: self.header_hash,
         };
 
-        let cipher = Cipher::aes_128_cbc();
+        let cipher = Cipher::aes_128_ocb();
         let serialized_private_string =
             serde_json::to_string(&private_data).context("Could not serialize private data")?;
         // Encrypt a fixed number of bytes regardless of the serialized size.
@@ -388,9 +397,7 @@ impl HibernateMetadata {
         let serialized_private_bytes = serialized_private_string.as_bytes();
         let serialized_bytes_length = serialized_private_bytes.len();
 
-        // Only N-1 bytes are going to be encrypted, so ensure the serialized
-        // data fits in there.
-        assert!(serialized_bytes_length < META_PRIVATE_SIZE);
+        assert!(serialized_bytes_length <= META_PRIVATE_DATA_SIZE);
 
         serialized_private[..serialized_bytes_length].copy_from_slice(serialized_private_bytes);
         if self.meta_key.is_none() {
@@ -407,15 +414,15 @@ impl HibernateMetadata {
             &self.meta_key.unwrap(),
             Some(&self.meta_iv),
         )
-        .unwrap();
+        .context("Could not initialize encrypter")?;
         crypter.pad(true);
+        crypter.set_tag_len(META_TAG_LENGTH)?;
         // Crypter demands that the output must be one block bigger than the
         // input.
-        let mut ciphertext = vec![0u8; META_PRIVATE_SIZE + cipher.block_size()];
-        // Encrypt N - 1 bytes, so padding brings us up to N.
+        let mut ciphertext = vec![0u8; META_PRIVATE_DATA_SIZE + cipher.block_size()];
         let mut encrypt_size = crypter
             .update(
-                &serialized_private[..META_PRIVATE_SIZE - 1],
+                &serialized_private[..META_PRIVATE_DATA_SIZE],
                 &mut ciphertext,
             )
             .context("Cannot encrypt private metadata")?;
@@ -425,11 +432,14 @@ impl HibernateMetadata {
             .context("Cannot encrypt private metadata")?;
 
         assert!(
-            encrypt_size == META_PRIVATE_SIZE,
+            encrypt_size == META_PRIVATE_DATA_SIZE,
             "Encrypted {} bytes, expected {}",
             encrypt_size,
-            META_PRIVATE_SIZE
+            META_PRIVATE_DATA_SIZE
         );
+
+        // Get the authentication tag.
+        crypter.get_tag(&mut ciphertext[META_PRIVATE_DATA_SIZE..])?;
 
         // Copy back into a correctly sized buffer and return that.
         serialized_private.copy_from_slice(&ciphertext[..META_PRIVATE_SIZE]);
