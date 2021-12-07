@@ -17,6 +17,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/containers/contains.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -180,10 +181,8 @@ const char Cellular::kPolicyAllowRoaming[] = "PolicyAllowRoaming";
 const char Cellular::kUseAttachApn[] = "UseAttachAPN";
 const char Cellular::kQ6V5ModemManufacturerName[] = "QUALCOMM INCORPORATED";
 const char Cellular::kQ6V5DriverName[] = "qcom-q6v5-mss";
-const char Cellular::kModemDriverSysfsName[] =
-    "/sys/class/remoteproc/remoteproc0/device/driver";
-const char Cellular::kModemResetSysfsName[] =
-    "/sys/class/remoteproc/remoteproc0/state";
+const char Cellular::kQ6V5SysfsBasePath[] = "/sys/class/remoteproc";
+const char Cellular::kQ6V5RemoteprocPattern[] = "remoteproc*";
 const int64_t Cellular::kModemResetTimeoutMilliseconds = 1 * 1000;
 const int64_t Cellular::kPollLocationIntervalMilliseconds = 5 * 60 * 1000;
 // static
@@ -1668,9 +1667,14 @@ void Cellular::LogRestartModemResult(const Error& error) {
 }
 
 bool Cellular::ResetQ6V5Modem() {
-  // TODO(b/177375637): Check for q6v5 driver before resetting the modem.
-  int fd = HANDLE_EINTR(
-      open(kModemResetSysfsName, O_WRONLY | O_NONBLOCK | O_CLOEXEC));
+  base::FilePath modem_reset_path = GetQ6V5ModemResetPath();
+  if (!base::PathExists(modem_reset_path)) {
+    PLOG(ERROR) << "Unable to find sysfs file to reset modem.";
+    return false;
+  }
+
+  int fd = HANDLE_EINTR(open(modem_reset_path.value().c_str(),
+                             O_WRONLY | O_NONBLOCK | O_CLOEXEC));
   if (fd < 0) {
     PLOG(ERROR) << "Failed to open sysfs file to reset modem.";
     return false;
@@ -1689,15 +1693,30 @@ bool Cellular::ResetQ6V5Modem() {
   return true;
 }
 
-bool Cellular::IsQ6V5Modem() {
-  base::FilePath driver_path, driver_name;
+base::FilePath Cellular::GetQ6V5ModemResetPath() {
+  base::FilePath modem_reset_path, driver_path;
 
+  base::FileEnumerator it(
+      base::FilePath(kQ6V5SysfsBasePath), false,
+      base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS,
+      kQ6V5RemoteprocPattern);
+  for (base::FilePath name = it.Next(); !name.empty(); name = it.Next()) {
+    if (base::ReadSymbolicLink(name.Append("device/driver"), &driver_path) &&
+        driver_path.BaseName() == base::FilePath(kQ6V5DriverName)) {
+      modem_reset_path = name.Append("state");
+      break;
+    }
+  }
+
+  return modem_reset_path;
+}
+
+bool Cellular::IsQ6V5Modem() {
   // Check if manufacturer is equal to "QUALCOMM INCORPORATED" and
-  // if remoteproc0/device/driver in sysfs links to "qcom-q6v5-mss".
-  driver_path = base::FilePath(kModemDriverSysfsName);
+  // if one of the remoteproc[0-9]/device/driver in sysfs links
+  // to "qcom-q6v5-mss".
   return (manufacturer_ == kQ6V5ModemManufacturerName &&
-          base::ReadSymbolicLink(driver_path, &driver_name) &&
-          driver_name.BaseName() == base::FilePath(kQ6V5DriverName));
+          base::PathExists(GetQ6V5ModemResetPath()));
 }
 
 void Cellular::StartPPP(const std::string& serial_device) {

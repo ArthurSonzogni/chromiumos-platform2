@@ -438,14 +438,14 @@ class Cellular : public Device,
   static const char kPolicyAllowRoaming[];
   static const char kUseAttachApn[];
 
-  // Modem reset sysfs path
-  static const char kModemResetSysfsName[];
-
   // Modem Manufacturer Name
   static const char kQ6V5ModemManufacturerName[];
 
-  // Modem driver sysfs path
-  static const char kModemDriverSysfsName[];
+  // Modem driver remoteproc pattern
+  static const char kQ6V5RemoteprocPattern[];
+
+  // Modem driver sysfs base path
+  static const char kQ6V5SysfsBasePath[];
 
   // Modem driver name
   static const char kQ6V5DriverName[];
@@ -574,6 +574,9 @@ class Cellular : public Device,
 
   // Handler to reset qcom-q6v5-mss based modems
   bool ResetQ6V5Modem();
+
+  // Get reset path for Q6V5 modem
+  base::FilePath GetQ6V5ModemResetPath();
 
   // Handler to check if modem is based on qcom-q6v5-mss
   bool IsQ6V5Modem();
