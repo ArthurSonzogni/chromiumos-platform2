@@ -91,6 +91,10 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     }
   }
 
+  void Init(void* userdata, struct fuse_conn_info*) override {
+    CHECK(userdata);
+  }
+
   // org::chromium::FuseBoxClient overrides.
 
   void ReadDirBatchResponse(uint64_t file_handle,
