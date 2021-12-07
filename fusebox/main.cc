@@ -5,6 +5,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 
+#include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/command_line.h>
@@ -21,6 +22,8 @@
 #include "fusebox/file_system.h"
 #include "fusebox/file_system_fake.h"
 #include "fusebox/fuse_frontend.h"
+#include "fusebox/fuse_path_inodes.h"
+#include "fusebox/make_stat.h"
 #include "fusebox/util.h"
 
 using base::CommandLine;
@@ -43,6 +46,16 @@ static bool g_use_fake_file_system;
 fusebox::FileSystem* CreateFakeFileSystem() {
   static base::NoDestructor<fusebox::FileSystemFake> fake_file_system;
   return fake_file_system.get();
+}
+
+fusebox::InodeTable& GetInodeTable() {
+  static base::NoDestructor<fusebox::InodeTable> inode_table;
+  return *inode_table;
+}
+
+dbus::MethodCall GetFuseBoxServerMethodCall(
+    const char* method = fusebox::kFuseBoxOperationMethod) {
+  return dbus::MethodCall(fusebox::kFuseBoxServiceInterface, method);
 }
 
 }  // namespace
@@ -93,6 +106,56 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
 
   void Init(void* userdata, struct fuse_conn_info*) override {
     CHECK(userdata);
+  }
+
+  void GetAttr(std::unique_ptr<AttrRequest> request, fuse_ino_t ino) override {
+    if (request->IsInterrupted())
+      return;
+
+    Node* node = GetInodeTable().Lookup(ino);
+    if (!node) {
+      PLOG(ERROR) << " getattr " << ino;
+      request->ReplyError(errno);
+      return;
+    }
+
+    dbus::MethodCall method = GetFuseBoxServerMethodCall();
+    dbus::MessageWriter writer(&method);
+
+    writer.AppendString("stat");
+    auto item = *g_device + GetInodeTable().GetPath(node);
+    writer.AppendString(item);
+
+    auto stat_response =
+        base::BindOnce(&FuseBoxClient::StatResponse, base::Unretained(this),
+                       std::move(request), node->ino);
+    constexpr auto timeout = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
+    dbus_proxy_->CallMethod(&method, timeout, std::move(stat_response));
+  }
+
+  const double kStatTimeoutSeconds = 5.0;
+
+  void StatResponse(std::unique_ptr<AttrRequest> request,
+                    fuse_ino_t ino,
+                    dbus::Response* response) {
+    if (request->IsInterrupted())
+      return;
+
+    dbus::MessageReader reader(response);
+    if (int error = GetResponseErrno(&reader, response)) {
+      request->ReplyError(error);
+      return;
+    }
+
+    Node* node = GetInodeTable().Lookup(ino);
+    if (!node) {
+      PLOG(ERROR) << "getattr " << ino;
+      request->ReplyError(errno);
+      return;
+    }
+
+    struct stat stat = GetServerStat(ino, &reader);
+    request->ReplyAttr(stat, kStatTimeoutSeconds);
   }
 
   // org::chromium::FuseBoxClient overrides.
