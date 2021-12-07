@@ -133,15 +133,6 @@ struct TpmEccAuthBlockState {
 };
 
 struct AuthBlockState {
-  // Returns an Flatbuffer offset which can be added to other Flatbuffers
-  // tables. Returns a zero offset for errors since AuthBlockState
-  // shall never be an empty table. Zero offset can be checked by IsNull().
-  flatbuffers::Offset<SerializedAuthBlockState> SerializeToOffset(
-      flatbuffers::FlatBufferBuilder* builder) const;
-
-  // Returns an AuthBlockState Flatbuffer serialized to a SecureBlob.
-  std::optional<brillo::SecureBlob> Serialize() const;
-
   std::variant<std::monostate,
                TpmNotBoundToPcrAuthBlockState,
                TpmBoundToPcrAuthBlockState,

@@ -19,6 +19,7 @@
 #include <brillo/secure_blob.h>
 #include <flatbuffers/flatbuffers.h>
 
+#include "cryptohome/auth_blocks/auth_block_state_converter.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_label.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
@@ -98,8 +99,8 @@ std::optional<Blob> SerializeAuthFactor(const AuthFactor& auth_factor) {
   flatbuffers::FlatBufferBuilder builder(kFlatbufferAllocatorInitialSize,
                                          &allocator);
 
-  auto auth_block_state_offset =
-      auth_factor.auth_block_state().value().SerializeToOffset(&builder);
+  auto auth_block_state_offset = SerializeToFlatBufferOffset(
+      &builder, auth_factor.auth_block_state().value());
   if (auth_block_state_offset.IsNull()) {
     LOG(ERROR) << "Failed to serialize auth block state";
     return std::nullopt;

@@ -14,12 +14,31 @@ table TpmBoundToPcrState {
   tpm_key:[ubyte] (id: 2);
   // Same as tpm_key, but extends the PCR to only allow one user until reboot.
   extended_tpm_key:[ubyte] (id: 3);
-  // A check if this is the same TPM that wrapped the credential.
+  // Optional, served as a TPM identity, useful when checking if the TPM is
+  // the same one sealed the tpm_key.
+  tpm_public_key_hash:[ubyte] (id: 4);
+}
+
+table TpmNotBoundToPcrState {
+  // This denotes if the password is fed through scrypt before going to
+  // the TPM.
+  scrypt_derived:bool = false (id: 0);
+  // The salt used when binding to the TPM.
+  salt:[ubyte] (id: 1);
+  // Optional, the number of rounds key derivation is called.
+  password_rounds:uint = null (id: 2);
+  // The VKK wrapped with the user's password by the tpm.
+  tpm_key:[ubyte] (id: 3);
+  // Optional, served as a TPM identity, useful when checking if the TPM is
+  // the same one sealed the tpm_key.
   tpm_public_key_hash:[ubyte] (id: 4);
 }
 
 // TODO(b/200961210): add more AuthBlockStates.
-union AuthBlockStateUnion { TpmBoundToPcrState }
+union AuthBlockStateUnion {
+  TpmBoundToPcrState,
+  TpmNotBoundToPcrState
+}
 
 table SerializedAuthBlockState {
   auth_block_state:AuthBlockStateUnion;
