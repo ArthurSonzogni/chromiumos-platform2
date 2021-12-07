@@ -1865,7 +1865,9 @@ bool Cellular::ModemIsEnabledButNotRegistered() {
   // In cases where we have an attach APN or eSIM this may not be true. See
   // b/204847937 and b/205882451 for more details.
   // TODO(b/186482862): Fix this behavior in ModemManager.
-  return state_ == State::kEnabled && modem_state_ == kModemStateEnabled;
+  return (state_ == State::kEnabled || state_ == State::kModemStarting ||
+          state_ == State::kModemStarted) &&
+         modem_state_ == kModemStateEnabled;
 }
 
 void Cellular::SetPendingConnect(const std::string& iccid) {
