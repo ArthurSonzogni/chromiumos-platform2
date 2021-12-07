@@ -694,6 +694,11 @@ class UserDataAuth {
       base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>
           on_done);
 
+  bool AuthenticateAuthFactor(
+      user_data_auth::AuthenticateAuthFactorRequest request,
+      base::OnceCallback<
+          void(const user_data_auth::AuthenticateAuthFactorReply&)> on_done);
+
  private:
   // base::Thread subclass so we can implement CleanUp.
   class MountThread : public base::Thread {

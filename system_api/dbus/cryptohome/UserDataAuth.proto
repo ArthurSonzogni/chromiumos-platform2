@@ -1109,3 +1109,25 @@ message AddAuthFactorReply {
   // Return the status of the request.
   CryptohomeErrorCode error = 1;
 }
+
+// AuthenticateAuthFactorRequest is built when a user is trying to
+// authenticate with an AuthFactor for a user. When the call is made,
+// AuthSession is in an unauthenticated state. After the operation the
+// AuthSession would still be in an authenticated state.
+message AuthenticateAuthFactorRequest {
+  // AuthFactor cannot be authenticated without an active AuthSession running.
+  // This id would be used to associate the AuthFactor to an AuthSession.
+  bytes auth_session_id = 1;
+  // The AuthFactor label would be used to determine the AuthFactor that
+  // needs to be authenticated. If the label does not exist, the call would
+  // return an error.
+  bytes auth_factor_label = 2;
+  // In some cases, such as password, the secret would be user supplied. In
+  // those cases the secret can be passed here.
+  AuthInput auth_input = 3;
+}
+
+message AuthenticateAuthFactorReply {
+  // Return the status of the request.
+  CryptohomeErrorCode error = 1;
+}

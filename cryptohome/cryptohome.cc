@@ -198,6 +198,7 @@ static const char* kActions[] = {"mount_ex",
                                  "prepare_persistent_vault",
                                  "prepare_vault_for_migration",
                                  "add_auth_factor",
+                                 "authenticate_auth_factor",
                                  NULL};
 enum ActionEnum {
   ACTION_MOUNT_EX,
@@ -290,7 +291,8 @@ enum ActionEnum {
   ACTION_PREPARE_EPHEMERAL_VAULT,
   ACTION_PREPARE_PERSISTENT_VAULT,
   ACTION_PREPARE_VAULT_FOR_MIGRATION,
-  ACTION_ADD_AUTH_FACTOR
+  ACTION_ADD_AUTH_FACTOR,
+  ACTION_AUTHENTICATE_AUTH_FACTOR
 };
 static const char kUserSwitch[] = "user";
 static const char kPasswordSwitch[] = "password";
@@ -3180,6 +3182,36 @@ int main(int argc, char** argv) {
     }
 
     printf("AuthFactor added.\n");
+  } else if (!strcmp(
+                 switches::kActions[switches::ACTION_AUTHENTICATE_AUTH_FACTOR],
+                 action.c_str())) {
+    user_data_auth::AuthenticateAuthFactorRequest req;
+    user_data_auth::AuthenticateAuthFactorReply reply;
+
+    std::string auth_session_id_hex, auth_session_id;
+
+    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+      return 1;
+    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
+    req.set_auth_session_id(auth_session_id);
+    // TODO(b/208358041): Implement building AuthFactor for request.
+    brillo::ErrorPtr error;
+    VLOG(1) << "Attempting to authenticate AuthFactor";
+    if (!userdataauth_proxy.AuthenticateAuthFactor(req, &reply, &error,
+                                                   timeout_ms) ||
+        error) {
+      printf("AuthenticateAuthFactor call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+    reply.PrintDebugString();
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("Failed to authenticate AuthFactor.\n");
+      return static_cast<int>(reply.error());
+    }
+
+    printf("AuthFactor authenticated.\n");
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)
