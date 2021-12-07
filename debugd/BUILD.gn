@@ -354,6 +354,7 @@ if (use.test) {
       "src/helpers/scheduler_configuration_utils_test.cc",
       "src/log_tool_doc_test.cc",
       "src/log_tool_test.cc",
+      "src/perf_tool_test.cc",
       "src/process_with_id_test.cc",
       "src/storage_tool_test.cc",
       "src/subprocess_tool_test.cc",

@@ -23,6 +23,17 @@
 
 namespace debugd {
 
+enum PerfSubcommand {
+  PERF_COMMAND_RECORD,
+  PERF_COMMAND_STAT,
+  PERF_COMMAND_MEM,
+  PERF_COMMAND_UNSUPPORTED,
+};
+
+bool ValidateQuipperArguments(const std::vector<std::string>& qp_args,
+                              PerfSubcommand& subcommand,
+                              brillo::ErrorPtr* error);
+
 class PerfTool {
  public:
   PerfTool();

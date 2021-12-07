@@ -26,6 +26,8 @@ const char kUnsupportedPerfToolErrorName[] =
     "org.chromium.debugd.error.UnsupportedPerfTool";
 const char kProcessErrorName[] = "org.chromium.debugd.error.RunProcess";
 const char kStopProcessErrorName[] = "org.chromium.debugd.error.StopProcess";
+const char kInvalidPerfArgumentErrorName[] =
+    "org.chromium.debugd.error.InvalidPerfArgument";
 
 const char kArgsError[] =
     "perf_args must begin with {\"perf\", \"record\"}, "
@@ -34,25 +36,31 @@ const char kArgsError[] =
 // Location of quipper on ChromeOS.
 const char kQuipperLocation[] = "/usr/bin/quipper";
 
-enum PerfSubcommand {
-  PERF_COMMAND_RECORD,
-  PERF_COMMAND_STAT,
-  PERF_COMMAND_MEM,
-  PERF_COMMAND_UNSUPPORTED,
+enum class OptionType {
+  Boolean,  // Has no value.
+  Value,    // Uses another argument.
+};
+
+// All quipper options and whether they are blocked in the debugd perf_tool.
+const std::map<std::string, OptionType> kQuipperOptions = {
+    {"--duration", OptionType::Value},
+    // Blocked, quipper figures out the full path of perf on its own.
+    // {"--perf_path", OptionType::Value},
+    // Blocked, perf_tool always return via stdout.
+    // {"--output_file", OptionType::Value},
+    {"--run_inject", OptionType::Boolean},
+    {"--inject_args", OptionType::Value},
 };
 
 // Returns one of the above enums given an vector of perf arguments, starting
 // with "perf" itself in |args[0]|.
-PerfSubcommand GetPerfSubcommandType(const std::vector<std::string>& args) {
-  if (args[0] == "perf" && args.size() > 1) {
-    if (args[1] == "record")
-      return PERF_COMMAND_RECORD;
-    if (args[1] == "stat")
-      return PERF_COMMAND_STAT;
-    if (args[1] == "mem")
-      return PERF_COMMAND_MEM;
-  }
-
+PerfSubcommand GetPerfSubcommandType(std::string command) {
+  if (command == "record")
+    return PERF_COMMAND_RECORD;
+  if (command == "stat")
+    return PERF_COMMAND_STAT;
+  if (command == "mem")
+    return PERF_COMMAND_MEM;
   return PERF_COMMAND_UNSUPPORTED;
 }
 
@@ -60,13 +68,57 @@ void AddQuipperArguments(brillo::Process* process,
                          const uint32_t duration_secs,
                          const std::vector<std::string>& perf_args) {
   process->AddArg(kQuipperLocation);
-  process->AddArg(base::StringPrintf("%u", duration_secs));
+  if (duration_secs > 0) {
+    process->AddArg(base::StringPrintf("%u", duration_secs));
+  }
   for (const auto& arg : perf_args) {
     process->AddArg(arg);
   }
 }
 
 }  // namespace
+
+bool ValidateQuipperArguments(const std::vector<std::string>& qp_args,
+                              PerfSubcommand& subcommand,
+                              brillo::ErrorPtr* error) {
+  for (auto args_iter = qp_args.begin(); args_iter != qp_args.end();
+       ++args_iter) {
+    if (*args_iter == "--") {
+      ++args_iter;
+      if (args_iter == qp_args.end()) {
+        DEBUGD_ADD_ERROR(error, kUnsupportedPerfToolErrorName, kArgsError);
+        return false;
+      }
+
+      subcommand = GetPerfSubcommandType(*args_iter);
+      if (subcommand == PERF_COMMAND_UNSUPPORTED) {
+        DEBUGD_ADD_ERROR(error, kUnsupportedPerfToolErrorName, kArgsError);
+        return false;
+      }
+
+      return true;
+    }
+
+    const auto& it = kQuipperOptions.find(*args_iter);
+    if (it == kQuipperOptions.end()) {
+      DEBUGD_ADD_ERROR_FMT(error, kInvalidPerfArgumentErrorName,
+                           "option %s is not allowed", args_iter->c_str());
+      return false;
+    }
+
+    if (it->second == OptionType::Value) {
+      ++args_iter;
+      if (args_iter == qp_args.end()) {
+        DEBUGD_ADD_ERROR_FMT(error, kInvalidPerfArgumentErrorName,
+                             "option %s needs a following value",
+                             args_iter->c_str());
+        return false;
+      }
+    }
+  }
+  DEBUGD_ADD_ERROR(error, kUnsupportedPerfToolErrorName, kArgsError);
+  return false;
+}
 
 PerfTool::PerfTool() {
   signal_handler_.Init();
@@ -79,9 +131,18 @@ bool PerfTool::GetPerfOutput(uint32_t duration_secs,
                              std::vector<uint8_t>* perf_stat,
                              int32_t* status,
                              brillo::ErrorPtr* error) {
-  PerfSubcommand subcommand = GetPerfSubcommandType(perf_args);
-  if (subcommand == PERF_COMMAND_UNSUPPORTED) {
-    DEBUGD_ADD_ERROR(error, kUnsupportedPerfToolErrorName, kArgsError);
+  PerfSubcommand subcommand;
+  if (duration_secs > 0) {  // legacy option style
+    if (perf_args.size() < 2) {
+      DEBUGD_ADD_ERROR(error, kUnsupportedPerfToolErrorName, kArgsError);
+      return false;
+    }
+    subcommand = GetPerfSubcommandType(perf_args[1]);
+    if (perf_args[0] != "perf" || subcommand == PERF_COMMAND_UNSUPPORTED) {
+      DEBUGD_ADD_ERROR(error, kUnsupportedPerfToolErrorName, kArgsError);
+      return false;
+    }
+  } else if (!ValidateQuipperArguments(perf_args, subcommand, error)) {
     return false;
   }
 
@@ -138,9 +199,18 @@ bool PerfTool::GetPerfOutputFd(uint32_t duration_secs,
                                const base::ScopedFD& stdout_fd,
                                uint64_t* session_id,
                                brillo::ErrorPtr* error) {
-  PerfSubcommand subcommand = GetPerfSubcommandType(perf_args);
-  if (subcommand == PERF_COMMAND_UNSUPPORTED) {
-    DEBUGD_ADD_ERROR(error, kUnsupportedPerfToolErrorName, kArgsError);
+  PerfSubcommand subcommand;
+  if (duration_secs > 0) {  // legacy option style
+    if (perf_args.size() < 2) {
+      DEBUGD_ADD_ERROR(error, kUnsupportedPerfToolErrorName, kArgsError);
+      return false;
+    }
+    subcommand = GetPerfSubcommandType(perf_args[1]);
+    if (perf_args[0] != "perf" || subcommand == PERF_COMMAND_UNSUPPORTED) {
+      DEBUGD_ADD_ERROR(error, kUnsupportedPerfToolErrorName, kArgsError);
+      return false;
+    }
+  } else if (!ValidateQuipperArguments(perf_args, subcommand, error)) {
     return false;
   }
 
