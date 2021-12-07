@@ -1,9 +1,4 @@
 {
-    "audio_codec": {
-        "generic": {
-            "eval": "generic_audio_codec"
-            }
-        },
     "battery": {
         "generic": {
             "eval": "generic_battery"

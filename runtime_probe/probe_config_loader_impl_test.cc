@@ -129,7 +129,7 @@ TEST_F(ProbeConfigLoaderImplTest, LoadFromFile_RelativePath) {
   EXPECT_EQ(probe_config->path, abs_file_path);
   EXPECT_FALSE(probe_config->config.DictEmpty());
   EXPECT_EQ(probe_config->sha1_hash,
-            "B4B67B8FB7B094783926CC581850C492C5A246A4");
+            "0B6621DE5CDB0F805E614F19CAA6C38104F1F178");
 }
 
 TEST_F(ProbeConfigLoaderImplTest, LoadFromFile_AbsolutePath) {
@@ -143,7 +143,7 @@ TEST_F(ProbeConfigLoaderImplTest, LoadFromFile_AbsolutePath) {
   EXPECT_EQ(probe_config->path, abs_file_path);
   EXPECT_FALSE(probe_config->config.DictEmpty());
   EXPECT_EQ(probe_config->sha1_hash,
-            "B4B67B8FB7B094783926CC581850C492C5A246A4");
+            "0B6621DE5CDB0F805E614F19CAA6C38104F1F178");
 }
 
 TEST_F(ProbeConfigLoaderImplTest, LoadFromFile_MissingFile) {
@@ -177,7 +177,7 @@ TEST_F(ProbeConfigLoaderImplTest, LoadFromFile_SymbolicLink) {
   EXPECT_EQ(probe_config->path, abs_file_path);
   EXPECT_FALSE(probe_config->config.DictEmpty());
   EXPECT_EQ(probe_config->sha1_hash,
-            "B4B67B8FB7B094783926CC581850C492C5A246A4");
+            "0B6621DE5CDB0F805E614F19CAA6C38104F1F178");
 }
 
 TEST_F(ProbeConfigLoaderImplTest, GetDefaultPaths_WithoutCrosDebug) {
@@ -248,7 +248,7 @@ TEST_F(ProbeConfigLoaderImplTest, LoadDefault_WithoutCrosDebug) {
       rootfs_config_path.Append(model_name).Append(kRuntimeProbeConfigName));
   EXPECT_FALSE(probe_config->config.DictEmpty());
   EXPECT_EQ(probe_config->sha1_hash,
-            "B4B67B8FB7B094783926CC581850C492C5A246A4");
+            "0B6621DE5CDB0F805E614F19CAA6C38104F1F178");
 }
 
 TEST_F(ProbeConfigLoaderImplTest, LoadDefault_WithCrosDebug) {
