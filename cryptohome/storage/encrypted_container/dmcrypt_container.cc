@@ -143,6 +143,20 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
     created = true;
   }
 
+  // Ensure that the dm-crypt device or the underlying backing device are
+  // not left attached on the failure paths. If the backing device was created
+  // during setup, purge it as well.
+  base::ScopedClosureRunner device_cleanup_runner;
+
+  if (created) {
+    device_cleanup_runner = base::ScopedClosureRunner(base::BindOnce(
+        base::IgnoreResult(&DmcryptContainer::Purge), base::Unretained(this)));
+  } else {
+    device_cleanup_runner = base::ScopedClosureRunner(
+        base::BindOnce(base::IgnoreResult(&DmcryptContainer::Teardown),
+                       base::Unretained(this)));
+  }
+
   if (!backing_device_->Setup()) {
     LOG(ERROR) << "Failed to setup backing device";
     return false;
@@ -218,11 +232,6 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
     }
   }
 
-  // Ensure that the dm-crypt device or the underlying backing device are
-  // not left attached on the failure paths.
-  base::ScopedClosureRunner device_teardown_runner(base::BindOnce(
-      base::IgnoreResult(&DmcryptContainer::Teardown), base::Unretained(this)));
-
   // Wait for the dmcrypt device path to show up before continuing to setting
   // up the filesystem.
   if (!platform_->UdevAdmSettle(dmcrypt_device_path, true)) {
@@ -243,7 +252,7 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
     return false;
   }
 
-  ignore_result(device_teardown_runner.Release());
+  ignore_result(device_cleanup_runner.Release());
   return true;
 }
 
