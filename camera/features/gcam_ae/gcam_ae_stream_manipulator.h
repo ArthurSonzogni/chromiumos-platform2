@@ -22,10 +22,10 @@ namespace cros {
 
 class GcamAeStreamManipulator : public StreamManipulator {
  public:
-  // The default Gcam AE config file. The file should contain a JSON map for the
-  // options defined below.
-  static constexpr const char kDefaultGcamAeConfigFile[] =
-      "/etc/camera/gcam_ae_config.json";
+  // By default the config is loaded from the feature config file path specified
+  // in the feature profile. For testing or debugging, the feature config can be
+  // overridden by the override config file below. The file should contain a
+  // JSON map for the options defined below.
   static constexpr const char kOverrideGcamAeConfigFile[] =
       "/run/camera/gcam_ae_config.json";
 
@@ -37,7 +37,8 @@ class GcamAeStreamManipulator : public StreamManipulator {
     bool log_frame_metadata = false;
   };
 
-  GcamAeStreamManipulator(GcamAeController::Factory gcam_ae_controller_factory =
+  GcamAeStreamManipulator(base::FilePath config_file_path,
+                          GcamAeController::Factory gcam_ae_controller_factory =
                               base::NullCallback());
 
   ~GcamAeStreamManipulator() override = default;

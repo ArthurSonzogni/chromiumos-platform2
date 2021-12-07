@@ -31,8 +31,9 @@ class ReloadableConfigFile {
   // will overwrite the existing |options_| values with the ones present in the
   // override config file. The config in the override file doesn't have to
   // include all the options and it can update only a subset of the options.
-  ReloadableConfigFile(const char* default_config_file_path,
-                       const char* override_config_file_path = nullptr);
+  ReloadableConfigFile(
+      base::FilePath default_config_file_path,
+      base::FilePath override_config_file_path = base::FilePath());
   ReloadableConfigFile(const ReloadableConfigFile& other) = delete;
   ReloadableConfigFile& operator=(const ReloadableConfigFile& other) = delete;
   ~ReloadableConfigFile() = default;

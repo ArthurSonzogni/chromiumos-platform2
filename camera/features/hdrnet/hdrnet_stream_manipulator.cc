@@ -119,6 +119,7 @@ void HdrNetStreamManipulator::HdrNetRequestBufferInfo::Invalidate() {
 //
 
 HdrNetStreamManipulator::HdrNetStreamManipulator(
+    base::FilePath config_file_path,
     std::unique_ptr<StillCaptureProcessor> still_capture_processor,
     HdrNetProcessor::Factory hdrnet_processor_factory)
     : gpu_thread_("HdrNetPipelineGpuThread"),
@@ -126,8 +127,8 @@ HdrNetStreamManipulator::HdrNetStreamManipulator(
           !hdrnet_processor_factory.is_null()
               ? std::move(hdrnet_processor_factory)
               : base::BindRepeating(HdrNetProcessorImpl::CreateInstance)),
-      config_(HdrNetConfig::kDefaultHdrNetConfigFile,
-              HdrNetConfig::kOverrideHdrNetConfigFile),
+      config_(config_file_path,
+              base::FilePath(HdrNetConfig::kOverrideHdrNetConfigFile)),
       still_capture_processor_(std::move(still_capture_processor)),
       camera_metrics_(CameraMetrics::New()),
       metadata_logger_({.dump_path = base::FilePath(kMetadataDumpPath)}) {

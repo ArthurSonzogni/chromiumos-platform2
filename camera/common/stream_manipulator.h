@@ -30,10 +30,6 @@ class CROS_CAMERA_EXPORT StreamManipulator {
     // Whether we should attempt to enable ZSL. We might have vendor-specific
     // ZSL solution, and in which case we should not try to enable our ZSL.
     bool enable_cros_zsl;
-
-    // Whether the HDRnet stream manipulator should be enabled. The default is
-    // disabled because the feature would require per-device tuning.
-    bool enable_hdrnet = false;
   };
 
   // Callback for the StreamManipulator to return capture results to the client

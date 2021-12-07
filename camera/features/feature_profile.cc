@@ -32,8 +32,8 @@ base::Optional<FeatureProfile::FeatureType> GetFeatureType(
 
 FeatureProfile::FeatureProfile(base::Optional<base::Value> feature_config,
                                base::Optional<DeviceConfig> device_config)
-    : config_file_(kFeatureProfileFilePath),
-      device_config_(device_config ? std::move(device_config.value())
+    : config_file_(base::FilePath(kFeatureProfileFilePath)),
+      device_config_(device_config ? std::move(device_config).value()
                                    : DeviceConfig::Create()) {
   if (feature_config.has_value()) {
     OnOptionsUpdated(feature_config.value());

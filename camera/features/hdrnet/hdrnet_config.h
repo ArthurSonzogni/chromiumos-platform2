@@ -18,10 +18,10 @@ namespace cros {
 // behaviors of the HDRnet pipeline.
 class HdrNetConfig {
  public:
-  // The default HDRnet config file. The file should contain a JSON map for the
-  // options defined below.
-  static constexpr const char kDefaultHdrNetConfigFile[] =
-      "/etc/camera/hdrnet_config.json";
+  // By default the config is loaded from the feature config file path specified
+  // in the feature profile. For testing or debugging, the feature config can be
+  // override by the config override file below. The file should contain a JSON
+  // map for the options defined below.
   static constexpr const char kOverrideHdrNetConfigFile[] =
       "/run/camera/hdrnet_config.json";
 

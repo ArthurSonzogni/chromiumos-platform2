@@ -32,6 +32,7 @@ namespace cros {
 class HdrNetStreamManipulator : public StreamManipulator {
  public:
   HdrNetStreamManipulator(
+      base::FilePath config_file_path,
       std::unique_ptr<StillCaptureProcessor> still_capture_processor,
       HdrNetProcessor::Factory hdrnet_processor_factory = base::NullCallback());
 

@@ -21,10 +21,10 @@ namespace cros {
 // A wrapper for the FaceSSD-based CrOS face detector.
 class FaceDetectionStreamManipulator : public StreamManipulator {
  public:
-  // The default face detection config file. The file should contain a JSON map
-  // for the options defined below.
-  static constexpr const char kDefaultFaceDetectionConfigFile[] =
-      "/etc/camera/face_detection_config.json";
+  // By default the config is loaded from the feature config file path specified
+  // in the feature profile. For testing or debugging, the feature config can be
+  // overridden by the override config file below. The file should contain a
+  // JSON map for the options defined below.
   static constexpr const char kOverrideFaceDetectionConfigFile[] =
       "/run/camera/face_detection_config.json";
 
@@ -40,7 +40,7 @@ class FaceDetectionStreamManipulator : public StreamManipulator {
     bool log_frame_metadata = false;
   };
 
-  FaceDetectionStreamManipulator();
+  explicit FaceDetectionStreamManipulator(base::FilePath config_file_path);
 
   ~FaceDetectionStreamManipulator() override = default;
 

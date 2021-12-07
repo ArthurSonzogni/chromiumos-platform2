@@ -228,7 +228,7 @@ class HdrNetStreamManipulatorTest : public Test {
 
   void SetUp() {
     stream_manipulator_ = std::make_unique<HdrNetStreamManipulator>(
-        std::make_unique<FakeStillCaptureProcessor>(),
+        base::FilePath(), std::make_unique<FakeStillCaptureProcessor>(),
         base::BindRepeating(CreateMockHdrNetProcessorInstance));
     stream_manipulator_->Initialize(
         nullptr,

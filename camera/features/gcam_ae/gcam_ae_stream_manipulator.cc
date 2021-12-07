@@ -31,8 +31,9 @@ constexpr char kLogFrameMetadataKey[] = "log_frame_metadata";
 //
 
 GcamAeStreamManipulator::GcamAeStreamManipulator(
+    base::FilePath config_file_path,
     GcamAeController::Factory gcam_ae_controller_factory)
-    : config_(kDefaultGcamAeConfigFile, kOverrideGcamAeConfigFile),
+    : config_(config_file_path, base::FilePath(kOverrideGcamAeConfigFile)),
       gcam_ae_controller_factory_(
           !gcam_ae_controller_factory.is_null()
               ? std::move(gcam_ae_controller_factory)

@@ -17,11 +17,12 @@
 namespace cros {
 
 ReloadableConfigFile::ReloadableConfigFile(
-    const char* default_config_file_path, const char* override_config_file_path)
+    base::FilePath default_config_file_path,
+    base::FilePath override_config_file_path)
     : default_config_file_path_(default_config_file_path) {
   base::AutoLock lock(options_lock_);
   ReadConfigFileLocked(default_config_file_path_);
-  if (override_config_file_path) {
+  if (!override_config_file_path.empty()) {
     override_config_file_path_ = base::FilePath(override_config_file_path);
     // Override config file is optional and may not exist. Check before read to
     // avoid printing the error message in ReadConfigFileLocked().

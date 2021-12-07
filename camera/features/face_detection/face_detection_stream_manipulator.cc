@@ -42,10 +42,11 @@ void LogFaceInfo(int frame_number, const human_sensing::CrosFace& face) {
 // FaceDetectionStreamManipulator implementations.
 //
 
-FaceDetectionStreamManipulator::FaceDetectionStreamManipulator()
+FaceDetectionStreamManipulator::FaceDetectionStreamManipulator(
+    base::FilePath config_file_path)
     : face_detector_(FaceDetector::Create()),
-      config_(kDefaultFaceDetectionConfigFile,
-              kOverrideFaceDetectionConfigFile),
+      config_(config_file_path,
+              base::FilePath(kOverrideFaceDetectionConfigFile)),
       metadata_logger_({.dump_path = base::FilePath(kMetadataDumpPath)}) {
   config_.SetCallback(
       base::BindRepeating(&FaceDetectionStreamManipulator::OnOptionsUpdated,

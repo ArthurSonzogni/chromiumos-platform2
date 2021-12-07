@@ -23,6 +23,7 @@
 #include "features/face_detection/face_detection_stream_manipulator.h"
 #endif
 
+#include "features/feature_profile.h"
 #include "features/zsl/zsl_stream_manipulator.h"
 
 namespace cros {
@@ -31,13 +32,15 @@ void MaybeEnableHdrNetStreamManipulator(
     const StreamManipulator::Options& options,
     std::vector<std::unique_ptr<StreamManipulator>>* out_stream_manipulators) {
 #if USE_CAMERA_FEATURE_HDRNET
+  FeatureProfile feature_profile;
+
   if (base::PathExists(base::FilePath(constants::kForceDisableHdrNetPath))) {
     // HDRnet is forcibly disabled.
     return;
   }
 
   if (base::PathExists(base::FilePath(constants::kForceEnableHdrNetPath)) ||
-      options.enable_hdrnet) {
+      feature_profile.IsEnabled(FeatureProfile::FeatureType::kHdrnet)) {
     // HDRnet is enabled forcibly or by the device setting.
 
     // TODO(jcliang): Update the camera module name here when the names are
@@ -65,10 +68,18 @@ void MaybeEnableHdrNetStreamManipulator(
           JpegCompressor::GetInstance(CameraMojoChannelManager::GetInstance());
       out_stream_manipulators->emplace_back(
           std::make_unique<HdrNetStreamManipulator>(
+              feature_profile.GetConfigFilePath(
+                  FeatureProfile::FeatureType::kHdrnet),
               std::make_unique<StillCaptureProcessorImpl>(
                   std::move(jpeg_compressor))));
-      out_stream_manipulators->emplace_back(
-          std::make_unique<GcamAeStreamManipulator>());
+      LOGF(INFO) << "HdrNetStreamManipulator enabled";
+      if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kGcamAe)) {
+        out_stream_manipulators->emplace_back(
+            std::make_unique<GcamAeStreamManipulator>(
+                feature_profile.GetConfigFilePath(
+                    FeatureProfile::FeatureType::kGcamAe)));
+        LOGF(INFO) << "GcamAeStreamManipulator enabled";
+      }
     }
   }
 #endif
@@ -78,16 +89,24 @@ void MaybeEnableHdrNetStreamManipulator(
 std::vector<std::unique_ptr<StreamManipulator>>
 StreamManipulator::GetEnabledStreamManipulators(Options options) {
   std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators;
+  FeatureProfile feature_profile;
 
 #if USE_CAMERA_FEATURE_FACE_DETECTION
-  stream_manipulators.emplace_back(
-      std::make_unique<FaceDetectionStreamManipulator>());
+  if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kFaceDetection)) {
+    stream_manipulators.emplace_back(
+        std::make_unique<FaceDetectionStreamManipulator>(
+            feature_profile.GetConfigFilePath(
+                FeatureProfile::FeatureType::kFaceDetection)));
+    LOGF(INFO) << "FaceDetectionStreamManipulator enabled";
+  }
 #endif
 
   MaybeEnableHdrNetStreamManipulator(options, &stream_manipulators);
 
+  // TODO(jcliang): See if we want to move ZSL to feature profile.
   if (options.enable_cros_zsl) {
     stream_manipulators.emplace_back(std::make_unique<ZslStreamManipulator>());
+    LOGF(INFO) << "ZslStreamManipulator enabled";
   }
 
   return stream_manipulators;
