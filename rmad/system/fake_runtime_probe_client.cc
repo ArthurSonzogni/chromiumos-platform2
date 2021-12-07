@@ -12,7 +12,6 @@
 namespace {
 
 const std::vector<rmad::RmadComponent> kDefaultProbedComponents = {
-    rmad::RMAD_COMPONENT_AUDIO_CODEC,
     rmad::RMAD_COMPONENT_BATTERY,
     rmad::RMAD_COMPONENT_STORAGE,
     rmad::RMAD_COMPONENT_CAMERA,

@@ -152,7 +152,7 @@ TEST_F(FakeRuntimeProbeClientTest, ProbeCategories_Specified) {
 TEST_F(FakeRuntimeProbeClientTest, ProbeCategories_All) {
   std::set<RmadComponent> components;
   EXPECT_TRUE(fake_runtime_probe_client_->ProbeCategories({}, &components));
-  EXPECT_EQ(13, components.size());
+  EXPECT_EQ(12, components.size());
 }
 
 }  // namespace fake

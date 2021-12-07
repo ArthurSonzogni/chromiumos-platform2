@@ -26,8 +26,6 @@ constexpr int kDefaultTimeoutMs = 10 * 1000;  // 10 seconds.
 const std::unordered_map<rmad::RmadComponent,
                          runtime_probe::ProbeRequest::SupportCategory>
     kRmadToRuntimeProbeComponentMap = {
-        {rmad::RMAD_COMPONENT_AUDIO_CODEC,
-         runtime_probe::ProbeRequest::audio_codec},
         {rmad::RMAD_COMPONENT_BATTERY, runtime_probe::ProbeRequest::battery},
         {rmad::RMAD_COMPONENT_STORAGE, runtime_probe::ProbeRequest::storage},
         {rmad::RMAD_COMPONENT_VPD_CACHED,
@@ -48,8 +46,6 @@ const std::unordered_map<rmad::RmadComponent,
 const std::vector<
     std::pair<rmad::RmadComponent, int (runtime_probe::ProbeResult::*)() const>>
     kProbedComponentSizes = {
-        {rmad::RMAD_COMPONENT_AUDIO_CODEC,
-         &runtime_probe::ProbeResult::audio_codec_size},
         {rmad::RMAD_COMPONENT_BATTERY,
          &runtime_probe::ProbeResult::battery_size},
         {rmad::RMAD_COMPONENT_STORAGE,
