@@ -4731,6 +4731,15 @@ mno {
     }
     mccmnc : "23415"
     mobile_apn {
+      apn : "wap.vodafone.co.uk"
+      localized_name {
+        name : "Vodafone UK Data"
+      }
+      username : "wap"
+      password : "wap"
+      ip_type : IPV4V6
+    }
+    mobile_apn {
       apn : "internet"
       localized_name {
         name : "Contract Internet"
