@@ -688,4 +688,9 @@ bool DebugdDBusAdaptor::DRMTraceAnnotateLog(brillo::ErrorPtr* error,
   return drm_trace_tool_->AnnotateLog(error, log);
 }
 
+bool DebugdDBusAdaptor::DRMTraceSnapshot(brillo::ErrorPtr* error,
+                                         uint32_t type_enum) {
+  return drm_trace_tool_->Snapshot(error, type_enum);
+}
+
 }  // namespace debugd

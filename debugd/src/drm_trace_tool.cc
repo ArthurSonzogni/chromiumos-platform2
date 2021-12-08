@@ -6,10 +6,13 @@
 
 #include "debugd/src/drm_trace_tool.h"
 
+#include <utility>
+
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/strings/string_util.h>
+#include <base/time/time.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_util.h>
 #include <brillo/files/safe_fd.h>
 #include <debugd/src/error_utils.h>
 
@@ -50,22 +53,26 @@ static_assert(AreEqual(DRM_UT_LEASE, DRMTraceCategory_LEASE));
 static_assert(AreEqual(DRM_UT_DP, DRMTraceCategory_DP));
 static_assert(AreEqual(DRM_UT_DRMRES, DRMTraceCategory_DRMRES));
 
-const uint32_t kDefaultMask = DRM_UT_DRIVER | DRM_UT_KMS | DRM_UT_DP;
-const uint32_t kAllCategories = 0x3FF;
-const uint32_t kDefaultTraceBufferSizeKb = 64;
+constexpr uint32_t kDefaultMask = DRM_UT_DRIVER | DRM_UT_KMS | DRM_UT_DP;
+constexpr uint32_t kAllCategories = 0x3FF;
+constexpr uint32_t kDefaultTraceBufferSizeKb = 64;
 // 2MB * num_cpus. This is somewhat arbitrary. Increase in size if we need more.
-const uint32_t kDebugTraceBufferSizeKb = 2 * 1024;
+constexpr uint32_t kDebugTraceBufferSizeKb = 2 * 1024;
 // 256K, to account for large blocks of text such as modetest output.
-const uint32_t kMaxLogSize = 256 * 1024;
+constexpr uint32_t kMaxLogSize = 256 * 1024;
 
 // Drop the first slash since the root path can be set for testing.
-const char kTraceMaskFile[] = "sys/module/drm/parameters/trace";
-const char kTraceBufferSizeFile[] =
+constexpr char kTraceMaskFile[] = "sys/module/drm/parameters/trace";
+constexpr char kTraceBufferSizeFile[] =
     "sys/kernel/debug/tracing/instances/drm/buffer_size_kb";
-const char kTraceMarkerFile[] =
+constexpr char kTraceMarkerFile[] =
     "sys/kernel/debug/tracing/instances/drm/trace_marker";
+constexpr char kTraceContentsFile[] =
+    "sys/kernel/debug/tracing/instances/drm/trace";
+constexpr char kSnapshotDirPath[] = "var/log/display_debug";
 
-const char kDRMTraceToolErrorString[] = "org.chromium.debugd.error.DRMTrace";
+constexpr char kDRMTraceToolErrorString[] =
+    "org.chromium.debugd.error.DRMTrace";
 
 // Convert |size| to the corresponding DRMTraceSizes enum value. Returns
 // false if |size| is not a valid enum value.
@@ -79,6 +86,31 @@ bool ConvertSize(uint32_t size, DRMTraceSizes* out_size) {
 
   return true;
 }
+
+// Convert |type| to the corresponding DRMSnapshotType enum value. Returns
+// false if |type| is not a valid enum value.
+bool ConvertType(uint32_t type, DRMSnapshotType* out_type) {
+  if (type == DRMSnapshotType_TRACE)
+    *out_type = DRMSnapshotType_TRACE;
+  else
+    return false;
+
+  return true;
+}
+
+base::FilePath GenerateSnapshotFilePath() {
+  base::Time now = base::Time::Now();
+  base::Time::Exploded exploded;
+  now.LocalExplode(&exploded);
+
+  // var/log/blah/trace.YYYYMMDD-HHMMSS
+  return base::FilePath(kSnapshotDirPath)
+      .Append(base::FilePath(base::StringPrintf(
+          "drm_trace.%04d%02d%02d-%02d%02d%02d", exploded.year, exploded.month,
+          exploded.day_of_month, exploded.hour, exploded.minute,
+          exploded.second)));
+}
+
 }  // namespace
 
 DRMTraceTool::DRMTraceTool() : DRMTraceTool(base::FilePath("/")) {}
@@ -152,6 +184,23 @@ bool DRMTraceTool::AnnotateLog(brillo::ErrorPtr* error,
   return WriteToFile(error, marker_path, sanitized_log);
 }
 
+bool DRMTraceTool::Snapshot(brillo::ErrorPtr* error, uint32_t type_enum) {
+  DRMSnapshotType drm_snapshot_type;
+  if (!ConvertType(type_enum, &drm_snapshot_type)) {
+    DEBUGD_ADD_ERROR_FMT(error, kDRMTraceToolErrorString,
+                         "Invalid value for type: %u", type_enum);
+    return false;
+  }
+
+  // Currently only drm_trace can be snapshotted, thus if ConvertType
+  // succeeded above, we know it's DRMSnapshotType_TRACE.
+  const base::FilePath trace_path = root_path_.Append(kTraceContentsFile);
+  const base::FilePath snapshot_path =
+      root_path_.Append(GenerateSnapshotFilePath());
+
+  return CopyFile(error, trace_path, snapshot_path);
+}
+
 bool DRMTraceTool::WriteToFile(brillo::ErrorPtr* error,
                                const base::FilePath& path,
                                const std::string& contents) {
@@ -199,6 +248,47 @@ void DRMTraceTool::SetToDefault() {
   if (!SetSize(&error, DRMTraceSize_DEFAULT))
     LOG(WARNING) << "Failed to reset trace buffer size; drm_trace may be "
                     "larger than expected.";
+}
+
+bool DRMTraceTool::CopyFile(brillo::ErrorPtr* error,
+                            const base::FilePath& src,
+                            const base::FilePath& dst) {
+  brillo::SafeFD::SafeFDResult result = brillo::SafeFD::Root();
+  brillo::SafeFD root_fd = std::move(result.first);
+  if (brillo::SafeFD::IsError(result.second)) {
+    DEBUGD_ADD_ERROR_FMT(error, kDRMTraceToolErrorString,
+                         "Failed to open SafeFD::Root(), error: %d",
+                         result.second);
+    return false;
+  }
+
+  result = root_fd.OpenExistingFile(src);
+  brillo::SafeFD src_fd = std::move(result.first);
+  if (brillo::SafeFD::IsError(result.second)) {
+    DEBUGD_ADD_ERROR_FMT(error, kDRMTraceToolErrorString,
+                         "Failed to open %s, error: %d", src.value().c_str(),
+                         result.second);
+    return false;
+  }
+
+  result = root_fd.MakeFile(dst);
+  brillo::SafeFD dst_fd = std::move(result.first);
+  if (brillo::SafeFD::IsError(result.second)) {
+    DEBUGD_ADD_ERROR_FMT(error, kDRMTraceToolErrorString,
+                         "Failed to create %s, error: %d", dst.value().c_str(),
+                         result.second);
+    return false;
+  }
+
+  brillo::SafeFD::Error copy_result = src_fd.CopyContentsTo(&dst_fd);
+  if (brillo::SafeFD::IsError(copy_result)) {
+    DEBUGD_ADD_ERROR_FMT(error, kDRMTraceToolErrorString,
+                         "Failed to copy %s to %s, error: %d",
+                         src.value().c_str(), dst.value().c_str(), copy_result);
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace debugd

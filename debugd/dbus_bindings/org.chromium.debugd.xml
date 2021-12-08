@@ -1349,6 +1349,18 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
+    <method name="DRMTraceSnapshot">
+      <tp:docstring>
+        Copy the current contents of the specified log type to a new file
+        /var/log/display_debug/$logtype.$datetimestamp
+      </tp:docstring>
+      <arg name="type" type="u" direction="in">
+        <tp:docstring>
+          Which log to snapshot as defined in the DRMSnapshotType enum.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
     <tp:flags name="DRMTraceCategories">
       <tp:docstring>
         Bit flags representing debug logging categories. Definitions of
@@ -1385,6 +1397,19 @@
         <tp:docstring>
           Increase the size of the drm_trace buffer to allow for collecting
           more verbose logs and a longer history of logs.
+        </tp:docstring>
+      </tp:enumvalue>
+    </tp:enum>
+    <tp:enum name="DRMSnapshotType">
+      <tp:docstring>
+        Enum values for different logs to snapshot in the context of DRMTrace.
+        Currently dbusxx-xml2cpp does not extract flags values, so any changes
+        here should be manually flushed to
+        platform/system_api/dbus/service_constants.h.
+      </tp:docstring>
+      <tp:enumvalue suffix="TRACE" value='0'>
+        <tp:docstring>
+          Snapshot /sys/kernel/debug/tracing/instances/drm/trace.
         </tp:docstring>
       </tp:enumvalue>
     </tp:enum>

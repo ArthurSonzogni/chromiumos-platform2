@@ -35,10 +35,18 @@ class DRMTraceTool : public SessionManagerObserverInterface {
   // /sys/kernel/debug/tracing/instances/drm/trace_marker
   bool AnnotateLog(brillo::ErrorPtr* error, const std::string& log);
 
+  // Copy the log specified by |type_enum| to
+  // /var/log/display_debug/$logtype.$datetime
+  bool Snapshot(brillo::ErrorPtr* error, uint32_t type_enum);
+
   // Helper function to write |contents| to the file at |path|.
   static bool WriteToFile(brillo::ErrorPtr* error,
                           const base::FilePath& path,
                           const std::string& contents);
+
+  static bool CopyFile(brillo::ErrorPtr* error,
+                       const base::FilePath& src,
+                       const base::FilePath& dest);
 
   ~DRMTraceTool() = default;
 
