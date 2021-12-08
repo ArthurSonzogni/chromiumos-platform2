@@ -66,6 +66,9 @@ class {{class_name}}
   ::mojo::ReceiverSet<{{interface.mojom_name}}> receiver_set_;
 
 {%- for method in interface.methods %}
+  {{method_macro.declare_data_checker(
+      method.mojom_name ~ "__", method.parameters)}}
+
   {{method_macro.declare_data_generator(
       method.mojom_name ~ "__", method.response_parameters)}}
 {%- endfor %}

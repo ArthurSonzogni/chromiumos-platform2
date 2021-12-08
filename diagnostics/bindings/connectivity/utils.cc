@@ -24,6 +24,16 @@ void RunOrReturnCallback(
     std::move(return_callback).Run(return_value);
   }
 }
+
+void RunSuccessOrFailedCallback(base::OnceClosure on_success,
+                                base::OnceClosure on_failed,
+                                bool result) {
+  if (result) {
+    std::move(on_success).Run();
+  } else {
+    std::move(on_failed).Run();
+  }
+}
 }  // namespace
 
 void RunOrReturn(
@@ -34,6 +44,15 @@ void RunOrReturn(
   std::move(get_result)
       .Run(base::BindOnce(&RunOrReturnCallback, return_value,
                           std::move(run_callback), std::move(return_callback)));
+}
+
+void RunSuccessOrFailed(
+    base::OnceCallback<void(base::OnceCallback<void(bool)>)> get_result,
+    base::OnceClosure on_success,
+    base::OnceClosure on_failed) {
+  std::move(get_result)
+      .Run(base::BindOnce(&RunSuccessOrFailedCallback, std::move(on_success),
+                          std::move(on_failed)));
 }
 
 }  // namespace connectivity

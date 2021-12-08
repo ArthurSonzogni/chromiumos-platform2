@@ -55,7 +55,16 @@ void {{class_name}}::CheckStep1__{{method.mojom_name}}(CheckCallback callback) {
   remote_.set_disconnect_handler(std::move(next_callback1));
   auto response_callback = base::BindOnce([]({{
     method_macro.declare_params("", method.response_parameters)}}
-  ){}).Then(std::move(next_callback2));
+  ){
+{%-      for param in method.response_parameters %}
+{%-        if param.kind is PendingReceiverKind or
+              param.kind is PendingRemoteKind  %}
+    CHECK(false) <<
+        "Checking interface through response parameters are not supported.";
+{%-        endif %}
+{%-      endfor %}
+    LOG(ERROR) << "{{method.mojom_name}} callback!";
+  }).Then(std::move(next_callback2));
 
   remote_->{{method.mojom_name}}({{method_macro.generate_params(
     method.mojom_name ~ "__", method.parameters)}}
@@ -79,9 +88,22 @@ void {{class_name}}::CheckStep2__{{method.mojom_name}}(CheckCallback callback) {
     &{{class_name}}::CheckStep3__{{method.mojom_name}},
     weak_factory_.GetWeakPtr());
 
-{#  TODO: Check sub-interfaces. #}
-
+{#  Do the checking of TestConsumer. The next action will be run only if the #}
+{#- previous one succeeded. #}
+{%    for param in method.parameters | reverse | selectattr(
+                                            "kind", "PendingReceiverKind")  %}
+  auto callback_{{loop.index}} = base::BindOnce(
+    &::diagnostics::bindings::connectivity::RunOrReturn,
+    /*return_value=*/false,
+    /*get_result=*/{{
+      method.mojom_name}}__{{param.mojom_name}}__generator__->CheckClosure(),
+    /*run_callback=*/std::move(callback_{{loop.index - 1}}));
+{%-     if loop.last %}
+  auto callback_last = std::move(callback_{{loop.index}});
+{%-     endif %}
+{%-   else %}
   auto callback_last = std::move(callback_0);
+{%-   endfor %}
   std::move(callback_last).Run(std::move(callback));
 }
 

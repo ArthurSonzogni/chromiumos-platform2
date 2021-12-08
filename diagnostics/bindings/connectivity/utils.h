@@ -24,6 +24,19 @@ void RunOrReturn(
     base::OnceCallback<void(base::OnceCallback<void(bool)>)> run_callback,
     base::OnceCallback<void(bool)> return_callback);
 
+// Runs |on_success| or |on_failed| based on the result of the callback of
+// |get_result|.
+// The blocking version of this is:
+//   if (get_result()) {
+//     // on success.
+//   } else {
+//     // on failed;
+//   }
+void RunSuccessOrFailed(
+    base::OnceCallback<void(base::OnceCallback<void(bool)>)> get_result,
+    base::OnceClosure on_success,
+    base::OnceClosure on_failed);
+
 }  // namespace connectivity
 }  // namespace bindings
 }  // namespace diagnostics

@@ -163,6 +163,8 @@ FAILED_TEST(TestWrongReturnType);
 FAILED_TEST(TestCannotBeNull);
 FAILED_TEST(TestWrongStruct);
 FAILED_TEST(TestWrongUnion);
+FAILED_TEST(TestFailSubInterfaceForward);
+FAILED_TEST(TestFailSubInterfaceBackward);
 
 }  // namespace
 }  // namespace test

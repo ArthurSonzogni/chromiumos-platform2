@@ -39,6 +39,14 @@ enum EnumWithDefault {
   C,
 };
 
+interface FooInterface {
+  Foo() => ();
+};
+
+interface BarInterface {
+  Bar(pending_remote<FooInterface> on_response);
+};
+
 interface TestSuccess {
   Foo();
   Bar() => ();
@@ -49,6 +57,14 @@ interface TestSuccess {
   FunUnion(MyUnion? u) => (MyUnion? u);
   FunEnum(MyEnum e) => (MyEnum e);
   FunEnumWithDefault(EnumWithDefault e) => (EnumWithDefault e);
+  FunPutService(pending_remote<FooInterface> on_response);
+  FunGetService(pending_receiver<FooInterface> foo_interface);
+  FunPutServiceR(pending_remote<FooInterface> on_response) => ();
+  FunGetServiceR(pending_receiver<FooInterface> foo_interface) => ();
+  FunPutTwoLayerInterface(pending_remote<BarInterface> on_response);
+  FunPutTwoLayerInterfaceR(pending_remote<BarInterface> on_response) => ();
+  FunGetTwoLayerInterface(pending_receiver<BarInterface> on_response);
+  FunGetTwoLayerInterfaceR(pending_receiver<BarInterface> on_response) => ();
   FunCommon(diagnostics.bindings.connectivity.test.common.mojom.CommonStruct s);
   FunCommonNull(
     diagnostics.bindings.connectivity.test.common.mojom.CommonStruct? s);
@@ -93,4 +109,12 @@ union WrongUnion {
 
 interface TestWrongUnion {
   Foo(WrongUnion u);
+};
+
+interface TestFailSubInterfaceForward {
+  Foo(pending_receiver<TestWrongStruct> foo_interface);
+};
+
+interface TestFailSubInterfaceBackward {
+  Foo(pending_remote<TestWrongStruct> on_response);
 };

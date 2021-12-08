@@ -11,6 +11,8 @@ std::unique_ptr<{{class_name}}> {{class_name}}::Create(
     ::diagnostics::bindings::connectivity::Context* context)
   : context_(context) {
 {%- for method in interface.methods -%}
+  {{method_macro.define_data_checker(
+      method.mojom_name ~ "__", "context", method.parameters)}}
   {{method_macro.define_data_generator(
       method.mojom_name ~ "__", "context", method.response_parameters)}}
 {%- endfor %}
@@ -36,6 +38,13 @@ void {{class_name}}::RemoveReceiver(::mojo::ReceiverId receiver_id) {
 {%- for method in interface.methods %}
 void {{class_name}}::{{method.mojom_name}}_Step1({{
     method_macro.declare_request_params("", method)}}) {
+{#  Bind each receiver to each TestProvider. #}
+{%-   for param in method.parameters | selectattr(
+                                          "kind", "PendingReceiverKind") %}
+    {{method.mojom_name}}__{{
+      param.mojom_name}}__checker__->Bind(std::move({{param.mojom_name}}));
+{%-   endfor %}
+
 {#  Create callback for Step2. #}
 {%-   if method.response_parameters != None -%}
   auto response_callback = base::BindOnce(
@@ -51,9 +60,29 @@ void {{class_name}}::{{method.mojom_name}}_Step1({{
     weak_factory_.GetWeakPtr(),
     std::move(response_callback));
 
-{# TODO: Recursively check interface. #}
+{#  Bind each remote to each TestConsumer and do the checking. The next #}
+{#- action will be run only if the previous one succeeded. #}
+{%-   for param in method.parameters | reverse | selectattr(
+                                              "kind", "PendingRemoteKind")  %}
+  {{method.mojom_name}}__{{
+      param.mojom_name}}__checker__->Bind(std::move({{param.mojom_name}}));
 
+  auto callback_{{loop.index}} = base::BindOnce(
+    &::diagnostics::bindings::connectivity::RunSuccessOrFailed,
+    /*get_result=*/{{
+      method.mojom_name}}__{{param.mojom_name}}__checker__->CheckClosure(),
+    /*on_success=*/std::move(callback_{{loop.index - 1}}),
+    /*on_failed=*/base::BindOnce([](){
+      LOG(ERROR) << "\"{{class_name}}::{{method.mojom_name}}\":"
+                 << " interface \"{{param.mojom_name}}\" check failed.";
+    }).Then(base::BindOnce(&{{class_name}}::RemoveReceiver,
+        weak_factory_.GetWeakPtr(), receiver_set_.current_receiver())));
+{%-     if loop.last %}
+  auto callback_last = std::move(callback_{{loop.index}});
+{%-     endif %}
+{%-   else %}
   auto callback_last = std::move(callback_0);
+{%    endfor %}
   std::move(callback_last).Run();
 }
 

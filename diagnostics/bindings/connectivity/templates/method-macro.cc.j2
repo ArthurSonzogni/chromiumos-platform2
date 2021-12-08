@@ -42,11 +42,26 @@
 {%-     call _cpp_nullable_generator_type(kind) -%}
 {{kind | get_name_for_kind}}DataGenerator
 {%-     endcall -%}
+{%-   elif kind is PendingRemoteKind -%}
+{{kind.kind | get_name_for_kind}}TestProvider
+{%-   elif kind is PendingReceiverKind -%}
+{{kind.kind | get_name_for_kind}}TestConsumer
 {%-   else -%}
 {%-     call _cpp_optional_generator_type(kind) -%}
 ::diagnostics::bindings::connectivity::DataGenerator<{{
   kind | cpp_wrapper_type(ignore_nullable=True)}}>
 {%-     endcall -%}
+{%-   endif -%}
+{%- endmacro -%}
+
+{#  Map kind to Checker type. #}
+{%- macro cpp_checker_type(kind) -%}
+{%-   if kind is PendingRemoteKind -%}
+{{kind.kind | get_name_for_kind}}TestConsumer
+{%-   elif kind is PendingReceiverKind -%}
+{{kind.kind | get_name_for_kind}}TestProvider
+{%-   else -%}
+UnsupportedCheckerType/*Should not reach.*/
 {%-   endif -%}
 {%- endmacro -%}
 
@@ -67,6 +82,32 @@ std::unique_ptr<{{cpp_generator_type(param.kind)}}> {{prefix}}{{
 {{prefix}}{{param.mojom_name}}__generator__ = {{
   cpp_generator_type(param.kind)}}::Create({{context}});
 {%      endfor %}
+{%-   endif %}
+{%- endmacro %}
+
+{#  Declare data checker of parameters. #}
+{%- macro declare_data_checker(prefix, parameters) -%}
+{%-   if parameters != None %}
+{%-     for param in parameters -%}
+{%-       if param.kind is PendingRemoteKind or
+             param.kind is PendingReceiverKind %}
+std::unique_ptr<{{cpp_checker_type(param.kind)}}> {{prefix}}{{
+  param.mojom_name}}__checker__;
+{%-       endif %}
+{%-     endfor %}
+{%-   endif %}
+{%- endmacro %}
+
+{#  Define data checker of parameters. #}
+{%- macro define_data_checker(prefix, context, parameters) %}
+{%-   if parameters != None %}
+{%-     for param in parameters -%}
+{%-       if param.kind is PendingRemoteKind or
+             param.kind is PendingReceiverKind %}
+{{prefix}}{{param.mojom_name}}__checker__ = {{
+  cpp_checker_type(param.kind)}}::Create({{context}});
+{%-       endif %}
+{%-     endfor %}
 {%-   endif %}
 {%- endmacro %}
 
