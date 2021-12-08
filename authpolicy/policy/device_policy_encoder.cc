@@ -670,6 +670,40 @@ void DevicePolicyEncoder::EncodePoliciesWithPolicyOptions(
                          ->mutable_login_screen_shortcuts_enabled_options(),
                      level_);
   }
+
+  if (base::Optional<bool> value =
+          EncodeBoolean(key::kDeviceLoginScreenKeyboardFocusHighlightEnabled)) {
+    em::AccessibilitySettingsProto* accessibility_settings =
+        policy->mutable_accessibility_settings();
+    accessibility_settings->set_login_screen_keyboard_focus_highlight_enabled(
+        value.value());
+    SetPolicyOptions(
+        accessibility_settings
+            ->mutable_login_screen_keyboard_focus_highlight_enabled_options(),
+        level_);
+  }
+
+  if (base::Optional<bool> value =
+          EncodeBoolean(key::kDeviceLoginScreenShowOptionsInSystemTrayMenu)) {
+    em::AccessibilitySettingsProto* accessibility_settings =
+        policy->mutable_accessibility_settings();
+    accessibility_settings
+        ->set_login_screen_show_options_in_system_tray_menu_enabled(
+            value.value());
+    SetPolicyOptions(
+        accessibility_settings
+            ->mutable_login_screen_show_options_in_system_tray_menu_enabled_options(),
+        level_);
+  }
+
+  if (base::Optional<bool> value =
+          EncodeBoolean(key::kDeviceLoginScreenPrimaryMouseButtonSwitch)) {
+    policy->mutable_login_screen_primary_mouse_button_switch()->set_value(
+        value.value());
+    SetPolicyOptions(policy->mutable_login_screen_primary_mouse_button_switch()
+                         ->mutable_policy_options(),
+                     level_);
+  }
 }
 
 void DevicePolicyEncoder::EncodeGenericPolicies(
@@ -1187,8 +1221,12 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   }
 
   if (base::Optional<bool> value =
-          EncodeBoolean(key::kKioskCRXManifestUpdateURLIgnored)) {
-    policy->mutable_kiosk_crx_manifest_update_url_ignored()->set_value(
+          EncodeBoolean(key::kDeviceI18nShortcutsEnabled))
+    policy->mutable_device_i18n_shortcuts_enabled()->set_enabled(value.value());
+
+  if (base::Optional<bool> value =
+          EncodeBoolean(key::kChromadToCloudMigrationEnabled)) {
+    policy->mutable_chromad_to_cloud_migration_enabled()->set_value(
         value.value());
   }
 }

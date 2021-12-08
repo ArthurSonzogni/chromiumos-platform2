@@ -347,6 +347,17 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(kBool,
             policy.accessibility_settings().login_screen_shortcuts_enabled());
 
+  EncodeBoolean(&policy, key::kDeviceLoginScreenKeyboardFocusHighlightEnabled,
+                kBool);
+  EXPECT_EQ(kBool, policy.accessibility_settings()
+                       .login_screen_keyboard_focus_highlight_enabled());
+
+  EncodeBoolean(&policy, key::kDeviceLoginScreenShowOptionsInSystemTrayMenu,
+                kBool);
+  EXPECT_EQ(kBool,
+            policy.accessibility_settings()
+                .login_screen_show_options_in_system_tray_menu_enabled());
+
   EncodeBoolean(&policy, key::kDeviceLoginScreenDefaultSpokenFeedbackEnabled,
                 kBool);
   EXPECT_EQ(kBool, policy.accessibility_settings()
@@ -802,12 +813,19 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(kBool,
             policy.device_allow_mgs_to_store_display_properties().value());
 
+  EncodeBoolean(&policy, key::kDeviceLoginScreenPrimaryMouseButtonSwitch,
+                kBool);
+  EXPECT_EQ(kBool, policy.login_screen_primary_mouse_button_switch().value());
+
+  EncodeBoolean(&policy, key::kDeviceI18nShortcutsEnabled, kBool);
+  EXPECT_EQ(kBool, policy.device_i18n_shortcuts_enabled().enabled());
+
+  EncodeBoolean(&policy, key::kChromadToCloudMigrationEnabled, kBool);
+  EXPECT_EQ(kBool, policy.chromad_to_cloud_migration_enabled().value());
+
   EncodeStringList(&policy, key::kDeviceAllowedBluetoothServices, kStringList);
   EXPECT_EQ(kStringList,
             ToVector(policy.device_allowed_bluetooth_services().allowlist()));
-
-  EncodeBoolean(&policy, key::kKioskCRXManifestUpdateURLIgnored, kBool);
-  EXPECT_EQ(kBool, policy.kiosk_crx_manifest_update_url_ignored().value());
 
   //
   // Check whether all device policies have been handled.
