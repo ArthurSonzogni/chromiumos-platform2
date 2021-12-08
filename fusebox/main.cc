@@ -21,6 +21,7 @@
 #include "fusebox/dbus_adaptors/org.chromium.FuseBoxClient.h"
 #include "fusebox/file_system.h"
 #include "fusebox/file_system_fake.h"
+#include "fusebox/fuse_file_handles.h"
 #include "fusebox/fuse_frontend.h"
 #include "fusebox/fuse_path_inodes.h"
 #include "fusebox/make_stat.h"
@@ -217,6 +218,27 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     entry.entry_timeout = kEntryTimeoutSeconds;
 
     request->ReplyEntry(entry);
+  }
+
+  void OpenDir(std::unique_ptr<OpenRequest> request, fuse_ino_t ino) override {
+    if (request->IsInterrupted())
+      return;
+
+    if ((request->flags() & O_ACCMODE) != O_RDONLY) {
+      request->ReplyError(EACCES);
+      LOG(ERROR) << " opendir error: EACCES";
+      return;
+    }
+
+    Node* node = GetInodeTable().Lookup(ino);
+    if (!node) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << " opendir " << ino;
+      return;
+    }
+
+    uint64_t handle = fusebox::OpenFile();
+    request->ReplyOpen(handle);
   }
 
   void ReadDirBatchResponse(uint64_t file_handle,
