@@ -413,6 +413,9 @@ properties:
                     reset-on-resume:
                       description: Expect bluetooth chip to have reset on resume.
                       type: boolean
+                    enable-bluetooth-offload:
+                      description: Enable audio offload path.
+                      type: boolean
                   additionalProperties: false
               additionalProperties: false
             wifi:
