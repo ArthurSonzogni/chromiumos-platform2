@@ -399,6 +399,20 @@ message GetWebAuthnSecretHashReply {
   bytes webauthn_secret_hash = 2;
 }
 
+// Input parameters to GetHibernateSecret()
+message GetHibernateSecretRequest {
+  // This represents the "single user" that the secret belongs to.
+  cryptohome.AccountIdentifier account_id = 1;
+}
+
+// Output parameters for GetHibernateSecret()
+message GetHibernateSecretReply {
+  // Indicates an error if |error| is not empty.
+  CryptohomeErrorCode error = 1;
+  // The hibernate secret.
+  bytes hibernate_secret = 2;
+}
+
 // TODO(b/126307305): For the messages, below, we'll need to add the documentations
 // for them.
 

@@ -38,6 +38,7 @@ const char kMigrateKey[] = "MigrateKey";
 const char kStartFingerprintAuthSession[] = "StartFingerprintAuthSession";
 const char kEndFingerprintAuthSession[] = "EndFingerprintAuthSession";
 const char kGetWebAuthnSecret[] = "GetWebAuthnSecret";
+const char kGetHibernateSecret[] = "GetHibernateSecret";
 const char kStartMigrateToDircrypto[] = "StartMigrateToDircrypto";
 const char kNeedsDircryptoMigration[] = "NeedsDircryptoMigration";
 const char kGetSupportedKeyPolicies[] = "GetSupportedKeyPolicies";
