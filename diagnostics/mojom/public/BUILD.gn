@@ -4,6 +4,7 @@
 
 import("//common-mk/mojom_bindings_generator.gni")
 import("//common-mk/pkg_config.gni")
+import("//diagnostics/bindings/connectivity/generator.gni")
 
 generate_mojom_bindings("cros_healthd_mojo_bindings") {
   mojo_root = "${platform2_root}"
@@ -26,4 +27,26 @@ generate_mojom_bindings("wilco_dtc_supportd_mojo_bindings") {
   mojo_root = "${platform2_root}"
   sources = [ "wilco_dtc_supportd.mojom" ]
   deps = [ ":cros_healthd_mojo_bindings" ]
+}
+
+mojom_connectivity("cros_healthd_mojo_connectivity_bindings") {
+  mojo_root = "${platform2_root}"
+  generator_overrides =
+      [ "//diagnostics/mojom/external/generator_overrides.json" ]
+  deps = [
+    ":cros_healthd_mojo_bindings",
+    "//diagnostics/mojom/external:mojo_connectivity_bindings_lib",
+  ]
+  sources = [
+    "//diagnostics/mojom/external/network_diagnostics.mojom",
+    "//diagnostics/mojom/external/network_health.mojom",
+    "//diagnostics/mojom/external/network_types.mojom",
+    "//diagnostics/mojom/external/time.mojom",
+    "cros_healthd.mojom",
+    "cros_healthd_diagnostics.mojom",
+    "cros_healthd_events.mojom",
+    "cros_healthd_probe.mojom",
+    "nullable_primitives.mojom",
+    "wilco_ec.mojom",
+  ]
 }
