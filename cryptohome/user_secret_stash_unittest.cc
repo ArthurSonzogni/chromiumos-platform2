@@ -233,7 +233,11 @@ class UserSecretStashObjectApiTest : public UserSecretStashTest {
  protected:
   void SetUp() override {
     ASSERT_NO_FATAL_FAILURE(UserSecretStashTest::SetUp());
+    ASSERT_NO_FATAL_FAILURE(UpdateObjectApiState());
+  }
 
+  // Populates |uss_container_obj_| and |uss_payload_obj_| based on |stash_|.
+  void UpdateObjectApiState() {
     // Encrypt the USS.
     base::Optional<brillo::SecureBlob> uss_container =
         stash_->GetEncryptedContainer(kMainKey);
@@ -416,6 +420,26 @@ TEST_F(UserSecretStashObjectApiTest, DecryptErrorNoResetSecret) {
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
       GetFlatbufferFromUssPayloadObj(), kMainKey));
+}
+
+// Test that decryption via wrapping key fails when the algorithm is unknown.
+TEST_F(UserSecretStashObjectApiTest, UnwrapAndDecryptErrorUnknownAlgorithm) {
+  const char kWrappingId[] = "id";
+  const brillo::SecureBlob kWrappingKey(kAesGcm256KeySize, 0xB);
+
+  EXPECT_TRUE(stash_->AddWrappedMainKey(kMainKey, kWrappingId, kWrappingKey));
+  ASSERT_NO_FATAL_FAILURE(UpdateObjectApiState());
+
+  // It's OK to increment MAX and get an unknown enum, since the schema defines
+  // the enum's underlying type to be a 32-bit int.
+  uss_container_obj_.wrapped_key_blocks[0]->encryption_algorithm =
+      static_cast<UserSecretStashEncryptionAlgorithm>(
+          static_cast<int>(UserSecretStashEncryptionAlgorithm::MAX) + 1);
+
+  brillo::SecureBlob main_key;
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainerWithWrappingKey(
+      GetFlatbufferFromUssContainerObj(), kWrappingId, kWrappingKey,
+      &main_key));
 }
 
 }  // namespace cryptohome

@@ -149,6 +149,7 @@ LoadUserSecretStashWrappedKeyBlocks(
                       "unknown algorithm: "
                    << static_cast<int>(
                           wrapped_key_block->encryption_algorithm());
+      continue;
     }
     loaded_block.encryption_algorithm =
         wrapped_key_block->encryption_algorithm();
