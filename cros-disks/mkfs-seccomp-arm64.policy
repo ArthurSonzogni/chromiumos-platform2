@@ -15,6 +15,7 @@ fsync: 1
 getcwd: 1
 getdents64: 1
 getpid: 1
+gettimeofday: 1
 ioctl: 1
 lseek: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
