@@ -373,6 +373,10 @@ class UserDataAuth {
   user_data_auth::GetWebAuthnSecretHashReply GetWebAuthnSecretHash(
       const user_data_auth::GetWebAuthnSecretHashRequest& request);
 
+  // =============  Hibernate Secret Public Methods ==============
+  user_data_auth::GetHibernateSecretReply GetHibernateSecret(
+      const user_data_auth::GetHibernateSecretRequest& request);
+
   // ========= Firmware Management Parameters Related Public Methods =========
 
   // Retrieve the firmware management parameters. Returns

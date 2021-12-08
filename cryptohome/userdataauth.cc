@@ -3073,6 +3073,39 @@ user_data_auth::GetWebAuthnSecretHashReply UserDataAuth::GetWebAuthnSecretHash(
   return reply;
 }
 
+user_data_auth::GetHibernateSecretReply UserDataAuth::GetHibernateSecret(
+    const user_data_auth::GetHibernateSecretRequest& request) {
+  AssertOnMountThread();
+  user_data_auth::GetHibernateSecretReply reply;
+
+  if (!request.has_account_id()) {
+    LOG(ERROR) << "GetHibernateSecretRequest must have account_id.";
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    return reply;
+  }
+
+  std::string account_id = GetAccountId(request.account_id());
+  if (account_id.empty()) {
+    LOG(ERROR) << "GetHibernateSecretRequest must have valid account_id.";
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    return reply;
+  }
+
+  scoped_refptr<UserSession> session = GetUserSession(account_id);
+  std::unique_ptr<brillo::SecureBlob> secret;
+  if (session) {
+    secret = session->GetHibernateSecret();
+  }
+  if (!secret) {
+    LOG(ERROR) << "Failed to get hibernate secret hash.";
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+    return reply;
+  }
+
+  reply.set_hibernate_secret(secret->to_string());
+  return reply;
+}
+
 user_data_auth::CryptohomeErrorCode
 UserDataAuth::GetFirmwareManagementParameters(
     user_data_auth::FirmwareManagementParameters* fwmp) {

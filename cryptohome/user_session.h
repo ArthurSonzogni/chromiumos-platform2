@@ -80,6 +80,9 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   // Returns the WebAuthn secret hash.
   const brillo::SecureBlob& GetWebAuthnSecretHash() const;
 
+  // Returns the hibernate secret.
+  std::unique_ptr<brillo::SecureBlob> GetHibernateSecret();
+
   // Sets credentials current session can be re-authenticated with.
   // Returns false in case anything went wrong in setting up new re-auth state.
   bool SetCredentials(const Credentials& credentials);
@@ -108,6 +111,13 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   // Clears the WebAuthn secret if it's not read yet.
   void ClearWebAuthnSecret();
 
+  // Computes a public derivative from |fek| and |fnek| for hiberman to fetch.
+  void PrepareHibernateSecret(const brillo::SecureBlob& fek,
+                              const brillo::SecureBlob& fnek);
+
+  // Clears the WebAuthn secret if it's not read yet.
+  void ClearHibernateSecret();
+
   HomeDirs* homedirs_;
   KeysetManagement* keyset_management_;
   UserOldestActivityTimestampManager* user_activity_timestamp_manager_;
@@ -125,6 +135,11 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   brillo::SecureBlob webauthn_secret_hash_;
   // Timer for clearing the WebAuthn secret.
   base::OneShotTimer clear_webauthn_secret_timer_;
+
+  // Secret for securing hibernate images.
+  std::unique_ptr<brillo::SecureBlob> hibernate_secret_;
+  // Timer for clearing the hibernate secret.
+  base::OneShotTimer clear_hibernate_secret_timer_;
 
   scoped_refptr<cryptohome::Mount> mount_;
   std::unique_ptr<Pkcs11Token> pkcs11_token_;

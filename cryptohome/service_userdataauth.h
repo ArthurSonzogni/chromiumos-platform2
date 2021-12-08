@@ -160,6 +160,16 @@ class UserDataAuthAdaptor
           user_data_auth::GetWebAuthnSecretHashReply>> response,
       const user_data_auth::GetWebAuthnSecretHashRequest& in_request);
 
+  void GetHibernateSecret(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetHibernateSecretReply>> response,
+      const user_data_auth::GetHibernateSecretRequest& in_request) override;
+
+  void DoGetHibernateSecret(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetHibernateSecretReply>> response,
+      const user_data_auth::GetHibernateSecretRequest& in_request);
+
   void StartMigrateToDircrypto(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::StartMigrateToDircryptoReply>> response,
