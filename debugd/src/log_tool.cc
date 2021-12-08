@@ -121,13 +121,16 @@ const std::array kCommandLogs {
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   Log{kFile, "amdgpu_vram_mm", "/sys/kernel/debug/dri/0/amdgpu_vram_mm",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  // Show du and ls results for dirs under /home/root/*/android-data/data/.
   // We need to enter init's mount namespace to access /home/root. Also, we use
   // neither ARC container's mount namespace (with android-sh) nor
   // /opt/google/containers/android/rootfs/android-data/ so that we can get
   // results even when the container is down.
-  Log{kCommand, "android_app_storage", "/usr/bin/nsenter -t1 -m "
-   "/bin/sh -c \"/usr/bin/du -h /home/root/*/android-data/data/\"",
-   kRoot, kDebugfsGroup},
+  Log{kCommand, "android_app_storage", "/usr/bin/nsenter -t1 -m /bin/sh -c \""
+    "du -h --one-file-system --max-depth 3 /home/root/*/android-data/data/;"
+    "find /home/root/*/android-data/data/ -xdev -type d -maxdepth 3 "
+    "-exec ls -dlZ --time-style='+' {} + | tr -s ' ' '\t' \"",
+    kRoot, kDebugfsGroup},
 #if USE_ARCVM
   Log{kCommand, "arcvm_console_output", "/usr/bin/vm_pstore_dump", "crosvm",
     "crosvm", Log::kDefaultMaxBytes, LogTool::Encoding::kAutodetect,
