@@ -70,7 +70,7 @@ void SensorDeviceFusion::SetFrequency(double frequency,
   std::move(callback).Run(frequency);
 
   ClientData& client = it->second;
-  if (client.observer.is_bound()) {
+  if (client.samples_observer.is_bound()) {
     // Let |samples_handler_| update |client.frequency|.
     samples_handler_->UpdateFrequency(&client, frequency);
   } else {

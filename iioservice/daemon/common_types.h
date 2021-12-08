@@ -43,7 +43,7 @@ class ClientData {
   explicit ClientData(const mojo::ReceiverId id,
                       DeviceData* device_data = nullptr);
 
-  bool IsActive() const;
+  bool IsSampleActive() const;
 
   const mojo::ReceiverId id;
   DeviceData* const device_data;
@@ -51,7 +51,7 @@ class ClientData {
   std::set<int32_t> enabled_chn_indices;
   double frequency = -1;    // Hz
   uint32_t timeout = 5000;  // millisecond
-  mojo::Remote<cros::mojom::SensorDeviceSamplesObserver> observer;
+  mojo::Remote<cros::mojom::SensorDeviceSamplesObserver> samples_observer;
 };
 
 struct SampleData {

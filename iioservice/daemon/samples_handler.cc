@@ -124,16 +124,16 @@ SamplesHandler::~SamplesHandler() {
   SensorMetrics::GetInstance()->SendSensorUsage(iio_device_->GetId(), 0.0);
 
   for (ClientData* client : inactive_clients_) {
-    if (client->observer.is_bound()) {
+    if (client->samples_observer.is_bound()) {
       SensorMetrics::GetInstance()->SendSensorObserverClosed();
-      client->observer.reset();
+      client->samples_observer.reset();
     }
   }
 
   for (auto& [client, _] : clients_map_) {
-    if (client->observer.is_bound()) {
+    if (client->samples_observer.is_bound()) {
       SensorMetrics::GetInstance()->SendSensorObserverClosed();
-      client->observer.reset();
+      client->samples_observer.reset();
     }
   }
 }
@@ -247,7 +247,7 @@ void SamplesHandler::SetSampleWatcherOnThread() {
   if (!iio_device_->CreateBuffer()) {
     LOGF(ERROR) << "Failed to create buffer";
     for (auto& [client_data, _] : clients_map_) {
-      client_data->observer->OnErrorOccurred(
+      client_data->samples_observer->OnErrorOccurred(
           cros::mojom::ObserverErrorType::GET_FD_FAILED);
     }
 
@@ -258,7 +258,7 @@ void SamplesHandler::SetSampleWatcherOnThread() {
   if (!fd.has_value()) {
     LOGF(ERROR) << "Failed to get fd";
     for (auto& [client_data, _] : clients_map_) {
-      client_data->observer->OnErrorOccurred(
+      client_data->samples_observer->OnErrorOccurred(
           cros::mojom::ObserverErrorType::GET_FD_FAILED);
     }
 
@@ -300,7 +300,7 @@ void SamplesHandler::AddActiveClientOnThread(ClientData* client_data) {
     }
 
     if (!sample.empty())
-      client_data->observer->OnSampleUpdated(std::move(sample));
+      client_data->samples_observer->OnSampleUpdated(std::move(sample));
   }
 
   if (!watcher_.get())
@@ -359,7 +359,7 @@ void SamplesHandler::UpdateFrequencyOnThread(
 
   auto it = inactive_clients_.find(client_data);
   if (it != inactive_clients_.end()) {
-    if (client_data->IsActive()) {
+    if (client_data->IsSampleActive()) {
       // The client is now active.
       inactive_clients_.erase(it);
       AddActiveClientOnThread(client_data);
@@ -371,7 +371,7 @@ void SamplesHandler::UpdateFrequencyOnThread(
   if (clients_map_.find(client_data) == clients_map_.end())
     return;
 
-  if (!client_data->IsActive()) {
+  if (!client_data->IsSampleActive()) {
     // The client is now inactive
     RemoveActiveClientOnThread(client_data, orig_freq);
     inactive_clients_.emplace(client_data);
@@ -380,7 +380,7 @@ void SamplesHandler::UpdateFrequencyOnThread(
   }
 
   // The client remains active
-  DCHECK(client_data->observer.is_bound());
+  DCHECK(client_data->samples_observer.is_bound());
 
   if (AddFrequencyOnThread(client_data->frequency) &&
       RemoveFrequencyOnThread(orig_freq)) {
@@ -388,7 +388,7 @@ void SamplesHandler::UpdateFrequencyOnThread(
   }
 
   // Failed to set device frequency
-  client_data->observer->OnErrorOccurred(
+  client_data->samples_observer->OnErrorOccurred(
       cros::mojom::ObserverErrorType::SET_FREQUENCY_IO_FAILED);
 }
 
@@ -495,7 +495,7 @@ void SamplesHandler::UpdateChannelsEnabledOnThread(
 
   auto it = inactive_clients_.find(client_data);
   if (it != inactive_clients_.end()) {
-    if (client_data->IsActive()) {
+    if (client_data->IsSampleActive()) {
       // The client is now active.
       inactive_clients_.erase(it);
       AddActiveClientOnThread(client_data);
@@ -507,7 +507,7 @@ void SamplesHandler::UpdateChannelsEnabledOnThread(
   if (clients_map_.find(client_data) == clients_map_.end())
     return;
 
-  if (client_data->IsActive()) {
+  if (client_data->IsSampleActive()) {
     // The client remains active
     return;
   }
@@ -542,7 +542,7 @@ void SamplesHandler::OnSampleAvailableWithoutBlocking() {
   if (!sample) {
     AddReadFailedLogOnThread();
     for (auto& [client_data, _] : clients_map_) {
-      client_data->observer->OnErrorOccurred(
+      client_data->samples_observer->OnErrorOccurred(
           cros::mojom::ObserverErrorType::READ_FAILED);
     }
 

@@ -62,7 +62,7 @@ DeviceData::DeviceData(libmems::IioDevice* const iio_device,
 ClientData::ClientData(const mojo::ReceiverId id, DeviceData* device_data)
     : id(id), device_data(device_data) {}
 
-bool ClientData::IsActive() const {
+bool ClientData::IsSampleActive() const {
   return frequency >= libmems::kFrequencyEpsilon &&
          !enabled_chn_indices.empty();
 }

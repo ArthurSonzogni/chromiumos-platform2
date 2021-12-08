@@ -31,16 +31,16 @@ SamplesHandlerFusion::~SamplesHandlerFusion() {
   update_frequency_callback_.Run(0.0);
 
   for (ClientData* client : inactive_clients_) {
-    if (client->observer.is_bound()) {
+    if (client->samples_observer.is_bound()) {
       SensorMetrics::GetInstance()->SendSensorObserverClosed();
-      client->observer.reset();
+      client->samples_observer.reset();
     }
   }
 
   for (auto& [client, _] : clients_map_) {
-    if (client->observer.is_bound()) {
+    if (client->samples_observer.is_bound()) {
       SensorMetrics::GetInstance()->SendSensorObserverClosed();
-      client->observer.reset();
+      client->samples_observer.reset();
     }
   }
 }
@@ -51,13 +51,13 @@ void SamplesHandlerFusion::AddClient(
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   if (invalid_) {
-    DCHECK(!client_data->observer.is_bound());
-    client_data->observer.Bind(std::move(observer));
-    client_data->observer.set_disconnect_handler(
+    DCHECK(!client_data->samples_observer.is_bound());
+    client_data->samples_observer.Bind(std::move(observer));
+    client_data->samples_observer.set_disconnect_handler(
         base::BindOnce(&SamplesHandlerFusion::OnSamplesObserverDisconnect,
                        GetWeakPtr(), client_data));
 
-    client_data->observer->OnErrorOccurred(
+    client_data->samples_observer->OnErrorOccurred(
         cros::mojom::ObserverErrorType::FREQUENCY_INVALID);
     return;
   }
@@ -86,7 +86,7 @@ void SamplesHandlerFusion::UpdateFrequency(ClientData* client_data,
 
   auto it = inactive_clients_.find(client_data);
   if (it != inactive_clients_.end()) {
-    if (client_data->IsActive()) {
+    if (client_data->IsSampleActive()) {
       // The client is now active.
       inactive_clients_.erase(it);
       AddActiveClientOnThread(client_data);
@@ -101,7 +101,7 @@ void SamplesHandlerFusion::UpdateFrequency(ClientData* client_data,
     return;
   }
 
-  if (!client_data->IsActive()) {
+  if (!client_data->IsSampleActive()) {
     // The client is now inactive
     RemoveActiveClientOnThread(client_data, orig_freq);
     inactive_clients_.emplace(client_data);
@@ -110,7 +110,7 @@ void SamplesHandlerFusion::UpdateFrequency(ClientData* client_data,
   }
 
   // The client remains active
-  DCHECK(client_data->observer.is_bound());
+  DCHECK(client_data->samples_observer.is_bound());
 
   AddFrequencyOnThread(client_data->frequency);
   RemoveFrequencyOnThread(orig_freq);
@@ -125,18 +125,18 @@ void SamplesHandlerFusion::Invalidate() {
   update_frequency_callback_.Run(GetRequestedFrequencyOnThread());  // 0.0
 
   for (ClientData* client : inactive_clients_) {
-    if (client->observer.is_bound())
+    if (client->samples_observer.is_bound())
       SensorMetrics::GetInstance()->SendSensorObserverClosed();
   }
 
   inactive_clients_.clear();
 
   for (auto& [client_data, _] : clients_map_) {
-    DCHECK(client_data->observer.is_bound());
+    DCHECK(client_data->samples_observer.is_bound());
 
     SensorMetrics::GetInstance()->SendSensorObserverClosed();
 
-    client_data->observer->OnErrorOccurred(
+    client_data->samples_observer->OnErrorOccurred(
         cros::mojom::ObserverErrorType::FREQUENCY_INVALID);
   }
 
@@ -162,7 +162,7 @@ void SamplesHandlerFusion::OnSampleAvailableOnThread(
   if (!SampleIsValid(sample)) {
     AddReadFailedLogOnThread();
     for (auto& [client_data, _] : clients_map_) {
-      client_data->observer->OnErrorOccurred(
+      client_data->samples_observer->OnErrorOccurred(
           cros::mojom::ObserverErrorType::READ_FAILED);
     }
 
