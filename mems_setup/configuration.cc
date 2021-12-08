@@ -75,10 +75,6 @@ constexpr std::initializer_list<const char*> kAccelAxes = {
 
 constexpr char kTriggerString[] = "trigger";
 
-#if USE_IIOSERVICE
-constexpr char kDevString[] = "/dev/";
-#endif  // USE_IIOSERVICE
-
 constexpr char kFilesToSetReadAndOwnership[][28] = {
     "buffer/hwfifo_timeout", "buffer/hwfifo_watermark_max", "buffer/enable",
     "buffer/length", "trigger/current_trigger"};
@@ -92,6 +88,10 @@ constexpr char kFilesToSetWriteAndOwnership[][24] = {"sampling_frequency",
                                                      "frequency"};
 
 constexpr char kScanElementsString[] = "scan_elements";
+
+#if USE_IIOSERVICE
+constexpr char kEventsString[] = "events";
+#endif  // USE_IIOSERVICE
 
 }  // namespace
 
@@ -610,7 +610,8 @@ bool Configuration::SetupPermissions() {
       libmems::IioDeviceImpl::GetStringFromId(sensor_->GetId());
 #if USE_IIOSERVICE
   // /dev/iio:deviceX
-  base::FilePath dev_path = base::FilePath(kDevString).Append(dev_name.c_str());
+  base::FilePath dev_path =
+      base::FilePath(libmems::kDevString).Append(dev_name.c_str());
   if (!delegate_->Exists(dev_path)) {
     LOG(ERROR) << "Missing path: " << dev_path.value();
     return false;
@@ -643,6 +644,18 @@ bool Configuration::SetupPermissions() {
     if (RE2::FullMatch(name, "in_.*_en"))
       files_to_set_write_own.push_back(file);
   }
+
+#if USE_IIOSERVICE
+  // Files under /sys/bus/iio/devices/iio:deviceX/events/.
+  files = delegate_->EnumerateAllFiles(sys_dev_path.Append(kEventsString));
+  files_to_set_read_own.insert(files_to_set_read_own.end(), files.begin(),
+                               files.end());
+  for (const base::FilePath& file : files) {
+    std::string name = file.BaseName().value();
+    if (RE2::FullMatch(name, "in_.*_en"))
+      files_to_set_write_own.push_back(file);
+  }
+#endif  // USE_IIOSERVICE
 
   for (auto file : kFilesToSetReadAndOwnership)
     files_to_set_read_own.push_back(sys_dev_path.Append(file));

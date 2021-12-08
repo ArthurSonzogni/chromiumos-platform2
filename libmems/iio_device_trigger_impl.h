@@ -78,6 +78,9 @@ class LIBMEMS_EXPORT IioDeviceTriggerImpl : public IioDevice {
   base::Optional<IioSample> ReadSample() override { return base::nullopt; }
   void FreeBuffer() override {}
 
+  base::Optional<int32_t> GetEventFd() override { return base::nullopt; }
+  base::Optional<iio_event_data> ReadEvent() override { return base::nullopt; }
+
  private:
   IioContextImpl* context_;    // non-owned
   iio_device* const trigger_;  // non-owned

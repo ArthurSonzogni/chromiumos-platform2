@@ -73,6 +73,9 @@ class LIBMEMS_EXPORT IioDeviceImpl : public IioDevice {
   base::Optional<IioSample> ReadSample() override;
   void FreeBuffer() override;
 
+  base::Optional<int32_t> GetEventFd() override;
+  base::Optional<iio_event_data> ReadEvent() override;
+
  private:
   static void IioBufferDeleter(iio_buffer* buffer);
 
@@ -85,6 +88,7 @@ class LIBMEMS_EXPORT IioDeviceImpl : public IioDevice {
 
   using ScopedBuffer = std::unique_ptr<iio_buffer, decltype(&IioBufferDeleter)>;
   ScopedBuffer buffer_;
+  base::Optional<int32_t> event_fd_;
 
   std::string log_prefix_;
 };

@@ -22,12 +22,15 @@
 #include "libmems/iio_channel.h"
 #include "libmems/iio_context.h"
 #include "libmems/iio_device.h"
+#include "libmems/iio_event.h"
 
 namespace libmems {
 
 namespace fakes {
 
 constexpr double kFakeSamplingFrequency = 20.0;
+
+constexpr int kEventNumber = 100;
 
 constexpr char kFakeAccelChns[][10] = {"accel_x", "accel_y", "accel_z",
                                        "timestamp"};
@@ -174,6 +177,33 @@ class LIBMEMS_EXPORT FakeIioChannel : public IioChannel {
   std::map<std::string, double> double_attributes_;
 };
 
+class LIBMEMS_EXPORT FakeIioEvent : public IioEvent {
+ public:
+  FakeIioEvent(iio_chan_type chan_type,
+               iio_event_type event_type,
+               iio_event_direction direction,
+               int channel);
+
+  // IioEvent overrides.
+  bool IsEnabled() const override { return enabled_; }
+  void SetEnabled(bool en) override;
+  base::Optional<std::string> ReadStringAttribute(
+      const std::string& name) const override;
+  bool WriteStringAttribute(const std::string& name,
+                            const std::string& value) override;
+
+  // |index| should be within [0, |kEventNumber|). If direction is either,
+  // returns rising and falling by turn.
+  // Returns base::nullopt if |index| is out of bound.
+  base::Optional<uint64_t> GetData(int index);
+
+ private:
+  bool dir_turn_ = true;
+
+  bool enabled_;
+  std::map<std::string, std::string> text_attributes_;
+};
+
 class FakeIioContext;
 
 class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
@@ -214,6 +244,9 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
   void AddChannel(std::unique_ptr<FakeIioChannel> chn) {
     channels_.push_back({chn->GetId(), std::move(chn)});
   }
+  void AddEvent(std::unique_ptr<FakeIioEvent> event) {
+    events_.push_back(std::move(event));
+  }
 
   bool EnableBuffer(size_t n) override;
   bool DisableBuffer() override;
@@ -228,14 +261,18 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
   base::Optional<IioSample> ReadSample() override;
   void FreeBuffer() override;
 
-  // Simulates a bad device: not readable fd and fails all reads.
+  base::Optional<int32_t> GetEventFd() override;
+  base::Optional<iio_event_data> ReadEvent() override;
+
+  // Simulates a bad device: not readable fd and fails all reading samples and
+  // events.
   void DisableFd();
+
   // Simulates some failures when reading the kth sample. Can be called multiple
   // times. The user should make sure the kth sample hasn't been read.
   void AddFailedReadAtKthSample(int k);
-
   // Pauses at kth sample. |callback| is run when (k-1)th sample is retrieved or
-  // when this function is called and |k| == |sample_index_|.
+  // when this function is called and |k| == |sample_fd_.index|.
   // The user should make sure that there wasn't a pause set and not occurred
   // yet, |k| doesn't exceeds fake data's size, and the kth sample hasn't been
   // read.
@@ -244,16 +281,48 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
   // The user should make sure this device is paused.
   void ResumeReadingSamples();
 
+  // Simulates some failures when reading the kth event. Can be called multiple
+  // times. The user should make sure the kth event hasn't been read.
+  void AddFailedReadAtKthEvent(int k);
+  // Pauses at kth event. |callback| is run when (k-1)th event is retrieved or
+  // when this function is called and |k| == |event_fd_.index|.
+  // The user should make sure that there wasn't a pause set and not occurred
+  // yet, |k| doesn't exceeds fake data's size, and the kth event hasn't been
+  // read.
+  void SetPauseCallbackAtKthEvents(int k, base::OnceCallback<void()> callback);
+  // Resumes reading after being paused.
+  // The user should make sure this device is paused.
+  void ResumeReadingEvents();
+
  private:
+  struct FakeFD {
+    bool is_valid() { return fd.is_valid(); }
+    int32_t get() { return fd.get(); }
+
+    bool WriteByte();
+    bool ReadByte();
+    void ClosePipe();
+
+    void SetPause();
+    void ResumeReading();
+
+    base::ScopedFD fd;
+    bool readable = false;
+    int index = 0;
+
+    bool is_paused = false;
+    base::Optional<int> pause_index;
+    base::OnceCallback<void()> pause_callback;
+
+    // Pops from the failure with the smallest sample index.
+    std::priority_queue<int, std::vector<int>, std::greater<int>>
+        failed_read_queue;
+  };
+
   struct ChannelData {
     std::string chn_id;
     FakeIioChannel* chn = nullptr;
   };
-
-  bool WriteByte();
-  bool ReadByte();
-  void ClosePipe();
-  void SetPause();
 
   FakeIioContext* context_ = nullptr;
   std::string name_;
@@ -269,19 +338,11 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
   size_t buffer_length_ = 0;
   bool buffer_enabled_ = false;
 
-  // For |CreateBuffer|, |GetBufferFd|, and |ReadSample|.
-  base::ScopedFD sample_fd_;
-  bool readable_fd_ = false;
-  int sample_index_ = 0;
+  FakeFD sample_fd_;
 
-  // Pops from the failure with the smallest sample index.
-  std::priority_queue<int, std::vector<int>, std::greater<int>>
-      failed_read_queue_;
+  FakeFD event_fd_;
 
   bool disabled_fd_ = false;
-  bool is_paused_ = false;
-  base::Optional<int> pause_index_;
-  base::OnceCallback<void()> pause_callback_;
 };
 
 class LIBMEMS_EXPORT FakeIioContext : public IioContext {

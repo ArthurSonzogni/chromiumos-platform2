@@ -34,10 +34,6 @@ constexpr char kTriggerString[] = "trigger";
 constexpr char kHwfifoTimeoutString[] = "buffer/hwfifo_timeout";
 constexpr char kFlushString[] = "flush";
 
-#if USE_IIOSERVICE
-constexpr char kDevString[] = "/dev/";
-#endif  // USE_IIOSERVICE
-
 class AccelerometerTest : public SensorTestBase {
  public:
   AccelerometerTest() : SensorTestBase("cros-ec-accel", kDeviceId) {
@@ -88,7 +84,8 @@ TEST_F(AccelerometerTest, CheckPermissionsAndOwnership) {
 
 #if USE_IIOSERVICE
   // /dev/iio:deviceX
-  base::FilePath dev_path = base::FilePath(kDevString).Append(dev_name.c_str());
+  base::FilePath dev_path =
+      base::FilePath(libmems::kDevString).Append(dev_name.c_str());
 
   CheckPermissionsAndOwnershipForFile(dev_path,
                                       base::FILE_PERMISSION_WRITE_BY_GROUP |

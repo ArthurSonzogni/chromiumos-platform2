@@ -2,11 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <fcntl.h>
 #include <memory>
 #include <string>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <utility>
 #include <vector>
 
 #include <base/check.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
@@ -17,6 +22,7 @@
 #include "libmems/iio_context_impl.h"
 #include "libmems/iio_device_impl.h"
 #include "libmems/iio_device_trigger_impl.h"
+#include "libmems/iio_event_impl.h"
 
 #define ERROR_BUFFER_SIZE 256
 
@@ -64,6 +70,20 @@ IioDeviceImpl::IioDeviceImpl(IioContextImpl* ctx, iio_device* dev)
         channel, GetId(), GetName() ? GetName() : "null");
     channels_[i].chn_id = channels_[i].chn->GetId();
   }
+
+  base::FileEnumerator file_enumerator(GetPath().Append("events"), false,
+                                       base::FileEnumerator::FILES, "*_en");
+  for (base::FilePath file = file_enumerator.Next(); !file.empty();
+       file = file_enumerator.Next()) {
+    auto iio_event = IioEventImpl::Create(file);
+    if (iio_event)
+      events_.push_back(std::move(iio_event));
+  }
+
+  // To read events and samples at the same time, the event fd must be created
+  // first, to avoid opening /dev/iio:deviceX twice.
+  if (!GetAllEvents().empty() && !GetAllChannels().empty())
+    GetEventFd();
 }
 
 IioContext* IioDeviceImpl::GetContext() const {
@@ -340,6 +360,44 @@ base::Optional<IioDevice::IioSample> IioDeviceImpl::ReadSample() {
 
 void IioDeviceImpl::FreeBuffer() {
   buffer_.reset();
+}
+
+base::Optional<int32_t> IioDeviceImpl::GetEventFd() {
+  if (event_fd_.has_value())
+    return event_fd_;
+
+  const std::string file =
+      base::StringPrintf("%s/%s", kDevString, iio_device_get_id(device_));
+  int fd = open(file.c_str(), O_RDONLY);
+  if (fd == -1) {
+    LOG(ERROR) << "Unable to open file " << file;
+    return base::nullopt;
+  }
+
+  int event_fd = -1;
+  int ret = ioctl(fd, IIO_GET_EVENT_FD_IOCTL, &event_fd);
+  close(fd);
+
+  if (ret < 0 || event_fd == -1) {
+    LOG(ERROR) << "Unable to open event descriptor for file " << file;
+    return base::nullopt;
+  }
+
+  event_fd_ = event_fd;
+  return event_fd_;
+}
+
+base::Optional<iio_event_data> IioDeviceImpl::ReadEvent() {
+  if (!event_fd_ && !GetEventFd().has_value())
+    return base::nullopt;
+
+  struct iio_event_data iio_event_buf = {0};
+  if (read(event_fd_.value(), &iio_event_buf, sizeof(iio_event_buf)) == -1) {
+    LOG(ERROR) << "Failed to read from FD " << event_fd_.value();
+    return base::nullopt;
+  }
+
+  return iio_event_buf;
 }
 
 // static

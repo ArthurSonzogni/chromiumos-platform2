@@ -7,6 +7,7 @@
 
 #include <iio.h>
 
+#include <linux/iio/events.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -18,6 +19,7 @@
 #include <base/time/time.h>
 
 #include "libmems/export.h"
+#include "libmems/iio_event.h"
 
 namespace libmems {
 
@@ -121,6 +123,16 @@ class LIBMEMS_EXPORT IioDevice {
   // It will return nullptr if no such channel can be found.
   IioChannel* GetChannel(const std::string& name);
 
+  // Returns all events belonging to this device.
+  std::vector<IioEvent*> GetAllEvents();
+
+  // Enables all events belonging to this device.
+  void EnableAllEvents();
+
+  // Finds the IIO event |index| as the index in this device and returns it.
+  // It will return nullptr if no such channel can be found.
+  IioEvent* GetEvent(int32_t index);
+
   // Returns the sample size in this device.
   // Returns base::nullopt on failure.
   virtual base::Optional<size_t> GetSampleSize() const = 0;
@@ -167,6 +179,14 @@ class LIBMEMS_EXPORT IioDevice {
   // used along with EnableBuffer.
   virtual void FreeBuffer() = 0;
 
+  // Gets the file descriptor to poll for events.
+  // Returns base::nullopt on failure.
+  virtual base::Optional<int32_t> GetEventFd() = 0;
+
+  // Reads & returns one event.
+  // Returns base::nullopt on failure.
+  virtual base::Optional<iio_event_data> ReadEvent() = 0;
+
   bool GetMinMaxFrequency(double* min_freq, double* max_freq);
 
  protected:
@@ -183,6 +203,7 @@ class LIBMEMS_EXPORT IioDevice {
   IioDevice& operator=(const IioDevice&) = delete;
 
   std::vector<ChannelData> channels_;
+  std::vector<std::unique_ptr<IioEvent>> events_;
 };
 
 }  // namespace libmems

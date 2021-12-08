@@ -12,6 +12,7 @@
 
 #include "libmems/common_types.h"
 #include "libmems/iio_channel.h"
+#include "libmems/iio_event.h"
 
 namespace libmems {
 
@@ -67,6 +68,28 @@ IioChannel* IioDevice::GetChannel(const std::string& name) {
   }
 
   return nullptr;
+}
+
+std::vector<IioEvent*> IioDevice::GetAllEvents() {
+  std::vector<IioEvent*> events;
+  for (const auto& event : events_)
+    events.push_back(event.get());
+
+  return events;
+}
+
+void IioDevice::EnableAllEvents() {
+  for (const auto& event : events_) {
+    if (!event->SetEnabledAndCheck(true))
+      LOG(ERROR) << "Failed to enable event: " << event->GetChannelNumber();
+  }
+}
+
+IioEvent* IioDevice::GetEvent(int32_t index) {
+  if (index < 0 || index >= events_.size())
+    return nullptr;
+
+  return events_[index].get();
 }
 
 bool IioDevice::GetMinMaxFrequency(double* min_freq, double* max_freq) {

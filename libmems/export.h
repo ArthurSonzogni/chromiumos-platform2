@@ -5,6 +5,6 @@
 #ifndef LIBMEMS_EXPORT_H_
 #define LIBMEMS_EXPORT_H_
 
-#define LIBMEMS_EXPORT __attribute__((__visibility__("default")))
+#define LIBMEMS_EXPORT __attribute__((visibility("default")))
 
 #endif  // LIBMEMS_EXPORT_H_

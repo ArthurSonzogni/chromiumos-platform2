@@ -5,9 +5,17 @@
 #ifndef LIBMEMS_COMMON_TYPES_H_
 #define LIBMEMS_COMMON_TYPES_H_
 
+#include <linux/iio/types.h>
 #include <vector>
 
+#include "libmems/export.h"
+
 namespace libmems {
+
+LIBMEMS_EXPORT uint64_t IioEventCode(iio_chan_type chan_type,
+                                     iio_event_type event_type,
+                                     iio_event_direction dir,
+                                     int channel);
 
 constexpr int kErrorBufferSize = 256;
 constexpr int kReadAttrBufferSize = 256;
@@ -33,6 +41,7 @@ constexpr char kRawAttr[] = "raw";
 constexpr char kTimestampAttr[] = "timestamp";
 
 constexpr char kSysDevString[] = "/sys/bus/iio/devices";
+constexpr char kDevString[] = "/dev";
 
 constexpr char kAccelName[] = "accel";
 constexpr char kGyroName[] = "anglvel";

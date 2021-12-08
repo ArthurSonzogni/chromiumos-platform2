@@ -26,11 +26,14 @@ pkg_config("target_defaults_pkg_deps") {
 
 shared_library("libmems") {
   sources = [
+    "common_types.cc",
     "iio_channel_impl.cc",
     "iio_context_impl.cc",
     "iio_device.cc",
     "iio_device_impl.cc",
     "iio_device_trigger_impl.cc",
+    "iio_event.cc",
+    "iio_event_impl.cc",
   ]
   configs += [ ":target_defaults_pkg_deps" ]
   install_path = "lib"
@@ -77,7 +80,10 @@ if (use.test) {
   }
 
   executable("libmems_testrunner") {
-    sources = [ "iio_device_test.cc" ]
+    sources = [
+      "iio_device_test.cc",
+      "iio_event_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":libmems_testrunner_pkg_deps",
