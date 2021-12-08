@@ -114,8 +114,8 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
 
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
-      PLOG(ERROR) << " getattr " << ino;
       request->ReplyError(errno);
+      PLOG(ERROR) << " getattr " << ino;
       return;
     }
 
@@ -149,8 +149,8 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
 
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
-      PLOG(ERROR) << "getattr " << ino;
       request->ReplyError(errno);
+      PLOG(ERROR) << "getattr " << ino;
       return;
     }
 
@@ -158,7 +158,66 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     request->ReplyAttr(stat, kStatTimeoutSeconds);
   }
 
-  // org::chromium::FuseBoxClient overrides.
+  void Lookup(std::unique_ptr<EntryRequest> request,
+              fuse_ino_t parent,
+              const char* name) override {
+    if (request->IsInterrupted())
+      return;
+
+    Node* parent_node = GetInodeTable().Lookup(parent);
+    if (!parent_node) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << " lookup " << parent;
+      return;
+    }
+
+    dbus::MethodCall method = GetFuseBoxServerMethodCall();
+    dbus::MessageWriter writer(&method);
+
+    writer.AppendString("stat");
+    const base::FilePath path(GetInodeTable().GetPath(parent_node));
+    auto item = *g_device + path.Append(name).value();
+    writer.AppendString(item);
+
+    auto lookup_response =
+        base::BindOnce(&FuseBoxClient::LookupResponse, base::Unretained(this),
+                       std::move(request), parent, name);
+    constexpr auto timeout = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
+    dbus_proxy_->CallMethod(&method, timeout, std::move(lookup_response));
+  }
+
+  const double kEntryTimeoutSeconds = 5.0;
+
+  void LookupResponse(std::unique_ptr<EntryRequest> request,
+                      fuse_ino_t parent,
+                      const char* name,
+                      dbus::Response* response) {
+    if (request->IsInterrupted())
+      return;
+
+    dbus::MessageReader reader(response);
+    if (int error = GetResponseErrno(&reader, response)) {
+      request->ReplyError(error);
+      return;
+    }
+
+    Node* node = GetInodeTable().Lookup(parent, name);
+    if (!node)
+      node = GetInodeTable().Create(parent, name);
+    if (!node) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << " lookup " << parent << " " << name;
+      return;
+    }
+
+    fuse_entry_param entry = {0};
+    entry.ino = node->ino;
+    entry.attr = GetServerStat(node->ino, &reader);
+    entry.attr_timeout = kStatTimeoutSeconds;
+    entry.entry_timeout = kEntryTimeoutSeconds;
+
+    request->ReplyEntry(entry);
+  }
 
   void ReadDirBatchResponse(uint64_t file_handle,
                             int32_t file_error,
