@@ -5,6 +5,10 @@
 import("//common-mk/mojom_bindings_generator.gni")
 import("//common-mk/pkg_config.gni")
 
+pkg_config("pkg_deps") {
+  pkg_deps = [ "libchrome" ]
+}
+
 generate_mojom_bindings("cros_healthd_internal") {
   mojo_root = "${platform2_root}"
   standalone = true
@@ -40,5 +44,13 @@ generate_mojom_bindings("network_health_mojo_bindings") {
   sources = [
     "network_health.mojom",
     "network_types.mojom",
+  ]
+}
+
+source_set("mojo_connectivity_bindings_lib") {
+  configs += [ ":pkg_deps" ]
+  sources = [
+    "time_mojom_data_generators.cc",
+    "time_mojom_data_generators.h",
   ]
 }
