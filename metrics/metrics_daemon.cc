@@ -1642,7 +1642,7 @@ void MetricsDaemon::UpdateStats(TimeTicks now_ticks, Time now_wall_time) {
                << " last_update_stats_time_: " << last_update_stats_time_;
     SendSample(kUnaggregatedUseTimeOverflowName, elapsed_seconds,
                kMaxAcceptableUnaggregatedUsageTime,  // value of first bucket
-               1 << 31,                              // value of last bucket
+               INT_MAX / 2,                          // value of last bucket
                50);                                  // number of buckets
   } else {
     // Allow some slack time above the expected max of 5 minutes.
