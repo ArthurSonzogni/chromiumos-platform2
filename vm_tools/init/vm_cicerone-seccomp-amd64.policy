@@ -42,6 +42,7 @@ fstat: 1
 getsockname: 1
 accept4: 1
 bind: 1
+pipe: 1
 pipe2: 1
 restart_syscall: 1
 exit_group: 1
