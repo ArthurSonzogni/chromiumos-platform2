@@ -1973,7 +1973,7 @@ TEST_F(CellularCapability3gppTest, SimLockStatusToProperty) {
 
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PIN2;
   store = capability_->SimLockStatusToProperty(&error);
-  EXPECT_TRUE(store.Get<std::string>(kSIMLockTypeProperty).empty());
+  EXPECT_EQ("sim-pin2", store.Get<std::string>(kSIMLockTypeProperty));
 
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PUK2;
   store = capability_->SimLockStatusToProperty(&error);
@@ -2008,6 +2008,14 @@ TEST_F(CellularCapability3gppTest, SimLockStatusToProperty) {
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_PH_CORP_PUK;
   store = capability_->SimLockStatusToProperty(&error);
   EXPECT_EQ("corporate-puk", store.Get<std::string>(kSIMLockTypeProperty));
+
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_PH_FSIM_PIN;
+  store = capability_->SimLockStatusToProperty(&error);
+  EXPECT_EQ("ph-fsim-pin", store.Get<std::string>(kSIMLockTypeProperty));
+
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_PH_FSIM_PUK;
+  store = capability_->SimLockStatusToProperty(&error);
+  EXPECT_EQ("ph-fsim-puk", store.Get<std::string>(kSIMLockTypeProperty));
 
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_PH_NETSUB_PIN;
   store = capability_->SimLockStatusToProperty(&error);
