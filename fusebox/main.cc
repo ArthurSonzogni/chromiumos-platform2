@@ -248,6 +248,20 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     // TODO(noel): implement.
   }
 
+  void ReleaseDir(std::unique_ptr<OkRequest> request, fuse_ino_t ino) override {
+    if (request->IsInterrupted())
+      return;
+
+    if (!fusebox::GetFile(request->fh())) {
+      request->ReplyError(EBADF);
+      LOG(ERROR) << " releasedir EBADF fh " << request->fh();
+      return;
+    }
+
+    fusebox::CloseFile(request->fh());
+    request->ReplyOk();
+  }
+
  private:
   // Client D-Bus object.
   brillo::dbus_utils::DBusObject dbus_object_;
