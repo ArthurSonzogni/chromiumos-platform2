@@ -290,11 +290,14 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .AddExtraWaylandSocket("/run/arcvm/mojo/mojo-proxy.sock,name=mojo")
       .SetSyslogTag(base::StringPrintf("ARCVM(%u)", vsock_cid_))
       .EnableGpu(true /* enable */)
-      .AppendAudioDevice(VmBuilder::AudioDeviceType::kAC97,
-                         "backend=cras,capture=true,client_type=arcvm")
-      // Second AC97 for the aaudio path.
-      .AppendAudioDevice(VmBuilder::AudioDeviceType::kAC97,
-                         "backend=cras,capture=true,client_type=arcvm")
+      .AppendAudioDevice(VmBuilder::AudioDeviceType::kVirtio,
+                         "capture=true,client_type=arcvm,socket_type=unified,"
+                         "num_input_streams=3,num_output_streams=3")
+      // Second Virtio sound device for the aaudio path.
+      // Remove this device once audioHAL switch all streams to the first
+      // device.
+      .AppendAudioDevice(VmBuilder::AudioDeviceType::kVirtio,
+                         "capture=true,client_type=arcvm,socket_type=unified")
       .AppendSharedDir(oem_etc_shared_dir)
       .AppendSharedDir(shared_testharness)
       .AppendSharedDir(shared_apkcache)
