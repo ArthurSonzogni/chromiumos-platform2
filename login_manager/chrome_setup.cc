@@ -840,6 +840,9 @@ void AddCrashHandlerFlag(ChromiumCommandBuilder* builder) {
 // supported subset of devices.
 void AddMlFlags(ChromiumCommandBuilder* builder,
                 brillo::CrosConfigInterface* cros_config) {
+  if (builder->UseFlagIsSet("ml_service"))
+    builder->AddArg("--ml_service=enabled");
+
   if (builder->UseFlagIsSet("smartdim"))
     builder->AddFeatureEnableOverride("SmartDim");
 
