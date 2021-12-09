@@ -7,6 +7,7 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
+
 #include <string>
 
 #include <dbus/message.h>
@@ -29,6 +30,9 @@ struct stat GetServerStat(ino_t ino,
 
 // Returns mode string.
 std::string StatModeToString(mode_t mode);
+
+// Show a stat for file system entry |name|.
+void ShowStat(const struct stat& stat, const std::string& name = {});
 
 }  // namespace fusebox
 

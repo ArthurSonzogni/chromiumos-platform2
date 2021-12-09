@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include <base/check.h>
+#include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/time/time.h>
 
@@ -125,6 +126,24 @@ std::string StatModeToString(mode_t mode) {
   mode_string.append((mode & S_IXOTH) ? "x" : "-");
 
   return mode_string;
+}
+
+void ShowStat(const struct stat& stat, const std::string& name) {
+  const char* type = S_ISDIR(stat.st_mode) ? "DIR" : "REG";
+
+  LOG(INFO) << " ENTRY: " << name;
+  LOG(INFO) << "    ls: " << StatModeToString(stat.st_mode);
+  LOG(INFO) << "  mode: " << type << " 0x" << std::hex << stat.st_mode;
+  LOG(INFO) << "   dev: " << stat.st_dev;
+  LOG(INFO) << "   ino: " << stat.st_ino;
+  LOG(INFO) << "  size: " << stat.st_size;
+  LOG(INFO) << " nlink: " << stat.st_nlink;
+  LOG(INFO) << "  rdev: " << stat.st_rdev;
+  LOG(INFO) << "   uid: " << stat.st_uid;
+  LOG(INFO) << "   gid: " << stat.st_gid;
+  LOG(INFO) << " atime: " << stat.st_atime;
+  LOG(INFO) << " mtime: " << stat.st_mtime;
+  LOG(INFO) << " ctime: " << stat.st_ctime;
 }
 
 }  // namespace fusebox

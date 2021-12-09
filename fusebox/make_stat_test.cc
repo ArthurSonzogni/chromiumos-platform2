@@ -257,4 +257,21 @@ TEST(MakeStatTest, GetServerStatDirectory) {
   EXPECT_EQ(49, stat_ro.st_ctime);
 }
 
+TEST(MakeStatTest, ShowStatForEntryName) {
+  struct stat stat = {0};
+
+  stat.st_dev = 40;
+  stat.st_ino = 41;
+  stat.st_mode = MakeStatModeBits(S_IFDIR | 0777);
+  stat.st_nlink = 42;
+  stat.st_uid = 1000;
+  stat.st_gid = 1001;
+  stat.st_rdev = 43;
+  stat.st_atime = 44;
+  stat.st_mtime = 45;
+  stat.st_ctime = 46;
+
+  ShowStat(stat, "entry-name");
+}
+
 }  // namespace fusebox
