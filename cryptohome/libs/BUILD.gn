@@ -69,6 +69,7 @@ flatbuffer("cryptohome-flatbuffers") {
   }
   sources = [
     "../flatbuffer_schemas/auth_block_state.fbs",
+    "../flatbuffer_schemas/auth_factor.fbs",
     "../flatbuffer_schemas/user_secret_stash_container.fbs",
     "../flatbuffer_schemas/user_secret_stash_payload.fbs",
   ]
