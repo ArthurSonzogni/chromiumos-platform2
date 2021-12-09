@@ -79,11 +79,13 @@ class FuseFrontend {
       fuse_chan_destroy(fuse_->chan);
   }
 
-  bool CreateFuseSession(void* userdata, fuse_lowlevel_ops fops) {
+  bool CreateFuseSession(void* userdata, fuse_lowlevel_ops fops, bool debug) {
     fuse_chan* chan = fuse_->chan;
 
     struct fuse_args args = {0};
     CHECK_EQ(0, fuse_opt_add_arg(&args, "fusebox"));
+    if (debug)
+      CHECK_EQ(0, fuse_opt_add_arg(&args, "-d"));
     CHECK_EQ(nullptr, session_);
     CHECK(chan);
 

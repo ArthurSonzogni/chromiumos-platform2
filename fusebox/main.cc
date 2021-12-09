@@ -90,7 +90,8 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
 
     fuse_frontend_.reset(new FuseFrontend(fuse_));
     auto* fs = g_use_fake_file_system ? CreateFakeFileSystem() : this;
-    if (!fuse_frontend_->CreateFuseSession(fs, FileSystem::FuseOps()))
+    auto debug = CommandLine::ForCurrentProcess()->HasSwitch("debug");
+    if (!fuse_frontend_->CreateFuseSession(fs, FileSystem::FuseOps(), debug))
       return EX_SOFTWARE;
 
     auto stop = base::BindOnce(&FuseBoxClient::Stop, base::Unretained(this));
