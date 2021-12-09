@@ -42,6 +42,8 @@ bool RecoveryCryptoTpm2BackendImpl::EncryptEccPrivateKey(
     const crypto::ScopedEC_KEY& own_key_pair,
     const base::Optional<brillo::SecureBlob>& /*auth_value*/,
     brillo::SecureBlob* encrypted_own_priv_key) {
+  DCHECK(encrypted_own_priv_key);
+
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";

@@ -557,6 +557,7 @@ if (use.test) {
 
     if (use.tpm2) {
       sources += [
+        "cryptorecovery/recovery_crypto_tpm2_backend_impl_unittest.cc",
         "pinweaver_le_credential_backend_unittest.cc",
         "tpm2_test.cc",
       ]
