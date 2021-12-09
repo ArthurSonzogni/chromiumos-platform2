@@ -91,8 +91,9 @@ VmBuilder& VmBuilder::AppendKernelParam(const std::string& param) {
   return *this;
 }
 
-VmBuilder& VmBuilder::AppendAudioDevice(const std::string& device) {
-  audio_devices_.push_back(device);
+VmBuilder& VmBuilder::AppendAudioDevice(const AudioDeviceType type,
+                                        const std::string& params) {
+  audio_devices_.push_back(AudioDevice{.type = type, .params = params});
   return *this;
 }
 
@@ -277,8 +278,16 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
     }
   }
 
-  for (const auto& a : audio_devices_)
-    args.emplace_back("--ac97", a);
+  for (const auto& dev : audio_devices_) {
+    switch (dev.type) {
+      case AudioDeviceType::kAC97:
+        args.emplace_back("--ac97", dev.params);
+        break;
+      case AudioDeviceType::kVirtio:
+        args.emplace_back("--cras-snd", dev.params);
+        break;
+    }
+  }
 
   for (const auto& d : disks_) {
     auto disk_args = d.GetCrosvmArgs();

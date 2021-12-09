@@ -240,15 +240,19 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     if (vm_permission::IsMicrophoneEnabled(bus_, vm_permission_service_proxy_,
                                            permission_token_)) {
       vm_builder.AppendAudioDevice(
+          VmBuilder::AudioDeviceType::kAC97,
           "backend=cras,capture=true,client_type=borealis");
     } else {
-      vm_builder.AppendAudioDevice("backend=cras,client_type=borealis");
+      vm_builder.AppendAudioDevice(VmBuilder::AudioDeviceType::kAC97,
+                                   "backend=cras,client_type=borealis");
     }
   } else {
     if (features_.audio_capture) {
-      vm_builder.AppendAudioDevice("backend=cras,capture=true");
+      vm_builder.AppendAudioDevice(VmBuilder::AudioDeviceType::kAC97,
+                                   "backend=cras,capture=true");
     } else {
-      vm_builder.AppendAudioDevice("backend=cras");
+      vm_builder.AppendAudioDevice(VmBuilder::AudioDeviceType::kAC97,
+                                   "backend=cras");
     }
   }
 

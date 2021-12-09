@@ -28,6 +28,12 @@ class VmBuilder {
     bool writable;
   };
 
+  // Audio device type enumeration.
+  enum class AudioDeviceType {
+    kAC97,
+    kVirtio,
+  };
+
   VmBuilder();
   VmBuilder(VmBuilder&&);
   VmBuilder& operator=(VmBuilder&& other);
@@ -49,7 +55,8 @@ class VmBuilder {
   VmBuilder& SetSocketPath(const std::string& socket_path);
   VmBuilder& AppendTapFd(base::ScopedFD tap_fd);
   VmBuilder& AppendKernelParam(const std::string& param);
-  VmBuilder& AppendAudioDevice(const std::string& device);
+  VmBuilder& AppendAudioDevice(const AudioDeviceType type,
+                               const std::string& params);
   VmBuilder& AppendSerialDevice(const std::string& device);
   VmBuilder& AppendSharedDir(const std::string& shared_dir);
   VmBuilder& AppendCustomParam(const std::string& key,
@@ -114,7 +121,12 @@ class VmBuilder {
   std::vector<Disk> disks_;
   std::vector<std::string> kernel_params_;
   std::vector<base::ScopedFD> tap_fds_;
-  std::vector<std::string> audio_devices_;
+
+  struct AudioDevice {
+    AudioDeviceType type;
+    std::string params;
+  };
+  std::vector<AudioDevice> audio_devices_;
   std::vector<std::string> serial_devices_;
   std::vector<std::string> wayland_sockets_;
   std::vector<std::string> shared_dirs_;
