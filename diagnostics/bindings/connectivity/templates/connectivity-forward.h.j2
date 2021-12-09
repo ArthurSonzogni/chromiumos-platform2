@@ -33,6 +33,11 @@ class {{interface.mojom_name}}TestProvider;
 class {{interface.mojom_name}}TestConsumer;
 {%- endfor %}
 
+{%-  for struct in module.structs %}
+class {{struct.mojom_name}}DataGenerator;
+class {{struct.mojom_name}}NullableDataGenerator;
+{%-  endfor %}
+
 {{namespace_end()}}
 
 #endif  // {{header_guard}}

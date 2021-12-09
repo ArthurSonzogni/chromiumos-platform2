@@ -19,6 +19,7 @@ if (use.test) {
     standalone = true
     sources = [
       "test_client.mojom",
+      "test_common.mojom",
       "test_server.mojom",
     ]
   }
@@ -28,6 +29,7 @@ if (use.test) {
     deps = [ ":connectivity_test_mojom" ]
     sources = [
       "test_client.mojom",
+      "test_common.mojom",
       "test_server.mojom",
     ]
   }

@@ -4,12 +4,30 @@
 
 module diagnostics.bindings.connectivity.test.server.mojom;
 
+import "diagnostics/bindings/connectivity/test/test_common.mojom";
+
+struct MySubStruct {
+  int32 num;
+};
+
+struct MyStruct {
+  int32 num;
+  string str;
+  string? opt_str;
+  MySubStruct s;
+  MySubStruct? s_opt;
+};
+
 interface TestSuccess {
   Foo();
   Bar() => ();
   Args(int16 a, string b, string? c);
   Response() => (int16 a, string b, string? c);
   IO(int16 a, string b, string? c) => (int16 a, string b, string? c);
+  FunStruct(MyStruct? s) => (MyStruct? s);
+  FunCommon(diagnostics.bindings.connectivity.test.common.mojom.CommonStruct s);
+  FunCommonNull(
+    diagnostics.bindings.connectivity.test.common.mojom.CommonStruct? s);
 };
 
 interface TestMissFunction {
@@ -34,4 +52,13 @@ interface TestWrongReturnType {
 
 interface TestCannotBeNull {
   Foo(string a);
+};
+
+struct WrongStruct {
+  string s;
+  int32 n;
+};
+
+interface TestWrongStruct {
+  Foo(WrongStruct s);
 };

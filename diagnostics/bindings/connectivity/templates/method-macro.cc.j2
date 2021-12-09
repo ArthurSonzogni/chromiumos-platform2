@@ -16,6 +16,15 @@
 {%-   endif -%}
 {%- endmacro -%}
 
+{#  Add nullable if needed. #}
+{%- macro _cpp_nullable_generator_type(kind) -%}
+{%-   if kind.is_nullable -%}
+::diagnostics::bindings::connectivity::NullableGenerator<{{ caller() }}>
+{%-   else -%}
+{{ caller() }}
+{%-   endif -%}
+{%- endmacro -%}
+
 {#  Add optional if needed. #}
 {%- macro _cpp_optional_generator_type(kind) -%}
 {%-   if kind.is_nullable -%}
@@ -27,10 +36,16 @@
 
 {#  Map kind to DataGenerator type. #}
 {%- macro cpp_generator_type(kind) -%}
+{%-   if kind is StructKind -%}
+{%-     call _cpp_nullable_generator_type(kind) -%}
+{{kind | get_name_for_kind}}DataGenerator
+{%-     endcall -%}
+{%-   else -%}
 {%-     call _cpp_optional_generator_type(kind) -%}
 ::diagnostics::bindings::connectivity::DataGenerator<{{
   kind | cpp_wrapper_type(ignore_nullable=True)}}>
 {%-     endcall -%}
+{%-   endif -%}
 {%- endmacro -%}
 
 {#  Declare data generator of parameters. #}

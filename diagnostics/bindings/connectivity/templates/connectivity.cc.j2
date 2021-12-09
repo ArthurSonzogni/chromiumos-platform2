@@ -35,4 +35,8 @@ namespace {{namespace}} {
 {%    include "test-consumer.cc.j2" %}
 {%- endfor %}
 
+{%- for struct in module.structs %}
+{%    include "struct-generator.cc.j2" %}
+{%  endfor %}
+
 {{namespace_end()}}

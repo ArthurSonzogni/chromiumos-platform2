@@ -47,6 +47,10 @@ namespace {{namespace}} {
 {%    include "test-consumer.h.j2" %}
 {%- endfor %}
 
+{%  for struct in module.structs %}
+{%    include "struct-generator.h.j2" %}
+{%  endfor %}
+
 {{namespace_end()}}
 
 #endif  // {{header_guard}}

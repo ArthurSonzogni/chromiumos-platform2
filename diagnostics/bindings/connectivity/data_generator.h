@@ -101,6 +101,42 @@ class OptionalGenerator : public DataGeneratorInterface<
   bool returned_null_ = false;
 };
 
+// Generator for nullable types. Notes that this generate the same type of its
+// non-nullable version.
+template <typename GeneratorType>
+class NullableGenerator
+    : public DataGeneratorInterface<typename GeneratorType::Type> {
+ public:
+  NullableGenerator(const NullableGenerator&) = delete;
+  NullableGenerator& operator=(const NullableGenerator&) = delete;
+  virtual ~NullableGenerator() = default;
+
+  static std::unique_ptr<NullableGenerator> Create(Context* context) {
+    return std::unique_ptr<NullableGenerator>(
+        new NullableGenerator<GeneratorType>(context));
+  }
+
+ public:
+  // DataGeneratorInterface overrides.
+  typename GeneratorType::Type Generate() override {
+    if (generator_->HasNext())
+      return generator_->Generate();
+    returned_null_ = true;
+    return typename GeneratorType::Type();
+  }
+
+  bool HasNext() override { return !returned_null_ || generator_->HasNext(); }
+
+ protected:
+  explicit NullableGenerator(Context* context) {
+    generator_ = GeneratorType::Create(context);
+  }
+
+ private:
+  std::unique_ptr<GeneratorType> generator_;
+  bool returned_null_ = false;
+};
+
 }  // namespace connectivity
 }  // namespace bindings
 }  // namespace diagnostics
