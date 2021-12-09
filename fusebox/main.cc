@@ -5,12 +5,16 @@
 #include <sysexits.h>
 #include <unistd.h>
 
+#include <map>
+#include <vector>
+
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/no_destructor.h>
+#include <base/posix/safe_strerror.h>
 #include <base/strings/stringprintf.h>
 
 #include <brillo/daemons/dbus_daemon.h>
@@ -25,6 +29,7 @@
 #include "fusebox/fuse_frontend.h"
 #include "fusebox/fuse_path_inodes.h"
 #include "fusebox/make_stat.h"
+#include "fusebox/proto_bindings/fusebox.pb.h"
 #include "fusebox/util.h"
 
 using base::CommandLine;
@@ -242,11 +247,120 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     request->ReplyOpen(handle);
   }
 
-  void ReadDirBatchResponse(uint64_t file_handle,
+  void ReadDir(std::unique_ptr<DirEntryRequest> request,
+               fuse_ino_t ino,
+               off_t off) override {
+    if (request->IsInterrupted())
+      return;
+
+    Node* node = GetInodeTable().Lookup(ino);
+    if (!node) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << " readdir " << ino;
+      return;
+    }
+
+    uint64_t handle = fusebox::GetFile(request->fh());
+    if (!handle) {
+      LOG(ERROR) << " readdir EBADF " << request->fh();
+      request->ReplyError(EBADF);
+      return;
+    }
+
+    auto it = readdir_.find(handle);
+    if (it != readdir_.end()) {
+      DirEntryResponse* response = it->second.get();
+      response->Append(std::move(request));
+      return;
+    }
+
+    dbus::MethodCall method = GetFuseBoxServerMethodCall();
+    dbus::MessageWriter writer(&method);
+
+    writer.AppendString("readdir");
+    auto item = *g_device + GetInodeTable().GetPath(node);
+    writer.AppendString(item);
+    writer.AppendUint64(handle);
+
+    auto readdir_response =
+        base::BindOnce(&FuseBoxClient::ReadDirResponse, base::Unretained(this),
+                       std::move(request), node->ino, handle);
+    constexpr auto timeout = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
+    dbus_proxy_->CallMethod(&method, timeout, std::move(readdir_response));
+  }
+
+  void ReadDirResponse(std::unique_ptr<DirEntryRequest> request,
+                       fuse_ino_t ino,
+                       uint64_t handle,
+                       dbus::Response* response) {
+    if (request->IsInterrupted())
+      return;
+
+    dbus::MessageReader reader(response);
+    if (int error = GetResponseErrno(&reader, response)) {
+      request->ReplyError(error);
+      return;
+    }
+
+    Node* node = GetInodeTable().Lookup(ino);
+    if (!node) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << " readdir " << ino;
+      return;
+    }
+
+    auto& buffer = readdir_[handle];
+    buffer.reset(new DirEntryResponse(node->ino, handle));
+    buffer->Append(std::move(request));
+  }
+
+  void ReadDirBatchResponse(uint64_t handle,
                             int32_t file_error,
                             const std::vector<uint8_t>& list,
                             bool has_more) override {
-    // TODO(noel): implement.
+    auto it = readdir_.find(handle);
+    if (it == readdir_.end())
+      return;
+
+    DirEntryResponse* response = it->second.get();
+    if (file_error) {
+      int error = FileErrorToErrno(file_error);
+      PLOG(ERROR) << base::safe_strerror(error) << " readdir error ["
+                  << file_error << "]";
+      response->Append(error);
+      return;
+    }
+
+    const ino_t parent = response->parent();
+    if (!GetInodeTable().Lookup(parent)) {
+      response->Append(ENOENT);
+      return;
+    }
+
+    fusebox::DirEntryListProto proto;
+    std::vector<fusebox::DirEntry> entries;
+    CHECK(proto.ParseFromArray(list.data(), list.size()));
+
+    for (const auto& item : proto.entries()) {
+      mode_t mode = item.is_directory() ? S_IFDIR : S_IFREG;
+      mode = MakeStatModeBits(mode | 0770);
+      const char* name = item.name().c_str();
+
+      if (Node* exists = GetInodeTable().Lookup(parent, name)) {
+        entries.push_back({exists->ino, item.name(), mode});
+        continue;
+      }
+
+      if (Node* create = GetInodeTable().Create(parent, name)) {
+        entries.push_back({create->ino, item.name(), mode});
+        continue;
+      }
+
+      response->Append(errno);
+      return;
+    }
+
+    response->Append(std::move(entries), !has_more);
   }
 
   void ReleaseDir(std::unique_ptr<OkRequest> request, fuse_ino_t ino) override {
@@ -255,11 +369,12 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
 
     if (!fusebox::GetFile(request->fh())) {
       request->ReplyError(EBADF);
-      LOG(ERROR) << " releasedir EBADF fh " << request->fh();
+      LOG(ERROR) << " releasedir EBADF " << request->fh();
       return;
     }
 
     fusebox::CloseFile(request->fh());
+    readdir_.erase(request->fh());
     request->ReplyOk();
   }
 
@@ -281,6 +396,9 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
 
   // Quit callback.
   base::OnceClosure quit_callback_;
+
+  // Active readdir requests.
+  std::map<uint64_t, std::unique_ptr<DirEntryResponse>> readdir_;
 };
 
 class FuseBoxDaemon : public brillo::DBusServiceDaemon {
