@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -13,20 +13,19 @@
 #
 # - Modifications to the ioctl settings based on similar usage in:
 # src/platform2/diagnostics/cros_healthd/seccomp/
-# ectool_i2cread-seccomp-amd64.policy
+# ectool_i2cread-seccomp-arm64.policy
 openat: 1
 write: 1
-mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
-stat: 1
+mmap: arg2 in ~PROT_EXEC
 mprotect: arg2 in ~PROT_EXEC
 fstat: 1
 newfstatat: 1
 close: 1
 read: 1
 # ioctl:
-# arg1 == _IOC(_IOC_READ|_IOC_WRITE, 0xec, 0x1, 0x108) (0xc108ec01) ||
-# arg1 == _IOC(_IOC_READ|_IOC_WRITE, 0xec, 0, 0x14) (0xc014ec00) ||
-# arg1 == _IOC(_IOC_READ|_IOC_WRITE, 0x3a, 0, 0x28) (0xc0283a00)
+# arg1 == _IOC(_IOC_READ|_IOC_WRITE, 0xec, 0x0, 0x28) (0xc0283a00) ||
+# arg1 == CROS_EC_DEV_IOCRDMEM (0xc108ec01) ||
+# arg1 == CROS_EC_DEV_IOCXCMD (0xc014ec00)
 #
 # Driver type 0x3a (":") = CROS_EC_DEV_IOC
 # (Old iotcl format, used by ChromeOS 3.18 and older)
@@ -34,13 +33,11 @@ read: 1
 # Driver type 0xec = CROS_EC_DEV_IOC_V2
 # (New ioctl format, used by ChromeOS 4.4 or later as well as upstream 4.0+)
 # Please refer to src/platform/ec/util/cros_ec_dev.h for more info.
-ioctl: arg1 == 0xc108ec01 || arg1 == 0xc014ec00 || arg1 == 0xc0283a00
+ioctl: arg1 == 0xc0283a00 || arg1 == 0xc108ec01 || arg1 == 0xc014ec00
 brk: 1
 rt_sigaction: 1
-access: 1
 faccessat: 1
 faccessat2: 1
-arch_prctl: 1
 munmap: 1
 set_tid_address: 1
 set_robust_list: 1
