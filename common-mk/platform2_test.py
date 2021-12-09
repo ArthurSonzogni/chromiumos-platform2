@@ -348,6 +348,15 @@ class Platform2Test(object):
       osutils.SafeMakedirs(path)
       osutils.Mount('/' + mount, path, 'none', osutils.MS_BIND)
 
+    # Make sure /run/lock is usable.  But not the real lock path since tests
+    # shouldn't be touching real state.
+    path = os.path.join(self.sysroot, 'run')
+    osutils.Mount('run', path, 'tmpfs',
+                  osutils.MS_NOSUID | osutils.MS_NODEV | osutils.MS_NOEXEC,
+                  "mode=755")
+    path = os.path.join(path, 'lock')
+    osutils.SafeMakedirs(path, mode=0o1777)
+
     positive_filters = self.gtest_filter[0]
     negative_filters = self.gtest_filter[1]
 
