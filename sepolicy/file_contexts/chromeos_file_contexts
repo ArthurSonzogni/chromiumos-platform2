@@ -315,7 +315,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 # These files are mounted into the mini-container before real /data, /cache are
 # available.
 /opt/google/containers/android/rootfs/android-data/cache                   u:object_r:cache_file:s0
-/opt/google/containers/android/rootfs/android-data/data                    u:object_r:system_data_root_file:s0
+/opt/google/containers/android/rootfs/android-data/data          is_arc_p(`u:object_r:system_data_file:s0',
+                                                                          `u:object_r:system_data_root_file:s0')
 /opt/google/containers/android/rootfs/android-data/data/.*                 u:object_r:system_data_file:s0
 /opt/google/containers/android/rootfs/android-data/data/dalvik-cache(/.*)? u:object_r:dalvikcache_data_file:s0
 /opt/google/easy_unlock/easy_unlock u:object_r:cros_easy_unlock_exec:s0
@@ -334,7 +335,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /run/arc/oem(/.*)?                             u:object_r:oem_fs:s0
 /run/arc/sdcard(/.*)?                          u:object_r:storage_file:s0
 /run/arcvm(/.*)?                               u:object_r:cros_run_arcvm:s0
-/run/arcvm/android-data(/.*)?                  u:object_r:system_data_root_file:s0
+/run/arcvm/android-data(/.*)?        is_arc_p(`u:object_r:system_data_file:s0',
+                                              `u:object_r:system_data_root_file:s0')
 /run/arcvm/android-data/mount/data/.*          u:object_r:system_data_file:s0
 has_arc(`
 /run/arcvm/android-data/mount/data/media(/.*)? u:object_r:media_rw_data_file:s0

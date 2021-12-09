@@ -16,7 +16,8 @@ auditallow {chromeos cros_session_manager} cros_arc_setup_exec:file execute;
 filetrans_pattern(cros_arc_setup, cros_run, cras_socket, dir, "cras");
 filetrans_pattern(cros_arc_setup, cros_home_shadow_uid_root, cros_home_shadow_uid_root_android, dir, "android-data");
 filetrans_pattern_no_target_perm(cros_arc_setup, cros_home_shadow_uid_root_android, cache_file, dir, "cache");
-filetrans_pattern_no_target_perm(cros_arc_setup, cros_home_shadow_uid_root_android, system_data_root_file, dir, "data");
+filetrans_pattern_no_target_perm(cros_arc_setup, cros_home_shadow_uid_root_android,
+                                 is_arc_p(`system_data_file', `system_data_root_file'), dir, "data");
 
 auditallow { domain -chromeos -kernel } cros_arc_setup:fd use;
 
