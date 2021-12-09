@@ -248,11 +248,11 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     }
   } else {
     if (features_.audio_capture) {
-      vm_builder.AppendAudioDevice(VmBuilder::AudioDeviceType::kAC97,
-                                   "backend=cras,capture=true");
+      vm_builder.AppendAudioDevice(VmBuilder::AudioDeviceType::kVirtio,
+                                   "capture=true,socket_type=unified");
     } else {
-      vm_builder.AppendAudioDevice(VmBuilder::AudioDeviceType::kAC97,
-                                   "backend=cras");
+      vm_builder.AppendAudioDevice(VmBuilder::AudioDeviceType::kVirtio,
+                                   "socket_type=unified");
     }
   }
 
