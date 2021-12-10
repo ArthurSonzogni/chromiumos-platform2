@@ -44,6 +44,7 @@ class ScreenDownload : public UpdateEngineProxy::UpdaterDelegate,
   FRIEND_TEST(ScreenDownloadTest, RepartitionDiskFailed);
   FRIEND_TEST(ScreenDownloadTest, StartUpdateFailed);
   FRIEND_TEST(ScreenDownloadTest, IdleError);
+  FRIEND_TEST(ScreenDownloadTest, CheckingForUpdateToIdleError);
   FRIEND_TEST(ScreenDownloadTest, ShowUpdateProgress);
 
   // Updates buttons with current selection.

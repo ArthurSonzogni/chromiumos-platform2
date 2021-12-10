@@ -80,6 +80,18 @@ TEST_F(ScreenDownloadTest, IdleError) {
   screen_download_.OnProgressChanged(status);
 }
 
+TEST_F(ScreenDownloadTest, CheckingForUpdateToIdleError) {
+  screen_download_.SetDisplayUpdateEngineStateForTest(true);
+  update_engine::StatusResult status;
+  status.set_current_operation(update_engine::Operation::CHECKING_FOR_UPDATE);
+  screen_download_.OnProgressChanged(status);
+
+  // If it changes to `IDLE` from an incorrect state it is an error.
+  status.set_current_operation(update_engine::Operation::IDLE);
+  EXPECT_CALL(mock_screen_controller_, OnError(ScreenType::kDownloadError));
+  screen_download_.OnProgressChanged(status);
+}
+
 TEST_F(ScreenDownloadTest, StartUpdateFailed) {
   // Show error screen on update engine failure.
   EXPECT_CALL(*mock_recovery_installer_ptr_, RepartitionDisk())

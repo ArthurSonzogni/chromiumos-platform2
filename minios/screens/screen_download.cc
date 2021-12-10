@@ -89,11 +89,9 @@ void ScreenDownload::OnProgressChanged(
       display_update_engine_state_ = false;
       break;
     default:
-      // Only `IDLE` and `CHECKING_FOR_UPDATE` can go back to `IDLE` without
-      // any error.
+      // Only `IDLE` can go back to `IDLE` without an error.
+      // Otherwise there will be an indefinite hang during screens.
       if (previous_update_state_ != update_engine::Operation::IDLE &&
-          previous_update_state_ !=
-              update_engine::Operation::CHECKING_FOR_UPDATE &&
           operation == update_engine::Operation::IDLE) {
         LOG(WARNING) << "Update engine went from " << previous_update_state_
                      << " back to IDLE.";
