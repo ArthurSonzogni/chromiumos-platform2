@@ -26,7 +26,8 @@ namespace hermes {
 
 namespace {
 
-const char kDefaultRootSmds[] = "lpa.ds.gsma.com";
+const char kDefaultProdRootSmds[] = "lpa.ds.gsma.com";
+const char kDefaultTestRootSmds[] = "testrootsmds.example.com";
 
 template <typename... T>
 void RunOnSuccess(base::OnceCallback<void(DbusResult<T...>)> cb,
@@ -49,6 +50,7 @@ Euicc::Euicc(uint8_t physical_slot, EuiccSlotInfo slot_info)
     : physical_slot_(physical_slot),
       slot_info_(std::move(slot_info)),
       is_test_mode_(false),
+      use_test_certs_(false),
       context_(Context::Get()),
       dbus_adaptor_(context_->adaptor_factory()->CreateEuiccAdaptor(this)),
       weak_factory_(this) {
@@ -396,8 +398,11 @@ void Euicc::RequestPendingProfiles(DbusResult<> dbus_result,
 
 void Euicc::GetPendingProfilesFromSmds(std::string root_smds,
                                        DbusResult<> dbus_result) {
+  auto default_smds =
+      use_test_certs_ ? kDefaultTestRootSmds : kDefaultProdRootSmds;
+  auto smds = root_smds.empty() ? default_smds : root_smds;
   context_->lpa()->GetPendingProfilesFromSmds(
-      root_smds.empty() ? kDefaultRootSmds : root_smds, context_->executor(),
+      smds, context_->executor(),
       [dbus_result{std::move(dbus_result)}, this](
           std::vector<lpa::proto::ProfileInfo>& profile_infos,
           int error) mutable {
@@ -462,6 +467,7 @@ void Euicc::UseTestCerts(bool use_test_certs) {
   // TODO(pholla): b/180422014 - all euicc's share the same LPA. Setting a euicc
   // to use test certs will make other euiccs use test certs too.
   context_->lpa()->SetTlsCertsDir(kPath + (use_test_certs ? "test/" : "prod/"));
+  use_test_certs_ = use_test_certs;
 }
 
 void Euicc::ResetMemoryHelper(DbusResult<> dbus_result, int reset_options) {
