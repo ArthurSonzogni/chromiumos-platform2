@@ -26,18 +26,19 @@ constexpr char kObfuscatedUsername[] = "foo@gmail.com";
 class UserSecretStashStorageTest : public ::testing::Test {
  protected:
   MockPlatform platform_;
+  UserSecretStashStorage uss_storage_{&platform_};
 };
 
 // Test the successful scenario of the USS persisting and loading.
 TEST_F(UserSecretStashStorageTest, PersistThenLoad) {
   // Write the USS.
-  EXPECT_TRUE(PersistUserSecretStash(SecureBlob(kUssContainer),
-                                     kObfuscatedUsername, &platform_));
+  EXPECT_TRUE(
+      uss_storage_.Persist(SecureBlob(kUssContainer), kObfuscatedUsername));
   EXPECT_TRUE(platform_.FileExists(UserSecretStashPath(kObfuscatedUsername)));
 
   // Load the USS and check it didn't change.
   base::Optional<SecureBlob> loaded_uss_container =
-      LoadPersistedUserSecretStash(kObfuscatedUsername, &platform_);
+      uss_storage_.LoadPersisted(kObfuscatedUsername);
   ASSERT_TRUE(loaded_uss_container);
   EXPECT_EQ(loaded_uss_container->to_string(), kUssContainer);
 }
@@ -47,13 +48,13 @@ TEST_F(UserSecretStashStorageTest, PersistFailure) {
   EXPECT_CALL(platform_, WriteSecureBlobToFileAtomicDurable(
                              UserSecretStashPath(kObfuscatedUsername), _, _))
       .WillRepeatedly(Return(false));
-  EXPECT_FALSE(PersistUserSecretStash(SecureBlob(kUssContainer),
-                                      kObfuscatedUsername, &platform_));
+  EXPECT_FALSE(
+      uss_storage_.Persist(SecureBlob(kUssContainer), kObfuscatedUsername));
 }
 
 // Test that the loading fails when the USS file doesn't exist.
 TEST_F(UserSecretStashStorageTest, LoadFailureNonExisting) {
-  EXPECT_FALSE(LoadPersistedUserSecretStash(kObfuscatedUsername, &platform_));
+  EXPECT_FALSE(uss_storage_.LoadPersisted(kObfuscatedUsername));
 }
 
 }  // namespace cryptohome

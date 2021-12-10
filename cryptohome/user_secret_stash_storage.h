@@ -14,17 +14,29 @@
 
 namespace cryptohome {
 
-// Persists the serialized USS container, as created by
-// `UserSecretStash::GetEncryptedContainer()`, in the given user's directory in
-// the shadow root. Returns false on failure.
-bool PersistUserSecretStash(const brillo::SecureBlob& uss_container_flatbuffer,
-                            const std::string& obfuscated_username,
-                            Platform* platform);
-// Loads the serialized USS container flatbuffer (to be used with
-// `UserSecretStash::FromEncryptedContainer()`) from the given user's directory
-// in the shadow root. Returns nullopt on failure.
-base::Optional<brillo::SecureBlob> LoadPersistedUserSecretStash(
-    const std::string& obfuscated_username, Platform* platform);
+class UserSecretStashStorage final {
+ public:
+  explicit UserSecretStashStorage(Platform* platform);
+
+  UserSecretStashStorage(const UserSecretStashStorage&) = delete;
+  UserSecretStashStorage& operator=(const UserSecretStashStorage&) = delete;
+
+  ~UserSecretStashStorage();
+
+  // Persists the serialized USS container, as created by
+  // `UserSecretStash::GetEncryptedContainer()`, in the given user's directory
+  // in the shadow root. Returns false on failure.
+  bool Persist(const brillo::SecureBlob& uss_container_flatbuffer,
+               const std::string& obfuscated_username);
+  // Loads the serialized USS container flatbuffer (to be used with
+  // `UserSecretStash::FromEncryptedContainer()`) from the given user's
+  // directory in the shadow root. Returns nullopt on failure.
+  base::Optional<brillo::SecureBlob> LoadPersisted(
+      const std::string& obfuscated_username);
+
+ private:
+  Platform* const platform_;
+};
 
 }  // namespace cryptohome
 
