@@ -24,11 +24,13 @@ constexpr int kMaxRetries = 5;
 constexpr int kMaxApduLen = 260;
 constexpr auto kSimRefreshDelay = base::TimeDelta::FromSeconds(3);
 constexpr auto kInitRetryDelay = base::TimeDelta::FromSeconds(10);
+constexpr uint8_t kInvalidChannel = 0;
+
 constexpr int kModemSuccess = 0;
 // This error will be returned when a received mbim/qmi message cannot be parsed
 // or when it is received in an unexpected state.
 constexpr int kModemMessageProcessingError = -1;
-constexpr uint8_t kInvalidChannel = 0;
+constexpr int kModemManagerError = -2;
 
 constexpr int kDefault3GPPRelease = 11;
 

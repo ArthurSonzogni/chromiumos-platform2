@@ -43,26 +43,17 @@ std::unique_ptr<ModemMbim> ModemMbim::Create(
     Executor* executor,
     std::unique_ptr<ModemManagerProxy> modem_manager_proxy) {
   VLOG(2) << __func__;
-  GFile* file = NULL;
-  const gchar* const path = "/dev/cdc-wdm0";
-  file = g_file_new_for_path(path);
-  if (file == NULL) {
-    LOG(ERROR) << __func__ << " :No file exist";
-    return nullptr;
-  }
   return std::unique_ptr<ModemMbim>(
-      new ModemMbim(file, logger, executor, std::move(modem_manager_proxy)));
+      new ModemMbim(logger, executor, std::move(modem_manager_proxy)));
 }
 
-ModemMbim::ModemMbim(GFile* file,
-                     Logger* logger,
+ModemMbim::ModemMbim(Logger* logger,
                      Executor* executor,
                      std::unique_ptr<ModemManagerProxy> modem_manager_proxy)
     : Modem<MbimCmd>(logger, executor, std::move(modem_manager_proxy)),
       channel_(kInvalidChannel),
       pending_response_(false),
       ready_state_(MBIM_SUBSCRIBER_READY_STATE_NOT_INITIALIZED),
-      file_(file),
       is_ready_state_valid(false),
       weak_factory_(this) {}
 
@@ -84,6 +75,16 @@ void ModemMbim::Initialize(EuiccManagerInterface* euicc_manager,
 }
 
 void ModemMbim::OnModemAvailable() {
+  if (modem_manager_proxy_->GetPrimaryPort().empty()) {
+    LOG(ERROR) << __func__ << ": Could not get primary port from MM";
+    std::move(init_done_cb_).Run(kModemManagerError);
+    return;
+  }
+
+  std::string dev_path = "/dev/" + modem_manager_proxy_->GetPrimaryPort();
+  const gchar* const path = dev_path.c_str();
+  LOG(INFO) << __func__ << " : Opening " << path;
+  file_ = g_file_new_for_path(path);
   mbim_device_new(file_, /* cancellable */ NULL,
                   (GAsyncReadyCallback)MbimCreateNewDeviceCb, this);
 }

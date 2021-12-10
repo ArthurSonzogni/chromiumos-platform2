@@ -31,6 +31,8 @@ class ModemManagerProxy {
   // waits for MM to export a DBus object.
   void WaitForModem(base::OnceClosure cb);
 
+  std::string GetPrimaryPort() const;
+
  protected:
   // To be used by mocks only
   ModemManagerProxy();
@@ -42,9 +44,14 @@ class ModemManagerProxy {
   void WaitForModemStepLast(
       base::OnceClosure cb,
       const DBusObjectsWithProperties& dbus_objects_with_properties);
+  void OnNewModemDetected(dbus::ObjectPath object_path);
+  void OnPropertiesChanged(
+      org::freedesktop::ModemManager1::ModemProxyInterface* /*unused*/,
+      const std::string& prop);
 
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::freedesktop::DBus::ObjectManagerProxy> proxy_;
+  std::unique_ptr<org::freedesktop::ModemManager1::ModemProxy> modem_proxy_;
   base::OnceClosure on_modem_appeared_cb_;
 
   base::WeakPtrFactory<ModemManagerProxy> weak_factory_;

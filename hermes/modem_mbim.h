@@ -53,8 +53,7 @@ class ModemMbim : public Modem<MbimCmd> {
                                              std::string* eid);
 
  private:
-  ModemMbim(GFile* file,
-            Logger* logger,
+  ModemMbim(Logger* logger,
             Executor* executor,
             std::unique_ptr<ModemManagerProxy> modem_manager_proxy);
   void OnModemAvailable();

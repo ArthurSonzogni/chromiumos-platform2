@@ -68,7 +68,8 @@ void ModemManagerProxy::WaitForModemStepLast(
       continue;
     }
     LOG(INFO) << __func__ << ": Found " << object_properties_pair.first.value();
-    std::move(cb).Run();
+    RegisterModemAppearedCallback(std::move(cb));
+    OnNewModemDetected(dbus::ObjectPath{object_properties_pair.first.value()});
     return;
   }
   LOG(INFO) << __func__ << ": Waiting for modem...";
@@ -84,9 +85,30 @@ void ModemManagerProxy::OnInterfaceAdded(
     VLOG(2) << __func__ << "Interfaces added, but not modem interface.";
     return;
   }
-  LOG(INFO) << "New modem detected at " << object_path.value();
+  OnNewModemDetected(object_path);
+}
+
+void ModemManagerProxy::OnNewModemDetected(dbus::ObjectPath object_path) {
+  LOG(INFO) << __func__ << ": New modem detected at " << object_path.value();
+  modem_proxy_ = std::make_unique<org::freedesktop::ModemManager1::ModemProxy>(
+      bus_, modemmanager::kModemManager1ServiceName, object_path);
+  modem_proxy_->InitializeProperties(base::BindRepeating(
+      &ModemManagerProxy::OnPropertiesChanged, weak_factory_.GetWeakPtr()));
+}
+
+void ModemManagerProxy::OnPropertiesChanged(
+    org::freedesktop::ModemManager1::ModemProxyInterface* /*unused*/,
+    const std::string& prop) {
+  VLOG(2) << __func__ << " : " << prop << " changed.";
+  if (!modem_proxy_->GetProperties()->primary_port.is_valid() ||
+      !modem_proxy_->GetProperties()->device_identifier.is_valid())
+    return;
   if (!on_modem_appeared_cb_.is_null())
     std::move(on_modem_appeared_cb_).Run();
+}
+
+std::string ModemManagerProxy::GetPrimaryPort() const {
+  return modem_proxy_->primary_port();
 }
 
 }  // namespace hermes
