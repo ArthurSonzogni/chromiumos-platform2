@@ -20,7 +20,10 @@ group("all") {
     ":shill-chromeos-dbus-adaptors",
   ]
   if (use.cellular) {
-    deps += [ ":set-apn-helper" ]
+    deps += [
+      ":cellular_mobile_operator_info_tester",
+      ":set-apn-helper",
+    ]
   }
   if (use.cellular || use.vpn) {
     deps += [ ":shill-pppd-plugin" ]
@@ -475,6 +478,14 @@ if (use.cellular) {
       ":set-apn-helper_config",
       ":target_defaults",
     ]
+  }
+}
+
+if (use.cellular) {
+  executable("cellular_mobile_operator_info_tester") {
+    sources = [ "cellular/cellular_mobile_operator_info_tester.cc" ]
+    configs += [ ":target_defaults" ]
+    deps = [ ":libshill" ]
   }
 }
 
