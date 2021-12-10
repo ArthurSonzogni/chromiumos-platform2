@@ -93,6 +93,7 @@ type cros_healthd_exec, exec_type, file_type, cros_file_type, cros_system_file_t
 type cros_hermes_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_hotlined_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_hotlog_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_hps_factory_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_hpsd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_huddly_monitor_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_hwclock_exec, exec_type, file_type, cros_file_type, cros_system_file_type;

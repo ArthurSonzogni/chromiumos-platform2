@@ -92,6 +92,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/hermes                 u:object_r:cros_hermes_exec:s0
 /usr/bin/hotlined               u:object_r:cros_hotlined_exec:s0
 /usr/bin/hotlog                 u:object_r:cros_hotlog_exec:s0
+/usr/bin/hps-factory            u:object_r:cros_hps_factory_exec:s0
 /usr/bin/ionice                 u:object_r:cros_ionice_exec:s0
 /usr/bin/ippusb_bridge          u:object_r:cros_ippusb_bridge_exec:s0
 /usr/bin/logger                 u:object_r:cros_logger_exec:s0
