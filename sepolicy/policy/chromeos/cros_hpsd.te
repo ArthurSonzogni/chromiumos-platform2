@@ -12,7 +12,7 @@ cros_dbus_client(cros_hpsd);
 uma_writer(cros_hpsd);
 log_writer(cros_hpsd);
 
-# Define an object context for the hps device (usually /dev/i2c-NN).
+# Define an object context for the hps device (/dev/i2c-hps-controller).
 type cros_hps_device, dev_type, cros_dev_type, cros_labeled_dev_type;
 
 # Access the sensor over i2c.

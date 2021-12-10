@@ -424,6 +424,7 @@ has_arc(`
 (/usr)?/lib(/.*)?                      u:object_r:cros_system_file:s0
 /lib/modules(/.*)?                     u:object_r:cros_kernel_modules_file:s0
 /lib/modules/.*\.ko                    u:object_r:cros_kernel_modules_ko_file:s0
+/lib/udev/hps-dev.sh                   u:object_r:cros_lib_udev_hps-dev_script:s0
 
 # /sys
 # Needed for tmpfiles.d to chgrp /sys/fs/cgroup/*

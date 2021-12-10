@@ -106,6 +106,7 @@ type cros_ipsec_charon_exec, exec_type, file_type, cros_file_type, cros_system_f
 type cros_ipsec_starter_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_is_running_from_installer_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_jetstream_update_stats_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_lib_udev_hps-dev_script, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_logger_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_lorgnette_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_losetup_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
