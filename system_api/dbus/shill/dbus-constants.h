@@ -594,10 +594,11 @@ const char kEapTLSVersion1p1[] = "1.1";
 const char kEapTLSVersion1p2[] = "1.2";
 
 // Flimflam VPN provider types.
+const char kProviderArcVpn[] = "arcvpn";
+const char kProviderIKEv2[] = "ikev2";
 const char kProviderL2tpIpsec[] = "l2tpipsec";
 const char kProviderOpenVpn[] = "openvpn";
 const char kProviderThirdPartyVpn[] = "thirdpartyvpn";
-const char kProviderArcVpn[] = "arcvpn";
 const char kProviderWireGuard[] = "wireguard";
 
 // Flimflam monitored properties

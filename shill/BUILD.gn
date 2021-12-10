@@ -400,6 +400,7 @@ static_library("libshill") {
   if (use.vpn) {
     sources += [
       "vpn/arc_vpn_driver.cc",
+      "vpn/ikev2_driver.cc",
       "vpn/ipsec_connection.cc",
       "vpn/l2tp_connection.cc",
       "vpn/l2tp_ipsec_driver.cc",
@@ -822,6 +823,7 @@ if (use.test) {
         "shims/environment_test.cc",
         "vpn/arc_vpn_driver_test.cc",
         "vpn/fake_vpn_util.cc",
+        "vpn/ikev2_driver_test.cc",
         "vpn/ipsec_connection_test.cc",
         "vpn/l2tp_connection_test.cc",
         "vpn/l2tp_ipsec_driver_test.cc",
