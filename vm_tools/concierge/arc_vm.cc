@@ -95,6 +95,9 @@ constexpr char kSbinSharedDirTag[] = "sbin";
 constexpr char kUsrBinSharedDir[] = "/usr/bin";
 constexpr char kUsrBinSharedDirTag[] = "usr_bin";
 
+constexpr char kUsrLocalBinSharedDir[] = "/usr/local/bin";
+constexpr char kUsrLocalBinSharedDirTag[] = "usr_local_bin";
+
 // For |kOemEtcSharedDir|, map host's crosvm to guest's root, also arc-camera
 // (603) to vendor_arc_camera (5003).
 constexpr char kOemEtcUgidMapTemplate[] = "0 %u 1, 5000 600 50";
@@ -279,6 +282,9 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   const base::FilePath usr_bin_dir(kUsrBinSharedDir);
   std::string shared_usr_bin = CreateSharedDataParam(
       usr_bin_dir, kUsrBinSharedDirTag, true, false, true, {});
+  const base::FilePath usr_local_bin_dir(kUsrLocalBinSharedDir);
+  std::string shared_usr_local_bin = CreateSharedDataParam(
+      usr_local_bin_dir, kUsrLocalBinSharedDirTag, true, false, true, {});
 
   vm_builder
       // Bias tuned on 4/8G hatch devices with multivm.Lifecycle tests.
@@ -326,6 +332,16 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       }
       custom_parameters = CustomParametersForDev(data);
     }
+  }
+
+  // Add /usr/local/bin as a shared directory which is located in a dev
+  // partition.
+  std::string channel_string;
+  const bool is_test_image = base::SysInfo::GetLsbReleaseValue(
+                                 "CHROMEOS_RELEASE_TRACK", &channel_string) &&
+                             base::StartsWith(channel_string, "test");
+  if (is_test_image) {
+    vm_builder.AppendSharedDir(shared_usr_local_bin);
   }
 
   if (custom_parameters.ObtainSpecialParameter(kKeyToOverrideODirect)
