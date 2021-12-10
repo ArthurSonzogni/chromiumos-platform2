@@ -3775,4 +3775,16 @@ bool UserDataAuth::UpdateAuthFactor(
   return true;
 }
 
+bool UserDataAuth::RemoveAuthFactor(
+    user_data_auth::RemoveAuthFactorRequest request,
+    base::OnceCallback<void(const user_data_auth::RemoveAuthFactorReply&)>
+        on_done) {
+  AssertOnMountThread();
+  // TODO(b/208357933): Implement RemoveAuthFactor.
+  user_data_auth::RemoveAuthFactorReply reply;
+  reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+  std::move(on_done).Run(reply);
+  return true;
+}
+
 }  // namespace cryptohome

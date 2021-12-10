@@ -1158,3 +1158,25 @@ message UpdateAuthFactorReply {
   // Return the status of the request.
   CryptohomeErrorCode error = 1;
 }
+
+// RemoveAuthFactorRequest is built when a user is trying to
+// remove an AuthFactor for a user. auth_factor_label would identify
+// the AuthFactor that the request is trying to remove. When the call is made,
+// AuthSession is in an authenticated state. After the operation the
+// AuthSession would still be in an authenticated state.
+message RemoveAuthFactorRequest {
+  // AuthFactor cannot be removed without an authenticated AuthSession running.
+  // This id would be used to get the user whose AuthFactor the call is trying
+  // to delete.
+  bytes auth_session_id = 1;
+  // The AuthFactor label would be used to determine the AuthFactor that
+  // needs to be removed.
+  // If this AuthFactor is the last AuthFactor for a given user, then the call
+  // would return an error stating that.
+  string auth_factor_label = 2;
+}
+
+message RemoveAuthFactorReply {
+  // Return the status of the request.
+  CryptohomeErrorCode error = 1;
+}

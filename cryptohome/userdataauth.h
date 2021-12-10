@@ -704,6 +704,11 @@ class UserDataAuth {
       base::OnceCallback<void(const user_data_auth::UpdateAuthFactorReply&)>
           on_done);
 
+  bool RemoveAuthFactor(
+      user_data_auth::RemoveAuthFactorRequest request,
+      base::OnceCallback<void(const user_data_auth::RemoveAuthFactorReply&)>
+          on_done);
+
  private:
   // base::Thread subclass so we can implement CleanUp.
   class MountThread : public base::Thread {
