@@ -36,6 +36,9 @@ class FEATURE_EXPORT PlatformFeaturesInterface {
   // or the dbus call fails.
   // DO NOT CACHE the result of this call, as it may change -- for example, when
   // Chrome restarts or when a user logs in or out.
+  // NOTE: As of 2021-12, Chrome only retrieves finch seeds after a first reboot
+  // (e.g. when logging in). So, if you need to run an experiment before this it
+  // should be set up as a client-side trial.
   virtual void IsEnabled(const Feature& feature,
                          IsEnabledCallback callback) = 0;
 
@@ -45,6 +48,9 @@ class FEATURE_EXPORT PlatformFeaturesInterface {
   // IsEnabled(), especially soon after Chrome starts.
   // DO NOT CACHE the result of this call, as it may change -- for example, when
   // Chrome restarts or when a user logs in or out.
+  // NOTE: As of 2021-12, Chrome only retrieves finch seeds after a first reboot
+  // (e.g. when logging in). So, if you need to run an experiment before this it
+  // should be set up as a client-side trial.
   virtual bool IsEnabledBlocking(const Feature& feature) = 0;
 };
 
