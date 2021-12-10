@@ -332,6 +332,14 @@ void ModemMbim::QueryCurrentMbimCapabilities(ResultCallback cb) {
   TransmitFromQueue();
 }
 
+void ModemMbim::CloseChannel(base::OnceCallback<void(int)> cb) {
+  tx_queue_.push_back(
+      {std::unique_ptr<TxInfo>(), AllocateId(),
+       std::make_unique<MbimCmd>(MbimCmd::MbimType::kMbimCloseLogicalChannel),
+       std::move(cb)});
+  TransmitFromQueue();
+}
+
 void ModemMbim::AcquireChannel(base::OnceCallback<void(int)> cb) {
   LOG(INFO) << __func__;
   tx_queue_.push_back(
@@ -346,12 +354,10 @@ void ModemMbim::ReacquireChannel(const uint32_t physical_slot,
   LOG(INFO) << __func__ << " with physical_slot: " << physical_slot;
   auto acquire_channel =
       base::BindOnce(&ModemMbim::AcquireChannel, weak_factory_.GetWeakPtr());
-  tx_queue_.push_back(
-      {std::unique_ptr<TxInfo>(), AllocateId(),
-       std::make_unique<MbimCmd>(MbimCmd::MbimType::kMbimCloseLogicalChannel),
-       base::BindOnce(&RunNextStep, std::move(acquire_channel),
-                      std::move(cb))});
-  TransmitFromQueue();
+  // Close any existing channel, and acquire a new one. Run cb after a new
+  // channel has been acquired.
+  CloseChannel(
+      base::BindOnce(&RunNextStep, std::move(acquire_channel), std::move(cb)));
 }
 
 void ModemMbim::GetEidFromSim(ResultCallback cb) {
@@ -727,15 +733,33 @@ void ModemMbim::StoreAndSetActiveSlot(const uint32_t physical_slot,
                   (GAsyncReadyCallback)MbimCreateNewDeviceCb, this);
 }
 
-void ModemMbim::StartProfileOp(uint32_t physical_slot, ResultCallback cb) {
-  LOG(INFO) << __func__ << " physical_slot:" << physical_slot;
-  retry_count_ = 0;
-  is_ready_state_valid = false;
-  StoreAndSetActiveSlot(physical_slot, std::move(cb));
+void ModemMbim::ProcessEuiccEvent(EuiccEvent event, ResultCallback cb) {
+  LOG(INFO) << __func__ << ", " << event;
+  if (event.step == EuiccStep::START) {
+    auto store_and_set_active_slot =
+        base::BindOnce(&ModemMbim::StoreAndSetActiveSlot,
+                       weak_factory_.GetWeakPtr(), event.slot);
+    modem_manager_proxy_->WaitForModemAndInhibit(base::BindOnce(
+        &RunNextStep, std::move(store_and_set_active_slot), std::move(cb)));
+    return;
+  }
+  if (event.step == EuiccStep::PENDING_NOTIFICATIONS) {
+    AcquireChannelAfterCardReady(event, std::move(cb));
+    return;
+  }
+  if (event.step == EuiccStep::END) {
+    auto close_device_and_uninhibit = base::BindOnce(
+        &ModemMbim::CloseDeviceAndUninhibit, weak_factory_.GetWeakPtr());
+    // Close channel, followed by close device and uninhibit, and then execute
+    // cb
+    CloseChannel(base::BindOnce(
+        &RunNextStep, std::move(close_device_and_uninhibit), std::move(cb)));
+    return;
+  }
 }
 
-void ModemMbim::FinishProfileOp(ResultCallback cb) {
-  LOG(INFO) << __func__;
+void ModemMbim::AcquireChannelAfterCardReady(EuiccEvent event,
+                                             ResultCallback cb) {
   const guint MBIM_SUBSCRIBER_READY_STATE_NO_ESIM_PROFILE = 7;
   if (!is_ready_state_valid ||
       !(ready_state_ == MBIM_SUBSCRIBER_READY_STATE_NOT_INITIALIZED ||
@@ -751,18 +775,20 @@ void ModemMbim::FinishProfileOp(ResultCallback cb) {
     retry_count_++;
     executor_->PostDelayedTask(
         FROM_HERE,
-        base::BindOnce(&ModemMbim::FinishProfileOp, weak_factory_.GetWeakPtr(),
+        base::BindOnce(&ModemMbim::AcquireChannelAfterCardReady,
+                       weak_factory_.GetWeakPtr(), std::move(event),
                        std::move(cb)),
         kSimRefreshDelay);
     return;
   }
   retry_count_ = 0;
-  // Ideally we would acquire a channel to send notifications here. However,
-  // acquiring a channel could cause MM to stop reporting the EID due to a fw
-  // bug in L850. Thus we skip sending profile enable/disable notifications
-  // until b/195589882, and b/202401139 are fixed.
+  AcquireChannel(std::move(cb));
+}
+
+void ModemMbim::CloseDeviceAndUninhibit(ResultCallback cb) {
   CloseDevice();
-  std::move(cb).Run(kModemMessageProcessingError);
+  modem_manager_proxy_->ScheduleUninhibit(kUninhibitDelay);
+  std::move(cb).Run(kModemSuccess);
 }
 
 void ModemMbim::RestoreActiveSlot(ResultCallback cb) {

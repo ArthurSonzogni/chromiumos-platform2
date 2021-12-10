@@ -11,8 +11,10 @@
 
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
+#include <base/cancelable_callback.h>
 
 #include "hermes/dbus_bindings/mm-proxies.h"
+#include "hermes/executor.h"
 #include "hermes/hermes_common.h"
 
 namespace hermes {
@@ -33,6 +35,9 @@ class ModemManagerProxy {
 
   std::string GetPrimaryPort() const;
 
+  void ScheduleUninhibit(base::TimeDelta timeout);
+  void WaitForModemAndInhibit(ResultCallback cb);
+
  protected:
   // To be used by mocks only
   ModemManagerProxy();
@@ -49,10 +54,21 @@ class ModemManagerProxy {
       org::freedesktop::ModemManager1::ModemProxyInterface* /*unused*/,
       const std::string& prop);
 
+  void Uninhibit();
+  void InhibitDevice(bool inhibit, ResultCallback cb);
+  void OnInhibitSuccess(bool inhibit,
+                        std::basic_string<char> uid,
+                        ResultCallback cb);
+
   scoped_refptr<dbus::Bus> bus_;
-  std::unique_ptr<org::freedesktop::DBus::ObjectManagerProxy> proxy_;
+  std::unique_ptr<org::freedesktop::DBus::ObjectManagerProxy>
+      object_manager_proxy_;
+  std::unique_ptr<org::freedesktop::ModemManager1Proxy> mm_proxy_;
   std::unique_ptr<org::freedesktop::ModemManager1::ModemProxy> modem_proxy_;
   base::OnceClosure on_modem_appeared_cb_;
+
+  std::optional<std::basic_string<char>> inhibited_uid_;
+  base::CancelableOnceClosure uninhibit_cb_;
 
   base::WeakPtrFactory<ModemManagerProxy> weak_factory_;
 };

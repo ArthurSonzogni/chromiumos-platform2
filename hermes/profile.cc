@@ -52,6 +52,15 @@ base::Optional<profile::ProfileClass> LpaProfileClassToHermes(
   }
 }
 
+void SendDBusError(std::shared_ptr<Profile::DBusResponse<>> response,
+                   brillo::ErrorPtr lpa_error,
+                   int modem_error) {
+  if (modem_error != kSuccess) {
+    LOG(ERROR) << "Modem finished with error code: " << modem_error;
+  }
+  response->ReplyWithError(lpa_error.get());
+}
+
 template <typename T>
 void RunOnSuccess(base::OnceCallback<void(T)> cb, T response, int err) {
   if (err) {
@@ -146,8 +155,8 @@ void Profile::Enable(std::unique_ptr<DBusResponse<>> response) {
   LOG(INFO) << "Enabling profile: " << GetObjectPathForLog(object_path_);
   auto enable_profile =
       base::BindOnce(&Profile::EnableProfile, weak_factory_.GetWeakPtr());
-  context_->modem_control()->StartProfileOp(
-      physical_slot_,
+  context_->modem_control()->ProcessEuiccEvent(
+      {physical_slot_, EuiccStep::START, EuiccOp::ENABLE},
       base::BindOnce(&RunOnSuccess<std::unique_ptr<DBusResponse<>>>,
                      std::move(enable_profile), std::move(response)));
 }
@@ -185,8 +194,8 @@ void Profile::Disable(std::unique_ptr<DBusResponse<>> response) {
   LOG(INFO) << "Disabling profile: " << GetObjectPathForLog(object_path_);
   auto disable_profile =
       base::BindOnce(&Profile::DisableProfile, weak_factory_.GetWeakPtr());
-  context_->modem_control()->StartProfileOp(
-      physical_slot_,
+  context_->modem_control()->ProcessEuiccEvent(
+      {physical_slot_, EuiccStep::START, EuiccOp::DISABLE},
       base::BindOnce(&RunOnSuccess<std::unique_ptr<DBusResponse<>>>,
                      std::move(disable_profile), std::move(response)));
 }
@@ -210,7 +219,10 @@ void Profile::OnEnabled(int error, std::shared_ptr<DBusResponse<>> response) {
   if (decoded_error) {
     LOG(ERROR) << "Failed enabling profile: " << object_path_.value()
                << " (error " << decoded_error << ")";
-    response->ReplyWithError(decoded_error.get());
+    context_->modem_control()->ProcessEuiccEvent(
+        {physical_slot_, EuiccStep::END},
+        base::BindOnce(&SendDBusError, std::move(response),
+                       std::move(decoded_error)));
     return;
   }
   on_profile_enabled_cb_.Run(GetIccid());
@@ -218,7 +230,9 @@ void Profile::OnEnabled(int error, std::shared_ptr<DBusResponse<>> response) {
   auto send_notifs =
       base::BindOnce(&Profile::FinishProfileOpCb, weak_factory_.GetWeakPtr(),
                      std::move(response));
-  context_->modem_control()->FinishProfileOp(std::move(send_notifs));
+  context_->modem_control()->ProcessEuiccEvent(
+      {physical_slot_, EuiccStep::PENDING_NOTIFICATIONS},
+      std::move(send_notifs));
 }
 
 void Profile::OnDisabled(int error, std::shared_ptr<DBusResponse<>> response) {
@@ -227,7 +241,10 @@ void Profile::OnDisabled(int error, std::shared_ptr<DBusResponse<>> response) {
   if (decoded_error) {
     LOG(ERROR) << "Failed disabling profile: " << object_path_.value()
                << " (error " << decoded_error << ")";
-    response->ReplyWithError(decoded_error.get());
+    context_->modem_control()->ProcessEuiccEvent(
+        {physical_slot_, EuiccStep::END},
+        base::BindOnce(&SendDBusError, std::move(response),
+                       std::move(decoded_error)));
     return;
   }
   LOG(INFO) << "Disabled profile: " << object_path_.value();
@@ -236,11 +253,14 @@ void Profile::OnDisabled(int error, std::shared_ptr<DBusResponse<>> response) {
   auto send_notifs =
       base::BindOnce(&Profile::FinishProfileOpCb, weak_factory_.GetWeakPtr(),
                      std::move(response));
-  context_->modem_control()->FinishProfileOp(std::move(send_notifs));
+  context_->modem_control()->ProcessEuiccEvent(
+      {physical_slot_, EuiccStep::PENDING_NOTIFICATIONS},
+      std::move(send_notifs));
 }
 
 void Profile::FinishProfileOpCb(std::shared_ptr<DBusResponse<>> response,
                                 int err) {
+  LOG(INFO) << __func__;
   if (err) {
     LOG(WARNING) << "Could not finish profile op: " << object_path_.value();
     // Notifications are optional by the standard. Since FinishProfileOp failed,
@@ -251,7 +271,18 @@ void Profile::FinishProfileOpCb(std::shared_ptr<DBusResponse<>> response,
   }
   context_->lpa()->SendNotifications(
       context_->executor(),
-      [response{std::move(response)}](int /*error*/) { response->Return(); });
+      [this, response{std::move(response)}](int /*error*/) {
+        VLOG(2) << "FinishProfileOpCb: sent all notifications";
+        context_->modem_control()->ProcessEuiccEvent(
+            {physical_slot_, EuiccStep::END},
+            base::BindOnce(
+                [](std::shared_ptr<DBusResponse<>> response, int error) {
+                  response->Return();
+                  LOG(INFO)
+                      << "FinishProfileOpCb: completed with err = " << error;
+                },
+                response));
+      });
 }
 
 void Profile::Rename(std::unique_ptr<DBusResponse<>> response,
@@ -269,8 +300,8 @@ void Profile::Rename(std::unique_ptr<DBusResponse<>> response,
   auto set_nickname =
       base::BindOnce(&Profile::SetNicknameMethod, weak_factory_.GetWeakPtr(),
                      std::move(nickname));
-  context_->modem_control()->StoreAndSetActiveSlot(
-      physical_slot_,
+  context_->modem_control()->ProcessEuiccEvent(
+      {physical_slot_, EuiccStep::START},
       base::BindOnce(&RunOnSuccess<std::unique_ptr<DBusResponse<>>>,
                      std::move(set_nickname), std::move(response)));
 }
@@ -322,13 +353,22 @@ void Profile::SetNicknameMethod(std::string nickname,
           return;
         }
         this->SetNickname(nickname);
-        auto report_success =
-            base::BindOnce([](std::shared_ptr<DBusResponse<>> response) {
-              response->Return();
-            });
-        context_->modem_control()->RestoreActiveSlot(
-            base::BindOnce(&RunOnSuccess<std::shared_ptr<DBusResponse<>>>,
-                           std::move(report_success), std::move(response)));
+
+        auto restore_slot_and_dbus_return = base::BindOnce(
+            [](ModemControlInterface* modem_control,
+               std::shared_ptr<DBusResponse<>> response, int error) {
+              auto report_success =
+                  base::BindOnce([](std::shared_ptr<DBusResponse<>> response) {
+                    response->Return();
+                  });
+              modem_control->RestoreActiveSlot(base::BindOnce(
+                  &RunOnSuccess<std::shared_ptr<DBusResponse<>>>,
+                  std::move(report_success), std::move(response)));
+            },
+            context_->modem_control(), response);
+        context_->modem_control()->ProcessEuiccEvent(
+            {physical_slot_, EuiccStep::END},
+            std::move(restore_slot_and_dbus_return));
       });
 }
 

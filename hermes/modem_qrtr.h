@@ -46,9 +46,7 @@ class ModemQrtr : public Modem<QmiCmdInterface> {
   void StoreAndSetActiveSlot(uint32_t physical_slot,
                              ResultCallback cb) override;
   void RestoreActiveSlot(ResultCallback cb) override;
-  void StartProfileOp(uint32_t physical_slot, ResultCallback cb) override;
-  void FinishProfileOp(ResultCallback cb) override;
-
+  void ProcessEuiccEvent(EuiccEvent event, ResultCallback cb) override;
 
  private:
   struct SwitchSlotTxInfo : public TxInfo {

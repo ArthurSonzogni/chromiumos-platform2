@@ -72,6 +72,7 @@ static_library("libhermes") {
     "daemon.cc",
     "euicc.cc",
     "euicc_dbus_adaptor.cc",
+    "euicc_event.cc",
     "executor.cc",
     "hermes_common.cc",
     "lpa_util.cc",

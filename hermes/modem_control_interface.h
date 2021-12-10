@@ -5,6 +5,7 @@
 #ifndef HERMES_MODEM_CONTROL_INTERFACE_H_
 #define HERMES_MODEM_CONTROL_INTERFACE_H_
 
+#include "hermes/euicc_event.h"
 #include "hermes/hermes_common.h"
 
 namespace hermes {
@@ -18,8 +19,7 @@ class ModemControlInterface {
   // Restore the value stored by StoreAndSetActiveSlot
   virtual void RestoreActiveSlot(ResultCallback cb) = 0;
 
-  virtual void StartProfileOp(uint32_t physical_slot, ResultCallback cb) = 0;
-  virtual void FinishProfileOp(ResultCallback cb) = 0;
+  virtual void ProcessEuiccEvent(EuiccEvent event, ResultCallback cb) = 0;
 
   virtual ~ModemControlInterface() = default;
 };

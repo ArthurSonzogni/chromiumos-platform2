@@ -26,11 +26,12 @@ constexpr auto kSimRefreshDelay = base::TimeDelta::FromSeconds(3);
 constexpr auto kInitRetryDelay = base::TimeDelta::FromSeconds(10);
 constexpr uint8_t kInvalidChannel = 0;
 
+// Schedule an uninhibit 2 seconds after an eSIM operation succeeds. If another
+// eSIM operation makes an inhibit call during these 2 seconds, the scheduled
+// uninhibit is cancelled.
+constexpr auto kUninhibitDelay = base::TimeDelta::FromSeconds(2);
+
 constexpr int kModemSuccess = 0;
-// This error will be returned when a received mbim/qmi message cannot be parsed
-// or when it is received in an unexpected state.
-constexpr int kModemMessageProcessingError = -1;
-constexpr int kModemManagerError = -2;
 
 constexpr int kDefault3GPPRelease = 11;
 

@@ -12,10 +12,13 @@ namespace hermes {
 
 ModemManagerProxy::ModemManagerProxy(const scoped_refptr<dbus::Bus>& bus)
     : bus_(bus),
-      proxy_(std::make_unique<org::freedesktop::DBus::ObjectManagerProxy>(
-          bus,
-          modemmanager::kModemManager1ServiceName,
-          dbus::ObjectPath(modemmanager::kModemManager1ServicePath))),
+      object_manager_proxy_(
+          std::make_unique<org::freedesktop::DBus::ObjectManagerProxy>(
+              bus,
+              modemmanager::kModemManager1ServiceName,
+              dbus::ObjectPath(modemmanager::kModemManager1ServicePath))),
+      mm_proxy_(std::make_unique<org::freedesktop::ModemManager1Proxy>(
+          bus, modemmanager::kModemManager1ServiceName)),
       weak_factory_(this) {
   auto on_interface_added = base::BindRepeating(
       &ModemManagerProxy::OnInterfaceAdded, weak_factory_.GetWeakPtr());
@@ -26,13 +29,14 @@ ModemManagerProxy::ModemManagerProxy(const scoped_refptr<dbus::Bus>& bus)
           LOG(ERROR) << "Failed to connect to signal " << interface << "."
                      << signal;
       });
-  proxy_->RegisterInterfacesAddedSignalHandler(
+  object_manager_proxy_->RegisterInterfacesAddedSignalHandler(
       std::move(on_interface_added), std::move(on_dbus_signal_connected));
 }
 
 ModemManagerProxy::ModemManagerProxy() : weak_factory_(this) {}
 
 void ModemManagerProxy::RegisterModemAppearedCallback(base::OnceClosure cb) {
+  VLOG(2) << __func__;
   on_modem_appeared_cb_ = std::move(cb);
 }
 
@@ -41,7 +45,7 @@ void ModemManagerProxy::WaitForModem(base::OnceClosure cb) {
   auto on_service_available =
       base::BindOnce(&ModemManagerProxy::WaitForModemStepGetObjects,
                      weak_factory_.GetWeakPtr(), std::move(cb));
-  proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
+  object_manager_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
       std::move((on_service_available)));
 }
 
@@ -51,7 +55,7 @@ void ModemManagerProxy::WaitForModemStepGetObjects(base::OnceClosure cb, bool) {
     LOG(ERROR) << "Could not get MM managed objects: " << err->GetDomain()
                << ": " << err->GetCode() << ": " << err->GetMessage();
   });
-  proxy_->GetManagedObjectsAsync(
+  object_manager_proxy_->GetManagedObjectsAsync(
       base::BindOnce(&ModemManagerProxy::WaitForModemStepLast,
                      weak_factory_.GetWeakPtr(), std::move(cb)),
       std::move(error_cb));
@@ -99,7 +103,7 @@ void ModemManagerProxy::OnNewModemDetected(dbus::ObjectPath object_path) {
 void ModemManagerProxy::OnPropertiesChanged(
     org::freedesktop::ModemManager1::ModemProxyInterface* /*unused*/,
     const std::string& prop) {
-  VLOG(2) << __func__ << " : " << prop << " changed.";
+  VLOG(3) << __func__ << " : " << prop << " changed.";
   if (!modem_proxy_->GetProperties()->primary_port.is_valid() ||
       !modem_proxy_->GetProperties()->device_identifier.is_valid())
     return;
@@ -109,6 +113,94 @@ void ModemManagerProxy::OnPropertiesChanged(
 
 std::string ModemManagerProxy::GetPrimaryPort() const {
   return modem_proxy_->primary_port();
+}
+
+void ModemManagerProxy::Uninhibit() {
+  uninhibit_cb_.Cancel();
+  if (inhibited_uid_.has_value()) {
+    InhibitDevice(false, base::BindOnce([](int err) {
+                    VLOG(2) << "Uninhibit completed with err: " << err;
+                  }));
+  }
+}
+
+void ModemManagerProxy::ScheduleUninhibit(base::TimeDelta timeout) {
+  LOG(INFO) << "Uninhibiting in " << timeout.InSeconds() << " seconds.";
+  uninhibit_cb_.Cancel();
+
+  uninhibit_cb_.Reset(base::BindOnce(&ModemManagerProxy::Uninhibit,
+                                     weak_factory_.GetWeakPtr()));
+  base::SequencedTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE, uninhibit_cb_.callback(), timeout);
+}
+
+void ModemManagerProxy::WaitForModemAndInhibit(ResultCallback cb) {
+  // wait for modem if another daemon has inhibited MM. If Hermes has inhibited
+  // MM, then we needn't wait for the modem.
+  if (inhibited_uid_.has_value()) {
+    LOG(INFO) << inhibited_uid_.value() << " is already inhibited.";
+    OnInhibitSuccess(/*inhibit*/ true, inhibited_uid_.value(), std::move(cb));
+    return;
+  }
+  WaitForModem(base::BindOnce(&ModemManagerProxy::InhibitDevice,
+                              weak_factory_.GetWeakPtr(), true, std::move(cb)));
+}
+
+void ModemManagerProxy::InhibitDevice(bool inhibit, ResultCallback cb) {
+  LOG(INFO) << __func__ << ": inhibit = " << inhibit;
+  if (!inhibit && !inhibited_uid_.has_value()) {
+    LOG(ERROR) << "No inhibited device found.";
+    std::move(cb).Run(kModemManagerError);
+    return;
+  }
+
+  if (inhibit && (!modem_proxy_ || modem_proxy_->device().empty())) {
+    LOG(ERROR) << __func__ << ": Device identifier unavailable.";
+    std::move(cb).Run(kModemManagerError);
+    return;
+  }
+
+  auto uid = inhibit ? modem_proxy_->device() : inhibited_uid_.value();
+
+  constexpr int kInhibitTimeoutMilliseconds = 1000;
+  // convert cb into a repeating callback, so that it can be used by either
+  // on_inhibit_success or on_inhibit_fail
+  auto return_inhibit_result = base::BindRepeating(
+      [](ResultCallback cb, int err) { std::move(cb).Run(err); },
+      base::Passed(std::move(cb)));
+
+  auto on_inhibit_success = base::BindOnce(&ModemManagerProxy::OnInhibitSuccess,
+                                           weak_factory_.GetWeakPtr(), inhibit,
+                                           uid, return_inhibit_result);
+  auto on_inhibit_fail = base::BindOnce(
+      [](ResultCallback cb, brillo::Error* error) {
+        LOG(ERROR) << error->GetMessage();
+        std::move(cb).Run(kModemManagerError);
+      },
+      return_inhibit_result);
+
+  mm_proxy_->InhibitDeviceAsync(uid, inhibit, std::move(on_inhibit_success),
+                                std::move(on_inhibit_fail),
+                                kInhibitTimeoutMilliseconds);
+}
+
+void ModemManagerProxy::OnInhibitSuccess(bool inhibit,
+                                         std::basic_string<char> uid,
+                                         ResultCallback cb) {
+  VLOG(2) << __func__;
+  inhibited_uid_ =
+      inhibit ? std::optional<std::basic_string<char>>{uid} : std::nullopt;
+
+  // uninhibit automatically if we exceed the max duration allowed for a
+  // Hermes operation.
+  uninhibit_cb_.Cancel();
+  if (inhibit) {
+    ScheduleUninhibit(kHermesTimeout);
+    std::move(cb).Run(kSuccess);
+    return;
+  }
+
+  std::move(cb).Run(kSuccess);
 }
 
 }  // namespace hermes

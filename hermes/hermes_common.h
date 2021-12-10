@@ -17,7 +17,14 @@ using ResultCallback = base::OnceCallback<void(int)>;
 constexpr char bcd_chars[] = "0123456789\0\0\0\0\0\0";
 constexpr auto kLpaRetryDelay = base::TimeDelta::FromSeconds(2);
 
+// Duration that Chrome waits for Hermes to return a DBus response
+constexpr auto kHermesTimeout = base::TimeDelta::FromMinutes(4);
+
 constexpr int kSuccess = 0;
+// This error will be returned when a received mbim/qmi message cannot be parsed
+// or when it is received in an unexpected state.
+constexpr int kModemMessageProcessingError = -1;
+constexpr int kModemManagerError = -2;
 
 std::string GetTrailingChars(const std::string& pii, int num_chars);
 // Used to redact PII in logs

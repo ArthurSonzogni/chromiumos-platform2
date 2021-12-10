@@ -883,21 +883,36 @@ void ModemQrtr::EnableQmi() {
   TransmitFromQueue();
 }
 
-void ModemQrtr::StartProfileOp(uint32_t physical_slot, ResultCallback cb) {
-  LOG(INFO) << __func__ << " physical_slot:" << physical_slot;
-  // The card triggers a refresh after profile enable. This refresh can cause
-  // response apdu's with intermediate bytes to be flushed during a qmi
-  // transaction. Since, we don't use these intermediate bytes, disable
-  // them to avoid qmi errors as per QC's recommendation. b/169954635
-  SetProcedureBytes(ProcedureBytesMode::DisableIntermediateBytes);
-  StoreAndSetActiveSlot(physical_slot, std::move(cb));
-}
+void ModemQrtr::ProcessEuiccEvent(EuiccEvent event, ResultCallback cb) {
+  LOG(INFO) << __func__ << ", " << event;
+  if (event.step == EuiccStep::START) {
+    if (event.op == EuiccOp::DISABLE || event.op == EuiccOp::ENABLE) {
+      // The card triggers a refresh after profile enable. This refresh can
+      // cause response apdu's with intermediate bytes to be flushed during a
+      // qmi transaction. Since, we don't use these intermediate bytes, disable
+      // them to avoid qmi errors as per QC's recommendation. b/169954635
+      SetProcedureBytes(ProcedureBytesMode::DisableIntermediateBytes);
+    }
 
-void ModemQrtr::FinishProfileOp(ResultCallback cb) {
-  LOG(INFO) << __func__;
-  DisableQmi(kSimRefreshDelay);
-  SetProcedureBytes(ProcedureBytesMode::EnableIntermediateBytes);
-  AcquireChannel(std::move(cb));
+    auto store_and_set_active_slot =
+        base::BindOnce(&ModemQrtr::StoreAndSetActiveSlot,
+                       weak_factory_.GetWeakPtr(), event.slot);
+    modem_manager_proxy_->WaitForModemAndInhibit(base::BindOnce(
+        &RunNextStep, std::move(store_and_set_active_slot), std::move(cb)));
+    return;
+  }
+  if (event.step == EuiccStep::PENDING_NOTIFICATIONS) {
+    SetProcedureBytes(ProcedureBytesMode::EnableIntermediateBytes);
+    DisableQmi(kSimRefreshDelay);
+    AcquireChannel(std::move(cb));
+    return;
+  }
+  if (event.step == EuiccStep::END) {
+    SetProcedureBytes(ProcedureBytesMode::EnableIntermediateBytes);
+    modem_manager_proxy_->ScheduleUninhibit(kUninhibitDelay);
+    std::move(cb).Run(kModemSuccess);
+    return;
+  }
 }
 
 void ModemQrtr::QrtrTable::Insert(QmiCmdInterface::Service service,

@@ -43,8 +43,7 @@ class ModemMbim : public Modem<MbimCmd> {
                   ResultCallback cb) override;
   void StoreAndSetActiveSlot(const uint32_t physical_slot,
                              ResultCallback cb) override;
-  void StartProfileOp(const uint32_t physical_slot, ResultCallback cb) override;
-  void FinishProfileOp(ResultCallback cb) override;
+  void ProcessEuiccEvent(EuiccEvent event, ResultCallback cb) override;
   void RestoreActiveSlot(ResultCallback cb) override;
   bool IsSimValidAfterEnable() override;
   bool IsSimValidAfterDisable() override;
@@ -74,6 +73,7 @@ class ModemMbim : public Modem<MbimCmd> {
   void TransmitMbimSendEidApdu();
   void TransmitMbimSendApdu(TxElement* tx_element);
   void QueryCurrentMbimCapabilities(ResultCallback cb);
+  void CloseChannel(base::OnceCallback<void(int)> cb);
   void AcquireChannel(base::OnceCallback<void(int)> cb);
   void ReacquireChannel(const uint32_t physical_slot, ResultCallback cb);
   void GetEidFromSim(ResultCallback cb);
@@ -112,6 +112,7 @@ class ModemMbim : public Modem<MbimCmd> {
 
   void CloseDevice();
 
+  void CloseDeviceAndUninhibit(ResultCallback cb);
   ///////////////////
   // State Diagram //
   ///////////////////
@@ -165,7 +166,11 @@ class ModemMbim : public Modem<MbimCmd> {
   MbimSubscriberReadyState ready_state_;
   GFile* file_ = NULL;
   bool is_ready_state_valid;
+
+  base::CancelableOnceClosure scheduled_uninhibit_;
+
   base::WeakPtrFactory<ModemMbim> weak_factory_;
+  void AcquireChannelAfterCardReady(EuiccEvent event, ResultCallback cb);
 };
 
 }  // namespace hermes

@@ -34,9 +34,8 @@ class EuiccInterface : public lpa::card::EuiccCard,
   // from ModemControlInterface
   virtual void StoreAndSetActiveSlot(uint32_t physical_slot,
                                      ResultCallback cb) = 0;
+  virtual void ProcessEuiccEvent(EuiccEvent event, ResultCallback cb) = 0;
   virtual void RestoreActiveSlot(ResultCallback cb) = 0;
-  virtual void StartProfileOp(uint32_t physical_slot, ResultCallback cb) = 0;
-  virtual void FinishProfileOp(ResultCallback cb) = 0;
 
   // from lpa::card::EuiccCard
   virtual void SendApdus(std::vector<lpa::card::Apdu> apdus,

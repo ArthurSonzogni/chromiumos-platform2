@@ -105,6 +105,15 @@ class Euicc {
   std::vector<std::unique_ptr<Profile>> pending_profiles_;
 
   base::WeakPtrFactory<Euicc> weak_factory_;
+
+  template <typename... T>
+  void EndEuiccOp(DbusResult<T...> dbus_result, T... object);
+  template <typename... T>
+  void EndEuiccOp(DbusResult<T...> dbus_result, brillo::ErrorPtr error);
+  template <typename... T>
+  void RunOnSuccess(base::OnceCallback<void(DbusResult<T...>)> cb,
+                    DbusResult<T...> dbus_result,
+                    int err);
 };
 
 }  // namespace hermes
