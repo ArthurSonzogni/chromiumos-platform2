@@ -139,7 +139,7 @@ enum RmadErrorCode {
 enum RmadComponent {
   RMAD_COMPONENT_UNKNOWN = 0;
   // runtime_probe supported components.
-  RMAD_COMPONENT_AUDIO_CODEC = 1;
+  RMAD_COMPONENT_AUDIO_CODEC = 1;  // Deprecated by runtime probe.
   RMAD_COMPONENT_BATTERY = 2;
   RMAD_COMPONENT_STORAGE = 3;
   RMAD_COMPONENT_VPD_CACHED = 4;
