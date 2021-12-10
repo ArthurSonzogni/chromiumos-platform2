@@ -95,6 +95,26 @@ TEST(SignatureTest, SignatureForThreeMounts) {
   EXPECT_EQ(signature, new_signature);
 }
 
+TEST(SignatureTest, SignatureForPathWithHash) {
+  MountEntryMap wx_mounts;
+
+  MountEntry wx_shadow_root_1(
+      "/dev/sda1 /home/root/deadbeef1234567890badbeef1234567890deadb ext4 "
+      "rw,nosuid,nodev,noatime,nosymfollow");
+  MountEntry wx_shadow_root_2(
+      "/dev/sda1 /home/root/1234567890badbeefdeadbeef1234567890badbe ext4 "
+      "rw,nosuid,nodev,noatime,nosymfollow");
+
+  wx_mounts.emplace(wx_shadow_root_1.dest(), wx_shadow_root_1);
+  std::string signature1 = GenerateSignature(wx_mounts);
+
+  wx_mounts.clear();
+  wx_mounts.emplace(wx_shadow_root_2.dest(), wx_shadow_root_2);
+  std::string signature2 = GenerateSignature(wx_mounts);
+
+  ASSERT_EQ(signature1, signature2);
+}
+
 // The simplest report will only contain one anomalous condition and empty
 // accompanying sections.
 TEST(ReporterTest, SimplestReport) {
