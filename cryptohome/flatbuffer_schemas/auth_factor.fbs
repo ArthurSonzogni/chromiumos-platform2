@@ -6,24 +6,16 @@ include "auth_block_state.fbs";
 
 namespace cryptohome;
 
-// AuthFactorType enum defines the different types of AuthFactor that could
-// exist for a user.
-enum AuthFactorType : int {
-  PASSWORD = 1,
-}
-
 // Metadata for a `PASSWORD` auth factor.
-table PasswordMetadata {}
+table SerializedPasswordMetadata {}
 
 // Union that holds auth factor's metadata.
-union AuthFactorMetadata { PasswordMetadata }
+union SerializedAuthFactorMetadata { SerializedPasswordMetadata }
 
 // Container that stores information about auth factor to be persisted on disk.
 table SerializedAuthFactor {
-  label:string (id: 0);
-  type:AuthFactorType = null (id: 1);
-  auth_block_state:SerializedAuthBlockState (id: 2);
-  metadata:AuthFactorMetadata (id: 4);
+  auth_block_state:SerializedAuthBlockState (id: 0);
+  metadata:SerializedAuthFactorMetadata (id: 2);
 }
 
 root_type SerializedAuthFactor;

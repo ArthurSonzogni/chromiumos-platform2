@@ -43,6 +43,7 @@ constexpr char kDmcryptContainerMountOptions[] = "discard,commit=600";
 
 constexpr char kUserSecretStashDir[] = "user_secret_stash";
 constexpr char kUserSecretStashFile[] = "uss";
+constexpr char kAuthFactorsDir[] = "auth_factors";
 
 base::FilePath ShadowRoot();
 base::FilePath SystemSaltFile();
@@ -53,6 +54,10 @@ base::FilePath UserActivityPerIndexTimestampPath(const std::string& obfuscated,
                                                  int index);
 base::FilePath UserActivityTimestampPath(const std::string& obfuscated);
 base::FilePath UserSecretStashPath(const std::string& obfuscated_username);
+base::FilePath AuthFactorsDirPath(const std::string& obfuscated_username);
+base::FilePath AuthFactorPath(const std::string& obfuscated_username,
+                              const std::string& auth_factor_type_string,
+                              const std::string& auth_factor_label);
 
 std::string LogicalVolumePrefix(const std::string& obfuscated_username);
 std::string DmcryptVolumePrefix(const std::string& obfuscated_username);

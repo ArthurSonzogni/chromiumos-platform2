@@ -56,6 +56,21 @@ base::FilePath UserSecretStashPath(const std::string& obfuscated_username) {
       .Append(kUserSecretStashFile);
 }
 
+base::FilePath AuthFactorsDirPath(const std::string& obfuscated_username) {
+  return ShadowRoot().Append(obfuscated_username).Append(kAuthFactorsDir);
+}
+
+base::FilePath AuthFactorPath(const std::string& obfuscated_username,
+                              const std::string& auth_factor_type_string,
+                              const std::string& auth_factor_label) {
+  // TODO(b:208348570): check |auth_factor_label| against allowed characters.
+  return ShadowRoot()
+      .Append(obfuscated_username)
+      .Append(kAuthFactorsDir)
+      .Append(auth_factor_type_string)
+      .AddExtension(auth_factor_label);
+}
+
 base::FilePath UserActivityPerIndexTimestampPath(const std::string& obfuscated,
                                                  int index) {
   return VaultKeysetPath(obfuscated, index).AddExtension(kTsFile);
