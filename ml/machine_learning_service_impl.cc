@@ -237,6 +237,7 @@ void MachineLearningServiceImpl::LoadBuiltinModel(
     LOG(ERROR) << "Failed to load model file '" << model_path << "'.";
     std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
     request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);
+    brillo::MessageLoop::current()->BreakLoop();
     return;
   }
 
@@ -296,6 +297,7 @@ void MachineLearningServiceImpl::LoadFlatBufferModel(
                << spec->metrics_model_name << "'.";
     std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
     request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);
+    brillo::MessageLoop::current()->BreakLoop();
     return;
   }
 
