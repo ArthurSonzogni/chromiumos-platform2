@@ -28,19 +28,6 @@ namespace cryptohome {
 
 namespace {
 
-base::Optional<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
-    const std::map<std::string, UserSecretStash::WrappedKeyBlock>&
-        wrapped_key_blocks,
-    const std::string& wrapping_id,
-    const brillo::SecureBlob& wrapping_key);
-bool LoadUserSecretStashContainer(
-    const brillo::SecureBlob& flatbuffer,
-    brillo::SecureBlob* ciphertext,
-    brillo::SecureBlob* iv,
-    brillo::SecureBlob* tag,
-    std::map<std::string, UserSecretStash::WrappedKeyBlock>*
-        wrapped_key_blocks);
-
 // Serializes the UserSecretStashWrappedKeyBlock table into the given flatbuffer
 // builder. Returns the flatbuffer offset, to be used for building the outer
 // table.
@@ -192,42 +179,6 @@ LoadUserSecretStashWrappedKeyBlocks(
   return loaded_key_blocks;
 }
 
-}  // namespace
-
-// static
-std::unique_ptr<UserSecretStash> UserSecretStash::CreateRandom() {
-  brillo::SecureBlob file_system_key =
-      CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_512_BIT_KEY_SIZE);
-  brillo::SecureBlob reset_secret =
-      CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
-  // Note: make_unique() wouldn't work due to the constructor being private.
-  return std::unique_ptr<UserSecretStash>(
-      new UserSecretStash(file_system_key, reset_secret));
-}
-
-// static
-std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedContainer(
-    const brillo::SecureBlob& flatbuffer, const brillo::SecureBlob& main_key) {
-  if (main_key.size() != kAesGcm256KeySize) {
-    LOG(ERROR) << "The UserSecretStash main key is of wrong length: "
-               << main_key.size() << ", expected: " << kAesGcm256KeySize;
-    return nullptr;
-  }
-
-  brillo::SecureBlob ciphertext, iv, gcm_tag;
-  std::map<std::string, WrappedKeyBlock> wrapped_key_blocks;
-  if (!LoadUserSecretStashContainer(flatbuffer, &ciphertext, &iv, &gcm_tag,
-                                    &wrapped_key_blocks)) {
-    // Note: the error is already logged.
-    return nullptr;
-  }
-
-  return FromEncryptedPayload(ciphertext, iv, gcm_tag, wrapped_key_blocks,
-                              main_key);
-}
-
-namespace {
-
 bool LoadUserSecretStashContainer(
     const brillo::SecureBlob& flatbuffer,
     brillo::SecureBlob* ciphertext,
@@ -296,7 +247,106 @@ bool LoadUserSecretStashContainer(
   return true;
 }
 
+base::Optional<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
+    const std::map<std::string, UserSecretStash::WrappedKeyBlock>&
+        wrapped_key_blocks,
+    const std::string& wrapping_id,
+    const brillo::SecureBlob& wrapping_key) {
+  // Verify preconditions.
+  if (wrapping_id.empty()) {
+    NOTREACHED() << "Empty wrapping ID is passed for UserSecretStash main key "
+                    "unwrapping.";
+    return base::nullopt;
+  }
+  if (wrapping_key.size() != kAesGcm256KeySize) {
+    NOTREACHED() << "Wrong wrapping key size is passed for UserSecretStash "
+                    "main key unwrapping. Received: "
+                 << wrapping_key.size() << ", expected " << kAesGcm256KeySize
+                 << ".";
+    return base::nullopt;
+  }
+
+  // Find the wrapped key block.
+  const auto wrapped_key_block_iter = wrapped_key_blocks.find(wrapping_id);
+  if (wrapped_key_block_iter == wrapped_key_blocks.end()) {
+    LOG(ERROR)
+        << "UserSecretStash wrapped key block with the given ID not found.";
+    return base::nullopt;
+  }
+  const UserSecretStash::WrappedKeyBlock& wrapped_key_block =
+      wrapped_key_block_iter->second;
+
+  // Verify the wrapped key block format. No NOTREACHED() checks here, since the
+  // key block is a deserialization of the persisted blob.
+  if (wrapped_key_block.encryption_algorithm !=
+      UserSecretStashEncryptionAlgorithm::AES_GCM_256) {
+    LOG(ERROR) << "UserSecretStash wrapped main key uses unknown algorithm: "
+               << static_cast<int>(wrapped_key_block.encryption_algorithm)
+               << ".";
+    return base::nullopt;
+  }
+  if (wrapped_key_block.encrypted_key.empty()) {
+    LOG(ERROR) << "UserSecretStash wrapped main key has empty encrypted key.";
+    return base::nullopt;
+  }
+  if (wrapped_key_block.iv.size() != kAesGcmIVSize) {
+    LOG(ERROR) << "UserSecretStash wrapped main key has IV of wrong length: "
+               << wrapped_key_block.iv.size() << ", expected: " << kAesGcmIVSize
+               << ".";
+    return base::nullopt;
+  }
+  if (wrapped_key_block.gcm_tag.size() != kAesGcmTagSize) {
+    LOG(ERROR)
+        << "UserSecretStash wrapped main key has AES-GCM tag of wrong length: "
+        << wrapped_key_block.gcm_tag.size() << ", expected: " << kAesGcmTagSize
+        << ".";
+    return base::nullopt;
+  }
+
+  // Attempt the unwrapping.
+  brillo::SecureBlob main_key;
+  if (!AesGcmDecrypt(wrapped_key_block.encrypted_key, /*ad=*/base::nullopt,
+                     wrapped_key_block.gcm_tag, wrapping_key,
+                     wrapped_key_block.iv, &main_key)) {
+    LOG(ERROR) << "Failed to unwrap UserSecretStash main key";
+    return base::nullopt;
+  }
+  return main_key;
+}
+
 }  // namespace
+
+// static
+std::unique_ptr<UserSecretStash> UserSecretStash::CreateRandom() {
+  brillo::SecureBlob file_system_key =
+      CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_512_BIT_KEY_SIZE);
+  brillo::SecureBlob reset_secret =
+      CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
+  // Note: make_unique() wouldn't work due to the constructor being private.
+  return std::unique_ptr<UserSecretStash>(
+      new UserSecretStash(file_system_key, reset_secret));
+}
+
+// static
+std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedContainer(
+    const brillo::SecureBlob& flatbuffer, const brillo::SecureBlob& main_key) {
+  if (main_key.size() != kAesGcm256KeySize) {
+    LOG(ERROR) << "The UserSecretStash main key is of wrong length: "
+               << main_key.size() << ", expected: " << kAesGcm256KeySize;
+    return nullptr;
+  }
+
+  brillo::SecureBlob ciphertext, iv, gcm_tag;
+  std::map<std::string, WrappedKeyBlock> wrapped_key_blocks;
+  if (!LoadUserSecretStashContainer(flatbuffer, &ciphertext, &iv, &gcm_tag,
+                                    &wrapped_key_blocks)) {
+    // Note: the error is already logged.
+    return nullptr;
+  }
+
+  return FromEncryptedPayload(ciphertext, iv, gcm_tag, wrapped_key_blocks,
+                              main_key);
+}
 
 // static
 std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedPayload(
@@ -395,77 +445,6 @@ void UserSecretStash::SetResetSecret(const brillo::SecureBlob& secret) {
 bool UserSecretStash::HasWrappedMainKey(const std::string& wrapping_id) const {
   return wrapped_key_blocks_.count(wrapping_id);
 }
-
-namespace {
-
-base::Optional<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
-    const std::map<std::string, UserSecretStash::WrappedKeyBlock>&
-        wrapped_key_blocks,
-    const std::string& wrapping_id,
-    const brillo::SecureBlob& wrapping_key) {
-  // Verify preconditions.
-  if (wrapping_id.empty()) {
-    NOTREACHED() << "Empty wrapping ID is passed for UserSecretStash main key "
-                    "unwrapping.";
-    return base::nullopt;
-  }
-  if (wrapping_key.size() != kAesGcm256KeySize) {
-    NOTREACHED() << "Wrong wrapping key size is passed for UserSecretStash "
-                    "main key unwrapping. Received: "
-                 << wrapping_key.size() << ", expected " << kAesGcm256KeySize
-                 << ".";
-    return base::nullopt;
-  }
-
-  // Find the wrapped key block.
-  const auto wrapped_key_block_iter = wrapped_key_blocks.find(wrapping_id);
-  if (wrapped_key_block_iter == wrapped_key_blocks.end()) {
-    LOG(ERROR)
-        << "UserSecretStash wrapped key block with the given ID not found.";
-    return base::nullopt;
-  }
-  const UserSecretStash::WrappedKeyBlock& wrapped_key_block =
-      wrapped_key_block_iter->second;
-
-  // Verify the wrapped key block format. No NOTREACHED() checks here, since the
-  // key block is a deserialization of the persisted blob.
-  if (wrapped_key_block.encryption_algorithm !=
-      UserSecretStashEncryptionAlgorithm::AES_GCM_256) {
-    LOG(ERROR) << "UserSecretStash wrapped main key uses unknown algorithm: "
-               << static_cast<int>(wrapped_key_block.encryption_algorithm)
-               << ".";
-    return base::nullopt;
-  }
-  if (wrapped_key_block.encrypted_key.empty()) {
-    LOG(ERROR) << "UserSecretStash wrapped main key has empty encrypted key.";
-    return base::nullopt;
-  }
-  if (wrapped_key_block.iv.size() != kAesGcmIVSize) {
-    LOG(ERROR) << "UserSecretStash wrapped main key has IV of wrong length: "
-               << wrapped_key_block.iv.size() << ", expected: " << kAesGcmIVSize
-               << ".";
-    return base::nullopt;
-  }
-  if (wrapped_key_block.gcm_tag.size() != kAesGcmTagSize) {
-    LOG(ERROR)
-        << "UserSecretStash wrapped main key has AES-GCM tag of wrong length: "
-        << wrapped_key_block.gcm_tag.size() << ", expected: " << kAesGcmTagSize
-        << ".";
-    return base::nullopt;
-  }
-
-  // Attempt the unwrapping.
-  brillo::SecureBlob main_key;
-  if (!AesGcmDecrypt(wrapped_key_block.encrypted_key, /*ad=*/base::nullopt,
-                     wrapped_key_block.gcm_tag, wrapping_key,
-                     wrapped_key_block.iv, &main_key)) {
-    LOG(ERROR) << "Failed to unwrap UserSecretStash main key";
-    return base::nullopt;
-  }
-  return main_key;
-}
-
-}  // namespace
 
 base::Optional<brillo::SecureBlob> UserSecretStash::UnwrapMainKey(
     const std::string& wrapping_id,
