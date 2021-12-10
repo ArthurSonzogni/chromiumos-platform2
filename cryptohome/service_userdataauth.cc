@@ -443,6 +443,34 @@ void UserDataAuthAdaptor::DoAuthenticateAuthFactor(
           std::move(response)));
 }
 
+void UserDataAuthAdaptor::UpdateAuthFactor(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::UpdateAuthFactorReply>> response,
+    const user_data_auth::UpdateAuthFactorRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &UserDataAuthAdaptor::DoUpdateAuthFactor, base::Unretained(this),
+          ThreadSafeDBusMethodResponse<user_data_auth::UpdateAuthFactorReply>::
+              MakeThreadSafe(std::move(response)),
+          in_request));
+}
+
+void UserDataAuthAdaptor::DoUpdateAuthFactor(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::UpdateAuthFactorReply>> response,
+    const user_data_auth::UpdateAuthFactorRequest& in_request) {
+  service_->UpdateAuthFactor(
+      in_request,
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 user_data_auth::UpdateAuthFactorReply>> local_response,
+             const user_data_auth::UpdateAuthFactorReply& reply) {
+            local_response->Return(reply);
+          },
+          std::move(response)));
+}
+
 void UserDataAuthAdaptor::Remove(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::RemoveReply>> response,

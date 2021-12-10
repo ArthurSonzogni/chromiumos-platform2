@@ -1131,3 +1131,30 @@ message AuthenticateAuthFactorReply {
   // Return the status of the request.
   CryptohomeErrorCode error = 1;
 }
+
+// UpdateAuthFactorRequest is built when a user is trying to
+// update an AuthFactor for a user. old_auth_factor_label would identify
+// the AuthFactor that the request is trying to update. When the call is made,
+// AuthSession is in an authenticated state. After the operation the
+// AuthSession would still be in an authenticated state.
+message UpdateAuthFactorRequest {
+  // AuthFactor cannot be updated without an active and authenticated
+  // AuthSession running. This id would be used to associate the AuthFactor to
+  // an AuthSession.
+  bytes auth_session_id = 1;
+  // Label to identify the existing AuthFactor.
+  string old_auth_factor_label = 2;
+  // The AuthFactor that we will replace the existing AuthFactor with. The full
+  // structure should be populated with factor specific data and metadata. The
+  // new label should either be same as old_auth_factor_label or be different
+  // than anything else that exist for a user already.
+  AuthFactor auth_factor = 3;
+  // In some cases, such as password, the secret would be user supplied. In
+  // those cases the secret can be passed here
+  AuthInput auth_input = 4;
+}
+
+message UpdateAuthFactorReply {
+  // Return the status of the request.
+  CryptohomeErrorCode error = 1;
+}

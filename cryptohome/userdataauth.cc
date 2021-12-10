@@ -3763,4 +3763,16 @@ bool UserDataAuth::AuthenticateAuthFactor(
   return true;
 }
 
+bool UserDataAuth::UpdateAuthFactor(
+    user_data_auth::UpdateAuthFactorRequest request,
+    base::OnceCallback<void(const user_data_auth::UpdateAuthFactorReply&)>
+        on_done) {
+  AssertOnMountThread();
+  // TODO(b/208357704): Implement UpdateAuthFactor.
+  user_data_auth::UpdateAuthFactorReply reply;
+  reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+  std::move(on_done).Run(reply);
+  return true;
+}
+
 }  // namespace cryptohome

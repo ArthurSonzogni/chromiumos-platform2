@@ -54,6 +54,7 @@ const char kPreparePersistentVault[] = "PreparePersistentVault";
 const char kPrepareVaultForMigration[] = "PrepareVaultForMigration";
 const char kAddAuthFactor[] = "AddAuthFactor";
 const char kAuthenticateAuthFactor[] = "AuthenticateAuthFactor";
+const char kUpdateAuthFactor[] = "UpdateAuthFactor";
 
 // Methods of the |kArcQuotaInterface| interface:
 const char kGetArcDiskFeatures[] = "GetArcDiskFeatures";
