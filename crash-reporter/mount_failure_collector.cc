@@ -15,6 +15,7 @@
 #include <base/rand_util.h>
 #include <base/strings/stringprintf.h>
 
+#include "crash-reporter/constants.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
 
@@ -110,7 +111,8 @@ bool MountFailureCollector::Collect(bool is_mount_failure) {
   auto logging_cmds = ConstructLoggingCommands(device_type_, is_mount_failure);
 
   base::FilePath crash_directory;
-  if (!GetCreatedCrashDirectoryByEuid(kRootUid, &crash_directory, nullptr)) {
+  if (!GetCreatedCrashDirectoryByEuid(constants::kRootUid, &crash_directory,
+                                      nullptr)) {
     return true;
   }
 

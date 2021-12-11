@@ -14,6 +14,7 @@
 #include <base/strings/stringprintf.h>
 #include <re2/re2.h>
 
+#include "crash-reporter/constants.h"
 #include "crash-reporter/util.h"
 
 namespace {
@@ -292,8 +293,8 @@ bool KernelWarningCollector::Collect(int weight, WarningType type) {
   }
 
   FilePath root_crash_directory;
-  if (!GetCreatedCrashDirectoryByEuid(kRootUid, &root_crash_directory,
-                                      nullptr)) {
+  if (!GetCreatedCrashDirectoryByEuid(constants::kRootUid,
+                                      &root_crash_directory, nullptr)) {
     return false;
   }
 

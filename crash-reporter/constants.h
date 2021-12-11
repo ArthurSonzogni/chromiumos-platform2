@@ -5,9 +5,16 @@
 #ifndef CRASH_REPORTER_CONSTANTS_H_
 #define CRASH_REPORTER_CONSTANTS_H_
 
+#include <sys/stat.h>
+#include <unistd.h>
+
 namespace constants {
 
+// UserID for root account.
+constexpr uid_t kRootUid = 0;
+
 constexpr char kCrashName[] = "crash";
+// The name of the crash-access group, which owns /var/spool/crash.
 constexpr char kCrashGroupName[] = "crash-access";
 
 #if !USE_KVM_GUEST
@@ -29,6 +36,8 @@ constexpr char kMinidumpExtensionWithDot[] = ".dmp";
 // This *must match* the ending of the crash::FileStorage::kDumpFileName
 // in the google3 internal crash processing code.
 constexpr char kKindForMinidump[] = "minidump";
+
+constexpr mode_t kSystemCrashFilesMode = 0660;
 
 }  // namespace constants
 

@@ -22,6 +22,7 @@
 #include <brillo/files/safe_fd.h>
 #include <brillo/process/process.h>
 
+#include "crash-reporter/constants.h"
 #include "crash-reporter/user_collector_base.h"
 #include "crash-reporter/util.h"
 #include "crash-reporter/vm_support.h"
@@ -371,7 +372,7 @@ bool UserCollector::RunCoreToMinidump(const FilePath& core_path,
     PLOG(ERROR) << "Could not open minidump file: " << minidump_path.value();
     return false;
   }
-  if (fchmod(minidump.get(), kSystemCrashFilesMode) < 0) {
+  if (fchmod(minidump.get(), constants::kSystemCrashFilesMode) < 0) {
     PLOG(ERROR) << "Couldn't chmod minidump file: " << minidump_path.value();
     return false;
   }

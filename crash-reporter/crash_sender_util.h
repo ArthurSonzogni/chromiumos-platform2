@@ -155,7 +155,7 @@ class Sender : public SenderBase {
     // the reports are uploaded to a staging crash server instead.
     bool allow_dev_sending = false;
 
-    // If true, just log the kTestModeSuccessful message if the crash report
+    // If true, just touch the kTestModeSuccessfulFile if the crash report
     // looks legible instead of actually uploading it.
     bool test_mode = false;
 

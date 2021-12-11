@@ -11,6 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
+#include "crash-reporter/constants.h"
 #include "crash-reporter/util.h"
 
 using base::FilePath;
@@ -98,8 +99,8 @@ bool BERTCollector::Collect() {
   }
 
   // Dump BERT table and BERT data into single bertdump file.
-  if (!GetCreatedCrashDirectoryByEuid(kRootUid, &root_crash_directory,
-                                      nullptr)) {
+  if (!GetCreatedCrashDirectoryByEuid(constants::kRootUid,
+                                      &root_crash_directory, nullptr)) {
     return false;
   }
   std::string dump_basename =

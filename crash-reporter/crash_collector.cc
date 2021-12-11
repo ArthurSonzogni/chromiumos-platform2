@@ -136,8 +136,6 @@ const char* const CrashCollector::kUnknownValue = "unknown";
 // number of core files or minidumps reaches this number.
 const int CrashCollector::kMaxCrashDirectorySize = 32;
 
-const uid_t CrashCollector::kRootUid = 0;
-
 // metrics user for creating /run/metrics/external/crash-reporter.
 constexpr char kMetricsUserName[] = "metrics";
 
@@ -478,7 +476,7 @@ base::ScopedFD CrashCollector::GetNewFileHandle(
       fd = HANDLE_EINTR(
           open(filename_cstr,
                O_CREAT | O_WRONLY | O_TRUNC | O_EXCL | O_NOFOLLOW | O_CLOEXEC,
-               kSystemCrashFilesMode));
+               constants::kSystemCrashFilesMode));
       if (fd < 0) {
         PLOG(ERROR) << "Could not open " << filename_cstr;
       }
@@ -927,7 +925,7 @@ base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfo(
   }
 #endif  // !USE_KVM_GUEST
   *mode = kSystemCrashDirectoryMode;
-  *directory_owner = kRootUid;
+  *directory_owner = constants::kRootUid;
   if (!brillo::userdb::GetGroupInfo(constants::kCrashGroupName,
                                     directory_group)) {
     PLOG(ERROR) << "Couldn't look up group " << constants::kCrashGroupName;
@@ -1569,14 +1567,14 @@ bool CrashCollector::ShouldHandleChromeCrashes() {
 
 bool CrashCollector::InitializeSystemCrashDirectories(bool early) {
   if (!CreateDirectoryWithSettings(FilePath(paths::kSystemRunStateDirectory),
-                                   kSystemRunStateDirectoryMode, kRootUid,
-                                   kRootGroup, nullptr))
+                                   kSystemRunStateDirectoryMode,
+                                   constants::kRootUid, kRootGroup, nullptr))
     return false;
 
   if (early) {
     if (!CreateDirectoryWithSettings(FilePath(paths::kSystemRunCrashDirectory),
-                                     kSystemRunStateDirectoryMode, kRootUid,
-                                     kRootGroup, nullptr))
+                                     kSystemRunStateDirectoryMode,
+                                     constants::kRootUid, kRootGroup, nullptr))
       return false;
   } else {
     gid_t directory_group;
@@ -1585,15 +1583,16 @@ bool CrashCollector::InitializeSystemCrashDirectories(bool early) {
       PLOG(ERROR) << "Group " << constants::kCrashGroupName << " doesn't exist";
       return false;
     }
-    if (!CreateDirectoryWithSettings(FilePath(paths::kSystemCrashDirectory),
-                                     kSystemCrashDirectoryMode, kRootUid,
-                                     directory_group, nullptr,
-                                     /*files_mode=*/kSystemCrashFilesMode))
+    if (!CreateDirectoryWithSettings(
+            FilePath(paths::kSystemCrashDirectory), kSystemCrashDirectoryMode,
+            constants::kRootUid, directory_group, nullptr,
+            /*files_mode=*/constants::kSystemCrashFilesMode))
       return false;
 
     if (!CreateDirectoryWithSettings(
             FilePath(paths::kCrashReporterStateDirectory),
-            kCrashReporterStateDirectoryMode, kRootUid, kRootGroup, nullptr))
+            kCrashReporterStateDirectoryMode, constants::kRootUid, kRootGroup,
+            nullptr))
       return false;
   }
 

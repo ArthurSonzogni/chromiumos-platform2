@@ -10,6 +10,8 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
+#include "crash-reporter/constants.h"
+
 constexpr int64_t MissedCrashCollector::kDefaultChunkSize;
 
 MissedCrashCollector::MissedCrashCollector()
@@ -69,7 +71,8 @@ bool MissedCrashCollector::Collect(int pid,
   // "correct" userid here would mean allowing writes to many more locations in
   // that minijail config. I'd rather keep the write restrictions as tight as
   // possible unless we actually have sensitive information here.
-  if (!GetCreatedCrashDirectoryByEuid(kRootUid, &crash_directory, nullptr)) {
+  if (!GetCreatedCrashDirectoryByEuid(constants::kRootUid, &crash_directory,
+                                      nullptr)) {
     LOG(WARNING) << "Could not get crash directory (full?)";
     return true;
   }

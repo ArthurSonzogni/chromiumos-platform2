@@ -13,6 +13,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 
+#include "crash-reporter/constants.h"
 #include "crash-reporter/util.h"
 
 namespace {
@@ -104,7 +105,8 @@ bool SELinuxViolationCollector::Collect() {
     return true;
 
   FilePath crash_directory;
-  if (!GetCreatedCrashDirectoryByEuid(kRootUid, &crash_directory, nullptr))
+  if (!GetCreatedCrashDirectoryByEuid(constants::kRootUid, &crash_directory,
+                                      nullptr))
     return true;
 
   // Give crash files more unique names by taking the "comm" identifier

@@ -11,6 +11,7 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
+#include "crash-reporter/constants.h"
 #include "crash-reporter/util.h"
 
 namespace {
@@ -60,7 +61,8 @@ bool GenericFailureCollector::CollectFull(const std::string& exec_name,
   }
 
   FilePath crash_directory;
-  if (!GetCreatedCrashDirectoryByEuid(kRootUid, &crash_directory, nullptr)) {
+  if (!GetCreatedCrashDirectoryByEuid(constants::kRootUid, &crash_directory,
+                                      nullptr)) {
     return true;
   }
 

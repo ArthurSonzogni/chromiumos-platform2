@@ -11,6 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
+#include "crash-reporter/constants.h"
 #include "crash-reporter/util.h"
 
 using base::FilePath;
@@ -28,7 +29,8 @@ bool CrashReporterFailureCollector::Collect() {
   LOG(INFO) << "Detected crash_reporter failure";
 
   FilePath crash_directory;
-  if (!GetCreatedCrashDirectoryByEuid(kRootUid, &crash_directory, nullptr)) {
+  if (!GetCreatedCrashDirectoryByEuid(constants::kRootUid, &crash_directory,
+                                      nullptr)) {
     return false;
   }
 

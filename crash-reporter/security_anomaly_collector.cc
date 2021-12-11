@@ -11,6 +11,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 
+#include "crash-reporter/constants.h"
+
 namespace {
 constexpr char kExecName[] = "security-anomaly";
 constexpr char kMetadataKeyPrefix[] = "security_anomaly_";
@@ -77,7 +79,8 @@ bool SecurityAnomalyCollector::Collect(int32_t weight) {
     return false;
 
   base::FilePath crash_directory;
-  if (!GetCreatedCrashDirectoryByEuid(kRootUid, &crash_directory, nullptr))
+  if (!GetCreatedCrashDirectoryByEuid(constants::kRootUid, &crash_directory,
+                                      nullptr))
     return false;
 
   std::string dump_basename = FormatDumpBasename(kExecName, time(nullptr), 0);

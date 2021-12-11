@@ -14,6 +14,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
+#include "crash-reporter/constants.h"
 #include "crash-reporter/util.h"
 
 namespace {
@@ -69,7 +70,8 @@ bool ClobberStateCollector::Collect() {
   std::string dump_basename = FormatDumpBasename(exec_name, time(nullptr), 0);
 
   base::FilePath crash_directory;
-  if (!GetCreatedCrashDirectoryByEuid(kRootUid, &crash_directory, nullptr)) {
+  if (!GetCreatedCrashDirectoryByEuid(constants::kRootUid, &crash_directory,
+                                      nullptr)) {
     return false;
   }
 

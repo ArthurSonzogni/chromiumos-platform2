@@ -18,11 +18,12 @@
 #include <base/strings/stringprintf.h>
 #include <re2/re2.h>
 
+#include "crash-reporter/constants.h"
+#include "crash-reporter/util.h"
+
 using base::FilePath;
 using base::StringPiece;
 using base::StringPrintf;
-
-#include "crash-reporter/util.h"
 
 namespace {
 
@@ -483,8 +484,8 @@ bool KernelCollector::HandleCrash(const std::string& kernel_dump,
   LOG(INFO) << "Received prior crash notification from "
             << "kernel (signature " << signature << ") (handling)";
 
-  if (!GetCreatedCrashDirectoryByEuid(kRootUid, &root_crash_directory,
-                                      nullptr)) {
+  if (!GetCreatedCrashDirectoryByEuid(constants::kRootUid,
+                                      &root_crash_directory, nullptr)) {
     return true;
   }
 

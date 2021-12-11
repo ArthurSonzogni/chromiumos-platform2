@@ -32,8 +32,6 @@
 #include <session_manager/dbus-proxies.h>
 #include <zlib.h>
 
-constexpr mode_t kSystemCrashFilesMode = 0660;
-
 // Walk the directory tree to make sure we avoid symlinks.
 // All parent parts must already exist else we return false.
 bool ValidatePathAndOpen(const base::FilePath& dir, int* outfd);
@@ -256,9 +254,6 @@ class CrashCollector {
 
   // Set maximum enqueued crashes in a crash directory.
   static const int kMaxCrashDirectorySize;
-
-  // UID for root account.
-  static const uid_t kRootUid;
 
   // Try to set up D-Bus, returning true on success and false on failure.
   virtual bool TrySetUpDBus();

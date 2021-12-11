@@ -29,10 +29,13 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
+#include <brillo/files/file_util.h>
+#include <brillo/files/safe_fd.h>
 #include <brillo/http/http_proxy.h>
 #include <brillo/http/http_transport.h>
 #include <brillo/http/http_utils.h>
 #include <brillo/mime_utils.h>
+#include <brillo/userdb_utils.h>
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -65,7 +68,11 @@ constexpr char kHwTestSenderUpload[] = "upload_var_hwtest_sender_direct";
 // Values used for kJsonLogKeySource.
 constexpr char kMetadataValueRedacted[] = "REDACTED";
 
-// Must match testModeSuccessful in the tast-test chrome_crash_loop.go.
+// Created when we would normally send a message, if we are in test mode.
+// MUST MATCH testModeSuccessfulFile in chrome_crash_loop.go.
+constexpr char kTestModeSuccessfulFile[] =
+    "/var/spool/crash/crash_sender_test_mode_successful";
+
 constexpr char kTestModeSuccessful[] =
     "Test Mode: Logging success and exiting instead of actually uploading";
 
@@ -103,7 +110,7 @@ void ParseCommandLine(int argc,
   DEFINE_bool(ignore_pause_file, false,
               "Ignore the existence of the pause file and run anyways");
   DEFINE_bool(test_mode, false,
-              "Do not upload crashes; instead, log a special message if the "
+              "Do not upload crashes; instead, touch a special file if the "
               "crash is valid. Used by tast test ChromeCrashLoop.");
   DEFINE_bool(upload_old_reports, false,
               "If set, ignore the timestamp check and upload older reports.");
@@ -742,6 +749,36 @@ SenderBase::CrashRemoveReason Sender::RequestToSendCrash(
 
   if (test_mode_) {
     LOG(WARNING) << kTestModeSuccessful;
+
+    auto result = brillo::SafeFD::Root();
+    if (brillo::SafeFD::IsError(result.second)) {
+      LOG(ERROR) << "Could not open root directory: "
+                 << static_cast<int>(result.second);
+      return CrashRemoveReason::kFinishedUploading;
+    }
+
+    const base::FilePath kTestModeSuccessfulFilePath(kTestModeSuccessfulFile);
+    // We must use the GID that owns /var/spool/crash for the file as well.
+    gid_t crash_group_gid = -1;
+    if (!brillo::userdb::GetGroupInfo(constants::kCrashGroupName,
+                                      &crash_group_gid)) {
+      PLOG(ERROR) << "Couldn't look up group " << constants::kCrashGroupName;
+      return CrashRemoveReason::kFinishedUploading;
+    }
+
+    // Set the file permissions to kSystemCrashFilesMode (0660) instead of the
+    // default 0640. We don't actually care if the group is able to write to the
+    // file, but if we don't, SafeFD will refuse to create the file because
+    // /var/spool/crash is group writable.
+    result = result.first.MakeFile(
+        kTestModeSuccessfulFilePath,
+        /*permissions=*/constants::kSystemCrashFilesMode,
+        /*uid=*/constants::kRootUid, /*gid=*/crash_group_gid);
+    if (brillo::SafeFD::IsError(result.second)) {
+      LOG(ERROR) << "Could not create " << kTestModeSuccessfulFile << ": "
+                 << static_cast<int>(result.second);
+    }
+
     return CrashRemoveReason::kFinishedUploading;
   }
 
