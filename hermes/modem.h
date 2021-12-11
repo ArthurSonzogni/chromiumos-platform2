@@ -71,11 +71,6 @@ class Modem : public EuiccInterface {
   lpa::util::EuiccLog* logger() override { return logger_; }
   lpa::util::Executor* executor() override { return executor_; }
 
-  std::vector<uint8_t> GetGsmSupportedRelease() override {
-    return std::vector<uint8_t>{
-        kDefault3GPPRelease, 0,
-        0};  // Last two bytes are fixed to zero by SGP.22
-  }
   std::vector<uint8_t> GetUtranSupportedRelease() override {
     return std::vector<uint8_t>{
         kDefault3GPPRelease, 0,
