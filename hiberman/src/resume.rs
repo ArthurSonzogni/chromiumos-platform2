@@ -209,7 +209,8 @@ impl ResumeConductor {
                 page_size * BUFFER_PAGES,
                 page_size,
             )?
-            .move_all()?;
+            .move_all()
+            .context("Failed to load in header file")?;
             debug!("Done loading header pages");
             image_size -= header_size as u64;
 
@@ -282,7 +283,8 @@ impl ResumeConductor {
             page_size * BUFFER_PAGES,
             page_size,
         )?
-        .move_all()?;
+        .move_all()
+        .context("Failed to move in hibernate image")?;
         info!("Moved {} MB", image_size / 1024 / 1024);
         // Check the header pages hash. Ideally this would be done just after
         // the private data was loaded, but by then we've handed a mutable

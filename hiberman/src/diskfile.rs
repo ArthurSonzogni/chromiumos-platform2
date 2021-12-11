@@ -257,6 +257,10 @@ impl Write for DiskFile {
         while offset < length {
             // There is no extending the file size.
             if self.current_position >= self.fiemap.file_size {
+                error!(
+                    "DiskFile EOF: {}/{} written, file size {}",
+                    offset, length, self.fiemap.file_size
+                );
                 break;
             }
 

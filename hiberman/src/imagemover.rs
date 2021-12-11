@@ -80,7 +80,9 @@ impl<'a> ImageMover<'a> {
             let start = offset;
             let end = start + length;
             let buffer_slice = self.buffer.u8_slice();
-            self.dest_file.write_all(&buffer_slice[start..end])?;
+            self.dest_file
+                .write_all(&buffer_slice[start..end])
+                .context("Failed to write buffer")?;
             offset += length;
             self.bytes_done += length as i64;
         }
@@ -125,7 +127,7 @@ impl<'a> ImageMover<'a> {
 
         self.buffer_offset += bytes_read;
         if self.buffer_offset >= self.buffer_size {
-            self.flush_buffer()?;
+            self.flush_buffer().context("Failed to flush chunk")?;
         }
 
         Ok(())
@@ -135,10 +137,10 @@ impl<'a> ImageMover<'a> {
     pub fn move_all(&mut self) -> Result<()> {
         debug!("Moving image");
         while self.bytes_done + (self.buffer_offset as i64) < self.source_size {
-            self.move_chunk()?;
+            self.move_chunk().context("Failed to move a chunk")?;
         }
 
-        self.flush_buffer()?;
+        self.flush_buffer().context("Failed final flush")?;
         debug!("Finished moving image");
         Ok(())
     }

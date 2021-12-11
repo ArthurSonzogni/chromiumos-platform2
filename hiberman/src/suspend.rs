@@ -8,7 +8,7 @@ use std::ffi::CString;
 use std::io::Write;
 use std::mem::MaybeUninit;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use log::{debug, error, info, warn};
 use sys_util::syscall;
 
@@ -212,7 +212,9 @@ impl SuspendConductor {
             page_size,
             page_size * BUFFER_PAGES,
         )?;
-        writer.move_all()?;
+        writer
+            .move_all()
+            .context("Failed to write out main image")?;
         info!("Wrote {} MB", image_size / 1024 / 1024);
         self.metadata.image_size = image_size as u64;
         self.metadata.flags |= META_FLAG_VALID;

@@ -75,9 +75,11 @@ pub fn preallocate_hiberfile() -> Result<DiskFile> {
     let hiberfile_path = Path::new(HIBERNATE_DIR).join(HIBER_DATA_NAME);
 
     // The maximum size of the hiberfile is half of memory, plus a little
-    // fudge for rounding.
+    // fudge for rounding. KASAN steals 1/8 of memory if it's enabled and makes
+    // it look invisible, but still needs to be saved, so multiply by 8/7 to
+    // account for the rare debug case where it's enabled.
     let memory_mb = get_total_memory_mb();
-    let hiberfile_mb = (memory_mb / 2) + 2;
+    let hiberfile_mb = ((memory_mb * 8 / 7) / 2) + 2;
     debug!(
         "System has {} MB of memory, preallocating {} MB hiberfile",
         memory_mb, hiberfile_mb

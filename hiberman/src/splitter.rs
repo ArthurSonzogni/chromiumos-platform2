@@ -307,8 +307,7 @@ fn get_meta_page_count(buf: &[u8], page_size: usize) -> std::io::Result<usize> {
     let meta_pages = header.pages - header.image_pages;
     debug!(
         "Image has {:x?} image pages, {:x?} header pages",
-        header.image_pages,
-        header.pages - header.image_pages
+        header.image_pages, meta_pages
     );
 
     if header.pages < header.image_pages {
