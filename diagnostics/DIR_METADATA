@@ -1,0 +1,5 @@
+buganizer {
+  # https://b.corp.google.com/issues?q=status:open%20componentid:982097
+  component_id: 982097
+}
+team_email: "cros-tdm-tpe-eng@google.com"
