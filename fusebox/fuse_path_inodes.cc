@@ -4,7 +4,7 @@
 
 #include "fusebox/fuse_path_inodes.h"
 
-#include <vector>
+#include <deque>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -142,17 +142,15 @@ std::string InodeTable::GetName(ino_t ino) {
 std::string InodeTable::GetPath(Node* node) {
   DCHECK(node);
 
-  std::vector<std::string> names;
-  while (node->ino && node->parent) {
-    names.push_back(node->name);
-    auto parent = node_map_.find(node->parent);
-    CHECK(parent != node_map_.end());
-    node = parent->second.get();
+  std::deque<std::string> names;
+  while (node && node->parent) {
+    names.push_front(node->name);
+    node = Lookup(node->parent);
   }
 
   std::string path;
-  for (auto it = names.rbegin(); it != names.rend(); ++it)
-    path.append(it->data(), it->size());
+  for (const auto& name : names)
+    path.append(name);
   if (path.empty())
     path.push_back('/');
 
