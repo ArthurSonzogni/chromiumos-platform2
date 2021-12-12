@@ -95,6 +95,22 @@ Node* InodeTable::Lookup(ino_t parent, const char* name, uint64_t ref) {
   return node;
 }
 
+Node* InodeTable::Ensure(ino_t parent, const char* name, uint64_t ref) {
+  std::string child = GetParentChildName(name);
+  if (child.empty() || !parent)
+    return NodeError(EINVAL);
+
+  auto p = parent_map_.find(std::to_string(parent).append(child));
+  if (p != parent_map_.end()) {
+    p->second->refcount += ref;
+    return p->second;
+  }
+
+  Node* node = InsertNode(CreateNode(parent, child, CreateIno()));
+  node->refcount += ref;
+  return node;
+}
+
 Node* InodeTable::Move(Node* node, ino_t parent, const char* name) {
   CHECK_NE(node, root_node_);
 

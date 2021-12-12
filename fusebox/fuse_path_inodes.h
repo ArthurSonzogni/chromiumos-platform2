@@ -44,6 +44,10 @@ class InodeTable {
   // The node refcount is increased by |ref|. Returns null on failure.
   Node* Lookup(ino_t parent, const char* name, uint64_t ref = 0);
 
+  // Same as Lookup(parent, name, ref) but creates if the |parent| child node
+  // |name| if it does not exist. Returns null on failure.
+  Node* Ensure(ino_t parent, const char* name, uint64_t ref = 0);
+
   // Move a table |node| to be the child node |name| of |parent| ino. Returns
   // the node or null on failure.
   Node* Move(Node* node, ino_t parent, const char* name);

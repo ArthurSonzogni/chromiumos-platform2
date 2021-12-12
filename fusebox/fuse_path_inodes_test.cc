@@ -71,6 +71,9 @@ TEST(FusePathInodesTest, RootNodeParent) {
   errno = 0;
   EXPECT_FALSE(inodes.Create(0, "child"));
   EXPECT_EQ(EINVAL, errno);
+  errno = 0;
+  EXPECT_FALSE(inodes.Ensure(0, "child"));
+  EXPECT_EQ(EINVAL, errno);
 
   // Create a child of the root node.
   Node* child = inodes.Create(1, "foo");
@@ -125,11 +128,21 @@ TEST(FusePathInodesTest, NodeNames) {
     errno = 0;
     EXPECT_FALSE(inodes.Create(1, name));
     EXPECT_EQ(EINVAL, errno);
+    errno = 0;
+    EXPECT_FALSE(inodes.Lookup(1, name));
+    EXPECT_EQ(EINVAL, errno);
+    errno = 0;
+    EXPECT_FALSE(inodes.Ensure(1, name));
+    EXPECT_EQ(EINVAL, errno);
   }
 
   for (const char* valid : {"foo", "bar", "baz"}) {
     errno = 0;
     EXPECT_TRUE(inodes.Create(1, valid));
+    EXPECT_EQ(0, errno);
+    EXPECT_TRUE(inodes.Lookup(1, valid));
+    EXPECT_EQ(0, errno);
+    EXPECT_TRUE(inodes.Ensure(1, valid));
     EXPECT_EQ(0, errno);
   }
 }
@@ -301,6 +314,48 @@ TEST(FusePathInodesTest, ChildNodeRename) {
   // Nodes cannot self-parent because inodes must be unique.
   Node* parent_self = inodes.Move(node, node->ino, "baz");
   EXPECT_FALSE(parent_self);
+}
+
+TEST(FusePathInodesTest, ChildNodeEnsure) {
+  InodeTable inodes;
+
+  // Ensure can be used to create child nodes.
+  Node* foo = inodes.Ensure(1, "foo");
+  EXPECT_TRUE(foo);
+  EXPECT_EQ(2, foo->ino);
+  EXPECT_EQ(1, foo->parent);
+  EXPECT_EQ(1, foo->refcount);
+
+  // Ensure and Lookup should return that node.
+  EXPECT_EQ(foo, inodes.Ensure(1, "foo"));
+  EXPECT_EQ(1, foo->refcount);
+  EXPECT_EQ(foo, inodes.Lookup(1, "foo"));
+  EXPECT_EQ(1, foo->refcount);
+
+  // Ensure and Lookup can change the node refcount.
+  EXPECT_EQ(foo, inodes.Ensure(1, "foo", 2));
+  EXPECT_EQ(3, foo->refcount);
+  EXPECT_EQ(foo, inodes.Lookup(1, "foo", 2));
+  EXPECT_EQ(5, foo->refcount);
+
+  // Create a child of the "foo" node.
+  Node* bar = inodes.Ensure(2, "bar", 1);
+  EXPECT_TRUE(bar);
+  EXPECT_EQ(3, bar->ino);
+  EXPECT_EQ(2, bar->parent);
+  EXPECT_EQ(2, bar->refcount);
+
+  // Ensure and Lookup should return that node.
+  EXPECT_EQ(bar, inodes.Lookup(2, "bar"));
+  EXPECT_EQ(2, bar->refcount);
+  EXPECT_EQ(bar, inodes.Ensure(2, "bar"));
+  EXPECT_EQ(2, bar->refcount);
+
+  // Ensure and Lookup can change the node refcount.
+  EXPECT_EQ(bar, inodes.Lookup(2, "bar", 3));
+  EXPECT_EQ(5, bar->refcount);
+  EXPECT_EQ(bar, inodes.Ensure(2, "bar", 3));
+  EXPECT_EQ(8, bar->refcount);
 }
 
 TEST(FusePathInodesTest, NodeStatCache) {
