@@ -5,8 +5,11 @@
 #include "brillo/files/safe_fd.h"
 
 #include <fcntl.h>
+#include <sys/sendfile.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#include <algorithm>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -234,6 +237,7 @@ std::pair<std::vector<char>, SafeFD::Error> SafeFD::ReadContents(
   }
 
   size_t file_size = 0;
+  // This is used as an estimate for picking the buffer size.
   SafeFD::Error err = GetFileSize(fd_.get(), &file_size);
   if (IsError(err)) {
     return std::make_pair(std::move(buffer), err);
@@ -243,11 +247,16 @@ std::pair<std::vector<char>, SafeFD::Error> SafeFD::ReadContents(
     return std::make_pair(std::move(buffer), SafeFD::Error::kExceededMaximum);
   }
 
-  buffer.resize(file_size);
-
-  err = Read(buffer.data(), buffer.size());
+  // Pseudo file systems like /proc and /sys report a zero file size even
+  // though they have contents, but are at most one page, so add
+  // kDefaultMaxPathDepth to cover this case and additional writes since
+  // GetFileSize up to one page.
+  buffer.resize(std::min(max_size, file_size + kDefaultPageSize));
+  std::tie(file_size, err) = this->ReadUntilEnd(buffer.data(), buffer.size());
   if (IsError(err)) {
     buffer.clear();
+  } else {
+    buffer.resize(file_size);
   }
   return std::make_pair(std::move(buffer), err);
 }
@@ -262,6 +271,52 @@ SafeFD::Error SafeFD::Read(char* data, size_t size) {
     return SafeFD::Error::kIOError;
   }
   return SafeFD::Error::kNoError;
+}
+
+std::pair<size_t, SafeFD::Error> SafeFD::ReadUntilEnd(char* data,
+                                                      size_t max_size) {
+  if (!fd_.is_valid()) {
+    return std::make_pair(0, SafeFD::Error::kNotInitialized);
+  }
+
+  // base::ReadFromFD returns a bool so it cannot be used in cases where the
+  // file size is not known like files in /proc, /sys, etc. These report zero
+  // length but still have contents.
+  size_t total_read = 0;
+  while (total_read < max_size) {
+    ssize_t bytes_read =
+        HANDLE_EINTR(read(fd_.get(), data + total_read, max_size - total_read));
+    if (bytes_read == 0) {
+      return std::make_pair(total_read, SafeFD::Error::kNoError);
+    }
+    if (bytes_read < 0) {
+      return std::make_pair(total_read, SafeFD::Error::kIOError);
+    }
+    total_read += bytes_read;
+  }
+  return std::make_pair(total_read, SafeFD::Error::kNoError);
+}
+
+SafeFD::Error SafeFD::CopyContentsTo(SafeFD* destination, size_t max_size) {
+  if (!fd_.is_valid() || !destination->is_valid()) {
+    return SafeFD::Error::kNotInitialized;
+  }
+
+  size_t total_copied = 0;
+  while (total_copied < max_size) {
+    // Use the current offset.
+    ssize_t copied =
+        HANDLE_EINTR(sendfile(destination->get(), fd_.get(), /*offset=*/nullptr,
+                              /*length=*/max_size - total_copied));
+    if (copied == 0) {
+      return SafeFD::Error::kNoError;
+    }
+    if (copied < 0) {
+      return SafeFD::Error::kIOError;
+    }
+    total_copied += copied;
+  }
+  return SafeFD::Error::kExceededMaximum;
 }
 
 SafeFD::SafeFDResult SafeFD::OpenExistingFile(const base::FilePath& path,

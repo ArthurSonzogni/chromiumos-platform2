@@ -73,6 +73,9 @@ class SafeFD {
 
   // 100 MiB
   BRILLO_EXPORT static constexpr size_t kDefaultMaxRead = 100 << 20;
+  // One page is usually 4 KiB. This is the typical file size limit for
+  // psuedo-fs such as /proc or /sys.
+  BRILLO_EXPORT static constexpr size_t kDefaultPageSize = 4 << 10;
   BRILLO_EXPORT static constexpr size_t kDefaultMaxPathDepth = 256;
   // User read and write only.
   BRILLO_EXPORT static constexpr size_t kDefaultFilePermissions = 0640;
@@ -126,6 +129,25 @@ class SafeFD {
   //  data - The buffer to read the file into.
   //  size - The number of bytes to read.
   BRILLO_EXPORT Error Read(char* data, size_t size) WARN_UNUSED_RESULT;
+
+  // Reads at most |max_size| bytes into |data|.
+  //
+  // Parameters
+  //  data - The buffer to read the file into.
+  //  max_size - The maximum number of bytes to read.
+  BRILLO_EXPORT std::pair<size_t, Error> ReadUntilEnd(
+      char* data, size_t max_size = kDefaultMaxRead) WARN_UNUSED_RESULT;
+
+  // Copy the contents of this file to |destination|.
+  //
+  // Parameters
+  //  destination - An open safe fd that will be written to with the contents of
+  //    |this|.
+  //  size - The max number of bytes to copy. If this amount is reached,
+  //    Error::kExceededMaximum is returned.
+  BRILLO_EXPORT Error CopyContentsTo(SafeFD* destination,
+                                     size_t max_size = kDefaultMaxRead)
+      WARN_UNUSED_RESULT;
 
   // Open an existing file relative to this directory.
   //

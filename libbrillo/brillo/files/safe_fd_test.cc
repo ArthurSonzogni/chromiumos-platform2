@@ -119,6 +119,17 @@ TEST_F(SafeFDTest, ReadContents_Success) {
             0);
 }
 
+TEST_F(SafeFDTest, ReadContents_PseudoFsSuccess) {
+  SafeFD::SafeFDResult file =
+      root_.OpenExistingFile(base::FilePath("/proc/version"), O_RDONLY);
+  EXPECT_EQ(file.second, SafeFD::Error::kNoError);
+  ASSERT_TRUE(file.first.is_valid());
+
+  auto result = file.first.ReadContents();
+  EXPECT_EQ(result.second, SafeFD::Error::kNoError);
+  EXPECT_GT(result.first.size(), 0);
+}
+
 TEST_F(SafeFDTest, ReadContents_ExceededMaximum) {
   std::string random_data = GetRandomSuffix();
   ASSERT_TRUE(WriteFile(random_data));
@@ -173,6 +184,128 @@ TEST_F(SafeFDTest, Read_IOError) {
   std::vector<char> buffer(random_data.size() * 2, '\0');
   ASSERT_EQ(file.first.Read(buffer.data(), buffer.size()),
             SafeFD::Error::kIOError);
+}
+
+TEST_F(SafeFDTest, ReadUntilEnd_Success) {
+  std::string random_data = GetRandomSuffix();
+  ASSERT_TRUE(WriteFile(random_data));
+
+  SafeFD::SafeFDResult file = root_.OpenExistingFile(file_path_);
+  EXPECT_EQ(file.second, SafeFD::Error::kNoError);
+  ASSERT_TRUE(file.first.is_valid());
+
+  std::vector<char> buffer(random_data.size() * 2, '\0');
+  ASSERT_EQ(file.first.ReadUntilEnd(buffer.data(), buffer.size()),
+            std::make_pair(random_data.size(), SafeFD::Error::kNoError));
+  EXPECT_EQ(memcmp(random_data.data(), buffer.data(), random_data.size()), 0);
+}
+
+TEST_F(SafeFDTest, ReadUntilEnd_NotInitialized) {
+  SafeFD invalid;
+  ASSERT_FALSE(invalid.is_valid());
+
+  char to_read;
+  EXPECT_EQ(invalid.ReadUntilEnd(&to_read, 1),
+            std::make_pair(size_t{0}, SafeFD::Error::kNotInitialized));
+}
+
+TEST_F(SafeFDTest, ReadUntilEnd_IOError) {
+  char to_read;
+  ASSERT_EQ(root_.ReadUntilEnd(&to_read, 1),
+            std::make_pair(size_t{0}, SafeFD::Error::kIOError));
+}
+
+TEST_F(SafeFDTest, CopyContentsTo_Success) {
+  std::string random_data = GetRandomSuffix();
+  ASSERT_TRUE(WriteFile(random_data));
+
+  SafeFD::SafeFDResult file = root_.OpenExistingFile(file_path_);
+  EXPECT_EQ(file.second, SafeFD::Error::kNoError);
+  ASSERT_TRUE(file.first.is_valid());
+
+  SafeFD::SafeFDResult destination = root_.MakeFile(GetTempName());
+  EXPECT_EQ(destination.second, SafeFD::Error::kNoError);
+  ASSERT_TRUE(destination.first.is_valid());
+
+  ASSERT_EQ(file.first.CopyContentsTo(&destination.first),
+            SafeFD::Error::kNoError);
+
+  // Rewind destination back to the beginning and check its contents.
+  ASSERT_EQ(lseek(destination.first.get(), 0, SEEK_SET), 0);
+  auto result = destination.first.ReadContents();
+  EXPECT_EQ(result.second, SafeFD::Error::kNoError);
+  ASSERT_EQ(random_data.size(), result.first.size());
+  EXPECT_EQ(memcmp(random_data.data(), result.first.data(), random_data.size()),
+            0);
+}
+
+TEST_F(SafeFDTest, CopyContentsTo_PseudoFsSuccess) {
+  SafeFD::SafeFDResult file =
+      root_.OpenExistingFile(base::FilePath("/proc/version"), O_RDONLY);
+
+  SafeFD::SafeFDResult destination = root_.MakeFile(file_path_);
+  EXPECT_EQ(destination.second, SafeFD::Error::kNoError);
+  ASSERT_TRUE(destination.first.is_valid());
+
+  ASSERT_EQ(file.first.CopyContentsTo(&destination.first),
+            SafeFD::Error::kNoError);
+
+  // Rewind source and destination back to the beginning and check their
+  // contents.
+  ASSERT_EQ(lseek(file.first.get(), 0, SEEK_SET), 0);
+  auto from_result = file.first.ReadContents();
+  EXPECT_EQ(from_result.second, SafeFD::Error::kNoError);
+  EXPECT_FALSE(from_result.first.empty());
+
+  ASSERT_EQ(lseek(destination.first.get(), 0, SEEK_SET), 0);
+  auto to_result = destination.first.ReadContents();
+  EXPECT_EQ(to_result.second, SafeFD::Error::kNoError);
+
+  ASSERT_EQ(from_result.first.size(), to_result.first.size());
+  EXPECT_EQ(memcmp(from_result.first.data(), to_result.first.data(),
+                   from_result.first.size()),
+            0);
+}
+
+TEST_F(SafeFDTest, CopyContentsTo_NotInitialized) {
+  std::string random_data = GetRandomSuffix();
+  ASSERT_TRUE(WriteFile(random_data));
+
+  SafeFD::SafeFDResult file = root_.OpenExistingFile(file_path_);
+  EXPECT_EQ(file.second, SafeFD::Error::kNoError);
+  ASSERT_TRUE(file.first.is_valid());
+
+  SafeFD invalid;
+  ASSERT_FALSE(invalid.is_valid());
+
+  EXPECT_EQ(invalid.CopyContentsTo(&file.first),
+            SafeFD::Error::kNotInitialized);
+  EXPECT_EQ(file.first.CopyContentsTo(&invalid),
+            SafeFD::Error::kNotInitialized);
+}
+
+TEST_F(SafeFDTest, CopyContentsTo_IOError) {
+  SafeFD::SafeFDResult file = root_.MakeFile(file_path_);
+  EXPECT_EQ(file.second, SafeFD::Error::kNoError);
+  ASSERT_TRUE(file.first.is_valid());
+
+  ASSERT_EQ(root_.CopyContentsTo(&file.first), SafeFD::Error::kIOError);
+}
+
+TEST_F(SafeFDTest, CopyContentsTo_ExceededMaximum) {
+  std::string random_data = GetRandomSuffix();
+  ASSERT_TRUE(WriteFile(random_data));
+
+  SafeFD::SafeFDResult file = root_.OpenExistingFile(file_path_);
+  EXPECT_EQ(file.second, SafeFD::Error::kNoError);
+  ASSERT_TRUE(file.first.is_valid());
+
+  SafeFD::SafeFDResult destination = root_.MakeFile(GetTempName());
+  EXPECT_EQ(destination.second, SafeFD::Error::kNoError);
+  ASSERT_TRUE(destination.first.is_valid());
+
+  ASSERT_EQ(file.first.CopyContentsTo(&destination.first, 1),
+            SafeFD::Error::kExceededMaximum);
 }
 
 TEST_F(SafeFDTest, OpenExistingFile_Success) {
