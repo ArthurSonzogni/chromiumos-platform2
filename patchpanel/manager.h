@@ -241,16 +241,16 @@ class Manager final : public brillo::DBusDaemon {
   // TODO(b/174538233) Introduce ForwardingGroup to properly track the state of
   // traffic forwarding (ndproxy, multicast) between upstream devices managed by
   // shill and downstream devices managed by patchpanel.
-  // All downstream interfaces managed by patchpanel for which multicast
-  // forwarding was enabled. This information cannot always be retrieved from
-  // the IFF_MULTICAST flag of the upstream interface managed by shill if it
-  // does not exist anymore.
-  std::set<std::string> multicast_virtual_ifnames_;
-  // All downstream interfaces managed by patchpanel for which IPv6 neighbor
-  // discovery proxy was enabled. This information cannot always be retrieved
-  // from the technology type of the upstream interface managed by shill if it
-  // does not exist anymore.
-  std::set<std::string> ndproxy_virtual_ifnames_;
+  // Map of shill interfaces to downstream interfaces managed by patchpanel for
+  // which multicast forwarding was enabled. This information cannot always be
+  // retrieved from the IFF_MULTICAST flag of the upstream interface managed by
+  // shill if it does not exist anymore.
+  std::map<std::string, std::set<std::string>> multicast_ifnames_;
+  // Map of shill interfaces to downstream interfaces managed by patchpanel for
+  // which IPv6 neighbor discovery proxy was enabled. This information cannot
+  // always be retrieved from the technology type of the upstream interface
+  // managed by shill if it does not exist anymore.
+  std::map<std::string, std::set<std::string>> ndproxy_ifnames_;
 
   // All namespaces currently connected through patchpanel ConnectNamespace
   // API, keyed by file descriptors committed by clients when calling

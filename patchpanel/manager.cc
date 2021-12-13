@@ -458,6 +458,7 @@ void Manager::OnShillDevicesChanged(const std::vector<std::string>& added,
       StopForwarding(nsinfo.outbound_ifname, nsinfo.host_ifname,
                      ForwardingSet{.ipv6 = true});
     }
+    StopForwarding(ifname, "" /* ifname_virtual */);
     datapath_->StopConnectionPinning(ifname);
     datapath_->RemoveRedirectDnsRule(ifname);
     counters_svc_->OnPhysicalDeviceRemoved(ifname);
@@ -1444,7 +1445,7 @@ void Manager::StartForwarding(const std::string& ifname_physical,
   ShillClient::Device upstream_shill_device;
   shill_client_->GetDeviceProperties(ifname_physical, &upstream_shill_device);
   if (fs.ipv6 && IsIPv6NDProxyEnabled(upstream_shill_device.type)) {
-    ndproxy_virtual_ifnames_.insert(ifname_virtual);
+    ndproxy_ifnames_[ifname_physical].insert(ifname_virtual);
     LOG(INFO) << "Starting IPv6 forwarding from " << ifname_physical << " to "
               << ifname_virtual;
 
@@ -1460,7 +1461,7 @@ void Manager::StartForwarding(const std::string& ifname_physical,
   }
 
   if (fs.multicast && IsMulticastInterface(ifname_physical)) {
-    multicast_virtual_ifnames_.insert(ifname_virtual);
+    multicast_ifnames_[ifname_physical].insert(ifname_virtual);
     LOG(INFO) << "Starting multicast forwarding from " << ifname_physical
               << " to " << ifname_virtual;
     mcast_proxy_->SendMessage(ipm);
@@ -1481,26 +1482,32 @@ void Manager::StopForwarding(const std::string& ifname_physical,
     msg->set_br_ifname(ifname_virtual);
   }
 
-  if (fs.ipv6 && ndproxy_virtual_ifnames_.find(ifname_virtual) !=
-                     ndproxy_virtual_ifnames_.end()) {
-    ndproxy_virtual_ifnames_.erase(ifname_virtual);
+  if (fs.ipv6) {
     if (ifname_virtual.empty()) {
+      ndproxy_ifnames_.erase(ifname_physical);
       LOG(INFO) << "Stopping IPv6 forwarding on " << ifname_physical;
     } else {
-      LOG(INFO) << "Stopping IPv6 forwarding from " << ifname_physical << " to "
-                << ifname_virtual;
+      auto ndproxy_it = ndproxy_ifnames_.find(ifname_physical);
+      if (ndproxy_it != ndproxy_ifnames_.end()) {
+        ndproxy_it->second.erase(ifname_virtual);
+        LOG(INFO) << "Stopping IPv6 forwarding from " << ifname_physical
+                  << " to " << ifname_virtual;
+      }
     }
     nd_proxy_->SendMessage(ipm);
   }
 
-  if (fs.multicast && multicast_virtual_ifnames_.find(ifname_virtual) !=
-                          multicast_virtual_ifnames_.end()) {
-    multicast_virtual_ifnames_.erase(ifname_virtual);
+  if (fs.multicast) {
     if (ifname_virtual.empty()) {
+      multicast_ifnames_.erase(ifname_physical);
       LOG(INFO) << "Stopping multicast forwarding on " << ifname_physical;
     } else {
-      LOG(INFO) << "Stopping multicast forwarding from " << ifname_physical
-                << " to " << ifname_virtual;
+      auto multicast_it = multicast_ifnames_.find(ifname_physical);
+      if (multicast_it != multicast_ifnames_.end()) {
+        multicast_it->second.erase(ifname_virtual);
+        LOG(INFO) << "Stopping multicast forwarding from " << ifname_physical
+                  << " to " << ifname_virtual;
+      }
     }
     mcast_proxy_->SendMessage(ipm);
   }
