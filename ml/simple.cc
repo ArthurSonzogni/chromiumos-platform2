@@ -81,7 +81,7 @@ AddResult Add(const double x,
   mojo::Remote<GraphExecutor> graph_executor;
   bool graph_executor_ok = false;
   auto options = GraphExecutorOptions::New(use_nnapi, use_gpu);
-  model->CreateGraphExecutorWithOptions(
+  model->CreateGraphExecutor(
       std::move(options), graph_executor.BindNewPipeAndPassReceiver(),
       base::BindOnce(
           [](bool* const graph_executor_ok,

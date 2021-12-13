@@ -62,11 +62,10 @@ class ModelImpl : public chromeos::machine_learning::mojom::Model {
   void set_disconnect_handler(base::OnceClosure disconnect_handler);
 
   // chromeos::machine_learning::mojom::Model:
+  void REMOVED_0(mojo::PendingReceiver<
+                     chromeos::machine_learning::mojom::GraphExecutor> receiver,
+                 CreateGraphExecutorCallback callback) override;
   void CreateGraphExecutor(
-      mojo::PendingReceiver<chromeos::machine_learning::mojom::GraphExecutor>
-          receiver,
-      CreateGraphExecutorCallback callback) override;
-  void CreateGraphExecutorWithOptions(
       chromeos::machine_learning::mojom::GraphExecutorOptionsPtr options,
       mojo::PendingReceiver<chromeos::machine_learning::mojom::GraphExecutor>
           receiver,

@@ -215,6 +215,7 @@ using ::chromeos::machine_learning::mojom::GrammarChecker;
 using ::chromeos::machine_learning::mojom::GrammarCheckerResult;
 using ::chromeos::machine_learning::mojom::GrammarCheckerResultPtr;
 using ::chromeos::machine_learning::mojom::GraphExecutor;
+using ::chromeos::machine_learning::mojom::GraphExecutorOptions;
 using ::chromeos::machine_learning::mojom::HandwritingRecognitionQuery;
 using ::chromeos::machine_learning::mojom::HandwritingRecognitionQueryPtr;
 using ::chromeos::machine_learning::mojom::HandwritingRecognizer;
@@ -333,7 +334,7 @@ bool CreateGraphExecutorForTesting(
     mojo::Remote<GraphExecutor>* graph_executor) {
   bool ge_callback_done = false;
   model->CreateGraphExecutor(
-      graph_executor->BindNewPipeAndPassReceiver(),
+      GraphExecutorOptions::New(), graph_executor->BindNewPipeAndPassReceiver(),
       base::BindOnce(
           [](bool* ge_callback_done, const CreateGraphExecutorResult result) {
             EXPECT_EQ(result, CreateGraphExecutorResult::OK);
@@ -529,7 +530,7 @@ TEST(MachineLearningServiceImplTest, TestModel) {
   mojo::Remote<GraphExecutor> graph_executor;
   bool ge_callback_done = false;
   model->CreateGraphExecutor(
-      graph_executor.BindNewPipeAndPassReceiver(),
+      GraphExecutorOptions::New(), graph_executor.BindNewPipeAndPassReceiver(),
       base::BindOnce(
           [](bool* ge_callback_done, const CreateGraphExecutorResult result) {
             EXPECT_EQ(result, CreateGraphExecutorResult::OK);

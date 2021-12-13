@@ -143,7 +143,7 @@ bool ConstructGraphExecutor(const mojo::Remote<Model>& model,
                             const TfliteBenchmarkConfig& tflite_config,
                             mojo::Remote<GraphExecutor>* const graph_executor) {
   bool succeeded = false;
-  model->CreateGraphExecutorWithOptions(
+  model->CreateGraphExecutor(
       GraphExecutorOptions::New(/*use_nnapi=*/false,
                                 /*use_gpu=*/tflite_config.use_gpu()),
       graph_executor->BindNewPipeAndPassReceiver(),

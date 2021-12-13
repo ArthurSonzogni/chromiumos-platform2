@@ -40,6 +40,7 @@ using ::chromeos::machine_learning::mojom::BuiltinModelSpecPtr;
 using ::chromeos::machine_learning::mojom::CreateGraphExecutorResult;
 using ::chromeos::machine_learning::mojom::ExecuteResult;
 using ::chromeos::machine_learning::mojom::GraphExecutor;
+using ::chromeos::machine_learning::mojom::GraphExecutorOptions;
 using ::chromeos::machine_learning::mojom::LoadModelResult;
 using ::chromeos::machine_learning::mojom::MachineLearningService;
 using ::chromeos::machine_learning::mojom::Model;
@@ -98,6 +99,7 @@ class MLServiceFuzzer {
     // Get graph executor.
     bool ge_callback_done = false;
     model_->CreateGraphExecutor(
+        GraphExecutorOptions::New(),
         graph_executor_.BindNewPipeAndPassReceiver(),
         base::BindOnce(
             [](bool* ge_callback_done, const CreateGraphExecutorResult result) {

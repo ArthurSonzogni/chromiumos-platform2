@@ -9,6 +9,7 @@
 
 #include <base/bind.h>
 #include <base/callback_helpers.h>
+#include <base/notreached.h>
 #include <brillo/message_loops/message_loop.h>
 
 #include "base/debug/leak_annotations.h"
@@ -56,16 +57,12 @@ int ModelImpl::num_graph_executors_for_testing() const {
   return graph_executors_.size();
 }
 
-void ModelImpl::CreateGraphExecutor(
-    mojo::PendingReceiver<GraphExecutor> receiver,
-    CreateGraphExecutorCallback callback) {
-  auto options = GraphExecutorOptions::New(
-      /*use_nnapi=*/false, /*use_gpu=*/false);
-  CreateGraphExecutorWithOptions(std::move(options), std::move(receiver),
-                                 std::move(callback));
+void ModelImpl::REMOVED_0(mojo::PendingReceiver<GraphExecutor> receiver,
+                          CreateGraphExecutorCallback callback) {
+  NOTIMPLEMENTED();
 }
 
-void ModelImpl::CreateGraphExecutorWithOptions(
+void ModelImpl::CreateGraphExecutor(
     GraphExecutorOptionsPtr options,
     mojo::PendingReceiver<GraphExecutor> receiver,
     CreateGraphExecutorCallback callback) {

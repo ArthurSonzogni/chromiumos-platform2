@@ -29,6 +29,7 @@ namespace {
 using ::chromeos::machine_learning::mojom::CreateGraphExecutorResult;
 using ::chromeos::machine_learning::mojom::ExecuteResult;
 using ::chromeos::machine_learning::mojom::GraphExecutor;
+using ::chromeos::machine_learning::mojom::GraphExecutorOptions;
 using ::chromeos::machine_learning::mojom::Model;
 using ::chromeos::machine_learning::mojom::TensorPtr;
 using ::testing::ElementsAre;
@@ -78,7 +79,7 @@ TEST_F(ModelImplTest, TestBadModel) {
   bool callback_done = false;
   mojo::Remote<GraphExecutor> graph_executor;
   model->CreateGraphExecutor(
-      graph_executor.BindNewPipeAndPassReceiver(),
+      GraphExecutorOptions::New(), graph_executor.BindNewPipeAndPassReceiver(),
       base::BindOnce(
           [](bool* callback_done, const CreateGraphExecutorResult result) {
             EXPECT_EQ(result,
@@ -110,7 +111,7 @@ TEST_F(ModelImplTest, TestExampleModel) {
   bool cge_callback_done = false;
   mojo::Remote<GraphExecutor> graph_executor;
   model->CreateGraphExecutor(
-      graph_executor.BindNewPipeAndPassReceiver(),
+      GraphExecutorOptions::New(), graph_executor.BindNewPipeAndPassReceiver(),
       base::BindOnce(
           [](bool* cge_callback_done, const CreateGraphExecutorResult result) {
             EXPECT_EQ(result, CreateGraphExecutorResult::OK);
@@ -175,6 +176,7 @@ TEST_F(ModelImplTest, TestGraphExecutorCleanup) {
   bool cge1_callback_done = false;
   mojo::Remote<GraphExecutor> graph_executor_1;
   model->CreateGraphExecutor(
+      GraphExecutorOptions::New(),
       graph_executor_1.BindNewPipeAndPassReceiver(),
       base::BindOnce(
           [](bool* cge1_callback_done, const CreateGraphExecutorResult result) {
@@ -192,6 +194,7 @@ TEST_F(ModelImplTest, TestGraphExecutorCleanup) {
   bool cge2_callback_done = false;
   mojo::Remote<GraphExecutor> graph_executor_2;
   model->CreateGraphExecutor(
+      GraphExecutorOptions::New(),
       graph_executor_2.BindNewPipeAndPassReceiver(),
       base::BindOnce(
           [](bool* cge2_callback_done, const CreateGraphExecutorResult result) {
