@@ -518,7 +518,7 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
 
   Error unused_error;
   network_rpcid = FindNetworkRpcidForService(service, &unused_error);
-  const std::string new_mac = service->UpdateMACAddress();
+  const auto [new_mac, update_supplicant] = service->UpdateMACAddress();
   if (network_rpcid.value().empty()) {
     KeyValueStore service_params =
         service->GetSupplicantConfigurationParameters();
@@ -538,7 +538,7 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
     CHECK(!network_rpcid.value().empty());  // No DBus path should be empty.
     service->set_bgscan_string(bgscan_string);
     rpcid_by_service_[service] = network_rpcid;
-  } else if (!new_mac.empty()) {
+  } else if (update_supplicant && !new_mac.empty()) {
     // During AddNetwork() (above) MAC is being configured as one of the
     // network parameters, but here we need to send an explicit update.
     std::unique_ptr<SupplicantNetworkProxyInterface> supplicant_network_proxy =
@@ -567,6 +567,7 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
   // reconsider if this is the right place to change the selected service.
   // see discussion in crbug.com/203282.
   SelectService(service);
+  EmitMACAddress(new_mac);
 }
 
 void WiFi::DisconnectFromIfActive(WiFiService* service) {

@@ -725,7 +725,7 @@ void WiFiService::OnConnect(Error* error) {
   wifi->ConnectTo(this, error);
 }
 
-std::string WiFiService::UpdateMACAddress() {
+WiFiService::UpdateMACAddressRet WiFiService::UpdateMACAddress() {
   const auto now = clock_->Now();
   bool rotating = false;
   bool change = false;
@@ -745,7 +745,8 @@ std::string WiFiService::UpdateMACAddress() {
       break;
     default:
       // Other modes do not require explicit address to be set.
-      return std::string();
+      // Setting empty mac address will result in publishing the hardware one.
+      return {std::string(), false};
   }
   // If we get here then we need to have MAC set - make sure it is.
   change = change || !mac_address_.is_set();
@@ -762,10 +763,9 @@ std::string WiFiService::UpdateMACAddress() {
       mac_address_.set_expiration_time(now +
                                        MACAddress::kDefaultExpirationTime);
     }
-    return mac_address_.ToString();
   }
 
-  return std::string();
+  return {mac_address_.ToString(), change};
 }
 
 KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {

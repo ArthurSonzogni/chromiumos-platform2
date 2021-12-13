@@ -542,6 +542,10 @@ class Device : public base::RefCounted<Device> {
 
   virtual void set_mac_address(const std::string& mac_address);
 
+  // Emit a given MAC Address via dbus. If empty or bad string is provided,
+  // emit the hardware MAC address of the device.
+  void EmitMACAddress(const std::string& mac_address = std::string());
+
  private:
   friend class CellularTest;
   friend class DeviceAdaptorInterface;

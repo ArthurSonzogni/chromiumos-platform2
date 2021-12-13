@@ -188,9 +188,15 @@ class WiFiService : public Service {
   // std::numeric_limits<int>::min().
   mockable int16_t SignalLevel() const;
 
-  // Update MAC Address when necessary e.g. when it needs to be re-rolled.
-  // Returns new MAC if it has been changed empty otherwise.
-  std::string UpdateMACAddress();
+  // UpdateMACAddress return type.
+  struct UpdateMACAddressRet {
+    std::string mac;
+    bool update;
+  };
+  // Update MAC address when necessary e.g. when it needs to be re-rolled.
+  // Returns the current MAC address (if randomized) and if it needs
+  // to be updated in WPA Supplicant.
+  UpdateMACAddressRet UpdateMACAddress();
 
   void set_expecting_disconnect(bool val) { expecting_disconnect_ = val; }
   bool expecting_disconnect() const { return expecting_disconnect_; }

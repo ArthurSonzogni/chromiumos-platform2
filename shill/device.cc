@@ -1383,9 +1383,18 @@ void Device::StopConnectivityTest() {
   connection_tester_.reset();
 }
 
+void Device::EmitMACAddress(const std::string& mac_address) {
+  if (mac_address.empty() ||
+      MakeHardwareAddressFromString(mac_address).empty()) {
+    adaptor_->EmitStringChanged(kAddressProperty, mac_address_);
+  } else {
+    adaptor_->EmitStringChanged(kAddressProperty, mac_address);
+  }
+}
+
 void Device::set_mac_address(const std::string& mac_address) {
   mac_address_ = mac_address;
-  adaptor_->EmitStringChanged(kAddressProperty, mac_address_);
+  EmitMACAddress();
 }
 
 bool Device::TimeToNextDHCPLeaseRenewal(uint32_t* result) {
