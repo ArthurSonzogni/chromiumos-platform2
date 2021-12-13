@@ -273,6 +273,10 @@ bool TPMNVSpaceImpl::LockNVSpace() {
     LOG(ERROR) << "Failed to call LockSpace: " << error->GetMessage();
     return false;
   }
+  if (reply.result() == tpm_manager::NVRAM_RESULT_OPERATION_DISABLED) {
+    // This error may happen when we lock the space second time in a boot cycle.
+    return true;
+  }
   if (reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
     LOG(ERROR) << "Failed to lock nvram space: "
                << NvramResult2Str(reply.result());

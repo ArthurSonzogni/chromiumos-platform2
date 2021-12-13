@@ -364,4 +364,29 @@ TEST_F(TPMNVSpaceImplTest, LockNVSpace) {
   EXPECT_TRUE(nvspace_utility_->LockNVSpace());
 }
 
+TEST_F(TPMNVSpaceImplTest, LockNVSpaceAlreadyLocked) {
+  EXPECT_CALL(mock_tpm_nvram_, LockSpace(_, _, _, _))
+      .WillOnce(Invoke([](const tpm_manager::LockSpaceRequest& request,
+                          tpm_manager::LockSpaceReply* reply, brillo::ErrorPtr*,
+                          int) {
+        EXPECT_EQ(GetBootLockboxNVRamIndex(), request.index());
+        EXPECT_FALSE(request.lock_read());
+        EXPECT_TRUE(request.lock_write());
+        EXPECT_FALSE(request.use_owner_authorization());
+        reply->set_result(tpm_manager::NVRAM_RESULT_OPERATION_DISABLED);
+        return true;
+      }));
+  EXPECT_TRUE(nvspace_utility_->LockNVSpace());
+}
+
+TEST_F(TPMNVSpaceImplTest, LockNVSpaceFail) {
+  EXPECT_CALL(mock_tpm_nvram_, LockSpace(_, _, _, _))
+      .WillOnce(Invoke([](const tpm_manager::LockSpaceRequest& request,
+                          tpm_manager::LockSpaceReply* reply, brillo::ErrorPtr*,
+                          int) {
+        reply->set_result(tpm_manager::NVRAM_RESULT_SPACE_DOES_NOT_EXIST);
+        return true;
+      }));
+  EXPECT_FALSE(nvspace_utility_->LockNVSpace());
+}
 }  // namespace cryptohome
