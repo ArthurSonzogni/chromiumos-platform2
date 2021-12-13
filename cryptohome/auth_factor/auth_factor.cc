@@ -8,10 +8,20 @@
 #include <utility>
 
 #include "cryptohome/scrypt_verifier.h"
+
 namespace cryptohome {
 
 AuthFactor::AuthFactor(KeysetManagement* keyset_management)
     : keyset_management_(keyset_management) {}
+
+AuthFactor::AuthFactor(AuthFactorType type,
+                       const std::string& label,
+                       const AuthFactorMetadata& metadata,
+                       const AuthBlockState& auth_block_state)
+    : type_(type),
+      label_(label),
+      metadata_(metadata),
+      auth_block_state_(auth_block_state) {}
 
 MountError AuthFactor::AuthenticateAuthFactor(const Credentials& credential,
                                               bool is_ephemeral_user) {
