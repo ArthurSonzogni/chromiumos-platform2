@@ -709,7 +709,7 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
     VirtualMachine::GetLxdContainerInfoStatus status =
         vm->GetLxdContainerInfo(container->name(), &info, &error);
     if (status != VirtualMachine::GetLxdContainerInfoStatus::RUNNING) {
-      LOG(ERROR) << "Failed to retreive IPv4 address for container: " << error;
+      LOG(ERROR) << "Failed to retrieve IPv4 address for container: " << error;
       event->Signal();
       return;
     }
