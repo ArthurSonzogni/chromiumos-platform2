@@ -144,6 +144,9 @@ class SHILL_EXPORT RTNLMessage {
     std::vector<IPAddress> addresses;
   };
 
+  // Packs the attribute map into a ByteString, with the proper alignment.
+  static ByteString PackAttrs(const RTNLAttrMap& attrs);
+
   // Empty constructor
   RTNLMessage();
   // Build an RTNL message from arguments
@@ -265,8 +268,12 @@ class SHILL_EXPORT RTNLMessage {
   // Sets the IFLA_INFO_KIND attribute which is nested in IFLA_LINKINFO (and
   // thus it is hard to be set via SetAttribute() directly). This attribute will
   // be used as the type string of a link when creating a new link. This
-  // function should be used only for RTNLMessages of type kTypeLink.
-  void SetIflaInfoKind(const std::string& link_kind);
+  // function should be used only for RTNLMessages of type kTypeLink. The second
+  // optional parameter |info_data| will be used as the value of IFLA_INFO_DATA,
+  // which is kind-specific. Leave it empty if there is no addtiional data
+  // needed for |link_kind|.
+  void SetIflaInfoKind(const std::string& link_kind,
+                       const ByteString& info_data);
 
  private:
   SHILL_PRIVATE bool DecodeInternal(const ByteString& msg);

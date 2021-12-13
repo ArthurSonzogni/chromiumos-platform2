@@ -150,6 +150,8 @@ constexpr char kKindRmnet[] = "rmnet";
 // v5.10, drivers/net/wireguard/device.c:254, |device_type.name| is set to
 // KBUILD_MODNAME, which is "wireguard".
 constexpr char kKindWireGuard[] = "wireguard";
+// v4.19+, net/xfrm/xfrm_interface.c
+constexpr char kKindXfrm[] = "xfrm";
 
 // Modem drivers that we support.
 const char* const kModemDrivers[] = {"cdc_mbim", "qmi_wwan"};
@@ -162,6 +164,11 @@ constexpr int kDelayedDeviceCreationSeconds = 5;
 
 // Time interval for polling for link statistics.
 constexpr int kRequestLinkStatisticsIntervalMilliseconds = 20000;
+
+// IFLA_XFRM_LINK and IFLA_XFRM_IF_ID are defined in
+// /usr/include/linux/if_link.h on 4.19+ kernels.
+constexpr int kIflaXfrmLink = 1;
+constexpr int kIflaXfrmIfId = 2;
 
 }  // namespace
 
@@ -354,6 +361,12 @@ Technology DeviceInfo::GetDeviceTechnology(
   if (kind.has_value() && kind.value() == kKindWireGuard) {
     SLOG(this, 2) << __func__ << ": device " << iface_name
                   << " is a wireguard device. Treat it as a tunnel.";
+    return Technology::kTunnel;
+  }
+
+  if (kind.has_value() && kind.value() == kKindXfrm) {
+    SLOG(this, 2) << __func__ << ": device " << iface_name
+                  << " is a xfrm device. Treat it as a tunnel.";
     return Technology::kTunnel;
   }
 
@@ -1112,8 +1125,8 @@ bool DeviceInfo::CreateWireGuardInterface(const std::string& interface_name,
                                           LinkReadyCallback link_ready_callback,
                                           base::OnceClosure failure_callback) {
   if (!rtnl_handler_->AddInterface(
-          interface_name, kKindWireGuard,
-          base::BindOnce(&DeviceInfo::OnCreateWireGuardInterfaceResponse,
+          interface_name, kKindWireGuard, {},
+          base::BindOnce(&DeviceInfo::OnCreateInterfaceResponse,
                          weak_factory_.GetWeakPtr(), interface_name,
                          std::move(failure_callback)))) {
     return false;
@@ -1123,10 +1136,30 @@ bool DeviceInfo::CreateWireGuardInterface(const std::string& interface_name,
   return true;
 }
 
-void DeviceInfo::OnCreateWireGuardInterfaceResponse(
-    const std::string& interface_name,
-    base::OnceClosure failure_callback,
-    int32_t error) {
+bool DeviceInfo::CreateXFRMInterface(const std::string& interface_name,
+                                     int underlying_if_index,
+                                     int xfrm_if_id,
+                                     LinkReadyCallback link_ready_callback,
+                                     base::OnceClosure failure_callback) {
+  RTNLAttrMap attrs;
+  attrs[kIflaXfrmLink] = ByteString::CreateFromCPUUInt32(underlying_if_index);
+  attrs[kIflaXfrmIfId] = ByteString::CreateFromCPUUInt32(xfrm_if_id);
+  const ByteString link_info_data = RTNLMessage::PackAttrs(attrs);
+  if (!rtnl_handler_->AddInterface(
+          interface_name, kKindXfrm, link_info_data,
+          base::BindOnce(&DeviceInfo::OnCreateInterfaceResponse,
+                         weak_factory_.GetWeakPtr(), interface_name,
+                         std::move(failure_callback)))) {
+    return false;
+  }
+  AddVirtualInterfaceReadyCallback(interface_name,
+                                   std::move(link_ready_callback));
+  return true;
+}
+
+void DeviceInfo::OnCreateInterfaceResponse(const std::string& interface_name,
+                                           base::OnceClosure failure_callback,
+                                           int32_t error) {
   if (error == 0) {
     // |error| == 0 means ACK. Needs to do nothing here. We expect getting the
     // new interface message latter.

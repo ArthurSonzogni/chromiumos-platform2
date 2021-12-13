@@ -470,6 +470,7 @@ int RTNLHandler::GetInterfaceIndex(const std::string& interface_name) {
 
 bool RTNLHandler::AddInterface(const std::string& interface_name,
                                const std::string& link_kind,
+                               const ByteString& link_info_data,
                                ResponseCallback response_callback) {
   if (interface_name.length() >= IFNAMSIZ) {
     LOG(DFATAL) << "Interface name is too long: " << interface_name;
@@ -481,7 +482,7 @@ bool RTNLHandler::AddInterface(const std::string& interface_name,
       NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK, 0 /* seq */,
       0 /* pid */, 0 /* if_index */, IPAddress::kFamilyUnknown);
   msg->SetAttribute(IFLA_IFNAME, {interface_name, true});
-  msg->SetIflaInfoKind(link_kind);
+  msg->SetIflaInfoKind(link_kind, link_info_data);
 
   uint32_t seq;
   if (!SendMessage(std::move(msg), &seq)) {

@@ -1303,16 +1303,16 @@ TEST_F(DeviceInfoTest, CreateWireGuardInterface) {
   };
 
   // RTNLHandler::AddInterface() returns false directly.
-  EXPECT_CALL(rtnl_handler_, AddInterface(kIfName, kLinkKind, _))
+  EXPECT_CALL(rtnl_handler_, AddInterface(kIfName, kLinkKind, _, _))
       .WillOnce(Return(false));
   EXPECT_FALSE(call_create_wireguard_interface());
   EXPECT_EQ(link_ready_calls_num, 0);
   EXPECT_EQ(on_failure_calls_num, 0);
 
   // RTNLHandler::AddInterface() returns true, but the kernel returns false.
-  EXPECT_CALL(rtnl_handler_, AddInterface(kIfName, kLinkKind, _))
+  EXPECT_CALL(rtnl_handler_, AddInterface(kIfName, kLinkKind, _, _))
       .WillRepeatedly([&](const std::string& interface_name,
-                          const std::string& link_kind,
+                          const std::string& link_kind, const ByteString&,
                           RTNLHandler::ResponseCallback response_callback) {
         registered_response_cb = std::move(response_callback);
         return true;
@@ -1325,6 +1325,66 @@ TEST_F(DeviceInfoTest, CreateWireGuardInterface) {
   // RTNLHandler::AddInterface() returns true, and the kernel returns ack. No
   // callback to the client should be invoked now.
   EXPECT_TRUE(call_create_wireguard_interface());
+  std::move(registered_response_cb).Run(0);
+  EXPECT_EQ(link_ready_calls_num, 0);
+  EXPECT_EQ(on_failure_calls_num, 1);
+
+  // Link is ready.
+  CreateDevice(kIfName, "192.168.1.1", 123, Technology::kTunnel);
+  EXPECT_EQ(link_ready_calls_num, 1);
+  EXPECT_EQ(on_failure_calls_num, 1);
+}
+
+TEST_F(DeviceInfoTest, CreateXFRMInterface) {
+  const std::string kIfName = "xfrm0";
+  const std::string kLinkKind = "xfrm";
+  constexpr int kUnderlyingIfIndex = 5;
+  constexpr int kIfId = 1;
+
+  int link_ready_calls_num = 0;
+  int on_failure_calls_num = 0;
+  auto link_ready_cb = [&](const std::string&, int) { link_ready_calls_num++; };
+  auto on_failure_cb = [&]() { on_failure_calls_num++; };
+
+  ByteString actual_link_info_data;
+  RTNLHandler::ResponseCallback registered_response_cb;
+
+  auto call_create_xfrm_interface = [&]() {
+    return device_info_.CreateXFRMInterface(
+        kIfName, kUnderlyingIfIndex, kIfId,
+        base::BindLambdaForTesting(link_ready_cb),
+        base::BindLambdaForTesting(on_failure_cb));
+  };
+
+  // RTNLHandler::AddInterface() returns false directly.
+  EXPECT_CALL(rtnl_handler_, AddInterface(kIfName, kLinkKind, _, _))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(call_create_xfrm_interface());
+  EXPECT_EQ(link_ready_calls_num, 0);
+  EXPECT_EQ(on_failure_calls_num, 0);
+
+  // RTNLHandler::AddInterface() returns true, but the kernel returns false.
+  EXPECT_CALL(rtnl_handler_, AddInterface(kIfName, kLinkKind, _, _))
+      .WillRepeatedly([&](const std::string& interface_name,
+                          const std::string& link_kind,
+                          const ByteString& link_info_data,
+                          RTNLHandler::ResponseCallback response_callback) {
+        actual_link_info_data = link_info_data;
+        registered_response_cb = std::move(response_callback);
+        return true;
+      });
+  EXPECT_TRUE(call_create_xfrm_interface());
+  EXPECT_EQ(actual_link_info_data,
+            RTNLMessage::PackAttrs(
+                {{1, ByteString::CreateFromCPUUInt32(kUnderlyingIfIndex)},
+                 {2, ByteString::CreateFromCPUUInt32(kIfId)}}));
+  std::move(registered_response_cb).Run(100);
+  EXPECT_EQ(link_ready_calls_num, 0);
+  EXPECT_EQ(on_failure_calls_num, 1);
+
+  // RTNLHandler::AddInterface() returns true, and the kernel returns ack. No
+  // callback to the client should be invoked now.
+  EXPECT_TRUE(call_create_xfrm_interface());
   std::move(registered_response_cb).Run(0);
   EXPECT_EQ(link_ready_calls_num, 0);
   EXPECT_EQ(on_failure_calls_num, 1);

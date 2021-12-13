@@ -124,6 +124,21 @@ class DeviceInfo {
                                         LinkReadyCallback link_ready_callback,
                                         base::OnceClosure failure_callback);
 
+  // Creates a XFRM interface in the kernel with name |interface_name|, index of
+  // the underlying interface |underlying_if_index| and the XFRM interface
+  // identifier |xfrm_if_id|. See the following link for more details about
+  // these two parameters:
+  // https://wiki.strongswan.org/projects/strongswan/wiki/RouteBasedVPN#XFRM-Interfaces-on-Linux.
+  // Returns true if we send the message to the kernel successfully.
+  // |link_ready_callback| will be invoked when the created link is ready,
+  // otherwise |failure_callback| will be invoked if the kernel rejects our
+  // request.
+  virtual bool CreateXFRMInterface(const std::string& interface_name,
+                                   int underlying_if_index,
+                                   int xfrm_if_id,
+                                   LinkReadyCallback link_ready_callback,
+                                   base::OnceClosure failure_callback);
+
   virtual bool DeleteInterface(int interface_index) const;
   virtual void AddVirtualInterfaceReadyCallback(
       const std::string& interface_name, LinkReadyCallback callback);
@@ -272,12 +287,12 @@ class DeviceInfo {
   void OnNeighborReachabilityEvent(
       const patchpanel::NeighborReachabilityEventSignal& signal);
 
-  // Callback registered in CreateWireGuardInterface() and invoked by
-  // RTNLHandler, to notify the acknowledgement from the kernel for the adding
-  // link request.
-  void OnCreateWireGuardInterfaceResponse(const std::string& interface_name,
-                                          base::OnceClosure failure_callback,
-                                          int32_t error);
+  // Callback registered in CreateWireGuardInterface() and
+  // CreateXFRMInterface(). Invoked by RTNLHandler, to notify the
+  // acknowledgement from the kernel for the adding link request.
+  void OnCreateInterfaceResponse(const std::string& interface_name,
+                                 base::OnceClosure failure_callback,
+                                 int32_t error);
 
   void set_sockets_for_test(std::unique_ptr<Sockets> sockets) {
     sockets_ = std::move(sockets);

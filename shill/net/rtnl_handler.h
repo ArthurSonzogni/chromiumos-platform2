@@ -120,10 +120,12 @@ class SHILL_EXPORT RTNLHandler {
   // determine the index.
   virtual int GetInterfaceIndex(const std::string& interface_name);
 
-  // Creates a new interface with name |interface_name| and type |link_kind|.
-  // Returns false on sending failures.
+  // Creates a new interface with name |interface_name| and type |link_kind| via
+  // a RTM_NEWLINK request. |link_info_data| will be appended as the value of
+  // IFLA_INFO_DATA if not empty. Returns false on sending failures.
   virtual bool AddInterface(const std::string& interface_name,
                             const std::string& link_kind,
+                            const ByteString& link_info_data,
                             ResponseCallback response_callback);
 
   // Sends an RTNL message. If the message is successfully sent, and |seq| is

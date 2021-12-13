@@ -572,7 +572,7 @@ TEST_F(RTNLHandlerTest, AddInterfaceTest) {
   base::RunLoop run_loop;
 
   RTNLHandler::GetInstance()->AddInterface(
-      kIfName, kIfType,
+      kIfName, kIfType, ByteString{},
       base::BindOnce(
           [](base::Closure callback, int32_t expected_error, int32_t error) {
             EXPECT_EQ(expected_error, error);

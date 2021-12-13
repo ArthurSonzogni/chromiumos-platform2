@@ -243,30 +243,6 @@ std::unique_ptr<RTNLAttrMap> ParseAttrs(struct rtattr* data, int len) {
   return std::make_unique<RTNLAttrMap>(attrs);
 }
 
-ByteString PackAttrs(const RTNLAttrMap& attrs) {
-  ByteString attributes;
-
-  for (const auto& pair : attrs) {
-    size_t len = RTA_LENGTH(pair.second.GetLength());
-    struct rtattr rt_attr = {
-        // Linter discourages 'unsigned short', but 'unsigned short' is used in
-        // the UAPI.
-        static_cast<unsigned short>(len),  // NOLINT(runtime/int)
-        pair.first,
-    };
-    ByteString header(reinterpret_cast<unsigned char*>(&rt_attr),
-                      sizeof(rt_attr));
-    header.Resize(RTA_ALIGN(header.GetLength()));
-    attributes.Append(header);
-
-    ByteString data(pair.second);
-    data.Resize(RTA_ALIGN(data.GetLength()));
-    attributes.Append(data);
-  }
-
-  return attributes;
-}
-
 // Returns the interface name for the device with interface index |ifindex|, or
 // returns an empty string if it fails to find the interface.
 std::string IndexToName(int ifindex) {
@@ -296,6 +272,30 @@ std::string RTNLMessage::NeighborStatus::ToString() const {
 
 std::string RTNLMessage::RdnssOption::ToString() const {
   return base::StringPrintf("RdnssOption lifetime %d", lifetime);
+}
+
+ByteString RTNLMessage::PackAttrs(const RTNLAttrMap& attrs) {
+  ByteString attributes;
+
+  for (const auto& pair : attrs) {
+    size_t len = RTA_LENGTH(pair.second.GetLength());
+    struct rtattr rt_attr = {
+        // Linter discourages 'unsigned short', but 'unsigned short' is used in
+        // the UAPI.
+        static_cast<unsigned short>(len),  // NOLINT(runtime/int)
+        pair.first,
+    };
+    ByteString header(reinterpret_cast<unsigned char*>(&rt_attr),
+                      sizeof(rt_attr));
+    header.Resize(RTA_ALIGN(header.GetLength()));
+    attributes.Append(header);
+
+    ByteString data(pair.second);
+    data.Resize(RTA_ALIGN(data.GetLength()));
+    attributes.Append(data);
+  }
+
+  return attributes;
 }
 
 RTNLMessage::RTNLMessage()
@@ -874,7 +874,8 @@ uint32_t RTNLMessage::GetFraPriority() const {
   return GetUint32Attribute(FRA_PRIORITY);
 }
 
-void RTNLMessage::SetIflaInfoKind(const std::string& link_kind) {
+void RTNLMessage::SetIflaInfoKind(const std::string& link_kind,
+                                  const ByteString& info_data) {
   // The maximum length of IFLA_INFO_KIND attribute is MODULE_NAME_LEN, defined
   // in /include/linux/module.h, as (64 - sizeof(unsigned long)). Set it to a
   // fixed value here.
@@ -885,6 +886,9 @@ void RTNLMessage::SetIflaInfoKind(const std::string& link_kind) {
   link_status_.kind = link_kind;
   RTNLAttrMap link_info_map;
   link_info_map[IFLA_INFO_KIND] = ByteString{link_kind, true};
+  if (!info_data.IsEmpty()) {
+    link_info_map[IFLA_INFO_DATA] = info_data;
+  }
   if (HasAttribute(IFLA_LINKINFO)) {
     LOG(DFATAL) << "IFLA_LINKINFO has already been set.";
   }

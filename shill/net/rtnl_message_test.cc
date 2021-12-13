@@ -959,7 +959,7 @@ TEST_F(RTNLMessageTest, EncodeIflaInfoKind) {
   const std::string kLinkKind = "kind";
   RTNLMessage pmsg(RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, NLM_F_REQUEST,
                    0, 0, 0, IPAddress::kFamilyUnknown);
-  pmsg.SetIflaInfoKind(kLinkKind);
+  pmsg.SetIflaInfoKind(kLinkKind, {});
   RTNLMessage msg;
   EXPECT_TRUE(msg.Decode(pmsg.Encode()));
   EXPECT_TRUE(msg.link_status().kind.has_value());

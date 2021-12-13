@@ -60,6 +60,11 @@ class MockDeviceInfo : public DeviceInfo {
               CreateWireGuardInterface,
               (const std::string&, LinkReadyCallback, base::OnceClosure),
               (override));
+  MOCK_METHOD(
+      bool,
+      CreateXFRMInterface,
+      (const std::string&, int, int, LinkReadyCallback, base::OnceClosure),
+      (override));
   MOCK_METHOD(void,
               AddVirtualInterfaceReadyCallback,
               (const std::string&, LinkReadyCallback),
