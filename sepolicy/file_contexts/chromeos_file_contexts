@@ -468,7 +468,7 @@ has_arc(`
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data/data   u:object_r:system_data_root_file:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data/data/.*   u:object_r:system_data_file:s0
 has_arc(`
-/home/.shadow/[0-9a-z]{40}/mount/root/android-data/data/media(.*/)?   u:object_r:media_rw_data_file:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/android-data/data/media(/.*)?   u:object_r:media_rw_data_file:s0
 ')
 /home/.shadow/[0-9a-z]{40}/mount/root/authpolicyd(/.*)?   u:object_r:cros_home_shadow_uid_root_authpolicyd:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/cdm-oemcrypto(/.*)?   u:object_r:cros_home_shadow_uid_root_cdm-oemcrypto:s0
