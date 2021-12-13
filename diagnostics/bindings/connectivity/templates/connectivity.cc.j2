@@ -1,0 +1,25 @@
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+{%- macro namespace_begin() %}
+{%-   for namespace in namespaces_as_array %}
+namespace {{namespace}} {
+{%-   endfor %}
+{%- endmacro %}
+
+{%- macro namespace_end() %}
+{%-   for namespace in namespaces_as_array|reverse %}
+}  // namespace {{namespace}}
+{%-   endfor %}
+{%- endmacro %}
+
+#include "{{module.path}}-connectivity.h"
+
+{%- for imp in module.imports %}
+#include "{{imp.path}}-connectivity.h"
+{%  endfor %}
+
+{{namespace_begin()}}
+
+{{namespace_end()}}

@@ -43,6 +43,14 @@ _mojom_bindings_suffixes = [
   "-connectivity.cc",
 ]
 
+_connectivity_root = "//diagnostics/bindings/connectivity"
+_connectivity_template_root = "$_connectivity_root/templates"
+_connectivity_template_sources = [
+  "$_connectivity_template_root/connectivity-forward.h.j2",
+  "$_connectivity_template_root/connectivity.cc.j2",
+  "$_connectivity_template_root/connectivity.h.j2",
+]
+
 # Generates C++ mojo bindings source code and headers.
 template("mojom_connectivity_gen") {
   forward_variables_from(invoker,
@@ -65,7 +73,8 @@ template("mojom_connectivity_gen") {
                              "deps",
                              "sources",
                            ])
-    inputs = [ _mojom_connectivity_generator ] + generator_overrides
+    inputs = [ _mojom_connectivity_generator ] +
+             _connectivity_template_sources + generator_overrides
     outputs = []
     filelist = []
     mojo_output_dir = _mojo_output_base + "/" + rebase_path(".", mojo_root)
