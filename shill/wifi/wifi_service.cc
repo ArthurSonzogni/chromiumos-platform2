@@ -12,6 +12,7 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <base/containers/contains.h>
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -82,6 +83,10 @@ static const std::map<WiFiService::RandomizationPolicy, int32_t>
          WPASupplicant::kMACAddrPolicyPersistentRandom},
 };
 
+// List of SSIDs served by endpoints that do not support randomization,
+// available by courtesy of Android (go/veaub).
+static constexpr std::array<const char*, 5> SSIDsExcludedFromRandomization = {
+    "ACWiFi", "AA-Inflight", "gogoinflight", "DeltaWiFi", "DeltaWiFi.com"};
 }  // namespace
 
 const char WiFiService::kAnyDeviceAddress[] = "any";
@@ -357,13 +362,24 @@ bool WiFiService::SetMACPolicy(const std::string& policy, Error* error) {
                            policy.c_str()));
     return false;
   }
-  // There might be no wifi_ during Load(), but then random_mac_supported()
-  // has already been checked.
-  if (ret->first != RandomizationPolicy::Hardware && wifi_ &&
-      !wifi_->random_mac_supported()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                          "MAC Address randomization not supported.");
-    return false;
+
+  if (ret->first != RandomizationPolicy::Hardware) {
+    // There might be no wifi_ during Load(), but then random_mac_supported()
+    // has already been checked.
+    if (wifi_ && !wifi_->random_mac_supported()) {
+      Error::PopulateAndLog(
+          FROM_HERE, error, Error::kNotSupported,
+          "MAC Address randomization not supported by hardware.");
+      return false;
+    }
+    // Some airline providers use aged APs that do not support locally
+    // generated bit. Prevent address randomization in such cases.
+    if (base::Contains(SSIDsExcludedFromRandomization, friendly_name_)) {
+      Error::PopulateAndLog(
+          FROM_HERE, error, Error::kNotSupported,
+          "MAC Address randomization not supported for this SSID.");
+      return false;
+    }
   }
   random_mac_policy_ = ret->first;
   return true;

@@ -243,6 +243,7 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, UpdateMACAddressPersistentPolicy);
   FRIEND_TEST(WiFiServiceTest, UpdateMACAddressPolicySwitch);
   FRIEND_TEST(WiFiServiceTest, RandomizationNotSupported);
+  FRIEND_TEST(WiFiServiceTest, RandomizationBlocklist);
 
   static const char kAnyDeviceAddress[];
   static const int kSuspectedCredentialFailureThreshold;

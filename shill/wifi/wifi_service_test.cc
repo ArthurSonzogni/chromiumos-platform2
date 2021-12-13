@@ -2152,4 +2152,21 @@ TEST_F(WiFiServiceTest, RandomizationNotSupported) {
       service->SetMACPolicy(kWifiRandomMacPolicyNonPersistentRandom, &ret));
 }
 
+TEST_F(WiFiServiceTest, RandomizationBlocklist) {
+  std::array<std::string, 5> ssid_blocklist = {
+      "ACWiFi", "AA-Inflight", "gogoinflight", "DeltaWiFi", "DeltaWiFi.com"};
+
+  for (auto& ssid : ssid_blocklist) {
+    auto service = MakeServiceSSID(kSecurityPsk, ssid);
+    Error ret;
+    EXPECT_TRUE(service->SetMACPolicy(kWifiRandomMacPolicyHardware, &ret));
+    EXPECT_FALSE(service->SetMACPolicy(kWifiRandomMacPolicyFullRandom, &ret));
+    EXPECT_FALSE(service->SetMACPolicy(kWifiRandomMacPolicyOUIRandom, &ret));
+    EXPECT_FALSE(
+        service->SetMACPolicy(kWifiRandomMacPolicyPersistentRandom, &ret));
+    EXPECT_FALSE(
+        service->SetMACPolicy(kWifiRandomMacPolicyNonPersistentRandom, &ret));
+  }
+}
+
 }  // namespace shill
