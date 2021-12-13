@@ -58,6 +58,7 @@ class NewL2TPIPsecDriver : public VPNDriver {
       std::unique_ptr<IPsecConnection::Config> config,
       std::unique_ptr<VPNConnection::Callbacks> callbacks,
       std::unique_ptr<VPNConnection> l2tp_connection,
+      DeviceInfo* device_info,
       EventDispatcher* dispatcher,
       ProcessManager* process_manager);
   mockable std::unique_ptr<VPNConnection> CreateL2TPConnection(

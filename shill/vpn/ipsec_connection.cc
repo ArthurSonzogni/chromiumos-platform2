@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/check.h>
 #include <base/files/file_path_watcher.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -55,6 +56,12 @@ constexpr char kDefaultESPProposals[] =
     "aes128gcm16,aes128-sha256,aes128-sha1,3des-sha1,3des-md5,default";
 
 constexpr char kChildSAName[] = "managed";
+
+// The interface identifier set for the XFRM interface. This id connects the
+// IPsec policies and the interface. Only used in IKEv2 connections.
+constexpr int kXFRMInterfaceID = 1;
+// Only used in IKEv2 connection.
+constexpr char kXFRMInterfaceName[] = "xfrm0";
 
 // The time interval between two checks for if the vici socket is connectable.
 constexpr base::TimeDelta kCheckViciConnectableInterval =
@@ -336,15 +343,18 @@ IPsecConnection::CipherSuite IPsecConnection::ParseCipherSuite(
 IPsecConnection::IPsecConnection(std::unique_ptr<Config> config,
                                  std::unique_ptr<Callbacks> callbacks,
                                  std::unique_ptr<VPNConnection> l2tp_connection,
+                                 DeviceInfo* device_info,
                                  EventDispatcher* dispatcher,
                                  ProcessManager* process_manager)
     : VPNConnection(std::move(callbacks), dispatcher),
       config_(std::move(config)),
       l2tp_connection_(std::move(l2tp_connection)),
       vici_socket_path_(kViciSocketPath),
+      device_info_(device_info),
       process_manager_(process_manager),
       vpn_util_(VPNUtil::New()) {
   if (l2tp_connection_) {
+    CHECK(config_->ike_version == Config::IKEVersion::kV1);
     l2tp_connection_->ResetCallbacks(std::make_unique<VPNConnection::Callbacks>(
         base::BindRepeating(&IPsecConnection::OnL2TPConnected,
                             weak_factory_.GetWeakPtr()),
@@ -353,7 +363,7 @@ IPsecConnection::IPsecConnection(std::unique_ptr<Config> config,
         base::BindOnce(&IPsecConnection::OnL2TPStopped,
                        weak_factory_.GetWeakPtr())));
   } else {
-    NOTREACHED();  // Reserved for IKEv2 VPN
+    CHECK(config_->ike_version == Config::IKEVersion::kV2);
   }
 }
 
@@ -406,7 +416,7 @@ void IPsecConnection::ScheduleConnectTask(ConnectStep step) {
       if (l2tp_connection_) {
         l2tp_connection_->Connect();
       } else {
-        NOTREACHED();  // Reserved for IKEv2 VPN
+        CreateXFRMInterface();
       }
       return;
     default:
@@ -674,6 +684,30 @@ void IPsecConnection::SwanctlListSAs() {
              "Failed to get SA information");
 }
 
+void IPsecConnection::CreateXFRMInterface() {
+  // We use the lo interface as the underlying interface of the created
+  // xfrm interface. This field is mandatory but does not really matter in
+  // our use case: it does matter if the outbound interface of the IPsec
+  // policies is configured. See the following link for more details:
+  // https://wiki.strongswan.org/projects/strongswan/wiki/RouteBasedVPN
+  int lo_index = device_info_->GetIndex("lo");
+  if (lo_index == -1) {
+    NotifyFailure(Service::kFailureInternal, "Failed to get index of lo");
+    return;
+  }
+  const std::string err_msg = "Failed to create XFRM interface";
+  if (!device_info_->CreateXFRMInterface(
+          kXFRMInterfaceName, lo_index, kXFRMInterfaceID,
+          base::BindOnce(&IPsecConnection::OnXFRMInterfaceReady,
+                         weak_factory_.GetWeakPtr()),
+          base::BindOnce(&IPsecConnection::NotifyFailure,
+                         weak_factory_.GetWeakPtr(), Service::kFailureInternal,
+                         err_msg))) {
+    NotifyFailure(Service::kFailureInternal, err_msg);
+  }
+  return;
+}
+
 void IPsecConnection::OnViciSocketPathEvent(int remaining_attempts,
                                             const base::FilePath& /*path*/,
                                             bool error) {
@@ -733,8 +767,16 @@ void IPsecConnection::OnSwanctlListSAsDone(const std::string& stdout_str) {
   const std::vector<std::string> lines = base::SplitString(
       stdout_str, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
 
-  SetIKECipherSuite(lines);
-  SetESPCipherSuite(lines);
+  if (!l2tp_connection_) {
+    ParseLocalVirtualIP(lines);
+    if (local_virtual_ip_.empty()) {
+      NotifyFailure(Service::kFailureInternal,
+                    "Failed to get local virtual IP");
+      return;
+    }
+  }
+  ParseIKECipherSuite(lines);
+  ParseESPCipherSuite(lines);
 
   ScheduleConnectTask(ConnectStep::kIPsecStatusRead);
 }
@@ -775,7 +817,35 @@ void IPsecConnection::SwanctlNextStep(ConnectStep step, const std::string&) {
   ScheduleConnectTask(step);
 }
 
-void IPsecConnection::SetIKECipherSuite(
+void IPsecConnection::ParseLocalVirtualIP(
+    const std::vector<std::string>& swanctl_output) {
+  local_virtual_ip_ = "";
+
+  // The index of the line which contains the virtual IP information in
+  // |swanctl_output|.
+  constexpr int kVIPLineNumber = 1;
+  if (swanctl_output.size() <= kVIPLineNumber) {
+    LOG(ERROR) << "Failed to parse the virtual IP, output only contains "
+               << swanctl_output.size() << " lines";
+    return;
+  }
+
+  // Example: local  '192.168.1.245' @ 192.168.1.245[4500] [10.10.10.2]
+  // We need to match the IP address in the last bracket ("[10.10.10.2]").
+  static constexpr LazyRE2 kVIPLine = {
+      R"(\s*local.*@.*\s+\[(\d*\.\d*\.\d*\.\d*)\]\s*$)"};
+  const std::string& line = swanctl_output[kVIPLineNumber];
+
+  std::string matched_part;
+  if (!RE2::FullMatch(line, *kVIPLine, &matched_part)) {
+    LOG(ERROR) << "Failed to parse the virtual IP, the line is: " << line;
+    return;
+  }
+
+  local_virtual_ip_ = matched_part;
+}
+
+void IPsecConnection::ParseIKECipherSuite(
     const std::vector<std::string>& swanctl_output) {
   ike_encryption_algo_ = Metrics::kVpnIpsecEncryptionAlgorithmUnknown;
   ike_integrity_algo_ = Metrics::kVpnIpsecIntegrityAlgorithmUnknown;
@@ -813,7 +883,7 @@ void IPsecConnection::SetIKECipherSuite(
   }
 }
 
-void IPsecConnection::SetESPCipherSuite(
+void IPsecConnection::ParseESPCipherSuite(
     const std::vector<std::string>& swanctl_output) {
   esp_encryption_algo_ = Metrics::kVpnIpsecEncryptionAlgorithmUnknown;
   esp_integrity_algo_ = Metrics::kVpnIpsecIntegrityAlgorithmUnknown;
@@ -918,6 +988,23 @@ void IPsecConnection::OnL2TPStopped() {
   StopCharon();
 }
 
+void IPsecConnection::OnXFRMInterfaceReady(const std::string& ifname,
+                                           int ifindex) {
+  xfrm_interface_index_ = ifindex;
+
+  IPConfig::Properties props;
+  props.address = local_virtual_ip_;
+  props.subnet_prefix = 32;
+  props.blackhole_ipv6 = true;
+  // This is a point-to-point link, gateway does not make sense here. Set it
+  // default to skip RTA_GATEWAY when installing routes.
+  props.gateway = "0.0.0.0";
+  props.mtu = IPConfig::kMinIPv6MTU;
+  props.method = kTypeVPN;
+
+  NotifyConnected(ifname, ifindex, props);
+}
+
 void IPsecConnection::StopCharon() {
   if (charon_pid_ != -1) {
     process_manager_->StopProcess(charon_pid_);
@@ -929,6 +1016,12 @@ void IPsecConnection::StopCharon() {
   // exist.
   if (!base::DeleteFile(vici_socket_path_)) {
     PLOG(ERROR) << "Failed to delete vici socket file";
+  }
+
+  // Removes the XFRM interface if it has been created.
+  if (xfrm_interface_index_.has_value()) {
+    device_info_->DeleteInterface(xfrm_interface_index_.value());
+    xfrm_interface_index_.reset();
   }
 
   // This function can be called directly from the destructor, and in that case

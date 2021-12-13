@@ -96,6 +96,7 @@ std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
     const std::string& remote_ip, const KeyValueStore& args) {
   auto config = std::make_unique<IPsecConnection::Config>();
 
+  config->ike_version = IPsecConnection::Config::IKEVersion::kV1;
   config->remote = remote_ip;
   config->psk = GetOptionalValue<std::string>(args, kL2TPIPsecPskProperty);
   config->ca_cert_pem_strings =
@@ -236,7 +237,8 @@ void NewL2TPIPsecDriver::StartIPsecConnection() {
 
   ipsec_connection_ = CreateIPsecConnection(
       MakeIPsecConfig(remote_ip, *const_args()), std::move(callbacks),
-      std::move(l2tp_connection), manager()->dispatcher(), process_manager());
+      std::move(l2tp_connection), manager()->device_info(),
+      manager()->dispatcher(), process_manager());
 
   ipsec_connection_->Connect();
 }
@@ -245,11 +247,12 @@ std::unique_ptr<VPNConnection> NewL2TPIPsecDriver::CreateIPsecConnection(
     std::unique_ptr<IPsecConnection::Config> config,
     std::unique_ptr<VPNConnection::Callbacks> callbacks,
     std::unique_ptr<VPNConnection> l2tp_connection,
+    DeviceInfo* device_info,
     EventDispatcher* dispatcher,
     ProcessManager* process_manager) {
   return std::make_unique<IPsecConnection>(
       std::move(config), std::move(callbacks), std::move(l2tp_connection),
-      dispatcher, process_manager);
+      device_info, dispatcher, process_manager);
 }
 
 std::unique_ptr<VPNConnection> NewL2TPIPsecDriver::CreateL2TPConnection(

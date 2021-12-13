@@ -20,6 +20,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/mock_control.h"
+#include "shill/mock_device_info.h"
+#include "shill/mock_manager.h"
+#include "shill/mock_metrics.h"
 #include "shill/mock_process_manager.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/fake_vpn_util.h"
@@ -32,11 +36,13 @@ class IPsecConnectionUnderTest : public IPsecConnection {
   IPsecConnectionUnderTest(std::unique_ptr<Config> config,
                            std::unique_ptr<Callbacks> callbacks,
                            std::unique_ptr<VPNConnection> l2tp_connection,
+                           DeviceInfo* device_info,
                            EventDispatcher* dispatcher,
                            ProcessManager* process_manager)
       : IPsecConnection(std::move(config),
                         std::move(callbacks),
                         std::move(l2tp_connection),
+                        device_info,
                         dispatcher,
                         process_manager) {
     vpn_util_ = std::make_unique<FakeVPNUtil>();
@@ -73,6 +79,12 @@ class IPsecConnectionUnderTest : public IPsecConnection {
   }
 
   void set_state(State state) { state_ = state; }
+
+  void set_l2tp_connection(std::unique_ptr<VPNConnection> l2tp_in) {
+    l2tp_connection_ = std::move(l2tp_in);
+  }
+
+  std::string local_virtual_ip() { return local_virtual_ip_; }
 
   MOCK_METHOD(void, ScheduleConnectTask, (ConnectStep), (override));
 };
@@ -151,8 +163,8 @@ secrets {
   }
 })";
 
-// Output of `swanctl --list-sas` used in SwanctlListSAs test.
-constexpr char kSwanctlListSAsOutput[] =
+// Output of `swanctl --list-sas` used in SwanctlListSAsL2TP test.
+constexpr char kSwanctlListSAsL2TPOutput[] =
     R"(vpn: #1, ESTABLISHED, IKEv1, d182735e14966467_i* ff9e514adb77bea8_r
   local  'CN=10.1.1.10' @ 192.168.1.2[4500]
   remote '10.1.1.10' @ 1.2.3.4[4500]
@@ -165,6 +177,19 @@ constexpr char kSwanctlListSAsOutput[] =
     local  192.168.1.2/32[udp/l2tp]
     remote 1.2.3.4/32[udp/l2tp]
 )";
+
+constexpr char kSwanctlListSAsIKEv2Output[] =
+    R"(vpn: #1, ESTABLISHED, IKEv2, f32cfa4a3b007894_i* 7cc2f86218f11619_r
+  local  '192.168.1.2' @ 192.168.1.2[4500] [10.10.10.2]
+  remote '192.168.1.3' @ 192.168.1.3[4500]
+  AES_CBC-128/HMAC_SHA2_256_128/PRF_HMAC_SHA2_256/MODP_3072
+  established 56s ago, rekeying in 14192s, reauth in 8601s
+  managed: #1, reqid 1, INSTALLED, TUNNEL, ESP:AES_CBC-128/HMAC_SHA2_256_128
+    installed 56s ago, rekeying in 3266s, expires in 3904s
+    in  c13d6df5 (-|0x00000001),  21701 bytes,    66 packets,     0s ago
+    out c78f93a7 (-|0x00000001),  11293 bytes,    95 packets,     0s ago
+    local  10.10.10.2/32
+    remote 0.0.0.0/0)";
 
 // Creates the UNIX socket at |path|, and listens on it if |start_listen| is
 // true. Returns the fd of this socket.
@@ -195,7 +220,8 @@ class MockCallbacks {
 
 class IPsecConnectionTest : public testing::Test {
  public:
-  IPsecConnectionTest() {
+  IPsecConnectionTest()
+      : manager_(&control_, &dispatcher_, &metrics_), device_info_(&manager_) {
     auto callbacks = std::make_unique<VPNConnection::Callbacks>(
         base::BindRepeating(&MockCallbacks::OnConnected,
                             base::Unretained(&callbacks_)),
@@ -208,12 +234,24 @@ class IPsecConnectionTest : public testing::Test {
     l2tp_connection_ = l2tp_tmp.get();
     ipsec_connection_ = std::make_unique<IPsecConnectionUnderTest>(
         std::make_unique<IPsecConnection::Config>(), std::move(callbacks),
-        std::move(l2tp_tmp), &dispatcher_, &process_manager_);
+        std::move(l2tp_tmp), &device_info_, &dispatcher_, &process_manager_);
   }
 
  protected:
+  void SetAsIKEv2Connection() {
+    auto config = std::make_unique<IPsecConnection::Config>();
+    config->ike_version = IPsecConnection::Config::IKEVersion::kV2;
+    ipsec_connection_->set_config(std::move(config));
+    ipsec_connection_->set_l2tp_connection(nullptr);
+  }
+
+  MockControl control_;
   EventDispatcherForTest dispatcher_;
+  MockMetrics metrics_;
+  MockManager manager_;
+
   MockCallbacks callbacks_;
+  MockDeviceInfo device_info_;
   MockProcessManager process_manager_;
 
   std::unique_ptr<IPsecConnectionUnderTest> ipsec_connection_;
@@ -489,7 +527,7 @@ TEST_F(IPsecConnectionTest, SwanctlInitiateConnection) {
   std::move(exit_cb).Run(0, "");
 }
 
-TEST_F(IPsecConnectionTest, SwanctlListSAs) {
+TEST_F(IPsecConnectionTest, SwanctlListSAsL2TP) {
   const base::FilePath kStrongSwanConfPath("/tmp/strongswan.conf");
   ipsec_connection_->set_strongswan_conf_path(kStrongSwanConfPath);
 
@@ -518,7 +556,7 @@ TEST_F(IPsecConnectionTest, SwanctlListSAs) {
   // Signal should be sent out if swanctl exits with 0.
   EXPECT_CALL(*ipsec_connection_,
               ScheduleConnectTask(ConnectStep::kIPsecStatusRead));
-  std::move(exit_cb).Run(0, kSwanctlListSAsOutput);
+  std::move(exit_cb).Run(0, kSwanctlListSAsL2TPOutput);
 
   // Checks the parsed cipher suites.
   EXPECT_EQ(ipsec_connection_->ike_encryption_algo(),
@@ -531,6 +569,61 @@ TEST_F(IPsecConnectionTest, SwanctlListSAs) {
             Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_128);
   EXPECT_EQ(ipsec_connection_->esp_integrity_algo(),
             Metrics::kVpnIpsecIntegrityAlgorithm_HMAC_SHA2_256_128);
+}
+
+TEST_F(IPsecConnectionTest, SwanctlListSAsIKEv2) {
+  SetAsIKEv2Connection();
+
+  ProcessManager::ExitWithStdoutCallback exit_cb;
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijailWithStdout(_, _, _, _, _, _))
+      .WillOnce(WithArg<5>(
+          [&exit_cb](ProcessManager::ExitWithStdoutCallback exit_callback) {
+            exit_cb = std::move(exit_callback);
+            return 123;
+          }));
+
+  ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kIPsecConnected);
+  EXPECT_CALL(*ipsec_connection_,
+              ScheduleConnectTask(ConnectStep::kIPsecStatusRead));
+  std::move(exit_cb).Run(0, kSwanctlListSAsIKEv2Output);
+
+  // Checks the parsed virtual ip.
+  EXPECT_EQ(ipsec_connection_->local_virtual_ip(), "10.10.10.2");
+
+  // Checks the parsed cipher suites.
+  EXPECT_EQ(ipsec_connection_->ike_encryption_algo(),
+            Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_128);
+  EXPECT_EQ(ipsec_connection_->ike_integrity_algo(),
+            Metrics::kVpnIpsecIntegrityAlgorithm_HMAC_SHA2_256_128);
+  EXPECT_EQ(ipsec_connection_->ike_dh_group(),
+            Metrics::kVpnIpsecDHGroup_MODP_3072);
+  EXPECT_EQ(ipsec_connection_->esp_encryption_algo(),
+            Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_128);
+  EXPECT_EQ(ipsec_connection_->esp_integrity_algo(),
+            Metrics::kVpnIpsecIntegrityAlgorithm_HMAC_SHA2_256_128);
+}
+
+TEST_F(IPsecConnectionTest, SwanctlListSAsIKEv2ParseVIPFailed) {
+  SetAsIKEv2Connection();
+  ipsec_connection_->set_state(VPNConnection::State::kConnecting);
+
+  ProcessManager::ExitWithStdoutCallback exit_cb;
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijailWithStdout(_, _, _, _, _, _))
+      .WillOnce(WithArg<5>(
+          [&exit_cb](ProcessManager::ExitWithStdoutCallback exit_callback) {
+            exit_cb = std::move(exit_callback);
+            return 123;
+          }));
+
+  ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kIPsecConnected);
+  EXPECT_CALL(*ipsec_connection_,
+              ScheduleConnectTask(ConnectStep::kIPsecStatusRead))
+      .Times(0);
+  std::move(exit_cb).Run(0, "");  // Passes an empty string.
+  EXPECT_CALL(callbacks_, OnFailure(Service::kFailureInternal));
+  dispatcher_.task_environment().RunUntilIdle();
 }
 
 TEST_F(IPsecConnectionTest, StartL2TPLayerAndConnected) {
@@ -570,6 +663,56 @@ TEST_F(IPsecConnectionTest, OnL2TPStopped) {
   EXPECT_CALL(process_manager_, StopProcess(kCharonPid));
 
   EXPECT_CALL(callbacks_, OnStopped());
+  dispatcher_.task_environment().RunUntilIdle();
+}
+
+TEST_F(IPsecConnectionTest, CreateXFRMInterfaceAndNotifyConnected) {
+  SetAsIKEv2Connection();
+  ipsec_connection_->set_state(VPNConnection::State::kConnecting);
+
+  constexpr int kLoIndex = 10;
+  constexpr int kIfIndex = 123;
+  std::string actual_if_name;
+  std::string actual_if_id;
+  DeviceInfo::LinkReadyCallback registered_link_ready_cb;
+  EXPECT_CALL(device_info_, GetIndex("lo")).WillOnce(Return(kLoIndex));
+  EXPECT_CALL(device_info_, CreateXFRMInterface(_, kLoIndex, _, _, _))
+      .WillOnce([&](const std::string& if_name, int, int if_id,
+                    DeviceInfo::LinkReadyCallback link_ready_cb,
+                    base::OnceClosure failure_cb) {
+        actual_if_name = if_name;
+        actual_if_id = if_id;
+        registered_link_ready_cb = std::move(link_ready_cb);
+        return true;
+      });
+
+  ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kIPsecStatusRead);
+
+  std::move(registered_link_ready_cb).Run(actual_if_name, kIfIndex);
+  EXPECT_CALL(callbacks_, OnConnected(actual_if_name, kIfIndex, _));
+  dispatcher_.task_environment().RunUntilIdle();
+}
+
+TEST_F(IPsecConnectionTest, CreateXFRMInterfaceFailed) {
+  SetAsIKEv2Connection();
+  ipsec_connection_->set_state(VPNConnection::State::kConnecting);
+
+  constexpr int kLoIndex = 10;
+  base::OnceClosure registered_failure_cb;
+  EXPECT_CALL(device_info_, GetIndex("lo")).WillOnce(Return(kLoIndex));
+  EXPECT_CALL(device_info_, CreateXFRMInterface(_, kLoIndex, _, _, _))
+      .WillOnce(
+          [&registered_failure_cb](const std::string& if_name, int, int if_id,
+                                   DeviceInfo::LinkReadyCallback link_ready_cb,
+                                   base::OnceClosure failure_cb) {
+            registered_failure_cb = std::move(failure_cb);
+            return true;
+          });
+
+  ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kIPsecStatusRead);
+
+  std::move(registered_failure_cb).Run();
+  EXPECT_CALL(callbacks_, OnFailure(Service::kFailureInternal));
   dispatcher_.task_environment().RunUntilIdle();
 }
 

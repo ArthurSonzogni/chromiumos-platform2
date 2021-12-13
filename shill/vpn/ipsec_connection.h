@@ -17,6 +17,7 @@
 #include <base/files/scoped_temp_dir.h>
 
 #include "shill/certificate_file.h"
+#include "shill/device_info.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/process_manager.h"
@@ -41,6 +42,13 @@ namespace shill {
 class IPsecConnection : public VPNConnection {
  public:
   struct Config {
+    enum class IKEVersion {
+      kV1,
+      kV2,
+    };
+
+    IKEVersion ike_version;
+
     // Remote hostname or IP address.
     std::string remote;
 
@@ -90,6 +98,7 @@ class IPsecConnection : public VPNConnection {
   explicit IPsecConnection(std::unique_ptr<Config> config,
                            std::unique_ptr<Callbacks> callbacks,
                            std::unique_ptr<VPNConnection> l2tp_connection,
+                           DeviceInfo* device_info,
                            EventDispatcher* dispatcher,
                            ProcessManager* process_manager);
   ~IPsecConnection();
@@ -142,6 +151,9 @@ class IPsecConnection : public VPNConnection {
   // Executes `swanctl --list-sas`, and parses the needed information from the
   // stdout of the execution. Trigger |kIPsecStatusRead| on success.
   void SwanctlListSAs();
+  // Lets DeviceInfo create a XFRM interface. Will only be called for an IKEv2
+  // connection.
+  void CreateXFRMInterface();
 
   // This function will be called when the vici socket file is created, and may
   // be called multiple times if charon is still not listening on that socket.
@@ -167,10 +179,13 @@ class IPsecConnection : public VPNConnection {
   // executes |step|.
   void SwanctlNextStep(ConnectStep step, const std::string& stdout_str);
 
+  // Parses and sets the |local_virtual_ip| (the overlay IP) from the output of
+  // `swanctl --list-sas`.
+  void ParseLocalVirtualIP(const std::vector<std::string>& swanctl_output);
   // Parses and sets the cipher suite for IKE and ESP from the output of
   // `swanctl --list-sas`.
-  void SetIKECipherSuite(const std::vector<std::string>& swanctl_output);
-  void SetESPCipherSuite(const std::vector<std::string>& swanctl_output);
+  void ParseIKECipherSuite(const std::vector<std::string>& swanctl_output);
+  void ParseESPCipherSuite(const std::vector<std::string>& swanctl_output);
 
   // Callbacks from L2TPConnection.
   void OnL2TPConnected(const std::string& interface_name,
@@ -178,6 +193,9 @@ class IPsecConnection : public VPNConnection {
                        const IPConfig::Properties& properties);
   void OnL2TPFailure(Service::ConnectFailure reason);
   void OnL2TPStopped();
+
+  // Callback from DeviceInfo.
+  void OnXFRMInterfaceReady(const std::string& if_name, int if_index);
 
   // Stops the charon process if it is running and invokes NotifyStopped().
   void StopCharon();
@@ -195,6 +213,12 @@ class IPsecConnection : public VPNConnection {
   base::FilePath vici_socket_path_;
   std::unique_ptr<base::FilePathWatcher> vici_socket_watcher_;
 
+  // Variables only used in an IKEv2 connection.
+  // Set when the XFRM interface is created.
+  std::optional<int> xfrm_interface_index_;
+  // Set when the IPsec layer is connected.
+  std::string local_virtual_ip_;
+
   // Cipher algorithms used by this connection. Set when IPsec is connected.
   Metrics::VpnIpsecEncryptionAlgorithm ike_encryption_algo_;
   Metrics::VpnIpsecIntegrityAlgorithm ike_integrity_algo_;
@@ -203,6 +227,7 @@ class IPsecConnection : public VPNConnection {
   Metrics::VpnIpsecIntegrityAlgorithm esp_integrity_algo_;
 
   // External dependencies.
+  DeviceInfo* device_info_;
   ProcessManager* process_manager_;
   std::unique_ptr<VPNUtil> vpn_util_;
 

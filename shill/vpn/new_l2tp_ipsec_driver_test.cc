@@ -48,6 +48,7 @@ class NewL2TPIPsecDriverUnderTest : public NewL2TPIPsecDriver {
       std::unique_ptr<IPsecConnection::Config> config,
       std::unique_ptr<VPNConnection::Callbacks> callbacks,
       std::unique_ptr<VPNConnection> l2tp_connection,
+      DeviceInfo* device_info,
       EventDispatcher* dispatcher,
       ProcessManager* process_manager) override {
     ipsec_config_ = std::move(config);

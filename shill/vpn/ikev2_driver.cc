@@ -64,7 +64,7 @@ void IKEv2Driver::StartIPsecConnection() {
   // values.
   ipsec_connection_ = CreateIPsecConnection(
       std::make_unique<IPsecConnection::Config>(), std::move(callbacks),
-      manager()->dispatcher(), process_manager());
+      manager()->device_info(), manager()->dispatcher(), process_manager());
 
   ipsec_connection_->Connect();
 }
@@ -72,11 +72,12 @@ void IKEv2Driver::StartIPsecConnection() {
 std::unique_ptr<VPNConnection> IKEv2Driver::CreateIPsecConnection(
     std::unique_ptr<IPsecConnection::Config> config,
     std::unique_ptr<VPNConnection::Callbacks> callbacks,
+    DeviceInfo* device_info,
     EventDispatcher* dispatcher,
     ProcessManager* process_manager) {
   return std::make_unique<IPsecConnection>(
       std::move(config), std::move(callbacks), /*l2tp_connection=*/nullptr,
-      dispatcher, process_manager);
+      device_info, dispatcher, process_manager);
 }
 
 void IKEv2Driver::Disconnect() {

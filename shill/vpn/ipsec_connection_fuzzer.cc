@@ -9,20 +9,16 @@
 
 #include "shill/process_manager.h"
 #include "shill/vpn/ipsec_connection.h"
-#include "shill/vpn/l2tp_connection.h"
 
 namespace shill {
 
 class IPsecConnectionUnderTest : public IPsecConnection {
  public:
+  // Initialized the IPsecConnection class without an L2TPConnection, and thus
+  // the code path for parsing virtual IP can be covered.
   explicit IPsecConnectionUnderTest(ProcessManager* process_manager)
       : IPsecConnection(
-            nullptr,
-            nullptr,
-            std::make_unique<L2TPConnection>(
-                nullptr, nullptr, nullptr, nullptr, nullptr, nullptr),
-            nullptr,
-            process_manager) {}
+            nullptr, nullptr, nullptr, nullptr, nullptr, process_manager) {}
 
   IPsecConnectionUnderTest(const IPsecConnectionUnderTest&) = delete;
   IPsecConnectionUnderTest& operator=(const IPsecConnectionUnderTest&) = delete;

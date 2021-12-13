@@ -54,6 +54,7 @@ class IKEv2Driver : public VPNDriver {
   mockable std::unique_ptr<VPNConnection> CreateIPsecConnection(
       std::unique_ptr<IPsecConnection::Config> config,
       std::unique_ptr<VPNConnection::Callbacks> callbacks,
+      DeviceInfo* device_info,
       EventDispatcher* dispatcher,
       ProcessManager* process_manager);
 
