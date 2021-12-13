@@ -208,9 +208,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
       return;
     }
 
-    Node* node = GetInodeTable().Lookup(parent, name);
-    if (!node)
-      node = GetInodeTable().Create(parent, name);
+    Node* node = GetInodeTable().Ensure(parent, name);
     if (!node) {
       request->ReplyError(errno);
       PLOG(ERROR) << " lookup " << parent << " " << name;
@@ -325,8 +323,8 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     DirEntryResponse* response = it->second.get();
     if (file_error) {
       int error = FileErrorToErrno(file_error);
-      PLOG(ERROR) << base::safe_strerror(error) << " readdir error ["
-                  << file_error << "]";
+      LOG(ERROR) << base::safe_strerror(error) << " readdir error ["
+                 << file_error << "]";
       response->Append(error);
       return;
     }
@@ -342,22 +340,15 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     CHECK(proto.ParseFromArray(list.data(), list.size()));
 
     for (const auto& item : proto.entries()) {
-      mode_t mode = item.is_directory() ? S_IFDIR : S_IFREG;
-      mode = MakeStatModeBits(mode | 0770);
       const char* name = item.name().c_str();
-
-      if (Node* exists = GetInodeTable().Lookup(parent, name)) {
-        entries.push_back({exists->ino, item.name(), mode});
-        continue;
+      if (Node* node = GetInodeTable().Ensure(parent, name)) {
+        mode_t mode = item.is_directory() ? S_IFDIR | 0770 : S_IFREG | 0770;
+        entries.push_back({node->ino, item.name(), MakeStatModeBits(mode)});
+      } else {
+        response->Append(errno);
+        PLOG(ERROR) << "parent ino: " << parent << " name: " << item.name();
+        return;
       }
-
-      if (Node* create = GetInodeTable().Create(parent, name)) {
-        entries.push_back({create->ino, item.name(), mode});
-        continue;
-      }
-
-      response->Append(errno);
-      return;
     }
 
     response->Append(std::move(entries), !has_more);
