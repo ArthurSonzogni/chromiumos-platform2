@@ -75,7 +75,9 @@ _accumulate_policy_files() {
       done < "${file}"
     fi
   done
-  printf "%b" "${accum}" > "${output}"
+  if [ ! -e "${CHROMIUMOS_PROCESS_MGMT_POLICIES}" ]; then
+    printf "%b" "${accum}" > "${output}"
+  fi
 }
 
 # Determine where securityfs files are placed.
@@ -90,6 +92,12 @@ configure_process_mgmt_security() {
   elif [ -e "${SAFESETID_PROCESS_MGMT_POLICIES}" ]; then
     _accumulate_policy_files \
       "${SAFESETID_PROCESS_MGMT_POLICIES}" \
+      /usr/share/cros/startup/process_management_policies/*
+  else
+    # ${CHROMIUMOS_PROCESSS_MGMT_POLICIES} exists. In this function
+    # call, parameter "${output}" is irrelevant to function behavior.
+    _accumulate_policy_files \
+      "${CHROMIUMOS_PROCESS_MGMT_POLICIES}" \
       /usr/share/cros/startup/process_management_policies/*
   fi
   # For GID relevant files.
