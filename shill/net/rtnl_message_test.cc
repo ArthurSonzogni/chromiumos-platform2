@@ -10,10 +10,10 @@
 #include <linux/rtnetlink.h>
 #include <sys/socket.h>
 
-#include <regex>
 #include <string>
 
 #include <gtest/gtest.h>
+#include <re2/re2.h>
 
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"
@@ -1018,7 +1018,7 @@ TEST_F(RTNLMessageTest, ToString) {
   for (const auto& tt : test_cases) {
     RTNLMessage msg;
     EXPECT_TRUE(msg.Decode(ByteString(tt.payload, tt.length)));
-    EXPECT_TRUE(std::regex_match(msg.ToString(), std::regex(tt.regexp)))
+    EXPECT_TRUE(RE2::FullMatch(msg.ToString(), tt.regexp))
         << '"' << msg.ToString() << "\" did not match regex \"" << tt.regexp
         << '"';
   }
