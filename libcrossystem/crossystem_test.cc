@@ -68,5 +68,24 @@ TEST_F(CrossystemTest, SetBooleanPropertyFalseFails) {
   EXPECT_FALSE(crossystem_->SetSystemPropertyBool("fake", false));
 }
 
+TEST_F(CrossystemTest, IsHardwareWriteProtectEnabledTrue) {
+  fake_->VbSetSystemPropertyInt(Crossystem::kHardwareWriteProtect, 1);
+  EXPECT_TRUE(crossystem_->HardwareWriteProtectIsEnabled());
+}
+
+TEST_F(CrossystemTest, IsHardwareWriteProtectEnabledFalse) {
+  fake_->VbSetSystemPropertyInt(Crossystem::kHardwareWriteProtect, 0);
+  EXPECT_FALSE(crossystem_->HardwareWriteProtectIsEnabled());
+}
+
+TEST_F(CrossystemTest, IsHardwareWriteProtectEnabledNotBoolean) {
+  fake_->VbSetSystemPropertyInt(Crossystem::kHardwareWriteProtect, -1);
+  EXPECT_DEATH(crossystem_->HardwareWriteProtectIsEnabled(), kCheckFailedRegex);
+}
+
+TEST_F(CrossystemTest, IsHardwareWriteProtectEnabledPropertyDoesNotExist) {
+  EXPECT_DEATH(crossystem_->HardwareWriteProtectIsEnabled(), kCheckFailedRegex);
+}
+
 }  // namespace
 }  // namespace crossystem

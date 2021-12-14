@@ -51,6 +51,18 @@ class BRILLO_EXPORT Crossystem {
   /// @return |true| if it succeeds; |false| if it fails.
   bool SetSystemPropertyBool(const std::string& name, bool value);
 
+  /// Get hardware write protect status.
+  ///
+  /// @note Crashes if the underlying status is not set or set to an invalid
+  /// value.
+  ///
+  /// @return true if hardware write protect is enabled; false otherwise.
+  bool HardwareWriteProtectIsEnabled() const;
+
+  // Use the helper methods (e.g., HardwareProtectIsEnabled()) rather than
+  // using these constants directly.
+  BRILLO_PRIVATE static constexpr char kHardwareWriteProtect[] = "wpsw_cur";
+
  private:
   std::unique_ptr<CrossystemVbootInterface> impl_;
 };

@@ -42,4 +42,10 @@ bool Crossystem::SetSystemPropertyBool(const std::string& name, bool value) {
   return VbSetSystemPropertyInt(name, value);
 }
 
+bool Crossystem::HardwareWriteProtectIsEnabled() const {
+  std::optional<bool> ret = GetSystemPropertyBool(kHardwareWriteProtect);
+  CHECK(ret.has_value());
+  return *ret;
+}
+
 }  // namespace crossystem
