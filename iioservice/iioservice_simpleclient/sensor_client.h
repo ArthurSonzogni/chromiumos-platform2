@@ -24,6 +24,9 @@ class SensorClient : public cros::mojom::SensorHalClient {
 
   static void SensorClientDeleter(SensorClient* observer);
 
+  using ScopedSensorClient =
+      std::unique_ptr<SensorClient, decltype(&SensorClientDeleter)>;
+
   void BindClient(mojo::PendingReceiver<cros::mojom::SensorHalClient> client);
 
   // cros::mojom::SensorHalClient overrides:
