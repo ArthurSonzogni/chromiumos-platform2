@@ -4,8 +4,6 @@
 
 #include "fusebox/make_stat.h"
 
-#include <unistd.h>
-
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
@@ -51,8 +49,8 @@ struct stat MakeStat(ino_t ino, const struct stat& s, bool read_only) {
   stat.st_ino = ino;
   stat.st_mode = MakeStatModeBits(s.st_mode, read_only);
   stat.st_nlink = 1;
-  stat.st_uid = getuid();
-  stat.st_gid = getgid();
+  stat.st_uid = kChronosUID;
+  stat.st_gid = kChronosAccessGID;
 
   return stat;
 }
@@ -78,8 +76,8 @@ struct stat GetServerStat(ino_t ino,
   stat.st_mode = MakeStatModeBits(mode | 0777, read_only);
   stat.st_size = size;
   stat.st_nlink = 1;
-  stat.st_uid = getuid();
-  stat.st_gid = getgid();
+  stat.st_uid = kChronosUID;
+  stat.st_gid = kChronosAccessGID;
 
   using atime_type = decltype(stat.st_atime);
   struct timeval atime = base::Time::FromDoubleT(last_accessed).ToTimeVal();

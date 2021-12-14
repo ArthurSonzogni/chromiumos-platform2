@@ -4,7 +4,6 @@
 
 #include "fusebox/make_stat.h"
 
-#include <unistd.h>
 #include <memory>
 
 #include <base/files/file.h>
@@ -132,8 +131,8 @@ TEST(MakeStatTest, MakeStat) {
   expected.st_ino = ino;
   expected.st_mode = 0;
   expected.st_nlink = 1;
-  expected.st_uid = getuid();
-  expected.st_gid = getgid();
+  expected.st_uid = kChronosUID;
+  expected.st_gid = kChronosAccessGID;
 
   for (const mode_t type : {S_IFDIR, S_IFREG}) {
     struct stat stat = {0};
@@ -196,8 +195,8 @@ TEST(MakeStatTest, GetServerStatFile) {
   EXPECT_EQ("-rw-rw----", StatModeToString(mode_t(stat_rw.st_mode)));
   EXPECT_EQ(1, stat_rw.st_ino);
   EXPECT_EQ(1, stat_rw.st_nlink);
-  EXPECT_EQ(getuid(), stat_rw.st_uid);
-  EXPECT_EQ(getgid(), stat_rw.st_gid);
+  EXPECT_EQ(kChronosUID, stat_rw.st_uid);
+  EXPECT_EQ(kChronosAccessGID, stat_rw.st_gid);
   EXPECT_EQ(42, stat_rw.st_size);
   EXPECT_EQ(43, stat_rw.st_atime);
   EXPECT_EQ(44, stat_rw.st_mtime);
@@ -210,8 +209,8 @@ TEST(MakeStatTest, GetServerStatFile) {
   EXPECT_EQ("-r--r-----", StatModeToString(mode_t(stat_ro.st_mode)));
   EXPECT_EQ(2, stat_ro.st_ino);
   EXPECT_EQ(1, stat_ro.st_nlink);
-  EXPECT_EQ(getuid(), stat_ro.st_uid);
-  EXPECT_EQ(getgid(), stat_ro.st_gid);
+  EXPECT_EQ(kChronosUID, stat_ro.st_uid);
+  EXPECT_EQ(kChronosAccessGID, stat_ro.st_gid);
   EXPECT_EQ(42, stat_ro.st_size);
   EXPECT_EQ(43, stat_ro.st_atime);
   EXPECT_EQ(44, stat_ro.st_mtime);
@@ -235,8 +234,8 @@ TEST(MakeStatTest, GetServerStatDirectory) {
   EXPECT_EQ("drwxrwx---", StatModeToString(mode_t(stat_rw.st_mode)));
   EXPECT_EQ(1, stat_rw.st_ino);
   EXPECT_EQ(1, stat_rw.st_nlink);
-  EXPECT_EQ(getuid(), stat_rw.st_uid);
-  EXPECT_EQ(getgid(), stat_rw.st_gid);
+  EXPECT_EQ(kChronosUID, stat_rw.st_uid);
+  EXPECT_EQ(kChronosAccessGID, stat_rw.st_gid);
   EXPECT_EQ(46, stat_rw.st_size);
   EXPECT_EQ(47, stat_rw.st_atime);
   EXPECT_EQ(48, stat_rw.st_mtime);
@@ -249,8 +248,8 @@ TEST(MakeStatTest, GetServerStatDirectory) {
   EXPECT_EQ("dr-xr-x---", StatModeToString(mode_t(stat_ro.st_mode)));
   EXPECT_EQ(2, stat_ro.st_ino);
   EXPECT_EQ(1, stat_ro.st_nlink);
-  EXPECT_EQ(getuid(), stat_ro.st_uid);
-  EXPECT_EQ(getgid(), stat_ro.st_gid);
+  EXPECT_EQ(kChronosUID, stat_ro.st_uid);
+  EXPECT_EQ(kChronosAccessGID, stat_ro.st_gid);
   EXPECT_EQ(46, stat_ro.st_size);
   EXPECT_EQ(47, stat_ro.st_atime);
   EXPECT_EQ(48, stat_ro.st_mtime);
@@ -264,8 +263,8 @@ TEST(MakeStatTest, ShowStatForEntryName) {
   stat.st_ino = 41;
   stat.st_mode = MakeStatModeBits(S_IFDIR | 0777);
   stat.st_nlink = 42;
-  stat.st_uid = 1000;
-  stat.st_gid = 1001;
+  stat.st_uid = kChronosUID;
+  stat.st_gid = kChronosAccessGID;
   stat.st_rdev = 43;
   stat.st_atime = 44;
   stat.st_mtime = 45;
