@@ -20,9 +20,9 @@ namespace power_manager {
 namespace policy {
 
 ShutdownFromSuspend::ShutdownFromSuspend()
-    : ShutdownFromSuspend(timers::SimpleAlarmTimer::Create()) {}
+    : ShutdownFromSuspend(brillo::timers::SimpleAlarmTimer::Create()) {}
 ShutdownFromSuspend::ShutdownFromSuspend(
-    std::unique_ptr<timers::SimpleAlarmTimer> alarm_timer)
+    std::unique_ptr<brillo::timers::SimpleAlarmTimer> alarm_timer)
     : alarm_timer_(std::move(alarm_timer)) {}
 ShutdownFromSuspend::~ShutdownFromSuspend() = default;
 

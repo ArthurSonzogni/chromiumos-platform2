@@ -23,7 +23,8 @@ constexpr auto kRunLoopDelay = base::TimeDelta::FromMilliseconds(200);
 class ShutdownFromSuspendTest : public ::testing::Test {
  public:
   ShutdownFromSuspendTest()
-      : shutdown_from_suspend_(timers::SimpleAlarmTimer::CreateForTesting()) {}
+      : shutdown_from_suspend_(
+            brillo::timers::SimpleAlarmTimer::CreateForTesting()) {}
   ShutdownFromSuspendTest(const ShutdownFromSuspendTest&) = delete;
   ShutdownFromSuspendTest& operator=(const ShutdownFromSuspendTest&) = delete;
 

@@ -88,6 +88,7 @@ libbrillo_sublibs = [
       "brillo/secure_string.cc",
       "brillo/strings/string_utils.cc",
       "brillo/syslog_logging.cc",
+      "brillo/timers/alarm_timer.cc",
       "brillo/timezone/tzif_parser.cc",
       "brillo/type_name_undecorate.cc",
       "brillo/url_utils.cc",

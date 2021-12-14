@@ -11,7 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/time/time.h>
-#include <components/timers/alarm_timer_chromeos.h>
+#include <brillo/timers/alarm_timer.h>
 
 namespace power_manager {
 
@@ -85,8 +85,8 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
 
   // Timer to wake the system from suspend. Set when suspend_duration is passed
   // to  PrepareForSuspend().
-  std::unique_ptr<timers::SimpleAlarmTimer> alarm_ =
-      timers::SimpleAlarmTimer::Create();
+  std::unique_ptr<brillo::timers::SimpleAlarmTimer> alarm_ =
+      brillo::timers::SimpleAlarmTimer::Create();
 
   // Mode for suspend. One of Suspend-to-idle, Power-on-suspend, or
   // Suspend-to-RAM.

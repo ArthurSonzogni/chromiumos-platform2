@@ -12,7 +12,7 @@
 
 #include <base/macros.h>
 #include <base/time/time.h>
-#include <components/timers/alarm_timer_chromeos.h>
+#include <brillo/timers/alarm_timer.h>
 
 namespace power_manager {
 
@@ -44,7 +44,8 @@ class ShutdownFromSuspend : public ShutdownFromSuspendInterface {
   void HandleFullResume() override;
 
  private:
-  ShutdownFromSuspend(std::unique_ptr<timers::SimpleAlarmTimer> alarm_timer);
+  ShutdownFromSuspend(
+      std::unique_ptr<brillo::timers::SimpleAlarmTimer> alarm_timer);
   ShutdownFromSuspend(const ShutdownFromSuspend&) = delete;
   ShutdownFromSuspend& operator=(const ShutdownFromSuspend&) = delete;
 
@@ -71,7 +72,7 @@ class ShutdownFromSuspend : public ShutdownFromSuspendInterface {
   // Has |alarm_timer_| fired since last full resume.
   bool timer_fired_ = false;
   // Timer to wake the system from suspend after |shutdown_delay_|.
-  std::unique_ptr<timers::SimpleAlarmTimer> alarm_timer_;
+  std::unique_ptr<brillo::timers::SimpleAlarmTimer> alarm_timer_;
 
   system::PowerSupplyInterface* power_supply_ = nullptr;  // weak
 

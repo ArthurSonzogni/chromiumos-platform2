@@ -19,7 +19,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/posix/unix_domain_socket.h>
 #include <brillo/daemons/daemon.h>
-#include <components/timers/alarm_timer_chromeos.h>
+#include <brillo/timers/alarm_timer.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 
@@ -83,7 +83,7 @@ struct ArcTimerManager::ArcTimerInfo {
   ArcTimerInfo(ArcTimerInfo&&) = delete;
   ArcTimerInfo(clockid_t clock_id,
                base::ScopedFD expiration_fd,
-               std::unique_ptr<timers::SimpleAlarmTimer> timer)
+               std::unique_ptr<brillo::timers::SimpleAlarmTimer> timer)
       : clock_id(clock_id),
         expiration_fd(std::move(expiration_fd)),
         timer(std::move(timer)) {}
@@ -100,7 +100,7 @@ struct ArcTimerManager::ArcTimerInfo {
   // constructor to create timers of different clock types.
   //
   // The timer that will be scheduled.
-  const std::unique_ptr<timers::SimpleAlarmTimer> timer;
+  const std::unique_ptr<brillo::timers::SimpleAlarmTimer> timer;
 };
 
 void ArcTimerManager::Init(DBusWrapperInterface* dbus_wrapper) {
@@ -244,10 +244,11 @@ std::unique_ptr<ArcTimerManager::ArcTimerInfo> ArcTimerManager::CreateArcTimer(
   if (create_for_testing) {
     return std::make_unique<ArcTimerInfo>(
         clock_id, std::move(expiration_fd),
-        timers::SimpleAlarmTimer::CreateForTesting());
+        brillo::timers::SimpleAlarmTimer::CreateForTesting());
   }
-  return std::make_unique<ArcTimerInfo>(clock_id, std::move(expiration_fd),
-                                        timers::SimpleAlarmTimer::Create());
+  return std::make_unique<ArcTimerInfo>(
+      clock_id, std::move(expiration_fd),
+      brillo::timers::SimpleAlarmTimer::Create());
 }
 
 // static.
