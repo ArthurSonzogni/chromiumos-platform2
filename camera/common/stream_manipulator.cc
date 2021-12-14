@@ -93,7 +93,7 @@ void MaybeEnableHdrNetStreamManipulator(
 
 void MaybeEnableAutoFramingStreamManipulator(
     std::vector<std::unique_ptr<StreamManipulator>>* out_stream_manipulators) {
-#if USE_CAMERA_AUTO_FRAMING
+#if USE_CAMERA_FEATURE_AUTO_FRAMING
   if (base::PathExists(
           base::FilePath(constants::kForceDisableAutoFramingPath))) {
     // Auto-framing is forcibly disabled.
@@ -104,6 +104,7 @@ void MaybeEnableAutoFramingStreamManipulator(
     // Auto-framing is forcibly enabled.
     out_stream_manipulators->emplace_back(
         std::make_unique<AutoFramingStreamManipulator>());
+    LOGF(INFO) << "AutoFramingStreamManipulator enabled";
   }
 #endif
 }
