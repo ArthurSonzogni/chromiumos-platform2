@@ -14,6 +14,7 @@ group("all") {
   if (use.test) {
     deps += [
       ":c_feature_check_example",
+      ":cpp_feature_check_example",
       ":feature_library_test",
     ]
   }
@@ -87,6 +88,11 @@ if (use.test) {
   executable("c_feature_check_example") {
     sources = [ "c_feature_check_example.c" ]
     deps = [ ":libfeatures_c" ]
+  }
+  executable("cpp_feature_check_example") {
+    sources = [ "cpp_feature_check_example.cc" ]
+    configs += [ ":test_helper_config" ]
+    deps = [ ":libfeatures" ]
   }
 }
 
