@@ -81,9 +81,9 @@ bool LogicalVolumeBackingDevice::Create() {
     return false;
   }
 
-  base::DictionaryValue lv_config;
-  lv_config.SetString("name", name_);
-  lv_config.SetString("size", base::NumberToString(size_));
+  base::Value lv_config(base::Value::Type::DICTIONARY);
+  lv_config.SetStringKey("name", name_);
+  lv_config.SetStringKey("size", base::NumberToString(size_));
 
   base::Optional<brillo::LogicalVolume> lv =
       lvm_->CreateLogicalVolume(*vg, *thinpool, lv_config);
