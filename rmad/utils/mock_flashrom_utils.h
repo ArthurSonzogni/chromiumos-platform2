@@ -16,6 +16,7 @@ class MockFlashromUtils : public FlashromUtils {
   MockFlashromUtils() = default;
   ~MockFlashromUtils() override = default;
 
+  MOCK_METHOD(bool, GetSoftwareWriteProtectionStatus, (bool*), (override));
   MOCK_METHOD(bool, EnableSoftwareWriteProtection, (), (override));
   MOCK_METHOD(bool, DisableSoftwareWriteProtection, (), (override));
 };

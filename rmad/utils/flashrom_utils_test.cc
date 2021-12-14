@@ -22,6 +22,10 @@ using testing::StrictMock;
 
 namespace {
 
+constexpr char kWriteProtectEnabledOutput[] =
+    R"(WP: write protect is enabled.)";
+constexpr char kWriteProtectDisabledOutput[] =
+    R"(WP: write protect is disabled.)";
 constexpr char kFmapOutput[] =
     R"(area_offset="0x10" area_size="0x20" area_name="WP_RO")";
 constexpr char kFmapErrorOutput[] =
@@ -36,6 +40,42 @@ class FlashromUtilsTest : public testing::Test {
   FlashromUtilsTest() = default;
   ~FlashromUtilsTest() override = default;
 };
+
+TEST_F(FlashromUtilsTest, GetSoftwareWriteProtectionStatus_Enabled) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kWriteProtectEnabledOutput), Return(true)));
+  auto flashrom_utils =
+      std::make_unique<FlashromUtilsImpl>(std::move(mock_cmd_utils));
+
+  bool enabled;
+  EXPECT_TRUE(flashrom_utils->GetSoftwareWriteProtectionStatus(&enabled));
+  EXPECT_TRUE(enabled);
+}
+
+TEST_F(FlashromUtilsTest, GetSoftwareWriteProtectionStatus_Disabled) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kWriteProtectDisabledOutput), Return(true)));
+  auto flashrom_utils =
+      std::make_unique<FlashromUtilsImpl>(std::move(mock_cmd_utils));
+
+  bool enabled;
+  EXPECT_TRUE(flashrom_utils->GetSoftwareWriteProtectionStatus(&enabled));
+  EXPECT_FALSE(enabled);
+}
+
+TEST_F(FlashromUtilsTest, GetSoftwareWriteProtectionStatus_Failed) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
+  auto flashrom_utils =
+      std::make_unique<FlashromUtilsImpl>(std::move(mock_cmd_utils));
+
+  bool enabled;
+  EXPECT_FALSE(flashrom_utils->GetSoftwareWriteProtectionStatus(&enabled));
+}
 
 TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_Success) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();

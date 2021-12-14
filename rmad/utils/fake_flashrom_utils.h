@@ -15,6 +15,10 @@ class FakeFlashromUtils : public FlashromUtils {
   FakeFlashromUtils() = default;
   ~FakeFlashromUtils() override = default;
 
+  bool GetSoftwareWriteProtectionStatus(bool* enabled) override {
+    *enabled = true;
+    return true;
+  }
   bool EnableSoftwareWriteProtection() override { return true; }
   bool DisableSoftwareWriteProtection() override { return true; }
 };
