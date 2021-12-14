@@ -1,9 +1,9 @@
-// Copyright 2020 The Chromium OS Authors. All rights reserved.
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef IIOSERVICE_IIOSERVICE_SIMPLECLIENT_OBSERVER_IMPL_H_
-#define IIOSERVICE_IIOSERVICE_SIMPLECLIENT_OBSERVER_IMPL_H_
+#ifndef IIOSERVICE_IIOSERVICE_SIMPLECLIENT_SAMPLES_OBSERVER_H_
+#define IIOSERVICE_IIOSERVICE_SIMPLECLIENT_SAMPLES_OBSERVER_H_
 
 #include <memory>
 #include <string>
@@ -21,14 +21,14 @@
 
 namespace iioservice {
 
-class ObserverImpl final : public SensorClient,
-                           public cros::mojom::SensorDeviceSamplesObserver {
+class SamplesObserver final : public SensorClient,
+                              public cros::mojom::SensorDeviceSamplesObserver {
  public:
-  using ScopedObserverImpl =
-      std::unique_ptr<ObserverImpl, decltype(&SensorClientDeleter)>;
+  using ScopedSamplesObserver =
+      std::unique_ptr<SamplesObserver, decltype(&SensorClientDeleter)>;
 
   // The task runner should be the same as the one provided to SensorClient.
-  static ScopedObserverImpl Create(
+  static ScopedSamplesObserver Create(
       scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
       int device_id,
       cros::mojom::DeviceType device_type,
@@ -43,14 +43,14 @@ class ObserverImpl final : public SensorClient,
   void OnErrorOccurred(cros::mojom::ObserverErrorType type) override;
 
  private:
-  ObserverImpl(scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
-               int device_id,
-               cros::mojom::DeviceType device_type,
-               std::vector<std::string> channel_ids,
-               double frequency,
-               int timeout,
-               int samples,
-               QuitCallback quit_callback);
+  SamplesObserver(scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
+                  int device_id,
+                  cros::mojom::DeviceType device_type,
+                  std::vector<std::string> channel_ids,
+                  double frequency,
+                  int timeout,
+                  int samples,
+                  QuitCallback quit_callback);
 
   // SensorClient overrides:
   void Start() override;
@@ -94,9 +94,9 @@ class ObserverImpl final : public SensorClient,
 
   mojo::Receiver<cros::mojom::SensorDeviceSamplesObserver> receiver_;
 
-  base::WeakPtrFactory<ObserverImpl> weak_factory_{this};
+  base::WeakPtrFactory<SamplesObserver> weak_factory_{this};
 };
 
 }  // namespace iioservice
 
-#endif  // IIOSERVICE_IIOSERVICE_SIMPLECLIENT_OBSERVER_IMPL_H_
+#endif  // IIOSERVICE_IIOSERVICE_SIMPLECLIENT_SAMPLES_OBSERVER_H_

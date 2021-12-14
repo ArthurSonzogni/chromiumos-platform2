@@ -1,8 +1,8 @@
-// Copyright 2020 The Chromium OS Authors. All rights reserved.
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "iioservice/iioservice_simpleclient/observer_impl.h"
+#include "iioservice/iioservice_simpleclient/samples_observer.h"
 
 #include <algorithm>
 #include <iostream>
@@ -31,7 +31,7 @@ constexpr base::TimeDelta kMaximumBaseLatencyTolerance =
 }  // namespace
 
 // static
-ObserverImpl::ScopedObserverImpl ObserverImpl::Create(
+SamplesObserver::ScopedSamplesObserver SamplesObserver::Create(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
     int device_id,
     cros::mojom::DeviceType device_type,
@@ -40,16 +40,16 @@ ObserverImpl::ScopedObserverImpl ObserverImpl::Create(
     int timeout,
     int samples,
     QuitCallback quit_callback) {
-  ScopedObserverImpl observer(
-      new ObserverImpl(ipc_task_runner, device_id, device_type,
-                       std::move(channel_ids), frequency, timeout, samples,
-                       std::move(quit_callback)),
+  ScopedSamplesObserver observer(
+      new SamplesObserver(ipc_task_runner, device_id, device_type,
+                          std::move(channel_ids), frequency, timeout, samples,
+                          std::move(quit_callback)),
       SensorClientDeleter);
 
   return observer;
 }
 
-void ObserverImpl::OnSampleUpdated(
+void SamplesObserver::OnSampleUpdated(
     const base::flat_map<int32_t, int64_t>& sample) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
   DCHECK_GT(result_freq_, 0.0);
@@ -128,7 +128,7 @@ void ObserverImpl::OnSampleUpdated(
   Reset();
 }
 
-void ObserverImpl::OnErrorOccurred(cros::mojom::ObserverErrorType type) {
+void SamplesObserver::OnErrorOccurred(cros::mojom::ObserverErrorType type) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   // Don't Change: Used as a check sentence in the tast test.
@@ -136,7 +136,7 @@ void ObserverImpl::OnErrorOccurred(cros::mojom::ObserverErrorType type) {
   Reset();
 }
 
-ObserverImpl::ObserverImpl(
+SamplesObserver::SamplesObserver(
     scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
     int device_id,
     cros::mojom::DeviceType device_type,
@@ -155,12 +155,12 @@ ObserverImpl::ObserverImpl(
       receiver_(this) {
   ipc_task_runner_->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&ObserverImpl::SetUpChannelTimeout,
+      base::BindOnce(&SamplesObserver::SetUpChannelTimeout,
                      weak_factory_.GetWeakPtr()),
       base::TimeDelta::FromMilliseconds(kSetUpChannelTimeoutInMilliseconds));
 }
 
-void ObserverImpl::Start() {
+void SamplesObserver::Start() {
   if (device_id_ < 0)
     GetDeviceIdsByType();
   else
@@ -168,17 +168,17 @@ void ObserverImpl::Start() {
 }
 
 mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver>
-ObserverImpl::GetRemote() {
+SamplesObserver::GetRemote() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   auto remote = receiver_.BindNewPipeAndPassRemote();
   receiver_.set_disconnect_handler(base::BindOnce(
-      &ObserverImpl::OnObserverDisconnect, weak_factory_.GetWeakPtr()));
+      &SamplesObserver::OnObserverDisconnect, weak_factory_.GetWeakPtr()));
 
   return remote;
 }
 
-void ObserverImpl::Reset() {
+void SamplesObserver::Reset() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   sensor_device_remote_.reset();
@@ -187,30 +187,30 @@ void ObserverImpl::Reset() {
   SensorClient::Reset();
 }
 
-void ObserverImpl::OnDeviceDisconnect() {
+void SamplesObserver::OnDeviceDisconnect() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   LOGF(ERROR) << "SensorDevice disconnected";
   Reset();
 }
 
-void ObserverImpl::OnObserverDisconnect() {
+void SamplesObserver::OnObserverDisconnect() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   LOGF(ERROR) << "Observer diconnected";
   Reset();
 }
 
-void ObserverImpl::GetDeviceIdsByType() {
+void SamplesObserver::GetDeviceIdsByType() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
   DCHECK_NE(device_type_, cros::mojom::DeviceType::NONE);
 
   sensor_service_remote_->GetDeviceIds(
-      device_type_, base::BindOnce(&ObserverImpl::GetDeviceIdsCallback,
+      device_type_, base::BindOnce(&SamplesObserver::GetDeviceIdsCallback,
                                    weak_factory_.GetWeakPtr()));
 }
 
-void ObserverImpl::GetDeviceIdsCallback(
+void SamplesObserver::GetDeviceIdsCallback(
     const std::vector<int32_t>& iio_device_ids) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
@@ -224,7 +224,7 @@ void ObserverImpl::GetDeviceIdsCallback(
   GetSensorDevice();
 }
 
-void ObserverImpl::GetSensorDevice() {
+void SamplesObserver::GetSensorDevice() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   if (sensor_device_remote_.is_bound())
@@ -234,18 +234,18 @@ void ObserverImpl::GetSensorDevice() {
       device_id_, sensor_device_remote_.BindNewPipeAndPassReceiver());
 
   sensor_device_remote_.set_disconnect_handler(base::BindOnce(
-      &ObserverImpl::OnDeviceDisconnect, weak_factory_.GetWeakPtr()));
+      &SamplesObserver::OnDeviceDisconnect, weak_factory_.GetWeakPtr()));
   GetAllChannelIds();
 }
 
-void ObserverImpl::GetAllChannelIds() {
+void SamplesObserver::GetAllChannelIds() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   sensor_device_remote_->GetAllChannelIds(base::BindOnce(
-      &ObserverImpl::GetAllChannelIdsCallback, weak_factory_.GetWeakPtr()));
+      &SamplesObserver::GetAllChannelIdsCallback, weak_factory_.GetWeakPtr()));
 }
 
-void ObserverImpl::GetAllChannelIdsCallback(
+void SamplesObserver::GetAllChannelIdsCallback(
     const std::vector<std::string>& iio_chn_ids) {
   iio_chn_ids_ = std::move(iio_chn_ids);
   channel_indices_.clear();
@@ -276,22 +276,22 @@ void ObserverImpl::GetAllChannelIdsCallback(
   StartReading();
 }
 
-void ObserverImpl::StartReading() {
+void SamplesObserver::StartReading() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   sensor_device_remote_->SetTimeout(timeout_);
   sensor_device_remote_->SetFrequency(
-      frequency_, base::BindOnce(&ObserverImpl::SetFrequencyCallback,
+      frequency_, base::BindOnce(&SamplesObserver::SetFrequencyCallback,
                                  weak_factory_.GetWeakPtr()));
   sensor_device_remote_->SetChannelsEnabled(
       channel_indices_, true,
-      base::BindOnce(&ObserverImpl::SetChannelsEnabledCallback,
+      base::BindOnce(&SamplesObserver::SetChannelsEnabledCallback,
                      weak_factory_.GetWeakPtr()));
 
   sensor_device_remote_->StartReadingSamples(GetRemote());
 }
 
-void ObserverImpl::SetFrequencyCallback(double result_freq) {
+void SamplesObserver::SetFrequencyCallback(double result_freq) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   result_freq_ = result_freq;
@@ -302,7 +302,7 @@ void ObserverImpl::SetFrequencyCallback(double result_freq) {
   Reset();
 }
 
-void ObserverImpl::SetChannelsEnabledCallback(
+void SamplesObserver::SetChannelsEnabledCallback(
     const std::vector<int32_t>& failed_indices) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 

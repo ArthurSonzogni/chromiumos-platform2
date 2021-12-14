@@ -22,10 +22,10 @@ pkg_config("target_defaults_pkg_deps") {
 static_library("libiioservice_simpleclient") {
   sources = [
     "daemon.cc",
-    "daemon_observer.cc",
     "daemon_query.cc",
-    "observer_impl.cc",
+    "daemon_samples_observer.cc",
     "query_impl.cc",
+    "samples_observer.cc",
     "sensor_client.cc",
   ]
   configs += [ ":target_defaults_pkg_deps" ]

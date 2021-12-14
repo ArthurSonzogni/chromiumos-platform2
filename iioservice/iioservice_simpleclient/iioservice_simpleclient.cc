@@ -12,7 +12,7 @@
 #include <brillo/flag_helper.h>
 
 #include "iioservice/iioservice_simpleclient/common.h"
-#include "iioservice/iioservice_simpleclient/daemon_observer.h"
+#include "iioservice/iioservice_simpleclient/daemon_samples_observer.h"
 #include "iioservice/include/common.h"
 #include "iioservice/mojo/sensor.mojom.h"
 
@@ -21,7 +21,7 @@ namespace {
 static const int kNumSuccessReads = 100;
 
 std::atomic<bool> daemon_running(false);
-std::unique_ptr<iioservice::DaemonObserver> exec_daemon;
+std::unique_ptr<iioservice::DaemonSamplesObserver> exec_daemon;
 
 void quit_daemon() {
   if (!daemon_running)
@@ -77,7 +77,7 @@ int main(int argc, char** argv) {
     exit(1);
   }
 
-  exec_daemon = std::make_unique<iioservice::DaemonObserver>(
+  exec_daemon = std::make_unique<iioservice::DaemonSamplesObserver>(
       FLAGS_device_id, static_cast<cros::mojom::DeviceType>(FLAGS_device_type),
       std::move(channel_ids), FLAGS_frequency, FLAGS_timeout, FLAGS_samples);
   signal(SIGTERM, signal_handler_stop);
