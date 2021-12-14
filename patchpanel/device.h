@@ -59,6 +59,8 @@ class Device {
     ~Config() = default;
 
     MacAddress mac_addr() const { return mac_addr_; }
+    void set_mac_addr(const MacAddress& mac) { mac_addr_ = mac; }
+
     uint32_t host_ipv4_addr() const { return host_ipv4_addr_->Address(); }
     uint32_t guest_ipv4_addr() const { return guest_ipv4_addr_->Address(); }
 

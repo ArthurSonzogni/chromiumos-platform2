@@ -67,6 +67,8 @@ class ArcService {
   // will be assigned to ARC Devices as they are added.
   void AllocateAddressConfigs();
 
+  void RefreshMacAddressesInConfigs();
+
   // Reserve a configuration for an interface.
   std::unique_ptr<Device::Config> AcquireConfig(ShillClient::Device::Type type);
 

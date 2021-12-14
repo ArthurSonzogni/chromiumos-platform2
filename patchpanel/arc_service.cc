@@ -252,6 +252,17 @@ void ArcService::AllocateAddressConfigs() {
   }
 }
 
+void ArcService::RefreshMacAddressesInConfigs() {
+  arc_device_->config().set_mac_addr(addr_mgr_->GenerateMacAddress());
+  for (const auto type :
+       {ShillClient::Device::Type::kEthernet, ShillClient::Device::Type::kWifi,
+        ShillClient::Device::Type::kCellular}) {
+    for (auto& c : available_configs_[type]) {
+      c->set_mac_addr(addr_mgr_->GenerateMacAddress());
+    }
+  }
+}
+
 std::unique_ptr<Device::Config> ArcService::AcquireConfig(
     ShillClient::Device::Type type) {
   // Normalize shill Device types for different ethernet flavors.
@@ -318,6 +329,11 @@ bool ArcService::Start(uint32_t id) {
                  << id;
       return false;
     }
+    // b/208240700: Refresh MAC address in AddressConfigs every time ARC starts
+    // to ensure ARC container has different MAC after optout and reopt-in.
+    // TODO(b/185881882): this should be safe to remove after b/185881882.
+    RefreshMacAddressesInConfigs();
+
     arc_device_ifname = ArcVethHostName(arc_device_->guest_ifname());
     if (!datapath_->ConnectVethPair(id, kArcNetnsName, arc_device_ifname,
                                     arc_device_->guest_ifname(),
