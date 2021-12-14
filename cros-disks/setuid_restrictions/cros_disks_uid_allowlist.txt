@@ -11,6 +11,8 @@
 213:311
 # fuse-exfat
 213:302
+# fuse-fusebox
+213:312
 # fuse-rar2fs
 213:308
 # fuse-zip
