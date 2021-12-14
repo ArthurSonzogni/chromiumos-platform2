@@ -130,6 +130,7 @@ void DimAdvisor::HandleSmartDimResponse(dbus::Response* response) {
 }
 
 void DimAdvisor::HandleHpsSenseSignal(dbus::Signal* signal) {
+  VLOG(2) << "DimAdvisor::HandleHpsSenseSignal is called.";
   // Hps sense is considered connected as soon as we get one signal from it.
   // Otherwise it maybe disabled inside HpsService.
   hps_sense_connected_ = true;
