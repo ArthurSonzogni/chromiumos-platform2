@@ -53,6 +53,7 @@ class MetricsLibraryInterface {
                                  int nbuckets,
                                  int num_samples) = 0;
 #endif
+  virtual void SetOutputFile(const std::string& output_file) = 0;
   virtual ~MetricsLibraryInterface() {}
 };
 
@@ -96,7 +97,7 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // fully available (e.g. when /var is not mounted). Note that the contents of
   // custom output files will not be sent to the server automatically, but need
   // to be imported via Replay() to get picked up by the reporting pipeline.
-  void SetOutputFile(const std::string& output_file);
+  void SetOutputFile(const std::string& output_file) override;
 
   // Replays metrics from the given file as if the events contained in |file|
   // where being generated via the SendXYZ functions.

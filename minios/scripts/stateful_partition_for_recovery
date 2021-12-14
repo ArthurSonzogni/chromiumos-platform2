@@ -1,0 +1,50 @@
+#!/bin/sh
+# Copyright 2022 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Gets the stateful partition name.
+# Used for recovery while booted from MiniOs.
+
+get_stateful_partition() {
+  local DST
+  . /usr/bin/write_gpt.sh
+  . /usr/share/misc/chromeos-common.sh
+  load_base_vars
+
+  DST="$(get_fixed_dst_drive)"
+  if [ -z "${DST}" ]; then
+    return 1
+  fi
+
+  if [ "${DST%[0-9]}" = "${DST}" ]; then
+    # e.g. sda => sda1
+    printf '%s' "${DST}1"
+  else
+    # e.g. mmcblk0 => mmcblk0p1
+    printf '%s' "${DST}p1"
+  fi
+}
+
+mount_stateful_partition() {
+  local stateful
+  if ! mountpoint -q /stateful; then
+    if stateful="$(get_stateful_partition)"; then
+      mount "${stateful}" /stateful
+    else
+      return 1
+    fi
+  fi
+}
+
+main() {
+  set -e
+
+  if [ "$1" = "--mount" ]; then
+    mount_stateful_partition
+  else
+    get_stateful_partition
+  fi
+}
+
+main "$@"

@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include "minios/metrics_reporter.h"
 #include "minios/recovery_installer.h"
 #include "minios/screens/screen_base.h"
 #include "minios/update_engine_proxy.h"
@@ -20,6 +21,7 @@ class ScreenDownload : public UpdateEngineProxy::UpdaterDelegate,
   ScreenDownload(std::unique_ptr<RecoveryInstallerInterface> recovery_installer,
                  std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
                  std::shared_ptr<DrawInterface> draw_utils,
+                 std::unique_ptr<MetricsReporterInterface> metrics_reporter,
                  ScreenControllerInterface* screen_controller);
 
   ~ScreenDownload() = default;
@@ -76,6 +78,9 @@ class ScreenDownload : public UpdateEngineProxy::UpdaterDelegate,
   // unnecessary screen changes.
   update_engine::Operation previous_update_state_{
       update_engine::Operation::IDLE};
+
+  // Used to report network-based recovery metrics.
+  std::unique_ptr<MetricsReporterInterface> metrics_reporter_;
 };
 
 }  // namespace minios

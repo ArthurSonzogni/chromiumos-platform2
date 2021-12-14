@@ -16,12 +16,14 @@ ScreenDownload::ScreenDownload(
     std::unique_ptr<RecoveryInstallerInterface> recovery_installer,
     std::shared_ptr<UpdateEngineProxy> update_engine_proxy,
     std::shared_ptr<DrawInterface> draw_utils,
+    std::unique_ptr<MetricsReporterInterface> metrics_reporter,
     ScreenControllerInterface* screen_controller)
     : ScreenBase(
           /*button_count=*/3, /*index_=*/1, draw_utils, screen_controller),
       recovery_installer_(std::move(recovery_installer)),
       update_engine_proxy_(update_engine_proxy),
-      display_update_engine_state_(false) {
+      display_update_engine_state_(false),
+      metrics_reporter_(std::move(metrics_reporter)) {
   update_engine_proxy_->SetDelegate(this);
 }
 
@@ -47,6 +49,7 @@ void ScreenDownload::Completed() {
   draw_utils_->ShowInstructions("title_MiniOS_complete");
   draw_utils_->ShowStepper({"done", "done", "done"});
 
+  metrics_reporter_->ReportNBRComplete();
   update_engine_proxy_->TriggerReboot();
 }
 

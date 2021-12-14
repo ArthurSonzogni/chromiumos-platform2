@@ -232,6 +232,10 @@ class TestMetricsLibrary : public MetricsLibraryInterface {
     return true;
   }
 
+  void SetOutputFile(const std::string& output_file) override {
+    ADD_FAILURE() << "Should not be reached";
+  }
+
  private:
   const std::string expected_use_time_metric_name_;
   int total_sent_{0};

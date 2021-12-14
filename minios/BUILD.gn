@@ -25,6 +25,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libmetrics",
     "libshill-client",
     "libupdate_engine-client",
     "protobuf-lite",
@@ -42,6 +43,7 @@ static_library("libminios") {
     "draw_utils.cc",
     "key_reader.cc",
     "logger.cc",
+    "metrics_reporter.cc",
     "minios.cc",
     "network_manager.cc",
     "process_manager.cc",
