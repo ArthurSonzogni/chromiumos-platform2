@@ -14,6 +14,9 @@ group("all") {
     ":libcrossystem_pc",
     ":libcrossystem_static",
   ]
+  if (use.test) {
+    deps += [ ":libcrossytem_tests" ]
+  }
 }
 
 default_pkg_deps = [
@@ -76,4 +79,20 @@ generate_pkg_config("libcrossystem_pc") {
   requires_private = default_pkg_deps
   libs = [ "-lcrossystem" ]
   install = true
+}
+
+if (use.test) {
+  executable("libcrossytem_tests") {
+    sources = [ "crossystem_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults_pkg_deps",
+    ]
+    run_test = true
+    deps = [
+      ":libcrossystem-test",
+      ":libcrossystem_static",
+      "//common-mk/testrunner",
+    ]
+  }
 }

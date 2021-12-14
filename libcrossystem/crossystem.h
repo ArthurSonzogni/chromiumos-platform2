@@ -38,6 +38,19 @@ class BRILLO_EXPORT Crossystem {
   bool VbSetSystemPropertyString(const std::string& name,
                                  const std::string& value);
 
+  /// Reads a system property boolean.
+  ///
+  /// @param name The name of the target system property.
+  /// @return The property value, or |base::nullopt| if error.
+  std::optional<bool> GetSystemPropertyBool(const std::string& name) const;
+
+  /// Sets a system property boolean.
+  ///
+  /// @param name The name of the target system property.
+  /// @param value The boolean value to set.
+  /// @return |true| if it succeeds; |false| if it fails.
+  bool SetSystemPropertyBool(const std::string& name, bool value);
+
  private:
   std::unique_ptr<CrossystemVbootInterface> impl_;
 };

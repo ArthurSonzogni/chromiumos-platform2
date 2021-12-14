@@ -4,6 +4,7 @@
 
 #include <libcrossystem/crossystem.h>
 
+#include <base/check_op.h>
 #include <optional>
 
 namespace crossystem {
@@ -25,6 +26,20 @@ std::optional<std::string> Crossystem::VbGetSystemPropertyString(
 bool Crossystem::VbSetSystemPropertyString(const std::string& name,
                                            const std::string& value) {
   return impl_->VbSetSystemPropertyString(name, value);
+}
+
+std::optional<bool> Crossystem::GetSystemPropertyBool(
+    const std::string& name) const {
+  std::optional<int> value = VbGetSystemPropertyInt(name);
+  if (!value.has_value()) {
+    return std::nullopt;
+  }
+  CHECK_GE(*value, 0);
+  return *value != 0;
+}
+
+bool Crossystem::SetSystemPropertyBool(const std::string& name, bool value) {
+  return VbSetSystemPropertyInt(name, value);
 }
 
 }  // namespace crossystem
