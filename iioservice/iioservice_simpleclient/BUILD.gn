@@ -6,6 +6,7 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":iioservice_event",
     ":iioservice_query",
     ":iioservice_simpleclient",
   ]
@@ -22,8 +23,11 @@ pkg_config("target_defaults_pkg_deps") {
 static_library("libiioservice_simpleclient") {
   sources = [
     "daemon.cc",
+    "daemon_events_observer.cc",
     "daemon_query.cc",
     "daemon_samples_observer.cc",
+    "events_observer.cc",
+    "observer.cc",
     "query_impl.cc",
     "samples_observer.cc",
     "sensor_client.cc",
@@ -37,6 +41,13 @@ static_library("libiioservice_simpleclient") {
 
 executable("iioservice_simpleclient") {
   sources = [ "iioservice_simpleclient.cc" ]
+  configs += [ ":target_defaults_pkg_deps" ]
+  install_path = "sbin"
+  deps = [ ":libiioservice_simpleclient" ]
+}
+
+executable("iioservice_event") {
+  sources = [ "iioservice_event.cc" ]
   configs += [ ":target_defaults_pkg_deps" ]
   install_path = "sbin"
   deps = [ ":libiioservice_simpleclient" ]

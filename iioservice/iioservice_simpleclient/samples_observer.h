@@ -16,13 +16,13 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "iioservice/iioservice_simpleclient/sensor_client.h"
+#include "iioservice/iioservice_simpleclient/observer.h"
 #include "iioservice/mojo/cros_sensor_service.mojom.h"
 #include "iioservice/mojo/sensor.mojom.h"
 
 namespace iioservice {
 
-class SamplesObserver final : public SensorClient,
+class SamplesObserver final : public Observer,
                               public cros::mojom::SensorDeviceSamplesObserver {
  public:
   using ScopedSamplesObserver =
@@ -54,17 +54,12 @@ class SamplesObserver final : public SensorClient,
                   QuitCallback quit_callback);
 
   // SensorClient overrides:
-  void Start() override;
   void Reset() override;
 
   mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> GetRemote();
 
-  void OnDeviceDisconnect();
-  void OnObserverDisconnect();
+  void GetSensorDevice() override;
 
-  void GetDeviceIdsByType();
-  void GetDeviceIdsCallback(const std::vector<int32_t>& iio_device_ids);
-  void GetSensorDevice();
   void GetAllChannelIds();
   void GetAllChannelIdsCallback(const std::vector<std::string>& iio_chn_ids);
 
@@ -73,25 +68,17 @@ class SamplesObserver final : public SensorClient,
   void SetFrequencyCallback(double result_freq);
   void SetChannelsEnabledCallback(const std::vector<int32_t>& failed_indices);
 
-  int device_id_ = -1;
-  cros::mojom::DeviceType device_type_ = cros::mojom::DeviceType::NONE;
+  base::TimeDelta GetLatencyTolerance() const override;
+
   const std::vector<std::string> channel_ids_;
   double frequency_;
   double result_freq_ = 0.0;
   int timeout_;
-  int samples_;
 
   std::vector<int32_t> channel_indices_;
   std::vector<std::string> iio_chn_ids_;
 
   std::optional<int> timestamp_index_ = std::nullopt;
-
-  int num_success_reads_ = 0;
-
-  base::TimeDelta total_latency_;
-  std::vector<base::TimeDelta> latencies_;
-
-  mojo::Remote<cros::mojom::SensorDevice> sensor_device_remote_;
 
   mojo::Receiver<cros::mojom::SensorDeviceSamplesObserver> receiver_;
 
