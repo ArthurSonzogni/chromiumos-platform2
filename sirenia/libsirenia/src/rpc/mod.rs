@@ -5,6 +5,7 @@
 //! A generic RPC implementation that depends on serializable and deserializable enums for requests
 //! and responses.
 
+use std::any::Any;
 use std::convert::TryInto;
 use std::fmt::{Debug, Formatter};
 use std::os::unix::io::{AsRawFd, RawFd};
@@ -48,6 +49,8 @@ pub enum Error {
     InvokeFailed,
     #[error("end of stream")]
     EndOfStream,
+    #[error("inner error")]
+    Inner(Box<dyn Any + Send + Sync + 'static>),
 }
 
 type Result<T> = StdResult<T, Error>;

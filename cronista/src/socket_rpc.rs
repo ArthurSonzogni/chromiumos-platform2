@@ -87,14 +87,14 @@ pub fn register_socket_rpc(
 #[derive(Clone)]
 struct CronistaServerImpl {}
 
-impl Cronista<()> for CronistaServerImpl {
+impl Cronista<anyhow::Error> for CronistaServerImpl {
     fn persist(
         &mut self,
         scope: Scope,
         domain: String,
         identifier: String,
         data: Vec<u8>,
-    ) -> std::result::Result<Status, ()> {
+    ) -> anyhow::Result<Status> {
         info!("Received persist message",);
         Ok(
             match storage::persist(scope, &domain, &identifier, data.as_slice()) {
@@ -112,7 +112,7 @@ impl Cronista<()> for CronistaServerImpl {
         scope: Scope,
         domain: String,
         identifier: String,
-    ) -> std::result::Result<(Status, Vec<u8>), ()> {
+    ) -> anyhow::Result<(Status, Vec<u8>)> {
         info!("Received retrieve message");
         let res = storage::retrieve(scope, &domain, &identifier);
         if is_unwritten_id(&res) {

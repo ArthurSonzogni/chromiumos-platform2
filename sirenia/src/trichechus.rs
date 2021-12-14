@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::result::Result as StdResult;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Error, Result};
 use getopts::Options;
 use libchromeos::secure_blob::SecureBlob;
 use libsirenia::{
@@ -40,7 +40,7 @@ use libsirenia::{
         },
         syslog::{Syslog, SyslogReceiverMut, SYSLOG_PATH},
     },
-    rpc::{self, ConnectionHandler, RpcDispatcher, TransportServer},
+    rpc::{ConnectionHandler, RpcDispatcher, TransportServer},
     sandbox::{MinijailSandbox, Sandbox, VmConfig, VmSandbox},
     secrets::{
         self, compute_sha256, storage_encryption::StorageEncryption, GscSecret, PlatformSecret,
@@ -81,18 +81,19 @@ struct TeeAppHandler {
 impl TeeAppHandler {
     fn conditionally_use_storage_encryption<
         T: Sized,
-        F: FnOnce(&StorageParameters, &mut dyn Cronista<rpc::Error>) -> StdResult<T, rpc::Error>
-            + Copy,
+        F: FnOnce(&StorageParameters, &mut dyn Cronista<anyhow::Error>) -> Result<T> + Copy,
     >(
         &self,
         cb: F,
-    ) -> StdResult<T, ()> {
+    ) -> Result<T> {
         let app_info = &self.tee_app.borrow().app_info;
         let params = app_info.storage_parameters.as_ref().ok_or_else(|| {
-            error!(
+            let msg = format!(
                 "App id '{}' made an unconfigured call to the write_data storage API.",
                 &app_info.app_name
             );
+            error!("{}", &msg);
+            anyhow!(msg)
         })?;
         let state = self.state.borrow_mut();
         // Holds the RefMut until secret_manager is dropped.
@@ -111,9 +112,9 @@ impl TeeAppHandler {
                             // TODO Move this to TrichechusState.
                             encryption =
                                 StorageEncryption::new(app_info, secret_manager, persistence);
-                            &mut encryption as &mut dyn Cronista<rpc::Error>
+                            &mut encryption as &mut dyn Cronista<anyhow::Error>
                         }
-                        None => persistence as &mut dyn Cronista<rpc::Error>,
+                        None => persistence as &mut dyn Cronista<anyhow::Error>,
                     },
                 );
                 match ret {
@@ -130,21 +131,23 @@ impl TeeAppHandler {
             }
 
             state.check_persistence().map_err(|err| {
-                error!("failed to persist data: {}", err);
+                let msg: &str = "failed to persist data";
+                error!("{}: {}", msg, err);
+                err.context(msg)
             })?;
         }
-        Err(())
+        Err(anyhow!(""))
     }
 }
 
-impl TeeApi<()> for TeeAppHandler {
-    fn read_data(&mut self, id: String) -> StdResult<(Status, Vec<u8>), ()> {
+impl TeeApi<Error> for TeeAppHandler {
+    fn read_data(&mut self, id: String) -> Result<(Status, Vec<u8>)> {
         self.conditionally_use_storage_encryption(|params, cronista| {
             cronista.retrieve(params.scope.clone(), params.domain.to_string(), id.clone())
         })
     }
 
-    fn write_data(&mut self, id: String, data: Vec<u8>) -> StdResult<Status, ()> {
+    fn write_data(&mut self, id: String, data: Vec<u8>) -> Result<Status> {
         self.conditionally_use_storage_encryption(|params, cronista| {
             cronista.persist(
                 params.scope.clone(),
@@ -243,11 +246,8 @@ impl TrichechusServerImpl {
     }
 }
 
-impl Trichechus<()> for TrichechusServerImpl {
-    fn start_session(
-        &mut self,
-        app_info: AppInfo,
-    ) -> StdResult<StdResult<(), trichechus::Error>, ()> {
+impl Trichechus<Error> for TrichechusServerImpl {
+    fn start_session(&mut self, app_info: AppInfo) -> Result<StdResult<(), trichechus::Error>> {
         info!("Received start session message: {:?}", &app_info);
         // The TEE app isn't started until its socket connection is accepted.
         Ok(log_error(start_session(
@@ -261,7 +261,7 @@ impl Trichechus<()> for TrichechusServerImpl {
         &mut self,
         app_id: String,
         elf: Vec<u8>,
-    ) -> StdResult<StdResult<(), trichechus::Error>, ()> {
+    ) -> Result<StdResult<(), trichechus::Error>> {
         info!("Received load app message: {:?}", &app_id);
         // The TEE app isn't started until its socket connection is accepted.
         Ok(log_error(load_app(
@@ -271,7 +271,7 @@ impl Trichechus<()> for TrichechusServerImpl {
         )))
     }
 
-    fn get_apps(&mut self) -> StdResult<Vec<(String, ExecutableInfo)>, ()> {
+    fn get_apps(&mut self) -> Result<Vec<(String, ExecutableInfo)>> {
         info!("Received get apps message");
         Ok(self
             .state
@@ -282,13 +282,13 @@ impl Trichechus<()> for TrichechusServerImpl {
             .collect())
     }
 
-    fn get_logs(&mut self) -> StdResult<Vec<Vec<u8>>, ()> {
+    fn get_logs(&mut self) -> Result<Vec<Vec<u8>>> {
         let mut replacement: VecDeque<Vec<u8>> = VecDeque::new();
         swap(&mut self.state.borrow_mut().log_queue, &mut replacement);
         Ok(replacement.into())
     }
 
-    fn system_event(&mut self, event: SystemEvent) -> StdResult<StdResult<(), String>, ()> {
+    fn system_event(&mut self, event: SystemEvent) -> Result<StdResult<(), String>> {
         Ok(log_error(system_event(event)))
     }
 }

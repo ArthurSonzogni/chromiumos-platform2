@@ -26,7 +26,6 @@ use crate::{
         persistence::{Cronista, Scope, Status},
         Digest,
     },
-    rpc,
     secrets::{self, compute_sha256, SecretManager, SecretVersion},
 };
 
@@ -67,7 +66,7 @@ enum Error {
     #[error("failed to serialize wrapped data: {0:?}")]
     SerializeWrappedData(#[source] SerializationError),
     #[error("storage client failed to persist the data: {0:?}")]
-    Persist(#[source] rpc::Error),
+    Persist(#[source] anyhow::Error),
     #[error("failed to deserialize wrapped data: {0:?}")]
     DeserializeWrappedData(#[source] DeserializationError),
     #[error("failed to deserialize authenticated data: {0:?}")]
@@ -75,7 +74,7 @@ enum Error {
     #[error("validation of stored data failed.")]
     ValidationFailure,
     #[error("storage client failed to retrieve the data: {0:?}")]
-    Retrieve(#[source] rpc::Error),
+    Retrieve(#[source] anyhow::Error),
 }
 
 enum ModeArgs<'a> {
@@ -139,14 +138,14 @@ fn digest_to_filename(digest: &[u8]) -> String {
 pub struct StorageEncryption<'a> {
     app_info: &'a AppManifestEntry,
     secret_manager: &'a SecretManager,
-    storage_client: &'a mut dyn Cronista<rpc::Error>,
+    storage_client: &'a mut dyn Cronista<anyhow::Error>,
 }
 
 impl<'a> StorageEncryption<'a> {
     pub fn new(
         app_info: &'a AppManifestEntry,
         secret_manager: &'a SecretManager,
-        storage_client: &'a mut dyn Cronista<rpc::Error>,
+        storage_client: &'a mut dyn Cronista<anyhow::Error>,
     ) -> Self {
         StorageEncryption {
             app_info,
@@ -338,14 +337,14 @@ impl<'a> StorageEncryption<'a> {
     }
 }
 
-impl<'a> Cronista<rpc::Error> for StorageEncryption<'a> {
+impl<'a> Cronista<anyhow::Error> for StorageEncryption<'a> {
     fn persist(
         &mut self,
         scope: Scope,
         domain: String,
         identifier: String,
         data: Vec<u8>,
-    ) -> Result<Status, rpc::Error> {
+    ) -> Result<Status, anyhow::Error> {
         match self.persist_impl(scope, domain, identifier, data) {
             Ok(v) => Ok(v),
             Err(Error::Persist(rpc_err)) => Err(rpc_err),
@@ -364,7 +363,7 @@ impl<'a> Cronista<rpc::Error> for StorageEncryption<'a> {
         scope: Scope,
         domain: String,
         identifier: String,
-    ) -> Result<(Status, Vec<u8>), rpc::Error> {
+    ) -> Result<(Status, Vec<u8>), anyhow::Error> {
         match self.retrieve_impl(scope, domain, identifier) {
             Ok(v) => Ok(v),
             Err(Error::Retrieve(rpc_err)) => Err(rpc_err),

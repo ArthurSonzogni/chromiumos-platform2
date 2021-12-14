@@ -12,8 +12,6 @@ use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use sirenia_rpc_macros::sirenia_rpc;
 
-use crate::rpc;
-
 /// Represents the possible status codes from an RPC.
 /// Values are assigned to make it easier to interface with D-Bus.
 #[derive(Debug, Deserialize, Serialize)]
@@ -73,7 +71,7 @@ impl CronistaIdentifier {
 /// A in memory implementation of the Cronista interface for unit tests.
 pub struct MockCronista {
     storage: Mutex<Map<CronistaIdentifier, Vec<u8>>>,
-    next_error: Mutex<VecDeque<rpc::Error>>,
+    next_error: Mutex<VecDeque<anyhow::Error>>,
     fail_next: bool,
 }
 
@@ -86,7 +84,7 @@ impl MockCronista {
         }
     }
 
-    pub fn next_error_push_back(&mut self, err: rpc::Error) {
+    pub fn next_error_push_back(&mut self, err: anyhow::Error) {
         self.next_error.lock().unwrap().deref_mut().push_back(err);
     }
 
@@ -105,14 +103,14 @@ impl Default for MockCronista {
     }
 }
 
-impl Cronista<rpc::Error> for MockCronista {
+impl Cronista<anyhow::Error> for MockCronista {
     fn persist(
         &mut self,
         scope: Scope,
         domain: String,
         identifier: String,
         data: Vec<u8>,
-    ) -> Result<Status, rpc::Error> {
+    ) -> Result<Status, anyhow::Error> {
         if let Some(err) = self.next_error.lock().unwrap().deref_mut().pop_front() {
             return Err(err);
         }
@@ -132,7 +130,7 @@ impl Cronista<rpc::Error> for MockCronista {
         scope: Scope,
         domain: String,
         identifier: String,
-    ) -> Result<(Status, Vec<u8>), rpc::Error> {
+    ) -> Result<(Status, Vec<u8>), anyhow::Error> {
         if let Some(err) = self.next_error.lock().unwrap().deref_mut().pop_front() {
             return Err(err);
         }

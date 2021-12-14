@@ -8,37 +8,110 @@
 
 extern crate proc_macro;
 
+use std::convert::TryFrom;
 use std::env;
 use std::result::Result as StdResult;
 
 use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, ToTokens};
 use syn::{
-    parse::{Error, Result},
-    parse_macro_input, FnArg, Ident, ItemTrait, Path, PathArguments, PathSegment, ReturnType,
-    Signature, TraitBound, TraitBoundModifier, TraitItem, Type, TypeParamBound,
+    parse::{Error, Parse, Parser, Result},
+    parse_macro_input, parse_quote,
+    spanned::Spanned,
+    Attribute, AttributeArgs, FieldsUnnamed, FnArg, Ident, ItemTrait, Lit, Meta, NestedMeta, Path,
+    PathArguments, PathSegment, ReturnType, Signature, TraitBound, TraitBoundModifier, TraitItem,
+    Type, TypeParamBound,
 };
+
+const INNER_ERROR_MACRO_ATTRIBUTE: &str = "error";
 
 /// Links the macro to the actual implementation.
 #[proc_macro_attribute]
 pub fn sirenia_rpc(
-    _args: proc_macro::TokenStream,
+    args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     let item_trait = parse_macro_input!(input as ItemTrait);
 
-    let expanded = sirenia_rpc_impl(&item_trait).unwrap_or_else(|err| {
-        let compile_error = err.to_compile_error();
-        quote! {
-            #compile_error
-
-            // Include the original input to avoid "use of undeclared type"
-            // errors elsewhere.
-            #item_trait
-        }
-    });
+    let config = match SireniaRpcConfig::try_from(&parse_macro_input!(args as AttributeArgs)) {
+        Ok(v) => v,
+        Err(err) => return error_to_tokenstream(err, &item_trait).into(),
+    };
+    let expanded = sirenia_rpc_impl(item_trait.clone(), &config)
+        .unwrap_or_else(|err| error_to_tokenstream(err, &item_trait));
 
     expanded.into()
+}
+
+#[derive(Debug, Default, Eq, PartialEq)]
+struct SireniaRpcConfig {
+    inner_error_type: Option<Type>,
+}
+
+fn str_to_type(value: &str, span: Span) -> Result<Option<Type>> {
+    if value.is_empty() {
+        return Ok(None);
+    }
+    let tokens: TokenStream = std::str::FromStr::from_str(value)
+        .map_err(|err| Error::new(span, format!("failed to tokenize type: {}", &err)))?;
+    Ok(Some(Type::without_plus.parse2(tokens).map_err(|err| {
+        let mut ret = Error::new(span, format!("failed to parse type: {:?}", value));
+        ret.combine(err);
+        ret
+    })?))
+}
+
+fn literal_to_type(lit: &Lit) -> Result<Option<Type>> {
+    match lit {
+        Lit::Verbatim(v) => str_to_type(v.to_string().as_str(), lit.span()),
+        Lit::Str(s) => str_to_type(s.value().as_str(), lit.span()),
+        _ => Err(Error::new(
+            lit.span(),
+            format!("Unexpected literal: '{:?}'", &lit),
+        )),
+    }
+}
+
+impl TryFrom<&AttributeArgs> for SireniaRpcConfig {
+    type Error = Error;
+
+    fn try_from(args: &AttributeArgs) -> StdResult<Self, Self::Error> {
+        let mut config = SireniaRpcConfig::default();
+        let get_default_err = |arg: &NestedMeta| {
+            Err(Error::new(
+                arg.span(),
+                format!("unexpected macro argument: '{:?}'", &arg),
+            ))
+        };
+        for arg in args {
+            let name_value = if let NestedMeta::Meta(Meta::NameValue(v)) = arg {
+                v
+            } else {
+                return get_default_err(arg);
+            };
+
+            let name = if let Some(v) = name_value.path.get_ident() {
+                v.to_string()
+            } else {
+                return get_default_err(arg);
+            };
+
+            match name.as_str() {
+                INNER_ERROR_MACRO_ATTRIBUTE => {
+                    if config.inner_error_type.is_some() {
+                        // Duplicate entry.
+                        return get_default_err(arg);
+                    }
+                    config.inner_error_type = literal_to_type(&name_value.lit)?;
+                }
+                _ => {
+                    // Unrecognized entry.
+                    return get_default_err(arg);
+                }
+            }
+        }
+        Ok(config)
+    }
 }
 
 fn get_request_name(name: &Ident) -> Ident {
@@ -102,6 +175,17 @@ fn to_upper_camel_case(snake_case: &str) -> String {
     output
 }
 
+fn error_to_tokenstream<T: ToTokens>(err: Error, original: &T) -> TokenStream {
+    let compile_error = err.to_compile_error();
+    quote! {
+        #compile_error
+
+        // Include the original input to avoid "use of undeclared type"
+        // errors elsewhere.
+        #original
+    }
+}
+
 /// Extract the first generic type T in Result<T, _> used for Ok(T).
 fn extract_ok_type(type_value: &Type) -> StdResult<TokenStream, ()> {
     match type_value {
@@ -121,6 +205,7 @@ fn extract_ok_type(type_value: &Type) -> StdResult<TokenStream, ()> {
 
 struct RpcMethodHelper {
     signature: Signature,
+    inner_error: Option<Type>,
     enum_name: Ident,
     request_args: Vec<FnArg>,
     request_arg_names: Vec<TokenStream>,
@@ -128,7 +213,7 @@ struct RpcMethodHelper {
 }
 
 impl RpcMethodHelper {
-    fn new(signature: Signature) -> Result<Self> {
+    fn new(signature: Signature, inner_error: Option<Type>) -> Result<Self> {
         let str_ident = signature.ident.to_string();
         let args = signature.inputs.iter();
         let response_arg = match &signature.output {
@@ -137,7 +222,7 @@ impl RpcMethodHelper {
             }
             ReturnType::Type(_, arg) => extract_ok_type(arg).map_err(|_| {
                 Error::new(
-                    Span::call_site(),
+                    signature.span(),
                     format!(
                         "unable to parse return type for '{}' expected std::result::Result",
                         &str_ident
@@ -164,13 +249,14 @@ impl RpcMethodHelper {
         }
         if !has_self {
             return Err(Error::new(
-                Span::call_site(),
+                signature.inputs.span(),
                 format!("'{}' needs a '&self' argument", &str_ident),
             ));
         }
 
         Ok(RpcMethodHelper {
             signature,
+            inner_error,
             enum_name: format_ident!("{}", to_upper_camel_case(&str_ident)),
             request_args,
             request_arg_names,
@@ -189,8 +275,14 @@ impl RpcMethodHelper {
     fn get_response_enum_item(&self) -> TokenStream {
         let enum_name = &self.enum_name;
         let response_arg = &self.response_arg;
-        quote! {
-            #enum_name(#response_arg)
+        if let Some(err) = &self.inner_error {
+            quote! {
+                #enum_name(::std::result::Result<#response_arg, #err>)
+            }
+        } else {
+            quote! {
+                #enum_name(#response_arg)
+            }
         }
     }
 
@@ -203,21 +295,24 @@ impl RpcMethodHelper {
     ) -> TokenStream {
         let mut signature = self.signature.clone();
         let response_arg = &self.response_arg;
-        signature.output = syn::parse2(
-            quote!(-> ::std::result::Result<#response_arg, #libsirenia_prefix::rpc::Error>),
-        )
-        .unwrap();
+        signature.output =
+            syn::parse2(quote!(-> ::std::result::Result<#response_arg, ::anyhow::Error>)).unwrap();
         let enum_name = &self.enum_name;
         let request_arg_names = &self.request_arg_names;
+        let response = if self.inner_error.is_some() {
+            quote! { response.map_err(|x| x.into()) }
+        } else {
+            quote! { Ok(response) }
+        };
         quote! {
             #signature {
                 if let #response_name::#enum_name(response) = #rpc_trait_name::rpc(
                     self,
                     #request_name::#enum_name{#(#request_arg_names),*},
                 )? {
-                    Ok(response)
+                    #response
                 } else {
-                    Err(#libsirenia_prefix::rpc::Error::ResponseMismatch)
+                    Err(#libsirenia_prefix::rpc::Error::ResponseMismatch.into())
                 }
             }
         }
@@ -227,9 +322,28 @@ impl RpcMethodHelper {
         let function_name = &self.signature.ident;
         let enum_name = &self.enum_name;
         let request_arg_names = &self.request_arg_names;
+
+        let function_call = quote! { self.#function_name(#(#request_arg_names),*) };
+
+        let mapping = if let Some(inner_error_type) = &self.inner_error {
+            quote! {
+                match #function_call {
+                    Ok(x) => Ok(#response_name::#enum_name(Ok(x))),
+                    Err(err) => {
+                        match err.downcast::<#inner_error_type>() {
+                            Ok(err) => Ok(#response_name::#enum_name(Err(err))),
+                            Err(err) => Err(err),
+                        }
+                    }
+                }
+            }
+        } else {
+            quote! { #function_call.map(|x| #response_name::#enum_name(x)) }
+        };
+
         quote! {
             #request_name::#enum_name{#(#request_arg_names),*} => {
-                self.#function_name(#(#request_arg_names),*).map(|x| #response_name::#enum_name(x))
+                #mapping
             }
         }
     }
@@ -247,14 +361,14 @@ impl SuperTraitHelper {
     fn new(trait_bound: TraitBound) -> Result<Self> {
         if !matches!(trait_bound.modifier, TraitBoundModifier::None) {
             return Err(Error::new(
-                Span::call_site(),
+                trait_bound.modifier.span(),
                 "TraitBoundModifier are not supported in supertrait position (yet)",
             ));
         }
 
         if trait_bound.lifetimes.is_some() {
             return Err(Error::new(
-                Span::call_site(),
+                trait_bound.lifetimes.span(),
                 "lifetimes are not supported in supertrait position (yet)",
             ));
         }
@@ -264,7 +378,7 @@ impl SuperTraitHelper {
         let super_name = super_trait
             .segments
             .last()
-            .ok_or_else(|| Error::new(Span::call_site(), "Missing trait path"))?
+            .ok_or_else(|| Error::new(super_trait.span(), "Missing trait path"))?
             .ident
             .clone();
 
@@ -338,7 +452,19 @@ impl SuperTraitHelper {
     }
 }
 
-fn sirenia_rpc_impl(item_trait: &ItemTrait) -> Result<TokenStream> {
+fn get_inner_error(attr: &Attribute) -> Result<Option<Type>> {
+    let mut fields = FieldsUnnamed::parse.parse2(attr.tokens.clone())?;
+    if fields.unnamed.len() > 1 {
+        return Err(Error::new(
+            attr.span(),
+            "More than one error type specified",
+        ));
+    }
+    let error_type = fields.unnamed.iter_mut().map(|x| x.ty.clone()).next();
+    Ok(error_type)
+}
+
+fn sirenia_rpc_impl(mut item_trait: ItemTrait, config: &SireniaRpcConfig) -> Result<TokenStream> {
     let trait_name = &item_trait.ident;
 
     let mut super_trait_helpers: Vec<SuperTraitHelper> = Vec::new();
@@ -347,7 +473,7 @@ fn sirenia_rpc_impl(item_trait: &ItemTrait) -> Result<TokenStream> {
             t
         } else {
             return Err(Error::new(
-                Span::call_site(),
+                bound.span(),
                 "lifetimes are not supported in supertrait position (yet)",
             ));
         };
@@ -355,16 +481,26 @@ fn sirenia_rpc_impl(item_trait: &ItemTrait) -> Result<TokenStream> {
     }
 
     let mut rpc_method_helpers: Vec<RpcMethodHelper> = Vec::new();
-    for x in item_trait.items.as_slice() {
+
+    for x in item_trait.items.iter_mut() {
         match x {
             TraitItem::Type(_) => {
-                return Err(Error::new(
-                    Span::call_site(),
-                    "trait types not supported yet",
-                ));
+                return Err(Error::new(x.span(), "trait types not supported yet"));
             }
             TraitItem::Method(trait_item_method) => {
-                rpc_method_helpers.push(RpcMethodHelper::new(trait_item_method.sig.clone())?);
+                let mut inner_error = Ok(config.inner_error_type.clone());
+                trait_item_method.attrs.retain(|a| {
+                    if a.path == parse_quote!(error) {
+                        inner_error = get_inner_error(a);
+                        false
+                    } else {
+                        true
+                    }
+                });
+                rpc_method_helpers.push(RpcMethodHelper::new(
+                    trait_item_method.sig.clone(),
+                    inner_error?,
+                )?);
             }
             _ => {}
         }
@@ -468,7 +604,7 @@ fn sirenia_rpc_impl(item_trait: &ItemTrait) -> Result<TokenStream> {
             }
         }
 
-        impl<R: #rpc_trait_name> #trait_name<#libsirenia_prefix::rpc::Error> for R {
+        impl<R: #rpc_trait_name> #trait_name<::anyhow::Error> for R {
             #(#client_trait_contents)*
         }
 
@@ -479,20 +615,20 @@ fn sirenia_rpc_impl(item_trait: &ItemTrait) -> Result<TokenStream> {
             type Response = #response_name;
         }
 
-        pub trait #server_trait_name: #trait_name<()> {
+        pub trait #server_trait_name: #trait_name<::anyhow::Error> {
             fn box_clone(&self) -> Box<dyn #server_trait_name>;
             fn rpc_impl(&mut self, request: #request_name) ->
-                    ::std::result::Result<#response_name, ()>;
+                    ::std::result::Result<#response_name, ::anyhow::Error>;
         }
 
-        impl<T: #trait_name<()> + #(#server_super_traits +)* ::std::clone::Clone + 'static>
+        impl<T: #trait_name<::anyhow::Error> + #(#server_super_traits +)* ::std::clone::Clone + 'static>
                 #server_trait_name for T {
             fn box_clone(&self) -> ::std::boxed::Box<dyn #server_trait_name> {
                 ::std::boxed::Box::new(self.clone())
             }
 
             fn rpc_impl(&mut self, request: #request_name) ->
-                    ::std::result::Result<#response_name, ()> {
+                    ::std::result::Result<#response_name, ::anyhow::Error> {
                 match request {
                     #(#server_rpc_impl_contents)*
                 }
@@ -507,7 +643,7 @@ fn sirenia_rpc_impl(item_trait: &ItemTrait) -> Result<TokenStream> {
         impl #libsirenia_prefix::rpc::MessageHandler for Box<dyn #server_trait_name> {
             fn handle_message(&mut self, request: #request_name) ->
                     ::std::result::Result<#response_name, ()> {
-                self.rpc_impl(request)
+                self.rpc_impl(request).map_err(|_| ())
             }
         }
 
@@ -523,33 +659,90 @@ fn sirenia_rpc_impl(item_trait: &ItemTrait) -> Result<TokenStream> {
 mod test {
     use super::*;
 
-    use syn::parse_quote;
+    fn sirenia_rpc_config_parse(stream: TokenStream, expected: SireniaRpcConfig) {
+        let args: AttributeArgs = parse_macro_input::ParseMacroInput::parse
+            .parse2(stream)
+            .unwrap();
+        let config = SireniaRpcConfig::try_from(&args).unwrap();
+        assert_eq!(config, expected);
+    }
+
+    #[test]
+    fn sirenia_rpc_config_parse_empty_str() {
+        sirenia_rpc_config_parse(
+            quote! { error="" },
+            SireniaRpcConfig {
+                inner_error_type: None,
+            },
+        );
+    }
+
+    #[test]
+    fn sirenia_rpc_config_parse_str_tuple() {
+        sirenia_rpc_config_parse(
+            quote! { error="()" },
+            SireniaRpcConfig {
+                inner_error_type: Some(parse_quote!(())),
+            },
+        );
+    }
+
+    #[test]
+    fn sirenia_rpc_config_parse_tuple() {
+        let verbatim = "()";
+        sirenia_rpc_config_parse(
+            quote! { error=#verbatim },
+            SireniaRpcConfig {
+                inner_error_type: Some(parse_quote!(())),
+            },
+        );
+    }
+
+    #[test]
+    fn sirenia_rpc_config_parse_path() {
+        let verbatim = "::std::option::Option<usize>";
+        sirenia_rpc_config_parse(
+            quote! { error=#verbatim },
+            SireniaRpcConfig {
+                inner_error_type: Some(parse_quote!(::std::option::Option<usize>)),
+            },
+        );
+    }
 
     #[test]
     fn sirenia_rpc_value_check() {
+        // This simulates #[error=()]
+        let args: AttributeArgs = parse_macro_input::ParseMacroInput::parse
+            .parse2(quote! { error="()" })
+            .unwrap();
         let input: ItemTrait = parse_quote!(
             pub trait Nested<E>: other::Test<E> {
+                #[error()]
+                fn ping(&mut self, value: usize) -> Result<usize, E>;
                 fn terminate(&mut self) -> Result<(), E>;
             }
         );
 
-        let actual = sirenia_rpc_impl(&input).unwrap();
+        let config = SireniaRpcConfig::try_from(&args).unwrap();
+        let actual = sirenia_rpc_impl(input, &config).unwrap();
         let expected = quote! {
-
             pub trait Nested<E>: other::Test<E> {
+                fn ping(&mut self, value: usize) -> Result<usize, E>;
                 fn terminate(&mut self) -> Result<(), E>;
             }
 
             #[derive(::std::fmt::Debug, ::serde::Deserialize, ::serde::Serialize)]
             pub enum NestedRequest {
                 Test(other::TestRequest),
+                Ping { value: usize },
                 Terminate {},
             }
 
             #[derive(::std::fmt::Debug, ::serde::Deserialize, ::serde::Serialize)]
             pub enum NestedResponse {
                 Test(other::TestResponse),
-                Terminate(()),
+                Ping(usize),
+                Terminate(::std::result::Result<(), ()>),
             }
 
             pub struct NestedClient {
@@ -581,14 +774,24 @@ mod test {
                 }
             }
 
-            impl<R: NestedRpc> Nested<::libsirenia::rpc::Error> for R {
-                fn terminate(&mut self) -> ::std::result::Result<(), ::libsirenia::rpc::Error> {
-                    if let NestedResponse::Terminate(response) =
-                        NestedRpc::rpc(self, NestedRequest::Terminate {},)?
+            impl<R: NestedRpc> Nested<::anyhow::Error> for R {
+                fn ping(&mut self, value: usize) -> ::std::result::Result<usize, ::anyhow::Error> {
+                    if let NestedResponse::Ping(response) =
+                        NestedRpc::rpc(self, NestedRequest::Ping { value },)?
                     {
                         Ok(response)
                     } else {
-                        Err(::libsirenia::rpc::Error::ResponseMismatch)
+                        Err(::libsirenia::rpc::Error::ResponseMismatch.into())
+                    }
+                }
+
+                fn terminate(&mut self) -> ::std::result::Result<(), ::anyhow::Error> {
+                    if let NestedResponse::Terminate(response) =
+                        NestedRpc::rpc(self, NestedRequest::Terminate {},)?
+                    {
+                        response.map_err(|x| x.into())
+                    } else {
+                        Err(::libsirenia::rpc::Error::ResponseMismatch.into())
                     }
                 }
             }
@@ -611,26 +814,38 @@ mod test {
                 type Response = NestedResponse;
             }
 
-            pub trait NestedServer: Nested<()> {
+            pub trait NestedServer: Nested<::anyhow::Error> {
                 fn box_clone(&self) -> Box<dyn NestedServer>;
                 fn rpc_impl(&mut self, request: NestedRequest) ->
-                        ::std::result::Result<NestedResponse, ()>;
+                        ::std::result::Result<NestedResponse, ::anyhow::Error>;
             }
 
-            impl<T: Nested<()> + other::TestServer + ::std::clone::Clone + 'static> NestedServer for T {
+            impl<T: Nested<::anyhow::Error> + other::TestServer + ::std::clone::Clone + 'static>
+                    NestedServer for T {
                 fn box_clone(&self) -> ::std::boxed::Box<dyn NestedServer> {
                     ::std::boxed::Box::new(self.clone())
                 }
                 fn rpc_impl(
                     &mut self,
                     request: NestedRequest
-                ) -> ::std::result::Result<NestedResponse, ()> {
+                ) -> ::std::result::Result<NestedResponse, ::anyhow::Error> {
                     match request {
                         NestedRequest::Test(request) => {
                             other::TestServer::rpc_impl(self, request).map(|x| NestedResponse::Test(x))
                         }
+                        NestedRequest::Ping { value } => {
+                            self.ping(value).map(|x| NestedResponse::Ping(x))
+                        }
                         NestedRequest::Terminate {} => {
-                            self.terminate().map(|x| NestedResponse::Terminate(x))
+                            match self.terminate() {
+                                Ok(x) => Ok(NestedResponse::Terminate(Ok(x))),
+                                Err(err) => {
+                                    match err.downcast::<()>() {
+                                        Ok(err) => Ok(NestedResponse::Terminate(Err(err))),
+                                        Err(err) => Err(err),
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -644,7 +859,7 @@ mod test {
             impl ::libsirenia::rpc::MessageHandler for Box<dyn NestedServer> {
                 fn handle_message(&mut self, request: NestedRequest) ->
                         ::std::result::Result<NestedResponse, ()> {
-                    self.rpc_impl(request)
+                    self.rpc_impl(request).map_err(|_| ())
                 }
             }
 

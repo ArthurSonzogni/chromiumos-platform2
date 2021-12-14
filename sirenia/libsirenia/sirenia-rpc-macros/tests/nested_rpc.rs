@@ -8,8 +8,9 @@ extern crate sirenia_rpc_macros;
 
 use std::thread::spawn;
 
+use anyhow::anyhow;
 use assert_matches::assert_matches;
-use libsirenia::rpc::{self, RpcDispatcher};
+use libsirenia::rpc::RpcDispatcher;
 use libsirenia::transport::create_transport_from_pipes;
 use sirenia_rpc_macros::sirenia_rpc;
 
@@ -33,29 +34,29 @@ pub trait NestedRpc<E>: TestRpc<E> + OtherRpc<E> {
 #[derive(Clone)]
 struct NestedRpcServerImpl {}
 
-impl TestRpc<()> for NestedRpcServerImpl {
-    fn checked_neg(&mut self, input: i32) -> Result<Option<i32>, ()> {
+impl TestRpc<anyhow::Error> for NestedRpcServerImpl {
+    fn checked_neg(&mut self, input: i32) -> Result<Option<i32>, anyhow::Error> {
         Ok(input.checked_neg())
     }
 
-    fn checked_add(&mut self, addend_a: i32, addend_b: i32) -> Result<Option<i32>, ()> {
+    fn checked_add(&mut self, addend_a: i32, addend_b: i32) -> Result<Option<i32>, anyhow::Error> {
         Ok(addend_a.checked_add(addend_b))
     }
 }
 
-impl OtherRpc<()> for NestedRpcServerImpl {
-    fn checked_neg(&mut self, input: i64) -> Result<Option<i64>, ()> {
+impl OtherRpc<anyhow::Error> for NestedRpcServerImpl {
+    fn checked_neg(&mut self, input: i64) -> Result<Option<i64>, anyhow::Error> {
         Ok(input.checked_neg())
     }
 
-    fn checked_add(&mut self, addend_a: i64, addend_b: i64) -> Result<Option<i64>, ()> {
+    fn checked_add(&mut self, addend_a: i64, addend_b: i64) -> Result<Option<i64>, anyhow::Error> {
         Ok(addend_a.checked_add(addend_b))
     }
 }
 
-impl NestedRpc<()> for NestedRpcServerImpl {
-    fn terminate(&mut self) -> Result<(), ()> {
-        Err(())
+impl NestedRpc<anyhow::Error> for NestedRpcServerImpl {
+    fn terminate(&mut self) -> Result<(), anyhow::Error> {
+        Err(anyhow!("Done"))
     }
 }
 
@@ -70,10 +71,10 @@ fn nested_rpc_test() {
     let client_thread = spawn(move || {
         let mut rpc_client = NestedRpcClient::new(client_transport);
 
-        let neg_resp = TestRpc::<rpc::Error>::checked_neg(&mut rpc_client, 125).unwrap();
+        let neg_resp = TestRpc::<anyhow::Error>::checked_neg(&mut rpc_client, 125).unwrap();
         assert_matches!(neg_resp, Some(-125));
 
-        let add_resp = OtherRpc::<rpc::Error>::checked_add(&mut rpc_client, 5, 4).unwrap();
+        let add_resp = OtherRpc::<anyhow::Error>::checked_add(&mut rpc_client, 5, 4).unwrap();
         assert_matches!(add_resp, Some(9));
 
         assert!(rpc_client.terminate().is_err());

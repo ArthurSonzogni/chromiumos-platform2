@@ -9,7 +9,6 @@ pub use file_storage::FileStorage;
 
 use std::any::{type_name, Any};
 use std::borrow::Borrow;
-use std::error::Error as StdError;
 use std::fmt::{self, Debug, Formatter};
 use std::result::Result as StdResult;
 
@@ -26,20 +25,18 @@ pub enum Error {
     InvalidIdForStorage(String),
     #[error("failed to cast data from '{from}' to '{to}'")]
     CastData { from: String, to: String },
-    // TODO: We may want to change this to not have an argument since it is not
-    // used anyways
     #[error("failed to read data")]
-    ReadData(#[source] Option<Box<dyn StdError>>),
+    ReadData(#[source] Option<anyhow::Error>),
     #[error("failed to write data")]
-    WriteData(#[source] Option<Box<dyn StdError>>),
+    WriteData(#[source] Option<anyhow::Error>),
 }
 
-pub fn to_read_data_error<E: StdError + 'static>(err: E) -> Error {
-    Error::ReadData(Some(Box::new(err)))
+pub fn to_read_data_error<E: Into<anyhow::Error>>(err: E) -> Error {
+    Error::ReadData(Some(err.into()))
 }
 
-pub fn to_write_data_error<E: StdError + 'static>(err: E) -> Error {
-    Error::WriteData(Some(Box::new(err)))
+pub fn to_write_data_error<E: Into<anyhow::Error>>(err: E) -> Error {
+    Error::WriteData(Some(err.into()))
 }
 
 /// The result of an operation in this crate.
