@@ -107,6 +107,11 @@ constexpr int kCpuPercentThrottle = 25;
 // (603) to vendor_arc_camera (5003).
 constexpr char kOemEtcUgidMapTemplate[] = "0 %u 1, 5000 600 50";
 
+// The amount of time after VM creation that we should wait to refresh counters
+// bassed on the zone watermarks, since they can change during boot.
+constexpr base::TimeDelta kBalloonRefreshTime =
+    base::TimeDelta::FromSeconds(60);
+
 // ConnectVSock connects to arc-powerctl in the VM identified by |cid|. It
 // returns a pair. The first object is the connected socket if connection was
 // successful. The second is a bool that is true if the VM is already dead, and
@@ -185,7 +190,8 @@ ArcVm::ArcVm(int32_t vsock_cid,
                  std::move(seneschal_server_proxy),
                  kCrosvmSocket,
                  std::move(runtime_dir)),
-      features_(features) {}
+      features_(features),
+      balloon_refresh_time_(base::Time::Now() + kBalloonRefreshTime) {}
 
 ArcVm::~ArcVm() {
   Shutdown();
@@ -491,6 +497,10 @@ void ArcVm::InitializeBalloonPolicy(const MemoryMargins& margins,
 
 const std::unique_ptr<BalloonPolicyInterface>& ArcVm::GetBalloonPolicy(
     const MemoryMargins& margins, const std::string& vm) {
+  if (balloon_refresh_time_ && base::Time::Now() > *balloon_refresh_time_) {
+    balloon_policy_.reset();
+    balloon_refresh_time_.reset();
+  }
   if (!balloon_policy_) {
     InitializeBalloonPolicy(margins, vm);
   }

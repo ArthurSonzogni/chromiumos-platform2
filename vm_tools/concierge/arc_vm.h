@@ -143,6 +143,11 @@ class ArcVm final : public VmBaseImpl {
   // It may take a few tries to initialize a LimitCacheBalloonPolicy, but give
   // up and log an error after too many failures.
   int balloon_init_attempts_ = 30;
+
+  // TODO(cwd): When we are sure what synchronization is needed to make sure the
+  // host knows the correct zone sizes (which change during boot), then replace
+  // this timeout.
+  base::Optional<base::Time> balloon_refresh_time_ = base::nullopt;
 };
 
 }  // namespace concierge
