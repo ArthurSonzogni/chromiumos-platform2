@@ -118,8 +118,8 @@ bool JsonFeatureParser::ParseFile(const base::FilePath& path,
     return false;
   }
 
-  if (!root.value->is_list() || root.value->GetList().size() == 0) {
-    *err_str = "debugd: features list should be non-zero size!";
+  if (!root.value->is_list() || root.value->GetList().size() != 1) {
+    *err_str = "debugd should not be used for new trials; use featured!";
     return false;
   }
 
@@ -138,6 +138,10 @@ bool JsonFeatureParser::ParseFile(const base::FilePath& path,
     }
 
     auto got = feature_map_.find(feature_obj.name());
+    if (feature_obj.name() != "SpecPageFault") {
+      *err_str = "debugd should not be used for new trials; use featured!";
+      return false;
+    }
     if (got != feature_map_.end()) {
       *err_str =
           "debugd: Duplicate feature name found! : " + feature_obj.name();
@@ -182,6 +186,10 @@ bool JsonFeatureParser::MakeFeatureObject(base::Value* feature_obj,
 
     for (unsigned i = 0; i < support_cmd_list_obj->GetList().size(); i++) {
       base::Value item = std::move(support_cmd_list_obj->GetList()[i]);
+      if (!item.is_dict()) {
+        *err_str = "debugd: support_check_commands is not list of dicts.";
+        return false;
+      }
       base::Value* cmd_obj = &item;
       std::string cmd_name;
 
@@ -214,6 +222,10 @@ bool JsonFeatureParser::MakeFeatureObject(base::Value* feature_obj,
 
   for (unsigned i = 0; i < cmd_list_obj->GetList().size(); i++) {
     base::Value item = std::move(cmd_list_obj->GetList()[i]);
+    if (!item.is_dict()) {
+      *err_str = "debugd: cmd_list is not list of dicts.";
+      return false;
+    }
     base::Value* cmd_obj = &item;
     std::string cmd_name;
 
