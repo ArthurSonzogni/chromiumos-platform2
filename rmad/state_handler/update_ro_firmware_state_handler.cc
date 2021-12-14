@@ -24,7 +24,9 @@
 #include "rmad/system/cros_disks_client_impl.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/cmd_utils_impl.h"
+#include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
+#include "rmad/utils/flashrom_utils_impl.h"
 
 namespace {
 
@@ -43,6 +45,8 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     : BaseStateHandler(json_store), active_(false) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
+  crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
+  flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
   cros_disks_client_ = std::make_unique<CrosDisksClientImpl>(GetSystemBus());
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
@@ -51,10 +55,14 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
 UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     scoped_refptr<JsonStore> json_store,
     std::unique_ptr<CmdUtils> cmd_utils,
+    std::unique_ptr<CrosSystemUtils> crossystem_utils,
+    std::unique_ptr<FlashromUtils> flashrom_utils,
     std::unique_ptr<CrosDisksClient> cros_disks_client,
     std::unique_ptr<PowerManagerClient> power_manager_client)
     : BaseStateHandler(json_store),
       cmd_utils_(std::move(cmd_utils)),
+      crossystem_utils_(std::move(crossystem_utils)),
+      flashrom_utils_(std::move(flashrom_utils)),
       cros_disks_client_(std::move(cros_disks_client)),
       power_manager_client_(std::move(power_manager_client)),
       active_(false) {

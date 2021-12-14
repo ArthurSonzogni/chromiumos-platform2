@@ -20,6 +20,8 @@
 #include "rmad/system/cros_disks_client.h"
 #include "rmad/system/power_manager_client.h"
 #include "rmad/utils/cmd_utils.h"
+#include "rmad/utils/crossystem_utils.h"
+#include "rmad/utils/flashrom_utils.h"
 
 namespace rmad {
 
@@ -33,11 +35,13 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
       base::TimeDelta::FromSeconds(5);
 
   explicit UpdateRoFirmwareStateHandler(scoped_refptr<JsonStore> json_store);
-  // Used to inject mock |cmd_utils_|, |cros_disks_client_| and
-  // |power_manager_client_| for testing.
+  // Used to inject mock |cmd_utils_|, |crossystem_utils|, |flashrom_utils|,
+  // |cros_disks_client_| and |power_manager_client_| for testing.
   UpdateRoFirmwareStateHandler(
       scoped_refptr<JsonStore> json_store,
       std::unique_ptr<CmdUtils> cmd_utils,
+      std::unique_ptr<CrosSystemUtils> crossystem_utils,
+      std::unique_ptr<FlashromUtils> flashrom_utils,
       std::unique_ptr<CrosDisksClient> cros_disks_client,
       std::unique_ptr<PowerManagerClient> power_manager_client);
 
@@ -74,6 +78,8 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   void Reboot();
 
   std::unique_ptr<CmdUtils> cmd_utils_;
+  std::unique_ptr<CrosSystemUtils> crossystem_utils_;
+  std::unique_ptr<FlashromUtils> flashrom_utils_;
   std::unique_ptr<CrosDisksClient> cros_disks_client_;
   std::unique_ptr<PowerManagerClient> power_manager_client_;
   std::unique_ptr<UpdateRoFirmwareStatusSignalCallback>

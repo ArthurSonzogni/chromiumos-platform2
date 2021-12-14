@@ -18,6 +18,8 @@
 #include "rmad/system/mock_power_manager_client.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cmd_utils.h"
+#include "rmad/utils/mock_crossystem_utils.h"
+#include "rmad/utils/mock_flashrom_utils.h"
 
 using testing::_;
 using testing::DoAll;
@@ -34,6 +36,11 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
     json_store_->SetValue(kRoFirmwareVerified, ro_verified);
     // Mock |CmdUtils|.
     auto mock_cmd_utils = std::make_unique<NiceMock<MockCmdUtils>>();
+    // Mock |CrosSystemUtils|.
+    auto mock_crossystem_utils =
+        std::make_unique<NiceMock<MockCrosSystemUtils>>();
+    // Mock |FlashromUtils|.
+    auto mock_flashrom_utils = std::make_unique<NiceMock<MockFlashromUtils>>();
     // Mock |CrosDisksClient|.
     auto mock_cros_disks_client =
         std::make_unique<NiceMock<MockCrosDisksClient>>();
@@ -43,6 +50,7 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
 
     auto handler = base::MakeRefCounted<UpdateRoFirmwareStateHandler>(
         json_store_, std::move(mock_cmd_utils),
+        std::move(mock_crossystem_utils), std::move(mock_flashrom_utils),
         std::move(mock_cros_disks_client),
         std::move(mock_power_manager_client));
     return handler;
