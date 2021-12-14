@@ -5,11 +5,34 @@
 // Provides the `display_debug` command which can be used to assist with log collection for feedback reports.
 
 use dbus::blocking::Connection;
-use sys_util::error;
 use system_api::client::OrgChromiumDebugd;
 
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
 use crate::util::DEFAULT_DBUS_TIMEOUT;
+
+struct Debugd {
+    connection: dbus::blocking::Connection,
+}
+
+impl Debugd {
+    fn new() -> Result<Debugd, dbus::Error> {
+        match Connection::new_system() {
+            Ok(connection) => Ok(Debugd { connection }),
+            Err(err) => Err(err),
+        }
+    }
+
+    fn drmtrace_annotate_log(self, log: String) -> Result<Debugd, dbus::Error> {
+        self.connection
+            .with_proxy(
+                "org.chromium.debugd",
+                "/org/chromium/debugd",
+                DEFAULT_DBUS_TIMEOUT,
+            )
+            .drmtrace_annotate_log(&log)
+            .map(|_| self)
+    }
+}
 
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
@@ -70,29 +93,18 @@ fn execute_display_debug_annotate(
     args: &Arguments,
 ) -> Result<(), dispatcher::Error> {
     let tokens = args.get_args();
-
     if tokens.is_empty() {
         return Err(dispatcher::Error::CommandInvalidArguments(
             "missing log argument".to_string(),
         ));
     }
-
-    let connection = Connection::new_system().map_err(|err| {
-        error!("ERROR: Failed to get D-Bus connection: {}", err);
-        dispatcher::Error::CommandReturnedError
-    })?;
-
-    let conn_path = connection.with_proxy(
-        "org.chromium.debugd",
-        "/org/chromium/debugd",
-        DEFAULT_DBUS_TIMEOUT,
-    );
-
-    // Sanitizion and validation of the log is done in debugd.
     let log = tokens.join(" ");
-    conn_path.drmtrace_annotate_log(&log).map_err(|err| {
-        println!("ERROR: Got unexpected result: {}", err);
-        dispatcher::Error::CommandReturnedError
-    })?;
-    Ok(())
+
+    match Debugd::new().and_then(|d| d.drmtrace_annotate_log(log)) {
+        Ok(_) => Ok(()),
+        Err(err) => {
+            println!("ERROR: Got unexpected result: {}", err);
+            Err(dispatcher::Error::CommandReturnedError)
+        }
+    }
 }
