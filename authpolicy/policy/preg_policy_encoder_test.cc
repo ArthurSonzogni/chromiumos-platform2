@@ -5,6 +5,7 @@
 #include <string>
 #include <utility>
 
+#include <base/optional.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -48,16 +49,6 @@ constexpr char kExtensionPolicy1[] = "Policy1";
 constexpr char kExtensionPolicy2[] = "Policy2";
 constexpr char kExtensionPolicy3[] = "Policy3";
 constexpr char kExtensionPolicy4[] = "Policy4";
-
-// Converts a json string that contains a dict into a base::DictionaryValue.
-std::unique_ptr<base::DictionaryValue> JsonStringToDictionaryValue(
-    const std::string& json_string) {
-  auto root =
-      base::JSONReader::Read(json_string, base::JSON_ALLOW_TRAILING_COMMAS);
-  return root ? base::DictionaryValue::From(
-                    std::make_unique<base::Value>(std::move(*root)))
-              : nullptr;
-}
 
 }  // namespace
 
@@ -378,21 +369,22 @@ TEST_F(PregPolicyEncoderTest, TestJsonWithNewlinesRoundtrip) {
   RegistryDict dict;
   EXPECT_TRUE(LoadPRegFileIntoDict(preg_1_path_, kKeyUserDevice, &dict));
   const std::string& roundtripped_json = dict.GetValue("TestJson")->GetString();
-  std::unique_ptr<base::DictionaryValue> json_dict =
-      JsonStringToDictionaryValue(roundtripped_json);
-  ASSERT_TRUE(json_dict != nullptr);
+  base::Optional<base::Value> json_dict = base::JSONReader::Read(
+      roundtripped_json, base::JSON_ALLOW_TRAILING_COMMAS);
+  ASSERT_TRUE(json_dict.has_value());
+  ASSERT_TRUE(json_dict->is_dict());
 
-  bool test_bool;
-  json_dict->GetBoolean("TestBool", &test_bool);
-  EXPECT_EQ(true, test_bool);
+  auto test_bool = json_dict->FindBoolKey("TestBool");
+  ASSERT_TRUE(test_bool.has_value());
+  EXPECT_TRUE(*test_bool);
 
-  int test_int;
-  json_dict->GetInteger("TestInt", &test_int);
-  EXPECT_EQ(123456, test_int);
+  auto test_int = json_dict->FindIntKey("TestInt");
+  ASSERT_TRUE(test_int.has_value());
+  EXPECT_EQ(*test_int, 123456);
 
-  std::string test_string;
-  json_dict->GetString("TestString", &test_string);
-  EXPECT_EQ("elephant", test_string);
+  auto test_string = json_dict->FindStringKey("TestString");
+  ASSERT_NE(test_string, nullptr);
+  EXPECT_EQ(*test_string, "elephant");
 }
 
 // Roundtrips a JSON dict that contains unescaped newlines within a single
@@ -417,14 +409,15 @@ TEST_F(PregPolicyEncoderTest, TestJsonWithNewlinesInsideStringRoundtrip) {
   RegistryDict dict;
   EXPECT_TRUE(LoadPRegFileIntoDict(preg_1_path_, kKeyUserDevice, &dict));
   const std::string& roundtripped_json = dict.GetValue("TestJson")->GetString();
-  std::unique_ptr<base::DictionaryValue> json_dict =
-      JsonStringToDictionaryValue(roundtripped_json);
-  ASSERT_TRUE(json_dict != nullptr);
+  base::Optional<base::Value> json_dict = base::JSONReader::Read(
+      roundtripped_json, base::JSON_ALLOW_TRAILING_COMMAS);
+  ASSERT_TRUE(json_dict.has_value());
+  ASSERT_TRUE(json_dict->is_dict());
 
-  std::string test_certificate;
-  json_dict->GetString("TestCertificate", &test_certificate);
-  EXPECT_EQ("A-B-C-D-E-F-G\nH-I-J-K-LMNOP\nQ-R-S...T-U-V\nW-X...Y-and-Z",
-            test_certificate);
+  auto test_certificate = json_dict->FindStringKey("TestCertificate");
+  ASSERT_NE(test_certificate, nullptr);
+  EXPECT_EQ(*test_certificate,
+            "A-B-C-D-E-F-G\nH-I-J-K-LMNOP\nQ-R-S...T-U-V\nW-X...Y-and-Z");
 }
 
 }  // namespace policy
