@@ -394,6 +394,9 @@ const std::array kCommandLogs {
   // any user.
   Log{kCommand, "tpm_version", "/usr/sbin/tpm-manager get_version_info", kRoot,
     kRoot},
+  // Type-C data from the type-c connector class, VID/PIDs are obfuscated.
+  Log{kCommand, "typec_connector_class",
+    "/usr/libexec/debugd/helpers/typec_connector_class_helper"},
   // typecd logs average around 56K. VID/PIDs are obfuscated from the printed
   // PD identity information.
   Log{kFile, "typecd", "/var/log/typecd.log"},

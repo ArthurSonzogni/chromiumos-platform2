@@ -316,6 +316,11 @@ explanation of each field.
 
 ## tpm_version
 
+## typec_connector_class
+
+Information about the state of USB Type-C ports, partners and cables from the
+USB Type-C connector class.
+
 ## typecd
 
 ## ui_log

@@ -27,6 +27,7 @@ group("all") {
     ":netif",
     ":network_status",
     ":scheduler_configuration_helper",
+    ":typec_connector_class_helper",
     ":usb4_devinfo_helper",
   ]
   if (use.test) {
@@ -284,6 +285,18 @@ executable("usb4_devinfo_helper") {
   configs += [
     ":target_defaults",
     ":usb4_devinfo_helper_config",
+  ]
+}
+
+pkg_config("typec_connector_class_helper_config") {
+  pkg_deps = [ "re2" ]
+}
+
+executable("typec_connector_class_helper") {
+  sources = [ "src/helpers/typec_connector_class_helper.cc" ]
+  configs += [
+    ":target_defaults",
+    ":typec_connector_class_helper_config",
   ]
 }
 
