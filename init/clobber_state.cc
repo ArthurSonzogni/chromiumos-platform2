@@ -1033,14 +1033,14 @@ void ClobberState::CreateLogicalVolumeStack() {
 
   vg->Activate();
 
-  base::DictionaryValue thinpool_config;
+  base::Value thinpool_config(base::Value::Type::DICTIONARY);
   int64_t thinpool_size = partition_size * kThinpoolSizePercent / 100;
   int64_t thinpool_metadata_size =
       thinpool_size * kThinpoolMetadataSizePercent / 100;
-  thinpool_config.SetString("name", "thinpool");
-  thinpool_config.SetString("size", base::NumberToString(thinpool_size));
-  thinpool_config.SetString("metadata_size",
-                            base::NumberToString(thinpool_metadata_size));
+  thinpool_config.SetStringKey("name", "thinpool");
+  thinpool_config.SetStringKey("size", base::NumberToString(thinpool_size));
+  thinpool_config.SetStringKey("metadata_size",
+                               base::NumberToString(thinpool_metadata_size));
 
   base::Optional<brillo::Thinpool> thinpool =
       lvm_->CreateThinpool(*vg, thinpool_config);
@@ -1049,9 +1049,9 @@ void ClobberState::CreateLogicalVolumeStack() {
     return;
   }
 
-  base::DictionaryValue lv_config;
-  lv_config.SetString("name", "unencrypted");
-  lv_config.SetString(
+  base::Value lv_config(base::Value::Type::DICTIONARY);
+  lv_config.SetStringKey("name", "unencrypted");
+  lv_config.SetStringKey(
       "size",
       base::NumberToString(thinpool_size * kLogicalVolumeSizePercent / 100));
 
