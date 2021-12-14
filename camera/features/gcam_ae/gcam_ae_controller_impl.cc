@@ -86,15 +86,19 @@ std::vector<NormalizedRect> CrosFaceToNormalizedRect(
 
 // static
 std::unique_ptr<GcamAeController> GcamAeControllerImpl::CreateInstance(
-    const camera_metadata_t* static_info) {
+    const camera_metadata_t* static_info,
+    DestructionCallback destruction_callback) {
   return std::make_unique<GcamAeControllerImpl>(
-      static_info, GcamAeDeviceAdapter::CreateInstance());
+      static_info, GcamAeDeviceAdapter::CreateInstance(),
+      std::move(destruction_callback));
 }
 
 GcamAeControllerImpl::GcamAeControllerImpl(
     const camera_metadata_t* static_info,
-    std::unique_ptr<GcamAeDeviceAdapter> ae_device_adapter)
-    : ae_device_adapter_(std::move(ae_device_adapter)) {
+    std::unique_ptr<GcamAeDeviceAdapter> ae_device_adapter,
+    DestructionCallback destruction_callback)
+    : destruction_callback_(std::move(destruction_callback)),
+      ae_device_adapter_(std::move(ae_device_adapter)) {
   base::span<const int32_t> sensitivity_range = GetRoMetadataAsSpan<int32_t>(
       static_info, ANDROID_SENSOR_INFO_SENSITIVITY_RANGE);
   base::Optional<int32_t> max_analog_sensitivity = GetRoMetadata<int32_t>(
@@ -141,6 +145,16 @@ GcamAeControllerImpl::GcamAeControllerImpl(
   ae_compensation_step_delta_range_ =
       Range<float>(kAeCompensationDeltaStopRange[0] / ae_compensation_step_,
                    kAeCompensationDeltaStopRange[1] / ae_compensation_step_);
+}
+
+GcamAeControllerImpl::~GcamAeControllerImpl() {
+  DCHECK(!destruction_callback_.is_null());
+  std::move(destruction_callback_)
+      .Run({
+          .last_tet = std::max(ae_state_machine_.GetCaptureTet(), 1.0f),
+          .last_hdr_ratio =
+              std::max(ae_state_machine_.GetFilteredHdrRatio(), 1.0f),
+      });
 }
 
 void GcamAeControllerImpl::RecordYuvBuffer(int frame_number,

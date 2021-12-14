@@ -24,8 +24,16 @@ namespace cros {
 // implementation, see features/gcam_ae/gcam_ae_controller_impl.{h,cc}.
 class GcamAeController {
  public:
+  // A callback to cache the last TET value before destruction.
+  struct CachedSettings {
+    float last_tet = 1.0f;
+    float last_hdr_ratio = 1.0f;
+  };
+  using DestructionCallback = base::OnceCallback<void(CachedSettings settings)>;
+
   using Factory = base::RepeatingCallback<std::unique_ptr<GcamAeController>(
-      const camera_metadata_t* static_info)>;
+      const camera_metadata_t* static_info,
+      DestructionCallback destruction_callback)>;
 
   struct Options {
     // Whether the GcamAeController is enabled.

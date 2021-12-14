@@ -37,6 +37,11 @@ class AeStateMachine {
     const Range<float> tet_range = {1e-6, 1e6};
   };
 
+  // Expose the initial TET and HDR ratio keys for GcamAeStreamManipulator to
+  // cache the last TET and HDR ratio values when the camera device is closed.
+  static constexpr char kInitialTet[] = "initial_tet";
+  static constexpr char kInitialHdrRatio[] = "initial_hdr_ratio";
+
   struct TuningParameters {
     // The threshold in log2 space for TET target stabilization. See the
     // comments for the kSearching state below.
@@ -69,6 +74,7 @@ class AeStateMachine {
     // The initial TET value. Useful for smoothing the TET transition during
     // camera initialization.
     float initial_tet = 33.33f;
+    float initial_hdr_ratio = 1.0f;
 
     // The bound for the inter-frame HDR ratio transition. We need to bound the
     // HDR ratio delta to avoid having sudden frame brightness changes.

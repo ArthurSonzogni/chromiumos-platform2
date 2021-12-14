@@ -6,11 +6,13 @@
 
 #include "common/reloadable_config_file.h"
 
+#include <iomanip>
 #include <string>
 #include <utility>
 
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
+#include <base/json/json_writer.h>
 
 #include "cros-camera/common.h"
 
@@ -46,8 +48,15 @@ void ReloadableConfigFile::SetCallback(OptionsUpdateCallback callback) {
   }
 }
 
+void ReloadableConfigFile::UpdateOption(std::string key, base::Value value) {
+  base::AutoLock lock(options_lock_);
+  json_values_.SetKey(key, std::move(value));
+  WriteConfigFileLocked(override_config_file_path_);
+}
+
 void ReloadableConfigFile::ReadConfigFileLocked(
     const base::FilePath& file_path) {
+  options_lock_.AssertAcquired();
   if (!base::PathExists(file_path)) {
     LOGF(ERROR) << "Config file does not exist: " << file_path;
     return;
@@ -69,6 +78,21 @@ void ReloadableConfigFile::ReadConfigFileLocked(
     json_values_.MergeDictionary(&json_values.value());
   } else {
     json_values_ = std::move(*json_values);
+  }
+}
+
+void ReloadableConfigFile::WriteConfigFileLocked(
+    const base::FilePath& file_path) {
+  options_lock_.AssertAcquired();
+  std::string json_string;
+  if (!base::JSONWriter::WriteWithOptions(
+          json_values_, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json_string)) {
+    LOGF(WARNING) << "Can't jsonify config settings";
+    return;
+  }
+  if (!base::WriteFile(file_path, json_string)) {
+    LOGF(WARNING) << "Can't write config settings to "
+                  << std::quoted(file_path.value());
   }
 }
 

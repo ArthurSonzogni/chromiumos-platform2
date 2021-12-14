@@ -7,6 +7,8 @@
 #ifndef CAMERA_COMMON_RELOADABLE_CONFIG_FILE_H_
 #define CAMERA_COMMON_RELOADABLE_CONFIG_FILE_H_
 
+#include <string>
+
 #include <base/callback_helpers.h>
 #include <base/files/file_path.h>
 #include <base/files/file_path_watcher.h>
@@ -39,9 +41,11 @@ class ReloadableConfigFile {
   ~ReloadableConfigFile() = default;
 
   void SetCallback(OptionsUpdateCallback callback);
+  void UpdateOption(std::string key, base::Value value);
 
  private:
   void ReadConfigFileLocked(const base::FilePath& file_path);
+  void WriteConfigFileLocked(const base::FilePath& file_path);
   void OnConfigFileUpdated(const base::FilePath& file_path, bool error);
 
   OptionsUpdateCallback options_update_callback_ = base::NullCallback();

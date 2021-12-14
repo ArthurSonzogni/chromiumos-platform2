@@ -27,13 +27,15 @@ class GcamAeControllerImpl : public GcamAeController {
   // The default factory method to get the activated GcamAeController
   // instance.
   static std::unique_ptr<GcamAeController> CreateInstance(
-      const camera_metadata_t* static_info);
+      const camera_metadata_t* static_info,
+      DestructionCallback destruction_callback);
 
   GcamAeControllerImpl(const camera_metadata_t* static_info,
-                       std::unique_ptr<GcamAeDeviceAdapter> ae_device_adapter);
+                       std::unique_ptr<GcamAeDeviceAdapter> ae_device_adapter,
+                       DestructionCallback destruction_callback);
 
   // GcamAeController implementations.
-  ~GcamAeControllerImpl() = default;
+  ~GcamAeControllerImpl() override;
   void RecordYuvBuffer(int frame_number,
                        buffer_handle_t buffer,
                        base::ScopedFD acquire_fence) override;
@@ -66,6 +68,7 @@ class GcamAeControllerImpl : public GcamAeController {
   AeFrameInfo* GetAeFrameInfoEntry(int frame_number);
 
   Options options_;
+  DestructionCallback destruction_callback_;
 
   // AE loop controls.
   Range<float> ae_compensation_step_delta_range_;

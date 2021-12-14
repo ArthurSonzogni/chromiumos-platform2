@@ -30,7 +30,6 @@ constexpr char kTetRetentionDurationMsDefault[] =
 constexpr char kTetRetentionDurationMsWithFace[] =
     "tet_retention_duration_ms_with_face";
 constexpr char kTetTargetThresholdLog2[] = "tet_target_threshold_log2";
-constexpr char kInitialTet[] = "initial_tet";
 constexpr char kHdrRatioStep[] = "hdr_ratio_step";
 
 // The log2 IIR filter strength for the long/short TET computed by Gcam AE.
@@ -110,22 +109,22 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
       << " log_scene_brightness=" << raw_ae_parameters.log_scene_brightness;
 
   // Filter the TET transition to avoid AE fluctuations or hunting.
+  float prev_short_tet = current_ae_parameters_.short_tet;
+  float prev_long_tet = current_ae_parameters_.long_tet;
   if (!current_ae_parameters_.IsValid()) {
     // This is the first set of AE parameters we get.
-    current_ae_parameters_.long_tet =
-        IirFilterLog2(tuning_parameters_.initial_tet,
-                      raw_ae_parameters.long_tet, kFilterStrength);
-    current_ae_parameters_.short_tet =
-        IirFilterLog2(tuning_parameters_.initial_tet,
-                      raw_ae_parameters.short_tet, kFilterStrength);
-  } else {
-    current_ae_parameters_.long_tet =
-        IirFilterLog2(current_ae_parameters_.long_tet,
-                      raw_ae_parameters.long_tet, kFilterStrength);
-    current_ae_parameters_.short_tet =
-        IirFilterLog2(current_ae_parameters_.short_tet,
-                      raw_ae_parameters.short_tet, kFilterStrength);
+    prev_short_tet = tuning_parameters_.initial_tet;
+    prev_long_tet =
+        tuning_parameters_.initial_tet * tuning_parameters_.initial_hdr_ratio;
+    // Initialize |next_| with the initial TET and HDR ratio to jump start the
+    // AE loop.
+    next_.tet = tuning_parameters_.initial_tet;
+    next_.hdr_ratio = tuning_parameters_.initial_hdr_ratio;
   }
+  current_ae_parameters_.short_tet = IirFilterLog2(
+      prev_short_tet, raw_ae_parameters.short_tet, kFilterStrength);
+  current_ae_parameters_.long_tet =
+      IirFilterLog2(prev_long_tet, raw_ae_parameters.long_tet, kFilterStrength);
   current_ae_parameters_.log_scene_brightness =
       raw_ae_parameters.log_scene_brightness;
 
@@ -403,6 +402,8 @@ void AeStateMachine::OnOptionsUpdated(const base::Value& json_values) {
   LoadIfExist(json_values, kTetRetentionDurationMsWithFace,
               &tuning_parameters_.tet_retention_duration_ms_with_face);
   LoadIfExist(json_values, kInitialTet, &tuning_parameters_.initial_tet);
+  LoadIfExist(json_values, kInitialHdrRatio,
+              &tuning_parameters_.initial_hdr_ratio);
   LoadIfExist(json_values, kHdrRatioStep, &tuning_parameters_.hdr_ratio_step);
 
   if (VLOG_IS_ON(1)) {

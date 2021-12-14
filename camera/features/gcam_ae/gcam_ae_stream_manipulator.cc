@@ -46,7 +46,19 @@ bool GcamAeStreamManipulator::Initialize(
   static_info_.acquire(clone_camera_metadata(static_info));
   {
     base::AutoLock lock(ae_controller_lock_);
-    ae_controller_ = gcam_ae_controller_factory_.Run(static_info);
+    auto cache_tet = [](ReloadableConfigFile* reloadable_config_file,
+                        GcamAeController::CachedSettings settings) {
+      reloadable_config_file->UpdateOption(AeStateMachine::kInitialTet,
+                                           base::Value(settings.last_tet));
+      reloadable_config_file->UpdateOption(
+          AeStateMachine::kInitialHdrRatio,
+          base::Value(settings.last_hdr_ratio));
+    };
+    // GcamAeStreamManipulator owns both |ae_controller_| and |config_|, and
+    // destroys |ae_controller_| before |config_|, so it's safe to pass
+    // |config_| as unretained pointer.
+    ae_controller_ = gcam_ae_controller_factory_.Run(
+        static_info, base::BindOnce(cache_tet, base::Unretained(&config_)));
   }
   // Set the options callback here to set the latest options to
   // |ae_controller_|.
