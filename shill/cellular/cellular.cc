@@ -497,9 +497,10 @@ void Cellular::StopStep(Error* error,
         // Allow the callback to succeed so that Shill identifies and persists
         // Cellular as disabled. TODO(b/184974739): StopModem should probably
         // succeed when in a failed state.
-        LOG(ERROR) << "StopModem returned an error: " << error_result;
+        LOG(WARNING) << "StopModem returned an error: " << error_result;
         callback.Run(Error());
       } else {
+        LOG(ERROR) << "StopModem returned an error: " << error_result;
         callback.Run(error_result);
       }
       stop_step_.reset();
@@ -522,7 +523,6 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
   LOG(INFO) << __func__ << ": state=" << GetStateString(state_);
 
   if (!error.IsSuccess()) {
-    LOG(ERROR) << "StartModem failed: " << error;
     SetState(State::kEnabled);
     if (error.type() == Error::kWrongState) {
       // If the enable operation failed with Error::kWrongState, the modem is
@@ -530,8 +530,10 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
       // SIM. Invoke |callback| with no error so that the enable completes.
       // If the ModemState property later changes to 'disabled', StartModem
       // will be called again.
+      LOG(WARNING) << "StartModem failed: " << error;
       callback.Run(Error());
     } else {
+      LOG(ERROR) << "StartModem failed: " << error;
       callback.Run(error);
     }
     return;
