@@ -10,6 +10,7 @@
 #include <string>
 #include <utility>
 
+#include <base/component_export.h>
 #include <base/macros.h>
 
 #include "arc/setup/android_sdk_version.h"
@@ -84,7 +85,7 @@ enum class Mode {
 };
 
 // A class that does the actual setup (and stop) operations.
-class ArcSetup {
+class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
  public:
   ArcSetup(Mode mode, const base::FilePath& config_json);
   ArcSetup(const ArcSetup&) = delete;
