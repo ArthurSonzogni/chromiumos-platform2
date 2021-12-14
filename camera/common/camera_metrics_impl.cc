@@ -66,10 +66,11 @@ constexpr base::TimeDelta kMaxCameraSessionDuration =
     base::TimeDelta::FromDays(1);
 constexpr int kBucketCameraSessionDuration = 100;
 
-constexpr char kCameraFaceAeFunction[] = "ChromeOS.Camera.FaceAe.Function";
+constexpr char kCameraFaceAeFunction[] =
+    "ChromeOS.Camera.FaceAutoExposure.FunctionStatus";
 // max number of faces detected times in a camera session
 constexpr char kCameraFaceAeMaxDetectedFaces[] =
-    "ChromeOS.Camera.FaceAe.MaxDetectedFaces";
+    "ChromeOS.Camera.FaceAutoExposure.MaxNumDetectedFaces";
 constexpr int kMaxNumFaces = 10;
 
 // *** HDRnet metrics ***
