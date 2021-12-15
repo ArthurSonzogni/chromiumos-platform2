@@ -7,6 +7,7 @@ import("//common-mk/proto_library.gni")
 
 pkg_config("target_defaults") {
   pkg_deps = [
+    "dbus-1",
     "libbrillo",
     "libchrome",
   ]
@@ -18,6 +19,28 @@ pkg_config("target_defaults") {
   }
 }
 
+static_library("missive_clientlib") {
+  sources = [ "report_queue_nonchrome_provider.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":report_queue_factory" ]
+}
+
+static_library("missive_client") {
+  sources = [
+    "missive_client.cc",
+    "missive_client.h",
+    "missive_dbus_constants.h",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    "//missive/proto:libmissiveprotointerface",
+    "//missive/proto:libmissiveprotorecord",
+    "//missive/proto:libmissiveprotorecordconstants",
+    "//missive/storage:missive_storage_module",
+    "//missive/util:status",
+  ]
+}
+
 static_library("report_queue_configuration") {
   sources = [
     "report_queue_configuration.cc",
@@ -25,8 +48,8 @@ static_library("report_queue_configuration") {
   ]
   configs += [ ":target_defaults" ]
   deps = [
-    "//missive/proto:record_constants",
-    "//missive/proto:record_proto",
+    "//missive/proto:libmissiveprotorecord",
+    "//missive/proto:libmissiveprotorecordconstants",
     "//missive/util:status",
     "//missive/util:status_macros",
   ]
@@ -42,7 +65,7 @@ static_library("report_queue_factory") {
     ":report_queue",
     ":report_queue_configuration",
     ":report_queue_provider",
-    "//missive/proto:record_constants",
+    "//missive/proto:libmissiveprotorecordconstants",
     "//missive/util:backoff_settings",
     "//missive/util:status",
   ]
@@ -58,12 +81,9 @@ static_library("report_queue") {
   configs += [ ":target_defaults" ]
   deps = [
     ":report_queue_configuration",
-    "//missive/encryption:encryption_module",
-    "//missive/proto:record_constants",
-    "//missive/proto:record_proto",
-    "//missive/storage:storage_module",
+    "//missive/proto:libmissiveprotorecord",
+    "//missive/proto:libmissiveprotorecordconstants",
     "//missive/storage:storage_module_interface",
-    "//missive/storage:storage_uploader_interface",
     "//missive/util:status",
     "//missive/util:status_macros",
   ]
@@ -79,11 +99,11 @@ static_library("report_queue_provider") {
   ]
   configs += [ ":target_defaults" ]
   deps = [
+    ":missive_client",
     ":report_queue",
     ":report_queue_configuration",
-    "//missive/proto:record_constants",
-    "//missive/proto:record_proto",
-    "//missive/storage:storage_module",
+    "//missive/proto:libmissiveprotorecord",
+    "//missive/proto:libmissiveprotorecordconstants",
     "//missive/storage:storage_module_interface",
     "//missive/util:shared_queue",
     "//missive/util:status",
@@ -106,8 +126,8 @@ static_library("client_test_support") {
     ":report_queue_configuration",
     ":report_queue_factory",
     ":report_queue_provider",
-    "//missive/proto:record_constants",
-    "//missive/proto:record_proto",
+    "//missive/proto:libmissiveprotorecord",
+    "//missive/proto:libmissiveprotorecordconstants",
     "//missive/proto:test_proto",
     "//missive/storage:storage_test_support",
     "//missive/util:status",

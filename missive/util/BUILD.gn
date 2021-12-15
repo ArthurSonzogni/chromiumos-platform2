@@ -34,7 +34,7 @@ static_library("status") {
     "statusor.h",
   ]
   configs += [ ":target_defaults" ]
-  public_deps = [ "//missive/proto:status_proto" ]
+  public_deps = [ "//missive/proto:libmissiveprotostatus" ]
 }
 
 source_set("shared_queue") {

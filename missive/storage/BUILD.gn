@@ -27,9 +27,9 @@ static_library("storage_uploader_interface") {
   sources = [ "storage_uploader_interface.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
-    "//missive/proto:record_constants",
-    "//missive/proto:record_proto",
-    "//missive/proto:status_proto",
+    "//missive/proto:libmissiveprotorecord",
+    "//missive/proto:libmissiveprotorecordconstants",
+    "//missive/proto:libmissiveprotostatus",
     "//missive/util:status",
   ]
 }
@@ -43,12 +43,28 @@ static_library("storage_queue") {
     "//missive/compression:compression_module",
     "//missive/encryption:encryption_module_interface",
     "//missive/encryption:verification",
-    "//missive/proto:record_constants",
-    "//missive/proto:record_proto",
+    "//missive/proto:libmissiveprotorecord",
+    "//missive/proto:libmissiveprotorecordconstants",
     "//missive/resources:resource_interface",
     "//missive/util:status",
     "//missive/util:status_macros",
     "//missive/util:task_runner_context",
+  ]
+}
+
+static_library("missive_storage_module") {
+  sources = [
+    "missive_storage_module.cc",
+    "missive_storage_module.h",
+    "missive_storage_module_delegate_impl.cc",
+    "missive_storage_module_delegate_impl.h",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":storage_module_interface",
+    "//missive/proto:libmissiveprotorecord",
+    "//missive/proto:libmissiveprotorecordconstants",
+    "//missive/util:status",
   ]
 }
 
@@ -62,8 +78,8 @@ static_library("storage_module") {
     ":storage_uploader_interface",
     "//missive/encryption:encryption_module",
     "//missive/encryption:encryption_module_interface",
-    "//missive/proto:record_constants",
-    "//missive/proto:record_proto",
+    "//missive/proto:libmissiveprotorecord",
+    "//missive/proto:libmissiveprotorecordconstants",
     "//missive/util:status",
   ]
 }
@@ -79,8 +95,8 @@ static_library("storage") {
     "//missive/encryption:encryption_module",
     "//missive/encryption:encryption_module_interface",
     "//missive/encryption:verification",
-    "//missive/proto:record_constants",
-    "//missive/proto:record_proto",
+    "//missive/proto:libmissiveprotorecord",
+    "//missive/proto:libmissiveprotorecordconstants",
     "//missive/util:status",
     "//missive/util:status_macros",
     "//missive/util:task_runner_context",
@@ -92,8 +108,8 @@ static_library("storage_module_interface") {
   configs += [ ":target_defaults" ]
   deps = [
     "//missive/compression:compression_module",
-    "//missive/proto:record_constants",
-    "//missive/proto:record_proto",
+    "//missive/proto:libmissiveprotorecord",
+    "//missive/proto:libmissiveprotorecordconstants",
     "//missive/util:status",
   ]
 }
@@ -106,8 +122,8 @@ static_library("storage_test_support") {
     ":storage_configuration",
     ":storage_module",
     ":storage_queue",
-    "//missive/proto:record_constants",
-    "//missive/proto:record_proto",
+    "//missive/proto:libmissiveprotorecord",
+    "//missive/proto:libmissiveprotorecordconstants",
     "//missive/util:status",
   ]
 }

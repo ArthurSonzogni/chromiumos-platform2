@@ -13,7 +13,7 @@
 #include <base/compiler_specific.h>
 #include <base/strings/string_piece.h>
 
-#include "missive/proto/status.pb.h"
+#include <missive/proto/status.pb.h>
 
 namespace reporting {
 namespace error {

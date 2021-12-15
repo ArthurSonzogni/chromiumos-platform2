@@ -64,7 +64,7 @@
 #include <base/compiler_specific.h>
 #include <base/logging.h>
 
-#include "missive/util/status.h"
+#include <missive/util/status.h>
 #include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {

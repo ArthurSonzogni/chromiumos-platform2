@@ -12,9 +12,9 @@
 #include <base/sequenced_task_runner.h>
 #include <brillo/backoff_entry.h>
 
-#include "missive/client/report_queue.h"
-#include "missive/client/report_queue_configuration.h"
-#include "missive/util/statusor.h"
+#include <missive/client/report_queue.h>
+#include <missive/client/report_queue_configuration.h>
+#include <missive/util/statusor.h>
 
 namespace reporting {
 

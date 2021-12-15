@@ -11,9 +11,9 @@
 
 #include <base/callback.h>
 
-#include "missive/proto/record_constants.pb.h"
-#include "missive/util/status.h"
-#include "missive/util/statusor.h"
+#include <missive/proto/record_constants.pb.h>
+#include <missive/util/status.h>
+#include <missive/util/statusor.h>
 
 namespace reporting {
 

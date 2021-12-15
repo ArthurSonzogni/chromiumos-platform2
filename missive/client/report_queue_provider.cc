@@ -5,6 +5,7 @@
 #include "missive/client/report_queue_provider.h"
 
 #include <memory>
+#include <string>
 
 #include <base/bind.h>
 #include <base/callback.h>

@@ -9,8 +9,9 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":libmissiveclient_pc",
+    ":missiveclientlib",
     ":missived",
-    "//missive/client:report_queue_factory",
   ]
   if (use.test) {
     deps += [ ":missived_testrunner" ]
@@ -50,6 +51,76 @@ generate_dbus_proxies("missive_dbus_proxies") {
   sources = [ "dbus/org.chromium.Missived.xml" ]
 }
 
+generate_pkg_config("libmissiveclient_pc") {
+  name = "libmissiveclient"
+  output_name = "libmissiveclient"
+  description = "missive client library"
+  version = libbase_ver
+  requires = []
+  requires_private = [
+    "dbus-1",
+    "libbrillo",
+    "libchrome",
+  ]
+  defines = [ "USE_RTTI_FOR_TYPE_TAGS" ]
+  libs = [
+    "-lmissiveclientlib",
+    "-lmissiveprotostatus",
+    "-lmissiveprotorecordconstants",
+    "-lmissiveprotorecord",
+    "-lmissiveprotointerface",
+  ]
+  cflags = [
+    "-I/usr/include/libmissiveclient",
+    "-v",
+  ]
+}
+
+# Client library for use by other daemons to call missived
+static_library("missiveclientlib") {
+  sources = [
+    "client/dm_token_retriever.h",
+    "client/empty_dm_token_retriever.cc",
+    "client/empty_dm_token_retriever.h",
+    "client/missive_client.cc",
+    "client/missive_client.h",
+    "client/missive_dbus_constants.h",
+    "client/report_queue.cc",
+    "client/report_queue.h",
+    "client/report_queue_configuration.cc",
+    "client/report_queue_configuration.h",
+    "client/report_queue_factory.cc",
+    "client/report_queue_factory.h",
+    "client/report_queue_impl.cc",
+    "client/report_queue_impl.h",
+    "client/report_queue_nonchrome_provider.cc",
+    "client/report_queue_provider.cc",
+    "client/report_queue_provider.h",
+    "storage/missive_storage_module.cc",
+    "storage/missive_storage_module.h",
+    "storage/missive_storage_module_delegate_impl.cc",
+    "storage/missive_storage_module_delegate_impl.h",
+    "storage/storage_module_interface.cc",
+    "storage/storage_module_interface.h",
+    "util/shared_queue.h",
+    "util/status.cc",
+    "util/status.h",
+    "util/statusor.cc",
+    "util/statusor.h",
+  ]
+  configs += [ ":target_defaults" ]
+
+  # Make the library into a standalone one.
+  configs -= [ "//common-mk:use_thin_archive" ]
+  configs += [ "//common-mk:nouse_thin_archive" ]
+
+  public_deps = [
+    "//missive/proto:libmissiveprotointerface",
+    "//missive/proto:libmissiveprotorecord",
+    "//missive/proto:libmissiveprotorecordconstants",
+  ]
+}
+
 static_library("libmessaging_layer") {
   sources = [ "missive_daemon.cc" ]
   configs += [ ":target_defaults" ]
@@ -59,7 +130,7 @@ static_library("libmessaging_layer") {
     "//missive/dbus:upload_client",
     "//missive/encryption:encryption_module",
     "//missive/encryption:verification",
-    "//missive/proto:interface_proto",
+    "//missive/proto:libmissiveprotointerface",
     "//missive/scheduler",
     "//missive/scheduler:enqueue_job",
     "//missive/scheduler:upload_job",

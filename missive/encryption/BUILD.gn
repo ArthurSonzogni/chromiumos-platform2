@@ -23,7 +23,7 @@ static_library("encryption_module_interface") {
   sources = [ "encryption_module_interface.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
-    "//missive/proto:record_proto",
+    "//missive/proto:libmissiveprotorecord",
     "//missive/util:status",
   ]
 }
@@ -46,7 +46,7 @@ static_library("encryption_module") {
   deps = [
     ":encryption",
     ":encryption_module_interface",
-    "//missive/proto:record_proto",
+    "//missive/proto:libmissiveprotorecord",
     "//missive/util:status",
   ]
 }
@@ -56,7 +56,7 @@ static_library("encryption") {
   configs += [ ":target_defaults" ]
   deps = [
     ":primitives",
-    "//missive/proto:record_proto",
+    "//missive/proto:libmissiveprotorecord",
     "//missive/util:status",
   ]
 }
@@ -68,7 +68,7 @@ static_library("decryption") {
     ":encryption",
     ":primitives",
     ":testing_primitives",
-    "//missive/proto:record_proto",
+    "//missive/proto:libmissiveprotorecord",
     "//missive/util:status",
   ]
 }
@@ -96,7 +96,7 @@ static_library("encryption_test_support") {
     ":primitives",
     ":testing_primitives",
     ":verification",
-    "//missive/proto:record_proto",
+    "//missive/proto:libmissiveprotorecord",
     "//missive/util:status",
     "//missive/util:status_macros",
   ]
@@ -117,7 +117,7 @@ source_set("unit_tests") {
     ":primitives",
     ":testing_primitives",
     ":verification",
-    "//missive/proto:record_proto",
+    "//missive/proto:libmissiveprotorecord",
     "//missive/util:status",
     "//missive/util:status_macros",
     "//missive/util:test_callbacks_support",
