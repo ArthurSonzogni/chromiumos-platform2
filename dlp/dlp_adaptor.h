@@ -59,6 +59,8 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
                              std::vector<uint8_t>,
                              brillo::dbus_utils::FileDescriptor>> response,
                          const std::vector<uint8_t>& request_blob) override;
+  std::vector<uint8_t> GetFilesSources(
+      const std::vector<uint8_t>& request_blob) override;
 
  private:
   friend class DlpAdaptorTest;
@@ -71,6 +73,8 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   FRIEND_TEST(DlpAdaptorTest,
               RestrictedFileAddedRequestedAndCancelledNotAllowed);
   FRIEND_TEST(DlpAdaptorTest, RequestAllowedWithoutDatabase);
+  FRIEND_TEST(DlpAdaptorTest, GetFilesSources);
+  FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesWithoutDatabase);
 
   // Opens the database |db_| to store files sources.
   void InitDatabase(const base::FilePath database_path);

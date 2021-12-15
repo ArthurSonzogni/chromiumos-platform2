@@ -250,6 +250,39 @@ void DlpAdaptor::RequestFileAccess(
                      std::move(callbacks.second)));
 }
 
+std::vector<uint8_t> DlpAdaptor::GetFilesSources(
+    const std::vector<uint8_t>& request_blob) {
+  GetFilesSourcesRequest request;
+  GetFilesSourcesResponse response_proto;
+  const std::string parse_error = ParseProto(FROM_HERE, &request, request_blob);
+  if (!parse_error.empty()) {
+    LOG(ERROR) << "Failed to parse GetFilesSources request: " << parse_error;
+    response_proto.set_error_message(parse_error);
+    return SerializeProto(response_proto);
+  }
+
+  if (!db_) {
+    return SerializeProto(response_proto);
+  }
+
+  for (const auto& file_inode : request.files_inodes()) {
+    std::string serialized_proto;
+    const leveldb::Status get_status =
+        db_->Get(leveldb::ReadOptions(), base::NumberToString(file_inode),
+                 &serialized_proto);
+    if (get_status.ok()) {
+      FileEntry file_entry;
+      file_entry.ParseFromString(serialized_proto);
+
+      FileMetadata* file_metadata = response_proto.add_files_metadata();
+      file_metadata->set_inode(file_inode);
+      file_metadata->set_source_url(file_entry.source_url());
+    }
+  }
+
+  return SerializeProto(response_proto);
+}
+
 void DlpAdaptor::InitDatabase(const base::FilePath database_path) {
   LOG(INFO) << "Opening database in: " << database_path.value();
   leveldb::Options options;

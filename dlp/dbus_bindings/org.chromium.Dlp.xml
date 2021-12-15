@@ -51,5 +51,18 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="async" />
     </method>
 
+     <method name="GetFilesSources">
+      <tp:docstring>
+        Returns sources for the requested files.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        Serialized GetFilesSourcesRequest message.
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        Serialized GetFilesSourcesResponse message.
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+    </method>
+
   </interface>
 </node>

@@ -430,4 +430,86 @@ TEST_F(DlpAdaptorTest, RequestAllowedWithoutDatabase) {
   EXPECT_TRUE(allowed);
 }
 
+TEST_F(DlpAdaptorTest, GetFilesSources) {
+  // Create database.
+  base::FilePath database_directory;
+  ASSERT_TRUE(base::CreateNewTempDirectory("dlpdatabase", &database_directory));
+  GetDlpAdaptor()->InitDatabase(database_directory);
+
+  // Create files to request sources by inodes.
+  base::FilePath file_path1;
+  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+  const ino_t inode1 = GetDlpAdaptor()->GetInodeValue(file_path1.value());
+  base::FilePath file_path2;
+  ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
+  const ino_t inode2 = GetDlpAdaptor()->GetInodeValue(file_path2.value());
+
+  GetFilesSourcesRequest request;
+  request.add_files_inodes(inode1);
+  request.add_files_inodes(inode2);
+  request.add_files_inodes(123456);
+
+  const std::string source1 = "source1";
+  const std::string source2 = "source2";
+
+  // Add the files to the database.
+  GetDlpAdaptor()->AddFile(
+      CreateSerializedAddFileRequest(file_path1.value(), source1, "referrer1"));
+  GetDlpAdaptor()->AddFile(
+      CreateSerializedAddFileRequest(file_path2.value(), source2, "referrer2"));
+
+  std::vector<uint8_t> request_proto_blob(request.ByteSizeLong());
+  request.SerializeToArray(request_proto_blob.data(),
+                           request_proto_blob.size());
+  std::vector<uint8_t> response_proto_blob =
+      GetDlpAdaptor()->GetFilesSources(std::move(request_proto_blob));
+  GetFilesSourcesResponse response;
+  response.ParseFromArray(response_proto_blob.data(),
+                          response_proto_blob.size());
+
+  ASSERT_EQ(response.files_metadata_size(), 2u);
+
+  FileMetadata file_metadata1 = response.files_metadata()[0];
+  EXPECT_EQ(file_metadata1.inode(), inode1);
+  EXPECT_EQ(file_metadata1.source_url(), source1);
+
+  FileMetadata file_metadata2 = response.files_metadata()[1];
+  EXPECT_EQ(file_metadata2.inode(), inode2);
+  EXPECT_EQ(file_metadata2.source_url(), source2);
+}
+
+TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
+  // Create files to request sources by inodes.
+  base::FilePath file_path1;
+  ASSERT_TRUE(base::CreateTemporaryFile(&file_path1));
+  const ino_t inode1 = GetDlpAdaptor()->GetInodeValue(file_path1.value());
+  base::FilePath file_path2;
+  ASSERT_TRUE(base::CreateTemporaryFile(&file_path2));
+  const ino_t inode2 = GetDlpAdaptor()->GetInodeValue(file_path2.value());
+
+  GetFilesSourcesRequest request;
+  request.add_files_inodes(inode1);
+  request.add_files_inodes(inode2);
+
+  const std::string source1 = "source1";
+  const std::string source2 = "source2";
+
+  // Add the files to the database.
+  GetDlpAdaptor()->AddFile(
+      CreateSerializedAddFileRequest(file_path1.value(), source1, "referrer1"));
+  GetDlpAdaptor()->AddFile(
+      CreateSerializedAddFileRequest(file_path2.value(), source2, "referrer2"));
+
+  std::vector<uint8_t> request_proto_blob(request.ByteSizeLong());
+  request.SerializeToArray(request_proto_blob.data(),
+                           request_proto_blob.size());
+  std::vector<uint8_t> response_proto_blob =
+      GetDlpAdaptor()->GetFilesSources(std::move(request_proto_blob));
+  GetFilesSourcesResponse response;
+  response.ParseFromArray(response_proto_blob.data(),
+                          response_proto_blob.size());
+
+  EXPECT_EQ(response.files_metadata_size(), 0u);
+}
+
 }  // namespace dlp
