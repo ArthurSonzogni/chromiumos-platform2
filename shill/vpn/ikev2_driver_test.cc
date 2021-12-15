@@ -12,6 +12,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/fake_store.h"
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -61,11 +62,22 @@ using testing::_;
 
 class IKEv2DriverTest : public testing::Test {
  public:
-  IKEv2DriverTest()
-      : manager_(&control_, &dispatcher_, &metrics_),
-        driver_(new IKEv2DriverUnderTest(&manager_, &process_manager_)) {}
+  IKEv2DriverTest() : manager_(&control_, &dispatcher_, &metrics_) {
+    ResetDriver();
+  }
 
  protected:
+  void ResetDriver() {
+    driver_.reset(new IKEv2DriverUnderTest(&manager_, &process_manager_));
+    store_.reset(new PropertyStore());
+    driver_->InitPropertyStore(store_.get());
+    Error unused_error;
+    // Set the PSK property by default.
+    store_->SetStringProperty(kIKEv2AuthenticationTypeProperty,
+                              kIKEv2AuthenticationTypePSK, &unused_error);
+    store_->SetStringProperty(kIKEv2PskProperty, "psk", &unused_error);
+  }
+
   void InvokeAndVerifyConnectAsync() {
     const auto timeout = driver_->ConnectAsync(&event_handler_);
     EXPECT_NE(timeout, VPNDriver::kTimeoutNone);
@@ -83,6 +95,7 @@ class IKEv2DriverTest : public testing::Test {
   MockProcessManager process_manager_;
 
   // Other objects used in the tests.
+  FakeStore fake_store_;
   MockVPNDriverEventHandler event_handler_;
   std::unique_ptr<PropertyStore> store_;
 
@@ -152,6 +165,111 @@ TEST_F(IKEv2DriverTest, ConnectedFailure) {
 }
 
 // TODO(b/210064468): Add tests for default service change and suspend events.
+
+TEST_F(IKEv2DriverTest, PropertyStoreAndConfig) {
+  Error unused_error;
+  const std::string kStorageId = "ikev2-test";
+
+  const std::string kHost = "127.0.0.1";
+  const std::string kCertId = "cert-id";
+  const std::string kCertSlot = "123";
+  const std::string kPSK = "preshared-key";
+  const std::vector<std::string> kCACertPEM = {"aaa", "bbb", "ccc"};
+  const std::string kEAPIdentity = "eap-identity";
+  const std::string kEAPPassword = "eap-password";
+  const std::string kLocalId = "local-id";
+  const std::string kRemoteId = "remote-id";
+
+  // Set to PSK auth, save and load, and then check the generated config file.
+  {
+    store_->SetStringProperty(kProviderHostProperty, kHost, &unused_error);
+    store_->SetStringProperty(kIKEv2AuthenticationTypeProperty,
+                              kIKEv2AuthenticationTypePSK, &unused_error);
+    store_->SetStringProperty(kIKEv2PskProperty, kPSK, &unused_error);
+    store_->SetStringProperty(kIKEv2LocalIdentityProperty, kLocalId,
+                              &unused_error);
+    store_->SetStringProperty(kIKEv2RemoteIdentityProperty, kRemoteId,
+                              &unused_error);
+
+    driver_->Save(&fake_store_, kStorageId, /*save_credentials=*/true);
+    ResetDriver();
+    driver_->Load(&fake_store_, kStorageId);
+
+    InvokeAndVerifyConnectAsync();
+    const auto* ipsec_config = driver_->ipsec_config();
+    EXPECT_EQ(ipsec_config->remote, kHost);
+    EXPECT_EQ(ipsec_config->ike_version,
+              IPsecConnection::Config::IKEVersion::kV2);
+    EXPECT_EQ(ipsec_config->ca_cert_pem_strings, std::nullopt);
+    EXPECT_EQ(ipsec_config->client_cert_id, std::nullopt);
+    EXPECT_EQ(ipsec_config->client_cert_slot, std::nullopt);
+    EXPECT_EQ(ipsec_config->psk, kPSK);
+    EXPECT_EQ(ipsec_config->xauth_user, std::nullopt);
+    EXPECT_EQ(ipsec_config->xauth_password, std::nullopt);
+    EXPECT_EQ(ipsec_config->local_id, kLocalId);
+    EXPECT_EQ(ipsec_config->remote_id, kRemoteId);
+  }
+
+  // Set to cert auth.
+  {
+    store_->SetStringProperty(kProviderHostProperty, kHost, &unused_error);
+    store_->SetStringProperty(kIKEv2AuthenticationTypeProperty,
+                              kIKEv2AuthenticationTypeCert, &unused_error);
+    store_->SetStringProperty(kIKEv2ClientCertIdProperty, kCertId,
+                              &unused_error);
+    store_->SetStringProperty(kIKEv2ClientCertSlotProperty, kCertSlot,
+                              &unused_error);
+    store_->SetStringsProperty(kIKEv2CaCertPemProperty, kCACertPEM,
+                               &unused_error);
+
+    driver_->Save(&fake_store_, kStorageId, /*save_credentials=*/true);
+    ResetDriver();
+    driver_->Load(&fake_store_, kStorageId);
+
+    InvokeAndVerifyConnectAsync();
+    const auto* ipsec_config = driver_->ipsec_config();
+    EXPECT_EQ(ipsec_config->remote, kHost);
+    EXPECT_EQ(ipsec_config->ike_version,
+              IPsecConnection::Config::IKEVersion::kV2);
+    EXPECT_EQ(ipsec_config->ca_cert_pem_strings, kCACertPEM);
+    EXPECT_EQ(ipsec_config->client_cert_id, kCertId);
+    EXPECT_EQ(ipsec_config->client_cert_slot, kCertSlot);
+    EXPECT_EQ(ipsec_config->psk, std::nullopt);
+    EXPECT_EQ(ipsec_config->xauth_user, std::nullopt);
+    EXPECT_EQ(ipsec_config->xauth_password, std::nullopt);
+    EXPECT_EQ(ipsec_config->local_id, kLocalId);
+    EXPECT_EQ(ipsec_config->remote_id, kRemoteId);
+  }
+
+  // Set to EAP auth.
+  {
+    store_->SetStringProperty(kProviderHostProperty, kHost, &unused_error);
+    store_->SetStringProperty(kIKEv2AuthenticationTypeProperty,
+                              kIKEv2AuthenticationTypeEAP, &unused_error);
+    store_->SetStringProperty(kEapIdentityProperty, kEAPIdentity,
+                              &unused_error);
+    store_->SetStringProperty(kEapPasswordProperty, kEAPPassword,
+                              &unused_error);
+
+    driver_->Save(&fake_store_, kStorageId, /*save_credentials=*/true);
+    ResetDriver();
+    driver_->Load(&fake_store_, kStorageId);
+
+    InvokeAndVerifyConnectAsync();
+    const auto* ipsec_config = driver_->ipsec_config();
+    EXPECT_EQ(ipsec_config->remote, kHost);
+    EXPECT_EQ(ipsec_config->ike_version,
+              IPsecConnection::Config::IKEVersion::kV2);
+    EXPECT_EQ(ipsec_config->ca_cert_pem_strings, kCACertPEM);
+    EXPECT_EQ(ipsec_config->client_cert_id, std::nullopt);
+    EXPECT_EQ(ipsec_config->client_cert_slot, std::nullopt);
+    EXPECT_EQ(ipsec_config->psk, std::nullopt);
+    EXPECT_EQ(ipsec_config->xauth_user, kEAPIdentity);
+    EXPECT_EQ(ipsec_config->xauth_password, kEAPPassword);
+    EXPECT_EQ(ipsec_config->local_id, kLocalId);
+    EXPECT_EQ(ipsec_config->remote_id, kRemoteId);
+  }
+}
 
 }  // namespace
 }  // namespace shill

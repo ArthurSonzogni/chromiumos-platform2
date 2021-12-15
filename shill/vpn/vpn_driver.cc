@@ -37,7 +37,8 @@ const char VPNDriver::kCredentialPrefix[] = "Credential.";
 VPNDriver::VPNDriver(Manager* manager,
                      ProcessManager* process_manager,
                      const Property* properties,
-                     size_t property_count)
+                     size_t property_count,
+                     bool use_eap)
     : manager_(manager),
       process_manager_(process_manager),
       properties_(properties),
@@ -47,6 +48,9 @@ VPNDriver::VPNDriver(Manager* manager,
     const bool isReadOnly = flags & Property::kReadOnly;
     const bool isWriteOnly = flags & Property::kWriteOnly;
     CHECK(!(isReadOnly && isWriteOnly));
+  }
+  if (use_eap) {
+    eap_credentials_.reset(new EapCredentials());
   }
 }
 
@@ -83,6 +87,11 @@ bool VPNDriver::Load(const StoreInterface* storage,
       }
     }
   }
+
+  if (eap_credentials_) {
+    eap_credentials_->Load(storage, storage_id);
+  }
+
   return true;
 }
 
@@ -143,6 +152,11 @@ bool VPNDriver::Save(StoreInterface* storage,
       storage->SetString(storage_id, storage_key, value);
     }
   }
+
+  if (eap_credentials_) {
+    eap_credentials_->Save(storage, storage_id, save_credentials);
+  }
+
   return true;
 }
 
@@ -153,6 +167,10 @@ void VPNDriver::UnloadCredentials() {
          (Property::kEphemeral | Property::kCredential))) {
       args_.Remove(properties_[i].property);
     }
+  }
+
+  if (eap_credentials_) {
+    eap_credentials_->Reset();
   }
 }
 
@@ -184,6 +202,10 @@ void VPNDriver::InitPropertyStore(PropertyStore* store) {
       kProviderProperty,
       KeyValueStoreAccessor(new CustomAccessor<VPNDriver, KeyValueStore>(
           this, &VPNDriver::GetProvider, nullptr)));
+
+  if (eap_credentials_) {
+    eap_credentials_->InitPropertyStore(store);
+  }
 }
 
 void VPNDriver::ClearMappedStringProperty(const size_t& index, Error* error) {

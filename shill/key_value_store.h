@@ -143,6 +143,17 @@ class KeyValueStore {
     return it->second.Get<T>();
   }
 
+  // Gets a value from KeyValueStore in std::optional. Returns std::nullopt if
+  // the key does not exist or the value is empty.
+  using ContainerTypes = brillo::TypeList<std::string, Strings>;
+  template <typename T, typename = brillo::EnableIfIsOneOf<T, ContainerTypes>>
+  std::optional<T> GetOptionalValue(const std::string& key) const {
+    if (Lookup<T>(key, T{}).empty()) {
+      return std::nullopt;
+    }
+    return Get<T>(key);
+  }
+
   // Conversion function between KeyValueStore and brillo::VariantDictionary.
   // Since we already use brillo::VariantDictionary for storing key value
   // pairs, all conversions will be trivial except nested KeyValueStore and

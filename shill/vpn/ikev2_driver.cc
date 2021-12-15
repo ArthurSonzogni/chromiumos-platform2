@@ -22,18 +22,76 @@
 namespace shill {
 
 namespace {
+
 constexpr base::TimeDelta kConnectTimeout = base::TimeDelta::FromSeconds(30);
+
+std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
+    const KeyValueStore& args, const EapCredentials& eap_credentials) {
+  auto config = std::make_unique<IPsecConnection::Config>();
+
+  config->ike_version = IPsecConnection::Config::IKEVersion::kV2;
+  config->remote = args.Lookup<std::string>(kProviderHostProperty, "");
+  config->local_id =
+      args.GetOptionalValue<std::string>(kIKEv2LocalIdentityProperty);
+  config->remote_id =
+      args.GetOptionalValue<std::string>(kIKEv2RemoteIdentityProperty);
+  config->ca_cert_pem_strings =
+      args.GetOptionalValue<Strings>(kIKEv2CaCertPemProperty);
+
+  const std::string auth_type =
+      args.Lookup<std::string>(kIKEv2AuthenticationTypeProperty, "");
+  if (auth_type == kIKEv2AuthenticationTypePSK) {
+    config->psk = args.GetOptionalValue<std::string>(kIKEv2PskProperty);
+    if (!config->psk.has_value()) {
+      LOG(ERROR) << "Auth type is PSK but no PSK value found.";
+      return nullptr;
+    }
+  } else if (auth_type == kIKEv2AuthenticationTypeCert) {
+    config->client_cert_id =
+        args.GetOptionalValue<std::string>(kIKEv2ClientCertIdProperty);
+    config->client_cert_slot =
+        args.GetOptionalValue<std::string>(kIKEv2ClientCertSlotProperty);
+    if (!config->client_cert_id.has_value() ||
+        !config->client_cert_slot.has_value()) {
+      LOG(ERROR) << "Auth type is emtpy but empty cert id or slot found.";
+      return nullptr;
+    }
+  } else if (auth_type == kIKEv2AuthenticationTypeEAP) {
+    Error err;
+    config->xauth_user = eap_credentials.identity();
+    config->xauth_password = eap_credentials.GetEapPassword(&err);
+    if (err.IsFailure()) {
+      LOG(ERROR) << err;
+      return nullptr;
+    }
+  } else {
+    LOG(ERROR) << "Invalid auth type: " << auth_type;
+    return nullptr;
+  }
+
+  return config;
+}
+
 }  // namespace
 
-// TODO(b/210064468): Add more properties.
 const VPNDriver::Property IKEv2Driver::kProperties[] = {
+    {kIKEv2AuthenticationTypeProperty, 0},
+    {kIKEv2CaCertPemProperty, Property::kArray},
+    {kIKEv2ClientCertIdProperty, 0},
+    {kIKEv2ClientCertSlotProperty, 0},
+    {kIKEv2PskProperty, Property::kCredential | Property::kWriteOnly},
+    {kIKEv2LocalIdentityProperty, Property::kCredential},
+    {kIKEv2RemoteIdentityProperty, Property::kCredential},
     {kProviderHostProperty, 0},
     {kProviderTypeProperty, 0},
 };
 
 IKEv2Driver::IKEv2Driver(Manager* manager, ProcessManager* process_manager)
-    : VPNDriver(
-          manager, process_manager, kProperties, base::size(kProperties)) {}
+    : VPNDriver(manager,
+                process_manager,
+                kProperties,
+                base::size(kProperties),
+                /*use_eap=*/true) {}
 
 IKEv2Driver::~IKEv2Driver() {}
 
@@ -59,12 +117,16 @@ void IKEv2Driver::StartIPsecConnection() {
                           weak_factory_.GetWeakPtr()),
       base::BindOnce(&IKEv2Driver::OnIPsecFailure, weak_factory_.GetWeakPtr()),
       base::BindOnce(&IKEv2Driver::OnIPsecStopped, weak_factory_.GetWeakPtr()));
+  auto ipsec_config = MakeIPsecConfig(*const_args(), *eap_credentials());
+  if (!ipsec_config) {
+    LOG(ERROR) << "Failed to generate IPsec config";
+    NotifyServiceOfFailure(Service::kFailureConnect);
+    return;
+  }
 
-  // TODO(b/210064468): Compose IPsecConnection::Config based on property
-  // values.
   ipsec_connection_ = CreateIPsecConnection(
-      std::make_unique<IPsecConnection::Config>(), std::move(callbacks),
-      manager()->device_info(), manager()->dispatcher(), process_manager());
+      std::move(ipsec_config), std::move(callbacks), manager()->device_info(),
+      manager()->dispatcher(), process_manager());
 
   ipsec_connection_->Connect();
 }

@@ -5,6 +5,7 @@
 #ifndef SHILL_VPN_VPN_DRIVER_H_
 #define SHILL_VPN_VPN_DRIVER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -14,6 +15,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/callbacks.h"
+#include "shill/eap_credentials.h"
 #include "shill/key_value_store.h"
 #include "shill/mockable.h"
 #include "shill/service.h"
@@ -126,6 +128,9 @@ class VPNDriver {
 
   KeyValueStore* args() { return &args_; }
   const KeyValueStore* const_args() const { return &args_; }
+  const EapCredentials* eap_credentials() const {
+    return eap_credentials_.get();
+  }
 
  protected:
   // Represents a property in |args_|, which can be read and/or written over
@@ -148,7 +153,8 @@ class VPNDriver {
   VPNDriver(Manager* manager,
             ProcessManager* process_manager,
             const Property* properties,
-            size_t property_count);
+            size_t property_count,
+            bool use_eap = false);
   VPNDriver(const VPNDriver&) = delete;
   VPNDriver& operator=(const VPNDriver&) = delete;
 
@@ -185,6 +191,8 @@ class VPNDriver {
   const Property* const properties_;
   const size_t property_count_;
   KeyValueStore args_;
+
+  std::unique_ptr<EapCredentials> eap_credentials_;
 };
 
 }  // namespace shill

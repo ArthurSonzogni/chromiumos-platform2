@@ -231,6 +231,20 @@ const char kProviderTypeProperty[] = "Provider.Type";
 // ArcVpn Service property names.
 const char kArcVpnTunnelChromeProperty[] = "ArcVpn.TunnelChrome";
 
+// IKEv2 VPN Service property names.
+const char kIKEv2AuthenticationTypeProperty[] = "IKEv2.AuthenticationType";
+const char kIKEv2CaCertPemProperty[] = "IKEv2.CACertPEM";
+const char kIKEv2ClientCertIdProperty[] = "IKEv2.ClientCertID";
+const char kIKEv2ClientCertSlotProperty[] = "IKEv2.ClientCertSlot";
+const char kIKEv2LocalIdentityProperty[] = "IKEv2.LocalIdentity";
+const char kIKEv2PskProperty[] = "IKEv2.PSK";
+const char kIKEv2RemoteIdentityProperty[] = "IKEv2.RemoteIdentity";
+
+// Values used in IKEv2.AuthenticationType.
+const char kIKEv2AuthenticationTypePSK[] = "PSK";
+const char kIKEv2AuthenticationTypeEAP[] = "EAP";
+const char kIKEv2AuthenticationTypeCert[] = "Cert";
+
 // Deprecated. Use the next group of constants instead.
 // TODO(jiejiang): Remove this group after the references in chrome are removed.
 const char kL2tpIpsecCaCertPemProperty[] = "L2TPIPsec.CACertPEM";

@@ -80,39 +80,27 @@ std::string ResolveNameToIP(const std::string& name) {
   return ConvertSockAddrToIPString(address);
 }
 
-// Gets a value from KeyValueStore in std::optional. Returns std::nullopt if the
-// key does not exist or the value is empty.
-using ContainerTypes = brillo::TypeList<std::string, Strings>;
-template <typename T, typename = brillo::EnableIfIsOneOf<T, ContainerTypes>>
-std::optional<T> GetOptionalValue(const KeyValueStore& args,
-                                  const std::string& key) {
-  if (args.Lookup<T>(key, T{}).empty()) {
-    return std::nullopt;
-  }
-  return args.Get<T>(key);
-}
-
 std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
     const std::string& remote_ip, const KeyValueStore& args) {
   auto config = std::make_unique<IPsecConnection::Config>();
 
   config->ike_version = IPsecConnection::Config::IKEVersion::kV1;
   config->remote = remote_ip;
-  config->psk = GetOptionalValue<std::string>(args, kL2TPIPsecPskProperty);
+  config->psk = args.GetOptionalValue<std::string>(kL2TPIPsecPskProperty);
   config->ca_cert_pem_strings =
-      GetOptionalValue<Strings>(args, kL2TPIPsecCaCertPemProperty);
+      args.GetOptionalValue<Strings>(kL2TPIPsecCaCertPemProperty);
   config->client_cert_id =
-      GetOptionalValue<std::string>(args, kL2TPIPsecClientCertIdProperty);
+      args.GetOptionalValue<std::string>(kL2TPIPsecClientCertIdProperty);
   config->client_cert_slot =
-      GetOptionalValue<std::string>(args, kL2TPIPsecClientCertSlotProperty);
+      args.GetOptionalValue<std::string>(kL2TPIPsecClientCertSlotProperty);
 
   config->xauth_user =
-      GetOptionalValue<std::string>(args, kL2TPIPsecXauthUserProperty);
+      args.GetOptionalValue<std::string>(kL2TPIPsecXauthUserProperty);
   config->xauth_password =
-      GetOptionalValue<std::string>(args, kL2TPIPsecXauthPasswordProperty);
+      args.GetOptionalValue<std::string>(kL2TPIPsecXauthPasswordProperty);
 
   config->tunnel_group =
-      GetOptionalValue<std::string>(args, kL2TPIPsecTunnelGroupProperty);
+      args.GetOptionalValue<std::string>(kL2TPIPsecTunnelGroupProperty);
 
   // 17 = UDP, 1701 = L2TP.
   config->local_proto_port =
