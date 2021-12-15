@@ -32,7 +32,7 @@ use libsirenia::{
         TransportTypeOption, VerbosityOption, DEFAULT_TRANSPORT_TYPE_LONG_NAME,
         DEFAULT_TRANSPORT_TYPE_SHORT_NAME,
     },
-    communication::trichechus::{AppInfo, Trichechus, TrichechusClient},
+    communication::trichechus::{self, AppInfo, Trichechus, TrichechusClient},
     linux::events::EventMultiplexer,
     transport::{
         Transport, TransportType, DEFAULT_CLIENT_PORT, DEFAULT_SERVER_PORT, LOOPBACK_DEFAULT,
@@ -122,7 +122,6 @@ impl Passthrough {
             .lock()
             .unwrap()
             .start_session(app_info)
-            .context("failed to call start_session rpc")?
             .context("start_session rpc failed")?;
 
         info!("Starting TEE application: {}", app_id);
@@ -155,9 +154,11 @@ impl OrgChromiumManaTEEInterface for Passthrough {
                 .parse()
                 .map_err(|err: String| dbus::Error::new_custom("", &err))?,
         ) {
-            Ok(Ok(())) => Ok(String::new()),
-            Ok(Err(err)) => Ok(err),
-            Err(err) => Err(dbus::Error::new_custom("", &err.to_string())),
+            Ok(()) => Ok(String::new()),
+            Err(err) => match err.downcast::<trichechus::Error>() {
+                Ok(err) => Ok(err.to_string()),
+                Err(err) => Err(dbus::Error::new_custom("", &err.to_string())),
+            },
         }
     }
 }
@@ -283,7 +284,6 @@ fn direct_start_manatee_app(
             .lock()
             .unwrap()
             .load_app(app_id.to_string(), elf)
-            .context("failed to call load_app rpc")?
             .context("load_app rpc failed")?;
     }
     start_manatee_app(&passthrough, app_id, handler)

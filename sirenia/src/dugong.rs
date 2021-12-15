@@ -13,6 +13,7 @@ use std::fs::File;
 use std::io::Read;
 use std::os::unix::net::UnixDatagram;
 use std::path::PathBuf;
+use std::result::Result as StdResult;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -95,7 +96,7 @@ impl OrgChromiumManaTEEInterface for DugongState {
     fn start_teeapplication(
         &mut self,
         app_id: String,
-    ) -> std::result::Result<(i32, OwnedFd, OwnedFd), MethodErr> {
+    ) -> StdResult<(i32, OwnedFd, OwnedFd), MethodErr> {
         info!("Got request to start up: {}", &app_id);
         let fds = request_start_tee_app(self, &app_id);
         match fds {
@@ -104,15 +105,15 @@ impl OrgChromiumManaTEEInterface for DugongState {
         }
     }
 
-    fn system_event(&mut self, event: String) -> std::result::Result<String, MethodErr> {
+    fn system_event(&mut self, event: String) -> StdResult<String, MethodErr> {
         let mut api_handle = self.trichechus_client().lock().unwrap();
-        let status = api_handle
-            .system_event(event.parse().map_err(|err| MethodErr::failed(&err))?)
-            .map_err(|err| MethodErr::failed(&err))?;
-        Ok(match status {
-            Ok(()) => String::new(),
-            Err(err) => format!("{:?}", err),
-        })
+        match api_handle.system_event(event.parse().map_err(|err| MethodErr::failed(&err))?) {
+            Ok(()) => Ok(String::new()),
+            Err(err) => match err.downcast::<trichechus::Error>() {
+                Ok(err) => Ok(err.to_string()),
+                Err(err) => Err(MethodErr::failed(&err)),
+            },
+        }
     }
 }
 
@@ -137,7 +138,6 @@ fn load_tee_app(
     info!("Transmitting TEE app.");
     api_handle
         .load_app(app_id.to_string(), elf)
-        .context("failed to call load_app rpc")?
         .context("load_app rpc failed")?;
 
     Ok(())
@@ -155,20 +155,17 @@ fn request_start_tee_app(state: &DugongState, app_id: &str) -> Result<(OwnedFd, 
     };
     info!("Requesting start {:?}", &app_info);
     let mut trichechus_client = state.trichechus_client().lock().unwrap();
-    match trichechus_client
-        .start_session(app_info.clone())
-        .context("failed to call start_session rpc")?
-    {
-        Ok(_) => (),
-        Err(trichechus::Error::AppNotLoaded) => {
-            load_tee_app(&mut trichechus_client, state, app_id)?;
-            trichechus_client
-                .start_session(app_info)
-                .context("failed to call start_session rpc")?
-                .context("start_session rpc failed")?;
-        }
-        Err(err) => {
-            bail!("start_session rpc failed: {}", err);
+    const RPC_FAILURE_CONTEXT: &str = "start_session rpc failed";
+    if let Err(err) = trichechus_client.start_session(app_info.clone()) {
+        match err.downcast() {
+            Ok(trichechus::Error::AppNotLoaded) => {
+                load_tee_app(&mut trichechus_client, state, app_id)?;
+                trichechus_client
+                    .start_session(app_info)
+                    .context(RPC_FAILURE_CONTEXT)?;
+            }
+            Ok(err) => Err(err).context(RPC_FAILURE_CONTEXT)?,
+            Err(err) => Err(err).context(RPC_FAILURE_CONTEXT)?,
         }
     }
     let Transport { r, w, id: _ } = transport.connect().context("failed to connect to socket")?;

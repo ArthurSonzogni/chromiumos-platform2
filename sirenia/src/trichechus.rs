@@ -247,28 +247,24 @@ impl TrichechusServerImpl {
 }
 
 impl Trichechus<Error> for TrichechusServerImpl {
-    fn start_session(&mut self, app_info: AppInfo) -> Result<StdResult<(), trichechus::Error>> {
+    fn start_session(&mut self, app_info: AppInfo) -> Result<()> {
         info!("Received start session message: {:?}", &app_info);
         // The TEE app isn't started until its socket connection is accepted.
         Ok(log_error(start_session(
             self.state.borrow_mut().deref_mut(),
             self.port_to_transport_type(app_info.port_number),
             &app_info.app_id,
-        )))
+        ))?)
     }
 
-    fn load_app(
-        &mut self,
-        app_id: String,
-        elf: Vec<u8>,
-    ) -> Result<StdResult<(), trichechus::Error>> {
+    fn load_app(&mut self, app_id: String, elf: Vec<u8>) -> Result<()> {
         info!("Received load app message: {:?}", &app_id);
         // The TEE app isn't started until its socket connection is accepted.
         Ok(log_error(load_app(
             self.state.borrow_mut().deref_mut(),
             &app_id,
             &elf,
-        )))
+        ))?)
     }
 
     fn get_apps(&mut self) -> Result<Vec<(String, ExecutableInfo)>> {
@@ -288,8 +284,8 @@ impl Trichechus<Error> for TrichechusServerImpl {
         Ok(replacement.into())
     }
 
-    fn system_event(&mut self, event: SystemEvent) -> Result<StdResult<(), String>> {
-        Ok(log_error(system_event(event)))
+    fn system_event(&mut self, event: SystemEvent) -> Result<()> {
+        log_error(system_event(event)).map_err(|err| trichechus::Error::from(err).into())
     }
 }
 

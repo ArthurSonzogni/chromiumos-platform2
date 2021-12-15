@@ -67,12 +67,14 @@ impl FromStr for SystemEvent {
     }
 }
 
-#[sirenia_rpc]
+#[sirenia_rpc(error = "Error")]
 pub trait Trichechus<E> {
-    fn start_session(&mut self, app_info: AppInfo) -> StdResult<Result<(), Error>, E>;
-    fn load_app(&mut self, app_id: String, elf: Vec<u8>) -> StdResult<Result<(), Error>, E>;
+    fn start_session(&mut self, app_info: AppInfo) -> StdResult<(), E>;
+    fn load_app(&mut self, app_id: String, elf: Vec<u8>) -> StdResult<(), E>;
+    #[error()]
     fn get_apps(&mut self) -> StdResult<Vec<(String, ExecutableInfo)>, E>;
+    #[error()]
     fn get_logs(&mut self) -> StdResult<Vec<Vec<u8>>, E>;
 
-    fn system_event(&mut self, event: SystemEvent) -> StdResult<Result<(), String>, E>;
+    fn system_event(&mut self, event: SystemEvent) -> StdResult<(), E>;
 }
