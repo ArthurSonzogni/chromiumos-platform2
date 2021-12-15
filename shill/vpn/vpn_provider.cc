@@ -22,6 +22,7 @@
 #include "shill/routing_policy_entry.h"
 #include "shill/store_interface.h"
 #include "shill/vpn/arc_vpn_driver.h"
+#include "shill/vpn/ikev2_driver.h"
 #include "shill/vpn/l2tp_ipsec_driver.h"
 #include "shill/vpn/new_l2tp_ipsec_driver.h"
 #include "shill/vpn/openvpn_driver.h"
@@ -275,6 +276,8 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const std::string& type,
     // Only used in the tast tests.
     driver.reset(
         new NewL2TPIPsecDriver(manager_, ProcessManager::GetInstance()));
+  } else if (type == kProviderIKEv2) {
+    driver.reset(new IKEv2Driver(manager_, ProcessManager::GetInstance()));
   } else if (type == kProviderThirdPartyVpn) {
     // For third party VPN host contains extension ID
     driver.reset(
