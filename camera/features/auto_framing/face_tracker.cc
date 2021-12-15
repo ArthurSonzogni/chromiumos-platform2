@@ -98,7 +98,7 @@ std::vector<Rect<float>> FaceTracker::GetActiveFaceRectangles() const {
   return face_rectangles;
 }
 
-Rect<float> FaceTracker::GetActiveBoundingRectangle() const {
+Rect<float> FaceTracker::GetActiveBoundingRectangleOnActiveStream() const {
   std::vector<Rect<float>> faces = GetActiveFaceRectangles();
   if (faces.empty()) {
     return Rect<float>();
@@ -111,7 +111,37 @@ Rect<float> FaceTracker::GetActiveBoundingRectangle() const {
     max_y1 = std::max(f.bottom(), max_y1);
   }
   Rect<float> bounding_rect(min_x0, min_y0, max_x1 - min_x0, max_y1 - min_y0);
-  VLOGF(2) << "Active bounding rect: " << bounding_rect;
+  VLOGF(2) << "Active bounding rect w.r.t active array: " << bounding_rect;
+
+  // Transform the normalized rectangle in the active sensor array space to the
+  // active stream space.
+  const float active_array_aspect_ratio =
+      static_cast<float>(options_.active_array_dimension.width) /
+      static_cast<float>(options_.active_array_dimension.height);
+  const float active_stream_aspect_ratio =
+      static_cast<float>(options_.active_stream_dimension.width) /
+      static_cast<float>(options_.active_stream_dimension.height);
+  if (active_array_aspect_ratio < active_stream_aspect_ratio) {
+    // The active stream is cropped into letterbox with smaller height than the
+    // active sensor array. Adjust the y coordinates accordingly.
+    const float height_ratio =
+        active_array_aspect_ratio / active_stream_aspect_ratio;
+    bounding_rect.height = std::min(bounding_rect.height / height_ratio, 1.0f);
+    const float y_offset = (1.0f - height_ratio) / 2;
+    bounding_rect.top =
+        std::max(bounding_rect.top - y_offset, 0.0f) / height_ratio;
+  } else {
+    // The active stream is cropped into pillarbox with smaller width than the
+    // active sensor array. Adjust the x coordinates accordingly.
+    const float width_ratio =
+        active_stream_aspect_ratio / active_array_aspect_ratio;
+    bounding_rect.width = std::min(bounding_rect.width / width_ratio, 1.0f);
+    const float x_offset = (1.0f - width_ratio) / 2;
+    bounding_rect.left =
+        std::max(bounding_rect.left - x_offset, 0.0f) / width_ratio;
+  }
+  VLOGF(2) << "Active bounding rect w.r.t active stream: " << bounding_rect;
+
   return bounding_rect;
 }
 

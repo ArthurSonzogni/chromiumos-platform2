@@ -27,6 +27,10 @@ class FaceTracker {
     // the input face coordinates.
     Size active_array_dimension;
 
+    // The dimension of the active stream that will be cropped. Used for
+    // translating the ROI coordinates in the active array space.
+    Size active_stream_dimension;
+
     // The threshold in ms for including a newly detected face for tracking.
     int face_phase_in_threshold_ms = 3000;
 
@@ -51,8 +55,10 @@ class FaceTracker {
   // The all the rectangles of all the detected faces.
   std::vector<Rect<float>> GetActiveFaceRectangles() const;
 
-  // Gets the rectangle than encloses all the detected faces.
-  Rect<float> GetActiveBoundingRectangle() const;
+  // Gets the rectangle than encloses all the detected faces. Returns a
+  // normalized rectangle in [0.0, 1.0] x [0.0, 1.0] with respect to the active
+  // stream dimension.
+  Rect<float> GetActiveBoundingRectangleOnActiveStream() const;
 
   void OnOptionsUpdated(const base::Value& json_values);
 

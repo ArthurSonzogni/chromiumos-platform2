@@ -86,7 +86,8 @@ bool AutoFramingStreamManipulator::ConfigureStreams(
     VLOGF(1) << "YUV stream for CrOS Auto Framing processing: "
              << GetDebugString(yuv_stream_);
     face_tracker_ = std::make_unique<FaceTracker>(FaceTracker::Options{
-        .active_array_dimension = active_array_dimension_});
+        .active_array_dimension = active_array_dimension_,
+        .active_stream_dimension = {yuv_stream_->width, yuv_stream_->height}});
     frame_cropper_ = std::make_unique<FrameCropper>(
         FrameCropper::Options{
             .input_size = {yuv_stream_->width, yuv_stream_->height}},
@@ -137,7 +138,8 @@ bool AutoFramingStreamManipulator::ProcessCaptureResult(
   if (result->feature_metadata().faces) {
     face_tracker_->OnNewFaceData(*result->feature_metadata().faces);
     faces_ = face_tracker_->GetActiveFaceRectangles();
-    region_of_interest_ = face_tracker_->GetActiveBoundingRectangle();
+    region_of_interest_ =
+        face_tracker_->GetActiveBoundingRectangleOnActiveStream();
     gpu_thread_.PostTaskSync(
         FROM_HERE,
         base::BindOnce(&FrameCropper::OnNewRegionOfInterest,
