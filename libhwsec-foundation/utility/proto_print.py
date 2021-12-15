@@ -12,7 +12,7 @@ this is not available when using only MessageLite. This script generates code to
 emulate Message::DebugString() without using reflection. The input must be a
 valid .proto file.
 
-Usage: proto_print.py [--subdir=foo] <bar.proto>
+Usage: proto_print.py [--package-dir=pac] [--subdir=foo] <bar.proto>
 
 Files named print_bar_proto.h and print_bar_proto.cc will be created in the
 current working directory.
@@ -49,7 +49,7 @@ class Message(object):
         """Initializes a Message instance.
 
         Args:
-           name: The protobuf message name.
+            name: The protobuf message name.
         """
         self.name = name
         self.fields = []
@@ -114,7 +114,7 @@ def ParseProto(input_file):
     enums = []
     current_message_stack = []
     current_enum = None
-    package_re = re.compile(r'package\s+(\w+);')
+    package_re = re.compile(r'package\s+([.\w]+);')
     import_re = re.compile(r'import\s+"([\w]*/)*(\w+).proto";')
     message_re = re.compile(r'message\s+(\w+)\s*{')
     field_re = re.compile(r'(optional|required|repeated)\s+(\w+)\s+(\w+)\s*=')
@@ -175,7 +175,7 @@ def ParseProto(input_file):
 
 def GenerateFileHeaders(proto_name, package, imports, subdir,
                         proto_include_override, header_file_name, header_file,
-                        impl_file):
+                        impl_file, package_dir):
     """Generates and prints file headers.
 
     Args:
@@ -184,22 +184,24 @@ def GenerateFileHeaders(proto_name, package, imports, subdir,
         imports: A list of imported protos.
         subdir: The --subdir arg.
         proto_include_override: Include directory override for the #include
-                    statement in generated code
+                        statement in generated code
         header_file_name: The header file name.
         header_file: The header file handle, open for writing.
         impl_file: The implementation file handle, open for writing.
+        package_dir: The package directory.
     """
     if subdir:
         guard_name = '%s_%s_PRINT_%s_PROTO_H_' % (
-            package.upper(), subdir.upper(), proto_name.upper())
-        package_with_subdir = '%s/%s' % (package, subdir)
+            package_dir.upper(), subdir.upper(), proto_name.upper())
+        package_with_subdir = '%s/%s' % (package_dir, subdir)
     else:
-        guard_name = '%s_PRINT_%s_PROTO_H_' % (package.upper(),
+        guard_name = '%s_PRINT_%s_PROTO_H_' % (package_dir.upper(),
                                                proto_name.upper())
-        package_with_subdir = package
+        package_with_subdir = package_dir
     proto_include_dir = package_with_subdir
     if proto_include_override is not None:
         proto_include_dir = proto_include_override
+    namespace = package.replace('.', '::')
     includes = '\n'.join([
         '#include "%(package_with_subdir)s/print_%(import)s_proto.h"' % {
             'package_with_subdir': package_with_subdir,
@@ -224,11 +226,11 @@ def GenerateFileHeaders(proto_name, package, imports, subdir,
 
 #include "%(proto_include_dir)s/%(proto)s.pb.h"
 
-namespace %(package)s {
+namespace %(namespace)s {
 """ % {
         'year': date.today().year,
         'guard_name': guard_name,
-        'package': package,
+        'namespace': namespace,
         'proto': proto_name,
         'proto_include_dir': proto_include_dir,
         'cmd': ' '.join(sys.argv)
@@ -253,10 +255,10 @@ namespace %(package)s {
 
 %(includes)s
 
-namespace %(package)s {
+namespace %(namespace)s {
 """ % {
         'year': date.today().year,
-        'package': package,
+        'namespace': namespace,
         'package_with_subdir': package_with_subdir,
         'header_file_name': header_file_name,
         'includes': includes,
@@ -267,7 +269,8 @@ namespace %(package)s {
     impl_file.write(impl)
 
 
-def GenerateFileFooters(proto_name, package, subdir, header_file, impl_file):
+def GenerateFileFooters(proto_name, package, subdir, header_file, impl_file,
+                        package_dir):
     """Generates and prints file footers.
 
     Args:
@@ -276,25 +279,27 @@ def GenerateFileFooters(proto_name, package, subdir, header_file, impl_file):
         subdir: The --subdir arg.
         header_file: The header file handle, open for writing.
         impl_file: The implementation file handle, open for writing.
+        package_dir: The package directory.
     """
+    namespace = package.replace('.', '::')
     if subdir:
         guard_name = '%s_%s_PRINT_%s_PROTO_H_' % (
-            package.upper(), subdir.upper(), proto_name.upper())
+            package_dir.upper(), subdir.upper(), proto_name.upper())
     else:
-        guard_name = '%s_PRINT_%s_PROTO_H_' % (package.upper(),
+        guard_name = '%s_PRINT_%s_PROTO_H_' % (package_dir.upper(),
                                                proto_name.upper())
     header = """
 
-}  // namespace %(package)s
+}  // namespace %(namespace)s
 
 #endif  // %(guard_name)s
 """ % {
         'guard_name': guard_name,
-        'package': package
+        'namespace': namespace
     }
     impl = """
-}  // namespace %(package)s
-""" % {'package': package}
+}  // namespace %(namespace)s
+""" % {'namespace': namespace}
 
     header_file.write(header)
     impl_file.write(impl)
@@ -435,6 +440,10 @@ def main():
     parser = argparse.ArgumentParser(description='print proto code generator')
     parser.add_argument('input_file')
     parser.add_argument(
+        '--package-dir',
+        default='',
+        help=('Override for the package directory name'))
+    parser.add_argument(
         '--subdir',
         default='',
         help=('The subdirectory under which the generated ' +
@@ -447,6 +456,9 @@ def main():
     args = parser.parse_args()
     with open(args.input_file) as input_file:
         package, imports, messages, enums = ParseProto(input_file)
+    package_dir = package
+    if args.package_dir != '':
+        package_dir = args.package_dir
     proto_name = os.path.basename(args.input_file).rsplit('.', 1)[0]
     header_file_name = 'print_%s_proto.h' % proto_name
     impl_file_name = 'print_%s_proto.cc' % proto_name
@@ -454,13 +466,13 @@ def main():
         with open(impl_file_name, 'w') as impl_file:
             GenerateFileHeaders(proto_name, package, imports, args.subdir,
                                 args.proto_include_override, header_file_name,
-                                header_file, impl_file)
+                                header_file, impl_file, package_dir)
             for enum in enums:
                 GenerateEnumPrinter(enum, header_file, impl_file)
             for message in messages:
                 GenerateMessagePrinter(message, header_file, impl_file)
             GenerateFileFooters(proto_name, package, args.subdir, header_file,
-                                impl_file)
+                                impl_file, package_dir)
     FormatFile(header_file_name)
     FormatFile(impl_file_name)
 
