@@ -192,7 +192,7 @@ TEST_F(DBusMethodInvokerTest, TestFailure) {
   EXPECT_EQ(nullptr, response.get());
   EXPECT_EQ(brillo::errors::dbus::kDomain, error->GetDomain());
   EXPECT_EQ("org.MyError", error->GetCode());
-  EXPECT_EQ("My error message", error->GetMessage());
+  EXPECT_NE(std::string::npos, error->GetMessage().find("My error message"));
 }
 
 TEST_F(DBusMethodInvokerTest, TestProtobuf) {
