@@ -17,6 +17,7 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/auth_factor/auth_factor.h"
+#include "cryptohome/auth_factor/auth_factor_utils.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/keyset_management.h"
@@ -65,10 +66,13 @@ class AuthSession final {
 
   // AddCredentials is called when newly created or existing user wants to add
   // new credentials.
-  // TODO(crbug.com/1181102): Add functionality for adding credentials for an
-  // existing user.
   user_data_auth::CryptohomeErrorCode AddCredentials(
       const user_data_auth::AddCredentialsRequest& request);
+
+  // AddCredentials is called when newly created or existing user wants to add
+  // new credentials.
+  user_data_auth::CryptohomeErrorCode AddAuthFactor(
+      const user_data_auth::AddAuthFactorRequest& request);
 
   // Authenticate is called when the user wants to authenticate the current
   // AuthSession. It may be called multiple times depending on errors or various

@@ -3779,6 +3779,17 @@ bool UserDataAuth::AddAuthFactor(
   AssertOnMountThread();
   // TODO(b/3319388): Implement AddAuthFactor.
   user_data_auth::AddAuthFactorReply reply;
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
+  AuthSession* auth_session =
+      GetAuthenticatedAuthSession(request.auth_session_id(), &error);
+  if (!auth_session) {
+    reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+    std::move(on_done).Run(reply);
+    return false;
+  }
+  auth_session->AddAuthFactor(request);
+
   reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
   std::move(on_done).Run(reply);
   return true;

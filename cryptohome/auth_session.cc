@@ -13,6 +13,7 @@
 #include <cryptohome/scrypt_verifier.h>
 
 #include "cryptohome/auth_factor/auth_factor.h"
+#include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/vault_keyset.h"
@@ -208,6 +209,22 @@ std::unique_ptr<Credentials> AuthSession::GetCredentials(
   }
 
   return credentials;
+}
+
+user_data_auth::CryptohomeErrorCode AuthSession::AddAuthFactor(
+    const user_data_auth::AddAuthFactorRequest& request) {
+  user_data_auth::CryptohomeErrorCode error_code =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED;
+
+  AuthFactorMetadata auth_factor_metadata;
+  AuthFactorType auth_factor_type;
+
+  GetAuthFactorMetadata(request.auth_factor(), auth_factor_metadata,
+                        auth_factor_type);
+
+  // TOTO(b/3319388): This is still incomplete, need to add implementation of
+  // AddAuthFactor and instantiation of AuthBlock.
+  return error_code;
 }
 
 }  // namespace cryptohome

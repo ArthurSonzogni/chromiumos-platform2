@@ -250,6 +250,7 @@ pkg_config("libcryptohome_dependent_config") {
 
 static_library("libcryptohome") {
   sources = [
+    "../auth_factor/auth_factor_utils.cc",
     "../challenge_credentials/challenge_credentials_constants.cc",
     "../challenge_credentials/challenge_credentials_decrypt_operation.cc",
     "../challenge_credentials/challenge_credentials_generate_new_operation.cc",
