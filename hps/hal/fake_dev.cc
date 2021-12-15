@@ -160,6 +160,13 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
     case HpsReg::kSysCmd:
     case HpsReg::kApplVers:
     case HpsReg::kFeatEn:
+    case HpsReg::kFpgaBootCount:
+    case HpsReg::kFpgaLoopCount:
+    case HpsReg::kFpgaRomVersion:
+    case HpsReg::kSpiFlashStatus:
+    case HpsReg::kDebugIdx:
+    case HpsReg::kDebugVal:
+    case HpsReg::kCameraConfig:
     case HpsReg::kMax:
       break;
   }
@@ -207,6 +214,13 @@ void FakeDev::WriteRegister(HpsReg reg, uint16_t value) {
     case HpsReg::kFeature1:
     case HpsReg::kFirmwareVersionHigh:
     case HpsReg::kFirmwareVersionLow:
+    case HpsReg::kFpgaBootCount:
+    case HpsReg::kFpgaLoopCount:
+    case HpsReg::kFpgaRomVersion:
+    case HpsReg::kSpiFlashStatus:
+    case HpsReg::kDebugIdx:
+    case HpsReg::kDebugVal:
+    case HpsReg::kCameraConfig:
     case HpsReg::kMax:
       break;
   }

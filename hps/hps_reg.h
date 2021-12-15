@@ -35,7 +35,14 @@ enum class HpsReg : uint8_t {
   kFeature1 = 9,
   kFirmwareVersionHigh = 10,
   kFirmwareVersionLow = 11,
-  kLargestRegister = kFirmwareVersionLow,  // keep this in sync
+  kFpgaBootCount = 12,
+  kFpgaLoopCount = 13,
+  kFpgaRomVersion = 14,
+  kSpiFlashStatus = 15,
+  kDebugIdx = 16,
+  kDebugVal = 17,
+  kCameraConfig = 18,
+  kLargestRegister = kCameraConfig,  // keep this in sync
   kMax = 127,
 };
 

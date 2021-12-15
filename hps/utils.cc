@@ -67,6 +67,20 @@ const char* HpsRegToString(const HpsReg reg) {
       return "kFirmwareVersionHigh";
     case HpsReg::kFirmwareVersionLow:
       return "kFirmwareVersionLow";
+    case HpsReg::kFpgaBootCount:
+      return "kFpgaBootCount";
+    case HpsReg::kFpgaLoopCount:
+      return "kFpgaLoopCount";
+    case HpsReg::kFpgaRomVersion:
+      return "kFpgaRomVersion";
+    case HpsReg::kSpiFlashStatus:
+      return "kSpiFlashStatus";
+    case HpsReg::kDebugIdx:
+      return "kDebugIdx";
+    case HpsReg::kDebugVal:
+      return "kDebugVal";
+    case HpsReg::kCameraConfig:
+      return "kCameraConfig";
 
     case HpsReg::kMax:
       return "kMax";
@@ -193,6 +207,13 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
     case HpsReg::kMagic:
     case HpsReg::kMax:
     case HpsReg::kSysCmd:
+    case HpsReg::kFpgaBootCount:
+    case HpsReg::kFpgaLoopCount:
+    case HpsReg::kFpgaRomVersion:
+    case HpsReg::kSpiFlashStatus:
+    case HpsReg::kDebugIdx:
+    case HpsReg::kDebugVal:
+    case HpsReg::kCameraConfig:
       return "";
   }
 }
