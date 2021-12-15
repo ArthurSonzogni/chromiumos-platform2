@@ -31,6 +31,7 @@
 #include <mojo/public/cpp/system/platform_handle.h>
 #include <sys/eventfd.h>
 
+#include "arc/vm/libvda/decode/gpu/decode_helpers.h"
 #include "arc/vm/libvda/gbm_util.h"
 #include "arc/vm/libvda/gpu/format_util.h"
 #include "arc/vm/libvda/gpu/mojom/video_common.mojom.h"
@@ -39,18 +40,10 @@
 namespace arc {
 namespace {
 
-// TODO(alexlau): Query for this instead of hard coding.
-constexpr vda_input_format_t kInputFormats[] = {
-    {VP8PROFILE_MIN /* profile */, 2 /* min_width */, 2 /* min_height */,
-     1920 /* max_width */, 1080 /* max_height */},
-    {VP9PROFILE_PROFILE0 /* profile */, 2 /* min_width */, 2 /* min_height */,
-     1920 /* max_width */, 1080 /* max_height */},
-    {H264PROFILE_MAIN /* profile */, 2 /* min_width */, 2 /* min_height */,
-     1920 /* max_width */, 1080 /* max_height */}};
-
+// Convert the specified mojo |result| to a VDA result
 inline vda_result_t ConvertResult(
-    arc::mojom::VideoDecodeAccelerator::Result error) {
-  switch (error) {
+    arc::mojom::VideoDecodeAccelerator::Result result) {
+  switch (result) {
     case arc::mojom::VideoDecodeAccelerator::Result::SUCCESS:
       return SUCCESS;
     case arc::mojom::VideoDecodeAccelerator::Result::ILLEGAL_STATE:
@@ -66,46 +59,9 @@ inline vda_result_t ConvertResult(
     case arc::mojom::VideoDecodeAccelerator::Result::CANCELLED:
       return CANCELLED;
     default:
-      DLOG(ERROR) << "Unknown error code: " << error;
+      DLOG(ERROR) << "Unknown error code: " << result;
       return PLATFORM_FAILURE;
   }
-}
-
-inline arc::mojom::HalPixelFormat ConvertPixelFormatToHalPixelFormat(
-    vda_pixel_format_t format) {
-  switch (format) {
-    case YV12:
-      return arc::mojom::HalPixelFormat::HAL_PIXEL_FORMAT_YV12;
-    case NV12:
-      return arc::mojom::HalPixelFormat::HAL_PIXEL_FORMAT_NV12;
-    default:
-      NOTREACHED();
-  }
-}
-
-bool CheckValidOutputFormat(vda_pixel_format_t format, size_t num_planes) {
-  switch (format) {
-    case NV12:
-      if (num_planes != 2) {
-        LOG(ERROR) << "Invalid number of planes for NV12 format, expected 2 "
-                      "but received "
-                   << num_planes;
-        return false;
-      }
-      break;
-    case YV12:
-      if (num_planes != 3) {
-        LOG(ERROR) << "Invalid number of planes for YV12 format, expected 3 "
-                      "but received "
-                   << num_planes;
-        return false;
-      }
-      break;
-    default:
-      LOG(WARNING) << "Unexpected format: " << format;
-      return false;
-  }
-  return true;
 }
 
 // GpuVdaContext is the GPU decode session context created by GpuVdaImpl which

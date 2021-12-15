@@ -56,6 +56,7 @@ source_set("libvda_source_set") {
   deps = [ ":video_mojo_bindings" ]
   sources = [
     "decode/fake/fake_vda_impl.cc",
+    "decode/gpu/decode_helpers.cc",
     "decode/gpu/gpu_vda_impl.cc",
     "decode_wrapper.cc",
     "encode/fake/fake_vea_impl.cc",
