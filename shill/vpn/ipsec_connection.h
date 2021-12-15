@@ -53,17 +53,25 @@ class IPsecConnection : public VPNConnection {
     std::string remote;
 
     // Fields required when using cert auth.
-    std::optional<std::vector<std::string>> ca_cert_pem_strings;
     std::optional<std::string> client_cert_id;
     std::optional<std::string> client_cert_slot;
-    std::optional<std::string> client_cert_pin;
 
     // Field required when using psk auth.
     std::optional<std::string> psk;
 
-    // Fields required when using xauth as the second round in IKEv1.
+    // Username and password when using Xauth (the second round of
+    // authentication in IKEv1) or EAP-MSCHAPv2 (IKEv2). Strongswan treats these
+    // two kinds of authentication similarly in the secret section of the config
+    // file so we use the same fields for them here.
     std::optional<std::string> xauth_user;
     std::optional<std::string> xauth_password;
+
+    // Optional local (remote) identity.
+    std::optional<std::string> local_id;
+    std::optional<std::string> remote_id;
+
+    // If set, authenticate server by CA cert.
+    std::optional<std::vector<std::string>> ca_cert_pem_strings;
 
     // Cisco tunnel group name.
     std::optional<std::string> tunnel_group;
@@ -71,6 +79,7 @@ class IPsecConnection : public VPNConnection {
     // Protocol and port on the local/remote side. Should be in form of
     // "proto/port", e.g., "17/1701". For the valid values of proto and port,
     // see https://wiki.strongswan.org/projects/strongswan/wiki/Swanctlconf
+    // Ignored if |ike_version| is set to kV2.
     std::string local_proto_port;
     std::string remote_proto_port;
   };

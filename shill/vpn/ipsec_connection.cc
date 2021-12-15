@@ -25,6 +25,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
 #include <re2/re2.h>
 
 #include "shill/metrics.h"
@@ -47,13 +48,37 @@ constexpr char kSmartcardModuleName[] = "crypto_module";
 // 3des-sha1-modp1536: strongSwan fallback
 // 3des-sha1-modp1024: for compatibility with Windows RRAS, which requires
 //                     using the modp1024 dh-group
-constexpr char kDefaultIKEProposals[] =
+constexpr char kL2TPIPsecDefaultIKEProposals[] =
     "aes128-sha256-modp3072,aes128-sha1-modp2048,3des-sha1-modp1536,3des-sha1-"
     "modp1024,default";
 // Cisco ASA L2TP/IPsec setup instructions indicate using md5 for authentication
 // for the IPsec SA. Default StrongS/WAN setup is to only propose SHA1.
-constexpr char kDefaultESPProposals[] =
+constexpr char kL2TPIPsecDefaultESPProposals[] =
     "aes128gcm16,aes128-sha256,aes128-sha1,3des-sha1,3des-md5,default";
+
+// The default proposals used by strongSwan 5.9.2, removing 3DES and SHA1. Each
+// string contains two proposals: the AEAD one and non-AEAD one, they have to be
+// specified separately in IKEv2.
+constexpr char kIKEv2DefaultIKEProposals[] =
+    // non-AEAD encryption algorithms
+    "aes128-aes192-aes256-camellia128-camellia192-camellia256"
+    // integrity algorithms
+    "-aesxcbc-aescmac-sha256-sha384-sha512"
+    // DH groups
+    "-ecp256-ecp384-ecp521-ecp256bp-ecp384bp-ecp512bp-curve25519-curve448-"
+    "modp3072-modp4096-modp6144-modp8192-modp2048,"
+    // AEAD encryption algorithms
+    "aes128gcm16-aes192gcm16-aes256gcm16-chacha20poly1305-aes128gcm12-"
+    "aes192gcm12-aes256gcm12-aes128gcm8-aes192gcm8-aes256gcm8"
+    // PRF functions
+    "-prfsha256-prfsha384-prfsha512-prfaesxcbc-prfaescmac"
+    // DH groups
+    "-ecp256-ecp384-ecp521-ecp256bp-ecp384bp-ecp512bp-curve25519-curve448-"
+    "modp3072-modp4096-modp6144-modp8192-modp2048";
+constexpr char kIKEv2DefaultESPProposals[] =
+    "aes128gcm16-aes192gcm16-aes256gcm16,"  // AEAD algorithms
+    "aes128-aes192-aes256"                  // encryption algorithms
+    "-sha256-sha384-sha512-aesxcbc";        // integrity algorithms
 
 constexpr char kChildSAName[] = "managed";
 
@@ -73,6 +98,10 @@ constexpr int kCheckViciConnectableMaxAttempts = 10;
 
 // The default timeout value used in `swanctl --initiate`.
 constexpr base::TimeDelta kIPsecTimeout = base::TimeDelta::FromSeconds(30);
+
+// The PIN value does not have any real effects. Use the default value here.
+// See platform2/chaps/README.md
+constexpr char kTPMDefaultPin[] = "111111";
 
 // Represents a section in the format used by strongswan.conf and swanctl.conf.
 // We use this class only for formatting swanctl.conf since the contents of
@@ -493,37 +522,72 @@ void IPsecConnection::WriteSwanctlConfig() {
   Section* vpn_section = connections_section.AddSection("vpn");
   vpn_section->AddKeyValue("local_addrs", "0.0.0.0/0,::/0");
   vpn_section->AddKeyValue("remote_addrs", config_->remote);
-  vpn_section->AddKeyValue("proposals", kDefaultIKEProposals);
-  vpn_section->AddKeyValue("version", "1");  // IKEv1
 
-  // Fields for authentication.
-  Section* local1 = vpn_section->AddSection("local-1");
-  Section* remote1 = vpn_section->AddSection("remote-1");
+  const std::string kIfIdString = base::NumberToString(kXFRMInterfaceID);
+  switch (config_->ike_version) {
+    case Config::IKEVersion::kV1:
+      vpn_section->AddKeyValue("version", "1");  // IKEv1
+      vpn_section->AddKeyValue("proposals", kL2TPIPsecDefaultIKEProposals);
+      break;
+    case Config::IKEVersion::kV2:
+      vpn_section->AddKeyValue("version", "2");  // IKEv2
+      vpn_section->AddKeyValue("proposals", kIKEv2DefaultIKEProposals);
+      vpn_section->AddKeyValue("vips", "0.0.0.0");
+      vpn_section->AddKeyValue("if_id_in", kIfIdString);
+      vpn_section->AddKeyValue("if_id_out", kIfIdString);
+      break;
+    default:
+      NOTREACHED();
+  }
+
+  // Fields for PSK.
   if (config_->psk.has_value()) {
-    local1->AddKeyValue("auth", "psk");
-    remote1->AddKeyValue("auth", "psk");
+    Section* local = vpn_section->AddSection("local-psk");
+    Section* remote = vpn_section->AddSection("remote-psk");
+    local->AddKeyValue("auth", "psk");
+    remote->AddKeyValue("auth", "psk");
     auto* psk_section = secrets_section.AddSection("ike-1");
     psk_section->AddKeyValue("secret", config_->psk.value());
-  } else {
+
+    if (config_->local_id.has_value()) {
+      local->AddKeyValue("id", config_->local_id.value());
+    }
+    if (config_->remote_id.has_value()) {
+      remote->AddKeyValue("id", config_->remote_id.value());
+    }
+
+    // TODO(b/165170125): This part is untested.
+    if (config_->tunnel_group.has_value()) {
+      // Aggressive mode is insecure but required by the legacy Cisco VPN here.
+      // See https://crbug.com/199004 .
+      vpn_section->AddKeyValue("aggressive", "yes");
+
+      // Sets local id.
+      const std::string tunnel_group = config_->tunnel_group.value();
+      const std::string hex_tunnel_id =
+          base::HexEncode(tunnel_group.c_str(), tunnel_group.length());
+      const std::string local_id =
+          base::StringPrintf("@#%s", hex_tunnel_id.c_str());
+      local->AddKeyValue("id", local_id);
+    }
+  }
+
+  // Fields for local pubkey.
+  if (config_->client_cert_id.has_value()) {
     if (!config_->ca_cert_pem_strings.has_value() ||
-        !config_->client_cert_id.has_value() ||
-        !config_->client_cert_pin.has_value() ||
         !config_->client_cert_slot.has_value()) {
       NotifyFailure(Service::kFailureInternal,
                     "Expect cert auth but some required fields are empty");
       return;
     }
 
-    local1->AddKeyValue("auth", "pubkey");
-    remote1->AddKeyValue("auth", "pubkey");
+    Section* local_cert = vpn_section->AddSection("local-pubkey");
+    local_cert->AddKeyValue("auth", "pubkey");
+    if (config_->local_id.has_value()) {
+      local_cert->AddKeyValue("id", config_->local_id.value());
+    }
 
-    // Writes server CA to a file and references this file in the config.
-    server_ca_.set_root_directory(temp_dir_.GetPath());
-    server_ca_path_ =
-        server_ca_.CreatePEMFromStrings(config_->ca_cert_pem_strings.value());
-    remote1->AddKeyValue("cacerts", server_ca_path_.value());
-
-    Section* cert = local1->AddSection("cert");
+    Section* cert = local_cert->AddSection("cert");
     cert->AddKeyValue("handle", config_->client_cert_id.value());
     cert->AddKeyValue("slot", config_->client_cert_slot.value());
     cert->AddKeyValue("module", kSmartcardModuleName);
@@ -532,9 +596,26 @@ void IPsecConnection::WriteSwanctlConfig() {
     token->AddKeyValue("module", kSmartcardModuleName);
     token->AddKeyValue("handle", config_->client_cert_id.value());
     token->AddKeyValue("slot", config_->client_cert_slot.value());
-    token->AddKeyValue("pin", config_->client_cert_pin.value());
+    token->AddKeyValue("pin", kTPMDefaultPin);
   }
 
+  // Fields for remote pubkey.
+  if (config_->ca_cert_pem_strings) {
+    Section* remote = vpn_section->AddSection("remote-pubkey");
+    remote->AddKeyValue("auth", "pubkey");
+    if (config_->remote_id.has_value()) {
+      remote->AddKeyValue("id", config_->remote_id.value());
+    }
+
+    // Writes server CA to a file and references this file in the config.
+    server_ca_.set_root_directory(temp_dir_.GetPath());
+    server_ca_path_ =
+        server_ca_.CreatePEMFromStrings(config_->ca_cert_pem_strings.value());
+    remote->AddKeyValue("cacerts", server_ca_path_.value());
+  }
+
+  // Fields for Xauth/EAP-MSCHAPv2. This will be used as the second round in
+  // L2TP/IPsec VPN or the first round in IKEv2 VPN.
   if (config_->xauth_user.has_value() || config_->xauth_password.has_value()) {
     if (!config_->xauth_user.has_value()) {
       NotifyFailure(Service::kFailureInternal, "Only Xauth password is set");
@@ -545,39 +626,52 @@ void IPsecConnection::WriteSwanctlConfig() {
       return;
     }
 
-    Section* local2 = vpn_section->AddSection("local-2");
-    local2->AddKeyValue("auth", "xauth");
-    local2->AddKeyValue("xauth_id", config_->xauth_user.value());
+    Section* local = vpn_section->AddSection("local-xauth");
+    if (config_->local_id.has_value()) {
+      local->AddKeyValue("id", config_->local_id.value());
+    }
+    switch (config_->ike_version) {
+      case Config::IKEVersion::kV1:
+        local->AddKeyValue("auth", "xauth");
+        local->AddKeyValue("xauth_id", config_->xauth_user.value());
+        break;
+      case Config::IKEVersion::kV2:
+        local->AddKeyValue("auth", "eap-mschapv2");
+        local->AddKeyValue("eap_id", config_->xauth_user.value());
+        break;
+      default:
+        NOTREACHED();
+    }
+
     Section* xauth_section = secrets_section.AddSection("xauth-1");
     xauth_section->AddKeyValue("id", config_->xauth_user.value());
     xauth_section->AddKeyValue("secret", config_->xauth_password.value());
   }
 
-  // TODO(b/165170125): This part is untested.
-  if (config_->tunnel_group.has_value()) {
-    // Aggressive mode is insecure but required by the legacy Cisco VPN here.
-    // See https://crbug.com/199004 .
-    vpn_section->AddKeyValue("aggressive", "yes");
-
-    // Sets local id.
-    const std::string tunnel_group = config_->tunnel_group.value();
-    const std::string hex_tunnel_id =
-        base::HexEncode(tunnel_group.c_str(), tunnel_group.length());
-    const std::string local_id =
-        base::StringPrintf("@#%s", hex_tunnel_id.c_str());
-    local1->AddKeyValue("id", local_id);
-  }
-
   // Fields for CHILD_SA.
   Section* children_section = vpn_section->AddSection("children");
   Section* child_section = children_section->AddSection(kChildSAName);
-  child_section->AddKeyValue(
-      "local_ts", base::StrCat({"dynamic[", config_->local_proto_port, "]"}));
-  child_section->AddKeyValue(
-      "remote_ts", base::StrCat({"dynamic[", config_->remote_proto_port, "]"}));
-  child_section->AddKeyValue("esp_proposals", kDefaultESPProposals);
-  // L2TP/IPsec always uses transport mode.
-  child_section->AddKeyValue("mode", "transport");
+  switch (config_->ike_version) {
+    case Config::IKEVersion::kV1:
+      child_section->AddKeyValue(
+          "local_ts",
+          base::StrCat({"dynamic[", config_->local_proto_port, "]"}));
+      child_section->AddKeyValue(
+          "remote_ts",
+          base::StrCat({"dynamic[", config_->remote_proto_port, "]"}));
+      child_section->AddKeyValue("esp_proposals",
+                                 kL2TPIPsecDefaultESPProposals);
+      child_section->AddKeyValue("mode", "transport");
+      break;
+    case Config::IKEVersion::kV2:
+      child_section->AddKeyValue("local_ts", "dynamic");
+      child_section->AddKeyValue("remote_ts", "0.0.0.0/0");
+      child_section->AddKeyValue("esp_proposals", kIKEv2DefaultESPProposals);
+      child_section->AddKeyValue("mode", "tunnel");
+      break;
+    default:
+      NOTREACHED();
+  }
 
   // Writes to file.
   const std::string contents = base::StrCat(

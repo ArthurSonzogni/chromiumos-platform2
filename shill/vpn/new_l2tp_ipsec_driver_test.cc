@@ -303,7 +303,6 @@ TEST_F(NewL2TPIPsecDriverTest, PropertyStoreAndConfig) {
   EXPECT_EQ(ipsec_config->ca_cert_pem_strings, kCACertPEM);
   EXPECT_EQ(ipsec_config->client_cert_id, kCertId);
   EXPECT_EQ(ipsec_config->client_cert_slot, kCertSlot);
-  EXPECT_EQ(ipsec_config->client_cert_pin, kCertPin);
   EXPECT_EQ(ipsec_config->psk, std::nullopt);
   EXPECT_EQ(ipsec_config->xauth_user, kXauthUser);
   EXPECT_EQ(ipsec_config->xauth_password, kXauthPassword);

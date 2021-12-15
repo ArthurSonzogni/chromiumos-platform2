@@ -126,20 +126,20 @@ constexpr char kExpectedStrongSwanConf[] =
     "  }\n"
     "}";
 
-// Expected contents of swanctl.conf in WriteSwanctlConfig test.
-constexpr char kExpectedSwanctlConfWithPSK[] = R"(connections {
+// Expected contents of swanctl.conf in WriteSwanctlConfigL2TPIPsec test.
+constexpr char kExpectedSwanctlConfL2TPIPsecPSK[] = R"(connections {
   vpn {
     local_addrs = "0.0.0.0/0,::/0"
     proposals = "aes128-sha256-modp3072,aes128-sha1-modp2048,3des-sha1-modp1536,3des-sha1-modp1024,default"
     remote_addrs = "10.0.0.1"
     version = "1"
-    local-1 {
+    local-psk {
       auth = "psk"
     }
-    remote-1 {
+    remote-psk {
       auth = "psk"
     }
-    local-2 {
+    local-xauth {
       auth = "xauth"
       xauth_id = "xauth_user"
     }
@@ -157,6 +157,38 @@ secrets {
   ike-1 {
     secret = "this is psk"
   }
+  xauth-1 {
+    id = "xauth_user"
+    secret = "xauth_password"
+  }
+})";
+
+// Expected contents of swanctl.conf in WriteSwanctlConfigIKEv2 test.
+constexpr char kExpectedSwanctlConfIKEv2EAP[] = R"(connections {
+  vpn {
+    if_id_in = "1"
+    if_id_out = "1"
+    local_addrs = "0.0.0.0/0,::/0"
+    proposals = "aes128-aes192-aes256-camellia128-camellia192-camellia256-aesxcbc-aescmac-sha256-sha384-sha512-ecp256-ecp384-ecp521-ecp256bp-ecp384bp-ecp512bp-curve25519-curve448-modp3072-modp4096-modp6144-modp8192-modp2048,aes128gcm16-aes192gcm16-aes256gcm16-chacha20poly1305-aes128gcm12-aes192gcm12-aes256gcm12-aes128gcm8-aes192gcm8-aes256gcm8-prfsha256-prfsha384-prfsha512-prfaesxcbc-prfaescmac-ecp256-ecp384-ecp521-ecp256bp-ecp384bp-ecp512bp-curve25519-curve448-modp3072-modp4096-modp6144-modp8192-modp2048"
+    remote_addrs = "10.0.0.1"
+    version = "2"
+    vips = "0.0.0.0"
+    local-xauth {
+      auth = "eap-mschapv2"
+      eap_id = "xauth_user"
+      id = "local_id"
+    }
+    children {
+      managed {
+        esp_proposals = "aes128gcm16-aes192gcm16-aes256gcm16,aes128-aes192-aes256-sha256-sha384-sha512-aesxcbc"
+        local_ts = "dynamic"
+        mode = "tunnel"
+        remote_ts = "0.0.0.0/0"
+      }
+    }
+  }
+}
+secrets {
   xauth-1 {
     id = "xauth_user"
     secret = "xauth_password"
@@ -385,11 +417,12 @@ TEST_F(IPsecConnectionTest, StartCharonFailWithSocketNotListening) {
   run_loop.Run();
 }
 
-TEST_F(IPsecConnectionTest, WriteSwanctlConfig) {
+TEST_F(IPsecConnectionTest, WriteSwanctlConfigL2TPIPsec) {
   base::FilePath temp_dir = ipsec_connection_->SetTempDir();
 
   // Creates a config with PSK. Cert will be covered by tast tests.
   auto config = std::make_unique<IPsecConnection::Config>();
+  config->ike_version = IPsecConnection::Config::IKEVersion::kV1;
   config->remote = "10.0.0.1";
   config->local_proto_port = "17/1701";
   config->remote_proto_port = "17/1701";
@@ -410,7 +443,38 @@ TEST_F(IPsecConnectionTest, WriteSwanctlConfig) {
   ASSERT_TRUE(base::PathExists(expected_path));
   std::string actual_content;
   ASSERT_TRUE(base::ReadFileToString(expected_path, &actual_content));
-  EXPECT_EQ(actual_content, kExpectedSwanctlConfWithPSK);
+  EXPECT_EQ(actual_content, kExpectedSwanctlConfL2TPIPsecPSK);
+
+  // The file should be deleted after destroying the IPsecConnection object.
+  ipsec_connection_ = nullptr;
+  ASSERT_FALSE(base::PathExists(expected_path));
+}
+
+TEST_F(IPsecConnectionTest, WriteSwanctlConfigIKEv2) {
+  base::FilePath temp_dir = ipsec_connection_->SetTempDir();
+
+  // Creates a config with PSK. Cert will be covered by tast tests.
+  auto config = std::make_unique<IPsecConnection::Config>();
+  config->ike_version = IPsecConnection::Config::IKEVersion::kV2;
+  config->remote = "10.0.0.1";
+  config->local_id = "local_id";
+  config->xauth_user = "xauth_user";
+  config->xauth_password = "xauth_password";
+  ipsec_connection_->set_config(std::move(config));
+
+  // Signal should be sent out at the end of the execution.
+  EXPECT_CALL(*ipsec_connection_,
+              ScheduleConnectTask(ConnectStep::kSwanctlConfigWritten));
+
+  ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kCharonStarted);
+
+  // IPsecConnection should write the config to the `swanctl.conf` file under
+  // the temp dir it created.
+  base::FilePath expected_path = temp_dir.Append("swanctl.conf");
+  ASSERT_TRUE(base::PathExists(expected_path));
+  std::string actual_content;
+  ASSERT_TRUE(base::ReadFileToString(expected_path, &actual_content));
+  EXPECT_EQ(actual_content, kExpectedSwanctlConfIKEv2EAP);
 
   // The file should be deleted after destroying the IPsecConnection object.
   ipsec_connection_ = nullptr;

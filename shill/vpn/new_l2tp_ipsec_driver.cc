@@ -105,8 +105,6 @@ std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
       GetOptionalValue<std::string>(args, kL2TPIPsecClientCertIdProperty);
   config->client_cert_slot =
       GetOptionalValue<std::string>(args, kL2TPIPsecClientCertSlotProperty);
-  config->client_cert_pin =
-      GetOptionalValue<std::string>(args, kL2TPIPsecPinProperty);
 
   config->xauth_user =
       GetOptionalValue<std::string>(args, kL2TPIPsecXauthUserProperty);
