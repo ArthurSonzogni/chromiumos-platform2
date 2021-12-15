@@ -4,11 +4,58 @@
 
 // Provides the `display_debug` command which can be used to assist with log collection for feedback reports.
 
+use bitflags::bitflags;
 use dbus::blocking::Connection;
 use system_api::client::OrgChromiumDebugd;
 
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
 use crate::util::DEFAULT_DBUS_TIMEOUT;
+
+// These bitflag values must match those in org.chromium.debugd.xml.
+bitflags! {
+    struct DRMTraceCategories: u32 {
+        const CORE =    0x001;
+        const DRIVER =  0x002;
+        const KMS =     0x004;
+        const PRIME =   0x008;
+        const ATOMIC =  0x010;
+        const VBL =     0x020;
+        const STATE =   0x040;
+        const LEASE =   0x080;
+        const DP =      0x100;
+        const DRMRES =  0x200;
+    }
+}
+
+impl DRMTraceCategories {
+    fn default() -> DRMTraceCategories {
+        DRMTraceCategories { bits: 0 }
+    }
+
+    fn debug() -> DRMTraceCategories {
+        DRMTraceCategories::DRIVER
+            | DRMTraceCategories::KMS
+            | DRMTraceCategories::PRIME
+            | DRMTraceCategories::ATOMIC
+            | DRMTraceCategories::STATE
+            | DRMTraceCategories::LEASE
+            | DRMTraceCategories::DP
+    }
+}
+
+// These enum values must match those in org.chromium.debugd.xml.
+enum DRMTraceSize {
+    Default = 0,
+    Debug = 1,
+}
+
+// These enum values must match those in org.chromium.debugd.xml.
+enum DRMTraceSnapshotType {
+    Trace = 0,
+}
+
+const TRACE_START_LOG: &str = "DISPLAY-DEBUG-START-TRACE";
+const TRACE_STOP_LOG: &str = "DISPLAY-DEBUG-STOP-TRACE";
 
 struct Debugd {
     connection: dbus::blocking::Connection,
@@ -30,6 +77,42 @@ impl Debugd {
                 DEFAULT_DBUS_TIMEOUT,
             )
             .drmtrace_annotate_log(&log)
+            .map(|_| self)
+    }
+
+    fn drmtrace_snapshot(self, snapshot_type: DRMTraceSnapshotType) -> Result<Debugd, dbus::Error> {
+        self.connection
+            .with_proxy(
+                "org.chromium.debugd",
+                "/org/chromium/debugd",
+                DEFAULT_DBUS_TIMEOUT,
+            )
+            .drmtrace_snapshot(snapshot_type as u32)
+            .map(|_| self)
+    }
+
+    fn drmtrace_set_size(self, size: DRMTraceSize) -> Result<Debugd, dbus::Error> {
+        self.connection
+            .with_proxy(
+                "org.chromium.debugd",
+                "/org/chromium/debugd",
+                DEFAULT_DBUS_TIMEOUT,
+            )
+            .drmtrace_set_size(size as u32)
+            .map(|_| self)
+    }
+
+    fn drmtrace_set_categories(
+        self,
+        categories: DRMTraceCategories,
+    ) -> Result<Debugd, dbus::Error> {
+        self.connection
+            .with_proxy(
+                "org.chromium.debugd",
+                "/org/chromium/debugd",
+                DEFAULT_DBUS_TIMEOUT,
+            )
+            .drmtrace_set_categories(categories.bits())
             .map(|_| self)
     }
 }
@@ -78,14 +161,37 @@ fn execute_display_debug_trace_start(
     _cmd: &Command,
     _args: &Arguments,
 ) -> Result<(), dispatcher::Error> {
-    unimplemented!();
+    println!("Increasing size and verbosity of drm_trace log. Call `display_debug trace_stop` to restore to default.");
+    match Debugd::new()
+        .and_then(|d| d.drmtrace_set_size(DRMTraceSize::Debug))
+        .and_then(|d| d.drmtrace_set_categories(DRMTraceCategories::debug()))
+        .and_then(|d| d.drmtrace_annotate_log(String::from(TRACE_START_LOG)))
+    {
+        Ok(_) => Ok(()),
+        Err(err) => {
+            println!("ERROR: Got unexpected result: {}", err);
+            Err(dispatcher::Error::CommandReturnedError)
+        }
+    }
 }
 
 fn execute_display_debug_trace_stop(
     _cmd: &Command,
     _args: &Arguments,
 ) -> Result<(), dispatcher::Error> {
-    unimplemented!();
+    println!("Saving drm_trace log to /var/log/display_debug/. Restoring size and verbosity of drm_trace log to default.");
+    match Debugd::new()
+        .and_then(|d| d.drmtrace_annotate_log(String::from(TRACE_STOP_LOG)))
+        .and_then(|d| d.drmtrace_snapshot(DRMTraceSnapshotType::Trace))
+        .and_then(|d| d.drmtrace_set_categories(DRMTraceCategories::default()))
+        .and_then(|d| d.drmtrace_set_size(DRMTraceSize::Default))
+    {
+        Ok(_) => Ok(()),
+        Err(err) => {
+            println!("ERROR: Got unexpected result: {}", err);
+            Err(dispatcher::Error::CommandReturnedError)
+        }
+    }
 }
 
 fn execute_display_debug_annotate(
