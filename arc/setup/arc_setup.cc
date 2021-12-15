@@ -108,6 +108,8 @@ constexpr char kCameraTestConfig[] = "/var/cache/camera/test_config.json";
 constexpr char kCrasSocketDirectory[] = "/run/cras";
 constexpr char kCombinedPropFileVm[] =
     "/run/arcvm/host_generated/combined.prop";
+constexpr char kDalvikCacheSELinuxContext[] =
+    "u:object_r:dalvikcache_data_file:s0";
 constexpr char kDebugfsDirectory[] = "/run/arc/debugfs";
 constexpr char kFakeKptrRestrict[] = "/run/arc/fake_kptr_restrict";
 constexpr char kFakeMmapRndBits[] = "/run/arc/fake_mmap_rnd_bits";
@@ -1088,8 +1090,6 @@ bool ArcSetup::InstallLinksToHostSideCodeInternal(
     const base::FilePath& src_isa_directory,
     const base::FilePath& dest_isa_directory,
     const std::string& isa) {
-  constexpr char kDalvikCacheSELinuxContext[] =
-      "u:object_r:dalvikcache_data_file:s0";
   bool src_file_exists = false;
   LOG(INFO) << "Adding symlinks to " << dest_isa_directory.value();
 
@@ -1141,6 +1141,8 @@ bool ArcSetup::InstallLinksToHostSideCode() {
       arc_paths_->android_data_directory.Append("data/dalvik-cache");
 
   EXIT_IF(!InstallDirectory(0771, kRootUid, kRootGid, dest_directory));
+  EXIT_IF(!Chcon(kDalvikCacheSELinuxContext, dest_directory));
+
   // Iterate through each isa sub directory. For example, dalvik-cache/x86 and
   // dalvik-cache/x86_64
   base::FileEnumerator src_directory_iter(src_directory, false,
