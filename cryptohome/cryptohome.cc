@@ -55,7 +55,6 @@
 #include "cryptohome/timestamp.pb.h"
 #include "cryptohome/UserDataAuth.pb.h"
 #include "cryptohome/vault_keyset.pb.h"
-#include "dbus_adaptors/org.chromium.CryptohomeInterface.h"  // NOLINT(build/include_alpha)
 #include "user_data_auth/dbus-proxies.h"
 // The dbus_adaptor and proxy include must happen after the protobuf include
 

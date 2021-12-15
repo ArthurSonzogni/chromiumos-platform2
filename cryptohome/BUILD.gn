@@ -16,7 +16,6 @@ group("all") {
     ":cryptohome",
     ":cryptohome-namespace-mounter",
     ":cryptohome-path",
-    ":cryptohome-proxy",
     ":cryptohomed",
     ":encrypted-reboot-vault",
     ":homedirs_initializer",
@@ -153,40 +152,6 @@ executable("cryptohome-namespace-mounter") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
-
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "protobuf",
-  ]
-}
-
-# This executable is used for the transition between old DBus interface
-# and the new DBus interface.
-executable("cryptohome-proxy") {
-  sources = [
-    "platform.cc",
-    "proxy/cryptohome_proxy.cc",
-    "proxy/dbus_proxy_service.cc",
-    "proxy/legacy_cryptohome_interface_adaptor.cc",
-  ]
-  configs += [ "libs:target_defaults" ]
-  deps = [
-    "libs:cryptohome-proto-external",
-    "libs:cryptohome_adaptors",
-    "libs:libcryptohome",
-  ]
-
-  # NOSORT
-  pkg_deps = [
-    "dbus-1",
-    "libattestation-client",
-    "libbrillo",
-    "libchrome",
-    "libmetrics",
-    "libtpm_manager-client",
-    "libuser_data_auth-client",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear
     # before protobuf here or the linker flags won't be in the right
@@ -482,8 +447,6 @@ if (use.test) {
       "mock_tpm.cc",
       "persistent_lookup_table_unittest.cc",
       "platform_unittest.cc",
-      "proxy/legacy_cryptohome_interface_adaptor.cc",
-      "proxy/legacy_cryptohome_interface_adaptor_test.cc",
       "sign_in_hash_tree_unittest.cc",
       "signature_sealing/structures_proto_test.cc",
       "signature_sealing_backend_test_utils.cc",
