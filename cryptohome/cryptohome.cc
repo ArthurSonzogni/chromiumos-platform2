@@ -124,8 +124,6 @@ static const char* kActions[] = {"mount_ex",
                                  "get_system_salt",
                                  "dump_keyset",
                                  "dump_last_activity",
-                                 "tpm_status",
-                                 "tpm_more_status",
                                  "status",
                                  "set_current_user_old",
                                  "tpm_take_ownership",
@@ -220,8 +218,6 @@ enum ActionEnum {
   ACTION_GET_SYSTEM_SALT,
   ACTION_DUMP_KEYSET,
   ACTION_DUMP_LAST_ACTIVITY,
-  ACTION_TPM_STATUS,
-  ACTION_TPM_MORE_STATUS,
   ACTION_STATUS,
   ACTION_SET_CURRENT_USER_OLD,
   ACTION_TPM_TAKE_OWNERSHIP,
@@ -1273,178 +1269,6 @@ int main(int argc, char** argv) {
                (base::Time::Now() - last_activity).InDays());
       }
     }
-  } else if (!strcmp(switches::kActions[switches::ACTION_TPM_STATUS],
-                     action.c_str())) {
-    tpm_manager::GetTpmStatusRequest req;
-    tpm_manager::GetTpmStatusReply reply;
-    brillo::ErrorPtr error;
-    if (!tpm_ownership_proxy.GetTpmStatus(req, &reply, &error, timeout_ms) ||
-        error) {
-      printf("GetTpmStatus call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
-    } else {
-      printf("TPM Enabled: %s\n", (reply.enabled() ? "true" : "false"));
-      printf("TPM Owned: %s\n", (reply.owned() ? "true" : "false"));
-      printf("TPM Ready: %s\n",
-             ((reply.enabled() && reply.owned()) ? "true" : "false"));
-      printf("TPM Password: %s\n", reply.local_data().owner_password().c_str());
-    }
-  } else if (!strcmp(switches::kActions[switches::ACTION_TPM_MORE_STATUS],
-                     action.c_str())) {
-    printf(
-        "WARNING: This method is deprecated and should not be used in new "
-        "code.\n");
-
-    // This method requires the output of more than 1 method and thus is
-    // divided into various parts:
-    // - TpmManager stage: Calls GetTpmStatus() in tpm_manager
-    // - DictionaryAttack stage: Calls GetDictionaryAttackInfo() in tpm_manager
-    // - InstallAttributes stage: Calls InstallAttributesGetStatus() in
-    // UserDataAuth
-    // - Attestation stage: Calls GetStatus() in attestation
-    // The 4 stages is executed back to back according to the sequence listed
-    // above. After all of them are done, we'll take their results and form the
-    // response for this method call.
-
-    cryptohome::GetTpmStatusReply result;
-
-    // Stage 1: TpmManager stage
-    tpm_manager::GetTpmStatusRequest req_tpm_manager;
-    tpm_manager::GetTpmStatusReply reply_tpm_manager;
-    brillo::ErrorPtr error;
-    if (!tpm_ownership_proxy.GetTpmStatus(req_tpm_manager, &reply_tpm_manager,
-                                          &error, timeout_ms) ||
-        error) {
-      printf("GetTpmStatus call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    if (reply_tpm_manager.status() != tpm_manager::STATUS_SUCCESS) {
-      printf("GetTpmStatus call failed: status %d.\n",
-             static_cast<int>(reply_tpm_manager.status()));
-      return 1;
-    }
-
-    result.set_enabled(reply_tpm_manager.enabled());
-    result.set_owned(reply_tpm_manager.owned());
-    if (!reply_tpm_manager.local_data().owner_password().empty()) {
-      result.set_initialized(false);
-      result.set_owner_password(
-          reply_tpm_manager.local_data().owner_password());
-    } else {
-      // Initialized is true only when the TPM is owned and the owner password
-      // has already been destroyed.
-      result.set_initialized(result.owned());
-    }
-
-    bool has_reset_lock_permissions = true;
-    if (reply_tpm_manager.local_data().owner_password().empty()) {
-      if (reply_tpm_manager.local_data().lockout_password().empty() &&
-          !reply_tpm_manager.local_data().has_owner_delegate()) {
-        has_reset_lock_permissions = false;
-      } else if (reply_tpm_manager.local_data().has_owner_delegate() &&
-                 !reply_tpm_manager.local_data()
-                      .owner_delegate()
-                      .has_reset_lock_permissions()) {
-        has_reset_lock_permissions = false;
-      }
-    }
-    result.set_has_reset_lock_permissions(has_reset_lock_permissions);
-
-    // Stage 2: DictionaryAttack stage
-    tpm_manager::GetDictionaryAttackInfoRequest req_da;
-    tpm_manager::GetDictionaryAttackInfoReply reply_da;
-    error.reset();
-    if (!tpm_ownership_proxy.GetDictionaryAttackInfo(req_da, &reply_da, &error,
-                                                     timeout_ms) ||
-        error) {
-      printf("GetDictionaryAttackInfo call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    if (reply_da.status() != tpm_manager::STATUS_SUCCESS) {
-      printf("GetDictionaryAttackInfo call failed: status %d.\n",
-             static_cast<int>(reply_da.status()));
-      return 1;
-    }
-    result.set_dictionary_attack_counter(reply_da.dictionary_attack_counter());
-    result.set_dictionary_attack_threshold(
-        reply_da.dictionary_attack_threshold());
-    result.set_dictionary_attack_lockout_in_effect(
-        reply_da.dictionary_attack_lockout_in_effect());
-    result.set_dictionary_attack_lockout_seconds_remaining(
-        reply_da.dictionary_attack_lockout_seconds_remaining());
-
-    // Stage 3: InstallAttributes stage
-    user_data_auth::InstallAttributesGetStatusRequest req_ia;
-    user_data_auth::InstallAttributesGetStatusReply reply_ia;
-    error.reset();
-    if (!install_attributes_proxy.InstallAttributesGetStatus(
-            req_ia, &reply_ia, &error, timeout_ms) ||
-        error) {
-      printf("InstallAttributesGetStatus call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    if (reply_ia.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printf("InstallAttributesGetStatus call failed: status %d.\n",
-             static_cast<int>(reply_ia.error()));
-      return 1;
-    }
-
-    result.set_install_lockbox_finalized(
-        result.owned() &&
-        reply_ia.state() == user_data_auth::InstallAttributesState::VALID);
-
-    // Stage 4: Attestation stage
-    attestation::GetStatusRequest req_attestation;
-    attestation::GetStatusReply reply_attestation;
-    req_attestation.set_extended_status(true);
-    error.reset();
-    if (!attestation_proxy.GetStatus(req_attestation, &reply_attestation,
-                                     &error, timeout_ms) ||
-        error) {
-      printf("AttestationGetStatus call failed: %s.\n",
-             BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    result.set_boot_lockbox_finalized(false);
-    result.set_is_locked_to_single_user(platform.FileExists(
-        base::FilePath(cryptohome::kLockedToSingleUserFile)));
-    if (reply_attestation.status() !=
-        attestation::AttestationStatus::STATUS_SUCCESS) {
-      printf("AttestationGetStatus call failed: status %d.\n",
-             static_cast<int>(reply_attestation.status()));
-      return 1;
-    } else {
-      result.set_attestation_prepared(
-          reply_attestation.prepared_for_enrollment());
-      result.set_attestation_enrolled(reply_attestation.enrolled());
-      result.set_verified_boot_measured(reply_attestation.verified_boot());
-      for (auto it = reply_attestation.identities().cbegin(),
-                end = reply_attestation.identities().cend();
-           it != end; ++it) {
-        auto* identity = result.mutable_identities()->Add();
-        identity->set_features(it->features());
-      }
-      for (auto it = reply_attestation.identity_certificates().cbegin(),
-                end = reply_attestation.identity_certificates().cend();
-           it != end; ++it) {
-        cryptohome::GetTpmStatusReply::IdentityCertificate identity_certificate;
-        identity_certificate.set_identity(it->second.identity());
-        identity_certificate.set_aca(it->second.aca());
-        result.mutable_identity_certificates()->insert(
-            google::protobuf::Map<
-                int, cryptohome::GetTpmStatusReply::IdentityCertificate>::
-                value_type(it->first, identity_certificate));
-      }
-    }
-
-    // Print the result.
-    result.PrintDebugString();
-
-    printf("GetTpmStatus success.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_STATUS],
                      action.c_str())) {
     user_data_auth::GetStatusStringRequest req;
