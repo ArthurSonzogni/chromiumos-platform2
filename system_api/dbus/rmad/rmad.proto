@@ -257,6 +257,7 @@ message ComponentsRepairState {
     }
     RmadComponent component = 1;
     RepairStatus repair_status = 2;
+    string identifier = 3;
   }
   repeated ComponentRepairStatus components = 1;
   bool mainboard_rework = 2;
