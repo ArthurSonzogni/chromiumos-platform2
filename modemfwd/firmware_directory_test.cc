@@ -93,14 +93,15 @@ TEST_F(FirmwareDirectoryTest, FindFirmwareV2) {
 
   EXPECT_TRUE(res.main_firmware.has_value());
   const FirmwareFileInfo& main_info = res.main_firmware.value();
-  EXPECT_EQ(kMainFirmwareFile1, main_info.firmware_path.BaseName().value());
+  EXPECT_EQ(kMainFirmwareFile1,
+            base::FilePath(main_info.firmware_path).BaseName().value());
   EXPECT_EQ(kMainFirmwareVersion1, main_info.version);
 
   EXPECT_TRUE(res.carrier_firmware.has_value());
   const FirmwareFileInfo& carrier_info = res.carrier_firmware.value();
   EXPECT_EQ(kCarrierA, carrier_a);
   EXPECT_EQ(kCarrierFirmwareFile1,
-            carrier_info.firmware_path.BaseName().value());
+            base::FilePath(carrier_info.firmware_path).BaseName().value());
   EXPECT_EQ(kCarrierFirmwareVersion1, carrier_info.version);
 
   EXPECT_FALSE(res.oem_firmware.has_value());
@@ -117,19 +118,21 @@ TEST_F(FirmwareDirectoryTest, FindFirmwareWithOemV2) {
 
   EXPECT_TRUE(res.main_firmware.has_value());
   const FirmwareFileInfo& main_info = res.main_firmware.value();
-  EXPECT_EQ(kMainFirmwareFile1, main_info.firmware_path.BaseName().value());
+  EXPECT_EQ(kMainFirmwareFile1,
+            base::FilePath(main_info.firmware_path).BaseName().value());
   EXPECT_EQ(kMainFirmwareVersion1, main_info.version);
 
   EXPECT_TRUE(res.carrier_firmware.has_value());
   const FirmwareFileInfo& carrier_info = res.carrier_firmware.value();
   EXPECT_EQ(kCarrierA, carrier_a);
   EXPECT_EQ(kCarrierFirmwareFile1,
-            carrier_info.firmware_path.BaseName().value());
+            base::FilePath(carrier_info.firmware_path).BaseName().value());
   EXPECT_EQ(kCarrierFirmwareVersion1, carrier_info.version);
 
   EXPECT_TRUE(res.oem_firmware.has_value());
   const FirmwareFileInfo& oem_info = res.oem_firmware.value();
-  EXPECT_EQ(kOemFirmwareFile1, oem_info.firmware_path.BaseName().value());
+  EXPECT_EQ(kOemFirmwareFile1,
+            base::FilePath(oem_info.firmware_path).BaseName().value());
   EXPECT_EQ(kOemFirmwareVersion1, oem_info.version);
 }
 
@@ -164,7 +167,8 @@ TEST_F(FirmwareDirectoryTest, MultipleCarrierFirmwareV2) {
   EXPECT_TRUE(res.carrier_firmware.has_value());
   const FirmwareFileInfo& info_a = res.carrier_firmware.value();
   EXPECT_EQ(kCarrierA, carrier_a);
-  EXPECT_EQ(kCarrierFirmwareFile1, info_a.firmware_path.BaseName().value());
+  EXPECT_EQ(kCarrierFirmwareFile1,
+            base::FilePath(info_a.firmware_path).BaseName().value());
   EXPECT_EQ(kCarrierFirmwareVersion1, info_a.version);
 
   std::string carrier_b(kCarrierB);
@@ -172,7 +176,8 @@ TEST_F(FirmwareDirectoryTest, MultipleCarrierFirmwareV2) {
   EXPECT_TRUE(res.carrier_firmware.has_value());
   const FirmwareFileInfo& info_b = res.carrier_firmware.value();
   EXPECT_EQ(kCarrierB, carrier_b);
-  EXPECT_EQ(kCarrierFirmwareFile2, info_b.firmware_path.BaseName().value());
+  EXPECT_EQ(kCarrierFirmwareFile2,
+            base::FilePath(info_b.firmware_path).BaseName().value());
   EXPECT_EQ(kCarrierFirmwareVersion2, info_b.version);
 }
 
@@ -186,12 +191,14 @@ TEST_F(FirmwareDirectoryTest, GenericFirmwareV2) {
   EXPECT_TRUE(res.carrier_firmware.has_value());
   const FirmwareFileInfo& info = res.carrier_firmware.value();
   EXPECT_EQ(FirmwareDirectory::kGenericCarrierId, carrier_a);
-  EXPECT_EQ(kGenericCarrierFirmwareFile, info.firmware_path.BaseName().value());
+  EXPECT_EQ(kGenericCarrierFirmwareFile,
+            base::FilePath(info.firmware_path).BaseName().value());
   EXPECT_EQ(kGenericCarrierFirmwareVersion, info.version);
 
   EXPECT_TRUE(res.oem_firmware.has_value());
   const FirmwareFileInfo& oem_info = res.oem_firmware.value();
-  EXPECT_EQ(kOemFirmwareFile1, oem_info.firmware_path.BaseName().value());
+  EXPECT_EQ(kOemFirmwareFile1,
+            base::FilePath(oem_info.firmware_path).BaseName().value());
   EXPECT_EQ(kOemFirmwareVersion1, oem_info.version);
 }
 
@@ -206,7 +213,8 @@ TEST_F(FirmwareDirectoryTest, FirmwareSupportsTwoCarriersV2) {
   EXPECT_TRUE(res.carrier_firmware.has_value());
   const FirmwareFileInfo& info_a = res.carrier_firmware.value();
   EXPECT_EQ(kCarrierA, carrier_a);
-  EXPECT_EQ(kCarrierFirmwareFile1, info_a.firmware_path.BaseName().value());
+  EXPECT_EQ(kCarrierFirmwareFile1,
+            base::FilePath(info_a.firmware_path).BaseName().value());
   EXPECT_EQ(kCarrierFirmwareVersion1, info_a.version);
 
   std::string carrier_b(kCarrierB);
@@ -214,7 +222,8 @@ TEST_F(FirmwareDirectoryTest, FirmwareSupportsTwoCarriersV2) {
   EXPECT_TRUE(res.carrier_firmware.has_value());
   const FirmwareFileInfo& info_b = res.carrier_firmware.value();
   EXPECT_EQ(kCarrierB, carrier_b);
-  EXPECT_EQ(kCarrierFirmwareFile1, info_b.firmware_path.BaseName().value());
+  EXPECT_EQ(kCarrierFirmwareFile1,
+            base::FilePath(info_b.firmware_path).BaseName().value());
   EXPECT_EQ(kCarrierFirmwareVersion1, info_b.version);
 
   std::string carrier_c(kCarrierC);
@@ -233,7 +242,8 @@ TEST_F(FirmwareDirectoryTest, SpecificBeforeGenericV2) {
   EXPECT_TRUE(res.carrier_firmware.has_value());
   const FirmwareFileInfo& info = res.carrier_firmware.value();
   EXPECT_EQ(kCarrierA, carrier_a);
-  EXPECT_EQ(kCarrierFirmwareFile1, info.firmware_path.BaseName().value());
+  EXPECT_EQ(kCarrierFirmwareFile1,
+            base::FilePath(info.firmware_path).BaseName().value());
   EXPECT_EQ(kCarrierFirmwareVersion1, info.version);
 }
 
@@ -247,18 +257,21 @@ TEST_F(FirmwareDirectoryTest, MainFirmwareDefault) {
 
   EXPECT_TRUE(res.main_firmware.has_value());
   const FirmwareFileInfo& main_info = res.main_firmware.value();
-  EXPECT_EQ(kMainFirmwareFile1, main_info.firmware_path.BaseName().value());
+  EXPECT_EQ(kMainFirmwareFile1,
+            base::FilePath(main_info.firmware_path).BaseName().value());
   EXPECT_EQ(kMainFirmwareVersion1, main_info.version);
 
   EXPECT_TRUE(res.carrier_firmware.has_value());
   const FirmwareFileInfo& info_a = res.carrier_firmware.value();
   EXPECT_EQ(kCarrierA, carrier_a);
-  EXPECT_EQ(kCarrierFirmwareFile1, info_a.firmware_path.BaseName().value());
+  EXPECT_EQ(kCarrierFirmwareFile1,
+            base::FilePath(info_a.firmware_path).BaseName().value());
   EXPECT_EQ(kCarrierFirmwareVersion1, info_a.version);
 
   EXPECT_TRUE(res.oem_firmware.has_value());
   const FirmwareFileInfo& oem_info = res.oem_firmware.value();
-  EXPECT_EQ(kOemFirmwareFile1, oem_info.firmware_path.BaseName().value());
+  EXPECT_EQ(kOemFirmwareFile1,
+            base::FilePath(oem_info.firmware_path).BaseName().value());
   EXPECT_EQ(kOemFirmwareVersion1, oem_info.version);
 }
 
@@ -273,12 +286,14 @@ TEST_F(FirmwareDirectoryTest, MainFirmwareDefaultForGeneric) {
 
   EXPECT_TRUE(res.main_firmware.has_value());
   const FirmwareFileInfo& main_info_2 = res.main_firmware.value();
-  EXPECT_EQ(kMainFirmwareFile1, main_info_2.firmware_path.BaseName().value());
+  EXPECT_EQ(kMainFirmwareFile1,
+            base::FilePath(main_info_2.firmware_path).BaseName().value());
   EXPECT_EQ(kMainFirmwareVersion1, main_info_2.version);
 
   EXPECT_TRUE(res.oem_firmware.has_value());
   const FirmwareFileInfo& oem_info = res.oem_firmware.value();
-  EXPECT_EQ(kOemFirmwareFile1, oem_info.firmware_path.BaseName().value());
+  EXPECT_EQ(kOemFirmwareFile1,
+            base::FilePath(oem_info.firmware_path).BaseName().value());
   EXPECT_EQ(kOemFirmwareVersion1, oem_info.version);
 }
 
@@ -293,18 +308,21 @@ TEST_F(FirmwareDirectoryTest, MainFirmwareSwitching) {
 
   EXPECT_TRUE(res.main_firmware.has_value());
   const FirmwareFileInfo& main_info = res.main_firmware.value();
-  EXPECT_EQ(kMainFirmwareFile1, main_info.firmware_path.BaseName().value());
+  EXPECT_EQ(kMainFirmwareFile1,
+            base::FilePath(main_info.firmware_path).BaseName().value());
   EXPECT_EQ(kMainFirmwareVersion1, main_info.version);
 
   EXPECT_TRUE(res.carrier_firmware.has_value());
   const FirmwareFileInfo& info_a = res.carrier_firmware.value();
   EXPECT_EQ(kCarrierA, carrier_a);
-  EXPECT_EQ(kCarrierFirmwareFile1, info_a.firmware_path.BaseName().value());
+  EXPECT_EQ(kCarrierFirmwareFile1,
+            base::FilePath(info_a.firmware_path).BaseName().value());
   EXPECT_EQ(kCarrierFirmwareVersion1, info_a.version);
 
   EXPECT_TRUE(res.oem_firmware.has_value());
   const FirmwareFileInfo& oem_info = res.oem_firmware.value();
-  EXPECT_EQ(kOemFirmwareFile1, oem_info.firmware_path.BaseName().value());
+  EXPECT_EQ(kOemFirmwareFile1,
+            base::FilePath(oem_info.firmware_path).BaseName().value());
   EXPECT_EQ(kOemFirmwareVersion1, oem_info.version);
 
   // Carrier B calls for different main firmware. This can only be encoded
@@ -314,18 +332,21 @@ TEST_F(FirmwareDirectoryTest, MainFirmwareSwitching) {
 
   EXPECT_TRUE(res.main_firmware.has_value());
   const FirmwareFileInfo& main_info_2 = res.main_firmware.value();
-  EXPECT_EQ(kMainFirmwareFile2, main_info_2.firmware_path.BaseName().value());
+  EXPECT_EQ(kMainFirmwareFile2,
+            base::FilePath(main_info_2.firmware_path).BaseName().value());
   EXPECT_EQ(kMainFirmwareVersion2, main_info_2.version);
 
   EXPECT_TRUE(res.carrier_firmware.has_value());
   const FirmwareFileInfo& info_b = res.carrier_firmware.value();
   EXPECT_EQ(kCarrierB, carrier_b);
-  EXPECT_EQ(kCarrierFirmwareFile2, info_b.firmware_path.BaseName().value());
+  EXPECT_EQ(kCarrierFirmwareFile2,
+            base::FilePath(info_b.firmware_path).BaseName().value());
   EXPECT_EQ(kCarrierFirmwareVersion2, info_b.version);
 
   EXPECT_TRUE(res.oem_firmware.has_value());
   const FirmwareFileInfo& oem_info_2 = res.oem_firmware.value();
-  EXPECT_EQ(kOemFirmwareFile2, oem_info_2.firmware_path.BaseName().value());
+  EXPECT_EQ(kOemFirmwareFile2,
+            base::FilePath(oem_info_2.firmware_path).BaseName().value());
   EXPECT_EQ(kOemFirmwareVersion2, oem_info_2.version);
 }
 
@@ -340,18 +361,21 @@ TEST_F(FirmwareDirectoryTest, MainFirmwareFullySpecified) {
 
   EXPECT_TRUE(res.main_firmware.has_value());
   const FirmwareFileInfo& main_info = res.main_firmware.value();
-  EXPECT_EQ(kMainFirmwareFile1, main_info.firmware_path.BaseName().value());
+  EXPECT_EQ(kMainFirmwareFile1,
+            base::FilePath(main_info.firmware_path).BaseName().value());
   EXPECT_EQ(kMainFirmwareVersion1, main_info.version);
 
   EXPECT_TRUE(res.carrier_firmware.has_value());
   const FirmwareFileInfo& info_a = res.carrier_firmware.value();
   EXPECT_EQ(kCarrierA, carrier_a);
-  EXPECT_EQ(kCarrierFirmwareFile1, info_a.firmware_path.BaseName().value());
+  EXPECT_EQ(kCarrierFirmwareFile1,
+            base::FilePath(info_a.firmware_path).BaseName().value());
   EXPECT_EQ(kCarrierFirmwareVersion1, info_a.version);
 
   EXPECT_TRUE(res.oem_firmware.has_value());
   const FirmwareFileInfo& oem_info = res.oem_firmware.value();
-  EXPECT_EQ(kOemFirmwareFile1, oem_info.firmware_path.BaseName().value());
+  EXPECT_EQ(kOemFirmwareFile1,
+            base::FilePath(oem_info.firmware_path).BaseName().value());
   EXPECT_EQ(kOemFirmwareVersion1, oem_info.version);
 
   // Carrier B uses the generic firmware, which specifies its own main firmware.
@@ -360,19 +384,21 @@ TEST_F(FirmwareDirectoryTest, MainFirmwareFullySpecified) {
 
   EXPECT_TRUE(res.main_firmware.has_value());
   const FirmwareFileInfo& main_info_2 = res.main_firmware.value();
-  EXPECT_EQ(kMainFirmwareFile2, main_info_2.firmware_path.BaseName().value());
+  EXPECT_EQ(kMainFirmwareFile2,
+            base::FilePath(main_info_2.firmware_path).BaseName().value());
   EXPECT_EQ(kMainFirmwareVersion2, main_info_2.version);
 
   EXPECT_TRUE(res.carrier_firmware.has_value());
   const FirmwareFileInfo& info_b = res.carrier_firmware.value();
   EXPECT_EQ(FirmwareDirectory::kGenericCarrierId, carrier_b);
   EXPECT_EQ(kGenericCarrierFirmwareFile,
-            info_b.firmware_path.BaseName().value());
+            base::FilePath(info_b.firmware_path).BaseName().value());
   EXPECT_EQ(kGenericCarrierFirmwareVersion, info_b.version);
 
   EXPECT_TRUE(res.oem_firmware.has_value());
   const FirmwareFileInfo& oem_info_2 = res.oem_firmware.value();
-  EXPECT_EQ(kOemFirmwareFile2, oem_info_2.firmware_path.BaseName().value());
+  EXPECT_EQ(kOemFirmwareFile2,
+            base::FilePath(oem_info_2.firmware_path).BaseName().value());
   EXPECT_EQ(kOemFirmwareVersion2, oem_info_2.version);
 }
 

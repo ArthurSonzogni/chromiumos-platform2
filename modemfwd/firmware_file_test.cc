@@ -11,10 +11,9 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <gtest/gtest.h>
-
-#include "modemfwd/scoped_temp_file.h"
 
 namespace modemfwd {
 namespace {
@@ -23,35 +22,42 @@ constexpr char kFirmwareVersion[] = "1.0";
 
 class FirmwareFileTest : public testing::Test {
  public:
-  FirmwareFileTest() : temp_file_(ScopedTempFile::Create()) {
-    CHECK(temp_file_);
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    temp_fw_dir_ = temp_dir_.GetPath();
+    ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_fw_dir_, &temp_file_));
   }
 
  protected:
-  std::unique_ptr<ScopedTempFile> temp_file_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath temp_fw_dir_;
+  base::FilePath temp_file_;
   FirmwareFile firmware_file_;
 };
 
 TEST_F(FirmwareFileTest, PrepareFromUncompressedFile) {
-  FirmwareFileInfo file_info(temp_file_->path(), kFirmwareVersion,
+  FirmwareFileInfo file_info(temp_file_.BaseName().value(), kFirmwareVersion,
                              FirmwareFileInfo::Compression::NONE);
-  EXPECT_TRUE(firmware_file_.PrepareFrom(file_info));
-  EXPECT_EQ(file_info.firmware_path, firmware_file_.path_for_logging());
-  EXPECT_EQ(file_info.firmware_path, firmware_file_.path_on_filesystem());
+  EXPECT_TRUE(firmware_file_.PrepareFrom(temp_fw_dir_, file_info));
+  EXPECT_EQ(temp_fw_dir_.Append(file_info.firmware_path),
+            firmware_file_.path_for_logging());
+  EXPECT_EQ(temp_fw_dir_.Append(file_info.firmware_path),
+            firmware_file_.path_on_filesystem());
 }
 
 TEST_F(FirmwareFileTest, PrepareFromCompressedFileDecompressFailed) {
   static const uint8_t kInvalidContent[] = {0x00, 0x01};
 
-  base::FilePath compressed_file_path = temp_file_->path().AddExtension(".xz");
+  base::FilePath compressed_file_path = temp_file_.AddExtension(".xz");
 
   ASSERT_EQ(base::WriteFile(compressed_file_path,
                             reinterpret_cast<const char*>(kInvalidContent),
                             std::size(kInvalidContent)),
             std::size(kInvalidContent));
-  FirmwareFileInfo file_info(compressed_file_path, kFirmwareVersion,
+  FirmwareFileInfo file_info(compressed_file_path.BaseName().value(),
+                             kFirmwareVersion,
                              FirmwareFileInfo::Compression::XZ);
-  EXPECT_FALSE(firmware_file_.PrepareFrom(file_info));
+  EXPECT_FALSE(firmware_file_.PrepareFrom(temp_fw_dir_, file_info));
   EXPECT_EQ(base::FilePath(), firmware_file_.path_for_logging());
   EXPECT_EQ(base::FilePath(), firmware_file_.path_on_filesystem());
 }
@@ -67,19 +73,23 @@ TEST_F(FirmwareFileTest, PrepareFromCompressedFileDecompressSucceeded) {
       0x7d, 0x01, 0x00, 0x00, 0x00, 0x00, 0x04, 0x59, 0x5a,
   };
 
-  base::FilePath compressed_file_path = temp_file_->path().AddExtension(".xz");
+  base::FilePath compressed_file_path = temp_file_.AddExtension(".xz");
   ASSERT_EQ(base::WriteFile(compressed_file_path,
                             reinterpret_cast<const char*>(kCompressedContent),
                             std::size(kCompressedContent)),
             std::size(kCompressedContent));
 
-  FirmwareFileInfo file_info(compressed_file_path, kFirmwareVersion,
+  FirmwareFileInfo file_info(compressed_file_path.BaseName().value(),
+                             kFirmwareVersion,
                              FirmwareFileInfo::Compression::XZ);
-  EXPECT_TRUE(firmware_file_.PrepareFrom(file_info));
-  EXPECT_EQ(file_info.firmware_path, firmware_file_.path_for_logging());
-  EXPECT_NE(file_info.firmware_path, firmware_file_.path_on_filesystem());
-  EXPECT_EQ(file_info.firmware_path.BaseName().RemoveFinalExtension(),
-            firmware_file_.path_on_filesystem().BaseName());
+  EXPECT_TRUE(firmware_file_.PrepareFrom(temp_fw_dir_, file_info));
+  EXPECT_EQ(temp_fw_dir_.Append(file_info.firmware_path),
+            firmware_file_.path_for_logging());
+  EXPECT_NE(temp_fw_dir_.Append(file_info.firmware_path),
+            firmware_file_.path_on_filesystem());
+  EXPECT_EQ(
+      base::FilePath(file_info.firmware_path).BaseName().RemoveFinalExtension(),
+      firmware_file_.path_on_filesystem().BaseName());
 
   std::string content;
   EXPECT_TRUE(

@@ -5,6 +5,7 @@
 #include "modemfwd/firmware_file.h"
 
 #include <base/check_op.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 
@@ -16,16 +17,18 @@ FirmwareFile::FirmwareFile() = default;
 
 FirmwareFile::~FirmwareFile() = default;
 
-bool FirmwareFile::PrepareFrom(const FirmwareFileInfo& file_info) {
+bool FirmwareFile::PrepareFrom(const base::FilePath& firmware_dir,
+                               const FirmwareFileInfo& file_info) {
+  base::FilePath firmware_path = firmware_dir.Append(file_info.firmware_path);
   switch (file_info.compression) {
     case FirmwareFileInfo::Compression::NONE:
-      path_for_logging_ = file_info.firmware_path;
-      path_on_filesystem_ = file_info.firmware_path;
+      path_for_logging_ = firmware_path;
+      path_on_filesystem_ = firmware_path;
       return true;
 
     case FirmwareFileInfo::Compression::XZ: {
       // A xz-compressed firmware file should end with a .xz extension.
-      CHECK_EQ(file_info.firmware_path.FinalExtension(), ".xz");
+      CHECK_EQ(firmware_path.FinalExtension(), ".xz");
 
       if (!temp_dir_.CreateUniqueTempDir()) {
         LOG(ERROR) << "Failed to create temporary directory for "
@@ -36,14 +39,14 @@ bool FirmwareFile::PrepareFrom(const FirmwareFileInfo& file_info) {
       // Maintains the original firmware file name with the trailing .xz
       // extension removed.
       base::FilePath actual_path = temp_dir_.GetPath().Append(
-          file_info.firmware_path.BaseName().RemoveFinalExtension());
+          firmware_path.BaseName().RemoveFinalExtension());
 
-      if (!DecompressXzFile(file_info.firmware_path, actual_path)) {
+      if (!DecompressXzFile(firmware_path, actual_path)) {
         LOG(ERROR) << "Failed to decompress firmware: "
-                   << file_info.firmware_path.value();
+                   << firmware_path.value();
         return false;
       }
-      path_for_logging_ = file_info.firmware_path;
+      path_for_logging_ = firmware_path;
       path_on_filesystem_ = actual_path;
       return true;
     }

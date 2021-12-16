@@ -27,7 +27,8 @@ class FirmwareFile {
   // If the firmware file is compressed, it decompresses the firmware file into
   // a temporary directory, which will be cleaned up upon destruction of this
   // object.
-  bool PrepareFrom(const FirmwareFileInfo& file_info);
+  bool PrepareFrom(const base::FilePath& firmware_dir,
+                   const FirmwareFileInfo& file_info);
 
   // Returns the firmware file path to be referenced in the log and journal
   // file.

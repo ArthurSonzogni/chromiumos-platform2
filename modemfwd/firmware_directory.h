@@ -36,6 +36,10 @@ class FirmwareDirectory {
   virtual Files FindFirmware(const std::string& device_id,
                              std::string* carrier_id) = 0;
 
+  // Returns the path where the firmware files are stored. For DLCs, the path
+  // is retrieved from dlcservice during runtime.
+  virtual const base::FilePath& GetFirmwarePath() = 0;
+
   // Determine whether two potentially different carrier ID |carrier_a| and
   // |carrier_b| are using the same base and carrier firmwares.
   // e.g. a carrier and MVNO networks.
@@ -48,7 +52,7 @@ class FirmwareDirectory {
 };
 
 std::unique_ptr<FirmwareDirectory> CreateFirmwareDirectory(
-    const base::FilePath& directory);
+    const base::FilePath& fw_manifest_directory);
 
 std::string GetModemFirmwareVariant();
 

@@ -88,7 +88,8 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
       flash_state->OnFlashedMainFirmware();
     } else {
       auto firmware_file = std::make_unique<FirmwareFile>();
-      if (!firmware_file->PrepareFrom(file_info))
+      if (!firmware_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
+                                      file_info))
         return base::OnceClosure();
 
       // We found different firmware!
@@ -109,7 +110,8 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
       flash_state->OnFlashedOemFirmware();
     } else {
       auto firmware_file = std::make_unique<FirmwareFile>();
-      if (!firmware_file->PrepareFrom(file_info))
+      if (!firmware_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
+                                      file_info))
         return base::OnceClosure();
 
       flash_cfg.push_back(
@@ -121,7 +123,8 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
   // Check if we need to update the carrier firmware.
   if (!current_carrier.empty() && files.carrier_firmware.has_value() &&
       flash_state->ShouldFlashCarrierFirmware(
-          files.carrier_firmware.value().firmware_path)) {
+          firmware_directory_->GetFirmwarePath().Append(
+              files.carrier_firmware.value().firmware_path))) {
     const FirmwareFileInfo& file_info = files.carrier_firmware.value();
 
     ELOG(INFO) << "Found carrier firmware blob " << file_info.version
@@ -146,7 +149,8 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
                                                   current_carrier) ||
         carrier_fw_version != file_info.version) {
       auto firmware_file = std::make_unique<FirmwareFile>();
-      if (!firmware_file->PrepareFrom(file_info))
+      if (!firmware_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
+                                      file_info))
         return base::OnceClosure();
 
       flash_cfg.push_back(

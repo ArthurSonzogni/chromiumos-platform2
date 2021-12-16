@@ -61,7 +61,8 @@ constexpr char kGenericCarrierFirmware2Version[] = "2017-10-14";
 class ModemFlasherTest : public ::testing::Test {
  public:
   ModemFlasherTest() {
-    auto firmware_directory = std::make_unique<FirmwareDirectoryStub>();
+    auto firmware_directory =
+        std::make_unique<FirmwareDirectoryStub>(base::FilePath());
     firmware_directory_ = firmware_directory.get();
 
     auto journal = std::make_unique<MockJournal>();
@@ -76,42 +77,42 @@ class ModemFlasherTest : public ::testing::Test {
 
  protected:
   void AddMainFirmwareFile(const std::string& device_id,
-                           const base::FilePath& firmware_path,
+                           const base::FilePath& rel_firmware_path,
                            const std::string& version) {
-    FirmwareFileInfo firmware_info(firmware_path, version);
+    FirmwareFileInfo firmware_info(rel_firmware_path.value(), version);
     firmware_directory_->AddMainFirmware(kDeviceId1, firmware_info);
   }
 
   void AddMainFirmwareFileForCarrier(const std::string& device_id,
                                      const std::string& carrier_name,
-                                     const base::FilePath& firmware_path,
+                                     const base::FilePath& rel_firmware_path,
                                      const std::string& version) {
-    FirmwareFileInfo firmware_info(firmware_path, version);
+    FirmwareFileInfo firmware_info(rel_firmware_path.value(), version);
     firmware_directory_->AddMainFirmwareForCarrier(kDeviceId1, carrier_name,
                                                    firmware_info);
   }
 
   void AddOemFirmwareFile(const std::string& device_id,
-                          const base::FilePath& firmware_path,
+                          const base::FilePath& rel_firmware_path,
                           const std::string& version) {
-    FirmwareFileInfo firmware_info(firmware_path, version);
+    FirmwareFileInfo firmware_info(rel_firmware_path.value(), version);
     firmware_directory_->AddOemFirmware(kDeviceId1, firmware_info);
   }
 
   void AddOemFirmwareFileForCarrier(const std::string& device_id,
                                     const std::string& carrier_name,
-                                    const base::FilePath& firmware_path,
+                                    const base::FilePath& rel_firmware_path,
                                     const std::string& version) {
-    FirmwareFileInfo firmware_info(firmware_path, version);
+    FirmwareFileInfo firmware_info(rel_firmware_path.value(), version);
     firmware_directory_->AddOemFirmwareForCarrier(kDeviceId1, carrier_name,
                                                   firmware_info);
   }
 
   void AddCarrierFirmwareFile(const std::string& device_id,
                               const std::string& carrier_name,
-                              const base::FilePath& firmware_path,
+                              const base::FilePath& rel_firmware_path,
                               const std::string& version) {
-    FirmwareFileInfo firmware_info(firmware_path, version);
+    FirmwareFileInfo firmware_info(rel_firmware_path.value(), version);
     firmware_directory_->AddCarrierFirmware(kDeviceId1, carrier_name,
                                             firmware_info);
   }

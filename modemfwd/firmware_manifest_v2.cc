@@ -19,7 +19,6 @@ namespace modemfwd {
 namespace {
 
 bool ParseDevice(const Device& device,
-                 const base::FilePath& directory_path,
                  DeviceFirmwareCache* out_cache) {
   // Sort main firmware entries by version. Ensure the versions are
   // all separate.
@@ -49,12 +48,12 @@ bool ParseDevice(const Device& device,
                  << main_firmware.filename() << ").";
       return false;
     }
-
+    // Use relative paths since DLCs have no predefined path
     main_firmware_infos.emplace(
         main_firmware.version(),
-        std::make_unique<FirmwareFileInfo>(
-            directory_path.Append(main_firmware.filename()),
-            main_firmware.version(), compression.value()));
+        std::make_unique<FirmwareFileInfo>(main_firmware.filename(),
+                                           main_firmware.version(),
+                                           compression.value()));
   }
 
   // Main firmware is default for a device if:
@@ -95,8 +94,7 @@ bool ParseDevice(const Device& device,
     }
 
     auto oem_info = std::make_unique<FirmwareFileInfo>(
-        directory_path.Append(oem_firmware.filename()), oem_firmware.version(),
-        compression.value());
+        oem_firmware.filename(), oem_firmware.version(), compression.value());
     if (oem_firmware.main_firmware_version_size() > 0) {
       for (const std::string& version : oem_firmware.main_firmware_version())
         oem_firmware_infos.emplace(version, oem_info.get());
@@ -158,8 +156,8 @@ bool ParseDevice(const Device& device,
     }
 
     auto carrier_info = std::make_unique<FirmwareFileInfo>(
-        directory_path.Append(carrier_firmware.filename()),
-        carrier_firmware.version(), compression.value());
+        carrier_firmware.filename(), carrier_firmware.version(),
+        compression.value());
 
     // Add the firmware to the cache under the carrier ID for this entry.
     for (const std::string& supported_carrier : carrier_firmware.carrier_id()) {
@@ -214,8 +212,6 @@ bool ParseFirmwareManifestV2(const base::FilePath& manifest,
   if (!brillo::ReadTextProtobuf(manifest, &manifest_proto))
     return false;
 
-  base::FilePath directory = manifest.DirName();
-
   for (const Device& device : manifest_proto.device()) {
     if (device.device_id().empty()) {
       LOG(ERROR) << "Empty device ID in device entry";
@@ -229,7 +225,7 @@ bool ParseFirmwareManifestV2(const base::FilePath& manifest,
     }
 
     DeviceFirmwareCache cache;
-    if (!ParseDevice(device, directory, &cache))
+    if (!ParseDevice(device, &cache))
       return false;
 
     (*index)[type] = std::move(cache);

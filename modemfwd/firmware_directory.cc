@@ -49,9 +49,10 @@ std::string GetModemFirmwareVariant() {
 
 class FirmwareDirectoryImpl : public FirmwareDirectory {
  public:
-  FirmwareDirectoryImpl(FirmwareIndex index, const base::FilePath& directory)
+  FirmwareDirectoryImpl(FirmwareIndex index,
+                        const base::FilePath& fw_manifest_directory)
       : index_(std::move(index)),
-        directory_(directory),
+        fw_manifest_directory_(fw_manifest_directory),
         variant_(GetModemFirmwareVariant()) {}
   FirmwareDirectoryImpl(const FirmwareDirectoryImpl&) = delete;
   FirmwareDirectoryImpl& operator=(const FirmwareDirectoryImpl&) = delete;
@@ -92,6 +93,10 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
 
     return result;
   }
+
+  const base::FilePath& GetFirmwarePath() override {
+    return fw_manifest_directory_;
+  };
 
   // modemfwd::IsUsingSameFirmware overrides.
   bool IsUsingSameFirmware(const std::string& device_id,
@@ -159,7 +164,7 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
   }
 
   FirmwareIndex index_;
-  base::FilePath directory_;
+  base::FilePath fw_manifest_directory_;
   std::string variant_;
 };
 

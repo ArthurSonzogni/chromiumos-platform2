@@ -93,7 +93,8 @@ bool RestartOperation(const JournalEntry& entry,
     }
 
     auto firmware_file = std::make_unique<FirmwareFile>();
-    if (info == nullptr || !firmware_file->PrepareFrom(*info)) {
+    if (info == nullptr ||
+        !firmware_file->PrepareFrom(firmware_dir->GetFirmwarePath(), *info)) {
       LOG(ERROR) << "Unfinished \"" << fw_type
                  << "\" firmware flash for device with ID \""
                  << entry.device_id() << "\" but no firmware was found";

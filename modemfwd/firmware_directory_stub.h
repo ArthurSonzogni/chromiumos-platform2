@@ -17,7 +17,7 @@ namespace modemfwd {
 
 class FirmwareDirectoryStub : public FirmwareDirectory {
  public:
-  FirmwareDirectoryStub() = default;
+  explicit FirmwareDirectoryStub(const base::FilePath& fw_manifest_directory);
   FirmwareDirectoryStub(const FirmwareDirectoryStub&) = delete;
   FirmwareDirectoryStub& operator=(const FirmwareDirectoryStub&) = delete;
 
@@ -41,6 +41,8 @@ class FirmwareDirectoryStub : public FirmwareDirectory {
                            const std::string& carrier_a,
                            const std::string& carrier_b) override;
 
+  const base::FilePath& GetFirmwarePath() override;
+
   // modemfwd::OverrideVariantForTesting overrides.
   void OverrideVariantForTesting(const std::string& variant) override;
 
@@ -57,6 +59,7 @@ class FirmwareDirectoryStub : public FirmwareDirectory {
   CarrierFirmwareMap main_fw_info_for_carrier_;
   CarrierFirmwareMap oem_fw_info_for_carrier_;
   CarrierFirmwareMap carrier_fw_info_;
+  base::FilePath fw_manifest_directory_;
 };
 
 }  // namespace modemfwd

@@ -45,7 +45,7 @@ class JournalTest : public ::testing::Test {
  public:
   JournalTest()
       : journal_file_(ScopedTempFile::Create()),
-        firmware_directory_(new FirmwareDirectoryStub),
+        firmware_directory_(new FirmwareDirectoryStub(base::FilePath())),
         modem_helper_directory_(new ModemHelperDirectoryStub) {
     CHECK(journal_file_);
     EXPECT_CALL(modem_helper_, GetFirmwareInfo(_)).Times(0);
@@ -64,21 +64,21 @@ class JournalTest : public ::testing::Test {
                        modem_helper_directory_.get());
   }
 
-  void AddMainFirmwareFile(const base::FilePath& firmware_path,
+  void AddMainFirmwareFile(const base::FilePath& rel_firmware_path,
                            const std::string& version) {
-    FirmwareFileInfo firmware_info(firmware_path, version);
+    FirmwareFileInfo firmware_info(rel_firmware_path.value(), version);
     firmware_directory_->AddMainFirmware(kDeviceId, firmware_info);
   }
 
-  void AddOemFirmwareFile(const base::FilePath& firmware_path,
+  void AddOemFirmwareFile(const base::FilePath& rel_firmware_path,
                           const std::string& version) {
-    FirmwareFileInfo firmware_info(firmware_path, version);
+    FirmwareFileInfo firmware_info(rel_firmware_path.value(), version);
     firmware_directory_->AddOemFirmware(kDeviceId, firmware_info);
   }
 
-  void AddCarrierFirmwareFile(const base::FilePath& firmware_path,
+  void AddCarrierFirmwareFile(const base::FilePath& rel_firmware_path,
                               const std::string& version) {
-    FirmwareFileInfo firmware_info(firmware_path, version);
+    FirmwareFileInfo firmware_info(rel_firmware_path.value(), version);
     firmware_directory_->AddCarrierFirmware(kDeviceId, kCarrierId,
                                             firmware_info);
   }
