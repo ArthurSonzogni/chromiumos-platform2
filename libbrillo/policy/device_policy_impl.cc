@@ -880,6 +880,17 @@ bool DevicePolicyImpl::GetDeviceDebugPacketCaptureAllowed(bool* allowed) const {
   return true;
 }
 
+bool DevicePolicyImpl::GetDeviceKeylockerForStorageEncryptionEnabled(
+    bool* keylocker_enabled) const {
+  if (!device_policy_.has_keylocker_for_storage_encryption_enabled())
+    return false;
+
+  *keylocker_enabled =
+      device_policy_.keylocker_for_storage_encryption_enabled().has_enabled() &&
+      device_policy_.keylocker_for_storage_encryption_enabled().enabled();
+  return true;
+}
+
 bool DevicePolicyImpl::VerifyPolicyFile(const base::FilePath& policy_path) {
   if (!verify_root_ownership_) {
     return true;

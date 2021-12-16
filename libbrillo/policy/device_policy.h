@@ -285,6 +285,11 @@ class DevicePolicy {
   virtual bool GetDeviceMarketSegment(
       DeviceMarketSegment* device_market_segment) const = 0;
 
+  // Write the value of the DeviceKeylockerForStorageEncryptionEnabled policy in
+  // |keylocker_enabled|. Returns true on success.
+  virtual bool GetDeviceKeylockerForStorageEncryptionEnabled(
+      bool* keylocker_enabled) const = 0;
+
   // Writes the value of DevicePacketCaptureAllowed policy in |allowed|. Returns
   // true if the policy was set and a value was retrieved for it, or false if
   // the policy was not set. |allowed| is modified only when the function

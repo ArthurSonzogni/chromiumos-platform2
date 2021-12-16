@@ -512,4 +512,29 @@ TEST_F(DevicePolicyImplTest, GetDeviceMarketSegment_NotSet) {
   DeviceMarketSegment segment;
   EXPECT_FALSE(device_policy_.GetDeviceMarketSegment(&segment));
 }
+
+TEST_F(DevicePolicyImplTest,
+       GetDeviceKeylockerForStorageEncryptionEnabled_SetEnabled) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::DeviceKeylockerForStorageEncryptionEnabledProto* kl_proto =
+      device_policy_proto.mutable_keylocker_for_storage_encryption_enabled();
+  kl_proto->set_enabled(true);
+  InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
+                   device_policy_proto);
+
+  bool kl_enabled = false;
+  EXPECT_TRUE(device_policy_.GetDeviceKeylockerForStorageEncryptionEnabled(
+      &kl_enabled));
+  EXPECT_TRUE(kl_enabled);
+}
+
+TEST_F(DevicePolicyImplTest,
+       GetDeviceKeylockerForStorageEncryptionEnabled_NotSet) {
+  em::PolicyData policy_data;
+  device_policy_.set_policy_data_for_testing(policy_data);
+  bool kl_enabled = false;
+  EXPECT_FALSE(device_policy_.GetDeviceKeylockerForStorageEncryptionEnabled(
+      &kl_enabled));
+}
+
 }  // namespace policy

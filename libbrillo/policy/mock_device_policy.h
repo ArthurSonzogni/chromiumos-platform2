@@ -134,6 +134,10 @@ class MockDevicePolicy : public DevicePolicy {
               GetDeviceDebugPacketCaptureAllowed,
               (bool*),
               (const, override));
+  MOCK_METHOD(bool,
+              GetDeviceKeylockerForStorageEncryptionEnabled,
+              (bool*),
+              (const, override));
 };
 }  // namespace policy
 

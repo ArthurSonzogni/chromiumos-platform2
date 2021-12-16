@@ -100,6 +100,8 @@ class DevicePolicyImpl : public DevicePolicy {
   bool GetDeviceMarketSegment(
       DeviceMarketSegment* device_market_segment) const override;
   bool GetDeviceDebugPacketCaptureAllowed(bool* allowed) const override;
+  bool GetDeviceKeylockerForStorageEncryptionEnabled(
+      bool* keylocker_enabled) const override;
 
   // Methods that can be used only for testing.
   void set_policy_data_for_testing(
