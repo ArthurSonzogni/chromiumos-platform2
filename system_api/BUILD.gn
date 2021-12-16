@@ -106,6 +106,7 @@ proto_library("system_api-power_manager-protos") {
     "${proto_in_dir}/suspend.proto",
     "${proto_in_dir}/switch_states.proto",
     "${proto_in_dir}/thermal.proto",
+    "${proto_in_dir}/user_charging_event.proto",
   ]
   standalone = true
 }
@@ -123,6 +124,7 @@ goproto_library("system_api-power_manager-goprotos") {
     "${proto_in_dir}/suspend.proto",
     "${proto_in_dir}/switch_states.proto",
     "${proto_in_dir}/thermal.proto",
+    "${proto_in_dir}/user_charging_event.proto",
   ]
 }
 
