@@ -4,7 +4,8 @@
 
 // THIS CODE IS GENERATED.
 // Generated with command:
-// ./proto_print.py --subdir common --proto-include attestation/proto_bindings
+// ../../libhwsec-foundation/utility/proto_print.py --subdir common
+// --proto-include attestation/proto_bindings
 // ../../system_api/dbus/attestation/keystore.proto
 
 #ifndef ATTESTATION_COMMON_PRINT_KEYSTORE_PROTO_H_

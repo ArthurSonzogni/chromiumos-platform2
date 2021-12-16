@@ -4,8 +4,8 @@
 
 // THIS CODE IS GENERATED.
 // Generated with command:
-// ../../attestation/common/proto_print.py --subdir common --proto-include
-// tpm_manager/proto_bindings
+// ../../libhwsec-foundation/utility/proto_print.py --subdir common
+// --proto-include tpm_manager/proto_bindings
 // ../../system_api/dbus/tpm_manager/tpm_manager.proto
 
 #include "tpm_manager/common/print_tpm_manager_proto.h"
