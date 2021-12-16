@@ -34,11 +34,11 @@ pkg_config("target_defaults_pkg_deps") {
     "libchrome",
     "libcros_config",
     "libcrypto",
-    "libcryptohome-client",
     "libmetrics",
     "libminijail",
     "libpatchpanel-client",
     "libselinux",
+    "libuser_data_auth-client",
     "libxml-2.0",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear
