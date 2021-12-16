@@ -254,7 +254,7 @@ shared_library("libcros_camera") {
     "//camera/features",
     "//camera/features/zsl",
   ]
-  if (use.camera_feature_face_detection || use.camera_feature_auto_framing) {
+  if (use.camera_feature_face_detection) {
     deps += [ "//camera/features/face_detection" ]
   }
   if (use.camera_feature_auto_framing) {

@@ -92,13 +92,21 @@ void FrameCropper::OnNewRegionOfInterest(int frame_number,
   ComputeActiveCropRegion(frame_number);
 }
 
-base::ScopedFD FrameCropper::CropBuffer(int frame_number,
-                                        buffer_handle_t input_yuv,
-                                        base::ScopedFD input_acquire_fence,
-                                        buffer_handle_t output_yuv) {
+base::ScopedFD FrameCropper::CropBuffer(
+    int frame_number,
+    buffer_handle_t input_yuv,
+    base::ScopedFD input_acquire_fence,
+    buffer_handle_t output_yuv,
+    base::Optional<Rect<float>> crop_override) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
-  ComputeActiveCropRegion(frame_number);
+  Rect<float> crop;
+  if (crop_override) {
+    crop = *crop_override;
+  } else {
+    ComputeActiveCropRegion(frame_number);
+    crop = active_crop_region_;
+  }
   if (input_acquire_fence.is_valid()) {
     sync_wait(input_acquire_fence.get(), 300);
   }
@@ -107,7 +115,7 @@ base::ScopedFD FrameCropper::CropBuffer(int frame_number,
   SharedImage output_image = SharedImage::CreateFromBuffer(
       output_yuv, Texture2D::Target::kTarget2D, true);
   image_processor_->CropYuv(input_image.y_texture(), input_image.uv_texture(),
-                            active_crop_region_, y_intermediate_.texture(),
+                            crop, y_intermediate_.texture(),
                             uv_intermediate_.texture());
   image_processor_->YUVToYUV(
       y_intermediate_.texture(), uv_intermediate_.texture(),

@@ -117,7 +117,7 @@ StreamManipulator::GetEnabledStreamManipulators(Options options) {
 
   MaybeEnableAutoFramingStreamManipulator(&stream_manipulators);
 
-#if USE_CAMERA_FEATURE_FACE_DETECTION || USE_CAMERA_FEATURE_AUTO_FRAMING
+#if USE_CAMERA_FEATURE_FACE_DETECTION
   if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kFaceDetection)) {
     stream_manipulators.emplace_back(
         std::make_unique<FaceDetectionStreamManipulator>(

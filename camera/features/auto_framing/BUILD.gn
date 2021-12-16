@@ -10,16 +10,18 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libcros_camera_android_deps",
     "libsync",
+    "libyuv",
   ]
 }
 
 source_set("auto_framing") {
   sources = [
+    "//camera/features/auto_framing/auto_framing_client.cc",
     "//camera/features/auto_framing/auto_framing_stream_manipulator.cc",
     "//camera/features/auto_framing/face_tracker.cc",
     "//camera/features/auto_framing/frame_cropper.cc",
   ]
-  libs = []
+  libs = [ "autoframing_cros" ]
   public_configs = [ ":target_defaults" ]
 
   # -fPIC needed by the libcros_camera.so shared library.

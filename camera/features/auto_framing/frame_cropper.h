@@ -58,10 +58,15 @@ class FrameCropper {
   void OnNewFaceRegions(int frame_number,
                         const std::vector<Rect<float>>& faces);
   void OnNewRegionOfInterest(int frame_number, const Rect<float>& roi);
-  base::ScopedFD CropBuffer(int frame_number,
-                            buffer_handle_t input_yuv,
-                            base::ScopedFD input_acquire_fence,
-                            buffer_handle_t output_yuv);
+
+  // Crops |input_yuv| into |output_yuv| with the active crop region, or with
+  // |crop_override| if given.
+  base::ScopedFD CropBuffer(
+      int frame_number,
+      buffer_handle_t input_yuv,
+      base::ScopedFD input_acquire_fence,
+      buffer_handle_t output_yuv,
+      base::Optional<Rect<float>> crop_override = base::nullopt);
 
   // Translates the coordinates of the normalized rectangles |rectangles| in the
   // global active array space to normalized rectangles in the crop space.

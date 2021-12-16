@@ -33,6 +33,7 @@ std::unordered_map<uint32_t, std::vector<uint32_t>> kSupportedHalFormats{
     {HAL_PIXEL_FORMAT_RGBX_8888, {DRM_FORMAT_XBGR8888}},
     {HAL_PIXEL_FORMAT_YCbCr_420_888, {DRM_FORMAT_NV12}},
     {HAL_PIXEL_FORMAT_YCBCR_P010, {DRM_FORMAT_P010}},
+    {HAL_PIXEL_FORMAT_Y8, {DRM_FORMAT_R8}},
 };
 
 uint32_t GetGbmUseFlags(uint32_t hal_format, uint32_t usage) {
