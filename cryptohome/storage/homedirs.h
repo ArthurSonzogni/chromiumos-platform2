@@ -90,6 +90,10 @@ class HomeDirs {
 
   // Returns whether the ephemeral users policy is enabled.
   virtual bool AreEphemeralUsersEnabled();
+
+  // Returns whether Keylocker should be used for per-user encrypted storage.
+  virtual bool KeylockerForStorageEncryptionEnabled();
+
   // Creates the cryptohome for the named user.
   virtual bool Create(const std::string& username);
 

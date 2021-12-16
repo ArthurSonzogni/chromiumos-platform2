@@ -158,7 +158,8 @@ MountError Mount::MountCryptohome(
   }
 
   user_cryptohome_vault_ = homedirs_->GetVaultFactory()->Generate(
-      obfuscated_username, file_system_keyset.KeyReference(), vault_type);
+      obfuscated_username, file_system_keyset.KeyReference(), vault_type,
+      homedirs_->KeylockerForStorageEncryptionEnabled());
 
   if (GetMountType() == MountType::NONE) {
     // TODO(dlunev): there should be a more proper error code set. CREATE_FAILED

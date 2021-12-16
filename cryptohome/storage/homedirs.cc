@@ -54,6 +54,13 @@ const char kAndroidCodeCacheInodeAttribute[] = "user.inode_code_cache";
 const char kTrackedDirectoryNameAttribute[] = "user.TrackedDirectoryName";
 const char kRemovableFileAttribute[] = "user.GCacheRemovable";
 
+bool IsAesKeylockerSupported() {
+  std::string proc_crypto_contents;
+  return base::ReadFileToString(base::FilePath("/proc/crypto"),
+                                &proc_crypto_contents) &&
+         proc_crypto_contents.find("aeskl") != std::string::npos;
+}
+
 HomeDirs::HomeDirs(Platform* platform,
                    std::unique_ptr<policy::PolicyProvider> policy_provider,
                    const RemoveCallback& remove_callback)
@@ -91,6 +98,26 @@ bool HomeDirs::AreEphemeralUsersEnabled() {
     policy_provider_->GetDevicePolicy().GetEphemeralUsersEnabled(
         &ephemeral_users_enabled);
   return ephemeral_users_enabled;
+}
+
+bool HomeDirs::KeylockerForStorageEncryptionEnabled() {
+  // Search through /proc/crypto for 'aeskl' as an indicator that AES Keylocker
+  // is supported. Cache the results so that we don't add the latency of reading
+  // /proc/crypto for every cryptohome::Mount call.
+  static bool keylocker_supported = IsAesKeylockerSupported();
+
+  if (!keylocker_supported)
+    return false;
+
+  LoadDevicePolicy();
+
+  // If the policy cannot be loaded, default to AESNI.
+  bool keylocker_for_storage_encryption_enabled = false;
+  if (policy_provider_->device_policy_is_loaded())
+    policy_provider_->GetDevicePolicy()
+        .GetDeviceKeylockerForStorageEncryptionEnabled(
+            &keylocker_for_storage_encryption_enabled);
+  return keylocker_for_storage_encryption_enabled;
 }
 
 bool HomeDirs::SetLockedToSingleUser() const {

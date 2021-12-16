@@ -31,14 +31,16 @@ class CryptohomeVaultFactory {
   virtual std::unique_ptr<CryptohomeVault> Generate(
       const std::string& obfuscated_username,
       const FileSystemKeyReference& key_reference,
-      EncryptedContainerType vault_type);
+      EncryptedContainerType vault_type,
+      bool keylocker_enabled = false);
 
  private:
   virtual std::unique_ptr<EncryptedContainer> GenerateEncryptedContainer(
       EncryptedContainerType type,
       const std::string& obfuscated_username,
       const FileSystemKeyReference& key_reference,
-      const std::string& container_identifier);
+      const std::string& container_identifier,
+      bool keylocker_enabled = false);
 
   Platform* platform_;
   std::unique_ptr<EncryptedContainerFactory> encrypted_container_factory_;

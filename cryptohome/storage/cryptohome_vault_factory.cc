@@ -59,7 +59,8 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
     EncryptedContainerType type,
     const std::string& obfuscated_username,
     const FileSystemKeyReference& key_reference,
-    const std::string& container_identifier) {
+    const std::string& container_identifier,
+    bool keylocker_enabled) {
   EncryptedContainerConfig config;
   base::FilePath stateful_device;
   uint64_t stateful_size;
@@ -82,6 +83,8 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
       if (!platform_->GetBlkSize(stateful_device, &stateful_size))
         return nullptr;
 
+      LOG_IF(INFO, keylocker_enabled) << "Using Keylocker for encryption";
+
       config.type = EncryptedContainerType::kDmcrypt;
       config.dmcrypt_config = {
           .backing_device_config =
@@ -95,7 +98,8 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
                                   .physical_volume = stateful_device}},
           .dmcrypt_device_name =
               DmcryptVolumePrefix(obfuscated_username) + container_identifier,
-          .dmcrypt_cipher = "aes-xts-plain64",
+          .dmcrypt_cipher = keylocker_enabled ? "capi:xts-aes-aeskl-plain64"
+                                              : "aes-xts-plain64",
           // TODO(sarthakkukreti): Add more dynamic checks for filesystem
           // features once dm-crypt cryptohomes are stable.
           .mkfs_opts = {"-O", "^huge_file,^flex_bg,", "-N",
@@ -122,7 +126,8 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
 std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
     const std::string& obfuscated_username,
     const FileSystemKeyReference& key_reference,
-    EncryptedContainerType vault_type) {
+    EncryptedContainerType vault_type,
+    bool keylocker_enabled) {
   EncryptedContainerType container_type = EncryptedContainerType::kUnknown;
   EncryptedContainerType migrating_container_type =
       EncryptedContainerType::kUnknown;
@@ -135,9 +140,9 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
   }
 
   // Generate containers for the vault.
-  std::unique_ptr<EncryptedContainer> container =
-      GenerateEncryptedContainer(container_type, obfuscated_username,
-                                 key_reference, kDmcryptDataContainerSuffix);
+  std::unique_ptr<EncryptedContainer> container = GenerateEncryptedContainer(
+      container_type, obfuscated_username, key_reference,
+      kDmcryptDataContainerSuffix, keylocker_enabled);
   if (!container) {
     LOG(ERROR) << "Could not create vault container";
     return nullptr;
@@ -147,7 +152,7 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
   if (migrating_container_type != EncryptedContainerType::kUnknown) {
     migrating_container = GenerateEncryptedContainer(
         migrating_container_type, obfuscated_username, key_reference,
-        kDmcryptDataContainerSuffix);
+        kDmcryptDataContainerSuffix, keylocker_enabled);
     if (!migrating_container) {
       LOG(ERROR) << "Could not create vault container for migration";
       return nullptr;
