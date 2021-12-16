@@ -22,6 +22,7 @@
 namespace typecd {
 
 constexpr char kTypeCSubsystem[] = "typec";
+constexpr char kUsbSubsystem[] = "usb";
 constexpr char kUdevMonitorName[] = "udev";
 
 // Class to monitor udev events on the Type C subsystem and inform other
@@ -37,7 +38,7 @@ class UdevMonitor {
   // notifications to other classes.
   bool ScanDevices();
 
-  // Start monitoring udev for typec events.
+  // Start monitoring udev for typec and usb events.
   bool BeginMonitoring();
 
   class Observer : public base::CheckedObserver {
@@ -112,8 +113,22 @@ class UdevMonitor {
     virtual void OnPortChanged(int port_num) = 0;
   };
 
+  class UsbObserver : public base::CheckedObserver {
+   public:
+    virtual ~UsbObserver() {}
+    // Callback that is executed when a USB device is connected or
+    // disconnected.
+    //
+    // The |path| argument refers to the sysfs device path of the USB device.
+    // The |added| argument is set to true if the port was added, and false
+    // otherwise.
+    virtual void OnDeviceAddedOrRemoved(const base::FilePath& path,
+                                        bool added) = 0;
+  };
+
   void AddObserver(Observer* obs);
   void RemoveObserver(Observer* obs);
+  void AddUsbObserver(UsbObserver* obs);
 
  private:
   friend class UdevMonitorTest;
@@ -124,13 +139,17 @@ class UdevMonitor {
   FRIEND_TEST(UdevMonitorTest, TestCableAndAltModeAddition);
   FRIEND_TEST(UdevMonitorTest, TestPartnerChanged);
   FRIEND_TEST(UdevMonitorTest, TestPortChanged);
+  FRIEND_TEST(UdevMonitorTest, TestUsbDeviceScan);
+  FRIEND_TEST(UdevMonitorTest, TestUsbDeviceAddRemove);
+  FRIEND_TEST(UdevMonitorTest, TestInvalidUsbDeviceSyspath);
 
   // Set the |udev_| pointer to a MockUdev device. *Only* used by unit tests.
   void SetUdev(std::unique_ptr<brillo::MockUdev> udev) {
     udev_ = std::move(udev);
   }
 
-  // Handle a udev event which causes a Type C device to be added/removed.
+  // Handle a udev event which causes a Type C device and/or USB device to be
+  // added/removed.
   bool HandleDeviceAddedRemoved(const base::FilePath& path, bool added);
 
   // Handle a udev "change" event for a Type C device.
@@ -144,6 +163,7 @@ class UdevMonitor {
   std::unique_ptr<base::FileDescriptorWatcher::Controller>
       udev_monitor_watcher_;
   base::ObserverList<Observer> observer_list_;
+  base::ObserverList<UsbObserver> usb_observer_list_;
 };
 
 }  // namespace typecd

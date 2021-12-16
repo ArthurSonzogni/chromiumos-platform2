@@ -42,6 +42,13 @@ class FuzzerObserver : public typecd::UdevMonitor::Observer {
   void OnPortChanged(int port_num) override{};
 };
 
+// Stub UsbObserver so that UdevMonitor has some callbacks to use.
+class FuzzerUsbObserver : public typecd::UdevMonitor::UsbObserver {
+ public:
+  void OnDeviceAddedOrRemoved(const base::FilePath& path,
+                              bool added) override{};
+};
+
 }  // namespace
 
 namespace typecd {
@@ -51,14 +58,17 @@ class UdevMonitorFuzzer {
  public:
   UdevMonitorFuzzer() {
     observer_ = std::make_unique<FuzzerObserver>();
+    usb_observer_ = std::make_unique<FuzzerUsbObserver>();
 
     monitor_ = std::make_unique<typecd::UdevMonitor>();
     monitor_->AddObserver(observer_.get());
+    monitor_->AddUsbObserver(usb_observer_.get());
   }
 
   ~UdevMonitorFuzzer() {
     monitor_.reset();
     observer_.reset();
+    usb_observer_.reset();
   }
 
   void SetUdev(std::unique_ptr<brillo::MockUdev> udev) {
@@ -69,6 +79,7 @@ class UdevMonitorFuzzer {
 
  private:
   std::unique_ptr<FuzzerObserver> observer_;
+  std::unique_ptr<FuzzerUsbObserver> usb_observer_;
   std::unique_ptr<typecd::UdevMonitor> monitor_;
 };
 
@@ -102,6 +113,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Ensuring that when we add the "typec" subsystem matcher to the udev
   // monitor, we don't fail.
   auto enumerate = std::make_unique<brillo::MockUdevEnumerate>();
+  EXPECT_CALL(*enumerate, AddMatchSubsystem(StrEq(typecd::kUsbSubsystem)))
+      .WillOnce(Return(true));
   EXPECT_CALL(*enumerate, AddMatchSubsystem(StrEq(typecd::kTypeCSubsystem)))
       .WillOnce(Return(true));
   EXPECT_CALL(*enumerate, ScanDevices()).WillOnce(Return(true));

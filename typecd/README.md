@@ -5,7 +5,8 @@
 typecd is a system daemon for tracking the state of various USB Type C ports and connected
 peripherals on a Chromebook. It interfaces with the Linux Type C connector class framework
 to obtain notifications about Type C events, and to pull updated information about ports and
-port-partners state.
+port-partners state. It also listens to USB events for handling USB device
+add/remove.
 
 ## CLASS ORGANIZATION
 
@@ -34,6 +35,9 @@ All communication and event notification between the Linux Kernel Type C connect
 and typecd occurs through the udev mechanism. This class watches for any events of the `typec` subsystem.
 Other classes (in this case, `PortManager`) can register `Observer`s with `UdevMonitor`. When any notification
 occurs, `UdevMonitor` calls the relevant function callback from the registered `Observer`s.
+
+This class also watches for events of the `usb` subsystem. Similar to
+`Observer`, there is `UsbObserver` with callbacks for `usb` add/remove events.
 
 This class has basic parsing to determine which `Observer` should be called (is this a port/partner/cable notification?
 is it add/remove/change?)
