@@ -527,9 +527,10 @@ bool ReadMachinePasswordToString(const base::FilePath& password_path,
 
 }  // namespace
 
-SambaInterface::SambaInterface(AuthPolicyMetrics* metrics,
-                               const PathService* path_service,
-                               const base::Closure& user_kerberos_files_changed)
+SambaInterface::SambaInterface(
+    AuthPolicyMetrics* metrics,
+    const PathService* path_service,
+    const base::RepeatingClosure& user_kerberos_files_changed)
     : user_account_(Path::USER_SMB_CONF),
       device_account_(Path::DEVICE_SMB_CONF),
       metrics_(metrics),

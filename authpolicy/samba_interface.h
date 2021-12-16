@@ -55,7 +55,7 @@ class SambaInterface : public TgtManager::Delegate {
  public:
   SambaInterface(AuthPolicyMetrics* metrics,
                  const PathService* path_service,
-                 const base::Closure& user_kerberos_files_changed);
+                 const base::RepeatingClosure& user_kerberos_files_changed);
   SambaInterface(const SambaInterface&) = delete;
   SambaInterface& operator=(const SambaInterface&) = delete;
 

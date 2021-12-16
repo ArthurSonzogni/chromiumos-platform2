@@ -5,6 +5,7 @@
 #include "authpolicy/session_manager_client.h"
 
 #include <memory>
+#include <utility>
 
 #include <base/callback.h>
 #include <base/logging.h>
@@ -49,13 +50,17 @@ SessionManagerClient::~SessionManagerClient() = default;
 void SessionManagerClient::StoreUnsignedPolicyEx(
     const std::vector<uint8_t>& descriptor_blob,
     const std::vector<uint8_t>& policy_blob,
-    const base::Callback<void(bool success)>& callback) {
+    base::OnceCallback<void(bool success)> callback) {
+  // Only one of OnStorePolicySuccess and OnStorePolicyError will be called.
+  auto callbacks = base::SplitOnceCallback(std::move(callback));
   proxy_->StoreUnsignedPolicyExAsync(
       descriptor_blob, policy_blob,
-      base::Bind(&SessionManagerClient::OnStorePolicySuccess,
-                 weak_ptr_factory_.GetWeakPtr(), callback),
-      base::Bind(&SessionManagerClient::OnStorePolicyError,
-                 weak_ptr_factory_.GetWeakPtr(), callback));
+      base::BindOnce(&SessionManagerClient::OnStorePolicySuccess,
+                     weak_ptr_factory_.GetWeakPtr(),
+                     std::move(callbacks.first)),
+      base::BindOnce(&SessionManagerClient::OnStorePolicyError,
+                     weak_ptr_factory_.GetWeakPtr(),
+                     std::move(callbacks.second)));
 }
 
 bool SessionManagerClient::ListStoredComponentPolicies(
@@ -72,11 +77,11 @@ bool SessionManagerClient::ListStoredComponentPolicies(
 }
 
 void SessionManagerClient::ConnectToSessionStateChangedSignal(
-    const base::Callback<void(const std::string& state)>& callback) {
+    const base::RepeatingCallback<void(const std::string& state)>& callback) {
   proxy_->RegisterSessionStateChangedSignalHandler(
-      base::Bind(&SessionManagerClient::OnSessionStateChanged,
-                 weak_ptr_factory_.GetWeakPtr(), callback),
-      base::Bind(&LogOnSignalConnected));
+      base::BindRepeating(&SessionManagerClient::OnSessionStateChanged,
+                          weak_ptr_factory_.GetWeakPtr(), callback),
+      base::BindOnce(&LogOnSignalConnected));
 }
 
 std::string SessionManagerClient::RetrieveSessionState() {
@@ -93,18 +98,18 @@ std::string SessionManagerClient::RetrieveSessionState() {
 }
 
 void SessionManagerClient::OnStorePolicySuccess(
-    const base::Callback<void(bool success)>& callback) {
-  callback.Run(true /* success */);
+    base::OnceCallback<void(bool success)> callback) {
+  std::move(callback).Run(true /* success */);
 }
 
 void SessionManagerClient::OnStorePolicyError(
-    const base::Callback<void(bool success)>& callback, brillo::Error* error) {
+    base::OnceCallback<void(bool success)> callback, brillo::Error* error) {
   PrintError(login_manager::kSessionManagerStoreUnsignedPolicyEx, error);
-  callback.Run(false /* success */);
+  std::move(callback).Run(false /* success */);
 }
 
 void SessionManagerClient::OnSessionStateChanged(
-    const base::Callback<void(const std::string& state)>& callback,
+    const base::RepeatingCallback<void(const std::string& state)>& callback,
     const std::string& state) {
   callback.Run(state);
 }

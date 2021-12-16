@@ -166,8 +166,8 @@ AuthPolicy::AuthPolicy(AuthPolicyMetrics* metrics,
       metrics_(metrics),
       samba_(metrics,
              path_service,
-             base::Bind(&AuthPolicy::OnUserKerberosFilesChanged,
-                        base::Unretained(this))) {}
+             base::BindRepeating(&AuthPolicy::OnUserKerberosFilesChanged,
+                                 base::Unretained(this))) {}
 
 AuthPolicy::~AuthPolicy() = default;
 
@@ -195,8 +195,9 @@ void AuthPolicy::RegisterAsync(
       std::make_unique<SessionManagerClient>(dbus_object_.get());
 
   // Listen to session state changes for backing up user TGT and other data.
-  session_manager_client_->ConnectToSessionStateChangedSignal(base::Bind(
-      &SambaInterface::OnSessionStateChanged, base::Unretained(&samba_)));
+  session_manager_client_->ConnectToSessionStateChangedSignal(
+      base::BindRepeating(&SambaInterface::OnSessionStateChanged,
+                          base::Unretained(&samba_)));
 
   // Set proper session state.
   samba_.OnSessionStateChanged(session_manager_client_->RetrieveSessionState());
@@ -492,7 +493,7 @@ void AuthPolicy::StoreSinglePolicy(
   if (!policy_blob) {
     session_manager_client_->StoreUnsignedPolicyEx(
         SerializeProto(descriptor), std::vector<uint8_t>() /* response_blob */,
-        base::Bind(&ResponseTracker::OnResponseFinished, response_tracker));
+        base::BindOnce(&ResponseTracker::OnResponseFinished, response_tracker));
     return;
   }
   // Wrap up the policy in a PolicyFetchResponse.
@@ -532,7 +533,7 @@ void AuthPolicy::StoreSinglePolicy(
 
   session_manager_client_->StoreUnsignedPolicyEx(
       SerializeProto(descriptor), SerializeProto(policy_response),
-      base::Bind(&ResponseTracker::OnResponseFinished, response_tracker));
+      base::BindOnce(&ResponseTracker::OnResponseFinished, response_tracker));
 }
 
 }  // namespace authpolicy

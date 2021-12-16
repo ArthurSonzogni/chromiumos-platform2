@@ -684,8 +684,9 @@ class AuthPolicyTest : public testing::Test {
     method_call.SetSerial(kDBusSerial);
     auto callback = std::make_unique<
         brillo::dbus_utils::DBusMethodResponse<int32_t, std::vector<uint8_t>>>(
-        &method_call, base::Bind(&AuthResponseCallback, &callback_was_called,
-                                 &error, &account_info_blob));
+        &method_call,
+        base::BindOnce(&AuthResponseCallback, &callback_was_called, &error,
+                       &account_info_blob));
     authpolicy_->AuthenticateUser(std::move(callback), request_blob,
                                   password_fd);
     EXPECT_TRUE(callback_was_called);
@@ -754,7 +755,7 @@ class AuthPolicyTest : public testing::Test {
     AuthPolicy::PolicyResponseCallback callback =
         std::make_unique<brillo::dbus_utils::DBusMethodResponse<int32_t>>(
             &method_call,
-            base::Bind(&CheckError, expected_error, &callback_was_called));
+            base::BindOnce(&CheckError, expected_error, &callback_was_called));
     expected_error_reports[ERROR_OF_REFRESH_USER_POLICY]++;
     authpolicy_->RefreshUserPolicy(std::move(callback), account_id);
 
@@ -788,7 +789,7 @@ class AuthPolicyTest : public testing::Test {
     AuthPolicy::PolicyResponseCallback callback =
         std::make_unique<brillo::dbus_utils::DBusMethodResponse<int32_t>>(
             &method_call,
-            base::Bind(&CheckError, expected_error, &callback_was_called));
+            base::BindOnce(&CheckError, expected_error, &callback_was_called));
     expected_error_reports[ERROR_OF_REFRESH_DEVICE_POLICY]++;
     authpolicy_->RefreshDevicePolicy(std::move(callback));
 
@@ -1021,7 +1022,8 @@ class AuthPolicyTest : public testing::Test {
   user_data_auth::GetSanitizedUsernameReply sanitized_username_reply_;
 
   // Notifies authpolicy that the session state changed (e.g. "started").
-  base::Callback<void(dbus::Signal* signal)> session_state_changed_callback_;
+  base::RepeatingCallback<void(dbus::Signal* signal)>
+      session_state_changed_callback_;
 
   // Keep this order! |authpolicy_| must be last as it depends on the other two.
   std::unique_ptr<TestMetrics> metrics_;

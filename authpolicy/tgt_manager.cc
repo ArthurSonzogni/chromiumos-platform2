@@ -397,7 +397,7 @@ ErrorType TgtManager::GetKerberosFiles(KerberosFiles* files) {
 }
 
 void TgtManager::SetKerberosFilesChangedCallback(
-    const base::Closure& callback) {
+    const base::RepeatingClosure& callback) {
   kerberos_files_changed_ = callback;
 }
 
@@ -710,7 +710,7 @@ void TgtManager::UpdateTgtAutoRenewal() {
                   << FormatTimeDelta(delay_seconds) << " " << lifetime;
 
         tgt_renewal_callback_.Reset(
-            base::Bind(&TgtManager::AutoRenewTgt, base::Unretained(this)));
+            base::BindOnce(&TgtManager::AutoRenewTgt, base::Unretained(this)));
         base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
             FROM_HERE, tgt_renewal_callback_.callback(),
             base::TimeDelta::FromSeconds(delay_seconds));

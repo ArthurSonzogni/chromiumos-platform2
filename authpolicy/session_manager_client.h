@@ -41,10 +41,9 @@ class SessionManagerClient {
   // See Session Manager for a description of the arguments.
 
   // Asynchronous to achieve higher IO queue depth when writing many policies.
-  void StoreUnsignedPolicyEx(
-      const std::vector<uint8_t>& descriptor_blob,
-      const std::vector<uint8_t>& policy_blob,
-      const base::Callback<void(bool success)>& callback);
+  void StoreUnsignedPolicyEx(const std::vector<uint8_t>& descriptor_blob,
+                             const std::vector<uint8_t>& policy_blob,
+                             base::OnceCallback<void(bool success)> callback);
 
   // Blocking for convenience / code simplicity.
   bool ListStoredComponentPolicies(const std::vector<uint8_t>& descriptor_blob,
@@ -53,7 +52,7 @@ class SessionManagerClient {
   // Connect to the signal invoked when the session state changes. See
   // session_manager_impl.cc for a list of possible states.
   void ConnectToSessionStateChangedSignal(
-      const base::Callback<void(const std::string& state)>& callback);
+      const base::RepeatingCallback<void(const std::string& state)>& callback);
 
   // Retrieves the session state immediately. Returns an empty string on error.
   std::string RetrieveSessionState();
@@ -61,17 +60,18 @@ class SessionManagerClient {
  private:
   // Callback called when StoreUnsignedPolicyEx() succeeds. Prints errors and
   // calls |callback|.
-  void OnStorePolicySuccess(const base::Callback<void(bool success)>& callback);
+  void OnStorePolicySuccess(
+      const base::OnceCallback<void(bool success)> callback);
 
   // Callback called when StoreUnsignedPolicyEx() fails. Prints errors and calls
   // |callback|.
-  void OnStorePolicyError(const base::Callback<void(bool success)>& callback,
+  void OnStorePolicyError(const base::OnceCallback<void(bool success)> callback,
                           brillo::Error* error);
 
   // Callback called on SessionStateChanged signal. Calls callback with the new
   // session state.
   void OnSessionStateChanged(
-      const base::Callback<void(const std::string& state)>& callback,
+      const base::RepeatingCallback<void(const std::string& state)>& callback,
       const std::string& state);
 
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxy> proxy_;

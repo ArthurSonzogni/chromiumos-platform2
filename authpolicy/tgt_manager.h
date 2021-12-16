@@ -94,7 +94,7 @@ class TgtManager {
   // Sets a callback that gets called when either the Kerberos credential cache
   // or the configuration file changes on disk. Use in combination with
   // GetKerberosFiles() to get the latest files.
-  void SetKerberosFilesChangedCallback(const base::Closure& callback);
+  void SetKerberosFilesChangedCallback(const base::RepeatingClosure& callback);
 
   // If enabled, the TGT renews automatically by scheduling RenewTgt()
   // periodically on the |task_runner_| (usually the D-Bus thread). Renewal must
@@ -174,7 +174,7 @@ class TgtManager {
   Delegate* delegate_ = nullptr;  // Delegate to receive events, not owned.
   const Path config_path_ = Path::INVALID;
   const Path credential_cache_path_ = Path::INVALID;
-  base::Closure kerberos_files_changed_;
+  base::RepeatingClosure kerberos_files_changed_;
 
   // Principal for which TGTs are acquired (user@REALM or machine$@REALM).
   std::string principal_;
@@ -193,7 +193,7 @@ class TgtManager {
   bool is_machine_principal_ = false;
 
   // Callback for automatic TGT renewal.
-  base::CancelableClosure tgt_renewal_callback_;
+  base::CancelableOnceClosure tgt_renewal_callback_;
   bool tgt_autorenewal_enabled_ = false;
 
   // Whether to retry kinit in case an error indicates that the credentials
