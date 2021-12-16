@@ -53,6 +53,13 @@ getrandom: 1
 #   0xc00864bf == DRM_IOCTL_SYNCOBJ_CREATE
 #   0xc00864c0 == DRM_IOCTL_SYNCOBJ_DESTROY
 #   0xc02064c3 == DRM_IOCTL_SYNCOBJ_WAIT
+#   0x40086482 == DRM_IOCTL_NOUVEAU_GEM_CPU_PREP
+#   0xc0106440 == DRM_IOCTL_NOUVEAU_GETPARAM
+#   0xc0106445 == DRM_IOCTL_NOUVEAU_NOTIFIEROBJ_ALLOC
+#   0xc0306480 == DRM_IOCTL_NOUVEAU_GEM_NEW
+#   0xc0**6447 == DRM_IOCTL_NOUVEAU_NVIF
+#   0xc0406481 == DRM_IOCTL_NOUVEAU_GEM_PUSHBUF
+#   0xc0586442 == DRM_IOCTL_NOUVEAU_CHANNEL_ALLOC
 ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0x40086409 || arg1 == 0x4008646e || arg1 == 0x400c645f || \
        arg1 == 0x40406469 || arg1 == 0x80106463 || arg1 == 0xc0086457 || \
@@ -63,7 +70,10 @@ ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0xc0406400 || arg1 == 0xc0106442 || arg1 == 0xc010640c || \
        arg1 == 0xc0286448 || arg1 == 0xc0086441 || arg1 == 0x40206445 || \
        arg1 == 0xc0206440 || arg1 == 0xc00864bf || arg1 == 0xc00864c0 || \
-       arg1 == 0xc02064c3
+       arg1 == 0xc02064c3 || arg1 == 0x40086482 || arg1 == 0xc0106440 || \
+       arg1 == 0xc0106445 || arg1 == 0xc0306480 || arg1 == 0xc0386447 || \
+       arg1 == 0xc0406481 || arg1 == 0xc0486447 || arg1 == 0xc0586442 || \
+       arg1 == 0xc0886447
 geteuid: 1
 brk: 1
 getuid: 1
