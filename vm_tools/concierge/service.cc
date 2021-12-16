@@ -110,6 +110,9 @@ constexpr char kToolsMountPath[] = "/opt/google/cros-containers";
 // Filesystem type of VM tools image.
 constexpr char kToolsFsType[] = "ext4";
 
+// The VM instance name of Arcvm
+constexpr char kArcVmName[] = "arcvm";
+
 // How long we should wait for a VM to start up.
 // While this timeout might be high, it's meant to be a final failure point, not
 // the lower bound of how long it takes.  On a loaded system (like extracting
@@ -1125,6 +1128,7 @@ bool Service::Init() {
       {kGetVmEnterpriseReportingInfoMethod,
        &Service::GetVmEnterpriseReportingInfo},
       {kMakeRtVcpuMethod, &Service::MakeRtVcpu},
+      {kArcVmCompleteBootMethod, &Service::ArcVmCompleteBoot},
       {kAdjustVmMethod, &Service::AdjustVm},
       {kCreateDiskImageMethod, &Service::CreateDiskImage},
       {kDestroyDiskImageMethod, &Service::DestroyDiskImage},
@@ -2253,6 +2257,58 @@ std::unique_ptr<dbus::Response> Service::GetVmEnterpriseReportingInfo(
   return dbus_response;
 }
 
+// Performs necessary steps to complete the boot of the VM.
+// Returns true on success, or false if the VM does not exist.
+bool Service::OnVmBootComplete(const std::string& owner_id,
+                               const std::string& name) {
+  auto iter = FindVm(owner_id, name);
+  if (iter == vms_.end()) {
+    return false;
+  }
+
+  // Create the RT v-Cpu for the VM now that boot is complete
+  auto& vm = iter->second;
+  vm->MakeRtVcpu();
+
+  return true;
+}
+
+std::unique_ptr<dbus::Response> Service::ArcVmCompleteBoot(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received ArcVmCompleteBoot request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  ArcVmCompleteBootRequest request;
+  ArcVmCompleteBootResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse ArcVmCompleteBootRequest from message";
+    response.set_result(ArcVmCompleteBootResult::BAD_REQUEST);
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (!OnVmBootComplete(request.owner_id(), kArcVmName)) {
+    LOG(ERROR) << "Unable to locate ArcVm instance";
+    response.set_result(ArcVmCompleteBootResult::ARCVM_NOT_FOUND);
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  response.set_result(ArcVmCompleteBootResult::SUCCESS);
+  writer.AppendProtoAsArrayOfBytes(response);
+
+  return dbus_response;
+}
+
+// TODO(kalutes, b:188858559) Remove this handler once usage is updated to
+// ArcVmCompleteBoot
 std::unique_ptr<dbus::Response> Service::MakeRtVcpu(
     dbus::MethodCall* method_call) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
@@ -2274,17 +2330,13 @@ std::unique_ptr<dbus::Response> Service::MakeRtVcpu(
     return dbus_response;
   }
 
-  auto iter = FindVm(request.owner_id(), request.name());
-  if (iter == vms_.end()) {
+  if (!OnVmBootComplete(request.owner_id(), request.name())) {
     const std::string error_message = "Requested VM does not exist";
     LOG(ERROR) << error_message;
     response.set_failure_reason(error_message);
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
-
-  auto& vm = iter->second;
-  vm->MakeRtVcpu();
 
   response.set_success(true);
   writer.AppendProtoAsArrayOfBytes(response);

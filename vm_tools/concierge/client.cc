@@ -1591,28 +1591,22 @@ int ReclaimVmMemory(dbus::ObjectProxy* proxy, string vm_name, string owner_id) {
   return 0;
 }
 
-int MakeRtVcpu(dbus::ObjectProxy* proxy, string vm_name, string owner_id) {
-  if (vm_name.empty()) {
-    LOG(ERROR) << "--name is required";
-    return -1;
-  }
-
+int ArcVmCompleteBoot(dbus::ObjectProxy* proxy, string owner_id) {
   if (owner_id.empty()) {
     LOG(ERROR) << "--cryptohome_id is required";
     return -1;
   }
 
-  LOG(INFO) << "Make RT vCPU.";
+  LOG(INFO) << "ARCVM Complete boot.";
   dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
-                               vm_tools::concierge::kMakeRtVcpuMethod);
+                               vm_tools::concierge::kArcVmCompleteBootMethod);
   dbus::MessageWriter writer(&method_call);
 
-  vm_tools::concierge::MakeRtVcpuRequest request;
-  request.set_name(vm_name);
+  vm_tools::concierge::ArcVmCompleteBootRequest request;
   request.set_owner_id(owner_id);
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
-    LOG(ERROR) << "Failed to encode MakeRtVcpuRequest protobuf";
+    LOG(ERROR) << "Failed to encode ArcVmCompleteBootRequest protobuf";
     return -1;
   }
 
@@ -1624,18 +1618,20 @@ int MakeRtVcpu(dbus::ObjectProxy* proxy, string vm_name, string owner_id) {
   }
 
   dbus::MessageReader reader(dbus_response.get());
-  vm_tools::concierge::MakeRtVcpuResponse response;
+  vm_tools::concierge::ArcVmCompleteBootResponse response;
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     LOG(ERROR) << "Failed to parse response protobuf";
     return -1;
   }
 
-  if (!response.success()) {
-    LOG(ERROR) << "Could not make RT vCPU: " << response.failure_reason();
+  if (response.result() !=
+      vm_tools::concierge::ArcVmCompleteBootResult::SUCCESS) {
+    LOG(ERROR) << "Could not complete ARCVM boot, ArcVmCompleteBootResult: "
+               << response.result();
     return -1;
   }
 
-  LOG(INFO) << "Successfully made RT vCPU.";
+  LOG(INFO) << "Successfully completed ARCVM boot.";
   return 0;
 }
 
@@ -1731,8 +1727,8 @@ int main(int argc, char** argv) {
               "Enterprise reporting info for the given VM");
   DEFINE_bool(set_vm_cpu_restriction, false, "Set VM CPU restriction");
   DEFINE_bool(reclaim_vm_memory, false, "Reclaim VM memory");
-  DEFINE_bool(make_rt_vcpu, false, "Make RT vCPU");
   DEFINE_bool(list_vms, false, "List VMs");
+  DEFINE_bool(arcvm_complete_boot, false, "Complete ARCVM Boot");
 
   // Parameters.
   DEFINE_string(kernel, "", "Path to the VM kernel");
@@ -1805,8 +1801,8 @@ int main(int argc, char** argv) {
       FLAGS_sync_time + FLAGS_attach_usb + FLAGS_detach_usb +
       FLAGS_list_usb_devices + FLAGS_start_plugin_vm + FLAGS_start_arc_vm +
       FLAGS_get_vm_enterprise_reporting_info +
-      FLAGS_set_vm_cpu_restriction + FLAGS_reclaim_vm_memory +
-      FLAGS_make_rt_vcpu + FLAGS_list_vms != 1) {
+      FLAGS_set_vm_cpu_restriction + FLAGS_reclaim_vm_memory + FLAGS_list_vms +
+      FLAGS_arcvm_complete_boot != 1) {
     // clang-format on
     LOG(ERROR)
         << "Exactly one of --start, --stop, --stop_all, --suspend, --resume, "
@@ -1816,7 +1812,7 @@ int main(int argc, char** argv) {
         << "--attach_usb, --detach_usb, "
         << "--list_usb_devices, --start_plugin_vm, --start_arc_vm, "
         << "--get_vm_enterprise_reporting_info, --set_vm_cpu_restriction, "
-        << "--reclaim_vm_memory, --make_rt_vcpu, or --list_vms "
+        << "--reclaim_vm_memory, --arcvm_complete_boot, or --list_vms "
         << "must be provided";
     return -1;
   }
@@ -1909,11 +1905,10 @@ int main(int argc, char** argv) {
   } else if (FLAGS_reclaim_vm_memory) {
     return ReclaimVmMemory(proxy, std::move(FLAGS_name),
                            std::move(FLAGS_cryptohome_id));
-  } else if (FLAGS_make_rt_vcpu) {
-    return MakeRtVcpu(proxy, std::move(FLAGS_name),
-                      std::move(FLAGS_cryptohome_id));
   } else if (FLAGS_list_vms) {
     return ListVms(proxy, std::move(FLAGS_cryptohome_id));
+  } else if (FLAGS_arcvm_complete_boot) {
+    return ArcVmCompleteBoot(proxy, std::move(FLAGS_cryptohome_id));
   }
 
   // Unreachable.

@@ -546,7 +546,34 @@ message GetVmEnterpriseReportingInfoResponse {
   string vm_kernel_version = 3;
 }
 
-// Request for creating RT vCPUs.
+// Request for completing the boot process of the ARC VM
+message ArcVmCompleteBootRequest {
+  // The owner of the vm.
+  string owner_id = 1;
+}
+
+// Result of an ArcVmCompleteBootRequest
+enum ArcVmCompleteBootResult {
+  // Not used
+  UNKNOWN = 0;
+
+  // ArcVm boot completion operations completed successfully.
+  SUCCESS = 1;
+
+  // The incoming boot complete request was mal-formed
+  BAD_REQUEST = 2;
+
+  // ArcVm does not exist or could not be found
+  ARCVM_NOT_FOUND = 3;
+}
+
+// Response sent back by vm_concierge for a ArcVmCompleteBoot dbus message.
+message ArcVmCompleteBootResponse {
+  ArcVmCompleteBootResult result = 1;
+}
+
+// TODO(kalutes, b:188858559) Deprecate this request once usage is updated to
+// ArcVmCompleteBoot Request for creating RT vCPUs.
 message MakeRtVcpuRequest {
   // The name of the VM.
   string name = 1;
@@ -555,6 +582,8 @@ message MakeRtVcpuRequest {
   string owner_id = 2;
 }
 
+// TODO(kalutes, b:188858559) Deprecate this response once usage is updated to
+// ArcVmCompleteBoot
 // Response sent back by vm_concierge for a MakeRtVcpuRequest dbus message.
 message MakeRtVcpuResponse {
   // If true, the request succeeded.

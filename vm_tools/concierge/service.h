@@ -143,6 +143,12 @@ class Service final {
   // MakeRtVcpuRequest protobuf serialized as an array of bytes.
   std::unique_ptr<dbus::Response> MakeRtVcpu(dbus::MethodCall* method_call);
 
+  // Handles a request to complete the boot of an ARC VM.
+  // |method_call| must have a ArcVmCompleteBootRequest
+  // protobuf serialized as an array of bytes.
+  std::unique_ptr<dbus::Response> ArcVmCompleteBoot(
+      dbus::MethodCall* method_call);
+
   // Handles a request to update all VMs' times to the current host time.
   std::unique_ptr<dbus::Response> SyncVmTimes(dbus::MethodCall* method_call);
 
@@ -339,6 +345,10 @@ class Service final {
   VMGpuCacheSpec PrepareVmGpuCachePaths(const std::string& owner_id,
                                         const std::string& vm_name,
                                         bool enable_render_server);
+
+  // Handles necessary operations to the VM once boot is complete
+  // Returns true on success or false if an error occurred
+  bool OnVmBootComplete(const std::string& owner_id, const std::string& name);
 
   // Resource allocators for VMs.
   VsockCidPool vsock_cid_pool_;
