@@ -7348,7 +7348,7 @@ mno {
   mvno {
     mvno_filter {
       type: IMSI
-      regex: "44020919[0-9]{7}"
+      regex: "44020(919|865)[0-9]{7}"
     }
     data {
       uuid : "81f75c0a-0365-43eb-83e7-4fb43256434d"
