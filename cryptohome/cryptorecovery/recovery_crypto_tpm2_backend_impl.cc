@@ -103,8 +103,9 @@ bool RecoveryCryptoTpm2BackendImpl::EncryptEccPrivateKey(
   // Create the TPM session.
   std::unique_ptr<trunks::HmacSession> hmac_session =
       trunks->factory->GetHmacSession();
+  // TODO(b:196192089): set enable_encryption to true
   trunks::TPM_RC tpm_result = hmac_session->StartUnboundSession(
-      /*salted=*/true, /*enable_encryption=*/true);
+      /*salted=*/true, /*enable_encryption=*/false);
   if (tpm_result != trunks::TPM_RC_SUCCESS) {
     LOG(ERROR) << "Failed to start TPM session: "
                << trunks::GetErrorString(tpm_result);
@@ -192,8 +193,9 @@ RecoveryCryptoTpm2BackendImpl::GenerateDiffieHellmanSharedSecret(
   // Create the TPM session.
   std::unique_ptr<trunks::HmacSession> hmac_session =
       trunks->factory->GetHmacSession();
+  // TODO(b:196192089): set enable_encryption to true
   trunks::TPM_RC tpm_result = hmac_session->StartUnboundSession(
-      /*salted=*/true, /*enable_encryption=*/true);
+      /*salted=*/true, /*enable_encryption=*/false);
   if (tpm_result != trunks::TPM_RC_SUCCESS) {
     LOG(ERROR) << "Failed to start TPM session: "
                << trunks::GetErrorString(tpm_result);

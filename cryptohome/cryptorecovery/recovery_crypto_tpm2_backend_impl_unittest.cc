@@ -87,7 +87,7 @@ TEST_F(RecoveryCryptoTpm2BackendTest, EncryptEccPrivateKeySuccess) {
   ASSERT_TRUE(own_key_pair);
 
   // Set up the mock expectations.
-  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, true))
+  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, false))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_hmac_session_, GetDelegate())
       .WillOnce(Return(&mock_authorization_delegate_));
@@ -111,7 +111,7 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   ASSERT_TRUE(own_key_pair);
 
   // Set up the mock expectations.
-  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, true))
+  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, false))
       .Times(Exactly(0));
   EXPECT_CALL(mock_hmac_session_, GetDelegate()).Times(Exactly(0));
   EXPECT_CALL(mock_tpm_utility_, ImportECCKey(_, _, _, _, _, _, _, _))
@@ -131,7 +131,7 @@ TEST_F(RecoveryCryptoTpm2BackendTest, EncryptEccPrivateKeyWithSessionFailure) {
   ASSERT_TRUE(own_key_pair);
 
   // Set up the mock expectations.
-  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, true))
+  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, false))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_CALL(mock_hmac_session_, GetDelegate()).Times(Exactly(0));
   EXPECT_CALL(mock_tpm_utility_, ImportECCKey(_, _, _, _, _, _, _, _))
@@ -151,7 +151,7 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   ASSERT_TRUE(own_key_pair);
 
   // Set up the mock expectations.
-  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, true))
+  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, false))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_hmac_session_, GetDelegate())
       .WillOnce(Return(&mock_authorization_delegate_));
@@ -187,7 +187,7 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
       &expected_shared_secret_ecc_point));
 
   // Set up the mock expectations.
-  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, true))
+  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, false))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_hmac_session_, GetDelegate())
       .Times(Exactly(2))
@@ -218,7 +218,7 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   ASSERT_TRUE(others_pub_key);
 
   // Set up the mock expectations.
-  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, true))
+  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, false))
       .Times(Exactly(0));
   EXPECT_CALL(mock_hmac_session_, GetDelegate()).Times(Exactly(0));
   EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _)).Times(Exactly(0));
@@ -242,7 +242,7 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   ASSERT_TRUE(others_pub_key);
 
   // Set up the mock expectations.
-  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, true))
+  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, false))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_CALL(mock_hmac_session_, GetDelegate()).Times(Exactly(0));
   EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _)).Times(Exactly(0));
@@ -265,7 +265,7 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   ASSERT_TRUE(others_pub_key);
 
   // Set up the mock expectations.
-  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, true))
+  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, false))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_hmac_session_, GetDelegate())
       .WillRepeatedly(Return(&mock_authorization_delegate_));
@@ -290,7 +290,7 @@ TEST_F(RecoveryCryptoTpm2BackendTest,
   ASSERT_TRUE(others_pub_key);
 
   // Set up the mock expectations.
-  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, true))
+  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true, false))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_hmac_session_, GetDelegate())
       .Times(Exactly(2))
