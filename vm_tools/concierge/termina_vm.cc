@@ -72,6 +72,11 @@ constexpr char kTerminaCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/termina";
 // see MESA_GLSL_CACHE_MAX_SIZE at https://docs.mesa3d.org/envvars.html.
 constexpr char kGpuCacheSizeString[] = "50M";
 
+// The maximum GPU shader cache disk usage for borealis.
+// TODO(b/169802596): Set cache size in a smarter way.
+// See b/209849605#comment5 for borealis cache size reasoning.
+constexpr char kGpuCacheSizeStringBorealis[] = "300M";
+
 // Special value to represent an invalid disk index for `crosvm disk`
 // operations.
 constexpr int kInvalidDiskIndex = -1;
@@ -226,11 +231,15 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
       .SetSyslogTag(base::StringPrintf("VM(%u)", vsock_cid_));
 
   if (features_.gpu) {
+    const char* cache_size = kGpuCacheSizeString;
+    if (id_.name() == "borealis") {
+      cache_size = kGpuCacheSizeStringBorealis;
+    }
     vm_builder.EnableGpu(true)
         .EnableVulkan(features_.vulkan)
         .EnableBigGl(features_.big_gl)
         .EnableRenderServer(features_.vulkan)  // enable with vulkan
-        .SetGpuCacheSize(kGpuCacheSizeString);
+        .SetGpuCacheSize(cache_size);
   }
 
   if (features_.software_tpm)
