@@ -523,8 +523,6 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("disable_cros_video_decoder"))
     AddArg("--platform-disallows-chromeos-direct-video-decoder");
 
-  if (UseFlagIsSet("arc_uses_cros_video_decoder"))
-    AddFeatureEnableOverride("ArcVideoDecoder");
   if (UseFlagIsSet("arc_disable_cros_video_decoder"))
     AddFeatureDisableOverride("ArcVideoDecoder");
 
