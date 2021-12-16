@@ -63,6 +63,8 @@ static_library("typecd_common") {
     "port_manager.cc",
     "session_manager_proxy.cc",
     "udev_monitor.cc",
+    "usb_device.cc",
+    "usb_monitor.cc",
     "utils.cc",
   ]
   all_dependent_configs = [ ":target_defaults" ]
@@ -90,6 +92,7 @@ if (use.test) {
       "port_test.cc",
       "test_utils.cc",
       "udev_monitor_test.cc",
+      "usb_monitor_test.cc",
     ]
     configs += [
       ":test_defaults",

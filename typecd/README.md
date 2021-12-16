@@ -17,16 +17,18 @@ The general structure of the classes is best illustrated by a few diagrams:
                            |
                            |
                            |
-        -----------------------------------------------------------------------------------------
-        |                                         |                       |                      |
-        |                                         |                       |                      |
-        |                                         |                       |                      |
-        |                                         |                       |                      |
-   UdevMonitor    ---typec- udev- events--->   PortManager    ------>   ECUtil         SessionManagerProxy
-                                                  /|\                                            |
-                                                   |                                             |
-                                                   ----------------------------------------------
-                                                                 session_manager events
+        ------------------------------------------------------------------------------------------
+        |                                     |                |               |                  |
+        |                                     |                |               |                  |
+        |                                     |                |               |                  |
+        |                                     |                |               |                  |
+   UdevMonitor ------usb- udev- events---> UsbMonitor          |               |                  |
+                 |                                             |               |                  |
+                  ---------typec- udev- events----------> PortManager -----> ECUtil      SessionManagerProxy
+                                                               /|\                                |
+                                                                |                                 |
+                                                                ----------------------------------
+                                                                      session_manager events
 ```
 
 ### UdevMonitor
@@ -194,6 +196,37 @@ session event, performs an alternate mode switch (by exiting the current mode an
 
 For unit tests, where it's difficult to emulate the asynchronous `session_manager` events, we emulate the same behaviour by calling
 the `PortManager`'s `SessionManagerObserverInterface` functions.
+
+### UsbMonitor
+
+This class maintains a representation of USB devices in sysfs.
+
+```
+                 UsbMonitor
+                     |
+                     |
+          ------------------------------------------
+         |               |                          |
+     UsbDevice0      UsbDevice1   ...          UsbDeviceN
+```
+
+Similar to `PortManager`, `UsbMonitor` sub-classes `UdevMonitor::UsbObserver`, and
+registers itself to receive USB event notifications. In turn, it adds or removes
+relevant `UsbDevice` object.
+
+#### UsbDevice
+
+This class represents a connected USB device. A `UsbDevice` may contain Type C
+port number if it is connected to a Type C port.
+
+```
+                UsbDevice
+                    |
+                    |
+      -----------------------------
+      |             |             |
+    busnum       devnum     typec_port_num
+```
 
 ## Alternate Mode Entry examples
 
