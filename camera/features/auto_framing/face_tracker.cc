@@ -64,7 +64,15 @@ void FaceTracker::OnNewFaceData(
       if (is_same_face(s.normalized_bounding_box,
                        known_face.normalized_bounding_box)) {
         found_matching_face = true;
-        s.first_detected_ticks = known_face.first_detected_ticks;
+        if (!s.has_attention) {
+          // If the face isn't looking at the camera, reset the timer.
+          s.first_detected_ticks = base::TimeTicks::Max();
+        } else if (!known_face.has_attention && s.has_attention) {
+          // If the face starts looking at the camera, start the timer.
+          s.first_detected_ticks = base::TimeTicks::Now();
+        } else {
+          s.first_detected_ticks = known_face.first_detected_ticks;
+        }
         known_face = s;
         break;
       }
