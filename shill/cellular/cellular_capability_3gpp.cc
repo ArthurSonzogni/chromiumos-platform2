@@ -251,9 +251,6 @@ KeyValueStore CellularCapability3gpp::SimLockStatusToProperty(
     case MM_MODEM_LOCK_SIM_PIN:
       lock_type = "sim-pin";
       break;
-    case MM_MODEM_LOCK_SIM_PIN2:
-      lock_type = "sim-pin2";
-      break;
     case MM_MODEM_LOCK_SIM_PUK:
       lock_type = "sim-puk";
       break;
@@ -277,12 +274,6 @@ KeyValueStore CellularCapability3gpp::SimLockStatusToProperty(
       break;
     case MM_MODEM_LOCK_PH_CORP_PIN:
       lock_type = "corporate-pin";
-      break;
-    case MM_MODEM_LOCK_PH_FSIM_PIN:
-      lock_type = "ph-fsim-pin";
-      break;
-    case MM_MODEM_LOCK_PH_FSIM_PUK:
-      lock_type = "ph-fsim-puk";
       break;
     case MM_MODEM_LOCK_PH_CORP_PUK:
       lock_type = "corporate-puk";
