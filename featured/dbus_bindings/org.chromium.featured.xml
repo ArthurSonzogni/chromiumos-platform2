@@ -3,39 +3,18 @@
 <node name="/org/chromium/featured"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.featured">
-    <method name="PlatformFeatureEnable">
+    <method name="IsPlatformFeatureEnabled">
       <tp:docstring>
-        Execute a sequence of commands to enable a kernel feature.
+        Determine whether a feature is enabled.
       </tp:docstring>
       <arg name="name" type="s" direction="in">
         <tp:docstring>
-          The name of the feature to enable.
+          The name of the feature to check.
         </tp:docstring>
       </arg>
       <arg name="result" type="b" direction="out">
         <tp:docstring>
-          The result of the method call (success or fail).
-        </tp:docstring>
-      </arg>
-      <arg name="err_str" type="s" direction="out">
-        <tp:docstring>
-          An err_str that describing the reasons for failure.
-        </tp:docstring>
-      </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
-    </method>
-    <method name="PlatformFeatureList">
-      <tp:docstring>
-        Get a CSV list of kernel features that are available to be enabled.
-      </tp:docstring>
-      <arg name="result" type="b" direction="out">
-        <tp:docstring>
-          The result of the method call (success or fail).
-        </tp:docstring>
-      </arg>
-      <arg name="csv" type="s" direction="out">
-        <tp:docstring>
-          The CSV result or an error string that describing the reasons for failure.
+          The result of the method call (true or false).
         </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>

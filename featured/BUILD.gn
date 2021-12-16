@@ -40,7 +40,10 @@ generate_dbus_adaptors("featured-adaptors") {
 static_library("libfeatured") {
   sources = [ "service.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [ ":featured-adaptors" ]
+  deps = [
+    ":featured-adaptors",
+    ":libfeatures",
+  ]
 }
 
 executable("featured") {

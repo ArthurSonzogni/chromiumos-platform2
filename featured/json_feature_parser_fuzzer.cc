@@ -17,9 +17,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   const std::string data_string(data, data + size);
 
   JsonFeatureParser parser;
-  std::string err_str;
-  bool success = parser.ParseFileContents(data_string, &err_str);
-  CHECK_EQ(success, err_str.empty());
+  parser.ParseFileContents(data_string);
 
   return 0;
 }

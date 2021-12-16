@@ -19,6 +19,7 @@
 #include <brillo/errors/error.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/variant_dictionary.h>
+#include <featured/feature_library.h>
 
 #include <memory>
 #include <string>
@@ -78,12 +79,16 @@ class PlatformFeature {
                   std::vector<std::unique_ptr<FeatureCommand>>&& feature_cmds)
       : exec_cmds_(std::move(feature_cmds)),
         support_check_cmds_(std::move(query_cmds)),
+        feature_{name.c_str(), FEATURE_DISABLED_BY_DEFAULT},
         name_(name) {}
   PlatformFeature(PlatformFeature&& other) = default;
   PlatformFeature(const PlatformFeature& other) = delete;
   PlatformFeature& operator=(const PlatformFeature& other) = delete;
 
   std::string name() { return name_; }
+
+  // Don't copy this because address must *not* change across lookups.
+  const Feature* const feature() const { return &feature_; }
 
   // Check if feature is supported on the device
   bool IsSupported() const;
@@ -94,14 +99,14 @@ class PlatformFeature {
  private:
   std::vector<std::unique_ptr<FeatureCommand>> exec_cmds_;
   std::vector<std::unique_ptr<FeatureCommand>> support_check_cmds_;
+  Feature feature_;
   std::string name_;
 };
 
 class FeatureParserBase {
  public:
   using FeatureMap = std::unordered_map<std::string, PlatformFeature>;
-  virtual bool ParseFileContents(const std::string& file_contents,
-                                 std::string* err_str) = 0;
+  virtual bool ParseFileContents(const std::string& file_contents) = 0;
   virtual ~FeatureParserBase() = default;
   bool AreFeaturesParsed() const { return features_parsed_; }
   const FeatureMap* GetFeatureMap() { return &feature_map_; }
@@ -115,13 +120,12 @@ class FeatureParserBase {
 class JsonFeatureParser : public FeatureParserBase {
  public:
   // Implements the meat of the JSON parsing functionality given a JSON blob
-  bool ParseFileContents(const std::string& file_contents,
-                         std::string* err_str) override;
+  bool ParseFileContents(const std::string& file_contents) override;
 
  private:
   // Helper to build a PlatformFeature object by parsing a JSON feature object
   std::optional<PlatformFeature> MakeFeatureObject(
-      const base::Value& feature_obj, std::string* err_str);
+      const base::Value& feature_obj);
 };
 
 class DbusFeaturedService {
@@ -136,19 +140,21 @@ class DbusFeaturedService {
 
  private:
   // Helpers to invoke a feature parser
-  bool ParseFeatureList(std::string* err_str);
+  bool ParseFeatureList();
+
+  // Enable all features that are supported and which Chrome tells us should be
+  // enabled.
+  bool EnableFeatures();
+
+  // Wraps IsPlatformFeatureEnabled, providing the interface that dbus expects
+  void IsPlatformFeatureEnabledWrap(
+      dbus::MethodCall* method_call,
+      dbus::ExportedObject::ResponseSender sender);
+
+  bool IsPlatformFeatureEnabled(const std::string& name);
+
   std::unique_ptr<FeatureParserBase> parser_;
-
-  // List all the platform features supported by the platform
-  bool GetFeatureList(std::string* csv_list, std::string* err_str);
-  void PlatformFeatureList(dbus::MethodCall* method_call,
-                           dbus::ExportedObject::ResponseSender sender);
-
-  // Wraps PlatformFeatureEnable, providing the interface that dbus expects
-  void PlatformFeatureEnableWrap(dbus::MethodCall* method_call,
-                                 dbus::ExportedObject::ResponseSender sender);
-
-  bool PlatformFeatureEnable(const std::string& name, std::string* err_str);
+  std::unique_ptr<feature::PlatformFeatures> library_;
 };
 
 }  // namespace featured

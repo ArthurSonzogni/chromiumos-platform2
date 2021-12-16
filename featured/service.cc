@@ -9,19 +9,18 @@
 #include <unordered_map>
 #include <utility>
 
+#include <base/files/file.h>
+#include <base/files/file_enumerator.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <build/build_config.h>
 #include <build/buildflag.h>
-
-#include "base/files/file.h"
-#include "base/files/file_enumerator.h"
-#include "base/files/file_path.h"
-#include "base/files/file_util.h"
-#include "base/files/scoped_file.h"
-#include "base/files/scoped_temp_dir.h"
 
 namespace featured {
 
@@ -85,8 +84,7 @@ bool PlatformFeature::IsSupported() const {
   return true;
 }
 
-bool JsonFeatureParser::ParseFileContents(const std::string& file_contents,
-                                          std::string* err_str) {
+bool JsonFeatureParser::ParseFileContents(const std::string& file_contents) {
   if (features_parsed_)
     return true;
 
@@ -95,23 +93,22 @@ bool JsonFeatureParser::ParseFileContents(const std::string& file_contents,
   base::JSONReader::ValueWithError root =
       base::JSONReader::ReadAndReturnValueWithError(file_contents);
   if (!root.value) {
-    *err_str = "featured: Failed to parse conf file: ";
-    *err_str += kPlatformFeaturesPath;
+    LOG(ERROR) << "Failed to parse conf file: " << kPlatformFeaturesPath;
     return false;
   }
 
   if (!root.value->is_list() || root.value->GetList().size() == 0) {
-    *err_str = "featured: features list should be non-zero size!";
+    LOG(ERROR) << "features list should be non-zero size!";
     return false;
   }
 
   for (const auto& item : root.value->GetList()) {
     if (!item.is_dict()) {
-      *err_str = "featured: features conf not list of dicts!";
+      LOG(ERROR) << "features conf not list of dicts!";
       return false;
     }
 
-    auto feature_obj_optional = MakeFeatureObject(item, err_str);
+    auto feature_obj_optional = MakeFeatureObject(item);
     if (!feature_obj_optional) {
       return false;
     }
@@ -119,8 +116,7 @@ bool JsonFeatureParser::ParseFileContents(const std::string& file_contents,
 
     auto got = feature_map_.find(feature_obj.name());
     if (got != feature_map_.end()) {
-      *err_str =
-          "featured: Duplicate feature name found! : " + feature_obj.name();
+      LOG(ERROR) << "Duplicate feature name found: " << feature_obj.name();
       return false;
     }
 
@@ -134,10 +130,10 @@ bool JsonFeatureParser::ParseFileContents(const std::string& file_contents,
 
 // PlatformFeature implementation (collect and execute commands).
 std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
-    const base::Value& feature_obj, std::string* err_str) {
+    const base::Value& feature_obj) {
   std::string feat_name;
   if (!GetStringFromKey(feature_obj, "name", &feat_name)) {
-    *err_str = "featured: features conf contains empty names";
+    LOG(ERROR) << "features conf contains empty names";
     return std::nullopt;
   }
 
@@ -154,20 +150,20 @@ std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
     // A support check command was provided, add it to the feature object.
     if (!support_cmd_list_obj->is_list() ||
         support_cmd_list_obj->GetList().size() == 0) {
-      *err_str = "featured: Invalid format for support_check_commands commands";
+      LOG(ERROR) << "Invalid format for support_check_commands commands";
       return std::nullopt;
     }
 
     for (const auto& item : support_cmd_list_obj->GetList()) {
       if (!item.is_dict()) {
-        *err_str = "featured: support_check_commands is not list of dicts.";
+        LOG(ERROR) << "support_check_commands is not list of dicts.";
         return std::nullopt;
       }
 
       std::string cmd_name;
 
       if (!GetStringFromKey(item, "name", &cmd_name)) {
-        *err_str = "featured: Invalid/Empty command name in features config.";
+        LOG(ERROR) << "Invalid/Empty command name in features config.";
         return std::nullopt;
       }
 
@@ -176,15 +172,14 @@ std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
 
         VLOG(1) << "featured: command is FileExists";
         if (!GetStringFromKey(item, "file", &file_name)) {
-          *err_str = "featured: JSON contains invalid command name";
+          LOG(ERROR) << "JSON contains invalid command name";
           return std::nullopt;
         }
 
         query_cmds.push_back(std::make_unique<FileExistsCommand>(file_name));
       } else {
-        *err_str =
-            "featured: Invalid support command name in features config: ";
-        *err_str += cmd_name;
+        LOG(ERROR) << "Invalid support command name in features config: "
+                   << cmd_name;
         return std::nullopt;
       }
     }
@@ -194,20 +189,20 @@ std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
   const base::Value* cmd_list_obj = feature_obj.FindListKey("commands");
   if (!cmd_list_obj || !cmd_list_obj->is_list() ||
       cmd_list_obj->GetList().size() == 0) {
-    *err_str = "featured: Failed to get commands list in feature.";
+    LOG(ERROR) << "Failed to get commands list in feature.";
     return std::nullopt;
   }
 
   std::vector<std::unique_ptr<FeatureCommand>> feature_cmds;
   for (const auto& item : cmd_list_obj->GetList()) {
     if (!item.is_dict()) {
-      *err_str = "featured: Invalid command in features config.";
+      LOG(ERROR) << "Invalid command in features config.";
       return std::nullopt;
     }
     std::string cmd_name;
 
     if (!GetStringFromKey(item, "name", &cmd_name)) {
-      *err_str = "featured: Invalid command in features config.";
+      LOG(ERROR) << "Invalid command in features config.";
       return std::nullopt;
     }
 
@@ -216,19 +211,18 @@ std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
 
       VLOG(1) << "featured: command is WriteFile";
       if (!GetStringFromKey(item, "file", &file_name)) {
-        *err_str = "featured: JSON contains invalid command name!";
+        LOG(ERROR) << "JSON contains invalid command name!";
         return std::nullopt;
       }
 
       if (!GetStringFromKey(item, "value", &value)) {
-        *err_str = "featured: JSON contains invalid command value!";
+        LOG(ERROR) << "JSON contains invalid command value!";
         return std::nullopt;
       }
       feature_cmds.push_back(
           std::make_unique<WriteFileCommand>(file_name, value));
     } else {
-      *err_str = "featured: Invalid command name in features config: ";
-      *err_str += cmd_name;
+      LOG(ERROR) << "Invalid command name in features config: " << cmd_name;
       return std::nullopt;
     }
   }
@@ -237,96 +231,69 @@ std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
                          std::move(feature_cmds));
 }
 
-bool DbusFeaturedService::ParseFeatureList(std::string* err_str) {
-  DCHECK(err_str);
-
+bool DbusFeaturedService::ParseFeatureList() {
   if (parser_->AreFeaturesParsed())
     return true;
 
   std::string file_contents;
   if (!ReadFileToString(base::FilePath(kPlatformFeaturesPath),
                         &file_contents)) {
-    *err_str = "featured: Failed to read conf file: ";
-    *err_str += kPlatformFeaturesPath;
+    LOG(ERROR) << "Failed to read conf file: " << kPlatformFeaturesPath;
     return false;
   }
 
-  return parser_->ParseFileContents(file_contents, err_str);
+  return parser_->ParseFileContents(file_contents);
 }
 
-bool DbusFeaturedService::GetFeatureList(std::string* csv_list,
-                                         std::string* err_str) {
-  DCHECK(csv_list);
-  DCHECK(err_str);
-
-  csv_list->clear();
-
-  if (!ParseFeatureList(err_str)) {
+bool DbusFeaturedService::EnableFeatures() {
+  if (!ParseFeatureList()) {
     return false;
   }
-
-  bool first = true;
   for (const auto& it : *(parser_->GetFeatureMap())) {
-    if (!first)
-      csv_list->append(",");
-    else
-      first = false;
-
-    csv_list->append(it.first);
+    if (it.second.IsSupported() &&
+        library_->IsEnabledBlocking(*it.second.feature())) {
+      it.second.Execute();
+    }
   }
-
   return true;
 }
 
-bool DbusFeaturedService::PlatformFeatureEnable(const std::string& name,
-                                                std::string* err_str) {
-  DCHECK(err_str);
-
-  if (!ParseFeatureList(err_str)) {
+bool DbusFeaturedService::IsPlatformFeatureEnabled(const std::string& name) {
+  if (!ParseFeatureList()) {
     return false;
   }
 
   auto feature = parser_->GetFeatureMap()->find(name);
   if (feature == parser_->GetFeatureMap()->end()) {
-    *err_str = "featured: Feature not found in features config!";
+    LOG(ERROR) << "Feature not found in features config!";
     return false;
   }
 
   const PlatformFeature& feature_obj = feature->second;
   if (!feature_obj.IsSupported()) {
-    *err_str = "featured: device does not support feature " + name;
+    VLOG(1) << "device does not support feature " << name;
     return false;
   }
 
-  if (!feature_obj.Execute()) {
-    *err_str = "featured: Tried but failed to enable feature " + name;
-    return false;
-  }
+  bool ret = library_->IsEnabledBlocking(*feature_obj.feature());
 
-  /* On success, return the feature name to featured for context. */
-  *err_str = name;
-  VLOG(1) << "featured: PlatformFeatureEnable: Feature " << name << " enabled";
-  return true;
+  VLOG(1) << "featured: IsPlatformFeatureEnabled: Feature " << name
+          << " enabled? " << ret;
+  return ret;
 }
 
-void DbusFeaturedService::PlatformFeatureEnableWrap(
+void DbusFeaturedService::IsPlatformFeatureEnabledWrap(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender sender) {
-  std::string out, err_str;
   bool ret;
 
   dbus::MessageReader reader(method_call);
   std::string name;
   if (!reader.PopString(&name)) {
-    out.append("error: missing string argument");
-    ret = false;
-  } else if (!PlatformFeatureEnable(name, &err_str)) {
-    // If failure, assign the output string as the error message
-    out.append("error: ");
-    out.append(err_str);
+    LOG(ERROR) << "missing string argument to IsPlatformFeatureEnabled";
     ret = false;
   } else {
-    ret = true;
+    ret = IsPlatformFeatureEnabled(name);
   }
 
   std::unique_ptr<dbus::Response> response =
@@ -334,34 +301,6 @@ void DbusFeaturedService::PlatformFeatureEnableWrap(
   dbus::MessageWriter writer(response.get());
 
   writer.AppendBool(ret);
-  writer.AppendString(out);
-
-  std::move(sender).Run(std::move(response));
-}
-
-void DbusFeaturedService::PlatformFeatureList(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender sender) {
-  std::string out, csv, err_str;
-  bool ret;
-
-  // If failure, assign the output string as the error message
-  if (!GetFeatureList(&csv, &err_str)) {
-    out.append("error: ");
-    out.append(err_str);
-    ret = false;
-  } else {
-    VLOG(1) << "featured: PlatformFeatureList: " << csv;
-    out = csv;
-    ret = true;
-  }
-
-  std::unique_ptr<dbus::Response> response =
-      dbus::Response::FromMethodCall(method_call);
-  dbus::MessageWriter writer(response.get());
-
-  writer.AppendBool(ret);
-  writer.AppendString(out);
 
   std::move(sender).Run(std::move(response));
 }
@@ -373,6 +312,8 @@ bool DbusFeaturedService::Start(dbus::Bus* bus,
     return false;
   }
 
+  library_ = feature::PlatformFeatures::New(bus);
+
   dbus::ObjectPath path(featured::kFeaturedServicePath);
   dbus::ExportedObject* object = bus->GetExportedObject(path);
   if (!object) {
@@ -380,22 +321,18 @@ bool DbusFeaturedService::Start(dbus::Bus* bus,
     return false;
   }
 
-  if (!object->ExportMethodAndBlock(
-          featured::kFeaturedServiceName, featured::kPlatformFeatureList,
-          base::BindRepeating(&DbusFeaturedService::PlatformFeatureList,
-                              ptr))) {
-    bus->UnregisterExportedObject(path);
-    LOG(ERROR) << "Failed to export method " << featured::kPlatformFeatureList;
+  if (!EnableFeatures()) {
+    LOG(ERROR) << "Failed to enable features";
     return false;
   }
 
   if (!object->ExportMethodAndBlock(
-          featured::kFeaturedServiceName, featured::kPlatformFeatureEnable,
-          base::BindRepeating(&DbusFeaturedService::PlatformFeatureEnableWrap,
-                              ptr))) {
+          featured::kFeaturedServiceName, featured::kIsPlatformFeatureEnabled,
+          base::BindRepeating(
+              &DbusFeaturedService::IsPlatformFeatureEnabledWrap, ptr))) {
     bus->UnregisterExportedObject(path);
     LOG(ERROR) << "Failed to export method "
-               << featured::kPlatformFeatureEnable;
+               << featured::kIsPlatformFeatureEnabled;
     return false;
   }
 
