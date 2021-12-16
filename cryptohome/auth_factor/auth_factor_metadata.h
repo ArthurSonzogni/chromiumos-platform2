@@ -9,7 +9,9 @@
 
 namespace cryptohome {
 
-struct PasswordAuthFactorMetadata {};
+struct PasswordAuthFactorMetadata {
+  PasswordAuthFactorMetadata() = default;
+};
 
 struct AuthFactorMetadata {
   // Use `std::monostate` as the first alternative, in order to make the

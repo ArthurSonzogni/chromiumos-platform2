@@ -126,6 +126,56 @@ std::optional<Blob> SerializeAuthFactor(const AuthFactor& auth_factor) {
               builder.GetBufferPointer() + builder.GetSize());
 }
 
+bool ConvertPasswordMetadataFromFlatbuffer(
+    const SerializedPasswordMetadata& flatbuffer_table,
+    AuthFactorMetadata* metadata) {
+  // There's no password-specific metadata currently.
+  metadata->metadata = PasswordAuthFactorMetadata();
+  return true;
+}
+
+bool ParseAuthFactorFlatbuffer(const Blob& flatbuffer,
+                               AuthBlockState* auth_block_state,
+                               AuthFactorMetadata* metadata) {
+  flatbuffers::Verifier flatbuffer_verifier(flatbuffer.data(),
+                                            flatbuffer.size());
+  if (!VerifySerializedAuthFactorBuffer(flatbuffer_verifier)) {
+    LOG(ERROR) << "The SerializedAuthFactor flatbuffer is invalid";
+    return false;
+  }
+
+  auto auth_factor_table = GetSerializedAuthFactor(flatbuffer.data());
+
+  if (!auth_factor_table->auth_block_state()) {
+    LOG(ERROR) << "SerializedAuthFactor has no auth block state";
+    return false;
+  }
+  base::Optional<AuthBlockState> converted_auth_block_state =
+      FromFlatBuffer(*auth_factor_table->auth_block_state());
+  if (!converted_auth_block_state) {
+    LOG(ERROR) << "Failed to convert SerializedAuthFactor auth block state";
+    return false;
+  }
+  *auth_block_state = converted_auth_block_state.value();
+
+  if (!auth_factor_table->metadata()) {
+    LOG(ERROR) << "SerializedAuthFactor has no metadata";
+    return false;
+  }
+  if (const SerializedPasswordMetadata* password_metadata =
+          auth_factor_table->metadata_as_SerializedPasswordMetadata()) {
+    if (!ConvertPasswordMetadataFromFlatbuffer(*password_metadata, metadata)) {
+      LOG(ERROR) << "Failed to convert SerializedAuthFactor password metadata";
+      return false;
+    }
+  } else {
+    LOG(ERROR) << "SerializedAuthFactor has unknown metadata";
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace
 
 AuthFactorManager::AuthFactorManager(Platform* platform) : platform_(platform) {
@@ -178,6 +228,42 @@ bool AuthFactorManager::SaveAuthFactor(const std::string& obfuscated_username,
   }
 
   return true;
+}
+
+std::unique_ptr<AuthFactor> AuthFactorManager::LoadAuthFactor(
+    const std::string& obfuscated_username,
+    AuthFactorType auth_factor_type,
+    const std::string& auth_factor_label) {
+  // TODO(b:208351356): Verify the `auth_factor_label` validity.
+
+  const std::string type_string = GetAuthFactorTypeString(auth_factor_type);
+  if (type_string.empty()) {
+    LOG(ERROR) << "Failed to convert auth factor type "
+               << static_cast<int>(auth_factor_type) << " for factor called "
+               << auth_factor_label;
+    return nullptr;
+  }
+
+  const base::FilePath file_path =
+      AuthFactorPath(obfuscated_username, type_string, auth_factor_label);
+  Blob file_contents;
+  if (!platform_->ReadFile(file_path, &file_contents)) {
+    LOG(ERROR) << "Failed to load persisted auth factor " << auth_factor_label
+               << " of type " << type_string << " for " << obfuscated_username;
+    return nullptr;
+  }
+
+  AuthBlockState auth_block_state;
+  AuthFactorMetadata auth_factor_metadata;
+  if (!ParseAuthFactorFlatbuffer(file_contents, &auth_block_state,
+                                 &auth_factor_metadata)) {
+    LOG(ERROR) << "Failed to parse persisted auth factor " << auth_factor_label
+               << " of type " << type_string << " for " << obfuscated_username;
+    return nullptr;
+  }
+
+  return std::make_unique<AuthFactor>(auth_factor_type, auth_factor_label,
+                                      auth_factor_metadata, auth_block_state);
 }
 
 AuthFactorManager::LabelToTypeMap AuthFactorManager::ListAuthFactors(

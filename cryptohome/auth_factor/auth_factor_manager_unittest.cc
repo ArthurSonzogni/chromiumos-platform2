@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 
+#include <absl/types/variant.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
@@ -30,6 +31,7 @@ const char kSomeIdpLabel[] = "some-idp";
 
 AuthBlockState CreatePasswordAuthBlockState() {
   TpmBoundToPcrAuthBlockState tpm_bound_to_pcr_auth_block_state = {
+      .scrypt_derived = false,
       .salt = SecureBlob("fake salt"),
       .tpm_key = SecureBlob("fake tpm key"),
       .extended_tpm_key = SecureBlob("fake extended tpm key"),
@@ -66,7 +68,19 @@ TEST_F(AuthFactorManagerTest, Save) {
       AuthFactorPath(kObfuscatedUsername,
                      /*auth_factor_type_string=*/"password", kSomeIdpLabel)));
 
-  // TODO(b/208348570): Test the factor can be loaded back.
+  // Load the auth factor and verify it's the same.
+  std::unique_ptr<AuthFactor> loaded_auth_factor =
+      auth_factor_manager_.LoadAuthFactor(
+          kObfuscatedUsername, AuthFactorType::kPassword, kSomeIdpLabel);
+  ASSERT_TRUE(loaded_auth_factor);
+  ASSERT_TRUE(loaded_auth_factor->type().has_value());
+  EXPECT_EQ(loaded_auth_factor->type().value(), AuthFactorType::kPassword);
+  ASSERT_TRUE(loaded_auth_factor->label().has_value());
+  EXPECT_EQ(loaded_auth_factor->label().value(), kSomeIdpLabel);
+  ASSERT_TRUE(loaded_auth_factor->metadata().has_value());
+  EXPECT_TRUE(absl::holds_alternative<PasswordAuthFactorMetadata>(
+      loaded_auth_factor->metadata().value().metadata));
+  // TODO(b/204441443): Check other fields too. Consider using a GTest matcher.
 }
 
 // Test the `SaveAuthFactor()` method fails when the label is empty.

@@ -6,6 +6,7 @@
 #define CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_MANAGER_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include "cryptohome/auth_factor/auth_factor.h"
@@ -35,6 +36,13 @@ class AuthFactorManager final {
   // vault.
   bool SaveAuthFactor(const std::string& obfuscated_username,
                       const AuthFactor& auth_factor);
+
+  // Loads from the auth factor with the given type and label from the file in
+  // the user's data vault.
+  std::unique_ptr<AuthFactor> LoadAuthFactor(
+      const std::string& obfuscated_username,
+      AuthFactorType auth_factor_type,
+      const std::string& auth_factor_label);
 
   // Loads the list of configured auth factors from the user's data vault.
   LabelToTypeMap ListAuthFactors(const std::string& obfuscated_username);
