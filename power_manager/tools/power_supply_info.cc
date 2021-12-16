@@ -38,6 +38,9 @@ namespace {
 // Number of columns that should be used to display field names.
 const int kFieldNameColumns = 27;
 
+// Number of retry attempts for reading the PowerStatus.
+static const int kPowerRefreshRetries = 3;
+
 std::string BoolToString(bool value) {
   return value ? "yes" : "no";
 }
@@ -108,7 +111,14 @@ int main(int argc, char** argv) {
   power_supply.Init(path, &prefs, &udev, &dbus_wrapper,
                     battery_percentage_converter.get());
 
-  CHECK(power_supply.RefreshImmediately());
+  bool success = false;
+  for (int i = 0; i < kPowerRefreshRetries; i++) {
+    success = power_supply.RefreshImmediately();
+    if (success)
+      break;
+  }
+
+  CHECK(success);
   const PowerStatus status = power_supply.GetPowerStatus();
 
   // NOTE, autotests (see autotest/files/client/cros/power_status.py) rely on
