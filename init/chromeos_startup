@@ -162,7 +162,8 @@ fi
 
 mkdir -p /dev/pts /dev/shm
 mount -n -i -c -t tmpfs -o nodev,noexec,nosuid shmfs /dev/shm
-mount -n -i -c -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts
+mount -n -i -c -t devpts \
+  -o noexec,nosuid,gid=5,mode=0620,ptmxmode=0666 devpts /dev/pts
 
 # Mount configfs, if present.
 if [ -d /sys/kernel/config ]; then
