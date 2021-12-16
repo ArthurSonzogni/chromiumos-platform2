@@ -30,6 +30,11 @@ config("local_proto_include") {
   include_dirs = [ "${sysroot}/usr/include/attestation/proto_bindings/" ]
 }
 
+config("local_print_proto_include") {
+  # This config is used when any build target used the print_proto.
+  include_dirs = [ "${target_gen_dir}/.." ]
+}
+
 pkg_config("target_defaults") {
   pkg_deps = [
     # This is a list of pkg-config dependencies
@@ -62,17 +67,38 @@ proto_library("proto_library_proto") {
   configs = [ ":local_proto_include" ]
 }
 
+action("print_proto_library") {
+  dbus_proto_path = "${sysroot}/usr/include/chromeos/dbus/attestation"
+  script = "../libhwsec-foundation/utility/proto_print.py"
+  inputs = [
+    "${dbus_proto_path}/attestation_ca.proto",
+    "${dbus_proto_path}/interface.proto",
+    "${dbus_proto_path}/keystore.proto",
+  ]
+  outputs = [
+    "${target_gen_dir}/common/print_attestation_ca_proto.cc",
+    "${target_gen_dir}/common/print_interface_proto.cc",
+    "${target_gen_dir}/common/print_keystore_proto.cc",
+  ]
+  args = [
+           "--subdir",
+           "common",
+           "--proto-include",
+           "attestation/proto_bindings",
+           "--output-dir",
+           "${target_gen_dir}/common",
+         ] + inputs
+}
+
 source_set("proto_library") {
+  sources = get_target_outputs(":print_proto_library")
   configs += [
     "//common-mk:nouse_thin_archive",
     "//common-mk:pic",
+    ":local_print_proto_include",
     ":target_defaults",
   ]
-  sources = [
-    "common/print_attestation_ca_proto.cc",
-    "common/print_interface_proto.cc",
-    "common/print_keystore_proto.cc",
-  ]
+  public_deps = [ ":print_proto_library" ]
 }
 
 # A library for common code.
@@ -270,7 +296,10 @@ executable("pca_agentd") {
 
 executable("pca_agent_client") {
   sources = [ "pca_agent/client/main.cc" ]
-  configs += [ ":target_defaults" ]
+  configs += [
+    ":local_print_proto_include",
+    ":target_defaults",
+  ]
 
   # NOSORT
   pkg_deps = [
