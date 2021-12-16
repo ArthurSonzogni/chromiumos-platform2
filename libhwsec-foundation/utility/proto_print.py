@@ -438,7 +438,6 @@ def FormatFile(filename):
 
 def main():
     parser = argparse.ArgumentParser(description='print proto code generator')
-    parser.add_argument('input_file')
     parser.add_argument(
         '--package-dir',
         default='',
@@ -454,33 +453,37 @@ def main():
         help=('Override for the include path of *.pb.h in' +
               'generated header'))
     parser.add_argument(
-        '--output-dir',
-        default='.',
-        help=('The output directory'))
+        '--output-dir', default='.', help=('The output directory'))
+    parser.add_argument('input_files', nargs='*')
     args = parser.parse_args()
-    with open(args.input_file) as input_file:
-        package, imports, messages, enums = ParseProto(input_file)
-    package_dir = package
-    if args.package_dir != '':
-        package_dir = args.package_dir
-    proto_name = os.path.basename(args.input_file).rsplit('.', 1)[0]
-    header_file_name = 'print_%s_proto.h' % proto_name
-    impl_file_name = 'print_%s_proto.cc' % proto_name
-    header_file_path = os.path.join(args.output_dir ,header_file_name)
-    impl_file_path = os.path.join(args.output_dir ,impl_file_name)
-    with open(header_file_path, 'w') as header_file:
-        with open(impl_file_path, 'w') as impl_file:
-            GenerateFileHeaders(proto_name, package, imports, args.subdir,
-                                args.proto_include_override, header_file_name,
-                                header_file, impl_file, package_dir)
-            for enum in enums:
-                GenerateEnumPrinter(enum, header_file, impl_file)
-            for message in messages:
-                GenerateMessagePrinter(message, header_file, impl_file)
-            GenerateFileFooters(proto_name, package, args.subdir, header_file,
-                                impl_file, package_dir)
-    FormatFile(header_file_path)
-    FormatFile(impl_file_path)
+
+    os.makedirs(args.output_dir, exist_ok=True)
+
+    for input_path in args.input_files:
+        with open(input_path) as input_file:
+            package, imports, messages, enums = ParseProto(input_file)
+        package_dir = package
+        if args.package_dir != '':
+            package_dir = args.package_dir
+        proto_name = os.path.basename(input_path).rsplit('.', 1)[0]
+        header_file_name = 'print_%s_proto.h' % proto_name
+        impl_file_name = 'print_%s_proto.cc' % proto_name
+        header_file_path = os.path.join(args.output_dir, header_file_name)
+        impl_file_path = os.path.join(args.output_dir, impl_file_name)
+        with open(header_file_path, 'w') as header_file:
+            with open(impl_file_path, 'w') as impl_file:
+                GenerateFileHeaders(proto_name, package, imports, args.subdir,
+                                    args.proto_include_override,
+                                    header_file_name, header_file, impl_file,
+                                    package_dir)
+                for enum in enums:
+                    GenerateEnumPrinter(enum, header_file, impl_file)
+                for message in messages:
+                    GenerateMessagePrinter(message, header_file, impl_file)
+                GenerateFileFooters(proto_name, package, args.subdir,
+                                    header_file, impl_file, package_dir)
+        FormatFile(header_file_path)
+        FormatFile(impl_file_path)
 
 
 if __name__ == '__main__':
