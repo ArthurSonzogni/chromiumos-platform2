@@ -34,7 +34,7 @@ import sys
 #   repeated: Whether the field is a repeated field.
 #   type_: The type of the field. E.g. int32.
 #   name: The name of the field.
-Field = collections.namedtuple('Field', 'repeated type_ name')
+Field = collections.namedtuple('Field', 'repeated type_ name proto3')
 
 
 class Message(object):
@@ -54,19 +54,21 @@ class Message(object):
         self.name = name
         self.fields = []
 
-    def AddField(self, attribute, field_type, field_name):
+    def AddField(self, attribute, field_type, field_name, proto3):
         """Adds a new field to the message.
 
         Args:
             attribute: This should be 'optional', 'required', or 'repeated'.
             field_type: The type of the field. E.g. int32.
             field_name: The name of the field.
+            proto3: The field is proto3 style or not.
         """
         self.fields.append(
             Field(
                 repeated=attribute == 'repeated',
                 type_=field_type,
-                name=field_name))
+                name=field_name,
+                proto3=proto3))
 
 
 class Enum(object):
@@ -118,6 +120,7 @@ def ParseProto(input_file):
     import_re = re.compile(r'import\s+"([\w]*/)*(\w+).proto";')
     message_re = re.compile(r'message\s+(\w+)\s*{')
     field_re = re.compile(r'(optional|required|repeated)\s+(\w+)\s+(\w+)\s*=')
+    field_re3 = re.compile(r'(|repeated\s+)([.\w]+)\s+(\w+)\s*=')
     enum_re = re.compile(r'enum\s+(\w+)\s*{')
     enum_value_re = re.compile(r'(\w+)\s*=')
     for line in input_file:
@@ -127,6 +130,7 @@ def ParseProto(input_file):
         msg_match = message_re.search(line)
         enum_match = enum_re.search(line)
         field_match = field_re.search(line)
+        field_match3 = field_re3.search(line)
         package_match = package_re.search(line)
         import_match = import_re.search(line)
         # Look for a message definition.
@@ -140,8 +144,11 @@ def ParseProto(input_file):
         elif current_message_stack and field_match:
             current_message_stack[-1].AddField(
                 field_match.group(1), field_match.group(2),
-                field_match.group(3))
-        # Look for an enum definition.
+                field_match.group(3), False)
+        elif current_message_stack and field_match3:
+            current_message_stack[-1].AddField(
+                field_match3.group(1).strip(), field_match3.group(2),
+                field_match3.group(3), True)
         elif enum_match:
             prefix = ''
             if current_message_stack:
@@ -381,6 +388,11 @@ std::string GetProtoDebugStringWithIndent(const %(name)s& value,
     base::StringAppendF(&output, %(format)s);
     output += "\\n";
   }"""
+    proto3_singular_field = """
+  output += indent + "  %(name)s: ";
+  base::StringAppendF(&output, %(format)s);
+  output += "\\n";
+  """
     repeated_field = """
   output += indent + "  %(name)s: {";
   for (int i = 0; i < value.%(name)s_size(); ++i) {
@@ -418,6 +430,9 @@ std::string GetProtoDebugStringWithIndent(const %(name)s& value,
         if field.repeated:
             value_get = repeated_field_get % {'name': field.name}
             field_code = repeated_field
+        elif field.proto3:
+            value_get = singular_field_get % {'name': field.name}
+            field_code = proto3_singular_field
         else:
             value_get = singular_field_get % {'name': field.name}
             field_code = singular_field
