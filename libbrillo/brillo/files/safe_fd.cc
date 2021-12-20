@@ -170,6 +170,33 @@ SafeFD::Error GetFileSize(int fd, size_t* file_size) {
   return SafeFD::Error::kNoError;
 }
 
+// Cover the case that sendfile is not supported for |source|.
+SafeFD::Error CopyContentsToFallback(SafeFD* source,
+                                     SafeFD* destination,
+                                     size_t max_size) {
+  std::vector<char> buffer(SafeFD::kDefaultPageSize, 0);
+  size_t total_copied = 0;
+  while (total_copied < max_size) {
+    // Use the current offset.
+    ssize_t read_count =
+        HANDLE_EINTR(read(source->get(), buffer.data(), buffer.size()));
+    if (read_count == 0) {
+      return SafeFD::Error::kNoError;
+    }
+    if (read_count < 0) {
+      PLOG(ERROR) << "Failed to copy file; read";
+      return SafeFD::Error::kIOError;
+    }
+
+    SafeFD::Error err = destination->Write(buffer.data(), read_count);
+    if (err != SafeFD::Error::kNoError) {
+      return err;
+    }
+    total_copied += read_count;
+  }
+  return SafeFD::Error::kExceededMaximum;
+}
+
 }  // namespace
 
 bool SafeFD::IsError(SafeFD::Error err) {
@@ -252,11 +279,33 @@ std::pair<std::vector<char>, SafeFD::Error> SafeFD::ReadContents(
   // kDefaultMaxPathDepth to cover this case and additional writes since
   // GetFileSize up to one page.
   buffer.resize(std::min(max_size, file_size + kDefaultPageSize));
-  std::tie(file_size, err) = this->ReadUntilEnd(buffer.data(), buffer.size());
+
+  size_t total_read = 0;
+  err = SafeFD::Error::kNoError;
+  while (total_read < max_size) {
+    ssize_t bytes_read = HANDLE_EINTR(read(
+        fd_.get(), buffer.data() + total_read, buffer.size() - total_read));
+    if (bytes_read == 0) {
+      break;
+    }
+    if (bytes_read < 0) {
+      PLOG(ERROR) << "Failed to read file";
+      err = SafeFD::Error::kIOError;
+      break;
+    }
+    total_read += bytes_read;
+
+    // Grow the buffer if necessary.
+    if (total_read + kDefaultPageSize > buffer.size()) {
+      buffer.resize(std::min(max_size, std::max(total_read + kDefaultPageSize,
+                                                buffer.capacity())),
+                    0);
+    }
+  }
   if (IsError(err)) {
     buffer.clear();
   } else {
-    buffer.resize(file_size);
+    buffer.resize(total_read);
   }
   return std::make_pair(std::move(buffer), err);
 }
@@ -290,6 +339,7 @@ std::pair<size_t, SafeFD::Error> SafeFD::ReadUntilEnd(char* data,
       return std::make_pair(total_read, SafeFD::Error::kNoError);
     }
     if (bytes_read < 0) {
+      PLOG(ERROR) << "Failed to read file";
       return std::make_pair(total_read, SafeFD::Error::kIOError);
     }
     total_read += bytes_read;
@@ -312,6 +362,11 @@ SafeFD::Error SafeFD::CopyContentsTo(SafeFD* destination, size_t max_size) {
       return SafeFD::Error::kNoError;
     }
     if (copied < 0) {
+      // Handle the case that an mmap-like operation is not available for fd_.
+      if (total_copied == 0 && errno == EINVAL) {
+        return CopyContentsToFallback(this, destination, max_size);
+      }
+      PLOG(ERROR) << "Failed to copy file";
       return SafeFD::Error::kIOError;
     }
     total_copied += copied;

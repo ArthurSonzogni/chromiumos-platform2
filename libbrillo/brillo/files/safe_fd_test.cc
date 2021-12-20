@@ -242,6 +242,37 @@ TEST_F(SafeFDTest, CopyContentsTo_Success) {
 TEST_F(SafeFDTest, CopyContentsTo_PseudoFsSuccess) {
   SafeFD::SafeFDResult file =
       root_.OpenExistingFile(base::FilePath("/proc/version"), O_RDONLY);
+  ASSERT_TRUE(file.first.is_valid());
+
+  SafeFD::SafeFDResult destination = root_.MakeFile(file_path_);
+  EXPECT_EQ(destination.second, SafeFD::Error::kNoError);
+  ASSERT_TRUE(destination.first.is_valid());
+
+  ASSERT_EQ(file.first.CopyContentsTo(&destination.first),
+            SafeFD::Error::kNoError);
+
+  // Rewind source and destination back to the beginning and check their
+  // contents.
+  ASSERT_EQ(lseek(file.first.get(), 0, SEEK_SET), 0);
+  auto from_result = file.first.ReadContents();
+  EXPECT_EQ(from_result.second, SafeFD::Error::kNoError);
+  EXPECT_FALSE(from_result.first.empty());
+
+  ASSERT_EQ(lseek(destination.first.get(), 0, SEEK_SET), 0);
+  auto to_result = destination.first.ReadContents();
+  EXPECT_EQ(to_result.second, SafeFD::Error::kNoError);
+
+  ASSERT_EQ(from_result.first.size(), to_result.first.size());
+  EXPECT_EQ(memcmp(from_result.first.data(), to_result.first.data(),
+                   from_result.first.size()),
+            0);
+}
+
+TEST_F(SafeFDTest, CopyContentsTo_PseudoFsLargeSuccess) {
+  SafeFD::SafeFDResult file = root_.OpenExistingFile(
+      base::FilePath("/proc/" + std::to_string(getpid()) + "/environ"),
+      O_RDONLY);
+  ASSERT_TRUE(file.first.is_valid());
 
   SafeFD::SafeFDResult destination = root_.MakeFile(file_path_);
   EXPECT_EQ(destination.second, SafeFD::Error::kNoError);
