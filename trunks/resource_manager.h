@@ -54,7 +54,7 @@ class ResourceManager : public CommandTransceiver {
 
   // CommandTransceiver methods.
   void SendCommand(const std::string& command,
-                   const ResponseCallback& callback) override;
+                   ResponseCallback callback) override;
 
   std::string SendCommandAndWait(const std::string& command) override;
 

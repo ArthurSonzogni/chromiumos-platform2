@@ -6,6 +6,7 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <utility>
 
 #include <base/callback.h>
 #include <base/check_op.h>
@@ -105,8 +106,8 @@ bool TpmHandle::Init() {
 }
 
 void TpmHandle::SendCommand(const std::string& command,
-                            const ResponseCallback& callback) {
-  callback.Run(SendCommandAndWait(command));
+                            ResponseCallback callback) {
+  std::move(callback).Run(SendCommandAndWait(command));
 }
 
 std::string TpmHandle::SendCommandAndWait(const std::string& command) {

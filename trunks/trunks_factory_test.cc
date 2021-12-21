@@ -41,8 +41,8 @@ class TrunksFactoryTest : public testing::Test {
   }
 
   void SendCommand(const std::string& command,
-                   const CommandTransceiver::ResponseCallback& callback) {
-    callback.Run(SendCommandAndWait(command));
+                   CommandTransceiver::ResponseCallback callback) {
+    std::move(callback).Run(SendCommandAndWait(command));
   }
 
   std::string SendCommandAndWait(const std::string& command) {
@@ -64,7 +64,7 @@ TEST_F(TrunksFactoryTest, TpmSendCommand) {
       EXPECT_EQ(expected_code, response_code);
     };
     factory_.GetTpm()->Startup(TPM_SU_CLEAR, nullptr,
-                               base::Bind(callback, expected_code));
+                               base::BindOnce(callback, expected_code));
     EXPECT_EQ(expected_code,
               factory_.GetTpm()->StartupSync(TPM_SU_CLEAR, nullptr));
   }
@@ -78,7 +78,7 @@ TEST_F(TrunksFactoryTest, TpmSendCommandRetry) {
   auto callback = [](TPM_RC response_code) {
     EXPECT_EQ(TPM_RC_RETRY, response_code);
   };
-  factory_.GetTpm()->Startup(TPM_SU_CLEAR, nullptr, base::Bind(callback));
+  factory_.GetTpm()->Startup(TPM_SU_CLEAR, nullptr, base::BindOnce(callback));
   // Sync versions of Tpm commands that call SendCommandAndWait should
   // retry when TPM_RC_RETRY and similar response codes are received.
   factory_.set_command_retry_delay(base::TimeDelta());

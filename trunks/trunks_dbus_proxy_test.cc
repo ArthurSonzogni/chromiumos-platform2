@@ -144,7 +144,7 @@ TEST_F(TrunksDBusProxyTest, SendCommandSuccess) {
   auto callback = [](const std::string& response) {
     EXPECT_EQ("response", response);
   };
-  proxy_.SendCommand("command", base::Bind(callback));
+  proxy_.SendCommand("command", base::BindOnce(callback));
   EXPECT_EQ("command", last_command());
 }
 
@@ -164,7 +164,7 @@ TEST_F(TrunksDBusProxyTest, SendCommandFailureInit) {
   auto callback = [](const std::string& response) {
     EXPECT_EQ(CreateErrorResponse(SAPI_RC_NO_CONNECTION), response);
   };
-  proxy_.SendCommand("command", base::Bind(callback));
+  proxy_.SendCommand("command", base::BindOnce(callback));
   EXPECT_EQ("", last_command());
 }
 
@@ -188,7 +188,7 @@ TEST_F(TrunksDBusProxyTest, SendCommandFailureNoConnection) {
   auto callback = [](const std::string& response) {
     EXPECT_EQ(CreateErrorResponse(SAPI_RC_NO_CONNECTION), response);
   };
-  proxy_.SendCommand("command", base::Bind(callback));
+  proxy_.SendCommand("command", base::BindOnce(callback));
   EXPECT_EQ("command", last_command());
 }
 
@@ -211,7 +211,7 @@ TEST_F(TrunksDBusProxyTest, SendCommandFailureNoResponse) {
   auto callback = [](const std::string& response) {
     EXPECT_EQ(CreateErrorResponse(SAPI_RC_NO_RESPONSE_RECEIVED), response);
   };
-  proxy_.SendCommand("command", base::Bind(callback));
+  proxy_.SendCommand("command", base::BindOnce(callback));
   EXPECT_EQ("command", last_command());
 }
 
@@ -236,7 +236,7 @@ TEST_F(TrunksDBusProxyTest, SendCommandFailureWrongThread) {
   auto callback = [](const std::string& response) {
     EXPECT_EQ(CreateErrorResponse(TRUNKS_RC_IPC_ERROR), response);
   };
-  proxy_.SendCommand("command", base::Bind(callback));
+  proxy_.SendCommand("command", base::BindOnce(callback));
   EXPECT_EQ("", last_command());
 }
 

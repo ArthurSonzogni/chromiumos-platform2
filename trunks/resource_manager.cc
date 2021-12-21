@@ -97,8 +97,8 @@ void ResourceManager::Initialize() {
 }
 
 void ResourceManager::SendCommand(const std::string& command,
-                                  const ResponseCallback& callback) {
-  callback.Run(SendCommandAndWait(command));
+                                  ResponseCallback callback) {
+  std::move(callback).Run(SendCommandAndWait(command));
 }
 
 std::string ResourceManager::SendCommandAndWait(const std::string& command) {

@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -3303,7 +3303,7 @@ class TRUNKS_EXPORT Tpm {
   virtual ~Tpm() {}
   CommandTransceiver* get_transceiver() { return transceiver_; }
 
-  typedef base::Callback<void(TPM_RC response_code)> StartupResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> StartupResponse;
   static TPM_RC SerializeCommand_Startup(
       const TPM_SU& startup_type,
       std::string* serialized_command,
@@ -3313,10 +3313,10 @@ class TRUNKS_EXPORT Tpm {
       AuthorizationDelegate* authorization_delegate);
   virtual void Startup(const TPM_SU& startup_type,
                        AuthorizationDelegate* authorization_delegate,
-                       const StartupResponse& callback);
+                       StartupResponse callback);
   virtual TPM_RC StartupSync(const TPM_SU& startup_type,
                              AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> ShutdownResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> ShutdownResponse;
   static TPM_RC SerializeCommand_Shutdown(
       const TPM_SU& shutdown_type,
       std::string* serialized_command,
@@ -3326,10 +3326,10 @@ class TRUNKS_EXPORT Tpm {
       AuthorizationDelegate* authorization_delegate);
   virtual void Shutdown(const TPM_SU& shutdown_type,
                         AuthorizationDelegate* authorization_delegate,
-                        const ShutdownResponse& callback);
+                        ShutdownResponse callback);
   virtual TPM_RC ShutdownSync(const TPM_SU& shutdown_type,
                               AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> SelfTestResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> SelfTestResponse;
   static TPM_RC SerializeCommand_SelfTest(
       const TPMI_YES_NO& full_test,
       std::string* serialized_command,
@@ -3339,10 +3339,11 @@ class TRUNKS_EXPORT Tpm {
       AuthorizationDelegate* authorization_delegate);
   virtual void SelfTest(const TPMI_YES_NO& full_test,
                         AuthorizationDelegate* authorization_delegate,
-                        const SelfTestResponse& callback);
+                        SelfTestResponse callback);
   virtual TPM_RC SelfTestSync(const TPMI_YES_NO& full_test,
                               AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code, const TPML_ALG& to_do_list)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPML_ALG& to_do_list)>
       IncrementalSelfTestResponse;
   static TPM_RC SerializeCommand_IncrementalSelfTest(
       const TPML_ALG& to_test,
@@ -3355,14 +3356,14 @@ class TRUNKS_EXPORT Tpm {
   virtual void IncrementalSelfTest(
       const TPML_ALG& to_test,
       AuthorizationDelegate* authorization_delegate,
-      const IncrementalSelfTestResponse& callback);
+      IncrementalSelfTestResponse callback);
   virtual TPM_RC IncrementalSelfTestSync(
       const TPML_ALG& to_test,
       TPML_ALG* to_do_list,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_MAX_BUFFER& out_data,
-                              const TPM_RC& test_result)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_MAX_BUFFER& out_data,
+                                  const TPM_RC& test_result)>
       GetTestResultResponse;
   static TPM_RC SerializeCommand_GetTestResult(
       std::string* serialized_command,
@@ -3373,14 +3374,14 @@ class TRUNKS_EXPORT Tpm {
       TPM_RC* test_result,
       AuthorizationDelegate* authorization_delegate);
   virtual void GetTestResult(AuthorizationDelegate* authorization_delegate,
-                             const GetTestResultResponse& callback);
+                             GetTestResultResponse callback);
   virtual TPM_RC GetTestResultSync(
       TPM2B_MAX_BUFFER* out_data,
       TPM_RC* test_result,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPMI_SH_AUTH_SESSION& session_handle,
-                              const TPM2B_NONCE& nonce_tpm)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPMI_SH_AUTH_SESSION& session_handle,
+                                  const TPM2B_NONCE& nonce_tpm)>
       StartAuthSessionResponse;
   static TPM_RC SerializeCommand_StartAuthSession(
       const TPMI_DH_OBJECT& tpm_key,
@@ -3409,7 +3410,7 @@ class TRUNKS_EXPORT Tpm {
                                 const TPMT_SYM_DEF& symmetric,
                                 const TPMI_ALG_HASH& auth_hash,
                                 AuthorizationDelegate* authorization_delegate,
-                                const StartAuthSessionResponse& callback);
+                                StartAuthSessionResponse callback);
   virtual TPM_RC StartAuthSessionSync(
       const TPMI_DH_OBJECT& tpm_key,
       const std::string& tpm_key_name,
@@ -3423,7 +3424,7 @@ class TRUNKS_EXPORT Tpm {
       TPMI_SH_AUTH_SESSION* session_handle,
       TPM2B_NONCE* nonce_tpm,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> PolicyRestartResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> PolicyRestartResponse;
   static TPM_RC SerializeCommand_PolicyRestart(
       const TPMI_SH_POLICY& session_handle,
       const std::string& session_handle_name,
@@ -3435,17 +3436,17 @@ class TRUNKS_EXPORT Tpm {
   virtual void PolicyRestart(const TPMI_SH_POLICY& session_handle,
                              const std::string& session_handle_name,
                              AuthorizationDelegate* authorization_delegate,
-                             const PolicyRestartResponse& callback);
+                             PolicyRestartResponse callback);
   virtual TPM_RC PolicyRestartSync(
       const TPMI_SH_POLICY& session_handle,
       const std::string& session_handle_name,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_PRIVATE& out_private,
-                              const TPM2B_PUBLIC& out_public,
-                              const TPM2B_CREATION_DATA& creation_data,
-                              const TPM2B_DIGEST& creation_hash,
-                              const TPMT_TK_CREATION& creation_ticket)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_PRIVATE& out_private,
+                                  const TPM2B_PUBLIC& out_public,
+                                  const TPM2B_CREATION_DATA& creation_data,
+                                  const TPM2B_DIGEST& creation_hash,
+                                  const TPMT_TK_CREATION& creation_ticket)>
       CreateResponse;
   static TPM_RC SerializeCommand_Create(
       const TPMI_DH_OBJECT& parent_handle,
@@ -3471,7 +3472,7 @@ class TRUNKS_EXPORT Tpm {
                       const TPM2B_DATA& outside_info,
                       const TPML_PCR_SELECTION& creation_pcr,
                       AuthorizationDelegate* authorization_delegate,
-                      const CreateResponse& callback);
+                      CreateResponse callback);
   virtual TPM_RC CreateSync(const TPMI_DH_OBJECT& parent_handle,
                             const std::string& parent_handle_name,
                             const TPM2B_SENSITIVE_CREATE& in_sensitive,
@@ -3484,9 +3485,9 @@ class TRUNKS_EXPORT Tpm {
                             TPM2B_DIGEST* creation_hash,
                             TPMT_TK_CREATION* creation_ticket,
                             AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM_HANDLE& object_handle,
-                              const TPM2B_NAME& name)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM_HANDLE& object_handle,
+                                  const TPM2B_NAME& name)>
       LoadResponse;
   static TPM_RC SerializeCommand_Load(
       const TPMI_DH_OBJECT& parent_handle,
@@ -3505,7 +3506,7 @@ class TRUNKS_EXPORT Tpm {
                     const TPM2B_PRIVATE& in_private,
                     const TPM2B_PUBLIC& in_public,
                     AuthorizationDelegate* authorization_delegate,
-                    const LoadResponse& callback);
+                    LoadResponse callback);
   virtual TPM_RC LoadSync(const TPMI_DH_OBJECT& parent_handle,
                           const std::string& parent_handle_name,
                           const TPM2B_PRIVATE& in_private,
@@ -3513,9 +3514,9 @@ class TRUNKS_EXPORT Tpm {
                           TPM_HANDLE* object_handle,
                           TPM2B_NAME* name,
                           AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM_HANDLE& object_handle,
-                              const TPM2B_NAME& name)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM_HANDLE& object_handle,
+                                  const TPM2B_NAME& name)>
       LoadExternalResponse;
   static TPM_RC SerializeCommand_LoadExternal(
       const TPM2B_SENSITIVE& in_private,
@@ -3532,7 +3533,7 @@ class TRUNKS_EXPORT Tpm {
                             const TPM2B_PUBLIC& in_public,
                             const TPMI_RH_HIERARCHY& hierarchy,
                             AuthorizationDelegate* authorization_delegate,
-                            const LoadExternalResponse& callback);
+                            LoadExternalResponse callback);
   virtual TPM_RC LoadExternalSync(
       const TPM2B_SENSITIVE& in_private,
       const TPM2B_PUBLIC& in_public,
@@ -3540,10 +3541,10 @@ class TRUNKS_EXPORT Tpm {
       TPM_HANDLE* object_handle,
       TPM2B_NAME* name,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_PUBLIC& out_public,
-                              const TPM2B_NAME& name,
-                              const TPM2B_NAME& qualified_name)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_PUBLIC& out_public,
+                                  const TPM2B_NAME& name,
+                                  const TPM2B_NAME& qualified_name)>
       ReadPublicResponse;
   static TPM_RC SerializeCommand_ReadPublic(
       const TPMI_DH_OBJECT& object_handle,
@@ -3559,15 +3560,15 @@ class TRUNKS_EXPORT Tpm {
   virtual void ReadPublic(const TPMI_DH_OBJECT& object_handle,
                           const std::string& object_handle_name,
                           AuthorizationDelegate* authorization_delegate,
-                          const ReadPublicResponse& callback);
+                          ReadPublicResponse callback);
   virtual TPM_RC ReadPublicSync(const TPMI_DH_OBJECT& object_handle,
                                 const std::string& object_handle_name,
                                 TPM2B_PUBLIC* out_public,
                                 TPM2B_NAME* name,
                                 TPM2B_NAME* qualified_name,
                                 AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_DIGEST& cert_info)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_DIGEST& cert_info)>
       ActivateCredentialResponse;
   static TPM_RC SerializeCommand_ActivateCredential(
       const TPMI_DH_OBJECT& activate_handle,
@@ -3589,7 +3590,7 @@ class TRUNKS_EXPORT Tpm {
                                   const TPM2B_ID_OBJECT& credential_blob,
                                   const TPM2B_ENCRYPTED_SECRET& secret,
                                   AuthorizationDelegate* authorization_delegate,
-                                  const ActivateCredentialResponse& callback);
+                                  ActivateCredentialResponse callback);
   virtual TPM_RC ActivateCredentialSync(
       const TPMI_DH_OBJECT& activate_handle,
       const std::string& activate_handle_name,
@@ -3599,9 +3600,9 @@ class TRUNKS_EXPORT Tpm {
       const TPM2B_ENCRYPTED_SECRET& secret,
       TPM2B_DIGEST* cert_info,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_ID_OBJECT& credential_blob,
-                              const TPM2B_ENCRYPTED_SECRET& secret)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_ID_OBJECT& credential_blob,
+                                  const TPM2B_ENCRYPTED_SECRET& secret)>
       MakeCredentialResponse;
   static TPM_RC SerializeCommand_MakeCredential(
       const TPMI_DH_OBJECT& handle,
@@ -3620,7 +3621,7 @@ class TRUNKS_EXPORT Tpm {
                               const TPM2B_DIGEST& credential,
                               const TPM2B_NAME& object_name,
                               AuthorizationDelegate* authorization_delegate,
-                              const MakeCredentialResponse& callback);
+                              MakeCredentialResponse callback);
   virtual TPM_RC MakeCredentialSync(
       const TPMI_DH_OBJECT& handle,
       const std::string& handle_name,
@@ -3629,8 +3630,8 @@ class TRUNKS_EXPORT Tpm {
       TPM2B_ID_OBJECT* credential_blob,
       TPM2B_ENCRYPTED_SECRET* secret,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_SENSITIVE_DATA& out_data)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_SENSITIVE_DATA& out_data)>
       UnsealResponse;
   static TPM_RC SerializeCommand_Unseal(
       const TPMI_DH_OBJECT& item_handle,
@@ -3644,13 +3645,13 @@ class TRUNKS_EXPORT Tpm {
   virtual void Unseal(const TPMI_DH_OBJECT& item_handle,
                       const std::string& item_handle_name,
                       AuthorizationDelegate* authorization_delegate,
-                      const UnsealResponse& callback);
+                      UnsealResponse callback);
   virtual TPM_RC UnsealSync(const TPMI_DH_OBJECT& item_handle,
                             const std::string& item_handle_name,
                             TPM2B_SENSITIVE_DATA* out_data,
                             AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_PRIVATE& out_private)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_PRIVATE& out_private)>
       ObjectChangeAuthResponse;
   static TPM_RC SerializeCommand_ObjectChangeAuth(
       const TPMI_DH_OBJECT& object_handle,
@@ -3670,7 +3671,7 @@ class TRUNKS_EXPORT Tpm {
                                 const std::string& parent_handle_name,
                                 const TPM2B_AUTH& new_auth,
                                 AuthorizationDelegate* authorization_delegate,
-                                const ObjectChangeAuthResponse& callback);
+                                ObjectChangeAuthResponse callback);
   virtual TPM_RC ObjectChangeAuthSync(
       const TPMI_DH_OBJECT& object_handle,
       const std::string& object_handle_name,
@@ -3679,10 +3680,10 @@ class TRUNKS_EXPORT Tpm {
       const TPM2B_AUTH& new_auth,
       TPM2B_PRIVATE* out_private,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_DATA& encryption_key_out,
-                              const TPM2B_PRIVATE& duplicate,
-                              const TPM2B_ENCRYPTED_SECRET& out_sym_seed)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_DATA& encryption_key_out,
+                                  const TPM2B_PRIVATE& duplicate,
+                                  const TPM2B_ENCRYPTED_SECRET& out_sym_seed)>
       DuplicateResponse;
   static TPM_RC SerializeCommand_Duplicate(
       const TPMI_DH_OBJECT& object_handle,
@@ -3706,7 +3707,7 @@ class TRUNKS_EXPORT Tpm {
                          const TPM2B_DATA& encryption_key_in,
                          const TPMT_SYM_DEF_OBJECT& symmetric_alg,
                          AuthorizationDelegate* authorization_delegate,
-                         const DuplicateResponse& callback);
+                         DuplicateResponse callback);
   virtual TPM_RC DuplicateSync(const TPMI_DH_OBJECT& object_handle,
                                const std::string& object_handle_name,
                                const TPMI_DH_OBJECT& new_parent_handle,
@@ -3717,9 +3718,9 @@ class TRUNKS_EXPORT Tpm {
                                TPM2B_PRIVATE* duplicate,
                                TPM2B_ENCRYPTED_SECRET* out_sym_seed,
                                AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_PRIVATE& out_duplicate,
-                              const TPM2B_ENCRYPTED_SECRET& out_sym_seed)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_PRIVATE& out_duplicate,
+                                  const TPM2B_ENCRYPTED_SECRET& out_sym_seed)>
       RewrapResponse;
   static TPM_RC SerializeCommand_Rewrap(
       const TPMI_DH_OBJECT& old_parent,
@@ -3744,7 +3745,7 @@ class TRUNKS_EXPORT Tpm {
                       const TPM2B_NAME& name,
                       const TPM2B_ENCRYPTED_SECRET& in_sym_seed,
                       AuthorizationDelegate* authorization_delegate,
-                      const RewrapResponse& callback);
+                      RewrapResponse callback);
   virtual TPM_RC RewrapSync(const TPMI_DH_OBJECT& old_parent,
                             const std::string& old_parent_name,
                             const TPMI_DH_OBJECT& new_parent,
@@ -3755,8 +3756,8 @@ class TRUNKS_EXPORT Tpm {
                             TPM2B_PRIVATE* out_duplicate,
                             TPM2B_ENCRYPTED_SECRET* out_sym_seed,
                             AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_PRIVATE& out_private)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_PRIVATE& out_private)>
       ImportResponse;
   static TPM_RC SerializeCommand_Import(
       const TPMI_DH_OBJECT& parent_handle,
@@ -3780,7 +3781,7 @@ class TRUNKS_EXPORT Tpm {
                       const TPM2B_ENCRYPTED_SECRET& in_sym_seed,
                       const TPMT_SYM_DEF_OBJECT& symmetric_alg,
                       AuthorizationDelegate* authorization_delegate,
-                      const ImportResponse& callback);
+                      ImportResponse callback);
   virtual TPM_RC ImportSync(const TPMI_DH_OBJECT& parent_handle,
                             const std::string& parent_handle_name,
                             const TPM2B_DATA& encryption_key,
@@ -3790,8 +3791,8 @@ class TRUNKS_EXPORT Tpm {
                             const TPMT_SYM_DEF_OBJECT& symmetric_alg,
                             TPM2B_PRIVATE* out_private,
                             AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_PUBLIC_KEY_RSA& out_data)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_PUBLIC_KEY_RSA& out_data)>
       RSA_EncryptResponse;
   static TPM_RC SerializeCommand_RSA_Encrypt(
       const TPMI_DH_OBJECT& key_handle,
@@ -3811,7 +3812,7 @@ class TRUNKS_EXPORT Tpm {
                            const TPMT_RSA_DECRYPT& in_scheme,
                            const TPM2B_DATA& label,
                            AuthorizationDelegate* authorization_delegate,
-                           const RSA_EncryptResponse& callback);
+                           RSA_EncryptResponse callback);
   virtual TPM_RC RSA_EncryptSync(const TPMI_DH_OBJECT& key_handle,
                                  const std::string& key_handle_name,
                                  const TPM2B_PUBLIC_KEY_RSA& message,
@@ -3819,8 +3820,8 @@ class TRUNKS_EXPORT Tpm {
                                  const TPM2B_DATA& label,
                                  TPM2B_PUBLIC_KEY_RSA* out_data,
                                  AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_PUBLIC_KEY_RSA& message)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_PUBLIC_KEY_RSA& message)>
       RSA_DecryptResponse;
   static TPM_RC SerializeCommand_RSA_Decrypt(
       const TPMI_DH_OBJECT& key_handle,
@@ -3840,7 +3841,7 @@ class TRUNKS_EXPORT Tpm {
                            const TPMT_RSA_DECRYPT& in_scheme,
                            const TPM2B_DATA& label,
                            AuthorizationDelegate* authorization_delegate,
-                           const RSA_DecryptResponse& callback);
+                           RSA_DecryptResponse callback);
   virtual TPM_RC RSA_DecryptSync(const TPMI_DH_OBJECT& key_handle,
                                  const std::string& key_handle_name,
                                  const TPM2B_PUBLIC_KEY_RSA& cipher_text,
@@ -3848,9 +3849,9 @@ class TRUNKS_EXPORT Tpm {
                                  const TPM2B_DATA& label,
                                  TPM2B_PUBLIC_KEY_RSA* message,
                                  AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_ECC_POINT& z_point,
-                              const TPM2B_ECC_POINT& pub_point)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_ECC_POINT& z_point,
+                                  const TPM2B_ECC_POINT& pub_point)>
       ECDH_KeyGenResponse;
   static TPM_RC SerializeCommand_ECDH_KeyGen(
       const TPMI_DH_OBJECT& key_handle,
@@ -3865,14 +3866,14 @@ class TRUNKS_EXPORT Tpm {
   virtual void ECDH_KeyGen(const TPMI_DH_OBJECT& key_handle,
                            const std::string& key_handle_name,
                            AuthorizationDelegate* authorization_delegate,
-                           const ECDH_KeyGenResponse& callback);
+                           ECDH_KeyGenResponse callback);
   virtual TPM_RC ECDH_KeyGenSync(const TPMI_DH_OBJECT& key_handle,
                                  const std::string& key_handle_name,
                                  TPM2B_ECC_POINT* z_point,
                                  TPM2B_ECC_POINT* pub_point,
                                  AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_ECC_POINT& out_point)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_ECC_POINT& out_point)>
       ECDH_ZGenResponse;
   static TPM_RC SerializeCommand_ECDH_ZGen(
       const TPMI_DH_OBJECT& key_handle,
@@ -3888,14 +3889,14 @@ class TRUNKS_EXPORT Tpm {
                          const std::string& key_handle_name,
                          const TPM2B_ECC_POINT& in_point,
                          AuthorizationDelegate* authorization_delegate,
-                         const ECDH_ZGenResponse& callback);
+                         ECDH_ZGenResponse callback);
   virtual TPM_RC ECDH_ZGenSync(const TPMI_DH_OBJECT& key_handle,
                                const std::string& key_handle_name,
                                const TPM2B_ECC_POINT& in_point,
                                TPM2B_ECC_POINT* out_point,
                                AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPMS_ALGORITHM_DETAIL_ECC& parameters)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPMS_ALGORITHM_DETAIL_ECC& parameters)>
       ECC_ParametersResponse;
   static TPM_RC SerializeCommand_ECC_Parameters(
       const TPMI_ECC_CURVE& curve_id,
@@ -3907,14 +3908,14 @@ class TRUNKS_EXPORT Tpm {
       AuthorizationDelegate* authorization_delegate);
   virtual void ECC_Parameters(const TPMI_ECC_CURVE& curve_id,
                               AuthorizationDelegate* authorization_delegate,
-                              const ECC_ParametersResponse& callback);
+                              ECC_ParametersResponse callback);
   virtual TPM_RC ECC_ParametersSync(
       const TPMI_ECC_CURVE& curve_id,
       TPMS_ALGORITHM_DETAIL_ECC* parameters,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_ECC_POINT& out_z1,
-                              const TPM2B_ECC_POINT& out_z2)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_ECC_POINT& out_z1,
+                                  const TPM2B_ECC_POINT& out_z2)>
       ZGen_2PhaseResponse;
   static TPM_RC SerializeCommand_ZGen_2Phase(
       const TPMI_DH_OBJECT& key_a,
@@ -3937,7 +3938,7 @@ class TRUNKS_EXPORT Tpm {
                            const TPMI_ECC_KEY_EXCHANGE& in_scheme,
                            const UINT16& counter,
                            AuthorizationDelegate* authorization_delegate,
-                           const ZGen_2PhaseResponse& callback);
+                           ZGen_2PhaseResponse callback);
   virtual TPM_RC ZGen_2PhaseSync(const TPMI_DH_OBJECT& key_a,
                                  const std::string& key_a_name,
                                  const TPM2B_ECC_POINT& in_qs_b,
@@ -3947,9 +3948,9 @@ class TRUNKS_EXPORT Tpm {
                                  TPM2B_ECC_POINT* out_z1,
                                  TPM2B_ECC_POINT* out_z2,
                                  AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_MAX_BUFFER& out_data,
-                              const TPM2B_IV& iv_out)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_MAX_BUFFER& out_data,
+                                  const TPM2B_IV& iv_out)>
       EncryptDecryptResponse;
   static TPM_RC SerializeCommand_EncryptDecrypt(
       const TPMI_DH_OBJECT& key_handle,
@@ -3972,7 +3973,7 @@ class TRUNKS_EXPORT Tpm {
                               const TPM2B_IV& iv_in,
                               const TPM2B_MAX_BUFFER& in_data,
                               AuthorizationDelegate* authorization_delegate,
-                              const EncryptDecryptResponse& callback);
+                              EncryptDecryptResponse callback);
   virtual TPM_RC EncryptDecryptSync(
       const TPMI_DH_OBJECT& key_handle,
       const std::string& key_handle_name,
@@ -3983,9 +3984,9 @@ class TRUNKS_EXPORT Tpm {
       TPM2B_MAX_BUFFER* out_data,
       TPM2B_IV* iv_out,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_DIGEST& out_hash,
-                              const TPMT_TK_HASHCHECK& validation)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_DIGEST& out_hash,
+                                  const TPMT_TK_HASHCHECK& validation)>
       HashResponse;
   static TPM_RC SerializeCommand_Hash(
       const TPM2B_MAX_BUFFER& data,
@@ -4002,15 +4003,15 @@ class TRUNKS_EXPORT Tpm {
                     const TPMI_ALG_HASH& hash_alg,
                     const TPMI_RH_HIERARCHY& hierarchy,
                     AuthorizationDelegate* authorization_delegate,
-                    const HashResponse& callback);
+                    HashResponse callback);
   virtual TPM_RC HashSync(const TPM2B_MAX_BUFFER& data,
                           const TPMI_ALG_HASH& hash_alg,
                           const TPMI_RH_HIERARCHY& hierarchy,
                           TPM2B_DIGEST* out_hash,
                           TPMT_TK_HASHCHECK* validation,
                           AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_DIGEST& out_hmac)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_DIGEST& out_hmac)>
       HMACResponse;
   static TPM_RC SerializeCommand_HMAC(
       const TPMI_DH_OBJECT& handle,
@@ -4028,15 +4029,15 @@ class TRUNKS_EXPORT Tpm {
                     const TPM2B_MAX_BUFFER& buffer,
                     const TPMI_ALG_HASH& hash_alg,
                     AuthorizationDelegate* authorization_delegate,
-                    const HMACResponse& callback);
+                    HMACResponse callback);
   virtual TPM_RC HMACSync(const TPMI_DH_OBJECT& handle,
                           const std::string& handle_name,
                           const TPM2B_MAX_BUFFER& buffer,
                           const TPMI_ALG_HASH& hash_alg,
                           TPM2B_DIGEST* out_hmac,
                           AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_DIGEST& random_bytes)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_DIGEST& random_bytes)>
       GetRandomResponse;
   static TPM_RC SerializeCommand_GetRandom(
       const UINT16& bytes_requested,
@@ -4048,11 +4049,11 @@ class TRUNKS_EXPORT Tpm {
       AuthorizationDelegate* authorization_delegate);
   virtual void GetRandom(const UINT16& bytes_requested,
                          AuthorizationDelegate* authorization_delegate,
-                         const GetRandomResponse& callback);
+                         GetRandomResponse callback);
   virtual TPM_RC GetRandomSync(const UINT16& bytes_requested,
                                TPM2B_DIGEST* random_bytes,
                                AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> StirRandomResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> StirRandomResponse;
   static TPM_RC SerializeCommand_StirRandom(
       const TPM2B_SENSITIVE_DATA& in_data,
       std::string* serialized_command,
@@ -4062,11 +4063,11 @@ class TRUNKS_EXPORT Tpm {
       AuthorizationDelegate* authorization_delegate);
   virtual void StirRandom(const TPM2B_SENSITIVE_DATA& in_data,
                           AuthorizationDelegate* authorization_delegate,
-                          const StirRandomResponse& callback);
+                          StirRandomResponse callback);
   virtual TPM_RC StirRandomSync(const TPM2B_SENSITIVE_DATA& in_data,
                                 AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPMI_DH_OBJECT& sequence_handle)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPMI_DH_OBJECT& sequence_handle)>
       HMAC_StartResponse;
   static TPM_RC SerializeCommand_HMAC_Start(
       const TPMI_DH_OBJECT& handle,
@@ -4084,15 +4085,15 @@ class TRUNKS_EXPORT Tpm {
                           const TPM2B_AUTH& auth,
                           const TPMI_ALG_HASH& hash_alg,
                           AuthorizationDelegate* authorization_delegate,
-                          const HMAC_StartResponse& callback);
+                          HMAC_StartResponse callback);
   virtual TPM_RC HMAC_StartSync(const TPMI_DH_OBJECT& handle,
                                 const std::string& handle_name,
                                 const TPM2B_AUTH& auth,
                                 const TPMI_ALG_HASH& hash_alg,
                                 TPMI_DH_OBJECT* sequence_handle,
                                 AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPMI_DH_OBJECT& sequence_handle)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPMI_DH_OBJECT& sequence_handle)>
       HashSequenceStartResponse;
   static TPM_RC SerializeCommand_HashSequenceStart(
       const TPM2B_AUTH& auth,
@@ -4106,13 +4107,13 @@ class TRUNKS_EXPORT Tpm {
   virtual void HashSequenceStart(const TPM2B_AUTH& auth,
                                  const TPMI_ALG_HASH& hash_alg,
                                  AuthorizationDelegate* authorization_delegate,
-                                 const HashSequenceStartResponse& callback);
+                                 HashSequenceStartResponse callback);
   virtual TPM_RC HashSequenceStartSync(
       const TPM2B_AUTH& auth,
       const TPMI_ALG_HASH& hash_alg,
       TPMI_DH_OBJECT* sequence_handle,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> SequenceUpdateResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> SequenceUpdateResponse;
   static TPM_RC SerializeCommand_SequenceUpdate(
       const TPMI_DH_OBJECT& sequence_handle,
       const std::string& sequence_handle_name,
@@ -4126,15 +4127,15 @@ class TRUNKS_EXPORT Tpm {
                               const std::string& sequence_handle_name,
                               const TPM2B_MAX_BUFFER& buffer,
                               AuthorizationDelegate* authorization_delegate,
-                              const SequenceUpdateResponse& callback);
+                              SequenceUpdateResponse callback);
   virtual TPM_RC SequenceUpdateSync(
       const TPMI_DH_OBJECT& sequence_handle,
       const std::string& sequence_handle_name,
       const TPM2B_MAX_BUFFER& buffer,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_DIGEST& result,
-                              const TPMT_TK_HASHCHECK& validation)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_DIGEST& result,
+                                  const TPMT_TK_HASHCHECK& validation)>
       SequenceCompleteResponse;
   static TPM_RC SerializeCommand_SequenceComplete(
       const TPMI_DH_OBJECT& sequence_handle,
@@ -4153,7 +4154,7 @@ class TRUNKS_EXPORT Tpm {
                                 const TPM2B_MAX_BUFFER& buffer,
                                 const TPMI_RH_HIERARCHY& hierarchy,
                                 AuthorizationDelegate* authorization_delegate,
-                                const SequenceCompleteResponse& callback);
+                                SequenceCompleteResponse callback);
   virtual TPM_RC SequenceCompleteSync(
       const TPMI_DH_OBJECT& sequence_handle,
       const std::string& sequence_handle_name,
@@ -4162,8 +4163,8 @@ class TRUNKS_EXPORT Tpm {
       TPM2B_DIGEST* result,
       TPMT_TK_HASHCHECK* validation,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPML_DIGEST_VALUES& results)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPML_DIGEST_VALUES& results)>
       EventSequenceCompleteResponse;
   static TPM_RC SerializeCommand_EventSequenceComplete(
       const TPMI_DH_PCR& pcr_handle,
@@ -4184,7 +4185,7 @@ class TRUNKS_EXPORT Tpm {
       const std::string& sequence_handle_name,
       const TPM2B_MAX_BUFFER& buffer,
       AuthorizationDelegate* authorization_delegate,
-      const EventSequenceCompleteResponse& callback);
+      EventSequenceCompleteResponse callback);
   virtual TPM_RC EventSequenceCompleteSync(
       const TPMI_DH_PCR& pcr_handle,
       const std::string& pcr_handle_name,
@@ -4193,9 +4194,9 @@ class TRUNKS_EXPORT Tpm {
       const TPM2B_MAX_BUFFER& buffer,
       TPML_DIGEST_VALUES* results,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_ATTEST& certify_info,
-                              const TPMT_SIGNATURE& signature)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_ATTEST& certify_info,
+                                  const TPMT_SIGNATURE& signature)>
       CertifyResponse;
   static TPM_RC SerializeCommand_Certify(
       const TPMI_DH_OBJECT& object_handle,
@@ -4218,7 +4219,7 @@ class TRUNKS_EXPORT Tpm {
                        const TPM2B_DATA& qualifying_data,
                        const TPMT_SIG_SCHEME& in_scheme,
                        AuthorizationDelegate* authorization_delegate,
-                       const CertifyResponse& callback);
+                       CertifyResponse callback);
   virtual TPM_RC CertifySync(const TPMI_DH_OBJECT& object_handle,
                              const std::string& object_handle_name,
                              const TPMI_DH_OBJECT& sign_handle,
@@ -4228,9 +4229,9 @@ class TRUNKS_EXPORT Tpm {
                              TPM2B_ATTEST* certify_info,
                              TPMT_SIGNATURE* signature,
                              AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_ATTEST& certify_info,
-                              const TPMT_SIGNATURE& signature)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_ATTEST& certify_info,
+                                  const TPMT_SIGNATURE& signature)>
       CertifyCreationResponse;
   static TPM_RC SerializeCommand_CertifyCreation(
       const TPMI_DH_OBJECT& sign_handle,
@@ -4257,7 +4258,7 @@ class TRUNKS_EXPORT Tpm {
                                const TPMT_SIG_SCHEME& in_scheme,
                                const TPMT_TK_CREATION& creation_ticket,
                                AuthorizationDelegate* authorization_delegate,
-                               const CertifyCreationResponse& callback);
+                               CertifyCreationResponse callback);
   virtual TPM_RC CertifyCreationSync(
       const TPMI_DH_OBJECT& sign_handle,
       const std::string& sign_handle_name,
@@ -4270,9 +4271,9 @@ class TRUNKS_EXPORT Tpm {
       TPM2B_ATTEST* certify_info,
       TPMT_SIGNATURE* signature,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_ATTEST& quoted,
-                              const TPMT_SIGNATURE& signature)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_ATTEST& quoted,
+                                  const TPMT_SIGNATURE& signature)>
       QuoteResponse;
   static TPM_RC SerializeCommand_Quote(
       const TPMI_DH_OBJECT& sign_handle,
@@ -4293,7 +4294,7 @@ class TRUNKS_EXPORT Tpm {
                      const TPMT_SIG_SCHEME& in_scheme,
                      const TPML_PCR_SELECTION& pcrselect,
                      AuthorizationDelegate* authorization_delegate,
-                     const QuoteResponse& callback);
+                     QuoteResponse callback);
   virtual TPM_RC QuoteSync(const TPMI_DH_OBJECT& sign_handle,
                            const std::string& sign_handle_name,
                            const TPM2B_DATA& qualifying_data,
@@ -4302,9 +4303,9 @@ class TRUNKS_EXPORT Tpm {
                            TPM2B_ATTEST* quoted,
                            TPMT_SIGNATURE* signature,
                            AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_ATTEST& audit_info,
-                              const TPMT_SIGNATURE& signature)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_ATTEST& audit_info,
+                                  const TPMT_SIGNATURE& signature)>
       GetSessionAuditDigestResponse;
   static TPM_RC SerializeCommand_GetSessionAuditDigest(
       const TPMI_RH_ENDORSEMENT& privacy_admin_handle,
@@ -4332,7 +4333,7 @@ class TRUNKS_EXPORT Tpm {
       const TPM2B_DATA& qualifying_data,
       const TPMT_SIG_SCHEME& in_scheme,
       AuthorizationDelegate* authorization_delegate,
-      const GetSessionAuditDigestResponse& callback);
+      GetSessionAuditDigestResponse callback);
   virtual TPM_RC GetSessionAuditDigestSync(
       const TPMI_RH_ENDORSEMENT& privacy_admin_handle,
       const std::string& privacy_admin_handle_name,
@@ -4345,9 +4346,9 @@ class TRUNKS_EXPORT Tpm {
       TPM2B_ATTEST* audit_info,
       TPMT_SIGNATURE* signature,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_ATTEST& audit_info,
-                              const TPMT_SIGNATURE& signature)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_ATTEST& audit_info,
+                                  const TPMT_SIGNATURE& signature)>
       GetCommandAuditDigestResponse;
   static TPM_RC SerializeCommand_GetCommandAuditDigest(
       const TPMI_RH_ENDORSEMENT& privacy_handle,
@@ -4371,7 +4372,7 @@ class TRUNKS_EXPORT Tpm {
       const TPM2B_DATA& qualifying_data,
       const TPMT_SIG_SCHEME& in_scheme,
       AuthorizationDelegate* authorization_delegate,
-      const GetCommandAuditDigestResponse& callback);
+      GetCommandAuditDigestResponse callback);
   virtual TPM_RC GetCommandAuditDigestSync(
       const TPMI_RH_ENDORSEMENT& privacy_handle,
       const std::string& privacy_handle_name,
@@ -4382,9 +4383,9 @@ class TRUNKS_EXPORT Tpm {
       TPM2B_ATTEST* audit_info,
       TPMT_SIGNATURE* signature,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_ATTEST& time_info,
-                              const TPMT_SIGNATURE& signature)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_ATTEST& time_info,
+                                  const TPMT_SIGNATURE& signature)>
       GetTimeResponse;
   static TPM_RC SerializeCommand_GetTime(
       const TPMI_RH_ENDORSEMENT& privacy_admin_handle,
@@ -4407,7 +4408,7 @@ class TRUNKS_EXPORT Tpm {
                        const TPM2B_DATA& qualifying_data,
                        const TPMT_SIG_SCHEME& in_scheme,
                        AuthorizationDelegate* authorization_delegate,
-                       const GetTimeResponse& callback);
+                       GetTimeResponse callback);
   virtual TPM_RC GetTimeSync(const TPMI_RH_ENDORSEMENT& privacy_admin_handle,
                              const std::string& privacy_admin_handle_name,
                              const TPMI_DH_OBJECT& sign_handle,
@@ -4417,12 +4418,12 @@ class TRUNKS_EXPORT Tpm {
                              TPM2B_ATTEST* time_info,
                              TPMT_SIGNATURE* signature,
                              AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const UINT32& param_size_out,
-                              const TPM2B_ECC_POINT& k,
-                              const TPM2B_ECC_POINT& l,
-                              const TPM2B_ECC_POINT& e,
-                              const UINT16& counter)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const UINT32& param_size_out,
+                                  const TPM2B_ECC_POINT& k,
+                                  const TPM2B_ECC_POINT& l,
+                                  const TPM2B_ECC_POINT& e,
+                                  const UINT16& counter)>
       CommitResponse;
   static TPM_RC SerializeCommand_Commit(
       const TPMI_DH_OBJECT& sign_handle,
@@ -4448,7 +4449,7 @@ class TRUNKS_EXPORT Tpm {
                       const TPM2B_SENSITIVE_DATA& s2,
                       const TPM2B_ECC_PARAMETER& y2,
                       AuthorizationDelegate* authorization_delegate,
-                      const CommitResponse& callback);
+                      CommitResponse callback);
   virtual TPM_RC CommitSync(const TPMI_DH_OBJECT& sign_handle,
                             const std::string& sign_handle_name,
                             const UINT32& param_size,
@@ -4461,10 +4462,10 @@ class TRUNKS_EXPORT Tpm {
                             TPM2B_ECC_POINT* e,
                             UINT16* counter,
                             AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const UINT32& param_size_out,
-                              const TPM2B_ECC_POINT& q,
-                              const UINT16& counter)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const UINT32& param_size_out,
+                                  const TPM2B_ECC_POINT& q,
+                                  const UINT16& counter)>
       EC_EphemeralResponse;
   static TPM_RC SerializeCommand_EC_Ephemeral(
       const UINT32& param_size,
@@ -4480,7 +4481,7 @@ class TRUNKS_EXPORT Tpm {
   virtual void EC_Ephemeral(const UINT32& param_size,
                             const TPMI_ECC_CURVE& curve_id,
                             AuthorizationDelegate* authorization_delegate,
-                            const EC_EphemeralResponse& callback);
+                            EC_EphemeralResponse callback);
   virtual TPM_RC EC_EphemeralSync(
       const UINT32& param_size,
       const TPMI_ECC_CURVE& curve_id,
@@ -4488,8 +4489,8 @@ class TRUNKS_EXPORT Tpm {
       TPM2B_ECC_POINT* q,
       UINT16* counter,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPMT_TK_VERIFIED& validation)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPMT_TK_VERIFIED& validation)>
       VerifySignatureResponse;
   static TPM_RC SerializeCommand_VerifySignature(
       const TPMI_DH_OBJECT& key_handle,
@@ -4507,7 +4508,7 @@ class TRUNKS_EXPORT Tpm {
                                const TPM2B_DIGEST& digest,
                                const TPMT_SIGNATURE& signature,
                                AuthorizationDelegate* authorization_delegate,
-                               const VerifySignatureResponse& callback);
+                               VerifySignatureResponse callback);
   virtual TPM_RC VerifySignatureSync(
       const TPMI_DH_OBJECT& key_handle,
       const std::string& key_handle_name,
@@ -4515,8 +4516,8 @@ class TRUNKS_EXPORT Tpm {
       const TPMT_SIGNATURE& signature,
       TPMT_TK_VERIFIED* validation,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPMT_SIGNATURE& signature)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPMT_SIGNATURE& signature)>
       SignResponse;
   static TPM_RC SerializeCommand_Sign(
       const TPMI_DH_OBJECT& key_handle,
@@ -4536,7 +4537,7 @@ class TRUNKS_EXPORT Tpm {
                     const TPMT_SIG_SCHEME& in_scheme,
                     const TPMT_TK_HASHCHECK& validation,
                     AuthorizationDelegate* authorization_delegate,
-                    const SignResponse& callback);
+                    SignResponse callback);
   virtual TPM_RC SignSync(const TPMI_DH_OBJECT& key_handle,
                           const std::string& key_handle_name,
                           const TPM2B_DIGEST& digest,
@@ -4544,7 +4545,7 @@ class TRUNKS_EXPORT Tpm {
                           const TPMT_TK_HASHCHECK& validation,
                           TPMT_SIGNATURE* signature,
                           AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)>
+  typedef base::OnceCallback<void(TPM_RC response_code)>
       SetCommandCodeAuditStatusResponse;
   static TPM_RC SerializeCommand_SetCommandCodeAuditStatus(
       const TPMI_RH_PROVISION& auth,
@@ -4564,7 +4565,7 @@ class TRUNKS_EXPORT Tpm {
       const TPML_CC& set_list,
       const TPML_CC& clear_list,
       AuthorizationDelegate* authorization_delegate,
-      const SetCommandCodeAuditStatusResponse& callback);
+      SetCommandCodeAuditStatusResponse callback);
   virtual TPM_RC SetCommandCodeAuditStatusSync(
       const TPMI_RH_PROVISION& auth,
       const std::string& auth_name,
@@ -4572,7 +4573,7 @@ class TRUNKS_EXPORT Tpm {
       const TPML_CC& set_list,
       const TPML_CC& clear_list,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> PCR_ExtendResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> PCR_ExtendResponse;
   static TPM_RC SerializeCommand_PCR_Extend(
       const TPMI_DH_PCR& pcr_handle,
       const std::string& pcr_handle_name,
@@ -4586,13 +4587,13 @@ class TRUNKS_EXPORT Tpm {
                           const std::string& pcr_handle_name,
                           const TPML_DIGEST_VALUES& digests,
                           AuthorizationDelegate* authorization_delegate,
-                          const PCR_ExtendResponse& callback);
+                          PCR_ExtendResponse callback);
   virtual TPM_RC PCR_ExtendSync(const TPMI_DH_PCR& pcr_handle,
                                 const std::string& pcr_handle_name,
                                 const TPML_DIGEST_VALUES& digests,
                                 AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPML_DIGEST_VALUES& digests)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPML_DIGEST_VALUES& digests)>
       PCR_EventResponse;
   static TPM_RC SerializeCommand_PCR_Event(
       const TPMI_DH_PCR& pcr_handle,
@@ -4608,16 +4609,16 @@ class TRUNKS_EXPORT Tpm {
                          const std::string& pcr_handle_name,
                          const TPM2B_EVENT& event_data,
                          AuthorizationDelegate* authorization_delegate,
-                         const PCR_EventResponse& callback);
+                         PCR_EventResponse callback);
   virtual TPM_RC PCR_EventSync(const TPMI_DH_PCR& pcr_handle,
                                const std::string& pcr_handle_name,
                                const TPM2B_EVENT& event_data,
                                TPML_DIGEST_VALUES* digests,
                                AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const UINT32& pcr_update_counter,
-                              const TPML_PCR_SELECTION& pcr_selection_out,
-                              const TPML_DIGEST& pcr_values)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const UINT32& pcr_update_counter,
+                                  const TPML_PCR_SELECTION& pcr_selection_out,
+                                  const TPML_DIGEST& pcr_values)>
       PCR_ReadResponse;
   static TPM_RC SerializeCommand_PCR_Read(
       const TPML_PCR_SELECTION& pcr_selection_in,
@@ -4631,17 +4632,17 @@ class TRUNKS_EXPORT Tpm {
       AuthorizationDelegate* authorization_delegate);
   virtual void PCR_Read(const TPML_PCR_SELECTION& pcr_selection_in,
                         AuthorizationDelegate* authorization_delegate,
-                        const PCR_ReadResponse& callback);
+                        PCR_ReadResponse callback);
   virtual TPM_RC PCR_ReadSync(const TPML_PCR_SELECTION& pcr_selection_in,
                               UINT32* pcr_update_counter,
                               TPML_PCR_SELECTION* pcr_selection_out,
                               TPML_DIGEST* pcr_values,
                               AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPMI_YES_NO& allocation_success,
-                              const UINT32& max_pcr,
-                              const UINT32& size_needed,
-                              const UINT32& size_available)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPMI_YES_NO& allocation_success,
+                                  const UINT32& max_pcr,
+                                  const UINT32& size_needed,
+                                  const UINT32& size_available)>
       PCR_AllocateResponse;
   static TPM_RC SerializeCommand_PCR_Allocate(
       const TPMI_RH_PLATFORM& auth_handle,
@@ -4660,7 +4661,7 @@ class TRUNKS_EXPORT Tpm {
                             const std::string& auth_handle_name,
                             const TPML_PCR_SELECTION& pcr_allocation,
                             AuthorizationDelegate* authorization_delegate,
-                            const PCR_AllocateResponse& callback);
+                            PCR_AllocateResponse callback);
   virtual TPM_RC PCR_AllocateSync(
       const TPMI_RH_PLATFORM& auth_handle,
       const std::string& auth_handle_name,
@@ -4670,7 +4671,8 @@ class TRUNKS_EXPORT Tpm {
       UINT32* size_needed,
       UINT32* size_available,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> PCR_SetAuthPolicyResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)>
+      PCR_SetAuthPolicyResponse;
   static TPM_RC SerializeCommand_PCR_SetAuthPolicy(
       const TPMI_RH_PLATFORM& auth_handle,
       const std::string& auth_handle_name,
@@ -4690,7 +4692,7 @@ class TRUNKS_EXPORT Tpm {
                                  const TPM2B_DIGEST& auth_policy,
                                  const TPMI_ALG_HASH& policy_digest,
                                  AuthorizationDelegate* authorization_delegate,
-                                 const PCR_SetAuthPolicyResponse& callback);
+                                 PCR_SetAuthPolicyResponse callback);
   virtual TPM_RC PCR_SetAuthPolicySync(
       const TPMI_RH_PLATFORM& auth_handle,
       const std::string& auth_handle_name,
@@ -4699,7 +4701,8 @@ class TRUNKS_EXPORT Tpm {
       const TPM2B_DIGEST& auth_policy,
       const TPMI_ALG_HASH& policy_digest,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> PCR_SetAuthValueResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)>
+      PCR_SetAuthValueResponse;
   static TPM_RC SerializeCommand_PCR_SetAuthValue(
       const TPMI_DH_PCR& pcr_handle,
       const std::string& pcr_handle_name,
@@ -4713,13 +4716,13 @@ class TRUNKS_EXPORT Tpm {
                                 const std::string& pcr_handle_name,
                                 const TPM2B_DIGEST& auth,
                                 AuthorizationDelegate* authorization_delegate,
-                                const PCR_SetAuthValueResponse& callback);
+                                PCR_SetAuthValueResponse callback);
   virtual TPM_RC PCR_SetAuthValueSync(
       const TPMI_DH_PCR& pcr_handle,
       const std::string& pcr_handle_name,
       const TPM2B_DIGEST& auth,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> PCR_ResetResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> PCR_ResetResponse;
   static TPM_RC SerializeCommand_PCR_Reset(
       const TPMI_DH_PCR& pcr_handle,
       const std::string& pcr_handle_name,
@@ -4731,13 +4734,13 @@ class TRUNKS_EXPORT Tpm {
   virtual void PCR_Reset(const TPMI_DH_PCR& pcr_handle,
                          const std::string& pcr_handle_name,
                          AuthorizationDelegate* authorization_delegate,
-                         const PCR_ResetResponse& callback);
+                         PCR_ResetResponse callback);
   virtual TPM_RC PCR_ResetSync(const TPMI_DH_PCR& pcr_handle,
                                const std::string& pcr_handle_name,
                                AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_TIMEOUT& timeout,
-                              const TPMT_TK_AUTH& policy_ticket)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_TIMEOUT& timeout,
+                                  const TPMT_TK_AUTH& policy_ticket)>
       PolicySignedResponse;
   static TPM_RC SerializeCommand_PolicySigned(
       const TPMI_DH_OBJECT& auth_object,
@@ -4766,7 +4769,7 @@ class TRUNKS_EXPORT Tpm {
                             const INT32& expiration,
                             const TPMT_SIGNATURE& auth,
                             AuthorizationDelegate* authorization_delegate,
-                            const PolicySignedResponse& callback);
+                            PolicySignedResponse callback);
   virtual TPM_RC PolicySignedSync(
       const TPMI_DH_OBJECT& auth_object,
       const std::string& auth_object_name,
@@ -4780,9 +4783,9 @@ class TRUNKS_EXPORT Tpm {
       TPM2B_TIMEOUT* timeout,
       TPMT_TK_AUTH* policy_ticket,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_TIMEOUT& timeout,
-                              const TPMT_TK_AUTH& policy_ticket)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_TIMEOUT& timeout,
+                                  const TPMT_TK_AUTH& policy_ticket)>
       PolicySecretResponse;
   static TPM_RC SerializeCommand_PolicySecret(
       const TPMI_DH_ENTITY& auth_handle,
@@ -4809,7 +4812,7 @@ class TRUNKS_EXPORT Tpm {
                             const TPM2B_NONCE& policy_ref,
                             const INT32& expiration,
                             AuthorizationDelegate* authorization_delegate,
-                            const PolicySecretResponse& callback);
+                            PolicySecretResponse callback);
   virtual TPM_RC PolicySecretSync(
       const TPMI_DH_ENTITY& auth_handle,
       const std::string& auth_handle_name,
@@ -4822,7 +4825,7 @@ class TRUNKS_EXPORT Tpm {
       TPM2B_TIMEOUT* timeout,
       TPMT_TK_AUTH* policy_ticket,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> PolicyTicketResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> PolicyTicketResponse;
   static TPM_RC SerializeCommand_PolicyTicket(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
@@ -4844,7 +4847,7 @@ class TRUNKS_EXPORT Tpm {
                             const TPM2B_NAME& auth_name,
                             const TPMT_TK_AUTH& ticket,
                             AuthorizationDelegate* authorization_delegate,
-                            const PolicyTicketResponse& callback);
+                            PolicyTicketResponse callback);
   virtual TPM_RC PolicyTicketSync(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
@@ -4854,7 +4857,7 @@ class TRUNKS_EXPORT Tpm {
       const TPM2B_NAME& auth_name,
       const TPMT_TK_AUTH& ticket,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> PolicyORResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> PolicyORResponse;
   static TPM_RC SerializeCommand_PolicyOR(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
@@ -4868,12 +4871,12 @@ class TRUNKS_EXPORT Tpm {
                         const std::string& policy_session_name,
                         const TPML_DIGEST& p_hash_list,
                         AuthorizationDelegate* authorization_delegate,
-                        const PolicyORResponse& callback);
+                        PolicyORResponse callback);
   virtual TPM_RC PolicyORSync(const TPMI_SH_POLICY& policy_session,
                               const std::string& policy_session_name,
                               const TPML_DIGEST& p_hash_list,
                               AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> PolicyPCRResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> PolicyPCRResponse;
   static TPM_RC SerializeCommand_PolicyPCR(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
@@ -4889,13 +4892,13 @@ class TRUNKS_EXPORT Tpm {
                          const TPM2B_DIGEST& pcr_digest,
                          const TPML_PCR_SELECTION& pcrs,
                          AuthorizationDelegate* authorization_delegate,
-                         const PolicyPCRResponse& callback);
+                         PolicyPCRResponse callback);
   virtual TPM_RC PolicyPCRSync(const TPMI_SH_POLICY& policy_session,
                                const std::string& policy_session_name,
                                const TPM2B_DIGEST& pcr_digest,
                                const TPML_PCR_SELECTION& pcrs,
                                AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> PolicyLocalityResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> PolicyLocalityResponse;
   static TPM_RC SerializeCommand_PolicyLocality(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
@@ -4909,13 +4912,13 @@ class TRUNKS_EXPORT Tpm {
                               const std::string& policy_session_name,
                               const TPMA_LOCALITY& locality,
                               AuthorizationDelegate* authorization_delegate,
-                              const PolicyLocalityResponse& callback);
+                              PolicyLocalityResponse callback);
   virtual TPM_RC PolicyLocalitySync(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
       const TPMA_LOCALITY& locality,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> PolicyNVResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> PolicyNVResponse;
   static TPM_RC SerializeCommand_PolicyNV(
       const TPMI_RH_NV_AUTH& auth_handle,
       const std::string& auth_handle_name,
@@ -4941,7 +4944,7 @@ class TRUNKS_EXPORT Tpm {
                         const UINT16& offset,
                         const TPM_EO& operation,
                         AuthorizationDelegate* authorization_delegate,
-                        const PolicyNVResponse& callback);
+                        PolicyNVResponse callback);
   virtual TPM_RC PolicyNVSync(const TPMI_RH_NV_AUTH& auth_handle,
                               const std::string& auth_handle_name,
                               const TPMI_RH_NV_INDEX& nv_index,
@@ -4952,7 +4955,8 @@ class TRUNKS_EXPORT Tpm {
                               const UINT16& offset,
                               const TPM_EO& operation,
                               AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> PolicyCounterTimerResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)>
+      PolicyCounterTimerResponse;
   static TPM_RC SerializeCommand_PolicyCounterTimer(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
@@ -4970,7 +4974,7 @@ class TRUNKS_EXPORT Tpm {
                                   const UINT16& offset,
                                   const TPM_EO& operation,
                                   AuthorizationDelegate* authorization_delegate,
-                                  const PolicyCounterTimerResponse& callback);
+                                  PolicyCounterTimerResponse callback);
   virtual TPM_RC PolicyCounterTimerSync(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
@@ -4978,7 +4982,8 @@ class TRUNKS_EXPORT Tpm {
       const UINT16& offset,
       const TPM_EO& operation,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> PolicyCommandCodeResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)>
+      PolicyCommandCodeResponse;
   static TPM_RC SerializeCommand_PolicyCommandCode(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
@@ -4992,13 +4997,13 @@ class TRUNKS_EXPORT Tpm {
                                  const std::string& policy_session_name,
                                  const TPM_CC& code,
                                  AuthorizationDelegate* authorization_delegate,
-                                 const PolicyCommandCodeResponse& callback);
+                                 PolicyCommandCodeResponse callback);
   virtual TPM_RC PolicyCommandCodeSync(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
       const TPM_CC& code,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)>
+  typedef base::OnceCallback<void(TPM_RC response_code)>
       PolicyPhysicalPresenceResponse;
   static TPM_RC SerializeCommand_PolicyPhysicalPresence(
       const TPMI_SH_POLICY& policy_session,
@@ -5012,12 +5017,12 @@ class TRUNKS_EXPORT Tpm {
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
       AuthorizationDelegate* authorization_delegate,
-      const PolicyPhysicalPresenceResponse& callback);
+      PolicyPhysicalPresenceResponse callback);
   virtual TPM_RC PolicyPhysicalPresenceSync(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> PolicyCpHashResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> PolicyCpHashResponse;
   static TPM_RC SerializeCommand_PolicyCpHash(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
@@ -5031,13 +5036,13 @@ class TRUNKS_EXPORT Tpm {
                             const std::string& policy_session_name,
                             const TPM2B_DIGEST& cp_hash_a,
                             AuthorizationDelegate* authorization_delegate,
-                            const PolicyCpHashResponse& callback);
+                            PolicyCpHashResponse callback);
   virtual TPM_RC PolicyCpHashSync(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
       const TPM2B_DIGEST& cp_hash_a,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> PolicyNameHashResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> PolicyNameHashResponse;
   static TPM_RC SerializeCommand_PolicyNameHash(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
@@ -5051,13 +5056,13 @@ class TRUNKS_EXPORT Tpm {
                               const std::string& policy_session_name,
                               const TPM2B_DIGEST& name_hash,
                               AuthorizationDelegate* authorization_delegate,
-                              const PolicyNameHashResponse& callback);
+                              PolicyNameHashResponse callback);
   virtual TPM_RC PolicyNameHashSync(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
       const TPM2B_DIGEST& name_hash,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)>
+  typedef base::OnceCallback<void(TPM_RC response_code)>
       PolicyDuplicationSelectResponse;
   static TPM_RC SerializeCommand_PolicyDuplicationSelect(
       const TPMI_SH_POLICY& policy_session,
@@ -5077,7 +5082,7 @@ class TRUNKS_EXPORT Tpm {
       const TPM2B_NAME& new_parent_name,
       const TPMI_YES_NO& include_object,
       AuthorizationDelegate* authorization_delegate,
-      const PolicyDuplicationSelectResponse& callback);
+      PolicyDuplicationSelectResponse callback);
   virtual TPM_RC PolicyDuplicationSelectSync(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
@@ -5085,7 +5090,8 @@ class TRUNKS_EXPORT Tpm {
       const TPM2B_NAME& new_parent_name,
       const TPMI_YES_NO& include_object,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> PolicyAuthorizeResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)>
+      PolicyAuthorizeResponse;
   static TPM_RC SerializeCommand_PolicyAuthorize(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
@@ -5105,7 +5111,7 @@ class TRUNKS_EXPORT Tpm {
                                const TPM2B_NAME& key_sign,
                                const TPMT_TK_VERIFIED& check_ticket,
                                AuthorizationDelegate* authorization_delegate,
-                               const PolicyAuthorizeResponse& callback);
+                               PolicyAuthorizeResponse callback);
   virtual TPM_RC PolicyAuthorizeSync(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
@@ -5114,7 +5120,8 @@ class TRUNKS_EXPORT Tpm {
       const TPM2B_NAME& key_sign,
       const TPMT_TK_VERIFIED& check_ticket,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> PolicyAuthValueResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)>
+      PolicyAuthValueResponse;
   static TPM_RC SerializeCommand_PolicyAuthValue(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
@@ -5126,12 +5133,12 @@ class TRUNKS_EXPORT Tpm {
   virtual void PolicyAuthValue(const TPMI_SH_POLICY& policy_session,
                                const std::string& policy_session_name,
                                AuthorizationDelegate* authorization_delegate,
-                               const PolicyAuthValueResponse& callback);
+                               PolicyAuthValueResponse callback);
   virtual TPM_RC PolicyAuthValueSync(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> PolicyPasswordResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> PolicyPasswordResponse;
   static TPM_RC SerializeCommand_PolicyPassword(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
@@ -5143,13 +5150,13 @@ class TRUNKS_EXPORT Tpm {
   virtual void PolicyPassword(const TPMI_SH_POLICY& policy_session,
                               const std::string& policy_session_name,
                               AuthorizationDelegate* authorization_delegate,
-                              const PolicyPasswordResponse& callback);
+                              PolicyPasswordResponse callback);
   virtual TPM_RC PolicyPasswordSync(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_DIGEST& policy_digest)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_DIGEST& policy_digest)>
       PolicyGetDigestResponse;
   static TPM_RC SerializeCommand_PolicyGetDigest(
       const TPMI_SH_POLICY& policy_session,
@@ -5163,13 +5170,14 @@ class TRUNKS_EXPORT Tpm {
   virtual void PolicyGetDigest(const TPMI_SH_POLICY& policy_session,
                                const std::string& policy_session_name,
                                AuthorizationDelegate* authorization_delegate,
-                               const PolicyGetDigestResponse& callback);
+                               PolicyGetDigestResponse callback);
   virtual TPM_RC PolicyGetDigestSync(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
       TPM2B_DIGEST* policy_digest,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> PolicyNvWrittenResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)>
+      PolicyNvWrittenResponse;
   static TPM_RC SerializeCommand_PolicyNvWritten(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
@@ -5183,19 +5191,19 @@ class TRUNKS_EXPORT Tpm {
                                const std::string& policy_session_name,
                                const TPMI_YES_NO& written_set,
                                AuthorizationDelegate* authorization_delegate,
-                               const PolicyNvWrittenResponse& callback);
+                               PolicyNvWrittenResponse callback);
   virtual TPM_RC PolicyNvWrittenSync(
       const TPMI_SH_POLICY& policy_session,
       const std::string& policy_session_name,
       const TPMI_YES_NO& written_set,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM_HANDLE& object_handle,
-                              const TPM2B_PUBLIC& out_public,
-                              const TPM2B_CREATION_DATA& creation_data,
-                              const TPM2B_DIGEST& creation_hash,
-                              const TPMT_TK_CREATION& creation_ticket,
-                              const TPM2B_NAME& name)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM_HANDLE& object_handle,
+                                  const TPM2B_PUBLIC& out_public,
+                                  const TPM2B_CREATION_DATA& creation_data,
+                                  const TPM2B_DIGEST& creation_hash,
+                                  const TPMT_TK_CREATION& creation_ticket,
+                                  const TPM2B_NAME& name)>
       CreatePrimaryResponse;
   static TPM_RC SerializeCommand_CreatePrimary(
       const TPMI_RH_HIERARCHY& primary_handle,
@@ -5222,7 +5230,7 @@ class TRUNKS_EXPORT Tpm {
                              const TPM2B_DATA& outside_info,
                              const TPML_PCR_SELECTION& creation_pcr,
                              AuthorizationDelegate* authorization_delegate,
-                             const CreatePrimaryResponse& callback);
+                             CreatePrimaryResponse callback);
   virtual TPM_RC CreatePrimarySync(
       const TPMI_RH_HIERARCHY& primary_handle,
       const std::string& primary_handle_name,
@@ -5237,7 +5245,8 @@ class TRUNKS_EXPORT Tpm {
       TPMT_TK_CREATION* creation_ticket,
       TPM2B_NAME* name,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> HierarchyControlResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)>
+      HierarchyControlResponse;
   static TPM_RC SerializeCommand_HierarchyControl(
       const TPMI_RH_HIERARCHY& auth_handle,
       const std::string& auth_handle_name,
@@ -5253,14 +5262,15 @@ class TRUNKS_EXPORT Tpm {
                                 const TPMI_RH_ENABLES& enable,
                                 const TPMI_YES_NO& state,
                                 AuthorizationDelegate* authorization_delegate,
-                                const HierarchyControlResponse& callback);
+                                HierarchyControlResponse callback);
   virtual TPM_RC HierarchyControlSync(
       const TPMI_RH_HIERARCHY& auth_handle,
       const std::string& auth_handle_name,
       const TPMI_RH_ENABLES& enable,
       const TPMI_YES_NO& state,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> SetPrimaryPolicyResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)>
+      SetPrimaryPolicyResponse;
   static TPM_RC SerializeCommand_SetPrimaryPolicy(
       const TPMI_RH_HIERARCHY& auth_handle,
       const std::string& auth_handle_name,
@@ -5276,14 +5286,14 @@ class TRUNKS_EXPORT Tpm {
                                 const TPM2B_DIGEST& auth_policy,
                                 const TPMI_ALG_HASH& hash_alg,
                                 AuthorizationDelegate* authorization_delegate,
-                                const SetPrimaryPolicyResponse& callback);
+                                SetPrimaryPolicyResponse callback);
   virtual TPM_RC SetPrimaryPolicySync(
       const TPMI_RH_HIERARCHY& auth_handle,
       const std::string& auth_handle_name,
       const TPM2B_DIGEST& auth_policy,
       const TPMI_ALG_HASH& hash_alg,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> ChangePPSResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> ChangePPSResponse;
   static TPM_RC SerializeCommand_ChangePPS(
       const TPMI_RH_PLATFORM& auth_handle,
       const std::string& auth_handle_name,
@@ -5295,11 +5305,11 @@ class TRUNKS_EXPORT Tpm {
   virtual void ChangePPS(const TPMI_RH_PLATFORM& auth_handle,
                          const std::string& auth_handle_name,
                          AuthorizationDelegate* authorization_delegate,
-                         const ChangePPSResponse& callback);
+                         ChangePPSResponse callback);
   virtual TPM_RC ChangePPSSync(const TPMI_RH_PLATFORM& auth_handle,
                                const std::string& auth_handle_name,
                                AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> ChangeEPSResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> ChangeEPSResponse;
   static TPM_RC SerializeCommand_ChangeEPS(
       const TPMI_RH_PLATFORM& auth_handle,
       const std::string& auth_handle_name,
@@ -5311,11 +5321,11 @@ class TRUNKS_EXPORT Tpm {
   virtual void ChangeEPS(const TPMI_RH_PLATFORM& auth_handle,
                          const std::string& auth_handle_name,
                          AuthorizationDelegate* authorization_delegate,
-                         const ChangeEPSResponse& callback);
+                         ChangeEPSResponse callback);
   virtual TPM_RC ChangeEPSSync(const TPMI_RH_PLATFORM& auth_handle,
                                const std::string& auth_handle_name,
                                AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> ClearResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> ClearResponse;
   static TPM_RC SerializeCommand_Clear(
       const TPMI_RH_CLEAR& auth_handle,
       const std::string& auth_handle_name,
@@ -5327,11 +5337,11 @@ class TRUNKS_EXPORT Tpm {
   virtual void Clear(const TPMI_RH_CLEAR& auth_handle,
                      const std::string& auth_handle_name,
                      AuthorizationDelegate* authorization_delegate,
-                     const ClearResponse& callback);
+                     ClearResponse callback);
   virtual TPM_RC ClearSync(const TPMI_RH_CLEAR& auth_handle,
                            const std::string& auth_handle_name,
                            AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> ClearControlResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> ClearControlResponse;
   static TPM_RC SerializeCommand_ClearControl(
       const TPMI_RH_CLEAR& auth,
       const std::string& auth_name,
@@ -5345,13 +5355,13 @@ class TRUNKS_EXPORT Tpm {
                             const std::string& auth_name,
                             const TPMI_YES_NO& disable,
                             AuthorizationDelegate* authorization_delegate,
-                            const ClearControlResponse& callback);
+                            ClearControlResponse callback);
   virtual TPM_RC ClearControlSync(
       const TPMI_RH_CLEAR& auth,
       const std::string& auth_name,
       const TPMI_YES_NO& disable,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)>
+  typedef base::OnceCallback<void(TPM_RC response_code)>
       HierarchyChangeAuthResponse;
   static TPM_RC SerializeCommand_HierarchyChangeAuth(
       const TPMI_RH_HIERARCHY_AUTH& auth_handle,
@@ -5367,13 +5377,13 @@ class TRUNKS_EXPORT Tpm {
       const std::string& auth_handle_name,
       const TPM2B_AUTH& new_auth,
       AuthorizationDelegate* authorization_delegate,
-      const HierarchyChangeAuthResponse& callback);
+      HierarchyChangeAuthResponse callback);
   virtual TPM_RC HierarchyChangeAuthSync(
       const TPMI_RH_HIERARCHY_AUTH& auth_handle,
       const std::string& auth_handle_name,
       const TPM2B_AUTH& new_auth,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)>
+  typedef base::OnceCallback<void(TPM_RC response_code)>
       DictionaryAttackLockResetResponse;
   static TPM_RC SerializeCommand_DictionaryAttackLockReset(
       const TPMI_RH_LOCKOUT& lock_handle,
@@ -5387,12 +5397,12 @@ class TRUNKS_EXPORT Tpm {
       const TPMI_RH_LOCKOUT& lock_handle,
       const std::string& lock_handle_name,
       AuthorizationDelegate* authorization_delegate,
-      const DictionaryAttackLockResetResponse& callback);
+      DictionaryAttackLockResetResponse callback);
   virtual TPM_RC DictionaryAttackLockResetSync(
       const TPMI_RH_LOCKOUT& lock_handle,
       const std::string& lock_handle_name,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)>
+  typedef base::OnceCallback<void(TPM_RC response_code)>
       DictionaryAttackParametersResponse;
   static TPM_RC SerializeCommand_DictionaryAttackParameters(
       const TPMI_RH_LOCKOUT& lock_handle,
@@ -5412,7 +5422,7 @@ class TRUNKS_EXPORT Tpm {
       const UINT32& new_recovery_time,
       const UINT32& lockout_recovery,
       AuthorizationDelegate* authorization_delegate,
-      const DictionaryAttackParametersResponse& callback);
+      DictionaryAttackParametersResponse callback);
   virtual TPM_RC DictionaryAttackParametersSync(
       const TPMI_RH_LOCKOUT& lock_handle,
       const std::string& lock_handle_name,
@@ -5420,7 +5430,7 @@ class TRUNKS_EXPORT Tpm {
       const UINT32& new_recovery_time,
       const UINT32& lockout_recovery,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> PP_CommandsResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> PP_CommandsResponse;
   static TPM_RC SerializeCommand_PP_Commands(
       const TPMI_RH_PLATFORM& auth,
       const std::string& auth_name,
@@ -5436,13 +5446,14 @@ class TRUNKS_EXPORT Tpm {
                            const TPML_CC& set_list,
                            const TPML_CC& clear_list,
                            AuthorizationDelegate* authorization_delegate,
-                           const PP_CommandsResponse& callback);
+                           PP_CommandsResponse callback);
   virtual TPM_RC PP_CommandsSync(const TPMI_RH_PLATFORM& auth,
                                  const std::string& auth_name,
                                  const TPML_CC& set_list,
                                  const TPML_CC& clear_list,
                                  AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> SetAlgorithmSetResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)>
+      SetAlgorithmSetResponse;
   static TPM_RC SerializeCommand_SetAlgorithmSet(
       const TPMI_RH_PLATFORM& auth_handle,
       const std::string& auth_handle_name,
@@ -5456,13 +5467,14 @@ class TRUNKS_EXPORT Tpm {
                                const std::string& auth_handle_name,
                                const UINT32& algorithm_set,
                                AuthorizationDelegate* authorization_delegate,
-                               const SetAlgorithmSetResponse& callback);
+                               SetAlgorithmSetResponse callback);
   virtual TPM_RC SetAlgorithmSetSync(
       const TPMI_RH_PLATFORM& auth_handle,
       const std::string& auth_handle_name,
       const UINT32& algorithm_set,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> FieldUpgradeStartResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)>
+      FieldUpgradeStartResponse;
   static TPM_RC SerializeCommand_FieldUpgradeStart(
       const TPMI_RH_PLATFORM& authorization,
       const std::string& authorization_name,
@@ -5482,7 +5494,7 @@ class TRUNKS_EXPORT Tpm {
                                  const TPM2B_DIGEST& fu_digest,
                                  const TPMT_SIGNATURE& manifest_signature,
                                  AuthorizationDelegate* authorization_delegate,
-                                 const FieldUpgradeStartResponse& callback);
+                                 FieldUpgradeStartResponse callback);
   virtual TPM_RC FieldUpgradeStartSync(
       const TPMI_RH_PLATFORM& authorization,
       const std::string& authorization_name,
@@ -5491,9 +5503,9 @@ class TRUNKS_EXPORT Tpm {
       const TPM2B_DIGEST& fu_digest,
       const TPMT_SIGNATURE& manifest_signature,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPMT_HA& next_digest,
-                              const TPMT_HA& first_digest)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPMT_HA& next_digest,
+                                  const TPMT_HA& first_digest)>
       FieldUpgradeDataResponse;
   static TPM_RC SerializeCommand_FieldUpgradeData(
       const TPM2B_MAX_BUFFER& fu_data,
@@ -5506,14 +5518,14 @@ class TRUNKS_EXPORT Tpm {
       AuthorizationDelegate* authorization_delegate);
   virtual void FieldUpgradeData(const TPM2B_MAX_BUFFER& fu_data,
                                 AuthorizationDelegate* authorization_delegate,
-                                const FieldUpgradeDataResponse& callback);
+                                FieldUpgradeDataResponse callback);
   virtual TPM_RC FieldUpgradeDataSync(
       const TPM2B_MAX_BUFFER& fu_data,
       TPMT_HA* next_digest,
       TPMT_HA* first_digest,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_MAX_BUFFER& fu_data)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_MAX_BUFFER& fu_data)>
       FirmwareReadResponse;
   static TPM_RC SerializeCommand_FirmwareRead(
       const UINT32& sequence_number,
@@ -5525,13 +5537,13 @@ class TRUNKS_EXPORT Tpm {
       AuthorizationDelegate* authorization_delegate);
   virtual void FirmwareRead(const UINT32& sequence_number,
                             AuthorizationDelegate* authorization_delegate,
-                            const FirmwareReadResponse& callback);
+                            FirmwareReadResponse callback);
   virtual TPM_RC FirmwareReadSync(
       const UINT32& sequence_number,
       TPM2B_MAX_BUFFER* fu_data,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPMS_CONTEXT& context)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPMS_CONTEXT& context)>
       ContextSaveResponse;
   static TPM_RC SerializeCommand_ContextSave(
       const TPMI_DH_CONTEXT& save_handle,
@@ -5545,13 +5557,13 @@ class TRUNKS_EXPORT Tpm {
   virtual void ContextSave(const TPMI_DH_CONTEXT& save_handle,
                            const std::string& save_handle_name,
                            AuthorizationDelegate* authorization_delegate,
-                           const ContextSaveResponse& callback);
+                           ContextSaveResponse callback);
   virtual TPM_RC ContextSaveSync(const TPMI_DH_CONTEXT& save_handle,
                                  const std::string& save_handle_name,
                                  TPMS_CONTEXT* context,
                                  AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPMI_DH_CONTEXT& loaded_handle)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPMI_DH_CONTEXT& loaded_handle)>
       ContextLoadResponse;
   static TPM_RC SerializeCommand_ContextLoad(
       const TPMS_CONTEXT& context,
@@ -5563,11 +5575,11 @@ class TRUNKS_EXPORT Tpm {
       AuthorizationDelegate* authorization_delegate);
   virtual void ContextLoad(const TPMS_CONTEXT& context,
                            AuthorizationDelegate* authorization_delegate,
-                           const ContextLoadResponse& callback);
+                           ContextLoadResponse callback);
   virtual TPM_RC ContextLoadSync(const TPMS_CONTEXT& context,
                                  TPMI_DH_CONTEXT* loaded_handle,
                                  AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> FlushContextResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> FlushContextResponse;
   static TPM_RC SerializeCommand_FlushContext(
       const TPMI_DH_CONTEXT& flush_handle,
       std::string* serialized_command,
@@ -5577,11 +5589,11 @@ class TRUNKS_EXPORT Tpm {
       AuthorizationDelegate* authorization_delegate);
   virtual void FlushContext(const TPMI_DH_CONTEXT& flush_handle,
                             AuthorizationDelegate* authorization_delegate,
-                            const FlushContextResponse& callback);
+                            FlushContextResponse callback);
   virtual TPM_RC FlushContextSync(
       const TPMI_DH_CONTEXT& flush_handle,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> EvictControlResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> EvictControlResponse;
   static TPM_RC SerializeCommand_EvictControl(
       const TPMI_RH_PROVISION& auth,
       const std::string& auth_name,
@@ -5599,7 +5611,7 @@ class TRUNKS_EXPORT Tpm {
                             const std::string& object_handle_name,
                             const TPMI_DH_PERSISTENT& persistent_handle,
                             AuthorizationDelegate* authorization_delegate,
-                            const EvictControlResponse& callback);
+                            EvictControlResponse callback);
   virtual TPM_RC EvictControlSync(
       const TPMI_RH_PROVISION& auth,
       const std::string& auth_name,
@@ -5607,8 +5619,8 @@ class TRUNKS_EXPORT Tpm {
       const std::string& object_handle_name,
       const TPMI_DH_PERSISTENT& persistent_handle,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPMS_TIME_INFO& current_time)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPMS_TIME_INFO& current_time)>
       ReadClockResponse;
   static TPM_RC SerializeCommand_ReadClock(
       std::string* serialized_command,
@@ -5618,10 +5630,10 @@ class TRUNKS_EXPORT Tpm {
       TPMS_TIME_INFO* current_time,
       AuthorizationDelegate* authorization_delegate);
   virtual void ReadClock(AuthorizationDelegate* authorization_delegate,
-                         const ReadClockResponse& callback);
+                         ReadClockResponse callback);
   virtual TPM_RC ReadClockSync(TPMS_TIME_INFO* current_time,
                                AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> ClockSetResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> ClockSetResponse;
   static TPM_RC SerializeCommand_ClockSet(
       const TPMI_RH_PROVISION& auth,
       const std::string& auth_name,
@@ -5635,12 +5647,13 @@ class TRUNKS_EXPORT Tpm {
                         const std::string& auth_name,
                         const UINT64& new_time,
                         AuthorizationDelegate* authorization_delegate,
-                        const ClockSetResponse& callback);
+                        ClockSetResponse callback);
   virtual TPM_RC ClockSetSync(const TPMI_RH_PROVISION& auth,
                               const std::string& auth_name,
                               const UINT64& new_time,
                               AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> ClockRateAdjustResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)>
+      ClockRateAdjustResponse;
   static TPM_RC SerializeCommand_ClockRateAdjust(
       const TPMI_RH_PROVISION& auth,
       const std::string& auth_name,
@@ -5654,15 +5667,15 @@ class TRUNKS_EXPORT Tpm {
                                const std::string& auth_name,
                                const TPM_CLOCK_ADJUST& rate_adjust,
                                AuthorizationDelegate* authorization_delegate,
-                               const ClockRateAdjustResponse& callback);
+                               ClockRateAdjustResponse callback);
   virtual TPM_RC ClockRateAdjustSync(
       const TPMI_RH_PROVISION& auth,
       const std::string& auth_name,
       const TPM_CLOCK_ADJUST& rate_adjust,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPMI_YES_NO& more_data,
-                              const TPMS_CAPABILITY_DATA& capability_data)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPMI_YES_NO& more_data,
+                                  const TPMS_CAPABILITY_DATA& capability_data)>
       GetCapabilityResponse;
   static TPM_RC SerializeCommand_GetCapability(
       const TPM_CAP& capability,
@@ -5679,7 +5692,7 @@ class TRUNKS_EXPORT Tpm {
                              const UINT32& property,
                              const UINT32& property_count,
                              AuthorizationDelegate* authorization_delegate,
-                             const GetCapabilityResponse& callback);
+                             GetCapabilityResponse callback);
   virtual TPM_RC GetCapabilitySync(
       const TPM_CAP& capability,
       const UINT32& property,
@@ -5687,7 +5700,7 @@ class TRUNKS_EXPORT Tpm {
       TPMI_YES_NO* more_data,
       TPMS_CAPABILITY_DATA* capability_data,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> TestParmsResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> TestParmsResponse;
   static TPM_RC SerializeCommand_TestParms(
       const TPMT_PUBLIC_PARMS& parameters,
       std::string* serialized_command,
@@ -5697,10 +5710,10 @@ class TRUNKS_EXPORT Tpm {
       AuthorizationDelegate* authorization_delegate);
   virtual void TestParms(const TPMT_PUBLIC_PARMS& parameters,
                          AuthorizationDelegate* authorization_delegate,
-                         const TestParmsResponse& callback);
+                         TestParmsResponse callback);
   virtual TPM_RC TestParmsSync(const TPMT_PUBLIC_PARMS& parameters,
                                AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> NV_DefineSpaceResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> NV_DefineSpaceResponse;
   static TPM_RC SerializeCommand_NV_DefineSpace(
       const TPMI_RH_PROVISION& auth_handle,
       const std::string& auth_handle_name,
@@ -5716,14 +5729,15 @@ class TRUNKS_EXPORT Tpm {
                               const TPM2B_AUTH& auth,
                               const TPM2B_NV_PUBLIC& public_info,
                               AuthorizationDelegate* authorization_delegate,
-                              const NV_DefineSpaceResponse& callback);
+                              NV_DefineSpaceResponse callback);
   virtual TPM_RC NV_DefineSpaceSync(
       const TPMI_RH_PROVISION& auth_handle,
       const std::string& auth_handle_name,
       const TPM2B_AUTH& auth,
       const TPM2B_NV_PUBLIC& public_info,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> NV_UndefineSpaceResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)>
+      NV_UndefineSpaceResponse;
   static TPM_RC SerializeCommand_NV_UndefineSpace(
       const TPMI_RH_PROVISION& auth_handle,
       const std::string& auth_handle_name,
@@ -5739,14 +5753,14 @@ class TRUNKS_EXPORT Tpm {
                                 const TPMI_RH_NV_INDEX& nv_index,
                                 const std::string& nv_index_name,
                                 AuthorizationDelegate* authorization_delegate,
-                                const NV_UndefineSpaceResponse& callback);
+                                NV_UndefineSpaceResponse callback);
   virtual TPM_RC NV_UndefineSpaceSync(
       const TPMI_RH_PROVISION& auth_handle,
       const std::string& auth_handle_name,
       const TPMI_RH_NV_INDEX& nv_index,
       const std::string& nv_index_name,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)>
+  typedef base::OnceCallback<void(TPM_RC response_code)>
       NV_UndefineSpaceSpecialResponse;
   static TPM_RC SerializeCommand_NV_UndefineSpaceSpecial(
       const TPMI_RH_NV_INDEX& nv_index,
@@ -5764,16 +5778,16 @@ class TRUNKS_EXPORT Tpm {
       const TPMI_RH_PLATFORM& platform,
       const std::string& platform_name,
       AuthorizationDelegate* authorization_delegate,
-      const NV_UndefineSpaceSpecialResponse& callback);
+      NV_UndefineSpaceSpecialResponse callback);
   virtual TPM_RC NV_UndefineSpaceSpecialSync(
       const TPMI_RH_NV_INDEX& nv_index,
       const std::string& nv_index_name,
       const TPMI_RH_PLATFORM& platform,
       const std::string& platform_name,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_NV_PUBLIC& nv_public,
-                              const TPM2B_NAME& nv_name)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_NV_PUBLIC& nv_public,
+                                  const TPM2B_NAME& nv_name)>
       NV_ReadPublicResponse;
   static TPM_RC SerializeCommand_NV_ReadPublic(
       const TPMI_RH_NV_INDEX& nv_index,
@@ -5788,14 +5802,14 @@ class TRUNKS_EXPORT Tpm {
   virtual void NV_ReadPublic(const TPMI_RH_NV_INDEX& nv_index,
                              const std::string& nv_index_name,
                              AuthorizationDelegate* authorization_delegate,
-                             const NV_ReadPublicResponse& callback);
+                             NV_ReadPublicResponse callback);
   virtual TPM_RC NV_ReadPublicSync(
       const TPMI_RH_NV_INDEX& nv_index,
       const std::string& nv_index_name,
       TPM2B_NV_PUBLIC* nv_public,
       TPM2B_NAME* nv_name,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> NV_WriteResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> NV_WriteResponse;
   static TPM_RC SerializeCommand_NV_Write(
       const TPMI_RH_NV_AUTH& auth_handle,
       const std::string& auth_handle_name,
@@ -5815,7 +5829,7 @@ class TRUNKS_EXPORT Tpm {
                         const TPM2B_MAX_NV_BUFFER& data,
                         const UINT16& offset,
                         AuthorizationDelegate* authorization_delegate,
-                        const NV_WriteResponse& callback);
+                        NV_WriteResponse callback);
   virtual TPM_RC NV_WriteSync(const TPMI_RH_NV_AUTH& auth_handle,
                               const std::string& auth_handle_name,
                               const TPMI_RH_NV_INDEX& nv_index,
@@ -5823,7 +5837,7 @@ class TRUNKS_EXPORT Tpm {
                               const TPM2B_MAX_NV_BUFFER& data,
                               const UINT16& offset,
                               AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> NV_IncrementResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> NV_IncrementResponse;
   static TPM_RC SerializeCommand_NV_Increment(
       const TPMI_RH_NV_AUTH& auth_handle,
       const std::string& auth_handle_name,
@@ -5839,14 +5853,14 @@ class TRUNKS_EXPORT Tpm {
                             const TPMI_RH_NV_INDEX& nv_index,
                             const std::string& nv_index_name,
                             AuthorizationDelegate* authorization_delegate,
-                            const NV_IncrementResponse& callback);
+                            NV_IncrementResponse callback);
   virtual TPM_RC NV_IncrementSync(
       const TPMI_RH_NV_AUTH& auth_handle,
       const std::string& auth_handle_name,
       const TPMI_RH_NV_INDEX& nv_index,
       const std::string& nv_index_name,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> NV_ExtendResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> NV_ExtendResponse;
   static TPM_RC SerializeCommand_NV_Extend(
       const TPMI_RH_NV_AUTH& auth_handle,
       const std::string& auth_handle_name,
@@ -5864,14 +5878,14 @@ class TRUNKS_EXPORT Tpm {
                          const std::string& nv_index_name,
                          const TPM2B_MAX_NV_BUFFER& data,
                          AuthorizationDelegate* authorization_delegate,
-                         const NV_ExtendResponse& callback);
+                         NV_ExtendResponse callback);
   virtual TPM_RC NV_ExtendSync(const TPMI_RH_NV_AUTH& auth_handle,
                                const std::string& auth_handle_name,
                                const TPMI_RH_NV_INDEX& nv_index,
                                const std::string& nv_index_name,
                                const TPM2B_MAX_NV_BUFFER& data,
                                AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> NV_SetBitsResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> NV_SetBitsResponse;
   static TPM_RC SerializeCommand_NV_SetBits(
       const TPMI_RH_NV_AUTH& auth_handle,
       const std::string& auth_handle_name,
@@ -5889,14 +5903,14 @@ class TRUNKS_EXPORT Tpm {
                           const std::string& nv_index_name,
                           const UINT64& bits,
                           AuthorizationDelegate* authorization_delegate,
-                          const NV_SetBitsResponse& callback);
+                          NV_SetBitsResponse callback);
   virtual TPM_RC NV_SetBitsSync(const TPMI_RH_NV_AUTH& auth_handle,
                                 const std::string& auth_handle_name,
                                 const TPMI_RH_NV_INDEX& nv_index,
                                 const std::string& nv_index_name,
                                 const UINT64& bits,
                                 AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> NV_WriteLockResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> NV_WriteLockResponse;
   static TPM_RC SerializeCommand_NV_WriteLock(
       const TPMI_RH_NV_AUTH& auth_handle,
       const std::string& auth_handle_name,
@@ -5912,14 +5926,15 @@ class TRUNKS_EXPORT Tpm {
                             const TPMI_RH_NV_INDEX& nv_index,
                             const std::string& nv_index_name,
                             AuthorizationDelegate* authorization_delegate,
-                            const NV_WriteLockResponse& callback);
+                            NV_WriteLockResponse callback);
   virtual TPM_RC NV_WriteLockSync(
       const TPMI_RH_NV_AUTH& auth_handle,
       const std::string& auth_handle_name,
       const TPMI_RH_NV_INDEX& nv_index,
       const std::string& nv_index_name,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> NV_GlobalWriteLockResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)>
+      NV_GlobalWriteLockResponse;
   static TPM_RC SerializeCommand_NV_GlobalWriteLock(
       const TPMI_RH_PROVISION& auth_handle,
       const std::string& auth_handle_name,
@@ -5931,13 +5946,13 @@ class TRUNKS_EXPORT Tpm {
   virtual void NV_GlobalWriteLock(const TPMI_RH_PROVISION& auth_handle,
                                   const std::string& auth_handle_name,
                                   AuthorizationDelegate* authorization_delegate,
-                                  const NV_GlobalWriteLockResponse& callback);
+                                  NV_GlobalWriteLockResponse callback);
   virtual TPM_RC NV_GlobalWriteLockSync(
       const TPMI_RH_PROVISION& auth_handle,
       const std::string& auth_handle_name,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_MAX_NV_BUFFER& data)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_MAX_NV_BUFFER& data)>
       NV_ReadResponse;
   static TPM_RC SerializeCommand_NV_Read(
       const TPMI_RH_NV_AUTH& auth_handle,
@@ -5959,7 +5974,7 @@ class TRUNKS_EXPORT Tpm {
                        const UINT16& size,
                        const UINT16& offset,
                        AuthorizationDelegate* authorization_delegate,
-                       const NV_ReadResponse& callback);
+                       NV_ReadResponse callback);
   virtual TPM_RC NV_ReadSync(const TPMI_RH_NV_AUTH& auth_handle,
                              const std::string& auth_handle_name,
                              const TPMI_RH_NV_INDEX& nv_index,
@@ -5968,7 +5983,7 @@ class TRUNKS_EXPORT Tpm {
                              const UINT16& offset,
                              TPM2B_MAX_NV_BUFFER* data,
                              AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> NV_ReadLockResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> NV_ReadLockResponse;
   static TPM_RC SerializeCommand_NV_ReadLock(
       const TPMI_RH_NV_AUTH& auth_handle,
       const std::string& auth_handle_name,
@@ -5984,13 +5999,13 @@ class TRUNKS_EXPORT Tpm {
                            const TPMI_RH_NV_INDEX& nv_index,
                            const std::string& nv_index_name,
                            AuthorizationDelegate* authorization_delegate,
-                           const NV_ReadLockResponse& callback);
+                           NV_ReadLockResponse callback);
   virtual TPM_RC NV_ReadLockSync(const TPMI_RH_NV_AUTH& auth_handle,
                                  const std::string& auth_handle_name,
                                  const TPMI_RH_NV_INDEX& nv_index,
                                  const std::string& nv_index_name,
                                  AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code)> NV_ChangeAuthResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)> NV_ChangeAuthResponse;
   static TPM_RC SerializeCommand_NV_ChangeAuth(
       const TPMI_RH_NV_INDEX& nv_index,
       const std::string& nv_index_name,
@@ -6004,15 +6019,15 @@ class TRUNKS_EXPORT Tpm {
                              const std::string& nv_index_name,
                              const TPM2B_AUTH& new_auth,
                              AuthorizationDelegate* authorization_delegate,
-                             const NV_ChangeAuthResponse& callback);
+                             NV_ChangeAuthResponse callback);
   virtual TPM_RC NV_ChangeAuthSync(
       const TPMI_RH_NV_INDEX& nv_index,
       const std::string& nv_index_name,
       const TPM2B_AUTH& new_auth,
       AuthorizationDelegate* authorization_delegate);
-  typedef base::Callback<void(TPM_RC response_code,
-                              const TPM2B_ATTEST& certify_info,
-                              const TPMT_SIGNATURE& signature)>
+  typedef base::OnceCallback<void(TPM_RC response_code,
+                                  const TPM2B_ATTEST& certify_info,
+                                  const TPMT_SIGNATURE& signature)>
       NV_CertifyResponse;
   static TPM_RC SerializeCommand_NV_Certify(
       const TPMI_DH_OBJECT& sign_handle,
@@ -6043,7 +6058,7 @@ class TRUNKS_EXPORT Tpm {
                           const UINT16& size,
                           const UINT16& offset,
                           AuthorizationDelegate* authorization_delegate,
-                          const NV_CertifyResponse& callback);
+                          NV_CertifyResponse callback);
   virtual TPM_RC NV_CertifySync(const TPMI_DH_OBJECT& sign_handle,
                                 const std::string& sign_handle_name,
                                 const TPMI_RH_NV_AUTH& auth_handle,
@@ -6058,7 +6073,8 @@ class TRUNKS_EXPORT Tpm {
                                 TPMT_SIGNATURE* signature,
                                 AuthorizationDelegate* authorization_delegate);
 
-  typedef base::Callback<void(TPM_RC response_code)> PolicyFidoSignedResponse;
+  typedef base::OnceCallback<void(TPM_RC response_code)>
+      PolicyFidoSignedResponse;
   static TPM_RC SerializeCommand_PolicyFidoSigned(
       const TPMI_DH_OBJECT& auth_object,
       const std::string& auth_object_name,
@@ -6081,7 +6097,7 @@ class TRUNKS_EXPORT Tpm {
       const std::vector<FIDO_DATA_RANGE>& auth_data_descr,
       const TPMT_SIGNATURE& auth,
       AuthorizationDelegate* authorization_delegate,
-      const PolicyFidoSignedResponse& callback);
+      PolicyFidoSignedResponse callback);
   virtual TPM_RC PolicyFidoSignedSync(
       const TPMI_DH_OBJECT& auth_object,
       const std::string& auth_object_name,

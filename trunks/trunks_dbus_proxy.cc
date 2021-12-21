@@ -75,38 +75,39 @@ bool TrunksDBusProxy::CheckIfServiceReady() {
 }
 
 void TrunksDBusProxy::SendCommand(const std::string& command,
-                                  const ResponseCallback& callback) {
+                                  ResponseCallback callback) {
   if (origin_thread_id_ != base::PlatformThread::CurrentId()) {
     LOG(ERROR) << "Error TrunksDBusProxy cannot be shared by multiple threads.";
-    callback.Run(CreateErrorResponse(TRUNKS_RC_IPC_ERROR));
+    std::move(callback).Run(CreateErrorResponse(TRUNKS_RC_IPC_ERROR));
     return;
   }
   if (!IsServiceReady(false /* force_check */)) {
     LOG(ERROR) << "Error TrunksDBusProxy cannot connect to trunksd.";
-    callback.Run(CreateErrorResponse(SAPI_RC_NO_CONNECTION));
+    std::move(callback).Run(CreateErrorResponse(SAPI_RC_NO_CONNECTION));
     return;
   }
+  std::pair<ResponseCallback, ResponseCallback> split =
+      base::SplitOnceCallback(std::move(callback));
   SendCommandRequest tpm_command_proto;
   tpm_command_proto.set_command(command);
   auto on_success = base::BindOnce(
-      [](const ResponseCallback& callback,
-         const SendCommandResponse& response) {
-        callback.Run(response.response());
+      [](ResponseCallback callback, const SendCommandResponse& response) {
+        std::move(callback).Run(response.response());
       },
-      callback);
+      std::move(split.first));
   brillo::dbus_utils::CallMethodWithTimeout(
       kDBusMaxTimeout, object_proxy_, trunks::kTrunksInterface,
       trunks::kSendCommand, std::move(on_success),
-      base::BindOnce(&TrunksDBusProxy::OnError, GetWeakPtr(), callback),
+      base::BindOnce(&TrunksDBusProxy::OnError, GetWeakPtr(),
+                     std::move(split.second)),
       tpm_command_proto);
 }
 
-void TrunksDBusProxy::OnError(const ResponseCallback& callback,
-                              brillo::Error* error) {
+void TrunksDBusProxy::OnError(ResponseCallback callback, brillo::Error* error) {
   TPM_RC error_code = IsServiceReady(true /* force_check */)
                           ? SAPI_RC_NO_RESPONSE_RECEIVED
                           : SAPI_RC_NO_CONNECTION;
-  callback.Run(CreateErrorResponse(error_code));
+  std::move(callback).Run(CreateErrorResponse(error_code));
 }
 
 std::string TrunksDBusProxy::SendCommandAndWait(const std::string& command) {

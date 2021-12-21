@@ -47,7 +47,7 @@ void PowerManager::Init(const scoped_refptr<dbus::Bus>& bus) {
   RegisterSignalHandlers();
 
   proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
-      base::Bind(&PowerManager::OnServiceAvailable, ThisForBind()));
+      base::BindRepeating(&PowerManager::OnServiceAvailable, ThisForBind()));
 }
 
 void PowerManager::TearDown() {
@@ -73,16 +73,16 @@ void PowerManager::RegisterSignalHandlers() {
   }
   VLOG(1) << "Registering PowerManager signal handlers.";
   auto resume_signal_handler =
-      base::Bind(&PowerManager::OnResume, ThisForBind());
+      base::BindRepeating(&PowerManager::OnResume, ThisForBind());
   auto resume_signal_connect =
-      base::Bind(&PowerManager::OnResumeConnect, ThisForBind());
+      base::BindRepeating(&PowerManager::OnResumeConnect, ThisForBind());
   proxy_->RegisterSuspendDoneSignalHandler(resume_signal_handler,
                                            resume_signal_connect);
 
   auto suspend_signal_handler =
-      base::Bind(&PowerManager::OnSuspend, ThisForBind());
+      base::BindRepeating(&PowerManager::OnSuspend, ThisForBind());
   auto suspend_signal_connect =
-      base::Bind(&PowerManager::OnSignalConnect, ThisForBind());
+      base::BindRepeating(&PowerManager::OnSignalConnect, ThisForBind());
   proxy_->RegisterSuspendImminentSignalHandler(suspend_signal_handler,
                                                suspend_signal_connect);
   proxy_->RegisterDarkSuspendImminentSignalHandler(suspend_signal_handler,
@@ -93,7 +93,7 @@ void PowerManager::OnServiceAvailable(bool available) {
   if (available) {
     VLOG(1) << "PowerManager service available.";
     proxy_->GetObjectProxy()->SetNameOwnerChangedCallback(
-        base::Bind(&PowerManager::OnOwnerChanged, ThisForBind()));
+        base::BindRepeating(&PowerManager::OnOwnerChanged, ThisForBind()));
     Start();
   } else {
     LOG(ERROR) << "PowerManager service unavailable.";
@@ -124,10 +124,11 @@ void PowerManager::Start() {
   request.set_description(kSuspendDelayDescription);
   std::vector<uint8_t> serialized_request;
   SerializeProto(request, &serialized_request);
-  auto success_callback =
-      base::Bind(&PowerManager::OnRegisterSuspendDelaySuccess, ThisForBind());
-  auto error_callback = base::Bind(&PowerManager::OnRequestError, ThisForBind(),
-                                   std::string("RegisterSuspendDelayRequest"));
+  auto success_callback = base::BindRepeating(
+      &PowerManager::OnRegisterSuspendDelaySuccess, ThisForBind());
+  auto error_callback =
+      base::BindRepeating(&PowerManager::OnRequestError, ThisForBind(),
+                          std::string("RegisterSuspendDelayRequest"));
   proxy_->RegisterSuspendDelayAsync(serialized_request, success_callback,
                                     error_callback);
 }
@@ -209,10 +210,11 @@ void PowerManager::OnSuspend(const std::vector<uint8_t>& serialized_proto) {
   std::vector<uint8_t> serialized_request;
   SerializeProto(request, &serialized_request);
   auto success_callback =
-      base::Bind(&PowerManager::OnRequestSuccess, ThisForBind(),
-                 std::string("SuspendReadinessInfo"));
-  auto error_callback = base::Bind(&PowerManager::OnRequestError, ThisForBind(),
-                                   std::string("SuspendReadinessInfo"));
+      base::BindRepeating(&PowerManager::OnRequestSuccess, ThisForBind(),
+                          std::string("SuspendReadinessInfo"));
+  auto error_callback =
+      base::BindRepeating(&PowerManager::OnRequestError, ThisForBind(),
+                          std::string("SuspendReadinessInfo"));
   proxy_->HandleSuspendReadinessAsync(serialized_request, success_callback,
                                       error_callback);
 }

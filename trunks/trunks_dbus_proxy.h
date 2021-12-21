@@ -32,7 +32,7 @@ class TRUNKS_EXPORT TrunksDBusProxy : public CommandTransceiver {
 
   // CommandTransceiver methods.
   void SendCommand(const std::string& command,
-                   const ResponseCallback& callback) override;
+                   ResponseCallback callback) override;
   std::string SendCommandAndWait(const std::string& command) override;
 
   // Returns the service readiness flag. Forces re-check for readiness if
@@ -65,7 +65,7 @@ class TRUNKS_EXPORT TrunksDBusProxy : public CommandTransceiver {
   bool CheckIfServiceReady();
 
   // Handles errors received from dbus.
-  void OnError(const ResponseCallback& callback, brillo::Error* error);
+  void OnError(ResponseCallback callback, brillo::Error* error);
 
   base::WeakPtr<TrunksDBusProxy> GetWeakPtr() {
     return weak_factory_.GetWeakPtr();

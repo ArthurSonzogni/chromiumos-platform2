@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "trunks/mock_tpm.h"
+#include <utility>
 
+#include "trunks/mock_tpm.h"
 #include "trunks/tpm_utility.h"
 
 using testing::_;
@@ -34,10 +35,10 @@ void MockTpm::StartAuthSession(const TPMI_DH_OBJECT& tpm_key,
                                const TPMT_SYM_DEF& symmetric,
                                const TPMI_ALG_HASH& auth_hash,
                                AuthorizationDelegate* authorization_delegate,
-                               const StartAuthSessionResponse& callback) {
+                               StartAuthSessionResponse callback) {
   StartAuthSessionShort(tpm_key, bind, nonce_caller, encrypted_salt,
                         session_type, symmetric, auth_hash,
-                        authorization_delegate, callback);
+                        authorization_delegate, std::move(callback));
 }
 
 TPM_RC MockTpm::StartAuthSessionSync(
@@ -130,10 +131,10 @@ void MockTpm::PolicySigned(const TPMI_DH_OBJECT& auth_object,
                            const INT32& expiration,
                            const TPMT_SIGNATURE& auth,
                            AuthorizationDelegate* authorization_delegate,
-                           const PolicySignedResponse& callback) {
+                           PolicySignedResponse callback) {
   PolicySignedShort(auth_object, policy_session, nonce_tpm, cp_hash_a,
                     policy_ref, expiration, auth, authorization_delegate,
-                    callback);
+                    std::move(callback));
 }
 TPM_RC MockTpm::PolicySignedSync(
     const TPMI_DH_OBJECT& auth_object,
@@ -178,9 +179,9 @@ void MockTpm::PolicyNV(const TPMI_RH_NV_AUTH& auth_handle,
                        const UINT16& offset,
                        const TPM_EO& operation,
                        AuthorizationDelegate* authorization_delegate,
-                       const PolicyNVResponse& callback) {
+                       PolicyNVResponse callback) {
   PolicyNVShort(auth_handle, nv_index, policy_session, operand_b, offset,
-                operation, authorization_delegate, callback);
+                operation, authorization_delegate, std::move(callback));
 }
 TPM_RC MockTpm::CreatePrimarySync(
     const TPMI_RH_HIERARCHY& primary_handle,
@@ -212,9 +213,10 @@ void MockTpm::NV_Certify(const TPMI_DH_OBJECT& sign_handle,
                          const UINT16& size,
                          const UINT16& offset,
                          AuthorizationDelegate* authorization_delegate,
-                         const NV_CertifyResponse& callback) {
+                         NV_CertifyResponse callback) {
   NV_CertifyShort(sign_handle, auth_handle, nv_index, qualifying_data,
-                  in_scheme, size, offset, authorization_delegate, callback);
+                  in_scheme, size, offset, authorization_delegate,
+                  std::move(callback));
 }
 TPM_RC MockTpm::NV_CertifySync(const TPMI_DH_OBJECT& sign_handle,
                                const std::string& sign_handle_name,

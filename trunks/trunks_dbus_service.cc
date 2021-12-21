@@ -66,7 +66,8 @@ void TrunksDBusService::HandleSendCommand(
   }
   transceiver_->SendCommand(
       request.command(),
-      base::Bind(callback, SharedResponsePointer(std::move(response_sender))));
+      base::BindOnce(callback,
+                     SharedResponsePointer(std::move(response_sender))));
 }
 
 }  // namespace trunks

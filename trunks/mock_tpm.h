@@ -24,35 +24,35 @@ class MockTpm : public Tpm {
   MOCK_METHOD3(Startup,
                void(const TPM_SU& startup_type,
                     AuthorizationDelegate* authorization_delegate,
-                    const StartupResponse& callback));
+                    StartupResponse callback));
   MOCK_METHOD2(StartupSync,
                TPM_RC(const TPM_SU& startup_type,
                       AuthorizationDelegate* authorization_delegate));
   MOCK_METHOD3(Shutdown,
                void(const TPM_SU& shutdown_type,
                     AuthorizationDelegate* authorization_delegate,
-                    const ShutdownResponse& callback));
+                    ShutdownResponse callback));
   MOCK_METHOD2(ShutdownSync,
                TPM_RC(const TPM_SU& shutdown_type,
                       AuthorizationDelegate* authorization_delegate));
   MOCK_METHOD3(SelfTest,
                void(const TPMI_YES_NO& full_test,
                     AuthorizationDelegate* authorization_delegate,
-                    const SelfTestResponse& callback));
+                    SelfTestResponse callback));
   MOCK_METHOD2(SelfTestSync,
                TPM_RC(const TPMI_YES_NO& full_test,
                       AuthorizationDelegate* authorization_delegate));
   MOCK_METHOD3(IncrementalSelfTest,
                void(const TPML_ALG& to_test,
                     AuthorizationDelegate* authorization_delegate,
-                    const IncrementalSelfTestResponse& callback));
+                    IncrementalSelfTestResponse callback));
   MOCK_METHOD3(IncrementalSelfTestSync,
                TPM_RC(const TPML_ALG& to_test,
                       TPML_ALG* to_do_list,
                       AuthorizationDelegate* authorization_delegate));
   MOCK_METHOD2(GetTestResult,
                void(AuthorizationDelegate* authorization_delegate,
-                    const GetTestResultResponse& callback));
+                    GetTestResultResponse callback));
   MOCK_METHOD3(GetTestResultSync,
                TPM_RC(TPM2B_MAX_BUFFER* out_data,
                       TPM_RC* test_result,
@@ -68,7 +68,7 @@ class MockTpm : public Tpm {
                         const TPMT_SYM_DEF& symmetric,
                         const TPMI_ALG_HASH& auth_hash,
                         AuthorizationDelegate* authorization_delegate,
-                        const StartAuthSessionResponse& callback) override;
+                        StartAuthSessionResponse callback) override;
   MOCK_METHOD9(StartAuthSessionShort,
                void(const TPMI_DH_OBJECT& tpm_key,
                     const TPMI_DH_ENTITY& bind,
@@ -78,7 +78,7 @@ class MockTpm : public Tpm {
                     const TPMT_SYM_DEF& symmetric,
                     const TPMI_ALG_HASH& auth_hash,
                     AuthorizationDelegate* authorization_delegate,
-                    const StartAuthSessionResponse& callback));
+                    StartAuthSessionResponse callback));
   // Too many args to mock, forward to *Short version.
   TPM_RC StartAuthSessionSync(
       const TPMI_DH_OBJECT& tpm_key,
@@ -108,7 +108,7 @@ class MockTpm : public Tpm {
                void(const TPMI_SH_POLICY& session_handle,
                     const std::string& session_handle_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicyRestartResponse& callback));
+                    PolicyRestartResponse callback));
   MOCK_METHOD3(PolicyRestartSync,
                TPM_RC(const TPMI_SH_POLICY& session_handle,
                       const std::string& session_handle_name,
@@ -121,7 +121,7 @@ class MockTpm : public Tpm {
                     const TPM2B_DATA& outside_info,
                     const TPML_PCR_SELECTION& creation_pcr,
                     AuthorizationDelegate* authorization_delegate,
-                    const CreateResponse& callback));
+                    CreateResponse callback));
   // Too many args to mock, forward to *Short version.
   TPM_RC CreateSync(const TPMI_DH_OBJECT& parent_handle,
                     const std::string& parent_handle_name,
@@ -152,7 +152,7 @@ class MockTpm : public Tpm {
                     const TPM2B_PRIVATE& in_private,
                     const TPM2B_PUBLIC& in_public,
                     AuthorizationDelegate* authorization_delegate,
-                    const LoadResponse& callback));
+                    LoadResponse callback));
   MOCK_METHOD7(LoadSync,
                TPM_RC(const TPMI_DH_OBJECT& parent_handle,
                       const std::string& parent_handle_name,
@@ -166,7 +166,7 @@ class MockTpm : public Tpm {
                     const TPM2B_PUBLIC& in_public,
                     const TPMI_RH_HIERARCHY& hierarchy,
                     AuthorizationDelegate* authorization_delegate,
-                    const LoadExternalResponse& callback));
+                    LoadExternalResponse callback));
   MOCK_METHOD6(LoadExternalSync,
                TPM_RC(const TPM2B_SENSITIVE& in_private,
                       const TPM2B_PUBLIC& in_public,
@@ -178,7 +178,7 @@ class MockTpm : public Tpm {
                void(const TPMI_DH_OBJECT& object_handle,
                     const std::string& object_handle_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const ReadPublicResponse& callback));
+                    ReadPublicResponse callback));
   MOCK_METHOD6(ReadPublicSync,
                TPM_RC(const TPMI_DH_OBJECT& object_handle,
                       const std::string& object_handle_name,
@@ -194,7 +194,7 @@ class MockTpm : public Tpm {
                     const TPM2B_ID_OBJECT& credential_blob,
                     const TPM2B_ENCRYPTED_SECRET& secret,
                     AuthorizationDelegate* authorization_delegate,
-                    const ActivateCredentialResponse& callback));
+                    ActivateCredentialResponse callback));
   MOCK_METHOD8(ActivateCredentialSync,
                TPM_RC(const TPMI_DH_OBJECT& activate_handle,
                       const std::string& activate_handle_name,
@@ -210,7 +210,7 @@ class MockTpm : public Tpm {
                     const TPM2B_DIGEST& credential,
                     const TPM2B_NAME& object_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const MakeCredentialResponse& callback));
+                    MakeCredentialResponse callback));
   MOCK_METHOD7(MakeCredentialSync,
                TPM_RC(const TPMI_DH_OBJECT& handle,
                       const std::string& handle_name,
@@ -223,7 +223,7 @@ class MockTpm : public Tpm {
                void(const TPMI_DH_OBJECT& item_handle,
                     const std::string& item_handle_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const UnsealResponse& callback));
+                    UnsealResponse callback));
   MOCK_METHOD4(UnsealSync,
                TPM_RC(const TPMI_DH_OBJECT& item_handle,
                       const std::string& item_handle_name,
@@ -236,7 +236,7 @@ class MockTpm : public Tpm {
                     const std::string& parent_handle_name,
                     const TPM2B_AUTH& new_auth,
                     AuthorizationDelegate* authorization_delegate,
-                    const ObjectChangeAuthResponse& callback));
+                    ObjectChangeAuthResponse callback));
   MOCK_METHOD7(ObjectChangeAuthSync,
                TPM_RC(const TPMI_DH_OBJECT& object_handle,
                       const std::string& object_handle_name,
@@ -253,7 +253,7 @@ class MockTpm : public Tpm {
                     const TPM2B_DATA& encryption_key_in,
                     const TPMT_SYM_DEF_OBJECT& symmetric_alg,
                     AuthorizationDelegate* authorization_delegate,
-                    const DuplicateResponse& callback));
+                    DuplicateResponse callback));
   MOCK_METHOD10(DuplicateSync,
                 TPM_RC(const TPMI_DH_OBJECT& object_handle,
                        const std::string& object_handle_name,
@@ -274,7 +274,7 @@ class MockTpm : public Tpm {
                     const TPM2B_NAME& name,
                     const TPM2B_ENCRYPTED_SECRET& in_sym_seed,
                     AuthorizationDelegate* authorization_delegate,
-                    const RewrapResponse& callback));
+                    RewrapResponse callback));
   MOCK_METHOD10(RewrapSync,
                 TPM_RC(const TPMI_DH_OBJECT& old_parent,
                        const std::string& old_parent_name,
@@ -295,7 +295,7 @@ class MockTpm : public Tpm {
                     const TPM2B_ENCRYPTED_SECRET& in_sym_seed,
                     const TPMT_SYM_DEF_OBJECT& symmetric_alg,
                     AuthorizationDelegate* authorization_delegate,
-                    const ImportResponse& callback));
+                    ImportResponse callback));
   MOCK_METHOD9(ImportSync,
                TPM_RC(const TPMI_DH_OBJECT& parent_handle,
                       const std::string& parent_handle_name,
@@ -313,7 +313,7 @@ class MockTpm : public Tpm {
                     const TPMT_RSA_DECRYPT& in_scheme,
                     const TPM2B_DATA& label,
                     AuthorizationDelegate* authorization_delegate,
-                    const RSA_EncryptResponse& callback));
+                    RSA_EncryptResponse callback));
   MOCK_METHOD7(RSA_EncryptSync,
                TPM_RC(const TPMI_DH_OBJECT& key_handle,
                       const std::string& key_handle_name,
@@ -329,7 +329,7 @@ class MockTpm : public Tpm {
                     const TPMT_RSA_DECRYPT& in_scheme,
                     const TPM2B_DATA& label,
                     AuthorizationDelegate* authorization_delegate,
-                    const RSA_DecryptResponse& callback));
+                    RSA_DecryptResponse callback));
   MOCK_METHOD7(RSA_DecryptSync,
                TPM_RC(const TPMI_DH_OBJECT& key_handle,
                       const std::string& key_handle_name,
@@ -342,7 +342,7 @@ class MockTpm : public Tpm {
                void(const TPMI_DH_OBJECT& key_handle,
                     const std::string& key_handle_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const ECDH_KeyGenResponse& callback));
+                    ECDH_KeyGenResponse callback));
   MOCK_METHOD5(ECDH_KeyGenSync,
                TPM_RC(const TPMI_DH_OBJECT& key_handle,
                       const std::string& key_handle_name,
@@ -354,7 +354,7 @@ class MockTpm : public Tpm {
                     const std::string& key_handle_name,
                     const TPM2B_ECC_POINT& in_point,
                     AuthorizationDelegate* authorization_delegate,
-                    const ECDH_ZGenResponse& callback));
+                    ECDH_ZGenResponse callback));
   MOCK_METHOD5(ECDH_ZGenSync,
                TPM_RC(const TPMI_DH_OBJECT& key_handle,
                       const std::string& key_handle_name,
@@ -364,7 +364,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD3(ECC_Parameters,
                void(const TPMI_ECC_CURVE& curve_id,
                     AuthorizationDelegate* authorization_delegate,
-                    const ECC_ParametersResponse& callback));
+                    ECC_ParametersResponse callback));
   MOCK_METHOD3(ECC_ParametersSync,
                TPM_RC(const TPMI_ECC_CURVE& curve_id,
                       TPMS_ALGORITHM_DETAIL_ECC* parameters,
@@ -377,7 +377,7 @@ class MockTpm : public Tpm {
                     const TPMI_ECC_KEY_EXCHANGE& in_scheme,
                     const UINT16& counter,
                     AuthorizationDelegate* authorization_delegate,
-                    const ZGen_2PhaseResponse& callback));
+                    ZGen_2PhaseResponse callback));
   MOCK_METHOD9(ZGen_2PhaseSync,
                TPM_RC(const TPMI_DH_OBJECT& key_a,
                       const std::string& key_a_name,
@@ -396,7 +396,7 @@ class MockTpm : public Tpm {
                     const TPM2B_IV& iv_in,
                     const TPM2B_MAX_BUFFER& in_data,
                     AuthorizationDelegate* authorization_delegate,
-                    const EncryptDecryptResponse& callback));
+                    EncryptDecryptResponse callback));
   MOCK_METHOD9(EncryptDecryptSync,
                TPM_RC(const TPMI_DH_OBJECT& key_handle,
                       const std::string& key_handle_name,
@@ -412,7 +412,7 @@ class MockTpm : public Tpm {
                     const TPMI_ALG_HASH& hash_alg,
                     const TPMI_RH_HIERARCHY& hierarchy,
                     AuthorizationDelegate* authorization_delegate,
-                    const HashResponse& callback));
+                    HashResponse callback));
   MOCK_METHOD6(HashSync,
                TPM_RC(const TPM2B_MAX_BUFFER& data,
                       const TPMI_ALG_HASH& hash_alg,
@@ -426,7 +426,7 @@ class MockTpm : public Tpm {
                     const TPM2B_MAX_BUFFER& buffer,
                     const TPMI_ALG_HASH& hash_alg,
                     AuthorizationDelegate* authorization_delegate,
-                    const HMACResponse& callback));
+                    HMACResponse callback));
   MOCK_METHOD6(HMACSync,
                TPM_RC(const TPMI_DH_OBJECT& handle,
                       const std::string& handle_name,
@@ -437,7 +437,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD3(GetRandom,
                void(const UINT16& bytes_requested,
                     AuthorizationDelegate* authorization_delegate,
-                    const GetRandomResponse& callback));
+                    GetRandomResponse callback));
   MOCK_METHOD3(GetRandomSync,
                TPM_RC(const UINT16& bytes_requested,
                       TPM2B_DIGEST* random_bytes,
@@ -445,7 +445,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD3(StirRandom,
                void(const TPM2B_SENSITIVE_DATA& in_data,
                     AuthorizationDelegate* authorization_delegate,
-                    const StirRandomResponse& callback));
+                    StirRandomResponse callback));
   MOCK_METHOD2(StirRandomSync,
                TPM_RC(const TPM2B_SENSITIVE_DATA& in_data,
                       AuthorizationDelegate* authorization_delegate));
@@ -455,7 +455,7 @@ class MockTpm : public Tpm {
                     const TPM2B_AUTH& auth,
                     const TPMI_ALG_HASH& hash_alg,
                     AuthorizationDelegate* authorization_delegate,
-                    const HMAC_StartResponse& callback));
+                    HMAC_StartResponse callback));
   MOCK_METHOD6(HMAC_StartSync,
                TPM_RC(const TPMI_DH_OBJECT& handle,
                       const std::string& handle_name,
@@ -467,7 +467,7 @@ class MockTpm : public Tpm {
                void(const TPM2B_AUTH& auth,
                     const TPMI_ALG_HASH& hash_alg,
                     AuthorizationDelegate* authorization_delegate,
-                    const HashSequenceStartResponse& callback));
+                    HashSequenceStartResponse callback));
   MOCK_METHOD4(HashSequenceStartSync,
                TPM_RC(const TPM2B_AUTH& auth,
                       const TPMI_ALG_HASH& hash_alg,
@@ -478,7 +478,7 @@ class MockTpm : public Tpm {
                     const std::string& sequence_handle_name,
                     const TPM2B_MAX_BUFFER& buffer,
                     AuthorizationDelegate* authorization_delegate,
-                    const SequenceUpdateResponse& callback));
+                    SequenceUpdateResponse callback));
   MOCK_METHOD4(SequenceUpdateSync,
                TPM_RC(const TPMI_DH_OBJECT& sequence_handle,
                       const std::string& sequence_handle_name,
@@ -490,7 +490,7 @@ class MockTpm : public Tpm {
                     const TPM2B_MAX_BUFFER& buffer,
                     const TPMI_RH_HIERARCHY& hierarchy,
                     AuthorizationDelegate* authorization_delegate,
-                    const SequenceCompleteResponse& callback));
+                    SequenceCompleteResponse callback));
   MOCK_METHOD7(SequenceCompleteSync,
                TPM_RC(const TPMI_DH_OBJECT& sequence_handle,
                       const std::string& sequence_handle_name,
@@ -506,7 +506,7 @@ class MockTpm : public Tpm {
                     const std::string& sequence_handle_name,
                     const TPM2B_MAX_BUFFER& buffer,
                     AuthorizationDelegate* authorization_delegate,
-                    const EventSequenceCompleteResponse& callback));
+                    EventSequenceCompleteResponse callback));
   MOCK_METHOD7(EventSequenceCompleteSync,
                TPM_RC(const TPMI_DH_PCR& pcr_handle,
                       const std::string& pcr_handle_name,
@@ -523,7 +523,7 @@ class MockTpm : public Tpm {
                     const TPM2B_DATA& qualifying_data,
                     const TPMT_SIG_SCHEME& in_scheme,
                     AuthorizationDelegate* authorization_delegate,
-                    const CertifyResponse& callback));
+                    CertifyResponse callback));
   MOCK_METHOD9(CertifySync,
                TPM_RC(const TPMI_DH_OBJECT& object_handle,
                       const std::string& object_handle_name,
@@ -544,7 +544,7 @@ class MockTpm : public Tpm {
                      const TPMT_SIG_SCHEME& in_scheme,
                      const TPMT_TK_CREATION& creation_ticket,
                      AuthorizationDelegate* authorization_delegate,
-                     const CertifyCreationResponse& callback));
+                     CertifyCreationResponse callback));
   // Too many args to mock, forward to *Short version.
   TPM_RC CertifyCreationSync(
       const TPMI_DH_OBJECT& sign_handle,
@@ -575,7 +575,7 @@ class MockTpm : public Tpm {
                     const TPMT_SIG_SCHEME& in_scheme,
                     const TPML_PCR_SELECTION& pcrselect,
                     AuthorizationDelegate* authorization_delegate,
-                    const QuoteResponse& callback));
+                    QuoteResponse callback));
   MOCK_METHOD8(QuoteSync,
                TPM_RC(const TPMI_DH_OBJECT& sign_handle,
                       const std::string& sign_handle_name,
@@ -595,7 +595,7 @@ class MockTpm : public Tpm {
                      const TPM2B_DATA& qualifying_data,
                      const TPMT_SIG_SCHEME& in_scheme,
                      AuthorizationDelegate* authorization_delegate,
-                     const GetSessionAuditDigestResponse& callback));
+                     GetSessionAuditDigestResponse callback));
   // Too many args to mock, forward to *Short version.
   TPM_RC GetSessionAuditDigestSync(
       const TPMI_RH_ENDORSEMENT& privacy_admin_handle,
@@ -626,7 +626,7 @@ class MockTpm : public Tpm {
                     const TPM2B_DATA& qualifying_data,
                     const TPMT_SIG_SCHEME& in_scheme,
                     AuthorizationDelegate* authorization_delegate,
-                    const GetCommandAuditDigestResponse& callback));
+                    GetCommandAuditDigestResponse callback));
   MOCK_METHOD9(GetCommandAuditDigestSync,
                TPM_RC(const TPMI_RH_ENDORSEMENT& privacy_handle,
                       const std::string& privacy_handle_name,
@@ -645,7 +645,7 @@ class MockTpm : public Tpm {
                     const TPM2B_DATA& qualifying_data,
                     const TPMT_SIG_SCHEME& in_scheme,
                     AuthorizationDelegate* authorization_delegate,
-                    const GetTimeResponse& callback));
+                    GetTimeResponse callback));
   MOCK_METHOD9(GetTimeSync,
                TPM_RC(const TPMI_RH_ENDORSEMENT& privacy_admin_handle,
                       const std::string& privacy_admin_handle_name,
@@ -664,7 +664,7 @@ class MockTpm : public Tpm {
                     const TPM2B_SENSITIVE_DATA& s2,
                     const TPM2B_ECC_PARAMETER& y2,
                     AuthorizationDelegate* authorization_delegate,
-                    const CommitResponse& callback));
+                    CommitResponse callback));
   // Too many args to mock, forward to *Short version.
   TPM_RC CommitSync(const TPMI_DH_OBJECT& sign_handle,
                     const std::string& sign_handle_name,
@@ -693,7 +693,7 @@ class MockTpm : public Tpm {
                void(const UINT32& param_size,
                     const TPMI_ECC_CURVE& curve_id,
                     AuthorizationDelegate* authorization_delegate,
-                    const EC_EphemeralResponse& callback));
+                    EC_EphemeralResponse callback));
   MOCK_METHOD6(EC_EphemeralSync,
                TPM_RC(const UINT32& param_size,
                       const TPMI_ECC_CURVE& curve_id,
@@ -707,7 +707,7 @@ class MockTpm : public Tpm {
                     const TPM2B_DIGEST& digest,
                     const TPMT_SIGNATURE& signature,
                     AuthorizationDelegate* authorization_delegate,
-                    const VerifySignatureResponse& callback));
+                    VerifySignatureResponse callback));
   MOCK_METHOD6(VerifySignatureSync,
                TPM_RC(const TPMI_DH_OBJECT& key_handle,
                       const std::string& key_handle_name,
@@ -722,7 +722,7 @@ class MockTpm : public Tpm {
                     const TPMT_SIG_SCHEME& in_scheme,
                     const TPMT_TK_HASHCHECK& validation,
                     AuthorizationDelegate* authorization_delegate,
-                    const SignResponse& callback));
+                    SignResponse callback));
   MOCK_METHOD7(SignSync,
                TPM_RC(const TPMI_DH_OBJECT& key_handle,
                       const std::string& key_handle_name,
@@ -738,7 +738,7 @@ class MockTpm : public Tpm {
                     const TPML_CC& set_list,
                     const TPML_CC& clear_list,
                     AuthorizationDelegate* authorization_delegate,
-                    const SetCommandCodeAuditStatusResponse& callback));
+                    SetCommandCodeAuditStatusResponse callback));
   MOCK_METHOD6(SetCommandCodeAuditStatusSync,
                TPM_RC(const TPMI_RH_PROVISION& auth,
                       const std::string& auth_name,
@@ -751,7 +751,7 @@ class MockTpm : public Tpm {
                     const std::string& pcr_handle_name,
                     const TPML_DIGEST_VALUES& digests,
                     AuthorizationDelegate* authorization_delegate,
-                    const PCR_ExtendResponse& callback));
+                    PCR_ExtendResponse callback));
   MOCK_METHOD4(PCR_ExtendSync,
                TPM_RC(const TPMI_DH_PCR& pcr_handle,
                       const std::string& pcr_handle_name,
@@ -762,7 +762,7 @@ class MockTpm : public Tpm {
                     const std::string& pcr_handle_name,
                     const TPM2B_EVENT& event_data,
                     AuthorizationDelegate* authorization_delegate,
-                    const PCR_EventResponse& callback));
+                    PCR_EventResponse callback));
   MOCK_METHOD5(PCR_EventSync,
                TPM_RC(const TPMI_DH_PCR& pcr_handle,
                       const std::string& pcr_handle_name,
@@ -772,7 +772,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD3(PCR_Read,
                void(const TPML_PCR_SELECTION& pcr_selection_in,
                     AuthorizationDelegate* authorization_delegate,
-                    const PCR_ReadResponse& callback));
+                    PCR_ReadResponse callback));
   MOCK_METHOD5(PCR_ReadSync,
                TPM_RC(const TPML_PCR_SELECTION& pcr_selection_in,
                       UINT32* pcr_update_counter,
@@ -784,7 +784,7 @@ class MockTpm : public Tpm {
                     const std::string& auth_handle_name,
                     const TPML_PCR_SELECTION& pcr_allocation,
                     AuthorizationDelegate* authorization_delegate,
-                    const PCR_AllocateResponse& callback));
+                    PCR_AllocateResponse callback));
   MOCK_METHOD8(PCR_AllocateSync,
                TPM_RC(const TPMI_RH_PLATFORM& auth_handle,
                       const std::string& auth_handle_name,
@@ -802,7 +802,7 @@ class MockTpm : public Tpm {
                     const TPM2B_DIGEST& auth_policy,
                     const TPMI_ALG_HASH& policy_digest,
                     AuthorizationDelegate* authorization_delegate,
-                    const PCR_SetAuthPolicyResponse& callback));
+                    PCR_SetAuthPolicyResponse callback));
   MOCK_METHOD7(PCR_SetAuthPolicySync,
                TPM_RC(const TPMI_RH_PLATFORM& auth_handle,
                       const std::string& auth_handle_name,
@@ -816,7 +816,7 @@ class MockTpm : public Tpm {
                     const std::string& pcr_handle_name,
                     const TPM2B_DIGEST& auth,
                     AuthorizationDelegate* authorization_delegate,
-                    const PCR_SetAuthValueResponse& callback));
+                    PCR_SetAuthValueResponse callback));
   MOCK_METHOD4(PCR_SetAuthValueSync,
                TPM_RC(const TPMI_DH_PCR& pcr_handle,
                       const std::string& pcr_handle_name,
@@ -826,7 +826,7 @@ class MockTpm : public Tpm {
                void(const TPMI_DH_PCR& pcr_handle,
                     const std::string& pcr_handle_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const PCR_ResetResponse& callback));
+                    PCR_ResetResponse callback));
   MOCK_METHOD3(PCR_ResetSync,
                TPM_RC(const TPMI_DH_PCR& pcr_handle,
                       const std::string& pcr_handle_name,
@@ -842,7 +842,7 @@ class MockTpm : public Tpm {
                     const INT32& expiration,
                     const TPMT_SIGNATURE& auth,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicySignedResponse& callback) override;
+                    PolicySignedResponse callback) override;
   MOCK_METHOD9(PolicySignedShort,
                void(const TPMI_DH_OBJECT& auth_object,
                     const TPMI_SH_POLICY& policy_session,
@@ -852,7 +852,7 @@ class MockTpm : public Tpm {
                     const INT32& expiration,
                     const TPMT_SIGNATURE& auth,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicySignedResponse& callback));
+                    PolicySignedResponse callback));
   // Too many args to mock, forward to *Short version.
   TPM_RC PolicySignedSync(
       const TPMI_DH_OBJECT& auth_object,
@@ -887,7 +887,7 @@ class MockTpm : public Tpm {
                     const std::vector<FIDO_DATA_RANGE>& auth_data_descr,
                     const TPMT_SIGNATURE& auth,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicyFidoSignedResponse& callback));
+                    PolicyFidoSignedResponse callback));
   MOCK_METHOD8(PolicyFidoSignedSync,
                TPM_RC(const TPMI_DH_OBJECT& auth_object,
                       const std::string& auth_object_name,
@@ -907,7 +907,7 @@ class MockTpm : public Tpm {
                      const TPM2B_NONCE& policy_ref,
                      const INT32& expiration,
                      AuthorizationDelegate* authorization_delegate,
-                     const PolicySecretResponse& callback));
+                     PolicySecretResponse callback));
   // Too many args to mock, forward to *Short version.
   TPM_RC PolicySecretSync(
       const TPMI_DH_ENTITY& auth_handle,
@@ -940,7 +940,7 @@ class MockTpm : public Tpm {
                     const TPM2B_NAME& auth_name,
                     const TPMT_TK_AUTH& ticket,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicyTicketResponse& callback));
+                    PolicyTicketResponse callback));
   MOCK_METHOD8(PolicyTicketSync,
                TPM_RC(const TPMI_SH_POLICY& policy_session,
                       const std::string& policy_session_name,
@@ -955,7 +955,7 @@ class MockTpm : public Tpm {
                     const std::string& policy_session_name,
                     const TPML_DIGEST& p_hash_list,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicyORResponse& callback));
+                    PolicyORResponse callback));
   MOCK_METHOD4(PolicyORSync,
                TPM_RC(const TPMI_SH_POLICY& policy_session,
                       const std::string& policy_session_name,
@@ -967,7 +967,7 @@ class MockTpm : public Tpm {
                     const TPM2B_DIGEST& pcr_digest,
                     const TPML_PCR_SELECTION& pcrs,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicyPCRResponse& callback));
+                    PolicyPCRResponse callback));
   MOCK_METHOD5(PolicyPCRSync,
                TPM_RC(const TPMI_SH_POLICY& policy_session,
                       const std::string& policy_session_name,
@@ -979,7 +979,7 @@ class MockTpm : public Tpm {
                     const std::string& policy_session_name,
                     const TPMA_LOCALITY& locality,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicyLocalityResponse& callback));
+                    PolicyLocalityResponse callback));
   MOCK_METHOD4(PolicyLocalitySync,
                TPM_RC(const TPMI_SH_POLICY& policy_session,
                       const std::string& policy_session_name,
@@ -996,7 +996,7 @@ class MockTpm : public Tpm {
                 const UINT16& offset,
                 const TPM_EO& operation,
                 AuthorizationDelegate* authorization_delegate,
-                const PolicyNVResponse& callback) override;
+                PolicyNVResponse callback) override;
   MOCK_METHOD8(PolicyNVShort,
                void(const TPMI_RH_NV_AUTH& auth_handle,
                     const TPMI_RH_NV_INDEX& nv_index,
@@ -1005,7 +1005,7 @@ class MockTpm : public Tpm {
                     const UINT16& offset,
                     const TPM_EO& operation,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicyNVResponse& callback));
+                    PolicyNVResponse callback));
   MOCK_METHOD10(PolicyNVSync,
                 TPM_RC(const TPMI_RH_NV_AUTH& auth_handle,
                        const std::string& auth_handle_name,
@@ -1024,7 +1024,7 @@ class MockTpm : public Tpm {
                     const UINT16& offset,
                     const TPM_EO& operation,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicyCounterTimerResponse& callback));
+                    PolicyCounterTimerResponse callback));
   MOCK_METHOD6(PolicyCounterTimerSync,
                TPM_RC(const TPMI_SH_POLICY& policy_session,
                       const std::string& policy_session_name,
@@ -1037,7 +1037,7 @@ class MockTpm : public Tpm {
                     const std::string& policy_session_name,
                     const TPM_CC& code,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicyCommandCodeResponse& callback));
+                    PolicyCommandCodeResponse callback));
   MOCK_METHOD4(PolicyCommandCodeSync,
                TPM_RC(const TPMI_SH_POLICY& policy_session,
                       const std::string& policy_session_name,
@@ -1047,7 +1047,7 @@ class MockTpm : public Tpm {
                void(const TPMI_SH_POLICY& policy_session,
                     const std::string& policy_session_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicyPhysicalPresenceResponse& callback));
+                    PolicyPhysicalPresenceResponse callback));
   MOCK_METHOD3(PolicyPhysicalPresenceSync,
                TPM_RC(const TPMI_SH_POLICY& policy_session,
                       const std::string& policy_session_name,
@@ -1057,7 +1057,7 @@ class MockTpm : public Tpm {
                     const std::string& policy_session_name,
                     const TPM2B_DIGEST& cp_hash_a,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicyCpHashResponse& callback));
+                    PolicyCpHashResponse callback));
   MOCK_METHOD4(PolicyCpHashSync,
                TPM_RC(const TPMI_SH_POLICY& policy_session,
                       const std::string& policy_session_name,
@@ -1068,7 +1068,7 @@ class MockTpm : public Tpm {
                     const std::string& policy_session_name,
                     const TPM2B_DIGEST& name_hash,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicyNameHashResponse& callback));
+                    PolicyNameHashResponse callback));
   MOCK_METHOD4(PolicyNameHashSync,
                TPM_RC(const TPMI_SH_POLICY& policy_session,
                       const std::string& policy_session_name,
@@ -1081,7 +1081,7 @@ class MockTpm : public Tpm {
                     const TPM2B_NAME& new_parent_name,
                     const TPMI_YES_NO& include_object,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicyDuplicationSelectResponse& callback));
+                    PolicyDuplicationSelectResponse callback));
   MOCK_METHOD6(PolicyDuplicationSelectSync,
                TPM_RC(const TPMI_SH_POLICY& policy_session,
                       const std::string& policy_session_name,
@@ -1097,7 +1097,7 @@ class MockTpm : public Tpm {
                     const TPM2B_NAME& key_sign,
                     const TPMT_TK_VERIFIED& check_ticket,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicyAuthorizeResponse& callback));
+                    PolicyAuthorizeResponse callback));
   MOCK_METHOD7(PolicyAuthorizeSync,
                TPM_RC(const TPMI_SH_POLICY& policy_session,
                       const std::string& policy_session_name,
@@ -1110,7 +1110,7 @@ class MockTpm : public Tpm {
                void(const TPMI_SH_POLICY& policy_session,
                     const std::string& policy_session_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicyAuthValueResponse& callback));
+                    PolicyAuthValueResponse callback));
   MOCK_METHOD3(PolicyAuthValueSync,
                TPM_RC(const TPMI_SH_POLICY& policy_session,
                       const std::string& policy_session_name,
@@ -1119,7 +1119,7 @@ class MockTpm : public Tpm {
                void(const TPMI_SH_POLICY& policy_session,
                     const std::string& policy_session_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicyPasswordResponse& callback));
+                    PolicyPasswordResponse callback));
   MOCK_METHOD3(PolicyPasswordSync,
                TPM_RC(const TPMI_SH_POLICY& policy_session,
                       const std::string& policy_session_name,
@@ -1128,7 +1128,7 @@ class MockTpm : public Tpm {
                void(const TPMI_SH_POLICY& policy_session,
                     const std::string& policy_session_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicyGetDigestResponse& callback));
+                    PolicyGetDigestResponse callback));
   MOCK_METHOD4(PolicyGetDigestSync,
                TPM_RC(const TPMI_SH_POLICY& policy_session,
                       const std::string& policy_session_name,
@@ -1139,7 +1139,7 @@ class MockTpm : public Tpm {
                     const std::string& policy_session_name,
                     const TPMI_YES_NO& written_set,
                     AuthorizationDelegate* authorization_delegate,
-                    const PolicyNvWrittenResponse& callback));
+                    PolicyNvWrittenResponse callback));
   MOCK_METHOD4(PolicyNvWrittenSync,
                TPM_RC(const TPMI_SH_POLICY& policy_session,
                       const std::string& policy_session_name,
@@ -1153,7 +1153,7 @@ class MockTpm : public Tpm {
                     const TPM2B_DATA& outside_info,
                     const TPML_PCR_SELECTION& creation_pcr,
                     AuthorizationDelegate* authorization_delegate,
-                    const CreatePrimaryResponse& callback));
+                    CreatePrimaryResponse callback));
   // Too many args to mock, forward to *Short version.
   TPM_RC CreatePrimarySync(
       const TPMI_RH_HIERARCHY& primary_handle,
@@ -1186,7 +1186,7 @@ class MockTpm : public Tpm {
                     const TPMI_RH_ENABLES& enable,
                     const TPMI_YES_NO& state,
                     AuthorizationDelegate* authorization_delegate,
-                    const HierarchyControlResponse& callback));
+                    HierarchyControlResponse callback));
   MOCK_METHOD5(HierarchyControlSync,
                TPM_RC(const TPMI_RH_HIERARCHY& auth_handle,
                       const std::string& auth_handle_name,
@@ -1199,7 +1199,7 @@ class MockTpm : public Tpm {
                     const TPM2B_DIGEST& auth_policy,
                     const TPMI_ALG_HASH& hash_alg,
                     AuthorizationDelegate* authorization_delegate,
-                    const SetPrimaryPolicyResponse& callback));
+                    SetPrimaryPolicyResponse callback));
   MOCK_METHOD5(SetPrimaryPolicySync,
                TPM_RC(const TPMI_RH_HIERARCHY& auth_handle,
                       const std::string& auth_handle_name,
@@ -1210,7 +1210,7 @@ class MockTpm : public Tpm {
                void(const TPMI_RH_PLATFORM& auth_handle,
                     const std::string& auth_handle_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const ChangePPSResponse& callback));
+                    ChangePPSResponse callback));
   MOCK_METHOD3(ChangePPSSync,
                TPM_RC(const TPMI_RH_PLATFORM& auth_handle,
                       const std::string& auth_handle_name,
@@ -1219,7 +1219,7 @@ class MockTpm : public Tpm {
                void(const TPMI_RH_PLATFORM& auth_handle,
                     const std::string& auth_handle_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const ChangeEPSResponse& callback));
+                    ChangeEPSResponse callback));
   MOCK_METHOD3(ChangeEPSSync,
                TPM_RC(const TPMI_RH_PLATFORM& auth_handle,
                       const std::string& auth_handle_name,
@@ -1228,7 +1228,7 @@ class MockTpm : public Tpm {
                void(const TPMI_RH_CLEAR& auth_handle,
                     const std::string& auth_handle_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const ClearResponse& callback));
+                    ClearResponse callback));
   MOCK_METHOD3(ClearSync,
                TPM_RC(const TPMI_RH_CLEAR& auth_handle,
                       const std::string& auth_handle_name,
@@ -1238,7 +1238,7 @@ class MockTpm : public Tpm {
                     const std::string& auth_name,
                     const TPMI_YES_NO& disable,
                     AuthorizationDelegate* authorization_delegate,
-                    const ClearControlResponse& callback));
+                    ClearControlResponse callback));
   MOCK_METHOD4(ClearControlSync,
                TPM_RC(const TPMI_RH_CLEAR& auth,
                       const std::string& auth_name,
@@ -1249,7 +1249,7 @@ class MockTpm : public Tpm {
                     const std::string& auth_handle_name,
                     const TPM2B_AUTH& new_auth,
                     AuthorizationDelegate* authorization_delegate,
-                    const HierarchyChangeAuthResponse& callback));
+                    HierarchyChangeAuthResponse callback));
   MOCK_METHOD4(HierarchyChangeAuthSync,
                TPM_RC(const TPMI_RH_HIERARCHY_AUTH& auth_handle,
                       const std::string& auth_handle_name,
@@ -1259,7 +1259,7 @@ class MockTpm : public Tpm {
                void(const TPMI_RH_LOCKOUT& lock_handle,
                     const std::string& lock_handle_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const DictionaryAttackLockResetResponse& callback));
+                    DictionaryAttackLockResetResponse callback));
   MOCK_METHOD3(DictionaryAttackLockResetSync,
                TPM_RC(const TPMI_RH_LOCKOUT& lock_handle,
                       const std::string& lock_handle_name,
@@ -1271,7 +1271,7 @@ class MockTpm : public Tpm {
                     const UINT32& new_recovery_time,
                     const UINT32& lockout_recovery,
                     AuthorizationDelegate* authorization_delegate,
-                    const DictionaryAttackParametersResponse& callback));
+                    DictionaryAttackParametersResponse callback));
   MOCK_METHOD6(DictionaryAttackParametersSync,
                TPM_RC(const TPMI_RH_LOCKOUT& lock_handle,
                       const std::string& lock_handle_name,
@@ -1285,7 +1285,7 @@ class MockTpm : public Tpm {
                     const TPML_CC& set_list,
                     const TPML_CC& clear_list,
                     AuthorizationDelegate* authorization_delegate,
-                    const PP_CommandsResponse& callback));
+                    PP_CommandsResponse callback));
   MOCK_METHOD5(PP_CommandsSync,
                TPM_RC(const TPMI_RH_PLATFORM& auth,
                       const std::string& auth_name,
@@ -1297,7 +1297,7 @@ class MockTpm : public Tpm {
                     const std::string& auth_handle_name,
                     const UINT32& algorithm_set,
                     AuthorizationDelegate* authorization_delegate,
-                    const SetAlgorithmSetResponse& callback));
+                    SetAlgorithmSetResponse callback));
   MOCK_METHOD4(SetAlgorithmSetSync,
                TPM_RC(const TPMI_RH_PLATFORM& auth_handle,
                       const std::string& auth_handle_name,
@@ -1311,7 +1311,7 @@ class MockTpm : public Tpm {
                     const TPM2B_DIGEST& fu_digest,
                     const TPMT_SIGNATURE& manifest_signature,
                     AuthorizationDelegate* authorization_delegate,
-                    const FieldUpgradeStartResponse& callback));
+                    FieldUpgradeStartResponse callback));
   MOCK_METHOD7(FieldUpgradeStartSync,
                TPM_RC(const TPMI_RH_PLATFORM& authorization,
                       const std::string& authorization_name,
@@ -1323,7 +1323,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD3(FieldUpgradeData,
                void(const TPM2B_MAX_BUFFER& fu_data,
                     AuthorizationDelegate* authorization_delegate,
-                    const FieldUpgradeDataResponse& callback));
+                    FieldUpgradeDataResponse callback));
   MOCK_METHOD4(FieldUpgradeDataSync,
                TPM_RC(const TPM2B_MAX_BUFFER& fu_data,
                       TPMT_HA* next_digest,
@@ -1332,7 +1332,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD3(FirmwareRead,
                void(const UINT32& sequence_number,
                     AuthorizationDelegate* authorization_delegate,
-                    const FirmwareReadResponse& callback));
+                    FirmwareReadResponse callback));
   MOCK_METHOD3(FirmwareReadSync,
                TPM_RC(const UINT32& sequence_number,
                       TPM2B_MAX_BUFFER* fu_data,
@@ -1341,7 +1341,7 @@ class MockTpm : public Tpm {
                void(const TPMI_DH_CONTEXT& save_handle,
                     const std::string& save_handle_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const ContextSaveResponse& callback));
+                    ContextSaveResponse callback));
   MOCK_METHOD4(ContextSaveSync,
                TPM_RC(const TPMI_DH_CONTEXT& save_handle,
                       const std::string& save_handle_name,
@@ -1350,7 +1350,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD3(ContextLoad,
                void(const TPMS_CONTEXT& context,
                     AuthorizationDelegate* authorization_delegate,
-                    const ContextLoadResponse& callback));
+                    ContextLoadResponse callback));
   MOCK_METHOD3(ContextLoadSync,
                TPM_RC(const TPMS_CONTEXT& context,
                       TPMI_DH_CONTEXT* loaded_handle,
@@ -1358,7 +1358,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD3(FlushContext,
                void(const TPMI_DH_CONTEXT& flush_handle,
                     AuthorizationDelegate* authorization_delegate,
-                    const FlushContextResponse& callback));
+                    FlushContextResponse callback));
   MOCK_METHOD2(FlushContextSync,
                TPM_RC(const TPMI_DH_CONTEXT& flush_handle,
                       AuthorizationDelegate* authorization_delegate));
@@ -1369,7 +1369,7 @@ class MockTpm : public Tpm {
                     const std::string& object_handle_name,
                     const TPMI_DH_PERSISTENT& persistent_handle,
                     AuthorizationDelegate* authorization_delegate,
-                    const EvictControlResponse& callback));
+                    EvictControlResponse callback));
   MOCK_METHOD6(EvictControlSync,
                TPM_RC(const TPMI_RH_PROVISION& auth,
                       const std::string& auth_name,
@@ -1379,7 +1379,7 @@ class MockTpm : public Tpm {
                       AuthorizationDelegate* authorization_delegate));
   MOCK_METHOD2(ReadClock,
                void(AuthorizationDelegate* authorization_delegate,
-                    const ReadClockResponse& callback));
+                    ReadClockResponse callback));
   MOCK_METHOD2(ReadClockSync,
                TPM_RC(TPMS_TIME_INFO* current_time,
                       AuthorizationDelegate* authorization_delegate));
@@ -1388,7 +1388,7 @@ class MockTpm : public Tpm {
                     const std::string& auth_name,
                     const UINT64& new_time,
                     AuthorizationDelegate* authorization_delegate,
-                    const ClockSetResponse& callback));
+                    ClockSetResponse callback));
   MOCK_METHOD4(ClockSetSync,
                TPM_RC(const TPMI_RH_PROVISION& auth,
                       const std::string& auth_name,
@@ -1399,7 +1399,7 @@ class MockTpm : public Tpm {
                     const std::string& auth_name,
                     const TPM_CLOCK_ADJUST& rate_adjust,
                     AuthorizationDelegate* authorization_delegate,
-                    const ClockRateAdjustResponse& callback));
+                    ClockRateAdjustResponse callback));
   MOCK_METHOD4(ClockRateAdjustSync,
                TPM_RC(const TPMI_RH_PROVISION& auth,
                       const std::string& auth_name,
@@ -1410,7 +1410,7 @@ class MockTpm : public Tpm {
                     const UINT32& property,
                     const UINT32& property_count,
                     AuthorizationDelegate* authorization_delegate,
-                    const GetCapabilityResponse& callback));
+                    GetCapabilityResponse callback));
   MOCK_METHOD6(GetCapabilitySync,
                TPM_RC(const TPM_CAP& capability,
                       const UINT32& property,
@@ -1421,7 +1421,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD3(TestParms,
                void(const TPMT_PUBLIC_PARMS& parameters,
                     AuthorizationDelegate* authorization_delegate,
-                    const TestParmsResponse& callback));
+                    TestParmsResponse callback));
   MOCK_METHOD2(TestParmsSync,
                TPM_RC(const TPMT_PUBLIC_PARMS& parameters,
                       AuthorizationDelegate* authorization_delegate));
@@ -1431,7 +1431,7 @@ class MockTpm : public Tpm {
                     const TPM2B_AUTH& auth,
                     const TPM2B_NV_PUBLIC& public_info,
                     AuthorizationDelegate* authorization_delegate,
-                    const NV_DefineSpaceResponse& callback));
+                    NV_DefineSpaceResponse callback));
   MOCK_METHOD5(NV_DefineSpaceSync,
                TPM_RC(const TPMI_RH_PROVISION& auth_handle,
                       const std::string& auth_handle_name,
@@ -1444,7 +1444,7 @@ class MockTpm : public Tpm {
                     const TPMI_RH_NV_INDEX& nv_index,
                     const std::string& nv_index_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const NV_UndefineSpaceResponse& callback));
+                    NV_UndefineSpaceResponse callback));
   MOCK_METHOD5(NV_UndefineSpaceSync,
                TPM_RC(const TPMI_RH_PROVISION& auth_handle,
                       const std::string& auth_handle_name,
@@ -1457,7 +1457,7 @@ class MockTpm : public Tpm {
                     const TPMI_RH_PLATFORM& platform,
                     const std::string& platform_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const NV_UndefineSpaceSpecialResponse& callback));
+                    NV_UndefineSpaceSpecialResponse callback));
   MOCK_METHOD5(NV_UndefineSpaceSpecialSync,
                TPM_RC(const TPMI_RH_NV_INDEX& nv_index,
                       const std::string& nv_index_name,
@@ -1468,7 +1468,7 @@ class MockTpm : public Tpm {
                void(const TPMI_RH_NV_INDEX& nv_index,
                     const std::string& nv_index_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const NV_ReadPublicResponse& callback));
+                    NV_ReadPublicResponse callback));
   MOCK_METHOD5(NV_ReadPublicSync,
                TPM_RC(const TPMI_RH_NV_INDEX& nv_index,
                       const std::string& nv_index_name,
@@ -1483,7 +1483,7 @@ class MockTpm : public Tpm {
                     const TPM2B_MAX_NV_BUFFER& data,
                     const UINT16& offset,
                     AuthorizationDelegate* authorization_delegate,
-                    const NV_WriteResponse& callback));
+                    NV_WriteResponse callback));
   MOCK_METHOD7(NV_WriteSync,
                TPM_RC(const TPMI_RH_NV_AUTH& auth_handle,
                       const std::string& auth_handle_name,
@@ -1498,7 +1498,7 @@ class MockTpm : public Tpm {
                     const TPMI_RH_NV_INDEX& nv_index,
                     const std::string& nv_index_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const NV_IncrementResponse& callback));
+                    NV_IncrementResponse callback));
   MOCK_METHOD5(NV_IncrementSync,
                TPM_RC(const TPMI_RH_NV_AUTH& auth_handle,
                       const std::string& auth_handle_name,
@@ -1512,7 +1512,7 @@ class MockTpm : public Tpm {
                     const std::string& nv_index_name,
                     const TPM2B_MAX_NV_BUFFER& data,
                     AuthorizationDelegate* authorization_delegate,
-                    const NV_ExtendResponse& callback));
+                    NV_ExtendResponse callback));
   MOCK_METHOD6(NV_ExtendSync,
                TPM_RC(const TPMI_RH_NV_AUTH& auth_handle,
                       const std::string& auth_handle_name,
@@ -1527,7 +1527,7 @@ class MockTpm : public Tpm {
                     const std::string& nv_index_name,
                     const UINT64& bits,
                     AuthorizationDelegate* authorization_delegate,
-                    const NV_SetBitsResponse& callback));
+                    NV_SetBitsResponse callback));
   MOCK_METHOD6(NV_SetBitsSync,
                TPM_RC(const TPMI_RH_NV_AUTH& auth_handle,
                       const std::string& auth_handle_name,
@@ -1541,7 +1541,7 @@ class MockTpm : public Tpm {
                     const TPMI_RH_NV_INDEX& nv_index,
                     const std::string& nv_index_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const NV_WriteLockResponse& callback));
+                    NV_WriteLockResponse callback));
   MOCK_METHOD5(NV_WriteLockSync,
                TPM_RC(const TPMI_RH_NV_AUTH& auth_handle,
                       const std::string& auth_handle_name,
@@ -1552,7 +1552,7 @@ class MockTpm : public Tpm {
                void(const TPMI_RH_PROVISION& auth_handle,
                     const std::string& auth_handle_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const NV_GlobalWriteLockResponse& callback));
+                    NV_GlobalWriteLockResponse callback));
   MOCK_METHOD3(NV_GlobalWriteLockSync,
                TPM_RC(const TPMI_RH_PROVISION& auth_handle,
                       const std::string& auth_handle_name,
@@ -1565,7 +1565,7 @@ class MockTpm : public Tpm {
                     const UINT16& size,
                     const UINT16& offset,
                     AuthorizationDelegate* authorization_delegate,
-                    const NV_ReadResponse& callback));
+                    NV_ReadResponse callback));
   MOCK_METHOD8(NV_ReadSync,
                TPM_RC(const TPMI_RH_NV_AUTH& auth_handle,
                       const std::string& auth_handle_name,
@@ -1581,7 +1581,7 @@ class MockTpm : public Tpm {
                     const TPMI_RH_NV_INDEX& nv_index,
                     const std::string& nv_index_name,
                     AuthorizationDelegate* authorization_delegate,
-                    const NV_ReadLockResponse& callback));
+                    NV_ReadLockResponse callback));
   MOCK_METHOD5(NV_ReadLockSync,
                TPM_RC(const TPMI_RH_NV_AUTH& auth_handle,
                       const std::string& auth_handle_name,
@@ -1593,7 +1593,7 @@ class MockTpm : public Tpm {
                     const std::string& nv_index_name,
                     const TPM2B_AUTH& new_auth,
                     AuthorizationDelegate* authorization_delegate,
-                    const NV_ChangeAuthResponse& callback));
+                    NV_ChangeAuthResponse callback));
   MOCK_METHOD4(NV_ChangeAuthSync,
                TPM_RC(const TPMI_RH_NV_INDEX& nv_index,
                       const std::string& nv_index_name,
@@ -1611,7 +1611,7 @@ class MockTpm : public Tpm {
                   const UINT16& size,
                   const UINT16& offset,
                   AuthorizationDelegate* authorization_delegate,
-                  const NV_CertifyResponse& callback) override;
+                  NV_CertifyResponse callback) override;
   MOCK_METHOD9(NV_CertifyShort,
                void(const TPMI_DH_OBJECT& sign_handle,
                     const TPMI_RH_NV_AUTH& auth_handle,
@@ -1621,7 +1621,7 @@ class MockTpm : public Tpm {
                     const UINT16& size,
                     const UINT16& offset,
                     AuthorizationDelegate* authorization_delegate,
-                    const NV_CertifyResponse& callback));
+                    NV_CertifyResponse callback));
   // Too many args to mock, forward to *Short version.
   TPM_RC NV_CertifySync(const TPMI_DH_OBJECT& sign_handle,
                         const std::string& sign_handle_name,

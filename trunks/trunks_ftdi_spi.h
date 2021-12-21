@@ -79,8 +79,7 @@ class TRUNKS_EXPORT TrunksFtdiSpi : public CommandTransceiver {
   ~TrunksFtdiSpi() {}
 
   bool Init() { return false; }
-  void SendCommand(const std::string& command,
-                   const ResponseCallback& callback) {}
+  void SendCommand(const std::string& command, ResponseCallback callback) {}
   std::string SendCommandAndWait(const std::string& command) {
     return std::string("");
   }

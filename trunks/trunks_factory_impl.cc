@@ -5,6 +5,7 @@
 #include "trunks/trunks_factory_impl.h"
 
 #include <memory>
+#include <utility>
 
 #include <base/check.h>
 #include <base/logging.h>
@@ -63,8 +64,8 @@ class TrunksFactoryImpl::PostProcessingTransceiver : public CommandTransceiver {
   bool Init() override { return transceiver_->Init(); }
 
   void SendCommand(const std::string& command,
-                   const ResponseCallback& callback) override {
-    transceiver_->SendCommand(command, callback);
+                   ResponseCallback callback) override {
+    transceiver_->SendCommand(command, std::move(callback));
   }
 
   std::string SendCommandAndWait(const std::string& command) override {

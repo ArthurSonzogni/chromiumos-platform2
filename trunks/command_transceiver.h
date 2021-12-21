@@ -16,7 +16,8 @@ namespace trunks {
 // receives responses. It can operate synchronously or asynchronously.
 class CommandTransceiver {
  public:
-  typedef base::Callback<void(const std::string& response)> ResponseCallback;
+  typedef base::OnceCallback<void(const std::string& response)>
+      ResponseCallback;
 
   virtual ~CommandTransceiver() {}
 
@@ -25,7 +26,7 @@ class CommandTransceiver {
   // transmission error occurs |callback| will be called with a well-formed
   // error |response|.
   virtual void SendCommand(const std::string& command,
-                           const ResponseCallback& callback) = 0;
+                           ResponseCallback callback) = 0;
 
   // Sends a TPM |command| synchronously (i.e. waits for a response) and returns
   // the response. If a transmission error occurs the response will be populated

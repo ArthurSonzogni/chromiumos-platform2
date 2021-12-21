@@ -7,6 +7,7 @@
 
 #include <arpa/inet.h>
 #include <cstring>
+#include <utility>
 
 #include <base/callback.h>
 #include <base/check.h>
@@ -61,8 +62,8 @@ FuzzedCommandTransceiver::FuzzedCommandTransceiver(
 }
 
 void FuzzedCommandTransceiver::SendCommand(const std::string& command,
-                                           const ResponseCallback& callback) {
-  callback.Run(SendCommandAndWait(command));
+                                           ResponseCallback callback) {
+  std::move(callback).Run(SendCommandAndWait(command));
 }
 
 std::string FuzzedCommandTransceiver::SendCommandAndWait(

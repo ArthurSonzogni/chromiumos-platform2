@@ -5,6 +5,7 @@
 #include "trunks/resource_manager.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -275,8 +276,8 @@ TEST_F(ResourceManagerTest, BasicPassThroughAsync) {
       .WillOnce(Return(response));
   std::string actual_response;
   CommandTransceiver::ResponseCallback callback =
-      base::Bind(&Assign, &actual_response);
-  resource_manager_.SendCommand(command, callback);
+      base::BindOnce(&Assign, &actual_response);
+  resource_manager_.SendCommand(command, std::move(callback));
   EXPECT_EQ(actual_response, response);
 }
 

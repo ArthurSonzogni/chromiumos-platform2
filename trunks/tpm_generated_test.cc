@@ -5,6 +5,7 @@
 // Note: These tests are not generated. They test generated code.
 
 #include <iterator>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -314,9 +315,9 @@ class CommandFlowTest : public testing::Test {
 class PostResponse {
  public:
   explicit PostResponse(const std::string& response) : response_(response) {}
-  void operator()(const base::Callback<void(const std::string&)>& callback) {
+  void operator()(base::OnceCallback<void(const std::string&)> callback) {
     base::ThreadTaskRunnerHandle::Get()->PostTask(
-        FROM_HERE, base::Bind(callback, response_));
+        FROM_HERE, base::BindOnce(std::move(callback), response_));
   }
 
  private:
@@ -360,9 +361,9 @@ TEST_F(CommandFlowTest, SimpleCommandFlow) {
       .WillOnce(Return(true));
   Tpm tpm(&transceiver);
   response_code_ = TPM_RC_FAILURE;
-  tpm.Startup(
-      TPM_SU_CLEAR, &authorization,
-      base::Bind(&CommandFlowTest::StartupCallback, base::Unretained(this)));
+  tpm.Startup(TPM_SU_CLEAR, &authorization,
+              base::BindOnce(&CommandFlowTest::StartupCallback,
+                             base::Unretained(this)));
   Run();
   EXPECT_EQ(TPM_RC_SUCCESS, response_code_);
 }
@@ -387,9 +388,9 @@ TEST_F(CommandFlowTest, SimpleCommandFlowWithError) {
   EXPECT_CALL(authorization, GetCommandAuthorization(_, _, _, _))
       .WillOnce(Return(true));
   Tpm tpm(&transceiver);
-  tpm.Startup(
-      TPM_SU_CLEAR, &authorization,
-      base::Bind(&CommandFlowTest::StartupCallback, base::Unretained(this)));
+  tpm.Startup(TPM_SU_CLEAR, &authorization,
+              base::BindOnce(&CommandFlowTest::StartupCallback,
+                             base::Unretained(this)));
   Run();
   EXPECT_EQ(TPM_RC_FAILURE, response_code_);
 }
@@ -453,10 +454,10 @@ TEST_F(CommandFlowTest, FullCommandFlow) {
   null_scheme.scheme = TPM_ALG_NULL;
   null_scheme.details.rsassa.hash_alg = TPM_ALG_SHA256;
   Tpm tpm(&transceiver);
-  tpm.Certify(
-      0x11223344u, "object_handle", 0x55667788u, "sign_handle",
-      Make_TPM2B_DATA("pt_user_data"), null_scheme, &authorization,
-      base::Bind(&CommandFlowTest::CertifyCallback, base::Unretained(this)));
+  tpm.Certify(0x11223344u, "object_handle", 0x55667788u, "sign_handle",
+              Make_TPM2B_DATA("pt_user_data"), null_scheme, &authorization,
+              base::BindOnce(&CommandFlowTest::CertifyCallback,
+                             base::Unretained(this)));
   Run();
   ASSERT_EQ(TPM_RC_SUCCESS, response_code_);
   EXPECT_EQ("pt_signed_data", signed_data_);

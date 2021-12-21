@@ -23,7 +23,7 @@ class MockCommandTransceiver : public CommandTransceiver {
 
   ~MockCommandTransceiver() override;
 
-  MOCK_METHOD2(SendCommand, void(const std::string&, const ResponseCallback&));
+  MOCK_METHOD2(SendCommand, void(const std::string&, ResponseCallback));
   MOCK_METHOD1(SendCommandAndWait, std::string(const std::string&));
 };
 

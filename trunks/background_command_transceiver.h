@@ -46,14 +46,13 @@ class TRUNKS_EXPORT BackgroundCommandTransceiver : public CommandTransceiver {
 
   // CommandTranceiver methods.
   void SendCommand(const std::string& command,
-                   const ResponseCallback& callback) override;
+                   ResponseCallback callback) override;
   std::string SendCommandAndWait(const std::string& command) override;
 
  private:
   // Sends a |command| to the |next_transceiver_| and invokes a |callback| with
   // the command response.
-  void SendCommandTask(const std::string& command,
-                       const ResponseCallback& callback);
+  void SendCommandTask(const std::string& command, ResponseCallback callback);
 
   base::WeakPtr<BackgroundCommandTransceiver> GetWeakPtr() {
     return weak_factory_.GetWeakPtr();

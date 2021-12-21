@@ -129,8 +129,8 @@ int main(int argc, char** argv) {
   CHECK(factory.Initialize()) << "Failed to initialize trunks factory.";
   trunks::ResourceManager resource_manager(factory, low_level_transceiver);
   background_thread.task_runner()->PostNonNestableTask(
-      FROM_HERE, base::Bind(&trunks::ResourceManager::Initialize,
-                            base::Unretained(&resource_manager)));
+      FROM_HERE, base::BindOnce(&trunks::ResourceManager::Initialize,
+                                base::Unretained(&resource_manager)));
   trunks::BackgroundCommandTransceiver background_transceiver(
       &resource_manager, background_thread.task_runner());
   service.set_transceiver(&background_transceiver);

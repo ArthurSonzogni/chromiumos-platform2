@@ -939,7 +939,7 @@ bool TrunksClientTest::NvramTest(const std::string& owner_password) {
     return false;
   }
   // Setup auto-cleanup of the NVRAM space.
-  auto cleanup = base::Bind(
+  auto cleanup = base::BindOnce(
       [](HmacSession* session, const std::string& owner_password,
          TpmUtility* utility, uint32_t index) {
         session->SetEntityAuthorizationValue(owner_password);
@@ -949,7 +949,7 @@ bool TrunksClientTest::NvramTest(const std::string& owner_password) {
         }
       },
       session.get(), owner_password, utility.get(), index);
-  base::ScopedClosureRunner scoper(cleanup);
+  base::ScopedClosureRunner scoper(std::move(cleanup));
 
   session->SetEntityAuthorizationValue(owner_password);
   result = utility->WriteNVSpace(index, 0, nv_data, true /*owner*/,

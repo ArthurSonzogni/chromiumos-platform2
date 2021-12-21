@@ -4,9 +4,9 @@
 
 #include "trunks/tpm_simulator_handle.h"
 
-#include <unistd.h>
-
 #include <iterator>
+#include <unistd.h>
+#include <utility>
 
 #include <base/check_op.h>
 
@@ -124,8 +124,8 @@ void TpmSimulatorHandle::InitializeSimulator() {
 }
 
 void TpmSimulatorHandle::SendCommand(const std::string& command,
-                                     const ResponseCallback& callback) {
-  callback.Run(SendCommandAndWait(command));
+                                     ResponseCallback callback) {
+  std::move(callback).Run(SendCommandAndWait(command));
 }
 
 std::string TpmSimulatorHandle::SendCommandAndWait(const std::string& command) {

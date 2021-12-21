@@ -65,7 +65,8 @@ class TRUNKS_EXPORT TpmStateImpl : public TpmState {
   // capabilities of the given type are sent to the |callback|. The callback
   // returns the next property value to query if there is more data available or
   // 0 if the capability data was empty.
-  using CapabilityCallback = base::Callback<uint32_t(const TPMU_CAPABILITIES&)>;
+  using CapabilityCallback =
+      base::RepeatingCallback<uint32_t(const TPMU_CAPABILITIES&)>;
   TPM_RC GetCapability(const CapabilityCallback& callback,
                        TPM_CAP capability,
                        uint32_t property,

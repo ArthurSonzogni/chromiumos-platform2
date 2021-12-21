@@ -199,7 +199,7 @@ bool TrunksFtdiSpi::Init() {
 }
 
 void TrunksFtdiSpi::SendCommand(const std::string& command,
-                                const ResponseCallback& callback) {
+                                ResponseCallback callback) {
   printf("%s invoked\n", __func__);
 }
 

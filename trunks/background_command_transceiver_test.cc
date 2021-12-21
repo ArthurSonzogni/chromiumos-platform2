@@ -4,6 +4,8 @@
 
 #include "trunks/background_command_transceiver.h"
 
+#include <utility>
+
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/logging.h>
@@ -31,8 +33,8 @@ std::string GetThreadName() {
 }
 
 void GetThreadNameAndCall(
-    const trunks::CommandTransceiver::ResponseCallback& callback) {
-  callback.Run(GetThreadName());
+    trunks::CommandTransceiver::ResponseCallback callback) {
+  std::move(callback).Run(GetThreadName());
 }
 
 void Assign(std::string* to, const std::string& from) {
@@ -71,7 +73,7 @@ TEST_F(BackgroundTransceiverTest, Asynchronous) {
   trunks::BackgroundCommandTransceiver background_transceiver(
       &next_transceiver_, test_thread_.task_runner());
   std::string output = "not_assigned";
-  background_transceiver.SendCommand("test", base::Bind(Assign, &output));
+  background_transceiver.SendCommand("test", base::BindOnce(Assign, &output));
   do {
     base::RunLoop run_loop;
     run_loop.RunUntilIdle();
@@ -87,8 +89,8 @@ TEST_F(BackgroundTransceiverTest, Synchronous) {
   std::string output = "not_assigned";
   // Post a synchronous call to be run when we start pumping the loop.
   task_environment_.GetMainThreadTaskRunner()->PostTask(
-      FROM_HERE, base::Bind(SendCommandAndWaitAndAssign,
-                            &background_transceiver, &output));
+      FROM_HERE, base::BindOnce(SendCommandAndWaitAndAssign,
+                                &background_transceiver, &output));
   base::RunLoop run_loop;
   run_loop.RunUntilIdle();
   // The call to our mock should have happened on the background thread.
