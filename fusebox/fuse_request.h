@@ -155,8 +155,8 @@ class DirEntryResponse {
   // Append |request| to the DirEntryRequest list.
   void Append(std::unique_ptr<DirEntryRequest> request);
 
-  // Error the DirEntry list with errno |error|.
-  void Append(int error);
+  // Append errno |error| to the DirEntry list. Returns |error|.
+  int Append(int error);
 
  private:
   // Called on Append() to respond to DirEntry requests.

@@ -145,9 +145,10 @@ void DirEntryResponse::Append(std::unique_ptr<DirEntryRequest> request) {
   Respond();
 }
 
-void DirEntryResponse::Append(int error) {
+int DirEntryResponse::Append(int error) {
   error_ = error;
   Respond();
+  return error;
 }
 
 void DirEntryResponse::Respond() {

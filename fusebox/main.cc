@@ -14,7 +14,6 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/no_destructor.h>
-#include <base/posix/safe_strerror.h>
 #include <base/strings/stringprintf.h>
 
 #include <brillo/daemons/dbus_daemon.h>
@@ -116,13 +115,15 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   }
 
   void GetAttr(std::unique_ptr<AttrRequest> request, fuse_ino_t ino) override {
+    VLOG(1) << "getattr " << ino;
+
     if (request->IsInterrupted())
       return;
 
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
       request->ReplyError(errno);
-      PLOG(ERROR) << " getattr " << ino;
+      PLOG(ERROR) << "getattr " << ino;
       return;
     }
 
@@ -145,6 +146,8 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   void StatResponse(std::unique_ptr<AttrRequest> request,
                     fuse_ino_t ino,
                     dbus::Response* response) {
+    VLOG(1) << "getattr-resp " << ino;
+
     if (request->IsInterrupted())
       return;
 
@@ -157,7 +160,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
       request->ReplyError(errno);
-      PLOG(ERROR) << "getattr " << ino;
+      PLOG(ERROR) << "getattr-resp " << ino;
       return;
     }
 
@@ -168,13 +171,15 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   void Lookup(std::unique_ptr<EntryRequest> request,
               fuse_ino_t parent,
               const char* name) override {
+    VLOG(1) << "lookup parent " << parent << "/" << name;
+
     if (request->IsInterrupted())
       return;
 
     Node* parent_node = GetInodeTable().Lookup(parent);
     if (!parent_node) {
       request->ReplyError(errno);
-      PLOG(ERROR) << " lookup " << parent;
+      PLOG(ERROR) << "lookup parent " << parent;
       return;
     }
 
@@ -188,7 +193,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
 
     auto lookup_response =
         base::BindOnce(&FuseBoxClient::LookupResponse, base::Unretained(this),
-                       std::move(request), parent, name);
+                       std::move(request), parent, std::string(name));
     constexpr auto timeout = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
     dbus_proxy_->CallMethod(&method, timeout, std::move(lookup_response));
   }
@@ -197,8 +202,10 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
 
   void LookupResponse(std::unique_ptr<EntryRequest> request,
                       fuse_ino_t parent,
-                      const char* name,
+                      std::string name,
                       dbus::Response* response) {
+    VLOG(1) << "lookup-resp parent " << parent << "/" << name;
+
     if (request->IsInterrupted())
       return;
 
@@ -208,10 +215,10 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
       return;
     }
 
-    Node* node = GetInodeTable().Ensure(parent, name);
+    Node* node = GetInodeTable().Ensure(parent, name.c_str());
     if (!node) {
       request->ReplyError(errno);
-      PLOG(ERROR) << " lookup " << parent << " " << name;
+      PLOG(ERROR) << "lookup-resp parent " << parent << "/" << name;
       return;
     }
 
@@ -225,19 +232,21 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   }
 
   void OpenDir(std::unique_ptr<OpenRequest> request, fuse_ino_t ino) override {
+    VLOG(1) << "opendir " << ino;
+
     if (request->IsInterrupted())
       return;
 
     if ((request->flags() & O_ACCMODE) != O_RDONLY) {
-      request->ReplyError(EACCES);
-      LOG(ERROR) << " opendir error: EACCES";
+      errno = request->ReplyError(EACCES);
+      PLOG(ERROR) << "opendir " << ino;
       return;
     }
 
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
       request->ReplyError(errno);
-      PLOG(ERROR) << " opendir " << ino;
+      PLOG(ERROR) << "opendir " << ino;
       return;
     }
 
@@ -248,20 +257,22 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   void ReadDir(std::unique_ptr<DirEntryRequest> request,
                fuse_ino_t ino,
                off_t off) override {
+    VLOG(1) << "readdir off " << off << " fh " << request->fh();
+
     if (request->IsInterrupted())
       return;
 
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
       request->ReplyError(errno);
-      PLOG(ERROR) << " readdir " << ino;
+      PLOG(ERROR) << "readdir " << ino;
       return;
     }
 
     uint64_t handle = fusebox::GetFile(request->fh());
     if (!handle) {
-      LOG(ERROR) << " readdir EBADF " << request->fh();
-      request->ReplyError(EBADF);
+      errno = request->ReplyError(EBADF);
+      PLOG(ERROR) << "readdir " << ino;
       return;
     }
 
@@ -291,6 +302,8 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
                        fuse_ino_t ino,
                        uint64_t handle,
                        dbus::Response* response) {
+    VLOG(1) << "readdir-resp fh " << handle;
+
     if (request->IsInterrupted())
       return;
 
@@ -303,7 +316,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     Node* node = GetInodeTable().Lookup(ino);
     if (!node) {
       request->ReplyError(errno);
-      PLOG(ERROR) << " readdir " << ino;
+      PLOG(ERROR) << "readdir-resp fh " << handle;
       return;
     }
 
@@ -316,22 +329,23 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
                             int32_t file_error,
                             const std::vector<uint8_t>& list,
                             bool has_more) override {
+    VLOG(1) << "readdir-batch fh " << handle;
+
     auto it = readdir_.find(handle);
     if (it == readdir_.end())
       return;
 
     DirEntryResponse* response = it->second.get();
     if (file_error) {
-      int error = FileErrorToErrno(file_error);
-      LOG(ERROR) << base::safe_strerror(error) << " readdir error ["
-                 << file_error << "]";
-      response->Append(error);
+      errno = response->Append(FileErrorToErrno(file_error));
+      PLOG(ERROR) << "readdir-batch [" << file_error << "]";
       return;
     }
 
     const ino_t parent = response->parent();
     if (!GetInodeTable().Lookup(parent)) {
-      response->Append(ENOENT);
+      errno = response->Append(ENOENT);
+      PLOG(ERROR) << "readdir-batch parent " << parent;
       return;
     }
 
@@ -355,12 +369,14 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   }
 
   void ReleaseDir(std::unique_ptr<OkRequest> request, fuse_ino_t ino) override {
+    VLOG(1) << "releasedir fh " << request->fh();
+
     if (request->IsInterrupted())
       return;
 
     if (!fusebox::GetFile(request->fh())) {
-      request->ReplyError(EBADF);
-      LOG(ERROR) << " releasedir EBADF " << request->fh();
+      errno = request->ReplyError(EBADF);
+      PLOG(ERROR) << "releasedir fh " << request->fh();
       return;
     }
 
@@ -482,7 +498,7 @@ int main(int argc, char** argv) {
   }
 
   errno = exit_code;
-  LOG_IF(ERROR, exit_code) << "fusebox exiting";
+  PLOG_IF(ERROR, exit_code) << "fusebox exiting";
   fuse_opt_free_args(&args);
 
   return exit_code;
