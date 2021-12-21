@@ -360,6 +360,7 @@ type cros_var_cache_shill, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache_modem_utilities, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache_camera, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache_cups, file_type, cros_file_type, cros_var_file_type;
+type cros_var_cache_fwupd, file_type, cros_file_type, cros_var_file_type;
 
 # /var/db
 type cros_var_db, file_type, cros_file_type, cros_var_file_type;
@@ -371,6 +372,8 @@ type cros_var_lib_chaps, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_cras, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_crash_reporter, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_dbus, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_fwupd, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_fwupd_pending, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_imageloader, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_misc, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_oemcrypto, file_type, cros_file_type, cros_var_file_type;
