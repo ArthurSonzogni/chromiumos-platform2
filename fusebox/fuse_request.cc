@@ -151,6 +151,8 @@ void DirEntryResponse::Append(int error) {
 }
 
 void DirEntryResponse::Respond() {
+  constexpr size_t kFlushAddedEntries = 25;
+
   const auto process_next_request = [&](auto& request) {
     if (request->IsInterrupted())
       return true;
@@ -166,7 +168,8 @@ void DirEntryResponse::Respond() {
       return true;
     }
 
-    while (offset < entry_.size()) {
+    size_t added;
+    for (added = 0; offset < entry_.size(); ++added) {
       const off_t next = 1 + offset;
       if (request->AddEntry(entry_[offset++], next))
         continue;  // add next entry
@@ -175,9 +178,10 @@ void DirEntryResponse::Respond() {
     }
 
     DCHECK_GE(offset, entry_.size());
-    if (end_)
+    bool done = end_ || added >= kFlushAddedEntries;
+    if (done)
       request->ReplyDone();
-    return end_;
+    return done;
   };
 
   while (!request_.empty()) {
