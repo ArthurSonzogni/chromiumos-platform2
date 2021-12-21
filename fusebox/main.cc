@@ -14,6 +14,7 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/no_destructor.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/strings/stringprintf.h>
 
 #include <brillo/daemons/dbus_daemon.h>
@@ -442,6 +443,61 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
 
     uint64_t handle = fusebox::OpenFile(std::move(fd));
     request->ReplyOpen(handle);
+  }
+
+  void Read(std::unique_ptr<BufferRequest> request,
+            fuse_ino_t ino,
+            size_t size,
+            off_t off) override {
+    VLOG(1) << "read fh " << request->fh() << " off " << off << " size "
+            << size;
+
+    if (request->IsInterrupted())
+      return;
+
+    if (size > SSIZE_MAX) {
+      errno = request->ReplyError(EINVAL);
+      PLOG(ERROR) << "read size";
+      return;
+    }
+
+    if (!fusebox::GetFile(request->fh())) {
+      errno = request->ReplyError(EBADF);
+      PLOG(ERROR) << "read fh " << request->fh();
+      return;
+    }
+
+    int fd = fusebox::GetFileDescriptor(request->fh());
+    if (fd != -1) {
+      ReadFileDescriptor(std::move(request), ino, fd, size, off);
+      return;
+    }
+
+    // TODO(noel): implement server read request flow.
+    request->ReplyError(ENOSYS);
+  }
+
+  void ReadFileDescriptor(std::unique_ptr<BufferRequest> request,
+                          fuse_ino_t ino,
+                          int fd,
+                          size_t size,
+                          off_t off) {
+    VLOG(1) << "read-fd fh " << request->fh() << " off " << off << " size "
+            << size;
+
+    std::vector<char> buf;
+    DCHECK_LE(size, SSIZE_MAX);
+    buf.resize(size);
+
+    DCHECK_NE(-1, fd);
+    ssize_t length = HANDLE_EINTR(pread(fd, buf.data(), size, off));
+    if (length == -1) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "read-fd fh " << request->fh();
+      return;
+    }
+
+    request->ReplyBuffer(buf.data(), length);
   }
 
   void Release(std::unique_ptr<OkRequest> request, fuse_ino_t ino) override {
