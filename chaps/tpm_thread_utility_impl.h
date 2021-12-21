@@ -5,6 +5,7 @@
 #ifndef CHAPS_TPM_THREAD_UTILITY_IMPL_H_
 #define CHAPS_TPM_THREAD_UTILITY_IMPL_H_
 
+#include "chaps/async_tpm_utility.h"
 #include "chaps/tpm_utility.h"
 
 #include <memory>
@@ -18,7 +19,7 @@ namespace chaps {
 // TPMThreadUtilityImpl will execute all TPM operations on a standalong thread.
 // All member functions are thread-safe, and all callbacks will post back to the
 // origin task runner.
-class TPMThreadUtilityImpl : public TPMUtility {
+class TPMThreadUtilityImpl : public AsyncTPMUtility {
  public:
   explicit TPMThreadUtilityImpl(std::unique_ptr<TPMUtility> inner_tpm);
   TPMThreadUtilityImpl(const TPMThreadUtilityImpl&) = delete;
@@ -105,6 +106,21 @@ class TPMThreadUtilityImpl : public TPMUtility {
                   const std::string& encrypted_data,
                   const brillo::SecureBlob& auth_value,
                   brillo::SecureBlob* unsealed_data) override;
+
+  // These functions called the correspondinf functions asynchronously.
+  // Note: The callback would be executed on the caller thread, so the caller
+  // needs to create an event loop before calling these functions.
+  void GenerateRandomAsync(int num_bytes,
+                           GenerateRandomCallback callback) override;
+  void UnloadKeysForSlotAsync(int slot,
+                              UnloadKeysForSlotCallback callback) override;
+  void SealDataAsync(const std::string& unsealed_data,
+                     const brillo::SecureBlob& auth_value,
+                     SealDataCallback callback) override;
+  void UnsealDataAsync(const std::string& key_blob,
+                       const std::string& encrypted_data,
+                       const brillo::SecureBlob& auth_value,
+                       UnsealDataCallback callback) override;
 
  private:
   // base::Thread subclass so we can implement CleanUp.

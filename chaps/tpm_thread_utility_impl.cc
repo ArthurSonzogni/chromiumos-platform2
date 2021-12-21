@@ -8,8 +8,10 @@
 #include "chaps/tpm_thread_utility_impl.h"
 
 #include <base/bind.h>
+#include <base/bind_post_task.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/thread.h>
+#include <base/threading/thread_task_runner_handle.h>
 
 namespace {
 constexpr char kTPMThreadName[] = "tpm_thread";
@@ -298,6 +300,88 @@ bool TPMThreadUtilityImpl::UnsealData(const std::string& key_blob,
   SendRequestAndWaitResult(&TPMUtility::UnsealData, &result, key_blob,
                            encrypted_data, auth_value, unsealed_data);
   return result;
+}
+
+void TPMThreadUtilityImpl::GenerateRandomAsync(
+    int num_bytes, GenerateRandomCallback callback) {
+  CHECK(base::SequencedTaskRunnerHandle::IsSet())
+      << "Caller doesn't have task runner.";
+
+  auto random_data = std::make_unique<std::string>();
+
+  base::OnceCallback<bool(void)> task = base::BindOnce(
+      &TPMUtility::GenerateRandom, base::Unretained(inner_tpm_.get()),
+      num_bytes, random_data.get());
+
+  base::OnceCallback<void(bool)> run_callback = base::BindOnce(
+      [](GenerateRandomCallback callback,
+         std::unique_ptr<std::string> random_data,
+         bool result) { std::move(callback).Run(result, *random_data); },
+      std::move(callback), std::move(random_data));
+
+  task_runner_->PostTaskAndReplyWithResult(FROM_HERE, std::move(task),
+                                           std::move(run_callback));
+}
+
+void TPMThreadUtilityImpl::UnloadKeysForSlotAsync(
+    int slot, UnloadKeysForSlotCallback callback) {
+  CHECK(base::SequencedTaskRunnerHandle::IsSet())
+      << "Caller doesn't have task runner.";
+
+  base::OnceClosure task =
+      base::BindOnce(&TPMUtility::UnloadKeysForSlot,
+                     base::Unretained(inner_tpm_.get()), slot)
+          .Then(base::BindPostTask(base::SequencedTaskRunnerHandle::Get(),
+                                   std::move(callback)));
+
+  task_runner_->PostTask(FROM_HERE, std::move(task));
+}
+
+void TPMThreadUtilityImpl::SealDataAsync(const std::string& unsealed_data,
+                                         const brillo::SecureBlob& auth_value,
+                                         SealDataCallback callback) {
+  CHECK(base::SequencedTaskRunnerHandle::IsSet())
+      << "Caller doesn't have task runner.";
+
+  auto key_blob = std::make_unique<std::string>();
+  auto encrypted_data = std::make_unique<std::string>();
+
+  base::OnceCallback<bool(void)> task = base::BindOnce(
+      &TPMUtility::SealData, base::Unretained(inner_tpm_.get()), unsealed_data,
+      auth_value, key_blob.get(), encrypted_data.get());
+
+  base::OnceCallback<void(bool)> run_callback = base::BindOnce(
+      [](SealDataCallback callback, std::unique_ptr<std::string> key_blob,
+         std::unique_ptr<std::string> encrypted_data, bool result) {
+        std::move(callback).Run(result, *key_blob, *encrypted_data);
+      },
+      std::move(callback), std::move(key_blob), std::move(encrypted_data));
+
+  task_runner_->PostTaskAndReplyWithResult(FROM_HERE, std::move(task),
+                                           std::move(run_callback));
+}
+
+void TPMThreadUtilityImpl::UnsealDataAsync(const std::string& key_blob,
+                                           const std::string& encrypted_data,
+                                           const brillo::SecureBlob& auth_value,
+                                           UnsealDataCallback callback) {
+  CHECK(base::SequencedTaskRunnerHandle::IsSet())
+      << "Caller doesn't have task runner.";
+
+  auto unsealed_data = std::make_unique<brillo::SecureBlob>();
+
+  base::OnceCallback<bool(void)> task = base::BindOnce(
+      &TPMUtility::UnsealData, base::Unretained(inner_tpm_.get()), key_blob,
+      encrypted_data, auth_value, unsealed_data.get());
+
+  base::OnceCallback<void(bool)> run_callback = base::BindOnce(
+      [](UnsealDataCallback callback,
+         std::unique_ptr<brillo::SecureBlob> unsealed_data,
+         bool result) { std::move(callback).Run(result, *unsealed_data); },
+      std::move(callback), std::move(unsealed_data));
+
+  task_runner_->PostTaskAndReplyWithResult(FROM_HERE, std::move(task),
+                                           std::move(run_callback));
 }
 
 }  // namespace chaps
