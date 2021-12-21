@@ -73,6 +73,20 @@ constexpr EllipticCurve::CurveType kDefaultCurve =
 
 constexpr int kMinPassBlobSize = 32;
 
+// Returns the total number of bits set in the first |size| elements from
+// |array|.
+int CountSetBits(const uint8_t* array, size_t size) {
+  int res = 0;
+  for (size_t i = 0; i < size; ++i) {
+    for (int bit_position = 0; bit_position < 8; ++bit_position) {
+      if ((array[i] & (1 << bit_position)) != 0) {
+        ++res;
+      }
+    }
+  }
+  return res;
+}
+
 std::string OwnerDependencyEnumClassToString(
     Tpm::TpmOwnerDependency dependency) {
   switch (dependency) {
@@ -526,6 +540,234 @@ bool Tpm2Impl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
                               Blob* delegate_secret) {
   LOG(ERROR) << __func__ << ": Not implemented.";
   return false;
+}
+
+bool Tpm2Impl::Sign(const SecureBlob& key_blob,
+                    const SecureBlob& input,
+                    uint32_t bound_pcr_index,
+                    SecureBlob* signature) {
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
+  trunks::AuthorizationDelegate* delegate;
+  std::unique_ptr<trunks::PolicySession> policy_session;
+  std::unique_ptr<trunks::HmacSession> hmac_session;
+  if (bound_pcr_index != kNotBoundToPCR) {
+    policy_session = trunks->factory->GetPolicySession();
+    if (StatusChain<TPMErrorBase> err =
+            HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
+                policy_session->StartUnboundSession(true, false)))) {
+      LOG(ERROR) << "Error starting policy session: " << err;
+      return false;
+    }
+    if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+            CreateError<TPM2Error>(policy_session->PolicyPCR(
+                std::map<uint32_t, std::string>({{bound_pcr_index, ""}}))))) {
+      LOG(ERROR) << "Error creating PCR policy: " << err;
+      return false;
+    }
+    delegate = policy_session->GetDelegate();
+  } else {
+    hmac_session = trunks->factory->GetHmacSession();
+    if (StatusChain<TPMErrorBase> err =
+            HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
+                hmac_session->StartUnboundSession(true, true)))) {
+      LOG(ERROR) << "Error starting hmac session: " << err;
+      return false;
+    }
+    hmac_session->SetEntityAuthorizationValue("");
+    delegate = hmac_session->GetDelegate();
+  }
+
+  ScopedKeyHandle handle;
+  if (StatusChain<TPMErrorBase> err = LoadWrappedKey(key_blob, &handle)) {
+    LOG(ERROR) << "Error loading pcr bound key: " << err;
+    return false;
+  }
+  std::string tpm_signature;
+  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM2Error>(trunks->tpm_utility->Sign(
+              handle.value(), trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA256,
+              input.to_string(), true /* generate_hash */, delegate,
+              &tpm_signature)))) {
+    LOG(ERROR) << "Error signing: " << err;
+    return false;
+  }
+  signature->assign(tpm_signature.begin(), tpm_signature.end());
+  return true;
+}
+
+bool Tpm2Impl::CreatePCRBoundKey(
+    const std::map<uint32_t, brillo::Blob>& pcr_map,
+    AsymmetricKeyUsage key_type,
+    SecureBlob* key_blob,
+    SecureBlob* public_key_der,
+    SecureBlob* creation_blob) {
+  CHECK(key_blob) << "No key blob argument provided.";
+  CHECK(creation_blob) << "No creation blob argument provided.";
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
+  std::string policy_digest;
+  std::map<uint32_t, std::string> str_pcr_map = ToStrPcrMap(pcr_map);
+  if (StatusChain<TPMErrorBase> err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
+              trunks->tpm_utility->GetPolicyDigestForPcrValues(
+                  str_pcr_map, false /* use_auth_value */, &policy_digest)))) {
+    LOG(ERROR) << "Error getting policy digest: " << err;
+    return false;
+  }
+  std::vector<uint32_t> pcr_list;
+  for (const auto& map_pair : pcr_map) {
+    pcr_list.push_back(map_pair.first);
+  }
+  std::string tpm_key_blob;
+  std::string tpm_creation_blob;
+  std::unique_ptr<trunks::AuthorizationDelegate> delegate =
+      trunks->factory->GetPasswordAuthorization("");
+  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM2Error>(trunks->tpm_utility->CreateRSAKeyPair(
+              ConvertAsymmetricKeyUsage(key_type), kDefaultTpmRsaModulusSize,
+              kDefaultTpmPublicExponent,
+              "",  // No authorization
+              policy_digest,
+              true,  // use_only_policy_authorization
+              pcr_list, delegate.get(), &tpm_key_blob,
+              &tpm_creation_blob /* No creation_blob */)))) {
+    LOG(ERROR) << "Error creating a pcr bound key: " << err;
+    return false;
+  }
+  key_blob->assign(tpm_key_blob.begin(), tpm_key_blob.end());
+  creation_blob->assign(tpm_creation_blob.begin(), tpm_creation_blob.end());
+
+  // if |public_key_der| is present, create and assign it.
+  if (public_key_der) {
+    trunks::TPM2B_PUBLIC public_data;
+    trunks::TPM2B_PRIVATE private_data;
+    if (!trunks->factory->GetBlobParser()->ParseKeyBlob(
+            key_blob->to_string(), &public_data, &private_data)) {
+      return false;
+    }
+    if (!PublicAreaToPublicKeyDER(public_data.public_area, public_key_der)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool Tpm2Impl::VerifyPCRBoundKey(
+    const std::map<uint32_t, brillo::Blob>& pcr_map,
+    const SecureBlob& key_blob,
+    const SecureBlob& creation_blob) {
+  TrunksClientContext* trunks;
+  if (!GetTrunksContext(&trunks)) {
+    return false;
+  }
+  // First we verify that the PCR were in a known good state at the time of
+  // Key creation.
+  trunks::TPM2B_CREATION_DATA creation_data;
+  trunks::TPM2B_DIGEST creation_hash;
+  trunks::TPMT_TK_CREATION creation_ticket;
+  if (!trunks->factory->GetBlobParser()->ParseCreationBlob(
+          creation_blob.to_string(), &creation_data, &creation_hash,
+          &creation_ticket)) {
+    LOG(ERROR) << "Error parsing creation_blob.";
+    return false;
+  }
+  trunks::TPML_PCR_SELECTION& pcr_select =
+      creation_data.creation_data.pcr_select;
+  if (pcr_select.count != 1) {
+    LOG(ERROR) << "Creation data missing creation PCR value.";
+    return false;
+  }
+  if (pcr_select.pcr_selections[0].hash != trunks::TPM_ALG_SHA256) {
+    LOG(ERROR) << "Creation PCR extended with wrong hash algorithm.";
+    return false;
+  }
+  uint8_t* pcr_selections = pcr_select.pcr_selections[0].pcr_select;
+  if (pcr_map.size() != CountSetBits(pcr_selections, PCR_SELECT_MIN)) {
+    LOG(ERROR) << "Incorrect creation PCR specified.";
+    return false;
+  }
+  brillo::Blob concatenated_pcr_values;
+  for (const auto& map_pair : pcr_map) {
+    uint32_t pcr_index = map_pair.first;
+    const brillo::Blob& pcr_value = map_pair.second;
+    if (pcr_index >= 8 * PCR_SELECT_MIN ||
+        (pcr_selections[pcr_index / 8] & (1 << (pcr_index % 8))) == 0) {
+      LOG(ERROR) << "Incorrect creation PCR specified.";
+      return false;
+    }
+    concatenated_pcr_values.insert(concatenated_pcr_values.end(),
+                                   pcr_value.begin(), pcr_value.end());
+  }
+  Blob expected_pcr_digest = Sha256(concatenated_pcr_values);
+  if (creation_data.creation_data.pcr_digest.size !=
+      expected_pcr_digest.size()) {
+    LOG(ERROR) << "Incorrect PCR digest size.";
+    return false;
+  }
+  if (memcmp(creation_data.creation_data.pcr_digest.buffer,
+             expected_pcr_digest.data(), expected_pcr_digest.size()) != 0) {
+    LOG(ERROR) << "Incorrect PCR digest value.";
+    return false;
+  }
+  // Then we certify that the key was created by the TPM.
+  ScopedKeyHandle scoped_handle;
+  if (StatusChain<TPMErrorBase> err =
+          LoadWrappedKey(key_blob, &scoped_handle)) {
+    LOG(ERROR) << "Failed to load wrapped key: " << err;
+    return false;
+  }
+  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM2Error>(trunks->tpm_utility->CertifyCreation(
+              scoped_handle.value(), creation_blob.to_string())))) {
+    LOG(ERROR) << "Error certifying that key was created by TPM: " << err;
+    return false;
+  }
+  // Finally we verify that the key's policy_digest is the expected value.
+  std::unique_ptr<trunks::PolicySession> trial_session =
+      trunks->factory->GetTrialSession();
+  if (StatusChain<TPMErrorBase> err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
+              trial_session->StartUnboundSession(true, true)))) {
+    LOG(ERROR) << "Error starting a trial session: " << err;
+    return false;
+  }
+  std::map<uint32_t, std::string> str_pcr_map = ToStrPcrMap(pcr_map);
+  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM2Error>(trial_session->PolicyPCR(str_pcr_map)))) {
+    LOG(ERROR) << "Error restricting trial policy to pcr value: " << err;
+    return false;
+  }
+  std::string policy_digest;
+  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM2Error>(trial_session->GetDigest(&policy_digest)))) {
+    LOG(ERROR) << "Error getting policy digest: " << err;
+    return false;
+  }
+  trunks::TPMT_PUBLIC public_area;
+  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM2Error>(trunks->tpm_utility->GetKeyPublicArea(
+              scoped_handle.value(), &public_area)))) {
+    LOG(ERROR) << "Error getting key public area: " << err;
+    return false;
+  }
+  if (public_area.auth_policy.size != policy_digest.size()) {
+    LOG(ERROR) << "Key auth policy and policy digest are of different length."
+               << public_area.auth_policy.size << "," << policy_digest.size();
+    return false;
+  } else if (memcmp(public_area.auth_policy.buffer, policy_digest.data(),
+                    policy_digest.size()) != 0) {
+    LOG(ERROR) << "Key auth policy is different from policy digest.";
+    return false;
+  } else if (public_area.object_attributes & trunks::kUserWithAuth) {
+    LOG(ERROR) << "Key authorization is not restricted to policy.";
+    return false;
+  }
+  return true;
 }
 
 bool Tpm2Impl::ExtendPCR(uint32_t pcr_index, const Blob& extension) {

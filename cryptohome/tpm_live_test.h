@@ -39,6 +39,9 @@ class TpmLiveTest {
   bool EncryptAndDecryptData(const brillo::SecureBlob& pcr_bound_key,
                              const std::map<uint32_t, brillo::Blob>& pcr_map);
 
+  // This test checks if PCRs and PCR bound keys work correctly.
+  bool PCRKeyTest();
+
   // This test checks if we can create and load an RSA decryption key and use
   // it to encrypt and decrypt.
   bool DecryptionKeyTest();

@@ -53,6 +53,10 @@ namespace cryptohome {
 TpmLiveTest::TpmLiveTest() : tpm_(Tpm::GetSingleton()) {}
 
 bool TpmLiveTest::RunLiveTests() {
+  if (!PCRKeyTest()) {
+    LOG(ERROR) << "Error running PCRKeyTest.";
+    return false;
+  }
   if (!DecryptionKeyTest()) {
     LOG(ERROR) << "Error running Decryption test.";
     return false;
@@ -70,6 +74,89 @@ bool TpmLiveTest::RunLiveTests() {
     return false;
   }
   LOG(INFO) << "All tests run successfully.";
+  return true;
+}
+
+bool TpmLiveTest::SignData(const SecureBlob& pcr_bound_key,
+                           const SecureBlob& public_key_der,
+                           int index) {
+  SecureBlob input_data("input_data");
+  SecureBlob signature;
+  if (!tpm_->Sign(pcr_bound_key, input_data, index, &signature)) {
+    LOG(ERROR) << "Error signing with PCR bound key.";
+    return false;
+  }
+  const unsigned char* public_key_data = public_key_der.data();
+  crypto::ScopedRSA rsa(
+      d2i_RSAPublicKey(nullptr, &public_key_data, public_key_der.size()));
+  if (!rsa.get()) {
+    LOG(ERROR) << "Failed to decode public key.";
+    return false;
+  }
+  SecureBlob digest = Sha256(input_data);
+  if (!RSA_verify(NID_sha256, digest.data(), digest.size(), signature.data(),
+                  signature.size(), rsa.get())) {
+    LOG(ERROR) << "Failed to verify signature.";
+    return false;
+  }
+  return true;
+}
+
+bool TpmLiveTest::PCRKeyTest() {
+  LOG(INFO) << "PCRKeyTest started";
+  uint32_t index = 5;
+  Blob pcr_data;
+  if (!tpm_->ReadPCR(index, &pcr_data)) {
+    LOG(ERROR) << "Error reading pcr value from TPM.";
+    return false;
+  }
+  SecureBlob pcr_bound_key1;  // Sign key
+  SecureBlob pcr_bound_key2;  // Decrypt key
+  SecureBlob public_key_der1;
+  SecureBlob public_key_der2;
+  SecureBlob creation_blob1;
+  SecureBlob creation_blob2;
+  std::map<uint32_t, brillo::Blob> pcr_map({{index, pcr_data}});
+  // Create the keys.
+  if (!tpm_->CreatePCRBoundKey(pcr_map, AsymmetricKeyUsage::kSignKey,
+                               &pcr_bound_key1, &public_key_der1,
+                               &creation_blob1)) {
+    LOG(ERROR) << "Error creating PCR bound signing key.";
+    return false;
+  }
+  if (!tpm_->CreatePCRBoundKey(pcr_map, AsymmetricKeyUsage::kDecryptKey,
+                               &pcr_bound_key2, &public_key_der2,
+                               &creation_blob2)) {
+    LOG(ERROR) << "Error creating PCR bound decryption key.";
+    return false;
+  }
+  if (!tpm_->VerifyPCRBoundKey(pcr_map, pcr_bound_key1, creation_blob1) ||
+      !tpm_->VerifyPCRBoundKey(pcr_map, pcr_bound_key2, creation_blob2)) {
+    LOG(ERROR) << "Error verifying PCR bound key.";
+    return false;
+  }
+  // Check that signing key works.
+  if (!SignData(pcr_bound_key1, public_key_der1, index)) {
+    LOG(ERROR) << "Error signing the blob.";
+    return false;
+  }
+  // Check that signing data doesn't work (only for TPM2).
+  if (tpm_->GetVersion() != Tpm::TPM_1_2) {
+    if (SignData(pcr_bound_key2, public_key_der2, index)) {
+      LOG(ERROR) << "Signing data succeeded with decryption only key.";
+      return false;
+    }
+  }
+  // Extend PCR to invalidate the keys.
+  if (!tpm_->ExtendPCR(index, BlobFromString("01234567890123456789"))) {
+    LOG(ERROR) << "Error extending PCR.";
+    return false;
+  }
+  if (SignData(pcr_bound_key1, public_key_der1, index)) {
+    LOG(ERROR) << "Sign succeeded without the correct PCR state.";
+    return false;
+  }
+  LOG(INFO) << "PCRKeyTest ended successfully.";
   return true;
 }
 

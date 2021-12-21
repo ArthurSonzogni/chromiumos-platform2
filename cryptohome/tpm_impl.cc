@@ -84,10 +84,44 @@ namespace {
 
 typedef std::unique_ptr<BYTE, base::FreeDeleter> ScopedByteArray;
 
+// The DER encoding of SHA-256 DigestInfo as defined in PKCS #1.
+const unsigned char kSha256DigestInfo[] = {
+    0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
+    0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20};
+
 // This is the well known UUID present in TPM1.2 implemenations. It is used
 // to load the cryptohome key into a TPM1.2 in a legacy path.
 const TSS_UUID kCryptohomeWellKnownUuid = {0x0203040b, 0, 0,
                                            0,          0, {0, 9, 8, 1, 0, 3}};
+
+// Creates a DER encoded RSA public key given a serialized TPM_PUBKEY.
+//
+// Parameters
+//   public_key - A serialized TPM_PUBKEY as returned by Tspi_Key_GetPubKey.
+//   public_key_der - The same public key in DER encoded form.
+bool ConvertPublicKeyToDER(const SecureBlob& public_key,
+                           SecureBlob* public_key_der) {
+  crypto::ScopedRSA rsa =
+      ParseRsaFromTpmPubkeyBlob(Blob(public_key.begin(), public_key.end()));
+  if (!rsa) {
+    return false;
+  }
+
+  int der_length = i2d_RSAPublicKey(rsa.get(), NULL);
+  if (der_length < 0) {
+    LOG(ERROR) << "Failed to DER-encode public key.";
+    return false;
+  }
+  public_key_der->resize(der_length);
+  unsigned char* der_buffer = public_key_der->data();
+  der_length = i2d_RSAPublicKey(rsa.get(), &der_buffer);
+  if (der_length < 0) {
+    LOG(ERROR) << "Failed to DER-encode public key.";
+    return false;
+  }
+  public_key_der->resize(der_length);
+  return true;
+}
 
 std::string OwnerDependencyEnumClassToString(
     Tpm::TpmOwnerDependency dependency) {
@@ -1185,6 +1219,290 @@ bool TpmImpl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
   is_delegate_bound_to_pcr_ = !bound_pcrs.empty();
   has_reset_lock_permissions_ = true;
 
+  return true;
+}
+
+bool TpmImpl::Sign(const SecureBlob& key_blob,
+                   const SecureBlob& input,
+                   uint32_t bound_pcr_index,
+                   SecureBlob* signature) {
+  CHECK(signature);
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << __func__ << ": Failed to connect to the TPM.";
+    return false;
+  }
+
+  // Load the Storage Root Key.
+  ScopedTssKey srk_handle(context_handle);
+  if (StatusChain<TPMErrorBase> err =
+          LoadSrk(context_handle, srk_handle.ptr())) {
+    LOG(ERROR) << __func__ << ": Failed to load SRK: " << err;
+    return false;
+  }
+
+  // Load the key (which should be wrapped by the SRK).
+  ScopedTssKey key_handle(context_handle);
+  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM1Error>(Tspi_Context_LoadKeyByBlob(
+              context_handle, srk_handle, key_blob.size(),
+              const_cast<BYTE*>(key_blob.data()), key_handle.ptr())))) {
+    LOG(ERROR) << __func__ << ": Failed to load key: " << err;
+    return false;
+  }
+
+  // Create a hash object to hold the input.
+  ScopedTssObject<TSS_HHASH> hash_handle(context_handle);
+  if (StatusChain<TPMErrorBase> err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+              Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_HASH,
+                                        TSS_HASH_OTHER, hash_handle.ptr())))) {
+    LOG(ERROR) << __func__ << ": Failed to create hash object: " << err;
+    return false;
+  }
+
+  // Create the DER encoded input.
+  SecureBlob der_header(std::begin(kSha256DigestInfo),
+                        std::end(kSha256DigestInfo));
+  SecureBlob der_encoded_input = SecureBlob::Combine(der_header, Sha256(input));
+
+  // Don't hash anything, just push the input data into the hash object.
+  if (StatusChain<TPMErrorBase> err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_Hash_SetHashValue(
+              hash_handle, der_encoded_input.size(),
+              const_cast<BYTE*>(der_encoded_input.data()))))) {
+    LOG(ERROR) << __func__ << ": Failed to set hash data: " << err;
+    return false;
+  }
+
+  UINT32 length = 0;
+  ScopedTssMemory buffer(context_handle);
+  if (StatusChain<TPMErrorBase> err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_Hash_Sign(
+              hash_handle, key_handle, &length, buffer.ptr())))) {
+    LOG(ERROR) << __func__ << ": Failed to generate signature: " << err;
+    return false;
+  }
+  SecureBlob tmp(buffer.value(), buffer.value() + length);
+  brillo::SecureClearBytes(buffer.value(), length);
+  signature->swap(tmp);
+  return true;
+}
+
+bool TpmImpl::CreatePCRBoundKey(const std::map<uint32_t, brillo::Blob>& pcr_map,
+                                AsymmetricKeyUsage key_type,
+                                brillo::SecureBlob* key_blob,
+                                brillo::SecureBlob* public_key_der,
+                                brillo::SecureBlob* creation_blob) {
+  CHECK(creation_blob) << "Error no creation_blob.";
+  creation_blob->clear();
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << __func__ << ": Failed to connect to the TPM.";
+    return false;
+  }
+
+  // Load the Storage Root Key.
+  ScopedTssKey srk_handle(context_handle);
+  if (StatusChain<TPMErrorBase> err =
+          LoadSrk(context_handle, srk_handle.ptr())) {
+    LOG(ERROR) << __func__ << ": Failed to load SRK: " << err;
+    return false;
+  }
+
+  // Create a PCRS object to hold pcr_index and pcr_value.
+  ScopedTssPcrs pcrs(context_handle);
+  if (StatusChain<TPMErrorBase> err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+              Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_PCRS,
+                                        TSS_PCRS_STRUCT_INFO, pcrs.ptr())))) {
+    LOG(ERROR) << __func__ << ": Failed to create PCRS object: " << err;
+    return false;
+  }
+
+  for (const auto& map_pair : pcr_map) {
+    uint32_t pcr_index = map_pair.first;
+    Blob pcr_value = map_pair.second;
+    if (pcr_value.empty()) {
+      if (!ReadPCR(pcr_index, &pcr_value)) {
+        LOG(ERROR) << __func__ << ": Failed to read PCR.";
+        return false;
+      }
+    }
+
+    BYTE* pcr_value_buffer = const_cast<BYTE*>(pcr_value.data());
+    Tspi_PcrComposite_SetPcrValue(pcrs, pcr_index, pcr_value.size(),
+                                  pcr_value_buffer);
+  }
+
+  // Create a non-migratable key restricted to |pcrs|.
+  ScopedTssKey pcr_bound_key(context_handle);
+  TSS_FLAG init_flags =
+      TSS_KEY_VOLATILE | TSS_KEY_NOT_MIGRATABLE | kDefaultTpmRsaKeyFlag;
+  switch (key_type) {
+    case AsymmetricKeyUsage::kDecryptKey:
+      // In this case, the key is not decrypt only. It can be used to sign the
+      // data too. No easy way to make a decrypt only key here.
+      init_flags |= TSS_KEY_TYPE_LEGACY;
+      break;
+    case AsymmetricKeyUsage::kSignKey:
+      init_flags |= TSS_KEY_TYPE_SIGNING;
+      break;
+    case AsymmetricKeyUsage::kDecryptAndSignKey:
+      init_flags |= TSS_KEY_TYPE_LEGACY;
+      break;
+  }
+  if (StatusChain<TPMErrorBase> err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+              Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_RSAKEY,
+                                        init_flags, pcr_bound_key.ptr())))) {
+    LOG(ERROR) << __func__ << ": Failed to create object: " << err;
+    return false;
+  }
+
+  if (StatusChain<TPMErrorBase> err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(Tspi_SetAttribUint32(
+              pcr_bound_key, TSS_TSPATTRIB_KEY_INFO,
+              TSS_TSPATTRIB_KEYINFO_SIGSCHEME, TSS_SS_RSASSAPKCS1V15_DER)))) {
+    LOG(ERROR) << __func__ << ": Failed to set signature scheme: " << err;
+    return false;
+  }
+  if (StatusChain<TPMErrorBase> err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+              Tspi_Key_CreateKey(pcr_bound_key, srk_handle, pcrs)))) {
+    LOG(ERROR) << __func__ << ": Failed to create key: " << err;
+    return false;
+  }
+  if (StatusChain<TPMErrorBase> err =
+          HANDLE_TPM_COMM_ERROR(CreateError<TPM1Error>(
+              Tspi_Key_LoadKey(pcr_bound_key, srk_handle)))) {
+    LOG(ERROR) << __func__ << ": Failed to load key: " << err;
+    return false;
+  }
+
+  // Get the public key.
+  SecureBlob public_key;
+  if (StatusChain<TPMErrorBase> err = GetDataAttribute(
+          context_handle, pcr_bound_key, TSS_TSPATTRIB_KEY_BLOB,
+          TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, &public_key)) {
+    LOG(ERROR) << __func__ << ": Failed to read public key: " << err;
+    return false;
+  }
+  if (!ConvertPublicKeyToDER(public_key, public_key_der)) {
+    return false;
+  }
+
+  // Get the key blob so we can load it later.
+  if (StatusChain<TPMErrorBase> err = GetDataAttribute(
+          context_handle, pcr_bound_key, TSS_TSPATTRIB_KEY_BLOB,
+          TSS_TSPATTRIB_KEYBLOB_BLOB, key_blob)) {
+    LOG(ERROR) << __func__ << ": Failed to read key blob: " << err;
+    return false;
+  }
+  return true;
+}
+
+bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, brillo::Blob>& pcr_map,
+                                const brillo::SecureBlob& key_blob,
+                                const brillo::SecureBlob& creation_blob) {
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << __func__ << ": Failed to connect to the TPM.";
+    return false;
+  }
+
+  ScopedTssKey srk_handle(context_handle);
+  if (StatusChain<TPMErrorBase> err =
+          LoadSrk(context_handle, srk_handle.ptr())) {
+    LOG(ERROR) << __func__ << ": Failed to load SRK: " << err;
+    return false;
+  }
+
+  ScopedTssKey key(context_handle);
+  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+          CreateError<TPM1Error>(Tspi_Context_LoadKeyByBlob(
+              context_handle, srk_handle, key_blob.size(),
+              const_cast<BYTE*>(key_blob.data()), key.ptr())))) {
+    LOG(ERROR) << __func__ << ": Failed to load key: " << err;
+    return false;
+  }
+
+  // Check that |pcr_index| is selected.
+  SecureBlob pcr_selection_blob;
+  if (StatusChain<TPMErrorBase> err = GetDataAttribute(
+          context_handle, key, TSS_TSPATTRIB_KEY_PCR,
+          TSS_TSPATTRIB_KEYPCR_SELECTION, &pcr_selection_blob)) {
+    LOG(ERROR) << __func__ << ": Failed to read PCR selection for key: " << err;
+    return false;
+  }
+  UINT64 trspi_offset = 0;
+  TPM_PCR_SELECTION pcr_selection;
+  Trspi_UnloadBlob_PCR_SELECTION(&trspi_offset, pcr_selection_blob.data(),
+                                 &pcr_selection);
+  if (!pcr_selection.pcrSelect) {
+    LOG(ERROR) << __func__ << ": No PCR selected.";
+    return false;
+  }
+  const Blob pcr_bitmap(pcr_selection.pcrSelect,
+                        pcr_selection.pcrSelect + pcr_selection.sizeOfSelect);
+  free(pcr_selection.pcrSelect);
+  brillo::Blob concatenated_pcr_values;
+  for (const auto& map_pair : pcr_map) {
+    uint32_t pcr_index = map_pair.first;
+    const brillo::Blob pcr_value = map_pair.second;
+    size_t offset = pcr_index / 8;
+    unsigned char mask = 1 << (pcr_index % 8);
+    if (pcr_bitmap.size() <= offset || (pcr_bitmap[offset] & mask) == 0) {
+      LOG(ERROR) << __func__ << ": Invalid PCR selection.";
+      return false;
+    }
+
+    concatenated_pcr_values.insert(concatenated_pcr_values.end(),
+                                   pcr_value.begin(), pcr_value.end());
+  }
+
+  // Compute the PCR composite hash we're expecting. Basically, we want to do
+  // the equivalent of hashing a TPM_PCR_COMPOSITE structure.
+  trspi_offset = 0;
+  UINT32 pcr_value_length = concatenated_pcr_values.size();
+  Blob pcr_value_length_blob(sizeof(UINT32));
+  Trspi_LoadBlob_UINT32(&trspi_offset, pcr_value_length,
+                        pcr_value_length_blob.data());
+  const SecureBlob pcr_hash = Sha1ToSecureBlob(
+      CombineBlobs({Blob(pcr_selection_blob.begin(), pcr_selection_blob.end()),
+                    pcr_value_length_blob, concatenated_pcr_values}));
+
+  // Check that the PCR value matches the key creation PCR value.
+  SecureBlob pcr_at_creation;
+  if (StatusChain<TPMErrorBase> err = GetDataAttribute(
+          context_handle, key, TSS_TSPATTRIB_KEY_PCR,
+          TSS_TSPATTRIB_KEYPCR_DIGEST_ATCREATION, &pcr_at_creation)) {
+    LOG(ERROR) << __func__ << ": Failed to read PCR value at key creation"
+               << err;
+    return false;
+  }
+
+  if (pcr_at_creation != pcr_hash) {
+    LOG(ERROR) << __func__ << ": Invalid key creation PCR.";
+    return false;
+  }
+
+  // Check that the PCR value matches the PCR value required to use the key.
+  SecureBlob pcr_at_release;
+  if (StatusChain<TPMErrorBase> err = GetDataAttribute(
+          context_handle, key, TSS_TSPATTRIB_KEY_PCR,
+          TSS_TSPATTRIB_KEYPCR_DIGEST_ATRELEASE, &pcr_at_release)) {
+    LOG(ERROR) << __func__
+               << ": Failed to read PCR value for key usage: " << err;
+    return false;
+  }
+  if (pcr_at_release != pcr_hash) {
+    LOG(ERROR) << __func__ << ": Invalid key usage PCR.";
+    return false;
+  }
   return true;
 }
 

@@ -78,6 +78,18 @@ using trunks::TPM_RC_FAILURE;
 using trunks::TPM_RC_SUCCESS;
 using trunks::TrunksFactory;
 
+namespace {
+
+// Reset the |pcr_select| and set the bit corresponding to |index|.
+void SetPcrSelectData(uint8_t* pcr_select, uint32_t index) {
+  for (uint8_t i = 0; i < PCR_SELECT_MIN; ++i) {
+    pcr_select[i] = 0;
+  }
+  pcr_select[index / 8] = 1 << (index % 8);
+}
+
+}  // namespace
+
 namespace cryptohome {
 
 class Tpm2Test : public testing::Test {
@@ -580,6 +592,397 @@ TEST_F(Tpm2Test, GetNvramSizeFailure) {
   EXPECT_CALL(mock_tpm_manager_utility_, GetSpaceInfo(_, _, _, _, _))
       .WillOnce(Return(false));
   EXPECT_EQ(tpm_->GetNvramSize(0), 0);
+}
+
+TEST_F(Tpm2Test, SignPolicySuccess) {
+  uint32_t pcr_index = 5;
+  EXPECT_CALL(mock_policy_session_, PolicyPCR(_))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_policy_session_, GetDelegate())
+      .WillOnce(Return(&mock_authorization_delegate_));
+  std::string tpm_signature(32, 'b');
+  EXPECT_CALL(mock_tpm_utility_,
+              Sign(_, _, _, _, _, &mock_authorization_delegate_, _))
+      .WillOnce(DoAll(SetArgPointee<6>(tpm_signature), Return(TPM_RC_SUCCESS)));
+  SecureBlob signature;
+  EXPECT_TRUE(tpm_->Sign(SecureBlob("key_blob"), SecureBlob("input"), pcr_index,
+                         &signature));
+  EXPECT_EQ(signature.to_string(), tpm_signature);
+}
+
+TEST_F(Tpm2Test, SignHmacSuccess) {
+  EXPECT_CALL(mock_hmac_session_, GetDelegate())
+      .WillOnce(Return(&mock_authorization_delegate_));
+  std::string tpm_signature(32, 'b');
+  EXPECT_CALL(mock_tpm_utility_,
+              Sign(_, _, _, _, _, &mock_authorization_delegate_, _))
+      .WillOnce(DoAll(SetArgPointee<6>(tpm_signature), Return(TPM_RC_SUCCESS)));
+
+  SecureBlob signature;
+  EXPECT_TRUE(tpm_->Sign(SecureBlob("key_blob"), SecureBlob("input"),
+                         kNotBoundToPCR, &signature));
+  EXPECT_EQ(signature.to_string(), tpm_signature);
+}
+
+TEST_F(Tpm2Test, SignLoadFailure) {
+  EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+
+  SecureBlob signature;
+  EXPECT_FALSE(tpm_->Sign(SecureBlob("key_blob"), SecureBlob("input"),
+                          kNotBoundToPCR, &signature));
+}
+
+TEST_F(Tpm2Test, SignFailure) {
+  uint32_t handle = 42;
+  EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(handle), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, Sign(handle, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+
+  SecureBlob signature;
+  EXPECT_FALSE(tpm_->Sign(SecureBlob("key_blob"), SecureBlob("input"),
+                          kNotBoundToPCR, &signature));
+}
+
+TEST_F(Tpm2Test, CreatePCRBoundKeySuccess) {
+  uint32_t index = 2;
+  brillo::Blob pcr_value = brillo::BlobFromString("pcr_value");
+  SecureBlob key_blob;
+  SecureBlob creation_blob;
+  uint32_t modulus = 2048;
+  uint32_t exponent = 0x10001;
+  EXPECT_CALL(mock_tpm_utility_,
+              CreateRSAKeyPair(_, modulus, exponent, _, _, true, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_TRUE(tpm_->CreatePCRBoundKey(
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}),
+      AsymmetricKeyUsage::kDecryptKey, &key_blob, nullptr, &creation_blob));
+}
+
+TEST_F(Tpm2Test, CreatePCRBoundKeyPolicyFailure) {
+  uint32_t index = 2;
+  brillo::Blob pcr_value = brillo::BlobFromString("pcr_value");
+  SecureBlob key_blob;
+  SecureBlob creation_blob;
+  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValues(_, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_FALSE(tpm_->CreatePCRBoundKey(
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}),
+      AsymmetricKeyUsage::kDecryptKey, &key_blob, nullptr, &creation_blob));
+}
+
+TEST_F(Tpm2Test, CreatePCRBoundKeyFailure) {
+  uint32_t index = 2;
+  brillo::Blob pcr_value = brillo::BlobFromString("pcr_value");
+  SecureBlob key_blob;
+  SecureBlob creation_blob;
+  EXPECT_CALL(mock_tpm_utility_, CreateRSAKeyPair(_, _, _, _, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_FALSE(tpm_->CreatePCRBoundKey(
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}),
+      AsymmetricKeyUsage::kDecryptKey, &key_blob, nullptr, &creation_blob));
+}
+
+TEST_F(Tpm2Test, CreateMultiplePCRBoundKeySuccess) {
+  std::map<uint32_t, brillo::Blob> pcr_map(
+      {{2, brillo::Blob()}, {5, brillo::Blob()}});
+  SecureBlob key_blob;
+  SecureBlob creation_blob;
+  uint32_t modulus = 2048;
+  uint32_t exponent = 0x10001;
+  EXPECT_CALL(mock_tpm_utility_,
+              CreateRSAKeyPair(_, modulus, exponent, _, _, true, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_TRUE(tpm_->CreatePCRBoundKey(pcr_map, AsymmetricKeyUsage::kDecryptKey,
+                                      &key_blob, nullptr, &creation_blob));
+}
+
+TEST_F(Tpm2Test, VerifyPCRBoundKeySuccess) {
+  uint32_t index = 2;
+  const Blob pcr_value = BlobFromString("pcr_value");
+  SecureBlob key_blob;
+  SecureBlob creation_blob;
+
+  trunks::TPM2B_CREATION_DATA creation_data;
+  trunks::TPML_PCR_SELECTION& pcr_select =
+      creation_data.creation_data.pcr_select;
+  pcr_select.count = 1;
+  pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
+  SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
+  creation_data.creation_data.pcr_digest =
+      trunks::Make_TPM2B_DIGEST(Sha256ToSecureBlob(pcr_value).to_string());
+  EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
+  std::string pcr_policy_value;
+  std::map<uint32_t, std::string> pcr_map;
+  EXPECT_CALL(mock_trial_session_, PolicyPCR(_))
+      .WillOnce(DoAll(SaveArg<0>(&pcr_map), Return(TPM_RC_SUCCESS)));
+  std::string policy_digest(32, 'a');
+  EXPECT_CALL(mock_trial_session_, GetDigest(_))
+      .WillOnce(DoAll(SetArgPointee<0>(policy_digest), Return(TPM_RC_SUCCESS)));
+  trunks::TPMT_PUBLIC public_area;
+  public_area.auth_policy.size = policy_digest.size();
+  memcpy(public_area.auth_policy.buffer, policy_digest.data(),
+         policy_digest.size());
+  public_area.object_attributes &= (~trunks::kUserWithAuth);
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(public_area), Return(TPM_RC_SUCCESS)));
+  ASSERT_TRUE(tpm_->VerifyPCRBoundKey(
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
+      creation_blob));
+  EXPECT_EQ(BlobFromString(pcr_map[index]), pcr_value);
+}
+
+TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationBlob) {
+  uint32_t index = 2;
+  brillo::Blob pcr_value = brillo::BlobFromString("pcr_value");
+  SecureBlob key_blob;
+  SecureBlob creation_blob;
+  EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
+      creation_blob));
+}
+
+TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationDataCount) {
+  uint32_t index = 2;
+  brillo::Blob pcr_value = brillo::BlobFromString("pcr_value");
+  SecureBlob key_blob;
+  SecureBlob creation_blob;
+
+  trunks::TPM2B_CREATION_DATA creation_data;
+  creation_data.creation_data.pcr_select.count = 0;
+  EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
+  EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
+      creation_blob));
+}
+
+TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCRBank) {
+  uint32_t index = 2;
+  brillo::Blob pcr_value = brillo::BlobFromString("pcr_value");
+  SecureBlob key_blob;
+  SecureBlob creation_blob;
+
+  trunks::TPM2B_CREATION_DATA creation_data;
+  trunks::TPML_PCR_SELECTION& pcr_select =
+      creation_data.creation_data.pcr_select;
+  pcr_select.count = 1;
+  pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA1;
+  EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
+  EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
+      creation_blob));
+}
+
+TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCR) {
+  uint32_t index = 2;
+  brillo::Blob pcr_value = brillo::BlobFromString("pcr_value");
+  SecureBlob key_blob;
+  SecureBlob creation_blob;
+
+  trunks::TPM2B_CREATION_DATA creation_data;
+  trunks::TPML_PCR_SELECTION& pcr_select =
+      creation_data.creation_data.pcr_select;
+  pcr_select.count = 1;
+  pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
+  pcr_select.pcr_selections[0].pcr_select[index / 8] = 0xFF;
+  EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
+  EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
+      creation_blob));
+}
+
+TEST_F(Tpm2Test, VerifyPCRBoundKeyBadCreationPCRDigest) {
+  uint32_t index = 2;
+  brillo::Blob pcr_value = brillo::BlobFromString("pcr_value");
+  SecureBlob key_blob;
+  SecureBlob creation_blob;
+
+  trunks::TPM2B_CREATION_DATA creation_data;
+  trunks::TPML_PCR_SELECTION& pcr_select =
+      creation_data.creation_data.pcr_select;
+  pcr_select.count = 1;
+  pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
+  SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
+  creation_data.creation_data.pcr_digest =
+      trunks::Make_TPM2B_DIGEST(Sha256(SecureBlob("")).to_string());
+  EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
+  EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
+      creation_blob));
+}
+
+TEST_F(Tpm2Test, VerifyPCRBoundKeyImportedKey) {
+  uint32_t index = 2;
+  const Blob pcr_value = BlobFromString("pcr_value");
+  SecureBlob key_blob;
+  SecureBlob creation_blob;
+
+  trunks::TPM2B_CREATION_DATA creation_data;
+  trunks::TPML_PCR_SELECTION& pcr_select =
+      creation_data.creation_data.pcr_select;
+  pcr_select.count = 1;
+  pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
+  SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
+  creation_data.creation_data.pcr_digest =
+      trunks::Make_TPM2B_DIGEST(Sha256ToSecureBlob(pcr_value).to_string());
+  EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
+
+  EXPECT_CALL(mock_tpm_utility_, CertifyCreation(_, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
+      creation_blob));
+}
+
+TEST_F(Tpm2Test, VerifyPCRBoundKeyBadSession) {
+  uint32_t index = 2;
+  const Blob pcr_value = BlobFromString("pcr_value");
+  SecureBlob key_blob;
+  SecureBlob creation_blob;
+
+  trunks::TPM2B_CREATION_DATA creation_data;
+  trunks::TPML_PCR_SELECTION& pcr_select =
+      creation_data.creation_data.pcr_select;
+  pcr_select.count = 1;
+  pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
+  for (size_t i = 0; i < PCR_SELECT_MIN; ++i) {
+    pcr_select.pcr_selections[0].pcr_select[i] = 0;
+  }
+  SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
+  creation_data.creation_data.pcr_digest =
+      trunks::Make_TPM2B_DIGEST(Sha256ToSecureBlob(pcr_value).to_string());
+  EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
+
+  EXPECT_CALL(mock_trial_session_, StartUnboundSession(true, true))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
+      creation_blob));
+}
+
+TEST_F(Tpm2Test, VerifyPCRBoundKeyBadPolicy) {
+  uint32_t index = 2;
+  const Blob pcr_value = BlobFromString("pcr_value");
+  SecureBlob key_blob;
+  SecureBlob creation_blob;
+
+  trunks::TPM2B_CREATION_DATA creation_data;
+  trunks::TPML_PCR_SELECTION& pcr_select =
+      creation_data.creation_data.pcr_select;
+  pcr_select.count = 1;
+  pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
+  for (size_t i = 0; i < PCR_SELECT_MIN; ++i) {
+    pcr_select.pcr_selections[0].pcr_select[i] = 0;
+  }
+  SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
+  creation_data.creation_data.pcr_digest =
+      trunks::Make_TPM2B_DIGEST(Sha256ToSecureBlob(pcr_value).to_string());
+  EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
+
+  EXPECT_CALL(mock_trial_session_, PolicyPCR(_))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
+      creation_blob));
+}
+
+TEST_F(Tpm2Test, VerifyPCRBoundKeyBadDigest) {
+  uint32_t index = 2;
+  const Blob pcr_value = BlobFromString("pcr_value");
+  SecureBlob key_blob;
+  SecureBlob creation_blob;
+
+  trunks::TPM2B_CREATION_DATA creation_data;
+  trunks::TPML_PCR_SELECTION& pcr_select =
+      creation_data.creation_data.pcr_select;
+  pcr_select.count = 1;
+  pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
+  SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
+  creation_data.creation_data.pcr_digest =
+      trunks::Make_TPM2B_DIGEST(Sha256ToSecureBlob(pcr_value).to_string());
+  EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
+
+  EXPECT_CALL(mock_trial_session_, GetDigest(_))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
+      creation_blob));
+}
+
+TEST_F(Tpm2Test, VerifyPCRBoundKeyBadPolicyDigest) {
+  uint32_t index = 2;
+  const Blob pcr_value = BlobFromString("pcr_value");
+  SecureBlob key_blob;
+  SecureBlob creation_blob;
+
+  trunks::TPM2B_CREATION_DATA creation_data;
+  trunks::TPML_PCR_SELECTION& pcr_select =
+      creation_data.creation_data.pcr_select;
+  pcr_select.count = 1;
+  pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
+  SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
+  creation_data.creation_data.pcr_digest =
+      trunks::Make_TPM2B_DIGEST(Sha256ToSecureBlob(pcr_value).to_string());
+  EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
+
+  std::string policy_digest(32, 'a');
+  EXPECT_CALL(mock_trial_session_, GetDigest(_))
+      .WillOnce(DoAll(SetArgPointee<0>(policy_digest), Return(TPM_RC_SUCCESS)));
+
+  trunks::TPMT_PUBLIC public_area;
+  public_area.auth_policy.size = 2;
+  public_area.object_attributes &= (~trunks::kUserWithAuth);
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(public_area), Return(TPM_RC_SUCCESS)));
+  EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
+      creation_blob));
+}
+
+TEST_F(Tpm2Test, VerifyPCRBoundKeyBadAttributes) {
+  uint32_t index = 2;
+  const Blob pcr_value = BlobFromString("pcr_value");
+  SecureBlob key_blob;
+  SecureBlob creation_blob;
+
+  trunks::TPM2B_CREATION_DATA creation_data;
+  trunks::TPML_PCR_SELECTION& pcr_select =
+      creation_data.creation_data.pcr_select;
+  pcr_select.count = 1;
+  pcr_select.pcr_selections[0].hash = trunks::TPM_ALG_SHA256;
+  SetPcrSelectData(pcr_select.pcr_selections[0].pcr_select, index);
+  creation_data.creation_data.pcr_digest =
+      trunks::Make_TPM2B_DIGEST(Sha256ToSecureBlob(pcr_value).to_string());
+  EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(creation_data), Return(true)));
+
+  std::string policy_digest(32, 'a');
+  EXPECT_CALL(mock_trial_session_, GetDigest(_))
+      .WillOnce(DoAll(SetArgPointee<0>(policy_digest), Return(TPM_RC_SUCCESS)));
+
+  trunks::TPMT_PUBLIC public_area;
+  public_area.auth_policy.size = policy_digest.size();
+  memcpy(public_area.auth_policy.buffer, policy_digest.data(),
+         policy_digest.size());
+  public_area.object_attributes = trunks::kUserWithAuth;
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(public_area), Return(TPM_RC_SUCCESS)));
+  EXPECT_FALSE(tpm_->VerifyPCRBoundKey(
+      std::map<uint32_t, brillo::Blob>({{index, pcr_value}}), key_blob,
+      creation_blob));
 }
 
 TEST_F(Tpm2Test, ExtendPCRSuccess) {

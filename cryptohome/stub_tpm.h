@@ -120,6 +120,24 @@ class StubTpm : public Tpm {
                       brillo::Blob* delegate_secret) override {
     return false;
   }
+  bool Sign(const SecureBlob& key_blob,
+            const SecureBlob& der_encoded_input,
+            uint32_t bound_pcr_index,
+            SecureBlob* signature) override {
+    return false;
+  }
+  bool CreatePCRBoundKey(const std::map<uint32_t, brillo::Blob>& pcr_map,
+                         AsymmetricKeyUsage key_type,
+                         SecureBlob* key_blob,
+                         SecureBlob* public_key_der,
+                         SecureBlob* creation_blob) override {
+    return false;
+  }
+  bool VerifyPCRBoundKey(const std::map<uint32_t, brillo::Blob>& pcr_map,
+                         const SecureBlob& key_blob,
+                         const SecureBlob& creation_blob) override {
+    return false;
+  }
   bool ExtendPCR(uint32_t pcr_index, const brillo::Blob& extension) override {
     return false;
   }

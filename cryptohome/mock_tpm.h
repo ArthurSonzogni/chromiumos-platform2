@@ -101,6 +101,27 @@ class MockTpm : public Tpm {
                brillo::Blob*,
                brillo::Blob*),
               (override));
+  MOCK_METHOD(bool,
+              Sign,
+              (const brillo::SecureBlob&,
+               const brillo::SecureBlob&,
+               uint32_t,
+               brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool,
+              CreatePCRBoundKey,
+              ((const std::map<uint32_t, brillo::Blob>&),
+               AsymmetricKeyUsage,
+               brillo::SecureBlob*,
+               brillo::SecureBlob*,
+               brillo::SecureBlob*),
+              (override));
+  MOCK_METHOD(bool,
+              VerifyPCRBoundKey,
+              ((const std::map<uint32_t, brillo::Blob>&),
+               const brillo::SecureBlob&,
+               const brillo::SecureBlob&),
+              (override));
   MOCK_METHOD(bool, ExtendPCR, (uint32_t, const brillo::Blob&), (override));
   MOCK_METHOD(bool, ReadPCR, (uint32_t, brillo::Blob*), (override));
   MOCK_METHOD(bool,
