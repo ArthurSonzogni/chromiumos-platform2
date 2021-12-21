@@ -143,8 +143,7 @@ void SimpleAlarmTimer::OnTimerFired() {
   base::WeakPtr<SimpleAlarmTimer> weak_ptr = weak_factory_.GetWeakPtr();
 
   // Run the task.
-  base::TaskAnnotator().RunTask("SimpleAlarmTimer::Reset",
-                                pending_user_task.get());
+  base::TaskAnnotator().RunTask("SimpleAlarmTimer::Reset", *pending_user_task);
 
   // If the timer wasn't deleted, stopped or reset by the callback, stop it.
   if (weak_ptr)
