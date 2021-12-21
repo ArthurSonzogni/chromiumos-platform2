@@ -262,7 +262,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   void ReadDir(std::unique_ptr<DirEntryRequest> request,
                fuse_ino_t ino,
                off_t off) override {
-    VLOG(1) << "readdir off " << off << " fh " << request->fh();
+    VLOG(1) << "readdir fh " << request->fh() << " off " << off;
 
     if (request->IsInterrupted())
       return;
@@ -277,7 +277,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     uint64_t handle = fusebox::GetFile(request->fh());
     if (!handle) {
       errno = request->ReplyError(EBADF);
-      PLOG(ERROR) << "readdir " << ino;
+      PLOG(ERROR) << "readdir fh " << request->fh();
       return;
     }
 
@@ -348,7 +348,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
 
     const ino_t parent = response->parent();
     if (!GetInodeTable().Lookup(parent)) {
-      errno = response->Append(ENOENT);
+      response->Append(errno);
       PLOG(ERROR) << "readdir-batch parent " << parent;
       return;
     }
