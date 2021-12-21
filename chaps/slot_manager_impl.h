@@ -19,7 +19,6 @@
 
 #include <base/macros.h>
 #include <base/synchronization/lock.h>
-#include <base/threading/platform_thread.h>
 
 #include "chaps/chaps_factory.h"
 #include "chaps/object_pool.h"
@@ -116,8 +115,6 @@ class SlotManagerImpl : public SlotManager,
     // Key: A session identifier.
     // Value: The associated session object.
     std::map<int, std::shared_ptr<Session>> sessions;
-    std::shared_ptr<base::PlatformThread::Delegate> worker_thread;
-    base::PlatformThreadHandle worker_thread_handle;
   };
 
   // Internal token presence check without isolate_credential check.
@@ -170,6 +167,53 @@ class SlotManagerImpl : public SlotManager,
                          const brillo::SecureBlob& auth_data,
                          const std::string& label,
                          int* slot_id);
+
+  // Loads the root key for a TPM token.
+  void LoadTPMToken(base::OnceCallback<void(bool)> callback,
+                    int slot_id,
+                    const base::FilePath& path,
+                    const brillo::SecureBlob& auth_data,
+                    std::shared_ptr<ObjectPool> object_pool);
+
+  // Loads the root key for a TPM token after the TPM unseals data.
+  void LoadTPMTokenAfterUnseal(base::OnceCallback<void(bool)> callback,
+                               const base::FilePath& path,
+                               const brillo::SecureBlob& auth_data,
+                               std::shared_ptr<ObjectPool> object_pool,
+                               bool success,
+                               brillo::SecureBlob unsealed_data);
+
+  // The final operation of loading the root key for a TPM token.
+  void LoadTPMTokenFinal(base::OnceCallback<void(bool)> callback,
+                         const base::FilePath& path,
+                         const brillo::SecureBlob& auth_data,
+                         std::shared_ptr<ObjectPool> object_pool,
+                         brillo::SecureBlob root_key);
+
+  // Initializes a new TPM token.
+  void InitializeTPMToken(base::OnceCallback<void(bool)> callback,
+                          const base::FilePath& path,
+                          const brillo::SecureBlob& auth_data,
+                          std::shared_ptr<ObjectPool> object_pool);
+
+  // Initializes a new TPM token after the TPM generates random.
+  void InitializeTPMTokenAfterGenerateRandom(
+      base::OnceCallback<void(bool)> callback,
+      const base::FilePath& path,
+      const brillo::SecureBlob& auth_data,
+      std::shared_ptr<ObjectPool> object_pool,
+      bool success,
+      std::string random_data);
+
+  // Initializes a new TPM token after the TPM seals data.
+  void InitializeTPMTokenAfterSealData(base::OnceCallback<void(bool)> callback,
+                                       const base::FilePath& path,
+                                       const brillo::SecureBlob& auth_data,
+                                       std::shared_ptr<ObjectPool> object_pool,
+                                       brillo::SecureBlob root_key,
+                                       bool success,
+                                       std::string key_blob,
+                                       std::string encrypted_data);
 
   // Loads the root key for a software-only token.
   bool LoadSoftwareToken(const brillo::SecureBlob& auth_data,
