@@ -129,7 +129,7 @@ class TestGenerators(unittest.TestCase):
     command.response_args = [self._MakeArg('char', 'output')]
     out_file = io.StringIO()
     command.OutputDeclarations(out_file)
-    expected_callback = """typedef base::Callback<void(
+    expected_callback = """typedef base::OnceCallback<void(
       TPM_RC response_code,
       const char& output)> TestResponse;"""
     self.assertIn(expected_callback, out_file.getvalue())
@@ -146,7 +146,7 @@ class TestGenerators(unittest.TestCase):
     expected_async = """virtual void Test(
       const int& input,
       AuthorizationDelegate* authorization_delegate,
-      const TestResponse& callback);"""
+      TestResponse callback);"""
     self.assertIn(expected_async, out_file.getvalue())
     expected_sync = """virtual TPM_RC TestSync(
       const int& input,

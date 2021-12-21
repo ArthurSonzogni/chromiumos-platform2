@@ -1229,7 +1229,7 @@ class Command(object):
 
   _HANDLE_RE = re.compile(r'TPMI_.H_.*')
   _CALLBACK_ARG = """
-      const %(method_name)sResponse& callback"""
+      %(method_name)sResponse callback"""
   _DELEGATE_ARG = """
       AuthorizationDelegate* authorization_delegate"""
   _SERIALIZE_ARG = """
@@ -1397,10 +1397,10 @@ TPM_RC Tpm::ParseResponse_%(method_name)s(%(method_args)s) {
 """
   _ERROR_CALLBACK_START = """
 void %(method_name)sErrorCallback(
-    const Tpm::%(method_name)sResponse& callback,
+    Tpm::%(method_name)sResponse callback,
     TPM_RC response_code) {
   VLOG(1) << __func__;
-  callback.Run(response_code"""
+  std::move(callback).Run(response_code"""
   _ERROR_CALLBACK_ARG = """,
                %(arg_type)s()"""
   _ERROR_CALLBACK_END = """);
@@ -1408,12 +1408,10 @@ void %(method_name)sErrorCallback(
 """
   _RESPONSE_CALLBACK_START = """
 void %(method_name)sResponseParser(
-    const Tpm::%(method_name)sResponse& callback,
+    Tpm::%(method_name)sResponse callback,
     AuthorizationDelegate* authorization_delegate,
     const std::string& response) {
-  VLOG(1) << __func__;
-  base::Callback<void(TPM_RC)> error_reporter =
-      base::Bind(%(method_name)sErrorCallback, callback);"""
+  VLOG(1) << __func__;"""
   _DECLARE_ARG_VAR = """
   %(var_type)s %(var_name)s;"""
   _RESPONSE_CALLBACK_END = """
@@ -1421,31 +1419,33 @@ void %(method_name)sResponseParser(
       response,%(method_arg_names_out)s
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
-    error_reporter.Run(rc);
+    base::OnceCallback<void(TPM_RC)> error_reporter =
+        base::BindOnce(%(method_name)sErrorCallback, std::move(callback));
+    std::move(error_reporter).Run(rc);
     return;
   }
-  callback.Run(
+  std::move(callback).Run(
       rc%(method_arg_names_in)s);
 }
 """
   _ASYNC_METHOD = """
 void Tpm::%(method_name)s(%(method_args)s) {
   VLOG(1) << __func__;
-  base::Callback<void(TPM_RC)> error_reporter =
-      base::Bind(%(method_name)sErrorCallback, callback);
-  base::Callback<void(const std::string&)> parser =
-      base::Bind(%(method_name)sResponseParser,
-                 callback,
-                 authorization_delegate);
   std::string command;
   TPM_RC rc = SerializeCommand_%(method_name)s(%(method_arg_names)s
       &command,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
-    error_reporter.Run(rc);
+    base::OnceCallback<void(TPM_RC)> error_reporter =
+        base::BindOnce(%(method_name)sErrorCallback, std::move(callback));
+    std::move(error_reporter).Run(rc);
     return;
   }
-  transceiver_->SendCommand(command, parser);
+  base::OnceCallback<void(const std::string&)> parser =
+      base::BindOnce(%(method_name)sResponseParser,
+                     std::move(callback),
+                     authorization_delegate);
+  transceiver_->SendCommand(command, std::move(parser));
 }
 """
   _SYNC_METHOD = """
@@ -1689,7 +1689,7 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
     if args:
       args = ',' + args
     args = '\n      TPM_RC response_code' + args
-    out_file.write('  typedef base::Callback<void(%s)> %sResponse;\n' %
+    out_file.write('  typedef base::OnceCallback<void(%s)> %sResponse;\n' %
                    (args, self._MethodName()))
 
   def _MethodName(self):
