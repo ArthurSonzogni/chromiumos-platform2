@@ -34,6 +34,10 @@ class FileSystem {
                       fuse_ino_t ino,
                       uint64_t nlookup);
 
+  virtual void ForgetMulti(std::unique_ptr<NoneRequest> request,
+                           size_t count,
+                           fuse_forget_data* forgets);
+
   virtual void GetAttr(std::unique_ptr<AttrRequest> request, fuse_ino_t ino);
 
   virtual void SetAttr(std::unique_ptr<AttrRequest> request,

@@ -34,6 +34,12 @@ void FileSystem::Forget(std::unique_ptr<NoneRequest> request,
   FuseNotImplemented(request.get());
 }
 
+void FileSystem::ForgetMulti(std::unique_ptr<NoneRequest> request,
+                             size_t count,
+                             fuse_forget_data* forgets) {
+  FuseNotImplemented(request.get());
+}
+
 void FileSystem::GetAttr(std::unique_ptr<AttrRequest> request, fuse_ino_t ino) {
   FuseNotImplemented(request.get());
 }

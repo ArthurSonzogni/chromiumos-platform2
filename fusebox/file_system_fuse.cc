@@ -26,6 +26,12 @@ static void fs_forget(fuse_req_t req, fuse_ino_t ino, uint64_t nlookup) {
   fs(req)->Forget(std::make_unique<NoneRequest>(req), ino, nlookup);
 }
 
+static void fs_forget_multi(fuse_req_t req,
+                            size_t count,
+                            fuse_forget_data* forgets) {
+  fs(req)->ForgetMulti(std::make_unique<NoneRequest>(req), count, forgets);
+}
+
 static void fs_getattr(fuse_req_t req,
                        fuse_ino_t ino,
                        struct fuse_file_info* fi) {
@@ -141,6 +147,7 @@ fuse_lowlevel_ops FileSystem::FuseOps() {
       .readdir = fs_readdir,
       .releasedir = fs_releasedir,
       .create = fs_create,
+      .forget_multi = fs_forget_multi,
   };
 
   return ops;
