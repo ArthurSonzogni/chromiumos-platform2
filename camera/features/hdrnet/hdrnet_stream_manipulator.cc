@@ -93,6 +93,7 @@ HdrNetStreamManipulator::HdrNetRequestBufferInfo::operator=(
     client_requested_yuv_buffers.swap(other.client_requested_yuv_buffers);
     blob_result_pending = other.blob_result_pending;
     blob_intermediate_yuv_pending = other.blob_intermediate_yuv_pending;
+    skip_hdrnet_processing = other.skip_hdrnet_processing;
     other.Invalidate();
   }
   return *this;
@@ -112,6 +113,7 @@ void HdrNetStreamManipulator::HdrNetRequestBufferInfo::Invalidate() {
   client_requested_yuv_buffers.clear();
   blob_result_pending = false;
   blob_intermediate_yuv_pending = false;
+  skip_hdrnet_processing = false;
 }
 
 //
@@ -451,6 +453,15 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
     }
   }
 
+  bool skip_hdrnet_processing = false;
+  base::span<const uint8_t> tm_mode =
+      request->GetMetadata<uint8_t>(ANDROID_TONEMAP_MODE);
+  if (!tm_mode.empty() && (tm_mode[0] == ANDROID_TONEMAP_MODE_CONTRAST_CURVE ||
+                           tm_mode[0] == ANDROID_TONEMAP_MODE_GAMMA_VALUE ||
+                           tm_mode[0] == ANDROID_TONEMAP_MODE_PRESET_CURVE)) {
+    skip_hdrnet_processing = true;
+  }
+
   if (request->GetInputBuffer() != nullptr) {
     // Skip reprocessing requests. We can't touch the output buffers of a
     // reprocessing request since they have to be produced from the given input
@@ -508,6 +519,7 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
           it->client_requested_yuv_buffers.push_back(request_buffer);
         } else {
           HdrNetRequestBufferInfo buf_info(stream_context, {request_buffer});
+          buf_info.skip_hdrnet_processing = skip_hdrnet_processing;
           hdrnet_buf_to_add.emplace_back(std::move(buf_info));
         }
         break;
@@ -528,6 +540,7 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
         HdrNetRequestBufferInfo buf_info(stream_context, {});
         buf_info.blob_result_pending = true;
         buf_info.blob_intermediate_yuv_pending = true;
+        buf_info.skip_hdrnet_processing = skip_hdrnet_processing;
         hdrnet_buf_to_add.emplace_back(std::move(buf_info));
         break;
       }
@@ -661,12 +674,8 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
     }
 
     // Run the HDRNet pipeline and write to the buffers.
-    HdrNetConfig::Options processor_config = options_;
-    base::Optional<float> gcam_ae_hdr_ratio =
-        result->feature_metadata().hdr_ratio;
-    if (gcam_ae_hdr_ratio) {
-      processor_config.hdr_ratio = *result->feature_metadata().hdr_ratio;
-    }
+    HdrNetConfig::Options processor_config =
+        PrepareProcessorConfig(result, *request_buffer_info);
     const SharedImage& image =
         stream_context->shared_images[request_buffer_info->buffer_index];
     request_buffer_info->release_fence = stream_context->processor->Run(
@@ -833,6 +842,31 @@ bool HdrNetStreamManipulator::GetBuffersToRender(
       break;
   }
   return true;
+}
+
+HdrNetConfig::Options HdrNetStreamManipulator::PrepareProcessorConfig(
+    Camera3CaptureDescriptor* result,
+    const HdrNetRequestBufferInfo& buf_info) const {
+  // Run the HDRNet pipeline and write to the buffers.
+  HdrNetConfig::Options processor_config = options_;
+
+  // Use the HDR ratio calculated by Gcam AE if available.
+  base::Optional<float> gcam_ae_hdr_ratio =
+      result->feature_metadata().hdr_ratio;
+  if (gcam_ae_hdr_ratio) {
+    processor_config.hdr_ratio = *result->feature_metadata().hdr_ratio;
+    DVLOGFID(1, result->frame_number())
+        << "Using HDR ratio=" << processor_config.hdr_ratio;
+  }
+
+  // Disable HDRnet processing completely if the tonemap mode is set to contrast
+  // curve, gamma value, or preset curve.
+  if (buf_info.skip_hdrnet_processing) {
+    processor_config.hdrnet_enable = false;
+    DVLOGFID(1, result->frame_number()) << "Disable HDRnet processing";
+  }
+
+  return processor_config;
 }
 
 void HdrNetStreamManipulator::OnBuffersRendered(

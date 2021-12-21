@@ -128,6 +128,12 @@ class HdrNetStreamManipulator : public StreamManipulator {
     // from the HDRnet pipeline. The YUV buffer rendered by the HDRnet pipeline
     // is used to produce the final still capture result.
     bool blob_intermediate_yuv_pending = false;
+
+    // Skips the HDRnet processing and directly copies the ISP output to the
+    // result buffer. When the tonemap mode is set to CONTRAST_CURVE,
+    // GAMMA_VALUE or PRESET_CURVE, we need to disable HDRnet per the API
+    // requirement.
+    bool skip_hdrnet_processing = false;
   };
 
   using HdrNetBufferInfoList = std::vector<HdrNetRequestBufferInfo>;
@@ -170,6 +176,10 @@ class HdrNetStreamManipulator : public StreamManipulator {
       HdrNetStreamContext* stream_context,
       HdrNetRequestBufferInfo* request_buffer_info,
       std::vector<camera3_stream_buffer_t>* output_buffers_to_client);
+
+  HdrNetConfig::Options PrepareProcessorConfig(
+      Camera3CaptureDescriptor* result,
+      const HdrNetRequestBufferInfo& buf_info) const;
 
   bool SetUpPipelineOnGpuThread();
 
