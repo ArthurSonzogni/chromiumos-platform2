@@ -7,6 +7,7 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":camera_characteristics_test",
+    ":camera_dfu_test",
     ":media_v4l2_is_capture_device",
     ":media_v4l2_test",
   ]
@@ -24,6 +25,26 @@ executable("camera_characteristics_test") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "re2",
+  ]
+}
+
+executable("camera_dfu_test") {
+  sources = [
+    "camera_dfu_test.cc",
+    "usb_dfu_device.cc",
+  ]
+  configs += [
+    "//common-mk:test",
+    "//camera/build:cros_camera_common",
+  ]
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "libchrome-test",
+    "libcros_camera",
+    "libudev",
+    "libusb-1.0",
     "re2",
   ]
 }

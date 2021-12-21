@@ -44,7 +44,7 @@ class CROS_CAMERA_EXPORT UdevWatcher {
     virtual void OnDeviceRemoved(ScopedUdevDevicePtr device);
   };
 
-  // The observer must outlive this wathcer.
+  // The observer must outlive this watcher.
   UdevWatcher(Observer* observer, std::string subsystem);
   ~UdevWatcher();
 
@@ -52,7 +52,7 @@ class CROS_CAMERA_EXPORT UdevWatcher {
   UdevWatcher(const UdevWatcher&) = delete;
   UdevWatcher& operator=(const UdevWatcher&) = delete;
 
-  // Start monitoring. This shuold be called before EnumerateExistingDevices().
+  // Start monitoring. This should be called before EnumerateExistingDevices().
   // All callbacks will be run on |task_runner|.
   bool Start(scoped_refptr<base::SingleThreadTaskRunner> task_runner);
 
