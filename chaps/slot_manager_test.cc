@@ -12,6 +12,7 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/strings/stringprintf.h>
+#include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <openssl/sha.h>
@@ -24,6 +25,7 @@
 #include "chaps/object_store_mock.h"
 #include "chaps/session_mock.h"
 #include "chaps/slot_policy_mock.h"
+#include "chaps/tpm_thread_utility_impl.h"
 #include "chaps/tpm_utility_mock.h"
 
 using base::FilePath;
@@ -133,8 +135,13 @@ class TestSlotManager : public ::testing::Test {
   void SetUp() {
     EXPECT_CALL(factory_, CreateObjectPool(_, _, _, _))
         .WillRepeatedly(InvokeWithoutArgs(CreateObjectPoolMock));
-    ConfigureTPMUtility(&tpm_);
-    slot_manager_.reset(new SlotManagerImpl(&factory_, &tpm_, false, nullptr));
+    auto tpm_mock = std::make_unique<TPMUtilityMock>();
+    tpm_ = tpm_mock.get();
+    ConfigureTPMUtility(tpm_);
+    tpm_thread_utility_ =
+        std::make_unique<TPMThreadUtilityImpl>(std::move(tpm_mock));
+    slot_manager_.reset(new SlotManagerImpl(
+        &factory_, tpm_thread_utility_.get(), false, nullptr));
     ASSERT_TRUE(slot_manager_->Init());
   }
   void TearDown() {
@@ -151,8 +158,10 @@ class TestSlotManager : public ::testing::Test {
 #endif
 
  protected:
+  base::test::TaskEnvironment task_environment_;
   ChapsFactoryMock factory_;
-  TPMUtilityMock tpm_;
+  TPMUtilityMock* tpm_;
+  std::unique_ptr<TPMThreadUtilityImpl> tpm_thread_utility_;
   std::unique_ptr<SlotManagerImpl> slot_manager_;
   SecureBlob ic_;
 };
@@ -162,9 +171,12 @@ TEST(DeathTest, InvalidInit) {
   ChapsFactoryMock factory;
   EXPECT_DEATH_IF_SUPPORTED(new SlotManagerImpl(&factory, NULL, false, nullptr),
                             "Check failed");
-  TPMUtilityMock tpm;
-  EXPECT_DEATH_IF_SUPPORTED(new SlotManagerImpl(NULL, &tpm, false, nullptr),
-                            "Check failed");
+  auto tpm_mock = std::make_unique<TPMUtilityMock>();
+  auto tpm_thread_utility =
+      std::make_unique<TPMThreadUtilityImpl>(std::move(tpm_mock));
+  EXPECT_DEATH_IF_SUPPORTED(
+      new SlotManagerImpl(NULL, tpm_thread_utility.get(), false, nullptr),
+      "Check failed");
 }
 
 TEST_F(TestSlotManager_DeathTest, InvalidArgs) {
@@ -217,8 +229,10 @@ TEST_F(TestSlotManager, DefaultSlotSetup) {
 #if GTEST_IS_THREADSAFE
 
 TEST(DeathTest, OutOfMemoryInit) {
-  TPMUtilityMock tpm;
-  ConfigureTPMUtility(&tpm);
+  auto tpm_mock = std::make_unique<TPMUtilityMock>();
+  ConfigureTPMUtility(tpm_mock.get());
+  auto tpm_thread_utility =
+      std::make_unique<TPMThreadUtilityImpl>(std::move(tpm_mock));
   ChapsFactoryMock factory;
   ObjectPool* null_pool = NULL;
   EXPECT_CALL(factory, CreateObjectPool(_, _, _, _))
@@ -228,7 +242,7 @@ TEST(DeathTest, OutOfMemoryInit) {
   ObjectImporter* null_importer = NULL;
   EXPECT_CALL(factory, CreateObjectImporter(_, _, _))
       .WillRepeatedly(Return(null_importer));
-  SlotManagerImpl sm(&factory, &tpm, false, nullptr);
+  SlotManagerImpl sm(&factory, tpm_thread_utility.get(), false, nullptr);
   ASSERT_TRUE(sm.Init());
   int slot_id;
   EXPECT_DEATH_IF_SUPPORTED(
@@ -341,7 +355,7 @@ TEST_F(TestSlotManager, TestDefaultIsolate) {
 }
 
 TEST_F(TestSlotManager, TestOpenIsolate) {
-  EXPECT_CALL(tpm_, GenerateRandom(_, _))
+  EXPECT_CALL(*tpm_, GenerateRandom(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(string("567890")), Return(true)));
 
   // Check that trying to open an invalid isolate creates new isolate.
@@ -358,7 +372,7 @@ TEST_F(TestSlotManager, TestOpenIsolate) {
 }
 
 TEST_F(TestSlotManager, TestCloseIsolate) {
-  EXPECT_CALL(tpm_, GenerateRandom(_, _))
+  EXPECT_CALL(*tpm_, GenerateRandom(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(string("abcdef")), Return(true)))
       .WillOnce(DoAll(SetArgPointee<1>(string("ghijkl")), Return(true)));
 
@@ -406,7 +420,7 @@ TEST_F(TestSlotManager_DeathTest, TestIsolateTokens) {
       IsolateCredentialManager::GetDefaultIsolateCredential();
 
   // Ensure different credentials are created for each isolate.
-  EXPECT_CALL(tpm_, GenerateRandom(_, _))
+  EXPECT_CALL(*tpm_, GenerateRandom(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(string("123456")), Return(true)))
       .WillOnce(DoAll(SetArgPointee<1>(string("567890")), Return(true)));
 
@@ -454,8 +468,9 @@ TEST_F(TestSlotManager_DeathTest, TestIsolateTokens) {
 }
 
 TEST_F(TestSlotManager, SRKNotReady) {
-  EXPECT_CALL(tpm_, IsSRKReady()).WillRepeatedly(Return(false));
-  slot_manager_.reset(new SlotManagerImpl(&factory_, &tpm_, false, nullptr));
+  EXPECT_CALL(*tpm_, IsSRKReady()).WillRepeatedly(Return(false));
+  slot_manager_.reset(new SlotManagerImpl(&factory_, tpm_thread_utility_.get(),
+                                          false, nullptr));
   ASSERT_TRUE(slot_manager_->Init());
 
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 0));
@@ -468,11 +483,12 @@ TEST_F(TestSlotManager, SRKNotReady) {
 }
 
 TEST_F(TestSlotManager, DelayedSRKInit) {
-  EXPECT_CALL(tpm_, IsSRKReady()).WillRepeatedly(Return(false));
-  slot_manager_.reset(new SlotManagerImpl(&factory_, &tpm_, false, nullptr));
+  EXPECT_CALL(*tpm_, IsSRKReady()).WillRepeatedly(Return(false));
+  slot_manager_.reset(new SlotManagerImpl(&factory_, tpm_thread_utility_.get(),
+                                          false, nullptr));
   ASSERT_TRUE(slot_manager_->Init());
 
-  EXPECT_CALL(tpm_, IsSRKReady()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*tpm_, IsSRKReady()).WillRepeatedly(Return(true));
   int slot_id = 0;
   EXPECT_TRUE(slot_manager_->LoadToken(
       ic_, FilePath("test_token"), MakeBlob(kAuthData), kTokenLabel, &slot_id));
@@ -496,11 +512,15 @@ class SoftwareOnlyTest : public TestSlotManager {
     EXPECT_CALL(factory_, CreateObjectPool(_, _, _, _))
         .WillRepeatedly(
             InvokeWithoutArgs(this, &SoftwareOnlyTest::ObjectPoolFactory));
-    EXPECT_CALL(no_tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
-    EXPECT_CALL(no_tpm_, GetTPMVersion())
+    auto tpm_mock = std::make_unique<StrictMock<TPMUtilityMock>>();
+    no_tpm_ = tpm_mock.get();
+    tpm_thread_utility_ =
+        std::make_unique<TPMThreadUtilityImpl>(std::move(tpm_mock));
+    EXPECT_CALL(*no_tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
+    EXPECT_CALL(*no_tpm_, GetTPMVersion())
         .WillRepeatedly(Return(TPMVersion::TPM1_2));
-    slot_manager_.reset(
-        new SlotManagerImpl(&factory_, &no_tpm_, false, nullptr));
+    slot_manager_.reset(new SlotManagerImpl(
+        &factory_, tpm_thread_utility_.get(), false, nullptr));
     ASSERT_TRUE(slot_manager_->Init());
   }
 
@@ -574,7 +594,8 @@ class SoftwareOnlyTest : public TestSlotManager {
  protected:
   const FilePath kTestTokenPath;
   // Strict so that we get an error if this gets called.
-  StrictMock<TPMUtilityMock> no_tpm_;
+  StrictMock<TPMUtilityMock>* no_tpm_;
+  std::unique_ptr<TPMThreadUtilityImpl> tpm_thread_utility_;
   std::map<int, string> pool_blobs_;
   int set_encryption_key_num_calls_;
   int delete_all_num_calls_;

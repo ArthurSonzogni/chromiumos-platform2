@@ -258,6 +258,7 @@ if (use.test) {
       "session_mock.cc",
       "slot_manager_mock.cc",
       "slot_policy_mock.cc",
+      "tpm_thread_utility_impl.cc",
       "tpm_utility_mock.cc",
     ]
     configs += [ ":target_defaults" ]

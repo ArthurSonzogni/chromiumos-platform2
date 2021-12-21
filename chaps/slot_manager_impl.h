@@ -27,7 +27,7 @@
 namespace chaps {
 
 class SessionFactory;
-class TPMUtility;
+class AsyncTPMUtility;
 
 // Maintains a list of PKCS #11 slots and modifies the list according to login
 // events received. Sample usage:
@@ -41,7 +41,7 @@ class SlotManagerImpl : public SlotManager,
                         public HandleGenerator {
  public:
   SlotManagerImpl(ChapsFactory* factory,
-                  TPMUtility* tpm_utility,
+                  AsyncTPMUtility* tpm_utility,
                   bool auto_load_system_token,
                   SystemShutdownBlocker* system_shutdown_blocker);
   SlotManagerImpl(const SlotManagerImpl&) = delete;
@@ -192,7 +192,7 @@ class SlotManagerImpl : public SlotManager,
   // Value: The identifier of the associated slot.
   std::map<int, int> session_slot_map_;
   std::map<brillo::SecureBlob, Isolate> isolate_map_;
-  TPMUtility* tpm_utility_;
+  AsyncTPMUtility* tpm_utility_;
   base::Lock handle_generator_lock_;
   bool auto_load_system_token_;
   bool is_initialized_;

@@ -26,13 +26,13 @@
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 
+#include "chaps/async_tpm_utility.h"
 #include "chaps/chaps_utility.h"
 #include "chaps/isolate.h"
 #include "chaps/object_importer.h"
 #include "chaps/session.h"
 #include "chaps/slot_policy_default.h"
 #include "chaps/slot_policy_shared_slot.h"
-#include "chaps/tpm_utility.h"
 #include "pkcs11/cryptoki.h"
 
 using base::AutoLock;
@@ -235,31 +235,6 @@ class TokenInitThread : public base::PlatformThread::Delegate {
   SystemShutdownBlocker* system_shutdown_blocker_;
 };
 
-// Performs expensive tasks required to terminate a token.
-class TokenTermThread : public base::PlatformThread::Delegate {
- public:
-  // This class will not take ownership of any pointers.
-  TokenTermThread(int slot_id, TPMUtility* tpm_utility)
-      : slot_id_(slot_id), tpm_utility_(tpm_utility) {}
-  TokenTermThread(const TokenTermThread&) = delete;
-  TokenTermThread& operator=(const TokenTermThread&) = delete;
-
-  ~TokenTermThread() override {}
-
-  // PlatformThread::Delegate interface.
-  void ThreadMain() override {
-    // Create a message loop for this thread.
-    brillo::BaseMessageLoop loop;
-    loop.SetAsCurrent();
-
-    tpm_utility_->UnloadKeysForSlot(slot_id_);
-  }
-
- private:
-  int slot_id_;
-  TPMUtility* tpm_utility_;
-};
-
 TokenInitThread::TokenInitThread(int slot_id,
                                  FilePath path,
                                  const SecureBlob& auth_data,
@@ -360,7 +335,7 @@ bool TokenInitThread::InitializeKeyHierarchy(SecureBlob* root_key) {
 }  // namespace
 
 SlotManagerImpl::SlotManagerImpl(ChapsFactory* factory,
-                                 TPMUtility* tpm_utility,
+                                 AsyncTPMUtility* tpm_utility,
                                  bool auto_load_system_token,
                                  SystemShutdownBlocker* system_shutdown_blocker)
     : factory_(factory),
@@ -676,8 +651,11 @@ bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
   CHECK(object_pool.get());
 
   // Wait for the termination of a previous token.
-  if (slot_list_[*slot_id].worker_thread.get())
+  if (slot_list_[*slot_id].worker_thread.get()) {
     base::PlatformThread::Join(slot_list_[*slot_id].worker_thread_handle);
+    slot_list_[*slot_id].worker_thread.reset();
+    slot_list_[*slot_id].worker_thread_handle = base::PlatformThreadHandle();
+  }
 
   if (tpm_utility_->IsTPMAvailable()) {
     // Decrypting (or creating) the root key requires the TPM so we'll put
@@ -809,16 +787,16 @@ void SlotManagerImpl::UnloadToken(const SecureBlob& isolate_credential,
   }
 
   // Wait for initialization to be finished before cleaning up.
-  if (slot_list_[slot_id].worker_thread.get())
+  if (slot_list_[slot_id].worker_thread.get()) {
     base::PlatformThread::Join(slot_list_[slot_id].worker_thread_handle);
+    slot_list_[slot_id].worker_thread.reset();
+    slot_list_[slot_id].worker_thread_handle = base::PlatformThreadHandle();
+  }
 
   if (tpm_utility_->IsTPMAvailable()) {
-    // Spawn a thread to handle the TPM-related work.
-    slot_list_[slot_id].worker_thread.reset(
-        new TokenTermThread(slot_id, tpm_utility_));
-    base::PlatformThread::Create(0, slot_list_[slot_id].worker_thread.get(),
-                                 &slot_list_[slot_id].worker_thread_handle);
+    tpm_utility_->UnloadKeysForSlotAsync(slot_id, base::DoNothing());
   }
+
   CloseAllSessions(isolate_credential, slot_id);
   slot_list_[slot_id].token_object_pool.reset();
   slot_list_[slot_id].slot_info.flags &= ~CKF_TOKEN_PRESENT;
