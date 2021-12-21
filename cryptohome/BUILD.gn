@@ -461,6 +461,7 @@ if (use.test) {
     }
     if (use.tpm) {
       sources += [
+        "cryptorecovery/recovery_crypto_tpm1_backend_impl_unittest.cc",
         "tpm1_static_utils_unittest.cc",
         "tpm1_test.cc",
       ]

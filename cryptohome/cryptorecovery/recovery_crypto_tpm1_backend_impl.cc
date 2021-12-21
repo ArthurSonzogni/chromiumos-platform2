@@ -13,7 +13,9 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
+#include <libhwsec/error/error.h>
 #include <libhwsec/error/tpm1_error.h>
+#include <libhwsec/error/tpm_retry_handler.h>
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <trousers/scoped_tss_type.h>
@@ -23,7 +25,7 @@
 #include "cryptohome/crypto/big_num_util.h"
 #include "cryptohome/crypto/ecdh_hkdf.h"
 #include "cryptohome/crypto/secure_blob_util.h"
-#include "cryptohome/tpm_impl.h"
+#include "cryptohome/tpm.h"
 
 namespace cryptohome {
 namespace cryptorecovery {
@@ -41,7 +43,7 @@ namespace {
 constexpr int kAuthValueSizeBytes = 32;
 }  // namespace
 
-RecoveryCryptoTpm1BackendImpl::RecoveryCryptoTpm1BackendImpl(TpmImpl* tpm_impl)
+RecoveryCryptoTpm1BackendImpl::RecoveryCryptoTpm1BackendImpl(Tpm* tpm_impl)
     : tpm_impl_(tpm_impl) {
   DCHECK(tpm_impl_);
 }

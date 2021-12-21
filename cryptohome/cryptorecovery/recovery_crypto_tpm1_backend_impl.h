@@ -15,10 +15,9 @@
 
 #include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/cryptorecovery/recovery_crypto.h"
+#include "cryptohome/tpm.h"
 
 namespace cryptohome {
-
-class TpmImpl;
 
 namespace cryptorecovery {
 
@@ -26,7 +25,7 @@ namespace cryptorecovery {
 // requires AP's elliptic-curve support.
 class RecoveryCryptoTpm1BackendImpl final : public RecoveryCryptoTpmBackend {
  public:
-  explicit RecoveryCryptoTpm1BackendImpl(TpmImpl* tpm_impl);
+  explicit RecoveryCryptoTpm1BackendImpl(Tpm* tpm_impl);
   RecoveryCryptoTpm1BackendImpl(const RecoveryCryptoTpm1BackendImpl&) = delete;
   RecoveryCryptoTpm1BackendImpl& operator=(
       const RecoveryCryptoTpm1BackendImpl&) = delete;
@@ -52,7 +51,7 @@ class RecoveryCryptoTpm1BackendImpl final : public RecoveryCryptoTpmBackend {
       const EC_POINT& others_pub_point) override;
 
  private:
-  TpmImpl* const tpm_impl_;
+  Tpm* const tpm_impl_;
 };
 
 }  // namespace cryptorecovery
