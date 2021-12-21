@@ -42,7 +42,7 @@
 #include "chaps/dbus_bindings/constants.h"
 #include "chaps/platform_globals.h"
 #include "chaps/slot_manager_impl.h"
-
+#include "chaps/tpm_thread_utility_impl.h"
 #include "chaps/tpm_utility.h"
 #include "chaps/tpm_utility_stub.h"
 
@@ -128,13 +128,19 @@ class Daemon : public brillo::DBusServiceDaemon {
     TPM2_SECTION({
       CHECK(tpm_background_thread_.StartWithOptions(base::Thread::Options(
           base::MessagePumpType::IO, 0 /* use default stack size */)));
-      tpm_.reset(new TPM2UtilityImpl(tpm_background_thread_.task_runner()));
+      auto tpm2_impl = std::make_unique<TPM2UtilityImpl>(
+          tpm_background_thread_.task_runner());
+      tpm_ = std::make_unique<TPMThreadUtilityImpl>(std::move(tpm2_impl));
     });
     TPM1_SECTION({
       // Instantiate a TPM1.2 Utility.
-      tpm_.reset(new TPMUtilityImpl(srk_auth_data_));
+      auto tpm1_impl = std::make_unique<TPMUtilityImpl>(srk_auth_data_);
+      tpm_ = std::make_unique<TPMThreadUtilityImpl>(std::move(tpm1_impl));
     });
-    OTHER_TPM_SECTION({ tpm_.reset(new TPMUtilityStub()); });
+    OTHER_TPM_SECTION({
+      auto tpm_stub = std::make_unique<TPMUtilityStub>();
+      tpm_ = std::make_unique<TPMThreadUtilityImpl>(std::move(tpm_stub));
+    });
     TPM_SELECT_END;
 
     factory_.reset(new ChapsFactoryImpl);
@@ -200,7 +206,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   bool auto_load_system_token_;
   base::Thread tpm_background_thread_;
 
-  std::unique_ptr<TPMUtility> tpm_;
+  std::unique_ptr<TPMThreadUtilityImpl> tpm_;
   std::unique_ptr<ChapsFactory> factory_;
   std::unique_ptr<SystemShutdownBlocker> system_shutdown_blocker_;
   std::unique_ptr<SlotManagerImpl> slot_manager_;

@@ -178,6 +178,7 @@ executable("chapsd") {
     "slot_policy_default.cc",
     "slot_policy_shared_slot.cc",
     "system_shutdown_blocker.cc",
+    "tpm_thread_utility_impl.cc",
   ]
   install_path = "sbin"
   configs += [
