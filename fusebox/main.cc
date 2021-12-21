@@ -58,11 +58,6 @@ fusebox::InodeTable& GetInodeTable() {
   return *inode_table;
 }
 
-dbus::MethodCall GetFuseBoxServerMethodCall(
-    const char* method = fusebox::kFuseBoxOperationMethod) {
-  return dbus::MethodCall(fusebox::kFuseBoxServiceInterface, method);
-}
-
 }  // namespace
 
 namespace fusebox {
@@ -110,6 +105,18 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     }
   }
 
+  static dbus::MethodCall GetFuseBoxServerMethod(
+      const char* method = fusebox::kFuseBoxOperationMethod) {
+    return dbus::MethodCall(fusebox::kFuseBoxServiceInterface, method);
+  }
+
+  template <typename Signature>
+  void CallFuseBoxServerMethod(dbus::MethodCall* method_call,
+                               base::OnceCallback<Signature> callback) {
+    constexpr auto timeout = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
+    dbus_proxy_->CallMethod(method_call, timeout, std::move(callback));
+  }
+
   void Init(void* userdata, struct fuse_conn_info*) override {
     CHECK(userdata);
   }
@@ -127,7 +134,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
       return;
     }
 
-    dbus::MethodCall method = GetFuseBoxServerMethodCall();
+    dbus::MethodCall method = GetFuseBoxServerMethod();
     dbus::MessageWriter writer(&method);
 
     writer.AppendString("stat");
@@ -137,8 +144,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     auto stat_response =
         base::BindOnce(&FuseBoxClient::StatResponse, base::Unretained(this),
                        std::move(request), node->ino);
-    constexpr auto timeout = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
-    dbus_proxy_->CallMethod(&method, timeout, std::move(stat_response));
+    CallFuseBoxServerMethod(&method, std::move(stat_response));
   }
 
   const double kStatTimeoutSeconds = 5.0;
@@ -183,7 +189,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
       return;
     }
 
-    dbus::MethodCall method = GetFuseBoxServerMethodCall();
+    dbus::MethodCall method = GetFuseBoxServerMethod();
     dbus::MessageWriter writer(&method);
 
     writer.AppendString("stat");
@@ -194,8 +200,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     auto lookup_response =
         base::BindOnce(&FuseBoxClient::LookupResponse, base::Unretained(this),
                        std::move(request), parent, std::string(name));
-    constexpr auto timeout = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
-    dbus_proxy_->CallMethod(&method, timeout, std::move(lookup_response));
+    CallFuseBoxServerMethod(&method, std::move(lookup_response));
   }
 
   const double kEntryTimeoutSeconds = 5.0;
@@ -283,7 +288,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
       return;
     }
 
-    dbus::MethodCall method = GetFuseBoxServerMethodCall();
+    dbus::MethodCall method = GetFuseBoxServerMethod();
     dbus::MessageWriter writer(&method);
 
     writer.AppendString("readdir");
@@ -294,8 +299,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     auto readdir_response =
         base::BindOnce(&FuseBoxClient::ReadDirResponse, base::Unretained(this),
                        std::move(request), node->ino, handle);
-    constexpr auto timeout = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
-    dbus_proxy_->CallMethod(&method, timeout, std::move(readdir_response));
+    CallFuseBoxServerMethod(&method, std::move(readdir_response));
   }
 
   void ReadDirResponse(std::unique_ptr<DirEntryRequest> request,
