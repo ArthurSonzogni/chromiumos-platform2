@@ -76,7 +76,7 @@ def UpdateTimeZones():
   Valid time zones are values of the kTimeZones array in timezone_settings.cc
   <http://goo.gl/WSVUeE>.
   """
-  cpp_code = GetChromiumSource('chromeos/settings/timezone_settings.cc')
+  cpp_code = GetChromiumSource('ash/components/settings/timezone_settings.cc')
   match = re.search(r'static[^\n]+kTimeZones\[\] = \{(.+?)^\}',
                     cpp_code, re.DOTALL | re.MULTILINE)
   if not match:
@@ -93,9 +93,9 @@ def UpdateMigrationMap():
   """Updates the input method migration map.
 
   The source is the kEngineIdMigrationMap array in input_method_util.cc
-  <https://chromium.googlesource.com/chromium/src/+/HEAD/ui/base/ime/chromeos/input_method_util.cc>.
+  <https://chromium.googlesource.com/chromium/src/+/HEAD/ui/base/ime/ash/input_method_util.cc>.
   """
-  cpp_code = GetChromiumSource('ui/base/ime/chromeos/input_method_util.cc')
+  cpp_code = GetChromiumSource('ui/base/ime/ash/input_method_util.cc')
   match = re.search(r'kEngineIdMigrationMap\[\]\[2\] = \{(.+?)^\}',
                     cpp_code, re.DOTALL | re.MULTILINE)
   if not match:
