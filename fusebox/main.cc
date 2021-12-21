@@ -389,6 +389,77 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     request->ReplyOk();
   }
 
+  void Open(std::unique_ptr<OpenRequest> request, fuse_ino_t ino) override {
+    VLOG(1) << "open " << ino;
+
+    if (request->IsInterrupted())
+      return;
+
+    Node* node = GetInodeTable().Lookup(ino);
+    if (!node) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "open " << ino;
+      return;
+    }
+
+    dbus::MethodCall method = GetFuseBoxServerMethod();
+    dbus::MessageWriter writer(&method);
+
+    writer.AppendString("open");
+    auto item = *g_device + GetInodeTable().GetPath(node);
+    writer.AppendString(item);
+    VLOG(1) << "open flags " << OpenFlagsToString(request->flags());
+    writer.AppendInt32(request->flags() & O_ACCMODE);
+
+    auto open_response =
+        base::BindOnce(&FuseBoxClient::OpenResponse, base::Unretained(this),
+                       std::move(request), node->ino);
+    CallFuseBoxServerMethod(&method, std::move(open_response));
+  }
+
+  void OpenResponse(std::unique_ptr<OpenRequest> request,
+                    fuse_ino_t ino,
+                    dbus::Response* response) {
+    VLOG(1) << "open-resp " << ino;
+
+    if (request->IsInterrupted())
+      return;
+
+    dbus::MessageReader reader(response);
+    if (int error = GetResponseErrno(&reader, response)) {
+      request->ReplyError(error);
+      return;
+    }
+
+    if (!GetInodeTable().Lookup(ino)) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "open-resp " << ino;
+      return;
+    }
+
+    base::ScopedFD fd;
+    reader.PopFileDescriptor(&fd);
+
+    uint64_t handle = fusebox::OpenFile(std::move(fd));
+    request->ReplyOpen(handle);
+  }
+
+  void Release(std::unique_ptr<OkRequest> request, fuse_ino_t ino) override {
+    VLOG(1) << "release fh " << request->fh();
+
+    if (request->IsInterrupted())
+      return;
+
+    if (!fusebox::GetFile(request->fh())) {
+      errno = request->ReplyError(EBADF);
+      PLOG(ERROR) << "release fh " << request->fh();
+      return;
+    }
+
+    fusebox::CloseFile(request->fh());
+    request->ReplyOk();
+  }
+
  private:
   // Client D-Bus object.
   brillo::dbus_utils::DBusObject dbus_object_;
