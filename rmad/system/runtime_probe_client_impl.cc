@@ -5,7 +5,6 @@
 #include "rmad/system/runtime_probe_client_impl.h"
 
 #include <memory>
-#include <set>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -18,6 +17,8 @@
 #include <dbus/runtime_probe/dbus-constants.h>
 #include <rmad/proto_bindings/rmad.pb.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
+
+#include "rmad/utils/component_utils.h"
 
 namespace {
 
@@ -41,29 +42,16 @@ const std::unordered_map<rmad::RmadComponent,
         {rmad::RMAD_COMPONENT_ETHERNET, runtime_probe::ProbeRequest::ethernet},
         {rmad::RMAD_COMPONENT_WIRELESS, runtime_probe::ProbeRequest::wireless}};
 
-const std::vector<
-    std::pair<rmad::RmadComponent, int (runtime_probe::ProbeResult::*)() const>>
-    kProbedComponentSizes = {
-        {rmad::RMAD_COMPONENT_BATTERY,
-         &runtime_probe::ProbeResult::battery_size},
-        {rmad::RMAD_COMPONENT_STORAGE,
-         &runtime_probe::ProbeResult::storage_size},
-        {rmad::RMAD_COMPONENT_CAMERA, &runtime_probe::ProbeResult::camera_size},
-        {rmad::RMAD_COMPONENT_STYLUS, &runtime_probe::ProbeResult::stylus_size},
-        {rmad::RMAD_COMPONENT_TOUCHPAD,
-         &runtime_probe::ProbeResult::touchpad_size},
-        {rmad::RMAD_COMPONENT_TOUCHSCREEN,
-         &runtime_probe::ProbeResult::touchscreen_size},
-        {rmad::RMAD_COMPONENT_DRAM, &runtime_probe::ProbeResult::dram_size},
-        {rmad::RMAD_COMPONENT_DISPLAY_PANEL,
-         &runtime_probe::ProbeResult::display_panel_size},
-        {rmad::RMAD_COMPONENT_CELLULAR,
-         &runtime_probe::ProbeResult::cellular_size},
-        {rmad::RMAD_COMPONENT_ETHERNET,
-         &runtime_probe::ProbeResult::ethernet_size},
-        {rmad::RMAD_COMPONENT_WIRELESS,
-         &runtime_probe::ProbeResult::wireless_size},
-};
+template <typename T>
+void AppendComponents(rmad::RmadComponent component,
+                      const T& arr,
+                      int size,
+                      rmad::ComponentsWithIdentifier* component_list) {
+  for (int i = 0; i < size; ++i) {
+    component_list->push_back(
+        std::make_pair(component, rmad::GetComponentIdentifier(arr.Get(i))));
+  }
+}
 
 }  // namespace
 
@@ -78,7 +66,7 @@ RuntimeProbeClientImpl::RuntimeProbeClientImpl(
 
 bool RuntimeProbeClientImpl::ProbeCategories(
     const std::vector<RmadComponent>& categories,
-    std::set<RmadComponent>* components) {
+    ComponentsWithIdentifier* component_list) {
   dbus::MethodCall method_call(runtime_probe::kRuntimeProbeInterfaceName,
                                runtime_probe::kProbeCategoriesMethod);
   dbus::MessageWriter writer(&method_call);
@@ -115,12 +103,30 @@ bool RuntimeProbeClientImpl::ProbeCategories(
     return false;
   }
 
-  components->clear();
-  for (auto& [component, probed_component_size] : kProbedComponentSizes) {
-    if ((reply.*probed_component_size)() > 0) {
-      components->insert(component);
-    }
-  }
+  component_list->clear();
+  AppendComponents(rmad::RMAD_COMPONENT_BATTERY, reply.battery(),
+                   reply.battery_size(), component_list);
+  AppendComponents(rmad::RMAD_COMPONENT_STORAGE, reply.storage(),
+                   reply.storage_size(), component_list);
+  AppendComponents(rmad::RMAD_COMPONENT_CAMERA, reply.camera(),
+                   reply.camera_size(), component_list);
+  AppendComponents(rmad::RMAD_COMPONENT_STYLUS, reply.stylus(),
+                   reply.stylus_size(), component_list);
+  AppendComponents(rmad::RMAD_COMPONENT_TOUCHPAD, reply.touchpad(),
+                   reply.touchpad_size(), component_list);
+  AppendComponents(rmad::RMAD_COMPONENT_TOUCHSCREEN, reply.touchscreen(),
+                   reply.touchscreen_size(), component_list);
+  AppendComponents(rmad::RMAD_COMPONENT_DRAM, reply.dram(), reply.dram_size(),
+                   component_list);
+  AppendComponents(rmad::RMAD_COMPONENT_DISPLAY_PANEL, reply.display_panel(),
+                   reply.display_panel_size(), component_list);
+  AppendComponents(rmad::RMAD_COMPONENT_CELLULAR, reply.cellular(),
+                   reply.cellular_size(), component_list);
+  AppendComponents(rmad::RMAD_COMPONENT_ETHERNET, reply.ethernet(),
+                   reply.ethernet_size(), component_list);
+  AppendComponents(rmad::RMAD_COMPONENT_WIRELESS, reply.wireless(),
+                   reply.wireless_size(), component_list);
+
   return true;
 }
 

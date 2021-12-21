@@ -5,9 +5,9 @@
 #include "rmad/state_handler/components_repair_state_handler.h"
 
 #include <memory>
-#include <set>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -25,7 +25,7 @@ using RepairStatus = ComponentRepairStatus::RepairStatus;
 
 namespace {
 
-const std::vector<RmadComponent> kProbeableComponents = {
+const std::unordered_set<RmadComponent> kProbeableComponents = {
     RMAD_COMPONENT_BATTERY,  RMAD_COMPONENT_STORAGE,
     RMAD_COMPONENT_CAMERA,   RMAD_COMPONENT_STYLUS,
     RMAD_COMPONENT_TOUCHPAD, RMAD_COMPONENT_TOUCHSCREEN,
@@ -34,7 +34,7 @@ const std::vector<RmadComponent> kProbeableComponents = {
     RMAD_COMPONENT_WIRELESS,
 };
 
-const std::vector<RmadComponent> kUnprobeableComponents = {
+const std::unordered_set<RmadComponent> kUnprobeableComponents = {
     RMAD_COMPONENT_KEYBOARD,           RMAD_COMPONENT_POWER_BUTTON,
     RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
     RMAD_COMPONENT_BASE_GYROSCOPE,     RMAD_COMPONENT_LID_GYROSCOPE,
@@ -116,46 +116,64 @@ ComponentsRepairStateHandler::ComponentsRepairStateHandler(
       runtime_probe_client_(std::move(runtime_probe_client)) {}
 
 RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
-  // |state_| should always contain the full list of components, unless it's
-  // just being created. Always probe again and use the probe results to update
-  // |state_| when re-entering the state.
+  // Probing takes a lot of time. Early return to avoid probing again if we are
+  // already in this state.
   if (active_) {
     return RMAD_ERROR_OK;
   }
+
   if (!state_.has_components_repair() && !RetrieveState()) {
     state_.set_allocated_components_repair(new ComponentsRepairState);
   }
+
+  // Initialize probeable and unprobeable components. Ideally |state_| always
+  // contain the full list of components, unless it's just being created, but
+  // it's possible that the state file on the device is old and the latest image
+  // introduces some new components. This could happen on stocked mainboards.
+  // We also assume we don't remove any component enums for backward
+  // compatibility.
   std::unordered_map<RmadComponent, RepairStatus> component_status_map =
       ConvertStateToDictionary(state_);
+  for (RmadComponent component : kProbeableComponents) {
+    if (component_status_map.count(component) == 0) {
+      component_status_map[component] =
+          ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING;
+    }
+  }
+  for (RmadComponent component : kUnprobeableComponents) {
+    if (component_status_map.count(component) == 0) {
+      component_status_map[component] =
+          ComponentRepairStatus::RMAD_REPAIR_STATUS_UNKNOWN;
+    }
+  }
 
   // Call runtime_probe to get all probed components.
-  // TODO(chenghan): Integrate with RACC to check AVL compliance.
-  std::set<RmadComponent> probed_components;
+  ComponentsWithIdentifier probed_components;
   if (!runtime_probe_client_->ProbeCategories({}, &probed_components)) {
     LOG(ERROR) << "Failed to get probe result from runtime_probe";
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
 
   // Update probeable components using runtime_probe results.
-  for (RmadComponent component : kProbeableComponents) {
-    if (probed_components.count(component) > 0) {
-      if (component_status_map.count(component) == 0 ||
-          component_status_map[component] ==
-              ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING) {
-        component_status_map[component] =
-            ComponentRepairStatus::RMAD_REPAIR_STATUS_UNKNOWN;
-      }
-    } else {
-      component_status_map[component] =
-          ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING;
-    }
-  }
-  // Update unprobeable components. These components are never MISSING because
-  // we cannot probe them.
-  for (RmadComponent component : kUnprobeableComponents) {
-    if (component_status_map.count(component) == 0) {
+  // 1. If a probed component is marked MISSING, the component was not probed
+  //    previously, or this is the first probe. Mark the component as UNKNOWN.
+  // 2. If a component is not marked MISSING, but it doesn't appear in the
+  //    latest probed result, mark the component as MISSING.
+  // TODO(chenghan): Use the identifier provided by runtime_probe.
+  std::set<RmadComponent> probed_component_set;
+  for (const auto& [component, unused_identidier] : probed_components) {
+    probed_component_set.insert(component);
+    CHECK_GT(kProbeableComponents.count(component), 0);
+    if (component_status_map[component] ==
+        ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING) {
       component_status_map[component] =
           ComponentRepairStatus::RMAD_REPAIR_STATUS_UNKNOWN;
+    }
+  }
+  for (RmadComponent component : kProbeableComponents) {
+    if (probed_component_set.count(component) == 0) {
+      component_status_map[component] =
+          ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING;
     }
   }
 

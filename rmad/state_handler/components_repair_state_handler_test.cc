@@ -32,7 +32,7 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<ComponentsRepairStateHandler> CreateStateHandler(
       bool runtime_probe_client_retval,
-      const std::set<RmadComponent>& probed_components) {
+      const ComponentsWithIdentifier& probed_components) {
     auto mock_runtime_probe_client =
         std::make_unique<NiceMock<MockRuntimeProbeClient>>();
     ON_CALL(*mock_runtime_probe_client, ProbeCategories(_, _))
@@ -71,7 +71,7 @@ TEST_F(ComponentsRepairStateHandlerTest, InitializeState_Fail) {
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_Success) {
-  auto handler = CreateStateHandler(true, {RMAD_COMPONENT_BATTERY});
+  auto handler = CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, ""}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   std::unique_ptr<ComponentsRepairState> components_repair =
@@ -96,7 +96,7 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_Success) {
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_Success_MlbRework) {
-  auto handler = CreateStateHandler(true, {RMAD_COMPONENT_BATTERY});
+  auto handler = CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, ""}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   std::unique_ptr<ComponentsRepairState> components_repair =
@@ -129,7 +129,7 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_Success_MlbRework) {
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_MissingState) {
-  auto handler = CreateStateHandler(true, {RMAD_COMPONENT_BATTERY});
+  auto handler = CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, ""}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No ComponentsRepairState.
@@ -141,7 +141,7 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_MissingState) {
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnknownComponent) {
-  auto handler = CreateStateHandler(true, {RMAD_COMPONENT_BATTERY});
+  auto handler = CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, ""}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   std::unique_ptr<ComponentsRepairState> components_repair =
@@ -165,7 +165,7 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnknownComponent) {
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnprobedComponent) {
-  auto handler = CreateStateHandler(true, {RMAD_COMPONENT_BATTERY});
+  auto handler = CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, ""}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   std::unique_ptr<ComponentsRepairState> components_repair =
@@ -190,7 +190,7 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnprobedComponent) {
 
 TEST_F(ComponentsRepairStateHandlerTest,
        GetNextStateCase_MissingProbedComponent) {
-  auto handler = CreateStateHandler(true, {RMAD_COMPONENT_BATTERY});
+  auto handler = CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, ""}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   std::unique_ptr<ComponentsRepairState> components_repair =
@@ -210,7 +210,7 @@ TEST_F(ComponentsRepairStateHandlerTest,
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnknownRepairState) {
-  auto handler = CreateStateHandler(true, {RMAD_COMPONENT_BATTERY});
+  auto handler = CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, ""}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // RMAD_COMPONENT_BATTERY is still UNKNOWN.

@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 #include <memory>
-#include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -151,9 +151,9 @@ class RmadInterfaceImplTest : public testing::Test {
       bool has_cellular) {
     auto mock_runtime_probe_client =
         std::make_unique<NiceMock<MockRuntimeProbeClient>>();
-    std::set<RmadComponent> components;
+    ComponentsWithIdentifier components;
     if (has_cellular) {
-      components.insert(RMAD_COMPONENT_CELLULAR);
+      components.push_back(std::make_pair(RMAD_COMPONENT_CELLULAR, ""));
     }
     ON_CALL(*mock_runtime_probe_client, ProbeCategories(_, _))
         .WillByDefault(DoAll(SetArgPointee<1>(components), Return(true)));

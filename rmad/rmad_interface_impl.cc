@@ -5,9 +5,9 @@
 #include "rmad/rmad_interface_impl.h"
 
 #include <memory>
-#include <set>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
@@ -188,10 +188,10 @@ bool RmadInterfaceImpl::SetUp() {
   // TODO(chenghan): Disable cellular in a separate thread to shorten the
   //                 response time.
   if (current_state_case_ != RmadState::STATE_NOT_SET) {
-    if (std::set<RmadComponent> components;
+    if (ComponentsWithIdentifier components;
         runtime_probe_client_->ProbeCategories({RMAD_COMPONENT_CELLULAR},
                                                &components) &&
-        components.count(RMAD_COMPONENT_CELLULAR) > 0) {
+        components.size() > 0) {
       LOG(INFO) << "Disabling cellular network";
       DCHECK(shill_client_->DisableCellular());
     }

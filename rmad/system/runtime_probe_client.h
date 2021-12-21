@@ -5,12 +5,16 @@
 #ifndef RMAD_SYSTEM_RUNTIME_PROBE_CLIENT_H_
 #define RMAD_SYSTEM_RUNTIME_PROBE_CLIENT_H_
 
-#include <set>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include <rmad/proto_bindings/rmad.pb.h>
 
 namespace rmad {
+
+using ComponentsWithIdentifier =
+    std::vector<std::pair<RmadComponent, std::string>>;
 
 class RuntimeProbeClient {
  public:
@@ -22,7 +26,7 @@ class RuntimeProbeClient {
   // categories by default. Return true if the probing is successful. Return
   // false if the probing fails, and in this case |components| is not modified.
   virtual bool ProbeCategories(const std::vector<RmadComponent>& categories,
-                               std::set<RmadComponent>* components) = 0;
+                               ComponentsWithIdentifier* components) = 0;
 };
 
 }  // namespace rmad

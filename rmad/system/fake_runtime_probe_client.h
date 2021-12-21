@@ -7,7 +7,8 @@
 
 #include "rmad/system/runtime_probe_client.h"
 
-#include <set>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
@@ -23,7 +24,7 @@ class FakeRuntimeProbeClient : public RuntimeProbeClient {
   ~FakeRuntimeProbeClient() override = default;
 
   bool ProbeCategories(const std::vector<RmadComponent>& categories,
-                       std::set<RmadComponent>* components) override;
+                       ComponentsWithIdentifier* components) override;
 };
 
 }  // namespace fake
