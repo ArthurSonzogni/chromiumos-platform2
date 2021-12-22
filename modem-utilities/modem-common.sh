@@ -95,10 +95,13 @@ MODEMFWD_IFACE=org.chromium.Modemfwd
 
 force_flash() {
   local device="$1"
+  local carrier_uuid="$2"
   [ -z "${device}" ] && error_exit "No device_id provided."
+  [ -z "${carrier_uuid}" ] && carrier_uuid="generic"
 
   dbus_call_with_timeout "${MODEMFWD}" 120000 "${MODEMFWD_OBJECT}" \
-    "${MODEMFWD_IFACE}.ForceFlash" "string:${device}"
+    "${MODEMFWD_IFACE}.ForceFlash" "string:${device}" \
+    dict:string:string:"carrier_uuid","${carrier_uuid}"
 }
 
 #
