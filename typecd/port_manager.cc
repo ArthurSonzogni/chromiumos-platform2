@@ -370,7 +370,8 @@ void PortManager::RunModeEntry(int port_num) {
     SetPeripheralDataAccess(features_client_->IsPeripheralDataAccessEnabled());
 
   // If the host supports USB4 and we can enter USB4 in this partner, do so.
-  if (port->CanEnterUSB4() == ModeEntryResult::kSuccess) {
+  auto can_enter_usb4 = port->CanEnterUSB4();
+  if (can_enter_usb4 == ModeEntryResult::kSuccess) {
     if (ec_util_->EnterMode(port_num, TypeCMode::kUSB4)) {
       port->SetCurrentMode(TypeCMode::kUSB4);
       LOG(INFO) << "Entered USB4 mode on port " << port_num;
@@ -381,7 +382,8 @@ void PortManager::RunModeEntry(int port_num) {
     return;
   }
 
-  if (port->CanEnterTBTCompatibilityMode() == ModeEntryResult::kSuccess) {
+  auto can_enter_thunderbolt = port->CanEnterTBTCompatibilityMode();
+  if (can_enter_thunderbolt == ModeEntryResult::kSuccess) {
     // Check if DP alt mode can be entered. If so:
     // - If the user is not active: enter DP.
     // - If the user is active: if peripheral data access is disabled, enter DP,
@@ -407,6 +409,14 @@ void PortManager::RunModeEntry(int port_num) {
                  << " failed for port " << port_num;
     }
 
+    // If TBT is entered due to a USB4 cable error, warn the user.
+    if (can_enter_usb4 == ModeEntryResult::kCableError) {
+      LOG(WARNING) << "USB4 partner with TBT cable on port " << port_num;
+      if (notify_mgr_)
+        notify_mgr_->NotifyCableWarning(
+            CableWarningType::kInvalidUSB4ValidTBTCable);
+    }
+
     return;
   }
 
@@ -418,19 +428,27 @@ void PortManager::RunModeEntry(int port_num) {
     } else {
       LOG(ERROR) << "Attempt to call Enter DP failed for port " << port_num;
     }
-
-    // Notification placeholder to warn the user of a cable which may not
-    // support DisplayPort alternate mode.
-    if (invalid_dpalt_cable) {
-      LOG(WARNING) << "Cable may not support DPAltMode on port " << port_num;
-
-      // Notify user of potential cable issue.
-      if (notify_mgr_)
-        notify_mgr_->NotifyCableWarning(CableWarningType::kInvalidDpCable);
-    }
-
-    return;
   }
+
+  // CableWarningType to track possible cable notifications.
+  CableWarningType cable_warning = CableWarningType::kOther;
+  if (can_enter_usb4 == ModeEntryResult::kCableError) {
+    cable_warning = CableWarningType::kInvalidUSB4Cable;
+    LOG(WARNING) << "USB4 partner with incompatible cable on port " << port_num;
+  } else if (can_enter_thunderbolt == ModeEntryResult::kCableError) {
+    cable_warning = CableWarningType::kInvalidTBTCable;
+    LOG(WARNING) << "TBT partner with incompatible cable on port " << port_num;
+  } else if (invalid_dpalt_cable) {
+    cable_warning = CableWarningType::kInvalidDpCable;
+    LOG(WARNING) << "DPAltMode partner with incompatible cable on port "
+                 << port_num;
+  }
+
+  // Notify user of potential cable issue.
+  if (notify_mgr_ && cable_warning != CableWarningType::kOther)
+    notify_mgr_->NotifyCableWarning(cable_warning);
+
+  return;
 }
 
 }  // namespace typecd

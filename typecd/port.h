@@ -150,6 +150,8 @@ class Port {
   FRIEND_TEST(PortTest, TestUSB4EntryFalseGatkexPassiveNonTBT3Cable);
   FRIEND_TEST(PortTest, TestUSB4EntryFalseGatkexActiveTBT3Cable);
   FRIEND_TEST(PortTest, TestUSB4EntryTrueGatkexAppleTBT3ProCable);
+  FRIEND_TEST(PortTest, TestUSB4ToTBT);
+  FRIEND_TEST(PortTest, TestUSB4ToDPAltMode);
 
   bool IsPartnerAltModePresent(uint16_t altmode_sid);
 

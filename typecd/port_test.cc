@@ -1198,4 +1198,120 @@ TEST_F(PortTest, TestUSB4EntryTrueGatkexAppleTBT3ProCable) {
   EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterUSB4());
 }
 
+// Check that USB4 device will enter TBT3 mode if the  cable does not support
+// USB4.
+// Case: Thunderbolt 4 OWC dock connected with unbranded active TBT3 cable.
+TEST_F(PortTest, TestUSB4ToTBT) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  // Set up fake sysfs paths and add a partner.
+  port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
+
+  // PD ID VDOs for the OWC Dock.
+  port->partner_->SetPDRevision(PDRevision::k30);
+  port->partner_->SetIdHeaderVDO(0x4cc01e91);
+  port->partner_->SetCertStatVDO(0x0);
+  port->partner_->SetProductVDO(0xde430069);
+  port->partner_->SetProductTypeVDO1(0xd00003b);
+  port->partner_->SetProductTypeVDO2(0x0);
+  port->partner_->SetProductTypeVDO3(0x0);
+
+  // Set up fake sysfs paths for partner alt modes.
+  port->partner_->SetNumAltModes(2);
+
+  // Add the DP alt mode.
+  std::string mode0_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
+  auto mode0_path = temp_dir_.Append(mode0_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kDPAltModeSID, 0x1c0045, 0));
+  port->AddRemovePartnerAltMode(mode0_path, true);
+
+  // Add the TBT alt mode.
+  std::string mode1_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
+  auto mode1_path = temp_dir_.Append(mode1_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode1_path, kTBTAltModeVID, 0x1, 0));
+  port->AddRemovePartnerAltMode(mode1_path, true);
+
+  // Set up fake sysfs paths and add a cable.
+  port->AddCable(base::FilePath(kFakePort0CableSysPath));
+
+  // PD ID VDOs for the unbranded TBT3 active cable.
+  port->cable_->SetPDRevision(PDRevision::k20);
+  port->cable_->SetIdHeaderVDO(0x240020c2);
+  port->cable_->SetCertStatVDO(0x0);
+  port->cable_->SetProductVDO(0x40010);
+  port->cable_->SetProductTypeVDO1(0x21085858);
+  port->cable_->SetProductTypeVDO2(0x0);
+  port->cable_->SetProductTypeVDO3(0x0);
+
+  port->cable_->SetNumAltModes(2);
+
+  // Set up fake sysfs paths for cable alt modes.
+  auto mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
+  auto mode_path = temp_dir_.Append(mode_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x430001, 0));
+  port->AddCableAltMode(mode_path);
+
+  mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 1);
+  mode_path = temp_dir_.Append(mode_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode_path, 0x4b4, 0x1, 0));
+  port->AddCableAltMode(mode_path);
+
+  EXPECT_EQ(ModeEntryResult::kCableError, port->CanEnterUSB4());
+  EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterTBTCompatibilityMode());
+}
+
+// Check that USB4 device will enter DPAltMode if the cable does not support
+// USB4 or TBT.
+// Case: Thunderbolt 4 OWC dock connected with unbranded USB2 cable.
+TEST_F(PortTest, TestUSB4ToDPAltMode) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  // Set up fake sysfs paths and add a partner.
+  port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
+
+  // PD ID VDOs for the OWC Dock.
+  port->partner_->SetPDRevision(PDRevision::k30);
+  port->partner_->SetIdHeaderVDO(0x4cc01e91);
+  port->partner_->SetCertStatVDO(0x0);
+  port->partner_->SetProductVDO(0xde430069);
+  port->partner_->SetProductTypeVDO1(0xd00003b);
+  port->partner_->SetProductTypeVDO2(0x0);
+  port->partner_->SetProductTypeVDO3(0x0);
+
+  // Set up fake sysfs paths for partner alt modes.
+  port->partner_->SetNumAltModes(2);
+
+  // Add the DP alt mode.
+  std::string mode0_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
+  auto mode0_path = temp_dir_.Append(mode0_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kDPAltModeSID, 0x1c0045, 0));
+  port->AddRemovePartnerAltMode(mode0_path, true);
+
+  // Add the TBT alt mode.
+  std::string mode1_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
+  auto mode1_path = temp_dir_.Append(mode1_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode1_path, kTBTAltModeVID, 0x1, 0));
+  port->AddRemovePartnerAltMode(mode1_path, true);
+
+  // Set up fake sysfs paths and add a cable.
+  port->AddCable(base::FilePath(kFakePort0CableSysPath));
+
+  // PD ID VDOs for the unbranded USB2 cable.
+  port->cable_->SetPDRevision(PDRevision::kNone);
+  port->cable_->SetIdHeaderVDO(0x0);
+  port->cable_->SetCertStatVDO(0x0);
+  port->cable_->SetProductVDO(0x0);
+  port->cable_->SetProductTypeVDO1(0x0);
+  port->cable_->SetProductTypeVDO2(0x0);
+  port->cable_->SetProductTypeVDO3(0x0);
+
+  bool invalid_dpalt_cable = false;
+  EXPECT_EQ(ModeEntryResult::kCableError, port->CanEnterUSB4());
+  EXPECT_EQ(ModeEntryResult::kCableError, port->CanEnterTBTCompatibilityMode());
+  // Cable is flagged as invalid, but typecd will still enter DPAltMode. For
+  // DPAltMode, the cable check is not a condition for mode entry.
+  EXPECT_TRUE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
+  EXPECT_TRUE(invalid_dpalt_cable);
+}
+
 }  // namespace typecd

@@ -26,6 +26,12 @@ enum class CableWarningType {
   kOther = 0,
   // Partner supports DisplayAlt mode, but the cable does not.
   kInvalidDpCable = 1,
+  // Partner supports USB4, but the cable restricts the connection to TBT.
+  kInvalidUSB4ValidTBTCable = 2,
+  // Partner supports USB4, but the cable prevents USB4 and TBT mode entry.
+  kInvalidUSB4Cable = 3,
+  // Partner supports TBT, but the cable prevents TBT mode entry.
+  kInvalidTBTCable = 4,
 };
 
 }  // namespace typecd
