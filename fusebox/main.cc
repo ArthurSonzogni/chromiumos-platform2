@@ -14,6 +14,7 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/no_destructor.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/stringprintf.h>
 
@@ -461,6 +462,13 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
       return;
     }
 
+    Node* node = GetInodeTable().Lookup(ino);
+    if (!node) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "read " << ino;
+      return;
+    }
+
     if (!fusebox::GetFile(request->fh())) {
       errno = request->ReplyError(EBADF);
       PLOG(ERROR) << "read fh " << request->fh();
@@ -473,8 +481,49 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
       return;
     }
 
-    // TODO(noel): implement server read request flow.
-    request->ReplyError(ENOSYS);
+    dbus::MethodCall method = GetFuseBoxServerMethod();
+    dbus::MessageWriter writer(&method);
+
+    writer.AppendString("read");
+    auto item = *g_device + GetInodeTable().GetPath(node);
+    writer.AppendString(item);
+    writer.AppendInt64(base::strict_cast<int64_t>(off));
+    writer.AppendInt32(base::saturated_cast<int32_t>(size));
+
+    auto read_response =
+        base::BindOnce(&FuseBoxClient::ReadResponse, base::Unretained(this),
+                       std::move(request), node->ino, size, off);
+    CallFuseBoxServerMethod(&method, std::move(read_response));
+  }
+
+  void ReadResponse(std::unique_ptr<BufferRequest> request,
+                    fuse_ino_t ino,
+                    size_t size,
+                    off_t off,
+                    dbus::Response* response) {
+    VLOG(1) << "read-resp fh " << request->fh() << " off " << off << " size "
+            << size;
+
+    if (request->IsInterrupted())
+      return;
+
+    dbus::MessageReader reader(response);
+    if (int error = GetResponseErrno(&reader, response)) {
+      request->ReplyError(error);
+      return;
+    }
+
+    if (!fusebox::GetFile(request->fh())) {
+      errno = request->ReplyError(EBADF);
+      PLOG(ERROR) << "read-resp fh " << request->fh();
+      return;
+    }
+
+    const uint8_t* buf = nullptr;
+    size_t length = 0;
+    reader.PopArrayOfBytes(&buf, &length);
+
+    request->ReplyBuffer(reinterpret_cast<const char*>(buf), length);
   }
 
   void ReadFileDescriptor(std::unique_ptr<BufferRequest> request,
