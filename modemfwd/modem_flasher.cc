@@ -12,20 +12,12 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/string_util.h>
 #include <chromeos/switches/modemfwd_switches.h>
 
 #include "modemfwd/firmware_file.h"
 #include "modemfwd/logging.h"
 #include "modemfwd/modem.h"
 
-namespace {
-
-constexpr char kDisableAutoUpdatePref[] =
-    "/var/lib/modemfwd/disable_auto_update";
-
-}  // namespace
 
 namespace modemfwd {
 
@@ -48,20 +40,6 @@ class InhibitMode {
 
 }  // namespace
 
-bool IsAutoUpdateDisabledByPref() {
-  const base::FilePath pref_path(kDisableAutoUpdatePref);
-  std::string contents;
-  if (!base::ReadFileToString(pref_path, &contents))
-    return false;
-
-  int pref_value;
-  if (!base::StringToInt(base::TrimWhitespaceASCII(contents, base::TRIM_ALL),
-                         &pref_value))
-    return false;
-
-  return (pref_value == 1);
-}
-
 ModemFlasher::ModemFlasher(
     std::unique_ptr<FirmwareDirectory> firmware_directory,
     std::unique_ptr<Journal> journal)
@@ -69,11 +47,6 @@ ModemFlasher::ModemFlasher(
       journal_(std::move(journal)) {}
 
 base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
-  if (IsAutoUpdateDisabledByPref()) {
-    LOG(INFO) << "Update disabled by pref";
-    return base::OnceClosure();
-  }
-
   std::string equipment_id = modem->GetEquipmentId();
   FlashState* flash_state = &modem_info_[equipment_id];
   if (!flash_state->ShouldFlash()) {
