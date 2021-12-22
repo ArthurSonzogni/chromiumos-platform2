@@ -1,4 +1,4 @@
-include chromium/src:main:/components/arc/session/OWNERS
+include chromium/src:main:/ash/components/arc/session/OWNERS
 # Native bridge / binary translation setup
 levarum@chromium.org
 # ARC Container Setup

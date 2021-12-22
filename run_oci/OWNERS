@@ -1,1 +1,1 @@
-include chromium/src:/components/arc/session/OWNERS
+include chromium/src:main:/ash/components/arc/session/OWNERS
