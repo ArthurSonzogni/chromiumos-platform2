@@ -19,13 +19,13 @@
 #include <brillo/secure_blob.h>
 #include <flatbuffers/flatbuffers.h>
 
-#include "cryptohome/auth_blocks/auth_block_state_converter.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_label.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor_generated.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state_flatbuffer.h"
 #include "cryptohome/flatbuffer_secure_allocator_bridge.h"
 #include "cryptohome/platform.h"
 
@@ -99,7 +99,7 @@ std::optional<Blob> SerializeAuthFactor(const AuthFactor& auth_factor) {
   flatbuffers::FlatBufferBuilder builder(kFlatbufferAllocatorInitialSize,
                                          &allocator);
 
-  auto auth_block_state_offset = SerializeToFlatBufferOffset(
+  auto auth_block_state_offset = ToFlatBuffer<AuthBlockState>()(
       &builder, auth_factor.auth_block_state().value());
   if (auth_block_state_offset.IsNull()) {
     LOG(ERROR) << "Failed to serialize auth block state";
@@ -150,13 +150,8 @@ bool ParseAuthFactorFlatbuffer(const Blob& flatbuffer,
     LOG(ERROR) << "SerializedAuthFactor has no auth block state";
     return false;
   }
-  base::Optional<AuthBlockState> converted_auth_block_state =
-      FromFlatBuffer(*auth_factor_table->auth_block_state());
-  if (!converted_auth_block_state) {
-    LOG(ERROR) << "Failed to convert SerializedAuthFactor auth block state";
-    return false;
-  }
-  *auth_block_state = converted_auth_block_state.value();
+  *auth_block_state =
+      FromFlatBuffer<AuthBlockState>()(auth_factor_table->auth_block_state());
 
   if (!auth_factor_table->metadata()) {
     LOG(ERROR) << "SerializedAuthFactor has no metadata";

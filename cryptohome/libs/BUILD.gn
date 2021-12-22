@@ -51,6 +51,73 @@ config("cryptohome-proto_config") {
   include_dirs = [ "${sysroot}/usr/include/cryptohome/proto_bindings/" ]
 }
 
+flatbuffer("python-flatbuffers-reflection") {
+  flatc_out_dir = "python"
+  flatc_args = [ "--python" ]
+  sources = [ "${sysroot}/usr/include/flatbuffers/reflection.fbs" ]
+}
+
+flatbuffer("cryptohome-flatbuffers-binding-binary") {
+  flatc_out_dir = "bfbs"
+  flatc_args = [
+    "--binary",
+    "--schema",
+  ]
+  sources = [ "../flatbuffer_schemas/auth_block_state.fbs" ]
+}
+
+# Put the generator in the same folder that the generated flatbuffers
+# reflection python library exist.
+copy("cryptohome-flatbuffers-binding-generator") {
+  sources = [ "../flatbuffer_schemas/flatbuffer_cpp_binding_generator.py" ]
+  outputs = [ "${root_gen_dir}/python/flatbuffer_cpp_binding_generator.py" ]
+  deps = [ ":python-flatbuffers-reflection" ]
+}
+
+action("cryptohome-flatbuffers-binding-generate") {
+  script = "${root_gen_dir}/python/flatbuffer_cpp_binding_generator.py"
+  inputs = [ "../flatbuffer_schemas/auth_block_state.fbs" ]
+  outputs = [
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/auth_block_state.h",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/auth_block_state_flatbuffer.h",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/auth_block_state.cc",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/auth_block_state_test_utils.h",
+  ]
+  args = [
+    "--output_dir=${root_gen_dir}/include/cryptohome/flatbuffer_schemas",
+    "--guard_prefix=CRYPTOHOME_FLATBUFFER_SCHEMAS",
+    "--flatbuffer_header_include_paths",
+    "cryptohome/auth_block_state_generated.h",
+    "--flatbuffer_header_include_paths",
+    "cryptohome/flatbuffer_schemas/auth_block_state.h",
+    "--flatbuffer_header_include_paths",
+    "cryptohome/flatbuffer_schemas/basic_objects.h",
+    "--flatbuffer_header_include_paths",
+    "cryptohome/structures_generated.h",
+    "--impl_include_paths",
+    "cryptohome/flatbuffer_schemas/auth_block_state.h",
+    "--impl_include_paths",
+    "cryptohome/flatbuffer_schemas/auth_block_state_flatbuffer.h",
+    "--impl_include_paths",
+    "cryptohome/flatbuffer_secure_allocator_bridge.h",
+    "--test_utils_header_include_path",
+    "cryptohome/flatbuffer_schemas/auth_block_state.h",
+    "${root_gen_dir}/bfbs/auth_block_state.bfbs",
+  ]
+  deps = [
+    ":cryptohome-flatbuffers-binding-binary",
+    ":cryptohome-flatbuffers-binding-generator",
+  ]
+}
+
+source_set("cryptohome-flatbuffers-binding") {
+  sources = [
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/auth_block_state.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":cryptohome-flatbuffers-binding-generate" ]
+}
+
 flatbuffer("cryptohome-flatbuffers") {
   flatc_out_dir = "include/cryptohome"
   flatc_args = [
@@ -69,6 +136,7 @@ flatbuffer("cryptohome-flatbuffers") {
   sources = [
     "../flatbuffer_schemas/auth_block_state.fbs",
     "../flatbuffer_schemas/auth_factor.fbs",
+    "../flatbuffer_schemas/structures.fbs",
     "../flatbuffer_schemas/user_secret_stash_container.fbs",
     "../flatbuffer_schemas/user_secret_stash_payload.fbs",
   ]
@@ -163,13 +231,15 @@ static_library("libcrosplatform") {
   if (use.selinux) {
     libs += [ "selinux" ]
   }
-  deps = [ ":cryptohome-proto" ]
+  deps = [
+    ":cryptohome-flatbuffers-binding",
+    ":cryptohome-proto",
+  ]
 }
 
 static_library("libcrostpm") {
   sources = [
     "../auth_blocks/async_challenge_credential_auth_block.cc",
-    "../auth_blocks/auth_block_state_converter.cc",
     "../auth_blocks/challenge_credential_auth_block.cc",
     "../auth_blocks/cryptohome_recovery_auth_block.cc",
     "../auth_blocks/double_wrapped_compat_auth_block.cc",
@@ -234,9 +304,10 @@ static_library("libcrostpm") {
   }
   deps = [
     ":cryptohome-flatbuffers",
+    ":cryptohome-flatbuffers-binding",
     ":cryptohome-proto",
     ":libcrosplatform",
-    "../../common-mk/external_dependencies:install_attributes-proto",
+    "//common-mk/external_dependencies:install_attributes-proto",
   ]
 }
 

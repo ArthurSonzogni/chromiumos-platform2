@@ -14,7 +14,7 @@ union SerializedAuthFactorMetadata { SerializedPasswordMetadata }
 
 // Container that stores information about auth factor to be persisted on disk.
 table SerializedAuthFactor {
-  auth_block_state:SerializedAuthBlockState (id: 0);
+  auth_block_state:_serialized_.AuthBlockState (id: 0);
   metadata:SerializedAuthFactorMetadata (id: 2);
 }
 
