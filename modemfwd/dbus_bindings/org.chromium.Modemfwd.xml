@@ -20,6 +20,10 @@
       <arg name="device_id" type="s" direction="in">
         Device ID of the modem to attempt to force-flash.
       </arg>
+      <arg name="options" type="a{sv}" direction="in">
+        A list of optional arguments to be used when force-flashing.
+        Supported values: "carrier_uuid".
+      </arg>
       <arg name="success" type="b" direction="out">
         Whether force-flashing was successful.
       </arg>

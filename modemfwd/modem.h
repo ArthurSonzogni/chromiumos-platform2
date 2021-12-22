@@ -52,6 +52,7 @@ std::unique_ptr<Modem> CreateModem(
     ModemHelperDirectory* helper_directory);
 
 std::unique_ptr<Modem> CreateStubModem(const std::string& device_id,
+                                       const std::string& carrier_id,
                                        ModemHelperDirectory* helper_directory);
 
 }  // namespace modemfwd

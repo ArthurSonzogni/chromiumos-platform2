@@ -103,8 +103,11 @@ void DBusAdaptor::SetDebugMode(bool debug_mode) {
   LOG(INFO) << "Debug mode is now " << ToOnOffString(ELOG_IS_ON());
 }
 
-bool DBusAdaptor::ForceFlash(const std::string& device_id) {
-  return daemon_->ForceFlash(device_id);
+bool DBusAdaptor::ForceFlash(const std::string& device_id,
+                             const brillo::VariantDictionary& args) {
+  std::string carrier_uuid =
+      brillo::GetVariantValueOrDefault<std::string>(args, "carrier_uuid");
+  return daemon_->ForceFlashForTesting(device_id, carrier_uuid);
 }
 
 Daemon::Daemon(const std::string& journal_file,
@@ -234,7 +237,26 @@ void Daemon::RegisterDBusObjectsAsync(
 }
 
 bool Daemon::ForceFlash(const std::string& device_id) {
-  auto stub_modem = CreateStubModem(device_id, helper_directory_.get());
+  auto stub_modem = CreateStubModem(device_id, "", helper_directory_.get());
+  if (!stub_modem)
+    return false;
+
+  ELOG(INFO) << "Force-flashing modem with device ID [" << device_id << "]";
+  base::OnceClosure cb = modem_flasher_->TryFlash(stub_modem.get());
+  // We don't know the equipment ID of this modem, and if we're force-flashing
+  // then we probably already have a problem with the modem coming up, so
+  // cleaning up at this point is not a problem. Run the callback now if we
+  // got one.
+  bool is_null = cb.is_null();
+  if (!is_null)
+    std::move(cb).Run();
+  return !is_null;
+}
+
+bool Daemon::ForceFlashForTesting(const std::string& device_id,
+                                  const std::string& carrier_uuid) {
+  auto stub_modem =
+      CreateStubModem(device_id, carrier_uuid, helper_directory_.get());
   if (!stub_modem)
     return false;
 

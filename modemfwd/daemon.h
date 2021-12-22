@@ -38,7 +38,8 @@ class DBusAdaptor : public org::chromium::ModemfwdInterface,
 
   // org::chromium::ModemfwdInterface overrides.
   void SetDebugMode(bool debug_mode) override;
-  bool ForceFlash(const std::string& device_id) override;
+  bool ForceFlash(const std::string& device_id,
+                  const brillo::VariantDictionary& args) override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
@@ -60,6 +61,8 @@ class Daemon : public brillo::DBusServiceDaemon {
   ~Daemon() override = default;
 
   bool ForceFlash(const std::string& device_id);
+  bool ForceFlashForTesting(const std::string& device_id,
+                            const std::string& carrier_uuid);
 
  protected:
   // brillo::Daemon overrides.
