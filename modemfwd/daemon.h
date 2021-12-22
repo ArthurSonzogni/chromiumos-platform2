@@ -62,7 +62,8 @@ class Daemon : public brillo::DBusServiceDaemon {
 
   bool ForceFlash(const std::string& device_id);
   bool ForceFlashForTesting(const std::string& device_id,
-                            const std::string& carrier_uuid);
+                            const std::string& carrier_uuid,
+                            const std::string& variant);
 
  protected:
   // brillo::Daemon overrides.

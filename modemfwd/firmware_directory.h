@@ -42,6 +42,9 @@ class FirmwareDirectory {
   virtual bool IsUsingSameFirmware(const std::string& device_id,
                                    const std::string& carrier_a,
                                    const std::string& carrier_b) = 0;
+
+  // Override the variant variable for testing.
+  virtual void OverrideVariantForTesting(const std::string& variant) = 0;
 };
 
 std::unique_ptr<FirmwareDirectory> CreateFirmwareDirectory(

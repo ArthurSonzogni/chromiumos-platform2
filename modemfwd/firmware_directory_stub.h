@@ -41,6 +41,9 @@ class FirmwareDirectoryStub : public FirmwareDirectory {
                            const std::string& carrier_a,
                            const std::string& carrier_b) override;
 
+  // modemfwd::OverrideVariantForTesting overrides.
+  void OverrideVariantForTesting(const std::string& variant) override;
+
  private:
   using CarrierFirmwareMap =
       std::map<std::pair<std::string, std::string>, FirmwareFileInfo>;

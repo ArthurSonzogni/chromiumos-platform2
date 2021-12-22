@@ -46,6 +46,12 @@ ModemFlasher::ModemFlasher(
     : firmware_directory_(std::move(firmware_directory)),
       journal_(std::move(journal)) {}
 
+base::OnceClosure ModemFlasher::TryFlashForTesting(Modem* modem,
+                                                   const std::string& variant) {
+  firmware_directory_->OverrideVariantForTesting(variant);
+  return TryFlash(modem);
+}
+
 base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
   std::string equipment_id = modem->GetEquipmentId();
   FlashState* flash_state = &modem_info_[equipment_id];

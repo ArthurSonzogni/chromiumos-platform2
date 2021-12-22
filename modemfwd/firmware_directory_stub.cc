@@ -130,4 +130,7 @@ bool FirmwareDirectoryStub::IsUsingSameFirmware(const std::string& device_id,
   return info_a.firmware_path == info_b.firmware_path;
 }
 
+void FirmwareDirectoryStub::OverrideVariantForTesting(
+    const std::string& variant) {}
+
 }  // namespace modemfwd

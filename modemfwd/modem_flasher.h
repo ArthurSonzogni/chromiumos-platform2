@@ -31,6 +31,11 @@ class ModemFlasher {
   // Returns a callback that should be executed when the modem reappears.
   base::OnceClosure TryFlash(Modem* modem);
 
+  // This function is the same as TryFlash, but it sets the variant to be used.
+  // Returns a callback that should be executed when the modem reappears.
+  base::OnceClosure TryFlashForTesting(Modem* modem,
+                                       const std::string& variant);
+
  private:
   class FlashState {
    public:

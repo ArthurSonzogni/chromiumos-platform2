@@ -107,7 +107,9 @@ bool DBusAdaptor::ForceFlash(const std::string& device_id,
                              const brillo::VariantDictionary& args) {
   std::string carrier_uuid =
       brillo::GetVariantValueOrDefault<std::string>(args, "carrier_uuid");
-  return daemon_->ForceFlashForTesting(device_id, carrier_uuid);
+  std::string variant =
+      brillo::GetVariantValueOrDefault<std::string>(args, "variant");
+  return daemon_->ForceFlashForTesting(device_id, carrier_uuid, variant);
 }
 
 Daemon::Daemon(const std::string& journal_file,
@@ -254,14 +256,18 @@ bool Daemon::ForceFlash(const std::string& device_id) {
 }
 
 bool Daemon::ForceFlashForTesting(const std::string& device_id,
-                                  const std::string& carrier_uuid) {
+                                  const std::string& carrier_uuid,
+                                  const std::string& variant) {
   auto stub_modem =
       CreateStubModem(device_id, carrier_uuid, helper_directory_.get());
   if (!stub_modem)
     return false;
 
-  ELOG(INFO) << "Force-flashing modem with device ID [" << device_id << "]";
-  base::OnceClosure cb = modem_flasher_->TryFlash(stub_modem.get());
+  ELOG(INFO) << "Force-flashing modem with device ID [" << device_id << "], "
+             << "variant [" << variant << "], carrier_uuid [" << carrier_uuid
+             << "]";
+  base::OnceClosure cb =
+      modem_flasher_->TryFlashForTesting(stub_modem.get(), variant);
   // We don't know the equipment ID of this modem, and if we're force-flashing
   // then we probably already have a problem with the modem coming up, so
   // cleaning up at this point is not a problem. Run the callback now if we

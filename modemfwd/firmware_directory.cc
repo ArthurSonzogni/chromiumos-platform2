@@ -122,6 +122,14 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
     return main_a->second == main_b->second && cust_a->second == cust_b->second;
   }
 
+  // modemfwd::OverrideVariantForTesting overrides.
+  void OverrideVariantForTesting(const std::string& variant) override {
+    if (variant.empty() || variant == variant_)
+      return;
+    LOG(INFO) << "Override variant value: " << variant;
+    variant_ = variant;
+  };
+
  private:
   bool FindFirmwareForCarrier(
       const DeviceFirmwareCache::CarrierIndex& carrier_index,
