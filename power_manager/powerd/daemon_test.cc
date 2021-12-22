@@ -154,10 +154,12 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     prefs_->SetInt64(kPluggedOffMsPref, 480000);
     prefs_->SetInt64(kPluggedDimMsPref, 420000);
     prefs_->SetInt64(kPluggedQuickDimMsPref, 120000);
+    prefs_->SetInt64(kPluggedQuickLockMsPref, 180000);
     prefs_->SetInt64(kUnpluggedSuspendMsPref, 600000);
     prefs_->SetInt64(kUnpluggedOffMsPref, 360000);
     prefs_->SetInt64(kUnpluggedDimMsPref, 300000);
     prefs_->SetInt64(kUnpluggedQuickDimMsPref, 60000);
+    prefs_->SetInt64(kUnpluggedQuickLockMsPref, 120000);
 
     // This pref is required by policy::ShutdownFromSuspend.
     prefs_->SetBool(kDisableHibernatePref, false);

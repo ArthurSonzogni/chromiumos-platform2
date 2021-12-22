@@ -746,6 +746,7 @@ In the tables below,
 | plugged-dim-ms | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | plugged-off-ms | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | plugged-quick-dim-ms | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
+| plugged-quick-lock-ms | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | plugged-suspend-ms | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | power-supply-full-factor | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | require-usb-input-device-to-suspend | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
@@ -772,6 +773,7 @@ In the tables below,
 | unplugged-dim-ms | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | unplugged-off-ms | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | unplugged-quick-dim-ms | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
+| unplugged-quick-lock-ms | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | unplugged-suspend-ms | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | usb-min-ac-watts | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | use-cras | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |

@@ -163,6 +163,8 @@ std::string GetPolicyDelaysDebugString(
     str += prefix + "_screen_off=" + MsToString(delays.screen_off_ms()) + " ";
   if (delays.has_screen_lock_ms())
     str += prefix + "_lock=" + MsToString(delays.screen_lock_ms()) + " ";
+  if (delays.has_quick_lock_ms())
+    str += prefix + "_quick_lock=" + MsToString(delays.quick_lock_ms()) + " ";
   if (delays.has_idle_warning_ms())
     str += prefix + "_idle_warn=" + MsToString(delays.idle_warning_ms()) + " ";
   if (delays.has_idle_ms())
@@ -238,7 +240,8 @@ bool StateController::Delays::operator!=(
   // based solely on screen_dim.
   return idle != o.idle || idle_warning != o.idle_warning ||
          screen_off != o.screen_off || screen_dim != o.screen_dim ||
-         screen_lock != o.screen_lock || quick_dim != o.quick_dim;
+         screen_lock != o.screen_lock || quick_dim != o.quick_dim ||
+         quick_lock != o.quick_lock;
 }
 
 class StateController::ActivityInfo {
@@ -625,6 +628,8 @@ PowerManagementPolicy::Delays StateController::CreateInactivityDelaysProto()
     proto.set_quick_dim_ms(delays_.quick_dim.InMilliseconds());
   if (!delays_.screen_lock.is_zero())
     proto.set_screen_lock_ms(delays_.screen_lock.InMilliseconds());
+  if (!delays_.quick_lock.is_zero())
+    proto.set_quick_lock_ms(delays_.quick_lock.InMilliseconds());
   return proto;
 }
 
@@ -733,6 +738,12 @@ void StateController::SanitizeDelays(Delays* delays) {
     delays->quick_dim = base::TimeDelta();
   }
 
+  // A quick_lock after screen_lock will never happen.
+  if (delays->screen_lock > base::TimeDelta() &&
+      delays->quick_lock >= delays->screen_lock) {
+    delays->quick_lock = base::TimeDelta();
+  }
+
   // Cap the idle-warning timeout to the idle-action timeout.
   if (delays->idle_warning > base::TimeDelta())
     delays->idle_warning = std::min(delays->idle_warning, delays->idle);
@@ -777,6 +788,10 @@ void StateController::MergeDelaysFromPolicy(
       policy_delays.screen_lock_ms() >= 0) {
     delays_out->screen_lock =
         base::TimeDelta::FromMilliseconds(policy_delays.screen_lock_ms());
+  }
+  if (policy_delays.has_quick_lock_ms() && policy_delays.quick_lock_ms() >= 0) {
+    delays_out->quick_lock =
+        base::TimeDelta::FromMilliseconds(policy_delays.quick_lock_ms());
   }
 }
 
@@ -905,6 +920,13 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenLock(
                   dim_wake_lock_->GetLastActiveTime(now));
 }
 
+base::TimeTicks StateController::GetLastActivityTimeForQuickLock(
+    base::TimeTicks now) const {
+  // On-but-dimmed wake locks also keep the screen from locking.
+  return std::max(GetLastActivityTimeForQuickDim(now),
+                  dim_wake_lock_->GetLastActiveTime(now));
+}
+
 void StateController::UpdateLastUserActivityTime() {
   last_user_activity_time_ = clock_->GetCurrentTime();
   delegate_->ReportUserActivityMetrics();
@@ -938,6 +960,8 @@ void StateController::LoadPrefs() {
                            &pref_ac_delays_.screen_dim));
   CHECK(GetMillisecondPref(prefs_, kPluggedQuickDimMsPref,
                            &pref_ac_delays_.quick_dim));
+  CHECK(GetMillisecondPref(prefs_, kPluggedQuickLockMsPref,
+                           &pref_ac_delays_.quick_lock));
 
   CHECK(GetMillisecondPref(prefs_, kUnpluggedSuspendMsPref,
                            &pref_battery_delays_.idle));
@@ -947,6 +971,8 @@ void StateController::LoadPrefs() {
                            &pref_battery_delays_.screen_dim));
   CHECK(GetMillisecondPref(prefs_, kUnpluggedQuickDimMsPref,
                            &pref_battery_delays_.quick_dim));
+  CHECK(GetMillisecondPref(prefs_, kUnpluggedQuickLockMsPref,
+                           &pref_battery_delays_.quick_lock));
 
   SanitizeDelays(&pref_ac_delays_);
   SanitizeDelays(&pref_battery_delays_);
@@ -1067,6 +1093,7 @@ void StateController::UpdateSettingsAndState() {
     delays_.screen_dim = base::TimeDelta();
     delays_.screen_off = base::TimeDelta();
     delays_.screen_lock = base::TimeDelta();
+    delays_.quick_lock = base::TimeDelta();
     lid_closed_action_ = Action::DO_NOTHING;
     idle_action_ = Action::DO_NOTHING;
     reason_for_ignoring_idle_action_ = "factory mode is enabled";
@@ -1123,6 +1150,7 @@ void StateController::LogSettings() {
             << " quick_dim=" << util::TimeDeltaToString(delays_.quick_dim)
             << " screen_off=" << util::TimeDeltaToString(delays_.screen_off)
             << " lock=" << util::TimeDeltaToString(delays_.screen_lock)
+            << " quick_lock=" << util::TimeDeltaToString(delays_.quick_lock)
             << " idle_warn=" << util::TimeDeltaToString(delays_.idle_warning)
             << " idle=" << util::TimeDeltaToString(delays_.idle) << " ("
             << ActionToString(idle_action_) << ")"
@@ -1227,10 +1255,21 @@ void StateController::UpdateState() {
   else if (!screen_turned_off_)
     screen_turned_off_time_ = base::TimeTicks();
 
-  HandleDelay(
-      delays_.screen_lock, screen_lock_duration,
-      base::BindOnce(&Delegate::LockScreen, base::Unretained(delegate_)),
-      base::OnceClosure(), "Locking screen", "", &requested_screen_lock_);
+  if (dim_advisor_.IsHpsSenseEnabled() && !delays_.quick_lock.is_zero()) {
+    HandleScreenLockWithHps(now, screen_lock_duration);
+  } else {
+    const bool requested_screen_lock_previously = requested_screen_lock_;
+    HandleDelay(
+        delays_.screen_lock, screen_lock_duration,
+        base::BindOnce(&Delegate::LockScreen, base::Unretained(delegate_)),
+        base::OnceClosure(), "Locking screen", "", &requested_screen_lock_);
+    if (requested_screen_lock_ && !requested_screen_lock_previously) {
+      last_lock_requested_time_ = now;
+    } else if (!requested_screen_lock_) {
+      // Set last_lock_requested_time_ as base::TimeTicks() if not requested.
+      last_lock_requested_time_ = base::TimeTicks();
+    }
+  }
 
   if (screen_dimmed_ != screen_was_dimmed ||
       screen_turned_off_ != screen_was_turned_off) {
@@ -1357,6 +1396,13 @@ void StateController::ScheduleActionTimeout(base::TimeTicks now) {
   if (!IsScreenLockBlocked()) {
     UpdateActionTimeout(now, GetLastActivityTimeForScreenLock(now),
                         delays_.screen_lock, &timeout_delay);
+    // Schedule an action for quick lock.
+    // We only schedule an action for quick lock if `hps_result_` is NEGATIVE.
+    if (dim_advisor_.IsHpsSenseEnabled() && !delays_.quick_lock.is_zero() &&
+        !requested_screen_lock_ && hps_result_ == hps::HpsResult::NEGATIVE) {
+      UpdateActionTimeout(now, GetLastActivityTimeForQuickLock(now),
+                          delays_.quick_lock, &timeout_delay);
+    }
   }
   if (!IsIdleBlocked()) {
     UpdateActionTimeout(now, GetLastActivityTimeForIdle(now),
@@ -1503,12 +1549,11 @@ void StateController::HandleDimWithHps(
     // NOTE: comparing to the original condition
     //   duration_since_last_activity_for_screen_dim < delays_.screen_dim
     // The new condition will skip an edge case that the screen is dimmed and
-    // the delays_.screen_dim is set to a larger value without any user activity
-    // This will undim the screen in the original condition; but not in this
-    // new condition.
-    // We don't think this edge case could happen or even if it does, a
-    // reasonably better behaviour is to apply that new delays_.screen_dim in
-    // the next dimming process.
+    // the delays_.screen_dim is set to a larger value without any user
+    // activity. This will undim the screen in the original condition; but not
+    // in this new condition. We don't think this edge case could happen or even
+    // if it does, a reasonably better behaviour is to apply that new
+    // delays_.screen_dim in the next dimming process.
     bool undim_for_user_activity =
         GetLastActivityTimeForScreenDim(now) >= last_dim_time_;
 
@@ -1524,6 +1569,34 @@ void StateController::HandleDimWithHps(
         dim_advisor_.UnDimFeedback(now - last_dim_time_);
       }
     }
+  }
+}
+
+void StateController::HandleScreenLockWithHps(
+    base::TimeTicks now,
+    base::TimeDelta duration_since_last_activity_for_screen_lock) {
+  if (!requested_screen_lock_) {
+    // Try to lock.
+    const bool should_quick_lock =
+        hps_result_ == hps::HpsResult::NEGATIVE &&
+        now - GetLastActivityTimeForQuickLock(now) >= delays_.quick_lock;
+
+    const bool should_standard_lock =
+        delays_.screen_lock > base::TimeDelta() &&
+        duration_since_last_activity_for_screen_lock >= delays_.screen_lock;
+
+    if (should_quick_lock || should_standard_lock) {
+      LOG(INFO) << "Lock screen after "
+                << util::TimeDeltaToString(
+                       duration_since_last_activity_for_screen_lock);
+      delegate_->LockScreen();
+      requested_screen_lock_ = true;
+      last_lock_requested_time_ = now;
+    }
+  } else if (GetLastActivityTimeForScreenLock(now) >=
+             last_lock_requested_time_) {
+    requested_screen_lock_ = false;
+    last_lock_requested_time_ = base::TimeTicks();
   }
 }
 

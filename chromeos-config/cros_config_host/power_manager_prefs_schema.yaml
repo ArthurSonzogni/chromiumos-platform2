@@ -13,6 +13,9 @@ powerd_prefs: &powerd_prefs
   plugged-quick-dim-ms:
     <<: *powerd_prefs_default
     default: "120000"
+  plugged-quick-lock-ms:
+    <<: *powerd_prefs_default
+    default: "510000"
   plugged-off-ms:
     <<: *powerd_prefs_default
     default: "450000"
@@ -25,6 +28,9 @@ powerd_prefs: &powerd_prefs
   unplugged-quick-dim-ms:
     <<: *powerd_prefs_default
     default: "60000"
+  unplugged-quick-lock-ms:
+    <<: *powerd_prefs_default
+    default: "390000"
   unplugged-off-ms:
     <<: *powerd_prefs_default
     default: "330000"

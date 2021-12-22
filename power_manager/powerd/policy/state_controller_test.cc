@@ -184,10 +184,12 @@ class StateControllerTest : public testing::Test {
         default_ac_screen_off_delay_(base::TimeDelta::FromSeconds(100)),
         default_ac_screen_dim_delay_(base::TimeDelta::FromSeconds(90)),
         default_ac_quick_dim_delay_(base::TimeDelta::FromSeconds(70)),
+        default_ac_quick_lock_delay_(base::TimeDelta::FromSeconds(80)),
         default_battery_suspend_delay_(base::TimeDelta::FromSeconds(60)),
         default_battery_screen_off_delay_(base::TimeDelta::FromSeconds(40)),
         default_battery_screen_dim_delay_(base::TimeDelta::FromSeconds(30)),
         default_battery_quick_dim_delay_(base::TimeDelta::FromSeconds(20)),
+        default_battery_quick_lock_delay_(base::TimeDelta::FromSeconds(25)),
         default_disable_idle_suspend_(0),
         default_factory_mode_(0),
         default_require_usb_input_device_to_suspend_(0),
@@ -218,11 +220,14 @@ class StateControllerTest : public testing::Test {
     SetMillisecondPref(kPluggedOffMsPref, default_ac_screen_off_delay_);
     SetMillisecondPref(kPluggedDimMsPref, default_ac_screen_dim_delay_);
     SetMillisecondPref(kPluggedQuickDimMsPref, default_ac_quick_dim_delay_);
+    SetMillisecondPref(kPluggedQuickLockMsPref, default_ac_quick_lock_delay_);
     SetMillisecondPref(kUnpluggedSuspendMsPref, default_battery_suspend_delay_);
     SetMillisecondPref(kUnpluggedOffMsPref, default_battery_screen_off_delay_);
     SetMillisecondPref(kUnpluggedDimMsPref, default_battery_screen_dim_delay_);
     SetMillisecondPref(kUnpluggedQuickDimMsPref,
                        default_battery_quick_dim_delay_);
+    SetMillisecondPref(kUnpluggedQuickLockMsPref,
+                       default_battery_quick_lock_delay_);
     prefs_.SetInt64(kDisableIdleSuspendPref, default_disable_idle_suspend_);
     prefs_.SetInt64(kFactoryModePref, default_factory_mode_);
     prefs_.SetInt64(kRequireUsbInputDeviceToSuspendPref,
@@ -285,10 +290,14 @@ class StateControllerTest : public testing::Test {
   // then (5 - 4), StepTimeAndTriggerTimeout() can be called with 2, 4, and
   // 5.  Call ResetLastStepDelay() before a new sequence of delays to reset
   // the "last delay".
-  bool StepTimeAndTriggerTimeout(base::TimeDelta next_delay)
-      WARN_UNUSED_RESULT {
+  void StepTime(base::TimeDelta next_delay) {
     AdvanceTime(next_delay - last_step_delay_);
     last_step_delay_ = next_delay;
+  }
+
+  bool StepTimeAndTriggerTimeout(base::TimeDelta next_delay)
+      WARN_UNUSED_RESULT {
+    StepTime(next_delay);
     return TriggerTimeout();
   }
 
@@ -434,10 +443,12 @@ class StateControllerTest : public testing::Test {
   base::TimeDelta default_ac_screen_off_delay_;
   base::TimeDelta default_ac_screen_dim_delay_;
   base::TimeDelta default_ac_quick_dim_delay_;
+  base::TimeDelta default_ac_quick_lock_delay_;
   base::TimeDelta default_battery_suspend_delay_;
   base::TimeDelta default_battery_screen_off_delay_;
   base::TimeDelta default_battery_screen_dim_delay_;
   base::TimeDelta default_battery_quick_dim_delay_;
+  base::TimeDelta default_battery_quick_lock_delay_;
   int64_t default_disable_idle_suspend_;
   int64_t default_factory_mode_;
   int64_t default_require_usb_input_device_to_suspend_;
@@ -2481,7 +2492,7 @@ TEST_F(StateControllerTest, LoadPrefShouldSetCorrectQuickDimDelaysBattery) {
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
 }
 
-TEST_F(StateControllerTest, HandlePolicyChangeShouldSetCorrectDelays) {
+TEST_F(StateControllerTest, HandlePolicyChangeShouldSetCorrectQuickDimDelays) {
   Init();
 
   const base::TimeDelta quick_dim_delay = base::TimeDelta::FromSeconds(52);
@@ -2505,8 +2516,126 @@ TEST_F(StateControllerTest, HandlePolicyChangeShouldSetCorrectDelays) {
   ac_delays.set_quick_dim_ms(default_ac_screen_dim_delay_.InMilliseconds() + 1);
   controller_.HandlePolicyChange(policy);
   EmitHpsSignal(HpsResult::NEGATIVE);
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+
+  // A quick lock should happen at default_ac_quick_lock_delay_.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_lock_delay_));
+  EXPECT_EQ(kScreenLock, delegate_.GetActions());
+
+  // A standard dim should happen at default_ac_screen_dim_delay_.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_ -
+                                           default_ac_quick_lock_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
+}
+
+TEST_F(StateControllerTest, LoadPrefShouldSetCorrectQuickLockDelaysAC) {
+  initial_power_source_ = PowerSource::AC;
+  Init();
+  // Enables HpsSense with signal NEGATIVE.
+  EmitHpsSignal(HpsResult::NEGATIVE);
+
+  // A quick dim should happen at default_ac_quick_dim_delay_.
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+
+  // A quick lock should happen at default_ac_quick_lock_delay_.
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_quick_lock_delay_));
+  EXPECT_EQ(kScreenLock, delegate_.GetActions());
+}
+
+TEST_F(StateControllerTest, LoadPrefShouldSetCorrectQuickLockDelaysBattery) {
+  initial_power_source_ = PowerSource::BATTERY;
+  Init();
+  // Enables HpsSense with signal NEGATIVE.
+  EmitHpsSignal(HpsResult::NEGATIVE);
+
+  // A quick dim should happen at default_battery_quick_dim_delay_.
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_battery_quick_dim_delay_));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+
+  // A quick lock should happen at default_battery_quick_lock_delay_.
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_battery_quick_lock_delay_));
+  EXPECT_EQ(kScreenLock, delegate_.GetActions());
+}
+
+TEST_F(StateControllerTest, QuickLockAfterQuickDim) {
+  initial_power_source_ = PowerSource::AC;
+  Init();
+  // Enables HpsSense with signal NEGATIVE.
+  EmitHpsSignal(HpsResult::NEGATIVE);
+
+  // A quick dim should happen at default_ac_quick_dim_delay_.
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+
+  // A quick lock should happen at default_ac_quick_lock_delay_.
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_quick_lock_delay_));
+  EXPECT_EQ(kScreenLock, delegate_.GetActions());
+
+  // undim by user activity.
+  controller_.HandleUserActivity();
+  EXPECT_EQ(kScreenUndim, delegate_.GetActions());
+  EmitHpsSignal(HpsResult::POSITIVE);
+  ResetLastStepDelay();
+
+  // Check that after undim, the same quick dim, quick_lock will happen again.
+  EmitHpsSignal(HpsResult::NEGATIVE);
+  // A quick dim should happen at default_ac_quick_dim_delay_.
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+
+  // A quick lock should happen at default_ac_quick_lock_delay_.
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_quick_lock_delay_));
+  EXPECT_EQ(kScreenLock, delegate_.GetActions());
+}
+
+TEST_F(StateControllerTest, QuickLockAfterStandardDim) {
+  initial_power_source_ = PowerSource::BATTERY;
+  Init();
+
+  const auto delta_quick_dim_to_standard_dim =
+      default_battery_screen_dim_delay_ - default_battery_quick_dim_delay_ +
+      base::TimeDelta::FromSeconds(1);
+
+  StepTime(delta_quick_dim_to_standard_dim);
+  EmitHpsSignal(HpsResult::NEGATIVE);
+
+  // There is not enough delay for a quick dim, so a standard dim will happen.
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_battery_screen_dim_delay_));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+
+  // A quick lock will then happen.
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_battery_quick_lock_delay_ +
+                                        delta_quick_dim_to_standard_dim));
+  EXPECT_EQ(kScreenLock, delegate_.GetActions());
+
+  // A screen off will then happen.
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_battery_screen_off_delay_));
+  EXPECT_EQ(kScreenOff, delegate_.GetActions());
+}
+
+TEST_F(StateControllerTest, QuickLockAfterScreenOff) {
+  initial_power_source_ = PowerSource::BATTERY;
+  Init();
+
+  const auto delta = default_battery_screen_dim_delay_ -
+                     default_battery_quick_dim_delay_ +
+                     base::TimeDelta::FromSeconds(6);
+
+  StepTime(delta);
+  EmitHpsSignal(HpsResult::NEGATIVE);
+
+  // There is not enough delay for a quick dim, so a standard dim will happen.
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_battery_screen_dim_delay_));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+
+  // A screen off will then happen.
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_battery_screen_off_delay_));
+  EXPECT_EQ(kScreenOff, delegate_.GetActions());
+
+  // A quick lock will then happen.
+  ASSERT_TRUE(
+      StepTimeAndTriggerTimeout(default_battery_quick_lock_delay_ + delta));
+  EXPECT_EQ(kScreenLock, delegate_.GetActions());
 }
 
 }  // namespace policy

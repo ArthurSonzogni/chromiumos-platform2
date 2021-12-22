@@ -26,10 +26,12 @@ extern const char kLowBatteryShutdownPercentPref[];
 // overriden by policy messages sent from Chrome.
 extern const char kPluggedDimMsPref[];
 extern const char kPluggedQuickDimMsPref[];
+extern const char kPluggedQuickLockMsPref[];
 extern const char kPluggedOffMsPref[];
 extern const char kPluggedSuspendMsPref[];
 extern const char kUnpluggedDimMsPref[];
 extern const char kUnpluggedQuickDimMsPref[];
+extern const char kUnpluggedQuickLockMsPref[];
 extern const char kUnpluggedOffMsPref[];
 extern const char kUnpluggedSuspendMsPref[];
 

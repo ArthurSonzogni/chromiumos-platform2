@@ -225,6 +225,7 @@ class StateController : public PrefsObserver {
     base::TimeDelta screen_dim_imminent;
     base::TimeDelta screen_lock;
     base::TimeDelta quick_dim;
+    base::TimeDelta quick_lock;
     bool operator!=(const Delays& o) const;
   };
 
@@ -323,6 +324,7 @@ class StateController : public PrefsObserver {
   base::TimeTicks GetLastActivityTimeForQuickDim(base::TimeTicks now) const;
   base::TimeTicks GetLastActivityTimeForScreenOff(base::TimeTicks now) const;
   base::TimeTicks GetLastActivityTimeForScreenLock(base::TimeTicks now) const;
+  base::TimeTicks GetLastActivityTimeForQuickLock(base::TimeTicks now) const;
 
   // Updates |last_user_activity_time_| to contain the current time and
   // calls |delegate_|'s ReportUserActivityMetrics() method.
@@ -412,6 +414,12 @@ class StateController : public PrefsObserver {
   void HandleDimWithHps(base::TimeTicks now,
                         base::TimeDelta screen_dim_duration);
 
+  // This is an expansion of `HandleDelay` that serves screen lock only.
+  // When conditions of quick lock or standard lock are satisfied, lock the
+  // screen.
+  void HandleScreenLockWithHps(base::TimeTicks now,
+                               base::TimeDelta screen_lock_duration);
+
   Delegate* delegate_ = nullptr;                          // not owned
   PrefsInterface* prefs_ = nullptr;                       // not owned
   system::DBusWrapperInterface* dbus_wrapper_ = nullptr;  // not owned
@@ -483,6 +491,10 @@ class StateController : public PrefsObserver {
   // Time of the last screen dim if screen is dimmed; it is set to be
   // base::TimeTicks() if screen is not currently dimmed.
   base::TimeTicks last_dim_time_;
+
+  // Time of the last screen lock request; it is set to be base::TimeTicks()
+  // when `requested_screen_lock_` is false.
+  base::TimeTicks last_lock_requested_time_;
 
   // True if user activity was observed after the screen was dimmed or soon
   // after it was turned off (which can result in delays being lengthened
