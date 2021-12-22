@@ -182,9 +182,9 @@ WiFiService::WiFiService(Manager* manager,
     SetEAPKeyManagement(WPASupplicant::kKeyManagementWPAPSK);
 #endif  // DISABLE_WPA3_SAE
   } else if (security_ == kSecurityWep) {
-    SetEAPKeyManagement(WPASupplicant::kKeyModeNone);
+    SetEAPKeyManagement(WPASupplicant::kKeyManagementNone);
   } else if (security_ == kSecurityNone) {
-    SetEAPKeyManagement(WPASupplicant::kKeyModeNone);
+    SetEAPKeyManagement(WPASupplicant::kKeyManagementNone);
   } else {
     LOG(ERROR) << "Unsupported security method " << security_;
   }
@@ -832,7 +832,7 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
         ft_eap = true;
       } else if (mgmt == WPASupplicant::kKeyManagementSAE) {
         ft_mgmt = WPASupplicant::kKeyManagementFTSAE;
-      } else {
+      } else if (mgmt != WPASupplicant::kKeyManagementNone) {
         LOG(ERROR) << "Unrecognized key management protocol " << mgmt;
         continue;
       }

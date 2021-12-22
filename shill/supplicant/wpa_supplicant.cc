@@ -99,7 +99,7 @@ const char WPASupplicant::kKeyManagementMethodPrefixEAP[] = "wpa-eap";
 const char WPASupplicant::kKeyManagementMethodSuffixEAP[] = "-eap";
 const char WPASupplicant::kKeyManagementMethodSuffixPSK[] = "-psk";
 const char WPASupplicant::kKeyManagementMethodSAE[] = "sae";
-const char WPASupplicant::kKeyModeNone[] = "NONE";
+const char WPASupplicant::kKeyManagementNone[] = "NONE";
 const char WPASupplicant::kNetworkBgscanMethodLearn[] = "learn";
 // None is not a real method name, but we interpret 'none' as a request that
 // no background scan parameter should be supplied to wpa_supplicant.
