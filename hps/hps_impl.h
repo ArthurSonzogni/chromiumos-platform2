@@ -28,6 +28,7 @@ class HPS_impl : public HPS {
   friend class HPSTestButUsingAMock;
   explicit HPS_impl(std::unique_ptr<DevInterface> dev)
       : device_(std::move(dev)),
+        wake_lock_(device_->CreateWakeLock()),  // Power on by default.
         hw_rev_(0),
         stage1_version_(0),
         write_protect_off_(false),
@@ -39,6 +40,7 @@ class HPS_impl : public HPS {
             const base::FilePath& fpga_bitstream,
             const base::FilePath& fpga_app_image) override;
   bool Boot() override;
+  bool ShutDown() override;
   bool Enable(uint8_t feature) override;
   bool Disable(uint8_t feature) override;
   FeatureResult Result(int feature) override;
@@ -79,6 +81,7 @@ class HPS_impl : public HPS {
   bool WriteFile(uint8_t bank, const base::FilePath& source);
   std::unique_ptr<DevInterface> device_;
   base::TimeTicks boot_start_time_;
+  std::unique_ptr<WakeLock> wake_lock_;
   HpsMetrics hps_metrics_;
   uint16_t hw_rev_;
   uint32_t stage1_version_;

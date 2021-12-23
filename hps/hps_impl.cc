@@ -46,6 +46,14 @@ static constexpr base::TimeDelta kApplTimeout =
 static constexpr base::TimeDelta kApplSleep =
     base::TimeDelta::FromMilliseconds(1000);
 
+// Time from powering on the sensor to it becoming ready for communication.
+static constexpr base::TimeDelta kPowerOnDelay =
+    base::TimeDelta::FromMilliseconds(1000);
+
+// Time for letting the sensor settle after powering it off.
+static constexpr base::TimeDelta kPowerOffDelay =
+    base::TimeDelta::FromMilliseconds(100);
+
 // Initialise the firmware parameters.
 void HPS_impl::Init(uint32_t stage1_version,
                     const base::FilePath& mcu,
@@ -90,6 +98,7 @@ bool HPS_impl::Boot() {
 }
 
 bool HPS_impl::Enable(uint8_t feature) {
+  DCHECK(wake_lock_);
   // Only 2 features available at the moment.
   if (feature >= kFeatures) {
     LOG(ERROR) << "Enabling unknown feature (" << static_cast<int>(feature)
@@ -108,6 +117,7 @@ bool HPS_impl::Enable(uint8_t feature) {
 }
 
 bool HPS_impl::Disable(uint8_t feature) {
+  DCHECK(wake_lock_);
   if (feature >= kFeatures) {
     LOG(ERROR) << "Disabling unknown feature (" << static_cast<int>(feature)
                << ")";
@@ -125,6 +135,7 @@ bool HPS_impl::Disable(uint8_t feature) {
 }
 
 FeatureResult HPS_impl::Result(int feature) {
+  DCHECK(wake_lock_);
   // Check the application is enabled and running.
   std::optional<uint16_t> status = this->device_->ReadReg(HpsReg::kSysStatus);
   if (!status || !(status.value() & R2::kAppl)) {
@@ -403,11 +414,25 @@ hps::HPS_impl::BootResult HPS_impl::CheckApplication() {
 
 // Reboot the hardware module.
 bool HPS_impl::Reboot() {
-  // Send a reset cmd - maybe should power cycle.
+  if (wake_lock_)
+    ShutDown();
+  LOG(INFO) << "Starting HPS device";
+  wake_lock_ = device_->CreateWakeLock();
+  Sleep(kPowerOnDelay);
+
+  // Also send a reset cmd in case the kernel driver isn't present.
   if (!this->device_->WriteReg(HpsReg::kSysCmd, R3::kReset)) {
     LOG(FATAL) << "Reboot failed";
     return false;
   }
+  return true;
+}
+
+bool HPS_impl::ShutDown() {
+  DCHECK(wake_lock_);
+  LOG(INFO) << "Shutting down HPS device";
+  wake_lock_.reset();
+  Sleep(kPowerOffDelay);
   return true;
 }
 
@@ -462,6 +487,7 @@ hps::HPS_impl::BootResult HPS_impl::SendApplicationUpdate() {
  * The HPS/Host I2C Interface Memory Write is used.
  */
 bool HPS_impl::Download(hps::HpsBank bank, const base::FilePath& source) {
+  DCHECK(wake_lock_);
   uint8_t ibank = static_cast<uint8_t>(bank);
   if (ibank >= kNumBanks) {
     LOG(ERROR) << "Download: Illegal bank: " << static_cast<int>(ibank) << ": "

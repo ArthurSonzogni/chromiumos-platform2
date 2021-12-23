@@ -13,6 +13,8 @@
 #include <stdint.h>
 #include <string>
 
+#include <base/files/file_path.h>
+
 #include "hps/dev.h"
 
 struct i2c_msg;
@@ -25,13 +27,18 @@ class I2CDev : public DevInterface {
   int Open();
   bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len) override;
   bool WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) override;
-  static std::unique_ptr<DevInterface> Create(const std::string&,
-                                              uint8_t address);
+  std::unique_ptr<WakeLock> CreateWakeLock() override;
+  static std::unique_ptr<DevInterface> Create(const std::string& bus,
+                                              uint8_t address,
+                                              const std::string& power_control);
 
  private:
-  I2CDev(const std::string& bus, uint8_t address);
+  I2CDev(const std::string& bus,
+         uint8_t address,
+         const base::FilePath& power_control);
   bool Ioc(struct i2c_msg* msg, size_t count);
   const std::string bus_;
+  base::FilePath power_control_;
   uint8_t address_;
   int fd_;
 };

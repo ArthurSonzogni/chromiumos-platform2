@@ -25,6 +25,7 @@ int main(int argc, char* argv[]) {
   base::AtExitManager at_exit;
 
   DEFINE_string(bus, "/dev/i2c-hps-controller", "I2C device");
+  DEFINE_string(hps_dev, "/dev/hps", "HPS device");
   DEFINE_uint32(addr, 0x30, "I2C address of module");
   DEFINE_uint32(speed, 200, "I2C bus speed in KHz");
   DEFINE_bool(mcp, false, "Use MCP2221A connection");
@@ -66,7 +67,7 @@ int main(int argc, char* argv[]) {
     fake->SkipBoot();
     dev = std::move(fake);
   } else {
-    dev = hps::I2CDev::Create(FLAGS_bus, addr);
+    dev = hps::I2CDev::Create(FLAGS_bus, addr, FLAGS_hps_dev);
   }
   CHECK(dev) << "Hardware device failed to initialise";
   LOG(INFO) << "Booting HPS device";

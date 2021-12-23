@@ -32,6 +32,10 @@ class HPS {
   //
   virtual bool Boot() = 0;
 
+  // Shut down the module. If the module is needed again, it must be
+  // reinitialized with Boot() before calling other operations.
+  virtual bool ShutDown() = 0;
+
   //
   // Enable the selected feature, return false if the
   // request fails e.g if the module is not ready.

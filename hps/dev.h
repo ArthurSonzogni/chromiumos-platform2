@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <optional>
 
 #include <base/compiler_specific.h>
@@ -18,9 +19,31 @@
 
 namespace hps {
 
+class WakeLock {
+ public:
+  virtual ~WakeLock() = default;
+  WakeLock(const WakeLock&) = delete;
+  WakeLock& operator=(const WakeLock&) = delete;
+
+ protected:
+  WakeLock() = default;
+};
+
 class DevInterface {
  public:
   virtual ~DevInterface() {}
+
+  /*
+   * Create a new wake lock object. A wake lock must be held while performing
+   * read or write operations on this device to ensure the device remains
+   * powered up.
+   *
+   * If the device-specific implementation supports power management, the
+   * hardware will remain powered on as long as at least one wake lock is
+   * active. Otherwise this function is a no-op.
+   */
+  virtual std::unique_ptr<WakeLock> CreateWakeLock();
+
   /*
    * Returns true on successful read, false on error.
    * In the event of an error, the contents may have been modified.

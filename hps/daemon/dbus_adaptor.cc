@@ -38,7 +38,9 @@ DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus,
     : org::chromium::HpsAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(::hps::kHpsServicePath)),
       hps_(std::move(hps)),
-      poll_time_ms_(poll_time_ms) {}
+      poll_time_ms_(poll_time_ms) {
+  ShutDown();
+}
 
 void DBusAdaptor::RegisterAsync(
     const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
@@ -63,14 +65,35 @@ void DBusAdaptor::PollTask() {
   }
 }
 
+void DBusAdaptor::BootIfNeeded() {
+  if (hps_booted_) {
+    return;
+  }
+  if (!hps_->Boot()) {
+    LOG(FATAL) << "Failed to boot";
+  }
+  hps_booted_ = true;
+}
+
+void DBusAdaptor::ShutDown() {
+  DCHECK(!poll_timer_.IsRunning());
+  if (!hps_->ShutDown()) {
+    LOG(FATAL) << "Failed to shutdown";
+  }
+  hps_booted_ = false;
+}
+
 bool DBusAdaptor::EnableFeature(brillo::ErrorPtr* error,
                                 const hps::FeatureConfig& config,
                                 uint8_t feature,
                                 StatusCallback callback) {
+  BootIfNeeded();
   if (!this->hps_->Enable(feature)) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          kErrorPath, "hpsd: Unable to enable feature");
-
+    if (enabled_features_.none()) {
+      ShutDown();
+    }
     return false;
   } else {
     auto filter = CreateFilter(config, callback);
@@ -90,13 +113,13 @@ bool DBusAdaptor::DisableFeature(brillo::ErrorPtr* error, uint8_t feature) {
   if (!this->hps_->Disable(feature)) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          kErrorPath, "hpsd: Unable to disable feature");
-
     return false;
   } else {
     feature_filters_[feature].reset();
     enabled_features_.reset(feature);
     if (enabled_features_.none()) {
       poll_timer_.Stop();
+      ShutDown();
     }
     return true;
   }

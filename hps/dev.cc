@@ -14,6 +14,15 @@
 #include "hps/utils.h"
 
 namespace hps {
+namespace {
+
+class WakeLockNoOpImpl : public WakeLock {
+ public:
+  WakeLockNoOpImpl() = default;
+  ~WakeLockNoOpImpl() override = default;
+};
+
+}  // namespace
 
 bool DevInterface::Read(uint8_t cmd, uint8_t* data, size_t len) {
   if (this->ReadDevice(cmd, data, len)) {
@@ -81,6 +90,10 @@ bool DevInterface::WriteReg(HpsReg r, uint16_t data) {
  */
 size_t DevInterface::BlockSizeBytes() {
   return 256;
+}
+
+std::unique_ptr<WakeLock> DevInterface::CreateWakeLock() {
+  return std::make_unique<WakeLockNoOpImpl>();
 }
 
 }  // namespace hps

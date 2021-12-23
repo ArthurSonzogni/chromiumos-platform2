@@ -147,7 +147,7 @@ int main(int argc, char* argv[]) {
     }
     dev = std::move(fake);
   } else {
-    dev = hps::I2CDev::Create(FLAGS_bus, FLAGS_addr);
+    dev = hps::I2CDev::Create(FLAGS_bus, FLAGS_addr, /*power_control=*/"");
   }
   if (FLAGS_retries > 0) {
     // If retries are required, add a retry device.

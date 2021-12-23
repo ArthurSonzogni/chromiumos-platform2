@@ -19,18 +19,53 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/files/file.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
 
 namespace hps {
+namespace {
 
-I2CDev::I2CDev(const std::string& bus, uint8_t addr)
-    : bus_(bus), address_(addr), fd_(-1) {}
+/*
+ * Holds a file handle to the HPS device, which causes the kernel module
+ * to keep the sensor powered as long as the file handle exists.
+ *
+ * If the HPS kernel driver isn't loaded or the device node doesn't exist, we
+ * assume the hardware is always powered on and disable power management in
+ * hpsd.
+ */
+class WakeLockImpl : public WakeLock {
+ public:
+  explicit WakeLockImpl(const base::FilePath& power_control)
+      : power_file_(power_control,
+                    base::File::FLAG_OPEN | base::File::FLAG_READ |
+                        base::File::FLAG_WRITE) {
+    if (!power_file_.IsValid())
+      PLOG(ERROR) << "Unable to create wake lock: \"" << power_control << "\"";
+  }
+  ~WakeLockImpl() override = default;
+
+ private:
+  base::File power_file_;
+};
+
+}  // namespace
+
+I2CDev::I2CDev(const std::string& bus,
+               uint8_t addr,
+               const base::FilePath& power_control)
+    : bus_(bus), power_control_(power_control), address_(addr), fd_(-1) {}
 
 int I2CDev::Open() {
   if (this->bus_.empty()) {
     LOG(ERROR) << "Empty i2c path: \"" << this->bus_ << "\"";
     return -1;
+  }
+  if (!power_control_.empty() && !base::PathExists(power_control_)) {
+    LOG(WARNING) << "Bad power control file, disabling power management: \""
+                 << power_control_ << "\"";
+    power_control_.clear();
   }
   this->fd_ = open(this->bus_.c_str(), O_RDWR);
   if (this->fd_ < 0) {
@@ -79,11 +114,19 @@ bool I2CDev::Ioc(struct i2c_msg* msg, size_t count) {
   return ret != -1;
 }
 
+std::unique_ptr<WakeLock> I2CDev::CreateWakeLock() {
+  if (!power_control_.empty())
+    return std::make_unique<WakeLockImpl>(power_control_);
+  return DevInterface::CreateWakeLock();
+}
+
 // Static factory method.
 std::unique_ptr<DevInterface> I2CDev::Create(const std::string& bus,
-                                             uint8_t addr) {
+                                             uint8_t addr,
+                                             const std::string& power_control) {
   // Use new so that private constructor can be accessed.
-  auto i2c_dev = std::unique_ptr<I2CDev>(new I2CDev(bus, addr));
+  auto i2c_dev = std::unique_ptr<I2CDev>(
+      new I2CDev(bus, addr, base::FilePath(power_control)));
   CHECK_GE(i2c_dev->Open(), 0);
   return std::unique_ptr<DevInterface>(std::move(i2c_dev));
 }
