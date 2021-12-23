@@ -30,6 +30,15 @@ config("libcros_installer_config") {
   defines = [ "USE_POSTINSTALL_CONFIG_EFI_AND_LEGACY=${use.postinstall_config_efi_and_legacy}" ]
 }
 
+if (use.manage_efi_boot_entries) {
+  pkg_config("efi_boot_management") {
+    pkg_deps = [
+      "efiboot",
+      "efivar",
+    ]
+  }
+}
+
 static_library("libcros_installer") {
   sources = [
     "cgpt_manager.cc",
@@ -44,6 +53,15 @@ static_library("libcros_installer") {
     sources += [ "slow_boot_notify_enable.cc" ]
   } else {
     sources += [ "slow_boot_notify_stub.cc" ]
+  }
+  if (use.manage_efi_boot_entries) {
+    configs += [ ":efi_boot_management" ]
+    sources += [
+      "efi_boot_management.cc",
+      "efivar.cc",
+    ]
+  } else {
+    sources += [ "efi_boot_management_stub.cc" ]
   }
   configs += [ ":target_defaults" ]
   all_dependent_configs = [ ":libcros_installer_config" ]
@@ -106,6 +124,10 @@ if (!use.cros_host && use.test) {
       ":cros_installer_test_config",
       ":target_defaults",
     ]
+    if (use.manage_efi_boot_entries) {
+      sources += [ "efi_boot_management_test.cc" ]
+      configs += [ ":efi_boot_management" ]
+    }
     deps = [
       ":libcros_installer",
       "//common-mk/testrunner:testrunner",

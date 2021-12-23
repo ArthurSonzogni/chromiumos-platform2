@@ -90,6 +90,7 @@ _IUSE = [
     'kvm_host',
     'libglvnd',
     'lvm_stateful_partition',
+    'manage_efi_boot_entries',
     'metrics_uploader',
     'ml_benchmark_drivers',
     'mojo',

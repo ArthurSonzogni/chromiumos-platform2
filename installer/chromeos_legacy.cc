@@ -18,6 +18,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
+#include "installer/efi_boot_management.h"
 #include "installer/inst_util.h"
 
 using std::string;
@@ -172,6 +173,9 @@ bool RunEfiPostInstall(const InstallConfig& install_config) {
     return false;
 
   if (!UpdateEfiBootloaders(install_config))
+    return false;
+
+  if (!UpdateEfiBootEntries(install_config))
     return false;
 
   // Of the form: PARTUUID=XXX-YYY-ZZZ
