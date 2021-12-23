@@ -1034,6 +1034,9 @@ properties:
                 has-backlight:
                   description: Does the device have a backlight.
                   type: boolean
+                has-poe-peripheral-support:
+                  description: Does the device have hardware for connecting PoE peripherals.
+                  type: boolean
                 display-type: *display-type
                 stylus-category: *stylus-category
                 psu-type: *psu-type
