@@ -59,7 +59,7 @@ bool HardwareVerifierClientImpl::GetHardwareVerificationResult(
     const hardware_verifier::ComponentInfo& info =
         report.found_component_infos(i);
     if (info.qualification_status() != hardware_verifier::QUALIFIED) {
-      error_str += GetComponentIdentifier(info);
+      error_str += GetComponentFieldsIdentifier(info.component_fields());
       error_str += "\n";
     }
   }

@@ -34,11 +34,12 @@ const char kVerifyComponentsReplyCompliant[] = R"(
     is_compliant: true
     found_component_infos: [
       {
-        component_category: audio_codec
+        component_category: battery
         qualification_status: QUALIFIED
         component_fields: {
-          audio_codec: {
-            name: "Audio1"
+          battery: {
+            manufacturer: "ABC"
+            model_name: "abc"
           }
         }
       }
@@ -52,15 +53,6 @@ const char kVerifyComponentsReplyNotCompliant[] = R"(
     is_compliant: false
     found_component_infos: [
       {
-        component_category: audio_codec
-        qualification_status: QUALIFIED
-        component_fields: {
-          audio_codec: {
-            name: "Audio1"
-          }
-        }
-      },
-      {
         component_category: battery
         qualification_status: UNQUALIFIED
         component_fields: {
@@ -69,78 +61,15 @@ const char kVerifyComponentsReplyNotCompliant[] = R"(
             model_name: "abc"
           }
         }
-      }
-    ]
-  }
-)";
-
-const char kVerifyComponentsReplyError[] = R"(
-  error: ERROR_OTHER_ERROR
-)";
-
-const char kVerifyComponentsReplyAllComponents[] = R"(
-  error: ERROR_OK
-  hw_verification_report: {
-    is_compliant: false
-    found_component_infos: [
-      {
-        component_category: audio_codec
-        qualification_status: UNQUALIFIED
-        component_fields: {
-          audio_codec: {
-            name: "AudioName"
-          }
-        }
-      },
-      {
-        component_category: battery
-        qualification_status: UNQUALIFIED
-        component_fields: {
-          battery: {
-            manufacturer: "BatteryManufacturer"
-            model_name: "BatteryModelName"
-          }
-        }
       },
       {
         component_category: storage
-        qualification_status: UNQUALIFIED
+        qualification_status: QUALIFIED
         component_fields: {
           storage: {
             type: "MMC",
             mmc_manfid: 10
             mmc_name: "MmcName"
-          }
-        }
-      },
-      {
-        component_category: storage
-        qualification_status: UNQUALIFIED
-        component_fields: {
-          storage: {
-            type: "NVMe",
-            pci_vendor: 10
-            pci_device: 11
-          }
-        }
-      },
-      {
-        component_category: storage
-        qualification_status: UNQUALIFIED
-        component_fields: {
-          storage: {
-            type: "ATA",
-            ata_vendor: "AtaVendor"
-            ata_model: "AtaModel"
-          }
-        }
-      },
-      {
-        component_category: storage
-        qualification_status: UNQUALIFIED
-        component_fields: {
-          storage: {
-            type: "*(&]",
           }
         }
       },
@@ -153,130 +82,17 @@ const char kVerifyComponentsReplyAllComponents[] = R"(
             usb_product_id: 11
           }
         }
-      },
-      {
-        component_category: stylus
-        qualification_status: UNQUALIFIED
-        component_fields: {
-          stylus: {
-            vendor: 10
-            product: 11
-          }
-        }
-      },
-      {
-        component_category: touchpad
-        qualification_status: UNQUALIFIED
-        component_fields: {
-          touchpad: {
-            vendor: 10
-            product: 11
-          }
-        }
-      },
-      {
-        component_category: touchscreen
-        qualification_status: UNQUALIFIED
-        component_fields: {
-          touchscreen: {
-            vendor: 10
-            product: 11
-          }
-        }
-      },
-      {
-        component_category: dram
-        qualification_status: UNQUALIFIED
-        component_fields: {
-          dram: {
-            part: "DramPart"
-          }
-        }
-      },
-      {
-        component_category: display_panel
-        qualification_status: UNQUALIFIED
-        component_fields: {
-          display_panel: {
-            vendor: "DisplayVendor"
-            product_id: 10
-          }
-        }
-      },
-      {
-        component_category: cellular
-        qualification_status: UNQUALIFIED
-        component_fields: {
-          cellular: {
-            type: "cellular"
-            bus_type: "pci"
-            pci_vendor_id: 10
-            pci_device_id: 11
-          }
-        }
-      },
-      {
-        component_category: ethernet
-        qualification_status: UNQUALIFIED
-        component_fields: {
-          cellular: {
-            type: "ethernet"
-            bus_type: "usb"
-            usb_vendor_id: 10
-            usb_product_id: 11
-          }
-        }
-      },
-      {
-        component_category: wireless
-        qualification_status: UNQUALIFIED
-        component_fields: {
-          cellular: {
-            type: "wireless"
-            bus_type: "sdio"
-            sdio_vendor_id: 10
-            sdio_device_id: 11
-          }
-        }
-      },
-      {
-        component_category: wireless
-        qualification_status: UNQUALIFIED
-        component_fields: {
-          cellular: {
-            type: "wireless"
-            bus_type: "*(&]"
-            sdio_vendor_id: 10
-            sdio_device_id: 11
-          }
-        }
-      },
-      {
-        component_category: network
-        qualification_status: UNQUALIFIED
       }
     ]
   }
 )";
 
-const char kVerifyComponentsErrorStrAllComponents[] =
-    "Audio_AudioName\n"
-    "Battery_BatteryManufacturer_BatteryModelName\n"
-    "Storage(eMMC)_0a_MmcName\n"
-    "Storage(NVMe)_000a_000b\n"
-    "Storage(SATA)_AtaVendor_AtaModel\n"
-    "Storage(unknown)\n"
-    "Camera_000a_000b\n"
-    "Stylus_000a_000b\n"
-    "Touchpad_000a_000b\n"
-    "Touchscreen_000a_000b\n"
-    "Memory_DramPart\n"
-    "Display_DisplayVendor_000a\n"
-    "Network(cellular:pci)_000a_000b\n"
-    "Network(ethernet:usb)_000a_000b\n"
-    "Network(wireless:sdio)_000a_000b\n"
-    "Network(wireless:unknown)\n"
-    "UnknownComponent\n";
+const char kVerifyComponentsErrorStrNotCompliant[] =
+    "Battery_ABC_abc\nCamera_000a_000b\n";
+
+const char kVerifyComponentsReplyError[] = R"(
+  error: ERROR_OTHER_ERROR
+)";
 
 }  // namespace
 
@@ -347,37 +163,7 @@ TEST_F(HardwareVerifierClientTest, GetHardwareVerificationResult_NotCompliant) {
   EXPECT_TRUE(
       hardware_verifier_client_->GetHardwareVerificationResult(&result));
   EXPECT_EQ(result.is_compliant(), false);
-  EXPECT_EQ(result.error_str(), "Battery_ABC_abc\n");
-}
-
-TEST_F(HardwareVerifierClientTest,
-       GetHardwareVerificationResult_AllComponents) {
-  EXPECT_CALL(*mock_object_proxy_, CallMethodAndBlock(_, _))
-      .WillOnce([](dbus::MethodCall*, int) {
-        std::unique_ptr<dbus::Response> hardware_verifier_response =
-            dbus::Response::CreateEmpty();
-        hardware_verifier::VerifyComponentsReply reply;
-        CHECK(google::protobuf::TextFormat::ParseFromString(
-            kVerifyComponentsReplyAllComponents, &reply));
-        dbus::MessageWriter writer(hardware_verifier_response.get());
-        writer.AppendProtoAsArrayOfBytes(reply);
-        return hardware_verifier_response;
-      });
-
-  HardwareVerificationResult result;
-  EXPECT_TRUE(
-      hardware_verifier_client_->GetHardwareVerificationResult(&result));
-  EXPECT_EQ(result.is_compliant(), false);
-  EXPECT_EQ(result.error_str(), kVerifyComponentsErrorStrAllComponents);
-}
-
-TEST_F(HardwareVerifierClientTest, GetHardwareVerificationResult_NoResponse) {
-  EXPECT_CALL(*mock_object_proxy_, CallMethodAndBlock(_, _))
-      .WillOnce([](dbus::MethodCall*, int) { return nullptr; });
-
-  HardwareVerificationResult result;
-  EXPECT_FALSE(
-      hardware_verifier_client_->GetHardwareVerificationResult(&result));
+  EXPECT_EQ(result.error_str(), kVerifyComponentsErrorStrNotCompliant);
 }
 
 TEST_F(HardwareVerifierClientTest,

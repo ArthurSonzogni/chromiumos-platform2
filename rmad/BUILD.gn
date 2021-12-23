@@ -189,6 +189,7 @@ if (use.test) {
       "system/tpm_manager_client_test.cc",
       "utils/cbi_utils_test.cc",
       "utils/cmd_utils_test.cc",
+      "utils/component_utils_test.cc",
       "utils/cr50_utils_test.cc",
       "utils/cros_config_utils_test.cc",
       "utils/crossystem_utils_test.cc",

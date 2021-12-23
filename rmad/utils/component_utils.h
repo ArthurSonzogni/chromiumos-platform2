@@ -7,12 +7,35 @@
 
 #include <string>
 
-#include <hardware_verifier/hardware_verifier.pb.h>
+#include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
 namespace rmad {
 
-std::string GetComponentIdentifier(
-    const hardware_verifier::ComponentInfo& info);
+// Identifier for each component fields.
+std::string GetComponentFieldsIdentifier(
+    const runtime_probe::Battery_Fields& fields);
+std::string GetComponentFieldsIdentifier(
+    const runtime_probe::Storage_Fields& fields);
+std::string GetComponentFieldsIdentifier(
+    const runtime_probe::Camera_Fields& fields);
+std::string GetComponentFieldsIdentifier(
+    const runtime_probe::InputDevice_Fields& fields);
+std::string GetComponentFieldsIdentifier(
+    const runtime_probe::Memory_Fields& fields);
+std::string GetComponentFieldsIdentifier(
+    const runtime_probe::Edid_Fields& fields);
+std::string GetComponentFieldsIdentifier(
+    const runtime_probe::Network_Fields& fields);
+
+// Extension for |runtime_probe::ComponentFields|.
+std::string GetComponentFieldsIdentifier(
+    const runtime_probe::ComponentFields& fields);
+
+// Extension for runtime_probe components.
+template <typename Component>
+std::string GetComponentIdentifier(const Component& component) {
+  return GetComponentFieldsIdentifier(component.values());
+}
 
 }  // namespace rmad
 
