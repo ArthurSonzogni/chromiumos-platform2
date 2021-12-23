@@ -23,6 +23,9 @@ namespace {
 
 constexpr size_t kMaxTpmMessageLength = 512;
 
+// Provide max iterations for a single fuzz run, otherwise it might timeout.
+constexpr int kMaxIterations = 100;
+
 }  // namespace
 
 class Environment {
@@ -51,9 +54,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       std::move(allowlisting_util), request_presence, user_state.get(),
       &tpm_proxy, &mock_metrics, legacy_kh_fallback, allow_g2f_attestation);
 
-  while (data_provider.remaining_bytes() > 0) {
+  int rounds = 0;
+  while (data_provider.remaining_bytes() > 0 && rounds < kMaxIterations) {
     u2f_msg_handler->ProcessMsg(data_provider.ConsumeRandomLengthString());
     user_state->NextState();
+    rounds++;
   }
 
   return 0;
