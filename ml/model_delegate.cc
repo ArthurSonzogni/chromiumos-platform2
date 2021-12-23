@@ -76,10 +76,10 @@ TfLiteGpuDelegateOptionsV2 MakeGpuDelegateOptions(
 
   switch (gpu_delegate_api) {
     case GpuDelegateApi::OPENCL:
-      options.experimental_flags = TFLITE_GPU_EXPERIMENTAL_FLAGS_CL_ONLY;
+      options.experimental_flags |= TFLITE_GPU_EXPERIMENTAL_FLAGS_CL_ONLY;
       break;
     default:
-      options.experimental_flags = TFLITE_GPU_EXPERIMENTAL_FLAGS_GL_ONLY;
+      options.experimental_flags |= TFLITE_GPU_EXPERIMENTAL_FLAGS_GL_ONLY;
   }
 
   return options;
