@@ -6,6 +6,7 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/dbus/dbus_connection.h>
+#include <chromeos-config/libcros_config/cros_config.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/platform/platform_channel.h>
 #include <stdlib.h>
@@ -117,10 +118,19 @@ int CameraHal::Init() {
     return -EBUSY;
   }
 
-  // Do not try to connect to the IP peripheral on devices where the IGB driver
-  // does not exist.
-  if (!base::DirectoryExists(base::FilePath("/sys/bus/pci/drivers/igb"))) {
-    LOGF(INFO) << "IGB driver not found, IP cameras won't work";
+  brillo::CrosConfig config;
+  if (!config.Init()) {
+    LOGF(ERROR) << "Unable to initialize CrosConfig";
+    return -EBUSY;
+  }
+
+  std::string has_poe_peripheral_support;
+  if (!config.GetString("/hardware-properties", "has-poe-peripheral-support",
+                        &has_poe_peripheral_support) ||
+      has_poe_peripheral_support.compare("true")) {
+    // Do not try to connect to the IP peripheral on devices where support does
+    // not exist.
+    LOGF(INFO) << "IP peripherals not supported, IP cameras won't work";
     return 0;
   }
 

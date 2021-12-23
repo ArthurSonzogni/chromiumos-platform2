@@ -34,6 +34,7 @@ shared_library("libcamera_hal") {
     "libbrillo",
     "libcros_camera",
     "libcros_camera_android_deps",
+    "libcros_config",
     "libsync",
     "libyuv",
   ]
