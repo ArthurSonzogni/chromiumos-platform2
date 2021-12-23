@@ -44,6 +44,12 @@ bool LowDiskSpaceHandler::Init(
 
   last_update_user_activity_timestamp_time_ = platform_->GetCurrentTime();
 
+  // We need to mark "stopped_" as false BEFORE calling any of the following
+  // methods, for the callbacks to work correctly; i.e. especially since the
+  // default "base::TimeDelta()" is zero and the "post_delayed_task" could
+  // call the callbacks from a different thread.
+  stopped_ = false;
+
   if (!post_delayed_task_.Run(
           FROM_HERE,
           base::BindOnce(&LowDiskSpaceHandler::FreeDiskSpace,
@@ -57,8 +63,6 @@ bool LowDiskSpaceHandler::Init(
                          base::Unretained(this)),
           base::TimeDelta()))
     return false;
-
-  stopped_ = false;
 
   return true;
 }
