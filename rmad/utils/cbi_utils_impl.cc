@@ -4,6 +4,7 @@
 
 #include "rmad/utils/cbi_utils_impl.h"
 
+#include <limits>
 #include <memory>
 #include <string>
 #include <utility>
@@ -23,6 +24,7 @@ constexpr char kEctoolIntValRegex[] = R"(As uint: (\d+))";
 
 constexpr int kCbiTagSkuId = 2;
 constexpr int kCbiTagDramPartNum = 3;
+constexpr int kCbiTagSSFC = 8;
 
 }  // namespace
 
@@ -47,6 +49,22 @@ bool CbiUtilsImpl::GetDramPartNum(std::string* dram_part_num) const {
   return GetCbi(kCbiTagDramPartNum, dram_part_num);
 }
 
+bool CbiUtilsImpl::GetSSFC(uint32_t* ssfc) const {
+  CHECK(ssfc);
+
+  uint64_t buf;
+  if (!GetCbi(kCbiTagSSFC, &buf)) {
+    return false;
+  }
+
+  if (buf > static_cast<uint64_t>(std::numeric_limits<uint32_t>::max())) {
+    return false;
+  }
+
+  *ssfc = static_cast<uint32_t>(buf);
+  return true;
+}
+
 bool CbiUtilsImpl::SetSku(uint64_t sku) {
   int byte_size = 0;
   uint64_t tmp = sku;
@@ -62,6 +80,11 @@ bool CbiUtilsImpl::SetSku(uint64_t sku) {
 
 bool CbiUtilsImpl::SetDramPartNum(const std::string& dram_part_num) {
   return SetCbi(kCbiTagDramPartNum, dram_part_num);
+}
+
+bool CbiUtilsImpl::SetSSFC(uint32_t ssfc) {
+  // For SSFC, we always use 4 bytes.
+  return SetCbi(kCbiTagSSFC, ssfc, 4);
 }
 
 bool CbiUtilsImpl::SetCbi(int tag, const std::string& value, int set_flag) {

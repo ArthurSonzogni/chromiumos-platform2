@@ -20,11 +20,17 @@ class CbiUtils {
   // Get the dram part number of the device from cbi.
   virtual bool GetDramPartNum(std::string* dram_part_num) const = 0;
 
+  // Get the second source factory cache of the device from cbi.
+  virtual bool GetSSFC(uint32_t* ssfc) const = 0;
+
   // Set the sku number of the device to cbi.
   virtual bool SetSku(uint64_t sku) = 0;
 
   // Set the dram part number of the device to cbi.
   virtual bool SetDramPartNum(const std::string& dram_part_num) = 0;
+
+  // Set the second source factory cache of the device to cbi.
+  virtual bool SetSSFC(uint32_t ssfc) = 0;
 };
 
 }  // namespace rmad

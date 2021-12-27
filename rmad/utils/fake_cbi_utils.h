@@ -25,8 +25,10 @@ class FakeCbiUtils : public CbiUtils {
 
   bool GetSku(uint64_t* sku) const override;
   bool GetDramPartNum(std::string* dram_part_num) const override;
+  bool GetSSFC(uint32_t* ssfc) const override;
   bool SetSku(uint64_t sku) override;
   bool SetDramPartNum(const std::string& dram_part_num) override;
+  bool SetSSFC(uint32_t ssfc) override;
 
  private:
   base::FilePath working_dir_path_;
