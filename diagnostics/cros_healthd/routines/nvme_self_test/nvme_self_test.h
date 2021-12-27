@@ -85,7 +85,7 @@ class NvmeSelfTestRoutine final : public DiagnosticRoutine {
 
   // Update percent_, status_message_, status_ at the same moment in case
   // misinformation occurring.
-  void UpdateStatus(
+  bool UpdateStatus(
       chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status,
       uint32_t percent,
       std::string msg);
@@ -99,6 +99,8 @@ class NvmeSelfTestRoutine final : public DiagnosticRoutine {
   uint32_t percent_ = 0;
   base::Value output_dict_{base::Value::Type::DICTIONARY};
   std::string status_message_;
+
+  FRIEND_TEST(NvmeSelfTestRoutineTest, RoutineStatusTransition);
 
   base::WeakPtrFactory<NvmeSelfTestRoutine> weak_ptr_routine_{this};
 };

@@ -113,7 +113,10 @@ void NvmeSelfTestRoutine::Start() {
 
 void NvmeSelfTestRoutine::Resume() {}
 void NvmeSelfTestRoutine::Cancel() {
-  status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kCancelling;
+  if (!UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kCancelling,
+                    /*percent=*/0, "")) {
+    return;
+  }
   auto result_callback =
       base::Bind(&NvmeSelfTestRoutine::OnDebugdNvmeSelfTestCancelCallback,
                  weak_ptr_routine_.GetWeakPtr());
@@ -184,8 +187,10 @@ void NvmeSelfTestRoutine::OnDebugdNvmeSelfTestStartCallback(
                  /*percent=*/100, kNvmeSelfTestRoutineStartError);
     return;
   }
-  UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, /*percent=*/0,
-               kNvmeSelfTestRoutineStarted);
+  if (!UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kRunning,
+                    /*percent=*/0, kNvmeSelfTestRoutineStarted)) {
+    return;
+  }
 }
 
 void NvmeSelfTestRoutine::OnDebugdNvmeSelfTestCancelCallback(
@@ -203,8 +208,10 @@ void NvmeSelfTestRoutine::OnDebugdNvmeSelfTestCancelCallback(
                  /*percent=*/100, kNvmeSelfTestRoutineAbortionError);
     return;
   }
-  UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled,
-               /*percent=*/100, kNvmeSelfTestRoutineCancelled);
+  if (!UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled,
+                    /*percent=*/100, kNvmeSelfTestRoutineCancelled)) {
+    return;
+  }
 }
 
 bool NvmeSelfTestRoutine::CheckSelfTestCompleted(uint8_t progress,
@@ -247,19 +254,25 @@ void NvmeSelfTestRoutine::OnDebugdResultCallback(const std::string& result,
   const uint8_t complete_status = static_cast<uint8_t>(decoded_output[4]);
 
   if (CheckSelfTestCompleted(progress, complete_status)) {
-    UpdateStatus(CheckSelfTestPassed(complete_status), /*percent=*/100,
-                 GetCompleteMessage(complete_status));
+    if (!UpdateStatus(CheckSelfTestPassed(complete_status), /*percent=*/100,
+                      GetCompleteMessage(complete_status))) {
+      return;
+    }
   } else if ((progress & 0xf) == self_test_type_) {
-    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, percent,
-                 kNvmeSelfTestRoutineRunning);
+    if (!UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, percent,
+                      kNvmeSelfTestRoutineRunning)) {
+      return;
+    }
   } else {
     // It's not readable if uint8_t variables are not cast to uint32_t.
     LOG(ERROR) << "No valid data is retrieved. progress: "
                << static_cast<uint32_t>(progress)
                << ", percent: " << static_cast<uint32_t>(percent)
                << ", status:" << static_cast<uint32_t>(complete_status);
-    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
-                 /*percent=*/100, kNvmeSelfTestRoutineGetProgressFailed);
+    if (!UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                      /*percent=*/100, kNvmeSelfTestRoutineGetProgressFailed)) {
+      return;
+    }
   }
 }
 
@@ -271,13 +284,25 @@ void NvmeSelfTestRoutine::ResetOutputDictToValue(const std::string& value) {
   output_dict_.SetKey("resultDetails", std::move(result_dict));
 }
 
-void NvmeSelfTestRoutine::UpdateStatus(
+bool NvmeSelfTestRoutine::UpdateStatus(
     chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status,
     uint32_t percent,
     std::string msg) {
+  // Final states (kPassed, kFailed, kError, kCancelled) cannot be updated.
+  // Override kCancelling with kRunning is prohibited.
+  if (status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kPassed ||
+      status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kFailed ||
+      status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kError ||
+      status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled ||
+      (status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kCancelling &&
+       status == mojo_ipc::DiagnosticRoutineStatusEnum::kRunning)) {
+    return false;
+  }
+
   status_ = status;
   percent_ = percent;
   status_message_ = std::move(msg);
+  return true;
 }
 
 }  // namespace diagnostics

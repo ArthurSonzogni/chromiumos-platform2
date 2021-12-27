@@ -4,7 +4,9 @@
 
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
+#include <vector>
 
 #include <base/base64.h>
 #include <base/check.h>
@@ -25,14 +27,18 @@ using testing::StrictMock;
 using testing::WithArg;
 
 namespace diagnostics {
-namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+using routine_status = mojo_ipc::DiagnosticRoutineStatusEnum;
 
 // Success message from controller if launching is completed without errors.
 constexpr char kStartSuccess[] = "Device self-test started";
 constexpr char kNvmeError[] = "NVMe Status:Unknown";
 
+// TODO(b/214177942): As FRIEND_TEST is used in NvmeSelfTestRoutine,
+// NvmeSelfTestRoutineTest must *not* be wrapped in anonymous namespace. See
+// go/gunitadvanced#testing-private-code. However, using FRIEND_TEST is not
+// ideal and should be removed after the routine refactoring.
 class NvmeSelfTestRoutineTest : public testing::Test {
  protected:
   NvmeSelfTestRoutineTest() = default;
@@ -500,5 +506,46 @@ TEST_F(NvmeSelfTestRoutineTest, DebugdErrorForGettingProgress) {
                              kDebugdErrorMessage);
 }
 
-}  // namespace
+// Tests that the NvmeSelfTest routine status transition works as expected.
+TEST_F(NvmeSelfTestRoutineTest, RoutineStatusTransition) {
+  struct TestCase {
+    const routine_status source_status;
+    const routine_status target_status;
+    const bool expected_return;
+  };
+
+  constexpr std::array<TestCase, 12> testcases = {
+      TestCase{routine_status::kRunning, routine_status::kRunning, true},
+      TestCase{routine_status::kRunning, routine_status::kError, true},
+      TestCase{routine_status::kRunning, routine_status::kPassed, true},
+      TestCase{routine_status::kRunning, routine_status::kFailed, true},
+      TestCase{routine_status::kRunning, routine_status::kCancelling, true},
+      TestCase{routine_status::kCancelling, routine_status::kError, true},
+      TestCase{routine_status::kCancelling, routine_status::kCancelled, true},
+      TestCase{routine_status::kCancelling, routine_status::kRunning, false},
+      TestCase{routine_status::kPassed, routine_status::kRunning, false},
+      TestCase{routine_status::kFailed, routine_status::kRunning, false},
+      TestCase{routine_status::kError, routine_status::kRunning, false},
+      TestCase{routine_status::kCancelled, routine_status::kRunning, false},
+  };
+
+  for (const auto& testcase : testcases) {
+    CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
+    EXPECT_CALL(debugd_adapter_, RunNvmeShortSelfTest(_))
+        .WillOnce(
+            WithArg<0>([&](const base::RepeatingCallback<void(
+                               const std::string&, brillo::Error*)>& callback) {
+              callback.Run(kStartSuccess, nullptr);
+            }));
+    RunRoutineStart();
+    EXPECT_EQ(routine()->GetStatus(),
+              mojo_ipc::DiagnosticRoutineStatusEnum::kRunning);
+    EXPECT_TRUE(reinterpret_cast<NvmeSelfTestRoutine*>(routine())->UpdateStatus(
+        testcase.source_status, 100, ""));
+    EXPECT_EQ(reinterpret_cast<NvmeSelfTestRoutine*>(routine())->UpdateStatus(
+                  testcase.target_status, 100, ""),
+              testcase.expected_return);
+  }
+}
+
 }  // namespace diagnostics
