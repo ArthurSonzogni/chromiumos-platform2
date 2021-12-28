@@ -18,6 +18,9 @@
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/utils/json_store.h"
+#include "rmad/utils/mock_cbi_utils.h"
+#include "rmad/utils/mock_cros_config_utils.h"
+#include "rmad/utils/mock_ssfc_utils.h"
 #include "rmad/utils/mock_vpd_utils.h"
 
 using testing::_;
@@ -25,7 +28,15 @@ using testing::DoAll;
 using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
+using testing::SetArgPointee;
 using testing::WithArg;
+
+namespace {
+
+constexpr char kTestModelName[] = "TestModelName";
+constexpr uint32_t kTestSSFC = 0x1234;
+
+}  // namespace
 
 namespace rmad {
 
@@ -45,13 +56,39 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
   }
 
   scoped_refptr<ProvisionDeviceStateHandler> CreateStateHandler(
-      bool set_stable_dev_secret = true, bool flush_vpd = true) {
+      bool get_model_name = true,
+      bool need_update_ssfc = true,
+      bool set_ssfc = true,
+      bool set_stable_dev_secret = true,
+      bool flush_vpd = true) {
     // Expect signal is always sent.
     ON_CALL(signal_sender_, SendProvisionProgressSignal(_))
         .WillByDefault(
             DoAll(WithArg<0>(Invoke(
                       this, &ProvisionDeviceStateHandlerTest::QueueStatus)),
                   Return(true)));
+
+    auto cros_config_utils = std::make_unique<NiceMock<MockCrosConfigUtils>>();
+    if (get_model_name) {
+      ON_CALL(*cros_config_utils, GetModelName(_))
+          .WillByDefault(DoAll(SetArgPointee<0>(std::string(kTestModelName)),
+                               Return(true)));
+    } else {
+      ON_CALL(*cros_config_utils, GetModelName(_)).WillByDefault(Return(false));
+    }
+
+    auto ssfc_utils = std::make_unique<NiceMock<MockSsfcUtils>>();
+    auto cbi_utils = std::make_unique<NiceMock<MockCbiUtils>>();
+
+    if (need_update_ssfc) {
+      ON_CALL(*ssfc_utils, GetSSFC(_, _, _))
+          .WillByDefault(DoAll(SetArgPointee<1>(true),
+                               SetArgPointee<2>(kTestSSFC), Return(true)));
+      ON_CALL(*cbi_utils, SetSSFC(_)).WillByDefault(Return(set_ssfc));
+    } else {
+      ON_CALL(*ssfc_utils, GetSSFC(_, _, _))
+          .WillByDefault(DoAll(SetArgPointee<1>(false), Return(true)));
+    }
 
     auto vpd_utils = std::make_unique<NiceMock<MockVpdUtils>>();
     ON_CALL(*vpd_utils, SetStableDeviceSecret(_))
@@ -60,7 +97,8 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
 
     // Fake |HardwareVerifierUtils|.
     auto handler = base::MakeRefCounted<ProvisionDeviceStateHandler>(
-        json_store_, std::move(vpd_utils));
+        json_store_, std::move(cbi_utils), std::move(cros_config_utils),
+        std::move(ssfc_utils), std::move(vpd_utils));
     auto callback =
         std::make_unique<base::RepeatingCallback<bool(const ProvisionStatus&)>>(
             base::BindRepeating(&SignalSender::SendProvisionProgressSignal,
@@ -89,6 +127,13 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
 TEST_F(ProvisionDeviceStateHandlerTest, InitializeState_Success) {
   auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  RunHandlerTaskRunner(handler);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest, Clenaup_Success) {
+  auto handler = CreateStateHandler();
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->CleanUpState();
   RunHandlerTaskRunner(handler);
 }
 
@@ -122,6 +167,30 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Success) {
   RunHandlerTaskRunner(handler);
 }
 
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_KeepDeviceOpenSuccess) {
+  auto handler = CreateStateHandler();
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kKeepDeviceOpen, true);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  task_environment_.FastForwardBy(
+      ProvisionDeviceStateHandler::kReportStatusInterval);
+  EXPECT_GE(status_hitory_.size(), 1);
+  EXPECT_EQ(status_hitory_.back().status(),
+            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  auto provision = std::make_unique<ProvisionDeviceState>();
+  provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE);
+  RmadState state;
+  state.set_allocated_provision_device(provision.release());
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpEnablePhysical);
+
+  RunHandlerTaskRunner(handler);
+}
+
 TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Wait) {
   auto handler = CreateStateHandler();
   json_store_->SetValue(kSameOwner, false);
@@ -142,7 +211,7 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Wait) {
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_UnknownDestinationFailedBlocking) {
-  auto handler = CreateStateHandler(true, true);
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
@@ -163,7 +232,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Retry) {
-  auto handler = CreateStateHandler(true, true);
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
@@ -192,15 +261,43 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Retry) {
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       GetNextStateCase_SetStableDeviceSecretFailedNonBlocking) {
-  auto handler = CreateStateHandler(false, true);
+       GetNextStateCase_SetStableDeviceSecretFailedBlocking) {
+  auto handler = CreateStateHandler(true, true, true, false, true);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_hitory_.size(), 1);
   EXPECT_EQ(status_hitory_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_NON_BLOCKING);
+            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+
+  RunHandlerTaskRunner(handler);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_GetModelNameFailedBlocking) {
+  auto handler = CreateStateHandler(false, true, true, true, true);
+  json_store_->SetValue(kSameOwner, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  task_environment_.FastForwardBy(
+      ProvisionDeviceStateHandler::kReportStatusInterval);
+  EXPECT_GE(status_hitory_.size(), 1);
+  EXPECT_EQ(status_hitory_.back().status(),
+            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+
+  RunHandlerTaskRunner(handler);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_SsfcNotRequiredSuccess) {
+  auto handler = CreateStateHandler(true, false, true, true, true);
+  json_store_->SetValue(kSameOwner, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  task_environment_.FastForwardBy(
+      ProvisionDeviceStateHandler::kReportStatusInterval);
+  EXPECT_GE(status_hitory_.size(), 1);
+  EXPECT_EQ(status_hitory_.back().status(),
+            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
 
   auto provision = std::make_unique<ProvisionDeviceState>();
   provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE);
@@ -215,24 +312,29 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       GetNextStateCase_VpdFlushFailedNonBlocking) {
-  auto handler = CreateStateHandler(true, false);
+       GetNextStateCase_SetSsfcFailedBlocking) {
+  auto handler = CreateStateHandler(true, true, false, true, true);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_hitory_.size(), 1);
   EXPECT_EQ(status_hitory_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_NON_BLOCKING);
+            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
 
-  auto provision = std::make_unique<ProvisionDeviceState>();
-  provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE);
-  RmadState state;
-  state.set_allocated_provision_device(provision.release());
+  RunHandlerTaskRunner(handler);
+}
 
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_VpdFlushFailedBlocking) {
+  auto handler = CreateStateHandler(true, true, true, true, false);
+  json_store_->SetValue(kSameOwner, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  task_environment_.FastForwardBy(
+      ProvisionDeviceStateHandler::kReportStatusInterval);
+  EXPECT_GE(status_hitory_.size(), 1);
+  EXPECT_EQ(status_hitory_.back().status(),
+            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
 
   RunHandlerTaskRunner(handler);
 }

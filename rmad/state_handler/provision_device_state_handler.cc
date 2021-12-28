@@ -23,8 +23,14 @@
 #include <base/strings/string_number_conversions.h>
 
 #include "rmad/constants.h"
+#include "rmad/utils/cbi_utils_impl.h"
+#include "rmad/utils/cros_config_utils_impl.h"
+#include "rmad/utils/fake_cbi_utils.h"
+#include "rmad/utils/fake_cros_config_utils.h"
+#include "rmad/utils/fake_ssfc_utils.h"
 #include "rmad/utils/fake_vpd_utils.h"
 #include "rmad/utils/json_store.h"
+#include "rmad/utils/ssfc_utils_impl.h"
 #include "rmad/utils/vpd_utils_impl.h"
 
 namespace {
@@ -36,8 +42,10 @@ constexpr double kProgressFailedNonblocking = -1.0;
 constexpr double kProgressFailedBlocking = -2.0;
 constexpr double kProgressInit = 0.0;
 constexpr double kProgressGetDestination = 0.3;
-constexpr double kProgressGenerateStableDeviceSecret = 0.5;
-constexpr double kProgressWriteStableDeviceSecret = 0.7;
+constexpr double kProgressGetModelName = 0.5;
+constexpr double kProgressGetSSFC = 0.7;
+constexpr double kProgressWriteSSFC = 0.8;
+constexpr double kProgressUpdateStableDeviceSecret = 0.9;
 constexpr double kProgressFlushOutVpdCache = kProgressComplete;
 
 }  // namespace
@@ -49,19 +57,34 @@ namespace fake {
 FakeProvisionDeviceStateHandler::FakeProvisionDeviceStateHandler(
     scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
     : ProvisionDeviceStateHandler(
-          json_store, std::make_unique<fake::FakeVpdUtils>(working_dir_path)) {}
+          json_store,
+          std::make_unique<fake::FakeCbiUtils>(working_dir_path),
+          std::make_unique<fake::FakeCrosConfigUtils>(),
+          std::make_unique<fake::FakeSsfcUtils>(),
+          std::make_unique<fake::FakeVpdUtils>(working_dir_path)) {}
 
 }  // namespace fake
 
 ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store) {
+  cbi_utils_ = std::make_unique<CbiUtilsImpl>();
+  cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
+  ssfc_utils_ = std::make_unique<SsfcUtilsImpl>();
   vpd_utils_ = std::make_unique<VpdUtilsImpl>();
 }
 
 ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
-    scoped_refptr<JsonStore> json_store, std::unique_ptr<VpdUtils> vpd_utils)
-    : BaseStateHandler(json_store), vpd_utils_(std::move(vpd_utils)) {}
+    scoped_refptr<JsonStore> json_store,
+    std::unique_ptr<CbiUtils> cbi_utils,
+    std::unique_ptr<CrosConfigUtils> cros_config_utils,
+    std::unique_ptr<SsfcUtils> ssfc_utils,
+    std::unique_ptr<VpdUtils> vpd_utils)
+    : BaseStateHandler(json_store),
+      cbi_utils_(std::move(cbi_utils)),
+      cros_config_utils_(std::move(cros_config_utils)),
+      ssfc_utils_(std::move(ssfc_utils)),
+      vpd_utils_(std::move(vpd_utils)) {}
 
 RmadErrorCode ProvisionDeviceStateHandler::InitializeState() {
   if (!task_runner_) {
@@ -162,6 +185,10 @@ void ProvisionDeviceStateHandler::StartProvision() {
 }
 
 void ProvisionDeviceStateHandler::RunProvision() {
+  // We should do all blocking items first, and then do non-blocking items.
+  // In this case, once it fails, we can directly update the status to
+  // FAILED_BLOCKING or FAILED_NON_BLOCKING based on the failed item.
+
   bool same_owner = false;
   if (!json_store_->GetValue(kSameOwner, &same_owner)) {
     LOG(ERROR) << "Failed to get device destination from json store";
@@ -172,33 +199,49 @@ void ProvisionDeviceStateHandler::RunProvision() {
   UpdateProgress(kProgressGetDestination,
                  ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
 
+  std::string model_name;
+  if (!cros_config_utils_->GetModelName(&model_name)) {
+    UpdateProgress(kProgressFailedBlocking,
+                   ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+    return;
+  }
+  UpdateProgress(kProgressGetModelName,
+                 ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
+
+  bool need_to_update_ssfc = false;
+  uint32_t ssfc;
+  if (!ssfc_utils_->GetSSFC(model_name, &need_to_update_ssfc, &ssfc)) {
+    UpdateProgress(kProgressFailedBlocking,
+                   ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+    return;
+  }
+  UpdateProgress(kProgressGetSSFC,
+                 ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
+
+  if (need_to_update_ssfc && !cbi_utils_->SetSSFC(ssfc)) {
+    UpdateProgress(kProgressFailedBlocking,
+                   ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+    return;
+  }
+  UpdateProgress(kProgressWriteSSFC,
+                 ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
+
   if (!same_owner) {
     std::string stable_device_secret;
-    if (!GenerateStableDeviceSecret(&stable_device_secret)) {
-      UpdateProgress(
-          kProgressFailedNonblocking,
-          ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_NON_BLOCKING);
+    if (!GenerateStableDeviceSecret(&stable_device_secret) ||
+        !vpd_utils_->SetStableDeviceSecret(stable_device_secret)) {
+      UpdateProgress(kProgressFailedNonblocking,
+                     ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
       return;
     }
-    UpdateProgress(kProgressGenerateStableDeviceSecret,
-                   ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
-
-    if (!vpd_utils_->SetStableDeviceSecret(stable_device_secret)) {
-      UpdateProgress(
-          kProgressFailedNonblocking,
-          ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_NON_BLOCKING);
-      return;
-    }
-    UpdateProgress(kProgressWriteStableDeviceSecret,
+    UpdateProgress(kProgressUpdateStableDeviceSecret,
                    ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
     // TODO(genechang): Reset fingerprint sensor here."
   }
 
-  // TODO(genechang): Write SSFC and FW_CONFIG here.
-
   if (!vpd_utils_->FlushOutRoVpdCache()) {
     UpdateProgress(kProgressFailedNonblocking,
-                   ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_NON_BLOCKING);
+                   ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
     return;
   }
   UpdateProgress(kProgressFlushOutVpdCache,
