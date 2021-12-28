@@ -319,6 +319,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiServiceTest, UpdateMACAddressNonPersistentPolicy);
   FRIEND_TEST(WiFiServiceTest, UpdateMACAddressPersistentPolicy);
   FRIEND_TEST(WiFiServiceTest, UpdateMACAddressPolicySwitch);
+  FRIEND_TEST(WiFiServiceTest, RandomizationNotSupported);
 
   using EndpointMap = std::map<const RpcIdentifier, WiFiEndpointRefPtr>;
   using ReverseServiceMap = std::map<const WiFiService*, RpcIdentifier>;

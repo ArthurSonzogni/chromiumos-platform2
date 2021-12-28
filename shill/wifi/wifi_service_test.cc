@@ -2138,4 +2138,18 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPolicySwitch) {
   EXPECT_TRUE(wifi_service->mac_address_.will_expire());
 }
 
+TEST_F(WiFiServiceTest, RandomizationNotSupported) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
+  wifi()->random_mac_supported_ = false;
+  Error ret;
+
+  EXPECT_TRUE(service->SetMACPolicy(kWifiRandomMacPolicyHardware, &ret));
+  EXPECT_FALSE(service->SetMACPolicy(kWifiRandomMacPolicyFullRandom, &ret));
+  EXPECT_FALSE(service->SetMACPolicy(kWifiRandomMacPolicyOUIRandom, &ret));
+  EXPECT_FALSE(
+      service->SetMACPolicy(kWifiRandomMacPolicyPersistentRandom, &ret));
+  EXPECT_FALSE(
+      service->SetMACPolicy(kWifiRandomMacPolicyNonPersistentRandom, &ret));
+}
+
 }  // namespace shill
