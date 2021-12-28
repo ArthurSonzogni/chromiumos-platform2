@@ -1519,6 +1519,8 @@ class Metrics : public DefaultServiceObserver {
   static const uint16_t kWiFiFrequency5955;
   static const uint16_t kWiFiFrequency7115;
 
+  static constexpr char kBootIdProcPath[] = "/proc/sys/kernel/random/boot_id";
+
   void InitializeCommonServiceMetrics(const Service& service);
   void UpdateServiceStateTransitionMetrics(ServiceMetrics* service_metrics,
                                            Service::ConnectState new_state);
@@ -1569,6 +1571,8 @@ class Metrics : public DefaultServiceObserver {
     DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
     device_metrics->scan_connect_timer.reset(timer);  // Passes ownership
   }
+
+  static std::string GetBootId();
 
   // |library_| points to |metrics_library_| when shill runs normally.
   // However, in order to allow for unit testing, we point |library_| to a

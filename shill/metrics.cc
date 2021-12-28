@@ -10,6 +10,7 @@
 
 #include <base/check.h>
 #include <base/containers/contains.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/macros.h>
 #include "base/strings/string_number_conversions.h"
@@ -2028,6 +2029,18 @@ bool Metrics::IsTechnologyPresent(Technology technology_id) const {
       return true;
   }
   return false;
+}
+
+// static
+std::string Metrics::GetBootId() {
+  std::string boot_id;
+  if (!base::ReadFileToString(base::FilePath(Metrics::kBootIdProcPath),
+                              &boot_id)) {
+    LOG(ERROR) << "Failed to read boot_id";
+    return std::string();
+  }
+  base::RemoveChars(boot_id, "-\r\n", &boot_id);
+  return boot_id;
 }
 
 void Metrics::set_library(MetricsLibraryInterface* library) {

@@ -2,10 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <time.h>
+
 #include "shill/net/shill_time.h"
 
 #include <base/format_macros.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 
 namespace shill {
 
@@ -32,6 +35,15 @@ bool Time::GetSecondsMonotonic(time_t* seconds) {
     *seconds = now.tv_sec;
     return true;
   }
+}
+
+bool Time::GetMicroSecondsMonotonic(int64_t* usecs) {
+  struct timespec ts;
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+    return false;
+  }
+  *usecs = ConvertTimespecToMicros(ts);
+  return true;
 }
 
 bool Time::GetSecondsBoottime(time_t* seconds) {
@@ -107,6 +119,24 @@ std::string Time::FormatTime(const struct tm& date_time, suseconds_t usec) {
   }
 
   return full_string;
+}
+
+// TODO(crbug.com/166153): Copied from Chrome's //base/time/time_now_posix.cc.
+// Make upstream code available via libchrome and use it here: crbug.com/166153
+// static
+int64_t Time::ConvertTimespecToMicros(const struct timespec& ts) {
+  // On 32-bit systems, the calculation cannot overflow int64_t.
+  // 2**32 * 1000000 + 2**64 / 1000 < 2**63
+  if (sizeof(ts.tv_sec) <= 4 && sizeof(ts.tv_nsec) <= 8) {
+    int64_t result = ts.tv_sec;
+    result *= base::Time::kMicrosecondsPerSecond;
+    result += (ts.tv_nsec / base::Time::kNanosecondsPerMicrosecond);
+    return result;
+  }
+  base::CheckedNumeric<int64_t> result(ts.tv_sec);
+  result *= base::Time::kMicrosecondsPerSecond;
+  result += (ts.tv_nsec / base::Time::kNanosecondsPerMicrosecond);
+  return result.ValueOrDie();
 }
 
 time_t Time::GetSecondsSinceEpoch() const {

@@ -47,6 +47,9 @@ class SHILL_EXPORT Time {
   // Returns CLOCK_MONOTONIC time, or 0 if a failure occurred.
   virtual bool GetSecondsMonotonic(time_t* seconds);
 
+  // Sets |usecs| to CLOCK_MONOTONIC, in microseconds.
+  virtual bool GetMicroSecondsMonotonic(int64_t* usecs);
+
   // Returns CLOCK_BOOTTIME time, or 0 if a failure occurred.
   virtual bool GetSecondsBoottime(time_t* seconds);
 
@@ -65,6 +68,8 @@ class SHILL_EXPORT Time {
   virtual time_t GetSecondsSinceEpoch() const;
 
   static std::string FormatTime(const struct tm& date_time, suseconds_t usec);
+
+  static int64_t ConvertTimespecToMicros(const struct timespec& ts);
 
  protected:
   Time();

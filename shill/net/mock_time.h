@@ -21,6 +21,7 @@ class MockTime : public Time {
   ~MockTime() override = default;
 
   MOCK_METHOD(bool, GetSecondsMonotonic, (time_t*), (override));
+  MOCK_METHOD(bool, GetMicroSecondsMonotonic, (int64_t*), (override));
   MOCK_METHOD(bool, GetSecondsBoottime, (time_t*), (override));
   MOCK_METHOD(int, GetTimeMonotonic, (struct timeval*), (override));
   MOCK_METHOD(int, GetTimeBoottime, (struct timeval*), (override));
