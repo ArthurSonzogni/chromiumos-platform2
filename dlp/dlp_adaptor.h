@@ -62,6 +62,8 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   std::vector<uint8_t> GetFilesSources(
       const std::vector<uint8_t>& request_blob) override;
 
+  void SetFanotifyWatcherStartedForTesting(bool is_started);
+
  private:
   friend class DlpAdaptorTest;
   FRIEND_TEST(DlpAdaptorTest, AllowedWithoutDatabase);
@@ -75,6 +77,7 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   FRIEND_TEST(DlpAdaptorTest, RequestAllowedWithoutDatabase);
   FRIEND_TEST(DlpAdaptorTest, GetFilesSources);
   FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesWithoutDatabase);
+  FRIEND_TEST(DlpAdaptorTest, SetDlpFilesPolicy);
 
   // Opens the database |db_| to store files sources.
   void InitDatabase(const base::FilePath database_path);
@@ -116,6 +119,9 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   void OnLifelineFdClosed(int fd);
 
   static ino_t GetInodeValue(const std::string& path);
+
+  // If true, DlpAdaptor won't try to initialise `fanotify_watcher_`.
+  bool is_fanotify_watcher_started_for_testing_ = false;
 
   // Can be nullptr if failed to initialize.
   std::unique_ptr<leveldb::DB> db_;

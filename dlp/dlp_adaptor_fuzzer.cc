@@ -35,6 +35,11 @@ DEFINE_PROTO_FUZZER(const dlp::DlpFuzzer& input) {
   dlp::DlpAdaptorTestHelper helper;
   dlp::DlpAdaptor* adaptor = helper.adaptor();
 
+  // If this function isn't called, DlpAdaptor will try to initialise Fanotify
+  // when the policy is set, which will cause a crash because tests don't have
+  // cap_sys_admin capability.
+  adaptor->SetFanotifyWatcherStartedForTesting(true);
+
   EXPECT_CALL(*helper.mock_session_manager_proxy(),
               CallMethodAndBlockWithErrorDetails(_, _, _))
       .WillRepeatedly(::testing::ReturnNull());

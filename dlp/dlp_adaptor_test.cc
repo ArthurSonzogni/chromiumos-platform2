@@ -77,7 +77,14 @@ bool IsFdClosed(int fd) {
 
 class DlpAdaptorTest : public ::testing::Test {
  public:
-  DlpAdaptorTest() = default;
+  DlpAdaptorTest() {
+    // By passing true to SetFanotifyWatcherStartedForTesting,
+    // DlpAdaptor won't try to start Fanotify. And given that these tests are
+    // meant to test DlpAdaptor and don't depend on Fanotify, so Fanotify
+    // initialisation isn't needed anyway.
+    GetDlpAdaptor()->SetFanotifyWatcherStartedForTesting(true);
+  }
+
   ~DlpAdaptorTest() override = default;
 
   DlpAdaptorTest(const DlpAdaptorTest&) = delete;
@@ -510,6 +517,21 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
                           response_proto_blob.size());
 
   EXPECT_EQ(response.files_metadata_size(), 0u);
+}
+
+TEST_F(DlpAdaptorTest, SetDlpFilesPolicy) {
+  SetDlpFilesPolicyRequest request;
+  request.add_rules();
+  std::vector<uint8_t> proto_blob(request.ByteSizeLong());
+  request.SerializeToArray(proto_blob.data(), proto_blob.size());
+
+  std::vector<uint8_t> response_blob =
+      GetDlpAdaptor()->SetDlpFilesPolicy(proto_blob);
+
+  RequestFileAccessResponse response;
+  response.ParseFromArray(response_blob.data(), response_blob.size());
+
+  EXPECT_FALSE(response.has_error_message());
 }
 
 }  // namespace dlp

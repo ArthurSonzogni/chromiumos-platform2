@@ -311,6 +311,9 @@ void DlpAdaptor::EnsureFanotifyWatcherStarted() {
   if (fanotify_watcher_)
     return;
 
+  if (is_fanotify_watcher_started_for_testing_)
+    return;
+
   LOG(INFO) << "Starting fanotify watcher";
 
   fanotify_watcher_ = std::make_unique<FanotifyWatcher>(this);
@@ -427,14 +430,8 @@ void DlpAdaptor::ReplyOnRequestFileAccess(
   response->Return(SerializeProto(response_proto), std::move(remote_fd));
 }
 
-// static
-ino_t DlpAdaptor::GetInodeValue(const std::string& path) {
-  struct stat file_stats;
-  if (stat(path.c_str(), &file_stats) != 0) {
-    PLOG(ERROR) << "Could not access " << path;
-    return 0;
-  }
-  return file_stats.st_ino;
+void DlpAdaptor::SetFanotifyWatcherStartedForTesting(bool is_started) {
+  is_fanotify_watcher_started_for_testing_ = is_started;
 }
 
 int DlpAdaptor::AddLifelineFd(int dbus_fd) {
@@ -476,6 +473,16 @@ void DlpAdaptor::OnLifelineFdClosed(int client_fd) {
 
   // Remove the approvals tied to the lifeline fd.
   approved_requests_.erase(client_fd);
+}
+
+// static
+ino_t DlpAdaptor::GetInodeValue(const std::string& path) {
+  struct stat file_stats;
+  if (stat(path.c_str(), &file_stats) != 0) {
+    PLOG(ERROR) << "Could not access " << path;
+    return 0;
+  }
+  return file_stats.st_ino;
 }
 
 }  // namespace dlp
