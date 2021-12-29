@@ -6,17 +6,12 @@ import enum
 import struct
 
 
-STRUCT_VERSION = 0
-# version, identity_type, entry_count, 4 bytes reserved
-HEADER_FORMAT = '<LLL4x'
-# flags, model match, sku match, whitelabel match
-ENTRY_FORMAT = '<LLLL'
-
-
-class IdentityType(enum.Enum):
-  """The type of identity provided by the identity data file."""
-  X86 = 0
-  ARM = 1
+STRUCT_VERSION = 1
+# version, entry_count
+HEADER_FORMAT = '<LL'
+# flags, smbios name match, fdt compatible match, sku match,
+# whitelabel match
+ENTRY_FORMAT = '<LLLLL'
 
 
 class EntryFlags(enum.Enum):
@@ -28,6 +23,10 @@ class EntryFlags(enum.Enum):
   # whitelabel tag. This is deprecated for new devices since 2017, so
   # it should only be set for old pre-unibuild migrations.
   HAS_CUSTOMIZATION_ID = 1 << 2
+
+  # This config requires at least one FDT compatible string to match
+  # the given string.
+  HAS_FDT_COMPATIBLE = 1 << 3
 
   # For x86 only: this device has an SMBIOS name to match.
   HAS_SMBIOS_NAME = 1 << 4
@@ -65,22 +64,9 @@ def WriteIdentityStruct(config, output_file):
         return index
       index += len(entry)
 
-  # Detecting x86 vs. ARM is rather annoying given the JSON-like
-  # schema.  This implementation checks if any config has an identity
-  # dict containing a device-tree-compatible-match or firmware-name,
-  # and correspondingly sets the identity type to ARM, otherwise X86.
-  if any('device-tree-compatible-match' in c.get('identity', {})
-         or 'firmware-name' in c.get('identity', {})
-         for c in device_configs):
-    identity_type = IdentityType.ARM
-  else:
-    identity_type = IdentityType.X86
-
-  # Write the header of the struct, containing version and identity
-  # type (x86 vs. ARM).
+  # Write the header of the struct.
   output_file.write(
-      struct.pack(HEADER_FORMAT, STRUCT_VERSION, identity_type.value,
-                  len(device_configs)))
+      struct.pack(HEADER_FORMAT, STRUCT_VERSION, len(device_configs)))
 
   # Write each of the entry structs.
   for device_config in device_configs:
@@ -91,14 +77,15 @@ def WriteIdentityStruct(config, output_file):
       flags |= EntryFlags.HAS_SKU_ID.value
       sku_id = identity_info['sku-id']
 
-    model_match = None
+    smbios_name_match = None
+    fdt_compatible_match = None
     whitelabel_match = None
-    if identity_type is IdentityType.X86:
-      if 'smbios-name-match' in identity_info:
-        flags |= EntryFlags.HAS_SMBIOS_NAME.value
-        model_match = identity_info['smbios-name-match']
-    elif identity_type is IdentityType.ARM:
-      model_match = identity_info['device-tree-compatible-match']
+    if 'smbios-name-match' in identity_info:
+      flags |= EntryFlags.HAS_SMBIOS_NAME.value
+      smbios_name_match = identity_info['smbios-name-match']
+    if 'device-tree-compatible-match' in identity_info:
+      flags |= EntryFlags.HAS_FDT_COMPATIBLE.value
+      fdt_compatible_match = identity_info['device-tree-compatible-match']
 
     if 'customization-id' in identity_info:
       flags |= EntryFlags.HAS_CUSTOMIZATION_ID.value
@@ -110,7 +97,8 @@ def WriteIdentityStruct(config, output_file):
     output_file.write(
         struct.pack(ENTRY_FORMAT,
                     flags,
-                    _StringTableIndex(model_match),
+                    _StringTableIndex(smbios_name_match),
+                    _StringTableIndex(fdt_compatible_match),
                     sku_id,
                     _StringTableIndex(whitelabel_match)))
 

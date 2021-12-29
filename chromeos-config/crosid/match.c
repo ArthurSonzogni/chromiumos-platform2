@@ -101,11 +101,7 @@ static bool table_entry_matches(struct crosid_table_header *table,
 			"SMBIOS name");
 	}
 
-	/*
-	 * Right now we always assume ARM uses FDT compatible match,
-	 * this can be changed in a future struct version
-	 */
-	if (table->identity_type == IDENTITY_TYPE_ARM) {
+	if (entry->flags & MATCH_FDT_COMPATIBLE) {
 		crosid_log(
 			LOG_DBG,
 			"  Requires one FDT compatible string matching \"%s\"\n",
