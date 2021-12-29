@@ -152,6 +152,13 @@ void crosid_probe_free(struct crosid_probed_device_data *data);
 
 /* Identity table */
 
+/*
+ * Bump this number when backwards-incompatible changes are made to
+ * the struct format.  This must be kept in sync with the
+ * cros_config_schema implementation.
+ */
+#define CROSID_TABLE_VERSION 0
+
 enum crosid_table_flags {
 	MATCH_SKU_ID = (1 << 0),
 	MATCH_WHITELABEL_TAG = (1 << 1),

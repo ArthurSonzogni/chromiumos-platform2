@@ -172,10 +172,10 @@ int crosid_match(struct crosid_probed_device_data *data)
 		goto exit;
 	}
 
-	if (table->version != 0) {
+	if (table->version != CROSID_TABLE_VERSION) {
 		crosid_log(LOG_ERR,
-			   "Incorrect table version: expected 0, got %u\n",
-			   table->version);
+			   "Incorrect table version: expected %u, got %u\n",
+			   CROSID_TABLE_VERSION, table->version);
 		goto exit;
 	}
 
