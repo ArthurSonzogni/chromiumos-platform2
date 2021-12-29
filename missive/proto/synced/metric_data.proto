@@ -61,6 +61,16 @@ enum NetworkConnectionState {
   NOT_CONNECTED = 5;
 }
 
+// Network connection type.
+enum NetworkType {
+  NETWORK_TYPE_UNSPECIFIED = 0;
+  CELLULAR = 1;
+  ETHERNET = 2;
+  TETHER = 3;
+  VPN = 4;
+  WIFI = 5;
+}
+
 // A single network telemetry data collected at a specific point of time.
 message NetworkTelemetry {
   // Unique identifier of the network.
@@ -70,6 +80,28 @@ message NetworkTelemetry {
   // Signal strength of the network provided only for wireless networks. Values
   // are normalized between 0 to 100 inclusive.
   optional int32 signal_strength = 3;
+  // For networks associated with a device, the path of the device.
+  optional string device_path = 4;
+  // The IP address this interface is bound to, if any.
+  optional string ip_address = 5;
+  // The gateway IP for this interface, if any.
+  optional string gateway = 6;
+  // Network connection type.
+  optional NetworkType type = 7;
+  // Access point address.
+  optional string access_point_address = 8;
+  // Transmission bit rate measured in Mbps.
+  optional int64 tx_bit_rate_mbps = 9;
+  // Receiving bit rate measured in Mbps.
+  optional int64 rx_bit_rate_mbps = 10;
+  // Transmission power measured in dBm.
+  optional int32 tx_power_dbm = 11;
+  // Is wifi encryption key on or not.
+  optional bool encryption_on = 12;
+  // Wifi link quality.
+  optional int64 link_quality = 13;
+  // Wifi power management enabled
+  optional bool power_management_enabled = 14;
 }
 
 // Configured networks telemetry data.
@@ -78,6 +110,121 @@ message NetworksTelemetry {
   repeated NetworkTelemetry network_telemetry = 1;
   // Https latency diagnostics routine result.
   optional HttpsLatencyRoutineData https_latency_data = 2;
+}
+
+// Security level of the thunderbolt bus.
+enum ThunderboltSecurityLevel {
+  UNSPECIFIED_THUNDERBOLT_SECURITY_LEVEL = 0;
+  // All devices are automatically connected by the firmware. No user approval
+  // is needed.
+  THUNDERBOLT_SECURITY_NONE_LEVEL = 1;
+  // User is asked whether the device is allowed to be connected.
+  THUNDERBOLT_SECURITY_USER_LEVEL = 2;
+  // User is asked whether the device is allowed to be connected. In addition
+  // the device is sent a challenge that should match the expected one based on
+  // a random key written to the key sysfs attribute
+  THUNDERBOLT_SECURITY_SECURE_LEVEL = 3;
+  // The firmware automatically creates tunnels for thunderbolt.
+  THUNDERBOLT_SECURITY_DP_ONLY_LEVEL = 4;
+  // The firmware automatically creates tunnels for the USB controller and
+  // Display Port in a dock. All PCIe links downstream of the dock are removed.
+  THUNDERBOLT_SECURITY_USB_ONLY_LEVEL = 5;
+  // PCIE tunneling is disabled.
+  THUNDERBOLT_SECURITY_NO_PCIE_LEVEL = 6;
+}
+
+message ThunderboltInfo {
+  optional ThunderboltSecurityLevel security_level = 1;
+}
+
+// currently we are only reporting bus device info for thunderbolt, though we
+// will certainly add more in the future.
+message BusDeviceInfo {
+  optional ThunderboltInfo thunderbolt_info = 1;
+}
+
+enum MemoryEncryptionState {
+  UNSPECIFIED_MEMORY_ENCRYPTION_STATE = 0;
+  // The memory encryption state is unknown.
+  MEMORY_ENCRYPTION_STATE_UNKNOWN = 1;
+  // Memory encrpytion on the device is disabled.
+  MEMORY_ENCRYPTION_STATE_DISABLED = 2;
+  // Memory encryption on the device uses total memory encryption.
+  MEMORY_ENCRYPTION_STATE_TME = 3;
+  // Memory encryption on the device uses multi-key total memory encryption.
+  MEMORY_ENCRYPTION_STATE_MKTME = 4;
+}
+
+enum MemoryEncryptionAlgorithm {
+  UNSPECIFIED_MEMORY_ENCRYPTION_ALGORITHM = 0;
+  // The memory encryption algorithm being used is unknown.
+  MEMORY_ENCRYPTION_ALGORITHM_UNKNOWN = 1;
+  // The memory encryption algorithm is using the AES_XTS encryption algorithm
+  // with a 128 bit block cypher.
+  MEMORY_ENCRYPTION_ALGORITHM_AES_XTS_128 = 2;
+  // The memory encryption algorithm is using the AES_XTS encryption algorithm
+  // with a 256 bit block cypher.
+  MEMORY_ENCRYPTION_ALGORITHM_AES_XTS_256 = 3;
+}
+
+message TotalMemoryEncryptionInfo {
+  // The state of memory encryption on the device.
+  optional MemoryEncryptionState encryption_state = 1;
+  // The maximum number of keys that can be used for encryption.
+  optional int64 max_keys = 2;
+  // The length of the encryption keys.
+  optional int64 key_length = 3;
+  // The encryption algorithm being used on the device.
+  optional MemoryEncryptionAlgorithm encryption_algorithm = 4;
+}
+
+message MemoryInfo {
+  // TME info for the device.
+  optional TotalMemoryEncryptionInfo tme_info = 1;
+}
+
+enum NetworkDeviceType {
+  NETWORK_DEVICE_TYPE_UNSPECIFIED = 0;
+  CELLULAR_DEVICE = 1;
+  ETHERNET_DEVICE = 2;
+  WIFI_DEVICE = 5;
+}
+
+// Info details about network interface.
+message NetworkInterface {
+  // Network device type.
+  optional NetworkDeviceType type = 1;
+
+  // MAC address (if applicable) of the corresponding network device. This is
+  // formatted as an ASCII string with 12 hex digits. Example: A0B1C2D3E4F5.
+  optional string mac_address = 2;
+
+  // MEID (if applicable) of the corresponding network device. Formatted as
+  // ASCII string composed of 14 hex digits. Example: A10000009296F2.
+  optional string meid = 3;
+
+  // IMEI (if applicable) of the corresponding network device. 15-16 decimal
+  // digits encoded as ASCII string. Example: 355402040158759.
+  optional string imei = 4;
+
+  // The device path associated with this network interface.
+  optional string device_path = 5;
+
+  // The integrated circuit card ID associated with the device's sim card.
+  optional string iccid = 6;
+
+  // The mobile directory number associated with the device's sim card.
+  optional string mdn = 7;
+
+  // List of EID (EUICC Identifier) of all cellular EUICCs
+  // (Embedded Universal Integrated Circuit Cards) on the device.
+  // 32 decimal digits encoded as ASCII string.
+  repeated string eids = 8;
+}
+
+// Networks info data.
+message NetworksInfo {
+  repeated NetworkInterface network_interfaces = 1;
 }
 
 // Information about keylocker. This is supported on Intel CPUs.
@@ -98,6 +245,28 @@ message CpuInfo {
 message InfoData {
   // CPU info for the device.
   optional CpuInfo cpu_info = 1;
+  // Bus Device info for the device.
+  optional BusDeviceInfo bus_device_info = 2;
+  // Memory info for the device.
+  optional MemoryInfo memory_info = 3;
+  // Network interfaces info.
+  optional NetworksInfo networks_info = 4;
+}
+
+// Audio telemetry data recorded intermittently
+message AudioTelemetry {
+  // Is active output device mute or not.
+  optional bool output_mute = 1;
+  // Is active input device mute or not.
+  optional bool input_mute = 2;
+  // Active output device's volume in [0, 100].
+  optional int32 output_volume = 3;
+  // Active output device's name.
+  optional string output_device_name = 4;
+  // Active input device's gain in [0, 100].
+  optional int32 input_gain = 5;
+  // Active input device's name.
+  optional string input_device_name = 6;
 }
 
 // Data that can change over time, collected and reported every specific period
@@ -107,17 +276,39 @@ message TelemetryData {
 
   // Networks telemetry data.
   optional NetworksTelemetry networks_telemetry = 1;
+  // Audio telemetry data.
+  optional AudioTelemetry audio_telemetry = 2;
 }
 
 enum MetricEventType {
   EVENT_TYPE_UNSPECIFIED = 0;
   NETWORK_HTTPS_LATENCY_CHANGE = 1;
+  NETWORK_CONNECTION_STATE_CHANGE = 2;
+  NETWORK_SIGNAL_STRENGTH_CHANGE = 3;
+  AUDIO_SEVERE_UNDERRUN = 4;
+  USB_ADDED = 5;
+  USB_REMOVED = 6;
+}
+
+message UsbEventData {
+  // Vendor name
+  optional string vendor = 1;
+  // Device name, model name, or product name
+  optional string name = 2;
+  // Vendor ID
+  optional int64 vid = 3;
+  // Product ID
+  optional int64 pid = 4;
+  // List of names of USB categories the device falls under
+  // https://www.usb.org/defined-class-codes
+  repeated string categories = 5;
 }
 
 // Indicates one of the following conditions occurred on the device, data
 // associated with the event will be reported as TelemetryData.
 message EventData {
   optional MetricEventType type = 1;
+  optional UsbEventData usb_event_data = 2;
 }
 
 // Main message to be reported, can contain `InfoData`, `TelemetryData`, or
