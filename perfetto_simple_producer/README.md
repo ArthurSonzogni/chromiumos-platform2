@@ -45,4 +45,5 @@ Sample steps:
 
 4.  Collect the trace at `/tmp/perfetto-trace`. It can be uploaded to the
     [perfetto UI website](https://ui.perfetto.dev) and check if there are 4 tracks on the corresponding
-    threads.
+    threads. And note that when uploading the file please make sure the file is
+    readable by user `chronos`. Otherwise, the site will throw an error.
