@@ -18,5 +18,5 @@ type cros_hps_device, dev_type, cros_dev_type, cros_labeled_dev_type;
 # Access the sensor over i2c.
 allow cros_hpsd cros_hps_device:chr_file { ioctl open read write };
 allowxperm cros_hpsd cros_hps_device:chr_file ioctl {
-  0x707  # I2C_RDWR
+  I2C_RDWR
 };

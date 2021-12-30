@@ -21,3 +21,10 @@ define(`FS_IOC_DROP_CACHE',`0x00006681')
 define(`FS_IOC_FSGETXATTR', `0x0000581F')
 define(`FS_IOC_FSSETXATTR', `0x00005820')
 
+# i2c ioctls are used to communicate with i2c devices. They are defined in
+# src/third_party/kernel/v*/include/uapi/linux/i2c-dev.h
+define(`I2C_SLAVE', `0x703')
+define(`I2C_SLAVE_FORCE', `0x706')
+define(`I2C_RDWR', `0x707')
+define(`I2C_PEC', `0x708')
+define(`I2C_SMBUS', `0x720')
