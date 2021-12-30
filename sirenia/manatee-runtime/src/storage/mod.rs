@@ -79,10 +79,10 @@ pub mod tests {
 
     use anyhow::{anyhow, Error, Result};
     use assert_matches::assert_matches;
-    use libsirenia::communication::tee_api::TeeApiServer;
-    use libsirenia::rpc::RpcDispatcher;
-    use libsirenia::storage::Error as StorageError;
-    use libsirenia::transport::create_transport_from_pipes;
+    use libsirenia::{
+        communication::tee_api::TeeApiServer, rpc::RpcDispatcher, storage::Error as StorageError,
+        transport::create_transport_from_pipes,
+    };
 
     const TEST_ID: &str = "id";
 

@@ -15,7 +15,6 @@ use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::fmt::Debug;
 use std::io::{self, BufWriter, Read, Write};
-use std::marker::PhantomData;
 use std::ops::Deref;
 use std::result::Result as StdResult;
 
@@ -46,14 +45,13 @@ pub enum Error {
 pub type Result<T> = StdResult<T, Error>;
 
 #[derive(Debug)]
-pub struct NonBlockingMessageReader<D: DeserializeOwned> {
+pub struct NonBlockingMessageReader {
     read_buffer: Vec<u8>,
     read_size: usize,
     read_target: Option<usize>,
-    _message: PhantomData<D>,
 }
 
-impl<D: DeserializeOwned> NonBlockingMessageReader<D> {
+impl NonBlockingMessageReader {
     pub fn partial_read(&self) -> bool {
         self.read_size != 0 || self.read_target.is_some()
     }
@@ -82,8 +80,17 @@ impl<D: DeserializeOwned> NonBlockingMessageReader<D> {
         Ok(())
     }
 
-    pub fn read_message<R: Read>(&mut self, r: &mut R) -> Result<Option<D>> {
+    pub fn read_message<'de, R: Read, D: Deserialize<'de>>(
+        &'de mut self,
+        r: &mut R,
+    ) -> Result<Option<D>> {
         if self.read_target.is_none() {
+            if self.read_size == 0 {
+                // Perform a clear since self.read_buffer might have been borrowed.
+                self.read_buffer.clear();
+                self.read_buffer.resize(LENGTH_BYTE_SIZE, 0u8);
+            }
+
             // Read the length of the serialized message first.
             debug_assert_eq!(self.read_buffer.len(), LENGTH_BYTE_SIZE);
             self.try_read(r)?;
@@ -109,21 +116,23 @@ impl<D: DeserializeOwned> NonBlockingMessageReader<D> {
         if self.read_size < message_size {
             return Ok(None);
         }
+        // Partial clear since self.read_buffer will be borrowed.
+        self.read_size = 0;
+        self.read_target = None;
+
         let ret = flexbuffers::from_slice(self.read_buffer.as_slice())
             .map(Some)
             .map_err(Error::Deserialize);
-        self.clear();
         ret
     }
 }
 
-impl<D: DeserializeOwned> Default for NonBlockingMessageReader<D> {
+impl Default for NonBlockingMessageReader {
     fn default() -> Self {
         NonBlockingMessageReader {
             read_buffer: vec![0u8; LENGTH_BYTE_SIZE],
             read_size: 0,
             read_target: None,
-            _message: PhantomData::default(),
         }
     }
 }
@@ -234,8 +243,9 @@ mod test {
         assert_matches!(read_message(&mut channel), Ok(TEST_VALUE));
 
         channel.rewind().unwrap();
-        let mut reader = NonBlockingMessageReader::<u32>::default();
-        assert_matches!(reader.read_message(&mut channel).unwrap(), Some(TEST_VALUE));
+        let mut reader = NonBlockingMessageReader::default();
+        let ret: Option<u32> = reader.read_message(&mut channel).unwrap();
+        assert_matches!(ret, Some(TEST_VALUE));
     }
 
     #[test]
@@ -249,8 +259,9 @@ mod test {
     #[test]
     fn nonblockingmessagereader_error_emptyread() {
         let mut channel = Cursor::new(Vec::<u8>::with_capacity(size_of::<u32>() * 2));
-        let mut reader = NonBlockingMessageReader::<u32>::default();
-        assert_matches!(reader.read_message(&mut channel), Err(Error::EmptyRead));
+        let mut reader = NonBlockingMessageReader::default();
+        let ret: Result<Option<u32>> = reader.read_message(&mut channel);
+        assert_matches!(ret, Err(Error::EmptyRead));
     }
 
     #[test]
@@ -258,18 +269,16 @@ mod test {
         let mut buf = Vec::<u8>::with_capacity(size_of::<u32>() * 2);
         write_message(&mut Cursor::new(&mut buf), TEST_VALUE).unwrap();
 
-        let mut reader = NonBlockingMessageReader::<u32>::default();
+        let mut reader = NonBlockingMessageReader::default();
         assert!(!reader.partial_read());
         eprintln!("0 Reader: {:?}", &reader);
 
         let mut offset = 0;
         const TAKE: usize = 1;
-        assert_matches!(
-            reader
-                .read_message(&mut Cursor::new(&mut buf[offset..(offset + TAKE)]))
-                .unwrap(),
-            None
-        );
+        let ret: Option<u32> = reader
+            .read_message(&mut Cursor::new(&mut buf[offset..(offset + TAKE)]))
+            .unwrap();
+        assert_matches!(ret, None);
         eprintln!("1 Reader: {:?}", &reader);
         offset += TAKE;
         assert_eq!(reader.read_size, offset);
@@ -277,34 +286,29 @@ mod test {
         assert_matches!(reader.remaining(), None);
 
         let remaining: usize = size_of::<u32>() - TAKE;
+        let ret: Result<Option<u32>> =
+            reader.read_message(&mut Cursor::new(&mut buf[offset..(offset + remaining)]));
         // This is an empty read because the end of the slice is reached trying to read the message.
-        assert_matches!(
-            reader.read_message(&mut Cursor::new(&mut buf[offset..(offset + remaining)])),
-            Err(Error::EmptyRead)
-        );
+        assert_matches!(ret, Err(Error::EmptyRead));
         eprintln!("2 Reader: {:?}", &reader);
         offset += remaining;
         assert!(reader.partial_read());
         assert_eq!(reader.read_size, offset - size_of::<u32>());
         assert_matches!(reader.remaining(), Some(v) if v == buf.len() - size_of::<u32>());
 
-        assert_matches!(
-            reader
-                .read_message(&mut Cursor::new(&mut buf[offset..(offset + TAKE)]))
-                .unwrap(),
-            None
-        );
+        let ret: Option<u32> = reader
+            .read_message(&mut Cursor::new(&mut buf[offset..(offset + TAKE)]))
+            .unwrap();
+        assert_matches!(ret, None);
         eprintln!("3 Reader: {:?}", &reader);
         offset += TAKE;
         assert!(reader.partial_read());
         assert_matches!(reader.remaining(), Some(v) if v == buf.len() - size_of::<u32>() - TAKE);
 
-        assert_matches!(
-            reader
-                .read_message(&mut Cursor::new(&mut buf[offset..]))
-                .unwrap(),
-            Some(TEST_VALUE)
-        );
+        let ret: Option<u32> = reader
+            .read_message(&mut Cursor::new(&mut buf[offset..]))
+            .unwrap();
+        assert_matches!(ret, Some(TEST_VALUE));
         eprintln!("4 Reader: {:?}", &reader);
         assert!(!reader.partial_read());
         assert_matches!(reader.remaining(), None);

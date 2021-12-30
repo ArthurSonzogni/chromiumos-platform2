@@ -106,7 +106,7 @@ pub trait ConnectionHandler {
 pub struct RpcDispatcher<H: MessageHandler + 'static> {
     handler: H,
     transport: Transport,
-    reader: NonBlockingMessageReader<H::Request>,
+    reader: NonBlockingMessageReader,
     message_count: usize,
 }
 
@@ -181,7 +181,7 @@ impl<H: MessageHandler + 'static> RpcDispatcher<H> {
         ret
     }
 
-    pub fn reader(&self) -> &NonBlockingMessageReader<H::Request> {
+    pub fn reader(&self) -> &NonBlockingMessageReader {
         &self.reader
     }
 
