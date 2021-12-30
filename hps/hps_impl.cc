@@ -199,7 +199,6 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
     case BootResult::kFail:
       return BootResult::kFail;
     case BootResult::kUpdate:
-      LOG(INFO) << "Updating SPI flash";
       return SendApplicationUpdate();
   }
 }
