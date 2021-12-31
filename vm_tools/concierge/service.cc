@@ -674,6 +674,21 @@ std::unique_ptr<dbus::Response> ReclaimVmMemoryInternal(
   return dbus_response;
 }
 
+// Determines what classification type this VM has. Classifications are roughly
+// related to products, and the classification broadly determines what features
+// are available to a given VM.
+//
+// TODO(b/213090722): Determining a VM's type based on its properties like this
+// is undesirable. Instead we should provide the type in the request, and
+// determine its properties from that.
+VmInfo::VmType ClassifyVm(const StartVmRequest& request) {
+  if (request.vm().dlc_id() == "borealis-dlc")
+    return VmInfo::BOREALIS;
+  if (request.start_termina())
+    return VmInfo::TERMINA;
+  return VmInfo::UNKNOWN;
+}
+
 }  // namespace
 
 base::Optional<int64_t> Service::GetAvailableMemory() {
@@ -1343,9 +1358,9 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     return dbus_response;
   }
   std::tie(request, response) = *helper_result;
+  VmInfo::VmType classification = ClassifyVm(request);
   VmInfo* vm_info = response.mutable_vm_info();
-  vm_info->set_vm_type(request.start_termina() ? VmInfo::TERMINA
-                                               : VmInfo::UNKNOWN);
+  vm_info->set_vm_type(classification);
 
   base::Optional<base::ScopedFD> kernel_fd, rootfs_fd, initrd_fd, storage_fd,
       bios_fd;
@@ -1382,7 +1397,8 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   }
 
   // Make sure we have our signal connected if starting a Termina VM.
-  if (request.start_termina() && !is_tremplin_started_signal_connected_) {
+  if (classification == VmInfo::TERMINA &&
+      !is_tremplin_started_signal_connected_) {
     LOG(ERROR) << "Can't start Termina VM without TremplinStartedSignal";
     response.set_failure_reason("TremplinStartedSignal not connected");
     writer.AppendProtoAsArrayOfBytes(response);
@@ -1400,7 +1416,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   string failure_reason;
   VMImageSpec image_spec =
       GetImageSpec(request.vm(), kernel_fd, rootfs_fd, initrd_fd, bios_fd,
-                   request.start_termina(), &failure_reason);
+                   classification == VmInfo::TERMINA, &failure_reason);
   if (!failure_reason.empty()) {
     LOG(ERROR) << "Failed to get image paths: " << failure_reason;
     response.set_failure_reason("Failed to get image paths: " + failure_reason);
@@ -1697,8 +1713,20 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   }
 
   if (request.vm().wayland_server().empty()) {
-    vm_builder.SetWaylandSocket(vm_launch_interface_->GetWaylandSocketForVm(
-        vm_id, request.start_termina()));
+    std::string wayland_server =
+        vm_launch_interface_->GetWaylandSocketForVm(vm_id, classification);
+    // Prevent certain VMs from running without a secure server.
+    //
+    // TODO(b/212636975): All VMs should use this, not just special ones.
+    if (classification == VmInfo::BOREALIS && wayland_server.empty()) {
+      response.set_failure_reason(
+          "Borealis VMs must have a secure wayland server. Likely borealis is "
+          "disabled.");
+      LOG(ERROR) << response.failure_reason();
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+    vm_builder.SetWaylandSocket(std::move(wayland_server));
   } else {
     vm_builder.SetWaylandSocket(request.vm().wayland_server());
   }
@@ -1753,7 +1781,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       vsock_cid, std::move(network_client), std::move(server_proxy),
       std::move(runtime_dir), std::move(log_path), std::move(stateful_device),
       std::move(stateful_size), features, vm_permission_service_proxy_, bus_,
-      vm_id, request.start_termina(), std::move(vm_builder));
+      vm_id, classification, std::move(vm_builder));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 

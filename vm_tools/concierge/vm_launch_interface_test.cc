@@ -14,6 +14,7 @@
 #include <dbus/vm_launch/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <vm_concierge/proto_bindings/concierge_service.pb.h>
 #include <vm_launch/proto_bindings/launch.pb.h>
 
 namespace vm_tools {
@@ -62,8 +63,7 @@ TEST_F(VmLaunchInterfaceTest, FailureReturnsEmpty) {
           }));
 
   VmId id("test_owner_id", "test_vm_name");
-  EXPECT_EQ(launch_interface.GetWaylandSocketForVm(id, /*is_termina=*/false),
-            "");
+  EXPECT_EQ(launch_interface.GetWaylandSocketForVm(id, VmInfo::UNKNOWN), "");
 }
 
 TEST_F(VmLaunchInterfaceTest, SuccessReturnsNonEmpty) {
@@ -87,7 +87,7 @@ TEST_F(VmLaunchInterfaceTest, SuccessReturnsNonEmpty) {
           }));
 
   VmId id("test_owner_id", "test_vm_name");
-  EXPECT_EQ(launch_interface.GetWaylandSocketForVm(id, /*is_termina=*/false),
+  EXPECT_EQ(launch_interface.GetWaylandSocketForVm(id, VmInfo::UNKNOWN),
             "test_path");
 }
 

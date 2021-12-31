@@ -14,12 +14,28 @@
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 #include <dbus/scoped_dbus_error.h>
+#include <vm_concierge/proto_bindings/concierge_service.pb.h>
 #include <vm_launch/proto_bindings/launch.pb.h>
 
 #include "vm_tools/common/vm_id.h"
 
 namespace vm_tools {
 namespace concierge {
+
+namespace {
+// Maps concierge-service classifications to types used by the launch service.
+// Returns UNKNOWN when no mapping exists.
+launch::VmType ToLaunchType(VmInfo::VmType classification) {
+  switch (classification) {
+    case VmInfo::BOREALIS:
+      return launch::BOREALIS;
+    case VmInfo::TERMINA:
+      return launch::TERMINA;
+    default:
+      return launch::UNKNOWN;
+  }
+}
+}  // namespace
 
 VmLaunchInterface::VmLaunchInterface(scoped_refptr<dbus::Bus> bus)
     : bus_(bus),
@@ -29,19 +45,15 @@ VmLaunchInterface::VmLaunchInterface(scoped_refptr<dbus::Bus> bus)
 
 VmLaunchInterface::~VmLaunchInterface() = default;
 
-std::string VmLaunchInterface::GetWaylandSocketForVm(const VmId& vm_id,
-                                                     bool is_termina) {
+std::string VmLaunchInterface::GetWaylandSocketForVm(
+    const VmId& vm_id, VmInfo::VmType classification) {
   dbus::MethodCall method_call(
       launch::kVmLaunchServiceInterface,
       launch::kVmLaunchServiceStartWaylandServerMethod);
   dbus::MessageWriter writer(&method_call);
 
   launch::StartWaylandServerRequest request;
-  if (!is_termina && vm_id.name() == "borealis") {
-    request.set_vm_type(launch::BOREALIS);
-  } else {
-    request.set_vm_type(launch::UNKNOWN);
-  }
+  request.set_vm_type(ToLaunchType(classification));
   request.set_owner_id(vm_id.owner_id());
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {

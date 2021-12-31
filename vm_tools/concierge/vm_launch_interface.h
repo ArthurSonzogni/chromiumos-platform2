@@ -19,6 +19,8 @@ class ObjectProxy;
 namespace vm_tools {
 namespace concierge {
 
+enum VmInfo_VmType : int;
+
 class VmLaunchInterface {
  public:
   explicit VmLaunchInterface(scoped_refptr<dbus::Bus> bus);
@@ -27,10 +29,12 @@ class VmLaunchInterface {
   VmLaunchInterface(const VmLaunchInterface&) = delete;
   VmLaunchInterface& operator=(const VmLaunchInterface&) = delete;
 
-  // Requests a custom wayland server from chrome, which will be used by the VM
-  // with the given |vm_id|. This process is document in go/secure-exo-ids.
-  // Returns a path to the server's socket on success, or "" on failure.
-  std::string GetWaylandSocketForVm(const VmId& vm_id, bool is_termina);
+  // Requests a custom wayland server for VMs of type |classification| from
+  // chrome, which will be used by the VM with the given |vm_id|. This process
+  // is document in go/secure-exo-ids. Returns a path to the server's socket on
+  // success, or "" on failure.
+  std::string GetWaylandSocketForVm(const VmId& vm_id,
+                                    VmInfo_VmType classification);
 
  private:
   scoped_refptr<dbus::Bus> bus_;

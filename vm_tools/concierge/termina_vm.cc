@@ -42,8 +42,7 @@ namespace concierge {
 namespace {
 
 // Features to enable.
-constexpr StartTerminaRequest_Feature kEnabledTerminaFeatures[] = {
-};
+constexpr StartTerminaRequest_Feature kEnabledTerminaFeatures[] = {};
 
 // Name of the control socket used for controlling crosvm.
 constexpr char kCrosvmSocket[] = "crosvm.sock";
@@ -97,7 +96,7 @@ TerminaVm::TerminaVm(
     dbus::ObjectProxy* vm_permission_service_proxy,
     scoped_refptr<dbus::Bus> bus,
     VmId id,
-    bool is_termina)
+    VmInfo::VmType classification)
     : VmBaseImpl(std::move(network_client),
                  vsock_cid,
                  std::move(seneschal_server_proxy),
@@ -111,7 +110,7 @@ TerminaVm::TerminaVm(
       id_(id),
       bus_(bus),
       vm_permission_service_proxy_(vm_permission_service_proxy),
-      is_termina_(is_termina) {}
+      classification_(classification) {}
 
 // For testing.
 TerminaVm::TerminaVm(
@@ -123,7 +122,7 @@ TerminaVm::TerminaVm(
     std::string stateful_device,
     uint64_t stateful_size,
     VmFeatures features,
-    bool is_termina)
+    VmInfo::VmType classification)
     : VmBaseImpl(nullptr /* network_client */,
                  vsock_cid,
                  std::move(seneschal_server_proxy),
@@ -136,7 +135,7 @@ TerminaVm::TerminaVm(
       stateful_resize_type_(DiskResizeType::NONE),
       log_path_(std::move(log_path)),
       id_(VmId("foo", "bar")),
-      is_termina_(is_termina) {
+      classification_(classification) {
   CHECK(subnet_);
 }
 
@@ -156,13 +155,13 @@ std::unique_ptr<TerminaVm> TerminaVm::Create(
     dbus::ObjectProxy* vm_permission_service_proxy,
     scoped_refptr<dbus::Bus> bus,
     VmId id,
-    bool is_termina,
+    VmInfo::VmType classification,
     VmBuilder vm_builder) {
   auto vm = base::WrapUnique(new TerminaVm(
       vsock_cid, std::move(network_client), std::move(seneschal_server_proxy),
       std::move(runtime_dir), std::move(log_path), std::move(stateful_device),
       std::move(stateful_size), features, vm_permission_service_proxy,
-      std::move(bus), std::move(id), is_termina));
+      std::move(bus), std::move(id), classification));
 
   if (!vm->Start(std::move(vm_builder)))
     vm.reset();
@@ -195,7 +194,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
 
   // TODO(b/193370101) Remove borealis specific code once crostini uses
   // permission service.
-  if (id_.name() == "borealis") {
+  if (classification_ == VmInfo::BOREALIS) {
     // Register the VM with permission service and obtain permission
     // token.
     if (!vm_permission::RegisterVm(bus_, vm_permission_service_proxy_, id_,
@@ -237,7 +236,9 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
   if (features_.software_tpm)
     vm_builder.EnableSoftwareTpm(true /* enable */);
 
-  if (id_.name() == "borealis") {
+  // TODO(b/193370101) Remove borealis specific code once crostini uses
+  // permission service.
+  if (classification_ == VmInfo::BOREALIS) {
     if (vm_permission::IsMicrophoneEnabled(bus_, vm_permission_service_proxy_,
                                            permission_token_)) {
       vm_builder.AppendAudioDevice(
@@ -955,7 +956,7 @@ VmInterface::Info TerminaVm::GetInfo() {
       .permission_token = permission_token_,
       .status = IsTremplinStarted() ? VmInterface::Status::RUNNING
                                     : VmInterface::Status::STARTING,
-      .type = is_termina_ ? VmInfo::TERMINA : VmInfo::UNKNOWN,
+      .type = classification_,
   };
 
   return info;
@@ -979,7 +980,7 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
     uint64_t stateful_size,
     std::string kernel_version,
     std::unique_ptr<vm_tools::Maitred::Stub> stub,
-    bool is_termina,
+    VmInfo::VmType classification,
     VmBuilder vm_builder) {
   VmFeatures features{
       .gpu = false,
@@ -989,7 +990,7 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
   auto vm = base::WrapUnique(new TerminaVm(
       std::move(subnet), vsock_cid, nullptr, std::move(runtime_dir),
       std::move(log_path), std::move(stateful_device), std::move(stateful_size),
-      features, is_termina));
+      features, classification));
   vm->set_kernel_version_for_testing(kernel_version);
   vm->set_stub_for_testing(std::move(stub));
 

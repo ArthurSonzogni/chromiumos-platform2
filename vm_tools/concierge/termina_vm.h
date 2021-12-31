@@ -82,7 +82,7 @@ class TerminaVm final : public VmBaseImpl {
       dbus::ObjectProxy* vm_permission_service_proxy,
       scoped_refptr<dbus::Bus> bus,
       VmId id,
-      bool is_termina,
+      VmInfo::VmType classification,
       VmBuilder vm_builder);
   ~TerminaVm() override;
 
@@ -211,7 +211,7 @@ class TerminaVm final : public VmBaseImpl {
       uint64_t stateful_size,
       std::string kernel_version,
       std::unique_ptr<vm_tools::Maitred::Stub> stub,
-      bool is_termina,
+      VmInfo::VmType classification,
       VmBuilder vm_builder);
 
  private:
@@ -226,7 +226,7 @@ class TerminaVm final : public VmBaseImpl {
             dbus::ObjectProxy* vm_permission_service_proxy,
             scoped_refptr<dbus::Bus> bus,
             VmId id,
-            bool is_termina);
+            VmInfo::VmType classification);
 
   // Constructor for testing only.
   TerminaVm(std::unique_ptr<patchpanel::Subnet> subnet,
@@ -237,7 +237,7 @@ class TerminaVm final : public VmBaseImpl {
             std::string stateful_device,
             uint64_t stateful_size,
             VmFeatures features,
-            bool is_termina);
+            VmInfo::VmType classification);
   TerminaVm(const TerminaVm&) = delete;
   TerminaVm& operator=(const TerminaVm&) = delete;
 
@@ -323,9 +323,9 @@ class TerminaVm final : public VmBaseImpl {
   // Proxy to the dispatcher service.  Not owned.
   dbus::ObjectProxy* vm_permission_service_proxy_;
 
-  // Confusingly, this class is also used for non-termina VMs that don't fit in
-  // other types. This bool indicates if the VM is really a termina VM.
-  const bool is_termina_;
+  // Record's this VM's "type" in the classification sense (e.g. termina,
+  // borealis, other...).
+  const VmInfo::VmType classification_;
 };
 
 }  // namespace concierge
