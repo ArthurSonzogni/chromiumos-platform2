@@ -56,8 +56,8 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
   std::string equipment_id = modem->GetEquipmentId();
   FlashState* flash_state = &modem_info_[equipment_id];
   if (!flash_state->ShouldFlash()) {
-    LOG(WARNING) << "Modem with equipment ID \"" << equipment_id
-                 << "\" failed to flash too many times; not flashing";
+    LOG(ERROR) << "Modem with equipment ID \"" << equipment_id
+               << "\" failed to flash too many times; not flashing";
     return base::OnceClosure();
   }
 
@@ -168,9 +168,11 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
   }
 
   // Flash if we have new firmwares
-  if (flash_cfg.empty())
+  if (flash_cfg.empty()) {
+    // This message is used by tests to track the end of flashing.
+    LOG(INFO) << " The modem already has the correct firmware installed";
     return base::OnceClosure();
-
+  }
   std::vector<std::string> fw_types;
   std::transform(flash_cfg.begin(), flash_cfg.end(),
                  std::back_inserter(fw_types),
