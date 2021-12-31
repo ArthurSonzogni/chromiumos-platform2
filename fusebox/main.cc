@@ -50,16 +50,6 @@ void SetupLogging() {
 
 static bool g_use_fake_file_system;
 
-fusebox::FileSystem* CreateFakeFileSystem() {
-  static base::NoDestructor<fusebox::FileSystemFake> fake_file_system;
-  return fake_file_system.get();
-}
-
-fusebox::InodeTable& GetInodeTable() {
-  static base::NoDestructor<fusebox::InodeTable> inode_table;
-  return *inode_table;
-}
-
 }  // namespace
 
 namespace fusebox {
@@ -82,8 +72,8 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     RegisterWithDBusObject(&dbus_object_);
     dbus_object_.RegisterAsync(cb);
 
-    auto path = dbus::ObjectPath(fusebox::kFuseBoxServicePath);
-    dbus_proxy_ = bus_->GetObjectProxy(fusebox::kFuseBoxServiceName, path);
+    const auto path = dbus::ObjectPath(kFuseBoxServicePath);
+    dbus_proxy_ = bus_->GetObjectProxy(kFuseBoxServiceName, path);
   }
 
   int StartFuseSession(base::OnceClosure stop_callback) {
@@ -99,9 +89,19 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     return EX_OK;
   }
 
+  static FileSystem* CreateFakeFileSystem() {
+    static base::NoDestructor<FileSystemFake> fake_file_system;
+    return fake_file_system.get();
+  }
+
+  static InodeTable& GetInodeTable() {
+    static base::NoDestructor<InodeTable> inode_table;
+    return *inode_table;
+  }
+
   static dbus::MethodCall GetFuseBoxServerMethod(
-      const char* method = fusebox::kFuseBoxOperationMethod) {
-    return dbus::MethodCall(fusebox::kFuseBoxServiceInterface, method);
+      const char* method = kFuseBoxOperationMethod) {
+    return dbus::MethodCall(kFuseBoxServiceInterface, method);
   }
 
   template <typename Signature>
