@@ -534,9 +534,8 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     VLOG(1) << "read-fd fh " << request->fh() << " off " << off << " size "
             << size;
 
-    std::vector<char> buf;
     DCHECK_LE(size, SSIZE_MAX);
-    buf.resize(size);
+    std::vector<char> buf(size);
 
     DCHECK_NE(-1, fd);
     ssize_t length = HANDLE_EINTR(pread(fd, buf.data(), size, off));
