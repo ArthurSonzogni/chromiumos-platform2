@@ -624,6 +624,7 @@ int Run(char** mountpoint, fuse_chan* chan) {
   FuseMount fuse = FuseMount(mountpoint, chan);
   fuse.debug = CommandLine::ForCurrentProcess()->HasSwitch("debug");
   fuse.fake = CommandLine::ForCurrentProcess()->HasSwitch("fake");
+  fuse.opts = CommandLine::ForCurrentProcess()->GetSwitchValueASCII("ll");
 
   auto daemon = FuseBoxDaemon(&fuse);
   return daemon.Run();

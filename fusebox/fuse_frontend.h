@@ -59,6 +59,7 @@ struct FuseMount {
   fuse_chan* chan;
   bool debug = false;
   bool fake = false;
+  std::string opts;
 };
 
 class FuseFrontend {
@@ -81,6 +82,8 @@ class FuseFrontend {
     CHECK_EQ(0, fuse_opt_add_arg(&args, "fusebox"));
     if (fuse_->debug)
       CHECK_EQ(0, fuse_opt_add_arg(&args, "-d"));
+    if (!fuse_->opts.empty())
+      CHECK_EQ(0, fuse_opt_add_arg(&args, ("-o" + fuse_->opts).c_str()));
 
     CHECK(!session_);
     session_ = fuse_lowlevel_new(&args, &fops, sizeof(fops), userdata);
