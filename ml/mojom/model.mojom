@@ -126,6 +126,12 @@ interface Model {
   REMOVED_0@0(pending_receiver<GraphExecutor> receiver) =>
       (CreateGraphExecutorResult result);
 
+  // Creates a new GraphExecutor with the specified `options` and binds it to
+  // `receiver`. The GraphExecutor can be used to repeatedly evaluate this
+  // `Model`.
+  // * A Model can have more than one GraphExecutor.
+  // * Releasing this GraphExecutor frees the associated memory (but
+  //   doesn't free the Model unless its pipe is also closed).
   CreateGraphExecutor@1(GraphExecutorOptions options,
                         pending_receiver<GraphExecutor> receiver) =>
       (CreateGraphExecutorResult result);
