@@ -19,6 +19,7 @@
 #include <base/containers/contains.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/files/safe_fd.h>
 #include <brillo/process/process.h>
 
 #include "crash-reporter/user_collector_base.h"
@@ -207,46 +208,52 @@ bool UserCollector::CopyOffProcFiles(pid_t pid, const FilePath& container_dir) {
     return false;
   }
 
-  // NB: We can't (yet) use brillo::SafeFD here because it does not support
-  // reading /proc files, due to the fact that they report 0 size.
-  // TODO(b/195787611): Use SafeFD.
-  int processpath_fd;
-  if (!ValidatePathAndOpen(process_path, &processpath_fd)) {
-    LOG(ERROR) << "Failed to open process path dir: " << process_path.value();
+  auto root_res = brillo::SafeFD::Root();
+  if (brillo::SafeFD::IsError(root_res.second)) {
+    LOG(ERROR) << "Failed to open root directory: "
+               << static_cast<int>(root_res.second);
     return false;
   }
-  base::ScopedFD scoped_processpath_fd(processpath_fd);
 
-  int containerpath_fd;
-  if (!ValidatePathAndOpen(container_dir, &containerpath_fd)) {
-    LOG(ERROR) << "Failed to open container dir:" << container_dir.value();
+  auto processpath_res = root_res.first.OpenExistingDir(process_path);
+  if (brillo::SafeFD::IsError(processpath_res.second)) {
+    LOG(ERROR) << "Failed to open " << process_path.value() << " : "
+               << static_cast<int>(processpath_res.second);
     return false;
   }
-  base::ScopedFD scoped_containerpath_fd(containerpath_fd);
+
+  brillo::SafeFD processpath_fd = std::move(processpath_res.first);
+
+  auto containerpath_res = root_res.first.OpenExistingDir(container_dir);
+  if (brillo::SafeFD::IsError(containerpath_res.second)) {
+    LOG(ERROR) << "Failed to open " << container_dir.value() << " : "
+               << static_cast<int>(containerpath_res.second);
+    return false;
+  }
+  brillo::SafeFD containerpath_fd = std::move(containerpath_res.first);
 
   static const char* const kProcFiles[] = {"auxv", "cmdline", "environ",
                                            "maps", "status",  "syscall"};
   for (const auto& proc_file : kProcFiles) {
-    int source_fd = HANDLE_EINTR(
-        openat(processpath_fd, proc_file, O_RDONLY | O_CLOEXEC | O_NOFOLLOW));
-    if (source_fd < 0) {
-      PLOG(ERROR) << "Failed to open " << process_path << "/" << proc_file;
+    auto proc_res = processpath_fd.OpenExistingFile(
+        base::FilePath(proc_file), /*flags=*/O_RDONLY | O_CLOEXEC);
+    if (brillo::SafeFD::IsError(proc_res.second)) {
+      PLOG(ERROR) << "Failed to open " << process_path << "/" << proc_file
+                  << ": " << static_cast<int>(proc_res.second);
       return false;
     }
-    base::File source(source_fd);
 
-    int dest_fd = HANDLE_EINTR(
-        openat(containerpath_fd, proc_file,
-               O_CREAT | O_WRONLY | O_TRUNC | O_EXCL | O_NOFOLLOW | O_CLOEXEC,
-               kSystemCrashFilesMode));
-    if (dest_fd < 0) {
-      PLOG(ERROR) << "Failed to open " << container_dir << "/" << proc_file;
+    auto res = containerpath_fd.MakeFile(base::FilePath(proc_file));
+    if (brillo::SafeFD::IsError(res.second)) {
+      PLOG(ERROR) << "Failed to open " << container_dir << "/" << proc_file
+                  << ": " << static_cast<int>(res.second);
       return false;
     }
-    base::File dest(dest_fd);
 
-    if (!base::CopyFileContents(source, dest)) {
-      LOG(ERROR) << "Failed to copy " << proc_file;
+    brillo::SafeFD::Error err = proc_res.first.CopyContentsTo(&res.first);
+    if (brillo::SafeFD::IsError(err)) {
+      PLOG(ERROR) << "Failed to copy file " << proc_file << ": "
+                  << static_cast<int>(err);
       return false;
     }
   }
