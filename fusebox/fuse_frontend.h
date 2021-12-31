@@ -30,7 +30,7 @@ namespace fusebox {
  *
  * A FuseMount object is provided to the FuseFrontend class, containing
  * the active |mountpoint| name, and Kernel FUSE channel |chan|, needed
- * to create the session with fuse_lowlevel_new().
+ * to create the session with fuse_lowlevel_new(3).
  *
  * FuseFrontend::CreateFuseSession() creates the FUSE session, and then
  * StartFuseSession() can be used to start and run the session.
@@ -40,7 +40,7 @@ namespace fusebox {
  * them to libFUSE, where they are processed into FUSE operations. This
  * is handled by FuseFrontend::OnFuseChannelReadable().
  *
- * Note an EINTR error while reading the channel can be ignored: kernel
+ * Note an EINTR error while reading the channel can be ignored: Kernel
  * FUSE will notice and re-send requests in this case (request delivery
  * is reliable in FUSE).
  *
@@ -50,7 +50,7 @@ namespace fusebox {
  * FUSE session.
  *
  * Session tear-down and clean-up: class owner deletes the FuseFrontend
- * class to invoke its destructor.
+ * which exits the session using fuse_session_exit(3).
  */
 
 struct FuseMount {
@@ -62,46 +62,33 @@ struct FuseMount {
 class FuseFrontend {
  public:
   explicit FuseFrontend(FuseMount* fuse) : fuse_(fuse) {}
+
   FuseFrontend(const FuseFrontend&) = delete;
   FuseFrontend& operator=(const FuseFrontend&) = delete;
 
   ~FuseFrontend() {
     read_watcher_.reset();
     stop_callback_.Reset();
-
-    if (fuse_->chan && session_)
-      fuse_session_remove_chan(fuse_->chan);
     if (session_)
-      fuse_remove_signal_handlers(session_);
-    if (session_)
-      fuse_session_destroy(session_);
-    if (fuse_->chan)
-      fuse_chan_destroy(fuse_->chan);
+      fuse_session_exit(session_);
   }
 
   bool CreateFuseSession(void* userdata, fuse_lowlevel_ops fops, bool debug) {
-    fuse_chan* chan = fuse_->chan;
-
     struct fuse_args args = {0};
+
     CHECK_EQ(0, fuse_opt_add_arg(&args, "fusebox"));
     if (debug)
       CHECK_EQ(0, fuse_opt_add_arg(&args, "-d"));
-    CHECK_EQ(nullptr, session_);
-    CHECK(chan);
 
+    CHECK(!session_);
     session_ = fuse_lowlevel_new(&args, &fops, sizeof(fops), userdata);
     if (!session_) {
       PLOG(ERROR) << "fuse_lowlevel_new() failed";
       return false;
     }
 
-    fuse_session_add_chan(session_, chan);
-
-    if (fuse_set_signal_handlers(session_) == -1) {
-      PLOG(ERROR) << "fuse_set_signal_handlers() failed";
-      return false;
-    }
-
+    CHECK(fuse_->chan);
+    fuse_session_add_chan(session_, fuse_->chan);
     return true;
   }
 
@@ -142,7 +129,8 @@ class FuseFrontend {
     };
 
     if (read_size == 0) {
-      *fuse_->mountpoint = nullptr;  // Kernel FUSE unmounted mountpoint.
+      LOG(INFO) << "Kernel FUSE : umount(8) " << *fuse_->mountpoint;
+      *fuse_->mountpoint = nullptr;
       kernel_fuse_closed(ENODEV);
       return;
     }
@@ -165,6 +153,8 @@ class FuseFrontend {
 
   // Fuse kernel-space channel reader.
   std::unique_ptr<base::FileDescriptorWatcher::Controller> read_watcher_;
+
+  // Fixed-size buffer to receive Kernel Fuse requests.
   std::vector<char> read_buffer_;
 
   // Stop callback. Called if Kernel Fuse closes the session.

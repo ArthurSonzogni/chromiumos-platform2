@@ -86,8 +86,8 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     dbus_proxy_ = bus_->GetObjectProxy(fusebox::kFuseBoxServiceName, path);
   }
 
-  int StartFuseSession(base::OnceClosure quit_callback) {
-    quit_callback_ = std::move(quit_callback);
+  int StartFuseSession(base::OnceClosure stop_callback) {
+    CHECK(stop_callback);
 
     fuse_frontend_.reset(new FuseFrontend(fuse_));
     auto* fs = g_use_fake_file_system ? CreateFakeFileSystem() : this;
@@ -95,16 +95,8 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     if (!fuse_frontend_->CreateFuseSession(fs, FileSystem::FuseOps(), debug))
       return EX_SOFTWARE;
 
-    auto stop = base::BindOnce(&FuseBoxClient::Stop, base::Unretained(this));
-    fuse_frontend_->StartFuseSession(std::move(stop));
+    fuse_frontend_->StartFuseSession(std::move(stop_callback));
     return EX_OK;
-  }
-
-  void Stop() {
-    fuse_frontend_.reset();
-    if (quit_callback_) {
-      std::move(quit_callback_).Run();
-    }
   }
 
   static dbus::MethodCall GetFuseBoxServerMethod(
@@ -580,9 +572,6 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   // Fuse user-space frontend.
   std::unique_ptr<FuseFrontend> fuse_frontend_;
 
-  // Quit callback.
-  base::OnceClosure quit_callback_;
-
   // Active readdir requests.
   std::map<uint64_t, std::unique_ptr<DirEntryResponse>> readdir_;
 };
@@ -669,6 +658,9 @@ int main(int argc, char** argv) {
   }
 
   int exit_code = fusebox::Run(&mountpoint, chan);
+
+  if (fuse_session* session = fuse_chan_session(chan))
+    fuse_session_destroy(session);
 
   if (!mountpoint) {  // Kernel removed the FUSE mountpoint: umount(8).
     exit_code = ENODEV;
