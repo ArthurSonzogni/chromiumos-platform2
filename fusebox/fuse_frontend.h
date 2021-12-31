@@ -57,6 +57,8 @@ struct FuseMount {
   FuseMount(char** m, fuse_chan* c) : mountpoint(m), chan(c) {}
   char** mountpoint;
   fuse_chan* chan;
+  bool debug = false;
+  bool fake = false;
 };
 
 class FuseFrontend {
@@ -73,11 +75,11 @@ class FuseFrontend {
       fuse_session_exit(session_);
   }
 
-  bool CreateFuseSession(void* userdata, fuse_lowlevel_ops fops, bool debug) {
+  bool CreateFuseSession(void* userdata, fuse_lowlevel_ops fops) {
     struct fuse_args args = {0};
 
     CHECK_EQ(0, fuse_opt_add_arg(&args, "fusebox"));
-    if (debug)
+    if (fuse_->debug)
       CHECK_EQ(0, fuse_opt_add_arg(&args, "-d"));
 
     CHECK(!session_);

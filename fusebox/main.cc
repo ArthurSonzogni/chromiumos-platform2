@@ -16,7 +16,6 @@
 #include <base/no_destructor.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/posix/eintr_wrapper.h>
-#include <base/strings/stringprintf.h>
 
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
@@ -48,8 +47,6 @@ void SetupLogging() {
   g_device = &device;
 }
 
-static bool g_use_fake_file_system;
-
 }  // namespace
 
 namespace fusebox {
@@ -80,9 +77,8 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     CHECK(stop_callback);
 
     fuse_frontend_.reset(new FuseFrontend(fuse_));
-    auto* fs = g_use_fake_file_system ? CreateFakeFileSystem() : this;
-    auto debug = CommandLine::ForCurrentProcess()->HasSwitch("debug");
-    if (!fuse_frontend_->CreateFuseSession(fs, FileSystem::FuseOps(), debug))
+    FileSystem* fs = fuse_->fake ? CreateFakeFileSystem() : this;
+    if (!fuse_frontend_->CreateFuseSession(fs, FileSystem::FuseOps()))
       return EX_SOFTWARE;
 
     fuse_frontend_->StartFuseSession(std::move(stop_callback));
@@ -623,8 +619,12 @@ class FuseBoxDaemon : public brillo::DBusServiceDaemon {
 };
 
 int Run(char** mountpoint, fuse_chan* chan) {
-  LOG(INFO) << base::StringPrintf("fusebox %s [%d]", *mountpoint, getpid());
+  LOG(INFO) << "fusebox " << *mountpoint << " [" << getpid() << "]";
+
   FuseMount fuse = FuseMount(mountpoint, chan);
+  fuse.debug = CommandLine::ForCurrentProcess()->HasSwitch("debug");
+  fuse.fake = CommandLine::ForCurrentProcess()->HasSwitch("fake");
+
   auto daemon = FuseBoxDaemon(&fuse);
   return daemon.Run();
 }
@@ -634,9 +634,6 @@ int Run(char** mountpoint, fuse_chan* chan) {
 int main(int argc, char** argv) {
   CommandLine::Init(argc, argv);
   SetupLogging();
-
-  if (CommandLine::ForCurrentProcess()->HasSwitch("fake"))
-    g_use_fake_file_system = true;
 
   fuse_args args = FUSE_ARGS_INIT(argc, argv);
   char* mountpoint = nullptr;
