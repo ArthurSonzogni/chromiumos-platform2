@@ -15,6 +15,8 @@ class FakeLibdrmUtil : public LibdrmUtil {
   FakeLibdrmUtil(const FakeLibdrmUtil& oth) = default;
   FakeLibdrmUtil(FakeLibdrmUtil&& oth) = default;
   ~FakeLibdrmUtil() override = default;
+
+  bool Initialize() override;
 };
 
 }  // namespace diagnostics

@@ -55,6 +55,9 @@ gettimeofday: 1
 #   0xc010640c == DRM_IOCTL_GET_CAP
 #   0xc0246400 == DRM_IOCTL_VERSION
 #   0xc0206440 == DRM_IOCTL_AMDGPU_GEM_CREATE
+#   0xc04064a0 == DRM_IOCTL_MODE_GETRESOURCES
+#   0xc04064aa == DRM_IOCTL_MODE_GETPROPERTY
+#   0xc05064a7 == DRM_IOCTL_MODE_GETCONNECTOR
 ioctl: arg1 == TCGETS || arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || \
        arg1 == 0xc0048000 || arg1 == 0x40048001 || arg1 == 0x40108003 || \
        arg1 == 0x40088026 || arg1 == 0x4018800e || arg1 == 0x80048011 || \
@@ -65,7 +68,8 @@ ioctl: arg1 == TCGETS || arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || \
        arg1 == 0xc0106442 || arg1 == 0xc0186443 || arg1 == 0xc0106440 || \
        arg1 == 0x40086409 || arg1 == 0x4004644b || arg1 == 0xc00c644a || \
        arg1 == 0xc00c6448 || arg1 == 0xc010640c || arg1 == 0xc0246400 || \
-       arg1 == 0xc0206440
+       arg1 == 0xc0206440 || arg1 == 0xc04064a0 || arg1 == 0xc04064aa || \
+       arg1 == 0xc05064a7
 epoll_ctl: 1
 write: 1
 rt_sigaction: 1

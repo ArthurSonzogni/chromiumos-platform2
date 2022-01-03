@@ -11,6 +11,9 @@ namespace diagnostics {
 class LibdrmUtil {
  public:
   virtual ~LibdrmUtil() = default;
+
+  // Initialize the util object.
+  virtual bool Initialize() = 0;
 };
 
 }  // namespace diagnostics

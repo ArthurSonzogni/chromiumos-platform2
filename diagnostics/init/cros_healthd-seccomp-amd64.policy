@@ -67,6 +67,9 @@ getrandom: 1
 #   0xc018646d == DRM_IOCTL_RADEON_GEM_USERPTR
 #   0xc020645d == DRM_IOCTL_RADEON_GEM_CREATE
 #   0xc020645e == DRM_IOCTL_RADEON_GEM_MMAP
+#   0xc04064a0 == DRM_IOCTL_MODE_GETRESOURCES
+#   0xc04064aa == DRM_IOCTL_MODE_GETPROPERTY
+#   0xc05064a7 == DRM_IOCTL_MODE_GETCONNECTOR
 ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0x40086409 || arg1 == 0x4008646e || arg1 == 0x400c645f || \
        arg1 == 0x40406469 || arg1 == 0x80106463 || arg1 == 0xc0086457 || \
@@ -82,7 +85,8 @@ ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0xc0406481 || arg1 == 0xc0486447 || arg1 == 0xc0586442 || \
        arg1 == 0xc0886447 || arg1 == 0x40086464 || arg1 == 0xc0106467 || \
        arg1 == 0xc018645c || arg1 == 0xc018646b || arg1 == 0xc018646d || \
-       arg1 == 0xc020645d || arg1 == 0xc020645e
+       arg1 == 0xc020645d || arg1 == 0xc020645e || arg1 == 0xc04064a0 || \
+       arg1 == 0xc04064aa || arg1 == 0xc05064a7
 geteuid: 1
 brk: 1
 getuid: 1

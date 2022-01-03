@@ -90,6 +90,12 @@ void FinishFetchingDisplayInfo(
 void DisplayFetcher::FetchDisplayInfo(
     DisplayFetcher::FetchDisplayInfoCallback&& callback) {
   auto libdrm_util = context_->CreateLibdrmUtil();
+  if (!libdrm_util->Initialize()) {
+    std::move(callback).Run(mojo_ipc::DisplayResult::NewError(
+        CreateAndLogProbeError(mojo_ipc::ErrorType::kSystemUtilityError,
+                               "Failed to initialize libdrm_util object.")));
+    return;
+  }
   context_->executor()->RunModetest(
       executor_ipc::ModetestOptionEnum::kListConnector,
       base::BindOnce(&FinishFetchingDisplayInfo, std::move(callback)));
