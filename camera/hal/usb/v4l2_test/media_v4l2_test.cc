@@ -58,7 +58,12 @@ constexpr char kCertificationTestList[] = "certification";
 constexpr uint32_t kMaxMinRoiWidth = 320;
 constexpr uint32_t kMaxMinRoiHeight = 320;
 
-std::string GetUsbVidPid(const base::FilePath& path) {
+struct UsbInfo {
+  std::string vid_pid;
+  std::string bcd_device;
+};
+
+UsbInfo GetUsbInfo(const base::FilePath& path) {
   auto read_id = [&](const char* name) -> std::string {
     base::FilePath id_path(
         base::StringPrintf("/sys/class/video4linux/%s/device/../%s",
@@ -73,12 +78,10 @@ std::string GetUsbVidPid(const base::FilePath& path) {
     }
     return std::string(base::TrimWhitespaceASCII(id, base::TRIM_ALL));
   };
-  std::string vid = read_id("idVendor");
-  std::string pid = read_id("idProduct");
-  if (vid.empty() || pid.empty()) {
-    return "";
-  }
-  return vid + ":" + pid;
+  return UsbInfo{
+      .vid_pid = read_id("idVendor") + ":" + read_id("idProduct"),
+      .bcd_device = read_id("bcdDevice"),
+  };
 }
 
 bool IsCaptureDevice(const base::FilePath& path) {
@@ -104,7 +107,7 @@ bool IsCaptureDevice(const base::FilePath& path) {
 }
 
 bool IsUsbCamera(const base::FilePath& path) {
-  return IsCaptureDevice(path) && !GetUsbVidPid(path).empty();
+  return IsCaptureDevice(path) && !GetUsbInfo(path).vid_pid.empty();
 }
 
 std::vector<base::FilePath> GetUsbCameras() {
@@ -202,7 +205,7 @@ class V4L2TestEnvironment : public ::testing::Environment {
                       const std::string& device_path)
       : test_list_(test_list),
         device_path_(device_path),
-        usb_info_(GetUsbVidPid(base::FilePath(device_path))) {
+        usb_info_(GetUsbInfo(base::FilePath(device_path))) {
     std::string model = []() -> std::string {
       base::Optional<DeviceConfig> config = DeviceConfig::Create();
       if (!config) {
@@ -213,8 +216,8 @@ class V4L2TestEnvironment : public ::testing::Environment {
     }();
     // The WFC maximum supported resoltuion requirement is waived on some
     // models (b/158564147).
-    if ((model == "blacktip360" && usb_info_ == "0408:5192") ||
-        (model == "garg360" && usb_info_ == "0408:5194")) {
+    if ((model == "blacktip360" && usb_info_.vid_pid == "0408:5192") ||
+        (model == "garg360" && usb_info_.vid_pid == "0408:5194")) {
       AddNegativeGtestFilter("V4L2Test.MaximumSupportedResolution");
     }
 
@@ -231,7 +234,7 @@ class V4L2TestEnvironment : public ::testing::Environment {
       }
       // The camera module sometimes generate out-of-order buffer timestamps.
       // See b/158957477 for detail.
-      if (usb_info_ == "0c45:6a05") {
+      if (usb_info_.vid_pid == "0c45:6a05") {
         check_timestamps_in_order_ = false;
       }
     } else if (test_list == kCertificationTestList) {
@@ -241,7 +244,8 @@ class V4L2TestEnvironment : public ::testing::Environment {
     } else if (test_list == kHalv3TestList) {
       // The camera modules do not support 1080p 30fps and got waived.
       // Please see http://b/142289821 and http://b/115453284 for the detail.
-      if (usb_info_ == "04f2:b6b5" || usb_info_ == "0bda:5647") {
+      if (usb_info_.vid_pid == "04f2:b6b5" ||
+          usb_info_.vid_pid == "0bda:5647") {
         check_1920x1080_ = false;
         AddNegativeGtestFilter("V4L2Test.CroppingResolution");
       }
@@ -249,11 +253,12 @@ class V4L2TestEnvironment : public ::testing::Environment {
   }
 
   void SetUp() {
-    ASSERT_THAT(usb_info_, MatchesRegex("[0-9a-f]{4}:[0-9a-f]{4}"));
+    ASSERT_THAT(usb_info_.vid_pid, MatchesRegex("[0-9a-f]{4}:[0-9a-f]{4}"));
 
     LOG(INFO) << "Test list: " << test_list_;
     LOG(INFO) << "Device path: " << device_path_;
-    LOG(INFO) << "USB Info: " << usb_info_;
+    LOG(INFO) << "USB id: " << usb_info_.vid_pid;
+    LOG(INFO) << "USB bcdDevice: " << usb_info_.bcd_device;
 
     ASSERT_THAT(test_list_,
                 AnyOf(StrEq(kDefaultTestList), StrEq(kHalv3TestList),
@@ -261,19 +266,20 @@ class V4L2TestEnvironment : public ::testing::Environment {
     ASSERT_TRUE(base::PathExists(base::FilePath(device_path_)));
 
     CameraCharacteristics characteristics;
-    const DeviceInfo* device_info =
-        characteristics.Find(usb_info_.substr(0, 4), usb_info_.substr(5, 9));
+    const DeviceInfo* device_info = characteristics.Find(
+        usb_info_.vid_pid.substr(0, 4), usb_info_.vid_pid.substr(5, 9));
 
     if (test_list_ != kDefaultTestList) {
       ASSERT_TRUE(characteristics.ConfigFileExists())
           << test_list_ << " test list needs camera config file";
       ASSERT_NE(device_info, nullptr)
-          << usb_info_ << " is not described in camera config file\n";
+          << usb_info_.vid_pid << " is not described in camera config file";
     } else {
       if (!characteristics.ConfigFileExists()) {
         LOG(INFO) << "Camera config file doesn't exist";
-      } else if (device_info == nullptr && !usb_info_.empty()) {
-        LOG(INFO) << usb_info_ << " is not described in camera config file";
+      } else if (device_info == nullptr && !usb_info_.vid_pid.empty()) {
+        LOG(INFO) << usb_info_.vid_pid
+                  << " is not described in camera config file";
       }
     }
 
@@ -338,7 +344,7 @@ class V4L2TestEnvironment : public ::testing::Environment {
 
   std::string test_list_;
   std::string device_path_;
-  std::string usb_info_;
+  UsbInfo usb_info_;
 
   bool check_1280x960_ = false;
   bool check_1600x1200_ = false;
