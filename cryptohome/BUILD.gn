@@ -36,6 +36,7 @@ group("all") {
     deps += [
       ":boot_lockbox_unittests",
       ":cryptohome_testrunner",
+      ":error_location_check",
       ":fake_platform_unittest",
       ":mount_encrypted_unittests",
     ]
@@ -646,4 +647,17 @@ if (use.fuzzer) {
       "libs:libcryptohome",
     ]
   }
+}
+
+action("error_location_check") {
+  outputs = [ "${target_gen_dir}/error_checked" ]
+
+  # gn requires an output to determine if we need to run the script.
+  deps = [ ":cryptohomed" ]
+
+  # If any source that contributes to cryptohomed changed, we might need to
+  # check again.
+
+  script = "error/tool/location_db.py"
+  args = [ "--check" ]
 }
