@@ -49,10 +49,8 @@ void MaybeEnableHdrNetStreamManipulator(
       feature_profile.IsEnabled(FeatureProfile::FeatureType::kHdrnet)) {
     // HDRnet is enabled forcibly or by the device setting.
 
-    // TODO(jcliang): Update the camera module name here when the names are
-    // updated in the HAL (b/194471449).
     constexpr const char kIntelIpu6CameraModuleName[] =
-        "Intel Camera3HAL Module";
+        "Intel IPU6 Camera HAL Module";
     if (options.camera_module_name == kIntelIpu6CameraModuleName) {
       // The pipeline looks like:
       //        ____       ________       _________
