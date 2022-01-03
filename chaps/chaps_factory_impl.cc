@@ -54,7 +54,12 @@ ObjectPool* ChapsFactoryImpl::CreateObjectPool(
 
 ObjectStore* ChapsFactoryImpl::CreateObjectStore(const FilePath& file_name) {
   std::unique_ptr<ObjectStoreImpl> store(new ObjectStoreImpl());
+#if USE_FUZZER
+  // Use in-memory object store when fuzzing.
+  if (!store->Init(base::FilePath(":memory:"))) {
+#else
   if (!store->Init(file_name)) {
+#endif  // USE_FUZZER
     // The approach here is to limp along without a persistent object store so
     // crypto services do not become unavailable. The side-effect is that all
     // objects will disappear when the token is removed (e.g. at logout).
