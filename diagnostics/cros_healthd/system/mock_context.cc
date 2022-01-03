@@ -46,6 +46,10 @@ MockContext::MockContext() {
   root_dir_ = temp_dir_.GetPath();
 }
 
+std::unique_ptr<LibdrmUtil> MockContext::CreateLibdrmUtil() {
+  return std::unique_ptr<LibdrmUtil>(new FakeLibdrmUtil(fake_libdrm_util_));
+}
+
 std::unique_ptr<PciUtil> MockContext::CreatePciUtil() {
   return std::unique_ptr<PciUtil>(new FakePciUtil(fake_pci_util_));
 }

@@ -25,6 +25,7 @@
 #include "diagnostics/cros_healthd/executor/executor_adapter_impl.h"
 #include "diagnostics/cros_healthd/network/network_health_adapter_impl.h"
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter_impl.h"
+#include "diagnostics/cros_healthd/system/libdrm_util_impl.h"
 #include "diagnostics/cros_healthd/system/pci_util_impl.h"
 #include "diagnostics/cros_healthd/system/system_config.h"
 #include "diagnostics/cros_healthd/system/system_utilities_impl.h"
@@ -96,6 +97,10 @@ std::unique_ptr<Context> Context::Create(
   context->udev_ = brillo::Udev::Create();
 
   return context;
+}
+
+std::unique_ptr<LibdrmUtil> Context::CreateLibdrmUtil() {
+  return std::unique_ptr<LibdrmUtil>(new LibdrmUtilImpl());
 }
 
 std::unique_ptr<PciUtil> Context::CreatePciUtil() {

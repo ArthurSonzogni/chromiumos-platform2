@@ -22,6 +22,7 @@
 #include "diagnostics/cros_healthd/network/fake_network_health_adapter.h"
 #include "diagnostics/cros_healthd/network_diagnostics/mock_network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/system/fake_libdrm_util.h"
 #include "diagnostics/cros_healthd/system/fake_pci_util.h"
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
 #include "diagnostics/cros_healthd/system/fake_system_utilities.h"
@@ -49,6 +50,7 @@ class MockContext final : public Context {
   MockContext& operator=(const MockContext&) = delete;
   ~MockContext() override = default;
 
+  std::unique_ptr<LibdrmUtil> CreateLibdrmUtil() override;
   std::unique_ptr<PciUtil> CreatePciUtil() override;
 
   // Accessors to the fake and mock objects held by MockContext:
@@ -77,6 +79,8 @@ class MockContext final : public Context {
  private:
   // Used to create a temporary root directory.
   base::ScopedTempDir temp_dir_;
+  // Used to create a fake libdrm util.
+  FakeLibdrmUtil fake_libdrm_util_;
   // Used to create a fake pci util.
   FakePciUtil fake_pci_util_;
 };

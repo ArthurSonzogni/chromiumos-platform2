@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/strings/stringprintf.h>
@@ -10,8 +11,6 @@
 
 #include "diagnostics/cros_healthd/fetchers/display_fetcher.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
-
-#include <utility>
 
 namespace diagnostics {
 
@@ -90,6 +89,7 @@ void FinishFetchingDisplayInfo(
 
 void DisplayFetcher::FetchDisplayInfo(
     DisplayFetcher::FetchDisplayInfoCallback&& callback) {
+  auto libdrm_util = context_->CreateLibdrmUtil();
   context_->executor()->RunModetest(
       executor_ipc::ModetestOptionEnum::kListConnector,
       base::BindOnce(&FinishFetchingDisplayInfo, std::move(callback)));
