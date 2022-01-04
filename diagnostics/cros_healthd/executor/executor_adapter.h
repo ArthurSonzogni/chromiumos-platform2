@@ -52,11 +52,6 @@ class ExecutorAdapter {
   virtual void GetProcessIOContents(
       const pid_t pid, Executor::GetProcessIOContentsCallback callback) = 0;
 
-  // Run |modetest| command.
-  virtual void RunModetest(
-      chromeos::cros_healthd_executor::mojom::ModetestOptionEnum option,
-      Executor::RunModetestCallback callback) = 0;
-
   // Read MSR register.
   virtual void ReadMsr(const uint32_t msr_reg,
                        Executor::ReadMsrCallback callback) = 0;

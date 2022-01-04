@@ -64,10 +64,6 @@ constexpr auto kWirelessInterfaceRegex = R"((wl[a-z][a-z0-9]{1,12}[0-9]))";
 constexpr char kMemtesterSeccompPolicyPath[] = "memtester-seccomp.policy";
 constexpr char kMemtesterBinary[] = "/usr/sbin/memtester";
 
-// SECCOMP policy for modetest.
-constexpr char kModetestSeccompPolicyPath[] = "modetest-seccomp.policy";
-constexpr char kModetestBinary[] = "/usr/bin/modetest";
-
 // Path to msr file. This file can be read by root only.
 // Values of MSR registers IA32_TME_CAPABILITY (0x981) and IA32_TME_ACTIVATE_MSR
 // (0x982) will be the same in all CPU cores. Therefore, we are only interested
@@ -358,39 +354,6 @@ void ExecutorMojoService::GetProcessIOContents(
                     &result);
 
   std::move(callback).Run(result);
-}
-
-void ExecutorMojoService::RunModetest(mojo_ipc::ModetestOptionEnum option,
-                                      RunModetestCallback callback) {
-  mojo_ipc::ProcessResult result;
-  std::vector<std::string> binary_args;
-
-  switch (option) {
-    case mojo_ipc::ModetestOptionEnum::kListConnector:
-      binary_args.push_back("-c");
-      break;
-    default:
-      result.return_code = EXIT_FAILURE;
-      result.err = "Unsupported option";
-      std::move(callback).Run(result.Clone());
-      return;
-  }
-
-  const auto seccomp_policy_path =
-      base::FilePath(kSandboxDirPath).Append(kModetestSeccompPolicyPath);
-
-  // Minijail setup for modetest.
-  std::vector<std::string> sandboxing_args;
-  sandboxing_args.push_back("-G");
-
-  base::FilePath binary_path = base::FilePath(kModetestBinary);
-
-  base::OnceClosure closure = base::BindOnce(
-      &ExecutorMojoService::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
-      seccomp_policy_path, sandboxing_args, base::nullopt, binary_path,
-      binary_args, std::move(result), std::move(callback));
-
-  base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
 }
 
 void ExecutorMojoService::ReadMsr(const uint32_t msr_reg,

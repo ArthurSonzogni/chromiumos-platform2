@@ -96,13 +96,6 @@ void ExecutorAdapterImpl::GetProcessIOContents(
                                   std::move(callback));
 }
 
-void ExecutorAdapterImpl::RunModetest(executor_ipc::ModetestOptionEnum option,
-                                      Executor::RunModetestCallback callback) {
-  DCHECK(executor_.is_bound());
-
-  executor_->RunModetest(option, std::move(callback));
-}
-
 void ExecutorAdapterImpl::ReadMsr(const uint32_t msr_reg,
                                   Executor::ReadMsrCallback callback) {
   DCHECK(executor_.is_bound());

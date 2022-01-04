@@ -48,11 +48,6 @@ class MockExecutorAdapter final : public ExecutorAdapter {
               (const pid_t pid, Executor::GetProcessIOContentsCallback),
               (override));
   MOCK_METHOD(void,
-              RunModetest,
-              (chromeos::cros_healthd_executor::mojom::ModetestOptionEnum,
-               Executor::RunModetestCallback),
-              (override));
-  MOCK_METHOD(void,
               ReadMsr,
               (uint32_t msr_reg, Executor::ReadMsrCallback),
               (override));

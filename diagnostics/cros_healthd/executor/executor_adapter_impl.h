@@ -35,9 +35,6 @@ class ExecutorAdapterImpl final : public ExecutorAdapter {
   void GetProcessIOContents(
       const pid_t pid,
       Executor::GetProcessIOContentsCallback callback) override;
-  void RunModetest(
-      chromeos::cros_healthd_executor::mojom::ModetestOptionEnum option,
-      Executor::RunModetestCallback callback) override;
   void ReadMsr(const uint32_t msr_reg,
                Executor::ReadMsrCallback callback) override;
   void GetUEFISecureBootContent(

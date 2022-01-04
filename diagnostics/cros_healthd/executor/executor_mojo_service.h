@@ -49,9 +49,6 @@ class ExecutorMojoService final
   void KillMemtester() override;
   void GetProcessIOContents(const uint32_t pid,
                             GetProcessIOContentsCallback callback) override;
-  void RunModetest(
-      chromeos::cros_healthd_executor::mojom::ModetestOptionEnum option,
-      RunModetestCallback callback) override;
   void ReadMsr(const uint32_t msr_reg, ReadMsrCallback callback) override;
   void GetUEFISecureBootContent(
       GetUEFISecureBootContentCallback callback) override;
