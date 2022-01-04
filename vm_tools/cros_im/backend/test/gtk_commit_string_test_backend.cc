@@ -7,7 +7,7 @@
 namespace cros_im {
 namespace test {
 
-BACKEND_TEST(GtkSimpleWindowTest, CommitStringSingleCharacters) {
+BACKEND_TEST(GtkCommitStringTest, SingleCharacters) {
   Ignore(Request::kSetCursorRectangle);
   Ignore(Request::kSetSurroundingText);
   Ignore(Request::kHideInputPanel);
@@ -25,7 +25,7 @@ BACKEND_TEST(GtkSimpleWindowTest, CommitStringSingleCharacters) {
   Expect(Request::kDestroy);
 }
 
-BACKEND_TEST(GtkSimpleWindowTest, CommitStringLongStrings) {
+BACKEND_TEST(GtkCommitStringTest, LongStrings) {
   Ignore(Request::kSetCursorRectangle);
   Ignore(Request::kSetSurroundingText);
   Ignore(Request::kHideInputPanel);

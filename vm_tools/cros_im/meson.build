@@ -72,7 +72,7 @@ libim_test_cros_gtk = shared_library('im_test_cros_gtk',
     'backend/test/backend_test_utils.h',
     'backend/test/event.cc',
     'backend/test/event.h',
-    'backend/test/gtk_simple_window_test_backend.cc',
+    'backend/test/gtk_commit_string_test_backend.cc',
     'backend/test/mock_text_input.cc',
     'backend/test/mock_text_input.h',
     'backend/test/mock_wayland_client.cc',
@@ -88,7 +88,8 @@ libim_test_cros_gtk = shared_library('im_test_cros_gtk',
 )
 
 test_sources = [
-  'test/gtk_simple_window_test.cc',
+  'test/gtk_commit_string_test.cc',
+  'test/gtk_test_base.h',
 ]
 
 executable('cros_im_tests',
