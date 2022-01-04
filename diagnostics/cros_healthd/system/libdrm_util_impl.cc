@@ -10,6 +10,7 @@
 #include <base/files/file_path.h>
 
 #include "diagnostics/cros_healthd/system/libdrm_util_impl.h"
+#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
 
@@ -131,6 +132,18 @@ int LibdrmUtilImpl::GetDrmProperty(const ScopedDrmModeConnectorPtr& connector,
   }
 
   return -1;
+}
+
+void LibdrmUtilImpl::FillDisplaySize(const uint32_t connector_id,
+                                     uint32_t* width,
+                                     uint32_t* height) {
+  ScopedDrmModeConnectorPtr connector(
+      drmModeGetConnector(device_file.GetPlatformFile(), connector_id));
+  if (!connector)
+    return;
+
+  *width = connector->mmWidth;
+  *height = connector->mmHeight;
 }
 
 }  // namespace diagnostics

@@ -65,6 +65,8 @@ TEST_F(DisplayFetcherTest, EmbeddedDisplayInfo) {
   const auto& edp_info = display_info->edp_info;
   EXPECT_TRUE(edp_info->privacy_screen_supported);
   EXPECT_FALSE(edp_info->privacy_screen_enabled);
+  EXPECT_EQ(edp_info->display_width->value, 123);
+  EXPECT_EQ(edp_info->display_height->value, 456);
 }
 
 }  // namespace

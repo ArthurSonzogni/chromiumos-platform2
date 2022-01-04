@@ -60,6 +60,7 @@ using chromeos::cros_healthd::mojom::NetworkInterfaceInfo;
 using chromeos::cros_healthd::mojom::NetworkInterfaceResultPtr;
 using chromeos::cros_healthd::mojom::NetworkResultPtr;
 using chromeos::cros_healthd::mojom::NonRemovableBlockDeviceResultPtr;
+using chromeos::cros_healthd::mojom::NullableUint32Ptr;
 using chromeos::cros_healthd::mojom::NullableUint64Ptr;
 using chromeos::cros_healthd::mojom::OsInfoPtr;
 using chromeos::cros_healthd::mojom::ProbeCategoryEnum;
@@ -311,6 +312,9 @@ void SetJsonDictValue(const std::string& key,
   } else if constexpr (std::is_same_v<T, base::Optional<std::string>>) {
     if (value.has_value())
       SetJsonDictValue(key, value.value(), output);
+  } else if constexpr (std::is_same_v<T, NullableUint32Ptr>) {
+    if (value)
+      SetJsonDictValue(key, value->value, output);
   } else if constexpr (std::is_same_v<T, NullableUint64Ptr>) {
     if (value)
       SetJsonDictValue(key, value->value, output);
@@ -471,6 +475,8 @@ void DisplayDisplayInfo(const DisplayResultPtr& display_result) {
   auto* edp = output.SetKey("edp", base::Value{base::Value::Type::DICTIONARY});
   SET_DICT(privacy_screen_supported, edp_info, edp);
   SET_DICT(privacy_screen_enabled, edp_info, edp);
+  SET_DICT(display_width, edp_info, edp);
+  SET_DICT(display_height, edp_info, edp);
   OutputJson(output);
 }
 

@@ -21,4 +21,11 @@ void FakeLibdrmUtil::FillPrivacyScreenInfo(const uint32_t connector_id,
   *privacy_screen_enabled = false;
 }
 
+void FakeLibdrmUtil::FillDisplaySize(const uint32_t connector_id,
+                                     uint32_t* width,
+                                     uint32_t* height) {
+  *width = 123;
+  *height = 456;
+}
+
 }  // namespace diagnostics
