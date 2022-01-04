@@ -14,10 +14,6 @@ generate_dbus_proxies("bootlockbox-proxies") {
   sources = [ "../dbus_adaptors/org.chromium.BootLockboxInterface.xml" ]
 }
 
-pkg_config("proto_config") {
-  pkg_deps = [ "protobuf" ]
-}
-
 proto_library("bootlockbox-proto") {
   proto_in_dir = "../bootlockbox"
   proto_lib_dirs = [ target_gen_dir ]
@@ -26,11 +22,7 @@ proto_library("bootlockbox-proto") {
   # shared_library.
   use_pic = true
   sources = [ "${proto_in_dir}/key_value_map.proto" ]
-  all_dependent_configs = [ ":proto_config" ]
   standalone = true
-}
-
-config("target_defaults") {
 }
 
 pkg_config("bootlockbox_dependent_config") {
@@ -45,7 +37,6 @@ shared_library("libbootlockbox-client") {
     "../bootlockbox/boot_lockbox_client.cc",
     "../bootlockbox/boot_lockbox_client.h",
   ]
-  configs += [ ":target_defaults" ]
   all_dependent_configs = [ ":bootlockbox_dependent_config" ]
   libs = [ "system_api" ]
   deps = [
@@ -56,7 +47,6 @@ shared_library("libbootlockbox-client") {
 
 group("all") {
   deps = [
-    ":bootlockbox-proto",
     ":bootlockbox-proxies",
     ":libbootlockbox-client",
   ]

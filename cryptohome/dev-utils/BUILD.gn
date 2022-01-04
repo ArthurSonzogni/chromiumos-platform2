@@ -11,22 +11,11 @@ group("all") {
   ]
 }
 
-pkg_config("cryptohome-test-tool_config") {
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-  ]
-}
-
 executable("cryptohome-test-tool") {
   sources = [
     "../cryptohome-test-tool.cc",
     "../cryptorecovery/fake_recovery_mediator_crypto.cc",
     "../cryptorecovery/recovery_crypto_hsm_cbor_serialization.cc",
-  ]
-  configs += [
-    ":cryptohome-test-tool_config",
-    "//cryptohome/libs:target_defaults",
   ]
   libs = [ "cbor" ]
   deps = [
@@ -35,32 +24,12 @@ executable("cryptohome-test-tool") {
   ]
 }
 
-pkg_config("cryptohome-tpm-live-test_config") {
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-    "libmetrics",
-    "openssl",
-    "protobuf",
-  ]
-}
-
 executable("cryptohome-tpm-live-test") {
   sources = [
     "../cryptohome-tpm-live-test.cc",
     "../tpm_live_test.cc",
   ]
-  configs += [
-    ":cryptohome-tpm-live-test_config",
-    "//cryptohome/libs:target_defaults",
-  ]
   deps = [ "//cryptohome/libs:libcrostpm" ]
 
-  # NOSORT
-  pkg_deps = [
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "protobuf",
-  ]
+  pkg_deps = [ "libmetrics" ]
 }

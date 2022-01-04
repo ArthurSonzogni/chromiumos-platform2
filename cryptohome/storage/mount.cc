@@ -30,7 +30,6 @@
 #include <brillo/scoped_umask.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
-#include <google/protobuf/util/message_differencer.h>
 
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
@@ -54,7 +53,6 @@ using brillo::cryptohome::home::GetUserPath;
 using brillo::cryptohome::home::IsSanitizedUserName;
 using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
-using google::protobuf::util::MessageDifferencer;
 
 namespace {
 constexpr bool __attribute__((unused)) MountUserSessionOOP() {

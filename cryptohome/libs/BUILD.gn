@@ -11,14 +11,33 @@ import("//common-mk/generate-dbus-proxies.gni")
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
+pkg_config("target_default_deps") {
+  # This is a list of pkg-config dependencies
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "openssl",
+    "system_api",
+  ]
+  if (use.fuzzer) {
+    pkg_deps += [ "protobuf" ]
+  } else {
+    pkg_deps += [ "protobuf-lite" ]
+  }
+}
+
 config("target_defaults") {
+  configs = [ ":target_default_deps" ]
   defines = [
+    "PLATFORM_FWMP_INDEX=${use.generic_tpm2}",
     "USE_LVM_STATEFUL_PARTITION=${use.lvm_stateful_partition}",
     "USE_PINWEAVER=${use.pinweaver}",
     "USE_SELINUX=${use.selinux}",
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
     "USE_TPM1=${use.tpm}",
     "USE_TPM2=${use.tpm2}",
+    "USE_TPM2_SIMULATOR=${use.tpm2_simulator}",
+    "USE_VTPM_PROXY=${use.vtpm_proxy}",
     "USE_DOUBLE_EXTEND_PCR_ISSUE=${use.double_extend_pcr_issue}",
     "USE_MOUNT_OOP=${use.mount_oop}",
     "USE_USER_SESSION_ISOLATION=${use.user_session_isolation}",
@@ -26,9 +45,7 @@ config("target_defaults") {
   ]
 }
 
-pkg_config("cryptohome-proto_config") {
-  pkg_deps = [ "protobuf" ]
-
+config("cryptohome-proto_config") {
   # The local protobuf used some other protos in system_api, so we'll need
   # to fix the include path so that it builds correctly.
   include_dirs = [ "${sysroot}/usr/include/cryptohome/proto_bindings/" ]
@@ -62,10 +79,6 @@ proto_library("cryptohome-proto") {
   proto_out_dir = "include/cryptohome"
   proto_lib_dirs = [ "${sysroot}/usr/include/chromeos/dbus/cryptohome/" ]
 
-  # libcryptohome-proto.a is used by a shared_libary
-  # object, so we need to build it with '-fPIC' instead of '-fPIE'.
-  use_pic = true
-
   sources = [
     "${proto_in_dir}/attestation.proto",
     "${proto_in_dir}/boot_lockbox_key.proto",
@@ -88,11 +101,8 @@ generate_dbus_proxies("cryptohome-key-delegate-proxies") {
 
 pkg_config("libcrosplatform_dependent_config") {
   pkg_deps = [
-    "libbrillo",
-    "libchrome",
     "libecryptfs",
     "libmetrics",
-    "openssl",
     "vboot_host",
   ]
 }
@@ -134,7 +144,14 @@ static_library("libcrosplatform") {
     "../user_secret_stash.cc",
     "../user_secret_stash_storage.cc",
   ]
-  configs += [ ":target_defaults" ]
+  if (use.lvm_stateful_partition) {
+    sources +=
+        [ "../storage/encrypted_container/logical_volume_backing_device.cc" ]
+  }
+  all_dependent_configs = [
+    ":libcrosplatform_dependent_config",
+    ":target_defaults",
+  ]
   libs = [
     "keyutils",
     "rootdev",
@@ -143,21 +160,7 @@ static_library("libcrosplatform") {
   if (use.selinux) {
     libs += [ "selinux" ]
   }
-  defines = [ "USE_LVM_STATEFUL_PARTIITON=${use.lvm_stateful_partition}" ]
-  if (use.lvm_stateful_partition) {
-    sources +=
-        [ "../storage/encrypted_container/logical_volume_backing_device.cc" ]
-  }
-  all_dependent_configs = [ ":libcrosplatform_dependent_config" ]
   deps = [ ":cryptohome-proto" ]
-}
-
-pkg_config("libcrostpm_dependent_config") {
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-    "openssl",
-  ]
 }
 
 static_library("libcrostpm") {
@@ -198,8 +201,7 @@ static_library("libcrostpm") {
     "../tpm.cc",
     "../vault_keyset.cc",
   ]
-  defines = [ "PLATFORM_FWMP_INDEX=${use.generic_tpm2}" ]
-  configs += [ ":target_defaults" ]
+  all_dependent_configs = [ ":target_defaults" ]
   libs = [
     "chaps",
     "hwsec",
@@ -207,12 +209,7 @@ static_library("libcrostpm") {
     "tpm_manager",
     "system_api",
   ]
-  all_dependent_configs = [ ":libcrostpm_dependent_config" ]
 
-  # TODO(crbug.com/1082873): Remove after fixing usage of protobuf
-  # deprecated declarations.
-  cflags_cc = [ "-Wno-error=deprecated-declarations" ]
-  public_deps = [ ":cryptohome-proto" ]
   if (use.tpm2) {
     sources += [
       "../cryptorecovery/recovery_crypto_tpm2_backend_impl.cc",
@@ -234,6 +231,7 @@ static_library("libcrostpm") {
   }
   deps = [
     ":cryptohome-flatbuffers",
+    ":cryptohome-proto",
     ":libcrosplatform",
     "../../common-mk/external_dependencies:install_attributes-proto",
   ]
@@ -246,11 +244,7 @@ generate_dbus_adaptors("userdataauth_adaptors") {
 }
 
 pkg_config("libcryptohome_dependent_config") {
-  pkg_deps = [
-    "libbootlockbox-client",
-    "libbrillo",
-    "libchrome",
-  ]
+  pkg_deps = [ "libbootlockbox-client" ]
 }
 
 static_library("libcryptohome") {
@@ -296,13 +290,13 @@ static_library("libcryptohome") {
     "../userdataauth.cc",
     "../vault_keyset_factory.cc",
   ]
-  configs += [
+
+  all_dependent_configs = [
     ":cryptohome-proto_config",
+    ":libcryptohome_dependent_config",
     ":target_defaults",
   ]
 
-  # The generated dbus headers use "register".
-  cflags = [ "-Wno-deprecated-register" ]
   libs = [
     "attestation",
     "biod_proxy",
@@ -311,7 +305,6 @@ static_library("libcryptohome") {
     "policy",
     "tpm_manager",
   ]
-  all_dependent_configs = [ ":libcryptohome_dependent_config" ]
   deps = [
     ":cryptohome-key-delegate-proxies",
     ":cryptohome-proto",
@@ -328,25 +321,17 @@ generate_dbus_adaptors("bootlockbox-adaptors") {
   sources = [ "../dbus_adaptors/org.chromium.BootLockboxInterface.xml" ]
 }
 
-pkg_config("libnvram-boot-lockbox_dependent_config") {
-  pkg_deps = [
-    "libbootlockbox-client",
-    "libbrillo",
-    "libchrome",
-  ]
-}
-
 static_library("libnvram-boot-lockbox") {
   sources = [
     "../bootlockbox/nvram_boot_lockbox.cc",
     "../bootlockbox/tpm_nvspace_impl.cc",
   ]
-  configs += [ ":target_defaults" ]
-  all_dependent_configs = [ ":libnvram-boot-lockbox_dependent_config" ]
+  all_dependent_configs = [ ":target_defaults" ]
   deps = [
     ":cryptohome-proto",
     ":libcrosplatform",
   ]
+  pkg_deps = [ "libbootlockbox-client" ]
 }
 
 # cryptohome <-> cryptohome-namespace-mounter IPC proto.
@@ -358,14 +343,6 @@ proto_library("namespace-mounter-ipc-proto") {
   configs = [ ":cryptohome-proto_config" ]
 }
 
-pkg_config("libfido_config") {
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-    "openssl",
-  ]
-}
-
 static_library("libfido") {
   sources = [
     "../fido/attested_credential_data.cc",
@@ -375,7 +352,6 @@ static_library("libfido") {
     "../fido/fido_parsing_utils.cc",
     "../fido/public_key.cc",
   ]
-  configs += [ ":target_defaults" ]
+  all_dependent_configs = [ ":target_defaults" ]
   libs = [ "cbor" ]
-  all_dependent_configs = [ ":libfido_config" ]
 }

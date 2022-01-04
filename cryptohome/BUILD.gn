@@ -50,6 +50,10 @@ group("all") {
   }
 }
 
+config("target_defaults") {
+  configs = [ "libs:target_defaults" ]
+}
+
 config("local_print_proto_include") {
   # This config is used when any build target used the print_proto.
   include_dirs = [ "${target_gen_dir}/.." ]
@@ -90,7 +94,7 @@ executable("cryptohome") {
   sources += get_target_outputs(":print_proto_library")
   configs += [
     ":local_print_proto_include",
-    "libs:target_defaults",
+    ":target_defaults",
   ]
   libs = [
     "chaps",
@@ -105,21 +109,11 @@ executable("cryptohome") {
     "libs:libcryptohome",
   ]
 
-  # NOSORT
   pkg_deps = [
     "dbus-1",
-    "libbrillo",
-    "libchrome",
     "libecryptfs",
     "libmetrics",
     "libuser_data_auth-client",
-    "openssl",
-
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "protobuf",
     "vboot_host",
   ]
 }
@@ -130,23 +124,11 @@ executable("cryptohome-path") {
     "libs:libcrostpm",
     "libs:libcryptohome",
   ]
-
-  # NOSORT
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "protobuf",
-  ]
 }
 
 executable("cryptohomed") {
   sources = [ "cryptohomed.cc" ]
-  configs += [ "libs:target_defaults" ]
+  configs += [ ":target_defaults" ]
   libs = [
     "chaps",
     "keyutils",
@@ -158,21 +140,11 @@ executable("cryptohomed") {
     "libs:libcryptohome",
   ]
 
-  # NOSORT
   pkg_deps = [
     "dbus-1",
     "libbootlockbox-client",
-    "libbrillo",
-    "libchrome",
     "libecryptfs",
     "libmetrics",
-    "openssl",
-
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "protobuf",
     "vboot_host",
   ]
 }
@@ -180,22 +152,10 @@ executable("cryptohomed") {
 # This executable is used to mount cryptohomes.
 executable("cryptohome-namespace-mounter") {
   sources = [ "cryptohome_namespace_mounter/cryptohome_namespace_mounter.cc" ]
-  configs += [ "libs:target_defaults" ]
+  configs += [ ":target_defaults" ]
   deps = [
     "libs:libcryptohome",
     "libs:namespace-mounter-ipc-proto",
-  ]
-
-  # NOSORT
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "protobuf",
   ]
 }
 
@@ -207,7 +167,7 @@ executable("lockbox-cache") {
     "lockbox.cc",
     "platform.cc",
   ]
-  configs += [ "libs:target_defaults" ]
+  configs += [ ":target_defaults" ]
   libs = [
     "keyutils",
     "secure_erase_file",
@@ -217,11 +177,8 @@ executable("lockbox-cache") {
     "libs:libcrostpm",
   ]
   pkg_deps = [
-    "libbrillo",
-    "libchrome",
     "libecryptfs",
     "libmetrics",
-    "openssl",
     "vboot_host",
   ]
 }
@@ -233,18 +190,10 @@ static_library("mount_encrypted_lib") {
     "mount_encrypted/mount_encrypted_metrics.cc",
     "mount_encrypted/tpm.cc",
   ]
-  configs += [
-    # for USE_TPM2
-    "libs:target_defaults",
-  ]
+  configs += [ ":target_defaults" ]
   defines = [ "CHROMEOS_ENVIRONMENT=1" ]
   deps = [ "libs:cryptohome-proto" ]
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-    "openssl",
-    "vboot_host",
-  ]
+  pkg_deps = [ "vboot_host" ]
 
   if (use.tpm2) {
     sources += [ "mount_encrypted/tpm2.cc" ]
@@ -262,52 +211,29 @@ executable("encrypted-reboot-vault") {
     "encrypted_reboot_vault/encrypted_reboot_vault_main.cc",
   ]
   deps = [ "libs:libcrostpm" ]
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-  ]
 }
 
 executable("mount-encrypted") {
   sources = [ "mount_encrypted/mount_encrypted.cc" ]
-  defines = [
-    "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
-    "USE_TPM2_SIMULATOR=${use.tpm2_simulator}",
-    "USE_VTPM_PROXY=${use.vtpm_proxy}",
-  ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":mount_encrypted_lib",
     "libs:libcrostpm",
   ]
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-    "openssl",
-    "vboot_host",
-  ]
+  pkg_deps = [ "vboot_host" ]
 }
 
 executable("tpm-manager") {
   sources = [ "tpm_manager.cc" ]
-  configs += [ "libs:target_defaults" ]
+  configs += [ ":target_defaults" ]
   libs = [
     "tpm_manager",
     "attestation",
   ]
 
-  # NOSORT
   pkg_deps = [
-    "libbrillo",
-    "libchrome",
     "libecryptfs",
     "libmetrics",
-    "openssl",
-
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "protobuf",
   ]
   deps = [ "libs:libcrostpm" ]
 
@@ -322,44 +248,37 @@ executable("tpm-manager") {
 
 executable("homedirs_initializer") {
   sources = [ "homedirs_initializer.cc" ]
-  configs += [ "libs:target_defaults" ]
+  configs += [ ":target_defaults" ]
   deps = [
     "libs:libcrostpm",
     "libs:libcryptohome",
   ]
-
-  # NOSORT
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-    "openssl",
-
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "protobuf",
-  ]
 }
 
 if (use.cert_provision) {
-  # TODO(hidehiko): Support pkg_deps in proto_library.
-  pkg_config("cert_provision-proto_config") {
-    pkg_deps = [ "protobuf" ]
-  }
-
   proto_library("cert_provision-proto") {
     proto_in_dir = "./cert"
     proto_out_dir = "include/cert"
     use_pic = true
     sources = [ "cert/cert_provision.proto" ]
-
-    # libcert_provision-proto.a is used by a shared_libary
-    all_dependent_configs = [ ":cert_provision-proto_config" ]
   }
 
   shared_library("cert_provision") {
     deps = [ ":cert_provision-static" ]
+  }
+
+  pkg_config("cert_provision_deps") {
+    pkg_deps = [
+      "libattestation-client",
+      "libbrillo",
+      "libchrome",
+      "system_api",
+    ]
+    if (use.fuzzer) {
+      pkg_deps += [ "protobuf" ]
+    } else {
+      pkg_deps += [ "protobuf-lite" ]
+    }
   }
 
   static_library("cert_provision-static") {
@@ -368,7 +287,6 @@ if (use.cert_provision) {
       "cert/cert_provision_keystore.cc",
       "cert/cert_provision_util.cc",
     ]
-    configs += [ ":cert_provision-proto_config" ]
 
     # libcert_provision-static.a is used by a shared_libary
     # object, so we need to build it with '-fPIC' instead of '-fPIE'.
@@ -379,14 +297,7 @@ if (use.cert_provision) {
       "pthread",
     ]
 
-    # NOSORT
-    public_pkg_deps = [
-      "libattestation-client",
-      "libbrillo",
-      "libchrome",
-      "openssl",
-      "protobuf",
-    ]
+    all_dependent_configs = [ ":cert_provision_deps" ]
 
     deps = [
       ":cert_provision-proto",
@@ -397,11 +308,6 @@ if (use.cert_provision) {
   executable("cert_provision_client") {
     sources = [ "cert/cert_provision_client.cc" ]
     deps = [ ":cert_provision" ]
-    public_pkg_deps = [ "system_api" ]
-    pkg_deps = [
-      "libbrillo",
-      "libchrome",
-    ]
   }
 }
 
@@ -419,7 +325,6 @@ if (use.test) {
     pkg_deps = [
       "libbrillo",
       "libchrome",
-      "openssl",
     ]
   }
 
@@ -511,7 +416,7 @@ if (use.test) {
     ]
     configs += [
       "//common-mk:test",
-      "libs:target_defaults",
+      ":target_defaults",
     ]
     libs = [
       "chaps",
@@ -520,9 +425,6 @@ if (use.test) {
       "pthread",
     ]
 
-    # TODO(crbug.com/1082873): Remove after fixing usage of deprecated
-    # declarations.
-    cflags_cc = [ "-Wno-error=deprecated-declarations" ]
     deps = [
       ":fake_platform-static",
       "libs:cryptohome-proto",
@@ -532,14 +434,11 @@ if (use.test) {
       "//common-mk/testrunner",
     ]
 
-    # NOSORT
     pkg_deps = [
       "dbus-1",
       "libattestation-client",
       "libattestation-client-test",
-      "libbrillo",
       "libbrillo-test",
-      "libchrome",
       "libchrome-test",
       "libecryptfs",
       "libmetrics",
@@ -547,13 +446,6 @@ if (use.test) {
       "libtpm_manager-client-test",
       "libuser_data_auth-client",
       "libuser_data_auth-client-test",
-      "openssl",
-
-      # system_api depends on protobuf (or protobuf-lite). It must appear
-      # before protobuf here or the linker flags won't be in the right
-      # order.
-      "system_api",
-      "protobuf",
       "vboot_host",
     ]
 
@@ -596,16 +488,14 @@ if (use.test) {
     ]
     configs += [
       "//common-mk:test",
-      "libs:target_defaults",
+      ":target_defaults",
     ]
     deps = [
       ":fake_platform-static",
       "//common-mk/testrunner",
     ]
     pkg_deps = [
-      "libbrillo",
       "libbrillo-test",
-      "libchrome",
       "libchrome-test",
     ]
   }
@@ -618,7 +508,7 @@ if (use.test) {
     ]
     configs += [
       "//common-mk:test",
-      "libs:target_defaults",
+      ":target_defaults",
     ]
     deps = [
       ":fake_platform-static",
@@ -627,9 +517,7 @@ if (use.test) {
       "//common-mk/testrunner",
     ]
     pkg_deps = [
-      "libbrillo",
       "libbrillo-test",
-      "libchrome",
       "libchrome-test",
     ]
 
@@ -649,24 +537,14 @@ if (use.test) {
     libs = [ "tpm_manager" ]
     configs += [
       "//common-mk:test",
-      "libs:target_defaults",
+      ":target_defaults",
     ]
 
-    # NOSORT
     pkg_deps = [
-      "libbrillo",
       "libbrillo-test",
-      "libchrome",
       "libchrome-test",
       "libtpm_manager-client",
       "libtpm_manager-client-test",
-      "openssl",
-
-      # system_api depends on protobuf (or protobuf-lite). It must appear
-      # before protobuf here or the linker flags won't be in the right
-      # order.
-      "system_api",
-      "protobuf",
     ]
     deps = [
       ":tpm-manager",
@@ -680,23 +558,8 @@ if (use.test) {
 executable("bootlockboxtool") {
   sources = [ "bootlockbox/boot_lockbox_tool.cc" ]
 
-  # NOSORT
-  pkg_deps = [
-    "libbootlockbox-client",
-    "libbrillo",
-    "libchrome",
-
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "protobuf",
-  ]
-  defines = [
-    "USE_TPM1=${use.tpm}",
-    "USE_TPM2=${use.tpm2}",
-    "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
-  ]
+  configs += [ ":target_defaults" ]
+  pkg_deps = [ "libbootlockbox-client" ]
   deps = [ "libs:libnvram-boot-lockbox" ]
 }
 
@@ -707,25 +570,11 @@ executable("bootlockboxd") {
     "bootlockbox/boot_lockboxd.cc",
   ]
 
-  # NOSORT
+  configs += [ ":target_defaults" ]
   pkg_deps = [
-    "libbrillo",
-    "libchrome",
-    "libmetrics",
     "libecryptfs",
-    "openssl",
-
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "protobuf",
+    "libmetrics",
     "vboot_host",
-  ]
-  defines = [
-    "USE_TPM1=${use.tpm}",
-    "USE_TPM2=${use.tpm2}",
-    "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
   ]
   libs = [
     "keyutils",
@@ -746,12 +595,7 @@ if (use.fuzzer) {
     ]
     configs += [ "//common-mk/common_fuzzer" ]
     deps = [ "libs:libcrosplatform" ]
-    pkg_deps = [
-      "libbrillo",
-      "libchrome",
-      "libchrome-test",
-      "openssl",
-    ]
+    pkg_deps = [ "libchrome-test" ]
   }
 
   executable("cryptohome_tpm1_cmk_migration_parser_fuzzer") {
@@ -765,13 +609,7 @@ if (use.fuzzer) {
       "libs:libcrosplatform",
       "libs:libcrostpm",
     ]
-    pkg_deps = [
-      "libbrillo",
-      "libchrome",
-      "libchrome-test",
-      "openssl",
-      "system_api",
-    ]
+    pkg_deps = [ "libchrome-test" ]
 
     # TODO(crbug/1144974): This is a workaround to let the fuzzer can build on TPM2 devices.
     if (!use.tpm) {
