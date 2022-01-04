@@ -31,6 +31,26 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthMountGuestNoGuestSession = 102,
   /* ./userdataauth.cc */
   kLocUserDataAuthMountGuestSessionMountFailed = 103,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoEphemeralMountForOwner = 104,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthEphemeralMountWithoutCreate = 105,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMountAuthSessionNotFound = 106,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMountAuthSessionNotAuthed = 107,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMountNoAccountID = 108,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMountCantGetPublicMountSalt = 109,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMountNoKeySecret = 110,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMountCreateNoKey = 111,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMountCreateMultipleKey = 112,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMountCreateKeyNotSpecified = 113,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

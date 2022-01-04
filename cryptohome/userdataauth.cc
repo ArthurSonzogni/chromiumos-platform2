@@ -81,6 +81,7 @@ using hwsec_foundation::Sha1;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
+using hwsec_foundation::status::StatusChainOr;
 
 namespace cryptohome {
 
@@ -1291,31 +1292,33 @@ void UserDataAuth::FinalizeInstallAttributesIfMounted() {
   }
 }
 
-bool UserDataAuth::GetShouldMountAsEphemeral(
+StatusChainOr<bool, CryptohomeError> UserDataAuth::GetShouldMountAsEphemeral(
     const std::string& account_id,
     bool is_ephemeral_mount_requested,
-    bool has_create_request,
-    bool* is_ephemeral,
-    user_data_auth::CryptohomeErrorCode* error) const {
+    bool has_create_request) const {
   AssertOnMountThread();
   const bool is_or_will_be_owner = homedirs_->IsOrWillBeOwner(account_id);
   if (is_ephemeral_mount_requested && is_or_will_be_owner) {
     LOG(ERROR) << "An ephemeral cryptohome can only be mounted when the user "
                   "is not the owner.";
-    *error = user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL;
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoEphemeralMountForOwner),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL);
   }
-  *is_ephemeral =
+  bool is_ephemeral =
       !is_or_will_be_owner &&
       (homedirs_->AreEphemeralUsersEnabled() || is_ephemeral_mount_requested);
-  if (*is_ephemeral && !has_create_request) {
+  if (is_ephemeral && !has_create_request) {
     LOG(ERROR) << "An ephemeral cryptohome can only be mounted when its "
                   "creation on-the-fly is allowed.";
-    *error =
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthEphemeralMountWithoutCreate),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
   }
-  return true;
+  return is_ephemeral;
 }
 
 void UserDataAuth::EnsureBootLockboxFinalized() {
@@ -1456,15 +1459,27 @@ void UserDataAuth::DoMount(
     auth_session =
         auth_session_manager_->FindAuthSession(request.auth_session_id());
     if (!auth_session) {
-      reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
       LOG(ERROR) << "Invalid AuthSession token provided.";
-      std::move(on_done).Run(reply);
+      ReplyWithError(
+          std::move(on_done), reply,
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(kLocUserDataAuthMountAuthSessionNotFound),
+              ErrorActionSet({ErrorAction::kReboot}),
+              user_data_auth::CryptohomeErrorCode::
+                  CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
       return;
     }
     if (auth_session->GetStatus() != AuthStatus::kAuthStatusAuthenticated) {
       reply.set_error(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
       LOG(ERROR) << "AuthSession is not authenticated";
-      std::move(on_done).Run(reply);
+      ReplyWithError(
+          std::move(on_done), reply,
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(kLocUserDataAuthMountAuthSessionNotAuthed),
+              ErrorActionSet({ErrorAction::kReboot,
+                              ErrorAction::kDevCheckUnexpectedState}),
+              user_data_auth::CryptohomeErrorCode::
+                  CRYPTOHOME_ERROR_INVALID_ARGUMENT));
       return;
     }
   }
@@ -1472,9 +1487,12 @@ void UserDataAuth::DoMount(
   // Check for empty account ID
   if (account_id.empty() && !auth_session) {
     LOG(ERROR) << "No email supplied";
-    reply.set_error(
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-    std::move(on_done).Run(reply);
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(kLocUserDataAuthMountNoAccountID),
+                       ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                       user_data_auth::CryptohomeErrorCode::
+                           CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
 
@@ -1487,9 +1505,13 @@ void UserDataAuth::DoMount(
         keyset_management_->GetPublicMountPassKey(account_id);
     if (public_mount_passkey.empty()) {
       LOG(ERROR) << "Could not get public mount passkey.";
-      reply.set_error(user_data_auth::CryptohomeErrorCode::
-                          CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
-      std::move(on_done).Run(reply);
+      ReplyWithError(
+          std::move(on_done), reply,
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(kLocUserDataAuthMountCantGetPublicMountSalt),
+              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              user_data_auth::CryptohomeErrorCode::
+                  CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED));
       return;
     }
 
@@ -1508,9 +1530,12 @@ void UserDataAuth::DoMount(
           KeyData::KEY_TYPE_CHALLENGE_RESPONSE &&
       !auth_session) {
     LOG(ERROR) << "No key secret supplied";
-    reply.set_error(
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-    std::move(on_done).Run(reply);
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(kLocUserDataAuthMountNoKeySecret),
+                       ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                       user_data_auth::CryptohomeErrorCode::
+                           CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
 
@@ -1527,14 +1552,23 @@ void UserDataAuth::DoMount(
     int keys_size = request.create().keys_size();
     if (keys_size == 0) {
       LOG(ERROR) << "CreateRequest supplied with no keys";
-      reply.set_error(user_data_auth::CryptohomeErrorCode::
-                          CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-      std::move(on_done).Run(reply);
+      ReplyWithError(
+          std::move(on_done), reply,
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(kLocUserDataAuthMountCreateNoKey),
+              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              user_data_auth::CryptohomeErrorCode::
+                  CRYPTOHOME_ERROR_INVALID_ARGUMENT));
       return;
     } else if (keys_size > 1) {
       LOG(ERROR) << "MountEx: unimplemented CreateRequest with multiple keys";
-      reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
-      std::move(on_done).Run(reply);
+      ReplyWithError(
+          std::move(on_done), reply,
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(kLocUserDataAuthMountCreateMultipleKey),
+              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              user_data_auth::CryptohomeErrorCode::
+                  CRYPTOHOME_ERROR_NOT_IMPLEMENTED));
       return;
     } else {
       const Key key = request.create().keys(0);
@@ -1543,9 +1577,13 @@ void UserDataAuth::DoMount(
           (key.secret().empty() &&
            key.data().type() != KeyData::KEY_TYPE_CHALLENGE_RESPONSE)) {
         LOG(ERROR) << "CreateRequest Keys are not fully specified";
-        reply.set_error(user_data_auth::CryptohomeErrorCode::
-                            CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-        std::move(on_done).Run(reply);
+        ReplyWithError(
+            std::move(on_done), reply,
+            MakeStatus<CryptohomeError>(
+                CRYPTOHOME_ERR_LOC(kLocUserDataAuthMountCreateKeyNotSpecified),
+                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                user_data_auth::CryptohomeErrorCode::
+                    CRYPTOHOME_ERROR_INVALID_ARGUMENT));
         return;
       }
     }
@@ -1556,16 +1594,16 @@ void UserDataAuth::DoMount(
   bool require_ephemeral =
       request.require_ephemeral() ||
       (auth_session ? auth_session->ephemeral_user() : false);
-  user_data_auth::CryptohomeErrorCode mount_error =
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 
-  if (!GetShouldMountAsEphemeral(account_id, require_ephemeral,
-                                 (request.has_create() || auth_session),
-                                 &is_ephemeral, &mount_error)) {
-    reply.set_error(mount_error);
-    std::move(on_done).Run(reply);
+  StatusChainOr<bool, CryptohomeError> should_mount_as_ephemeral_status =
+      GetShouldMountAsEphemeral(account_id, require_ephemeral,
+                                (request.has_create() || auth_session));
+  if (!should_mount_as_ephemeral_status.ok()) {
+    ReplyWithError(std::move(on_done), reply,
+                   std::move(should_mount_as_ephemeral_status.status()));
     return;
   }
+  is_ephemeral = should_mount_as_ephemeral_status.value();
 
   // MountArgs is a set of parameters that we'll be passing around to
   // ContinueMountWithCredentials() and DoChallengeResponseMount().

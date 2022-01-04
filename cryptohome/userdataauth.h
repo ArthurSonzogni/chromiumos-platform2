@@ -20,6 +20,7 @@
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
+#include <libhwsec-foundation/status/status_chain_or.h>
 #include <tpm_manager/client/tpm_manager_utility.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
@@ -32,6 +33,7 @@
 #include "cryptohome/cleanup/low_disk_space_handler.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/fingerprint_manager.h"
 #include "cryptohome/firmware_management_parameters.h"
 #include "cryptohome/install_attributes.h"
@@ -822,14 +824,11 @@ class UserDataAuth {
                              std::string* public_mount_passkey);
 
   // Determines whether the mount request should be ephemeral. On error, returns
-  // false and sets the error code in |error|. Otherwise, returns true and fills
-  // the result in |is_ephemeral|.
-  bool GetShouldMountAsEphemeral(
-      const std::string& account_id,
-      bool is_ephemeral_mount_requested,
-      bool has_create_request,
-      bool* is_ephemeral,
-      user_data_auth::CryptohomeErrorCode* error) const;
+  // status, otherwise, return the result (whether to mount ephemeral).
+  hwsec_foundation::status::StatusChainOr<bool, error::CryptohomeError>
+  GetShouldMountAsEphemeral(const std::string& account_id,
+                            bool is_ephemeral_mount_requested,
+                            bool has_create_request) const;
 
   // Returns either and existing or a newly created UserSession, if not present.
   scoped_refptr<UserSession> GetOrCreateUserSession(
