@@ -376,6 +376,28 @@ void EapCredentials::Load(const KeyValueStore& store) {
   pin_ = store.Lookup<std::string>(kEapPinProperty, std::string());
 }
 
+void EapCredentials::Load(const EapCredentials& eap) {
+  ca_cert_id_ = eap.ca_cert_id_;
+  ca_cert_pem_ = eap.ca_cert_pem_;
+  eap_ = eap.eap_;
+  inner_eap_ = eap.inner_eap_;
+  tls_version_max_ = eap.tls_version_max_;
+  subject_match_ = eap.subject_match_;
+  subject_alternative_name_match_list_ =
+      eap.subject_alternative_name_match_list_;
+  domain_suffix_match_list_ = eap.domain_suffix_match_list_;
+  use_proactive_key_caching_ = eap.use_proactive_key_caching_;
+  use_system_cas_ = eap.use_system_cas_;
+  anonymous_identity_ = eap.anonymous_identity_;
+  identity_ = eap.identity_;
+  password_ = eap.password_;
+  use_login_password_ = eap.use_login_password_;
+  cert_id_ = eap.cert_id_;
+  key_id_ = eap.key_id_;
+  SetKeyManagement(eap.key_management_, nullptr);
+  pin_ = eap.pin_;
+}
+
 void EapCredentials::MigrateDeprecatedStorage(StoreInterface* storage,
                                               const std::string& id) const {
   // Note that if we found any of these keys, then we already know that

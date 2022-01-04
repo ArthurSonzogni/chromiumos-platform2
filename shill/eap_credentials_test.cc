@@ -313,6 +313,27 @@ TEST_F(EapCredentialsTest, Load) {
   EXPECT_TRUE(eap_.use_system_cas());
   EXPECT_FALSE(eap_.use_proactive_key_caching_);
   EXPECT_FALSE(eap_.use_login_password_);
+
+  EapCredentials eap2;
+  eap2.Load(eap_);
+  EXPECT_EQ(eap_.method(), eap2.method());
+  EXPECT_EQ(eap_.inner_method(), eap2.inner_method());
+  EXPECT_EQ(eap_.identity(), eap2.identity());
+  EXPECT_EQ(eap_.password_, eap2.password_);
+  EXPECT_EQ(eap_.ca_cert_pem(), eap2.ca_cert_pem());
+  EXPECT_EQ(eap_.subject_match(), eap2.subject_match());
+  EXPECT_EQ(eap_.subject_alternative_name_match_list(),
+            eap2.subject_alternative_name_match_list());
+  EXPECT_EQ(eap_.domain_suffix_match_list(), eap2.domain_suffix_match_list());
+  EXPECT_EQ(eap_.anonymous_identity_, eap2.anonymous_identity_);
+  EXPECT_EQ(eap_.cert_id_, eap2.cert_id_);
+  EXPECT_EQ(eap_.key_id_, eap2.key_id_);
+  EXPECT_EQ(eap_.pin_, eap2.pin_);
+  EXPECT_EQ(eap_.ca_cert_id_, eap2.ca_cert_id_);
+  EXPECT_EQ(eap_.tls_version_max_, eap2.tls_version_max_);
+  EXPECT_EQ(eap_.use_system_cas(), eap2.use_system_cas());
+  EXPECT_EQ(eap_.use_proactive_key_caching_, eap2.use_proactive_key_caching_);
+  EXPECT_EQ(eap_.use_login_password_, eap2.use_login_password_);
 }
 
 TEST_F(EapCredentialsTest, OutputConnectionMetrics) {

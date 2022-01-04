@@ -55,6 +55,9 @@ class EapCredentials {
   // Load EAP properties from key/value store |store|.
   virtual void Load(const KeyValueStore& store);
 
+  // Load EAP properties from another EapCredentials set |eap|.
+  virtual void Load(const EapCredentials& eap);
+
   void MigrateDeprecatedStorage(StoreInterface* storage,
                                 const std::string& id) const;
 
