@@ -31,6 +31,14 @@ enum DfuAttributeBits : uint8_t {
   kWillDetach = 1 << 3,
 };
 
+// Quirks for special handling of the device.
+enum : uint32_t {
+  // Send DFU_DETACH instead of USB reset to switch from DFU to APP mode.
+  kDfuQuirkDetachForAttach = 1 << 0,
+  // Ignore bitCanUpload attribute.
+  kDfuQuirkIgnoreUpload = 1 << 1,
+};
+
 // Data from DFU_GETSTATUS request.
 struct DfuStatus {
   uint8_t status;
@@ -43,7 +51,8 @@ class UsbDfuDevice {
  public:
   explicit UsbDfuDevice(libusb_device_handle* handle,
                         const libusb_device_descriptor& dev_desc,
-                        const libusb_interface_descriptor& intf_desc);
+                        const libusb_interface_descriptor& intf_desc,
+                        uint32_t quirks);
   ~UsbDfuDevice();
 
   UsbDfuDevice(const UsbDfuDevice&) = delete;
@@ -64,15 +73,19 @@ class UsbDfuDevice {
   // transferred. Return the firmware image.
   std::vector<unsigned char> Upload() const;
 
-  // Issue a USB bus reset to the device. On success, the underlying device
+  // Switch device from DFU mode to APP mode. On success, the underlying device
   // handle becomes invalid.
-  bool Reset() const;
+  bool Attach() const;
 
   uint16_t bcd_device() const { return bcd_device_; }
   bool is_dfu_mode() const { return is_dfu_mode_; }
   uint8_t attributes() const { return attributes_; }
 
  private:
+  // Issue a USB bus reset to the device. On success, the underlying device
+  // handle becomes invalid.
+  bool Reset() const;
+
   // Send DFU_GETSTATUS request to device.
   base::Optional<DfuStatus> GetStatus() const;
 
@@ -95,6 +108,7 @@ class UsbDfuDevice {
   uint8_t attributes_;
   uint16_t detach_timeout_;
   uint16_t transfer_size_;
+  uint32_t quirks_;
 };
 
 // Wrapper over libusb context operations.
@@ -111,7 +125,9 @@ class UsbContext {
   UsbContext& operator=(UsbContext&&) = delete;
 
   // Create a UsbDfuDevice with matching VID:PID if present.
-  std::unique_ptr<UsbDfuDevice> CreateUsbDfuDevice(uint16_t vid, uint16_t pid);
+  std::unique_ptr<UsbDfuDevice> CreateUsbDfuDevice(uint16_t vid,
+                                                   uint16_t pid,
+                                                   uint32_t quirks);
 
  private:
   libusb_context* ctx_;

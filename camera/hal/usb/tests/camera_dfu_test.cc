@@ -18,6 +18,7 @@
 #include <base/logging.h>
 #include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/test/task_environment.h>
@@ -58,7 +59,8 @@ class CameraDfuTestEnvironment : public ::testing::Environment,
                            uint16_t fw1_version,
                            uint16_t fw2_version,
                            std::vector<unsigned char> fw1_blob,
-                           std::vector<unsigned char> fw2_blob)
+                           std::vector<unsigned char> fw2_blob,
+                           uint32_t quirks)
       : app_vid_(app_vid),
         app_pid_(app_pid),
         dfu_vid_(dfu_vid),
@@ -67,6 +69,7 @@ class CameraDfuTestEnvironment : public ::testing::Environment,
         fw2_version_(fw2_version),
         fw1_blob_(std::move(fw1_blob)),
         fw2_blob_(std::move(fw2_blob)),
+        quirks_(quirks),
         usb_context_(UsbContext::Create()),
         udev_watcher_(this, "usb"),
         udev_watcher_thread_("UdevWatcherThread") {}
@@ -117,6 +120,7 @@ class CameraDfuTestEnvironment : public ::testing::Environment,
                                     fw2_version_, fw2_blob_.size());
     LOG(INFO) << base::StringPrintf("Device version=%04x",
                                     app_dev->bcd_device());
+    LOG(INFO) << base::StringPrintf("Quirks=0x%x", quirks_);
   }
 
   void TearDown() override {
@@ -128,17 +132,17 @@ class CameraDfuTestEnvironment : public ::testing::Environment,
   }
 
   std::unique_ptr<UsbDfuDevice> GetAppModeDevice() {
-    return usb_context_->CreateUsbDfuDevice(app_vid_, app_pid_);
+    return usb_context_->CreateUsbDfuDevice(app_vid_, app_pid_, quirks_);
   }
 
   std::unique_ptr<UsbDfuDevice> GetDfuModeDevice() {
-    return usb_context_->CreateUsbDfuDevice(dfu_vid_, dfu_pid_);
+    return usb_context_->CreateUsbDfuDevice(dfu_vid_, dfu_pid_, quirks_);
   }
 
   bool PutDeviceIntoAppMode() {
     if (!WaitForDeviceIntoAppMode()) {
       auto dfu_dev = g_env->GetDfuModeDevice();
-      if (!dfu_dev || !dfu_dev->Reset() || !WaitForDeviceIntoAppMode()) {
+      if (!dfu_dev || !dfu_dev->Attach() || !WaitForDeviceIntoAppMode()) {
         return false;
       }
     }
@@ -228,6 +232,8 @@ class CameraDfuTestEnvironment : public ::testing::Environment,
   std::vector<unsigned char> fw1_blob_;
   std::vector<unsigned char> fw2_blob_;
 
+  uint32_t quirks_;
+
   std::unique_ptr<UsbContext> usb_context_;
 
   base::WaitableEvent app_dev_arrived_;
@@ -256,7 +262,7 @@ class CameraDfuTest : public ::testing::Test {
       auto dfu_dev = g_env->GetDfuModeDevice();
       ASSERT_NE(dfu_dev, nullptr);
       ASSERT_TRUE(dfu_dev->Download(firmware));
-      ASSERT_TRUE(dfu_dev->Reset());
+      ASSERT_TRUE(dfu_dev->Attach());
     }
     base::TimeDelta download_time = timer.Elapsed();
     LOG(INFO) << "Downloading firmware took " << download_time;
@@ -301,7 +307,7 @@ class CameraDfuTest : public ::testing::Test {
         auto dfu_dev = g_env->GetDfuModeDevice();
         ASSERT_NE(dfu_dev, nullptr);
         ASSERT_TRUE(dfu_dev->Download(firmware));
-        ASSERT_TRUE(dfu_dev->Reset());
+        ASSERT_TRUE(dfu_dev->Attach());
         ASSERT_TRUE(g_env->WaitForDeviceIntoAppMode());
       }
     }
@@ -328,7 +334,7 @@ class CameraDfuTest : public ::testing::Test {
       ASSERT_NE(dfu_dev, nullptr);
       // Transferring bad firmware could fail halfway.
       dfu_dev->Download(firmware);
-      ASSERT_TRUE(dfu_dev->Reset());
+      ASSERT_TRUE(dfu_dev->Attach());
     }
     ASSERT_TRUE(g_env->WaitForDeviceIntoAppMode());
     {
@@ -356,7 +362,7 @@ TEST_F(CameraDfuTest, SwitchModes) {
       auto dfu_dev = g_env->GetDfuModeDevice();
       ASSERT_NE(dfu_dev, nullptr);
       EXPECT_TRUE(dfu_dev->is_dfu_mode());
-      ASSERT_TRUE(dfu_dev->Reset());
+      ASSERT_TRUE(dfu_dev->Attach());
     }
     ASSERT_TRUE(g_env->WaitForDeviceIntoAppMode());
   }
@@ -381,7 +387,7 @@ TEST_F(CameraDfuTest, Upload) {
     auto dfu_dev = g_env->GetDfuModeDevice();
     ASSERT_NE(dfu_dev, nullptr);
     if (!(dfu_dev->attributes() & cros::kCanUpload)) {
-      GTEST_SKIP() << "Device doesn't support upload";
+      GTEST_SKIP() << "Device doesn't support upload or is ignored";
     }
     std::vector<unsigned char> firmware = dfu_dev->Upload();
     EXPECT_GT(firmware.size(), 0u);
@@ -450,6 +456,7 @@ int main(int argc, char** argv) {
   DEFINE_string(fw1_version, "", "Version (BCD) of testing firmware #1");
   DEFINE_string(fw2_path, "", "Path to the testing DFU firmware file #2");
   DEFINE_string(fw2_version, "", "Version (BCD) of testing firmware #2");
+  DEFINE_string(quirks, "", "Comma-separated device quirk strings");
 
   // Add a newline at the beginning of the usage text to separate the help
   // message from gtest.
@@ -491,10 +498,23 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  uint32_t quirks = 0;
+  for (const std::string& quirk_str : base::SplitString(
+           FLAGS_quirks, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL)) {
+    if (quirk_str == "detach-for-attach") {
+      quirks |= cros::kDfuQuirkDetachForAttach;
+    } else if (quirk_str == "ignore-upload") {
+      quirks |= cros::kDfuQuirkIgnoreUpload;
+    } else {
+      LOG(ERROR) << "Unknown quirk: " << quirk_str;
+      return 1;
+    }
+  }
+
   cros::tests::g_env = new cros::tests::CameraDfuTestEnvironment(
       app_vid, app_pid, dfu_vid, dfu_pid, fw1_version, fw2_version,
       std::vector<unsigned char>(fw1_blob.begin(), fw1_blob.end()),
-      std::vector<unsigned char>(fw2_blob.begin(), fw2_blob.end()));
+      std::vector<unsigned char>(fw2_blob.begin(), fw2_blob.end()), quirks);
   ::testing::AddGlobalTestEnvironment(cros::tests::g_env);
 
   return RUN_ALL_TESTS();

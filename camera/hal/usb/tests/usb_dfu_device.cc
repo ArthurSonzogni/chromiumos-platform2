@@ -95,7 +95,8 @@ UsbContext::~UsbContext() {
 }
 
 std::unique_ptr<UsbDfuDevice> UsbContext::CreateUsbDfuDevice(uint16_t vid,
-                                                             uint16_t pid) {
+                                                             uint16_t pid,
+                                                             uint32_t quirks) {
   libusb_device_handle* handle =
       libusb_open_device_with_vid_pid(ctx_, vid, pid);
   if (!handle) {
@@ -135,12 +136,13 @@ std::unique_ptr<UsbDfuDevice> UsbContext::CreateUsbDfuDevice(uint16_t vid,
   }
 
   handle_deleter.ReplaceClosure(base::DoNothing());
-  return std::make_unique<UsbDfuDevice>(handle, dev_desc, *intf_desc);
+  return std::make_unique<UsbDfuDevice>(handle, dev_desc, *intf_desc, quirks);
 }
 
 UsbDfuDevice::UsbDfuDevice(libusb_device_handle* handle,
                            const libusb_device_descriptor& dev_desc,
-                           const libusb_interface_descriptor& intf_desc)
+                           const libusb_interface_descriptor& intf_desc,
+                           uint32_t quirks)
     : handle_(handle),
       bcd_device_(dev_desc.bcdDevice),
       is_dfu_mode_(intf_desc.bInterfaceProtocol == 0x02),
@@ -148,7 +150,12 @@ UsbDfuDevice::UsbDfuDevice(libusb_device_handle* handle,
           base::strict_cast<uint16_t>(intf_desc.bInterfaceNumber)),
       attributes_(base::strict_cast<uint8_t>(intf_desc.extra[2])),
       detach_timeout_(ParseUint16(intf_desc.extra + 3)),
-      transfer_size_(ParseUint16(intf_desc.extra + 5)) {}
+      transfer_size_(ParseUint16(intf_desc.extra + 5)),
+      quirks_(quirks) {
+  if (quirks_ & kDfuQuirkIgnoreUpload) {
+    attributes_ &= ~kCanUpload;
+  }
+}
 
 UsbDfuDevice::~UsbDfuDevice() {
   int ret = libusb_release_interface(handle_,
@@ -294,6 +301,10 @@ std::vector<unsigned char> UsbDfuDevice::Upload() const {
   }
   DCHECK_EQ(firmware.size(), transferred_size);
   return firmware;
+}
+
+bool UsbDfuDevice::Attach() const {
+  return (quirks_ & kDfuQuirkDetachForAttach) ? Detach() : Reset();
 }
 
 bool UsbDfuDevice::Reset() const {
