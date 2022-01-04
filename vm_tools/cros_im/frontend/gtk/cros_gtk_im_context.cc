@@ -152,6 +152,7 @@ gboolean CrosGtkIMContext::FilterKeypress(GdkEventKey* event) {
   // The compositor sends us events directly so we generally don't need to do
   // anything here. It is possible for key events to race with input field
   // activation, in which case we will fail to send the key event to the IME.
+  // Also see the comment in KeySym().
   return false;
 }
 
@@ -240,12 +241,31 @@ void CrosGtkIMContext::BackendObserver::Commit(const std::string& text) {
 
 void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
                                                KeyState state) {
+  // This function is called for key events which are not consumed by the IME.
+  // It is not sufficient to have Chrome call wl_keyboard::key as under X11
+  // this may race with events sent via text_input.
+
+  // These key events are turned into either fake GDK key events or commit
+  // signals for key events corresponding to non-control characters (e.g. 'a').
+  // Keys like backspace, enter and tab (all control characters), when not
+  // consumed by an IME, are handled specifically by GTK widgets, while keys
+  // corresponding to regular characters are normally converted by the IM
+  // context.
+
+  uint32_t c = gdk_keyval_to_unicode(keysym);
+  if (c && !g_unichar_iscntrl(c)) {
+    // g_unichar_to_utf8() supposedly requires 6 bytes of space, despite UTF-8
+    // only needing 4 bytes.
+    char utf8[6];
+    size_t len = g_unichar_to_utf8(c, utf8);
+    Commit({utf8, len});
+    return;
+  }
+
   if (!context_->window_ || !context_->gtk_window_)
     return;
 
-  // TODO(timloh): This implementation is incomplete. Take a a look at GTK's
-  // gdkdevice-wayland.c when implementing it properly.
-
+  // TODO(timloh): Chrome appears to only send press events currently.
   GdkEvent* raw_event = gdk_event_new(
       state == KeyState::kPressed ? GDK_KEY_PRESS : GDK_KEY_RELEASE);
 
@@ -254,7 +274,6 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
   g_set_object(&event->window, context_->window_);
   event->send_event = true;
   event->time = GDK_CURRENT_TIME;
-  event->state = 0;
   event->keyval = keysym;
 
   // These are "deprecated and should never be used" so we leave them empty.
@@ -262,14 +281,17 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
   event->length = 0;
   event->string = nullptr;
 
+  // TODO(timloh): Support other control characters.
   if (keysym == GDK_KEY_BackSpace) {
     event->hardware_keycode = 22;
   } else {
     event->hardware_keycode = 0;
   }
-
   event->group = 0;
+
+  // TODO(timloh): Support modifier usage.
   event->is_modifier = false;
+  event->state = 0;
 
   bool result;
   g_signal_emit_by_name(context_->gtk_window_, "key-press-event", event,

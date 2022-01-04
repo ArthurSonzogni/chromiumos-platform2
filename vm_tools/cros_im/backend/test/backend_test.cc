@@ -93,6 +93,10 @@ void BackendTest::SendCommitString(const std::string& string) {
   actions_.emplace(std::make_unique<CommitStringEvent>(string));
 }
 
+void BackendTest::SendKeySym(int keysym) {
+  actions_.emplace(std::make_unique<KeySymEvent>(keysym));
+}
+
 void BackendTest::PostEventIfNeeded() {
   if (actions_.empty() || actions_.front().is_request_)
     return;

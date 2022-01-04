@@ -76,6 +76,7 @@ class BackendTest {
   void Ignore(Request::RequestType type);
   void Expect(Request::RequestType type);
   void SendCommitString(const std::string& string);
+  void SendKeySym(int keysym);
 
   // If the next action is an event, run it asynchronously.
   void PostEventIfNeeded();

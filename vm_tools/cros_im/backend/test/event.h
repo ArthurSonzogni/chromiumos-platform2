@@ -16,7 +16,7 @@ class Event {
  public:
   virtual ~Event() {}
   virtual void Run() const = 0;
-  virtual std::string ToString() const = 0;
+  virtual void Print(std::ostream& stream) const = 0;
 };
 
 std::ostream& operator<<(std::ostream& stream, const Event& event);
@@ -26,10 +26,21 @@ class CommitStringEvent : public Event {
   explicit CommitStringEvent(const std::string& text) : text_(text) {}
   ~CommitStringEvent() override;
   void Run() const override;
-  std::string ToString() const override;
+  void Print(std::ostream& stream) const override;
 
  private:
   std::string text_;
+};
+
+class KeySymEvent : public Event {
+ public:
+  explicit KeySymEvent(int keysym) : keysym_(keysym) {}
+  ~KeySymEvent() override;
+  void Run() const override;
+  void Print(std::ostream& stream) const override;
+
+ private:
+  int keysym_;
 };
 
 }  // namespace test

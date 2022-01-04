@@ -14,7 +14,9 @@ namespace cros_im {
 namespace test {
 
 std::ostream& operator<<(std::ostream& stream, const Event& event) {
-  stream << "[Event: " << event.ToString() << "]";
+  stream << "[Event: ";
+  event.Print(stream);
+  stream << "]";
   return stream;
 }
 
@@ -30,8 +32,26 @@ void CommitStringEvent::Run() const {
                                       /*serial=*/0, text_.c_str());
 }
 
-std::string CommitStringEvent::ToString() const {
-  return "commit_string(" + text_ + ")";
+void CommitStringEvent::Print(std::ostream& stream) const {
+  stream << "commit_string(" << text_ << ")";
+}
+
+KeySymEvent::~KeySymEvent() = default;
+
+void KeySymEvent::Run() const {
+  auto* text_input = GetTextInput();
+  if (!text_input) {
+    FAILED() << "Failed to find text_input object";
+    return;
+  }
+  bool pressed = true;
+  text_input->listener->keysym(text_input->listener_data, text_input,
+                               /*serial=*/0, /*time=*/0, keysym_,
+                               /*state=*/pressed, /*modifiers=*/0);
+}
+
+void KeySymEvent::Print(std::ostream& stream) const {
+  stream << "key_sym(" << keysym_ << ")";
 }
 
 }  // namespace test
