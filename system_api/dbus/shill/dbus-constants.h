@@ -39,7 +39,6 @@ const char kSetDNSProxyDOHProvidersFunction[] = "SetDNSProxyDOHProviders";
 const char kAddPasspointCredentialsFunction[] = "AddPasspointCredentials";
 
 // Service function names.
-const char kActivateCellularModemFunction[] = "ActivateCellularModem";
 const char kClearPropertiesFunction[] = "ClearProperties";
 const char kCompleteCellularActivationFunction[] = "CompleteCellularActivation";
 const char kConnectFunction[] = "Connect";

@@ -132,10 +132,6 @@ Methods		dict GetProperties()
 			Possible Errors: [service].Error.InvalidArguments
 					 [service].Error.NotSupported
 
-		void ActivateCellularModem(string carrier)
-
-			Deprecated, do not use.
-
 			Expected Result: [service].Error.NotSupported
 
 		void CompleteCellularActivation()

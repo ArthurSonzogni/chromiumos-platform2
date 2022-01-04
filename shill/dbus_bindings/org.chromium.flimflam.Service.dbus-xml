@@ -23,9 +23,6 @@
 		<method name="Connect"/>
 		<method name="Disconnect"/>
 		<method name="Remove"/>
-		<method name="ActivateCellularModem">
-			<arg type="s" direction="in"/>
-		</method>
 		<method name="CompleteCellularActivation"/>
 		<method name="GetLoadableProfileEntries">
 			<arg type="a{os}" direction="out"/>

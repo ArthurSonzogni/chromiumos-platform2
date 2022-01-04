@@ -161,15 +161,6 @@ bool ServiceDBusAdaptor::Remove(brillo::ErrorPtr* error) {
   return !e.ToChromeosError(error);
 }
 
-bool ServiceDBusAdaptor::ActivateCellularModem(brillo::ErrorPtr* error,
-                                               const std::string& carrier) {
-  SLOG(this, 2) << __func__;
-  Error e;
-  Error::PopulateAndLog(FROM_HERE, &e, Error::kNotSupported,
-                        "Service doesn't support cellular modem activation.");
-  return !e.ToChromeosError(error);
-}
-
 bool ServiceDBusAdaptor::CompleteCellularActivation(brillo::ErrorPtr* error) {
   SLOG(this, 2) << __func__;
   Error e;
