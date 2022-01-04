@@ -17,8 +17,8 @@ std::vector<uint8_t> HpsResultToSerializedBytes(HpsResult result) {
 
   std::vector<uint8_t> serialized;
   serialized.resize(result_proto.ByteSizeLong());
-  DCHECK(result_proto.SerializeToArray(serialized.data(),
-                                       static_cast<int>(serialized.size())));
+  result_proto.SerializeToArray(serialized.data(),
+                                static_cast<int>(serialized.size()));
   return serialized;
 }
 

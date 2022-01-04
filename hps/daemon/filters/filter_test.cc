@@ -36,8 +36,8 @@ TEST(HpsFilterTest, FilterWatcherTest) {
       base::BindLambdaForTesting([&](const std::vector<uint8_t>& bytes) {
         // Gets HpsResult from a serialized bytes of HpsResultProto.
         HpsResultProto result_proto;
-        DCHECK(result_proto.ParseFromArray(bytes.data(),
-                                           static_cast<int>(bytes.size())));
+        result_proto.ParseFromArray(bytes.data(),
+                                    static_cast<int>(bytes.size()));
         cb_result = result_proto.value();
       });
 
