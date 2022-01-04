@@ -135,7 +135,6 @@ proto_library("system_api-cryptohome-protos") {
     "${proto_in_dir}/fido.proto",
     "${proto_in_dir}/key.proto",
     "${proto_in_dir}/rpc.proto",
-    "${proto_in_dir}/signed_secret.proto",
   ]
   standalone = true
 

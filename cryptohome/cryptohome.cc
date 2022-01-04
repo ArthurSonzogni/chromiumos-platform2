@@ -38,7 +38,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <cryptohome/proto_bindings/key.pb.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
-#include <cryptohome/proto_bindings/signed_secret.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <google/protobuf/message_lite.h>

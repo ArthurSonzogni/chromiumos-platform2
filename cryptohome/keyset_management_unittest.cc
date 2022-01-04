@@ -18,7 +18,6 @@
 #include <brillo/cryptohome.h>
 #include <brillo/data_encoding.h>
 #include <brillo/secure_blob.h>
-#include <cryptohome/proto_bindings/signed_secret.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -184,42 +183,6 @@ class KeysetManagementTest : public ::testing::Test {
     key_data.set_label(kPinLabel);
     key_data.mutable_policy()->set_low_entropy_credential(true);
     return key_data;
-  }
-
-  Credentials CredsForUpdate(const brillo::SecureBlob& passkey) {
-    Credentials credentials(users_[0].name, passkey);
-    KeyData key_data;
-    key_data.set_label(kAltPasswordLabel);
-    credentials.set_key_data(key_data);
-    return credentials;
-  }
-
-  Key KeyForUpdate(const Credentials& creds, int revision) {
-    Key key;
-    std::string secret_str;
-    secret_str.resize(creds.passkey().size());
-    secret_str.assign(reinterpret_cast<const char*>(creds.passkey().data()),
-                      creds.passkey().size());
-    key.set_secret(secret_str);
-    key.mutable_data()->set_label(creds.key_data().label());
-    key.mutable_data()->set_revision(revision);
-
-    return key;
-  }
-
-  std::string SignatureForUpdate(const Key& key,
-                                 const std::string& signing_key) {
-    std::string changes_str;
-    ac::chrome::managedaccounts::account::Secret secret;
-    secret.set_revision(key.data().revision());
-    secret.set_secret(key.secret());
-    secret.SerializeToString(&changes_str);
-
-    brillo::SecureBlob hmac_key(signing_key);
-    brillo::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
-    brillo::SecureBlob hmac = HmacSha256(hmac_key, hmac_data);
-
-    return hmac.to_string();
   }
 
   void KeysetSetUpWithKeyData(const KeyData& key_data) {

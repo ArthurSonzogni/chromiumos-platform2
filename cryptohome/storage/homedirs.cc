@@ -26,7 +26,6 @@
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
 #include <cryptohome/proto_bindings/key.pb.h>
-#include <cryptohome/proto_bindings/signed_secret.pb.h>
 
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
