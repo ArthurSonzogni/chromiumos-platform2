@@ -32,6 +32,7 @@ getpid: 1
 getpriority: 1
 getrandom: 1
 getsockname: 1
+getsockopt: 1
 gettid: 1
 gettimeofday: 1
 getuid: 1

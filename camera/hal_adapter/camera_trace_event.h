@@ -7,110 +7,63 @@
 #ifndef CAMERA_HAL_ADAPTER_CAMERA_TRACE_EVENT_H_
 #define CAMERA_HAL_ADAPTER_CAMERA_TRACE_EVENT_H_
 
-#define TRACE_CAMERA_COMBINE_NAME1(X, Y) X##Y
-#define TRACE_CAMERA_COMBINE_NAME(X, Y) TRACE_CAMERA_COMBINE_NAME1(X, Y)
-
-#define TRACE_CAMERA_ENABLE(enabled) \
-  cros::tracer::EventTracer::GetInstance()->SetEnabled(enabled)
-#define TRACE_CAMERA_SCOPED(...)                       \
-  cros::tracer::ScopedTrace TRACE_CAMERA_COMBINE_NAME( \
-      scoped_trace_, __LINE__)(__FUNCTION__, ##__VA_ARGS__)
-#define TRACE_CAMERA_INSTANT(...) \
-  (cros::tracer::ScopedTrace(__FUNCTION__, ##__VA_ARGS__))
-#define TRACE_CAMERA_BEGIN(name, ...)                   \
-  cros::tracer::EventTracer::GetInstance()->BeginTrace( \
-      name, cros::tracer::ArgsString(__VA_ARGS__))
-#define TRACE_CAMERA_END(name, ...)                   \
-  cros::tracer::EventTracer::GetInstance()->EndTrace( \
-      name, cros::tracer::ArgsString(__VA_ARGS__))
-#define TRACE_CAMERA_ASYNC_BEGIN(name, cookie, ...)          \
-  cros::tracer::EventTracer::GetInstance()->AsyncBeginTrace( \
-      name, cookie, cros::tracer::ArgsString(__VA_ARGS__))
-#define TRACE_CAMERA_ASYNC_END(name, cookie, ...)          \
-  cros::tracer::EventTracer::GetInstance()->AsyncEndTrace( \
-      name, cookie, cros::tracer::ArgsString(__VA_ARGS__))
-#define TRACE_CAMERA_COUNTER(name, value) \
-  cros::tracer::EventTracer::GetInstance()->Counter(name, value)
-
-#include <set>
-#include <sstream>
 #include <string>
 
-#include <base/compiler_specific.h>
-#include <base/files/file.h>
-#include <base/strings/string_piece.h>
-#include <base/synchronization/lock.h>
+#include <perfetto/perfetto.h>
+
+#include <base/strings/stringprintf.h>
 
 namespace cros {
 
-namespace tracer {
+constexpr char kCameraTraceCategory[] = "cros_camera";
 
-class EventTracer {
- public:
-  EventTracer();
+constexpr char kCameraTraceKeyFrameNumber[] = "frame_number";
 
-  // Not copyable or movable
-  EventTracer(const EventTracer&) = delete;
-  EventTracer& operator=(const EventTracer&) = delete;
+constexpr char kCameraTraceKeyBufferId[] = "buffer_id";
 
-  static EventTracer* GetInstance();
-  void SetEnabled(bool enabled);
-  void BeginTrace(base::StringPiece name, base::StringPiece args);
-  void EndTrace(base::StringPiece name, base::StringPiece args);
-  void AsyncBeginTrace(base::StringPiece name,
-                       int cookie,
-                       base::StringPiece args);
-  void AsyncEndTrace(base::StringPiece name,
-                     int cookie,
-                     base::StringPiece args);
-  void Counter(base::StringPiece name, int value);
+constexpr char kCameraTraceKeyCameraId[] = "camera_id";
 
- private:
-  void TracePrintf(const char* format, ...) PRINTF_FORMAT(2, 3);
+constexpr char kCameraTraceKeyStreamId[] = "stream_id";
 
-  bool tracing_enabled_ = false;
-  std::set<pid_t> begun_tid_;
-  base::File trace_file_;
-  base::Lock event_tracer_lock_;
+constexpr char kCameraTraceKeyWidth[] = "width";
+
+constexpr char kCameraTraceKeyHeight[] = "height";
+
+constexpr char kCameraTraceKeyFormat[] = "format";
+
+enum class CameraTraceEvent {
+  kCapture,
 };
 
-inline void AppendArgsString(std::stringstream& args_buf) {}
+#define TRACE_CAMERA_COMBINE_NAME(X, Y) X##Y
+#define TRACE_NAME TRACE_CAMERA_COMBINE_NAME(trace_, __LINE__)
 
-template <typename ArgName, typename ArgVal, typename... Rest>
-void AppendArgsString(std::stringstream& args_buf,
-                      ArgName arg_name,
-                      ArgVal arg_val,
-                      Rest... rest) {
-  args_buf << arg_name << "=" << arg_val << ";";
-  AppendArgsString(args_buf, rest...);
-}
+#define TRACE_CAMERA_SCOPED(...)                            \
+  static const std::string trace_name =                     \
+      base::StringPrintf("%s_L%d", __FUNCTION__, __LINE__); \
+  TRACE_EVENT(kCameraTraceCategory,                         \
+              perfetto::StaticString(trace_name.c_str()), ##__VA_ARGS__);
 
-template <typename... Rest>
-std::string ArgsString(Rest... rest) {
-  std::stringstream args_buf;
-  AppendArgsString(args_buf, rest...);
-  return args_buf.str();
-}
+#define TRACE_CAMERA_EVENT_BEGIN(event, track, ...) \
+  TRACE_EVENT_BEGIN(kCameraTraceCategory, event, track, ##__VA_ARGS__);
 
-class ScopedTrace {
- public:
-  explicit ScopedTrace(base::StringPiece name) : name_(name) {
-    EventTracer::GetInstance()->BeginTrace(name_, "");
-  }
+#define TRACE_CAMERA_EVENT_END(track) \
+  TRACE_EVENT_END(kCameraTraceCategory, track);
 
-  template <typename... Rest>
-  ScopedTrace(base::StringPiece name, Rest... rest) : name_(name) {
-    EventTracer::GetInstance()->BeginTrace(name_, ArgsString(rest...));
-  }
+void InitializeCameraTrace();
 
-  ~ScopedTrace() { EventTracer::GetInstance()->EndTrace(name_, ""); }
+// Generates unique track by given |event|, |primary_id| and |secondary_id|. For
+// |secondary_id|, only the last 16 bits will be used.
+perfetto::Track GetTraceTrack(CameraTraceEvent event,
+                              int primary_id = 0,
+                              int secondary_id = 0);
 
- private:
-  base::StringPiece name_;
-};
-
-}  // namespace tracer
+perfetto::StaticString ToString(CameraTraceEvent event);
 
 }  // namespace cros
+
+PERFETTO_DEFINE_CATEGORIES(
+    perfetto::Category(cros::kCameraTraceCategory)
+        .SetDescription("Events from CrOS Camera Service"));
 
 #endif  // CAMERA_HAL_ADAPTER_CAMERA_TRACE_EVENT_H_

@@ -48,6 +48,7 @@ CameraHalServerImpl::CameraHalServerImpl()
           CameraMojoChannelManagerToken::CreateInstance())),
       ipc_bridge_(new IPCBridge(this, mojo_manager_.get())) {
   VLOGF_ENTER();
+  InitializeCameraTrace();
 }
 
 CameraHalServerImpl::~CameraHalServerImpl() {
@@ -135,10 +136,11 @@ void CameraHalServerImpl::IPCBridge::CreateChannel(
 }
 
 void CameraHalServerImpl::IPCBridge::SetTracingEnabled(bool enabled) {
-  VLOGF_ENTER();
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-
-  TRACE_CAMERA_ENABLE(enabled);
+  // Since we have migrated to use Perfetto SDK for camera tracing, the tracing
+  // overhead is neglectable if the interested categories are not enabled so we
+  // don't need to enable/disable it ourselves.
+  // TODO(b/212231270): Remove this function once the call site (Chrome) is
+  // removed.
 }
 
 void CameraHalServerImpl::IPCBridge::NotifyCameraActivityChange(

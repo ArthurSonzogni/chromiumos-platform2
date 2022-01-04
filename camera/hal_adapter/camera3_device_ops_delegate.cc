@@ -43,8 +43,10 @@ void Camera3DeviceOpsDelegate::ConfigureStreams(
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   for (const auto& stream : config->streams) {
-    TRACE_CAMERA_SCOPED("stream_id", stream->id, "width", stream->width,
-                        "height", stream->height, "format", stream->format);
+    TRACE_CAMERA_SCOPED(kCameraTraceKeyStreamId, stream->id,
+                        kCameraTraceKeyWidth, stream->width,
+                        kCameraTraceKeyHeight, stream->height,
+                        kCameraTraceKeyFormat, stream->format);
   }
   mojom::Camera3StreamConfigurationPtr updated_config;
   int32_t result = camera_device_adapter_->ConfigureStreams(std::move(config),
@@ -68,12 +70,13 @@ void Camera3DeviceOpsDelegate::ProcessCaptureRequest(
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   for (const auto& output_buffer : request->output_buffers) {
-    TRACE_CAMERA_ASYNC_BEGIN(base::StringPrintf("frame capture stream %" PRIu64,
-                                                output_buffer->stream_id),
-                             request->frame_number, "frame_number",
-                             request->frame_number, "stream_id",
-                             output_buffer->stream_id, "buffer_id",
-                             output_buffer->buffer_id);
+    TRACE_CAMERA_EVENT_BEGIN(
+        ToString(CameraTraceEvent::kCapture),
+        GetTraceTrack(CameraTraceEvent::kCapture, request->frame_number,
+                      output_buffer->stream_id),
+        kCameraTraceKeyFrameNumber, request->frame_number,
+        kCameraTraceKeyStreamId, output_buffer->stream_id,
+        kCameraTraceKeyBufferId, output_buffer->buffer_id);
   }
   std::move(callback).Run(
       camera_device_adapter_->ProcessCaptureRequest(std::move(request)));
@@ -125,8 +128,10 @@ void Camera3DeviceOpsDelegate::ConfigureStreamsAndGetAllocatedBuffers(
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   for (const auto& stream : config->streams) {
-    TRACE_CAMERA_SCOPED("stream_id", stream->id, "width", stream->width,
-                        "height", stream->height, "format", stream->format);
+    TRACE_CAMERA_SCOPED(kCameraTraceKeyStreamId, stream->id,
+                        kCameraTraceKeyWidth, stream->width,
+                        kCameraTraceKeyHeight, stream->height,
+                        kCameraTraceKeyFormat, stream->format);
   }
   mojom::Camera3StreamConfigurationPtr updated_config;
   CameraDeviceAdapter::AllocatedBuffers allocated_buffers;

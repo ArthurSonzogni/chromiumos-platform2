@@ -44,6 +44,7 @@ getresgid: 1
 getresuid: 1
 getrlimit: 1
 getsockname: 1
+getsockopt: 1
 gettid: 1
 gettimeofday: 1
 getuid: 1

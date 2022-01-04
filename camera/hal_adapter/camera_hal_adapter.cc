@@ -100,7 +100,7 @@ CameraHalAdapter::~CameraHalAdapter() {
 
 bool CameraHalAdapter::Start() {
   VLOGF_ENTER();
-  TRACE_CAMERA_INSTANT();
+  TRACE_CAMERA_SCOPED();
 
   if (!camera_module_thread_.Start()) {
     LOGF(ERROR) << "Failed to start CameraModuleThread";
@@ -144,7 +144,7 @@ int32_t CameraHalAdapter::OpenDevice(
     mojom::CameraClientType camera_client_type) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_CAMERA_SCOPED("camera_id", camera_id);
+  TRACE_CAMERA_SCOPED(kCameraTraceKeyCameraId, camera_id);
 
   session_timer_map_.emplace(std::piecewise_construct,
                              std::forward_as_tuple(camera_id),
@@ -273,7 +273,7 @@ int32_t CameraHalAdapter::GetCameraInfo(
     mojom::CameraClientType camera_client_type) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_CAMERA_SCOPED("camera_id", camera_id);
+  TRACE_CAMERA_SCOPED(kCameraTraceKeyCameraId, camera_id);
 
   camera_module_t* camera_module;
   int internal_camera_id;
@@ -835,7 +835,7 @@ void CameraHalAdapter::CloseDevice(int32_t camera_id,
                                    mojom::CameraClientType camera_client_type) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_CAMERA_SCOPED("camera_id", camera_id);
+  TRACE_CAMERA_SCOPED(kCameraTraceKeyCameraId, camera_id);
   LOGF(INFO) << camera_client_type << ", camera_id = " << camera_id;
   if (device_adapters_.find(camera_id) == device_adapters_.end()) {
     LOGF(ERROR) << "Failed to close camera device " << camera_id
