@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_LIBDRM_UTIL_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_LIBDRM_UTIL_IMPL_H_
 
+#include <memory>
+#include <string>
 #include <vector>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
@@ -25,6 +27,10 @@ struct DrmModeConnectorDeleter {
   }
 };
 
+struct DrmModePropertyDeleter {
+  void operator()(drmModePropertyRes* prop) { drmModeFreeProperty(prop); }
+};
+
 class LibdrmUtilImpl : public LibdrmUtil {
  public:
   LibdrmUtilImpl();
@@ -33,11 +39,25 @@ class LibdrmUtilImpl : public LibdrmUtil {
   ~LibdrmUtilImpl() override;
 
   bool Initialize() override;
+  uint32_t GetEmbeddedDisplayConnectorID() override;
+  void FillPrivacyScreenInfo(const uint32_t connector_id,
+                             bool* privacy_screen_supported,
+                             bool* privacy_screen_enabled) override;
 
  private:
   using ScopedDrmModeResPtr = std::unique_ptr<drmModeRes, DrmModeResDeleter>;
   using ScopedDrmModeConnectorPtr =
       std::unique_ptr<drmModeConnector, DrmModeConnectorDeleter>;
+  using ScopedDrmPropertyPtr =
+      std::unique_ptr<drmModePropertyRes, DrmModePropertyDeleter>;
+
+ private:
+  // This function iterates all the properties in |connector| and find the
+  // property with |name|. When it finds it, it stores the property into |prop|
+  // and return its index. If it fails to find it, -1 is returned.
+  int GetDrmProperty(const ScopedDrmModeConnectorPtr& connector,
+                     const std::string& name,
+                     ScopedDrmPropertyPtr* prop);
 
   base::File device_file;
   uint32_t edp_connector_id;

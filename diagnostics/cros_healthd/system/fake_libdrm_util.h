@@ -17,6 +17,10 @@ class FakeLibdrmUtil : public LibdrmUtil {
   ~FakeLibdrmUtil() override = default;
 
   bool Initialize() override;
+  uint32_t GetEmbeddedDisplayConnectorID() override;
+  void FillPrivacyScreenInfo(const uint32_t connector_id,
+                             bool* privacy_screen_supported,
+                             bool* privacy_screen_enabled) override;
 };
 
 }  // namespace diagnostics

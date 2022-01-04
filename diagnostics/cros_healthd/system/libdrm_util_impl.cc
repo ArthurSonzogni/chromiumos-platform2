@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/files/file_enumerator.h>
@@ -57,6 +58,47 @@ bool LibdrmUtilImpl::Initialize() {
   }
 
   return true;
+}
+
+uint32_t LibdrmUtilImpl::GetEmbeddedDisplayConnectorID() {
+  return edp_connector_id;
+}
+
+void LibdrmUtilImpl::FillPrivacyScreenInfo(const uint32_t connector_id,
+                                           bool* privacy_screen_supported,
+                                           bool* privacy_screen_enabled) {
+  ScopedDrmModeConnectorPtr connector(
+      drmModeGetConnector(device_file.GetPlatformFile(), connector_id));
+  if (!connector)
+    return;
+
+  ScopedDrmPropertyPtr privacy_screen_prop;
+  int idx = GetDrmProperty(connector, "privacy-screen", &privacy_screen_prop);
+  if (idx >= 0) {
+    *privacy_screen_supported = true;
+    *privacy_screen_enabled = connector->prop_values[idx] == 1;
+  }
+}
+
+int LibdrmUtilImpl::GetDrmProperty(const ScopedDrmModeConnectorPtr& connector,
+                                   const std::string& name,
+                                   ScopedDrmPropertyPtr* prop) {
+  if (!connector)
+    return -1;
+
+  for (int i = 0; i < connector->count_props; ++i) {
+    ScopedDrmPropertyPtr tmp(
+        drmModeGetProperty(device_file.GetPlatformFile(), connector->props[i]));
+    if (!tmp)
+      continue;
+
+    if (name == tmp->name) {
+      *prop = std::move(tmp);
+      return i;
+    }
+  }
+
+  return -1;
 }
 
 }  // namespace diagnostics
