@@ -1676,6 +1676,22 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
     GetDelayedDevices().insert(kTestDeviceIndex);
   }
 
+  void AddDeviceWithNoIFLAAddress(Technology delayed_technology) {
+    auto message = std::make_unique<RTNLMessage>(
+        RTNLMessage::kTypeLink, RTNLMessage::kModeAdd, 0, 0, 0,
+        kTestDeviceIndex, IPAddress::kFamilyIPv4);
+    message->SetAttribute(static_cast<uint16_t>(IFLA_IFNAME),
+                          ByteString(std::string(kTestDeviceName),
+                                     /*copy_terminator=*/true));
+
+    EXPECT_CALL(test_device_info_, GetDeviceTechnology(kTestDeviceName, _))
+        .WillOnce(Return(delayed_technology));
+    // When message does not have IFLA_ADDRESS and technology is either WiFi
+    // or Ethernet, the AddLinkMsgHandler function does not create device
+    EXPECT_CALL(test_device_info_, CreateDevice(_, _, _, _)).Times(0);
+    test_device_info_.AddLinkMsgHandler(*message);
+  }
+
   void EnsureDelayedDevice(Technology reported_device_technology,
                            Technology created_device_technology) {
     EXPECT_CALL(test_device_info_, GetDeviceTechnology(_, _))
@@ -1687,6 +1703,8 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
     DelayedDeviceCreationTask();
     EXPECT_TRUE(GetDelayedDevices().empty());
   }
+
+  void EnsureNoDelayedDevice() { EXPECT_TRUE(GetDelayedDevices().empty()); }
 
 #if !defined(DISABLE_WIFI)
   void TriggerOnWiFiInterfaceInfoReceived(const Nl80211Message& message) {
@@ -1734,6 +1752,16 @@ TEST_F(DeviceInfoDelayedCreationTest, NoDeviceSymlinkIgnored) {
 TEST_F(DeviceInfoDelayedCreationTest, GuestInterface) {
   AddDelayedDevice(Technology::kNoDeviceSymlink);
   EnsureDelayedDevice(Technology::kGuestInterface, Technology::kGuestInterface);
+}
+
+TEST_F(DeviceInfoDelayedCreationTest, WiFiInterface) {
+  AddDeviceWithNoIFLAAddress(Technology::kWifi);
+  EnsureNoDelayedDevice();
+}
+
+TEST_F(DeviceInfoDelayedCreationTest, EthernetInterface) {
+  AddDeviceWithNoIFLAAddress(Technology::kEthernet);
+  EnsureNoDelayedDevice();
 }
 
 #if !defined(DISABLE_WIFI)

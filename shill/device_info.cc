@@ -767,13 +767,10 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
       infos_[dev_index].mac_address = msg.GetAttribute(IFLA_ADDRESS);
       address = infos_[dev_index].mac_address.HexEncode();
       SLOG(this, 2) << "link index " << dev_index << " address " << address;
-    } else if (technology != Technology::kCellular &&
-               technology != Technology::kTunnel &&
-               technology != Technology::kPPP &&
-               technology != Technology::kNoDeviceSymlink &&
-               technology != Technology::kGuestInterface) {
-      LOG(ERROR) << "Add Link message for link '" << link_name
-                 << "' does not have IFLA_ADDRESS!";
+    } else if (technology == Technology::kWifi ||
+               technology == Technology::kEthernet) {
+      LOG(ERROR) << "Add link message does not have IFLA_ADDRESS, link: "
+                 << link_name << ", Technology: " << technology.GetName();
       return;
     }
     metrics_->RegisterDevice(dev_index, technology);
