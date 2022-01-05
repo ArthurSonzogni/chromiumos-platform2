@@ -132,6 +132,8 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
 }
 
 bool DoRecoveryCryptoCreateRecoveryRequestAction(
+    const FilePath& gaia_rapt_in_file_path,
+    const FilePath& epoch_response_in_file_path,
     const FilePath& channel_pub_key_in_file_path,
     const FilePath& channel_priv_key_in_file_path,
     const FilePath& serialized_hsm_payload_in_file_path,
@@ -163,11 +165,30 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
   }
 
   CryptoRecoveryEpochResponse epoch_response;
-  CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochResponse(&epoch_response));
+  if (epoch_response_in_file_path.empty()) {
+    CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochResponse(&epoch_response));
+  } else {
+    SecureBlob epoch_response_bytes;
+    if (!ReadHexFileToSecureBlobLogged(epoch_response_in_file_path,
+                                       &epoch_response_bytes)) {
+      return false;
+    }
+    if (!epoch_response.ParseFromString(epoch_response_bytes.to_string())) {
+      LOG(ERROR) << "Failed to parse epoch response.";
+      return false;
+    }
+  }
 
+  RequestMetadata request_metadata;
+  if (!gaia_rapt_in_file_path.empty()) {
+    SecureBlob gaia_rapt;
+    if (!ReadHexFileToSecureBlobLogged(gaia_rapt_in_file_path, &gaia_rapt)) {
+      return false;
+    }
+    request_metadata.auth_claim.gaia_reauth_proof_token = gaia_rapt.to_string();
+  }
   brillo::SecureBlob ephemeral_pub_key;
   CryptoRecoveryRpcRequest recovery_request;
-  RequestMetadata request_metadata;
   if (!recovery_crypto->GenerateRecoveryRequest(
           hsm_payload, request_metadata, epoch_response, channel_priv_key,
           channel_pub_key, &recovery_request, &ephemeral_pub_key)) {
@@ -346,6 +367,14 @@ int main(int argc, char* argv[]) {
   DEFINE_string(
       recovery_secret_out_file, "",
       "Path to the file where to store the Cryptohome Recovery secret.");
+  DEFINE_string(
+      epoch_response_in_file, "",
+      "Path to the file containing the hex-encoded Cryptohome Recovery "
+      "epoch response proto.");
+  DEFINE_string(
+      gaia_rapt_in_file, "",
+      "Path to the file containing the hex-encoded Gaia RAPT to be added to "
+      "RequestMetaData.");
   brillo::FlagHelper::Init(argc, argv,
                            "cryptohome-test-tool - Test tool for cryptohome.");
 
@@ -382,6 +411,8 @@ int main(int argc, char* argv[]) {
         CheckMandatoryFlag("recovery_request_out_file",
                            FLAGS_recovery_request_out_file)) {
       success = DoRecoveryCryptoCreateRecoveryRequestAction(
+          FilePath(FLAGS_gaia_rapt_in_file),
+          FilePath(FLAGS_epoch_response_in_file),
           FilePath(FLAGS_channel_pub_key_in_file),
           FilePath(FLAGS_channel_priv_key_in_file),
           FilePath(FLAGS_serialized_hsm_payload_in_file),
