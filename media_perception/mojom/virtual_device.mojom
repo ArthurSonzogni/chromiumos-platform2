@@ -4,12 +4,13 @@
 
 module video_capture.mojom;
 
-import "mojom/video_capture_buffer.mojom";
-import "mojom/video_capture_types.mojom";
-import "mojom/producer.mojom";
-import "mojom/scoped_access_permission.mojom";
-import "mojom/geometry.mojom";
-import "mojom/buffer_types.mojom";
+import "media_perception/mojom/video_capture_buffer.mojom";
+import "media_perception/mojom/video_capture_types.mojom";
+import "media_perception/mojom/producer.mojom";
+import "media_perception/mojom/scoped_access_permission.mojom";
+import "media_perception/mojom/video_frame_handler.mojom";
+import "media_perception/mojom/geometry.mojom";
+import "media_perception/mojom/buffer_types.mojom";
 
 // Interface for a producer to feed video frames into a virtual
 // device. These frames will appear to the consumer of the device

@@ -14,9 +14,9 @@
 #include <base/time/time.h>
 #include <base/memory/writable_shared_memory_region.h>
 
-#include "mojom/producer.mojom.h"
-#include "mojom/video_source_provider.mojom.h"
-#include "mojom/virtual_device.mojom.h"
+#include "media_perception/mojom/producer.mojom.h"
+#include "media_perception/mojom/video_source_provider.mojom.h"
+#include "media_perception/mojom/virtual_device.mojom.h"
 
 namespace mri {
 

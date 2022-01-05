@@ -4,15 +4,15 @@
 
 module media.mojom;
 
-import "mojom/mailbox_holder.mojom";
-import "mojom/vulkan_ycbcr_info.mojom";
-import "mojom/time.mojom";
-import "mojom/values.mojom";
-import "mojom/unguessable_token.mojom";
-import "mojom/geometry.mojom";
-import "mojom/buffer_types.mojom";
-import "mojom/color_space.mojom";
-import "mojom/hdr_metadata.mojom";
+import "media_perception/mojom/mailbox_holder.mojom";
+import "media_perception/mojom/vulkan_ycbcr_info.mojom";
+import "media_perception/mojom/time.mojom";
+import "media_perception/mojom/values.mojom";
+import "media_perception/mojom/unguessable_token.mojom";
+import "media_perception/mojom/geometry.mojom";
+import "media_perception/mojom/buffer_types.mojom";
+import "media_perception/mojom/color_space.mojom";
+import "media_perception/mojom/hdr_metadata.mojom";
 
 // See media/base/audio_codecs.h for descriptions.
 [Native]

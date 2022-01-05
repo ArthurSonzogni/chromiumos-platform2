@@ -4,9 +4,9 @@
 
 module video_capture.mojom;
 
-import "mojom/image_capture.mojom";
-import "mojom/video_capture_types.mojom";
-import "mojom/video_frame_handler.mojom";
+import "media_perception/mojom/image_capture.mojom";
+import "media_perception/mojom/video_capture_types.mojom";
+import "media_perception/mojom/video_frame_handler.mojom";
 
 enum CreatePushSubscriptionResultCode {
   kCreatedWithRequestedSettings,

@@ -4,7 +4,7 @@
 
 module gfx.mojom;
 
-import "mojom/native_handle_types.mojom";
+import "media_perception/mojom/native_handle_types.mojom";
 
 // gfx::BufferFormat
 enum BufferFormat {

@@ -13,9 +13,9 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 
 #include "media_perception/device_management.pb.h"
+#include "media_perception/mojom/device_factory.mojom.h"
+#include "media_perception/mojom/video_frame_handler.mojom.h"
 #include "media_perception/video_capture_service_client.h"
-#include "mojom/device_factory.mojom.h"
-#include "mojom/video_frame_handler.mojom.h"
 
 namespace mri {
 

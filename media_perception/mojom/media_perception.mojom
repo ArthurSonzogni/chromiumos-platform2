@@ -6,15 +6,15 @@
 
 module chromeos.media_perception.mojom;
 
-import "mojom/appearances.mojom";
-import "mojom/device_management.mojom";
-import "mojom/frame_perception.mojom";
-import "mojom/hotword_detection.mojom";
-import "mojom/occupancy_trigger.mojom";
-import "mojom/pipeline.mojom";
-import "mojom/presence_perception.mojom";
-import "mojom/one_touch_autozoom.mojom";
-import "mojom/software_autozoom.mojom";
+import "media_perception/mojom/appearances.mojom";
+import "media_perception/mojom/device_management.mojom";
+import "media_perception/mojom/frame_perception.mojom";
+import "media_perception/mojom/hotword_detection.mojom";
+import "media_perception/mojom/occupancy_trigger.mojom";
+import "media_perception/mojom/pipeline.mojom";
+import "media_perception/mojom/presence_perception.mojom";
+import "media_perception/mojom/one_touch_autozoom.mojom";
+import "media_perception/mojom/software_autozoom.mojom";
 
 struct SuccessStatus {
   // Whether or not the action succeeded.

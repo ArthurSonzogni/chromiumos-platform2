@@ -4,7 +4,7 @@
 
 module gfx.mojom;
 
-import "mojom/geometry.mojom";
+import "media_perception/mojom/geometry.mojom";
 
 // This defines a mojo transport format for gfx::HDRMetadata.
 // See ui/gl/hdr_metadata.h for description.

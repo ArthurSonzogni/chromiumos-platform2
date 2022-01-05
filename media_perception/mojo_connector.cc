@@ -14,8 +14,8 @@
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/system/invitation.h>
 
+#include "media_perception/mojom/video_capture_types.mojom.h"
 #include "media_perception/serialized_proto.h"
-#include "mojom/video_capture_types.mojom.h"
 
 namespace mri {
 

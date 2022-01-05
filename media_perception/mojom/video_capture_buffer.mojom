@@ -4,14 +4,14 @@
 
 module media.mojom;
 
-import "mojom/mailbox_holder.mojom";
-import "mojom/video_capture_types.mojom";
-import "mojom/media_types.mojom";
-import "mojom/shared_memory.mojom";
-import "mojom/time.mojom";
-import "mojom/geometry.mojom";
-import "mojom/buffer_types.mojom";
-import "mojom/color_space.mojom";
+import "media_perception/mojom/mailbox_holder.mojom";
+import "media_perception/mojom/video_capture_types.mojom";
+import "media_perception/mojom/media_types.mojom";
+import "media_perception/mojom/shared_memory.mojom";
+import "media_perception/mojom/time.mojom";
+import "media_perception/mojom/geometry.mojom";
+import "media_perception/mojom/buffer_types.mojom";
+import "media_perception/mojom/color_space.mojom";
 
 struct VideoFrameInfo{
   mojo_base.mojom.TimeDelta timestamp;

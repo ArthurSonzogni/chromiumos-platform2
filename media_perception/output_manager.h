@@ -17,17 +17,17 @@
 #include <base/threading/thread.h>
 #include "base/memory/weak_ptr.h"
 #include "media_perception/media_perception_mojom.pb.h"
+#include "media_perception/mojom/appearances.mojom.h"
+#include "media_perception/mojom/frame_perception.mojom.h"
+#include "media_perception/mojom/hotword_detection.mojom.h"
+#include "media_perception/mojom/media_perception.mojom.h"
+#include "media_perception/mojom/occupancy_trigger.mojom.h"
+#include "media_perception/mojom/one_touch_autozoom.mojom.h"
+#include "media_perception/mojom/presence_perception.mojom.h"
+#include "media_perception/mojom/software_autozoom.mojom.h"
 #include "media_perception/perception_interface.pb.h"
 #include "media_perception/rtanalytics.h"
 #include "mojo/public/cpp/bindings/remote.h"
-#include "mojom/appearances.mojom.h"
-#include "mojom/frame_perception.mojom.h"
-#include "mojom/hotword_detection.mojom.h"
-#include "mojom/media_perception.mojom.h"
-#include "mojom/occupancy_trigger.mojom.h"
-#include "mojom/one_touch_autozoom.mojom.h"
-#include "mojom/presence_perception.mojom.h"
-#include "mojom/software_autozoom.mojom.h"
 
 namespace mri {
 

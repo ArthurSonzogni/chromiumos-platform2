@@ -4,9 +4,9 @@
 
 module video_capture.mojom;
 
-import "mojom/video_capture_buffer.mojom";
-import "mojom/video_capture_types.mojom";
-import "mojom/scoped_access_permission.mojom";
+import "media_perception/mojom/video_capture_buffer.mojom";
+import "media_perception/mojom/video_capture_types.mojom";
+import "media_perception/mojom/scoped_access_permission.mojom";
 
 // Describes a new frame that is ready for consumption in the buffer with id
 // |buffer_id| and allows it to read the data from the buffer. The producer

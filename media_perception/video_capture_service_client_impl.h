@@ -14,9 +14,9 @@
 #include <string>
 
 #include "media_perception/mojo_connector.h"
+#include "media_perception/mojom/media_perception_service.mojom.h"
 #include "media_perception/producer_impl.h"
 #include "media_perception/video_frame_handler_impl.h"
-#include "mojom/media_perception_service.mojom.h"
 
 namespace mri {
 

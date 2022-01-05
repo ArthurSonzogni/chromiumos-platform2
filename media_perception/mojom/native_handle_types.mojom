@@ -4,8 +4,8 @@
 
 module gfx.mojom;
 
-import "mojom/shared_memory.mojom";
-import "mojom/unguessable_token.mojom";
+import "media_perception/mojom/shared_memory.mojom";
+import "media_perception/mojom/unguessable_token.mojom";
 
 // gfx::NativePixmapPlane
 [EnableIf=supports_native_pixmap, Stable]

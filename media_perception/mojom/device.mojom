@@ -4,9 +4,9 @@
 
 module video_capture.mojom;
 
-import "mojom/video_capture_types.mojom";
-import "mojom/image_capture.mojom";
-import "mojom/video_frame_handler.mojom";
+import "media_perception/mojom/video_capture_types.mojom";
+import "media_perception/mojom/image_capture.mojom";
+import "media_perception/mojom/video_frame_handler.mojom";
 
 // Represents access to a video capture device available on the machine. The
 // device is stopped automatically when the message pipe corresponding to either

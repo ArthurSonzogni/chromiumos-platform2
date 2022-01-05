@@ -4,8 +4,8 @@
 
 module gpu.mojom;
 
-import "mojom/mailbox.mojom";
-import "mojom/sync_token.mojom";
+import "media_perception/mojom/mailbox.mojom";
+import "media_perception/mojom/sync_token.mojom";
 
 // See gpu/command_buffer/common/mailbox_holder.h.
 struct MailboxHolder {

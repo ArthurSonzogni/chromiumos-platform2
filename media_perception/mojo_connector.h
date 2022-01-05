@@ -19,12 +19,12 @@
 #include "media_perception/chrome_audio_service_client.h"
 #include "media_perception/device_management.pb.h"
 #include "media_perception/media_perception_service_impl.h"
+#include "media_perception/mojom/media_perception_service.mojom.h"
+#include "media_perception/mojom/video_source.mojom.h"
 #include "media_perception/producer_impl.h"
 #include "media_perception/rtanalytics.h"
 #include "media_perception/video_capture_service_client.h"
 #include "media_perception/video_frame_handler_impl.h"
-#include "mojom/media_perception_service.mojom.h"
-#include "mojom/video_source.mojom.h"
 
 namespace mri {
 

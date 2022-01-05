@@ -4,8 +4,8 @@
 
 module media.mojom;
 
-import "mojom/time.mojom";
-import "mojom/geometry.mojom";
+import "media_perception/mojom/time.mojom";
+import "media_perception/mojom/geometry.mojom";
 
 [Stable, Extensible]
 enum VideoCapturePixelFormat {

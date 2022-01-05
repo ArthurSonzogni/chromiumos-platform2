@@ -4,11 +4,11 @@
 
 module video_capture.mojom;
 
-import "mojom/video_capture_types.mojom";
-import "mojom/device.mojom";
-import "mojom/devices_changed_observer.mojom";
-import "mojom/producer.mojom";
-import "mojom/virtual_device.mojom";
+import "media_perception/mojom/video_capture_types.mojom";
+import "media_perception/mojom/device.mojom";
+import "media_perception/mojom/devices_changed_observer.mojom";
+import "media_perception/mojom/producer.mojom";
+import "media_perception/mojom/virtual_device.mojom";
 
 enum DeviceAccessResultCode {
   NOT_INITIALIZED,

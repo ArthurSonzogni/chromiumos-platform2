@@ -11,8 +11,8 @@
 #include <mojo/public/cpp/system/handle.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
-#include "mojom/scoped_access_permission.mojom.h"
-#include "mojom/video_capture_types.mojom.h"
+#include "media_perception/mojom/scoped_access_permission.mojom.h"
+#include "media_perception/mojom/video_capture_types.mojom.h"
 
 namespace mri {
 

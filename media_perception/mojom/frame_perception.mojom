@@ -6,7 +6,7 @@
 
 module chromeos.media_perception.mojom;
 
-import "mojom/common.mojom";
+import "media_perception/mojom/common.mojom";
 
 [Extensible]
 enum EntityType {
