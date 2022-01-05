@@ -467,11 +467,26 @@ bool HPS_impl::WriteFile(uint8_t bank, const base::FilePath& source) {
     PLOG(ERROR) << "WriteFile: \"" << source << "\" GetLength failed: ";
     return false;
   }
-  if (bank == 0) {  // TODO(b/211388356): make erase explicit for other banks
-    if (!this->device_->WriteReg(HpsReg::kSysCmd, R3::kEraseStage1)) {
-      LOG(ERROR) << "WriteFile: error erasing bank: " << static_cast<int>(bank);
-      return false;
-    }
+  switch (bank) {
+    case static_cast<uint8_t>(HpsBank::kMcuFlash):
+      if (!this->device_->WriteReg(HpsReg::kSysCmd, R3::kEraseStage1)) {
+        LOG(ERROR) << "WriteFile: error erasing bank: "
+                   << static_cast<int>(bank);
+        return false;
+      }
+      break;
+    case static_cast<uint8_t>(HpsBank::kSpiFlash):
+      // Note that this also erases bank 2 (HpsBank::kSocRom)
+      // because they are both on the same SPI flash!
+      if (!this->device_->WriteReg(HpsReg::kSysCmd, R3::kEraseSpiFlash)) {
+        LOG(ERROR) << "WriteFile: error erasing bank: "
+                   << static_cast<int>(bank);
+        return false;
+      }
+      break;
+    case static_cast<uint8_t>(HpsBank::kSocRom):
+      // Assume it was already erased by writing HpsBank::kSpiFlash before this.
+      break;
   }
   uint32_t address = 0;
   int rd;

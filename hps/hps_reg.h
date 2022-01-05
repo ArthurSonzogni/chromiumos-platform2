@@ -67,6 +67,7 @@ enum R3 : uint16_t {
   kLaunch1 = BIT(1),
   kLaunchAppl = BIT(2),
   kEraseStage1 = BIT(3),
+  kEraseSpiFlash = BIT(4),
 };
 
 // Register 7 (RW) - Feature enable bit mask.
