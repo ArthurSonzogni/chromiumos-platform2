@@ -521,10 +521,7 @@ bool HPS_impl::WaitForBankReady(uint8_t bank) {
   base::ElapsedTimer timer;
   do {
     std::optional<uint16_t> result = this->device_->ReadReg(HpsReg::kBankReady);
-    if (!result) {
-      return false;
-    }
-    if (result.value() & (1 << bank)) {
+    if (result && (result.value() & (1 << bank))) {
       return true;
     }
     Sleep(kBankReadySleep);
