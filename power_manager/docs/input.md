@@ -8,17 +8,18 @@ from Chrome while the user is active. These method calls include a
 allowing powerd to e.g. avoid turning the screen back on if the user presses the
 Brightness Down key while the screen is already off.
 
-`powerd/system/input.cc` uses the kernel's input subsystem to observe power
-button and lid switch events. (ACPI power button events may be additionally
-received by Chrome as standard keyboard input, but they are ignored there since
-button releases are not reported correctly.) These events are reported to Chrome
-via `InputEvent` D-Bus signals containing [InputEvent] protocol buffers; Chrome
-uses the power button notifications to display screen-lock and shutdown
-animations.
+[`powerd/system/input_watcher.cc`] uses the kernel's input subsystem to observe
+power button and lid switch events. (ACPI power button events may be
+additionally received by Chrome as standard keyboard input, but they are
+ignored there since button releases are not reported correctly.) These events
+are reported to Chrome via `InputEvent` D-Bus signals containing [InputEvent]
+protocol buffers; Chrome uses the power button notifications to display
+screen-lock and shutdown animations.
 
 See the [Power Buttons] document for more information about power button
 behavior.
 
-[UserActivityType]: https://chromium.googlesource.com/chromiumos/platform2/system_api/+/HEAD/dbus/power_manager/dbus-constants.h
-[InputEvent]: https://chromium.googlesource.com/chromiumos/platform2/system_api/+/HEAD/dbus/power_manager/input_event.proto
+[UserActivityType]: ../../system_api/dbus/power_manager/dbus-constants.h
+[`powerd/system/input_watcher.cc`]: ../powerd/system/input_watcher.cc
+[InputEvent]: ../../system_api/dbus/power_manager/input_event.proto
 [Power Buttons]: power_buttons.md
