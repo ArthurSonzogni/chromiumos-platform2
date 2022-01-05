@@ -50,10 +50,12 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
         RMAD_COMPONENT_AUDIO_CODEC};
     auto components_repair = std::make_unique<ComponentsRepairState>();
     for (auto component : default_original_components) {
-      ComponentRepairStatus* components = components_repair->add_components();
-      components->set_component(component);
-      components->set_repair_status(
+      ComponentRepairStatus* component_repair_status =
+          components_repair->add_components();
+      component_repair_status->set_component(component);
+      component_repair_status->set_repair_status(
           ComponentRepairStatus::RMAD_REPAIR_STATUS_ORIGINAL);
+      component_repair_status->set_identifier("");
     }
     return components_repair;
   }
@@ -71,15 +73,18 @@ TEST_F(ComponentsRepairStateHandlerTest, InitializeState_Fail) {
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_Success) {
-  auto handler = CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, ""}});
+  auto handler =
+      CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, "battery_abcd"}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   std::unique_ptr<ComponentsRepairState> components_repair =
       CreateDefaultComponentsRepairState();
-  ComponentRepairStatus* components = components_repair->add_components();
-  components->set_component(RMAD_COMPONENT_BATTERY);
-  components->set_repair_status(
+  ComponentRepairStatus* component_repair_status =
+      components_repair->add_components();
+  component_repair_status->set_component(RMAD_COMPONENT_BATTERY);
+  component_repair_status->set_repair_status(
       ComponentRepairStatus::RMAD_REPAIR_STATUS_REPLACED);
+  component_repair_status->set_identifier("battery_abcd");
   RmadState state;
   state.set_allocated_components_repair(components_repair.release());
 
@@ -96,7 +101,8 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_Success) {
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_Success_MlbRework) {
-  auto handler = CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, ""}});
+  auto handler =
+      CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, "battery_abcd"}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   std::unique_ptr<ComponentsRepairState> components_repair =
@@ -129,7 +135,8 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_Success_MlbRework) {
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_MissingState) {
-  auto handler = CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, ""}});
+  auto handler =
+      CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, "battery_abcd"}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No ComponentsRepairState.
@@ -141,20 +148,24 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_MissingState) {
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnknownComponent) {
-  auto handler = CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, ""}});
+  auto handler =
+      CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, "battery_abcd"}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   std::unique_ptr<ComponentsRepairState> components_repair =
       CreateDefaultComponentsRepairState();
-  ComponentRepairStatus* components = components_repair->add_components();
-  components->set_component(RMAD_COMPONENT_BATTERY);
-  components->set_repair_status(
+  ComponentRepairStatus* component_repair_status =
+      components_repair->add_components();
+  component_repair_status->set_component(RMAD_COMPONENT_BATTERY);
+  component_repair_status->set_repair_status(
       ComponentRepairStatus::RMAD_REPAIR_STATUS_ORIGINAL);
+  component_repair_status->set_identifier("battery_abcd");
   // RMAD_COMPONENT_NETWORK is deprecated.
-  components = components_repair->add_components();
-  components->set_component(RMAD_COMPONENT_NETWORK);
-  components->set_repair_status(
+  component_repair_status = components_repair->add_components();
+  component_repair_status->set_component(RMAD_COMPONENT_NETWORK);
+  component_repair_status->set_repair_status(
       ComponentRepairStatus::RMAD_REPAIR_STATUS_ORIGINAL);
+  component_repair_status->set_identifier("network_abcd");
 
   RmadState state;
   state.set_allocated_components_repair(components_repair.release());
@@ -165,20 +176,24 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnknownComponent) {
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnprobedComponent) {
-  auto handler = CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, ""}});
+  auto handler =
+      CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, "battery_abcd"}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   std::unique_ptr<ComponentsRepairState> components_repair =
       CreateDefaultComponentsRepairState();
-  ComponentRepairStatus* components = components_repair->add_components();
-  components->set_component(RMAD_COMPONENT_BATTERY);
-  components->set_repair_status(
+  ComponentRepairStatus* component_repair_status =
+      components_repair->add_components();
+  component_repair_status->set_component(RMAD_COMPONENT_BATTERY);
+  component_repair_status->set_repair_status(
       ComponentRepairStatus::RMAD_REPAIR_STATUS_ORIGINAL);
+  component_repair_status->set_identifier("battery_abcd");
   // RMAD_COMPONENT_STORAGE is not probed.
-  components = components_repair->add_components();
-  components->set_component(RMAD_COMPONENT_STORAGE);
-  components->set_repair_status(
+  component_repair_status = components_repair->add_components();
+  component_repair_status->set_component(RMAD_COMPONENT_STORAGE);
+  component_repair_status->set_repair_status(
       ComponentRepairStatus::RMAD_REPAIR_STATUS_ORIGINAL);
+  component_repair_status->set_identifier("storage_abcd");
 
   RmadState state;
   state.set_allocated_components_repair(components_repair.release());
@@ -190,16 +205,19 @@ TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnprobedComponent) {
 
 TEST_F(ComponentsRepairStateHandlerTest,
        GetNextStateCase_MissingProbedComponent) {
-  auto handler = CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, ""}});
+  auto handler =
+      CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, "battery_abcd"}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   std::unique_ptr<ComponentsRepairState> components_repair =
       CreateDefaultComponentsRepairState();
   // RMAD_COMPONENT_BATTERY is probed but set to MISSING.
-  ComponentRepairStatus* components = components_repair->add_components();
-  components->set_component(RMAD_COMPONENT_BATTERY);
-  components->set_repair_status(
+  ComponentRepairStatus* component_repair_status =
+      components_repair->add_components();
+  component_repair_status->set_component(RMAD_COMPONENT_BATTERY);
+  component_repair_status->set_repair_status(
       ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING);
+  component_repair_status->set_identifier("storage_abcd");
 
   RmadState state;
   state.set_allocated_components_repair(components_repair.release());
@@ -210,10 +228,11 @@ TEST_F(ComponentsRepairStateHandlerTest,
 }
 
 TEST_F(ComponentsRepairStateHandlerTest, GetNextStateCase_UnknownRepairState) {
-  auto handler = CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, ""}});
+  auto handler =
+      CreateStateHandler(true, {{RMAD_COMPONENT_BATTERY, "battery_abcd"}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  // RMAD_COMPONENT_BATTERY is still UNKNOWN.
+  // State doesn't contain RMAD_COMPONENT_BATTERY.
   std::unique_ptr<ComponentsRepairState> components_repair =
       CreateDefaultComponentsRepairState();
 

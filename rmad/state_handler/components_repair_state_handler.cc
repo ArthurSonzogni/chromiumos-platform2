@@ -12,16 +12,35 @@
 #include <vector>
 
 #include "rmad/constants.h"
+#include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/system/fake_runtime_probe_client.h"
 #include "rmad/system/runtime_probe_client_impl.h"
 #include "rmad/utils/dbus_utils.h"
 
 #include <base/logging.h>
 
-namespace rmad {
+// Used as an unique identifier for supported components.
+using ComponentKey = std::pair<rmad::RmadComponent, std::string>;
 
-using ComponentRepairStatus = ComponentsRepairState::ComponentRepairStatus;
+// Just for convenience.
+using ComponentRepairStatus =
+    rmad::ComponentsRepairState::ComponentRepairStatus;
 using RepairStatus = ComponentRepairStatus::RepairStatus;
+
+namespace std {
+
+// Hash definition for |ComponentKey|, so we can use it in std::unordered_map.
+template <>
+struct std::hash<ComponentKey> {
+  std::size_t operator()(const ComponentKey& key) const {
+    return std::hash<uint32_t>()(key.first) ^
+           std::hash<std::string>()(key.second);
+  }
+};
+
+}  // namespace std
+
+namespace rmad {
 
 namespace {
 
@@ -41,47 +60,55 @@ const std::unordered_set<RmadComponent> kUnprobeableComponents = {
     RMAD_COMPONENT_AUDIO_CODEC,
 };
 
-// Convert the list of |ComponentRepairStatus| in |state| to a mapping table of
-// component repair states. Unfortunately protobuf doesn't support enum as map
-// keys so we can only store them in a list in protobuf and convert to a map
-// internally.
-std::unordered_map<RmadComponent, RepairStatus> ConvertStateToDictionary(
+ComponentRepairStatus CreateComponentRepairStatus(
+    RmadComponent component,
+    RepairStatus repair_status,
+    const std::string& identifier) {
+  ComponentRepairStatus component_repair_status;
+  component_repair_status.set_component(component);
+  component_repair_status.set_repair_status(repair_status);
+  component_repair_status.set_identifier(identifier);
+  return component_repair_status;
+}
+
+// Convert the list of |ComponentRepairStatus| in |state| to a map using the
+// pair (component, identifier) as the key. There might be collisions, e.g. DRAM
+// has multiple probe entries for each slots, but we still view them as the same
+// DRAM component.
+std::unordered_map<ComponentKey, RepairStatus> ConvertStateToDictionary(
     const RmadState& state) {
-  std::unordered_map<RmadComponent, RepairStatus> component_status_map;
+  std::unordered_map<ComponentKey, RepairStatus> component_map;
   if (state.has_components_repair()) {
     const ComponentsRepairState& components_repair = state.components_repair();
     for (int i = 0; i < components_repair.components_size(); ++i) {
-      const ComponentRepairStatus& components = components_repair.components(i);
-      const RmadComponent& component = components.component();
-      const RepairStatus& repair_status = components.repair_status();
-      if (component == RMAD_COMPONENT_UNKNOWN) {
+      const ComponentRepairStatus& component_repair_status =
+          components_repair.components(i);
+      if (component_repair_status.component() == RMAD_COMPONENT_UNKNOWN) {
         LOG(WARNING) << "RmadState component missing |component| field.";
         continue;
       }
-      if (component_status_map.count(component) > 0) {
-        LOG(WARNING) << "RmadState has duplicate components "
-                     << RmadComponent_Name(component);
-        continue;
-      }
-      component_status_map.insert({component, repair_status});
+      component_map[std::make_pair(component_repair_status.component(),
+                                   component_repair_status.identifier())] =
+          component_repair_status.repair_status();
     }
   }
-  return component_status_map;
+  return component_map;
 }
 
-// Convert a dictionary of {RmadComponent: RepairStatus} to a |RmadState|.
+// Convert a map of {(component, identifier), repair_status} to a |RmadState|.
 RmadState ConvertDictionaryToState(
-    const std::unordered_map<RmadComponent, RepairStatus>& component_status_map,
+    const std::unordered_map<ComponentKey, RepairStatus>& component_map,
     bool mainboard_rework) {
   auto components_repair = std::make_unique<ComponentsRepairState>();
-  for (auto [component, repair_status] : component_status_map) {
+  for (const auto& [key, repair_status] : component_map) {
+    RmadComponent component = key.first;
+    const std::string& identifier = key.second;
     if (component == RMAD_COMPONENT_UNKNOWN) {
-      LOG(WARNING) << "Dictionary contains UNKNOWN component";
+      LOG(WARNING) << "List contains UNKNOWN component";
       continue;
     }
-    ComponentRepairStatus* components = components_repair->add_components();
-    components->set_component(component);
-    components->set_repair_status(repair_status);
+    *(components_repair->add_components()) =
+        CreateComponentRepairStatus(component, repair_status, identifier);
   }
   components_repair->set_mainboard_rework(mainboard_rework);
 
@@ -126,25 +153,12 @@ RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
     state_.set_allocated_components_repair(new ComponentsRepairState);
   }
 
-  // Initialize probeable and unprobeable components. Ideally |state_| always
-  // contain the full list of components, unless it's just being created, but
-  // it's possible that the state file on the device is old and the latest image
-  // introduces some new components. This could happen on stocked mainboards.
-  // We also assume we don't remove any component enums for backward
-  // compatibility.
-  std::unordered_map<RmadComponent, RepairStatus> component_status_map =
+  // Initialize helper data structures.
+  std::unordered_map<ComponentKey, RepairStatus> old_component_map =
       ConvertStateToDictionary(state_);
+  std::unordered_map<RmadComponent, bool> is_component_probed;
   for (RmadComponent component : kProbeableComponents) {
-    if (component_status_map.count(component) == 0) {
-      component_status_map[component] =
-          ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING;
-    }
-  }
-  for (RmadComponent component : kUnprobeableComponents) {
-    if (component_status_map.count(component) == 0) {
-      component_status_map[component] =
-          ComponentRepairStatus::RMAD_REPAIR_STATUS_UNKNOWN;
-    }
+    is_component_probed[component] = false;
   }
 
   // Call runtime_probe to get all probed components.
@@ -154,31 +168,44 @@ RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
 
-  // Update probeable components using runtime_probe results.
-  // 1. If a probed component is marked MISSING, the component was not probed
-  //    previously, or this is the first probe. Mark the component as UNKNOWN.
-  // 2. If a component is not marked MISSING, but it doesn't appear in the
-  //    latest probed result, mark the component as MISSING.
-  // TODO(chenghan): Use the identifier provided by runtime_probe.
-  std::set<RmadComponent> probed_component_set;
-  for (const auto& [component, unused_identidier] : probed_components) {
-    probed_component_set.insert(component);
+  // Create a new map of component repair status using runtime_probe results.
+  // 1. If a probed component is found in the previous probe result, preserve
+  //    the repair status. Otherwise mark it as UNKNOWN.
+  // 2. If a probeable component type doesn't appear in the probe result, add an
+  //    entry with empty identifier and MISSING status.
+  // 3. For each unprobeable component type, add an entry with empty identifier.
+  //    Preserve the previous repair status is it exists, otherwise mark the
+  //    status as UNKNOWN.
+  std::unordered_map<ComponentKey, RepairStatus> new_component_map;
+  for (const auto& key : probed_components) {
+    RmadComponent component = key.first;
     CHECK_GT(kProbeableComponents.count(component), 0);
-    if (component_status_map[component] ==
-        ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING) {
-      component_status_map[component] =
+    is_component_probed[component] = true;
+    if (old_component_map.count(key) > 0) {
+      new_component_map[key] = old_component_map[key];
+    } else {
+      new_component_map[key] =
           ComponentRepairStatus::RMAD_REPAIR_STATUS_UNKNOWN;
     }
   }
   for (RmadComponent component : kProbeableComponents) {
-    if (probed_component_set.count(component) == 0) {
-      component_status_map[component] =
+    if (!is_component_probed[component]) {
+      new_component_map[std::make_pair(component, "")] =
           ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING;
+    }
+  }
+  for (RmadComponent component : kUnprobeableComponents) {
+    auto key = std::make_pair(component, "");
+    if (old_component_map.count(key) > 0) {
+      new_component_map[key] = old_component_map[key];
+    } else {
+      new_component_map[key] =
+          ComponentRepairStatus::RMAD_REPAIR_STATUS_UNKNOWN;
     }
   }
 
   state_ = ConvertDictionaryToState(
-      component_status_map, state_.components_repair().mainboard_rework());
+      new_component_map, state_.components_repair().mainboard_rework());
   active_ = true;
   return RMAD_ERROR_OK;
 }
@@ -206,51 +233,54 @@ bool ComponentsRepairStateHandler::ApplyUserSelection(const RmadState& state) {
     return false;
   }
 
-  std::unordered_map<RmadComponent, RepairStatus> current_map =
+  std::unordered_map<ComponentKey, RepairStatus> current_map =
       ConvertStateToDictionary(state_);
-  const std::unordered_map<RmadComponent, RepairStatus> update_map =
+  const std::unordered_map<ComponentKey, RepairStatus> update_map =
       ConvertStateToDictionary(state);
   const bool mainboard_rework = state.components_repair().mainboard_rework();
 
   if (mainboard_rework) {
     // MLB rework. Set all the probed components to REPLACED.
-    for (auto& [component, repair_status] : current_map) {
+    for (auto& [key, repair_status] : current_map) {
       if (repair_status != ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING) {
         repair_status = ComponentRepairStatus::RMAD_REPAIR_STATUS_REPLACED;
       }
     }
   } else {
     // Not MLB rework. Use |update_map| to update |current_map|.
-    for (auto [component, repair_status] : update_map) {
-      const std::string component_name = RmadComponent_Name(component);
-      if (current_map.count(component) == 0) {
+    for (const auto& [key, new_repair_status] : update_map) {
+      RmadComponent component = key.first;
+      const std::string& identifier = key.second;
+      if (current_map.count(key) == 0) {
         LOG(ERROR) << "New state contains an unknown component "
-                   << component_name;
+                   << RmadComponent_Name(component) << " " << identifier;
         return false;
       }
-      RepairStatus prev_repair_status = current_map[component];
+      RepairStatus prev_repair_status = current_map[key];
       if (prev_repair_status ==
               ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING &&
-          repair_status != ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING) {
+          new_repair_status !=
+              ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING) {
         LOG(ERROR) << "New state contains repair state for unprobed component "
-                   << component_name;
+                   << RmadComponent_Name(component) << " " << identifier;
         return false;
       }
       if (prev_repair_status !=
               ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING &&
-          repair_status == ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING) {
+          new_repair_status ==
+              ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING) {
         LOG(ERROR) << "New state missing repair state for component "
-                   << component_name;
+                   << RmadComponent_Name(component) << " " << identifier;
         return false;
       }
-      current_map[component] = repair_status;
+      current_map[key] = new_repair_status;
     }
   }
   // Check if there are any components that still has UNKNOWN repair state.
-  for (auto [component, repair_status] : current_map) {
+  for (const auto& [key, repair_status] : current_map) {
     if (repair_status == ComponentRepairStatus::RMAD_REPAIR_STATUS_UNKNOWN) {
-      LOG(ERROR) << "Component " << RmadComponent_Name(component)
-                 << " has unknown repair state";
+      LOG(ERROR) << "Component " << RmadComponent_Name(key.first) << " "
+                 << key.second << " has unknown repair state";
       return false;
     }
   }
@@ -262,12 +292,12 @@ bool ComponentsRepairStateHandler::ApplyUserSelection(const RmadState& state) {
 
 bool ComponentsRepairStateHandler::StoreVars() const {
   std::vector<std::string> replaced_components;
-  const std::unordered_map<RmadComponent, RepairStatus> component_status_map =
+  const std::unordered_map<ComponentKey, RepairStatus> component_map =
       ConvertStateToDictionary(state_);
 
-  for (auto [component, repair_status] : component_status_map) {
+  for (auto [key, repair_status] : component_map) {
     if (repair_status == ComponentRepairStatus::RMAD_REPAIR_STATUS_REPLACED) {
-      replaced_components.push_back(RmadComponent_Name(component));
+      replaced_components.push_back(RmadComponent_Name(key.first));
     }
   }
 
