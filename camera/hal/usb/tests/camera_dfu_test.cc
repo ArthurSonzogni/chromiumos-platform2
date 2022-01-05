@@ -32,7 +32,7 @@
 
 #include "cros-camera/future.h"
 #include "cros-camera/udev_watcher.h"
-#include "hal/usb/v4l2_test/usb_dfu_device.h"
+#include "hal/usb/tests/usb_dfu_device.h"
 
 namespace cros::tests {
 

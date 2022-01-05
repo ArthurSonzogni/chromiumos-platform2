@@ -28,7 +28,7 @@
 #include "cros-camera/device_config.h"
 #include "hal/usb/camera_characteristics.h"
 #include "hal/usb/common_types.h"
-#include "hal/usb/v4l2_test/media_v4l2_device.h"
+#include "hal/usb/tests/media_v4l2_device.h"
 
 namespace cros {
 namespace tests {

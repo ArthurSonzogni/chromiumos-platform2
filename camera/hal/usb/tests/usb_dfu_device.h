@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_HAL_USB_V4L2_TEST_USB_DFU_DEVICE_H_
-#define CAMERA_HAL_USB_V4L2_TEST_USB_DFU_DEVICE_H_
+#ifndef CAMERA_HAL_USB_TESTS_USB_DFU_DEVICE_H_
+#define CAMERA_HAL_USB_TESTS_USB_DFU_DEVICE_H_
 
 #include <stdint.h>
 
@@ -119,4 +119,4 @@ class UsbContext {
 
 }  // namespace cros
 
-#endif  // CAMERA_HAL_USB_V4L2_TEST_USB_DFU_DEVICE_H_
+#endif  // CAMERA_HAL_USB_TESTS_USB_DFU_DEVICE_H_

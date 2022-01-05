@@ -30,7 +30,7 @@ PLATFORM2_CAMERA_TEST_PACKAGES = [
     # 'media-libs/cros-camera-libjda_test',  # not buildable at the moment
     'media-libs/cros-camera-libjea_test',
     'media-libs/cros-camera-test',
-    'media-libs/cros-camera-v4l2_test',
+    'media-libs/cros-camera-usb-tests',
 ]
 
 SYSROOT_COMPILEDB_PATH = '/build/{board}/build/compilation_database/{pkg}'

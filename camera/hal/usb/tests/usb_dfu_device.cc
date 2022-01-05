@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "hal/usb/v4l2_test/usb_dfu_device.h"
+#include "hal/usb/tests/usb_dfu_device.h"
 
 #include <libusb-1.0/libusb.h>
 
