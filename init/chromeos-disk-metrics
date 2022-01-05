@@ -3,6 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+. /usr/share/cros/disk_utils.sh
 . /usr/share/misc/storage-info-common.sh
 . /usr/share/misc/shflags
 
@@ -151,6 +152,7 @@ main() {
   fi
   rm -f "${STORAGE_INFO_FILE}"
   get_storage_info > "${STORAGE_INFO_FILE}"
+  metrics_client -e Platform.StatefulFormat "$(get_stateful_format_enum)" 2
   sata_disk_metrics
   emmc_disk_metrics
   sindin8de2_disk_metrics
