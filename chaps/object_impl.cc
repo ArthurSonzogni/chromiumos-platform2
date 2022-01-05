@@ -133,7 +133,8 @@ CK_RV ObjectImpl::SetAttributes(const CK_ATTRIBUTE_PTR attributes,
     // Watch out for -1 in the length; this survives serialization (because
     // it is used as an error indicator for C_GetAttributeValue) but isn't
     // valid when setting attributes.
-    if (attributes[i].ulValueLen == static_cast<CK_ULONG>(-1))
+    if (attributes[i].ulValueLen == static_cast<CK_ULONG>(-1) ||
+        !attributes[i].pValue)
       return CKR_ATTRIBUTE_VALUE_INVALID;
     string value(reinterpret_cast<const char*>(attributes[i].pValue),
                  attributes[i].ulValueLen);
