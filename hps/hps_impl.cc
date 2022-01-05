@@ -467,6 +467,12 @@ bool HPS_impl::WriteFile(uint8_t bank, const base::FilePath& source) {
     PLOG(ERROR) << "WriteFile: \"" << source << "\" GetLength failed: ";
     return false;
   }
+  if (bank == 0) {  // TODO(b/211388356): make erase explicit for other banks
+    if (!this->device_->WriteReg(HpsReg::kSysCmd, R3::kEraseStage1)) {
+      LOG(ERROR) << "WriteFile: error erasing bank: " << static_cast<int>(bank);
+      return false;
+    }
+  }
   uint32_t address = 0;
   int rd;
   base::ElapsedTimer timer;

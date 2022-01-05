@@ -196,6 +196,11 @@ void FakeDev::WriteRegister(HpsReg reg, uint16_t value) {
             this->SetStage(Stage::kAppl);
           }
         }
+      } else if (value & hps::R3::kEraseStage1) {
+        // Only valid in stage0
+        if (this->stage_ == Stage::kStage0) {
+          this->bank_erased_[HpsBank::kMcuFlash] = true;
+        }
       }
       break;
 
@@ -234,6 +239,10 @@ bool FakeDev::WriteMemory(HpsBank bank, const uint8_t* data, size_t len) {
   }
   // Don't allow writes that exceed the max block size.
   if (len > (this->block_size_b_ + sizeof(uint32_t))) {
+    return false;
+  }
+  // Bank 0 must be explicitly erased before writing.
+  if (bank == HpsBank::kMcuFlash && !this->bank_erased_[bank]) {
     return false;
   }
   switch (this->stage_) {

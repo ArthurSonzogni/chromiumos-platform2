@@ -79,16 +79,17 @@ class FakeDev : public DevInterface {
     kAppl,
   };
   void SetStage(Stage s);
-  std::map<HpsBank, size_t> bank_len_;  // Count of writes to banks.
-  Stage stage_;                      // Current stage of the device
-  uint16_t fault_ = 0;               // Fault bits
-  uint16_t feature_on_ = 0;          // Enabled features.
-  uint16_t bank_ = 0;                // Current memory bank readiness
-  uint16_t flags_ = 0;               // Behaviour flags
-  uint32_t firmware_version_ = 0;    // Firmware version
-  size_t block_size_b_ = 256;        // Write block size.
-  int8_t f0_result_ = 0;             // Result for feature 0
-  int8_t f1_result_ = 0;             // Result for feature 1
+  std::map<HpsBank, size_t> bank_len_;   // Count of writes to banks.
+  std::map<HpsBank, bool> bank_erased_;  // Whether bank has been erased
+  Stage stage_;                          // Current stage of the device
+  uint16_t fault_ = 0;                   // Fault bits
+  uint16_t feature_on_ = 0;              // Enabled features.
+  uint16_t bank_ = 0;                    // Current memory bank readiness
+  uint16_t flags_ = 0;                   // Behaviour flags
+  uint32_t firmware_version_ = 0;        // Firmware version
+  size_t block_size_b_ = 256;            // Write block size.
+  int8_t f0_result_ = 0;                 // Result for feature 0
+  int8_t f1_result_ = 0;                 // Result for feature 1
 };
 
 }  // namespace hps
