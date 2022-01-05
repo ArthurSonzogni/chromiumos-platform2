@@ -19,7 +19,21 @@ add_global_arguments('-Wundef', language: 'c')
 add_global_arguments('-Wmissing-variable-declarations', language: 'c')
 add_global_arguments('-Wmissing-prototypes', language: 'c')
 
-src_files = ['file_ops.c', 'logging.c', 'main.c', 'match.c', 'probe.c', 'sku.c']
+lib_files = ['file_ops.c', 'logging.c', 'match.c', 'probe.c', 'sku.c']
+src_files = lib_files + ['main.c']
+
+libcrosid = library('crosid', lib_files)
+
+# Generate crosid.pc
+pkg = import('pkgconfig')
+pkg.generate(
+    libraries: libcrosid,
+    version: '1.0',
+    name: 'libcrosid',
+    filebase: 'crosid',
+    description: 'Chrome OS device identity library',
+)
+
 executable(
     'crosid',
     src_files,
