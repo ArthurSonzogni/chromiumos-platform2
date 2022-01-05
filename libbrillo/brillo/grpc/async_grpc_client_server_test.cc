@@ -918,9 +918,8 @@ TEST_F(AsyncGrpcClientServerTest, ShutdownBetweenSyncRequests) {
     client_->CallRpc(
         &test_rpcs::ExampleService::Stub::AsyncEmptyRpc,
         test_rpcs::EmptyRpcRequest(),
-        base::DoNothing()
-            .Repeatedly<grpc::Status,
-                        std::unique_ptr<test_rpcs::EmptyRpcResponse>>());
+        base::BindRepeating(
+            [](grpc::Status, std::unique_ptr<test_rpcs::EmptyRpcResponse>) {}));
   }
 
   // Waits until the service shuts down itself after receiving the first
