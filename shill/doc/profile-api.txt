@@ -60,17 +60,18 @@ Methods		dict GetProperties()
 			Possible Errors: [service].Error.InvalidArguments
 					 [service].Error.InvalidProperty
 
-		dict GetEntry(object path)
+		dict GetEntry(string entry_identifier)
 
-			Return properties for the specified profile
-			entry.  If the service is currently loaded into
-			memory or visible, the returned result will be
-			as if a "GetProperties" were called on the service.
+			Return properties for profile entry specified by the
+			given entry_identifier.  If the service which is
+			configured by this entry is currently loaded into memory
+			or visible, the returned result will be as if a
+			"GetProperties" were called on the service.
 			Otherwise, a much more compact dict will be
 			returned:
 
 			string Name [readonly]
-				Name of this profile.
+				Name of this entry.
 
 			string GUID [readonly]
 				Globally Unique IDentifier for the service as
@@ -101,7 +102,7 @@ Methods		dict GetProperties()
 			Possible Errors: [service].Error.NotFound
 					 [service].Error.InvalidArguments
 
-		dict DeleteEntry(string entry_name)
+		dict DeleteEntry(string entry_identifier)
 
 			Remove the entry from the profile.  Any associated
 			service has its security credentials revoked and
@@ -127,10 +128,12 @@ Properties	string CheckPortalList [readonly]
 			default profile as it affects all users and is
 			used pre-login.
 
-		array{object} Entries [readonly]
+		array{string} Entries [readonly]
 
-			List of profile Entry objects.  Use the GetEntry
-			method to retrieve an Entry's contents.
+			List of entry identifiers of the profile's Entries.
+			Each Entry is essentially the persisted settings of a
+			Service.  Use the GetEntry method to retrieve an Entry's
+			properties.
 
 		string Name [readonly]
 
