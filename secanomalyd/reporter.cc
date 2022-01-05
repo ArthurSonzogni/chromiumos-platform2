@@ -15,7 +15,6 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
 #include <crypto/sha2.h>
-#include <re2/re2.h>
 #include <vboot/crossystem.h>
 
 #include "secanomalyd/mounts.h"
@@ -42,15 +41,9 @@ bool ShouldReport(bool report_in_dev_mode) {
 
 std::string GenerateSignature(const MountEntryMap& wx_mounts) {
   std::vector<std::string> dests;
-  re2::RE2 sha1_re("[a-f0-9]{40}");
 
   for (const auto& p : wx_mounts) {
-    std::string dest = p.first.value();
-    // If the W+X mount includes a hash, replace the hash with a placeholder.
-    // This will allow grouping equivalent mounts in the same crash bucket,
-    // even if their paths are not equal.
-    re2::RE2::Replace(&dest, sha1_re, "<hash>");
-    dests.emplace_back(dest);
+    dests.emplace_back(p.first.value());
   }
 
   std::string signature;

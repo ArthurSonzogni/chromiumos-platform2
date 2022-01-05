@@ -12,6 +12,7 @@
 #include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <re2/re2.h>
 
 namespace secanomalyd {
 
@@ -33,6 +34,9 @@ const std::vector<base::FilePath> kDestPathsToFilter = {
 };
 
 const base::FilePath kUsrLocal = base::FilePath("/usr/local");
+
+const re2::RE2 sha1_re("[a-f0-9]{40}");
+
 }  // namespace
 
 MountEntry::MountEntry(base::StringPiece mount_str) {
@@ -43,7 +47,16 @@ MountEntry::MountEntry(base::StringPiece mount_str) {
                              base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   src_ = base::FilePath(fields[0]);
-  dest_ = base::FilePath(fields[1]);
+
+  // If the mount includes a SHA1 hash, replace the hash with a placeholder.
+  // This will allow grouping equivalent mounts in the same crash bucket,
+  // even if their paths are not equal.
+  // Moreover, these SHA1 hashes can be salted hashes of the user's email
+  // address which is PII.
+  std::string str_dest = std::string(fields[1]);
+  re2::RE2::Replace(&str_dest, sha1_re, "<hash>");
+
+  dest_ = base::FilePath(str_dest);
   type_ = std::string(fields[2]);
 
   opts_ = base::SplitString(fields[3], ",", base::TRIM_WHITESPACE,

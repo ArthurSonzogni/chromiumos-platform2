@@ -87,4 +87,13 @@ TEST(MountEntryTest, OtherTypesAreNotNamespaceMounts) {
   ASSERT_FALSE(e.IsNamespaceBindMount());
 }
 
+TEST(MountEntryTest, HashReplacedSuccessfully) {
+  MountEntry e(
+      "/dev/mmcblk0p1 "
+      "/home/root/14894cd6a6ea7a741dd3b855cea5bf82c5a784f5/android-data/data "
+      "ext4 rw,seclabel,nodev,noatime 0 0");
+
+  ASSERT_EQ(e.dest().value(), "/home/root/<hash>/android-data/data");
+}
+
 }  // namespace secanomalyd
