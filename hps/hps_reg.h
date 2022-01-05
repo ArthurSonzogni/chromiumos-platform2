@@ -56,8 +56,9 @@ enum R2 : uint16_t {
   kWpOff = BIT(5),
   // Unused          BIT(6),
   // Unused          BIT(7),
-  kStage1 = BIT(8),        // Stage1 running
-  kAppl = BIT(9),          // Application running
+  kStage1 = BIT(8),          // Stage1 running
+  kAppl = BIT(9),            // Application running
+  kCmdInProgress = BIT(10),  // Command in progress (often SPI flash hashing)
 };
 
 // Register 3 (WO) - System command register.
