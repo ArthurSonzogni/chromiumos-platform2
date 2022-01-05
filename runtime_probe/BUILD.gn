@@ -26,6 +26,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libcros_config",
+    "libec",
     "libpcrecpp",
     "libshill-client",
 
@@ -60,6 +61,7 @@ static_library("libruntime_probe") {
     "functions/nvme_storage.cc",
     "functions/sequence.cc",
     "functions/sysfs.cc",
+    "functions/tcpc.cc",
     "functions/usb_camera.cc",
     "functions/vpd_cached.cc",
     "functions/wireless_network.cc",

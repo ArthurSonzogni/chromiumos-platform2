@@ -23,6 +23,7 @@
 #include "runtime_probe/functions/sequence.h"
 #include "runtime_probe/functions/shell.h"
 #include "runtime_probe/functions/sysfs.h"
+#include "runtime_probe/functions/tcpc.h"
 #include "runtime_probe/functions/usb_camera.h"
 #include "runtime_probe/functions/vpd_cached.h"
 #include "runtime_probe/functions/wireless_network.h"
@@ -66,6 +67,7 @@ auto ProbeFunction::registered_functions_ =
                                      SequenceFunction,
                                      ShellFunction,
                                      SysfsFunction,
+                                     TcpcFunction,
                                      UsbCameraFunction,
                                      VPDCached,
                                      WirelessNetworkFunction>();
