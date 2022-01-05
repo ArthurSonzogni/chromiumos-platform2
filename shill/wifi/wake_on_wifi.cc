@@ -98,8 +98,8 @@ WakeOnWiFi::WakeOnWiFi(NetlinkManager* netlink_manager,
   netlink_handler_ = base::Bind(&WakeOnWiFi::OnWakeupReasonReceived,
                                 weak_ptr_factory_.GetWeakPtr());
   netlink_manager_->AddBroadcastHandler(netlink_handler_);
-  dhcp_lease_renewal_timer_ = timers::SimpleAlarmTimer::Create();
-  wake_to_scan_timer_ = timers::SimpleAlarmTimer::Create();
+  dhcp_lease_renewal_timer_ = brillo::timers::SimpleAlarmTimer::Create();
+  wake_to_scan_timer_ = brillo::timers::SimpleAlarmTimer::Create();
 }
 
 WakeOnWiFi::~WakeOnWiFi() {

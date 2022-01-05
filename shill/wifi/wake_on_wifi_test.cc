@@ -480,9 +480,9 @@ class WakeOnWiFiTest : public ::testing::Test {
 
     // Change timer for testing.
     wake_on_wifi_->wake_to_scan_timer_ =
-        timers::SimpleAlarmTimer::CreateForTesting();
+        brillo::timers::SimpleAlarmTimer::CreateForTesting();
     wake_on_wifi_->dhcp_lease_renewal_timer_ =
-        timers::SimpleAlarmTimer::CreateForTesting();
+        brillo::timers::SimpleAlarmTimer::CreateForTesting();
 
     ON_CALL(netlink_manager_, SendNl80211Message(_, _, _, _))
         .WillByDefault(Return(true));
