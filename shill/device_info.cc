@@ -415,7 +415,7 @@ Technology DeviceInfo::GetDeviceTechnology(
   if (contents.find(kInterfaceUeventWifiSignature) != std::string::npos) {
     SLOG(this, 2) << __func__ << ": device " << iface_name
                   << " has wifi signature in uevent file";
-    return Technology::kWifi;
+    return Technology::kWiFi;
   }
 
   // Similarly, if the uevent file contains "DEVTYPE=bridge\n" then we can
@@ -598,7 +598,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
           new VirtioEthernet(manager_, link_name, address, interface_index);
       device->EnableIPv6Privacy();
       break;
-    case Technology::kWifi:
+    case Technology::kWiFi:
 #if defined(DISABLE_WIFI)
       LOG(WARNING) << "WiFi support is not implemented. Ignore WiFi link "
                    << link_name << " at index " << interface_index << ".";

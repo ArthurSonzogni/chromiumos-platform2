@@ -1709,7 +1709,7 @@ void Metrics::NotifyDeviceRemovedEvent(Technology technology_id) {
     case Technology::kEthernet:
       type = kDeviceTechnologyTypeEthernet;
       break;
-    case Technology::kWifi:
+    case Technology::kWiFi:
       type = kDeviceTechnologyTypeWifi;
       break;
     case Technology::kCellular:

@@ -1295,7 +1295,7 @@ void Service::NoteFailureEvent() {
 
 void Service::ReportUserInitiatedConnectionResult(ConnectState state) {
   // Report stats for wifi only for now.
-  if (technology_ != Technology::kWifi)
+  if (technology_ != Technology::kWiFi)
     return;
 
   int result;

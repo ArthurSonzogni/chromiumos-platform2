@@ -290,7 +290,7 @@ TEST_F(ServiceTest, CalculateState) {
 }
 
 TEST_F(ServiceTest, CalculateTechnology) {
-  service_->technology_ = Technology::kWifi;
+  service_->technology_ = Technology::kWiFi;
   Error error;
   EXPECT_EQ(kTypeWifi, service_->CalculateTechnology(&error));
   EXPECT_TRUE(error.IsSuccess());
@@ -637,7 +637,7 @@ TEST_F(ServiceTest, SaveTrafficCounters) {
 
 TEST_F(ServiceTest, Save) {
   FakeStore storage;
-  service_->technology_ = Technology::kWifi;
+  service_->technology_ = Technology::kWiFi;
   EXPECT_TRUE(service_->Save(&storage));
 
   std::string type;
@@ -878,7 +878,7 @@ TEST_F(ServiceTest, StateResetAfterFailure) {
 }
 
 TEST_F(ServiceTest, UserInitiatedConnectionResult) {
-  service_->technology_ = Technology::kWifi;
+  service_->technology_ = Technology::kWiFi;
   Error error;
   // User-initiated connection attempt succeed.
   service_->SetState(Service::kStateIdle);
@@ -1122,7 +1122,7 @@ TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
 TEST_F(ServiceTest, SkipAutoConnectAfterRecentBadPassphraseFailure) {
   const char* reason;
   service_->SetConnectable(true);
-  SetTechnology(Technology::kWifi);
+  SetTechnology(Technology::kWiFi);
   EXPECT_TRUE(IsAutoConnectable(&reason));
 
   service_->set_failed_time_for_testing(base::Time::Now());
@@ -2153,9 +2153,9 @@ TEST_F(ServiceTest, Compare) {
   EXPECT_CALL(*service2, technology())
       .WillRepeatedly(Return(Technology::kEthernet));
   EXPECT_CALL(*service10, technology())
-      .WillRepeatedly(Return((Technology::kWifi)));
+      .WillRepeatedly(Return((Technology::kWiFi)));
 
-  technology_order_for_sorting_ = {Technology::kEthernet, Technology::kWifi};
+  technology_order_for_sorting_ = {Technology::kEthernet, Technology::kWiFi};
   EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
 
   // Connectable.
@@ -2211,10 +2211,10 @@ TEST_F(ServiceTest, ComparePreferEthernetOverWifi) {
   // Create mock wifi service.
   scoped_refptr<MockService> wifi_service(new NiceMock<MockService>(manager()));
   EXPECT_CALL(*wifi_service.get(), technology())
-      .WillRepeatedly(Return((Technology::kWifi)));
+      .WillRepeatedly(Return((Technology::kWiFi)));
 
   // Confirm that ethernet service is sorted above wifi service.
-  technology_order_for_sorting_ = {Technology::kEthernet, Technology::kWifi};
+  technology_order_for_sorting_ = {Technology::kEthernet, Technology::kWiFi};
   EXPECT_TRUE(DefaultSortingOrderIs(ethernet_service, wifi_service));
 
   // Even making the wifi service managed doesn't change the network sorting

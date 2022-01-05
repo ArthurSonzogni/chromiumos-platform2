@@ -380,7 +380,7 @@ TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi) {
   // Set the type of the lower connection to "wifi" and expect that type to be
   // returned by GetPhysicalTechnologyProperty().
   EXPECT_CALL(*lower_connection, technology())
-      .WillOnce(Return(Technology::kWifi));
+      .WillOnce(Return(Technology::kWiFi));
 
   Error error;
   EXPECT_EQ(kTypeWifi, service_->GetPhysicalTechnologyProperty(&error));

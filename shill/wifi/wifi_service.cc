@@ -109,7 +109,7 @@ WiFiService::WiFiService(Manager* manager,
                          const std::string& mode,
                          const std::string& security_class,
                          bool hidden_ssid)
-    : Service(manager, Technology::kWifi),
+    : Service(manager, Technology::kWiFi),
       need_passphrase_(false),
       security_(security_class),
       mode_(mode),
@@ -1388,8 +1388,8 @@ bool WiFiService::Is8021x() const {
 
 WiFiRefPtr WiFiService::ChooseDevice() {
   DeviceRefPtr device =
-      manager()->GetEnabledDeviceWithTechnology(Technology::kWifi);
-  CHECK(!device || device->technology() == Technology::kWifi)
+      manager()->GetEnabledDeviceWithTechnology(Technology::kWiFi);
+  CHECK(!device || device->technology() == Technology::kWiFi)
       << "Unexpected device technology: " << device->technology();
   return static_cast<WiFi*>(device.get());
 }

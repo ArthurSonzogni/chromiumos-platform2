@@ -323,7 +323,7 @@ const char WiFiServiceUpdateFromEndpointsTest::kBadEndpointBssId[] =
 
 TEST_F(WiFiServiceTest, Constructor) {
   const auto histogram = metrics()->GetFullMetricName(
-      Metrics::kMetricTimeToJoinMillisecondsSuffix, Technology::kWifi);
+      Metrics::kMetricTimeToJoinMillisecondsSuffix, Technology::kWiFi);
   EXPECT_CALL(*metrics(), AddServiceStateTransitionTimer(
                               _, histogram, Service::kStateAssociating,
                               Service::kStateConfiguring));
@@ -1886,7 +1886,7 @@ TEST_F(WiFiServiceTest, ChooseDevice) {
   WiFiServiceRefPtr service = MakeServiceWithMockManager();
 
   EXPECT_CALL(*mock_manager(),
-              GetEnabledDeviceWithTechnology(Technology(Technology::kWifi)))
+              GetEnabledDeviceWithTechnology(Technology(Technology::kWiFi)))
       .WillOnce(Return(wifi));
   EXPECT_EQ(wifi, service->ChooseDevice());
   Mock::VerifyAndClearExpectations(mock_manager());

@@ -17,7 +17,7 @@ TEST(TechnologyTest, CreateFromName) {
   EXPECT_EQ(Technology::kEthernet, Technology::CreateFromName("ethernet"));
   EXPECT_EQ(Technology::kEthernetEap,
             Technology::CreateFromName("etherneteap"));
-  EXPECT_EQ(Technology::kWifi, Technology::CreateFromName("wifi"));
+  EXPECT_EQ(Technology::kWiFi, Technology::CreateFromName("wifi"));
   EXPECT_EQ(Technology::kCellular, Technology::CreateFromName("cellular"));
   EXPECT_EQ(Technology::kTunnel, Technology::CreateFromName("tunnel"));
   EXPECT_EQ(Technology::kLoopback, Technology::CreateFromName("loopback"));
@@ -32,7 +32,7 @@ TEST(TechnologyTest, CreateFromName) {
 TEST(TechnologyTest, GetName) {
   EXPECT_EQ("ethernet", Technology(Technology::kEthernet).GetName());
   EXPECT_EQ("etherneteap", Technology(Technology::kEthernetEap).GetName());
-  EXPECT_EQ("wifi", Technology(Technology::kWifi).GetName());
+  EXPECT_EQ("wifi", Technology(Technology::kWiFi).GetName());
   EXPECT_EQ("cellular", Technology(Technology::kCellular).GetName());
   EXPECT_EQ("tunnel", Technology(Technology::kTunnel).GetName());
   EXPECT_EQ("loopback", Technology(Technology::kLoopback).GetName());
@@ -76,7 +76,7 @@ TEST(TechnologyTest, GetTechnologyVectorFromStringWithValidTechnologyNames) {
                                             &error));
   EXPECT_THAT(
       technologies,
-      ElementsAre(Technology::kWifi, Technology::kEthernet, Technology::kVPN));
+      ElementsAre(Technology::kWiFi, Technology::kEthernet, Technology::kVPN));
   EXPECT_TRUE(error.IsSuccess());
 }
 
