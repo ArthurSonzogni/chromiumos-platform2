@@ -6,12 +6,12 @@ import enum
 import struct
 
 
-STRUCT_VERSION = 1
+STRUCT_VERSION = 2
 # version, entry_count
 HEADER_FORMAT = '<LL'
 # flags, smbios name match, fdt compatible match, sku match,
-# whitelabel match
-ENTRY_FORMAT = '<LLLLL'
+# whitelabel match, firmware manifest name
+ENTRY_FORMAT = '<LLLLLL'
 
 
 class EntryFlags(enum.Enum):
@@ -71,6 +71,7 @@ def WriteIdentityStruct(config, output_file):
   # Write each of the entry structs.
   for device_config in device_configs:
     identity_info = device_config.get('identity', {})
+    firmware_manifest_key = device_config['name']
     flags = 0
     sku_id = 0
     if 'sku-id' in identity_info:
@@ -100,7 +101,8 @@ def WriteIdentityStruct(config, output_file):
                     _StringTableIndex(smbios_name_match),
                     _StringTableIndex(fdt_compatible_match),
                     sku_id,
-                    _StringTableIndex(whitelabel_match)))
+                    _StringTableIndex(whitelabel_match),
+                    _StringTableIndex(firmware_manifest_key)))
 
   for entry in string_table:
     output_file.write(entry)

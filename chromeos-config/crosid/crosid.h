@@ -109,6 +109,7 @@ struct crosid_probed_device_data {
 	struct crosid_optional_string fdt_compatible;
 	struct crosid_optional_string whitelabel_tag;
 	struct crosid_optional_string customization_id;
+	char *firmware_manifest_key;
 };
 
 /**
@@ -157,7 +158,7 @@ void crosid_probe_free(struct crosid_probed_device_data *data);
  * the struct format.  This must be kept in sync with the
  * cros_config_schema implementation.
  */
-#define CROSID_TABLE_VERSION 1
+#define CROSID_TABLE_VERSION 2
 
 enum crosid_table_flags {
 	MATCH_SKU_ID = (1 << 0),
@@ -176,6 +177,7 @@ struct crosid_table_entry {
 		uint32_t customization_id_match;
 		uint32_t whitelabel_tag_match;
 	};
+	uint32_t firmware_manifest_key;
 } __attribute__((packed));
 
 struct crosid_table_header {

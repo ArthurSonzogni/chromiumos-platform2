@@ -3,9 +3,12 @@
  * found in the LICENSE file.
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 #include "crosid.h"
 
@@ -35,6 +38,13 @@
 	"- model.yaml or Boxster has not been set up for your correctly provisioned device\n" \
 	"\n"                                                                                  \
 	"Hint: you can always run \"crosid -v\" for a full explanation.\n"
+
+static char *get_string(struct crosid_table_header *table, uint32_t string_idx)
+{
+	char *strings = (char *)&table->entries[table->entry_count];
+
+	return strings + string_idx;
+}
 
 static bool
 check_optional_string_match(struct crosid_optional_string *device_str,
@@ -190,6 +200,9 @@ int crosid_match(struct crosid_probed_device_data *data)
 		if (table_entry_matches(table, i, data)) {
 			crosid_log(LOG_DBG, "Identity %zu is a match!\n", i);
 			rv = i;
+			data->firmware_manifest_key = strdup(get_string(
+				table,
+				table->entries[i].firmware_manifest_key));
 			goto exit;
 		} else {
 			crosid_log(LOG_DBG, "Identity %zu is incompatible.\n",

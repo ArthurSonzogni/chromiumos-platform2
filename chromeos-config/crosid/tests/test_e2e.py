@@ -2,12 +2,47 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import shlex
 import subprocess
 import struct
 
 import pytest
 
 import cros_config_host.identity_table
+
+
+def getvars(output):
+    """Get a dictionary from the output of crosid."""
+    result = {}
+    for word in shlex.split(output):
+        key, _, value = word.partition("=")
+        result[key] = value
+    return result
+
+
+def make_config(
+    model_name,
+    smbios_name_match=None,
+    sku_id=None,
+    fdt_match=None,
+    customization_id=None,
+    whitelabel_tag=None,
+):
+    identity = {}
+    if smbios_name_match is not None:
+        identity["smbios-name-match"] = smbios_name_match
+    if sku_id is not None:
+        identity["sku-id"] = sku_id
+    if fdt_match is not None:
+        identity["device-tree-compatible-match"] = fdt_match
+    if customization_id is not None:
+        identity["customization-id"] = customization_id
+    if whitelabel_tag is not None:
+        identity["whitelabel-tag"] = whitelabel_tag
+    return {
+        "name": model_name,
+        "identity": identity,
+    }
 
 
 def make_fake_sysroot(
@@ -46,7 +81,7 @@ def make_fake_sysroot(
         for name, value in vpd_values.items():
             (vpd_sysfs_path / name).write_text(value)
 
-    configs_full = {"chromeos": {"configs": [{"identity": c} for c in configs]}}
+    configs_full = {"chromeos": {"configs": configs}}
     config_path = path / "usr" / "share" / "chromeos-config"
     config_path.mkdir(exist_ok=True, parents=True)
     with open(config_path / "identity.bin", "wb") as output_file:
@@ -54,63 +89,73 @@ def make_fake_sysroot(
 
 
 REEF_CONFIGS = [
-    {
-        "smbios-name-match": "Reef",
-        "sku-id": 8,
-        "customization-id": "PARMA-ELECTRO",
-    },
-    {
-        "smbios-name-match": "Reef",
-        "sku-id": 0,
-        "customization-id": "OEM2-BASKING",
-    },
-    {
-        "smbios-name-match": "Pyro",
-        "customization-id": "NEWTON2-PYRO",
-    },
-    {
-        "smbios-name-match": "Sand",
-        "customization-id": "ACER-SAND",
-    },
-    {
-        "smbios-name-match": "Snappy",
-        "sku-id": 7,
-        "customization-id": "ALAN-DOLPHIN",
-    },
-    {
-        "smbios-name-match": "Snappy",
-        "sku-id": 2,
-        "customization-id": "BENTLEY-BIGDADDY",
-    },
-    {
-        "smbios-name-match": "Snappy",
-        "sku-id": 5,
-        "customization-id": "BENTLEY-BIGDADDY",
-    },
-    {
-        "smbios-name-match": "Snappy",
-        "sku-id": 8,
-        "customization-id": "MORGAN-SNAPPY",
-    },
-    {
-        "smbios-name-match": "Snappy",
-    },
+    make_config(
+        "electro",
+        smbios_name_match="Reef",
+        sku_id=8,
+        customization_id="PARMA-ELECTRO",
+    ),
+    make_config(
+        "basking",
+        smbios_name_match="Reef",
+        sku_id=0,
+        customization_id="OEM2-BASKING",
+    ),
+    make_config(
+        "pyro",
+        smbios_name_match="Pyro",
+        customization_id="NEWTON2-PYRO",
+    ),
+    make_config(
+        "sand",
+        smbios_name_match="Sand",
+        customization_id="ACER-SAND",
+    ),
+    make_config(
+        "alan",
+        smbios_name_match="Snappy",
+        sku_id=7,
+        customization_id="DOLPHIN-ALAN",
+    ),
+    make_config(
+        "bigdaddy",
+        smbios_name_match="Snappy",
+        sku_id=2,
+        customization_id="BENTLEY-BIGDADDY",
+    ),
+    make_config(
+        "bigdaddy",
+        smbios_name_match="Snappy",
+        sku_id=5,
+        customization_id="BENTLEY-BIGDADDY",
+    ),
+    make_config(
+        "snappy",
+        smbios_name_match="Snappy",
+        sku_id=8,
+        customization_id="MORGAN-SNAPPY",
+    ),
+    make_config(
+        "snappy",
+        smbios_name_match="Snappy",
+    ),
 ]
 
 
 @pytest.mark.parametrize("config_idx", list(range(len(REEF_CONFIGS))))
 def test_reef(tmp_path, executable_path, config_idx):
     cfg = REEF_CONFIGS[config_idx]
+    identity = cfg["identity"]
     vpd = {}
 
-    customization_id = cfg.get("customization-id")
+    customization_id = identity.get("customization-id")
     if customization_id:
         vpd["customization_id"] = customization_id
 
     make_fake_sysroot(
         tmp_path,
-        smbios_name=cfg["smbios-name-match"],
-        smbios_sku=cfg.get("sku-id"),
+        smbios_name=identity["smbios-name-match"],
+        smbios_sku=identity.get("sku-id"),
         vpd_values=vpd,
         configs=REEF_CONFIGS,
     )
@@ -124,9 +169,11 @@ def test_reef(tmp_path, executable_path, config_idx):
         encoding="utf-8",
     )
 
-    assert result.stdout == "SKU={}\nCONFIG_INDEX={}\n".format(
-        cfg.get("sku-id", "none"), config_idx
-    )
+    assert getvars(result.stdout) == {
+        "SKU": str(identity.get("sku-id", "none")),
+        "CONFIG_INDEX": str(config_idx),
+        "FIRMWARE_MANIFEST_KEY": cfg["name"],
+    }
 
 
 def test_no_match(tmp_path, executable_path):
@@ -147,7 +194,11 @@ def test_no_match(tmp_path, executable_path):
     )
 
     assert result.returncode != 0
-    assert result.stdout == "SKU=none\nCONFIG_INDEX=unknown\n"
+    assert getvars(result.stdout) == {
+        "SKU": "none",
+        "CONFIG_INDEX": "unknown",
+        "FIRMWARE_MANIFEST_KEY": "",
+    }
 
 
 def test_both_customization_id_and_whitelabel(tmp_path, executable_path):
@@ -176,52 +227,27 @@ def test_both_customization_id_and_whitelabel(tmp_path, executable_path):
 
 
 TROGDOR_CONFIGS = [
-    {
-        "device-tree-compatible-match": "google,trogdor",
-    },
-    {
-        "device-tree-compatible-match": "google,lazor",
-        "sku-id": 0,
-    },
-    {
-        "device-tree-compatible-match": "google,lazor",
-        "sku-id": 1,
-    },
-    {
-        "device-tree-compatible-match": "google,lazor",
-        "sku-id": 2,
-    },
-    {
-        "device-tree-compatible-match": "google,lazor",
-        "sku-id": 4,
-    },
-    {
-        "device-tree-compatible-match": "google,lazor",
-        "sku-id": 5,
-        "whitelabel-tag": "",
-    },
-    {
-        "device-tree-compatible-match": "google,lazor",
-        "sku-id": 6,
-        "whitelabel-tag": "lazorwl",
-    },
-    {
-        "device-tree-compatible-match": "google,lazor",
-        "sku-id": 6,
-        "whitelabel-tag": "",
-    },
-    {
-        "device-tree-compatible-match": "google,lazor",
-    },
+    make_config("trogdor", fdt_match="google,trogdor"),
+    make_config("lazor", fdt_match="google,lazor", sku_id=0),
+    make_config("lazor", fdt_match="google,lazor", sku_id=1),
+    make_config("lazor", fdt_match="google,lazor", sku_id=2),
+    make_config("lazor", fdt_match="google,lazor", sku_id=3),
+    make_config("limozeen", fdt_match="google,lazor", sku_id=5, whitelabel_tag=""),
+    make_config(
+        "limozeen", fdt_match="google,lazor", sku_id=6, whitelabel_tag="lazorwl"
+    ),
+    make_config("limozeen", fdt_match="google,lazor", sku_id=6, whitelabel_tag=""),
+    make_config("lazor", fdt_match="google,lazor"),
 ]
 
 
 @pytest.mark.parametrize("config_idx", list(range(len(TROGDOR_CONFIGS))))
 def test_trogdor(tmp_path, executable_path, config_idx):
     cfg = TROGDOR_CONFIGS[config_idx]
+    identity = cfg["identity"]
 
     vpd = {}
-    whitelabel_tag = cfg.get("whitelabel-tag")
+    whitelabel_tag = identity.get("whitelabel-tag")
     if whitelabel_tag:
         vpd["whitelabel_tag"] = whitelabel_tag
 
@@ -230,10 +256,10 @@ def test_trogdor(tmp_path, executable_path, config_idx):
         fdt_compatible=[
             "google,snapdragon",
             "google,sc7180",
-            cfg["device-tree-compatible-match"],
+            identity["device-tree-compatible-match"],
             "google,chromebook",
         ],
-        fdt_sku=cfg.get("sku-id"),
+        fdt_sku=identity.get("sku-id"),
         vpd_values=vpd,
         configs=TROGDOR_CONFIGS,
     )
@@ -247,9 +273,11 @@ def test_trogdor(tmp_path, executable_path, config_idx):
         encoding="utf-8",
     )
 
-    assert result.stdout == "SKU={}\nCONFIG_INDEX={}\n".format(
-        cfg.get("sku-id", "none"), config_idx
-    )
+    assert getvars(result.stdout) == {
+        "SKU": str(identity.get("sku-id", "none")),
+        "CONFIG_INDEX": str(config_idx),
+        "FIRMWARE_MANIFEST_KEY": cfg["name"],
+    }
 
 
 def test_fdt_compatible_missing(tmp_path, executable_path):
@@ -269,7 +297,11 @@ def test_fdt_compatible_missing(tmp_path, executable_path):
     )
 
     assert result.returncode != 0
-    assert result.stdout == "SKU=none\nCONFIG_INDEX=unknown\n"
+    assert getvars(result.stdout) == {
+        "SKU": "none",
+        "CONFIG_INDEX": "unknown",
+        "FIRMWARE_MANIFEST_KEY": "",
+    }
 
 
 def test_missing_identity_table(tmp_path, executable_path):
@@ -283,7 +315,11 @@ def test_missing_identity_table(tmp_path, executable_path):
     )
 
     assert result.returncode != 0
-    assert result.stdout == "SKU=none\nCONFIG_INDEX=unknown\n"
+    assert getvars(result.stdout) == {
+        "SKU": "none",
+        "CONFIG_INDEX": "unknown",
+        "FIRMWARE_MANIFEST_KEY": "",
+    }
 
 
 @pytest.mark.parametrize(
@@ -309,7 +345,11 @@ def test_corrupted_identity_table(tmp_path, executable_path, contents):
     )
 
     assert result.returncode != 0
-    assert result.stdout == "SKU=none\nCONFIG_INDEX=unknown\n"
+    assert getvars(result.stdout) == {
+        "SKU": "none",
+        "CONFIG_INDEX": "unknown",
+        "FIRMWARE_MANIFEST_KEY": "",
+    }
 
 
 @pytest.mark.parametrize(
@@ -348,7 +388,11 @@ def test_corrupted_sku_x86(tmp_path, executable_path, contents):
         encoding="utf-8",
     )
 
-    assert result.stdout == "SKU=none\nCONFIG_INDEX=8\n"
+    assert getvars(result.stdout) == {
+        "SKU": "none",
+        "CONFIG_INDEX": "8",
+        "FIRMWARE_MANIFEST_KEY": "snappy",
+    }
 
 
 @pytest.mark.parametrize(
@@ -381,4 +425,8 @@ def test_corrupted_sku_arm(tmp_path, executable_path, contents):
         encoding="utf-8",
     )
 
-    assert result.stdout == "SKU=none\nCONFIG_INDEX=8\n"
+    assert getvars(result.stdout) == {
+        "SKU": "none",
+        "CONFIG_INDEX": "8",
+        "FIRMWARE_MANIFEST_KEY": "lazor",
+    }

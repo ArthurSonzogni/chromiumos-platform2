@@ -40,6 +40,9 @@ int crosid_probe(struct crosid_probed_device_data *out)
 {
 	const char *sku_src;
 
+	/* To be later populated by crosid_match */
+	out->firmware_manifest_key = NULL;
+
 	if (crosid_get_sku_id(&out->sku_id, &sku_src) >= 0) {
 		out->has_sku_id = true;
 		crosid_log(LOG_DBG, "Read SKU=%u (from %s)\n", out->sku_id,
@@ -105,6 +108,12 @@ void crosid_print_vars(FILE *out, struct crosid_probed_device_data *data,
 		fprintf(out, "CONFIG_INDEX=%d\n", config_idx);
 	else
 		fprintf(out, "CONFIG_INDEX=unknown\n");
+
+	if (data->firmware_manifest_key)
+		fprintf(out, "FIRMWARE_MANIFEST_KEY='%s'\n",
+			data->firmware_manifest_key);
+	else
+		fprintf(out, "FIRMWARE_MANIFEST_KEY=\n");
 }
 
 void crosid_probe_free(struct crosid_probed_device_data *data)
@@ -113,4 +122,5 @@ void crosid_probe_free(struct crosid_probed_device_data *data)
 	free(data->fdt_compatible.value);
 	free(data->whitelabel_tag.value);
 	free(data->customization_id.value);
+	free(data->firmware_manifest_key);
 }
