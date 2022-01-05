@@ -186,4 +186,21 @@ struct crosid_table_header {
 	struct crosid_table_entry entries[];
 } __attribute__((packed));
 
+/* High-level API entry points */
+
+/**
+ * crosid_get_firmware_manifest_key() - Get futility manifest key
+ *
+ * @manifest_key_out - Output parameter of the firmware manifest key.
+ *
+ * Note: manifest_key_out is allocated by this function and should be
+ * freed by the caller when no longer required.
+ *
+ * Returns:
+ * - >=0, the matched identity index, if probe and match was
+ *    successful (manifest key available)
+ * - <0 error
+ */
+int crosid_get_firmware_manifest_key(char **manifest_key_out);
+
 #endif /* _CROSID_H */
