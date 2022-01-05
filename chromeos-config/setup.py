@@ -18,7 +18,6 @@ setup(
     package_data={'cros_config_host': [
         'cros_config_schema.yaml',
         'power_manager_prefs_schema.yaml',
-        'cros_config_test_schema.yaml',
     ]},
     entry_points={
         'console_scripts': [
@@ -27,7 +26,6 @@ setup(
                 'cros_config_host',
                 'cros_config_proto_converter',
                 'cros_config_schema',
-                'cros_config_test_schema'
             )
         ],
     },
