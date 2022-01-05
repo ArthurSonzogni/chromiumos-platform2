@@ -72,12 +72,44 @@ void LibdrmUtilImpl::FillPrivacyScreenInfo(const uint32_t connector_id,
   if (!connector)
     return;
 
-  ScopedDrmPropertyPtr privacy_screen_prop;
-  int idx = GetDrmProperty(connector, "privacy-screen", &privacy_screen_prop);
+  ScopedDrmPropertyPtr hw_prop;
+  ScopedDrmPropertyPtr sw_prop;
+  int hw_idx = GetDrmProperty(connector, "privacy-screen hw-state", &hw_prop);
+  int sw_idx = GetDrmProperty(connector, "privacy-screen sw-state", &sw_prop);
+
+  // Both hw-state and sw-state should exist to indicate we support this
+  // feature.
+  // Only hw-state indicate the status of ePrivacyScreen.
+  //
+  // Reference: chromium/src/ui/ozone/platform/drm/common/drm_util.cc
+  if (hw_idx >= 0 && sw_idx >= 0) {
+    *privacy_screen_supported = true;
+    auto hw_enum_name = GetEnumName(hw_prop, connector->prop_values[hw_idx]);
+    if (hw_enum_name == "Enabled" || hw_enum_name == "Enabled-locked") {
+      *privacy_screen_enabled = true;
+    }
+    return;
+  }
+
+  // Fallback to legacy version.
+  ScopedDrmPropertyPtr legacy_prop;
+  int idx = GetDrmProperty(connector, "privacy-screen", &legacy_prop);
   if (idx >= 0) {
     *privacy_screen_supported = true;
     *privacy_screen_enabled = connector->prop_values[idx] == 1;
   }
+}
+
+std::string LibdrmUtilImpl::GetEnumName(const ScopedDrmPropertyPtr& prop,
+                                        uint32_t value) {
+  if (!prop)
+    return std::string();
+
+  for (int i = 0; i < prop->count_enums; ++i)
+    if (prop->enums[i].value == value)
+      return prop->enums[i].name;
+
+  return std::string();
 }
 
 int LibdrmUtilImpl::GetDrmProperty(const ScopedDrmModeConnectorPtr& connector,

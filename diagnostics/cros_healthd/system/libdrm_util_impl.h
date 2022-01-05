@@ -58,6 +58,7 @@ class LibdrmUtilImpl : public LibdrmUtil {
   int GetDrmProperty(const ScopedDrmModeConnectorPtr& connector,
                      const std::string& name,
                      ScopedDrmPropertyPtr* prop);
+  std::string GetEnumName(const ScopedDrmPropertyPtr& prop, uint32_t value);
 
   base::File device_file;
   uint32_t edp_connector_id;
