@@ -10,6 +10,13 @@
 #include "runtime_probe/system/context_impl.h"
 
 namespace runtime_probe {
+
+// Define the constructor here instead of the header to allow us using forward
+// declaration in headers. This can reduce the dependencies to external
+// libraries like debugd-client for the components which don't use them.
+ContextImpl::ContextImpl() = default;
+ContextImpl::~ContextImpl() = default;
+
 bool ContextImpl::SetupDBusServices() {
   dbus_bus_ = connection_.Connect();
   if (!dbus_bus_) {

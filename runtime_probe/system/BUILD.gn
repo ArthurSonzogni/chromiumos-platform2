@@ -4,7 +4,7 @@
 
 import("//common-mk/pkg_config.gni")
 
-pkg_config("libsystem_common_pkg_deps") {
+pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
@@ -13,12 +13,12 @@ pkg_config("libsystem_common_pkg_deps") {
   defines = [ "USE_FACTORY_RUNTIME_PROBE=${use.factory_runtime_probe}" ]
 }
 
-source_set("libsystem") {
-  configs += [ ":libsystem_common_pkg_deps" ]
+source_set("system") {
   sources = [
     "context_impl.cc",
     "context_instance.cc",
   ]
+  configs += [ ":target_defaults" ]
   if (use.factory_runtime_probe) {
     sources += [
       "context_factory_impl.cc",
@@ -33,18 +33,15 @@ source_set("libsystem") {
 }
 
 if (use.test) {
-  pkg_config("libsystem_test_pkg_deps") {
-    pkg_deps = [
-      "libdebugd-client",
-      "libdebugd-client-test",
-    ]
+  pkg_config("test_pkg_deps") {
+    pkg_deps = [ "libdebugd-client-test" ]
   }
 
-  source_set("libsystem_test") {
-    configs += [
-      ":libsystem_common_pkg_deps",
-      ":libsystem_test_pkg_deps",
-    ]
+  source_set("test_utils") {
     sources = [ "fake_helper_invoker.cc" ]
+    configs += [
+      ":target_defaults",
+      ":test_pkg_deps",
+    ]
   }
 }

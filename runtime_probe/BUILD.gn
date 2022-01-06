@@ -21,50 +21,21 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
-  # NOSORT
   pkg_deps = [
     "libbrillo",
     "libchrome",
     "libcros_config",
-    "libec",
-    "libpcrecpp",
-    "libshill-client",
-
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
     "protobuf",
+    "system_api",
     "vboot_host",
   ]
   defines = [ "USE_FACTORY_RUNTIME_PROBE=${use.factory_runtime_probe}" ]
 }
 
-static_library("libruntime_probe") {
+source_set("lib") {
   sources = [
     "component_category.cc",
     "field_converter.cc",
-    "function_templates/network.cc",
-    "function_templates/storage.cc",
-    "functions/all_functions.cc",
-    "functions/ata_storage.cc",
-    "functions/cellular_network.cc",
-    "functions/ectool_i2cread.cc",
-    "functions/edid.cc",
-    "functions/ethernet_network.cc",
-    "functions/generic_battery.cc",
-    "functions/generic_network.cc",
-    "functions/generic_storage.cc",
-    "functions/input_device.cc",
-    "functions/memory.cc",
-    "functions/mmc_storage.cc",
-    "functions/nvme_storage.cc",
-    "functions/sequence.cc",
-    "functions/sysfs.cc",
-    "functions/tcpc.cc",
-    "functions/usb_camera.cc",
-    "functions/vpd_cached.cc",
-    "functions/wireless_network.cc",
     "probe_config.cc",
     "probe_config_loader_impl.cc",
     "probe_function.cc",
@@ -72,27 +43,19 @@ static_library("libruntime_probe") {
     "probe_result_checker.cc",
     "probe_statement.cc",
     "system_property_impl.cc",
-    "utils/edid.cc",
-    "utils/file_utils.cc",
-    "utils/input_device.cc",
-    "utils/pipe_utils.cc",
-    "utils/type_utils.cc",
-    "utils/value_utils.cc",
   ]
-  configs += [
-    ":target_defaults",
-    "system:libsystem_common_pkg_deps",
+  configs += [ ":target_defaults" ]
+  deps = [
+    "//runtime_probe/functions",
+    "//runtime_probe/system",
+    "//runtime_probe/utils",
   ]
-  deps = [ "system:libsystem" ]
 }
 
 executable("runtime_probe") {
   sources = [ "runtime_probe.cc" ]
-  configs += [
-    ":target_defaults",
-    "system:libsystem_common_pkg_deps",
-  ]
-  deps = [ ":libruntime_probe" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":lib" ]
   if (use.factory_runtime_probe) {
     output_name = "factory_runtime_probe"
     install_path = "bin"
@@ -105,28 +68,25 @@ if (use.test) {
   executable("unittest_runner") {
     sources = [
       "field_converter_test.cc",
-      "functions/sequence_test.cc",
-      "functions/sysfs_test.cc",
       "probe_config_loader_impl_test.cc",
       "probe_config_test.cc",
       "probe_function_argument_test.cc",
       "probe_result_checker_test.cc",
       "probe_statement_test.cc",
-      "utils/file_utils_test.cc",
     ]
     configs += [
-      "//common-mk:test",
       ":target_defaults",
-      "system:libsystem_test_pkg_deps",
+      "//common-mk:test",
     ]
     data = [
       "testdata/probe_config.json",
       "testdata/test.txt",
     ]
     deps = [
-      ":libruntime_probe",
-      "system:libsystem_test",
+      ":lib",
       "//common-mk/testrunner",
+      "//runtime_probe/functions:test",
+      "//runtime_probe/utils:test",
     ]
   }
 }
@@ -135,13 +95,13 @@ if (use.fuzzer) {
   executable("runtime_probe_resultchecker_fuzzer") {
     sources = [ "runtime_probe_resultchecker_fuzzer.cc" ]
     configs += [ "//common-mk/common_fuzzer" ]
-    deps = [ ":libruntime_probe" ]
+    deps = [ ":lib" ]
     pkg_deps = [ "libchrome-test" ]
   }
   executable("runtime_probe_probestatement_fuzzer") {
     sources = [ "runtime_probe_probestatement_fuzzer.cc" ]
     configs += [ "//common-mk/common_fuzzer" ]
-    deps = [ ":libruntime_probe" ]
+    deps = [ ":lib" ]
     pkg_deps = [ "libchrome-test" ]
   }
 }

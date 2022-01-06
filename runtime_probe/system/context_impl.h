@@ -8,7 +8,6 @@
 #include <memory>
 
 #include <base/check.h>
-#include <debugd/dbus-proxies.h>
 #include <brillo/dbus/dbus_connection.h>
 
 #include "runtime_probe/system/context.h"
@@ -17,7 +16,7 @@ namespace runtime_probe {
 
 class ContextImpl : public Context {
  public:
-  ~ContextImpl() override = default;
+  ~ContextImpl() override;
 
   org::chromium::debugdProxyInterface* debugd_proxy() override {
     CHECK(debugd_proxy_);
@@ -31,7 +30,7 @@ class ContextImpl : public Context {
 
  protected:
   // This interface should be used through its derived classes.
-  ContextImpl() = default;
+  ContextImpl();
 
   // Setups the dbus connection and the dbus services.
   bool SetupDBusServices();

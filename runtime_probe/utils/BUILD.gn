@@ -1,0 +1,35 @@
+# Copyright 2022 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+}
+
+source_set("utils") {
+  sources = [
+    "edid.cc",
+    "file_utils.cc",
+    "input_device.cc",
+    "pipe_utils.cc",
+    "type_utils.cc",
+    "value_utils.cc",
+  ]
+  configs += [ ":target_defaults" ]
+}
+
+if (use.test) {
+  source_set("test") {
+    sources = [ "file_utils_test.cc" ]
+    configs += [
+      ":target_defaults",
+      "//common-mk:test",
+    ]
+    deps = [ ":utils" ]
+  }
+}
