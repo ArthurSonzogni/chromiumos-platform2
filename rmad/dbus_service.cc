@@ -330,7 +330,7 @@ int DBusService::OnEventLoopStarted() {
     }
     is_external_utils_initialized_ = true;
   }
-  is_rma_required_ = IsRmaRequired();
+  is_rma_required_ = CheckRmaCriteria();
   return EX_OK;
 }
 
@@ -394,7 +394,7 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
       sequencer->GetHandler("Failed to register D-Bus objects.", true));
 }
 
-bool DBusService::IsRmaRequired() const {
+bool DBusService::CheckRmaCriteria() const {
   if (base::PathExists(state_file_path_)) {
     return true;
   }
@@ -403,6 +403,9 @@ bool DBusService::IsRmaRequired() const {
       tpm_manager_client_->GetRoVerificationStatus(&status) &&
       (status == RoVerificationStatus::PASS ||
        status == RoVerificationStatus::UNSUPPORTED_TRIGGERED)) {
+    // Initialize the state file so we can reliably boot into RMA even if Chrome
+    // accidentally reboots the device before calling |GetCurrentState| API.
+    base::WriteFile(state_file_path_, "{}");
     return true;
   }
   return false;

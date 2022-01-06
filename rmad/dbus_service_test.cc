@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <brillo/dbus/dbus_object_test_helpers.h>
 #include <brillo/file_utils.h>
@@ -90,11 +91,14 @@ class DBusServiceTest : public testing::Test {
   }
   ~DBusServiceTest() override = default;
 
+  base::FilePath GetStateFilePath() const {
+    return temp_dir_.GetPath().AppendASCII("state");
+  }
+
   void SetUpDBusService(bool state_file_exist,
                         RoVerificationStatus ro_verification_status,
                         bool setup_success) {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base::FilePath state_file_path = temp_dir_.GetPath().AppendASCII("state");
+    base::FilePath state_file_path = GetStateFilePath();
     if (state_file_exist) {
       brillo::TouchFile(state_file_path);
     }
@@ -208,6 +212,8 @@ class DBusServiceTest : public testing::Test {
   }
 
  protected:
+  void SetUp() override { ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()); }
+
   std::unique_ptr<dbus::MethodCall> CreateMethodCall(
       const std::string& method_name) {
     auto call =
@@ -228,6 +234,7 @@ TEST_F(DBusServiceTest, IsRmaRequired_NotRequired) {
   bool is_rma_required;
   ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
   EXPECT_EQ(is_rma_required, false);
+  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
 }
 
 TEST_F(DBusServiceTest, IsRmaRequired_RoVerificationPass) {
@@ -235,6 +242,7 @@ TEST_F(DBusServiceTest, IsRmaRequired_RoVerificationPass) {
   bool is_rma_required;
   ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
   EXPECT_EQ(is_rma_required, true);
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 }
 
 TEST_F(DBusServiceTest, IsRmaRequired_RoVerificationUnsupportedTriggered) {
@@ -242,6 +250,7 @@ TEST_F(DBusServiceTest, IsRmaRequired_RoVerificationUnsupportedTriggered) {
   bool is_rma_required;
   ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
   EXPECT_EQ(is_rma_required, true);
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 }
 
 TEST_F(DBusServiceTest, IsRmaRequired_StateFileExists) {
@@ -249,6 +258,7 @@ TEST_F(DBusServiceTest, IsRmaRequired_StateFileExists) {
   bool is_rma_required;
   ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
   EXPECT_EQ(is_rma_required, true);
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 }
 
 TEST_F(DBusServiceTest, IsRmaRequired_InterfaceSetUpFailed) {
@@ -257,6 +267,7 @@ TEST_F(DBusServiceTest, IsRmaRequired_InterfaceSetUpFailed) {
   bool is_rma_required;
   ExecuteMethod(kIsRmaRequiredMethod, &is_rma_required);
   EXPECT_EQ(is_rma_required, true);
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 }
 
 TEST_F(DBusServiceTest, GetCurrentStats_RmaNotRequired) {

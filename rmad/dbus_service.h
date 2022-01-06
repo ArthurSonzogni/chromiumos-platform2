@@ -84,7 +84,7 @@ class DBusService : public brillo::DBusServiceDaemon {
  private:
   friend class DBusServiceTest;
 
-  bool IsRmaRequired() const;
+  bool CheckRmaCriteria() const;
   bool ConditionallySetUpInterface();
 
   template <typename... Types>
