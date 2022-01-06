@@ -65,6 +65,8 @@ getuid: 1
 #   0xc04064a0 == DRM_IOCTL_MODE_GETRESOURCES
 #   0xc04064aa == DRM_IOCTL_MODE_GETPROPERTY
 #   0xc05064a7 == DRM_IOCTL_MODE_GETCONNECTOR
+#   0xc01464a6 == DRM_IOCTL_MODE_GETENCODER
+#   0xc06864a1 == DRM_IOCTL_MODE_GETCRTC
 ioctl: arg1 == BLKGETSIZE64 || arg1 == SIOCSIFFLAGS || arg1 == BLKSSZGET || \
        arg1 == SIOCGIFFLAGS || arg1 == TCGETS || arg1 == 0x40048001 || \
        arg1 == 0x40108003 || arg1 == 0x40108014 || arg1 == 0x40208018 || \
@@ -73,7 +75,7 @@ ioctl: arg1 == BLKGETSIZE64 || arg1 == SIOCSIFFLAGS || arg1 == BLKSSZGET || \
        arg1 == 0xc0106442 || arg1 == 0xc018644c || arg1 == 0xc010640c || \
        arg1 == 0xc0186443 || arg1 == 0xc0106440 || arg1 == 0xc0406400 || \
        arg1 == 0x4004644b || arg1 == 0xc04064a0 || arg1 == 0xc04064aa || \
-       arg1 == 0xc05064a7
+       arg1 == 0xc05064a7 || arg1 == 0xc01464a6 || arg1 == 0xc06864a1
 kill: 1
 lseek: 1
 madvise: 1

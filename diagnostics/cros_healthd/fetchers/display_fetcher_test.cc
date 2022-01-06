@@ -67,6 +67,8 @@ TEST_F(DisplayFetcherTest, EmbeddedDisplayInfo) {
   EXPECT_FALSE(edp_info->privacy_screen_enabled);
   EXPECT_EQ(edp_info->display_width->value, 123);
   EXPECT_EQ(edp_info->display_height->value, 456);
+  EXPECT_EQ(edp_info->resolution_horizontal->value, 1920);
+  EXPECT_EQ(edp_info->resolution_vertical->value, 1080);
 }
 
 }  // namespace

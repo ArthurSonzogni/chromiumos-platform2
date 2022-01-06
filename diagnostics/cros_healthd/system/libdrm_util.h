@@ -22,6 +22,9 @@ class LibdrmUtil {
   virtual void FillDisplaySize(const uint32_t connector_id,
                                uint32_t* width,
                                uint32_t* height) = 0;
+  virtual void FillDisplayResolution(const uint32_t connector_id,
+                                     uint32_t* horizontal,
+                                     uint32_t* vertical) = 0;
 };
 
 }  // namespace diagnostics

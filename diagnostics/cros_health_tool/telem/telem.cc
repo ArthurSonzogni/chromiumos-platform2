@@ -477,6 +477,8 @@ void DisplayDisplayInfo(const DisplayResultPtr& display_result) {
   SET_DICT(privacy_screen_enabled, edp_info, edp);
   SET_DICT(display_width, edp_info, edp);
   SET_DICT(display_height, edp_info, edp);
+  SET_DICT(resolution_horizontal, edp_info, edp);
+  SET_DICT(resolution_vertical, edp_info, edp);
   OutputJson(output);
 }
 

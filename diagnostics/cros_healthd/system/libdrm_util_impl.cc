@@ -134,6 +134,21 @@ int LibdrmUtilImpl::GetDrmProperty(const ScopedDrmModeConnectorPtr& connector,
   return -1;
 }
 
+void LibdrmUtilImpl::GetDrmCrtc(const uint32_t connector_id,
+                                ScopedDrmModeCrtcPtr* crtc) {
+  ScopedDrmModeConnectorPtr connector(
+      drmModeGetConnector(device_file.GetPlatformFile(), connector_id));
+  if (!connector)
+    return;
+
+  ScopedDrmModeEncoderPtr encoder(
+      drmModeGetEncoder(device_file.GetPlatformFile(), connector->encoder_id));
+  if (!encoder)
+    return;
+
+  crtc->reset(drmModeGetCrtc(device_file.GetPlatformFile(), encoder->crtc_id));
+}
+
 void LibdrmUtilImpl::FillDisplaySize(const uint32_t connector_id,
                                      uint32_t* width,
                                      uint32_t* height) {
@@ -144,6 +159,18 @@ void LibdrmUtilImpl::FillDisplaySize(const uint32_t connector_id,
 
   *width = connector->mmWidth;
   *height = connector->mmHeight;
+}
+
+void LibdrmUtilImpl::FillDisplayResolution(const uint32_t connector_id,
+                                           uint32_t* horizontal,
+                                           uint32_t* vertical) {
+  ScopedDrmModeCrtcPtr crtc;
+  GetDrmCrtc(connector_id, &crtc);
+  if (!crtc)
+    return;
+
+  *horizontal = crtc->mode.hdisplay;
+  *vertical = crtc->mode.vdisplay;
 }
 
 }  // namespace diagnostics

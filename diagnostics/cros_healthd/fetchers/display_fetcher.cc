@@ -28,18 +28,32 @@ void FillDisplaySize(const std::unique_ptr<LibdrmUtil>& libdrm_util,
   *out_height = mojo_ipc::NullableUint32::New(height);
 }
 
+void FillDisplayResolution(const std::unique_ptr<LibdrmUtil>& libdrm_util,
+                           const uint32_t connector_id,
+                           mojo_ipc::NullableUint32Ptr* out_horizontal,
+                           mojo_ipc::NullableUint32Ptr* out_vertical) {
+  uint32_t horizontal;
+  uint32_t vertical;
+  libdrm_util->FillDisplayResolution(connector_id, &horizontal, &vertical);
+
+  *out_horizontal = mojo_ipc::NullableUint32::New(horizontal);
+  *out_vertical = mojo_ipc::NullableUint32::New(vertical);
+}
+
 mojo_ipc::EmbeddedDisplayInfoPtr FetchEmbeddedDisplayInfo(
     const std::unique_ptr<LibdrmUtil>& libdrm_util) {
-  auto edp_info = mojo_ipc::EmbeddedDisplayInfo::New();
-  auto edp_connector_id = libdrm_util->GetEmbeddedDisplayConnectorID();
-  libdrm_util->FillPrivacyScreenInfo(edp_connector_id,
-                                     &edp_info->privacy_screen_supported,
-                                     &edp_info->privacy_screen_enabled);
+  auto info = mojo_ipc::EmbeddedDisplayInfo::New();
+  auto connector_id = libdrm_util->GetEmbeddedDisplayConnectorID();
+  libdrm_util->FillPrivacyScreenInfo(connector_id,
+                                     &info->privacy_screen_supported,
+                                     &info->privacy_screen_enabled);
 
-  FillDisplaySize(libdrm_util, edp_connector_id, &edp_info->display_width,
-                  &edp_info->display_height);
+  FillDisplaySize(libdrm_util, connector_id, &info->display_width,
+                  &info->display_height);
+  FillDisplayResolution(libdrm_util, connector_id, &info->resolution_horizontal,
+                        &info->resolution_vertical);
 
-  return edp_info;
+  return info;
 }
 
 }  // namespace

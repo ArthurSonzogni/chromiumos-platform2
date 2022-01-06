@@ -24,6 +24,9 @@ class FakeLibdrmUtil : public LibdrmUtil {
   void FillDisplaySize(const uint32_t connector_id,
                        uint32_t* width,
                        uint32_t* height) override;
+  void FillDisplayResolution(const uint32_t connector_id,
+                             uint32_t* horizontal,
+                             uint32_t* vertical) override;
 };
 
 }  // namespace diagnostics

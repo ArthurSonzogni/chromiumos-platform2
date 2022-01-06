@@ -28,4 +28,11 @@ void FakeLibdrmUtil::FillDisplaySize(const uint32_t connector_id,
   *height = 456;
 }
 
+void FakeLibdrmUtil::FillDisplayResolution(const uint32_t connector_id,
+                                           uint32_t* horizontal,
+                                           uint32_t* vertical) {
+  *horizontal = 1920;
+  *vertical = 1080;
+}
+
 }  // namespace diagnostics

@@ -31,6 +31,14 @@ struct DrmModePropertyDeleter {
   void operator()(drmModePropertyRes* prop) { drmModeFreeProperty(prop); }
 };
 
+struct DrmModeEncoderDeleter {
+  void operator()(drmModeEncoder* encoder) { drmModeFreeEncoder(encoder); }
+};
+
+struct DrmModeCrtcDeleter {
+  void operator()(drmModeCrtc* crtc) { drmModeFreeCrtc(crtc); }
+};
+
 class LibdrmUtilImpl : public LibdrmUtil {
  public:
   LibdrmUtilImpl();
@@ -46,6 +54,9 @@ class LibdrmUtilImpl : public LibdrmUtil {
   void FillDisplaySize(const uint32_t connector_id,
                        uint32_t* width,
                        uint32_t* height) override;
+  void FillDisplayResolution(const uint32_t connector_id,
+                             uint32_t* horizontal,
+                             uint32_t* vertical) override;
 
  private:
   using ScopedDrmModeResPtr = std::unique_ptr<drmModeRes, DrmModeResDeleter>;
@@ -53,6 +64,9 @@ class LibdrmUtilImpl : public LibdrmUtil {
       std::unique_ptr<drmModeConnector, DrmModeConnectorDeleter>;
   using ScopedDrmPropertyPtr =
       std::unique_ptr<drmModePropertyRes, DrmModePropertyDeleter>;
+  using ScopedDrmModeEncoderPtr =
+      std::unique_ptr<drmModeEncoder, DrmModeEncoderDeleter>;
+  using ScopedDrmModeCrtcPtr = std::unique_ptr<drmModeCrtc, DrmModeCrtcDeleter>;
 
  private:
   // This function iterates all the properties in |connector| and find the
@@ -62,6 +76,7 @@ class LibdrmUtilImpl : public LibdrmUtil {
                      const std::string& name,
                      ScopedDrmPropertyPtr* prop);
   std::string GetEnumName(const ScopedDrmPropertyPtr& prop, uint32_t value);
+  void GetDrmCrtc(const uint32_t connector_id, ScopedDrmModeCrtcPtr* crtc);
 
   base::File device_file;
   uint32_t edp_connector_id;
