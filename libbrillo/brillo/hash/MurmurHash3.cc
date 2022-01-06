@@ -25,9 +25,15 @@
 
 #if defined(_MSC_VER)
 
-#define FORCE_INLINE	__forceinline
-
 #include <stdlib.h>
+
+#endif
+
+namespace brillo {
+
+#if defined(_MSC_VER)
+
+#define FORCE_INLINE	__forceinline
 
 #define ROTL32(x,y)	_rotl(x,y)
 #define ROTL64(x,y)	_rotl64(x,y)
@@ -372,3 +378,4 @@ void MurmurHash3_x64_128 ( const void * key, const int len,
 
 //-----------------------------------------------------------------------------
 
+}
