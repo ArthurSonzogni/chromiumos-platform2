@@ -2,11 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <sstream>
 #include <string>
+#include <tuple>
+#include <vector>
 
 #include "libhwsec-foundation/status/status_chain.h"
 #include "libhwsec-foundation/status/status_chain_macros.h"
+#include "libhwsec-foundation/status/status_chain_or.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -442,6 +446,230 @@ TEST_F(StatusChainTest, Macros) {
     return true;
   };
   EXPECT_TRUE(lambda_success());
+}
+
+TEST_F(StatusChainTest, StatusChainOrAssignAndRead) {
+  StatusChainOr<std::string, Fake1Error> status_or1("data");
+  StatusChainOr<std::string, Fake1Error> status_or2("");
+  StatusChainOr<std::string, Fake1Error> status_or3(
+      MakeStatus<Fake1Error>("fake1", 0));
+
+  // Make sure the StatusChainOr is only constructable with expected nullptr.
+  static_assert(
+      std::is_constructible_v<StatusChainOr<std::unique_ptr<int>, Fake1Error>,
+                              nullptr_t>,
+      "should be constructable with nullptr");
+  static_assert(
+      !std::is_constructible_v<StatusChainOr<int, Fake1Error>, nullptr_t>,
+      "should not be constructable with nullptr");
+
+  // Make sure converting between StatusChainOr and bool work as intended.
+  static_assert(!std::is_convertible_v<StatusChainOr<int, Fake1Error>, bool>,
+                "should not be convertible to bool");
+  static_assert(!std::is_convertible_v<StatusChainOr<bool, Fake1Error>, bool>,
+                "should not be convertible to bool");
+  static_assert(
+      !std::is_convertible_v<bool, StatusChainOr<std::string, Fake1Error>>,
+      "should not be convertible from bool");
+  static_assert(std::is_convertible_v<bool, StatusChainOr<bool, Fake1Error>>,
+                "should be convertible from bool");
+
+  EXPECT_TRUE(status_or1.ok());
+  EXPECT_TRUE(status_or2.ok());
+  EXPECT_FALSE(status_or3.ok());
+
+  EXPECT_EQ(*status_or1, "data");
+  EXPECT_TRUE(status_or2->empty());
+  EXPECT_EQ(status_or3.status().ToFullString(), "Fake1: fake1");
+
+  // StatusChainOr should be moveable.
+  StatusChainOr<std::string, Fake1Error> status_or4 = std::move(status_or1);
+  EXPECT_TRUE(status_or4.ok());
+  EXPECT_EQ(*status_or4, "data");
+
+  EXPECT_DEATH_IF_SUPPORTED(
+      (StatusChainOr<std::string, Fake1Error>(OkStatus<Fake1Error>())),
+      "Check failed");
+}
+
+TEST_F(StatusChainTest, StatusChainOrLambda) {
+  using StatusChainOrType1 = StatusChainOr<std::unique_ptr<int>, FakeBaseError>;
+  auto lambda1 = [](int value) -> StatusChainOrType1 {
+    if (value == 0) {
+      return MakeStatus<Fake1Error>("value shouldn't be zero", 0);
+    } else if (value < 0) {
+      return std::unique_ptr<int>(nullptr);
+    } else {
+      return std::make_unique<int>(123);
+    }
+  };
+
+  using StatusChainOrType2 =
+      StatusChainOr<std::tuple<bool, std::unique_ptr<std::string>, int>,
+                    Fake1Error>;
+  auto lambda2 = [](int value) -> StatusChainOrType2 {
+    if (value == 0) {
+      return MakeStatus<Fake1Error>("value shouldn't be zero", 0);
+    } else if (value < 0) {
+      return {std::in_place, false, nullptr, 0};
+    } else {
+      return std::make_tuple(true, std::make_unique<std::string>("data"),
+                             0x1337);
+    }
+  };
+
+  auto lambda3 = [&lambda1](int value) -> StatusChainOrType1 {
+    StatusChainOrType1 result = lambda1(value);
+    if (!result.ok()) {
+      return MakeStatus<Fake4Error>("lambda1 failed", 4)
+          .Wrap(std::move(result).status());
+    }
+    return std::move(*result);
+  };
+
+  auto lambda4 = [&lambda1](int value) -> StatusChain<FakeBaseError> {
+    if (value < 0) {
+      return MakeStatus<Fake4Error>("value shouldn't be negative", value);
+    }
+    RETURN_IF_ERROR(std::move(lambda1(value)).status(), AsIs());
+    return OkStatus<Fake3Error>();
+  };
+
+  using StatusChainOrType3 = StatusChainOr<std::vector<int>, Fake1Error>;
+
+  auto lambda5 = [](int value) -> StatusChainOrType3 {
+    if (value == 0) {
+      return MakeStatus<Fake1Error>("value shouldn't be zero", 0);
+    } else if (value < 0) {
+      return {std::in_place};
+    } else {
+      return {std::in_place,
+              {
+                  value,
+                  value + 1,
+                  value + 2,
+                  value + 3,
+              }};
+    }
+  };
+
+  EXPECT_FALSE(lambda1(0).ok());
+  EXPECT_FALSE(lambda1(0).status().ok());
+  EXPECT_TRUE(lambda1(-1).ok());
+  EXPECT_TRUE(lambda1(-1).status().ok());
+  EXPECT_TRUE(lambda1(123).ok());
+  EXPECT_TRUE(lambda1(123).status().ok());
+
+  auto result0 = lambda1(0);
+  auto result1 = lambda1(-1);
+  auto result123 = lambda1(123);
+  const auto& result0_status = result0.status();
+  const auto& result1_status = result1.status();
+  const auto& result123_status = result123.status();
+
+  EXPECT_FALSE(result0.ok());
+  EXPECT_FALSE(result0_status.ok());
+  EXPECT_TRUE(result1.ok());
+  EXPECT_TRUE(result1_status.ok());
+  EXPECT_TRUE(result123.ok());
+  EXPECT_TRUE(result123_status.ok());
+
+  EXPECT_EQ(result0.status().ToFullString(), "Fake1: value shouldn't be zero");
+  EXPECT_EQ(*result1, nullptr);
+  EXPECT_NE(*result123, nullptr);
+  EXPECT_EQ(**result123, 123);
+
+  EXPECT_FALSE(lambda2(0).ok());
+  EXPECT_FALSE(lambda1(0).status().ok());
+  EXPECT_TRUE(lambda2(-1).ok());
+  EXPECT_TRUE(lambda2(-1).status().ok());
+  EXPECT_TRUE(lambda2(123).ok());
+  EXPECT_TRUE(lambda2(123).status().ok());
+
+  auto result30 = lambda3(0);
+  auto result31 = lambda3(-1);
+  auto result3123 = lambda3(123);
+
+  EXPECT_FALSE(result30.ok());
+  EXPECT_FALSE(result30.status().ok());
+  EXPECT_TRUE(result31.ok());
+  EXPECT_TRUE(result31.status().ok());
+  EXPECT_TRUE(result3123.ok());
+  EXPECT_TRUE(result3123.status().ok());
+
+  EXPECT_EQ(result30.status().ToFullString(),
+            "Fake4: lambda1 failed: Fake1: value shouldn't be zero");
+  EXPECT_EQ(*result31, nullptr);
+  EXPECT_NE(*result3123, nullptr);
+  EXPECT_EQ(**result3123, 123);
+
+  EXPECT_FALSE(lambda4(0).ok());
+  EXPECT_FALSE(lambda4(-1).ok());
+  EXPECT_TRUE(lambda4(123).ok());
+
+  EXPECT_EQ(lambda4(0).ToFullString(), "Fake1: value shouldn't be zero");
+  EXPECT_EQ(lambda4(-1).ToFullString(), "Fake4: value shouldn't be negative");
+
+  auto result50 = lambda5(0);
+  auto result51 = lambda5(-1);
+  auto result5123 = lambda5(123);
+
+  EXPECT_FALSE(result50.ok());
+  EXPECT_TRUE(result51.ok());
+  EXPECT_TRUE(result5123.ok());
+
+  EXPECT_TRUE(result51->empty());
+  EXPECT_EQ(result5123->size(), 4);
+  EXPECT_EQ(result5123->at(3), 126);
+}
+
+TEST_F(StatusChainTest, StatusChainOrDerive) {
+  class BaseStruct {
+   public:
+    virtual ~BaseStruct() = default;
+  };
+  class DeriveStruct : public BaseStruct {
+   public:
+    virtual ~DeriveStruct() = default;
+  };
+
+  using StatusChainOrBase =
+      StatusChainOr<std::unique_ptr<BaseStruct>, FakeBaseError>;
+  using StatusChainOrDerive =
+      StatusChainOr<std::unique_ptr<DeriveStruct>, FakeBaseError>;
+
+  auto lambda1 = [](int value) -> StatusChainOrDerive {
+    if (value == 0) {
+      return MakeStatus<Fake1Error>("value shouldn't be zero", 0);
+    } else {
+      return std::make_unique<DeriveStruct>();
+    }
+  };
+
+  auto lambda2 = [&lambda1](int value) -> StatusChainOrBase {
+    if (value < 0) {
+      return std::make_unique<BaseStruct>();
+    }
+    if (value == 123) {
+      return std::make_unique<DeriveStruct>();
+    }
+    auto result = lambda1(value);
+    if (!result.ok()) {
+      return MakeStatus<Fake4Error>("lambda1 failed", 4)
+          .Wrap(std::move(result).status());
+    }
+    return std::move(result).value();
+  };
+
+  auto result0 = lambda2(0);
+  auto result1 = lambda2(-1);
+  auto result123 = lambda2(123);
+  auto result456 = lambda2(456);
+
+  EXPECT_FALSE(result0.ok());
+  EXPECT_TRUE(result1.ok());
+  EXPECT_TRUE(result123.ok());
+  EXPECT_TRUE(result456.ok());
 }
 
 }  // namespace

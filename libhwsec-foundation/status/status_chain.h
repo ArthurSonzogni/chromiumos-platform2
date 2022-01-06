@@ -50,7 +50,7 @@ using Error = __impl::Error;
 
 // |StackableError| is the canonical Status holder for use in hwsec. Alias it
 // to a Status resambling name.
-template <typename _Et, typename _Bt = Error>
+template <typename _Et>
 using StatusChain = __impl::StackableError<_Et>;
 
 // Make a usable discard tag.
@@ -83,6 +83,21 @@ StatusChain<_Et> OkStatus() {
   static_assert(std::is_base_of_v<Error, _Et> || std::is_same_v<Error, _Et>,
                 "Supplied type is not derived from |Error|.");
   return StatusChain<_Et>(nullptr);
+}
+
+// Return |nullptr| error object in a typed |const StatusChain| container.
+template <typename _Et>
+const StatusChain<_Et>& ConstRefOkStatus() {
+  // thread_local variable instances are initialized much like static
+  // variables, except that they must be initialized separately for each
+  // thread, rather than once at program startup. This means that
+  // thread_local variables declared within a function are safe.
+
+  // thread_local variable instances are not destroyed before their thread
+  // terminates, so they do not have the destruction-order issues of static
+  // variables.
+  const thread_local StatusChain<_Et> kOkStatus = OkStatus<_Et>();
+  return kOkStatus;
 }
 
 // Specifies default behaviour of the MakeStatus on the object. Default is to

@@ -80,6 +80,12 @@ class CustomError : public Error {
 };
 ```
 
+## StatusChainOr
+
+StatusChainOr allows you to return either a value or a non-ok status.
+
+Note: you should never convert an `OkStatus` into the StatusChainOr.
+
 ## How to return an error
 
 1. If you need to interact with non-libhwsec errors - define MakeStatusTrait
