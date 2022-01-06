@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_FAKE_LIBDRM_UTIL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_FAKE_LIBDRM_UTIL_H_
 
+#include <vector>
+
 #include "diagnostics/cros_healthd/system/libdrm_util.h"
 
 namespace diagnostics {
@@ -18,6 +20,7 @@ class FakeLibdrmUtil : public LibdrmUtil {
 
   bool Initialize() override;
   uint32_t GetEmbeddedDisplayConnectorID() override;
+  std::vector<uint32_t> GetExternalDisplayConnectorID() override;
   void FillPrivacyScreenInfo(const uint32_t connector_id,
                              bool* privacy_screen_supported,
                              bool* privacy_screen_enabled) override;

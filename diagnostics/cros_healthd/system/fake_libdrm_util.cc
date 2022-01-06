@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <vector>
+
 #include "diagnostics/cros_healthd/system/fake_libdrm_util.h"
 
 namespace diagnostics {
@@ -14,6 +16,10 @@ uint32_t FakeLibdrmUtil::GetEmbeddedDisplayConnectorID() {
   return 0;
 }
 
+std::vector<uint32_t> FakeLibdrmUtil::GetExternalDisplayConnectorID() {
+  return {1, 2};
+}
+
 void FakeLibdrmUtil::FillPrivacyScreenInfo(const uint32_t connector_id,
                                            bool* privacy_screen_supported,
                                            bool* privacy_screen_enabled) {
@@ -24,20 +30,34 @@ void FakeLibdrmUtil::FillPrivacyScreenInfo(const uint32_t connector_id,
 void FakeLibdrmUtil::FillDisplaySize(const uint32_t connector_id,
                                      uint32_t* width,
                                      uint32_t* height) {
-  *width = 123;
-  *height = 456;
+  if (connector_id == 0) {
+    *width = 290;
+    *height = 190;
+  } else {
+    *width = 600;
+    *height = 340;
+  }
 }
 
 void FakeLibdrmUtil::FillDisplayResolution(const uint32_t connector_id,
                                            uint32_t* horizontal,
                                            uint32_t* vertical) {
-  *horizontal = 1920;
-  *vertical = 1080;
+  if (connector_id == 0) {
+    *horizontal = 1920;
+    *vertical = 1080;
+  } else {
+    *horizontal = 2560;
+    *vertical = 1440;
+  }
 }
 
 void FakeLibdrmUtil::FillDisplayRefreshRate(const uint32_t connector_id,
                                             double* refresh_rate) {
-  *refresh_rate = 60.0;
+  if (connector_id == 0) {
+    *refresh_rate = 60.0;
+  } else {
+    *refresh_rate = 120.0;
+  }
 }
 
 }  // namespace diagnostics

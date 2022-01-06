@@ -484,6 +484,21 @@ void DisplayDisplayInfo(const DisplayResultPtr& display_result) {
   SET_DICT(resolution_horizontal, edp_info, edp);
   SET_DICT(resolution_vertical, edp_info, edp);
   SET_DICT(refresh_rate, edp_info, edp);
+
+  if (display->dp_infos) {
+    const auto& dp_infos = display->dp_infos;
+    auto* dp = output.SetKey("dp", base::Value{base::Value::Type::LIST});
+    for (const auto& dp_info : *dp_infos) {
+      base::Value data{base::Value::Type::DICTIONARY};
+      SET_DICT(display_width, dp_info, &data);
+      SET_DICT(display_height, dp_info, &data);
+      SET_DICT(resolution_horizontal, dp_info, &data);
+      SET_DICT(resolution_vertical, dp_info, &data);
+      SET_DICT(refresh_rate, edp_info, &data);
+      dp->Append(std::move(data));
+    }
+  }
+
   OutputJson(output);
 }
 

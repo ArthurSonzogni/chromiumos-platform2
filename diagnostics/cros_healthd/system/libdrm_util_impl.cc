@@ -65,6 +65,10 @@ uint32_t LibdrmUtilImpl::GetEmbeddedDisplayConnectorID() {
   return edp_connector_id;
 }
 
+std::vector<uint32_t> LibdrmUtilImpl::GetExternalDisplayConnectorID() {
+  return dp_connector_ids;
+}
+
 void LibdrmUtilImpl::FillPrivacyScreenInfo(const uint32_t connector_id,
                                            bool* privacy_screen_supported,
                                            bool* privacy_screen_enabled) {

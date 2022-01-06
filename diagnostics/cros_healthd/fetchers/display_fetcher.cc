@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/optional.h>
+
 #include "diagnostics/cros_healthd/fetchers/display_fetcher.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 
@@ -66,6 +68,29 @@ mojo_ipc::EmbeddedDisplayInfoPtr FetchEmbeddedDisplayInfo(
   return info;
 }
 
+base::Optional<std::vector<mojo_ipc::ExternalDisplayInfoPtr>>
+FetchExternalDisplayInfo(const std::unique_ptr<LibdrmUtil>& libdrm_util) {
+  auto connector_ids = libdrm_util->GetExternalDisplayConnectorID();
+  if (connector_ids.size() == 0)
+    return base::nullopt;
+
+  std::vector<mojo_ipc::ExternalDisplayInfoPtr> infos;
+  for (const auto& connector_id : connector_ids) {
+    auto info = mojo_ipc::ExternalDisplayInfo::New();
+
+    FillDisplaySize(libdrm_util, connector_id, &info->display_width,
+                    &info->display_height);
+    FillDisplayResolution(libdrm_util, connector_id,
+                          &info->resolution_horizontal,
+                          &info->resolution_vertical);
+    FillDisplayRefreshRate(libdrm_util, connector_id, &info->refresh_rate);
+
+    infos.push_back(std::move(info));
+  }
+
+  return infos;
+}
+
 }  // namespace
 
 void DisplayFetcher::FetchDisplayInfo(
@@ -81,6 +106,11 @@ void DisplayFetcher::FetchDisplayInfo(
   auto display_info = mojo_ipc::DisplayInfo::New();
   auto edp_info = FetchEmbeddedDisplayInfo(libdrm_util);
   display_info->edp_info = std::move(edp_info);
+
+  auto dp_infos = FetchExternalDisplayInfo(libdrm_util);
+  if (dp_infos) {
+    display_info->dp_infos = std::move(dp_infos);
+  }
 
   std::move(callback).Run(
       mojo_ipc::DisplayResult::NewDisplayInfo(std::move(display_info)));

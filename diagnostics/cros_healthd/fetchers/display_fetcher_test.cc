@@ -62,14 +62,25 @@ TEST_F(DisplayFetcherTest, EmbeddedDisplayInfo) {
   ASSERT_TRUE(display_result->is_display_info());
   const auto& display_info = display_result->get_display_info();
 
+  // Answer can be found in fake_libdrm_util.cc.
   const auto& edp_info = display_info->edp_info;
   EXPECT_TRUE(edp_info->privacy_screen_supported);
   EXPECT_FALSE(edp_info->privacy_screen_enabled);
-  EXPECT_EQ(edp_info->display_width->value, 123);
-  EXPECT_EQ(edp_info->display_height->value, 456);
+  EXPECT_EQ(edp_info->display_width->value, 290);
+  EXPECT_EQ(edp_info->display_height->value, 190);
   EXPECT_EQ(edp_info->resolution_horizontal->value, 1920);
   EXPECT_EQ(edp_info->resolution_vertical->value, 1080);
   EXPECT_NEAR(edp_info->refresh_rate->value, 60.00, 1e-6);
+
+  const auto& dp_infos = display_info->dp_infos;
+  EXPECT_EQ(dp_infos->size(), 2);
+  for (const auto& dp_info : *dp_infos) {
+    EXPECT_EQ(dp_info->display_width->value, 600);
+    EXPECT_EQ(dp_info->display_height->value, 340);
+    EXPECT_EQ(dp_info->resolution_horizontal->value, 2560);
+    EXPECT_EQ(dp_info->resolution_vertical->value, 1440);
+    EXPECT_NEAR(dp_info->refresh_rate->value, 120.00, 1e-6);
+  }
 }
 
 }  // namespace
