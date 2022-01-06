@@ -72,11 +72,14 @@ bool HdrNetProcessorImpl::Initialize(Size input_size,
            << " input_height=" << input_size.height
            << " output_width=" << input_size.width
            << " output_height=" << input_size.height;
-  HdrNetLinearRgbPipelineCrOS::Options options{
+  HdrNetLinearRgbPipelineCrOS::CreateOptions options{
       .input_width = static_cast<int>(input_size.width),
       .input_height = static_cast<int>(input_size.height),
       .output_width = static_cast<int>(input_size.width),
       .output_height = static_cast<int>(input_size.height),
+      .intermediate_format = GL_RGBA16F,
+      .min_hdr_ratio = 1.0f,
+      .max_hdr_ratio = 15.0f,
   };
   std::string model_dir = "";
   if (base::PathExists(base::FilePath(kModelDir))) {
@@ -312,10 +315,19 @@ bool HdrNetProcessorImpl::RunLinearRgbPipeline(
   DCHECK(task_runner_->BelongsToCurrentThread());
 
   // Run the HDRnet linear RGB pipeline
+  HdrNetLinearRgbPipelineCrOS::RunOptions run_options = {
+      .hdr_ratio = options.hdr_ratio,
+      .min_gain = 1.0f,
+      .max_gain = options.hdr_ratio,
+      .max_gain_blend_threshold = options.max_gain_blend_threshold,
+      .spatial_filter_sigma = options.spatial_filter_sigma,
+      .range_filter_sigma = options.range_filter_sigma,
+      .iir_filter_strength = options.iir_filter_strength,
+  };
   bool result =
       hdrnet_pipeline_->Run(CreateTextureInfo(input_rgba),
                             HdrNetLinearRgbPipelineCrOS::Texture2DInfo(),
-                            CreateTextureInfo(output_rgba), options.hdr_ratio);
+                            CreateTextureInfo(output_rgba), run_options);
   if (!result) {
     LOGF(WARNING) << "Failed to run HDRnet pipeline";
     return false;

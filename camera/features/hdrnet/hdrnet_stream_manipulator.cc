@@ -34,9 +34,13 @@ constexpr char kMetadataDumpPath[] = "/run/camera/hdrnet_frame_metadata.json";
 
 constexpr char kDumpBufferKey[] = "dump_buffer";
 constexpr char kHdrNetEnableKey[] = "hdrnet_enable";
-constexpr char kHdrRatioKey[] = "hdr_ratio";
 constexpr char kLogFrameMetadataKey[] = "log_frame_metadata";
 
+constexpr char kHdrRatioKey[] = "hdr_ratio";
+constexpr char kMaxGainBlendThresholdKey[] = "max_gain_blend_threshold";
+constexpr char kSpatialFilterSigma[] = "spatial_filter_sigma";
+constexpr char kRangeFilterSigma[] = "range_filter_sigma";
+constexpr char kIirFilterStrength[] = "iir_filter_strength";
 }  // namespace
 
 //
@@ -848,25 +852,25 @@ HdrNetConfig::Options HdrNetStreamManipulator::PrepareProcessorConfig(
     Camera3CaptureDescriptor* result,
     const HdrNetRequestBufferInfo& buf_info) const {
   // Run the HDRNet pipeline and write to the buffers.
-  HdrNetConfig::Options processor_config = options_;
+  HdrNetConfig::Options run_options = options_;
 
   // Use the HDR ratio calculated by Gcam AE if available.
   base::Optional<float> gcam_ae_hdr_ratio =
       result->feature_metadata().hdr_ratio;
   if (gcam_ae_hdr_ratio) {
-    processor_config.hdr_ratio = *result->feature_metadata().hdr_ratio;
+    run_options.hdr_ratio = *result->feature_metadata().hdr_ratio;
     DVLOGFID(1, result->frame_number())
-        << "Using HDR ratio=" << processor_config.hdr_ratio;
+        << "Using HDR ratio=" << run_options.hdr_ratio;
   }
 
   // Disable HDRnet processing completely if the tonemap mode is set to contrast
   // curve, gamma value, or preset curve.
   if (buf_info.skip_hdrnet_processing) {
-    processor_config.hdrnet_enable = false;
+    run_options.hdrnet_enable = false;
     DVLOGFID(1, result->frame_number()) << "Disable HDRnet processing";
   }
 
-  return processor_config;
+  return run_options;
 }
 
 void HdrNetStreamManipulator::OnBuffersRendered(
@@ -1043,8 +1047,19 @@ HdrNetStreamManipulator::GetHdrNetContextFromHdrNetStream(
 
 void HdrNetStreamManipulator::OnOptionsUpdated(const base::Value& json_values) {
   LoadIfExist(json_values, kHdrNetEnableKey, &options_.hdrnet_enable);
-  LoadIfExist(json_values, kHdrRatioKey, &options_.hdr_ratio);
   LoadIfExist(json_values, kDumpBufferKey, &options_.dump_buffer);
+  LoadIfExist(json_values, kHdrRatioKey, &options_.hdr_ratio);
+  LoadIfExist(json_values, kMaxGainBlendThresholdKey,
+              &options_.max_gain_blend_threshold);
+  LoadIfExist(json_values, kSpatialFilterSigma, &options_.spatial_filter_sigma);
+  LoadIfExist(json_values, kRangeFilterSigma, &options_.range_filter_sigma);
+  LoadIfExist(json_values, kIirFilterStrength, &options_.iir_filter_strength);
+
+  DCHECK_GE(options_.hdr_ratio, 1.0f);
+  DCHECK_LE(options_.max_gain_blend_threshold, 1.0f);
+  DCHECK_GE(options_.max_gain_blend_threshold, 0.0f);
+  DCHECK_LE(options_.iir_filter_strength, 1.0f);
+  DCHECK_GE(options_.iir_filter_strength, 0.0f);
 
   bool log_frame_metadata;
   if (LoadIfExist(json_values, kLogFrameMetadataKey, &log_frame_metadata)) {
@@ -1056,13 +1071,15 @@ void HdrNetStreamManipulator::OnOptionsUpdated(const base::Value& json_values) {
     options_.log_frame_metadata = log_frame_metadata;
   }
 
-  if (VLOG_IS_ON(1)) {
-    VLOGF(1) << "HDRnet config:"
-             << " hdrnet_enable=" << options_.hdrnet_enable
-             << " hdr_ratio=" << options_.hdr_ratio
-             << " dump_buffer=" << options_.dump_buffer
-             << " log_frame_metadata=" << options_.log_frame_metadata;
-  }
+  DVLOGF(1) << "HDRnet config:"
+            << " hdrnet_enable=" << options_.hdrnet_enable
+            << " dump_buffer=" << options_.dump_buffer
+            << " log_frame_metadata=" << options_.log_frame_metadata
+            << " hdr_ratio=" << options_.hdr_ratio
+            << " max_gain_blend_threshold=" << options_.max_gain_blend_threshold
+            << " spatial_filter_sigma=" << options_.spatial_filter_sigma
+            << " range_filter_sigma=" << options_.range_filter_sigma
+            << " iir_filter_strength=" << options_.iir_filter_strength;
 }
 
 void HdrNetStreamManipulator::UploadMetrics() {

@@ -29,15 +29,27 @@ class HdrNetConfig {
     // Enables the HDRnet pipeline to produce output frames.
     bool hdrnet_enable = true;
 
-    // The HDR ratio use for HDRnet rendering. Only effective if Gcam AE isn't
-    // running.
-    float hdr_ratio = 3.0;
-
     // Dumps intermediate processing buffers for debugging.
     bool dump_buffer = false;
 
     // Whether to log per-frame metadata using MetadataLogger.
     bool log_frame_metadata = false;
+
+    // The HDR ratio use for HDRnet rendering. Only effective if Gcam AE isn't
+    // running.
+    float hdr_ratio = 1.0f;
+
+    // |max_gain_blend_threshold| is a value in [0.0, 1.0] that defines a
+    // threshold for the pixel luma intensity below which the HDR ratio applied
+    // to the pixel will be linearly interpolated between [1.0, |hdr_ratio|]. If
+    // set to 0, the interpolation is disabled.
+    float max_gain_blend_threshold = 0.0f;
+
+    // Spatial and temporal filtering parameters for the HDRnet grid. Setting
+    // the parameters to 0 disables the filtering.
+    float spatial_filter_sigma = 0.0f;
+    float range_filter_sigma = 0.0f;
+    float iir_filter_strength = 0.0f;
   };
 };
 
