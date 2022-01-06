@@ -39,6 +39,7 @@ using Role = PowerStatus::Port::Role;
 const char* const kMainsType = PowerSupply::kMainsType;
 const char* const kBatteryType = PowerSupply::kBatteryType;
 const char* const kUsbType = PowerSupply::kUsbType;
+const char* const kUsbPdType = PowerSupply::kUsbPdType;
 const char* const kUsbPdDrpType = PowerSupply::kUsbPdDrpType;
 const char* const kUnknownType = PowerSupply::kUnknownType;
 
@@ -64,6 +65,15 @@ constexpr double kFullFactor = 0.98;
 
 // Starting value used by |power_supply_| as "now".
 const base::TimeTicks kStartTime = base::TimeTicks::FromInternalValue(1000);
+
+// Invalid values for usb_type.
+const char* kInvalidUsbTypeValues[] = {
+    "Unknown SDP DCP CDP C PD PD_DRP BrickID",
+    "Unknown SDP DCP CDP C PD [] BrickID",
+    "Unknown SDP DCP CDP C PD ]PD_DRP[ BrickID",
+    "[",
+    "]",
+    "[]"};
 
 class TestObserver : public PowerSupplyObserver {
  public:
@@ -463,6 +473,39 @@ TEST_F(PowerSupplyTest, NonMainsLinePower) {
   EXPECT_FALSE(power_status.supports_dual_role_devices);
 }
 
+// Test that the supply type is correctly read from usb_type when present.
+TEST_F(PowerSupplyTest, LinePowerWithUsbType) {
+  WriteDefaultValues(PowerSource::AC);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kUsbType, kCharging);
+  Init();
+
+  // With the type set to USB and no usb_type set, the supply is treated
+  // as a low-power USB connection.
+  PowerStatus power_status;
+  ASSERT_TRUE(UpdateStatus(&power_status));
+  EXPECT_EQ(kUsbType, power_status.ports[0].type);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB,
+            power_status.external_power);
+
+  // With usb_type set to PD, the supply is treated as AC.
+  WriteValue(ac_dir_, "usb_type", "C [PD] PD_PPS");
+  ASSERT_TRUE(UpdateStatus(&power_status));
+  EXPECT_EQ(kUsbPdType, power_status.ports[0].type);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC,
+            power_status.external_power);
+
+  // Invalid usb_type values should report as low-power USB.
+  for (size_t i = 0; i < std::size(kInvalidUsbTypeValues); ++i) {
+    const char* kType = kInvalidUsbTypeValues[i];
+    SCOPED_TRACE(kType);
+    WriteValue(ac_dir_, "usb_type", kType);
+    ASSERT_TRUE(UpdateStatus(&power_status));
+    ASSERT_EQ(kUsbType, power_status.ports[0].type);
+    EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB,
+              power_status.external_power);
+  }
+}
+
 // Tests that when multiple line power sources are reported (e.g. because both
 // the PD and ACPI drivers are present), powerd favors the non-Mains source.
 TEST_F(PowerSupplyTest, MultipleLinePowerSources) {
@@ -730,14 +773,6 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   ASSERT_EQ(Role::DUAL_ROLE, status.ports[1].role);
 
   // USB should not report as dual role if usb_type is craaaazy.
-  const char* const kInvalidUsbTypeValues[] = {
-      "Unknown SDP DCP CDP C PD PD_DRP BrickID",
-      "Unknown SDP DCP CDP C PD [] BrickID",
-      "Unknown SDP DCP CDP C [PD] PD_DRP BrickID",
-      "Unknown SDP DCP CDP C PD ]PD_DRP[ BrickID",
-      "[",
-      "]",
-      "[]"};
   for (size_t i = 0; i < std::size(kInvalidUsbTypeValues); ++i) {
     const char* kType = kInvalidUsbTypeValues[i];
     SCOPED_TRACE(kType);

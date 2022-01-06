@@ -35,11 +35,17 @@ particularly relevant:
         port on a pre-USB-C device.
     *   `USB`, `USB_ACA`, `USB_CDP`, `USB_DCP` - A low-power USB BC1.2 power
         supply. USB-C ports with nothing connected to them may report a `USB`
-        type in conjunction with an `online` value of `0`.
+        type in conjunction with an `online` value of `0`. Note that some
+        drivers use a static type of `USB` and report the active connection in
+        `usb_type`, described below.
     *   `USB_C`, `USB_PD` - A USB Type-C power supply.
     *   `USB_PD_DRP` - A dual-role USB Type-C device (i.e. one capable of either
         delivering or receiving power).
     *   `BrickID` - An Apple legacy USB charger. May be either USB-A or USB-C.
+*   `usb_type` is used by some drivers in newer kernels (4.19+) that have a
+    `type` of USB to report all supported connection types, with the active
+    connection value in brackets. For example, a `usb_type` of `C [PD] PD_PPS`
+    is the same as a `type` of `USB_PD`.
 *   `online` typically describes whether anything is connected to the port; a
     value of `1` indicates a connection. If `type` is `USB_PD_DRP`, an `online`
     value of `0` indicates that a dual-role device is connected but that it is

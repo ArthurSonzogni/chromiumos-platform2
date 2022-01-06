@@ -121,19 +121,35 @@ bool IsPdDrpType(const std::string& type) {
                         base::CompareCase::SENSITIVE);
 }
 
-// Returns true if |type|, a power supply type read from a "type" file in
-// sysfs, indicates USB_PD_DRP, meaning a USB Power Delivery Dual Role Port.
-bool IsDualRoleType(const std::string& type, const base::FilePath& path) {
-  // 4.19+ kernels have the type as just "USB", and an extra usb_type file
-  // in the form:
-  // Unknown SDP DCP CDP C PD [PD_DRP] BrickID
-  if (type == PowerSupply::kUsbType) {
-    std::string usb_type;
-    if (ReadBracketSelectedString(path, "usb_type", &usb_type))
-      return IsPdDrpType(usb_type);
-  }
+// Returns the type of connection for the power supply. If the type
+// cannot be read, kUnknownType is returned.
+std::string ReadPowerSupplyType(const base::FilePath& path) {
+  std::string type;
+  if (!ReadAndTrimString(path, "type", &type))
+    return PowerSupply::kUnknownType;
 
-  return IsPdDrpType(type);
+  if (type != PowerSupply::kUsbType)
+    return type;
+
+  // Some drivers in newer kernels (4.19+) report a static type of USB,
+  // and separately report all supported connection types in a usb_type
+  // file, with the active value in brackets. For example:
+  // "Unknown SDP DCP CDP C PD [PD_DRP] BrickID".
+  std::string usb_type;
+  if (!ReadBracketSelectedString(path, "usb_type", &usb_type))
+    return PowerSupply::kUsbType;
+
+  // The exact type is unknown, but we still know it's USB.
+  if (usb_type == PowerSupply::kUnknownType || usb_type.empty())
+    return PowerSupply::kUsbType;
+
+  // For compatibility with the old dynamic type, prepend "USB_"
+  // to the type. The only exception is for the BrickId type,
+  // which is unprefixed.
+  if (usb_type != PowerSupply::kBrickIdType)
+    usb_type = "USB_" + usb_type;
+
+  return usb_type;
 }
 
 // Returns true if |path|, a sysfs directory, corresponds to an external
@@ -947,11 +963,11 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
     status->supports_dual_role_devices = true;
 
   // An "Unknown" type indicates a sink-only device that can't supply power.
-  ReadAndTrimString(path, "type", &port->type);
+  port->type = ReadPowerSupplyType(path);
   if (port->type == kUnknownType)
     return;
 
-  const bool dual_role_connected = IsDualRoleType(port->type, path);
+  const bool dual_role_connected = IsPdDrpType(port->type);
 
   // If "online" is 0, nothing is connected unless it is USB_PD_DRP, in which
   // case a value of 0 indicates we're connected to a dual-role device but not
