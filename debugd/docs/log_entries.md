@@ -68,6 +68,9 @@ Expected size is ~20 KiB.
 
 ## buddyinfo
 
+Various virtual memory fragmentation details.  See the `/proc/buddyinfo` section
+of the [proc(5)] man page for an explanation of each field.
+
 ## cbi_info
 
 ## cheets_log
@@ -85,6 +88,10 @@ Expected size is ~20 KiB.
 ## console-ramoops
 
 ## cpuinfo
+
+Various CPU & system architecture details.  Often shows exact CPU models and
+supported hardware flags, as well as how many CPUs and cores that are available.
+See the `/proc/cpuinfo` section of the [proc(5)] man page for more details.
 
 ## cr50_version
 
@@ -177,6 +184,9 @@ provide a complete folder contents listing.
 
 ## interrupts
 
+Per-CPU interrupt statistics.  See the `/proc/interrupts` section of the
+[proc(5)] man page for an explanation of each field.
+
 ## iw_list
 
 ## kernel-crashes
@@ -207,6 +217,9 @@ Information about LVM logical volumes.
 ## memd.parameters
 
 ## meminfo
+
+Various memory usage statistics.  See the `/proc/meminfo` section of the
+[proc(5)] man page for an explanation of each field.
 
 ## memory_spd_info
 
@@ -274,6 +287,9 @@ Information about LVM physical volumes.
 
 ## slabinfo
 
+Kernel memory allocator/cache statistics.  See the [slabinfo(5)] man page for an
+explanation of each field.
+
 ## stateful_trim_data
 
 ## stateful_trim_state
@@ -306,11 +322,19 @@ Information about LVM physical volumes.
 
 ## uname
 
+Short summary of the current system information from the [uname(1)] command.
+It will include the [Linux kernel](https://www.kernel.org/) version (including
+the git commit), when the kernel was compiled, and some details for the system's
+CPU.
+
 ## update_engine.log
 
 ## upstart
 
 ## uptime
+
+The current system [uptime(1)] in seconds, including time spent in suspend.
+In other words, how long since the system was booted.
 
 ## usb4 devices
 
@@ -325,6 +349,9 @@ Information about LVM physical volumes.
 ## vmlog.PREVIOUS
 
 ## vmstat
+
+Various virtual memory statistics.  See the `/proc/vmstat` section of the
+[proc(5)] man page for an explanation of each field.
 
 ## vpd_2.0
 
@@ -351,3 +378,7 @@ Useful to know how much memory is being stored compressed in zram.
 
 [FPMCU]: https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/docs/fingerprint/fingerprint.md
 [Panic Data]: https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/README.md#Panicinfo
+[proc(5)]: https://man7.org/linux/man-pages/man5/proc.5.html
+[slabinfo(5)]: https://man7.org/linux/man-pages/man5/slabinfo.5.html
+[uname(1)]: https://man7.org/linux/man-pages/man1/uname.1.html
+[uptime(1)]: https://man7.org/linux/man-pages/man1/uptime.1.html
