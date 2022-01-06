@@ -221,7 +221,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_HasCellular) {
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
   };
-  rmad_interface.GetCurrentState(base::BindRepeating(callback));
+  rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
 
 TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_NoCellular) {
@@ -245,7 +245,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_NoCellular) {
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
   };
-  rmad_interface.GetCurrentState(base::BindRepeating(callback));
+  rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
 
 TEST_F(RmadInterfaceImplTest,
@@ -267,7 +267,7 @@ TEST_F(RmadInterfaceImplTest,
     EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
     EXPECT_EQ(RmadState::STATE_NOT_SET, reply.state().state_case());
   };
-  rmad_interface.GetCurrentState(base::BindRepeating(callback));
+  rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
 
 TEST_F(RmadInterfaceImplTest, GetCurrentState_NotInRma_RoVerificationPass) {
@@ -287,7 +287,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotInRma_RoVerificationPass) {
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
   };
-  rmad_interface.GetCurrentState(base::BindRepeating(callback));
+  rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
 
 TEST_F(RmadInterfaceImplTest,
@@ -308,7 +308,7 @@ TEST_F(RmadInterfaceImplTest,
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
   };
-  rmad_interface.GetCurrentState(base::BindRepeating(callback));
+  rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
 
 TEST_F(RmadInterfaceImplTest, GetCurrentState_CorruptedFile) {
@@ -342,7 +342,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_EmptyFile) {
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
   };
-  rmad_interface.GetCurrentState(base::BindRepeating(callback));
+  rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
 
 TEST_F(RmadInterfaceImplTest, GetCurrentState_NotSet) {
@@ -363,7 +363,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotSet) {
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
   };
-  rmad_interface.GetCurrentState(base::BindRepeating(callback));
+  rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
 
 TEST_F(RmadInterfaceImplTest, GetCurrentState_WithHistory) {
@@ -384,7 +384,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithHistory) {
     EXPECT_EQ(true, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
   };
-  rmad_interface.GetCurrentState(base::BindRepeating(callback));
+  rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
 
 TEST_F(RmadInterfaceImplTest, GetCurrentState_WithUnsupportedState) {
@@ -406,7 +406,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithUnsupportedState) {
     EXPECT_EQ(true, reply.can_abort());
   };
   // TODO(gavindodd): Use mock log to check for expected error.
-  rmad_interface.GetCurrentState(base::BindRepeating(callback));
+  rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
 
 TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidState) {
@@ -427,7 +427,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidState) {
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
   };
-  rmad_interface.GetCurrentState(base::BindRepeating(callback));
+  rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
 
 TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidJson) {
@@ -447,7 +447,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidJson) {
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
   };
-  rmad_interface.GetCurrentState(base::BindRepeating(callback));
+  rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
 
 TEST_F(RmadInterfaceImplTest, GetCurrentState_InitializeStateFail) {
@@ -466,7 +466,7 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InitializeStateFail) {
     EXPECT_EQ(RMAD_ERROR_MISSING_COMPONENT, reply.error());
     EXPECT_EQ(RmadState::STATE_NOT_SET, reply.state().state_case());
   };
-  rmad_interface.GetCurrentState(base::BindRepeating(callback));
+  rmad_interface.GetCurrentState(base::BindOnce(callback));
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionNextState) {
@@ -489,7 +489,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
     EXPECT_EQ(true, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
   };
-  rmad_interface.TransitionNextState(request, base::BindRepeating(callback1));
+  rmad_interface.TransitionNextState(request, base::BindOnce(callback1));
   EXPECT_EQ(true, rmad_interface.CanAbort());
 
   auto callback2 = [](const GetStateReply& reply) {
@@ -498,7 +498,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(false, reply.can_abort());
   };
-  rmad_interface.TransitionNextState(request, base::BindRepeating(callback2));
+  rmad_interface.TransitionNextState(request, base::BindOnce(callback2));
   EXPECT_EQ(false, rmad_interface.CanAbort());
 }
 
@@ -518,9 +518,9 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
   auto callback = [](const GetStateReply& reply) {
     FAIL() << "Unexpected call to callback";
   };
-  EXPECT_DEATH(rmad_interface.TransitionNextState(
-                   request, base::BindRepeating(callback)),
-               "No registered state handler");
+  EXPECT_DEATH(
+      rmad_interface.TransitionNextState(request, base::BindOnce(callback)),
+      "No registered state handler");
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionNextState_InitializeNextStateFail) {
@@ -542,7 +542,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_InitializeNextStateFail) {
     EXPECT_EQ(true, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
   };
-  rmad_interface.TransitionNextState(request, base::BindRepeating(callback));
+  rmad_interface.TransitionNextState(request, base::BindOnce(callback));
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
@@ -563,7 +563,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
   };
-  rmad_interface.TransitionPreviousState(base::BindRepeating(callback));
+  rmad_interface.TransitionPreviousState(base::BindOnce(callback));
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {
@@ -584,7 +584,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
   };
-  rmad_interface.TransitionPreviousState(base::BindRepeating(callback));
+  rmad_interface.TransitionPreviousState(base::BindOnce(callback));
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionPreviousState_MissingHandler) {
@@ -605,7 +605,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_MissingHandler) {
     EXPECT_EQ(false, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
   };
-  rmad_interface.TransitionPreviousState(base::BindRepeating(callback));
+  rmad_interface.TransitionPreviousState(base::BindOnce(callback));
 }
 
 TEST_F(RmadInterfaceImplTest,
@@ -627,7 +627,7 @@ TEST_F(RmadInterfaceImplTest,
     EXPECT_EQ(true, reply.can_go_back());
     EXPECT_EQ(true, reply.can_abort());
   };
-  rmad_interface.TransitionPreviousState(base::BindRepeating(callback));
+  rmad_interface.TransitionPreviousState(base::BindOnce(callback));
 }
 
 TEST_F(RmadInterfaceImplTest, AbortRma) {
@@ -648,7 +648,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma) {
   auto callback = [](const AbortRmaReply& reply) {
     EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
   };
-  rmad_interface.AbortRma(base::BindRepeating(callback));
+  rmad_interface.AbortRma(base::BindOnce(callback));
 
   // Check the the state file is cleared.
   EXPECT_FALSE(base::PathExists(json_store_file_path));
@@ -672,7 +672,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
   auto callback = [](const AbortRmaReply& reply) {
     EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
   };
-  rmad_interface.AbortRma(base::BindRepeating(callback));
+  rmad_interface.AbortRma(base::BindOnce(callback));
 
   // Check the the state file is cleared.
   EXPECT_FALSE(base::PathExists(json_store_file_path));
@@ -696,7 +696,7 @@ TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {
   auto callback = [](const AbortRmaReply& reply) {
     EXPECT_EQ(RMAD_ERROR_ABORT_FAILED, reply.error());
   };
-  rmad_interface.AbortRma(base::BindRepeating(callback));
+  rmad_interface.AbortRma(base::BindOnce(callback));
 
   // Check the the state file still exists.
   EXPECT_TRUE(base::PathExists(json_store_file_path));

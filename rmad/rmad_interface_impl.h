@@ -79,11 +79,11 @@ class RmadInterfaceImpl final : public RmadInterface {
     return current_state_case_;
   }
   void TryTransitionNextStateFromCurrentState() override;
-  void GetCurrentState(const GetStateCallback& callback) override;
+  void GetCurrentState(GetStateCallback callback) override;
   void TransitionNextState(const TransitionNextStateRequest& request,
-                           const GetStateCallback& callback) override;
-  void TransitionPreviousState(const GetStateCallback& callback) override;
-  void AbortRma(const AbortRmaCallback& callback) override;
+                           GetStateCallback callback) override;
+  void TransitionPreviousState(GetStateCallback callback) override;
+  void AbortRma(AbortRmaCallback callback) override;
   bool CanAbort() const override { return can_abort_; }
 
   void SetTestMode() { test_mode_ = true; }

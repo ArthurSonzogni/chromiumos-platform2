@@ -55,16 +55,13 @@ class MockRmadInterface : public RmadInterface {
 
   MOCK_METHOD(RmadState::StateCase, GetCurrentStateCase, (), (override));
   MOCK_METHOD(void, TryTransitionNextStateFromCurrentState, (), (override));
-  MOCK_METHOD(void, GetCurrentState, (const GetStateCallback&), (override));
+  MOCK_METHOD(void, GetCurrentState, (GetStateCallback), (override));
   MOCK_METHOD(void,
               TransitionNextState,
-              (const TransitionNextStateRequest&, const GetStateCallback&),
+              (const TransitionNextStateRequest&, GetStateCallback),
               (override));
-  MOCK_METHOD(void,
-              TransitionPreviousState,
-              (const GetStateCallback&),
-              (override));
-  MOCK_METHOD(void, AbortRma, (const AbortRmaCallback&), (override));
+  MOCK_METHOD(void, TransitionPreviousState, (GetStateCallback), (override));
+  MOCK_METHOD(void, AbortRma, (AbortRmaCallback), (override));
   MOCK_METHOD(bool, CanAbort, (), (const, override));
 };
 

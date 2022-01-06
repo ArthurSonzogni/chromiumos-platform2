@@ -273,10 +273,10 @@ TEST_F(DBusServiceTest, IsRmaRequired_InterfaceSetUpFailed) {
 TEST_F(DBusServiceTest, GetCurrentStats_RmaNotRequired) {
   SetUpDBusService(false, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(mock_rmad_service_, GetCurrentState(_))
-      .WillOnce(Invoke([](const RmadInterface::GetStateCallback& callback) {
+      .WillOnce(Invoke([](RmadInterface::GetStateCallback callback) {
         GetStateReply reply;
         reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
-        callback.Run(reply);
+        std::move(callback).Run(reply);
       }));
   GetStateReply reply;
   ExecuteMethod(kGetCurrentStateMethod, &reply);
@@ -287,10 +287,10 @@ TEST_F(DBusServiceTest, GetCurrentStats_RmaNotRequired) {
 TEST_F(DBusServiceTest, GetCurrentState_Success) {
   SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(mock_rmad_service_, GetCurrentState(_))
-      .WillOnce(Invoke([](const RmadInterface::GetStateCallback& callback) {
+      .WillOnce(Invoke([](RmadInterface::GetStateCallback callback) {
         GetStateReply reply;
         reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
-        callback.Run(reply);
+        std::move(callback).Run(reply);
       }));
 
   GetStateReply reply;
@@ -320,13 +320,13 @@ TEST_F(DBusServiceTest, TransitionNextState) {
   SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(mock_rmad_service_, TransitionNextState(_, _))
       .WillOnce(Invoke([](const TransitionNextStateRequest& request,
-                          const RmadInterface::GetStateCallback& callback) {
+                          RmadInterface::GetStateCallback callback) {
         GetStateReply reply;
         reply.set_error(RMAD_ERROR_OK);
         RmadState* state = new RmadState();
         state->set_allocated_welcome(new WelcomeState());
         reply.set_allocated_state(state);
-        callback.Run(reply);
+        std::move(callback).Run(reply);
       }));
 
   TransitionNextStateRequest request;
@@ -339,10 +339,10 @@ TEST_F(DBusServiceTest, TransitionNextState) {
 TEST_F(DBusServiceTest, TransitionPreviousState) {
   SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(mock_rmad_service_, TransitionPreviousState(_))
-      .WillOnce(Invoke([](const RmadInterface::GetStateCallback& callback) {
+      .WillOnce(Invoke([](RmadInterface::GetStateCallback callback) {
         GetStateReply reply;
         reply.set_error(RMAD_ERROR_TRANSITION_FAILED);
-        callback.Run(reply);
+        std::move(callback).Run(reply);
       }));
 
   GetStateReply reply;
@@ -354,10 +354,10 @@ TEST_F(DBusServiceTest, TransitionPreviousState) {
 TEST_F(DBusServiceTest, AbortRma) {
   SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(mock_rmad_service_, AbortRma(_))
-      .WillOnce(Invoke([](const RmadInterface::AbortRmaCallback& callback) {
+      .WillOnce(Invoke([](RmadInterface::AbortRmaCallback callback) {
         AbortRmaReply reply;
         reply.set_error(RMAD_ERROR_ABORT_FAILED);
-        callback.Run(reply);
+        std::move(callback).Run(reply);
       }));
 
   AbortRmaReply reply;

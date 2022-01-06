@@ -90,11 +90,10 @@ class DBusService : public brillo::DBusServiceDaemon {
   template <typename... Types>
   using DBusMethodResponse = brillo::dbus_utils::DBusMethodResponse<Types...>;
 
-  // Template for handling D-Bus methods.
+  // Template for handling D-Bus methods with request protobuf.
   template <typename RequestProtobufType, typename ReplyType>
   using HandlerFunction = void (RmadInterface::*)(
-      const RequestProtobufType&,
-      const base::RepeatingCallback<void(const ReplyType&)>&);
+      const RequestProtobufType&, base::OnceCallback<void(const ReplyType&)>);
 
   template <typename RequestProtobufType,
             typename ReplyType,
@@ -105,19 +104,15 @@ class DBusService : public brillo::DBusServiceDaemon {
       SendErrorSignal(RMAD_ERROR_DAEMON_INITIALIZATION_FAILED);
       return;
     }
-    // Convert to shared_ptr so rmad_interface_ can safely copy the callback.
-    using SharedResponsePointer =
-        std::shared_ptr<DBusMethodResponse<ReplyType>>;
     (rmad_interface_->*func)(
-        request, base::BindRepeating(
-                     &DBusService::SendReply<ReplyType>, base::Unretained(this),
-                     SharedResponsePointer(std::move(response))));
+        request, base::BindOnce(&DBusService::SendReply<ReplyType>,
+                                base::Unretained(this), std::move(response)));
   }
 
   // Template for handling D-Bus methods without request protobuf.
   template <typename ReplyType>
-  using HandlerFunctionEmptyRequest = void (RmadInterface::*)(
-      const base::RepeatingCallback<void(const ReplyType&)>&);
+  using HandlerFunctionEmptyRequest =
+      void (RmadInterface::*)(base::OnceCallback<void(const ReplyType&)>);
 
   template <typename ReplyType,
             DBusService::HandlerFunctionEmptyRequest<ReplyType> func>
@@ -126,12 +121,9 @@ class DBusService : public brillo::DBusServiceDaemon {
       SendErrorSignal(RMAD_ERROR_DAEMON_INITIALIZATION_FAILED);
       return;
     }
-    // Convert to shared_ptr so rmad_interface_ can safely copy the callback.
-    using SharedResponsePointer =
-        std::shared_ptr<DBusMethodResponse<ReplyType>>;
-    (rmad_interface_->*func)(base::BindRepeating(
-        &DBusService::SendReply<ReplyType>, base::Unretained(this),
-        SharedResponsePointer(std::move(response))));
+    (rmad_interface_->*func)(base::BindOnce(&DBusService::SendReply<ReplyType>,
+                                            base::Unretained(this),
+                                            std::move(response)));
   }
 
   bool HandleIsRmaRequiredMethod();
@@ -140,7 +132,7 @@ class DBusService : public brillo::DBusServiceDaemon {
 
   // Template for sending out the reply.
   template <typename ReplyType>
-  void SendReply(std::shared_ptr<DBusMethodResponse<ReplyType>> response,
+  void SendReply(std::unique_ptr<DBusMethodResponse<ReplyType>> response,
                  const ReplyType& reply) {
     response->Return(reply);
 

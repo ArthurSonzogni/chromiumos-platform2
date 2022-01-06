@@ -290,9 +290,9 @@ void RmadInterfaceImpl::TryTransitionNextStateFromCurrentState() {
   TransitionNextStateInternal(TransitionNextStateRequest(), true);
 }
 
-void RmadInterfaceImpl::GetCurrentState(const GetStateCallback& callback) {
+void RmadInterfaceImpl::GetCurrentState(GetStateCallback callback) {
   GetStateReply reply = GetCurrentStateInternal();
-  callback.Run(reply);
+  std::move(callback).Run(reply);
 }
 
 GetStateReply RmadInterfaceImpl::GetCurrentStateInternal() {
@@ -317,10 +317,9 @@ GetStateReply RmadInterfaceImpl::GetCurrentStateInternal() {
 }
 
 void RmadInterfaceImpl::TransitionNextState(
-    const TransitionNextStateRequest& request,
-    const GetStateCallback& callback) {
+    const TransitionNextStateRequest& request, GetStateCallback callback) {
   GetStateReply reply = TransitionNextStateInternal(request, false);
-  callback.Run(reply);
+  std::move(callback).Run(reply);
 }
 
 GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
@@ -391,12 +390,11 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
   return reply;
 }
 
-void RmadInterfaceImpl::TransitionPreviousState(
-    const GetStateCallback& callback) {
+void RmadInterfaceImpl::TransitionPreviousState(GetStateCallback callback) {
   GetStateReply reply;
   if (current_state_case_ == RmadState::STATE_NOT_SET) {
     reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
-    callback.Run(reply);
+    std::move(callback).Run(reply);
     return;
   }
 
@@ -406,7 +404,7 @@ void RmadInterfaceImpl::TransitionPreviousState(
       error != RMAD_ERROR_OK) {
     DLOG(FATAL) << "Current state initialization failed";
     reply.set_error(error);
-    callback.Run(reply);
+    std::move(callback).Run(reply);
     return;
   }
 
@@ -419,7 +417,7 @@ void RmadInterfaceImpl::TransitionPreviousState(
   if (!CanGoBack()) {
     LOG(INFO) << "Cannot go back to previous state";
     reply.set_error(RMAD_ERROR_TRANSITION_FAILED);
-    callback.Run(reply);
+    std::move(callback).Run(reply);
     return;
   }
 
@@ -428,7 +426,7 @@ void RmadInterfaceImpl::TransitionPreviousState(
           GetInitializedStateHandler(prev_state_case, &prev_state_handler);
       error != RMAD_ERROR_OK) {
     reply.set_error(error);
-    callback.Run(reply);
+    std::move(callback).Run(reply);
     return;
   }
 
@@ -448,10 +446,10 @@ void RmadInterfaceImpl::TransitionPreviousState(
   reply.set_allocated_state(new RmadState(prev_state_handler->GetState(true)));
   reply.set_can_go_back(CanGoBack());
   reply.set_can_abort(CanAbort());
-  callback.Run(reply);
+  std::move(callback).Run(reply);
 }
 
-void RmadInterfaceImpl::AbortRma(const AbortRmaCallback& callback) {
+void RmadInterfaceImpl::AbortRma(AbortRmaCallback callback) {
   AbortRmaReply reply;
   if (current_state_case_ == RmadState::STATE_NOT_SET) {
     reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
@@ -472,7 +470,7 @@ void RmadInterfaceImpl::AbortRma(const AbortRmaCallback& callback) {
     reply.set_error(RMAD_ERROR_ABORT_FAILED);
   }
 
-  callback.Run(reply);
+  std::move(callback).Run(reply);
 }
 
 bool RmadInterfaceImpl::CanGoBack() const {

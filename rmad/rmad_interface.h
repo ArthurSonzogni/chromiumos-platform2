@@ -74,20 +74,20 @@ class RmadInterface {
 
   // Callback used by all state functions to return the current state to the
   // dbus service.
-  using GetStateCallback = base::RepeatingCallback<void(const GetStateReply&)>;
+  using GetStateCallback = base::OnceCallback<void(const GetStateReply&)>;
 
   // Get the initialized current RmadState proto.
-  virtual void GetCurrentState(const GetStateCallback& callback) = 0;
+  virtual void GetCurrentState(GetStateCallback callback) = 0;
   // Update the state using the RmadState proto in the request and return the
   // resulting state after all work is done.
   virtual void TransitionNextState(const TransitionNextStateRequest& request,
-                                   const GetStateCallback& callback) = 0;
+                                   GetStateCallback callback) = 0;
   // Go back to the previous state if possible and return the RmadState proto.
-  virtual void TransitionPreviousState(const GetStateCallback& callback) = 0;
+  virtual void TransitionPreviousState(GetStateCallback callback) = 0;
 
-  using AbortRmaCallback = base::RepeatingCallback<void(const AbortRmaReply&)>;
+  using AbortRmaCallback = base::OnceCallback<void(const AbortRmaReply&)>;
   // Cancel the RMA process if possible and reboot.
-  virtual void AbortRma(const AbortRmaCallback& callback) = 0;
+  virtual void AbortRma(AbortRmaCallback callback) = 0;
 
   // Returns whether it's allowed to abort RMA now.
   virtual bool CanAbort() const = 0;
