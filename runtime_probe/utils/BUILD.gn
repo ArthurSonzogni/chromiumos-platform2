@@ -24,12 +24,22 @@ source_set("utils") {
 }
 
 if (use.test) {
+  source_set("test_utils") {
+    configs += [ ":target_defaults" ]
+    sources = [ "file_test_utils.cc" ]
+  }
   source_set("test") {
-    sources = [ "file_utils_test.cc" ]
+    sources = [
+      "file_test_utils_test.cc",
+      "file_utils_test.cc",
+    ]
     configs += [
       ":target_defaults",
       "//common-mk:test",
     ]
-    deps = [ ":utils" ]
+    deps = [
+      ":test_utils",
+      ":utils",
+    ]
   }
 }

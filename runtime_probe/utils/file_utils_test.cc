@@ -4,54 +4,34 @@
 
 #include <algorithm>
 
-#include <base/check.h>
-#include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
+#include "runtime_probe/utils/file_test_utils.h"
 #include "runtime_probe/utils/file_utils.h"
 
 namespace runtime_probe {
 
-class FileUtilsTest : public ::testing::Test {
+class FileUtilsTest : public BaseFileTest {
  protected:
   void SetUp() {
-    PCHECK(scoped_temp_dir_.CreateUniqueTempDir());
-    SetFile("a/b1/c1");
-    SetFile("a/b1/c2");
-    SetFile("a/b1/c3");
-    SetFile("a/b2/c1");
-    SetFile("a/b3/c1");
-    SetFile("s/*");
-    SetFile("s/[test]");
-  }
-
-  void SetFile(const std::string& path_str) {
-    const base::FilePath path(path_str);
-    CHECK(!path.IsAbsolute());
-    base::FilePath file = GetRootDir().Append(path);
-    CHECK(base::CreateDirectory(file.DirName()));
-    CHECK_GT(base::WriteFile(file, file.BaseName().value()), 0);
-  }
-
-  const base::FilePath& GetRootDir() const {
-    return scoped_temp_dir_.GetPath();
+    CreateTestRoot();
+    SetFile("a/b1/c1", "c1");
+    SetFile("a/b1/c2", "c2");
+    SetFile("a/b1/c3", "c3");
+    SetFile("a/b2/c1", "c1");
+    SetFile("a/b3/c1", "c1");
+    SetFile("s/*", "");
+    SetFile("s/[test]", "");
   }
 
   std::vector<base::FilePath> ToFilePathVector(
       const std::vector<std::string>& in) {
     std::vector<base::FilePath> res;
     for (const auto& path : in) {
-      res.push_back(GetRootDir().Append(path));
+      res.push_back(GetPathUnderRoot(path));
     }
     // Make sure the order is the same as the glob results.
     sort(res.begin(), res.end());
     return res;
   }
-
- private:
-  base::ScopedTempDir scoped_temp_dir_;
 };
 
 namespace {
@@ -73,42 +53,42 @@ TEST_F(FileUtilsTest, MapFilesToDict) {
   for (const auto& file : res_files) {
     res.SetKey(file, base::Value(file));
   }
-  auto path = GetRootDir().Append("a/b1");
+  auto path = GetPathUnderRoot("a/b1");
   EXPECT_EQ(MapFilesToDict(path, keys, optional_keys), res);
 }
 
 TEST_F(FileUtilsTest, Glob) {
-  auto path = GetRootDir().Append("a/*/?1");
+  auto path = GetPathUnderRoot("a/*/?1");
   const std::vector<std::string> res{"a/b1/c1", "a/b2/c1", "a/b3/c1"};
   EXPECT_EQ(GlobForTest(path), ToFilePathVector(res));
 }
 
 TEST_F(FileUtilsTest, GlobOneFile) {
-  auto path = GetRootDir().Append("a/b2/c1");
+  auto path = GetPathUnderRoot("a/b2/c1");
   const std::vector<std::string> res{"a/b2/c1"};
   EXPECT_EQ(GlobForTest(path), ToFilePathVector(res));
 }
 
 TEST_F(FileUtilsTest, GlobDir) {
-  auto path = GetRootDir().Append("a/b2/");
+  auto path = GetPathUnderRoot("a/b2/");
   const std::vector<std::string> res{"a/b2"};
   EXPECT_EQ(GlobForTest(path), ToFilePathVector(res));
 }
 
 TEST_F(FileUtilsTest, GlobNoFile) {
-  auto path = GetRootDir().Append("x/y/z");
+  auto path = GetPathUnderRoot("x/y/z");
   const std::vector<std::string> res{};
   EXPECT_EQ(GlobForTest(path), ToFilePathVector(res));
 }
 
 TEST_F(FileUtilsTest, GlobSpecial1) {
-  auto path = GetRootDir().Append("s/[*]");
+  auto path = GetPathUnderRoot("s/[*]");
   const std::vector<std::string> res{"s/*"};
   EXPECT_EQ(GlobForTest(path), ToFilePathVector(res));
 }
 
 TEST_F(FileUtilsTest, GlobSpecial2) {
-  auto path = GetRootDir().Append("s/[[]test]");
+  auto path = GetPathUnderRoot("s/[[]test]");
   const std::vector<std::string> res{"s/[test]"};
   EXPECT_EQ(GlobForTest(path), ToFilePathVector(res));
 }
