@@ -34,6 +34,7 @@ extern "C" void BluetoothAclConnectionStateChanged(int64_t system_time,
                                                    const char* device_id,
                                                    int device_type,
                                                    int connection_direction,
+                                                   int connection_initiator,
                                                    int state_change_type,
                                                    int state) {
   bluetooth::BluetoothAclConnectionStateChanged()
@@ -41,6 +42,7 @@ extern "C" void BluetoothAclConnectionStateChanged(int64_t system_time,
       .SetDeviceId(device_id)
       .SetDeviceType(device_type)
       .SetConnectionDirection(connection_direction)
+      .SetConnectionInitiator(connection_initiator)
       .SetStateChangeType(state_change_type)
       .SetAclConnectionState(state)
       .Record();

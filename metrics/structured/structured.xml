@@ -75,6 +75,11 @@
         Whether it is an incoming or outgoing connection.
       </summary>
     </metric>
+    <metric name="ConnectionInitiator" type="int">
+      <summary>
+        Whether the connection is established by clients or system.
+      </summary>
+    </metric>
     <metric name="StateChangeType" type="int">
       <summary>
         Whether it is a connection or disconnection state change.
