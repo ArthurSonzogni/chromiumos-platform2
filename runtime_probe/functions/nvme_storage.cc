@@ -14,7 +14,7 @@
 #include <brillo/errors/error.h>
 #include <debugd/dbus-proxies.h>
 
-#include "runtime_probe/system/context_instance.h"
+#include "runtime_probe/system/context.h"
 #include "runtime_probe/utils/file_utils.h"
 #include "runtime_probe/utils/value_utils.h"
 
@@ -47,8 +47,7 @@ bool CheckStorageTypeMatch(const base::FilePath& node_path) {
 
 bool NvmeCliList(std::string* output) {
   brillo::ErrorPtr error;
-  if (ContextInstance::Get()->debugd_proxy()->Nvme(/*option=*/"list", output,
-                                                   &error)) {
+  if (Context::Get()->debugd_proxy()->Nvme(/*option=*/"list", output, &error)) {
     return true;
   }
   LOG(ERROR) << "Debugd::Nvme failed: " << error->GetMessage();

@@ -18,7 +18,6 @@
 #include "runtime_probe/probe_function.h"
 #include "runtime_probe/system/context_factory_impl.h"
 #include "runtime_probe/system/context_helper_impl.h"
-#include "runtime_probe/system/context_instance.h"
 #include "runtime_probe/system/context_runtime_impl.h"
 #include "runtime_probe/system_property_impl.h"
 
@@ -57,7 +56,7 @@ int RunAsHelper() {
     return kFailedToParseProbeStatementFromArg;
   }
 
-  runtime_probe::ContextInstance::Init<runtime_probe::ContextHelperImpl>();
+  runtime_probe::ContextHelperImpl context;
 
   auto probe_function = runtime_probe::ProbeFunction::FromValue(*val);
   if (probe_function == nullptr) {
@@ -82,7 +81,7 @@ int RunAsDaemon() {
   }
 
   LOG(INFO) << "Starting Runtime Probe. Running in daemon mode";
-  runtime_probe::ContextInstance::Init<runtime_probe::ContextRuntimeImpl>();
+  runtime_probe::ContextRuntimeImpl context;
   runtime_probe::Daemon daemon;
   return daemon.Run();
 }
@@ -93,9 +92,9 @@ int RunningInCli(const std::string& config_file_path, bool to_stdout) {
   LOG(INFO) << "Starting Runtime Probe. Running in CLI mode";
 
 #if USE_FACTORY_RUNTIME_PROBE
-  runtime_probe::ContextInstance::Init<runtime_probe::ContextFactoryImpl>();
+  runtime_probe::ContextFactoryImpl context;
 #else
-  runtime_probe::ContextInstance::Init<runtime_probe::ContextRuntimeImpl>();
+  runtime_probe::ContextRuntimeImpl context;
 #endif
 
   const auto probe_config_loader =

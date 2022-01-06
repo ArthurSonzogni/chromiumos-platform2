@@ -15,8 +15,8 @@ pkg_config("target_defaults") {
 
 source_set("system") {
   sources = [
+    "context.cc",
     "context_impl.cc",
-    "context_instance.cc",
   ]
   configs += [ ":target_defaults" ]
   if (use.factory_runtime_probe) {

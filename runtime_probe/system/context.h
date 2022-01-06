@@ -21,16 +21,23 @@ namespace runtime_probe {
 // the context object is passed.
 class Context {
  public:
-  Context() = default;
   Context(const Context&) = delete;
   Context& operator=(const Context&) = delete;
-  virtual ~Context() = default;
+
+  // Returns the current global context instance. The global instance will be
+  // overridden by derived classes. Only one global instance is allowed at a
+  // time.
+  static Context* Get();
 
   // Use the object returned by debugd_proxy() to make calls to debugd.
   virtual org::chromium::debugdProxyInterface* debugd_proxy() = 0;
 
   // The object to invoke the runtime_probe helper.
   virtual HelperInvoker* helper_invoker() = 0;
+
+ protected:
+  Context();
+  virtual ~Context();
 };
 
 }  // namespace runtime_probe

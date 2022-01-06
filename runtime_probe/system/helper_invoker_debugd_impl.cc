@@ -13,7 +13,7 @@
 #include <brillo/errors/error.h>
 #include <debugd/dbus-proxies.h>
 
-#include "runtime_probe/system/context_instance.h"
+#include "runtime_probe/system/context.h"
 #include "runtime_probe/utils/pipe_utils.h"
 
 namespace runtime_probe {
@@ -23,7 +23,7 @@ bool HelperInvokerDebugdImpl::Invoke(const ProbeFunction* probe_function,
                                      std::string* result) const {
   base::ScopedFD read_fd{};
   brillo::ErrorPtr error;
-  if (!ContextInstance::Get()->debugd_proxy()->EvaluateProbeFunction(
+  if (!Context::Get()->debugd_proxy()->EvaluateProbeFunction(
           probe_statement_str, &read_fd, &error)) {
     LOG(ERROR) << "Debugd::EvaluateProbeFunction failed: "
                << error->GetMessage();
