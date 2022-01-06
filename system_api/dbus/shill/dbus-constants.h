@@ -57,8 +57,6 @@ const char kRemoveConfigFunction[] = "Remove";
 // Device function names.
 const char kChangePinFunction[] = "ChangePin";
 const char kEnterPinFunction[] = "EnterPin";
-// Deprecated: crbug.com/938698.
-const char kPerformTDLSOperationFunction[] = "PerformTDLSOperation";
 const char kRegisterFunction[] = "Register";
 const char kRequirePinFunction[] = "RequirePin";
 const char kResetFunction[] = "Reset";
@@ -757,21 +755,6 @@ const char kPacketTransmitSuccessesProperty[] = "PacketTrasmitSuccesses";
 const char kReceiveBitrateProperty[] = "ReceiveBitrate";
 const char kTransmitBitrateProperty[] = "TransmitBitrate";
 const char kTransmitRetriesProperty[] = "TransmitRetries";
-
-// Deprecated: crbug.com/938698.
-// WiFi TDLS operations.
-const char kTDLSDiscoverOperation[] = "Discover";
-const char kTDLSSetupOperation[] = "Setup";
-const char kTDLSStatusOperation[] = "Status";
-const char kTDLSTeardownOperation[] = "Teardown";
-
-// Deprecated: crbug.com/938698.
-// WiFi TDLS states.
-const char kTDLSConnectedState[] = "Connected";
-const char kTDLSDisabledState[] = "Disabled";
-const char kTDLSDisconnectedState[] = "Disconnected";
-const char kTDLSNonexistentState[] = "Nonexistent";
-const char kTDLSUnknownState[] = "Unknown";
 
 // Wake on WiFi features.
 const char kWakeOnWiFiFeaturesEnabledDarkConnect[] = "darkconnect";

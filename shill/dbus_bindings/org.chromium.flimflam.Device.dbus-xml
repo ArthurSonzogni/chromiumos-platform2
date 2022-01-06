@@ -42,11 +42,6 @@
 			<arg type="s" direction="in"/>
 			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
-		<method name="PerformTDLSOperation">
-			<arg type="s" direction="in"/>
-			<arg type="s" direction="in"/>
-			<arg type="s" direction="out"/>
-		</method>
 		<method name="RenewDHCPLease"/>
 		<method name="Reset">
 			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>

@@ -140,11 +140,6 @@ Methods		dict GetProperties()
 
 			Reset the device's persisted counters of transmitted
 
-		string PerformTDLSOperation(string operation,
-					    string peer) [readwrite]
-
-			Deprecated.
-
 		void SetUsbEthernetMacAddressSource(string source)
 
 			(Ethernet only) Set MAC address source for USB Ethernet

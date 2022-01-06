@@ -229,18 +229,6 @@ bool DeviceDBusAdaptor::RenewDHCPLease(brillo::ErrorPtr* error) {
   return !e.ToChromeosError(error);
 }
 
-bool DeviceDBusAdaptor::PerformTDLSOperation(brillo::ErrorPtr* error,
-                                             const std::string& operation,
-                                             const std::string& peer,
-                                             std::string* out_state) {
-  SLOG(this, 2) << __func__;
-
-  Error e;
-  Error::PopulateAndLog(FROM_HERE, &e, Error::kNotSupported,
-                        "PerformTDLSOperation is deprecated");
-  return false;
-}
-
 bool DeviceDBusAdaptor::ResetByteCounters(brillo::ErrorPtr* error) {
   device_->ResetByteCounters();
   return true;
