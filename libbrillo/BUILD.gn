@@ -75,6 +75,7 @@ libbrillo_sublibs = [
       "brillo/files/file_util.cc",
       "brillo/files/safe_fd.cc",
       "brillo/flag_helper.cc",
+      "brillo/hash/MurmurHash3.cc",
       "brillo/key_value_store.cc",
       "brillo/message_loops/base_message_loop.cc",
       "brillo/message_loops/message_loop.cc",
