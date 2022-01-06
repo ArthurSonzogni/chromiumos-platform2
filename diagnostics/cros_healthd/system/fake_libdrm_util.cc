@@ -35,4 +35,9 @@ void FakeLibdrmUtil::FillDisplayResolution(const uint32_t connector_id,
   *vertical = 1080;
 }
 
+void FakeLibdrmUtil::FillDisplayRefreshRate(const uint32_t connector_id,
+                                            double* refresh_rate) {
+  *refresh_rate = 60.0;
+}
+
 }  // namespace diagnostics

@@ -40,6 +40,15 @@ void FillDisplayResolution(const std::unique_ptr<LibdrmUtil>& libdrm_util,
   *out_vertical = mojo_ipc::NullableUint32::New(vertical);
 }
 
+void FillDisplayRefreshRate(const std::unique_ptr<LibdrmUtil>& libdrm_util,
+                            const uint32_t connector_id,
+                            mojo_ipc::NullableDoublePtr* out_refresh_rate) {
+  double refresh_rate;
+  libdrm_util->FillDisplayRefreshRate(connector_id, &refresh_rate);
+
+  *out_refresh_rate = mojo_ipc::NullableDouble::New(refresh_rate);
+}
+
 mojo_ipc::EmbeddedDisplayInfoPtr FetchEmbeddedDisplayInfo(
     const std::unique_ptr<LibdrmUtil>& libdrm_util) {
   auto info = mojo_ipc::EmbeddedDisplayInfo::New();
@@ -52,6 +61,7 @@ mojo_ipc::EmbeddedDisplayInfoPtr FetchEmbeddedDisplayInfo(
                   &info->display_height);
   FillDisplayResolution(libdrm_util, connector_id, &info->resolution_horizontal,
                         &info->resolution_vertical);
+  FillDisplayRefreshRate(libdrm_util, connector_id, &info->refresh_rate);
 
   return info;
 }

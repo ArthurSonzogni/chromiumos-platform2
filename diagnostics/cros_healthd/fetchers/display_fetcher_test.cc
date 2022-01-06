@@ -69,6 +69,7 @@ TEST_F(DisplayFetcherTest, EmbeddedDisplayInfo) {
   EXPECT_EQ(edp_info->display_height->value, 456);
   EXPECT_EQ(edp_info->resolution_horizontal->value, 1920);
   EXPECT_EQ(edp_info->resolution_vertical->value, 1080);
+  EXPECT_NEAR(edp_info->refresh_rate->value, 60.00, 1e-6);
 }
 
 }  // namespace

@@ -60,6 +60,7 @@ using chromeos::cros_healthd::mojom::NetworkInterfaceInfo;
 using chromeos::cros_healthd::mojom::NetworkInterfaceResultPtr;
 using chromeos::cros_healthd::mojom::NetworkResultPtr;
 using chromeos::cros_healthd::mojom::NonRemovableBlockDeviceResultPtr;
+using chromeos::cros_healthd::mojom::NullableDoublePtr;
 using chromeos::cros_healthd::mojom::NullableUint32Ptr;
 using chromeos::cros_healthd::mojom::NullableUint64Ptr;
 using chromeos::cros_healthd::mojom::OsInfoPtr;
@@ -312,6 +313,9 @@ void SetJsonDictValue(const std::string& key,
   } else if constexpr (std::is_same_v<T, base::Optional<std::string>>) {
     if (value.has_value())
       SetJsonDictValue(key, value.value(), output);
+  } else if constexpr (std::is_same_v<T, NullableDoublePtr>) {
+    if (value)
+      SetJsonDictValue(key, value->value, output);
   } else if constexpr (std::is_same_v<T, NullableUint32Ptr>) {
     if (value)
       SetJsonDictValue(key, value->value, output);
@@ -479,6 +483,7 @@ void DisplayDisplayInfo(const DisplayResultPtr& display_result) {
   SET_DICT(display_height, edp_info, edp);
   SET_DICT(resolution_horizontal, edp_info, edp);
   SET_DICT(resolution_vertical, edp_info, edp);
+  SET_DICT(refresh_rate, edp_info, edp);
   OutputJson(output);
 }
 

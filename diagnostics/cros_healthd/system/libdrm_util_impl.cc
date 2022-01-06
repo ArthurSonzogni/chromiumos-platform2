@@ -173,4 +173,21 @@ void LibdrmUtilImpl::FillDisplayResolution(const uint32_t connector_id,
   *vertical = crtc->mode.vdisplay;
 }
 
+void LibdrmUtilImpl::FillDisplayRefreshRate(const uint32_t connector_id,
+                                            double* refresh_rate) {
+  ScopedDrmModeCrtcPtr crtc;
+  GetDrmCrtc(connector_id, &crtc);
+  if (!crtc)
+    return;
+
+  // |crtc->mode.vrefresh| indicates the refresh rate, however, it stores in
+  // |uint32_t| type which loses the accuracy.
+  //
+  // The following calculation refers to the implementation in |modetest|
+  // command line tool. In Chrome side, they also use the same method to
+  // calculate it.
+  *refresh_rate =
+      crtc->mode.clock * 1000.0 / (crtc->mode.htotal * crtc->mode.vtotal);
+}
+
 }  // namespace diagnostics
