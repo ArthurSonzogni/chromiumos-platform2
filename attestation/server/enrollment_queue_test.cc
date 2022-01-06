@@ -24,7 +24,7 @@ class EnrollmentQueueTest : public testing::TestWithParam<ACAType> {
  protected:
   ACAType aca_type() { return GetParam(); }
 
-  std::shared_ptr<AttestationFlowData> MakeDummyAttestationFlowData() {
+  std::shared_ptr<AttestationFlowData> MakeAttestationFlowDataForTesting() {
     GetCertificateRequest request;
     request.set_aca_type(GetParam());
     AttestationInterface::GetCertificateCallback callback;
@@ -36,11 +36,11 @@ TEST_P(EnrollmentQueueTest, ClosedLoopTesting) {
   EnrollmentQueue enrollment_queue(kTotalLimit);
   std::vector<std::shared_ptr<AttestationFlowData>> entries;
   for (int i = 0; i < kTotalLimit; ++i) {
-    entries.push_back(MakeDummyAttestationFlowData());
+    entries.push_back(MakeAttestationFlowDataForTesting());
     EXPECT_TRUE(enrollment_queue.Push(entries.back()));
   }
   // Reached the size limit; the push operation should fail.
-  EXPECT_FALSE(enrollment_queue.Push(MakeDummyAttestationFlowData()));
+  EXPECT_FALSE(enrollment_queue.Push(MakeAttestationFlowDataForTesting()));
   // Popped items should match the entries we push into the queue.
   EXPECT_THAT(enrollment_queue.PopAll(aca_type()), ElementsAreArray(entries));
   // Makes sure after popping the entries, the queue is empty.

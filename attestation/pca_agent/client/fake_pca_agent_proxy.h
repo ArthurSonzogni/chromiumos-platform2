@@ -92,7 +92,7 @@ class FakePcaAgentProxy : public org::chromium::PcaAgentProxyMock {
   GetCertificateReply get_certificate_reply_;
 
   // Error returned when dbus error.
-  brillo::ErrorPtr dummy_error_{
+  brillo::ErrorPtr dbus_error_{
       brillo::Error::Create(base::Location(), "", "", "")};
 
   template <class ReplyType, class SuccessCallbackType, class ErrorCallbackType>
@@ -102,7 +102,7 @@ class FakePcaAgentProxy : public org::chromium::PcaAgentProxyMock {
                 ErrorCallbackType on_error) {
     auto task = config.success
                     ? base::BindOnce(std::move(on_success), reply)
-                    : base::BindOnce(std::move(on_error), dummy_error_.get());
+                    : base::BindOnce(std::move(on_error), dbus_error_.get());
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE, std::move(task), config.delay);
   }

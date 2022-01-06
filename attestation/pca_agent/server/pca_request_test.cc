@@ -28,7 +28,7 @@ constexpr char kFakeUrl[] = "fake.url.org";
 constexpr char kFakeRequest[] = "fake request";
 constexpr char kFakeResponse[] = "fake response";
 constexpr char kFakeErrMessage[] = "a tactical error";
-constexpr char kDummyHandlerName[] = "testing";
+constexpr char kFakeHandlerName[] = "testing";
 
 constexpr char kFakeProxy1[] = "https://fake-proxy1:8000";
 constexpr char kFakeProxy2[] = "https://fake-proxy2:8000";
@@ -71,7 +71,7 @@ class PcaRequestTest : public ::testing::Test {
     // base::Bind.
     auto v = [this](const ReplyType& reply) { this->Verify(reply); };
     auto response = MakeResponseWithVerifier<ReplyType>(v);
-    auto request = new PcaRequest<ReplyType>(kDummyHandlerName, kFakeUrl,
+    auto request = new PcaRequest<ReplyType>(kFakeHandlerName, kFakeUrl,
                                              kFakeRequest, std::move(response));
 
     // testing objects injected to the request.
