@@ -1303,7 +1303,8 @@ class Metrics : public DefaultServiceObserver {
       const std::string& home_mccmnc,
       const std::string& serving_mccmnc,
       const std::string& roaming_state,
-      bool use_attach_apn);
+      bool use_attach_apn,
+      uint32_t tech_used);
 
   // Notifies this object about 3GPP registration drop events.
   virtual void Notify3GPPRegistrationDelayedDropPosted();

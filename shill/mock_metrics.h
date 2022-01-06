@@ -45,7 +45,8 @@ class MockMetrics : public Metrics {
                const std::string&,
                const std::string&,
                const std::string&,
-               bool use_attach_apn),
+               bool use_attach_apn,
+               uint32_t tech_used),
               (override));
 
   MOCK_METHOD(void,

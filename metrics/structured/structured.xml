@@ -307,6 +307,17 @@
         MODEM == 2.
         </summary>
     </metric>
+    <metric name="tech_used" type="int">
+      <summary>
+        Indicates the technologies in use for the connect attempt.
+
+        Value is a bitmask, allowing multiple simultaneous technologies, for
+        instance for proper 5G-NSA reporting. Values are defined by the
+        MMModemAccessTechnology enum in ModemManager[1].
+
+        [1] freedesktop.org/software/ModemManager/api/latest/ModemManager-Flags-and-Enumerations.html#MMModemAccessTechnology
+        </summary>
+    </metric>
   </event>
 </project>
 

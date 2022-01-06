@@ -93,6 +93,7 @@ class CellularCapability3gpp : public CellularCapability {
   bool IsRegistered() const override;
   void SetUnregistered(bool searching) override;
   void OnServiceCreated() override;
+  uint32_t GetActiveAccessTechnologies() const override;
   std::string GetNetworkTechnologyString() const override;
   std::string GetRoamingStateString() const override;
   void Connect(const ResultCallback& callback) override;

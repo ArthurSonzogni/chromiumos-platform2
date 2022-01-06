@@ -1521,7 +1521,8 @@ void Metrics::NotifyDetailedCellularConnectionResult(
     const std::string& home_mccmnc,
     const std::string& serving_mccmnc,
     const std::string& roaming_state,
-    bool use_attach_apn) {
+    bool use_attach_apn,
+    uint32_t tech_used) {
   int64_t home, serving;
   CellularApnSource apn_source = kCellularApnSourceUi;
   std::string apn_name;
@@ -1565,7 +1566,8 @@ void Metrics::NotifyDetailedCellularConnectionResult(
                 << " ipv6:" << ipv6_config_method
                 << " home_mccmnc:" << home_mccmnc
                 << " serving_mccmnc:" << serving_mccmnc
-                << " roaming_state:" << roaming_state;
+                << " roaming_state:" << roaming_state
+                << " tech_used:" << tech_used;
 
   metrics::structured::events::cellular::CellularConnectionAttempt()
       .Setconnect_result(static_cast<int64_t>(connect_result))
@@ -1577,6 +1579,7 @@ void Metrics::NotifyDetailedCellularConnectionResult(
       .Setroaming_state(roaming)
       .Setuse_attach_apn(use_attach_apn)
       .Setapn_source(static_cast<int64_t>(apn_source))
+      .Settech_used(tech_used)
       .Record();
 }
 

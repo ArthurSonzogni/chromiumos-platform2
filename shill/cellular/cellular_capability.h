@@ -162,6 +162,9 @@ class CellularCapability {
   // Returns an empty string if the network technology is unknown.
   virtual std::string GetNetworkTechnologyString() const = 0;
 
+  // Returns all active access technologies
+  virtual uint32_t GetActiveAccessTechnologies() const = 0;
+
   virtual std::string GetRoamingStateString() const = 0;
 
   // -------------------------------------------------------------------------

@@ -1335,6 +1335,10 @@ std::string CellularCapability3gpp::GetNetworkTechnologyString() const {
   return AccessTechnologyToString(access_technologies_);
 }
 
+uint32_t CellularCapability3gpp::GetActiveAccessTechnologies() const {
+  return access_technologies_;
+}
+
 std::string CellularCapability3gpp::GetRoamingStateString() const {
   switch (registration_state_) {
     case MM_MODEM_3GPP_REGISTRATION_STATE_HOME:
