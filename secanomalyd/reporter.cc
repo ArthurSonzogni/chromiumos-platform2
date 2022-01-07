@@ -168,7 +168,8 @@ bool SendReport(base::StringPiece report,
     }
   }
 
-  return crash_reporter->Wait();
+  // |crash_reporter| returns 0 on success.
+  return crash_reporter->Wait() == 0;
 }
 
 bool ReportAnomalousSystem(const MountEntryMap& wx_mounts,

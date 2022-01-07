@@ -178,7 +178,7 @@ TEST(ReporterTest, CrashReporterSuceeds) {
               RedirectUsingPipe(STDIN_FILENO, true /*is_input*/));
   EXPECT_CALL(*crash_reporter, GetPipe(STDIN_FILENO))
       .WillOnce(Return(dev_null.get()));
-  EXPECT_CALL(*crash_reporter, Wait()).WillOnce(Return(true));
+  EXPECT_CALL(*crash_reporter, Wait()).WillOnce(Return(0));
 
   EXPECT_TRUE(SendReport("This is a report", crash_reporter.get(), kWeight,
                          true /*report_in_dev_mode*/));
@@ -261,10 +261,10 @@ TEST(ReporterTest, WaitFails) {
               RedirectUsingPipe(STDIN_FILENO, true /*is_input*/));
   EXPECT_CALL(*crash_reporter, GetPipe(STDIN_FILENO))
       .WillOnce(Return(dev_null.get()));
-  EXPECT_CALL(*crash_reporter, Wait()).WillOnce(Return(true));
+  EXPECT_CALL(*crash_reporter, Wait()).WillOnce(Return(1));
 
-  EXPECT_TRUE(SendReport("This is a report", crash_reporter.get(), kWeight,
-                         true /*report_in_dev_mode*/));
+  EXPECT_FALSE(SendReport("This is a report", crash_reporter.get(), kWeight,
+                          true /*report_in_dev_mode*/));
 
   // SendReport() puts the subprocess' stdin fd into a scoper class, so it's
   // been closed by the time SendReport() returns.
