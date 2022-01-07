@@ -89,10 +89,13 @@ bool GenericNetlinkMessage::InitAndStripHeader(NetlinkPacket* packet) {
   return true;
 }
 
+std::string GenericNetlinkMessage::ToString() const {
+  return base::StringPrintf("Message %s (%d)", command_string(), command());
+}
+
 void GenericNetlinkMessage::Print(int header_log_level,
                                   int detail_log_level) const {
-  SLOG(this, header_log_level)
-      << base::StringPrintf("Message %s (%d)", command_string(), command());
+  SLOG(this, header_log_level) << ToString();
   attributes_->Print(detail_log_level, 1);
 }
 

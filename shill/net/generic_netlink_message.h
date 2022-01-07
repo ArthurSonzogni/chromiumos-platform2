@@ -6,6 +6,7 @@
 #define SHILL_NET_GENERIC_NETLINK_MESSAGE_H_
 
 #include <memory>
+#include <string>
 
 #include "shill/net/attribute_list.h"
 #include "shill/net/byte_string.h"
@@ -75,7 +76,7 @@ class SHILL_EXPORT GenericNetlinkMessage : public NetlinkMessage {
   const char* command_string() const { return command_string_; }
   AttributeListConstRefPtr const_attributes() const { return attributes_; }
   AttributeListRefPtr attributes() { return attributes_; }
-
+  std::string ToString() const override;
   void Print(int header_log_level, int detail_log_level) const override;
 
  protected:

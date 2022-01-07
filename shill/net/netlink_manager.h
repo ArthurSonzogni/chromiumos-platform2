@@ -236,6 +236,9 @@ class SHILL_EXPORT NetlinkManager {
       const NetlinkAckHandler& ack_handler,
       const NetlinkAuxilliaryMessageHandler& error_handler);
 
+  // Get string version of NetlinkMessage for logging purposes
+  static std::string GetRawMessage(const NetlinkMessage* raw_message);
+
   // Generic erroneous message handler everyone can use.
   static void OnNetlinkMessageError(AuxilliaryMessageType type,
                                     const NetlinkMessage* raw_message);

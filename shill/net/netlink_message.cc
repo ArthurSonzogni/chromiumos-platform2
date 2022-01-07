@@ -79,6 +79,11 @@ bool NetlinkMessage::InitFromPacket(NetlinkPacket* packet,
   return true;
 }
 
+void NetlinkMessage::Print(int header_log_level,
+                           int /*detail_log_level*/) const {
+  SLOG(this, header_log_level) << ToString();
+}
+
 // static
 void NetlinkMessage::PrintBytes(int log_level,
                                 const unsigned char* buf,
@@ -188,11 +193,6 @@ std::string ErrorAckMessage::ToString() const {
   return output;
 }
 
-void ErrorAckMessage::Print(int header_log_level,
-                            int /*detail_log_level*/) const {
-  SLOG(this, header_log_level) << ToString();
-}
-
 // NoopMessage.
 
 const uint16_t NoopMessage::kMessageType = NLMSG_NOOP;
@@ -202,8 +202,8 @@ ByteString NoopMessage::Encode(uint32_t sequence_number) {
   return ByteString();
 }
 
-void NoopMessage::Print(int header_log_level, int /*detail_log_level*/) const {
-  SLOG(this, header_log_level) << ToString();
+std::string NoopMessage::ToString() const {
+  return "<NOOP>";
 }
 
 // DoneMessage.
@@ -214,8 +214,8 @@ ByteString DoneMessage::Encode(uint32_t sequence_number) {
   return EncodeHeader(sequence_number);
 }
 
-void DoneMessage::Print(int header_log_level, int /*detail_log_level*/) const {
-  SLOG(this, header_log_level) << ToString();
+std::string DoneMessage::ToString() const {
+  return "<DONE with multipart message>";
 }
 
 // OverrunMessage.
@@ -227,9 +227,8 @@ ByteString OverrunMessage::Encode(uint32_t sequence_number) {
   return ByteString();
 }
 
-void OverrunMessage::Print(int header_log_level,
-                           int /*detail_log_level*/) const {
-  SLOG(this, header_log_level) << ToString();
+std::string OverrunMessage::ToString() const {
+  return "<OVERRUN - data lost>";
 }
 
 // UnknownMessage.
@@ -239,8 +238,7 @@ ByteString UnknownMessage::Encode(uint32_t sequence_number) {
   return ByteString();
 }
 
-void UnknownMessage::Print(int header_log_level,
-                           int /*detail_log_level*/) const {
+std::string UnknownMessage::ToString() const {
   int total_bytes = message_body_.GetLength();
   const uint8_t* const_data = message_body_.GetConstData();
 
@@ -248,7 +246,12 @@ void UnknownMessage::Print(int header_log_level,
   for (int i = 0; i < total_bytes; ++i) {
     base::StringAppendF(&output, " %02x", const_data[i]);
   }
-  SLOG(this, header_log_level) << output;
+  return output;
+}
+
+void UnknownMessage::Print(int header_log_level,
+                           int /*detail_log_level*/) const {
+  SLOG(this, header_log_level) << ToString();
 }
 
 //

@@ -240,6 +240,13 @@ void NetlinkManager::OnNewFamilyMessage(const ControlNetlinkMessage& message) {
   message_types_[family_name].family_id = family_id;
 }
 
+std::string NetlinkManager::GetRawMessage(const NetlinkMessage* raw_message) {
+  if (raw_message) {
+    return raw_message->ToString();
+  }
+  return "<none>";
+}
+
 // static
 void NetlinkManager::OnNetlinkMessageError(AuxilliaryMessageType type,
                                            const NetlinkMessage* raw_message) {
@@ -247,7 +254,7 @@ void NetlinkManager::OnNetlinkMessageError(AuxilliaryMessageType type,
     case kErrorFromKernel:
       if (!raw_message) {
         LOG(ERROR) << "Unknown error from kernel.";
-        break;
+        return;
       }
       if (raw_message->message_type() == ErrorAckMessage::GetMessageType()) {
         const ErrorAckMessage* error_ack_message =
@@ -259,23 +266,26 @@ void NetlinkManager::OnNetlinkMessageError(AuxilliaryMessageType type,
                    << ": Message (seq: " << error_ack_message->sequence_number()
                    << ") failed: " << error_ack_message->ToString();
       }
-      break;
+      return;
 
     case kUnexpectedResponseType:
-      LOG(ERROR) << "Message not handled by regular message handler:";
-      if (raw_message) {
-        raw_message->Print(0, 0);
-      }
-      break;
+      LOG(ERROR) << "Message not handled by regular message handler: "
+                 << GetRawMessage(raw_message);
+      return;
 
     case kTimeoutWaitingForResponse:
-      LOG(WARNING) << "Timeout waiting for response";
-      break;
+      LOG(WARNING) << "Timeout waiting for response: "
+                   << GetRawMessage(raw_message);
+      return;
 
-    default:
-      LOG(ERROR) << "Unexpected auxilliary message type: " << type;
-      break;
+    case kDone:
+      SLOG(this, 1) << __func__
+                    << ": received kDone: " << GetRawMessage(raw_message);
+      return;
   }
+
+  LOG(ERROR) << "Unexpected auxiliary message type: " << type
+             << ", message: " << GetRawMessage(raw_message);
 }
 
 bool NetlinkManager::Init() {

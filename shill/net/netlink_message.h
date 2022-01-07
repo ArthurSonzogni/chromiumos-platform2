@@ -101,9 +101,11 @@ class SHILL_EXPORT NetlinkMessage {
   void AddAckFlag() { flags_ |= NLM_F_ACK; }
   uint16_t flags() const { return flags_; }
   uint32_t sequence_number() const { return sequence_number_; }
+
+  virtual std::string ToString() const = 0;
   // Logs the message.  Allows a different log level (presumably more
   // stringent) for the body of the message than the header.
-  virtual void Print(int header_log_level, int detail_log_level) const = 0;
+  virtual void Print(int header_log_level, int detail_log_level) const;
 
   // Logs the message's raw bytes (with minimal interpretation).
   static void PrintBytes(int log_level,
@@ -154,8 +156,7 @@ class SHILL_EXPORT ErrorAckMessage : public NetlinkMessage {
   static uint16_t GetMessageType() { return kMessageType; }
   bool InitFromPacket(NetlinkPacket* packet, MessageContext context) override;
   ByteString Encode(uint32_t sequence_number) override;
-  void Print(int header_log_level, int detail_log_level) const override;
-  std::string ToString() const;
+  std::string ToString() const override;
   uint32_t error() const { return -error_; }
 
  private:
@@ -172,8 +173,7 @@ class SHILL_EXPORT NoopMessage : public NetlinkMessage {
 
   static uint16_t GetMessageType() { return kMessageType; }
   ByteString Encode(uint32_t sequence_number) override;
-  void Print(int header_log_level, int detail_log_level) const override;
-  std::string ToString() const { return "<NOOP>"; }
+  std::string ToString() const override;
 };
 
 class SHILL_EXPORT DoneMessage : public NetlinkMessage {
@@ -186,8 +186,7 @@ class SHILL_EXPORT DoneMessage : public NetlinkMessage {
 
   static uint16_t GetMessageType() { return kMessageType; }
   ByteString Encode(uint32_t sequence_number) override;
-  void Print(int header_log_level, int detail_log_level) const override;
-  std::string ToString() const { return "<DONE with multipart message>"; }
+  std::string ToString() const override;
 };
 
 class SHILL_EXPORT OverrunMessage : public NetlinkMessage {
@@ -200,8 +199,7 @@ class SHILL_EXPORT OverrunMessage : public NetlinkMessage {
 
   static uint16_t GetMessageType() { return kMessageType; }
   ByteString Encode(uint32_t sequence_number) override;
-  void Print(int header_log_level, int detail_log_level) const override;
-  std::string ToString() const { return "<OVERRUN - data lost>"; }
+  std::string ToString() const override;
 };
 
 class SHILL_EXPORT UnknownMessage : public NetlinkMessage {
@@ -212,6 +210,7 @@ class SHILL_EXPORT UnknownMessage : public NetlinkMessage {
   UnknownMessage& operator=(const UnknownMessage&) = delete;
 
   ByteString Encode(uint32_t sequence_number) override;
+  std::string ToString() const override;
   void Print(int header_log_level, int detail_log_level) const override;
 
  private:
