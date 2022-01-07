@@ -1756,11 +1756,12 @@ StartVmResponse Service::StartVm(StartVmRequest request,
     }
   }
 
-  auto vm = TerminaVm::Create(
-      vsock_cid, std::move(network_client), std::move(server_proxy),
-      std::move(runtime_dir), std::move(log_path), std::move(stateful_device),
-      std::move(stateful_size), features, vm_permission_service_proxy_, bus_,
-      vm_id, classification, std::move(vm_builder));
+  auto vm = TerminaVm::Create(vsock_cid, std::move(network_client),
+                              std::move(server_proxy), std::move(runtime_dir),
+                              std::move(log_path), std::move(stateful_device),
+                              std::move(stateful_size), GetVmMemoryMiB(request),
+                              features, vm_permission_service_proxy_, bus_,
+                              vm_id, classification, std::move(vm_builder));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 
@@ -1900,6 +1901,10 @@ StartVmResponse Service::StartVm(StartVmRequest request,
 
   vms_[vm_id] = std::move(vm);
   return response;
+}
+
+int64_t Service::GetVmMemoryMiB(const StartVmRequest& request) {
+  return ::vm_tools::concierge::GetVmMemoryMiB();
 }
 
 std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {

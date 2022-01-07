@@ -107,6 +107,10 @@ class Service final {
   StartVmResponse StartVm(StartVmRequest request,
                           std::unique_ptr<dbus::MessageReader> reader);
 
+  // Returns how many mebibyte of physical memory to use for the
+  // VM being started with the given request.
+  int64_t GetVmMemoryMiB(const StartVmRequest& request);
+
   // Handles a request to start a plugin-based VM.
   StartVmResponse StartPluginVm(StartPluginVmRequest request,
                                 std::unique_ptr<dbus::MessageReader> reader);
@@ -114,6 +118,10 @@ class Service final {
   // Handles a request to start ARCVM.
   StartVmResponse StartArcVm(StartArcVmRequest request,
                              std::unique_ptr<dbus::MessageReader> reader);
+
+  // Returns how many mebibyte of physical memory to use for the
+  // VM being started with the given request.
+  int64_t GetArcVmMemoryMiB(const StartArcVmRequest& request);
 
   // Handles a request to stop a VM.  |method_call| must have a StopVmRequest
   // protobuf serialized as an array of bytes.

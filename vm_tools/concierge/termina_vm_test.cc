@@ -403,13 +403,14 @@ void TerminaVmTest::SetUp() {
 
   std::string stateful_device = "/dev/vdb";
   uint64_t stateful_size = (uint64_t)20 * 1024 * 1024 * 1024;
+  int64_t mem_mib = (int64_t)8 * 1024 * 1024 * 1024;
 
   // Create the TerminaVm.
   VmBuilder vm_builder;
   vm_builder.SetRootfs({.device = "/dev/vda", .path = base::FilePath("dummy")});
   vm_ = TerminaVm::CreateForTesting(
       std::move(subnet), vsock_cid, temp_dir_.GetPath(), base::FilePath(),
-      std::move(stateful_device), stateful_size, kKernelVersion,
+      std::move(stateful_device), stateful_size, mem_mib, kKernelVersion,
       std::move(stub), VmInfo::TERMINA, std::move(vm_builder));
   ASSERT_TRUE(vm_);
 }

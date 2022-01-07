@@ -98,6 +98,7 @@ TerminaVm::TerminaVm(
     base::FilePath log_path,
     std::string stateful_device,
     uint64_t stateful_size,
+    int64_t mem_mib,
     VmFeatures features,
     dbus::ObjectProxy* vm_permission_service_proxy,
     scoped_refptr<dbus::Bus> bus,
@@ -112,6 +113,7 @@ TerminaVm::TerminaVm(
       stateful_device_(stateful_device),
       stateful_size_(stateful_size),
       stateful_resize_type_(DiskResizeType::NONE),
+      mem_mib_(mem_mib),
       log_path_(std::move(log_path)),
       id_(id),
       bus_(bus),
@@ -127,6 +129,7 @@ TerminaVm::TerminaVm(
     base::FilePath log_path,
     std::string stateful_device,
     uint64_t stateful_size,
+    int64_t mem_mib,
     VmFeatures features,
     VmInfo::VmType classification)
     : VmBaseImpl(nullptr /* network_client */,
@@ -139,6 +142,7 @@ TerminaVm::TerminaVm(
       stateful_device_(stateful_device),
       stateful_size_(stateful_size),
       stateful_resize_type_(DiskResizeType::NONE),
+      mem_mib_(mem_mib),
       log_path_(std::move(log_path)),
       id_(VmId("foo", "bar")),
       classification_(classification) {
@@ -157,6 +161,7 @@ std::unique_ptr<TerminaVm> TerminaVm::Create(
     base::FilePath log_path,
     std::string stateful_device,
     uint64_t stateful_size,
+    int64_t mem_mib,
     VmFeatures features,
     dbus::ObjectProxy* vm_permission_service_proxy,
     scoped_refptr<dbus::Bus> bus,
@@ -166,7 +171,7 @@ std::unique_ptr<TerminaVm> TerminaVm::Create(
   auto vm = base::WrapUnique(new TerminaVm(
       vsock_cid, std::move(network_client), std::move(seneschal_server_proxy),
       std::move(runtime_dir), std::move(log_path), std::move(stateful_device),
-      std::move(stateful_size), features, vm_permission_service_proxy,
+      std::move(stateful_size), mem_mib, features, vm_permission_service_proxy,
       std::move(bus), std::move(id), classification));
 
   if (!vm->Start(std::move(vm_builder)))
@@ -226,7 +231,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
   vm_builder.AppendTapFd(std::move(tap_fd))
       .SetVsockCid(vsock_cid_)
       .SetSocketPath(GetVmSocketPath())
-      .SetMemory(std::to_string(GetVmMemoryMiB()))
+      .SetMemory(std::to_string(mem_mib_))
       .AppendSerialDevice(GetCrosVmSerial("serial", "earlycon"))
       .AppendSerialDevice(GetCrosVmSerial("virtio-console", "console"))
       .SetSyslogTag(base::StringPrintf("VM(%u)", vsock_cid_));
@@ -991,6 +996,7 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
     base::FilePath log_path,
     std::string stateful_device,
     uint64_t stateful_size,
+    int64_t mem_mib,
     std::string kernel_version,
     std::unique_ptr<vm_tools::Maitred::Stub> stub,
     VmInfo::VmType classification,
@@ -1003,7 +1009,7 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
   auto vm = base::WrapUnique(new TerminaVm(
       std::move(subnet), vsock_cid, nullptr, std::move(runtime_dir),
       std::move(log_path), std::move(stateful_device), std::move(stateful_size),
-      features, classification));
+      mem_mib, features, classification));
   vm->set_kernel_version_for_testing(kernel_version);
   vm->set_stub_for_testing(std::move(stub));
 

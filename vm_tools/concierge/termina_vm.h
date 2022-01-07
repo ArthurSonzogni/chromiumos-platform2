@@ -79,6 +79,7 @@ class TerminaVm final : public VmBaseImpl {
       base::FilePath log_path,
       std::string stateful_device,
       uint64_t stateful_size,
+      int64_t mem_mib,
       VmFeatures features,
       dbus::ObjectProxy* vm_permission_service_proxy,
       scoped_refptr<dbus::Bus> bus,
@@ -210,6 +211,7 @@ class TerminaVm final : public VmBaseImpl {
       base::FilePath log_path,
       std::string stateful_device,
       uint64_t stateful_size,
+      int64_t mem_mib,
       std::string kernel_version,
       std::unique_ptr<vm_tools::Maitred::Stub> stub,
       VmInfo::VmType classification,
@@ -223,6 +225,7 @@ class TerminaVm final : public VmBaseImpl {
             base::FilePath log_path,
             std::string stateful_device,
             uint64_t stateful_size,
+            int64_t mem_mib,
             VmFeatures features,
             dbus::ObjectProxy* vm_permission_service_proxy,
             scoped_refptr<dbus::Bus> bus,
@@ -237,6 +240,7 @@ class TerminaVm final : public VmBaseImpl {
             base::FilePath log_path,
             std::string stateful_device,
             uint64_t stateful_size,
+            int64_t mem_mib,
             VmFeatures features,
             VmInfo::VmType classification);
   TerminaVm(const TerminaVm&) = delete;
@@ -306,6 +310,9 @@ class TerminaVm final : public VmBaseImpl {
   // Type of disk resize currently in progress.
   // If this is NONE, then no resize is in progress right now.
   enum DiskResizeType stateful_resize_type_;
+
+  // Size of the guest's physical memory in mebibytes.
+  const int64_t mem_mib_;
 
   // Status of the current resize operation (or most recent resize operation,
   // if no resize is currently in progress).

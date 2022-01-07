@@ -235,12 +235,7 @@ StartVmResponse Service::StartArcVm(
     vm_builder.AppendCustomParam("--hugepages", "");
   }
 
-  const uint32_t memory_mib = request.memory_mib();
-  if (memory_mib > 0) {
-    vm_builder.SetMemory(std::to_string(memory_mib));
-  } else {
-    vm_builder.SetMemory(std::to_string(GetVmMemoryMiB()));
-  }
+  vm_builder.SetMemory(std::to_string(GetArcVmMemoryMiB(request)));
 
   /* Enable THP if the VM has at least 7G of memory */
   if (base::SysInfo::AmountOfPhysicalMemoryMB() >= 7 * 1024) {
@@ -271,6 +266,14 @@ StartVmResponse Service::StartArcVm(
   vms_[vm_id] = std::move(vm);
 
   return response;
+}
+
+int64_t Service::GetArcVmMemoryMiB(const StartArcVmRequest& request) {
+  int64_t memory_mib = request.memory_mib();
+  if (memory_mib <= 0) {
+    memory_mib = ::vm_tools::concierge::GetVmMemoryMiB();
+  }
+  return memory_mib;
 }
 
 }  // namespace concierge
