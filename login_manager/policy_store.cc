@@ -20,7 +20,10 @@ const char kPrefsFileName[] = "preferences";
 }  // namespace
 
 PolicyStore::PolicyStore(const base::FilePath& policy_path)
-    : policy_path_(policy_path) {}
+    : PolicyStore(policy_path, /*is_resilient=*/false) {}
+
+PolicyStore::PolicyStore(const base::FilePath& policy_path, bool is_resilient)
+    : policy_path_(policy_path), is_resilient_store_(is_resilient) {}
 
 PolicyStore::~PolicyStore() {}
 
@@ -57,11 +60,20 @@ bool PolicyStore::LoadOrCreateFromPath(const base::FilePath& policy_path) {
       cached_policy_data_ = polstr;
       return true;
     case policy::LoadPolicyResult::kFileNotFound:
-      return true;
+      if (!is_resilient_store_) {
+        return true;
+      }
+      LOG(WARNING) << "Resilient policy file not found: "
+                   << policy_path.value();
+      return false;
     case policy::LoadPolicyResult::kFailedToReadFile:
+      LOG(WARNING) << "Failed to read policy file: " << policy_path.value();
+      return false;
     case policy::LoadPolicyResult::kEmptyFile:
+      LOG(WARNING) << "Empty policy file: " << policy_path.value();
       return false;
     case policy::LoadPolicyResult::kInvalidPolicyData:
+      LOG(WARNING) << "Invalid policy data: " << policy_path.value();
       base::DeleteFile(policy_path);
       policy_.Clear();
       return false;

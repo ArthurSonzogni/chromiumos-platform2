@@ -61,14 +61,16 @@ bool CreateCleanupDoneFile(const base::FilePath& policy_path) {
 
 ResilientPolicyStore::ResilientPolicyStore(const base::FilePath& policy_path,
                                            LoginMetrics* metrics)
-    : PolicyStore(policy_path), metrics_(metrics) {}
+    : PolicyStore(policy_path, /*is_resilient=*/true), metrics_(metrics) {}
 
 bool ResilientPolicyStore::LoadOrCreate() {
   DCHECK(metrics_);
   std::map<int, base::FilePath> sorted_policy_file_paths =
       policy::GetSortedResilientPolicyFilePaths(policy_path_);
-  if (sorted_policy_file_paths.empty())
+  if (sorted_policy_file_paths.empty()) {
+    LOG(INFO) << "No device policy file present.";
     return true;
+  }
 
   // Try to load the existent policy files one by one in reverse order of their
   // index until we succeed. The files that fail to be parsed are deleted.
@@ -81,6 +83,7 @@ bool ResilientPolicyStore::LoadOrCreate() {
       break;
     }
     number_of_invalid_files++;
+    LOG(WARNING) << "Invalid device policy file: " << policy_path.value();
     base::DeleteFile(policy_path);
   }
 
@@ -139,6 +142,7 @@ void ResilientPolicyStore::CleanupPolicyFiles(
   for (const auto& map_pair : base::Reversed(sorted_policy_file_paths)) {
     const base::FilePath& policy_path = map_pair.second;
     if (number_of_good_files >= max_allowed_files) {
+      LOG(INFO) << "Deleting the old policy file: " << policy_path.value();
       base::DeleteFile(policy_path);
       continue;
     }
@@ -157,6 +161,8 @@ void ResilientPolicyStore::CleanupPolicyFiles(
       case policy::LoadPolicyResult::kEmptyFile:
       case policy::LoadPolicyResult::kInvalidPolicyData:
         number_of_invalid_files++;
+        LOG(WARNING) << "Invalid policy file: " << policy_path.value()
+                     << ", result: " << static_cast<int>(result);
         base::DeleteFile(policy_path);
         break;
     }

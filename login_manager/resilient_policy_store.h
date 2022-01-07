@@ -38,8 +38,6 @@ class ResilientPolicyStore : public PolicyStore {
   // but deletion is only allowed for component policy.
   bool Delete() override;
 
-  bool resilient_for_testing() const override { return true; }
-
  private:
   // Check the policy files from the most recent to the oldest until a valid
   // file is found. Loads the signed policy off of the valid file into

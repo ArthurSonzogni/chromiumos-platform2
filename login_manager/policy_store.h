@@ -51,9 +51,11 @@ class PolicyStore {
 
   const base::FilePath policy_path() const { return policy_path_; }
 
-  virtual bool resilient_for_testing() const { return false; }
+  bool resilient_for_testing() const { return is_resilient_store_; }
 
  protected:
+  PolicyStore(const base::FilePath& policy_path, bool is_resilient);
+
   // Load the signed policy off of disk into |policy_|. Returns true unless
   // there is a policy on disk and loading it fails.
   virtual bool LoadOrCreate();
@@ -75,6 +77,11 @@ class PolicyStore {
 
   enum LoadResult { NOT_LOADED, LOAD_SUCCEEDED, LOAD_FAILED };
   LoadResult load_result_ = NOT_LOADED;
+
+ private:
+  // The type of policy store. If resilient, the latest policy data are stored
+  // in multiple files.
+  const bool is_resilient_store_;
 };
 }  // namespace login_manager
 
