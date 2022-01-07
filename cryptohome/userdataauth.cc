@@ -424,12 +424,12 @@ bool UserDataAuth::StatefulRecoveryMount(const std::string& username,
         if (!user_session || !user_session->IsActive()) {
           LOG(ERROR) << "Failed to get mount in stateful recovery.";
           *mount_path_retrieved = false;
-          return;
+        } else {
+          const std::string obfuscated_username =
+              brillo::cryptohome::home::SanitizeUserName(username);
+          *out_home_path = GetUserMountDirectory(obfuscated_username);
+          *mount_path_retrieved = true;
         }
-        const std::string obfuscated_username =
-            brillo::cryptohome::home::SanitizeUserName(username);
-        *out_home_path = GetUserMountDirectory(obfuscated_username);
-        *mount_path_retrieved = true;
         done_event_ptr->Signal();
       },
       base::Unretained(this), username, base::Unretained(out_home_path),
