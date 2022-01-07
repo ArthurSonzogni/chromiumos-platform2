@@ -383,6 +383,14 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
   // true, unless we restart the whole RMA process.
   can_abort_ &= next_state_handler->IsRepeatable();
 
+  // If the new state needs the daemon to quit and restart, request to quit the
+  // daemon here.
+  if (std::find(kQuitDaemonStates.begin(), kQuitDaemonStates.end(),
+                current_state_case_) != kQuitDaemonStates.end()) {
+    CHECK(request_quit_daemon_callback_);
+    request_quit_daemon_callback_->Run();
+  }
+
   reply.set_error(RMAD_ERROR_OK);
   reply.set_allocated_state(new RmadState(next_state_handler->GetState(true)));
   reply.set_can_go_back(CanGoBack());

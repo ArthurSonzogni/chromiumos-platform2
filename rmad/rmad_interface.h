@@ -23,6 +23,10 @@ class RmadInterface {
   // initialized by the constructor but not fully set up.
   virtual bool SetUp() = 0;
 
+  // Register a callback for requesting to quit the daemon.
+  virtual void RegisterRequestQuitDaemonCallback(
+      std::unique_ptr<base::RepeatingCallback<void()>> callback) = 0;
+
   // Register a signal sender for specific states. Virtual functions cannot be
   // declared as template so we need to declare them one by one.
   virtual void RegisterSignalSender(

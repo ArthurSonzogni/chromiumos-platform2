@@ -78,8 +78,8 @@ class DBusService : public brillo::DBusServiceDaemon {
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
-  // Provide callbacks for sending signals to rmad_interface.
-  void RegisterSignalSenders();
+  // Provide callbacks to rmad_interface.
+  void SetUpInterfaceCallbacks();
 
  private:
   friend class DBusServiceTest;
@@ -136,19 +136,13 @@ class DBusService : public brillo::DBusServiceDaemon {
                  const ReplyType& reply) {
     response->Return(reply);
 
-    // Quit the daemon under some conditions.
-    // TODO(chenghan): This is now determined by state. Maybe it's better to
-    //                 decide this in the state transition, e.g. pass an
-    //                 additional boolean in the |rmad_interface_| callback.
-    ConditionallyQuit();
+    if (!is_rma_required_ || quit_requested_) {
+      PostQuitTask();
+    }
   }
 
-  // Quit the daemon if current state is:
-  //   - STATE_NOT_SET: RMA is not required. Quit the daemon to release
-  //                    resources.
-  //   - kWpDisableComplete: Need to restart the daemon after disabling hardware
-  //                         write protection to get more minijail permissions.
-  void ConditionallyQuit();
+  // Request to quit the daemon. This is used as a callback by state handlers.
+  void RequestQuit() { quit_requested_ = true; }
 
   // Schedule an asynchronous D-Bus shutdown and exit the daemon.
   void PostQuitTask();
@@ -187,6 +181,8 @@ class DBusService : public brillo::DBusServiceDaemon {
   bool is_interface_set_up_;
   // Whether the device should trigger shimless RMA.
   bool is_rma_required_;
+  // Whether we should quit the daemon after handling a method.
+  bool quit_requested_;
 
   // Test mode daemon.
   bool test_mode_;

@@ -38,6 +38,10 @@ inline constexpr char kFirmwareUpdated[] = "firmware_updated";
 inline constexpr char kCalibrationMap[] = "calibration_map";
 inline constexpr char kPowerwashRequest[] = "powerwash_request";
 
+// States that requires daemon to quit and restart when entering.
+inline constexpr std::array<RmadState::StateCase, 1> kQuitDaemonStates = {
+    RmadState::StateCase::kWpDisableComplete};
+
 // Component traits.
 inline constexpr std::array<RmadComponent, 4> kComponentsNeedManualCalibration =
     {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,

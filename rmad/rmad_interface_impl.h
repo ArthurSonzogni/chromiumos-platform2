@@ -8,8 +8,10 @@
 #include "rmad/rmad_interface.h"
 
 #include <memory>
+#include <utility>
 #include <vector>
 
+#include <base/callback.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/timer/timer.h>
 
@@ -45,6 +47,11 @@ class RmadInterfaceImpl final : public RmadInterface {
   ~RmadInterfaceImpl() override = default;
 
   bool SetUp() override;
+
+  void RegisterRequestQuitDaemonCallback(
+      std::unique_ptr<base::RepeatingCallback<void()>> callback) override {
+    request_quit_daemon_callback_ = std::move(callback);
+  }
 
   void RegisterSignalSender(
       RmadState::StateCase state_case,
@@ -126,6 +133,10 @@ class RmadInterfaceImpl final : public RmadInterface {
   RmadState::StateCase current_state_case_;
   std::vector<RmadState::StateCase> state_history_;
   bool can_abort_;
+
+  // Callback for request quit the daemon.
+  std::unique_ptr<base::RepeatingCallback<void()>>
+      request_quit_daemon_callback_;
 
   // Test mode. Use fake state handlers.
   bool test_mode_;

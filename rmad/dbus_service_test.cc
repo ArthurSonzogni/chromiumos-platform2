@@ -47,6 +47,10 @@ class DBusServiceTest : public testing::Test {
 
     EXPECT_CALL(mock_rmad_service_, GetCurrentStateCase())
         .WillRepeatedly(Return(RmadState::STATE_NOT_SET));
+    EXPECT_CALL(mock_rmad_service_,
+                RegisterRequestQuitDaemonCallback(
+                    A<std::unique_ptr<base::RepeatingCallback<void()>>>()))
+        .WillRepeatedly(Return());
     EXPECT_CALL(
         mock_rmad_service_,
         RegisterSignalSender(

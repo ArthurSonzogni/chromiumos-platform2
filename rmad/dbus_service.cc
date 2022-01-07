@@ -294,6 +294,7 @@ DBusService::DBusService(RmadInterface* rmad_interface)
       state_file_path_(kDefaultJsonStoreFilePath),
       is_external_utils_initialized_(false),
       is_interface_set_up_(false),
+      quit_requested_(false),
       test_mode_(false) {}
 
 DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
@@ -306,6 +307,7 @@ DBusService::DBusService(const scoped_refptr<dbus::Bus>& bus,
       tpm_manager_client_(std::move(tpm_manager_client)),
       is_external_utils_initialized_(true),
       is_interface_set_up_(false),
+      quit_requested_(false),
       test_mode_(false) {
   dbus_object_ = std::make_unique<DBusObject>(
       nullptr, bus, dbus::ObjectPath(kRmadServicePath));
@@ -418,13 +420,16 @@ bool DBusService::ConditionallySetUpInterface() {
       return false;
     }
     is_interface_set_up_ = true;
-    RegisterSignalSenders();
+    SetUpInterfaceCallbacks();
     rmad_interface_->TryTransitionNextStateFromCurrentState();
   }
   return true;
 }
 
-void DBusService::RegisterSignalSenders() {
+void DBusService::SetUpInterfaceCallbacks() {
+  rmad_interface_->RegisterRequestQuitDaemonCallback(
+      std::make_unique<base::RepeatingCallback<void()>>(base::BindRepeating(
+          &DBusService::RequestQuit, base::Unretained(this))));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kWpDisablePhysical,
       std::make_unique<base::RepeatingCallback<bool(bool)>>(base::BindRepeating(
@@ -541,15 +546,6 @@ bool DBusService::SendHardwareWriteProtectionStateSignal(bool enabled) {
 bool DBusService::SendPowerCableStateSignal(bool plugged_in) {
   auto signal = power_cable_signal_.lock();
   return (signal.get() == nullptr) ? false : signal->Send(plugged_in);
-}
-
-void DBusService::ConditionallyQuit() {
-  const RmadState::StateCase current_state_case =
-      rmad_interface_->GetCurrentStateCase();
-  if (current_state_case == RmadState::STATE_NOT_SET ||
-      current_state_case == RmadState::kWpDisableComplete) {
-    PostQuitTask();
-  }
 }
 
 void DBusService::PostQuitTask() {
