@@ -89,11 +89,7 @@ bool MountEntry::IsDestInUsrLocal() const {
 }
 
 bool MountEntry::IsNamespaceBindMount() const {
-  // On 3.18 kernels these mounts show up as type "proc" rather than type
-  // "nsfs".
-  // TODO(crbug.com/1204604): Remove the "proc" exception after 3.18 kernels go
-  // away.
-  return this->type() == "nsfs" || this->type() == "proc";
+  return this->type() == "nsfs";
 }
 
 std::string MountEntry::ShortDescription() const {
