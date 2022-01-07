@@ -79,7 +79,11 @@ int64_t BalanceAvailableBalloonPolicy::ComputeBalloonDelta(
   const int64_t guest_above_critical =
       guest_available - critical_guest_available_ - bias;
   const int64_t host_above_critical = host_available - critical_host_available_;
-  const int64_t balloon_delta = guest_above_critical - host_above_critical;
+
+  // Find the midpoint to account for the fact that inflating/deflating the
+  // balloon will decrease/increase the host available memory.
+  const int64_t balloon_delta =
+      (guest_above_critical - host_above_critical) / 2;
 
   // To avoid killing apps accidentally, cap the delta here by leaving the space
   // MAX_CRITICAL_DELTA;
