@@ -129,12 +129,16 @@ UpdateRoFirmwareStateHandler::GetNextStateCase(const RmadState& state) {
 
   switch (state.update_ro_firmware().choice()) {
     case UpdateRoFirmwareState::RMAD_UPDATE_CHOICE_CONTINUE:
-      if (status_ == RMAD_UPDATE_RO_FIRMWARE_COMPLETE) {
-        return NextStateCaseWrapper(RmadState::StateCase::kUpdateDeviceInfo);
-      } else {
+      if (status_ != RMAD_UPDATE_RO_FIRMWARE_COMPLETE) {
         return NextStateCaseWrapper(RMAD_ERROR_WAIT);
       }
+      // Firmware update completed. Same behavior as SKIP.
+      FALLTHROUGH;
     case UpdateRoFirmwareState::RMAD_UPDATE_CHOICE_SKIP:
+      if (bool mlb_repair;
+          json_store_->GetValue(kMlbRepair, &mlb_repair) && mlb_repair) {
+        return NextStateCaseWrapper(RmadState::StateCase::kRestock);
+      }
       return NextStateCaseWrapper(RmadState::StateCase::kUpdateDeviceInfo);
     default:
       break;
