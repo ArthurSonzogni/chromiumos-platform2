@@ -71,11 +71,11 @@ class Disk {
 // Path to the crosvm binary.
 extern const char kCrosvmBin[];
 
-// Calculates the amount of memory to give the virtual machine. Currently
-// configured to provide 75% of system memory. This is deliberately over
-// provisioned with the expectation that we will use the balloon driver to
+// Calculates the amount of memory to give the virtual machine, in MiB.
+// Currently configured to provide 75% of system memory. This is deliberately
+// over provisioned with the expectation that we will use the balloon driver to
 // reduce the actual memory footprint.
-std::string GetVmMemoryMiB();
+int64_t GetVmMemoryMiB();
 
 // Retrieves the physical package ID for |cpu| from the topology information in
 // sysfs.

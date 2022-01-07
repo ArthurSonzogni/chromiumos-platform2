@@ -226,7 +226,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
   vm_builder.AppendTapFd(std::move(tap_fd))
       .SetVsockCid(vsock_cid_)
       .SetSocketPath(GetVmSocketPath())
-      .SetMemory(GetVmMemoryMiB())
+      .SetMemory(std::to_string(GetVmMemoryMiB()))
       .AppendSerialDevice(GetCrosVmSerial("serial", "earlycon"))
       .AppendSerialDevice(GetCrosVmSerial("virtio-console", "console"))
       .SetSyslogTag(base::StringPrintf("VM(%u)", vsock_cid_));

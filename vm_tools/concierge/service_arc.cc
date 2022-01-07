@@ -239,7 +239,7 @@ StartVmResponse Service::StartArcVm(
   if (memory_mib > 0) {
     vm_builder.SetMemory(std::to_string(memory_mib));
   } else {
-    vm_builder.SetMemory(GetVmMemoryMiB());
+    vm_builder.SetMemory(std::to_string(GetVmMemoryMiB()));
   }
 
   /* Enable THP if the VM has at least 7G of memory */

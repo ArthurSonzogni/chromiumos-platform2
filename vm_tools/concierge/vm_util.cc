@@ -212,7 +212,7 @@ base::StringPairs Disk::GetCrosvmArgs() const {
 
 Disk::~Disk() = default;
 
-std::string GetVmMemoryMiB() {
+int64_t GetVmMemoryMiB() {
   int64_t sys_memory_mb = base::SysInfo::AmountOfPhysicalMemoryMB();
   int64_t vm_memory_mb;
   if (sys_memory_mb >= 4096) {
@@ -242,7 +242,7 @@ std::string GetVmMemoryMiB() {
     vm_memory_mb = std::min(vm_memory_mb, k32bitVmMemoryMaxMb);
   }
 
-  return std::to_string(vm_memory_mb);
+  return vm_memory_mb;
 }
 
 base::Optional<int32_t> ReadFileToInt32(const base::FilePath& filename) {
