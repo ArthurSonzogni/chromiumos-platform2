@@ -369,14 +369,6 @@ TEST_F(DBusServiceTest, AbortRma) {
   EXPECT_EQ(RMAD_ERROR_ABORT_FAILED, reply.error());
 }
 
-TEST_F(DBusServiceTest, GetLogPath) {
-  // This method doesn't call |mock_rma_service_|.
-  SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
-  std::string reply;
-  ExecuteMethod(kGetLogPathMethod, &reply);
-  EXPECT_EQ("not_supported", reply);
-}
-
 TEST_F(DBusServiceTest, SignalError) {
   SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(*GetMockExportedObject(), SendSignal(_))

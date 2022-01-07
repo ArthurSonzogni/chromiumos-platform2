@@ -345,30 +345,28 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
   brillo::dbus_utils::DBusInterface* dbus_interface =
       dbus_object_->AddOrGetInterface(kRmadInterfaceName);
 
-  dbus_interface->AddSimpleMethodHandler(
-      kIsRmaRequiredMethod, base::Unretained(this),
-      &DBusService::HandleIsRmaRequiredMethod);
+  dbus_interface->AddMethodHandler(kIsRmaRequiredMethod, base::Unretained(this),
+                                   &DBusService::HandleIsRmaRequiredMethod);
   dbus_interface->AddMethodHandler(
       kGetCurrentStateMethod, base::Unretained(this),
-      &DBusService::HandleMethod<GetStateReply,
-                                 &RmadInterface::GetCurrentState>);
+      &DBusService::DelegateToInterface<GetStateReply,
+                                        &RmadInterface::GetCurrentState>);
   dbus_interface->AddMethodHandler(
       kTransitionNextStateMethod, base::Unretained(this),
-      &DBusService::HandleMethod<TransitionNextStateRequest, GetStateReply,
-                                 &RmadInterface::TransitionNextState>);
+      &DBusService::DelegateToInterface<TransitionNextStateRequest,
+                                        GetStateReply,
+                                        &RmadInterface::TransitionNextState>);
   dbus_interface->AddMethodHandler(
       kTransitionPreviousStateMethod, base::Unretained(this),
-      &DBusService::HandleMethod<GetStateReply,
-                                 &RmadInterface::TransitionPreviousState>);
+      &DBusService::DelegateToInterface<
+          GetStateReply, &RmadInterface::TransitionPreviousState>);
   dbus_interface->AddMethodHandler(
       kAbortRmaMethod, base::Unretained(this),
-      &DBusService::HandleMethod<AbortRmaReply, &RmadInterface::AbortRma>);
+      &DBusService::DelegateToInterface<AbortRmaReply,
+                                        &RmadInterface::AbortRma>);
 
-  dbus_interface->AddSimpleMethodHandler(kGetLogPathMethod,
-                                         base::Unretained(this),
-                                         &DBusService::HandleGetLogPathMethod);
-  dbus_interface->AddSimpleMethodHandler(kGetLogMethod, base::Unretained(this),
-                                         &DBusService::HandleGetLogMethod);
+  dbus_interface->AddMethodHandler(kGetLogMethod, base::Unretained(this),
+                                   &DBusService::HandleGetLogMethod);
 
   error_signal_ = dbus_interface->RegisterSignal<RmadErrorCode>(kErrorSignal);
   hardware_verification_signal_ =
@@ -413,9 +411,9 @@ bool DBusService::CheckRmaCriteria() const {
   return false;
 }
 
-bool DBusService::ConditionallySetUpInterface() {
+bool DBusService::SetUpInterface() {
   CHECK(rmad_interface_);
-  if (is_rma_required_ && !is_interface_set_up_) {
+  if (!is_interface_set_up_) {
     if (!rmad_interface_->SetUp()) {
       return false;
     }
@@ -479,15 +477,13 @@ void DBusService::SetUpInterfaceCallbacks() {
           &DBusService::SendPowerCableStateSignal, base::Unretained(this))));
 }
 
-bool DBusService::HandleIsRmaRequiredMethod() {
-  return is_rma_required_;
+void DBusService::HandleIsRmaRequiredMethod(
+    std::unique_ptr<DBusMethodResponse<bool>> response) {
+  SendReply(std::move(response), is_rma_required_);
 }
 
-std::string DBusService::HandleGetLogPathMethod() {
-  return "not_supported";
-}
-
-GetLogReply DBusService::HandleGetLogMethod() {
+void DBusService::HandleGetLogMethod(
+    std::unique_ptr<DBusMethodResponse<GetLogReply>> response) {
   GetLogReply reply;
   std::string log_string;
   if (base::GetAppOutput({kCroslogCmd, "--identifier=rmad"}, &log_string)) {
@@ -496,7 +492,7 @@ GetLogReply DBusService::HandleGetLogMethod() {
     LOG(ERROR) << "Failed to generate logs from croslog";
     reply.set_error(RMAD_ERROR_CANNOT_GET_LOG);
   }
-  return reply;
+  SendReply(std::move(response), reply);
 }
 
 bool DBusService::SendErrorSignal(RmadErrorCode error) {

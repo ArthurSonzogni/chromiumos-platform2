@@ -85,7 +85,7 @@ class DBusService : public brillo::DBusServiceDaemon {
   friend class DBusServiceTest;
 
   bool CheckRmaCriteria() const;
-  bool ConditionallySetUpInterface();
+  bool SetUpInterface();
 
   template <typename... Types>
   using DBusMethodResponse = brillo::dbus_utils::DBusMethodResponse<Types...>;
@@ -98,9 +98,10 @@ class DBusService : public brillo::DBusServiceDaemon {
   template <typename RequestProtobufType,
             typename ReplyType,
             DBusService::HandlerFunction<RequestProtobufType, ReplyType> func>
-  void HandleMethod(std::unique_ptr<DBusMethodResponse<ReplyType>> response,
-                    const RequestProtobufType& request) {
-    if (!ConditionallySetUpInterface()) {
+  void DelegateToInterface(
+      std::unique_ptr<DBusMethodResponse<ReplyType>> response,
+      const RequestProtobufType& request) {
+    if (is_rma_required_ && !SetUpInterface()) {
       SendErrorSignal(RMAD_ERROR_DAEMON_INITIALIZATION_FAILED);
       return;
     }
@@ -116,8 +117,9 @@ class DBusService : public brillo::DBusServiceDaemon {
 
   template <typename ReplyType,
             DBusService::HandlerFunctionEmptyRequest<ReplyType> func>
-  void HandleMethod(std::unique_ptr<DBusMethodResponse<ReplyType>> response) {
-    if (!ConditionallySetUpInterface()) {
+  void DelegateToInterface(
+      std::unique_ptr<DBusMethodResponse<ReplyType>> response) {
+    if (is_rma_required_ && !SetUpInterface()) {
       SendErrorSignal(RMAD_ERROR_DAEMON_INITIALIZATION_FAILED);
       return;
     }
@@ -126,9 +128,10 @@ class DBusService : public brillo::DBusServiceDaemon {
                                             std::move(response)));
   }
 
-  bool HandleIsRmaRequiredMethod();
-  std::string HandleGetLogPathMethod();
-  GetLogReply HandleGetLogMethod();
+  void HandleIsRmaRequiredMethod(
+      std::unique_ptr<DBusMethodResponse<bool>> response);
+  void HandleGetLogMethod(
+      std::unique_ptr<DBusMethodResponse<GetLogReply>> response);
 
   // Template for sending out the reply.
   template <typename ReplyType>
