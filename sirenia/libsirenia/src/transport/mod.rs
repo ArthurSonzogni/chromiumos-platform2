@@ -95,6 +95,11 @@ impl<T: Write + Debug + Send + AsRawFd + IntoRawFd> TransportWrite for T {
         (*self).into_raw_fd()
     }
 }
+impl AsRawFd for Box<dyn TransportWrite> {
+    fn as_raw_fd(&self) -> RawFd {
+        self.as_ref().as_raw_fd()
+    }
+}
 
 /// Transport options that can be selected or uniquely represent a transport instance.
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]

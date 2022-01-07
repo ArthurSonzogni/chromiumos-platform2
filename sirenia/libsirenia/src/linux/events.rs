@@ -20,14 +20,14 @@
 use std::boxed::Box;
 use std::collections::BTreeMap;
 use std::fmt::{Debug, Formatter};
-use std::io::{Read, Write};
+use std::io::Read;
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::result::Result as StdResult;
 
 use sys_util::{error, warn, Error as SysError, PollContext, PollToken, WatchingEvents};
 use thiserror::Error as ThisError;
 
-use crate::sys::{eagain_is_ok, set_nonblocking};
+use crate::sys::{eagain_is_ok, set_nonblocking, write_all_blocking};
 use crate::transport::{TransportRead, TransportWrite};
 
 #[derive(Debug, ThisError)]
@@ -322,7 +322,10 @@ impl EventSource for CopyFdEventSource {
             match eagain_is_ok(self.input.read(&mut buf)) {
                 Ok(Some(0)) | Err(_) => break,
                 Ok(Some(size)) => {
-                    if self.output.write_all(&buf[..size]).is_err() {
+                    // This is somewhat hacky, but it is used here because serial is only
+                    // used by developers for debugging and so this isn't performance
+                    // critical.
+                    if write_all_blocking(&mut self.output, &buf[..size]).is_err() {
                         break;
                     }
                 }

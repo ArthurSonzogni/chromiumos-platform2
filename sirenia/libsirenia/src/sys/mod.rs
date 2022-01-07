@@ -7,14 +7,14 @@
 //! interact with the libc package.
 
 use std::fs::File;
-use std::io;
+use std::io::{self, Write};
 use std::mem::MaybeUninit;
 use std::os::unix::io::{AsRawFd, FromRawFd, RawFd};
 use std::ptr::null_mut;
 
 use anyhow::Context;
 use libc::{self, c_int, sigfillset, sigprocmask, sigset_t, wait, ECHILD, SIG_BLOCK, SIG_UNBLOCK};
-use sys_util::add_fd_flags;
+use sys_util::{add_fd_flags, PollContext, WatchingEvents};
 
 pub fn errno() -> c_int {
     io::Error::last_os_error().raw_os_error().unwrap()
@@ -166,11 +166,42 @@ pub fn eagain_is_ok<T>(ret: Result<T, io::Error>) -> Result<Option<T>, io::Error
     Ok(match ret {
         Ok(v) => Some(v),
         Err(err) => {
-            if matches!(err.raw_os_error(), Some(code) if code == libc::EAGAIN) {
+            if matches!(err.raw_os_error(), Some(libc::EAGAIN)) {
                 None
             } else {
                 return Err(err);
             }
         }
     })
+}
+
+pub fn write_all_blocking<W: Write + AsRawFd>(write: &mut W, buf: &[u8]) -> Result<(), io::Error> {
+    let mut poll: Option<PollContext<()>> = None;
+    let mut offset = 0usize;
+    while offset < buf.len() {
+        match write.write(&buf[offset..]) {
+            Ok(written) => {
+                offset += written;
+            }
+            Err(err) => {
+                if matches!(err.raw_os_error(), Some(libc::EAGAIN)) {
+                    // Lazy initialization is used to avoid getting a poll fd if it is not needed.
+                    let poll = match &mut poll {
+                        Some(p) => p,
+                        None => {
+                            let p = PollContext::new()?;
+                            let events = WatchingEvents::empty().set_write();
+                            p.add_fd_with_events(write, events, ())?;
+                            poll = Some(p);
+                            poll.as_mut().unwrap()
+                        }
+                    };
+                    poll.wait()?;
+                } else {
+                    return Err(err);
+                }
+            }
+        }
+    }
+    Ok(())
 }
