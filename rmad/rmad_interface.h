@@ -93,6 +93,10 @@ class RmadInterface {
   // Cancel the RMA process if possible and reboot.
   virtual void AbortRma(AbortRmaCallback callback) = 0;
 
+  using GetLogCallback = base::OnceCallback<void(const GetLogReply&)>;
+  // Get the RMA logs.
+  virtual void GetLog(GetLogCallback callback) = 0;
+
   // Returns whether it's allowed to abort RMA now.
   virtual bool CanAbort() const = 0;
 };

@@ -279,12 +279,6 @@ struct DBusType<FinalizeStatus> {
 
 namespace rmad {
 
-namespace {
-
-const char kCroslogCmd[] = "/usr/sbin/croslog";
-
-}  // namespace
-
 using brillo::dbus_utils::AsyncEventSequencer;
 using brillo::dbus_utils::DBusObject;
 
@@ -364,9 +358,9 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
       kAbortRmaMethod, base::Unretained(this),
       &DBusService::DelegateToInterface<AbortRmaReply,
                                         &RmadInterface::AbortRma>);
-
-  dbus_interface->AddMethodHandler(kGetLogMethod, base::Unretained(this),
-                                   &DBusService::HandleGetLogMethod);
+  dbus_interface->AddMethodHandler(
+      kGetLogMethod, base::Unretained(this),
+      &DBusService::DelegateToInterface<GetLogReply, &RmadInterface::GetLog>);
 
   error_signal_ = dbus_interface->RegisterSignal<RmadErrorCode>(kErrorSignal);
   hardware_verification_signal_ =
@@ -480,19 +474,6 @@ void DBusService::SetUpInterfaceCallbacks() {
 void DBusService::HandleIsRmaRequiredMethod(
     std::unique_ptr<DBusMethodResponse<bool>> response) {
   SendReply(std::move(response), is_rma_required_);
-}
-
-void DBusService::HandleGetLogMethod(
-    std::unique_ptr<DBusMethodResponse<GetLogReply>> response) {
-  GetLogReply reply;
-  std::string log_string;
-  if (base::GetAppOutput({kCroslogCmd, "--identifier=rmad"}, &log_string)) {
-    reply.set_log(log_string);
-  } else {
-    LOG(ERROR) << "Failed to generate logs from croslog";
-    reply.set_error(RMAD_ERROR_CANNOT_GET_LOG);
-  }
-  SendReply(std::move(response), reply);
 }
 
 bool DBusService::SendErrorSignal(RmadErrorCode error) {

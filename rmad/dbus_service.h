@@ -130,8 +130,6 @@ class DBusService : public brillo::DBusServiceDaemon {
 
   void HandleIsRmaRequiredMethod(
       std::unique_ptr<DBusMethodResponse<bool>> response);
-  void HandleGetLogMethod(
-      std::unique_ptr<DBusMethodResponse<GetLogReply>> response);
 
   // Template for sending out the reply.
   template <typename ReplyType>

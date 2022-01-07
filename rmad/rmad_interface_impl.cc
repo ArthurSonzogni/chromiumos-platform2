@@ -27,13 +27,17 @@
 #include "rmad/system/runtime_probe_client_impl.h"
 #include "rmad/system/shill_client_impl.h"
 #include "rmad/system/tpm_manager_client_impl.h"
+#include "rmad/utils/cmd_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
+#include "rmad/utils/fake_cmd_utils.h"
 
 namespace rmad {
 
 namespace {
 
 const RmadState::StateCase kInitialStateCase = RmadState::kWelcome;
+
+const char kCroslogCmd[] = "/usr/sbin/croslog";
 
 }  // namespace
 
@@ -50,6 +54,7 @@ RmadInterfaceImpl::RmadInterfaceImpl(
     std::unique_ptr<ShillClient> shill_client,
     std::unique_ptr<TpmManagerClient> tpm_manager_client,
     std::unique_ptr<PowerManagerClient> power_manager_client,
+    std::unique_ptr<CmdUtils> cmd_utils,
     std::unique_ptr<MetricsUtils> metrics_utils)
     : RmadInterface(),
       json_store_(json_store),
@@ -58,6 +63,7 @@ RmadInterfaceImpl::RmadInterfaceImpl(
       shill_client_(std::move(shill_client)),
       tpm_manager_client_(std::move(tpm_manager_client)),
       power_manager_client_(std::move(power_manager_client)),
+      cmd_utils_(std::move(cmd_utils)),
       metrics_utils_(std::move(metrics_utils)),
       external_utils_initialized_(true),
       current_state_case_(RmadState::STATE_NOT_SET),
@@ -86,6 +92,7 @@ void RmadInterfaceImpl::InitializeExternalUtils() {
     // Still use the real power_manager.
     power_manager_client_ =
         std::make_unique<PowerManagerClientImpl>(GetSystemBus());
+    cmd_utils_ = std::make_unique<fake::FakeCmdUtils>();
   } else {
     state_handler_manager_->RegisterStateHandlers();
     runtime_probe_client_ =
@@ -95,6 +102,7 @@ void RmadInterfaceImpl::InitializeExternalUtils() {
         std::make_unique<TpmManagerClientImpl>(GetSystemBus());
     power_manager_client_ =
         std::make_unique<PowerManagerClientImpl>(GetSystemBus());
+    cmd_utils_ = std::make_unique<CmdUtilsImpl>();
   }
 }
 
@@ -478,6 +486,18 @@ void RmadInterfaceImpl::AbortRma(AbortRmaCallback callback) {
     reply.set_error(RMAD_ERROR_ABORT_FAILED);
   }
 
+  std::move(callback).Run(reply);
+}
+
+void RmadInterfaceImpl::GetLog(GetLogCallback callback) {
+  GetLogReply reply;
+  std::string log_string;
+  if (cmd_utils_->GetOutput({kCroslogCmd, "--identifier=rmad"}, &log_string)) {
+    reply.set_log(log_string);
+  } else {
+    LOG(ERROR) << "Failed to generate logs";
+    reply.set_error(RMAD_ERROR_CANNOT_GET_LOG);
+  }
   std::move(callback).Run(reply);
 }
 
