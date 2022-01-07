@@ -15,6 +15,8 @@ enum class AndroidSdkVersion {
   ANDROID_N_MR1 = 25,
   ANDROID_P = 28,
   ANDROID_R = 30,
+  ANDROID_S = 31,
+  ANDROID_S_V2 = 32,
 
   // Development SDK number is equal to
   // android.os.Build.VersionCode#CUR_DEVELOPMENT in Android framework.

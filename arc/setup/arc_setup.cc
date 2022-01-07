@@ -1681,6 +1681,10 @@ AndroidSdkVersion ArcSetup::SdkVersionFromString(
         return AndroidSdkVersion::ANDROID_P;
       case 30:
         return AndroidSdkVersion::ANDROID_R;
+      case 31:
+        return AndroidSdkVersion::ANDROID_S;
+      case 32:
+        return AndroidSdkVersion::ANDROID_S_V2;
     }
   }
 
