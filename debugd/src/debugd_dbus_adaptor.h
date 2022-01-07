@@ -215,7 +215,8 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   bool EvaluateProbeFunction(
       brillo::ErrorPtr* error,
       const std::string& probe_statement,
-      brillo::dbus_utils::FileDescriptor* outfd) override;
+      brillo::dbus_utils::FileDescriptor* outfd,
+      brillo::dbus_utils::FileDescriptor* errfd) override;
   bool CollectSmartBatteryMetric(brillo::ErrorPtr* error,
                                  const std::string& metric_name,
                                  std::string* output) override;

@@ -177,15 +177,18 @@ std::unique_ptr<brillo::Process> CreateSandboxedProcess(
 bool ProbeTool::EvaluateProbeFunction(
     brillo::ErrorPtr* error,
     const std::string& probe_statement,
-    brillo::dbus_utils::FileDescriptor* outfd) {
+    brillo::dbus_utils::FileDescriptor* outfd,
+    brillo::dbus_utils::FileDescriptor* errfd) {
   // Details of sandboxing for probing should be centralized in a single
   // directory. Sandboxing is mandatory when we don't allow debug features.
   auto process = CreateSandboxedProcess(error, probe_statement);
   if (process == nullptr)
     return false;
 
-  base::ScopedFD read_fd, write_fd;
-  if (!CreateNonblockingPipe(&read_fd, &write_fd)) {
+  base::ScopedFD out_r_fd, out_w_fd;
+  base::ScopedFD err_r_fd, err_w_fd;
+  if (!CreateNonblockingPipe(&out_r_fd, &out_w_fd) ||
+      !CreateNonblockingPipe(&err_r_fd, &err_w_fd)) {
     DEBUGD_ADD_ERROR(error, kErrorPath, "Cannot create a pipe");
     return false;
   }
@@ -194,10 +197,12 @@ bool ProbeTool::EvaluateProbeFunction(
     process->AddArg(arg);
   }
   process->AddArg(probe_statement);
-  process->BindFd(write_fd.get(), STDOUT_FILENO);
+  process->BindFd(out_w_fd.get(), STDOUT_FILENO);
+  process->BindFd(err_w_fd.get(), STDERR_FILENO);
   process->Start();
   process->Release();
-  *outfd = std::move(read_fd);
+  *outfd = std::move(out_r_fd);
+  *errfd = std::move(err_r_fd);
   return true;
 }
 

@@ -5,6 +5,8 @@
 #include "runtime_probe/system/helper_invoker_direct_impl.h"
 
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <base/command_line.h>
 #include <base/logging.h>
@@ -28,14 +30,25 @@ bool HelperInvokerDirectImpl::Invoke(const ProbeFunction* probe_function,
   helper_proc.AddArg(probe_statement_str);
   helper_proc.RedirectInput("/dev/null");
   helper_proc.RedirectUsingPipe(STDOUT_FILENO, false);
+  helper_proc.RedirectUsingPipe(STDERR_FILENO, false);
 
   if (!helper_proc.Start()) {
     LOG(ERROR) << "Failed to start the helper process.";
     return false;
   }
 
-  return ReadNonblockingPipeToString(helper_proc.GetPipe(STDOUT_FILENO),
-                                     result);
+  std::vector<std::stirng> out;
+  bool res = ReadNonblockingPipeToString(
+      {helper_proc.GetPipe(STDOUT_FILENO), helper_proc.GetPipe(STDERR_FILENO)},
+      &out);
+  if (out[1].size()) {
+    LOG(INFO) << "Helper stderr:\n"
+              << "^--------------------------------------------------------^\n"
+              << out[1]
+              << "$--------------------------------------------------------$";
+  }
+  *result = std::move(out[0]);
+  return res;
 }
 
 }  // namespace runtime_probe

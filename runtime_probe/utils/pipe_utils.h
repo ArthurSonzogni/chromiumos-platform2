@@ -6,10 +6,12 @@
 #define RUNTIME_PROBE_UTILS_PIPE_UTILS_H_
 
 #include <string>
+#include <vector>
 
 namespace runtime_probe {
 
-bool ReadNonblockingPipeToString(int fd, std::string* out);
+bool ReadNonblockingPipeToString(const std::vector<int>& fds,
+                                 std::vector<std::string>* out);
 
 }  // namespace runtime_probe
 

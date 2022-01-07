@@ -38,6 +38,10 @@ void SetVerbosityLevel(uint32_t verbosity_level) {
 }
 
 int RunAsHelper() {
+  // This can help to verify the logging is working while generating seccomp
+  // policy.
+  DLOG(INFO) << "Starting Runtime Probe helper.";
+
   const auto* command_line = base::CommandLine::ForCurrentProcess();
   const auto args = command_line->GetArgs();
 
@@ -91,6 +95,9 @@ int RunAsDaemon() {
 int RunningInCli(const std::string& config_file_path, bool to_stdout) {
   LOG(INFO) << "Starting Runtime Probe. Running in CLI mode";
 
+  // Required by dbus in libchrome.
+  base::AtExitManager at_exit_manager;
+
 #if USE_FACTORY_RUNTIME_PROBE
   runtime_probe::ContextFactoryImpl context;
 #else
@@ -136,19 +143,9 @@ int RunningInCli(const std::string& config_file_path, bool to_stdout) {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  if constexpr (USE_FACTORY_RUNTIME_PROBE) {
-    int cros_debug;
-    if (!runtime_probe::SystemPropertyImpl().GetInt("cros_debug",
-                                                    &cros_debug) ||
-        cros_debug != 1) {
-      LOG(FATAL) << "factory_runtime_probe should never run in normal mode.";
-      return ExitStatus::kUnknownError;
-    }
-  }
+  // Don't output any log until we know in which mode we are.
+  brillo::InitLog(0);
 
-  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
-
-  // Flags are subject to change
   DEFINE_string(config_file_path, "",
                 "File path to probe config, empty to use default one");
 
@@ -166,6 +163,13 @@ int main(int argc, char* argv[]) {
   brillo::FlagHelper::Init(argc, argv, "ChromeOS runtime probe tool");
 
   SetVerbosityLevel(FLAGS_verbosity_level);
+  if (FLAGS_helper) {
+    // Don't log to syslog in helper. Notes that log to syslog request
+    // additional syscall.
+    brillo::SetLogFlags(brillo::kLogToStderr);
+  } else {
+    brillo::SetLogFlags(brillo::kLogToSyslog | brillo::kLogToStderr);
+  }
 
   if (FLAGS_helper && FLAGS_dbus) {
     LOG(ERROR) << "--helper conflicts with --dbus";
@@ -177,12 +181,19 @@ int main(int argc, char* argv[]) {
                     "helper mode and dbus mode.";
   }
 
+  if constexpr (USE_FACTORY_RUNTIME_PROBE) {
+    int cros_debug;
+    if (!runtime_probe::SystemPropertyImpl().GetInt("cros_debug",
+                                                    &cros_debug) ||
+        cros_debug != 1) {
+      LOG(FATAL) << "factory_runtime_probe should never run in normal mode.";
+      return ExitStatus::kUnknownError;
+    }
+  }
+
   if (FLAGS_helper)
     return RunAsHelper();
   if (FLAGS_dbus)
     return RunAsDaemon();
-
-  // Required by dbus in libchrome.
-  base::AtExitManager at_exit_manager;
   return RunningInCli(FLAGS_config_file_path, FLAGS_to_stdout);
 }

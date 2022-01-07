@@ -102,7 +102,7 @@ class ProbeFunction {
   // Output will be an integer and the interpretation of the integer on
   // purposely leaves to the caller because it might execute other binary
   // in sandbox environment and we might want to preserve the exit code.
-  int EvalInHelper(std::string* output) const;
+  virtual int EvalInHelper(std::string* output) const;
 
   using FactoryFunctionType =
       std::function<std::unique_ptr<ProbeFunction>(const base::Value&)>;
@@ -117,7 +117,7 @@ class ProbeFunction {
   ProbeFunction(const ProbeFunction&) = delete;
   explicit ProbeFunction(base::Value&& raw_value);
 
- private:
+ protected:
   // Implement this method to provide the probing. The output should be a list
   // of base::Value.
   virtual DataType EvalImpl() const = 0;
@@ -137,7 +137,9 @@ class PrivilegedProbeFunction : public ProbeFunction {
   // For each |PrivilegedProbeFunction|, please modify `sandbox/args.json` and
   // `sandbox/${ARCH}/${function_name}-seccomp.policy`.
  public:
+  // ProbeFunction overrides.
   DataType Eval() const final;
+  int EvalInHelper(std::string* output) const final;
 
   // Redefine this to access protected constructor.
   template <typename T>

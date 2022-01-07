@@ -60,6 +60,12 @@ std::unique_ptr<ProbeFunction> ProbeFunction::FromValue(const base::Value& dv) {
       registered_functions_[function_name](kwargs));
 }
 
+int ProbeFunction::EvalInHelper(std::string* /*output*/) const {
+  LOG(ERROR) << "Probe function \"" << GetFunctionName()
+             << "\" cannot be invoked in helper.";
+  return -1;
+}
+
 PrivilegedProbeFunction::PrivilegedProbeFunction(base::Value&& raw_value)
     : raw_value_(std::move(raw_value)) {}
 
@@ -81,8 +87,10 @@ base::Optional<base::Value> PrivilegedProbeFunction::InvokeHelperToJSON()
   return base::JSONReader::Read(raw_output);
 }
 
-int ProbeFunction::EvalInHelper(std::string* output) const {
-  base::Value result = static_cast<base::Value>(EvalImpl());
+int PrivilegedProbeFunction::EvalInHelper(std::string* output) const {
+  DLOG(INFO) << "Invoking probe function \"" << GetFunctionName()
+             << "\" in helper.";
+  base::Value result{EvalImpl()};
   if (base::JSONWriter::Write(result, output))
     return 0;
   LOG(ERROR) << "Failed to serialize probed result to json string";
@@ -92,7 +100,7 @@ int ProbeFunction::EvalInHelper(std::string* output) const {
 PrivilegedProbeFunction::DataType PrivilegedProbeFunction::Eval() const {
   auto json_output = InvokeHelperToJSON();
   if (!json_output) {
-    LOG(ERROR) << "Failed to invoke helper.";
+    LOG(ERROR) << "Failed to invoke helper (empty output).";
     return {};
   }
   if (!json_output->is_list()) {

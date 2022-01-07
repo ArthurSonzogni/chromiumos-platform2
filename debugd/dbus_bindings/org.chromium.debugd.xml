@@ -1129,9 +1129,14 @@
           the runtime_probe helper.
         </tp:docstring>
       </arg>
-      <arg name="outfd" type="h" direction="out">
+      <arg name="result_fd" type="h" direction="out">
         <tp:docstring>
-          File descriptor to send output to.
+          File descriptor to send the result to.
+        </tp:docstring>
+      </arg>
+      <arg name="error_fd" type="h" direction="out">
+        <tp:docstring>
+          File descriptor to send the error logs to.
         </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>

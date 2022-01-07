@@ -24,7 +24,8 @@ class ProbeTool {
   // Executes the function defined for runtime_probe.
   bool EvaluateProbeFunction(brillo::ErrorPtr* error,
                              const std::string& probe_statement,
-                             brillo::dbus_utils::FileDescriptor* outfd);
+                             brillo::dbus_utils::FileDescriptor* outfd,
+                             brillo::dbus_utils::FileDescriptor* errfd);
 };
 
 }  // namespace debugd

@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/logging.h>
@@ -21,19 +22,30 @@ namespace runtime_probe {
 bool HelperInvokerDebugdImpl::Invoke(const ProbeFunction* probe_function,
                                      const std::string& probe_statement_str,
                                      std::string* result) const {
-  base::ScopedFD read_fd{};
+  base::ScopedFD result_fd{};
+  base::ScopedFD error_fd{};
   brillo::ErrorPtr error;
   if (!Context::Get()->debugd_proxy()->EvaluateProbeFunction(
-          probe_statement_str, &read_fd, &error)) {
+          probe_statement_str, &result_fd, &error_fd, &error)) {
     LOG(ERROR) << "Debugd::EvaluateProbeFunction failed: "
                << error->GetMessage();
     return false;
   }
 
-  if (!ReadNonblockingPipeToString(read_fd.get(), result)) {
+  std::vector<std::string> out;
+  bool res =
+      ReadNonblockingPipeToString({result_fd.get(), error_fd.get()}, &out);
+  if (out[1].size()) {
+    LOG(INFO) << "Helper stderr:\n"
+              << "^--------------------------------------------------------^\n"
+              << out[1]
+              << "$--------------------------------------------------------$";
+  }
+  if (!res) {
     LOG(ERROR) << "Cannot read result from helper";
     return false;
   }
+  *result = std::move(out[0]);
   return true;
 }
 

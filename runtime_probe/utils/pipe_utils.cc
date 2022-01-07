@@ -8,6 +8,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <string>
 
 #include <base/logging.h>
@@ -47,19 +48,35 @@ PipeState ReadPipe(int src_fd, std::string* dst_str) {
 
 }  // namespace
 
-bool ReadNonblockingPipeToString(int fd, std::string* out) {
-  fd_set read_fds;
+bool ReadNonblockingPipeToString(const std::vector<int>& fds,
+                                 std::vector<std::string>* out) {
   struct timeval timeout;
-
-  FD_ZERO(&read_fds);
-  FD_SET(fd, &read_fds);
 
   timeout.tv_sec = kWaitSeconds;
   timeout.tv_usec = 0;
 
+  *out = std::vector<std::string>(fds.size(), "");
+  std::vector<bool> done_array(fds.size(), false);
+
   while (true) {
+    // This argument should be set to the highest-numbered file descriptor,
+    // plus 1.
+    fd_set read_fds;
+    int nfds = 0;
+    bool done = true;
+    FD_ZERO(&read_fds);
+    for (int i = 0; i < fds.size(); ++i) {
+      if (!done_array[i]) {
+        done = false;
+        FD_SET(fds[i], &read_fds);
+        nfds = std::max(nfds, fds[i] + 1);
+      }
+    }
+    if (done)
+      return true;
+
     int retval =
-        HANDLE_EINTR(select(fd + 1, &read_fds, nullptr, nullptr, &timeout));
+        HANDLE_EINTR(select(nfds, &read_fds, nullptr, nullptr, &timeout));
     if (retval < 0) {
       PLOG(ERROR) << "select() failed from runtime_probe_helper";
       return false;
@@ -72,12 +89,14 @@ bool ReadNonblockingPipeToString(int fd, std::string* out) {
       return false;
     }
 
-    PipeState state = ReadPipe(fd, out);
-    if (state == PipeState::DONE) {
-      return true;
-    }
-    if (state == PipeState::ERROR) {
-      return false;
+    for (int i = 0; i < fds.size(); ++i) {
+      if (!FD_ISSET(fds[i], &read_fds))
+        continue;
+      PipeState state = ReadPipe(fds[i], &out->at(i));
+      if (state == PipeState::ERROR)
+        return false;
+      if (state == PipeState::DONE)
+        done_array[i] = true;
     }
   }
 }

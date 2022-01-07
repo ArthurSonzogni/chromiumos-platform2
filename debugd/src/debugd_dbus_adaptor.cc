@@ -627,8 +627,10 @@ bool DebugdDBusAdaptor::SetSchedulerConfigurationV2(
 bool DebugdDBusAdaptor::EvaluateProbeFunction(
     brillo::ErrorPtr* error,
     const std::string& probe_statement,
-    brillo::dbus_utils::FileDescriptor* outfd) {
-  return probe_tool_->EvaluateProbeFunction(error, probe_statement, outfd);
+    brillo::dbus_utils::FileDescriptor* outfd,
+    brillo::dbus_utils::FileDescriptor* errfd) {
+  return probe_tool_->EvaluateProbeFunction(error, probe_statement, outfd,
+                                            errfd);
 }
 
 bool DebugdDBusAdaptor::CollectSmartBatteryMetric(
