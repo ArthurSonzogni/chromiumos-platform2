@@ -27,6 +27,10 @@ static constexpr char kSuspendModePath[] = "/sys/power/mem_sleep";
 // This file is absent on kernels without hibernation support.
 static constexpr char kSnapshotDevicePath[] = "/dev/snapshot";
 
+// Path to the hiberman executable responsible for coordinating hibernate/resume
+// activities.
+static constexpr char kHibermanExecutablePath[] = "/usr/sbin/hiberman";
+
 // suspend to idle (S0iX) suspend mode
 static constexpr char kSuspendModeFreeze[] = "s2idle";
 
@@ -107,9 +111,13 @@ bool SuspendConfigurator::IsHibernateAvailable() {
   base::FilePath snapshot_device_path =
       GetPrefixedFilePath(base::FilePath(kSnapshotDevicePath));
 
+  base::FilePath hiberman_executable_path =
+      GetPrefixedFilePath(base::FilePath(kHibermanExecutablePath));
+
   // Use the existence of the snapshot device as evidence that the kernel
   // is capable of doing suspend to disk.
-  if (base::PathExists(snapshot_device_path)) {
+  if (base::PathExists(snapshot_device_path) &&
+      base::PathExists(hiberman_executable_path)) {
     LOG(INFO) << "Hibernate is available";
     hibernate_available_ = true;
 

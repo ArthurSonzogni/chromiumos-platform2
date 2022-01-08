@@ -337,20 +337,26 @@ else
     /sbin/hwclock -V > /dev/null
   fi
 
-  # Echo freeze to /sys/power/state on platforms that support suspend to idle.
-  # Echo disk to enter hibernate/S4.
-  action='mem'
+  # For hibernate/S4, invoke the hiberman helper process to take us all the way
+  # down.
   if [ "${FLAGS_suspend_to_disk}" -eq 0 ]; then
-    action='disk'
-  elif [ "${FLAGS_suspend_to_idle}" -eq 0 ]; then
-    action='freeze'
-    unbind_igb_devices
+    /usr/sbin/hiberman hibernate
+    error=
+
+  else
+    # Echo freeze to /sys/power/state on platforms that support suspend to idle.
+    action='mem'
+    if [ "${FLAGS_suspend_to_idle}" -eq 0 ]; then
+      action='freeze'
+      unbind_igb_devices
+    fi
+
+    # Suspend. This is piped through cat since we want to determine
+    # the causes of failures -- dash's "echo" command appears to not print
+    # anything in response to write errors.
+    error=$( (printf '%s' "${action}" | cat > /sys/power/state) 2>&1)
   fi
 
-  # Suspend. This is piped through cat since we want to determine
-  # the causes of failures -- dash's "echo" command appears to not print
-  # anything in response to write errors.
-  error=$( (printf '%s' "${action}" | cat > /sys/power/state) 2>&1)
   if [ $? -eq 0 ]; then
     # On resume:
     result="${RESULT_SUCCESS}"
