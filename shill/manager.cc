@@ -2765,7 +2765,7 @@ Manager::GetNetworksForGeolocation() const {
     const DeviceRefPtr& device = entry.first;
     const std::vector<GeolocationInfo>& device_info = entry.second;
     std::vector<GeolocationInfo>* network_geolocation_info = nullptr;
-    if (device->technology() == Technology::kWiFi) {
+    if (device->technology() == Technology::kWifi) {
       network_geolocation_info =
           &geolocation_infos[kGeoWifiAccessPointsProperty];
     } else if (device->technology() == Technology::kCellular) {
@@ -2817,7 +2817,7 @@ void Manager::RequestScan(const std::string& technology, Error* error) {
   // unspecified technology as an error after we update existing clients of
   // this API to specify a valid technology when calling this method.
   if (technology.empty()) {
-    technology_identifier = Technology::kWiFi;
+    technology_identifier = Technology::kWifi;
   } else {
     technology_identifier = Technology::CreateFromName(technology);
   }
@@ -2831,7 +2831,7 @@ void Manager::RequestScan(const std::string& technology, Error* error) {
       }
       break;
 
-    case Technology::kWiFi:
+    case Technology::kWifi:
       for (const auto& device : FilterByTechnology(technology_identifier)) {
         metrics_->NotifyUserInitiatedEvent(
             Metrics::kUserInitiatedEventWifiScan);
@@ -2879,7 +2879,7 @@ bool Manager::IsWifiIdle() {
   // Since services are sorted by connection state, status of the wifi device
   // can be determine by examing the connection state of the first wifi service.
   for (const auto& service : services_) {
-    if (service->technology() == Technology::kWiFi) {
+    if (service->technology() == Technology::kWifi) {
       if (!service->IsConnecting() && !service->IsConnected()) {
         ret = true;
       }
@@ -2899,7 +2899,7 @@ void Manager::UpdateProviderMapping() {
 #endif  // DISABLE_WIRED_8021X
   providers_[Technology::kVPN] = vpn_provider_.get();
 #if !defined(DISABLE_WIFI)
-  providers_[Technology::kWiFi] = wifi_provider_.get();
+  providers_[Technology::kWifi] = wifi_provider_.get();
 #endif  // DISABLE_WIFI
 }
 

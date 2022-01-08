@@ -28,7 +28,7 @@ class Technology {
   enum Type {
     kEthernet,
     kEthernetEap,
-    kWiFi,
+    kWifi,
     kWiFiMonitor,
     kCellular,
     kVPN,

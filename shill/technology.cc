@@ -65,7 +65,7 @@ Technology Technology::CreateFromName(const std::string& name) {
   } else if (name == kTypeEthernetEap) {
     return kEthernetEap;
   } else if (name == kTypeWifi) {
-    return kWiFi;
+    return kWifi;
   } else if (name == kTypeCellular) {
     return kCellular;
   } else if (name == kTypeVPN) {
@@ -100,7 +100,7 @@ std::string Technology::GetName() const {
     return kTypeEthernet;
   } else if (type_ == kEthernetEap) {
     return kTypeEthernetEap;
-  } else if (type_ == kWiFi) {
+  } else if (type_ == kWifi) {
     return kTypeWifi;
   } else if (type_ == kCellular) {
     return kTypeCellular;
@@ -122,7 +122,7 @@ std::string Technology::GetName() const {
 }
 
 bool Technology::IsPrimaryConnectivityTechnology() const {
-  return (type_ == kCellular || type_ == kEthernet || type_ == kWiFi ||
+  return (type_ == kCellular || type_ == kEthernet || type_ == kWifi ||
           type_ == kPPPoE);
 }
 

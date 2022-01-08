@@ -875,7 +875,7 @@ TEST_F(DeviceTest, StopWithNetworkInterfaceDisabledAfterward) {
 
 TEST_F(DeviceTest, StartProhibited) {
   DeviceRefPtr device(new TestDevice(manager(), kDeviceName, kDeviceAddress,
-                                     kDeviceInterfaceIndex, Technology::kWiFi));
+                                     kDeviceInterfaceIndex, Technology::kWifi));
   {
     Error error;
     manager()->SetProhibitedTechnologies("wifi", &error);

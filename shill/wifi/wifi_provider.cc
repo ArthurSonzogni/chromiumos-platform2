@@ -258,7 +258,7 @@ void WiFiProvider::CreateServicesFromProfile(const ProfileRefPtr& profile) {
   // of opening the profile, we should initiate a WiFi scan, which will
   // allow us to find any hidden services that we may have created.
   if (created_hidden_service &&
-      !manager_->IsTechnologyConnected(Technology::kWiFi)) {
+      !manager_->IsTechnologyConnected(Technology::kWifi)) {
     Error unused_error;
     manager_->RequestScan(kTypeWifi, &unused_error);
   }
@@ -652,7 +652,7 @@ void WiFiProvider::AddCredentials(
   credentials_by_id_[credentials->id()] = credentials;
 
   DeviceRefPtr device =
-      manager_->GetEnabledDeviceWithTechnology(Technology::kWiFi);
+      manager_->GetEnabledDeviceWithTechnology(Technology::kWifi);
   if (!device) {
     return;
   }
@@ -670,7 +670,7 @@ void WiFiProvider::RemoveCredentials(
   credentials_by_id_.erase(credentials->id());
 
   DeviceRefPtr device =
-      manager_->GetEnabledDeviceWithTechnology(Technology::kWiFi);
+      manager_->GetEnabledDeviceWithTechnology(Technology::kWifi);
   if (!device) {
     return;
   }
