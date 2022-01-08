@@ -22,7 +22,9 @@ static void fs_lookup(fuse_req_t req, fuse_ino_t parent, const char* name) {
   fs(req)->Lookup(std::make_unique<EntryRequest>(req), parent, name);
 }
 
-static void fs_forget(fuse_req_t req, fuse_ino_t ino, uint64_t nlookup) {
+static void fs_forget(fuse_req_t req,
+                      fuse_ino_t ino,
+                      unsigned long nlookup) {  // NOLINT(runtime/int)
   fs(req)->Forget(std::make_unique<NoneRequest>(req), ino, nlookup);
 }
 
