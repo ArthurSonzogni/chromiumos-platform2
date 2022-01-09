@@ -279,11 +279,12 @@ void FileSystemFake::Read(std::unique_ptr<BufferRequest> request,
   LOG(INFO) << " read fh " << request->fh();
 
   const auto get_data_slice = [&data, &off, &size]() {
-    auto* source = data.data();
-    auto length = data.size();
-    if (off < length)
-      return base::StringPiece(source + off, std::min(length - off, size));
-    return base::StringPiece();
+    const char* source = data.data();
+    size_t length = data.size();
+    if (off < 0 || off >= length)
+      return base::StringPiece();
+    length -= size_t(off);
+    return base::StringPiece(source + off, std::min(length, size));
   };
 
   auto slice = get_data_slice();
