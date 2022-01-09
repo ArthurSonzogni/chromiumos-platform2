@@ -53,8 +53,11 @@ InodeTable::InodeTable() : ino_(0), stat_cache_(1024) {
   root_node_ = InsertNode(CreateNode(0, "/", CreateIno()));
 }
 
+static_assert(sizeof(fuse_ino_t) <= sizeof(ino_t),
+              "fuse_ino_t size should not exceed the system ino_t size");
+
 ino_t InodeTable::CreateIno() {
-  ino_t ino = ++ino_;
+  fuse_ino_t ino = ++ino_;
   CHECK(ino) << "inodes wrapped";
   return ino;
 }

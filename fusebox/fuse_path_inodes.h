@@ -5,6 +5,8 @@
 #ifndef FUSEBOX_FUSE_PATH_INODES_H_
 #define FUSEBOX_FUSE_PATH_INODES_H_
 
+#include <fuse_lowlevel.h>
+
 #include <stdint.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -44,8 +46,8 @@ class InodeTable {
   // The node refcount is increased by |ref|. Returns null on failure.
   Node* Lookup(ino_t parent, const char* name, uint64_t ref = 0);
 
-  // Same as Lookup(parent, name, ref) but creates if the |parent| child node
-  // |name| if it does not exist. Returns null on failure.
+  // Lookup(parent, name, ref) that creates the |parent| child node |name| if
+  // it does not exist. Returns null on failure.
   Node* Ensure(ino_t parent, const char* name, uint64_t ref = 0);
 
   // Move a table |node| to be the child node |name| of |parent| ino. Returns
@@ -73,7 +75,7 @@ class InodeTable {
   void ForgetStat(ino_t ino);
 
  private:
-  // Returns a new ino_t number.
+  // Returns a new ino number.
   ino_t CreateIno();
 
   // Inserts |node| into the node table.
@@ -89,8 +91,8 @@ class InodeTable {
   };
 
  private:
-  // ino_t allocator.
-  ino_t ino_;
+  // ino number allocator.
+  fuse_ino_t ino_;
 
   // Map ino to node.
   std::unordered_map<ino_t, std::unique_ptr<Node>> node_map_;
