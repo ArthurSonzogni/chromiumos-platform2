@@ -79,7 +79,7 @@ void FileSystemFake::Init(void* userdata, struct fuse_conn_info*) {
 }
 
 void FileSystemFake::Lookup(std::unique_ptr<EntryRequest> request,
-                            fuse_ino_t parent,
+                            ino_t parent,
                             const char* name) {
   LOG(INFO) << "Lookup parent " << parent << " name " << name;
 
@@ -99,7 +99,7 @@ void FileSystemFake::Lookup(std::unique_ptr<EntryRequest> request,
 
   const double kEntryTimeoutSeconds = 5.0;
   fuse_entry_param entry = {0};
-  entry.ino = node->ino;
+  entry.ino = static_cast<fuse_ino_t>(node->ino);
   entry.attr = stat;
   entry.attr_timeout = kEntryTimeoutSeconds;
   entry.entry_timeout = kEntryTimeoutSeconds;
@@ -108,8 +108,7 @@ void FileSystemFake::Lookup(std::unique_ptr<EntryRequest> request,
   request->ReplyEntry(entry);
 }
 
-void FileSystemFake::GetAttr(std::unique_ptr<AttrRequest> request,
-                             fuse_ino_t ino) {
+void FileSystemFake::GetAttr(std::unique_ptr<AttrRequest> request, ino_t ino) {
   LOG(INFO) << "GetAttr ino " << ino;
 
   if (request->IsInterrupted())
@@ -130,8 +129,7 @@ void FileSystemFake::GetAttr(std::unique_ptr<AttrRequest> request,
   request->ReplyAttr(stat, kStatTimeoutSeconds);
 }
 
-void FileSystemFake::OpenDir(std::unique_ptr<OpenRequest> request,
-                             fuse_ino_t ino) {
+void FileSystemFake::OpenDir(std::unique_ptr<OpenRequest> request, ino_t ino) {
   LOG(INFO) << "OpenDir ino " << ino;
 
   if (request->IsInterrupted())
@@ -169,7 +167,7 @@ void FileSystemFake::OpenDir(std::unique_ptr<OpenRequest> request,
 }
 
 void FileSystemFake::ReadDir(std::unique_ptr<DirEntryRequest> request,
-                             fuse_ino_t ino,
+                             ino_t ino,
                              off_t off) {
   LOG(INFO) << "ReadDir ino " << ino << " off " << off;
 
@@ -194,8 +192,7 @@ void FileSystemFake::ReadDir(std::unique_ptr<DirEntryRequest> request,
   response->Append(std::move(request));
 }
 
-void FileSystemFake::ReleaseDir(std::unique_ptr<OkRequest> request,
-                                fuse_ino_t ino) {
+void FileSystemFake::ReleaseDir(std::unique_ptr<OkRequest> request, ino_t ino) {
   LOG(INFO) << "ReleaseDir ino " << ino;
 
   if (request->IsInterrupted())
@@ -214,8 +211,7 @@ void FileSystemFake::ReleaseDir(std::unique_ptr<OkRequest> request,
   request->ReplyOk();
 }
 
-void FileSystemFake::Open(std::unique_ptr<OpenRequest> request,
-                          fuse_ino_t ino) {
+void FileSystemFake::Open(std::unique_ptr<OpenRequest> request, ino_t ino) {
   LOG(INFO) << "Open ino " << ino;
 
   if (request->IsInterrupted())
@@ -251,7 +247,7 @@ void FileSystemFake::Open(std::unique_ptr<OpenRequest> request,
 }
 
 void FileSystemFake::Read(std::unique_ptr<BufferRequest> request,
-                          fuse_ino_t ino,
+                          ino_t ino,
                           size_t size,
                           off_t off) {
   LOG(INFO) << "Read ino " << ino << " off " << off << " size " << size;
@@ -291,8 +287,7 @@ void FileSystemFake::Read(std::unique_ptr<BufferRequest> request,
   request->ReplyBuffer(slice.data(), slice.size());
 }
 
-void FileSystemFake::Release(std::unique_ptr<OkRequest> request,
-                             fuse_ino_t ino) {
+void FileSystemFake::Release(std::unique_ptr<OkRequest> request, ino_t ino) {
   LOG(INFO) << "Release ino " << ino;
 
   if (request->IsInterrupted())

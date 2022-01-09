@@ -26,27 +26,27 @@ class FileSystemFake : public FileSystem {
   void Init(void* userdata, struct fuse_conn_info* conn) override;
 
   void Lookup(std::unique_ptr<EntryRequest> request,
-              fuse_ino_t parent,
+              ino_t parent,
               const char* name) override;
 
-  void GetAttr(std::unique_ptr<AttrRequest> request, fuse_ino_t ino) override;
+  void GetAttr(std::unique_ptr<AttrRequest> request, ino_t ino) override;
 
-  void OpenDir(std::unique_ptr<OpenRequest> request, fuse_ino_t ino) override;
+  void OpenDir(std::unique_ptr<OpenRequest> request, ino_t ino) override;
 
   void ReadDir(std::unique_ptr<DirEntryRequest> request,
-               fuse_ino_t ino,
+               ino_t ino,
                off_t off) override;
 
-  void ReleaseDir(std::unique_ptr<OkRequest> request, fuse_ino_t ino) override;
+  void ReleaseDir(std::unique_ptr<OkRequest> request, ino_t ino) override;
 
-  void Open(std::unique_ptr<OpenRequest> request, fuse_ino_t ino) override;
+  void Open(std::unique_ptr<OpenRequest> request, ino_t ino) override;
 
   void Read(std::unique_ptr<BufferRequest> request,
-            fuse_ino_t ino,
+            ino_t ino,
             size_t size,
             off_t off) override;
 
-  void Release(std::unique_ptr<OkRequest> request, fuse_ino_t ino) override;
+  void Release(std::unique_ptr<OkRequest> request, ino_t ino) override;
 
  private:
   std::map<uint64_t, std::unique_ptr<DirEntryResponse>> readdir_;

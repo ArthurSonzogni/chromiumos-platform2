@@ -27,68 +27,68 @@ class FileSystem {
   virtual void Destroy(void* userdata);
 
   virtual void Lookup(std::unique_ptr<EntryRequest> request,
-                      fuse_ino_t parent,
+                      ino_t parent,
                       const char* name);
 
   virtual void Forget(std::unique_ptr<NoneRequest> request,
-                      fuse_ino_t ino,
+                      ino_t ino,
                       uint64_t nlookup);
 
   virtual void ForgetMulti(std::unique_ptr<NoneRequest> request,
                            size_t count,
                            fuse_forget_data* forgets);
 
-  virtual void GetAttr(std::unique_ptr<AttrRequest> request, fuse_ino_t ino);
+  virtual void GetAttr(std::unique_ptr<AttrRequest> request, ino_t ino);
 
   virtual void SetAttr(std::unique_ptr<AttrRequest> request,
-                       fuse_ino_t ino,
+                       ino_t ino,
                        struct stat* attr,
                        int to_set);
 
   virtual void MkDir(std::unique_ptr<EntryRequest> request,
-                     fuse_ino_t parent,
+                     ino_t parent,
                      const char* name,
                      mode_t mode);
 
   virtual void Unlink(std::unique_ptr<OkRequest> request,
-                      fuse_ino_t parent,
+                      ino_t parent,
                       const char* name);
 
   virtual void RmDir(std::unique_ptr<OkRequest> request,
-                     fuse_ino_t parent,
+                     ino_t parent,
                      const char* name);
 
   virtual void Rename(std::unique_ptr<OkRequest> request,
-                      fuse_ino_t parent,
+                      ino_t parent,
                       const char* name,
-                      fuse_ino_t new_parent,
+                      ino_t new_parent,
                       const char* new_name);
 
-  virtual void Open(std::unique_ptr<OpenRequest> request, fuse_ino_t ino);
+  virtual void Open(std::unique_ptr<OpenRequest> request, ino_t ino);
 
   virtual void Read(std::unique_ptr<BufferRequest> request,
-                    fuse_ino_t ino,
+                    ino_t ino,
                     size_t size,
                     off_t off);
 
   virtual void Write(std::unique_ptr<WriteRequest> request,
-                     fuse_ino_t ino,
+                     ino_t ino,
                      const char* buf,
                      size_t size,
                      off_t off);
 
-  virtual void Release(std::unique_ptr<OkRequest> request, fuse_ino_t ino);
+  virtual void Release(std::unique_ptr<OkRequest> request, ino_t ino);
 
-  virtual void OpenDir(std::unique_ptr<OpenRequest> request, fuse_ino_t ino);
+  virtual void OpenDir(std::unique_ptr<OpenRequest> request, ino_t ino);
 
   virtual void ReadDir(std::unique_ptr<DirEntryRequest> request,
-                       fuse_ino_t ino,
+                       ino_t ino,
                        off_t off);
 
-  virtual void ReleaseDir(std::unique_ptr<OkRequest> request, fuse_ino_t ino);
+  virtual void ReleaseDir(std::unique_ptr<OkRequest> request, ino_t ino);
 
   virtual void Create(std::unique_ptr<CreateRequest> request,
-                      fuse_ino_t parent,
+                      ino_t parent,
                       const char* name,
                       mode_t mode);
 

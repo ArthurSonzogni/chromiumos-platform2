@@ -111,7 +111,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     CHECK(userdata);
   }
 
-  void GetAttr(std::unique_ptr<AttrRequest> request, fuse_ino_t ino) override {
+  void GetAttr(std::unique_ptr<AttrRequest> request, ino_t ino) override {
     VLOG(1) << "getattr " << ino;
 
     if (request->IsInterrupted())
@@ -140,7 +140,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   const double kStatTimeoutSeconds = 5.0;
 
   void StatResponse(std::unique_ptr<AttrRequest> request,
-                    fuse_ino_t ino,
+                    ino_t ino,
                     dbus::Response* response) {
     VLOG(1) << "getattr-resp " << ino;
 
@@ -165,7 +165,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   }
 
   void Lookup(std::unique_ptr<EntryRequest> request,
-              fuse_ino_t parent,
+              ino_t parent,
               const char* name) override {
     VLOG(1) << "lookup parent " << parent << "/" << name;
 
@@ -196,7 +196,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   const double kEntryTimeoutSeconds = 5.0;
 
   void LookupResponse(std::unique_ptr<EntryRequest> request,
-                      fuse_ino_t parent,
+                      ino_t parent,
                       std::string name,
                       dbus::Response* response) {
     VLOG(1) << "lookup-resp parent " << parent << "/" << name;
@@ -218,7 +218,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     }
 
     fuse_entry_param entry = {0};
-    entry.ino = node->ino;
+    entry.ino = static_cast<fuse_ino_t>(node->ino);
     entry.attr = GetServerStat(node->ino, &reader);
     entry.attr_timeout = kStatTimeoutSeconds;
     entry.entry_timeout = kEntryTimeoutSeconds;
@@ -226,7 +226,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     request->ReplyEntry(entry);
   }
 
-  void OpenDir(std::unique_ptr<OpenRequest> request, fuse_ino_t ino) override {
+  void OpenDir(std::unique_ptr<OpenRequest> request, ino_t ino) override {
     VLOG(1) << "opendir " << ino;
 
     if (request->IsInterrupted())
@@ -250,7 +250,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   }
 
   void ReadDir(std::unique_ptr<DirEntryRequest> request,
-               fuse_ino_t ino,
+               ino_t ino,
                off_t off) override {
     VLOG(1) << "readdir fh " << request->fh() << " off " << off;
 
@@ -293,7 +293,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   }
 
   void ReadDirResponse(std::unique_ptr<DirEntryRequest> request,
-                       fuse_ino_t ino,
+                       ino_t ino,
                        uint64_t handle,
                        dbus::Response* response) {
     VLOG(1) << "readdir-resp fh " << handle;
@@ -362,7 +362,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     response->Append(std::move(entries), !has_more);
   }
 
-  void ReleaseDir(std::unique_ptr<OkRequest> request, fuse_ino_t ino) override {
+  void ReleaseDir(std::unique_ptr<OkRequest> request, ino_t ino) override {
     VLOG(1) << "releasedir fh " << request->fh();
 
     if (request->IsInterrupted())
@@ -379,7 +379,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     request->ReplyOk();
   }
 
-  void Open(std::unique_ptr<OpenRequest> request, fuse_ino_t ino) override {
+  void Open(std::unique_ptr<OpenRequest> request, ino_t ino) override {
     VLOG(1) << "open " << ino;
 
     if (request->IsInterrupted())
@@ -408,7 +408,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   }
 
   void OpenResponse(std::unique_ptr<OpenRequest> request,
-                    fuse_ino_t ino,
+                    ino_t ino,
                     dbus::Response* response) {
     VLOG(1) << "open-resp " << ino;
 
@@ -435,7 +435,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   }
 
   void Read(std::unique_ptr<BufferRequest> request,
-            fuse_ino_t ino,
+            ino_t ino,
             size_t size,
             off_t off) override {
     VLOG(1) << "read fh " << request->fh() << " off " << off << " size "
@@ -485,7 +485,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   }
 
   void ReadResponse(std::unique_ptr<BufferRequest> request,
-                    fuse_ino_t ino,
+                    ino_t ino,
                     size_t size,
                     off_t off,
                     dbus::Response* response) {
@@ -515,7 +515,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   }
 
   void ReadFileDescriptor(std::unique_ptr<BufferRequest> request,
-                          fuse_ino_t ino,
+                          ino_t ino,
                           int fd,
                           size_t size,
                           off_t off) {
@@ -536,7 +536,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     request->ReplyBuffer(buf.data(), length);
   }
 
-  void Release(std::unique_ptr<OkRequest> request, fuse_ino_t ino) override {
+  void Release(std::unique_ptr<OkRequest> request, ino_t ino) override {
     VLOG(1) << "release fh " << request->fh();
 
     if (request->IsInterrupted())

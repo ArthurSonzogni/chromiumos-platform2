@@ -183,7 +183,7 @@ class DirEntryResponse {
 };
 
 struct DirEntry {
-  fuse_ino_t ino;
+  ino_t ino;
   std::string name;
   mode_t mode;
 };
