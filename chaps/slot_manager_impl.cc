@@ -533,10 +533,13 @@ bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
   CHECK(object_pool.get());
 
   if (tpm_utility_->IsTPMAvailable()) {
-    // Asynchronously Decrypting (or creating) the root key.
-    // This has the effect that queries for public objects are responsive but
-    // queries for private objects will be waiting for the root key to be ready.
-    LoadTPMToken(base::DoNothing(), *slot_id, path, auth_data, object_pool);
+    if (!MigrateTokenIfNeeded(path, auth_data, object_pool)) {
+      // Asynchronously Decrypting (or creating) the root key.
+      // This has the effect that queries for public objects are responsive but
+      // queries for private objects will be waiting for the root key to be
+      // ready.
+      LoadTPMToken(base::DoNothing(), *slot_id, path, auth_data, object_pool);
+    }
   } else {
     // Load a software-only token.
     LOG(WARNING) << "No TPM is available. Loading a software-only token.";
@@ -558,6 +561,52 @@ bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
   LOG(INFO) << "Slot " << *slot_id << " ready for token at " << path.value();
   VLOG(1) << "SlotManagerImpl::LoadToken success";
   return true;
+}
+
+bool SlotManagerImpl::MigrateTokenIfNeeded(const base::FilePath& path,
+                                           const SecureBlob& auth_data,
+                                           shared_ptr<ObjectPool> object_pool) {
+  if (USE_TPM_INSECURE_FALLBACK) {
+    SecureBlob auth_key_encrypt =
+        Sha256(SecureBlob::Combine(auth_data, SecureBlob(kKeyPurposeEncrypt)));
+    SecureBlob auth_key_mac =
+        Sha256(SecureBlob::Combine(auth_data, SecureBlob(kKeyPurposeMac)));
+    string encrypted_root_key;
+    string saved_mac;
+
+    if (!object_pool->GetInternalBlob(kEncryptedRootKey, &encrypted_root_key) ||
+        !object_pool->GetInternalBlob(kAuthDataHash, &saved_mac)) {
+      return false;
+    }
+
+    if (HmacSha512(kAuthKeyMacInput, auth_key_mac) != saved_mac) {
+      return false;
+    }
+
+    // Decrypt the root key with the auth data.
+    string root_key_str;
+    if (!RunCipher(false,  // Decrypt.
+                   auth_key_encrypt,
+                   std::string(),  // Use a random IV.
+                   encrypted_root_key, &root_key_str)) {
+      return false;
+    }
+
+    LOG(INFO) << "Migrating software token to hardware token.";
+
+    SecureBlob root_key(root_key_str);
+    brillo::SecureClearContainer(root_key_str);
+
+    // Asynchronously migrate the root key to TPM.
+    // This has the effect that queries for public objects are responsive but
+    // queries for private objects will be waiting for the root key to be
+    // ready.
+    InitializeTPMTokenWithRootKey(base::DoNothing(), path, auth_data,
+                                  object_pool, root_key);
+    return true;
+  }
+
+  return false;
 }
 
 void SlotManagerImpl::LoadTPMToken(base::OnceCallback<void(bool)> callback,
@@ -694,10 +743,22 @@ void SlotManagerImpl::InitializeTPMTokenAfterGenerateRandom(
 
   SecureBlob root_key(random_data.begin(), random_data.end());
 
+  InitializeTPMTokenWithRootKey(std::move(callback), path, auth_data,
+                                object_pool, root_key);
+
+  brillo::SecureClearContainer(random_data);
+}
+
+void SlotManagerImpl::InitializeTPMTokenWithRootKey(
+    base::OnceCallback<void(bool)> callback,
+    const base::FilePath& path,
+    const brillo::SecureBlob& auth_data,
+    std::shared_ptr<ObjectPool> object_pool,
+    brillo::SecureBlob root_key) {
   AsyncTPMUtility::SealDataCallback seal_callback = base::BindOnce(
       &SlotManagerImpl::InitializeTPMTokenAfterSealData, base::Unretained(this),
       std::move(callback), path, auth_data, object_pool, root_key);
-  tpm_utility_->SealDataAsync(random_data, Sha1(auth_data),
+  tpm_utility_->SealDataAsync(root_key.to_string(), Sha1(auth_data),
                               std::move(seal_callback));
 }
 

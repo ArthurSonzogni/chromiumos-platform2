@@ -160,6 +160,12 @@ class SlotManagerImpl : public SlotManager,
   // prng and loading the system token.
   bool InitStage2();
 
+  // Migrates software token to TPM token if needed. Returns true when the
+  // migration is needed. Return false in the other case.
+  bool MigrateTokenIfNeeded(const base::FilePath& path,
+                            const brillo::SecureBlob& auth_data,
+                            std::shared_ptr<ObjectPool> object_pool);
+
   // LoadToken for internal callers.
   bool LoadTokenInternal(const brillo::SecureBlob& isolate_credential,
                          const base::FilePath& path,
@@ -203,6 +209,13 @@ class SlotManagerImpl : public SlotManager,
       std::shared_ptr<ObjectPool> object_pool,
       bool success,
       std::string random_data);
+
+  // Initializes a new TPM token with the specific root key.
+  void InitializeTPMTokenWithRootKey(base::OnceCallback<void(bool)> callback,
+                                     const base::FilePath& path,
+                                     const brillo::SecureBlob& auth_data,
+                                     std::shared_ptr<ObjectPool> object_pool,
+                                     brillo::SecureBlob root_key);
 
   // Initializes a new TPM token after the TPM seals data.
   void InitializeTPMTokenAfterSealData(base::OnceCallback<void(bool)> callback,
