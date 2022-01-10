@@ -16,3 +16,6 @@ allowxperm cros_hps_factory cros_hps_device:chr_file ioctl {
   I2C_PEC
   I2C_SMBUS
 };
+
+# Bind and unbind the kernel driver.
+allow cros_hps_factory sysfs:file { open write };
