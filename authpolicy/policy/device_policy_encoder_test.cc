@@ -161,6 +161,9 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(kBool,
             policy.device_restricted_managed_guest_session_enabled().enabled());
 
+  EncodeBoolean(&policy, key::kDeviceLoginScreenWebUILazyLoading, kBool);
+  EXPECT_EQ(kBool, policy.login_web_ui_lazy_loading().enabled());
+
   //
   // Network policies.
   //
@@ -827,6 +830,12 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(kStringList,
             ToVector(policy.device_allowed_bluetooth_services().allowlist()));
 
+  EncodeBoolean(&policy, key::kDeviceKeylockerForStorageEncryptionEnabled,
+                kBool);
+  EXPECT_EQ(kBool, policy.keylocker_for_storage_encryption_enabled().enabled());
+
+  EncodeBoolean(&policy, key::kDeviceRunAutomaticCleanupOnLogin, kBool);
+  EXPECT_EQ(kBool, policy.device_run_automatic_cleanup_on_login().value());
   //
   // Check whether all device policies have been handled.
   //

@@ -343,6 +343,17 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
     policy->mutable_device_restricted_managed_guest_session_enabled()
         ->set_enabled(value.value());
   }
+
+  if (base::Optional<bool> value =
+          EncodeBoolean(key::kDeviceLoginScreenWebUILazyLoading)) {
+    policy->mutable_login_web_ui_lazy_loading()->set_enabled(value.value());
+  }
+
+  if (base::Optional<bool> value =
+          EncodeBoolean(key::kDeviceRunAutomaticCleanupOnLogin)) {
+    policy->mutable_device_run_automatic_cleanup_on_login()->set_value(
+        value.value());
+  }
 }
 
 void DevicePolicyEncoder::EncodeNetworkPolicies(
@@ -1229,6 +1240,11 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     policy->mutable_chromad_to_cloud_migration_enabled()->set_value(
         value.value());
   }
+
+  if (base::Optional<bool> value =
+          EncodeBoolean(key::kDeviceKeylockerForStorageEncryptionEnabled))
+    policy->mutable_keylocker_for_storage_encryption_enabled()->set_enabled(
+        value.value());
 }
 
 base::Optional<bool> DevicePolicyEncoder::EncodeBoolean(
