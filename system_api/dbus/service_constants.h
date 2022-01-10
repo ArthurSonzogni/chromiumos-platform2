@@ -512,6 +512,7 @@ const char kNumberOfInputStreamsWithPermissionChanged[] =
 const char kAudioOutputActiveStateChanged[] = "AudioOutputActiveStateChanged";
 const char kHotwordTriggered[] = "HotwordTriggered";
 const char kBluetoothBatteryChanged[] = "BluetoothBatteryChanged";
+const char kSurveyTrigger[] = "SurveyTrigger";
 }  // namespace cras
 
 namespace feedback {
