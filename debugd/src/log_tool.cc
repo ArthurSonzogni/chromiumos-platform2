@@ -371,7 +371,7 @@ const std::array kCommandLogs {
     "/usr/share/userfeedback/scripts/getmsgs /var/log/messages"},
   Log{kCommand, "system_log_stats",
     "echo 'BLOCK_SIZE=1024'; "
-    "find /var/log/ -type f -exec du --block-size=1024 Log{} + | sort -n -r",
+    "find /var/log/ -type f -exec du --block-size=1024 {} + | sort -n -r",
     kRoot, kRoot},
   Log{kCommand, "threads",
     "/bin/ps -T axo pid,ppid,spid,pcpu,ni,stat,time,comm"},
