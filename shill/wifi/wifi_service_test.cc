@@ -899,6 +899,36 @@ TEST_F(WiFiServiceTest, LoadPassphraseClearCredentials) {
   EXPECT_TRUE(service->has_ever_connected_);
 }
 
+TEST_F(WiFiServiceTest, LoadWithPasspointCredentials) {
+  const std::string creds_id("an_id");
+  const uint64_t match_priority = 3;
+  PasspointCredentialsRefPtr credentials = new PasspointCredentials(creds_id);
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityNone);
+
+  FakeStore store;
+  const std::string storage_id = service->GetStorageIdentifier();
+  SetWiFiProperties(&store, storage_id, simple_ssid(), kSecurityNone);
+
+  // No credentials stored.
+  EXPECT_TRUE(service->Load(&store));
+  EXPECT_EQ(nullptr, service->parent_credentials());
+
+  // Set of credentials in the store.
+  store.SetString(storage_id, WiFiService::kStoragePasspointCredentials,
+                  creds_id);
+  store.SetUint64(storage_id, WiFiService::kStoragePasspointMatchPriority,
+                  match_priority);
+  EXPECT_CALL(*provider(), FindCredentials(creds_id))
+      .WillOnce(Return(credentials));
+  EXPECT_TRUE(service->Load(&store));
+  EXPECT_EQ(credentials, service->parent_credentials());
+  EXPECT_EQ(match_priority, service->match_priority());
+
+  // Set of credentials in the store, but not in the provider
+  EXPECT_CALL(*provider(), FindCredentials(creds_id)).WillOnce(Return(nullptr));
+  EXPECT_FALSE(service->Load(&store));
+}
+
 TEST_F(WiFiServiceTest, ConfigureMakesConnectable) {
   std::string guid("legit_guid");
   KeyValueStore args;

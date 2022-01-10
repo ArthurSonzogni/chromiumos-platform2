@@ -44,6 +44,7 @@ class WiFiProvider : public ProviderInterface {
   // connectable based on the contained set of credentials, and what kind of
   // network it will provide.
   struct PasspointMatch {
+    PasspointMatch();
     PasspointMatch(const PasspointCredentialsRefPtr& cred_in,
                    const WiFiEndpointRefPtr& endp_in,
                    MatchPriority prio_in);
@@ -138,6 +139,9 @@ class WiFiProvider : public ProviderInterface {
 
   // Get the list of Passpoint credentials known by the provider.
   virtual std::vector<PasspointCredentialsRefPtr> GetCredentials();
+
+  // Get the set of Passpoint credentials referenced by |id|.
+  virtual PasspointCredentialsRefPtr FindCredentials(const std::string& id);
 
   // Called by the Wi-Fi device when an interworking selection found
   // connectable endpoint using Passpoint credentials.

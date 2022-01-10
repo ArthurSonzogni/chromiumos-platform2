@@ -148,8 +148,8 @@ class Manager {
 
   virtual const ProfileRefPtr& ActiveProfile() const;
   bool IsActiveProfile(const ProfileRefPtr& profile) const;
-  bool MoveServiceToProfile(const ServiceRefPtr& to_move,
-                            const ProfileRefPtr& destination);
+  virtual bool MoveServiceToProfile(const ServiceRefPtr& to_move,
+                                    const ProfileRefPtr& destination);
   virtual bool MatchProfileWithService(const ServiceRefPtr& service);
   ProfileRefPtr LookupProfileByRpcIdentifier(const std::string& profile_rpcid);
 

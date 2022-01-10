@@ -35,6 +35,7 @@
 #include "shill/property_accessor.h"
 #include "shill/store_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
+#include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wifi.h"
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_provider.h"
@@ -87,6 +88,11 @@ static const std::map<WiFiService::RandomizationPolicy, int32_t>
 // available by courtesy of Android (go/veaub).
 static constexpr std::array<const char*, 5> SSIDsExcludedFromRandomization = {
     "ACWiFi", "AA-Inflight", "gogoinflight", "DeltaWiFi", "DeltaWiFi.com"};
+
+// The default Passpoint match score is (for now) set to the best network
+// priority. A (not Passpoint) network should have a score equivalent to a
+// "home" Passpoint network.
+constexpr uint64_t kDefaultMatchPriority = WiFiProvider::MatchPriority::kHome;
 }  // namespace
 
 const char WiFiService::kAnyDeviceAddress[] = "any";
@@ -102,6 +108,10 @@ const char WiFiService::kStorageHiddenSSID[] = "WiFi.HiddenSSID";
 const char WiFiService::kStorageMode[] = "WiFi.Mode";
 const char WiFiService::kStorageSecurityClass[] = "WiFi.SecurityClass";
 const char WiFiService::kStorageSSID[] = "SSID";
+const char WiFiService::kStoragePasspointCredentials[] =
+    "WiFi.PasspointCredentialsId";
+const char WiFiService::kStoragePasspointMatchPriority[] =
+    "WiFi.PasspointMatchPriority";
 
 bool WiFiService::logged_signal_warning = false;
 // Clock for time-related events.
@@ -130,7 +140,8 @@ WiFiService::WiFiService(Manager* manager,
       provider_(provider),
       roam_state_(kRoamStateIdle),
       is_rekey_in_progress_(false),
-      last_rekey_time_(base::Time()) {
+      last_rekey_time_(base::Time()),
+      match_priority_(kDefaultMatchPriority) {
   std::string ssid_string(reinterpret_cast<const char*>(ssid_.data()),
                           ssid_.size());
   WiFi::SanitizeSSID(&ssid_string);
@@ -483,6 +494,22 @@ bool WiFiService::Load(const StoreInterface* storage) {
   }
 
   expecting_disconnect_ = false;
+
+  // Passpoint might not be present.
+  std::string credentials_id;
+  if (storage->GetString(id, WiFiService::kStoragePasspointCredentials,
+                         &credentials_id)) {
+    PasspointCredentialsRefPtr creds =
+        provider_->FindCredentials(credentials_id);
+    if (!creds) {
+      LOG(ERROR) << "Failed to load Passpoint credentials " << credentials_id;
+      return false;
+    }
+    parent_credentials_ = creds;
+  }
+  storage->GetUint64(id, WiFiService::kStoragePasspointMatchPriority,
+                     &match_priority_);
+
   return true;
 }
 
@@ -535,6 +562,11 @@ bool WiFiService::Save(StoreInterface* storage) {
   storage->SetString(id, kStorageSecurityClass,
                      ComputeSecurityClass(security_));
   storage->SetString(id, kStorageSSID, hex_ssid_);
+  if (parent_credentials_) {
+    storage->SetString(id, kStoragePasspointCredentials,
+                       parent_credentials_->id());
+  }
+  storage->SetUint64(id, kStoragePasspointMatchPriority, match_priority_);
 
   return true;
 }
@@ -557,6 +589,8 @@ bool WiFiService::Unload() {
   ClearPassphrase(&unused_error);
   mac_address_.Clear();
   random_mac_policy_ = RandomizationPolicy::Hardware;
+  match_priority_ = kDefaultMatchPriority;
+  parent_credentials_ = nullptr;
   return provider_->OnServiceUnloaded(this);
 }
 
@@ -914,6 +948,15 @@ bool WiFiService::IsDisconnectable(Error* error) const {
     return false;
   }
   return true;
+}
+
+bool WiFiService::IsMeteredByServiceProperties() const {
+  if (!parent_credentials_) {
+    return false;
+  }
+
+  // A Wi-Fi network provided by a set of Passpoint credentials may be metered.
+  return parent_credentials_->metered_override();
 }
 
 RpcIdentifier WiFiService::GetDeviceRpcId(Error* error) const {
@@ -1389,6 +1432,16 @@ void WiFiService::OnProfileConfigured() {
   // that configuration is saved, we must join the service with its profile,
   // which will make this SSID eligible for directed probes during scans.
   manager()->RegisterService(this);
+}
+
+void WiFiService::OnPasspointMatch(
+    const PasspointCredentialsRefPtr& credentials, uint64_t priority) {
+  parent_credentials_ = credentials;
+  match_priority_ = priority;
+
+  mutable_eap()->Load(parent_credentials_->eap());
+  OnEapCredentialsChanged(Service::kReasonPasspointMatch);
+  EnableAndRetainAutoConnect();
 }
 
 bool WiFiService::Is8021x() const {

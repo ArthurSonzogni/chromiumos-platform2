@@ -28,6 +28,7 @@ namespace shill {
 class CertificateFile;
 class Error;
 class Manager;
+class PasspointCredentials;
 class WiFiProvider;
 
 class WiFiService : public Service {
@@ -39,6 +40,8 @@ class WiFiService : public Service {
   static const char kStorageMode[];
   static const char kStorageSecurityClass[];
   static const char kStorageSSID[];
+  static const char kStoragePasspointCredentials[];
+  static const char kStoragePasspointMatchPriority[];
 
   // Default signal level value without any endpoint.
   static const int16_t SignalLevelMin = std::numeric_limits<int16_t>::min();
@@ -171,6 +174,11 @@ class WiFiService : public Service {
   // have been configured.
   void OnProfileConfigured() override;
 
+  // Called by WiFiProvider to update the service credentials using a set of
+  // Passpoint credentials identified during a match.
+  void OnPasspointMatch(const PasspointCredentialsRefPtr& credentials,
+                        uint64_t priority);
+
   // Called by WiFiProvider to reset the WiFi device reference on shutdown.
   virtual void ResetWiFi();
 
@@ -205,11 +213,17 @@ class WiFiService : public Service {
   void set_bgscan_string(const std::string& val) { bgscan_string_ = val; }
   std::string bgscan_string() const { return bgscan_string_; }
 
+  PasspointCredentialsRefPtr& parent_credentials() {
+    return parent_credentials_;
+  }
+  uint64_t match_priority() const { return match_priority_; }
+
  protected:
   // Inherited from Service.
   void OnConnect(Error* error) override;
   void OnDisconnect(Error* error, const char* reason) override;
   bool IsDisconnectable(Error* error) const override;
+  bool IsMeteredByServiceProperties() const override;
 
   void SetEAPKeyManagement(const std::string& key_management) override;
   std::string GetTethering(Error* error) const override;
@@ -434,6 +448,11 @@ class WiFiService : public Service {
   bool is_rekey_in_progress_;
   // Timestamp of the last attempted rising edge of the "re-key".
   base::Time last_rekey_time_;
+  // Set of Passpoint credentials present when the service was populated by a
+  // previous Passpoint match.
+  PasspointCredentialsRefPtr parent_credentials_;
+  // Passpoint network match score.
+  uint64_t match_priority_;
 };
 
 }  // namespace shill

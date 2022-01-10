@@ -59,6 +59,10 @@ class MockManager : public Manager {
               MatchProfileWithService,
               (const ServiceRefPtr&),
               (override));
+  MOCK_METHOD(bool,
+              MoveServiceToProfile,
+              (const ServiceRefPtr&, const ProfileRefPtr& destination),
+              (override));
   MOCK_METHOD(void, RegisterDevice, (const DeviceRefPtr&), (override));
   MOCK_METHOD(void, DeregisterDevice, (const DeviceRefPtr&), (override));
   MOCK_METHOD(bool, HasService, (const ServiceRefPtr&), (override));

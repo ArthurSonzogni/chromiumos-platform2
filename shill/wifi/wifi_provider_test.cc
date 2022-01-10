@@ -24,6 +24,7 @@
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
+#include "shill/wifi/mock_passpoint_credentials.h"
 #include "shill/wifi/mock_wifi_service.h"
 #include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wifi_endpoint.h"
@@ -222,6 +223,16 @@ class WiFiProviderTest : public testing::Test {
     return WiFiEndpoint::MakeOpenEndpoint(
         nullptr, nullptr, ssid, bssid,
         WPASupplicant::kNetworkModeInfrastructure, frequency, signal_dbm);
+  }
+  WiFiEndpointRefPtr Make8021xEndpoint(const std::string& ssid,
+                                       const std::string& bssid,
+                                       uint16_t frequency,
+                                       int16_t signal_dbm) {
+    WiFiEndpoint::SecurityFlags rsn_flags;
+    rsn_flags.rsn_8021x = true;
+    return WiFiEndpoint::MakeEndpoint(nullptr, nullptr, ssid, bssid,
+                                      WPASupplicant::kNetworkModeInfrastructure,
+                                      frequency, signal_dbm, rsn_flags);
   }
   WiFiEndpointRefPtr MakeEndpoint(
       const std::string& ssid,
@@ -1618,6 +1629,87 @@ TEST_F(WiFiProviderTest, AddRemoveCredentials) {
   provider_.RemoveCredentials(creds);
   list = provider_.GetCredentials();
   EXPECT_EQ(0, list.size());
+}
+
+TEST_F(WiFiProviderTest, SimpleCredentialsMatchesOverride) {
+  provider_.Start();
+
+  // Add few sets of credentials
+  PasspointCredentialsRefPtr creds0 = new MockPasspointCredentials("creds0");
+  PasspointCredentialsRefPtr creds1 = new MockPasspointCredentials("creds1");
+  EXPECT_CALL(manager_, GetEnabledDeviceWithTechnology(_))
+      .WillRepeatedly(Return(nullptr));
+  creds0->SetProfile(user_profile_);
+  provider_.AddCredentials(creds0);
+  creds1->SetProfile(user_profile_);
+  provider_.AddCredentials(creds1);
+
+  // Provide some scan results
+  const std::string ssid0("an_ssid");
+  const std::vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
+  WiFiEndpointRefPtr endpoint0 =
+      Make8021xEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
+  EXPECT_CALL(manager_, RegisterService(_)).Times(1);
+  EXPECT_CALL(manager_, UpdateService(_)).Times(1);
+  provider_.OnEndpointAdded(endpoint0);
+
+  // Report a match
+  std::vector<WiFiProvider::PasspointMatch> match{
+      {creds0, endpoint0, WiFiProvider::MatchPriority::kRoaming}};
+  EXPECT_CALL(manager_, UpdateService(_)).Times(1);
+  EXPECT_CALL(manager_, MoveServiceToProfile(_, _)).Times(1);
+  provider_.OnPasspointCredentialsMatches(match);
+
+  // The best match for endpoint0 is cred0 with "Roaming" priority.
+  WiFiServiceRefPtr service0(
+      FindService(ssid0_bytes, kModeManaged, kSecurity8021x));
+  EXPECT_EQ(WiFiProvider::MatchPriority::kRoaming, service0->match_priority());
+  EXPECT_EQ(creds0, service0->parent_credentials());
+
+  // Report a match that overrides the previous one.
+  std::vector<WiFiProvider::PasspointMatch> better_match{
+      {creds1, endpoint0, WiFiProvider::MatchPriority::kHome}};
+  EXPECT_CALL(manager_, UpdateService(_)).Times(1);
+  EXPECT_CALL(manager_, MoveServiceToProfile(_, _)).Times(1);
+  provider_.OnPasspointCredentialsMatches(better_match);
+
+  service0 = FindService(ssid0_bytes, kModeManaged, kSecurity8021x);
+  EXPECT_EQ(WiFiProvider::MatchPriority::kHome, service0->match_priority());
+  EXPECT_EQ(creds1, service0->parent_credentials());
+}
+
+TEST_F(WiFiProviderTest, MultipleCredentialsMatches) {
+  provider_.Start();
+
+  // Add few sets of credentials
+  PasspointCredentialsRefPtr creds0 = new MockPasspointCredentials("creds0");
+  PasspointCredentialsRefPtr creds1 = new MockPasspointCredentials("creds1");
+  EXPECT_CALL(manager_, GetEnabledDeviceWithTechnology(_))
+      .WillRepeatedly(Return(nullptr));
+  provider_.AddCredentials(creds0);
+  provider_.AddCredentials(creds1);
+
+  // Provide some scan results
+  const std::string ssid0("an_ssid");
+  const std::vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
+  WiFiEndpointRefPtr endpoint0 =
+      Make8021xEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
+  EXPECT_CALL(manager_, RegisterService(_)).Times(1);
+  EXPECT_CALL(manager_, UpdateService(_)).Times(1);
+  provider_.OnEndpointAdded(endpoint0);
+
+  // Report matches
+  std::vector<WiFiProvider::PasspointMatch> matches{
+      {creds0, endpoint0, WiFiProvider::MatchPriority::kHome},
+      {creds1, endpoint0, WiFiProvider::MatchPriority::kRoaming}};
+  EXPECT_CALL(manager_, UpdateService(_)).Times(1);
+  provider_.OnPasspointCredentialsMatches(matches);
+
+  // The best match for endpoint0 is cred0 because of the "Home" priority.
+  WiFiServiceRefPtr service0(
+      FindService(ssid0_bytes, kModeManaged, kSecurity8021x));
+  EXPECT_EQ(WiFiProvider::MatchPriority::kHome, service0->match_priority());
+  EXPECT_EQ(creds0, service0->parent_credentials());
 }
 
 }  // namespace shill

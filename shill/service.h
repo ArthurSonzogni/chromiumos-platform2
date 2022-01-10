@@ -189,7 +189,8 @@ class Service : public base::RefCounted<Service> {
 
   enum UpdateCredentialsReason {
     kReasonCredentialsLoaded,
-    kReasonPropertyUpdate
+    kReasonPropertyUpdate,
+    kReasonPasspointMatch
   };
 
   // Enumeration of possible ONC sources.

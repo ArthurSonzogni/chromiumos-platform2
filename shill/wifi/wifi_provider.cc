@@ -385,9 +385,9 @@ bool WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr& endpoint) {
   service_by_endpoint_[endpoint.get()] = service;
 
   manager_->UpdateService(service);
-  // TODO(b/162106001) return whether the service has matched with passpoint
-  // credentials or not.
-  return false;
+  // Return whether the service has already matched with a set of credentials
+  // or not.
+  return service->parent_credentials() != nullptr;
 }
 
 WiFiServiceRefPtr WiFiProvider::OnEndpointRemoved(
@@ -692,16 +692,80 @@ std::vector<PasspointCredentialsRefPtr> WiFiProvider::GetCredentials() {
   return list;
 }
 
+PasspointCredentialsRefPtr WiFiProvider::FindCredentials(
+    const std::string& id) {
+  const auto it = credentials_by_id_.find(id);
+  if (it == credentials_by_id_.end()) {
+    return nullptr;
+  }
+  return it->second;
+}
+
 void WiFiProvider::OnPasspointCredentialsMatches(
     const std::vector<PasspointMatch>& matches) {
   SLOG(this, 1) << __func__;
-  // TODO(b/162106001) populate services with credentials from the matches
-  // when appropriate.
+
+  // Keep the best match for each service.
+  std::map<WiFiService*, PasspointMatch> matches_by_service;
+  for (const auto& m : matches) {
+    WiFiServiceRefPtr service = FindServiceForEndpoint(m.endpoint);
+    if (!service) {
+      SLOG(this, 1) << "No service for endpoint " << m.endpoint->bssid_string();
+      continue;
+    }
+
+    if (service->parent_credentials() &&
+        service->match_priority() <= m.priority) {
+      // The current match brought better or as good credentials than the
+      // new one, we won't override it.
+      continue;
+    }
+
+    const auto it = matches_by_service.find(service.get());
+    if (it == matches_by_service.end()) {
+      // No match exists yet, just insert the new one.
+      matches_by_service[service.get()] = m;
+      continue;
+    }
+
+    if (it->second.priority > m.priority) {
+      // The new match is better than the previous one
+      matches_by_service[service.get()] = m;
+    }
+  }
+
+  // Populate each service with the credentials contained in the match.
+  for (auto& [service_ref, match] : matches_by_service) {
+    WiFiServiceRefPtr service(service_ref);
+    if (service->connectable() && !service->parent_credentials()) {
+      // The service already has non-Passpoint credentials, we don't want to
+      // override it.
+      continue;
+    }
+
+    if (service->parent_credentials() &&
+        service->match_priority() < match.priority) {
+      // The service is populated with Passpoint credentials and the
+      // previous match priority is better than the one we got now.
+      // We don't want to override it.
+      continue;
+    }
+
+    // Ensure the service is updated with the credentials and saved in the same
+    // profile as the credentials set.
+    service->OnPasspointMatch(match.credentials, match.priority);
+    manager_->UpdateService(service);
+    if (service->profile() != match.credentials->profile()) {
+      manager_->MoveServiceToProfile(service, match.credentials->profile());
+    }
+  }
 }
 
 Metrics* WiFiProvider::metrics() const {
   return manager_->metrics();
 }
+
+WiFiProvider::PasspointMatch::PasspointMatch() {}
 
 WiFiProvider::PasspointMatch::PasspointMatch(
     const PasspointCredentialsRefPtr& cred_in,
