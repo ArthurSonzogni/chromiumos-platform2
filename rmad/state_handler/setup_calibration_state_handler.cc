@@ -103,7 +103,13 @@ SetupCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
 
   if (running_setup_instruction_ ==
       RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION) {
-    return NextStateCaseWrapper(RmadState::StateCase::kProvisionDevice);
+    if (bool keep_device_open;
+        json_store_->GetValue(kKeepDeviceOpen, &keep_device_open) &&
+        keep_device_open) {
+      return NextStateCaseWrapper(RmadState::StateCase::kWpEnablePhysical);
+    } else {
+      return NextStateCaseWrapper(RmadState::StateCase::kFinalize);
+    }
   }
 
   if (running_setup_instruction_ ==

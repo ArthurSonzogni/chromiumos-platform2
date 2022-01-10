@@ -37,6 +37,7 @@ inline constexpr char kMlbRepair[] = "mlb_repair";
 inline constexpr char kFirmwareUpdated[] = "firmware_updated";
 inline constexpr char kCalibrationMap[] = "calibration_map";
 inline constexpr char kPowerwashRequest[] = "powerwash_request";
+inline constexpr char kProvisionFinishedStatus[] = "provision_finished_status";
 
 // States that requires daemon to quit and restart when entering.
 inline constexpr std::array<RmadState::StateCase, 1> kQuitDaemonStates = {

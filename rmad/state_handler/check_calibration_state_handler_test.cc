@@ -176,7 +176,7 @@ TEST_F(CheckCalibrationStateHandlerTest, GetNextStateCase_Success) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
+  EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
 
   std::map<std::string, std::map<std::string, std::string>>
       current_calibration_map;
@@ -291,7 +291,7 @@ TEST_F(CheckCalibrationStateHandlerTest, GetNextStateCase_SuccessSkipSensors) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
+  EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
 
   std::map<std::string, std::map<std::string, std::string>>
       current_calibration_map;

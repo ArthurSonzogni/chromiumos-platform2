@@ -16,6 +16,7 @@
 #include <base/synchronization/lock.h>
 #include <base/timer/timer.h>
 
+#include "rmad/system/power_manager_client.h"
 #include "rmad/utils/cbi_utils.h"
 #include "rmad/utils/cros_config_utils.h"
 #include "rmad/utils/json_store.h"
@@ -29,11 +30,15 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   // Report status every second.
   static constexpr base::TimeDelta kReportStatusInterval = base::Seconds(1);
 
+  // Wait for 5 seconds before rebooting.
+  static constexpr base::TimeDelta kRebootDelay = base::Seconds(5);
+
   explicit ProvisionDeviceStateHandler(scoped_refptr<JsonStore> json_store);
-  // Used to inject mock |cbi_utils_|, |cros_config_utils_|, |ssfc_utils_| and
-  // |vpd_utils_| for testing.
+  // Used to inject mock |cbi_utils_|, |cros_config_utils_|,
+  // |power_manager_client_|, |ssfc_utils_|, and |vpd_utils_| for testing.
   ProvisionDeviceStateHandler(
       scoped_refptr<JsonStore> json_store,
+      std::unique_ptr<PowerManagerClient> power_manager_client,
       std::unique_ptr<CbiUtils> cbi_utils,
       std::unique_ptr<CrosConfigUtils> cros_config_utils,
       std::unique_ptr<SsfcUtils> ssfc_utils,
@@ -50,6 +55,7 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   RmadErrorCode InitializeState() override;
   void CleanUpState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
+  GetNextStateCaseReply TryGetNextStateCaseAtBoot() override;
 
   scoped_refptr<base::SequencedTaskRunner> GetTaskRunner() {
     return task_runner_;
@@ -69,8 +75,10 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   ProvisionStatus GetProgress() const;
 
   bool GenerateStableDeviceSecret(std::string* stable_device_secret);
+  void Reboot();
 
   ProvisionStatus status_;
+  std::unique_ptr<PowerManagerClient> power_manager_client_;
   std::unique_ptr<ProvisionSignalCallback> provision_signal_sender_;
   std::unique_ptr<CbiUtils> cbi_utils_;
   std::unique_ptr<CrosConfigUtils> cros_config_utils_;
@@ -78,6 +86,7 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   std::unique_ptr<VpdUtils> vpd_utils_;
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
   base::RepeatingTimer status_timer_;
+  base::OneShotTimer reboot_timer_;
   mutable base::Lock lock_;
 };
 

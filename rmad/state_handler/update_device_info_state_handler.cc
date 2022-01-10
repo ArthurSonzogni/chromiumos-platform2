@@ -215,7 +215,7 @@ UpdateDeviceInfoStateHandler::GetNextStateCase(const RmadState& state) {
 
   state_ = state;
 
-  return NextStateCaseWrapper(RmadState::StateCase::kSetupCalibration);
+  return NextStateCaseWrapper(RmadState::StateCase::kProvisionDevice);
 }
 
 bool UpdateDeviceInfoStateHandler::VerifyReadOnly(

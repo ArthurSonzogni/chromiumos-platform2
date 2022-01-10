@@ -128,7 +128,13 @@ RunCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
     LOG(ERROR) << "Rmad: Sensor calibration is failed.";
     return NextStateCaseWrapper(RmadState::StateCase::kCheckCalibration);
   } else if (instruction == RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION) {
-    return NextStateCaseWrapper(RmadState::StateCase::kProvisionDevice);
+    if (bool keep_device_open;
+        json_store_->GetValue(kKeepDeviceOpen, &keep_device_open) &&
+        keep_device_open) {
+      return NextStateCaseWrapper(RmadState::StateCase::kWpEnablePhysical);
+    } else {
+      return NextStateCaseWrapper(RmadState::StateCase::kFinalize);
+    }
   } else if (instruction == running_group_) {
     LOG(INFO) << "Rmad: Sensor calibrations is still running.";
     return NextStateCaseWrapper(RMAD_ERROR_WAIT);

@@ -133,7 +133,13 @@ CheckCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
     return NextStateCaseWrapper(RmadState::StateCase::kSetupCalibration);
   }
 
-  return NextStateCaseWrapper(RmadState::StateCase::kProvisionDevice);
+  if (bool keep_device_open;
+      json_store_->GetValue(kKeepDeviceOpen, &keep_device_open) &&
+      keep_device_open) {
+    return NextStateCaseWrapper(RmadState::StateCase::kWpEnablePhysical);
+  } else {
+    return NextStateCaseWrapper(RmadState::StateCase::kFinalize);
+  }
 }
 
 bool CheckCalibrationStateHandler::CheckIsUserSelectionValid(

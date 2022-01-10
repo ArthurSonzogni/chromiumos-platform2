@@ -23,8 +23,11 @@
 #include <base/strings/string_number_conversions.h>
 
 #include "rmad/constants.h"
+#include "rmad/system/fake_power_manager_client.h"
+#include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/cbi_utils_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
+#include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/fake_cbi_utils.h"
 #include "rmad/utils/fake_cros_config_utils.h"
 #include "rmad/utils/fake_ssfc_utils.h"
@@ -58,6 +61,7 @@ FakeProvisionDeviceStateHandler::FakeProvisionDeviceStateHandler(
     scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
     : ProvisionDeviceStateHandler(
           json_store,
+          std::make_unique<fake::FakePowerManagerClient>(working_dir_path),
           std::make_unique<fake::FakeCbiUtils>(working_dir_path),
           std::make_unique<fake::FakeCrosConfigUtils>(),
           std::make_unique<fake::FakeSsfcUtils>(),
@@ -68,43 +72,63 @@ FakeProvisionDeviceStateHandler::FakeProvisionDeviceStateHandler(
 ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store) {
+  power_manager_client_ =
+      std::make_unique<PowerManagerClientImpl>(GetSystemBus());
   cbi_utils_ = std::make_unique<CbiUtilsImpl>();
   cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
   ssfc_utils_ = std::make_unique<SsfcUtilsImpl>();
   vpd_utils_ = std::make_unique<VpdUtilsImpl>();
+  status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
+  status_.set_progress(kProgressInit);
 }
 
 ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     scoped_refptr<JsonStore> json_store,
+    std::unique_ptr<PowerManagerClient> power_manager_client,
     std::unique_ptr<CbiUtils> cbi_utils,
     std::unique_ptr<CrosConfigUtils> cros_config_utils,
     std::unique_ptr<SsfcUtils> ssfc_utils,
     std::unique_ptr<VpdUtils> vpd_utils)
     : BaseStateHandler(json_store),
+      power_manager_client_(std::move(power_manager_client)),
       cbi_utils_(std::move(cbi_utils)),
       cros_config_utils_(std::move(cros_config_utils)),
       ssfc_utils_(std::move(ssfc_utils)),
-      vpd_utils_(std::move(vpd_utils)) {}
+      vpd_utils_(std::move(vpd_utils)) {
+  status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
+  status_.set_progress(kProgressInit);
+}
 
 RmadErrorCode ProvisionDeviceStateHandler::InitializeState() {
+  if (!state_.has_provision_device() && !RetrieveState()) {
+    state_.set_allocated_provision_device(new ProvisionDeviceState);
+  }
+
   if (!task_runner_) {
     task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
         {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
   }
 
-  if (!state_.has_provision_device()) {
-    state_.set_allocated_provision_device(new ProvisionDeviceState);
-    UpdateProgress(kProgressInit,
-                   ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
-  }
   if (!provision_signal_sender_) {
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
 
-  if (GetProgress().status() ==
-      ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN) {
+  // If status_name is set in |json_store_|, it means it has been provisioned.
+  // We should restore the status and let users decide.
+  ProvisionStatus::Status provision_status = GetProgress().status();
+  if (std::string status_name;
+      json_store_->GetValue(kProvisionFinishedStatus, &status_name) &&
+      ProvisionStatus::Status_Parse(status_name, &provision_status)) {
+    UpdateProgress(kProgressInit, provision_status);
+  }
+
+  if (provision_status == ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN) {
     StartProvision();
   }
+
+  // We always send status signals when we initialize the handler to notify the
+  // Chrome side.
+  StartStatusTimer();
   return RMAD_ERROR_OK;
 }
 
@@ -119,6 +143,8 @@ ProvisionDeviceStateHandler::GetNextStateCase(const RmadState& state) {
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
+  state_ = state;
+  StoreState();
   const ProvisionStatus& status = GetProgress();
   switch (state.provision_device().choice()) {
     case ProvisionDeviceState::RMAD_PROVISION_CHOICE_UNKNOWN:
@@ -130,14 +156,13 @@ ProvisionDeviceStateHandler::GetNextStateCase(const RmadState& state) {
         case ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE:
           FALLTHROUGH;
         case ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_NON_BLOCKING:
-          if (bool keep_device_open;
-              json_store_->GetValue(kKeepDeviceOpen, &keep_device_open) &&
-              keep_device_open) {
-            return NextStateCaseWrapper(
-                RmadState::StateCase::kWpEnablePhysical);
-          } else {
-            return NextStateCaseWrapper(RmadState::StateCase::kFinalize);
-          }
+          json_store_->SetValue(kProvisionFinishedStatus,
+                                ProvisionStatus::Status_Name(status.status()));
+          // Schedule a reboot after |kRebootDelay| seconds and return.
+          reboot_timer_.Start(FROM_HERE, kRebootDelay, this,
+                              &ProvisionDeviceStateHandler::Reboot);
+          return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_REBOOT,
+                                      AdditionalActivity::REBOOT);
         case ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING:
           return NextStateCaseWrapper(RMAD_ERROR_PROVISIONING_FAILED);
         default:
@@ -146,12 +171,29 @@ ProvisionDeviceStateHandler::GetNextStateCase(const RmadState& state) {
       break;
     case ProvisionDeviceState::RMAD_PROVISION_CHOICE_RETRY:
       StartProvision();
+      StartStatusTimer();
       return NextStateCaseWrapper(RMAD_ERROR_WAIT);
     default:
       break;
   }
 
   NOTREACHED();
+  return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
+}
+
+BaseStateHandler::GetNextStateCaseReply
+ProvisionDeviceStateHandler::TryGetNextStateCaseAtBoot() {
+  // If the status is already complete or non-blocking at startup, we should go
+  // to the next state. Otherwise, don't transition.
+  switch (GetProgress().status()) {
+    case ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE:
+      FALLTHROUGH;
+    case ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_NON_BLOCKING:
+      return NextStateCaseWrapper(RmadState::StateCase::kSetupCalibration);
+    default:
+      break;
+  }
+
   return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
 }
 
@@ -181,7 +223,6 @@ void ProvisionDeviceStateHandler::StartProvision() {
   task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&ProvisionDeviceStateHandler::RunProvision,
                                 base::Unretained(this)));
-  StartStatusTimer();
 }
 
 void ProvisionDeviceStateHandler::RunProvision() {
@@ -201,6 +242,7 @@ void ProvisionDeviceStateHandler::RunProvision() {
 
   std::string model_name;
   if (!cros_config_utils_->GetModelName(&model_name)) {
+    LOG(ERROR) << "Failed to get model name from cros_config.";
     UpdateProgress(kProgressFailedBlocking,
                    ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
     return;
@@ -226,6 +268,7 @@ void ProvisionDeviceStateHandler::RunProvision() {
   UpdateProgress(kProgressWriteSSFC,
                  ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
 
+  // All blocking items should be finished before here.
   if (!same_owner) {
     std::string stable_device_secret;
     if (!GenerateStableDeviceSecret(&stable_device_secret) ||
@@ -271,6 +314,13 @@ bool ProvisionDeviceStateHandler::GenerateStableDeviceSecret(
 
   *stable_device_secret = base::HexEncode(buffer, kStableDeviceSecretSize);
   return true;
+}
+
+void ProvisionDeviceStateHandler::Reboot() {
+  LOG(INFO) << "Rebooting after updating configs.";
+  if (!power_manager_client_->Restart()) {
+    LOG(ERROR) << "Failed to reboot";
+  }
 }
 
 }  // namespace rmad

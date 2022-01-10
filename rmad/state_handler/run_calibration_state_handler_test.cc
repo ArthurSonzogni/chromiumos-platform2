@@ -304,7 +304,80 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_Success) {
   RmadState state = handler->GetState();
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
+  EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
+  handler->CleanUpState();
+}
+
+TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_SuccessKeepDeviceOpen) {
+  EXPECT_TRUE(json_store_->SetValue(kKeepDeviceOpen, true));
+
+  const std::map<std::string, std::map<std::string, std::string>>
+      predefined_calibration_map = {{kBaseInstructionName,
+                                     {{kBaseAccName, kStatusCompleteName},
+                                      {kBaseGyroName, kStatusCompleteName}}},
+                                    {kLidInstructionName,
+                                     {{kLidAccName, kStatusWaitingName},
+                                      {kLidGyroName, kStatusWaitingName}}}};
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
+
+  auto handler = CreateStateHandler(false, {}, true, {0.5, 1.0}, false, {},
+                                    true, {0.5, 1.0});
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  task_environment_.FastForwardBy(RunCalibrationStateHandler::kPollInterval);
+  EXPECT_EQ(progress_history_.size(), 2);
+  EXPECT_EQ(progress_history_[0].progress(), 0.5);
+  EXPECT_EQ(progress_history_[0].status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
+  EXPECT_EQ(progress_history_[0].component(), RMAD_COMPONENT_LID_ACCELEROMETER);
+  EXPECT_EQ(progress_history_[1].progress(), 0.5);
+  EXPECT_EQ(progress_history_[1].status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
+  EXPECT_EQ(progress_history_[1].component(), RMAD_COMPONENT_LID_GYROSCOPE);
+
+  std::map<std::string, std::map<std::string, std::string>>
+      current_calibration_map;
+  EXPECT_TRUE(json_store_->GetValue(kCalibrationMap, &current_calibration_map));
+  const std::map<std::string, std::map<std::string, std::string>>
+      target_calibration_map_one_interval = {
+          {kBaseInstructionName,
+           {{kBaseAccName, kStatusCompleteName},
+            {kBaseGyroName, kStatusCompleteName}}},
+          {kLidInstructionName,
+           {{kLidAccName, kStatusInProgressName},
+            {kLidGyroName, kStatusInProgressName}}}};
+  EXPECT_EQ(current_calibration_map, target_calibration_map_one_interval);
+
+  task_environment_.FastForwardBy(RunCalibrationStateHandler::kPollInterval);
+  EXPECT_EQ(progress_history_.size(), 4);
+  EXPECT_EQ(progress_history_[2].progress(), 1.0);
+  EXPECT_EQ(progress_history_[2].status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE);
+  EXPECT_EQ(progress_history_[2].component(), RMAD_COMPONENT_LID_ACCELEROMETER);
+  EXPECT_EQ(progress_history_[3].progress(), 1.0);
+  EXPECT_EQ(progress_history_[3].status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE);
+  EXPECT_EQ(progress_history_[3].component(), RMAD_COMPONENT_LID_GYROSCOPE);
+  EXPECT_TRUE(json_store_->GetValue(kCalibrationMap, &current_calibration_map));
+
+  const std::map<std::string, std::map<std::string, std::string>>
+      target_calibration_map = {{kBaseInstructionName,
+                                 {{kBaseAccName, kStatusCompleteName},
+                                  {kBaseGyroName, kStatusCompleteName}}},
+                                {kLidInstructionName,
+                                 {{kLidAccName, kStatusCompleteName},
+                                  {kLidGyroName, kStatusCompleteName}}}};
+  EXPECT_EQ(current_calibration_map, target_calibration_map);
+
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ(overall_status_history_.size(), 1);
+  EXPECT_EQ(overall_status_history_[0], RMAD_CALIBRATION_OVERALL_COMPLETE);
+
+  RmadState state = handler->GetState();
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpEnablePhysical);
   handler->CleanUpState();
 }
 
@@ -457,7 +530,49 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_NoNeedCalibration) {
   RmadState state = handler->GetState();
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
+  EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
+  handler->CleanUpState();
+}
+
+TEST_F(RunCalibrationStateHandlerTest,
+       GetNextStateCase_NoNeedCalibrationKeepDeviceOpen) {
+  EXPECT_TRUE(json_store_->SetValue(kKeepDeviceOpen, true));
+
+  const std::map<std::string, std::map<std::string, std::string>>
+      predefined_calibration_map = {{kBaseInstructionName,
+                                     {{kBaseAccName, kStatusCompleteName},
+                                      {kBaseGyroName, kStatusSkipName}}},
+                                    {kLidInstructionName,
+                                     {{kLidAccName, kStatusCompleteName},
+                                      {kLidGyroName, kStatusCompleteName}}}};
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
+
+  auto handler = CreateStateHandler(false, {}, false, {}, false, {}, false, {});
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ(progress_history_.size(), 0);
+
+  std::map<std::string, std::map<std::string, std::string>>
+      current_calibration_map;
+  EXPECT_TRUE(json_store_->GetValue(kCalibrationMap, &current_calibration_map));
+  const std::map<std::string, std::map<std::string, std::string>>
+      target_calibration_map = {{kBaseInstructionName,
+                                 {{kBaseAccName, kStatusCompleteName},
+                                  {kBaseGyroName, kStatusSkipName}}},
+                                {kLidInstructionName,
+                                 {{kLidAccName, kStatusCompleteName},
+                                  {kLidGyroName, kStatusCompleteName}}}};
+  EXPECT_EQ(current_calibration_map, target_calibration_map);
+
+  EXPECT_EQ(overall_status_history_.size(), 1);
+  EXPECT_EQ(overall_status_history_[0], RMAD_CALIBRATION_OVERALL_COMPLETE);
+
+  RmadState state = handler->GetState();
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpEnablePhysical);
   handler->CleanUpState();
 }
 

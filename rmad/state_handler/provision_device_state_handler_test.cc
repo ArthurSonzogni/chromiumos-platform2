@@ -17,6 +17,7 @@
 #include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/state_handler/state_handler_test_common.h"
+#include "rmad/system/mock_power_manager_client.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cbi_utils.h"
 #include "rmad/utils/mock_cros_config_utils.h"
@@ -24,6 +25,7 @@
 #include "rmad/utils/mock_vpd_utils.h"
 
 using testing::_;
+using testing::Assign;
 using testing::DoAll;
 using testing::Invoke;
 using testing::NiceMock;
@@ -57,6 +59,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
 
   scoped_refptr<ProvisionDeviceStateHandler> CreateStateHandler(
       bool get_model_name = true,
+      bool get_ssfc = true,
       bool need_update_ssfc = true,
       bool set_ssfc = true,
       bool set_stable_dev_secret = true,
@@ -83,7 +86,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     if (need_update_ssfc) {
       ON_CALL(*ssfc_utils, GetSSFC(_, _, _))
           .WillByDefault(DoAll(SetArgPointee<1>(true),
-                               SetArgPointee<2>(kTestSSFC), Return(true)));
+                               SetArgPointee<2>(kTestSSFC), Return(get_ssfc)));
       ON_CALL(*cbi_utils, SetSSFC(_)).WillByDefault(Return(set_ssfc));
     } else {
       ON_CALL(*ssfc_utils, GetSSFC(_, _, _))
@@ -95,10 +98,18 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
         .WillByDefault(Return(set_stable_dev_secret));
     ON_CALL(*vpd_utils, FlushOutRoVpdCache()).WillByDefault(Return(flush_vpd));
 
+    // Mock |PowerManagerClient|.
+    reboot_called_ = false;
+    auto mock_power_manager_client =
+        std::make_unique<NiceMock<MockPowerManagerClient>>();
+    ON_CALL(*mock_power_manager_client, Restart())
+        .WillByDefault(DoAll(Assign(&reboot_called_, true), Return(true)));
+
     // Fake |HardwareVerifierUtils|.
     auto handler = base::MakeRefCounted<ProvisionDeviceStateHandler>(
-        json_store_, std::move(cbi_utils), std::move(cros_config_utils),
-        std::move(ssfc_utils), std::move(vpd_utils));
+        json_store_, std::move(mock_power_manager_client), std::move(cbi_utils),
+        std::move(cros_config_utils), std::move(ssfc_utils),
+        std::move(vpd_utils));
     auto callback =
         std::make_unique<base::RepeatingCallback<bool(const ProvisionStatus&)>>(
             base::BindRepeating(&SignalSender::SendProvisionProgressSignal,
@@ -116,6 +127,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
  protected:
   NiceMock<SignalSender> signal_sender_;
   std::vector<ProvisionStatus> status_hitory_;
+  bool reboot_called_;
 
   // Variables for TaskRunner.
   base::test::TaskEnvironment task_environment_{
@@ -161,17 +173,28 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Success) {
   state.set_allocated_provision_device(provision.release());
 
   auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
+  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+  task_environment_.FastForwardBy(ProvisionDeviceStateHandler::kRebootDelay);
+  EXPECT_EQ(reboot_called_, true);
+  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
 
   RunHandlerTaskRunner(handler);
 }
 
-TEST_F(ProvisionDeviceStateHandlerTest,
-       GetNextStateCase_KeepDeviceOpenSuccess) {
+TEST_F(ProvisionDeviceStateHandlerTest, TryGetNextStateCaseAtBoot_Failed) {
   auto handler = CreateStateHandler();
   json_store_->SetValue(kSameOwner, false);
-  json_store_->SetValue(kKeepDeviceOpen, true);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  auto [error, state] = handler->TryGetNextStateCaseAtBoot();
+  EXPECT_EQ(error, RMAD_ERROR_TRANSITION_FAILED);
+  EXPECT_EQ(state, RmadState::StateCase::kProvisionDevice);
+
+  RunHandlerTaskRunner(handler);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest, TryGetNextStateCaseAtBoot_Success) {
+  auto handler = CreateStateHandler();
+  json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
@@ -185,26 +208,17 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   state.set_allocated_provision_device(provision.release());
 
   auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kWpEnablePhysical);
-
-  RunHandlerTaskRunner(handler);
-}
-
-TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Wait) {
-  auto handler = CreateStateHandler();
-  json_store_->SetValue(kSameOwner, false);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  EXPECT_EQ(status_hitory_.size(), 0);
-
-  auto provision = std::make_unique<ProvisionDeviceState>();
-  provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE);
-  RmadState state;
-  state.set_allocated_provision_device(provision.release());
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_WAIT);
+  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+  task_environment_.FastForwardBy(ProvisionDeviceStateHandler::kRebootDelay);
+  EXPECT_EQ(reboot_called_, true);
   EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
+
+  auto handler_after_reboot = CreateStateHandler();
+  EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
+  auto [error_try_boot, state_case_try_boot] =
+      handler_after_reboot->TryGetNextStateCaseAtBoot();
+  EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kSetupCalibration);
 
   RunHandlerTaskRunner(handler);
 }
@@ -262,7 +276,7 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Retry) {
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_SetStableDeviceSecretFailedBlocking) {
-  auto handler = CreateStateHandler(true, true, true, false, true);
+  auto handler = CreateStateHandler(true, true, true, true, false, true);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
@@ -276,7 +290,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_GetModelNameFailedBlocking) {
-  auto handler = CreateStateHandler(false, true, true, true, true);
+  auto handler = CreateStateHandler(false, true, true, true, true, true);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
@@ -290,7 +304,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_SsfcNotRequiredSuccess) {
-  auto handler = CreateStateHandler(true, false, true, true, true);
+  auto handler = CreateStateHandler(true, true, false, true, true, true);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
@@ -305,15 +319,36 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   state.set_allocated_provision_device(provision.release());
 
   auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
+  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+  task_environment_.FastForwardBy(ProvisionDeviceStateHandler::kRebootDelay);
+  EXPECT_EQ(reboot_called_, true);
+  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
+
+  auto handler_after_reboot = CreateStateHandler();
+  EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
+  auto [error_try_boot, state_case_try_boot] =
+      handler_after_reboot->TryGetNextStateCaseAtBoot();
+  EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kSetupCalibration);
 
   RunHandlerTaskRunner(handler);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_GetSsfcFailedBlocking) {
+  auto handler = CreateStateHandler(true, false, true, true, true, true);
+  json_store_->SetValue(kSameOwner, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  task_environment_.FastForwardBy(
+      ProvisionDeviceStateHandler::kReportStatusInterval);
+  EXPECT_GE(status_hitory_.size(), 1);
+  EXPECT_EQ(status_hitory_.back().status(),
+            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_SetSsfcFailedBlocking) {
-  auto handler = CreateStateHandler(true, true, false, true, true);
+  auto handler = CreateStateHandler(true, true, true, false, true, true);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
@@ -327,7 +362,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_VpdFlushFailedBlocking) {
-  auto handler = CreateStateHandler(true, true, true, true, false);
+  auto handler = CreateStateHandler(true, true, true, true, true, false);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(

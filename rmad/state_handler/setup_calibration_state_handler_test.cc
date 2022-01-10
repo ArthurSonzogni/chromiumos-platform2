@@ -204,7 +204,32 @@ TEST_F(SetupCalibrationStateHandlerTest,
   RmadState state = handler->GetState();
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
+  EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
+}
+
+TEST_F(SetupCalibrationStateHandlerTest,
+       GetNextStateCase_SuccessNoNeedCalibrationKeepDeviceOpen) {
+  EXPECT_TRUE(json_store_->SetValue(kKeepDeviceOpen, true));
+
+  const std::map<std::string, std::map<std::string, std::string>>
+      predefined_calibration_map = {{kBaseInstructionName,
+                                     {{kBaseAccName, kStatusCompleteName},
+                                      {kBaseGyroName, kStatusCompleteName}}},
+                                    {kLidInstructionName,
+                                     {{kLidAccName, kStatusSkipName},
+                                      {kLidGyroName, kStatusCompleteName}}}};
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
+
+  auto handler = CreateStateHandler(
+      {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
+       RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE});
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  RmadState state = handler->GetState();
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpEnablePhysical);
 }
 
 TEST_F(SetupCalibrationStateHandlerTest, GetNextStateCase_SuccessNoSensor) {
@@ -214,7 +239,20 @@ TEST_F(SetupCalibrationStateHandlerTest, GetNextStateCase_SuccessNoSensor) {
   RmadState state = handler->GetState();
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
+  EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
+}
+
+TEST_F(SetupCalibrationStateHandlerTest,
+       GetNextStateCase_SuccessNoSensorKeepDeviceOpen) {
+  EXPECT_TRUE(json_store_->SetValue(kKeepDeviceOpen, true));
+
+  auto handler = CreateStateHandler({});
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  RmadState state = handler->GetState();
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpEnablePhysical);
 }
 
 TEST_F(SetupCalibrationStateHandlerTest, GetNextStateCase_SuccessNeedToCheck) {
