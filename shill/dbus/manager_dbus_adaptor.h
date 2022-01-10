@@ -115,6 +115,9 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
   bool ListDebugTags(brillo::ErrorPtr* error, std::string* tags) override;
   bool GetNetworksForGeolocation(brillo::ErrorPtr* error,
                                  brillo::VariantDictionary* networks) override;
+  bool ScanAndConnectToBestServices(brillo::ErrorPtr* error) override;
+  // TODO(b:206907629): Remove the D-Bus method when chrome is not calling it
+  // anymore.
   bool ConnectToBestServices(brillo::ErrorPtr* error) override;
   bool CreateConnectivityReport(brillo::ErrorPtr* error) override;
   bool ClaimInterface(brillo::ErrorPtr* error,

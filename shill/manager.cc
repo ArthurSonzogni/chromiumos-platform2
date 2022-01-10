@@ -2199,6 +2199,17 @@ void Manager::AutoConnect() {
   }
 }
 
+void Manager::ScanAndConnectToBestServices(Error* error) {
+#if !defined(DISABLE_WIFI)
+  DeviceRefPtr device = GetEnabledDeviceWithTechnology(Technology::kWifi);
+  if (device) {
+    static_cast<WiFi*>(device.get())->EnsureScanAndConnectToBestService(error);
+    return;
+  }
+#endif  // DISABLE_WIFI
+  ConnectToBestServices(error);
+}
+
 void Manager::ConnectToBestServices(Error* /*error*/) {
   dispatcher_->PostTask(FROM_HERE,
                         base::BindOnce(&Manager::ConnectToBestServicesTask,

@@ -211,7 +211,18 @@ class Manager {
   // Called by Device when its geolocation data has been updated.
   virtual void OnDeviceGeolocationInfoUpdated(const DeviceRefPtr& device);
 
-  void ConnectToBestServices(Error* error);
+  // Force a wifi scan if applicable, and connect to the best available
+  // services.
+  // Called by chrome when a user profile is loaded and the user's
+  // policy-provided networks are configured.
+  void ScanAndConnectToBestServices(Error* error);
+
+  // Connects to the highest priority service for each available technology.
+  // Note: ConnectToBestServices should only be called from
+  // ScanAndConnectToBestServices.
+  // All other calls should be considered deprecated.  This method should be
+  // removed eventually (b:206907629).
+  virtual void ConnectToBestServices(Error* error);
 
   // Method to create connectivity report for connected services.
   void CreateConnectivityReport(Error* error);

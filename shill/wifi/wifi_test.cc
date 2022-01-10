@@ -1215,6 +1215,18 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
   void OnGetReg(const Nl80211Message& msg) { wifi_->OnGetReg(msg); }
 
+  void EnsureScanAndConnectToBestService() {
+    wifi_->EnsureScanAndConnectToBestService(nullptr);
+  }
+
+  void HandleEnsuredScan(WiFi::ScanState old_state,
+                         WiFi::EnsuredScanState ensured_scan_state,
+                         WiFi::EnsuredScanState expected_ensured_scan_state) {
+    wifi_->ensured_scan_state_ = ensured_scan_state;
+    wifi_->HandleEnsuredScan(old_state);
+    EXPECT_EQ(expected_ensured_scan_state, wifi_->ensured_scan_state_);
+  }
+
   MOCK_METHOD(void, SuspendCallback, (const Error&));
 
   // Reporting of MaxScanSSID capability can (in theory) behave in three ways:
@@ -1814,6 +1826,263 @@ TEST_F(WiFiMainTest, ScanCompleted) {
   // BSSes with empty SSIDs should be filtered.
   ReportBSS(RpcIdentifier("bss2"), std::string(), "00:00:00:00:00:02", 3, 0,
             kNetworkModeInfrastructure);
+}
+
+TEST_F(WiFiMainTest, EnsuredScan) {
+  // Setup
+  EXPECT_CALL(*adaptor_, EmitBoolChanged(kPoweredProperty, _))
+      .Times(AnyNumber());
+  ExpectScanStart(WiFi::kScanMethodFull, false);
+  StartWiFi();
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Handle the initial scan from setup
+  ExpectScanStop();
+  ReportScanDone();
+  event_dispatcher_->DispatchPendingEvents();
+  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
+
+  // Ensure the Scan
+  ExpectScanStart(WiFi::kScanMethodFull, false);
+  EnsureScanAndConnectToBestService();
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Verify the ensured scan
+  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodFull);
+  ExpectScanStop();
+  ReportScanDone();
+
+  // Verify that ConnectToBestServices is called
+  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  event_dispatcher_->DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, QueueEnsuredScan) {
+  // Setup
+  EXPECT_CALL(*adaptor_, EmitBoolChanged(kPoweredProperty, _))
+      .Times(AnyNumber());
+  ExpectScanStart(WiFi::kScanMethodFull, false);
+  StartWiFi();
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Queue the ensured scan
+  ExpectScanStart(WiFi::kScanMethodFull, false);
+  EnsureScanAndConnectToBestService();
+  // Handle the initial scan
+  ExpectScanStop();
+  ReportScanDone();
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Verify the ensured scan
+  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodFull);
+  ExpectScanStop();
+  ReportScanDone();
+
+  // Verify that ConnectToBestServices is called
+  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  event_dispatcher_->DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, QueuedEnsuredScan) {
+  // Setup
+  EXPECT_CALL(*adaptor_, EmitBoolChanged(kPoweredProperty, _))
+      .Times(AnyNumber());
+  ExpectScanStart(WiFi::kScanMethodFull, false);
+  StartWiFi();
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Handle the initial scan from setup
+  ExpectScanStop();
+  ReportScanDone();
+  event_dispatcher_->DispatchPendingEvents();
+  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
+
+  // Queue the ensured scan
+  ExpectScanStart(WiFi::kScanMethodFull, false);
+  HandleEnsuredScan(WiFi::kScanScanning, WiFi::EnsuredScanState::kWaiting,
+                    WiFi::EnsuredScanState::kScanning);
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Verify the ensured scan
+  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodFull);
+  ExpectScanStop();
+  ReportScanDone();
+
+  // Verify that ConnectToBestServices is called
+  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  event_dispatcher_->DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, QueuedEnsuredScanBackgroundScanFinished) {
+  // Setup
+  EXPECT_CALL(*adaptor_, EmitBoolChanged(kPoweredProperty, _))
+      .Times(AnyNumber());
+  ExpectScanStart(WiFi::kScanMethodFull, false);
+  StartWiFi();
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Handle the initial scan from setup
+  ExpectScanStop();
+  ReportScanDone();
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Verify that ConnectToBestServices is called
+  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  // Simulate an idle radio coming from a background scan when a scan had been
+  // queued
+  HandleEnsuredScan(WiFi::kScanBackgroundScanning,
+                    WiFi::EnsuredScanState::kScanning,
+                    WiFi::EnsuredScanState::kIdle);
+  // Verify that there wasn't an extra scan
+  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
+}
+
+TEST_F(WiFiMainTest, QueuedEnsuredScanFoundNothing) {
+  // Setup
+  EXPECT_CALL(*adaptor_, EmitBoolChanged(kPoweredProperty, _))
+      .Times(AnyNumber());
+  ExpectScanStart(WiFi::kScanMethodFull, false);
+  StartWiFi();
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Handle the initial scan from setup
+  ExpectScanStop();
+  ReportScanDone();
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Verify that ConnectToBestServices is called
+  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  // Simulate a scan completing with nothing found when a scan had been queued
+  HandleEnsuredScan(WiFi::kScanFoundNothing, WiFi::EnsuredScanState::kScanning,
+                    WiFi::EnsuredScanState::kIdle);
+  // Verify there wasn't an extra scan
+  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
+}
+
+TEST_F(WiFiMainTest, QueuedEnsuredScanInterruptedByConnect) {
+  // Setup
+  EXPECT_CALL(*adaptor_, EmitBoolChanged(kPoweredProperty, _))
+      .Times(AnyNumber());
+  ExpectScanStart(WiFi::kScanMethodFull, false);
+  StartWiFi();
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Handle the initial scan from setup
+  ExpectScanStop();
+  ReportScanDone();
+  event_dispatcher_->DispatchPendingEvents();
+  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
+
+  // Queue the ensured scan, simulating a scan already queued but with an
+  // interruption from an unexpected connected state
+  ExpectScanStart(WiFi::kScanMethodFull, false);
+  HandleEnsuredScan(WiFi::kScanConnected, WiFi::EnsuredScanState::kScanning,
+                    WiFi::EnsuredScanState::kScanning);
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Verify the ensured scan
+  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodFull);
+  ExpectScanStop();
+  ReportScanDone();
+
+  // Verify that ConnectToBestServices is called
+  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  event_dispatcher_->DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, QueuedEnsuredScanInterruptedByConnecting) {
+  // Setup
+  EXPECT_CALL(*adaptor_, EmitBoolChanged(kPoweredProperty, _))
+      .Times(AnyNumber());
+  ExpectScanStart(WiFi::kScanMethodFull, false);
+  StartWiFi();
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Handle the initial scan from setup
+  ExpectScanStop();
+  ReportScanDone();
+  event_dispatcher_->DispatchPendingEvents();
+  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
+
+  // Queue the ensured scan, simulating a scan already queued but with an
+  // interruption from an unexpected connecting state
+  ExpectScanStart(WiFi::kScanMethodFull, false);
+  HandleEnsuredScan(WiFi::kScanConnecting, WiFi::EnsuredScanState::kScanning,
+                    WiFi::EnsuredScanState::kScanning);
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Verify the ensured scan
+  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodFull);
+  ExpectScanStop();
+  ReportScanDone();
+
+  // Verify that ConnectToBestServices is called
+  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  event_dispatcher_->DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, QueuedEnsuredScanInterruptedByTransitionToConnecting) {
+  // Setup
+  EXPECT_CALL(*adaptor_, EmitBoolChanged(kPoweredProperty, _))
+      .Times(AnyNumber());
+  ExpectScanStart(WiFi::kScanMethodFull, false);
+  StartWiFi();
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Handle the initial scan from setup
+  ExpectScanStop();
+  ReportScanDone();
+  event_dispatcher_->DispatchPendingEvents();
+  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
+
+  // Queue the ensured scan, simulating a scan already queued but with an
+  // interruption from an unexpected transition to connecting state
+  ExpectScanStart(WiFi::kScanMethodFull, false);
+  HandleEnsuredScan(WiFi::kScanTransitionToConnecting,
+                    WiFi::EnsuredScanState::kScanning,
+                    WiFi::EnsuredScanState::kScanning);
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Verify the ensured scan
+  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodFull);
+  ExpectScanStop();
+  ReportScanDone();
+
+  // Verify that ConnectToBestServices is called
+  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  event_dispatcher_->DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, QueuedEnsuredScanInterruptedByUnexpectedIdleState) {
+  // Setup
+  EXPECT_CALL(*adaptor_, EmitBoolChanged(kPoweredProperty, _))
+      .Times(AnyNumber());
+  ExpectScanStart(WiFi::kScanMethodFull, false);
+  StartWiFi();
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Handle the initial scan from setup
+  ExpectScanStop();
+  ReportScanDone();
+  event_dispatcher_->DispatchPendingEvents();
+  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
+
+  // Queue the ensured scan, simulating a scan already queued but with an
+  // interruption from an unexpected idle state
+  ExpectScanStart(WiFi::kScanMethodFull, false);
+  HandleEnsuredScan(WiFi::kScanTransitionToConnecting,
+                    WiFi::EnsuredScanState::kScanning,
+                    WiFi::EnsuredScanState::kScanning);
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Verify the ensured scan
+  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodFull);
+  ExpectScanStop();
+  ReportScanDone();
+
+  // Verify that ConnectToBestServices is called
+  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  event_dispatcher_->DispatchPendingEvents();
 }
 
 TEST_F(WiFiMainTest, LoneBSSRemovedWhileConnected) {

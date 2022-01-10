@@ -238,6 +238,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Removes a set of Passpoint credentials from WPA supplicant.
   bool RemoveCred(const PasspointCredentialsRefPtr& credentials);
 
+  // Ensures a scan, then calls the manager's ConnectToBestServices method.
+  void EnsureScanAndConnectToBestService(Error* error);
+
  private:
   enum ScanMethod { kScanMethodNone, kScanMethodFull };
   enum ScanState {
@@ -248,6 +251,13 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
     kScanConnecting,
     kScanConnected,
     kScanFoundNothing
+  };
+
+  // Represents the state of a "ensured" queued scan
+  enum class EnsuredScanState {
+    kIdle,     // No queued scan
+    kWaiting,  // Queued scan
+    kScanning  // Queued scan in progress
   };
 
   // Result from a BSSAdded or BSSRemoved event.
@@ -313,6 +323,26 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
   FRIEND_TEST(WiFiMainTest, NoScansWhileConnecting);  // ScanState
   FRIEND_TEST(WiFiMainTest, PendingScanEvents);       // EndpointMap
+  FRIEND_TEST(WiFiMainTest, EnsuredScan);             // ScanState, ScanMethod
+  FRIEND_TEST(WiFiMainTest, QueueEnsuredScan);        // ScanState, ScanMethod
+  FRIEND_TEST(WiFiMainTest, QueuedEnsuredScan);       // ScanState, ScanMethod
+  FRIEND_TEST(WiFiMainTest,
+              QueuedEnsuredScanFoundNothing);  // ScanState, ScanMethod
+  FRIEND_TEST(
+      WiFiMainTest,
+      QueuedEnsuredScanBackgroundScanFinished);  // ScanState, ScanMethod
+  FRIEND_TEST(WiFiMainTest,
+              QueuedEnsuredScanInterruptedByConnect);  // ScanState, ScanMethod
+  FRIEND_TEST(
+      WiFiMainTest,
+      QueuedEnsuredScanInterruptedByConnecting);  // ScanState, ScanMethod
+  FRIEND_TEST(
+      WiFiMainTest,
+      QueuedEnsuredScanInterruptedByTransitionToConnecting);  // ScanState,
+                                                              // ScanMethod
+  FRIEND_TEST(WiFiMainTest,
+              QueuedEnsuredScanInterruptedByUnexpectedIdleState);  // ScanState,
+                                                                   // ScanMethod
   FRIEND_TEST(WiFiMainTest, ScanRejected);            // ScanState
   FRIEND_TEST(WiFiMainTest, ScanResults);             // EndpointMap
   FRIEND_TEST(WiFiMainTest, ScanStateHandleDisconnect);  // ScanState
@@ -438,11 +468,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void ScanDoneTask();
   void ScanFailedTask();
   // UpdateScanStateAfterScanDone is spawned as a task from ScanDoneTask in
-  // order to guarantee that it is run after the start of any connections that
+  // order to ensure that it is run after the start of any connections that
   // result from a scan.  This works because supplicant sends all BSSAdded
   // signals to shill before it sends a ScanDone signal.  The code that
   // handles those signals launch tasks such that the tasks have the following
-  // dependencies (an arrow from X->Y indicates X is guaranteed to run before
+  // dependencies (an arrow from X->Y indicates X is ensured to run before
   // Y):
   //
   // [BSSAdded]-->[BssAddedTask]-->[SortServiceTask (calls ConnectTo)]
@@ -587,6 +617,12 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void SetScanState(ScanState new_state,
                     ScanMethod new_method,
                     const char* reason);
+
+  // Handles the radio state transitions required to make a ensured scan.
+  // Note: This is an internal method designed only to be called when the radio
+  // is idle.  Calling this from contexts in which the radio is not idle will
+  // have unexpected behavior (the scan may not actually occur).
+  void HandleEnsuredScan(ScanState old_state);
   void ReportScanResultToUma(ScanState state, ScanMethod method);
   static std::string ScanStateString(ScanState state, ScanMethod type);
 
@@ -785,6 +821,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   ScanState scan_state_;
   ScanMethod scan_method_;
+  EnsuredScanState ensured_scan_state_ = EnsuredScanState::kIdle;
 
   // Indicates if the last scan skipped the broadcast probe.
   bool broadcast_probe_was_skipped_;

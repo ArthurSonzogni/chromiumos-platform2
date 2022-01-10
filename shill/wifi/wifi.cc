@@ -393,6 +393,17 @@ bool WiFi::RemoveCred(const PasspointCredentialsRefPtr& credentials) {
   return true;
 }
 
+void WiFi::EnsureScanAndConnectToBestService(Error* error) {
+  // If the radio is currently idle, start a scan.  Otherwise, wait until the
+  // radio becomes idle.
+  if (scan_state_ == kScanIdle) {
+    ensured_scan_state_ = EnsuredScanState::kScanning;
+    Scan(error, "Starting ensured scan.");
+  } else {
+    ensured_scan_state_ = EnsuredScanState::kWaiting;
+  }
+}
+
 void WiFi::AddPendingScanResult(const RpcIdentifier& path,
                                 const KeyValueStore& properties,
                                 bool is_removal) {
@@ -3264,6 +3275,7 @@ void WiFi::SetScanState(ScanState new_state,
     case kScanIdle:
       metrics()->ResetScanTimer(interface_index());
       metrics()->ResetConnectTimer(interface_index());
+      HandleEnsuredScan(old_state);
       break;
     case kScanScanning:  // FALLTHROUGH
     case kScanBackgroundScanning:
@@ -3293,6 +3305,42 @@ void WiFi::SetScanState(ScanState new_state,
     // Now that we've logged a terminal state, let's call ourselves to
     // transition to the idle state.
     SetScanState(kScanIdle, kScanMethodNone, reason);
+  }
+}
+
+void WiFi::HandleEnsuredScan(ScanState old_scan_state) {
+  switch (ensured_scan_state_) {
+    case EnsuredScanState::kWaiting:
+      ensured_scan_state_ = EnsuredScanState::kScanning;
+      // This starts a scan in the event loop, allowing SetScanState
+      // to complete before proceeding.
+      Scan(nullptr, "Previous scan complete. Starting ensured scan.");
+      break;
+    case EnsuredScanState::kScanning:
+      // If the last state was a scanning-related state, the scan actually
+      // executed.  Otherwise there was a race condition for the radio, and
+      // a new scan should be started.
+      switch (old_scan_state) {
+        case kScanScanning:
+        case kScanBackgroundScanning:
+        case kScanFoundNothing:
+          ensured_scan_state_ = EnsuredScanState::kIdle;
+          // This connects to best services in the event loop, allowing
+          // SetScanState to complete before proceeding.
+          manager()->ConnectToBestServices(nullptr);
+          break;
+        case kScanTransitionToConnecting:
+        case kScanConnecting:
+        case kScanConnected:
+        case kScanIdle:
+          // This starts a scan in the event loop, allowing SetScanState
+          // to complete before proceeding.
+          Scan(nullptr, "Ensured scan didn't occur. Requesting another scan.");
+          break;
+      }
+      break;
+    case EnsuredScanState::kIdle:
+      break;
   }
 }
 

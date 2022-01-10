@@ -366,8 +366,25 @@ Methods		dict GetProperties()
 			rates are specified in kbits/s. If throttling already
 			exists, this will override current throttling settings.
 
+		void ScanAndConnectToBestServices()
+
+			Forces a WiFi scan if a WiFi device is available as a
+			way of ensuring that networks recently configured can be
+			found. Then connects to the highest priority service
+			available for each technology as determined by sorting
+			all services independent of their current connectivity
+			state. Shill does not normally disrupt an active
+			connection for a given technology, even when a higher
+			priority network becomes available for that technology.
+			Calling this method will trigger a switch to higher
+			priority services for each available technology.
+			Note: The scan applies only to a WiFi device, however
+			connecting to the highest priority service will happen
+			for all technologies.
+
 		void ConnectToBestServices()
 
+			Deprecated: Use ScanAndConnectToBestServices instead.
 			For each technology present, connect to the "best"
 			service available, as determined by sorting all
 			services independent of their current connectivity
