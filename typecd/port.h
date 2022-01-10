@@ -153,6 +153,27 @@ class Port {
   FRIEND_TEST(PortTest, TestUSB4ToTBT);
   FRIEND_TEST(PortTest, TestUSB4ToDPAltMode);
 
+  // Helper functions from test_util for defining devices used in unit tests.
+  friend void AddUnbrandedUSB2Cable(Port& port);
+  friend void AddNekteckUSB2PassiveCable(Port& port);
+  friend void AddHongjuUSB3p1Gen1Cable(Port& port);
+  friend void AddHPUSB3p2Gen1Cable(Port& port);
+  friend void AddAnkerUSB3p2Gen2Cable(Port& port);
+  friend void AddUnbrandedTBT3Cable(Port& port);
+  friend void AddBelkinTBT3PassiveCable(Port& port);
+  friend void AddBelkinTBT3ActiveCable(Port& port);
+  friend void AddAppleTBT3ProCable(Port& port);
+  friend void AddCalDigitTBT4Cable(Port& port);
+  friend void AddStartech40GbpsCable(Port& port);
+  friend void AddCableMattersDock(Port& port);
+  friend void AddDellWD19TBDock(Port& port);
+  friend void AddStartechDock(Port& port);
+  friend void AddStartechTB3DK2DPWDock(Port& port);
+  friend void AddThinkpadTBT3Dock(Port& port);
+  friend void AddIntelUSB4GatkexCreekDock(Port& port);
+  friend void AddOWCTBT4Dock(Port& port);
+  friend void AddWimaxitDisplay(Port& port);
+
   bool IsPartnerAltModePresent(uint16_t altmode_sid);
 
   bool IsCableAltModePresent(uint16_t altmode_sid);
