@@ -75,7 +75,7 @@ class InodeTable {
   void ForgetStat(ino_t ino);
 
  private:
-  // Returns a new ino number.
+  // Creates a new ino number.
   ino_t CreateIno();
 
   // Inserts |node| into the node table.
@@ -91,7 +91,7 @@ class InodeTable {
   };
 
  private:
-  // ino number allocator.
+  // ino number creator.
   fuse_ino_t ino_;
 
   // Map ino to node.
