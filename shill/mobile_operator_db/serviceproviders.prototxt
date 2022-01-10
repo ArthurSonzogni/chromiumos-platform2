@@ -896,6 +896,7 @@ mno {
     mccmnc : "50501"
     mobile_apn {
       apn : "telstra.wap"
+      ip_type : IPV6
     }
     mobile_apn {
       apn : "telstra.datapack"
@@ -909,6 +910,7 @@ mno {
       localized_name {
         name : "Telstra (Next G)"
       }
+      ip_type : IPV4V6
       is_attach_apn : true
     }
     mobile_apn {
