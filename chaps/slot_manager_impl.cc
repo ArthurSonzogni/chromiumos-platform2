@@ -719,6 +719,14 @@ bool SlotManagerImpl::LoadSoftwareToken(const SecureBlob& auth_data,
       Sha256(SecureBlob::Combine(auth_data, SecureBlob(kKeyPurposeMac)));
   string encrypted_root_key;
   string saved_mac;
+
+  string key_blob;
+  if (object_pool->GetInternalBlob(kEncryptedAuthKey, &key_blob)) {
+    LOG(ERROR) << "Trying to load software token with the hardware token "
+                  "existing, ignoring the request.";
+    return false;
+  }
+
   if (!object_pool->GetInternalBlob(kEncryptedRootKey, &encrypted_root_key) ||
       !object_pool->GetInternalBlob(kAuthDataHash, &saved_mac)) {
     return InitializeSoftwareToken(auth_data, object_pool);
