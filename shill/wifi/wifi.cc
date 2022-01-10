@@ -2883,9 +2883,9 @@ void WiFi::ConnectToSupplicant() {
     // Interface might've already been created, attempt to retrieve it.
     if (!supplicant_process_proxy()->GetInterface(
             link_name(), &supplicant_interface_path_)) {
-      LOG(ERROR) << __func__
-                 << ": Failed to create interface with supplicant, attempt "
-                 << supplicant_connect_attempts_;
+      LOG(WARNING) << __func__
+                   << ": Failed to create interface with supplicant, attempt "
+                   << supplicant_connect_attempts_;
 
       // Interface could not be created at the moment. This could be a
       // transient error in trying to bring the interface UP, or it could be a
@@ -2893,7 +2893,8 @@ void WiFi::ConnectToSupplicant() {
       // either we succeed or the device disappears or is disabled, in the hope
       // that the device will recover.
       if (supplicant_connect_attempts_ >= kMaxRetryCreateInterfaceAttempts) {
-        LOG(ERROR) << "Giving up.";
+        LOG(ERROR) << "Failed to create interface with supplicant after "
+                   << supplicant_connect_attempts_ << " attempts. Giving up.";
         SetEnabled(false);
         metrics()->NotifyWiFiSupplicantAbort();
       } else {
