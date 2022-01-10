@@ -238,6 +238,24 @@ TEST_F(FakeTpmManagerClientTest, RoVerification_Unsupported) {
   EXPECT_EQ(ro_verification_status, RoVerificationStatus::UNSUPPORTED);
 }
 
+TEST_F(FakeTpmManagerClientTest, RoVerification_UnsupportedNotTriggered) {
+  WriteRoVerificationStatus("UNSUPPORTED_NOT_TRIGGERED");
+  RoVerificationStatus ro_verification_status;
+  EXPECT_TRUE(fake_tpm_manager_client_->GetRoVerificationStatus(
+      &ro_verification_status));
+  EXPECT_EQ(ro_verification_status,
+            RoVerificationStatus::UNSUPPORTED_NOT_TRIGGERED);
+}
+
+TEST_F(FakeTpmManagerClientTest, RoVerification_UnsupportedTriggered) {
+  WriteRoVerificationStatus("UNSUPPORTED_TRIGGERED");
+  RoVerificationStatus ro_verification_status;
+  EXPECT_TRUE(fake_tpm_manager_client_->GetRoVerificationStatus(
+      &ro_verification_status));
+  EXPECT_EQ(ro_verification_status,
+            RoVerificationStatus::UNSUPPORTED_TRIGGERED);
+}
+
 TEST_F(FakeTpmManagerClientTest, RoVerification_ParseError) {
   WriteRoVerificationStatus("ABCDE");
   RoVerificationStatus ro_verification_status;

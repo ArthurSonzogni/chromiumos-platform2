@@ -29,6 +29,12 @@ bool RoVerificationStatus_Parse(const std::string& str,
   } else if (str == "UNSUPPORTED") {
     *status = rmad::RoVerificationStatus::UNSUPPORTED;
     return true;
+  } else if (str == "UNSUPPORTED_NOT_TRIGGERED") {
+    *status = rmad::RoVerificationStatus::UNSUPPORTED_NOT_TRIGGERED;
+    return true;
+  } else if (str == "UNSUPPORTED_TRIGGERED") {
+    *status = rmad::RoVerificationStatus::UNSUPPORTED_TRIGGERED;
+    return true;
   } else {
     return false;
   }
