@@ -181,3 +181,232 @@ func TestHasSupportedResolutionTest(t *testing.T) {
 		}
 	}
 }
+
+// TestHighestResolutionIsSupportedTest tests that
+// HighestResolutionIsSupportedTest functions correctly.
+func TestHighestResolutionIsSupportedTest(t *testing.T) {
+	tests := []struct {
+		platenCaps     utils.SourceCapabilities
+		adfSimplexCaps utils.SourceCapabilities
+		adfDuplexCaps  utils.SourceCapabilities
+		result         utils.TestResult
+		failures       []utils.FailureType
+	}{
+		{
+			// Should pass: highest resolution is 600 for both resolution
+			// ranges.
+			platenCaps: utils.SourceCapabilities{
+				SettingProfile: utils.SettingProfile{
+					SupportedResolutions: utils.SupportedResolutions{
+						XResolutionRange: utils.ResolutionRange{
+							Min:    75,
+							Max:    600,
+							Normal: 85,
+							Step:   5},
+						YResolutionRange: utils.ResolutionRange{
+							Min:    75,
+							Max:    600,
+							Normal: 85,
+							Step:   5}}}},
+			// Should pass: highest resolution is [300, 300].
+			adfSimplexCaps: utils.SourceCapabilities{
+				SettingProfile: utils.SettingProfile{
+					SupportedResolutions: utils.SupportedResolutions{
+						DiscreteResolutions: []utils.DiscreteResolution{
+							utils.DiscreteResolution{
+								XResolution: 150,
+								YResolution: 200},
+							utils.DiscreteResolution{
+								XResolution: 300,
+								YResolution: 300}}}}},
+			// Should pass: zero-value SourceCapabilities aren't checked.
+			adfDuplexCaps: utils.SourceCapabilities{},
+			result:        utils.Passed,
+			failures:      []utils.FailureType{},
+		},
+		{
+			// Should fail: [1500, 1500] is unsupported.
+			platenCaps: utils.SourceCapabilities{
+				SettingProfile: utils.SettingProfile{
+					SupportedResolutions: utils.SupportedResolutions{
+						XResolutionRange: utils.ResolutionRange{
+							Min:    50,
+							Max:    1500,
+							Normal: 85,
+							Step:   5},
+						YResolutionRange: utils.ResolutionRange{
+							Min:    50,
+							Max:    1500,
+							Normal: 85,
+							Step:   5}}}},
+			// Should fail: [2000, 2000] is unsupported.
+			adfSimplexCaps: utils.SourceCapabilities{
+				SettingProfile: utils.SettingProfile{
+					SupportedResolutions: utils.SupportedResolutions{
+						DiscreteResolutions: []utils.DiscreteResolution{
+							utils.DiscreteResolution{
+								XResolution: 150,
+								YResolution: 150},
+							utils.DiscreteResolution{
+								XResolution: 2000,
+								YResolution: 2000}}}}},
+			// Should fail: [300, 600] is unsupported. Here, each of 300 and 600
+			// is only supported by either XResolution or YResolution but not
+			// both.
+			adfDuplexCaps: utils.SourceCapabilities{
+				SettingProfile: utils.SettingProfile{
+					SupportedResolutions: utils.SupportedResolutions{
+						DiscreteResolutions: []utils.DiscreteResolution{
+							utils.DiscreteResolution{
+								XResolution: 200,
+								YResolution: 200},
+							utils.DiscreteResolution{
+								XResolution: 300,
+								YResolution: 600}}}}},
+			result:   utils.Failed,
+			failures: []utils.FailureType{utils.NeedsAudit, utils.NeedsAudit, utils.NeedsAudit},
+		},
+		{
+			platenCaps:     utils.SourceCapabilities{},
+			adfSimplexCaps: utils.SourceCapabilities{},
+			adfDuplexCaps:  utils.SourceCapabilities{},
+			result:         utils.Skipped,
+			failures:       []utils.FailureType{},
+		},
+	}
+
+	for _, tc := range tests {
+		result, failures, err := HighestResolutionIsSupportedTest(tc.platenCaps, tc.adfSimplexCaps, tc.adfDuplexCaps)()
+
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+
+		if result != tc.result {
+			t.Errorf("Result: expected %d, got %d", tc.result, result)
+		}
+
+		if len(failures) != len(tc.failures) {
+			t.Errorf("Number of failures: expected %d, got %d", len(tc.failures), len(failures))
+		}
+		for i, failure := range failures {
+			if failure.Type != tc.failures[i] {
+				t.Errorf("FailureType: expected %d, got %d", tc.failures[i], failure.Type)
+			}
+		}
+	}
+}
+
+// TestLowestResolutionIsSupportedTest tests that
+// LowestResolutionIsSupportedTest functions correctly.
+func TestLowestResolutionIsSupportedTest(t *testing.T) {
+	tests := []struct {
+		platenCaps     utils.SourceCapabilities
+		adfSimplexCaps utils.SourceCapabilities
+		adfDuplexCaps  utils.SourceCapabilities
+		result         utils.TestResult
+		failures       []utils.FailureType
+	}{
+		{
+			// Should pass: lowest resolution is 75 for both resolution ranges.
+			platenCaps: utils.SourceCapabilities{
+				SettingProfile: utils.SettingProfile{
+					SupportedResolutions: utils.SupportedResolutions{
+						XResolutionRange: utils.ResolutionRange{
+							Min:    75,
+							Max:    95,
+							Normal: 85,
+							Step:   10},
+						YResolutionRange: utils.ResolutionRange{
+							Min:    75,
+							Max:    95,
+							Normal: 85,
+							Step:   10}}}},
+			// Should pass: lowest resolution is [150, 150].
+			adfSimplexCaps: utils.SourceCapabilities{
+				SettingProfile: utils.SettingProfile{
+					SupportedResolutions: utils.SupportedResolutions{
+						DiscreteResolutions: []utils.DiscreteResolution{
+							utils.DiscreteResolution{
+								XResolution: 150,
+								YResolution: 150},
+							utils.DiscreteResolution{
+								XResolution: 200,
+								YResolution: 300}}}}},
+			// Should pass: zero-value SourceCapabilities aren't checked.
+			adfDuplexCaps: utils.SourceCapabilities{},
+			result:        utils.Passed,
+			failures:      []utils.FailureType{},
+		},
+		{
+			// Should fail: [50, 50] is unsupported.
+			platenCaps: utils.SourceCapabilities{
+				SettingProfile: utils.SettingProfile{
+					SupportedResolutions: utils.SupportedResolutions{
+						XResolutionRange: utils.ResolutionRange{
+							Min:    50,
+							Max:    95,
+							Normal: 85,
+							Step:   5},
+						YResolutionRange: utils.ResolutionRange{
+							Min:    50,
+							Max:    95,
+							Normal: 85,
+							Step:   5}}}},
+			// Should fail: [25, 25] is unsupported.
+			adfSimplexCaps: utils.SourceCapabilities{
+				SettingProfile: utils.SettingProfile{
+					SupportedResolutions: utils.SupportedResolutions{
+						DiscreteResolutions: []utils.DiscreteResolution{
+							utils.DiscreteResolution{
+								XResolution: 25,
+								YResolution: 25},
+							utils.DiscreteResolution{
+								XResolution: 150,
+								YResolution: 150}}}}},
+			// Should fail: [150, 200] is unsupported. Here, each of 150 and 200
+			// is only supported by either XResolution or YResolution but not
+			// both.
+			adfDuplexCaps: utils.SourceCapabilities{
+				SettingProfile: utils.SettingProfile{
+					SupportedResolutions: utils.SupportedResolutions{
+						DiscreteResolutions: []utils.DiscreteResolution{
+							utils.DiscreteResolution{
+								XResolution: 150,
+								YResolution: 200},
+							utils.DiscreteResolution{
+								XResolution: 300,
+								YResolution: 300}}}}},
+			result:   utils.Failed,
+			failures: []utils.FailureType{utils.NeedsAudit, utils.NeedsAudit, utils.NeedsAudit},
+		},
+		{
+			platenCaps:     utils.SourceCapabilities{},
+			adfSimplexCaps: utils.SourceCapabilities{},
+			adfDuplexCaps:  utils.SourceCapabilities{},
+			result:         utils.Skipped,
+			failures:       []utils.FailureType{},
+		},
+	}
+
+	for _, tc := range tests {
+		result, failures, err := LowestResolutionIsSupportedTest(tc.platenCaps, tc.adfSimplexCaps, tc.adfDuplexCaps)()
+
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+
+		if result != tc.result {
+			t.Errorf("Result: expected %d, got %d", tc.result, result)
+		}
+
+		if len(failures) != len(tc.failures) {
+			t.Errorf("Number of failures: expected %d, got %d", len(tc.failures), len(failures))
+		}
+		for i, failure := range failures {
+			if failure.Type != tc.failures[i] {
+				t.Errorf("FailureType: expected %d, got %d", tc.failures[i], failure.Type)
+			}
+		}
+	}
+}
