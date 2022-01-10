@@ -143,10 +143,10 @@ class WrapperMetaclass(type):
 
   @staticmethod
   def ConvertString(string):
-    """Converts Python string to a ctypes ByteString pointer.
+    """Converts Python bytes to a ctypes ByteString pointer.
 
     Args:
-      string: a Python string.
+      string: a Python bytes.
 
     Returns:
       A ctypes pointer to ByteString.

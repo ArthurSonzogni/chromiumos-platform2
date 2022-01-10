@@ -96,7 +96,7 @@ def main():
   wp_all = pdu_resp.flash_protection == FLASH_PROTECT_ALL
   touchpad_info = hammerd_api.TouchpadInfo()
   updater.SendSubcommandReceiveResponse(
-      hammerd_api.UpdateExtraCommand.TouchpadInfo, '',
+      hammerd_api.UpdateExtraCommand.TouchpadInfo, b'',
       ctypes.pointer(touchpad_info), ctypes.sizeof(touchpad_info))
 
   # Do a pairing challenge, which will check that entropy has been injected
