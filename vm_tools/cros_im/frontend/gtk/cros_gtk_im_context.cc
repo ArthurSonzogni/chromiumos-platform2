@@ -281,13 +281,19 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
   event->length = 0;
   event->string = nullptr;
 
-  // TODO(timloh): Support other control characters.
-  if (keysym == GDK_KEY_BackSpace) {
-    event->hardware_keycode = 22;
+  GdkKeymapKey* keys;
+  int n_keys;
+  if (gdk_keymap_get_entries_for_keyval(
+          gdk_keymap_get_for_display(gdk_display_get_default()), keysym, &keys,
+          &n_keys)) {
+    event->hardware_keycode = keys[0].keycode;
+    event->group = keys[0].group;
+    g_free(keys);
   } else {
-    event->hardware_keycode = 0;
+    g_warning("Failed to find keycode for keysym %u", keysym);
+    gdk_event_free(raw_event);
+    return;
   }
-  event->group = 0;
 
   // TODO(timloh): Support modifier usage.
   event->is_modifier = false;

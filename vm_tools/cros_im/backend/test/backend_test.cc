@@ -76,9 +76,21 @@ void BackendTest::ProcessRequest(const Request& request) {
 }
 
 void BackendTest::RunNextEvent() {
-  actions_.front().event_->Run();
+  if (actions_.empty()) {
+    FAILED() << "Tried to run next event but queue is empty.";
+    return;
+  }
+  if (actions_.front().is_request_) {
+    FAILED() << "Tried to run next event but next action is a request.";
+    return;
+  }
+  std::unique_ptr<Event> event(std::move(actions_.front().event_));
+
+  // Running the event may synchronously fire a request.
   actions_.pop();
   PostEventIfNeeded();
+
+  event->Run();
 }
 
 void BackendTest::Ignore(Request::RequestType request_type) {

@@ -44,8 +44,8 @@ struct Action {
       : is_request_(false), event_(std::move(event)) {}
 
   const bool is_request_;
-  const std::unique_ptr<Request> request_;
-  const std::unique_ptr<Event> event_;
+  std::unique_ptr<Request> request_;
+  std::unique_ptr<Event> event_;
 };
 
 std::ostream& operator<<(std::ostream& stream, const Action& action);

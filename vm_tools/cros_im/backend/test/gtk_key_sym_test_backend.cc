@@ -43,5 +43,79 @@ BACKEND_TEST(GtkKeySymTextViewTest, NonAscii) {
   Expect(Request::kDestroy);
 }
 
+BACKEND_TEST(GtkKeySymTextViewTest, Whitespace) {
+  Ignore(Request::kSetCursorRectangle);
+  Ignore(Request::kSetSurroundingText);
+  Ignore(Request::kHideInputPanel);
+
+  Expect(Request::kActivate);
+
+  SendKeySym(XKB_KEY_Return);
+  // As per gtk_text_view_key_press_event in gtk_textview.c.
+  Expect(Request::kReset);
+  SendKeySym(XKB_KEY_Tab);
+  SendKeySym(XKB_KEY_space);
+  SendKeySym(XKB_KEY_Return);
+  SendKeySym(XKB_KEY_space);
+  SendKeySym(XKB_KEY_Tab);
+
+  Expect(Request::kDeactivate);
+  Expect(Request::kDestroy);
+}
+
+BACKEND_TEST(GtkKeySymTextViewTest, Backspace) {
+  Ignore(Request::kSetCursorRectangle);
+  Ignore(Request::kSetSurroundingText);
+  Ignore(Request::kHideInputPanel);
+
+  Expect(Request::kActivate);
+
+  SendKeySym(XKB_KEY_a);
+  SendKeySym(XKB_KEY_BackSpace);
+  // As per gtk_text_view_backspace in gtk_textview.c.
+  Expect(Request::kReset);
+  SendKeySym(XKB_KEY_Return);
+  SendKeySym(XKB_KEY_b);
+  SendKeySym(XKB_KEY_BackSpace);
+  SendKeySym(XKB_KEY_c);
+  SendKeySym(XKB_KEY_BackSpace);
+  SendKeySym(XKB_KEY_BackSpace);
+
+  Expect(Request::kDeactivate);
+  Expect(Request::kDestroy);
+}
+
+BACKEND_TEST(GtkKeySymEntryTest, Enter) {
+  Ignore(Request::kSetCursorRectangle);
+  Ignore(Request::kSetSurroundingText);
+  Ignore(Request::kHideInputPanel);
+
+  Expect(Request::kActivate);
+
+  SendKeySym(XKB_KEY_e);
+  SendKeySym(XKB_KEY_Return);
+  // As per gtk_entry_key_press in gtkentry.c
+  Expect(Request::kReset);
+
+  Expect(Request::kDeactivate);
+  Expect(Request::kReset);
+  Expect(Request::kDestroy);
+}
+
+BACKEND_TEST(GtkKeySymEntryTest, Tab) {
+  Ignore(Request::kSetCursorRectangle);
+  Ignore(Request::kSetSurroundingText);
+  Ignore(Request::kHideInputPanel);
+
+  Expect(Request::kActivate);
+
+  SendKeySym(XKB_KEY_t);
+  SendKeySym(XKB_KEY_Tab);
+
+  Expect(Request::kDeactivate);
+  Expect(Request::kReset);
+  Expect(Request::kDestroy);
+}
+
 }  // namespace test
 }  // namespace cros_im
