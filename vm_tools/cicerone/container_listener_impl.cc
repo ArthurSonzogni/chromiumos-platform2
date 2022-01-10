@@ -96,8 +96,9 @@ grpc::Status ContainerListenerImpl::ContainerShutdown(
                      container_name, request->token(), cid, &result, &event));
   event.Wait();
   if (!result) {
-    LOG(ERROR) << "Received ContainerShutdown but could not find matching VM: "
-               << ctx->peer();
+    LOG(WARNING)
+        << "Received ContainerShutdown but could not find matching VM: "
+        << ctx->peer();
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Cannot find VM for ContainerListener");
   }
