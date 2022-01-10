@@ -20,6 +20,7 @@
 #include <base/macros.h>
 
 #include "chaps/chaps_factory.h"
+#include "chaps/chaps_metrics.h"
 #include "chaps/object_pool.h"
 
 namespace chaps {
@@ -41,7 +42,8 @@ class SlotManagerImpl : public SlotManager,
   SlotManagerImpl(ChapsFactory* factory,
                   AsyncTPMUtility* tpm_utility,
                   bool auto_load_system_token,
-                  SystemShutdownBlocker* system_shutdown_blocker);
+                  SystemShutdownBlocker* system_shutdown_blocker,
+                  ChapsMetrics* chaps_metrics);
   SlotManagerImpl(const SlotManagerImpl&) = delete;
   SlotManagerImpl& operator=(const SlotManagerImpl&) = delete;
 
@@ -239,6 +241,7 @@ class SlotManagerImpl : public SlotManager,
   bool auto_load_system_token_;
   bool is_initialized_;
   SystemShutdownBlocker* system_shutdown_blocker_;
+  ChapsMetrics* chaps_metrics_;
 };
 
 }  // namespace chaps

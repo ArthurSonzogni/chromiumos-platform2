@@ -59,6 +59,7 @@ class SlotManagerFuzzer {
   explicit SlotManagerFuzzer(FuzzedDataProvider* tpm_data_provider,
                              FuzzedDataProvider* data_provider)
       : data_provider_(data_provider) {
+    chaps_metrics_ = std::make_unique<chaps::ChapsMetrics>();
     factory_ = std::make_unique<chaps::FuzzedChapsFactory>(data_provider_);
     command_transceiver_ = std::make_unique<trunks::FuzzedCommandTransceiver>(
         tpm_data_provider, kMaxTpmMessageLength);
@@ -78,13 +79,15 @@ class SlotManagerFuzzer {
 
     bool auto_load_system_token = data_provider_->ConsumeBool();
     slot_manager_ = std::make_unique<chaps::SlotManagerImpl>(
-        factory_.get(), tpm_utility_.get(), auto_load_system_token, nullptr);
+        factory_.get(), tpm_utility_.get(), auto_load_system_token, nullptr,
+        chaps_metrics_.get());
   }
 
   ~SlotManagerFuzzer() {
     slot_manager_.reset();
     tpm_utility_.reset();
     factory_.reset();
+    chaps_metrics_.reset();
   }
 
   void Run() {
@@ -275,6 +278,7 @@ class SlotManagerFuzzer {
 
   FuzzedDataProvider* data_provider_;
   std::unique_ptr<chaps::SlotManagerImpl> slot_manager_;
+  std::unique_ptr<chaps::ChapsMetrics> chaps_metrics_;
   std::unique_ptr<chaps::FuzzedChapsFactory> factory_;
   std::unique_ptr<trunks::TrunksFactoryImpl> trunks_factory_;
   std::unique_ptr<chaps::FuzzedTpmManagerUtility> tpm_manager_utility_;

@@ -69,6 +69,7 @@ pkg_config("target_defaults") {
     "openssl",
     "libbrillo",
     "libchrome",
+    "libmetrics",
   ]
 
   if (use.fuzzer) {
@@ -110,6 +111,7 @@ static_library("libchaps_static") {
   sources = [
     "attributes.cc",
     "chaps.cc",
+    "chaps_metrics.cc",
     "chaps_proxy.cc",
     "chaps_utility.cc",
     "isolate_chromeos.cc",
@@ -124,6 +126,7 @@ shared_library("libchaps") {
   sources = [
     "attributes.cc",
     "chaps.cc",
+    "chaps_metrics.cc",
     "chaps_proxy.cc",
     "chaps_utility.cc",
     "isolate_chromeos.cc",
@@ -274,7 +277,10 @@ if (use.test) {
   }
 
   executable("chaps_test") {
-    sources = [ "chaps_test.cc" ]
+    sources = [
+      "chaps_metrics_test.cc",
+      "chaps_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
