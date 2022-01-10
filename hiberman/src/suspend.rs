@@ -5,22 +5,21 @@
 //! Implement hibernate suspend functionality
 
 use std::ffi::CString;
-use std::io::Write;
 use std::mem::MaybeUninit;
 
 use anyhow::{Context, Result};
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use sys_util::syscall;
 
 use crate::cookie::set_hibernate_cookie;
-use crate::crypto::{CryptoWriter, Mode};
+use crate::crypto::{CryptoMode, CryptoWriter};
 use crate::diskfile::{BouncedDiskFile, DiskFile};
 use crate::files::{
     create_hibernate_dir, preallocate_header_file, preallocate_hiberfile, preallocate_log_file,
     preallocate_metadata_file, HIBERNATE_DIR,
 };
 use crate::hiberlog::{flush_log, redirect_log, replay_logs, reset_log, HiberlogFile, HiberlogOut};
-use crate::hibermeta::{HibernateMetadata, META_FLAG_ENCRYPTED, META_FLAG_VALID};
+use crate::hibermeta::{HibernateMetadata, META_FLAG_ENCRYPTED, META_FLAG_VALID, META_TAG_SIZE};
 use crate::hiberutil::HibernateOptions;
 use crate::hiberutil::{get_page_size, lock_process_memory, path_to_stateful_block, BUFFER_PAGES};
 use crate::imagemover::ImageMover;
@@ -186,25 +185,26 @@ impl SuspendConductor {
     ) -> Result<()> {
         let image_size = snap_dev.get_image_size()?;
         let page_size = get_page_size();
-        let mut mover_dest: &mut dyn Write = &mut hiber_file;
-        let mut encryptor;
+        let mode = if self.options.unencrypted {
+            CryptoMode::Unencrypted
+        } else {
+            CryptoMode::Encrypt
+        };
+        let mut encryptor = CryptoWriter::new(
+            &mut hiber_file,
+            &self.metadata.data_key,
+            &self.metadata.data_iv,
+            mode,
+            page_size * BUFFER_PAGES,
+        )?;
+
         if !self.options.unencrypted {
-            encryptor = CryptoWriter::new(
-                mover_dest,
-                &self.metadata.data_key,
-                &self.metadata.data_iv,
-                Mode::Encrypt,
-                page_size * BUFFER_PAGES,
-            )?;
-            mover_dest = &mut encryptor;
             self.metadata.flags |= META_FLAG_ENCRYPTED;
             debug!("Added encryption");
-        } else {
-            warn!("Warning: The hibernate image is unencrypted");
         }
 
         debug!("Hibernate image is {} bytes", image_size);
-        let mut splitter = ImageSplitter::new(&mut header_file, mover_dest, &mut self.metadata);
+        let mut splitter = ImageSplitter::new(&mut header_file, &mut encryptor, &mut self.metadata);
         let mut writer = ImageMover::new(
             &mut snap_dev.file,
             &mut splitter,
@@ -215,7 +215,13 @@ impl SuspendConductor {
         writer
             .move_all()
             .context("Failed to write out main image")?;
+
         info!("Wrote {} MB", image_size / 1024 / 1024);
+
+        self.metadata.data_tag = encryptor.get_tag()?;
+
+        assert!(self.metadata.data_tag != [0u8; META_TAG_SIZE]);
+
         self.metadata.image_size = image_size as u64;
         self.metadata.flags |= META_FLAG_VALID;
         Ok(())

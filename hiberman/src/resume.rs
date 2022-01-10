@@ -11,7 +11,7 @@ use anyhow::{Context, Result};
 use log::{debug, error, info, warn};
 
 use crate::cookie::set_hibernate_cookie;
-use crate::crypto::{CryptoReader, Mode};
+use crate::crypto::{CryptoMode, CryptoReader};
 use crate::dbus::{HiberDbusConnection, PendingResumeCall};
 use crate::diskfile::{BouncedDiskFile, DiskFile};
 use crate::files::{open_header_file, open_hiberfile, open_log_file, open_metafile};
@@ -169,7 +169,7 @@ impl ResumeConductor {
         // Create the image joiner, which combines the header file and the data
         // file into one contiguous read stream.
         let mut joiner = ImageJoiner::new(&mut header_file, &mut hiber_file);
-        let mut mover_source: &mut dyn Read;
+        let mover_source: &mut dyn Read;
 
         // Fire up the preloader to start loading pages off of disk right away.
         // We preload data because disk latency tends to be the long pole in the
@@ -246,21 +246,21 @@ impl ResumeConductor {
         let metadata = &mut self.metadata;
         self.key_manager.install_saved_metadata_key(metadata)?;
         metadata.load_private_data()?;
-        let mut decryptor;
-        if (metadata.flags & META_FLAG_ENCRYPTED) != 0 {
-            decryptor = CryptoReader::new(
-                mover_source,
-                &metadata.data_key,
-                &metadata.data_iv,
-                Mode::Decrypt,
-                page_size * BUFFER_PAGES,
-            )?;
-
-            mover_source = &mut decryptor;
-            debug!("Image is encrypted");
-        } else if self.options.unencrypted {
-            warn!("Image is not encrypted");
+        let mode = if (metadata.flags & META_FLAG_ENCRYPTED) != 0 {
+            CryptoMode::Decrypt
         } else {
+            CryptoMode::Unencrypted
+        };
+        let mut decryptor = CryptoReader::new(
+            mover_source,
+            &metadata.data_key,
+            &metadata.data_iv,
+            mode,
+            page_size * BUFFER_PAGES,
+        )?;
+        if (metadata.flags & META_FLAG_ENCRYPTED) != 0 {
+            debug!("Image is encrypted");
+        } else if !self.options.unencrypted {
             error!("Unencrypted images are not permitted without --unencrypted");
             return Err(HibernateError::ImageUnencryptedError())
                 .context("Detected unencrypted image without --unencrypted");
@@ -271,13 +271,13 @@ impl ResumeConductor {
         // big chunks, to the snapshot dev, which only writes pages.
         if !self.options.no_preloader {
             debug!("Sending in partial page");
-            self.read_first_partial_page(mover_source, page_size, snap_dev)?;
+            self.read_first_partial_page(&mut decryptor, page_size, snap_dev)?;
             image_size -= page_size as u64;
         }
 
         // Fire up the big image pump into the kernel.
         ImageMover::new(
-            mover_source,
+            &mut decryptor,
             &mut snap_dev.file,
             image_size as i64,
             page_size * BUFFER_PAGES,
@@ -286,6 +286,11 @@ impl ResumeConductor {
         .move_all()
         .context("Failed to move in hibernate image")?;
         info!("Moved {} MB", image_size / 1024 / 1024);
+        // Validate the image data tag.
+        decryptor
+            .check_tag(&self.metadata.data_tag)
+            .context("Failed to verify image authentication tag")?;
+
         // Check the header pages hash. Ideally this would be done just after
         // the private data was loaded, but by then we've handed a mutable
         // borrow out to the mover source. This is fine too, as the kernel will

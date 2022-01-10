@@ -65,10 +65,10 @@ const META_PUBLIC_SIZE: usize = 0x1000;
 pub const META_PRIVATE_SIZE: usize = 0x1000;
 
 /// Define the size of the encryption authentication tag, in bytes.
-const META_TAG_LENGTH: usize = 16;
+pub const META_TAG_SIZE: usize = 16;
 
 /// Define the size of the data portion of the private metadata.
-const META_PRIVATE_DATA_SIZE: usize = META_PRIVATE_SIZE - META_TAG_LENGTH;
+const META_PRIVATE_DATA_SIZE: usize = META_PRIVATE_SIZE - META_TAG_SIZE;
 
 /// Define the size of the asymmetric key pairs used to encrypt the hibernate
 /// metadata.
@@ -87,7 +87,9 @@ pub struct HibernateMetadata {
     /// Hibernate symmetric encryption key.
     pub data_key: [u8; META_SYMMETRIC_KEY_SIZE],
     /// Hibernate symmetric encryption IV (chosen randomly).
-    pub data_iv: [u8; META_SYMMETRIC_IV_SIZE],
+    pub data_iv: [u8; META_OCB_IV_SIZE],
+    /// Hibernate data AEAD tag.
+    pub data_tag: [u8; META_TAG_SIZE],
     /// The first byte of data, in plaintext. This is needed to coerce the kernel
     /// into doing its image allocation. Random IV used for metadata encryption.
     pub first_data_byte: u8,
@@ -145,7 +147,9 @@ pub struct PrivateHibernateMetadata {
     /// Hibernate symmetric encryption key.
     data_key: [u8; META_SYMMETRIC_KEY_SIZE],
     /// Hibernate symmetric encryption IV (chosen randomly).
-    data_iv: [u8; META_SYMMETRIC_IV_SIZE],
+    data_iv: [u8; META_OCB_IV_SIZE],
+    /// Hibernate data AEAD tag.
+    data_tag: [u8; META_TAG_SIZE],
     /// Hash of the header pages.
     header_hash: [u8; META_HASH_SIZE],
 }
@@ -156,7 +160,7 @@ impl HibernateMetadata {
     pub fn new() -> Result<Self> {
         let mut data_key = [0u8; META_SYMMETRIC_KEY_SIZE];
         Self::fill_random(&mut data_key)?;
-        let mut data_iv = [0u8; META_SYMMETRIC_IV_SIZE];
+        let mut data_iv = [0u8; META_OCB_IV_SIZE];
         Self::fill_random(&mut data_iv)?;
         let mut meta_iv = [0u8; META_OCB_IV_SIZE];
         Self::fill_random(&mut meta_iv)?;
@@ -172,6 +176,7 @@ impl HibernateMetadata {
             header_hash: [0u8; META_HASH_SIZE],
             data_key,
             data_iv,
+            data_tag: [0u8; META_TAG_SIZE],
             first_data_byte: 0,
             meta_iv,
             meta_eph_public,
@@ -234,7 +239,7 @@ impl HibernateMetadata {
         )
         .unwrap();
         crypter.pad(true);
-        crypter.set_tag_len(META_TAG_LENGTH)?;
+        crypter.set_tag_len(META_TAG_SIZE)?;
         let private_blob = self.private_blob.unwrap();
         crypter.set_tag(&private_blob[META_PRIVATE_DATA_SIZE..])?;
         let mut private_buf = vec![0u8; META_PRIVATE_DATA_SIZE + cipher.block_size()];
@@ -293,6 +298,7 @@ impl HibernateMetadata {
         self.header_hash = privdata.header_hash;
         self.data_key = privdata.data_key;
         self.data_iv = privdata.data_iv;
+        self.data_tag = privdata.data_tag;
         self.flags = privdata.flags;
         Ok(())
     }
@@ -386,6 +392,7 @@ impl HibernateMetadata {
             flags: self.flags,
             data_key: self.data_key,
             data_iv: self.data_iv,
+            data_tag: self.data_tag,
             header_hash: self.header_hash,
         };
 
@@ -416,7 +423,7 @@ impl HibernateMetadata {
         )
         .context("Could not initialize encrypter")?;
         crypter.pad(true);
-        crypter.set_tag_len(META_TAG_LENGTH)?;
+        crypter.set_tag_len(META_TAG_SIZE)?;
         // Crypter demands that the output must be one block bigger than the
         // input.
         let mut ciphertext = vec![0u8; META_PRIVATE_DATA_SIZE + cipher.block_size()];
@@ -488,7 +495,8 @@ impl TryFrom<PublicHibernateMetadata> for HibernateMetadata {
             pagemap_pages: pubdata.pagemap_pages,
             header_hash: [0u8; META_HASH_SIZE],
             data_key: [0u8; META_SYMMETRIC_KEY_SIZE],
-            data_iv: [0u8; META_SYMMETRIC_IV_SIZE],
+            data_iv: [0u8; META_OCB_IV_SIZE],
+            data_tag: [0u8; META_TAG_SIZE],
             first_data_byte: pubdata.first_data_byte,
             meta_iv: pubdata.private_iv,
             meta_key: None,
