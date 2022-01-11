@@ -92,7 +92,7 @@ const char* const kGpFlagsStr[] = {
     "3 GPFLAGS_ALL_DISABLED",
 };
 
-constexpr char kKerberosParam[] = "--kerberos";
+constexpr char kKerberosParam[] = "--use-kerberos=required";
 constexpr char kConfigParam[] = "--configfile";
 constexpr char kDebugParam[] = "--debuglevel";
 constexpr char kCommandParam[] = "--command";
