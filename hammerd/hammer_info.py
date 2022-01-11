@@ -10,7 +10,9 @@ from __future__ import print_function
 import argparse
 import collections
 import ctypes
+import os.path
 import shlex
+import subprocess
 import sys
 
 import hammerd_api
@@ -37,6 +39,10 @@ FLASH_PROTECT_ALL = (EC_FLASH_PROTECT_RO_AT_BOOT | EC_FLASH_PROTECT_RO_NOW |
                      EC_FLASH_PROTECT_ALL_AT_BOOT |EC_FLASH_PROTECT_ALL_NOW |
                      EC_FLASH_PROTECT_GPIO_ASSERTED)
 
+def DetachableBaseConfig(key):
+  cmd = ['cros_config', '/detachable-base', key]
+  return subprocess.check_output(cmd, encoding='utf-8')
+
 def GetHammerdArguments():
   """Parses the hammerd.override and retrieves the arguments.
 
@@ -59,14 +65,26 @@ def GetHammerdArguments():
       'VENDOR_ID',
       'PRODUCT_ID',
       'USB_PATH']
+  IMAGE_DIR = '/lib/firmware'
 
   ret = {}
-  with open(ARGUMENT_FILE_PATH, 'r') as f:
-    for line in f:
-      tokens = shlex.split(line)
-      if len(tokens) >= 2 and tokens[0] == 'env':
-        key, _unused_sel, value = tokens[1].partition('=')
-        ret[key] = value
+  if os.path.exists(ARGUMENT_FILE_PATH):
+    with open(ARGUMENT_FILE_PATH, 'r') as f:
+      for line in f:
+        tokens = shlex.split(line)
+        if len(tokens) >= 2 and tokens[0] == 'env':
+          key, _unused_sel, value = tokens[1].partition('=')
+          ret[key] = value
+  else:
+    ec_image_filename = DetachableBaseConfig('ec-image-name')
+    touchpad_image_filename = DetachableBaseConfig('touch-image-name')
+
+    ret['EC_IMAGE_PATH'] = os.path.join(IMAGE_DIR, ec_image_filename)
+    ret['TOUCHPAD_IMAGE_PATH'] = os.path.join(IMAGE_DIR,
+                                              touchpad_image_filename)
+    ret['VENDOR_ID'] = DetachableBaseConfig('vendor-id')
+    ret['PRODUCT_ID'] = DetachableBaseConfig('product-id')
+    ret['USB_PATH'] = DetachableBaseConfig('usb-path')
 
   missing_args = set(REQUIRED_ARGUMENTS) - set(ret.keys())
   if missing_args:
