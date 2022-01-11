@@ -71,6 +71,11 @@ class Modem : public EuiccInterface {
   const lpa::proto::EuiccSpecVersion& GetCardVersion() override {
     return spec_version_;
   }
+  void SetCardVersion(
+      const lpa::proto::EuiccSpecVersion& spec_version) override {
+    spec_version_ = spec_version;
+  };
+
   lpa::util::EuiccLog* logger() override { return logger_; }
   lpa::util::Executor* executor() override { return executor_; }
 

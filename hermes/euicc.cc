@@ -84,10 +84,13 @@ void Euicc::InstallProfileFromActivationCode(
   auto download_profile =
       base::BindOnce(&Euicc::DownloadProfile, weak_factory_.GetWeakPtr(),
                      std::move(activation_code), std::move(confirmation_code));
+  auto get_card_version =
+      base::BindOnce(&Euicc::GetCardVersion<dbus::ObjectPath>,
+                     weak_factory_.GetWeakPtr(), std::move(download_profile));
   context_->modem_control()->ProcessEuiccEvent(
       {physical_slot_, EuiccStep::START},
       base::BindOnce(&Euicc::RunOnSuccess<dbus::ObjectPath>,
-                     weak_factory_.GetWeakPtr(), std::move(download_profile),
+                     weak_factory_.GetWeakPtr(), std::move(get_card_version),
                      std::move(dbus_result)));
 }
 
@@ -325,11 +328,13 @@ void Euicc::RequestInstalledProfiles(DbusResult<> dbus_result) {
   }
   auto get_installed_profiles =
       base::BindOnce(&Euicc::GetInstalledProfiles, weak_factory_.GetWeakPtr());
+  auto get_card_version =
+      base::BindOnce(&Euicc::GetCardVersion<>, weak_factory_.GetWeakPtr(),
+                     std::move(get_installed_profiles));
   context_->modem_control()->ProcessEuiccEvent(
       {physical_slot_, EuiccStep::START},
       base::BindOnce(&Euicc::RunOnSuccess<>, weak_factory_.GetWeakPtr(),
-                     std::move(get_installed_profiles),
-                     std::move(dbus_result)));
+                     std::move(get_card_version), std::move(dbus_result)));
 }
 
 void Euicc::GetInstalledProfiles(DbusResult<> dbus_result) {
@@ -387,11 +392,13 @@ void Euicc::RequestPendingProfiles(DbusResult<> dbus_result,
   auto get_pending_profiles_from_smds =
       base::BindOnce(&Euicc::GetPendingProfilesFromSmds,
                      weak_factory_.GetWeakPtr(), std::move(root_smds));
+  auto get_card_version =
+      base::BindOnce(&Euicc::GetCardVersion<>, weak_factory_.GetWeakPtr(),
+                     std::move(get_pending_profiles_from_smds));
   context_->modem_control()->ProcessEuiccEvent(
       {physical_slot_, EuiccStep::START},
       base::BindOnce(&Euicc::RunOnSuccess<>, weak_factory_.GetWeakPtr(),
-                     std::move(get_pending_profiles_from_smds),
-                     std::move(dbus_result)));
+                     std::move(get_card_version), std::move(dbus_result)));
 }
 
 void Euicc::GetPendingProfilesFromSmds(std::string root_smds,
@@ -482,10 +489,13 @@ void Euicc::ResetMemoryHelper(DbusResult<> dbus_result, int reset_options) {
 
   auto reset_memory_internal = base::BindOnce(
       &Euicc::ResetMemory, weak_factory_.GetWeakPtr(), reset_options);
+  auto get_card_version =
+      base::BindOnce(&Euicc::GetCardVersion<>, weak_factory_.GetWeakPtr(),
+                     std::move(reset_memory_internal));
   context_->modem_control()->ProcessEuiccEvent(
       {physical_slot_, EuiccStep::START},
       base::BindOnce(&Euicc::RunOnSuccess<>, weak_factory_.GetWeakPtr(),
-                     std::move(reset_memory_internal), std::move(dbus_result)));
+                     std::move(get_card_version), std::move(dbus_result)));
 }
 
 void Euicc::ResetMemory(int reset_options, DbusResult<> dbus_result) {
@@ -577,6 +587,33 @@ void Euicc::RunOnSuccess(base::OnceCallback<void(DbusResult<T...>)> cb,
     return;
   }
   std::move(cb).Run(std::move(dbus_result));
+}
+
+template <typename... T>
+void Euicc::GetCardVersion(base::OnceCallback<void(DbusResult<T...>)> next_step,
+                           DbusResult<T...> dbus_result) {
+  // convert next_step into a copyable type (repeating callback), so that it can
+  // be captured in a lambda.
+  auto copyable_next_step = base::BindRepeating(
+      [](base::OnceCallback<void(DbusResult<T...>)> next_step,
+         DbusResult<T...> dbus_result) {
+        std::move(next_step).Run(std::move(dbus_result));
+      },
+      base::Passed(std::move(next_step)));
+  context_->lpa()->GetEuiccInfo1(
+      context_->executor(),
+      [this, dbus_result{std::move(dbus_result)}, copyable_next_step](
+          lpa::proto::EuiccInfo1& euicc_info_1, int error) {
+        LOG(INFO) << "euicc_info_1:" << euicc_info_1.DebugString();
+        auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
+        if (decoded_error) {
+          EndEuiccOp(dbus_result, std::move(decoded_error));
+          return;
+        }
+        context_->modem_control()->SetCardVersion(
+            euicc_info_1.euicc_spec_version());
+        copyable_next_step.Run(std::move(dbus_result));
+      });
 }
 
 }  // namespace hermes

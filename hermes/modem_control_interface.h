@@ -21,6 +21,9 @@ class ModemControlInterface {
 
   virtual void ProcessEuiccEvent(EuiccEvent event, ResultCallback cb) = 0;
 
+  virtual void SetCardVersion(
+      const lpa::proto::EuiccSpecVersion& spec_version) = 0;
+
   virtual ~ModemControlInterface() = default;
 };
 

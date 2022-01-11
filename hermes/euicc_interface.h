@@ -36,6 +36,8 @@ class EuiccInterface : public lpa::card::EuiccCard,
                                      ResultCallback cb) = 0;
   virtual void ProcessEuiccEvent(EuiccEvent event, ResultCallback cb) = 0;
   virtual void RestoreActiveSlot(ResultCallback cb) = 0;
+  virtual void SetCardVersion(
+      const lpa::proto::EuiccSpecVersion& spec_version) = 0;
 
   // from lpa::card::EuiccCard
   virtual void SendApdus(std::vector<lpa::card::Apdu> apdus,

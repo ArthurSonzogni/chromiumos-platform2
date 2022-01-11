@@ -114,6 +114,9 @@ class Euicc {
   void RunOnSuccess(base::OnceCallback<void(DbusResult<T...>)> cb,
                     DbusResult<T...> dbus_result,
                     int err);
+  template <typename... T>
+  void GetCardVersion(base::OnceCallback<void(DbusResult<T...>)> cb,
+                      DbusResult<T...> dbus_result);
 };
 
 }  // namespace hermes

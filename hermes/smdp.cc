@@ -61,11 +61,12 @@ std::unique_ptr<lpa::smdp::SmdpClient> SmdpFactory::NewSmdpClient(
     std::string smdp_addr,
     const lpa::proto::EuiccSpecVersion& card_verison) {
   return std::make_unique<Smdp>(std::move(smdp_addr), std::move(tls_certs_dir),
-                                logger_, executor_);
+                                card_verison, logger_, executor_);
 }
 
 Smdp::Smdp(std::string server_addr,
            const std::string& certs_dir,
+           const lpa::proto::EuiccSpecVersion& card_version,
            Logger* logger,
            Executor* executor)
     : server_transport_(brillo::http::Transport::CreateDefault()),
@@ -89,6 +90,10 @@ Smdp::Smdp(std::string server_addr,
   if (found != std::string::npos) {
     smdp_addr_.erase(0, found + 3);
   }
+  std::ostringstream stringStream;
+  stringStream << card_version.major() << "." << card_version.minor() << "."
+               << card_version.revision();
+  card_version_ = stringStream.str();
 }
 
 lpa::util::EuiccLog* Smdp::logger() {
@@ -117,7 +122,7 @@ void Smdp::SendHttps(const std::string& path,
                                      server_transport_);
   http_request.SetContentType("application/json");
   http_request.SetUserAgent("gsma-rsp-lpad");
-  http_request.AddHeader("X-Admin-Protocol", "gsma/rsp/v2.2.0");
+  http_request.AddHeader("X-Admin-Protocol", "gsma/rsp/v" + card_version_);
   http_request.AddRequestBody(&request[0], request.size(), &error);
   CHECK(!error);
 
