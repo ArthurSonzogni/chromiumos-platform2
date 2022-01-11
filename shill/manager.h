@@ -284,7 +284,7 @@ class Manager {
   // If the service ends up with no matching profile, it is unloaded (which
   // may also remove the service from the manager's list, e.g. WiFi services
   // that are not visible)..
-  void RemoveService(const ServiceRefPtr& service);
+  virtual void RemoveService(const ServiceRefPtr& service);
   // Handle the event where a profile is about to remove a profile entry.
   // Any Services that are dependent on this storage identifier will need
   // to find new profiles.  Return true if any service has been moved to a new

@@ -216,6 +216,7 @@ class WiFiService : public Service {
   PasspointCredentialsRefPtr& parent_credentials() {
     return parent_credentials_;
   }
+  void set_parent_credentials(const PasspointCredentialsRefPtr& credentials);
   uint64_t match_priority() const { return match_priority_; }
 
  protected:

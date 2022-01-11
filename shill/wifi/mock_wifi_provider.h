@@ -58,15 +58,14 @@ class MockWiFiProvider : public WiFiProvider {
               OnEndpointUpdated,
               (const WiFiEndpointConstRefPtr&),
               (override));
-  MOCK_METHOD(bool, OnServiceUnloaded, (const WiFiServiceRefPtr&), (override));
+  MOCK_METHOD(bool,
+              OnServiceUnloaded,
+              (const WiFiServiceRefPtr&, const PasspointCredentialsRefPtr&),
+              (override));
   MOCK_METHOD(ByteArrays, GetHiddenSSIDList, (), (override));
   MOCK_METHOD(int, NumAutoConnectableServices, (), (override));
   MOCK_METHOD(void,
               AddCredentials,
-              (const PasspointCredentialsRefPtr&),
-              (override));
-  MOCK_METHOD(void,
-              RemoveCredentials,
               (const PasspointCredentialsRefPtr&),
               (override));
   MOCK_METHOD(std::vector<PasspointCredentialsRefPtr>,

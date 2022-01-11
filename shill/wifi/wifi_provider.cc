@@ -451,7 +451,15 @@ void WiFiProvider::OnEndpointUpdated(const WiFiEndpointConstRefPtr& endpoint) {
   OnEndpointAdded(endpoint);
 }
 
-bool WiFiProvider::OnServiceUnloaded(const WiFiServiceRefPtr& service) {
+bool WiFiProvider::OnServiceUnloaded(
+    const WiFiServiceRefPtr& service,
+    const PasspointCredentialsRefPtr& credentials) {
+  if (credentials) {
+    // The service had credentials. We want to remove them and invalidate all
+    // the services that were populated with it.
+    ForgetCredentials(credentials);
+  }
+
   // If the service still has endpoints, it should remain in the service list.
   if (service->HasEndpoints()) {
     return false;
@@ -643,6 +651,8 @@ void WiFiProvider::UnloadCredentialsFromProfile(const ProfileRefPtr& profile) {
   PasspointCredentialsMap creds(credentials_by_id_);
   for (const auto& [id, c] : creds) {
     if (c != nullptr && c->profile() == profile) {
+      // We don't need to call RemoveCredentials with service removal because at
+      // Profile removal time, we expect all the services to be removed already.
       RemoveCredentials(c);
     }
   }
@@ -664,6 +674,40 @@ void WiFiProvider::AddCredentials(
     SLOG(this, 1) << "Failed to push credentials " << credentials->id()
                   << " to device.";
   }
+}
+
+void WiFiProvider::ForgetCredentials(
+    const PasspointCredentialsRefPtr& credentials) {
+  if (!credentials ||
+      credentials_by_id_.find(credentials->id()) == credentials_by_id_.end()) {
+    // Credentials have been removed, nothing to do.
+    return;
+  }
+
+  // TODO(b/162106001) handle CA and client cert removal if necessary.
+
+  // Remove the credentials from our credentials set and from the WiFi device.
+  RemoveCredentials(credentials);
+  // Find all the services linked to the set.
+  std::vector<WiFiServiceRefPtr> to_delete;
+  for (auto& service : services_) {
+    if (service->parent_credentials() == credentials) {
+      // Prevent useless future calls to ForgetCredentials().
+      service->set_parent_credentials(nullptr);
+      // There's no risk of double removal here because the original service's
+      // credentials were reset in WiFiService::Unload().
+      to_delete.push_back(service);
+    }
+  }
+  // Delete the services separately to avoid iterating over the list while
+  // deleting.
+  for (auto& service : to_delete) {
+    Error error;
+    service->Remove(&error);
+  }
+  // Delete the credentials set from profile storage.
+  StoreInterface* storage = credentials->profile()->GetStorage();
+  storage->DeleteGroup(credentials->id());
 }
 
 void WiFiProvider::RemoveCredentials(

@@ -590,8 +590,9 @@ bool WiFiService::Unload() {
   mac_address_.Clear();
   random_mac_policy_ = RandomizationPolicy::Hardware;
   match_priority_ = kDefaultMatchPriority;
+  PasspointCredentialsRefPtr creds = parent_credentials_;
   parent_credentials_ = nullptr;
-  return provider_->OnServiceUnloaded(this);
+  return provider_->OnServiceUnloaded(this, creds);
 }
 
 void WiFiService::SetState(ConnectState state) {
@@ -1524,6 +1525,11 @@ void WiFiService::SetIsRekeyInProgress(bool is_rekey_in_progress) {
   is_rekey_in_progress_ = is_rekey_in_progress;
   adaptor()->EmitBoolChanged(kWifiRekeyInProgressProperty,
                              is_rekey_in_progress_);
+}
+
+void WiFiService::set_parent_credentials(
+    const PasspointCredentialsRefPtr& credentials) {
+  parent_credentials_ = credentials;
 }
 
 }  // namespace shill

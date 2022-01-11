@@ -117,6 +117,10 @@ class WiFiProviderTest : public testing::Test {
 
   bool GetRunning() { return provider_.running_; }
 
+  void RemoveCredentials(const PasspointCredentialsRefPtr& credentials) {
+    provider_.RemoveCredentials(credentials);
+  }
+
   void AddStringParameterToStorage(FakeStore* storage,
                                    const std::string& id,
                                    const std::string& key,
@@ -1380,13 +1384,13 @@ TEST_F(WiFiProviderTest, OnServiceUnloaded) {
   EXPECT_EQ(1, GetServices().size());
   EXPECT_CALL(*service, HasEndpoints()).WillOnce(Return(true));
   EXPECT_CALL(*service, ResetWiFi()).Times(0);
-  EXPECT_FALSE(provider_.OnServiceUnloaded(service));
+  EXPECT_FALSE(provider_.OnServiceUnloaded(service, nullptr));
   EXPECT_EQ(1, GetServices().size());
   Mock::VerifyAndClearExpectations(service.get());
 
   EXPECT_CALL(*service, HasEndpoints()).WillOnce(Return(false));
   EXPECT_CALL(*service, ResetWiFi()).Times(1);
-  EXPECT_TRUE(provider_.OnServiceUnloaded(service));
+  EXPECT_TRUE(provider_.OnServiceUnloaded(service, nullptr));
   // Verify now, so it's clear that this happened as a result of the call
   // above, and not anything in the destructor(s).
   Mock::VerifyAndClearExpectations(service.get());
@@ -1626,9 +1630,52 @@ TEST_F(WiFiProviderTest, AddRemoveCredentials) {
 
   // Remove the set of credentials
   list.clear();
-  provider_.RemoveCredentials(creds);
+  RemoveCredentials(creds);
   list = provider_.GetCredentials();
   EXPECT_EQ(0, list.size());
+}
+
+TEST_F(WiFiProviderTest, ForgetCredentials) {
+  provider_.Start();
+
+  // Add a set of credentials
+  PasspointCredentialsRefPtr creds0 = new MockPasspointCredentials("creds0");
+  creds0->SetProfile(user_profile_);
+  EXPECT_CALL(manager_, GetEnabledDeviceWithTechnology(_))
+      .WillRepeatedly(Return(nullptr));
+  provider_.AddCredentials(creds0);
+
+  const std::string ssid0("an_ssid");
+  const std::vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
+  MockWiFiServiceRefPtr service0 =
+      AddMockService(ssid0_bytes, kModeManaged, kSecurity8021x, false);
+  const std::string ssid1("another_ssid");
+  const std::vector<uint8_t> ssid1_bytes(ssid1.begin(), ssid1.end());
+  MockWiFiServiceRefPtr service1 =
+      AddMockService(ssid1_bytes, kModeManaged, kSecurity8021x, false);
+
+  // Report endpoints
+  WiFiEndpointRefPtr endpoint0 =
+      Make8021xEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
+  WiFiEndpointRefPtr endpoint1 =
+      Make8021xEndpoint(ssid1, "00:00:00:00:00:00", 0, 0);
+  EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0)));
+  EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service1)));
+  provider_.OnEndpointAdded(endpoint0);
+  provider_.OnEndpointAdded(endpoint1);
+
+  // Report two matches that will fill the two services
+  std::vector<WiFiProvider::PasspointMatch> matches{
+      {creds0, endpoint0, WiFiProvider::MatchPriority::kHome},
+      {creds0, endpoint1, WiFiProvider::MatchPriority::kRoaming}};
+  EXPECT_CALL(manager_, UpdateService(_)).Times(2);
+  EXPECT_CALL(manager_, MoveServiceToProfile(_, _)).Times(2);
+  provider_.OnPasspointCredentialsMatches(matches);
+
+  // Ensure both services are removed.
+  EXPECT_CALL(manager_, RemoveService(RefPtrMatch(service0)));
+  EXPECT_CALL(manager_, RemoveService(RefPtrMatch(service1)));
+  provider_.ForgetCredentials(creds0);
 }
 
 TEST_F(WiFiProviderTest, SimpleCredentialsMatchesOverride) {

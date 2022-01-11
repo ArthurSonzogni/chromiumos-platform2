@@ -102,7 +102,10 @@ class WiFiProvider : public ProviderInterface {
   virtual void OnEndpointUpdated(const WiFiEndpointConstRefPtr& endpoint);
 
   // Called by a WiFiService when it is unloaded and no longer visible.
-  virtual bool OnServiceUnloaded(const WiFiServiceRefPtr& service);
+  // |credentials| contains the set of Passpoint credentials of the service,
+  // if any.
+  virtual bool OnServiceUnloaded(const WiFiServiceRefPtr& service,
+                                 const PasspointCredentialsRefPtr& credentials);
 
   // Get the list of SSIDs for hidden WiFi services we are aware of.
   virtual ByteArrays GetHiddenSSIDList();
@@ -133,9 +136,10 @@ class WiFiProvider : public ProviderInterface {
   // device.
   virtual void AddCredentials(const PasspointCredentialsRefPtr& credentials);
 
-  // Removes the set of credentials referenced by |id| from both the provider
-  // and the WiFi device.
-  virtual void RemoveCredentials(const PasspointCredentialsRefPtr& credentials);
+  // Removes the set of credentials referenced by |credentials| from the
+  // provider, the WiFi device and invalidates all the services populated with
+  // the set of credentials.
+  virtual void ForgetCredentials(const PasspointCredentialsRefPtr& credentials);
 
   // Get the list of Passpoint credentials known by the provider.
   virtual std::vector<PasspointCredentialsRefPtr> GetCredentials();
@@ -179,6 +183,10 @@ class WiFiProvider : public ProviderInterface {
   // Disassociate the service from its WiFi device and remove it from the
   // services_ vector.
   void ForgetService(const WiFiServiceRefPtr& service);
+
+  // Removes the set of credentials referenced by |credentials| from both the
+  // provider and the WiFi device.
+  void RemoveCredentials(const PasspointCredentialsRefPtr& credentials);
 
   void ReportRememberedNetworkCount();
   void ReportServiceSourceMetrics();
