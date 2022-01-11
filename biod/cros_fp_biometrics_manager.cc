@@ -219,7 +219,7 @@ bool CrosFpBiometricsManager::RemoveRecord(const std::string& record_id) {
 
   std::string user_id = record->user_id;
 
-  // TODO(mqg): only delete record if user_id is primary user.
+  // TODO(b/115399954): only delete record if user_id is primary user.
   if (!record_manager_->DeleteRecord(record_id))
     return false;
 
