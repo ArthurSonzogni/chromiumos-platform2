@@ -112,12 +112,13 @@ bool DirEntryRequest::AddEntry(const struct DirEntry& entry, off_t offset) {
     off_ = 0;
   }
 
-  size_t size = size_ - off_;
-  if (fuse_add_direntry(req_, nullptr, 0, name, nullptr, 0) > size)
+  char* data = buf_.get() + off_;
+  const size_t size = size_ - off_;
+  size_t used = fuse_add_direntry(req_, data, size, name, &stat, offset);
+  if (used > size)
     return false;  // no |buf_| space.
 
-  char* data = buf_.get() + off_;
-  off_ += fuse_add_direntry(req_, data, size, name, &stat, offset);
+  off_ += used;
   CHECK_LE(off_, size_);
   offset_ = offset;
   return true;
