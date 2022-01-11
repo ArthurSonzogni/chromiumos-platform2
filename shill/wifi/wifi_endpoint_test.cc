@@ -222,20 +222,20 @@ TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK) {
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityRSN802_1x) {
-  EXPECT_STREQ(kSecurity8021x,
+  EXPECT_STREQ(kSecurityWpa3Enterprise,
                ParseSecurity(MakeSecurityArgs("RSN", "wpa-eap-suite-b")));
-  EXPECT_STREQ(kSecurity8021x,
+  EXPECT_STREQ(kSecurityWpa3Enterprise,
                ParseSecurity(MakeSecurityArgs("RSN", "wpa-eap-suite-b-192")));
-  EXPECT_STREQ(kSecurity8021x,
+  EXPECT_STREQ(kSecurityWpa2Enterprise,
                ParseSecurity(MakeSecurityArgs("RSN", "wpa-eap")));
-  EXPECT_STREQ(kSecurity8021x,
+  EXPECT_STREQ(kSecurityWpa3Enterprise,
                ParseSecurity(MakeSecurityArgs("RSN", "wpa-eap-sha256")));
-  EXPECT_STREQ(kSecurity8021x,
+  EXPECT_STREQ(kSecurityWpa2Enterprise,
                ParseSecurity(MakeSecurityArgs("RSN", "wpa-ft-eap")));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityWPA802_1x) {
-  EXPECT_STREQ(kSecurity8021x,
+  EXPECT_STREQ(kSecurityWpaEnterprise,
                ParseSecurity(MakeSecurityArgs("WPA", "something-eap")));
 }
 
@@ -877,20 +877,20 @@ TEST_F(WiFiEndpointTest, PropertiesChangedSecurityMode) {
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
   endpoint->PropertiesChanged(MakeSecurityArgs("RSN", "something-eap"));
   Mock::VerifyAndClearExpectations(wifi().get());
-  EXPECT_EQ(kSecurity8021x, endpoint->security_mode());
+  EXPECT_EQ(kSecurityWpa2Enterprise, endpoint->security_mode());
 
   // Add WPA-PSK, however this is trumped by RSN 802.1x above, so we don't
   // change our security nor do we notify anyone.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(0);
   endpoint->PropertiesChanged(MakeSecurityArgs("WPA", "something-psk"));
   Mock::VerifyAndClearExpectations(wifi().get());
-  EXPECT_EQ(kSecurity8021x, endpoint->security_mode());
+  EXPECT_EQ(kSecurityWpa2Enterprise, endpoint->security_mode());
 
   // If nothing changes, we should stay the same.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(0);
   endpoint->PropertiesChanged(no_changed_properties);
   Mock::VerifyAndClearExpectations(wifi().get());
-  EXPECT_EQ(kSecurity8021x, endpoint->security_mode());
+  EXPECT_EQ(kSecurityWpa2Enterprise, endpoint->security_mode());
 
   // However, if the BSS updates to no longer support 802.1x, we degrade
   // to WPA.

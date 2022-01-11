@@ -294,23 +294,25 @@ Metrics::WiFiFrequencyRange Metrics::WiFiChannelToFrequencyRange(
 // static
 Metrics::WiFiSecurity Metrics::WiFiSecurityStringToEnum(
     const std::string& security) {
+  // TODO(b/226138492): Start using new metrics defined in CL/3634379
   if (security == kSecurityNone) {
     return kWiFiSecurityNone;
   } else if (security == kSecurityWep) {
     return kWiFiSecurityWep;
   } else if (security == kSecurityWpa) {
     return kWiFiSecurityWpa;
-  } else if (security == kSecurityWpa2) {
-    // Note: kSecurityWpa2 denotes both pure WPA2 mode and WPA2 mixed modes so
-    // we cannot use new metric values yet (see crrev.com/c/3634379). First
-    // shill needs to start differentiate between pure and mixed WPA2 modes.
+  } else if (security == kSecurityWpaWpa2 || security == kSecurityWpaAll ||
+             security == kSecurityWpa2 || security == kSecurityWpa2Wpa3) {
     return kWiFiSecurityRsn;
-  } else if (security == kSecurity8021x) {
-    return kWiFiSecurity8021x;
-  } else if (security == kSecurityPsk) {
-    return kWiFiSecurityPsk;
   } else if (security == kSecurityWpa3) {
     return kWiFiSecurityWpa3;
+  } else if (security == kSecurityWpaEnterprise ||
+             security == kSecurityWpaWpa2Enterprise ||
+             security == kSecurityWpaAllEnterprise ||
+             security == kSecurityWpa2Enterprise ||
+             security == kSecurityWpa2Wpa3Enterprise ||
+             security == kSecurityWpa3Enterprise) {
+    return kWiFiSecurity8021x;
   } else {
     return kWiFiSecurityUnknown;
   }

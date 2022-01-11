@@ -69,7 +69,7 @@ TEST_F(NetworkManagerTest, Connect_RequestScanSuccess_NoPassphrase) {
       {shill::kModeProperty, brillo::Any(std::string(shill::kModeManaged))},
       {shill::kNameProperty, brillo::Any(iter_no_passphrase->first)},
       {shill::kSecurityClassProperty,
-       brillo::Any(std::string(shill::kSecurityNone))},
+       brillo::Any(std::string(shill::kSecurityClassNone))},
       {shill::kTypeProperty, brillo::Any(std::string(shill::kTypeWifi))},
   };
   EXPECT_CALL(*mock_shill_proxy_ptr_,
@@ -85,7 +85,7 @@ TEST_F(NetworkManagerTest, Connect_RequestScanSuccess_Passphrase) {
       {shill::kModeProperty, brillo::Any(std::string(shill::kModeManaged))},
       {shill::kNameProperty, brillo::Any(iter_passphrase->first)},
       {shill::kSecurityClassProperty,
-       brillo::Any(std::string(shill::kSecurityPsk))},
+       brillo::Any(std::string(shill::kSecurityClassPsk))},
       {shill::kTypeProperty, brillo::Any(std::string(shill::kTypeWifi))},
   };
   EXPECT_CALL(*mock_shill_proxy_ptr_,

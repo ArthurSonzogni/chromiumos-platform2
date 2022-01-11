@@ -90,6 +90,8 @@ class WPASupplicant {
   static const char kKeyManagementMethodPrefixEAP[];
   static const char kKeyManagementMethodSuffixEAP[];
   static const char kKeyManagementMethodSuffixPSK[];
+  static const char kKeyManagementMethodSuiteB[];
+  static const char kKeyManagementMethodSuffixSha256[];
   static const char kKeyManagementMethodSAE[];
   static const char kKeyManagementNone[];
   static const char kNetworkBgscanMethodLearn[];

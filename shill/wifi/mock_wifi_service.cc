@@ -14,9 +14,9 @@ MockWiFiService::MockWiFiService(Manager* manager,
                                  WiFiProvider* provider,
                                  const std::vector<uint8_t>& ssid,
                                  const std::string& mode,
-                                 const std::string& security,
+                                 const std::string& security_class,
                                  bool hidden_ssid)
-    : WiFiService(manager, provider, ssid, mode, security, hidden_ssid) {
+    : WiFiService(manager, provider, ssid, mode, security_class, hidden_ssid) {
   ON_CALL(*this, GetSupplicantConfigurationParameters())
       .WillByDefault(testing::Return(KeyValueStore()));
 }

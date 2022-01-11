@@ -55,7 +55,7 @@ class MetricsTest : public Test {
                                               manager_.wifi_provider(),
                                               ssid_,
                                               kModeManaged,
-                                              kSecurity8021x,
+                                              kSecurityClass8021x,
                                               false)),
         eap_(new MockEapCredentials()),
 #endif  // DISABLE_WIFI
@@ -264,6 +264,7 @@ TEST_F(MetricsTest, WiFiServicePostReadyEAP) {
   eap_wifi_service_->frequency_ = 2412;
   eap_wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   eap_wifi_service_->raw_signal_strength_ = kStrength;
+  eap_wifi_service_->security_ = kSecurityWpa2Enterprise;
   EXPECT_CALL(
       *eap_, OutputConnectionMetrics(&metrics_, Technology(Technology::kWiFi)));
   metrics_.NotifyServiceStateChanged(*eap_wifi_service_,

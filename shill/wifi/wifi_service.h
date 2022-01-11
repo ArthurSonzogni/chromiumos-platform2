@@ -301,9 +301,11 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);
   FRIEND_TEST(WiFiServiceTest, AutoConnect);
   FRIEND_TEST(WiFiServiceTest, ClearWriteOnlyDerivedProperty);  // passphrase_
+  FRIEND_TEST(WiFiServiceTest, Connectable);
   FRIEND_TEST(WiFiServiceTest, ComputeCipher8021x);
   FRIEND_TEST(WiFiServiceTest, CompareWithSameTechnology);
   FRIEND_TEST(WiFiServiceTest, IsAutoConnectable);
+  FRIEND_TEST(WiFiServiceTest, Is8021x);
   FRIEND_TEST(WiFiServiceTest, LoadHidden);
   FRIEND_TEST(WiFiServiceTest, SetPassphraseForNonPassphraseService);
   FRIEND_TEST(WiFiServiceTest, LoadAndUnloadPassphrase);
@@ -363,9 +365,18 @@ class WiFiService : public Service {
   // Check if an WPA3 service is connectable (e.g., underlying device does not
   // support WPA3-SAE?).
   bool IsWPA3Connectable() const;
+  // Returns true if service is configured in pure WPA3 mode or it is configured
+  // in a mixed WPA3 mode (Wpa2/3 or Wpa1/2/3) but only pure WPA3 endpoints are
+  // visible.
+  bool HasOnlyWPA3Endpoints() const;
+
   void UpdateConnectable();
   void UpdateFromEndpoints();
   void UpdateSecurity();
+
+  // Helper function for the case of service with SecurityClass==PSK.
+  // Returns true if AES algorithm can be used - false otherwise (RC4).
+  bool IsAESCapable() const;
 
   static CryptoAlgorithm ComputeCipher8021x(
       const std::set<WiFiEndpointConstRefPtr>& endpoints);

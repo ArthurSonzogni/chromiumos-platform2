@@ -1681,23 +1681,35 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			present and contains the security method or key
 			management setting.
 
-			Possible values are:
+			Possible values are listed below.
 
-			"none" - no privacy,
-			"wep"  - fixed key WEP,
-			"wpa"  - WPA-PSK,
-			"wpa2" - IEEE 802.11i-PSK,
-			"rsn"  - deprecated name for "wpa2",
-			"wpa3" - WPA3-SAE,
-			"psk"  - "wpa", "wpa2", or "wpa3",
-			"802_1x" - IEEE 802.11i with 802.1x authentication.
+			"none" - no privacy
+			"wep"  - fixed key WEP
+			"wpa"  - WPA-PSK
+			"wpa2" - IEEE 802.11i-PSK
+			"rsn"  - deprecated name for "wpa2"
+			"wpa3" - WPA3-SAE
 
-			Note that "psk" is used as a catch-all for non-WEP
-			passphrase-based key management protocols (WPA, WPA-2,
-			and WPA-3) before we know which one is in use. See also
-			SecurityClass. Also note that WPA3-SAE is technically
-			also an RSN protocol, so we use the Wi-Fi Alliance
-			designation (WPA3) for clarity.
+			Equivalent modes with with 802.1x authentication:
+
+			"wpa-ent"
+			"wpa2-ent"
+			"wpa3-ent"
+
+			Transitional modes (when more then one possible value is
+			accepted):
+
+			"wpa+wpa2"
+			"wpa2+wpa3"
+			"wpa-all"
+			"wpa+wpa2-ent"
+			"wpa2+wpa3-ent"
+			"wpa-all-ent"
+
+			See also SecurityClass. Also note that WPA3-SAE
+			is technically also an RSN protocol, so we use
+			the Wi-Fi Alliance designation (WPA3) for
+			clarity.
 
 			This property is only present for WiFi services.
 

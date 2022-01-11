@@ -389,6 +389,8 @@ const char* WiFiEndpoint::ParseSecurity(const KeyValueStore& properties,
         properties.Get<KeyValueStore>(WPASupplicant::kPropertyRSN);
     std::set<KeyManagement> key_management;
     ParseKeyManagementMethods(rsn_properties, &key_management);
+    flags->rsn_8021x_wpa3 =
+        base::Contains(key_management, kKeyManagement802_1x_Wpa3);
     flags->rsn_8021x = base::Contains(key_management, kKeyManagement802_1x);
     flags->rsn_psk = base::Contains(key_management, kKeyManagementPSK);
     flags->rsn_sae = base::Contains(key_management, kKeyManagementSAE);
@@ -407,12 +409,16 @@ const char* WiFiEndpoint::ParseSecurity(const KeyValueStore& properties,
     flags->privacy = properties.Get<bool>(WPASupplicant::kPropertyPrivacy);
   }
 
-  if (flags->rsn_8021x || flags->wpa_8021x) {
-    return kSecurity8021x;
+  if (flags->rsn_8021x_wpa3) {
+    return kSecurityWpa3Enterprise;
+  } else if (flags->rsn_8021x) {
+    return kSecurityWpa2Enterprise;
+  } else if (flags->wpa_8021x) {
+    return kSecurityWpaEnterprise;
   } else if (flags->rsn_sae) {
-    return kSecurityWpa3;
+    return flags->rsn_psk ? kSecurityWpa2Wpa3 : kSecurityWpa3;
   } else if (flags->rsn_psk) {
-    return kSecurityWpa2;
+    return flags->wpa_psk ? kSecurityWpaWpa2 : kSecurityWpa2;
   } else if (flags->wpa_psk) {
     return kSecurityWpa;
   } else if (flags->privacy) {
@@ -438,6 +444,14 @@ void WiFiEndpoint::ParseKeyManagementMethods(
   for (const auto& method : key_management_vec) {
     if (method == WPASupplicant::kKeyManagementMethodSAE) {
       key_management_methods->insert(kKeyManagementSAE);
+    } else if (base::StartsWith(method,
+                                WPASupplicant::kKeyManagementMethodPrefixEAP) &&
+               (base::Contains(method,
+                               WPASupplicant::kKeyManagementMethodSuiteB) ||
+                base::EndsWith(method,
+                               WPASupplicant::kKeyManagementMethodSuffixSha256,
+                               base::CompareCase::SENSITIVE))) {
+      key_management_methods->insert(kKeyManagement802_1x_Wpa3);
     } else if (base::StartsWith(method,
                                 WPASupplicant::kKeyManagementMethodPrefixEAP) ||
                base::EndsWith(method,

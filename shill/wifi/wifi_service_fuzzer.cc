@@ -34,7 +34,8 @@ class WiFiServiceFuzzer {
   static void Run(const uint8_t* data, size_t size) {
     FuzzedDataProvider data_provider(data, size);
     bool security_option = data_provider.ConsumeBool();
-    std::string security_class = security_option ? kSecurityWep : kSecurityPsk;
+    std::string security_class =
+        security_option ? kSecurityClassWep : kSecurityClassPsk;
     uint8_t ssid_size = data_provider.ConsumeIntegral<uint8_t>();
     std::vector<uint8_t> ssid = data_provider.ConsumeBytes<uint8_t>(ssid_size);
     std::string passphrase = data_provider.ConsumeRemainingBytesAsString();

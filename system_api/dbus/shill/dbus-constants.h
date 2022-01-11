@@ -609,18 +609,31 @@ const char kTypeVPN[] = "vpn";
 // Flimflam mode options.
 const char kModeManaged[] = "managed";
 
-// Flimflam security options.
+// WiFi SecurityClass options.
+const char kSecurityClassNone[] = "none";
+const char kSecurityClassWep[] = "wep";
+const char kSecurityClassPsk[] = "psk";
+const char kSecurityClass8021x[] = "802_1x";
+
+// WiFi Security options.
 const char kSecurityNone[] = "none";
 const char kSecurityWep[] = "wep";
-const char kSecurityPsk[] = "psk";
 const char kSecurityWpa[] = "wpa";
+const char kSecurityWpaWpa2[] = "wpa+wpa2";
+const char kSecurityWpaAll[] = "wpa-all";
 // Deprecated.  Use kSecurityWpa2 instead.
 // TODO(b/226138492) Remove this once references in Chrome and Shill are
 // removed.
 const char kSecurityRsn[] = "rsn";
 const char kSecurityWpa2[] = "wpa2";
+const char kSecurityWpa2Wpa3[] = "wpa2+wpa3";
 const char kSecurityWpa3[] = "wpa3";
-const char kSecurity8021x[] = "802_1x";
+const char kSecurityWpaEnterprise[] = "wpa-ent";
+const char kSecurityWpaWpa2Enterprise[] = "wpa+wpa2-ent";
+const char kSecurityWpaAllEnterprise[] = "wpa-all-ent";
+const char kSecurityWpa2Enterprise[] = "wpa2-ent";
+const char kSecurityWpa2Wpa3Enterprise[] = "wpa2+wpa3-ent";
+const char kSecurityWpa3Enterprise[] = "wpa3-ent";
 
 // Compress option values as expected by OpenVPN.
 const char kOpenVPNCompressFramingOnly[] = "";

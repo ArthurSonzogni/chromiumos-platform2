@@ -28,6 +28,7 @@ class SupplicantBSSProxyInterface;
 class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
  public:
   struct SecurityFlags {
+    bool rsn_8021x_wpa3 = false;
     bool rsn_8021x = false;
     bool rsn_psk = false;
     bool rsn_sae = false;
@@ -133,6 +134,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
 
   enum KeyManagement {
     kKeyManagement802_1x,
+    kKeyManagement802_1x_Wpa3,
     kKeyManagementPSK,
     kKeyManagementSAE
   };

@@ -2577,7 +2577,7 @@ void WiFi::StateChanged(const std::string& new_state) {
 
 bool WiFi::SuspectCredentials(WiFiServiceRefPtr service,
                               Service::ConnectFailure* failure) const {
-  if (service->IsSecurityMatch(kSecurityPsk)) {
+  if (service->IsSecurityMatch(kSecurityClassPsk)) {
     if (supplicant_state_ == WPASupplicant::kInterfaceState4WayHandshake &&
         service->AddSuspectedCredentialFailure()) {
       if (failure) {
@@ -2585,7 +2585,7 @@ bool WiFi::SuspectCredentials(WiFiServiceRefPtr service,
       }
       return true;
     }
-  } else if (service->IsSecurityMatch(kSecurity8021x)) {
+  } else if (service->IsSecurityMatch(kSecurityClass8021x)) {
     if (eap_state_handler_->is_eap_in_progress() &&
         service->AddSuspectedCredentialFailure()) {
       if (failure) {

@@ -53,8 +53,8 @@ void NetworkManager::RequestScanSuccess(ConnectMapIter iter) {
 
   // If there is no passphrase, default to no security.
   const std::string security = iter->second.passphrase.empty()
-                                   ? shill::kSecurityNone
-                                   : shill::kSecurityPsk;
+                                   ? shill::kSecurityClassNone
+                                   : shill::kSecurityClassPsk;
   const brillo::VariantDictionary properties = {
       // Mode needs to be set from supported station type.
       {shill::kModeProperty, brillo::Any(std::string(shill::kModeManaged))},
