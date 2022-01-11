@@ -72,7 +72,10 @@ impl HibernateKeyManager {
             HibernateError::KeyManagerError("No private key to derive public key from".to_string())
         })?;
 
-        create_dir(PUBLIC_KEY_DIR).context("Cannot create directory to save public key")?;
+        if !Path::new(PUBLIC_KEY_DIR).exists() {
+            create_dir(PUBLIC_KEY_DIR).context("Cannot create directory to save public key")?;
+        }
+
         let key_path = Path::new(PUBLIC_KEY_DIR).join(PUBLIC_KEY_NAME);
         info!("Saving public key to {}", key_path.display());
         let mut key_file = File::create(&key_path).context("Cannot create public key file")?;

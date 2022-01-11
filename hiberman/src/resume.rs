@@ -12,7 +12,7 @@ use log::{debug, error, info, warn};
 
 use crate::cookie::set_hibernate_cookie;
 use crate::crypto::{CryptoReader, Mode};
-use crate::dbus::HiberDbusConnection;
+use crate::dbus::{HiberDbusConnection, PendingResumeCall};
 use crate::diskfile::{BouncedDiskFile, DiskFile};
 use crate::files::{open_header_file, open_hiberfile, open_log_file, open_metafile};
 use crate::hiberlog::{flush_log, redirect_log, replay_logs, HiberlogFile, HiberlogOut};
@@ -34,7 +34,6 @@ use crate::splitter::ImageJoiner;
 /// work in concert to resume the system from hibernation.
 pub struct ResumeConductor {
     metadata: HibernateMetadata,
-    dbus_connection: Option<HiberDbusConnection>,
     key_manager: HibernateKeyManager,
     options: ResumeOptions,
 }
@@ -44,7 +43,6 @@ impl ResumeConductor {
     pub fn new() -> Result<Self> {
         Ok(ResumeConductor {
             metadata: HibernateMetadata::new()?,
-            dbus_connection: None,
             key_manager: HibernateKeyManager::new(),
             options: Default::default(),
         })
@@ -59,10 +57,9 @@ impl ResumeConductor {
         // Fire up the dbus server.
         let mut dbus_connection = HiberDbusConnection::new()?;
         dbus_connection.spawn_dbus_server()?;
-        self.dbus_connection = Some(dbus_connection);
         // Start keeping logs in memory, anticipating success.
         redirect_log(HiberlogOut::BufferInMemory);
-        let result = self.resume_inner();
+        let result = self.resume_inner(&mut dbus_connection);
         // Replay earlier logs first. Don't wipe the logs out if this is just a dry
         // run.
         replay_logs(true, !self.options.dry_run);
@@ -71,7 +68,11 @@ impl ResumeConductor {
         // Unless the test keys are being used, wait for the key material from
         // cryptohome and save the public portion for a later hibernate.
         if !self.options.test_keys {
-            let save_result = self.save_public_key();
+            let save_result = self.save_public_key(&mut dbus_connection);
+            if let Err(e) = &save_result {
+                warn!("Failed to save public key: {:?}", e);
+            }
+
             result.and(save_result)
         } else {
             result
@@ -80,7 +81,7 @@ impl ResumeConductor {
 
     /// Helper function to perform the meat of the resume action now that the
     /// logging is routed.
-    fn resume_inner(&mut self) -> Result<()> {
+    fn resume_inner(&mut self, dbus_connection: &mut HiberDbusConnection) -> Result<()> {
         // Clear the cookie near the start to avoid situations where we repeatedly
         // try to resume but fail.
         let block_path = path_to_stateful_block()?;
@@ -115,7 +116,7 @@ impl ResumeConductor {
         let _locked_memory = lock_process_memory()?;
         let header_file = open_header_file()?;
         self.metadata = metadata;
-        self.resume_system(header_file, hiber_file, meta_file)
+        self.resume_system(header_file, hiber_file, meta_file, dbus_connection)
     }
 
     /// Inner helper function to read the resume image and launch it.
@@ -124,6 +125,7 @@ impl ResumeConductor {
         header_file: DiskFile,
         hiber_file: DiskFile,
         meta_file: BouncedDiskFile,
+        dbus_connection: &mut HiberDbusConnection,
     ) -> Result<()> {
         let mut log_file = open_log_file(HiberlogFile::Resume)?;
         // Don't allow the logfile to log as it creates a deadlock.
@@ -132,7 +134,13 @@ impl ResumeConductor {
         redirect_log(HiberlogOut::File(Box::new(log_file)));
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Write)?;
         snap_dev.set_platform_mode(false)?;
-        self.read_image(header_file, hiber_file, &mut snap_dev)?;
+        // Save the pending resume call even though it's never used, as it
+        // represents the object blocking the ResumeFromHibernate dbus call from
+        // completing and letting the rest of boot continue. This gets dropped
+        // at the end of the function, when resume has either completed (and not
+        // returned) or failed (so this boot can continue).
+        let _pending_resume_call =
+            self.read_image(header_file, hiber_file, &mut snap_dev, dbus_connection)?;
         info!("Freezing userspace");
         let frozen_userspace = snap_dev.freeze_userspace()?;
         if self.options.dry_run {
@@ -148,12 +156,13 @@ impl ResumeConductor {
     }
 
     /// Load the resume image from disk into memory.
-    fn read_image(
+    fn read_image<'a>(
         &mut self,
         mut header_file: DiskFile,
         mut hiber_file: DiskFile,
         snap_dev: &mut SnapshotDevice,
-    ) -> Result<()> {
+        dbus_connection: &'a mut HiberDbusConnection,
+    ) -> Result<Option<PendingResumeCall>> {
         let page_size = get_page_size();
         let mut image_size = self.metadata.image_size;
         debug!("Resume image is {} bytes", image_size);
@@ -221,11 +230,13 @@ impl ResumeConductor {
         // Now that as much data as possible has been preloaded from disk, the next
         // step is to start decrypting it and push it to the kernel. Block waiting
         // on the authentication key material from cryptohome.
+        let pending_resume_call;
         if self.options.test_keys {
             self.key_manager.use_test_keys()?;
+            pending_resume_call = None;
         } else {
             // This is what blocks waiting for seed material.
-            self.populate_seed()?;
+            pending_resume_call = Some(self.populate_seed(dbus_connection, true)?);
         }
 
         // With the seed material in hand, decrypt the private data, and fire up
@@ -299,36 +310,22 @@ impl ResumeConductor {
                 .context("Failed to load verify resume header pages");
         }
 
-        Ok(())
+        Ok(pending_resume_call)
     }
 
     /// Block waiting for the hibernate key seed, and then feed it to the key
     /// manager.
-    fn populate_seed(&mut self) -> Result<()> {
-        let dbus_connection = self.dbus_connection.as_mut().unwrap();
-        let got_seed_already = dbus_connection.has_seed_material();
-        if !got_seed_already {
-            debug!("Waiting for seed material");
-            // Also print it to the console for the poor souls testing manually.
-            // If you're stuck here, use --test-keys to skip this part, or
-            // manually send something like this:
-            // dbus-send --system --type=method_call --print-reply
-            //    --dest=org.chromium.Hibernate /org/chromium/HibernateSeed
-            //    org.chromium.HibernateSeedInterface.SetSeedMaterial
-            //    "array:byte:0x31,0x32,0x33,0x34,.... (32 bytes)"
-            println!("Waiting for seed material");
-        }
-
+    fn populate_seed(
+        &mut self,
+        dbus_connection: &mut HiberDbusConnection,
+        resume_in_progress: bool,
+    ) -> Result<PendingResumeCall> {
         // Block waiting for seed material from cryptohome.
-        let seed = dbus_connection.get_seed_material()?;
-        if !got_seed_already {
-            debug!("Got seed material");
-            // Use an exclamation point to congratulate that poor soul who's
-            // been stuck here all afternoon.
-            println!("Got seed material!")
-        }
-
-        self.key_manager.set_private_key(&seed)
+        let pending_resume_call = dbus_connection.get_seed_material(resume_in_progress)?;
+        debug!("Got seed material");
+        self.key_manager
+            .set_private_key(&pending_resume_call.secret_seed)?;
+        Ok(pending_resume_call)
     }
 
     /// To get the kernel to do its big allocation, we sent one byte of data to
@@ -415,10 +412,9 @@ impl ResumeConductor {
     }
 
     /// Save the public key for future hibernate attempts.
-    fn save_public_key(&mut self) -> Result<()> {
-        info!("Saving public key for future hibernate");
-        let key_manager = HibernateKeyManager::new();
-        self.populate_seed()?;
-        key_manager.save_public_key()
+    fn save_public_key(&mut self, dbus_connection: &mut HiberDbusConnection) -> Result<()> {
+        info!("Fetching public key for future hibernate");
+        self.populate_seed(dbus_connection, false)?;
+        self.key_manager.save_public_key()
     }
 }

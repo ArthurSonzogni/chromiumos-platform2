@@ -4,6 +4,7 @@
 
 //! Handles the D-Bus interface for hibernate.
 
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -14,28 +15,84 @@ use dbus::channel::MatchingReceiver;
 use dbus::message::MatchRule;
 use dbus_crossroads::{Context, Crossroads};
 use log::{debug, error, info};
+use protobuf::{Message, SingularPtrField};
 use sync::Mutex;
+use system_api::client::OrgChromiumUserDataAuthInterface;
+use system_api::rpc::AccountIdentifier;
+use system_api::UserDataAuth::{GetHibernateSecretReply, GetHibernateSecretRequest};
 
 use crate::hiberutil::HibernateError;
 
 /// Define the minimum acceptable seed material length.
 const MINIMUM_SEED_SIZE: usize = 32;
 
+// Define the timeout to connect to the dbus system.
+pub const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(25);
+
+/// Define the message sent by the d-bus thread to the main thread when the
+/// ResumeFromHibernate d-bus method is called.
+struct ResumeRequest {
+    account_id: String,
+    completion_tx: Sender<u32>,
+}
+
+impl ResumeRequest {
+    pub fn complete(&mut self) {
+        // The content of the message is ignored, this simply allows the dbus
+        // thread to unblock and complete the method. The error is ignored
+        // because the best course of action is simply to keep going with
+        // the main thread.
+        let _ = self.completion_tx.send(0);
+    }
+}
+
+impl Drop for ResumeRequest {
+    fn drop(&mut self) {
+        self.complete();
+    }
+}
+
 /// Define the context shared between dbus calls. These must all have the Send
 /// trait.
-#[derive(Default)]
 struct HibernateDbusStateInternal {
     call_count: u32,
     seed_material: Vec<u8>,
+    resume_tx: Sender<ResumeRequest>,
+    stop: bool,
 }
 
 impl HibernateDbusStateInternal {
+    fn new(resume_tx: Sender<ResumeRequest>) -> Self {
+        Self {
+            call_count: 0,
+            seed_material: vec![],
+            resume_tx,
+            stop: false,
+        }
+    }
+
     /// D-bus method called by cryptohome to set secret seed material derived
     /// from user authentication.
     fn set_seed_material(&mut self, seed: &[u8]) {
         info!("Received {} bytes of seed material", seed.len());
         self.call_count += 1;
         self.seed_material = seed.to_owned();
+    }
+
+    /// D-bus method called by login_manager to let the hibernate service
+    /// know a user session is about to be started.
+    fn resume_from_hibernate(&mut self, account_id: &str) {
+        self.call_count += 1;
+        let (completion_tx, completion_rx) = channel();
+        let _ = self.resume_tx.send(ResumeRequest {
+            account_id: account_id.to_string(),
+            completion_tx,
+        });
+
+        // Wait on the completion channel for the main thread to send something.
+        // It doesn't matter what it is, and on error, just keep going.
+        info!("ResumeFromHibernate: waiting on main thread");
+        let _ = completion_rx.recv();
     }
 }
 
@@ -45,24 +102,25 @@ impl HibernateDbusStateInternal {
 struct HibernateDbusState(Arc<Mutex<HibernateDbusStateInternal>>);
 
 impl HibernateDbusState {
-    fn new() -> Self {
-        HibernateDbusState(Arc::new(Mutex::new(HibernateDbusStateInternal::default())))
+    fn new(resume_tx: Sender<ResumeRequest>) -> Self {
+        HibernateDbusState(Arc::new(Mutex::new(HibernateDbusStateInternal::new(
+            resume_tx,
+        ))))
     }
 }
 
 /// Define the connection details to Dbus. This is the unprotected version, to
 /// be manipulated after acquiring the lock.
-pub struct HiberDbusConnectionInternal {
+struct HiberDbusConnectionInternal {
     conn: Connection,
     state: HibernateDbusState,
 }
 
 impl HiberDbusConnectionInternal {
-    /// Fire up a new system d-bus connection. Attempt to register the
-    /// well-known HibernateSeed name so cryptohome can call us. Create the
-    /// HibernateSeedInterface here as well.
-    pub fn new() -> Result<Self> {
+    /// Fire up a new system d-bus server.
+    fn new(resume_tx: Sender<ResumeRequest>) -> Result<Self> {
         info!("Setting up dbus");
+        let state = HibernateDbusState::new(resume_tx);
         let conn = Connection::new_system().context("Failed to start local dbus connection")?;
         conn.request_name("org.chromium.Hibernate", false, false, false)
             .context("Failed to request dbus name")?;
@@ -87,10 +145,28 @@ impl HiberDbusConnectionInternal {
             );
         });
 
-        // Let's add the "/seed" path, which implements the
-        // org.chromium.HibernateSeed interface, to the crossroads instance.
-        let state = HibernateDbusState::new();
-        crossroads.insert("/org/chromium/HibernateSeed", &[iface_token], state.clone());
+        crossroads.insert("/org/chromium/Hibernate", &[iface_token], state.clone());
+        // Build a new HibernateResumeInterface.
+        let iface_token = crossroads.register("org.chromium.HibernateResumeInterface", |b| {
+            b.method(
+                "ResumeFromHibernate",
+                ("account_id",),
+                (),
+                move |_ctx: &mut Context,
+                      state: &mut HibernateDbusState,
+                      (account_id,): (String,)| {
+                    // Here's what happens when the method is called.
+                    let mut internal_state = state.0.lock();
+                    internal_state.resume_from_hibernate(&account_id);
+                    // This is currently the only thing the dbus thread is alive
+                    // for, so shut it down after this method call.
+                    internal_state.stop = true;
+                    info!("ResumeFromHibernate completing");
+                    Ok(())
+                },
+            );
+        });
+        crossroads.insert("/org/chromium/Hibernate", &[iface_token], state.clone());
         conn.start_receive(
             MatchRule::new_method_call(),
             Box::new(move |msg, conn| {
@@ -108,21 +184,21 @@ impl HiberDbusConnectionInternal {
     }
 
     /// Public function used by the dbus thread to process requests until the
-    /// seed has been received. At that point we drop off since that's all we
+    /// resume method gets called. At that point we drop off since that's all we
     /// need.
-    pub fn receive_seed(&mut self) -> Result<()> {
-        info!("Looping to receive seed");
+    fn receive_seed(&mut self) -> Result<()> {
+        info!("Looping to receive ResumeFromHibernate dbus call");
         loop {
             self.conn
                 .process(Duration::from_millis(30000))
                 .context("Failed to process")?;
-            let HibernateDbusState(state) = &self.state;
-            let state = state.lock();
-            if state.call_count > 0 {
+            // Break out if ResumefromHibernate was called.
+            let state = self.state.0.lock();
+            if state.stop {
                 break;
             }
 
-            debug!("Still waiting for seed");
+            debug!("Still waiting for ResumeFromHibernate dbus call");
         }
 
         Ok(())
@@ -133,15 +209,18 @@ impl HiberDbusConnectionInternal {
 pub struct HiberDbusConnection {
     internal: Arc<Mutex<HiberDbusConnectionInternal>>,
     thread: Option<thread::JoinHandle<()>>,
+    resume_rx: Receiver<ResumeRequest>,
 }
 
 impl HiberDbusConnection {
     /// Create a new dbus connection and announce ourselves on the bus. This
     /// function does not start serving requests yet though.
     pub fn new() -> Result<Self> {
+        let (resume_tx, resume_rx) = channel();
         Ok(HiberDbusConnection {
-            internal: Arc::new(Mutex::new(HiberDbusConnectionInternal::new()?)),
+            internal: Arc::new(Mutex::new(HiberDbusConnectionInternal::new(resume_tx)?)),
             thread: None,
+            resume_rx,
         })
     }
 
@@ -158,22 +237,23 @@ impl HiberDbusConnection {
         Ok(())
     }
 
-    /// Block waiting for the dbus server thread to finish, which happens after
-    /// someone (eg cryptohome) has called our SetSeedMaterial method to hand us
-    /// key material. Then return that material.
-    pub fn get_seed_material(&mut self) -> Result<Vec<u8>> {
-        info!("Waiting for dbus server thread");
-        // Wait for the dbus thread to exit.
-        if let Some(thread) = self.thread.take() {
-            thread.join().unwrap();
+    /// Block waiting for the seed material to become available from cryptohome,
+    /// then return that material.
+    pub fn get_seed_material(&mut self, resume_in_progress: bool) -> Result<PendingResumeCall> {
+        // Block until the dbus thread receives a ResumeFromHibernate call, and
+        // receive that info.
+        info!("Waiting for ResumeFromHibernate call");
+        let mut resume_request = self.resume_rx.recv()?;
+
+        // If there's no resume in progress, unblock boot ASAP.
+        if !resume_in_progress {
+            info!("Unblocking ResumeFromHibernate immediately");
+            resume_request.complete();
         }
 
-        // Now grab the internal connection, grab the state, and grab the seed
-        // material.
-        let internal = self.internal.lock();
-        let HibernateDbusState(state) = &internal.state;
-        let state = state.lock();
-        let length = state.seed_material.len();
+        info!("Requesting secret seed");
+        let secret_seed = get_secret_seed(&resume_request.account_id)?;
+        let length = secret_seed.len();
         if length < MINIMUM_SEED_SIZE {
             return Err(HibernateError::DbusError(format!(
                 "Seed size {} was below minium {}",
@@ -183,23 +263,40 @@ impl HiberDbusConnection {
         }
 
         info!("Got {} bytes of seed material", length);
-        Ok(state.seed_material.clone())
+        Ok(PendingResumeCall {
+            secret_seed,
+            _resume_request: resume_request,
+        })
     }
+}
 
-    /// Returns true if seed material is already acquired. Unlike
-    /// get_seed_material() this function does not block if the seed material is
-    /// not available.
-    pub fn has_seed_material(&self) -> bool {
-        let internal = self.internal.lock();
-        let HibernateDbusState(state) = &internal.state;
-        // Attempt to get the lock on the inner state. Since the thread holds it
-        // while it's running, and exits as soon as the seed material is given,
-        // assume a failure to acquire means no seed material is present yet.
-        let state = match state.try_lock() {
-            Ok(s) => s,
-            Err(_) => return false,
-        };
+/// This struct serves as a ticket indicating that the dbus thread is currently
+/// blocked in the ResumeFromHibernate method.
+pub struct PendingResumeCall {
+    pub secret_seed: Vec<u8>,
+    // When this resume request is dropped, the dbus thread allows the method
+    // call to complete.
+    _resume_request: ResumeRequest,
+}
 
-        state.seed_material.len() >= MINIMUM_SEED_SIZE
-    }
+/// Ask cryptohome for the hibernate seed for the given account. This call only
+/// works once, then cryptohome forgets the secret.
+fn get_secret_seed(account_id: &str) -> Result<Vec<u8>> {
+    let conn = Connection::new_system().context("Failed to connect to dbus for secret seed")?;
+    let conn_path = conn.with_proxy(
+        "org.chromium.UserDataAuth",
+        "/org/chromium/UserDataAuth",
+        DEFAULT_DBUS_TIMEOUT,
+    );
+
+    let mut proto: GetHibernateSecretRequest = Message::new();
+    let mut account_identifier = AccountIdentifier::new();
+    account_identifier.set_account_id(account_id.to_string());
+    proto.account_id = SingularPtrField::some(account_identifier);
+    let response = conn_path
+        .get_hibernate_secret(proto.write_to_bytes().unwrap())
+        .context("Failed to call GetHibernateSecret dbus method")?;
+    let response: GetHibernateSecretReply = Message::parse_from_bytes(&response)
+        .context("Failed to parse GetHibernateSecret dbus response")?;
+    Ok(response.hibernate_secret)
 }

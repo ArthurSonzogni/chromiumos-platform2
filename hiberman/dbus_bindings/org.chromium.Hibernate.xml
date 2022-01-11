@@ -2,19 +2,32 @@
 
 <node name="/org/chromium/Hibernate"
   xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
-<interface name="org.chromium.HibernateSeedInterface">
-  <!--
-  SetSeedMaterial:
-  @seed: Array of hibernate secret seed bytes.
+  <interface name="org.chromium.HibernateSeedInterface">
+    <!--
+    SetSeedMaterial:
+    @seed: Array of hibernate secret seed bytes.
 
-  Gives the hibernate service its secret key material, based on user
-  authentication data. This will be used to derive the public/private
-  hibernate key pair used to protect the hibernate image. This seed should be
-  at least 32 bytes.
-  -->
-  <method name="SetSeedMaterial">
-    <arg name="seed" type="ay" direction="in" />
-    <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
-  </method>
-</interface>
+    Gives the hibernate service its secret key material, based on user
+    authentication data. This will be used to derive the public/private
+    hibernate key pair used to protect the hibernate image. This seed should be
+    at least 32 bytes.
+    -->
+    <method name="SetSeedMaterial">
+      <arg name="seed" type="ay" direction="in" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+  </interface>
+  <interface name="org.chromium.HibernateResumeInterface">
+    <!--
+    ResumeFromHibernate:
+
+    Executes a resume from hibernation, if a viable resume image is present.
+    Otherwise, executes any preparations needed to perform a hibernation at a
+    later time.
+    -->
+    <method name="ResumeFromHibernate">
+      <arg name="account_id" direction="in" type="s" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+  </interface>
 </node>
