@@ -1,3 +1,12 @@
+// Copyright 2022 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// This source file is modified from a verbatim copy of MurmurHash3.cc from
+// the smhasher project. The modifications done to this file is licensed
+// according to the Chromium OS license notice above. The original, verbatim
+// source's license is as below.
+
 //-----------------------------------------------------------------------------
 // MurmurHash3 was written by Austin Appleby, and is placed in the public
 // domain. The author hereby disclaims copyright to this source code.
