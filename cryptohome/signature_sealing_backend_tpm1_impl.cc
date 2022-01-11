@@ -1254,7 +1254,7 @@ SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
         unsealing_session) {
   // Validate the parameters.
   auto* sealed_secret_data_ptr =
-      absl::get_if<structure::Tpm12CertifiedMigratableKeyData>(
+      std::get_if<structure::Tpm12CertifiedMigratableKeyData>(
           &sealed_secret_data);
   if (!sealed_secret_data_ptr) {
     return CreateError<TPMError>(

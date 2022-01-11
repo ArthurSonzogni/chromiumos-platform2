@@ -45,11 +45,11 @@ void VerifyCreateCallback(base::RunLoop* run_loop,
   EXPECT_FALSE(blobs->scrypt_wrapped_reset_seed_key->derived_key().empty());
   EXPECT_FALSE(blobs->scrypt_wrapped_reset_seed_key->ConsumeSalt().empty());
 
-  ASSERT_TRUE(absl::holds_alternative<ChallengeCredentialAuthBlockState>(
+  ASSERT_TRUE(std::holds_alternative<ChallengeCredentialAuthBlockState>(
       auth_state->state));
 
   auto& tpm_state =
-      absl::get<ChallengeCredentialAuthBlockState>(auth_state->state);
+      std::get<ChallengeCredentialAuthBlockState>(auth_state->state);
 
   ASSERT_TRUE(tpm_state.keyset_challenge_info.has_value());
   EXPECT_EQ(

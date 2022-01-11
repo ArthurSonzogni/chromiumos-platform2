@@ -5,9 +5,9 @@
 #ifndef CRYPTOHOME_SIGNATURE_SEALING_STRUCTURES_H_
 #define CRYPTOHOME_SIGNATURE_SEALING_STRUCTURES_H_
 
+#include <variant>
 #include <vector>
 
-#include <absl/types/variant.h>
 #include <brillo/secure_blob.h>
 
 namespace cryptohome {
@@ -72,9 +72,9 @@ struct Tpm12CertifiedMigratableKeyData {
   brillo::Blob extended_pcr_bound_secret;
 };
 
-using SignatureSealedData = absl::variant<absl::monostate,
-                                          Tpm2PolicySignedData,
-                                          Tpm12CertifiedMigratableKeyData>;
+using SignatureSealedData = std::variant<std::monostate,
+                                         Tpm2PolicySignedData,
+                                         Tpm12CertifiedMigratableKeyData>;
 
 // Fields specific to the challenge-response protection.
 // The Scrypt KDF passphrase, used for the protection of the keyset, is

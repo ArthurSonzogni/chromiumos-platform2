@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 #include <utility>
+#include <variant>
 
-#include <absl/types/variant.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/signature_sealing/structures_proto.h"
@@ -161,10 +161,10 @@ structure::ChallengeSignatureAlgorithm FromProto(
 
 SignatureSealedData ToProto(const structure::SignatureSealedData& obj) {
   SignatureSealedData result;
-  if (auto* data = absl::get_if<structure::Tpm2PolicySignedData>(&obj)) {
+  if (auto* data = std::get_if<structure::Tpm2PolicySignedData>(&obj)) {
     *result.mutable_tpm2_policy_signed_data() = ToProto(*data);
   } else if (auto* data =
-                 absl::get_if<structure::Tpm12CertifiedMigratableKeyData>(
+                 std::get_if<structure::Tpm12CertifiedMigratableKeyData>(
                      &obj)) {
     *result.mutable_tpm12_certified_migratable_key_data() = ToProto(*data);
   } else {

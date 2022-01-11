@@ -6,8 +6,8 @@
 #define CRYPTOHOME_AUTH_BLOCKS_AUTH_BLOCK_STATE_H_
 
 #include <optional>
+#include <variant>
 
-#include <absl/types/variant.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/auth_block_state_generated.h"
@@ -142,15 +142,15 @@ struct AuthBlockState {
   // Returns an AuthBlockState Flatbuffer serialized to a SecureBlob.
   std::optional<brillo::SecureBlob> Serialize() const;
 
-  absl::variant<absl::monostate,
-                TpmNotBoundToPcrAuthBlockState,
-                TpmBoundToPcrAuthBlockState,
-                PinWeaverAuthBlockState,
-                LibScryptCompatAuthBlockState,
-                ChallengeCredentialAuthBlockState,
-                DoubleWrappedCompatAuthBlockState,
-                CryptohomeRecoveryAuthBlockState,
-                TpmEccAuthBlockState>
+  std::variant<std::monostate,
+               TpmNotBoundToPcrAuthBlockState,
+               TpmBoundToPcrAuthBlockState,
+               PinWeaverAuthBlockState,
+               LibScryptCompatAuthBlockState,
+               ChallengeCredentialAuthBlockState,
+               DoubleWrappedCompatAuthBlockState,
+               CryptohomeRecoveryAuthBlockState,
+               TpmEccAuthBlockState>
       state;
 };
 

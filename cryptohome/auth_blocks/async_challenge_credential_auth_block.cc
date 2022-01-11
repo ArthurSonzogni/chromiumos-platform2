@@ -6,8 +6,8 @@
 
 #include <memory>
 #include <utility>
+#include <variant>
 
-#include <absl/types/variant.h>
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/notreached.h>
@@ -112,7 +112,7 @@ void AsyncChallengeCredentialAuthBlock::CreateContinue(
     return;
   }
 
-  if (auto* scrypt_state = absl::get_if<LibScryptCompatAuthBlockState>(
+  if (auto* scrypt_state = std::get_if<LibScryptCompatAuthBlockState>(
           &scrypt_auth_state->state)) {
     ChallengeCredentialAuthBlockState cc_state = {
         .scrypt_state = std::move(*scrypt_state),
@@ -141,7 +141,7 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
   }
 
   const ChallengeCredentialAuthBlockState* cc_state =
-      absl::get_if<ChallengeCredentialAuthBlockState>(&state.state);
+      std::get_if<ChallengeCredentialAuthBlockState>(&state.state);
   if (cc_state == nullptr) {
     LOG(ERROR) << __func__
                << "Invalid state for challenge credential AuthBlock.";

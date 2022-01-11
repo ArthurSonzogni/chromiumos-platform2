@@ -5,16 +5,16 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_METADATA_H_
 #define CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_METADATA_H_
 
-#include <absl/types/variant.h>
+#include <variant>
 
 namespace cryptohome {
 
 struct PasswordAuthFactorMetadata {};
 
 struct AuthFactorMetadata {
-  // Use `absl::monostate` as the first alternative, in order to make the
+  // Use `std::monostate` as the first alternative, in order to make the
   // default constructor create an empty metadata.
-  absl::variant<absl::monostate, PasswordAuthFactorMetadata> metadata;
+  std::variant<std::monostate, PasswordAuthFactorMetadata> metadata;
 };
 
 }  // namespace cryptohome

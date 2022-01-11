@@ -6,8 +6,8 @@
 
 #include <memory>
 #include <optional>
+#include <variant>
 
-#include <absl/types/variant.h>
 #include <brillo/secure_allocator.h>
 #include <brillo/secure_blob.h>
 
@@ -61,7 +61,7 @@ static flatbuffers::Offset<TpmBoundToPcrState> ToFlatBufferOffset(
 flatbuffers::Offset<SerializedAuthBlockState> AuthBlockState::SerializeToOffset(
     flatbuffers::FlatBufferBuilder* builder) const {
   flatbuffers::Offset<SerializedAuthBlockState> zero_offset(0);
-  if (auto* tpm_state = absl::get_if<TpmBoundToPcrAuthBlockState>(&state)) {
+  if (auto* tpm_state = std::get_if<TpmBoundToPcrAuthBlockState>(&state)) {
     // Check required fields
     if (IsEmpty(tpm_state->salt)) {
       LOG(ERROR) << "Invalid salt in TpmBoundToPcrAuthBlockState";

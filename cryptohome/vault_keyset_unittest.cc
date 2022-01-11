@@ -9,10 +9,10 @@
 #include <memory>
 #include <string.h>  // For memcmp().
 #include <utility>
+#include <variant>
 #include <vector>
 #include <openssl/evp.h>
 
-#include <absl/types/variant.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -325,7 +325,7 @@ TEST_F(VaultKeysetTest, GetPcrBoundAuthBlockStateTest) {
   EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
 
   const TpmBoundToPcrAuthBlockState* tpm_state =
-      absl::get_if<TpmBoundToPcrAuthBlockState>(&auth_state.state);
+      std::get_if<TpmBoundToPcrAuthBlockState>(&auth_state.state);
 
   EXPECT_NE(tpm_state, nullptr);
   EXPECT_TRUE(tpm_state->scrypt_derived);
@@ -355,7 +355,7 @@ TEST_F(VaultKeysetTest, GetEccAuthBlockStateTest) {
   EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
 
   const TpmEccAuthBlockState* tpm_state =
-      absl::get_if<TpmEccAuthBlockState>(&auth_state.state);
+      std::get_if<TpmEccAuthBlockState>(&auth_state.state);
 
   EXPECT_NE(tpm_state, nullptr);
   EXPECT_TRUE(tpm_state->salt.has_value());
@@ -381,7 +381,7 @@ TEST_F(VaultKeysetTest, GetNotPcrBoundAuthBlockState) {
   EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
 
   const TpmNotBoundToPcrAuthBlockState* tpm_state =
-      absl::get_if<TpmNotBoundToPcrAuthBlockState>(&auth_state.state);
+      std::get_if<TpmNotBoundToPcrAuthBlockState>(&auth_state.state);
   EXPECT_NE(tpm_state, nullptr);
   EXPECT_FALSE(tpm_state->scrypt_derived);
   EXPECT_TRUE(tpm_state->tpm_key.has_value());
@@ -402,7 +402,7 @@ TEST_F(VaultKeysetTest, GetPinWeaverAuthBlockState) {
   EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
 
   const PinWeaverAuthBlockState* pin_auth_state =
-      absl::get_if<PinWeaverAuthBlockState>(&auth_state.state);
+      std::get_if<PinWeaverAuthBlockState>(&auth_state.state);
   EXPECT_NE(pin_auth_state, nullptr);
   EXPECT_TRUE(pin_auth_state->le_label.has_value());
   EXPECT_EQ(le_label, pin_auth_state->le_label.value());
@@ -422,7 +422,7 @@ TEST_F(VaultKeysetTest, GetChallengeCredentialAuthBlockState) {
   EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
 
   const ChallengeCredentialAuthBlockState* cc_state =
-      absl::get_if<ChallengeCredentialAuthBlockState>(&auth_state.state);
+      std::get_if<ChallengeCredentialAuthBlockState>(&auth_state.state);
   EXPECT_NE(cc_state, nullptr);
 }
 
@@ -442,7 +442,7 @@ TEST_F(VaultKeysetTest, GetLibscryptCompatAuthBlockState) {
   EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
 
   const LibScryptCompatAuthBlockState* scrypt_state =
-      absl::get_if<LibScryptCompatAuthBlockState>(&auth_state.state);
+      std::get_if<LibScryptCompatAuthBlockState>(&auth_state.state);
   EXPECT_NE(scrypt_state, nullptr);
   EXPECT_TRUE(scrypt_state->wrapped_keyset.has_value());
   EXPECT_TRUE(scrypt_state->wrapped_chaps_key.has_value());
@@ -466,7 +466,7 @@ TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockStateFailure) {
   EXPECT_FALSE(keyset.GetAuthBlockState(&auth_state));
 
   const DoubleWrappedCompatAuthBlockState* double_wrapped_state =
-      absl::get_if<DoubleWrappedCompatAuthBlockState>(&auth_state.state);
+      std::get_if<DoubleWrappedCompatAuthBlockState>(&auth_state.state);
   EXPECT_EQ(double_wrapped_state, nullptr);
 }
 
@@ -485,7 +485,7 @@ TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockState) {
   EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
 
   const DoubleWrappedCompatAuthBlockState* double_wrapped_state =
-      absl::get_if<DoubleWrappedCompatAuthBlockState>(&auth_state.state);
+      std::get_if<DoubleWrappedCompatAuthBlockState>(&auth_state.state);
   EXPECT_NE(double_wrapped_state, nullptr);
 }
 
@@ -748,7 +748,7 @@ TEST_F(VaultKeysetTest, GetTpmWritePasswordRounds) {
   AuthBlockState tpm_state;
   EXPECT_TRUE(keyset.GetAuthBlockState(&tpm_state));
   auto test_state =
-      absl::get_if<TpmNotBoundToPcrAuthBlockState>(&tpm_state.state);
+      std::get_if<TpmNotBoundToPcrAuthBlockState>(&tpm_state.state);
   // test_state is of type TpmNotBoundToPcrAuthBlockState
   ASSERT_EQ(keyset.GetPasswordRounds(), test_state->password_rounds.value());
 }
@@ -817,7 +817,7 @@ TEST_F(LeCredentialsManagerTest, Encrypt) {
       &auth_block_state));
 
   EXPECT_TRUE(
-      absl::holds_alternative<PinWeaverAuthBlockState>(auth_block_state.state));
+      std::holds_alternative<PinWeaverAuthBlockState>(auth_block_state.state));
 }
 
 TEST_F(LeCredentialsManagerTest, EncryptFail) {

@@ -4,8 +4,8 @@
 
 #include <optional>
 #include <utility>
+#include <variant>
 
-#include <absl/types/variant.h>
 #include <brillo/secure_allocator.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>

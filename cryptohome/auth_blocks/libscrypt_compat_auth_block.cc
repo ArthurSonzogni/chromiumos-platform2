@@ -6,8 +6,8 @@
 
 #include <memory>
 #include <utility>
+#include <variant>
 
-#include <absl/types/variant.h>
 #include <base/logging.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
@@ -122,7 +122,7 @@ CryptoError LibScryptCompatAuthBlock::Derive(const AuthInput& auth_input,
                                              KeyBlobs* key_blobs) {
   const LibScryptCompatAuthBlockState* state;
   if (!(state =
-            absl::get_if<LibScryptCompatAuthBlockState>(&auth_state.state))) {
+            std::get_if<LibScryptCompatAuthBlockState>(&auth_state.state))) {
     LOG(ERROR) << "Invalid AuthBlockState";
   }
 

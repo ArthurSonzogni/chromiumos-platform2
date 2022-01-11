@@ -7,8 +7,8 @@
 #include <map>
 #include <string>
 #include <utility>
+#include <variant>
 
-#include <absl/types/variant.h>
 #include <base/check.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
@@ -47,7 +47,7 @@ CryptoError TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
                                               KeyBlobs* key_out_data) {
   const TpmNotBoundToPcrAuthBlockState* tpm_state;
   if (!(tpm_state =
-            absl::get_if<TpmNotBoundToPcrAuthBlockState>(&state.state))) {
+            std::get_if<TpmNotBoundToPcrAuthBlockState>(&state.state))) {
     LOG(ERROR) << "Invalid AuthBlockState";
     return CryptoError::CE_OTHER_CRYPTO;
   }

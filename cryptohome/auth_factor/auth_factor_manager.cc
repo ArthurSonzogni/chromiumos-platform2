@@ -10,8 +10,8 @@
 #include <string>
 #include <optional>
 #include <utility>
+#include <variant>
 
-#include <absl/types/variant.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/check.h>
@@ -83,7 +83,7 @@ flatbuffers::Offset<void> SerializeMetadataToOffset(
     flatbuffers::FlatBufferBuilder* builder,
     SerializedAuthFactorMetadata* metadata_type) {
   if (const auto* password_metadata =
-          absl::get_if<PasswordAuthFactorMetadata>(&metadata.metadata)) {
+          std::get_if<PasswordAuthFactorMetadata>(&metadata.metadata)) {
     *metadata_type = SerializedAuthFactorMetadata::SerializedPasswordMetadata;
     return SerializeMetadataToOffset(*password_metadata, builder).Union();
   }

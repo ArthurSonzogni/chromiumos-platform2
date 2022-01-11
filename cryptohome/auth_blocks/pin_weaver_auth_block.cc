@@ -12,8 +12,8 @@
 #include <map>
 #include <string>
 #include <utility>
+#include <variant>
 
-#include <absl/types/variant.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
@@ -225,7 +225,7 @@ CryptoError PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
                                        const AuthBlockState& state,
                                        KeyBlobs* key_blobs) {
   const PinWeaverAuthBlockState* auth_state;
-  if (!(auth_state = absl::get_if<PinWeaverAuthBlockState>(&state.state))) {
+  if (!(auth_state = std::get_if<PinWeaverAuthBlockState>(&state.state))) {
     LOG(ERROR) << "Invalid AuthBlockState";
     return CryptoError::CE_OTHER_CRYPTO;
   }

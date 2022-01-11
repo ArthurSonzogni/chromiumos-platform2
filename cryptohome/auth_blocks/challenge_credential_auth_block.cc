@@ -5,8 +5,8 @@
 #include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
 
 #include <utility>
+#include <variant>
 
-#include <absl/types/variant.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 
@@ -32,7 +32,7 @@ CryptoError ChallengeCredentialAuthBlock::Create(
     return error;
   }
   if (auto* scrypt_state =
-          absl::get_if<LibScryptCompatAuthBlockState>(&auth_state.state)) {
+          std::get_if<LibScryptCompatAuthBlockState>(&auth_state.state)) {
     ChallengeCredentialAuthBlockState cc_state = {.scrypt_state =
                                                       std::move(*scrypt_state)};
     *auth_block_state = AuthBlockState{.state = std::move(cc_state)};
@@ -49,7 +49,7 @@ CryptoError ChallengeCredentialAuthBlock::Derive(const AuthInput& user_input,
                                                  const AuthBlockState& state,
                                                  KeyBlobs* key_blobs) {
   const ChallengeCredentialAuthBlockState* cc_state =
-      absl::get_if<ChallengeCredentialAuthBlockState>(&state.state);
+      std::get_if<ChallengeCredentialAuthBlockState>(&state.state);
   if (cc_state == nullptr) {
     LOG(ERROR) << "Invalid state for challenge credential AuthBlock";
     return CryptoError::CE_OTHER_FATAL;

@@ -1607,9 +1607,9 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Seal) {
                 Blob() /* delegate_secret */, &secret_value, &sealed_data));
   EXPECT_EQ(secret_value, SecureBlob(kSecretValue));
   ASSERT_TRUE(
-      absl::holds_alternative<structure::Tpm2PolicySignedData>(sealed_data));
+      std::holds_alternative<structure::Tpm2PolicySignedData>(sealed_data));
   const structure::Tpm2PolicySignedData& sealed_data_contents =
-      absl::get<structure::Tpm2PolicySignedData>(sealed_data);
+      std::get<structure::Tpm2PolicySignedData>(sealed_data);
   EXPECT_EQ(key_spki_der_, sealed_data_contents.public_key_spki_der);
   EXPECT_EQ(kSealedSecretValue,
             BlobToString(sealed_data_contents.srk_wrapped_secret));

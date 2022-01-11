@@ -282,7 +282,7 @@ CryptoError TpmEccAuthBlock::Derive(const AuthInput& auth_input,
                                     const AuthBlockState& state,
                                     KeyBlobs* key_out_data) {
   const TpmEccAuthBlockState* auth_state;
-  if (!(auth_state = absl::get_if<TpmEccAuthBlockState>(&state.state))) {
+  if (!(auth_state = std::get_if<TpmEccAuthBlockState>(&state.state))) {
     DLOG(FATAL) << "Invalid AuthBlockState";
     return CryptoError::CE_OTHER_CRYPTO;
   }

@@ -8,9 +8,9 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
-#include <absl/types/variant.h>
 #include <base/files/file_path.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -99,13 +99,13 @@ TEST(TpmBoundToPcrTest, CreateTest) {
   EXPECT_EQ(CryptoError::CE_NONE,
             auth_block.Create(user_input, &auth_state, &vkk_data));
   EXPECT_TRUE(
-      absl::holds_alternative<TpmBoundToPcrAuthBlockState>(auth_state.state));
+      std::holds_alternative<TpmBoundToPcrAuthBlockState>(auth_state.state));
 
   EXPECT_NE(vkk_data.vkk_key, std::nullopt);
   EXPECT_NE(vkk_data.vkk_iv, std::nullopt);
   EXPECT_NE(vkk_data.chaps_iv, std::nullopt);
 
-  auto& tpm_state = absl::get<TpmBoundToPcrAuthBlockState>(auth_state.state);
+  auto& tpm_state = std::get<TpmBoundToPcrAuthBlockState>(auth_state.state);
 
   EXPECT_TRUE(tpm_state.salt.has_value());
   const brillo::SecureBlob& salt = tpm_state.salt.value();
@@ -161,14 +161,14 @@ TEST(TpmNotBoundToPcrTest, CreateTest) {
   AuthBlockState auth_state;
   EXPECT_EQ(CryptoError::CE_NONE,
             auth_block.Create(user_input, &auth_state, &vkk_data));
-  EXPECT_TRUE(absl::holds_alternative<TpmNotBoundToPcrAuthBlockState>(
-      auth_state.state));
+  EXPECT_TRUE(
+      std::holds_alternative<TpmNotBoundToPcrAuthBlockState>(auth_state.state));
 
   EXPECT_NE(vkk_data.vkk_key, std::nullopt);
   EXPECT_NE(vkk_data.vkk_iv, std::nullopt);
   EXPECT_NE(vkk_data.chaps_iv, std::nullopt);
 
-  auto& tpm_state = absl::get<TpmNotBoundToPcrAuthBlockState>(auth_state.state);
+  auto& tpm_state = std::get<TpmNotBoundToPcrAuthBlockState>(auth_state.state);
 
   EXPECT_TRUE(tpm_state.salt.has_value());
   const brillo::SecureBlob& salt = tpm_state.salt.value();
@@ -286,9 +286,9 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
   EXPECT_EQ(CryptoError::CE_NONE,
             auth_block.Create(user_input, &auth_state, &vkk_data));
   EXPECT_TRUE(
-      absl::holds_alternative<PinWeaverAuthBlockState>(auth_state.state));
+      std::holds_alternative<PinWeaverAuthBlockState>(auth_state.state));
 
-  auto& pin_state = absl::get<PinWeaverAuthBlockState>(auth_state.state);
+  auto& pin_state = std::get<PinWeaverAuthBlockState>(auth_state.state);
 
   EXPECT_TRUE(pin_state.salt.has_value());
   const brillo::SecureBlob& salt = pin_state.salt.value();
@@ -964,11 +964,11 @@ TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   ASSERT_TRUE(created_key_blobs.vkk_key.has_value());
   ASSERT_TRUE(created_key_blobs.vkk_iv.has_value());
   ASSERT_TRUE(created_key_blobs.chaps_iv.has_value());
-  ASSERT_TRUE(absl::holds_alternative<CryptohomeRecoveryAuthBlockState>(
+  ASSERT_TRUE(std::holds_alternative<CryptohomeRecoveryAuthBlockState>(
       auth_state.state));
 
   const CryptohomeRecoveryAuthBlockState& cryptohome_recovery_state =
-      absl::get<CryptohomeRecoveryAuthBlockState>(auth_state.state);
+      std::get<CryptohomeRecoveryAuthBlockState>(auth_state.state);
   ASSERT_TRUE(cryptohome_recovery_state.hsm_payload.has_value());
   ASSERT_TRUE(
       cryptohome_recovery_state.plaintext_destination_share.has_value());
@@ -1072,13 +1072,13 @@ TEST(TpmEccAuthBlockTest, CreateTest) {
   AuthBlockState auth_state;
   EXPECT_EQ(CryptoError::CE_NONE,
             auth_block.Create(user_input, &auth_state, &vkk_data));
-  EXPECT_TRUE(absl::holds_alternative<TpmEccAuthBlockState>(auth_state.state));
+  EXPECT_TRUE(std::holds_alternative<TpmEccAuthBlockState>(auth_state.state));
 
   EXPECT_NE(vkk_data.vkk_key, std::nullopt);
   EXPECT_NE(vkk_data.vkk_iv, std::nullopt);
   EXPECT_NE(vkk_data.chaps_iv, std::nullopt);
 
-  auto& tpm_state = absl::get<TpmEccAuthBlockState>(auth_state.state);
+  auto& tpm_state = std::get<TpmEccAuthBlockState>(auth_state.state);
 
   EXPECT_TRUE(tpm_state.salt.has_value());
   const brillo::SecureBlob& salt = tpm_state.salt.value();
@@ -1145,13 +1145,13 @@ TEST(TpmEccAuthBlockTest, CreateRetryTest) {
   AuthBlockState auth_state;
   EXPECT_EQ(CryptoError::CE_NONE,
             auth_block.Create(user_input, &auth_state, &vkk_data));
-  EXPECT_TRUE(absl::holds_alternative<TpmEccAuthBlockState>(auth_state.state));
+  EXPECT_TRUE(std::holds_alternative<TpmEccAuthBlockState>(auth_state.state));
 
   EXPECT_NE(vkk_data.vkk_key, std::nullopt);
   EXPECT_NE(vkk_data.vkk_iv, std::nullopt);
   EXPECT_NE(vkk_data.chaps_iv, std::nullopt);
 
-  auto& tpm_state = absl::get<TpmEccAuthBlockState>(auth_state.state);
+  auto& tpm_state = std::get<TpmEccAuthBlockState>(auth_state.state);
 
   EXPECT_TRUE(tpm_state.salt.has_value());
   const brillo::SecureBlob& salt = tpm_state.salt.value();

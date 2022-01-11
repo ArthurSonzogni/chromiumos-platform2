@@ -4,8 +4,8 @@
 
 #include <string>
 #include <utility>
+#include <variant>
 
-#include <absl/types/variant.h>
 #include <gtest/gtest.h>
 
 #include "cryptohome/signature_sealing/structures_proto.h"
@@ -49,15 +49,15 @@ TEST(SignatureSealedDataTest, ToProtoFromProtoTPM2) {
 
   structure::SignatureSealedData struct_data = data;
   ASSERT_TRUE(
-      absl::holds_alternative<structure::Tpm2PolicySignedData>(struct_data));
+      std::holds_alternative<structure::Tpm2PolicySignedData>(struct_data));
 
   structure::SignatureSealedData final_data =
       proto::FromProto(proto::ToProto(struct_data));
   ASSERT_TRUE(
-      absl::holds_alternative<structure::Tpm2PolicySignedData>(final_data));
+      std::holds_alternative<structure::Tpm2PolicySignedData>(final_data));
 
   const structure::Tpm2PolicySignedData& tpm2_data =
-      absl::get<structure::Tpm2PolicySignedData>(final_data);
+      std::get<structure::Tpm2PolicySignedData>(final_data);
 
   EXPECT_EQ(tpm2_data.public_key_spki_der, data.public_key_spki_der);
   EXPECT_EQ(tpm2_data.srk_wrapped_secret, data.srk_wrapped_secret);
@@ -81,17 +81,17 @@ TEST(SignatureSealedDataTest, ToProtoFromProtoTPM1) {
 
   structure::SignatureSealedData struct_data = data;
   ASSERT_TRUE(
-      absl::holds_alternative<structure::Tpm12CertifiedMigratableKeyData>(
+      std::holds_alternative<structure::Tpm12CertifiedMigratableKeyData>(
           struct_data));
 
   structure::SignatureSealedData final_data =
       proto::FromProto(proto::ToProto(struct_data));
   ASSERT_TRUE(
-      absl::holds_alternative<structure::Tpm12CertifiedMigratableKeyData>(
+      std::holds_alternative<structure::Tpm12CertifiedMigratableKeyData>(
           final_data));
 
   const structure::Tpm12CertifiedMigratableKeyData& tpm1_data =
-      absl::get<structure::Tpm12CertifiedMigratableKeyData>(final_data);
+      std::get<structure::Tpm12CertifiedMigratableKeyData>(final_data);
 
   EXPECT_EQ(tpm1_data.public_key_spki_der, data.public_key_spki_der);
   EXPECT_EQ(tpm1_data.srk_wrapped_cmk, data.srk_wrapped_cmk);
@@ -126,10 +126,10 @@ TEST(SignatureChallengeInfoTest, ToProtoFromProto) {
   EXPECT_EQ(final_data.salt, data.salt);
   EXPECT_EQ(final_data.salt_signature_algorithm, data.salt_signature_algorithm);
 
-  ASSERT_TRUE(absl::holds_alternative<structure::Tpm2PolicySignedData>(
+  ASSERT_TRUE(std::holds_alternative<structure::Tpm2PolicySignedData>(
       final_data.sealed_secret));
   const structure::Tpm2PolicySignedData& tpm2_data =
-      absl::get<structure::Tpm2PolicySignedData>(final_data.sealed_secret);
+      std::get<structure::Tpm2PolicySignedData>(final_data.sealed_secret);
 
   EXPECT_EQ(tpm2_data.public_key_spki_der, policy_data.public_key_spki_der);
   EXPECT_EQ(tpm2_data.srk_wrapped_secret, policy_data.srk_wrapped_secret);

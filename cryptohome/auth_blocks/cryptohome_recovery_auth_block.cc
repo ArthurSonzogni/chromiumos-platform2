@@ -6,8 +6,8 @@
 
 #include <memory>
 #include <utility>
+#include <variant>
 
-#include <absl/types/variant.h>
 #include <base/check.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
@@ -123,7 +123,7 @@ CryptoError CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   DCHECK(key_blobs);
   const CryptohomeRecoveryAuthBlockState* auth_state;
   if (!(auth_state =
-            absl::get_if<CryptohomeRecoveryAuthBlockState>(&state.state))) {
+            std::get_if<CryptohomeRecoveryAuthBlockState>(&state.state))) {
     DLOG(FATAL) << "Invalid AuthBlockState";
     return CryptoError::CE_OTHER_CRYPTO;
   }

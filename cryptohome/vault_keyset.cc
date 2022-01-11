@@ -7,12 +7,12 @@
 #include <memory>
 #include <optional>
 #include <utility>
+#include <variant>
 
 #include <sys/types.h>
 #include <crypto/sha2.h>
 #include <openssl/sha.h>
 
-#include <absl/types/variant.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_path.h>
@@ -697,22 +697,22 @@ void VaultKeyset::SetTpmEccState(const TpmEccAuthBlockState& auth_state) {
 
 void VaultKeyset::SetAuthBlockState(const AuthBlockState& auth_state) {
   if (auto* state =
-          absl::get_if<TpmNotBoundToPcrAuthBlockState>(&auth_state.state)) {
+          std::get_if<TpmNotBoundToPcrAuthBlockState>(&auth_state.state)) {
     SetTpmNotBoundToPcrState(*state);
   } else if (auto* state =
-                 absl::get_if<TpmBoundToPcrAuthBlockState>(&auth_state.state)) {
+                 std::get_if<TpmBoundToPcrAuthBlockState>(&auth_state.state)) {
     SetTpmBoundToPcrState(*state);
   } else if (auto* state =
-                 absl::get_if<PinWeaverAuthBlockState>(&auth_state.state)) {
+                 std::get_if<PinWeaverAuthBlockState>(&auth_state.state)) {
     SetPinWeaverState(*state);
-  } else if (auto* state = absl::get_if<LibScryptCompatAuthBlockState>(
+  } else if (auto* state = std::get_if<LibScryptCompatAuthBlockState>(
                  &auth_state.state)) {
     SetLibScryptCompatState(*state);
-  } else if (auto* state = absl::get_if<ChallengeCredentialAuthBlockState>(
+  } else if (auto* state = std::get_if<ChallengeCredentialAuthBlockState>(
                  &auth_state.state)) {
     SetChallengeCredentialState(*state);
   } else if (auto* state =
-                 absl::get_if<TpmEccAuthBlockState>(&auth_state.state)) {
+                 std::get_if<TpmEccAuthBlockState>(&auth_state.state)) {
     SetTpmEccState(*state);
   } else {
     // other states are not supported.
@@ -790,7 +790,7 @@ bool VaultKeyset::GetSignatureChallengeState(AuthBlockState* auth_state) const {
     return false;
   }
   const auto* libscrypt_state =
-      absl::get_if<LibScryptCompatAuthBlockState>(&scrypt_state.state);
+      std::get_if<LibScryptCompatAuthBlockState>(&scrypt_state.state);
 
   // This should never happen.
   if (libscrypt_state == nullptr) {
@@ -830,7 +830,7 @@ bool VaultKeyset::GetDoubleWrappedCompatState(
     return false;
   }
   const auto* scrypt_sub_state =
-      absl::get_if<LibScryptCompatAuthBlockState>(&scrypt_state.state);
+      std::get_if<LibScryptCompatAuthBlockState>(&scrypt_state.state);
 
   // This should never happen.
   if (scrypt_sub_state == nullptr) {
@@ -843,7 +843,7 @@ bool VaultKeyset::GetDoubleWrappedCompatState(
     return false;
   }
   const auto* tpm_sub_state =
-      absl::get_if<TpmNotBoundToPcrAuthBlockState>(&tpm_state.state);
+      std::get_if<TpmNotBoundToPcrAuthBlockState>(&tpm_state.state);
 
   // This should never happen but handling it on the safe side.
   if (tpm_sub_state == nullptr) {
@@ -974,9 +974,9 @@ bool VaultKeyset::EncryptVaultKeyset(const SecureBlob& vault_key,
 
   bool wrapping_succeeded;
   bool is_scrypt_wrapped =
-      absl::holds_alternative<LibScryptCompatAuthBlockState>(
+      std::holds_alternative<LibScryptCompatAuthBlockState>(
           auth_state->state) ||
-      absl::holds_alternative<ChallengeCredentialAuthBlockState>(
+      std::holds_alternative<ChallengeCredentialAuthBlockState>(
           auth_state->state);
   if (is_scrypt_wrapped) {
     wrapping_succeeded = WrapScryptVaultKeyset(key_blobs);

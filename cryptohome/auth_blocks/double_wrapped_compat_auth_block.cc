@@ -38,7 +38,7 @@ CryptoError DoubleWrappedCompatAuthBlock::Derive(const AuthInput& auth_input,
                                                  KeyBlobs* key_blobs) {
   const DoubleWrappedCompatAuthBlockState* auth_state;
   if (!(auth_state =
-            absl::get_if<DoubleWrappedCompatAuthBlockState>(&state.state))) {
+            std::get_if<DoubleWrappedCompatAuthBlockState>(&state.state))) {
     DLOG(FATAL) << "Invalid AuthBlockState";
     return CryptoError::CE_OTHER_CRYPTO;
   }
