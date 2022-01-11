@@ -5,12 +5,12 @@
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 
 #include <algorithm>
+#include <optional>
 #include <utility>
 #include <vector>
 
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
-#include <base/optional.h>
 #include <base/stl_util.h>
 #include <brillo/secure_blob.h>
 
@@ -101,7 +101,7 @@ FakeRecoveryMediatorCrypto::Create() {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
     return nullptr;
   }
-  base::Optional<EllipticCurve> ec =
+  std::optional<EllipticCurve> ec =
       EllipticCurve::Create(RecoveryCrypto::kCurve, context.get());
   if (!ec) {
     LOG(ERROR) << "Failed to create EllipticCurve";
@@ -204,7 +204,7 @@ bool FakeRecoveryMediatorCrypto::DecryptMediatorShare(
   }
 
   if (!AesGcmDecrypt(encrypted_mediator_share.encrypted_data,
-                     /*ad=*/base::nullopt, encrypted_mediator_share.tag,
+                     /*ad=*/std::nullopt, encrypted_mediator_share.tag,
                      aes_gcm_key, encrypted_mediator_share.iv,
                      mediator_share)) {
     LOG(ERROR) << "Failed to perform AES-GCM decryption";

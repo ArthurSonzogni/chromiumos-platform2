@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <array>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -15,7 +16,6 @@
 #include <base/containers/span.h>
 #include <base/macros.h>
 #include <base/numerics/safe_conversions.h>
-#include <base/optional.h>
 #include <chromeos/cbor/values.h>
 
 #include "cryptohome/fido/attested_credential_data.h"
@@ -37,10 +37,10 @@ class AuthenticatorData {
   // Extract authenticator data from FIDO MakeCredentialResponse. Attestation
   // part is ignored.
   // TODO(xzhou): support attestation.
-  static base::Optional<AuthenticatorData> ParseMakeCredentialResponse(
+  static std::optional<AuthenticatorData> ParseMakeCredentialResponse(
       const std::vector<uint8_t>& input);
 
-  static base::Optional<AuthenticatorData> DecodeAuthenticatorData(
+  static std::optional<AuthenticatorData> DecodeAuthenticatorData(
       base::span<const uint8_t> auth_data);
 
   //  The attested credential |data| must be specified iff |flags| have
@@ -50,8 +50,8 @@ class AuthenticatorData {
       base::span<const uint8_t, kRpIdHashLength> application_parameter,
       uint8_t flags,
       base::span<const uint8_t, kSignCounterLength> counter,
-      base::Optional<AttestedCredentialData> data,
-      base::Optional<cbor::Value> extensions = base::nullopt);
+      std::optional<AttestedCredentialData> data,
+      std::optional<cbor::Value> extensions = std::nullopt);
 
   // Moveable.
   AuthenticatorData(AuthenticatorData&& other);
@@ -77,13 +77,13 @@ class AuthenticatorData {
   // authenticator data.
   std::vector<uint8_t> GetCredentialId() const;
 
-  const base::Optional<AttestedCredentialData>& attested_data() const {
+  const std::optional<AttestedCredentialData>& attested_data() const {
     return attested_data_;
   }
 
   // If a value is returned then the result of calling |is_map()| on it can be
   // assumed to be true.
-  const base::Optional<cbor::Value>& extensions() const { return extensions_; }
+  const std::optional<cbor::Value>& extensions() const { return extensions_; }
 
   const std::array<uint8_t, kRpIdHashLength>& application_parameter() const {
     return application_parameter_;
@@ -128,9 +128,9 @@ class AuthenticatorData {
 
   // Signature counter, 32-bit unsigned big-endian integer.
   std::array<uint8_t, kSignCounterLength> counter_;
-  base::Optional<AttestedCredentialData> attested_data_;
+  std::optional<AttestedCredentialData> attested_data_;
   // If |extensions_| has a value, then it will be a CBOR map.
-  base::Optional<cbor::Value> extensions_;
+  std::optional<cbor::Value> extensions_;
 };
 
 }  // namespace fido_device

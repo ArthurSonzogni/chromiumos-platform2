@@ -29,7 +29,7 @@ TEST(AesTest, AesGcmTestSimple) {
 
   GetSecureRandom(key.data(), key.size());
 
-  EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/base::nullopt, key, &iv, &tag,
+  EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/std::nullopt, key, &iv, &tag,
                             &ciphertext));
 
   // Validity check that the encryption actually did something.
@@ -37,7 +37,7 @@ TEST(AesTest, AesGcmTestSimple) {
   EXPECT_EQ(ciphertext.size(), plaintext.size());
 
   brillo::SecureBlob decrypted_plaintext(4096);
-  EXPECT_TRUE(AesGcmDecrypt(ciphertext, /*ad=*/base::nullopt, tag, key, iv,
+  EXPECT_TRUE(AesGcmDecrypt(ciphertext, /*ad=*/std::nullopt, tag, key, iv,
                             &decrypted_plaintext));
 
   EXPECT_EQ(plaintext, decrypted_plaintext);
@@ -102,7 +102,7 @@ TEST(AesTest, AesGcmTestWrongAd) {
   }
   {
     brillo::SecureBlob decrypted_plaintext(4096);
-    EXPECT_FALSE(AesGcmDecrypt(ciphertext, /*ad=*/base::nullopt, tag, key, iv,
+    EXPECT_FALSE(AesGcmDecrypt(ciphertext, /*ad=*/std::nullopt, tag, key, iv,
                                &decrypted_plaintext));
     EXPECT_NE(plaintext, decrypted_plaintext);
   }
@@ -120,7 +120,7 @@ TEST(AesTest, AesGcmTestWrongKey) {
 
   GetSecureRandom(key.data(), key.size());
 
-  EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/base::nullopt, key, &iv, &tag,
+  EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/std::nullopt, key, &iv, &tag,
                             &ciphertext));
 
   // Validity check that the encryption actually did something.
@@ -131,7 +131,7 @@ TEST(AesTest, AesGcmTestWrongKey) {
   GetSecureRandom(wrong_key.data(), wrong_key.size());
 
   brillo::SecureBlob decrypted_plaintext(4096);
-  EXPECT_FALSE(AesGcmDecrypt(ciphertext, /*ad=*/base::nullopt, tag, wrong_key,
+  EXPECT_FALSE(AesGcmDecrypt(ciphertext, /*ad=*/std::nullopt, tag, wrong_key,
                              iv, &decrypted_plaintext));
   EXPECT_NE(plaintext, decrypted_plaintext);
 }
@@ -148,7 +148,7 @@ TEST(AesTest, AesGcmTestWrongIV) {
 
   GetSecureRandom(key.data(), key.size());
 
-  EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/base::nullopt, key, &iv, &tag,
+  EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/std::nullopt, key, &iv, &tag,
                             &ciphertext));
 
   // Validity check that the encryption actually did something.
@@ -159,7 +159,7 @@ TEST(AesTest, AesGcmTestWrongIV) {
   GetSecureRandom(wrong_iv.data(), wrong_iv.size());
 
   brillo::SecureBlob decrypted_plaintext(4096);
-  EXPECT_FALSE(AesGcmDecrypt(ciphertext, /*ad=*/base::nullopt, tag, key,
+  EXPECT_FALSE(AesGcmDecrypt(ciphertext, /*ad=*/std::nullopt, tag, key,
                              wrong_iv, &decrypted_plaintext));
   EXPECT_NE(plaintext, decrypted_plaintext);
 }
@@ -176,7 +176,7 @@ TEST(AesTest, AesGcmTestWrongTag) {
 
   GetSecureRandom(key.data(), key.size());
 
-  EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/base::nullopt, key, &iv, &tag,
+  EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/std::nullopt, key, &iv, &tag,
                             &ciphertext));
 
   // Validity check that the encryption actually did something.
@@ -187,7 +187,7 @@ TEST(AesTest, AesGcmTestWrongTag) {
   GetSecureRandom(wrong_tag.data(), wrong_tag.size());
 
   brillo::SecureBlob decrypted_plaintext(4096);
-  EXPECT_FALSE(AesGcmDecrypt(ciphertext, /*ad=*/base::nullopt, wrong_tag, key,
+  EXPECT_FALSE(AesGcmDecrypt(ciphertext, /*ad=*/std::nullopt, wrong_tag, key,
                              iv, &decrypted_plaintext));
 }
 
@@ -208,15 +208,15 @@ TEST(AesTest, AesGcmTestUniqueIVs) {
   GetSecureRandom(key.data(), key.size());
 
   brillo::SecureBlob iv(kAesGcmIVSize);
-  EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/base::nullopt, key, &iv, &tag,
+  EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/std::nullopt, key, &iv, &tag,
                             &ciphertext));
 
   brillo::SecureBlob iv2(kAesGcmIVSize);
-  EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/base::nullopt, key, &iv2, &tag,
+  EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/std::nullopt, key, &iv2, &tag,
                             &ciphertext));
 
   brillo::SecureBlob iv3(kAesGcmIVSize);
-  EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/base::nullopt, key, &iv3, &tag,
+  EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/std::nullopt, key, &iv3, &tag,
                             &ciphertext));
 
   EXPECT_NE(iv, iv2);

@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -293,7 +294,7 @@ class MockPlatform : public Platform {
                (std::multimap<const base::FilePath, const base::FilePath>*)),
               (override));
   MOCK_METHOD(bool, IsDirectoryMounted, (const base::FilePath&), (override));
-  MOCK_METHOD(base::Optional<std::vector<bool>>,
+  MOCK_METHOD(std::optional<std::vector<bool>>,
               AreDirectoriesMounted,
               (const std::vector<base::FilePath>&),
               (override));
@@ -409,7 +410,7 @@ class MockPlatform : public Platform {
               RestoreSELinuxContexts,
               (const base::FilePath&, bool),
               (override));
-  MOCK_METHOD(base::Optional<std::string>,
+  MOCK_METHOD(std::optional<std::string>,
               GetSELinuxContextOfFD,
               (int fd),
               (override));

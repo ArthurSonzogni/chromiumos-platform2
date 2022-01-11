@@ -5,9 +5,9 @@
 #ifndef CRYPTOHOME_CRYPTO_ELLIPTIC_CURVE_H_
 #define CRYPTOHOME_CRYPTO_ELLIPTIC_CURVE_H_
 
+#include <optional>
 #include <string>
 
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/bn.h>
@@ -22,10 +22,10 @@ class EllipticCurve final {
   // can be extended to any OpenSSL supported curve if needed.
   enum class CurveType { kPrime256, kPrime384, kPrime521 };
 
-  // Creates an elliptic curve. Returns `base::nullopt` if error occurred.
+  // Creates an elliptic curve. Returns `std::nullopt` if error occurred.
   // Context is only used during creation of the curve and does not have to
   // outlive the curve instance (it is not stored in a curve object).
-  static base::Optional<EllipticCurve> Create(CurveType curve, BN_CTX* context);
+  static std::optional<EllipticCurve> Create(CurveType curve, BN_CTX* context);
 
   // Non-copyable, but movable.
   EllipticCurve(EllipticCurve&& other) = default;

@@ -4,13 +4,13 @@
 
 #include "cryptohome/challenge_credentials/challenge_credentials_generate_new_operation.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
-#include <base/optional.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
 #include "cryptohome/tpm.h"
@@ -28,11 +28,11 @@ namespace {
 // Returns the signature algorithm that should be used for signing salt from the
 // set of algorithms supported by the given key. Returns nullopt when no
 // suitable algorithm was found.
-base::Optional<structure::ChallengeSignatureAlgorithm>
+std::optional<structure::ChallengeSignatureAlgorithm>
 ChooseSaltSignatureAlgorithm(
     const structure::ChallengePublicKeyInfo& public_key_info) {
   DCHECK(public_key_info.signature_algorithm.size());
-  base::Optional<structure::ChallengeSignatureAlgorithm>
+  std::optional<structure::ChallengeSignatureAlgorithm>
       currently_chosen_algorithm;
   // Respect the input's algorithm prioritization, with the exception of
   // considering SHA-1 as the least preferred option.
@@ -133,7 +133,7 @@ bool ChallengeCredentialsGenerateNewOperation::GenerateSalt() {
 
 bool ChallengeCredentialsGenerateNewOperation::StartGeneratingSaltSignature() {
   DCHECK(!salt_.empty());
-  base::Optional<structure::ChallengeSignatureAlgorithm>
+  std::optional<structure::ChallengeSignatureAlgorithm>
       chosen_salt_signature_algorithm =
           ChooseSaltSignatureAlgorithm(public_key_info_);
   if (!chosen_salt_signature_algorithm) {

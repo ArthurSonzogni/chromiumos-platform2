@@ -1063,11 +1063,11 @@ StatusChain<TPMErrorBase> UnsealingSessionTpm1Impl::Unseal(
   // Unseal the secret value bound to PCRs and the AuthData value.
   SecureBlob auth_value;
   if (StatusChain<TPMErrorBase> err =
-          tpm_->GetAuthValue(base::nullopt, auth_data, &auth_value)) {
+          tpm_->GetAuthValue(std::nullopt, auth_data, &auth_value)) {
     return WrapError<TPMError>(std::move(err), "Failed to get auth value");
   }
   if (StatusChain<TPMErrorBase> err = tpm_->UnsealWithAuthorization(
-          base::nullopt, SecureBlob(pcr_bound_secret_), auth_value,
+          std::nullopt, SecureBlob(pcr_bound_secret_), auth_value,
           {} /* pcr_map */, unsealed_value)) {
     return WrapError<TPMError>(std::move(err),
                                "Failed to unseal the secret value");
@@ -1084,7 +1084,7 @@ StatusChain<TPMErrorBase> MakePcrBoundSecret(
   CHECK(pcr_bound_secret);
   brillo::SecureBlob auth_value;
   if (StatusChain<TPMErrorBase> err =
-          tpm->GetAuthValue(base::nullopt, auth_data, &auth_value)) {
+          tpm->GetAuthValue(std::nullopt, auth_data, &auth_value)) {
     return WrapError<TPMError>(std::move(err), "Failed to get auth value");
   }
   SecureBlob secure_pcr_bound_secret;

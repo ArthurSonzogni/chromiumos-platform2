@@ -5,10 +5,10 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 
 #include <map>
+#include <optional>
 #include <utility>
 #include <vector>
 
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/cbor/writer.h>
 #include <crypto/scoped_openssl_types.h>
@@ -130,7 +130,7 @@ class HsmPayloadCborHelperTest : public testing::Test {
 
  protected:
   ScopedBN_CTX context_;
-  base::Optional<EllipticCurve> ec_;
+  std::optional<EllipticCurve> ec_;
   brillo::SecureBlob publisher_pub_key_;
   brillo::SecureBlob publisher_priv_key_;
   brillo::SecureBlob channel_pub_key_;
@@ -211,7 +211,7 @@ class RecoveryRequestCborHelperTest : public testing::Test {
  protected:
   AeadPayloadHelper aead_helper_;
   ScopedBN_CTX context_;
-  base::Optional<EllipticCurve> ec_;
+  std::optional<EllipticCurve> ec_;
   brillo::SecureBlob epoch_pub_key_;
   brillo::SecureBlob epoch_priv_key_;
   RequestMetadata request_meta_data_;
@@ -337,7 +337,7 @@ TEST_F(HsmPayloadCborHelperTest, DeserializePlainTextHsmPayloadNotCbor) {
 // if input is not a CBOR map.
 TEST_F(HsmPayloadCborHelperTest, DeserializePlainTextHsmPayloadNotMap) {
   HsmPlainText hsm_plain_text;
-  base::Optional<std::vector<uint8_t>> serialized =
+  std::optional<std::vector<uint8_t>> serialized =
       cbor::Writer::Write(cbor::Value("a CBOR but not a map"));
   ASSERT_TRUE(serialized.has_value());
   brillo::SecureBlob hsm_cbor(serialized.value().begin(),
@@ -643,7 +643,7 @@ TEST_F(RecoveryResponseCborHelperTest, DeserializeAssociatedData) {
 // Verifies that deserialization of Response payload associated data from CBOR
 // fails when input is not a map.
 TEST_F(RecoveryResponseCborHelperTest, DeserializeAssociatedDataNotMap) {
-  base::Optional<std::vector<uint8_t>> serialized =
+  std::optional<std::vector<uint8_t>> serialized =
       cbor::Writer::Write(cbor::Value("a CBOR but not a map"));
   ASSERT_TRUE(serialized.has_value());
   brillo::SecureBlob response_cbor(serialized.value().begin(),
@@ -689,7 +689,7 @@ TEST_F(RecoveryResponseCborHelperTest, DeserializePlainText) {
 // Verifies that deserialization of Response payload plain text from CBOR fails
 // when input is not a map.
 TEST_F(RecoveryResponseCborHelperTest, DeserializePlainTextNotMap) {
-  base::Optional<std::vector<uint8_t>> serialized =
+  std::optional<std::vector<uint8_t>> serialized =
       cbor::Writer::Write(cbor::Value("a CBOR but not a map"));
   ASSERT_TRUE(serialized.has_value());
   brillo::SecureBlob response_cbor(serialized.value().begin(),

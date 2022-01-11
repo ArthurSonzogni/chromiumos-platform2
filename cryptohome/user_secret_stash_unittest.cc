@@ -4,12 +4,12 @@
 
 #include "cryptohome/user_secret_stash.h"
 
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include "cryptohome/crypto/aes.h"
@@ -78,11 +78,11 @@ TEST_F(UserSecretStashTest, MainKeyWrapping) {
       stash_->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey1));
 
   // The main key can be unwrapped using any of the wrapping keys.
-  base::Optional<brillo::SecureBlob> got_main_key1 =
+  std::optional<brillo::SecureBlob> got_main_key1 =
       stash_->UnwrapMainKey(kWrappingId1, kWrappingKey1);
   ASSERT_TRUE(got_main_key1);
   EXPECT_EQ(*got_main_key1, kMainKey);
-  base::Optional<brillo::SecureBlob> got_main_key2 =
+  std::optional<brillo::SecureBlob> got_main_key2 =
       stash_->UnwrapMainKey(kWrappingId2, kWrappingKey2);
   ASSERT_TRUE(got_main_key2);
   EXPECT_EQ(*got_main_key2, kMainKey);
@@ -96,9 +96,9 @@ TEST_F(UserSecretStashTest, MainKeyWrapping) {
 }
 
 TEST_F(UserSecretStashTest, GetEncryptedUSS) {
-  base::Optional<brillo::SecureBlob> uss_container =
+  std::optional<brillo::SecureBlob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
-  ASSERT_NE(base::nullopt, uss_container);
+  ASSERT_NE(std::nullopt, uss_container);
 
   // No raw secrets in the encrypted USS, which is written to disk.
   EXPECT_FALSE(FindBlobInBlob(*uss_container, stash_->GetFileSystemKey()));
@@ -106,9 +106,9 @@ TEST_F(UserSecretStashTest, GetEncryptedUSS) {
 }
 
 TEST_F(UserSecretStashTest, EncryptAndDecryptUSS) {
-  base::Optional<brillo::SecureBlob> uss_container =
+  std::optional<brillo::SecureBlob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
-  ASSERT_NE(base::nullopt, uss_container);
+  ASSERT_NE(std::nullopt, uss_container);
 
   std::unique_ptr<UserSecretStash> stash2 =
       UserSecretStash::FromEncryptedContainer(uss_container.value(), kMainKey);
@@ -130,9 +130,9 @@ TEST_F(UserSecretStashTest, DecryptErrorEmptyBuf) {
 // never occurs, but we verify to be resilient against accidental or intentional
 // file corruption.
 TEST_F(UserSecretStashTest, DecryptErrorCorruptedBuf) {
-  base::Optional<brillo::SecureBlob> uss_container =
+  std::optional<brillo::SecureBlob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
-  ASSERT_NE(base::nullopt, uss_container);
+  ASSERT_NE(std::nullopt, uss_container);
 
   brillo::SecureBlob corrupted_uss_container = *uss_container;
   for (uint8_t& byte : corrupted_uss_container)
@@ -144,9 +144,9 @@ TEST_F(UserSecretStashTest, DecryptErrorCorruptedBuf) {
 
 // Test that decryption fails on an empty decryption key.
 TEST_F(UserSecretStashTest, DecryptErrorEmptyKey) {
-  base::Optional<brillo::SecureBlob> uss_container =
+  std::optional<brillo::SecureBlob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
-  ASSERT_NE(base::nullopt, uss_container);
+  ASSERT_NE(std::nullopt, uss_container);
 
   EXPECT_FALSE(
       UserSecretStash::FromEncryptedContainer(*uss_container, /*main_key=*/{}));
@@ -154,9 +154,9 @@ TEST_F(UserSecretStashTest, DecryptErrorEmptyKey) {
 
 // Test that decryption fails on a decryption key of a wrong size.
 TEST_F(UserSecretStashTest, DecryptErrorKeyBadSize) {
-  base::Optional<brillo::SecureBlob> uss_container =
+  std::optional<brillo::SecureBlob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
-  ASSERT_NE(base::nullopt, uss_container);
+  ASSERT_NE(std::nullopt, uss_container);
 
   brillo::SecureBlob bad_size_main_key = kMainKey;
   bad_size_main_key.resize(kAesGcm256KeySize - 1);
@@ -167,9 +167,9 @@ TEST_F(UserSecretStashTest, DecryptErrorKeyBadSize) {
 
 // Test that decryption fails on a wrong decryption key.
 TEST_F(UserSecretStashTest, DecryptErrorWrongKey) {
-  base::Optional<brillo::SecureBlob> uss_container =
+  std::optional<brillo::SecureBlob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
-  ASSERT_NE(base::nullopt, uss_container);
+  ASSERT_NE(std::nullopt, uss_container);
 
   brillo::SecureBlob wrong_main_key = kMainKey;
   wrong_main_key[0] ^= 1;
@@ -191,7 +191,7 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSSWithWrappedKeys) {
 
   // Do the serialization-deserialization roundtrip with the USS.
   auto uss_container = stash_->GetEncryptedContainer(kMainKey);
-  ASSERT_NE(base::nullopt, uss_container);
+  ASSERT_NE(std::nullopt, uss_container);
   std::unique_ptr<UserSecretStash> stash2 =
       UserSecretStash::FromEncryptedContainer(uss_container.value(), kMainKey);
   ASSERT_TRUE(stash2);
@@ -200,7 +200,7 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSSWithWrappedKeys) {
   // decrypted.
   EXPECT_TRUE(stash2->HasWrappedMainKey(kWrappingId1));
   EXPECT_TRUE(stash2->HasWrappedMainKey(kWrappingId2));
-  base::Optional<brillo::SecureBlob> got_main_key1 =
+  std::optional<brillo::SecureBlob> got_main_key1 =
       stash2->UnwrapMainKey(kWrappingId1, kWrappingKey1);
   ASSERT_TRUE(got_main_key1);
   EXPECT_EQ(*got_main_key1, kMainKey);
@@ -215,9 +215,9 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSSViaWrappedKey) {
   EXPECT_TRUE(stash_->AddWrappedMainKey(kMainKey, kWrappingId, kWrappingKey));
 
   // Encrypt the USS.
-  base::Optional<brillo::SecureBlob> uss_container =
+  std::optional<brillo::SecureBlob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
-  ASSERT_NE(base::nullopt, uss_container);
+  ASSERT_NE(std::nullopt, uss_container);
 
   // The USS can be decrypted using the wrapping key.
   brillo::SecureBlob unwrapped_main_key;
@@ -243,7 +243,7 @@ class UserSecretStashObjectApiTest : public UserSecretStashTest {
   // Populates |uss_container_obj_| and |uss_payload_obj_| based on |stash_|.
   void UpdateObjectApiState() {
     // Encrypt the USS.
-    base::Optional<brillo::SecureBlob> uss_container =
+    std::optional<brillo::SecureBlob> uss_container =
         stash_->GetEncryptedContainer(kMainKey);
     ASSERT_TRUE(uss_container);
 
@@ -257,7 +257,7 @@ class UserSecretStashObjectApiTest : public UserSecretStashTest {
     brillo::SecureBlob uss_payload;
     ASSERT_TRUE(AesGcmDecrypt(
         brillo::SecureBlob(uss_container_obj_.ciphertext),
-        /*ad=*/base::nullopt, brillo::SecureBlob(uss_container_obj_.gcm_tag),
+        /*ad=*/std::nullopt, brillo::SecureBlob(uss_container_obj_.gcm_tag),
         kMainKey, brillo::SecureBlob(uss_container_obj_.iv), &uss_payload));
     std::unique_ptr<UserSecretStashPayloadT> uss_payload_obj_ptr =
         UnPackUserSecretStashPayload(uss_payload.data());
@@ -294,7 +294,7 @@ class UserSecretStashObjectApiTest : public UserSecretStashTest {
       const brillo::SecureBlob& uss_payload) const {
     // Encrypt the packed |uss_payload_obj_|.
     brillo::SecureBlob iv, tag, ciphertext;
-    EXPECT_TRUE(AesGcmEncrypt(uss_payload, /*ad=*/base::nullopt, kMainKey, &iv,
+    EXPECT_TRUE(AesGcmEncrypt(uss_payload, /*ad=*/std::nullopt, kMainKey, &iv,
                               &tag, &ciphertext));
 
     // Create a copy of |uss_container_obj_|, with the encrypted blob replaced.

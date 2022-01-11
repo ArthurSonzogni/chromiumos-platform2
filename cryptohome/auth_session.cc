@@ -5,6 +5,7 @@
 #include "cryptohome/auth_session.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -155,11 +156,11 @@ std::unique_ptr<CredentialVerifier> AuthSession::TakeCredentialVerifier() {
 }
 
 // static
-base::Optional<std::string> AuthSession::GetSerializedStringFromToken(
+std::optional<std::string> AuthSession::GetSerializedStringFromToken(
     const base::UnguessableToken& token) {
   if (token == base::UnguessableToken::Null()) {
     LOG(ERROR) << "Invalid UnguessableToken given";
-    return base::nullopt;
+    return std::nullopt;
   }
   std::string serialized_token;
   serialized_token.resize(kSizeOfSerializedValueInToken *
@@ -172,12 +173,12 @@ base::Optional<std::string> AuthSession::GetSerializedStringFromToken(
 }
 
 // static
-base::Optional<base::UnguessableToken>
-AuthSession::GetTokenFromSerializedString(const std::string& serialized_token) {
+std::optional<base::UnguessableToken> AuthSession::GetTokenFromSerializedString(
+    const std::string& serialized_token) {
   if (serialized_token.size() !=
       kSizeOfSerializedValueInToken * kNumberOfSerializedValuesInToken) {
     LOG(ERROR) << "Incorrect serialized string size";
-    return base::nullopt;
+    return std::nullopt;
   }
   uint64_t high, low;
   memcpy(&high, &serialized_token[kHighTokenOffset], sizeof(high));

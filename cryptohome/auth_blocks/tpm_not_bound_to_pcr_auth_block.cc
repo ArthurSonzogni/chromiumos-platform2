@@ -11,7 +11,6 @@
 #include <absl/types/variant.h>
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"

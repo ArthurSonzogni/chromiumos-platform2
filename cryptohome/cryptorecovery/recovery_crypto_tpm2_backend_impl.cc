@@ -5,6 +5,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_tpm2_backend_impl.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/check.h>
@@ -40,7 +41,7 @@ brillo::SecureBlob RecoveryCryptoTpm2BackendImpl::GenerateKeyAuthValue() {
 bool RecoveryCryptoTpm2BackendImpl::EncryptEccPrivateKey(
     const EllipticCurve& ec,
     const crypto::ScopedEC_KEY& own_key_pair,
-    const base::Optional<brillo::SecureBlob>& /*auth_value*/,
+    const std::optional<brillo::SecureBlob>& /*auth_value*/,
     brillo::SecureBlob* encrypted_own_priv_key) {
   DCHECK(encrypted_own_priv_key);
 
@@ -150,7 +151,7 @@ crypto::ScopedEC_POINT
 RecoveryCryptoTpm2BackendImpl::GenerateDiffieHellmanSharedSecret(
     const EllipticCurve& ec,
     const brillo::SecureBlob& encrypted_own_priv_key,
-    const base::Optional<brillo::SecureBlob>& /*auth_value*/,
+    const std::optional<brillo::SecureBlob>& /*auth_value*/,
     const EC_POINT& others_pub_point) {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {

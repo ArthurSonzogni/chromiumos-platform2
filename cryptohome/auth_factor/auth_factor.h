@@ -6,9 +6,9 @@
 #define CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
-#include <base/optional.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
@@ -48,12 +48,12 @@ class AuthFactor {
   // credentials during unlock.
   std::unique_ptr<CredentialVerifier> TakeCredentialVerifier();
 
-  const base::Optional<AuthFactorType>& type() const { return type_; }
-  const base::Optional<std::string>& label() const { return label_; }
-  const base::Optional<AuthFactorMetadata>& metadata() const {
+  const std::optional<AuthFactorType>& type() const { return type_; }
+  const std::optional<std::string>& label() const { return label_; }
+  const std::optional<AuthFactorMetadata>& metadata() const {
     return metadata_;
   }
-  const base::Optional<AuthBlockState>& auth_block_state() const {
+  const std::optional<AuthBlockState>& auth_block_state() const {
     return auth_block_state_;
   }
 
@@ -81,11 +81,11 @@ class AuthFactor {
   cryptohome::KeyData key_data_;
   // The auth factor public information. TODO(b:208351356): Make these
   // non-optional by implementing vault keyset conversion into these fields.
-  const base::Optional<AuthFactorType> type_;
-  const base::Optional<std::string> label_;
-  const base::Optional<AuthFactorMetadata> metadata_;
+  const std::optional<AuthFactorType> type_;
+  const std::optional<std::string> label_;
+  const std::optional<AuthFactorMetadata> metadata_;
   // Contains the data that the auth factor needs for deriving the secret.
-  base::Optional<AuthBlockState> auth_block_state_;
+  std::optional<AuthBlockState> auth_block_state_;
 };
 
 }  // namespace cryptohome

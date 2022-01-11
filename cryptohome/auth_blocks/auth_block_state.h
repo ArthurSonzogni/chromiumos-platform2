@@ -5,8 +5,9 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_AUTH_BLOCK_STATE_H_
 #define CRYPTOHOME_AUTH_BLOCKS_AUTH_BLOCK_STATE_H_
 
+#include <optional>
+
 #include <absl/types/variant.h>
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/auth_block_state_generated.h"
@@ -26,42 +27,42 @@ struct TpmNotBoundToPcrAuthBlockState {
   bool scrypt_derived = false;
   // The salt used to bind to the TPM.
   // Must be set.
-  base::Optional<brillo::SecureBlob> salt;
+  std::optional<brillo::SecureBlob> salt;
   // Optional, the number of rounds key derivation is called.
   // This is only used for legacy non-scrypt key derivation.
-  base::Optional<uint32_t> password_rounds;
+  std::optional<uint32_t> password_rounds;
   // The VKK wrapped with the user's password by the tpm.
   // Must be set.
-  base::Optional<brillo::SecureBlob> tpm_key;
+  std::optional<brillo::SecureBlob> tpm_key;
   // Optional, served as a TPM identity, useful when checking if the TPM is
   // the same one sealed the tpm_key.
-  base::Optional<brillo::SecureBlob> tpm_public_key_hash;
+  std::optional<brillo::SecureBlob> tpm_public_key_hash;
 };
 
 struct TpmBoundToPcrAuthBlockState {
   // Marks if the password is run through scrypt before going to the TPM.
   bool scrypt_derived = false;
   // The salt used to bind to the TPM.
-  base::Optional<brillo::SecureBlob> salt;
+  std::optional<brillo::SecureBlob> salt;
   // The VKK wrapped with the user's password by the tpm.
-  base::Optional<brillo::SecureBlob> tpm_key;
+  std::optional<brillo::SecureBlob> tpm_key;
   // Same as tpm_key, but extends the PCR to only allow one user until reboot.
-  base::Optional<brillo::SecureBlob> extended_tpm_key;
+  std::optional<brillo::SecureBlob> extended_tpm_key;
   // Optional, served as a TPM identity, useful when checking if the TPM is
   // the same one sealed the tpm_key.
-  base::Optional<brillo::SecureBlob> tpm_public_key_hash;
+  std::optional<brillo::SecureBlob> tpm_public_key_hash;
 };
 
 struct PinWeaverAuthBlockState {
   // The label for the credential in the LE hash tree.
-  base::Optional<uint64_t> le_label;
+  std::optional<uint64_t> le_label;
   // The salt used to first scrypt the user input.
-  base::Optional<brillo::SecureBlob> salt;
+  std::optional<brillo::SecureBlob> salt;
   // The IV used to derive the chaps key.
-  base::Optional<brillo::SecureBlob> chaps_iv;
+  std::optional<brillo::SecureBlob> chaps_iv;
   // The IV used to derive the file encryption key.
   // TODO(b/204202689): rename fek_iv to vkk_iv.
-  base::Optional<brillo::SecureBlob> fek_iv;
+  std::optional<brillo::SecureBlob> fek_iv;
 };
 
 // This is a unique AuthBlockState for backwards compatibility. libscrypt puts
@@ -71,21 +72,21 @@ struct PinWeaverAuthBlockState {
 struct LibScryptCompatAuthBlockState {
   // The wrapped filesystem keys.
   // This is for in memory data holding only and will not be serialized.
-  base::Optional<brillo::SecureBlob> wrapped_keyset;
+  std::optional<brillo::SecureBlob> wrapped_keyset;
   // The wrapped chaps keys.
   // This is for in memory data holding only and will not be serialized.
-  base::Optional<brillo::SecureBlob> wrapped_chaps_key;
+  std::optional<brillo::SecureBlob> wrapped_chaps_key;
   // The wrapped reset seed keys.
   // This is for in memory data holding only and will not be serialized.
-  base::Optional<brillo::SecureBlob> wrapped_reset_seed;
+  std::optional<brillo::SecureBlob> wrapped_reset_seed;
   // The random salt.
   // TODO(b/198394243): We should remove it because it's not actually used.
-  base::Optional<brillo::SecureBlob> salt;
+  std::optional<brillo::SecureBlob> salt;
 };
 
 struct ChallengeCredentialAuthBlockState {
   struct LibScryptCompatAuthBlockState scrypt_state;
-  base::Optional<structure::SignatureChallengeInfo> keyset_challenge_info;
+  std::optional<structure::SignatureChallengeInfo> keyset_challenge_info;
 };
 
 struct DoubleWrappedCompatAuthBlockState {
@@ -97,38 +98,38 @@ struct CryptohomeRecoveryAuthBlockState {
   // HSM Payload is created at onboarding and contains all the data that are
   // persisted on a chromebook and will be eventually used for recovery,
   // serialized to CBOR.
-  base::Optional<brillo::SecureBlob> hsm_payload;
+  std::optional<brillo::SecureBlob> hsm_payload;
   // The salt used to first scrypt the user input.
-  base::Optional<brillo::SecureBlob> salt;
+  std::optional<brillo::SecureBlob> salt;
   // Secret share of the destination (plaintext).
   // TODO(b/184924489): store encrypted destination share.
-  base::Optional<brillo::SecureBlob> plaintext_destination_share;
+  std::optional<brillo::SecureBlob> plaintext_destination_share;
   // Channel keys that will be used for secure communication during recovery.
   // TODO(b/196192089): store encrypted keys.
-  base::Optional<brillo::SecureBlob> channel_pub_key;
-  base::Optional<brillo::SecureBlob> channel_priv_key;
+  std::optional<brillo::SecureBlob> channel_pub_key;
+  std::optional<brillo::SecureBlob> channel_priv_key;
 };
 
 struct TpmEccAuthBlockState {
   // The salt used to derive the user input with scrypt.
-  base::Optional<brillo::SecureBlob> salt;
+  std::optional<brillo::SecureBlob> salt;
   // The IV to decrypt EVK.
-  base::Optional<brillo::SecureBlob> vkk_iv;
+  std::optional<brillo::SecureBlob> vkk_iv;
   // The number of rounds the auth value generating process is called.
-  base::Optional<uint32_t> auth_value_rounds;
+  std::optional<uint32_t> auth_value_rounds;
   // HVKKM: Hardware Vault Keyset Key Material.
   // SVKKM: Software Vault Keyset Key Material.
   // We would use HVKKM and SVKKM to derive the VKK.
   // The HVKKM are encrypted with the user's password, TPM, and binds to empty
   // current user state.
-  base::Optional<brillo::SecureBlob> sealed_hvkkm;
+  std::optional<brillo::SecureBlob> sealed_hvkkm;
   // Same as |sealed_hvkkm|, but extends the current user state to the specific
   // user.
-  base::Optional<brillo::SecureBlob> extended_sealed_hvkkm;
+  std::optional<brillo::SecureBlob> extended_sealed_hvkkm;
   // A check if this is the same TPM that wrapped the credential.
-  base::Optional<brillo::SecureBlob> tpm_public_key_hash;
+  std::optional<brillo::SecureBlob> tpm_public_key_hash;
   // The wrapped reset seed to reset LE credentials.
-  base::Optional<brillo::SecureBlob> wrapped_reset_seed;
+  std::optional<brillo::SecureBlob> wrapped_reset_seed;
 };
 
 struct AuthBlockState {
@@ -139,7 +140,7 @@ struct AuthBlockState {
       flatbuffers::FlatBufferBuilder* builder) const;
 
   // Returns an AuthBlockState Flatbuffer serialized to a SecureBlob.
-  base::Optional<brillo::SecureBlob> Serialize() const;
+  std::optional<brillo::SecureBlob> Serialize() const;
 
   absl::variant<absl::monostate,
                 TpmNotBoundToPcrAuthBlockState,

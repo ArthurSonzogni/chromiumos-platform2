@@ -10,6 +10,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <utility>
 
@@ -17,7 +18,6 @@
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ptr_util.h>
-#include <base/optional.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
@@ -244,7 +244,7 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
   }
   SecureBlob unsealed_text;
   if (StatusChain<TPMErrorBase> err = tpm_->UnsealWithAuthorization(
-          base::nullopt, ciphertext, auth_value, pcr_map, &unsealed_text)) {
+          std::nullopt, ciphertext, auth_value, pcr_map, &unsealed_text)) {
     LOG(ERROR) << "Error unsealing blob: " << err;
     return false;
   }
@@ -260,7 +260,7 @@ bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
     LOG(ERROR) << "Failed to get auth value: " << err;
     return false;
   }
-  if (tpm_->UnsealWithAuthorization(base::nullopt, ciphertext, auth_value,
+  if (tpm_->UnsealWithAuthorization(std::nullopt, ciphertext, auth_value,
                                     pcr_map, &unsealed_text) == nullptr &&
       plaintext == unsealed_text) {
     LOG(ERROR) << "UnsealWithAuthorization failed to fail.";
@@ -349,7 +349,7 @@ struct SignatureSealedSecretTestCaseParam {
       int key_size_bits,
       const std::vector<structure::ChallengeSignatureAlgorithm>&
           supported_algorithms,
-      base::Optional<structure::ChallengeSignatureAlgorithm> expected_algorithm,
+      std::optional<structure::ChallengeSignatureAlgorithm> expected_algorithm,
       int openssl_algorithm_nid)
       : test_case_description(test_case_description),
         tpm(tpm),
@@ -390,7 +390,7 @@ struct SignatureSealedSecretTestCaseParam {
   Tpm* tpm;
   int key_size_bits;
   std::vector<structure::ChallengeSignatureAlgorithm> supported_algorithms;
-  base::Optional<structure::ChallengeSignatureAlgorithm> expected_algorithm;
+  std::optional<structure::ChallengeSignatureAlgorithm> expected_algorithm;
   int openssl_algorithm_nid;
 };
 

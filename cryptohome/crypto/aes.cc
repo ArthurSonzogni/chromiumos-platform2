@@ -5,15 +5,15 @@
 #include "cryptohome/crypto/aes.h"
 
 #include <limits>
-#include <openssl/err.h>
-#include <openssl/evp.h>
-
-#include <crypto/scoped_openssl_types.h>
+#include <optional>
 
 #include "cryptohome/crypto/secure_blob_util.h"
 
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <crypto/scoped_openssl_types.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
 
 namespace cryptohome {
 
@@ -90,7 +90,7 @@ bool AesDecryptDeprecated(const brillo::SecureBlob& ciphertext,
 }
 
 bool AesGcmDecrypt(const brillo::SecureBlob& ciphertext,
-                   const base::Optional<brillo::SecureBlob>& ad,
+                   const std::optional<brillo::SecureBlob>& ad,
                    const brillo::SecureBlob& tag,
                    const brillo::SecureBlob& key,
                    const brillo::SecureBlob& iv,
@@ -186,7 +186,7 @@ bool AesGcmDecrypt(const brillo::SecureBlob& ciphertext,
 }
 
 bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
-                   const base::Optional<brillo::SecureBlob>& ad,
+                   const std::optional<brillo::SecureBlob>& ad,
                    const brillo::SecureBlob& key,
                    brillo::SecureBlob* iv,
                    brillo::SecureBlob* tag,

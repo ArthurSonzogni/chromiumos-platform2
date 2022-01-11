@@ -5,6 +5,7 @@
 #include "cryptohome/auth_session_manager.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -45,7 +46,7 @@ void AuthSessionManager::RemoveAuthSession(
 
 void AuthSessionManager::RemoveAuthSession(
     const std::string& serialized_token) {
-  base::Optional<base::UnguessableToken> token =
+  std::optional<base::UnguessableToken> token =
       AuthSession::GetTokenFromSerializedString(serialized_token);
   if (!token.has_value()) {
     LOG(ERROR) << "Unparsable AuthSession token for removal";
@@ -61,7 +62,7 @@ void AuthSessionManager::ExpireAuthSession(
 
 AuthSession* AuthSessionManager::FindAuthSession(
     const std::string& serialized_token) const {
-  base::Optional<base::UnguessableToken> token =
+  std::optional<base::UnguessableToken> token =
       AuthSession::GetTokenFromSerializedString(serialized_token);
   if (!token.has_value()) {
     LOG(ERROR) << "Unparsable AuthSession token for find";

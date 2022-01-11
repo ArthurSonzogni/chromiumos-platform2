@@ -8,6 +8,7 @@
 #include "cryptohome/fido/public_key.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -45,7 +46,7 @@ class ECPublicKey : public PublicKey {
 
   // Get OpenSSL algorithm numeric identifier (NID). If the algorithm is not
   // supported, return -1.
-  base::Optional<int> GetAlgorithmNid() const;
+  std::optional<int> GetAlgorithmNid() const;
 
   // Print the public key to string format.
   std::string ToString() override;

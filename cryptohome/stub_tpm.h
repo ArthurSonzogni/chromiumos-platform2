@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 
@@ -44,14 +45,14 @@ class StubTpm : public Tpm {
         "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
   hwsec::StatusChain<hwsec::TPMErrorBase> GetAuthValue(
-      base::Optional<TpmKeyHandle> key_handle,
+      std::optional<TpmKeyHandle> key_handle,
       const brillo::SecureBlob& pass_blob,
       brillo::SecureBlob* auth_value) override {
     return hwsec_foundation::error::CreateError<hwsec::TPMError>(
         "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
   hwsec::StatusChain<hwsec::TPMErrorBase> GetEccAuthValue(
-      base::Optional<TpmKeyHandle> key_handle,
+      std::optional<TpmKeyHandle> key_handle,
       const brillo::SecureBlob& pass_blob,
       brillo::SecureBlob* auth_value) override {
     return hwsec_foundation::error::CreateError<hwsec::TPMError>(
@@ -72,7 +73,7 @@ class StubTpm : public Tpm {
         "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
   hwsec::StatusChain<hwsec::TPMErrorBase> UnsealWithAuthorization(
-      base::Optional<TpmKeyHandle> preload_handle,
+      std::optional<TpmKeyHandle> preload_handle,
       const SecureBlob& sealed_data,
       const SecureBlob& auth_value,
       const std::map<uint32_t, brillo::Blob>& pcr_map,
@@ -160,7 +161,7 @@ class StubTpm : public Tpm {
     return false;
   }
   void CloseHandle(TpmKeyHandle key_handle) override{};
-  void GetStatus(base::Optional<TpmKeyHandle> key,
+  void GetStatus(std::optional<TpmKeyHandle> key,
                  TpmStatusInfo* status) override {}
   bool GetDictionaryAttackInfo(int* counter,
                                int* threshold,

@@ -4,6 +4,8 @@
 
 #include "cryptohome/fido/authenticator_data.h"
 
+#include <optional>
+
 #include <base/big_endian.h>
 #include <base/check.h>
 #include <base/check_op.h>
@@ -29,27 +31,27 @@ constexpr size_t kAttestedCredentialDataOffset =
 }  // namespace
 
 // static
-base::Optional<AuthenticatorData> AuthenticatorData::DecodeAuthenticatorData(
+std::optional<AuthenticatorData> AuthenticatorData::DecodeAuthenticatorData(
     base::span<const uint8_t> auth_data) {
   if (auth_data.size() < kAttestedCredentialDataOffset)
-    return base::nullopt;
+    return std::nullopt;
   auto application_parameter = auth_data.first<kRpIdHashLength>();
   uint8_t flag_byte = auth_data[kRpIdHashLength];
   auto counter =
       auth_data.subspan<kRpIdHashLength + kFlagsLength, kSignCounterLength>();
 
   auth_data = auth_data.subspan(kAttestedCredentialDataOffset);
-  base::Optional<AttestedCredentialData> attested_credential_data;
+  std::optional<AttestedCredentialData> attested_credential_data;
   if (flag_byte & static_cast<uint8_t>(Flag::kAttestation)) {
     auto maybe_result =
         AttestedCredentialData::ConsumeFromCtapResponse(auth_data);
     if (!maybe_result) {
-      return base::nullopt;
+      return std::nullopt;
     }
     std::tie(attested_credential_data, auth_data) = std::move(*maybe_result);
   }
 
-  base::Optional<cbor::Value> extensions;
+  std::optional<cbor::Value> extensions;
   if (flag_byte & static_cast<uint8_t>(Flag::kExtensionDataIncluded)) {
     cbor::Reader::DecoderError error;
     extensions = cbor::Reader::Read(auth_data, &error);
@@ -57,14 +59,14 @@ base::Optional<AuthenticatorData> AuthenticatorData::DecodeAuthenticatorData(
       LOG(ERROR) << "CBOR decoding of authenticator data extensions failed ("
                  << cbor::Reader::ErrorCodeToString(error) << ") from "
                  << base::HexEncode(auth_data.data(), auth_data.size());
-      return base::nullopt;
+      return std::nullopt;
     }
     if (!extensions->is_map()) {
       LOG(ERROR) << "Incorrect CBOR structure of authenticator data extensions";
-      return base::nullopt;
+      return std::nullopt;
     }
   } else if (!auth_data.empty()) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return AuthenticatorData(application_parameter, flag_byte, counter,
@@ -73,15 +75,14 @@ base::Optional<AuthenticatorData> AuthenticatorData::DecodeAuthenticatorData(
 }
 
 // static
-base::Optional<AuthenticatorData>
-AuthenticatorData::ParseMakeCredentialResponse(
+std::optional<AuthenticatorData> AuthenticatorData::ParseMakeCredentialResponse(
     const std::vector<uint8_t>& input) {
   base::span<const uint8_t> buffer(input.data(), input.size());
   // The response is an attestation object.
-  base::Optional<cbor::Value> attestation_obj = cbor::Reader::Read(buffer);
+  std::optional<cbor::Value> attestation_obj = cbor::Reader::Read(buffer);
   if (!attestation_obj || !attestation_obj->is_map()) {
     LOG(ERROR) << "Attestation object is not a CBOR map.";
-    return base::nullopt;
+    return std::nullopt;
   }
   const auto& attestation_obj_map = attestation_obj->GetMap();
 
@@ -89,11 +90,11 @@ AuthenticatorData::ParseMakeCredentialResponse(
   auto it = attestation_obj_map.find(cbor::Value(kFormatKey));
   if (it == attestation_obj_map.end()) {
     LOG(ERROR) << "Missing format key.";
-    return base::nullopt;
+    return std::nullopt;
   }
   if (!it->second.is_string()) {
     LOG(ERROR) << "Invalid format.";
-    return base::nullopt;
+    return std::nullopt;
   }
   std::string format = it->second.GetString();
 
@@ -101,7 +102,7 @@ AuthenticatorData::ParseMakeCredentialResponse(
   it = attestation_obj_map.find(cbor::Value(kAuthDataKey));
   if (it == attestation_obj_map.end() || !it->second.is_bytestring()) {
     LOG(ERROR) << "Invalid AuthData value type.";
-    return base::nullopt;
+    return std::nullopt;
   }
   std::vector<uint8_t> auth_data_buffer(it->second.GetBytestring());
   base::span<const uint8_t> auth_data(auth_data_buffer.data(),
@@ -110,7 +111,7 @@ AuthenticatorData::ParseMakeCredentialResponse(
       AuthenticatorData::DecodeAuthenticatorData(auth_data);
   if (!authenticator_data) {
     LOG(INFO) << "Failed to parse authenticator data.";
-    return base::nullopt;
+    return std::nullopt;
   }
   return authenticator_data;
 }
@@ -119,8 +120,8 @@ AuthenticatorData::AuthenticatorData(
     base::span<const uint8_t, kRpIdHashLength> application_parameter,
     uint8_t flags,
     base::span<const uint8_t, kSignCounterLength> counter,
-    base::Optional<AttestedCredentialData> data,
-    base::Optional<cbor::Value> extensions)
+    std::optional<AttestedCredentialData> data,
+    std::optional<cbor::Value> extensions)
     : application_parameter_(
           fido_parsing_utils::Materialize(application_parameter)),
       flags_(flags),

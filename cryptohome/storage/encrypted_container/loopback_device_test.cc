@@ -57,7 +57,7 @@ TEST_F(LoopbackDeviceTest, LoopbackPurge) {
 TEST_F(LoopbackDeviceTest, LoopbackSetup) {
   EXPECT_TRUE(backing_device_->Setup());
 
-  EXPECT_NE(backing_device_->GetPath(), base::nullopt);
+  EXPECT_NE(backing_device_->GetPath(), std::nullopt);
   EXPECT_TRUE(backing_device_->Teardown());
 }
 
@@ -66,7 +66,7 @@ TEST_F(LoopbackDeviceTest, ValidLoopbackDeviceTeardown) {
   EXPECT_TRUE(backing_device_->Setup());
   EXPECT_TRUE(backing_device_->Teardown());
 
-  EXPECT_EQ(backing_device_->GetPath(), base::nullopt);
+  EXPECT_EQ(backing_device_->GetPath(), std::nullopt);
 }
 
 }  // namespace cryptohome

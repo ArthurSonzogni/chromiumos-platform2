@@ -5,6 +5,7 @@
 #include "cryptohome/fido/attested_credential_data.h"
 
 #include <algorithm>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -22,17 +23,17 @@ namespace cryptohome {
 namespace fido_device {
 
 // static
-base::Optional<std::pair<AttestedCredentialData, base::span<const uint8_t>>>
+std::optional<std::pair<AttestedCredentialData, base::span<const uint8_t>>>
 AttestedCredentialData::ConsumeFromCtapResponse(
     base::span<const uint8_t> buffer) {
   if (buffer.size() < kAaguidLength)
-    return base::nullopt;
+    return std::nullopt;
 
   auto aaguid = buffer.first<kAaguidLength>();
   buffer = buffer.subspan(kAaguidLength);
 
   if (buffer.size() < kCredentialIdLengthLength)
-    return base::nullopt;
+    return std::nullopt;
 
   auto credential_id_length_span = buffer.first<kCredentialIdLengthLength>();
   const size_t credential_id_length =
@@ -41,7 +42,7 @@ AttestedCredentialData::ConsumeFromCtapResponse(
   buffer = buffer.subspan(kCredentialIdLengthLength);
 
   if (buffer.size() < credential_id_length)
-    return base::nullopt;
+    return std::nullopt;
 
   auto credential_id = buffer.first(credential_id_length);
   buffer = buffer.subspan(credential_id_length);
@@ -51,14 +52,14 @@ AttestedCredentialData::ConsumeFromCtapResponse(
   // is discarded.
   size_t bytes_read;
   if (!cbor::Reader::Read(buffer, &bytes_read)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Only EC Public key is supported for now.
   auto credential_public_key =
       ECPublicKey::ParseECPublicKey(buffer.first(bytes_read));
   if (!credential_public_key)
-    return base::nullopt;
+    return std::nullopt;
 
   buffer = buffer.subspan(bytes_read);
   return std::make_pair(
@@ -69,7 +70,7 @@ AttestedCredentialData::ConsumeFromCtapResponse(
 }
 
 // static
-base::Optional<AttestedCredentialData>
+std::optional<AttestedCredentialData>
 AttestedCredentialData::CreateFromU2fRegisterResponse(
     base::span<const uint8_t> u2f_data, std::unique_ptr<PublicKey> public_key) {
   // TODO(crbug/799075): Introduce a CredentialID class to do this extraction.
@@ -79,7 +80,7 @@ AttestedCredentialData::CreateFromU2fRegisterResponse(
       fido_parsing_utils::Extract(u2f_data, kU2fKeyHandleLengthOffset, 1);
 
   if (extracted_length.empty()) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // For U2F register request, device AAGUID is set to zeros.
@@ -95,7 +96,7 @@ AttestedCredentialData::CreateFromU2fRegisterResponse(
       base::strict_cast<size_t>(credential_id_length[1]));
 
   if (credential_id.empty()) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return AttestedCredentialData(aaguid, credential_id_length,

@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -183,7 +184,7 @@ class FakePlatform final : public Platform {
       std::multimap<const base::FilePath, const base::FilePath>* mounts)
       override;
   bool IsDirectoryMounted(const base::FilePath& directory) override;
-  base::Optional<std::vector<bool>> AreDirectoriesMounted(
+  std::optional<std::vector<bool>> AreDirectoriesMounted(
       const std::vector<base::FilePath>& directories) override;
 
   brillo::LoopDeviceManager* GetLoopDeviceManager() override;

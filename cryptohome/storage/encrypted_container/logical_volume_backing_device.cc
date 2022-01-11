@@ -5,6 +5,7 @@
 #include "cryptohome/storage/encrypted_container/logical_volume_backing_device.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -33,26 +34,26 @@ LogicalVolumeBackingDevice::LogicalVolumeBackingDevice(
     : LogicalVolumeBackingDevice(
           config, std::make_unique<brillo::LogicalVolumeManager>()) {}
 
-base::Optional<brillo::LogicalVolume>
+std::optional<brillo::LogicalVolume>
 LogicalVolumeBackingDevice::GetLogicalVolume() {
-  base::Optional<brillo::PhysicalVolume> pv =
+  std::optional<brillo::PhysicalVolume> pv =
       lvm_->GetPhysicalVolume(physical_volume_);
 
   if (!pv || !pv->IsValid()) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
-  base::Optional<brillo::VolumeGroup> vg = lvm_->GetVolumeGroup(*pv);
+  std::optional<brillo::VolumeGroup> vg = lvm_->GetVolumeGroup(*pv);
 
   if (!vg || !vg->IsValid()) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return lvm_->GetLogicalVolume(*vg, name_);
 }
 
 bool LogicalVolumeBackingDevice::Purge() {
-  base::Optional<brillo::LogicalVolume> lv = GetLogicalVolume();
+  std::optional<brillo::LogicalVolume> lv = GetLogicalVolume();
 
   if (lv && lv->IsValid()) {
     return lv->Remove();
@@ -62,20 +63,20 @@ bool LogicalVolumeBackingDevice::Purge() {
 }
 
 bool LogicalVolumeBackingDevice::Create() {
-  base::Optional<brillo::PhysicalVolume> pv =
+  std::optional<brillo::PhysicalVolume> pv =
       lvm_->GetPhysicalVolume(physical_volume_);
 
   if (!pv || !pv->IsValid()) {
     return false;
   }
 
-  base::Optional<brillo::VolumeGroup> vg = lvm_->GetVolumeGroup(*pv);
+  std::optional<brillo::VolumeGroup> vg = lvm_->GetVolumeGroup(*pv);
 
   if (!vg || !vg->IsValid()) {
     return false;
   }
 
-  base::Optional<brillo::Thinpool> thinpool =
+  std::optional<brillo::Thinpool> thinpool =
       lvm_->GetThinpool(*vg, thinpool_name_);
   if (!thinpool || !thinpool->IsValid()) {
     return false;
@@ -85,7 +86,7 @@ bool LogicalVolumeBackingDevice::Create() {
   lv_config.SetStringKey("name", name_);
   lv_config.SetStringKey("size", base::NumberToString(size_));
 
-  base::Optional<brillo::LogicalVolume> lv =
+  std::optional<brillo::LogicalVolume> lv =
       lvm_->CreateLogicalVolume(*vg, *thinpool, lv_config);
   if (!lv || !lv->IsValid()) {
     return false;
@@ -95,7 +96,7 @@ bool LogicalVolumeBackingDevice::Create() {
 }
 
 bool LogicalVolumeBackingDevice::Setup() {
-  base::Optional<brillo::LogicalVolume> lv = GetLogicalVolume();
+  std::optional<brillo::LogicalVolume> lv = GetLogicalVolume();
 
   if (!lv || !lv->IsValid()) {
     LOG(ERROR) << "Failed to set up logical volume.";
@@ -106,7 +107,7 @@ bool LogicalVolumeBackingDevice::Setup() {
 }
 
 bool LogicalVolumeBackingDevice::Teardown() {
-  base::Optional<brillo::LogicalVolume> lv = GetLogicalVolume();
+  std::optional<brillo::LogicalVolume> lv = GetLogicalVolume();
 
   if (!lv || !lv->IsValid()) {
     LOG(ERROR) << "Invalid logical volume";
@@ -117,17 +118,17 @@ bool LogicalVolumeBackingDevice::Teardown() {
 }
 
 bool LogicalVolumeBackingDevice::Exists() {
-  base::Optional<brillo::LogicalVolume> lv = GetLogicalVolume();
+  std::optional<brillo::LogicalVolume> lv = GetLogicalVolume();
 
   return lv && lv->IsValid();
 }
 
-base::Optional<base::FilePath> LogicalVolumeBackingDevice::GetPath() {
-  base::Optional<brillo::LogicalVolume> lv = GetLogicalVolume();
+std::optional<base::FilePath> LogicalVolumeBackingDevice::GetPath() {
+  std::optional<brillo::LogicalVolume> lv = GetLogicalVolume();
 
   if (!lv || !lv->IsValid()) {
     LOG(ERROR) << "Invalid logical volume";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return lv->GetPath();

@@ -13,6 +13,7 @@
 #include <sys/statvfs.h>
 #include <sys/types.h>
 
+#include <optional>
 #include <string>
 
 #include <base/compiler_specific.h>
@@ -230,7 +231,7 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
       rootdir.Append(STATEFUL_MNT "/encrypted.block");
 
   base::FilePath stateful_device = platform->GetStatefulDevice();
-  base::Optional<brillo::PhysicalVolume> pv =
+  std::optional<brillo::PhysicalVolume> pv =
       lvm->GetPhysicalVolume(stateful_device);
 
   // Use the loopback sparse file in 2 cases:

@@ -6,6 +6,7 @@
 #define CRYPTOHOME_CRYPTORECOVERY_RECOVERY_CRYPTO_TPM1_BACKEND_IMPL_H_
 
 #include <map>
+#include <optional>
 
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
@@ -39,7 +40,7 @@ class RecoveryCryptoTpm1BackendImpl final : public RecoveryCryptoTpmBackend {
   bool EncryptEccPrivateKey(
       const EllipticCurve& ec,
       const crypto::ScopedEC_KEY& own_key_pair,
-      const base::Optional<brillo::SecureBlob>& auth_value,
+      const std::optional<brillo::SecureBlob>& auth_value,
       brillo::SecureBlob* encrypted_own_priv_key) override;
   // Performs the scalar multiplication by unsealing the encrypted secret via
   // the TPM_Unseal command and generated the corresponding shared secret via
@@ -47,7 +48,7 @@ class RecoveryCryptoTpm1BackendImpl final : public RecoveryCryptoTpmBackend {
   crypto::ScopedEC_POINT GenerateDiffieHellmanSharedSecret(
       const EllipticCurve& ec,
       const brillo::SecureBlob& encrypted_own_priv_key,
-      const base::Optional<brillo::SecureBlob>& auth_value,
+      const std::optional<brillo::SecureBlob>& auth_value,
       const EC_POINT& others_pub_point) override;
 
  private:

@@ -9,6 +9,7 @@
 #include <cinttypes>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -128,7 +129,7 @@ StatusChain<TPMErrorBase> DeriveTpmEccPointFromSeed(
                                  TPMRetryAction::kNoRetry);
   }
 
-  base::Optional<EllipticCurve> ec =
+  std::optional<EllipticCurve> ec =
       EllipticCurve::Create(kDefaultCurve, context.get());
   if (!ec) {
     return CreateError<TPMError>("Failed to create EllipticCurve",
@@ -1033,7 +1034,7 @@ StatusChain<TPMErrorBase> Tpm2Impl::PreloadSealedData(
 }
 
 StatusChain<TPMErrorBase> Tpm2Impl::UnsealWithAuthorization(
-    base::Optional<TpmKeyHandle> preload_handle,
+    std::optional<TpmKeyHandle> preload_handle,
     const SecureBlob& sealed_data,
     const SecureBlob& auth_value,
     const std::map<uint32_t, brillo::Blob>& pcr_map,
@@ -1107,7 +1108,7 @@ StatusChain<TPMErrorBase> Tpm2Impl::GetPublicKeyHash(TpmKeyHandle key_handle,
   return nullptr;
 }
 
-void Tpm2Impl::GetStatus(base::Optional<TpmKeyHandle> key,
+void Tpm2Impl::GetStatus(std::optional<TpmKeyHandle> key,
                          TpmStatusInfo* status) {
   memset(status, 0, sizeof(TpmStatusInfo));
   TrunksClientContext* trunks;
@@ -1322,7 +1323,7 @@ bool Tpm2Impl::PublicAreaToPublicKeyDER(const trunks::TPMT_PUBLIC& public_area,
 }
 
 StatusChain<TPMErrorBase> Tpm2Impl::GetAuthValue(
-    base::Optional<TpmKeyHandle> key_handle,
+    std::optional<TpmKeyHandle> key_handle,
     const SecureBlob& pass_blob,
     SecureBlob* auth_value) {
   if (!key_handle) {
@@ -1361,7 +1362,7 @@ StatusChain<TPMErrorBase> Tpm2Impl::GetAuthValue(
 }
 
 StatusChain<TPMErrorBase> Tpm2Impl::GetEccAuthValue(
-    base::Optional<TpmKeyHandle> key_handle,
+    std::optional<TpmKeyHandle> key_handle,
     const SecureBlob& pass_blob,
     SecureBlob* auth_value) {
   if (!key_handle) {

@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -859,7 +860,7 @@ class UserDataAuth {
   void ContinueMountWithCredentials(
       const user_data_auth::MountRequest& request,
       std::unique_ptr<Credentials> credentials,
-      base::Optional<base::UnguessableToken> token,
+      std::optional<base::UnguessableToken> token,
       const MountArgs& mount_args,
       base::OnceCallback<void(const user_data_auth::MountReply&)> on_done);
 

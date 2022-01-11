@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -389,7 +390,7 @@ bool KeysetManagement::ReSaveKeyset(const Credentials& credentials,
   // We get the LE Label from keyset before we resave it. Once the keyset
   // is re-saved, a new label is generated making the old label obsolete.
   // It would be safe to delete that from PinWeaver tree after resave.
-  base::Optional<uint64_t> old_le_label;
+  std::optional<uint64_t> old_le_label;
   if (keyset->HasLELabel()) {
     old_le_label = keyset->GetLELabel();
   }

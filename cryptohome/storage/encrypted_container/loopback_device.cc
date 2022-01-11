@@ -5,6 +5,7 @@
 #include "cryptohome/storage/encrypted_container/loopback_device.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -73,13 +74,13 @@ bool LoopbackDevice::Exists() {
   return platform_->FileExists(backing_file_path_);
 }
 
-base::Optional<base::FilePath> LoopbackDevice::GetPath() {
+std::optional<base::FilePath> LoopbackDevice::GetPath() {
   std::unique_ptr<brillo::LoopDevice> loopdev =
       platform_->GetLoopDeviceManager()->GetAttachedDeviceByName(name_);
 
   if (!loopdev->IsValid()) {
     LOG(ERROR) << "Loop device does not exist.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return loopdev->GetDevicePath();

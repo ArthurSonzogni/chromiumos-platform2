@@ -4,6 +4,8 @@
 
 #include "cryptohome/storage/arc_disk_quota.h"
 
+#include <optional>
+
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -178,7 +180,7 @@ bool ArcDiskQuota::SetMediaRWDataFileProjectId(int project_id,
     *out_error = EINVAL;
     return false;
   }
-  base::Optional<std::string> context = platform_->GetSELinuxContextOfFD(fd);
+  std::optional<std::string> context = platform_->GetSELinuxContextOfFD(fd);
   if (!context) {
     LOG(ERROR) << "Failed to get the SELinux context of FD.";
     *out_error = EIO;

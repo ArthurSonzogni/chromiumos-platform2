@@ -5,6 +5,7 @@
 #include "cryptohome/storage/encrypted_container/dmcrypt_container.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -162,7 +163,7 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
     return false;
   }
 
-  base::Optional<base::FilePath> backing_device_path =
+  std::optional<base::FilePath> backing_device_path =
       backing_device_->GetPath();
   if (!backing_device_path) {
     LOG(ERROR) << "Failed to get backing device path";

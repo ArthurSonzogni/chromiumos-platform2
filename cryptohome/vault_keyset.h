@@ -6,13 +6,13 @@
 #define CRYPTOHOME_VAULT_KEYSET_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/compiler_specific.h>
 #include <base/files/file_path.h>
 #include <base/gtest_prod_util.h>
 #include <base/macros.h>
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
@@ -326,7 +326,7 @@ class VaultKeyset {
   // The salt used to derive the user input in auth block.
   brillo::SecureBlob auth_salt_;
   // The IV used to encrypt the encryption key.
-  base::Optional<brillo::SecureBlob> vkk_iv_;
+  std::optional<brillo::SecureBlob> vkk_iv_;
   // legacy_index_ is the index of the keyset for the user. It is called legacy
   // due to previous plans to fully switch to label-based addressing, which,
   // unfortunately, wasn't followed through.
@@ -335,49 +335,48 @@ class VaultKeyset {
   bool auth_locked_;
   // This is used by the TPM AuthBlocks to make sure the keyset was sealed to
   // the TPM on this system. It's not a security check, but a diagnostic.
-  base::Optional<brillo::SecureBlob> tpm_public_key_hash_;
+  std::optional<brillo::SecureBlob> tpm_public_key_hash_;
   // Passwords which are TPM backed, not PCR bound, and not run through scrypt
   // before the TPM operation, have a number of rounds to run the key derivation
   // function.
-  base::Optional<int32_t> password_rounds_;
+  std::optional<int32_t> password_rounds_;
   // An optional timestamp field.
   // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-  base::Optional<int64_t> last_activity_timestamp_;
+  std::optional<int64_t> last_activity_timestamp_;
   // Plaintet metadata describing the key.
-  base::Optional<KeyData> key_data_;
+  std::optional<KeyData> key_data_;
   // Used for the reset seed wrapping.
-  base::Optional<brillo::SecureBlob> reset_iv_;
+  std::optional<brillo::SecureBlob> reset_iv_;
   // The label for PinWeaver secrets.
-  base::Optional<uint64_t> le_label_;
+  std::optional<uint64_t> le_label_;
   // IV for the file encryption key of PinWeaver credentials.
-  base::Optional<brillo::SecureBlob> le_fek_iv_;
+  std::optional<brillo::SecureBlob> le_fek_iv_;
   // IV for the chaps key wrapping of PinWeaver credentials.
-  base::Optional<brillo::SecureBlob> le_chaps_iv_;
+  std::optional<brillo::SecureBlob> le_chaps_iv_;
   // Used with the resed seed to derive the reset secret. PinWeaver only.
-  base::Optional<brillo::SecureBlob> reset_salt_;
+  std::optional<brillo::SecureBlob> reset_salt_;
   // Specifies which version of fscrypt encryption policy this is used with.
-  base::Optional<int32_t> fscrypt_policy_version_;
+  std::optional<int32_t> fscrypt_policy_version_;
 
   // Group 2. Wrapped stuff.
   // An encrypted copy of the VaultKeysetKeys struct, which holds important
   // fields such as a the file encryption key.
   brillo::SecureBlob wrapped_keyset_;
   // Wrapped copy of the key used to authenticate with the PKCS#11 service.
-  base::Optional<brillo::SecureBlob> wrapped_chaps_key_;
+  std::optional<brillo::SecureBlob> wrapped_chaps_key_;
   // The VaultKeysetKey encrypted with the user's password and TPM.
-  base::Optional<brillo::SecureBlob> tpm_key_;
+  std::optional<brillo::SecureBlob> tpm_key_;
   // Used by the PCR bound AuthBlock where the TPM's PCR is extended with the
   // username.
-  base::Optional<brillo::SecureBlob> extended_tpm_key_;
+  std::optional<brillo::SecureBlob> extended_tpm_key_;
   // The reset seed for LE credentials.
-  base::Optional<brillo::SecureBlob> wrapped_reset_seed_;
+  std::optional<brillo::SecureBlob> wrapped_reset_seed_;
   // Information specific to the signature-challenge response protection. This
   // has plaintext metadata in it, but also the sealed secret, so it goes here.
-  base::Optional<SerializedVaultKeyset::SignatureChallengeInfo>
+  std::optional<SerializedVaultKeyset::SignatureChallengeInfo>
       signature_challenge_info_;
 
   // Group 3. Unwrapped secrets.
-  // TODO(kerrnel): Make these base::Optional<>
   // The file encryption key present in all VaultKeysets.
   brillo::SecureBlob fek_;
   // Randomly generated key identifier.

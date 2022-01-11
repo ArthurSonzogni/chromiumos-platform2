@@ -10,6 +10,7 @@
 #include <stdint.h>
 
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 
@@ -52,7 +53,7 @@ class MockTpm : public Tpm {
               (override));
   MOCK_METHOD(hwsec::StatusChain<hwsec::TPMErrorBase>,
               UnsealWithAuthorization,
-              (base::Optional<TpmKeyHandle>,
+              (std::optional<TpmKeyHandle>,
                const brillo::SecureBlob&,
                const brillo::SecureBlob&,
                (const std::map<uint32_t, brillo::Blob>&),
@@ -142,7 +143,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD(void, CloseHandle, (TpmKeyHandle), (override));
   MOCK_METHOD(void,
               GetStatus,
-              (base::Optional<TpmKeyHandle>, TpmStatusInfo*),
+              (std::optional<TpmKeyHandle>, TpmStatusInfo*),
               (override));
   MOCK_METHOD(hwsec::StatusChain<hwsec::TPMErrorBase>,
               IsSrkRocaVulnerable,
@@ -189,13 +190,13 @@ class MockTpm : public Tpm {
               (const override));
   MOCK_METHOD(hwsec::StatusChain<hwsec::TPMErrorBase>,
               GetAuthValue,
-              (base::Optional<TpmKeyHandle> key_handle,
+              (std::optional<TpmKeyHandle> key_handle,
                const brillo::SecureBlob& pass_blob,
                brillo::SecureBlob* auth_value),
               (override));
   MOCK_METHOD(hwsec::StatusChain<hwsec::TPMErrorBase>,
               GetEccAuthValue,
-              (base::Optional<TpmKeyHandle> key_handle,
+              (std::optional<TpmKeyHandle> key_handle,
                const brillo::SecureBlob& pass_blob,
                brillo::SecureBlob* auth_value),
               (override));

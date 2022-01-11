@@ -7,12 +7,12 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <stdint.h>
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -247,7 +247,7 @@ bool LoadUserSecretStashContainer(
   return true;
 }
 
-base::Optional<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
+std::optional<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
     const std::map<std::string, UserSecretStash::WrappedKeyBlock>&
         wrapped_key_blocks,
     const std::string& wrapping_id,
@@ -256,14 +256,14 @@ base::Optional<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
   if (wrapping_id.empty()) {
     NOTREACHED() << "Empty wrapping ID is passed for UserSecretStash main key "
                     "unwrapping.";
-    return base::nullopt;
+    return std::nullopt;
   }
   if (wrapping_key.size() != kAesGcm256KeySize) {
     NOTREACHED() << "Wrong wrapping key size is passed for UserSecretStash "
                     "main key unwrapping. Received: "
                  << wrapping_key.size() << ", expected " << kAesGcm256KeySize
                  << ".";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Find the wrapped key block.
@@ -271,7 +271,7 @@ base::Optional<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
   if (wrapped_key_block_iter == wrapped_key_blocks.end()) {
     LOG(ERROR)
         << "UserSecretStash wrapped key block with the given ID not found.";
-    return base::nullopt;
+    return std::nullopt;
   }
   const UserSecretStash::WrappedKeyBlock& wrapped_key_block =
       wrapped_key_block_iter->second;
@@ -283,33 +283,33 @@ base::Optional<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
     LOG(ERROR) << "UserSecretStash wrapped main key uses unknown algorithm: "
                << static_cast<int>(wrapped_key_block.encryption_algorithm)
                << ".";
-    return base::nullopt;
+    return std::nullopt;
   }
   if (wrapped_key_block.encrypted_key.empty()) {
     LOG(ERROR) << "UserSecretStash wrapped main key has empty encrypted key.";
-    return base::nullopt;
+    return std::nullopt;
   }
   if (wrapped_key_block.iv.size() != kAesGcmIVSize) {
     LOG(ERROR) << "UserSecretStash wrapped main key has IV of wrong length: "
                << wrapped_key_block.iv.size() << ", expected: " << kAesGcmIVSize
                << ".";
-    return base::nullopt;
+    return std::nullopt;
   }
   if (wrapped_key_block.gcm_tag.size() != kAesGcmTagSize) {
     LOG(ERROR)
         << "UserSecretStash wrapped main key has AES-GCM tag of wrong length: "
         << wrapped_key_block.gcm_tag.size() << ", expected: " << kAesGcmTagSize
         << ".";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Attempt the unwrapping.
   brillo::SecureBlob main_key;
-  if (!AesGcmDecrypt(wrapped_key_block.encrypted_key, /*ad=*/base::nullopt,
+  if (!AesGcmDecrypt(wrapped_key_block.encrypted_key, /*ad=*/std::nullopt,
                      wrapped_key_block.gcm_tag, wrapping_key,
                      wrapped_key_block.iv, &main_key)) {
     LOG(ERROR) << "Failed to unwrap UserSecretStash main key";
-    return base::nullopt;
+    return std::nullopt;
   }
   return main_key;
 }
@@ -356,7 +356,7 @@ std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedPayload(
     const std::map<std::string, WrappedKeyBlock>& wrapped_key_blocks,
     const brillo::SecureBlob& main_key) {
   brillo::SecureBlob serialized_uss_payload;
-  if (!AesGcmDecrypt(ciphertext, /*ad=*/base::nullopt, gcm_tag, main_key, iv,
+  if (!AesGcmDecrypt(ciphertext, /*ad=*/std::nullopt, gcm_tag, main_key, iv,
                      &serialized_uss_payload)) {
     LOG(ERROR) << "Failed to decrypt UserSecretStash payload";
     return nullptr;
@@ -409,7 +409,7 @@ UserSecretStash::FromEncryptedContainerWithWrappingKey(
     return nullptr;
   }
 
-  base::Optional<brillo::SecureBlob> main_key_optional =
+  std::optional<brillo::SecureBlob> main_key_optional =
       UnwrapMainKeyFromBlocks(wrapped_key_blocks, wrapping_id, wrapping_key);
   if (!main_key_optional) {
     // Note: the error is already logged.
@@ -446,7 +446,7 @@ bool UserSecretStash::HasWrappedMainKey(const std::string& wrapping_id) const {
   return wrapped_key_blocks_.count(wrapping_id);
 }
 
-base::Optional<brillo::SecureBlob> UserSecretStash::UnwrapMainKey(
+std::optional<brillo::SecureBlob> UserSecretStash::UnwrapMainKey(
     const std::string& wrapping_id,
     const brillo::SecureBlob& wrapping_key) const {
   return UnwrapMainKeyFromBlocks(wrapped_key_blocks_, wrapping_id,
@@ -486,7 +486,7 @@ bool UserSecretStash::AddWrappedMainKey(
   WrappedKeyBlock wrapped_key_block;
   wrapped_key_block.encryption_algorithm =
       UserSecretStashEncryptionAlgorithm::AES_GCM_256;
-  if (!AesGcmEncrypt(main_key, /*ad=*/base::nullopt, wrapping_key,
+  if (!AesGcmEncrypt(main_key, /*ad=*/std::nullopt, wrapping_key,
                      &wrapped_key_block.iv, &wrapped_key_block.gcm_tag,
                      &wrapped_key_block.encrypted_key)) {
     LOG(ERROR) << "Failed to wrap UserSecretStash main key.";
@@ -508,7 +508,7 @@ bool UserSecretStash::RemoveWrappedMainKey(const std::string& wrapping_id) {
   return true;
 }
 
-base::Optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
+std::optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
     const brillo::SecureBlob& main_key) {
   FlatbufferSecureAllocatorBridge allocator;
   flatbuffers::FlatBufferBuilder builder(/*initial_size=*/4096, &allocator,
@@ -531,10 +531,10 @@ base::Optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
       builder.GetBufferPointer() + builder.GetSize());
 
   brillo::SecureBlob tag, iv, ciphertext;
-  if (!AesGcmEncrypt(serialized_uss, /*ad=*/base::nullopt, main_key, &iv, &tag,
+  if (!AesGcmEncrypt(serialized_uss, /*ad=*/std::nullopt, main_key, &iv, &tag,
                      &ciphertext)) {
     LOG(ERROR) << "Failed to encrypt UserSecretStash";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   builder.Clear();

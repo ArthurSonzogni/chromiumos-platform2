@@ -5,6 +5,7 @@
 #include "cryptohome/crypto/elliptic_curve.h"
 
 #include <algorithm>
+#include <optional>
 #include <utility>
 
 #include <base/logging.h>
@@ -17,8 +18,8 @@
 namespace cryptohome {
 
 // static
-base::Optional<EllipticCurve> EllipticCurve::Create(CurveType curve,
-                                                    BN_CTX* context) {
+std::optional<EllipticCurve> EllipticCurve::Create(CurveType curve,
+                                                   BN_CTX* context) {
   // Translate from CurveType to NID.
   int nid = NID_undef;
   switch (curve) {
@@ -34,23 +35,23 @@ base::Optional<EllipticCurve> EllipticCurve::Create(CurveType curve,
   }
   if (nid == NID_undef) {
     LOG(ERROR) << "Invalid curve type " << static_cast<int>(curve);
-    return base::nullopt;
+    return std::nullopt;
   }
   crypto::ScopedEC_GROUP group(EC_GROUP_new_by_curve_name(nid));
   if (!group) {
     LOG(ERROR) << "Failed to create group of EllipticCurve type="
                << static_cast<int>(curve) << " NID=" << nid << ": "
                << GetOpenSSLErrors();
-    return base::nullopt;
+    return std::nullopt;
   }
   crypto::ScopedBIGNUM order(BN_secure_new());
   if (!order) {
     LOG(ERROR) << "Failed to allocate BIGNUM structure: " << GetOpenSSLErrors();
-    return base::nullopt;
+    return std::nullopt;
   }
   if (!EC_GROUP_get_order(group.get(), order.get(), context)) {
     LOG(ERROR) << "Failed to get EC_GROUP order: " << GetOpenSSLErrors();
-    return base::nullopt;
+    return std::nullopt;
   }
   return EllipticCurve(curve, std::move(group), std::move(order));
 }

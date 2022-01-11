@@ -5,12 +5,12 @@
 #ifndef CRYPTOHOME_USER_SECRET_STASH_H_
 #define CRYPTOHOME_USER_SECRET_STASH_H_
 
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <stdint.h>
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "cryptohome/flatbuffer_secure_allocator_bridge.h"
@@ -69,7 +69,7 @@ class UserSecretStash {
   // Unwraps (decrypts) the USS main key from the wrapped key block with the
   // given wrapping ID. Returns null if it doesn't exist or the unwrapping
   // fails.
-  base::Optional<brillo::SecureBlob> UnwrapMainKey(
+  std::optional<brillo::SecureBlob> UnwrapMainKey(
       const std::string& wrapping_id,
       const brillo::SecureBlob& wrapping_key) const;
   // Wraps (encrypts) the USS main key using the given wrapped key. The wrapped
@@ -88,7 +88,7 @@ class UserSecretStash {
   // encrypt this UserSecretStash class. The object is converted to a
   // UserSecretStashPayload table, serialized, encrypted with AES-GCM-256, and
   // serialized as a UserSecretStashContainer table.
-  base::Optional<brillo::SecureBlob> GetEncryptedContainer(
+  std::optional<brillo::SecureBlob> GetEncryptedContainer(
       const brillo::SecureBlob& main_key);
 
  private:

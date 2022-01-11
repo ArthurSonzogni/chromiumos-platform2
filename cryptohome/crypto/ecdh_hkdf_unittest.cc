@@ -4,6 +4,8 @@
 
 #include "cryptohome/crypto/ecdh_hkdf.h"
 
+#include <optional>
+
 #include <gtest/gtest.h>
 
 #include "cryptohome/crypto/aes.h"
@@ -23,7 +25,7 @@ static const char kInfoHex[] = "0b0b0b0b0b0b0b0b";
 TEST(EcdhHkdfTest, CompareEcdhHkdfSymmetricKeys) {
   ScopedBN_CTX context = CreateBigNumContext();
   ASSERT_TRUE(context);
-  base::Optional<EllipticCurve> ec =
+  std::optional<EllipticCurve> ec =
       EllipticCurve::Create(kCurve, context.get());
   ASSERT_TRUE(ec);
 
@@ -67,7 +69,7 @@ TEST(EcdhHkdfTest, CompareEcdhHkdfSymmetricKeys) {
 TEST(EcdhHkdfTest, AesGcmEncryptionDecryption) {
   ScopedBN_CTX context = CreateBigNumContext();
   ASSERT_TRUE(context);
-  base::Optional<EllipticCurve> ec =
+  std::optional<EllipticCurve> ec =
       EllipticCurve::Create(kCurve, context.get());
   ASSERT_TRUE(ec);
 
@@ -100,7 +102,7 @@ TEST(EcdhHkdfTest, AesGcmEncryptionDecryption) {
   brillo::SecureBlob plaintext("I am encrypting this message.");
 
   // Encrypt using sender's `aes_gcm_key1`.
-  EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/base::nullopt, aes_gcm_key1, &iv,
+  EXPECT_TRUE(AesGcmEncrypt(plaintext, /*ad=*/std::nullopt, aes_gcm_key1, &iv,
                             &tag, &ciphertext));
 
   brillo::SecureBlob shared_secret_point_recipient;
@@ -118,7 +120,7 @@ TEST(EcdhHkdfTest, AesGcmEncryptionDecryption) {
 
   // Decrypt using recipient's `aes_gcm_key2`.
   brillo::SecureBlob decrypted_plaintext;
-  EXPECT_TRUE(AesGcmDecrypt(ciphertext, /*ad=*/base::nullopt, tag, aes_gcm_key2,
+  EXPECT_TRUE(AesGcmDecrypt(ciphertext, /*ad=*/std::nullopt, tag, aes_gcm_key2,
                             iv, &decrypted_plaintext));
 
   EXPECT_EQ(plaintext, decrypted_plaintext);

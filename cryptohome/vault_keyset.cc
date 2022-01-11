@@ -5,6 +5,7 @@
 #include "cryptohome/vault_keyset.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <sys/types.h>
@@ -460,8 +461,8 @@ bool VaultKeyset::UnwrapScryptVaultKeyset(
 }
 
 bool VaultKeyset::WrapVaultKeysetWithAesDeprecated(const KeyBlobs& blobs) {
-  if (blobs.vkk_key == base::nullopt || blobs.vkk_iv == base::nullopt ||
-      blobs.chaps_iv == base::nullopt) {
+  if (blobs.vkk_key == std::nullopt || blobs.vkk_iv == std::nullopt ||
+      blobs.chaps_iv == std::nullopt) {
     DLOG(FATAL) << "Fields missing from KeyBlobs.";
     return false;
   }
@@ -565,9 +566,9 @@ bool VaultKeyset::WrapScryptVaultKeyset(const KeyBlobs& key_blobs) {
 bool VaultKeyset::UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
                                     const KeyBlobs& vkk_data,
                                     CryptoError* error) {
-  bool has_vkk_key = vkk_data.vkk_key != base::nullopt &&
-                     vkk_data.vkk_iv != base::nullopt &&
-                     vkk_data.chaps_iv != base::nullopt;
+  bool has_vkk_key = vkk_data.vkk_key != std::nullopt &&
+                     vkk_data.vkk_iv != std::nullopt &&
+                     vkk_data.chaps_iv != std::nullopt;
   bool has_scrypt_key = vkk_data.scrypt_key != nullptr;
   bool successfully_unwrapped = false;
 
@@ -956,12 +957,12 @@ bool VaultKeyset::EncryptVaultKeyset(const SecureBlob& vault_key,
     return false;
   }
 
-  base::Optional<SecureBlob> reset_secret;
+  std::optional<SecureBlob> reset_secret;
   if (!GetResetSecret().empty()) {
     reset_secret = GetResetSecret();
   }
 
-  AuthInput user_input = {vault_key, /*locked_to_single_user*=*/base::nullopt,
+  AuthInput user_input = {vault_key, /*locked_to_single_user*=*/std::nullopt,
                           obfuscated_username, reset_secret};
 
   KeyBlobs key_blobs;

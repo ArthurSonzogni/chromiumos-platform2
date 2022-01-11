@@ -10,9 +10,9 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <vector>
 
-#include <base/optional.h>
 #include <base/time/time.h>
 
 #include "cryptohome/cleanup/disk_cleanup_routines.h"
@@ -50,7 +50,7 @@ class DiskCleanup {
 
   // Return the available disk space in bytes for home directories, or nullopt
   // on failure.
-  virtual base::Optional<int64_t> AmountOfFreeDiskSpace() const;
+  virtual std::optional<int64_t> AmountOfFreeDiskSpace() const;
 
   // Determines the state of the free disk space based on the following
   // thresholds:
@@ -62,7 +62,7 @@ class DiskCleanup {
   //                      aggresive_cleanup_threshold_
   //   kNeedAggressiveCleanup: aggresive_cleanup_threshold_ >
   //                      free_disk_space
-  virtual FreeSpaceState GetFreeDiskSpaceState(base::Optional<int64_t>) const;
+  virtual FreeSpaceState GetFreeDiskSpaceState(std::optional<int64_t>) const;
 
   // Uses AmountOfFreeDiskSpace to get the current amount of free disk space and
   // to determine the state of the free disk space.
@@ -121,10 +121,10 @@ class DiskCleanup {
   uint64_t target_free_space_ = kTargetFreeSpaceAfterCleanup;
 
   // Cleanup times.
-  base::Optional<base::Time> last_free_disk_space_ = base::nullopt;
-  base::Optional<base::Time> last_normal_disk_cleanup_complete_ = base::nullopt;
-  base::Optional<base::Time> last_aggressive_disk_cleanup_complete_ =
-      base::nullopt;
+  std::optional<base::Time> last_free_disk_space_ = std::nullopt;
+  std::optional<base::Time> last_normal_disk_cleanup_complete_ = std::nullopt;
+  std::optional<base::Time> last_aggressive_disk_cleanup_complete_ =
+      std::nullopt;
 };
 
 }  // namespace cryptohome

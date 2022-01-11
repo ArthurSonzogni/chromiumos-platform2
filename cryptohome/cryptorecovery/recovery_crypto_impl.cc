@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -118,7 +119,7 @@ std::unique_ptr<RecoveryCryptoImpl> RecoveryCryptoImpl::Create(
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
     return nullptr;
   }
-  base::Optional<EllipticCurve> ec =
+  std::optional<EllipticCurve> ec =
       EllipticCurve::Create(kCurve, context.get());
   if (!ec) {
     LOG(ERROR) << "Failed to create EllipticCurve";
@@ -174,7 +175,7 @@ bool RecoveryCryptoImpl::EncryptMediatorShare(
   // Dispose private key.
   ephemeral_priv_key.clear();
 
-  if (!AesGcmEncrypt(mediator_share, /*ad=*/base::nullopt, aes_gcm_key,
+  if (!AesGcmEncrypt(mediator_share, /*ad=*/std::nullopt, aes_gcm_key,
                      &encrypted_ms->iv, &encrypted_ms->tag,
                      &encrypted_ms->encrypted_data)) {
     LOG(ERROR) << "Failed to perform AES-GCM encryption of the mediator share";
@@ -335,7 +336,7 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
   // decrypted response afterward
   crypto::ScopedEC_POINT shared_secret_point =
       tpm_backend_->GenerateDiffieHellmanSharedSecret(
-          ec_, encrypted_channel_priv_key, /*auth_value=*/base::nullopt,
+          ec_, encrypted_channel_priv_key, /*auth_value=*/std::nullopt,
           *epoch_pub_point);
   if (!shared_secret_point) {
     LOG(ERROR) << "Failed to compute shared point from epoch_pub_point and "
@@ -492,7 +493,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   // because key_auth_value will be unavailable when encrypted_channel_priv_key
   // is unsealed from TPM1.2
   if (!tpm_backend_->EncryptEccPrivateKey(ec_, channel_key_pair,
-                                          /*auth_value=*/base::nullopt,
+                                          /*auth_value=*/std::nullopt,
                                           encrypted_channel_priv_key)) {
     LOG(ERROR) << "Failed to encrypt channel_priv_key";
     return false;
@@ -702,7 +703,7 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
   // decrypted response afterward
   crypto::ScopedEC_POINT shared_secret_point =
       tpm_backend_->GenerateDiffieHellmanSharedSecret(
-          ec_, encrypted_channel_priv_key, /*auth_value=*/base::nullopt,
+          ec_, encrypted_channel_priv_key, /*auth_value=*/std::nullopt,
           *epoch_pub_point);
   if (!shared_secret_point) {
     LOG(ERROR) << "Failed to compute shared point from epoch_pub_point and "

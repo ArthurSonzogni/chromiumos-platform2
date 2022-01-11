@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <set>
 #include <utility>
 #include <vector>
@@ -191,7 +192,7 @@ bool HomeDirs::DmcryptContainerExists(
   if (!vg || !vg->IsValid())
     return false;
 
-  return lvm_->GetLogicalVolume(*vg, logical_volume_container) != base::nullopt;
+  return lvm_->GetLogicalVolume(*vg, logical_volume_container) != std::nullopt;
 #else
   return false;
 #endif  // USE_LVM_STATEFUL_PARTITION
@@ -346,12 +347,12 @@ EncryptedContainerType HomeDirs::ChooseVaultType() {
 // TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
   // Validate stateful partition thinpool.
-  base::Optional<brillo::PhysicalVolume> pv =
+  std::optional<brillo::PhysicalVolume> pv =
       lvm_->GetPhysicalVolume(platform_->GetStatefulDevice());
   if (pv && pv->IsValid()) {
-    base::Optional<brillo::VolumeGroup> vg = lvm_->GetVolumeGroup(*pv);
+    std::optional<brillo::VolumeGroup> vg = lvm_->GetVolumeGroup(*pv);
     if (vg && vg->IsValid()) {
-      base::Optional<brillo::Thinpool> thinpool =
+      std::optional<brillo::Thinpool> thinpool =
           lvm_->GetThinpool(*vg, "thinpool");
       if (thinpool && thinpool->IsValid())
         return EncryptedContainerType::kDmcrypt;

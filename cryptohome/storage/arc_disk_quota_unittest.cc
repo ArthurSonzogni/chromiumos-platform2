@@ -468,7 +468,7 @@ TEST_F(ArcDiskQuotaTest, SetMediaRWDataFileProjectId_GetSELinuxContextFails) {
   int error = 0;
 
   EXPECT_CALL(platform_, GetSELinuxContextOfFD(kFd))
-      .WillOnce(Return(base::nullopt));
+      .WillOnce(Return(std::nullopt));
 
   EXPECT_FALSE(
       arc_disk_quota_.SetMediaRWDataFileProjectId(kProjectId, kFd, &error));

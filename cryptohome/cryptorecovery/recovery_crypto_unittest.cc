@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
 #include <utility>
 
 #include "cryptohome/crypto/big_num_util.h"
@@ -34,7 +35,7 @@ SecureBlob GeneratePublicKey() {
     ADD_FAILURE() << "CreateBigNumContext failed";
     return SecureBlob();
   }
-  base::Optional<EllipticCurve> ec =
+  std::optional<EllipticCurve> ec =
       EllipticCurve::Create(kCurve, context.get());
   if (!ec) {
     ADD_FAILURE() << "EllipticCurve::Create failed";
@@ -60,7 +61,7 @@ SecureBlob GenerateScalar() {
     ADD_FAILURE() << "CreateBigNumContext failed";
     return SecureBlob();
   }
-  base::Optional<EllipticCurve> ec =
+  std::optional<EllipticCurve> ec =
       EllipticCurve::Create(kCurve, context.get());
   if (!ec) {
     ADD_FAILURE() << "EllipticCurve::Create failed";

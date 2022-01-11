@@ -8,6 +8,7 @@
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 
 #include <memory>
+#include <optional>
 
 #include <gmock/gmock.h>
 
@@ -62,9 +63,9 @@ class FakeBackingDevice : public BackingDevice {
 
   BackingDeviceType GetType() override { return type_; }
 
-  base::Optional<base::FilePath> GetPath() override {
+  std::optional<base::FilePath> GetPath() override {
     if (!attached_) {
-      return base::nullopt;
+      return std::nullopt;
     }
     return backing_device_path_;
   }

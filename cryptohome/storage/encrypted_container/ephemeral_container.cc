@@ -5,6 +5,7 @@
 #include "cryptohome/storage/encrypted_container/ephemeral_container.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/callback_helpers.h>
@@ -74,7 +75,7 @@ bool EphemeralContainer::Setup(const FileSystemKey& encryption_key) {
 
   // Format the device. At this point, even if the backing device was already
   // present, it will lose all of its content.
-  base::Optional<base::FilePath> backing_device_path =
+  std::optional<base::FilePath> backing_device_path =
       backing_device_->GetPath();
   if (!backing_device_path.has_value()) {
     LOG(ERROR) << "Failed to get backing device path";

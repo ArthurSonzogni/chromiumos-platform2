@@ -6,6 +6,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -720,7 +721,7 @@ bool FakePlatform::IsDirectoryMounted(const base::FilePath& directory) {
   return fake_mount_mapper_->IsMounted(ndirectory);
 }
 
-base::Optional<std::vector<bool>> FakePlatform::AreDirectoriesMounted(
+std::optional<std::vector<bool>> FakePlatform::AreDirectoriesMounted(
     const std::vector<base::FilePath>& directories) {
   std::vector<bool> result;
   result.reserve(directories.size());

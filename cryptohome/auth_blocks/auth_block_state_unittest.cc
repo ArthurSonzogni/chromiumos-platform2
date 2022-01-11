@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
 #include <utility>
 
 #include <absl/types/variant.h>
-#include <base/optional.h>
 #include <brillo/secure_allocator.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
@@ -44,7 +44,7 @@ TEST(AuthBlockStateTest, SerializeTpmBoundtoPcrState) {
   };
   AuthBlockState final_state = {.state = std::move(tpm_state)};
 
-  base::Optional<brillo::SecureBlob> serialized = final_state.Serialize();
+  std::optional<brillo::SecureBlob> serialized = final_state.Serialize();
 
   ASSERT_TRUE(serialized.has_value());
   auto* state_buffer = GetSerializedAuthBlockState(serialized->data());
@@ -98,7 +98,7 @@ TEST(AuthBlockStateTest, TpmBoundtoPcrStateOptionalFields) {
   };
   AuthBlockState final_state = {.state = std::move(tpm_state)};
 
-  base::Optional<brillo::SecureBlob> serialized = final_state.Serialize();
+  std::optional<brillo::SecureBlob> serialized = final_state.Serialize();
 
   ASSERT_TRUE(serialized.has_value());
   auto* state_buffer = GetSerializedAuthBlockState(serialized->data());
@@ -119,10 +119,10 @@ TEST(AuthBlockStateTest, TpmBoundtoPcrStateFail) {
   };
   AuthBlockState final_state = {.state = std::move(tpm_state)};
 
-  base::Optional<brillo::SecureBlob> serialized = final_state.Serialize();
+  std::optional<brillo::SecureBlob> serialized = final_state.Serialize();
 
   // tpm_key, extended_tpm_key and salt are all missing, cannot serialize()
-  EXPECT_EQ(serialized, base::nullopt);
+  EXPECT_EQ(serialized, std::nullopt);
 }
 
 }  // namespace cryptohome

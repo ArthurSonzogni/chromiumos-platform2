@@ -448,7 +448,7 @@ class HomeDirsVaultTest : public ::testing::Test {
           .WillRepeatedly(Return(lv));
     } else {
       EXPECT_CALL(*lvm.get(), GetLogicalVolume(_, _))
-          .WillRepeatedly(Return(base::nullopt));
+          .WillRepeatedly(Return(std::nullopt));
     }
 
     homedirs->SetLogicalVolumeManagerForTesting(std::move(lvm));

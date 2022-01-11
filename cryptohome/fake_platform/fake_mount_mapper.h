@@ -110,7 +110,7 @@ class FakeMountMapper final {
                  const base::FilePath& target,
                  const base::FilePath& redirect);
 
-  // Returns mapping if the target is or on the mount, base::nullopt otherwise.
+  // Returns mapping if the target is or on the mount, std::nullopt otherwise.
   std::optional<FakeMountMapping> FindMapping(
       const base::FilePath& target) const;
 };

@@ -30,13 +30,14 @@
 #include <sys/wait.h>
 #include <sys/xattr.h>
 #include <unistd.h>
-#include <memory>
 
 #include <base/check_op.h>
 
 #include <ios>
 #include <iterator>
 #include <limits>
+#include <memory>
+#include <optional>
 #include <sstream>
 #include <utility>
 
@@ -274,11 +275,11 @@ bool Platform::IsDirectoryMounted(const FilePath& directory) {
   return ret.value()[0];
 }
 
-base::Optional<std::vector<bool>> Platform::AreDirectoriesMounted(
+std::optional<std::vector<bool>> Platform::AreDirectoriesMounted(
     const std::vector<base::FilePath>& directories) {
   std::string contents;
   if (!base::ReadFileToString(mount_info_path_, &contents)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::vector<bool> ret;
@@ -1371,12 +1372,12 @@ bool Platform::RestoreSELinuxContexts(const base::FilePath& path,
   return true;
 }
 
-base::Optional<std::string> Platform::GetSELinuxContextOfFD(int fd) {
+std::optional<std::string> Platform::GetSELinuxContextOfFD(int fd) {
 #if USE_SELINUX
   char* con = nullptr;
   if (fgetfilecon(fd, &con) < 0) {
     PLOG(ERROR) << "fgetfilecon failed";
-    return base::nullopt;
+    return std::nullopt;
   }
   std::string result = con;
   freecon(con);

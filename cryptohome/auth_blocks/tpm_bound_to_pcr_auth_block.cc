@@ -6,6 +6,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -13,7 +14,6 @@
 #include <absl/types/variant.h>
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
@@ -274,7 +274,7 @@ CryptoError TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
   // On TPM1.2 devices, preloading sealed data is meaningless and
   // UnsealWithAuthorization will check the preload_handle not containing any
   // value.
-  base::Optional<TpmKeyHandle> handle;
+  std::optional<TpmKeyHandle> handle;
   if (preload_handle.has_value()) {
     handle = preload_handle.value();
   }

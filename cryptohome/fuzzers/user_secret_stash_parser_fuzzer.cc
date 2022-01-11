@@ -6,11 +6,11 @@
 #include <stdint.h>
 
 #include <memory>
+#include <optional>
 
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <openssl/err.h>
@@ -72,9 +72,9 @@ void PrepareMutatedArguments(FuzzedDataProvider* fuzzed_data_provider,
 
   // Encrypt the mutated USS payload flatbuffer.
   SecureBlob iv, tag, ciphertext;
-  CHECK(cryptohome::AesGcmEncrypt(
-      SecureBlob(mutated_uss_payload), /*ad=*/base::nullopt,
-      SecureBlob(uss_main_key), &iv, &tag, &ciphertext));
+  CHECK(cryptohome::AesGcmEncrypt(SecureBlob(mutated_uss_payload),
+                                  /*ad=*/std::nullopt, SecureBlob(uss_main_key),
+                                  &iv, &tag, &ciphertext));
 
   // Create USS container from mutated fields.
   cryptohome::UserSecretStashContainerT uss_container_obj;
@@ -137,7 +137,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   if (stash) {
     // If the USS was decrypted successfully, its reencryption must succeed as
     // well.
-    base::Optional<SecureBlob> reencrypted =
+    std::optional<SecureBlob> reencrypted =
         stash->GetEncryptedContainer(mutated_uss_main_key);
     CHECK(reencrypted);
 

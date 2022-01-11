@@ -7,6 +7,7 @@
 #include "cryptohome/auth_session.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -82,31 +83,31 @@ TEST_F(AuthSessionTest, TimeoutTest) {
 
 TEST_F(AuthSessionTest, SerializedStringFromNullToken) {
   base::UnguessableToken token = base::UnguessableToken::Null();
-  base::Optional<std::string> serialized_token =
+  std::optional<std::string> serialized_token =
       AuthSession::GetSerializedStringFromToken(token);
   EXPECT_FALSE(serialized_token.has_value());
 }
 
 TEST_F(AuthSessionTest, TokenFromEmptyString) {
   std::string serialized_string = "";
-  base::Optional<base::UnguessableToken> unguessable_token =
+  std::optional<base::UnguessableToken> unguessable_token =
       AuthSession::GetTokenFromSerializedString(serialized_string);
   EXPECT_FALSE(unguessable_token.has_value());
 }
 
 TEST_F(AuthSessionTest, TokenFromUnexpectedSize) {
   std::string serialized_string = "unexpected_sized_string";
-  base::Optional<base::UnguessableToken> unguessable_token =
+  std::optional<base::UnguessableToken> unguessable_token =
       AuthSession::GetTokenFromSerializedString(serialized_string);
   EXPECT_FALSE(unguessable_token.has_value());
 }
 
 TEST_F(AuthSessionTest, TokenFromString) {
   base::UnguessableToken original_token = base::UnguessableToken::Create();
-  base::Optional<std::string> serialized_token =
+  std::optional<std::string> serialized_token =
       AuthSession::GetSerializedStringFromToken(original_token);
   EXPECT_TRUE(serialized_token.has_value());
-  base::Optional<base::UnguessableToken> deserialized_token =
+  std::optional<base::UnguessableToken> deserialized_token =
       AuthSession::GetTokenFromSerializedString(serialized_token.value());
   EXPECT_TRUE(deserialized_token.has_value());
   EXPECT_EQ(deserialized_token.value(), original_token);

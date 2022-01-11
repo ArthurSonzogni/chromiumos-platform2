@@ -5,11 +5,11 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 
 #include <string>
+#include <optional>
 #include <utility>
 #include <vector>
 
 #include <base/logging.h>
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/cbor/reader.h>
 #include <chromeos/cbor/values.h>
@@ -24,7 +24,7 @@ namespace {
 
 bool SerializeCborMap(const cbor::Value::MapValue& cbor_map,
                       brillo::SecureBlob* blob_cbor) {
-  base::Optional<std::vector<uint8_t>> serialized =
+  std::optional<std::vector<uint8_t>> serialized =
       cbor::Writer::Write(cbor::Value(std::move(cbor_map)));
   if (!serialized) {
     LOG(ERROR) << "Failed to serialize CBOR Map.";
@@ -34,23 +34,23 @@ bool SerializeCborMap(const cbor::Value::MapValue& cbor_map,
   return true;
 }
 
-base::Optional<cbor::Value> ReadCborMap(const brillo::SecureBlob& map_cbor) {
+std::optional<cbor::Value> ReadCborMap(const brillo::SecureBlob& map_cbor) {
   cbor::Reader::DecoderError error_code;
-  base::Optional<cbor::Value> cbor_response =
+  std::optional<cbor::Value> cbor_response =
       cbor::Reader::Read(map_cbor, &error_code);
   if (!cbor_response) {
     LOG(ERROR) << "Unable to create CBOR reader: "
                << cbor::Reader::ErrorCodeToString(error_code);
-    return base::nullopt;
+    return std::nullopt;
   }
   if (error_code != cbor::Reader::DecoderError::CBOR_NO_ERROR) {
     LOG(ERROR) << "Error when parsing CBOR input: "
                << cbor::Reader::ErrorCodeToString(error_code);
-    return base::nullopt;
+    return std::nullopt;
   }
   if (!cbor_response->is_map()) {
     LOG(ERROR) << "CBOR input is not a map.";
-    return base::nullopt;
+    return std::nullopt;
   }
   return cbor_response;
 }
@@ -675,7 +675,7 @@ int GetCborMapSize(const brillo::SecureBlob& input_cbor) {
 
 bool SerializeCborForTesting(const cbor::Value& cbor,
                              brillo::SecureBlob* serialized_cbor) {
-  base::Optional<std::vector<uint8_t>> serialized = cbor::Writer::Write(cbor);
+  std::optional<std::vector<uint8_t>> serialized = cbor::Writer::Write(cbor);
   if (!serialized) {
     LOG(ERROR) << "Failed to serialize CBOR Map.";
     return false;

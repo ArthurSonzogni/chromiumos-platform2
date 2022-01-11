@@ -4,6 +4,8 @@
 
 #include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
 
+#include <optional>
+
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
@@ -26,7 +28,7 @@ brillo::SecureBlob RecoveryCryptoFakeTpmBackendImpl::GenerateKeyAuthValue() {
 bool RecoveryCryptoFakeTpmBackendImpl::EncryptEccPrivateKey(
     const EllipticCurve& ec,
     const crypto::ScopedEC_KEY& own_key_pair,
-    const base::Optional<brillo::SecureBlob>& /*auth_value*/,
+    const std::optional<brillo::SecureBlob>& /*auth_value*/,
     brillo::SecureBlob* encrypted_own_priv_key) {
   const BIGNUM* own_priv_key_bn = EC_KEY_get0_private_key(own_key_pair.get());
   if (!own_priv_key_bn) {
@@ -47,7 +49,7 @@ crypto::ScopedEC_POINT
 RecoveryCryptoFakeTpmBackendImpl::GenerateDiffieHellmanSharedSecret(
     const EllipticCurve& ec,
     const brillo::SecureBlob& encrypted_own_priv_key,
-    const base::Optional<brillo::SecureBlob>& /*auth_value*/,
+    const std::optional<brillo::SecureBlob>& /*auth_value*/,
     const EC_POINT& others_pub_point) {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {

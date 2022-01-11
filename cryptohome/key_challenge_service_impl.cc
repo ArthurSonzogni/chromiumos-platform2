@@ -6,13 +6,13 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
 #include <dbus/bus.h>
@@ -36,14 +36,14 @@ class OnceCallbackHolder {
 
   T get() {
     DCHECK(obj_.has_value());
-    base::Optional<T> res;
+    std::optional<T> res;
     std::swap(res, obj_);
     return std::move(res.value());
   }
 
  private:
   // The object that we are holding
-  base::Optional<T> obj_;
+  std::optional<T> obj_;
 };
 
 std::vector<uint8_t> SerializeProto(

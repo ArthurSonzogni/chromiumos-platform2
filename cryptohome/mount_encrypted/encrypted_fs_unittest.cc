@@ -122,7 +122,7 @@ TEST_F(EncryptedFsTest, RebuildStateful) {
   EXPECT_EQ(device_mapper_.GetTable(dmcrypt_name_).CryptGetKey(),
             brillo::SecureBlob());
   // Check if backing device is not attached.
-  EXPECT_EQ(backing_device_->GetPath(), base::nullopt);
+  EXPECT_EQ(backing_device_->GetPath(), std::nullopt);
 }
 
 TEST_F(EncryptedFsTest, OldStateful) {
@@ -145,7 +145,7 @@ TEST_F(EncryptedFsTest, OldStateful) {
   EXPECT_EQ(device_mapper_.GetTable(dmcrypt_name_).CryptGetKey(),
             brillo::SecureBlob());
   // Check if backing device is not attached.
-  EXPECT_EQ(backing_device_->GetPath(), base::nullopt);
+  EXPECT_EQ(backing_device_->GetPath(), std::nullopt);
 }
 
 TEST_F(EncryptedFsTest, LoopdevTeardown) {
@@ -158,7 +158,7 @@ TEST_F(EncryptedFsTest, LoopdevTeardown) {
   // Expect setup to fail.
   EXPECT_EQ(encrypted_fs_->Setup(key_, false), RESULT_FAIL_FATAL);
   // Make sure that the backing device is not left attached.
-  EXPECT_EQ(backing_device_->GetPath(), base::nullopt);
+  EXPECT_EQ(backing_device_->GetPath(), std::nullopt);
 }
 
 TEST_F(EncryptedFsTest, DevmapperTeardown) {
@@ -171,7 +171,7 @@ TEST_F(EncryptedFsTest, DevmapperTeardown) {
   // Expect setup to fail.
   EXPECT_EQ(encrypted_fs_->Setup(key_, false), RESULT_FAIL_FATAL);
   // Make sure that the backing device is no left attached.
-  EXPECT_EQ(backing_device_->GetPath(), base::nullopt);
+  EXPECT_EQ(backing_device_->GetPath(), std::nullopt);
 }
 
 }  // namespace mount_encrypted

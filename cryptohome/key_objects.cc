@@ -9,7 +9,6 @@
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 
 namespace cryptohome {
@@ -19,7 +18,7 @@ brillo::SecureBlob LibScryptCompatKeyObjects::derived_key() {
 }
 
 brillo::SecureBlob LibScryptCompatKeyObjects::ConsumeSalt() {
-  CHECK(salt_ != base::nullopt);
+  CHECK(salt_ != std::nullopt);
 
   // The salt may not be re-used.
   brillo::SecureBlob value = salt_.value();

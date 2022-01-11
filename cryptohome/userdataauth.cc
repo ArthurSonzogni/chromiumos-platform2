@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -1465,7 +1466,7 @@ void UserDataAuth::DoMount(
   // Everything else can be the default.
   credentials->set_key_data(request.authorization().key().data());
 
-  base::Optional<base::UnguessableToken> token = base::nullopt;
+  std::optional<base::UnguessableToken> token = std::nullopt;
   if (auth_session) {
     token = auth_session->token();
   }
@@ -1711,14 +1712,14 @@ void UserDataAuth::OnChallengeResponseMountCredentialsObtained(
   DCHECK_EQ(credentials->key_data().type(),
             KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
 
-  ContinueMountWithCredentials(request, std::move(credentials), base::nullopt,
+  ContinueMountWithCredentials(request, std::move(credentials), std::nullopt,
                                mount_args, std::move(on_done));
 }
 
 void UserDataAuth::ContinueMountWithCredentials(
     const user_data_auth::MountRequest& request,
     std::unique_ptr<Credentials> credentials,
-    base::Optional<base::UnguessableToken> token,
+    std::optional<base::UnguessableToken> token,
     const UserDataAuth::MountArgs& mount_args,
     base::OnceCallback<void(const user_data_auth::MountReply&)> on_done) {
   AssertOnMountThread();
@@ -2308,7 +2309,7 @@ void UserDataAuth::TryLightweightChallengeResponseCheckKey(
   const std::string obfuscated_username =
       SanitizeUserNameWithSalt(account_id, system_salt_);
 
-  base::Optional<KeyData> found_session_key_data;
+  std::optional<KeyData> found_session_key_data;
   for (const auto& session_pair : sessions_) {
     const scoped_refptr<UserSession>& session = session_pair.second;
     if (session->VerifyUser(obfuscated_username) &&
@@ -3247,7 +3248,7 @@ std::string UserDataAuth::GetStatusString() {
   if (rsa_key_loader && rsa_key_loader->HasCryptohomeKey()) {
     tpm_->GetStatus(rsa_key_loader->GetCryptohomeKey(), &tpm_status_info);
   } else {
-    tpm_->GetStatus(base::nullopt, &tpm_status_info);
+    tpm_->GetStatus(std::nullopt, &tpm_status_info);
   }
 
   base::Value tpm(base::Value::Type::DICTIONARY);

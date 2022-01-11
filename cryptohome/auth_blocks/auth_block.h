@@ -8,7 +8,6 @@
 #include <memory>
 
 #include <base/callback.h>
-#include <base/optional.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/crypto_error.h"

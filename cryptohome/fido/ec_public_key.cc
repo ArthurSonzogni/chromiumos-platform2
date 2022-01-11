@@ -5,6 +5,7 @@
 #include "cryptohome/fido/ec_public_key.h"
 
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -12,7 +13,6 @@
 
 #include <base/containers/span.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/cbor/reader.h>
 #include <crypto/scoped_openssl_types.h>
@@ -52,7 +52,7 @@ void ECPublicKey::SetCOSEKey(const std::vector<uint8_t> cose_key) {
 
 bool ECPublicKey::ParseCOSE(base::span<const uint8_t> bytes) {
   size_t bytes_read;
-  base::Optional<cbor::Value> value = cbor::Reader::Read(bytes, &bytes_read);
+  std::optional<cbor::Value> value = cbor::Reader::Read(bytes, &bytes_read);
 
   if (!value || !value->is_map()) {
     LOG(ERROR) << "Failed to parse public key, "
@@ -162,11 +162,11 @@ BinaryValue ECPublicKey::GetY() const {
   return y_;
 }
 
-base::Optional<int> ECPublicKey::GetAlgorithmNid() const {
+std::optional<int> ECPublicKey::GetAlgorithmNid() const {
   if (algorithm_ == "ES256")
     return NID_X9_62_prime256v1;
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace fido_device

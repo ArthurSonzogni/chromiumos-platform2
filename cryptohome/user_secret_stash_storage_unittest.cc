@@ -4,7 +4,8 @@
 
 #include "cryptohome/user_secret_stash_storage.h"
 
-#include <base/optional.h>
+#include <optional>
+
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -37,7 +38,7 @@ TEST_F(UserSecretStashStorageTest, PersistThenLoad) {
   EXPECT_TRUE(platform_.FileExists(UserSecretStashPath(kObfuscatedUsername)));
 
   // Load the USS and check it didn't change.
-  base::Optional<SecureBlob> loaded_uss_container =
+  std::optional<SecureBlob> loaded_uss_container =
       uss_storage_.LoadPersisted(kObfuscatedUsername);
   ASSERT_TRUE(loaded_uss_container);
   EXPECT_EQ(loaded_uss_container->to_string(), kUssContainer);

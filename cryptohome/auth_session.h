@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -111,12 +112,12 @@ class AuthSession final {
   // token is serialized into two uint64_t values which are stored in string of
   // size 16 bytes. The first 8 bytes represent the high value of the serialized
   // token, the next 8 represent the low value of the serialized token.
-  static base::Optional<std::string> GetSerializedStringFromToken(
+  static std::optional<std::string> GetSerializedStringFromToken(
       const base::UnguessableToken& token);
 
   // Static function which returns UnguessableToken object after deconstructing
   // the string formed in GetSerializedStringFromToken.
-  static base::Optional<base::UnguessableToken> GetTokenFromSerializedString(
+  static std::optional<base::UnguessableToken> GetTokenFromSerializedString(
       const std::string& serialized_token);
 
   // Extends the timer for the AuthSession by kAuthSessionExtensionInMinutes.

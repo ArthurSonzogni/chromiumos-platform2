@@ -12,6 +12,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -23,7 +24,6 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <base/optional.h>
 #include <brillo/blkdev_utils/loop_device.h>
 #include <brillo/process/process.h>
 #include <brillo/secure_blob.h>
@@ -272,7 +272,7 @@ class Platform {
   //
   // Parameters
   //   directories - The directories to check
-  virtual base::Optional<std::vector<bool>> AreDirectoriesMounted(
+  virtual std::optional<std::vector<bool>> AreDirectoriesMounted(
       const std::vector<base::FilePath>& directories);
 
   // Returns an instance of class brillo::Process that can be mocked out in
@@ -928,7 +928,7 @@ class Platform {
   //
   // Parameters
   //   fd - The FD.
-  virtual base::Optional<std::string> GetSELinuxContextOfFD(int fd);
+  virtual std::optional<std::string> GetSELinuxContextOfFD(int fd);
 
   // Set the SELinux context for the file/directory pointed by path.
   // Returns true if the context is set successfully.

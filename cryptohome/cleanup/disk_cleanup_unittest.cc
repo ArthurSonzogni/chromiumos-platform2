@@ -10,7 +10,6 @@
 
 #include <base/check.h>
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <brillo/cryptohome.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -155,7 +154,7 @@ TEST_F(DiskCleanupTest, GetFreeDiskSpaceState) {
   cleanup_->set_cleanup_threshold(10);
   cleanup_->set_aggressive_cleanup_threshold(5);
 
-  EXPECT_EQ(cleanup_->GetFreeDiskSpaceState(base::nullopt),
+  EXPECT_EQ(cleanup_->GetFreeDiskSpaceState(std::nullopt),
             DiskCleanup::FreeSpaceState::kError);
 
   EXPECT_EQ(cleanup_->GetFreeDiskSpaceState(0),

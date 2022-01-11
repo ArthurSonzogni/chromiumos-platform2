@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <base/check.h>
@@ -3637,7 +3638,7 @@ TEST_F(UserDataAuthExTest, StartAuthSession) {
   }
   EXPECT_EQ(auth_session_reply.error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  base::Optional<base::UnguessableToken> auth_session_id =
+  std::optional<base::UnguessableToken> auth_session_id =
       AuthSession::GetTokenFromSerializedString(
           auth_session_reply.auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
@@ -3709,7 +3710,7 @@ TEST_F(UserDataAuthExTest, MountUnauthenticatedAuthSession) {
   }
   EXPECT_EQ(auth_session_reply.error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  base::Optional<base::UnguessableToken> auth_session_id =
+  std::optional<base::UnguessableToken> auth_session_id =
       AuthSession::GetTokenFromSerializedString(
           auth_session_reply.auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
@@ -3756,7 +3757,7 @@ TEST_F(UserDataAuthExTest, InvalidateAuthSession) {
   }
   EXPECT_EQ(auth_session_reply.error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  base::Optional<base::UnguessableToken> auth_session_id =
+  std::optional<base::UnguessableToken> auth_session_id =
       AuthSession::GetTokenFromSerializedString(
           auth_session_reply.auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
@@ -3811,7 +3812,7 @@ TEST_F(UserDataAuthExTest, ExtendAuthSession) {
   }
   EXPECT_EQ(auth_session_reply.error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  base::Optional<base::UnguessableToken> auth_session_id =
+  std::optional<base::UnguessableToken> auth_session_id =
       AuthSession::GetTokenFromSerializedString(
           auth_session_reply.auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
@@ -3889,7 +3890,7 @@ class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
       std::move(callback).Run(std::move(passkey_to_pass));
     }
 
-    base::Optional<brillo::SecureBlob> passkey;
+    std::optional<brillo::SecureBlob> passkey;
   };
 
   ChallengeResponseUserDataAuthExTest() {

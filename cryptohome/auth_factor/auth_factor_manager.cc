@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <string>
+#include <optional>
 #include <utility>
 
 #include <absl/types/variant.h>
@@ -15,7 +16,6 @@
 #include <base/files/file_path.h>
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <flatbuffers/flatbuffers.h>
 
@@ -57,14 +57,14 @@ std::string GetAuthFactorTypeString(AuthFactorType type) {
 
 // Converts the auth factor type string into an enum. Returns a null optional
 // if the string is unknown.
-base::Optional<AuthFactorType> GetAuthFactorTypeFromString(
+std::optional<AuthFactorType> GetAuthFactorTypeFromString(
     const std::string& type_string) {
   for (const auto& type_and_string : kAuthFactorTypeStrings) {
     if (type_and_string.second == type_string) {
       return type_and_string.first;
     }
   }
-  return base::nullopt;
+  return std::nullopt;
 }
 
 // Serializes the password metadata into the given flatbuffer builder. Returns
@@ -93,7 +93,7 @@ flatbuffers::Offset<void> SerializeMetadataToOffset(
 }
 
 // Serializes the auth factor into a flatbuffer blob. Returns null on failure.
-base::Optional<Blob> SerializeAuthFactor(const AuthFactor& auth_factor) {
+std::optional<Blob> SerializeAuthFactor(const AuthFactor& auth_factor) {
   FlatbufferSecureAllocatorBridge allocator;
   flatbuffers::FlatBufferBuilder builder(kFlatbufferAllocatorInitialSize,
                                          &allocator);
@@ -102,7 +102,7 @@ base::Optional<Blob> SerializeAuthFactor(const AuthFactor& auth_factor) {
       auth_factor.auth_block_state().value().SerializeToOffset(&builder);
   if (auth_block_state_offset.IsNull()) {
     LOG(ERROR) << "Failed to serialize auth block state";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   SerializedAuthFactorMetadata metadata_type =
@@ -111,7 +111,7 @@ base::Optional<Blob> SerializeAuthFactor(const AuthFactor& auth_factor) {
       auth_factor.metadata().value(), &builder, &metadata_type);
   if (metadata_offset.IsNull()) {
     LOG(ERROR) << "Failed to serialize metadata";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   SerializedAuthFactorBuilder auth_factor_builder(builder);
@@ -158,7 +158,7 @@ bool AuthFactorManager::SaveAuthFactor(const std::string& obfuscated_username,
   }
 
   // Create a flatbuffer to be persisted.
-  base::Optional<Blob> flatbuffer = SerializeAuthFactor(auth_factor);
+  std::optional<Blob> flatbuffer = SerializeAuthFactor(auth_factor);
   if (!flatbuffer.has_value()) {
     LOG(ERROR) << "Failed to serialize auth factor "
                << auth_factor.label().value() << " of type " << type_string;
@@ -200,7 +200,7 @@ AuthFactorManager::LabelToTypeMap AuthFactorManager::ListAuthFactors(
     // Parse and sanitize the type.
     const std::string auth_factor_type_string =
         base_name.RemoveExtension().value();
-    const base::Optional<AuthFactorType> auth_factor_type =
+    const std::optional<AuthFactorType> auth_factor_type =
         GetAuthFactorTypeFromString(auth_factor_type_string);
     if (!auth_factor_type.has_value()) {
       LOG(WARNING) << "Unknown auth factor type: file name = "

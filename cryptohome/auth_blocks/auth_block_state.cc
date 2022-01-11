@@ -5,9 +5,9 @@
 #include "cryptohome/auth_blocks/auth_block_state.h"
 
 #include <memory>
+#include <optional>
 
 #include <absl/types/variant.h>
-#include <base/optional.h>
 #include <brillo/secure_allocator.h>
 #include <brillo/secure_blob.h>
 
@@ -24,7 +24,7 @@ inline flatbuffers::Offset<flatbuffers::Vector<uint8_t>> CreateVector(
   return builder->CreateVector(blob.data(), blob.size());
 }
 
-inline bool IsEmpty(const base::Optional<brillo::SecureBlob>& blob) {
+inline bool IsEmpty(const std::optional<brillo::SecureBlob>& blob) {
   return blob.has_value() ? blob.value().empty() : true;
 }
 
@@ -88,7 +88,7 @@ flatbuffers::Offset<SerializedAuthBlockState> AuthBlockState::SerializeToOffset(
   }
 }
 
-base::Optional<brillo::SecureBlob> AuthBlockState::Serialize() const {
+std::optional<brillo::SecureBlob> AuthBlockState::Serialize() const {
   FlatbufferSecureAllocatorBridge allocator;
   flatbuffers::FlatBufferBuilder builder(/*initial_size=*/kInitialSize,
                                          &allocator);
@@ -96,7 +96,7 @@ base::Optional<brillo::SecureBlob> AuthBlockState::Serialize() const {
   auto auth_block_state_buffer = SerializeToOffset(&builder);
   if (auth_block_state_buffer.IsNull()) {
     DLOG(ERROR) << "AuthBlockState cannot be serialized to offset.";
-    return base::nullopt;
+    return std::nullopt;
   }
   builder.Finish(auth_block_state_buffer);
   uint8_t* buf = builder.GetBufferPointer();

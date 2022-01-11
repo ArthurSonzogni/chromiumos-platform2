@@ -13,7 +13,6 @@
 
 #include <attestation-client-test/attestation/dbus-proxy-mocks.h>
 #include <base/bind.h>
-#include <base/optional.h>
 #include <chaps/attributes.h>
 #include <chaps/chaps_proxy_mock.h>
 #include <crypto/scoped_openssl_types.h>

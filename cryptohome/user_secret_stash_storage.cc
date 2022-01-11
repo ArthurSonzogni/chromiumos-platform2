@@ -6,10 +6,10 @@
 
 #include <sys/stat.h>
 
+#include <optional>
 #include <string>
 
 #include <base/logging.h>
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/filesystem_layout.h"
@@ -38,14 +38,14 @@ bool UserSecretStashStorage::Persist(
   return true;
 }
 
-base::Optional<brillo::SecureBlob> UserSecretStashStorage::LoadPersisted(
+std::optional<brillo::SecureBlob> UserSecretStashStorage::LoadPersisted(
     const std::string& obfuscated_username) {
   brillo::SecureBlob uss_container_flatbuffer;
   if (!platform_->ReadFileToSecureBlob(UserSecretStashPath(obfuscated_username),
                                        &uss_container_flatbuffer)) {
     LOG(ERROR) << "Failed to load the UserSecretStash file for "
                << obfuscated_username;
-    return base::nullopt;
+    return std::nullopt;
   }
   return uss_container_flatbuffer;
 }

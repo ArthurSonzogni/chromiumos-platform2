@@ -17,6 +17,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 
@@ -60,7 +61,7 @@ class TpmImpl : public Tpm {
       const brillo::SecureBlob& sealed_data,
       ScopedKeyHandle* preload_handle) override;
   hwsec::StatusChain<hwsec::TPMErrorBase> UnsealWithAuthorization(
-      base::Optional<TpmKeyHandle> preload_handle,
+      std::optional<TpmKeyHandle> preload_handle,
       const brillo::SecureBlob& sealed_data,
       const brillo::SecureBlob& auth_value,
       const std::map<uint32_t, brillo::Blob>& pcr_map,
@@ -115,7 +116,7 @@ class TpmImpl : public Tpm {
   bool LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
                                brillo::SecureBlob* key_blob) override;
   void CloseHandle(TpmKeyHandle key_handle) override;
-  void GetStatus(base::Optional<TpmKeyHandle> key,
+  void GetStatus(std::optional<TpmKeyHandle> key,
                  TpmStatusInfo* status) override;
   hwsec::StatusChain<hwsec::TPMErrorBase> IsSrkRocaVulnerable(
       bool* result) override;
@@ -189,14 +190,14 @@ class TpmImpl : public Tpm {
   // Copies the |pass_blob| to |auth_value|.
   // The input |pass_blob| must have 256 bytes.
   hwsec::StatusChain<hwsec::TPMErrorBase> GetAuthValue(
-      base::Optional<TpmKeyHandle> key_handle,
+      std::optional<TpmKeyHandle> key_handle,
       const brillo::SecureBlob& pass_blob,
       brillo::SecureBlob* auth_value) override;
 
   // Copies the |pass_blob| to |auth_value|.
   // The input |pass_blob| must have 256 bytes.
   hwsec::StatusChain<hwsec::TPMErrorBase> GetEccAuthValue(
-      base::Optional<TpmKeyHandle> key_handle,
+      std::optional<TpmKeyHandle> key_handle,
       const brillo::SecureBlob& pass_blob,
       brillo::SecureBlob* auth_value) override;
 
@@ -343,8 +344,8 @@ class TpmImpl : public Tpm {
   // explicitly requesting the update or from dbus signal.
   tpm_manager::LocalData last_tpm_manager_data_;
 
-  // Cache of TPM version info, base::nullopt if cache doesn't exist.
-  base::Optional<TpmVersionInfo> version_info_;
+  // Cache of TPM version info, std::nullopt if cache doesn't exist.
+  std::optional<TpmVersionInfo> version_info_;
 };
 
 }  // namespace cryptohome

@@ -6,6 +6,7 @@
 #define CRYPTOHOME_STORAGE_ENCRYPTED_CONTAINER_BACKING_DEVICE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -53,7 +54,7 @@ class BackingDevice {
   virtual bool Teardown() = 0;
   virtual bool Exists() = 0;
   virtual BackingDeviceType GetType() = 0;
-  virtual base::Optional<base::FilePath> GetPath() = 0;
+  virtual std::optional<base::FilePath> GetPath() = 0;
 };
 
 }  // namespace cryptohome

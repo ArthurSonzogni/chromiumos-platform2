@@ -11,6 +11,7 @@
 #include <iterator>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 
 #include <base/bind.h>
@@ -1254,7 +1255,7 @@ TEST_F(Tpm2Test, GetAuthValueSuccess) {
       .WillOnce(Return(TPM_RC_SUCCESS));
   SecureBlob pass_blob(256, 'a');
   SecureBlob auth_value;
-  EXPECT_EQ(nullptr, tpm_->GetAuthValue(base::Optional<TpmKeyHandle>(handle),
+  EXPECT_EQ(nullptr, tpm_->GetAuthValue(std::optional<TpmKeyHandle>(handle),
                                         pass_blob, &auth_value));
 }
 
@@ -1262,7 +1263,7 @@ TEST_F(Tpm2Test, GetAuthValueFailedWithAuthorizationBadAuthSize) {
   TpmKeyHandle handle = 42;
   SecureBlob pass_blob(128, 'a');
   SecureBlob auth_value;
-  EXPECT_NE(nullptr, tpm_->GetAuthValue(base::Optional<TpmKeyHandle>(handle),
+  EXPECT_NE(nullptr, tpm_->GetAuthValue(std::optional<TpmKeyHandle>(handle),
                                         pass_blob, &auth_value));
 }
 
@@ -1272,7 +1273,7 @@ TEST_F(Tpm2Test, GetAuthValueFailed) {
       .WillOnce(Return(TPM_RC_FAILURE));
   SecureBlob pass_blob(256, 'a');
   SecureBlob auth_value;
-  EXPECT_NE(nullptr, tpm_->GetAuthValue(base::Optional<TpmKeyHandle>(handle),
+  EXPECT_NE(nullptr, tpm_->GetAuthValue(std::optional<TpmKeyHandle>(handle),
                                         pass_blob, &auth_value));
 }
 
@@ -1288,7 +1289,7 @@ TEST_F(Tpm2Test, GetEccAuthValueSuccess) {
       .WillOnce(DoAll(SetArgPointee<3>(out_point), Return(TPM_RC_SUCCESS)));
   SecureBlob pass_blob(256, 'a');
   SecureBlob auth_value;
-  EXPECT_EQ(nullptr, tpm_->GetEccAuthValue(base::Optional<TpmKeyHandle>(handle),
+  EXPECT_EQ(nullptr, tpm_->GetEccAuthValue(std::optional<TpmKeyHandle>(handle),
                                            pass_blob, &auth_value));
 }
 
@@ -1297,7 +1298,7 @@ TEST_F(Tpm2Test, GetEccAuthValueFailedWithAuthorizationBadAuthSize) {
   SecureBlob pass_blob(16, 'a');
   SecureBlob auth_value;
   StatusChain<TPMErrorBase> err = tpm_->GetEccAuthValue(
-      base::Optional<TpmKeyHandle>(handle), pass_blob, &auth_value);
+      std::optional<TpmKeyHandle>(handle), pass_blob, &auth_value);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
@@ -1309,7 +1310,7 @@ TEST_F(Tpm2Test, GetEccAuthValueFailed) {
   SecureBlob pass_blob(256, 'a');
   SecureBlob auth_value;
   StatusChain<TPMErrorBase> err = tpm_->GetEccAuthValue(
-      base::Optional<TpmKeyHandle>(handle), pass_blob, &auth_value);
+      std::optional<TpmKeyHandle>(handle), pass_blob, &auth_value);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
@@ -1322,7 +1323,7 @@ TEST_F(Tpm2Test, GetEccAuthValueScalarOutOfRange) {
   EXPECT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(kOorStr, &pass_blob));
   SecureBlob auth_value;
   StatusChain<TPMErrorBase> err = tpm_->GetEccAuthValue(
-      base::Optional<TpmKeyHandle>(handle), pass_blob, &auth_value);
+      std::optional<TpmKeyHandle>(handle), pass_blob, &auth_value);
 
   EXPECT_NE(nullptr, err);
   auto ecc_err = err.Find<EllipticCurveError>();
@@ -1350,7 +1351,7 @@ TEST_F(Tpm2Test, UnsealWithAuthorizationSuccess) {
       .WillOnce(Return(TPM_RC_SUCCESS));
   SecureBlob plaintext;
   EXPECT_EQ(nullptr, tpm_->UnsealWithAuthorization(
-                         base::nullopt, sealed_data, auth_value,
+                         std::nullopt, sealed_data, auth_value,
                          std::map<uint32_t, brillo::Blob>(), &plaintext));
 }
 

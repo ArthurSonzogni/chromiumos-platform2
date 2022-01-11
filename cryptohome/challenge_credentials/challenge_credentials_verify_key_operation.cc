@@ -4,13 +4,13 @@
 
 #include "cryptohome/challenge_credentials/challenge_credentials_verify_key_operation.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
@@ -29,9 +29,9 @@ namespace {
 constexpr int kChallengeByteCount = 20;
 
 // Returns the signature algorithm to be used for the verification.
-base::Optional<structure::ChallengeSignatureAlgorithm> ChooseChallengeAlgorithm(
+std::optional<structure::ChallengeSignatureAlgorithm> ChooseChallengeAlgorithm(
     const structure::ChallengePublicKeyInfo& public_key_info) {
-  base::Optional<structure::ChallengeSignatureAlgorithm>
+  std::optional<structure::ChallengeSignatureAlgorithm>
       currently_chosen_algorithm;
   // Respect the input's algorithm prioritization, with the exception of
   // considering SHA-1 as the least preferred option.
@@ -135,7 +135,7 @@ void ChallengeCredentialsVerifyKeyOperation::Start() {
     Complete(&completion_callback_, /*is_key_valid=*/false);
     return;
   }
-  const base::Optional<structure::ChallengeSignatureAlgorithm>
+  const std::optional<structure::ChallengeSignatureAlgorithm>
       chosen_challenge_algorithm = ChooseChallengeAlgorithm(public_key_info_);
   if (!chosen_challenge_algorithm) {
     LOG(ERROR) << "Failed to choose verification signature challenge algorithm";

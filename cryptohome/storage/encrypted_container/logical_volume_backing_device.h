@@ -8,6 +8,7 @@
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -52,10 +53,10 @@ class LogicalVolumeBackingDevice : public BackingDevice {
   }
 
   // Gets path to the logical volume's block device.
-  base::Optional<base::FilePath> GetPath() override;
+  std::optional<base::FilePath> GetPath() override;
 
  private:
-  base::Optional<brillo::LogicalVolume> GetLogicalVolume();
+  std::optional<brillo::LogicalVolume> GetLogicalVolume();
 
   const std::string name_;
   const int64_t size_;

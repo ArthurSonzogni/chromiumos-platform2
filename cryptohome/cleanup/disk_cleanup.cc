@@ -7,11 +7,11 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
 
@@ -32,11 +32,11 @@ DiskCleanup::DiskCleanup(Platform* platform,
       timestamp_manager_(timestamp_manager),
       routines_(std::make_unique<DiskCleanupRoutines>(homedirs_, platform_)) {}
 
-base::Optional<int64_t> DiskCleanup::AmountOfFreeDiskSpace() const {
+std::optional<int64_t> DiskCleanup::AmountOfFreeDiskSpace() const {
   int64_t free_space = platform_->AmountOfFreeDiskSpace(ShadowRoot());
 
   if (free_space < 0) {
-    return base::nullopt;
+    return std::nullopt;
   } else {
     return free_space;
   }
@@ -47,7 +47,7 @@ DiskCleanup::FreeSpaceState DiskCleanup::GetFreeDiskSpaceState() const {
 }
 
 DiskCleanup::FreeSpaceState DiskCleanup::GetFreeDiskSpaceState(
-    base::Optional<int64_t> free_disk_space) const {
+    std::optional<int64_t> free_disk_space) const {
   if (!free_disk_space) {
     return DiskCleanup::FreeSpaceState::kError;
   }

@@ -5,9 +5,9 @@
 #ifndef CRYPTOHOME_USER_SECRET_STASH_STORAGE_H_
 #define CRYPTOHOME_USER_SECRET_STASH_STORAGE_H_
 
+#include <optional>
 #include <string>
 
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/platform.h"
@@ -31,7 +31,7 @@ class UserSecretStashStorage final {
   // Loads the serialized USS container flatbuffer (to be used with
   // `UserSecretStash::FromEncryptedContainer()`) from the given user's
   // directory in the shadow root. Returns nullopt on failure.
-  base::Optional<brillo::SecureBlob> LoadPersisted(
+  std::optional<brillo::SecureBlob> LoadPersisted(
       const std::string& obfuscated_username);
 
  private:

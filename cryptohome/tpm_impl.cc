@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -254,7 +255,7 @@ bool TpmImpl::ConnectContextAsDelegate(const Blob& delegate_blob,
   return true;
 }
 
-void TpmImpl::GetStatus(base::Optional<TpmKeyHandle> key_handle,
+void TpmImpl::GetStatus(std::optional<TpmKeyHandle> key_handle,
                         TpmStatusInfo* status) {
   memset(status, 0, sizeof(TpmStatusInfo));
   status->this_instance_has_context = (tpm_context_.value() != 0);
@@ -700,7 +701,7 @@ StatusChain<TPMErrorBase> TpmImpl::PreloadSealedData(
 }
 
 StatusChain<TPMErrorBase> TpmImpl::UnsealWithAuthorization(
-    base::Optional<TpmKeyHandle> preload_handle,
+    std::optional<TpmKeyHandle> preload_handle,
     const SecureBlob& sealed_data,
     const SecureBlob& auth_value,
     const std::map<uint32_t, brillo::Blob>& pcr_map,
@@ -2102,7 +2103,7 @@ bool TpmImpl::SetDelegateDataFromTpmManager() {
 }
 
 StatusChain<TPMErrorBase> TpmImpl::GetAuthValue(
-    base::Optional<TpmKeyHandle> key_handle,
+    std::optional<TpmKeyHandle> key_handle,
     const SecureBlob& pass_blob,
     SecureBlob* auth_value) {
   // For TPM1.2, the |auth_value| should be the same as |pass_blob|.
@@ -2111,7 +2112,7 @@ StatusChain<TPMErrorBase> TpmImpl::GetAuthValue(
 }
 
 StatusChain<TPMErrorBase> TpmImpl::GetEccAuthValue(
-    base::Optional<TpmKeyHandle> key_handle,
+    std::optional<TpmKeyHandle> key_handle,
     const SecureBlob& pass_blob,
     SecureBlob* auth_value) {
   // For TPM1.2, the |auth_value| should be the same as |pass_blob|.

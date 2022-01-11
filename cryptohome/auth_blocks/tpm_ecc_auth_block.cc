@@ -6,6 +6,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -13,7 +14,6 @@
 #include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/error/tpm_retry_handler.h>
 
@@ -421,7 +421,7 @@ CryptoError TpmEccAuthBlock::DeriveHvkkm(bool locked_to_single_user,
                                          ScopedKeyHandle* preload_handle,
                                          uint32_t auth_value_rounds,
                                          brillo::SecureBlob* hvkkm) {
-  base::Optional<TpmKeyHandle> sealed_hvkkm_handle;
+  std::optional<TpmKeyHandle> sealed_hvkkm_handle;
   // The preload handle may be an invalid handle, we should only use it when
   // it's a valid handle.
   if (preload_handle->has_value()) {

@@ -4,9 +4,10 @@
 
 #include "cryptohome/signature_sealing_backend_tpm2_impl.h"
 
-#include <stdint.h>
 #include <cstring>
+#include <optional>
 #include <set>
+#include <stdint.h>
 #include <string>
 #include <utility>
 
@@ -16,7 +17,6 @@
 #include <base/memory/ptr_util.h>
 #include <base/notreached.h>
 #include <base/numerics/safe_conversions.h>
-#include <base/optional.h>
 #include <base/threading/thread_checker.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/key.pb.h>
@@ -443,7 +443,7 @@ SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
                                  TPMRetryAction::kNoRetry);
   }
   const TPM_ALG_ID hash_alg = static_cast<TPM_ALG_ID>(data.hash_alg);
-  base::Optional<structure::ChallengeSignatureAlgorithm> chosen_algorithm;
+  std::optional<structure::ChallengeSignatureAlgorithm> chosen_algorithm;
   for (auto algorithm : key_algorithms) {
     TPM_ALG_ID current_scheme = TPM_ALG_NULL;
     TPM_ALG_ID current_hash_alg = TPM_ALG_NULL;

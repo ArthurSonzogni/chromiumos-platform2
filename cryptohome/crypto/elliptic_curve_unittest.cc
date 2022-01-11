@@ -4,6 +4,8 @@
 
 #include "cryptohome/crypto/elliptic_curve.h"
 
+#include <optional>
+
 #include "cryptohome/crypto/big_num_util.h"
 #include "cryptohome/crypto/error_util.h"
 
@@ -106,21 +108,21 @@ class EllipticCurveTest : public testing::Test {
 
  protected:
   ScopedBN_CTX context_;
-  base::Optional<EllipticCurve> ec_;
+  std::optional<EllipticCurve> ec_;
 };
 
 TEST_F(EllipticCurveTest, GetCurveType) {
-  base::Optional<EllipticCurve> ec_256 = EllipticCurve::Create(
+  std::optional<EllipticCurve> ec_256 = EllipticCurve::Create(
       EllipticCurve::CurveType::kPrime256, context_.get());
   ASSERT_TRUE(ec_256);
   EXPECT_EQ(ec_256->GetCurveType(), EllipticCurve::CurveType::kPrime256);
 
-  base::Optional<EllipticCurve> ec_384 = EllipticCurve::Create(
+  std::optional<EllipticCurve> ec_384 = EllipticCurve::Create(
       EllipticCurve::CurveType::kPrime384, context_.get());
   ASSERT_TRUE(ec_384);
   EXPECT_EQ(ec_384->GetCurveType(), EllipticCurve::CurveType::kPrime384);
 
-  base::Optional<EllipticCurve> ec_521 = EllipticCurve::Create(
+  std::optional<EllipticCurve> ec_521 = EllipticCurve::Create(
       EllipticCurve::CurveType::kPrime521, context_.get());
   ASSERT_TRUE(ec_521);
   EXPECT_EQ(ec_521->GetCurveType(), EllipticCurve::CurveType::kPrime521);

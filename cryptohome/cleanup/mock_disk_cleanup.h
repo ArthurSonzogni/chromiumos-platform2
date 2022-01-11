@@ -8,6 +8,7 @@
 #include "cryptohome/cleanup/disk_cleanup.h"
 
 #include <cstdint>
+#include <optional>
 #include <string>
 
 #include <gmock/gmock.h>
@@ -19,13 +20,13 @@ class MockDiskCleanup : public DiskCleanup {
   MockDiskCleanup();
   virtual ~MockDiskCleanup();
 
-  MOCK_METHOD(base::Optional<int64_t>,
+  MOCK_METHOD(std::optional<int64_t>,
               AmountOfFreeDiskSpace,
               (),
               (override, const));
   MOCK_METHOD(DiskCleanup::FreeSpaceState,
               GetFreeDiskSpaceState,
-              (base::Optional<int64_t>),
+              (std::optional<int64_t>),
               (override, const));
   MOCK_METHOD(DiskCleanup::FreeSpaceState,
               GetFreeDiskSpaceState,

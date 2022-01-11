@@ -8,6 +8,7 @@
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -53,7 +54,7 @@ class LoopbackDevice : public BackingDevice {
   }
 
   // Gets the device path for the loop device.
-  base::Optional<base::FilePath> GetPath() override;
+  std::optional<base::FilePath> GetPath() override;
 
  protected:
   const base::FilePath backing_file_path_;

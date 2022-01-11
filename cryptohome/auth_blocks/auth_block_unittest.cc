@@ -5,6 +5,7 @@
 #include "cryptohome/auth_blocks/auth_block.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -88,9 +89,9 @@ TEST(TpmBoundToPcrTest, CreateTest) {
       .WillByDefault(ReturnError<TPMErrorBase>());
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/base::nullopt,
+                          /*locked_to_single_user=*/std::nullopt,
                           obfuscated_username,
-                          /*reset_secret=*/base::nullopt};
+                          /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
 
   TpmBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
@@ -100,9 +101,9 @@ TEST(TpmBoundToPcrTest, CreateTest) {
   EXPECT_TRUE(
       absl::holds_alternative<TpmBoundToPcrAuthBlockState>(auth_state.state));
 
-  EXPECT_NE(vkk_data.vkk_key, base::nullopt);
-  EXPECT_NE(vkk_data.vkk_iv, base::nullopt);
-  EXPECT_NE(vkk_data.chaps_iv, base::nullopt);
+  EXPECT_NE(vkk_data.vkk_key, std::nullopt);
+  EXPECT_NE(vkk_data.vkk_iv, std::nullopt);
+  EXPECT_NE(vkk_data.chaps_iv, std::nullopt);
 
   auto& tpm_state = absl::get<TpmBoundToPcrAuthBlockState>(auth_state.state);
 
@@ -128,9 +129,9 @@ TEST(TpmBoundToPcrTest, CreateFailTest) {
       .WillByDefault(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/base::nullopt,
+                          /*locked_to_single_user=*/std::nullopt,
                           obfuscated_username,
-                          /*reset_secret=*/base::nullopt};
+                          /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
   AuthBlockState auth_state;
@@ -152,9 +153,9 @@ TEST(TpmNotBoundToPcrTest, CreateTest) {
       .WillOnce(DoAll(SaveArg<2>(&aes_skey), ReturnError<TPMErrorBase>()));
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/base::nullopt,
+                          /*locked_to_single_user=*/std::nullopt,
                           obfuscated_username,
-                          /*reset_secret=*/base::nullopt};
+                          /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmNotBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
   AuthBlockState auth_state;
@@ -163,9 +164,9 @@ TEST(TpmNotBoundToPcrTest, CreateTest) {
   EXPECT_TRUE(absl::holds_alternative<TpmNotBoundToPcrAuthBlockState>(
       auth_state.state));
 
-  EXPECT_NE(vkk_data.vkk_key, base::nullopt);
-  EXPECT_NE(vkk_data.vkk_iv, base::nullopt);
-  EXPECT_NE(vkk_data.chaps_iv, base::nullopt);
+  EXPECT_NE(vkk_data.vkk_key, std::nullopt);
+  EXPECT_NE(vkk_data.vkk_iv, std::nullopt);
+  EXPECT_NE(vkk_data.chaps_iv, std::nullopt);
 
   auto& tpm_state = absl::get<TpmNotBoundToPcrAuthBlockState>(auth_state.state);
 
@@ -189,9 +190,9 @@ TEST(TpmNotBoundToPcrTest, CreateFailTest) {
       .WillByDefault(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/base::nullopt,
+                          /*locked_to_single_user=*/std::nullopt,
                           obfuscated_username,
-                          /*reset_secret=*/base::nullopt};
+                          /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmNotBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
   AuthBlockState auth_state;
@@ -276,7 +277,7 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
 
   // Call the Create() method.
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/base::nullopt,
+                          /*locked_to_single_user=*/std::nullopt,
                           obfuscated_username, reset_secret};
   KeyBlobs vkk_data;
 
@@ -311,7 +312,7 @@ TEST(PinWeaverAuthBlockTest, CreateFailTest) {
                                      &cryptohome_keys_manager_fail);
   // Call the Create() method.
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/base::nullopt,
+                          /*locked_to_single_user=*/std::nullopt,
                           obfuscated_username, reset_secret};
   KeyBlobs vkk_data;
   AuthBlockState auth_state;
@@ -405,9 +406,9 @@ TEST(PinWeaverAuthBlockTest, DeriveTest) {
             auth_block.Derive(auth_input, auth_state, &key_blobs));
 
   // Set expectations of the key blobs.
-  EXPECT_NE(key_blobs.reset_secret, base::nullopt);
-  EXPECT_NE(key_blobs.chaps_iv, base::nullopt);
-  EXPECT_NE(key_blobs.vkk_iv, base::nullopt);
+  EXPECT_NE(key_blobs.reset_secret, std::nullopt);
+  EXPECT_NE(key_blobs.chaps_iv, std::nullopt);
+  EXPECT_NE(key_blobs.vkk_iv, std::nullopt);
 
   // PinWeaver should always use unique IVs.
   EXPECT_NE(key_blobs.chaps_iv.value(), key_blobs.vkk_iv.value());
@@ -528,8 +529,8 @@ TEST(TPMAuthBlockTest, DecryptBoundToPcrTest) {
   EXPECT_CALL(tpm, GetAuthValue(_, pass_blob, _))
       .WillOnce(
           DoAll(SetArgPointee<2>(auth_value), ReturnError<TPMErrorBase>()));
-  EXPECT_CALL(tpm, UnsealWithAuthorization(base::Optional<TpmKeyHandle>(5566),
-                                           _, auth_value, _, _))
+  EXPECT_CALL(tpm, UnsealWithAuthorization(std::optional<TpmKeyHandle>(5566), _,
+                                           auth_value, _, _))
       .Times(Exactly(1));
 
   TpmBoundToPcrAuthBlock tpm_auth_block(&tpm, &cryptohome_keys_manager);
@@ -558,7 +559,7 @@ TEST(TPMAuthBlockTest, DecryptBoundToPcrNoPreloadTest) {
   EXPECT_CALL(tpm, GetAuthValue(_, pass_blob, _))
       .WillOnce(
           DoAll(SetArgPointee<2>(auth_value), ReturnError<TPMErrorBase>()));
-  base::Optional<TpmKeyHandle> nullopt;
+  std::optional<TpmKeyHandle> nullopt;
   EXPECT_CALL(tpm, UnsealWithAuthorization(nullopt, _, auth_value, _, _))
       .Times(Exactly(1));
 
@@ -630,8 +631,8 @@ TEST(TpmAuthBlockTest, DeriveTest) {
             auth_block.Derive(auth_input, auth_state, &key_out_data));
 
   // Assert that the returned key blobs isn't uninitialized.
-  EXPECT_NE(key_out_data.vkk_iv, base::nullopt);
-  EXPECT_NE(key_out_data.vkk_key, base::nullopt);
+  EXPECT_NE(key_out_data.vkk_iv, std::nullopt);
+  EXPECT_NE(key_out_data.vkk_key, std::nullopt);
   EXPECT_EQ(key_out_data.vkk_iv.value(), key_out_data.chaps_iv.value());
 }
 
@@ -1062,9 +1063,9 @@ TEST(TpmEccAuthBlockTest, CreateTest) {
       .WillOnce(ReturnError<TPMErrorBase>());
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/base::nullopt,
+                          /*locked_to_single_user=*/std::nullopt,
                           obfuscated_username,
-                          /*reset_secret=*/base::nullopt};
+                          /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
 
   TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
@@ -1073,9 +1074,9 @@ TEST(TpmEccAuthBlockTest, CreateTest) {
             auth_block.Create(user_input, &auth_state, &vkk_data));
   EXPECT_TRUE(absl::holds_alternative<TpmEccAuthBlockState>(auth_state.state));
 
-  EXPECT_NE(vkk_data.vkk_key, base::nullopt);
-  EXPECT_NE(vkk_data.vkk_iv, base::nullopt);
-  EXPECT_NE(vkk_data.chaps_iv, base::nullopt);
+  EXPECT_NE(vkk_data.vkk_key, std::nullopt);
+  EXPECT_NE(vkk_data.vkk_iv, std::nullopt);
+  EXPECT_NE(vkk_data.chaps_iv, std::nullopt);
 
   auto& tpm_state = absl::get<TpmEccAuthBlockState>(auth_state.state);
 
@@ -1135,9 +1136,9 @@ TEST(TpmEccAuthBlockTest, CreateRetryTest) {
       .WillOnce(ReturnError<TPMErrorBase>());
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/base::nullopt,
+                          /*locked_to_single_user=*/std::nullopt,
                           obfuscated_username,
-                          /*reset_secret=*/base::nullopt};
+                          /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
 
   TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
@@ -1146,9 +1147,9 @@ TEST(TpmEccAuthBlockTest, CreateRetryTest) {
             auth_block.Create(user_input, &auth_state, &vkk_data));
   EXPECT_TRUE(absl::holds_alternative<TpmEccAuthBlockState>(auth_state.state));
 
-  EXPECT_NE(vkk_data.vkk_key, base::nullopt);
-  EXPECT_NE(vkk_data.vkk_iv, base::nullopt);
-  EXPECT_NE(vkk_data.chaps_iv, base::nullopt);
+  EXPECT_NE(vkk_data.vkk_key, std::nullopt);
+  EXPECT_NE(vkk_data.vkk_iv, std::nullopt);
+  EXPECT_NE(vkk_data.chaps_iv, std::nullopt);
 
   auto& tpm_state = absl::get<TpmEccAuthBlockState>(auth_state.state);
 
@@ -1181,9 +1182,9 @@ TEST(TpmEccAuthBlockTest, CreateRetryFailTest) {
       .WillRepeatedly(ReturnError<TPMError>("later", TPMRetryAction::kLater));
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/base::nullopt,
+                          /*locked_to_single_user=*/std::nullopt,
                           obfuscated_username,
-                          /*reset_secret=*/base::nullopt};
+                          /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
   AuthBlockState auth_state;
@@ -1214,9 +1215,9 @@ TEST(TpmEccAuthBlockTest, CreateSealToPcrFailTest) {
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/base::nullopt,
+                          /*locked_to_single_user=*/std::nullopt,
                           obfuscated_username,
-                          /*reset_secret=*/base::nullopt};
+                          /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
   AuthBlockState auth_state;
@@ -1248,9 +1249,9 @@ TEST(TpmEccAuthBlockTest, CreateSecondSealToPcrFailTest) {
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/base::nullopt,
+                          /*locked_to_single_user=*/std::nullopt,
                           obfuscated_username,
-                          /*reset_secret=*/base::nullopt};
+                          /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
   AuthBlockState auth_state;
@@ -1274,9 +1275,9 @@ TEST(TpmEccAuthBlockTest, CreateEccAuthValueFailTest) {
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/base::nullopt,
+                          /*locked_to_single_user=*/std::nullopt,
                           obfuscated_username,
-                          /*reset_secret=*/base::nullopt};
+                          /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmEccAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
   AuthBlockState auth_state;
@@ -1318,8 +1319,8 @@ TEST(TpmEccAuthBlockTest, DeriveTest) {
             auth_block.Derive(auth_input, auth_state, &key_out_data));
 
   // Assert that the returned key blobs isn't uninitialized.
-  EXPECT_NE(key_out_data.vkk_iv, base::nullopt);
-  EXPECT_NE(key_out_data.vkk_key, base::nullopt);
+  EXPECT_NE(key_out_data.vkk_iv, std::nullopt);
+  EXPECT_NE(key_out_data.vkk_key, std::nullopt);
   EXPECT_EQ(key_out_data.vkk_iv.value(), key_out_data.chaps_iv.value());
 }
 
@@ -1369,8 +1370,8 @@ TEST(TpmEccAuthBlockTest, DeriveRetryTest) {
             auth_block.Derive(auth_input, auth_state, &key_out_data));
 
   // Assert that the returned key blobs isn't uninitialized.
-  EXPECT_NE(key_out_data.vkk_iv, base::nullopt);
-  EXPECT_NE(key_out_data.vkk_key, base::nullopt);
+  EXPECT_NE(key_out_data.vkk_iv, std::nullopt);
+  EXPECT_NE(key_out_data.vkk_key, std::nullopt);
   EXPECT_EQ(key_out_data.vkk_iv.value(), key_out_data.chaps_iv.value());
 }
 

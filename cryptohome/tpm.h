@@ -15,10 +15,10 @@
 #include <stdint.h>
 
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 
-#include <base/optional.h>
 #include <base/synchronization/lock.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/error/tpm_error.h>
@@ -257,7 +257,7 @@ class Tpm {
   //             so an empty map can be used.
   //   plaintext (OUT) - Unsealed blob.
   virtual hwsec::StatusChain<hwsec::TPMErrorBase> UnsealWithAuthorization(
-      base::Optional<TpmKeyHandle> preload_handle,
+      std::optional<TpmKeyHandle> preload_handle,
       const brillo::SecureBlob& sealed_data,
       const brillo::SecureBlob& auth_value,
       const std::map<uint32_t, brillo::Blob>& pcr_map,
@@ -498,7 +498,7 @@ class Tpm {
   // Parameters
   //   key - The optional key to check for encryption/decryption
   //   status (OUT) - The TpmStatusInfo structure containing the results
-  virtual void GetStatus(base::Optional<TpmKeyHandle> key,
+  virtual void GetStatus(std::optional<TpmKeyHandle> key,
                          TpmStatusInfo* status) = 0;
 
   // Returns whether the TPM SRK is vulnerable to the ROCA vulnerability.
@@ -598,7 +598,7 @@ class Tpm {
   // to decrypt the |pass_blob| and it must be a RSA key, obtaining the
   // authorization value. For TPM1.2 the |key_handle| is unused.
   virtual hwsec::StatusChain<hwsec::TPMErrorBase> GetAuthValue(
-      base::Optional<TpmKeyHandle> key_handle,
+      std::optional<TpmKeyHandle> key_handle,
       const brillo::SecureBlob& pass_blob,
       brillo::SecureBlob* auth_value) = 0;
 
@@ -607,7 +607,7 @@ class Tpm {
   // is used to decrypt the |pass_blob| and it must be an ECC key, obtaining the
   // authorization value. For TPM1.2 the |key_handle| is unused.
   virtual hwsec::StatusChain<hwsec::TPMErrorBase> GetEccAuthValue(
-      base::Optional<TpmKeyHandle> key_handle,
+      std::optional<TpmKeyHandle> key_handle,
       const brillo::SecureBlob& pass_blob,
       brillo::SecureBlob* auth_value) = 0;
 

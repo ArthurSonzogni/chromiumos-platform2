@@ -6,6 +6,7 @@
 #define CRYPTOHOME_CRYPTORECOVERY_RECOVERY_CRYPTO_H_
 
 #include <memory>
+#include <optional>
 
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
@@ -37,7 +38,7 @@ class RecoveryCryptoTpmBackend {
   virtual bool EncryptEccPrivateKey(
       const EllipticCurve& ec,
       const crypto::ScopedEC_KEY& own_key_pair,
-      const base::Optional<brillo::SecureBlob>& auth_value,
+      const std::optional<brillo::SecureBlob>& auth_value,
       brillo::SecureBlob* encrypted_own_priv_key) = 0;
   // Multiplies the private key, provided in encrypted form, with the given the
   // other party's public EC point. Returns the multiplication, or nullptr on
@@ -49,7 +50,7 @@ class RecoveryCryptoTpmBackend {
   virtual crypto::ScopedEC_POINT GenerateDiffieHellmanSharedSecret(
       const EllipticCurve& ec,
       const brillo::SecureBlob& encrypted_own_priv_key,
-      const base::Optional<brillo::SecureBlob>& auth_value,
+      const std::optional<brillo::SecureBlob>& auth_value,
       const EC_POINT& others_pub_point) = 0;
 };
 

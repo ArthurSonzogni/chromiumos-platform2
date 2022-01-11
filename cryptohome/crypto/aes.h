@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_CRYPTO_AES_H_
 #define CRYPTOHOME_CRYPTO_AES_H_
 
+#include <optional>
+
 #include <brillo/secure_blob.h>
 
 namespace cryptohome {
@@ -86,7 +88,7 @@ bool AesDecryptDeprecated(const brillo::SecureBlob& ciphertext,
 //   iv - The IV to decrypt with.
 //   plaintext - On success, the decrypted data.
 bool AesGcmDecrypt(const brillo::SecureBlob& ciphertext,
-                   const base::Optional<brillo::SecureBlob>& ad,
+                   const std::optional<brillo::SecureBlob>& ad,
                    const brillo::SecureBlob& tag,
                    const brillo::SecureBlob& key,
                    const brillo::SecureBlob& iv,
@@ -104,7 +106,7 @@ bool AesGcmDecrypt(const brillo::SecureBlob& ciphertext,
 //   tag - On success, the integrity tag of the data.
 //   ciphertext - On success, the encrypted data.
 bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
-                   const base::Optional<brillo::SecureBlob>& ad,
+                   const std::optional<brillo::SecureBlob>& ad,
                    const brillo::SecureBlob& key,
                    brillo::SecureBlob* iv,
                    brillo::SecureBlob* tag,
