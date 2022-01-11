@@ -45,7 +45,7 @@ constexpr char kRebootFile[] = "/tmp/force_reboot_after_fw_update";
 bool UpdateImage(const biod::CrosFpDeviceUpdate& ec_dev,
                  const biod::CrosFpBootUpdateCtrl& boot_ctrl,
                  const biod::CrosFpFirmware& fw,
-                 enum ec_current_image image) {
+                 enum ec_image image) {
   if (boot_ctrl.TriggerBootUpdateSplash()) {
     DLOG(INFO) << "Successfully launched update splash screen.";
   } else {
@@ -73,8 +73,7 @@ bool UpdateImage(const biod::CrosFpDeviceUpdate& ec_dev,
 
 namespace biod {
 
-std::string CrosFpDeviceUpdate::EcCurrentImageToString(
-    enum ec_current_image image) {
+std::string CrosFpDeviceUpdate::EcCurrentImageToString(enum ec_image image) {
   switch (image) {
     case EC_IMAGE_UNKNOWN:
       return "UNKNOWN";
@@ -128,7 +127,7 @@ bool CrosFpDeviceUpdate::IsFlashProtectEnabled(bool* status) const {
 }
 
 bool CrosFpDeviceUpdate::Flash(const CrosFpFirmware& fw,
-                               enum ec_current_image image) const {
+                               enum ec_image image) const {
   DCHECK(image == EC_IMAGE_RO || image == EC_IMAGE_RW);
 
   std::string image_str = EcCurrentImageToString(image);

@@ -276,9 +276,9 @@ base::Optional<CrosFpDeviceInterface::FpStats> CrosFpDevice::GetFpStats() {
 
 // static
 bool CrosFpDevice::WaitOnEcBoot(const base::ScopedFD& cros_fp_fd,
-                                ec_current_image expected_image) {
+                                ec_image expected_image) {
   int tries = 50;
-  ec_current_image image = EC_IMAGE_UNKNOWN;
+  ec_image image = EC_IMAGE_UNKNOWN;
 
   while (tries) {
     tries--;
@@ -290,7 +290,7 @@ bool CrosFpDevice::WaitOnEcBoot(const base::ScopedFD& cros_fp_fd,
       base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(500));
       continue;
     }
-    image = static_cast<ec_current_image>(cmd.Resp()->current_image);
+    image = static_cast<ec_image>(cmd.Resp()->current_image);
     if (image == expected_image) {
       LOG(INFO) << "EC image is " << (image == EC_IMAGE_RO ? "RO" : "RW")
                 << ".";
@@ -320,11 +320,11 @@ base::Optional<CrosFpDeviceInterface::EcVersion> CrosFpDevice::GetVersion(
   return EcVersion{
       .ro_version = std::string(cmd.Resp()->version_string_ro),
       .rw_version = std::string(cmd.Resp()->version_string_rw),
-      .current_image = static_cast<ec_current_image>(cmd.Resp()->current_image),
+      .current_image = static_cast<ec_image>(cmd.Resp()->current_image),
   };
 }
 
-bool CrosFpDevice::EcReboot(ec_current_image to_image) {
+bool CrosFpDevice::EcReboot(ec_image to_image) {
   DCHECK(to_image == EC_IMAGE_RO || to_image == EC_IMAGE_RW);
 
   EcCommand<EmptyParam, EmptyParam> cmd_reboot(EC_CMD_REBOOT);

@@ -43,7 +43,7 @@ class CrosFpDevice : public CrosFpDeviceInterface {
   // Run a simple command to get the version information from FP MCU and check
   // whether the image type returned is the same as |expected_image|.
   static bool WaitOnEcBoot(const base::ScopedFD& cros_fp_fd,
-                           ec_current_image expected_image);
+                           ec_image expected_image);
 
   // Run a simple command to get the version information from FP MCU.
   static base::Optional<EcVersion> GetVersion(const base::ScopedFD& cros_fp_fd);
@@ -108,7 +108,7 @@ class CrosFpDevice : public CrosFpDeviceInterface {
 
   bool EcDevInit();
   base::Optional<EcProtocolInfo> EcProtoInfo();
-  bool EcReboot(ec_current_image to_image);
+  bool EcReboot(ec_image to_image);
   // Run the EC command to generate new entropy in the underlying MCU.
   // |reset| specifies whether we want to merely add entropy (false), or
   // perform a reset, which erases old entropy(true).

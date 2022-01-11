@@ -35,7 +35,7 @@ class BioCryptoInit {
   virtual bool WriteSeedToCrosFp(const brillo::SecureVector& seed);
   virtual base::ScopedFD OpenCrosFpDevice();
   virtual bool WaitOnEcBoot(const base::ScopedFD& cros_fp_fd,
-                            ec_current_image expected_image);
+                            ec_image expected_image);
 
  private:
   std::unique_ptr<ec::EcCommandFactoryInterface> ec_command_factory_;

@@ -27,9 +27,8 @@ class CrosFpDeviceUpdate {
   virtual ~CrosFpDeviceUpdate() = default;
   virtual base::Optional<CrosFpDeviceInterface::EcVersion> GetVersion() const;
   virtual bool IsFlashProtectEnabled(bool* status) const;
-  virtual bool Flash(const CrosFpFirmware& fw,
-                     enum ec_current_image image) const;
-  static std::string EcCurrentImageToString(enum ec_current_image image);
+  virtual bool Flash(const CrosFpFirmware& fw, enum ec_image image) const;
+  static std::string EcCurrentImageToString(enum ec_image image);
 };
 
 // CrosFpBootUpdateCtrl holds the interfaces for the

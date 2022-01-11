@@ -31,8 +31,7 @@ class MockBioCryptoInit : public BioCryptoInit {
   MOCK_METHOD(base::ScopedFD, OpenCrosFpDevice, (), (override));
   MOCK_METHOD(bool,
               WaitOnEcBoot,
-              (const base::ScopedFD& cros_fp_fd,
-               ec_current_image expected_image),
+              (const base::ScopedFD& cros_fp_fd, ec_image expected_image),
               (override));
 
   bool WriteSeedToCrosFpDelegate(const brillo::SecureVector& seed) {

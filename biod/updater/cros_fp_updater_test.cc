@@ -38,7 +38,7 @@ namespace {
 constexpr char kTestImageROVersion[] = "nocturne_fp_v2.2.64-58cf5974e";
 constexpr char kTestImageRWVersion[] = "nocturne_fp_v2.2.110-b936c0a3c";
 
-const std::vector<enum ec_current_image> kEcCurrentImageEnums = {
+const std::vector<enum ec_image> kEcCurrentImageEnums = {
     EC_IMAGE_UNKNOWN,
     EC_IMAGE_RO,
     EC_IMAGE_RW,
@@ -53,7 +53,7 @@ class MockCrosFpDeviceUpdate : public biod::CrosFpDeviceUpdate {
   MOCK_METHOD(bool, IsFlashProtectEnabled, (bool*), (const, override));
   MOCK_METHOD(bool,
               Flash,
-              (const biod::CrosFpFirmware&, enum ec_current_image),
+              (const biod::CrosFpFirmware&, enum ec_image),
               (const, override));
 };
 
@@ -96,7 +96,7 @@ class CrosFpUpdaterTest : public ::testing::Test {
   void SetupEnvironment(bool flash_protect,
                         bool ro_mismatch,
                         bool rw_mismatch,
-                        enum ec_current_image ec_image = EC_IMAGE_RW) {
+                        enum ec_image ec_image = EC_IMAGE_RW) {
     CrosFpFirmware::ImageVersion img_ver = {kTestImageROVersion,
                                             kTestImageRWVersion};
 

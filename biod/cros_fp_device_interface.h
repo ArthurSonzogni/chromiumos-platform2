@@ -37,7 +37,7 @@ class CrosFpDeviceInterface {
   struct EcVersion {
     std::string ro_version;
     std::string rw_version;
-    ec_current_image current_image = EC_IMAGE_UNKNOWN;
+    ec_image current_image = EC_IMAGE_UNKNOWN;
   };
 
   virtual void SetMkbpEventCallback(MkbpCallback callback) = 0;
