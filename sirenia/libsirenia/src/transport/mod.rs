@@ -21,10 +21,12 @@ use std::net::{
 };
 use std::os::raw::c_uint;
 use std::os::unix::io::{AsRawFd, IntoRawFd, RawFd};
+use std::path::PathBuf;
 use std::str::FromStr;
+use std::time::Duration;
 
 use core::mem::replace;
-use sys_util::net::{InetVersion, TcpSocket};
+use sys_util::net::{InetVersion, TcpSocket, UnixSeqpacket, UnixSeqpacketListener};
 use sys_util::vsock::{
     AddrParseError, SocketAddr as VSocketAddr, ToSocketAddr, VsockCid, VsockListener, VsockSocket,
     VsockStream, VMADDR_PORT_ANY,
@@ -106,6 +108,7 @@ impl AsRawFd for Box<dyn TransportWrite> {
 pub enum TransportType {
     VsockConnection(VSocketAddr),
     IpConnection(SocketAddr),
+    UnixConnection(PathBuf),
     Pipe(RawFd, RawFd),
 }
 
@@ -138,6 +141,7 @@ impl Display for TransportType {
         match self {
             TransportType::IpConnection(addr) => write!(f, "ip://{}", addr),
             TransportType::VsockConnection(addr) => write!(f, "vsock://{}", addr),
+            TransportType::UnixConnection(path) => write!(f, "unix://{:?}'", path),
             TransportType::Pipe(a, b) => write!(f, "pipe://{}/{}:{}", getpid(), a, b),
         }
     }
@@ -204,6 +208,7 @@ impl TryInto<Box<dyn ServerTransport>> for &TransportType {
         match self {
             TransportType::IpConnection(url) => Ok(Box::new(IpServerTransport::new(&url)?)),
             TransportType::VsockConnection(url) => Ok(Box::new(VsockServerTransport::new(&url)?)),
+            TransportType::UnixConnection(path) => Ok(Box::new(UnixServerTransport::new(path)?)),
             _ => Err(Error::UnknownTransportType),
         }
     }
@@ -283,6 +288,15 @@ fn tcpstream_to_transport(stream: TcpStream, id: SocketAddr) -> Result<Transport
         r: Box::new(stream),
         w: Box::new(write),
         id: TransportType::from(id),
+    })
+}
+
+fn unixseqpacket_to_transport(stream: UnixSeqpacket, path: PathBuf) -> Result<Transport> {
+    let write = stream.try_clone().map_err(Error::Clone)?;
+    Ok(Transport {
+        r: Box::new(stream),
+        w: Box::new(write),
+        id: TransportType::UnixConnection(path),
     })
 }
 
@@ -397,6 +411,47 @@ impl ClientTransport for IpClientTransport {
         let stream = sock.connect(self.addr).map_err(Error::Connect)?;
         let addr = stream.local_addr().map_err(Error::LocalAddr)?;
         tcpstream_to_transport(stream, addr)
+    }
+}
+
+/// A transport method that listens for incoming unix connections.
+pub struct UnixServerTransport(UnixSeqpacketListener, PathBuf);
+
+impl UnixServerTransport {
+    /// `path` - The path to bind to.
+    pub fn new<P: Into<PathBuf>>(path: P) -> Result<Self> {
+        let path_buf = path.into();
+        let listener = UnixSeqpacketListener::bind(path_buf.as_path()).map_err(Error::Bind)?;
+        Ok(UnixServerTransport(listener, path_buf))
+    }
+
+    pub fn local_addr(&self) -> Result<SocketAddr> {
+        Err(Error::GetAddress(io::Error::new(
+            io::ErrorKind::Other,
+            "unix socket not supported",
+        )))
+    }
+
+    pub fn accept_with_timeout(&self, timeout: Duration) -> Result<Transport> {
+        let stream = handle_eintr!(self.0.accept_with_timeout(timeout)).map_err(Error::Accept)?;
+        unixseqpacket_to_transport(stream, self.1.clone())
+    }
+}
+
+impl AsRawFd for UnixServerTransport {
+    fn as_raw_fd(&self) -> RawFd {
+        self.0.as_raw_fd()
+    }
+}
+
+impl ServerTransport for UnixServerTransport {
+    fn bound_to(&self) -> Result<TransportType> {
+        self.local_addr().map(TransportType::from)
+    }
+
+    fn accept(&mut self) -> Result<Transport> {
+        let stream = handle_eintr!(self.0.accept()).map_err(Error::Accept)?;
+        unixseqpacket_to_transport(stream, self.1.clone())
     }
 }
 
@@ -653,6 +708,7 @@ pub mod tests {
     use std::thread::spawn;
 
     use assert_matches::assert_matches;
+    use sys_util::scoped_path::{get_temp_path, ScopedPath};
     use sys_util::vsock::{VsockCid, VMADDR_PORT_ANY};
 
     const CLIENT_SEND: [u8; 7] = [1, 2, 3, 4, 5, 6, 7];
@@ -697,6 +753,22 @@ pub mod tests {
         let (server, mut client) = get_ip_transport().unwrap();
         client.bind().unwrap();
         test_transport(server, client);
+    }
+
+    #[test]
+    fn unixtransport() {
+        let test_dir =
+            ScopedPath::create(get_temp_path(Some("sirenia-transport-unixtransport"))).unwrap();
+        let socket_path = test_dir.join("test.sock");
+        let mut server = UnixServerTransport::new(&socket_path).unwrap();
+        let mut client = UnixSeqpacket::connect(&socket_path).unwrap();
+
+        let (_, mut w, _) = server.accept().unwrap().into();
+        assert_eq!(w.write(&SERVER_SEND).unwrap(), SERVER_SEND.len());
+
+        let mut buf: [u8; SERVER_SEND.len()] = [0; SERVER_SEND.len()];
+        client.read_exact(&mut buf).unwrap();
+        assert_eq!(buf, SERVER_SEND);
     }
 
     // TODO modify this to be work with concurrent vsock usage.
