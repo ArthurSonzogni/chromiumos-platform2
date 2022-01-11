@@ -764,6 +764,7 @@ void ModemMbim::AcquireChannelAfterCardReady(EuiccEvent event,
   if (!is_ready_state_valid ||
       !(ready_state_ == MBIM_SUBSCRIBER_READY_STATE_NOT_INITIALIZED ||
         ready_state_ == MBIM_SUBSCRIBER_READY_STATE_INITIALIZED ||
+        ready_state_ == MBIM_SUBSCRIBER_READY_STATE_DEVICE_LOCKED ||
         ready_state_ == MBIM_SUBSCRIBER_READY_STATE_NO_ESIM_PROFILE)) {
     if (retry_count_ > kMaxRetries) {
       LOG(ERROR) << "Could not finish profile operation, ready_state_="
