@@ -278,6 +278,10 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
       return;
     }
 
+    auto& buffer = readdir_[handle];
+    buffer.reset(new DirEntryResponse(node->ino, handle));
+    buffer->Append(std::move(request));
+
     dbus::MethodCall method = GetFuseBoxServerMethod();
     dbus::MessageWriter writer(&method);
 
@@ -288,35 +292,23 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
 
     auto readdir_response =
         base::BindOnce(&FuseBoxClient::ReadDirResponse, base::Unretained(this),
-                       std::move(request), node->ino, handle);
+                       node->ino, handle);
     CallFuseBoxServerMethod(&method, std::move(readdir_response));
   }
 
-  void ReadDirResponse(std::unique_ptr<DirEntryRequest> request,
-                       ino_t ino,
-                       uint64_t handle,
-                       dbus::Response* response) {
+  void ReadDirResponse(ino_t ino, uint64_t handle, dbus::Response* response) {
     VLOG(1) << "readdir-resp fh " << handle;
 
-    if (request->IsInterrupted())
-      return;
-
     dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response)) {
-      request->ReplyError(error);
+    int error = GetResponseErrno(&reader, response);
+    if (!error)
       return;
-    }
 
-    Node* node = GetInodeTable().Lookup(ino);
-    if (!node) {
-      request->ReplyError(errno);
-      PLOG(ERROR) << "readdir-resp fh " << handle;
-      return;
+    auto it = readdir_.find(handle);
+    if (it != readdir_.end()) {
+      DirEntryResponse* response = it->second.get();
+      response->Append(error);
     }
-
-    auto& buffer = readdir_[handle];
-    buffer.reset(new DirEntryResponse(node->ino, handle));
-    buffer->Append(std::move(request));
   }
 
   void ReadDirBatchResponse(uint64_t handle,
