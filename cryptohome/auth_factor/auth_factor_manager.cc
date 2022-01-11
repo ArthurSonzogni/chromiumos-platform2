@@ -18,6 +18,7 @@
 #include <flatbuffers/flatbuffers.h>
 
 #include "cryptohome/auth_factor/auth_factor.h"
+#include "cryptohome/auth_factor/auth_factor_label.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor_generated.h"
@@ -127,6 +128,7 @@ bool AuthFactorManager::SaveAuthFactor(const std::string& obfuscated_username,
   DCHECK(auth_factor.metadata().has_value());
   DCHECK(auth_factor.label().has_value());
 
+  // Validate input parameters.
   const std::string type_string =
       GetAuthFactorTypeString(auth_factor.type().value());
   if (type_string.empty()) {
@@ -135,7 +137,13 @@ bool AuthFactorManager::SaveAuthFactor(const std::string& obfuscated_username,
                << " for factor called " << auth_factor.label().value();
     return false;
   }
+  if (!IsValidAuthFactorLabel(auth_factor.label().value())) {
+    LOG(ERROR) << "Invalid auth factor label " << auth_factor.label().value()
+               << " of type " << type_string;
+    return false;
+  }
 
+  // Create a flatbuffer to be persisted.
   base::Optional<Blob> flatbuffer = SerializeAuthFactor(auth_factor);
   if (!flatbuffer.has_value()) {
     LOG(ERROR) << "Failed to serialize auth factor "
@@ -143,6 +151,7 @@ bool AuthFactorManager::SaveAuthFactor(const std::string& obfuscated_username,
     return false;
   }
 
+  // Write the file.
   base::FilePath file_path = AuthFactorPath(obfuscated_username, type_string,
                                             auth_factor.label().value());
   if (!platform_->WriteFileAtomicDurable(file_path, flatbuffer.value(),

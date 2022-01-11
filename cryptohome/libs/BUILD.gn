@@ -110,6 +110,7 @@ pkg_config("libcrosplatform_dependent_config") {
 # Common objects.
 static_library("libcrosplatform") {
   sources = [
+    "../auth_factor/auth_factor_label.cc",
     "../auth_factor/auth_factor_manager.cc",
     "../crypto/aes.cc",
     "../crypto/big_num_util.cc",

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <string>
 
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
@@ -50,6 +51,8 @@ class AuthFactorManagerTest : public ::testing::Test {
   AuthFactorManager auth_factor_manager_{&platform_};
 };
 
+// Test the `SaveAuthFactor()` method correctly serializes the factor into a
+// file.
 TEST_F(AuthFactorManagerTest, Save) {
   std::unique_ptr<AuthFactor> auth_factor = CreatePasswordAuthFactor();
 
@@ -61,6 +64,37 @@ TEST_F(AuthFactorManagerTest, Save) {
                      /*auth_factor_type_string=*/"password", kSomeIdpLabel)));
 
   // TODO(b/208348570): Test the factor can be loaded back.
+}
+
+// Test the `SaveAuthFactor()` method fails when the label is empty.
+TEST_F(AuthFactorManagerTest, SaveBadEmptyLabel) {
+  // Create an auth factor as a clone of a correct object, but with an empty
+  // label.
+  std::unique_ptr<AuthFactor> good_auth_factor = CreatePasswordAuthFactor();
+  AuthFactor bad_auth_factor(good_auth_factor->type().value(),
+                             /*label=*/std::string(),
+                             good_auth_factor->metadata().value(),
+                             good_auth_factor->auth_block_state().value());
+
+  // Verify the manager refuses to save this auth factor.
+  EXPECT_FALSE(auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername,
+                                                   bad_auth_factor));
+}
+
+// Test the `SaveAuthFactor()` method fails when the label contains forbidden
+// characters.
+TEST_F(AuthFactorManagerTest, SaveBadMalformedLabel) {
+  // Create an auth factor as a clone of a correct object, but with a malformed
+  // label.
+  std::unique_ptr<AuthFactor> good_auth_factor = CreatePasswordAuthFactor();
+  AuthFactor bad_auth_factor(good_auth_factor->type().value(),
+                             /*label=*/"foo.' bar'",
+                             good_auth_factor->metadata().value(),
+                             good_auth_factor->auth_block_state().value());
+
+  // Verify the manager refuses to save this auth factor.
+  EXPECT_FALSE(auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername,
+                                                   bad_auth_factor));
 }
 
 }  // namespace cryptohome

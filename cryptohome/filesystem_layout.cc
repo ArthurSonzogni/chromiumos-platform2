@@ -6,11 +6,13 @@
 
 #include <string>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/auth_factor/auth_factor_label.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -63,7 +65,8 @@ base::FilePath AuthFactorsDirPath(const std::string& obfuscated_username) {
 base::FilePath AuthFactorPath(const std::string& obfuscated_username,
                               const std::string& auth_factor_type_string,
                               const std::string& auth_factor_label) {
-  // TODO(b:208348570): check |auth_factor_label| against allowed characters.
+  // The caller must make sure the label was sanitized.
+  DCHECK(IsValidAuthFactorLabel(auth_factor_label));
   return ShadowRoot()
       .Append(obfuscated_username)
       .Append(kAuthFactorsDir)
