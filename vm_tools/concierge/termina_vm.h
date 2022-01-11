@@ -39,6 +39,7 @@ struct VmFeatures {
   bool gpu;
   bool vulkan;
   bool big_gl;
+  bool render_server;
 
   // Provide software-based virtual Trusted Platform Module to the VM.
   bool software_tpm;

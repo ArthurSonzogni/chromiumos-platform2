@@ -76,6 +76,8 @@ class VmBuilder {
   VmBuilder& EnableRenderServer(bool enable);
   VmBuilder& SetGpuCachePath(base::FilePath gpu_cache_path);
   VmBuilder& SetGpuCacheSize(std::string gpu_cache_size_str);
+  VmBuilder& SetRenderServerCachePath(base::FilePath render_server_cache_path);
+  VmBuilder& SetRenderServerCacheSize(std::string render_server_cache_size_str);
 
   VmBuilder& EnableSoftwareTpm(bool enable);
   VmBuilder& EnableVideoDecoder(bool enable);
@@ -112,6 +114,8 @@ class VmBuilder {
   bool enable_render_server_ = false;
   base::FilePath gpu_cache_path_;
   std::string gpu_cache_size_str_;
+  base::FilePath render_server_cache_path_;
+  std::string render_server_cache_size_str_;
 
   bool enable_software_tpm_ = false;
   bool enable_video_decoder_ = false;

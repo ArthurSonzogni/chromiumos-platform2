@@ -1606,11 +1606,6 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   }
   base::FilePath log_path = GetVmLogPath(request.owner_id(), request.name());
 
-  base::FilePath gpu_cache_path;
-  if (request.enable_gpu()) {
-    gpu_cache_path = PrepareVmGpuCachePath(request.owner_id(), request.name());
-  }
-
   if (request.enable_vulkan() && !request.enable_gpu()) {
     LOG(ERROR) << "Vulkan enabled without GPU";
     response.set_failure_reason("Vulkan enabled without GPU");
@@ -1623,6 +1618,15 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     response.set_failure_reason("Big GL enabled without GPU");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
+  }
+
+  // Enable the render server for Vulkan.
+  const bool enable_render_server = request.enable_vulkan();
+
+  VMGpuCacheSpec gpu_cache_spec;
+  if (request.enable_gpu()) {
+    gpu_cache_spec = PrepareVmGpuCachePaths(request.owner_id(), request.name(),
+                                            enable_render_server);
   }
 
   // Allocate resources for the VM.
@@ -1674,6 +1678,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       .gpu = request.enable_gpu(),
       .vulkan = request.enable_vulkan(),
       .big_gl = request.enable_big_gl(),
+      .render_server = enable_render_server,
       .software_tpm = request.software_tpm(),
       .audio_capture = request.enable_audio_capture(),
   };
@@ -1705,7 +1710,8 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       .SetCpus(cpus)
       .AppendDisks(std::move(disks))
       .EnableSmt(false /* enable */)
-      .SetGpuCachePath(std::move(gpu_cache_path));
+      .SetGpuCachePath(std::move(gpu_cache_spec.device))
+      .SetRenderServerCachePath(std::move(gpu_cache_spec.render_server));
   if (!image_spec.rootfs.empty()) {
     vm_builder.SetRootfs({.device = std::move(rootfs_device),
                           .path = std::move(image_spec.rootfs),
@@ -4103,11 +4109,21 @@ Service::VMImageSpec Service::GetImageSpec(
   };
 }
 
-base::FilePath Service::PrepareVmGpuCachePath(const std::string& owner_id,
-                                              const std::string& vm_name) {
+Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
+    const std::string& owner_id,
+    const std::string& vm_name,
+    bool enable_render_server) {
   base::FilePath cache_path = GetVmGpuCachePath(owner_id, vm_name);
   base::FilePath bootid_path = cache_path.DirName();
   base::FilePath base_path = bootid_path.DirName();
+
+  base::FilePath cache_device_path = cache_path.Append("device");
+  base::FilePath cache_render_server_path =
+      enable_render_server ? cache_path.Append("render_server")
+                           : base::FilePath();
+
+  const base::FilePath* cache_subdir_paths[] = {&cache_device_path,
+                                                &cache_render_server_path};
 
   base::AutoLock guard(cache_mutex_);
 
@@ -4125,19 +4141,28 @@ base::FilePath Service::PrepareVmGpuCachePath(const std::string& owner_id,
     if (!base::DeletePathRecursively(base_path)) {
       LOG(ERROR) << "Failed to delete gpu cache directory: " << base_path
                  << " shader caching will be disabled.";
-      return base::FilePath();
+      return VMGpuCacheSpec{};
     }
   }
 
-  if (!base::DirectoryExists(cache_path)) {
-    base::File::Error dir_error;
-    if (!base::CreateDirectoryAndGetError(cache_path, &dir_error)) {
-      LOG(ERROR) << "Failed to create crosvm gpu cache directory in "
-                 << cache_path << ": " << base::File::ErrorToString(dir_error);
-      return base::FilePath();
+  for (const base::FilePath* path : cache_subdir_paths) {
+    if (path->empty()) {
+      continue;
+    }
+
+    if (!base::DirectoryExists(*path)) {
+      base::File::Error dir_error;
+      if (!base::CreateDirectoryAndGetError(*path, &dir_error)) {
+        LOG(ERROR) << "Failed to create crosvm gpu cache directory in " << *path
+                   << ": " << base::File::ErrorToString(dir_error);
+        base::DeletePathRecursively(cache_path);
+        return VMGpuCacheSpec{};
+      }
     }
   }
-  return cache_path;
+
+  return VMGpuCacheSpec{.device = std::move(cache_device_path),
+                        .render_server = std::move(cache_render_server_path)};
 }
 
 }  // namespace concierge

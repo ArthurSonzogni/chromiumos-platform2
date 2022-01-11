@@ -172,6 +172,18 @@ VmBuilder& VmBuilder::SetGpuCacheSize(std::string gpu_cache_size_str) {
   return *this;
 }
 
+VmBuilder& VmBuilder::SetRenderServerCachePath(
+    base::FilePath render_server_cache_path) {
+  render_server_cache_path_ = std::move(render_server_cache_path);
+  return *this;
+}
+
+VmBuilder& VmBuilder::SetRenderServerCacheSize(
+    std::string render_server_cache_size_str) {
+  render_server_cache_size_str_ = std::move(render_server_cache_size_str);
+  return *this;
+}
+
 VmBuilder& VmBuilder::EnableSoftwareTpm(bool enable) {
   enable_software_tpm_ = enable;
   return *this;
@@ -317,7 +329,12 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
     if (enable_render_server_) {
       std::string render_server_arg = "--gpu-render-server=path=";
       render_server_arg += kVirglRenderServerPath;
-
+      if (!render_server_cache_path_.empty()) {
+        render_server_arg += ",cache-path=" + render_server_cache_path_.value();
+      }
+      if (!render_server_cache_size_str_.empty()) {
+        render_server_arg += ",cache-size=" + render_server_cache_size_str_;
+      }
       args.emplace_back(render_server_arg, "");
     }
   }

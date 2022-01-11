@@ -74,6 +74,14 @@ class Service final {
     VMImageSpec() = default;
   };
 
+  // Describes GPU shader cache paths.
+  struct VMGpuCacheSpec {
+    base::FilePath device;
+    base::FilePath render_server;
+
+    VMGpuCacheSpec() = default;
+  };
+
   explicit Service(base::Closure quit_closure);
   Service(const Service&) = delete;
   Service& operator=(const Service&) = delete;
@@ -323,10 +331,11 @@ class Service final {
       bool is_termina,
       std::string* failure_reason);
 
-  // Prepares the GPU shader disk cache directory and if necessary erases
-  // old caches for all VMs. Returns the prepared path.
-  base::FilePath PrepareVmGpuCachePath(const std::string& owner_id,
-                                       const std::string& vm_name);
+  // Prepares the GPU shader disk cache directories and if necessary erases
+  // old caches for all VMs. Returns the prepared paths.
+  VMGpuCacheSpec PrepareVmGpuCachePaths(const std::string& owner_id,
+                                        const std::string& vm_name,
+                                        bool enable_render_server);
 
   // Resource allocators for VMs.
   VsockCidPool vsock_cid_pool_;
