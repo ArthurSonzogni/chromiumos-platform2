@@ -69,6 +69,7 @@ enum ChromeOSError {
     FailedSetupContainerUser(SetUpLxdContainerUserResponse_Status, String),
     FailedSharePath(String),
     FailedStartContainerStatus(StartLxdContainerResponse_Status, String),
+    FailedLxdContainerStarting(LxdContainerStartingSignal_Status, String),
     FailedStartLxdProgressSignal(StartLxdProgressSignal_Status, String),
     FailedStartLxdStatus(StartLxdResponse_Status, String),
     FailedStopVm { vm_name: String, reason: String },
@@ -139,6 +140,9 @@ impl fmt::Display for ChromeOSError {
             }
             FailedSharePath(reason) => write!(f, "failed to share path with vm: {}", reason),
             FailedStartContainerStatus(s, reason) => {
+                write!(f, "failed to start container: `{:?}`: {}", s, reason)
+            }
+            FailedLxdContainerStarting(s, reason) => {
                 write!(f, "failed to start container: `{:?}`: {}", s, reason)
             }
             FailedStartLxdProgressSignal(s, reason) => {
@@ -1343,16 +1347,22 @@ impl Methods {
             })
             .collect();
 
+        let tremplin_timeout = if features.timeout == 0 {
+            DEFAULT_TIMEOUT_MS
+        } else {
+            features.timeout as i32 * 1_000
+        };
+
         // Send a protobuf request with the FDs.
         let response: StartVmResponse =
-            self.sync_protobus_timeout(message, &request, &owned_fds, DEFAULT_TIMEOUT_MS)?;
+            self.sync_protobus_timeout(message, &request, &owned_fds, tremplin_timeout)?;
 
         match response.status {
             VmStatus::VM_STATUS_STARTING => {
                 assert!(response.success);
                 if start_termina {
                     tremplin_started.wait_with_filter(
-                        DEFAULT_TIMEOUT_MS,
+                        tremplin_timeout,
                         |s: &TremplinStartedSignal| {
                             s.vm_name == vm_name && s.owner_id == user_id_hash
                         },
@@ -1613,11 +1623,14 @@ impl Methods {
         user_id_hash: &str,
         container_name: &str,
         source: ContainerSource,
+        timeout: Option<i32>,
     ) -> Result<(), Box<dyn Error>> {
         let mut request = CreateLxdContainerRequest::new();
         request.vm_name = vm_name.to_owned();
         request.container_name = container_name.to_owned();
         request.owner_id = user_id_hash.to_owned();
+
+        let timeout = timeout.map(|x| x * 1_000).unwrap_or(DEFAULT_TIMEOUT_MS);
         match source {
             ContainerSource::ImageServer {
                 image_alias,
@@ -1652,7 +1665,7 @@ impl Methods {
                 let signal: LxdContainerCreatedSignal = self.protobus_wait_for_signal_timeout(
                     VM_CICERONE_INTERFACE,
                     LXD_CONTAINER_CREATED_SIGNAL,
-                    DEFAULT_TIMEOUT_MS,
+                    timeout,
                 )?;
                 match signal.status {
                     CREATED => Ok(()),
@@ -1672,12 +1685,15 @@ impl Methods {
         user_id_hash: &str,
         container_name: &str,
         privilege_level: StartLxdContainerRequest_PrivilegeLevel,
+        timeout: Option<i32>,
     ) -> Result<(), Box<dyn Error>> {
         let mut request = StartLxdContainerRequest::new();
         request.vm_name = vm_name.to_owned();
         request.container_name = container_name.to_owned();
         request.owner_id = user_id_hash.to_owned();
         request.privilege_level = privilege_level;
+
+        let timeout = timeout.map(|x| x * 1_000).unwrap_or(DEFAULT_TIMEOUT_MS);
 
         let response: StartLxdContainerResponse = self.sync_protobus(
             Message::new_method_call(
@@ -1695,14 +1711,27 @@ impl Methods {
             // boot. It's a long running operation and when it happens it's returned in lieu of
             // |STARTING|. It makes sense to treat them the same way.
             STARTING | REMAPPING => {
-                // TODO: listen for signal before calling the D-Bus method.
-                let _signal: cicerone_service::ContainerStartedSignal = self
-                    .protobus_wait_for_signal_timeout(
-                        VM_CICERONE_INTERFACE,
-                        CONTAINER_STARTED_SIGNAL,
-                        DEFAULT_TIMEOUT_MS,
-                    )?;
-                Ok(())
+                use self::LxdContainerStartingSignal_Status::*;
+                let container_started = ProtobusSignalWatcher::new(
+                    self.connection.connection.as_ref(),
+                    VM_CICERONE_INTERFACE,
+                    LXD_CONTAINER_STARTING_SIGNAL,
+                )?;
+                let signal = container_started.wait_with_filter(
+                    timeout,
+                    |s: &LxdContainerStartingSignal| {
+                        s.vm_name == vm_name
+                            && s.owner_id == user_id_hash
+                            && s.container_name == container_name
+                            && s.status != STARTING
+                    },
+                )?;
+                match signal.status {
+                    STARTED => Ok(()),
+                    _ => {
+                        Err(FailedLxdContainerStarting(signal.status, signal.failure_reason).into())
+                    }
+                }
             }
             RUNNING => Ok(()),
             _ => Err(FailedStartContainerStatus(response.status, response.failure_reason).into()),
@@ -2221,13 +2250,14 @@ impl Methods {
         user_id_hash: &str,
         container_name: &str,
         source: ContainerSource,
+        timeout: Option<i32>,
     ) -> Result<(), Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         if self.is_plugin_vm(vm_name, user_id_hash)? {
             return Err(NotAvailableForPluginVm.into());
         }
 
-        self.create_container(vm_name, user_id_hash, container_name, source)
+        self.create_container(vm_name, user_id_hash, container_name, source, timeout)
     }
 
     pub fn container_start(
@@ -2236,13 +2266,20 @@ impl Methods {
         user_id_hash: &str,
         container_name: &str,
         privilege_level: StartLxdContainerRequest_PrivilegeLevel,
+        timeout: Option<i32>,
     ) -> Result<(), Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         if self.is_plugin_vm(vm_name, user_id_hash)? {
             return Err(NotAvailableForPluginVm.into());
         }
 
-        self.start_container(vm_name, user_id_hash, container_name, privilege_level)
+        self.start_container(
+            vm_name,
+            user_id_hash,
+            container_name,
+            privilege_level,
+            timeout,
+        )
     }
 
     pub fn container_setup_user(

@@ -713,6 +713,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "is the container privileged. only takes effect on boards that support privileged containers",
             "true / false",
         );
+        opts.optopt("", "timeout", "seconds to wait until timeout.", "PARAM");
         let matches = opts
             .parse(self.args)
             .map_err(|_| ExpectedPrivilegedFlagValue)?;
@@ -726,6 +727,8 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             },
             None => StartLxdContainerRequest_PrivilegeLevel::UNCHANGED,
         };
+
+        let timeout = matches.opt_str("timeout").map(|x| x.parse()).transpose()?;
 
         let required_args = &matches.free;
         let (vm_name, container_name, source) = match required_args.len() {
@@ -772,9 +775,13 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             Some(end) => &email[..end],
         };
 
-        try_command!(self
-            .methods
-            .container_create(vm_name, &user_id_hash, container_name, source));
+        try_command!(self.methods.container_create(
+            vm_name,
+            &user_id_hash,
+            container_name,
+            source,
+            timeout
+        ));
         try_command!(self.methods.container_setup_user(
             vm_name,
             &user_id_hash,
@@ -789,7 +796,8 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             vm_name,
             &user_id_hash,
             container_name,
-            privilege_level
+            privilege_level,
+            timeout
         ));
 
         try_command!(self
@@ -915,7 +923,7 @@ const USAGE: &str = r#"
      list |
      share <vm name> <path> |
      unshare <vm name> <path> |
-     container <vm name> <container name> [ (<image server> <image alias>) | (<rootfs path> <metadata path>)] [ --privileged <true/false> ]
+     container <vm name> <container name> [ (<image server> <image alias>) | (<rootfs path> <metadata path>)] [--privileged <true/false>] [--timeout PARAM]
      usb-attach <vm name> <bus>:<device> |
      usb-detach <vm name> <port> |
      usb-list <vm name> |
@@ -1400,6 +1408,11 @@ mod tests {
             if let Ok(()) = Vmc.run(&mut methods, args, &environ) {
                 panic!("test args should have failed: {:?}", args)
             }
+        }
+
+        let args = &["vmc", "container", "termina", "a", "--timeout", "600"];
+        if let Err(e) = Vmc.run(&mut methods, args, &environ) {
+            panic!("test args failed: {:?}: {}", args, e)
         }
     }
 }
