@@ -103,8 +103,8 @@ bool SupplicantProcessProxy::CreateInterface(const KeyValueStore& args,
   brillo::ErrorPtr error;
   if (!supplicant_proxy_->CreateInterface(dict, &path, &error)) {
     // Interface might already been created by wpasupplicant.
-    LOG(ERROR) << "Failed to create interface: " << error->GetCode() << " "
-               << error->GetMessage();
+    LOG(INFO) << "Failed to create interface: " << error->GetCode() << " "
+              << error->GetMessage();
     return false;
   }
   *rpc_identifier = path;
@@ -122,8 +122,9 @@ bool SupplicantProcessProxy::RemoveInterface(
 
   brillo::ErrorPtr error;
   if (!supplicant_proxy_->RemoveInterface(rpc_identifier, &error)) {
-    LOG(ERROR) << "Failed to remove interface " << rpc_identifier.value()
-               << ": " << error->GetCode() << " " << error->GetMessage();
+    // Interface may already be removed by wpa_supplicant.
+    LOG(INFO) << "Failed to remove interface " << rpc_identifier.value() << ": "
+              << error->GetCode() << " " << error->GetMessage();
     return false;
   }
   return true;
@@ -140,8 +141,9 @@ bool SupplicantProcessProxy::GetInterface(const std::string& ifname,
   dbus::ObjectPath path;
   brillo::ErrorPtr error;
   if (!supplicant_proxy_->GetInterface(ifname, &path, &error)) {
-    LOG(ERROR) << "Failed to get interface " << ifname << ": "
-               << error->GetCode() << " " << error->GetMessage();
+    // Interface may not yet be available at the wpa_supplicant layer.
+    LOG(INFO) << "Failed to get interface " << ifname << ": "
+              << error->GetCode() << " " << error->GetMessage();
     return false;
   }
   *rpc_identifier = path;
