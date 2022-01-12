@@ -284,17 +284,6 @@ void ProcessInfo::Classify() {
   for (const auto& pit : daemon_processes_map) {
     groups_[PG_DAEMONS].push_back(pit.second);
   }
-
-  // If there's more than one GPU process, log their command-lines.
-  if (groups_[PG_GPU].size() > 1) {
-    LOG(ERROR) << "Unexpected number of GPU processes:";
-    for (const auto* process_node : groups_[PG_GPU]) {
-      LOG(ERROR) << "  GPU process with command-line: "
-                 << process_node->GetCmdlineString();
-    }
-  }
-  // Make sure there is at most one GPU process.
-  CHECK_LE(groups_[PG_GPU].size(), 1);
 }
 
 bool ProcessNode::RetrieveProcessData(const base::FilePath& procfs_root) {
