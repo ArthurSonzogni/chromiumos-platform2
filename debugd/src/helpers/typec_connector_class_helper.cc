@@ -24,15 +24,22 @@ struct VdoField {
 
 enum ProductType {
   kOther = 0,
-  kPD2PassiveCable = 1,
-  kPD2ActiveCable = 2,
-  kPD2AMA = 3,
-  kPD3PassiveCable = 4,
-  kPD3ActiveCable = 5,
-  kPD3VPD = 6,
-  kPD3UFP = 7,
-  kPD3DFP = 8,
-  kPD3DRD = 9,
+  kPD20PassiveCable = 1,
+  kPD20ActiveCable = 2,
+  kPD20AMA = 3,
+  kPD30PassiveCable = 4,
+  kPD30ActiveCable = 5,
+  kPD30AMA = 6,
+  kPD30VPD = 7,
+  kPD30UFP = 8,
+  kPD30DFP = 9,
+  kPD30DRD = 10,
+  kPD31PassiveCable = 11,
+  kPD31ActiveCable = 12,
+  kPD31VPD = 13,
+  kPD31UFP = 14,
+  kPD31DFP = 15,
+  kPD31DRD = 16,
 };
 
 constexpr char kTypecSysfs[] = "/sys/class/typec";
@@ -47,18 +54,26 @@ constexpr uint32_t kPDUFPProductTypeMask = 0x38000000;
 constexpr uint32_t kPDDFPProductTypeMask = 0x03800000;
 
 // Expected id_header field results.
-constexpr uint32_t kPD2PassiveCableComp = 0x20000000;
-constexpr uint32_t kPD2ActiveCableComp = 0x18000000;
-constexpr uint32_t kPD2AMAComp = 0x28000000;
-constexpr uint32_t kPD3PassiveCableComp = 0x18000000;
-constexpr uint32_t kPD3ActiveCableComp = 0x20000000;
-constexpr uint32_t kPD3VPDComp = 0x30000000;
-constexpr uint32_t kPD3HubComp = 0x08000000;
-constexpr uint32_t kPD3PeripheralComp = 0x10000000;
-constexpr uint32_t kPD3PSDComp = 0x18000000;
-constexpr uint32_t kPD3DFPHubComp = 0x00800000;
-constexpr uint32_t kPD3DFPHostComp = 0x01000000;
-constexpr uint32_t kPD3PowerBrickComp = 0x01800000;
+constexpr uint32_t kPD20PassiveCableComp = 0x20000000;
+constexpr uint32_t kPD20ActiveCableComp = 0x18000000;
+constexpr uint32_t kPD20AMAComp = 0x28000000;
+constexpr uint32_t kPD30PassiveCableComp = 0x18000000;
+constexpr uint32_t kPD30ActiveCableComp = 0x20000000;
+constexpr uint32_t kPD30AMAComp = 0x28000000;
+constexpr uint32_t kPD30VPDComp = 0x30000000;
+constexpr uint32_t kPD30HubComp = 0x08000000;
+constexpr uint32_t kPD30PeripheralComp = 0x10000000;
+constexpr uint32_t kPD30DFPHubComp = 0x00800000;
+constexpr uint32_t kPD30DFPHostComp = 0x01000000;
+constexpr uint32_t kPD30PowerBrickComp = 0x01800000;
+constexpr uint32_t kPD31PassiveCableComp = 0x18000000;
+constexpr uint32_t kPD31ActiveCableComp = 0x20000000;
+constexpr uint32_t kPD31VPDComp = 0x30000000;
+constexpr uint32_t kPD31HubComp = 0x08000000;
+constexpr uint32_t kPD31PeripheralComp = 0x10000000;
+constexpr uint32_t kPD31DFPHubComp = 0x00800000;
+constexpr uint32_t kPD31DFPHostComp = 0x01000000;
+constexpr uint32_t kPD31PowerBrickComp = 0x01800000;
 
 // VDO descriptions from the USB PD Revision 2.0 and 3.1 specifications.
 const std::vector<VdoField> kCertStatVDO = {{0, 0xffffffff, "XID"}};
@@ -67,7 +82,7 @@ const std::vector<VdoField> kIDHeaderVDO = {{0, 0x0000ffff, "Vendor ID"}};
 
 const std::vector<VdoField> kProductVDO = {{16, 0xffff0000, "Product ID"}};
 
-const std::vector<VdoField> kPD2PassiveVDO = {
+const std::vector<VdoField> kPD20PassiveVDO = {
     {0, 0x00000007, "USB Speed"},
     {3, 0x00000008, "Reserved"},
     {4, 0x00000010, "Vbus Through Cable"},
@@ -85,7 +100,7 @@ const std::vector<VdoField> kPD2PassiveVDO = {
     {28, 0xf0000000, "HW Version"},
 };
 
-const std::vector<VdoField> kPD2ActiveVDO = {
+const std::vector<VdoField> kPD20ActiveVDO = {
     {0, 0x00000007, "USB Speed"},
     {3, 0x00000008, "SOP'' Controller Present"},
     {4, 0x00000010, "Vbus Through Cable"},
@@ -103,7 +118,7 @@ const std::vector<VdoField> kPD2ActiveVDO = {
     {28, 0xf0000000, "HW Version"},
 };
 
-const std::vector<VdoField> kPD2AMAVDO = {
+const std::vector<VdoField> kPD20AMAVDO = {
     {0, 0x00000007, "USB SS Signaling Support"},
     {3, 0x00000008, "Vbus Required"},
     {4, 0x00000010, "Vconn Required"},
@@ -112,12 +127,12 @@ const std::vector<VdoField> kPD2AMAVDO = {
     {9, 0x00000200, "SSRX1 Directionality Support"},
     {10, 0x00000400, "SSTX2 Directionality Support"},
     {11, 0x00000800, "SSTX1 Directionality Support"},
-    {12, 0x00fff000, "Resrved"},
+    {12, 0x00fff000, "Reserved"},
     {24, 0x0f000000, "Firmware Version"},
     {28, 0xf0000000, "Hardware Version"},
 };
 
-const std::vector<VdoField> kPD3PassiveVDO = {
+const std::vector<VdoField> kPD30PassiveVDO = {
     {0, 0x00000007, "USB Speed"},
     {3, 0x00000018, "Reserved"},
     {5, 0x00000060, "Vbus Current Handling"},
@@ -125,7 +140,7 @@ const std::vector<VdoField> kPD3PassiveVDO = {
     {9, 0x00000600, "Maximum Vbus Voltage"},
     {11, 0x00001800, "Cable Termination Type"},
     {13, 0x0001e000, "Cable Latency"},
-    {17, 0x00020000, "EPR Mode Cable"},
+    {17, 0x00020000, "Reserved"},
     {18, 0x000c0000, "USB Type-C Plug to USB Type"},
     {20, 0x00100000, "Reserved"},
     {21, 0x00e00000, "VDO Version"},
@@ -133,7 +148,7 @@ const std::vector<VdoField> kPD3PassiveVDO = {
     {28, 0xf0000000, "HW Version"},
 };
 
-const std::vector<VdoField> kPD3ActiveVDO1 = {
+const std::vector<VdoField> kPD30ActiveVDO1 = {
     {0, 0x00000007, "USB Speed"},
     {3, 0x00000008, "SOP'' Controller Present"},
     {4, 0x00000010, "Vbus Through Cable"},
@@ -143,15 +158,15 @@ const std::vector<VdoField> kPD3ActiveVDO1 = {
     {9, 0x00000600, "Maximum Vbus Voltage"},
     {11, 0x00001800, "Cable Termination Type"},
     {13, 0x0001e000, "Cable Latency"},
-    {17, 0x00020000, "EPR Mode Cable"},
-    {18, 0x000c0000, "USB Type-C Plug to USB Type"},
+    {17, 0x00020000, "Reserved"},
+    {18, 0x000c0000, "Connector Type"},
     {20, 0x00100000, "Reserved"},
     {21, 0x00e00000, "VDO Version"},
     {24, 0x0f000000, "Firmware Version"},
     {28, 0xf0000000, "HW Version"},
 };
 
-const std::vector<VdoField> kPD3ActiveVDO2 = {
+const std::vector<VdoField> kPD30ActiveVDO2 = {
     {0, 0x00000001, "USB Gen"},
     {1, 0x00000002, "Reserved"},
     {2, 0x00000004, "Optically Insulated Active Cable"},
@@ -169,7 +184,14 @@ const std::vector<VdoField> kPD3ActiveVDO2 = {
     {24, 0xff000000, "Max Operating Tempurature"},
 };
 
-const std::vector<VdoField> kPD3VPDVDO = {
+const std::vector<VdoField> kPD30AMAVDO = {
+    {0, 0x00000007, "USB Highest Speed"}, {3, 0x00000008, "Vbus Required"},
+    {4, 0x00000010, "Vconn Required"},    {5, 0x000000e0, "Vconn Power"},
+    {8, 0x001fff00, "Reserved"},          {21, 0x00e00000, "VDO Version"},
+    {24, 0x0f000000, "Firmware Version"}, {28, 0xf0000000, "Hardware Version"},
+};
+
+const std::vector<VdoField> kPD30VPDVDO = {
     {0, 0x00000001, "Charge Through Support"},
     {1, 0x0000007e, "Ground Impedance"},
     {7, 0x00001f80, "Vbus Impedance"},
@@ -182,7 +204,90 @@ const std::vector<VdoField> kPD3VPDVDO = {
     {28, 0xf0000000, "HW Version"},
 };
 
-const std::vector<VdoField> kPD3UFPVDO = {
+const std::vector<VdoField> kPD30UFPVDO1 = {
+    {0, 0x00000007, "USB Highest Speed"}, {3, 0x00000038, "Alternate Modes"},
+    {6, 0x00ffffc0, "Reserved"},          {24, 0x0f000000, "Device Capability"},
+    {28, 0x10000000, "Reserved"},         {29, 0xe0000000, "UFP VDO Version"},
+};
+
+const std::vector<VdoField> kPD30UFPVDO2 = {
+    {0, 0x0000007f, "USB3 Max Power"},  {7, 0x00003f80, "USB3 Min Power"},
+    {14, 0x0000c000, "Reserved"},       {16, 0x007f0000, "USB4 Max Power"},
+    {23, 0x3f800000, "USB4 Min Power"}, {30, 0xc0000000, "Reserved"},
+};
+
+const std::vector<VdoField> kPD30DFPVDO = {
+    {0, 0x0000001f, "Port Number"},      {5, 0x00ffffe0, "Reserved"},
+    {24, 0x07000000, "Host Capability"}, {27, 0x18000000, "Reserved"},
+    {29, 0xe0000000, "DFP VDO Version"},
+};
+
+const std::vector<VdoField> kPD31PassiveVDO = {
+    {0, 0x00000007, "USB Speed"},
+    {3, 0x00000018, "Reserved"},
+    {5, 0x00000060, "Vbus Current Handling"},
+    {7, 0x00000180, "Reserved"},
+    {9, 0x00000600, "Maximum Vbus Voltage"},
+    {11, 0x00001800, "Cable Termination Type"},
+    {13, 0x0001e000, "Cable Latency"},
+    {17, 0x00020000, "EPR Mode Cable"},
+    {18, 0x000c0000, "USB Type-C Plug to USB Type"},
+    {20, 0x00100000, "Reserved"},
+    {21, 0x00e00000, "VDO Version"},
+    {24, 0x0f000000, "Firmware Version"},
+    {28, 0xf0000000, "HW Version"},
+};
+
+const std::vector<VdoField> kPD31ActiveVDO1 = {
+    {0, 0x00000007, "USB Speed"},
+    {3, 0x00000008, "SOP'' Controller Present"},
+    {4, 0x00000010, "Vbus Through Cable"},
+    {5, 0x00000060, "Vbus Current Handling"},
+    {7, 0x00000080, "SBU Type"},
+    {8, 0x00000100, "SBU Supported"},
+    {9, 0x00000600, "Maximum Vbus Voltage"},
+    {11, 0x00001800, "Cable Termination Type"},
+    {13, 0x0001e000, "Cable Latency"},
+    {17, 0x00020000, "EPR Mode Cable"},
+    {18, 0x000c0000, "USB Type-C Plug to USB Type"},
+    {20, 0x00100000, "Reserved"},
+    {21, 0x00e00000, "VDO Version"},
+    {24, 0x0f000000, "Firmware Version"},
+    {28, 0xf0000000, "HW Version"},
+};
+
+const std::vector<VdoField> kPD31ActiveVDO2 = {
+    {0, 0x00000001, "USB Gen"},
+    {1, 0x00000002, "Reserved"},
+    {2, 0x00000004, "Optically Insulated Active Cable"},
+    {3, 0x00000008, "USB Lanes Supported"},
+    {4, 0x00000010, "USB 3.2 Supported"},
+    {5, 0x00000020, "USB 2.0 Supported"},
+    {6, 0x000000c00, "USB 2.0 Hub Hops Command"},
+    {8, 0x00000100, "USB4 Supported"},
+    {9, 0x00000200, "Active Element"},
+    {10, 0x00000400, "Physical Connection"},
+    {11, 0x00000800, "U3 to U0 Transition Mode"},
+    {12, 0x00007000, "U3/CLd Power"},
+    {15, 0x00008000, "Reserved"},
+    {16, 0x00ff0000, "Shutdown Tempurature"},
+    {24, 0xff000000, "Max Operating Tempurature"},
+};
+
+const std::vector<VdoField> kPD31VPDVDO = {
+    {0, 0x00000001, "Charge Through Support"},
+    {1, 0x0000007e, "Ground Impedance"},
+    {7, 0x00001f80, "Vbus Impedance"},
+    {13, 0x00002000, "Reserved"},
+    {14, 0x00004000, "Charge Through Current Support"},
+    {15, 0x00018000, "Maximum Vbus Voltage"},
+    {17, 0x001e0000, "Reserved"},
+    {21, 0x00e00000, "VDO Version"},
+    {24, 0x0f000000, "Firmware Version"},
+    {28, 0xf0000000, "HW Version"},
+};
+
+const std::vector<VdoField> kPD31UFPVDO = {
     {0, 0x00000007, "USB Highest Speed"},
     {3, 0x00000038, "Alternate Modes"},
     {6, 0x00000040, "Vbus Required"},
@@ -195,7 +300,7 @@ const std::vector<VdoField> kPD3UFPVDO = {
     {29, 0xe0000000, "UFP VDO Version"},
 };
 
-const std::vector<VdoField> kPD3DFPVDO = {
+const std::vector<VdoField> kPD31DFPVDO = {
     {0, 0x0000001f, "Port Number"},
     {5, 0x003fffe0, "Reserved"},
     {22, 0x00c00000, "Connector Type (Legacy)"},
@@ -328,7 +433,7 @@ ProductType GetPartnerProductType(const base::FilePath& dir) {
                               &pd_revision_str))
     return ProductType::kOther;
 
-  if (pd_revision_str.empty())
+  if (pd_revision_str.length() < 3)
     return ProductType::kOther;
 
   uint32_t id_header;
@@ -336,41 +441,66 @@ ProductType GetPartnerProductType(const base::FilePath& dir) {
     return ProductType::kOther;
 
   ProductType ret = ProductType::kOther;
-  if (pd_revision_str[0] == '2') {
+  if (pd_revision_str[0] == '2' && pd_revision_str[2] == '0') {
     // Alternate Mode Adapter (AMA) is the only partner product type in the
     // USB PD 2.0 specification
-    if ((id_header & kPDUFPProductTypeMask) == kPD2AMAComp)
-      return ProductType::kPD2AMA;
+    if ((id_header & kPDUFPProductTypeMask) == kPD20AMAComp)
+      return ProductType::kPD20AMA;
     else
       return ProductType::kOther;
-  } else if (pd_revision_str[0] == '3') {
+  } else if (pd_revision_str[0] == '3' && pd_revision_str[2] == '0') {
     // In USB PD 3.0 a partner can be an upstream facing port (UFP),
     // downstream facing port (DFP), or a dual-role data port (DRD).
     // Information about UFP/DFP are in different fields, so they are checked
     // separately then compared to determine a partner's product type.
-
+    // Separate from UFP/DFP, they can support AMA/VPD as a UFP type.
     bool ufp_supported = false;
-    if ((id_header & kPDUFPProductTypeMask) == kPD3HubComp)
+    if ((id_header & kPDUFPProductTypeMask) == kPD30HubComp)
       ufp_supported = true;
-    else if ((id_header & kPDUFPProductTypeMask) == kPD3PeripheralComp)
+    else if ((id_header & kPDUFPProductTypeMask) == kPD30PeripheralComp)
       ufp_supported = true;
-    else if ((id_header & kPDUFPProductTypeMask) == kPD3PSDComp)
-      ufp_supported = true;
+    else if ((id_header & kPDUFPProductTypeMask) == kPD30AMAComp)
+      return ProductType::kPD30AMA;
+    else if ((id_header & kPDUFPProductTypeMask) == kPD30VPDComp)
+      return ProductType::kPD30VPD;
 
     bool dfp_supported = false;
-    if ((id_header & kPDDFPProductTypeMask) == kPD3DFPHubComp)
+    if ((id_header & kPDDFPProductTypeMask) == kPD30DFPHubComp)
       dfp_supported = true;
-    else if ((id_header & kPDDFPProductTypeMask) == kPD3DFPHostComp)
+    else if ((id_header & kPDDFPProductTypeMask) == kPD30DFPHostComp)
       dfp_supported = true;
-    else if ((id_header & kPDDFPProductTypeMask) == kPD3PowerBrickComp)
+    else if ((id_header & kPDDFPProductTypeMask) == kPD30PowerBrickComp)
       dfp_supported = true;
 
     if (ufp_supported && dfp_supported)
-      ret = ProductType::kPD3DRD;
+      ret = ProductType::kPD30DRD;
     else if (ufp_supported)
-      ret = ProductType::kPD3UFP;
+      ret = ProductType::kPD30UFP;
     else if (dfp_supported)
-      ret = ProductType::kPD3DFP;
+      ret = ProductType::kPD30DFP;
+  } else if (pd_revision_str[0] == '3' && pd_revision_str[2] == '1') {
+    // Similar to USB PD 3.0, USB PD 3.1 can have a partner which is both UFP
+    // and DFP (DRD).
+    bool ufp_supported = false;
+    if ((id_header & kPDUFPProductTypeMask) == kPD31HubComp)
+      ufp_supported = true;
+    else if ((id_header & kPDUFPProductTypeMask) == kPD31PeripheralComp)
+      ufp_supported = true;
+
+    bool dfp_supported = false;
+    if ((id_header & kPDDFPProductTypeMask) == kPD31DFPHubComp)
+      dfp_supported = true;
+    else if ((id_header & kPDDFPProductTypeMask) == kPD31DFPHostComp)
+      dfp_supported = true;
+    else if ((id_header & kPDDFPProductTypeMask) == kPD31PowerBrickComp)
+      dfp_supported = true;
+
+    if (ufp_supported && dfp_supported)
+      ret = ProductType::kPD31DRD;
+    else if (ufp_supported)
+      ret = ProductType::kPD31UFP;
+    else if (dfp_supported)
+      ret = ProductType::kPD31DFP;
   }
   return ret;
 }
@@ -383,30 +513,38 @@ ProductType GetCableProductType(const base::FilePath& dir) {
                               &pd_revision_str))
     return ProductType::kOther;
 
-  if (pd_revision_str.empty())
+  if (pd_revision_str.length() < 3)
     return ProductType::kOther;
 
   uint32_t id_header;
   if (!ReadVdo(dir.Append("identity").Append("id_header"), &id_header))
     return ProductType::kOther;
 
-  if (pd_revision_str[0] == '2') {
+  if (pd_revision_str[0] == '2' && pd_revision_str[2] == '0') {
     // USB PD 2.0 only supports active and passive cables.
-    if ((id_header & kPDUFPProductTypeMask) == kPD2PassiveCableComp)
-      return ProductType::kPD2PassiveCable;
-    else if ((id_header & kPDUFPProductTypeMask) == kPD2ActiveCableComp)
-      return ProductType::kPD2ActiveCable;
+    if ((id_header & kPDUFPProductTypeMask) == kPD20PassiveCableComp)
+      return ProductType::kPD20PassiveCable;
+    else if ((id_header & kPDUFPProductTypeMask) == kPD20ActiveCableComp)
+      return ProductType::kPD20ActiveCable;
     else
       return ProductType::kOther;
-  } else if (pd_revision_str[0] == '3') {
-    // USB PD 3.0 supports active cables, passive cables and Vconn Powered
+  } else if (pd_revision_str[0] == '3' && pd_revision_str[2] == '0') {
+    // USB PD 3.0 supports only active and passive cables.
+    if ((id_header & kPDUFPProductTypeMask) == kPD30PassiveCableComp)
+      return ProductType::kPD30PassiveCable;
+    else if ((id_header & kPDUFPProductTypeMask) == kPD30ActiveCableComp)
+      return ProductType::kPD30ActiveCable;
+    else
+      return ProductType::kOther;
+  } else if (pd_revision_str[0] == '3' && pd_revision_str[2] == '1') {
+    // USB PD 3.1 supports active cables, passive cables and Vconn Powered
     // Devices (VPD) definitions from id_header.
-    if ((id_header & kPDUFPProductTypeMask) == kPD3PassiveCableComp)
-      return ProductType::kPD3PassiveCable;
-    else if ((id_header & kPDUFPProductTypeMask) == kPD3ActiveCableComp)
-      return ProductType::kPD3ActiveCable;
-    else if ((id_header & kPDUFPProductTypeMask) == kPD3VPDComp)
-      return ProductType::kPD3VPD;
+    if ((id_header & kPDUFPProductTypeMask) == kPD31PassiveCableComp)
+      return ProductType::kPD31PassiveCable;
+    else if ((id_header & kPDUFPProductTypeMask) == kPD31ActiveCableComp)
+      return ProductType::kPD31ActiveCable;
+    else if ((id_header & kPDUFPProductTypeMask) == kPD31VPDComp)
+      return ProductType::kPD31VPD;
     else
       return ProductType::kOther;
   } else {
@@ -432,29 +570,62 @@ void PrintPartnerIdentity(const base::FilePath& partner, int indent) {
 
   ProductType product_type = GetPartnerProductType(partner);
   switch (product_type) {
-    case ProductType::kPD2AMA:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD2AMAVDO, false,
+    case ProductType::kPD20AMA:
+      PrintVdo(identity.Append("product_type_vdo1"), kPD20AMAVDO, false,
                indent + 2);
       PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
       PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
       break;
-    case ProductType::kPD3UFP:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD3UFPVDO, false,
+    case ProductType::kPD30VPD:
+      PrintVdo(identity.Append("product_type_vdo1"), kPD30VPDVDO, false,
                indent + 2);
       PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
       PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
       break;
-    case ProductType::kPD3DFP:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD3DFPVDO, false,
+    case ProductType::kPD30AMA:
+      PrintVdo(identity.Append("product_type_vdo1"), kPD30AMAVDO, false,
                indent + 2);
       PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
       PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
       break;
-    case ProductType::kPD3DRD:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD3UFPVDO, false,
+    case ProductType::kPD30UFP:
+      PrintVdo(identity.Append("product_type_vdo1"), kPD30UFPVDO1, false,
+               indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), kPD30UFPVDO2, false,
+               indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      break;
+    case ProductType::kPD30DFP:
+      PrintVdo(identity.Append("product_type_vdo1"), kPD30DFPVDO, false,
                indent + 2);
       PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
-      PrintVdo(identity.Append("product_type_vdo3"), kPD3DFPVDO, false,
+      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      break;
+    case ProductType::kPD30DRD:
+      PrintVdo(identity.Append("product_type_vdo1"), kPD30UFPVDO1, false,
+               indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), kPD30UFPVDO2, false,
+               indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), kPD30DFPVDO, false,
+               indent + 2);
+      break;
+    case ProductType::kPD31UFP:
+      PrintVdo(identity.Append("product_type_vdo1"), kPD31UFPVDO, false,
+               indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      break;
+    case ProductType::kPD31DFP:
+      PrintVdo(identity.Append("product_type_vdo1"), kPD31DFPVDO, false,
+               indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      break;
+    case ProductType::kPD31DRD:
+      PrintVdo(identity.Append("product_type_vdo1"), kPD31UFPVDO, false,
+               indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), kPD31DFPVDO, false,
                indent + 2);
       break;
     default:
@@ -480,33 +651,46 @@ void PrintCableIdentity(const base::FilePath& cable, int indent) {
 
   ProductType product_type = GetCableProductType(cable);
   switch (product_type) {
-    case ProductType::kPD2PassiveCable:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD2PassiveVDO, false,
+    case ProductType::kPD20PassiveCable:
+      PrintVdo(identity.Append("product_type_vdo1"), kPD20PassiveVDO, false,
                indent + 2);
       PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
       PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
       break;
-    case ProductType::kPD2ActiveCable:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD2ActiveVDO, false,
+    case ProductType::kPD20ActiveCable:
+      PrintVdo(identity.Append("product_type_vdo1"), kPD20ActiveVDO, false,
                indent + 2);
       PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
       PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
       break;
-    case ProductType::kPD3PassiveCable:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD3PassiveVDO, false,
+    case ProductType::kPD30PassiveCable:
+      PrintVdo(identity.Append("product_type_vdo1"), kPD30PassiveVDO, false,
                indent + 2);
       PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
       PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
       break;
-    case ProductType::kPD3ActiveCable:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD3ActiveVDO1, false,
+    case ProductType::kPD30ActiveCable:
+      PrintVdo(identity.Append("product_type_vdo1"), kPD30ActiveVDO1, false,
                indent + 2);
-      PrintVdo(identity.Append("product_type_vdo2"), kPD3ActiveVDO2, false,
+      PrintVdo(identity.Append("product_type_vdo2"), kPD30ActiveVDO2, false,
                indent + 2);
       PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
       break;
-    case ProductType::kPD3VPD:
-      PrintVdo(identity.Append("product_type_vdo1"), kPD3VPDVDO, false,
+    case ProductType::kPD31PassiveCable:
+      PrintVdo(identity.Append("product_type_vdo1"), kPD31PassiveVDO, false,
+               indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      break;
+    case ProductType::kPD31ActiveCable:
+      PrintVdo(identity.Append("product_type_vdo1"), kPD31ActiveVDO1, false,
+               indent + 2);
+      PrintVdo(identity.Append("product_type_vdo2"), kPD31ActiveVDO2, false,
+               indent + 2);
+      PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
+      break;
+    case ProductType::kPD31VPD:
+      PrintVdo(identity.Append("product_type_vdo1"), kPD31VPDVDO, false,
                indent + 2);
       PrintVdo(identity.Append("product_type_vdo2"), {}, false, indent + 2);
       PrintVdo(identity.Append("product_type_vdo3"), {}, false, indent + 2);
