@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_H_
-#define POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_UDEV_H_
+#define POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_UDEV_H_
 
 #include <memory>
 #include <string>
@@ -33,8 +33,8 @@ class UdevInterface;
 
 // Concrete implementation of UserProximityWatcherInterface: detects proximity
 // sensors and reports proximity events.
-class UserProximityWatcher : public UserProximityWatcherInterface,
-                             public UdevSubsystemObserver {
+class UserProximityWatcherUdev : public UserProximityWatcherInterface,
+                                 public UdevSubsystemObserver {
  public:
   // Sensor type for proximity detection.
   enum class SensorType { UNKNOWN, SAR, ACTIVITY };
@@ -50,11 +50,11 @@ class UserProximityWatcher : public UserProximityWatcherInterface,
 
   void set_open_iio_events_func_for_testing(const OpenIioEventsFunc& f);
 
-  UserProximityWatcher();
-  UserProximityWatcher(const UserProximityWatcher&) = delete;
-  UserProximityWatcher& operator=(const UserProximityWatcher&) = delete;
+  UserProximityWatcherUdev();
+  UserProximityWatcherUdev(const UserProximityWatcherUdev&) = delete;
+  UserProximityWatcherUdev& operator=(const UserProximityWatcherUdev&) = delete;
 
-  ~UserProximityWatcher() override;
+  ~UserProximityWatcherUdev() override;
 
   // Returns true on success.
   bool Init(PrefsInterface* prefs,
@@ -146,4 +146,4 @@ class UserProximityWatcher : public UserProximityWatcherInterface,
 }  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_UDEV_H_

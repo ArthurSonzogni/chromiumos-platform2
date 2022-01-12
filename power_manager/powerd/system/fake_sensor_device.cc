@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/containers/contains.h>
 #include <base/logging.h>
 
 namespace power_manager::system {
@@ -43,6 +44,11 @@ void FakeSensorDevice::ResetSamplesObserverRemote(mojo::ReceiverId id) {
   samples_observers_.erase(it);
 }
 
+void FakeSensorDevice::ResetAllEventsObserverRemotes() {
+  events_observers_.Clear();
+  events_enabled_indices_.clear();
+}
+
 void FakeSensorDevice::OnSampleUpdated(
     const base::flat_map<int32_t, int64_t>& sample) {
   for (auto& samples_observer : samples_observers_)
@@ -50,8 +56,17 @@ void FakeSensorDevice::OnSampleUpdated(
 }
 
 void FakeSensorDevice::OnEventUpdated(cros::mojom::IioEventPtr event) {
-  for (auto& events_observer : events_observers_)
-    events_observer->OnEventUpdated(event.Clone());
+  if (events_observers_.empty()) {  // Wait until there's at least one observer.
+    events_.push_back(std::move(event));
+    return;
+  }
+
+  for (const auto& [id, enabled_indices] : events_enabled_indices_) {
+    if (!base::Contains(enabled_indices, event->channel))
+      continue;
+
+    events_observers_.Get(id)->OnEventUpdated(event.Clone());
+  }
 }
 
 void FakeSensorDevice::SetAttribute(std::string attr_name, std::string value) {
@@ -139,6 +154,11 @@ void FakeSensorDevice::StartReadingEvents(
     mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver> observer) {
   events_enabled_indices_[events_observers_.Add(std::move(observer))] =
       iio_event_indices;
+
+  for (int i = 0; i < events_.size(); ++i)
+    OnEventUpdated(std::move(events_[i]));
+
+  events_.clear();
 }
 
 }  // namespace power_manager::system

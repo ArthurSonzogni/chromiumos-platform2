@@ -31,6 +31,7 @@
 #include <cros_config/cros_config.h>
 #include <libec/charge_current_limit_set_command.h>
 #include <libec/ec_usb_endpoint.h>
+#include <libsar/sar_config_reader_delegate_impl.h>
 #include <metrics/metrics_library.h>
 #include <ml/dbus-proxies.h>
 
@@ -80,7 +81,8 @@
 #include "power_manager/powerd/system/thermal/thermal_device.h"
 #include "power_manager/powerd/system/thermal/thermal_device_factory.h"
 #include "power_manager/powerd/system/udev.h"
-#include "power_manager/powerd/system/user_proximity_watcher.h"
+#include "power_manager/powerd/system/user_proximity_watcher_mojo.h"
+#include "power_manager/powerd/system/user_proximity_watcher_udev.h"
 #include "power_manager/powerd/system/wilco_charge_controller_helper.h"
 
 namespace power_manager {
@@ -291,12 +293,25 @@ class DaemonDelegateImpl : public DaemonDelegate {
   }
 
   std::unique_ptr<system::UserProximityWatcherInterface>
-  CreateUserProximityWatcher(PrefsInterface* prefs,
-                             system::UdevInterface* udev,
-                             TabletMode initial_tablet_mode) override {
-    auto watcher = std::make_unique<system::UserProximityWatcher>();
+  CreateUserProximityWatcher(
+      PrefsInterface* prefs,
+      system::UdevInterface* udev,
+      TabletMode initial_tablet_mode,
+      system::SensorServiceHandler* sensor_service_handler) override {
     auto config = std::make_unique<brillo::CrosConfig>();
+
+// When |USE_IIOSERVICE_PROXIMITY| == true, proximity sensors are owned by
+// CrOS iioservice daemon. Powerd then needs to rely on iioservice to
+// facilitaete mojo IPC.
+#if USE_IIOSERVICE_PROXIMITY
+    auto watcher = std::make_unique<system::UserProximityWatcherMojo>(
+        prefs, std::move(config),
+        std::make_unique<libsar::SarConfigReaderDelegateImpl>(),
+        initial_tablet_mode, sensor_service_handler);
+#else   // !USE_IIOSERVICE_PROXIMITY
+    auto watcher = std::make_unique<system::UserProximityWatcherUdev>();
     watcher->Init(prefs, udev, std::move(config), initial_tablet_mode);
+#endif  // USE_IIOSERVICE_PROXIMITY
     return watcher;
   }
 

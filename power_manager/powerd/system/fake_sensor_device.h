@@ -27,6 +27,7 @@ class FakeSensorDevice : public cros::mojom::SensorDevice {
       const std::string& description = "");
 
   void ResetSamplesObserverRemote(mojo::ReceiverId id);
+  void ResetAllEventsObserverRemotes();
 
   void SetAttribute(std::string attr_name, std::string value);
 
@@ -74,6 +75,8 @@ class FakeSensorDevice : public cros::mojom::SensorDevice {
       events_enabled_indices_;
 
   mojo::ReceiverSet<cros::mojom::SensorDevice> receiver_set_;
+
+  std::vector<cros::mojom::IioEventPtr> events_;
 };
 
 }  // namespace power_manager::system

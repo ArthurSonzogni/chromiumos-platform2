@@ -411,9 +411,11 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     return std::move(passed_power_supply_);
   }
   std::unique_ptr<system::UserProximityWatcherInterface>
-  CreateUserProximityWatcher(PrefsInterface* prefs,
-                             system::UdevInterface* udev,
-                             TabletMode initial_tablet_mode) override {
+  CreateUserProximityWatcher(
+      PrefsInterface* prefs,
+      system::UdevInterface* udev,
+      TabletMode initial_tablet_mode,
+      system::SensorServiceHandler* sensor_service_handler) override {
     EXPECT_EQ(prefs_, prefs);
     EXPECT_EQ(udev_, udev);
     EXPECT_EQ(input_watcher_->GetTabletMode(), initial_tablet_mode);

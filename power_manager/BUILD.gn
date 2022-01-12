@@ -104,6 +104,7 @@ pkg_config("target_defaults") {
   defines = [
     "USE_CELLULAR=${use.cellular}",
     "USE_IIOSERVICE=${use.iioservice}",
+    "USE_IIOSERVICE_PROXIMITY=${use.iioservice_proximity}",
     "USE_QRTR=${use.qrtr}",
   ]
 
@@ -119,6 +120,7 @@ pkg_config("target_defaults") {
     "libec",
     "libml-client",
     "libmojo",
+    "libsar",
     "libudev",
     "mojo_service_manager",
     "re2",
@@ -218,6 +220,7 @@ static_library("libsystem") {
     "powerd/system/peripheral_battery_watcher.cc",
     "powerd/system/pluggable_internal_backlight.cc",
     "powerd/system/power_supply.cc",
+    "powerd/system/proximity_events_observer.cc",
     "powerd/system/rolling_average.cc",
     "powerd/system/sensor_service_handler.cc",
     "powerd/system/sensor_service_handler_observer.cc",
@@ -231,7 +234,8 @@ static_library("libsystem") {
     "powerd/system/thermal/thermal_device_factory.cc",
     "powerd/system/udev.cc",
     "powerd/system/usb_backlight.cc",
-    "powerd/system/user_proximity_watcher.cc",
+    "powerd/system/user_proximity_watcher_mojo.cc",
+    "powerd/system/user_proximity_watcher_udev.cc",
     "powerd/system/wake_on_dp_configurator.cc",
     "powerd/system/wakeup_device.cc",
     "powerd/system/wakeup_source_identifier.cc",
@@ -551,6 +555,7 @@ if (use.test) {
       "powerd/system/display/external_display_test.cc",
       "powerd/system/ec_keyboard_backlight_test.cc",
       "powerd/system/fake_light.cc",
+      "powerd/system/fake_proximity.cc",
       "powerd/system/fake_sensor_device.cc",
       "powerd/system/fake_sensor_service.cc",
       "powerd/system/input_watcher_test.cc",
@@ -560,6 +565,7 @@ if (use.test) {
       "powerd/system/peripheral_battery_watcher_test.cc",
       "powerd/system/pluggable_internal_backlight_test.cc",
       "powerd/system/power_supply_test.cc",
+      "powerd/system/proximity_events_observer_test.cc",
       "powerd/system/rolling_average_test.cc",
       "powerd/system/sensor_service_handler_test.cc",
       "powerd/system/suspend_configurator_test.cc",
@@ -567,7 +573,8 @@ if (use.test) {
       "powerd/system/tagged_device_test.cc",
       "powerd/system/thermal/cooling_device_test.cc",
       "powerd/system/thermal/thermal_device_factory_test.cc",
-      "powerd/system/user_proximity_watcher_test.cc",
+      "powerd/system/user_proximity_watcher_mojo_test.cc",
+      "powerd/system/user_proximity_watcher_udev_test.cc",
       "powerd/system/wakeup_device_test.cc",
       "powerd/system/wakeup_source_identifier_test.cc",
       "powerd/testing/test_environment.cc",
@@ -585,6 +592,7 @@ if (use.test) {
       ":libutil_test",
       "//common-mk/testrunner",
     ]
+    pkg_deps = [ "libsar_test_support" ]
   }
 
   executable("power_manager_policy_test") {

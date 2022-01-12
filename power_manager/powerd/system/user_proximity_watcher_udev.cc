@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/system/user_proximity_watcher.h"
+#include "power_manager/powerd/system/user_proximity_watcher_udev.h"
 
 #include <fcntl.h>
 #include <linux/iio/events.h>
@@ -56,24 +56,24 @@ int OpenIioFd(const base::FilePath& path) {
 
 }  // namespace
 
-const char UserProximityWatcher::kIioUdevSubsystem[] = "iio";
+const char UserProximityWatcherUdev::kIioUdevSubsystem[] = "iio";
 
-const char UserProximityWatcher::kIioUdevDevice[] = "iio_device";
+const char UserProximityWatcherUdev::kIioUdevDevice[] = "iio_device";
 
-void UserProximityWatcher::set_open_iio_events_func_for_testing(
+void UserProximityWatcherUdev::set_open_iio_events_func_for_testing(
     const OpenIioEventsFunc& f) {
   open_iio_events_func_ = f;
 }
 
-UserProximityWatcher::UserProximityWatcher()
+UserProximityWatcherUdev::UserProximityWatcherUdev()
     : open_iio_events_func_(base::BindRepeating(&OpenIioFd)) {}
 
-UserProximityWatcher::~UserProximityWatcher() {
+UserProximityWatcherUdev::~UserProximityWatcherUdev() {
   if (udev_)
     udev_->RemoveSubsystemObserver(kIioUdevSubsystem, this);
 }
 
-bool UserProximityWatcher::Init(
+bool UserProximityWatcherUdev::Init(
     PrefsInterface* prefs,
     UdevInterface* udev,
     std::unique_ptr<brillo::CrosConfigInterface> config,
@@ -105,7 +105,7 @@ bool UserProximityWatcher::Init(
   return true;
 }
 
-void UserProximityWatcher::HandleTabletModeChange(TabletMode mode) {
+void UserProximityWatcherUdev::HandleTabletModeChange(TabletMode mode) {
   if (tablet_mode_ == mode)
     return;
 
@@ -115,8 +115,8 @@ void UserProximityWatcher::HandleTabletModeChange(TabletMode mode) {
   }
 }
 
-bool UserProximityWatcher::EnableDisableSensor(const SensorInfo& sensor,
-                                               bool enable) {
+bool UserProximityWatcherUdev::EnableDisableSensor(const SensorInfo& sensor,
+                                                   bool enable) {
   std::string either, rising, falling;
   const std::string& syspath = sensor.syspath;
   const std::string& val = enable ? "1" : "0";
@@ -154,15 +154,15 @@ bool UserProximityWatcher::EnableDisableSensor(const SensorInfo& sensor,
   return true;
 }
 
-bool UserProximityWatcher::DisableSensor(const SensorInfo& sensor) {
+bool UserProximityWatcherUdev::DisableSensor(const SensorInfo& sensor) {
   return EnableDisableSensor(sensor, false);
 }
 
-bool UserProximityWatcher::EnableSensor(const SensorInfo& sensor) {
+bool UserProximityWatcherUdev::EnableSensor(const SensorInfo& sensor) {
   return EnableDisableSensor(sensor, true);
 }
 
-void UserProximityWatcher::CompensateSensor(const SensorInfo& sensor) {
+void UserProximityWatcherUdev::CompensateSensor(const SensorInfo& sensor) {
   LOG(INFO) << "Compensating proximity sensor";
 
   if (!DisableSensor(sensor)) {
@@ -175,7 +175,7 @@ void UserProximityWatcher::CompensateSensor(const SensorInfo& sensor) {
   }
 }
 
-void UserProximityWatcher::AddObserver(UserProximityObserver* observer) {
+void UserProximityWatcherUdev::AddObserver(UserProximityObserver* observer) {
   DCHECK(observer);
   observers_.AddObserver(observer);
 
@@ -185,18 +185,18 @@ void UserProximityWatcher::AddObserver(UserProximityObserver* observer) {
   }
 }
 
-void UserProximityWatcher::RemoveObserver(UserProximityObserver* observer) {
+void UserProximityWatcherUdev::RemoveObserver(UserProximityObserver* observer) {
   DCHECK(observer);
   observers_.RemoveObserver(observer);
 }
 
-void UserProximityWatcher::OnUdevEvent(const UdevEvent& event) {
+void UserProximityWatcherUdev::OnUdevEvent(const UdevEvent& event) {
   if (event.action != UdevEvent::Action::ADD)
     return;
   OnNewUdevDevice(event.device_info);
 }
 
-void UserProximityWatcher::OnFileCanReadWithoutBlocking(int fd) {
+void UserProximityWatcherUdev::OnFileCanReadWithoutBlocking(int fd) {
   if (sensors_.find(fd) == sensors_.end()) {
     LOG(WARNING) << "Notified about FD " << fd << "which is not a sensor";
     return;
@@ -228,8 +228,8 @@ void UserProximityWatcher::OnFileCanReadWithoutBlocking(int fd) {
     observer.OnProximityEvent(fd, proximity);
 }
 
-bool UserProximityWatcher::IsIioSarSensor(const UdevDeviceInfo& dev,
-                                          std::string* devlink_out) {
+bool UserProximityWatcherUdev::IsIioSarSensor(const UdevDeviceInfo& dev,
+                                              std::string* devlink_out) {
   DCHECK(udev_);
   if (dev.subsystem != kIioUdevSubsystem || dev.devtype != kIioUdevDevice)
     return false;
@@ -251,8 +251,8 @@ bool UserProximityWatcher::IsIioSarSensor(const UdevDeviceInfo& dev,
   return false;
 }
 
-bool UserProximityWatcher::IsIioActivitySensor(const UdevDeviceInfo& dev,
-                                               std::string* devlink_out) {
+bool UserProximityWatcherUdev::IsIioActivitySensor(const UdevDeviceInfo& dev,
+                                                   std::string* devlink_out) {
   if (dev.subsystem != kIioUdevSubsystem || dev.devtype != kIioUdevDevice)
     return false;
   if (dev.syspath.find("-activity") == std::string::npos)
@@ -262,8 +262,8 @@ bool UserProximityWatcher::IsIioActivitySensor(const UdevDeviceInfo& dev,
   return true;
 }
 
-uint32_t UserProximityWatcher::GetUsableSensorRoles(const SensorType type,
-                                                    const std::string& path) {
+uint32_t UserProximityWatcherUdev::GetUsableSensorRoles(
+    const SensorType type, const std::string& path) {
   uint32_t responsibility = UserProximityObserver::SensorRole::SENSOR_ROLE_NONE;
 
   switch (type) {
@@ -297,7 +297,7 @@ uint32_t UserProximityWatcher::GetUsableSensorRoles(const SensorType type,
   return responsibility;
 }
 
-bool UserProximityWatcher::ConfigureSarSensor(SensorInfo* sensor) {
+bool UserProximityWatcherUdev::ConfigureSarSensor(SensorInfo* sensor) {
   uint32_t role = sensor->role;
   if (!config_) {
     /* Ignore on non-unibuild boards */
@@ -332,8 +332,8 @@ bool UserProximityWatcher::ConfigureSarSensor(SensorInfo* sensor) {
   return true;
 }
 
-bool UserProximityWatcher::ConfigureActivitySensor(const std::string& syspath,
-                                                   uint32_t role) {
+bool UserProximityWatcherUdev::ConfigureActivitySensor(
+    const std::string& syspath, uint32_t role) {
   std::string enable_path = "events/in_proximity_change_either_en";
   if (!udev_->SetSysattr(syspath, enable_path, "1")) {
     LOG(ERROR) << "Could not enable proximity sensor";
@@ -342,9 +342,9 @@ bool UserProximityWatcher::ConfigureActivitySensor(const std::string& syspath,
   return true;
 }
 
-bool UserProximityWatcher::OnSensorDetected(const SensorType type,
-                                            const std::string& syspath,
-                                            const std::string& devlink) {
+bool UserProximityWatcherUdev::OnSensorDetected(const SensorType type,
+                                                const std::string& syspath,
+                                                const std::string& devlink) {
   DCHECK(type != SensorType::UNKNOWN);
   uint32_t role = GetUsableSensorRoles(type, devlink);
 
@@ -389,9 +389,9 @@ bool UserProximityWatcher::OnSensorDetected(const SensorType type,
 
   info.event_fd = event_fd;
   info.controller = base::FileDescriptorWatcher::WatchReadable(
-      event_fd,
-      base::BindRepeating(&UserProximityWatcher::OnFileCanReadWithoutBlocking,
-                          base::Unretained(this), event_fd));
+      event_fd, base::BindRepeating(
+                    &UserProximityWatcherUdev::OnFileCanReadWithoutBlocking,
+                    base::Unretained(this), event_fd));
   sensors_.emplace(event_fd, std::move(info));
 
   for (auto& observer : observers_) {
@@ -401,7 +401,8 @@ bool UserProximityWatcher::OnSensorDetected(const SensorType type,
   return true;
 }
 
-void UserProximityWatcher::OnNewUdevDevice(const UdevDeviceInfo& device_info) {
+void UserProximityWatcherUdev::OnNewUdevDevice(
+    const UdevDeviceInfo& device_info) {
   std::string devlink;
   SensorType type = SensorType::UNKNOWN;
   if (IsIioSarSensor(device_info, &devlink))

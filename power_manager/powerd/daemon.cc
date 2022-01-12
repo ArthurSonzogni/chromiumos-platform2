@@ -30,6 +30,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/mojo/service_constants.h>
 #include <chromeos/ec/ec_commands.h>
+#include <cros_config/cros_config.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <libec/ec_command.h>
@@ -576,7 +577,7 @@ void Daemon::Init() {
       base::FilePath(kPowerOverrideLockfileDir), {});
 
   user_proximity_watcher_ = delegate_->CreateUserProximityWatcher(
-      prefs_.get(), udev_.get(), tablet_mode);
+      prefs_.get(), udev_.get(), tablet_mode, sensor_service_handler_.get());
   user_proximity_handler_ = std::make_unique<policy::UserProximityHandler>();
   user_proximity_handler_->Init(user_proximity_watcher_.get(),
                                 wifi_controller_.get(),

@@ -176,9 +176,11 @@ class DaemonDelegate {
       BatteryPercentageConverter* battery_percentage_converter) = 0;
 
   virtual std::unique_ptr<system::UserProximityWatcherInterface>
-  CreateUserProximityWatcher(PrefsInterface* prefs,
-                             system::UdevInterface* udev,
-                             TabletMode initial_tablet_mode) = 0;
+  CreateUserProximityWatcher(
+      PrefsInterface* prefs,
+      system::UdevInterface* udev,
+      TabletMode initial_tablet_mode,
+      system::SensorServiceHandler* sensor_service_handler) = 0;
 
   virtual std::unique_ptr<system::DarkResumeInterface> CreateDarkResume(
       PrefsInterface* prefs,
