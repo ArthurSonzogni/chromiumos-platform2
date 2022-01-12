@@ -497,9 +497,16 @@ Properties	string Address [readonly]
 				     gives the two-letter language code for the locale
 				     of the localized name. If "localized_name" exists,
 				     then this property will always exist as well.
-
-			TODO(b/199688838): describe missing properties "network_id",
-			"authentication", "attach", and "ip_type".
+			"network_id" The MCCMNC of this network.
+			"authentication"
+				     Authentication method for sending the username and
+				     password. If it is non-empty, it is either "PAP" or
+				     "CHAP".
+			"attach"     Whether or not this APN is an attach APN.
+			"ip_type"    Either "ipv4", "ipv6", or "ipv4v6", which
+				     specifies which version of IP we should get
+				     addresses for when using this APN. The latter
+				     specifies dual-stack operation.
 
 		bool EapAuthenticatorDetected [readonly]
 

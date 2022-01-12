@@ -277,7 +277,13 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 
 		string Cellular.ActivationType [readwrite]
 
-			TODO(b/199688838)
+			(Cellular only) Mechanism by which this cellular
+			service can be activated. Valid types are
+			"NonCellular", "OMADM", "OTA", and "OTASP".
+
+			For 3GPP-based services (UMTS, HSPA, LTE) this is
+			generally going to be "OTA", and for CDMA it will
+			often be "OTASP".
 
 		dict Cellular.ServingOperator [readonly] [GSM only]
 
@@ -421,16 +427,20 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 
 		dict Cellular.LastAttachAPN [readonly]
 
-			TODO(b/199688838)
+			(Cellular only) The last attach APN that was sent
+			to ModemManager as the initial EPS bearer for the
+			modem. The format of this property is the same as for
+			the Cellular.APN property.
 
 		boolean Cellular.OutOfCredits [readonly]
 
 			(Cellular only) Indicates whether a cellular service
 			has any remaining bandwidth credits with the carrier.
 
-		string Cellular.UsageUrl [readonly
+		string Cellular.UsageUrl [readonly]
 
-			TODO(b/199688838)
+			(Cellular only) If non-empty, a URL pointing to the web
+			service that will show the user's data usage.
 
 		string Cellular.PPP.Username [readwrite]
 
