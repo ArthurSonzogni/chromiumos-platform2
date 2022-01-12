@@ -167,8 +167,10 @@ bool SupplicantInterfaceProxy::Disconnect() {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   brillo::ErrorPtr error;
   if (!interface_proxy_->Disconnect(&error)) {
-    LOG(ERROR) << "Failed to disconnect: " << error->GetCode() << " "
-               << error->GetMessage();
+    // Don't log as an error because this happens when lower layers disconnect
+    // before shill does.
+    LOG(INFO) << "Failed to disconnect: " << error->GetCode() << " "
+              << error->GetMessage();
     return false;
   }
   return true;
@@ -285,8 +287,10 @@ bool SupplicantInterfaceProxy::Scan(const KeyValueStore& args) {
       KeyValueStore::ConvertToVariantDictionary(args);
   brillo::ErrorPtr error;
   if (!interface_proxy_->Scan(dict, &error)) {
-    LOG(ERROR) << "Failed to scan: " << error->GetCode() << " "
-               << error->GetMessage();
+    // Don't log as an error because this is expected to happen if the radio is
+    // busy.
+    LOG(INFO) << "Failed to scan: " << error->GetCode() << " "
+              << error->GetMessage();
     return false;
   }
   return true;
