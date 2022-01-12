@@ -254,3 +254,18 @@ func TestHTTPGetIPPUSB(t *testing.T) {
 		t.Errorf("Response: expected %s, got %s", localhostResponse, string(respbytes))
 	}
 }
+
+// TestToLorgnetteScannerName tests that ToLorgnetteScannerName functions
+// correctly.
+func TestToLorgnetteScannerName(t *testing.T) {
+	scannerInfo := LorgnetteScannerInfo{
+		Protocol: "airscan",
+		Name:     "Test Scanner Name",
+		Address:  "http://192.789.32.10:80",
+	}
+
+	expectedName := "airscan:escl:Test Scanner Name:http://192.789.32.10:80/eSCL/"
+	if scannerInfo.ToLorgnetteScannerName() != expectedName {
+		t.Errorf("LorgnetteScannerName: expected %s, got %s", expectedName, scannerInfo.ToLorgnetteScannerName())
+	}
+}

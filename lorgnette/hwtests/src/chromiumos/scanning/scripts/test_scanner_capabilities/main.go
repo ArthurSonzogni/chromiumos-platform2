@@ -42,6 +42,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	rawLorgnetteCaps, err := utils.LorgnetteCLIGetJSONCaps(scannerInfo.ToLorgnetteScannerName())
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	tests := map[string]utils.TestFunction{
 		"HasSupportedDocumentSource":   hwtests.HasSupportedDocumentSourceTest(caps.PlatenInputCaps, caps.AdfCapabilities.AdfSimplexInputCaps, caps.AdfCapabilities.AdfDuplexInputCaps),
 		"NoCameraSource":               hwtests.NoCameraSourceTest(caps.CameraInputCaps),
@@ -50,7 +55,8 @@ func main() {
 		"HighestResolutionIsSupported": hwtests.HighestResolutionIsSupportedTest(caps.PlatenInputCaps, caps.AdfCapabilities.AdfSimplexInputCaps, caps.AdfCapabilities.AdfDuplexInputCaps),
 		"LowestResolutionIsSupported":  hwtests.LowestResolutionIsSupportedTest(caps.PlatenInputCaps, caps.AdfCapabilities.AdfSimplexInputCaps, caps.AdfCapabilities.AdfDuplexInputCaps),
 		"HasSupportedColorMode":        hwtests.HasSupportedColorModeTest(caps.PlatenInputCaps, caps.AdfCapabilities.AdfSimplexInputCaps, caps.AdfCapabilities.AdfDuplexInputCaps),
-		"NoUnsupportedColorMode":       hwtests.NoUnsupportedColorModeTest(caps.PlatenInputCaps, caps.AdfCapabilities.AdfSimplexInputCaps, caps.AdfCapabilities.AdfDuplexInputCaps)}
+		"NoUnsupportedColorMode":       hwtests.NoUnsupportedColorModeTest(caps.PlatenInputCaps, caps.AdfCapabilities.AdfSimplexInputCaps, caps.AdfCapabilities.AdfDuplexInputCaps),
+		"MatchesLorgnetteCapabilities": hwtests.MatchesLorgnetteCapabilitiesTest(caps, rawLorgnetteCaps)}
 	failed := []string{}
 	skipped := []string{}
 	errors := []string{}

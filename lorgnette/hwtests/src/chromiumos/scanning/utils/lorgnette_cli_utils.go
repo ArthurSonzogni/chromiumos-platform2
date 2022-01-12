@@ -131,3 +131,9 @@ func (info LorgnetteScannerInfo) HTTPGet(url string) (*http.Response, error) {
 
 	return client.Get(info.Address + url)
 }
+
+// ToLorgnetteScannerName constructs the scanner name used by Lorgnette for
+// `info`.
+func (info LorgnetteScannerInfo) ToLorgnetteScannerName() string {
+	return fmt.Sprintf("%s:escl:%s:%s/eSCL/", info.Protocol, info.Name, info.Address)
+}
