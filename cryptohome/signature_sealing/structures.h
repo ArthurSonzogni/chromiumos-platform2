@@ -72,8 +72,9 @@ struct Tpm12CertifiedMigratableKeyData {
   brillo::Blob extended_pcr_bound_secret;
 };
 
-using SignatureSealedData =
-    absl::variant<Tpm2PolicySignedData, Tpm12CertifiedMigratableKeyData>;
+using SignatureSealedData = absl::variant<absl::monostate,
+                                          Tpm2PolicySignedData,
+                                          Tpm12CertifiedMigratableKeyData>;
 
 // Fields specific to the challenge-response protection.
 // The Scrypt KDF passphrase, used for the protection of the keyset, is

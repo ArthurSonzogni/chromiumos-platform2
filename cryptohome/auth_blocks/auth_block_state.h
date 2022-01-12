@@ -141,7 +141,8 @@ struct AuthBlockState {
   // Returns an AuthBlockState Flatbuffer serialized to a SecureBlob.
   base::Optional<brillo::SecureBlob> Serialize() const;
 
-  absl::variant<TpmNotBoundToPcrAuthBlockState,
+  absl::variant<absl::monostate,
+                TpmNotBoundToPcrAuthBlockState,
                 TpmBoundToPcrAuthBlockState,
                 PinWeaverAuthBlockState,
                 LibScryptCompatAuthBlockState,
