@@ -62,7 +62,7 @@ int Daemon::OnInit() {
   session_manager_proxy_->AddObserver(port_manager_.get());
 
   // Add any observers to |udev_monitor_| here.
-  udev_monitor_->AddObserver(port_manager_.get());
+  udev_monitor_->AddTypecObserver(port_manager_.get());
   udev_monitor_->AddUsbObserver(usb_monitor_.get());
 
   udev_monitor_->ScanDevices();

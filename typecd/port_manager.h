@@ -25,7 +25,7 @@ namespace typecd {
 // provide the daemon with an accurate view of the Type C state (after reading
 // from the Type C connector class framework sysfs files), as well as provide a
 // means to change this state according to policy defined in the daemon.
-class PortManager : public UdevMonitor::Observer,
+class PortManager : public UdevMonitor::TypecObserver,
                     public SessionManagerObserverInterface {
  public:
   PortManager();

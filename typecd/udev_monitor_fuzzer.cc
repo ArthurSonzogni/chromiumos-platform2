@@ -21,8 +21,8 @@ using testing::StrEq;
 
 namespace {
 
-// Stub observer so that UdevMonitor has some callbacks to use.
-class FuzzerObserver : public typecd::UdevMonitor::Observer {
+// Stub TypecObserver so that UdevMonitor has some callbacks to use.
+class FuzzerTypecObserver : public typecd::UdevMonitor::TypecObserver {
  public:
   void OnPortAddedOrRemoved(const base::FilePath& path,
                             int port_num,
@@ -57,17 +57,17 @@ namespace typecd {
 class UdevMonitorFuzzer {
  public:
   UdevMonitorFuzzer() {
-    observer_ = std::make_unique<FuzzerObserver>();
+    typec_observer_ = std::make_unique<FuzzerTypecObserver>();
     usb_observer_ = std::make_unique<FuzzerUsbObserver>();
 
     monitor_ = std::make_unique<typecd::UdevMonitor>();
-    monitor_->AddObserver(observer_.get());
+    monitor_->AddTypecObserver(typec_observer_.get());
     monitor_->AddUsbObserver(usb_observer_.get());
   }
 
   ~UdevMonitorFuzzer() {
     monitor_.reset();
-    observer_.reset();
+    typec_observer_.reset();
     usb_observer_.reset();
   }
 
@@ -78,7 +78,7 @@ class UdevMonitorFuzzer {
   void CallScanDevices() { monitor_->ScanDevices(); }
 
  private:
-  std::unique_ptr<FuzzerObserver> observer_;
+  std::unique_ptr<FuzzerTypecObserver> typec_observer_;
   std::unique_ptr<FuzzerUsbObserver> usb_observer_;
   std::unique_ptr<typecd::UdevMonitor> monitor_;
 };

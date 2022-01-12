@@ -36,11 +36,11 @@ The general structure of the classes is best illustrated by a few diagrams:
 
 All communication and event notification between the Linux Kernel Type C connector class framework
 and typecd occurs through the udev mechanism. This class watches for any events of the `typec` subsystem.
-Other classes (in this case, `PortManager`) can register `Observer`s with `UdevMonitor`. When any notification
-occurs, `UdevMonitor` calls the relevant function callback from the registered `Observer`s.
+Other classes (in this case, `PortManager`) can register `TypecObserver`s with `UdevMonitor`. When any notification
+occurs, `UdevMonitor` calls the relevant function callback from the registered `TypecObserver`s.
 
 This class also watches for events of the `usb` subsystem. Similar to
-`Observer`, there is `UsbObserver` with callbacks for `usb` add/remove events.
+`TypecObserver`, there is `UsbObserver` with callbacks for `usb` add/remove events.
 
 This class has basic parsing to determine which `Observer` should be called (is this a port/partner/cable notification?
 is it add/remove/change?)
@@ -51,7 +51,7 @@ This class maintains a representation of all the state of a typec port exposed b
 The primary entity for `PortManager` is a Port.
 
 ```
-           PortManager(UdevMonitor::Observer)
+         PortManager(UdevMonitor::TypecObserver)
                            |
                            |
                            |
@@ -62,7 +62,7 @@ The primary entity for `PortManager` is a Port.
       Port0    Port1     ....               PortN
 ```
 
-`PortManager` sub-classes `UdevMonitor::Observer`, and registers itself to receive typec event notifications. In turn, it
+`PortManager` sub-classes `UdevMonitor::TypecObserver`, and registers itself to receive typec event notifications. In turn, it
 routes the notifications to the relevant object (Port, Partner, Cable) that the notification affects.
 
 #### Port

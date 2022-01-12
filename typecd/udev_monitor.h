@@ -41,9 +41,9 @@ class UdevMonitor {
   // Start monitoring udev for typec and usb events.
   bool BeginMonitoring();
 
-  class Observer : public base::CheckedObserver {
+  class TypecObserver : public base::CheckedObserver {
    public:
-    virtual ~Observer() {}
+    virtual ~TypecObserver() {}
     // Callback that is executed when a port is connected or disconnected.
     //
     // The |path| argument refers to the sysfs device path of the port.
@@ -126,8 +126,8 @@ class UdevMonitor {
                                         bool added) = 0;
   };
 
-  void AddObserver(Observer* obs);
-  void RemoveObserver(Observer* obs);
+  void AddTypecObserver(TypecObserver* obs);
+  void RemoveTypecObserver(TypecObserver* obs);
   void AddUsbObserver(UsbObserver* obs);
 
  private:
@@ -162,7 +162,7 @@ class UdevMonitor {
   std::unique_ptr<brillo::UdevMonitor> udev_monitor_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller>
       udev_monitor_watcher_;
-  base::ObserverList<Observer> observer_list_;
+  base::ObserverList<TypecObserver> typec_observer_list_;
   base::ObserverList<UsbObserver> usb_observer_list_;
 };
 

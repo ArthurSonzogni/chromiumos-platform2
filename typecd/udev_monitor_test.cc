@@ -29,9 +29,9 @@ constexpr char kInvalidPortSysPath[] = "/sys/class/typec/a-yz";
 constexpr char kFakeUsbSysPath[] = "/sys/bus/usb/devices/usb1/1-1";
 constexpr char kInvalidUsbSysPath[] = "/sys/bus/usb/devices/usb1/a-yz";
 
-// A really dumb observer to verify that UdevMonitor is invoking the right
+// A really dumb typec observer to verify that UdevMonitor is invoking the right
 // callbacks.
-class TestObserver : public UdevMonitor::Observer {
+class TestTypecObserver : public UdevMonitor::TypecObserver {
  public:
   void OnPortAddedOrRemoved(const base::FilePath& path,
                             int port_num,
@@ -135,23 +135,23 @@ class UdevMonitorTest : public ::testing::Test {
 
  protected:
   void SetUp() override {
-    observer_ = std::make_unique<TestObserver>();
+    typec_observer_ = std::make_unique<TestTypecObserver>();
     usb_observer_ = std::make_unique<TestUsbObserver>();
 
     monitor_ = std::make_unique<UdevMonitor>();
-    monitor_->AddObserver(observer_.get());
+    monitor_->AddTypecObserver(typec_observer_.get());
     monitor_->AddUsbObserver(usb_observer_.get());
   }
 
   void TearDown() override {
     monitor_.reset();
-    observer_.reset();
+    typec_observer_.reset();
     usb_observer_.reset();
   }
 
   // Add a task environment to keep the FileDescriptorWatcher code happy.
   base::test::TaskEnvironment task_environment_;
-  std::unique_ptr<TestObserver> observer_;
+  std::unique_ptr<TestTypecObserver> typec_observer_;
   std::unique_ptr<TestUsbObserver> usb_observer_;
   std::unique_ptr<UdevMonitor> monitor_;
 };
@@ -183,12 +183,12 @@ TEST_F(UdevMonitorTest, TestBasic) {
 
   monitor_->SetUdev(std::move(udev));
 
-  EXPECT_THAT(0, observer_->GetNumPorts());
+  EXPECT_THAT(0, typec_observer_->GetNumPorts());
 
   ASSERT_TRUE(monitor_->ScanDevices());
 
-  EXPECT_THAT(1, observer_->GetNumPorts());
-  EXPECT_THAT(1, observer_->GetNumPartners());
+  EXPECT_THAT(1, typec_observer_->GetNumPorts());
+  EXPECT_THAT(1, typec_observer_->GetNumPartners());
 }
 
 // Check that a port and partner can be detected after init. Also check whether
@@ -242,8 +242,8 @@ TEST_F(UdevMonitorTest, TestHotplug) {
 
   monitor_->SetUdev(std::move(udev));
 
-  EXPECT_THAT(0, observer_->GetNumPorts());
-  EXPECT_THAT(0, observer_->GetNumCables());
+  EXPECT_THAT(0, typec_observer_->GetNumPorts());
+  EXPECT_THAT(0, typec_observer_->GetNumCables());
 
   // Skip initial scanning, since we are only interested in testing hotplug.
   ASSERT_TRUE(monitor_->BeginMonitoring());
@@ -254,13 +254,13 @@ TEST_F(UdevMonitorTest, TestHotplug) {
   // Instead we manually call HandleUdevEvent. Effectively this equivalent to
   // triggering the event handler using the FileDescriptorWatcher.
   monitor_->HandleUdevEvent();
-  EXPECT_THAT(1, observer_->GetNumPorts());
+  EXPECT_THAT(1, typec_observer_->GetNumPorts());
   monitor_->HandleUdevEvent();
-  EXPECT_THAT(1, observer_->GetNumPartners());
+  EXPECT_THAT(1, typec_observer_->GetNumPartners());
   monitor_->HandleUdevEvent();
-  EXPECT_THAT(0, observer_->GetNumPartners());
+  EXPECT_THAT(0, typec_observer_->GetNumPartners());
   monitor_->HandleUdevEvent();
-  EXPECT_THAT(1, observer_->GetNumCables());
+  EXPECT_THAT(1, typec_observer_->GetNumCables());
 }
 
 // Test that the udev handler correctly handles invalid port sysfs paths.
@@ -298,7 +298,7 @@ TEST_F(UdevMonitorTest, TestInvalidPortSyspath) {
   // Manually call HandleUdevEvent. Effectively this equivalent to triggering
   // the event handler using the FileDescriptorWatcher.
   monitor_->HandleUdevEvent();
-  EXPECT_THAT(0, observer_->GetNumPorts());
+  EXPECT_THAT(0, typec_observer_->GetNumPorts());
 }
 
 // Test that the monitor can detect cable creation and SOP' alternate mode
@@ -343,8 +343,8 @@ TEST_F(UdevMonitorTest, TestCableAndAltModeAddition) {
 
   ASSERT_TRUE(monitor_->ScanDevices());
 
-  EXPECT_THAT(1, observer_->GetNumCables());
-  EXPECT_THAT(1, observer_->GetNumCableAltModes());
+  EXPECT_THAT(1, typec_observer_->GetNumCables());
+  EXPECT_THAT(1, typec_observer_->GetNumCableAltModes());
 }
 
 // Check that a basic partner change event gets detected correctly.
@@ -377,7 +377,7 @@ TEST_F(UdevMonitorTest, TestPartnerChanged) {
 
   monitor_->SetUdev(std::move(udev));
 
-  EXPECT_THAT(0, observer_->GetNumPartnerChangeEvents());
+  EXPECT_THAT(0, typec_observer_->GetNumPartnerChangeEvents());
 
   // Skip initial scanning, since we are only interested in testing the change
   // event.
@@ -389,7 +389,7 @@ TEST_F(UdevMonitorTest, TestPartnerChanged) {
   // Instead we manually call HandleUdevEvent. Effectively this is equivalent to
   // triggering the event handler using the FileDescriptorWatcher.
   monitor_->HandleUdevEvent();
-  EXPECT_THAT(1, observer_->GetNumPartnerChangeEvents());
+  EXPECT_THAT(1, typec_observer_->GetNumPartnerChangeEvents());
 }
 
 // Check that a basic port change event gets detected correctly.
@@ -422,9 +422,9 @@ TEST_F(UdevMonitorTest, TestPortChanged) {
 
   monitor_->SetUdev(std::move(udev));
 
-  // Prep the observer state for future events.
-  observer_->ResetPortChanged(0);
-  EXPECT_FALSE(observer_->PortChanged(0));
+  // Prep the typec observer state for future events.
+  typec_observer_->ResetPortChanged(0);
+  EXPECT_FALSE(typec_observer_->PortChanged(0));
 
   // Skip initial scanning, since we are only interested in testing the change
   // event.
@@ -436,7 +436,7 @@ TEST_F(UdevMonitorTest, TestPortChanged) {
   // Instead we manually call HandleUdevEvent. Effectively this is equivalent to
   // triggering the event handler using the FileDescriptorWatcher.
   monitor_->HandleUdevEvent();
-  EXPECT_TRUE(observer_->PortChanged(0));
+  EXPECT_TRUE(typec_observer_->PortChanged(0));
 }
 
 // Check that a USB device can be detected after init.

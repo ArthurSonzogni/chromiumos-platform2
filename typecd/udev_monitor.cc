@@ -107,12 +107,12 @@ bool UdevMonitor::BeginMonitoring() {
   return true;
 }
 
-void UdevMonitor::AddObserver(Observer* obs) {
-  observer_list_.AddObserver(obs);
+void UdevMonitor::AddTypecObserver(TypecObserver* obs) {
+  typec_observer_list_.AddObserver(obs);
 }
 
-void UdevMonitor::RemoveObserver(Observer* obs) {
-  observer_list_.RemoveObserver(obs);
+void UdevMonitor::RemoveTypecObserver(TypecObserver* obs) {
+  typec_observer_list_.RemoveObserver(obs);
 }
 
 void UdevMonitor::AddUsbObserver(UsbObserver* obs) {
@@ -124,7 +124,7 @@ bool UdevMonitor::HandleDeviceAddedRemoved(const base::FilePath& path,
   auto name = path.BaseName();
   int port_num;
 
-  for (Observer& observer : observer_list_) {
+  for (TypecObserver& observer : typec_observer_list_) {
     if (RE2::FullMatch(name.value(), kPortRegex, &port_num))
       observer.OnPortAddedOrRemoved(path, port_num, added);
     else if (RE2::FullMatch(name.value(), kPartnerRegex, &port_num))
@@ -153,7 +153,7 @@ void UdevMonitor::HandleDeviceChange(const base::FilePath& path) {
   auto name = path.BaseName();
   int port_num;
 
-  for (auto& observer : observer_list_) {
+  for (auto& observer : typec_observer_list_) {
     if (RE2::FullMatch(name.value(), kPartnerRegex, &port_num))
       observer.OnPartnerChanged(port_num);
     else if (RE2::FullMatch(name.value(), kPortRegex, &port_num))
