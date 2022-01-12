@@ -46,8 +46,19 @@ void UsbMonitor::OnDeviceAddedOrRemoved(const base::FilePath& path,
     if (base::ReadFileToString(path.Append("port/connector/uevent"),
                                &typec_port_uevent) &&
         RE2::PartialMatch(typec_port_uevent, kTypecPortUeventRegex,
-                          &typec_port_num))
+                          &typec_port_num)) {
       GetDevice(key)->SetTypecPortNum(typec_port_num);
+    } else {
+      // Parent USB hub device's sysfs directory name.
+      // e.g. Parent sysfs of 2-1.5.4 would be 2-1
+      auto parent_key = key.substr(0, key.find("."));
+
+      // If parent USB hub device is present and has a Type C port associated,
+      // use the parent's Type C port number.
+      if (GetDevice(parent_key) != nullptr)
+        GetDevice(key)->SetTypecPortNum(
+            GetDevice(parent_key)->GetTypecPortNum());
+    }
 
   } else {
     if (it == devices_.end()) {

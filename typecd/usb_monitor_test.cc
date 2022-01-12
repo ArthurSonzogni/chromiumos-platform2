@@ -126,4 +126,56 @@ TEST_F(UsbMonitorTest, TestNoTypecPort) {
   EXPECT_EQ(-1, usb_device->GetTypecPortNum());
 }
 
+// Test a tree of UsbDevice with Type C port only available to the parent.
+TEST_F(UsbMonitorTest, TestDeviceTree) {
+  // Set up fake parent sysfs directory.
+  auto parent_usb_sysfs_path = temp_dir_.Append("3-1");
+  ASSERT_TRUE(base::CreateDirectory(parent_usb_sysfs_path));
+  auto parent_busnum_path = parent_usb_sysfs_path.Append("busnum");
+  ASSERT_TRUE(base::WriteFile(parent_busnum_path, "3", 1));
+  auto parent_devnum_path = parent_usb_sysfs_path.Append("devnum");
+  ASSERT_TRUE(base::WriteFile(parent_devnum_path, "2", 1));
+  // Type C port number set only for parent device.
+  auto parent_connector_dir_path =
+      parent_usb_sysfs_path.Append("port/connector");
+  base::CreateDirectory(parent_connector_dir_path);
+  auto parent_uevent_path = parent_connector_dir_path.Append("uevent");
+  auto uevent_typec_port =
+      base::StringPrintf("TYPEC_PORT=port%d", kTypecPortNum);
+  ASSERT_TRUE(base::WriteFile(parent_uevent_path, uevent_typec_port.c_str(),
+                              uevent_typec_port.length()));
+
+  // Set up fake child sysfs directory.
+  auto child_usb_sysfs_path = temp_dir_.Append("3-1.1");
+  ASSERT_TRUE(base::CreateDirectory(child_usb_sysfs_path));
+  auto child_busnum_path = child_usb_sysfs_path.Append("busnum");
+  ASSERT_TRUE(base::WriteFile(child_busnum_path, "3", 1));
+  auto child_devnum_path = child_usb_sysfs_path.Append("devnum");
+  ASSERT_TRUE(base::WriteFile(child_devnum_path, "8", 1));
+
+  // Set up fake grandchild sysfs directory.
+  auto grandchild_usb_sysfs_path = temp_dir_.Append("3-1.1.4");
+  ASSERT_TRUE(base::CreateDirectory(grandchild_usb_sysfs_path));
+  auto grandchild_busnum_path = grandchild_usb_sysfs_path.Append("busnum");
+  ASSERT_TRUE(base::WriteFile(grandchild_busnum_path, "3", 1));
+  auto grandchild_devnum_path = grandchild_usb_sysfs_path.Append("devnum");
+  ASSERT_TRUE(base::WriteFile(grandchild_devnum_path, "18", 2));
+
+  auto usb_monitor = std::make_unique<UsbMonitor>();
+
+  // New USB devices created and added to the map.
+  usb_monitor->OnDeviceAddedOrRemoved(parent_usb_sysfs_path, true);
+  usb_monitor->OnDeviceAddedOrRemoved(child_usb_sysfs_path, true);
+  usb_monitor->OnDeviceAddedOrRemoved(grandchild_usb_sysfs_path, true);
+  auto child_usb_device =
+      usb_monitor->GetDevice(child_usb_sysfs_path.BaseName().value());
+  auto grandchild_usb_device =
+      usb_monitor->GetDevice(grandchild_usb_sysfs_path.BaseName().value());
+  EXPECT_NE(nullptr, child_usb_device);
+  EXPECT_NE(nullptr, grandchild_usb_device);
+  // Children have the same Type C port number with the one set for parent.
+  EXPECT_EQ(kTypecPortNum, child_usb_device->GetTypecPortNum());
+  EXPECT_EQ(kTypecPortNum, grandchild_usb_device->GetTypecPortNum());
+}
+
 }  // namespace typecd

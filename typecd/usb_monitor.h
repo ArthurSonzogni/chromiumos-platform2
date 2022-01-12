@@ -27,6 +27,7 @@ class UsbMonitor : public UdevMonitor::UsbObserver {
   FRIEND_TEST(UsbMonitorTest, TestDeviceAddAndRemove);
   FRIEND_TEST(UsbMonitorTest, TestInvalidUeventPath);
   FRIEND_TEST(UsbMonitorTest, TestNoTypecPort);
+  FRIEND_TEST(UsbMonitorTest, TestDeviceTree);
 
   // UdevMonitor::UsbObserver overrides
   void OnDeviceAddedOrRemoved(const base::FilePath& path, bool added) override;
