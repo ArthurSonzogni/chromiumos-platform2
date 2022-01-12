@@ -103,6 +103,14 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
   ping_sent_ = base::TimeTicks::Now();
   dbus::MethodCall ping(chromeos::kLivenessServiceInterface,
                         chromeos::kLivenessServiceCheckLivenessMethod);
+  // TODO(crbug/1286683): The timeout here is out of sync with |interval|. This
+  // should probably be updated to use |interval| instead, and then it makes
+  // sense to cancel any previous invocations liveness check invocations that
+  // might still be pending for whatever reason.
+  //
+  // At the time of writing this, there's an ongoing investigation into Chrome
+  // hangs, so the above changes need to wait until this is resolved in order to
+  // avoid disturbing data collection.
   dbus_proxy_->CallMethod(&ping, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
                           base::Bind(&LivenessCheckerImpl::HandleAck,
                                      weak_ptr_factory_.GetWeakPtr()));
