@@ -133,7 +133,7 @@ static bool table_entry_matches(struct crosid_table_header *table,
 				   "(mismatch, as this device has no SKU)\n");
 			mismatches++;
 		} else if (data->sku_id != entry->sku_id_match) {
-			crosid_log(LOG_DBG, "(%u does not match)",
+			crosid_log(LOG_DBG, "(%u does not match)\n",
 				   data->sku_id);
 			mismatches++;
 		} else {
