@@ -47,6 +47,8 @@ constexpr char kAbilist64PropertyPrefixTemplate[] =
 constexpr char kAbilist64PropertyExpected[] = "x86_64";
 constexpr char kAbilist64PropertyReplacement[] = "x86_64,arm64-v8a";
 constexpr char kDalvikVmIsaArm64[] = "ro.dalvik.vm.isa.arm64=x86_64";
+constexpr char kPrimaryDisplayOrientationPropertyTemplate[] =
+    "ro.surface_flinger.primary_display_orientation=ORIENTATION_%d";
 
 // Prefix of Android property to enable debugging features.
 constexpr char kDebuggablePropertyPrefix[] = "ro.debuggable=";
@@ -281,6 +283,24 @@ bool ExpandPropertyContents(const std::string& content,
       std::string oem_key_property = ComputeOEMKey(config, property);
       new_properties +=
           std::string(kOEMKey1PropertyPrefix) + oem_key_property + "\n";
+
+      // TODO(b/211563458): Remove this super dirty hack ASAP.
+      //
+      // The only customization method we currently have for this property
+      // is to add it to PRODUCT_PROPERTY_OVERRIDES in board_specific_setup.
+      // It is a build time, *per-board* configuration.
+      // However, a new model in board="dedede" family turned out to require
+      // a different values from other models in the same family (b/210802730).
+      //
+      // To work around the lack of per-model configuration, the below hack
+      // directly embeds the mapping from model name here as a short-term
+      // solution. The right approach should be to dynamically pass the
+      // panel orientation from Chrome down to arc-setup.
+      if (property == "bugzzy") {
+        new_properties +=
+            base::StringPrintf(kPrimaryDisplayOrientationPropertyTemplate, 90) +
+            "\n";
+      }
     }
   }
 
