@@ -12,7 +12,6 @@ import io
 import json
 import os
 import re
-import textwrap
 
 import jsonschema  # pylint: disable=import-error
 from six.moves import zip_longest
@@ -700,20 +699,16 @@ class MainTests(cros_test_lib.TempDirTestCase):
           'Actual  : {2}\n').format(line_num, repr(line_expected),
                                     repr(line_actual)))
 
-  def testMainWithExampleWithBuildAndMosysCBindings(self):
+  def testMainWithExampleWithBuild(self):
     json_output = os.path.join(self.tempdir, 'output.json')
-    c_output = os.path.join(self.tempdir, 'config.c')
     cros_config_schema.Main(
         None,
         os.path.join(this_dir, '../test_data/test.yaml'),
         json_output,
-        gen_c_output_dir=self.tempdir)
+    )
 
     expected_json_file = os.path.join(this_dir, '../test_data/test_build.json')
     self.assertFileEqual(expected_json_file, json_output)
-
-    expected_c_file = os.path.join(this_dir, '../test_data/test.c')
-    self.assertFileEqual(expected_c_file, c_output)
 
   def testMainWithExampleWithoutBuild(self):
     output = os.path.join(self.tempdir, 'output')
@@ -728,19 +723,15 @@ class MainTests(cros_test_lib.TempDirTestCase):
 
   def testMainArmExample(self):
     json_output = os.path.join(self.tempdir, 'output.json')
-    c_output = os.path.join(self.tempdir, 'config.c')
     cros_config_schema.Main(
         None,
         os.path.join(this_dir, '../test_data/test_arm.yaml'),
         json_output,
         filter_build_details=True,
-        gen_c_output_dir=self.tempdir)
+    )
 
     expected_json_file = os.path.join(this_dir, '../test_data/test_arm.json')
     self.assertFileEqual(expected_json_file, json_output)
-
-    expected_c_file = os.path.join(this_dir, '../test_data/test_arm.c')
-    self.assertFileEqual(expected_c_file, c_output)
 
   def testMainImportExample(self):
     output = os.path.join(self.tempdir, 'output')
@@ -790,15 +781,6 @@ class MainTests(cros_test_lib.TempDirTestCase):
       # contents/format.  We just check that we put some good looking
       # data there (greater than 32 bytes is required).
     self.assertGreater(len(output.getvalue()), 32)
-
-  def testClangFormat(self):
-    test_input = 'int main(int argc, char **argv) { return 0; }'
-    expected = textwrap.dedent("""\
-    int main(int argc, char** argv) {
-      return 0;
-    }""")
-    formatted = cros_config_schema.ClangFormat(test_input)
-    self.assertEqual(formatted, expected)
 
 
 if __name__ == '__main__':

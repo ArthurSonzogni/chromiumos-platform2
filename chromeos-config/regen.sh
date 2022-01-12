@@ -26,17 +26,13 @@ python3 -m cros_config_host.cros_config_schema -o test_data/test_merge.json \
 python3 -m cros_config_host.cros_config_schema --zephyr-ec-configs-only \
         -o test_data/test_zephyr.json -m test_data/test.yaml
 
-regen_test_data_with_c_bindings() {
+regen_test_data() {
     python3 -m cros_config_host.cros_config_schema -f True \
-            -c "test_data/${1}.yaml" -o "test_data/${1}.json" \
-            -g test_data
-    # TODO(jrosenth): cros_config_schema doesn't let us specify where to
-    # put the C file directly?  Refactor later.
-    mv test_data/config.c "test_data/${1}.c"
+            -c "test_data/${1}.yaml" -o "test_data/${1}.json"
 }
 
 # ARM test data
-regen_test_data_with_c_bindings test_arm
+regen_test_data test_arm
 
 # x86 test data
-regen_test_data_with_c_bindings test
+regen_test_data test
