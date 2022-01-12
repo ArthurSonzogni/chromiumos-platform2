@@ -501,6 +501,14 @@ void RmadInterfaceImpl::GetLog(GetLogCallback callback) {
   std::move(callback).Run(reply);
 }
 
+void RmadInterfaceImpl::SaveLog(const std::string& diagnostics_log_path,
+                                SaveLogCallback callback) {
+  SaveLogReply reply;
+  reply.set_error(RMAD_ERROR_OK);
+  reply.set_save_path("fake_path");
+  std::move(callback).Run(reply);
+}
+
 bool RmadInterfaceImpl::CanGoBack() const {
   if (state_history_.size() > 1) {
     const auto current_state_handler =

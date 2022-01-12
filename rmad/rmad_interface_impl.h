@@ -8,6 +8,7 @@
 #include "rmad/rmad_interface.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -94,6 +95,8 @@ class RmadInterfaceImpl final : public RmadInterface {
   void TransitionPreviousState(GetStateCallback callback) override;
   void AbortRma(AbortRmaCallback callback) override;
   void GetLog(GetLogCallback callback) override;
+  void SaveLog(const std::string& diagnostics_log_path,
+               SaveLogCallback callback) override;
   bool CanAbort() const override { return can_abort_; }
 
   void SetTestMode() { test_mode_ = true; }

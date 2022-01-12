@@ -728,4 +728,22 @@ TEST_F(RmadInterfaceImplTest, GetLog) {
   rmad_interface.GetLog(base::BindOnce(callback));
 }
 
+TEST_F(RmadInterfaceImplTest, SaveLog) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, "", 0);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  RmadInterfaceImpl rmad_interface(
+      json_store, CreateStateHandlerManager(json_store),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
+  EXPECT_TRUE(rmad_interface.SetUp());
+
+  auto callback = [](const SaveLogReply& reply) {
+    EXPECT_EQ(RMAD_ERROR_OK, reply.error());
+    EXPECT_EQ("fake_path", reply.save_path());
+  };
+  rmad_interface.SaveLog("", base::BindOnce(callback));
+}
+
 }  // namespace rmad

@@ -97,6 +97,11 @@ class RmadInterface {
   // Get the RMA logs.
   virtual void GetLog(GetLogCallback callback) = 0;
 
+  using SaveLogCallback = base::OnceCallback<void(const SaveLogReply&)>;
+  // Save the RMA logs
+  virtual void SaveLog(const std::string& diagnostics_log_path,
+                       SaveLogCallback callback) = 0;
+
   // Returns whether it's allowed to abort RMA now.
   virtual bool CanAbort() const = 0;
 };

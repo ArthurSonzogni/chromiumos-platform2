@@ -90,17 +90,17 @@ class DBusService : public brillo::DBusServiceDaemon {
   template <typename... Types>
   using DBusMethodResponse = brillo::dbus_utils::DBusMethodResponse<Types...>;
 
-  // Template for handling D-Bus methods with request protobuf.
-  template <typename RequestProtobufType, typename ReplyType>
+  // Template for handling D-Bus methods with a request.
+  template <typename RequestType, typename ReplyType>
   using HandlerFunction = void (RmadInterface::*)(
-      const RequestProtobufType&, base::OnceCallback<void(const ReplyType&)>);
+      const RequestType&, base::OnceCallback<void(const ReplyType&)>);
 
-  template <typename RequestProtobufType,
+  template <typename RequestType,
             typename ReplyType,
-            DBusService::HandlerFunction<RequestProtobufType, ReplyType> func>
+            DBusService::HandlerFunction<RequestType, ReplyType> func>
   void DelegateToInterface(
       std::unique_ptr<DBusMethodResponse<ReplyType>> response,
-      const RequestProtobufType& request) {
+      const RequestType& request) {
     if (is_rma_required_ && !SetUpInterface()) {
       SendErrorSignal(RMAD_ERROR_DAEMON_INITIALIZATION_FAILED);
       return;
@@ -110,7 +110,7 @@ class DBusService : public brillo::DBusServiceDaemon {
                                 base::Unretained(this), std::move(response)));
   }
 
-  // Template for handling D-Bus methods without request protobuf.
+  // Template for handling D-Bus methods without a request.
   template <typename ReplyType>
   using HandlerFunctionEmptyRequest =
       void (RmadInterface::*)(base::OnceCallback<void(const ReplyType&)>);
