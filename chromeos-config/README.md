@@ -1124,10 +1124,3 @@ For instance:
 (chroot) $ cros_config_host -c /build/coral/usr/share/chromeos-config/yaml /config.yaml -m robo360 get /firmware key-id
 (chroot) $ cros_config_host -c /build/coral/usr/share/chromeos-config/yaml /config.yaml list-models
 ```
-
-## Device Testing
-
-To test configuration changes on actual devices use the `platform.CrosConfig`
-Tast test. This will run `cros_config` tests for unibuilds and mosys
-for all devices.
-See [HOWTO](https://chromium.googlesource.com/chromiumos/platform/tast-tests/+/HEAD/src/chromiumos/tast/local/bundles/cros/platform/cros_config.md).
