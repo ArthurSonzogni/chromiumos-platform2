@@ -92,6 +92,9 @@ const char kBoostUrgentProperty[] = "boost-urgent";
 constexpr char kModemPath[] = "/modem";
 constexpr char kModemAttachApnProperty[] = "attach-apn-required";
 
+constexpr char kHpsPath[] = "/hps";
+constexpr char kHasHpsProperty[] = "has-hps";
+
 // These hashes are only being used temporarily till we can determine if a
 // device is a Chromebox for Meetings or not from the Install Time attributes.
 // TODO(rkc, pbos): Remove these and related code once crbug.com/706523 is
@@ -139,6 +142,19 @@ void SetUpAutoNightLightFlag(ChromiumCommandBuilder* builder,
     return;
 
   builder->AddFeatureEnableOverride("AutoNightLight");
+}
+
+void SetUpHasHpsFlag(ChromiumCommandBuilder* builder,
+                     brillo::CrosConfigInterface* cros_config) {
+  std::string has_hps;
+  if (!cros_config ||
+      !cros_config->GetString(kHpsPath, kHasHpsProperty, &has_hps) ||
+      has_hps != "true") {
+    return;
+  }
+
+  builder->AddFeatureEnableOverride("SnoopingProtection");
+  builder->AddFeatureEnableOverride("QuickDim");
 }
 
 // Enables the "HandwritingRecognitionWebPlatformApi" Blink feature flag if
@@ -859,6 +875,7 @@ void AddMlFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--ondevice_document_scanner=use_rootfs");
 
   SetUpHandwritingRecognitionWebPlatformApiFlag(builder, cros_config);
+  SetUpHasHpsFlag(builder, cros_config);
 }
 
 // Adds patterns to the --vmodule flag.
