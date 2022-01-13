@@ -95,6 +95,7 @@ executable("runtime_probe") {
   deps = [ ":libruntime_probe" ]
   if (use.factory_runtime_probe) {
     output_name = "factory_runtime_probe"
+    install_path = "bin"
   } else {
     sources += [ "daemon.cc" ]
   }
@@ -151,6 +152,12 @@ if (use.factory_runtime_probe) {
     deps = [ ":runtime_probe" ]
     inputs = [ "$root_build_dir/factory_runtime_probe" ]
     outputs = [ "$root_build_dir/factory_runtime_probe_installer" ]
+    install_configs = [
+      {
+        path = "/usr/bin"
+        options = "-m755"
+      },
+    ]
     args = [
              "--root-dir",
              getenv("SYSROOT"),
