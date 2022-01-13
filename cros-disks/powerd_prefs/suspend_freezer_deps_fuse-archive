@@ -1,4 +1,5 @@
 drivefs
+fusebox
 mount.exfat-fuse
 ntfs-3g
 smbfs
