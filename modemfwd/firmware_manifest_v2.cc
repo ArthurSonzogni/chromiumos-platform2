@@ -238,4 +238,20 @@ bool ParseFirmwareManifestV2(const base::FilePath& manifest,
   return true;
 }
 
+base::Optional<FirmwareFileInfo::Compression> ToFirmwareFileInfoCompression(
+    Compression compression) {
+  switch (compression) {
+    case Compression::NONE:
+      return FirmwareFileInfo::Compression::NONE;
+    case Compression::XZ:
+      return FirmwareFileInfo::Compression::XZ;
+    default:
+      std::string name = Compression_Name(compression);
+      if (name.empty())
+        name = base::NumberToString(compression);
+      LOG(ERROR) << "Unsupported compression: " << name;
+      return base::nullopt;
+  }
+}
+
 }  // namespace modemfwd

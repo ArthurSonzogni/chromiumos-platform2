@@ -17,10 +17,7 @@ group("all") {
     deps += [ ":modemfw_test" ]
   }
   if (use.fuzzer) {
-    deps += [
-      ":firmware_manifest_fuzzer",
-      ":firmware_manifest_v2_fuzzer",
-    ]
+    deps += [ ":firmware_manifest_v2_fuzzer" ]
   }
 }
 
@@ -61,7 +58,6 @@ static_library("libmodemfw") {
     "file_decompressor.cc",
     "firmware_directory.cc",
     "firmware_file.cc",
-    "firmware_manifest.cc",
     "firmware_manifest_v2.cc",
     "journal.cc",
     "logging.cc",
@@ -126,15 +122,6 @@ if (use.test) {
 }
 
 if (use.fuzzer) {
-  executable("firmware_manifest_fuzzer") {
-    sources = [ "firmware_manifest_fuzzer.cc" ]
-    configs += [
-      "//common-mk/common_fuzzer",
-      ":target_defaults",
-    ]
-    pkg_deps = [ "libprotobuf-mutator" ]
-    deps = [ ":libmodemfw" ]
-  }
   executable("firmware_manifest_v2_fuzzer") {
     sources = [ "firmware_manifest_v2_fuzzer.cc" ]
     configs += [

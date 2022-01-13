@@ -8,8 +8,10 @@ package modemfwd;
 
 option go_package = "chromiumos/modemfwd";
 
-// For Compression. Will be moved when manifest v1 is removed.
-import "firmware_manifest.proto";
+enum Compression {
+  NONE = 0;
+  XZ = 1;
+}
 
 message MainFirmwareV2 {
   string filename = 1;

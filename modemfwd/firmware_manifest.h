@@ -15,7 +15,7 @@
 
 #include "modemfwd/firmware_file_info.h"
 
-#include "modemfwd/proto_bindings/firmware_manifest.pb.h"
+#include "modemfwd/proto_bindings/firmware_manifest_v2.pb.h"
 
 namespace modemfwd {
 
@@ -50,9 +50,6 @@ struct DeviceFirmwareCache {
 };
 
 using FirmwareIndex = std::map<DeviceType, DeviceFirmwareCache>;
-
-bool ParseFirmwareManifest(const base::FilePath& manifest,
-                           FirmwareIndex* index);
 
 bool ParseFirmwareManifestV2(const base::FilePath& manifest,
                              FirmwareIndex* index);

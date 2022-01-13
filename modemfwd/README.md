@@ -57,7 +57,7 @@ All commands should return 0 on success and something non-zero on failure.
 
 ## Helper and firmware directory structure
 
-The protos defined in `helper_manifest.proto` and `firmware_manifest.proto`
+The protos defined in `helper_manifest.proto` and `firmware_manifest_v2.proto`
 define manifests that should be provided in the helper and firmware directories
 so modemfwd can figure out what devices, carriers, etc. the contents can be
 used with.
