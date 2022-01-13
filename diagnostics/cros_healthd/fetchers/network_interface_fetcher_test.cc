@@ -51,7 +51,15 @@ constexpr char kFakeGetLinkOutput[] =
 constexpr char kFakeGetLinkDeviceNotConnectedOutput[] = "Not connected.\n";
 constexpr char kFakeGetInfoOutput[] = "txpower 22.00 dBm\n";
 constexpr char kFakeGetScanDumpOutput[] =
-    "capability: ESS Privacy RadioMeasure (0x1011)\n";
+    "BSS 11:11:11:11:11:11(on wlan0)\n"
+    "bss data: some data\n"
+    "BSS 11:22:33:44:55:66(on wlan0) -- associated\n"
+    "\tlast seen: 1803877.987s [boottime]\n"
+    "\tTSF: 4892660736771 usec (56d, 15:04:20)\n"
+    "\tfreq: 2462\n"
+    "\tbeacon interval: 100 TUs\n"
+    "\tcapability: ESS Privacy ShortSlotTime RadioMeasure (0x1431)\n"
+    "\tsignal: -82.00 dBm\n";
 constexpr char kExpectedInterfaceName[] = "wlan0";
 constexpr bool kExpectedPowerManagementOn = true;
 constexpr char kExpectedAcessPoint[] = "11:22:33:44:55:66";

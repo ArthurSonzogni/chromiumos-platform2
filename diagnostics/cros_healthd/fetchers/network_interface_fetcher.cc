@@ -35,6 +35,8 @@ constexpr auto kLinkNoConnectionRegex = R"((Not\s+connected.)\s*)";
 constexpr auto kAccessPointRegex =
     R"(Connected\s+to\s+(\w{2}:\w{2}:\w{2}:\w{2}:\w{2}:\w{2}).*)";
 constexpr auto kEncryptionRegex = R"(\s*(capability:\s+\w+\s+Privacy).+)";
+// Parse the fifth line from BSS line to get encryption state.
+constexpr uint32_t kEncryptionLineOffset = 5;
 
 // This function will return the value with OutputType of first token if the
 // second token matches with <unit_name>.
@@ -78,9 +80,18 @@ void NetworkInterfaceFetcher::HandleScanDump(
 
   std::string encryption;
   wireless_info_->wireless_link_info->encyption_on = false;
-  for (auto& line : lines) {
-    if (RE2::FullMatch(line, kEncryptionRegex, &encryption)) {
-      wireless_info_->wireless_link_info->encyption_on = true;
+  // Example of bss_str line: "BSS b0:e4:d5:6f:65:1b(on wlan0) -- associated".
+  std::string bss_str =
+      "BSS " + wireless_info_->wireless_link_info->access_point_address_str +
+      "(on " + wireless_info_->interface_name + ") -- associated";
+  for (uint32_t index = 0; index < lines.size(); index++) {
+    if (lines[index] == bss_str) {
+      // Only look at Privacy bit of AP that the WiFi adapter connected to.
+      if (((index + kEncryptionLineOffset) < lines.size()) &&
+          (RE2::FullMatch(lines[index + kEncryptionLineOffset],
+                          kEncryptionRegex, &encryption))) {
+        wireless_info_->wireless_link_info->encyption_on = true;
+      }
       break;
     }
   }
