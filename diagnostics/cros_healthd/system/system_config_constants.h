@@ -11,43 +11,45 @@
 namespace diagnostics {
 
 // The path used to check a device's master configuration hardware properties.
-extern const char kHardwarePropertiesPath[];
+inline constexpr auto kHardwarePropertiesPath = "/hardware-properties";
 // The master configuration property that specifies a device's PSU type.
-extern const char kPsuTypeProperty[];
+inline constexpr auto kPsuTypeProperty = "psu-type";
 // The path used to check a device's master configuration cros_healthd battery
 // properties.
-extern const char kBatteryPropertiesPath[];
+inline constexpr auto kBatteryPropertiesPath = "/cros-healthd/battery";
 // The master configuration property that indicates whether a device has Smart
 // Battery info.
-extern const char kHasSmartBatteryInfoProperty[];
+inline constexpr auto kHasSmartBatteryInfoProperty = "has-smart-battery-info";
 // The master configuration property that indicates whether a device has a
 // backlight.
-extern const char kHasBacklightProperty[];
+inline constexpr auto kHasBacklightProperty = "has-backlight";
 // The path used to check a device's master configuration cros_healthd vpd
 // properties.
-extern const char kCachedVpdPropertiesPath[];
+inline constexpr auto kCachedVpdPropertiesPath = "/cros-healthd/cached-vpd";
 // The master configuration property that indicates whether a device has a
 // sku number in the VPD fields.
-extern const char kHasSkuNumberProperty[];
+inline constexpr auto kHasSkuNumberProperty = "has-sku-number";
 // NVME utility program path relative to the root directory.
-extern const char kNvmeToolPath[];
+inline constexpr auto kNvmeToolPath = "usr/sbin/nvme";
 // Linux device path relative to the root directory.
-extern const char kDevicePath[];
+inline constexpr auto kDevicePath = "dev";
 // Smartctl utility program path relative to the root directory.
-extern const char kSmartctlToolPath[];
+inline constexpr auto kSmartctlToolPath = "usr/sbin/smartctl";
 // Fio utility program path relative to the root directory.
-extern const char kFioToolPath[];
+inline constexpr auto kFioToolPath = "usr/bin/fio";
 // The path to check a device's master configuration ARC build properties.
-extern const char kArcBuildPropertiesPath[];
+inline constexpr auto kArcBuildPropertiesPath = "/arc/build-properties";
 // The master configuration property that specifies a device's marketing name.
-extern const char kMarketingNameProperty[];
+inline constexpr auto kMarketingNameProperty = "marketing-name";
 // The root path of master configuration.
-extern const char kRootPath[];
+inline constexpr auto kRootPath = "/";
 // The master configuration property that specifies a device's code name.
-extern const char kCodeNameProperty[];
+inline constexpr auto kCodeNameProperty = "name";
 
 // Returns a list of wilco board names.
-const std::list<std::string> GetWilcoBoardNames();
+inline const std::list<std::string> GetWilcoBoardNames() {
+  return {"sarien", "drallion"};
+}
 
 }  // namespace diagnostics
 

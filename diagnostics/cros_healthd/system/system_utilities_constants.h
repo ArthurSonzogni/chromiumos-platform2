@@ -8,9 +8,9 @@
 namespace diagnostics {
 
 // Machines populated by uname().
-extern const char kUnameMachineX86_64[];
-extern const char kUnameMachineAArch64[];
-extern const char kUnameMachineArmv7l[];
+inline constexpr auto kUnameMachineX86_64 = "x86_64";
+inline constexpr auto kUnameMachineAArch64 = "aarch64";
+inline constexpr auto kUnameMachineArmv7l = "armv7l";
 
 }  // namespace diagnostics
 
