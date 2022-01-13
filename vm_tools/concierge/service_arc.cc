@@ -24,6 +24,9 @@ constexpr const char kAndroidDataDir[] = "/run/arcvm/android-data";
 // Android stub volume directory for MyFiles and removable media.
 constexpr const char kStubVolumeSharedDir[] = "/run/arcvm/media";
 
+// The CPU cgroup where all the ARCVM's crosvm processes should belong to.
+constexpr char kArcvmVcpuCpuCgroup[] = "/sys/fs/cgroup/cpu/arcvm-vcpus";
+
 }  // namespace
 
 std::unique_ptr<dbus::Response> Service::StartArcVm(
@@ -223,6 +226,8 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   vm_builder.AppendDisks(std::move(disks))
       .SetCpus(topology.NumCPUs())
       .AppendKernelParam(base::JoinString(params, " "))
+      .AppendCustomParam("--vcpu-cgroup-path",
+                         base::FilePath(kArcvmVcpuCpuCgroup).value())
       .AppendCustomParam("--android-fstab", fstab.value())
       .AppendCustomParam("--pstore",
                          base::StringPrintf("path=%s,size=%d", kArcVmPstorePath,

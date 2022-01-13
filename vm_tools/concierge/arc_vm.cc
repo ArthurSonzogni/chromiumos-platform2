@@ -56,7 +56,7 @@ constexpr base::TimeDelta kArcPowerctlConnectTimeout =
     base::TimeDelta::FromSeconds(5);
 
 // The CPU cgroup where all the ARCVM's crosvm processes should belong to.
-constexpr char kArcvmCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/arc";
+constexpr char kArcvmCpuCgroup[] = "/sys/fs/cgroup/cpu/arcvm";
 
 // Port for arc-powerctl running on the guest side.
 constexpr unsigned int kVSockPort = 4242;
