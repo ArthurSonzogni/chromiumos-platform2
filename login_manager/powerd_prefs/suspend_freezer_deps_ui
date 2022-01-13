@@ -1,5 +1,6 @@
 drivefs
 fuse-archive
+fusebox
 mount-zip
 mount.exfat-fuse
 ntfs-3g
