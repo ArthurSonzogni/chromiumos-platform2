@@ -114,9 +114,9 @@ bool DeviceDestinationStateHandler::CanSkipHwwp() const {
                   component) != kComponentsNeedManualCalibration.end()) {
       return false;
     }
-    if (std::find(kComponentsNeedAutoCalibration.begin(),
-                  kComponentsNeedAutoCalibration.end(),
-                  component) != kComponentsNeedAutoCalibration.end()) {
+    if (std::find(kComponentsNeedUpdateCbi.begin(),
+                  kComponentsNeedUpdateCbi.end(),
+                  component) != kComponentsNeedUpdateCbi.end()) {
       return false;
     }
   }

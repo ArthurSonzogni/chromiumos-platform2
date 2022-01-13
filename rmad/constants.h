@@ -42,9 +42,8 @@ inline constexpr char kPowerwashRequest[] = "powerwash_request";
 inline constexpr std::array<RmadComponent, 4> kComponentsNeedManualCalibration =
     {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
      RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE};
-inline constexpr std::array<RmadComponent, 1> kComponentsNeedAutoCalibration = {
-    RMAD_COMPONENT_TOUCHSCREEN,
-};
+inline constexpr std::array<RmadComponent, 2> kComponentsNeedUpdateCbi = {
+    RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE};
 
 // Constants for fake utilities.
 namespace fake {
