@@ -5,8 +5,6 @@
 #ifndef MISSIVE_ENCRYPTION_ENCRYPTION_MODULE_H_
 #define MISSIVE_ENCRYPTION_ENCRYPTION_MODULE_H_
 
-#include <atomic>
-
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_piece.h>

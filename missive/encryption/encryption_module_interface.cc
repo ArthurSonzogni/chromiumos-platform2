@@ -4,7 +4,6 @@
 
 #include "missive/encryption/encryption_module_interface.h"
 
-#include <atomic>
 #include <utility>
 
 #include <base/bind.h>
