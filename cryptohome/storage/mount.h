@@ -175,6 +175,11 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Return the the mount type as a string.
   MountType GetMountType() const;
 
+  // TODO(crbug.com/1287022): Remove in M101.
+  // Remove the Chrome Logs if they are too large. This is a mitigation for
+  // crbug.com/1231192.
+  virtual bool RemoveLargeChromeLogs() const;
+
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.
   uid_t default_user_;
