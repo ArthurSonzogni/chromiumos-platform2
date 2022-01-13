@@ -10,6 +10,9 @@ group("all") {
     ":feedback_client",
     ":feedback_daemon",
     ":feedback_proto",
+    ":install_headers",
+    ":install_init_conf",
+    ":install_systemd_conf",
   ]
   if (use.test) {
     deps += [ ":feedback_daemon_test" ]
@@ -44,6 +47,7 @@ static_library("libfeedback_daemon") {
 executable("feedback_daemon") {
   sources = [ "feedback_daemon.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   deps = [ ":libfeedback_daemon" ]
 }
 
@@ -66,6 +70,7 @@ static_library("libfeedback_client") {
 executable("feedback_client") {
   sources = [ "feedback_client.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   deps = [
     ":libfeedback_client",
     ":libfeedback_daemon",
@@ -87,9 +92,28 @@ proto_library("feedback_proto") {
   ]
 }
 
+install_config("install_headers") {
+  sources = [
+    "components/feedback/feedback_common.h",
+    "feedback_service_interface.h",
+  ]
+  install_path = "/usr/include/feedback"
+}
+
+install_config("install_init_conf") {
+  sources = [ "init/feedback_daemon.conf" ]
+  install_path = "/etc/init"
+}
+
+install_config("install_systemd_conf") {
+  sources = [ "org.chromium.feedback.conf" ]
+  install_path = "/etc/dbus-1/system.d"
+}
+
 if (use.test) {
   executable("feedback_daemon_test") {
     sources = [ "feedback_service_test.cc" ]
+    run_test = true
     configs += [
       "//common-mk:test",
       ":target_defaults",
