@@ -158,7 +158,7 @@ struct RecoveryRequestPlainText {
 // RecoveryRequest is the request sent to the HSM server.
 struct RecoveryRequest {
   // The AEAD-encrypted payload.
-  RequestPayload request_payload;
+  brillo::SecureBlob request_payload;
 };
 
 // `associated_data` for the Response payload.

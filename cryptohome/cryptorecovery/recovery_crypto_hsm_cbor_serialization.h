@@ -54,6 +54,11 @@ extern const int kHsmAssociatedDataSchemaVersion;
 extern const int kOnboardingMetaDataSchemaVersion;
 extern const int kRequestMetaDataSchemaVersion;
 
+// Constructs cbor-encoded binary blob for the Recovery Request payload.
+bool SerializeRecoveryRequestPayloadToCbor(
+    const RequestPayload& request_payload,
+    brillo::SecureBlob* request_payload_cbor);
+
 // Constructs cbor-encoded binary blob for the Recovery Request.
 bool SerializeRecoveryRequestToCbor(const RecoveryRequest& request,
                                     brillo::SecureBlob* request_cbor);
@@ -116,6 +121,10 @@ bool DeserializeRecoveryRequestPlainTextFromCbor(
 bool DeserializeRecoveryRequestFromCbor(
     const brillo::SecureBlob& recovery_request_cbor,
     RecoveryRequest* recovery_request);
+
+// Extracts data from Recovery Request payload cbor.
+bool DeserializeRecoveryRequestPayloadFromCbor(
+    const brillo::SecureBlob& serialized_cbor, RequestPayload* request_payload);
 
 // Extracts data from response plain text cbor.
 bool DeserializeHsmResponsePlainTextFromCbor(

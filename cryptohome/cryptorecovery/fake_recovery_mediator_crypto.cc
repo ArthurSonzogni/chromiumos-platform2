@@ -455,9 +455,15 @@ bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
     return false;
   }
 
+  RequestPayload request_payload;
+  if (!DeserializeRecoveryRequestPayloadFromCbor(
+          recovery_request.request_payload, &request_payload)) {
+    LOG(ERROR) << "Failed to deserialize Request payload.";
+    return false;
+  }
+
   brillo::SecureBlob request_plain_text_cbor;
-  if (!DecryptRequestPayloadPlainText(epoch_priv_key,
-                                      recovery_request.request_payload,
+  if (!DecryptRequestPayloadPlainText(epoch_priv_key, request_payload,
                                       &request_plain_text_cbor)) {
     LOG(ERROR) << "Unable to decrypt plain text in request_payload";
     return false;
@@ -472,8 +478,8 @@ bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
   }
 
   HsmPayload hsm_payload;
-  if (!GetHsmPayloadFromRequestAdForTesting(
-          recovery_request.request_payload.associated_data, &hsm_payload)) {
+  if (!GetHsmPayloadFromRequestAdForTesting(request_payload.associated_data,
+                                            &hsm_payload)) {
     LOG(ERROR) << "Unable to extract hsm_payload from request_payload";
     return false;
   }

@@ -40,6 +40,10 @@ const char kFakeHsmPayloadCipherText[] = "fake hsm payload cipher text";
 const char kFakeHsmPayloadAd[] = "fake hsm payload ad";
 const char kFakeHsmPayloadIv[] = "fake hsm payload iv";
 const char kFakeHsmPayloadTag[] = "fake hsm payload tag";
+const char kFakePayloadCipherText[] = "fake cipher text";
+const char kFakePayloadAd[] = "fake ad";
+const char kFakePayloadIv[] = "fake iv";
+const char kFakePayloadTag[] = "fake tag";
 const char kFakeResponseData[] = "fake response metadata";
 const char kFakeResponseSalt[] = "fake response salt";
 const char kFakeMetadataCborKey[] = "fake metadata cbor key";
@@ -139,11 +143,10 @@ class HsmPayloadCborHelperTest : public testing::Test {
 class AeadPayloadHelper {
  public:
   AeadPayloadHelper() {
-    fake_aead_payload_.cipher_text = brillo::SecureBlob("fake cipher text");
-    fake_aead_payload_.associated_data =
-        brillo::SecureBlob("fake associated data");
-    fake_aead_payload_.iv = brillo::SecureBlob("fake iv");
-    fake_aead_payload_.tag = brillo::SecureBlob("fake tag");
+    fake_aead_payload_.cipher_text = brillo::SecureBlob(kFakePayloadCipherText);
+    fake_aead_payload_.associated_data = brillo::SecureBlob(kFakePayloadAd);
+    fake_aead_payload_.iv = brillo::SecureBlob(kFakePayloadIv);
+    fake_aead_payload_.tag = brillo::SecureBlob(kFakePayloadTag);
   }
 
   const AeadPayload& GetFakePayload() const { return fake_aead_payload_; }
@@ -473,45 +476,75 @@ TEST_F(RecoveryRequestCborHelperTest, GeneratePlainText) {
   EXPECT_EQ(GetCborMapSize(cbor_output), 1);
 }
 
-// Verifies serialization of Recovery Request to CBOR.
+// Verifies serialization of Recovery Request and Request Payload to CBOR.
 TEST_F(RecoveryRequestCborHelperTest, SerializeRecoveryRequest) {
   RecoveryRequest request;
-  request.request_payload = aead_helper_.GetFakePayload();
+  RequestPayload request_payload = aead_helper_.GetFakePayload();
+  ASSERT_TRUE(SerializeRecoveryRequestPayloadToCbor(request_payload,
+                                                    &request.request_payload));
 
   brillo::SecureBlob cbor_output;
   EXPECT_TRUE(SerializeRecoveryRequestToCbor(request, &cbor_output));
 
-  cbor::Value deserialized_request_payload;
-  EXPECT_TRUE(GetValueFromCborMapByKeyForTesting(
-      cbor_output, kRequestAead, &deserialized_request_payload));
-  ASSERT_TRUE(deserialized_request_payload.is_map());
-  aead_helper_.ExpectEqualsToFakeAeadPayload(
-      deserialized_request_payload.GetMap());
+  RequestPayload deserialized_request_payload;
+  ASSERT_TRUE(DeserializeRecoveryRequestPayloadFromCbor(
+      request.request_payload, &deserialized_request_payload));
+  aead_helper_.ExpectEqualsToFakeAeadPayload(deserialized_request_payload);
+}
+
+// Verifies deserialization of Recovery Request from CBOR.
+TEST_F(RecoveryRequestCborHelperTest, DeserializeRecoveryRequestPayload) {
+  brillo::SecureBlob request_payload_cbor;
+  ASSERT_TRUE(SerializeRecoveryRequestPayloadToCbor(
+      aead_helper_.GetFakePayload(), &request_payload_cbor));
+
+  RequestPayload request_payload;
+  EXPECT_TRUE(DeserializeRecoveryRequestPayloadFromCbor(request_payload_cbor,
+                                                        &request_payload));
+  aead_helper_.ExpectEqualsToFakeAeadPayload(request_payload);
+}
+
+// Verifies that deserialization of Recovery Request from CBOR fails if payload
+// has a missing field.
+TEST_F(RecoveryRequestCborHelperTest,
+       DeserializeRecoveryRequestPayloadMissingField) {
+  cbor::Value::MapValue payload = aead_helper_.GetFakePayloadCborMap();
+  // Remove `iv` value.
+  payload.erase(payload.find(cbor::Value(kAeadIv)));
+
+  brillo::SecureBlob request_payload_cbor;
+  ASSERT_TRUE(CreateCborMapForTesting(payload, &request_payload_cbor));
+  RequestPayload request_payload;
+  EXPECT_FALSE(DeserializeRecoveryRequestPayloadFromCbor(request_payload_cbor,
+                                                         &request_payload));
 }
 
 // Verifies deserialization of Recovery Request from CBOR.
 TEST_F(RecoveryRequestCborHelperTest, DeserializeRecoveryRequest) {
   cbor::Value::MapValue request;
-  request.emplace(kRequestAead, aead_helper_.GetFakePayloadCborMap());
+  RequestPayload payload = aead_helper_.GetFakePayload();
+  brillo::SecureBlob request_payload_cbor;
+  ASSERT_TRUE(
+      SerializeRecoveryRequestPayloadToCbor(payload, &request_payload_cbor));
+  request.emplace(kRequestAead, request_payload_cbor);
   brillo::SecureBlob request_cbor;
   ASSERT_TRUE(CreateCborMapForTesting(request, &request_cbor));
 
   RecoveryRequest recovery_request;
   EXPECT_TRUE(
       DeserializeRecoveryRequestFromCbor(request_cbor, &recovery_request));
-  aead_helper_.ExpectEqualsToFakeAeadPayload(recovery_request.request_payload);
+  RequestPayload request_payload;
+  EXPECT_TRUE(DeserializeRecoveryRequestPayloadFromCbor(
+      recovery_request.request_payload, &request_payload));
+  aead_helper_.ExpectEqualsToFakeAeadPayload(request_payload);
 }
 
 // Verifies that deserialization of Recovery Request from CBOR fails if payload
 // has wrong format.
 TEST_F(RecoveryRequestCborHelperTest, DeserializeRecoveryRequestWrongFormat) {
-  brillo::SecureBlob payload_cbor;
-  ASSERT_TRUE(CreateCborMapForTesting(aead_helper_.GetFakePayloadCborMap(),
-                                      &payload_cbor));
-
   cbor::Value::MapValue request;
-  // Field value is serialized CBOR instead of nested map.
-  request.emplace(kRequestAead, payload_cbor);
+  // Field value is nested map instead of serialized CBOR.
+  request.emplace(kRequestAead, aead_helper_.GetFakePayloadCborMap());
   brillo::SecureBlob request_cbor;
   ASSERT_TRUE(CreateCborMapForTesting(request, &request_cbor));
 
@@ -523,12 +556,8 @@ TEST_F(RecoveryRequestCborHelperTest, DeserializeRecoveryRequestWrongFormat) {
 // Verifies that deserialization of Recovery Request from CBOR fails if payload
 // has a missing field.
 TEST_F(RecoveryRequestCborHelperTest, DeserializeRecoveryRequestMissingField) {
-  cbor::Value::MapValue payload = aead_helper_.GetFakePayloadCborMap();
-  // Remove `iv` value.
-  payload.erase(payload.find(cbor::Value(kAeadIv)));
-
   cbor::Value::MapValue request;
-  request.emplace(kRequestAead, payload);
+  // Does not emplace `kRequestAead` value.
   brillo::SecureBlob request_cbor;
   ASSERT_TRUE(CreateCborMapForTesting(request, &request_cbor));
 

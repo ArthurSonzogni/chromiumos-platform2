@@ -178,12 +178,24 @@ const int kHsmAssociatedDataSchemaVersion = 1;
 const int kOnboardingMetaDataSchemaVersion = 1;
 const int kRequestMetaDataSchemaVersion = 1;
 
+bool SerializeRecoveryRequestPayloadToCbor(
+    const RequestPayload& request_payload,
+    brillo::SecureBlob* request_payload_cbor) {
+  cbor::Value::MapValue request_payload_map =
+      ConvertAeadPayloadToCborMap(request_payload);
+
+  if (!SerializeCborMap(request_payload_map, request_payload_cbor)) {
+    LOG(ERROR) << "Failed to serialize Recovery Request payload to CBOR";
+    return false;
+  }
+  return true;
+}
+
 bool SerializeRecoveryRequestToCbor(const RecoveryRequest& request,
                                     brillo::SecureBlob* request_cbor) {
   cbor::Value::MapValue request_map;
 
-  request_map.emplace(kRequestAead,
-                      ConvertAeadPayloadToCborMap(request.request_payload));
+  request_map.emplace(kRequestAead, request.request_payload);
 
   if (!SerializeCborMap(request_map, request_cbor)) {
     LOG(ERROR) << "Failed to serialize Recovery Request to CBOR";
@@ -400,21 +412,26 @@ bool DeserializeRecoveryRequestFromCbor(
   }
 
   const cbor::Value::MapValue& cbor_map = cbor->GetMap();
-  const auto recovery_request_entry = cbor_map.find(cbor::Value(kRequestAead));
-  if (recovery_request_entry == cbor_map.end()) {
-    LOG(ERROR) << "No " << kRequestAead
-               << " entry in the Recovery Request map.";
+  // Parse out request_payload SecureBlob
+  brillo::SecureBlob request_payload;
+  if (!FindBytestringValueInCborMap(cbor_map, kRequestAead, &request_payload)) {
+    LOG(ERROR) << "Failed to get request payload from Recovery Request map.";
     return false;
   }
-  if (!recovery_request_entry->second.is_map()) {
-    LOG(ERROR) << "Wrongly formatted " << kRequestAead
-               << " entry in the Recovery Request map.";
+  recovery_request->request_payload = std::move(request_payload);
+  return true;
+}
+
+bool DeserializeRecoveryRequestPayloadFromCbor(
+    const brillo::SecureBlob& serialized_cbor,
+    RequestPayload* request_payload) {
+  const auto& cbor = ReadCborMap(serialized_cbor);
+  if (!cbor) {
     return false;
   }
 
-  if (!ConvertCborMapToAeadPayload(recovery_request_entry->second.GetMap(),
-                                   &recovery_request->request_payload)) {
-    LOG(ERROR) << "Failed to deserialize Recovery Request from CBOR.";
+  if (!ConvertCborMapToAeadPayload(cbor->GetMap(), request_payload)) {
+    LOG(ERROR) << "Failed to deserialize Recovery Request payload from CBOR.";
     return false;
   }
   return true;

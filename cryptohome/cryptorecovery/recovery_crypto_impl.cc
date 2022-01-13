@@ -387,8 +387,15 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
     return false;
   }
 
+  brillo::SecureBlob request_payload_blob;
+  if (!SerializeRecoveryRequestPayloadToCbor(request_payload,
+                                             &request_payload_blob)) {
+    LOG(ERROR) << "Failed to serialize Recovery Request payload";
+    return false;
+  }
+
   RecoveryRequest request;
-  request.request_payload = std::move(request_payload);
+  request.request_payload = std::move(request_payload_blob);
   if (!GenerateRecoveryRequestProto(request, recovery_request)) {
     LOG(ERROR) << "Failed to generate Recovery Request proto";
     return false;
