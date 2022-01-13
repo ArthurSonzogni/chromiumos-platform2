@@ -47,8 +47,9 @@ class Error {
     kPermissionDenied,
     kPinBlocked,
     kPinRequired,
+    kTechnologyNotAvailable,
     kWrongState,
-    kNumErrors
+    kNumErrors,
   };
 
   Error();                    // Success by default.

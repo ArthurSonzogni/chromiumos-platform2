@@ -96,8 +96,6 @@ namespace {
 
 constexpr char kErrorTypeRequired[] = "must specify service type";
 
-constexpr char kErrorUnsupportedServiceType[] = "service type is unsupported";
-
 // Time to wait for termination actions to complete, which should be less than
 // the upstart job timeout, or otherwise stats for termination actions might be
 // lost.
@@ -730,7 +728,7 @@ void Manager::PopProfile(const std::string& name, Error* error) {
     return;
   }
   if (!active_profile->MatchesIdentifier(ident)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
                           name + " is not the active profile");
     return;
   }
@@ -1002,8 +1000,10 @@ ServiceRefPtr Manager::CreateTemporaryServiceFromProfile(
   }
 
   if (!service) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                          kErrorUnsupportedServiceType);
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kTechnologyNotAvailable,
+        "Could not create temporary service for technology: " +
+            technology.GetName());
     return nullptr;
   }
 
@@ -2524,8 +2524,9 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore& args,
   std::string type = args.Get<std::string>(kTypeProperty);
   Technology technology = Technology::CreateFromName(type);
   if (!base::Contains(providers_, technology)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                          kErrorUnsupportedServiceType);
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kTechnologyNotAvailable,
+        "Could not get service for technology: " + technology.GetName());
     return nullptr;
   }
 
@@ -2614,8 +2615,9 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
   Technology technology = Technology::CreateFromName(type);
 
   if (!base::Contains(providers_, technology)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                          kErrorUnsupportedServiceType);
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kTechnologyNotAvailable,
+        "Failed to configure service for technology: " + technology.GetName());
     return nullptr;
   }
 
@@ -2643,7 +2645,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
     service = GetServiceWithGUID(args.Get<std::string>(kGuidProperty), nullptr);
     if (service && service->technology() != technology) {
       Error::PopulateAndLog(
-          FROM_HERE, error, Error::kNotSupported,
+          FROM_HERE, error, Error::kInvalidArguments,
           base::StringPrintf("This GUID matches a non-%s service",
                              type.c_str()));
       return nullptr;

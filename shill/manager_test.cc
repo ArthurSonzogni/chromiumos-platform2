@@ -1003,7 +1003,7 @@ TEST_F(ManagerTest, PushPopProfile) {
   EXPECT_EQ(Error::kInvalidArguments, TestPopProfile(&manager, "~"));
 
   // Popping an profile that is not at the top of the stack should fail.
-  EXPECT_EQ(Error::kNotSupported, TestPopProfile(&manager, kProfile0));
+  EXPECT_EQ(Error::kWrongState, TestPopProfile(&manager, kProfile0));
 
   // Popping the top profile should succeed.
   EXPECT_CALL(*service, ClearExplicitlyDisconnected());
@@ -1530,8 +1530,7 @@ TEST_F(ManagerTest, GetServiceUnknownType) {
   Error e;
   args.Set<std::string>(kTypeProperty, kTypePPPoE);
   manager()->GetService(args, &e);
-  EXPECT_EQ(Error::kNotSupported, e.type());
-  EXPECT_EQ("service type is unsupported", e.message());
+  EXPECT_EQ(Error::kTechnologyNotAvailable, e.type());
 }
 
 TEST_F(ManagerTest, GetServiceEthernet) {
@@ -1772,8 +1771,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithWrongType) {
   Error error;
   ServiceRefPtr service =
       manager()->ConfigureServiceForProfile("", args, &error);
-  EXPECT_EQ(Error::kNotSupported, error.type());
-  EXPECT_EQ("service type is unsupported", error.message());
+  EXPECT_EQ(Error::kTechnologyNotAvailable, error.type());
   EXPECT_EQ(nullptr, service);
 }
 
@@ -1886,7 +1884,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceByGUID) {
     ServiceRefPtr service = manager()->ConfigureServiceForProfile(
         kProfileName.value(), args, &error);
     EXPECT_EQ(nullptr, service);
-    EXPECT_EQ(Error::kNotSupported, error.type());
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
     EXPECT_EQ("This GUID matches a non-wifi service", error.message());
   }
 

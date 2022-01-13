@@ -248,8 +248,8 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const std::string& type,
                 << " storage id " << storage_id;
 #if defined(DISABLE_VPN)
 
-  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                        "VPN is not supported.");
+  Error::PopulateAndLog(FROM_HERE, error, Error::kTechnologyNotAvailable,
+                        "VPN technology is not available.");
   return nullptr;
 
 #else

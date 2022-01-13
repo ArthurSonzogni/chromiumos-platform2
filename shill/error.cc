@@ -49,6 +49,7 @@ const Info kInfos[Error::kNumErrors] = {
     {kErrorResultPermissionDenied, "Permission denied"},
     {kErrorResultPinBlocked, "SIM PIN is blocked"},
     {kErrorResultPinRequired, "SIM PIN is required"},
+    {kErrorResultTechnologyNotAvailable, "Technology not available"},
     {kErrorResultWrongState, "Wrong state"},
 };
 

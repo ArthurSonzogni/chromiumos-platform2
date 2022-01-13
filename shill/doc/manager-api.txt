@@ -96,6 +96,7 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 					 [service].Error.NotFound
+					 [service].Error.WrongState
 
 		object PopAnyProfile()
 
@@ -183,7 +184,7 @@ Methods		dict GetProperties()
 			See also GetService.
 
 			Possible Errors: [service].Error.InvalidArguments
-					 [service].Error.NotSupported
+					 [service].Error.TechnologyNotAvailable
 
 		object ConfigureServiceForProfile(object profile,
 						  dict properties)
@@ -249,7 +250,7 @@ Methods		dict GetProperties()
 			Possible Errors: [service].Error.InternalError
 					 [service].Error.InvalidArguments
 					 [service].Error.NotFound
-					 [service].Error.NotSupported
+					 [service].Error.TechnologyNotAvailable
 
 		void FindMatchingService(dict properties)
 
@@ -287,11 +288,11 @@ Methods		dict GetProperties()
 			See also ConfigureService.
 
 			Possible Errors: [service].Error.InvalidArguments
-					 [service].Error.NotSupported
 					 [service].Error.PermissionDenied
 					 [service].Error.InternalError
 					 [service].Error.InvalidNetworkName
 					 [service].Error.InvalidPassphrase
+					 [service].Error.TechnologyNotAvailable
 
 		void SetDebugTags(string taglist)
 
