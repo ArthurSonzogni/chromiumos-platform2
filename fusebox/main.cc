@@ -38,9 +38,7 @@ namespace {
 
 static std::string* g_device;
 
-void SetupLogging() {
-  brillo::InitLog(brillo::kLogToStderr);
-
+void SetupDevice() {
   static std::string device;
   device = CommandLine::ForCurrentProcess()->GetSwitchValueASCII("storage");
   LOG_IF(INFO, !device.empty()) << "device: " << device;
@@ -610,13 +608,17 @@ class FuseBoxDaemon : public brillo::DBusServiceDaemon {
   std::unique_ptr<FuseBoxClient> client_;
 };
 
-int Run(char** mountpoint, fuse_chan* chan) {
+int Run(char** mountpoint, fuse_chan* chan, int foreground) {
   LOG(INFO) << "fusebox " << *mountpoint << " [" << getpid() << "]";
 
   FuseMount fuse = FuseMount(mountpoint, chan);
   fuse.debug = CommandLine::ForCurrentProcess()->HasSwitch("debug");
   fuse.fake = CommandLine::ForCurrentProcess()->HasSwitch("fake");
   fuse.opts = CommandLine::ForCurrentProcess()->GetSwitchValueASCII("ll");
+
+  if (!foreground)
+    LOG(INFO) << "fusebox fuse_daemonizing";
+  fuse_daemonize(foreground);
 
   auto daemon = FuseBoxDaemon(&fuse);
   return daemon.Run();
@@ -626,12 +628,14 @@ int Run(char** mountpoint, fuse_chan* chan) {
 
 int main(int argc, char** argv) {
   CommandLine::Init(argc, argv);
-  SetupLogging();
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
+  SetupDevice();
 
   fuse_args args = FUSE_ARGS_INIT(argc, argv);
   char* mountpoint = nullptr;
 
-  if (fuse_parse_cmdline(&args, &mountpoint, nullptr, nullptr) == -1) {
+  int foreground = 0;
+  if (fuse_parse_cmdline(&args, &mountpoint, nullptr, &foreground) == -1) {
     PLOG(ERROR) << "fuse_parse_cmdline() failed";
     return EX_USAGE;
   }
@@ -647,10 +651,11 @@ int main(int argc, char** argv) {
     return ENODEV;
   }
 
-  int exit_code = fusebox::Run(&mountpoint, chan);
+  int exit_code = fusebox::Run(&mountpoint, chan, foreground);
 
   if (fuse_session* session = fuse_chan_session(chan))
     fuse_session_destroy(session);
+  fuse_opt_free_args(&args);
 
   if (!mountpoint) {  // Kernel removed the FUSE mountpoint: umount(8).
     exit_code = ENODEV;
@@ -660,7 +665,5 @@ int main(int argc, char** argv) {
 
   errno = exit_code;
   PLOG_IF(ERROR, exit_code) << "fusebox exiting";
-  fuse_opt_free_args(&args);
-
   return exit_code;
 }
