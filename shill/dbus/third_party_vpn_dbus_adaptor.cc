@@ -5,6 +5,7 @@
 #include "shill/dbus/third_party_vpn_dbus_adaptor.h"
 
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/logging.h"
@@ -97,7 +98,9 @@ bool ThirdPartyVpnDBusAdaptor::UpdateConnectionState(
       e.Populate(Error::kInvalidArguments, error_message);
     }
   } else {
-    e.Populate(Error::kNotSupported, "Connection state is not supported");
+    e.Populate(Error::kInternalError,
+               "Failed to convert connection_state: " +
+                   base::NumberToString(connection_state));
   }
   return !e.ToChromeosError(error);
 }

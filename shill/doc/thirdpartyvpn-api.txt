@@ -29,6 +29,9 @@ Methods		string SetParameters(dict parameters)
 				  to connect (or reconnect) so the service
 				  should be disabled.
 
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.InternalError
+
 		void SendPacket(array{uint8} ip_packet)
 
 			Transmits an IP packet to the tunnel interface.

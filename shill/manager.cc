@@ -1001,7 +1001,7 @@ ServiceRefPtr Manager::CreateTemporaryServiceFromProfile(
 
   if (!service) {
     Error::PopulateAndLog(
-        FROM_HERE, error, Error::kTechnologyNotAvailable,
+        FROM_HERE, error, Error::kInternalError,
         "Could not create temporary service for technology: " +
             technology.GetName());
     return nullptr;
