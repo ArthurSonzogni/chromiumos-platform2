@@ -19,7 +19,7 @@ members = [
 [features]
 default = ["guest", "hypervisor"]
 guest = []
-hypervisor = []
+hypervisor = ["balloon_control"]
 sdk = []
 
 [[bin]]
@@ -54,6 +54,7 @@ assert_matches = "1.5.0"
 
 [dependencies]
 anyhow = "1.0.0"
+balloon_control = { path = "../../platform/crosvm/common/balloon_control", optional = true } # provided by ebuild
 data_model = { path = "../../platform/crosvm/common/data_model" } # provided by ebuild
 dbus = "0.9"
 dbus-crossroads = "0.5.0"

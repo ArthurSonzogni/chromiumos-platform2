@@ -7,23 +7,23 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
+use std::convert::{TryFrom, TryInto};
 use std::env;
 use std::fmt::{Debug, Formatter};
 use std::io::{ErrorKind, Read, Write};
 use std::mem;
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::PathBuf;
+use std::ptr::null_mut;
 use std::rc::Rc;
-use std::time::Duration;
 use std::result::Result as StdResult;
+use std::time::Duration;
 
-use sys_util::{
-    vsock::{SocketAddr as VSocketAddr, VsockCid},
-    {error, handle_eintr_errno, info, syslog, warn},
-};
+use anyhow::{anyhow, bail, Context, Result};
+use balloon_control::{BalloonTubeCommand, BalloonTubeResult};
 use data_model::DataInit;
-use anyhow::{anyhow, Context, Result};
+use libc::{recvfrom, MSG_PEEK, MSG_TRUNC};
 use libsirenia::{
     build_info::BUILD_TIMESTAMP,
     linux::events::{
@@ -35,8 +35,37 @@ use libsirenia::{
         Error as TransportError, Transport, TransportType, UnixServerTransport, DEFAULT_MMS_PORT,
     },
 };
+use serde::{Deserialize, Serialize};
+use sys_util::{
+    vsock::{SocketAddr as VSocketAddr, VsockCid},
+    {error, handle_eintr_errno, info, pagesize, round_up_to_page_size, syslog, warn},
+};
 
 const CROS_GUEST_ID: u32 = 0;
+
+#[repr(u32)]
+enum MessageId {
+    // PrepareVm(u64 mem_size, u64 init_mem_size) => (i32 res, u32 id, u64 shortfall);
+    PrepareVm = 3,
+    // FinishAddVm(u32 id) => i32
+    FinishAddVm = 4,
+    // RemoveVm(u32 id) => i32
+    RemoveVm = 5,
+}
+
+impl TryFrom<u32> for MessageId {
+    type Error = anyhow::Error;
+
+    fn try_from(v: u32) -> Result<MessageId> {
+        use MessageId::*;
+        match v {
+            v if v == PrepareVm as u32 => Ok(PrepareVm),
+            v if v == FinishAddVm as u32 => Ok(FinishAddVm),
+            v if v == RemoveVm as u32 => Ok(RemoveVm),
+            _ => Err(anyhow!(format!("unknown message id {}", v))),
+        }
+    }
+}
 
 #[repr(C)]
 #[derive(Copy, Clone, Default)]
@@ -47,6 +76,77 @@ struct MmsMessageHeader {
 // Safe because MmsMessageHeader only contains plain data.
 unsafe impl DataInit for MmsMessageHeader {}
 
+#[derive(Deserialize, Debug)]
+struct PrepareVmMsg {
+    #[serde(with = "u64_from_double")]
+    mem_size: u64,
+    #[serde(with = "u64_from_double")]
+    init_mem_size: u64,
+}
+
+#[derive(Serialize)]
+struct PrepareVmResp {
+    res: i32,
+    id: u32,
+    shortfall: u64,
+}
+
+fn error_prepare_vm_resp(res: i32) -> PrepareVmResp {
+    PrepareVmResp {
+        res,
+        id: 0,
+        shortfall: 0,
+    }
+}
+
+#[derive(Deserialize)]
+struct FinishAddVmMsg {
+    id: u32,
+}
+
+#[derive(Deserialize)]
+struct RemoveVmMsg {
+    id: u32,
+}
+
+#[derive(Serialize)]
+struct SimpleResp {
+    res: i32,
+}
+
+// TODO(stevensd): use something other than json
+macro_rules! from_double {
+    ( $name:ident, $dest_type:ty ) => {
+        mod $name {
+            use serde::{Deserialize, Deserializer};
+
+            pub fn deserialize<'de, D>(deserializer: D) -> Result<$dest_type, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                Ok(f64::deserialize(deserializer)? as $dest_type)
+            }
+        }
+    };
+}
+
+from_double!(u64_from_double, u64);
+
+// In practice this won't overflow, since mem_size is checked to be less than the
+// CrOS guest's total memory, so it will be significantly less than 2^64.
+fn calculate_extra_bytes(mem_size: u64) -> u64 {
+    // 3.2MB/GB for shmem xarray
+    // 2MB/GB for EPT
+    // 2MB/GB for page tables
+    // 2MB/GB for kvm rmap
+    // .5MB/GB for kvm gfn tracking
+    // => 9.7MB/GB
+    // TODO(stevensd): uprev/backport removal of rmap/gfn tracking to hypervisor
+    let extra_bytes = round_up_to_page_size(mem_size as usize * 97 / 10240) as u64;
+    // 6MB for crosvm
+    extra_bytes + (6 * 1024 * 1024)
+}
+
 fn read_obj<T: DataInit>(connection: &mut Transport) -> Result<T> {
     let mut bytes = vec![0; mem::size_of::<T>()];
     connection
@@ -56,6 +156,72 @@ fn read_obj<T: DataInit>(connection: &mut Transport) -> Result<T> {
     T::from_slice(&bytes)
         .context("failed to parse bytes")
         .map(|o| *o)
+}
+
+fn sync_balloon_command(
+    conn: &mut Transport,
+    msg: BalloonTubeCommand,
+) -> Result<BalloonTubeResult> {
+    conn.w
+        .write(&serde_json::ser::to_vec(&msg).unwrap())
+        .with_context(|| "failed to issue command")?;
+
+    let ret = unsafe {
+        handle_eintr_errno!(recvfrom(
+            conn.r.as_raw_fd(),
+            null_mut(),
+            0,
+            MSG_TRUNC | MSG_PEEK,
+            null_mut(),
+            null_mut(),
+        ))
+    };
+    if ret < 0 {
+        bail!("Failed to get message size: {}", sys::errno());
+    }
+    let mut resp = vec![0; ret as usize];
+    conn.r
+        .read_exact(&mut resp)
+        .with_context(|| "failed to read response")?;
+    serde_json::from_slice(&resp).with_context(|| "failed to parse response")
+}
+
+fn adjust_balloon(client: &mut CrosVmClient, delta: i64) -> i64 {
+    let target_size = if delta > 0 {
+        client.balloon_size + (delta as u64)
+    } else {
+        client.balloon_size.saturating_sub(delta.abs() as u64)
+    };
+    let actual_delta = match sync_balloon_command(
+        &mut client.client,
+        BalloonTubeCommand::Adjust {
+            num_bytes: target_size,
+            allow_failure: true,
+        },
+    ) {
+        Ok(BalloonTubeResult::Adjusted {
+            num_bytes: actual_size,
+        }) => {
+            let actual_delta = (actual_size as i64) - (client.balloon_size as i64);
+            client.balloon_size = actual_size;
+            actual_delta
+        }
+        res => {
+            error!("Error adjusting balloon {:?}", res);
+            // Be pessimistic - if we were trying to reclaim memory, assume the balloon didn't
+            // inflate at all, and if we were trying to release memory, assume nothing was
+            // released. If the sibling is dead, then things will be sorted out when the VM
+            // is removed.
+            if delta > 0 {
+                0
+            } else {
+                client.balloon_size = target_size;
+                delta
+            }
+        }
+    };
+
+    actual_delta
 }
 
 fn get_control_server_path(id: u32) -> PathBuf {
@@ -82,7 +248,11 @@ fn wait_for_hangup(conn: &Transport) {
     }
 
     if ret == -1 || (fds.revents & libc::POLLHUP) == 0 {
-        error!("Error cleaning up stale clients {} {}", sys::errno(), fds.revents);
+        error!(
+            "Error cleaning up stale clients {} {}",
+            sys::errno(),
+            fds.revents
+        );
     }
 }
 
@@ -113,9 +283,58 @@ struct CrosVmClient {
     balloon_size: u64,
 }
 
+// About the flow for starting a new VM:
+//
+// MMS implements a small state machine for managing startup of new
+// VMs. The states are as follows:
+//
+//  - Idle: MMS is not starting a new VM
+//  - Pending: MMS is in the middle of starting a new VM
+//  - Failed: MMS failed to start a new VM
+//
+// The following messages affect the state machine:
+//
+//  - PrepareVm: Reserves memory for the new VM. To allow the client to
+//    deal with failures to reserve enough memory, this message can be sent
+//    multiple times, and the reserved memory will continue to accumulate.
+//      - I -> P or P -> P
+//  - FinishAddVm: Finishes VM startup.
+//      - P -> I or P -> F
+//  - RemoveVm: Cleans up VM starting VM, if the id matches the id
+//    of the starting VM.
+//      - P -> I or F -> I
+//  - Client crashes: Equivalent to removing the starting VM.
+//
+// Establishing a balloon control connection with a new VM is a two
+// step process. When preparing for a new VM, MMS creates a new named
+// domain socket, and when finishing adding a new VM, MMS accepts a connection
+// from that socket. The connection-based approach allows MMS wait for
+// the client to finish shutting down when removing a VM, and it also gives
+// MMS a clean, race-free way to prevent any new VMs from starting and using
+// a socket (by unlinking the socket).
+struct StartingVmState {
+    id: u32,
+    server: UnixServerTransport,
+    mem_size: u64,
+    init_mem_size: u64,
+    reserved_mem: u64,
+    client: Option<Transport>,
+    failed: bool,
+}
+
+impl Debug for StartingVmState {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StartingVmState")
+            .field("id", &self.id)
+            .finish()
+    }
+}
+
 struct MmsState {
     cros_ctrl_connected: bool,
-    clients: HashMap<u32, CrosVmClient>,
+    clients: BTreeMap<u32, CrosVmClient>,
+    starting_vm_state: Option<StartingVmState>,
+    next_id: u32,
 }
 
 struct CtrlHandler {
@@ -123,9 +342,198 @@ struct CtrlHandler {
     state: Rc<RefCell<MmsState>>,
 }
 
+macro_rules! dispatch_message {
+    ($self: ident, $fn: ident, $data: expr) => {
+        serde_json::to_vec(
+            &$self.$fn(&serde_json::from_slice(&$data).with_context(|| "failed to parse")?),
+        )
+        .with_context(|| "failed to serialize response")
+    };
+}
+
 impl CtrlHandler {
     fn new(connection: Transport, state: Rc<RefCell<MmsState>>) -> Self {
         CtrlHandler { connection, state }
+    }
+
+    fn prepare_vm(&mut self, msg: &PrepareVmMsg) -> PrepareVmResp {
+        let mut state = self.state.borrow_mut();
+        let already_reserved = match state.starting_vm_state.as_mut() {
+            Some(vm_state) => {
+                if vm_state.mem_size != msg.mem_size || vm_state.init_mem_size != msg.init_mem_size
+                {
+                    error!(
+                        "prepare_vm mismatch with pending request {:?} {} {}",
+                        msg, vm_state.mem_size, vm_state.init_mem_size
+                    );
+                    return error_prepare_vm_resp(-libc::EINVAL);
+                }
+                if vm_state.failed {
+                    error!("prepare_vm mismatch with failed request {}", vm_state.id);
+                    return error_prepare_vm_resp(-libc::EINVAL);
+                }
+                vm_state.reserved_mem
+            }
+            None => {
+                if msg.mem_size % (pagesize() as u64) != 0
+                    || msg.init_mem_size % (pagesize() as u64) != 0
+                    || msg.init_mem_size > msg.mem_size
+                {
+                    error!("invalid prepare VM request {:?}", msg);
+                    return error_prepare_vm_resp(-libc::EINVAL);
+                }
+
+                let crosvm_client = state.clients.get(&CROS_GUEST_ID).unwrap();
+                if msg.mem_size >= crosvm_client.mem_size {
+                    error!("Oversized guest {:?}", msg);
+                    return error_prepare_vm_resp(-libc::EINVAL);
+                }
+
+                // Just panic on overflow - 2^32 VMs should be enough.
+                let id = state.next_id;
+                state.next_id = state.next_id.checked_add(1).unwrap();
+
+                let path = get_control_server_path(id);
+                let server = match UnixServerTransport::new(&path) {
+                    Ok(server) => server,
+                    Err(e) => {
+                        error!("failed to create server for {}: {:?}", id, e);
+                        return error_prepare_vm_resp(-libc::EIO);
+                    }
+                };
+                state.starting_vm_state = Some(StartingVmState {
+                    id,
+                    server,
+                    mem_size: msg.mem_size,
+                    init_mem_size: msg.init_mem_size,
+                    reserved_mem: 0,
+                    client: None,
+                    failed: false,
+                });
+                0
+            }
+        };
+
+        let required_mem = msg.init_mem_size + calculate_extra_bytes(msg.mem_size);
+        let crosvm_client = state.clients.get_mut(&CROS_GUEST_ID).unwrap();
+        let new_reserved =
+            adjust_balloon(crosvm_client, (required_mem - already_reserved) as i64) as u64;
+
+        // starting_vm_state cannot be None here
+        let vm_state = state.starting_vm_state.as_mut().unwrap();
+        vm_state.reserved_mem += new_reserved;
+
+        PrepareVmResp {
+            res: if vm_state.reserved_mem == required_mem {
+                0
+            } else {
+                -libc::ENOMEM
+            },
+            id: vm_state.id,
+            shortfall: required_mem - vm_state.reserved_mem,
+        }
+    }
+
+    fn finish_add_vm(&mut self, FinishAddVmMsg { id }: &FinishAddVmMsg) -> SimpleResp {
+        let mut state = self.state.borrow_mut();
+        let pending_id = match state.starting_vm_state.as_ref() {
+            Some(vm_state) => {
+                if vm_state.failed {
+                    error!("pending failed vm in finish_add_vm {}", vm_state.id);
+                    return SimpleResp { res: -libc::EINVAL };
+                }
+                Some(vm_state.id)
+            }
+            None => None,
+        };
+        if Some(*id) != pending_id {
+            error!("id mismatch in finish_add_vm {} {:?}", id, pending_id);
+            return SimpleResp { res: -libc::EINVAL };
+        }
+        // starting_vm_state cannot be None here
+        let vm_state = state.starting_vm_state.as_mut().unwrap();
+
+        let balloon_size = (vm_state.mem_size - vm_state.init_mem_size) as i64;
+        let required_mem = vm_state.init_mem_size + calculate_extra_bytes(vm_state.mem_size);
+        let client = if required_mem == vm_state.reserved_mem {
+            match vm_state.server.accept_with_timeout(Duration::from_secs(10)) {
+                Ok(client) => {
+                    let mut client = CrosVmClient {
+                        client,
+                        mem_size: vm_state.mem_size,
+                        balloon_size: 0,
+                    };
+                    if adjust_balloon(&mut client, balloon_size) != balloon_size {
+                        error!("Failed to inflate new client balloon");
+                        Err((-libc::ENOMEM, Some(client.client)))
+                    } else {
+                        Ok(client)
+                    }
+                }
+                Err(msg) => {
+                    error!("Failed to connect to vm: {:?}", msg);
+                    Err((-libc::EIO, None))
+                }
+            }
+        } else {
+            error!(
+                "Mismatch memory for added VM: required={} reserved={}",
+                required_mem, vm_state.reserved_mem
+            );
+            Err((-libc::ENOMEM, None))
+        };
+
+        match client {
+            Ok(client) => {
+                let vm_state = state.starting_vm_state.take().unwrap();
+                state.clients.insert(vm_state.id, client);
+                cleanup_control_server(vm_state.id, vm_state.server);
+                SimpleResp { res: 0 }
+            }
+            Err((res, client)) => {
+                vm_state.failed = true;
+                vm_state.client = client;
+                SimpleResp { res }
+            }
+        }
+    }
+
+    fn remove_vm(&mut self, RemoveVmMsg { id }: &RemoveVmMsg) -> SimpleResp {
+        if *id == CROS_GUEST_ID {
+            error!("Invalid id in remove_vm {}", CROS_GUEST_ID);
+            return SimpleResp { res: -libc::EINVAL };
+        }
+        let mut state = self.state.borrow_mut();
+        let released_mem = match state.clients.remove(id) {
+            None => {
+                let pending_id = state.starting_vm_state.as_ref().map(|state| state.id);
+                if Some(*id) != pending_id {
+                    error!("Unknown id in remove_vm {}", *id);
+                    return SimpleResp { res: -libc::EINVAL };
+                }
+                let vm_state = state.starting_vm_state.take().unwrap();
+                cleanup_control_server(vm_state.id, vm_state.server);
+                if let Some(client) = vm_state.client {
+                    wait_for_hangup(&client);
+                }
+                vm_state.reserved_mem
+            }
+            Some(client) => {
+                wait_for_hangup(&client.client);
+                client.mem_size - client.balloon_size + calculate_extra_bytes(client.mem_size)
+            }
+        };
+
+        let crosvm_client = state.clients.get_mut(&CROS_GUEST_ID).unwrap();
+        let actual_released = adjust_balloon(crosvm_client, -(released_mem as i64));
+        if actual_released != -(released_mem as i64) {
+            error!(
+                "Failed to release sibling memory back to CrOS guest {} {}",
+                -(released_mem as i64),
+                actual_released
+            );
+        }
+        SimpleResp { res: 0 }
     }
 
     fn handle_message(&mut self) -> Result<()> {
@@ -138,8 +546,10 @@ impl CtrlHandler {
             .read_exact(&mut bytes)
             .with_context(|| "failed to read ctl message")?;
 
-        let msg: Vec<u8> = match header.msg_type {
-            _ => Err(anyhow!("unknown message type {}", header.msg_type)),
+        let msg = match header.msg_type.try_into()? {
+            MessageId::PrepareVm => dispatch_message!(self, prepare_vm, bytes),
+            MessageId::FinishAddVm => dispatch_message!(self, finish_add_vm, bytes),
+            MessageId::RemoveVm => dispatch_message!(self, remove_vm, bytes),
         }?;
 
         let mut resp_bytes = Vec::new();
@@ -173,6 +583,41 @@ impl EventSource for CtrlHandler {
 
     fn on_hangup(&mut self) -> std::result::Result<Option<Box<dyn Mutator>>, String> {
         let mut state = self.state.borrow_mut();
+        // Wait for all old non-cros VMs to go away
+        let mut released_mem = 0;
+        info!("waiting for stale crosvm clients to exit");
+        for (id, client) in &state.clients {
+            if *id == CROS_GUEST_ID {
+                continue;
+            }
+
+            wait_for_hangup(&client.client);
+            released_mem += (client.mem_size - client.balloon_size
+                + calculate_extra_bytes(client.mem_size)) as i64;
+        }
+        state.clients.retain(|k, _| *k == CROS_GUEST_ID);
+
+        if let Some(vm_state) = state.starting_vm_state.take() {
+            info!("cleaning up control server");
+            cleanup_control_server(vm_state.id, vm_state.server);
+
+            if let Some(client) = vm_state.client {
+                info!("cleaning up client");
+                wait_for_hangup(&client);
+            }
+
+            released_mem += vm_state.reserved_mem as i64;
+        }
+        info!("all stale crosvm clients exited");
+
+        let crosvm_client = state.clients.get_mut(&CROS_GUEST_ID).unwrap();
+        let actual_released = adjust_balloon(crosvm_client, -released_mem);
+        if actual_released != -released_mem {
+            error!(
+                "Failed to release sibling memory back to CrOS guest {} {}",
+                -released_mem, actual_released
+            );
+        }
         state.cros_ctrl_connected = false;
         Ok(Some(Box::new(RemoveFdMutator(self.connection.as_raw_fd()))))
     }
@@ -252,7 +697,7 @@ fn main() {
         }
     };
     cleanup_control_server(CROS_GUEST_ID, crosvm_server);
-    let mut clients = HashMap::new();
+    let mut clients = BTreeMap::new();
     clients.insert(
         CROS_GUEST_ID,
         CrosVmClient {
@@ -265,6 +710,8 @@ fn main() {
     let state = Rc::new(RefCell::new(MmsState {
         cros_ctrl_connected: false,
         clients,
+        starting_vm_state: None,
+        next_id: CROS_GUEST_ID + 1,
     }));
 
     let ctrl_connection = TransportType::VsockConnection(VSocketAddr {
