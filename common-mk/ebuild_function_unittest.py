@@ -42,6 +42,8 @@ class DoCommandTests(cros_test_lib.TestCase):
         # "recursive" is disabled in any install_type except "ins".
         ret = ebuild_function.do_command('bin', ['source'], recursive=True)
         self.assertEqual(ret, [['dobin', 'source']])
+        ret = ebuild_function.do_command('exe', ['source'], recursive=True)
+        self.assertEqual(ret, [['doexe', 'source']])
 
     def testDoInvalidInstallType(self):
         with self.assertRaises(ebuild_function.InvalidInstallTypeError):
@@ -166,6 +168,11 @@ class GenerateTests(cros_test_lib.TestCase):
                                      install_path='sbin',
                                      command_type='executable'),
             [['into', '/usr'], ['dosbin', 'source']])
+        self.assertEqual(
+            ebuild_function.generate(['source'],
+                                     install_path='/opt/google',
+                                     command_type='executable'),
+            [['exeinto', '/opt/google'], ['doexe', 'source']])
         self.assertEqual(
             ebuild_function.generate(['source'],
                                      install_path='/bin',

@@ -12,7 +12,7 @@ https://dev.gentoo.org/~zmedico/portage/doc/man/ebuild.5.html
 import os
 
 
-VALID_INSTALL_TYPES = ('bin', 'ins', 'lib.a', 'lib.so', 'sbin')
+VALID_INSTALL_TYPES = ('bin', 'ins', 'lib.a', 'lib.so', 'sbin', 'exe')
 
 class EbuildFunctionError(Exception):
     """The base exception for ebuild_function."""
@@ -33,9 +33,8 @@ def generate(sources, install_path=None, outputs=None, symlinks=None,
         sources: A list of source files to be installed.
         install_path: A string of path to install into. When both install_path
           and symlinks are specified, it joins a install_path to symlinks.
-          When command_type is "executable", "shared_library" or
-          "static_library", install_path must end with "bin", "sbin" or
-          "lib".
+          When command_type is "shared_library" or "static_library",
+          install_path must end with "lib".
         outputs: A list of new file names to be installed as. If not specified,
           original file names are used.
         symlinks: A list of new symbolic links to be created. If specified,
@@ -49,16 +48,16 @@ def generate(sources, install_path=None, outputs=None, symlinks=None,
           "executable", "shared_library", "static_library" and None are only
           allowed to be specified.
           The generated command depends on command_type.
-            executable: dobin, dosbin, newbin, newsbin
+            executable: dobin, dosbin, newbin, newsbin, doexe, newexe
             shared_library: dolib.so, newlib.so
             static_library: dolib.a, newlib.a
             None: doins, newins, dosym
 
     Returns:
         A list of commandlines correspond to given args.
-        It can generate "doins", "dobin", "dosbin", "dolib.a", "dolib.so" and
-        "dosym". When "outputs" is specified, it generates new-command of those
-        except for "dosym".
+        It can generate "doins", "dobin", "dosbin", "doexe", "dolib.a",
+        "dolib.so", and "dosym". When "outputs" is specified, it generates
+        new-command of those except for "dosym".
         doins:
         [
           ['insinto', 'path/to/install'],
@@ -69,6 +68,11 @@ def generate(sources, install_path=None, outputs=None, symlinks=None,
         [
           ['into', 'path/to/install'],
           ['dobin', 'sources[0]', 'sources[1]', ...],
+        ]
+        doexe):
+        [
+          ['exeinto', 'path/to/install'],
+          ['doexe', 'sources[0]', 'sources[1]', ...],
         ]
         dosym:
         [
@@ -92,20 +96,29 @@ def generate(sources, install_path=None, outputs=None, symlinks=None,
                 outputs = symlinks
 
     elif command_type == 'executable':
-        install_path, install_type = os.path.split(install_path)
-        assert install_type in ('bin', 'sbin'), (
-                'install_path must end in bin or sbin in an executable target')
+        assert install_path, ('install_path is required for'
+                              ' command_type="executable"')
+        # dobin and dosbin adds subdirectory "bin" and "sbin" respectively.
+        # Therefore install path needs to be trimmed.
+        new_install_path, install_type = os.path.split(install_path)
+        if install_type not in ('bin', 'sbin'):
+            assert os.path.isabs(install_path), (
+                'install_path must be absolute for executables'
+                ' other than */bin or */sbin.')
+            install_type = 'exe'
+        else:
+            install_path = new_install_path
 
     elif command_type == 'shared_library':
         install_path, lib = os.path.split(install_path)
         assert lib == 'lib', ('install_path must end in lib in a shared_library'
-                            ' target')
+                              ' target')
         install_type = 'lib.so'
 
     elif command_type == 'static_library':
         install_path, lib = os.path.split(install_path)
         assert lib == 'lib', ('install_path must end in lib in a static_library'
-                            ' target')
+                              ' target')
         install_type = 'lib.a'
     else:
         raise AssertionError('unknown type. type must be executable,'
@@ -131,7 +144,7 @@ def sym_install(sources, symlinks):
         ]
     """
     assert len(sources) == len(symlinks), ('the number of symlinks must be the'
-                                          ' same as sources')
+                                           ' same as sources')
     return [['dosym', source, symlink]
             for source, symlink in zip(sources, symlinks)]
 
@@ -160,9 +173,12 @@ def option_cmd(install_type, install_path='', options=None):
     """
     if install_type == 'ins':
         return [
-                ['insinto', install_path or '/'],
-                ['insopts', options or '-m0644'],
+            ['insinto', install_path or '/'],
+            ['insopts', options or '-m0644'],
         ]
+    if install_type == 'exe':
+        assert install_path
+        return [['exeinto', install_path]]
     if install_type in VALID_INSTALL_TYPES:
         return [['into', install_path or '/usr']]
     return []
