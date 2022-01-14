@@ -18,35 +18,38 @@ namespace brillo {
 // related library functions into a C++ object.
 class BRILLO_EXPORT UdevListEntry {
  public:
-  // Constructs a UdevListEntry object by taking a raw pointer to a
-  // udev_list_entry struct as |list_entry|. The ownership of |list_entry| is
-  // not transferred, and thus it should outlive this object.
-  explicit UdevListEntry(udev_list_entry* list_entry);
-
   virtual ~UdevListEntry() = default;
 
   // Wraps udev_list_entry_get_next().
-  virtual std::unique_ptr<UdevListEntry> GetNext() const;
+  virtual std::unique_ptr<UdevListEntry> GetNext() const = 0;
 
   // Wraps udev_list_entry_get_by_name().
-  virtual std::unique_ptr<UdevListEntry> GetByName(const char* name) const;
+  virtual std::unique_ptr<UdevListEntry> GetByName(const char* name) const = 0;
 
   // Wraps udev_list_entry_get_name().
-  virtual const char* GetName() const;
+  virtual const char* GetName() const = 0;
 
   // Wraps udev_list_entry_get_value().
-  virtual const char* GetValue() const;
+  virtual const char* GetValue() const = 0;
+};
+
+class BRILLO_EXPORT UdevListEntryImpl : public UdevListEntry {
+ public:
+  // Constructs a UdevListEntry object by taking a raw pointer to a
+  // udev_list_entry struct as |list_entry|. The ownership of |list_entry| is
+  // not transferred, and thus it should outlive this object.
+  explicit UdevListEntryImpl(udev_list_entry* list_entry);
+
+  UdevListEntryImpl(const UdevListEntryImpl&) = delete;
+  UdevListEntryImpl& operator=(const UdevListEntryImpl&) = delete;
+
+  // UdevListEntry overrides.
+  std::unique_ptr<UdevListEntry> GetNext() const override;
+  std::unique_ptr<UdevListEntry> GetByName(const char* name) const override;
+  const char* GetName() const override;
+  const char* GetValue() const override;
 
  private:
-  // Allows MockUdevListEntry to invoke the private default constructor below.
-  friend class MockUdevListEntry;
-
-  // Constructs a UdevListEntry object without referencing a udev_list_entry
-  // struct, which is only allowed to be called by MockUdevListEntry.
-  UdevListEntry();
-  UdevListEntry(const UdevListEntry&) = delete;
-  UdevListEntry& operator=(const UdevListEntry&) = delete;
-
   udev_list_entry* const list_entry_;
 };
 

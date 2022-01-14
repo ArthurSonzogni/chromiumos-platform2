@@ -153,7 +153,7 @@ bool UdevEnumerate::ScanSubsystems() {
 
 std::unique_ptr<UdevListEntry> UdevEnumerate::GetListEntry() const {
   udev_list_entry* list_entry = udev_enumerate_get_list_entry(enumerate_);
-  return list_entry ? std::make_unique<UdevListEntry>(list_entry) : nullptr;
+  return list_entry ? std::make_unique<UdevListEntryImpl>(list_entry) : nullptr;
 }
 
 }  // namespace brillo

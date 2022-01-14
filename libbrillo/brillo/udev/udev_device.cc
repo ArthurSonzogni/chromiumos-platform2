@@ -96,12 +96,12 @@ const char* UdevDeviceImpl::GetAction() const {
 
 std::unique_ptr<UdevListEntry> UdevDeviceImpl::GetDeviceLinksListEntry() const {
   udev_list_entry* list_entry = udev_device_get_devlinks_list_entry(device_);
-  return list_entry ? std::make_unique<UdevListEntry>(list_entry) : nullptr;
+  return list_entry ? std::make_unique<UdevListEntryImpl>(list_entry) : nullptr;
 }
 
 std::unique_ptr<UdevListEntry> UdevDeviceImpl::GetPropertiesListEntry() const {
   udev_list_entry* list_entry = udev_device_get_properties_list_entry(device_);
-  return list_entry ? std::make_unique<UdevListEntry>(list_entry) : nullptr;
+  return list_entry ? std::make_unique<UdevListEntryImpl>(list_entry) : nullptr;
 }
 
 const char* UdevDeviceImpl::GetPropertyValue(const char* key) const {
@@ -110,13 +110,13 @@ const char* UdevDeviceImpl::GetPropertyValue(const char* key) const {
 
 std::unique_ptr<UdevListEntry> UdevDeviceImpl::GetTagsListEntry() const {
   udev_list_entry* list_entry = udev_device_get_tags_list_entry(device_);
-  return list_entry ? std::make_unique<UdevListEntry>(list_entry) : nullptr;
+  return list_entry ? std::make_unique<UdevListEntryImpl>(list_entry) : nullptr;
 }
 
 std::unique_ptr<UdevListEntry> UdevDeviceImpl::GetSysAttributeListEntry()
     const {
   udev_list_entry* list_entry = udev_device_get_sysattr_list_entry(device_);
-  return list_entry ? std::make_unique<UdevListEntry>(list_entry) : nullptr;
+  return list_entry ? std::make_unique<UdevListEntryImpl>(list_entry) : nullptr;
 }
 
 const char* UdevDeviceImpl::GetSysAttributeValue(const char* attribute) const {
