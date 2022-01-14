@@ -145,6 +145,8 @@ void DimAdvisor::HandleHpsSenseSignal(dbus::Signal* signal) {
     return;
   }
 
+  VLOG(2) << "StateController::HandleHpsResultChange is called with value "
+          << hps::HpsResult_Name(result_proto.value());
   // Calls StateController::HandleHpsResultChange to consume new hps result.
   state_controller_->HandleHpsResultChange(result_proto.value());
 }
