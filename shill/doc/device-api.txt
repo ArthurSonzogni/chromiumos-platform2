@@ -163,6 +163,8 @@ Methods		dict GetProperties()
 					The |source| is unknown.
 				[service].Error.NotFound
 					Failed to find new MAC address for |source|.
+				[service].Error.NotImplemented
+					Functionality is not implemented for non-Ethernet devices
 
 Signals		PropertyChanged(string name, variant value)
 

@@ -101,7 +101,7 @@ bool EthernetService::SetAutoConnectFull(const bool& connect, Error* error) {
 }
 
 void EthernetService::Remove(Error* error) {
-  error->Populate(Error::kNotSupported);
+  error->Populate(Error::kNotImplemented);
 }
 
 bool EthernetService::IsVisible() const {

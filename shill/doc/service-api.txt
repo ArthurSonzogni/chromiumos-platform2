@@ -127,12 +127,12 @@ Methods		dict GetProperties()
 			this service, it will be re-configured there.
 
 			This method is not permitted for Ethernet devices;
-			it will generate a NotSupported error response.
+			it will generate a NotImplemented error response.
 
 			Possible Errors: [service].Error.InvalidArguments
-					 [service].Error.NotSupported
+					 [service].Error.NotImplemented
 
-			Expected Result: [service].Error.NotSupported
+			Expected Result: [service].Error.NotImplemented
 
 		void CompleteCellularActivation()
 

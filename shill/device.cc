@@ -604,9 +604,10 @@ void Device::StopAllActivities() {
 void Device::SetUsbEthernetMacAddressSource(const std::string& source,
                                             Error* error,
                                             const ResultCallback& callback) {
-  Error::PopulateAndLog(
-      FROM_HERE, error, Error::kNotSupported,
-      "SetUsbEthernetMacAddressSource not implemented for " + link_name_ + ".");
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotImplemented,
+                        "SetUsbEthernetMacAddressSource not implemented for " +
+                            technology().GetName() + " device on " +
+                            link_name_ + ".");
   return;
 }
 

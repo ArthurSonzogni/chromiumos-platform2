@@ -94,7 +94,7 @@ bool IPConfigDBusAdaptor::ClearProperty(brillo::ErrorPtr* error,
 
 bool IPConfigDBusAdaptor::Remove(brillo::ErrorPtr* error) {
   SLOG(this, 2) << __func__;
-  return !Error(Error::kNotSupported).ToChromeosError(error);
+  return !Error(Error::kNotImplemented).ToChromeosError(error);
 }
 
 }  // namespace shill
