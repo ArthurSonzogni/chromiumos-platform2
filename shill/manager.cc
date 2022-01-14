@@ -3254,8 +3254,8 @@ bool Manager::GetUseSwanctlDriver(Error* error) {
   if (props_.use_swanctl_driver.has_value()) {
     return props_.use_swanctl_driver.value();
   }
-  // Default is using the legacy driver.
-  return false;
+  // Default is using the new driver.
+  return true;
 }
 
 bool Manager::SetUseSwanctlDriver(const bool& use_swanctl_driver,
