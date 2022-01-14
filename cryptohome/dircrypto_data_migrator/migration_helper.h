@@ -12,7 +12,6 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
 #include <chromeos/dbus/service_constants.h>
@@ -74,6 +73,10 @@ class MigrationHelper {
                   const base::FilePath& status_files_dir,
                   uint64_t max_chunk_size,
                   MigrationType migration_type);
+
+  MigrationHelper(const MigrationHelper&) = delete;
+  MigrationHelper& operator=(const MigrationHelper&) = delete;
+
   virtual ~MigrationHelper();
 
   void set_namespaced_mtime_xattr_name_for_testing(const std::string& name) {
@@ -250,8 +253,6 @@ class MigrationHelper {
   base::Lock child_counts_lock_;                // Lock for child_counts_.
 
   AtomicFlag is_cancelled_;
-
-  DISALLOW_IMPLICIT_CONSTRUCTORS(MigrationHelper);
 };
 
 }  // namespace dircrypto_data_migrator
