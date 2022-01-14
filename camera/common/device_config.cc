@@ -264,6 +264,13 @@ void DeviceConfig::AddCameraEeproms() {
                                 base::FileEnumerator::DIRECTORIES);
   for (base::FilePath dev_path = dev_enum.Next(); !dev_path.empty();
        dev_path = dev_enum.Next()) {
+    // Some Thunderbolt nvmem devices can take multiple minutes to be read.
+    // Avoid reading them, as the camera eeprom will not be sitting there
+    // anyway (b/213525227).
+    if (dev_path.BaseName().value().find("nvm_active") == 0) {
+      LOGF(INFO) << "Ignoring nvmem at " << dev_path;
+      continue;
+    }
     const base::FilePath nvmem_path =
         base::MakeAbsoluteFilePath(dev_path.Append("nvmem"));
     if (nvmem_path.empty()) {
