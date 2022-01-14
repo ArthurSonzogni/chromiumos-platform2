@@ -7,6 +7,10 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":easy_unlock",
+    ":install_conf",
+    ":install_init_conf",
+    ":install_interfaces",
+    ":install_service",
     ":libeasyunlock",
   ]
   if (use.test) {
@@ -41,7 +45,28 @@ static_library("libeasyunlock") {
 executable("easy_unlock") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "/opt/google/easy_unlock"
   deps = [ ":libeasyunlock" ]
+}
+
+install_config("install_conf") {
+  sources = [ "org.chromium.EasyUnlock.conf" ]
+  install_path = "/etc/dbus-1/system.d"
+}
+
+install_config("install_service") {
+  sources = [ "org.chromium.EasyUnlock.service" ]
+  install_path = "/usr/share/dbus-1/system-services"
+}
+
+install_config("install_init_conf") {
+  sources = [ "init/easy-unlock.conf" ]
+  install_path = "/etc/init"
+}
+
+install_config("install_interfaces") {
+  sources = [ "dbus_bindings/org.chromium.EasyUnlockInterface.xml" ]
+  install_path = "/usr/share/dbus-1/interfaces"
 }
 
 if (use.test) {
@@ -56,6 +81,7 @@ if (use.test) {
       ":target_defaults",
       ":test_config",
     ]
+    run_test = true
     deps = [
       ":libeasyunlock",
       "//common-mk/testrunner",
