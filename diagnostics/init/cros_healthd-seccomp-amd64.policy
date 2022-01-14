@@ -60,6 +60,13 @@ getrandom: 1
 #   0xc0**6447 == DRM_IOCTL_NOUVEAU_NVIF
 #   0xc0406481 == DRM_IOCTL_NOUVEAU_GEM_PUSHBUF
 #   0xc0586442 == DRM_IOCTL_NOUVEAU_CHANNEL_ALLOC
+#   0x40086464 == DRM_IOCTL_RADEON_GEM_WAIT_IDLE
+#   0xc0106467 == DRM_IOCTL_RADEON_INFO
+#   0xc018645c == DRM_IOCTL_RADEON_GEM_INFO
+#   0xc018646b == DRM_IOCTL_RADEON_GEM_VA
+#   0xc018646d == DRM_IOCTL_RADEON_GEM_USERPTR
+#   0xc020645d == DRM_IOCTL_RADEON_GEM_CREATE
+#   0xc020645e == DRM_IOCTL_RADEON_GEM_MMAP
 ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0x40086409 || arg1 == 0x4008646e || arg1 == 0x400c645f || \
        arg1 == 0x40406469 || arg1 == 0x80106463 || arg1 == 0xc0086457 || \
@@ -73,7 +80,9 @@ ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0xc02064c3 || arg1 == 0x40086482 || arg1 == 0xc0106440 || \
        arg1 == 0xc0106445 || arg1 == 0xc0306480 || arg1 == 0xc0386447 || \
        arg1 == 0xc0406481 || arg1 == 0xc0486447 || arg1 == 0xc0586442 || \
-       arg1 == 0xc0886447
+       arg1 == 0xc0886447 || arg1 == 0x40086464 || arg1 == 0xc0106467 || \
+       arg1 == 0xc018645c || arg1 == 0xc018646b || arg1 == 0xc018646d || \
+       arg1 == 0xc020645d || arg1 == 0xc020645e
 geteuid: 1
 brk: 1
 getuid: 1
