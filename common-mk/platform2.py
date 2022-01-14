@@ -107,6 +107,7 @@ _IUSE = [
     'passive_metrics',
     'pinweaver',
     'pinweaver_csme',
+    'postinstall_config_efi_and_legacy',
     'power_management',
     'pppoe',
     'profiling',

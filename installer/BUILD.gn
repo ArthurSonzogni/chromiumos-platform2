@@ -26,6 +26,10 @@ pkg_config("target_defaults") {
   ]
 }
 
+config("libcros_installer_config") {
+  defines = [ "USE_POSTINSTALL_CONFIG_EFI_AND_LEGACY=${use.postinstall_config_efi_and_legacy}" ]
+}
+
 static_library("libcros_installer") {
   sources = [
     "cgpt_manager.cc",
@@ -42,6 +46,7 @@ static_library("libcros_installer") {
     sources += [ "slow_boot_notify_stub.cc" ]
   }
   configs += [ ":target_defaults" ]
+  all_dependent_configs = [ ":libcros_installer_config" ]
 }
 
 pkg_config("cros_installer_config") {

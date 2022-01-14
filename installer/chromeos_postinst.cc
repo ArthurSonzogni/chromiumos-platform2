@@ -539,14 +539,38 @@ bool RunPostInstall(const string& install_dev,
       if (!RunLegacyPostInstall(install_config)) {
         LOG(ERROR) << "Legacy PostInstall failed.";
         success = false;
+        break;
       }
+
+      // Configure EFI entries in addition to the legacy.
+      // Allows devices that can boot installers in legacy
+      // but will boot the installed target in EFI mode.
+      // Errors here are not necessarily fatal as the common
+      // case is the machine will boot successfully from legacy.
+      if (USE_POSTINSTALL_CONFIG_EFI_AND_LEGACY) {
+        if (!RunEfiPostInstall(install_config)) {
+          LOG(WARNING) << "Ignored secondary EFI PostInstall failure.";
+        }
+      }
+
       break;
 
     case kBiosTypeEFI:
       if (!RunEfiPostInstall(install_config)) {
         LOG(ERROR) << "EFI PostInstall failed.";
         success = false;
+        break;
       }
+
+      // Optionally update the legacy boot entries to support
+      // devices that can boot from the USB in EFI mode with the
+      // installed disk booting in legacy mode.
+      if (USE_POSTINSTALL_CONFIG_EFI_AND_LEGACY) {
+        if (!RunLegacyPostInstall(install_config)) {
+          LOG(WARNING) << "Ignored secondary Legacy PostInstall failure.";
+        }
+      }
+
       break;
   }
 
