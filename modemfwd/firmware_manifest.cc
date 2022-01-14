@@ -27,6 +27,7 @@ bool SortByDevice(const FirmwareManifest& manifest,
                   std::map<DeviceType, DeviceEntries>* out_sorted) {
   for (const MainFirmware& info : manifest.main_firmware()) {
     if (info.device_id().empty() || info.filename().empty() ||
+        base::FilePath(info.filename()).IsAbsolute() ||
         info.version().empty() || !Compression_IsValid(info.compression())) {
       LOG(ERROR) << "Found malformed main firmware manifest entry";
       return false;
@@ -46,6 +47,7 @@ bool SortByDevice(const FirmwareManifest& manifest,
 
   for (const CarrierFirmware& info : manifest.carrier_firmware()) {
     if (info.device_id().empty() || info.filename().empty() ||
+        base::FilePath(info.filename()).IsAbsolute() ||
         info.version().empty() || info.carrier_id().empty() ||
         !Compression_IsValid(info.compression())) {
       LOG(ERROR) << "Found malformed carrier firmware manifest entry";

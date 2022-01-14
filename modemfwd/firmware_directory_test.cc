@@ -215,6 +215,12 @@ TEST_F(FirmwareDirectoryTest, MalformedCarrierEntry) {
   SetUpDirectory(kManifest, false);
 }
 
+TEST_F(FirmwareDirectoryTest, AbsolutePathInFilename) {
+  const base::FilePath kManifest(
+      "test_protos/absolute_path_in_filename.prototxt");
+  SetUpDirectory(kManifest, false);
+}
+
 // ----------------------- MANIFEST V2 TESTS ----------------------------------
 
 TEST_F(FirmwareDirectoryTest, FindFirmwareV2) {
@@ -544,6 +550,12 @@ TEST_F(FirmwareDirectoryTest, MalformedOemEntryV2) {
 TEST_F(FirmwareDirectoryTest, MalformedCarrierEntryV2) {
   const base::FilePath kManifest(
       "test_protos/malformed_carrier_firmware_v2.prototxt");
+  SetUpDirectory(kManifest, false);
+}
+
+TEST_F(FirmwareDirectoryTest, AbsolutePathInFilenameV2) {
+  const base::FilePath kManifest(
+      "test_protos/absolute_path_in_filename_v2.prototxt");
   SetUpDirectory(kManifest, false);
 }
 
