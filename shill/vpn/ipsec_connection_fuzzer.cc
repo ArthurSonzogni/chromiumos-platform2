@@ -7,6 +7,7 @@
 
 #include <base/logging.h>
 
+#include "shill/event_dispatcher.h"
 #include "shill/process_manager.h"
 #include "shill/vpn/ipsec_connection.h"
 
@@ -14,11 +15,19 @@ namespace shill {
 
 class IPsecConnectionUnderTest : public IPsecConnection {
  public:
-  // Initialized the IPsecConnection class without an L2TPConnection, and thus
-  // the code path for parsing virtual IP can be covered.
-  explicit IPsecConnectionUnderTest(ProcessManager* process_manager)
+  explicit IPsecConnectionUnderTest(
+      std::unique_ptr<IPsecConnection::Config> config,
+      std::unique_ptr<VPNConnection> l2tp_connection,
+      EventDispatcher* dispatcher,
+      ProcessManager* process_manager)
       : IPsecConnection(
-            nullptr, nullptr, nullptr, nullptr, nullptr, process_manager) {}
+            std::move(config),
+            std::make_unique<VPNConnection::Callbacks>(
+                base::DoNothing(), base::DoNothing(), base::DoNothing()),
+            std::move(l2tp_connection),
+            nullptr,
+            dispatcher,
+            process_manager) {}
 
   IPsecConnectionUnderTest(const IPsecConnectionUnderTest&) = delete;
   IPsecConnectionUnderTest& operator=(const IPsecConnectionUnderTest&) = delete;
@@ -29,6 +38,19 @@ class IPsecConnectionUnderTest : public IPsecConnection {
 
   // Do nothing since we only want to test the `swanctl --list-sas` step.
   void ScheduleConnectTask(ConnectStep) override {}
+};
+
+// Does nothing in PostTask().
+class EventDispatcherForFuzzer : public EventDispatcher {
+ public:
+  EventDispatcherForFuzzer() = default;
+  EventDispatcherForFuzzer(const EventDispatcherForFuzzer&) = delete;
+  EventDispatcherForFuzzer& operator=(const EventDispatcherForFuzzer&) = delete;
+  ~EventDispatcherForFuzzer() override = default;
+
+  void PostDelayedTask(const base::Location& location,
+                       base::OnceClosure task,
+                       int64_t delay_ms) override {}
 };
 
 class FakeProcessManager : public ProcessManager {
@@ -62,9 +84,16 @@ class Environment {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
 
+  // Initialized the IPsecConnection class with an IKEv2 setting, and thus the
+  // code path for parsing both virtual IP and cipher suites can be covered.
+  auto config = std::make_unique<IPsecConnection::Config>();
+  config->ike_version = IPsecConnection::Config::IKEVersion::kV2;
+  EventDispatcherForFuzzer dispatcher;
   FakeProcessManager process_manager(
       std::string{reinterpret_cast<const char*>(data), size});
-  IPsecConnectionUnderTest connection(&process_manager);
+  IPsecConnectionUnderTest connection(std::move(config),
+                                      /*l2tp_connection=*/nullptr, &dispatcher,
+                                      &process_manager);
 
   connection.TriggerReadIPsecStatus();
 
