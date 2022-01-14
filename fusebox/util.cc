@@ -25,10 +25,11 @@ int GetResponseErrno(dbus::MessageReader* reader, dbus::Response* response) {
   CHECK(reader->PopInt32(&response_file_error));
 
   if (response_file_error != 0) {
-    int response_errno = FileErrorToErrno(response_file_error);
-    LOG(ERROR) << "error: " << base::safe_strerror(response_errno) << " ["
-               << response_file_error << "]";
-    return response_errno;
+    int file_errno = FileErrorToErrno(response_file_error);
+    auto file_error = static_cast<base::File::Error>(response_file_error);
+    LOG(ERROR) << "error: " << base::safe_strerror(file_errno) << " ["
+               << base::File::ErrorToString(file_error) << "]";
+    return file_errno;
   }
 
   return 0;
