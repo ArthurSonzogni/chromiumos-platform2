@@ -59,3 +59,8 @@ chmod 0644 "${MACHINE_INFO}"
   echo "rlz_brand_code=\"$(cros_config / brand-code)\""
   echo "wpsw_cur=\"$(crossystem wpsw_cur)\""
 ) >> "${MACHINE_INFO}"
+
+# Add the client_id if this is a Reven device
+if crossystem "hwid?REVEN-ANAE A6A-A7I"; then
+  (echo "client_id=\"$(client_id)\"") >> "${MACHINE_INFO}"
+fi

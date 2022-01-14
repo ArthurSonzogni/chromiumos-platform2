@@ -40,6 +40,7 @@ copies.
 | [chromeos-config](./chromeos-config/) | CrOS unified build runtime config manager |
 | [chromeos-dbus-bindings](./chromeos-dbus-bindings/) | Simplifies the implementation of D-Bus daemons and proxies |
 | [chromeos-nvt-tcon-updater](./chromeos-nvt-tcon-updater/) | Library for integrating the Novatek TCON firmware updater into a CrOS device |
+| [client_id](./client_id/) | Utility for generating client_id, a machine identifier for devices without VPD info |
 | [codelab](./codelab/) | Codelab exercise |
 | [common-mk](./common-mk/) | Common build & test logic for platform2 projects |
 | [crash-reporter](./crash-reporter/) | The system crash handler & reporter |
