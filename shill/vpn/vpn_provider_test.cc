@@ -91,7 +91,7 @@ TEST_F(VPNProviderTest, GetServiceUnsupportedType) {
   args.Set<std::string>(kProviderHostProperty, kHost);
   args.Set<std::string>(kNameProperty, kName);
   ServiceRefPtr service = provider_.GetService(args, &e);
-  EXPECT_EQ(Error::kNotSupported, e.type());
+  EXPECT_EQ(Error::kInvalidArguments, e.type());
   EXPECT_FALSE(service);
 }
 
@@ -258,7 +258,7 @@ TEST_F(VPNProviderTest, CreateService) {
       provider_.CreateService("unknown-vpn-type", kName, kStorageID,
                               /*use_new_l2tp_driver=*/false, &error);
   EXPECT_FALSE(unknown_service);
-  EXPECT_EQ(Error::kNotSupported, error.type());
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
 }
 
 TEST_F(VPNProviderTest, CreateArcService) {

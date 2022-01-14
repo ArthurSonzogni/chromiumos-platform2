@@ -284,8 +284,8 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const std::string& type,
   } else if (type == kProviderWireGuard) {
     driver.reset(new WireGuardDriver(manager_, ProcessManager::GetInstance()));
   } else {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                          "Unsupported VPN type: " + type);
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Invalid VPN type: " + type);
     return nullptr;
   }
 

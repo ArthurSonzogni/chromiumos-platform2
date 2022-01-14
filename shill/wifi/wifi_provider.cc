@@ -60,10 +60,8 @@ const char kWiFiProviderStorageId[] = "provider_of_wifi";
 const char kManagerErrorSSIDRequired[] = "must specify SSID";
 const char kManagerErrorSSIDTooLong[] = "SSID is too long";
 const char kManagerErrorSSIDTooShort[] = "SSID is too short";
-const char kManagerErrorUnsupportedSecurityClass[] =
-    "security class is unsupported";
-const char kManagerErrorUnsupportedServiceMode[] =
-    "service mode is unsupported";
+const char kManagerErrorInvalidSecurityClass[] = "invalid security class";
+const char kManagerErrorInvalidServiceMode[] = "invalid service mode";
 
 // Retrieve a WiFi service's identifying properties from passed-in |args|.
 // Returns true if |args| are valid and populates |ssid|, |mode|,
@@ -80,8 +78,8 @@ bool GetServiceParametersFromArgs(const KeyValueStore& args,
 
   std::string mode_test = args.Lookup<std::string>(kModeProperty, kModeManaged);
   if (!WiFiService::IsValidMode(mode_test)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                          kManagerErrorUnsupportedServiceMode);
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          kManagerErrorInvalidServiceMode);
     return false;
   }
 
@@ -125,8 +123,8 @@ bool GetServiceParametersFromArgs(const KeyValueStore& args,
     std::string security_class_test =
         args.Lookup<std::string>(kSecurityClassProperty, kDefaultSecurity);
     if (!WiFiService::IsValidSecurityClass(security_class_test)) {
-      Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                            kManagerErrorUnsupportedSecurityClass);
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                            kManagerErrorInvalidSecurityClass);
       return false;
     }
     *security_class = security_class_test;

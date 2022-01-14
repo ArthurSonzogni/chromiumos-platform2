@@ -42,7 +42,7 @@ bool GetServiceParametersFromArgs(const KeyValueStore& args,
   *iccid =
       args.Lookup<std::string>(CellularService::kStorageIccid, std::string());
   if (iccid->empty()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Missing ICCID");
     return false;
   }

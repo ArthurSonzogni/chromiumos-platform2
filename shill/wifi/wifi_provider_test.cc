@@ -713,7 +713,7 @@ TEST_F(WiFiProviderTest, GetServiceEmptyMode) {
   Error error;
   EXPECT_FALSE(
       GetService("foo", "", kSecurityNone, false, false, &error).get());
-  EXPECT_EQ(Error::kNotSupported, error.type());
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
 }
 
 TEST_F(WiFiProviderTest, GetServiceNoMode) {
@@ -728,16 +728,16 @@ TEST_F(WiFiProviderTest, GetServiceBadMode) {
   Error error;
   EXPECT_FALSE(
       GetService("foo", "BogoMesh", kSecurityNone, false, false, &error).get());
-  EXPECT_EQ(Error::kNotSupported, error.type());
-  EXPECT_EQ("service mode is unsupported", error.message());
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  EXPECT_EQ("invalid service mode", error.message());
 }
 
 TEST_F(WiFiProviderTest, GetServiceAdhocNotSupported) {
   Error error;
   EXPECT_FALSE(
       GetService("foo", "adhoc", kSecurityNone, false, false, &error).get());
-  EXPECT_EQ(Error::kNotSupported, error.type());
-  EXPECT_EQ("service mode is unsupported", error.message());
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  EXPECT_EQ("invalid service mode", error.message());
 }
 
 TEST_F(WiFiProviderTest, GetServiceNoSSID) {
@@ -782,8 +782,8 @@ TEST_F(WiFiProviderTest, GetServiceBadSecurityClass) {
   EXPECT_FALSE(
       GetService("foo", kModeManaged, kSecurityRsn, false, false, &error)
           .get());
-  EXPECT_EQ(Error::kNotSupported, error.type());
-  EXPECT_EQ("security class is unsupported", error.message());
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  EXPECT_EQ("invalid security class", error.message());
 }
 
 TEST_F(WiFiProviderTest, GetServiceMinimal) {
@@ -895,7 +895,7 @@ TEST_F(WiFiProviderTest, GetServiceBogusSecurityClass) {
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   service = GetWiFiService(args, &error);
   EXPECT_FALSE(error.IsSuccess());
-  EXPECT_EQ(Error::kNotSupported, error.type());
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
 }
 
 TEST_F(WiFiProviderTest, GetServiceNonSecurityClass) {
@@ -912,7 +912,7 @@ TEST_F(WiFiProviderTest, GetServiceNonSecurityClass) {
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   service = GetWiFiService(args, &error);
   EXPECT_FALSE(error.IsSuccess());
-  EXPECT_EQ(Error::kNotSupported, error.type());
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
 }
 
 TEST_F(WiFiProviderTest, FindSimilarService) {
