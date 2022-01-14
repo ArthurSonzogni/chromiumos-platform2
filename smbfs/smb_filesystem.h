@@ -18,7 +18,6 @@
 #include <base/callback.h>
 #include <base/containers/mru_cache.h>
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
@@ -76,6 +75,11 @@ class SmbFilesystem : public Filesystem {
   };
 
   SmbFilesystem(Delegate* delegate, Options options);
+
+  SmbFilesystem() = delete;
+  SmbFilesystem(const SmbFilesystem&) = delete;
+  SmbFilesystem& operator=(const SmbFilesystem&) = delete;
+
   ~SmbFilesystem() override;
 
   base::WeakPtr<SmbFilesystem> GetWeakPtr();
@@ -350,8 +354,6 @@ class SmbFilesystem : public Filesystem {
   std::unique_ptr<RecursiveDeleteOperation> recursive_delete_operation_;
 
   base::WeakPtrFactory<SmbFilesystem> weak_factory_{this};
-
-  DISALLOW_IMPLICIT_CONSTRUCTORS(SmbFilesystem);
 };
 
 std::ostream& operator<<(std::ostream& out, SmbFilesystem::ConnectError error);

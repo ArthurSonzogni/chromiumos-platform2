@@ -9,7 +9,6 @@
 
 #include <memory>
 
-#include <base/macros.h>
 #include <base/strings/string_piece.h>
 
 namespace smbfs {
@@ -19,6 +18,10 @@ namespace internal {
 // are responded to correctly.
 class BaseRequest {
  public:
+  BaseRequest() = delete;
+  BaseRequest(const BaseRequest&) = delete;
+  BaseRequest& operator=(const BaseRequest&) = delete;
+
   bool IsInterrupted() const;
   void ReplyError(int error);
 
@@ -28,9 +31,6 @@ class BaseRequest {
 
   const fuse_req_t req_;
   bool replied_ = false;
-
- private:
-  DISALLOW_IMPLICIT_CONSTRUCTORS(BaseRequest);
 };
 
 }  // namespace internal
