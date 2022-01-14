@@ -65,7 +65,7 @@ std::string GetActivationErrorString(uint32_t error) {
 void OnUnsupportedOperation(const char* operation, Error* error) {
   std::string message("The ");
   message.append(operation).append(" operation is not supported.");
-  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported, message);
+  Error::PopulateAndLog(FROM_HERE, error, Error::kIllegalOperation, message);
 }
 
 }  // namespace

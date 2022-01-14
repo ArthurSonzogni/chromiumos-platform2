@@ -311,7 +311,7 @@ bool WiFiService::SetPassphrase(const std::string& passphrase, Error* error) {
              security_ == kSecurityRsn || security_ == kSecurityWpa3) {
     ValidateWPAPassphrase(passphrase, error);
   } else {
-    error->Populate(Error::kNotSupported);
+    error->Populate(Error::kIllegalOperation);
   }
 
   if (!error->IsSuccess()) {
@@ -368,7 +368,7 @@ bool WiFiService::SetMACPolicy(const std::string& policy, Error* error) {
     // has already been checked.
     if (wifi_ && !wifi_->random_mac_supported()) {
       Error::PopulateAndLog(
-          FROM_HERE, error, Error::kNotSupported,
+          FROM_HERE, error, Error::kIllegalOperation,
           "MAC Address randomization not supported by hardware.");
       return false;
     }

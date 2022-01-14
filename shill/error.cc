@@ -27,6 +27,7 @@ const Info kInfos[Error::kNumErrors] = {
     {kErrorResultFailure, "Operation failed (no other information)"},
     {kErrorResultAlreadyConnected, "Already connected"},
     {kErrorResultAlreadyExists, "Already exists"},
+    {kErrorResultIllegalOperation, "Illegal operation"},
     {kErrorResultIncorrectPin, "Incorrect PIN"},
     {kErrorResultInProgress, "In progress"},
     {kErrorResultInternalError, "Internal error"},

@@ -843,8 +843,8 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
   SLOG(this, 2) << __func__ << " " << source;
 
   if (bus_type_ != kDeviceBusTypeUsb) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                          "Not supported for non-USB devices: " + bus_type_);
+    Error::PopulateAndLog(FROM_HERE, error, Error::kIllegalOperation,
+                          "Not allowed on non-USB devices: " + bus_type_);
     return;
   }
 

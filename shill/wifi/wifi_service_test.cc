@@ -383,7 +383,7 @@ TEST_F(WiFiServiceTest, PassphraseSetPropertyOpenNetwork) {
   Error error;
   EXPECT_FALSE(wifi_service->mutable_store()->SetStringProperty(
       kPassphraseProperty, "invalid", &error));
-  EXPECT_EQ(Error::kNotSupported, error.type());
+  EXPECT_EQ(Error::kIllegalOperation, error.type());
 }
 
 TEST_F(WiFiServiceTest, NonUTF8SSID) {
@@ -795,7 +795,7 @@ TEST_F(WiFiServiceTest, SetPassphraseForNonPassphraseService) {
   EXPECT_TRUE(service->Load(&store));
   Error error;
   EXPECT_FALSE(service->SetPassphrase("password", &error));
-  EXPECT_TRUE(error.type() == Error::kNotSupported);
+  EXPECT_TRUE(error.type() == Error::kIllegalOperation);
 }
 
 TEST_F(WiFiServiceTest, LoadMultipleMatchingGroups) {
@@ -926,8 +926,9 @@ TEST_F(WiFiServiceTest, ConfigureMakesConnectable) {
 }
 
 TEST_F(WiFiServiceTest, ConfigurePassphrase) {
-  EXPECT_EQ(Error::kNotSupported, TestConfigurePassphrase(kSecurityNone, ""));
-  EXPECT_EQ(Error::kNotSupported,
+  EXPECT_EQ(Error::kIllegalOperation,
+            TestConfigurePassphrase(kSecurityNone, ""));
+  EXPECT_EQ(Error::kIllegalOperation,
             TestConfigurePassphrase(kSecurityNone, "foo"));
   EXPECT_EQ(Error::kSuccess, TestConfigurePassphrase(kSecurityWep, nullptr));
   EXPECT_EQ(Error::kInvalidPassphrase,

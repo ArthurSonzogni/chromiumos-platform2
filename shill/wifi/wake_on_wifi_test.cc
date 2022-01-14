@@ -2215,7 +2215,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, SetWakeOnWiFiAllowed) {
   e.Reset();
   EXPECT_FALSE(
       SetWakeOnWiFiFeaturesEnabled(kWakeOnWiFiFeaturesEnabledDarkConnect, &e));
-  EXPECT_EQ(e.type(), Error::kNotSupported);
+  EXPECT_EQ(e.type(), Error::kIllegalOperation);
   EXPECT_STREQ(GetWakeOnWiFiFeaturesEnabled().c_str(),
                kWakeOnWiFiFeaturesEnabledNone);
 

@@ -688,6 +688,8 @@ const char kErrorResultAlreadyConnected[] =
     "org.chromium.flimflam.Error.AlreadyConnected";
 const char kErrorResultAlreadyExists[] =
     "org.chromium.flimflam.Error.AlreadyExists";
+const char kErrorResultIllegalOperation[] =
+    "org.chromium.flimflam.Error.IllegalOperation";
 const char kErrorResultIncorrectPin[] =
     "org.chromium.flimflam.Error.IncorrectPin";
 const char kErrorResultInProgress[] = "org.chromium.flimflam.Error.InProgress";

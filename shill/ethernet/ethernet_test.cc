@@ -637,7 +637,7 @@ TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceNotSupportedForNonUsb) {
   SetUsbEthernetMacAddressSource(
       kUsbEthernetMacAddressSourceUsbAdapterMac, &error,
       base::Bind(&EthernetTest::ErrorCallback, base::Unretained(this)));
-  EXPECT_EQ(error.type(), Error::kNotSupported);
+  EXPECT_EQ(error.type(), Error::kIllegalOperation);
 }
 
 TEST_F(EthernetTest,

@@ -1122,7 +1122,7 @@ std::string Service::GetEapPassphrase(Error* error) {
     return eap()->GetEapPassword(error);
   }
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
-  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+  Error::PopulateAndLog(FROM_HERE, error, Error::kIllegalOperation,
                         "Cannot retrieve EAP passphrase from non-EAP network.");
   return std::string();
 }

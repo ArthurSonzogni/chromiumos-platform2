@@ -25,6 +25,7 @@ class Error {
     kOperationFailed,  // failure, otherwise unspecified
     kAlreadyConnected,
     kAlreadyExists,
+    kIllegalOperation,
     kIncorrectPin,
     kInProgress,
     kInternalError,

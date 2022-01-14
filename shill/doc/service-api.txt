@@ -192,7 +192,7 @@ Methods		dict GetProperties()
 			passphrase isn't accidentally leaked to the UI or
 			included in logs.
 
-			Possible Errors: [service].Error.NotSupported
+			Possible Errors: [service].Error.IllegalOperation
 
 		array{dict} RequestTrafficCounters()
 

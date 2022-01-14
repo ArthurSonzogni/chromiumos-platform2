@@ -119,6 +119,8 @@ Methods		dict GetProperties()
 			more attempt is made to register, after switching back
 			to automatic registration mode.
 
+			Possible Errors: [service].Error.IllegalOperation
+
 		void RenewDHCPLease()
 
 			Request the renewal of all DHCPv4 and DHCPv6 leases.
@@ -154,6 +156,9 @@ Methods		dict GetProperties()
 						    MAC address.
 
 			Possible Errors:
+				[service].Error.IllegalOperation
+					Cannot set USB Ethernet MAC address |source| for non-USB
+					devices.
 				[service].Error.InvalidArguments
 					The |source| is unknown.
 				[service].Error.NotSupported

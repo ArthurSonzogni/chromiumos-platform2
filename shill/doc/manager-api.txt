@@ -247,7 +247,8 @@ Methods		dict GetProperties()
 			that although the operation succeeded, there is
 			no matching service that refers to this profile.
 
-			Possible Errors: [service].Error.InternalError
+			Possible Errors: [service].Error.IllegalOperation
+					 [service].Error.InternalError
 					 [service].Error.InvalidArguments
 					 [service].Error.NotFound
 					 [service].Error.TechnologyNotAvailable

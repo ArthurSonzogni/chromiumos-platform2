@@ -160,7 +160,7 @@ std::string WakeOnWiFi::GetWakeOnWiFiFeaturesEnabled(Error* error) {
 bool WakeOnWiFi::SetWakeOnWiFiFeaturesEnabled(const std::string& enabled,
                                               Error* error) {
   if (!wake_on_wifi_allowed_) {
-    error->Populate(Error::kNotSupported, kWakeOnWiFiNotAllowed);
+    error->Populate(Error::kIllegalOperation, kWakeOnWiFiNotAllowed);
     SLOG(this, 7) << __func__ << ": " << kWakeOnWiFiNotAllowed;
     return false;
   }

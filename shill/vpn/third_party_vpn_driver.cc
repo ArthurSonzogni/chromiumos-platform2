@@ -119,8 +119,8 @@ bool ThirdPartyVpnDriver::Save(StoreInterface* storage,
 }
 
 void ThirdPartyVpnDriver::ClearExtensionId(Error* error) {
-  error->Populate(Error::kNotSupported,
-                  "Clearing extension id is not supported.");
+  error->Populate(Error::kIllegalOperation,
+                  "Clearing extension id is not allowed.");
 }
 
 bool ThirdPartyVpnDriver::SetExtensionId(const std::string& value,
