@@ -86,6 +86,7 @@ bool WriteHexFileLogged(const FilePath& file_path, const SecureBlob& contents) {
 }
 
 bool DoRecoveryCryptoCreateHsmPayloadAction(
+    const FilePath& rsa_priv_key_out_file_path,
     const FilePath& destination_share_out_file_path,
     const FilePath& channel_pub_key_out_file_path,
     const FilePath& channel_priv_key_out_file_path,
@@ -103,15 +104,15 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
 
   // Generates HSM payload that would be persisted on a chromebook.
   HsmPayload hsm_payload;
-  brillo::SecureBlob destination_share;
-  brillo::SecureBlob recovery_key;
-  brillo::SecureBlob channel_pub_key;
-  brillo::SecureBlob channel_priv_key;
+  SecureBlob rsa_priv_key;
+  SecureBlob destination_share;
+  SecureBlob recovery_key;
+  SecureBlob channel_pub_key;
+  SecureBlob channel_priv_key;
   OnboardingMetadata onboarding_metadata;
   if (!recovery_crypto->GenerateHsmPayload(
-          mediator_pub_key,
-          /*rsa_pub_key=*/brillo::SecureBlob(), onboarding_metadata,
-          &hsm_payload, &destination_share, &recovery_key, &channel_pub_key,
+          mediator_pub_key, onboarding_metadata, &hsm_payload, &rsa_priv_key,
+          &destination_share, &recovery_key, &channel_pub_key,
           &channel_priv_key)) {
     return false;
   }
@@ -122,7 +123,8 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
     return false;
   }
 
-  return WriteHexFileLogged(destination_share_out_file_path,
+  return WriteHexFileLogged(rsa_priv_key_out_file_path, rsa_priv_key) &&
+         WriteHexFileLogged(destination_share_out_file_path,
                             destination_share) &&
          WriteHexFileLogged(channel_pub_key_out_file_path, channel_pub_key) &&
          WriteHexFileLogged(channel_priv_key_out_file_path, channel_priv_key) &&
@@ -134,15 +136,19 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
 bool DoRecoveryCryptoCreateRecoveryRequestAction(
     const FilePath& gaia_rapt_in_file_path,
     const FilePath& epoch_response_in_file_path,
+    const FilePath& rsa_priv_key_in_file_path,
     const FilePath& channel_pub_key_in_file_path,
     const FilePath& channel_priv_key_in_file_path,
     const FilePath& serialized_hsm_payload_in_file_path,
     const FilePath& ephemeral_pub_key_out_file_path,
     const FilePath& recovery_request_out_file_path) {
+  SecureBlob rsa_priv_key;
   SecureBlob channel_pub_key;
   SecureBlob channel_priv_key;
   SecureBlob serialized_hsm_payload;
-  if (!ReadHexFileToSecureBlobLogged(channel_pub_key_in_file_path,
+  if (!ReadHexFileToSecureBlobLogged(rsa_priv_key_in_file_path,
+                                     &rsa_priv_key) ||
+      !ReadHexFileToSecureBlobLogged(channel_pub_key_in_file_path,
                                      &channel_pub_key) ||
       !ReadHexFileToSecureBlobLogged(channel_priv_key_in_file_path,
                                      &channel_priv_key) ||
@@ -190,8 +196,9 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
   brillo::SecureBlob ephemeral_pub_key;
   CryptoRecoveryRpcRequest recovery_request;
   if (!recovery_crypto->GenerateRecoveryRequest(
-          hsm_payload, request_metadata, epoch_response, channel_priv_key,
-          channel_pub_key, &recovery_request, &ephemeral_pub_key)) {
+          hsm_payload, request_metadata, epoch_response, rsa_priv_key,
+          channel_priv_key, channel_pub_key, &recovery_request,
+          &ephemeral_pub_key)) {
     return false;
   }
 
@@ -309,6 +316,14 @@ int main(int argc, char* argv[]) {
       "recovery_crypto_create_recovery_request, recovery_crypto_mediate, "
       "recovery_crypto_decrypt.");
   DEFINE_string(
+      rsa_priv_key_in_file, "",
+      "Path to the file containing the hex-encoded Cryptohome Recovery "
+      "encrypted rsa private key.");
+  DEFINE_string(
+      rsa_priv_key_out_file, "",
+      "Path to the file where to store the hex-encoded Cryptohome Recovery "
+      "encrypted rsa private key.");
+  DEFINE_string(
       destination_share_out_file, "",
       "Path to the file where to store the hex-encoded Cryptohome Recovery "
       "encrypted destination share.");
@@ -382,7 +397,9 @@ int main(int argc, char* argv[]) {
   if (FLAGS_action.empty()) {
     LOG(ERROR) << "--action is required.";
   } else if (FLAGS_action == "recovery_crypto_create_hsm_payload") {
-    if (CheckMandatoryFlag("destination_share_out_file",
+    if (CheckMandatoryFlag("rsa_priv_key_out_file",
+                           FLAGS_rsa_priv_key_out_file) &&
+        CheckMandatoryFlag("destination_share_out_file",
                            FLAGS_destination_share_out_file) &&
         CheckMandatoryFlag("channel_pub_key_out_file",
                            FLAGS_channel_pub_key_out_file) &&
@@ -393,6 +410,7 @@ int main(int argc, char* argv[]) {
         CheckMandatoryFlag("recovery_secret_out_file",
                            FLAGS_recovery_secret_out_file)) {
       success = DoRecoveryCryptoCreateHsmPayloadAction(
+          FilePath(FLAGS_rsa_priv_key_out_file),
           FilePath(FLAGS_destination_share_out_file),
           FilePath(FLAGS_channel_pub_key_out_file),
           FilePath(FLAGS_channel_priv_key_out_file),
@@ -400,7 +418,9 @@ int main(int argc, char* argv[]) {
           FilePath(FLAGS_recovery_secret_out_file));
     }
   } else if (FLAGS_action == "recovery_crypto_create_recovery_request") {
-    if (CheckMandatoryFlag("channel_pub_key_in_file",
+    if (CheckMandatoryFlag("rsa_priv_key_in_file",
+                           FLAGS_rsa_priv_key_in_file) &&
+        CheckMandatoryFlag("channel_pub_key_in_file",
                            FLAGS_channel_pub_key_in_file) &&
         CheckMandatoryFlag("channel_priv_key_in_file",
                            FLAGS_channel_priv_key_in_file) &&
@@ -413,6 +433,7 @@ int main(int argc, char* argv[]) {
       success = DoRecoveryCryptoCreateRecoveryRequestAction(
           FilePath(FLAGS_gaia_rapt_in_file),
           FilePath(FLAGS_epoch_response_in_file),
+          FilePath(FLAGS_rsa_priv_key_in_file),
           FilePath(FLAGS_channel_pub_key_in_file),
           FilePath(FLAGS_channel_priv_key_in_file),
           FilePath(FLAGS_serialized_hsm_payload_in_file),

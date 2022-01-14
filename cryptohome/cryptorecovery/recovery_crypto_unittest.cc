@@ -124,15 +124,17 @@ class RecoveryCryptoTest : public testing::Test {
     // Generates HSM payload that would be persisted on a chromebook.
     HsmPayload hsm_payload;
     SecureBlob channel_pub_key;
+    SecureBlob rsa_priv_key;
     EXPECT_TRUE(recovery_->GenerateHsmPayload(
-        mediator_pub_key_, rsa_pub_key_, onboarding_metadata_, &hsm_payload,
+        mediator_pub_key_, onboarding_metadata_, &hsm_payload, &rsa_priv_key,
         destination_share, recovery_key, &channel_pub_key, channel_priv_key));
 
     // Start recovery process.
     CryptoRecoveryRpcRequest recovery_request;
     EXPECT_TRUE(recovery_->GenerateRecoveryRequest(
-        hsm_payload, request_metadata_, epoch_response_, *channel_priv_key,
-        channel_pub_key, &recovery_request, ephemeral_pub_key));
+        hsm_payload, request_metadata_, epoch_response_, rsa_priv_key,
+        *channel_priv_key, channel_pub_key, &recovery_request,
+        ephemeral_pub_key));
 
     // Simulates mediation performed by HSM.
     EXPECT_TRUE(mediator_->MediateRequestPayload(
@@ -159,17 +161,19 @@ class RecoveryCryptoTest : public testing::Test {
 TEST_F(RecoveryCryptoTest, RecoveryTestSuccess) {
   // Generates HSM payload that would be persisted on a chromebook.
   HsmPayload hsm_payload;
-  SecureBlob destination_share, recovery_key, channel_pub_key, channel_priv_key;
+  SecureBlob rsa_priv_key, destination_share, recovery_key, channel_pub_key,
+      channel_priv_key;
   EXPECT_TRUE(recovery_->GenerateHsmPayload(
-      mediator_pub_key_, rsa_pub_key_, onboarding_metadata_, &hsm_payload,
+      mediator_pub_key_, onboarding_metadata_, &hsm_payload, &rsa_priv_key,
       &destination_share, &recovery_key, &channel_pub_key, &channel_priv_key));
 
   // Start recovery process.
   CryptoRecoveryRpcRequest recovery_request;
   SecureBlob ephemeral_pub_key;
   EXPECT_TRUE(recovery_->GenerateRecoveryRequest(
-      hsm_payload, request_metadata_, epoch_response_, channel_priv_key,
-      channel_pub_key, &recovery_request, &ephemeral_pub_key));
+      hsm_payload, request_metadata_, epoch_response_, rsa_priv_key,
+      channel_priv_key, channel_pub_key, &recovery_request,
+      &ephemeral_pub_key));
 
   // Simulates mediation performed by HSM.
   CryptoRecoveryRpcResponse response_proto;
@@ -194,27 +198,30 @@ TEST_F(RecoveryCryptoTest, RecoveryTestSuccess) {
 
 TEST_F(RecoveryCryptoTest, GenerateHsmPayloadInvalidMediatorKey) {
   HsmPayload hsm_payload;
-  SecureBlob destination_share, recovery_key, channel_pub_key, channel_priv_key;
+  SecureBlob rsa_priv_key, destination_share, recovery_key, channel_pub_key,
+      channel_priv_key;
   EXPECT_FALSE(recovery_->GenerateHsmPayload(
-      /*mediator_pub_key=*/SecureBlob("not a key"), rsa_pub_key_,
-      onboarding_metadata_, &hsm_payload, &destination_share, &recovery_key,
+      /*mediator_pub_key=*/SecureBlob("not a key"), onboarding_metadata_,
+      &hsm_payload, &rsa_priv_key, &destination_share, &recovery_key,
       &channel_pub_key, &channel_priv_key));
 }
 
 TEST_F(RecoveryCryptoTest, MediateWithInvalidEpochPublicKey) {
   // Generates HSM payload that would be persisted on a chromebook.
   HsmPayload hsm_payload;
-  SecureBlob destination_share, recovery_key, channel_pub_key, channel_priv_key;
+  SecureBlob rsa_priv_key, destination_share, recovery_key, channel_pub_key,
+      channel_priv_key;
   EXPECT_TRUE(recovery_->GenerateHsmPayload(
-      mediator_pub_key_, rsa_pub_key_, onboarding_metadata_, &hsm_payload,
+      mediator_pub_key_, onboarding_metadata_, &hsm_payload, &rsa_priv_key,
       &destination_share, &recovery_key, &channel_pub_key, &channel_priv_key));
 
   // Start recovery process.
   CryptoRecoveryRpcRequest recovery_request;
   SecureBlob ephemeral_pub_key;
   EXPECT_TRUE(recovery_->GenerateRecoveryRequest(
-      hsm_payload, request_metadata_, epoch_response_, channel_priv_key,
-      channel_pub_key, &recovery_request, &ephemeral_pub_key));
+      hsm_payload, request_metadata_, epoch_response_, rsa_priv_key,
+      channel_priv_key, channel_pub_key, &recovery_request,
+      &ephemeral_pub_key));
 
   SecureBlob random_key = GeneratePublicKey();
 

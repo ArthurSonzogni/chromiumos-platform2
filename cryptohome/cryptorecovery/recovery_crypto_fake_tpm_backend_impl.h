@@ -48,6 +48,19 @@ class RecoveryCryptoFakeTpmBackendImpl final : public RecoveryCryptoTpmBackend {
       const brillo::SecureBlob& encrypted_own_priv_key,
       const std::optional<brillo::SecureBlob>& /*auth_value*/,
       const EC_POINT& others_pub_point) override;
+  // Generate RSA key pair from tpm modules. Return true if the key generation
+  // from TPM modules is successful.
+  // TODO(b:196191918): implement the function for testing
+  bool GenerateRsaKeyPair(
+      brillo::SecureBlob* /*encrypted_rsa_private_key*/,
+      brillo::SecureBlob* /*rsa_public_key_spki_der*/) override;
+  // Sign the request payload with the provided RSA private key. Return true if
+  // the signing operation is successful.
+  // TODO(b:196191918): implement the function for testing
+  bool SignRequestPayload(
+      const brillo::SecureBlob& /*encrypted_rsa_private_key*/,
+      const brillo::SecureBlob& /*request_payload*/,
+      brillo::SecureBlob* /*signature*/) override;
 };
 
 }  // namespace cryptorecovery

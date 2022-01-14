@@ -33,15 +33,16 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
       const HsmPayload& hsm_payload,
       const RequestMetadata& request_meta_data,
       const CryptoRecoveryEpochResponse& epoch_response,
+      const brillo::SecureBlob& encrypted_rsa_priv_key,
       const brillo::SecureBlob& encrypted_channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
       CryptoRecoveryRpcRequest* recovery_request,
       brillo::SecureBlob* ephemeral_pub_key) const override;
   bool GenerateHsmPayload(
       const brillo::SecureBlob& mediator_pub_key,
-      const brillo::SecureBlob& rsa_pub_key,
       const OnboardingMetadata& onboarding_metadata,
       HsmPayload* hsm_payload,
+      brillo::SecureBlob* encrypted_rsa_priv_key,
       brillo::SecureBlob* encrypted_destination_share,
       brillo::SecureBlob* recovery_key,
       brillo::SecureBlob* channel_pub_key,

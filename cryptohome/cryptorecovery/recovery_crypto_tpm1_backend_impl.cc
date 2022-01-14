@@ -41,6 +41,41 @@ namespace {
 // with taking into account that this authorization value is hashed by SHA-1
 // by Trousers anyway).
 constexpr int kAuthValueSizeBytes = 32;
+
+// Creates a DER encoded RSA public key using SubjectPublicKeyInfo structure.
+//
+// Parameters
+//   rsa_public_key_pkcs1_der - A serialized PKCS#1 RSAPublicKey in DER format.
+//   rsa_public_key_spki_der - The same public key using SubjectPublicKeyInfo
+//   structure in DER encoded form.
+bool ConvertPkcs1DerToSpkiDer(
+    const brillo::SecureBlob& rsa_public_key_pkcs1_der,
+    brillo::SecureBlob* rsa_public_key_spki_der) {
+  const unsigned char* rsa_public_key_pkcs1_der_data =
+      rsa_public_key_pkcs1_der.data();
+  crypto::ScopedRSA rsa(d2i_RSAPublicKey(/*RSA=*/nullptr,
+                                         &rsa_public_key_pkcs1_der_data,
+                                         rsa_public_key_pkcs1_der.size()));
+  if (!rsa.get()) {
+    LOG(ERROR) << "Failed to decode public key.";
+    return false;
+  }
+
+  int der_length = i2d_RSA_PUBKEY(rsa.get(), NULL);
+  if (der_length < 0) {
+    LOG(ERROR) << "Failed to DER-encode public key using SubjectPublicKeyInfo.";
+    return false;
+  }
+  rsa_public_key_spki_der->resize(der_length);
+  unsigned char* der_buffer = rsa_public_key_spki_der->data();
+  der_length = i2d_RSA_PUBKEY(rsa.get(), &der_buffer);
+  if (der_length < 0) {
+    LOG(ERROR) << "Failed to DER-encode public key using SubjectPublicKeyInfo.";
+    return false;
+  }
+  rsa_public_key_spki_der->resize(der_length);
+  return true;
+}
 }  // namespace
 
 RecoveryCryptoTpm1BackendImpl::RecoveryCryptoTpm1BackendImpl(Tpm* tpm_impl)
@@ -136,6 +171,48 @@ RecoveryCryptoTpm1BackendImpl::GenerateDiffieHellmanSharedSecret(
   }
 
   return point_dh;
+}
+
+bool RecoveryCryptoTpm1BackendImpl::GenerateRsaKeyPair(
+    brillo::SecureBlob* encrypted_rsa_private_key,
+    brillo::SecureBlob* rsa_public_key_spki_der) {
+  CHECK(encrypted_rsa_private_key);
+  CHECK(rsa_public_key_spki_der);
+  brillo::SecureBlob creation_blob;
+  brillo::SecureBlob rsa_public_key_pkcs1_der;
+
+  // Generate RSA key pair
+  // TODO(b/196191918): Get the real pcr_map
+  if (!tpm_impl_->CreatePCRBoundKey(
+          /*pcr_map=*/{{}}, AsymmetricKeyUsage::kSignKey,
+          encrypted_rsa_private_key, &rsa_public_key_pkcs1_der,
+          /*creation_blob=*/&creation_blob)) {
+    LOG(ERROR) << "Error creating PCR bound signing key.";
+    return false;
+  }
+
+  if (!ConvertPkcs1DerToSpkiDer(rsa_public_key_pkcs1_der,
+                                rsa_public_key_spki_der)) {
+    LOG(ERROR) << "Error convert RSA public key from PKCS#1 to "
+                  "SubjectPublicKeyInfo structure.";
+    return false;
+  }
+
+  return true;
+}
+
+bool RecoveryCryptoTpm1BackendImpl::SignRequestPayload(
+    const brillo::SecureBlob& encrypted_rsa_private_key,
+    const brillo::SecureBlob& request_payload,
+    brillo::SecureBlob* signature) {
+  CHECK(signature);
+  // TODO(b/196191918): Get the real bound_pcr_index
+  if (!tpm_impl_->Sign(encrypted_rsa_private_key, request_payload,
+                       /*bound_pcr_index=*/kNotBoundToPCR, signature)) {
+    LOG(ERROR) << "Error signing with PCR bound key.";
+    return false;
+  }
+  return true;
 }
 
 }  // namespace cryptorecovery

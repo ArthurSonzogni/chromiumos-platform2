@@ -52,6 +52,24 @@ class RecoveryCryptoTpmBackend {
       const brillo::SecureBlob& encrypted_own_priv_key,
       const std::optional<brillo::SecureBlob>& auth_value,
       const EC_POINT& others_pub_point) = 0;
+  // Generate a TPM-backed RSA key pair. Return true if the key generation
+  // from TPM modules is successful.
+  // Generated RSA private key would be used to sign recovery request payload
+  // when channel private key cannot be restored in a secure manner. Therefore,
+  // it will only be implemented in TPM1 backend. For TPM2, a dummy true would
+  // be returned.
+  virtual bool GenerateRsaKeyPair(
+      brillo::SecureBlob* encrypted_rsa_private_key,
+      brillo::SecureBlob* rsa_public_key_spki_der) = 0;
+  // Sign the request payload with the provided RSA private key. Return true if
+  // the signing operation is successful.
+  // The RSA private key would be loaded from the TPM modules first and used to
+  // sign the payload. As signing the request payload is only required for TPM1,
+  // the implementation of TPM2 would return a dummy true.
+  virtual bool SignRequestPayload(
+      const brillo::SecureBlob& encrypted_rsa_private_key,
+      const brillo::SecureBlob& request_payload,
+      brillo::SecureBlob* signature) = 0;
 };
 
 // Cryptographic operations for cryptohome recovery.
@@ -118,6 +136,7 @@ class RecoveryCrypto {
       const HsmPayload& hsm_payload,
       const RequestMetadata& request_meta_data,
       const CryptoRecoveryEpochResponse& epoch_response,
+      const brillo::SecureBlob& encrypted_rsa_priv_key,
       const brillo::SecureBlob& encrypted_channel_priv_key,
       const brillo::SecureBlob& channel_pub_key,
       CryptoRecoveryRpcRequest* recovery_request,
@@ -147,9 +166,9 @@ class RecoveryCrypto {
   // with kav for TPM 1.2 and stored in the host.
   virtual bool GenerateHsmPayload(
       const brillo::SecureBlob& mediator_pub_key,
-      const brillo::SecureBlob& rsa_pub_key,
       const OnboardingMetadata& onboarding_metadata,
       HsmPayload* hsm_payload,
+      brillo::SecureBlob* encrypted_rsa_priv_key,
       brillo::SecureBlob* encrypted_destination_share,
       brillo::SecureBlob* recovery_key,
       brillo::SecureBlob* channel_pub_key,

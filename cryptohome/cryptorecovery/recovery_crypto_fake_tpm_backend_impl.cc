@@ -71,5 +71,20 @@ RecoveryCryptoFakeTpmBackendImpl::GenerateDiffieHellmanSharedSecret(
   return point_dh;
 }
 
+bool RecoveryCryptoFakeTpmBackendImpl::GenerateRsaKeyPair(
+    brillo::SecureBlob* /*encrypted_rsa_private_key*/,
+    brillo::SecureBlob* /*rsa_public_key_spki_der*/) {
+  // TODO(b:196191918): implement the function for testing
+  return true;
+}
+
+bool RecoveryCryptoFakeTpmBackendImpl::SignRequestPayload(
+    const brillo::SecureBlob& /*encrypted_rsa_private_key*/,
+    const brillo::SecureBlob& /*request_payload*/,
+    brillo::SecureBlob* /*signature*/) {
+  // TODO(b:196191918): implement the function for testing
+  return true;
+}
+
 }  // namespace cryptorecovery
 }  // namespace cryptohome

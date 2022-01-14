@@ -49,6 +49,20 @@ class RecoveryCryptoTpm1BackendImpl final : public RecoveryCryptoTpmBackend {
       const brillo::SecureBlob& encrypted_own_priv_key,
       const std::optional<brillo::SecureBlob>& auth_value,
       const EC_POINT& others_pub_point) override;
+  // Generate RSA key pair from tpm modules. Return true if the key generation
+  // from TPM modules is successful.
+  // Generated RSA private key would be used to sign recovery request payload
+  // when channel private key cannot be restored in a secure manner. Therefore,
+  // it will only be implemented in TPM1 backend.
+  bool GenerateRsaKeyPair(brillo::SecureBlob* encrypted_rsa_private_key,
+                          brillo::SecureBlob* rsa_public_key_spki_der) override;
+  // Sign the request payload with the provided RSA private key. Return true if
+  // the signing operation is successful.
+  // The RSA private key would be loaded from the TPM modules first and used to
+  // sign the payload.
+  bool SignRequestPayload(const brillo::SecureBlob& encrypted_rsa_private_key,
+                          const brillo::SecureBlob& request_payload,
+                          brillo::SecureBlob* signature) override;
 
  private:
   Tpm* const tpm_impl_;

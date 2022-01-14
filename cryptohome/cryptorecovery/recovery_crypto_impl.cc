@@ -21,6 +21,7 @@
 #include "cryptohome/crypto/big_num_util.h"
 #include "cryptohome/crypto/ecdh_hkdf.h"
 #include "cryptohome/crypto/error_util.h"
+#include "cryptohome/crypto/rsa.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
@@ -296,6 +297,7 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
     const HsmPayload& hsm_payload,
     const RequestMetadata& request_meta_data,
     const CryptoRecoveryEpochResponse& epoch_response,
+    const brillo::SecureBlob& encrypted_rsa_priv_key,
     const brillo::SecureBlob& encrypted_channel_priv_key,
     const brillo::SecureBlob& channel_pub_key,
     CryptoRecoveryRpcRequest* recovery_request,
@@ -388,15 +390,23 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
     return false;
   }
 
+  // Sign the request payload with the rsa private key
   brillo::SecureBlob request_payload_blob;
   if (!SerializeRecoveryRequestPayloadToCbor(request_payload,
                                              &request_payload_blob)) {
     LOG(ERROR) << "Failed to serialize Recovery Request payload";
     return false;
   }
+  brillo::SecureBlob rsa_signature;
+  if (!tpm_backend_->SignRequestPayload(encrypted_rsa_priv_key,
+                                        request_payload_blob, &rsa_signature)) {
+    LOG(ERROR) << "Failed to sign Recovery Request payload";
+    return false;
+  }
 
   RecoveryRequest request;
   request.request_payload = std::move(request_payload_blob);
+  request.rsa_signature = std::move(rsa_signature);
   if (!GenerateRecoveryRequestProto(request, recovery_request)) {
     LOG(ERROR) << "Failed to generate Recovery Request proto";
     return false;
@@ -406,9 +416,9 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
 
 bool RecoveryCryptoImpl::GenerateHsmPayload(
     const brillo::SecureBlob& mediator_pub_key,
-    const brillo::SecureBlob& rsa_pub_key,
     const OnboardingMetadata& onboarding_metadata,
     HsmPayload* hsm_payload,
+    brillo::SecureBlob* encrypted_rsa_priv_key,
     brillo::SecureBlob* encrypted_destination_share,
     brillo::SecureBlob* recovery_key,
     brillo::SecureBlob* channel_pub_key,
@@ -472,6 +482,14 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
     return false;
   }
 
+  // Generate RSA key pair
+  brillo::SecureBlob rsa_public_key_der;
+  if (!tpm_backend_->GenerateRsaKeyPair(encrypted_rsa_priv_key,
+                                        &rsa_public_key_der)) {
+    LOG(ERROR) << "Error creating PCR bound signing key.";
+    return false;
+  }
+
   // Generate channel key pair.
   crypto::ScopedEC_KEY channel_key_pair = ec_.GenerateKey(context.get());
   if (!channel_key_pair) {
@@ -503,7 +521,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   // channel_pub_key, rsa_pub_key, onboarding_metadata}).
   brillo::SecureBlob publisher_priv_key;
   brillo::SecureBlob publisher_pub_key;
-  if (!GenerateHsmAssociatedData(*channel_pub_key, rsa_pub_key,
+  if (!GenerateHsmAssociatedData(*channel_pub_key, rsa_public_key_der,
                                  onboarding_metadata,
                                  &hsm_payload->associated_data,
                                  &publisher_priv_key, &publisher_pub_key)) {

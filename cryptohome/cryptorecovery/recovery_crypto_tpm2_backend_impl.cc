@@ -239,5 +239,22 @@ RecoveryCryptoTpm2BackendImpl::GenerateDiffieHellmanSharedSecret(
   return point_dh;
 }
 
+// Generating Rsa Key is only required for TPM1, so the
+// implementation of TPM2 would return a dummy true.
+bool RecoveryCryptoTpm2BackendImpl::GenerateRsaKeyPair(
+    brillo::SecureBlob* /*encrypted_rsa_private_key*/,
+    brillo::SecureBlob* /*rsa_public_key_spki_der*/) {
+  return true;
+}
+
+// Signing the request payload is only required for TPM1, so the
+// implementation of TPM2 would return a dummy true.
+bool RecoveryCryptoTpm2BackendImpl::SignRequestPayload(
+    const brillo::SecureBlob& /*encrypted_rsa_private_key*/,
+    const brillo::SecureBlob& /*request_payload*/,
+    brillo::SecureBlob* /*signature*/) {
+  return true;
+}
+
 }  // namespace cryptorecovery
 }  // namespace cryptohome
