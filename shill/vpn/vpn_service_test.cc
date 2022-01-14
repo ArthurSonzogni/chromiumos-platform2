@@ -175,7 +175,7 @@ TEST_F(VPNServiceTest, CreateStorageIdentifierNoName) {
   Error error;
   args.Set<std::string>(kProviderHostProperty, "10.8.0.1");
   EXPECT_EQ("", VPNService::CreateStorageIdentifier(args, &error));
-  EXPECT_EQ(Error::kNotSupported, error.type());
+  EXPECT_EQ(Error::kInvalidProperty, error.type());
 }
 
 TEST_F(VPNServiceTest, CreateStorageIdentifier) {

@@ -101,6 +101,7 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.NotFound
 					 [service].Error.InvalidArguments
+					 [service].Error.InvalidProperty
 					 [service].Error.TechnologyNotAvailable
 
 		dict DeleteEntry(string entry_identifier)

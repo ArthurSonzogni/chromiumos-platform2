@@ -182,7 +182,7 @@ std::string VPNService::CreateStorageIdentifier(const KeyValueStore& args,
   }
   const auto name = args.Lookup<std::string>(kNameProperty, "");
   if (name.empty()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidProperty,
                           "Missing VPN name.");
     return "";
   }

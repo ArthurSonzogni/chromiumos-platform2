@@ -79,7 +79,7 @@ TEST_F(VPNProviderTest, GetServiceNoType) {
   Error e;
   args.Set<std::string>(kTypeProperty, kTypeVPN);
   ServiceRefPtr service = provider_.GetService(args, &e);
-  EXPECT_EQ(Error::kNotSupported, e.type());
+  EXPECT_EQ(Error::kInvalidProperty, e.type());
   EXPECT_FALSE(service);
 }
 

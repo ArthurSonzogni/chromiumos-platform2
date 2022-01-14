@@ -1577,7 +1577,7 @@ TEST_F(ManagerTest, GetServiceVPNUnknownType) {
       new StrictMock<MockProfile>(manager(), ""));
   AdoptProfile(manager(), profile);
   ServiceRefPtr service = manager()->GetService(args, &e);
-  EXPECT_EQ(Error::kNotSupported, e.type());
+  EXPECT_EQ(Error::kInvalidProperty, e.type());
   EXPECT_FALSE(service);
 }
 

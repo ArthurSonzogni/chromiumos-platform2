@@ -76,7 +76,7 @@ bool GetServiceParametersFromStorage(const StoreInterface* storage,
                                      Error* error) {
   if (!storage->GetString(entry_name, CellularService::kStorageIccid, iccid) ||
       iccid->empty()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidProperty,
                           "Missing or empty ICCID");
     return false;
   }

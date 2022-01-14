@@ -61,14 +61,14 @@ bool GetServiceParametersFromArgs(const KeyValueStore& args,
   SLOG(nullptr, 2) << __func__;
   const auto type = args.Lookup<std::string>(kProviderTypeProperty, "");
   if (type.empty()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidProperty,
                           "Missing VPN type property.");
     return false;
   }
 
   const auto host = args.Lookup<std::string>(kProviderHostProperty, "");
   if (host.empty()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidProperty,
                           "Missing VPN host property.");
     return false;
   }
