@@ -14,6 +14,9 @@ group("all") {
   deps = [
     ":attestation_client",
     ":attestationd",
+    ":install_init",
+    ":install_policy",
+    ":install_systemd",
     ":libattestation",
     ":pca_agent_client",
     ":pca_agentd",
@@ -149,6 +152,7 @@ source_set("common_library") {
 
 # A shared library for clients.
 shared_library("libattestation") {
+  install_path = "lib"
   configs += [
     "//common-mk:nouse_thin_archive",
     ":local_proto_include",
@@ -168,6 +172,7 @@ executable("attestation_client") {
     ":target_defaults",
     ":local_proto_include",
   ]
+  install_path = "bin"
 
   # NOSORT
   pkg_deps = [
@@ -231,6 +236,7 @@ executable("attestationd") {
     ":local_proto_include",
     ":target_defaults",
   ]
+  install_path = "sbin"
   libs = [ "policy" ]
 
   # NOSORT
@@ -279,6 +285,7 @@ executable("pca_agentd") {
     ":attestationd_config",
     ":target_defaults",
   ]
+  install_path = "sbin"
 
   # NOSORT
   pkg_deps = [
@@ -300,6 +307,7 @@ executable("pca_agent_client") {
     ":local_print_proto_include",
     ":target_defaults",
   ]
+  install_path = "bin"
 
   # NOSORT
   pkg_deps = [
@@ -312,6 +320,37 @@ executable("pca_agent_client") {
   deps = [
     ":pca-agent-proxies",
     ":proto_library",
+  ]
+}
+
+install_config("install_systemd") {
+  sources = [
+    "pca_agent/server/org.chromium.PcaAgent.conf",
+    "server/org.chromium.Attestation.conf",
+  ]
+  install_path = "/etc/dbus-1/system.d"
+}
+
+install_config("install_init") {
+  sources = [
+    "pca_agent/server/pca_agentd.conf",
+    "server/attestationd.conf",
+  ]
+  install_path = "/etc/init"
+}
+
+install_config("install_policy") {
+  _arch = getenv("ARCH")
+  sources = [
+    "pca_agent/server/pca_agentd-seccomp-${_arch}.policy",
+    "server/attestationd-seccomp-${_arch}.policy",
+  ]
+  install_path = "/usr/share/policy"
+
+  # NOSORT
+  outputs = [
+    "pca_agentd-seccomp.policy",
+    "attestationd-seccomp.policy",
   ]
 }
 
@@ -362,6 +401,7 @@ if (use.test) {
       ":local_proto_include",
       ":target_defaults",
     ]
+    run_test = true
 
     # NOSORT
     pkg_deps = [
