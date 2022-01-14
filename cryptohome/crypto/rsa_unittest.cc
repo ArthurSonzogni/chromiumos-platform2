@@ -4,26 +4,84 @@
 
 #include "cryptohome/crypto/rsa.h"
 
+#include <base/check.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "cryptohome/crypto/secure_blob_util.h"
+#include "cryptohome/crypto/sha.h"
 
 namespace cryptohome {
+namespace {
+
+constexpr int kKeySizeBits = 1024;
+constexpr int kKeySizeBytes = kKeySizeBits / 8;
+
+// Generate RSA key.
+bool GenerateRsaKey(RSA* rsa) {
+  CHECK(rsa);
+  crypto::ScopedBIGNUM e(BN_new());
+  if (!e) {
+    ADD_FAILURE() << "Failed to create a BIGNUM.";
+    return false;
+  }
+
+  if (!BN_set_word(e.get(), kWellKnownExponent)) {
+    ADD_FAILURE() << "Failed to set BIGNUM word.";
+    return false;
+  }
+
+  if (!RSA_generate_key_ex(rsa, kKeySizeBits, e.get(), /*BN_GENCB=*/nullptr)) {
+    ADD_FAILURE() << "Failed to generate RSA key.";
+    return false;
+  }
+
+  return true;
+}
+
+// Sign the input data with a RSA private key using RSASSA-PKCS1-v1_5 Sha256
+bool SignRsaPkcs1Sha256(const brillo::SecureBlob& input_data,
+                        RSA* rsa,
+                        brillo::SecureBlob* signature) {
+  const brillo::SecureBlob digest = Sha256(input_data);
+  signature->resize(kKeySizeBytes);
+  unsigned int siglen = 0;
+  if (!RSA_sign(NID_sha256, digest.data(), digest.size(), signature->data(),
+                &siglen, rsa)) {
+    LOG(ERROR) << "Failed to sign the input data using RSA.";
+    return false;
+  }
+  signature->resize(siglen);
+  return true;
+}
+
+// Convert RSA public key to DER-encoded X.509 SubjectPublicKeyInfo structure.
+bool ConvertRsaToSpkiDer(const crypto::ScopedRSA& rsa,
+                         brillo::SecureBlob* rsa_public_key_spki_der) {
+  int der_length = i2d_RSA_PUBKEY(rsa.get(), /*unsigned char**=*/nullptr);
+  if (der_length < 0) {
+    LOG(ERROR) << "Failed to DER-encode public key using SubjectPublicKeyInfo.";
+    return false;
+  }
+  rsa_public_key_spki_der->resize(der_length);
+  unsigned char* der_buffer = rsa_public_key_spki_der->data();
+  der_length = i2d_RSA_PUBKEY(rsa.get(), &der_buffer);
+  if (der_length < 0) {
+    LOG(ERROR) << "Failed to DER-encode public key using SubjectPublicKeyInfo.";
+    return false;
+  }
+  rsa_public_key_spki_der->resize(der_length);
+  return true;
+}
+}  // namespace
 
 TEST(RsaTest, RsaOaepDecrypt) {
   // Generate the input data.
-  constexpr int kKeySizeBits = 1024;
-  constexpr int kKeySizeBytes = kKeySizeBits / 8;
   constexpr int kPlaintextSize = 32;
   crypto::ScopedRSA rsa(RSA_new());
-  CHECK(rsa);
-  crypto::ScopedBIGNUM e(BN_new());
-  CHECK(e);
-  EXPECT_TRUE(BN_set_word(e.get(), kWellKnownExponent));
-  EXPECT_TRUE(RSA_generate_key_ex(rsa.get(), kKeySizeBits, e.get(), nullptr));
+  ASSERT_TRUE(GenerateRsaKey(rsa.get()));
   const auto plaintext = CreateSecureRandomBlob(kPlaintextSize);
   // Test decryption when a non-empty label is used.
   const brillo::SecureBlob kFirstOaepLabel("foo");
@@ -110,6 +168,84 @@ TEST(RsaTest, TestRocaVulnerable) {
   crypto::ScopedBIGNUM good_modulus_bn(
       BN_bin2bn(good_modulus, sizeof(good_modulus), nullptr));
   EXPECT_FALSE(TestRocaVulnerable(good_modulus_bn.get()));
+}
+
+TEST(RsaTest, RsaVerifySignatureSha256Success) {
+  // Generate the input data.
+  crypto::ScopedRSA rsa(RSA_new());
+  ASSERT_TRUE(GenerateRsaKey(rsa.get()));
+  const auto input_data = CreateSecureRandomBlob(kKeySizeBytes);
+
+  // Sign the input text with the private key
+  brillo::SecureBlob signature;
+  ASSERT_TRUE(SignRsaPkcs1Sha256(input_data, rsa.get(), &signature));
+
+  // Convert the public key to DER-encoded X.509 SubjectPublicKeyInfo
+  brillo::SecureBlob rsa_public_key_spki_der;
+  EXPECT_TRUE(ConvertRsaToSpkiDer(rsa, &rsa_public_key_spki_der));
+
+  EXPECT_TRUE(
+      VerifyRsaSignatureSha256(input_data, signature, rsa_public_key_spki_der));
+}
+
+TEST(RsaTest, RsaVerifySignatureSha256WithInvalidInputData) {
+  // Generate the input data.
+  crypto::ScopedRSA rsa(RSA_new());
+  ASSERT_TRUE(GenerateRsaKey(rsa.get()));
+  const auto input_data = CreateSecureRandomBlob(kKeySizeBytes);
+  const auto invalid_input_data = CreateSecureRandomBlob(kKeySizeBytes);
+
+  // Sign the input text with the private key
+  brillo::SecureBlob signature;
+  ASSERT_TRUE(SignRsaPkcs1Sha256(input_data, rsa.get(), &signature));
+
+  // Convert the public key to DER-encoded X.509 SubjectPublicKeyInfo
+  brillo::SecureBlob rsa_public_key_spki_der;
+  EXPECT_TRUE(ConvertRsaToSpkiDer(rsa, &rsa_public_key_spki_der));
+
+  EXPECT_FALSE(VerifyRsaSignatureSha256(invalid_input_data, signature,
+                                        rsa_public_key_spki_der));
+}
+
+TEST(RsaTest, RsaVerifySignatureSha256WithInvalidSignature) {
+  // Generate the input data.
+  crypto::ScopedRSA rsa(RSA_new());
+  ASSERT_TRUE(GenerateRsaKey(rsa.get()));
+  const auto input_data = CreateSecureRandomBlob(kKeySizeBytes);
+
+  // Sign the input text with the private key
+  brillo::SecureBlob signature;
+  ASSERT_TRUE(SignRsaPkcs1Sha256(input_data, rsa.get(), &signature));
+
+  // Make the signature invalid by resizing it shorter
+  signature.resize(signature.size() - 1);
+
+  // Convert the public key to DER-encoded X.509 SubjectPublicKeyInfo
+  brillo::SecureBlob rsa_public_key_spki_der;
+  EXPECT_TRUE(ConvertRsaToSpkiDer(rsa, &rsa_public_key_spki_der));
+
+  EXPECT_FALSE(
+      VerifyRsaSignatureSha256(input_data, signature, rsa_public_key_spki_der));
+}
+
+TEST(RsaTest, RsaVerifySignatureSha256WithInvalidPublicKey) {
+  // Generate the input data.
+  crypto::ScopedRSA rsa(RSA_new());
+  ASSERT_TRUE(GenerateRsaKey(rsa.get()));
+  const auto input_data = CreateSecureRandomBlob(kKeySizeBytes);
+
+  // Sign the input text with the private key
+  brillo::SecureBlob signature;
+  ASSERT_TRUE(SignRsaPkcs1Sha256(input_data, rsa.get(), &signature));
+
+  // Convert the public key to DER-encoded X.509 SubjectPublicKeyInfo
+  brillo::SecureBlob rsa_public_key_spki_der;
+  EXPECT_TRUE(ConvertRsaToSpkiDer(rsa, &rsa_public_key_spki_der));
+  // Make the public key invalid by resizing it shorter
+  rsa_public_key_spki_der.resize(rsa_public_key_spki_der.size() - 1);
+
+  EXPECT_FALSE(
+      VerifyRsaSignatureSha256(input_data, signature, rsa_public_key_spki_der));
 }
 
 }  // namespace cryptohome

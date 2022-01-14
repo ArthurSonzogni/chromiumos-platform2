@@ -64,6 +64,13 @@ bool RsaOaepDecrypt(const brillo::SecureBlob& ciphertext,
                     RSA* key,
                     brillo::SecureBlob* plaintext);
 
+// Verify the signature with the SHA-256 hash function. The signature is signed
+// using the provided input_data and a private key, of which the corresponding
+// public key (DER-encoded X.509 SubjectPublicKeyInfo structure) is provided.
+bool VerifyRsaSignatureSha256(const brillo::SecureBlob& input_data,
+                              const brillo::SecureBlob& signature,
+                              const brillo::SecureBlob& public_key_spki_der);
+
 // Encrypts data using the TPM_ES_RSAESOAEP_SHA1_MGF1 scheme.
 //
 // Parameters

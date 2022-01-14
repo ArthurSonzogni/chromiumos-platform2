@@ -12,6 +12,7 @@
 #include <crypto/scoped_openssl_types.h>
 
 #include "cryptohome/crypto/aes.h"
+#include "cryptohome/crypto/sha.h"
 
 namespace cryptohome {
 
@@ -255,6 +256,28 @@ bool RsaOaepDecrypt(const brillo::SecureBlob& ciphertext,
   }
   local_plaintext.resize(padding_check_result);
   *plaintext = std::move(local_plaintext);
+  return true;
+}
+
+bool VerifyRsaSignatureSha256(const brillo::SecureBlob& input_data,
+                              const brillo::SecureBlob& signature,
+                              const brillo::SecureBlob& public_key_spki_der) {
+  const brillo::SecureBlob digest = Sha256(input_data);
+
+  const unsigned char* public_key_data = public_key_spki_der.data();
+  crypto::ScopedRSA rsa(d2i_RSA_PUBKEY(/*RSA=*/nullptr, &public_key_data,
+                                       public_key_spki_der.size()));
+  if (!rsa.get()) {
+    LOG(ERROR)
+        << "Failed to decode public key SubjectPublicKeyInfo into an RSA key.";
+    return false;
+  }
+
+  if (!RSA_verify(NID_sha256, digest.data(), digest.size(), signature.data(),
+                  signature.size(), rsa.get())) {
+    LOG(ERROR) << "Failed to verify RSA signature.";
+    return false;
+  }
   return true;
 }
 

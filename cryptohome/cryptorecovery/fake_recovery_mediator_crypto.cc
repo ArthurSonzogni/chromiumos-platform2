@@ -19,6 +19,7 @@
 #include "cryptohome/crypto/ecdh_hkdf.h"
 #include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/crypto/error_util.h"
+#include "cryptohome/crypto/rsa.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptorecovery/recovery_crypto.h"
@@ -448,18 +449,47 @@ bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
     return false;
   }
-
+  // Parse out the rsa_signature in Recovery Request
   RecoveryRequest recovery_request;
   if (!GetRecoveryRequestFromProto(recovery_request_proto, &recovery_request)) {
     LOG(ERROR) << "Couldn't get recovery request from recovery_request_proto";
     return false;
   }
-
+  // Parse out the rsa_public_key, which is in Hsm Associated Data. Hsm
+  // Associated Data is in Hsm Payload, and it is in the Associated Data of
+  // Request Payload
   RequestPayload request_payload;
   if (!DeserializeRecoveryRequestPayloadFromCbor(
           recovery_request.request_payload, &request_payload)) {
     LOG(ERROR) << "Failed to deserialize Request payload.";
     return false;
+  }
+  HsmPayload hsm_payload;
+  if (!GetHsmPayloadFromRequestAdForTesting(request_payload.associated_data,
+                                            &hsm_payload)) {
+    LOG(ERROR) << "Unable to extract hsm_payload from request_payload";
+    return false;
+  }
+  HsmAssociatedData hsm_associated_data;
+  if (!DeserializeHsmAssociatedDataFromCbor(hsm_payload.associated_data,
+                                            &hsm_associated_data)) {
+    LOG(ERROR) << "Unable to deserialize hsm_associated_data_cbor";
+    return false;
+  }
+
+  // If the recovery request is sent from devices with TPM2.0, no RSA signature
+  // is attached to be verified and the public key wrapped in AD1 would be
+  // empty.
+  if (!hsm_associated_data.rsa_public_key.empty() ||
+      !recovery_request.rsa_signature.empty()) {
+    // Verify RSA signature with RSA public key and request payload
+    if (!VerifyRsaSignatureSha256(recovery_request.request_payload,
+                                  recovery_request.rsa_signature,
+                                  hsm_associated_data.rsa_public_key)) {
+      LOG(ERROR)
+          << "Unable to initiate verifying rsa signature in request_payload";
+      return false;
+    }
   }
 
   brillo::SecureBlob request_plain_text_cbor;
@@ -477,16 +507,14 @@ bool FakeRecoveryMediatorCrypto::MediateRequestPayload(
     return false;
   }
 
-  HsmPayload hsm_payload;
-  if (!GetHsmPayloadFromRequestAdForTesting(request_payload.associated_data,
-                                            &hsm_payload)) {
-    LOG(ERROR) << "Unable to extract hsm_payload from request_payload";
+  if (!MediateHsmPayload(mediator_priv_key, epoch_pub_key, epoch_priv_key,
+                         plain_text.ephemeral_pub_inv_key, hsm_payload,
+                         recovery_response_proto)) {
+    LOG(ERROR) << "Unable to mediate hsm_payload";
     return false;
   }
 
-  return MediateHsmPayload(mediator_priv_key, epoch_pub_key, epoch_priv_key,
-                           plain_text.ephemeral_pub_inv_key, hsm_payload,
-                           recovery_response_proto);
+  return true;
 }
 
 }  // namespace cryptorecovery
