@@ -920,7 +920,7 @@ void Ethernet::OnSetInterfaceMacResponse(const std::string& mac_address_source,
     LOG(ERROR) << __func__ << " received response with error "
                << strerror(error);
     if (!callback.is_null()) {
-      callback.Run(Error(Error::kNotSupported));
+      callback.Run(Error(Error::kOperationFailed));
     }
     return;
   }

@@ -165,6 +165,9 @@ Methods		dict GetProperties()
 					Failed to find new MAC address for |source|.
 				[service].Error.NotImplemented
 					Functionality is not implemented for non-Ethernet devices
+				[service].Error.OperationFailed
+					The RTNL handler failed to set the interface MAC address.
+
 
 Signals		PropertyChanged(string name, variant value)
 

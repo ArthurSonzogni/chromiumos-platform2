@@ -672,7 +672,7 @@ TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceNetlinkError) {
             std::move(response_callback).Run(1 /* error */);
           })));
 
-  EXPECT_CALL(*this, ErrorCallback(ErrorEquals(Error::kNotSupported)));
+  EXPECT_CALL(*this, ErrorCallback(ErrorEquals(Error::kOperationFailed)));
 
   Error error(Error::kOperationInitiated);
   SetUsbEthernetMacAddressSource(
