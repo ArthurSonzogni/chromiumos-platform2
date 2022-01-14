@@ -7,7 +7,8 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::cmp;
+use std::collections::{BTreeMap, BTreeSet};
 use std::convert::{TryFrom, TryInto};
 use std::env;
 use std::fmt::{Debug, Formatter};
@@ -21,7 +22,7 @@ use std::result::Result as StdResult;
 use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context, Result};
-use balloon_control::{BalloonTubeCommand, BalloonTubeResult};
+use balloon_control::{BalloonStats, BalloonTubeCommand, BalloonTubeResult};
 use data_model::DataInit;
 use libc::{recvfrom, MSG_PEEK, MSG_TRUNC};
 use libsirenia::{
@@ -45,6 +46,10 @@ const CROS_GUEST_ID: u32 = 0;
 
 #[repr(u32)]
 enum MessageId {
+    // GetBalloonStats(array<u32 id>) => (array<TaggedBalloonStats>);
+    GetBalloonStats = 1,
+    // RebalanceMemory(array<BalloonDelta> deltas) => (array<ActualBalloonDelta> actual);
+    RebalanceMemory = 2,
     // PrepareVm(u64 mem_size, u64 init_mem_size) => (i32 res, u32 id, u64 shortfall);
     PrepareVm = 3,
     // FinishAddVm(u32 id) => i32
@@ -59,6 +64,8 @@ impl TryFrom<u32> for MessageId {
     fn try_from(v: u32) -> Result<MessageId> {
         use MessageId::*;
         match v {
+            v if v == GetBalloonStats as u32 => Ok(GetBalloonStats),
+            v if v == RebalanceMemory as u32 => Ok(RebalanceMemory),
             v if v == PrepareVm as u32 => Ok(PrepareVm),
             v if v == FinishAddVm as u32 => Ok(FinishAddVm),
             v if v == RemoveVm as u32 => Ok(RemoveVm),
@@ -75,6 +82,46 @@ struct MmsMessageHeader {
 }
 // Safe because MmsMessageHeader only contains plain data.
 unsafe impl DataInit for MmsMessageHeader {}
+
+#[derive(Deserialize)]
+struct GetBalloonStatsMsg {
+    ids: Vec<u32>,
+}
+
+#[derive(Serialize)]
+struct TaggedBalloonStats {
+    id: u32,
+    stats: BalloonStats,
+    balloon_actual: u64,
+}
+
+#[derive(Serialize)]
+struct GetBalloonStatsResp {
+    all_stats: Vec<TaggedBalloonStats>,
+}
+
+#[derive(Deserialize, Debug)]
+struct BalloonDelta {
+    id: u32,
+    #[serde(with = "i64_from_double")]
+    delta: i64,
+}
+
+#[derive(Deserialize)]
+struct RebalanceMemoryMsg {
+    deltas: Vec<BalloonDelta>,
+}
+
+#[derive(Serialize)]
+struct ActualBalloonDelta {
+    id: u32,
+    delta: i64,
+}
+
+#[derive(Serialize)]
+struct RebalanceMemoryResp {
+    actual_deltas: Vec<ActualBalloonDelta>,
+}
 
 #[derive(Deserialize, Debug)]
 struct PrepareVmMsg {
@@ -131,6 +178,7 @@ macro_rules! from_double {
 }
 
 from_double!(u64_from_double, u64);
+from_double!(i64_from_double, i64);
 
 // In practice this won't overflow, since mem_size is checked to be less than the
 // CrOS guest's total memory, so it will be significantly less than 2^64.
@@ -356,6 +404,152 @@ impl CtrlHandler {
         CtrlHandler { connection, state }
     }
 
+    fn handle_balloon_stats(
+        &mut self,
+        GetBalloonStatsMsg { ids }: &GetBalloonStatsMsg,
+    ) -> GetBalloonStatsResp {
+        let mut state = self.state.borrow_mut();
+        let mut all_stats = Vec::new();
+        for id in ids {
+            let client = match state.clients.get_mut(id) {
+                Some(client) => client,
+                None => {
+                    warn!("Missing client for {}", id);
+                    continue;
+                }
+            };
+            match sync_balloon_command(&mut client.client, BalloonTubeCommand::Stats { id: 0 }) {
+                Ok(BalloonTubeResult::Stats {
+                    stats,
+                    balloon_actual,
+                    ..
+                }) => {
+                    all_stats.push(TaggedBalloonStats {
+                        id: *id,
+                        stats,
+                        balloon_actual,
+                    });
+                }
+                Ok(resp) => error!("Unexpected response {:?}", resp),
+                Err(e) => error!("Error fetching stats {} {}", id, e),
+            };
+        }
+        GetBalloonStatsResp { all_stats }
+    }
+
+    fn validate_rebalance_deltas(&self, deltas: &[BalloonDelta]) -> Result<()> {
+        let state = self.state.borrow();
+        let mut ids = BTreeSet::new();
+        let mut total_delta = 0;
+        let pagesize = pagesize();
+        for delta in deltas {
+            if delta.delta % (pagesize as i64) != 0 {
+                bail!("invalid balloon config {:?}", delta);
+            }
+            if !ids.insert(delta.id) {
+                bail!("duplicate id {}", delta.id);
+            }
+
+            let client = state
+                .clients
+                .get(&delta.id)
+                .with_context(|| format!("unknown target id {}", delta.id))?;
+            let new_size = if delta.delta > 0 {
+                client.balloon_size.checked_add(delta.delta as u64)
+            } else {
+                delta
+                    .delta
+                    .checked_abs()
+                    .and_then(|d| client.balloon_size.checked_sub(d as u64))
+            }
+            // Also catches underflow
+            .with_context(|| format!("balloon overflow {} {}", client.balloon_size, delta.delta))?;
+
+            if new_size > client.mem_size {
+                bail!("overinflate balloon {} {}", new_size, client.mem_size);
+            }
+
+            total_delta += delta.delta;
+        }
+        if total_delta != 0 {
+            bail!("unbalanced config {}", total_delta);
+        }
+
+        Ok(())
+    }
+
+    fn handle_rebalance_memory(
+        &mut self,
+        RebalanceMemoryMsg { deltas }: &RebalanceMemoryMsg,
+    ) -> RebalanceMemoryResp {
+        if let Err(err) = self.validate_rebalance_deltas(deltas) {
+            error!("Invalid rebalance: {:?}", err);
+            return RebalanceMemoryResp {
+                actual_deltas: deltas
+                    .iter()
+                    .map(|delta| ActualBalloonDelta {
+                        id: delta.id,
+                        delta: 0,
+                    })
+                    .collect(),
+            };
+        }
+
+        let mut state = self.state.borrow_mut();
+        let mut slack: i64 = 0;
+        let mut actual_deltas = Vec::new();
+
+        // Inflate balloons to reclaim their memory.
+        for delta in deltas {
+            if delta.delta <= 0 {
+                continue;
+            }
+            let client = state.clients.get_mut(&delta.id).unwrap();
+            let actual_delta = adjust_balloon(client, delta.delta);
+            if actual_delta != delta.delta {
+                info!(
+                    "balloon inflate mismatch id={} expected={} actual={}",
+                    delta.id, delta.delta, actual_delta
+                );
+            }
+            slack += actual_delta;
+            actual_deltas.push(ActualBalloonDelta {
+                id: delta.id,
+                delta: actual_delta,
+            });
+        }
+
+        // Deflate balloons to give reclaimed memory to other VMs
+        for delta in deltas {
+            if delta.delta >= 0 {
+                continue;
+            }
+            let client = state.clients.get_mut(&delta.id).unwrap();
+            let adjusted_delta = -cmp::min(delta.delta.abs(), slack);
+            let actual_delta = adjust_balloon(client, adjusted_delta);
+            if adjusted_delta != actual_delta {
+                warn!(
+                    "balloon deflate mismatch id={} expected={} actual={}",
+                    delta.id, adjusted_delta, actual_delta
+                );
+            }
+            slack += actual_delta;
+            actual_deltas.push(ActualBalloonDelta {
+                id: delta.id,
+                delta: actual_delta,
+            });
+        }
+
+        if slack != 0 {
+            // This should not happen. It either require that a balloon over-inflates
+            // in the first stage, or that a balloon fails to deflate as requested in
+            // the second stage. Neither should be possible.
+            error!("non-zero slack remaining: {}", slack);
+        }
+
+        RebalanceMemoryResp { actual_deltas }
+    }
+
     fn prepare_vm(&mut self, msg: &PrepareVmMsg) -> PrepareVmResp {
         let mut state = self.state.borrow_mut();
         let already_reserved = match state.starting_vm_state.as_mut() {
@@ -547,6 +741,8 @@ impl CtrlHandler {
             .with_context(|| "failed to read ctl message")?;
 
         let msg = match header.msg_type.try_into()? {
+            MessageId::GetBalloonStats => dispatch_message!(self, handle_balloon_stats, bytes),
+            MessageId::RebalanceMemory => dispatch_message!(self, handle_rebalance_memory, bytes),
             MessageId::PrepareVm => dispatch_message!(self, prepare_vm, bytes),
             MessageId::FinishAddVm => dispatch_message!(self, finish_add_vm, bytes),
             MessageId::RemoveVm => dispatch_message!(self, remove_vm, bytes),
