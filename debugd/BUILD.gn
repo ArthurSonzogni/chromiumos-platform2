@@ -8,6 +8,7 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":audit_log_filter",
     ":bt_usb_disconnect_helper",
     ":capture_packets",
     ":cups_uri_helper",
@@ -234,6 +235,22 @@ executable("dev_features_usb_boot") {
   deps = [ ":libdebugd" ]
 }
 
+pkg_config("audit_log_utils_config") {
+  pkg_deps = [ "re2" ]
+}
+
+executable("audit_log_filter") {
+  sources = [
+    "src/helpers/audit_log_filter.cc",
+    "src/helpers/audit_log_utils.cc",
+  ]
+  configs += [
+    ":target_defaults",
+    ":audit_log_utils_config",
+  ]
+  deps = [ ":libdebugd" ]
+}
+
 pkg_config("folder_size_dump_config") {
   pkg_deps = [ "re2" ]
 }
@@ -317,6 +334,7 @@ if (use.test) {
     pkg_deps = [
       "libchrome-test",
       "protobuf",
+      "re2",
     ]
   }
 
@@ -326,6 +344,8 @@ if (use.test) {
       "src/dev_mode_no_owner_restriction_test.cc",
       "src/drm_trace_tool_test.cc",
       "src/helper_utils_test.cc",
+      "src/helpers/audit_log_utils.cc",
+      "src/helpers/audit_log_utils_test.cc",
       "src/helpers/cups_uri_helper_test.cc",
       "src/helpers/cups_uri_helper_utils.cc",
       "src/helpers/dev_features_password_utils.cc",

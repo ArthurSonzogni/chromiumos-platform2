@@ -146,6 +146,8 @@ const std::array kCommandLogs {
   Log{kCommand, "atmel_ts_refs",
     "/opt/google/touch/scripts/atmel_tools.sh ts r", kRoot, kRoot},
   Log{kFile, "atrus_logs", "/var/log/atrus.log"},
+  Log{kCommand, "audit_log", "/usr/libexec/debugd/helpers/audit_log_filter",
+    kRoot, kDebugfsGroup},
   Log{kFile, "authpolicy", "/var/log/authpolicy.log"},
   Log{kFile, "bio_crypto_init.LATEST",
     "/var/log/bio_crypto_init/bio_crypto_init.LATEST"},
