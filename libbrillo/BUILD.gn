@@ -355,6 +355,9 @@ static_library("libbrillo-test") {
   if (use.device_mapper) {
     sources += [ "brillo/blkdev_utils/device_mapper_fake.cc" ]
   }
+  if (use.udev) {
+    sources += [ "brillo/udev/fake_udev_list.cc" ]
+  }
   configs -= [ "//common-mk:use_thin_archive" ]
   configs += [
     "//common-mk:nouse_thin_archive",
