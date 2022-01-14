@@ -1179,17 +1179,6 @@ bool UserDataAuth::GetShouldMountAsEphemeral(
   return true;
 }
 
-scoped_refptr<Mount> UserDataAuth::CreateMount(const std::string& username) {
-  AssertOnMountThread();
-  scoped_refptr<Mount> m;
-  // TODO(dlunev): Decide if finalization should be moved to MountFactory.
-  EnsureBootLockboxFinalized();
-  m = mount_factory_->New(platform_, homedirs_, legacy_mount_,
-                          bind_mount_downloads_,
-                          /*local_mounter=*/false);
-  return m;
-}
-
 void UserDataAuth::EnsureBootLockboxFinalized() {
   AssertOnMountThread();
 
@@ -1213,7 +1202,10 @@ scoped_refptr<UserSession> UserDataAuth::GetOrCreateUserSession(
   AssertOnMountThread();
   if (sessions_.count(username) == 0U) {
     // We don't have a mount associated with |username|, let's create one.
-    scoped_refptr<cryptohome::Mount> m = CreateMount(username);
+    EnsureBootLockboxFinalized();
+    scoped_refptr<cryptohome::Mount> m = mount_factory_->New(
+        platform_, homedirs_, legacy_mount_, bind_mount_downloads_,
+        /*local_mounter=*/false);
     if (!m) {
       return nullptr;
     }

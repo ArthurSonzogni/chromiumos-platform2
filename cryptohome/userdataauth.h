@@ -1014,9 +1014,6 @@ class UserDataAuth {
   // and false otherwise.
   bool StatefulRecoveryIsOwner(const std::string& username);
 
-  // Creates and initialized MountObject for user
-  scoped_refptr<Mount> CreateMount(const std::string& username);
-
   // Ensures BootLockbox is finalized;
   void EnsureBootLockboxFinalized();
 
