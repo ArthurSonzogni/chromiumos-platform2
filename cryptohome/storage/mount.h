@@ -53,14 +53,15 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Sets up Mount with the default locations, username, etc., as defined above.
   Mount();
-  Mount(Platform* platform, HomeDirs* homedirs);
+  Mount(Platform* platform,
+        HomeDirs* homedirs,
+        bool legacy_mount = true,
+        bool bind_mount_downloads = true,
+        bool use_local_mounter = false);
   Mount(const Mount&) = delete;
   Mount& operator=(const Mount&) = delete;
 
   virtual ~Mount();
-
-  // Gets the uid/gid of the default user.
-  virtual bool Init(bool use_local_mounter = false);
 
   // Attempts to mount the cryptohome for the given username
   //
@@ -121,9 +122,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Cancels the active dircrypto migration if there is, and wait for it to
   // stop.
   void MaybeCancelActiveDircryptoMigrationAndWait();
-
-  void set_legacy_mount(bool legacy) { legacy_mount_ = legacy; }
-  void set_bind_mount_downloads(bool bind) { bind_mount_downloads_ = bind; }
 
  private:
   // Gets the directory in the shadow root where the user's salt, key, and vault

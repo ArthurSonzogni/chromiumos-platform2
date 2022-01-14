@@ -79,12 +79,23 @@ void StartUserFileAttrsCleanerService(cryptohome::Platform* platform,
     PLOG(WARNING) << "Error while running file_attrs_cleaner_tool";
 }
 
-Mount::Mount(Platform* platform, HomeDirs* homedirs)
+Mount::Mount(Platform* platform,
+             HomeDirs* homedirs,
+             bool legacy_mount,
+             bool bind_mount_downloads,
+             bool use_local_mounter)
     : platform_(platform),
       homedirs_(homedirs),
-      legacy_mount_(true),
-      bind_mount_downloads_(true),
+      legacy_mount_(legacy_mount),
+      bind_mount_downloads_(bind_mount_downloads),
       dircrypto_migration_stopped_condition_(&active_dircrypto_migrator_lock_) {
+  if (use_local_mounter) {
+    active_mounter_.reset(
+        new MountHelper(legacy_mount_, bind_mount_downloads_, platform_));
+  } else {
+    active_mounter_.reset(new OutOfProcessMountHelper(
+        legacy_mount_, bind_mount_downloads_, platform_));
+  }
 }
 
 Mount::Mount() : Mount(nullptr, nullptr) {}
@@ -92,19 +103,6 @@ Mount::Mount() : Mount(nullptr, nullptr) {}
 Mount::~Mount() {
   if (IsMounted())
     UnmountCryptohome();
-}
-
-bool Mount::Init(bool use_local_mounter) {
-  if (use_local_mounter) {
-    active_mounter_.reset(
-        new MountHelper(legacy_mount_, bind_mount_downloads_, platform_));
-    return true;
-  }
-
-  active_mounter_.reset(new OutOfProcessMountHelper(
-      legacy_mount_, bind_mount_downloads_, platform_));
-
-  return true;
 }
 
 MountError Mount::MountEphemeralCryptohome(const std::string& username) {

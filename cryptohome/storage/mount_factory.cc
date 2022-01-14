@@ -13,7 +13,12 @@ namespace cryptohome {
 MountFactory::MountFactory() {}
 MountFactory::~MountFactory() {}
 
-Mount* MountFactory::New(Platform* platform, HomeDirs* homedirs) {
-  return new Mount(platform, homedirs);
+Mount* MountFactory::New(Platform* platform,
+                         HomeDirs* homedirs,
+                         bool legacy_mount,
+                         bool bind_mount_downloads,
+                         bool use_local_mounter) {
+  return new Mount(platform, homedirs, legacy_mount, bind_mount_downloads,
+                   use_local_mounter);
 }
 }  // namespace cryptohome

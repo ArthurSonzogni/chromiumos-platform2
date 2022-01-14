@@ -157,8 +157,7 @@ namespace {
 TEST_F(AuthSessionInterfaceTest, PrepareGuestVault) {
   // Mount factory returns a raw pointer, which caller wraps into unique_ptr.
   MockMount* mount = new MockMount();
-  EXPECT_CALL(mount_factory_, New(_, _)).WillOnce(Return(mount));
-  EXPECT_CALL(*mount, Init(_)).WillOnce(Return(true));
+  EXPECT_CALL(mount_factory_, New(_, _, _, _, _)).WillOnce(Return(mount));
   EXPECT_CALL(*mount, IsMounted()).WillRepeatedly(Return(true));
   EXPECT_CALL(*mount, MountEphemeralCryptohome(kGuestUserName))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -209,8 +208,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   // User authed and exists.
   // Mount factory returns a raw pointer, which caller wraps into unique_ptr.
   MockMount* mount = new MockMount();
-  EXPECT_CALL(mount_factory_, New(_, _)).WillOnce(Return(mount));
-  EXPECT_CALL(*mount, Init(_)).WillOnce(Return(true));
+  EXPECT_CALL(mount_factory_, New(_, _, _, _, _)).WillOnce(Return(mount));
   EXPECT_CALL(*mount, IsMounted())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -233,8 +231,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   // But ephemeral succeeds ...
   // Mount factory returns a raw pointer, which caller wraps into unique_ptr.
   MockMount* mount2 = new MockMount();
-  EXPECT_CALL(mount_factory_, New(_, _)).WillOnce(Return(mount2));
-  EXPECT_CALL(*mount2, Init(_)).WillOnce(Return(true));
+  EXPECT_CALL(mount_factory_, New(_, _, _, _, _)).WillOnce(Return(mount2));
   EXPECT_CALL(*mount2, IsMounted())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -251,8 +248,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   // ... and so regular.
   // Mount factory returns a raw pointer, which caller wraps into unique_ptr.
   MockMount* mount3 = new MockMount();
-  EXPECT_CALL(mount_factory_, New(_, _)).WillOnce(Return(mount3));
-  EXPECT_CALL(*mount3, Init(_)).WillOnce(Return(true));
+  EXPECT_CALL(mount_factory_, New(_, _, _, _, _)).WillOnce(Return(mount3));
   EXPECT_CALL(*mount3, IsMounted())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -288,8 +284,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
   // Auth and prepare.
   // Mount factory returns a raw pointer, which caller wraps into unique_ptr.
   MockMount* mount = new MockMount();
-  EXPECT_CALL(mount_factory_, New(_, _)).WillOnce(Return(mount));
-  EXPECT_CALL(*mount, Init(_)).WillOnce(Return(true));
+  EXPECT_CALL(mount_factory_, New(_, _, _, _, _)).WillOnce(Return(mount));
   EXPECT_CALL(*mount, IsMounted())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -323,8 +318,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
   // But ephemeral succeeds ...
   // Mount factory returns a raw pointer, which caller wraps into unique_ptr.
   MockMount* mount2 = new MockMount();
-  EXPECT_CALL(mount_factory_, New(_, _)).WillOnce(Return(mount2));
-  EXPECT_CALL(*mount2, Init(_)).WillOnce(Return(true));
+  EXPECT_CALL(mount_factory_, New(_, _, _, _, _)).WillOnce(Return(mount2));
   EXPECT_CALL(*mount2, IsMounted())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -341,8 +335,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
   // ... and so regular.
   MockMount* mount3 = new MockMount();
   // Mount factory returns a raw pointer, which caller wraps into unique_ptr.
-  EXPECT_CALL(mount_factory_, New(_, _)).WillOnce(Return(mount3));
-  EXPECT_CALL(*mount3, Init(_)).WillOnce(Return(true));
+  EXPECT_CALL(mount_factory_, New(_, _, _, _, _)).WillOnce(Return(mount3));
   EXPECT_CALL(*mount3, IsMounted())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));

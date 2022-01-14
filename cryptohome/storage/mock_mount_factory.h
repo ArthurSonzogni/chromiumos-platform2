@@ -20,16 +20,24 @@ class Mount;
 class MockMountFactory : public MountFactory {
  public:
   MockMountFactory() {
-    ON_CALL(*this, New(_, _))
+    ON_CALL(*this, New(_, _, _, _, _))
         .WillByDefault(testing::Invoke(this, &MockMountFactory::NewConcrete));
   }
 
   virtual ~MockMountFactory() {}
-  MOCK_METHOD(Mount*, New, (Platform*, HomeDirs*), (override));
+  MOCK_METHOD(Mount*,
+              New,
+              (Platform*, HomeDirs*, bool, bool, bool),
+              (override));
 
   // Backdoor to access real method, for delegating calls to parent class
-  Mount* NewConcrete(Platform* platform, HomeDirs* homedirs) {
-    return MountFactory::New(platform, homedirs);
+  Mount* NewConcrete(Platform* platform,
+                     HomeDirs* homedirs,
+                     bool legacy_mount,
+                     bool bind_mount_downloads,
+                     bool use_local_mounter) {
+    return MountFactory::New(platform, homedirs, legacy_mount,
+                             bind_mount_downloads, use_local_mounter);
   }
 };
 }  // namespace cryptohome

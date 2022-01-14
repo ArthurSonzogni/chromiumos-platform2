@@ -21,7 +21,7 @@ class MountFactory {
  public:
   MountFactory();
   virtual ~MountFactory();
-  virtual Mount* New(Platform*, HomeDirs*);
+  virtual Mount* New(Platform*, HomeDirs*, bool, bool, bool);
 };
 
 }  // namespace cryptohome

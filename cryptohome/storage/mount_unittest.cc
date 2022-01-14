@@ -417,9 +417,9 @@ class PersistentSystemTest : public ::testing::Test {
         std::make_unique<CryptohomeVaultFactory>(&platform_,
                                                  std::move(container_factory)));
 
-    mount_ = new Mount(&platform_, homedirs_.get());
-
-    EXPECT_TRUE(mount_->Init(/*use_local_mounter=*/true));
+    mount_ =
+        new Mount(&platform_, homedirs_.get(), /*legacy_mount=*/true,
+                  /*bind_mount_downloads=*/true, /*use_local_mounter=*/true);
   }
 
   void TearDown() { platform_.GetFake()->RemoveSystemSaltForLibbrillo(); }
@@ -1149,8 +1149,9 @@ TEST_F(PersistentSystemTest, EcryptfsMigration) {
   // Create a new mount object, because interface rises a flag prohibiting
   // migration on unmount.
   // TODO(dlunev): fix the behaviour.
-  scoped_refptr<Mount> new_mount = new Mount(&platform_, homedirs_.get());
-  EXPECT_TRUE(new_mount->Init(/*use_local_mounter=*/true));
+  scoped_refptr<Mount> new_mount =
+      new Mount(&platform_, homedirs_.get(), /*legacy_mount=*/true,
+                /*bind_mount_downloads=*/true, /*use_local_mounter=*/true);
   options = {
       .migrate = true,
   };
@@ -1221,9 +1222,9 @@ class EphemeralSystemTest : public ::testing::Test {
         std::make_unique<CryptohomeVaultFactory>(&platform_,
                                                  std::move(container_factory)));
 
-    mount_ = new Mount(&platform_, homedirs_.get());
-
-    EXPECT_TRUE(mount_->Init(/*use_local_mounter=*/true));
+    mount_ =
+        new Mount(&platform_, homedirs_.get(), /*legacy_mount=*/true,
+                  /*bind_mount_downloads=*/true, /*use_local_mounter=*/true);
 
     SetupVFSMock();
   }
