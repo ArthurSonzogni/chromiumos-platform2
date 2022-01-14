@@ -420,7 +420,7 @@ bool UserDataAuth::StatefulRecoveryMount(const std::string& username,
         // After the mount is successful, we need to obtain the user
         // mount.
         scoped_refptr<UserSession> user_session = uda->GetUserSession(username);
-        if (!user_session || !user_session->GetMount()->IsMounted()) {
+        if (!user_session || !user_session->IsActive()) {
           LOG(ERROR) << "Failed to get mount in stateful recovery.";
           *mount_path_retrieved = false;
           return;
@@ -605,10 +605,9 @@ bool UserDataAuth::IsMounted(const std::string& username,
     // No username is specified, so we consider "the cryptohome" to be mounted
     // if any existing cryptohome is mounted.
     for (const auto& session_pair : sessions_) {
-      if (session_pair.second->GetMount()->IsMounted()) {
+      if (session_pair.second->IsActive()) {
         is_mounted = true;
-        is_ephemeral |=
-            !session_pair.second->GetMount()->IsNonEphemeralMounted();
+        is_ephemeral |= session_pair.second->IsEphemeral();
       }
     }
   } else {
@@ -616,9 +615,8 @@ bool UserDataAuth::IsMounted(const std::string& username,
     scoped_refptr<UserSession> session = GetUserSession(username);
 
     if (session.get()) {
-      is_mounted = session->GetMount()->IsMounted();
-      is_ephemeral =
-          is_mounted && !session->GetMount()->IsNonEphemeralMounted();
+      is_mounted = session->IsActive();
+      is_ephemeral = is_mounted && session->IsEphemeral();
     }
   }
 
@@ -647,7 +645,7 @@ bool UserDataAuth::RemoveAllMounts(bool unmount) {
   bool success = true;
   for (auto it = sessions_.begin(); it != sessions_.end();) {
     scoped_refptr<UserSession> session = it->second;
-    if (unmount && session->GetMount()->IsMounted()) {
+    if (unmount && session->IsActive()) {
       success = success && session->Unmount();
     }
     sessions_.erase(it++);
@@ -686,7 +684,7 @@ bool UserDataAuth::FilterActiveMounts(
     for (; match != mounts->end() && match->first == curr->first; ++match) {
       // Ignore known mounts.
       for (const auto& session_pair : sessions_) {
-        if (session_pair.second->GetMount()->OwnsMountPoint(match->second)) {
+        if (session_pair.second->OwnsMountPoint(match->second)) {
           keep = true;
           // If !include_busy_mount, other mount points not owned scanned after
           // should be preserved as well.
@@ -985,8 +983,7 @@ void UserDataAuth::InitializePkcs11(UserSession* session) {
   // this check is because it might be possible for Unmount() to be called after
   // mounting and before getting here.
   for (const auto& session_pair : sessions_) {
-    if (session_pair.second.get() == session &&
-        session->GetMount()->IsMounted()) {
+    if (session_pair.second.get() == session && session->IsActive()) {
       still_mounted = true;
       break;
     }
@@ -1147,8 +1144,7 @@ void UserDataAuth::FinalizeInstallAttributesIfMounted() {
   if (is_mounted &&
       install_attrs_->status() == InstallAttributes::Status::kFirstInstall) {
     scoped_refptr<UserSession> guest_session = GetUserSession(guest_user_);
-    bool guest_mounted =
-        guest_session.get() && guest_session->GetMount()->IsMounted();
+    bool guest_mounted = guest_session.get() && guest_session->IsActive();
     if (!guest_mounted) {
       install_attrs_->Finalize();
     }
@@ -1772,8 +1768,7 @@ void UserDataAuth::ContinueMountWithCredentials(
 
   // Check if the guest user is mounted, if it is, we can't proceed.
   scoped_refptr<UserSession> guest_session = GetUserSession(guest_user_);
-  bool guest_mounted =
-      guest_session.get() && guest_session->GetMount()->IsMounted();
+  bool guest_mounted = guest_session.get() && guest_session->IsActive();
   // TODO(wad,ellyjones) Change this behavior to return failure even
   // on a succesful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.
   if (guest_mounted && !guest_session->Unmount()) {
@@ -1797,7 +1792,7 @@ void UserDataAuth::ContinueMountWithCredentials(
   // mount. Exceptionally, it is normal and ok to have a failed previous mount
   // attempt for the same user.
   const bool only_self_unmounted_attempt =
-      sessions_.size() == 1 && !user_session->GetMount()->IsMounted();
+      sessions_.size() == 1 && !user_session->IsActive();
   if (request.public_mount() && other_sessions_active &&
       !only_self_unmounted_attempt) {
     LOG(ERROR) << "Public mount requested with other sessions active.";
@@ -1814,8 +1809,8 @@ void UserDataAuth::ContinueMountWithCredentials(
   }
 
   // Don't overlay an ephemeral mount over a file-backed one.
-  if (mount_args.is_ephemeral &&
-      user_session->GetMount()->IsNonEphemeralMounted()) {
+  if (mount_args.is_ephemeral && user_session->IsActive() &&
+      !user_session->IsEphemeral()) {
     // TODO(wad,ellyjones) Change this behavior to return failure even
     // on a succesful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.
     if (!user_session->Unmount()) {
@@ -1837,7 +1832,7 @@ void UserDataAuth::ContinueMountWithCredentials(
   // If a user's home directory is already mounted, then we'll just recheck its
   // credential with what's cached in memory. This is much faster than going to
   // the TPM.
-  if (user_session->GetMount()->IsMounted()) {
+  if (user_session->IsActive()) {
     // Attempt a short-circuited credential test.
     if (user_session->VerifyCredentials(*credentials)) {
       std::move(on_done).Run(reply);
@@ -1950,7 +1945,7 @@ MountError UserDataAuth::AttemptUserMount(
     const Credentials& credentials,
     const UserDataAuth::MountArgs& mount_args,
     scoped_refptr<UserSession> user_session) {
-  if (user_session->GetMount()->IsMounted()) {
+  if (user_session->IsActive()) {
     return MOUNT_ERROR_MOUNT_POINT_BUSY;
   }
 
@@ -2004,7 +1999,7 @@ MountError UserDataAuth::AttemptUserMount(
     AuthSession* auth_session,
     const UserDataAuth::MountArgs& mount_args,
     scoped_refptr<UserSession> user_session) {
-  if (user_session->GetMount()->IsMounted()) {
+  if (user_session->IsActive()) {
     return MOUNT_ERROR_MOUNT_POINT_BUSY;
   }
   // Mount ephemerally using authsession
@@ -2749,8 +2744,7 @@ void UserDataAuth::StartMigrateToDircrypto(
     return;
   }
   LOG(INFO) << "StartMigrateToDircrypto: Migrating to dircrypto.";
-  if (!session->GetMount()->MigrateToDircrypto(progress_callback,
-                                               migration_type)) {
+  if (!session->MigrateVault(progress_callback, migration_type)) {
     LOG(ERROR) << "StartMigrateToDircrypto: Failed to migrate.";
     progress.set_status(user_data_auth::DIRCRYPTO_MIGRATION_FAILED);
     progress_callback.Run(progress);
@@ -3485,7 +3479,7 @@ scoped_refptr<UserSession> UserDataAuth::GetMountableUserSession(
 
   // Check no guest is mounted.
   scoped_refptr<UserSession> guest_session = GetUserSession(guest_user_);
-  if (guest_session && guest_session->GetMount()->IsMounted()) {
+  if (guest_session && guest_session->IsActive()) {
     LOG(ERROR) << "Can not mount non-anonymous while guest session is active.";
     *error = user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY;
     return nullptr;
@@ -3494,7 +3488,7 @@ scoped_refptr<UserSession> UserDataAuth::GetMountableUserSession(
   // Check the user is not already mounted.
   scoped_refptr<UserSession> session =
       GetOrCreateUserSession(auth_session->username());
-  if (session->GetMount()->IsMounted()) {
+  if (session->IsActive()) {
     LOG(ERROR) << "User is already mounted: " << obfuscated_username;
     *error = user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY;
     return nullptr;

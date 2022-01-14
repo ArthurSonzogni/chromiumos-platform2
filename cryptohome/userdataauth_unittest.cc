@@ -785,14 +785,14 @@ TEST_F(UserDataAuthTest, IsMounted) {
   // specify a user.
   bool is_ephemeral = true;
   EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
-  EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(true));
+  EXPECT_CALL(*mount_, IsEphemeral()).WillOnce(Return(false));
   EXPECT_TRUE(userdataauth_->IsMounted("", &is_ephemeral));
   EXPECT_FALSE(is_ephemeral);
 
   // Test to see if is_ephemeral works, and test the code path that specify the
   // user.
   EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
-  EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(false));
+  EXPECT_CALL(*mount_, IsEphemeral()).WillOnce(Return(true));
   EXPECT_TRUE(userdataauth_->IsMounted("foo@gmail.com", &is_ephemeral));
   EXPECT_TRUE(is_ephemeral);
 

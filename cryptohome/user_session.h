@@ -23,6 +23,8 @@
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount.h"
 
+#include "cryptohome/dircrypto_data_migrator/migration_helper.h"
+
 namespace cryptohome {
 
 class UserSession : public base::RefCountedThreadSafe<UserSession> {
@@ -43,11 +45,25 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   void operator=(const UserSession&) = delete;
   void operator=(const UserSession&&) = delete;
 
-  // Accessors to the mount object.
-  // TODO(dlunev): ideally we shouldn't have these accessors and
-  // Service/UserDataAuth shall operate on UserSession object only.
-  scoped_refptr<Mount> GetMount() { return mount_; }
-  const scoped_refptr<Mount> GetMount() const { return mount_; }
+  // Returns whether the user session represents an active login session.
+  bool IsActive() const { return mount_->IsMounted(); }
+
+  // Returns whether the session is for an ephemeral user.
+  bool IsEphemeral() const { return mount_->IsEphemeral(); }
+
+  // Returns whether the path belong to the session.
+  // TODO(dlunev): remove it once recovery logic is embedded into storage code.
+  bool OwnsMountPoint(const base::FilePath& path) const {
+    return mount_->OwnsMountPoint(path);
+  }
+
+  // Perform migration of the vault to a different encryption type.
+  bool MigrateVault(
+      const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
+          callback,
+      MigrationType migration_type) {
+    return mount_->MigrateToDircrypto(callback, migration_type);
+  }
 
   // Mounts disk backed vault for the given username with the supplied file
   // system keyset.

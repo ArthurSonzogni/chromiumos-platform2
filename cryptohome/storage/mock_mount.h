@@ -32,6 +32,7 @@ class MockMount : public Mount {
               (override));
   MOCK_METHOD(bool, UnmountCryptohome, (), (override));
   MOCK_METHOD(bool, IsMounted, (), (const, override));
+  MOCK_METHOD(bool, IsEphemeral, (), (const, override));
   MOCK_METHOD(bool, IsNonEphemeralMounted, (), (const, override));
   MOCK_METHOD(bool, OwnsMountPoint, (const base::FilePath&), (const, override));
 
