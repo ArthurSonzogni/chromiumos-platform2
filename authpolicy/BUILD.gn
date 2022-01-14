@@ -12,6 +12,10 @@ group("all") {
     ":authpolicyd",
     ":container-protos",
     ":dbus_code_generator",
+    ":install_init",
+    ":install_policy",
+    ":install_process_management_policies",
+    ":install_systemd",
     ":libauthpolicy",
     ":policy_code_generator",
   ]
@@ -173,6 +177,7 @@ executable("authpolicy_parser") {
     ":authpolicy_parser_config",
     ":target_defaults",
   ]
+  install_path = "sbin"
   deps = [ ":libauthpolicy" ]
 }
 
@@ -183,10 +188,35 @@ executable("authpolicyd") {
     ":authpolicy_parser_config",
     ":target_defaults",
   ]
+  install_path = "sbin"
   deps = [
     ":authpolicy_parser",
     ":libauthpolicy",
   ]
+}
+
+install_config("install_init") {
+  sources = [ "etc/init/authpolicyd.conf" ]
+  install_path = "/etc/init"
+}
+
+install_config("install_policy") {
+  sources = [
+    "seccomp_filters/authpolicy_parser-seccomp.policy",
+    "seccomp_filters/klist-seccomp.policy",
+    "seccomp_filters/samba-seccomp.policy",
+  ]
+  install_path = "/usr/share/policy"
+}
+
+install_config("install_process_management_policies") {
+  sources = [ "setuid_restrictions/authpolicyd_uid_allowlist.txt" ]
+  install_path = "/usr/share/cros/startup/process_management_policies"
+}
+
+install_config("install_systemd") {
+  sources = [ "etc/dbus-1/org.chromium.AuthPolicy.conf" ]
+  install_path = "/etc/dbus-1/system.d"
 }
 
 # Unit tests.
@@ -238,6 +268,7 @@ if (use.test) {
       ":authpolicy_test_config",
       ":target_defaults",
     ]
+    run_test = true
     defines = [ "UNIT_TEST" ]
     deps = [
       ":libauthpolicy",
