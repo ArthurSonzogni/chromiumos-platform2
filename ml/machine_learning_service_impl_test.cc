@@ -24,6 +24,7 @@
 #include "ml/handwriting.h"
 #include "ml/handwriting_proto_mojom_conversion.h"
 #include "ml/machine_learning_service_impl.h"
+#include "ml/mojom/big_buffer.mojom.h"
 #include "ml/mojom/document_scanner.mojom.h"
 #include "ml/mojom/grammar_checker.mojom.h"
 #include "ml/mojom/graph_executor.mojom.h"
@@ -35,6 +36,7 @@
 #include "ml/mojom/text_classifier.mojom.h"
 #include "ml/mojom/text_suggester.mojom.h"
 #include "ml/mojom/web_platform_handwriting.mojom.h"
+#include "ml/mojom/web_platform_model.mojom.h"
 #include "ml/process.h"
 #include "ml/tensor_view.h"
 #include "ml/test_utils.h"
@@ -1746,6 +1748,140 @@ TEST_F(DocumentScannerTest, PostProcessing) {
 
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(infer_callback_done);
+}
+
+// Tests that the Test model file can be loaded correctly and produces the
+// expected inference result.
+TEST(WebPlatformModelTest, ValidInputs) {
+  // Set the mlservice to single process mode for testing here.
+  Process::GetInstance()->SetTypeForTesting(
+      Process::Type::kSingleProcessForTest);
+
+  mojo::Remote<MachineLearningService> ml_service;
+  const MachineLearningServiceImplForTesting ml_service_impl(
+      ml_service.BindNewPipeAndPassReceiver());
+
+  // Creates model.
+  mojo::Remote<model_loader::mojom::ModelLoader> loader;
+  bool load_callback_done = false;
+  // Just uses the default option.
+  auto option = model_loader::mojom::CreateModelLoaderOptions::New();
+  ml_service->CreateWebPlatformModelLoader(
+      loader.BindNewPipeAndPassReceiver(), std::move(option),
+      base::BindOnce(
+          [](bool* load_callback_done,
+             model_loader::mojom::CreateModelLoaderResult result) {
+            EXPECT_EQ(result,
+                      model_loader::mojom::CreateModelLoaderResult::kOk);
+            *load_callback_done = true;
+          },
+          &load_callback_done));
+  ASSERT_NE(loader.get(), nullptr);
+  ASSERT_TRUE(loader.is_bound());
+
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(load_callback_done);
+
+  // Loads the model.
+  std::string model_string;
+  base::ReadFileToString(
+      base::FilePath(GetTestModelDir() +
+                     "mlservice-model-test_add-20180914.tflite"),
+      &model_string);
+
+  std::vector<uint8_t> model_vector(model_string.size());
+  memcpy(model_vector.data(), model_string.c_str(), model_string.size());
+
+  auto buffer = mojo_base::mojom::BigBuffer::New();
+  buffer->set_bytes(std::move(model_vector));
+
+  mojo::Remote<model_loader::mojom::Model> model;
+
+  bool model_callback_done = false;
+  loader->Load(
+      std::move(buffer),
+      base::BindOnce(
+          [](bool* model_callback_done,
+             mojo::Remote<model_loader::mojom::Model>* model_remote,
+             model_loader::mojom::LoadModelResult result,
+             mojo::PendingRemote<model_loader::mojom::Model> pending_remote,
+             model_loader::mojom::ModelInfoPtr model_info) {
+            ASSERT_EQ(result, model_loader::mojom::LoadModelResult::kOk);
+
+            // Checks the inputs/outputs are recognized correctly.
+            ASSERT_FALSE(model_info.is_null());
+            ASSERT_EQ(model_info->input_tensor_info.size(), 2u);
+            ASSERT_TRUE(model_info->input_tensor_info.find("x") !=
+                        model_info->input_tensor_info.end());
+            EXPECT_EQ(model_info->input_tensor_info["x"]->byte_size, 4u);
+            EXPECT_EQ(model_info->input_tensor_info["x"]->data_type,
+                      model_loader::mojom::DataType::kFloat32);
+            ASSERT_EQ(model_info->input_tensor_info["x"]->dimensions.size(),
+                      1u);
+            EXPECT_EQ(model_info->input_tensor_info["x"]->dimensions[0], 1u);
+
+            ASSERT_TRUE(model_info->input_tensor_info.find("y") !=
+                        model_info->input_tensor_info.end());
+            EXPECT_EQ(model_info->input_tensor_info["y"]->byte_size, 4u);
+            EXPECT_EQ(model_info->input_tensor_info["y"]->data_type,
+                      model_loader::mojom::DataType::kFloat32);
+            ASSERT_EQ(model_info->input_tensor_info["y"]->dimensions.size(),
+                      1u);
+            EXPECT_EQ(model_info->input_tensor_info["y"]->dimensions[0], 1u);
+
+            ASSERT_EQ(model_info->output_tensor_info.size(), 1u);
+
+            ASSERT_TRUE(model_info->output_tensor_info.find("Add") !=
+                        model_info->output_tensor_info.end());
+            EXPECT_EQ(model_info->output_tensor_info["Add"]->byte_size, 4u);
+            EXPECT_EQ(model_info->output_tensor_info["Add"]->data_type,
+                      model_loader::mojom::DataType::kFloat32);
+            ASSERT_EQ(model_info->output_tensor_info["Add"]->dimensions.size(),
+                      1u);
+            EXPECT_EQ(model_info->output_tensor_info["Add"]->dimensions[0], 1u);
+
+            model_remote->Bind(std::move(pending_remote));
+
+            *model_callback_done = true;
+          },
+          &model_callback_done, base::Unretained(&model)));
+
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(model_callback_done);
+
+  // Does some inference.
+  base::flat_map<std::string, std::vector<uint8_t>> inputs;
+  inputs["x"].resize(4);
+  inputs["y"].resize(4);
+  float x = 1.0;
+  float y = 2.0;
+  memcpy(inputs["x"].data(), &x, 4);
+  memcpy(inputs["y"].data(), &y, 4);
+
+  bool compute_callback_done = false;
+  model->Compute(
+      std::move(inputs),
+      base::BindOnce(
+          [](bool* callback_done, model_loader::mojom::ComputeResult result,
+             const absl::optional<
+                 base::flat_map<std::string, std::vector<uint8_t>>>& outputs) {
+            ASSERT_EQ(result, model_loader::mojom::ComputeResult::kOk);
+            ASSERT_TRUE(outputs.has_value());
+            ASSERT_EQ(outputs.value().size(), 1u);
+
+            ASSERT_TRUE(outputs.value().contains("Add"));
+            ASSERT_EQ(outputs.value().find("Add")->second.size(), 4u);
+
+            float add = .0;
+            memcpy(&add, outputs.value().find("Add")->second.data(), 4);
+            EXPECT_NEAR(add, 3.0, 1e-6);
+
+            *callback_done = true;
+          },
+          &compute_callback_done));
+
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(compute_callback_done);
 }
 
 }  // namespace

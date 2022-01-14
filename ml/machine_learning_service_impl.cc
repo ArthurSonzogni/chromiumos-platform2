@@ -35,6 +35,7 @@
 #include "ml/mojom/model.mojom.h"
 #include "ml/mojom/soda.mojom.h"
 #include "ml/mojom/web_platform_handwriting.mojom.h"
+#include "ml/mojom/web_platform_model.mojom.h"
 #include "ml/process.h"
 #include "ml/request_metrics.h"
 #include "ml/soda_recognizer_impl.h"
@@ -42,6 +43,7 @@
 #include "ml/text_suggester_impl.h"
 #include "ml/text_suggestions.h"
 #include "ml/web_platform_handwriting_recognizer_impl.h"
+#include "ml/web_platform_model_loader_impl.h"
 
 namespace ml {
 
@@ -770,6 +772,54 @@ void MachineLearningServiceImpl::LoadDocumentScanner(
   // From here below is the worker process.
   LoadDocumentScannerFromPath(std::move(receiver), std::move(callback),
                               ml::kLibDocumentScannerDefaultDir);
+}
+
+void MachineLearningServiceImpl::CreateWebPlatformModelLoader(
+    mojo::PendingReceiver<model_loader::mojom::ModelLoader> receiver,
+    model_loader::mojom::CreateModelLoaderOptionsPtr options,
+    CreateWebPlatformModelLoaderCallback callback) {
+  // If it is run in the control process, spawn a worker process and forward the
+  // request to it.
+  if (Process::GetInstance()->IsControlProcess()) {
+    // Currently, we only support "TfLite".
+    //   - If the input type is `kAuto`, we will try to load it as "TfLite".
+    //   - If the device preference is `kGpu`, it will fallback to CPU.
+    if (options->model_format != model_loader::mojom::ModelFormat::kTfLite &&
+        options->model_format != model_loader::mojom::ModelFormat::kAuto) {
+      std::move(callback).Run(
+          model_loader::mojom::CreateModelLoaderResult::kNotSupported);
+      return;
+    }
+
+    pid_t worker_pid;
+    mojo::PlatformChannel channel;
+    constexpr char kModelName[] = "WebPlatformFlatBufferModel";
+    if (!Process::GetInstance()->SpawnWorkerProcessAndGetPid(
+            channel, kModelName, &worker_pid)) {
+      // UMA metrics have already been reported in
+      // `SpawnWorkerProcessAndGetPid`.
+      std::move(callback).Run(
+          model_loader::mojom::CreateModelLoaderResult::kUnknownError);
+      return;
+    }
+    Process::GetInstance()
+        ->SendMojoInvitationAndGetRemote(worker_pid, std::move(channel),
+                                         kModelName)
+        ->CreateWebPlatformModelLoader(std::move(receiver), std::move(options),
+                                       std::move(callback));
+    return;
+  }
+
+  // From here below is the worker process.
+  RequestMetrics request_metrics("WebPlatformModel", kMetricsRequestName);
+  request_metrics.StartRecordingPerformanceMetrics();
+
+  WebPlatformModelLoaderImpl::Create(std::move(receiver), std::move(options));
+
+  std::move(callback).Run(model_loader::mojom::CreateModelLoaderResult::kOk);
+
+  request_metrics.FinishRecordingPerformanceMetrics();
+  request_metrics.RecordRequestEvent(LoadModelResult::OK);
 }
 
 }  // namespace ml

@@ -101,6 +101,10 @@ class MachineLearningServiceImpl
       mojo::PendingReceiver<chromeos::machine_learning::mojom::DocumentScanner>
           receiver,
       LoadDocumentScannerCallback callback) override;
+  void CreateWebPlatformModelLoader(
+      mojo::PendingReceiver<model_loader::mojom::ModelLoader> receiver,
+      model_loader::mojom::CreateModelLoaderOptionsPtr options,
+      CreateWebPlatformModelLoaderCallback callback) override;
 
   // Metadata required to load builtin models. Initialized at construction.
   const std::map<chromeos::machine_learning::mojom::BuiltinModelId,
