@@ -243,8 +243,8 @@ TEST_F(VPNProviderTest, CreateService) {
   EXPECT_CALL(manager_, RegisterService(_)).Times(kTypesCount);
   for (auto type : kTypes) {
     Error error;
-    VPNServiceRefPtr service =
-        provider_.CreateService(type, kName, kStorageID, &error);
+    VPNServiceRefPtr service = provider_.CreateService(
+        type, kName, kStorageID, /*use_new_l2tp_driver=*/false, &error);
     ASSERT_NE(nullptr, service) << type;
     ASSERT_TRUE(service->driver()) << type;
     EXPECT_EQ(type, service->driver()->GetProviderType());
@@ -255,7 +255,8 @@ TEST_F(VPNProviderTest, CreateService) {
   }
   Error error;
   VPNServiceRefPtr unknown_service =
-      provider_.CreateService("unknown-vpn-type", kName, kStorageID, &error);
+      provider_.CreateService("unknown-vpn-type", kName, kStorageID,
+                              /*use_new_l2tp_driver=*/false, &error);
   EXPECT_FALSE(unknown_service);
   EXPECT_EQ(Error::kNotSupported, error.type());
 }
@@ -267,7 +268,8 @@ TEST_F(VPNProviderTest, CreateArcService) {
   EXPECT_CALL(manager_, RegisterService(_));
   Error error;
   VPNServiceRefPtr service =
-      provider_.CreateService(kProviderArcVpn, kName, kStorageID, &error);
+      provider_.CreateService(kProviderArcVpn, kName, kStorageID,
+                              /*use_new_l2tp_driver=*/false, &error);
   ASSERT_NE(nullptr, service);
   ASSERT_TRUE(service->driver());
   service->driver()->args()->Set<std::string>(kProviderHostProperty, kHost);

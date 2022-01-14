@@ -78,13 +78,21 @@ class VPNProvider : public ProviderInterface {
   FRIEND_TEST(VPNServiceTest, AddRemoveVMInterface);
   FRIEND_TEST(VPNServiceTest, Unload);
 
-  // Create a service of type |type| and storage identifier |storage_id|
-  // and initial parameters |args|.  Returns a service reference pointer
-  // to the newly created service, or populates |error| with an the error
-  // that caused this to fail.
+  // Create a service of type |type| and storage identifier |storage_id| and
+  // initial parameters |args|.  Returns a service reference pointer to the
+  // newly created service, or populates |error| with an the error that caused
+  // this to fail.
+  // b/204261554: |use_new_l2tp_driver| is only valid for an L2TP/IPsec service,
+  // and indicates that whether NewL2TPIPsecDriver should be used (instead of
+  // the legacy L2TPIPsecDriver) to initialized the VPNService class according
+  // to the properties of this service. Note that which driver is used is not
+  // only controlled by this bool, but also by a global property in Manager.
+  // This field can be removed after the migration is done. See the bug page for
+  // more details.
   VPNServiceRefPtr CreateServiceInner(const std::string& type,
                                       const std::string& name,
                                       const std::string& storage_id,
+                                      bool use_new_l2tp_driver,
                                       Error* error);
 
   // Calls CreateServiceInner above, and on success registers and adds this
@@ -92,6 +100,7 @@ class VPNProvider : public ProviderInterface {
   VPNServiceRefPtr CreateService(const std::string& type,
                                  const std::string& name,
                                  const std::string& storage_id,
+                                 bool use_new_l2tp_driver,
                                  Error* error);
 
   // Finds a service of type |type| with its Name property set to |name| and its

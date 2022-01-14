@@ -56,6 +56,7 @@ bool GetServiceParametersFromArgs(const KeyValueStore& args,
                                   std::string* type_ptr,
                                   std::string* name_ptr,
                                   std::string* host_ptr,
+                                  bool* use_new_l2tp_driver,
                                   Error* error) {
   SLOG(nullptr, 2) << __func__;
   const auto type = args.Lookup<std::string>(kProviderTypeProperty, "");
@@ -76,6 +77,11 @@ bool GetServiceParametersFromArgs(const KeyValueStore& args,
   *host_ptr = host;
   *name_ptr = args.Lookup<std::string>(kNameProperty, "");
 
+  // Only if |tunnel_group| is not set, we can use the NewL2TPIPsecDriver.
+  const auto tunnel_group =
+      args.Lookup<std::string>(kL2TPIPsecTunnelGroupProperty, "");
+  *use_new_l2tp_driver = tunnel_group.empty();
+
   return true;
 }
 
@@ -88,6 +94,7 @@ bool GetServiceParametersFromStorage(const StoreInterface* storage,
                                      std::string* vpn_type_ptr,
                                      std::string* name_ptr,
                                      std::string* host_ptr,
+                                     bool* use_new_l2tp_driver,
                                      Error* error) {
   std::string service_type;
   if (!storage->GetString(entry_name, kTypeProperty, &service_type) ||
@@ -117,6 +124,14 @@ bool GetServiceParametersFromStorage(const StoreInterface* storage,
                           "Host not specified");
     return false;
   }
+
+  // Only if |tunnel_group| is not set, we can use the NewL2TPIPsecDriver.
+  std::string tunnel_group;
+  if (!storage->GetString(entry_name, kL2TPIPsecTunnelGroupProperty,
+                          &tunnel_group)) {
+    *use_new_l2tp_driver = tunnel_group.empty();
+  }
+
   return true;
 }
 
@@ -137,8 +152,10 @@ ServiceRefPtr VPNProvider::GetService(const KeyValueStore& args, Error* error) {
   std::string type;
   std::string name;
   std::string host;
+  bool use_new_l2tp_driver;
 
-  if (!GetServiceParametersFromArgs(args, &type, &name, &host, error)) {
+  if (!GetServiceParametersFromArgs(args, &type, &name, &host,
+                                    &use_new_l2tp_driver, error)) {
     return nullptr;
   }
 
@@ -150,7 +167,7 @@ ServiceRefPtr VPNProvider::GetService(const KeyValueStore& args, Error* error) {
   // Find a service in the provider list which matches these parameters.
   VPNServiceRefPtr service = FindService(type, name, host);
   if (service == nullptr) {
-    service = CreateService(type, name, storage_id, error);
+    service = CreateService(type, name, storage_id, use_new_l2tp_driver, error);
   }
   return service;
 }
@@ -161,8 +178,10 @@ ServiceRefPtr VPNProvider::FindSimilarService(const KeyValueStore& args,
   std::string type;
   std::string name;
   std::string host;
+  bool use_new_l2tp_driver;
 
-  if (!GetServiceParametersFromArgs(args, &type, &name, &host, error)) {
+  if (!GetServiceParametersFromArgs(args, &type, &name, &host,
+                                    &use_new_l2tp_driver, error)) {
     return nullptr;
   }
 
@@ -191,8 +210,9 @@ void VPNProvider::CreateServicesFromProfile(const ProfileRefPtr& profile) {
     std::string type;
     std::string name;
     std::string host;
+    bool use_new_l2tp_driver;
     if (!GetServiceParametersFromStorage(storage, group, &type, &name, &host,
-                                         nullptr)) {
+                                         &use_new_l2tp_driver, nullptr)) {
       continue;
     }
 
@@ -205,7 +225,7 @@ void VPNProvider::CreateServicesFromProfile(const ProfileRefPtr& profile) {
     }
 
     Error error;
-    service = CreateService(type, name, group, &error);
+    service = CreateService(type, name, group, use_new_l2tp_driver, &error);
 
     if (service == nullptr) {
       LOG(ERROR) << "Could not create service for " << group;
@@ -222,6 +242,7 @@ void VPNProvider::CreateServicesFromProfile(const ProfileRefPtr& profile) {
 VPNServiceRefPtr VPNProvider::CreateServiceInner(const std::string& type,
                                                  const std::string& name,
                                                  const std::string& storage_id,
+                                                 bool use_new_l2tp_driver,
                                                  Error* error) {
   SLOG(this, 2) << __func__ << " type " << type << " name " << name
                 << " storage id " << storage_id;
@@ -238,7 +259,9 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const std::string& type,
     driver.reset(new OpenVPNDriver(manager_, ProcessManager::GetInstance()));
   } else if (type == kProviderL2tpIpsec) {
     Error err;
-    if (manager_->GetUseSwanctlDriver(&err)) {
+    // Use NewL2TPIPsecDriver both the properties and the global settings
+    // suggest so.
+    if (use_new_l2tp_driver && manager_->GetUseSwanctlDriver(&err)) {
       driver.reset(
           new NewL2TPIPsecDriver(manager_, ProcessManager::GetInstance()));
     } else {
@@ -280,8 +303,10 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const std::string& type,
 VPNServiceRefPtr VPNProvider::CreateService(const std::string& type,
                                             const std::string& name,
                                             const std::string& storage_id,
+                                            bool use_new_l2tp_driver,
                                             Error* error) {
-  VPNServiceRefPtr service = CreateServiceInner(type, name, storage_id, error);
+  VPNServiceRefPtr service =
+      CreateServiceInner(type, name, storage_id, use_new_l2tp_driver, error);
   if (service) {
     services_.push_back(service);
     manager_->RegisterService(service);
@@ -308,8 +333,10 @@ ServiceRefPtr VPNProvider::CreateTemporaryService(const KeyValueStore& args,
   std::string type;
   std::string name;
   std::string host;
+  bool use_new_l2tp_driver;
 
-  if (!GetServiceParametersFromArgs(args, &type, &name, &host, error)) {
+  if (!GetServiceParametersFromArgs(args, &type, &name, &host,
+                                    &use_new_l2tp_driver, error)) {
     return nullptr;
   }
 
@@ -319,7 +346,7 @@ ServiceRefPtr VPNProvider::CreateTemporaryService(const KeyValueStore& args,
     return nullptr;
   }
 
-  return CreateServiceInner(type, name, storage_id, error);
+  return CreateServiceInner(type, name, storage_id, use_new_l2tp_driver, error);
 }
 
 ServiceRefPtr VPNProvider::CreateTemporaryServiceFromProfile(
@@ -327,12 +354,14 @@ ServiceRefPtr VPNProvider::CreateTemporaryServiceFromProfile(
   std::string type;
   std::string name;
   std::string host;
+  bool use_new_l2tp_driver;
   if (!GetServiceParametersFromStorage(profile->GetConstStorage(), entry_name,
-                                       &type, &name, &host, error)) {
+                                       &type, &name, &host,
+                                       &use_new_l2tp_driver, error)) {
     return nullptr;
   }
 
-  return CreateServiceInner(type, name, entry_name, error);
+  return CreateServiceInner(type, name, entry_name, use_new_l2tp_driver, error);
 }
 
 bool VPNProvider::HasActiveService() const {
