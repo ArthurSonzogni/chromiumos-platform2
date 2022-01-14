@@ -10,6 +10,7 @@ group("all") {
 
 executable("hps") {
   sources = [
+    "bind.cc",
     "boot.cc",
     "cmd.cc",
     "download.cc",
