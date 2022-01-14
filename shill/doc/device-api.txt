@@ -161,9 +161,8 @@ Methods		dict GetProperties()
 					devices.
 				[service].Error.InvalidArguments
 					The |source| is unknown.
-				[service].Error.NotSupported
-					Device does not support MAC address
-					change.
+				[service].Error.NotFound
+					Failed to find new MAC address for |source|.
 
 Signals		PropertyChanged(string name, variant value)
 

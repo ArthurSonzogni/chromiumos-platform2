@@ -867,7 +867,7 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
 
   if (new_mac_address.empty()) {
     Error::PopulateAndLog(
-        FROM_HERE, error, Error::kNotSupported,
+        FROM_HERE, error, Error::kNotFound,
         "Failed to find out new MAC address for source: " + source);
     return;
   }

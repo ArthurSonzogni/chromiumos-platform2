@@ -648,7 +648,7 @@ TEST_F(EthernetTest,
   SetUsbEthernetMacAddressSource(
       kUsbEthernetMacAddressSourceDesignatedDockMac, &error,
       base::Bind(&EthernetTest::ErrorCallback, base::Unretained(this)));
-  EXPECT_EQ(error.type(), Error::kNotSupported);
+  EXPECT_EQ(error.type(), Error::kNotFound);
 }
 
 MATCHER_P(ErrorEquals, expected_error_type, "") {
