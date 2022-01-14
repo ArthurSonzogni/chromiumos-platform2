@@ -157,6 +157,7 @@ const char kAeadIv[] = "iv";
 const char kAeadTag[] = "tag";
 const char kRequestMetaData[] = "request_meta_data";
 const char kRequestAead[] = "req_aead";
+const char kRequestRsaSignature[] = "rsa_signature";
 const char kEpochPublicKey[] = "epoch_pub_key";
 const char kEphemeralPublicInvKey[] = "ephemeral_pub_inv_key";
 const char kRequestPayloadSalt[] = "request_salt";
@@ -197,6 +198,11 @@ bool SerializeRecoveryRequestToCbor(const RecoveryRequest& request,
 
   request_map.emplace(kRequestAead, request.request_payload);
 
+  // Attach rsa_signature if a signature is generated
+  if (!request.rsa_signature.empty()) {
+    request_map.emplace(kRequestRsaSignature, request.rsa_signature);
+  }
+
   if (!SerializeCborMap(request_map, request_cbor)) {
     LOG(ERROR) << "Failed to serialize Recovery Request to CBOR";
     return false;
@@ -211,7 +217,10 @@ bool SerializeHsmAssociatedDataToCbor(const HsmAssociatedData& args,
   ad_map.emplace(kSchemaVersion, kHsmAssociatedDataSchemaVersion);
   ad_map.emplace(kPublisherPublicKey, args.publisher_pub_key);
   ad_map.emplace(kChannelPublicKey, args.channel_pub_key);
-  ad_map.emplace(kRsaPublicKey, args.rsa_public_key);
+  // Attach rsa_public_key if a public key is generated
+  if (!args.rsa_public_key.empty()) {
+    ad_map.emplace(kRsaPublicKey, args.rsa_public_key);
+  }
 
   cbor::Value::MapValue onboarding_meta_data_map;
   onboarding_meta_data_map.emplace(kSchemaVersion,
@@ -382,6 +391,49 @@ bool DeserializeHsmPlainTextFromCbor(
   return true;
 }
 
+bool DeserializeHsmAssociatedDataFromCbor(
+    const brillo::SecureBlob& hsm_associated_data_cbor,
+    HsmAssociatedData* hsm_associated_data) {
+  const auto& cbor = ReadCborMap(hsm_associated_data_cbor);
+  if (!cbor) {
+    return false;
+  }
+
+  const cbor::Value::MapValue& response_map = cbor->GetMap();
+  brillo::SecureBlob publisher_pub_key;
+  if (!FindBytestringValueInCborMap(response_map, kPublisherPublicKey,
+                                    &publisher_pub_key)) {
+    LOG(ERROR) << "Failed to get publisher public key from the HSM associated "
+                  "data map.";
+    return false;
+  }
+  brillo::SecureBlob channel_pub_key;
+  if (!FindBytestringValueInCborMap(response_map, kChannelPublicKey,
+                                    &channel_pub_key)) {
+    LOG(ERROR)
+        << "Failed to get Channel public key from the HSM associated data map.";
+    return false;
+  }
+
+  // Parse out rsa_public_key if it is attached
+  const auto rsa_public_key_entry =
+      response_map.find(cbor::Value(kRsaPublicKey));
+  if (rsa_public_key_entry != response_map.end()) {
+    brillo::SecureBlob rsa_public_key;
+    if (!FindBytestringValueInCborMap(response_map, kRsaPublicKey,
+                                      &rsa_public_key)) {
+      LOG(ERROR)
+          << "Failed to get RSA public key from the HSM associated data map.";
+      return false;
+    }
+    hsm_associated_data->rsa_public_key = std::move(rsa_public_key);
+  }
+
+  hsm_associated_data->publisher_pub_key = std::move(publisher_pub_key);
+  hsm_associated_data->channel_pub_key = std::move(channel_pub_key);
+  return true;
+}
+
 bool DeserializeRecoveryRequestPlainTextFromCbor(
     const brillo::SecureBlob& request_plain_text_cbor,
     RecoveryRequestPlainText* request_plain_text) {
@@ -434,6 +486,7 @@ bool DeserializeRecoveryRequestPayloadFromCbor(
     LOG(ERROR) << "Failed to deserialize Recovery Request payload from CBOR.";
     return false;
   }
+
   return true;
 }
 

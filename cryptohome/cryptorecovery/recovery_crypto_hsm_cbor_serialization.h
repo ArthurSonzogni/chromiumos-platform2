@@ -33,6 +33,7 @@ extern const char kAeadTag[];
 extern const char kEphemeralPublicInvKey[];
 extern const char kRequestMetaData[];
 extern const char kRequestAead[];
+extern const char kRequestRsaSignature[];
 extern const char kEpochPublicKey[];
 extern const char kRequestPayloadSalt[];
 extern const char kResponseAead[];
@@ -111,6 +112,11 @@ bool DeserializeHsmPayloadFromCbor(const brillo::SecureBlob& serialized_cbor,
 bool DeserializeHsmPlainTextFromCbor(
     const brillo::SecureBlob& hsm_plain_text_cbor,
     HsmPlainText* hsm_plain_text);
+
+// Extracts data from HSM associated data cbor.
+bool DeserializeHsmAssociatedDataFromCbor(
+    const brillo::SecureBlob& hsm_associated_data_cbor,
+    HsmAssociatedData* hsm_associated_data);
 
 // Extracts data from Recovery Request plain text cbor.
 bool DeserializeRecoveryRequestPlainTextFromCbor(

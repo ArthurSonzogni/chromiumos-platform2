@@ -137,6 +137,7 @@ class HsmPayloadCborHelperTest : public testing::Test {
   brillo::SecureBlob channel_priv_key_;
   brillo::SecureBlob dealer_pub_key_;
   brillo::SecureBlob dealer_priv_key_;
+  brillo::SecureBlob rsa_public_key_;
   OnboardingMetadata onboarding_meta_data_;
 };
 
@@ -268,8 +269,8 @@ TEST_F(HsmPayloadCborHelperTest, GenerateAdCborWithEmptyRsaPublicKey) {
                                           kOnboardingMetaDataSchemaVersion));
   EXPECT_EQ(deserialized_onboarding_metadata.GetMap().size(), 3);
 
-  // 4 fields + schema version:
-  EXPECT_EQ(GetCborMapSize(cbor_output), 5);
+  // 3 fields + schema version:
+  EXPECT_EQ(GetCborMapSize(cbor_output), 4);
 }
 
 // Verifies serialization of HSM payload plain text encrypted payload to CBOR.
@@ -298,6 +299,70 @@ TEST_F(HsmPayloadCborHelperTest, GeneratePlainTextHsmPayloadCbor) {
   EXPECT_EQ(BN_get_word(SecureBlobToBigNum(deserialized_mediator_share).get()),
             BN_get_word(scalar.get()));
   EXPECT_EQ(GetCborMapSize(cbor_output), 3);
+}
+
+// Verifies deserialization of HSM associated data from CBOR.
+TEST_F(HsmPayloadCborHelperTest, DeserializeAssociatedDataHsmPayload) {
+  brillo::SecureBlob mediator_share;
+  brillo::SecureBlob cbor_output;
+
+  crypto::ScopedBIGNUM scalar = BigNumFromValue(123123123u);
+  ASSERT_TRUE(scalar);
+  ASSERT_TRUE(BigNumToSecureBlob(*scalar, 10, &mediator_share));
+
+  // Serialize plain text payload with empty kav.
+  cbor::Value::MapValue fake_map;
+  fake_map.emplace(kPublisherPublicKey, publisher_pub_key_);
+  fake_map.emplace(kChannelPublicKey, channel_pub_key_);
+  fake_map.emplace(kRsaPublicKey, rsa_public_key_);
+  brillo::SecureBlob hsm_cbor;
+  ASSERT_TRUE(CreateCborMapForTesting(fake_map, &hsm_cbor));
+
+  HsmAssociatedData hsm_associated_data;
+  EXPECT_TRUE(
+      DeserializeHsmAssociatedDataFromCbor(hsm_cbor, &hsm_associated_data));
+
+  EXPECT_EQ(hsm_associated_data.publisher_pub_key, publisher_pub_key_);
+  EXPECT_EQ(hsm_associated_data.channel_pub_key, channel_pub_key_);
+  EXPECT_EQ(hsm_associated_data.rsa_public_key, rsa_public_key_);
+}
+
+// Verifies that the deserialization of HSM associated data text from CBOR fails
+// if input is not a CBOR.
+TEST_F(HsmPayloadCborHelperTest, DeserializeAssociatedDataHsmPayloadNotCbor) {
+  HsmAssociatedData hsm_associated_data;
+  brillo::SecureBlob hsm_cbor("actually not a CBOR");
+  EXPECT_FALSE(
+      DeserializeHsmAssociatedDataFromCbor(hsm_cbor, &hsm_associated_data));
+}
+
+// Verifies that the deserialization of HSM payload plain text from CBOR fails
+// if input is not a CBOR map.
+TEST_F(HsmPayloadCborHelperTest, DeserializeAssociatedDataHsmPayloadNotMap) {
+  HsmAssociatedData hsm_associated_data;
+  base::Optional<std::vector<uint8_t>> serialized =
+      cbor::Writer::Write(cbor::Value("a CBOR but not a map"));
+  ASSERT_TRUE(serialized.has_value());
+  brillo::SecureBlob hsm_cbor(serialized.value().begin(),
+                              serialized.value().end());
+  EXPECT_FALSE(
+      DeserializeHsmAssociatedDataFromCbor(hsm_cbor, &hsm_associated_data));
+}
+
+// Verifies that the deserialization of HSM payload plain text from CBOR fails
+// if CBOR has wrong format.
+TEST_F(HsmPayloadCborHelperTest,
+       DeserializeAssociatedDataHsmPayloadWrongFormat) {
+  HsmAssociatedData hsm_associated_data;
+  brillo::SecureBlob cbor_output;
+  cbor::Value::MapValue fake_map;
+  fake_map.emplace(kMediatorShare, "a string value instead of bytes");
+  fake_map.emplace(kDealerPublicKey, dealer_pub_key_);
+  fake_map.emplace(kKeyAuthValue, brillo::SecureBlob());
+  brillo::SecureBlob hsm_cbor;
+  ASSERT_TRUE(CreateCborMapForTesting(fake_map, &hsm_cbor));
+  EXPECT_FALSE(
+      DeserializeHsmAssociatedDataFromCbor(hsm_cbor, &hsm_associated_data));
 }
 
 // Verifies deserialization of HSM payload plain text from CBOR.

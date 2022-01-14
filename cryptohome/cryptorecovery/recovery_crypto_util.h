@@ -69,8 +69,8 @@ struct HsmAssociatedData {
   brillo::SecureBlob publisher_pub_key;
   // G*s, one of the keys that will be used for Request payload decryption.
   brillo::SecureBlob channel_pub_key;
-  // The key sent to HSM so that it can validate Request payload, used only for
-  // TPM 1.2.
+  // The key (X.509 SubjectPublicKeyInfo structure in DER) sent to HSM so that
+  // it can validate Request payload, used only for TPM 1.2.
   brillo::SecureBlob rsa_public_key;
   // The metadata generated during the Onboarding workflow on a Chromebook
   // (OMD).
@@ -159,6 +159,9 @@ struct RecoveryRequestPlainText {
 struct RecoveryRequest {
   // The AEAD-encrypted payload.
   brillo::SecureBlob request_payload;
+  // The RSA signature of the AEAD-encrypted payload using SHA-256.
+  // It's an optional field, used only on TPM 1.2 devices.
+  brillo::SecureBlob rsa_signature;
 };
 
 // `associated_data` for the Response payload.
