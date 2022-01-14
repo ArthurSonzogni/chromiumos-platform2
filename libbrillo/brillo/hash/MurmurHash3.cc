@@ -16,7 +16,7 @@
 // compile and run any of them on any platform, but your performance with the
 // non-native version will be less than optimal.
 
-#include "MurmurHash3.h"
+#include "libbrillo/brillo/hash/MurmurHash3.h"
 
 //-----------------------------------------------------------------------------
 // Platform-specific functions and macros
@@ -146,7 +146,7 @@ void MurmurHash3_x86_32(const void* key, int len, uint32_t seed, void* out) {
       k1 = ROTL32(k1, 15);
       k1 *= c2;
       h1 ^= k1;
-  };
+  }
 
   //----------
   // finalization
@@ -155,7 +155,7 @@ void MurmurHash3_x86_32(const void* key, int len, uint32_t seed, void* out) {
 
   h1 = fmix32(h1);
 
-  *(uint32_t*)out = h1;
+  *reinterpret_cast<uint32_t*>(out) = h1;
 }
 
 //-----------------------------------------------------------------------------
@@ -299,7 +299,7 @@ void MurmurHash3_x86_128(const void* key,
       k1 = ROTL32(k1, 15);
       k1 *= c2;
       h1 ^= k1;
-  };
+  }
 
   //----------
   // finalization
@@ -328,10 +328,10 @@ void MurmurHash3_x86_128(const void* key,
   h3 += h1;
   h4 += h1;
 
-  ((uint32_t*)out)[0] = h1;
-  ((uint32_t*)out)[1] = h2;
-  ((uint32_t*)out)[2] = h3;
-  ((uint32_t*)out)[3] = h4;
+  (reinterpret_cast<uint32_t*>(out))[0] = h1;
+  (reinterpret_cast<uint32_t*>(out))[1] = h2;
+  (reinterpret_cast<uint32_t*>(out))[2] = h3;
+  (reinterpret_cast<uint32_t*>(out))[3] = h4;
 }
 
 //-----------------------------------------------------------------------------
@@ -439,7 +439,7 @@ void MurmurHash3_x64_128(const void* key,
       k1 = ROTL64(k1, 31);
       k1 *= c2;
       h1 ^= k1;
-  };
+  }
 
   //----------
   // finalization
@@ -456,8 +456,8 @@ void MurmurHash3_x64_128(const void* key,
   h1 += h2;
   h2 += h1;
 
-  ((uint64_t*)out)[0] = h1;
-  ((uint64_t*)out)[1] = h2;
+  (reinterpret_cast<uint64_t*>(out))[0] = h1;
+  (reinterpret_cast<uint64_t*>(out))[1] = h2;
 }
 
 //-----------------------------------------------------------------------------
