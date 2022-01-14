@@ -23,6 +23,7 @@ class UsbMonitor : public UdevMonitor::UsbObserver {
   UsbMonitor() = default;
 
  private:
+  friend class UsbMonitorFuzzer;
   friend class UsbMonitorTest;
   FRIEND_TEST(UsbMonitorTest, TestDeviceAddAndRemove);
   FRIEND_TEST(UsbMonitorTest, TestInvalidUeventPath);

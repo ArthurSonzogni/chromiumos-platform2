@@ -19,6 +19,7 @@ group("all") {
       ":typecd_port_manager_fuzzer",
       ":typecd_session_manager_proxy_fuzzer",
       ":typecd_udev_monitor_fuzzer",
+      ":typecd_usb_monitor_fuzzer",
     ]
   }
 }
@@ -172,6 +173,15 @@ if (use.fuzzer) {
       ":test_defaults",
       "//common-mk/common_fuzzer",
       "//common-mk:test",
+    ]
+    deps = [ ":typecd_common" ]
+  }
+
+  executable("typecd_usb_monitor_fuzzer") {
+    sources = [ "usb_monitor_fuzzer.cc" ]
+    configs += [
+      ":target_defaults",
+      "//common-mk/common_fuzzer",
     ]
     deps = [ ":typecd_common" ]
   }

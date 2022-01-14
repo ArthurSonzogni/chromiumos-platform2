@@ -15,8 +15,8 @@
 #include "typecd/usb_device.h"
 
 namespace {
-constexpr char kBusnum[] = "1";
-constexpr char kDevnum[] = "1";
+constexpr char kBusnum[] = "1\n";
+constexpr char kDevnum[] = "1\n";
 constexpr int kTypecPortNum = 1;
 
 }  // namespace

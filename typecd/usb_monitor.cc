@@ -8,6 +8,8 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include "base/strings/string_number_conversions.h"
+#include <base/strings/string_util.h>
 #include <re2/re2.h>
 
 namespace {
@@ -37,9 +39,18 @@ void UsbMonitor::OnDeviceAddedOrRemoved(const base::FilePath& path,
       PLOG(ERROR) << "Failed to find devnum in " << path;
       return;
     }
+    base::TrimWhitespaceASCII(busnum, base::TRIM_TRAILING, &busnum);
+    base::TrimWhitespaceASCII(devnum, base::TRIM_TRAILING, &devnum);
 
-    devices_.emplace(
-        key, std::make_unique<UsbDevice>(std::stoi(busnum), std::stoi(devnum)));
+    int busnum_int;
+    int devnum_int;
+    if (!base::StringToInt(busnum, &busnum_int) ||
+        !base::StringToInt(devnum, &devnum_int)) {
+      PLOG(ERROR) << "Failed to parse integer value from busnum and devnum in "
+                  << path;
+      return;
+    }
+    devices_.emplace(key, std::make_unique<UsbDevice>(busnum_int, devnum_int));
 
     std::string typec_port_uevent;
     int typec_port_num;
