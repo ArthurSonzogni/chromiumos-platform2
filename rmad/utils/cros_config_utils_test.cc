@@ -73,7 +73,7 @@ constexpr char kCrosConfigJson[] =
 
 // The first option of the WL list is always an empty string.
 const std::vector<std::string> kTargetWhitelabelTagList = {
-    "TestWhiteLabelTag", "TestWhiteLabelTag-2", ""};
+    "TestWhiteLabelTag", "TestWhiteLabelTag-2"};
 const std::vector<int> kTargetSkuIdList = {1111111112, 1111111113, 1234567890};
 
 class CrosConfigUtilsImplTest : public testing::Test {

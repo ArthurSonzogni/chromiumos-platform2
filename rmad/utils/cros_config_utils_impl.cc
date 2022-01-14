@@ -115,8 +115,6 @@ bool CrosConfigUtilsImpl::GetWhitelabelTagList(
   }
 
   sort(whitelabel_tag_list->begin(), whitelabel_tag_list->end());
-  // We add an empty string to the last option, since it is always valid.
-  whitelabel_tag_list->push_back("");
   return true;
 }
 

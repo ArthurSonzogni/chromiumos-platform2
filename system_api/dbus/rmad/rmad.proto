@@ -364,11 +364,11 @@ message UpdateDeviceInfoState {
   // User provided serial number of device.
   string serial_number = 1;
   // Chosen region index for the current choice. See |region_list| below.
-  uint32 region_index = 2;
+  int32 region_index = 2;
   // Chosen SKU index of device. See |sku_list| below.
-  uint32 sku_index = 3;
+  int32 sku_index = 3;
   // Chosen whitelabel index of device. See |whitelabel_list| below.
-  uint32 whitelabel_index = 4;
+  int32 whitelabel_index = 4;
   // User provided dram part number of device.
   string dram_part_number = 5;
 

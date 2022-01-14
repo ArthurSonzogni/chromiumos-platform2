@@ -269,9 +269,8 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
     return false;
   }
 
-  if (device_info.region_index() >=
-          static_cast<uint64_t>(device_info.region_list_size()) ||
-      device_info.region_index() == 0) {
+  if (device_info.region_index() < 0 ||
+      device_info.region_index() >= device_info.region_list_size()) {
     LOG(ERROR) << "It is a wrong |region index| of |region list|.";
     return false;
   }
@@ -281,9 +280,8 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
     return false;
   }
 
-  if (device_info.sku_index() >=
-          static_cast<uint64_t>(device_info.sku_list_size()) ||
-      device_info.sku_index() == 0) {
+  if (device_info.sku_index() < 0 ||
+      device_info.sku_index() >= device_info.sku_list_size()) {
     LOG(ERROR) << "It is a wrong |sku index| of |sku list|.";
     return false;
   }
@@ -292,18 +290,20 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
     return false;
   }
 
-  // We can allow empty whitelabel-tag, so we can allow index == 0.
-  if (device_info.whitelabel_index() >=
-      static_cast<uint64_t>(device_info.whitelabel_list_size())) {
+  // We can allow empty whitelabel-tag, so we reserved negative index for
+  // empty string of whitelabel-tag.
+  if (device_info.whitelabel_index() >= device_info.whitelabel_list_size()) {
     LOG(ERROR) << "It is a wrong |whitelabel index| of |whitelabel list|.";
     return false;
   }
-  // If the model does not support whitelabel, we don't need to write it.
-  // Otherwise, even if the whitelabel is empty, we should always write
-  // it to vpd.
+  // If the model does not have whitelabel, we also need to set it to an empty
+  // string.
+  std::string whitelabel = "";
   if (device_info.whitelabel_list_size() > 1 &&
-      !vpd_utils_->SetWhitelabelTag(
-          device_info.whitelabel_list(device_info.whitelabel_index()))) {
+      device_info.whitelabel_index() > 0) {
+    whitelabel = device_info.whitelabel_list(device_info.whitelabel_index());
+  }
+  if (!vpd_utils_->SetWhitelabelTag(whitelabel)) {
     LOG(ERROR) << "Failed to save whitelabel to vpd cache.";
     return false;
   }

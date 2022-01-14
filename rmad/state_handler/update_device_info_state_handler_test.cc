@@ -45,9 +45,8 @@ const std::vector<std::string> kRegionList = {"TestRegion", "TestRegion1"};
 // We get the value of type int from cros_config, but we set uint64_t in cbi.
 // This is used to mock the result of cros_config, so it is a vector<int>.
 const std::vector<int> kSkuList = {1234567890, 1234567891};
-// The last option is always an empty string, because it is always valid.
 const std::vector<std::string> kWhitelabelTagList = {
-    "TestWhitelabelTag", "TestWhitelabelTag0", "TestWhitelabelTag1", ""};
+    "TestWhitelabelTag", "TestWhitelabelTag0", "TestWhitelabelTag1"};
 constexpr uint32_t kOriginalRegionSelection = 0;
 constexpr uint32_t kOriginalSkuSelection = 0;
 constexpr uint32_t kOriginalWhitelabelSelection = 0;
@@ -55,7 +54,7 @@ constexpr uint32_t kOriginalWhitelabelSelection = 0;
 constexpr char kNewSerialNumber[] = "NewTestSerialNumber";
 constexpr uint32_t kNewRegionSelection = 1;
 constexpr uint32_t kNewSkuSelection = 1;
-constexpr uint32_t kNewWhitelabelSelection = 3;
+constexpr uint32_t kNewWhitelabelSelection = 2;
 constexpr char kNewDramPartNum[] = "NewTestDramPartNum";
 
 class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
@@ -305,7 +304,6 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_Success) {
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
 
-  // The first option is always reserved for empty option, so subtract one.
   EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
   EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection]);
   EXPECT_EQ(whitelabel_set_, kWhitelabelTagList[kNewWhitelabelSelection]);
@@ -392,8 +390,6 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuFailed) {
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
-
-  // The first option is always reserved for empty option, so subtract one.
   EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
 }
 
@@ -420,8 +416,6 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_WhitelabelFailed) {
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
-
-  // The first option is always reserved for empty option, so subtract one.
   EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
   EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection]);
 }
@@ -449,8 +443,6 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_DramPartNumFailed) {
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
-
-  // The first option is always reserved for empty option, so subtract one.
   EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
   EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection]);
   EXPECT_EQ(whitelabel_set_, kWhitelabelTagList[kNewWhitelabelSelection]);
@@ -463,7 +455,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_RegionEmptyFailed) {
 
   auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
-  state.mutable_update_device_info()->set_region_index(0);
+  state.mutable_update_device_info()->set_region_index(-1);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
   state.mutable_update_device_info()->set_whitelabel_index(
       kNewWhitelabelSelection);
@@ -484,10 +476,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_RegionWrongIndex) {
 
   auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
-
-  // The first option is always reserved for empty option, so we should add
-  // one to exceed the size.
-  state.mutable_update_device_info()->set_region_index(kRegionList.size() + 1);
+  state.mutable_update_device_info()->set_region_index(kRegionList.size());
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
   state.mutable_update_device_info()->set_whitelabel_index(
       kNewWhitelabelSelection);
@@ -509,7 +498,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuEmptyFailed) {
   auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
-  state.mutable_update_device_info()->set_sku_index(0);
+  state.mutable_update_device_info()->set_sku_index(-1);
   state.mutable_update_device_info()->set_whitelabel_index(
       kNewWhitelabelSelection);
   state.mutable_update_device_info()->set_dram_part_number(kNewDramPartNum);
@@ -520,8 +509,6 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuEmptyFailed) {
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
-
-  // The first option is always reserved for empty option, so subtract one.
   EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
 }
 
@@ -533,10 +520,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuWrongIndex) {
   auto state = handler->GetState();
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
-
-  // The first option is always reserved for empty option, so we should add
-  // one to exceed the size.
-  state.mutable_update_device_info()->set_sku_index(kSkuList.size() + 1);
+  state.mutable_update_device_info()->set_sku_index(kSkuList.size());
   state.mutable_update_device_info()->set_whitelabel_index(
       kNewWhitelabelSelection);
   state.mutable_update_device_info()->set_dram_part_number(kNewDramPartNum);
@@ -562,8 +546,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
-  state.mutable_update_device_info()->set_whitelabel_index(
-      kWhitelabelTagList.size() - 1);
+  state.mutable_update_device_info()->set_whitelabel_index(-1);
   state.mutable_update_device_info()->set_dram_part_number(kNewDramPartNum);
 
   auto [error, state_case] = handler->GetNextStateCase(state);
@@ -572,12 +555,9 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   EXPECT_EQ(state_case, RmadState::StateCase::kSetupCalibration);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
-
-  // The first option is always empty and reserved, so subtract one.
   EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
   EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection]);
   EXPECT_EQ(whitelabel_set_, "");
-
   EXPECT_EQ(dram_part_num_set_, kNewDramPartNum);
 }
 
@@ -591,9 +571,6 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
   state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
   state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
-
-  // The first option is always reserved for empty option, so we should add
-  // one to exceed the size.
   state.mutable_update_device_info()->set_whitelabel_index(
       kWhitelabelTagList.size());
 
@@ -605,8 +582,6 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
-
-  // The first option is always reserved for empty option, so subtract one.
   EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
   EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection]);
 }
@@ -880,12 +855,9 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuOverflow_Success) {
   EXPECT_EQ(state_case, RmadState::StateCase::kSetupCalibration);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
-
-  // The first option is always reserved for empty option, so subtract one.
   EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
   EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection]);
   EXPECT_EQ(whitelabel_set_, kWhitelabelTagList[kNewWhitelabelSelection]);
-
   EXPECT_EQ(dram_part_num_set_, kNewDramPartNum);
 }
 
