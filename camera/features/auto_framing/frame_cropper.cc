@@ -107,11 +107,8 @@ base::ScopedFD FrameCropper::CropBuffer(int frame_number,
   SharedImage output_image = SharedImage::CreateFromBuffer(
       output_yuv, Texture2D::Target::kTarget2D, true);
   image_processor_->CropYuv(input_image.y_texture(), input_image.uv_texture(),
-                            active_crop_region_, y_intermediate_.texture(),
-                            uv_intermediate_.texture());
-  image_processor_->YUVToYUV(
-      y_intermediate_.texture(), uv_intermediate_.texture(),
-      output_image.y_texture(), output_image.uv_texture());
+                            active_crop_region_, output_image.y_texture(),
+                            output_image.uv_texture());
   EglFence fence;
   return fence.GetNativeFd();
 }
@@ -178,15 +175,6 @@ void FrameCropper::SetUpPipeline() {
   image_processor_ = std::make_unique<GpuImageProcessor>();
   if (!image_processor_) {
     LOGF(ERROR) << "Failed to create GpuImageProcessor";
-    return;
-  }
-  y_intermediate_ = SharedImage::CreateFromGpuTexture(
-      GL_R8, options_.input_size.width, options_.input_size.height);
-  uv_intermediate_ = SharedImage::CreateFromGpuTexture(
-      GL_RG8, options_.input_size.width / 2, options_.input_size.height / 2);
-  if (!y_intermediate_.texture().IsValid() ||
-      !uv_intermediate_.texture().IsValid()) {
-    LOGF(ERROR) << "Failed to create intermediate textures";
     return;
   }
 }

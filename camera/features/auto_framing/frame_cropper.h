@@ -86,8 +86,6 @@ class FrameCropper {
 
   std::unique_ptr<EglContext> egl_context_;
   std::unique_ptr<GpuImageProcessor> image_processor_;
-  SharedImage y_intermediate_;
-  SharedImage uv_intermediate_;
 };
 
 }  // namespace cros
