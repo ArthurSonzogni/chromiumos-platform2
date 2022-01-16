@@ -146,7 +146,7 @@ class HomeDirsTest
                      obfuscated,
                      passkey,
                      credentials,
-                     ShadowRoot().Append(obfuscated),
+                     UserPath(obfuscated),
                      brillo::cryptohome::home::GetHashedUserPath(obfuscated)};
     users_.push_back(info);
   }
@@ -222,7 +222,7 @@ TEST_P(HomeDirsTest, CreateCryptohome) {
   constexpr char kNewUserId[] = "some_new_user";
   const std::string kHashedNewUserId =
       brillo::cryptohome::home::SanitizeUserName(kNewUserId);
-  const base::FilePath kNewUserPath = ShadowRoot().Append(kHashedNewUserId);
+  const base::FilePath kNewUserPath = UserPath(kHashedNewUserId);
 
   EXPECT_TRUE(homedirs_->Create(kNewUserId));
   EXPECT_TRUE(platform_.DirectoryExists(kNewUserPath));
@@ -417,7 +417,7 @@ class HomeDirsVaultTest : public ::testing::Test {
  public:
   HomeDirsVaultTest()
       : user_({.obfuscated = "foo",
-               .homedir_path = base::FilePath(ShadowRoot().Append("foo"))}),
+               .homedir_path = base::FilePath(UserPath("foo"))}),
         key_reference_({.fek_sig = brillo::SecureBlob("random keyref")}) {}
   ~HomeDirsVaultTest() override = default;
 

@@ -44,22 +44,24 @@ base::FilePath SkelDir() {
   return base::FilePath(kSkelPath);
 }
 
+base::FilePath UserPath(const std::string& obfuscated) {
+  return ShadowRoot().Append(obfuscated);
+}
+
 base::FilePath VaultKeysetPath(const std::string& obfuscated, int index) {
-  return ShadowRoot()
-      .Append(obfuscated)
+  return UserPath(obfuscated)
       .Append(kKeyFile)
       .AddExtension(base::NumberToString(index));
 }
 
 base::FilePath UserSecretStashPath(const std::string& obfuscated_username) {
-  return ShadowRoot()
-      .Append(obfuscated_username)
+  return UserPath(obfuscated_username)
       .Append(kUserSecretStashDir)
       .Append(kUserSecretStashFile);
 }
 
 base::FilePath AuthFactorsDirPath(const std::string& obfuscated_username) {
-  return ShadowRoot().Append(obfuscated_username).Append(kAuthFactorsDir);
+  return UserPath(obfuscated_username).Append(kAuthFactorsDir);
 }
 
 base::FilePath AuthFactorPath(const std::string& obfuscated_username,
@@ -67,8 +69,7 @@ base::FilePath AuthFactorPath(const std::string& obfuscated_username,
                               const std::string& auth_factor_label) {
   // The caller must make sure the label was sanitized.
   DCHECK(IsValidAuthFactorLabel(auth_factor_label));
-  return ShadowRoot()
-      .Append(obfuscated_username)
+  return UserPath(obfuscated_username)
       .Append(kAuthFactorsDir)
       .Append(auth_factor_type_string)
       .AddExtension(auth_factor_label);
@@ -80,25 +81,25 @@ base::FilePath UserActivityPerIndexTimestampPath(const std::string& obfuscated,
 }
 
 base::FilePath UserActivityTimestampPath(const std::string& obfuscated) {
-  return ShadowRoot().Append(obfuscated).Append(kTsFile);
+  return UserPath(obfuscated).Append(kTsFile);
 }
 
 base::FilePath GetEcryptfsUserVaultPath(const std::string& obfuscated) {
-  return ShadowRoot().Append(obfuscated).Append(kEcryptfsVaultDir);
+  return UserPath(obfuscated).Append(kEcryptfsVaultDir);
 }
 
 base::FilePath GetUserMountDirectory(const std::string& obfuscated_username) {
-  return ShadowRoot().Append(obfuscated_username).Append(kMountDir);
+  return UserPath(obfuscated_username).Append(kMountDir);
 }
 
 base::FilePath GetUserTemporaryMountDirectory(
     const std::string& obfuscated_username) {
-  return ShadowRoot().Append(obfuscated_username).Append(kTemporaryMountDir);
+  return UserPath(obfuscated_username).Append(kTemporaryMountDir);
 }
 
 base::FilePath GetDmcryptUserCacheDirectory(
     const std::string& obfuscated_username) {
-  return ShadowRoot().Append(obfuscated_username).Append(kDmcryptCacheDir);
+  return UserPath(obfuscated_username).Append(kDmcryptCacheDir);
 }
 
 std::string LogicalVolumePrefix(const std::string& obfuscated_username) {

@@ -516,8 +516,7 @@ class PersistentSystemTest : public ::testing::Test {
   void SetHomedir(const std::string& username) {
     const std::string obfuscated_username =
         brillo::cryptohome::home::SanitizeUserName(username);
-    ASSERT_TRUE(
-        platform_.CreateDirectory(ShadowRoot().Append(obfuscated_username)));
+    ASSERT_TRUE(platform_.CreateDirectory(UserPath(obfuscated_username)));
   }
 
   void SetDmcryptPrereqs(const std::string& username) {

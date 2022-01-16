@@ -126,7 +126,7 @@ bool HomeDirs::SetLockedToSingleUser() const {
 }
 
 bool HomeDirs::Exists(const std::string& obfuscated_username) const {
-  FilePath user_dir = ShadowRoot().Append(obfuscated_username);
+  FilePath user_dir = UserPath(obfuscated_username);
   return platform_->DirectoryExists(user_dir);
 }
 
@@ -476,7 +476,7 @@ bool HomeDirs::Create(const std::string& username) {
   std::string obfuscated_username = SanitizeUserName(username);
 
   // Create the user's entry in the shadow root
-  FilePath user_dir = ShadowRoot().Append(obfuscated_username);
+  FilePath user_dir = UserPath(obfuscated_username);
   if (!platform_->CreateDirectory(user_dir)) {
     return false;
   }
@@ -486,7 +486,7 @@ bool HomeDirs::Create(const std::string& username) {
 
 bool HomeDirs::Remove(const std::string& obfuscated) {
   remove_callback_.Run(obfuscated);
-  FilePath user_dir = ShadowRoot().Append(obfuscated);
+  FilePath user_dir = UserPath(obfuscated);
   FilePath user_path =
       brillo::cryptohome::home::GetUserPathPrefix().Append(obfuscated);
   FilePath root_path =
@@ -531,7 +531,7 @@ int64_t HomeDirs::ComputeDiskUsage(const std::string& account_id) {
   // ephemeral, but the current mount is ephemeral. In this case,
   // ComputeDiskUsage() return the non ephemeral on disk vault's size.
   std::string obfuscated = SanitizeUserName(account_id);
-  FilePath user_dir = ShadowRoot().Append(obfuscated);
+  FilePath user_dir = UserPath(obfuscated);
 
   int64_t size = 0;
   if (!platform_->DirectoryExists(user_dir)) {
@@ -586,7 +586,7 @@ bool HomeDirs::NeedsDircryptoMigration(
   // dircrypto migration. eCryptfs test is adapted from
   // Mount::DoesEcryptfsCryptohomeExist.
   const FilePath user_ecryptfs_vault_dir =
-      ShadowRoot().Append(obfuscated_username).Append(kEcryptfsVaultDir);
+      UserPath(obfuscated_username).Append(kEcryptfsVaultDir);
   return platform_->DirectoryExists(user_ecryptfs_vault_dir);
 }
 
@@ -601,7 +601,7 @@ int32_t HomeDirs::GetUnmountedAndroidDataCount() {
         if (EcryptfsCryptohomeExists(dir.obfuscated))
           return false;
 
-        FilePath shadow_dir = ShadowRoot().Append(dir.obfuscated);
+        FilePath shadow_dir = UserPath(dir.obfuscated);
         FilePath root_home_dir;
         return GetTrackedDirectory(shadow_dir, FilePath(kRootHomeSuffix),
                                    &root_home_dir) &&

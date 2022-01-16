@@ -124,14 +124,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   void MaybeCancelActiveDircryptoMigrationAndWait();
 
  private:
-  // Gets the directory in the shadow root where the user's salt, key, and vault
-  // are stored.
-  //
-  // Parameters
-  //   obfuscated_username - Obfuscated username field of the Credentials
-  base::FilePath GetUserDirectoryForUser(
-      const std::string& obfuscated_username) const;
-
   // Gets the directory to mount the user's ephemeral cryptohome at.
   //
   // Parameters

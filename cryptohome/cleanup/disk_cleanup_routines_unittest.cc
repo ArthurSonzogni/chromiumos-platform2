@@ -125,7 +125,7 @@ INSTANTIATE_TEST_SUITE_P(WithDircrypto,
                          ::testing::Values(false));
 
 TEST_P(DiskCleanupRoutinesTest, DeleteUserCache) {
-  base::FilePath mount = ShadowRoot().Append(kTestUser).Append(kMountDir);
+  base::FilePath mount = UserPath(kTestUser).Append(kMountDir);
   base::FilePath user = mount.Append(kUserHomeSuffix);
   base::FilePath cache = user.Append(kCacheDir);
 
@@ -152,7 +152,7 @@ TEST_P(DiskCleanupRoutinesTest, DeleteUserCache) {
 }
 
 TEST_P(DiskCleanupRoutinesTest, DeleteUserGCacheV1) {
-  base::FilePath mount = ShadowRoot().Append(kTestUser).Append(kMountDir);
+  base::FilePath mount = UserPath(kTestUser).Append(kMountDir);
   base::FilePath user = mount.Append(kUserHomeSuffix);
   base::FilePath gcache = user.Append(kGCacheDir);
   base::FilePath gcache_version1 = gcache.Append(kGCacheVersion1Dir);
@@ -194,7 +194,7 @@ TEST_P(DiskCleanupRoutinesTest, DeleteUserGCacheV1) {
 }
 
 TEST_P(DiskCleanupRoutinesTest, DeleteUserGCacheV2) {
-  base::FilePath mount = ShadowRoot().Append(kTestUser).Append(kMountDir);
+  base::FilePath mount = UserPath(kTestUser).Append(kMountDir);
   base::FilePath user = mount.Append(kUserHomeSuffix);
   base::FilePath gcache = user.Append(kGCacheDir);
   base::FilePath gcache_version1 = gcache.Append(kGCacheVersion1Dir);
@@ -270,7 +270,7 @@ TEST_P(DiskCleanupRoutinesTest, DeleteCacheVault) {
 }
 
 TEST_P(DiskCleanupRoutinesTest, DeleteAndroidCache) {
-  base::FilePath mount = ShadowRoot().Append(kTestUser).Append(kMountDir);
+  base::FilePath mount = UserPath(kTestUser).Append(kMountDir);
   base::FilePath root = mount.Append(kRootHomeSuffix);
 
   ExpectTrackedDirectoryEnumeration({root});

@@ -167,7 +167,7 @@ std::unique_ptr<VaultKeyset> KeysetManagement::GetVaultKeyset(
 bool KeysetManagement::GetVaultKeysets(const std::string& obfuscated,
                                        std::vector<int>* keysets) const {
   CHECK(keysets);
-  base::FilePath user_dir = ShadowRoot().Append(obfuscated);
+  base::FilePath user_dir = UserPath(obfuscated);
 
   std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
       user_dir, false, base::FileEnumerator::FILES));
@@ -201,7 +201,7 @@ bool KeysetManagement::GetVaultKeysetLabelsAndData(
     const std::string& obfuscated_username,
     std::map<std::string, KeyData>* key_label_data) const {
   CHECK(key_label_data);
-  base::FilePath user_dir = ShadowRoot().Append(obfuscated_username);
+  base::FilePath user_dir = UserPath(obfuscated_username);
 
   std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
       user_dir, false /* Not recursive. */, base::FileEnumerator::FILES));
@@ -244,7 +244,7 @@ bool KeysetManagement::GetVaultKeysetLabels(
     const std::string& obfuscated_username,
     std::vector<std::string>* labels) const {
   CHECK(labels);
-  base::FilePath user_dir = ShadowRoot().Append(obfuscated_username);
+  base::FilePath user_dir = UserPath(obfuscated_username);
 
   std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
       user_dir, false /* Not recursive. */, base::FileEnumerator::FILES));
@@ -742,7 +742,7 @@ void KeysetManagement::RemoveLECredentials(
 }
 
 bool KeysetManagement::UserExists(const std::string& obfuscated_username) {
-  base::FilePath user_dir = ShadowRoot().Append(obfuscated_username);
+  base::FilePath user_dir = UserPath(obfuscated_username);
   return platform_->DirectoryExists(user_dir);
 }
 

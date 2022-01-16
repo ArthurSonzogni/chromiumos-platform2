@@ -16,39 +16,40 @@
 namespace cryptohome {
 
 // Name of the vault directory which is used with eCryptfs cryptohome.
-constexpr char kEcryptfsVaultDir[] = "vault";
+inline constexpr char kEcryptfsVaultDir[] = "vault";
 // Name of the mount directory.
-constexpr char kMountDir[] = "mount";
+inline constexpr char kMountDir[] = "mount";
 // Name of the temporary mount directory used during migration.
-constexpr char kTemporaryMountDir[] = "temporary_mount";
+inline constexpr char kTemporaryMountDir[] = "temporary_mount";
 // Name of the dm-crypt cache directory.
-constexpr char kDmcryptCacheDir[] = "cache";
+inline constexpr char kDmcryptCacheDir[] = "cache";
 // Device Mapper directory.
-constexpr char kDeviceMapperDir[] = "/dev/mapper";
+inline constexpr char kDeviceMapperDir[] = "/dev/mapper";
 
 // Suffix for cryptohome dm-crypt container.
-constexpr char kDmcryptCacheContainerSuffix[] = "cache";
-constexpr char kDmcryptDataContainerSuffix[] = "data";
+inline constexpr char kDmcryptCacheContainerSuffix[] = "cache";
+inline constexpr char kDmcryptDataContainerSuffix[] = "data";
 
-constexpr mode_t kKeyFilePermissions = 0600;
-constexpr int kKeyFileMax = 100;       // master.0 ... master.99 // nocheck
-constexpr char kKeyFile[] = "master";  // nocheck
-constexpr char kKeyLegacyPrefix[] = "legacy-";
+inline constexpr mode_t kKeyFilePermissions = 0600;
+inline constexpr int kKeyFileMax = 100;  // master.0 ... master.99 // nocheck
+inline constexpr char kKeyFile[] = "master";  // nocheck
+inline constexpr char kKeyLegacyPrefix[] = "legacy-";
 
-constexpr int kInitialKeysetIndex = 0;
-constexpr char kTsFile[] = "timestamp";
+inline constexpr int kInitialKeysetIndex = 0;
+inline constexpr char kTsFile[] = "timestamp";
 
-constexpr char kDmcryptContainerMountType[] = "ext4";
-constexpr char kDmcryptContainerMountOptions[] = "discard,commit=600";
+inline constexpr char kDmcryptContainerMountType[] = "ext4";
+inline constexpr char kDmcryptContainerMountOptions[] = "discard,commit=600";
 
-constexpr char kUserSecretStashDir[] = "user_secret_stash";
-constexpr char kUserSecretStashFile[] = "uss";
-constexpr char kAuthFactorsDir[] = "auth_factors";
+inline constexpr char kUserSecretStashDir[] = "user_secret_stash";
+inline constexpr char kUserSecretStashFile[] = "uss";
+inline constexpr char kAuthFactorsDir[] = "auth_factors";
 
 base::FilePath ShadowRoot();
 base::FilePath SystemSaltFile();
 base::FilePath PublicMountSaltFile();
 base::FilePath SkelDir();
+base::FilePath UserPath(const std::string& obfuscated);
 base::FilePath VaultKeysetPath(const std::string& obfuscated, int index);
 base::FilePath UserActivityPerIndexTimestampPath(const std::string& obfuscated,
                                                  int index);

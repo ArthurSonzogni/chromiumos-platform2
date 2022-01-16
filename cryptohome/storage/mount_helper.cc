@@ -721,8 +721,7 @@ bool MountHelper::SetUpDmcryptMount(const std::string& obfuscated_username) {
   }
 
   ignore_result(CreateVaultDirectoryStructure(
-      platform_,
-      GetDmcryptSubdirectories(ShadowRoot().Append(obfuscated_username))));
+      platform_, GetDmcryptSubdirectories(UserPath(obfuscated_username))));
 
   return true;
 }

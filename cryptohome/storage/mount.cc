@@ -222,13 +222,13 @@ MountError Mount::MountCryptohome(
   // directory to decide on the action on failure when we  move on to the next
   // phase in the cryptohome SELinux development, i.e. making cryptohome
   // enforcing.
-  if (platform_->RestoreSELinuxContexts(
-          GetUserDirectoryForUser(obfuscated_username), true /*recursive*/)) {
+  if (platform_->RestoreSELinuxContexts(UserPath(obfuscated_username),
+                                        true /*recursive*/)) {
     ReportRestoreSELinuxContextResultForHomeDir(true);
   } else {
     ReportRestoreSELinuxContextResultForHomeDir(false);
-    LOG(ERROR) << "RestoreSELinuxContexts("
-               << GetUserDirectoryForUser(obfuscated_username) << ") failed.";
+    LOG(ERROR) << "RestoreSELinuxContexts(" << UserPath(obfuscated_username)
+               << ") failed.";
   }
 
   // TODO(crbug.com/1287022): Remove in M101.
@@ -276,11 +276,6 @@ bool Mount::OwnsMountPoint(const FilePath& path) const {
   return active_mounter_ && active_mounter_->IsPathMounted(path);
 }
 
-FilePath Mount::GetUserDirectoryForUser(
-    const std::string& obfuscated_username) const {
-  return ShadowRoot().Append(obfuscated_username);
-}
-
 MountType Mount::GetMountType() const {
   if (!user_cryptohome_vault_) {
     return MountType::NONE;
@@ -322,8 +317,7 @@ bool Mount::MigrateToDircrypto(
   constexpr uint64_t kMaxChunkSize = 128 * 1024 * 1024;
   dircrypto_data_migrator::MigrationHelper migrator(
       platform_, temporary_mount, GetUserMountDirectory(obfuscated_username),
-      GetUserDirectoryForUser(obfuscated_username), kMaxChunkSize,
-      migration_type);
+      UserPath(obfuscated_username), kMaxChunkSize, migration_type);
   {  // Abort if already cancelled.
     base::AutoLock lock(active_dircrypto_migrator_lock_);
     if (is_dircrypto_migration_cancelled_)

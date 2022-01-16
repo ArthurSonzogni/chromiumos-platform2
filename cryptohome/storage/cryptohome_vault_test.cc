@@ -51,7 +51,7 @@ class CryptohomeVaultTest
       : obfuscated_username_("foo"),
         key_reference_({.fek_sig = brillo::SecureBlob("random keyref")}),
         key_({.fek = brillo::SecureBlob("random key")}),
-        backing_dir_(ShadowRoot().Append(obfuscated_username_)),
+        backing_dir_(UserPath(obfuscated_username_)),
         encrypted_container_factory_(&platform_, &keyring_) {
     ON_CALL(platform_, SetDirCryptoKey(_, _)).WillByDefault(Return(true));
   }

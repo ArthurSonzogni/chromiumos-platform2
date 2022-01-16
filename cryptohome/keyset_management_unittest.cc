@@ -157,7 +157,7 @@ class KeysetManagementTest : public ::testing::Test {
                      obfuscated,
                      passkey,
                      credentials,
-                     ShadowRoot().Append(obfuscated),
+                     UserPath(obfuscated),
                      brillo::cryptohome::home::GetHashedUserPath(obfuscated)};
     users_.push_back(info);
   }
