@@ -151,12 +151,12 @@ Methods		dict GetProperties()
 			If this method is called on a non-cellular service
 			or on a cellular service that is not being activated
 			over a non-cellular network, it will return a
-			NotSupported error.
+			NotImplemented error.
 
 			If the cellular service is already activated or being
 			activated, nothing is returned.
 
-			Possible Errors: [service].Error.NotSupported
+			Possible Errors: [service].Error.NotImplemented
 
 		dict GetLoadableProfileEntries()
 
@@ -173,14 +173,14 @@ Methods		dict GetProperties()
 		string GetWiFiPassphrase()
 
 			Return the passphrase for a given WiFi network if it
-			has one.  This will return a NotSupported error if
+			has one.  This will return a NotImplemented error if
 			called on a Service which is not WiFi, or if there is
 			no saved passphrase.  This is included as a separate
 			method instead of a property to help ensure that the
 			passphrase isn't accidentally leaked to the UI or
 			included in logs.
 
-			Possible Errors: [service].Error.NotSupported
+			Possible Errors: [service].Error.NotImplemented
 
 		string GetEapPassphrase()
 

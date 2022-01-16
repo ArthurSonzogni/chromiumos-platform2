@@ -938,9 +938,12 @@ bool WiFi::SetRandomMacEnabled(const bool& enabled, Error* error) {
     return false;
   }
   if (!random_mac_supported_) {
-    Error::PopulateAndLog(
-        FROM_HERE, error, Error::kNotSupported,
-        "This WiFi device does not support MAC address randomization");
+    const std::string message =
+        "This WiFi device does not support MAC address randomization";
+    LOG(ERROR) << message;
+    if (error) {
+      error->Populate(Error::kNotSupported, message, FROM_HERE);
+    }
     return false;
   }
   if ((enabled && supplicant_interface_proxy_->EnableMacAddressRandomization(

@@ -148,8 +148,18 @@ void Error::LogMessage(const base::Location& from_here,
                        const std::string& message) {
   std::string file_name =
       base::FilePath(from_here.file_name()).BaseName().value();
-  LOG(ERROR) << "[" << file_name << "(" << from_here.line_number()
-             << ")]: " << message;
+  std::stringstream err_msg;
+  err_msg << "[" << file_name << "(" << from_here.line_number()
+          << ")]: " << message;
+  // Since Chrome OS devices do not support certain features, errors returning
+  // kNotSupported when those features are requested are expected and should be
+  // logged as a WARNING. Prefer using the more specific kNotImplemented error
+  // for missing functionality that should be implemented.
+  if (type == Error::kNotSupported) {
+    LOG(WARNING) << err_msg.str();
+  } else {
+    LOG(ERROR) << err_msg.str();
+  }
 }
 
 // static

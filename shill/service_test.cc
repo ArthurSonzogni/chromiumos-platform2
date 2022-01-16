@@ -958,7 +958,7 @@ TEST_F(ServiceTest, UserInitiatedConnectionResult) {
 TEST_F(ServiceTest, CompleteCellularActivation) {
   Error error;
   service_->CompleteCellularActivation(&error);
-  EXPECT_EQ(Error::kNotSupported, error.type());
+  EXPECT_EQ(Error::kNotImplemented, error.type());
 }
 
 TEST_F(ServiceTest, EnableAndRetainAutoConnect) {

@@ -452,14 +452,17 @@ void Service::UserInitiatedDisconnect(const char* reason, Error* error) {
 }
 
 void Service::CompleteCellularActivation(Error* error) {
-  Error::PopulateAndLog(
-      FROM_HERE, error, Error::kNotSupported,
-      "Service doesn't support cellular activation completion.");
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotImplemented,
+                        "Service doesn't support cellular activation "
+                        "completion for technology: " +
+                            GetTechnologyString());
 }
 
 std::string Service::GetWiFiPassphrase(Error* error) {
-  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                        "Service doesn't support WiFi passphrase retrieval.");
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotImplemented,
+                        "Service doesn't support WiFi passphrase retrieval for "
+                        "technology: " +
+                            GetTechnologyString());
   return std::string();
 }
 

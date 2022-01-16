@@ -186,15 +186,17 @@ void Device::LinkEvent(unsigned flags, unsigned change) {
 void Device::Scan(Error* error, const std::string& reason) {
   SLOG(this, 2) << __func__ << " [Device] on " << link_name() << " from "
                 << reason;
-  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                        "Device doesn't support scan.");
+  Error::PopulateAndLog(
+      FROM_HERE, error, Error::kNotImplemented,
+      technology().GetName() + " device doesn't implement Scan");
 }
 
 void Device::RegisterOnNetwork(const std::string& /*network_id*/,
                                Error* error,
                                const ResultCallback& /*callback*/) {
-  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                        "Device doesn't support network registration.");
+  Error::PopulateAndLog(
+      FROM_HERE, error, Error::kNotImplemented,
+      technology().GetName() + " device doesn't implement RegisterOnNetwork");
 }
 
 void Device::RequirePin(const std::string& /*pin*/,
@@ -202,16 +204,18 @@ void Device::RequirePin(const std::string& /*pin*/,
                         Error* error,
                         const ResultCallback& /*callback*/) {
   SLOG(this, 2) << __func__;
-  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                        "Device doesn't support RequirePin.");
+  Error::PopulateAndLog(
+      FROM_HERE, error, Error::kNotImplemented,
+      technology().GetName() + " device doesn't implement RequirePin");
 }
 
 void Device::EnterPin(const std::string& /*pin*/,
                       Error* error,
                       const ResultCallback& /*callback*/) {
   SLOG(this, 2) << __func__;
-  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                        "Device doesn't support EnterPin.");
+  Error::PopulateAndLog(
+      FROM_HERE, error, Error::kNotImplemented,
+      technology().GetName() + " device doesn't implement EnterPin");
 }
 
 void Device::UnblockPin(const std::string& /*unblock_code*/,
@@ -219,8 +223,9 @@ void Device::UnblockPin(const std::string& /*unblock_code*/,
                         Error* error,
                         const ResultCallback& /*callback*/) {
   SLOG(this, 2) << __func__;
-  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                        "Device doesn't support UnblockPin.");
+  Error::PopulateAndLog(
+      FROM_HERE, error, Error::kNotImplemented,
+      technology().GetName() + " device doesn't implement UnblockPin");
 }
 
 void Device::ChangePin(const std::string& /*old_pin*/,
@@ -228,14 +233,16 @@ void Device::ChangePin(const std::string& /*old_pin*/,
                        Error* error,
                        const ResultCallback& /*callback*/) {
   SLOG(this, 2) << __func__;
-  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                        "Device doesn't support ChangePin.");
+  Error::PopulateAndLog(
+      FROM_HERE, error, Error::kNotImplemented,
+      technology().GetName() + " device doesn't implement ChangePin");
 }
 
 void Device::Reset(Error* error, const ResultCallback& /*callback*/) {
   SLOG(this, 2) << __func__;
-  Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
-                        "Device doesn't support Reset.");
+  Error::PopulateAndLog(
+      FROM_HERE, error, Error::kNotImplemented,
+      technology().GetName() + " device doesn't implement Reset");
 }
 
 void Device::RefreshIPConfig(Error* /*error*/) {
@@ -605,7 +612,8 @@ void Device::SetUsbEthernetMacAddressSource(const std::string& source,
                                             Error* error,
                                             const ResultCallback& callback) {
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotImplemented,
-                        "SetUsbEthernetMacAddressSource not implemented for " +
+                        "SetUsbEthernetMacAddressSource from source " + source +
+                            " is not implemented for " +
                             technology().GetName() + " device on " +
                             link_name_ + ".");
   return;

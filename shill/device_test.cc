@@ -899,8 +899,7 @@ TEST_F(DeviceTest, StartProhibited) {
 TEST_F(DeviceTest, Reset) {
   Error e;
   device_->Reset(&e, ResultCallback());
-  EXPECT_EQ(Error::kNotSupported, e.type());
-  EXPECT_EQ("Device doesn't support Reset.", e.message());
+  EXPECT_EQ(Error::kNotImplemented, e.type());
 }
 
 TEST_F(DeviceTest, ResumeWithIPConfig) {
