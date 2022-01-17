@@ -28,6 +28,9 @@ class LogEntryReader {
                  std::unique_ptr<LogParser> parser_in,
                  bool install_change_watcher);
 
+  LogEntryReader(const LogEntryReader&) = delete;
+  LogEntryReader& operator=(const LogEntryReader&) = delete;
+
   // Returns the parsed previous entry, or a nullopt, if the current position
   // reaches the beginning of the file.
   MaybeLogEntry GetPreviousEntry();
@@ -51,8 +54,6 @@ class LogEntryReader {
   LogLineReader line_reader_;
   MaybeLogEntry next_entry_;
   std::unique_ptr<LogParser> parser_;
-
-  DISALLOW_COPY_AND_ASSIGN(LogEntryReader);
 };
 
 }  // namespace croslog

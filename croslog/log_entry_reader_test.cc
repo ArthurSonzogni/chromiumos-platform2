@@ -15,9 +15,8 @@ namespace croslog {
 class LogEntryReaderTest : public ::testing::Test {
  public:
   LogEntryReaderTest() = default;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(LogEntryReaderTest);
+  LogEntryReaderTest(const LogEntryReaderTest&) = delete;
+  LogEntryReaderTest& operator=(const LogEntryReaderTest&) = delete;
 };
 
 TEST_F(LogEntryReaderTest, GetNextEntry) {
