@@ -192,6 +192,8 @@ class ArcVmCPUTopology {
 
   void CreateCPUAffinity();
 
+  bool IsSymmetricCPU();
+
   uint32_t NumCPUs();
   uint32_t NumRTCPUs();
   void SetNumRTCPUs(uint32_t num_rt_cpus);
@@ -209,7 +211,6 @@ class ArcVmCPUTopology {
  private:
   void CreateTopology();
   void CreateAffinity();
-  bool IsSymmetricCpu();
 
   // Total number of CPUs VM will be configured with
   uint32_t num_cpus_;

@@ -731,7 +731,7 @@ void ArcVmCPUTopology::CreateAffinity(void) {
   cpu_list.clear();
 
   // Just skip any affinity settings for a symmetric processor.
-  if (IsSymmetricCpu()) {
+  if (IsSymmetricCPU()) {
     num_cpus_ += num_rt_cpus_;
     return;
   }
@@ -807,9 +807,9 @@ void ArcVmCPUTopology::CreateTopology(void) {
 }
 
 // Check whether the host processor is symmetric.
-// TODO(kansho): Support ADL. IsSymmetricCpu() would return true even though
+// TODO(kansho): Support ADL. IsSymmetricCPU() would return true even though
 //               it's heterogeneous.
-bool ArcVmCPUTopology::IsSymmetricCpu() {
+bool ArcVmCPUTopology::IsSymmetricCPU() {
   return capacity_.size() == 1 && package_.size() == 1;
 }
 
