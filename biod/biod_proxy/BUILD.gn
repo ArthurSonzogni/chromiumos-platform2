@@ -5,7 +5,10 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":libbiod_proxy" ]
+  deps = [
+    ":install_headers",
+    ":libbiod_proxy",
+  ]
   if (use.test) {
     deps += [ ":biod_proxy_test_runner" ]
   }
@@ -32,6 +35,15 @@ pkg_config("target_defaults") {
 shared_library("libbiod_proxy") {
   sources = [ "biometrics_manager_proxy_base.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "lib"
+}
+
+install_config("install_headers") {
+  sources = [
+    "biometrics_manager_proxy_base.h",
+    "mock_biometrics_manager_proxy_base.h",
+  ]
+  install_path = "/usr/include/biod/biod_proxy/"
 }
 
 if (use.test) {
@@ -45,6 +57,7 @@ if (use.test) {
       ":libchrome_test_config",
       ":target_defaults",
     ]
+    run_test = true
     deps = [
       ":libbiod_proxy",
       "//common-mk/testrunner",
