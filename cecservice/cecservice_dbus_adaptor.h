@@ -8,7 +8,6 @@
 #include <memory>
 #include <vector>
 
-#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/dbus/dbus_object.h>
 #include <dbus/bus.h>
@@ -24,6 +23,9 @@ class CecServiceDBusAdaptor : public org::chromium::CecServiceAdaptor,
                               public org::chromium::CecServiceInterface {
  public:
   explicit CecServiceDBusAdaptor(scoped_refptr<dbus::Bus> bus);
+  CecServiceDBusAdaptor(const CecServiceDBusAdaptor&) = delete;
+  CecServiceDBusAdaptor& operator=(const CecServiceDBusAdaptor&) = delete;
+
   ~CecServiceDBusAdaptor() override;
 
   // Register the D-Bus object and interfaces.
@@ -41,8 +43,6 @@ class CecServiceDBusAdaptor : public org::chromium::CecServiceAdaptor,
   CecDeviceFactoryImpl cec_device_factory_;
   CecManager cec_;
   brillo::dbus_utils::DBusObject dbus_object_;
-
-  DISALLOW_COPY_AND_ASSIGN(CecServiceDBusAdaptor);
 };
 
 }  // namespace cecservice

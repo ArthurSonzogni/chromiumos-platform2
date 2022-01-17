@@ -39,6 +39,8 @@ class CecDeviceImpl::Impl {
   };
 
   Impl(std::unique_ptr<CecFd> fd, const base::FilePath& device_path);
+  Impl(const Impl&) = delete;
+  Impl& operator=(const Impl&) = delete;
 
   // Performs object initialization. Returns false if the initialization
   // failed and object is unusable.
@@ -208,8 +210,6 @@ class CecDeviceImpl::Impl {
   bool probe_tv_address_if_unknown_ = true;
 
   base::WeakPtrFactory<Impl> weak_factory_{this};
-
-  DISALLOW_COPY_AND_ASSIGN(Impl);
 };
 
 // Maximum size of a cec device's queue with outgoing messages, roughly
@@ -283,13 +283,13 @@ class StateBase {
 
   StateBase();
 
+  StateBase(const StateBase&) = delete;
+  StateBase& operator=(const StateBase&) = delete;
+
   virtual ~StateBase();
 
  protected:
   CecDeviceImpl::Impl* device_;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(StateBase);
 };
 
 // The state the object transitions to whenever an unrecoverable

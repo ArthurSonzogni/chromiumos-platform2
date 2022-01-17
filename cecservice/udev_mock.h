@@ -8,7 +8,6 @@
 #include <memory>
 #include <vector>
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "cecservice/udev.h"
@@ -18,24 +17,22 @@ namespace cecservice {
 class UdevMock : public Udev {
  public:
   UdevMock() = default;
+  UdevMock(const UdevMock&) = delete;
+  UdevMock& operator=(const UdevMock&) = delete;
 
   MOCK_CONST_METHOD1(EnumerateDevices, bool(std::vector<base::FilePath>*));
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(UdevMock);
 };
 
 class UdevFactoryMock : public UdevFactory {
  public:
   UdevFactoryMock() = default;
+  UdevFactoryMock(const UdevFactoryMock&) = delete;
+  UdevFactoryMock& operator=(const UdevFactoryMock&) = delete;
 
   MOCK_CONST_METHOD2(Create,
                      std::unique_ptr<Udev>(
                          const Udev::DeviceCallback& device_added_callback,
                          const Udev::DeviceCallback& device_removed_callback));
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(UdevFactoryMock);
 };
 
 }  // namespace cecservice

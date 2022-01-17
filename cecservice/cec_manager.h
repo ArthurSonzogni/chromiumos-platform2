@@ -29,6 +29,9 @@ class CecManager {
 
   CecManager(const UdevFactory& udev_factory,
              const CecDeviceFactory& cec_factory);
+  CecManager(const CecManager&) = delete;
+  CecManager& operator=(const CecManager&) = delete;
+
   ~CecManager();
 
   // Queries power status of CEC-enabled TVs (devices with logical address 0).
@@ -90,8 +93,6 @@ class CecManager {
   std::unique_ptr<Udev> udev_;
 
   base::WeakPtrFactory<CecManager> weak_factory_{this};
-
-  DISALLOW_COPY_AND_ASSIGN(CecManager);
 };
 
 }  // namespace cecservice

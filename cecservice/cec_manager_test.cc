@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "cecservice/cec_device_mock.h"
@@ -39,6 +38,9 @@ void Copy(std::vector<TvPowerStatus>* out,
 class CecManagerTest : public ::testing::Test {
  public:
   CecManagerTest();
+  CecManagerTest(const CecManagerTest&) = delete;
+  CecManagerTest& operator=(const CecManagerTest&) = delete;
+
   ~CecManagerTest() = default;
 
  protected:
@@ -47,9 +49,6 @@ class CecManagerTest : public ::testing::Test {
   Udev::DeviceCallback device_removed_callback_;
   std::unique_ptr<UdevMock> udev_mock_ = std::make_unique<UdevMock>();
   NiceMock<UdevFactoryMock> udev_factory_mock_;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(CecManagerTest);
 };
 
 CecManagerTest::CecManagerTest() {

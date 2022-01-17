@@ -10,7 +10,6 @@
 #include <memory>
 
 #include <base/callback.h>
-#include <base/macros.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
@@ -85,6 +84,9 @@ class CecFd {
 class CecFdImpl : public CecFd {
  public:
   explicit CecFdImpl(base::ScopedFD fd, base::ScopedFD epoll_fd);
+  CecFdImpl(const CecFdImpl&) = delete;
+  CecFdImpl& operator=(const CecFdImpl&) = delete;
+
   ~CecFdImpl() override;
 
   // CecFd overrides:
@@ -115,8 +117,6 @@ class CecFdImpl : public CecFd {
   Callback callback_;
 
   base::WeakPtrFactory<CecFdImpl> weak_factory_{this};
-
-  DISALLOW_COPY_AND_ASSIGN(CecFdImpl);
 };
 
 // Utility class to open files, for unit testing.
@@ -133,14 +133,14 @@ class CecFdOpener {
 class CecFdOpenerImpl : public CecFdOpener {
  public:
   CecFdOpenerImpl();
+  CecFdOpenerImpl(const CecFdOpenerImpl&) = delete;
+  CecFdOpenerImpl& operator=(const CecFdOpenerImpl&) = delete;
+
   ~CecFdOpenerImpl() override;
 
   // CecFdOpener:
   std::unique_ptr<CecFd> Open(const base::FilePath& path,
                               int flags) const override;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(CecFdOpenerImpl);
 };
 
 }  // namespace cecservice

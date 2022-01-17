@@ -13,7 +13,6 @@
 #include <base/callback.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 
 namespace cecservice {
@@ -34,6 +33,9 @@ class Udev {
 class UdevImpl : public Udev {
  public:
   UdevImpl();
+  UdevImpl(const UdevImpl&) = delete;
+  UdevImpl& operator=(const UdevImpl&) = delete;
+
   ~UdevImpl() override;
 
   // Initializes the object, configuring provided callbacks. False return value
@@ -67,8 +69,6 @@ class UdevImpl : public Udev {
   std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
 
   base::WeakPtrFactory<UdevImpl> weak_factory_{this};
-
-  DISALLOW_COPY_AND_ASSIGN(UdevImpl);
 };
 
 // Factory for udev object.
@@ -87,14 +87,15 @@ class UdevFactory {
 class UdevFactoryImpl : public UdevFactory {
  public:
   UdevFactoryImpl();
+  UdevFactoryImpl(const UdevFactoryImpl&) = delete;
+  UdevFactoryImpl& operator=(const UdevFactoryImpl&) = delete;
+
   ~UdevFactoryImpl() override;
 
   // Udev:
   std::unique_ptr<Udev> Create(
       const Udev::DeviceCallback& device_added_callback,
       const Udev::DeviceCallback& device_removed_callback) const override;
-
-  DISALLOW_COPY_AND_ASSIGN(UdevFactoryImpl);
 };
 
 }  // namespace cecservice

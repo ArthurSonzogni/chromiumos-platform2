@@ -8,7 +8,6 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
-#include <base/macros.h>
 #include <base/files/file_path.h>
 #include <gmock/gmock.h>
 
@@ -45,6 +44,9 @@ void Copy(TvPowerStatus* out, TvPowerStatus in) {
 class CecDeviceTest : public ::testing::Test {
  public:
   CecDeviceTest();
+  CecDeviceTest(const CecDeviceTest&) = delete;
+  CecDeviceTest& operator=(const CecDeviceTest&) = delete;
+
   ~CecDeviceTest() = default;
 
  protected:
@@ -85,9 +87,6 @@ class CecDeviceTest : public ::testing::Test {
   CecFdMock* cec_fd_mock_;  // owned by |device_|
   std::unique_ptr<CecDeviceImpl> device_;
   struct cec_msg sent_message_ = {};
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(CecDeviceTest);
 };
 
 CecDeviceTest::CecDeviceTest() {

@@ -17,6 +17,9 @@ namespace {
 class Daemon : public brillo::DBusServiceDaemon {
  public:
   Daemon() : DBusServiceDaemon(cecservice::kCecServiceName) {}
+  Daemon(const Daemon&) = delete;
+  Daemon& operator=(const Daemon&) = delete;
+
   ~Daemon() override = default;
 
  protected:
@@ -30,8 +33,6 @@ class Daemon : public brillo::DBusServiceDaemon {
 
  private:
   std::unique_ptr<cecservice::CecServiceDBusAdaptor> adaptor_;
-
-  DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
 
 }  // namespace

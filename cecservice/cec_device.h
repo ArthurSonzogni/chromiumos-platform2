@@ -41,6 +41,9 @@ class CecDeviceImpl : public CecDevice {
   class Impl;
 
   CecDeviceImpl(std::unique_ptr<CecFd> fd, const base::FilePath& device_path);
+  CecDeviceImpl(const CecDeviceImpl&) = delete;
+  CecDeviceImpl& operator=(const CecDeviceImpl&) = delete;
+
   ~CecDeviceImpl() override;
 
   // Performs object initialization. Returns false if the initialization
@@ -55,8 +58,6 @@ class CecDeviceImpl : public CecDevice {
  private:
   // Actual implementation.
   std::unique_ptr<Impl> impl_;
-
-  DISALLOW_COPY_AND_ASSIGN(CecDeviceImpl);
 };
 
 // Factory creating CEC device handlers.
@@ -74,6 +75,9 @@ class CecDeviceFactory {
 class CecDeviceFactoryImpl : public CecDeviceFactory {
  public:
   explicit CecDeviceFactoryImpl(const CecFdOpener* cec_fd_opener);
+  CecDeviceFactoryImpl(const CecDeviceFactoryImpl&) = delete;
+  CecDeviceFactoryImpl& operator=(const CecDeviceFactoryImpl&) = delete;
+
   ~CecDeviceFactoryImpl() override;
 
   // CecDeviceFactory overrides.
@@ -81,8 +85,6 @@ class CecDeviceFactoryImpl : public CecDeviceFactory {
 
  private:
   const CecFdOpener* cec_fd_opener_;
-
-  DISALLOW_COPY_AND_ASSIGN(CecDeviceFactoryImpl);
 };
 
 }  // namespace cecservice
