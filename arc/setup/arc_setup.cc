@@ -1855,12 +1855,19 @@ void ArcSetup::MountSharedAndroidDirectories() {
   // the shared mount point because the new flags won't be propagated if the
   // mount point has already been shared with the MS_SLAVE one.
   EXIT_IF(!arc_mounter_->BindMount(data_directory, data_directory));
+
+  // TODO(b/213625515): Investigate if this mount can be made
+  // NO_EXEC, and if we can mount /data directory from inside the
+  // container as EXEC.
   EXIT_IF(
       !arc_mounter_->Remount(data_directory, MS_NOSUID | MS_NODEV, "seclabel"));
 
   // Finally, bind-mount /data to the shared mount point.
   EXIT_IF(!arc_mounter_->Mount(data_directory.value(), shared_data_directory,
                                nullptr, MS_BIND, nullptr));
+  // Remount the mount point of original data directory as non-executable.
+  EXIT_IF(!arc_mounter_->Remount(data_directory,
+                                 MS_NOSUID | MS_NODEV | MS_NOEXEC, "seclabel"));
 
   const std::string demo_session_apps =
       config_.GetStringOrDie("DEMO_SESSION_APPS_PATH");
