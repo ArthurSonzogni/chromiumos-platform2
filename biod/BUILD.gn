@@ -11,6 +11,9 @@ group("all") {
     ":bio_wash",
     ":biod",
     ":biod_client_tool",
+    ":install_init",
+    ":install_policy",
+    ":install_systemd",
     ":libbiod",
   ]
   if (use.test) {
@@ -86,6 +89,7 @@ static_library("fake_libbiod") {
 executable("biod") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   deps = [ ":libbiod" ]
 }
 
@@ -95,25 +99,56 @@ executable("bio_crypto_init") {
     "tools/bio_crypto_init_main.cc",
   ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   deps = [ ":libbiod" ]
 }
 
 executable("bio_wash") {
   sources = [ "tools/bio_wash.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   deps = [ ":libbiod" ]
 }
 
 executable("biod_client_tool") {
   sources = [ "tools/biod_client_tool.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "/usr/local/bin"
   libs = [ "biod_proxy" ]
 }
 
 executable("bio_fw_updater") {
   sources = [ "tools/bio_fw_updater.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "sbin"
   deps = [ ":libbiod" ]
+}
+
+install_config("install_policy") {
+  _seccomp_src_dir = "init/seccomp"
+  _arch = getenv("ARCH")
+  sources = [
+    "${_seccomp_src_dir}/bio-crypto-init-seccomp-${_arch}.policy",
+    "${_seccomp_src_dir}/biod-seccomp-${_arch}.policy",
+  ]
+  install_path = "/usr/share/policy"
+  outputs = [
+    "bio-crypto-init-seccomp.policy",
+    "biod-seccomp.policy",
+  ]
+}
+
+install_config("install_init") {
+  sources = [
+    "init/bio_crypto_init.conf",
+    "init/biod.conf",
+  ]
+  install_path = "/etc/init"
+}
+
+install_config("install_systemd") {
+  sources = [ "dbus/org.chromium.BiometricsDaemon.conf" ]
+  install_path = "/etc/dbus-1/system.d"
 }
 
 if (use.test) {
@@ -142,6 +177,7 @@ if (use.test) {
       ":libchrome_test_config",
       ":target_defaults",
     ]
+    run_test = true
     deps = [
       ":fake_libbiod",
       ":libbiod",
