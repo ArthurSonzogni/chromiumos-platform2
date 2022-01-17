@@ -730,12 +730,6 @@ void ArcVmCPUTopology::CreateAffinity(void) {
   non_rt_cpu_mask_ = base::JoinString(cpu_list, ",");
   cpu_list.clear();
 
-  // Just skip any affinity settings for a symmetric processor.
-  if (IsSymmetricCPU()) {
-    num_cpus_ += num_rt_cpus_;
-    return;
-  }
-
   // Try to group VCPUs based on physical CPUs topology.
   if (package_.size() > 1) {
     for (const auto& pkg : package_) {

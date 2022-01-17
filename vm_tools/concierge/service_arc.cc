@@ -207,11 +207,13 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   // By default we don't request any RT CPUs
   ArcVmCPUTopology topology(request.cpus(), 0);
 
-  if (request.enable_rt_vcpu()) {
-    // We create only 1 RT VCPU for the time being
+  // We create only 1 RT VCPU for the time being
+  if (request.enable_rt_vcpu())
     topology.SetNumRTCPUs(1);
-    topology.CreateCPUAffinity();
 
+  topology.CreateCPUAffinity();
+
+  if (request.enable_rt_vcpu()) {
     params.emplace_back("isolcpus=" + topology.RTCPUMask());
     params.emplace_back("androidboot.rtcpus=" + topology.RTCPUMask());
     params.emplace_back("androidboot.non_rtcpus=" + topology.NonRTCPUMask());
@@ -234,15 +236,17 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
 
   if (request.enable_rt_vcpu()) {
     vm_builder.AppendCustomParam("--rt-cpus", topology.RTCPUMask());
-    if (!topology.AffinityMask().empty())
-      vm_builder.AppendCustomParam("--cpu-affinity", topology.AffinityMask());
   }
 
-  if (!topology.CapacityMask().empty()) {
+  if (!topology.IsSymmetricCPU() && !topology.AffinityMask().empty()) {
+    vm_builder.AppendCustomParam("--cpu-affinity", topology.AffinityMask());
+  }
+
+  if (!topology.IsSymmetricCPU() && !topology.CapacityMask().empty()) {
     vm_builder.AppendCustomParam("--cpu-capacity", topology.CapacityMask());
   }
 
-  if (!topology.PackageMask().empty()) {
+  if (!topology.IsSymmetricCPU() && !topology.PackageMask().empty()) {
     for (auto& package : topology.PackageMask()) {
       vm_builder.AppendCustomParam("--cpu-cluster", package);
     }

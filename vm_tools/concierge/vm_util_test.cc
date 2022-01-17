@@ -259,6 +259,7 @@ TEST(VMUtilTest, CreateArcVMAffinityTwoGroups) {
   EXPECT_EQ(topology.NumRTCPUs(), 1);
   EXPECT_EQ(topology.RTCPUMask(), "4");
   EXPECT_EQ(topology.NonRTCPUMask(), "0,1,2,3");
+  EXPECT_FALSE(topology.IsSymmetricCPU());
   EXPECT_EQ(topology.AffinityMask(), "0=0,1:1=0,1:4=0,1:2=2,3:3=2,3");
   EXPECT_EQ(topology.CapacityMask(), "0=42,1=42,2=128,3=128,4=42");
 
@@ -310,7 +311,7 @@ TEST(VMUtilTest, CreateArcVMAffinityOnePackageOneCapacity) {
   EXPECT_EQ(topology.NumRTCPUs(), 1);
   EXPECT_EQ(topology.RTCPUMask(), "4");
   EXPECT_EQ(topology.NonRTCPUMask(), "0,1,2,3");
-  EXPECT_TRUE(topology.AffinityMask().empty());
+  EXPECT_TRUE(topology.IsSymmetricCPU());
   EXPECT_EQ(topology.CapacityMask(), "0=42,1=42,2=42,3=42,4=42");
 
   auto& package = topology.PackageMask();
@@ -336,6 +337,7 @@ TEST(VMUtilTest, CreateArcVMAffinityTwoCapacityClustersReverse) {
   EXPECT_EQ(topology.NumRTCPUs(), 1);
   EXPECT_EQ(topology.RTCPUMask(), "4");
   EXPECT_EQ(topology.NonRTCPUMask(), "0,1,2,3");
+  EXPECT_FALSE(topology.IsSymmetricCPU());
   EXPECT_EQ(topology.AffinityMask(), "2=2,3:3=2,3:4=2,3:0=0,1:1=0,1");
   EXPECT_EQ(topology.CapacityMask(), "2=42,3=42,0=128,1=128,4=42");
 
@@ -362,7 +364,7 @@ TEST(VMUtilTest, CreateArcVMAffinityOneCapacityCluster) {
   EXPECT_EQ(topology.NumRTCPUs(), 1);
   EXPECT_EQ(topology.RTCPUMask(), "4");
   EXPECT_EQ(topology.NonRTCPUMask(), "0,1,2,3");
-  EXPECT_TRUE(topology.AffinityMask().empty());
+  EXPECT_TRUE(topology.IsSymmetricCPU());
   EXPECT_EQ(topology.CapacityMask(), "0=42,1=42,2=42,3=42,4=42");
 
   auto& package = topology.PackageMask();
@@ -387,7 +389,7 @@ TEST(VMUtilTest, CreateArcVMAffinityOneCapacityClusterNoRT) {
   ASSERT_EQ(topology.RTCPUMask().size(), 0);
   EXPECT_EQ(topology.NumCPUs(), 4);
   EXPECT_EQ(topology.NumRTCPUs(), 0);
-  EXPECT_TRUE(topology.AffinityMask().empty());
+  EXPECT_TRUE(topology.IsSymmetricCPU());
   EXPECT_EQ(topology.CapacityMask(), "0=42,1=42,2=42,3=42");
 
   auto& package = topology.PackageMask();
@@ -409,7 +411,7 @@ TEST(VMUtilTest, CreateArcVMAffinitySMP2Core) {
   EXPECT_EQ(topology.NumRTCPUs(), 1);
   ASSERT_EQ(topology.RTCPUMask(), "2");
   EXPECT_EQ(topology.NonRTCPUMask(), "0,1");
-  EXPECT_TRUE(topology.AffinityMask().empty());
+  EXPECT_TRUE(topology.IsSymmetricCPU());
 
   auto& package = topology.PackageMask();
   ASSERT_EQ(package.size(), 1);
@@ -433,7 +435,7 @@ TEST(VMUtilTest, CreateArcVMAffinitySMP4Core) {
   EXPECT_EQ(topology.NumRTCPUs(), 1);
   ASSERT_EQ(topology.RTCPUMask(), "4");
   EXPECT_EQ(topology.NonRTCPUMask(), "0,1,2,3");
-  EXPECT_TRUE(topology.AffinityMask().empty());
+  EXPECT_TRUE(topology.IsSymmetricCPU());
 
   auto& package = topology.PackageMask();
   ASSERT_EQ(package.size(), 1);
