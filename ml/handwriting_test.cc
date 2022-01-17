@@ -4,6 +4,7 @@
 
 #include <fstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -94,6 +95,25 @@ TEST(HandwritingLibraryTest, ExampleRequest) {
     }
     instance->DestroyHandwritingRecognizer(recognizer);
   }
+}
+
+TEST(HandwritingLibraryTest, LanguagePacksWrongPath) {
+  // Nothing to test on an unsupported platform.
+  if (!ml::HandwritingLibrary::IsHandwritingLibraryUnitTestSupported() ||
+      !ml::HandwritingLibrary::IsUseLanguagePacksEnabled()) {
+    return;
+  }
+
+  auto* const instance = ml::HandwritingLibrary::GetInstance();
+  ASSERT_EQ(instance->GetStatus(), ml::HandwritingLibrary::Status::kOk);
+  const HandwritingRecognizer recognizer =
+      instance->CreateHandwritingRecognizer();
+
+  // /tmp is a legit folder but it's not a valid path for a Language Pack.
+  const std::string temp_dir = "/tmp";
+  auto wrong_path_spec = HandwritingRecognizerSpec::New("es", temp_dir);
+  EXPECT_FALSE(instance->LoadHandwritingRecognizer(recognizer,
+                                                   std::move(wrong_path_spec)));
 }
 
 }  // namespace ml
