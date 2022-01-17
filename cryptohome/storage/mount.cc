@@ -243,7 +243,7 @@ MountError Mount::MountCryptohome(
 bool Mount::UnmountCryptohome() {
   // There should be no file access when unmounting.
   // Stop dircrypto migration if in progress.
-  MaybeCancelActiveDircryptoMigrationAndWait();
+  MaybeCancelMigrateEncryptionAndWait();
 
   active_mounter_->UnmountAll();
 
@@ -305,7 +305,7 @@ std::string Mount::GetMountTypeString() const {
   return "";
 }
 
-bool Mount::MigrateToDircrypto(
+bool Mount::MigrateEncryption(
     const dircrypto_data_migrator::MigrationHelper::ProgressCallback& callback,
     MigrationType migration_type) {
   std::string obfuscated_username = SanitizeUserName(username_);
@@ -351,7 +351,7 @@ bool Mount::MigrateToDircrypto(
   return true;
 }
 
-void Mount::MaybeCancelActiveDircryptoMigrationAndWait() {
+void Mount::MaybeCancelMigrateEncryptionAndWait() {
   base::AutoLock lock(active_dircrypto_migrator_lock_);
   is_dircrypto_migration_cancelled_ = true;
   while (active_dircrypto_migrator_) {

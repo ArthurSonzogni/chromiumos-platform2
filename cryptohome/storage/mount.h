@@ -110,18 +110,18 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Returns true if this Mount instances owns the mount path.
   virtual bool OwnsMountPoint(const base::FilePath& path) const;
 
-  // Migrates the data from eCryptfs to dircrypto.
+  // Migrates the vault's encryption type.
   // Call MountCryptohome with to_migrate_from_ecryptfs beforehand.
   // If |migration_type| is MINIMAL, no progress reporting will be done and only
   // allowlisted paths will be migrated.
-  virtual bool MigrateToDircrypto(
+  virtual bool MigrateEncryption(
       const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
           callback,
       MigrationType migration_type);
 
-  // Cancels the active dircrypto migration if there is, and wait for it to
+  // Cancels the active encryption migration if there is, and wait for it to
   // stop.
-  void MaybeCancelActiveDircryptoMigrationAndWait();
+  void MaybeCancelMigrateEncryptionAndWait();
 
  private:
   // Gets the directory to mount the user's ephemeral cryptohome at.

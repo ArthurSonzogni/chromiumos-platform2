@@ -2318,7 +2318,7 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoValidity) {
 
   SetupMount(kUsername1);
 
-  EXPECT_CALL(*mount_, MigrateToDircrypto(_, MigrationType::FULL))
+  EXPECT_CALL(*mount_, MigrateEncryption(_, MigrationType::FULL))
       .WillOnce(Return(true));
 
   int success_cnt = 0;
@@ -2365,7 +2365,7 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoFailure) {
   // Test MigrateToDircrypto failed
   SetupMount(kUsername1);
 
-  EXPECT_CALL(*mount_, MigrateToDircrypto(_, MigrationType::FULL))
+  EXPECT_CALL(*mount_, MigrateEncryption(_, MigrationType::FULL))
       .WillOnce(Return(false));
 
   call_cnt = 0;

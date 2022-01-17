@@ -62,7 +62,7 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
       const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
           callback,
       MigrationType migration_type) {
-    return mount_->MigrateToDircrypto(callback, migration_type);
+    return mount_->MigrateEncryption(callback, migration_type);
   }
 
   // Mounts disk backed vault for the given username with the supplied file

@@ -37,7 +37,7 @@ class MockMount : public Mount {
 
   MOCK_METHOD(
       bool,
-      MigrateToDircrypto,
+      MigrateEncryption,
       (const dircrypto_data_migrator::MigrationHelper::ProgressCallback&,
        MigrationType),
       (override));

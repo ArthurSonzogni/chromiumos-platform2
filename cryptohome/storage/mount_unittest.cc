@@ -1111,7 +1111,7 @@ TEST_F(PersistentSystemTest, EcryptfsMigration) {
   ASSERT_THAT(new_mount->MountCryptohome(kUser, keyset, options),
               MOUNT_ERROR_NONE);
 
-  ASSERT_TRUE(new_mount->MigrateToDircrypto(
+  ASSERT_TRUE(new_mount->MigrateEncryption(
       base::BindRepeating(
           [](const user_data_auth::DircryptoMigrationProgress& unused) {}),
       MigrationType::FULL));
