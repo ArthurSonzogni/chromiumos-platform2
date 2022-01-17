@@ -519,7 +519,10 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MetricsFailed) {
   state.set_allocated_repair_complete(repair_complete.release());
 
   auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_TRANSITION_FAILED);
+  // Structured metrics recording is expected to fail as current library does
+  // not support recording locally without user consent. We shouldn't let it
+  // block the flow until the library actually supports it.
+  EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
   EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
   EXPECT_FALSE(reboot_called);
   EXPECT_FALSE(shutdown_called);
@@ -527,9 +530,14 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MetricsFailed) {
   EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
   EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
 
-  // Check that the state file hasn't been cleared. Should not be cleared before
-  // recording metrics.
-  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+  // Check that the state file is cleared.
+  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+
+  // Cutoff and reboot are called after a delay.
+  task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
+  EXPECT_TRUE(reboot_called);
+  EXPECT_FALSE(shutdown_called);
+  EXPECT_TRUE(base::PathExists(GetCutoffRequestFilePath()));
 }
 
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_JsonFailed) {

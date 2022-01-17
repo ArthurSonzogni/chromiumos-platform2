@@ -104,7 +104,7 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
     // TODO(chenghan): Check if powerwash is successful.
     if (!metrics_utils_->Record(json_store_, true)) {
       LOG(ERROR) << "RepairCompleteState: Failed to record metrics to the file";
-      return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
+      // TODO(genechang): We should block here if the metrics library is ready.
     }
 
     if (!json_store_->ClearAndDeleteFile()) {
