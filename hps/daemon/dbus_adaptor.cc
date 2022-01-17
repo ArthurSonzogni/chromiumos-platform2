@@ -5,6 +5,7 @@
 #include "hps/daemon/dbus_adaptor.h"
 
 #include <utility>
+#include <vector>
 
 #include <base/location.h>
 #include <brillo/errors/error.h>
@@ -15,6 +16,21 @@
 namespace hps {
 
 constexpr char kErrorPath[] = "org.chromium.Hps.GetFeatureResultError";
+
+namespace {
+
+std::vector<uint8_t> HpsResultToSerializedBytes(HpsResult result) {
+  HpsResultProto result_proto;
+  result_proto.set_value(result);
+
+  std::vector<uint8_t> serialized;
+  serialized.resize(result_proto.ByteSizeLong());
+  result_proto.SerializeToArray(serialized.data(),
+                                static_cast<int>(serialized.size()));
+  return serialized;
+}
+
+}  // namespace
 
 DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus,
                          std::unique_ptr<HPS> hps,
@@ -112,7 +128,12 @@ bool DBusAdaptor::EnableHpsSense(brillo::ErrorPtr* error,
 
 bool DBusAdaptor::DisableHpsSense(brillo::ErrorPtr* error) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return DisableFeature(error, 0);
+  if (DisableFeature(error, 0)) {
+    DBusAdaptor::SendHpsSenseChangedSignal(
+        HpsResultToSerializedBytes(HpsResult::UNKNOWN));
+    return true;
+  }
+  return false;
 }
 
 bool DBusAdaptor::GetResultHpsSense(brillo::ErrorPtr* error,
@@ -132,7 +153,12 @@ bool DBusAdaptor::EnableHpsNotify(brillo::ErrorPtr* error,
 
 bool DBusAdaptor::DisableHpsNotify(brillo::ErrorPtr* error) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return DisableFeature(error, 1);
+  if (DisableFeature(error, 1)) {
+    DBusAdaptor::SendHpsNotifyChangedSignal(
+        HpsResultToSerializedBytes(HpsResult::UNKNOWN));
+    return true;
+  }
+  return false;
 }
 
 bool DBusAdaptor::GetResultHpsNotify(brillo::ErrorPtr* error,
