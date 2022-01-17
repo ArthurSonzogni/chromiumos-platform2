@@ -42,6 +42,18 @@ mode_t MakeStatModeBits(mode_t mode, bool read_only) {
   return mode;
 }
 
+struct stat MakeTimeStat(mode_t mode, time_t time) {
+  CHECK(IsAllowedStatMode(mode));
+
+  struct stat stat = {0};
+  stat.st_mode = mode;
+  stat.st_atime = time;
+  stat.st_mtime = time;
+  stat.st_ctime = time;
+
+  return stat;
+}
+
 struct stat MakeStat(ino_t ino, const struct stat& s, bool read_only) {
   CHECK(IsAllowedStatMode(s.st_mode));
 

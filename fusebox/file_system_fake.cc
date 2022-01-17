@@ -47,28 +47,24 @@ FileSystemFake::~FileSystemFake() = default;
 
 void FileSystemFake::Init(void* userdata, struct fuse_conn_info*) {
   LOG(INFO) << "Init";
-  CHECK(userdata);
+
+  // File system root node parent: assume `pwd`.
+  struct stat parent;
+  CHECK_EQ(0, stat(".", &parent));
 
   const auto time_now = std::time(nullptr);
   const bool read_only = true;
-  struct stat parent;  // parent node: assume `pwd`.
-  CHECK_EQ(0, stat(".", &parent));
-
-  struct stat stat = {0};
-  stat.st_atime = time_now;
-  stat.st_mtime = time_now;
-  stat.st_ctime = time_now;
 
   Node* root = GetInodeTable().Lookup(1);
-  stat.st_mode = S_IFDIR | 0777;
-  auto root_stat = MakeStat(root->ino, stat, read_only);
+  struct stat root_stat = MakeTimeStat(S_IFDIR | 0777, time_now);
+  root_stat = MakeStat(root->ino, root_stat, read_only);
   GetInodeTable().SetStat(root->ino, root_stat);
   ShowStat(root_stat, root->name);
 
   Node* hello = GetInodeTable().Create(1, "hello");
-  stat.st_mode = S_IFREG | 0777;
-  stat.st_size = strlen("hello\r\n");
-  auto hello_stat = MakeStat(hello->ino, stat, read_only);
+  struct stat hello_stat = MakeTimeStat(S_IFREG | 0777, time_now);
+  hello_stat.st_size = strlen("hello\r\n");
+  hello_stat = MakeStat(hello->ino, hello_stat, read_only);
   GetInodeTable().SetStat(hello->ino, hello_stat);
   ShowStat(hello_stat, hello->name);
 
@@ -76,6 +72,8 @@ void FileSystemFake::Init(void* userdata, struct fuse_conn_info*) {
   entry.push_back({root->ino, ".", root_stat.st_mode});
   entry.push_back({parent.st_ino, "..", parent.st_mode});
   entry.push_back({hello->ino, "hello", hello_stat.st_mode});
+
+  CHECK(userdata) << "FileSystem (userdata) is required";
 }
 
 void FileSystemFake::Lookup(std::unique_ptr<EntryRequest> request,

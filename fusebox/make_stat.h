@@ -7,6 +7,7 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <string>
@@ -26,6 +27,9 @@ bool IsAllowedStatMode(mode_t mode, mode_t allowed = S_IFREG | S_IFDIR);
 
 // Returns |mode| with synthesized permission bits.
 mode_t MakeStatModeBits(mode_t mode, bool read_only = false);
+
+// Returns stat with .st_mode |mode| and time fields set to |time|.
+struct stat MakeTimeStat(mode_t mode, time_t time = std::time(nullptr));
 
 // Returns an inode |ino| stat with synthesized permission bits.
 struct stat MakeStat(ino_t ino, const struct stat& s, bool read_only = false);
