@@ -13,9 +13,11 @@ enum class MountType {
   NONE,                    // Not mounted.
   ECRYPTFS,                // Encrypted with ecryptfs.
   DIR_CRYPTO,              // Encrypted with dircrypto.
-  ECRYPTFS_TO_DIR_CRYPTO,  // Vault migration.
   DMCRYPT,                 // Encrypted with dmcrypt over a logical volume.
   EPHEMERAL,               // Ephemeral mount.
+  ECRYPTFS_TO_DIR_CRYPTO,  // Vault migration.
+  ECRYPTFS_TO_DMCRYPT,     // Vault migration.
+  DIR_CRYPTO_TO_DMCRYPT,   // Vault migration.
 };
 
 // Paths to sparse file for ephemeral mounts.

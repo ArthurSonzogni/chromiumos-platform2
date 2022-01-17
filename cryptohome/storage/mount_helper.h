@@ -85,7 +85,8 @@ class MountHelper : public MountHelperInterface {
   //
   // Parameters
   //   obfuscated_username - The obfuscated form of the username
-  bool MountCacheSubdirectories(const std::string& obfuscated_username);
+  bool MountCacheSubdirectories(const std::string& obfuscated_username,
+                                const base::FilePath& data_directory);
 
   // Sets up the ecryptfs mount.
   bool SetUpEcryptfsMount(const std::string& obfuscated_username,
@@ -97,7 +98,8 @@ class MountHelper : public MountHelperInterface {
   void SetUpDircryptoMount(const std::string& obfuscated_username);
 
   // Sets up the dm-crypt mount.
-  bool SetUpDmcryptMount(const std::string& obfuscated_username);
+  bool SetUpDmcryptMount(const std::string& obfuscated_username,
+                         const base::FilePath& data_mount_point);
 
   // Carries out eCryptfs/dircrypto mount(2) operations for a regular
   // cryptohome.

@@ -634,9 +634,9 @@ bool MountHelper::MountHomesAndDaemonStores(
 }
 
 bool MountHelper::MountCacheSubdirectories(
-    const std::string& obfuscated_username) {
+    const std::string& obfuscated_username,
+    const base::FilePath& data_directory) {
   FilePath cache_directory = GetDmcryptUserCacheDirectory(obfuscated_username);
-  FilePath data_directory = GetUserMountDirectory(obfuscated_username);
 
   const FilePath tracked_subdir_paths[] = {
       FilePath(kUserHomeSuffix).Append(kCacheDir),
@@ -694,13 +694,13 @@ void MountHelper::SetUpDircryptoMount(const std::string& obfuscated_username) {
       SetTrackingXattr(platform_, GetCommonSubdirectories(mount_point)));
 }
 
-bool MountHelper::SetUpDmcryptMount(const std::string& obfuscated_username) {
+bool MountHelper::SetUpDmcryptMount(const std::string& obfuscated_username,
+                                    const base::FilePath& data_mount_point) {
   const FilePath dmcrypt_data_volume =
       GetDmcryptDataVolume(obfuscated_username);
   const FilePath dmcrypt_cache_volume =
       GetDmcryptCacheVolume(obfuscated_username);
 
-  const FilePath data_mount_point = GetUserMountDirectory(obfuscated_username);
   const FilePath cache_mount_point =
       GetDmcryptUserCacheDirectory(obfuscated_username);
 
@@ -762,11 +762,39 @@ MountError MountHelper::PerformMount(MountType mount_type,
       }
       SetUpDircryptoMount(obfuscated_username);
       return MOUNT_ERROR_NONE;
+    case MountType::ECRYPTFS_TO_DMCRYPT:
+      if (!SetUpEcryptfsMount(
+              obfuscated_username, fek_signature, fnek_signature,
+              GetUserTemporaryMountDirectory(obfuscated_username))) {
+        return MOUNT_ERROR_MOUNT_ECRYPTFS_FAILED;
+      }
+      if (!SetUpDmcryptMount(obfuscated_username,
+                             GetUserMountDirectory(obfuscated_username)) ||
+          !MountCacheSubdirectories(
+              obfuscated_username,
+              GetUserMountDirectory(obfuscated_username))) {
+        LOG(ERROR) << "Dm-crypt mount failed";
+        return MOUNT_ERROR_MOUNT_DMCRYPT_FAILED;
+      }
+      return MOUNT_ERROR_NONE;
     case MountType::DIR_CRYPTO:
       SetUpDircryptoMount(obfuscated_username);
       break;
+    case MountType::DIR_CRYPTO_TO_DMCRYPT:
+      SetUpDircryptoMount(obfuscated_username);
+      if (!SetUpDmcryptMount(
+              obfuscated_username,
+              GetUserTemporaryMountDirectory(obfuscated_username)) ||
+          !MountCacheSubdirectories(
+              obfuscated_username,
+              GetUserTemporaryMountDirectory(obfuscated_username))) {
+        LOG(ERROR) << "Dm-crypt mount failed";
+        return MOUNT_ERROR_MOUNT_DMCRYPT_FAILED;
+      }
+      return MOUNT_ERROR_NONE;
     case MountType::DMCRYPT:
-      if (!SetUpDmcryptMount(obfuscated_username)) {
+      if (!SetUpDmcryptMount(obfuscated_username,
+                             GetUserMountDirectory(obfuscated_username))) {
         LOG(ERROR) << "Dm-crypt mount failed";
         return MOUNT_ERROR_MOUNT_DMCRYPT_FAILED;
       }
@@ -793,7 +821,8 @@ MountError MountHelper::PerformMount(MountType mount_type,
   // issues. Figure out how to make it propagate properly to move to the switch
   // above.
   if (mount_type == MountType::DMCRYPT &&
-      !MountCacheSubdirectories(obfuscated_username)) {
+      !MountCacheSubdirectories(obfuscated_username,
+                                GetUserMountDirectory(obfuscated_username))) {
     LOG(ERROR)
         << "Failed to mount tracked subdirectories from the cache volume";
     return MOUNT_ERROR_MOUNT_DMCRYPT_FAILED;

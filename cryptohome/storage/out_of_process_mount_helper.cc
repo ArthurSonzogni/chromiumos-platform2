@@ -97,15 +97,19 @@ std::map<cryptohome::MountType, cryptohome::OutOfProcessMountRequest_MountType>
         // Encrypted with dircrypto.
         {cryptohome::MountType::DIR_CRYPTO,
          cryptohome::OutOfProcessMountRequest_MountType_DIR_CRYPTO},
-        // Vault Migration.
-        {cryptohome::MountType::ECRYPTFS_TO_DIR_CRYPTO,
-         cryptohome::OutOfProcessMountRequest_MountType_ECRYPTFS_TO_DIR_CRYPTO},
-        // Ephemeral mount.
-        {cryptohome::MountType::EPHEMERAL,
-         cryptohome::OutOfProcessMountRequest_MountType_EPHEMERAL},
         // Encrypted with dmcrpyt.
         {cryptohome::MountType::DMCRYPT,
          cryptohome::OutOfProcessMountRequest_MountType_DMCRYPT},
+        // Ephemeral mount.
+        {cryptohome::MountType::EPHEMERAL,
+         cryptohome::OutOfProcessMountRequest_MountType_EPHEMERAL},
+        // Vault Migration.
+        {cryptohome::MountType::ECRYPTFS_TO_DIR_CRYPTO,
+         cryptohome::OutOfProcessMountRequest_MountType_ECRYPTFS_TO_DIR_CRYPTO},
+        {cryptohome::MountType::ECRYPTFS_TO_DMCRYPT,
+         cryptohome::OutOfProcessMountRequest_MountType_ECRYPTFS_TO_DMCRYPT},
+        {cryptohome::MountType::DIR_CRYPTO_TO_DMCRYPT,
+         cryptohome::OutOfProcessMountRequest_MountType_DIR_CRYPTO_TO_DMCRYPT},
 };
 
 }  // namespace

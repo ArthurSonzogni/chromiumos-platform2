@@ -141,11 +141,19 @@ MountType CryptohomeVault::GetMountType() {
   EncryptedContainerType type = container_->GetType();
   switch (type) {
     case EncryptedContainerType::kEcryptfs:
-      if (migrating_container_) {
+      if (migrating_container_ &&
+          migrating_container_->GetType() == EncryptedContainerType::kFscrypt) {
         return MountType::ECRYPTFS_TO_DIR_CRYPTO;
+      }
+      if (migrating_container_ &&
+          migrating_container_->GetType() == EncryptedContainerType::kDmcrypt) {
+        return MountType::ECRYPTFS_TO_DMCRYPT;
       }
       return MountType::ECRYPTFS;
     case EncryptedContainerType::kFscrypt:
+      if (migrating_container_) {
+        return MountType::DIR_CRYPTO_TO_DMCRYPT;
+      }
       return MountType::DIR_CRYPTO;
     case EncryptedContainerType::kDmcrypt:
       return MountType::DMCRYPT;

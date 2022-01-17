@@ -18,12 +18,16 @@ message OutOfProcessMountRequest {
     ECRYPTFS = 1;
     // Encrypted with dircrypto.
     DIR_CRYPTO = 2;
-    // Vault Migration.
-    ECRYPTFS_TO_DIR_CRYPTO = 3;
     // Encrypted with dmcrypt.
-    DMCRYPT = 4;
+    DMCRYPT = 3;
     // Ephemeral mount.
-    EPHEMERAL = 5;
+    EPHEMERAL = 4;
+    // Vault Migration ECRYPTFS->DIRCRYPTO.
+    ECRYPTFS_TO_DIR_CRYPTO = 5;
+    // Vault Migration ECRYPTFS->DMCRYPT.
+    ECRYPTFS_TO_DMCRYPT = 6;
+    // Vault Migration DIRCRYPTO->DMCRYPT.
+    DIR_CRYPTO_TO_DMCRYPT = 7;
   }
   // Username used in login.
   string username = 1;

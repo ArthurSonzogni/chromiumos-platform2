@@ -293,6 +293,10 @@ std::string Mount::GetMountTypeString() const {
       return "dircrypto";
     case MountType::ECRYPTFS_TO_DIR_CRYPTO:
       return "ecryptfs-to-dircrypto";
+    case MountType::ECRYPTFS_TO_DMCRYPT:
+      return "ecryptfs-to-dmcrypt";
+    case MountType::DIR_CRYPTO_TO_DMCRYPT:
+      return "dircrypto-to-dmcrypt";
     case MountType::EPHEMERAL:
       return "ephemeral";
     case MountType::DMCRYPT:
