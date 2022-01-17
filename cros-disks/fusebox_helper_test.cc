@@ -83,7 +83,7 @@ TEST_F(FuseBoxHelperTest, CreateMounter) {
   std::string arguments;
   auto source = kFuseBoxSource.value();
   EXPECT_EQ(MOUNT_ERROR_NONE, ConfigureSandbox(source, {}, &arguments));
-  EXPECT_EQ("--uid=1000 --gid=1001", arguments);
+  EXPECT_EQ("-o uid=1000,gid=1001", arguments);
 }
 
 TEST_F(FuseBoxHelperTest, CreateMounterWithOptions) {
@@ -93,7 +93,7 @@ TEST_F(FuseBoxHelperTest, CreateMounterWithOptions) {
   std::string arguments;
   auto source = kFuseBoxSource.value();
   EXPECT_EQ(MOUNT_ERROR_NONE, ConfigureSandbox(source, options, &arguments));
-  std::string expected = options[0].append(" --uid=1000 --gid=1001");
+  std::string expected = options[0].append(" -o uid=1000,gid=1001");
   EXPECT_EQ(expected, arguments);
 }
 

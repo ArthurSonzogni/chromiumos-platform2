@@ -90,8 +90,18 @@ MountErrorType FuseBoxHelper::ConfigureSandbox(
   for (const auto& parameter : params)
     sandbox->AddArgument(parameter);
 
-  sandbox->AddArgument("--uid=" + base::NumberToString(kChronosUID));
-  sandbox->AddArgument("--gid=" + base::NumberToString(kChronosAccessGID));
+  std::vector<std::string> options;
+  SetParamValue(&options, "uid", base::NumberToString(kChronosUID));
+  SetParamValue(&options, "gid", base::NumberToString(kChronosAccessGID));
+
+  std::string lib_fuse_options;
+  if (!JoinParamsIntoOptions(options, &lib_fuse_options)) {
+    LOG(ERROR) << "Invalid fusebox libFUSE options";
+    return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+  }
+
+  sandbox->AddArgument("-o");
+  sandbox->AddArgument(lib_fuse_options);
 
   return MOUNT_ERROR_NONE;
 }
