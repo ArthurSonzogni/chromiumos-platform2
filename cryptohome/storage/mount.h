@@ -159,6 +159,21 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   base::FilePath GetMountedEphemeralRootHomePath(
       const std::string& obfuscated_username) const;
 
+  bool MigrateFromEcryptfs(
+      const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
+          callback,
+      MigrationType migration_type);
+
+  bool MigrateFromDircrypto(
+      const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
+          callback,
+      MigrationType migration_type);
+
+  bool PerformMigration(
+      const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
+          callback,
+      std::unique_ptr<dircrypto_data_migrator::MigrationHelper> migrator);
+
   // A special of UnmountCryptohome to be called from the migration path.
   void UnmountCryptohomeFromMigration();
 

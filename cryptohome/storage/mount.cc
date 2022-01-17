@@ -53,6 +53,7 @@ using brillo::cryptohome::home::GetUserPath;
 using brillo::cryptohome::home::IsSanitizedUserName;
 using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
+using cryptohome::dircrypto_data_migrator::MigrationHelper;
 
 namespace {
 constexpr bool __attribute__((unused)) MountUserSessionOOP() {
@@ -305,31 +306,98 @@ std::string Mount::GetMountTypeString() const {
   return "";
 }
 
-bool Mount::MigrateEncryption(
-    const dircrypto_data_migrator::MigrationHelper::ProgressCallback& callback,
+bool Mount::MigrateEncryption(const MigrationHelper::ProgressCallback& callback,
+                              MigrationType migration_type) {
+  if (!IsMounted()) {
+    LOG(ERROR) << "Not mounted.";
+    return false;
+  }
+  auto mount_type = GetMountType();
+  if (mount_type == MountType::ECRYPTFS_TO_DIR_CRYPTO ||
+      mount_type == MountType::ECRYPTFS_TO_DMCRYPT) {
+    return MigrateFromEcryptfs(callback, migration_type);
+  }
+  if (mount_type == MountType::DIR_CRYPTO_TO_DMCRYPT) {
+    return MigrateFromDircrypto(callback, migration_type);
+  }
+  LOG(ERROR) << "Not mounted for migration.";
+  return false;
+}
+
+bool Mount::MigrateFromEcryptfs(
+    const MigrationHelper::ProgressCallback& callback,
     MigrationType migration_type) {
   std::string obfuscated_username = SanitizeUserName(username_);
-  FilePath temporary_mount =
-      GetUserTemporaryMountDirectory(obfuscated_username);
-  if (!IsMounted() || GetMountType() != MountType::ECRYPTFS_TO_DIR_CRYPTO ||
-      !platform_->DirectoryExists(temporary_mount) ||
-      !OwnsMountPoint(temporary_mount)) {
-    LOG(ERROR) << "Not mounted for eCryptfs->dircrypto migration.";
+  FilePath source = GetUserTemporaryMountDirectory(obfuscated_username);
+  FilePath destination = GetUserMountDirectory(obfuscated_username);
+
+  if (!platform_->DirectoryExists(source) || !OwnsMountPoint(source)) {
+    LOG(ERROR) << "Unexpected ecryptfs source state.";
     return false;
   }
   // Do migration.
   constexpr uint64_t kMaxChunkSize = 128 * 1024 * 1024;
-  dircrypto_data_migrator::MigrationHelper migrator(
-      platform_, temporary_mount, GetUserMountDirectory(obfuscated_username),
-      UserPath(obfuscated_username), kMaxChunkSize, migration_type);
+  if (!PerformMigration(callback, std::make_unique<MigrationHelper>(
+                                      platform_, source, destination,
+                                      UserPath(obfuscated_username),
+                                      kMaxChunkSize, migration_type))) {
+    return false;
+  }
+
+  // Clean up.
+  FilePath vault_path = GetEcryptfsUserVaultPath(obfuscated_username);
+  if (!platform_->DeletePathRecursively(source) ||
+      !platform_->DeletePathRecursively(vault_path)) {
+    LOG(ERROR) << "Failed to delete the old vault.";
+    return false;
+  }
+
+  return true;
+}
+
+bool Mount::MigrateFromDircrypto(
+    const MigrationHelper::ProgressCallback& callback,
+    MigrationType migration_type) {
+  std::string obfuscated_username = SanitizeUserName(username_);
+  FilePath source = GetUserMountDirectory(obfuscated_username);
+  FilePath destination = GetUserTemporaryMountDirectory(obfuscated_username);
+
+  if (!platform_->DirectoryExists(destination) ||
+      !OwnsMountPoint(destination)) {
+    LOG(ERROR) << "Unexpected dmcrypt destination state.";
+    return false;
+  }
+  // Do migration.
+  constexpr uint64_t kMaxChunkSize = 128 * 1024 * 1024;
+  if (!PerformMigration(callback, std::make_unique<MigrationHelper>(
+                                      platform_, source, destination,
+                                      UserPath(obfuscated_username),
+                                      kMaxChunkSize, migration_type))) {
+    return false;
+  }
+
+  // Clean up, in case of dircrypto source is the vault path, and destination
+  // is a temp mount point.
+  FilePath vault_path = GetEcryptfsUserVaultPath(obfuscated_username);
+  if (!platform_->DeletePathRecursively(source) ||
+      !platform_->DeletePathRecursively(destination)) {
+    LOG(ERROR) << "Failed to delete the old vault.";
+    return false;
+  }
+
+  return true;
+}
+
+bool Mount::PerformMigration(const MigrationHelper::ProgressCallback& callback,
+                             std::unique_ptr<MigrationHelper> migrator) {
   {  // Abort if already cancelled.
     base::AutoLock lock(active_dircrypto_migrator_lock_);
     if (is_dircrypto_migration_cancelled_)
       return false;
     CHECK(!active_dircrypto_migrator_);
-    active_dircrypto_migrator_ = &migrator;
+    active_dircrypto_migrator_ = migrator.get();
   }
-  bool success = migrator.Migrate(callback);
+  bool success = migrator->Migrate(callback);
 
   UnmountCryptohomeFromMigration();
   {  // Signal the waiting thread.
@@ -339,13 +407,6 @@ bool Mount::MigrateEncryption(
   }
   if (!success) {
     LOG(ERROR) << "Failed to migrate.";
-    return false;
-  }
-  // Clean up.
-  FilePath vault_path = GetEcryptfsUserVaultPath(obfuscated_username);
-  if (!platform_->DeletePathRecursively(temporary_mount) ||
-      !platform_->DeletePathRecursively(vault_path)) {
-    LOG(ERROR) << "Failed to delete the old vault.";
     return false;
   }
   return true;
