@@ -5,16 +5,24 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_MANAGER_H_
 #define CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_MANAGER_H_
 
+#include <map>
 #include <string>
 
 #include "cryptohome/auth_factor/auth_factor.h"
+#include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/platform.h"
 
 namespace cryptohome {
 
 // Manages the persistently stored auth factors.
+//
+// The basic assumption is that each factor has a unique label (among all
+// factors configured for a given user).
 class AuthFactorManager final {
  public:
+  // Mapping between auth factor label and type.
+  using LabelToTypeMap = std::map<std::string, AuthFactorType>;
+
   // `platform` is an unowned pointer that must outlive this object.
   explicit AuthFactorManager(Platform* platform);
 
@@ -27,6 +35,9 @@ class AuthFactorManager final {
   // vault.
   bool SaveAuthFactor(const std::string& obfuscated_username,
                       const AuthFactor& auth_factor);
+
+  // Loads the list of configured auth factors from the user's data vault.
+  LabelToTypeMap ListAuthFactors(const std::string& obfuscated_username);
 
  private:
   // Unowned pointer that must outlive this object.

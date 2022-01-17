@@ -6,10 +6,12 @@
 
 #include <sys/stat.h>
 
+#include <memory>
 #include <string>
 #include <utility>
 
 #include <absl/types/variant.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/check.h>
 #include <base/logging.h>
@@ -51,6 +53,18 @@ std::string GetAuthFactorTypeString(AuthFactorType type) {
     }
   }
   return std::string();
+}
+
+// Converts the auth factor type string into an enum. Returns a null optional
+// if the string is unknown.
+base::Optional<AuthFactorType> GetAuthFactorTypeFromString(
+    const std::string& type_string) {
+  for (const auto& type_and_string : kAuthFactorTypeStrings) {
+    if (type_and_string.second == type_string) {
+      return type_and_string.first;
+    }
+  }
+  return base::nullopt;
 }
 
 // Serializes the password metadata into the given flatbuffer builder. Returns
@@ -163,6 +177,68 @@ bool AuthFactorManager::SaveAuthFactor(const std::string& obfuscated_username,
   }
 
   return true;
+}
+
+AuthFactorManager::LabelToTypeMap AuthFactorManager::ListAuthFactors(
+    const std::string& obfuscated_username) {
+  LabelToTypeMap label_to_type_map;
+
+  std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
+      AuthFactorsDirPath(obfuscated_username), /*recursive=*/false,
+      base::FileEnumerator::FILES));
+  base::FilePath next_path;
+  while (!(next_path = file_enumerator->Next()).empty()) {
+    const base::FilePath base_name = next_path.BaseName();
+
+    if (!base_name.RemoveFinalExtension().FinalExtension().empty()) {
+      // Silently ignore files that have multiple extensions; to note, a
+      // legitimate case of such files is the checksum file
+      // ("<type>.<label>.sum").
+      continue;
+    }
+
+    // Parse and sanitize the type.
+    const std::string auth_factor_type_string =
+        base_name.RemoveExtension().value();
+    const base::Optional<AuthFactorType> auth_factor_type =
+        GetAuthFactorTypeFromString(auth_factor_type_string);
+    if (!auth_factor_type.has_value()) {
+      LOG(WARNING) << "Unknown auth factor type: file name = "
+                   << base_name.value();
+      continue;
+    }
+
+    // Parse and sanitize the label. Note that `FilePath::Extension()` returns a
+    // string with a leading dot.
+    const std::string extension = base_name.Extension();
+    if (extension.length() <= 1 ||
+        extension[0] != base::FilePath::kExtensionSeparator) {
+      LOG(WARNING) << "Missing auth factor label: file name = "
+                   << base_name.value();
+      continue;
+    }
+    const std::string auth_factor_label = extension.substr(1);
+    if (!IsValidAuthFactorLabel(auth_factor_label)) {
+      LOG(WARNING) << "Invalid auth factor label: file name = "
+                   << base_name.value();
+      continue;
+    }
+
+    // Check for label clashes.
+    if (label_to_type_map.count(auth_factor_label)) {
+      const AuthFactorType previous_type = label_to_type_map[auth_factor_label];
+      LOG(WARNING) << "Ignoring duplicate auth factor: label = "
+                   << auth_factor_label << " type = " << auth_factor_type_string
+                   << " previous type = "
+                   << GetAuthFactorTypeString(previous_type);
+      continue;
+    }
+
+    // All checks passed - add the factor.
+    label_to_type_map.insert({auth_factor_label, auth_factor_type.value()});
+  }
+
+  return label_to_type_map;
 }
 
 }  // namespace cryptohome

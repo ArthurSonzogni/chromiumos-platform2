@@ -17,6 +17,9 @@
 #include "cryptohome/mock_platform.h"
 
 using brillo::SecureBlob;
+using testing::ElementsAre;
+using testing::IsEmpty;
+using testing::Pair;
 
 namespace cryptohome {
 
@@ -96,5 +99,125 @@ TEST_F(AuthFactorManagerTest, SaveBadMalformedLabel) {
   EXPECT_FALSE(auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername,
                                                    bad_auth_factor));
 }
+
+// Test that `ListAuthFactors()` returns an empty map when there's no auth
+// factor added.
+TEST_F(AuthFactorManagerTest, ListEmpty) {
+  AuthFactorManager::LabelToTypeMap factor_map =
+      auth_factor_manager_.ListAuthFactors(kObfuscatedUsername);
+  EXPECT_THAT(factor_map, IsEmpty());
+}
+
+// Test that `ListAuthFactors()` returns the auth factor that was added.
+TEST_F(AuthFactorManagerTest, ListSingle) {
+  // Create the auth factor file.
+  std::unique_ptr<AuthFactor> auth_factor = CreatePasswordAuthFactor();
+  EXPECT_TRUE(
+      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, *auth_factor));
+
+  // Verify the factor is listed.
+  AuthFactorManager::LabelToTypeMap factor_map =
+      auth_factor_manager_.ListAuthFactors(kObfuscatedUsername);
+  EXPECT_THAT(factor_map,
+              ElementsAre(Pair(kSomeIdpLabel, AuthFactorType::kPassword)));
+}
+
+// Test that `ListAuthFactors()` ignores an auth factor without a file name
+// extension (and hence without a label).
+TEST_F(AuthFactorManagerTest, ListBadNoExtension) {
+  // Create files with correct and malformed names.
+  platform_.WriteFile(AuthFactorsDirPath(kObfuscatedUsername)
+                          .Append("password")
+                          .AddExtension(kSomeIdpLabel),
+                      /*blob=*/{});
+  platform_.WriteFile(
+      AuthFactorsDirPath(kObfuscatedUsername).Append("password"), /*blob=*/{});
+
+  // Verify the malformed file is ignored, and the good one is still listed.
+  AuthFactorManager::LabelToTypeMap factor_map =
+      auth_factor_manager_.ListAuthFactors(kObfuscatedUsername);
+  EXPECT_THAT(factor_map,
+              ElementsAre(Pair(kSomeIdpLabel, AuthFactorType::kPassword)));
+}
+
+// Test that `ListAuthFactors()` ignores an auth factor with an empty file name
+// extension (and hence without a label).
+TEST_F(AuthFactorManagerTest, ListBadEmptyExtension) {
+  // Create files with correct and malformed names.
+  platform_.WriteFile(AuthFactorsDirPath(kObfuscatedUsername)
+                          .Append("password")
+                          .AddExtension(kSomeIdpLabel),
+                      /*blob=*/{});
+  platform_.WriteFile(
+      AuthFactorsDirPath(kObfuscatedUsername).Append("password."), /*blob=*/{});
+
+  // Verify the malformed file is ignored, and the good one is still listed.
+  AuthFactorManager::LabelToTypeMap factor_map =
+      auth_factor_manager_.ListAuthFactors(kObfuscatedUsername);
+  EXPECT_THAT(factor_map,
+              ElementsAre(Pair(kSomeIdpLabel, AuthFactorType::kPassword)));
+}
+
+// Test that `ListAuthFactors()` ignores an auth factor with multiple file name
+// extensions (and hence with an incorrect label).
+TEST_F(AuthFactorManagerTest, ListBadMultipleExtensions) {
+  // Create files with correct and malformed names.
+  platform_.WriteFile(AuthFactorsDirPath(kObfuscatedUsername)
+                          .Append("password")
+                          .AddExtension(kSomeIdpLabel),
+                      /*blob=*/{});
+  platform_.WriteFile(
+      AuthFactorsDirPath(kObfuscatedUsername).Append("password.label.garbage"),
+      /*blob=*/{});
+  platform_.WriteFile(
+      AuthFactorsDirPath(kObfuscatedUsername).Append("password.tar.gz"),
+      /*blob=*/{});
+
+  // Verify the malformed files are ignored, and the good one is still listed.
+  AuthFactorManager::LabelToTypeMap factor_map =
+      auth_factor_manager_.ListAuthFactors(kObfuscatedUsername);
+  EXPECT_THAT(factor_map,
+              ElementsAre(Pair(kSomeIdpLabel, AuthFactorType::kPassword)));
+}
+
+// Test that `ListAuthFactors()` ignores an auth factor with the file name
+// consisting of just an extension (and hence without a factor type).
+TEST_F(AuthFactorManagerTest, ListBadEmptyType) {
+  // Create files with correct and malformed names.
+  platform_.WriteFile(AuthFactorsDirPath(kObfuscatedUsername)
+                          .Append("password")
+                          .AddExtension(kSomeIdpLabel),
+                      /*blob=*/{});
+  platform_.WriteFile(AuthFactorsDirPath(kObfuscatedUsername).Append(".label"),
+                      /*blob=*/{});
+
+  // Verify the malformed file is ignored, and the good one is still listed.
+  AuthFactorManager::LabelToTypeMap factor_map =
+      auth_factor_manager_.ListAuthFactors(kObfuscatedUsername);
+  EXPECT_THAT(factor_map,
+              ElementsAre(Pair(kSomeIdpLabel, AuthFactorType::kPassword)));
+}
+
+// Test that `ListAuthFactors()` ignores an auth factor whose file name has a
+// garbage instead of the factor type.
+TEST_F(AuthFactorManagerTest, ListBadUnknownType) {
+  // Create files with correct and malformed names.
+  platform_.WriteFile(AuthFactorsDirPath(kObfuscatedUsername)
+                          .Append("password")
+                          .AddExtension(kSomeIdpLabel),
+                      /*blob=*/{});
+  platform_.WriteFile(
+      AuthFactorsDirPath(kObfuscatedUsername).Append("fancytype.label"),
+      /*blob=*/{});
+
+  // Verify the malformed file is ignored, and the good one is still listed.
+  AuthFactorManager::LabelToTypeMap factor_map =
+      auth_factor_manager_.ListAuthFactors(kObfuscatedUsername);
+  EXPECT_THAT(factor_map,
+              ElementsAre(Pair(kSomeIdpLabel, AuthFactorType::kPassword)));
+}
+
+// TODO(b:208348570): Test clash of labels once more than one factor type is
+// supported by AuthFactorManager.
 
 }  // namespace cryptohome
