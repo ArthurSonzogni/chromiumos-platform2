@@ -22,6 +22,10 @@ class Camera3CallbackOpsDelegate
   explicit Camera3CallbackOpsDelegate(
       scoped_refptr<base::SingleThreadTaskRunner> task_runner);
 
+  Camera3CallbackOpsDelegate(const Camera3CallbackOpsDelegate&) = delete;
+  Camera3CallbackOpsDelegate& operator=(const Camera3CallbackOpsDelegate&) =
+      delete;
+
   ~Camera3CallbackOpsDelegate() = default;
 
   void ProcessCaptureResult(mojom::Camera3CaptureResultPtr result);
@@ -32,8 +36,6 @@ class Camera3CallbackOpsDelegate
   void ProcessCaptureResultOnThread(mojom::Camera3CaptureResultPtr result);
 
   void NotifyOnThread(mojom::Camera3NotifyMsgPtr msg);
-
-  DISALLOW_IMPLICIT_CONSTRUCTORS(Camera3CallbackOpsDelegate);
 };
 
 }  // end of namespace cros

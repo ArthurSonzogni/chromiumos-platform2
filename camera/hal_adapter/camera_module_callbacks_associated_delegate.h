@@ -19,6 +19,11 @@ class CameraModuleCallbacksAssociatedDelegate
   CameraModuleCallbacksAssociatedDelegate(
       scoped_refptr<base::SingleThreadTaskRunner> task_runner);
 
+  CameraModuleCallbacksAssociatedDelegate(
+      const CameraModuleCallbacksAssociatedDelegate&) = delete;
+  CameraModuleCallbacksAssociatedDelegate& operator=(
+      const CameraModuleCallbacksAssociatedDelegate&) = delete;
+
   ~CameraModuleCallbacksAssociatedDelegate() = default;
 
   void CameraDeviceStatusChange(int camera_id, int new_status);
@@ -35,8 +40,6 @@ class CameraModuleCallbacksAssociatedDelegate
                                      base::OnceClosure callback);
 
   cros::CancellationRelay relay_;
-
-  DISALLOW_IMPLICIT_CONSTRUCTORS(CameraModuleCallbacksAssociatedDelegate);
 };
 
 }  // namespace cros

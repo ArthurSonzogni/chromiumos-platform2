@@ -23,6 +23,9 @@ class Camera3DeviceOpsDelegate final
       CameraDeviceAdapter* camera_device_adapter,
       scoped_refptr<base::SingleThreadTaskRunner> task_runner);
 
+  Camera3DeviceOpsDelegate(const Camera3DeviceOpsDelegate&) = delete;
+  Camera3DeviceOpsDelegate& operator=(const Camera3DeviceOpsDelegate&) = delete;
+
   ~Camera3DeviceOpsDelegate();
 
  private:
@@ -61,8 +64,6 @@ class Camera3DeviceOpsDelegate final
       ConfigureStreamsAndGetAllocatedBuffersCallback callback) final;
 
   CameraDeviceAdapter* camera_device_adapter_;
-
-  DISALLOW_IMPLICIT_CONSTRUCTORS(Camera3DeviceOpsDelegate);
 };
 
 }  // namespace cros

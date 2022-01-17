@@ -63,6 +63,9 @@ class CameraHalAdapter {
                    CameraMojoChannelManagerToken* token,
                    CameraActivityCallback activity_callback);
 
+  CameraHalAdapter(const CameraHalAdapter&) = delete;
+  CameraHalAdapter& operator=(const CameraHalAdapter&) = delete;
+
   virtual ~CameraHalAdapter();
 
   // Starts the camera HAL adapter.  This method must be called before calling
@@ -280,8 +283,6 @@ class CameraHalAdapter {
   CameraMojoChannelManagerToken* mojo_manager_token_;
 
   CameraActivityCallback activity_callback_;
-
-  DISALLOW_IMPLICIT_CONSTRUCTORS(CameraHalAdapter);
 };
 
 }  // namespace cros

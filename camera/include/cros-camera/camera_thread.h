@@ -24,6 +24,9 @@ class CROS_CAMERA_EXPORT CameraThread {
  public:
   explicit CameraThread(std::string name) : thread_(name) {}
 
+  CameraThread(const CameraThread&) = delete;
+  CameraThread& operator=(const CameraThread&) = delete;
+
   // Starts the thread. Returns true if the thread was successfully started.
   bool Start() {
     if (!thread_.Start()) {
@@ -139,8 +142,6 @@ class CROS_CAMERA_EXPORT CameraThread {
   }
 
   base::Thread thread_;
-
-  DISALLOW_IMPLICIT_CONSTRUCTORS(CameraThread);
 };
 
 }  // namespace cros

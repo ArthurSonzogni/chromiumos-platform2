@@ -20,6 +20,9 @@ class VendorTagOpsDelegate final
   VendorTagOpsDelegate(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
                        vendor_tag_ops_t* ops);
 
+  VendorTagOpsDelegate(const VendorTagOpsDelegate&) = delete;
+  VendorTagOpsDelegate& operator=(const VendorTagOpsDelegate&) = delete;
+
   ~VendorTagOpsDelegate() = default;
 
  private:
@@ -34,8 +37,6 @@ class VendorTagOpsDelegate final
   void GetTagType(uint32_t tag, GetTagTypeCallback callback);
 
   vendor_tag_ops_t* vendor_tag_ops_;
-
-  DISALLOW_IMPLICIT_CONSTRUCTORS(VendorTagOpsDelegate);
 };
 
 }  // namespace cros

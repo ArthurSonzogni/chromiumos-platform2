@@ -16,15 +16,15 @@ class Camera3PreviewFixture : public testing::Test {
   explicit Camera3PreviewFixture(std::vector<int> cam_ids)
       : cam_service_(cam_ids) {}
 
+  Camera3PreviewFixture(const Camera3PreviewFixture&) = delete;
+  Camera3PreviewFixture& operator=(const Camera3PreviewFixture&) = delete;
+
   void SetUp() override;
 
   void TearDown() override;
 
  protected:
   Camera3Service cam_service_;
-
- private:
-  DISALLOW_IMPLICIT_CONSTRUCTORS(Camera3PreviewFixture);
 };
 
 }  // namespace camera3_test

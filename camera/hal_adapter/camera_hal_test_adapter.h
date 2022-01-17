@@ -29,6 +29,9 @@ class CameraHalTestAdapter : public CameraHalAdapter {
       bool enable_back,
       bool enable_external);
 
+  CameraHalTestAdapter(const CameraHalTestAdapter&) = delete;
+  CameraHalTestAdapter& operator=(const CameraHalTestAdapter&) = delete;
+
   ~CameraHalTestAdapter() override {}
 
   int32_t OpenDevice(
@@ -67,8 +70,6 @@ class CameraHalTestAdapter : public CameraHalAdapter {
   base::Optional<int32_t> GetRemappedCameraId(int camera_id);
 
   base::Optional<int32_t> GetUnRemappedCameraId(int camera_id);
-
-  DISALLOW_IMPLICIT_CONSTRUCTORS(CameraHalTestAdapter);
 };
 
 }  // namespace cros

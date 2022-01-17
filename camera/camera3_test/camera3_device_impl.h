@@ -30,6 +30,9 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
  public:
   explicit Camera3DeviceImpl(int cam_id);
 
+  Camera3DeviceImpl(const Camera3DeviceImpl&) = delete;
+  Camera3DeviceImpl& operator=(const Camera3DeviceImpl&) = delete;
+
   int Initialize(Camera3Module* cam_module);
 
   void RegisterProcessCaptureResultCallback(
@@ -260,8 +263,6 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
       process_result_metadata_output_buffers_cb_;
 
   Camera3Device::ProcessPartialMetadataCallback process_partial_metadata_cb_;
-
-  DISALLOW_IMPLICIT_CONSTRUCTORS(Camera3DeviceImpl);
 };
 
 }  // namespace camera3_test

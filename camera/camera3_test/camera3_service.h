@@ -40,6 +40,9 @@ class Camera3Service {
   explicit Camera3Service(std::vector<int> cam_ids)
       : cam_ids_(cam_ids), initialized_(false) {}
 
+  Camera3Service(const Camera3Service&) = delete;
+  Camera3Service& operator=(const Camera3Service&) = delete;
+
   ~Camera3Service();
 
   typedef base::Callback<void(int cam_id,
@@ -130,8 +133,6 @@ class Camera3Service {
   class Camera3DeviceService;
   std::unordered_map<int, std::unique_ptr<Camera3DeviceService>>
       cam_dev_service_map_;
-
-  DISALLOW_IMPLICIT_CONSTRUCTORS(Camera3Service);
 };
 
 class Camera3Service::Camera3DeviceService {
@@ -151,6 +152,9 @@ class Camera3Service::Camera3DeviceService {
         number_of_in_flight_requests_(0),
         still_capture_metadata_(nullptr),
         recording_metadata_(nullptr) {}
+
+  Camera3DeviceService(const Camera3DeviceService&) = delete;
+  Camera3DeviceService& operator=(const Camera3DeviceService&) = delete;
 
   int Initialize();
 
@@ -321,8 +325,6 @@ class Camera3Service::Camera3DeviceService {
   std::list<MetadataListener> metadata_listener_list_;
 
   sem_t preview_frame_sem_;
-
-  DISALLOW_IMPLICIT_CONSTRUCTORS(Camera3DeviceService);
 };
 
 }  // namespace camera3_test

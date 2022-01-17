@@ -141,6 +141,9 @@ class Camera3Device::StaticInfo {
  public:
   explicit StaticInfo(const camera_info& cam_info);
 
+  StaticInfo(const StaticInfo&) = delete;
+  StaticInfo& operator=(const StaticInfo&) = delete;
+
   // Determine whether or not all the keys are available
   bool IsKeyAvailable(uint32_t tag) const;
   bool AreKeysAvailable(std::vector<uint32_t> tags) const;
@@ -282,8 +285,6 @@ class Camera3Device::StaticInfo {
   void GetStreamConfigEntry(camera_metadata_ro_entry_t* entry) const;
 
   const camera_metadata_t* characteristics_;
-
-  DISALLOW_IMPLICIT_CONSTRUCTORS(StaticInfo);
 };
 
 }  // namespace camera3_test

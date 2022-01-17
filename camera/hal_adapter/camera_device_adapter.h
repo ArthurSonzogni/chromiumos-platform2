@@ -88,6 +88,9 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
       base::OnceCallback<void()> close_callback,
       std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators);
 
+  CameraDeviceAdapter(const CameraDeviceAdapter&) = delete;
+  CameraDeviceAdapter& operator=(const CameraDeviceAdapter&) = delete;
+
   ~CameraDeviceAdapter();
 
   using HasReprocessEffectVendorTagCallback =
@@ -334,8 +337,6 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   CameraMonitor capture_result_monitor_;
 
   std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators_;
-
-  DISALLOW_IMPLICIT_CONSTRUCTORS(CameraDeviceAdapter);
 };
 
 }  // namespace cros

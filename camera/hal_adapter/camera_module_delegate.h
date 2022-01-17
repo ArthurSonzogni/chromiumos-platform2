@@ -23,6 +23,9 @@ class CameraModuleDelegate final
                        scoped_refptr<base::SingleThreadTaskRunner> task_runner,
                        mojom::CameraClientType camera_client_type);
 
+  CameraModuleDelegate(const CameraModuleDelegate&) = delete;
+  CameraModuleDelegate& operator=(const CameraModuleDelegate&) = delete;
+
   ~CameraModuleDelegate();
 
  private:
@@ -55,8 +58,6 @@ class CameraModuleDelegate final
 
   CameraHalAdapter* camera_hal_adapter_;
   mojom::CameraClientType camera_client_type_;
-
-  DISALLOW_IMPLICIT_CONSTRUCTORS(CameraModuleDelegate);
 };
 
 }  // namespace cros
