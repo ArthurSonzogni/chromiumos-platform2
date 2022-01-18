@@ -91,7 +91,7 @@ if [ -w "${DRM_TRACEFS_BUF_SIZE}" ]; then
 fi
 
 mkdir -p "${UI_LOG_DIR}"
-ln -sf ui.$(date +%Y%m%d-%H%M%S) "${UI_LOG_DIR}/${UI_LOG_FILE}"
+ln -sf ui.$(date --utc +%Y%m%d-%H%M%S) "${UI_LOG_DIR}/${UI_LOG_FILE}"
 
 mkdir -p "${CONTAINER_ROOT_DIR}"
 
