@@ -45,7 +45,9 @@ static flatbuffers::Offset<TpmBoundToPcrState> ToFlatBufferOffset(
 
   // Construction of the flatbuffer.
   TpmBoundToPcrStateBuilder tpm_buffer_builder(*builder);
-  tpm_buffer_builder.add_scrypt_derived(tpm_state->scrypt_derived);
+  if (tpm_state->scrypt_derived.has_value()) {
+    tpm_buffer_builder.add_scrypt_derived(tpm_state->scrypt_derived.value());
+  }
   tpm_buffer_builder.add_salt(salt_vector);
   tpm_buffer_builder.add_tpm_key(tpm_key_vector);
   tpm_buffer_builder.add_extended_tpm_key(extended_tpm_key_vector);

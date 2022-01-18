@@ -23,8 +23,12 @@ SignatureSealedData_Tpm2PolicySignedData ToProto(
   SignatureSealedData_Tpm2PolicySignedData result;
   result.set_public_key_spki_der(BlobToString(obj.public_key_spki_der));
   result.set_srk_wrapped_secret(BlobToString(obj.srk_wrapped_secret));
-  result.set_scheme(obj.scheme);
-  result.set_hash_alg(obj.hash_alg);
+  if (obj.scheme.has_value()) {
+    result.set_scheme(obj.scheme.value());
+  }
+  if (obj.hash_alg.has_value()) {
+    result.set_hash_alg(obj.hash_alg.value());
+  }
 
   // Special conversion for backwards-compatibility.
   // Note: The order of items added here is important, as it must match the
@@ -58,8 +62,12 @@ structure::Tpm2PolicySignedData FromProto(
   structure::Tpm2PolicySignedData result;
   result.public_key_spki_der = BlobFromString(obj.public_key_spki_der());
   result.srk_wrapped_secret = BlobFromString(obj.srk_wrapped_secret());
-  result.scheme = obj.scheme();
-  result.hash_alg = obj.hash_alg();
+  if (obj.has_scheme()) {
+    result.scheme = obj.scheme();
+  }
+  if (obj.has_hash_alg()) {
+    result.hash_alg = obj.hash_alg();
+  }
 
   // Special conversion for backwards-compatibility.
   if (obj.pcr_restrictions_size() == 2) {
@@ -190,7 +198,10 @@ SerializedVaultKeyset_SignatureChallengeInfo ToProto(
   result.set_public_key_spki_der(BlobToString(obj.public_key_spki_der));
   *result.mutable_sealed_secret() = ToProto(obj.sealed_secret);
   result.set_salt(BlobToString(obj.salt));
-  result.set_salt_signature_algorithm(ToProto(obj.salt_signature_algorithm));
+  if (obj.salt_signature_algorithm.has_value()) {
+    result.set_salt_signature_algorithm(
+        ToProto(obj.salt_signature_algorithm.value()));
+  }
   return result;
 }
 
@@ -200,7 +211,9 @@ structure::SignatureChallengeInfo FromProto(
   result.public_key_spki_der = BlobFromString(obj.public_key_spki_der());
   result.sealed_secret = FromProto(obj.sealed_secret());
   result.salt = BlobFromString(obj.salt());
-  result.salt_signature_algorithm = FromProto(obj.salt_signature_algorithm());
+  if (obj.has_salt_signature_algorithm()) {
+    result.salt_signature_algorithm = FromProto(obj.salt_signature_algorithm());
+  }
   return result;
 }
 

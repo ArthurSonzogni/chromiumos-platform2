@@ -167,7 +167,11 @@ CryptoError TpmBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
     return CryptoError::CE_OTHER_CRYPTO;
   }
 
-  if (!tpm_state->scrypt_derived) {
+  if (!tpm_state->scrypt_derived.has_value()) {
+    LOG(ERROR) << "Invalid TpmBoundToPcrAuthBlockState: missing scrypt_derived";
+    return CryptoError::CE_OTHER_CRYPTO;
+  }
+  if (!tpm_state->scrypt_derived.value()) {
     LOG(ERROR) << "All TpmBoundtoPcr operations should be scrypt derived.";
     return CryptoError::CE_OTHER_CRYPTO;
   }

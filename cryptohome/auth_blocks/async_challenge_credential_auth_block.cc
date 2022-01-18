@@ -157,11 +157,20 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
     return;
   }
 
+  const structure::SignatureChallengeInfo& keyset_challenge_info =
+      cc_state->keyset_challenge_info.value();
+  if (!keyset_challenge_info.salt_signature_algorithm.has_value()) {
+    LOG(ERROR)
+        << __func__
+        << "No signature algorithm info in challenge credential AuthBlock.";
+    std::move(callback).Run(CryptoError::CE_OTHER_CRYPTO, nullptr);
+    return;
+  }
+
   structure::ChallengePublicKeyInfo public_key_info{
-      .public_key_spki_der =
-          cc_state->keyset_challenge_info.value().public_key_spki_der,
+      .public_key_spki_der = keyset_challenge_info.public_key_spki_der,
       .signature_algorithm =
-          {cc_state->keyset_challenge_info.value().salt_signature_algorithm},
+          {keyset_challenge_info.salt_signature_algorithm.value()},
   };
 
   AuthBlockState scrypt_state = {.state = cc_state->scrypt_state};

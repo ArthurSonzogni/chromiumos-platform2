@@ -60,6 +60,11 @@ CryptoError TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
     LOG(ERROR) << "Invalid TpmNotBoundToPcrAuthBlockState: missing tpm_key";
     return CryptoError::CE_OTHER_CRYPTO;
   }
+  if (!tpm_state->scrypt_derived.has_value()) {
+    LOG(ERROR)
+        << "Invalid TpmNotBoundToPcrAuthBlockState: missing scrypt_derived";
+    return CryptoError::CE_OTHER_CRYPTO;
+  }
 
   brillo::SecureBlob tpm_public_key_hash;
   if (tpm_state->tpm_public_key_hash.has_value()) {
@@ -187,7 +192,7 @@ CryptoError TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
                             : kDefaultLegacyPasswordRounds;
 
   // TODO(b/204200132): check if this branch is unnecessary.
-  if (tpm_state.scrypt_derived) {
+  if (tpm_state.scrypt_derived.value()) {
     if (!DeriveSecretsScrypt(vault_key, salt, {&aes_skey, &kdf_skey, vkk_iv})) {
       return CryptoError::CE_OTHER_FATAL;
     }
@@ -220,7 +225,7 @@ CryptoError TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
   }
 
   // TODO(b/204200132): check if this branch is unnecessary.
-  if (tpm_state.scrypt_derived) {
+  if (tpm_state.scrypt_derived.value()) {
     *vkk_key = HmacSha256(kdf_skey, local_vault_key);
   } else {
     if (!PasskeyToAesKey(local_vault_key, salt, rounds, vkk_key, vkk_iv)) {

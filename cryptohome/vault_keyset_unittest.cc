@@ -327,8 +327,9 @@ TEST_F(VaultKeysetTest, GetPcrBoundAuthBlockStateTest) {
   const TpmBoundToPcrAuthBlockState* tpm_state =
       std::get_if<TpmBoundToPcrAuthBlockState>(&auth_state.state);
 
-  EXPECT_NE(tpm_state, nullptr);
-  EXPECT_TRUE(tpm_state->scrypt_derived);
+  ASSERT_NE(tpm_state, nullptr);
+  ASSERT_TRUE(tpm_state->scrypt_derived.has_value());
+  EXPECT_TRUE(tpm_state->scrypt_derived.value());
   EXPECT_TRUE(tpm_state->extended_tpm_key.has_value());
   EXPECT_TRUE(tpm_state->tpm_key.has_value());
 }
@@ -357,7 +358,7 @@ TEST_F(VaultKeysetTest, GetEccAuthBlockStateTest) {
   const TpmEccAuthBlockState* tpm_state =
       std::get_if<TpmEccAuthBlockState>(&auth_state.state);
 
-  EXPECT_NE(tpm_state, nullptr);
+  ASSERT_NE(tpm_state, nullptr);
   EXPECT_TRUE(tpm_state->salt.has_value());
   EXPECT_TRUE(tpm_state->sealed_hvkkm.has_value());
   EXPECT_TRUE(tpm_state->extended_sealed_hvkkm.has_value());
@@ -382,8 +383,9 @@ TEST_F(VaultKeysetTest, GetNotPcrBoundAuthBlockState) {
 
   const TpmNotBoundToPcrAuthBlockState* tpm_state =
       std::get_if<TpmNotBoundToPcrAuthBlockState>(&auth_state.state);
-  EXPECT_NE(tpm_state, nullptr);
-  EXPECT_FALSE(tpm_state->scrypt_derived);
+  ASSERT_NE(tpm_state, nullptr);
+  ASSERT_TRUE(tpm_state->scrypt_derived.has_value());
+  EXPECT_FALSE(tpm_state->scrypt_derived.value());
   EXPECT_TRUE(tpm_state->tpm_key.has_value());
 }
 
@@ -403,7 +405,7 @@ TEST_F(VaultKeysetTest, GetPinWeaverAuthBlockState) {
 
   const PinWeaverAuthBlockState* pin_auth_state =
       std::get_if<PinWeaverAuthBlockState>(&auth_state.state);
-  EXPECT_NE(pin_auth_state, nullptr);
+  ASSERT_NE(pin_auth_state, nullptr);
   EXPECT_TRUE(pin_auth_state->le_label.has_value());
   EXPECT_EQ(le_label, pin_auth_state->le_label.value());
 }
@@ -443,7 +445,7 @@ TEST_F(VaultKeysetTest, GetLibscryptCompatAuthBlockState) {
 
   const LibScryptCompatAuthBlockState* scrypt_state =
       std::get_if<LibScryptCompatAuthBlockState>(&auth_state.state);
-  EXPECT_NE(scrypt_state, nullptr);
+  ASSERT_NE(scrypt_state, nullptr);
   EXPECT_TRUE(scrypt_state->wrapped_keyset.has_value());
   EXPECT_TRUE(scrypt_state->wrapped_chaps_key.has_value());
   EXPECT_TRUE(scrypt_state->wrapped_reset_seed.has_value());

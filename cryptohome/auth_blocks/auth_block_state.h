@@ -24,7 +24,7 @@ namespace cryptohome {
 
 struct TpmNotBoundToPcrAuthBlockState {
   // Marks if the password is run through scrypt before going to the TPM.
-  bool scrypt_derived = false;
+  std::optional<bool> scrypt_derived;
   // The salt used to bind to the TPM.
   // Must be set.
   std::optional<brillo::SecureBlob> salt;
@@ -41,7 +41,7 @@ struct TpmNotBoundToPcrAuthBlockState {
 
 struct TpmBoundToPcrAuthBlockState {
   // Marks if the password is run through scrypt before going to the TPM.
-  bool scrypt_derived = false;
+  std::optional<bool> scrypt_derived;
   // The salt used to bind to the TPM.
   std::optional<brillo::SecureBlob> salt;
   // The VKK wrapped with the user's password by the tpm.

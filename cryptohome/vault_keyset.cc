@@ -601,7 +601,7 @@ bool VaultKeyset::UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
 void VaultKeyset::SetTpmNotBoundToPcrState(
     const TpmNotBoundToPcrAuthBlockState& auth_state) {
   flags_ = kTpmNotBoundToPcrFlags.require_flags;
-  if (auth_state.scrypt_derived) {
+  if (auth_state.scrypt_derived.value_or(false)) {
     flags_ |= SerializedVaultKeyset::SCRYPT_DERIVED;
   }
 
@@ -619,7 +619,7 @@ void VaultKeyset::SetTpmNotBoundToPcrState(
 void VaultKeyset::SetTpmBoundToPcrState(
     const TpmBoundToPcrAuthBlockState& auth_state) {
   flags_ = kTpmBoundToPcrFlags.require_flags;
-  if (auth_state.scrypt_derived) {
+  if (auth_state.scrypt_derived.value_or(false)) {
     flags_ |= SerializedVaultKeyset::SCRYPT_DERIVED;
   }
 

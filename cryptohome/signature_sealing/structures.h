@@ -32,11 +32,11 @@ struct Tpm2PolicySignedData {
   brillo::Blob srk_wrapped_secret;
 
   // The signature scheme (TPM_ALG_ID) that should be used for unsealing.
-  int32_t scheme = 0;
+  std::optional<int32_t> scheme;
 
   // The signature hash algorithm (TPM_ALG_ID) that should be used for
   // unsealing.
-  int32_t hash_alg = 0;
+  std::optional<int32_t> hash_alg;
 
   // TPM policy digest for the TPM2_PolicyPCR command executed with default PCR
   // map.
@@ -98,7 +98,7 @@ struct SignatureChallengeInfo {
   // Signature algorithm to be used for signing |salt|.
   // NOTE: the signature algorithm has to be deterministic (that is, always
   // produce the same output for the same input).
-  ChallengeSignatureAlgorithm salt_signature_algorithm;
+  std::optional<ChallengeSignatureAlgorithm> salt_signature_algorithm;
 };
 
 // Description of a public key of an asymmetric cryptographic key. Used with

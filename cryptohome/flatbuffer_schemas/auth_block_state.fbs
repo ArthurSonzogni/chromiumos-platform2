@@ -7,7 +7,7 @@ namespace cryptohome;
 table TpmBoundToPcrState {
   // This denotes if the password is fed through scrypt before going to
   // the TPM.
-  scrypt_derived:bool = false (id: 0);
+  scrypt_derived:bool = null (id: 0);
   // The salt used when binding to the TPM.
   salt:[ubyte] (id: 1);
   // The VKK wrapped with the user's password by the tpm.

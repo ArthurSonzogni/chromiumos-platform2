@@ -428,21 +428,28 @@ SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
     return CreateError<TPMError>("Empty SRK wrapped secret",
                                  TPMRetryAction::kNoRetry);
   }
+  if (!data.scheme.has_value()) {
+    return CreateError<TPMError>("Empty scheme", TPMRetryAction::kNoRetry);
+  }
+  if (!data.hash_alg.has_value()) {
+    return CreateError<TPMError>("Empty hash algorithm",
+                                 TPMRetryAction::kNoRetry);
+  }
 
   if (data.public_key_spki_der != public_key_spki_der) {
     return CreateError<TPMError>("Wrong subject public key info",
                                  TPMRetryAction::kNoRetry);
   }
-  if (!base::IsValueInRangeForNumericType<TPM_ALG_ID>(data.scheme)) {
+  if (!base::IsValueInRangeForNumericType<TPM_ALG_ID>(data.scheme.value())) {
     return CreateError<TPMError>("Error parsing signature scheme",
                                  TPMRetryAction::kNoRetry);
   }
-  const TPM_ALG_ID scheme = static_cast<TPM_ALG_ID>(data.scheme);
-  if (!base::IsValueInRangeForNumericType<TPM_ALG_ID>(data.hash_alg)) {
+  const TPM_ALG_ID scheme = static_cast<TPM_ALG_ID>(data.scheme.value());
+  if (!base::IsValueInRangeForNumericType<TPM_ALG_ID>(data.hash_alg.value())) {
     return CreateError<TPMError>("Error parsing signature hash algorithm",
                                  TPMRetryAction::kNoRetry);
   }
-  const TPM_ALG_ID hash_alg = static_cast<TPM_ALG_ID>(data.hash_alg);
+  const TPM_ALG_ID hash_alg = static_cast<TPM_ALG_ID>(data.hash_alg.value());
   std::optional<structure::ChallengeSignatureAlgorithm> chosen_algorithm;
   for (auto algorithm : key_algorithms) {
     TPM_ALG_ID current_scheme = TPM_ALG_NULL;

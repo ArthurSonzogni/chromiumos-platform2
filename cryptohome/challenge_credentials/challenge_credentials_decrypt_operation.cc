@@ -103,6 +103,10 @@ ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
     return CreateError<TPMError>("Missing public key",
                                  TPMRetryAction::kNoRetry);
   }
+  if (!keyset_challenge_info_.salt_signature_algorithm.has_value()) {
+    return CreateError<TPMError>("Missing signature algorithm",
+                                 TPMRetryAction::kNoRetry);
+  }
   const Blob& salt = keyset_challenge_info_.salt;
   // IMPORTANT: Verify that the salt is correctly prefixed. See the comment on
   // GetChallengeCredentialsSaltConstantPrefix() for details. Note also that, as
@@ -118,7 +122,7 @@ ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
   }
   MakeKeySignatureChallenge(
       account_id_, public_key_info_.public_key_spki_der, salt,
-      keyset_challenge_info_.salt_signature_algorithm,
+      keyset_challenge_info_.salt_signature_algorithm.value(),
       base::BindOnce(
           &ChallengeCredentialsDecryptOperation::OnSaltChallengeResponse,
           weak_ptr_factory_.GetWeakPtr()));
