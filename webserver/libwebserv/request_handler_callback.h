@@ -21,7 +21,7 @@ class LIBWEBSERV_EXPORT RequestHandlerCallback final
     : public RequestHandlerInterface {
  public:
   explicit RequestHandlerCallback(
-      const base::Callback<HandlerSignature>& callback);
+      base::RepeatingCallback<HandlerSignature> callback);
   RequestHandlerCallback(const RequestHandlerCallback&) = delete;
   RequestHandlerCallback& operator=(const RequestHandlerCallback&) = delete;
 
@@ -29,7 +29,7 @@ class LIBWEBSERV_EXPORT RequestHandlerCallback final
                      std::unique_ptr<Response> response) override;
 
  private:
-  base::Callback<HandlerSignature> callback_;
+  base::RepeatingCallback<HandlerSignature> callback_;
 };
 
 }  // namespace libwebserv

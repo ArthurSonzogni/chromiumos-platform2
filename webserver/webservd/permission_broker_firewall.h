@@ -27,12 +27,12 @@ class PermissionBrokerFirewall : public FirewallInterface {
 
   // Interface overrides.
   void WaitForServiceAsync(scoped_refptr<dbus::Bus> bus,
-                           const base::Closure& callback) override;
+                           base::OnceClosure callback) override;
   void PunchTcpHoleAsync(
       uint16_t port,
       const std::string& interface_name,
-      const base::Callback<void(bool)>& success_cb,
-      const base::Callback<void(brillo::Error*)>& failure_cb) override;
+      base::OnceCallback<void(bool)> success_cb,
+      base::OnceCallback<void(brillo::Error*)> failure_cb) override;
 
  private:
   // Callbacks to register to see when permission_broker starts or
@@ -44,7 +44,7 @@ class PermissionBrokerFirewall : public FirewallInterface {
   std::unique_ptr<org::chromium::PermissionBrokerProxy> proxy_;
 
   // Callback to use when firewall service starts or restarts.
-  base::Closure service_started_cb_;
+  base::OnceClosure service_started_cb_;
 
   // File descriptors for the two ends of the pipe used for communicating with
   // remote firewall server (permission_broker), where the remote firewall

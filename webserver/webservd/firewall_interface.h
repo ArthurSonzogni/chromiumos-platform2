@@ -22,14 +22,14 @@ class FirewallInterface {
 
   // Wait for the firewall DBus service to be up.
   virtual void WaitForServiceAsync(scoped_refptr<dbus::Bus> bus,
-                                   const base::Closure& callback) = 0;
+                                   base::OnceClosure callback) = 0;
 
   // Methods for managing firewall ports.
   virtual void PunchTcpHoleAsync(
       uint16_t port,
       const std::string& interface_name,
-      const base::Callback<void(bool)>& success_cb,
-      const base::Callback<void(brillo::Error*)>& failure_cb) = 0;
+      base::OnceCallback<void(bool)> success_cb,
+      base::OnceCallback<void(brillo::Error*)> failure_cb) = 0;
 
  protected:
   FirewallInterface() = default;

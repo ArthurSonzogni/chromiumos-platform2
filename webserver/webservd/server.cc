@@ -89,9 +89,9 @@ void Server::RegisterAsync(
   for (auto& handler_config : config_.protocol_handlers)
     CreateProtocolHandler(&handler_config);
 
-  firewall_->WaitForServiceAsync(dbus_object_->GetBus(),
-                                 base::Bind(&Server::OnFirewallServiceOnline,
-                                            weak_ptr_factory_.GetWeakPtr()));
+  firewall_->WaitForServiceAsync(
+      dbus_object_->GetBus(), base::BindOnce(&Server::OnFirewallServiceOnline,
+                                             weak_ptr_factory_.GetWeakPtr()));
 
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed exporting Server.", true));
@@ -112,9 +112,9 @@ void Server::OnFirewallServiceOnline() {
             << ", Interface = " << handler_config.interface_name;
     firewall_->PunchTcpHoleAsync(
         handler_config.port, handler_config.interface_name,
-        base::Bind(&OnFirewallSuccess, handler_config.interface_name,
-                   handler_config.port),
-        base::Bind(&IgnoreFirewallDBusMethodError));
+        base::BindOnce(&OnFirewallSuccess, handler_config.interface_name,
+                       handler_config.port),
+        base::BindOnce(&IgnoreFirewallDBusMethodError));
   }
 }
 

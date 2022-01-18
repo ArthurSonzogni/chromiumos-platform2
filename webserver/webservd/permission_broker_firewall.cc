@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/check.h>
@@ -26,9 +27,9 @@ PermissionBrokerFirewall::~PermissionBrokerFirewall() {
   close(lifeline_write_fd_);
 }
 
-void PermissionBrokerFirewall::WaitForServiceAsync(
-    scoped_refptr<dbus::Bus> bus, const base::Closure& callback) {
-  service_started_cb_ = callback;
+void PermissionBrokerFirewall::WaitForServiceAsync(scoped_refptr<dbus::Bus> bus,
+                                                   base::OnceClosure callback) {
+  service_started_cb_ = std::move(callback);
   proxy_ = std::make_unique<org::chromium::PermissionBrokerProxy>(bus);
   proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
       base::Bind(&PermissionBrokerFirewall::OnPermissionBrokerAvailable,
@@ -41,21 +42,22 @@ void PermissionBrokerFirewall::WaitForServiceAsync(
 void PermissionBrokerFirewall::PunchTcpHoleAsync(
     uint16_t port,
     const std::string& interface_name,
-    const base::Callback<void(bool)>& success_cb,
-    const base::Callback<void(brillo::Error*)>& failure_cb) {
+    base::OnceCallback<void(bool)> success_cb,
+    base::OnceCallback<void(brillo::Error*)> failure_cb) {
   proxy_->RequestTcpPortAccessAsync(port, interface_name, lifeline_read_fd_,
-                                    success_cb, failure_cb);
+                                    std::move(success_cb),
+                                    std::move(failure_cb));
 }
 
 void PermissionBrokerFirewall::OnPermissionBrokerAvailable(bool available) {
-  if (available)
-    service_started_cb_.Run();
+  if (available && !service_started_cb_.is_null())
+    std::move(service_started_cb_).Run();
 }
 
 void PermissionBrokerFirewall::OnPermissionBrokerNameOwnerChanged(
     const std::string& old_owner, const std::string& new_owner) {
-  if (!new_owner.empty())
-    service_started_cb_.Run();
+  if (!new_owner.empty() && !service_started_cb_.is_null())
+    std::move(service_started_cb_).Run();
 }
 
 }  // namespace webservd
