@@ -351,6 +351,8 @@ class Platform2Test(object):
     # Make sure /run/lock is usable.  But not the real lock path since tests
     # shouldn't be touching real state.
     path = os.path.join(self.sysroot, 'run')
+    # Ensure that ${SYSROOT}/run exists before we try to mount to it.
+    osutils.SafeMakedirs(path, mode=0o755, sudo=True)
     osutils.Mount('run', path, 'tmpfs',
                   osutils.MS_NOSUID | osutils.MS_NODEV | osutils.MS_NOEXEC,
                   "mode=755")
