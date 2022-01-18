@@ -106,6 +106,7 @@ copies.
 | [ml_benchmark](./ml_benchmark/) | ML performance benchmark for Chrome OS |
 | [modem-utilities](./modem-utilities/) ||
 | [modemfwd](./modemfwd/) | Daemon for managing modem firmware updaters |
+| [mojo_service_manager](./mojo_service_manager/) | Daemon for managing mojo services |
 | [mtpd](./mtpd/) | Daemon for handling Media Transfer Protocol (MTP) with devices (e.g. phones) |
 | [nnapi](./nnapi/) | Implementation of the Android [Neural Networks API](https://developer.android.com/ndk/guides/neuralnetworks) |
 | [ocr](./ocr/) | Optical Character Recognition (OCR) service for Chrome OS |
