@@ -29,6 +29,7 @@
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
 #include "cryptohome/storage/encrypted_container/fake_backing_device.h"
+#include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mount_constants.h"
 
 using ::testing::_;
@@ -104,7 +105,8 @@ class HomeDirsTest
     InitializeFilesystemLayout(&platform_, &crypto_, &system_salt);
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
-            &platform_, std::make_unique<FakeBackingDeviceFactory>(&platform_));
+            &platform_, std::make_unique<FakeKeyring>(),
+            std::make_unique<FakeBackingDeviceFactory>(&platform_));
     HomeDirs::RemoveCallback remove_callback =
         base::BindRepeating(&MockKeysetManagement::RemoveLECredentials,
                             base::Unretained(&keyset_management_));

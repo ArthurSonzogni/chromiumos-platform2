@@ -8,6 +8,7 @@
 #include <cryptohome/platform.h>
 #include <cryptohome/storage/encrypted_container/filesystem_key.h>
 #include <cryptohome/storage/encrypted_container/fscrypt_container.h>
+#include <cryptohome/storage/keyring/real_keyring.h>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -88,14 +89,16 @@ cryptohome::FileSystemKey RetrieveKey() {
 }  // namespace
 
 EncryptedRebootVault::EncryptedRebootVault()
-    : vault_path_(base::FilePath(kEncryptedRebootVaultPath)) {
+    : vault_path_(base::FilePath(kEncryptedRebootVaultPath)),
+      keyring_(std::make_unique<cryptohome::RealKeyring>()) {
   cryptohome::FileSystemKeyReference key_reference;
   key_reference.fek_sig = brillo::SecureBlob(kEncryptionKeyTag);
 
   // TODO(dlunev): change the allow_v2 to true once all the boards are on
   // 5.4+
   encrypted_container_ = std::make_unique<cryptohome::FscryptContainer>(
-      vault_path_, key_reference, /*allow_v2=*/false, &platform_);
+      vault_path_, key_reference, /*allow_v2=*/false, &platform_,
+      keyring_.get());
 }
 
 bool EncryptedRebootVault::CreateVault() {

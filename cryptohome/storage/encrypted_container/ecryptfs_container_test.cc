@@ -14,6 +14,7 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
+#include "cryptohome/storage/keyring/fake_keyring.h"
 
 using ::testing::_;
 using ::testing::Return;
@@ -31,7 +32,7 @@ class EcryptfsContainerTest : public ::testing::Test {
               .fek_salt = brillo::SecureBlob("random_fek_salt"),
               .fnek_salt = brillo::SecureBlob("random_fnek_salt")}),
         container_(std::make_unique<EcryptfsContainer>(
-            backing_dir_, key_reference_, &platform_)) {}
+            backing_dir_, key_reference_, &platform_, &keyring_)) {}
   ~EcryptfsContainerTest() override = default;
 
  protected:
@@ -39,46 +40,38 @@ class EcryptfsContainerTest : public ::testing::Test {
   FileSystemKeyReference key_reference_;
   FileSystemKey key_;
   MockPlatform platform_;
+  FakeKeyring keyring_;
   std::unique_ptr<EncryptedContainer> container_;
 };
 
 // Tests the creation path for an eCryptFs container.
 TEST_F(EcryptfsContainerTest, SetupCreateCheck) {
-  EXPECT_CALL(platform_,
-              AddEcryptfsAuthToken(_, testing::MatchesRegex("[0-9a-z]*"), _))
-      .Times(2)
-      .WillRepeatedly(Return(true));
-
   EXPECT_TRUE(container_->Setup(key_));
   EXPECT_TRUE(platform_.DirectoryExists(backing_dir_));
+  EXPECT_TRUE(keyring_.HasKey(Keyring::KeyType::kEcryptfsKey, key_reference_));
 }
 
 // Tests the setup path for an existing eCryptFs container.
 TEST_F(EcryptfsContainerTest, SetupNoCreateCheck) {
   EXPECT_TRUE(platform_.CreateDirectory(backing_dir_));
-  EXPECT_CALL(platform_,
-              AddEcryptfsAuthToken(_, testing::MatchesRegex("[0-9a-z]*"), _))
-      .Times(2)
-      .WillRepeatedly(Return(true));
-
   EXPECT_TRUE(container_->Setup(key_));
+  EXPECT_TRUE(keyring_.HasKey(Keyring::KeyType::kEcryptfsKey, key_reference_));
 }
 
 // Tests the failure path on failing to add the eCryptFs auth token to the
 // user keyring.
 TEST_F(EcryptfsContainerTest, SetupFailedEncryptionKeyAdd) {
-  EXPECT_CALL(platform_,
-              AddEcryptfsAuthToken(_, testing::MatchesRegex("[0-9a-z]*"), _))
-      .WillOnce(Return(false));
-
+  keyring_.SetShouldFail(true);
   EXPECT_FALSE(container_->Setup(key_));
+  EXPECT_FALSE(keyring_.HasKey(Keyring::KeyType::kEcryptfsKey, key_reference_));
 }
 
-// Tests the failure path on failing to invalidate the user keyring.
+// Tests the teardown invalidates the key.
 TEST_F(EcryptfsContainerTest, TeardownInvalidateKey) {
-  EXPECT_CALL(platform_, ClearUserKeyring()).WillOnce(Return(true));
-
+  EXPECT_TRUE(container_->Setup(key_));
+  EXPECT_TRUE(keyring_.HasKey(Keyring::KeyType::kEcryptfsKey, key_reference_));
   EXPECT_TRUE(container_->Teardown());
+  EXPECT_FALSE(keyring_.HasKey(Keyring::KeyType::kEcryptfsKey, key_reference_));
 }
 
 }  // namespace cryptohome

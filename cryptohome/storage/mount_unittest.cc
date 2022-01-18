@@ -50,6 +50,7 @@
 #include "cryptohome/storage/encrypted_container/fake_backing_device.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/homedirs.h"
+#include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/storage/mount_helper.h"
 #include "cryptohome/vault_keyset.h"
@@ -410,7 +411,8 @@ class PersistentSystemTest : public ::testing::Test {
 
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
-            &platform_, std::make_unique<FakeBackingDeviceFactory>(&platform_));
+            &platform_, std::make_unique<FakeKeyring>(),
+            std::make_unique<FakeBackingDeviceFactory>(&platform_));
     homedirs_ = std::make_unique<HomeDirs>(
         &platform_, std::make_unique<policy::PolicyProvider>(),
         base::BindRepeating([](const std::string& unused) {}),
@@ -475,23 +477,6 @@ class PersistentSystemTest : public ::testing::Test {
     EXPECT_CALL(platform_, ClearUserKeyring()).WillOnce(Return(success));
   }
 
-  void MockEcryptfsKeyringSetup(const FileSystemKeyset& keyset, bool success) {
-    EXPECT_CALL(platform_, AddEcryptfsAuthToken(
-                               keyset.Key().fek,
-                               SecureBlobToHex(keyset.KeyReference().fek_sig),
-                               keyset.Key().fek_salt))
-        .WillOnce(Return(success));
-    EXPECT_CALL(platform_, AddEcryptfsAuthToken(
-                               keyset.Key().fnek,
-                               SecureBlobToHex(keyset.KeyReference().fnek_sig),
-                               keyset.Key().fnek_salt))
-        .WillOnce(Return(success));
-  }
-
-  void MockEcryptfsKeyringTeardown(bool success) {
-    EXPECT_CALL(platform_, ClearUserKeyring()).WillOnce(Return(success));
-  }
-
   void MockDircryptoPolicy(const std::string& username, bool existing_dir) {
     const std::string obfuscated_username =
         brillo::cryptohome::home::SanitizeUserName(username);
@@ -522,30 +507,9 @@ class PersistentSystemTest : public ::testing::Test {
     MockDircryptoPolicy(username, existing_dir);
     // EXPECT_CALL(platform_,
     // CheckDircryptoKeyIoctlSupport()).WillOnce(Return(true));
-    EXPECT_CALL(platform_, AddDirCryptoKeyToKeyring(
-                               keyset.Key().fek,
-                               Pointee(DirCryptoReferenceMatcher(reference))))
-        .WillOnce(Return(success));
     EXPECT_CALL(
         platform_,
         SetDirCryptoKey(backing_dir, DirCryptoReferenceMatcher(reference)))
-        .WillOnce(Return(success));
-  }
-
-  void MockDircryptoKeyringTeardown(const std::string& username,
-                                    const FileSystemKeyset& keyset,
-                                    bool success) {
-    const std::string obfuscated_username =
-        brillo::cryptohome::home::SanitizeUserName(username);
-    const base::FilePath backing_dir =
-        GetUserMountDirectory(obfuscated_username);
-    const dircrypto::KeyReference reference = {
-        .policy_version = FSCRYPT_POLICY_V1,
-        .reference = keyset.KeyReference().fek_sig,
-    };
-    EXPECT_CALL(platform_,
-                InvalidateDirCryptoKey(DirCryptoReferenceMatcher(reference),
-                                       backing_dir))
         .WillOnce(Return(success));
   }
 
@@ -999,7 +963,6 @@ TEST_F(PersistentSystemTest, Ecryptfs_MountPristineTouchFileUnmountMountAgain) {
   };
 
   MockPreclearKeyring(/*success=*/true);
-  MockEcryptfsKeyringSetup(keyset, /*success=*/true);
   ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options),
               Eq(MOUNT_ERROR_NONE));
   VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/true);
@@ -1007,7 +970,6 @@ TEST_F(PersistentSystemTest, Ecryptfs_MountPristineTouchFileUnmountMountAgain) {
   ASSERT_TRUE(platform_.WriteStringToFile(
       base::FilePath(kHomeChronosUser).Append(kFile), kContent));
 
-  MockEcryptfsKeyringTeardown(/*success=*/true);
   ASSERT_TRUE(mount_->UnmountCryptohome());
   VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/false);
 
@@ -1015,7 +977,6 @@ TEST_F(PersistentSystemTest, Ecryptfs_MountPristineTouchFileUnmountMountAgain) {
       platform_.FileExists(base::FilePath(kHomeChronosUser).Append(kFile)));
 
   MockPreclearKeyring(/*success=*/true);
-  MockEcryptfsKeyringSetup(keyset, /*success=*/true);
   ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options),
               Eq(MOUNT_ERROR_NONE));
   VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/true);
@@ -1025,7 +986,6 @@ TEST_F(PersistentSystemTest, Ecryptfs_MountPristineTouchFileUnmountMountAgain) {
       base::FilePath(kHomeChronosUser).Append(kFile), &result));
   ASSERT_THAT(result, kContent);
 
-  MockEcryptfsKeyringTeardown(/*success=*/true);
   ASSERT_TRUE(mount_->UnmountCryptohome());
   VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/false);
 }
@@ -1051,7 +1011,6 @@ TEST_F(PersistentSystemTest,
   ASSERT_TRUE(platform_.WriteStringToFile(
       base::FilePath(kHomeChronosUser).Append(kFile), kContent));
 
-  MockDircryptoKeyringTeardown(kUser, keyset, /*success=*/true);
   ASSERT_TRUE(mount_->UnmountCryptohome());
   // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
   // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
@@ -1071,7 +1030,6 @@ TEST_F(PersistentSystemTest,
       base::FilePath(kHomeChronosUser).Append(kFile), &result));
   ASSERT_THAT(result, kContent);
 
-  MockDircryptoKeyringTeardown(kUser, keyset, /*success=*/true);
   ASSERT_TRUE(mount_->UnmountCryptohome());
   // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
   // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
@@ -1087,12 +1045,10 @@ TEST_F(PersistentSystemTest, NoEcryptfsMountWhenForcedDircrypto) {
   };
 
   MockPreclearKeyring(/*success=*/true);
-  MockEcryptfsKeyringSetup(keyset, /*success=*/true);
   ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options), MOUNT_ERROR_NONE)
       << "ERROR: " << error;
   VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/true);
 
-  MockEcryptfsKeyringTeardown(/*success=*/true);
   ASSERT_TRUE(mount_->UnmountCryptohome());
   VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/false);
 
@@ -1114,14 +1070,12 @@ TEST_F(PersistentSystemTest, EcryptfsMigration) {
       .force_type = EncryptedContainerType::kEcryptfs,
   };
   MockPreclearKeyring(/*success=*/true);
-  MockEcryptfsKeyringSetup(keyset, /*success=*/true);
   ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options),
               MOUNT_ERROR_NONE);
 
   ASSERT_TRUE(platform_.WriteStringToFile(
       base::FilePath(kHomeChronosUser).Append(kFile), kContent));
 
-  MockEcryptfsKeyringTeardown(/*success=*/true);
   ASSERT_TRUE(mount_->UnmountCryptohome());
 
   // Start migration
@@ -1129,14 +1083,11 @@ TEST_F(PersistentSystemTest, EcryptfsMigration) {
       .migrate = true,
   };
   MockPreclearKeyring(/*success=*/true);
-  MockEcryptfsKeyringSetup(keyset, /*success=*/true);
   MockDircryptoKeyringSetup(kUser, keyset, /*existing_dir=*/false,
                             /*success=*/true);
   ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options),
               MOUNT_ERROR_NONE);
 
-  MockEcryptfsKeyringTeardown(/*success=*/true);
-  MockDircryptoKeyringTeardown(kUser, keyset, /*success=*/true);
   ASSERT_TRUE(mount_->UnmountCryptohome());
 
   // We can't mount in progress migration regularly
@@ -1156,14 +1107,11 @@ TEST_F(PersistentSystemTest, EcryptfsMigration) {
       .migrate = true,
   };
   MockPreclearKeyring(/*success=*/true);
-  MockEcryptfsKeyringSetup(keyset, /*success=*/true);
   MockDircryptoKeyringSetup(kUser, keyset, /*existing_dir=*/true,
                             /*success=*/true);
   ASSERT_THAT(new_mount->MountCryptohome(kUser, keyset, options),
               MOUNT_ERROR_NONE);
 
-  MockEcryptfsKeyringTeardown(/*success=*/true);
-  MockDircryptoKeyringTeardown(kUser, keyset, /*success=*/true);
   ASSERT_TRUE(new_mount->MigrateToDircrypto(
       base::BindRepeating(
           [](const user_data_auth::DircryptoMigrationProgress& unused) {}),
@@ -1195,7 +1143,6 @@ TEST_F(PersistentSystemTest, EcryptfsMigration) {
       base::FilePath(kHomeChronosUser).Append(kFile), &result));
   ASSERT_THAT(result, kContent);
 
-  MockDircryptoKeyringTeardown(kUser, keyset, /*success=*/true);
   ASSERT_TRUE(mount_->UnmountCryptohome());
   // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
   // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
@@ -1215,7 +1162,8 @@ class EphemeralSystemTest : public ::testing::Test {
 
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
-            &platform_, std::make_unique<FakeBackingDeviceFactory>(&platform_));
+            &platform_, std::make_unique<FakeKeyring>(),
+            std::make_unique<FakeBackingDeviceFactory>(&platform_));
     homedirs_ = std::make_unique<HomeDirs>(
         &platform_, std::make_unique<policy::PolicyProvider>(),
         base::BindRepeating([](const std::string& unused) {}),

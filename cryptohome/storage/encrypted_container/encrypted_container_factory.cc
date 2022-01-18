@@ -17,17 +17,23 @@
 #include "cryptohome/storage/encrypted_container/ephemeral_container.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/encrypted_container/fscrypt_container.h"
+#include "cryptohome/storage/keyring/keyring.h"
+#include "cryptohome/storage/keyring/real_keyring.h"
 
 namespace cryptohome {
 
 EncryptedContainerFactory::EncryptedContainerFactory(Platform* platform)
     : EncryptedContainerFactory(
-          platform, std::make_unique<BackingDeviceFactory>(platform)) {}
+          platform,
+          std::make_unique<RealKeyring>(),
+          std::make_unique<BackingDeviceFactory>(platform)) {}
 
 EncryptedContainerFactory::EncryptedContainerFactory(
     Platform* platform,
+    std::unique_ptr<Keyring> keyring,
     std::unique_ptr<BackingDeviceFactory> backing_device_factory)
     : platform_(platform),
+      keyring_(std::move(keyring)),
       backing_device_factory_(std::move(backing_device_factory)),
       allow_fscrypt_v2_(false) {}
 
@@ -37,10 +43,11 @@ std::unique_ptr<EncryptedContainer> EncryptedContainerFactory::Generate(
   switch (config.type) {
     case EncryptedContainerType::kFscrypt:
       return std::make_unique<FscryptContainer>(
-          config.backing_dir, key_reference, allow_fscrypt_v2_, platform_);
+          config.backing_dir, key_reference, allow_fscrypt_v2_, platform_,
+          keyring_.get());
     case EncryptedContainerType::kEcryptfs:
-      return std::make_unique<EcryptfsContainer>(config.backing_dir,
-                                                 key_reference, platform_);
+      return std::make_unique<EcryptfsContainer>(
+          config.backing_dir, key_reference, platform_, keyring_.get());
     case EncryptedContainerType::kDmcrypt: {
       auto backing_device = backing_device_factory_->Generate(
           config.dmcrypt_config.backing_device_config);
@@ -48,9 +55,9 @@ std::unique_ptr<EncryptedContainer> EncryptedContainerFactory::Generate(
         LOG(ERROR) << "Could not create backing device for dmcrypt container";
         return nullptr;
       }
-      return std::make_unique<DmcryptContainer>(config.dmcrypt_config,
-                                                std::move(backing_device),
-                                                key_reference, platform_);
+      return std::make_unique<DmcryptContainer>(
+          config.dmcrypt_config, std::move(backing_device), key_reference,
+          platform_, keyring_.get());
     }
     case EncryptedContainerType::kEphemeral: {
       auto backing_device =

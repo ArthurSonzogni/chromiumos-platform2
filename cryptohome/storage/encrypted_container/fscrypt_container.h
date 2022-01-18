@@ -11,6 +11,7 @@
 
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
+#include "cryptohome/storage/keyring/keyring.h"
 
 namespace cryptohome {
 
@@ -21,7 +22,8 @@ class FscryptContainer : public EncryptedContainer {
   FscryptContainer(const base::FilePath& backing_dir,
                    const FileSystemKeyReference& key_reference,
                    bool allow_v2,
-                   Platform* platform);
+                   Platform* platform,
+                   Keyring* keyring);
   ~FscryptContainer() = default;
 
   bool Setup(const FileSystemKey& encryption_key) override;
@@ -35,10 +37,14 @@ class FscryptContainer : public EncryptedContainer {
   base::FilePath GetBackingLocation() const override;
 
  private:
+  // Deduces whether V1 or V2 policy should be used.
+  bool UseV2();
+
   const base::FilePath backing_dir_;
-  dircrypto::KeyReference key_reference_;
+  FileSystemKeyReference key_reference_;
   bool allow_v2_;
   Platform* platform_;
+  Keyring* keyring_;
 };
 
 }  // namespace cryptohome

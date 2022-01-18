@@ -22,6 +22,7 @@
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/fake_backing_device.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
+#include "cryptohome/storage/keyring/fake_keyring.h"
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -58,6 +59,7 @@ class EncryptedFsTest : public ::testing::Test {
 
     auto container = std::make_unique<cryptohome::DmcryptContainer>(
         config_, std::move(fake_backing_device), key_reference_, &platform_,
+        &keyring_,
         std::make_unique<brillo::DeviceMapper>(
             base::BindRepeating(&brillo::fake::CreateDevmapperTask)));
 
@@ -93,6 +95,7 @@ class EncryptedFsTest : public ::testing::Test {
   cryptohome::DmcryptConfig config_;
 
   NiceMock<cryptohome::MockPlatform> platform_;
+  cryptohome::FakeKeyring keyring_;
   brillo::DeviceMapper device_mapper_;
   cryptohome::FakeBackingDeviceFactory fake_backing_device_factory_;
   cryptohome::FileSystemKey key_;

@@ -62,6 +62,7 @@
 #include <base/system/sys_info.h>
 #include <base/threading/thread.h>
 #include <base/time/time.h>
+#include <brillo/blkdev_utils/device_mapper.h>
 #include <brillo/blkdev_utils/loop_device.h>
 #include <brillo/file_utils.h>
 #include <brillo/files/safe_fd.h>
@@ -1423,31 +1424,6 @@ bool Platform::SetupProcessKeyring() {
   return true;
 }
 
-// Encapsulate these helpers to avoid include conflicts.
-namespace ecryptfs {
-extern "C" {
-#include <ecryptfs.h>  // NOLINT(build/include_alpha)
-}
-
-long AddEcryptfsAuthToken(  // NOLINT(runtime/int)
-    const brillo::SecureBlob& key,
-    const std::string& key_sig,
-    const brillo::SecureBlob& salt) {
-  DCHECK_EQ(static_cast<size_t>(ECRYPTFS_MAX_KEY_BYTES), key.size());
-  DCHECK_EQ(static_cast<size_t>(ECRYPTFS_SIG_SIZE) * 2, key_sig.length());
-  DCHECK_EQ(static_cast<size_t>(ECRYPTFS_SALT_SIZE), salt.size());
-
-  struct ecryptfs_auth_tok auth_token;
-
-  generate_payload(&auth_token, const_cast<char*>(key_sig.c_str()),
-                   const_cast<char*>(salt.char_data()),
-                   const_cast<char*>(key.char_data()));
-
-  return ecryptfs_add_auth_tok_to_keyring(&auth_token,
-                                          const_cast<char*>(key_sig.c_str()));
-}
-}  // namespace ecryptfs
-
 dircrypto::KeyState Platform::GetDirCryptoKeyState(const FilePath& dir) {
   return dircrypto::GetDirectoryKeyState(dir);
 }
@@ -1461,18 +1437,13 @@ int Platform::GetDirectoryPolicyVersion(const base::FilePath& dir) const {
   return dircrypto::GetDirectoryPolicyVersion(dir);
 }
 
-bool Platform::CheckFscryptKeyIoctlSupport() const {
-  return dircrypto::CheckFscryptKeyIoctlSupport();
-}
-
-bool Platform::AddDirCryptoKeyToKeyring(
-    const brillo::SecureBlob& key, dircrypto::KeyReference* key_reference) {
-  return dircrypto::AddDirectoryKey(key, key_reference);
-}
-
 bool Platform::InvalidateDirCryptoKey(
     const dircrypto::KeyReference& key_reference, const FilePath& shadow_root) {
   return dircrypto::RemoveDirectoryKey(key_reference, shadow_root);
+}
+
+bool Platform::CheckFscryptKeyIoctlSupport() const {
+  return dircrypto::CheckFscryptKeyIoctlSupport();
 }
 
 bool Platform::ClearUserKeyring() {
@@ -1480,10 +1451,14 @@ bool Platform::ClearUserKeyring() {
   return (keyctl(KEYCTL_CLEAR, KEY_SPEC_USER_KEYRING) == 0);
 }
 
-bool Platform::AddEcryptfsAuthToken(const brillo::SecureBlob& key,
-                                    const std::string& key_sig,
-                                    const brillo::SecureBlob& salt) {
-  return (ecryptfs::AddEcryptfsAuthToken(key, key_sig, salt) >= 0);
+bool Platform::IsDmcryptKeyringSupported() const {
+  const brillo::DeviceMapperVersion reference_version({1, 15, 0});
+
+  if (brillo::DeviceMapper().GetTargetVersion("crypt") < reference_version) {
+    return false;
+  }
+
+  return true;
 }
 
 FileEnumerator* Platform::GetFileEnumerator(const FilePath& root_path,

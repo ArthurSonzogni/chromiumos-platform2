@@ -20,6 +20,7 @@
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/fake_backing_device.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
+#include "cryptohome/storage/keyring/fake_keyring.h"
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -45,6 +46,7 @@ class DmcryptContainerTest : public ::testing::Test {
   void GenerateContainer() {
     container_ = std::make_unique<DmcryptContainer>(
         config_, std::move(backing_device_), key_reference_, &platform_,
+        &keyring_,
         std::make_unique<brillo::DeviceMapper>(
             base::BindRepeating(&brillo::fake::CreateDevmapperTask)));
   }
@@ -55,6 +57,7 @@ class DmcryptContainerTest : public ::testing::Test {
   FileSystemKeyReference key_reference_;
   FileSystemKey key_;
   MockPlatform platform_;
+  FakeKeyring keyring_;
   brillo::DeviceMapper device_mapper_;
   std::unique_ptr<BackingDevice> backing_device_;
   std::unique_ptr<DmcryptContainer> container_;

@@ -370,20 +370,11 @@ class MockPlatform : public Platform {
               (const, override));
   MOCK_METHOD(bool, CheckFscryptKeyIoctlSupport, (), (const, override));
   MOCK_METHOD(bool,
-              AddDirCryptoKeyToKeyring,
-              (const brillo::SecureBlob& key, dircrypto::KeyReference*),
-              (override));
-  MOCK_METHOD(bool,
               InvalidateDirCryptoKey,
               (const dircrypto::KeyReference&, const base::FilePath&),
               (override));
   MOCK_METHOD(bool, ClearUserKeyring, (), (override));
-  MOCK_METHOD(bool,
-              AddEcryptfsAuthToken,
-              (const brillo::SecureBlob&,
-               const std::string&,
-               const brillo::SecureBlob&),
-              (override));
+  MOCK_METHOD(bool, IsDmcryptKeyringSupported, (), (const, override));
   MOCK_METHOD(bool, FirmwareWriteProtected, (), (override));
   MOCK_METHOD(std::string, GetHardwareID, (), (override));
   MOCK_METHOD(bool, GetBlkSize, (const base::FilePath&, uint64_t*), (override));

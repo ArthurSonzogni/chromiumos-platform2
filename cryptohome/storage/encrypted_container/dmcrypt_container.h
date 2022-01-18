@@ -18,6 +18,7 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
+#include "cryptohome/storage/keyring/keyring.h"
 
 namespace cryptohome {
 
@@ -30,12 +31,14 @@ class DmcryptContainer : public EncryptedContainer {
                    std::unique_ptr<BackingDevice> backing_device,
                    const FileSystemKeyReference& key_reference,
                    Platform* platform,
+                   Keyring* keyring,
                    std::unique_ptr<brillo::DeviceMapper> device_mapper);
 
   DmcryptContainer(const DmcryptConfig& config,
                    std::unique_ptr<BackingDevice> backing_device,
                    const FileSystemKeyReference& key_reference,
-                   Platform* platform);
+                   Platform* platform,
+                   Keyring* keyring);
 
   ~DmcryptContainer() {}
 
@@ -67,9 +70,10 @@ class DmcryptContainer : public EncryptedContainer {
   std::unique_ptr<BackingDevice> backing_device_;
 
   // Key reference for filesystem key.
-  const FileSystemKeyReference key_reference_;
+  FileSystemKeyReference key_reference_;
 
   Platform* platform_;
+  Keyring* keyring_;
   std::unique_ptr<brillo::DeviceMapper> device_mapper_;
 };
 

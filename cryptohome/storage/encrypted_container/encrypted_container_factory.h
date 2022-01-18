@@ -14,6 +14,7 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/backing_device_factory.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
+#include "cryptohome/storage/keyring/keyring.h"
 
 namespace cryptohome {
 
@@ -23,6 +24,7 @@ class EncryptedContainerFactory {
   explicit EncryptedContainerFactory(Platform* platform);
   EncryptedContainerFactory(
       Platform* platform,
+      std::unique_ptr<Keyring> keyring,
       std::unique_ptr<BackingDeviceFactory> backing_device_factory);
   virtual ~EncryptedContainerFactory() {}
 
@@ -36,6 +38,7 @@ class EncryptedContainerFactory {
 
  private:
   Platform* platform_;
+  std::unique_ptr<Keyring> keyring_;
   std::unique_ptr<BackingDeviceFactory> backing_device_factory_;
   bool allow_fscrypt_v2_;
 };

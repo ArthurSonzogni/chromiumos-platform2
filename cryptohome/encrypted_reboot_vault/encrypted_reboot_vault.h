@@ -14,6 +14,7 @@
 #include <cryptohome/dircrypto_util.h>
 #include <cryptohome/platform.h>
 #include <cryptohome/storage/encrypted_container/encrypted_container.h>
+#include <cryptohome/storage/keyring/keyring.h>
 
 class EncryptedRebootVault {
  public:
@@ -31,6 +32,7 @@ class EncryptedRebootVault {
  private:
   base::FilePath vault_path_;
   cryptohome::Platform platform_;
+  std::unique_ptr<cryptohome::Keyring> keyring_;
   std::unique_ptr<cryptohome::EncryptedContainer> encrypted_container_;
 };
 

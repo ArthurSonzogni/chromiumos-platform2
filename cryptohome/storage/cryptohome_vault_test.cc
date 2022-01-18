@@ -19,6 +19,7 @@
 #include "cryptohome/storage/encrypted_container/fake_backing_device.h"
 #include "cryptohome/storage/encrypted_container/fake_encrypted_container_factory.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
+#include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mock_homedirs.h"
 
 using ::testing::_;
@@ -51,7 +52,9 @@ class CryptohomeVaultTest
         key_reference_({.fek_sig = brillo::SecureBlob("random keyref")}),
         key_({.fek = brillo::SecureBlob("random key")}),
         backing_dir_(ShadowRoot().Append(obfuscated_username_)),
-        encrypted_container_factory_(&platform_) {}
+        encrypted_container_factory_(&platform_, &keyring_) {
+    ON_CALL(platform_, SetDirCryptoKey(_, _)).WillByDefault(Return(true));
+  }
   ~CryptohomeVaultTest() override = default;
 
   EncryptedContainerType ContainerType() { return GetParam().container_type; }
@@ -101,19 +104,6 @@ class CryptohomeVaultTest
     return config;
   }
 
-  void ExpectEcryptfsSetup() {
-    EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
-        .Times(2)
-        .WillRepeatedly(Return(true));
-  }
-
-  void ExpectFscryptSetup() {
-    EXPECT_CALL(platform_, AddDirCryptoKeyToKeyring(_, _))
-        .WillOnce(Return(true));
-    EXPECT_CALL(platform_, SetDirCryptoKey(backing_dir_.Append(kMountDir), _))
-        .WillOnce(Return(true));
-  }
-
   void ExpectDmcryptSetup(const std::string& name) {
     base::FilePath backing_device_path = base::FilePath("/dev").Append(name);
     base::FilePath dmcrypt_device("/dev/mapper/dmcrypt-" + name);
@@ -125,24 +115,8 @@ class CryptohomeVaultTest
     EXPECT_CALL(platform_, Tune2Fs(dmcrypt_device, _)).WillOnce(Return(true));
   }
 
-  void ExpectEcryptfsTeardown() {
-    EXPECT_CALL(platform_, ClearUserKeyring()).WillRepeatedly(Return(true));
-  }
-
-  void ExpectFscryptTeardown() {
-    EXPECT_CALL(platform_,
-                InvalidateDirCryptoKey(_, backing_dir_.Append(kMountDir)))
-        .WillRepeatedly(Return(true));
-  }
-
   void ExpectContainerSetup(EncryptedContainerType type) {
     switch (type) {
-      case EncryptedContainerType::kEcryptfs:
-        ExpectEcryptfsSetup();
-        break;
-      case EncryptedContainerType::kFscrypt:
-        ExpectFscryptSetup();
-        break;
       case EncryptedContainerType::kDmcrypt:
         ExpectDmcryptSetup("data");
         break;
@@ -155,19 +129,6 @@ class CryptohomeVaultTest
     switch (type) {
       case EncryptedContainerType::kDmcrypt:
         ExpectDmcryptSetup("cache");
-        break;
-      default:
-        break;
-    }
-  }
-
-  void ExpectContainerTeardown(EncryptedContainerType type) {
-    switch (type) {
-      case EncryptedContainerType::kEcryptfs:
-        ExpectEcryptfsTeardown();
-        break;
-      case EncryptedContainerType::kFscrypt:
-        ExpectFscryptTeardown();
         break;
       default:
         break;
@@ -212,12 +173,6 @@ class CryptohomeVaultTest
     EXPECT_CALL(platform_, SetupProcessKeyring()).WillOnce(Return(true));
   }
 
-  void ExpectVaultTeardownOnDestruction() {
-    ExpectContainerTeardown(ContainerType());
-    ExpectContainerTeardown(MigratingContainerType());
-    ExpectContainerTeardown(CacheContainerType());
-  }
-
   void GenerateVault(bool create_container,
                      bool create_migrating_container,
                      bool create_cache_container) {
@@ -255,6 +210,7 @@ class CryptohomeVaultTest
 
   MockHomeDirs homedirs_;
   MockPlatform platform_;
+  FakeKeyring keyring_;
   FakeEncryptedContainerFactory encrypted_container_factory_;
   std::unique_ptr<CryptohomeVault> vault_;
 };
@@ -293,7 +249,6 @@ TEST_P(CryptohomeVaultTest, FailedProcessKeyringSetup) {
                 /*create_cache_container=*/false);
   EXPECT_CALL(platform_, SetupProcessKeyring()).WillOnce(Return(false));
   EXPECT_EQ(vault_->Setup(key_), MOUNT_ERROR_SETUP_PROCESS_KEYRING_FAILED);
-  ExpectVaultTeardownOnDestruction();
 }
 
 // Tests the failure path on Setup if setting up the container fails.
@@ -302,8 +257,8 @@ TEST_P(CryptohomeVaultTest, ContainerSetupFailed) {
                 /*create_migrating_container=*/false,
                 /*create_cache_container=*/false);
   ExpectVaultSetup();
+  keyring_.SetShouldFail(true);
   EXPECT_EQ(vault_->Setup(key_), MOUNT_ERROR_KEYRING_FAILED);
-  ExpectVaultTeardownOnDestruction();
 }
 
 // Tests the failure path on Setup if setting up the container fails.
@@ -316,13 +271,17 @@ TEST_P(CryptohomeVaultTest, MigratingContainerSetupFailed) {
   ExpectCacheContainerSetup(CacheContainerType());
 
   // In absence of a migrating container, the vault setup should succeed.
+  if (CacheContainerType() != EncryptedContainerType::kUnknown) {
+    keyring_.SetShouldFailAfter(2);
+  } else {
+    keyring_.SetShouldFailAfter(1);
+  }
   MountError error =
       MigratingContainerType() != EncryptedContainerType::kUnknown
           ? MOUNT_ERROR_KEYRING_FAILED
           : MOUNT_ERROR_NONE;
 
   EXPECT_EQ(vault_->Setup(key_), error);
-  ExpectVaultTeardownOnDestruction();
 }
 
 // Tests the setup path of a pristine cryptohome.
@@ -338,7 +297,6 @@ TEST_P(CryptohomeVaultTest, CreateVault) {
   EXPECT_EQ(vault_->Setup(key_), MOUNT_ERROR_NONE);
 
   CheckContainersExist();
-  ExpectVaultTeardownOnDestruction();
 }
 
 // Tests the setup path for an existing container with no migrating container
@@ -355,7 +313,6 @@ TEST_P(CryptohomeVaultTest, ExistingVaultNoMigratingVault) {
   EXPECT_EQ(vault_->Setup(key_), MOUNT_ERROR_NONE);
 
   CheckContainersExist();
-  ExpectVaultTeardownOnDestruction();
 }
 
 // Tests the setup path for an existing vault with an existing migrating
@@ -371,7 +328,6 @@ TEST_P(CryptohomeVaultTest, ExistingMigratingVault) {
   EXPECT_EQ(vault_->Setup(key_), MOUNT_ERROR_NONE);
 
   CheckContainersExist();
-  ExpectVaultTeardownOnDestruction();
 }
 
 // Tests the setup path for an existing vault with an existing cache container
@@ -387,7 +343,6 @@ TEST_P(CryptohomeVaultTest, ExistingCacheContainer) {
   EXPECT_EQ(vault_->Setup(key_), MOUNT_ERROR_NONE);
 
   CheckContainersExist();
-  ExpectVaultTeardownOnDestruction();
 }
 
 }  // namespace cryptohome

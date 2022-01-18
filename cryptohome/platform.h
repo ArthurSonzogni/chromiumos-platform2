@@ -761,10 +761,6 @@ class Platform {
   virtual bool SetDirCryptoKey(const base::FilePath& dir,
                                const dircrypto::KeyReference& key_reference);
 
-  // Adds the key to the dircrypto keyring and sets permissions.
-  virtual bool AddDirCryptoKeyToKeyring(const brillo::SecureBlob& key,
-                                        dircrypto::KeyReference* key_reference);
-
   // Invalidates the key to make dircrypto data inaccessible.
   virtual bool InvalidateDirCryptoKey(
       const dircrypto::KeyReference& key_reference,
@@ -773,15 +769,9 @@ class Platform {
   // Clears the kernel-managed user keyring
   virtual bool ClearUserKeyring();
 
-  // Creates an ecryptfs auth token and installs it in the kernel keyring.
-  //
-  // Parameters
-  //   key - The key to add
-  //   key_sig - The key's (ascii) signature
-  //   salt - The salt
-  virtual bool AddEcryptfsAuthToken(const brillo::SecureBlob& key,
-                                    const std::string& key_sig,
-                                    const brillo::SecureBlob& salt);
+  // Check whether the dm-crypt driver version is greater than 1.15.0 and can
+  // support key provisioning via the kernel keyring.
+  virtual bool IsDmcryptKeyringSupported() const;
 
   // Override the location of the mountinfo file used.
   // Default is kMountInfoFile.
