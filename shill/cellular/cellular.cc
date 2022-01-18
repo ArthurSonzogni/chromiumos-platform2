@@ -500,7 +500,8 @@ void Cellular::StopStep(Error* error,
         LOG(WARNING) << "StopModem returned an error: " << error_result;
         callback.Run(Error());
       } else {
-        LOG(ERROR) << "StopModem returned an error: " << error_result;
+        if (error_result.IsFailure())
+          LOG(ERROR) << "StopModem returned an error: " << error_result;
         callback.Run(error_result);
       }
       stop_step_.reset();
