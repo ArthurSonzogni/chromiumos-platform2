@@ -75,6 +75,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/chunneld               u:object_r:cros_chunneld_exec:s0
 /usr/bin/core_collector[0-9]*   u:object_r:cros_core_collector_exec:s0
 /usr/bin/cras                   u:object_r:cros_cras_exec:s0
+/usr/bin/cronista               u:object_r:cros_cronista_exec:s0
 /usr/bin/cros-disks             u:object_r:cros_disks_exec:s0
 /usr/bin/cros_camera_algo       u:object_r:cros_camera_algo_exec:s0
 /usr/bin/cros_camera_service    u:object_r:cros_camera_service_exec:s0
@@ -85,6 +86,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/dbus-daemon            u:object_r:cros_dbus_daemon_exec:s0
 /usr/bin/dbus-send              u:object_r:cros_dbus_send_exec:s0
 /usr/bin/dbus-uuidgen           u:object_r:cros_dbus_uuidgen_exec:s0
+/usr/bin/dugong                 u:object_r:cros_dugong_exec:s0
 /usr/bin/esif_ufd               u:object_r:cros_esif_ufd_exec:s0
 /usr/bin/find                   u:object_r:cros_system_file:s0
 /usr/bin/gdbus                  u:object_r:cros_gdbus_exec:s0
