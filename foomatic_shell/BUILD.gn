@@ -38,6 +38,7 @@ executable("foomatic_shell") {
     "verifier.h",
   ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
 }
 
 if (use.test) {
@@ -55,6 +56,7 @@ if (use.test) {
       "//common-mk:test",
       ":target_defaults",
     ]
+    run_test = true
     deps = [ "//common-mk/testrunner" ]
   }
 }
