@@ -9,6 +9,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -41,8 +42,9 @@ class CameraMetadataInspector {
   // --metadata_inspector_output=<path/to/output/file>
   // --metadata_inspector_allowlist=<regex_filter> (optional)
   // --metadata_inspector_denylist=<regex_filter> (optional)
-  // See the comments of |output_file_|, |allowlist_| and |denylist_| below for
-  // more details.  Returns nullptr on error.
+  // --metadata_inspector_position=<comma_separated_numbers> (optional)
+  // See the comments of |output_file_|, |allowlist_|, |denylist_| and
+  // |inspect_position_| below for more details.  Returns nullptr on error.
   static std::unique_ptr<CameraMetadataInspector> Create(
       int partial_result_count);
 
@@ -52,12 +54,17 @@ class CameraMetadataInspector {
 
   // Inspect a capture request and dump the difference from the previous one
   // in |output_file_|.
-  void InspectRequest(const camera3_capture_request_t* request);
+  void InspectRequest(const camera3_capture_request_t* request,
+                      size_t position);
 
   // Inspect a capture result and dump the difference from the previous one
   // in |output_file_|.  Partial results would be aggregated automatically, but
   // the caller needs to guarantee it's called on the same sequence.
-  void InspectResult(const camera3_capture_result_t* result);
+  void InspectResult(const camera3_capture_result_t* result, size_t position);
+
+  // Whether a position should be inspected (see |inspect_positions_| comments
+  // for details).
+  bool IsPositionInspected(size_t position) const;
 
  private:
   enum class Kind { kRequest, kResult, kNumberOfKinds };
@@ -67,6 +74,7 @@ class CameraMetadataInspector {
                           base::File output_file,
                           std::unique_ptr<RE2> allowlist,
                           std::unique_ptr<RE2> denylist,
+                          std::set<size_t> inspect_positions,
                           std::unique_ptr<base::Thread> thread);
 
   // Writes and flushes |msg| to |output_file_|.
@@ -84,7 +92,8 @@ class CameraMetadataInspector {
 
   // Compares the metadata with the previous one, and writes the formatted
   // difference into |output_file_|.
-  void InspectOnThread(Kind kind,
+  void InspectOnThread(size_t position,
+                       Kind kind,
                        const std::string& kind_tag,
                        int color,
                        base::Time time,
@@ -107,8 +116,18 @@ class CameraMetadataInspector {
   // keys (in allowlist && not in the denylist) would be logged.
   std::unique_ptr<RE2> denylist_;
 
-  // The latest DataMap for each kind of metadata.
-  DataMap latest_map[static_cast<size_t>(Kind::kNumberOfKinds)];
+  // Specifies the positions to inspect metadata between the client, stream
+  // manipulators (SM), and the HAL.  If there are N SMs, the values mean:
+  //   0 - between the client and the 1st SM;
+  //   i - between the i-th SM and the (i+1)-th SM (0 < i < N);
+  //   N - between the last SM and the HAL.
+  // If not specified, every position is inspected by default.
+  std::set<size_t> inspect_positions_;
+
+  // The latest DataMap for each kind of metadata for each position.
+  std::map<size_t,
+           std::array<DataMap, static_cast<size_t>(Kind::kNumberOfKinds)>>
+      latest_map_;
 
   // The aggregated capture result for all current partial results.
   base::Lock pending_result_lock_;

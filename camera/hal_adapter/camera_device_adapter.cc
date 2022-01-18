@@ -568,10 +568,6 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
         base::BindOnce(
             &CameraDeviceAdapter::ReprocessEffectsOnReprocessEffectThread,
             base::Unretained(this), std::move(req_ptr)));
-
-    if (camera_metadata_inspector_) {
-      camera_metadata_inspector_->InspectRequest(&req);
-    }
     return 0;
   }
 
@@ -580,18 +576,25 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
   // the stream manipulators so that they can still do incremental changes on
   // top of the cached settings.
   Camera3CaptureDescriptor request_descriptor(req);
-  for (auto it = stream_manipulators_.begin(); it != stream_manipulators_.end();
-       ++it) {
-    (*it)->ProcessCaptureRequest(&request_descriptor);
+  for (size_t i = 0; i < stream_manipulators_.size(); ++i) {
+    if (camera_metadata_inspector_ &&
+        camera_metadata_inspector_->IsPositionInspected(i)) {
+      camera_metadata_inspector_->InspectRequest(
+          request_descriptor.LockForRequest(), i);
+      request_descriptor.Unlock();
+    }
+    stream_manipulators_[i]->ProcessCaptureRequest(&request_descriptor);
   }
-  camera3_capture_request_t* locked_request =
-      request_descriptor.LockForRequest();
-  if (camera_metadata_inspector_) {
-    camera_metadata_inspector_->InspectRequest(locked_request);
+  if (camera_metadata_inspector_ &&
+      camera_metadata_inspector_->IsPositionInspected(
+          stream_manipulators_.size())) {
+    camera_metadata_inspector_->InspectRequest(
+        request_descriptor.LockForRequest(), stream_manipulators_.size());
+    request_descriptor.Unlock();
   }
 
-  int ret = camera_device_->ops->process_capture_request(camera_device_,
-                                                         locked_request);
+  int ret = camera_device_->ops->process_capture_request(
+      camera_device_, request_descriptor.LockForRequest());
 
   return ret;
 }
@@ -694,9 +697,22 @@ void CameraDeviceAdapter::ProcessCaptureResult(
   // Call ProcessCaptureResult in reverse order of that of ProcessCaptureRequest
   // so the stream manipulators can unwind the buffer states.
   Camera3CaptureDescriptor result_descriptor(*result);
-  for (auto it = self->stream_manipulators_.rbegin();
-       it != self->stream_manipulators_.rend(); ++it) {
-    (*it)->ProcessCaptureResult(&result_descriptor);
+  if (self->camera_metadata_inspector_ &&
+      self->camera_metadata_inspector_->IsPositionInspected(
+          self->stream_manipulators_.size())) {
+    self->camera_metadata_inspector_->InspectResult(
+        result_descriptor.LockForResult(), self->stream_manipulators_.size());
+    result_descriptor.Unlock();
+  }
+  for (size_t i = 0; i < self->stream_manipulators_.size(); ++i) {
+    size_t j = self->stream_manipulators_.size() - i - 1;
+    self->stream_manipulators_[j]->ProcessCaptureResult(&result_descriptor);
+    if (self->camera_metadata_inspector_ &&
+        self->camera_metadata_inspector_->IsPositionInspected(j)) {
+      self->camera_metadata_inspector_->InspectResult(
+          result_descriptor.LockForResult(), j);
+      result_descriptor.Unlock();
+    }
   }
 
   ReturnResultToClient(ops, std::move(result_descriptor));
@@ -754,10 +770,6 @@ void CameraDeviceAdapter::ReturnResultToClient(
 
   base::AutoLock l(self->callback_ops_delegate_lock_);
   if (self->callback_ops_delegate_) {
-    if (self->camera_metadata_inspector_) {
-      self->camera_metadata_inspector_->InspectResult(
-          result_descriptor.GetLockedResult());
-    }
     self->callback_ops_delegate_->ProcessCaptureResult(std::move(result_ptr));
   }
 }

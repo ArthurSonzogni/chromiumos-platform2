@@ -13,7 +13,10 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/command_line.h>
+#include <base/containers/contains.h>
 #include <base/memory/ptr_util.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <system/camera_metadata.h>
@@ -43,6 +46,9 @@ const int kMaxLineWidth = 100;
 // The format is HH:MM:ss.SSS, such as 23:59:59.999.
 const int kTimestampWidth = 12;
 
+// The inspect position number, expected smaller than 10.
+const int kPositionWidth = 1;
+
 // The format is (Req|Res)(frame % 1000), such as Req087.
 const int kIdentifierWidth = 6;
 
@@ -51,8 +57,9 @@ const int kMaxKeyWidth = 24;
 
 // The remaining line width is the space for value.
 const int kMaxValueWidth =
-    kMaxLineWidth - (kTimestampWidth + kSeparatorWidth + kIdentifierWidth +
-                     kSeparatorWidth + kMaxKeyWidth + kSeparatorWidth);
+    kMaxLineWidth -
+    (kTimestampWidth + kSeparatorWidth + kPositionWidth + kSeparatorWidth +
+     kIdentifierWidth + kSeparatorWidth + kMaxKeyWidth + kSeparatorWidth);
 
 // Formats the key of |entry| as {tag_section}.{tag_name}.  Returns empty string
 // on error.
@@ -201,6 +208,19 @@ std::unique_ptr<CameraMetadataInspector> CameraMetadataInspector::Create(
     return nullptr;
   }
 
+  std::vector<std::string> position_strs =
+      base::SplitString(cl->GetSwitchValueASCII("metadata_inspector_positions"),
+                        ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  std::set<size_t> positions;
+  for (std::string& s : position_strs) {
+    size_t p;
+    if (!base::StringToSizeT(s, &p)) {
+      LOGF(ERROR) << "Failed to parse inspect positions";
+      return nullptr;
+    }
+    positions.insert(p);
+  }
+
   auto thread = std::make_unique<base::Thread>("CameraMetadataInspectorThread");
   if (!thread->Start()) {
     LOGF(ERROR) << "Failed to start thread";
@@ -209,7 +229,7 @@ std::unique_ptr<CameraMetadataInspector> CameraMetadataInspector::Create(
 
   return base::WrapUnique(new CameraMetadataInspector(
       partial_result_count, std::move(output_file), std::move(allowlist),
-      std::move(denylist), std::move(thread)));
+      std::move(denylist), std::move(positions), std::move(thread)));
 }
 
 CameraMetadataInspector::CameraMetadataInspector(
@@ -217,11 +237,13 @@ CameraMetadataInspector::CameraMetadataInspector(
     base::File output_file,
     std::unique_ptr<RE2> allowlist,
     std::unique_ptr<RE2> denylist,
+    std::set<size_t> inspect_positions,
     std::unique_ptr<base::Thread> thread)
     : partial_result_count_(partial_result_count),
       output_file_(std::move(output_file)),
       allowlist_(std::move(allowlist)),
       denylist_(std::move(denylist)),
+      inspect_positions_(std::move(inspect_positions)),
       thread_(std::move(thread)) {}
 
 void CameraMetadataInspector::Write(base::StringPiece msg) {
@@ -296,7 +318,8 @@ std::vector<DiffData> CameraMetadataInspector::Compare(const DataMap& old_map,
   return diffs;
 }
 
-void CameraMetadataInspector::InspectOnThread(Kind kind,
+void CameraMetadataInspector::InspectOnThread(size_t position,
+                                              Kind kind,
                                               const std::string& kind_name,
                                               int color,
                                               base::Time time,
@@ -306,13 +329,15 @@ void CameraMetadataInspector::InspectOnThread(Kind kind,
   auto map = MapFromMetadata(metadata);
   base::Time::Exploded exploded;
   time.LocalExplode(&exploded);
-  auto diffs = Compare(latest_map[static_cast<size_t>(kind)], map);
+  auto diffs = Compare(latest_map_[position][static_cast<size_t>(kind)], map);
   std::stringstream ss;
   for (auto diff : diffs) {
     ss << "\e[" << color << "m";
     ss << base::StringPrintf("%02d:%02d:%02d.%03d", exploded.hour,
                              exploded.minute, exploded.second,
                              exploded.millisecond);
+    ss << kSeparator;
+    ss << position;
     ss << kSeparator;
     ss << base::StringPrintf("%s%03d", kind_name.c_str(), frame_number % 1000);
     ss << kSeparator;
@@ -323,25 +348,25 @@ void CameraMetadataInspector::InspectOnThread(Kind kind,
     ss << "\e[0m\n";
   }
   Write(ss.str());
-  latest_map[static_cast<size_t>(kind)] = map;
+  latest_map_[position][static_cast<size_t>(kind)] = map;
   free_camera_metadata(metadata);
 }
 
 void CameraMetadataInspector::InspectRequest(
-    const camera3_capture_request_t* request) {
+    const camera3_capture_request_t* request, size_t position) {
   if (request->settings == nullptr) {
     return;
   }
   thread_->task_runner()->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraMetadataInspector::InspectOnThread,
-                     base::Unretained(this), Kind::kRequest, "Req",
+                     base::Unretained(this), position, Kind::kRequest, "Req",
                      kRequestColor, base::Time::Now(), request->frame_number,
                      clone_camera_metadata(request->settings)));
 }
 
 void CameraMetadataInspector::InspectResult(
-    const camera3_capture_result_t* result) {
+    const camera3_capture_result_t* result, size_t position) {
   if (result->result == nullptr) {
     return;
   }
@@ -355,9 +380,14 @@ void CameraMetadataInspector::InspectResult(
   thread_->task_runner()->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraMetadataInspector::InspectOnThread,
-                     base::Unretained(this), Kind::kResult, "Res", kResultColor,
-                     base::Time::Now(), result->frame_number,
+                     base::Unretained(this), position, Kind::kResult, "Res",
+                     kResultColor, base::Time::Now(), result->frame_number,
                      pending_result_.release()));
+}
+
+bool CameraMetadataInspector::IsPositionInspected(size_t position) const {
+  return inspect_positions_.empty() ||
+         base::Contains(inspect_positions_, position);
 }
 
 }  // namespace cros
