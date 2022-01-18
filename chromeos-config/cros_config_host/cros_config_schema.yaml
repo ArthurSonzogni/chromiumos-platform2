@@ -1104,6 +1104,27 @@ properties:
                   description: (Optional) non-urgent task are only allowed
                     to use given CPUs.
               additionalProperties: false
+            branding:
+              type: object
+              description: Contains branding characteristics for this model.
+              properties:
+                oem-name:
+                  type: string
+                  description: |
+                    Original Equipment Manufacturer for this model. Generally
+                    this means the OEM name printed on the device. This info can
+                    only be included if:
+                    - The product has been publicly announced.
+                    - Or, the entire board is only used by one OEM (rare).
+                    Pre-launch products should populate this in CBI instead.
+                    Clients should first check cros_config for the value, and if
+                    not present, check CBI via means of SMBIOS or FDT.
+                marketing-name:
+                  type: string
+                  description: Name of this model as it is called in the market,
+                    reported in 'ro.product.model'. This often starts with
+                    '{oem-name}'.
+              additionalProperties: false
           additionalProperties: false
           required:
           - name

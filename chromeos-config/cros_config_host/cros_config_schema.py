@@ -35,7 +35,7 @@ PRODUCTS = 'products'
 SKUS = 'skus'
 CONFIG = 'config'
 BRAND_ELEMENTS = ['brand-code', 'firmware-signing', 'wallpaper',
-                  'regulatory-label']
+                  'regulatory-label', 'branding']
 # External stylus is allowed for whitelabels
 EXTERNAL_STYLUS = 'external'
 TEMPLATE_PATTERN = re.compile('{{([^}]*)}}')

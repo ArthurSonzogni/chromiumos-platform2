@@ -413,6 +413,7 @@ In the tables below,
 | auto-night-light | boolean |  | False |  | False | Whether the auto-night-light feature is enabled on the device, which sets the schedule for Night light automatically to sunset-to-sunrise. |
 | bluetooth | [bluetooth](#bluetooth) |  | False |  | False |  |
 | brand-code | string |  | False |  | False | Brand code of the model (also called RLZ code). |
+| branding | [branding](#branding) |  | False |  | False | Contains branding characteristics for this model. |
 | camera | [camera](#camera) |  | False |  | False |  |
 | cros-healthd | [cros-healthd](#cros_healthd) |  | False |  | False | Contains properties used by cros_healthd for model-specific telemetry. Each property represents a category of information and contains boolean properties that indicate whether a device supports a particular telemetry item. See cros_healthd_probe.mojom for descriptions of each property. |
 | cross-device | [cross-device](#cross_device) |  | False |  | False | Contains properties to configure cross-device features between ChromeOS devices and other devices, such as Instant Tethering and Smart Lock. |
@@ -506,6 +507,12 @@ In the tables below,
 | enable-suspend-management | boolean |  | False |  | False | Enable powerd suspend management callbacks. |
 | reset-on-resume | boolean |  | False |  | False | Expect bluetooth chip to have reset on resume. |
 | stop-on-suspend | boolean |  | False |  | False | Stop the bluetooth adapter on suspend and start it on resume. |
+
+### branding
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| marketing-name | string |  | False |  | False | Name of this model as it is called in the market, reported in 'ro.product.model'. This often starts with '{oem-name}'. |
+| oem-name | string |  | False |  | False | Original Equipment Manufacturer for this model. Generally this means the OEM name printed on the device. This info can only be included if: - The product has been publicly announced. - Or, the entire board is only used by one OEM (rare). Pre-launch products should populate this in CBI instead. Clients should first check cros_config for the value, and if not present, check CBI via means of SMBIOS or FDT.  |
 
 ### camera
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

@@ -391,6 +391,7 @@ chromeos:
           $regulatory-label: 'WL1_LABEL'
           $whitelabel-tag: 'WL1_TAG'
           $brand-code: 'WL1_BRAND_CODE'
+          $oem-name: 'WL1_OEM_NAME'
           $stylus-category: 'none'
           $test-label: 'WL1_TEST_LABEL'
           $marketing-name: 'BRAND1_MARKETING_NAME1'
@@ -399,6 +400,7 @@ chromeos:
           $regulatory-label: 'WL2_LABEL'
           $whitelabel-tag: 'WL2_TAG'
           $brand-code: 'WL2_BRAND_CODE'
+          $oem-name: 'WL2_OEM_NAME'
           $stylus-category: 'external'
           $test-label: 'WL2_TEST_LABEL'
           $marketing-name: 'BRAND2_MARKETING_NAME2'
@@ -417,6 +419,10 @@ chromeos:
               build-properties:
                 $marketing-name: ''
                 marketing-name: '{{$marketing-name}}'
+            branding:
+              $oem-name: ''
+              oem-name: '{{$oem-name}}'
+              marketing-name: '{{$marketing-name}}'
 """
 
 INVALID_WHITELABEL_CONFIG = """
