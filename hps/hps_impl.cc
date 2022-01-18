@@ -69,6 +69,7 @@ bool HPS_impl::Boot() {
 
   this->Reboot();
 
+  this->boot_start_time_ = base::TimeTicks::Now();
   // If the boot process sent an update, reboot and try again
   // A full update takes 3 boots, so try 3 times.
   for (int i = 0; i < 3; ++i) {
@@ -224,7 +225,9 @@ bool HPS_impl::CheckMagic() {
               << "ms";
       return true;
     } else {
-      hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kBadMagic);
+      hps_metrics_.SendHpsTurnOnResult(
+          HpsTurnOnResult::kBadMagic,
+          base::TimeTicks::Now() - this->boot_start_time_);
       LOG(FATAL) << base::StringPrintf("Bad magic number 0x%04x",
                                        magic.value());
       return false;
@@ -242,7 +245,9 @@ bool HPS_impl::CheckMagic() {
 // Else return BootResult::kFail.
 hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
   if (!CheckMagic()) {
-    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kNoResponse);
+    hps_metrics_.SendHpsTurnOnResult(
+        HpsTurnOnResult::kNoResponse,
+        base::TimeTicks::Now() - this->boot_start_time_);
     return BootResult::kFail;
   }
 
@@ -254,7 +259,7 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
   }
 
   if (status.value() & R2::kFault || !(status.value() & R2::kOK)) {
-    this->Fault();
+    this->OnBootFault();
     return BootResult::kFail;
   }
 
@@ -274,7 +279,9 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
   if (!this->write_protect_off_ && !(status.value() & R2::kStage1Verified)) {
     // Stage1 not verified, so need to update it.
     LOG(INFO) << "Stage1 flash not verified";
-    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kMcuNotVerified);
+    hps_metrics_.SendHpsTurnOnResult(
+        HpsTurnOnResult::kMcuNotVerified,
+        base::TimeTicks::Now() - this->boot_start_time_);
     return BootResult::kUpdate;
   }
 
@@ -298,7 +305,9 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
     // Versions do not match, need to update.
     LOG(INFO) << "Stage1 version mismatch, module: " << version
               << " expected: " << this->stage1_version_;
-    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kMcuVersionMismatch);
+    hps_metrics_.SendHpsTurnOnResult(
+        HpsTurnOnResult::kMcuVersionMismatch,
+        base::TimeTicks::Now() - this->boot_start_time_);
     return BootResult::kUpdate;
   }
 }
@@ -311,7 +320,9 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
 // Else return BootResult::kFail.
 hps::HPS_impl::BootResult HPS_impl::CheckStage1() {
   if (!CheckMagic()) {
-    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kStage1NotStarted);
+    hps_metrics_.SendHpsTurnOnResult(
+        HpsTurnOnResult::kStage1NotStarted,
+        base::TimeTicks::Now() - this->boot_start_time_);
     return BootResult::kFail;
   }
 
@@ -323,12 +334,14 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage1() {
   }
 
   if (status.value() & R2::kFault || !(status.value() & R2::kOK)) {
-    this->Fault();
+    this->OnBootFault();
     return BootResult::kFail;
   }
 
   if (!(status.value() & R2::kStage1)) {
-    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kStage1NotStarted);
+    hps_metrics_.SendHpsTurnOnResult(
+        HpsTurnOnResult::kStage1NotStarted,
+        base::TimeTicks::Now() - this->boot_start_time_);
     LOG(FATAL) << "Stage 1 did not start";
     return BootResult::kFail;
   }
@@ -354,7 +367,9 @@ hps::HPS_impl::BootResult HPS_impl::CheckApplication() {
     if (status.value() & R2::kAppl) {
       VLOG(1) << "Application boot after " << timer.Elapsed().InMilliseconds()
               << "ms";
-      hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kSuccess);
+      hps_metrics_.SendHpsTurnOnResult(
+          HpsTurnOnResult::kSuccess,
+          base::TimeTicks::Now() - this->boot_start_time_);
       return BootResult::kOk;
     }
 
@@ -367,17 +382,21 @@ hps::HPS_impl::BootResult HPS_impl::CheckApplication() {
     if (error.value() & RError::kSpiNotVer) {
       VLOG(1) << "SPI verification failed after "
               << timer.Elapsed().InMilliseconds() << "ms";
-      hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kSpiNotVerified);
+      hps_metrics_.SendHpsTurnOnResult(
+          HpsTurnOnResult::kSpiNotVerified,
+          base::TimeTicks::Now() - this->boot_start_time_);
       return BootResult::kUpdate;
     } else if (error.value()) {
-      this->Fault();
+      this->OnBootFault();
       return BootResult::kFail;
     }
 
     Sleep(kApplSleep);
   } while (timer.Elapsed() < kApplTimeout);
 
-  hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kApplNotStarted);
+  hps_metrics_.SendHpsTurnOnResult(
+      HpsTurnOnResult::kApplNotStarted,
+      base::TimeTicks::Now() - this->boot_start_time_);
   LOG(FATAL) << "Application did not start";
   return BootResult::kFail;
 }
@@ -392,9 +411,11 @@ bool HPS_impl::Reboot() {
   return true;
 }
 
-// Fault bit seen, attempt to dump status information
-void HPS_impl::Fault() {
-  hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kFault);
+// Fault bit seen during boot, attempt to dump status information and abort.
+// Only call this function in the boot process.
+void HPS_impl::OnBootFault() {
+  hps_metrics_.SendHpsTurnOnResult(
+      HpsTurnOnResult::kFault, base::TimeTicks::Now() - this->boot_start_time_);
   std::optional<uint16_t> errors = this->device_->ReadReg(HpsReg::kError);
   if (!errors) {
     LOG(FATAL) << "Fault: cause unknown";
@@ -412,7 +433,9 @@ hps::HPS_impl::BootResult HPS_impl::SendStage1Update() {
     hps_metrics_.SendHpsUpdateDuration(HpsBank::kMcuFlash, timer.Elapsed());
     return BootResult::kUpdate;
   } else {
-    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kMcuUpdateFailure);
+    hps_metrics_.SendHpsTurnOnResult(
+        HpsTurnOnResult::kMcuUpdateFailure,
+        base::TimeTicks::Now() - this->boot_start_time_);
     return BootResult::kFail;
   }
 }
@@ -427,7 +450,9 @@ hps::HPS_impl::BootResult HPS_impl::SendApplicationUpdate() {
     hps_metrics_.SendHpsUpdateDuration(HpsBank::kSpiFlash, timer.Elapsed());
     return BootResult::kUpdate;
   } else {
-    hps_metrics_.SendHpsTurnOnResult(HpsTurnOnResult::kSpiUpdateFailure);
+    hps_metrics_.SendHpsTurnOnResult(
+        HpsTurnOnResult::kSpiUpdateFailure,
+        base::TimeTicks::Now() - this->boot_start_time_);
     return BootResult::kFail;
   }
 }

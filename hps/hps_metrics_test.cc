@@ -49,11 +49,36 @@ TEST_F(HpsMetricsTest, SendHpsTurnOnResult) {
   ASSERT_EQ(all_results.size(),
             static_cast<int>(HpsTurnOnResult::kMaxValue) + 1);
 
+  constexpr int kDuration = 49;
   for (auto result : all_results) {
+    switch (result) {
+      case HpsTurnOnResult::kSuccess:
+        EXPECT_CALL(*GetMetricsLibraryMock(),
+                    SendToUMA(kHpsBootSuccessDuration, kDuration, _, _, _))
+            .Times(1);
+        break;
+      case HpsTurnOnResult::kMcuVersionMismatch:
+      case HpsTurnOnResult::kSpiNotVerified:
+      case HpsTurnOnResult::kMcuNotVerified:
+        break;
+      case HpsTurnOnResult::kStage1NotStarted:
+      case HpsTurnOnResult::kApplNotStarted:
+      case HpsTurnOnResult::kNoResponse:
+      case HpsTurnOnResult::kTimeout:
+      case HpsTurnOnResult::kBadMagic:
+      case HpsTurnOnResult::kFault:
+      case HpsTurnOnResult::kMcuUpdateFailure:
+      case HpsTurnOnResult::kSpiUpdateFailure:
+        EXPECT_CALL(*GetMetricsLibraryMock(),
+                    SendToUMA(kHpsBootFailedDuration, kDuration, _, _, _))
+            .Times(1);
+        break;
+    }
     EXPECT_CALL(*GetMetricsLibraryMock(),
                 SendEnumToUMA(kHpsTurnOnResult, static_cast<int>(result), _))
         .Times(1);
-    hps_metrics_.SendHpsTurnOnResult(result);
+    hps_metrics_.SendHpsTurnOnResult(
+        result, base::TimeDelta::FromMilliseconds(kDuration));
   }
 }
 

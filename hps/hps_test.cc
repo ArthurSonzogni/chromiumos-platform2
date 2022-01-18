@@ -289,6 +289,9 @@ TEST_F(HPSTest, NormalBoot) {
   hps_->Init(version, mcu, spi1, spi2);
 
   // Boot the module.
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(kHpsBootSuccessDuration, _, _, _, _))
+      .Times(1);
   EXPECT_CALL(
       *GetMetricsLibraryMock(),
       SendEnumToUMA(hps::kHpsTurnOnResult,
@@ -323,6 +326,9 @@ TEST_F(HPSTest, NormalBootTwice) {
   hps_->Init(version, mcu, spi1, spi2);
 
   // Boot the module.
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(kHpsBootSuccessDuration, _, _, _, _))
+      .Times(2);
   EXPECT_CALL(
       *GetMetricsLibraryMock(),
       SendEnumToUMA(hps::kHpsTurnOnResult,
@@ -362,6 +368,9 @@ TEST_F(HPSTest, McuUpdate) {
       .Times(1);
   EXPECT_CALL(*GetMetricsLibraryMock(),
               SendToUMA(hps::kHpsUpdateMcuDuration, _, _, _, _))
+      .Times(1);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(kHpsBootSuccessDuration, _, _, _, _))
       .Times(1);
   EXPECT_CALL(
       *GetMetricsLibraryMock(),
@@ -408,6 +417,9 @@ TEST_F(HPSTest, SpiUpdate) {
       .Times(1);
   EXPECT_CALL(*GetMetricsLibraryMock(),
               SendToUMA(hps::kHpsUpdateSpiDuration, _, _, _, _))
+      .Times(1);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(kHpsBootSuccessDuration, _, _, _, _))
       .Times(1);
   EXPECT_CALL(
       *GetMetricsLibraryMock(),
@@ -467,6 +479,9 @@ TEST_F(HPSTest, BothUpdate) {
   EXPECT_CALL(*GetMetricsLibraryMock(),
               SendToUMA(hps::kHpsUpdateSpiDuration, _, _, _, _))
       .Times(1);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(kHpsBootSuccessDuration, _, _, _, _))
+      .Times(1);
   EXPECT_CALL(
       *GetMetricsLibraryMock(),
       SendEnumToUMA(hps::kHpsTurnOnResult,
@@ -506,6 +521,9 @@ TEST_F(HPSTest, WpOffNoUpdate) {
   hps_->Init(version, mcu, spi1, spi2);
 
   // Boot the module.
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(kHpsBootSuccessDuration, _, _, _, _))
+      .Times(1);
   EXPECT_CALL(
       *GetMetricsLibraryMock(),
       SendEnumToUMA(hps::kHpsTurnOnResult,
@@ -555,6 +573,9 @@ TEST_F(HPSTest, WpOffUpdate) {
       .Times(1);
   EXPECT_CALL(*GetMetricsLibraryMock(),
               SendToUMA(hps::kHpsUpdateMcuDuration, _, _, _, _))
+      .Times(1);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(kHpsBootSuccessDuration, _, _, _, _))
       .Times(1);
   EXPECT_CALL(
       *GetMetricsLibraryMock(),
@@ -612,6 +633,9 @@ TEST_F(HPSTest, VersionUpdate) {
       .Times(1);
   EXPECT_CALL(*GetMetricsLibraryMock(),
               SendToUMA(hps::kHpsUpdateSpiDuration, _, _, _, _))
+      .Times(1);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(kHpsBootSuccessDuration, _, _, _, _))
       .Times(1);
   EXPECT_CALL(
       *GetMetricsLibraryMock(),

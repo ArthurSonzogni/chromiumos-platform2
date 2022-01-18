@@ -16,6 +16,9 @@
 namespace hps {
 
 constexpr char kHpsTurnOnResult[] = "ChromeOS.HPS.TurnOn.Result";
+constexpr char kHpsBootFailedDuration[] = "ChromeOS.HPS.TurnOn.Failed.Duration";
+constexpr char kHpsBootSuccessDuration[] =
+    "ChromeOS.HPS.TurnOn.Success.Duration";
 constexpr char kHpsUpdateMcuDuration[] = "ChromeOS.HPS.Update.Mcu.Duration";
 constexpr char kHpsUpdateSpiDuration[] = "ChromeOS.HPS.Update.Spi.Duration";
 
@@ -46,7 +49,7 @@ class HpsMetrics {
 
   ~HpsMetrics() = default;
 
-  bool SendHpsTurnOnResult(HpsTurnOnResult result);
+  bool SendHpsTurnOnResult(HpsTurnOnResult result, base::TimeDelta duration);
   bool SendHpsUpdateDuration(HpsBank bank, base::TimeDelta duration);
 
   void SetMetricsLibraryForTesting(

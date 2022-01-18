@@ -8,10 +8,39 @@ namespace hps {
 
 constexpr int kHpsUpdateMcuMaxDurationMilliSeconds = 60 * 1000;
 constexpr int kHpsUpdateSpiMaxDurationMilliSeconds = 40 * 60 * 1000;
+constexpr int kHpsBootMaxDurationMilliSeconds =
+    kHpsUpdateMcuMaxDurationMilliSeconds +
+    kHpsUpdateSpiMaxDurationMilliSeconds + 10 * 60 * 1000;
 
 HpsMetrics::HpsMetrics() : metrics_lib_(std::make_unique<MetricsLibrary>()) {}
 
-bool HpsMetrics::SendHpsTurnOnResult(HpsTurnOnResult result) {
+bool HpsMetrics::SendHpsTurnOnResult(HpsTurnOnResult result,
+                                     base::TimeDelta duration) {
+  switch (result) {
+    case HpsTurnOnResult::kSuccess:
+      metrics_lib_->SendToUMA(kHpsBootSuccessDuration,
+                              static_cast<int>(duration.InMilliseconds()), 1,
+                              kHpsBootMaxDurationMilliSeconds, 50);
+      break;
+    // The kHpsBoot*Duration is only for terminal boot status, (fail or
+    // succeed). So for the 'send an update' results, do not send the duration.
+    case HpsTurnOnResult::kMcuVersionMismatch:
+    case HpsTurnOnResult::kSpiNotVerified:
+    case HpsTurnOnResult::kMcuNotVerified:
+      break;
+    case HpsTurnOnResult::kStage1NotStarted:
+    case HpsTurnOnResult::kApplNotStarted:
+    case HpsTurnOnResult::kNoResponse:
+    case HpsTurnOnResult::kTimeout:
+    case HpsTurnOnResult::kBadMagic:
+    case HpsTurnOnResult::kFault:
+    case HpsTurnOnResult::kMcuUpdateFailure:
+    case HpsTurnOnResult::kSpiUpdateFailure:
+      metrics_lib_->SendToUMA(kHpsBootFailedDuration,
+                              static_cast<int>(duration.InMilliseconds()), 1,
+                              kHpsBootMaxDurationMilliSeconds, 50);
+      break;
+  }
   return metrics_lib_->SendEnumToUMA(hps::kHpsTurnOnResult, result);
 }
 

@@ -72,12 +72,13 @@ class HPS_impl : public HPS {
   BootResult CheckStage1();
   BootResult CheckApplication();
   bool Reboot();
-  void Fault();
+  void OnBootFault();
   bool WaitForBankReady(uint8_t bank);
   BootResult SendStage1Update();
   BootResult SendApplicationUpdate();
   bool WriteFile(uint8_t bank, const base::FilePath& source);
   std::unique_ptr<DevInterface> device_;
+  base::TimeTicks boot_start_time_;
   HpsMetrics hps_metrics_;
   uint16_t hw_rev_;
   uint32_t stage1_version_;
