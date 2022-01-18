@@ -16,6 +16,7 @@ use dbus::Error as DbusError;
 use lazy_static::lazy_static;
 use system_api::client::OrgChromiumSessionManagerInterface;
 use thiserror::Error as ThisError;
+use vboot_reference_sys::crossystem::*;
 
 // 25 seconds is the default timeout for dbus-send.
 pub const DBUS_TIMEOUT: Duration = Duration::from_secs(25);
@@ -69,18 +70,6 @@ pub fn is_dev_mode() -> Result<bool> {
 }
 
 const BUFFER_SIZE: usize = 128;
-
-// Bindings to vboot/crossystem.h
-extern "C" {
-    fn VbGetSystemPropertyInt(name: *const c_char) -> c_int;
-    fn VbGetSystemPropertyString(
-        name: *const c_char,
-        dest: *mut c_char,
-        size: c_ulong,
-    ) -> *const c_char;
-    fn VbSetSystemPropertyInt(name: *const c_char, value: c_int) -> c_int;
-    fn VbSetSystemPropertyString(name: *const c_char, value: *const c_char) -> c_int;
-}
 
 /// Integer properties present in crossystem.
 pub enum CrossystemIntProperty {

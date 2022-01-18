@@ -15,8 +15,9 @@ log = "0.4"
 serde = { version = "1.0.114", features = ["derive"] }
 system_api = { path = "../system_api", optional = true } # provided by ebuild
 thiserror = "1.0.20"
+vboot_reference-sys = { path = "../../platform/vboot_reference/rust/vboot_reference-sys", optional = true } # provided by ebuild
 zeroize = { version = "1.2.0", features = ["zeroize_derive"] }
 
 [features]
 default = []
-chromeos-module = ["dbus", "lazy_static", "pkg-config", "system_api"]
+chromeos-module = ["dbus", "lazy_static", "pkg-config", "system_api", "vboot_reference-sys"]
