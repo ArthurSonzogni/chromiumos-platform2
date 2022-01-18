@@ -27,7 +27,9 @@ class IPsecConnectionUnderTest : public IPsecConnection {
             std::move(l2tp_connection),
             nullptr,
             dispatcher,
-            process_manager) {}
+            process_manager) {
+    state_ = VPNConnection::State::kConnecting;
+  }
 
   IPsecConnectionUnderTest(const IPsecConnectionUnderTest&) = delete;
   IPsecConnectionUnderTest& operator=(const IPsecConnectionUnderTest&) = delete;
