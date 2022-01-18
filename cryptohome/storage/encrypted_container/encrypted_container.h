@@ -23,9 +23,11 @@ enum class EncryptedContainerType {
   kUnknown = 0,
   kEcryptfs,
   kFscrypt,
-  kEcryptfsToFscrypt,
   kDmcrypt,
   kEphemeral,
+  kEcryptfsToFscrypt,
+  kEcryptfsToDmcrypt,
+  kFscryptToDmcrypt,
 };
 
 struct DmcryptConfig {
@@ -69,6 +71,12 @@ class EncryptedContainer {
   virtual bool SetLazyTeardownWhenUnused() = 0;
   // Returns the backing location if any.
   virtual base::FilePath GetBackingLocation() const = 0;
+
+  static bool IsMigratingType(EncryptedContainerType type) {
+    return type == EncryptedContainerType::kEcryptfsToFscrypt ||
+           type == EncryptedContainerType::kEcryptfsToDmcrypt ||
+           type == EncryptedContainerType::kFscryptToDmcrypt;
+  }
 };
 
 }  // namespace cryptohome

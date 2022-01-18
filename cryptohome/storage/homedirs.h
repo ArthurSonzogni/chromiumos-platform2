@@ -168,6 +168,10 @@ class HomeDirs {
   virtual void set_enterprise_owned(bool value) { enterprise_owned_ = value; }
   virtual bool enterprise_owned() const { return enterprise_owned_; }
 
+  virtual void set_lvm_migration_enabled(bool value) {
+    lvm_migration_enabled_ = value;
+  }
+
   // Pick the most appropriate vault type for the user.
   virtual EncryptedContainerType PickVaultType(
       const std::string& obfuscated_username,
@@ -242,6 +246,9 @@ class HomeDirs {
   Platform* platform_;
   std::unique_ptr<policy::PolicyProvider> policy_provider_;
   bool enterprise_owned_;
+  // lvm migration flag is temporary, it will be removed when defaulted to
+  // |true|.
+  bool lvm_migration_enabled_;
   chaps::TokenManagerClient chaps_client_;
   std::unique_ptr<CryptohomeVaultFactory> vault_factory_;
   std::vector<HomeDir> unmounted_homedirs_;

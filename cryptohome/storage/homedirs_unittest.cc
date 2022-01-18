@@ -481,6 +481,7 @@ class HomeDirsVaultTest : public ::testing::Test {
       ExpectLogicalVolumeStatefulPartition(
           platform, homedirs, user_.obfuscated,
           type == EncryptedContainerType::kDmcrypt);
+      homedirs->set_lvm_migration_enabled(true);
     }
 #endif  // USE_LVM_STATEFUL_PARTITION
 
@@ -588,7 +589,7 @@ TEST_F(HomeDirsVaultTest, PickVaultType) {
         .expected_error = MOUNT_ERROR_OLD_ENCRYPTION,
     },
     {
-        .name = "existing_ecryptfs_migrate",
+        .name = "existing_ecryptfs_migrate_to_fscrypt",
         .lvm_supported = false,
         .fscrypt_supported = true,
         .existing_container_type = EncryptedContainerType::kEcryptfs,
@@ -615,15 +616,6 @@ TEST_F(HomeDirsVaultTest, PickVaultType) {
         .expected_error = MOUNT_ERROR_NONE,
     },
     {
-        .name = "existing_fscrypt_migrate_not_allowed",
-        .lvm_supported = false,
-        .fscrypt_supported = true,
-        .existing_container_type = EncryptedContainerType::kFscrypt,
-        .options = {.migrate = true},
-        .expected_type = EncryptedContainerType::kUnknown,
-        .expected_error = MOUNT_ERROR_UNEXPECTED_MOUNT_TYPE,
-    },
-    {
         .name = "existing_migration",
         .lvm_supported = false,
         .fscrypt_supported = true,
@@ -642,6 +634,24 @@ TEST_F(HomeDirsVaultTest, PickVaultType) {
         .expected_error = MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE,
     },
 #if USE_LVM_STATEFUL_PARTITION
+    {
+        .name = "existing_fscrypt_migrate",
+        .lvm_supported = true,
+        .fscrypt_supported = true,
+        .existing_container_type = EncryptedContainerType::kFscrypt,
+        .options = {.migrate = true},
+        .expected_type = EncryptedContainerType::kFscryptToDmcrypt,
+        .expected_error = MOUNT_ERROR_NONE,
+    },
+    {
+        .name = "existing_ecryptfs_migrate_to_dmcrypt",
+        .lvm_supported = true,
+        .fscrypt_supported = true,
+        .existing_container_type = EncryptedContainerType::kEcryptfs,
+        .options = {.migrate = true},
+        .expected_type = EncryptedContainerType::kEcryptfsToDmcrypt,
+        .expected_error = MOUNT_ERROR_NONE,
+    },
     {
         .name = "new_lvm",
         .lvm_supported = true,

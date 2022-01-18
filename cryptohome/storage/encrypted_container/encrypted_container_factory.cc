@@ -70,6 +70,8 @@ std::unique_ptr<EncryptedContainer> EncryptedContainerFactory::Generate(
                                                   platform_);
     }
     case EncryptedContainerType::kEcryptfsToFscrypt:
+    case EncryptedContainerType::kEcryptfsToDmcrypt:
+    case EncryptedContainerType::kFscryptToDmcrypt:
       // The migrating type is handled by the higher level abstraction.
       // FALLTHROUGH
     case EncryptedContainerType::kUnknown:

@@ -114,6 +114,8 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
       config.backing_file_name = obfuscated_username;
       break;
     case EncryptedContainerType::kEcryptfsToFscrypt:
+    case EncryptedContainerType::kEcryptfsToDmcrypt:
+    case EncryptedContainerType::kFscryptToDmcrypt:
       // The migrating type is handled by the higher level abstraction.
       // FALLTHROUGH
     case EncryptedContainerType::kUnknown:
@@ -132,11 +134,17 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
   EncryptedContainerType migrating_container_type =
       EncryptedContainerType::kUnknown;
 
-  if (vault_type != EncryptedContainerType::kEcryptfsToFscrypt) {
-    container_type = vault_type;
-  } else {
+  if (vault_type == EncryptedContainerType::kEcryptfsToFscrypt) {
     container_type = EncryptedContainerType::kEcryptfs;
     migrating_container_type = EncryptedContainerType::kFscrypt;
+  } else if (vault_type == EncryptedContainerType::kEcryptfsToDmcrypt) {
+    container_type = EncryptedContainerType::kEcryptfs;
+    migrating_container_type = EncryptedContainerType::kDmcrypt;
+  } else if (vault_type == EncryptedContainerType::kFscryptToDmcrypt) {
+    container_type = EncryptedContainerType::kFscrypt;
+    migrating_container_type = EncryptedContainerType::kDmcrypt;
+  } else {
+    container_type = vault_type;
   }
 
   // Generate containers for the vault.
@@ -160,7 +168,9 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
   }
 
   std::unique_ptr<EncryptedContainer> cache_container;
-  if (container_type == EncryptedContainerType::kDmcrypt) {
+  if (container_type == EncryptedContainerType::kDmcrypt ||
+      container_type == EncryptedContainerType::kEcryptfsToDmcrypt ||
+      container_type == EncryptedContainerType::kFscryptToDmcrypt) {
     cache_container =
         GenerateEncryptedContainer(container_type, obfuscated_username,
                                    key_reference, kDmcryptCacheContainerSuffix);

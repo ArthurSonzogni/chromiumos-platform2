@@ -52,7 +52,9 @@ class CryptohomeVaultTest
         key_reference_({.fek_sig = brillo::SecureBlob("random keyref")}),
         key_({.fek = brillo::SecureBlob("random key")}),
         backing_dir_(UserPath(obfuscated_username_)),
-        encrypted_container_factory_(&platform_, &keyring_) {
+        keyring_(new FakeKeyring()),
+        encrypted_container_factory_(&platform_,
+                                     std::unique_ptr<FakeKeyring>(keyring_)) {
     ON_CALL(platform_, SetDirCryptoKey(_, _)).WillByDefault(Return(true));
   }
   ~CryptohomeVaultTest() override = default;
@@ -210,7 +212,7 @@ class CryptohomeVaultTest
 
   MockHomeDirs homedirs_;
   MockPlatform platform_;
-  FakeKeyring keyring_;
+  FakeKeyring* keyring_;
   FakeEncryptedContainerFactory encrypted_container_factory_;
   std::unique_ptr<CryptohomeVault> vault_;
 };
@@ -257,7 +259,7 @@ TEST_P(CryptohomeVaultTest, ContainerSetupFailed) {
                 /*create_migrating_container=*/false,
                 /*create_cache_container=*/false);
   ExpectVaultSetup();
-  keyring_.SetShouldFail(true);
+  keyring_->SetShouldFail(true);
   EXPECT_EQ(vault_->Setup(key_), MOUNT_ERROR_KEYRING_FAILED);
 }
 
@@ -277,7 +279,7 @@ TEST_P(CryptohomeVaultTest, MigratingContainerSetupFailed) {
   } else if (CacheContainerType() != EncryptedContainerType::kUnknown) {
     good_key_calls = 2;
   }
-  keyring_.SetShouldFailAfter(good_key_calls);
+  keyring_->SetShouldFailAfter(good_key_calls);
 
   MountError error =
       MigratingContainerType() != EncryptedContainerType::kUnknown

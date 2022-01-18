@@ -77,6 +77,7 @@ HomeDirs::HomeDirs(Platform* platform,
     : platform_(platform),
       policy_provider_(std::move(policy_provider)),
       enterprise_owned_(false),
+      lvm_migration_enabled_(false),
       vault_factory_(std::move(vault_factory)),
       remove_callback_(remove_callback) {
 // TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
@@ -379,8 +380,14 @@ EncryptedContainerType HomeDirs::GetVaultType(
     if (DircryptoCryptohomeExists(obfuscated_username, error)) {
       return EncryptedContainerType::kEcryptfsToFscrypt;
     }
+    if (DmcryptCryptohomeExists(obfuscated_username)) {
+      return EncryptedContainerType::kEcryptfsToDmcrypt;
+    }
     return EncryptedContainerType::kEcryptfs;
   } else if (DircryptoCryptohomeExists(obfuscated_username, error)) {
+    if (DmcryptCryptohomeExists(obfuscated_username)) {
+      return EncryptedContainerType::kFscryptToDmcrypt;
+    }
     return EncryptedContainerType::kFscrypt;
   } else if (DmcryptCryptohomeExists(obfuscated_username)) {
     return EncryptedContainerType::kDmcrypt;
@@ -396,8 +403,17 @@ EncryptedContainerType HomeDirs::PickVaultType(
   EncryptedContainerType vault_type = GetVaultType(obfuscated_username, error);
   // If existing vault is ecryptfs and migrate == true - make migrating vault.
   if (vault_type == EncryptedContainerType::kEcryptfs && options.migrate) {
-    vault_type = EncryptedContainerType::kEcryptfsToFscrypt;
+    if (lvm_migration_enabled_) {
+      vault_type = EncryptedContainerType::kEcryptfsToDmcrypt;
+    } else {
+      vault_type = EncryptedContainerType::kEcryptfsToFscrypt;
+    }
   }
+#if USE_LVM_STATEFUL_PARTITION
+  if (vault_type == EncryptedContainerType::kFscrypt && options.migrate) {
+    vault_type = EncryptedContainerType::kFscryptToDmcrypt;
+  }
+#endif
 
   // Validate exiting vault options.
   if (vault_type != EncryptedContainerType::kUnknown) {
@@ -433,15 +449,13 @@ MountError HomeDirs::VerifyVaultType(EncryptedContainerType vault_type,
     LOG(ERROR) << "Mount attempt with block_ecryptfs on eCryptfs.";
     return MOUNT_ERROR_OLD_ENCRYPTION;
   }
-  if (vault_type == EncryptedContainerType::kEcryptfsToFscrypt &&
-      !options.migrate) {
+  if (EncryptedContainer::IsMigratingType(vault_type) && !options.migrate) {
     LOG(ERROR) << "Mount failed because both eCryptfs and dircrypto home"
                << " directories were found. Need to resume and finish"
                << " migration first.";
     return MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE;
   }
-  if (vault_type != EncryptedContainerType::kEcryptfsToFscrypt &&
-      options.migrate) {
+  if (!EncryptedContainer::IsMigratingType(vault_type) && options.migrate) {
     LOG(ERROR) << "Mount attempt with migration on non-eCryptfs mount";
     return MOUNT_ERROR_UNEXPECTED_MOUNT_TYPE;
   }

@@ -46,8 +46,8 @@
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
-#include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
 #include "cryptohome/storage/encrypted_container/fake_backing_device.h"
+#include "cryptohome/storage/encrypted_container/fake_encrypted_container_factory.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/keyring/fake_keyring.h"
@@ -410,9 +410,8 @@ class PersistentSystemTest : public ::testing::Test {
     platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt);
 
     std::unique_ptr<EncryptedContainerFactory> container_factory =
-        std::make_unique<EncryptedContainerFactory>(
-            &platform_, std::make_unique<FakeKeyring>(),
-            std::make_unique<FakeBackingDeviceFactory>(&platform_));
+        std::make_unique<FakeEncryptedContainerFactory>(
+            &platform_, std::make_unique<FakeKeyring>());
     homedirs_ = std::make_unique<HomeDirs>(
         &platform_, std::make_unique<policy::PolicyProvider>(),
         base::BindRepeating([](const std::string& unused) {}),
@@ -527,6 +526,13 @@ class PersistentSystemTest : public ::testing::Test {
         platform_.TouchFileDurable(GetDmcryptDataVolume(obfuscated_username)));
     ASSERT_TRUE(
         platform_.TouchFileDurable(GetDmcryptCacheVolume(obfuscated_username)));
+    ON_CALL(platform_, GetStatefulDevice())
+        .WillByDefault(Return(base::FilePath("/dev/somedev")));
+    ON_CALL(platform_, GetBlkSize(_, _))
+        .WillByDefault(DoAll(SetArgPointee<1>(4096), Return(true)));
+    ON_CALL(platform_, UdevAdmSettle(_, _)).WillByDefault(Return(true));
+    ON_CALL(platform_, FormatExt4(_, _, _)).WillByDefault(Return(true));
+    ON_CALL(platform_, Tune2Fs(_, _)).WillByDefault(Return(true));
   }
 
  private:
@@ -1058,7 +1064,7 @@ TEST_F(PersistentSystemTest, NoEcryptfsMountWhenForcedDircrypto) {
               Eq(MOUNT_ERROR_OLD_ENCRYPTION));
 }
 
-TEST_F(PersistentSystemTest, EcryptfsMigration) {
+TEST_F(PersistentSystemTest, MigrateEcryptfsToFscrypt) {
   // Verify ecryptfs->dircrypto migration.
   const std::string kContent{"some_content"};
   const base::FilePath kFile{"some_file"};
@@ -1146,6 +1152,150 @@ TEST_F(PersistentSystemTest, EcryptfsMigration) {
   // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
   // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
 }
+
+#if USE_LVM_STATEFUL_PARTITION
+
+TEST_F(PersistentSystemTest, MigrateEcryptfsToDmcrypt) {
+  // Verify ecryptfs->dircrypto migration.
+  const std::string kContent{"some_content"};
+  const base::FilePath kFile{"some_file"};
+  const FileSystemKeyset keyset = FileSystemKeyset::CreateRandom();
+
+  homedirs_->set_lvm_migration_enabled(true);
+
+  // Create ecryptfs
+  CryptohomeVault::Options options = {
+      .force_type = EncryptedContainerType::kEcryptfs,
+  };
+  MockPreclearKeyring(/*success=*/true);
+  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options),
+              MOUNT_ERROR_NONE);
+
+  ASSERT_TRUE(platform_.WriteStringToFile(
+      base::FilePath(kHomeChronosUser).Append(kFile), kContent));
+
+  ASSERT_TRUE(mount_->UnmountCryptohome());
+
+  // Start migration
+  // Create a new mount object, because interface rises a flag prohibiting
+  // migration on unmount.
+  // TODO(dlunev): fix the behaviour.
+  scoped_refptr<Mount> new_mount =
+      new Mount(&platform_, homedirs_.get(), /*legacy_mount=*/true,
+                /*bind_mount_downloads=*/true, /*use_local_mounter=*/true);
+  options = {
+      .migrate = true,
+  };
+  MockPreclearKeyring(/*success=*/true);
+  SetDmcryptPrereqs(kUser);
+  ASSERT_THAT(new_mount->MountCryptohome(kUser, keyset, options),
+              MOUNT_ERROR_NONE);
+
+  ASSERT_TRUE(new_mount->MigrateEncryption(
+      base::BindRepeating(
+          [](const user_data_auth::DircryptoMigrationProgress& unused) {}),
+      MigrationType::FULL));
+  VerifyFS(kUser, MountType::ECRYPTFS, /*expect_present=*/false);
+  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/false);
+
+  // "vault" should be gone.
+  const std::string obfuscated_username =
+      brillo::cryptohome::home::SanitizeUserName(kUser);
+  const base::FilePath ecryptfs_vault =
+      GetEcryptfsUserVaultPath(obfuscated_username);
+  ASSERT_FALSE(platform_.DirectoryExists(ecryptfs_vault));
+
+  // Now we should be able to mount with dircrypto.
+  options = {
+      .force_type = EncryptedContainerType::kDmcrypt,
+  };
+  MockPreclearKeyring(/*success=*/true);
+  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options),
+              MOUNT_ERROR_NONE);
+  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/true);
+
+  std::string result;
+  ASSERT_TRUE(platform_.ReadFileToString(
+      base::FilePath(kHomeChronosUser).Append(kFile), &result));
+  ASSERT_THAT(result, kContent);
+
+  ASSERT_TRUE(mount_->UnmountCryptohome());
+  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/false);
+}
+
+TEST_F(PersistentSystemTest, MigrateFscryptToDmcrypt) {
+  // Verify ecryptfs->dircrypto migration.
+  const std::string kContent{"some_content"};
+  const base::FilePath kFile{"some_file"};
+  const FileSystemKeyset keyset = FileSystemKeyset::CreateRandom();
+
+  homedirs_->set_lvm_migration_enabled(true);
+
+  // Create ecryptfs
+  CryptohomeVault::Options options = {
+      .force_type = EncryptedContainerType::kFscrypt,
+  };
+  MockPreclearKeyring(/*success=*/true);
+  MockDircryptoKeyringSetup(kUser, keyset, /*existing_dir=*/false,
+                            /*success=*/true);
+  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options),
+              MOUNT_ERROR_NONE);
+
+  ASSERT_TRUE(platform_.WriteStringToFile(
+      base::FilePath(kHomeChronosUser).Append(kFile), kContent));
+
+  ASSERT_TRUE(mount_->UnmountCryptohome());
+
+  // Start migration
+  // Create a new mount object, because interface rises a flag prohibiting
+  // migration on unmount.
+  // TODO(dlunev): fix the behaviour.
+  scoped_refptr<Mount> new_mount =
+      new Mount(&platform_, homedirs_.get(), /*legacy_mount=*/true,
+                /*bind_mount_downloads=*/true, /*use_local_mounter=*/true);
+  options = {
+      .migrate = true,
+  };
+  MockPreclearKeyring(/*success=*/true);
+  MockDircryptoKeyringSetup(kUser, keyset, /*existing_dir=*/true,
+                            /*success=*/true);
+  SetDmcryptPrereqs(kUser);
+  ASSERT_THAT(new_mount->MountCryptohome(kUser, keyset, options),
+              MOUNT_ERROR_NONE);
+
+  ASSERT_TRUE(new_mount->MigrateEncryption(
+      base::BindRepeating(
+          [](const user_data_auth::DircryptoMigrationProgress& unused) {}),
+      MigrationType::FULL));
+  // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
+  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/false);
+
+  // "vault" should be gone.
+  const std::string obfuscated_username =
+      brillo::cryptohome::home::SanitizeUserName(kUser);
+  const base::FilePath ecryptfs_vault =
+      GetEcryptfsUserVaultPath(obfuscated_username);
+  ASSERT_FALSE(platform_.DirectoryExists(ecryptfs_vault));
+
+  // Now we should be able to mount with dircrypto.
+  options = {
+      .force_type = EncryptedContainerType::kDmcrypt,
+  };
+  MockPreclearKeyring(/*success=*/true);
+  ASSERT_THAT(mount_->MountCryptohome(kUser, keyset, options),
+              MOUNT_ERROR_NONE);
+  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/true);
+
+  std::string result;
+  ASSERT_TRUE(platform_.ReadFileToString(
+      base::FilePath(kHomeChronosUser).Append(kFile), &result));
+  ASSERT_THAT(result, kContent);
+
+  ASSERT_TRUE(mount_->UnmountCryptohome());
+  VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/false);
+}
+
+#endif  // USE_LVM_STATEFUL_PARTITION
 
 }  // namespace
 
