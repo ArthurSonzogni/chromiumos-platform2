@@ -52,8 +52,7 @@ base::Optional<base::Value> SystemServiceProxy::CallMethodAndGetResponse(
     return base::nullopt;
 
   dbus::MessageReader reader(response.get());
-  return base::Optional<base::Value>(
-      base::Value::FromUniquePtrValue(dbus::PopDataAsValue(&reader)));
+  return base::Optional<base::Value>(dbus::PopDataAsValue(&reader));
 }
 
 base::Optional<base::Value> SystemServiceProxy::GetProperties(
