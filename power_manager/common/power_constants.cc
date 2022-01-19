@@ -315,4 +315,23 @@ std::string WifiRegDomainToString(WifiRegDomain domain) {
   return "unknown";
 }
 
+std::string TriggerSourceToString(TriggerSource source) {
+  switch (source) {
+    case TriggerSource::INIT:
+      return "init";
+    case TriggerSource::TABLET_MODE:
+      return "tablet_mode";
+    case TriggerSource::REG_DOMAIN:
+      return "reg_domain";
+    case TriggerSource::PROXIMITY:
+      return "proximity";
+    case TriggerSource::UDEV_EVENT:
+      return "udev_event";
+    case TriggerSource::UNKNOWN:
+      return "unknown";
+  }
+  NOTREACHED() << "Unhandled trigger source " << static_cast<int>(source);
+  return "unknown";
+}
+
 }  // namespace power_manager

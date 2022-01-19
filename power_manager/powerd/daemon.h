@@ -172,7 +172,8 @@ class Daemon :
 
   // Overridden from policy::WifiController::Delegate:
   void SetWifiTransmitPower(RadioTransmitPower power,
-                            WifiRegDomain domain) override;
+                            WifiRegDomain domain,
+                            TriggerSource source) override;
 
   // Overridden from policy::CellularController::Delegate:
   void SetCellularTransmitPower(RadioTransmitPower power,
