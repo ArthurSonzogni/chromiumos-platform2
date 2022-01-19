@@ -42,11 +42,13 @@ executable("attestation-injected-keys") {
     "protobuf",
   ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
 }
 
 executable("hwsec-test-va") {
   sources = [ "verified_access/main.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   deps = [
     ":common_library",
     ":verified_access_library",
@@ -81,6 +83,7 @@ source_set("verified_access_library") {
 executable("fake_pca_agentd") {
   sources = [ "fake_pca_agent/main.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   deps = [
     ":common_library",
     ":fake_pca_agent_library",
@@ -137,6 +140,7 @@ if (use.test) {
       ":hwsec-test-utils_testrunner_config",
       "//common-mk:test",
     ]
+    run_test = true
     deps = [
       ":common_library",
       ":fake_pca_agent_library",
