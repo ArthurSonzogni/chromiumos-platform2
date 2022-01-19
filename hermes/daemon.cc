@@ -56,10 +56,10 @@ void Daemon::RegisterDBusObjectsAsync(
   manager_ = std::make_unique<Manager>();
   auto cb = base::BindOnce([](int err) {
     if (err) {
-      LOG(INFO) << "Could not find eSIM:" << err;
+      LOG(INFO) << "Could not initialize: " << err;
       return;
     }
-    LOG(INFO) << "eSIM init finished";
+    LOG(INFO) << "init finished";
   });
 
   modem_->Initialize(manager_.get(), std::move(cb));

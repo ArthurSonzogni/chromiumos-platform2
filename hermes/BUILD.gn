@@ -5,6 +5,7 @@
 import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/generate-dbus-proxies.gni")
 import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
@@ -64,6 +65,12 @@ generate_dbus_adaptors("hermes_adaptors") {
   ]
 }
 
+proto_library("hermes-protos") {
+  proto_in_dir = "./proto/"
+  proto_out_dir = "include/hermes/"
+  sources = [ "${proto_in_dir}/cached_euicc.proto" ]
+}
+
 static_library("libhermes") {
   sources = [
     "adaptor_factory.cc",
@@ -71,6 +78,7 @@ static_library("libhermes") {
     "context.cc",
     "daemon.cc",
     "euicc.cc",
+    "euicc_cache.cc",
     "euicc_dbus_adaptor.cc",
     "euicc_event.cc",
     "executor.cc",
@@ -99,6 +107,7 @@ static_library("libhermes") {
   configs += [ ":target_defaults" ]
   defines = [ "USE_QRTR=${use.qrtr}" ]
   deps = [
+    ":hermes-protos",
     ":hermes_adaptors",
     ":modemmanager_proxies",
   ]

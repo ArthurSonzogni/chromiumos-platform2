@@ -182,6 +182,7 @@ template <typename T>
 void Modem<T>::SendApdusResponse(EuiccInterface::ResponseCallback callback,
                                  int err) {
   std::vector<std::vector<uint8_t>> responses_vec;
+  VLOG(2) << __func__;
   for (auto& response : responses_) {
     response.ReleaseStatusBytes();
     responses_vec.push_back(response.Release());

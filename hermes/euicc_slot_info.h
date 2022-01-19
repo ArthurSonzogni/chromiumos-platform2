@@ -6,10 +6,8 @@
 #define HERMES_EUICC_SLOT_INFO_H_
 
 #include <base/check.h>
-#include <base/optional.h>
 #include <string>
 #include <utility>
-
 #include "hermes/hermes_common.h"
 
 namespace hermes {
@@ -19,23 +17,24 @@ namespace hermes {
 class EuiccSlotInfo {
  public:
   explicit EuiccSlotInfo(std::string eid)
-      : logical_slot_(base::nullopt), eid_(std::move(eid)) {}
+      : eid_(std::move(eid)), logical_slot_(std::nullopt) {}
   explicit EuiccSlotInfo(uint8_t logical_slot, std::string eid)
-      : logical_slot_(logical_slot), eid_(std::move(eid)) {}
+      : eid_(std::move(eid)), logical_slot_(logical_slot) {}
 
-  void SetLogicalSlot(base::Optional<uint8_t> logical_slot) {
+  void SetLogicalSlot(std::optional<uint8_t> logical_slot) {
     logical_slot_ = std::move(logical_slot);
   }
   bool IsActive() const { return logical_slot_.has_value(); }
   const std::string& eid() const { return eid_; }
-  const base::Optional<uint8_t>& logical_slot() const { return logical_slot_; }
+  const std::optional<uint8_t>& logical_slot() const { return logical_slot_; }
   bool operator==(const EuiccSlotInfo& rhs) const {
     return logical_slot_ == rhs.logical_slot_ && eid_ == rhs.eid_;
   }
 
- private:
-  base::Optional<uint8_t> logical_slot_;
   std::string eid_;
+
+ private:
+  std::optional<uint8_t> logical_slot_;
 };
 
 }  // namespace hermes

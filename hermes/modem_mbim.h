@@ -47,22 +47,24 @@ class ModemMbim : public Modem<MbimCmd> {
   void RestoreActiveSlot(ResultCallback cb) override;
   bool IsSimValidAfterEnable() override;
   bool IsSimValidAfterDisable() override;
-
   void OpenConnection(
       const std::vector<uint8_t>& aid,
       base::OnceCallback<void(std::vector<uint8_t>)> cb) override{};
   void TransmitApdu(
       const std::vector<uint8_t>& apduCommand,
       base::OnceCallback<void(std::vector<uint8_t>)> cb) override{};
-
   static bool ParseEidApduResponseForTesting(const MbimMessage* response,
                                              std::string* eid);
 
  private:
+  struct SwitchSlotTxInfo : public TxInfo {
+    explicit SwitchSlotTxInfo(const uint32_t physical_slot)
+        : physical_slot_(physical_slot) {}
+    const uint32_t physical_slot_;
+  };
   ModemMbim(Logger* logger,
             Executor* executor,
             std::unique_ptr<ModemManagerProxy> modem_manager_proxy);
-  void OnModemAvailable();
   void Shutdown() override;
   void TransmitFromQueue() override;
   std::unique_ptr<MbimCmd> GetTagForSendApdu() override;
@@ -73,27 +75,41 @@ class ModemMbim : public Modem<MbimCmd> {
   static void MbimDeviceOpenReadyCb(MbimDevice* dev,
                                     GAsyncResult* res,
                                     ModemMbim* modem_mbim);
-  void TransmitSubscriberReadyStatusQuery();
-  void TransmitMbimLoadCurrentCapabilities();
-  void TransmitMbimCloseChannel();
-  void TransmitMbimOpenLogicalChannel();
-  void TransmitMbimSendEidApdu();
+  void TransmitSubscriberStatusReady();
+  void TransmitDeviceCaps();
+  void TransmitCloseChannel();
+  void TransmitDeviceSlotMapping();
+  void TransmitSlotInfoStatus();
+  void TransmitOpenChannel();
+  void TransmitSendEidApdu();
+  void TransmitSysCapsQuery();
+  void TransmitSetDeviceSlotMapping();
   void TransmitMbimSendApdu(TxElement* tx_element);
-  void QueryCurrentMbimCapabilities(ResultCallback cb);
-  void CloseChannel(base::OnceCallback<void(int)> cb);
-  void AcquireChannel(base::OnceCallback<void(int)> cb);
-  void ReacquireChannel(const uint32_t physical_slot, ResultCallback cb);
-  void GetEidFromSim(ResultCallback cb);
-  void GetEidStepCloseChannel(ResultCallback cb);
-  void GetEidStepOpenChannel(ResultCallback cb);
+
+  template <typename Func, typename... Args>
+  void SendMessage(MbimCmd::MbimType type,
+                   std::unique_ptr<TxInfo> tx_info,
+                   ResultCallback cb,
+                   Func&& next_step,
+                   Args&&... args);
 
   static void SubscriberReadyStatusRspCb(MbimDevice* device,
                                          GAsyncResult* res,
                                          ModemMbim* modem_mbim);
+  static void QuerySysCapsReady(MbimDevice* device,
+                                GAsyncResult* res,
+                                ModemMbim* modem_mbim);
+  static void DeviceSlotStatusMappingRspCb(MbimDevice* device,
+                                           GAsyncResult* res,
+                                           ModemMbim* modem_mbim);
 
   static void DeviceCapsQueryReady(MbimDevice* device,
                                    GAsyncResult* res,
                                    ModemMbim* modem_mbim);
+
+  static void DeviceSlotStatusInfoRspCb(MbimDevice* device,
+                                        GAsyncResult* res,
+                                        ModemMbim* modem_mbim);
 
   static void UiccLowLevelAccessCloseChannelSetCb(MbimDevice* device,
                                                   GAsyncResult* res,
@@ -113,6 +129,10 @@ class ModemMbim : public Modem<MbimCmd> {
                                                   GAsyncResult* res,
                                                   ModemMbim* modem_mbim);
 
+  static void SetDeviceSlotMappingsRspCb(MbimDevice* device,
+                                         GAsyncResult* res,
+                                         ModemMbim* modem_mbim);
+
   static void ClientIndicationCb(MbimDevice* device,
                                  MbimMessage* notification,
                                  ModemMbim* modem_mbim);
@@ -120,20 +140,40 @@ class ModemMbim : public Modem<MbimCmd> {
   void CloseDevice();
 
   void CloseDeviceAndUninhibit(ResultCallback cb);
-  ///////////////////
-  // State Diagram //
-  ///////////////////
-  //
-  //       Uninitialized --------------------------------> InitializeStarted
-  //                              Initialize()
-  //       InitializeStarted ----------------------------> MbimStarted
-  //                              GetEidFromSim()
+
+  enum class EuiccEventStep {
+    GET_MBIM_DEVICE,
+    GET_SLOT_MAPPING,
+    GET_SLOT_INFO,
+    SET_SLOT_MAPPING,
+    CLOSE_CHANNEL,
+    OPEN_CHANNEL,
+    GET_EID,
+    EUICC_EVENT_STEP_LAST,
+  };
+
+  void ReacquireChannel(EuiccEventStep step, ResultCallback cb);
+  void OnEuiccEventStart(uint32_t physical_slot,
+                         bool switch_slot_only,
+                         EuiccEventStep step,
+                         ResultCallback cb);
+  void AcquireChannelAfterCardReady(EuiccEvent event, ResultCallback cb);
 
   class State {
    public:
     enum Value : uint8_t {
       kMbimUninitialized,
       kMbimInitializeStarted,
+      kReadImei,
+      kGetSubscriberReadyState,
+      kCheckSingleSim,
+      kSysQuery,  // for num slots
+      kDeviceSlotMapping,
+      kSlotInfo,
+      kCloseChannel,
+      kOpenChannel,
+      kReadEid,
+      kEidReadComplete,
       kMbimStarted,
     };
 
@@ -141,43 +181,47 @@ class ModemMbim : public Modem<MbimCmd> {
     // Transitions to the indicated state. Returns whether or not the
     // transition was successful.
     bool Transition(Value value);
-
     bool operator==(Value value) const { return value_ == value; }
     bool operator!=(Value value) const { return value_ != value; }
-    friend std::ostream& operator<<(std::ostream& os, const State state) {
-      switch (state.value_) {
-        case kMbimUninitialized:
-          os << "Uninitialized";
-          break;
-        case kMbimInitializeStarted:
-          os << "InitializeStarted";
-          break;
-        case kMbimStarted:
-          os << "MbimStarted";
-          break;
-      }
-      return os;
-    }
+    friend std::ostream& operator<<(std::ostream& os, State state);
 
    private:
     explicit State(Value value) : value_(value) {}
     Value value_;
   };
+  friend std::ostream& operator<<(std::ostream& os, State state);
+  void InitializationStep(ModemMbim::State::Value next_state,
+                          ResultCallback cb);
+  void ReadSlotsInfo(uint32_t slot_num,
+                     uint32_t retry_count,
+                     ResultCallback cb);
+  void OnEuiccUpdated();
+
   State current_state_;
   ResultCallback init_done_cb_;
-  std::string eid_;
   guint32 channel_;
   glib_bridge::ScopedGObject<MbimDevice> device_;
   uint8_t indication_id_;
-  bool pending_response_;
+  bool is_ready_state_valid;
   MbimSubscriberReadyState ready_state_;
   GFile* file_ = NULL;
-  bool is_ready_state_valid;
-
-  base::CancelableOnceClosure scheduled_uninhibit_;
-
+  struct SlotInfo {
+    guint32 map_count_;  // number of executors/ radio. 1 for DSSA
+    guint32 slot_count_;
+    int cached_active_slot_;
+    std::vector<MbimUiccSlotState> slot_state_;
+    std::vector<std::string> eid_;
+    bool IsEuicc(int slot) const;
+    bool IsEuiccPresentOnAnySlot() const;
+    bool IsEsimActive() const { return IsEuicc(cached_active_slot_); }
+    void Clear() { InitSlotInfo(0, 0); }
+    void InitSlotInfo(guint32 slot_count, guint32 map_count);
+    void SetEidActiveSlot(std::string eid);
+    void SetSlotStateActiveSlot(MbimUiccSlotState state);
+  };
+  friend std::ostream& operator<<(std::ostream& os, const SlotInfo& info);
+  SlotInfo slot_info_;
   base::WeakPtrFactory<ModemMbim> weak_factory_;
-  void AcquireChannelAfterCardReady(EuiccEvent event, ResultCallback cb);
 };
 
 }  // namespace hermes

@@ -194,6 +194,7 @@ void ResponseApdu::AddStatusBytes(uint8_t sw1, uint8_t sw2) {
 void ResponseApdu::AddData(const uint8_t* data, size_t data_len) {
   // If AddData is called over multiple fragments, remove status bytes from the
   // previous fragment
+  VLOG(2) << __func__;
   if (data_.size() >= kNumStatusBytes)
     ReleaseStatusBytes();
   data_.insert(data_.end(), data, data + data_len);
