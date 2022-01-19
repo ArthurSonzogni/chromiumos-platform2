@@ -224,8 +224,17 @@ message ProvisionStatus {
     RMAD_PROVISION_STATUS_FAILED_BLOCKING = 3;
     RMAD_PROVISION_STATUS_FAILED_NON_BLOCKING = 4;
   }
+  enum Error {
+    RMAD_PROVISION_ERROR_UNKNOWN = 0;
+    RMAD_PROVISION_ERROR_INTERNAL = 1;
+    RMAD_PROVISION_ERROR_WP_ENABLED = 2;
+    RMAD_PROVISION_ERROR_CANNOT_READ = 3;
+    RMAD_PROVISION_ERROR_CANNOT_WRITE = 4;
+    RMAD_PROVISION_ERROR_GENERATE_SECRET = 5;
+  }
   Status status = 1;
   double progress = 2;
+  Error error = 3;
 }
 
 // Defined Finalize progress.
@@ -237,8 +246,17 @@ message FinalizeStatus {
     RMAD_FINALIZE_STATUS_FAILED_BLOCKING = 3;
     RMAD_FINALIZE_STATUS_FAILED_NON_BLOCKING = 4;
   }
+  enum Error {
+    RMAD_FINALIZE_ERROR_UNKNOWN = 0;
+    RMAD_FINALIZE_ERROR_INTERNAL = 1;
+    RMAD_FINALIZE_ERROR_CANNOT_ENABLE_HWWP = 2;
+    RMAD_FINALIZE_ERROR_CANNOT_ENABLE_SWWP = 3;
+    RMAD_FINALIZE_ERROR_CR50 = 4;
+    RMAD_FINALIZE_ERROR_GBB = 5;
+  }
   Status status = 1;
   double progress = 2;
+  Error error = 3;
 }
 
 // Defined Rmad states.
