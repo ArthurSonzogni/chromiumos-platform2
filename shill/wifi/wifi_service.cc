@@ -569,7 +569,7 @@ void WiFiService::SetState(ConnectState state) {
   } else if (state == kStateConnected) {
     // Now that we are connected let's check if we have a DHCP lease ...
     dhcp4_lease_expiry_ = base::Time();
-    if (wifi_->ipconfig() && wifi_->ipconfig()->type() == kTypeDHCP) {
+    if (wifi_ && wifi_->ipconfig() && wifi_->ipconfig()->type() == kTypeDHCP) {
       // ... and get its expiry so that next time we attempt to connect we know
       // if the lease is still (potentially) valid and don't regenerate MAC
       // address for this network.

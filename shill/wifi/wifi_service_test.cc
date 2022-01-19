@@ -421,8 +421,6 @@ TEST_F(WiFiServiceTest, ConnectReportBSSes) {
 TEST_F(WiFiServiceTest, ConnectConditions) {
   Error error;
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityNone);
-  SetWiFiForService(wifi_service, wifi());
-
   // With nothing else going on, the service should attempt to connect.
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
   wifi_service->Connect(&error, "in test");
@@ -1716,13 +1714,16 @@ TEST_F(WiFiServiceTest, Unload) {
 TEST_F(WiFiServiceTest, PropertyChanges) {
   WiFiServiceRefPtr service = MakeServiceWithMockManager();
   ServiceMockAdaptor* adaptor = GetAdaptor(service.get());
+  // It is important to test these property changes before having wifi pointer
+  // set because there are race scenarios where e.g. due to event queueing we
+  // could end up transitioning to connected without having valid wifi device,
+  // so shill needs to be ready for this.
+  TestCommonPropertyChanges(service, adaptor);
+  TestAutoConnectPropertyChange(service, adaptor);
 
   EXPECT_CALL(*adaptor, EmitRpcIdentifierChanged(kDeviceProperty, _));
   SetWiFi(service, wifi());
   Mock::VerifyAndClearExpectations(adaptor);
-
-  TestCommonPropertyChanges(service, adaptor);
-  TestAutoConnectPropertyChange(service, adaptor);
 
   EXPECT_CALL(*adaptor, EmitRpcIdentifierChanged(kDeviceProperty, _));
   service->ResetWiFi();
