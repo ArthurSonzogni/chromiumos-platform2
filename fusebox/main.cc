@@ -411,14 +411,14 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
       return;
     }
 
+    base::ScopedFD fd;
+    reader.PopFileDescriptor(&fd);
+
     if (!GetInodeTable().Lookup(ino)) {
       request->ReplyError(errno);
       PLOG(ERROR) << "open-resp " << ino;
       return;
     }
-
-    base::ScopedFD fd;
-    reader.PopFileDescriptor(&fd);
 
     uint64_t handle = fusebox::OpenFile(std::move(fd));
     request->ReplyOpen(handle);
