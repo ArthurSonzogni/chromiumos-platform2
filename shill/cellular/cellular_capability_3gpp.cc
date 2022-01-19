@@ -380,6 +380,14 @@ void CellularCapability3gpp::EnableModemCompleted(
     const ResultCallback& callback, const Error& error) {
   SLOG(this, 1) << __func__ << " error=" << error;
 
+  // Update all dbus properties from the modem even if the enable dbus call to
+  // MM fails. CellularCapability3gpp::EnableModem is responsible for setting up
+  // the modem to be usable. That involves updating all properties and
+  // triggering creation of services for all SIMs.
+  if (error.IsSuccess() || error.type() == Error::kWrongState) {
+    GetProperties();
+  }
+
   if (error.IsFailure()) {
     callback.Run(error);
     return;
@@ -396,10 +404,6 @@ void CellularCapability3gpp::EnableModemCompleted(
       base::Bind(&CellularCapability3gpp::OnSetupSignalReply,
                  weak_ptr_factory_.GetWeakPtr());
   SetupSignal(kSignalQualityUpdateRateSeconds, setup_signal_callback);
-
-  // After modem is enabled, it should be possible to get properties
-  // TODO(jglasgow): handle errors from GetProperties
-  GetProperties();
 
   // Try to get profiles list from the modem, and then call the callback
   // to complete the enabling process.

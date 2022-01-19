@@ -617,32 +617,13 @@ TEST_F(CellularCapability3gppTest, StartModemInWrongState) {
   StartModem(&error);
   EXPECT_TRUE(error.IsOngoing());
 
-  // Verify that the modem has not been enabled.
-  EXPECT_TRUE(cellular_->imei().empty());
-  EXPECT_EQ(0, capability_->access_technologies_for_testing());
-  Mock::VerifyAndClearExpectations(this);
-
-  // Change the state to kModemStateEnabling and verify that it still has not
-  // been enabled.
-  capability_->OnModemStateChanged(Cellular::kModemStateEnabling);
-  EXPECT_TRUE(cellular_->imei().empty());
-  EXPECT_EQ(0, capability_->access_technologies_for_testing());
-  Mock::VerifyAndClearExpectations(this);
-
-  // Change the state to kModemStateDisabling and verify that it still has not
-  // been enabled.
-  EXPECT_CALL(*this, TestCallback(_)).Times(0);
-  capability_->OnModemStateChanged(Cellular::kModemStateDisabling);
-  EXPECT_TRUE(cellular_->imei().empty());
-  EXPECT_EQ(0, capability_->access_technologies_for_testing());
-  Mock::VerifyAndClearExpectations(this);
-
-  // Change the state of the modem to disabled and verify that it gets enabled.
-  capability_->OnModemStateChanged(Cellular::kModemStateDisabled);
+  // Verify that modem properties have been read.
   EXPECT_EQ(kImei, cellular_->imei());
-  EXPECT_EQ(kAccessTechnologies,
-            capability_->access_technologies_for_testing());
-  Mock::VerifyAndClearExpectations(this);
+
+  // Simulate MM transitioning to disabled and verify that modem_proxy_->Enable
+  // gets called again.
+  capability_->OnModemStateChanged(Cellular::kModemStateDisabling);
+  capability_->OnModemStateChanged(Cellular::kModemStateDisabled);
 }
 
 TEST_F(CellularCapability3gppTest, StopModem) {
