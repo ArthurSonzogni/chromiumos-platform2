@@ -761,14 +761,9 @@ static_assert(
     "Enum member CRYPTOHOME_ADD_CREDENTIALS_FAILED differs between "
     "user_data_auth:: and cryptohome::");
 static_assert(
-    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_UNKNOWN_LEGACY) ==
-        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_UNKNOWN_LEGACY),
-    "Enum member CRYPTOHOME_ERROR_UNKNOWN_LEGACY differs between "
-    "user_data_auth:: and cryptohome::");
-static_assert(
-    user_data_auth::CryptohomeErrorCode_MAX == 51,
+    user_data_auth::CryptohomeErrorCode_MAX == 50,
     "user_data_auth::CrytpohomeErrorCode's element count is incorrect");
-static_assert(cryptohome::CryptohomeErrorCode_MAX == 51,
+static_assert(cryptohome::CryptohomeErrorCode_MAX == 50,
               "cryptohome::CrytpohomeErrorCode's element count is incorrect");
 }  // namespace CryptohomeErrorCodeEquivalenceTest
 
