@@ -155,6 +155,9 @@ const char* const kGuestArgv[] = {
     "arg 2",
 };
 
+const base::FilePath kChromadMigrationFilePath =
+    base::FilePath(SessionManagerImpl::kChromadMigrationSkipOobePreservePath);
+
 // Test Bus instance to inject MockExportedObject.
 class FakeBus : public dbus::Bus {
  public:
@@ -2334,6 +2337,9 @@ TEST_F(SessionManagerImplTest, StartRemoteDeviceWipe_Enterprise) {
   std::vector<uint8_t> in_signed_command;
   EXPECT_TRUE(impl_->StartRemoteDeviceWipe(&error, in_signed_command));
   EXPECT_FALSE(error.get());
+
+  // This file should NOT be set in cloud managed devices.
+  EXPECT_FALSE(utils_.Exists(kChromadMigrationFilePath));
 }
 
 // Unsigned commands should fail on cloud managed devices.
@@ -2346,6 +2352,9 @@ TEST_F(SessionManagerImplTest, StartRemoteDeviceWipe_EnterpriseBadSignature) {
   std::vector<uint8_t> in_signed_command;
   EXPECT_FALSE(impl_->StartRemoteDeviceWipe(&error, in_signed_command));
   EXPECT_TRUE(error.get());
+
+  // This file should NOT be set in cloud managed devices.
+  EXPECT_FALSE(utils_.Exists(kChromadMigrationFilePath));
 }
 
 // On AD managed devices, any command (signed or not) should succeed.
@@ -2359,6 +2368,9 @@ TEST_F(SessionManagerImplTest, StartRemoteDeviceWipe_EnterpriseAD) {
   std::vector<uint8_t> in_signed_command;
   EXPECT_TRUE(impl_->StartRemoteDeviceWipe(&error, in_signed_command));
   EXPECT_FALSE(error.get());
+
+  // This file should be set in AD managed devices.
+  EXPECT_TRUE(utils_.Exists(kChromadMigrationFilePath));
 }
 
 TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {
@@ -2375,6 +2387,19 @@ TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {
       "fast safe keepimg reason="
       "overly_long_test_message_with_special_chars_____12",
       contents);
+}
+
+TEST_F(SessionManagerImplTest, InitiateDeviceWipe_ChromadMigration) {
+  ASSERT_TRUE(
+      utils_.RemoveFile(base::FilePath(SessionManagerImpl::kLoggedInFlag)));
+  ExpectDeviceRestart();
+  impl_->InitiateDeviceWipe("ad_migration_wipe_request");
+  std::string contents;
+  base::FilePath reset_path = real_utils_.PutInsideBaseDirForTesting(
+      base::FilePath(SessionManagerImpl::kResetFile));
+  ASSERT_TRUE(base::ReadFileToString(reset_path, &contents));
+  ASSERT_EQ("fast safe ad_migration keepimg reason=ad_migration_wipe_request",
+            contents);
 }
 
 TEST_F(SessionManagerImplTest, ClearForcedReEnrollmentVpd) {
@@ -3503,7 +3528,7 @@ TEST_F(SessionManagerImplTest, StartBrowserDataMigrationForNonLoggedInUser) {
   EXPECT_EQ(error->GetCode(), dbus_error::kSessionDoesNotExist);
 }
 
-TEST_F(SessionManagerImplTest, StartBrowserDataMigrationForNonPrimarynUser) {
+TEST_F(SessionManagerImplTest, StartBrowserDataMigrationForNonPrimaryUser) {
   const std::string second_user_email = "seconduser@gmail.com";
   ExpectAndRunStartSession(kSaneEmail);
   ExpectAndRunStartSession(second_user_email);

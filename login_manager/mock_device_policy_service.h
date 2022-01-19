@@ -18,9 +18,10 @@
 
 #include "bindings/chrome_device_policy.pb.h"
 
+class Crossystem;
+
 namespace login_manager {
-// Forward declaration.
-typedef struct PK11SlotInfoStr PK11SlotInfo;
+class SystemUtils;
 
 class MockDevicePolicyService : public DevicePolicyService {
  public:
@@ -72,6 +73,7 @@ class MockDevicePolicyService : public DevicePolicyService {
               (const std::vector<uint8_t>&),
               (override));
 
+  void set_system_utils(SystemUtils* system) { system_ = system; }
   void set_crossystem(Crossystem* crossystem) { crossystem_ = crossystem; }
   void set_vpd_process(VpdProcess* vpd_process) { vpd_process_ = vpd_process; }
   void set_install_attributes_reader(

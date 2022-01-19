@@ -42,6 +42,9 @@ class ClobberState {
     // Run in the context of an RMA flow. Additionally save the RMA
     // state file.
     bool rma_wipe = false;
+    // Preserve the flag file used to skip some OOBE screens during the Chromad
+    // to cloud migration.
+    bool ad_migration_wipe = false;
   };
 
   // The index of each partition within the gpt partition table.

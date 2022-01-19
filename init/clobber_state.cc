@@ -69,6 +69,9 @@ constexpr char kLastRollcallDate[] = "last-roll-call-ping-day";
 constexpr char kUpdateEnginePrefsPath[] = "/var/lib/update_engine/prefs/";
 constexpr char kUpdateEnginePreservePath[] =
     "unencrypted/preserve/update_engine/prefs/";
+constexpr char kChromadMigrationSkipOobePreservePath[] =
+    "unencrypted/preserve/chromad_migration_skip_oobe";
+
 // Size of string for volume group name.
 constexpr int kVolumeGroupNameSize = 16;
 
@@ -293,6 +296,8 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
       args.setup_lvm = true;
     } else if (arg == "rma") {
       args.rma_wipe = true;
+    } else if (arg == "ad_migration") {
+      args.ad_migration_wipe = true;
     }
   }
 
@@ -896,6 +901,13 @@ std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
                              std::string(kLastPingDate));
     stateful_paths.push_back(std::string(kUpdateEnginePreservePath) +
                              std::string(kLastRollcallDate));
+
+    // For the Chromad to cloud migration, we store a flag file to indicate that
+    // some OOBE screens should be skipped after the device is powerwashed.
+    if (args_.ad_migration_wipe) {
+      stateful_paths.push_back(kChromadMigrationSkipOobePreservePath);
+    }
+
     // Preserve pre-installed demo mode resources for offline Demo Mode.
     std::string demo_mode_resources_dir =
         "unencrypted/cros-components/offline-demo-mode-resources/";
@@ -1145,6 +1157,7 @@ int ClobberState::Run() {
   LOG(INFO) << "Rollback wipe: " << args_.rollback_wipe;
   LOG(INFO) << "Reason: " << args_.reason;
   LOG(INFO) << "RMA wipe: " << args_.rma_wipe;
+  LOG(INFO) << "AD migration wipe: " << args_.ad_migration_wipe;
 
   // Most effective means of destroying user data is run at the start: Throwing
   // away the key to encrypted stateful by requesting the TPM to be cleared at
@@ -1265,6 +1278,7 @@ int ClobberState::Run() {
   log_preserve.AddArg("/sbin/clobber-log");
   log_preserve.AddArg("--preserve");
   log_preserve.AddArg("clobber-state");
+
   if (args_.factory_wipe)
     log_preserve.AddArg("factory");
   if (args_.fast_wipe)
@@ -1279,6 +1293,9 @@ int ClobberState::Run() {
     log_preserve.AddArg(args_.reason);
   if (args_.rma_wipe)
     log_preserve.AddArg("rma");
+  if (args_.ad_migration_wipe)
+    log_preserve.AddArg("ad_migration");
+
   log_preserve.RedirectOutput(temp_file.value());
   log_preserve.Run();
   AppendFileToLog(temp_file);

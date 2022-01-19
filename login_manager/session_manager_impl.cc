@@ -100,6 +100,9 @@ constexpr char SessionManagerImpl::kTPMFirmwareUpdateRequestFlagFile[] =
 constexpr char SessionManagerImpl::kStatefulPreservationRequestFile[] =
     "/mnt/stateful_partition/preservation_request";
 
+constexpr char SessionManagerImpl::kChromadMigrationSkipOobePreservePath[] =
+    "/mnt/stateful_partition/unencrypted/preserve/chromad_migration_skip_oobe";
+
 constexpr char SessionManagerImpl::kStartUserSessionImpulse[] =
     "start-user-session";
 
@@ -178,7 +181,12 @@ constexpr char kDefaultUiLogSymlinkPath[] = "/var/log/ui/ui.LATEST";
 
 // A path of the directory that contains all the key-value pairs stored to the
 // persistent login screen storage.
-const char kLoginScreenStoragePath[] = "/var/lib/login_screen_storage";
+constexpr char kLoginScreenStoragePath[] = "/var/lib/login_screen_storage";
+
+// The device wipe reason that should be written in the `kResetFile` when we're
+// starting the Chromad to cloud migration.
+constexpr char kChromadMigrationDeviceWipeReason[] =
+    "ad_migration_wipe_request";
 
 const char* ToSuccessSignal(bool success) {
   return success ? "success" : "failure";
@@ -553,7 +561,7 @@ bool SessionManagerImpl::Initialize() {
   // already been set and initialized.
   if (!device_policy_) {
     device_policy_ = DevicePolicyService::Create(
-        owner_key_, login_metrics_, &mitigator_, nss_, crossystem_,
+        owner_key_, login_metrics_, &mitigator_, nss_, system_, crossystem_,
         vpd_process_, install_attributes_reader_);
     // Thinking about combining set_delegate() with the 'else' block below and
     // moving it down? Note that device_policy_->Initialize() might call
@@ -706,7 +714,7 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
   }
 
   // Check whether the current user is the owner, and if so make sure they are
-  // whitelisted and have an owner key.
+  // allowlisted and have an owner key.
   bool user_is_owner = false;
   if (!device_policy_->CheckAndHandleOwnerLogin(user_session->username,
                                                 user_session->descriptor.get(),
@@ -1112,7 +1120,16 @@ bool SessionManagerImpl::StartRemoteDeviceWipe(
     return false;
   }
 
-  InitiateDeviceWipe("remote_wipe_request");
+  // As part of the AD to cloud management migration, a flag file is set,
+  // indicating that some OOBE screens should be skipped after the powerwash.
+  if (is_active_directory) {
+    system_->AtomicFileWrite(
+        base::FilePath(kChromadMigrationSkipOobePreservePath), "1");
+    InitiateDeviceWipe(kChromadMigrationDeviceWipeReason);
+  } else {
+    InitiateDeviceWipe("remote_wipe_request");
+  }
+
   return true;
 }
 
@@ -1640,9 +1657,9 @@ void SessionManagerImpl::EnableAdbSideloadCallbackAdaptor(
 void SessionManagerImpl::EnableAdbSideload(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
   if (system_->Exists(base::FilePath(kLoggedInFlag))) {
-    auto error = CREATE_ERROR_AND_LOG(
-        dbus_error::kSessionExists,
-        "EnableAdbSideload is not allowed once a user logged in this boot.");
+    auto error = CREATE_ERROR_AND_LOG(dbus_error::kSessionExists,
+                                      "EnableAdbSideload is not allowed "
+                                      "once a user logged in this boot.");
     response->ReplyWithError(error.get());
     return;
   }
@@ -1720,8 +1737,12 @@ void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {
       },
       '_');
   const base::FilePath reset_path(kResetFile);
-  system_->AtomicFileWrite(reset_path,
-                           "fast safe keepimg reason=" + sanitized_reason);
+  const std::string reset_file_content =
+      (reason == kChromadMigrationDeviceWipeReason)
+          ? "fast safe ad_migration keepimg reason=" + sanitized_reason
+          : "fast safe keepimg reason=" + sanitized_reason;
+  system_->AtomicFileWrite(reset_path, reset_file_content);
+
   RestartDevice(sanitized_reason);
 }
 

@@ -47,6 +47,7 @@ MockDevicePolicyService::MockDevicePolicyService(PolicyKey* policy_key)
                           nullptr,
                           nullptr,
                           nullptr,
+                          nullptr,
                           nullptr) {}
 MockDevicePolicyService::~MockDevicePolicyService() = default;
 

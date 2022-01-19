@@ -745,6 +745,39 @@ TEST_F(GetPreservedFilesListTest, SafeAndRollbackWipe) {
   SetCompare(expected_preserved_set, preserved_set);
 }
 
+TEST_F(GetPreservedFilesListTest, SafeAndAdMigrationWipe) {
+  ClobberState::Arguments args;
+  args.safe_wipe = true;
+  args.ad_migration_wipe = true;
+  clobber_.SetArgsForTest(args);
+
+  ASSERT_TRUE(cros_system_->SetInt(CrosSystem::kDebugBuild, 0));
+  std::vector<base::FilePath> preserved_files =
+      clobber_.GetPreservedFilesList();
+  std::set<base::FilePath> preserved_set(preserved_files.begin(),
+                                         preserved_files.end());
+  std::set<std::string> expected_preserved_set{
+      "unencrypted/preserve/powerwash_count",
+      "unencrypted/preserve/tpm_firmware_update_request",
+      "unencrypted/preserve/update_engine/prefs/rollback-happened",
+      "unencrypted/preserve/update_engine/prefs/rollback-version",
+      "unencrypted/preserve/update_engine/prefs/last-active-ping-day",
+      "unencrypted/preserve/update_engine/prefs/last-roll-call-ping-day",
+      "unencrypted/preserve/chromad_migration_skip_oobe",
+      "unencrypted/cros-components/offline-demo-mode-resources/image.squash",
+      "unencrypted/cros-components/offline-demo-mode-resources/"
+      "imageloader.json",
+      "unencrypted/cros-components/offline-demo-mode-resources/"
+      "imageloader.sig.1",
+      "unencrypted/cros-components/offline-demo-mode-resources/"
+      "imageloader.sig.2",
+      "unencrypted/cros-components/offline-demo-mode-resources/"
+      "manifest.fingerprint",
+      "unencrypted/cros-components/offline-demo-mode-resources/manifest.json",
+      "unencrypted/cros-components/offline-demo-mode-resources/table"};
+  SetCompare(expected_preserved_set, preserved_set);
+}
+
 TEST_F(GetPreservedFilesListTest, FactoryWipe) {
   ClobberState::Arguments args;
   args.factory_wipe = true;

@@ -27,13 +27,17 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "login_manager/blob_util.h"
+#include "login_manager/crossystem.h"
 #include "login_manager/dbus_util.h"
 #include "login_manager/feature_flags_util.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/login_metrics.h"
+#include "login_manager/nss_util.h"
 #include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_store.h"
+#include "login_manager/session_manager_impl.h"
+#include "login_manager/system_utils.h"
 
 namespace em = enterprise_management;
 
@@ -51,7 +55,7 @@ bool IsConsumerPolicy(const em::PolicyFetchResponse& policy) {
     return false;
   }
 
-  // Look at management_mode first.  Refer to PolicyData::management_mode docs
+  // Look at management_mode first. Refer to PolicyData::management_mode docs
   // for details.
   if (poldata.has_management_mode())
     return poldata.management_mode() == em::PolicyData::LOCAL_OWNER;
@@ -99,11 +103,12 @@ std::unique_ptr<DevicePolicyService> DevicePolicyService::Create(
     LoginMetrics* metrics,
     OwnerKeyLossMitigator* mitigator,
     NssUtil* nss,
+    SystemUtils* system,
     Crossystem* crossystem,
     VpdProcess* vpd_process,
     InstallAttributesReader* install_attributes_reader) {
   return base::WrapUnique(new DevicePolicyService(
-      base::FilePath(kPolicyDir), owner_key, metrics, mitigator, nss,
+      base::FilePath(kPolicyDir), owner_key, metrics, mitigator, nss, system,
       crossystem, vpd_process, install_attributes_reader));
 }
 
@@ -178,12 +183,14 @@ DevicePolicyService::DevicePolicyService(
     LoginMetrics* metrics,
     OwnerKeyLossMitigator* mitigator,
     NssUtil* nss,
+    SystemUtils* system,
     Crossystem* crossystem,
     VpdProcess* vpd_process,
     InstallAttributesReader* install_attributes_reader)
     : PolicyService(policy_dir, policy_key, metrics, true),
       mitigator_(mitigator),
       nss_(nss),
+      system_(system),
       crossystem_(crossystem),
       vpd_process_(vpd_process),
       install_attributes_reader_(install_attributes_reader) {}
@@ -523,8 +530,8 @@ bool DevicePolicyService::UpdateSystemSettings(const Completion& completion) {
     }
   }
 
-  // Clear nvram_cleared if block_devmode has the correct state now.  (This is
-  // OK as long as block_devmode is the only consumer of nvram_cleared.  Once
+  // Clear nvram_cleared if block_devmode has the correct state now. (This is
+  // OK as long as block_devmode is the only consumer of nvram_cleared. Once
   // other use cases crop up, clearing has to be done in cooperation.)
   if (block_devmode_value == block_devmode_setting) {
     const int nvram_cleared_value =
@@ -558,6 +565,16 @@ bool DevicePolicyService::UpdateSystemSettings(const Completion& completion) {
 
     return true;
   }
+
+  // If the install attributes are finalized (OOBE completed) and the device is
+  // not AD managed, try to delete the Chromad migration skip OOBE flag. This
+  // insures that the file gets deleted when it's no longer needed.
+  if (!mode.empty() &&
+      mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
+    system_->RemoveFile(base::FilePath(
+        SessionManagerImpl::kChromadMigrationSkipOobePreservePath));
+  }
+
   bool is_enrolled = (mode == InstallAttributesReader::kDeviceModeEnterprise ||
                       mode == InstallAttributesReader::kDeviceModeEnterpriseAD);
 
@@ -663,7 +680,7 @@ bool DevicePolicyService::ValidateRemoteDeviceWipeCommand(
 
   // Note: the code here doesn't protect against replay attacks, but that is not
   // an issue for remote powerwash since after execution the device ID will no
-  // longer match.  In case more commands are to be added in the future, replay
+  // longer match. In case more commands are to be added in the future, replay
   // protection must be considered and added if deemed necessary.
 
   return true;

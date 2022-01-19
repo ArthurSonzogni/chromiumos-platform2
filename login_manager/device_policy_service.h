@@ -17,12 +17,11 @@
 #include <base/memory/ref_counted.h>
 #include <crypto/scoped_nss_types.h>
 
-#include "login_manager/crossystem.h"
 #include "login_manager/nss_util.h"
-#include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/vpd_process.h"
 
+class Crossystem;
 class InstallAttributesReader;
 
 namespace crypto {
@@ -37,8 +36,8 @@ class PolicyFetchResponse;
 namespace login_manager {
 class KeyGenerator;
 class LoginMetrics;
-class NssUtil;
 class OwnerKeyLossMitigator;
+class SystemUtils;
 
 // A policy service specifically for device policy, adding in a few helpers for
 // generating a new key for the device owner, handling key loss mitigation,
@@ -53,6 +52,7 @@ class DevicePolicyService : public PolicyService {
       LoginMetrics* metrics,
       OwnerKeyLossMitigator* mitigator,
       NssUtil* nss,
+      SystemUtils* system,
       Crossystem* crossystem,
       VpdProcess* vpd_process,
       InstallAttributesReader* install_attributes_reader);
@@ -106,7 +106,7 @@ class DevicePolicyService : public PolicyService {
   // update is not considered a fatal error because new functionality relies on
   // VPD when checking the settings. The old code is using NVRAM however, which
   // means we have to update that memory too. Returns whether VPD process
-  // started succesfully and is running in a separate process. In this case,
+  // started successfully and is running in a separate process. In this case,
   // |vpd_process_| is responsible for running |completion|; otherwise,
   // OnPolicyPersisted() is.
   virtual bool UpdateSystemSettings(const Completion& completion);
@@ -152,6 +152,7 @@ class DevicePolicyService : public PolicyService {
                       LoginMetrics* metrics,
                       OwnerKeyLossMitigator* mitigator,
                       NssUtil* nss,
+                      SystemUtils* system,
                       Crossystem* crossystem,
                       VpdProcess* vpd_process,
                       InstallAttributesReader* install_attributes_reader);
@@ -195,11 +196,12 @@ class DevicePolicyService : public PolicyService {
   // Returns enterprise mode from |install_attributes_reader_|.
   const std::string& GetEnterpriseMode();
 
-  // Returns whether the store is resilent. To be used for testing only.
+  // Returns whether the store is resilient. To be used for testing only.
   bool IsChromeStoreResilientForTesting();
 
   OwnerKeyLossMitigator* mitigator_;
   NssUtil* nss_;
+  SystemUtils* system_;                                 // Owned by the caller.
   Crossystem* crossystem_;                              // Owned by the caller.
   VpdProcess* vpd_process_;                             // Owned by the caller.
   InstallAttributesReader* install_attributes_reader_;  // Owned by the caller.
