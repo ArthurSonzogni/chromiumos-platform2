@@ -9,7 +9,6 @@
 
 #include <base/optional.h>
 #include <brillo/dbus/dbus_method_response.h>
-#include <trunks/cr50_headers/u2f.h>
 
 #include "u2fd/webauthn_handler.h"
 

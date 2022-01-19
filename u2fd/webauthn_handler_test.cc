@@ -165,13 +165,11 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
                      std::unique_ptr<AllowlistingUtil> allowlisting_util) {
     handler_ = std::make_unique<WebAuthnHandler>();
     PrepareMockCryptohome();
-    handler_->Initialize(
-        mock_bus_.get(), /*tpm_proxy=*/nullptr, &mock_user_state_, u2f_mode,
-        /*request_presence=*/[]() {}, std::move(allowlisting_util),
-        &mock_metrics_);
     auto mock_processor = std::make_unique<MockU2fCommandProcessor>();
     mock_processor_ = mock_processor.get();
-    handler_->SetU2fCommandProcessorForTesting(std::move(mock_processor));
+    handler_->Initialize(mock_bus_.get(), &mock_user_state_, u2f_mode,
+                         std::move(mock_processor),
+                         std::move(allowlisting_util), &mock_metrics_);
   }
 
   void PrepareMockCryptohome() {

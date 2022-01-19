@@ -16,8 +16,6 @@
 #include <openssl/sha.h>
 #include <openssl/x509.h>
 
-#include "u2fd/tpm_vendor_cmd.h"
-
 namespace u2f {
 namespace util {
 
@@ -235,28 +233,6 @@ bool RemoveCertificatePadding(std::vector<uint8_t>* cert_in) {
 
   cert_in->resize(cert_size);
   return true;
-}
-
-base::Optional<std::vector<uint8_t>> GetG2fCert(TpmVendorCommandProxy* proxy) {
-  std::string cert_str;
-  std::vector<uint8_t> cert;
-
-  uint32_t get_cert_status = proxy->GetG2fCertificate(&cert_str);
-
-  if (get_cert_status != 0) {
-    LOG(ERROR) << "Failed to retrieve G2F certificate, status: " << std::hex
-               << get_cert_status;
-    return base::nullopt;
-  }
-
-  util::AppendToVector(cert_str, &cert);
-
-  if (!util::RemoveCertificatePadding(&cert)) {
-    LOG(ERROR) << "Failed to remove padding from G2F certificate ";
-    return base::nullopt;
-  }
-
-  return cert;
 }
 
 std::vector<uint8_t> BuildU2fRegisterResponseSignedData(

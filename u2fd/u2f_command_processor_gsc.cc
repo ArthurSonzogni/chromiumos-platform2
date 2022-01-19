@@ -5,6 +5,7 @@
 #include "u2fd/u2f_command_processor_gsc.h"
 
 #include <functional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -299,7 +300,25 @@ MakeCredentialResponse::MakeCredentialStatus U2fCommandProcessorGsc::G2fAttest(
 }
 
 base::Optional<std::vector<uint8_t>> U2fCommandProcessorGsc::GetG2fCert() {
-  return util::GetG2fCert(tpm_proxy_);
+  std::string cert_str;
+  std::vector<uint8_t> cert;
+
+  uint32_t get_cert_status = tpm_proxy_->GetG2fCertificate(&cert_str);
+
+  if (get_cert_status != 0) {
+    LOG(ERROR) << "Failed to retrieve G2F certificate, status: " << std::hex
+               << get_cert_status;
+    return base::nullopt;
+  }
+
+  util::AppendToVector(cert_str, &cert);
+
+  if (!util::RemoveCertificatePadding(&cert)) {
+    LOG(ERROR) << "Failed to remove padding from G2F certificate ";
+    return base::nullopt;
+  }
+
+  return cert;
 }
 
 // This is needed for backward compatibility. Credential id's that were already

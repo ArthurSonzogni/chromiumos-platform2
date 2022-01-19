@@ -20,7 +20,6 @@
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 #include "u2fd/allowlisting_util.h"
-#include "u2fd/tpm_vendor_cmd.h"
 #include "u2fd/u2f_mode.h"
 #include "u2fd/user_state.h"
 #include "u2fd/webauthn_storage.h"
@@ -79,20 +78,16 @@ class WebAuthnHandler {
 
   // Initializes WebAuthnHandler.
   // |bus| - DBus pointer.
-  // |tpm_proxy| - proxy to send commands to TPM. Owned by U2fDaemon and should
-  // outlive WebAuthnHandler.
   // |user_state| - pointer to a UserState instance, for requesting user secret.
   // Owned by U2fDaemon and should outlive WebAuthnHandler.
   // |u2f_mode| - whether u2f or g2f is enabled.
-  // |request_presence| - callback for performing other platform tasks when
-  // expecting the user to press the power button.
+  // |u2f_command_processor| - processor for executing u2f commands.
   // |allowlisting_util| - utility to append allowlisting data to g2f certs.
   // |metrics| pointer to metrics library object.
   void Initialize(dbus::Bus* bus,
-                  TpmVendorCommandProxy* tpm_proxy,
                   UserState* user_state,
                   U2fMode u2f_mode,
-                  std::function<void()> request_presence,
+                  std::unique_ptr<U2fCommandProcessor> u2f_command_processor,
                   std::unique_ptr<AllowlistingUtil> allowlisting_util,
                   MetricsLibraryInterface* metrics);
 
@@ -145,9 +140,6 @@ class WebAuthnHandler {
   void SetCryptohomeInterfaceProxyForTesting(
       std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
           cryptohome_proxy);
-
-  void SetU2fCommandProcessorForTesting(
-      std::unique_ptr<U2fCommandProcessor> helper);
 
  private:
   friend class WebAuthnHandlerTestBase;

@@ -116,10 +116,9 @@ WebAuthnHandler::~WebAuthnHandler() {}
 
 void WebAuthnHandler::Initialize(
     dbus::Bus* bus,
-    TpmVendorCommandProxy* tpm_proxy,
     UserState* user_state,
     U2fMode u2f_mode,
-    std::function<void()> request_presence,
+    std::unique_ptr<U2fCommandProcessor> u2f_command_processor,
     std::unique_ptr<AllowlistingUtil> allowlisting_util,
     MetricsLibraryInterface* metrics) {
   if (Initialized()) {
@@ -145,8 +144,7 @@ void WebAuthnHandler::Initialize(
         std::make_unique<org::chromium::UserDataAuthInterfaceProxy>(bus_);
   DCHECK(auth_dialog_dbus_proxy_);
 
-  u2f_command_processor_ =
-      std::make_unique<U2fCommandProcessorGsc>(tpm_proxy, request_presence);
+  u2f_command_processor_ = std::move(u2f_command_processor);
 
   if (user_state_->HasUser()) {
     // WebAuthnHandler should normally initialize on boot, before any user has
@@ -1190,11 +1188,6 @@ void WebAuthnHandler::SetCryptohomeInterfaceProxyForTesting(
     std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
         cryptohome_proxy) {
   cryptohome_proxy_ = std::move(cryptohome_proxy);
-}
-
-void WebAuthnHandler::SetU2fCommandProcessorForTesting(
-    std::unique_ptr<U2fCommandProcessor> helper) {
-  u2f_command_processor_ = std::move(helper);
 }
 
 }  // namespace u2f

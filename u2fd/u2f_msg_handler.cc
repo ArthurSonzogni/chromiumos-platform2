@@ -4,12 +4,15 @@
 
 #include "u2fd/u2f_msg_handler.h"
 
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <trunks/cr50_headers/u2f.h>
 
+#include "u2fd/tpm_vendor_cmd.h"
 #include "u2fd/util.h"
 
 namespace u2f {
@@ -25,6 +28,28 @@ constexpr uint8_t kU2fVer2Prefix = 5;
 
 // UMA Metric names.
 constexpr char kU2fCommand[] = "Platform.U2F.Command";
+
+base::Optional<std::vector<uint8_t>> GetG2fCert(TpmVendorCommandProxy* proxy) {
+  std::string cert_str;
+  std::vector<uint8_t> cert;
+
+  uint32_t get_cert_status = proxy->GetG2fCertificate(&cert_str);
+
+  if (get_cert_status != 0) {
+    LOG(ERROR) << "Failed to retrieve G2F certificate, status: " << std::hex
+               << get_cert_status;
+    return base::nullopt;
+  }
+
+  util::AppendToVector(cert_str, &cert);
+
+  if (!util::RemoveCertificatePadding(&cert)) {
+    LOG(ERROR) << "Failed to remove padding from G2F certificate ";
+    return base::nullopt;
+  }
+
+  return cert;
+}
 
 }  // namespace
 
@@ -132,7 +157,7 @@ U2fResponseApdu U2fMessageHandler::ProcessU2fRegister(
   std::vector<uint8_t> allowlisting_data;
 
   if (allow_g2f_attestation_ && request.UseG2fAttestation()) {
-    base::Optional<std::vector<uint8_t>> g2f_cert = util::GetG2fCert(proxy_);
+    base::Optional<std::vector<uint8_t>> g2f_cert = GetG2fCert(proxy_);
 
     if (g2f_cert.has_value()) {
       attestation_cert = *g2f_cert;

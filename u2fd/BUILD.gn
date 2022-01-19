@@ -7,17 +7,19 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
-    ":g2ftool",
     ":u2fd",
     ":webauthntool",
   ]
-  if (use.test) {
-    deps += [
-      ":g2f_client_test",
-      ":u2fd_test_runner",
-    ]
+  if (use.cr50_onboard || use.ti50_onboard) {
+    deps += [ ":g2ftool" ]
   }
-  if (use.fuzzer) {
+  if (use.test) {
+    if (use.cr50_onboard || use.ti50_onboard) {
+      deps += [ ":g2f_client_test" ]
+    }
+    deps += [ ":u2fd_test_runner" ]
+  }
+  if (use.fuzzer && (use.cr50_onboard || use.ti50_onboard)) {
     deps += [
       ":u2f_apdu_fuzzer",
       ":u2f_msg_handler_fuzzer",
@@ -33,6 +35,10 @@ pkg_config("target_defaults") {
     "libchrome",
     "libsession_manager-client",
   ]
+  defines = [
+    "USE_TPM1=${use.tpm}",
+    "USE_GSC=${use.cr50_onboard} || ${use.ti50_onboard}",
+  ]
 }
 
 pkg_config("u2fd_config") {
@@ -41,7 +47,6 @@ pkg_config("u2fd_config") {
     "libattestation-client",
     "libmetrics",
     "libpower_manager-client",
-    "libtrunks",
     "libuser_data_auth-client",
     "openssl",
 
@@ -50,6 +55,9 @@ pkg_config("u2fd_config") {
     # order.
     "system_api",
   ]
+  if (use.cr50_onboard || use.ti50_onboard) {
+    pkg_deps += [ "libtrunks" ]
+  }
   if (use.fuzzer) {
     pkg_deps += [ "protobuf" ]
   } else {
@@ -60,13 +68,7 @@ pkg_config("u2fd_config") {
 static_library("libu2fd") {
   sources = [
     "allowlisting_util.cc",
-    "tpm_vendor_cmd.cc",
-    "u2f_apdu.cc",
-    "u2f_command_processor_gsc.cc",
     "u2f_daemon.cc",
-    "u2f_msg_handler.cc",
-    "u2fhid.cc",
-    "uhid_device.cc",
     "user_state.cc",
     "util.cc",
     "webauthn_handler.cc",
@@ -84,6 +86,17 @@ static_library("libu2fd") {
     ":user_state_proto",
     "//common-mk/external_dependencies:policy-protos",
   ]
+  if (use.cr50_onboard || use.ti50_onboard) {
+    sources += [
+      "tpm_vendor_cmd.cc",
+      "u2f_apdu.cc",
+      "u2f_command_processor_gsc.cc",
+      "u2f_msg_handler.cc",
+      "u2fhid.cc",
+      "u2fhid_service_impl.cc",
+      "uhid_device.cc",
+    ]
+  }
 }
 
 executable("u2fd") {
@@ -99,11 +112,13 @@ proto_library("user_state_proto") {
   sources = [ "user_state.proto" ]
 }
 
-executable("g2ftool") {
-  sources = [ "g2f_tools/g2ftool.cc" ]
-  configs += [ ":target_defaults" ]
-  install_path = "bin"
-  deps = [ ":libg2fclient" ]
+if (use.cr50_onboard || use.ti50_onboard) {
+  executable("g2ftool") {
+    sources = [ "g2f_tools/g2ftool.cc" ]
+    configs += [ ":target_defaults" ]
+    install_path = "bin"
+    deps = [ ":libg2fclient" ]
+  }
 }
 
 pkg_config("webauthntool_config") {
@@ -130,29 +145,33 @@ executable("webauthntool") {
   install_path = "bin"
 }
 
-static_library("libg2fclient") {
-  sources = [ "g2f_tools/g2f_client.cc" ]
-  configs += [ ":target_defaults" ]
-  libs = [ "hidapi-hidraw" ]
+if (use.cr50_onboard || use.ti50_onboard) {
+  static_library("libg2fclient") {
+    sources = [ "g2f_tools/g2f_client.cc" ]
+    configs += [ ":target_defaults" ]
+    libs = [ "hidapi-hidraw" ]
+  }
 }
 
 if (use.test) {
-  pkg_config("g2f_client_test_config") {
-    pkg_deps = [ "libchrome-test" ]
-  }
+  if (use.cr50_onboard || use.ti50_onboard) {
+    pkg_config("g2f_client_test_config") {
+      pkg_deps = [ "libchrome-test" ]
+    }
 
-  executable("g2f_client_test") {
-    sources = [
-      "g2f_tools/g2f_client.cc",
-      "g2f_tools/g2f_client_test.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-      ":g2f_client_test_config",
-    ]
-    run_test = true
-    deps = [ "//common-mk/testrunner" ]
+    executable("g2f_client_test") {
+      sources = [
+        "g2f_tools/g2f_client.cc",
+        "g2f_tools/g2f_client_test.cc",
+      ]
+      configs += [
+        "//common-mk:test",
+        ":target_defaults",
+        ":g2f_client_test_config",
+      ]
+      run_test = true
+      deps = [ "//common-mk/testrunner" ]
+    }
   }
 
   pkg_config("u2fd_test_config") {
@@ -166,8 +185,6 @@ if (use.test) {
   executable("u2fd_test_runner") {
     sources = [
       "allowlisting_util_test.cc",
-      "u2f_command_processor_gsc_test.cc",
-      "u2f_msg_handler_test.cc",
       "webauthn_handler_test.cc",
       "webauthn_storage_test.cc",
     ]
@@ -181,10 +198,16 @@ if (use.test) {
       ":libu2fd",
       "//common-mk/testrunner",
     ]
+    if (use.cr50_onboard || use.ti50_onboard) {
+      sources += [
+        "u2f_command_processor_gsc_test.cc",
+        "u2f_msg_handler_test.cc",
+      ]
+    }
   }
 }
 
-if (use.fuzzer) {
+if (use.fuzzer && (use.cr50_onboard || use.ti50_onboard)) {
   executable("u2f_apdu_fuzzer") {
     sources = [
       "fuzzers/u2f_apdu_fuzzer.cc",

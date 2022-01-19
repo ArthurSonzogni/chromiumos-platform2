@@ -9,14 +9,12 @@
 #include <string>
 #include <vector>
 
-#include <base/optional.h>
 #include <base/logging.h>
+#include <base/optional.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/sha.h>
 
 namespace u2f {
-
-class TpmVendorCommandProxy;
 
 namespace util {
 
@@ -105,11 +103,8 @@ base::Optional<std::vector<uint8_t>> CreateAttestationCertificate(
 // removing any padding that was present.
 bool RemoveCertificatePadding(std::vector<uint8_t>* cert);
 
-// Retrieves the G2F certificate from cr50. Returns nullopt on failure.
-base::Optional<std::vector<uint8_t>> GetG2fCert(TpmVendorCommandProxy* proxy);
-
-// Builds data to be signed as part of a U2F_REGISTER response, as defined by
-// the "U2F Raw Message Formats" specification.
+// Builds data to be signed as part of a U2F_REGISTER response, as defined
+// by the "U2F Raw Message Formats" specification.
 std::vector<uint8_t> BuildU2fRegisterResponseSignedData(
     const std::vector<uint8_t>& app_id,
     const std::vector<uint8_t>& challenge,
