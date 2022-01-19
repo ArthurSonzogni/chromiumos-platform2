@@ -105,15 +105,13 @@ std::string Icmp6TypeName(uint32_t type) {
 
 }  // namespace
 
-constexpr ssize_t NDProxy::kTranslateErrorNotICMPv6Frame;
-constexpr ssize_t NDProxy::kTranslateErrorNotNDFrame;
+constexpr ssize_t NDProxy::kTranslateErrorNotICMPv6Packet;
+constexpr ssize_t NDProxy::kTranslateErrorNotNDPacket;
 constexpr ssize_t NDProxy::kTranslateErrorInsufficientLength;
 constexpr ssize_t NDProxy::kTranslateErrorBufferMisaligned;
 constexpr ssize_t NDProxy::kTranslateErrorMismatchedIp6Length;
 
-NDProxy::NDProxy()
-    : in_frame_buffer_(AlignFrameBuffer(in_frame_buffer_extended_)),
-      out_frame_buffer_(AlignFrameBuffer(out_frame_buffer_extended_)) {}
+NDProxy::NDProxy() {}
 
 base::ScopedFD NDProxy::PreparePacketSocket() {
   base::ScopedFD fd(
@@ -182,52 +180,26 @@ void NDProxy::ReplaceMacInIcmpOption(uint8_t* icmp6,
   }
 }
 
-ssize_t NDProxy::TranslateNDFrame(const uint8_t* in_frame,
-                                  ssize_t frame_len,
-                                  const MacAddress& local_mac_addr,
-                                  const in6_addr* new_src_ip,
-                                  uint8_t* out_frame) {
-  if ((reinterpret_cast<uintptr_t>(in_frame + ETHER_HDR_LEN) & 0x3) != 0 ||
-      (reinterpret_cast<uintptr_t>(out_frame + ETHER_HDR_LEN) & 0x3) != 0) {
-    return kTranslateErrorBufferMisaligned;
-  }
-  if (frame_len < ETHER_HDR_LEN + sizeof(ip6_hdr) + sizeof(icmp6_hdr)) {
+ssize_t NDProxy::TranslateNDPacket(const uint8_t* in_packet,
+                                   ssize_t packet_len,
+                                   const MacAddress& local_mac_addr,
+                                   const in6_addr* new_src_ip,
+                                   uint8_t* out_packet) {
+  if (packet_len < sizeof(ip6_hdr) + sizeof(icmp6_hdr)) {
     return kTranslateErrorInsufficientLength;
   }
-  if (reinterpret_cast<const ethhdr*>(in_frame)->h_proto != htons(ETH_P_IPV6) ||
-      reinterpret_cast<const ip6_hdr*>(in_frame + ETHER_HDR_LEN)->ip6_nxt !=
-          IPPROTO_ICMPV6) {
-    return kTranslateErrorNotICMPv6Frame;
+  if (reinterpret_cast<const ip6_hdr*>(in_packet)->ip6_nxt != IPPROTO_ICMPV6) {
+    return kTranslateErrorNotICMPv6Packet;
   }
-  if (ntohs(reinterpret_cast<const ip6_hdr*>(in_frame + ETHER_HDR_LEN)
-                ->ip6_plen) !=
-      (frame_len - ETHER_HDR_LEN - sizeof(struct ip6_hdr))) {
+  if (ntohs(reinterpret_cast<const ip6_hdr*>(in_packet)->ip6_plen) !=
+      (packet_len - sizeof(struct ip6_hdr))) {
     return kTranslateErrorMismatchedIp6Length;
   }
 
-  memcpy(out_frame, in_frame, frame_len);
-  ethhdr* eth = reinterpret_cast<ethhdr*>(out_frame);
-  ip6_hdr* ip6 = reinterpret_cast<ip6_hdr*>(out_frame + ETHER_HDR_LEN);
-  icmp6_hdr* icmp6 =
-      reinterpret_cast<icmp6_hdr*>(out_frame + ETHER_HDR_LEN + sizeof(ip6_hdr));
-  const size_t ip6_len = frame_len - ETHER_HDR_LEN;
-  const size_t icmp6_len = frame_len - ETHER_ADDR_LEN - sizeof(ip6_hdr);
-
-  // If destination MAC is unicast (Individual/Group bit in MAC address == 0),
-  // it needs to be modified so guest OS L3 stack can see it.
-  // For proxy cascading case, we also need to recheck if destination MAC is
-  // ff:ff:ff:ff:ff:ff (which must have been filled by an upstream proxy).
-  if (!(eth->h_dest[0] & 0x1) ||
-      memcmp(eth->h_dest, kBroadcastMacAddress, ETHER_ADDR_LEN) == 0) {
-    MacAddress neighbor_mac;
-    if (GetNeighborMac(ip6->ip6_dst, &neighbor_mac)) {
-      memcpy(eth->h_dest, neighbor_mac.data(), ETHER_ADDR_LEN);
-    } else {
-      // If we can't resolve the destination IP into MAC from kernel neighbor
-      // table, fill destination MAC with broadcast MAC instead.
-      memcpy(eth->h_dest, kBroadcastMacAddress, ETHER_ADDR_LEN);
-    }
-  }
+  memcpy(out_packet, in_packet, packet_len);
+  ip6_hdr* ip6 = reinterpret_cast<ip6_hdr*>(out_packet);
+  icmp6_hdr* icmp6 = reinterpret_cast<icmp6_hdr*>(out_packet + sizeof(ip6_hdr));
+  const size_t icmp6_len = packet_len - sizeof(ip6_hdr);
 
   switch (icmp6->icmp6_type) {
     case ND_ROUTER_SOLICIT:
@@ -263,10 +235,8 @@ ssize_t NDProxy::TranslateNDFrame(const uint8_t* in_frame,
                              local_mac_addr);
       break;
     default:
-      return kTranslateErrorNotNDFrame;
+      return kTranslateErrorNotNDPacket;
   }
-
-  memcpy(eth->h_source, local_mac_addr.data(), ETHER_ADDR_LEN);
 
   if (new_src_ip != nullptr)
     memcpy(&ip6->ip6_src, new_src_ip, sizeof(in6_addr));
@@ -275,22 +245,29 @@ ssize_t NDProxy::TranslateNDFrame(const uint8_t* in_frame,
   // checksum calculation does not wrongly take old checksum into account.
   icmp6->icmp6_cksum = 0;
   icmp6->icmp6_cksum =
-      Icmpv6Checksum(reinterpret_cast<const uint8_t*>(ip6), ip6_len);
+      Icmpv6Checksum(reinterpret_cast<const uint8_t*>(ip6), packet_len);
 
-  return frame_len;
+  return packet_len;
 }
 
 void NDProxy::ReadAndProcessOneFrame(int fd) {
   sockaddr_ll dst_addr;
-  struct iovec iov = {
-      .iov_base = in_frame_buffer_,
-      .iov_len = IP_MAXPACKET,
+  ethhdr in_ethhdr;
+  struct iovec iov_in[2] = {
+      {
+          .iov_base = &in_ethhdr,
+          .iov_len = sizeof(in_ethhdr),
+      },
+      {
+          .iov_base = in_packet_buffer_,
+          .iov_len = IP_MAXPACKET,
+      },
   };
   msghdr hdr = {
       .msg_name = &dst_addr,
       .msg_namelen = sizeof(dst_addr),
-      .msg_iov = &iov,
-      .msg_iovlen = 1,
+      .msg_iov = iov_in,
+      .msg_iovlen = 2,
       .msg_control = nullptr,
       .msg_controllen = 0,
       .msg_flags = 0,
@@ -304,11 +281,14 @@ void NDProxy::ReadAndProcessOneFrame(int fd) {
     }
     return;
   }
-  ip6_hdr* ip6 = reinterpret_cast<ip6_hdr*>(in_frame_buffer_ + ETH_HLEN);
-  icmp6_hdr* icmp6 = reinterpret_cast<icmp6_hdr*>(
-      in_frame_buffer_ + ETHER_HDR_LEN + sizeof(ip6_hdr));
+  size_t packet_len = len - ETHER_ADDR_LEN;
 
-  if (ip6->ip6_nxt != IPPROTO_ICMPV6 || icmp6->icmp6_type < ND_ROUTER_SOLICIT ||
+  ip6_hdr* ip6 = reinterpret_cast<ip6_hdr*>(in_packet_buffer_);
+  icmp6_hdr* icmp6 =
+      reinterpret_cast<icmp6_hdr*>(in_packet_buffer_ + sizeof(ip6_hdr));
+
+  if (in_ethhdr.h_proto != htons(ETH_P_IPV6) ||
+      ip6->ip6_nxt != IPPROTO_ICMPV6 || icmp6->icmp6_type < ND_ROUTER_SOLICIT ||
       icmp6->icmp6_type > ND_NEIGHBOR_ADVERT)
     return;
 
@@ -336,9 +316,8 @@ void NDProxy::ReadAndProcessOneFrame(int fd) {
   if (icmp6->icmp6_type == ND_ROUTER_ADVERT &&
       IsRouterInterface(dst_addr.sll_ifindex) &&
       !router_discovery_handler_.is_null()) {
-    const nd_opt_prefix_info* prefix_info =
-        GetPrefixInfoOption(reinterpret_cast<uint8_t*>(icmp6),
-                            len - ETHER_ADDR_LEN - sizeof(ip6_hdr));
+    const nd_opt_prefix_info* prefix_info = GetPrefixInfoOption(
+        reinterpret_cast<uint8_t*>(icmp6), packet_len - sizeof(ip6_hdr));
     if (prefix_info != nullptr && prefix_info->nd_opt_pi_prefix_len <= 64) {
       // Generate an EUI-64 address from virtual interface MAC. A prefix
       // larger that /64 is required.
@@ -434,50 +413,78 @@ void NDProxy::ReadAndProcessOneFrame(int fd) {
       new_src_ip_p = &new_src_ip;
     }
 
-    int result = TranslateNDFrame(in_frame_buffer_, len, local_mac,
-                                  new_src_ip_p, out_frame_buffer_);
+    int result =
+        TranslateNDPacket(reinterpret_cast<const uint8_t*>(in_packet_buffer_),
+                          packet_len, local_mac, new_src_ip_p,
+                          reinterpret_cast<uint8_t*>(out_packet_buffer_));
     if (result < 0) {
       switch (result) {
-        case kTranslateErrorNotICMPv6Frame:
-          LOG(DFATAL) << "Attempt to TranslateNDFrame on a non-ICMPv6 frame";
+        case kTranslateErrorNotICMPv6Packet:
+          LOG(DFATAL) << "Attempt to TranslateNDPacket on a non-ICMPv6 packet";
           return;
-        case kTranslateErrorNotNDFrame:
-          LOG(DFATAL) << "Attempt to TranslateNDFrame on a non-NDP frame, "
+        case kTranslateErrorNotNDPacket:
+          LOG(DFATAL) << "Attempt to TranslateNDPacket on a non-NDP packet, "
                          "icmpv6 type = "
                       << static_cast<int>(icmp6->icmp6_type);
           return;
         case kTranslateErrorInsufficientLength:
-          LOG(DFATAL) << "TranslateNDFrame failed: frame_len = " << len
-                      << " is too small";
+          LOG(DFATAL) << "TranslateNDPacket failed: packet length = "
+                      << packet_len << " is too small";
           return;
         case kTranslateErrorMismatchedIp6Length:
-          LOG(DFATAL) << "TranslateNDFrame failed: expected ip6_plen = "
+          LOG(DFATAL) << "TranslateNDPacket failed: expected ip6_plen = "
                       << ntohs(ip6->ip6_plen) << ", received length = "
-                      << (len - ETHER_HDR_LEN - sizeof(struct ip6_hdr));
+                      << (packet_len - sizeof(struct ip6_hdr));
           return;
         default:
-          LOG(DFATAL) << "Unknown error in TranslateNDFrame";
+          LOG(DFATAL) << "Unknown error in TranslateNDPacket";
           return;
       }
     }
 
-    struct iovec iov_out = {
-        .iov_base = out_frame_buffer_,
-        .iov_len = static_cast<size_t>(len),
-    };
+    ethhdr out_ethhdr;
+    out_ethhdr.h_proto = htons(ETH_P_IPV6);
+    memcpy(out_ethhdr.h_source, local_mac.data(), ETHER_ADDR_LEN);
+    memcpy(out_ethhdr.h_dest, in_ethhdr.h_dest, ETHER_ADDR_LEN);
+    // If destination MAC is unicast (Individual/Group bit in MAC address == 0),
+    // it needs to be modified so guest OS L3 stack can see it.
+    // For proxy cascading case, we also need to recheck if destination MAC is
+    // ff:ff:ff:ff:ff:ff (which must have been filled by an upstream proxy).
+    if (!(out_ethhdr.h_dest[0] & 0x1) ||
+        memcmp(&out_ethhdr.h_dest, kBroadcastMacAddress, ETHER_ADDR_LEN) == 0) {
+      MacAddress neighbor_mac;
+      if (GetNeighborMac(ip6->ip6_dst, &neighbor_mac)) {
+        memcpy(&out_ethhdr.h_dest, neighbor_mac.data(), ETHER_ADDR_LEN);
+      } else {
+        // If we can't resolve the destination IP into MAC from kernel neighbor
+        // table, fill destination MAC with broadcast MAC instead.
+        memcpy(&out_ethhdr.h_dest, kBroadcastMacAddress, ETHER_ADDR_LEN);
+      }
+    }
+
     sockaddr_ll addr = {
         .sll_family = AF_PACKET,
         .sll_protocol = htons(ETH_P_IPV6),
         .sll_ifindex = target_if,
         .sll_halen = ETHER_ADDR_LEN,
     };
-    memcpy(addr.sll_addr, reinterpret_cast<ethhdr*>(out_frame_buffer_)->h_dest,
-           ETHER_ADDR_LEN);
+    memcpy(addr.sll_addr, out_ethhdr.h_dest, ETHER_ADDR_LEN);
+
+    struct iovec iov_out[2] = {
+        {
+            .iov_base = &out_ethhdr,
+            .iov_len = sizeof(out_ethhdr),
+        },
+        {
+            .iov_base = out_packet_buffer_,
+            .iov_len = static_cast<size_t>(packet_len),
+        },
+    };
     msghdr hdr = {
         .msg_name = &addr,
         .msg_namelen = sizeof(addr),
-        .msg_iov = &iov_out,
-        .msg_iovlen = 1,
+        .msg_iov = iov_out,
+        .msg_iovlen = 2,
         .msg_control = nullptr,
         .msg_controllen = 0,
     };

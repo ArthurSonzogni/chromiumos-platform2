@@ -272,10 +272,8 @@ TEST(NDProxyTest, GetPrefixInfoOption) {
 }
 
 TEST(NDProxyTest, TranslateFrame) {
-  uint8_t in_buffer_extended[IP_MAXPACKET + ETHER_HDR_LEN + 4];
-  uint8_t out_buffer_extended[IP_MAXPACKET + ETHER_HDR_LEN + 4];
-  uint8_t* in_buffer = NDProxy::AlignFrameBuffer(in_buffer_extended);
-  uint8_t* out_buffer = NDProxy::AlignFrameBuffer(out_buffer_extended);
+  uint8_t* in_buffer = new uint8_t[IP_MAXPACKET];
+  uint8_t* out_buffer = new uint8_t[IP_MAXPACKET];
   int result;
 
   NDProxy ndproxy;
@@ -297,7 +295,7 @@ TEST(NDProxyTest, TranslateFrame) {
           sizeof(tcp_frame),
           physical_if_mac,
           nullptr,
-          NDProxy::kTranslateErrorNotICMPv6Frame,
+          NDProxy::kTranslateErrorNotICMPv6Packet,
       },
       {
           "ping_frame",
@@ -305,7 +303,7 @@ TEST(NDProxyTest, TranslateFrame) {
           sizeof(ping_frame),
           physical_if_mac,
           nullptr,
-          NDProxy::kTranslateErrorNotNDFrame,
+          NDProxy::kTranslateErrorNotNDPacket,
       },
       {
           "rs_frame_too_large_plen",
@@ -378,23 +376,30 @@ TEST(NDProxyTest, TranslateFrame) {
   for (const auto& test_case : test_cases) {
     LOG(INFO) << test_case.name;
 
-    memcpy(in_buffer, test_case.input_frame, test_case.input_frame_len);
-    result = ndproxy.TranslateNDFrame(in_buffer, test_case.input_frame_len,
-                                      test_case.local_mac, test_case.src_ip,
-                                      out_buffer);
+    size_t packet_len = test_case.input_frame_len - ETHER_HDR_LEN;
+    size_t expected_output_packet_len =
+        test_case.expected_output_frame_len - ETHER_HDR_LEN;
+
+    memcpy(in_buffer, test_case.input_frame + ETHER_HDR_LEN, packet_len);
+    result =
+        ndproxy.TranslateNDPacket(in_buffer, packet_len, test_case.local_mac,
+                                  test_case.src_ip, out_buffer);
 
     if (test_case.expected_error != 0) {
       EXPECT_EQ(test_case.expected_error, result);
     } else {
-      EXPECT_EQ(test_case.expected_output_frame_len, result);
+      EXPECT_EQ(expected_output_packet_len, result);
 
-      const auto expected = ToHexString(test_case.expected_output_frame,
-                                        test_case.expected_output_frame_len);
-      const auto received =
-          ToHexString(out_buffer, test_case.expected_output_frame_len);
+      const auto expected =
+          ToHexString(test_case.expected_output_frame + ETHER_HDR_LEN,
+                      expected_output_packet_len);
+      const auto received = ToHexString(out_buffer, expected_output_packet_len);
       EXPECT_EQ(expected, received);
     }
   }
+
+  delete[] in_buffer;
+  delete[] out_buffer;
 }
 
 }  // namespace patchpanel

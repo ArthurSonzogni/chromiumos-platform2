@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <linux/if_ether.h>
 #include <net/ethernet.h>
 #include <netinet/icmp6.h>
 #include <netinet/ip.h>
@@ -35,8 +36,8 @@ namespace patchpanel {
 // NS/NA will be proxied.
 class NDProxy {
  public:
-  static constexpr ssize_t kTranslateErrorNotICMPv6Frame = -1;
-  static constexpr ssize_t kTranslateErrorNotNDFrame = -2;
+  static constexpr ssize_t kTranslateErrorNotICMPv6Packet = -1;
+  static constexpr ssize_t kTranslateErrorNotNDPacket = -2;
   static constexpr ssize_t kTranslateErrorInsufficientLength = -3;
   static constexpr ssize_t kTranslateErrorBufferMisaligned = -4;
   static constexpr ssize_t kTranslateErrorMismatchedIp6Length = -5;
@@ -47,23 +48,22 @@ class NDProxy {
 
   virtual ~NDProxy() = default;
 
-  // RFC 4389: Read the input ICMPv6 frame in |in_frame| and determine whether
-  // it should be proxied. If so, fill |out_frame| buffer with proxied frame and
-  // return the length of proxied frame (usually same with input frame length).
-  // Return a negative value if proxy is not needed or an error occurred.
-  // in_frame: buffer containing input ethernet frame; needs special alignment
-  //           so that IP header is 4-bytes aligned;
-  // frame_len: the length of input frame;
-  // local_mac_addr: MAC address of interface that will be used to send frame;
-  // new_src_ip: if not null, address that will be used for the IP header source
-  //             address to send the frame;
-  // out_frame: buffer for output frame; should have at least frame_len space;
-  //            needs special alignment so that IP header is 4-bytes aligned.
-  ssize_t TranslateNDFrame(const uint8_t* in_frame,
-                           ssize_t frame_len,
-                           const MacAddress& local_mac_addr,
-                           const in6_addr* new_src_ip,
-                           uint8_t* out_frame);
+  // RFC 4389: Read the input ICMPv6 packet in |in_packet| and determine whether
+  // it should be proxied. If so, fill the |out_packet| buffer with proxied
+  // packet and return the length of proxied packet (usually same with input
+  // frame length). Return a negative value if proxy is not needed or an error
+  // occurred. in_packet: buffer containing input IPv6 packet. packet_len: the
+  // length of input IPv6 packet; local_mac_addr: MAC address of interface that
+  // will be used to send the proxied packet; new_src_ip: if not null, address
+  // that will be used for the IP header source
+  //             address to send the proxied packet;
+  // out_packet: buffer for output IPv6 pacet; should have at least packet_len
+  // space.
+  ssize_t TranslateNDPacket(const uint8_t* in_packet,
+                            ssize_t packet_len,
+                            const MacAddress& local_mac_addr,
+                            const in6_addr* new_src_ip,
+                            uint8_t* out_packet);
 
   // Given the ICMPv6 packet |icmp6| with header and options (payload) of total
   // byte length |icmp6_len|, returns a pointer to the start of the prefix
@@ -166,13 +166,14 @@ class NDProxy {
   base::ScopedFD dummy_fd_;
   base::ScopedFD rtnl_fd_;
 
-  // Allocate slightly more space and adjust the buffer start location to
-  // make sure IP header is 4-bytes aligned.
-  uint8_t in_frame_buffer_extended_[IP_MAXPACKET + ETH_HLEN + 4];
-  uint8_t out_frame_buffer_extended_[IP_MAXPACKET + ETH_HLEN + 4];
-  uint8_t* in_frame_buffer_;
-  uint8_t* out_frame_buffer_;
+  // Fixed buffers for receiving and sending IP packets.
+  uint8_t* in_packet_buffer_[IP_MAXPACKET];
+  uint8_t* out_packet_buffer_[IP_MAXPACKET];
 
+  // Maps of interface names to set of interfaces to which a given ICMP6 types
+  // of ND packet should be forwarded. For any ND packet of a given ICMP6 type
+  // arriving on an interface, the relevant map indicates which other interfaces
+  // this packets should be proxied to.
   interface_mapping if_map_rs_;
   interface_mapping if_map_ra_;
   interface_mapping if_map_ns_na_;
