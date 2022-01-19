@@ -302,7 +302,12 @@ bool ManagerDBusAdaptor::FindMatchingService(
   Error find_error;
   ServiceRefPtr service =
       manager_->FindMatchingService(args_store, &find_error);
-  if (find_error.ToChromeosError(error)) {
+  if (find_error.type() == Error::kNotFound) {
+    // FindMatchingService may be used to test whether a Service exists.
+    LOG(INFO) << "FindMatchingService failed: " << find_error;
+    find_error.ToChromeosErrorNoLog(error);
+    return false;
+  } else if (find_error.ToChromeosError(error)) {
     return false;
   }
 

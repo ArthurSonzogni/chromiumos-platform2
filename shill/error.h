@@ -74,6 +74,7 @@ class Error {
   // Sets the Chromeos |error| and returns true if Error represents failure.
   // Leaves error unchanged, and returns false otherwise.
   bool ToChromeosError(brillo::ErrorPtr* error) const;
+  bool ToChromeosErrorNoLog(brillo::ErrorPtr* error) const;
 
   Type type() const { return type_; }
   const std::string& message() const { return message_; }
@@ -91,6 +92,10 @@ class Error {
                              Error* error,
                              Type type,
                              const std::string& message);
+
+  // Note: This error message is used in tast tests.
+  static constexpr char kServiceNotFoundMsg[] =
+      "Matching service was not found";
 
  private:
   Type type_;

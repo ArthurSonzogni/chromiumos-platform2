@@ -188,7 +188,7 @@ ServiceRefPtr VPNProvider::FindSimilarService(const KeyValueStore& args,
   // Find a service in the provider list which matches these parameters.
   VPNServiceRefPtr service = FindService(type, name, host);
   if (!service) {
-    error->Populate(Error::kNotFound, "Matching service was not found");
+    error->Populate(Error::kNotFound, Error::kServiceNotFoundMsg, FROM_HERE);
   }
 
   return service;

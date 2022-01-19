@@ -2723,7 +2723,7 @@ ServiceRefPtr Manager::FindMatchingService(const KeyValueStore& args,
       return service;
     }
   }
-  error->Populate(Error::kNotFound, "Matching service was not found");
+  error->Populate(Error::kNotFound, Error::kServiceNotFoundMsg, FROM_HERE);
   return nullptr;
 }
 

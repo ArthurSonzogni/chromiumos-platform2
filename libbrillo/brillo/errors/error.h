@@ -23,7 +23,7 @@ class BRILLO_EXPORT Error {
  public:
   virtual ~Error() = default;
 
-  // Creates an instance of Error class.
+  // Creates an instance of Error class and logs the error.
   static ErrorPtr Create(const base::Location& location,
                          const std::string& domain,
                          const std::string& code,
@@ -33,6 +33,14 @@ class BRILLO_EXPORT Error {
                          const std::string& code,
                          const std::string& message,
                          ErrorPtr inner_error);
+
+  // Creates an instance of Error class without logging.
+  static ErrorPtr CreateNoLog(const base::Location& location,
+                              const std::string& domain,
+                              const std::string& code,
+                              const std::string& message,
+                              ErrorPtr inner_error);
+
   // If |error| is not nullptr, creates another instance of Error class,
   // initializes it with specified arguments and adds it to the head of
   // the error chain pointed to by |error|.

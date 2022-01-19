@@ -4,6 +4,8 @@
 
 #include "shill/error.h"
 
+#include <utility>
+
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
@@ -101,6 +103,18 @@ bool Error::ToChromeosError(brillo::ErrorPtr* error) const {
   if (IsFailure()) {
     brillo::Error::AddTo(error, location_, brillo::errors::dbus::kDomain,
                          kInfos[type_].dbus_result, message_);
+    return true;
+  }
+  return false;
+}
+
+bool Error::ToChromeosErrorNoLog(brillo::ErrorPtr* error) const {
+  if (IsFailure()) {
+    if (error) {
+      *error = brillo::Error::CreateNoLog(
+          location_, brillo::errors::dbus::kDomain, kInfos[type_].dbus_result,
+          message_, std::move(*error));
+    }
     return true;
   }
   return false;

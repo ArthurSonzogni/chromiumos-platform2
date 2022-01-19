@@ -43,6 +43,14 @@ ErrorPtr Error::Create(const base::Location& location,
                        const std::string& message,
                        ErrorPtr inner_error) {
   LogError(location, domain, code, message);
+  return CreateNoLog(location, domain, code, message, std::move(inner_error));
+}
+
+ErrorPtr Error::CreateNoLog(const base::Location& location,
+                            const std::string& domain,
+                            const std::string& code,
+                            const std::string& message,
+                            ErrorPtr inner_error) {
   return ErrorPtr(
       new Error(location, domain, code, message, std::move(inner_error)));
 }

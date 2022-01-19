@@ -287,7 +287,7 @@ ServiceRefPtr WiFiProvider::FindSimilarService(const KeyValueStore& args,
 
   WiFiServiceRefPtr service(FindService(ssid, mode, security_class));
   if (!service) {
-    error->Populate(Error::kNotFound, "Matching service was not found");
+    error->Populate(Error::kNotFound, Error::kServiceNotFoundMsg, FROM_HERE);
   }
 
   return service;
