@@ -84,6 +84,7 @@ class DevicePolicyImpl : public DevicePolicy {
   bool GetAutoLaunchedKioskAppId(std::string* app_id_out) const override;
   bool IsEnterpriseManaged() const override;
   bool GetSecondFactorAuthenticationMode(int* mode_out) const override;
+  std::optional<bool> GetRunAutomaticCleanupOnLogin() const override;
   bool GetDisallowedTimeIntervals(
       std::vector<WeeklyTimeInterval>* intervals_out) const override;
   bool GetDeviceUpdateStagingSchedule(

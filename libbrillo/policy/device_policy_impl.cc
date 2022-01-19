@@ -691,6 +691,23 @@ bool DevicePolicyImpl::GetSecondFactorAuthenticationMode(int* mode_out) const {
   return true;
 }
 
+std::optional<bool> DevicePolicyImpl::GetRunAutomaticCleanupOnLogin() const {
+  // Only runs on enterprise devices.
+  if (!IsEnterpriseEnrolled())
+    return {};
+
+  if (!device_policy_.has_device_run_automatic_cleanup_on_login())
+    return {};
+
+  const em::BooleanPolicyProto& proto =
+      device_policy_.device_run_automatic_cleanup_on_login();
+
+  if (!proto.has_value())
+    return {};
+
+  return proto.value();
+}
+
 bool DevicePolicyImpl::GetDisallowedTimeIntervals(
     std::vector<WeeklyTimeInterval>* intervals_out) const {
   intervals_out->clear();

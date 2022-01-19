@@ -106,6 +106,10 @@ class MockDevicePolicy : public DevicePolicy {
               GetSecondFactorAuthenticationMode,
               (int*),
               (const, override));
+  MOCK_METHOD(std::optional<bool>,
+              GetRunAutomaticCleanupOnLogin,
+              (),
+              (const, override));
   MOCK_METHOD(bool,
               GetDisallowedTimeIntervals,
               (std::vector<WeeklyTimeInterval>*),

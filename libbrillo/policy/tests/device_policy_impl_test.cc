@@ -537,4 +537,29 @@ TEST_F(DevicePolicyImplTest,
       &kl_enabled));
 }
 
+// Policy should only apply to enterprise devices.
+TEST_F(DevicePolicyImplTest, GetRunAutomaticCleanupOnLogin_SetConsumer) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::BooleanPolicyProto* run_settings =
+      device_policy_proto.mutable_device_run_automatic_cleanup_on_login();
+  run_settings->set_value(true);
+  InitializePolicy(InstallAttributesReader::kDeviceModeConsumer,
+                   device_policy_proto);
+
+  ASSERT_THAT(device_policy_.GetRunAutomaticCleanupOnLogin(),
+              testing::Eq(std::nullopt));
+}
+
+TEST_F(DevicePolicyImplTest, GetRunAutomaticCleanupOnLogin_Set) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::BooleanPolicyProto* run_settings =
+      device_policy_proto.mutable_device_run_automatic_cleanup_on_login();
+  run_settings->set_value(true);
+  InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
+                   device_policy_proto);
+
+  ASSERT_THAT(device_policy_.GetRunAutomaticCleanupOnLogin(),
+              testing::Eq(std::optional(true)));
+}
+
 }  // namespace policy

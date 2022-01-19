@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -225,6 +226,10 @@ class DevicePolicy {
   // DeviceSecondFactorAuthenticationProto's U2fMode enum (e.g. DISABLED,
   // U2F or U2F_EXTENDED). Returns true on success.
   virtual bool GetSecondFactorAuthenticationMode(int* mode_out) const = 0;
+
+  // Returns the value of the DeviceRunAutomaticCleanupOnLogin policy. On
+  // error or if the policy is not set, returns an empty value.
+  virtual std::optional<bool> GetRunAutomaticCleanupOnLogin() const = 0;
 
   // Writes the valid time intervals to |intervals_out|. These
   // intervals are taken from the disallowed time intervals field in the
