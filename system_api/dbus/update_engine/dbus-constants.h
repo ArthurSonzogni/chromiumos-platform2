@@ -55,8 +55,7 @@ const char kUpdateStatusCleanupPreviousUpdate[] =
 
 // Feature names.
 const char kFeatureRepeatedUpdates[] = "feature-repeated-updates";
-const char kFeatureDisableConsumerAutoUpdate[] =
-    "feature-disable-consumer-auto-update";
+const char kFeatureConsumerAutoUpdate[] = "feature-consumer-auto-update";
 
 // Action exit codes.
 // Reference common/error_code.h in update_engine repo for direct mappings and
