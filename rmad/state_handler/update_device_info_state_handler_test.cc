@@ -340,7 +340,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_serial_numberFailed) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 }
 
@@ -362,7 +362,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_RegionFailed) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
@@ -386,7 +386,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuFailed) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
@@ -412,7 +412,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_WhitelabelFailed) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
@@ -439,7 +439,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_DramPartNumFailed) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
@@ -463,7 +463,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_RegionEmptyFailed) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
@@ -484,7 +484,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_RegionWrongIndex) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
@@ -505,7 +505,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuEmptyFailed) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
@@ -527,7 +527,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuWrongIndex) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
@@ -578,7 +578,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
@@ -604,7 +604,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 }
 
@@ -627,7 +627,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 }
 
@@ -649,7 +649,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_ReadOnlySkuFailed) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 }
 
@@ -672,7 +672,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 }
 
@@ -693,7 +693,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_ReadOnlyDramFailed) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 }
 
@@ -715,7 +715,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 }
 
@@ -737,7 +737,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 }
 
@@ -759,7 +759,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 }
 
@@ -781,7 +781,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 }
 
@@ -803,7 +803,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 }
 
@@ -825,7 +825,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_DEVICE_INFO_INVALID);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 }
 

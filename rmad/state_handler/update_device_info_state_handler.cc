@@ -190,7 +190,7 @@ UpdateDeviceInfoStateHandler::GetNextStateCase(const RmadState& state) {
 
   if (!VerifyReadOnly(state.update_device_info()) ||
       !WriteDeviceInfo(state.update_device_info())) {
-    return NextStateCaseWrapper(RMAD_ERROR_DEVICE_INFO_INVALID);
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   }
 
   state_ = state;
@@ -299,8 +299,7 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
   // If the model does not have whitelabel, we also need to set it to an empty
   // string.
   std::string whitelabel = "";
-  if (device_info.whitelabel_list_size() > 1 &&
-      device_info.whitelabel_index() > 0) {
+  if (device_info.whitelabel_index() >= 0) {
     whitelabel = device_info.whitelabel_list(device_info.whitelabel_index());
   }
   if (!vpd_utils_->SetWhitelabelTag(whitelabel)) {
