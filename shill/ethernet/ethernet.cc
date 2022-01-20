@@ -334,16 +334,18 @@ void Ethernet::Certification(const KeyValueStore& properties) {
   uint32_t depth;
   if (WPASupplicant::ExtractRemoteCertification(properties, &subject, &depth)) {
     dispatcher()->PostTask(
-        FROM_HERE, base::Bind(&Ethernet::CertificationTask,
-                              weak_ptr_factory_.GetWeakPtr(), subject, depth));
+        FROM_HERE,
+        base::BindOnce(&Ethernet::CertificationTask,
+                       weak_ptr_factory_.GetWeakPtr(), subject, depth));
   }
 }
 
 void Ethernet::EAPEvent(const std::string& status,
                         const std::string& parameter) {
   dispatcher()->PostTask(
-      FROM_HERE, base::Bind(&Ethernet::EAPEventTask,
-                            weak_ptr_factory_.GetWeakPtr(), status, parameter));
+      FROM_HERE,
+      base::BindOnce(&Ethernet::EAPEventTask, weak_ptr_factory_.GetWeakPtr(),
+                     status, parameter));
 }
 
 void Ethernet::PropertiesChanged(const KeyValueStore& properties) {
@@ -353,7 +355,7 @@ void Ethernet::PropertiesChanged(const KeyValueStore& properties) {
   }
   dispatcher()->PostTask(
       FROM_HERE,
-      base::Bind(
+      base::BindOnce(
           &Ethernet::SupplicantStateChangedTask, weak_ptr_factory_.GetWeakPtr(),
           properties.Get<std::string>(WPASupplicant::kInterfacePropertyState)));
 }

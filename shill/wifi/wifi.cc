@@ -326,8 +326,8 @@ void WiFi::Scan(Error* /*error*/, const std::string& reason) {
   // signal handler context (via Manager::RequestScan). So defer work
   // to event loop.
   dispatcher()->PostTask(
-      FROM_HERE, base::Bind(&WiFi::ScanTask,
-                            weak_ptr_factory_while_started_.GetWeakPtr()));
+      FROM_HERE, base::BindOnce(&WiFi::ScanTask,
+                                weak_ptr_factory_while_started_.GetWeakPtr()));
 }
 
 int16_t WiFi::GetSignalLevelForActiveService() {
@@ -428,15 +428,15 @@ void WiFi::BSSRemoved(const RpcIdentifier& path) {
 void WiFi::Certification(const KeyValueStore& properties) {
   dispatcher()->PostTask(
       FROM_HERE,
-      base::Bind(&WiFi::CertificationTask,
-                 weak_ptr_factory_while_started_.GetWeakPtr(), properties));
+      base::BindOnce(&WiFi::CertificationTask,
+                     weak_ptr_factory_while_started_.GetWeakPtr(), properties));
 }
 
 void WiFi::EAPEvent(const std::string& status, const std::string& parameter) {
   dispatcher()->PostTask(
-      FROM_HERE, base::Bind(&WiFi::EAPEventTask,
-                            weak_ptr_factory_while_started_.GetWeakPtr(),
-                            status, parameter));
+      FROM_HERE, base::BindOnce(&WiFi::EAPEventTask,
+                                weak_ptr_factory_while_started_.GetWeakPtr(),
+                                status, parameter));
 }
 
 void WiFi::PropertiesChanged(const KeyValueStore& properties) {
@@ -444,8 +444,8 @@ void WiFi::PropertiesChanged(const KeyValueStore& properties) {
   // Called from D-Bus signal handler, but may need to send a D-Bus
   // message. So defer work to event loop.
   dispatcher()->PostTask(
-      FROM_HERE, base::Bind(&WiFi::PropertiesChangedTask,
-                            weak_ptr_factory_.GetWeakPtr(), properties));
+      FROM_HERE, base::BindOnce(&WiFi::PropertiesChangedTask,
+                                weak_ptr_factory_.GetWeakPtr(), properties));
 }
 
 void WiFi::ScanDone(const bool& success) {
@@ -469,8 +469,9 @@ void WiFi::ScanDone(const bool& success) {
   if (success) {
     scan_failed_callback_.Cancel();
     dispatcher()->PostTask(
-        FROM_HERE, base::Bind(&WiFi::ScanDoneTask,
-                              weak_ptr_factory_while_started_.GetWeakPtr()));
+        FROM_HERE,
+        base::BindOnce(&WiFi::ScanDoneTask,
+                       weak_ptr_factory_while_started_.GetWeakPtr()));
   } else {
     scan_failed_callback_.Reset(base::Bind(
         &WiFi::ScanFailedTask, weak_ptr_factory_while_started_.GetWeakPtr()));
@@ -1958,8 +1959,8 @@ void WiFi::ScanDoneTask() {
   // results have been processed.  This allows connections on new BSSes to be
   // started before we decide whether the scan was fruitful.
   dispatcher()->PostTask(
-      FROM_HERE, base::Bind(&WiFi::UpdateScanStateAfterScanDone,
-                            weak_ptr_factory_while_started_.GetWeakPtr()));
+      FROM_HERE, base::BindOnce(&WiFi::UpdateScanStateAfterScanDone,
+                                weak_ptr_factory_while_started_.GetWeakPtr()));
   if (wake_on_wifi_ && (provider_->NumAutoConnectableServices() < 1) &&
       IsIdle()) {
     // Ensure we are also idle in case we are in the midst of connecting to

@@ -861,16 +861,16 @@ void WakeOnWiFi::OnBeforeSuspend(
     // Renew DHCP lease immediately if we have one that is expiring soon.
     renew_dhcp_lease_callback.Run();
     dispatcher_->PostTask(
-        FROM_HERE, base::Bind(&WakeOnWiFi::BeforeSuspendActions,
-                              weak_ptr_factory_.GetWeakPtr(), is_connected,
-                              false, time_to_next_lease_renewal,
-                              remove_supplicant_networks_callback));
+        FROM_HERE, base::BindOnce(&WakeOnWiFi::BeforeSuspendActions,
+                                  weak_ptr_factory_.GetWeakPtr(), is_connected,
+                                  false, time_to_next_lease_renewal,
+                                  remove_supplicant_networks_callback));
   } else {
     dispatcher_->PostTask(
-        FROM_HERE, base::Bind(&WakeOnWiFi::BeforeSuspendActions,
-                              weak_ptr_factory_.GetWeakPtr(), is_connected,
-                              have_dhcp_lease, time_to_next_lease_renewal,
-                              remove_supplicant_networks_callback));
+        FROM_HERE, base::BindOnce(&WakeOnWiFi::BeforeSuspendActions,
+                                  weak_ptr_factory_.GetWeakPtr(), is_connected,
+                                  have_dhcp_lease, time_to_next_lease_renewal,
+                                  remove_supplicant_networks_callback));
   }
 }
 
