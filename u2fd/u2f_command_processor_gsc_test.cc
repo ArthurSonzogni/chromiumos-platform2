@@ -237,7 +237,8 @@ class U2fCommandProcessorGscTest : public ::testing::Test {
       std::vector<uint8_t>* credential_pubkey) {
     return processor_->U2fGenerate(
         GetRpIdHash(), HexArrayToBlob(kCredentialSecret), presence_requirement,
-        uv_compatible, auth_time_secret_hash, credential_id, credential_pubkey);
+        uv_compatible, auth_time_secret_hash, credential_id, credential_pubkey,
+        nullptr);
   }
 
   GetAssertionResponse::GetAssertionStatus U2fSign(
@@ -246,15 +247,15 @@ class U2fCommandProcessorGscTest : public ::testing::Test {
       PresenceRequirement presence_requirement,
       std::vector<uint8_t>* signature) {
     return processor_->U2fSign(GetRpIdHash(), hash_to_sign, credential_id,
-                               HexArrayToBlob(kCredentialSecret),
+                               HexArrayToBlob(kCredentialSecret), nullptr,
                                presence_requirement, signature);
   }
 
   HasCredentialsResponse::HasCredentialsStatus U2fSignCheckOnly(
       const std::vector<uint8_t>& rp_id_hash,
       const std::vector<uint8_t>& credential_id) {
-    return processor_->U2fSignCheckOnly(rp_id_hash, credential_id,
-                                        HexArrayToBlob(kCredentialSecret));
+    return processor_->U2fSignCheckOnly(
+        rp_id_hash, credential_id, HexArrayToBlob(kCredentialSecret), nullptr);
   }
 
   MakeCredentialResponse::MakeCredentialStatus G2fAttest(

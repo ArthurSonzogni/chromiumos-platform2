@@ -22,6 +22,10 @@ namespace u2f {
 
 class U2fCommandProcessorGsc : public U2fCommandProcessor {
  public:
+  // |tpm_proxy| - proxy to send commands to TPM. Owned by U2fDaemon and should
+  // outlive WebAuthnHandler.
+  // |request_presence| - callback for performing other platform tasks when
+  // expecting the user to press the power button.
   U2fCommandProcessorGsc(TpmVendorCommandProxy* tpm_proxy,
                          std::function<void()> request_presence);
 
@@ -41,7 +45,8 @@ class U2fCommandProcessorGsc : public U2fCommandProcessor {
       bool uv_compatible,
       const brillo::Blob* auth_time_secret_hash,
       std::vector<uint8_t>* credential_id,
-      std::vector<uint8_t>* credential_public_key) override;
+      std::vector<uint8_t>* credential_public_key,
+      std::vector<uint8_t>* credential_key_blob) override;
 
   // Runs a U2F_SIGN command to check that credential_id is valid, and if so,
   // sign |hash_to_sign| and store the signature in |signature|.
@@ -53,6 +58,7 @@ class U2fCommandProcessorGsc : public U2fCommandProcessor {
       const std::vector<uint8_t>& hash_to_sign,
       const std::vector<uint8_t>& credential_id,
       const std::vector<uint8_t>& credential_secret,
+      const std::vector<uint8_t>* credential_key_blob,
       PresenceRequirement presence_requirement,
       std::vector<uint8_t>* signature) override;
 
@@ -61,7 +67,8 @@ class U2fCommandProcessorGsc : public U2fCommandProcessor {
   HasCredentialsResponse::HasCredentialsStatus U2fSignCheckOnly(
       const std::vector<uint8_t>& rp_id_hash,
       const std::vector<uint8_t>& credential_id,
-      const std::vector<uint8_t>& credential_secret) override;
+      const std::vector<uint8_t>& credential_secret,
+      const std::vector<uint8_t>* credential_key_blob) override;
 
   // Run a U2F_ATTEST command to sign data using the cr50 individual attestation
   // certificate.

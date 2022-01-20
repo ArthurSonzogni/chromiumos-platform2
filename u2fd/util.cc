@@ -10,9 +10,12 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/bn.h>
 #include <openssl/ecdsa.h>
+#include <openssl/evp.h>
+#include <openssl/hmac.h>
 #include <openssl/sha.h>
 #include <openssl/x509.h>
 
@@ -72,6 +75,14 @@ base::Optional<std::vector<uint8_t>> SignatureToDerBytes(const uint8_t* r,
   }
 
   return signature;
+}
+
+std::vector<uint8_t> HmacSha256(const brillo::SecureBlob& key,
+                                const std::vector<uint8_t>& data) {
+  brillo::Blob mac(SHA256_DIGEST_LENGTH);
+  HMAC(EVP_sha256(), key.data(), key.size(), data.data(), data.size(),
+       mac.data(), nullptr);
+  return mac;
 }
 
 bool DoSoftwareAttest(const std::vector<uint8_t>& data_to_sign,

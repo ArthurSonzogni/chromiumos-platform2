@@ -60,7 +60,8 @@ U2fCommandProcessorGsc::U2fGenerate(
     bool uv_compatible,
     const brillo::Blob* auth_time_secret_hash,
     std::vector<uint8_t>* credential_id,
-    std::vector<uint8_t>* credential_public_key) {
+    std::vector<uint8_t>* credential_public_key,
+    std::vector<uint8_t>* /*unused*/) {
   DCHECK(rp_id_hash.size() == SHA256_DIGEST_LENGTH);
 
   struct u2f_generate_req generate_req = {};
@@ -125,6 +126,7 @@ GetAssertionResponse::GetAssertionStatus U2fCommandProcessorGsc::U2fSign(
     const std::vector<uint8_t>& hash_to_sign,
     const std::vector<uint8_t>& credential_id,
     const std::vector<uint8_t>& credential_secret,
+    const std::vector<uint8_t>* /*unused*/,
     PresenceRequirement presence_requirement,
     std::vector<uint8_t>* signature) {
   DCHECK(rp_id_hash.size() == SHA256_DIGEST_LENGTH);
@@ -205,7 +207,8 @@ HasCredentialsResponse::HasCredentialsStatus
 U2fCommandProcessorGsc::U2fSignCheckOnly(
     const std::vector<uint8_t>& rp_id_hash,
     const std::vector<uint8_t>& credential_id,
-    const std::vector<uint8_t>& credential_secret) {
+    const std::vector<uint8_t>& credential_secret,
+    const std::vector<uint8_t>* /*unused*/) {
   uint32_t sign_status;
 
   if (credential_id.size() == U2F_V1_KH_SIZE + SHA256_DIGEST_LENGTH) {

@@ -27,6 +27,8 @@ struct WebAuthnRecord {
   // memory will hit RLIMIT_MEMLOCK. 2. With physical presence and auth-time
   // secret, this per-credential secret is more like a salt.
   brillo::Blob secret;
+  // Key blob containing wrapped TPM key, used in generic TPM case.
+  brillo::Blob key_blob;
   // The relying party id.
   std::string rp_id;
   // The relying party display name.
@@ -62,6 +64,11 @@ class WebAuthnStorage {
 
   virtual base::Optional<brillo::Blob> GetSecretByCredentialId(
       const std::string& credential_id);
+
+  virtual bool GetSecretAndKeyBlobByCredentialId(
+      const std::string& credential_id,
+      brillo::Blob* secret,
+      brillo::Blob* key_blob);
 
   virtual base::Optional<WebAuthnRecord> GetRecordByCredentialId(
       const std::string& credential_id);

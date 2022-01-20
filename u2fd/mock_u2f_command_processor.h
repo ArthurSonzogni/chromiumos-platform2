@@ -29,7 +29,8 @@ class MockU2fCommandProcessor : public U2fCommandProcessor {
                bool uv_compatible,
                const brillo::Blob* auth_time_secret_hash,
                std::vector<uint8_t>* credential_id,
-               std::vector<uint8_t>* credential_public_key),
+               std::vector<uint8_t>* credential_public_key,
+               std::vector<uint8_t>* credential_key_blob),
               (override));
 
   MOCK_METHOD(GetAssertionResponse::GetAssertionStatus,
@@ -38,6 +39,7 @@ class MockU2fCommandProcessor : public U2fCommandProcessor {
                const std::vector<uint8_t>& hash_to_sign,
                const std::vector<uint8_t>& credential_id,
                const std::vector<uint8_t>& credential_secret,
+               const std::vector<uint8_t>* credential_key_blob,
                PresenceRequirement presence_requirement,
                std::vector<uint8_t>* signature),
               (override));
@@ -46,7 +48,8 @@ class MockU2fCommandProcessor : public U2fCommandProcessor {
               U2fSignCheckOnly,
               (const std::vector<uint8_t>& rp_id_hash,
                const std::vector<uint8_t>& credential_id,
-               const std::vector<uint8_t>& credential_secret),
+               const std::vector<uint8_t>& credential_secret,
+               const std::vector<uint8_t>* credential_key_blob),
               (override));
 
   MOCK_METHOD(MakeCredentialResponse::MakeCredentialStatus,

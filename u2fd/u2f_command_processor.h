@@ -31,7 +31,8 @@ class U2fCommandProcessor {
       bool uv_compatible,
       const brillo::Blob* auth_time_secret_hash,
       std::vector<uint8_t>* credential_id,
-      std::vector<uint8_t>* credential_public_key) = 0;
+      std::vector<uint8_t>* credential_public_key,
+      std::vector<uint8_t>* credential_key_blob) = 0;
 
   // Check that credential_id is valid, and if so,
   // sign |hash_to_sign| and store the signature in |signature|.
@@ -41,6 +42,7 @@ class U2fCommandProcessor {
       const std::vector<uint8_t>& hash_to_sign,
       const std::vector<uint8_t>& credential_id,
       const std::vector<uint8_t>& credential_secret,
+      const std::vector<uint8_t>* credential_key_blob,
       PresenceRequirement presence_requirement,
       std::vector<uint8_t>* signature) = 0;
 
@@ -48,7 +50,8 @@ class U2fCommandProcessor {
   virtual HasCredentialsResponse::HasCredentialsStatus U2fSignCheckOnly(
       const std::vector<uint8_t>& rp_id_hash,
       const std::vector<uint8_t>& credential_id,
-      const std::vector<uint8_t>& credential_secret) = 0;
+      const std::vector<uint8_t>& credential_secret,
+      const std::vector<uint8_t>* credential_key_blob) = 0;
 
   // Sign data using the attestation certificate.
   virtual MakeCredentialResponse::MakeCredentialStatus G2fAttest(

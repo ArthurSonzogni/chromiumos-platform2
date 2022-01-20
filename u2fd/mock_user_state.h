@@ -7,6 +7,7 @@
 
 #include "u2fd/user_state.h"
 
+#include <string>
 #include <vector>
 
 #include <base/optional.h>
@@ -21,6 +22,7 @@ class MockUserState : public UserState {
               GetUserSecret,
               (),
               (override));
+  MOCK_METHOD(base::Optional<std::string>, GetUser, (), (override));
   MOCK_METHOD(base::Optional<std::vector<uint8_t>>, GetCounter, (), (override));
   MOCK_METHOD(bool, IncrementCounter, (), (override));
 };

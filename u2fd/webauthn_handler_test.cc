@@ -130,6 +130,7 @@ brillo::Blob HexArrayToBlob(const char* array) {
 
 }  // namespace
 
+// TODO(b/205813697): Add tests for generic TPM flow.
 // The base test fixture tests behaviors seen by general consumers. It
 // disallows presence-only mode, because U2F isn't offered to general
 // consumers.
@@ -301,7 +302,7 @@ TEST_F(WebAuthnHandlerTestBase, MakeCredentialNoAuthTimeSecretHash) {
   ExpectUVFlowSuccess();
   EXPECT_CALL(*mock_processor_,
               U2fGenerate(GetRpIdHash(), _, PresenceRequirement::kNone, true,
-                          nullptr, _, _))
+                          nullptr, _, _, _))
       .WillRepeatedly(Return(MakeCredentialResponse::INTERNAL_ERROR));
 
   auto mock_method_response =
@@ -330,7 +331,7 @@ TEST_F(WebAuthnHandlerTestBase, MakeCredentialUPUpgradedToUV) {
   SetUpAuthTimeSecretHash();
   EXPECT_CALL(*mock_processor_,
               U2fGenerate(GetRpIdHash(), _, PresenceRequirement::kNone, true,
-                          Pointee(GetAuthTimeSecretHash()), _, _))
+                          Pointee(GetAuthTimeSecretHash()), _, _, _))
       .WillOnce(DoAll(SetArgPointee<5>(GetVersionedCredId()),
                       SetArgPointee<6>(GetCredPubKey()),
                       Return(MakeCredentialResponse::SUCCESS)));
@@ -354,7 +355,7 @@ TEST_F(WebAuthnHandlerTestBase, MakeCredentialVerificationSuccess) {
   SetUpAuthTimeSecretHash();
   EXPECT_CALL(*mock_processor_,
               U2fGenerate(GetRpIdHash(), _, PresenceRequirement::kNone, true,
-                          Pointee(GetAuthTimeSecretHash()), _, _))
+                          Pointee(GetAuthTimeSecretHash()), _, _, _))
       .WillOnce(DoAll(SetArgPointee<5>(GetVersionedCredId()),
                       SetArgPointee<6>(GetCredPubKey()),
                       Return(MakeCredentialResponse::SUCCESS)));
@@ -468,14 +469,14 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionNoCredentialSecret) {
   request.set_verification_type(VerificationType::VERIFICATION_USER_PRESENCE);
 
   EXPECT_CALL(*mock_webauthn_storage_,
-              GetSecretByCredentialId(GetCredIdString()))
-      .WillOnce(Return(base::nullopt));
+              GetSecretAndKeyBlobByCredentialId(GetCredIdString(), _, _))
+      .WillOnce(Return(false));
   ExpectGetUserSecret();
 
   // We will check for legacy credentials, so two check-only calls to TPM.
-  EXPECT_CALL(
-      *mock_processor_,
-      U2fSignCheckOnly(GetWrongRpIdHash(), GetCredId(), GetCorrectUserSecret()))
+  EXPECT_CALL(*mock_processor_,
+              U2fSignCheckOnly(GetWrongRpIdHash(), GetCredId(),
+                               GetCorrectUserSecret(), _))
       .Times(2)
       .WillRepeatedly(Return(HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID));
 
@@ -505,12 +506,13 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionInvalidKeyHandle) {
   request.set_verification_type(VerificationType::VERIFICATION_USER_PRESENCE);
 
   EXPECT_CALL(*mock_webauthn_storage_,
-              GetSecretByCredentialId(GetCredIdString()))
-      .WillOnce(Return(HexArrayToBlob(kCredentialSecret)));
+              GetSecretAndKeyBlobByCredentialId(GetCredIdString(), _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(HexArrayToBlob(kCredentialSecret)),
+                      Return(true)));
   ExpectGetUserSecret();
   // 3 calls to SignCheckOnly, one for each credential type.
   EXPECT_CALL(*mock_processor_,
-              U2fSignCheckOnly(GetWrongRpIdHash(), GetCredId(), _))
+              U2fSignCheckOnly(GetWrongRpIdHash(), GetCredId(), _, _))
       .Times(3)
       .WillRepeatedly(Return(HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID));
 
@@ -541,21 +543,22 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionUPUpgradedToUV) {
       VerificationType::VERIFICATION_USER_VERIFICATION);
 
   // Pass DoU2fSignCheckOnly so that we can get to UV flow.
-  EXPECT_CALL(*mock_webauthn_storage_,
-              GetSecretByCredentialId(GetVersionedCredIdString()))
-      .WillRepeatedly(Return(HexArrayToBlob(kCredentialSecret)));
+  EXPECT_CALL(*mock_webauthn_storage_, GetSecretAndKeyBlobByCredentialId(
+                                           GetVersionedCredIdString(), _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(HexArrayToBlob(kCredentialSecret)),
+                            Return(true)));
   ExpectGetUserSecret();
 
   EXPECT_CALL(*mock_processor_,
               U2fSignCheckOnly(GetRpIdHash(), GetVersionedCredId(),
-                               HexArrayToBlob(kCredentialSecret)))
+                               HexArrayToBlob(kCredentialSecret), _))
       .WillRepeatedly(Return(HasCredentialsResponse::SUCCESS));
-  EXPECT_CALL(*mock_processor_,
-              U2fSignCheckOnly(_, GetVersionedCredId(), GetCorrectUserSecret()))
+  EXPECT_CALL(*mock_processor_, U2fSignCheckOnly(_, GetVersionedCredId(),
+                                                 GetCorrectUserSecret(), _))
       .WillRepeatedly(Return(HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID));
   EXPECT_CALL(*mock_processor_,
               U2fSign(GetRpIdHash(), _, GetVersionedCredId(),
-                      HexArrayToBlob(kCredentialSecret),
+                      HexArrayToBlob(kCredentialSecret), _,
                       PresenceRequirement::kAuthorizationSecret, _))
       .WillOnce(Return(GetAssertionResponse::SUCCESS));
 
@@ -581,24 +584,25 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionVerificationSuccess) {
 
   ExpectUVFlowSuccess();
 
-  EXPECT_CALL(*mock_webauthn_storage_,
-              GetSecretByCredentialId(GetVersionedCredIdString()))
-      .WillRepeatedly(Return(HexArrayToBlob(kCredentialSecret)));
+  EXPECT_CALL(*mock_webauthn_storage_, GetSecretAndKeyBlobByCredentialId(
+                                           GetVersionedCredIdString(), _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(HexArrayToBlob(kCredentialSecret)),
+                            Return(true)));
 
   ExpectGetUserSecret();
 
   EXPECT_CALL(*mock_processor_,
               U2fSignCheckOnly(GetRpIdHash(), GetVersionedCredId(),
-                               HexArrayToBlob(kCredentialSecret)))
+                               HexArrayToBlob(kCredentialSecret), _))
       .WillRepeatedly(Return(HasCredentialsResponse::SUCCESS));
-  EXPECT_CALL(*mock_processor_,
-              U2fSignCheckOnly(_, GetVersionedCredId(), GetCorrectUserSecret()))
+  EXPECT_CALL(*mock_processor_, U2fSignCheckOnly(_, GetVersionedCredId(),
+                                                 GetCorrectUserSecret(), _))
       .WillRepeatedly(Return(HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID));
   EXPECT_CALL(*mock_processor_,
               U2fSign(GetRpIdHash(), _, GetVersionedCredId(),
-                      HexArrayToBlob(kCredentialSecret),
+                      HexArrayToBlob(kCredentialSecret), _,
                       PresenceRequirement::kAuthorizationSecret, _))
-      .WillOnce(DoAll(SetArgPointee<5>(GetSignature()),
+      .WillOnce(DoAll(SetArgPointee<6>(GetSignature()),
                       Return(GetAssertionResponse::SUCCESS)));
 
   auto mock_method_response =
@@ -636,13 +640,13 @@ TEST_F(WebAuthnHandlerTestBase, HasCredentialsNoMatch) {
   request.set_app_id(kWrongRpId);
   request.add_credential_id(GetCredIdString());
   EXPECT_CALL(*mock_webauthn_storage_,
-              GetSecretByCredentialId(GetCredIdString()))
-      .WillRepeatedly(Return(base::nullopt));
+              GetSecretAndKeyBlobByCredentialId(GetCredIdString(), _, _))
+      .WillRepeatedly(Return(false));
   ExpectGetUserSecret();
 
-  EXPECT_CALL(
-      *mock_processor_,
-      U2fSignCheckOnly(GetWrongRpIdHash(), GetCredId(), GetCorrectUserSecret()))
+  EXPECT_CALL(*mock_processor_,
+              U2fSignCheckOnly(GetWrongRpIdHash(), GetCredId(),
+                               GetCorrectUserSecret(), _))
       .Times(2)
       .WillRepeatedly(Return(HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID));
 
@@ -659,18 +663,19 @@ TEST_F(WebAuthnHandlerTestBase, HasCredentialsMatchPlatformAuthenticator) {
   request.set_app_id(kRpId);
   request.add_credential_id(GetVersionedCredIdString());
 
-  EXPECT_CALL(*mock_webauthn_storage_,
-              GetSecretByCredentialId(GetVersionedCredIdString()))
-      .WillOnce(Return(HexArrayToBlob(kCredentialSecret)));
+  EXPECT_CALL(*mock_webauthn_storage_, GetSecretAndKeyBlobByCredentialId(
+                                           GetVersionedCredIdString(), _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(HexArrayToBlob(kCredentialSecret)),
+                      Return(true)));
   ExpectGetUserSecret();
 
   EXPECT_CALL(*mock_processor_,
               U2fSignCheckOnly(GetRpIdHash(), GetVersionedCredId(),
-                               HexArrayToBlob(kCredentialSecret)))
+                               HexArrayToBlob(kCredentialSecret), _))
       .WillOnce(Return(HasCredentialsResponse::SUCCESS));
   EXPECT_CALL(*mock_processor_,
               U2fSignCheckOnly(GetRpIdHash(), GetVersionedCredId(),
-                               GetCorrectUserSecret()))
+                               GetCorrectUserSecret(), _))
       .Times(2)
       .WillRepeatedly(Return(HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID));
 
@@ -687,11 +692,11 @@ TEST_F(WebAuthnHandlerTestBase, HasCredentialsMatchU2fhidWebAuthn) {
   request.add_credential_id(GetCredIdString());
 
   EXPECT_CALL(*mock_webauthn_storage_,
-              GetSecretByCredentialId(GetCredIdString()))
-      .WillOnce(Return(base::nullopt));
+              GetSecretAndKeyBlobByCredentialId(GetCredIdString(), _, _))
+      .WillOnce(Return(false));
   ExpectGetUserSecret();
   EXPECT_CALL(*mock_processor_, U2fSignCheckOnly(GetRpIdHash(), GetCredId(),
-                                                 GetCorrectUserSecret()))
+                                                 GetCorrectUserSecret(), _))
       .WillOnce(Return(HasCredentialsResponse::SUCCESS));
 
   auto resp = handler_->HasCredentials(request);
@@ -708,17 +713,17 @@ TEST_F(WebAuthnHandlerTestBase, HasCredentialsMatchAppId) {
   request.add_credential_id(GetCredIdString());
 
   EXPECT_CALL(*mock_webauthn_storage_,
-              GetSecretByCredentialId(GetCredIdString()))
-      .WillOnce(Return(base::nullopt));
+              GetSecretAndKeyBlobByCredentialId(GetCredIdString(), _, _))
+      .WillOnce(Return(false));
   ExpectGetUserSecret();
   // Matching rp_id fails.
-  EXPECT_CALL(
-      *mock_processor_,
-      U2fSignCheckOnly(GetWrongRpIdHash(), GetCredId(), GetCorrectUserSecret()))
+  EXPECT_CALL(*mock_processor_,
+              U2fSignCheckOnly(GetWrongRpIdHash(), GetCredId(),
+                               GetCorrectUserSecret(), _))
       .WillOnce(Return(HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID));
   // Matching app_id succeeds.
   EXPECT_CALL(*mock_processor_, U2fSignCheckOnly(GetRpIdHash(), GetCredId(),
-                                                 GetCorrectUserSecret()))
+                                                 GetCorrectUserSecret(), _))
       .WillOnce(Return(HasCredentialsResponse::SUCCESS));
 
   auto resp = handler_->HasCredentials(request);
@@ -738,25 +743,26 @@ TEST_F(WebAuthnHandlerTestBase, HasCredentialsSomeMatches) {
                                            unknown_credential_id.end());
   request.add_credential_id(unknown_credential_id_string);
 
-  EXPECT_CALL(*mock_webauthn_storage_,
-              GetSecretByCredentialId(GetVersionedCredIdString()))
-      .WillOnce(Return(HexArrayToBlob(kCredentialSecret)));
-  EXPECT_CALL(*mock_webauthn_storage_,
-              GetSecretByCredentialId(unknown_credential_id_string))
-      .WillOnce(Return(base::nullopt));
+  EXPECT_CALL(*mock_webauthn_storage_, GetSecretAndKeyBlobByCredentialId(
+                                           GetVersionedCredIdString(), _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(HexArrayToBlob(kCredentialSecret)),
+                      Return(true)));
+  EXPECT_CALL(*mock_webauthn_storage_, GetSecretAndKeyBlobByCredentialId(
+                                           unknown_credential_id_string, _, _))
+      .WillOnce(Return(false));
   ExpectGetUserSecret();
 
   EXPECT_CALL(*mock_processor_,
               U2fSignCheckOnly(GetRpIdHash(), GetVersionedCredId(),
-                               HexArrayToBlob(kCredentialSecret)))
+                               HexArrayToBlob(kCredentialSecret), _))
       .WillOnce(Return(HasCredentialsResponse::SUCCESS));
   EXPECT_CALL(*mock_processor_,
               U2fSignCheckOnly(GetRpIdHash(), GetVersionedCredId(),
-                               GetCorrectUserSecret()))
+                               GetCorrectUserSecret(), _))
       .WillRepeatedly(Return(HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID));
   EXPECT_CALL(*mock_processor_,
               U2fSignCheckOnly(GetRpIdHash(), unknown_credential_id,
-                               GetCorrectUserSecret()))
+                               GetCorrectUserSecret(), _))
       .WillRepeatedly(Return(HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID));
 
   auto resp = handler_->HasCredentials(request);
@@ -772,9 +778,9 @@ TEST_F(WebAuthnHandlerTestBase, HasLegacyCredentialsNoMatch) {
   request.add_credential_id(GetCredIdString());
 
   ExpectGetUserSecret();
-  EXPECT_CALL(
-      *mock_processor_,
-      U2fSignCheckOnly(GetWrongRpIdHash(), GetCredId(), GetCorrectUserSecret()))
+  EXPECT_CALL(*mock_processor_,
+              U2fSignCheckOnly(GetWrongRpIdHash(), GetCredId(),
+                               GetCorrectUserSecret(), _))
       .Times(2)
       .WillRepeatedly(Return(HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID));
 
@@ -793,7 +799,7 @@ TEST_F(WebAuthnHandlerTestBase, HasLegacyCredentialsMatchU2fhidWebAuthn) {
 
   ExpectGetUserSecret();
   EXPECT_CALL(*mock_processor_, U2fSignCheckOnly(GetRpIdHash(), GetCredId(),
-                                                 GetCorrectUserSecret()))
+                                                 GetCorrectUserSecret(), _))
       .WillOnce(Return(HasCredentialsResponse::SUCCESS));
 
   auto resp = handler_->HasLegacyCredentials(request);
@@ -811,13 +817,13 @@ TEST_F(WebAuthnHandlerTestBase, HasLegacyCredentialsMatchAppId) {
 
   ExpectGetUserSecret();
   // Matching rp_id fails.
-  EXPECT_CALL(
-      *mock_processor_,
-      U2fSignCheckOnly(GetWrongRpIdHash(), GetCredId(), GetCorrectUserSecret()))
+  EXPECT_CALL(*mock_processor_,
+              U2fSignCheckOnly(GetWrongRpIdHash(), GetCredId(),
+                               GetCorrectUserSecret(), _))
       .WillOnce(Return(HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID));
   // Matching app_id succeeds.
   EXPECT_CALL(*mock_processor_, U2fSignCheckOnly(GetRpIdHash(), GetCredId(),
-                                                 GetCorrectUserSecret()))
+                                                 GetCorrectUserSecret(), _))
       .WillOnce(Return(HasCredentialsResponse::SUCCESS));
 
   auto resp = handler_->HasLegacyCredentials(request);
@@ -839,11 +845,11 @@ TEST_F(WebAuthnHandlerTestBase, HasLegacyCredentialsSomeMatches) {
 
   ExpectGetUserSecret();
   EXPECT_CALL(*mock_processor_, U2fSignCheckOnly(GetRpIdHash(), GetCredId(),
-                                                 GetCorrectUserSecret()))
+                                                 GetCorrectUserSecret(), _))
       .WillRepeatedly(Return(HasCredentialsResponse::SUCCESS));
   EXPECT_CALL(*mock_processor_,
               U2fSignCheckOnly(GetRpIdHash(), unknown_credential_id,
-                               GetCorrectUserSecret()))
+                               GetCorrectUserSecret(), _))
       .WillRepeatedly(Return(HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID));
 
   auto resp = handler_->HasLegacyCredentials(request);
@@ -955,7 +961,7 @@ TEST_F(WebAuthnHandlerTestU2fMode, MakeCredentialPresenceSuccess) {
   EXPECT_CALL(*mock_processor_,
               U2fGenerate(GetRpIdHash(), GetCorrectUserSecret(),
                           PresenceRequirement::kPowerButton, false,
-                          Pointee(GetAuthTimeSecretHash()), _, _))
+                          Pointee(GetAuthTimeSecretHash()), _, _, _))
       .WillOnce(DoAll(SetArgPointee<5>(GetCredId()),
                       SetArgPointee<6>(GetCredPubKey()),
                       Return(MakeCredentialResponse::SUCCESS)));
@@ -1018,17 +1024,17 @@ TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialNoPresence) {
   ExpectIncrementCounter();
 
   EXPECT_CALL(*mock_webauthn_storage_,
-              GetSecretByCredentialId(GetCredIdString()))
+              GetSecretAndKeyBlobByCredentialId(GetCredIdString(), _, _))
       .Times(2)
-      .WillRepeatedly(Return(base::nullopt));
+      .WillRepeatedly(Return(false));
   // LegacyCredential uses "user secret" instead of per credential secret.
   ExpectGetUserSecretForTimes(2);
 
   EXPECT_CALL(*mock_processor_, U2fSignCheckOnly(GetRpIdHash(), GetCredId(),
-                                                 GetCorrectUserSecret()))
+                                                 GetCorrectUserSecret(), _))
       .WillOnce(Return(HasCredentialsResponse::SUCCESS));
   EXPECT_CALL(*mock_processor_,
-              U2fSign(GetRpIdHash(), _, GetCredId(), GetCorrectUserSecret(),
+              U2fSign(GetRpIdHash(), _, GetCredId(), GetCorrectUserSecret(), _,
                       PresenceRequirement::kPowerButton, _))
       .WillOnce(Return(GetAssertionResponse::VERIFICATION_FAILED));
 
@@ -1057,18 +1063,18 @@ TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialSuccess) {
   ExpectIncrementCounter();
 
   EXPECT_CALL(*mock_webauthn_storage_,
-              GetSecretByCredentialId(GetCredIdString()))
+              GetSecretAndKeyBlobByCredentialId(GetCredIdString(), _, _))
       .Times(2)
-      .WillRepeatedly(Return(base::nullopt));
+      .WillRepeatedly(Return(false));
   // LegacyCredential uses "user secret" instead of per credential secret.
   ExpectGetUserSecretForTimes(2);
   EXPECT_CALL(*mock_processor_, U2fSignCheckOnly(GetRpIdHash(), GetCredId(),
-                                                 GetCorrectUserSecret()))
+                                                 GetCorrectUserSecret(), _))
       .WillOnce(Return(HasCredentialsResponse::SUCCESS));
   EXPECT_CALL(*mock_processor_,
-              U2fSign(GetRpIdHash(), _, GetCredId(), GetCorrectUserSecret(),
+              U2fSign(GetRpIdHash(), _, GetCredId(), GetCorrectUserSecret(), _,
                       PresenceRequirement::kPowerButton, _))
-      .WillOnce(DoAll(SetArgPointee<5>(GetSignature()),
+      .WillOnce(DoAll(SetArgPointee<6>(GetSignature()),
                       Return(GetAssertionResponse::SUCCESS)));
 
   auto mock_method_response =
@@ -1111,25 +1117,25 @@ TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialAppIdMatch) {
   ExpectIncrementCounter();
 
   EXPECT_CALL(*mock_webauthn_storage_,
-              GetSecretByCredentialId(GetCredIdString()))
+              GetSecretAndKeyBlobByCredentialId(GetCredIdString(), _, _))
       .Times(2)
-      .WillRepeatedly(Return(base::nullopt));
+      .WillRepeatedly(Return(false));
   // LegacyCredential uses "user secret" instead of per credential secret.
   ExpectGetUserSecretForTimes(2);
 
   // Rp id doesn't match.
-  EXPECT_CALL(
-      *mock_processor_,
-      U2fSignCheckOnly(GetWrongRpIdHash(), GetCredId(), GetCorrectUserSecret()))
+  EXPECT_CALL(*mock_processor_,
+              U2fSignCheckOnly(GetWrongRpIdHash(), GetCredId(),
+                               GetCorrectUserSecret(), _))
       .WillOnce(Return(HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID));
   // App id matches.
   EXPECT_CALL(*mock_processor_, U2fSignCheckOnly(GetRpIdHash(), GetCredId(),
-                                                 GetCorrectUserSecret()))
+                                                 GetCorrectUserSecret(), _))
       .WillOnce(Return(HasCredentialsResponse::SUCCESS));
   EXPECT_CALL(*mock_processor_,
-              U2fSign(GetRpIdHash(), _, GetCredId(), GetCorrectUserSecret(),
+              U2fSign(GetRpIdHash(), _, GetCredId(), GetCorrectUserSecret(), _,
                       PresenceRequirement::kPowerButton, _))
-      .WillOnce(DoAll(SetArgPointee<5>(GetSignature()),
+      .WillOnce(DoAll(SetArgPointee<6>(GetSignature()),
                       Return(GetAssertionResponse::SUCCESS)));
 
   auto mock_method_response =
@@ -1175,22 +1181,23 @@ TEST_F(WebAuthnHandlerTestU2fMode,
 
   ExpectUVFlowSuccess();
 
-  EXPECT_CALL(*mock_webauthn_storage_,
-              GetSecretByCredentialId(GetVersionedCredIdString()))
-      .WillRepeatedly(Return(HexArrayToBlob(kCredentialSecret)));
+  EXPECT_CALL(*mock_webauthn_storage_, GetSecretAndKeyBlobByCredentialId(
+                                           GetVersionedCredIdString(), _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(HexArrayToBlob(kCredentialSecret)),
+                            Return(true)));
   ExpectGetUserSecret();
   EXPECT_CALL(*mock_processor_,
               U2fSignCheckOnly(GetRpIdHash(), GetVersionedCredId(),
-                               HexArrayToBlob(kCredentialSecret)))
+                               HexArrayToBlob(kCredentialSecret), _))
       .WillOnce(Return(HasCredentialsResponse::SUCCESS));
-  EXPECT_CALL(*mock_processor_,
-              U2fSignCheckOnly(_, GetVersionedCredId(), GetCorrectUserSecret()))
+  EXPECT_CALL(*mock_processor_, U2fSignCheckOnly(_, GetVersionedCredId(),
+                                                 GetCorrectUserSecret(), _))
       .WillRepeatedly(Return(HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID));
   EXPECT_CALL(*mock_processor_,
               U2fSign(GetRpIdHash(), _, GetVersionedCredId(),
-                      HexArrayToBlob(kCredentialSecret),
+                      HexArrayToBlob(kCredentialSecret), _,
                       PresenceRequirement::kAuthorizationSecret, _))
-      .WillOnce(DoAll(SetArgPointee<5>(GetSignature()),
+      .WillOnce(DoAll(SetArgPointee<6>(GetSignature()),
                       Return(GetAssertionResponse::SUCCESS)));
 
   auto mock_method_response =
@@ -1239,31 +1246,32 @@ TEST_F(WebAuthnHandlerTestU2fMode,
 
   ExpectUVFlowSuccess();
 
+  EXPECT_CALL(*mock_webauthn_storage_, GetSecretAndKeyBlobByCredentialId(
+                                           GetVersionedCredIdString(), _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(HexArrayToBlob(kCredentialSecret)),
+                            Return(true)));
   EXPECT_CALL(*mock_webauthn_storage_,
-              GetSecretByCredentialId(GetVersionedCredIdString()))
-      .WillRepeatedly(Return(HexArrayToBlob(kCredentialSecret)));
-  EXPECT_CALL(*mock_webauthn_storage_,
-              GetSecretByCredentialId(GetCredIdString()))
-      .WillRepeatedly(Return(base::nullopt));
+              GetSecretAndKeyBlobByCredentialId(GetCredIdString(), _, _))
+      .WillRepeatedly(Return(false));
   ExpectGetUserSecret();
   // Both credentials should pass U2fSignCheckOnly, but only the platform
   // credential should go through U2fSign.
   EXPECT_CALL(*mock_processor_,
               U2fSignCheckOnly(GetRpIdHash(), GetVersionedCredId(),
-                               HexArrayToBlob(kCredentialSecret)))
+                               HexArrayToBlob(kCredentialSecret), _))
       .WillOnce(Return(HasCredentialsResponse::SUCCESS));
-  EXPECT_CALL(*mock_processor_,
-              U2fSignCheckOnly(_, GetVersionedCredId(), GetCorrectUserSecret()))
+  EXPECT_CALL(*mock_processor_, U2fSignCheckOnly(_, GetVersionedCredId(),
+                                                 GetCorrectUserSecret(), _))
       .WillRepeatedly(Return(HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID));
   EXPECT_CALL(*mock_processor_, U2fSignCheckOnly(GetRpIdHash(), GetCredId(),
-                                                 GetCorrectUserSecret()))
+                                                 GetCorrectUserSecret(), _))
       .WillOnce(Return(HasCredentialsResponse::SUCCESS));
 
   EXPECT_CALL(*mock_processor_,
               U2fSign(GetRpIdHash(), _, GetVersionedCredId(),
-                      HexArrayToBlob(kCredentialSecret),
+                      HexArrayToBlob(kCredentialSecret), _,
                       PresenceRequirement::kAuthorizationSecret, _))
-      .WillOnce(DoAll(SetArgPointee<5>(GetSignature()),
+      .WillOnce(DoAll(SetArgPointee<6>(GetSignature()),
                       Return(GetAssertionResponse::SUCCESS)));
 
   auto mock_method_response =
@@ -1352,7 +1360,7 @@ TEST_F(WebAuthnHandlerTestG2fMode, MakeCredentialPresenceSuccess) {
   SetUpAuthTimeSecretHash();
   EXPECT_CALL(*mock_processor_,
               U2fGenerate(GetRpIdHash(), _, PresenceRequirement::kPowerButton,
-                          false, Pointee(GetAuthTimeSecretHash()), _, _))
+                          false, Pointee(GetAuthTimeSecretHash()), _, _, _))
       .WillOnce(DoAll(SetArgPointee<5>(GetCredId()),
                       SetArgPointee<6>(GetCredPubKey()),
                       Return(MakeCredentialResponse::SUCCESS)));

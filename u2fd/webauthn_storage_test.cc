@@ -23,6 +23,7 @@ constexpr char kSanitizedUser[] = "SanitizedUser";
 
 constexpr char kCredentialId[] = "CredentialId";
 constexpr char kCredentialSecret[65] = {[0 ... 63] = 'E', '\0'};
+constexpr char kCredentialKeyBlob[65] = {[0 ... 63] = 'F', '\0'};
 constexpr char kRpId[] = "example.com";
 constexpr char kRpDisplayName[] = "Example Site";
 constexpr char kUserId[] = "deadbeef";
@@ -38,6 +39,7 @@ brillo::Blob HexArrayToBlob(const char* array) {
 using ::testing::_;
 using ::testing::Return;
 
+// TODO(b/205813697): Add tests for record structure backward compatibility.
 class WebAuthnStorageTest : public ::testing::Test {
  public:
   WebAuthnStorageTest() {
@@ -62,14 +64,15 @@ class WebAuthnStorageTest : public ::testing::Test {
 };
 
 TEST_F(WebAuthnStorageTest, WriteAndReadRecord) {
-  const WebAuthnRecord record{kCredentialId,
-                              HexArrayToBlob(kCredentialSecret),
-                              kRpId,
-                              kRpDisplayName,
-                              kUserId,
-                              kUserDisplayName,
-                              kCreatedTime,
-                              /* is_resident_key = */ true};
+  const WebAuthnRecord record{.credential_id = kCredentialId,
+                              .secret = HexArrayToBlob(kCredentialSecret),
+                              .key_blob = HexArrayToBlob(kCredentialKeyBlob),
+                              .rp_id = kRpId,
+                              .rp_display_name = kRpDisplayName,
+                              .user_id = kUserId,
+                              .user_display_name = kUserDisplayName,
+                              .timestamp = kCreatedTime,
+                              .is_resident_key = true};
 
   EXPECT_TRUE(webauthn_storage_->WriteRecord(record));
 
@@ -83,6 +86,7 @@ TEST_F(WebAuthnStorageTest, WriteAndReadRecord) {
       webauthn_storage_->GetRecordByCredentialId(kCredentialId);
   EXPECT_TRUE(record_loaded);
   EXPECT_EQ(record.secret, record_loaded->secret);
+  EXPECT_EQ(record.key_blob, record_loaded->key_blob);
   EXPECT_EQ(record.rp_id, record_loaded->rp_id);
   EXPECT_EQ(record.rp_display_name, record_loaded->rp_display_name);
   EXPECT_EQ(record.user_id, record_loaded->user_id);
@@ -92,14 +96,15 @@ TEST_F(WebAuthnStorageTest, WriteAndReadRecord) {
 }
 
 TEST_F(WebAuthnStorageTest, WriteAndReadRecordWithEmptyUserIdAndDisplayName) {
-  const WebAuthnRecord record{kCredentialId,
-                              HexArrayToBlob(kCredentialSecret),
-                              kRpId,
-                              kRpDisplayName,
-                              /* user_id = */ std::string(),
-                              /* user_display_name = */ std::string(),
-                              kCreatedTime,
-                              /* is_resident_key = */ false};
+  const WebAuthnRecord record{.credential_id = kCredentialId,
+                              .secret = HexArrayToBlob(kCredentialSecret),
+                              .key_blob = HexArrayToBlob(kCredentialKeyBlob),
+                              .rp_id = kRpId,
+                              .rp_display_name = kRpDisplayName,
+                              .user_id = std::string(),
+                              .user_display_name = std::string(),
+                              .timestamp = kCreatedTime,
+                              .is_resident_key = false};
 
   EXPECT_TRUE(webauthn_storage_->WriteRecord(record));
 
@@ -113,6 +118,7 @@ TEST_F(WebAuthnStorageTest, WriteAndReadRecordWithEmptyUserIdAndDisplayName) {
       webauthn_storage_->GetRecordByCredentialId(kCredentialId);
   EXPECT_TRUE(record_loaded);
   EXPECT_EQ(record.secret, record_loaded->secret);
+  EXPECT_EQ(record.key_blob, record_loaded->key_blob);
   EXPECT_EQ(record.rp_id, record_loaded->rp_id);
   EXPECT_EQ(record.rp_display_name, record_loaded->rp_display_name);
   EXPECT_TRUE(record_loaded->user_id.empty());
@@ -123,14 +129,16 @@ TEST_F(WebAuthnStorageTest, WriteAndReadRecordWithEmptyUserIdAndDisplayName) {
 
 TEST_F(WebAuthnStorageTest, LoadManyRecords) {
   for (int i = 0; i < 30; i++) {
-    const WebAuthnRecord record{std::string(kCredentialId) + std::to_string(i),
-                                HexArrayToBlob(kCredentialSecret),
-                                kRpId,
-                                kRpDisplayName,
-                                kUserId,
-                                kUserDisplayName,
-                                kCreatedTime,
-                                /* is_resident_key = */ true};
+    const WebAuthnRecord record{
+        .credential_id = std::string(kCredentialId) + std::to_string(i),
+        .secret = HexArrayToBlob(kCredentialSecret),
+        .key_blob = HexArrayToBlob(kCredentialKeyBlob),
+        .rp_id = kRpId,
+        .rp_display_name = kRpDisplayName,
+        .user_id = kUserId,
+        .user_display_name = kUserDisplayName,
+        .timestamp = kCreatedTime,
+        .is_resident_key = false};
 
     EXPECT_TRUE(webauthn_storage_->WriteRecord(record));
   }

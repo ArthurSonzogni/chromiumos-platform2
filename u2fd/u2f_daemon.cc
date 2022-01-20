@@ -23,7 +23,9 @@
 #if USE_GSC
 #include "u2fd/u2f_command_processor_gsc.h"
 #include "u2fd/u2fhid_service_impl.h"
-#endif  // USE_TPM2
+#elif USE_TPM1
+#include "u2fd/u2f_command_processor_generic.h"
+#endif
 
 namespace u2f {
 
@@ -32,9 +34,9 @@ namespace {
 constexpr int kWinkSignalMinIntervalMs = 1000;
 constexpr base::TimeDelta kRequestPresenceDelay = base::Milliseconds(500);
 
-// The U2F counter stored in cr50 is stored in a format resistant to rollbacks,
-// and that guarantees monotonicity even in the presence of partial writes.
-// See //platform/ec/include/nvcounter.h
+// The U2F counter stored in cr50 is stored in a format resistant to
+// rollbacks, and that guarantees monotonicity even in the presence of partial
+// writes. See //platform/ec/include/nvcounter.h
 //
 // The counter is stored across 2 pages of flash - a high page and a low page,
 // with each page containing 512 4-byte words. The counter increments using
@@ -44,10 +46,10 @@ constexpr base::TimeDelta kRequestPresenceDelay = base::Milliseconds(500);
 // the maximum value below.
 // See //platform/ec/common/nvcounter.c for more details.
 constexpr uint32_t kMaxCr50U2fCounterValue = (2048 * 4097) + 4096;
-// If we are supporting legacy key handles, we initialize the counter such that
-// it is always larger than the maximum possible value cr50 could have returned,
-// and therefore guarantee that we provide a monotonically increasing counter
-// value for migrated key handles.
+// If we are supporting legacy key handles, we initialize the counter such
+// that it is always larger than the maximum possible value cr50 could have
+// returned, and therefore guarantee that we provide a monotonically
+// increasing counter value for migrated key handles.
 constexpr uint32_t kLegacyKhCounterMin = kMaxCr50U2fCounterValue + 1;
 
 bool U2fPolicyReady() {
@@ -330,7 +332,10 @@ void U2fDaemon::InitializeWebAuthnHandler(U2fMode u2f_mode) {
 #if USE_GSC
   u2f_command_processor = std::make_unique<U2fCommandProcessorGsc>(
       u2fhid_service_->tpm_proxy(), request_presence);
-#endif  // USE_GSC
+#elif USE_TPM1
+  u2f_command_processor = std::make_unique<U2fCommandProcessorGeneric>(
+      user_state_.get(), bus_.get());
+#endif
 
   webauthn_handler_.Initialize(bus_.get(), user_state_.get(), u2f_mode,
                                std::move(u2f_command_processor),

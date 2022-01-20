@@ -11,6 +11,7 @@
 
 #include <base/logging.h>
 #include <base/optional.h>
+#include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/sha.h>
 
@@ -80,6 +81,10 @@ std::vector<uint8_t> Sha256(const Blob& data) {
 
   return hash;
 }
+
+// Returns the HMAC_SHA-256 of the specified data.
+std::vector<uint8_t> HmacSha256(const brillo::SecureBlob& key,
+                                const std::vector<uint8_t>& data);
 
 // Attest to |data_to_sign| using software attestation.
 bool DoSoftwareAttest(const std::vector<uint8_t>& data_to_sign,

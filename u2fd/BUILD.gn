@@ -86,6 +86,11 @@ static_library("libu2fd") {
     ":user_state_proto",
     "//common-mk/external_dependencies:policy-protos",
   ]
+  if (use.tpm) {
+    sources += [
+      "u2f_command_processor_generic.cc",
+    ]
+  }
   if (use.cr50_onboard || use.ti50_onboard) {
     sources += [
       "tpm_vendor_cmd.cc",
@@ -198,6 +203,9 @@ if (use.test) {
       ":libu2fd",
       "//common-mk/testrunner",
     ]
+    if (use.tpm) {
+      sources += [ "u2f_command_processor_generic_test.cc" ]
+    }
     if (use.cr50_onboard || use.ti50_onboard) {
       sources += [
         "u2f_command_processor_gsc_test.cc",

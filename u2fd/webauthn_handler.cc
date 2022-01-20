@@ -433,6 +433,7 @@ void WebAuthnHandler::DoMakeCredential(
   const std::vector<uint8_t> rp_id_hash = util::Sha256(session.request.rp_id());
   std::vector<uint8_t> credential_id;
   std::vector<uint8_t> credential_public_key;
+  std::vector<uint8_t> credential_key_blob;
 
   // If we are in u2f or g2f mode, and the request says it wants presence only,
   // make a non-versioned (i.e. non-uv-compatible) credential.
@@ -467,7 +468,8 @@ void WebAuthnHandler::DoMakeCredential(
   MakeCredentialResponse::MakeCredentialStatus generate_status =
       u2f_command_processor_->U2fGenerate(
           rp_id_hash, credential_secret, presence_requirement, uv_compatible,
-          auth_time_secret_hash_.get(), &credential_id, &credential_public_key);
+          auth_time_secret_hash_.get(), &credential_id, &credential_public_key,
+          &credential_key_blob);
 
   if (generate_status != MakeCredentialResponse::SUCCESS) {
     response.set_status(generate_status);
@@ -535,6 +537,7 @@ void WebAuthnHandler::DoMakeCredential(
     WebAuthnRecord record;
     AppendToString(credential_id, &record.credential_id);
     record.secret = std::move(credential_secret);
+    record.key_blob = std::move(credential_key_blob);
     record.rp_id = session.request.rp_id();
     record.rp_display_name = session.request.rp_display_name();
     record.user_id = session.request.user_id();
@@ -787,9 +790,9 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
   GetAssertionResponse response;
 
   bool is_u2f_authenticator_credential = false;
-  base::Optional<std::vector<uint8_t>> credential_secret =
-      webauthn_storage_->GetSecretByCredentialId(session.credential_id);
-  if (!credential_secret) {
+  std::vector<uint8_t> credential_secret, credential_key_blob;
+  if (!webauthn_storage_->GetSecretAndKeyBlobByCredentialId(
+          session.credential_id, &credential_secret, &credential_key_blob)) {
     if (!AllowPresenceMode()) {
       LOG(ERROR) << "No credential secret for credential id "
                  << session.credential_id << ", aborting GetAssertion.";
@@ -836,9 +839,10 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
 
   std::vector<uint8_t> signature;
   GetAssertionResponse::GetAssertionStatus sign_status =
-      u2f_command_processor_->U2fSign(
-          rp_id_hash, hash_to_sign, util::ToVector(session.credential_id),
-          *credential_secret, presence_requirement, &signature);
+      u2f_command_processor_->U2fSign(rp_id_hash, hash_to_sign,
+                                      util::ToVector(session.credential_id),
+                                      credential_secret, &credential_key_blob,
+                                      presence_requirement, &signature);
   response.set_status(sign_status);
   if (sign_status == GetAssertionResponse::SUCCESS) {
     auto* assertion = response.add_assertion();
@@ -861,13 +865,15 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
 
   // Platform authenticator credentials.
   for (const auto& credential_id : all_credentials) {
-    base::Optional<std::vector<uint8_t>> credential_secret =
-        webauthn_storage_->GetSecretByCredentialId(credential_id);
-    if (!credential_secret)
+    std::vector<uint8_t> credential_secret, credential_key_blob;
+
+    if (!webauthn_storage_->GetSecretAndKeyBlobByCredentialId(
+            credential_id, &credential_secret, &credential_key_blob))
       continue;
 
     auto ret = u2f_command_processor_->U2fSignCheckOnly(
-        rp_id_hash, util::ToVector(credential_id), *credential_secret);
+        rp_id_hash, util::ToVector(credential_id), credential_secret,
+        &credential_key_blob);
     if (ret == HasCredentialsResponse::INTERNAL_ERROR) {
       result.has_internal_error = true;
       return result;
@@ -890,7 +896,8 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
     HasCredentialsResponse::HasCredentialsStatus ret =
         u2f_command_processor_->U2fSignCheckOnly(
             rp_id_hash, util::ToVector(credential_id),
-            std::vector<uint8_t>(user_secret->begin(), user_secret->end()));
+            std::vector<uint8_t>(user_secret->begin(), user_secret->end()),
+            nullptr);
     DCHECK(HasCredentialsResponse::HasCredentialsStatus_IsValid(ret));
     switch (ret) {
       case HasCredentialsResponse::SUCCESS:
@@ -913,7 +920,8 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
     // Try matching app_id.
     ret = u2f_command_processor_->U2fSignCheckOnly(
         app_id_hash, util::ToVector(credential_id),
-        std::vector<uint8_t>(user_secret->begin(), user_secret->end()));
+        std::vector<uint8_t>(user_secret->begin(), user_secret->end()),
+        nullptr);
     DCHECK(HasCredentialsResponse::HasCredentialsStatus_IsValid(ret));
     switch (ret) {
       case HasCredentialsResponse::SUCCESS:
