@@ -690,7 +690,7 @@ bool Device::AcquireIPConfigWithLeaseName(const std::string& lease_name) {
   ipconfig_->RegisterExpireCallback(
       base::Bind(&Device::OnIPConfigExpired, AsWeakPtr()));
   dispatcher()->PostTask(
-      FROM_HERE, base::Bind(&Device::ConfigureStaticIPTask, AsWeakPtr()));
+      FROM_HERE, base::BindOnce(&Device::ConfigureStaticIPTask, AsWeakPtr()));
   if (!ipconfig_->RequestIP()) {
     return false;
   }
@@ -765,8 +765,9 @@ void Device::AssignIPConfig(const IPConfig::Properties& properties) {
   StartIPv6();
   ipconfig_ = new IPConfig(control_interface(), link_name_);
   ipconfig_->set_properties(properties);
-  dispatcher()->PostTask(FROM_HERE, base::Bind(&Device::OnIPConfigUpdated,
-                                               AsWeakPtr(), ipconfig_, true));
+  dispatcher()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&Device::OnIPConfigUpdated, AsWeakPtr(), ipconfig_, true));
 }
 
 void Device::AssignIPv6Config(const IPConfig::Properties& properties) {
@@ -774,8 +775,9 @@ void Device::AssignIPv6Config(const IPConfig::Properties& properties) {
   StartIPv6();
   ip6config_ = new IPConfig(control_interface(), link_name_);
   ip6config_->set_properties(properties);
-  dispatcher()->PostTask(FROM_HERE, base::Bind(&Device::OnIPConfigUpdated,
-                                               AsWeakPtr(), ip6config_, true));
+  dispatcher()->PostTask(FROM_HERE,
+                         base::BindOnce(&Device::OnIPConfigUpdated, AsWeakPtr(),
+                                        ip6config_, true));
 }
 
 void Device::DestroyIPConfigLease(const std::string& name) {
@@ -1066,7 +1068,7 @@ void Device::OnIPConfigRefreshed(const IPConfigRefPtr& ipconfig) {
       selected_service_->mutable_static_ip_parameters());
 
   dispatcher()->PostTask(
-      FROM_HERE, base::Bind(&Device::ConfigureStaticIPTask, AsWeakPtr()));
+      FROM_HERE, base::BindOnce(&Device::ConfigureStaticIPTask, AsWeakPtr()));
 }
 
 void Device::OnIPConfigFailure() {

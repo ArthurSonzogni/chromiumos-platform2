@@ -327,8 +327,8 @@ void PowerManagerProxy::OnServiceAvailable(bool available) {
   // The callback might invoke calls to the ObjectProxy, so defer the callback
   // to event loop.
   dispatcher_->PostTask(FROM_HERE,
-                        base::Bind(&PowerManagerProxy::OnServiceAppeared,
-                                   weak_factory_.GetWeakPtr()));
+                        base::BindOnce(&PowerManagerProxy::OnServiceAppeared,
+                                       weak_factory_.GetWeakPtr()));
 
   service_available_ = true;
 }
@@ -341,15 +341,15 @@ void PowerManagerProxy::OnServiceOwnerChanged(const std::string& old_owner,
     // The callback might invoke calls to the ObjectProxy, so defer the
     // callback to event loop.
     dispatcher_->PostTask(FROM_HERE,
-                          base::Bind(&PowerManagerProxy::OnServiceVanished,
-                                     weak_factory_.GetWeakPtr()));
+                          base::BindOnce(&PowerManagerProxy::OnServiceVanished,
+                                         weak_factory_.GetWeakPtr()));
     service_available_ = false;
   } else {
     // The callback might invoke calls to the ObjectProxy, so defer the
     // callback to event loop.
     dispatcher_->PostTask(FROM_HERE,
-                          base::Bind(&PowerManagerProxy::OnServiceAppeared,
-                                     weak_factory_.GetWeakPtr()));
+                          base::BindOnce(&PowerManagerProxy::OnServiceAppeared,
+                                         weak_factory_.GetWeakPtr()));
     service_available_ = true;
   }
 }

@@ -108,9 +108,9 @@ DBusHandlerResult DHCPCDListener::HandleMessage(DBusConnection* connection,
     if (brillo::dbus_utils::ExtractMessageParameters(
             &reader, nullptr, &pid, &reason, &configurations)) {
       dispatcher_->PostTask(
-          FROM_HERE,
-          base::Bind(&DHCPCDListener::EventSignal, weak_factory_.GetWeakPtr(),
-                     sender, pid, reason, configurations));
+          FROM_HERE, base::BindOnce(&DHCPCDListener::EventSignal,
+                                    weak_factory_.GetWeakPtr(), sender, pid,
+                                    reason, configurations));
     }
   } else if (member_name == kSignalStatusChanged) {
     uint32_t pid;
@@ -120,8 +120,8 @@ DBusHandlerResult DHCPCDListener::HandleMessage(DBusConnection* connection,
                                                      &status)) {
       dispatcher_->PostTask(
           FROM_HERE,
-          base::Bind(&DHCPCDListener::StatusChangedSignal,
-                     weak_factory_.GetWeakPtr(), sender, pid, status));
+          base::BindOnce(&DHCPCDListener::StatusChangedSignal,
+                         weak_factory_.GetWeakPtr(), sender, pid, status));
     }
   } else {
     LOG(INFO) << "Ignore signal: " << member_name;

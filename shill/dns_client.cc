@@ -231,8 +231,9 @@ void DnsClient::ReceiveDnsReply(int status, struct hostent* hostent) {
   SLOG(this, 3) << "In " << __func__;
   running_ = false;
   timeout_closure_.Cancel();
-  dispatcher_->PostTask(FROM_HERE, base::Bind(&DnsClient::HandleCompletion,
-                                              weak_ptr_factory_.GetWeakPtr()));
+  dispatcher_->PostTask(FROM_HERE,
+                        base::BindOnce(&DnsClient::HandleCompletion,
+                                       weak_ptr_factory_.GetWeakPtr()));
 
   if (status == ARES_SUCCESS && hostent != nullptr &&
       hostent->h_addrtype == address_.family() &&
@@ -361,8 +362,8 @@ bool DnsClient::RefreshHandles() {
     running_ = false;
     error_.Populate(Error::kOperationTimeout, kErrorTimedOut);
     dispatcher_->PostTask(FROM_HERE,
-                          base::Bind(&DnsClient::HandleCompletion,
-                                     weak_ptr_factory_.GetWeakPtr()));
+                          base::BindOnce(&DnsClient::HandleCompletion,
+                                         weak_ptr_factory_.GetWeakPtr()));
     return false;
   } else {
     struct timeval max, ret_tv;

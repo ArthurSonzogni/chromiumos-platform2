@@ -428,8 +428,8 @@ void CellularCapability3gpp::StopModem(Error* error,
   }
 
   cellular()->dispatcher()->PostTask(
-      FROM_HERE, base::Bind(&CellularCapability3gpp::Stop_Disable,
-                            weak_ptr_factory_.GetWeakPtr(), callback));
+      FROM_HERE, base::BindOnce(&CellularCapability3gpp::Stop_Disable,
+                                weak_ptr_factory_.GetWeakPtr(), callback));
 }
 
 void CellularCapability3gpp::Stop_Disable(const ResultCallback& callback) {

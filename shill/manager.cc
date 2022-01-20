@@ -2201,8 +2201,8 @@ void Manager::AutoConnect() {
 
 void Manager::ConnectToBestServices(Error* /*error*/) {
   dispatcher_->PostTask(FROM_HERE,
-                        base::Bind(&Manager::ConnectToBestServicesTask,
-                                   weak_factory_.GetWeakPtr()));
+                        base::BindOnce(&Manager::ConnectToBestServicesTask,
+                                       weak_factory_.GetWeakPtr()));
 }
 
 void Manager::ConnectToBestServicesTask() {

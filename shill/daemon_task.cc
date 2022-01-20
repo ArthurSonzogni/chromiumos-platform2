@@ -131,8 +131,9 @@ void DaemonTask::TerminationActionsCompleted(const Error& error) {
   //                     -> DeviceInfo::Stop
   //                       -> Cellular::~Cellular
   //           -> Manager::RemoveTerminationAction
-  dispatcher_->PostTask(FROM_HERE, base::Bind(&DaemonTask::StopAndReturnToMain,
-                                              base::Unretained(this)));
+  dispatcher_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&DaemonTask::StopAndReturnToMain, base::Unretained(this)));
 }
 
 void DaemonTask::StopAndReturnToMain() {

@@ -44,7 +44,7 @@ void SupplicantManager::AddSupplicantListener(
   listeners_.push_back(present_callback);
   // Give an immediate notification.
   if (present_)
-    dispatcher_->PostTask(FROM_HERE, base::Bind(present_callback, true));
+    dispatcher_->PostTask(FROM_HERE, base::BindOnce(present_callback, true));
 }
 
 void SupplicantManager::RemoveSupplicantListener(

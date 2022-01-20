@@ -111,9 +111,9 @@ class L2TPIPsecDriverTest : public testing::Test, public RpcTaskDelegate {
     driver_ = nullptr;
     dispatcher_.PostTask(
         FROM_HERE,
-        base::Bind(&EventDispatcherForTest::QuitDispatchForever,
-                   // dispatcher_ will not be deleted before RunLoop quits.
-                   base::Unretained(&dispatcher_)));
+        base::BindOnce(&EventDispatcherForTest::QuitDispatchForever,
+                       // dispatcher_ will not be deleted before RunLoop quits.
+                       base::Unretained(&dispatcher_)));
     dispatcher_.DispatchForever();
   }
 
