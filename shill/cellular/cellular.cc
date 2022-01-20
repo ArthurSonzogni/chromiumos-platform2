@@ -1193,7 +1193,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
 
   if (!connect_pending_iccid_.empty() &&
       connect_pending_iccid_ == service->iccid()) {
-    Error error_temp = Error(Error::kWrongState, "Connect Failed: Inhibited.");
+    Error error_temp = Error(Error::kWrongState, "Connect already pending.");
     LOG(WARNING) << error_temp.message();
     NotifyCellularConnectionResult(error_temp, service->iccid(),
                                    service_->is_in_user_connect());
