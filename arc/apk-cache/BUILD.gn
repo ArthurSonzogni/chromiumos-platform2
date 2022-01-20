@@ -8,7 +8,12 @@ group("all") {
   deps = [
     ":apk-cache-cleaner",
     ":apk-cache-ctl",
+    ":install_apk_cache_cleaner_jailed",
+    ":install_init",
   ]
+  if (use.seccomp) {
+    deps += [ ":install_policy" ]
+  }
   if (use.fuzzer) {
     deps += [ ":apk_cache_database_fuzzer" ]
   }
@@ -59,6 +64,7 @@ pkg_config("apk-cache-common_config") {
 executable("apk-cache-cleaner") {
   sources = [ "cache_cleaner_main.cc" ]
   configs += [ ":apk-cache-common_config" ]
+  install_path = "sbin"
   deps = [
     ":libapk-cache",
     ":libapk-cache-cleaner",
@@ -68,10 +74,31 @@ executable("apk-cache-cleaner") {
 executable("apk-cache-ctl") {
   sources = [ "apk_cache_ctl_main.cc" ]
   configs += [ ":apk-cache-common_config" ]
+  install_path = "bin"
   deps = [
     ":libapk-cache",
     ":libapk-cache-ctl",
   ]
+}
+
+install_config("install_init") {
+  sources = [ "init/apk-cache-cleaner.conf" ]
+  install_path = "/etc/init"
+}
+
+install_config("install_apk_cache_cleaner_jailed") {
+  sources = [ "apk-cache-cleaner-jailed" ]
+  install_path = "sbin"
+  type = "executable"
+}
+
+if (use.seccomp) {
+  install_config("install_policy") {
+    sources =
+        [ "seccomp/apk-cache-cleaner-seccomp-" + getenv("ARCH") + ".policy" ]
+    install_path = "/usr/share/policy"
+    outputs = [ "apk-cache-cleaner-seccomp.policy" ]
+  }
 }
 
 if (use.fuzzer) {
@@ -105,6 +132,7 @@ if (use.test) {
       "//common-mk:test",
       ":apk-cache-common_testrunner_config",
     ]
+    run_test = true
     deps = [
       ":libapk-cache",
       ":libapk-cache-cleaner",
@@ -120,6 +148,7 @@ if (use.test) {
       "//common-mk:test",
       ":apk-cache-common_testrunner_config",
     ]
+    run_test = true
     deps = [
       ":libapk-cache",
       ":libapk-cache-ctl",
