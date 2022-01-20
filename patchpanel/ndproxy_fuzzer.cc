@@ -20,15 +20,18 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   uint8_t* out_buffer = NDProxy::AlignFrameBuffer(out_buffer_extended);
   NDProxy ndproxy;
   ndproxy.Init();
-  ndproxy.TranslateNDFrame(data, size, guest_if_mac, out_buffer);
+  ndproxy.TranslateNDFrame(data, size, guest_if_mac, nullptr, out_buffer);
+  delete[] out_buffer_extended;
 
-  memcpy(out_buffer, data, size);
+  uint8_t* icmp_buffer = new uint8_t[size];
+  memcpy(icmp_buffer, data, size);
   const nd_opt_prefix_info* prefix_info =
-      NDProxy::GetPrefixInfoOption(out_buffer, size);
+      NDProxy::GetPrefixInfoOption(icmp_buffer, size);
   // Just to consume GetPrefixInfoOption() output
   if (prefix_info != nullptr)
-    out_buffer_extended[0] = prefix_info->nd_opt_pi_prefix_len;
-  delete[] out_buffer_extended;
+    icmp_buffer[0] = prefix_info->nd_opt_pi_prefix_len;
+
+  delete[] icmp_buffer;
 
   return 0;
 }

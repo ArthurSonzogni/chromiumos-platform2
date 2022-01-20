@@ -181,16 +181,95 @@ std::string ToHexString(const uint8_t* buffer, size_t len) {
 TEST(NDProxyTest, GetPrefixInfoOption) {
   uint8_t in_buffer_extended[IP_MAXPACKET + ETHER_HDR_LEN + 4];
   uint8_t* in_buffer = NDProxy::AlignFrameBuffer(in_buffer_extended);
-  const nd_opt_prefix_info* prefix_info;
 
-  memcpy(in_buffer, ra_frame, sizeof(ra_frame));
-  prefix_info = NDProxy::GetPrefixInfoOption(in_buffer, sizeof(ra_frame));
-  EXPECT_NE(nullptr, prefix_info);
-  EXPECT_EQ(64, prefix_info->nd_opt_pi_prefix_len);
+  struct {
+    std::string name;
+    const uint8_t* input_frame;
+    size_t input_frame_len;
+    uint8_t expected_prefix_len;
+    uint32_t expected_valid_time;
+    uint32_t expected_preferred_time;
+  } test_cases[] = {
+      {
+          "ra_frame",
+          ra_frame,
+          sizeof(ra_frame),
+          64,
+          ntohl(720 * 60 * 60),
+          ntohl(168 * 60 * 60),
+      },
+      {
+          "ra_frame_translated",
+          ra_frame_translated,
+          sizeof(ra_frame_translated),
+          64,
+          ntohl(720 * 60 * 60),
+          ntohl(168 * 60 * 60),
+      },
+      {
+          "ra_frame_option_reordered",
+          ra_frame_option_reordered,
+          sizeof(ra_frame_option_reordered),
+          64,
+          ntohl(720 * 60 * 60),
+          ntohl(168 * 60 * 60),
+      },
+      {
+          "ra_frame_option_reordered_translated",
+          ra_frame_option_reordered_translated,
+          sizeof(ra_frame_option_reordered_translated),
+          64,
+          ntohl(720 * 60 * 60),
+          ntohl(168 * 60 * 60),
+      },
+      {
+          "rs_frame",
+          rs_frame,
+          sizeof(rs_frame),
+          0,
+          0,
+          0,
+      },
+      {
+          "ns_frame",
+          ns_frame,
+          sizeof(ns_frame),
+          0,
+          0,
+          0,
+      },
+      {
+          "na_frame",
+          na_frame,
+          sizeof(na_frame),
+          0,
+          0,
+          0,
+      },
+  };
 
-  memcpy(in_buffer, rs_frame, sizeof(rs_frame));
-  prefix_info = NDProxy::GetPrefixInfoOption(in_buffer, sizeof(rs_frame));
-  EXPECT_EQ(nullptr, prefix_info);
+  for (const auto& test_case : test_cases) {
+    LOG(INFO) << test_case.name;
+
+    memcpy(in_buffer, test_case.input_frame, test_case.input_frame_len);
+    size_t offset = ETHER_HDR_LEN + sizeof(ip6_hdr);
+    size_t icmp6_len = test_case.input_frame_len - offset;
+    // const icmp6_hdr* icmp6 = reinterpret_cast<icmp6_hdr*>();
+    const nd_opt_prefix_info* prefix_info =
+        NDProxy::GetPrefixInfoOption(in_buffer + offset, icmp6_len);
+
+    if (test_case.expected_prefix_len == 0) {
+      EXPECT_EQ(nullptr, prefix_info);
+    } else {
+      EXPECT_NE(nullptr, prefix_info);
+      EXPECT_EQ(test_case.expected_prefix_len,
+                prefix_info->nd_opt_pi_prefix_len);
+      EXPECT_EQ(test_case.expected_valid_time,
+                prefix_info->nd_opt_pi_valid_time);
+      EXPECT_EQ(test_case.expected_preferred_time,
+                prefix_info->nd_opt_pi_preferred_time);
+    }
+  }
 }
 
 TEST(NDProxyTest, TranslateFrame) {
@@ -208,6 +287,7 @@ TEST(NDProxyTest, TranslateFrame) {
     const uint8_t* input_frame;
     size_t input_frame_len;
     MacAddress local_mac;
+    in6_addr* src_ip;
     ssize_t expected_error;
     const uint8_t* expected_output_frame;
     size_t expected_output_frame_len;
@@ -217,6 +297,7 @@ TEST(NDProxyTest, TranslateFrame) {
           tcp_frame,
           sizeof(tcp_frame),
           physical_if_mac,
+          nullptr,
           NDProxy::kTranslateErrorNotICMPv6Frame,
       },
       {
@@ -224,6 +305,7 @@ TEST(NDProxyTest, TranslateFrame) {
           ping_frame,
           sizeof(ping_frame),
           physical_if_mac,
+          nullptr,
           NDProxy::kTranslateErrorNotNDFrame,
       },
       {
@@ -231,6 +313,7 @@ TEST(NDProxyTest, TranslateFrame) {
           rs_frame_too_large_plen,
           sizeof(rs_frame_too_large_plen),
           physical_if_mac,
+          nullptr,
           NDProxy::kTranslateErrorMismatchedIp6Length,
       },
       {
@@ -238,6 +321,7 @@ TEST(NDProxyTest, TranslateFrame) {
           rs_frame_too_small_plen,
           sizeof(rs_frame_too_small_plen),
           physical_if_mac,
+          nullptr,
           NDProxy::kTranslateErrorMismatchedIp6Length,
       },
       {
@@ -245,6 +329,7 @@ TEST(NDProxyTest, TranslateFrame) {
           rs_frame,
           sizeof(rs_frame),
           physical_if_mac,
+          nullptr,
           0,  // no error
           rs_frame_translated,
           sizeof(rs_frame_translated),
@@ -254,6 +339,7 @@ TEST(NDProxyTest, TranslateFrame) {
           ra_frame,
           sizeof(ra_frame),
           guest_if_mac,
+          nullptr,
           0,  // no error
           ra_frame_translated,
           sizeof(ra_frame_translated),
@@ -263,6 +349,7 @@ TEST(NDProxyTest, TranslateFrame) {
           ra_frame_option_reordered,
           sizeof(ra_frame_option_reordered),
           guest_if_mac,
+          nullptr,
           0,  // no error
           ra_frame_option_reordered_translated,
           sizeof(ra_frame_option_reordered_translated),
@@ -272,6 +359,7 @@ TEST(NDProxyTest, TranslateFrame) {
           ns_frame,
           sizeof(ns_frame),
           physical_if_mac,
+          nullptr,
           0,  // no error
           ns_frame_translated,
           sizeof(ns_frame_translated),
@@ -281,6 +369,7 @@ TEST(NDProxyTest, TranslateFrame) {
           na_frame,
           sizeof(na_frame),
           guest_if_mac,
+          nullptr,
           0,  // no error
           na_frame_translated,
           sizeof(na_frame_translated),
@@ -292,7 +381,8 @@ TEST(NDProxyTest, TranslateFrame) {
 
     memcpy(in_buffer, test_case.input_frame, test_case.input_frame_len);
     result = ndproxy.TranslateNDFrame(in_buffer, test_case.input_frame_len,
-                                      test_case.local_mac, out_buffer);
+                                      test_case.local_mac, test_case.src_ip,
+                                      out_buffer);
 
     if (test_case.expected_error != 0) {
       EXPECT_EQ(test_case.expected_error, result);

@@ -47,13 +47,30 @@ class NDProxy {
 
   virtual ~NDProxy() = default;
 
+  // RFC 4389: Read the input ICMPv6 frame in |in_frame| and determine whether
+  // it should be proxied. If so, fill |out_frame| buffer with proxied frame and
+  // return the length of proxied frame (usually same with input frame length).
+  // Return a negative value if proxy is not needed or an error occurred.
+  // in_frame: buffer containing input ethernet frame; needs special alignment
+  //           so that IP header is 4-bytes aligned;
+  // frame_len: the length of input frame;
+  // local_mac_addr: MAC address of interface that will be used to send frame;
+  // new_src_ip: if not null, address that will be used for the IP header source
+  //             address to send the frame;
+  // out_frame: buffer for output frame; should have at least frame_len space;
+  //            needs special alignment so that IP header is 4-bytes aligned.
   ssize_t TranslateNDFrame(const uint8_t* in_frame,
                            ssize_t frame_len,
                            const MacAddress& local_mac_addr,
+                           const in6_addr* new_src_ip,
                            uint8_t* out_frame);
 
-  static const nd_opt_prefix_info* GetPrefixInfoOption(const uint8_t* in_frame,
-                                                       ssize_t frame_len);
+  // Given the ICMPv6 packet |icmp6| with header and options (payload) of total
+  // byte length |icmp6_len|, returns a pointer to the start of the prefix
+  // information, or returns nullptr if no option of type
+  // ND_OPT_PREFIX_INFORMATION was found.
+  static const nd_opt_prefix_info* GetPrefixInfoOption(const uint8_t* icmp6,
+                                                       size_t icmp6_len);
 
   // Given an extended |buffer|, find a proper frame buffer pointer so that
   // pt > buffer, and start of IP header (pt + ETH_H_LEN) is 4-bytes aligned.
@@ -112,15 +129,16 @@ class NDProxy {
   // 1 and 2 will be proxied to each other.
   using interface_mapping = std::map<int, std::set<int>>;
 
-  static void ReplaceMacInIcmpOption(uint8_t* frame,
-                                     ssize_t frame_len,
+  // Given the ICMPv6 segment |icmp6| with header and options (payload) of total
+  // byte length |icmp6_len|, overwrites in option |opt_type| the mac address
+  // with |target_mac|. |icmp6_len| is the total size in bytes of the ICMPv6
+  // segment. |nd_hdr_len| is the length of ICMPv6 header (so the first option
+  // starts after |nd_hdr_len|.)
+  static void ReplaceMacInIcmpOption(uint8_t* icmp6,
+                                     size_t icmp6_len,
                                      size_t nd_hdr_len,
                                      uint8_t opt_type,
                                      const MacAddress& target_mac);
-
-  static void ReplaceSourceIP(uint8_t* frame,
-                              ssize_t frame_len,
-                              const in6_addr& src_ip);
 
   // Get MAC address on a local interface through ioctl().
   // Returns false upon failure.

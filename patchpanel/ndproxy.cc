@@ -155,18 +155,15 @@ bool NDProxy::Init() {
   return true;
 }
 
-// In an ICMPv6 Ethernet Frame *frame with length frame_len, replace the mac
-// address in option opt_type into *target_mac. nd_hdr_len indicates the length
-// of ICMPv6 ND message headers (so the first option starts after nd_hdr_len.)
-void NDProxy::ReplaceMacInIcmpOption(uint8_t* frame,
-                                     ssize_t frame_len,
+// static
+void NDProxy::ReplaceMacInIcmpOption(uint8_t* icmp6,
+                                     size_t icmp6_len,
                                      size_t nd_hdr_len,
                                      uint8_t opt_type,
                                      const MacAddress& target_mac) {
   nd_opt_hdr* opt;
-  nd_opt_hdr* end = reinterpret_cast<nd_opt_hdr*>(&frame[frame_len]);
-  for (opt = reinterpret_cast<nd_opt_hdr*>(frame + ETHER_HDR_LEN +
-                                           sizeof(ip6_hdr) + nd_hdr_len);
+  nd_opt_hdr* end = reinterpret_cast<nd_opt_hdr*>(icmp6 + icmp6_len);
+  for (opt = reinterpret_cast<nd_opt_hdr*>(icmp6 + nd_hdr_len);
        opt < end && opt->nd_opt_len > 0;
        opt = reinterpret_cast<nd_opt_hdr*>(reinterpret_cast<uint64_t*>(opt) +
                                            opt->nd_opt_len)) {
@@ -178,20 +175,10 @@ void NDProxy::ReplaceMacInIcmpOption(uint8_t* frame,
   }
 }
 
-// RFC 4389
-// Read the input ICMPv6 frame and determine whether it should be proxied. If
-// so, fill out_frame buffer with proxied frame and return the length of proxied
-// frame (usually same with input frame length). Return a negative value if
-// proxy is not needed or error occured.
-// in_frame: buffer containing input ethernet frame; needs special alignment
-//           so that IP header is 4-bytes aligned;
-// frame_len: the length of input frame;
-// local_mac_addr: MAC address of interface that will be used to send frame;
-// out_frame: buffer for output frame; should have at least space of frame_len;
-//            needs special alignment so that IP header is 4-bytes aligned.
 ssize_t NDProxy::TranslateNDFrame(const uint8_t* in_frame,
                                   ssize_t frame_len,
                                   const MacAddress& local_mac_addr,
+                                  const in6_addr* new_src_ip,
                                   uint8_t* out_frame) {
   if ((reinterpret_cast<uintptr_t>(in_frame + ETHER_HDR_LEN) & 0x3) != 0 ||
       (reinterpret_cast<uintptr_t>(out_frame + ETHER_HDR_LEN) & 0x3) != 0) {
@@ -216,6 +203,8 @@ ssize_t NDProxy::TranslateNDFrame(const uint8_t* in_frame,
   ip6_hdr* ip6 = reinterpret_cast<ip6_hdr*>(out_frame + ETHER_HDR_LEN);
   icmp6_hdr* icmp6 =
       reinterpret_cast<icmp6_hdr*>(out_frame + ETHER_HDR_LEN + sizeof(ip6_hdr));
+  const size_t ip6_len = frame_len - ETHER_HDR_LEN;
+  const size_t icmp6_len = frame_len - ETHER_ADDR_LEN - sizeof(ip6_hdr);
 
   // If destination MAC is unicast (Individual/Group bit in MAC address == 0),
   // it needs to be modified so guest OS L3 stack can see it.
@@ -235,8 +224,9 @@ ssize_t NDProxy::TranslateNDFrame(const uint8_t* in_frame,
 
   switch (icmp6->icmp6_type) {
     case ND_ROUTER_SOLICIT:
-      ReplaceMacInIcmpOption(out_frame, frame_len, sizeof(nd_router_solicit),
-                             ND_OPT_SOURCE_LINKADDR, local_mac_addr);
+      ReplaceMacInIcmpOption(reinterpret_cast<uint8_t*>(icmp6), icmp6_len,
+                             sizeof(nd_router_solicit), ND_OPT_SOURCE_LINKADDR,
+                             local_mac_addr);
       break;
     case ND_ROUTER_ADVERT: {
       // RFC 4389 Section 4.1.3.3 - Set Proxy bit
@@ -250,64 +240,37 @@ ssize_t NDProxy::TranslateNDFrame(const uint8_t* in_frame,
       }
       ra->nd_ra_flags_reserved |= 0x04;
 
-      ReplaceMacInIcmpOption(out_frame, frame_len, sizeof(nd_router_advert),
-                             ND_OPT_SOURCE_LINKADDR, local_mac_addr);
+      ReplaceMacInIcmpOption(reinterpret_cast<uint8_t*>(icmp6), icmp6_len,
+                             sizeof(nd_router_advert), ND_OPT_SOURCE_LINKADDR,
+                             local_mac_addr);
       break;
     }
     case ND_NEIGHBOR_SOLICIT:
-      ReplaceMacInIcmpOption(out_frame, frame_len, sizeof(nd_neighbor_solicit),
+      ReplaceMacInIcmpOption(reinterpret_cast<uint8_t*>(icmp6), icmp6_len,
+                             sizeof(nd_neighbor_solicit),
                              ND_OPT_SOURCE_LINKADDR, local_mac_addr);
       break;
     case ND_NEIGHBOR_ADVERT:
-      ReplaceMacInIcmpOption(out_frame, frame_len, sizeof(nd_neighbor_advert),
-                             ND_OPT_TARGET_LINKADDR, local_mac_addr);
+      ReplaceMacInIcmpOption(reinterpret_cast<uint8_t*>(icmp6), icmp6_len,
+                             sizeof(nd_neighbor_advert), ND_OPT_TARGET_LINKADDR,
+                             local_mac_addr);
       break;
     default:
       return kTranslateErrorNotNDFrame;
   }
 
-  // We need to clear the old checksum first so checksum calculation does not
-  // wrongly take old checksum into account.
-  icmp6->icmp6_cksum = 0;
-
-  // Just get the length of the ip6 packet.
-  ssize_t ip6_len = frame_len - ETHER_HDR_LEN;
-  icmp6->icmp6_cksum =
-      Icmpv6Checksum(reinterpret_cast<const uint8_t*>(ip6), ip6_len);
-
   memcpy(eth->h_source, local_mac_addr.data(), ETHER_ADDR_LEN);
-  return frame_len;
-}
 
-void NDProxy::ReplaceSourceIP(uint8_t* frame,
-                              ssize_t frame_len,
-                              const in6_addr& src_ip) {
-  if (frame_len < (ETHER_HDR_LEN + sizeof(ip6_hdr) + sizeof(icmp6_hdr))) {
-    LOG(ERROR) << "Invalid frame length for ICMPv6 frame " << frame_len;
-    return;
-  }
+  if (new_src_ip != nullptr)
+    memcpy(&ip6->ip6_src, new_src_ip, sizeof(in6_addr));
 
-  ip6_hdr* ip6 = reinterpret_cast<ip6_hdr*>(frame + ETHER_HDR_LEN);
-  icmp6_hdr* icmp6 =
-      reinterpret_cast<icmp6_hdr*>(frame + ETHER_HDR_LEN + sizeof(ip6_hdr));
-
-  if (ntohs(ip6->ip6_plen) !=
-      (frame_len - ETHER_HDR_LEN - sizeof(struct ip6_hdr))) {
-    LOG(ERROR) << "Mismatched expected ip6_plen " << ntohs(ip6->ip6_plen)
-               << " with actual received length "
-               << frame_len - ETHER_HDR_LEN - sizeof(struct ip6_hdr);
-    return;
-  }
-
-  memcpy(&ip6->ip6_src, &src_ip, sizeof(in6_addr));
-
-  // Recalculate checksum.
+  // Recalculate the checksum. We need to clear the old checksum first so
+  // checksum calculation does not wrongly take old checksum into account.
   icmp6->icmp6_cksum = 0;
-
-  // Exclude the ether header from the checksum.
-  ssize_t ip6_len = frame_len - ETHER_HDR_LEN;
   icmp6->icmp6_cksum =
       Icmpv6Checksum(reinterpret_cast<const uint8_t*>(ip6), ip6_len);
+
+  return frame_len;
 }
 
 void NDProxy::ReadAndProcessOneFrame(int fd) {
@@ -367,7 +330,8 @@ void NDProxy::ReadAndProcessOneFrame(int fd) {
       IsRouterInterface(dst_addr.sll_ifindex) &&
       !router_discovery_handler_.is_null()) {
     const nd_opt_prefix_info* prefix_info =
-        GetPrefixInfoOption(in_frame_buffer_, len);
+        GetPrefixInfoOption(reinterpret_cast<uint8_t*>(icmp6),
+                            len - ETHER_ADDR_LEN - sizeof(ip6_hdr));
     if (prefix_info != nullptr && prefix_info->nd_opt_pi_prefix_len <= 64) {
       // Generate an EUI-64 address from virtual interface MAC. A prefix
       // larger that /64 is required.
@@ -448,8 +412,23 @@ void NDProxy::ReadAndProcessOneFrame(int fd) {
     MacAddress local_mac;
     if (!GetLocalMac(target_if, &local_mac))
       continue;
-    int result =
-        TranslateNDFrame(in_frame_buffer_, len, local_mac, out_frame_buffer_);
+
+    // b/187918638: Overwrite source IP address with host address to workaround
+    // irregular router address on Fibocom cell modem, as described above.
+    in6_addr* new_src_ip_p = nullptr;
+    in6_addr new_src_ip;
+    if (unusual_ra_src) {
+      if (!GetLinkLocalAddress(target_if, &new_src_ip)) {
+        LOG(WARNING) << "Cannot find a local address for L3 relay, skipping "
+                        "proxy RA to interface "
+                     << target_if;
+        continue;
+      }
+      new_src_ip_p = &new_src_ip;
+    }
+
+    int result = TranslateNDFrame(in_frame_buffer_, len, local_mac,
+                                  new_src_ip_p, out_frame_buffer_);
     if (result < 0) {
       switch (result) {
         case kTranslateErrorNotICMPv6Frame:
@@ -473,19 +452,6 @@ void NDProxy::ReadAndProcessOneFrame(int fd) {
           LOG(DFATAL) << "Unknown error in TranslateNDFrame";
           return;
       }
-    }
-
-    // b/187918638: Overwrite source IP address with host address to workaround
-    // irregular router address on Fibocom cell modem, as described above.
-    if (unusual_ra_src) {
-      in6_addr new_src;
-      if (!GetLinkLocalAddress(target_if, &new_src)) {
-        LOG(WARNING) << "Cannot find a local address for L3 relay, skipping "
-                        "proxy RA to interface "
-                     << target_if;
-        return;
-      }
-      ReplaceSourceIP(out_frame_buffer_, len, new_src);
     }
 
     struct iovec iov_out = {
@@ -517,16 +483,18 @@ void NDProxy::ReadAndProcessOneFrame(int fd) {
   }
 }
 
-const nd_opt_prefix_info* NDProxy::GetPrefixInfoOption(const uint8_t* in_frame,
-                                                       ssize_t frame_len) {
-  const uint8_t* ptr =
-      in_frame + ETH_HLEN + sizeof(ip6_hdr) + sizeof(nd_router_advert);
-  while (ptr + offsetof(nd_opt_hdr, nd_opt_len) < in_frame + frame_len) {
+// static
+const nd_opt_prefix_info* NDProxy::GetPrefixInfoOption(const uint8_t* icmp6,
+                                                       size_t icmp6_len) {
+  const uint8_t* start = reinterpret_cast<const uint8_t*>(icmp6);
+  const uint8_t* end = start + icmp6_len;
+  const uint8_t* ptr = start + sizeof(nd_router_advert);
+  while (ptr + offsetof(nd_opt_hdr, nd_opt_len) < end) {
     const nd_opt_hdr* opt = reinterpret_cast<const nd_opt_hdr*>(ptr);
     if (opt->nd_opt_len == 0)
       return nullptr;
     ptr += opt->nd_opt_len << 3;  // nd_opt_len is in 8 bytes
-    if (ptr > in_frame + frame_len)
+    if (ptr > end)
       return nullptr;
     if (opt->nd_opt_type == ND_OPT_PREFIX_INFORMATION &&
         opt->nd_opt_len << 3 == sizeof(nd_opt_prefix_info)) {
