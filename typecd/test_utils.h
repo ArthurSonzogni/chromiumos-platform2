@@ -28,6 +28,7 @@ void AddNekteckUSB2PassiveCable(Port& port);
 void AddHongjuUSB3p1Gen1Cable(Port& port);
 void AddHPUSB3p2Gen1Cable(Port& port);
 void AddAnkerUSB3p2Gen2Cable(Port& port);
+void AddCableMatters20GbpsCable(Port& port);
 void AddUnbrandedTBT3Cable(Port& port);
 void AddBelkinTBT3PassiveCable(Port& port);
 void AddBelkinTBT3ActiveCable(Port& port);

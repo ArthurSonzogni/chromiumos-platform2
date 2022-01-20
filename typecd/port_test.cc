@@ -468,4 +468,28 @@ TEST_F(PortTest, TestUSB4ToDPAltMode) {
   EXPECT_TRUE(invalid_dpalt_cable);
 }
 
+// Check that CableLimitingUSBSpeed works for "false" case.
+// Case: Thunderbolt 4 OWC dock connected with CalDigit Thunderbolt 4 cable.
+TEST_F(PortTest, TestUSB4LimitedByCableFalse) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  AddOWCTBT4Dock(*port);
+  AddCalDigitTBT4Cable(*port);
+
+  EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterUSB4());
+  EXPECT_FALSE(port->CableLimitingUSBSpeed());
+}
+
+// Check that CableLimitingUSBSpeed works for "true" case.
+// Case: Thunderbolt 4 OWC dock connected with Cable Matters USB4 20Gbps cable.
+TEST_F(PortTest, TestUSB4LimitedByCableTrue) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  AddOWCTBT4Dock(*port);
+  AddCableMatters20GbpsCable(*port);
+
+  EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterUSB4());
+  EXPECT_TRUE(port->CableLimitingUSBSpeed());
+}
+
 }  // namespace typecd

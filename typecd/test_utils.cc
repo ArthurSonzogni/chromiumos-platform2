@@ -113,6 +113,20 @@ void AddAnkerUSB3p2Gen2Cable(Port& port) {
   port.cable_->SetProductTypeVDO3(0x0);
 }
 
+void AddCableMatters20GbpsCable(Port& port) {
+  port.AddCable(base::FilePath(kFakePort0CableSysPath));
+
+  // Cable Matters 20 Gbps USB4 cable.
+  port.AddCable(base::FilePath(kFakePort0CableSysPath));
+  port.cable_->SetPDRevision(PDRevision::k30);
+  port.cable_->SetIdHeaderVDO(0x1860060f);
+  port.cable_->SetCertStatVDO(0x20ef);
+  port.cable_->SetProductVDO(0x0);
+  port.cable_->SetProductTypeVDO1(0x11084042);
+  port.cable_->SetProductTypeVDO2(0x0);
+  port.cable_->SetProductTypeVDO3(0x0);
+}
+
 void AddUnbrandedTBT3Cable(Port& port) {
   base::ScopedTempDir scoped_temp_dir_;
   if (!scoped_temp_dir_.CreateUniqueTempDir())

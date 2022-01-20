@@ -81,6 +81,14 @@ constexpr uint16_t kTBTAltModeVID = 0x8087;
 constexpr uint32_t kAMAVDOUSBSpeedBitMask = 0x7;
 constexpr uint32_t kAMAVDOUSBSpeedBillboard = 0x3;
 
+// Bit Masks for Fields in Active and Passive Cable VDO1
+// USB PD spec rev 3.1, v 1.2.
+// Table 6-41 Passive Cable VDO
+// Table 6-42 Active Cable VDO1
+constexpr uint8_t kCableVDO1VDOPlugTypeOffset = 18;
+constexpr uint8_t kCableVDO1VDOPlugTypeBitMask = 0x3;
+constexpr uint8_t kCableVDO1VDOPlugTypeCaptive = 0x3;
+
 }  // namespace typecd
 
 #endif  // TYPECD_PD_VDO_CONSTANTS_H_

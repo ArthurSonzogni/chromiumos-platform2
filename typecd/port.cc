@@ -410,6 +410,54 @@ end:
   power_role_ = role;
 }
 
+bool Port::CableLimitingUSBSpeed() {
+  if (!partner_ || !cable_)
+    return false;
+
+  // Check for cable product type.
+  auto cable_type =
+      (cable_->GetIdHeaderVDO() >> kIDHeaderVDOProductTypeBitOffset) &
+      kIDHeaderVDOProductTypeMask;
+  if (cable_type != kIDHeaderVDOProductTypeCableActive &&
+      cable_type != kIDHeaderVDOProductTypeCablePassive)
+    return false;
+
+  // Check for captive cable.
+  auto cable_plug_type =
+      (cable_->GetProductTypeVDO1() >> kCableVDO1VDOPlugTypeOffset) &
+      kCableVDO1VDOPlugTypeBitMask;
+  if (cable_plug_type == kCableVDO1VDOPlugTypeCaptive)
+    return false;
+
+  // Check for partner product type.
+  auto partner_type =
+      (partner_->GetIdHeaderVDO() >> kIDHeaderVDOProductTypeBitOffset) &
+      kIDHeaderVDOProductTypeMask;
+  if (partner_->GetPDRevision() == PDRevision::k20) {
+    // PD rev 2.0, v 1.3
+    // Table 6-24 Product Types (UFP)
+    // Only AMAs use a product type VDO.
+    if (partner_type != kIDHeaderVDOProductTypeUFPAMA)
+      return false;
+  } else if (partner_->GetPDRevision() == PDRevision::k30) {
+    // PD rev 3.0, v 2.0
+    // Table 6-30 Product Types (UFP)
+    // Only PDUSB hubs, PDUSB peripherals and AMAs use a product type VDO with
+    // USB speed.
+    if (partner_type != kIDHeaderVDOProductTypeUFPHub &&
+        partner_type != kIDHeaderVDOProductTypeUFPPeripheral &&
+        partner_type != kIDHeaderVDOProductTypeUFPAMA)
+      return false;
+  } else {
+    // Return false on undetermined PD revision.
+    return false;
+  }
+
+  auto cable_speed = cable_->GetProductTypeVDO1() & kUSBSpeedBitMask;
+  auto partner_speed = partner_->GetProductTypeVDO1() & kUSBSpeedBitMask;
+  return partner_speed > cable_speed;
+}
+
 void Port::ReportPartnerMetrics(Metrics* metrics) {
   if (!partner_) {
     LOG(INFO) << "Trying to report metrics for non-existent partner.";

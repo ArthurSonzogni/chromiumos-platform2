@@ -115,6 +115,10 @@ class Port {
   // returns true.
   virtual bool IsCableDiscoveryComplete();
 
+  // Returns true if the port's partner supports a higher USB gen than the
+  // cable.
+  bool CableLimitingUSBSpeed();
+
   // Calls the |partner_|'s metrics reporting function, if a |partner_| is
   // registered.
   void ReportPartnerMetrics(Metrics* metrics);
@@ -152,6 +156,8 @@ class Port {
   FRIEND_TEST(PortTest, TestUSB4EntryTrueGatkexAppleTBT3ProCable);
   FRIEND_TEST(PortTest, TestUSB4ToTBT);
   FRIEND_TEST(PortTest, TestUSB4ToDPAltMode);
+  FRIEND_TEST(PortTest, TestUSB4LimitedByCableFalse);
+  FRIEND_TEST(PortTest, TestUSB4LimitedByCableTrue);
 
   // Helper functions from test_util for defining devices used in unit tests.
   friend void AddUnbrandedUSB2Cable(Port& port);
@@ -159,6 +165,7 @@ class Port {
   friend void AddHongjuUSB3p1Gen1Cable(Port& port);
   friend void AddHPUSB3p2Gen1Cable(Port& port);
   friend void AddAnkerUSB3p2Gen2Cable(Port& port);
+  friend void AddCableMatters20GbpsCable(Port& port);
   friend void AddUnbrandedTBT3Cable(Port& port);
   friend void AddBelkinTBT3PassiveCable(Port& port);
   friend void AddBelkinTBT3ActiveCable(Port& port);

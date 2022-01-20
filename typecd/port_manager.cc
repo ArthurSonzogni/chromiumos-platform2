@@ -379,6 +379,13 @@ void PortManager::RunModeEntry(int port_num) {
       LOG(ERROR) << "Attempt to call Enter USB4 failed for port " << port_num;
     }
 
+    // If the cable limits USB speed, warn the user.
+    if (port->CableLimitingUSBSpeed()) {
+      LOG(INFO) << "Cable limiting USB speed on port " << port_num;
+      if (notify_mgr_)
+        notify_mgr_->NotifyCableWarning(CableWarningType::kSpeedLimitingCable);
+    }
+
     return;
   }
 
@@ -442,6 +449,9 @@ void PortManager::RunModeEntry(int port_num) {
     cable_warning = CableWarningType::kInvalidDpCable;
     LOG(WARNING) << "DPAltMode partner with incompatible cable on port "
                  << port_num;
+  } else if (port->CableLimitingUSBSpeed()) {
+    cable_warning = CableWarningType::kSpeedLimitingCable;
+    LOG(INFO) << "Cable limiting USB speed on port " << port_num;
   }
 
   // Notify user of potential cable issue.

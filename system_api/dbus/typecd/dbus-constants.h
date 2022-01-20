@@ -32,6 +32,8 @@ enum class CableWarningType {
   kInvalidUSB4Cable = 3,
   // Partner supports TBT, but the cable prevents TBT mode entry.
   kInvalidTBTCable = 4,
+  // USB speed is limited by the cable.
+  kSpeedLimitingCable = 5,
 };
 
 }  // namespace typecd
