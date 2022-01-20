@@ -34,6 +34,11 @@ class UpdateDeviceInfoStateHandler : public BaseStateHandler {
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
 
+  // Do not auto-transition at boot because we always need user input.
+  GetNextStateCaseReply TryGetNextStateCaseAtBoot() override {
+    return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
+  }
+
  protected:
   ~UpdateDeviceInfoStateHandler() override = default;
 
