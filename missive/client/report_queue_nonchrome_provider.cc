@@ -6,11 +6,12 @@
 #include <string>
 
 #include <base/bind.h>
+#include <base/bind_post_task.h>
 #include <base/callback.h>
 #include <base/memory/scoped_refptr.h>
 #include "base/memory/singleton.h"
-#include <base/bind_post_task.h>
 #include <base/strings/strcat.h>
+#include <base/strings/string_number_conversions.h>
 
 #include "missive/client/empty_dm_token_retriever.h"
 #include "missive/client/missive_client.h"
