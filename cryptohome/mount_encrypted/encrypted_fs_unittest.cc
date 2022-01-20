@@ -75,7 +75,6 @@ class EncryptedFsTest : public ::testing::Test {
   }
 
   void ExpectSetup(bool is_formatted) {
-    EXPECT_CALL(platform_, StatVFS(_, _)).WillOnce(Return(true));
     EXPECT_CALL(platform_, GetBlkSize(_, _))
         .WillRepeatedly(DoAll(SetArgPointee<1>(40920000), Return(true)));
     EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
