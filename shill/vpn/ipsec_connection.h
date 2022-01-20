@@ -218,7 +218,7 @@ class IPsecConnection : public VPNConnection {
   base::FilePath server_ca_path_;
   base::FilePath strongswan_conf_path_;
   base::FilePath swanctl_conf_path_;
-  pid_t charon_pid_;
+  pid_t charon_pid_ = -1;
   base::FilePath vici_socket_path_;
   std::unique_ptr<base::FilePathWatcher> vici_socket_watcher_;
 
