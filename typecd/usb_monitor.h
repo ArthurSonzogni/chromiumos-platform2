@@ -37,6 +37,10 @@ class UsbMonitor : public UdevMonitor::UsbObserver {
   // devices_. If there is none, return nullptr.
   UsbDevice* GetDevice(std::string key);
 
+  // Assuming given path is an interface, handle add event.
+  // e.g. 2-1 is a device while 2-1:1.0 is an interface that driver is bound to.
+  void AddInterface(const base::FilePath& path);
+
   // key: USB root hub and hub port numbers in the final path component of the
   // sysfs directory path. (e.g. 2-1 if sysfs path is /sys/bus/usb/devices/2-1)
   // value: USB device associated with the sysfs directory.

@@ -8,6 +8,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -17,8 +18,10 @@
 namespace {
 constexpr char kBusnum[] = "1\n";
 constexpr char kDevnum[] = "1\n";
+constexpr char kDeviceClass[] = "00\n";
+constexpr char kInterfaceClass[] = "e0\n";
+constexpr char kSpeed[] = "10000\n";
 constexpr int kTypecPortNum = 1;
-
 }  // namespace
 
 namespace typecd {
@@ -55,15 +58,32 @@ TEST_F(UsbMonitorTest, TestDeviceAddAndRemove) {
   ASSERT_TRUE(base::WriteFile(uevent_path, uevent_typec_port.c_str(),
                               uevent_typec_port.length()));
 
+  auto speed_path = usb_sysfs_path.Append("speed");
+  ASSERT_TRUE(base::WriteFile(speed_path, kSpeed, strlen(kSpeed)));
+
+  auto device_class_path = usb_sysfs_path.Append("bDeviceClass");
+  ASSERT_TRUE(
+      base::WriteFile(device_class_path, kDeviceClass, strlen(kDeviceClass)));
+
+  auto interface_dir_path = usb_sysfs_path.Append("1-1:1.0");
+  base::CreateDirectory(interface_dir_path);
+  auto interface_class_path = interface_dir_path.Append("bInterfaceClass");
+  ASSERT_TRUE(base::WriteFile(interface_class_path, kInterfaceClass,
+                              strlen(kInterfaceClass)));
+
   auto usb_monitor = std::make_unique<UsbMonitor>();
 
   // New USB device created and added to the map.
   usb_monitor->OnDeviceAddedOrRemoved(usb_sysfs_path, true);
+  usb_monitor->OnDeviceAddedOrRemoved(interface_dir_path, true);
   auto usb_device = usb_monitor->GetDevice(usb_sysfs_path.BaseName().value());
   EXPECT_NE(nullptr, usb_device);
   EXPECT_EQ(std::stoi(kBusnum), usb_device->GetBusnum());
   EXPECT_EQ(std::stoi(kDevnum), usb_device->GetDevnum());
   EXPECT_EQ(kTypecPortNum, usb_device->GetTypecPortNum());
+  EXPECT_EQ(std::stoi(kSpeed), usb_device->GetSpeed());
+  EXPECT_EQ(std::stoi(kDeviceClass, 0, 16), usb_device->GetDeviceClass());
+  EXPECT_EQ(std::stoi(kInterfaceClass, 0, 16), usb_device->GetInterfaceClass());
 
   // USB device removed from the map.
   usb_monitor->OnDeviceAddedOrRemoved(usb_sysfs_path, false);
