@@ -288,13 +288,13 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     writer.AppendString(item);
     writer.AppendUint64(handle);
 
-    auto readdir_response =
-        base::BindOnce(&FuseBoxClient::ReadDirResponse, base::Unretained(this),
+    auto readdir_started =
+        base::BindOnce(&FuseBoxClient::ReadDirStarted, base::Unretained(this),
                        node->ino, handle);
-    CallFuseBoxServerMethod(&method, std::move(readdir_response));
+    CallFuseBoxServerMethod(&method, std::move(readdir_started));
   }
 
-  void ReadDirResponse(ino_t ino, uint64_t handle, dbus::Response* response) {
+  void ReadDirStarted(ino_t ino, uint64_t handle, dbus::Response* response) {
     VLOG(1) << "readdir-resp fh " << handle;
 
     dbus::MessageReader reader(response);
@@ -309,11 +309,11 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     }
   }
 
-  void ReadDirBatchResponse(uint64_t handle,
-                            int32_t file_error,
-                            const std::vector<uint8_t>& list,
-                            bool has_more) override {
-    VLOG(1) << "readdir-batch fh " << handle;
+  void ReadDirResponse(uint64_t handle,
+                       int32_t file_error,
+                       const std::vector<uint8_t>& list,
+                       bool has_more) override {
+    VLOG(1) << "readdir-resp fh " << handle;
 
     auto it = readdir_.find(handle);
     if (it == readdir_.end())
@@ -322,14 +322,14 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     DirEntryResponse* response = it->second.get();
     if (file_error) {
       errno = response->Append(FileErrorToErrno(file_error));
-      PLOG(ERROR) << "readdir-batch [" << file_error << "]";
+      PLOG(ERROR) << "readdir-resp [" << file_error << "]";
       return;
     }
 
     const ino_t parent = response->parent();
     if (!GetInodeTable().Lookup(parent)) {
       response->Append(errno);
-      PLOG(ERROR) << "readdir-batch parent " << parent;
+      PLOG(ERROR) << "readdir-resp parent " << parent;
       return;
     }
 
@@ -540,6 +540,14 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
 
     fusebox::CloseFile(request->fh());
     request->ReplyOk();
+  }
+
+  bool AttachStorage(brillo::ErrorPtr* ptr, const std::string& name) override {
+    return false;
+  }
+
+  bool DetachStorage(brillo::ErrorPtr* ptr, const std::string& name) override {
+    return false;
   }
 
  private:
