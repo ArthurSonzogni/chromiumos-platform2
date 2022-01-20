@@ -79,13 +79,13 @@ class PlatformFeature {
                   std::vector<std::unique_ptr<FeatureCommand>>&& feature_cmds)
       : exec_cmds_(std::move(feature_cmds)),
         support_check_cmds_(std::move(query_cmds)),
-        feature_{name.c_str(), FEATURE_DISABLED_BY_DEFAULT},
-        name_(name) {}
+        name_(std::make_unique<std::string>(name)),
+        feature_{name_->c_str(), FEATURE_DISABLED_BY_DEFAULT} {}
   PlatformFeature(PlatformFeature&& other) = default;
   PlatformFeature(const PlatformFeature& other) = delete;
   PlatformFeature& operator=(const PlatformFeature& other) = delete;
 
-  std::string name() { return name_; }
+  const std::string& name() const { return *name_; }
 
   // Don't copy this because address must *not* change across lookups.
   const Feature* const feature() const { return &feature_; }
@@ -99,8 +99,10 @@ class PlatformFeature {
  private:
   std::vector<std::unique_ptr<FeatureCommand>> exec_cmds_;
   std::vector<std::unique_ptr<FeatureCommand>> support_check_cmds_;
+  // The string in this unique_ptr must not be modified since feature_ contains
+  // a pointer to the underlying c_str().
+  std::unique_ptr<const std::string> name_;
   Feature feature_;
-  std::string name_;
 };
 
 class FeatureParserBase {
